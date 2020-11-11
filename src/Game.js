@@ -104,65 +104,71 @@ export class Game extends Component {
         console.log(spaceship)
 
         var loader = new GLTFLoader();
-        console.log('import correct')
-            loader.load( 'Magnate.glb', function ( gltf ) {
-                console.log(gltf)
-                gltf.scene.children[2].children[14].material.color.r = 1
-                gltf.scene.children[2].children[14].material.color.g = 1
-                gltf.scene.children[2].children[14].material.color.b = 1
-                console.log(gltf.scene.children[2].children[14].material)
-                //gltf.scene.children[2].children[14].material.color = 'e5e5e5'
-                //gltf.scene.children[2].children[14].material = new THREE.MeshLambertMaterial({color:'#00ffff',opacity:0})
-                console.log(gltf.scene.children[2].children[14].material)
-                scene.add( gltf.scene );
-                gltf.scene.position.x += 4
-                document.addEventListener('keydown',function(e){
-                    // orbitControls.update()
-                    //movimiento
-                    switch(e.key){
-                        case 'a':
-                        // gltf.scene.translateX(-0.5);
-                        camera.position.x -= 0.5
-                        break;
-                        case 'd':
-                        // gltf.scene.translateX(0.5);
-                        camera.position.x += 0.5
-                        break;
-                        case 'w':
-                        // gltf.scene.translateZ(0.5);
-                        camera.position.z -= 0.5
-                        break;
-                        case 's':
-                        // gltf.scene.translateZ(-0.5);
-                        camera.position.z += 0.5
-                        break;
-                    }
-                    //giro
-                    switch(e.key){
-                        case 'ArrowLeft':
-                        // gltf.scene.rotateY(-0.1);
-                        camera.rotation.y += 0.1
-                        break;
-                        case 'ArrowRight':
-                        // gltf.scene.rotateY(0.1);
-                        camera.rotation.y -= 0.1
-                        break;
-                        case 'ArrowUp':
-                        // gltf.scene.rotateX(-0.1);
-                        camera.rotation.x += 0.1
-                        break;
-                        case 'ArrowDown':
-                        // gltf.scene.rotateX(0.1);
-                        camera.rotation.x -= 0.1
-                        break;
-                    }
-                })
+        loader.load( 'Magnate.glb', function ( gltf ) {
+            console.log('import correct')
+            console.log(gltf)
+            gltf.scene.children[2].children[14].material.color.r = 1
+            gltf.scene.children[2].children[14].material.color.g = 1
+            gltf.scene.children[2].children[14].material.color.b = 1
+            console.log(gltf.scene.children[2].children[14].material)
+            //gltf.scene.children[2].children[14].material.color = 'e5e5e5'
+            //gltf.scene.children[2].children[14].material = new THREE.MeshLambertMaterial({color:'#00ffff',opacity:0})
+            console.log(gltf.scene.children[2].children[14].material)
+            scene.add( gltf.scene );
+            gltf.scene.position.x += 4
+            document.addEventListener('keydown',function(e){
+                // orbitControls.update()
+                //movimiento
+                switch(e.key){
+                    case 'a':
+                    // gltf.scene.translateX(-0.5);
+                    camera.position.x -= 0.5
+                    break;
+                    case 'd':
+                    // gltf.scene.translateX(0.5);
+                    camera.position.x += 0.5
+                    break;
+                    case 'w':
+                    // gltf.scene.translateZ(0.5);
+                    camera.position.z -= 0.5
+                    break;
+                    case 's':
+                    // gltf.scene.translateZ(-0.5);
+                    camera.position.z += 0.5
+                    break;
+                }
+                //giro
+                switch(e.key){
+                    case 'ArrowLeft':
+                    // gltf.scene.rotateY(-0.1);
+                    camera.rotation.y += 0.1
+                    break;
+                    case 'ArrowRight':
+                    // gltf.scene.rotateY(0.1);
+                    camera.rotation.y -= 0.1
+                    break;
+                    case 'ArrowUp':
+                    // gltf.scene.rotateX(-0.1);
+                    camera.rotation.x += 0.1
+                    break;
+                    case 'ArrowDown':
+                    // gltf.scene.rotateX(0.1);
+                    camera.rotation.x -= 0.1
+                    break;
+                }
+            })
+        }, undefined, function ( error ) {
+            console.error( error );
+        } );
 
-            }, undefined, function ( error ) {
-
-                console.error( error );
-
-            } );
+        var animate = function () {
+            requestAnimationFrame( animate );
+    
+            renderer.render( scene, camera );
+        };
+    
+        animate();
+            
     }
     render() {
         return <div ref={ref => (this.mount = ref)} />;

@@ -49,8 +49,8 @@ export class Game extends Component {
             side: THREE.DoubleSide,
             flatShading: true
         } );
-        var cube = new THREE.Mesh(geometry, material);
-        scene.add(cube);
+        var spaceship = new THREE.Group();
+        scene.add(spaceship);
 
         var lights = [];
         lights[ 0 ] = new THREE.PointLight( 0xffffff, 1, 0 );
@@ -96,21 +96,12 @@ export class Game extends Component {
 
         }
 
+        console.log(scene);
 
-
-        // ANIMATE THE SCENE
-        var animate = function() {
-            requestAnimationFrame(animate);
-
-            cube.rotation.x += 0.01;
-            cube.rotation.y += 0.01;
-
-            renderer.render(scene, camera);
-        };
-
-        animate();
-
-        console.log(geometry);console.log(scene);
+        spaceship.add(new THREE.Mesh(geometry, material).translateX(-2))
+        spaceship.add(new THREE.Mesh(geometry, material))
+        spaceship.add(new THREE.Mesh(geometry, material).translateY(2))
+        console.log(spaceship)
 
         var loader = new GLTFLoader();
         console.log('import correct')

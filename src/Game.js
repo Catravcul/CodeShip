@@ -104,7 +104,7 @@ export class Game extends Component {
         console.log(spaceship)
 
         var loader = new GLTFLoader();
-        loader.load( 'Magnate.glb', function ( gltf ) {
+        loader.load( '3d/Magnate.glb', function ( gltf ) {
             console.log('import correct')
             console.log(gltf)
             gltf.scene.children[2].children[14].material.color.r = 1

@@ -1,28 +1,12 @@
-import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader';
+import {GltfLoader} from './utils/GltfLoader'
 
-export class Spaceship{
-    loader = new GLTFLoader()
+export class Spaceship {
     spaceship
     fuselage = {}
     wingLeft
-    constructor(p_spaceship, p_fuselage = '3d/Magnate.glb'){
+    constructor(p_spaceship, p_fuselagePath = '3d/Magnate.glb') {
         this.spaceship = p_spaceship
-        this.setFuselage(p_spaceship, p_fuselage)
-    }
-
-    /**
-     * Gives a 3d object already in scene a new child (3d object)
-     * @param {THREE.Group} p_spaceship - 3d object in scene
-     * @param {string} p_fuselage - path of the .glb file
-     */
-    setFuselage(p_spaceship, p_fuselage){   
-        let fuselage = this.fuselage
-        this.loader.load( p_fuselage, function ( gltf ) {
-            fuselage.gltf=gltf
-            p_spaceship.add(gltf.scene)
-        }, undefined, function ( error ) {
-            console.error( error );
-        } );
+        GltfLoader.loadAsChild(this.spaceship, p_fuselagePath, this.fuselage, GltfLoader.loader, this)
     }
 
 }

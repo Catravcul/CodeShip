@@ -98,9 +98,7 @@ export class Game extends Component {
 
         import('./Spaceship').then(({Spaceship}) => {
             const spaceship = new THREE.Group();
-            (new Spaceship(spaceship))
-            console.log('test')
-            console.log(spaceship)
+            const spaceshipInstance = new Spaceship(spaceship)
             scene.add(spaceship)
         })
 

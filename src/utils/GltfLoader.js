@@ -7,12 +7,12 @@ export class GltfLoader{
      * Gives a 3d object already in scene a new child (3d object) which is loaded with GLTF
      * @param {THREE.Group} p_parent - 3d object in scene
      * @param {string} p_childPath - path of the .glb file
-     * @param {object} p_reference - object reference to store scene of child loaded
+     * @param {p_instance} p_instance - instance which propery is going to store rendered 3d model
+     * @param {string} property - property name
      */
-    static loadAsChild(p_parent, p_childPath, p_reference = {}, loader = GltfLoader.loader) {   
-        let reference = p_reference
+    static loadAsChild(p_parent, p_childPath, [p_instance, p_property] = [{},'fail'], loader = GltfLoader.loader) {
         loader.load( p_childPath, function ( {scene} ) {
-            reference.scene = scene
+            p_instance[p_property] = scene
             p_parent.add(scene)
         }, undefined, function ( error ) {
             console.error( error );

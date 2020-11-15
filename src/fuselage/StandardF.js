@@ -1,7 +1,9 @@
 import {GltfLoader} from '../utils/GltfLoader'
 
 export class StandardF{
-    glbPath = '3d/fusilage/Fusilage.glb'
+    glbPath = '3d/fuselage/StandardF.glb'
+    positionPE = {x:0, y:0, z:0}
+    positionDW = {x:0, y:0, z:0}
     lifePoints
     color
     scene

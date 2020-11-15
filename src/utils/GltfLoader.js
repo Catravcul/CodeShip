@@ -10,9 +10,12 @@ export class GltfLoader{
      * @param {p_instance} p_instance - instance which propery is going to store rendered 3d model
      * @param {string} property - property name
      */
-    static loadAsChild(p_parent, p_childPath, [p_instance, p_property] = [{},'fail'], loader = GltfLoader.loader) {
+    static loadAsChild(p_parent, p_childPath, [p_instance, p_property] = [{},'fail'], middlewares = {}, loader = GltfLoader.loader) {
         loader.load( p_childPath, function ( {scene} ) {
             p_instance[p_property] = scene
+            for (const key in middlewares) {
+                middlewares[key](p_instance, scene)
+            }
             p_parent.add(scene)
         }, undefined, function ( error ) {
             console.error( error );

@@ -5,9 +5,9 @@ export class Environment {
     '3d/asteroids/Poligon.glb', '3d/asteroids/Stone.glb']
     scene
     distanceArrays = [
-        [ 10, -10, -50, 50, 100, -100, -160, 230, -210, -300, -400, -510],  
+        [ 10, -10, -50, -100, 50, 100, -160, -220, 160, 220, -300, 300],  
         [10, -10, -30, -40],
-        [ 10, -10, -50, -100, 50, 100, -160, -220, 160, 220, -300, 300]
+        [ 10, -10, -50, 50, 100, -100, -160, 230, -210, 300, 400, 510]
     ]
     middlewares = {
         alignWithOthers(instance, scene) {

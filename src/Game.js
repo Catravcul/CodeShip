@@ -46,17 +46,7 @@ export class Game extends Component {
 
 
 
-        // ADD CUBE AND LIGHTS
-        // https://threejs.org/docs/index.html#api/en/geometries/BoxGeometry
-        // https://threejs.org/docs/scenes/geometry-browser.html#BoxGeometry
-        var geometry = new THREE.BoxGeometry(2, 2, 2);
-        var material = new THREE.MeshPhongMaterial( {
-            color: 0x156289,
-            emissive: 0x072534,
-            side: THREE.DoubleSide,
-            flatShading: true
-        } );
-
+        // ADD LIGHTS
         var lights = [];
         lights[ 0 ] = new THREE.PointLight( 0xffffff, 1, 0 );
         lights[ 1 ] = new THREE.PointLight( 0xffffff, 1, 0 );
@@ -103,20 +93,20 @@ export class Game extends Component {
 
         console.log(scene);
 
-        import('./Spaceship').then(({Spaceship}) => {
-            const spaceship = new THREE.Group();
+        const spaceship = new THREE.Group();
+        import('./threeModels/Spaceship').then(({Spaceship}) => {
             const spaceshipInstance = new Spaceship(spaceship)
             console.log(spaceshipInstance)
             scene.add(spaceship)
         })
 
-        import('./Environment').then(({Environment}) => {
+        import('./threeModels/Environment').then(({Environment}) => {
             const environment = new Environment(scene)
         })
 
         var animate = function () {
             requestAnimationFrame( animate );
-    
+            // spaceship.translateZ(0.5)
             renderer.render( scene, camera );
         };
     

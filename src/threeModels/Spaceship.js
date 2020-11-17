@@ -1,4 +1,4 @@
-import {StandardPE} from './propulsion_engines/StandardPE'
+import {StandardPE} from './propulsionEngines/StandardPE'
 import {StandardF} from './fuselage/StandardF'
 
 export class Spaceship {

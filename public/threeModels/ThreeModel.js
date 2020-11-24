@@ -1,8 +1,8 @@
-import { GltfLoader } from '../utils/GltfLoader'
+import { GltfLoader } from '../utils/GltfLoader.js'
 
 
 //MATERIALS
-import { Cristal } from '../materials/Cristal'
+import { Cristal } from '../materials/Cristal.js'
 
 export class ThreeModel {
     GltfLoader = GltfLoader

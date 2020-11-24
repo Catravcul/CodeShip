@@ -1,8 +1,8 @@
-import * as Components from './Components'
+import * as Components from './Components.js'
 
 export class Spaceship {
     spaceship
-    fuselage = new Components.MiniF()
+    fuselage = new Components.BirdF()
     wingLeft = new Components.BirdPE(this.fuselage.positionPE, this.fuselage.rotationPE)
 
     constructor(p_spaceship) {

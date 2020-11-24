@@ -1,4 +1,4 @@
-import { ThreeModel } from '../ThreeModel'
+import { ThreeModel } from '../ThreeModel.js'
 
 export class PropulsionEngine extends ThreeModel {
     position

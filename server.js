@@ -23,7 +23,7 @@ app.get( '/*', ( req, res ) => {
 } );
 app.post( '/spaceship/class', ( req, res ) => { 
     const response = {}
-    fs.readFile( 'src/threeModels/Spaceship.js', { encoding : 'utf-8' })
+    fs.readFile( 'public/threeModels/Spaceship.js', { encoding : 'utf-8' })
     .then( ( data ) => {
         response.fileText = data
         res.status( 200 ).json( response )
@@ -34,7 +34,7 @@ app.post( '/spaceship/class', ( req, res ) => {
     } )
 } );
 app.put( '/spaceship/class', ( req, res ) => {
-    fs.writeFile( 'src/threeModels/Spaceship.js', req.body.fileText )
+    fs.writeFile( 'public/threeModels/Spaceship.js', req.body.fileText )
     .then( () => {
         response.message = 'well done'
         res.status( 200 ).json( response )

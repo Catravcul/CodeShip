@@ -13,10 +13,10 @@ export class GltfLoader{
     static loadAsChild(p_parent, p_childPath, [p_instance, p_property] = [{},'fail'], middlewares = {}, loader = GltfLoader.loader) {
         loader.load( p_childPath, function ( {scene} ) {
             p_instance[p_property] = scene
+            p_parent.add(scene)
             for (const key in middlewares) {
                 middlewares[key](p_instance, scene)
             }
-            p_parent.add(scene)
         }, undefined, function ( error ) {
             console.error( error );
         } );

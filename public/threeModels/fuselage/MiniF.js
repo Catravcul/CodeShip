@@ -3,13 +3,13 @@ import { ThreeModel } from '../ThreeModel.js'
 export class MiniF extends ThreeModel {
     glbPath = '3d/fuselage/MiniF.glb'
     positionPE = {x:0, y:-0.3, z:-8.4}
-    rotationPE = {x:-0.1, y:0, z:0}
+    rotationPE = {x:-0, y:0, z:0}
     positionTO = [
-        {x:1.2, y:-2.1, z:-3.85},
-        {x:-1.2, y:-2.1, z:-3.85},
+        {x:1.2, y:-2, z:-3.85},
+        {x:-1.2, y:-2, z:-3.85},
         {x:1.2, y:-2, z:-1.5},
         {x:-1.2, y:-2, z:-1.5},
-        {x:0, y:-2.6, z:4.5}
+        {x:0, y:-2.5, z:4.5}
     ]
     rotationTO = [
         {x:-0.05, y:0, z:0.25},

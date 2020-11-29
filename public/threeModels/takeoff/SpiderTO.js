@@ -1,0 +1,15 @@
+import { Takeoff } from './Takeoff.js'
+
+export class SpiderTO extends Takeoff {
+    glbPath = '3d/takeoff/SpiderTO.glb'
+
+    constructor(p_positions, p_rotations, p_scale, p_color = 'grey', p_lifePoints = 100) {
+        super()
+        this.positions = p_positions
+        this.rotations = p_rotations
+        this.scale = p_scale
+        this.lifePoints = p_lifePoints
+        this.color = p_color
+    }
+
+}

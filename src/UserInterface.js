@@ -5,18 +5,27 @@ export class UserInterface extends Component {
     constructor(props) {
         super(props)
         this.state = {
-            spaceshipVisibility : 'hidden'
+            spaceshipVisibility : 'hidden',
+            token: '',
+            session: {},
+            products: []
         }
     }
     
     componentDidMount() {
-        fetch('http://localhost:300/spaceship/class', {
+        fetch('http://localhost:3000/spaceship/class', {
             method : 'POST'
         }).then( response => response.json()).then( data => {
             if( data.error === undefined ) {
                 this.setState( { spaceshipClassText : data.fileText } )
             }
         })
+        this.setState({token: sessionStorage.getItem('codeship-token')}, this.updateSession)
+    }
+
+    updateSession() {
+        fetch('http://127.0.0.1:5000/user', {method: 'GET', headers: {'x-access-token': this.state.token}})
+        .then(res => res.json()).then(({user}) => this.setState({session: user}))
     }
 
     customizeSpaceship = () => {
@@ -29,7 +38,7 @@ export class UserInterface extends Component {
 
     uploadSpaceshipClassText = () => {
         const body = { fileText: this.state.spaceshipClassText }
-        fetch( 'http://localhost:300/spaceship/class', {
+        fetch( 'http://localhost:3000/spaceship/class', {
             method : 'PUT',
             body : JSON.stringify( body ),
             headers : { 'Content-Type' : 'application/json' }

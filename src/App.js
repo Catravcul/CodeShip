@@ -1,6 +1,6 @@
-import './resources/css/App.css';
+import './App.css';
 import { Game } from './Game'
-import { UserInterface } from './UserInterface'
+import { UserInterface } from './UserInterface/UserInterface'
 
 function App() {
   return (

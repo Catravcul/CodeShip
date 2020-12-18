@@ -13,19 +13,25 @@ export class UserInterface extends Component {
     }
     
     componentDidMount() {
-        fetch('http://localhost:3000/spaceship/class', {
-            method : 'POST'
-        }).then( response => response.json()).then( data => {
-            if( data.error === undefined ) {
-                this.setState( { spaceshipClassText : data.fileText } )
-            }
-        })
+        // fetch('http://localhost:3000/spaceship/class', {
+        //     method : 'POST'
+        // }).then( response => response.json()).then( data => {
+        //     if( data.error === undefined ) {
+        //         this.setState( { spaceshipClassText : data.fileText } )
+        //     }
+        // })
         this.setState({token: sessionStorage.getItem('codeship-token')}, this.updateSession)
+        this.getProducts()
     }
 
     updateSession() {
         fetch('http://127.0.0.1:5000/user', {method: 'GET', headers: {'x-access-token': this.state.token}})
         .then(res => res.json()).then(({user}) => this.setState({session: user}))
+    }
+
+    getProducts() {
+        fetch('http://127.0.0.1:5000/public/product', {method: 'GET'})
+        .then(res => res.json()).then(({products}) => this.setState({products: products}))
     }
 
     customizeSpaceship = () => {

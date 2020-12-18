@@ -13,13 +13,8 @@ export class UserInterface extends Component {
     }
     
     componentDidMount() {
-        // fetch('http://localhost:3000/spaceship/class', {
-        //     method : 'POST'
-        // }).then( response => response.json()).then( data => {
-        //     if( data.error === undefined ) {
-        //         this.setState( { spaceshipClassText : data.fileText } )
-        //     }
-        // })
+        fetch('http://127.0.0.1:5000/spaceship.txt', {method: 'GET'})
+        .then(res => res.text()).then( data => this.setState({spaceshipClassText: data}))
         this.setState({token: sessionStorage.getItem('codeship-token')}, this.updateSession)
         this.getProducts()
     }

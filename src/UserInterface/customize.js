@@ -1,22 +1,19 @@
-import { Component } from 'react'
+import { Config } from '../Config'
+import './customize.css'
 
-export class Customize extends Component {
+export class Customize extends Config {
     state = {
-        spaceshipClassText: ''
+        shipClass: ''
     }
 
     componentDidMount() {
-        fetch('http://127.0.0.1:5000/spaceship.txt', {method: 'GET'})
-        .then(res => res.text()).then( data => this.setState({spaceshipClassText: data}))
-    }
-
-    changeSpaceshipClassText = ( e ) => {
-        this.setState( { spaceshipClassText: e.currentTarget.value } )
+        fetch(this.config.codeshipApi.urlBase + 'spaceship.txt', {method: 'GET'})
+        .then(res => res.text()).then( data => this.setState({shipClass: data}))
     }
 
     render() {
-        return  <div id="spaceship-class" className={ "absolute middle " + this.props.spaceshipVisibility }>
-                    <textarea value = { this.state.spaceshipClassText } className = "screen-80" spellCheck = "false" onChange = { this.changeSpaceshipClassText }></textarea>
+        return  <div id="spaceship-class" className={ "customize-s screen " + this.props.spaceshipVisibility }>
+                    <textarea value = { this.state.shipClass } className = "absolute ship-class" disabled ></textarea>
                     <button id = "apply" onClick = { this.uploadSpaceshipClassText }>
                         <img src="/img/apply.svg" alt="shop" width="20px"/>
                     </button>

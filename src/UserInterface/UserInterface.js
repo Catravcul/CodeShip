@@ -1,8 +1,8 @@
-import { Component } from 'react'
+import { Config } from '../Config'
 import './UserInterface.css'
 import { Nav } from './nav'
 
-export class UserInterface extends Component {
+export class UserInterface extends Config {
 
     state = {
         token: '',
@@ -16,22 +16,13 @@ export class UserInterface extends Component {
     }
 
     updateSession() {
-        fetch('http://127.0.0.1:5000/user', {method: 'GET', headers: {'x-access-token': this.state.token}})
+        fetch(this.config.codeshipApi.urlBase + 'user', {method: 'GET', headers: {'x-access-token': this.state.token}})
         .then(res => res.json()).then(({user}) => this.setState({session: user}))
     }
 
     getProducts() {
-        fetch('http://127.0.0.1:5000/public/product', {method: 'GET'})
+        fetch(this.config.codeshipApi.urlBase + 'public/product', {method: 'GET'})
         .then(res => res.json()).then(({products}) => this.setState({products: products}))
-    }
-
-    uploadSpaceshipClassText = () => {
-        const body = { fileText: this.state.spaceshipClassText }
-        fetch( 'http://localhost:3000/spaceship/class', {
-            method : 'PUT',
-            body : JSON.stringify( body ),
-            headers : { 'Content-Type' : 'application/json' }
-        } ).then( response => response.json() ).then( window.location.reload() )
     }
 
     /**
@@ -39,7 +30,7 @@ export class UserInterface extends Component {
      */
     render() {
         return  <div id="user-interface" >
-                    <Nav />
+                    <Nav session={this.state.session} products={this.state.products}/>
                 </div>
     }
 

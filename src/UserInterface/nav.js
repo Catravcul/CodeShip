@@ -12,16 +12,19 @@ export class Nav extends Component {
     }
 
     render() {
-        return  <div><nav className="absolute top" >
-                    <button id="customize" onClick = {this.customizeSpaceship}>
-                        <img src="/img/customize.svg" alt="customize" width="20px"/>
-                    </button>
-                    <button id="navigate">
-                        <img src="/img/navigate.svg" alt="navigate" width="20px"/>
-                    </button>
-                    <button id="shop">
-                        <img src="/img/shop.svg" alt="shop" width="20px"/>
-                    </button>
-                </nav><Customize spaceshipVisibility={this.state.spaceshipVisibility} /></div>
+        return  <div>
+                    <nav className="absolute bottom flex-col" >
+                        <button id="customize" className="btn" onClick = {this.customizeSpaceship}>
+                            <img src="/img/customize.svg" alt="customize" width="50px"/>
+                        </button>
+                        <button id="navigate" className="btn">
+                            <img src="/img/navigate.svg" alt="navigate" width="50px"/>
+                        </button>
+                        <button id="shop" className="btn">
+                            <img src="/img/shop.svg" alt="shop" width="50px"/>
+                        </button>
+                    </nav>
+                    <Customize spaceshipVisibility={this.state.spaceshipVisibility} session={this.props.session} products={this.props.products}/>
+                </div>
     }
 }

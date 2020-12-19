@@ -1,11 +1,11 @@
-import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
 import { Environment } from './threeModels/Environment'
+import { Config } from './Config'
 
 
-export class Game extends Component {
+export class Game extends Config {
 
     /**
      * Render scene and spaceship in default way
@@ -98,28 +98,17 @@ export class Game extends Component {
 
         }
 
-        console.log(scene);
-
-        const spaceship = new THREE.Group();
-        import('./threeModels/Spaceship').then(({Spaceship}) => {
-            const spaceshipInstance = new Spaceship(spaceship)
-            console.log(spaceshipInstance)
-            scene.add(spaceship)
-        })
-
-        import('./threeModels/Environment').then(({Environment}) => {
-            const environment = new Environment(scene)
-        })
+        scene.add(Config.ship)
 
         var animate = function () {
             requestAnimationFrame( animate );
-            // spaceship.translateZ(0.5)
             renderer.render( scene, camera );
         };
     
         animate();
             
     }
+
     render() {
         return <div ref={ref => (this.mount = ref)} />;
     }

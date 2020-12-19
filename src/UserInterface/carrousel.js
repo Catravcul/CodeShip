@@ -16,7 +16,8 @@ export class Carrousel extends Config {
         const { position } = this.state
         if (ids.length > 5) {
             if (position + 5 > ids.length) {
-                const initialIds = ids.slice(position, ids.length - 1)
+                const initialIds = ids.slice(position, ids.length)
+                console.log(initialIds)
                 ids = initialIds.concat(ids.slice(0, 5 - initialIds.length))
             } else {
                 ids = ids.slice(position, position + 5)
@@ -53,11 +54,11 @@ export class Carrousel extends Config {
                     this.printNav(triangle_l, this.prevItems)
                     : ''}
 
-            {this.products && this.items? this.getProducts(this.items, this.products).map((item, index) => {
-                return  <button className={"btn " + this.classes[index]}>
-                            <img className="img" style={{backgroundImage: 'url("' + this.config.codeshipApi.urlBase + item.img_path + '")'}} />
-                        </button>
-            }) : console.log(this.products)}
+            {this.products && this.items? this.getProducts(this.items, this.products).map((item, index) => 
+                <button className={"btn " + this.classes[index]} onClick={() => Config.shipInstance.setComponent(item.type, item.title)} >
+                    <img className="img" style={{backgroundImage: 'url("' + this.config.codeshipApi.urlBase + item.img_path + '")'}} />
+                </button>
+            ) : console.log(this.products)}
 
                 {this.items ?
                     this.printNav(triangle_r, this.nextItems)

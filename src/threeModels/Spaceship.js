@@ -22,4 +22,9 @@ export class Spaceship {
         this.propulsionEngine.renderOnGroup(this.spaceship)
     }
 
+    setComponent(component, value) {
+        this.spaceship.clear()
+        this.components[component] = value
+        this.renderComponents()
+    }
 }

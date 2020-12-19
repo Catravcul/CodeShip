@@ -4,6 +4,13 @@
 .top {
     top: 0;
 }
+.bottom {
+    bottom: 0;
+}
+.screen {
+    height: 100vh;
+    width: 100vw;
+}
 .middle {
     top: 50vh;
     left: 50vw;
@@ -15,4 +22,26 @@
 .screen-80 {
     width: 80vw;
     height: 80vh
+}
+.btn {
+    background-color: unset;
+    padding: unset;
+    border: none;
+    margin: 2px;
+}
+.btn:focus {
+    outline: none;
+}
+.btn:hover {
+    transform: scale(1.2);
+}
+.img {
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-color:rgb(0, 0, 0, 50%);
+}
+.flex-col {
+    display: flex;
+    flex-flow: column;
 }

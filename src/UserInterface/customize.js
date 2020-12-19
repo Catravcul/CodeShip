@@ -1,4 +1,5 @@
 import { Config } from '../Config'
+import { Carrousel } from './carrousel'
 import './customize.css'
 
 export class Customize extends Config {
@@ -17,6 +18,7 @@ export class Customize extends Config {
                     <button id = "apply" onClick = { this.uploadSpaceshipClassText }>
                         <img src="/img/apply.svg" alt="shop" width="20px"/>
                     </button>
+                    <Carrousel session={this.props.session} products={this.props.products}/>
                 </div>
     }
 }

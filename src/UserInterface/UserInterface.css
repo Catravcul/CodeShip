@@ -45,3 +45,7 @@
     display: flex;
     flex-flow: column;
 }
+.bg-gray {
+    background-color: rgba(170, 170, 170, 0.7);
+    color: rgb(15, 15, 15);
+}

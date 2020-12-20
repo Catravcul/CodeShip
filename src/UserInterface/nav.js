@@ -1,7 +1,7 @@
-import { Component } from 'react'
+import { Config } from '../Config'
 import { Customize } from './customize'
 
-export class Nav extends Component {
+export class Nav extends Config {
 
     state = {
             customize: false
@@ -11,10 +11,16 @@ export class Nav extends Component {
         this.setState({customize: this.state.customize == true ? false : true})
     }
 
+    cancelCustomize = () => {
+        Config.shipInstance.components = Object.assign([], Config.components)
+        Config.shipInstance.renderComponents()
+        this.customizeShip()
+    }
+
     render() {
         return  <div>
                     <nav className="absolute bottom flex-col" >
-                        <button className={"btn " + (this.state.customize ? '' : 'hidden')} onClick = {this.customizeShip}>
+                        <button className={"btn " + (this.state.customize ? '' : 'hidden')} onClick = {this.cancelCustomize}>
                             <img src="/img/cancel.svg" alt="cancel" width="50px"/>
                         </button>
                         <button className={"btn " + (this.state.customize ? '' : 'hidden')} >

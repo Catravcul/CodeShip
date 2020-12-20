@@ -17,13 +17,22 @@ export class Nav extends Config {
         this.customizeShip()
     }
 
+    applyCustomize = () => {
+        fetch(this.config.codeshipApi.urlBase + 'spaceship', {
+            method: 'PATCH',
+            body: JSON.stringify({config: Config.shipInstance.components}),
+            headers: {'x-access-token': this.props.token, 'Content-Type': 'application/json'}
+        }).then(res => res.json()).then(({spaceship}) => Config.components = Object.assign([], spaceship.config))
+        this.customizeShip()
+    }
+
     render() {
         return  <div>
                     <nav className="absolute bottom flex-col" >
                         <button className={"btn " + (this.state.customize ? '' : 'hidden')} onClick = {this.cancelCustomize}>
                             <img src="/img/cancel.svg" alt="cancel" width="50px"/>
                         </button>
-                        <button className={"btn " + (this.state.customize ? '' : 'hidden')} >
+                        <button className={"btn " + (this.state.customize ? '' : 'hidden')} onClick = {this.applyCustomize}>
                             <img src="/img/apply.svg" alt="apply" width="50px"/>
                         </button>
                         <button className={"btn " + (this.state.customize ? 'hidden' : '')} onClick = {this.customizeShip}>

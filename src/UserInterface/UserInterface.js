@@ -39,7 +39,7 @@ export class UserInterface extends Config {
      */
     render() {
         return  <div id="user-interface" >
-                    <Nav session={this.state.session} products={this.state.products}/>
+                    <Nav session={this.state.session} products={this.state.products} token={this.state.token} />
                 </div>
     }
 

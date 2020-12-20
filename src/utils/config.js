@@ -1,14 +1,14 @@
-const mode = 'DEV'
+const mode = 'PROD'
 
 const development = {
     codeshipApi: {
     urlBase : 'http://127.0.0.1:5000/'
-    }}
-    const test = {
+}}
+const test = {
     codeshipApi: {
     urlBase : 'http://127.0.0.1:5000/'
-    }}
-    const production = {
+}}
+const production = {
     codeshipApi: {
     urlBase : 'https://codeship-api.herokuapp.com/'
 }}

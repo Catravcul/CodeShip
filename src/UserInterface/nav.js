@@ -18,11 +18,15 @@ export class Nav extends Config {
     }
 
     applyCustomize = () => {
-        fetch(this.config.codeshipApi.urlBase + 'spaceship', {
-            method: 'PATCH',
-            body: JSON.stringify({config: Config.shipInstance.components}),
-            headers: {'x-access-token': this.props.token, 'Content-Type': 'application/json'}
-        }).then(res => res.json()).then(({spaceship}) => Config.components = Object.assign([], spaceship.config))
+        if(this.props.session) {
+            fetch(Config.config.codeshipApi.urlBase + 'spaceship', {
+                method: 'PATCH',
+                body: JSON.stringify({config: Config.shipInstance.components}),
+                headers: {'x-access-token': this.props.token, 'Content-Type': 'application/json'}
+            }).then(res => res.json()).then(({spaceship}) => Config.components = Object.assign([], spaceship.config))
+        } else {
+            alert('where would customization be saved without an account ?')
+        }
         this.customizeShip()
     }
 

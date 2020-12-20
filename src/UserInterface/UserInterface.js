@@ -17,7 +17,15 @@ export class UserInterface extends Config {
 
     updateSession() {
         fetch(this.config.codeshipApi.urlBase + 'user', {method: 'GET', headers: {'x-access-token': this.state.token}})
-        .then(res => res.json()).then(({user}) => this.setState({session: user}))
+        .then(res => res.json()).then(({user}) => this.setState({session: user}, this.loadShip))
+    }
+
+    loadShip() {
+        fetch(this.config.codeshipApi.urlBase + 'spaceship', {method: 'GET', headers: {'x-access-token': this.state.token}})
+        .then(res => res.json()).then(({spaceship}) => {
+            Config.shipInstance.components = spaceship.config
+            Config.shipInstance.renderComponents()
+        })
     }
 
     getProducts() {

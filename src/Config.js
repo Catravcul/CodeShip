@@ -5,6 +5,7 @@ import { Spaceship } from './threeModels/Spaceship'
 
 export class Config extends Component {
     config = getConfig()
+    static components = {fuselage: 'StandardF', propulsionEngine: 'StandardPE', takeoff: 'StandardTO'}
     static ship = new Group()
     static shipInstance = new Spaceship(Config.ship)
 }

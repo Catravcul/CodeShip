@@ -1,36 +1,55 @@
 import { Config } from '../Config'
 import './UserInterface.css'
 import { Nav } from './nav'
+import { Login } from './login'
 
 export class UserInterface extends Config {
 
     state = {
         token: '',
         session: {},
-        products: []
+        products: [],
+        login: ''
     }
         
     componentDidMount() {
-        this.setState({token: sessionStorage.getItem('codeship-token')}, this.updateSession)
+        this.updateToken()
         this.getProducts()
     }
 
+    updateToken = () => {
+        this.setState({token: sessionStorage.getItem('codeship-token')}, this.updateSession)
+    }
+    
     updateSession() {
-        fetch(this.config.codeshipApi.urlBase + 'user', {method: 'GET', headers: {'x-access-token': this.state.token}})
-        .then(res => res.json()).then(({user}) => this.setState({session: user}, this.loadShip))
+        this.fetchGet('user', ({user}) => this.setState({session: user}, this.loadShip))
     }
 
     loadShip() {
-        fetch(this.config.codeshipApi.urlBase + 'spaceship', {method: 'GET', headers: {'x-access-token': this.state.token}})
-        .then(res => res.json()).then(({spaceship}) => {
-            Config.components = Object.assign([],spaceship.config)
-            Config.shipInstance.components = spaceship.config
+        if(this.state.session){
+            this.fetchGet('spaceship', ({spaceship}) => {
+                if(spaceship.config.fuselage){
+                    Config.components = Object.assign({},spaceship.config)
+                    Config.shipInstance.components = spaceship.config
+                }
+                Config.shipInstance.renderComponents()
+            })
+        } else {
+            this.setState({login: <Login updateToken={this.updateToken}/>})
             Config.shipInstance.renderComponents()
-        })
+        }
+    }
+
+    fetchGet(entity, callback) {
+        fetch(Config.config.codeshipApi.urlBase + entity, {
+            method: 'GET',
+            cache: 'no-store',
+            headers: {'x-access-token': this.state.token}
+        }).then(res => res.json()).then(callback)
     }
 
     getProducts() {
-        fetch(this.config.codeshipApi.urlBase + 'public/product', {method: 'GET'})
+        fetch(Config.config.codeshipApi.urlBase + 'public/product', {method: 'GET'})
         .then(res => res.json()).then(({products}) => this.setState({products: products}))
     }
 
@@ -39,6 +58,7 @@ export class UserInterface extends Config {
      */
     render() {
         return  <div id="user-interface" >
+                    {this.state.login}
                     <Nav session={this.state.session} products={this.state.products} token={this.state.token} />
                 </div>
     }

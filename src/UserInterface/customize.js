@@ -8,7 +8,7 @@ export class Customize extends Config {
     }
 
     componentDidMount() {
-        fetch(this.config.codeshipApi.urlBase + 'spaceship.txt', {method: 'GET'})
+        fetch(Config.config.codeshipApi.urlBase + 'spaceship.txt', {method: 'GET'})
         .then(res => res.text()).then( data => this.setState({shipClass: data}))
     }
 

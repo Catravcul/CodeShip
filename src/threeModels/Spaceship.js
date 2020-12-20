@@ -14,6 +14,7 @@ export class Spaceship {
     }
 
     renderComponents() {
+        this.spaceship.clear()
         this.fuselage = new Components[this.components['fuselage']]()
         this.takeoff = new Components[this.components['takeoff']](this.fuselage.positionTO, this.fuselage.rotationTO, this.fuselage.scaleTO)
         this.propulsionEngine = new Components[this.components['propulsionEngine']](this.fuselage.positionPE, this.fuselage.rotationPE)
@@ -23,7 +24,6 @@ export class Spaceship {
     }
 
     setComponent(component, value) {
-        this.spaceship.clear()
         this.components[component] = value
         this.renderComponents()
     }

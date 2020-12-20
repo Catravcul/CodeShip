@@ -13,11 +13,8 @@ export class Customize extends Config {
     }
 
     render() {
-        return  <div id="spaceship-class" className={ "customize-s screen " + this.props.spaceshipVisibility }>
+        return  <div id="spaceship-class" className={ "customize-s screen " + (this.props.customize ? '' : 'hidden') }>
                     <textarea value = { this.state.shipClass } className = "absolute ship-class" disabled ></textarea>
-                    <button id = "apply" onClick = { this.uploadSpaceshipClassText }>
-                        <img src="/img/apply.svg" alt="shop" width="20px"/>
-                    </button>
                     <Carrousel session={this.props.session} products={this.props.products}/>
                 </div>
     }

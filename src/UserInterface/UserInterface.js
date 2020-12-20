@@ -23,6 +23,7 @@ export class UserInterface extends Config {
     loadShip() {
         fetch(this.config.codeshipApi.urlBase + 'spaceship', {method: 'GET', headers: {'x-access-token': this.state.token}})
         .then(res => res.json()).then(({spaceship}) => {
+            Config.components = Object.assign([],spaceship.config)
             Config.shipInstance.components = spaceship.config
             Config.shipInstance.renderComponents()
         })

@@ -1,6 +1,7 @@
 import { ThreeModel } from '../ThreeModel'
 
 export class Takeoff extends ThreeModel {
+    static folderPath = '3d/takeoff/'
     positions
     rotations
     scale

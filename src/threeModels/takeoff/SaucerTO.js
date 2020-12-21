@@ -1,7 +1,7 @@
 import { Takeoff } from './Takeoff'
 
 export class SaucerTO extends Takeoff {
-    glbPath = '3d/takeoff/SaucerTO.glb'
+    glbPath = Takeoff.folderPath + 'SaucerTO.glb'
 
     constructor(p_positions, p_rotations, p_scale, p_color = 'grey', p_lifePoints = 100) {
         super()

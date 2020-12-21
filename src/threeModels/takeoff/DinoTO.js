@@ -1,7 +1,7 @@
 import { Takeoff } from './Takeoff'
 
 export class DinoTO extends Takeoff {
-    glbPath = '3d/takeoff/DinoTO.glb'
+    glbPath = Takeoff.folderPath + 'DinoTO.glb'
 
     constructor(p_positions, p_rotations, p_scale, p_color = 'grey', p_lifePoints = 100) {
         super()

@@ -1,7 +1,7 @@
 import { PropulsionEngine } from './PropulsionEngine'
 
 export class RaptorPE extends PropulsionEngine {
-    glbPath = '3d/propulsion_Engine/RaptorPE.glb'
+    glbPath = PropulsionEngine.folderPath + 'RaptorPE.glb'
 
     constructor(p_position, p_rotation, p_color = 'grey', p_lifePoints = 100) {
         super()

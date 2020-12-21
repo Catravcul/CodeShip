@@ -1,6 +1,7 @@
 import { ThreeModel } from '../ThreeModel'
 
 export class PropulsionEngine extends ThreeModel {
+    static folderPath = '3d/propulsion_engine/'
     position
     rotation
     middlewares = {

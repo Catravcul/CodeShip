@@ -14,9 +14,15 @@ export class Customize extends Config {
     }
 
     selectComponent = (component) => {
-        const word = 'Components.' + (component.type === 'fuselage' ? 'F' : component.type === 'takeoff' ? 'TO' : 'PE')
         Config.shipInstance.setComponent(component.type, component.title)
-        this.setState({customClass: this.state.shipClass.replace(word, 'Components.' + component.title)})
+        const {fuselage, propulsionEngine, takeoff} = Config.shipInstance.components
+        this.setState({
+            customClass: this.state.shipClass.replace(/Components.F|Components.TO|Components.PE/g, str => {
+                const newStr = 'Components.' + (str === 'Components.F' ? fuselage : 
+                str === 'Components.TO' ? takeoff : propulsionEngine)
+                return newStr
+            })
+        })
     }
 
     render() {

@@ -31,11 +31,14 @@ export class Nav extends Config {
     }
 
     selectComponent = () => {
-        if (this.props.session) {
-            localStorage.setItem('codeship-g-token', JSON.stringify(this.props.token))
-            localStorage.setItem('codeship-g-session', JSON.stringify(this.props.session))
-        }
-        window.open('http://localhost:3000').focus()
+        const homePage = window.open('http://localhost:3000').focus()
+        window.addEventListener('message', e => {
+            if (e.origin === 'http://localhost:3000') {
+                if (this.props.token) {
+                    e.source.postMessage(this.props.token, 'http://localhost:3000')
+                }
+            }
+        })
     }
 
     render() {

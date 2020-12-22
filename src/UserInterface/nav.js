@@ -45,8 +45,8 @@ export class Nav extends Config {
                         <button className={"btn " + (this.state.customize ? 'hidden' : '')}>
                             <img src="/img/navigate.svg" alt="navigate" width="50px"/>
                         </button>
-                        <button className={"btn " + (this.state.customize ? 'hidden' : '')}>
-                            <img src="/img/shop.svg" alt="shop" width="50px"/>
+                        <button className={"btn " + (this.state.customize ? 'hidden' : '')} onClick = {() => window.open('http://localhost:3000')}>
+                            <img src="/img/home.svg" alt="home" width="50px"/>
                         </button>
                     </nav>
                     <Customize customize={this.state.customize} session={this.props.session} products={this.props.products}/>

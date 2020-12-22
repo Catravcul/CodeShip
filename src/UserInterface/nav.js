@@ -30,6 +30,14 @@ export class Nav extends Config {
         this.customizeShip()
     }
 
+    selectComponent = () => {
+        if (this.props.session) {
+            localStorage.setItem('codeship-g-token', JSON.stringify(this.props.token))
+            localStorage.setItem('codeship-g-session', JSON.stringify(this.props.session))
+        }
+        window.open('http://localhost:3000').focus()
+    }
+
     render() {
         return  <div>
                     <nav className="absolute bottom flex-col" >
@@ -45,7 +53,7 @@ export class Nav extends Config {
                         <button className={"btn " + (this.state.customize ? 'hidden' : '')}>
                             <img src="/img/navigate.svg" alt="navigate" width="50px"/>
                         </button>
-                        <button className={"btn " + (this.state.customize ? 'hidden' : '')} onClick = {() => window.open('http://localhost:3000')}>
+                        <button className={"btn " + (this.state.customize ? 'hidden' : '')} onClick = {this.selectComponent}>
                             <img src="/img/home.svg" alt="home" width="50px"/>
                         </button>
                     </nav>

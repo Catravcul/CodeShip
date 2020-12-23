@@ -28,7 +28,7 @@ export class Customize extends Config {
     render() {
         return  <div id="spaceship-class" className={ "customize-s screen " + (this.props.customize ? '' : 'hidden') }>
                     <textarea value = { this.state.customClass } className = "absolute ship-class" disabled ></textarea>
-                    <Carrousel session={this.props.session} products={this.props.products} selectComponent={this.selectComponent}/>
+                    <Carrousel selectComponent={this.selectComponent}/>
                 </div>
     }
 }

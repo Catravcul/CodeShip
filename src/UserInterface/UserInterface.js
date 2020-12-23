@@ -1,5 +1,6 @@
 import { Config } from '../Config'
 import './UserInterface.css'
+import { SessionContext } from './sessionContext'
 import { Nav } from './nav'
 import { Login } from './login'
 
@@ -57,10 +58,17 @@ export class UserInterface extends Config {
      * RENDER USER INTERFACE
      */
     render() {
-        return  <div id="user-interface" >
-                    {this.state.login}
-                    <Nav session={this.state.session} products={this.state.products} token={this.state.token} />
-                </div>
+        return  <SessionContext.Provider value={{
+            postMessageS:'123',
+            session: this.state.session,
+            products: this.state.products,
+            token: this.state.token
+            }}>
+                    <div id="user-interface" >
+                        {this.state.login}
+                        <Nav session={this.state.session} products={this.state.products} token={this.state.token} />
+                    </div>
+                </SessionContext.Provider>
     }
 
 }

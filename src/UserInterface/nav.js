@@ -1,5 +1,6 @@
 import { Config } from '../Config'
 import { Customize } from './customize'
+import { SessionContext } from './sessionContext'
 
 export class Nav extends Config {
 
@@ -18,12 +19,12 @@ export class Nav extends Config {
     }
 
     applyCustomize = () => {
-        if(this.props.session) {
+        if(this.context.session) {
             fetch(Config.config.codeshipApi.urlBase + 'spaceship', {
                 method: 'PATCH',
                 body: JSON.stringify({config: Config.shipInstance.components}),
-                headers: {'x-access-token': this.props.token, 'Content-Type': 'application/json'}
-            }).then(res => res.json()).then(({spaceship}) => Config.components = Object.assign([], spaceship.config))
+                headers: {'x-access-token': this.context.token, 'Content-Type': 'application/json'}
+            }).then(res => res.json()).then(({spaceship}) => Config.components = Object.assign({}, spaceship.config))
         } else {
             alert('where would customization be saved without an account ?')
         }
@@ -34,8 +35,9 @@ export class Nav extends Config {
         const homePage = window.open('http://localhost:3000').focus()
         window.addEventListener('message', e => {
             if (e.origin === 'http://localhost:3000') {
-                if (this.props.token) {
-                    e.source.postMessage(this.props.token, 'http://localhost:3000')
+                if (this.context.token) {
+                    if(e.data === this.context.postMessageS)
+                    e.source.postMessage(this.context.token, 'http://localhost:3000')
                 }
             }
         })
@@ -60,7 +62,9 @@ export class Nav extends Config {
                             <img src="/img/home.svg" alt="home" width="50px"/>
                         </button>
                     </nav>
-                    <Customize customize={this.state.customize} session={this.props.session} products={this.props.products}/>
+                    <Customize customize={this.state.customize}/>
                 </div>
     }
 }
+
+Nav.contextType = SessionContext

@@ -1,5 +1,7 @@
 import { Config } from '../Config'
 import './carrousel.css'
+import { SessionContext } from './sessionContext'
+
 import triangle_l from './triangle_l.png'
 import triangle_r from './triangle_r.png'
 
@@ -46,8 +48,8 @@ export class Carrousel extends Config {
     }
 
     render() {
-        this.items = this.props.session ? this.props.session.items : undefined
-        this.products = this.props.products
+        this.items = this.context.session ? this.context.session.items : undefined
+        this.products = this.context.products
         return  <section className="carrousel-s absolute">
                 {this.items ?
                     this.printNav(triangle_l, this.prevItems)
@@ -65,3 +67,5 @@ export class Carrousel extends Config {
                 </section>
     }
 }
+
+Carrousel.contextType = SessionContext

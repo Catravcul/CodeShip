@@ -1,37 +1,24 @@
 import { Config } from '../Config'
-import { Customize } from './customize'
+import * as Mofify from './modify'
+import * as Travel from './travel'
 import { SessionContext } from './sessionContext'
 
 export class Nav extends Config {
 
     state = {
-            customize: false
+            modify: false,
+            travel: false
     }
 
-    customizeShip = () => {
-        this.setState({customize: this.state.customize == true ? false : true})
+    shipModify = () => {
+        this.setState({modify: this.state.modify == true ? false : true})
     }
 
-    cancelCustomize = () => {
-        Config.shipInstance.components = Object.assign([], Config.components)
-        Config.shipInstance.renderComponents()
-        this.customizeShip()
+    shipTravel = () => {
+        this.setState({travel: this.state.travel == true ? false : true})
     }
 
-    applyCustomize = () => {
-        if(this.context.session) {
-            fetch(Config.config.codeshipApi.urlBase + 'spaceship', {
-                method: 'PATCH',
-                body: JSON.stringify({config: Config.shipInstance.components}),
-                headers: {'x-access-token': this.context.token, 'Content-Type': 'application/json'}
-            }).then(res => res.json()).then(({spaceship}) => Config.components = Object.assign({}, spaceship.config))
-        } else {
-            alert('where would customization be saved without an account ?')
-        }
-        this.customizeShip()
-    }
-
-    selectComponent = () => {
+    openHome = () => {
         const homePage = window.open('http://localhost:3000').focus()
         window.addEventListener('message', e => {
             console.log(e)
@@ -47,23 +34,19 @@ export class Nav extends Config {
     render() {
         return  <div>
                     <nav className="absolute bottom flex-col" >
-                        <button className={"btn " + (this.state.customize ? '' : 'hidden')} onClick = {this.cancelCustomize}>
-                            <img src="/img/cancel.svg" alt="cancel" width="50px"/>
+                        <Mofify.Nav shipModify={this.shipModify} modify={this.state.modify}/>
+                        <Travel.Nav shipTravel={this.shipTravel} travel={this.state.travel}/>
+                        <button className={"btn " + (this.state.modify || this.state.travel ? 'hidden' : '')} onClick = {this.shipModify}>
+                            <img src="/img/modify.svg" alt="modify" width="50px"/>
                         </button>
-                        <button className={"btn " + (this.state.customize ? '' : 'hidden')} onClick = {this.applyCustomize}>
-                            <img src="/img/apply.svg" alt="apply" width="50px"/>
+                        <button className={"btn " + (this.state.modify || this.state.travel ? 'hidden' : '')} onClick = {this.shipTravel}>
+                            <img src="/img/travel.svg" alt="travel" width="50px"/>
                         </button>
-                        <button className={"btn " + (this.state.customize ? 'hidden' : '')} onClick = {this.customizeShip}>
-                            <img src="/img/customize.svg" alt="customize" width="50px"/>
-                        </button>
-                        <button className={"btn " + (this.state.customize ? 'hidden' : '')}>
-                            <img src="/img/navigate.svg" alt="navigate" width="50px"/>
-                        </button>
-                        <button className={"btn " + (this.state.customize ? 'hidden' : '')} onClick = {this.selectComponent}>
+                        <button className={"btn " + (this.state.modify || this.state.travel ? 'hidden' : '')} onClick = {this.openHome}>
                             <img src="/img/home.svg" alt="home" width="50px"/>
                         </button>
                     </nav>
-                    <Customize customize={this.state.customize}/>
+                    <Mofify.Interface modify={this.state.modify}/>
                 </div>
     }
 }

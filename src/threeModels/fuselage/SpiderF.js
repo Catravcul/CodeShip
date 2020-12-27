@@ -1,6 +1,7 @@
 import { ThreeModel } from '../ThreeModel.js'
 
 export class SpiderF extends ThreeModel {
+    energy = 1
     glbPath = '3d/fuselage/SpiderF.glb'
     positionPE = {x:0, y:0.3, z:-5.2}
     rotationPE = {x:-0, y:-0, z:-0}

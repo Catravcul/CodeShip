@@ -2,6 +2,8 @@ import { PropulsionEngine } from './PropulsionEngine'
 
 export class MiniPE extends PropulsionEngine {
     glbPath = PropulsionEngine.folderPath + 'MiniPE.glb'
+    potential = 2
+    energy = 2
 
     constructor(p_position, p_rotation, p_color = 'grey', p_lifePoints = 100) {
         super()

@@ -46,6 +46,7 @@ export class Nav extends Config {
                             <img src="/img/home.svg" alt="home" width="50px"/>
                         </button>
                     </nav>
+                    <Travel.Interface />
                     <Mofify.Interface modify={this.state.modify}/>
                 </div>
     }

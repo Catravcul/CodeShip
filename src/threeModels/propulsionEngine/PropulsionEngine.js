@@ -4,6 +4,7 @@ export class PropulsionEngine extends ThreeModel {
     static folderPath = '3d/propulsion_engine/'
     runInterval
     chargeInterval
+    speed = 1
     position
     rotation
     middlewares = {
@@ -20,11 +21,10 @@ export class PropulsionEngine extends ThreeModel {
     }
 
     /**
-     * Reset movement interval
+     * Reset movement interval runInterval
      * @param {scene} spaceship
-     * @param {int} speed
      */
-    run(spaceship, speed) {
+    run(spaceship, speed = this.speed) {
         clearInterval(this.runInterval)
         if (speed <= this.energy) {
             this.runInterval = setInterval(() => this.accelerate(spaceship, speed), 50)
@@ -36,7 +36,7 @@ export class PropulsionEngine extends ThreeModel {
      * @param {scene} spaceship 
      * @param {int} speed 
      */
-    accelerate(spaceship, speed) {
+    accelerate(spaceship, speed = this.speed) {
         spaceship.translateZ(speed)
         speed *= 0.1
         if (speed > this.energy) {
@@ -46,7 +46,7 @@ export class PropulsionEngine extends ThreeModel {
     }
     
     /**
-     * Reset charge interval
+     * Reset charge interval chargeInterval
      * @param {int} energy
      */
     charge(energy) {

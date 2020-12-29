@@ -28,5 +28,26 @@ export class Nav extends Config {
 
 export class Interface extends Config {
 
-    
+    changeSpeed = e => {
+        Config.shipInstance.propulsionEngine.speed = e.currentTarget.value
+        console.log(Config.shipInstance.propulsionEngine.speed)
+    }
+
+    render() {
+        const speeds = []
+        if (Config.shipInstance.propulsionEngine) {
+            let speed = 0
+            while (Config.shipInstance.propulsionEngine.potential > speed) {
+                speed++
+                speeds.push(speed)
+            }
+        }
+        return(
+            <nav className="absolute bottom right speeds">
+                {speeds.map(speed => (
+                    <input type="button" className="btn num" value={speed} onClick={this.changeSpeed}/>
+                ))}
+            </nav>
+        )
+    }
 }

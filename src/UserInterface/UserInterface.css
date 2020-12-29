@@ -19,7 +19,7 @@
     left: 50vw;
     transform: translate(-50%, -50%);
 }
-.hidden {
+body .hidden {
     display: none;
 }
 .screen-80 {

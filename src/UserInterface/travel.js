@@ -43,7 +43,7 @@ export class Interface extends Config {
             }
         }
         return(
-            <nav className="absolute bottom right speeds">
+            <nav className={"absolute bottom right speeds" + (this.props.travel ? '' : ' hidden')}>
                 {speeds.map(speed => (
                     <input type="button" className="btn num" value={speed} onClick={this.changeSpeed}/>
                 ))}

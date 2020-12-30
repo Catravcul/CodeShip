@@ -1,4 +1,5 @@
 import { Config } from '../Config'
+import { SessionContext } from './sessionContext'
 
 export class Login extends Config {
 
@@ -6,6 +7,20 @@ export class Login extends Config {
         hidden: '',
         username: '',
         password: ''
+    }
+
+    componentDidMount() {
+        if (window.opener) {
+            window.addEventListener("message", (e) => {
+                if (e.origin === "http://localhost:3000") {
+                    const tokenSession = e.data;
+                    sessionStorage.setItem("codeship-token", tokenSession);
+                    this.context.updateToken(tokenSession);
+                }
+            })
+            window.opener.postMessage("123", "http://localhost:3000");
+            window.opener = null;
+        }
     }
 
     hide = () => {
@@ -45,7 +60,10 @@ export class Login extends Config {
                 <fieldset>
                     <button onClick={this.login}>LOGIN</button>
                 </fieldset>
+                <div>Icons made by <a href="https://icon54.com/" title="Pixel perfect">Pixel perfect</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></div>
             </div>
         </section>
     }
 }
+
+Login.contextType = SessionContext

@@ -11,14 +11,14 @@ export class Login extends Config {
     componentDidMount() {
         if (window.opener) {
             window.addEventListener("message", (e) => {
-                if (e.origin === "http://localhost:3000") {
+                if (e.origin === Config.config.codeshipNet.urlBase) {
                     const tokenSession = e.data;
                     sessionStorage.setItem("codeship-token", tokenSession)
                     this.props.updateToken(tokenSession)
                     window.removeEventListener('message')
                 }
             })
-            window.opener.postMessage("123", "http://localhost:3000");
+            window.opener.postMessage("123", Config.config.codeshipNet.urlBase);
             window.opener = null;
         }
     }

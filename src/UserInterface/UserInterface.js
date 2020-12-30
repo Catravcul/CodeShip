@@ -61,6 +61,7 @@ export class UserInterface extends Config {
         return  <SessionContext.Provider value={{
             postMessageS:'123',
             session: this.state.session,
+            updateToken: this.updateToken,
             products: this.state.products,
             token: this.state.token
             }}>

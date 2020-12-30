@@ -12,14 +12,21 @@ export class Nav extends Config {
         Config.shipInstance.propulsionEngine.charge(Config.shipInstance.fuselage.energy)
     }
 
+    stop = () => {
+        Config.shipInstance.propulsionEngine.stop()
+    }
+
     render() {
         return(
             <>
-            <button className={"btn " + (this.props.travel ? '' : 'hidden')} onClick = {this.exit}>
-            <img src="/img/travel.svg" alt="cancel" width="50px"/>
+            <button className={"btn " + (this.props.travel ? '' : 'hidden')} onClick = {this.stop}>
+            <img src="/img/orbit.svg" alt="stop" width="50px"/>
             </button>
             <button className={"btn " + (this.props.travel ? '' : 'hidden')} onClick = {this.move}>
             <img src="/img/launch.svg" alt="move" width="50px"/>
+            </button>
+            <button className={"btn " + (this.props.travel ? '' : 'hidden')} onClick = {this.exit}>
+            <img src="/img/travel.svg" alt="cancel" width="50px"/>
             </button>
             </>
         )

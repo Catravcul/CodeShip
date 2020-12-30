@@ -23,6 +23,7 @@ export class PropulsionEngine extends ThreeModel {
     /**
      * Reset movement interval runInterval
      * @param {scene} spaceship
+     * @param {int} speed
      */
     run(spaceship, speed = this.speed) {
         clearInterval(this.runInterval)
@@ -44,6 +45,13 @@ export class PropulsionEngine extends ThreeModel {
         }
         this.energy -= speed
     }
+
+    /**
+     * clear interval runInterval
+     */
+    stop() {
+        clearInterval(this.runInterval)
+    }
     
     /**
      * Reset charge interval chargeInterval
@@ -62,6 +70,7 @@ export class PropulsionEngine extends ThreeModel {
         this.energy += energy
         if (this.energy > this.potential) {
             clearInterval(this.chargeInterval)
+            this.energy = this.potential
         }
     }
 }

@@ -15,7 +15,7 @@ export class Login extends Config {
                 if (e.origin === "http://localhost:3000") {
                     const tokenSession = e.data;
                     sessionStorage.setItem("codeship-token", tokenSession);
-                    this.context.updateToken(tokenSession);
+                    this.props.updateToken(tokenSession);
                 }
             })
             window.opener.postMessage("123", "http://localhost:3000");
@@ -34,7 +34,6 @@ export class Login extends Config {
             headers: {'Content-Type': 'application/json'}
         }).then(res => res.json()).then(({token}) => {
             sessionStorage.setItem('codeship-token', token)
-            this.hide()
             this.props.updateToken({token: token})
         })
     }

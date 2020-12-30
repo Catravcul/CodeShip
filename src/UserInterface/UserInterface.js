@@ -37,8 +37,20 @@ export class UserInterface extends Config {
             })
             this.setState({login: ''})
         } else {
-            this.setState({login: <Login updateToken={this.updateToken}/>})
+            this.setState({login: <Login updateToken={this.updateToken} hideLog={this.hideLog}/>})
             Config.shipInstance.renderComponents()
+        }
+    }
+
+    hideLog = () => {
+        this.setState({login: ''})
+    }
+
+    toggleLog = () => {
+        if (this.state.login) {
+            this.hideLog()
+        } else {
+            this.setState({login: <Login updateToken={this.updateToken} hideLog={this.hideLog}/>})
         }
     }
 
@@ -67,6 +79,9 @@ export class UserInterface extends Config {
             }}>
                     <div id="user-interface" >
                         {this.state.login}
+                        <button className="btn top right absolute" onClick = {this.toggleLog}>
+                            <img src="/img/login.svg" alt="login" width="50px"/>
+                        </button>
                         <Nav session={this.state.session} products={this.state.products} token={this.state.token} />
                     </div>
                 </SessionContext.Provider>

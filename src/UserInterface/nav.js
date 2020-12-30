@@ -21,11 +21,11 @@ export class Nav extends Config {
     openHome = () => {
         const homePage = window.open('http://localhost:3000').focus()
         window.addEventListener('message', e => {
-            console.log(e)
             if (e.origin === 'http://localhost:3000') {
                 if (this.context.token) {
                     if(e.data === this.context.postMessageS)
                     e.source.postMessage(this.context.token, 'http://localhost:3000')
+                    window.removeEventListener('message')
                 }
             }
         })

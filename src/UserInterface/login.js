@@ -13,8 +13,9 @@ export class Login extends Config {
             window.addEventListener("message", (e) => {
                 if (e.origin === "http://localhost:3000") {
                     const tokenSession = e.data;
-                    sessionStorage.setItem("codeship-token", tokenSession);
-                    this.props.updateToken(tokenSession);
+                    sessionStorage.setItem("codeship-token", tokenSession)
+                    this.props.updateToken(tokenSession)
+                    window.removeEventListener('message')
                 }
             })
             window.opener.postMessage("123", "http://localhost:3000");

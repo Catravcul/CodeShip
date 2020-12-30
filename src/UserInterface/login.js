@@ -4,7 +4,6 @@ import { SessionContext } from './sessionContext'
 export class Login extends Config {
 
     state = {
-        hidden: '',
         username: '',
         password: ''
     }
@@ -21,10 +20,6 @@ export class Login extends Config {
             window.opener.postMessage("123", "http://localhost:3000");
             window.opener = null;
         }
-    }
-
-    hide = () => {
-        this.setState({hidden: 'hidden'})
     }
 
     login = () => {
@@ -45,8 +40,8 @@ export class Login extends Config {
     }
 
     render() {
-        return <section className={"login-s " + this.state.hidden}>
-            <div className="absolute screen top" onClick={this.hide}></div>
+        return <section className="login-s">
+            <div className="absolute screen top" onClick={this.props.hideLog}></div>
             <div className="absolute middle bg-gray">
                 <h1>Login</h1>
                 <p>Login to save progress!</p>

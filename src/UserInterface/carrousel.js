@@ -57,7 +57,7 @@ export class Carrousel extends Config {
 
             {this.products && this.items? this.getProducts(this.items, this.products).map((item, index) => 
                 <button className={"btn " + this.classes[index]} onClick={() => this.props.selectComponent(item)} >
-                    <img className="img" style={{backgroundImage: 'url("' + Config.config.codeshipApi.urlBase + item.img_path + '")'}} />
+                    <img className="img" style={{backgroundImage: 'url("' + Config.config.codeshipFS.urlBase + item.img_path + '")'}} />
                 </button>
             ) : console.log(this.products)}
 

@@ -24,7 +24,7 @@ export class Login extends Config {
     }
 
     login = () => {
-        fetch(Config.config.codeshipApi.urlBase + 'public/user', {
+        fetch(Config.config.codeshipApi.urlBase + '/public/user', {
             method: 'POST',
             body: JSON.stringify({username: this.state.username, password: this.state.password}),
             headers: {'Content-Type': 'application/json'}

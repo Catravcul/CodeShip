@@ -11,7 +11,7 @@ export class Interface extends Config {
     }
 
     componentDidMount() {
-        fetch(Config.config.codeshipApi.urlBase + 'spaceship.txt', {method: 'GET'})
+        fetch(Config.config.codeshipApi.urlBase + '/spaceship.txt', {method: 'GET'})
         .then(res => res.text()).then( data => this.setState({customClass: data}, this.setState({shipClass: data})))
     }
 
@@ -47,7 +47,7 @@ export class Nav extends Config {
 
     apply = () => {
         if(this.context.session) {
-            fetch(Config.config.codeshipApi.urlBase + 'spaceship', {
+            fetch(Config.config.codeshipApi.urlBase + '/spaceship', {
                 method: 'PATCH',
                 body: JSON.stringify({config: Config.shipInstance.components}),
                 headers: {'x-access-token': this.context.token, 'Content-Type': 'application/json'}

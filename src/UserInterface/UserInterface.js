@@ -23,12 +23,12 @@ export class UserInterface extends Config {
     }
     
     updateSession() {
-        this.fetchGet('user', ({user}) => this.setState({session: user}, this.loadShip))
+        this.fetchGet('/user', ({user}) => this.setState({session: user}, this.loadShip))
     }
 
     loadShip() {
         if(this.state.session){
-            this.fetchGet('spaceship', ({spaceship}) => {
+            this.fetchGet('/spaceship', ({spaceship}) => {
                 if(spaceship.config.fuselage){
                     Config.components = Object.assign({},spaceship.config)
                     Config.shipInstance.components = spaceship.config
@@ -63,7 +63,7 @@ export class UserInterface extends Config {
     }
 
     getProducts() {
-        fetch(Config.config.codeshipApi.urlBase + 'public/product', {method: 'GET'})
+        fetch(Config.config.codeshipApi.urlBase + '/public/product', {method: 'GET'})
         .then(res => res.json()).then(({products}) => this.setState({products: products}))
     }
 

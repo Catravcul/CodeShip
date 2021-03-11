@@ -23,10 +23,16 @@ export class UserInterface extends Config {
     }
     
     updateSession() {
-        this.fetchGet('/user', ({user}) => this.setState({session: user}, this.loadShip))
+        this.fetchGet('/user', {
+            success: ({user}) => this.setState({session: user}, this.loadShip),
+            error: () => {
+                this.state.session = undefined
+                this.loadShip()
+            }
+        })
     }
 
-    loadShip() {
+    loadShip = () => {
         if(this.state.session){
             this.fetchGet('/spaceship', ({spaceship}) => {
                 if(spaceship.config.fuselage){
@@ -54,12 +60,12 @@ export class UserInterface extends Config {
         }
     }
 
-    fetchGet(entity, callback) {
+    fetchGet = (entity, {success, error, complete}) => {
         fetch(Config.config.codeshipApi.urlBase + entity, {
             method: 'GET',
             cache: 'no-store',
             headers: {'x-access-token': this.state.token}
-        }).then(res => res.json()).then(callback)
+        }).then(res => res.json()).then(success).catch(error).finally(complete)
     }
 
     getProducts() {

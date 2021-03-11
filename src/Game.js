@@ -1,5 +1,6 @@
 import ReactDOM from "react-dom";
 import * as THREE from "three";
+import { Camera } from './Camera/Camera'
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
 import { Environment } from './threeModels/Environment'
 import { Config } from './Config'
@@ -24,6 +25,7 @@ export class Game extends Config {
         );
         camera.position.z = 13;
         camera.position.y = 5;
+        Camera.camera = camera;
         scene.rotateY(5.3);
 
         var renderer = new THREE.WebGLRenderer();
@@ -48,9 +50,9 @@ export class Game extends Config {
 
 
         // CAMERA CONTROLS
-        // https://threejs.org/docs/index.html#examples/controls/OrbitControls
-        this.controls = new OrbitControls(camera, renderer.domElement);
-
+        // // https://threejs.org/docs/index.html#examples/controls/OrbitControls
+        this.controls = new OrbitControls(camera, document.getElementsByTagName('body')[0]);
+        Camera.orbitCamera = this.controls
 
 
         // ADD LIGHTS
@@ -99,12 +101,13 @@ export class Game extends Config {
         }
 
         scene.add(Config.ship)
-
+        
         var animate = function () {
             requestAnimationFrame( animate );
+            Camera.orbitCamera.target = Config.ship.getWorldPosition()
+            Camera.orbitCamera.update()
             renderer.render( scene, camera );
         };
-    
         animate();
             
     }
@@ -114,5 +117,5 @@ export class Game extends Config {
     }
 }
 
-const rootElement = document.getElementById("root");
-ReactDOM.render(<Game />, rootElement);
+// const rootElement = document.getElementById("root");
+// ReactDOM.render(<Game />, rootElement);

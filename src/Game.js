@@ -51,7 +51,7 @@ export class Game extends Config {
 
         // CAMERA CONTROLS
         // // https://threejs.org/docs/index.html#examples/controls/OrbitControls
-        this.controls = new OrbitControls(camera, document.getElementsByTagName('body')[0]);
+        this.controls = new OrbitControls(camera, this.mount);
         Camera.orbitCamera = this.controls
 
 
@@ -113,7 +113,11 @@ export class Game extends Config {
     }
 
     render() {
-        return <div ref={ref => (this.mount = ref)} />;
+        return(
+        <div ref={ref => (this.mount = ref)} >
+            <Camera.render/>
+        </div>
+        )
     }
 }
 

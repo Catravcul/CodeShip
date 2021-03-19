@@ -4,6 +4,7 @@ export class PropulsionEngine extends ThreeModel {
     static folderPath = '3d/propulsion_engine/'
     runInterval
     chargeInterval
+    spinInterval
     speed = 1
     position
     rotation
@@ -44,6 +45,27 @@ export class PropulsionEngine extends ThreeModel {
             clearInterval(this.runInterval)
         }
         this.energy -= speed
+    }
+
+    /**
+     * Spin spaceship
+     * @param {scene} spaceship 
+     * @param {object} angles
+     */
+    spin(spaceship, {x=0, y=0, z=0}) {
+        clearInterval(this.spinInterval)
+        this.spinInterval = setInterval(() => {
+            spaceship.rotateX(x)
+            spaceship.rotateY(y)
+            spaceship.rotateZ(z)
+        }, 100)
+    }
+
+    /**
+     * clear interval spinInterval
+     */
+    stand() {
+        clearInterval(this.spinInterval)
     }
 
     /**

@@ -1,3 +1,47 @@
+.screen {
+    height: 100vh;
+    width: 100vw;
+}
+.min-size-80-px {
+    min-width: 80px;
+    min-height: 80px;
+}
+.min-w-80-px {
+    min-width: 80px;
+}
+.min-w-30-px {
+    min-width: 30px;
+}
+.screen-80 {
+    width: 80vw;
+    height: 80vh
+}
+.size-8-vw {
+    width: 8vw;
+    height: 8vw;
+}
+.w-8-vw {
+    width: 8vw;
+}
+.w-1-vw {
+    width: 1vw;
+}
+.m-auto {
+    margin: auto;
+}
+.flex-col, .flex-row {
+    display: flex;
+    flex-direction: column;
+}
+.flex-row {
+    flex-direction: row;
+}
+.justify-content-space-around {
+    justify-content: space-around;
+}
+body .hidden {
+    display: none;
+}
 .absolute {
     position: absolute;
 }
@@ -10,21 +54,19 @@
 .right {
     right: 0;
 }
-.screen {
-    height: 100vh;
-    width: 100vw;
-}
 .middle {
     top: 50vh;
     left: 50vw;
     transform: translate(-50%, -50%);
 }
-body .hidden {
-    display: none;
+.rotate-90-deg {
+    transform: rotate(90deg);
 }
-.screen-80 {
-    width: 80vw;
-    height: 80vh
+.rotate-180-deg {
+    transform: rotate(180deg);
+}
+.rotate-270-deg {
+    transform: rotate(270deg);
 }
 .btn {
     background-color: unset;
@@ -43,10 +85,6 @@ body .hidden {
     background-repeat: no-repeat;
     background-position: center;
     background-color:rgb(0, 0, 0, 50%);
-}
-.flex-col {
-    display: flex;
-    flex-flow: column;
 }
 .bg-gray {
     background-color: rgba(170, 170, 170, 0.7);

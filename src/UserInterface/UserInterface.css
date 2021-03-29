@@ -26,11 +26,18 @@
 .w-1-vw {
     width: 1vw;
 }
-
+.w-100 {
+    width: 100%;
+}
 .m-auto {
     margin: auto;
 }
-
+.b-rad-30 {
+    border-radius: 30%;
+}
+.inline-block {
+    display: inline-block;
+}
 .flex-col, .flex-row {
     display: flex;
     flex-direction: column;
@@ -44,20 +51,58 @@
 body .hidden {
     display: none;
 }
-
-
+.relative {
+    position: relative;
+}
+.absolute, .absolute-vertical-center, .absolute-vertical-center-flipped {
+    position: absolute;
+}
+.middle {
+    top: 50vh;
+    left: 50vw;
+    transform: translate(-50%, -50%);
+}
+.absolute-vertical-center {
+    top: 50%;
+    transform: translateY(-50%);
+}
+.absolute-vertical-center-flipped {
+    top: 50%;
+    transform: translateY(-50%) rotate(180deg);
+}
 .top {
     top: 0;
 }
-
+.top-30 {
+    top: 30%;
+}
 .bottom {
     bottom: 0;
 }
-
+.bottom-30 {
+    bottom: 30%;
+}
 .right {
     right: 0;
 }
-
+.right-10 {
+    right: 10%;
+}
+.left {
+    left: 0;
+}
+.left-10 {
+    left: 10%;
+}
+.left-50 {
+    left: 50%;
+}
+.z-index-1 {
+    z-index: 1;
+}
+.translateX-less-50 {
+    transform: translateX(-50%);
+}
 .rotate-90-deg {
     transform: rotate(90deg);
 }

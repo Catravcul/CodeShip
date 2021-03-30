@@ -11,7 +11,6 @@ export class Nav extends Config {
         Config.shipInstance.propulsionEngine.run(Config.shipInstance.spaceship)
         Config.shipInstance.propulsionEngine.charge(Config.shipInstance.fuselage.energy)
     }
-
     stop = () => {
         Config.shipInstance.propulsionEngine.stop()
     }
@@ -24,6 +23,9 @@ export class Nav extends Config {
             </button>
             <button className={"btn " + (this.props.travel ? '' : 'hidden')} onClick = {this.move}>
             <img src="/img/launch.svg" alt="move" width="50px"/>
+            </button>
+            <button className={"btn " + (this.props.travel ? '' : 'hidden')} onClick = {this.props.toggleNav}>
+            <img src="/img/spin.svg" alt="cancel" width="50px"/>
             </button>
             <button className={"btn " + (this.props.travel ? '' : 'hidden')} onClick = {this.exit}>
             <img src="/img/travel.svg" alt="cancel" width="50px"/>
@@ -49,12 +51,13 @@ export class Interface extends Config {
                 speeds.push(speed)
             }
         }
-        return(
-            // <nav className={"absolute bottom right speeds" + (this.props.travel ? '' : ' hidden')}>
-            //     {speeds.map(speed => (
-            //         <input type="button" className="btn num" value={speed} onClick={this.changeSpeed}/>
-            //     ))}
-            // </nav>
+        const nav = this.props.showSpinNav ? 
+            <nav className={"absolute bottom right speeds" + (this.props.travel ? '' : ' hidden')}>
+                {speeds.map(speed => (
+                    <input type="button" className="btn num" value={speed} onClick={this.changeSpeed}/>
+                ))}
+            </nav>
+            :
             <nav className="absolute bottom right">
                 <div className="min-size-80-px size-8-vw inline-block relative">
                     <input className="w-100 absolute top-30 left rotate-90-deg glass-slider slider-thumb-turn-up" type="range" min="0" max="45"></input>
@@ -80,6 +83,10 @@ export class Interface extends Config {
                     <input className="w-100 absolute bottom-30 left rotate-270-deg glass-slider slider-thumb-turn-down" type="range" min="0" max="45"></input>
                 </div>
             </nav>
+        return(
+            <>
+            {nav}
+            </>
         )
     }
 }

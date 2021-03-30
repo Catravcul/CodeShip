@@ -7,7 +7,8 @@ export class Nav extends Config {
 
     state = {
             modify: false,
-            travel: false
+            travel: false,
+            showSpinNav: false
     }
 
     shipModify = () => {
@@ -16,6 +17,12 @@ export class Nav extends Config {
 
     shipTravel = () => {
         this.setState({travel: this.state.travel === true ? false : true})
+    }
+
+    toggleNav = () => {
+        const newVal = this.state.showSpinNav ? false : true
+        this.setState({showSpinNav : newVal})
+        console.log(newVal)
     }
 
     openHome = () => {
@@ -35,7 +42,7 @@ export class Nav extends Config {
         return  <div>
                     <nav className="absolute bottom flex-col" >
                         <Mofify.Nav shipModify={this.shipModify} modify={this.state.modify}/>
-                        <Travel.Nav shipTravel={this.shipTravel} travel={this.state.travel}/>
+                        <Travel.Nav shipTravel={this.shipTravel} travel={this.state.travel} toggleNav={this.toggleNav}/>
                         <button className={"btn " + (this.state.modify || this.state.travel ? 'hidden' : '')} onClick = {this.shipModify}>
                             <img src="/img/modify.svg" alt="modify" width="50px"/>
                         </button>
@@ -46,7 +53,7 @@ export class Nav extends Config {
                             <img src="/img/home.svg" alt="home" width="50px"/>
                         </button>
                     </nav>
-                    <Travel.Interface travel={this.state.travel}/>
+                    <Travel.Interface travel={this.state.travel} showSpinNav={this.state.showSpinNav}/>
                     <Mofify.Interface modify={this.state.modify}/>
                 </div>
     }

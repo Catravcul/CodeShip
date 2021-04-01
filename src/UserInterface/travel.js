@@ -1,6 +1,8 @@
 import { Config } from '../Config'
 import './travel.css'
 
+import {Status} from './status'
+
 export class Nav extends Config {
 
     exit = () => {
@@ -55,9 +57,10 @@ export class Interface extends Config {
                 speed++
                 speeds.push(speed)
             }
+        
         }
-        const nav = this.props.showSpinNav ? 
-            <nav className={"absolute bottom right speeds" + (this.props.travel ? '' : ' hidden')}>
+        const nav = !this.props.travel ? <Status /> : this.props.showSpinNav ? 
+            <nav className="absolute bottom right speeds">
                 {speeds.map(speed => (
                     <input type="button" className="btn num" value={speed} onClick={this.changeSpeed}/>
                 ))}

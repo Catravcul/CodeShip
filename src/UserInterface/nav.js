@@ -2,23 +2,21 @@ import { Config } from '../Config'
 import * as Mofify from './modify'
 import * as Travel from './travel'
 import { SessionContext } from './sessionContext'
-import { Status } from './status'
 
 export class Nav extends Config {
 
     state = {
             modify: false,
             travel: false,
-            status: true,
             showSpinNav: false
     }
 
     shipModify = () => {
-        this.setState({modify: this.state.modify === true ? false : true, status: this.state.status === true ? false : true})
+        this.setState({modify: this.state.modify === true ? false : true})
     }
 
     shipTravel = () => {
-        this.setState({travel: this.state.travel === true ? false : true, status: this.state.status === true ? false : true})
+        this.setState({travel: this.state.travel === true ? false : true})
     }
 
     toggleNav = () => {
@@ -56,7 +54,6 @@ export class Nav extends Config {
                     </nav>
                     <Travel.Interface travel={this.state.travel} showSpinNav={this.state.showSpinNav}/>
                     <Mofify.Interface modify={this.state.modify}/>
-                    <Status status={this.state.status}/>
                 </div>
     }
 }

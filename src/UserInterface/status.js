@@ -8,7 +8,7 @@ export class Status extends Config {
     render() {
         return(
             <>
-            <ul className='absolute bottom right list-style-none'>
+            <ul className={'absolute bottom right list-style-none ' + (this.props.status ? '' : 'hidden')}>
                 <li className={this.barClass} style={this.barStyle}>Energy 100%</li>
             </ul>
             </>

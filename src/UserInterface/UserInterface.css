@@ -29,11 +29,25 @@
 .w-100 {
     width: 100%;
 }
+.px-20-px {
+    padding-left: 20px;
+    padding-right: 20px;
+}
+.py-3-px {
+    padding-top: 3px;
+    padding-bottom: 3px;
+}
 .m-auto {
     margin: auto;
 }
+.m-3-px {
+    margin: 3px;
+}
 .b-rad-30 {
     border-radius: 30%;
+}
+.b-rad-3-px {
+    border-radius: 10px;
 }
 .inline-block {
     display: inline-block;
@@ -138,6 +152,9 @@ body .hidden {
     font-weight: bold;
     color: white;
     text-shadow:1px 1px black, -1px -1px black, 1px -1px black, -1px 1px black;
+}
+.list-style-none {
+    list-style: none;
 }
 .glass-panel {
     box-shadow: inset 0 0 10px white;

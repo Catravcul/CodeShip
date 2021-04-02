@@ -22,25 +22,28 @@ export class PropulsionEngine extends ThreeModel {
     }
 
     /**
-     * Reset movement interval runInterval
+     * Reset movement interval runInterval, take callback for the setInterval func
      * @param {scene} spaceship
+     * @param {function} callback
      * @param {int} speed
      */
-    run(spaceship, speed = this.speed) {
+    run(spaceship, callback=() => {}, speed = this.speed) {
         clearInterval(this.runInterval)
         if (speed <= this.energy) {
-            this.runInterval = setInterval(() => this.accelerate(spaceship, speed), 50)
+            this.runInterval = setInterval(() => this.accelerate(spaceship, callback, speed), 50)
         }
     }
 
     /**
-     * Move spaceship
+     * Move spaceship, use callback with this.energy & this.potential as args
      * @param {scene} spaceship 
+     * @param {function} callback
      * @param {int} speed 
      */
-    accelerate(spaceship, speed = this.speed) {
+    accelerate(spaceship,callback=() => {}, speed = this.speed) {
         spaceship.translateZ(speed)
         speed *= 0.1
+        callback(this.energy, this.potential)
         if (speed > this.energy) {
             clearInterval(this.runInterval)
         }
@@ -76,20 +79,23 @@ export class PropulsionEngine extends ThreeModel {
     }
     
     /**
-     * Reset charge interval chargeInterval
+     * Reset charge interval chargeInterval, take callback for the setInterval func
      * @param {int} energy
+     * @param {function} callback
      */
-    charge(energy) {
+    charge(energy, callback=() => {}) {
         clearInterval(this.chargeInterval)
-        this.chargeInterval = setInterval(() => this.restore(energy), 500)
+        this.chargeInterval = setInterval(() => this.restore(energy, callback), 500)
     }
     
     /**
-     * Restore spaceship energy
+     * Restore spaceship energy, use callback with this.energy & this.potential as args
      * @param {int} energy 
+     * @param {function} callback
      */
-    restore(energy) {
+    restore(energy, callback=() => {}) {
         this.energy += energy
+        callback(this.energy, this.potential)
         if (this.energy > this.potential) {
             clearInterval(this.chargeInterval)
             this.energy = this.potential

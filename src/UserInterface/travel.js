@@ -11,8 +11,8 @@ export class Nav extends Config {
     }
 
     move = amount => {
-        Config.shipInstance.propulsionEngine.run(Config.shipInstance.spaceship)
-        Config.shipInstance.propulsionEngine.charge(Config.shipInstance.fuselage.energy)
+        Config.shipInstance.propulsionEngine.run(Config.shipInstance.spaceship, this.props.changeEnergy)
+        Config.shipInstance.propulsionEngine.charge(Config.shipInstance.fuselage.energy, this.props.changeEnergy)
     }
 
     stop = () => {
@@ -56,7 +56,7 @@ export class Interface extends Config {
             }
         
         }
-        const nav = !this.props.travel ? <Status /> : this.props.showSpinNav ? 
+        const nav = !this.props.travel ? <Status energyPercent={this.props.energyPercent} /> : this.props.showSpinNav ? 
             <nav className="absolute bottom right speeds">
                 {speeds.map(speed => (
                     <input type="button" className="btn num" value={speed} onClick={this.changeSpeed}/>

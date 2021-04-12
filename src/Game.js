@@ -4,6 +4,7 @@ import { Camera } from './Camera/Camera'
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
 import { Environment } from './threeModels/Environment'
 import { Config } from './Config'
+import { Levels } from './Levels'
 
 
 export class Game extends Config {
@@ -116,6 +117,7 @@ export class Game extends Config {
         return(
         <div ref={ref => (this.mount = ref)} >
             <Camera.render/>
+            <Levels />
         </div>
         )
     }

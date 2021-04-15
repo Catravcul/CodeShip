@@ -12,6 +12,12 @@
 .min-w-30-px {
     min-width: 30px;
 }
+.max-w-400-px {
+    max-width: 400px;
+}
+.max-h-550-px {
+    max-height: 550px;
+}
 .screen-80 {
     width: 80vw;
     height: 80vh
@@ -28,6 +34,12 @@
 }
 .w-100 {
     width: 100%;
+}
+.w-60-vw {
+    width: 60vw;
+}
+.h-70-vh {
+    height: 70vh;
 }
 .px-20-px {
     padding-left: 20px;
@@ -46,7 +58,7 @@
 .b-rad-30 {
     border-radius: 30%;
 }
-.b-rad-3-px {
+.b-rad-10-px {
     border-radius: 10px;
 }
 .inline-block {
@@ -147,6 +159,9 @@ body .hidden {
 .bg-gray {
     background-color: rgba(170, 170, 170, 0.7);
     color: rgb(15, 15, 15);
+}
+.color-white {
+    color: white;
 }
 .color-white-and-black {
     font-weight: bold;

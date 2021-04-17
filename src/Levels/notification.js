@@ -1,7 +1,7 @@
 import {useState, useCallback, useRef, memo} from 'react'
 import './notification.css'
 
-export const Notification = memo(({quest}) => {
+export const Notification = memo(({quest, levelsName, changeLevel, levelSelected}) => {
     
     const [showModal, setShowModal] = useState(false)
     const [languaje, setLanguaje] = useState('english')
@@ -12,15 +12,19 @@ export const Notification = memo(({quest}) => {
             <header>
                 <button className='close' onClick={toggleModal}>x</button>
             </header>
-            <h1>{quest[languaje].title}</h1>
+            <h1>{'Javascript - ' + quest[languaje].title}</h1>
             <img src={quest.img} width='100%'/>
             <nav className='w-100 flex-row p-unset justify-content-center'>
                 <ul className='languaje-select flex-row p-unset list-style-none py-3-px'>
                     <li>
-                        <button className={'px-20-px py-3-px ' + (languaje == 'spanish' ? 'selected' : '')} onClick={() => changeLanguaje('spanish')}>Spanish</button>
+                        <button className={'px-20-px py-3-px ' + (languaje === 'spanish' ? 'selected' : '')} onClick={() => changeLanguaje('spanish')}>
+                            Spanish
+                        </button>
                     </li>
                     <li>
-                        <button className={'px-20-px py-3-px ' + (languaje == 'english' ? 'selected' : '')} onClick={() => changeLanguaje('english')}>English</button>
+                        <button className={'px-20-px py-3-px ' + (languaje === 'english' ? 'selected' : '')} onClick={() => changeLanguaje('english')}>
+                            English
+                        </button>
                     </li>
                 </ul>
             </nav>
@@ -28,14 +32,25 @@ export const Notification = memo(({quest}) => {
             <p>{quest[languaje].intro}</p>
             <h2>Steps</h2>
             <ol>
-                {quest[languaje].steps.map(step => <li>{step}</li>)}
+                {quest[languaje].steps.map((step, index) => <li id={'questStep' + index}>{step}</li>)}
             </ol>
             <h3>Examples</h3>
             <ul>
-                {quest[languaje].code.map(code => <li><code>{code}</code></li>)}
+                {quest[languaje].code.map((code, index) => <li id={'codeExample' + index}><code>{code}</code></li>)}
             </ul>
+            <nav className='w-100 flex-row p-unset justify-content-center'>
+                <ul className='languaje-select flex-row p-unset list-style-none py-3-px'>
+                    {levelsName.current.map( levelName =>
+                        <li id={levelName}>
+                            <button className={'px-20-px py-3-px ' + (levelName === levelSelected ? 'selected' : '')} onClick={() => changeLevel(levelName)}>
+                                {levelName}
+                            </button>
+                        </li>
+                    )}
+                </ul>
+            </nav>
         </article>
-    , [languaje])
+    , [languaje, levelSelected])
     return(
         <>
         <button onClick={toggleModal}>Quest</button>

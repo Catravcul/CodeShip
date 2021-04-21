@@ -69,15 +69,3 @@
     margin-left: 10px;
     background-color: #0e0e0e;
 }
-.notification-c>ul>li>code>.color-blue {
-    color: #3a5eff;
-}
-.notification-c>ul>li>code>.color-lightblue {
-    color: #3fb7de;
-}
-.notification-c>ul>li>code>.color-orangered {
-    color: #ff895d;
-}
-.notification-c>ul>li>code>.color-whitebone {
-    color: #edffb2;
-}

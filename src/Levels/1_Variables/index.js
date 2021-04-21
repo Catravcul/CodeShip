@@ -21,7 +21,7 @@ export const Variables = memo(({Notification, levelUp, scene}) => {
             GltfLoader.loadInArray(codeObj.modelFile, threeScenes.current, () => codeObjects.current.push(codeObj))
         })
         const startSublevel = () => setTimeout(() => {
-            if (codeObjects.current.length > 0) {
+            if (codeObjects.current.length > 0 && scene) {
                 setIndexScene(() => {
                     scene.add(threeScenes.current[0])
                     threeScenes.current[0].translateZ(50)

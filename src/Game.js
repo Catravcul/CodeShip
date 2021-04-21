@@ -6,8 +6,13 @@ import { Environment } from './threeModels/Environment'
 import { Config } from './Config'
 import { Levels } from './Levels'
 
-
+const scene = new THREE.Scene();
 export class Game extends Config {
+    state = {
+        levelUpdates: () => {}
+    }
+    
+    setlevelUpdates = (callback) => this.setState({...this.state, levelUpdates : callback})
 
     /**
      * Render scene and spaceship in default way
@@ -17,7 +22,7 @@ export class Game extends Config {
         // BASIC THREE.JS THINGS: SCENE, CAMERA, RENDERER
         // Three.js Creating a scene tutorial
         // https://threejs.org/docs/index.html#manual/en/introduction/Creating-a-scene
-        var scene = new THREE.Scene();
+        // var scene = new THREE.Scene();
         var camera = new THREE.PerspectiveCamera(
             75,
             window.innerWidth / window.innerHeight,
@@ -58,17 +63,26 @@ export class Game extends Config {
 
         // ADD LIGHTS
         var lights = [];
-        lights[ 0 ] = new THREE.PointLight( 0xffffff, 1, 0 );
-        lights[ 1 ] = new THREE.PointLight( 0xffffff, 1, 0 );
-        lights[ 2 ] = new THREE.PointLight( 0xffffff, 1, 0 );
+        lights[ 0 ] = new THREE.PointLight( 0xffffff, 0.5, 0 );
+        lights[ 1 ] = new THREE.PointLight( 0xffffff, 0.5, 0 );
+        lights[ 2 ] = new THREE.PointLight( 0xffffff, 0.5, 0 );
+        lights[ 3 ] = new THREE.PointLight( 0xffffff, 0.5, 0 );
+        lights[ 4 ] = new THREE.PointLight( 0xffffff, 0.5, 0 );
+        lights[ 5 ] = new THREE.PointLight( 0xffffff, 0.5, 0 );
 
         lights[ 0 ].position.set( 0, 200, 0 );
-        lights[ 1 ].position.set( 100, 200, 100 );
-        lights[ 2 ].position.set( - 100, - 200, - 100 );
+        lights[ 1 ].position.set( 200, 0, 0 );
+        lights[ 2 ].position.set( 0, - 200, 0 );
+        lights[ 3 ].position.set( - 200, 0, 0 );
+        lights[ 4 ].position.set( 0, 0, 200 );
+        lights[ 5 ].position.set( 0, 0, - 200 );
 
         scene.add( lights[ 0 ] );
         scene.add( lights[ 1 ] );
         scene.add( lights[ 2 ] );
+        scene.add( lights[ 3 ] );
+        scene.add( lights[ 4 ] );
+        scene.add( lights[ 5 ] );
 
 
 
@@ -103,8 +117,9 @@ export class Game extends Config {
 
         scene.add(Config.ship)
         
-        var animate = function () {
+        var animate = () => {
             requestAnimationFrame( animate );
+            this.state.levelUpdates()
             Camera.orbitCamera.target = Config.ship.getWorldPosition()
             Camera.orbitCamera.update()
             renderer.render( scene, camera );
@@ -117,7 +132,7 @@ export class Game extends Config {
         return(
         <div ref={ref => (this.mount = ref)} >
             <Camera.render/>
-            <Levels />
+            <Levels setlevelUpdates={this.setlevelUpdates} scene={scene}/>
         </div>
         )
     }

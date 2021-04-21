@@ -41,6 +41,9 @@
 .h-70-vh {
     height: 70vh;
 }
+.p-unset {
+    padding: unset;
+}
 .px-20-px {
     padding-left: 20px;
     padding-right: 20px;
@@ -73,6 +76,9 @@
 }
 .justify-content-space-around {
     justify-content: space-around;
+}
+.justify-content-center {
+    justify-content: center;
 }
 body .hidden {
     display: none;

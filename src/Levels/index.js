@@ -11,7 +11,7 @@ export const Levels = ({setlevelUpdates, scene}) => {
     const Level = levels[level]
 
     return(
-        <div className='absolute'>
+        <div className='absolute top'>
             <Level Notification={Notification} CodeModal={CodeModal} levelUp={levelUp} setlevelUpdates={setlevelUpdates} scene={scene}/>
         </div>
     )

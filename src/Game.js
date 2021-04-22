@@ -1,4 +1,3 @@
-import ReactDOM from "react-dom";
 import * as THREE from "three";
 import { Camera } from './Camera/Camera'
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
@@ -51,13 +50,13 @@ export class Game extends Config {
         const environment = new Environment(scene)
 
         // MOUNT INSIDE OF REACT
-        this.mount.appendChild(renderer.domElement); // mount a scene inside of React using a ref
+        this.mount.prepend(renderer.domElement); // mount a scene inside of React using a ref
 
 
 
         // CAMERA CONTROLS
         // // https://threejs.org/docs/index.html#examples/controls/OrbitControls
-        this.controls = new OrbitControls(camera, this.mount);
+        this.controls = new OrbitControls(camera, this.mount.children[1]);
         Camera.orbitCamera = this.controls
 
 
@@ -137,6 +136,3 @@ export class Game extends Config {
         )
     }
 }
-
-// const rootElement = document.getElementById("root");
-// ReactDOM.render(<Game />, rootElement);

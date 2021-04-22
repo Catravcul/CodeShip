@@ -5,24 +5,43 @@ export const CodeModal = memo(({codeObject}) => {
     
     const [showModal, setShowModal] = useState(false)
     const toggleModal = useCallback(() => setShowModal(prevState => prevState ? false : true), [])
-    const isDraggable = useRef(true)
-    const drag = useCallback(({clientX, clientY, currentTarget}) => {
+
+    const dragTouch = useCallback(({targetTouches}) => {
+        const {clientX, clientY, target} = targetTouches[0]
+        const currentTarget = target.tagName === 'SPAN' ? target.parentElement : target
+        const init = {x: clientX, y: clientY}
+        const moveElement = ({targetTouches}) => {
+            const {clientX, clientY, target} = targetTouches[0]
+            const currentTarget = target.tagName === 'SPAN' ? target.parentElement : target
+            const current = {x: clientX - init.x, y: clientY - init.y}
+            currentTarget.style.top = currentTarget.offsetTop + current.y + 'px'
+            currentTarget.style.left = currentTarget.offsetLeft + current.x + 'px'
+            init.x = clientX 
+            init.y = clientY
+        }
+        currentTarget.ontouchmove = moveElement
+        currentTarget.ontouchend = () => {
+            currentTarget.ontouchmove = null
+            currentTarget.ontouchend = null
+        }
+    }, [])
+    
+    const dragMouse = useCallback(({clientX, clientY, currentTarget}) => {
         const init = {x: clientX, y: clientY}
         const moveElement = ({clientX, clientY, currentTarget}) => {
             const current = {x: clientX - init.x, y: clientY - init.y}
             currentTarget.style.top = currentTarget.offsetTop + current.y + 'px'
             currentTarget.style.left = currentTarget.offsetLeft + current.x + 'px'
-            init.x = clientX
-            init.y = clientY
+            init.x= clientX 
+            init.y= clientY
         }
-        if (isDraggable.current) {
-            currentTarget.onmousemove = moveElement
-            isDraggable.current = false
-        } else {
-            currentTarget.onmousemove = () => {}
-            isDraggable.current = true
+        currentTarget.onmousemove = moveElement
+        currentTarget.onmouseup = () => {
+            currentTarget.onmousemove = null
+            currentTarget.onmouseup = null
         }
     }, [])
+
     const codeSlotElement = useCallback((fragment, index) => {
         const elementSize = (55/codeObject.code.length) + 'vw'
         const style = {width: elementSize, height: elementSize}
@@ -34,7 +53,7 @@ export const CodeModal = memo(({codeObject}) => {
         const top =  ((index + 0.1) * (100 / codeObject.code.length)) + '%'
         const left =  ((index + 0.1) * (100 / codeObject.code.length)) + '%'
         const style = {top, left, width: elementSize, height: elementSize}
-        return <code className='code-fragment' onClick={drag} style={style} id={'codeFragment' + index}>{fragment}</code>
+        return <code className='code-fragment' onMouseDown={dragMouse} onTouchStart={dragTouch} style={style} id={'codeFragment' + index}>{fragment}</code>
     }, [codeObject])
 
     const getModal = useCallback(() =>

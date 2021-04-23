@@ -2,7 +2,7 @@ import {memo, useMemo, useCallback, useRef, useState, useEffect, useLayoutEffect
 import {GltfLoader} from '../../utils/GltfLoader'
 import * as type from './type'
 import * as number from './number'
-import { CodeModal } from '../codeModal'
+import {CodeModal} from '../codeModal'
 
 export const Variables = memo(({Notification, levelUp, scene}) => {
     const subLevels = useRef({type, number})

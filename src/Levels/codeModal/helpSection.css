@@ -1,0 +1,41 @@
+.code-modal-c>.help-s {
+    width: 100%;
+    border: 1px solid #464646;
+    position: absolute;
+    z-index: -1;
+    font-size: 12px;
+    color: limegreen;
+    text-align: start;
+    background-color: #2a2a2a;
+    box-shadow: 0 4px 3px #000000a8, inset -3px 3px 3px #3a3a3a, inset 3px 0 3px #3a3a3a;
+}
+@keyframes show-help {
+    0% {z-index: 1; display: none; transform: translateY(-100%);}
+    1% {display: block;}
+    99% {z-index: 1;}
+    100% {z-index: 2; transform: translateY(44px);}
+}
+.code-modal-c>.help-s.show {
+    animation-name: show-help;
+    animation-duration: 0.5s;
+    animation-timing-function: ease-out;
+    animation-iteration-count: 1;
+    animation-fill-mode: both;
+}
+@keyframes hide-help {
+    100% {z-index: 1; display: none; transform: translateY(-100%);}
+    99% {display: block;}
+    1% {z-index: 1;}
+    0% {z-index: 2; transform: translateY(44px);}
+}
+.code-modal-c>.help-s.hide {
+    animation-name: hide-help;
+    animation-duration: 0.5s;
+    animation-timing-function: ease-in;
+    animation-iteration-count: 1;
+    animation-fill-mode: both;
+}
+.code-modal-c>.help-s>ul {
+    margin-top: 0;
+    list-style-type: none;
+}

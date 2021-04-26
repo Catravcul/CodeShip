@@ -6,12 +6,8 @@
  * @returns boolean
  */
 export const checkFit = (slot, subject, margin=0) => {
-    const {offsetLeft: slotLeft, offsetTop: slotTop} = slot
-    const slotRight = slotLeft + slot.offsetWidth
-    const slotBottom = slotTop + slot.offsetHeight
-    const {offsetLeft: subjectLeft, offsetTop: subjectTop} = subject
-    const subjectRight = subjectLeft + subject.offsetWidth
-    const subjectBottom = subjectTop + subject.offsetHeight
+    const {left: slotLeft, top: slotTop, right: slotRight, bottom: slotBottom} = slot.getBoundingClientRect()
+    const {left: subjectLeft, top: subjectTop, right: subjectRight, bottom: subjectBottom} = subject.getBoundingClientRect()
     let answer = false
     if ((slotLeft - margin) < subjectLeft && (slotRight + margin) > subjectRight) {
         if ((slotTop - margin) < subjectTop && (slotBottom + margin) > subjectBottom) {

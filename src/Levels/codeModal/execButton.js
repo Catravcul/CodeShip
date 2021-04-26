@@ -15,10 +15,14 @@ export const ExecButton = memo(({slots, snippets, orbits}) => {
         })
         if (win) {
             orbits.map(orbit => orbit.classList.add('spin'))
+            slots.map(slot => {
+                snippets.map(snippet => snippet.classList.add('hide'))
+                slot.children[0].classList.remove('hide')
+                slot.classList.add('match')
+            })
         }
     }, [slots, snippets])
-    return(<>
+    return(
         <button onClick={executeCode}>Execute code</button>
-        <button onClick={() => orbits.map(orbit => orbit.classList.remove('spin'))}>Return</button></>
     )
 })

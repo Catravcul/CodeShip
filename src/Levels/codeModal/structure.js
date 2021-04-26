@@ -14,9 +14,15 @@ export const Structure = memo(({props: {
 
     const getSlotElement = useCallback((fragment, index) => {
         const elementSize = (60/codeObject.code.length) + 'vw'
+        const snippetSize = (50/codeObject.code.length) + 'vw'
         const style = {width: elementSize, height: elementSize}
+        
         return (
-            <div className='code-slot' id={'answer' + index} style={style} ref={ref => slots[index] = ref}></div>
+            <div className='code-slot' id={'answer' + index} style={style} ref={ref => slots[index] = ref}>
+                <code className='code-fragment hide' style={style} id={'codeAnswer' + index} >
+                    {fragment}
+                </code>
+            </div>
         )
     }, [codeObject])
 
@@ -31,7 +37,7 @@ export const Structure = memo(({props: {
         return line
     }, [])
 
-    const codeFragmentElement = useCallback((fragment, index) => {
+    const getSnippetElement = useCallback((fragment, index) => {
         const elementSize = (50/codeObject.code.length) + 'vw'
         const top =  ((index + 0.1) * (100 / codeObject.code.length)) + '%'
         const left =  ((index + 0.1) * (100 / codeObject.code.length)) + '%'
@@ -71,14 +77,14 @@ export const Structure = memo(({props: {
                     <div style={{position: 'absolute', width: '100%'}}>
                         {fillSlotsLine([1], [0,2,3])}
                     </div>
-                    <div ref={ref => orbits.current.push(ref)} className='first-orbit'>
+                    <div ref={ref => orbits.current[0]=ref} className='first-orbit'>
                         {fillSlotsLine([0, 2], [1], 'space-33')}
                     </div>
-                    <div ref={ref => orbits.current.push(ref)} className='second-orbit'>
+                    <div ref={ref => orbits.current[1]=ref} className='second-orbit'>
                         {fillSlotsLine([3], [0,1,2])}
                     </div>
                 </div>
-                {codeObject.code.map(codeFragmentElement)}
+                {codeObject.code.map(getSnippetElement)}
             </div>
             <footer>
                 <ExecButton snippets={snippets} slots={slots} orbits={orbits.current}/>

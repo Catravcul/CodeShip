@@ -14,9 +14,14 @@ export const Variables = memo(({Notification, levelUp, scene}) => {
     const codeObjects = useRef([])
     const threeScenes = useRef([])
     const codeObject = useMemo(() => codeObjects.current[indexScene], [indexScene])
-    
+
     const actualSublevel = subLevels.current[subLevel]
+    const oldScene = threeScenes.current[indexScene]
     useEffect(() => {
+        scene.remove(oldScene)
+        codeObjects.current.length = 0
+        threeScenes.current.length = 0
+        setIndexScene(() => -1)
         actualSublevel.codeObjects.map(codeObj => {
             GltfLoader.loadInArray(codeObj.modelFile, threeScenes.current, () => codeObjects.current.push(codeObj))
         })
@@ -33,10 +38,7 @@ export const Variables = memo(({Notification, levelUp, scene}) => {
             }
         }, 10000)
         startSublevel()
-    }, [])
-    useLayoutEffect(() => {
-        scene.add(threeScenes.current[indexScene])
-    }, [indexScene])
+    }, [subLevel])
     
     return(
         <>

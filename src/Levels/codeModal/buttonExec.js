@@ -1,7 +1,9 @@
 import {useCallback, memo} from 'react'
 import {checkFit} from './checkFit'
 
-export const ExecButton = memo(({slots, snippets, orbits}) => {
+export const ButtonExec = memo(({props: {
+    codeSlots: slots, codeSnippets: snippets, orbits
+}}) => {
     const executeCode = useCallback(() => {
         let win = true
         slots.map((slot, index) => {

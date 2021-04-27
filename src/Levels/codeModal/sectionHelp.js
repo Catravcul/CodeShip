@@ -1,5 +1,5 @@
 import {useCallback} from 'react'
-import './helpSection.css'
+import './sectionHelp.css'
 
 export const Button = ({helpSection}) => {
     const toggleHelpSection = useCallback(({currentTarget: {classList: btnClassList}}) => {

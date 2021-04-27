@@ -1,7 +1,7 @@
 .code-modal-c {
     width: 90vw;
     height: 65vh;
-    overflow: auto;
+    overflow: hidden;
     top: 9vh;
     left: 5vw;
     display: flex;
@@ -34,9 +34,6 @@
     color: pink;
     background-color: red;
 }
-.code-modal-c>header>nav {
-    display: flex;
-}
 .code-modal-c>header>nav>.help {
     border-radius: 12px;
     font-weight: bold;
@@ -46,6 +43,9 @@
 .code-modal-c>header>nav>.help:hover, .code-modal-c>header>nav>.help.selected{
     background-color: rgb(255 208 89);
     color: rgb(255 255 255);
+}
+.code-modal-c>header>nav {
+    display: flex;
 }
 .code-modal-c>header>nav>.mode {
     padding: 3px 5px;

@@ -1,4 +1,4 @@
-import {useState, useCallback, useRef, memo} from 'react'
+import {useState, useCallback, memo} from 'react'
 import './notification.css'
 
 export const Notification = memo(({quest, levelsName, changeLevel, levelSelected}) => {
@@ -8,12 +8,12 @@ export const Notification = memo(({quest, levelsName, changeLevel, levelSelected
     const toggleModal = useCallback(() => setShowModal(prevState => prevState ? false : true), [])
     const changeLanguaje = useCallback(lang => setLanguaje(() => lang), [])
     const getModal = useCallback(() =>
-        <article className='w-60-vw h-70-vh max-w-400-px max-h-550-px b-rad-10-px absolute middle color-white notification-c'>
+        <article className='h-70-vh max-w-400-px max-h-550-px b-rad-10-px absolute middle color-white notification-c'>
             <header>
                 <button className='close' onClick={toggleModal}>x</button>
             </header>
             <h1>{'Javascript - ' + quest[languaje].title}</h1>
-            <img src={quest.img} width='100%'/>
+            <img src={quest.img} width='100%' alt='Screenshot as example'/>
             <nav className='w-100 flex-row p-unset justify-content-center'>
                 <ul className='languaje-select flex-row p-unset list-style-none py-3-px'>
                     <li>

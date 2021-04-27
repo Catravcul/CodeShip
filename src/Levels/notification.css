@@ -1,5 +1,7 @@
 .notification-c {
+    width: 60vw;
     padding: 20px;
+    z-index: 1;
     font-size: 13px;
     text-align: justify;
     background-color: #0b0b0b;
@@ -68,4 +70,21 @@
 .notification-c>ul {
     margin-left: 10px;
     background-color: #0e0e0e;
+}
+
+@media screen and (max-width: 600px) {
+    .notification-c {
+        width: 90vw;
+    }
+}
+@media screen and (max-width: 360px) {
+    .notification-c {
+        background-image: repeating-linear-gradient(45deg, orangered, transparent 0.6vw),repeating-linear-gradient(-45deg, orangered, transparent 0.6vw);
+    }
+}
+@media screen and (max-width: 330px) {
+    .notification-c {
+        width: 95vw;
+        background-image: repeating-linear-gradient(45deg, orangered, transparent 0.6vw),repeating-linear-gradient(-45deg, orangered, transparent 0.6vw);
+    }
 }

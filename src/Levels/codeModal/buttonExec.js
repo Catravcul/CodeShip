@@ -1,9 +1,12 @@
-import {useCallback, memo} from 'react'
+import {useCallback, useRef, memo} from 'react'
 import {checkFit} from './checkFit'
+import './buttonExec.css'
+import winImg from './win.svg'
 
 export const ButtonExec = memo(({props: {
     codeSlots: slots, codeSnippets: snippets, orbits
 }}) => {
+    const outcomeEl = useRef(null)
     const executeCode = useCallback(() => {
         let win = true
         slots.map((slot, index) => {
@@ -22,9 +25,15 @@ export const ButtonExec = memo(({props: {
                 slot.children[0].classList.remove('hide')
                 slot.classList.add('match')
             })
+            outcomeEl.current.classList.add('win')
         }
     }, [slots, snippets])
     return(
-        <button onClick={executeCode}>Execute code</button>
+        <>
+            <div className='outcome' ref={ref => outcomeEl.current = ref}>
+                <img src={winImg}/>
+            </div>
+            <button className='exec-btn' onClick={executeCode}>Execute code</button>
+        </>
     )
 })

@@ -31,3 +31,96 @@
     width: 50%;
     height: 50%;
 }
+.code-modal-c>footer>.btn-exec {
+    min-width: 70px;
+    min-height: 20px;
+    width: 10vw;
+    height: 4vw;
+    position: absolute;
+    bottom: 3%;
+    right: 3%;
+}
+.code-modal-c>footer>.btn-exec>button {
+    width: 100%;
+    height: 100%;
+    border-radius: 5px;
+    border: none;
+    position: inherit;
+    top: 0;
+    left: 0;
+    transition-property: transform;
+    transition-duration: 0.5s;
+    background-color: #060606;
+    box-shadow: inset 0 0.15vw 0.3vw white;
+
+}
+.code-modal-c>footer>.btn-exec:hover>button {
+    transform: scale(0.9);
+}
+.code-modal-c>footer>.btn-exec>span {
+    position: inherit;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    transition: transform;
+    transition-duration: 0.5s;
+    font-weight: 700;
+    color: greenyellow;
+    text-shadow: 1px 1px black, 1px -1px black, -1px 1px black, -1px -1px black;
+}
+.code-modal-c>footer>.btn-exec:hover>span {
+    transform: translate(-50%, -50%) scale(0.9);
+}
+.code-modal-c>footer>.btn-exec>i {
+    content: '1';
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    display: flex;
+    flex-flow: column;
+    justify-content: center;
+    position: absolute;
+    transition-property: transform, opacity;
+    transition-duration: 0.5s;
+    text-align: center;
+    font-size: 10px;
+    color: palegoldenrod;
+    opacity: 0;
+    background-color: black;
+    box-shadow: inset 0 0.1vw 0.2vw white;
+}
+.code-modal-c>footer>.btn-exec>i:nth-child(2) {
+    width: 18px;
+    height: 18px;
+    top: 4px;
+    left: 15px;
+}
+.code-modal-c>footer>.btn-exec>i:nth-child(3) {
+    top: 5px;
+    right: 11px;
+}
+.code-modal-c>footer>.btn-exec>i:nth-child(4) {
+    bottom: 4px;
+    left: 9px;
+}
+.code-modal-c>footer>.btn-exec>i:nth-child(5) {
+    height: 18px;
+    width: 18px;
+    bottom: 3px;
+    right: 11px;
+}
+.code-modal-c>footer>.btn-exec:hover>i {
+    opacity: 0.9;
+}
+.code-modal-c>footer>.btn-exec:hover>i:nth-child(2) {
+    transform: translate(-100%, -100%) scale(1.1, 0.9);
+}
+.code-modal-c>footer>.btn-exec:hover>i:nth-child(3) {
+    transform: translate(100%, -160%) scale(1, 1.1);
+}
+.code-modal-c>footer>.btn-exec:hover>i:nth-child(4) {
+    transform: translate(-150%, 50%) scale(1.1, 1);
+}
+.code-modal-c>footer>.btn-exec:hover>i:nth-child(5) {
+    transform: translate(100%, 90%) scale(1.1, 1.2);
+}

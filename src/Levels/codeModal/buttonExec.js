@@ -33,7 +33,13 @@ export const ButtonExec = memo(({props: {
             <div className='outcome' ref={ref => outcomeEl.current = ref}>
                 <img src={winImg}/>
             </div>
-            <button className='exec-btn' onClick={executeCode}>Execute code</button>
+            <div className='btn-exec' onClick={executeCode}>
+                <button/>
+                {[1, 0, 0, 1].map( digit =>
+                    <i>{digit}</i>
+                )}
+                <span>Execute</span>
+            </div>
         </>
     )
 })

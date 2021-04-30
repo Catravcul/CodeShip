@@ -19,15 +19,21 @@ const changeQuest = (state, action) => {
 
 export const Variables = memo(({Notification, levelUp, scene}) => {
     const [questState, dispatchQuest] = useReducer(changeQuest, initialQuest)
-    
     const codeObjects = useRef([])
     const threeScenes = useRef([])
     const codeObject = useMemo(() => codeObjects.current[questState.sceneIndex], [questState.sceneIndex])
+
+    const changeScene = (index = questState.sceneIndex + 1) => {
+        scene.remove(threeScenes.current[index - 1])
+        scene.add(threeScenes.current[index])
+        threeScenes.current[index].translateZ(100)
+        threeScenes.current[index].translateX(100)
+        dispatchQuest({type: 'changeSceneIndex', index})
+    }
     
     const actualQuest = quests[questState.name]
-    const oldScene = threeScenes.current[questState.sceneIndex]
     useEffect(() => {
-        scene.remove(oldScene)
+        scene.remove(threeScenes.current[questState.sceneIndex])
         codeObjects.current.length = 0
         threeScenes.current.length = 0
         dispatchQuest({type: 'changeSceneIndex', index: -1})
@@ -45,7 +51,7 @@ export const Variables = memo(({Notification, levelUp, scene}) => {
             }
         }, 5000)
         startSublevel()
-        return scene.remove(oldScene)
+        scene.remove(threeScenes.current[questState.sceneIndex])
     }, [questState.name])
     useEffect(() => console.log(questState.sceneIndex), [questState.sceneIndex])
     const getQuestsLi = useCallback(() => 
@@ -62,7 +68,7 @@ export const Variables = memo(({Notification, levelUp, scene}) => {
     return(
         <>
         <Notification quest={actualQuest.quest} questSelected={questState.name} getQuestsLi={getQuestsLi}/>
-        <CodeModal codeObject={codeObject}/>
+        <CodeModal codeObject={codeObject} nextScene={() => changeScene()}/>
         </>
     )
 })

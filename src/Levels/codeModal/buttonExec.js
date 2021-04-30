@@ -4,7 +4,7 @@ import './buttonExec.css'
 import winImg from './win.svg'
 
 export const ButtonExec = memo(({props: {
-    codeSlots: slots, codeSnippets: snippets, orbits
+    codeSlots: slots, codeSnippets: snippets, orbits, nextScene
 }}) => {
     const outcomeEl = useRef(null)
     const executeCode = useCallback(() => {
@@ -26,8 +26,9 @@ export const ButtonExec = memo(({props: {
                 slot.classList.add('match')
             })
             outcomeEl.current.classList.add('win')
+            nextScene()
         }
-    }, [slots, snippets])
+    })
     return(
         <>
             <div className='outcome' ref={ref => outcomeEl.current = ref}>

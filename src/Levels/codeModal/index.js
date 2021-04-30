@@ -4,7 +4,7 @@ import {ButtonExec} from './buttonExec'
 import * as Help from './sectionHelp'
 import './index.css'
 
-export const CodeModal = memo(({codeObject}) => {
+export const CodeModal = memo(({codeObject, nextScene}) => {
     
     const [showModal, setShowModal] = useState(false)
     const toggleModal = useCallback(() => setShowModal(prevState => prevState ? false : true), [])
@@ -21,7 +21,7 @@ export const CodeModal = memo(({codeObject}) => {
 
     const execProps = useMemo(() => {
         return {
-            orbits, codeSlots, codeSnippets
+            orbits, codeSlots, codeSnippets, nextScene
         }
     }, [codeObject])
 

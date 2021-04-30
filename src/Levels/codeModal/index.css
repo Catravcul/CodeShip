@@ -4,6 +4,7 @@
     overflow: hidden;
     top: 9vh;
     left: 5vw;
+    z-index: 1;
     display: flex;
     flex-flow: column;
     background-image: repeating-conic-gradient(pink 0deg 1deg, transparent 1deg 2deg), repeating-radial-gradient(circle, violet, pink 10px);

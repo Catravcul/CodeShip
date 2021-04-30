@@ -5,7 +5,17 @@ export const codeObjects = [
     {
         modelFile: '3d/structures/ApartmentBuilding.glb',
         code: [
-            getBlueCode('const'), getLightblueCode('mySchool'), '=', getLightblueCode('School_1')
+            getBlueCode('const'), getLightblueCode('appartments'), '=', getLightblueCode('building')
+        ]
+    }, {
+        modelFile: '3d/structures/School.glb',
+        code: [
+            getBlueCode('var'), getCyanCode('building'), '=', getLightblueCode('school')
+        ]
+    }, {
+        modelFile: '3d/structures/MiniLibrary.glb',
+        code: [
+            getBlueCode('let'), getCyanCode('library'), '=', getLightblueCode('home')
         ]
     }
 ]

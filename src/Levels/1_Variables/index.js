@@ -1,58 +1,67 @@
-import {memo, useMemo, useCallback, useRef, useState, useEffect, useLayoutEffect} from 'react'
+import {memo, useMemo, useCallback, useRef, useState, useReducer, useEffect} from 'react'
 import {GltfLoader} from '../../utils/GltfLoader'
 import * as type from './type'
 import * as number from './number'
 import {CodeModal} from '../codeModal'
 
-export const Variables = memo(({Notification, levelUp, scene}) => {
-    const quests = useRef({type, number})
-    const [quest, setQuest] = useState('type')
-    const questsName = useRef(['type', 'number'])
-    const changeQuest = useCallback(levelName => {setQuest(() => levelName)}, [])
+const quests = {type, number}
+const questsName = ['type', 'number']
+const initialQuest = {
+    name: 'type', sceneIndex: -1, nombre:'name'
+}
+const changeQuest = (state, action) => {
+    switch (action.type) {
+        case 'changeName': return {...state, name: action.name}
+        case 'changeSceneIndex': return {...state, sceneIndex: action.index}
+        default : return state
+    }
+}
 
-    const [indexScene, setIndexScene] = useState(-1)
+export const Variables = memo(({Notification, levelUp, scene}) => {
+    const [questState, dispatchQuest] = useReducer(changeQuest, initialQuest)
+    
     const codeObjects = useRef([])
     const threeScenes = useRef([])
-    const codeObject = useMemo(() => codeObjects.current[indexScene], [indexScene])
-
-    const actualQuest = quests.current[quest]
-    const oldScene = threeScenes.current[indexScene]
+    const codeObject = useMemo(() => codeObjects.current[questState.sceneIndex], [questState.sceneIndex])
+    
+    const actualQuest = quests[questState.name]
+    const oldScene = threeScenes.current[questState.sceneIndex]
     useEffect(() => {
         scene.remove(oldScene)
         codeObjects.current.length = 0
         threeScenes.current.length = 0
-        setIndexScene(() => -1)
+        dispatchQuest({type: 'changeSceneIndex', index: -1})
         actualQuest.codeObjects.map(codeObj => {
             GltfLoader.loadInArray(codeObj.modelFile, threeScenes.current, () => codeObjects.current.push(codeObj))
         })
         const startSublevel = () => setTimeout(() => {
             if (codeObjects.current.length > 0 && scene) {
-                setIndexScene(() => {
-                    scene.add(threeScenes.current[0])
-                    threeScenes.current[0].translateZ(50)
-                    threeScenes.current[0].translateX(50)
-                    return 0
-                })
+                dispatchQuest({type: 'changeSceneIndex', index: 0})
+                scene.add(threeScenes.current[0])
+                threeScenes.current[0].translateZ(50)
+                threeScenes.current[0].translateX(50)
             } else {
                 startSublevel()
             }
         }, 5000)
         startSublevel()
         return scene.remove(oldScene)
-    }, [quest])
-    
+    }, [questState.name])
+    useEffect(() => console.log(questState.sceneIndex), [questState.sceneIndex])
     const getQuestsLi = useCallback(() => 
-        questsName.current.map( questName =>
+        questsName.map( questName =>
             <li id={questName}>
-                <button className={`px-20-px py-3-px ${(questName === quest ? 'selected' : '')}`} onClick={() => changeQuest(questName)}>
+                <button className={`px-20-px py-3-px ${(questName === questState.name ? 'selected' : '')}`} onClick={() => dispatchQuest({
+                    type: 'changeName', name: questName
+                })}>
                     {questName}
                 </button>
             </li>
         )
-    ,[quest])
+    ,[questState.name])
     return(
         <>
-        <Notification quest={actualQuest.quest} questSelected={quest} getQuestsLi={getQuestsLi}/>
+        <Notification quest={actualQuest.quest} questSelected={questState.name} getQuestsLi={getQuestsLi}/>
         <CodeModal codeObject={codeObject}/>
         </>
     )

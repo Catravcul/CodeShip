@@ -10,8 +10,8 @@ export class Nav extends Config {
         this.props.shipTravel()
     }
 
-    move = amount => {
-        Config.shipInstance.propulsionEngine.run(Config.shipInstance.spaceship, this.props.changeEnergy)
+    move = () => {
+        Config.shipInstance.propulsionEngine.run.forward(Config.shipInstance.spaceship, this.props.changeEnergy)
         Config.shipInstance.propulsionEngine.charge(Config.shipInstance.fuselage.energy, this.props.changeEnergy)
     }
 

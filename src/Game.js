@@ -58,32 +58,11 @@ export class Game extends Config {
         // // https://threejs.org/docs/index.html#examples/controls/OrbitControls
         this.controls = new OrbitControls(camera, this.mount.children[1]);
         Camera.orbitCamera = this.controls
-
-
+        
         // ADD LIGHTS
-        var lights = [];
-        lights[ 0 ] = new THREE.PointLight( 0xffffff, 0.5, 0 );
-        lights[ 1 ] = new THREE.PointLight( 0xffffff, 0.5, 0 );
-        lights[ 2 ] = new THREE.PointLight( 0xffffff, 0.5, 0 );
-        lights[ 3 ] = new THREE.PointLight( 0xffffff, 0.5, 0 );
-        lights[ 4 ] = new THREE.PointLight( 0xffffff, 0.5, 0 );
-        lights[ 5 ] = new THREE.PointLight( 0xffffff, 0.5, 0 );
-
-        lights[ 0 ].position.set( 0, 200, 0 );
-        lights[ 1 ].position.set( 200, 0, 0 );
-        lights[ 2 ].position.set( 0, - 200, 0 );
-        lights[ 3 ].position.set( - 200, 0, 0 );
-        lights[ 4 ].position.set( 0, 0, 200 );
-        lights[ 5 ].position.set( 0, 0, - 200 );
-
-        scene.add( lights[ 0 ] );
-        scene.add( lights[ 1 ] );
-        scene.add( lights[ 2 ] );
-        scene.add( lights[ 3 ] );
-        scene.add( lights[ 4 ] );
-        scene.add( lights[ 5 ] );
-
-
+        const directionalLight = new THREE.DirectionalLight( 0xffffff, 0.5 );
+        scene.add( directionalLight );
+        
 
         // SCALE ON RESIZE
 
@@ -113,13 +92,12 @@ export class Game extends Config {
             renderer.render( scene, camera );
 
         }
-
-        scene.add(Config.ship)
         
+        scene.add(Config.ship)
         var animate = () => {
             requestAnimationFrame( animate );
             this.state.levelUpdates()
-            Camera.orbitCamera.target = Config.ship.getWorldPosition()
+            Camera.orbitCamera.target = Config.ship.getWorldPosition(Config.ship.position)
             Camera.orbitCamera.update()
             renderer.render( scene, camera );
         };

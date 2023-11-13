@@ -27,7 +27,6 @@ export class Nav extends Config {
     
     changeEnergy = (energy, potential) => {
         this.setState({energyPercent: ((energy*100)/potential)})
-        console.log(potential, energy)
     }
 
     openHome = () => {
@@ -48,7 +47,7 @@ export class Nav extends Config {
         <div>
             <nav className="absolute bottom flex-col" >
                 <Mofify.Nav shipModify={this.shipModify} modify={this.state.modify}/>
-                <Travel.Nav shipTravel={this.shipTravel} travel={this.state.travel} toggleNav={this.toggleNav} changeEnergy={this.changeEnergy}/>
+                <Travel.Nav shipTravel={this.shipTravel} travel={this.state.travel} toggleNav={this.toggleNav}/>
                 <button className={"btn " + (this.state.modify || this.state.travel ? 'hidden' : '')} onClick = {this.shipModify}>
                     <img src="/img/modify.svg" alt="modify" width="50px"/>
                 </button>

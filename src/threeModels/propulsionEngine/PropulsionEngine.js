@@ -24,38 +24,13 @@ export class PropulsionEngine extends ThreeModel {
     /**
      * Reset movement interval runInterval, take callback for the setInterval func
      * @param {scene} spaceship
-     * @param {function} callback
      * @param {int} speed
      */
-    run = {
-        forward (spaceship, callback=() => {}, speed = this.speed) {
-            clearInterval(this.runInterval)
-            if (speed <= this.energy) {
-                this.runInterval = setInterval(() => this.accelerate(spaceship, callback, speed), 50)
-            }
-        },
-        backward (spaceship, callback=() => {}, speed = this.speed) {
-            clearInterval(this.runInterval)
-            if (speed <= this.energy) {
-                this.runInterval = setInterval(() => this.accelerate(spaceship, callback, (speed * -1)), 50)
-            }
-        }
-    }
-
-    /**
-     * Move spaceship, use callback with this.energy & this.potential as args
-     * @param {scene} spaceship 
-     * @param {function} callback
-     * @param {int} speed 
-     */
-    accelerate(spaceship,callback=() => {}, speed = this.speed) {
+    runForward (spaceship, speed = this.speed) {
         spaceship.translateZ(speed)
-        speed *= 0.1
-        callback(this.energy, this.potential)
-        if (speed > this.energy) {
-            clearInterval(this.runInterval)
-        }
-        this.energy -= speed
+    }
+    runBackward (spaceship, speed = this.speed) {
+        spaceship.translateZ(speed * -1)
     }
     
     /**

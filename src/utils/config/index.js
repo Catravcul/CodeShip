@@ -1,4 +1,4 @@
-const mode = 'PROD'
+import { mode } from './variables'
 
 const development = {
     codeshipApi: {
@@ -24,7 +24,7 @@ const test = {
 }
 const production = {
     codeshipApi: {
-        urlBase: 'https://codeship-api.herokuapp.com'
+        urlBase: 'https://codeship-api-dev.fl0.io/'
     }, 
     codeshipNet: {
         urlBase: 'https://codeship-net.herokuapp.com'

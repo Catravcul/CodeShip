@@ -1,3 +1,5 @@
+import React from 'react'
+
 import { Config } from '../Config'
 import './travel.css'
 
@@ -6,17 +8,22 @@ import {Spin} from './spin'
 
 export class Nav extends Config {
 
+    runInterval = React.createRef(null)
+
     exit = () => {
         this.props.shipTravel()
     }
 
     move = () => {
-        Config.shipInstance.propulsionEngine.run.forward(Config.shipInstance.spaceship, this.props.changeEnergy)
-        Config.shipInstance.propulsionEngine.charge(Config.shipInstance.fuselage.energy, this.props.changeEnergy)
+        this.runInterval.current = setInterval( () => {
+            Config.shipInstance.propulsionEngine.runForward(Config.shipInstance.spaceship)
+            Config.updateCamera(Config.shipInstance.propulsionEngine.scene)
+        }, 8)
     }
 
     stop = () => {
-        Config.shipInstance.propulsionEngine.stop()
+        // Config.shipInstance.propulsionEngine.stop()
+        clearInterval(this.runInterval.current)
     }
 
     render() {
@@ -25,7 +32,7 @@ export class Nav extends Config {
             <button className={"btn " + (this.props.travel ? '' : 'hidden')} onClick = {this.stop}>
             <img src="/img/orbit.svg" alt="stop" width="50px"/>
             </button>
-            <button className={"btn " + (this.props.travel ? '' : 'hidden')} onClick = {this.move}>
+            <button className={"btn " + (this.props.travel ? '' : 'hidden')} onMouseDown = {this.move} onMouseUp = {this.stop}>
             <img src="/img/launch.svg" alt="move" width="50px"/>
             </button>
             <button className={"btn " + (this.props.travel ? '' : 'hidden')} onClick = {this.props.toggleNav}>

@@ -1,17 +1,36 @@
 import * as THREE from "three";
-import { Camera } from './Camera/Camera'
+import { Camera } from '../Camera/Camera'
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
-import { Environment } from './threeModels/Environment'
-import { Config } from './Config'
-import { Levels } from './Levels'
+import { Environment } from '../threeModels/Environment'
+import { Config } from '../Config'
+import { Levels } from '../Levels'
+import { GameLoop } from "./loop";
 
 const scene = new THREE.Scene();
-export class Game extends Config {
+export default class Game extends Config {
     state = {
         levelUpdates: () => {}
     }
     
     setlevelUpdates = (callback) => this.setState({...this.state, levelUpdates : callback})
+    /**
+     * 
+     * @param {THREE.Camera} pCamera 
+     * @param {THREE.Object3D} pFollowedObj 
+     * @returns 
+     */
+    updateCameraPosition = (pCamera, pFollowedObj) => {
+        const { x: savedX, y: savedY, z: savedZ } = pFollowedObj.position
+
+        pFollowedObj.translateZ(-5)
+        pFollowedObj.translateY(5)
+        const { x, y, z } = pFollowedObj.getWorldPosition(new THREE.Vector3())
+        pCamera.position.setX(x)
+        pCamera.position.setY(y)
+        pCamera.position.setZ(z)
+
+        pFollowedObj.position.set(savedX, savedY, savedZ)
+    }
 
     /**
      * Render scene and spaceship in default way
@@ -30,8 +49,8 @@ export class Game extends Config {
         );
         camera.position.z = 13;
         camera.position.y = 5;
+        Config.updateCamera = (pFollowedObj = Config.ship) => this.updateCameraPosition(camera, pFollowedObj)
         Camera.camera = camera;
-        scene.rotateY(5.3);
 
         var renderer = new THREE.WebGLRenderer();
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -94,14 +113,14 @@ export class Game extends Config {
         }
         
         scene.add(Config.ship)
-        var animate = () => {
-            requestAnimationFrame( animate );
-            this.state.levelUpdates()
-            Camera.orbitCamera.target = Config.ship.getWorldPosition(Config.ship.position)
-            Camera.orbitCamera.update()
-            renderer.render( scene, camera );
-        };
-        animate();
+        Config.ship.rotateY(5.3)
+
+
+        GameLoop.addAction(() => this.state.levelUpdates())
+        GameLoop.addAction(() => Camera.orbitCamera.target = Config.ship.getWorldPosition(new THREE.Vector3()))
+        GameLoop.addAction(() => Camera.orbitCamera.update())
+        GameLoop.addAction(() => renderer.render( scene, camera ))
+        GameLoop.startLoop()
             
     }
 

@@ -4,7 +4,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
 import { Environment } from '../threeModels/Environment'
 import { Config } from '../Config'
 import { Levels } from '../Levels'
-import { GameLoop } from "./loop";
+import GameLoop from "./loop";
 
 const scene = new THREE.Scene();
 export default class Game extends Config {

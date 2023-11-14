@@ -5,6 +5,9 @@ import GameLoop from '../Game/loop'
 
 export class Spin extends Config {
 
+    /**
+     * it is espected to store the action id from the game loop to remove it in willunmount
+     */
     spinningId = React.createRef(0)
 
     isSpinning = {
@@ -23,6 +26,10 @@ export class Spin extends Config {
     stopSpinDown = () => this.isSpinning.down = false
     stopSpinRight = () => this.isSpinning.right = false
     
+    /**
+     * 
+     * @param {KeyboardEvent} e 
+     */
     keydownHandler = e => {
         switch (e.key) {
             case 'i' : this.spinUp() ; break;
@@ -32,6 +39,10 @@ export class Spin extends Config {
             default: break;
         }
     }
+    /**
+     * 
+     * @param {KeyboardEvent} e 
+     */
     keyupHandler = e => {
         switch (e.key) {
             case 'i' : this.stopSpinUp() ; break;

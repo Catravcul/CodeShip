@@ -5,34 +5,95 @@ import './travel.css'
 
 import {Status} from './status'
 import {Spin} from './spin'
+import GameLoop from '../Game/loop'
 
 export class Nav extends Config {
 
-    runInterval = React.createRef(null)
+    /**
+     * it is espected to store the action id from the game loop to remove it in willunmount
+     */
+    accelerate = {
+        actionId: -1,
+        actualSpeed: 0,
+        isActive: false,
+        isCurbing: false
+    }
 
     exit = () => {
         this.props.shipTravel()
     }
 
     move = () => {
-        this.runInterval.current = setInterval( () => {
-            Config.shipInstance.propulsionEngine.runForward(Config.shipInstance.spaceship)
-            Config.updateCamera(Config.shipInstance.propulsionEngine.scene)
-        }, 8)
+        let {isActive, actualSpeed, isCurbing} = this.accelerate
+        if (isCurbing) {
+            if (actualSpeed > 0) actualSpeed -= 0.01
+            else actualSpeed = 0
+        }
+        else if (isActive) {
+            if (actualSpeed < Config.shipInstance.propulsionEngine.speed) actualSpeed += 0.01
+        }
+        else if (actualSpeed > 0) actualSpeed -= 0.001
+
+        if (actualSpeed > 0) Config.updateCamera(Config.shipInstance.propulsionEngine.scene)
+        Config.shipInstance.propulsionEngine.runForward(Config.shipInstance.spaceship, actualSpeed)
+        this.accelerate.actualSpeed = actualSpeed
     }
 
-    stop = () => {
+    /**
+     * 
+     * @param {KeyboardEvent} e 
+     */
+    keydownHandler = e => {
+        switch (e.key) {
+            case "w": this.activate(); break;
+            case "s": this.curb(); break;
+        }
+    }
+    /**
+     * 
+     * @param {KeyboardEvent} e 
+     */
+    keyupHandler = e => {
+        switch (e.key) {
+            case "w": this.deactivate(); break;
+            case "s": this.notCurb(); break;
+        }
+    }
+
+    componentDidMount () {
+        const waitPropulsionEngine = () => {
+            if (Config.shipInstance.propulsionEngine) {
+                document.addEventListener("keydown", this.keydownHandler)
+                document.addEventListener("keyup", this.keyupHandler)
+                this.accelerate.actionId = GameLoop.addAction(this.move)
+            } else setTimeout(waitPropulsionEngine, 100)
+        }
+        waitPropulsionEngine()
+    }
+    componentWillUnmount() {
+        document.removeChild("keydown", this.keydownHandler)
+        document.removeChild("keyup", this.keyupHandler)
+        GameLoop.removeAction(this.accelerate.actionId)
+    }
+
+    activate = () => this.accelerate.isActive = true
+    deactivate = () => this.accelerate.isActive = false
+
+    curb = () => {
         // Config.shipInstance.propulsionEngine.stop()
-        clearInterval(this.runInterval.current)
+        this.accelerate.isCurbing = true
+    }
+    notCurb = () => {
+        this.accelerate.isCurbing = false
     }
 
     render() {
         return(
             <>
-            <button className={"btn " + (this.props.travel ? '' : 'hidden')} onClick = {this.stop}>
+            <button className={"btn " + (this.props.travel ? '' : 'hidden')} onMouseDown = {this.curb} onMouseUp={this.notCurb}>
             <img src="/img/orbit.svg" alt="stop" width="50px"/>
             </button>
-            <button className={"btn " + (this.props.travel ? '' : 'hidden')} onMouseDown = {this.move} onMouseUp = {this.stop}>
+            <button className={"btn " + (this.props.travel ? '' : 'hidden')} onMouseDown = {this.activate} onMouseUp = {this.deactivate}>
             <img src="/img/launch.svg" alt="move" width="50px"/>
             </button>
             <button className={"btn " + (this.props.travel ? '' : 'hidden')} onClick = {this.props.toggleNav}>

@@ -1,5 +1,8 @@
 import React from 'react'
 
+import Avatar from '@mui/material/Avatar';
+import IconButton from '@mui/material/IconButton';
+
 import { Config } from '../Config'
 import './travel.css'
 
@@ -80,7 +83,6 @@ export class Nav extends Config {
     deactivate = () => this.accelerate.isActive = false
 
     curb = () => {
-        // Config.shipInstance.propulsionEngine.stop()
         this.accelerate.isCurbing = true
     }
     notCurb = () => {
@@ -90,12 +92,15 @@ export class Nav extends Config {
     render() {
         return(
             <>
-            <button className={"btn " + (this.props.travel ? '' : 'hidden')} onMouseDown = {this.curb} onMouseUp={this.notCurb}>
-            <img src="/img/orbit.svg" alt="stop" width="50px"/>
-            </button>
-            <button className={"btn " + (this.props.travel ? '' : 'hidden')} onMouseDown = {this.activate} onMouseUp = {this.deactivate}>
-            <img src="/img/launch.svg" alt="move" width="50px"/>
-            </button>
+            { this.props.travel ? <>
+                <IconButton aria-label="w" color="secondary" onPointerDown = {this.activate} onPointerUp = {this.deactivate}>
+                    <Avatar>w</Avatar>
+                </IconButton>
+                <IconButton aria-label="s" color="secondary" onPointerDown = {this.curb} onPointerUp={this.notCurb}>
+                    <Avatar>s</Avatar>
+                </IconButton>
+            </> : ''
+            }
             <button className={"btn " + (this.props.travel ? '' : 'hidden')} onClick = {this.props.toggleNav}>
             <img src="/img/spin.svg" alt="cancel" width="50px"/>
             </button>

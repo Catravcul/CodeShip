@@ -1,5 +1,9 @@
-
 import React from 'react'
+
+import Grid from '@mui/material/Grid';
+import Avatar from '@mui/material/Avatar';
+import IconButton from '@mui/material/IconButton';
+
 import {Config} from '../Config'
 import GameLoop from '../Game/loop'
 
@@ -70,34 +74,32 @@ export class Spin extends Config {
         document.removeEventListener("keydown", this.keydownHandler)
         document.removeEventListener("keyup", this.keyupHandler)
     }
-    
     render() {
         return(
-            <nav className="absolute bottom right">
-                <div className="min-size-80-px size-8-vw inline-block relative color-white-and-black">
-                    <button className="absolute bottom glass-panel" onMouseDown={this.spinUp} onMouseUp={this.stopSpinUp}>i</button>
-                </div>
-                <div className="flex-row">
-                    <div className="min-size-80-px size-8-vw inline-block relative color-white-and-black">
-                        <button className="absolute-vertical-center right-10 glass-panel" onMouseDown={this.spinLeft} onMouseUp={this.stopSpinLeft}>j</button>
-                    </div>
-                    <div className="m-auto color-white-and-black z-index-1">
-                        <div className="min-w-80-px w-8-vw flex-row justify-content-space-around">
-                            <label>X: </label><input type="number" min="-45" max="45" className="min-w-30-px w-1-vw"/>
-                        </div>
-                        <div className="min-w-80-px w-8-vw flex-row justify-content-space-around">
-                            <label>Y: </label><input type="number" min="-45" max="45" className="min-w-30-px w-1-vw"/>
-                        </div>
-                    </div>
-                    <div className="min-size-80-px size-8-vw b-rad-30 absolute left-50 translateX-less-50 glass-panel"></div>
-                    <div className="min-size-80-px size-8-vw inline-block relative color-white-and-black">
-                        <button className="absolute-vertical-center left-10 glass-panel" onMouseDown={this.spinRight} onMouseUp={this.stopSpinRight}>l</button>
-                    </div>
-                </div>
-                <div className="min-size-80-px size-8-vw inline-block relative color-white-and-black">
-                    <button className="absolute top glass-panel" onMouseDown={this.spinDown} onMouseUp={this.stopSpinDown}>k</button>
-                </div>
-            </nav>
+            <Grid container sx={{ position:"absolute", bottom: "20px", right: "10px", width: "160px", height: "140px" }}>
+                <Grid item xs={12} sx={{ display: "flex", justifyContent: "center" }}>
+                    <IconButton aria-label="i" color="secondary" onPointerDown={this.spinUp} onPointerUp={this.stopSpinUp}>
+                        <Avatar>i</Avatar>
+                    </IconButton>
+                </Grid>
+                <Grid item xs={4} sx={{ display: "flex", justifyContent: "center" }}>
+                    <IconButton aria-label="j" color="secondary" onPointerDown={this.spinLeft} onPointerUp={this.stopSpinLeft}>
+                        <Avatar>j</Avatar>
+                    </IconButton>
+                </Grid>
+                <Grid item xs={4} sx={{ display: "flex", justifyContent: "center" }}>
+                </Grid>
+                <Grid item xs={4} sx={{ display: "flex", justifyContent: "center" }}>
+                    <IconButton aria-label="l" color="secondary" onPointerDown={this.spinRight} onPointerUp={this.stopSpinRight}>
+                        <Avatar>l</Avatar>
+                    </IconButton>
+                </Grid>
+                <Grid item xs={12} sx={{ display: "flex", justifyContent: "center" }}>
+                    <IconButton aria-label="k" color="secondary" onPointerDown={this.spinDown} onPointerUp={this.stopSpinDown}>
+                        <Avatar>k</Avatar>
+                    </IconButton>
+                </Grid>
+            </Grid>
         )
     }
 }

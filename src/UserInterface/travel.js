@@ -2,6 +2,7 @@ import React from 'react'
 
 import Avatar from '@mui/material/Avatar';
 import IconButton from '@mui/material/IconButton';
+import Pagination from '@mui/material/Pagination';
 
 import { Config } from '../Config'
 import './travel.css'
@@ -60,6 +61,7 @@ export class Nav extends Config {
         switch (e.key) {
             case "w": this.deactivate(); break;
             case "s": this.notCurb(); break;
+            case "d": this.props.toggleNav(); break;
         }
     }
 
@@ -94,16 +96,16 @@ export class Nav extends Config {
             <>
             { this.props.travel ? <>
                 <IconButton aria-label="w" color="secondary" onPointerDown = {this.activate} onPointerUp = {this.deactivate}>
-                    <Avatar>w</Avatar>
+                    <Avatar sx={{ bgcolor: "secondary.light" }}>w</Avatar>
                 </IconButton>
                 <IconButton aria-label="s" color="secondary" onPointerDown = {this.curb} onPointerUp={this.notCurb}>
-                    <Avatar>s</Avatar>
+                    <Avatar sx={{ bgcolor: "secondary.light" }}>s</Avatar>
+                </IconButton>
+                <IconButton aria-label="i" color="primary" onClick = {this.props.toggleNav}>
+                    <Avatar sx={{ bgcolor: "primary.main" }}>d</Avatar>
                 </IconButton>
             </> : ''
             }
-            <button className={"btn " + (this.props.travel ? '' : 'hidden')} onClick = {this.props.toggleNav}>
-            <img src="/img/spin.svg" alt="cancel" width="50px"/>
-            </button>
             <button className={"btn " + (this.props.travel ? '' : 'hidden')} onClick = {this.exit}>
             <img src="/img/travel.svg" alt="cancel" width="50px"/>
             </button>
@@ -114,26 +116,61 @@ export class Nav extends Config {
 
 export class Interface extends Config {
 
-    changeSpeed = e => {
-        Config.shipInstance.propulsionEngine.speed = e.currentTarget.value
-        console.log(Config.shipInstance.propulsionEngine.speed)
+    keys = ['j', 'k', 'l', 'ñ', 'u', 'i', 'o', 'p']
+    speeds = []
+    /**
+     * 
+     * @param {KeyboardEvent} e event with the character received from the keyboard to change the speed
+     */
+    keyHandler = ({ key: pKey}) => {
+        const { speed = -1 } = this.speeds.find(obj => obj.key == pKey) ?? {}
+        if (speed != -1) this.changeSpeed(speed)
     }
 
-    render() {
-        const speeds = []
+    /**
+     * 
+     * @param {number} pSpeed it is espected to be a number less or equal to the potential of the propulsion engine
+     */
+    changeSpeed = pSpeed => {
+        Config.shipInstance.propulsionEngine.speed = pSpeed
+    }
+
+    waitPropulsionEngine = () => {
         if (Config.shipInstance.propulsionEngine) {
-            let speed = 0
-            while (Config.shipInstance.propulsionEngine.potential > speed) {
-                speed++
-                speeds.push(speed)
-            }
-        
+            const { potential: maxSpeed } = Config.shipInstance.propulsionEngine
+            this.speeds = Array.from({ ...this.keys, length: maxSpeed }, (key, i) => ({ key, speed: (i + 1) }))
+            document.addEventListener('keypress', this.keyHandler)
+        } else setTimeout(this.waitPropulsionEngine, 100)
+    }
+    componentDidMount () {
+        if (!this.props.showSpinNav) this.waitPropulsionEngine()
+    }
+    componentDidUpdate (prevProps) {
+        if (this.props.showSpinNav != prevProps.showSpinNav) {
+            if (!this.props.showSpinNav) this.waitPropulsionEngine()
+            else document.removeEventListener('keypress', this.keyHandler)
         }
-        const nav = !this.props.travel ? <Status energyPercent={this.props.energyPercent} /> : this.props.showSpinNav ? 
+    }
+    componentWillUnmount () {
+        if (!this.props.showSpinNav) document.removeEventListener('keypress', this.keyHandler)
+    }
+
+
+    render () {
+
+        const nav = !this.props.travel ? <Status energyPercent={this.props.energyPercent} /> : !this.props.showSpinNav ? 
             <nav className="absolute bottom right speeds">
-                {speeds.map(speed => (
-                    <input type="button" className="btn num" value={speed} onClick={this.changeSpeed}/>
-                ))}
+                <Pagination 
+                    boundaryCount={this.speeds.length}
+                    size='large'
+                    className='speeds' 
+                    sx={{ '&.speeds li': { margin: '0 3px', borderRadius: '100%', backgroundColor: 'white', 'button': { margin: '0' } } }} 
+                    count={this.speeds.length} 
+                    color="info" 
+                    hideNextButton={ true } 
+                    hidePrevButton={ true }  
+                    onChange={ (e, speed) => this.changeSpeed(speed) }
+                />
             </nav> : <Spin />
         return(
             <>

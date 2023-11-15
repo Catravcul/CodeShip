@@ -79,24 +79,24 @@ export class Spin extends Config {
             <Grid container sx={{ position:"absolute", bottom: "20px", right: "10px", width: "160px", height: "140px" }}>
                 <Grid item xs={12} sx={{ display: "flex", justifyContent: "center" }}>
                     <IconButton aria-label="i" color="secondary" onPointerDown={this.spinUp} onPointerUp={this.stopSpinUp}>
-                        <Avatar>i</Avatar>
+                        <Avatar sx={{ bgcolor: "secondary.light" }}>i</Avatar>
                     </IconButton>
                 </Grid>
                 <Grid item xs={4} sx={{ display: "flex", justifyContent: "center" }}>
                     <IconButton aria-label="j" color="secondary" onPointerDown={this.spinLeft} onPointerUp={this.stopSpinLeft}>
-                        <Avatar>j</Avatar>
+                        <Avatar sx={{ bgcolor: "secondary.light" }}>j</Avatar>
                     </IconButton>
                 </Grid>
                 <Grid item xs={4} sx={{ display: "flex", justifyContent: "center" }}>
                 </Grid>
                 <Grid item xs={4} sx={{ display: "flex", justifyContent: "center" }}>
                     <IconButton aria-label="l" color="secondary" onPointerDown={this.spinRight} onPointerUp={this.stopSpinRight}>
-                        <Avatar>l</Avatar>
+                        <Avatar sx={{ bgcolor: "secondary.light" }}>l</Avatar>
                     </IconButton>
                 </Grid>
                 <Grid item xs={12} sx={{ display: "flex", justifyContent: "center" }}>
                     <IconButton aria-label="k" color="secondary" onPointerDown={this.spinDown} onPointerUp={this.stopSpinDown}>
-                        <Avatar>k</Avatar>
+                        <Avatar sx={{ bgcolor: "secondary.light" }}>k</Avatar>
                     </IconButton>
                 </Grid>
             </Grid>

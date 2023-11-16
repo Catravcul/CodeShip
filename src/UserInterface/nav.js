@@ -1,6 +1,6 @@
 import { Config } from '../Config'
 import * as Mofify from './modify'
-import * as Travel from './travel'
+import Drive from './drive'
 import { SessionContext } from './sessionContext'
 
 export class Nav extends Config {
@@ -47,7 +47,7 @@ export class Nav extends Config {
         <div>
             <nav className="absolute bottom flex-col" >
                 <Mofify.Nav shipModify={this.shipModify} modify={this.state.modify}/>
-                <Travel.Nav shipTravel={this.shipTravel} travel={this.state.travel} toggleNav={this.toggleNav}/>
+                <Drive.Nav shipTravel={this.shipTravel} travel={this.state.travel} toggleNav={this.toggleNav}/>
                 <button className={"btn " + (this.state.modify || this.state.travel ? 'hidden' : '')} onClick = {this.shipModify}>
                     <img src="/img/modify.svg" alt="modify" width="50px"/>
                 </button>
@@ -58,7 +58,7 @@ export class Nav extends Config {
                     <img src="/img/home.svg" alt="home" width="50px"/>
                 </button>
             </nav>
-            <Travel.Interface travel={this.state.travel} showSpinNav={this.state.showSpinNav} energyPercent={this.state.energyPercent}/>
+            <Drive.Controls travel={this.state.travel} showSpinNav={this.state.showSpinNav} energyPercent={this.state.energyPercent}/>
             <Mofify.Interface modify={this.state.modify}/>
         </div>
         )

@@ -1,0 +1,7 @@
+.speeds {
+    width: 180px;
+    height: 180px;
+    display: flex;
+    flex-wrap: wrap-reverse;
+    justify-content: space-evenly;
+}

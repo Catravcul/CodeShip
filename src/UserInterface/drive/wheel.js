@@ -3,11 +3,12 @@ import React from 'react'
 import Grid from '@mui/material/Grid';
 import Avatar from '@mui/material/Avatar';
 import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
 
-import {Config} from '../Config'
-import GameLoop from '../Game/loop'
+import {Config} from '../../Config'
+import GameLoop from '../../Game/loop'
 
-export class Spin extends Config {
+export default class Wheel extends Config {
 
     /**
      * it is espected to store the action id from the game loop to remove it in willunmount
@@ -78,26 +79,34 @@ export class Spin extends Config {
         return(
             <Grid container sx={{ position:"absolute", bottom: "20px", right: "10px", width: "160px", height: "140px" }}>
                 <Grid item xs={12} sx={{ display: "flex", justifyContent: "center" }}>
-                    <IconButton aria-label="i" color="secondary" onPointerDown={this.spinUp} onPointerUp={this.stopSpinUp}>
-                        <Avatar sx={{ bgcolor: "secondary.light" }}>i</Avatar>
-                    </IconButton>
+                    <Tooltip title="turn up" placement="left">
+                        <IconButton aria-label="i" color="secondary" onPointerDown={this.spinUp} onPointerUp={this.stopSpinUp}>
+                            <Avatar sx={{ bgcolor: "secondary.light" }}>i</Avatar>
+                        </IconButton>
+                    </Tooltip>
                 </Grid>
                 <Grid item xs={4} sx={{ display: "flex", justifyContent: "center" }}>
-                    <IconButton aria-label="j" color="secondary" onPointerDown={this.spinLeft} onPointerUp={this.stopSpinLeft}>
-                        <Avatar sx={{ bgcolor: "secondary.light" }}>j</Avatar>
-                    </IconButton>
+                    <Tooltip title="turn left" placement="left">
+                        <IconButton aria-label="j" color="secondary" onPointerDown={this.spinLeft} onPointerUp={this.stopSpinLeft}>
+                            <Avatar sx={{ bgcolor: "secondary.light" }}>j</Avatar>
+                        </IconButton>
+                    </Tooltip>
                 </Grid>
                 <Grid item xs={4} sx={{ display: "flex", justifyContent: "center" }}>
                 </Grid>
                 <Grid item xs={4} sx={{ display: "flex", justifyContent: "center" }}>
-                    <IconButton aria-label="l" color="secondary" onPointerDown={this.spinRight} onPointerUp={this.stopSpinRight}>
-                        <Avatar sx={{ bgcolor: "secondary.light" }}>l</Avatar>
-                    </IconButton>
+                    <Tooltip title="turn right" placement="left">
+                        <IconButton aria-label="l" color="secondary" onPointerDown={this.spinRight} onPointerUp={this.stopSpinRight}>
+                            <Avatar sx={{ bgcolor: "secondary.light" }}>l</Avatar>
+                        </IconButton>
+                    </Tooltip>
                 </Grid>
                 <Grid item xs={12} sx={{ display: "flex", justifyContent: "center" }}>
-                    <IconButton aria-label="k" color="secondary" onPointerDown={this.spinDown} onPointerUp={this.stopSpinDown}>
-                        <Avatar sx={{ bgcolor: "secondary.light" }}>k</Avatar>
-                    </IconButton>
+                    <Tooltip title="turn down" placement="left">
+                        <IconButton aria-label="k" color="secondary" onPointerDown={this.spinDown} onPointerUp={this.stopSpinDown}>
+                            <Avatar sx={{ bgcolor: "secondary.light" }}>k</Avatar>
+                        </IconButton>
+                    </Tooltip>
                 </Grid>
             </Grid>
         )

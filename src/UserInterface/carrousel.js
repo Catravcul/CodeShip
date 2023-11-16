@@ -1,3 +1,6 @@
+import Skeleton from '@mui/material/Skeleton';
+import Alert from '@mui/material/Alert';
+
 import { Config } from '../Config'
 import './carrousel.css'
 import { SessionContext } from './sessionContext'
@@ -47,24 +50,44 @@ export class Carrousel extends Config {
             : ''
     }
 
+    getCarrousel = () => (
+        <>
+        {this.printNav(triangle_l, this.prevItems)}
+
+        {this.getProducts(this.items, this.products).map((item, index) => 
+        <button className={"btn " + this.classes[index]} onClick={() => this.props.selectComponent(item)} >
+            <img className="img" style={{backgroundImage: 'url("' + Config.config.codeshipFS.urlBase + item.img_path + '")'}} />
+        </button>
+        )}
+
+        {this.printNav(triangle_r, this.nextItems)}
+        </>
+    )
+
+    getCarrouselSkeleton = () => (
+        <>
+        {[1, 2, 3, 4, 5].map((item, index) => 
+        <button className={"btn " + this.classes[index]} >
+            <div className="img" style={{width: '100%', height: '100%'}}>
+
+            <Skeleton variant="rectangular" sx={{ bgcolor: 'grey.900', height: '100%' }}/>
+            </div>
+        </button>
+        )}
+        <Alert severity="info">There isn't any item for customization yet.</Alert>
+        </>
+    )
+
     render() {
         this.items = this.context.session ? this.context.session.items : undefined
         this.products = this.context.products
-        return  <section className="carrousel-s absolute">
-                {this.items ?
-                    this.printNav(triangle_l, this.prevItems)
-                    : ''}
 
-            {this.products && this.items? this.getProducts(this.items, this.products).map((item, index) => 
-                <button className={"btn " + this.classes[index]} onClick={() => this.props.selectComponent(item)} >
-                    <img className="img" style={{backgroundImage: 'url("' + Config.config.codeshipFS.urlBase + item.img_path + '")'}} />
-                </button>
-            ) : console.log(this.products)}
 
-                {this.items ?
-                    this.printNav(triangle_r, this.nextItems)
-                    : ''}
-                </section>
+        return ( 
+            <section className="carrousel-s absolute">
+                { (this.items && this.products) ? this.getCarrousel() : this.getCarrouselSkeleton() }
+            </section>
+        )
     }
 }
 

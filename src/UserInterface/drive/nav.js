@@ -74,8 +74,8 @@ export default class Nav extends Config {
         waitPropulsionEngine()
     }
     componentWillUnmount() {
-        document.removeChild("keydown", this.keydownHandler)
-        document.removeChild("keyup", this.keyupHandler)
+        document.removeEventListener("keydown", this.keydownHandler)
+        document.removeEventListener("keyup", this.keyupHandler)
         GameLoop.removeAction(this.accelerate.actionId)
     }
 
@@ -92,34 +92,33 @@ export default class Nav extends Config {
     render() {
 
         return(
-
-            this.props.travel ? <>
+            <>
                 
                 <Tooltip title="accelerate" placement='right'>
-                    <IconButton aria-label="w" color="secondary" onPointerDown = {this.activate} onPointerUp = {this.deactivate}>
+                    <IconButton aria-label="f keyboard" color="secondary" onPointerDown = {this.activate} onPointerUp = {this.deactivate}>
                         <Avatar sx={{ bgcolor: "secondary.light" }}>f</Avatar>
                     </IconButton>
                 </Tooltip>
                 
                 <Tooltip title="stop" placement='right'>
-                    <IconButton aria-label="s" color="secondary" onPointerDown = {this.curb} onPointerUp={this.notCurb}>
+                    <IconButton aria-label="d keyboard" color="secondary" onPointerDown = {this.curb} onPointerUp={this.notCurb}>
                         <Avatar sx={{ bgcolor: "secondary.light" }}>d</Avatar>
                     </IconButton>
                 </Tooltip>
                 
                 <Tooltip title="speeds/spins" placement='right'>
-                    <IconButton aria-label="i" color="primary" onClick = {this.props.toggleNav}>
+                    <IconButton aria-label="s keyboard" color="primary" onClick = {this.props.toggleNav}>
                         <Avatar sx={{ bgcolor: "primary.main" }}>s</Avatar>
                     </IconButton>
                 </Tooltip>
                 
                 <Tooltip title="exit drive" placement='right'>
-                    <IconButton aria-label="i" color="warning"  onClick = {this.exit}>
+                    <IconButton aria-label="a keyboard" color="warning"  onClick = {this.exit}>
                         <Avatar sx={{ bgcolor: "warning.main" }}>a</Avatar>
                     </IconButton>
                 </Tooltip>
 
-            </> : ''
+            </>
 
         )
     }

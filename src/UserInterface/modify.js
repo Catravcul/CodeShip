@@ -1,3 +1,8 @@
+import Avatar from '@mui/material/Avatar';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+
+
 import { Config } from '../Config'
 import { SessionContext } from './sessionContext'
 import { Carrousel } from './carrousel'
@@ -42,7 +47,6 @@ export class Nav extends Config {
     cancel = () => {
         Config.shipInstance.components = Object.assign([], Config.components)
         Config.shipInstance.renderComponents()
-        this.props.shipModify()
     }
 
     apply = () => {
@@ -55,18 +59,46 @@ export class Nav extends Config {
         } else {
             alert('where would customization be saved without an account ?')
         }
-        this.props.shipModify()
     }
 
-    render(){
-        return(
+    /**
+     * 
+     * @param {KeyboardEvent} e 
+     */
+    keyHandler = e => {
+        switch (e.key) {
+            case "f": this.apply(); break;
+            case "d": this.cancel(); break;
+            case "s": this.props.shipModify(); break;
+        }
+    }
+    componentDidMount () {
+        document.addEventListener('keypress', this.keyHandler)
+    }
+    componentWillUnmount () {
+        document.removeEventListener('keypress', this.keyHandler)
+    }
+
+    render () {
+        return (
             <>
-            <button className={"btn " + (this.props.modify ? '' : 'hidden')} onClick = {this.cancel}>
-            <img src="/img/cancel.svg" alt="cancel" width="50px"/>
-            </button>
-            <button className={"btn " + (this.props.modify ? '' : 'hidden')} onClick = {this.apply}>
-                <img src="/img/apply.svg" alt="apply" width="50px"/>
-            </button>
+            <Tooltip title="save customization" placement='right'>
+                <IconButton aria-label="f keyboard" color="success"  onClick = { this.apply }>
+                    <Avatar sx={{ bgcolor: "success.light" }}>f</Avatar>
+                </IconButton>
+            </Tooltip>
+            
+            <Tooltip title="reset customization" placement='right'>
+                <IconButton aria-label="d keyboard" color="error" onClick = { this.cancel }>
+                    <Avatar sx={{ bgcolor: "error.light" }}>d</Avatar>
+                </IconButton>
+            </Tooltip>
+
+            <Tooltip title="exit customization" placement='right'>
+                <IconButton aria-label="s keyboard" color="warning" onClick = { this.props.shipModify }>
+                    <Avatar sx={{ bgcolor: "warning.light" }}>s</Avatar>
+                </IconButton>
+            </Tooltip>
             </>
         )
     }

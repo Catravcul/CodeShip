@@ -1,3 +1,7 @@
+import Tooltip from '@mui/material/Tooltip';
+import Avatar from '@mui/material/Avatar';
+import IconButton from '@mui/material/IconButton';
+
 import { Config } from '../Config'
 import * as Mofify from './modify'
 import Drive from './drive'
@@ -41,25 +45,57 @@ export class Nav extends Config {
             }
         })
     }
+    /**
+     * 
+     * @param {KeyboardEvent} e 
+     */
+    keyHandler = e => {
+        switch (e.key) {
+            case "f": this.shipModify(); break;
+            case "d": this.shipTravel(); break;
+            case "s": this.openHome(); break;
+        }
+    }
+    componentDidMount () {
+        document.addEventListener('keypress', this.keyHandler)
+    }
+    componentDidUpdate (prevProps, prevState) {
+        if (prevState.travel != this.state.travel || prevState.modify != this.state.modify) {
+            if (this.state.travel || this.state.modify) document.removeEventListener('keypress', this.keyHandler)
+            else document.addEventListener('keypress', this.keyHandler)
+        }
+    }
 
     render() {
         return(  
         <div>
             <nav className="absolute bottom flex-col" >
-                <Mofify.Nav shipModify={this.shipModify} modify={this.state.modify}/>
-                <Drive.Nav shipTravel={this.shipTravel} travel={this.state.travel} toggleNav={this.toggleNav}/>
-                <button className={"btn " + (this.state.modify || this.state.travel ? 'hidden' : '')} onClick = {this.shipModify}>
-                    <img src="/img/modify.svg" alt="modify" width="50px"/>
-                </button>
-                <button className={"btn " + (this.state.modify || this.state.travel ? 'hidden' : '')} onClick = {this.shipTravel}>
-                    <img src="/img/travel.svg" alt="travel" width="50px"/>
-                </button>
-                <button className={"btn " + (this.state.modify || this.state.travel ? 'hidden' : '')} onClick = {this.openHome}>
-                    <img src="/img/home.svg" alt="home" width="50px"/>
-                </button>
+                { this.state.modify ? <Mofify.Nav shipModify={ this.shipModify } modify={ this.state.modify }/> : "" }
+                { this.state.travel ? <Drive.Nav toggleNav={ this.toggleNav } shipTravel={ this.shipTravel }/> : "" }
+                { !this.state.travel && !this.state.modify ?
+                <>
+                    <Tooltip title="customize" placement='right'>
+                        <IconButton aria-label="f" color="warning" onClick = { this.shipModify }>
+                            <Avatar sx={{ bgcolor: "warning.light" }}>f</Avatar>
+                        </IconButton>
+                    </Tooltip>
+                    
+                    <Tooltip title="drive" placement='right'>
+                        <IconButton aria-label="d" color="warning" onClick = { this.shipTravel }>
+                            <Avatar sx={{ bgcolor: "warning.light" }}>d</Avatar>
+                        </IconButton>
+                    </Tooltip>
+                    
+                    <Tooltip title="open net" placement='right'>
+                        <IconButton aria-label="s" color="error" onClick = { this.openHome }>
+                            <Avatar sx={{ bgcolor: "error.main" }}>s</Avatar>
+                        </IconButton>
+                    </Tooltip>
+                </> : ''
+                }
             </nav>
-            <Drive.Controls travel={this.state.travel} showSpinNav={this.state.showSpinNav} energyPercent={this.state.energyPercent}/>
-            <Mofify.Interface modify={this.state.modify}/>
+            <Drive.Controls travel={ this.state.travel } showSpinNav={ this.state.showSpinNav } energyPercent={ this.state.energyPercent }/>
+            <Mofify.Interface modify={ this.state.modify }/>
         </div>
         )
     }

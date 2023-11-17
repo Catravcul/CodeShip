@@ -33,7 +33,9 @@ export default class Controls extends Config {
     changeSpeed = pSpeed => {
         Config.shipInstance.propulsionEngine.speed = pSpeed
     }
-
+    componentDidUpdate (prevProps) {
+        if (prevProps.showLogin != this.props.showLogin && this.props.showLogin) document.removeEventListener('keypress', this.keyHandler)
+    }
     waitPropulsionEngine = () => {
         if (Config.shipInstance.propulsionEngine) {
             const { potential: maxSpeed } = Config.shipInstance.propulsionEngine
@@ -45,8 +47,8 @@ export default class Controls extends Config {
         if (!this.props.showSpinNav) this.waitPropulsionEngine()
     }
     componentDidUpdate (prevProps) {
-        if (this.props.showSpinNav != prevProps.showSpinNav) {
-            if (!this.props.showSpinNav) this.waitPropulsionEngine()
+        if (this.props.showSpinNav != prevProps.showSpinNav || prevProps.showLogin != this.props.showLogin) {
+            if (!this.props.showSpinNav && !this.props.showLogin) this.waitPropulsionEngine()
             else document.removeEventListener('keypress', this.keyHandler)
         }
     }
@@ -74,7 +76,7 @@ export default class Controls extends Config {
                       )}
                     onChange={ (e, page) => this.changeSpeed(page) }
                 />
-            </nav> : <Wheel />
+            </nav> : <Wheel showLogin={ this.props.showLogin }/>
 
         return(
             <>

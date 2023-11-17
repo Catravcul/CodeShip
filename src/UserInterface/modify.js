@@ -73,7 +73,13 @@ export class Nav extends Config {
         }
     }
     componentDidMount () {
-        document.addEventListener('keypress', this.keyHandler)
+        if (!this.props.showLogin) document.addEventListener('keypress', this.keyHandler)
+    }
+    componentDidUpdate (prevProps) {
+        if (prevProps.showLogin != this.props.showLogin) {
+            if (this.props.showLogin) document.removeEventListener('keypress', this.keyHandler)
+            else document.addEventListener('keypress', this.keyHandler)
+        } 
     }
     componentWillUnmount () {
         document.removeEventListener('keypress', this.keyHandler)

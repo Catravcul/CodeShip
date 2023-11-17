@@ -2,6 +2,7 @@ import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import Slide from '@mui/material/Slide';
+import Alert from '@mui/material/Alert';
 
 import { Config } from '../Config'
 import { SessionContext } from './sessionContext'
@@ -11,6 +12,7 @@ export class Login extends Config {
     state = {
         username: 'videnacry',
         password: '123456',
+        error: ''
 
     }
 
@@ -29,16 +31,25 @@ export class Login extends Config {
             window.opener = null;
         }
     }
-
-    login = () => {
-        fetch(Config.config.codeshipApi.urlBase + '/public/user', {
-            method: 'POST',
-            body: JSON.stringify({username: this.state.username, password: this.state.password}),
-            headers: {'Content-Type': 'application/json'}
-        }).then(res => res.json()).then(({token}) => {
-            sessionStorage.setItem('codeship-token', token)
-            this.props.updateToken({token: token})
-        })
+    
+    login = async () => {
+        try {
+            const raw = await fetch(Config.config.codeshipApi.urlBase + '/public/user', {
+                method: 'POST',
+                body: JSON.stringify({username: this.state.username, password: this.state.password}),
+                headers: {'Content-Type': 'application/json'}
+            })
+            const { token, err } = await raw.json()
+            if (!err) {
+                this.setState({ error: '' })
+                sessionStorage.setItem('codeship-token', token)
+                this.props.updateToken({ token: token })
+            } else {
+                this.setState({ error: err })
+            }
+        } catch (e) {
+            console.log(e, 'catch')
+        }
     }
 
     changeText = (e, prop) => {
@@ -48,10 +59,11 @@ export class Login extends Config {
     }
 
     render() {
-        return <Slide in={this.props.isLogin} direction='left' unmountOnExit><section className="absolute screen top" onClick={this.props.hideLog}>
-            <div className="absolute middle bg-white b-rad-10-px" style={{ width: "360px", maxWidth: "90%" }}>
+        return <Slide in={this.props.showLogin} direction='left' unmountOnExit><section className="absolute screen top" onClick={this.props.hideLog}>
+            <div className="absolute middle bg-white b-rad-10-px" style={{ width: "360px", maxWidth: "90%" }} onClick={e => e.stopPropagation()}>
                 <IconButton aria-label="close" color="error" sx={{ position: 'absolute', right: 0, marginRight: 1 }}  onClick={this.props.hideLog}>&times;</IconButton>
                 <h1>codeship-net</h1>
+                { this.state.error ? <Alert severity="error" sx={{ mb: 1 }}>{ this.state.error }</Alert> : ''}
                 <div>
                     <TextField
                     label="Username"

@@ -57,11 +57,11 @@ export class Nav extends Config {
         }
     }
     componentDidMount () {
-        document.addEventListener('keypress', this.keyHandler)
+        if (!this.props.showLogin) document.addEventListener('keypress', this.keyHandler)
     }
     componentDidUpdate (prevProps, prevState) {
-        if (prevState.travel != this.state.travel || prevState.modify != this.state.modify) {
-            if (this.state.travel || this.state.modify) document.removeEventListener('keypress', this.keyHandler)
+        if (prevState.travel != this.state.travel || prevState.modify != this.state.modify || prevState.showLogin != this.props.showLogin) {
+            if (this.state.travel || this.state.modify || this.props.showLogin) document.removeEventListener('keypress', this.keyHandler)
             else document.addEventListener('keypress', this.keyHandler)
         }
     }
@@ -70,8 +70,8 @@ export class Nav extends Config {
         return(  
         <div>
             <nav className="absolute bottom flex-col" >
-                { this.state.modify ? <Modify.Nav shipModify={ this.shipModify } modify={ this.state.modify }/> : "" }
-                { this.state.travel ? <Drive.Nav toggleNav={ this.toggleNav } shipTravel={ this.shipTravel }/> : "" }
+                { this.state.modify ? <Modify.Nav shipModify={ this.shipModify } modify={ this.state.modify } showLogin={ this.props.showLogin }/> : "" }
+                { this.state.travel ? <Drive.Nav toggleNav={ this.toggleNav } shipTravel={ this.shipTravel } showLogin={ this.props.showLogin }/> : "" }
                 { !this.state.travel && !this.state.modify ?
                 <>
                     <Tooltip title="customize" placement='right'>
@@ -94,8 +94,8 @@ export class Nav extends Config {
                 </> : ''
                 }
             </nav>
-            <Drive.Controls travel={ this.state.travel } showSpinNav={ this.state.showSpinNav } energyPercent={ this.state.energyPercent }/>
-            <Modify.Interface modify={ this.state.modify }/>
+            <Drive.Controls travel={ this.state.travel } showSpinNav={ this.state.showSpinNav } energyPercent={ this.state.energyPercent } showLogin={ this.props.showLogin }/>
+            <Modify.Interface modify={ this.state.modify } showLogin={ this.props.showLogin }/>
         </div>
         )
     }

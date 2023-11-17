@@ -63,19 +63,31 @@ export default class Nav extends Config {
         }
     }
 
+    removeKeyListeners = () => {
+        document.removeEventListener("keydown", this.keydownHandler)
+        document.removeEventListener("keyup", this.keyupHandler)
+    }
+    addKeyListeners = () => {
+        document.addEventListener("keydown", this.keydownHandler)
+        document.addEventListener("keyup", this.keyupHandler)
+    }
     componentDidMount () {
         const waitPropulsionEngine = () => {
             if (Config.shipInstance.propulsionEngine) {
-                document.addEventListener("keydown", this.keydownHandler)
-                document.addEventListener("keyup", this.keyupHandler)
+                this.addKeyListeners()
                 this.accelerate.actionId = GameLoop.addAction(this.move)
             } else setTimeout(waitPropulsionEngine, 100)
         }
         waitPropulsionEngine()
     }
+    componentDidUpdate (prevProps) {
+        if (prevProps.showLogin != this.props.showLogin) {
+            if (this.props.showLogin) this.removeKeyListeners()
+            else this.addKeyListeners()
+        } 
+    }
     componentWillUnmount() {
-        document.removeEventListener("keydown", this.keydownHandler)
-        document.removeEventListener("keyup", this.keyupHandler)
+        this.removeKeyListeners()
         GameLoop.removeAction(this.accelerate.actionId)
     }
 

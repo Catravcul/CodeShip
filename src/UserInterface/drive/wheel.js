@@ -65,15 +65,27 @@ export default class Wheel extends Config {
         this.isSpinning.right && Config.shipInstance.propulsionEngine.spin(Config.shipInstance.spaceship, {x: 0, y: -0.03, z:0})
     }
 
-    componentDidMount () {
-        this.spinningId.current = GameLoop.addAction(this.spinning)
+    removeKeyListeners = () => {
+        document.removeEventListener("keydown", this.keydownHandler)
+        document.removeEventListener("keyup", this.keyupHandler)
+    }
+    addKeyListeners = () => {
         document.addEventListener("keydown", this.keydownHandler)
         document.addEventListener("keyup", this.keyupHandler)
     }
+    componentDidMount () {
+        this.spinningId.current = GameLoop.addAction(this.spinning)
+        if (!this.props.showLogin) this.addKeyListeners()
+    }
+    componentDidUpdate (prevProps) {
+        if (prevProps.showLogin != this.props.showLogin) {
+            if (this.props.showLogin) this.removeKeyListeners()
+            else this.addKeyListeners()
+        } 
+    }
     componentWillUnmount () {
         GameLoop.removeAction(this.spinningId.current)
-        document.removeEventListener("keydown", this.keydownHandler)
-        document.removeEventListener("keyup", this.keyupHandler)
+        this.removeKeyListeners()
     }
     render() {
         return(

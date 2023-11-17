@@ -56,7 +56,9 @@ export class Carrousel extends Config {
 
         {this.getProducts(this.items, this.products).map((item, index) => 
         <button className={"btn " + this.classes[index]} onClick={() => this.props.selectComponent(item)} >
-            <img className="img" style={{backgroundImage: 'url("' + Config.config.codeshipFS.urlBase + item.img_path + '")'}} />
+            <div className="fix-height">
+                <img className="img" style={{backgroundImage: 'url("' + Config.config.codeshipFS.urlBase + item.img_path + '")'}} />
+            </div>
         </button>
         )}
 
@@ -68,13 +70,12 @@ export class Carrousel extends Config {
         <>
         {[1, 2, 3, 4, 5].map((item, index) => 
         <button className={"btn " + this.classes[index]} >
-            <div className="img" style={{width: '100%', height: '100%'}}>
-
-            <Skeleton variant="rectangular" sx={{ bgcolor: 'grey.900', height: '100%' }}/>
+            <div className="fix-height" >
+                <Skeleton className="img" variant="rectangular" sx={{ bgcolor: 'grey.900', height: '100%' }}/>
             </div>
         </button>
         )}
-        <Alert severity="info">There isn't any item for customization yet.</Alert>
+        <Alert severity="info" sx={{ mt: 2 }}>There isn't any item for customization yet.</Alert>
         </>
     )
 
@@ -84,9 +85,11 @@ export class Carrousel extends Config {
 
 
         return ( 
-            <section className="carrousel-s absolute">
-                { (this.items && this.products) ? this.getCarrousel() : this.getCarrouselSkeleton() }
-            </section>
+            <>
+                <section className="carrousel-s absolute">
+                    { (this.items && this.products) ? this.getCarrousel() : this.getCarrouselSkeleton() }
+                </section>
+            </>
         )
     }
 }

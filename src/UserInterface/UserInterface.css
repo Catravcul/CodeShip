@@ -148,7 +148,7 @@ body .hidden {
     background-color: unset;
     padding: unset;
     border: none;
-    margin: 2px;
+    margin: unset;
 }
 .btn:focus {
     outline: none;
@@ -164,6 +164,10 @@ body .hidden {
 }
 .bg-gray {
     background-color: rgba(170, 170, 170, 0.7);
+    color: rgb(15, 15, 15);
+}
+.bg-white {
+    background-color: rgba(255, 255, 255, 0.7);
     color: rgb(15, 15, 15);
 }
 .color-white {

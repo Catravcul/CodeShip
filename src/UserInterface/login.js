@@ -1,11 +1,17 @@
+import TextField from '@mui/material/TextField'
+import Button from '@mui/material/Button'
+import IconButton from '@mui/material/IconButton'
+import Slide from '@mui/material/Slide';
+
 import { Config } from '../Config'
 import { SessionContext } from './sessionContext'
 
 export class Login extends Config {
 
     state = {
-        username: '',
-        password: ''
+        username: 'videnacry',
+        password: '123456',
+
     }
 
     componentDidMount() {
@@ -42,23 +48,31 @@ export class Login extends Config {
     }
 
     render() {
-        return <section className="login-s">
-            <div className="absolute screen top" onClick={this.props.hideLog}></div>
-            <div className="absolute middle bg-gray">
-                <h1>Login</h1>
-                <p>Login to save progress!</p>
-                <fieldset>
-                    <input value={this.state.username} onChange={e => this.changeText(e, 'username')}  type="text"  placeholder="username"/>
-                </fieldset>
-                <fieldset>
-                    <input value={this.state.password} onChange={e => this.changeText(e, 'password')}  type="password"  placeholder="password"/>
-                </fieldset>
-                <fieldset>
-                    <button onClick={this.login}>LOGIN</button>
-                </fieldset>
+        return <Slide in={this.props.isLogin} direction='left' unmountOnExit><section className="absolute screen top" onClick={this.props.hideLog}>
+            <div className="absolute middle bg-white b-rad-10-px" style={{ width: "360px", maxWidth: "90%" }}>
+                <IconButton aria-label="close" color="error" sx={{ position: 'absolute', right: 0, marginRight: 1 }}  onClick={this.props.hideLog}>&times;</IconButton>
+                <h1>codeship-net</h1>
+                <div>
+                    <TextField
+                    label="Username"
+                    value={this.state.username}
+                    onChange={e => this.changeText(e, 'username')}
+                    sx={{ m: 1 }}
+                    />
+                </div>
+                <div>
+                    <TextField
+                    type="password"
+                    label="Password"
+                    value={this.state.password}
+                    onChange={e => this.changeText(e, 'password')}
+                    sx={{ m: 1 }}
+                    />
+                </div>
+                <Button fullWidth size='small' variant="contained" onClick={this.login} sx={{ my: 1 }}>LOGIN</Button>
                 <div>Icons made by <a href="https://icon54.com/" title="Pixel perfect">Pixel perfect</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></div>
             </div>
-        </section>
+        </section></Slide>
     }
 }
 

@@ -10,7 +10,7 @@ export class UserInterface extends Config {
         token: '',
         session: {},
         products: [],
-        login: ''
+        isLogin: false
     }
         
     componentDidMount() {
@@ -41,22 +41,24 @@ export class UserInterface extends Config {
                 }
                 Config.shipInstance.renderComponents()
             })
-            this.setState({login: ''})
+            this.hideLog()
         } else {
-            this.setState({login: <Login updateToken={this.updateToken} hideLog={this.hideLog}/>})
+            this.showLog()
             Config.shipInstance.renderComponents()
         }
     }
 
     hideLog = () => {
-        this.setState({login: ''})
+        this.setState({isLogin: false})
     }
-
+    showLog = () => {
+        this.setState({isLogin: true})
+    }
     toggleLog = () => {
-        if (this.state.login) {
+        if (this.state.isLogin) {
             this.hideLog()
         } else {
-            this.setState({login: <Login updateToken={this.updateToken} hideLog={this.hideLog}/>})
+            this.setState({isLogin: true})
         }
     }
 
@@ -84,7 +86,7 @@ export class UserInterface extends Config {
             token: this.state.token
             }}>
                     <div id="user-interface" >
-                        {this.state.login}
+                        <Login updateToken={this.updateToken} hideLog={this.hideLog} isLogin={this.state.isLogin}/>
                         <button className="btn top right absolute" onClick = {this.toggleLog}>
                             <img src="/img/login.svg" alt="login" width="50px"/>
                         </button>

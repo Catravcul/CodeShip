@@ -3,7 +3,7 @@ import Avatar from '@mui/material/Avatar';
 import IconButton from '@mui/material/IconButton';
 
 import { Config } from '../Config'
-import * as Mofify from './modify'
+import * as Modify from './modify'
 import Drive from './drive'
 import { SessionContext } from './sessionContext'
 
@@ -70,7 +70,7 @@ export class Nav extends Config {
         return(  
         <div>
             <nav className="absolute bottom flex-col" >
-                { this.state.modify ? <Mofify.Nav shipModify={ this.shipModify } modify={ this.state.modify }/> : "" }
+                { this.state.modify ? <Modify.Nav shipModify={ this.shipModify } modify={ this.state.modify }/> : "" }
                 { this.state.travel ? <Drive.Nav toggleNav={ this.toggleNav } shipTravel={ this.shipTravel }/> : "" }
                 { !this.state.travel && !this.state.modify ?
                 <>
@@ -95,7 +95,7 @@ export class Nav extends Config {
                 }
             </nav>
             <Drive.Controls travel={ this.state.travel } showSpinNav={ this.state.showSpinNav } energyPercent={ this.state.energyPercent }/>
-            <Mofify.Interface modify={ this.state.modify }/>
+            <Modify.Interface modify={ this.state.modify }/>
         </div>
         )
     }

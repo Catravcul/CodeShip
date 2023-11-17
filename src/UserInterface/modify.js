@@ -45,7 +45,7 @@ export class Interface extends Config {
 export class Nav extends Config {
 
     cancel = () => {
-        Config.shipInstance.components = Object.assign([], Config.components)
+        Config.shipInstance.components = Object.assign({}, Config.components)
         Config.shipInstance.renderComponents()
     }
 

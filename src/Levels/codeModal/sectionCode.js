@@ -14,7 +14,7 @@ export const SectionCode = memo(({props: {
         const snippetStyle = {width: snippetSize, height: snippetSize}
         
         return (
-            <div className='code-slot' id={'answer' + index} style={slotStyle}
+            <div className='code-slot' key={'answer' + index} id={'answer' + index} style={slotStyle}
                 ref={ref => {
                     slots[index] = ref
                     refRemoveEvents.current.push(createDropzone(ref))
@@ -33,7 +33,7 @@ export const SectionCode = memo(({props: {
             line[index] = createSlot(fragments[index], index)
         })
         fillIndices.map(index => {
-            line[index] = <div className={className}></div>
+            line[index] = <div key={index + className} className={className}></div>
         })
         return line
     }, [])
@@ -46,6 +46,7 @@ export const SectionCode = memo(({props: {
         const style = {top, left, width: elementSize, height: elementSize}
         return (
             <code 
+                key={index + fragment}
                 ref={ref => {
                     snippets[index] = ref
                     refRemoveEvents.current.push(createDraggable(ref))

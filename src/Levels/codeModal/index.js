@@ -13,17 +13,9 @@ export const CodeModal = memo(({codeObject, nextScene}) => {
     const {current: codeSnippets} = useRef([])
     const {current: orbits} = useRef([])
 
-    const codeProps = useMemo(() => {
-        return {
-            codeObject, codeSlots, codeSnippets, orbits
-        }
-    }, [codeObject])
+    const codeProps = useMemo(() => ({ codeObject, codeSlots, codeSnippets, orbits }), [codeObject])
 
-    const execProps = useMemo(() => {
-        return {
-            orbits, codeSlots, codeSnippets, nextScene
-        }
-    }, [codeObject])
+    const execProps = useMemo(() => ({ orbits, codeSlots, codeSnippets, nextScene }), [nextScene])
 
     const structure = useCallback(() => 
 
@@ -45,7 +37,7 @@ export const CodeModal = memo(({codeObject, nextScene}) => {
             </footer>
         </article>
 
-    ,[codeObject])
+    ,[codeObject, nextScene])
     return(
         <>
         <button onClick={toggleModal}>Code</button>

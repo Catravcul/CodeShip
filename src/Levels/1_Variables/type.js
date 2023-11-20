@@ -1,31 +1,26 @@
 import {getBlueCode, getOrangeredCode, getWhiteboneCode, getLightblueCode, getCyanCode} from '../codeSpans'
-import example from './type.jpg'
 
-export const codeObjects = [
+export const codeObjs = [
     {
-        modelFile: '3d/structures/ApartmentBuilding.glb',
         code: [
             getBlueCode('const'), getLightblueCode('appartments'), '=', getLightblueCode('building')
         ]
     }, {
-        modelFile: '3d/structures/School.glb',
         code: [
             getBlueCode('var'), getCyanCode('building'), '=', getLightblueCode('school')
         ]
     }, {
-        modelFile: '3d/structures/MiniLibrary.glb',
         code: [
             getBlueCode('let'), getCyanCode('library'), '=', getLightblueCode('home')
         ]
     }
 ]
 
-export const quest = {
-    img: example,
+export const intro = {
     english: {
-        title: 'Variable types',
+        title: 'Types',
         phrase: 'Some values seems to never change, others can change in any context while others in specific context',
-        intro: 'We would store some values pending on their posibility to change in future',
+        intro: 'We would store some values depending on their posibility to change in future',
         steps: [
             'Approach the spaceship to a structure until appears code button (<>), then click it!',
             'Drag and drop the code elements in correct order to create a javascript variable.'
@@ -38,7 +33,7 @@ export const quest = {
         congratulate: 'Well done! it is time to pass to numbers.'
     },
     spanish: {
-        title: 'Tipos de variables',
+        title: 'Tipos',
         phrase: 'Algunos valores parece que nunca cambian, otros pueden hacerlo en cualquier contexto, mientras otros en un contexto específico',
         intro: 'Vamos a guardar algunos valores dependiendo de su posibilidad de cambiar en un futuro',
         steps: [

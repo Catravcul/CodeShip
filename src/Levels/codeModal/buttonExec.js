@@ -36,8 +36,8 @@ export const ButtonExec = memo(({props: {
             </div>
             <div className='btn-exec' onClick={executeCode}>
                 <button/>
-                {[1, 0, 0, 1].map( digit =>
-                    <i>{digit}</i>
+                {[1, 0, 0, 1].map( (digit, idx) =>
+                    <i key={"digit" + idx}>{digit}</i>
                 )}
                 <span>Execute</span>
             </div>

@@ -1,7 +1,7 @@
 import {useState, useCallback, memo} from 'react'
 import './notification.css'
 
-export const Notification = memo(({quest, getQuestsLi, questSelected}) => {
+export const Notification = memo(({quest, getQuestsLi, img}) => {
     
     const [showModal, setShowModal] = useState(false)
     const [languaje, setLanguaje] = useState('english')
@@ -16,7 +16,7 @@ export const Notification = memo(({quest, getQuestsLi, questSelected}) => {
                 <button className='close' onClick={toggleModal}>x</button>
             </header>
             <h1>{'Javascript - ' + quest[languaje].title}</h1>
-            <img src={quest.img} width='100%' alt='Screenshot as example' onClick={toggleImage}/>
+            <img src={img} width='100%' alt='Screenshot as example' onClick={toggleImage}/>
             <nav className='w-100 flex-row p-unset justify-content-center'>
                 <ul className='languaje-select flex-row p-unset list-style-none py-3-px'>
                     <li>
@@ -35,11 +35,11 @@ export const Notification = memo(({quest, getQuestsLi, questSelected}) => {
             <p>{quest[languaje].intro}</p>
             <h2>Steps</h2>
             <ol>
-                {quest[languaje].steps.map((step, index) => <li id={'questStep' + index}>{step}</li>)}
+                {quest[languaje].steps.map((step, index) => <li id={'questStep' + index} key={'questStep' + index}>{step}</li>)}
             </ol>
             <h3>Examples</h3>
             <ul>
-                {quest[languaje].code.map((code, index) => <li id={'codeExample' + index}><code>{code}</code></li>)}
+                {quest[languaje].code.map((code, index) => <li id={'codeExample' + index} key={'codeExample' + index}><code>{code}</code></li>)}
             </ul>
             <nav className='w-100 flex-row p-unset justify-content-center'>
                 <ul className='languaje-select flex-row p-unset list-style-none py-3-px'>
@@ -47,7 +47,7 @@ export const Notification = memo(({quest, getQuestsLi, questSelected}) => {
                 </ul>
             </nav>
         </article>
-    , [languaje, questSelected])
+    , [languaje, quest])
     return(
         <>
         <div id='notification-img' className='absolute left top quest-img big-img hide' style={{backgroundImage: `url(${quest.img})`}} onClick={toggleImage}></div>

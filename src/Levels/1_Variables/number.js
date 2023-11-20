@@ -1,17 +1,32 @@
 import {getBlueCode, getWhiteboneCode, getLightblueCode, getCyanCode} from '../codeSpans'
 
-export const codeObjects = [
+export const codeObjs = [
     {
-        modelFile: '3d/Magnate.glb',
         code: [
-            getBlueCode('const'), getLightblueCode('fastReadingPracticeMinutes'), '=', getWhiteboneCode('20')
+            getBlueCode('let'), getLightblueCode('fastReadingPracticeMinutes'), '=', getWhiteboneCode('20')
+        ]
+    }, {
+        code: [
+            getBlueCode('const'), getLightblueCode('fourPlusThree'), '=', getWhiteboneCode('4 + 3')
+        ]
+    }, {
+        code: [
+            getBlueCode('const'), getLightblueCode('nineLessTwo'), '=', getWhiteboneCode('9 - 2')
+        ]
+    }, {
+        code: [
+            getBlueCode('const'), getLightblueCode('percentageOfEmpaty'), '=', getWhiteboneCode('100')
+        ]
+    }, {
+        code: [
+            getBlueCode('var'), getLightblueCode('ponderingHours'), '=', getWhiteboneCode('2')
         ]
     }
 ]
 
-export const quest = {
+export const intro = {
     english: {
-        title: 'Number variables',
+        title: 'Number',
         phrase: 'Quantity can be found in our minds to the point to tell to us how much love is correct',
         intro: 'Lets collect some numbers, in no time we would be making operations with them!',
         steps: [
@@ -25,7 +40,7 @@ export const quest = {
         ]
     },
     spanish: {
-        title: 'Variables numéricas',
+        title: 'Números',
         phrase: 'La cantidad puede ser encontrada en nuestras mentes al punto de decirnos cuanto amor es correcto.',
         intro: 'Recolectemos algunos números, dentro de nada realizaremos operaciones con ellos.',
         steps: [
@@ -39,4 +54,3 @@ export const quest = {
         ]
     }
 }
-const congratulate = ''

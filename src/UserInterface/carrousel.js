@@ -71,7 +71,7 @@ export class Carrousel extends Config {
         {[1, 2, 3, 4, 5].map((item, index) => 
         <button className={"btn " + this.classes[index]} >
             <div className="fix-height" >
-                <Skeleton className="img" variant="rectangular" sx={{ bgcolor: 'grey.900', height: '100%' }}/>
+                <Skeleton className="img" variant="rectangular" sx={{ position:"absolute", top: "0", left: '0', width: '100%', height: '100%', bgcolor: 'grey.900' }}/>
             </div>
         </button>
         )}

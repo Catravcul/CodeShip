@@ -1,4 +1,9 @@
 import {useState, useCallback, memo} from 'react'
+import Tooltip from '@mui/material/Tooltip'
+import IconButton from '@mui/material/IconButton'
+import Avatar from '@mui/material/Avatar'
+import Slide from '@mui/material/Slide'
+
 import './notification.css'
 
 export const propsType = {text:"", texts:[""], setTextIdx:()=>{}, img:""}
@@ -12,8 +17,17 @@ export const Notification = memo((props = propsType) => {
         document.getElementById('notification-img').classList.toggle('hide')
     },[])
 
-    const getModal = useCallback(() =>
-        <article className='h-70-vh max-w-400-px max-h-550-px b-rad-10-px absolute middle color-white notification-c'>
+    return(
+        <>
+        <div id='notification-img' className='absolute left top quest-img big-img hide' style={{backgroundImage: `url(${props.img})`}} onClick={toggleImage}></div>
+        <Tooltip title="show code modal" placement='bottom'>
+            <IconButton aria-label="<>" color="warning"  onClick={ toggleModal }>
+                <Avatar sx={{ bgcolor: "warning.light" }} variant='rounded'>?</Avatar>
+            </IconButton>
+        </Tooltip>
+        <Slide in={showModal} direction='right' unmountOnExit>
+        <div className='absolute screen top' onClick={() => setShowModal(false)}>
+        <article className='h-70-vh max-w-400-px max-h-550-px b-rad-10-px absolute middle color-white notification-c' onClick={e => e.stopPropagation()}>
             <header>
                 <button className='close' onClick={toggleModal}>x</button>
             </header>
@@ -55,12 +69,8 @@ export const Notification = memo((props = propsType) => {
                 </ul>
             </nav>
         </article>
-    , [languaje, props])
-    return(
-        <>
-        <div id='notification-img' className='absolute left top quest-img big-img hide' style={{backgroundImage: `url(${props.img})`}} onClick={toggleImage}></div>
-        <button onClick={toggleModal}>Quest</button>
-        {showModal ? getModal() : <></>}
+        </div>
+        </Slide>
         </>
     )
 })

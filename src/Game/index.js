@@ -7,6 +7,8 @@ import { Levels } from '../Levels'
 import GameLoop from "./loop";
 
 const scene = new THREE.Scene();
+Config.scene = scene
+
 export default class Game extends Config {
     state = {
         levelUpdates: () => {}

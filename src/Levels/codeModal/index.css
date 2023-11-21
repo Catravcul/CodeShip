@@ -2,8 +2,9 @@
     width: 90vw;
     height: 65vh;
     overflow: hidden;
-    top: 9vh;
-    left: 5vw;
+    transform: translate(-50%, -50%);
+    top: 50%;
+    left: 50%;
     z-index: 1;
     display: flex;
     flex-flow: column;

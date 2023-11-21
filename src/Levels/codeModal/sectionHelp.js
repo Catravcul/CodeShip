@@ -25,8 +25,7 @@ export const Section = ({helpSection}) => {
             /*
             <ul>
                 <h3>Help</h3>
-                <li>Click.- click on the code snippet you want to fill the first available space with</li>
-                <li>Drag.- click the code fragment, then move (not fast) the mouse to the slot, click it again so it does not move</li>
+                <li>Drag.- click the code fragment, then move the mouse to the slot, it most be inside to work.</li>
             </ul>
             */
         </div>

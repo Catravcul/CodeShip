@@ -1,6 +1,7 @@
+import { Group, Scene } from 'three'
+
 import { Component } from 'react'
 import { getConfig } from '../utils/config'
-import { Group } from 'three'
 import { Spaceship } from '../threeModels/Spaceship'
 
 export class Config extends Component {
@@ -21,4 +22,9 @@ export class Config extends Component {
      * @type {function} expected to update the camera position to follow the object passed as parameter
      */
     static updateCamera
+    /**
+     * Base scene which stores all the threejs 3d elements
+     * @type {Scene}
+     */
+    static scene
 }

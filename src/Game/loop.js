@@ -1,5 +1,5 @@
 
-export default class GameLoop {
+class GameLoop {
 
     /**
      * functions to be executed in the game loop
@@ -62,3 +62,5 @@ export default class GameLoop {
     }
 
 }
+
+export default GameLoop

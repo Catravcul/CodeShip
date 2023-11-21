@@ -1,7 +1,7 @@
 import { Component } from 'react'
-import { getConfig } from './utils/config'
+import { getConfig } from '../utils/config'
 import { Group } from 'three'
-import { Spaceship } from './threeModels/Spaceship'
+import { Spaceship } from '../threeModels/Spaceship'
 
 export class Config extends Component {
     static config = getConfig()

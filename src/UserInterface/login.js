@@ -4,7 +4,7 @@ import IconButton from '@mui/material/IconButton'
 import Slide from '@mui/material/Slide';
 import Alert from '@mui/material/Alert';
 
-import { Config } from '../Config'
+import { Config } from '../Game/Config'
 import { SessionContext } from './sessionContext'
 
 export class Login extends Config {

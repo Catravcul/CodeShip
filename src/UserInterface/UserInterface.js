@@ -1,4 +1,4 @@
-import { Config } from '../Config'
+import { Config } from '../Game/Config'
 import './UserInterface.css'
 import { SessionContext } from './sessionContext'
 import { Nav } from './nav'

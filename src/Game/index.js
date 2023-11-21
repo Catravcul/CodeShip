@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { Camera } from '../Camera/Camera'
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
 import { Environment } from '../threeModels/Environment'
-import { Config } from '../Config'
+import { Config } from './Config'
 import { Levels } from '../Levels'
 import GameLoop from "./loop";
 

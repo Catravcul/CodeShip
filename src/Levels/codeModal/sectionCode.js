@@ -3,13 +3,12 @@ import {createDraggable, createDropzone} from './drag'
 import './sectionCode.css'
 
 export const SectionCode = memo(({props: {
-    codeObject, codeSlots: slots, codeSnippets: snippets, orbits: orbits
+    codeObj, codeSlots: slots, codeSnippets: snippets, orbits: orbits
 }}) => {
     const refRemoveEvents = useRef([])
-
     const getSlotElement = useCallback((fragment, index) => {
-        const slotSize = (60/codeObject.code.length) + 'vw'
-        const snippetSize = (50/codeObject.code.length) + 'vw'
+        const slotSize = (60/codeObj.code.length) + 'vw'
+        const snippetSize = (50/codeObj.code.length) + 'vw'
         const slotStyle = {width: slotSize, height: slotSize}
         const snippetStyle = {width: snippetSize, height: snippetSize}
         
@@ -25,9 +24,9 @@ export const SectionCode = memo(({props: {
                 </code>
             </div>
         )
-    }, [codeObject])
+    }, [codeObj])
 
-    const fillSlotsLine = useCallback((slotIndices, fillIndices, className = 'space-25', fragments = codeObject.code, createSlot = getSlotElement) => {
+    const fillSlotsLine = useCallback((slotIndices, fillIndices, className = 'space-25', fragments = codeObj.code, createSlot = getSlotElement) => {
         const line = []
         slotIndices.map(index => {
             line[index] = createSlot(fragments[index], index)
@@ -39,7 +38,7 @@ export const SectionCode = memo(({props: {
     }, [])
 
     const getSnippetElement = useCallback((fragment, index) => {
-        const length = codeObject.code.length
+        const length = codeObj.code.length
         const elementSize = (50 / length) + 'vw'
         const top =  ((index + 0.1) * (100 / length)) + '%'
         const left =  index % 2 ? ((index - 0.9) * (100 / length)) + '%' : ((index + 1) * (100 / length)) + '%'
@@ -57,7 +56,7 @@ export const SectionCode = memo(({props: {
                 {fragment}
             </code>
         )
-    }, [codeObject])
+    }, [codeObj])
 
     useEffect( () => {
         const clean = () => refRemoveEvents.current.forEach( remover => remover() )
@@ -77,7 +76,7 @@ export const SectionCode = memo(({props: {
                     {fillSlotsLine([3], [0,1,2])}
                 </div>
             </div>
-            {codeObject.code.map(getSnippetElement)}
+            {codeObj.code.map(getSnippetElement)}
         </div>
     )
 })

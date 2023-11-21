@@ -16,7 +16,7 @@ export const codeObjs = [
     }
 ]
 
-export const intro = {
+export const text = {
     english: {
         title: 'Types',
         phrase: 'Some values seems to never change, others can change in any context while others in specific context',

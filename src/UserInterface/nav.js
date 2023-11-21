@@ -2,7 +2,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Avatar from '@mui/material/Avatar';
 import IconButton from '@mui/material/IconButton';
 
-import { Config } from '../Config'
+import { Config } from '../Game/Config'
 import * as Modify from './modify'
 import Drive from './drive'
 import { SessionContext } from './sessionContext'

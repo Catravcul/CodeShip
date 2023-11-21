@@ -4,7 +4,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Pagination from '@mui/material/Pagination';
 import PaginationItem from '@mui/material/PaginationItem';
 
-import { Config } from '../../Config'
+import { Config } from '../../Game/Config'
 import './travel.css'
 
 import {Status} from './status'

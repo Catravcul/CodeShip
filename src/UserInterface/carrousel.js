@@ -1,7 +1,7 @@
 import Skeleton from '@mui/material/Skeleton';
 import Alert from '@mui/material/Alert';
 
-import { Config } from '../Config'
+import { Config } from '../Game/Config'
 import './carrousel.css'
 import { SessionContext } from './sessionContext'
 

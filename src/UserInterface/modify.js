@@ -3,7 +3,7 @@ import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 
 
-import { Config } from '../Config'
+import { Config } from '../Game/Config'
 import { SessionContext } from './sessionContext'
 import { Carrousel } from './carrousel'
 import './modify.css'

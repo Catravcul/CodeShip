@@ -1,4 +1,4 @@
-import {Config} from '../../Config'
+import {Config} from '../../Game/Config'
 
 const radialColors = ['white', 'cyan', 'blue', 'lime', 'yellow', 'red', 'magenta', 'purple', 'brown', 'black']
 const barClass = 'px-20-px py-3-px m-3-px b-rad-10-px bg-gray color-white-and-black '

@@ -4,19 +4,19 @@ import {ButtonExec} from './buttonExec'
 import * as Help from './sectionHelp'
 import './index.css'
 
-export const CodeModal = memo(({codeObject, nextScene}) => {
-    
-    const [showModal, setShowModal] = useState(false)
-    const toggleModal = useCallback(() => setShowModal(prevState => prevState ? false : true), [])
+export const CodeModal = memo(({codeObj, nextCodeObj}) => {
+    const [isModalVisible, setIsModalVisible] = useState(false)
+    const toggleIsModalVisible = () => setIsModalVisible(old => !old)
+
     const helpSection = useRef(null)
     const {current: codeSlots} = useRef([])
     const {current: codeSnippets} = useRef([])
     const {current: orbits} = useRef([])
 
-    const codeProps = useMemo(() => ({ codeObject, codeSlots, codeSnippets, orbits }), [codeObject])
+    const codeProps = useMemo(() => ({ codeObj, codeSlots, codeSnippets, orbits }), [codeObj])
 
-    const execProps = useMemo(() => ({ orbits, codeSlots, codeSnippets, nextScene }), [nextScene])
-
+    const execProps = useMemo(() => ({ orbits, codeSlots, codeSnippets, nextCodeObj }), [nextCodeObj])
+    
     const structure = useCallback(() => 
 
         <article className='b-rad-10-px absolute color-white code-modal-c'>
@@ -28,7 +28,7 @@ export const CodeModal = memo(({codeObject, nextScene}) => {
                     </div>
                     <Help.Button helpSection={helpSection}/>
                 </nav>
-                <button className='close' onClick={toggleModal}>x</button>
+                <button className='close' onClick={() => setIsModalVisible(false)}>x</button>
             </header>
             <Help.Section helpSection={helpSection}/>
             <SectionCode props={codeProps}/>
@@ -37,11 +37,11 @@ export const CodeModal = memo(({codeObject, nextScene}) => {
             </footer>
         </article>
 
-    ,[codeObject, nextScene])
+    ,[codeObj, nextCodeObj])
     return(
         <>
-        <button onClick={toggleModal}>Code</button>
-        {showModal && codeObject ? structure() : null}
+        <button onClick={toggleIsModalVisible}>Code</button>
+        { isModalVisible && structure() }
         </>
     )
 })

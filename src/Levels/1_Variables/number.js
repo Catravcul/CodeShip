@@ -24,7 +24,7 @@ export const codeObjs = [
     }
 ]
 
-export const intro = {
+export const text = {
     english: {
         title: 'Number',
         phrase: 'Quantity can be found in our minds to the point to tell to us how much love is correct',

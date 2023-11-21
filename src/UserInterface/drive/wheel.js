@@ -5,7 +5,7 @@ import Avatar from '@mui/material/Avatar';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 
-import {Config} from '../../Config'
+import {Config} from '../../Game/Config'
 import GameLoop from '../../Game/loop'
 
 export default class Wheel extends Config {

@@ -1,56 +1,42 @@
 import {getBlueCode, getWhiteboneCode, getLightblueCode, getCyanCode} from '../codeSpans'
 
-export const codeObjs = [
-    {
-        code: [
-            getBlueCode('let'), getLightblueCode('fastReadingPracticeMinutes'), '=', getWhiteboneCode('20')
-        ]
-    }, {
-        code: [
-            getBlueCode('const'), getLightblueCode('fourPlusThree'), '=', getWhiteboneCode('4 + 3')
-        ]
-    }, {
-        code: [
-            getBlueCode('const'), getLightblueCode('nineLessTwo'), '=', getWhiteboneCode('9 - 2')
-        ]
-    }, {
-        code: [
-            getBlueCode('const'), getLightblueCode('percentageOfEmpaty'), '=', getWhiteboneCode('100')
-        ]
-    }, {
-        code: [
-            getBlueCode('var'), getLightblueCode('ponderingHours'), '=', getWhiteboneCode('2')
-        ]
-    }
-]
 
-export const text = {
-    english: {
-        title: 'Number',
-        phrase: 'Quantity can be found in our minds to the point to tell to us how much love is correct',
-        intro: 'Lets collect some numbers, in no time we would be making operations with them!',
-        steps: [
-            'Approach the spaceship to a number until the code button (<>) appears, then click it!',
-            'Drag and drop the code elements in correct order to create a number variable.'
-        ],
-        code: [
-            <>{getBlueCode('const')}&nbsp;{getLightblueCode('weekDays')}&nbsp;=&nbsp;{getWhiteboneCode('7')}</>,
-            <>{getBlueCode('let')}&nbsp;{getCyanCode('meditationHours')}&nbsp;=&nbsp;{getWhiteboneCode('1')}</>,
-            <>{getBlueCode('var')}&nbsp;{getCyanCode('studyTechnicsPracticeMinutes')}&nbsp;=&nbsp;{getWhiteboneCode('30')}</>
-        ]
-    },
-    spanish: {
-        title: 'Números',
-        phrase: 'La cantidad puede ser encontrada en nuestras mentes al punto de decirnos cuanto amor es correcto.',
-        intro: 'Recolectemos algunos números, dentro de nada realizaremos operaciones con ellos.',
-        steps: [
-            'Acerca la nave espacial a un número hasta que el botón de código (<>) aparezca, luego haz clic en él.',
-            'Arrastra los elementos de código hasta dejarlos en un orden correcto para crear una variable numérica.'
-        ],
-        code: [
-            <>{getBlueCode('const')}&nbsp;{getLightblueCode('diasSemanales')}&nbsp;=&nbsp;{getWhiteboneCode('7')}</>,
-            <>{getBlueCode('let')}&nbsp;{getCyanCode('horasIntrospectivas')}&nbsp;=&nbsp;{getWhiteboneCode('1')}</>,
-            <>{getBlueCode('var')}&nbsp;{getCyanCode('minutosPracticaTecnicasEstudio')}&nbsp;=&nbsp;{getWhiteboneCode('30')}</>
-        ]
-    }
+export const quest = {
+    codeObjs: [
+        {
+            code: [
+                getBlueCode('let'), getLightblueCode('pulsesPerHour'), '=', getWhiteboneCode('20')
+            ]
+        }, {
+            code: [
+                getBlueCode('let'), getLightblueCode('wavesLayers'), '=', getWhiteboneCode('10')
+            ]
+        }, {
+            code: [
+                getBlueCode('let'), getLightblueCode('metersPerUnit'), '=', getWhiteboneCode('10000')
+            ]
+        }, {
+            code: [
+                getBlueCode('let'), getLightblueCode('spinsPerHour'), '=', getWhiteboneCode('60')
+            ]
+        }, {
+            code: [
+                getBlueCode('let'), getLightblueCode('ciclesPerDay'), '=', getWhiteboneCode('2')
+            ]
+        }
+    ],
+    title: 'Configure nano_net',
+    name: 'Nevaeh',
+    img: '/img/nevaeh/face_100px.webp',
+    lines: [
+        'Dear Doménica,',
+        `I'm glad to know you managed to reach the right place, please do not lose contact with your loved ones, some of them are
+        texting us worried about you.`,
+        `Now is the perfect time to set some number values in our nano_net,
+        as we told you, the nano_net is difficult to see, but don't worry, the spaceship will guide you drawing a colored line to your next
+        destination, once there, the 'code' button is going to show to you next to the 'quest' button, click it to solve our issue.`,
+        'The order of the commands are first a "let" then a name then an "=" and finally a number. e.g.',
+        <code>{getBlueCode('let')} {getLightblueCode('yearDays')} = {getWhiteboneCode('365')}</code>,
+        `I hope you are having an awesome time!`
+    ]
 }

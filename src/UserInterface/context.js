@@ -6,3 +6,7 @@ export const SessionContext = createContext({
     token: '',
     products: []
 })
+
+export const UserInterfaceContext = createContext({ 
+    buttonsLabeled: { open: true } 
+})

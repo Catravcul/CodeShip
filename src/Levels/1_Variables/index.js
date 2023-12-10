@@ -1,25 +1,25 @@
-import { memo, useState, useCallback, useEffect, useRef } from 'react'
-import { codeObjs as typeQuests, text as typeText } from './type'
-import { codeObjs as numberQuests, text as numberText } from './number'
+import { memo, useState, useCallback, useEffect } from 'react'
+
+import { quest as textQuest } from './text'
+import { quest as numberQuest } from './number'
 import { CodeModal } from '../codeModal'
-import exampleSrc from './type.jpg'
+
 import Trace from "./trace";
 
 
-const quests = [typeQuests, numberQuests]
-const texts = [typeText, numberText]
+const quests = [ numberQuest, textQuest ]
 
-export const Variables = memo(({ Notification, levelUp, scene }) => {
+export const Variables = memo(({ levelUp, scene, setQuest, toggleIsCodePos }) => {
+
     const [isModalActive, setIsModalActive] = useState(false)
+    const toggleIsModalActive = () => {toggleIsCodePos(); setIsModalActive(old => !old)}
     
     const [questIdx, setQuestIdx] = useState(0)
     const [codeObjIdx, setCodeObjIdx] = useState(0)
 
-    const [textIdx, setTextIdx] = useState(0)
-
     const nextQuest = useCallback( () => {
         if (questIdx < (quests.length - 1)) setQuestIdx( prev => (prev + 1)) 
-        else alert('there isn\'t more quests yet')
+        else alert('there aren\'t more quests yet :\'c')
     }, [questIdx, setQuestIdx])
 
     const nextCodeObj = useCallback( () => {
@@ -29,13 +29,16 @@ export const Variables = memo(({ Notification, levelUp, scene }) => {
             nextQuest()
         }
      } , [codeObjIdx, setCodeObjIdx, nextQuest])
+
+    useEffect(() => {
+        setQuest(quests[questIdx])
+    }, [questIdx])
      
 
     return(
         <>
-        <Trace pSetIsModalActive={setIsModalActive} pIsModalActive={isModalActive} pCodeObjIdx={codeObjIdx} pQuestIdx={questIdx}/>
-        <Notification text={texts[textIdx]} img={exampleSrc} texts={texts} setTextIdx={setTextIdx}/>
-        {isModalActive && <CodeModal codeObj={quests[questIdx][codeObjIdx]} nextCodeObj={nextCodeObj}/>}
+        <Trace pToggleIsCodePos={toggleIsModalActive} pIsModalActive={isModalActive} pCodeObjIdx={codeObjIdx} pQuestIdx={questIdx}/>
+        <CodeModal codeObj={quests[questIdx].codeObjs[codeObjIdx]} nextCodeObj={nextCodeObj}/>
         </>
     )
 })

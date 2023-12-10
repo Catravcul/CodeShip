@@ -126,11 +126,20 @@ export default class Game extends Config {
             
     }
 
+
     render() {
         return(
         <div ref={ref => (this.mount = ref)} >
             <Camera.render/>
-            <Levels setlevelUpdates={this.setlevelUpdates} scene={scene}/>
+            <Levels 
+                showCode={this.props.showCode}
+                toggleShowCode={this.props.toggleShowCode}
+                setlevelUpdates={this.setlevelUpdates}
+                scene={scene}
+                showQuest={this.props.showQuest}
+                toggleShowQuest={this.props.toggleShowQuest}
+                toggleIsCodePos={this.props.toggleIsCodePos}
+            />
         </div>
         )
     }

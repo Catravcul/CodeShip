@@ -42,7 +42,7 @@ export const SectionCode = memo(({props: {
         const elementSize = (50 / length) + 'vw'
         const top =  ((index + 0.1) * (100 / length)) + '%'
         const left =  index % 2 ? ((index - 0.9) * (100 / length)) + '%' : ((index + 1) * (100 / length)) + '%'
-        const style = {top, left, width: elementSize, height: elementSize}
+        const style = {top, left, width: elementSize, height: elementSize, textAlign: 'center'}
         return (
             <code 
                 key={index + fragment}

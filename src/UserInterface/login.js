@@ -5,7 +5,7 @@ import Slide from '@mui/material/Slide';
 import Alert from '@mui/material/Alert';
 
 import { Config } from '../Game/Config'
-import { SessionContext } from './sessionContext'
+import { SessionContext } from './context'
 
 export class Login extends Config {
 
@@ -60,7 +60,7 @@ export class Login extends Config {
 
     render() {
         return <Slide in={this.props.showLogin} direction='left' unmountOnExit><section className="absolute screen top" onClick={this.props.hideLog}>
-            <div className="absolute middle bg-white b-rad-10-px" style={{ width: "360px", maxWidth: "90%" }} onClick={e => e.stopPropagation()}>
+            <div className="absolute middle bg-white b-rad-10-px" style={{ width: "360px", maxWidth: "90%", textAlign: 'center' }} onClick={e => e.stopPropagation()}>
                 <IconButton aria-label="close" color="error" sx={{ position: 'absolute', right: 0, marginRight: 1 }}  onClick={this.props.hideLog}>&times;</IconButton>
                 <h1>codeship-net</h1>
                 { this.state.error ? <Alert severity="error" sx={{ mb: 1 }}>{ this.state.error }</Alert> : ''}

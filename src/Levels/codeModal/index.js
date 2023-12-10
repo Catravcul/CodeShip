@@ -1,17 +1,14 @@
-import {useState, useCallback, useMemo, useRef, memo} from 'react'
+import {useMemo, useRef, memo, useContext} from 'react'
 import {SectionCode} from './sectionCode'
 import {ButtonExec} from './buttonExec'
 import * as Help from './sectionHelp'
-import Tooltip from '@mui/material/Tooltip'
-import Avatar from '@mui/material/Avatar'
-import IconButton from '@mui/material/IconButton'
 import Slide from '@mui/material/Slide'
 
 import './index.css'
+import { LevelsContext } from '../context'
 
 export const CodeModal = memo(({codeObj, nextCodeObj}) => {
-    const [isModalVisible, setIsModalVisible] = useState(false)
-    const toggleIsModalVisible = () => setIsModalVisible(old => !old)
+    const { showCode, toggleShowCode } = useContext(LevelsContext)
 
     const helpSection = useRef(null)
     const {current: codeSlots} = useRef([])
@@ -23,17 +20,11 @@ export const CodeModal = memo(({codeObj, nextCodeObj}) => {
     const execProps = useMemo(() => ({ orbits, codeSlots, codeSnippets, nextCodeObj }), [nextCodeObj])
     
 
-    return(
-        <>
-        <Tooltip title="show code modal" placement='right'>
-            <IconButton aria-label="<>" color="success"  onClick={ toggleIsModalVisible }>
-                <Avatar sx={{ bgcolor: "success.light" }} variant='rounded'>{'<>'}</Avatar>
-            </IconButton>
-        </Tooltip>
+    return (
         
-        <Slide in={isModalVisible} direction='right' unmountOnExit>
+        <Slide in={showCode} direction='right' unmountOnExit>
             
-        <div className='absolute screen top' onClick={() => setIsModalVisible(false)}>
+        <div className='absolute screen top' onClick={toggleShowCode}>
             <article className='b-rad-10-px absolute color-white code-modal-c' onClick={e => e.stopPropagation()}>
                 <header>
                     <nav>
@@ -43,7 +34,7 @@ export const CodeModal = memo(({codeObj, nextCodeObj}) => {
                         </div>
                         <Help.Button helpSection={helpSection}/>
                     </nav>
-                    <button className='close' onClick={() => setIsModalVisible(false)}>x</button>
+                    <button className='close' onClick={toggleShowCode}>x</button>
                 </header>
                 <Help.Section helpSection={helpSection}/>
                 <SectionCode props={codeProps}/>
@@ -53,6 +44,5 @@ export const CodeModal = memo(({codeObj, nextCodeObj}) => {
             </article>
             </div>
         </Slide>
-        </>
     )
 })

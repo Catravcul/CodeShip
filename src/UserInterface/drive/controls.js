@@ -4,6 +4,8 @@ import Tooltip from '@mui/material/Tooltip';
 import Pagination from '@mui/material/Pagination';
 import PaginationItem from '@mui/material/PaginationItem';
 
+
+import { UserInterfaceContext } from '../context';
 import { Config } from '../../Game/Config'
 import './travel.css'
 
@@ -11,6 +13,8 @@ import {Status} from './status'
 import Wheel from './wheel'
 
 export default class Controls extends Config {
+    
+    static contextType = UserInterfaceContext
 
     keys = ['j', 'k', 'l', 'ñ', 'u', 'i', 'o', 'p']
     /**
@@ -69,11 +73,15 @@ export default class Controls extends Config {
                     color="info" 
                     hideNextButton={ true } 
                     hidePrevButton={ true }
-                    renderItem={ item => (
-                        <Tooltip title={ "speed " + item.page}>
+                    renderItem={ item => {
+                        const props = { title: "speed " + item.page, arrow: true, placement: 'top'}
+                        if (this.context.buttonsLabeled.open) props.open = true
+                        return (
+                        <Tooltip {...props}>
                             <PaginationItem {...item} page={ this.speeds.find(s => s.speed == item.page).key }/>
                         </Tooltip>
-                      )}
+                        )
+                    }}
                     onChange={ (e, page) => this.changeSpeed(page) }
                 />
             </nav> : <Wheel showLogin={ this.props.showLogin }/>

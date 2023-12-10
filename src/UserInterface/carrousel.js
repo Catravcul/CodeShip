@@ -3,7 +3,7 @@ import Alert from '@mui/material/Alert';
 
 import { Config } from '../Game/Config'
 import './carrousel.css'
-import { SessionContext } from './sessionContext'
+import { SessionContext } from './context'
 
 import triangle_l from './triangle_l.png'
 import triangle_r from './triangle_r.png'

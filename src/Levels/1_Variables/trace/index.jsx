@@ -8,7 +8,7 @@ import Obj3D from "./obj3D";
 /**
  * it doesn't return any Element, it serves for the rendering of the trace, which changes color and position by the parent props, it also changes the visibility of the parent modal
  */
-const Trace = memo(({ pIsModalActive, pSetIsModalActive, pCodeObjIdx, pQuestIdx }) => {
+const Trace = memo(({ pIsModalActive, pToggleIsCodePos, pCodeObjIdx, pQuestIdx }) => {
     const isModalActiveRef = useRef(pIsModalActive)
     
     const obj3D = useRef(new Obj3D())
@@ -19,9 +19,9 @@ const Trace = memo(({ pIsModalActive, pSetIsModalActive, pCodeObjIdx, pQuestIdx 
         const actionId = GameLoop.addAction(() => {
             obj3D.current.update()
             if ( obj3D.current.isTraceFollowerInOriginArea() ) {
-                if (!isModalActiveRef.current) pSetIsModalActive(true)
+                if (!isModalActiveRef.current) pToggleIsCodePos()
             } else {
-                if (isModalActiveRef.current) pSetIsModalActive(false)
+                if (isModalActiveRef.current) pToggleIsCodePos()
             }
         })
 

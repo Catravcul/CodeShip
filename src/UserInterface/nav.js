@@ -1,11 +1,9 @@
-import Tooltip from '@mui/material/Tooltip';
-import Avatar from '@mui/material/Avatar';
-import IconButton from '@mui/material/IconButton';
 
 import { Config } from '../Game/Config'
 import * as Modify from './modify'
 import Drive from './drive'
-import { SessionContext } from './sessionContext'
+import { SessionContext } from './context'
+import ButtonLabeled from './components/ButtonLabeled';
 
 export class Nav extends Config {
 
@@ -51,9 +49,9 @@ export class Nav extends Config {
      */
     keyHandler = e => {
         switch (e.key) {
-            case "f": this.shipModify(); break;
-            case "d": this.shipTravel(); break;
-            case "s": this.openHome(); break;
+            case "d": this.shipModify(); break;
+            case "s": this.shipTravel(); break;
+            case "a": this.openHome(); break;
         }
     }
     componentDidMount () {
@@ -66,6 +64,21 @@ export class Nav extends Config {
         }
     }
 
+    buttonsLabeled = [
+        { 
+            label:{title:"modify ship", placement:'right'},
+            button:{content:'d', bgColor:'warning.main', onClick:this.shipModify}
+        },
+        { 
+            label:{title:"drive ship", placement:'right'},
+            button:{content:'s', bgColor:'warning.main', onClick:this.shipTravel}
+        },
+        { 
+            label:{title:"open home", placement:'right'},
+            button:{content:'a', bgColor:'error.main', onClick:this.openHome}
+        }
+    ]
+
     render() {
         return(  
         <div>
@@ -74,23 +87,7 @@ export class Nav extends Config {
                 { this.state.travel ? <Drive.Nav toggleNav={ this.toggleNav } shipTravel={ this.shipTravel } showLogin={ this.props.showLogin }/> : "" }
                 { !this.state.travel && !this.state.modify ?
                 <>
-                    <Tooltip title="customize" placement='right'>
-                        <IconButton aria-label="f" color="warning" onClick = { this.shipModify }>
-                            <Avatar sx={{ bgcolor: "warning.light" }}>f</Avatar>
-                        </IconButton>
-                    </Tooltip>
-                    
-                    <Tooltip title="drive" placement='right'>
-                        <IconButton aria-label="d" color="warning" onClick = { this.shipTravel }>
-                            <Avatar sx={{ bgcolor: "warning.light" }}>d</Avatar>
-                        </IconButton>
-                    </Tooltip>
-                    
-                    <Tooltip title="open net" placement='right'>
-                        <IconButton aria-label="s" color="error" onClick = { this.openHome }>
-                            <Avatar sx={{ bgcolor: "error.main" }}>s</Avatar>
-                        </IconButton>
-                    </Tooltip>
+                    { this.buttonsLabeled.map( (buttonLabeled, i) => <ButtonLabeled {...buttonLabeled} key={buttonLabeled.button.content + i} />) }
                 </> : ''
                 }
             </nav>

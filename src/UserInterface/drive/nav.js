@@ -1,12 +1,9 @@
 import React from 'react'
 
-import Avatar from '@mui/material/Avatar';
-import IconButton from '@mui/material/IconButton';
-import Tooltip from '@mui/material/Tooltip';
-
 import { Config } from '../../Game/Config'
 
 import GameLoop from '../../Game/loop'
+import ButtonLabeled from '../components/ButtonLabeled';
 
 export default class Nav extends Config {
 
@@ -48,7 +45,6 @@ export default class Nav extends Config {
         switch (e.key) {
             case "f": this.activate(); break;
             case "d": this.curb(); break;
-            case "a": this.exit(); break;
         }
     }
     /**
@@ -60,6 +56,7 @@ export default class Nav extends Config {
             case "f": this.deactivate(); break;
             case "d": this.notCurb(); break;
             case "s": this.props.toggleNav(); break;
+            case "a": this.exit(); break;
         }
     }
 
@@ -101,34 +98,31 @@ export default class Nav extends Config {
         this.accelerate.isCurbing = false
     }
 
+    buttonsLabeled = [
+        { 
+            label:{title: "accelerate", placement: 'right'},
+            button:{content: 'f', bgColor: 'secondary.main', onPointerDown: this.activate, onPointerUp: this.deactivate}
+        },
+        { 
+            label:{title: "decelerate", placement: 'right'},
+            button:{content: 'd', bgColor: 'secondary.main', onPointerDown: this.curb, onPointerUp: this.notCurb}
+        },
+        { 
+            label:{title: "directions - speeds", placement: 'right'},
+            button:{content: 's', bgColor: 'primary.main', onClick: this.props.toggleNav}
+        },
+        { 
+            label:{title: "exit drive", placement: 'right'},
+            button:{content: 'a', bgColor: 'warning.main', onClick: this.exit}
+        }
+    ]
+
     render() {
 
         return(
             <>
-                
-                <Tooltip title="accelerate" placement='right'>
-                    <IconButton aria-label="f keyboard" color="secondary" onPointerDown = {this.activate} onPointerUp = {this.deactivate}>
-                        <Avatar sx={{ bgcolor: "secondary.light" }}>f</Avatar>
-                    </IconButton>
-                </Tooltip>
-                
-                <Tooltip title="stop" placement='right'>
-                    <IconButton aria-label="d keyboard" color="secondary" onPointerDown = {this.curb} onPointerUp={this.notCurb}>
-                        <Avatar sx={{ bgcolor: "secondary.light" }}>d</Avatar>
-                    </IconButton>
-                </Tooltip>
-                
-                <Tooltip title="speeds/spins" placement='right'>
-                    <IconButton aria-label="s keyboard" color="primary" onClick = {this.props.toggleNav}>
-                        <Avatar sx={{ bgcolor: "primary.main" }}>s</Avatar>
-                    </IconButton>
-                </Tooltip>
-                
-                <Tooltip title="exit drive" placement='right'>
-                    <IconButton aria-label="a keyboard" color="warning"  onClick = {this.exit}>
-                        <Avatar sx={{ bgcolor: "warning.main" }}>a</Avatar>
-                    </IconButton>
-                </Tooltip>
+
+                { this.buttonsLabeled.map( (buttonLabeled, i) => <ButtonLabeled {...buttonLabeled} key={buttonLabeled.button.content + i} />) }
 
             </>
 

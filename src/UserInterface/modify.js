@@ -1,12 +1,10 @@
-import Avatar from '@mui/material/Avatar';
-import IconButton from '@mui/material/IconButton';
-import Tooltip from '@mui/material/Tooltip';
-
 
 import { Config } from '../Game/Config'
-import { SessionContext } from './sessionContext'
+import { SessionContext } from './context'
 import { Carrousel } from './carrousel'
 import './modify.css'
+
+import ButtonLabeled from './components/ButtonLabeled';
 
 export class Interface extends Config {
     
@@ -67,9 +65,9 @@ export class Nav extends Config {
      */
     keyHandler = e => {
         switch (e.key) {
-            case "f": this.apply(); break;
-            case "d": this.cancel(); break;
-            case "s": this.props.shipModify(); break;
+            case "d": this.apply(); break;
+            case "s": this.cancel(); break;
+            case "a": this.props.shipModify(); break;
         }
     }
     componentDidMount () {
@@ -85,26 +83,25 @@ export class Nav extends Config {
         document.removeEventListener('keypress', this.keyHandler)
     }
 
+    buttonsLabeled = [
+        { 
+            label:{title: "save modification", placement: 'right'},
+            button:{content: 'd', bgColor: 'success.light', onClick: this.apply}
+        },
+        { 
+            label:{title: "reset modification", placement: 'right'},
+            button:{content: 's', bgColor: 'error.light', onClick: this.cancel}
+        },
+        { 
+            label:{title: "exit modification", placement: 'right'},
+            button:{content: 'a', bgColor: 'warning.light', onClick: this.props.shipModify}
+        }
+    ]
+
     render () {
         return (
             <>
-            <Tooltip title="save customization" placement='right'>
-                <IconButton aria-label="f keyboard" color="success"  onClick = { this.apply }>
-                    <Avatar sx={{ bgcolor: "success.light" }}>f</Avatar>
-                </IconButton>
-            </Tooltip>
-            
-            <Tooltip title="reset customization" placement='right'>
-                <IconButton aria-label="d keyboard" color="error" onClick = { this.cancel }>
-                    <Avatar sx={{ bgcolor: "error.light" }}>d</Avatar>
-                </IconButton>
-            </Tooltip>
-
-            <Tooltip title="exit customization" placement='right'>
-                <IconButton aria-label="s keyboard" color="warning" onClick = { this.props.shipModify }>
-                    <Avatar sx={{ bgcolor: "warning.light" }}>s</Avatar>
-                </IconButton>
-            </Tooltip>
+                { this.buttonsLabeled.map( (buttonLabeled, i) => <ButtonLabeled {...buttonLabeled} key={buttonLabeled.button.content + i} />) }
             </>
         )
     }

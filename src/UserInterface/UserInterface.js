@@ -1,21 +1,55 @@
+import React from 'react'
+
 import { Config } from '../Game/Config'
 import './UserInterface.css'
-import { SessionContext } from './sessionContext'
+import { SessionContext, UserInterfaceContext } from './context'
 import { Nav } from './nav'
 import { Login } from './login'
+import TopNav from './topNav'
+
+
 
 export class UserInterface extends Config {
+    
+    componentDidMount () {
+
+        this.updateToken()
+        this.getProducts()
+
+        const propsTopNav = {
+            rightButtons: [
+                {
+                    label:{ title:'config', placement:'bottom' }, 
+                    button:{ content:'o', bgColor:'warning.main', onClick() {} }
+                },
+                {
+                    label:{ title:'login', placement:'bottom' }, 
+                    button:{ content:'p', bgColor:'warning.main', onClick:this.toggleLog }
+                }
+            ],
+            leftButtons: [
+                {
+                    label:{ title:'quest', placement:'bottom' }, 
+                    button:{ content:'q', bgColor:'secondary.main', onClick:this.props.toggleShowQuest }
+                }
+            ],
+            upKeys: [
+                { key:'p', handler:this.toggleLog },
+                { key:'o', handler() {} },
+                { key:'q', handler:this.props.toggleShowQuest },
+    
+            ]
+        
+        }
+        this.setState({...this.state, propsTopNav })
+    }
 
     state = {
         token: '',
         session: {},
         products: [],
-        showLogin: false
-    }
-        
-    componentDidMount() {
-        this.updateToken()
-        this.getProducts()
+        showLogin: false,
+        propsTopNav: { }
     }
 
     updateToken = () => {
@@ -82,24 +116,44 @@ export class UserInterface extends Config {
         fetch(Config.config.codeshipApi.urlBase + '/public/product', {method: 'GET'})
         .then(res => res.json()).then(({products}) => this.setState({products: products}))
     }
+    
 
-    /**
-     * RENDER USER INTERFACE
-     */
+    componentDidUpdate () {
+        const button = {
+            label:{ title:'code', placement:'bottom' }, 
+            button:{ content:'w', bgColor:'success.main', onClick:this.props.toggleShowCode }
+        }
+        const propsTopNav = {...this.state.propsTopNav}
+        
+        if (this.props.isCodePos) {
+            const idx = propsTopNav.leftButtons.findIndex(b => b.button.content == button.button.content)
+            if (idx < 0) {
+                propsTopNav.leftButtons.push(button)
+                propsTopNav.upKeys.push( { key:'w', handler:this.props.toggleShowCode } )
+                this.setState({...this.state, propsTopNav})
+            }
+        } else {
+            const idx = propsTopNav.leftButtons.findIndex(b => b.button.content == button.button.content)
+            if (idx >= 0) {
+                propsTopNav.leftButtons.splice(idx, 1)
+                this.setState({...this.state, propsTopNav})
+            }
+        }
+    }
+
     render() {
         return  <SessionContext.Provider value={{
             postMessageS:'123',
             session: this.state.session,
             products: this.state.products,
             token: this.state.token
-            }}>
+            }}> <UserInterfaceContext.Provider value={{buttonsLabeled: { open: true }}}>
                 <div id="user-interface" >
                     <Login updateToken={this.updateToken} hideLog={this.hideLog} showLogin={this.state.showLogin}/>
-                    <button className="btn top right absolute" onClick = {this.toggleLog}>
-                        <img src="/img/login.svg" alt="login" width="50px"/>
-                    </button>
+                    { this.state.showLogin ? '' : <TopNav {...this.state.propsTopNav}/> }
                     <Nav session={this.state.session} products={this.state.products} token={this.state.token} showLogin={this.state.showLogin}/>
                 </div>
+                </UserInterfaceContext.Provider>
             </SessionContext.Provider>
     }
 

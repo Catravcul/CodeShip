@@ -198,14 +198,10 @@ body .hidden {
     height: 15px;
     border-radius: 5px;
     background-color: pink;
-    background-image: url('./turn-right.svg');
     transform: rotate(90deg)
 }
 .slider-thumb-turn-left::-webkit-slider-thumb {
     transform: rotateX(180deg) rotate(90deg);
-}
-.slider-thumb-turn-down::-webkit-slider-thumb, .slider-thumb-turn-up::-webkit-slider-thumb {
-    background-image: url('./turn-down.svg');
 }
 .slider-thumb-turn-up::-webkit-slider-thumb {
     transform: rotate(90deg);

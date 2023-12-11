@@ -2,10 +2,10 @@ import { useContext } from "react"
 import { LevelsContext } from "./context"
 
 
-const Plan = (props = {handleClose:()=>{}, showModal:false}) => {
+const Plan = () => {
     const context = useContext(LevelsContext)
     
-    return <context.questView {...props} />
+    return <context.questView />
 }
 
 export default Plan

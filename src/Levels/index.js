@@ -1,4 +1,4 @@
-import {useState, useCallback} from 'react'
+import {useState, useCallback, useContext} from 'react'
 import {Notification} from './notification'
 import {CodeModal} from './codeModal'
 
@@ -6,7 +6,10 @@ import {Variables} from './1_Variables'
 import { LevelsContext, initialValue } from './context'
 import Plan from './plan'
 
-export const Levels = ({setlevelUpdates, scene, showQuest, toggleShowQuest, showCode, toggleShowCode, toggleIsCodePos}) => {
+import { GameModals } from '../context'
+
+export const Levels = ({setlevelUpdates, scene}) => {
+    const appContext = useContext(GameModals)
     
     const [levels, setLevels] = useState([Variables])
     const [level, setLevel] = useState(0)
@@ -16,12 +19,12 @@ export const Levels = ({setlevelUpdates, scene, showQuest, toggleShowQuest, show
     const [questView, setQuestView] = useState(Notification)
     const [quest, setQuest] = useState(initialValue.quest)
     
-    const propsLevel = {CodeModal, levelUp, setlevelUpdates, scene, setQuest, toggleIsCodePos}
+    const propsLevel = {CodeModal, levelUp, setlevelUpdates, scene, setQuest}
     return(
-        <LevelsContext.Provider value={{questView, quest, showCode, toggleShowCode}}>
+        <LevelsContext.Provider value={{questView, quest, ...appContext}}>
             <div className='absolute top'>
                 <Level {...propsLevel}/>
-                <Plan showModal={showQuest} handleClose={toggleShowQuest} />
+                <Plan />
             </div>
         </LevelsContext.Provider>
     )

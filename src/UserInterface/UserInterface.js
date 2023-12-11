@@ -129,13 +129,15 @@ export class UserInterface extends Config {
             const idx = propsTopNav.leftButtons.findIndex(b => b.button.content == button.button.content)
             if (idx < 0) {
                 propsTopNav.leftButtons.push(button)
-                propsTopNav.upKeys.push( { key:'w', handler:this.props.toggleShowCode } )
+                propsTopNav.upKeys.push( { key:'w', handler:() => {this.props.toggleShowCode();console.log('w');} } )
                 this.setState({...this.state, propsTopNav})
             }
         } else {
-            const idx = propsTopNav.leftButtons.findIndex(b => b.button.content == button.button.content)
-            if (idx >= 0) {
-                propsTopNav.leftButtons.splice(idx, 1)
+            const buttonIdx = propsTopNav.leftButtons.findIndex(b => b.button.content == button.button.content)
+            const keyIdx = propsTopNav.upKeys.findIndex(k => k.key == 'w')
+            if (buttonIdx >= 0) {
+                propsTopNav.leftButtons.splice(buttonIdx, 1)
+                propsTopNav.upKeys.splice(keyIdx, 1)
                 this.setState({...this.state, propsTopNav})
             }
         }

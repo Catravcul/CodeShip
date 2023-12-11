@@ -59,7 +59,7 @@ export default class Game extends Config {
 
 
         const path = "./img/";
-        const format = '.jpg';
+        const format = '.webp';
         const urls = [
           path + 'spaceBox' + format, path + 'spaceBox' + format,
           path + 'spaceBox' + format, path + 'spaceBox' + format,
@@ -132,13 +132,8 @@ export default class Game extends Config {
         <div ref={ref => (this.mount = ref)} >
             <Camera.render/>
             <Levels 
-                showCode={this.props.showCode}
-                toggleShowCode={this.props.toggleShowCode}
                 setlevelUpdates={this.setlevelUpdates}
                 scene={scene}
-                showQuest={this.props.showQuest}
-                toggleShowQuest={this.props.toggleShowQuest}
-                toggleIsCodePos={this.props.toggleIsCodePos}
             />
         </div>
         )

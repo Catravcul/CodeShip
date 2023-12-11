@@ -13,18 +13,18 @@ import { LevelsContext } from './context'
 import './notification.css'
 
 
-export const Notification = memo(({handleClose, showModal}) => {
+export const Notification = memo(() => {
     
-    const { quest } = useContext(LevelsContext)
+    const { quest, showQuest, toggleShowQuest } = useContext(LevelsContext)
     
     return (
         <Backdrop
-        open={showModal}
+        open={showQuest}
         sx={{ color: '#fff', zIndex: 1 }}
-        onClick={handleClose}
+        onClick={toggleShowQuest}
         >
-            <Slide in={showModal} direction='right' unmountOnExit onClick={e => e.stopPropagation()}>
-                <Card sx={{ maxWidth: 345 }}>
+            <Slide in={showQuest} direction='right' unmountOnExit onClick={e => e.stopPropagation()}>
+                <Card sx={{ overflow: 'auto', maxWidth: '94vw', width: 400, maxHeight: '90vh' }}>
                     <CardHeader
                         avatar={
                         <Avatar sx={{ bgcolor: 'error.light' }} aria-label="recipe">
@@ -32,7 +32,7 @@ export const Notification = memo(({handleClose, showModal}) => {
                         </Avatar>
                         }
                         action={
-                        <IconButton aria-label="close modal" onClick={handleClose}>
+                        <IconButton aria-label="close modal" onClick={toggleShowQuest}>
                             &times;
                         </IconButton>
                         }

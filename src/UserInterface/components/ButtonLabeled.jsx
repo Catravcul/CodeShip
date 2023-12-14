@@ -1,4 +1,4 @@
-import { useContext } from 'react';
+import { useContext, useEffect, useState } from 'react';
 
 import { UserInterfaceContext } from '../context';
 import Tooltip from '@mui/material/Tooltip';
@@ -8,17 +8,31 @@ import IconButton from '@mui/material/IconButton';
 const propsLabel = { title: '', placement: '' }
 const propsButton = { content: '', bgColor: '', onClick: () => {}, onPointerDown: () => {}, onPointerUp: () => {} }
 
-const ButtonLabeled = ({ label = propsLabel, button = propsButton, isBox = false }) => {
+const ButtonLabeled = ({
+    label = propsLabel,
+    button:{ bgColor,
+    content, ...buttonProps } = propsButton,
+    isBox = false 
+}) => {
     
-    const { buttonsLabeled: { open } } = useContext(UserInterfaceContext)
-    if (open) label.open = true
-    const { bgColor, content, ...buttonProps } = button
-    const variant = isBox ? 'rounded' : 'circle'
+    const { showLabels } = useContext(UserInterfaceContext)
+    const [ isHovered, setIsHovered ] = useState(false)
+
+    const [ tooltipProps, setTooltipProps ] = useState({})
+
+    useEffect( () => {
+        const props = {
+            showLabels,
+            onPointerOver: () => setIsHovered(true),
+            onPointerLeave: () => setIsHovered(false)
+        }
+        setTooltipProps(props)
+    }, [showLabels, isHovered] )
 
     return (
-        <Tooltip {...label} arrow PopperProps={{style:{zIndex:0}}}>
+        <Tooltip {...label} {...tooltipProps} open={ showLabels || isHovered ? true : false} arrow PopperProps={{style:{zIndex:0}}}>
             <IconButton { ...buttonProps } aria-label={ content } >
-                <Avatar sx={{ bgcolor: bgColor }} variant={variant}>{ content }</Avatar>
+                <Avatar sx={{ bgcolor:bgColor }} variant={isBox ? 'rounded' : 'circle'}>{ content }</Avatar>
             </IconButton>
         </Tooltip>
     )

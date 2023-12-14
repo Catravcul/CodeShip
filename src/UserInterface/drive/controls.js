@@ -75,7 +75,7 @@ export default class Controls extends Config {
                     hidePrevButton={ true }
                     renderItem={ item => {
                         const props = { title: "speed " + item.page, arrow: true, placement: 'top'}
-                        if (this.context.buttonsLabeled.open) props.open = true
+                        if (this.context.showLabels) props.open = true
                         return (
                         <Tooltip {...props}>
                             <PaginationItem {...item} page={ this.speeds.find(s => s.speed == item.page).key }/>

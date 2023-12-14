@@ -6,6 +6,7 @@ import { SessionContext, UserInterfaceContext } from './context'
 import { Nav } from './nav'
 import { Login } from './login'
 import TopNav from './topNav'
+import { Menu } from './menu'
 
 
 
@@ -19,8 +20,8 @@ export class UserInterface extends Config {
         const propsTopNav = {
             rightButtons: [
                 {
-                    label:{ title:'config', placement:'bottom' }, 
-                    button:{ content:'o', bgColor:'warning.main', onClick() {} }
+                    label:{ title:'menu', placement:'bottom' }, 
+                    button:{ content:'o', bgColor:'warning.main', onClick:this.toggleShowMenu }
                 },
                 {
                     label:{ title:'login', placement:'bottom' }, 
@@ -35,7 +36,7 @@ export class UserInterface extends Config {
             ],
             upKeys: [
                 { key:'p', handler:this.toggleLog },
-                { key:'o', handler() {} },
+                { key:'o', handler:this.toggleShowMenu },
                 { key:'q', handler:this.props.toggleShowQuest },
     
             ]
@@ -49,8 +50,13 @@ export class UserInterface extends Config {
         session: {},
         products: [],
         showLogin: false,
+        showLabels: true,
+        showMenu: false,
         propsTopNav: { }
     }
+
+    toggleShowLabels = () => {this.setState({...this.state, showLabels:!this.state.showLabels}); console.log(this.state.showLabels)}
+    toggleShowMenu = () => this.setState({...this.state, showMenu:!this.state.showMenu})
 
     updateToken = () => {
         this.setState({token: sessionStorage.getItem('codeship-token')}, this.updateSession)
@@ -144,19 +150,22 @@ export class UserInterface extends Config {
     }
 
     render() {
-        return  <SessionContext.Provider value={{
+        return  (
+            <SessionContext.Provider value={{
             postMessageS:'123',
             session: this.state.session,
             products: this.state.products,
             token: this.state.token
-            }}> <UserInterfaceContext.Provider value={{buttonsLabeled: { open: true }}}>
+            }}> <UserInterfaceContext.Provider value={{ showLabels:this.state.showLabels, toggleShowLabels:this.toggleShowLabels }}>
                 <div id="user-interface" >
-                    <Login updateToken={this.updateToken} hideLog={this.hideLog} showLogin={this.state.showLogin}/>
                     { this.state.showLogin ? '' : <TopNav {...this.state.propsTopNav}/> }
                     <Nav session={this.state.session} products={this.state.products} token={this.state.token} showLogin={this.state.showLogin}/>
+                    <Login updateToken={this.updateToken} hideLog={this.hideLog} showLogin={this.state.showLogin}/>
+                    <Menu showMenu={this.state.showMenu} toggleShowMenu={this.toggleShowMenu}/>
                 </div>
                 </UserInterfaceContext.Provider>
             </SessionContext.Provider>
+        )
     }
 
 }

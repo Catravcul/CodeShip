@@ -8,5 +8,6 @@ export const SessionContext = createContext({
 })
 
 export const UserInterfaceContext = createContext({ 
-    buttonsLabeled: { open: true } 
+    showLabels: true,
+    toggleShowLabels () {}
 })

@@ -1,4 +1,3 @@
-import type { MindDuel } from "@modules/mind-duel/domain/duel";
 import type { Answer, CodeBlock, Exercise } from "@modules/mind-duel/domain/exercise";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
@@ -17,8 +16,39 @@ function trayOrder(ex: Exercise & { kind: "order" }): CodeBlock[] {
   return blocks;
 }
 
+/** What the screen needs from a duel with a mind or from a chore: the current challenge and two meters. */
+export interface SessionLike {
+  readonly current: Exercise | undefined;
+  readonly progress: number;
+  readonly goal: number;
+  readonly lives: number;
+  readonly maxLives: number;
+}
+
+export interface SessionText {
+  readonly title: string;
+  readonly progress: string;
+  readonly lives: string;
+  readonly order: string;
+  readonly submit: string;
+  readonly ok: string;
+  readonly bad: string;
+  /** Bottom sheet: leaves the 3D scene visible above (chores, yoga). */
+  readonly sheet?: boolean;
+}
+
+export const asteroidText = (name: string): SessionText => ({
+  title: `Mente de ${name}`,
+  progress: "Persuasión",
+  lives: "Paciencia",
+  order: "Ordena el pensamiento",
+  submit: "Enviar idea",
+  ok: "La idea encaja: el asteroide se deja persuadir",
+  bad: "La idea se rechaza: pierde paciencia",
+});
+
 /**
- * Mobile-first duel screen. Tap a block in the tray to place it; tap a placed block to send it back.
+ * Mobile-first challenge screen, shared by duels with minds and by chores on board. Tap a block in the tray to place it; tap a placed block to send it back.
  * Every block shows Spanish pseudocode or JavaScript.
  */
 export class DuelView {
@@ -27,27 +57,31 @@ export class DuelView {
   private placed: string[] = [];
   private feedback: { ok: boolean; text: string } | null = null;
 
-  constructor(
-    root: HTMLElement,
-    private readonly asteroidName: string,
-    private readonly onAnswer: (a: Answer) => { ok: boolean },
-  ) {
+  private text: SessionText = asteroidText("");
+  private onAnswer: (a: Answer) => { ok: boolean } = () => ({ ok: false });
+
+  constructor(root: HTMLElement) {
     this.el = document.createElement("div");
     this.el.className = "duel hidden";
     root.appendChild(this.el);
     this.el.addEventListener("click", (e) => this.onClick(e));
   }
 
-  private duel: MindDuel | undefined;
+  private duel: SessionLike | undefined;
 
-  show(duel: MindDuel): void {
-    this.duel = duel;
+  show(session: SessionLike, text: SessionText, onAnswer: (a: Answer) => { ok: boolean }): void {
+    this.duel = session;
+    this.text = text;
+    this.onAnswer = onAnswer;
+    this.el.classList.toggle("sheet", !!text.sheet);
     this.placed = [];
     this.feedback = null;
     this.el.classList.remove("hidden");
     document.body.classList.add("in-duel");
     this.render();
   }
+
+  onClose?: () => void;
 
   get visible(): boolean {
     return !this.el.classList.contains("hidden");
@@ -67,6 +101,11 @@ export class DuelView {
     if (!t || !this.duel) return;
     const ex = this.duel.current;
     const act = t.dataset.act;
+    if (act === "close") {
+      this.hide();
+      this.onClose?.();
+      return;
+    }
     if (act === "toggle") this.showJs = !this.showJs;
     if (ex?.kind === "order" && act === "place" && t.dataset.id) this.placed.push(t.dataset.id);
     if (ex?.kind === "order" && act === "unplace" && t.dataset.id) this.placed = this.placed.filter((id) => id !== t.dataset.id);
@@ -77,7 +116,7 @@ export class DuelView {
 
   private submit(a: Answer): void {
     const { ok } = this.onAnswer(a);
-    this.feedback = ok ? { ok, text: "La idea encaja: el asteroide se deja persuadir" } : { ok, text: "La idea se rechaza: pierde paciencia" };
+    this.feedback = { ok, text: ok ? this.text.ok : this.text.bad };
     this.placed = [];
   }
 
@@ -91,14 +130,14 @@ export class DuelView {
     const ex = d.current;
     const head = `
       <div class="duel-head">
-        <div class="duel-title">Mente de ${esc(this.asteroidName)}</div>
-        ${this.meter("Persuasión", d.persuasion, d.profile.persuasionGoal, "persuasion")}
-        ${this.meter("Paciencia", d.patience, d.profile.patience, "patience")}
+        <div class="duel-title">${esc(this.text.title)}</div>
+        ${this.meter(this.text.progress, d.progress, d.goal, "persuasion")}
+        ${this.meter(this.text.lives, d.lives, d.maxLives, "patience")}
       </div>
       ${this.feedback ? `<div class="feedback ${this.feedback.ok ? "ok" : "bad"}">${this.feedback.text}</div>` : ""}`;
 
     if (!ex) {
-      this.el.innerHTML = head;
+      this.el.innerHTML = `${head}<button class="submit" data-act="close">Cerrar</button>`;
       return;
     }
 
@@ -121,10 +160,10 @@ export class DuelView {
         .join("");
       const full = this.placed.length === ex.solution.length;
       body = `
-        <div class="question">Ordena el pensamiento</div>
+        <div class="question">${esc(this.text.order)}</div>
         <div class="slots">${slots}</div>
         <div class="tray">${tray}</div>
-        <button class="submit" data-act="submit" ${full ? "" : "disabled"}>Enviar idea</button>`;
+        <button class="submit" data-act="submit" ${full ? "" : "disabled"}>${esc(this.text.submit)}</button>`;
     } else {
       const code = ex.code.map((b) => `<div class="code-line">${this.face(b)}</div>`).join("");
       const options = ex.options.map((o, i) => `<button class="option" data-act="choose" data-index="${i}">${esc(o)}</button>`).join("");

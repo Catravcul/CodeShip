@@ -4,16 +4,16 @@ const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
 /**
  * Game tuning, not measured data: how fast the substrate dries, how a dry pot hurts the plant and
- * how much encouragement speeds growth. Talking to plants is game fiction (see docs/design/vida-a-bordo.md).
+ * how much tending heals it. Growth days themselves come from the species data.
  */
 export const PLANT_TUNING = {
   waterPerDay: 0.5,
   dryBelow: 0.15,
   dryDamagePerDay: 0.25,
   recoveryPerDay: 0.1,
-  moodDecayPerDay: 0.1,
-  /** Growth multiplier ranges from (1 - moodEffect) at mood 0 to (1 + moodEffect) at mood 1. */
-  moodEffect: 0.15,
+  tendHeal: 0.4,
+  /** Chile flowers from this fraction of its first harvest day (tuning; PH-04 gives no flowering day). */
+  floweringAt: 0.5,
   newForDays: 3,
 } as const;
 
@@ -34,7 +34,6 @@ export class Plant {
   private _development = 0;
   private _water = 1;
   private _health = 1;
-  private _mood = 0.5;
   private _shaken = false;
   private _harvests = 0;
 
@@ -56,8 +55,13 @@ export class Plant {
   get health(): number {
     return this._health;
   }
-  get mood(): number {
-    return this._mood;
+  get shaken(): boolean {
+    return this._shaken;
+  }
+  /** Flowering: the moment to shake a plant that needs it. */
+  get flowering(): boolean {
+    const first = this.species.harvestDays.value[0] ?? Infinity;
+    return this.species.needsShaking.value && this._development >= first * PLANT_TUNING.floweringAt && this._harvests === 0;
   }
   get alive(): boolean {
     return this._health > 0;
@@ -80,12 +84,8 @@ export class Plant {
     this._water = clamp01(this._water - t.waterPerDay * dtDays);
     if (this._water < t.dryBelow) this._health = clamp01(this._health - t.dryDamagePerDay * dtDays);
     else this._health = clamp01(this._health + t.recoveryPerDay * dtDays);
-    // Mood relaxes toward neutral (0.5), where growth matches the real experiment.
-    const toNeutral = 0.5 - this._mood;
-    this._mood += Math.sign(toNeutral) * Math.min(Math.abs(toNeutral), t.moodDecayPerDay * dtDays);
     if (!this.alive || !env.lit) return;
-    const moodFactor = 1 - t.moodEffect + 2 * t.moodEffect * this._mood;
-    this._development += dtDays * this._health * moodFactor;
+    this._development += dtDays * this._health;
   }
 
   waterIt(): void {
@@ -97,12 +97,13 @@ export class Plant {
     this._shaken = true;
   }
 
-  /** Talking to the plant's mind. Positive raises its mood, negative lowers it. */
-  encourage(amount: number): void {
-    this._mood = clamp01(this._mood + amount);
+  /** Prune damaged leaves, secure the pot: heals part of the damage. */
+  tend(): void {
+    if (this.alive) this._health = clamp01(this._health + PLANT_TUNING.tendHeal);
   }
 
-  bite(severity: number): void {
+  /** Bitten by a cat, knocked over by a jolt… */
+  damage(severity: number): void {
     this._health = clamp01(this._health - severity);
   }
 

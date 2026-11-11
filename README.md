@@ -26,6 +26,8 @@ npm run build
 | Motor principal | Espacio |
 | Asistente de rotación | T |
 
+En el móvil hay mandos táctiles. Con el botón **Ir al interior** se entra en el módulo habitable: se camina con WASD (o el joystick) y se mira con las flechas o arrastrando. **Tareas** lista lo que hay que hacer a bordo; cada tarea es una cadena de retos de código (ver [vida-a-bordo.md](docs/design/vida-a-bordo.md)).
+
 ## Arquitectura
 
 Monolito modular con arquitectura hexagonal. Cada módulo tiene `domain/` (reglas puras, sin motor), `application/` (casos de uso) y `data/` (catálogos con fuentes). Los adaptadores (Three.js, teclado, HUD) viven fuera y dependen del dominio, nunca al revés; `npm run lint:arch` lo comprueba en CI.

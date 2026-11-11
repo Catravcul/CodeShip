@@ -64,3 +64,32 @@ body.in-duel .banner, body.in-duel .hud, body.in-duel .touch-left, body.in-duel 
   .action { top: 44vh; bottom: auto; }
   .banner { top: 34vh; max-width: 90vw; background: #05060ccc; padding: 6px 10px; border-radius: 8px; }
 }
+
+/* --- Interior (habitat module) ------------------------------------------ */
+body.in-interior .hud, body.in-interior .help, body.in-interior .reticle, body.in-interior .banner, body.in-interior .action, body.in-interior .touch { display: none !important; }
+.mode-btn { position: fixed; top: 12px; right: 12px; z-index: 6; padding: 10px 14px; font: inherit; font-size: 14px; color: #bfefff; background: #0b2a36dd; border: 1px solid #7fdcff66; border-radius: 10px; }
+body.in-duel .mode-btn { display: none; }
+.interior-ui.hidden, .interior-ui .hidden { display: none !important; }
+.ihud { position: fixed; top: 12px; left: 12px; width: min(230px, 55vw); color: #e6f6ff; font-size: 12px; text-shadow: 0 1px 2px #000; pointer-events: none; z-index: 4; }
+.ihud .ititle { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: #7fdcff; margin-bottom: 4px; }
+.ihud .bar { position: relative; height: 16px; margin: 3px 0; background: #00000066; border-radius: 4px; overflow: hidden; }
+.ihud .bar span { position: relative; z-index: 1; padding-left: 6px; line-height: 16px; }
+.ihud .bar i { position: absolute; inset: 0 auto 0 0; background: #2f9e6c; }
+.ihud .small { margin-top: 4px; opacity: 0.9; }
+.tasks-btn { position: fixed; top: 58px; right: 12px; z-index: 6; padding: 10px 14px; font: inherit; font-size: 14px; color: #001018; background: #7fdcff; border: 0; border-radius: 10px; }
+.station-btn { position: fixed; left: 50%; bottom: 150px; transform: translateX(-50%); z-index: 6; padding: 14px 22px; font: inherit; font-size: 16px; color: #001018; background: #ffd27f; border: 0; border-radius: 14px; box-shadow: 0 0 18px #ffb34788; }
+.board { position: fixed; z-index: 8; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(520px, 92vw); max-height: 80vh; overflow-y: auto; padding: 12px; box-sizing: border-box; background: #0a1220f2; border: 1px solid #7fdcff55; border-radius: 14px; color: #e6f6ff; display: flex; flex-direction: column; gap: 8px; }
+.board-head { display: flex; justify-content: space-between; align-items: center; font-size: 15px; }
+.board-head button { font: inherit; color: #e6f6ff; background: none; border: 0; font-size: 18px; }
+.board .chore { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; padding: 10px 12px; font: inherit; color: #e6f6ff; background: #13243a; border: 1px solid #2c4a6a; border-radius: 10px; }
+.board .chore span { font-size: 12px; opacity: 0.85; }
+.board .chore em { font-size: 11px; color: #ffd27f; font-style: normal; }
+.toast { position: fixed; left: 50%; top: 22vh; transform: translateX(-50%); z-index: 7; padding: 8px 14px; background: #000000aa; color: #fff; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity 0.3s; pointer-events: none; text-align: center; max-width: 86vw; }
+.toast.on { opacity: 1; }
+.walk-stick { display: none; position: fixed; left: 22px; bottom: 26px; width: 120px; height: 120px; border-radius: 50%; background: #ffffff14; border: 1px solid #ffffff44; z-index: 5; touch-action: none; }
+.walk-stick .knob { position: absolute; left: 35px; top: 35px; width: 50px; height: 50px; border-radius: 50%; background: #7fdcff88; }
+@media (pointer: coarse) { body.in-interior .walk-stick { display: block; } }
+body.in-duel .walk-stick, body.in-duel .interior-ui { display: none; }
+/* Chores: the challenge sits in a bottom sheet so the plant, cat or yoga figure stays visible above. */
+.duel.sheet { top: 38vh; border-radius: 18px 18px 0 0; background-image: none; background-color: #05060cf2; }
+@media (min-aspect-ratio: 1/1) { .duel.sheet { top: 0; left: auto; right: 0; width: min(480px, 46vw); padding-inline: 16px; border-radius: 18px 0 0 18px; } }

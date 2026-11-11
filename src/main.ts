@@ -6,17 +6,23 @@ import { explorerDesign } from "@modules/ship/data/explorer";
 import { Asteroid } from "@modules/celestial/domain/asteroid";
 import { BENNU } from "@modules/celestial/data/bennu";
 import { RigidBodyState } from "@modules/flight/domain/rigid-body";
-import { FlightComputer } from "@modules/flight/application/flight-computer";
+import { FlightComputer, NO_INPUT } from "@modules/flight/application/flight-computer";
 import { Expedition } from "@modules/expedition/application/expedition";
 import { EXERCISES } from "@modules/mind-duel/data/exercises";
 import { asteroidSurfaceFn } from "./content/asteroid-shape";
 import { TouchPilot, mergeCommands } from "./adapters/input/touch";
-import { DuelView } from "./ui/duel-view";
+import { DuelView, asteroidText } from "./ui/duel-view";
 import { buildAsteroidMesh } from "./adapters/three/asteroid-mesh";
 import { buildCockpit } from "./adapters/three/cockpit";
 import { buildStarfield } from "./adapters/three/starfield";
 import { KeyboardPilot } from "./adapters/input/keyboard";
 import { Hud } from "./ui/hud";
+import { Habitat } from "@modules/habitat/application/habitat";
+import { Cat } from "@modules/pets/domain/cat";
+import { CHILE_ESPANOLA, LETTUCE_OUTREDGEOUS } from "@modules/garden/data/species";
+import type { Plant } from "@modules/garden/domain/plant";
+import { seededRandom } from "./content/random";
+import { Interior } from "./interior";
 
 // --- Domain setup -----------------------------------------------------------
 const d = BENNU.dimensionsM.value;
@@ -31,6 +37,19 @@ const start = RigidBodyState.at(new Vec3(250, 120, 1600)).withOrientation(
 );
 const flight = new FlightComputer(ship, start, { gravitySources: [bennu], target: bennu });
 const expedition = new Expedition(flight, bennu, EXERCISES, 500);
+
+// Life on board: a long leg is already under way, so the garden has some days behind it.
+const habitat = new Habitat(seededRandom(2026), 2, ship, "Berón");
+const growFor = (p: Plant, days: number) => {
+  for (let t = 0; t < days; t += 0.25) {
+    p.tick(0.25, { lit: true });
+    if (p.water < 0.5) p.waterIt();
+  }
+};
+growFor(habitat.plant("l1", LETTUCE_OUTREDGEOUS), 31);
+growFor(habitat.plant("c1", CHILE_ESPANOLA), 51);
+habitat.plant("l2", LETTUCE_OUTREDGEOUS);
+habitat.adopt(new Cat("luna", "Luna", 4));
 
 // --- Rendering adapter ------------------------------------------------------
 const root = document.getElementById("app")!;
@@ -73,17 +92,46 @@ const pilot = new KeyboardPilot(window);
 pilot.onToggleAssist = () => (flight.rotationAssist = !flight.rotationAssist);
 const touch = new TouchPilot(root);
 
-const duelView = new DuelView(root, BENNU.name, (answer) => {
-  const events = expedition.answer(answer);
-  return { ok: events.some((e) => e.type === "idea-accepted") };
+const duelView = new DuelView(root);
+const duelSession = () => {
+  const d = expedition.duel!;
+  return {
+    get current() {
+      return d.current;
+    },
+    get progress() {
+      return d.persuasion;
+    },
+    goal: d.profile.persuasionGoal,
+    get lives() {
+      return d.patience;
+    },
+    maxLives: d.profile.patience,
+  };
+};
+const interior = new Interior(root, habitat, duelView);
+const modeBtn = document.createElement("button");
+modeBtn.className = "mode-btn";
+modeBtn.textContent = "Ir al interior";
+root.appendChild(modeBtn);
+modeBtn.addEventListener("click", () => {
+  if (duelView.visible) return;
+  if (interior.active) interior.exit();
+  else interior.enter();
+  modeBtn.textContent = interior.active ? "Ir a la cabina" : "Ir al interior";
 });
+let lastPhase = expedition.phase;
+
 const action = document.createElement("button");
 action.className = "action hidden";
 root.appendChild(action);
 action.addEventListener("click", () => {
   if (expedition.canStartDuel) {
     expedition.startDuel();
-    duelView.show(expedition.duel!);
+    duelView.show(duelSession(), asteroidText(BENNU.name), (answer) => {
+      const events = expedition.answer(answer);
+      return { ok: events.some((e) => e.type === "idea-accepted") };
+    });
   } else if (expedition.phase === "persuaded" || expedition.phase === "aggressive") {
     duelView.hide();
   }
@@ -114,6 +162,7 @@ window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  interior.resize();
 });
 
 // --- Loop -------------------------------------------------------------------
@@ -121,7 +170,14 @@ let last = performance.now();
 renderer.setAnimationLoop((now) => {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
-  expedition.update(dt, mergeCommands(pilot.command(), touch.command()));
+  expedition.update(dt, interior.active ? NO_INPUT : mergeCommands(pilot.command(), touch.command()));
+  if (expedition.phase === "aggressive" && lastPhase !== "aggressive") habitat.jolt(0.8, `${BENNU.name}, furioso, sacudió la nave`);
+  lastPhase = expedition.phase;
+  interior.update(dt);
+  if (interior.active) {
+    renderer.render(interior.scene, interior.camera);
+    return;
+  }
   renderPhase();
 
   const s = flight.state;
@@ -134,4 +190,4 @@ renderer.setAnimationLoop((now) => {
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior };

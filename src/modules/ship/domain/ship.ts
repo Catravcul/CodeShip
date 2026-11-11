@@ -29,7 +29,7 @@ export class Ship {
   private readonly fuel = new Map<Propellant, number>();
   private _hull = 1;
 
-  private constructor(private readonly design: ShipDesign) {
+  private constructor(readonly design: ShipDesign) {
     for (const t of design.tanks) {
       if (t.fillKg < 0 || t.fillKg > t.spec.capacityKg) throw new RangeError(`Tank fill out of range: ${t.fillKg} kg`);
       this.fuel.set(t.spec.propellant, (this.fuel.get(t.spec.propellant) ?? 0) + t.fillKg);
@@ -70,6 +70,10 @@ export class Ship {
 
   damage(fraction: number): void {
     this._hull = Math.max(0, this._hull - Math.max(0, fraction));
+  }
+
+  repair(fraction: number): void {
+    this._hull = Math.min(1, this._hull + Math.max(0, fraction));
   }
 
   propellantKg(p: Propellant): number {

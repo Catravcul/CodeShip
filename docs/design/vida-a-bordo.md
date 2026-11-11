@@ -9,7 +9,6 @@ El asteroide, las plantas, los gatos y la nave usan el mismo motor de duelo (`mo
 | Mente | Al persuadirla | Si se agota la paciencia | Conceptos que entrena |
 | --- | --- | --- | --- |
 | Asteroide | Obedece y sus recursos llenan la bodega | Se vuelve agresivo y hay que huir | Según masa y riqueza (1–10) |
-| Planta | Ánimo al máximo: crece más rápido | Se desanima un poco (ánimo −0,3) | Secuencia y variables (1–2) |
 | Gato | Aprende una regla nueva en su mente | Se molesta (estrés +0,3) y no aprende nada | Condicionales y eventos (5, 9) |
 | Nave | Se monta la pieza nueva | La pieza queda mal montada y rinde menos | Variables, operaciones, reparar (2, 4) |
 
@@ -46,9 +45,7 @@ El Veggie usaba LED rojos, azules y verdes. En el juego, «luces encendidas» es
 
 **Cuidados.** Hay que regar (el sustrato se seca), mantener las luces encendidas, agitar el chile antes de que fructifique y proteger la planta de los gatos.
 
-**Ánimo.** Con ánimo neutro la planta crece al ritmo real del experimento. Al animarla sube al máximo y crece hasta un 15 % más rápido. Si se desanima, crece hasta un 15 % más lento. El ánimo vuelve poco a poco a neutro.
-
-**Aviso honesto:** que hablar a las plantas acelere su crecimiento es **ficción del juego**. No hay evidencia sólida, y el documento lo deja claro para no enseñar algo falso.
+Hablar a las plantas para que produzcan más **se retiró** (decisión de Berón, 2026-11-11). En su lugar, cuidar, cosechar y cocinar son retos de código (ver «Todo a bordo es un reto de código»). Sin ánimo, la planta crece exactamente al ritmo real del experimento si está regada, iluminada y sana.
 
 **Planta nueva.** Durante sus 3 primeros días la planta es «nueva» y atrae a los gatos.
 
@@ -115,6 +112,42 @@ En el borrador se mostraba el código de la clase de la nave y se actualizaba al
   La línea cambiada se resalta como un diff.
 - **Si fallas.** La nave no se enfada: la pieza queda mal montada y rinde menos (menos empuje, fugas). Para arreglarla hay un reto de **reparar** sobre esa línea.
 
+## Todo a bordo es un reto de código
+
+Cada tarea es una **cadena de retos en orden** (`modules/chores`): cada reto resuelto es un paso hecho. Si fallas dos veces, la tarea queda sin hacer y hay que repetirla. Los retos **se generan a partir del estado y de los datos reales**, no salen de un banco fijo:
+
+| Tarea | Cuándo aparece | Retos | Efecto al terminar |
+| --- | --- | --- | --- |
+| Curar planta | Salud < 70 % (mordisco de gato, sacudida del asteroide…) | Ordenar la cura · predecir la salud final | Salud +40 % |
+| Regar | Agua < 40 % | Completar el umbral del `si` · ordenar el riego | Agua al 100 % |
+| Polinizar | El chile florece (mitad del día 100) | Especificar la orden correcta · ordenar | Habrá fruto (PH-04: hay que agitarlo) |
+| Cosechar | Llega el día real de cosecha | Ordenar · predecir las porciones con un `si/si no` | Porciones a la despensa |
+| Dar de comer al gato | Saciedad < 50 % | **Calcular la ración con la fórmula real** (70·kg^0,75 × factor ÷ 2) · ordenar | Media ración diaria |
+| Calmar al gato | Estrés > 50 % (bufidos, sacudidas) | Predecir qué hace el programa según sus orejas · ordenar | Juego, cariño y calma |
+| Cocinar | Hay ingredientes en la despensa | Ordenar los pasos de la receta (dos mitades) | Platos y saciedad del tripulante |
+| Yoga | Siempre | **Un reto por postura**: elegir la siguiente postura y su respiración | Cada acierto mueve la figura a esa postura; la secuencia sube forma y calma |
+| Reparar la nave | Casco < 100 % | Encontrar la línea dañada del código de la nave · completar el valor real | Casco +30 % |
+
+**Escenarios.** La tarea cuenta por qué hace falta: «Luna mordisqueó la lechuga (l2)», «Bennu, furioso, sacudió la nave: la maceta de chile (c1) se volcó». Cuando el asteroide se enfurece, la sacudida daña plantas, asusta a los gatos, estresa al tripulante y deja el casco dañado.
+
+**Yoga de Cold Sanctuary.** Las secuencias salen de la ficha de asanas de Cold Sanctuary ([yoga-asanas-spec.md](https://github.com/videnacry/cold-sanctuary/blob/master/docs/yoga-asanas-spec.md)): Upa-yoga de cuello y hombros (6 ejercicios) y Saludo al Sol (12 asanas con su respiración). La figura de cubos imita el rig de Cold Sanctuary.
+
+**Recetas de Cold Sanctuary.** Las recetas vienen del restaurante de Cold Sanctuary ([CookingRecipe.cs](https://github.com/videnacry/cold-sanctuary/blob/master/Assets/Scripts/Kitchen/CookingRecipe.cs)). La ensalada usa la lechuga de a bordo, la milpa usa el chile y el mercimek solo usa despensa seca.
+
+## El interior
+
+El módulo habitable se recorre en primera persona: joystick y arrastrar para mirar en el móvil, WASD y flechas en el escritorio. Tiene estas estaciones:
+
+- el **huerto**, con luces LED de cultivo;
+- la **cocina**;
+- la **esterilla de yoga**, con la figura de perfil;
+- el **rincón de los gatos**;
+- el **panel de la mente de la nave**, con su clase y sus valores reales.
+
+El botón **Tareas** lista lo pendiente con su escenario. Al elegir una, el personaje camina a la estación y el reto se abre en una hoja inferior, para que se siga viendo la planta, el gato o la postura.
+
+Se camina con los pies en el suelo porque el módulo es un **anillo giratorio con gravedad artificial**. Es una licencia de diseño para poder hacer yoga y cocinar: las naves reales, como la ISS, no la tienen.
+
 ## Qué hay implementado
 
 | Pieza | Dónde | Estado |
@@ -124,10 +157,13 @@ En el borrador se mostraba el código de la clase de la nave y se actualizaba al
 | Gato (energía real, necesidades, estrés, reglas) | `modules/pets/domain/cat.ts` | ✓ con tests |
 | Instintos y decisión | `modules/pets/domain/behavior.ts` | ✓ con tests |
 | Presentaciones entre gatos | `modules/pets/domain/introduction.ts` | ✓ con tests |
-| Hábitat: une plantas, gatos, encuentros y charlas | `modules/habitat/application/habitat.ts` | ✓ con tests |
-| Lecciones para gatos y charla con plantas | `pets/data/rules.ts`, `garden/data/minds.ts` | ✓ 9 ejercicios |
-| Mente de la nave (vista de su clase y retos generados) | — | diseñado |
-| Interior 3D de la nave, personaje caminando, gatos y macetas visibles | — | siguiente paso |
+| Hábitat: une plantas, gatos, tripulante, despensa, sacudidas, tareas y charlas con gatos | `modules/habitat/application/habitat.ts` | ✓ con tests |
+| Lecciones para programar gatos | `pets/data/rules.ts` | ✓ 6 ejercicios |
+| Tareas como cadenas de retos generados | `modules/chores` | ✓ con tests |
+| Tripulante (saciedad, forma, estrés) | `modules/crew` | ✓ con tests |
+| Yoga y recetas de Cold Sanctuary | `wellness/data/yoga.ts`, `kitchen/data/recipes.ts` | ✓ |
+| Panel de la mente de la nave y reparación por retos | `chores/application/catalog.ts`, `src/interior.ts` | ✓ (cambiar piezas: pendiente) |
+| Interior 3D: caminar, huerto, gatos, cocina, esterilla, panel | `src/interior.ts`, `src/adapters/three/interior/` | ✓ |
 | Viaje automático programado entre asteroides | — | pendiente |
 
 Los números de cuidado sin fuente (velocidad de secado, ritmo de juego y de cariño, probabilidad de mordisco, días por etapa) están marcados en el código como **ajuste de juego**. Así se distinguen de los datos reales.

@@ -51,18 +51,6 @@ describe("Plant", () => {
     expect(p.developmentDays).toBe(0);
   });
 
-  it("neutral mood grows at real speed; encouragement makes it grow faster than a neglected mood", () => {
-    const happy = new Plant("a", LETTUCE_OUTREDGEOUS);
-    const sad = new Plant("b", LETTUCE_OUTREDGEOUS);
-    sad.encourage(-1);
-    for (let d = 0; d < 20; d++) {
-      happy.encourage(1);
-      grow(happy, 1);
-      grow(sad, 1);
-    }
-    expect(happy.developmentDays).toBeGreaterThan(sad.developmentDays * 1.1);
-  });
-
   it("chile gives two harvests (days 100 and 120) and needs shaking to set fruit", () => {
     const shaken = new Plant("c1", CHILE_ESPANOLA);
     const still = new Plant("c2", CHILE_ESPANOLA);
@@ -77,10 +65,23 @@ describe("Plant", () => {
     expect(shaken.finished).toBe(false);
   });
 
-  it("bites hurt it and harvesting early throws", () => {
+  it("chile flowers halfway to its first harvest; lettuce never asks to be shaken", () => {
+    const c = new Plant("c", CHILE_ESPANOLA);
+    grow(c, 49);
+    expect(c.flowering).toBe(false);
+    grow(c, 2);
+    expect(c.flowering).toBe(true);
+    const l = new Plant("l", LETTUCE_OUTREDGEOUS);
+    grow(l, 30);
+    expect(l.flowering).toBe(false);
+  });
+
+  it("damage hurts it, tending heals it, and harvesting early throws", () => {
     const p = new Plant("l1", LETTUCE_OUTREDGEOUS);
-    p.bite(0.4);
-    expect(p.health).toBeCloseTo(0.6);
+    p.damage(0.7);
+    expect(p.health).toBeCloseTo(0.3);
+    p.tend();
+    expect(p.health).toBeCloseTo(0.7);
     expect(() => p.harvest()).toThrow();
   });
 });

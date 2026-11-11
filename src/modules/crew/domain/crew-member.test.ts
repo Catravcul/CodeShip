@@ -14,10 +14,10 @@ describe("CrewMember", () => {
   it("a full yoga sequence raises fitness and lowers stress", () => {
     const c = new CrewMember("Berón");
     c.startle(0.5);
-    const before = { f: c.fitness, s: c.stress, h: c.health };
+    const before = { f: c.fitness, s: c.stress, h: c.wellbeing };
     for (let i = 0; i < 12; i++) c.practice(12);
     expect(c.fitness).toBeCloseTo(before.f + 0.25);
     expect(c.stress).toBeCloseTo(before.s - 0.3);
-    expect(c.health).toBeGreaterThan(before.h);
+    expect(c.wellbeing).toBeGreaterThan(before.h);
   });
 });

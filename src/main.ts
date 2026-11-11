@@ -19,7 +19,18 @@ import { KeyboardPilot } from "./adapters/input/keyboard";
 import { Hud } from "./ui/hud";
 import { Habitat } from "@modules/habitat/application/habitat";
 import { Cat } from "@modules/pets/domain/cat";
-import { CHILE_ESPANOLA, LETTUCE_OUTREDGEOUS } from "@modules/garden/data/species";
+import {
+  CAT_GRASS,
+  CHILE_ESPANOLA,
+  LETTUCE_OUTREDGEOUS,
+  POTATO_NORLAND,
+  RADISH_CHERRY_BELLE,
+  SOYBEAN_HOYT,
+  TOMATO_RED_ROBIN,
+  WHEAT_APOGEE,
+} from "@modules/garden/data/species";
+import { MACHINES } from "@modules/life-support/data/machines";
+import { Hen } from "@modules/poultry/domain/hen";
 import type { Plant } from "@modules/garden/domain/plant";
 import { seededRandom } from "./content/random";
 import { Interior } from "./interior";
@@ -39,17 +50,39 @@ const flight = new FlightComputer(ship, start, { gravitySources: [bennu], target
 const expedition = new Expedition(flight, bennu, EXERCISES, 500);
 
 // Life on board: a long leg is already under way, so the garden has some days behind it.
-const habitat = new Habitat(seededRandom(2026), 2, ship, "Berón");
+const habitat = new Habitat(seededRandom(2026), 3, ship, "Berón", MACHINES);
 const growFor = (p: Plant, days: number) => {
   for (let t = 0; t < days; t += 0.25) {
     p.tick(0.25, { lit: true });
     if (p.water < 0.5) p.waterIt();
   }
 };
-growFor(habitat.plant("l1", LETTUCE_OUTREDGEOUS), 31);
-growFor(habitat.plant("c1", CHILE_ESPANOLA), 51);
-habitat.plant("l2", LETTUCE_OUTREDGEOUS);
+const garden: [string, Parameters<Habitat["plant"]>[1], number][] = [
+  ["l1", LETTUCE_OUTREDGEOUS, 31],
+  ["l2", LETTUCE_OUTREDGEOUS, 0],
+  ["c1", CHILE_ESPANOLA, 51],
+  ["t1", TOMATO_RED_ROBIN, 44],
+  ["t2", TOMATO_RED_ROBIN, 0],
+  ["r1", RADISH_CHERRY_BELLE, 27],
+  ["r2", RADISH_CHERRY_BELLE, 10],
+  ["p1", POTATO_NORLAND, 91],
+  ["p2", POTATO_NORLAND, 40],
+  ["s1", SOYBEAN_HOYT, 90],
+  ["s2", SOYBEAN_HOYT, 30],
+  ["w1", WHEAT_APOGEE, 77],
+  ["w2", WHEAT_APOGEE, 77],
+  ["w3", WHEAT_APOGEE, 35],
+  ["g1", CAT_GRASS, 12],
+];
+for (const [id, sp, days] of garden) growFor(habitat.plant(id, sp), days);
+// Stores the ship left with: cat food, hen feed and culture medium for the bioreactor.
+habitat.stock("pienso-gatos", 1500);
+habitat.stock("pienso-gallinas", 4);
+habitat.stock("medio-cultivo", 12);
 habitat.adopt(new Cat("luna", "Luna", 4));
+// Nube came aboard at the last stop: the two are still being introduced.
+habitat.adopt(new Cat("nube", "Nube", 3.2))[0]!.startAt("contacto-visual");
+for (const [id, name] of [["clara", "Clara"], ["yema", "Yema"], ["pinta", "Pinta"]] as const) habitat.addHen(new Hen(id, name));
 
 // --- Rendering adapter ------------------------------------------------------
 const root = document.getElementById("app")!;

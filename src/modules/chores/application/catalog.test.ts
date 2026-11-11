@@ -6,7 +6,14 @@ import { Cat } from "@modules/pets/domain/cat";
 import { explorerDesign } from "@modules/ship/data/explorer";
 import { RECIPES } from "@modules/kitchen/data/recipes";
 import { YOGA_SEQUENCES, SUN_SALUTATION } from "@modules/wellness/data/yoga";
-import { catChores, cookingChore, plantChores, repairChore, shipCode, toCall, yogaChore } from "./catalog";
+import { PROCESSES } from "@modules/kitchen/data/processes";
+import { MACHINES } from "@modules/life-support/data/machines";
+import { Machine } from "@modules/life-support/domain/machine";
+import { Bioreactor } from "@modules/cultured-meat/domain/bioreactor";
+import { Hen } from "@modules/poultry/domain/hen";
+import { Health } from "@modules/medical/domain/health";
+import { PROTOCOLS } from "@modules/medical/data/protocols";
+import { bioreactorChores, henChores, machineRepairChore, patientChore, processChore, plainStep, catMeal, catChores, cookingChore, plantChores, repairChore, shipCode, toCall, yogaChore } from "./catalog";
 
 function valid(e: Exercise) {
   if (e.kind === "order") {
@@ -41,7 +48,7 @@ describe("chore catalog", () => {
       ...plantChores(hurt),
       ...plantChores(ripe),
       ...catChores(cat),
-      ...RECIPES.map(cookingChore),
+      ...RECIPES.map((r) => cookingChore(r)),
       ...YOGA_SEQUENCES.map(yogaChore),
       ...[0, 1, 2, 3, 4].map((s) => repairChore(explorerDesign(), 0.5, s)),
     ];
@@ -77,5 +84,36 @@ describe("chore catalog", () => {
       expect(ex.options[ex.correct]).toBe(changed[0]!.pseudo);
     }
     expect(original[0]).toContain("490 N");
+  });
+
+  it("production, animals, machines and the sickbay all make valid challenges", () => {
+    const b = new Bioreactor();
+    const chores = [...bioreactorChores(b, 3)];
+    b.seed();
+    b.tick(2);
+    chores.push(...bioreactorChores(b, 3));
+    b.contaminate();
+    chores.push(...bioreactorChores(b, 3));
+    const hens = [new Hen("a", "A"), new Hen("b", "B")];
+    hens[0]!.tick(0.8, 16);
+    chores.push(...henChores(hens, 2, 3, 16));
+    chores.push(...MACHINES.map((m, i) => machineRepairChore(new Machine(m), i)));
+    chores.push(...PROCESSES.map((p) => processChore(p, ["tira todo"])));
+    const patient = { id: "x", name: "X", kind: "humano", health: new Health("x") };
+    for (const k of Object.keys(PROTOCOLS) as (keyof typeof PROTOCOLS)[]) chores.push(patientChore(patient, patient.health.add(k, 0.5, "prueba")));
+    expect(chores.map((c) => c.kind)).toEqual(expect.arrayContaining(["cultivo-sembrar", "cultivo-renovar", "cultivo-esterilizar", "alimentar-gallinas", "recoger-huevos", "reparar-maquina", "procesar", "atender-paciente"]));
+    for (const c of chores) for (const e of c.exercises) valid(e);
+    const ids = chores.flatMap((c) => c.exercises.map((e) => e.id));
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("cats eat meat or kibble, never crops, in grams from their energy needs", () => {
+    const luna = new Cat("luna", "Luna", 4);
+    expect(catMeal(luna, { meatG: 500, kibbleG: 0 })).toEqual({ kcal: 119, food: "meat", grams: 99 });
+    expect(catMeal(luna, { meatG: 10, kibbleG: 500 })).toEqual({ kcal: 119, food: "kibble", grams: 31 });
+    expect(catMeal(luna, { meatG: 0, kibbleG: 0 })).toBeUndefined();
+    luna.tick(0.8, { resourcesOk: true });
+    expect(catChores(luna, undefined, { meatG: 0, kibbleG: 0 }).some((c) => c.kind === "alimentar-gato")).toBe(false);
+    expect(plainStep("cocina hasta {71|50|100} °C")).toBe("cocina hasta 71 °C");
   });
 });

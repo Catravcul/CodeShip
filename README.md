@@ -1,70 +1,56 @@
-# Getting Started with Create React App
+# Codeship
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Juego web de pilotaje espacial realista. El jugador vuela en primera persona hasta asteroides reales, se enfrenta a su «mente» resolviendo código y, si gana, el asteroide cede sus recursos. Comparte mundo con Cold Sanctuary.
 
-## Available Scripts
+Esta es la versión 2, rehecha desde cero con Three.js y TypeScript. El borrador anterior (React 17) sigue en las ramas `develop`, `top_nav` y `recuperar-onedrive`.
 
-In the project directory, you can run:
+## Arrancar
 
-### `npm start`
+```bash
+npm install
+npm run dev        # http://localhost:5173
+npm test           # tests del dominio (Vitest)
+npm run lint:arch  # comprueba que el dominio no dependa de Three.js ni del DOM
+npm run build
+```
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+## Controles
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+| Acción | Tecla |
+| --- | --- |
+| Avanzar / retroceder (RCS) | W / S |
+| Lateral (RCS) | A / D |
+| Subir / bajar (RCS) | R / F |
+| Cabeceo / guiñada | Flechas |
+| Alabeo | Q / E |
+| Motor principal | Espacio |
+| Asistente de rotación | T |
 
-### `npm test`
+## Arquitectura
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Monolito modular con arquitectura hexagonal. Cada módulo tiene `domain/` (reglas puras, sin motor), `application/` (casos de uso) y `data/` (catálogos con fuentes). Los adaptadores (Three.js, teclado, HUD) viven fuera y dependen del dominio, nunca al revés; `npm run lint:arch` lo comprueba en CI.
 
-### `npm run build`
+```
+src/
+  core/            núcleo compartido: Vec3, Quat, unidades, valores con fuente
+  modules/
+    ship/          nave como composición de componentes reales; masa, inercia, delta-v
+    flight/        sólido rígido 6DOF newtoniano, ordenador de vuelo a 120 Hz fijo
+    celestial/     asteroides reales: masa, densidad, rotación, gravedad, composición
+  content/         generadores procedurales deterministas (forma de asteroides)
+  adapters/three/  escena, cabina, malla del asteroide, estrellas
+  adapters/input/  teclado → orden de empuje
+  ui/              HUD
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Reglas: TDD en `domain/` y `application/`; cada valor real lleva su fuente (`sources` o `Sourced<T>`); la simulación es determinista y se prueba sin renderizar.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Datos reales usados
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+| Elemento | Valores | Fuente |
+| --- | --- | --- |
+| Motor principal R-4D | 490 N, Isp 312 s, 3,6 kg, MMH/NTO | [Wikipedia](https://en.wikipedia.org/wiki/R-4D) |
+| RCS MR-106L | 22 N (10–34 N), Isp 228–235 s, 0,59 kg, hidracina | [SatCatalog](https://satcatalog.com/component/mr-106l-22n) |
+| 101955 Bennu | 565×535×508 m, radio medio 245,03 m, 7,329×10¹⁰ kg, 1190 kg/m³, rotación 4,296057 h, tipo B | [Wikipedia](https://en.wikipedia.org/wiki/101955_Bennu) |
 
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
-
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+El casco y los tanques de la nave inicial son valores de juego, a sustituir por piezas reales. La distribución de 24 propulsores RCS en pares dedicados es una simplificación jugable.

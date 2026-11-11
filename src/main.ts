@@ -7,6 +7,11 @@ import { Asteroid } from "@modules/celestial/domain/asteroid";
 import { BENNU } from "@modules/celestial/data/bennu";
 import { RigidBodyState } from "@modules/flight/domain/rigid-body";
 import { FlightComputer } from "@modules/flight/application/flight-computer";
+import { Expedition } from "@modules/expedition/application/expedition";
+import { EXERCISES } from "@modules/mind-duel/data/exercises";
+import { asteroidSurfaceFn } from "./content/asteroid-shape";
+import { TouchPilot, mergeCommands } from "./adapters/input/touch";
+import { DuelView } from "./ui/duel-view";
 import { buildAsteroidMesh } from "./adapters/three/asteroid-mesh";
 import { buildCockpit } from "./adapters/three/cockpit";
 import { buildStarfield } from "./adapters/three/starfield";
@@ -14,13 +19,18 @@ import { KeyboardPilot } from "./adapters/input/keyboard";
 import { Hud } from "./ui/hud";
 
 // --- Domain setup -----------------------------------------------------------
-const bennu = new Asteroid(BENNU, Vec3.ZERO);
+const d = BENNU.dimensionsM.value;
+// One set of shape parameters drives both the render mesh and the surface the ship lands on.
+const shapeParams = { seed: 101955, size: { x: d.x, y: d.y, z: d.z }, detail: 6, ridge: 0.09, roughness: 0.06, craters: 60 };
+const surface = asteroidSurfaceFn(shapeParams);
+const bennu = new Asteroid(BENNU, Vec3.ZERO, (local) => surface(local));
 const ship = Ship.create(explorerDesign());
 const start = RigidBodyState.at(new Vec3(250, 120, 1600)).withOrientation(
   // Face the asteroid from the start position.
   Quat.fromAxisAngle(Vec3.Y, Math.atan2(250, 1600)).multiply(Quat.fromAxisAngle(Vec3.X, -Math.atan2(120, 1620))),
 );
 const flight = new FlightComputer(ship, start, { gravitySources: [bennu], target: bennu });
+const expedition = new Expedition(flight, bennu, EXERCISES, 500);
 
 // --- Rendering adapter ------------------------------------------------------
 const root = document.getElementById("app")!;
@@ -43,11 +53,7 @@ const sun = new THREE.DirectionalLight(0xfff4e6, 3.2);
 sun.position.set(-1, 0.4, 0.6).multiplyScalar(1e4);
 scene.add(sun, new THREE.AmbientLight(0x223344, 0.25));
 
-const d = BENNU.dimensionsM.value;
-const asteroidMesh = buildAsteroidMesh(
-  { seed: 101955, size: { x: d.x, y: d.y, z: d.z }, detail: 6, ridge: 0.09, roughness: 0.06, craters: 60 },
-  0x3b3835, // Bennu is very dark (albedo ~4%); tone mapping lifts it a little.
-);
+const asteroidMesh = buildAsteroidMesh(shapeParams, 0x3b3835); // Bennu is very dark; tone mapping lifts it a little.
 scene.add(asteroidMesh);
 
 const reticle = document.createElement("div");
@@ -65,6 +71,44 @@ const hud = new Hud(root, {
 
 const pilot = new KeyboardPilot(window);
 pilot.onToggleAssist = () => (flight.rotationAssist = !flight.rotationAssist);
+const touch = new TouchPilot(root);
+
+const duelView = new DuelView(root, BENNU.name, (answer) => {
+  const events = expedition.answer(answer);
+  return { ok: events.some((e) => e.type === "idea-accepted") };
+});
+const action = document.createElement("button");
+action.className = "action hidden";
+root.appendChild(action);
+action.addEventListener("click", () => {
+  if (expedition.canStartDuel) {
+    expedition.startDuel();
+    duelView.show(expedition.duel!);
+  } else if (expedition.phase === "persuaded" || expedition.phase === "aggressive") {
+    duelView.hide();
+  }
+});
+const banner = document.createElement("div");
+banner.className = "banner";
+root.appendChild(banner);
+
+function renderPhase(): void {
+  const p = expedition.phase;
+  const t = flight.telemetry();
+  action.classList.toggle("hidden", !(p === "landed" || ((p === "persuaded" || p === "aggressive") && duelView.visible)));
+  action.textContent = p === "landed" ? "Entrar en su mente" : "Volver a la cabina";
+  if (p === "persuaded") {
+    banner.textContent = `${BENNU.name} obedece: ${expedition.cargo.map((c) => `${c.kg.toFixed(0)} kg de ${c.material}`).join(", ")} en la bodega`;
+  } else if (p === "aggressive") {
+    const left = Math.max(0, expedition.safeDistanceM! - t.distanceToSurface);
+    banner.textContent = left > 0 ? `¡${BENNU.name} está furioso! Huye: faltan ${left.toFixed(0)} m hasta la distancia segura` : "A salvo. Espera a que se calme";
+  } else if (p === "landed") {
+    banner.textContent = "Nave anclada";
+  } else {
+    banner.textContent = t.distanceToSurface < 60 ? "Aterriza a menos de 0,10 m/s para anclarte" : "";
+  }
+  banner.className = `banner ${p}`;
+}
 
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -77,7 +121,8 @@ let last = performance.now();
 renderer.setAnimationLoop((now) => {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
-  flight.update(dt, pilot.command());
+  expedition.update(dt, mergeCommands(pilot.command(), touch.command()));
+  renderPhase();
 
   const s = flight.state;
   camera.position.set(s.position.x, s.position.y, s.position.z);
@@ -89,4 +134,4 @@ renderer.setAnimationLoop((now) => {
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition };

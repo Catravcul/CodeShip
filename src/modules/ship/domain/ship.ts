@@ -27,6 +27,7 @@ const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 /** A ship assembled from real components. Owns its propellant state; knows nothing about rendering. */
 export class Ship {
   private readonly fuel = new Map<Propellant, number>();
+  private _hull = 1;
 
   private constructor(private readonly design: ShipDesign) {
     for (const t of design.tanks) {
@@ -60,6 +61,15 @@ export class Ship {
     let p = 0;
     for (const v of this.fuel.values()) p += v;
     return this.dryMassKg + p;
+  }
+
+  /** 1 = intact, 0 = destroyed. */
+  get hullIntegrity(): number {
+    return this._hull;
+  }
+
+  damage(fraction: number): void {
+    this._hull = Math.max(0, this._hull - Math.max(0, fraction));
   }
 
   propellantKg(p: Propellant): number {

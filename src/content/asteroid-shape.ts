@@ -54,12 +54,10 @@ function normalize(p: number[]): number[] {
   return [p[0]! / l, p[1]! / l, p[2]! / l];
 }
 
-/**
- * Procedural rubble-pile asteroid: ellipsoid scaled to real extents, equatorial ridge,
- * fractal lumps and bowl-shaped craters with raised rims. Deterministic for a given seed.
- */
-export function generateAsteroidShape(p: AsteroidShapeParams): ShapeMesh {
-  const { v, f } = icosphere(p.detail);
+type ShapeRadius = (x: number, y: number, z: number) => number;
+
+/** Radius multiplier (≈1) for a unit direction, before scaling to the asteroid's extents. */
+function shapeRadiusFn(p: AsteroidShapeParams): ShapeRadius {
   const rnd = seededRandom(p.seed);
   const noise = valueNoise3(p.seed);
   const craters = Array.from({ length: p.craters }, () => {
@@ -67,10 +65,7 @@ export function generateAsteroidShape(p: AsteroidShapeParams): ShapeMesh {
     const radius = 0.05 + Math.pow(rnd(), 3) * 0.3; // many small, few large (angular radius, rad)
     return { dir, radius, depth: radius * (0.25 + rnd() * 0.15) };
   });
-
-  const positions = new Float32Array(v.length * 3);
-  v.forEach((n, i) => {
-    const [x, y, z] = n as [number, number, number];
+  return (x, y, z) => {
     let r = 1;
     // Equatorial ridge: smooth bulge around y = 0 and slightly flattened poles (no crease at the equator).
     r += p.ridge * Math.exp(-((y / 0.28) ** 2)) - p.ridge * 0.4 * y * y;
@@ -88,9 +83,38 @@ export function generateAsteroidShape(p: AsteroidShapeParams): ShapeMesh {
       if (d < 1) r -= c.depth * (1 - d * d);
       else if (d < 1.5) r += c.depth * 0.25 * Math.sin(((d - 1) / 0.5) * Math.PI);
     }
+    return r;
+  };
+}
+
+/**
+ * Procedural rubble-pile asteroid: ellipsoid scaled to real extents, equatorial ridge,
+ * fractal lumps and bowl-shaped craters with raised rims. Deterministic for a given seed.
+ */
+export function generateAsteroidShape(p: AsteroidShapeParams): ShapeMesh {
+  const { v, f } = icosphere(p.detail);
+  const radius = shapeRadiusFn(p);
+  const positions = new Float32Array(v.length * 3);
+  v.forEach((n, i) => {
+    const [x, y, z] = n as [number, number, number];
+    const r = radius(x, y, z);
     positions[i * 3] = x * r * (p.size.x / 2);
     positions[i * 3 + 1] = y * r * (p.size.y / 2);
     positions[i * 3 + 2] = z * r * (p.size.z / 2);
   });
   return { positions, indices: Uint32Array.from(f.flat()) };
+}
+
+/**
+ * Same surface as the mesh, as a function: distance from the centre to the surface along the
+ * ray through a point given in the asteroid's own frame. Lets the simulation land on the real shape.
+ */
+export function asteroidSurfaceFn(p: AsteroidShapeParams): (local: { x: number; y: number; z: number }) => number {
+  const radius = shapeRadiusFn(p);
+  const hx = p.size.x / 2, hy = p.size.y / 2, hz = p.size.z / 2;
+  return ({ x, y, z }) => {
+    const [ux, uy, uz] = normalize([x / hx, y / hy, z / hz]) as [number, number, number];
+    const r = radius(ux, uy, uz);
+    return Math.hypot(ux * r * hx, uy * r * hy, uz * r * hz);
+  };
 }

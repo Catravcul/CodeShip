@@ -36,3 +36,29 @@ describe("Asteroid", () => {
     expect(BENNU.massKg.value / volume / BENNU.densityKgM3.value).toBeLessThan(1.1);
   });
 });
+
+describe("Asteroid surface and spin", () => {
+  it("defaults to a sphere of the mean radius", () => {
+    const a = new Asteroid(BENNU, Vec3.ZERO);
+    expect(a.surfaceDistance(new Vec3(1000, 0, 0), 0)).toBeCloseTo(1000 - 245.03, 6);
+  });
+
+  it("uses the real shape when given one", () => {
+    const a = new Asteroid(BENNU, Vec3.ZERO, () => 300);
+    expect(a.surfaceDistance(new Vec3(0, 400, 0), 0)).toBeCloseTo(100, 6);
+  });
+
+  it("local and world frames round-trip after spinning", () => {
+    const a = new Asteroid(BENNU, new Vec3(5, 0, 0));
+    const p = new Vec3(100, 20, -30);
+    const back = a.toWorld(a.toLocal(p, 1234), 1234);
+    expect(back.x).toBeCloseTo(p.x, 9);
+    expect(back.z).toBeCloseTo(p.z, 9);
+  });
+
+  it("the ground moves with the spin: ω × r", () => {
+    const a = new Asteroid(BENNU, Vec3.ZERO);
+    const v = a.surfaceVelocity(new Vec3(245, 0, 0));
+    expect(v.z).toBeCloseTo(-a.spinRadS * 245, 12);
+  });
+});

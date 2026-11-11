@@ -3,8 +3,14 @@ import type { Habitat, HabitatEvent, ChoreSession } from "@modules/habitat/appli
 import type { Chore } from "@modules/chores/domain/chore";
 import { shipCode } from "@modules/chores/application/catalog";
 import { RECIPES } from "@modules/kitchen/data/recipes";
+import { PROCESSES } from "@modules/kitchen/data/processes";
+import { ITEMS } from "@modules/kitchen/data/items";
+import { CAT_LESSONS } from "@modules/pets/data/rules";
+import { PROTOCOLS } from "@modules/medical/data/protocols";
+import type { MachineId } from "@modules/life-support/domain/machine";
 import { YOGA_SEQUENCES } from "@modules/wellness/data/yoga";
-import { ROOM, STATIONS, POT_SLOTS, buildRoom, drawPanel, type Station } from "./adapters/three/interior/room";
+import { CAT_BOUNDS, COOP_BOUNDS, MACHINE_STATION, ROOM, STATIONS, POT_SLOTS, buildRoom, drawScreen, type RoomHandles, type Station } from "./adapters/three/interior/room";
+import { HenModel } from "./adapters/three/interior/hen-model";
 import { PlantModel } from "./adapters/three/interior/plant-model";
 import { CatModel } from "./adapters/three/interior/cat-model";
 import { CubeFigure } from "./adapters/three/interior/figure";
@@ -12,22 +18,23 @@ import { Walker } from "./adapters/input/walker";
 import type { DuelView, SessionText } from "./ui/duel-view";
 
 const CAT_COLORS = [0xd9822b, 0x2b2b2b, 0xe8e2d6, 0x8a8f99];
+const HEN_COLORS = [0xb5651d, 0xf2efe6, 0x2a2a2a, 0xc98a4a];
+const CONTEXT = { recipes: RECIPES, yoga: YOGA_SEQUENCES, processes: PROCESSES, lessons: CAT_LESSONS };
 /** Game days per real second while walking around (a day every ~40 s). Paused during a chore. */
 const DAYS_PER_SECOND = 1 / 40;
 
 const stationFor = (c: Chore): Station["id"] => {
   switch (c.kind) {
-    case "cocinar":
-      return "cocina";
     case "yoga":
       return "yoga";
     case "reparar-nave":
       return "panel";
     case "alimentar-gato":
     case "calmar-gato":
+    case "programar-gato":
       return "gatos";
     default:
-      return "huerto";
+      return c.machine ? MACHINE_STATION[c.machine as MachineId] : "huerto";
   }
 };
 
@@ -35,26 +42,38 @@ const choreText = (c: Chore): SessionText => ({
   title: c.title,
   progress: c.kind === "yoga" ? "Posturas" : "Pasos",
   lives: "Intentos",
-  order: c.kind === "cocinar" ? "Ordena los pasos de la receta" : "Ordena los pasos",
+  order: c.kind === "programar-gato" ? "Ordena su programa" : "Ordena los pasos",
   submit: "Hacerlo",
-  ok: c.kind === "yoga" ? "Entras en la postura" : "Bien hecho",
+  ok: c.kind === "yoga" ? "Entras en la postura" : c.kind === "cocinar" ? "Paso hecho" : "Bien hecho",
   bad: "Así no: inténtalo otra vez",
   sheet: true,
 });
 
 const EVENT_TEXT = (h: Habitat, e: HabitatEvent): string | undefined => {
-  const cat = (id: string) => h.cats.find((c) => c.id === id)?.name ?? id;
+  const who = (id: string) => h.patients.find((c) => c.id === id)?.name ?? id;
   switch (e.type) {
     case "plant-bitten":
-      return `${cat(e.catId)} ha mordisqueado una planta nueva`;
+      return `${who(e.catId)} ha mordisqueado una planta nueva`;
+    case "cat-grass":
+      return `${who(e.catId)} mordisquea su hierba en vez de las plantas`;
     case "cats-hissed":
-      return `${cat(e.a)} y ${cat(e.b)} se han bufado`;
+      return `${who(e.a)} y ${who(e.b)} se han bufado`;
+    case "cats-fought":
+      return `¡${who(e.a)} y ${who(e.b)} se han peleado! Llévalos a la enfermería`;
+    case "hens-stalked":
+      return `${who(e.catId)} acecha a las gallinas`;
+    case "injured":
+      return `${who(e.patientId)} necesita la enfermería (${e.cause})`;
+    case "machine-broken":
+      return "Una máquina se ha averiado";
+    case "culture-stage":
+      return e.stage === "contaminado" || e.stage === "perdido" ? "¡El cultivo de carne se ha perdido!" : e.stage === "listo" ? "La carne cultivada está lista" : undefined;
     case "introduction-advanced":
-      return `${cat(e.newcomerId)} y ${cat(e.residentId)}: ${e.stage.replace(/-/g, " ")}`;
+      return `${who(e.newcomerId)} y ${who(e.residentId)}: ${e.stage.replace(/-/g, " ")}`;
     case "plant-died":
       return "Una planta se ha secado";
     case "jolt":
-      return "¡Sacudida! Revisa plantas, gatos y nave";
+      return "¡Sacudida! Revisa plantas, animales, máquinas y nave";
     case "chore-done":
       return "Tarea hecha";
     default:
@@ -69,6 +88,11 @@ export class Interior {
   private readonly walker: Walker;
   private readonly plants: PlantModel[] = [];
   private readonly cats = new Map<string, CatModel>();
+  private readonly hens = new Map<string, HenModel>();
+  private readonly room: RoomHandles;
+  private screensKey = "";
+  private screensAt = 0;
+  private cooking = false;
   private readonly figure = new CubeFigure();
   private readonly panel: THREE.Mesh;
   private readonly ui: HTMLElement;
@@ -78,7 +102,7 @@ export class Interior {
   private readonly toast: HTMLElement;
   private yaw = Math.PI;
   private pitch = -0.05;
-  private pos = new THREE.Vector3(0, 0, -2.6);
+  private pos = new THREE.Vector3(0, 0, -4.6);
   private walkTo: { pos: THREE.Vector3; look: THREE.Vector3; then: () => void } | null = null;
   private session: ChoreSession | null = null;
   private panelKey = "";
@@ -91,10 +115,10 @@ export class Interior {
     private readonly habitat: Habitat,
     private readonly duel: DuelView,
   ) {
-    const { group, panel } = buildRoom();
-    this.scene.add(group);
+    this.room = buildRoom();
+    this.scene.add(this.room.group);
     this.scene.background = new THREE.Color(0x10141a);
-    this.panel = panel;
+    this.panel = this.room.panel;
     habitat.plants.forEach((p, i) => {
       const m = new PlantModel(p);
       m.root.position.copy(POT_SLOTS[i % POT_SLOTS.length]!);
@@ -102,12 +126,17 @@ export class Interior {
       this.scene.add(m.root);
     });
     habitat.cats.forEach((c, i) => {
-      const m = new CatModel(c.id, CAT_COLORS[i % CAT_COLORS.length]!, { minX: -1.2, maxX: 1.1, minZ: -3, maxZ: 3.4 });
+      const m = new CatModel(c.id, CAT_COLORS[i % CAT_COLORS.length]!, CAT_BOUNDS);
       this.cats.set(c.id, m);
       this.scene.add(m.root);
     });
+    habitat.hens.forEach((h, i) => {
+      const m = new HenModel(h.id, HEN_COLORS[i % HEN_COLORS.length]!, COOP_BOUNDS);
+      this.hens.set(h.id, m);
+      this.scene.add(m.root);
+    });
     const mat = new THREE.Group();
-    mat.position.set(0.2, 0, 2.4);
+    mat.position.set(0.2, 0, 4.0);
     mat.rotation.y = -Math.PI / 2; // profile to the room, like a yoga teacher's side view
     mat.add(this.figure.root);
     this.scene.add(mat);
@@ -197,6 +226,14 @@ export class Interior {
         m.update(dt);
       }
     }
+    for (const h of this.habitat.hens) {
+      const m = this.hens.get(h.id);
+      if (m) {
+        m.stress = h.stress;
+        m.update(dt);
+      }
+    }
+    this.syncMachines();
     this.figure.update(dt);
     this.syncPanel();
     this.renderHud();
@@ -223,7 +260,7 @@ export class Interior {
   }
 
   private currentChores(): Chore[] {
-    return this.habitat.chores(RECIPES, YOGA_SEQUENCES);
+    return this.habitat.chores(RECIPES, YOGA_SEQUENCES, CONTEXT);
   }
 
   private openBoard(filter?: Station["id"]): void {
@@ -244,19 +281,21 @@ export class Interior {
     let look = st.look.clone();
     let stand = st.stand.clone();
     if (chore.kind === "yoga") {
-      stand = new THREE.Vector3(0, 0, -1.3);
-      look = new THREE.Vector3(0, 0.8, 2.4);
+      stand = new THREE.Vector3(0, 0, 1.3);
+      look = new THREE.Vector3(0, 0.8, 4.0);
     }
     const plantIdx = this.habitat.plants.findIndex((p) => p.id === chore.targetId);
     if (plantIdx >= 0) {
       const slot = POT_SLOTS[plantIdx % POT_SLOTS.length]!;
-      stand = new THREE.Vector3(0.4, 0, slot.z);
-      look = slot.clone().setY(1.05);
+      stand = new THREE.Vector3(0.3, 0, slot.z);
+      look = slot.clone().setY(slot.y + 0.25);
     }
     const cat = chore.targetId ? this.cats.get(chore.targetId) : undefined;
-    if (cat) {
-      cat.goTo(new THREE.Vector3(-1.1, 0, 2.9));
-      look = new THREE.Vector3(-1.1, 0.2, 2.9);
+    if (cat && chore.kind === "atender-paciente") {
+      cat.goTo(new THREE.Vector3(-1.15, 0, 0.2));
+    } else if (cat) {
+      cat.goTo(new THREE.Vector3(-1.1, 0, 5.0));
+      look = new THREE.Vector3(-1.1, 0.2, 5.0);
     }
     this.walkTo = { pos: stand, look, then: () => this.startChore(chore) };
   }
@@ -287,7 +326,8 @@ export class Interior {
 
   private startChore(chore: Chore): void {
     this.frameForSheet(true);
-    const session = this.habitat.start(chore, { recipes: RECIPES, yoga: YOGA_SEQUENCES });
+    const session = this.habitat.start(chore, CONTEXT);
+    this.cooking = chore.kind === "cocinar";
     this.session = session;
     const run = session.run;
     if (chore.kind === "yoga") this.figure.pose("stand");
@@ -312,6 +352,7 @@ export class Interior {
 
   private endChore(): void {
     this.session = null;
+    this.cooking = false;
     this.frameForSheet(false);
     this.figure.pose("stand");
   }
@@ -336,16 +377,74 @@ export class Interior {
     const key = ship.hullIntegrity.toFixed(3);
     if (key === this.panelKey) return;
     this.panelKey = key;
-    drawPanel(this.panel, `class ${ship.design.hull.name.replace(/\s/g, "")}`, shipCode(ship.design).map((b) => b.pseudo), ship.hullIntegrity);
+    const hull = ship.hullIntegrity;
+    drawScreen(this.panel, `class ${ship.design.hull.name.replace(/\s/g, "")}`, [
+      ...shipCode(ship.design).map((b) => b.pseudo),
+      `${hull < 0.999 ? "!" : "+"}casco = ${Math.round(hull * 100)} %`,
+    ]);
+  }
+
+  /** Machine lamps, bioreactor tank and console, sickbay monitor, hob and nest eggs follow the domain. */
+  private syncMachines(): void {
+    const h = this.habitat;
+    for (const m of h.machines) {
+      const l = this.room.lamps.get(m.id);
+      if (!l) continue;
+      const mat = l.material as THREE.MeshStandardMaterial;
+      const c = m.working ? 0x37e07a : performance.now() % 800 < 400 ? 0xff3030 : 0x401010;
+      mat.color.setHex(c);
+      mat.emissive.setHex(c);
+    }
+    const b = h.bioreactor;
+    const med = this.room.medium;
+    med.visible = b.stage !== "vacio";
+    // Phenol red in the medium: pink at pH 7.4, orange and yellow as lactate acidifies it.
+    const acid = Math.min(1, Math.max(0, (7.4 - b.ph) / 0.6));
+    const mm = med.material as THREE.MeshStandardMaterial;
+    mm.color.setHex(b.stage === "contaminado" || b.stage === "perdido" ? 0x8a7a50 : 0xff5a7a).lerp(new THREE.Color(0xf2c230), b.stage === "proliferando" ? acid : 0);
+    med.scale.y = b.stage === "proliferando" ? 0.4 + 0.6 * Math.min(1, b.glucose + 0.3) : 1;
+    med.position.y = 0.125 + 0.375 * med.scale.y;
+    const hob = this.room.hob.material as THREE.MeshStandardMaterial;
+    hob.emissiveIntensity = this.cooking ? 1.4 + 0.3 * Math.sin(performance.now() / 120) : 0.15;
+    const eggs = this.room.nestEggs;
+    if (eggs.children.length !== Math.min(h.nestEggs, 8)) {
+      eggs.clear();
+      for (let i = 0; i < Math.min(h.nestEggs, 8); i++) {
+        const e = new THREE.Mesh(new THREE.SphereGeometry(0.025, 10, 8), new THREE.MeshStandardMaterial({ color: 0xf3e3c8 }));
+        e.scale.y = 1.3;
+        e.position.set(1.78 + (i % 2) * 0.06, 0.53, i < 4 ? 5.3 + (i % 2 ? 0.05 : -0.05) : 5.62 + (i % 2 ? 0.05 : -0.05));
+        eggs.add(e);
+      }
+    }
+    const sci = (n: number) => (n > 0 ? n.toExponential(1).replace("e+", "·10^") : "0");
+    const reactorLines = [
+      `${b.stage === "contaminado" || b.stage === "perdido" ? "!" : "+"}fase: ${b.stage}`,
+      `células: ${sci(b.cells)} (${b.doublings.toFixed(1)} duplicaciones)`,
+      `${b.needsMedium ? "!" : ""}pH: ${b.ph.toFixed(2)}   glucosa: ${Math.round(b.glucose * 100)} %`,
+      `temperatura: 37 °C   rinde: ${b.yieldG} g`,
+      `medio: ${h.larder("medio-cultivo")} lotes   carne: ${h.larder("carne-cultivada")} g`,
+    ];
+    const patients = h.patients.flatMap((p) => p.health.conditions.map((c) => `${c.treated ? "+" : "!"}${p.name}: ${PROTOCOLS[c.kind].name.toLowerCase()} ${Math.round(c.severity * 100)} %${c.treated ? " (en recuperación)" : ""}`));
+    const medLines = patients.length ? patients.slice(0, 7) : ["+Nadie en la enfermería", "Triaje: A·B·C·D·E", "Camilla, ecógrafo, desfibrilador", "Mesa veterinaria y botiquín"];
+    const key = reactorLines.join("|") + medLines.join("|");
+    if (key !== this.screensKey && performance.now() - this.screensAt > 400) {
+      this.screensKey = key;
+      this.screensAt = performance.now();
+      drawScreen(this.room.reactorScreen, "Biorreactor", reactorLines);
+      drawScreen(this.room.medScreen, "Enfermería", medLines);
+    }
   }
 
   private renderHud(): void {
     const c = this.habitat.crew;
     const bar = (label: string, v: number, cls = "") => `<div class="bar ${cls}"><span>${label}</span><i style="width:${Math.round(Math.min(1, v) * 100)}%"></i></div>`;
-    const larder = ["lechuga-outredgeous", "chile-espanola"].map((k) => this.habitat.larder(k));
+    const larder = ITEMS.map((i) => [i, this.habitat.larder(i.id)] as const)
+      .filter(([, n]) => n > 0)
+      .map(([i, n]) => `${n}${i.unit === "g" ? " g" : ""} ${i.name}`)
+      .join(" · ");
     this.hud.innerHTML = `
       <div class="ititle">Día ${Math.floor(this.dayClock) + 1} a bordo</div>
       ${bar("Saciedad", c.satiety)}${bar("Forma", c.fitness)}${bar("Calma", 1 - c.stress)}
-      <div class="small">Despensa: ${larder[0]} lechuga · ${larder[1]} chile · ${this.habitat.meals} platos cocinados</div>`;
+      <div class="small">Despensa: ${larder || "vacía"} · ${this.habitat.meals} platos cocinados</div>`;
   }
 }

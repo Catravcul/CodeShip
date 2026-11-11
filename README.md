@@ -26,7 +26,7 @@ npm run build
 | Motor principal | Espacio |
 | Asistente de rotación | T |
 
-En el móvil hay mandos táctiles. Con el botón **Ir al interior** se entra en el módulo habitable: se camina con WASD (o el joystick) y se mira con las flechas o arrastrando. **Tareas** lista lo que hay que hacer a bordo; cada tarea es una cadena de retos de código (ver [vida-a-bordo.md](docs/design/vida-a-bordo.md)).
+En el móvil hay mandos táctiles. Con el botón **Ir al interior** se entra en el módulo habitable: se camina con WASD (o el joystick) y se mira con las flechas o arrastrando. **Tareas** lista lo que hay que hacer a bordo; cada tarea es una cadena de retos de código (ver [vida-a-bordo.md](docs/design/vida-a-bordo.md)). El módulo tiene huerto, cocina, molino, laboratorio de carne cultivada, enfermería, gallinero, rincón de los gatos, esterilla de yoga y el panel de la mente de la nave.
 
 ## Arquitectura
 

@@ -1,7 +1,15 @@
 import type { ChoiceExercise, CodeBlock, Concept, Exercise, OrderExercise } from "@modules/mind-duel/domain/exercise";
 import type { Plant } from "@modules/garden/domain/plant";
 import { PLANT_TUNING } from "@modules/garden/domain/plant";
-import { MER_FACTOR, RER, type Cat } from "@modules/pets/domain/cat";
+import { FOOD_KCAL_PER_G, MER_FACTOR, RER, type Cat } from "@modules/pets/domain/cat";
+import type { CatLesson } from "@modules/pets/data/rules";
+import type { Process } from "@modules/kitchen/data/processes";
+import { itemName } from "@modules/kitchen/data/items";
+import { Bioreactor, CULTURE } from "@modules/cultured-meat/domain/bioreactor";
+import { HEN_TUNING, LAYING_LIGHT_HOURS, type Hen } from "@modules/poultry/domain/hen";
+import type { Machine } from "@modules/life-support/domain/machine";
+import type { Condition, Patient } from "@modules/medical/domain/health";
+import { ABCDE, PROTOCOLS } from "@modules/medical/data/protocols";
 import type { ShipDesign } from "@modules/ship/domain/ship";
 import type { Recipe } from "@modules/kitchen/data/recipes";
 import type { Breath, YogaSequence } from "@modules/wellness/data/yoga";
@@ -117,7 +125,7 @@ export function plantChores(p: Plant, scenario?: string): Chore[] {
           10,
           "especificar",
           "Mis flores esperan",
-          "¿Qué orden poliniza el chile en la nave?",
+          `¿Qué orden poliniza ${p.species.name.toLowerCase()} en la nave?`,
           [],
           "Agita la planta con suavidad para que el polen caiga en sus flores",
           ["Corta las flores para que salgan frutos", "Riega las flores directamente"],
@@ -126,7 +134,7 @@ export function plantChores(p: Plant, scenario?: string): Chore[] {
       ],
     });
   }
-  if (p.readyToHarvest) {
+  if (p.readyToHarvest && !p.species.forCats) {
     const fruit = !p.species.needsShaking.value || p.shaken;
     const portions = fruit ? (p.health >= 0.5 ? 2 : 1) : 0;
     out.push({
@@ -161,18 +169,36 @@ export function plantChores(p: Plant, scenario?: string): Chore[] {
 
 // --- Cats --------------------------------------------------------------------
 
-export function catChores(c: Cat, scenario?: string): Chore[] {
+/** What the cats can eat right now (grams). Cats are obligate carnivores: no crops. */
+export interface CatFood {
+  readonly meatG: number;
+  readonly kibbleG: number;
+}
+
+/** Grams of a cat's meal: half its daily energy, from meat if there is enough, else stored kibble. */
+export function catMeal(c: Cat, food: CatFood): { kcal: number; food: "meat" | "kibble"; grams: number } | undefined {
+  const kcal = Math.round((RER.value(c.massKg) * MER_FACTOR.value[c.lifeStage]) / 2);
+  const meat = Math.round(kcal / FOOD_KCAL_PER_G.value.meat);
+  if (food.meatG >= meat) return { kcal, food: "meat", grams: meat };
+  const kibble = Math.round(kcal / FOOD_KCAL_PER_G.value.kibble);
+  if (food.kibbleG >= kibble) return { kcal, food: "kibble", grams: kibble };
+  return undefined;
+}
+
+export function catChores(c: Cat, scenario?: string, food: CatFood = { meatG: Infinity, kibbleG: Infinity }): Chore[] {
   const out: Chore[] = [];
-  if (c.satiety < 0.5) {
+  const meal = catMeal(c, food);
+  if (c.satiety < 0.5 && meal) {
     const rer = RER.value(c.massKg);
     const factor = MER_FACTOR.value[c.lifeStage];
-    const meal = Math.round((rer * factor) / 2);
+    const kcalPerG = FOOD_KCAL_PER_G.value[meal.food];
+    const what = meal.food === "meat" ? "carne cultivada" : "pienso";
     out.push({
       id: `alimentar-${c.id}`,
       kind: "alimentar-gato",
       targetId: c.id,
       title: `Dar de comer a ${c.name}`,
-      scenario: `${c.name} maúlla junto a su comedero`,
+      scenario: `${c.name} maúlla junto a su comedero (${what})`,
       exercises: [
         choice(
           `alimentar-${c.id}-racion`,
@@ -185,10 +211,20 @@ export function catChores(c: Cat, scenario?: string): Chore[] {
             block("b", `guardar reposo × ${fmt(factor)} en diario`, `const diario = reposo * ${factor};`),
             block("c", "guardar diario ÷ 2 en comida", "const comida = diario / 2; // dos comidas al día"),
           ],
-          `${meal} kcal`,
-          [`${Math.round(rer / 2)} kcal`, `${Math.round(rer * factor)} kcal`, `${Math.round(meal * 2.5)} kcal`],
+          `${meal.kcal} kcal`,
+          [`${Math.round(rer / 2)} kcal`, `${Math.round(rer * factor)} kcal`, `${Math.round(meal.kcal * 2.5)} kcal`],
         ),
-        order(`alimentar-${c.id}-pasos`, 1, "Así me gusta", ["medir la ración", "servirla en su comedero", "cambiar el agua"]),
+        choice(
+          `alimentar-${c.id}-gramos`,
+          4,
+          "predecir",
+          "Soy carnívoro: nada de lechuga",
+          `La ${what} da ${fmt(kcalPerG)} kcal por gramo. ¿Cuántos gramos sirves?`,
+          [block("a", `guardar ${meal.kcal} ÷ ${fmt(kcalPerG)} en gramos`, `const gramos = Math.round(${meal.kcal} / ${kcalPerG});`)],
+          `${meal.grams} g`,
+          [`${Math.round(meal.kcal * kcalPerG)} g`, `${meal.kcal} g`, `${Math.round(meal.grams / 3)} g`],
+        ),
+        order(`alimentar-${c.id}-pasos`, 1, "Así me gusta", ["pesar la ración", "servirla en su comedero", "cambiar el agua"]),
       ],
     });
   }
@@ -223,19 +259,74 @@ export function catChores(c: Cat, scenario?: string): Chore[] {
   return out;
 }
 
+// --- Step chains: one challenge per step ------------------------------------
+
+const PARAM = /\{([^}]+)\}/;
+/** "cocina hasta {71|50|100} °C" → "cocina hasta 71 °C" */
+export const plainStep = (step: string): string => step.replace(PARAM, (_, g: string) => g.split("|")[0]!);
+
+/**
+ * A procedure where each step is one challenge: pick the step that comes next (the last two are shown
+ * as code), or fill in the real value when the step carries one (`{right|wrong|wrong}`).
+ */
+export function stepChain(idBase: string, concept: Concept, idea: (i: number) => string, steps: readonly string[], pool: readonly string[]): Exercise[] {
+  const plain = steps.map(plainStep);
+  return steps.map((step, i) => {
+    const prev = plain.slice(Math.max(0, i - 2), i).map((q, k) => {
+      const n = Math.max(0, i - 2) + k;
+      return block(String(n), `${n + 1}. ${q}`, toCall(q));
+    });
+    const id = `${idBase}-${i + 1}`;
+    const param = PARAM.exec(step);
+    if (param) {
+      const [right, ...wrong] = param[1]!.split("|");
+      const unit = step.slice(param.index + param[0].length).trim().split(" ")[0] ?? "";
+      const u = (v: string) => (unit ? `${v} ${unit}` : v);
+      const gap = step.replace(PARAM, "___");
+      return choice(id, 2, "completar", idea(i), `Paso ${i + 1} de ${steps.length}: ¿qué valor falta?`, [...prev, block("x", `${i + 1}. ${gap}`, toCall(gap.replace("___", "")).replace("();", "(___);"))], u(right!), wrong.map(u));
+    }
+    const later = plain[i + 1] ?? plain.find((_, k) => k < i - 2);
+    const foreign = pool.find((x) => !plain.includes(x) && x !== later) ?? "tira todo a la basura";
+    const wrong = [later, foreign].filter((x): x is string => !!x && x !== plain[i]);
+    if (wrong.length < 2) wrong.push("espera sin hacer nada");
+    return choice(id, concept, "predecir", idea(i), i === 0 ? `¿Con qué paso empieza? (${steps.length} pasos)` : `Paso ${i + 1} de ${steps.length}: ¿qué viene ahora?`, prev, plain[i]!, wrong);
+  });
+}
+
 // --- Kitchen -----------------------------------------------------------------
 
-/** Each recipe becomes ordering challenges: its steps split into halves (Parsons problems). */
-export function cookingChore(r: Recipe): Chore {
-  const steps = r.steps.value;
-  const half = Math.ceil(steps.length / 2);
+/** Steps of other procedures, used as plausible wrong answers. */
+export const stepPool = (lists: readonly (readonly string[])[]): string[] => [...new Set(lists.flat().map(plainStep))];
+
+const listItems = (r: Readonly<Record<string, number>>) =>
+  Object.entries(r)
+    .map(([k, n]) => `${n} ${itemName(k)}`)
+    .join(", ");
+
+/** Each recipe step is one challenge. */
+export function cookingChore(r: Recipe, pool: readonly string[] = []): Chore {
+  const uses = Object.keys(r.ingredients).length ? listItems(r.ingredients) : "solo despensa seca";
   return {
     id: `cocinar-${r.id}`,
     kind: "cocinar",
     targetId: r.id,
+    machine: "cocina",
     title: `Cocinar ${r.name}`,
-    scenario: `Hay ingredientes para ${r.name.toLowerCase()} (${r.portions} porciones)`,
-    exercises: [order(`cocinar-${r.id}-1`, 1, "Primero, preparar", steps.slice(0, half)), order(`cocinar-${r.id}-2`, 1, "Después, cocinar y servir", steps.slice(half))],
+    scenario: `Usa ${uses} → ${r.portions} ${r.portions === 1 ? "porción" : "porciones"}`,
+    exercises: stepChain(`cocinar-${r.id}`, 1, (i) => `${r.name}: paso ${i + 1}`, r.steps.value, pool),
+  };
+}
+
+/** A machine turns a harvest into an ingredient; each step is one challenge. */
+export function processChore(p: Process, pool: readonly string[] = []): Chore {
+  return {
+    id: `procesar-${p.id}`,
+    kind: "procesar",
+    targetId: p.id,
+    machine: p.machine,
+    title: p.name,
+    scenario: `${listItems(p.inputs)} → ${listItems(p.outputs)}`,
+    exercises: stepChain(`procesar-${p.id}`, 1, (i) => `${p.name}: paso ${i + 1}`, p.steps.value, pool),
   };
 }
 
@@ -315,6 +406,260 @@ export function repairChore(design: ShipDesign, hull: number, seed: number, scen
         String(main.thrustN),
         [String(main.thrustN * 10), String(Math.round(main.thrustN / 10))],
       ),
+    ],
+  };
+}
+
+// --- Cats: programming their minds ------------------------------------------
+
+/** Writing a rule into a cat's mind is a chore too: the lesson's ideas, in order. */
+export function catLessonChore(c: Cat, lesson: CatLesson, scenario: string): Chore {
+  return {
+    id: `programar-${c.id}-${lesson.rule.id}`,
+    kind: "programar-gato",
+    targetId: c.id,
+    title: `Programar a ${c.name}: ${lesson.rule.id.replace(/-/g, " ")}`,
+    scenario,
+    exercises: lesson.exercises,
+  };
+}
+
+// --- Hens --------------------------------------------------------------------
+
+export function henChores(hens: readonly Hen[], nestEggs: number, feedDays: number, lightHours: number): Chore[] {
+  const out: Chore[] = [];
+  if (hens.length === 0) return out;
+  const hungry = hens.filter((h) => h.satiety < 0.5);
+  if (hungry.length && feedDays >= 1) {
+    const grams = hens.length * HEN_TUNING.feedPerHenG;
+    out.push({
+      id: "alimentar-gallinas",
+      kind: "alimentar-gallinas",
+      machine: "gallinero",
+      title: "Dar de comer a las gallinas",
+      scenario: `${hungry.map((h) => h.name).join(", ")} picotean el comedero vacío`,
+      exercises: [
+        choice(
+          "gallinas-racion",
+          4,
+          "predecir",
+          "Co-co-co",
+          `¿Cuánto pienso al día para ${hens.length} gallinas?`,
+          [block("a", `guardar ${hens.length} en gallinas`, `const gallinas = ${hens.length};`), block("b", `guardar gallinas × ${HEN_TUNING.feedPerHenG} g en pienso`, `const pienso = gallinas * ${HEN_TUNING.feedPerHenG}; // g`)],
+          `${grams} g`,
+          [`${HEN_TUNING.feedPerHenG} g`, `${grams * 10} g`, `${hens.length} g`],
+        ),
+        choice(
+          "gallinas-luz",
+          4,
+          "completar",
+          "Sin luz no hay huevos",
+          "¿Cuántas horas de luz como mínimo para que pongan?",
+          [block("a", "si horasDeLuz >= ___ entonces", "if (horasDeLuz >= ___) {"), block("b", "poner(huevo)", "poner(huevo);", 1), block("c", "fin", "}")],
+          `${LAYING_LIGHT_HOURS.value[0]} h`,
+          ["6 h", "24 h"],
+        ),
+        order("gallinas-pasos", 1, "Comida, agua y calma", ["llenar el comedero", "limpiar el bebedero", "revisar que todas comen"]),
+      ],
+    });
+  }
+  if (nestEggs > 0) {
+    out.push({
+      id: "recoger-huevos",
+      kind: "recoger-huevos",
+      machine: "gallinero",
+      title: "Recoger huevos",
+      scenario: `Hay ${nestEggs} ${nestEggs === 1 ? "huevo" : "huevos"} en los ponederos${lightHours < LAYING_LIGHT_HOURS.value[0] ? " (con poca luz pondrán menos)" : ""}`,
+      exercises: [
+        choice(
+          "huevos-bucle",
+          6,
+          "predecir",
+          "Con cuidado, que se rompen",
+          "¿Cuántos huevos hay en la cesta al final?",
+          [
+            block("a", "guardar 0 en cesta", "let cesta = 0;"),
+            block("b", `para cada ponedero de ${nestEggs} con huevo`, `for (const p of ponederosConHuevo) { // ${nestEggs}`),
+            block("c", "sumar 1 a cesta", "cesta = cesta + 1;", 1),
+            block("d", "fin", "}"),
+          ],
+          String(nestEggs),
+          [String(nestEggs + 1), "0", "1"].filter((x) => x !== String(nestEggs)),
+        ),
+        order("huevos-pasos", 1, "Del nido a la nevera", ["recoger los huevos con cuidado", "limpiar los que estén sucios", "guardarlos en la nevera"]),
+      ],
+    });
+  }
+  return out;
+}
+
+// --- Cultured meat -----------------------------------------------------------
+
+const sci = (n: number) => {
+  const e = Math.floor(Math.log10(n));
+  const m = n / 10 ** e;
+  return `${fmt(Math.round(m * 10) / 10)}·10^${e}`;
+};
+
+/** Each stage of the bioreactor is a chore; each of its steps is a challenge. */
+export function bioreactorChores(b: Bioreactor, mediumLots: number, scenario?: string): Chore[] {
+  const C = CULTURE.value;
+  const base = { machine: "biorreactor" as const };
+  switch (b.stage) {
+    case "vacio":
+      if (mediumLots < 1) return [];
+      return [
+        {
+          ...base,
+          id: "cultivo-sembrar",
+          kind: "cultivo-sembrar",
+          title: "Sembrar el biorreactor",
+          scenario: `Descongelar un vial de ${sci(C.vialCells)} células. Queda${mediumLots === 1 ? "" : "n"} ${mediumLots} lote${mediumLots === 1 ? "" : "s"} de medio`,
+          exercises: [
+            ...stepChain("cultivo-sembrar", 1, () => "Despierto del frío", ["saca un vial del tanque de nitrógeno", "descongélalo a 37 °C", "filtra el medio a 0,2 µm", "llena el biorreactor con medio", "siembra las células con microportadores", "fija la temperatura a {37|20|60} °C"], []),
+            choice(
+              "cultivo-duplicaciones",
+              6,
+              "predecir",
+              "¿Cuántas veces tengo que dividirme?",
+              `Empiezas con ${sci(C.vialCells)} células y necesitas ${sci(C.targetCells)}. ¿Cuántas duplicaciones?`,
+              [block("a", `guardar ${sci(C.vialCells)} en células`, "let celulas = 1e9;"), block("b", "mientras células < 5·10^11", "while (celulas < 5e11) {"), block("c", "duplicar células", "celulas = celulas * 2;", 1), block("d", "fin", "}")],
+              "9",
+              ["500", "2", "30"],
+            ),
+          ],
+        },
+      ];
+    case "proliferando":
+      if (!b.needsMedium || mediumLots < 1) return [];
+      return [
+        {
+          ...base,
+          id: "cultivo-renovar",
+          kind: "cultivo-renovar",
+          title: "Renovar el medio del cultivo",
+          scenario: scenario ?? `pH ${fmt(Math.round(b.ph * 100) / 100)}, glucosa ${Math.round(b.glucose * 100)} %: las células comen glucosa y sueltan lactato`,
+          exercises: [
+            choice(
+              "cultivo-ph",
+              4,
+              "completar",
+              "Me ahoga el ácido",
+              "¿Por debajo de qué pH hay que renovar el medio?",
+              [block("a", "si sonda.pH < ___ entonces", "if (sonda.pH < ___) {"), block("b", "renovarMedio()", "renovarMedio();", 1), block("c", "añadirBicarbonato()", "anadirBicarbonato();", 1), block("d", "fin", "}")],
+              fmt(C.ph[0]),
+              ["5", "9"],
+            ),
+            order("cultivo-renovar-pasos", 1, "Comida fresca, por favor", ["para la agitación un momento", "saca el medio gastado", "añade medio fresco", "corrige el pH con bicarbonato", "reanuda la agitación"]),
+          ],
+        },
+      ];
+    case "listo-para-diferenciar":
+      return [
+        {
+          ...base,
+          id: "cultivo-diferenciar",
+          kind: "cultivo-diferenciar",
+          title: "Diferenciar en fibras musculares",
+          scenario: `${sci(b.cells)} células: hora de convertirlas en músculo`,
+          exercises: stepChain("cultivo-diferenciar", 1, () => "Quiero ser fibra", ["baja los factores de crecimiento", "pasa las células al andamio comestible", "activa el estirador", "deja que se fusionen en miotubos"], []),
+        },
+      ];
+    case "listo":
+      return [
+        {
+          ...base,
+          id: "cultivo-cosechar",
+          kind: "cultivo-cosechar",
+          title: "Cosechar carne cultivada",
+          scenario: `${b.yieldG} g de carne, sin sacrificar a ningún animal`,
+          exercises: [
+            choice(
+              "cultivo-gramos",
+              2,
+              "predecir",
+              "¿Cuánto peso?",
+              `Un gramo de músculo tiene ${sci(C.cellsPerGram)} células. ¿Cuántos gramos dan ${sci(b.cells)}?`,
+              [block("a", `guardar ${sci(b.cells)} ÷ ${sci(C.cellsPerGram)} en gramos`, `const gramos = ${b.cells.toExponential(1)} / ${C.cellsPerGram.toExponential(1)};`)],
+              `${b.yieldG} g`,
+              [`${Math.round(b.yieldG / 10)} g`, `${b.yieldG * 10} g`],
+            ),
+            ...stepChain("cultivo-cosechar", 1, () => "Listo para la cámara fría", ["separa el tejido del andamio", "lávalo en la centrífuga", "forma las piezas", "guárdalas en la cámara fría a {4|20|-80} °C"], []),
+          ],
+        },
+      ];
+    case "contaminado":
+    case "perdido":
+      return [
+        {
+          ...base,
+          id: "cultivo-esterilizar",
+          kind: "cultivo-esterilizar",
+          title: "Esterilizar el biorreactor",
+          scenario: scenario ?? (b.stage === "perdido" ? "El pH bajó demasiado: el cultivo murió" : "Entraron bacterias: hay que tirar el lote"),
+          exercises: stepChain("cultivo-esterilizar", 1, () => "Empezar de cero, limpio", ["vacía el biorreactor", "desmonta las sondas", "esteriliza en el autoclave a {121|60|300} °C", "monta y prueba el tanque"], []),
+        },
+      ];
+    default:
+      return [];
+  }
+}
+
+// --- Machines ----------------------------------------------------------------
+
+/** Repairing a machine: its repair steps in order, then restoring one of its real settings. */
+export function machineRepairChore(m: Machine, seed: number, scenario?: string): Chore {
+  const s = m.spec.settings[seed % m.spec.settings.length]!;
+  const u = (v: number) => `${fmt(v)}${s.unit ? ` ${s.unit}` : ""}`;
+  return {
+    id: `reparar-${m.id}`,
+    kind: "reparar-maquina",
+    targetId: m.id,
+    machine: m.id,
+    title: `Reparar ${m.spec.name.toLowerCase()}`,
+    scenario: scenario ?? `${m.spec.name} al ${Math.round(m.condition * 100)} %`,
+    exercises: [
+      order(`reparar-${m.id}-pasos`, 1, "Algo se soltó dentro de mí", m.spec.repairSteps),
+      choice(
+        `reparar-${m.id}-ajuste`,
+        2,
+        "completar",
+        "Recuérdame cómo funciono",
+        `¿Qué valor real lleva ${s.name}?`,
+        [block("a", `${s.name} = ___`, `this.${toCall(s.name).replace("();", "")} = ___;`)],
+        u(s.value),
+        s.wrong.map(u),
+      ),
+    ],
+  };
+}
+
+// --- Sickbay -----------------------------------------------------------------
+
+/** Treating a patient: triage with ABCDE, then the protocol for the condition, one step per challenge. */
+export function patientChore(p: Patient, c: Condition, pool: readonly string[] = []): Chore {
+  const protocol = PROTOCOLS[c.kind];
+  const sev = Math.round(c.severity * 100);
+  return {
+    id: `atender-${c.id}`,
+    kind: "atender-paciente",
+    targetId: p.id,
+    conditionId: c.id,
+    machine: "enfermeria",
+    title: `Enfermería: ${protocol.name.toLowerCase()} de ${p.name}`,
+    scenario: `${c.cause} (gravedad ${sev} %)`,
+    exercises: [
+      choice(
+        `atender-${c.id}-triaje`,
+        1,
+        "predecir",
+        "Primero, lo que mata antes",
+        `Triaje ABCDE de ${p.name}: ¿qué revisas primero?`,
+        [],
+        ABCDE.value[0]!,
+        [ABCDE.value[2]!, "la herida que más se ve"],
+      ),
+      ...stepChain(`atender-${c.id}`, 1, (i) => `${p.name}: paso ${i + 1}`, protocol.steps.value, pool),
     ],
   };
 }

@@ -9,7 +9,18 @@ export type ChoreKind =
   | "calmar-gato"
   | "cocinar"
   | "yoga"
-  | "reparar-nave";
+  | "reparar-nave"
+  | "programar-gato"
+  | "alimentar-gallinas"
+  | "recoger-huevos"
+  | "procesar"
+  | "cultivo-sembrar"
+  | "cultivo-renovar"
+  | "cultivo-diferenciar"
+  | "cultivo-cosechar"
+  | "cultivo-esterilizar"
+  | "reparar-maquina"
+  | "atender-paciente";
 
 /** A task on board, done by solving code challenges in order. */
 export interface Chore {
@@ -19,6 +30,10 @@ export interface Chore {
   /** Why it is needed now ("Luna mordió la lechuga", "la sacudida volcó la maceta"…). */
   readonly scenario: string;
   readonly targetId?: string;
+  /** Condition being treated, for sickbay chores. */
+  readonly conditionId?: string;
+  /** Machine the chore needs (or repairs). */
+  readonly machine?: string;
   /** In order: for yoga each exercise is the next posture of the sequence. */
   readonly exercises: readonly Exercise[];
 }

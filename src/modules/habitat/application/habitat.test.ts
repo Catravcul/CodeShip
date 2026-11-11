@@ -11,6 +11,11 @@ import { Cat } from "@modules/pets/domain/cat";
 import { BEFRIEND, RESPECT_PLANTS } from "@modules/pets/data/rules";
 import { EXERCISES } from "@modules/mind-duel/data/exercises";
 import { CAT_LESSONS } from "@modules/pets/data/rules";
+import { Hen } from "@modules/poultry/domain/hen";
+import { MACHINES } from "@modules/life-support/data/machines";
+import { PROCESSES } from "@modules/kitchen/data/processes";
+import { CAT_GRASS, POTATO_NORLAND, TOMATO_RED_ROBIN, WHEAT_APOGEE } from "@modules/garden/data/species";
+import { RESPECT_HENS } from "@modules/pets/data/rules";
 import { Habitat, type ChoreSession, type Conversation, type HabitatEvent } from "./habitat";
 
 const right = (e: Exercise): Answer => (e.kind === "order" ? { kind: "order", order: e.solution } : { kind: "choice", index: e.correct });
@@ -193,5 +198,149 @@ describe("Habitat chores (everything is a code challenge)", () => {
     const postures = h.drainEvents().filter((e) => e.type === "posture");
     expect(postures).toHaveLength(11);
     expect(h.crew.stress).toBeCloseTo(stress - 0.3);
+  });
+
+  const ctx = { recipes: RECIPES, yoga: YOGA_SEQUENCES, processes: PROCESSES, lessons: CAT_LESSONS };
+  const all = (h: Habitat) => h.chores(RECIPES, YOGA_SEQUENCES, ctx);
+  const doKind = (h: Habitat, kind: string, pick?: (id: string) => boolean) => {
+    const c = all(h).find((x) => x.kind === kind && (!pick || pick(x.id)));
+    expect(c, kind).toBeDefined();
+    finish(h.start(c!, ctx));
+  };
+
+  it("every recipe step is its own challenge", () => {
+    const h = new Habitat(seededRandom(1), 2);
+    h.stock("huevo", 2);
+    const c = all(h).find((x) => x.targetId === "huevos-revueltos")!;
+    expect(c.exercises).toHaveLength(RECIPES.find((r) => r.id === "huevos-revueltos")!.steps.value.length);
+    const temp = c.exercises.find((e) => e.kind === "choice" && e.skill === "completar");
+    expect(temp && temp.kind === "choice" && temp.options[temp.correct]).toBe("71 °C");
+  });
+
+  it("hens lay eggs; collecting them lets the crew cook a potato omelette", () => {
+    const h = new Habitat(seededRandom(4), 2, undefined, "Berón", MACHINES);
+    for (const [id, n] of [["clara", "Clara"], ["yema", "Yema"], ["pinta", "Pinta"]] as const) h.addHen(new Hen(id, n));
+    h.stock("pienso-gallinas", 6);
+    h.stock("papa-norland", 2);
+    for (let d = 0; d < 2; d += 0.25) {
+      h.tick(0.25);
+      if (all(h).some((c) => c.kind === "alimentar-gallinas")) doKind(h, "alimentar-gallinas");
+    }
+    expect(h.nestEggs).toBeGreaterThanOrEqual(3);
+    doKind(h, "recoger-huevos");
+    expect(h.larder("huevo")).toBeGreaterThanOrEqual(3);
+    doKind(h, "cocinar", (id) => id === "cocinar-tortilla-papa");
+    expect(h.larder("papa-norland")).toBe(0);
+  });
+
+  it("the bioreactor grows meat with no animal killed, and the cats eat it", () => {
+    const h = new Habitat(seededRandom(4), 2, undefined, "Berón", MACHINES);
+    const luna = new Cat("luna", "Luna", 4);
+    h.adopt(luna);
+    h.stock("medio-cultivo", 12);
+    doKind(h, "cultivo-sembrar");
+    for (let d = 0; d < 20 && h.bioreactor.stage !== "listo"; d += 0.1) {
+      h.tick(0.1);
+      luna.feed(luna.dailyKcal * 0.1);
+      const step = all(h).find((c) => c.kind === "cultivo-renovar" || c.kind === "cultivo-diferenciar");
+      if (step) finish(h.start(step, ctx));
+    }
+    doKind(h, "cultivo-cosechar");
+    expect(h.larder("carne-cultivada")).toBe(2000);
+    luna.tick(0.8, { resourcesOk: true });
+    const feed = all(h).find((c) => c.kind === "alimentar-gato")!;
+    expect(feed.scenario).toContain("carne cultivada");
+    finish(h.start(feed, ctx));
+    expect(h.larder("carne-cultivada")).toBe(2000 - 99);
+  });
+
+  it("wheat and soybean become flour and hen feed through the mill", () => {
+    const h = new Habitat(seededRandom(4), 2, undefined, "Berón", MACHINES);
+    h.stock("trigo-apogee", 2);
+    h.stock("soja-hoyt", 1);
+    doKind(h, "procesar", (id) => id === "procesar-moler-trigo");
+    expect(h.larder("harina")).toBe(2);
+    doKind(h, "procesar", (id) => id === "procesar-pienso-gallinas");
+    expect(h.larder("pienso-gallinas")).toBe(6);
+    expect(all(h).some((c) => c.targetId === "chapati")).toBe(true);
+  });
+
+  it("a jolt breaks machines: their chores wait until a repair challenge is solved", () => {
+    const h = new Habitat(seededRandom(9), 2, undefined, "Berón", MACHINES);
+    h.stock("huevo", 2);
+    h.jolt(1, "Bennu sacudió la nave");
+    const broken = h.machines.filter((m) => !m.working);
+    expect(broken.length).toBeGreaterThan(0);
+    for (const m of broken) {
+      expect(all(h).filter((c) => c.machine === m.id).map((c) => c.kind)).toEqual(["reparar-maquina"]);
+      doKind(h, "reparar-maquina", (id) => id === `reparar-${m.id}`);
+      expect(m.working).toBe(true);
+    }
+  });
+
+  it("the sickbay treats anyone: the crew after a jolt, a cat after a fight", () => {
+    const h = new Habitat(seededRandom(3), 3, undefined, "Berón", MACHINES);
+    h.jolt(0.8, "Bennu sacudió la nave");
+    const crewCase = all(h).find((c) => c.kind === "atender-paciente" && c.targetId === h.crew.id)!;
+    expect((crewCase.exercises[0] as { question: string }).question).toContain("ABCDE");
+    finish(h.start(crewCase, ctx));
+    expect(h.crew.health.untreated).toHaveLength(0);
+    live(h, 4);
+    expect(h.crew.health.burden).toBe(0);
+
+    const luna = new Cat("luna", "Luna", 4);
+    const nube = new Cat("nube", "Nube", 3.5);
+    h.adopt(luna);
+    h.adopt(nube)[0]!.startAt("contacto-visual");
+    let fought = false;
+    for (let d = 0; d < 20 && !fought; d += 0.05) {
+      luna.startle(0.05);
+      nube.startle(0.05);
+      h.tick(0.05);
+      fought = h.drainEvents().some((e) => e.type === "cats-fought");
+    }
+    expect(fought).toBe(true);
+    expect(h.introductions[0]!.canMeet).toBe(false);
+    const cases = all(h).filter((c) => c.kind === "atender-paciente" && (c.targetId === "luna" || c.targetId === "nube"));
+    expect(cases).toHaveLength(2);
+    expect(cases[0]!.scenario).toContain("se pelearon");
+  });
+
+  it("biting a toxic plant poisons the cat; cat grass keeps most bites away", () => {
+    const bites = (grass: boolean) => {
+      const h = new Habitat(seededRandom(11), 3);
+      const luna = new Cat("luna", "Luna", 4);
+      h.adopt(luna);
+      if (grass) {
+        const g = h.plant("g1", CAT_GRASS);
+        for (let d = 0; d < 11; d++) g.tick(1, { lit: true }), g.waterIt();
+      }
+      h.plant("t1", TOMATO_RED_ROBIN);
+      h.plant("p1", POTATO_NORLAND);
+      const ev = live(h, 3);
+      return { bitten: count(ev, "plant-bitten"), luna };
+    };
+    const without = bites(false);
+    expect(without.bitten).toBeGreaterThan(0);
+    expect(without.luna.health.conditions.some((c) => c.kind === "intoxicacion")).toBe(true);
+    expect(bites(true).bitten).toBeLessThan(without.bitten);
+  });
+
+  it("a cat that stalks the hens gets a programming chore; once programmed it leaves them alone", () => {
+    const h = new Habitat(seededRandom(6), 3);
+    h.adopt(new Cat("luna", "Luna", 4));
+    h.addHen(new Hen("clara", "Clara"));
+    expect(count(live(h, 3), "hens-stalked")).toBeGreaterThan(0);
+    const prog = all(h).find((c) => c.kind === "programar-gato" && c.id.endsWith(RESPECT_HENS.rule.id))!;
+    expect(prog.scenario).toContain("acechó a las gallinas");
+    finish(h.start(prog, ctx));
+    expect(count(live(h, 3), "hens-stalked")).toBe(0);
+  });
+
+  it("wheat grows in the BPC's 77 days", () => {
+    const h = new Habitat(seededRandom(1), 2);
+    const w = h.plant("w1", WHEAT_APOGEE);
+    for (let d = 0; d < 77; d++) w.tick(1, { lit: true }), w.waterIt();
+    expect(w.readyToHarvest).toBe(true);
   });
 });

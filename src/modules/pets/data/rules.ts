@@ -121,4 +121,46 @@ export const BEFRIEND: CatLesson = {
   ],
 };
 
-export const CAT_LESSONS: readonly CatLesson[] = [RESPECT_PLANTS, BEFRIEND];
+export const RESPECT_HENS: CatLesson = {
+  rule: {
+    id: "respetar-gallinas",
+    when: "gallina",
+    then: "ignorar",
+    pseudo: "cuando vea una gallina → no acecharla y seguir mi camino",
+    js: "on('gallina', gallina => { ignorar(gallina); });",
+  },
+  exercises: [
+    {
+      kind: "order",
+      id: "gato-gallina-evento",
+      concept: 9,
+      idea: "Algo con plumas se mueve tras la malla",
+      blocks: [
+        { id: "a", pseudo: "cuando vea una gallina", js: "on('gallina', (gallina) => {" },
+        { id: "b", pseudo: "mirarla desde lejos", js: "mirar(gallina, 'lejos');", indent: 1 },
+        { id: "c", pseudo: "seguir mi camino", js: "alejarme();", indent: 1 },
+        { id: "d", pseudo: "fin", js: "});" },
+      ],
+      solution: ["a", "b", "c", "d"],
+    },
+    {
+      kind: "choice",
+      id: "gato-gallina-predecir",
+      concept: 5,
+      skill: "predecir",
+      idea: "Mis bigotes vibran",
+      question: "El gato tiene estrés 0,9 (límite 0,8). ¿Qué hará al ver una gallina?",
+      code: [
+        { id: "a", pseudo: "si estrés < 0,8 entonces", js: "if (estres < 0.8) {" },
+        { id: "b", pseudo: "seguir la regla aprendida", js: "regla(gallina);", indent: 1 },
+        { id: "c", pseudo: "si no", js: "} else {" },
+        { id: "d", pseudo: "seguir el instinto", js: "instinto(gallina);", indent: 1 },
+        { id: "e", pseudo: "fin", js: "}" },
+      ],
+      options: ["Sigue la regla y la ignora", "Sigue su instinto y puede acecharla", "Se duerme"],
+      correct: 1,
+    },
+  ],
+};
+
+export const CAT_LESSONS: readonly CatLesson[] = [RESPECT_PLANTS, BEFRIEND, RESPECT_HENS];

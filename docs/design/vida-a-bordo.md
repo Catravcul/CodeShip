@@ -23,6 +23,7 @@ En la rama `recuperar-onedrive` aparecieron estas piezas:
 - **HolisticCast**. Las acciones de código («declarar var número», «asignar»…) funcionaban como hechizos contra un objetivo, con efectos en el tiempo. Es el antecedente directo del duelo.
 - **Materials**. Contaba hielo de agua, carbono, aminoácidos, azúcares, hidrocarburos, silicatos, hierro, níquel y cobalto.
 - **Catálogos de componentes** sin fuentes (ya copiados a `docs/research/legado`).
+- **Personajes y diálogos.** Las misiones del bloque de variables (`src/Levels/1_Variables/number.js`, `text.js`, `boolean.js`) llegan como **cartas de Nevaeh** a **Doménica**, la protagonista: «Dear Doménica, …». Nevaeh le pide configurar la *nano_net* con números, textos y booleanos, y en las posdatas se cuenta una historia: los seres queridos de Doménica escriben preocupados, hubo un fallo de comunicaciones y Nevaeh termina revelando que «alguien estaba detrás». Las cartas apuntan a un retrato (`/img/nevaeh/face_100px.webp`), pero **la imagen no está** en ninguna rama ni en el zip de OneDrive. La rama `levels` tiene además frases e introducciones en español e inglés para cada bloque («La cantidad puede ser encontrada en nuestras mentes…»).
 
 Encajan así:
 
@@ -34,12 +35,20 @@ Encajan así:
 
 ## Plantas
 
-Los datos de cultivo son reales. Por ahora hay dos especies (`modules/garden/data/species.ts`):
+Los datos de cultivo son reales (`modules/garden/data/species.ts`):
 
 | Especie | Cosechas | Polinización | Fuente |
 | --- | --- | --- | --- |
 | Lechuga romana roja 'Outredgeous' (Veggie, ISS) | Día 33. Cosechando hojas sin arrancarla («cut-and-come-again») llegó a 64 días | No hace falta | [NTRS 20190028955](https://ntrs.nasa.gov/citations/20190028955), [Scientific American](https://www.scientificamerican.com/article/astronauts-take-first-bites-of-lettuce-grown-in-space/) |
 | Chile 'Española Improved' (Plant Habitat-04, ISS, 2021) | Días 100 y 120 | Autopoliniza, pero hay que **agitar** la planta | [NASA PH-04](https://www.nasa.gov/sites/default/files/atoms/files/plant_habitat-04.pdf), [NMSU](https://engr.nmsu.edu/news-events/2021/11/chile-in-space.html) |
+| Tomate enano 'Red Robin' (VEG-05, ISS, 2023) | Días 83, 90 y 100 | Agitar las flores (VEG-05 preparó la polinización a mano) | [NTRS 20240001505](https://ntrs.nasa.gov/citations/20240001505), [NTRS 20210026897](https://ntrs.nasa.gov/citations/20210026897) |
+| Rábano 'Cherry Belle' (Plant Habitat-02, ISS, 2020) | Día 27 | No hace falta | [Astrobiology](https://astrobiology.com/2020/12/03/astronauts-harvest-first-radish-crop-on-international-space-station/) |
+| Papa 'Norland' (Biomass Production Chamber, NASA) | Día 91 (91 o 105) | No hace falta | [Wheeler, BPC](https://ntrs.nasa.gov/api/citations/20140017323/downloads/20140017323.pdf) |
+| Soja 'Hoyt' (BPC) | Día 90 (90 o 97) | Autopoliniza | idem |
+| Trigo 'Apogee' (BPC) | Día 77 (77–86) | Autopoliniza | idem |
+| Hierba para gatos (brotes de avena) | ~10 días (ajuste de juego) | — | [Hart et al. 2021](https://escholarship.org/content/qt8x40j557/qt8x40j557.pdf): el 65 % de los gatos come plantas cada semana; es una conducta normal |
+
+**Tóxicas para gatos.** La ASPCA lista la planta del tomate y la de la papa como tóxicas para gatos. Si un gato las muerde, sufre una **intoxicación** y hay que llevarlo a la enfermería.
 
 El Veggie usaba LED rojos, azules y verdes. En el juego, «luces encendidas» es la condición para crecer.
 
@@ -124,7 +133,13 @@ Cada tarea es una **cadena de retos en orden** (`modules/chores`): cada reto res
 | Cosechar | Llega el día real de cosecha | Ordenar · predecir las porciones con un `si/si no` | Porciones a la despensa |
 | Dar de comer al gato | Saciedad < 50 % | **Calcular la ración con la fórmula real** (70·kg^0,75 × factor ÷ 2) · ordenar | Media ración diaria |
 | Calmar al gato | Estrés > 50 % (bufidos, sacudidas) | Predecir qué hace el programa según sus orejas · ordenar | Juego, cariño y calma |
-| Cocinar | Hay ingredientes en la despensa | Ordenar los pasos de la receta (dos mitades) | Platos y saciedad del tripulante |
+| Cocinar | Hay ingredientes en la despensa y la cocina funciona | **Un reto por paso de la receta**: elegir el paso siguiente o completar su valor real (p. ej. 71 °C) | Platos y saciedad del tripulante |
+| Procesar | Hay cosecha y su máquina funciona | Un reto por paso (moler, hacer tofu, preparar pienso) | Harina, tofu, pienso |
+| Programar a un gato | El gato ya causó el problema (mordió, bufó, acechó) | Las ideas de la lección | Regla escrita en su mente |
+| Gallinas: comer, huevos | Hambre o huevos en el nido | Calcular el pienso, completar las horas de luz, contar con un bucle | Gallinas comidas, huevos a la nevera |
+| Biorreactor | Según la fase del cultivo | Un reto por paso; calcular duplicaciones y gramos | Siembra, medio renovado, fibras, carne |
+| Reparar máquina | Una sacudida la dejó por debajo del 50 % | Ordenar la reparación · completar un ajuste real | Máquina al 100 % |
+| Enfermería | Alguien tiene una lesión sin tratar | Triaje ABCDE · un reto por paso del protocolo | Tratado: se recupera con reposo |
 | Yoga | Siempre | **Un reto por postura**: elegir la siguiente postura y su respiración | Cada acierto mueve la figura a esa postura; la secuencia sube forma y calma |
 | Reparar la nave | Casco < 100 % | Encontrar la línea dañada del código de la nave · completar el valor real | Casco +30 % |
 
@@ -132,17 +147,84 @@ Cada tarea es una **cadena de retos en orden** (`modules/chores`): cada reto res
 
 **Yoga de Cold Sanctuary.** Las secuencias salen de la ficha de asanas de Cold Sanctuary ([yoga-asanas-spec.md](https://github.com/videnacry/cold-sanctuary/blob/master/docs/yoga-asanas-spec.md)): Upa-yoga de cuello y hombros (6 ejercicios) y Saludo al Sol (12 asanas con su respiración). La figura de cubos imita el rig de Cold Sanctuary.
 
-**Recetas de Cold Sanctuary.** Las recetas vienen del restaurante de Cold Sanctuary ([CookingRecipe.cs](https://github.com/videnacry/cold-sanctuary/blob/master/Assets/Scripts/Kitchen/CookingRecipe.cs)). La ensalada usa la lechuga de a bordo, la milpa usa el chile y el mercimek solo usa despensa seca.
+**Recetas.** Vienen del restaurante de Cold Sanctuary ([CookingRecipe.cs](https://github.com/videnacry/cold-sanctuary/blob/master/Assets/Scripts/Kitchen/CookingRecipe.cs)) o son recetas tradicionales, adaptadas a lo que se produce a bordo:
+
+| Platillo | Ingredientes de a bordo | Pasos |
+| --- | --- | --- |
+| Huevos revueltos (Cold Sanctuary) | 2 huevos | 7, con la temperatura segura de 71 °C ([USDA FSIS](https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/food-safety-basics/safe-temperature-chart)) |
+| Ensalada de la nave | lechuga, tomate y rábano | 6 |
+| Tortilla de papa | 2 papas y 3 huevos | 8 |
+| Chapati | harina (del trigo, por el molino) | 7 |
+| Tofu salteado con chile | tofu (de la soja) y chile | 6 |
+| Carne cultivada con papas | 250 g de carne y 1 papa | 7, con 71 °C como la carne picada |
+| Milpa con chile | chile | 6 |
+| Mercimek | solo despensa seca | 7 |
+
+## Producir toda la comida: el módulo de soporte vital
+
+Sí se puede: una nave de viaje largo lleva un **módulo biorregenerativo**, como la *Biomass Production Chamber* de la NASA, que cultivó trigo, soja, papa, lechuga y tomate en hidroponía bajo luz eléctrica. En el juego son máquinas (`modules/life-support`), cada una con su base real:
+
+| Máquina | Para qué | Base real |
+| --- | --- | --- |
+| Bastidores de cultivo (2 pisos, 18 macetas) | Todas las plantas; sin ellos no hay luz | BPC (NFT) y Veggie (LED rojo, azul y verde) |
+| Molino de grano | Harina de trigo y pienso de gallinas | — |
+| Procesador de soja | Tofu: remojar, moler, hervir, filtrar, cuajar con nigari, prensar | [Tofu](https://es.wikipedia.org/wiki/Tofu) |
+| Biorreactor de carne cultivada | Carne sin sacrificar animales | [carne-cultivada.md](https://github.com/videnacry/cold-sanctuary/blob/master/docs/carne-cultivada.md) de Cold Sanctuary |
+| Gallinero | Huevos, con 16 h de luz | [Merck Veterinary Manual](https://www.merckvetmanual.com/poultry/nutrition-and-management-poultry/management-of-laying-chickens) |
+| Cocina | Todos los platillos | Cocina de Cold Sanctuary |
+| Enfermería | Personas y animales | Hospital de Cold Sanctuary |
+
+Una **sacudida** puede dañar dos máquinas. Por debajo del 50 % la máquina se para: sus tareas desaparecen hasta repararla con su reto. Cambiar o añadir máquinas por la mente de la nave queda pendiente.
+
+## Carne cultivada
+
+El proceso real, tal como lo documentó Cold Sanctuary: un vial de 10⁹ células satélite se descongela del nitrógeno líquido, crece en un **biorreactor de tanque agitado** a 37 °C y pH 7,2–7,4, y las células se **duplican cada ~24 h**. Para 2 kg hacen falta ~5·10¹¹ células (un gramo de músculo tiene 2–3·10⁸), unas **9 duplicaciones**. Luego se diferencian en fibras sobre un andamio comestible y se cosechan. El medio sin suero (Beefy-9, Stout et al. 2022) no requiere ningún animal sacrificado.
+
+**Cuidados y recursos.** Las células comen glucosa y sueltan lactato, que baja el pH. Hay que **renovar el medio** (y corregir con bicarbonato) cada ~2 días: cada siembra y cada renovación gastan un **lote de medio**, unos 6 por tanda. Si no se renueva, el crecimiento se para; por debajo de pH 6,8 el cultivo muere. Una sacudida puede **contaminarlo**. En ambos casos hay que esterilizarlo en el autoclave (121 °C). El medio viene en la bodega; producirlo a bordo (hidrolizados vegetales) queda pendiente.
+
+## Gallinas
+
+Tres gallinas viven en el gallinero del anillo, donde hay gravedad. Ponen alrededor de un huevo al día (ajuste de juego) si comen, están tranquilas, sanas y tienen **14–16 h de luz** (Merck). El pienso se hace en el molino con trigo, soja y calcio para la cáscara. Un gato sin programar **acecha** a las gallinas: se asustan, dejan de poner y a veces una sale herida. Se arregla programando al gato con la lección «respetar gallinas».
+
+## Qué comen los gatos
+
+Los gatos son **carnívoros estrictos**: necesitan nutrientes que solo da el tejido animal (taurina, ácido araquidónico, vitamina A preformada; Merck). Por eso **no comen lo que se cultiva**: comen **carne cultivada** (de células de pollo, ~1,2 kcal/g) o, si no hay, pienso de la bodega (~3,8 kcal/g). El reto de darles de comer calcula sus kcal reales y luego los gramos.
+
+Lo que sí se les puede plantar es **hierba para gatos**: no los alimenta, pero les gusta mordisquearla. Con la hierba lista, el 70 % de los mordiscos que iban a una planta nueva van a la hierba (ajuste de juego).
+
+## Peleas entre gatos
+
+Durante la presentación, cuando los gatos ya se ven, un bufido entre gatos muy estresados puede acabar en **pelea**: los dos salen con heridas de mordisco y la presentación **retrocede una etapa** (la guía de la AAFP dice volver un paso atrás). Una mordedura de gato sin curar **se infecta en un absceso** a los 3 días.
+
+## La enfermería
+
+Una sola enfermería para personas y animales, versión de a bordo del hospital de Cold Sanctuary: camilla, mesa veterinaria, monitor, ecógrafo y botiquín. Todos los seres de a bordo son **pacientes** con el mismo modelo de salud (`modules/medical`): el tripulante, los gatos, las gallinas y los personajes que se añadan después.
+
+| Lesión | De dónde sale | Protocolo (un reto por paso) |
+| --- | --- | --- |
+| Herida | Pelea de gatos, gato que ataca a una gallina | Guantes, presionar, irrigar con suero, revisar, cubrir |
+| Golpe | Sacudida fuerte: el tripulante choca con un mamparo | Inmovilizar, ecografía, frío, analgesia, reposo |
+| Intoxicación | Gato que muerde tomate o papa | Identificar la planta, toxicología, carbón activado si lo indican, fluidos, vigilar |
+| Absceso | Mordedura sin curar | Sedar, drenar, lavar, antibiótico, collar |
+| Estrés agudo | (reservado para escenarios futuros) | Lugar tranquilo, luz baja, revisar, agua, descanso |
+
+Todo empieza por el **triaje ABCDE** (vía aérea, respiración, circulación, estado neurológico, exposición) de la OMS. Sin tratar, la lesión empeora poco a poco; tratada, se cura con reposo. Las lesiones graves (≥ 60 %) piden cama. Los protocolos son un resumen de juego, no una guía clínica.
 
 ## El interior
 
 El módulo habitable se recorre en primera persona: joystick y arrastrar para mirar en el móvil, WASD y flechas en el escritorio. Tiene estas estaciones:
 
-- el **huerto**, con luces LED de cultivo;
-- la **cocina**;
+- el **huerto**: dos pisos de bastidores con luces LED, canal de nutrientes y 18 macetas, cada especie con su forma (roseta, fruto, raíz, espigas, hierba);
+- la **cocina**: placa que se enciende al cocinar, horno y nevera;
+- el **molino** y el **procesador de soja**;
+- el **laboratorio de carne cultivada**: tanque de vidrio cuyo medio cambia de rosa a amarillo al acidificarse (como el rojo de fenol), tanque de nitrógeno, campana de flujo y consola con fase, células, pH y glucosa;
+- la **enfermería**: camilla, mesa veterinaria y monitor con los pacientes;
+- el **panel de la mente de la nave**, con su clase y sus valores reales;
 - la **esterilla de yoga**, con la figura de perfil;
 - el **rincón de los gatos**;
-- el **panel de la mente de la nave**, con su clase y sus valores reales.
+- el **gallinero**, con malla, ponederos (los huevos aparecen en el nido), aseladero, comedero y bebedero.
+
+Cada máquina tiene una luz: verde si funciona y roja parpadeante si está averiada.
 
 El botón **Tareas** lista lo pendiente con su escenario. Al elegir una, el personaje camina a la estación y el reto se abre en una hoja inferior, para que se siga viendo la planta, el gato o la postura.
 
@@ -152,8 +234,13 @@ Se camina con los pies en el suelo porque el módulo es un **anillo giratorio co
 
 | Pieza | Dónde | Estado |
 | --- | --- | --- |
-| Planta (agua, luz, salud, ánimo, agitar, cosechar) | `modules/garden/domain/plant.ts` | ✓ con tests |
-| Especies con datos reales | `modules/garden/data/species.ts` | ✓ lechuga y chile |
+| Planta (agua, luz, salud, agitar, cosechar) | `modules/garden/domain/plant.ts` | ✓ con tests |
+| Especies con datos reales | `modules/garden/data/species.ts` | ✓ 8 especies |
+| Máquinas del soporte vital | `modules/life-support` | ✓ con tests |
+| Biorreactor de carne cultivada | `modules/cultured-meat` | ✓ con tests |
+| Gallinas | `modules/poultry` | ✓ con tests |
+| Salud y enfermería (cualquier paciente) | `modules/medical` | ✓ con tests |
+| Recetas, ingredientes y procesos | `modules/kitchen/data` | ✓ 8 recetas, 3 procesos |
 | Gato (energía real, necesidades, estrés, reglas) | `modules/pets/domain/cat.ts` | ✓ con tests |
 | Instintos y decisión | `modules/pets/domain/behavior.ts` | ✓ con tests |
 | Presentaciones entre gatos | `modules/pets/domain/introduction.ts` | ✓ con tests |
@@ -163,7 +250,8 @@ Se camina con los pies en el suelo porque el módulo es un **anillo giratorio co
 | Tripulante (saciedad, forma, estrés) | `modules/crew` | ✓ con tests |
 | Yoga y recetas de Cold Sanctuary | `wellness/data/yoga.ts`, `kitchen/data/recipes.ts` | ✓ |
 | Panel de la mente de la nave y reparación por retos | `chores/application/catalog.ts`, `src/interior.ts` | ✓ (cambiar piezas: pendiente) |
-| Interior 3D: caminar, huerto, gatos, cocina, esterilla, panel | `src/interior.ts`, `src/adapters/three/interior/` | ✓ |
+| Interior 3D: caminar, huerto, cocina, molino, laboratorio, enfermería, panel, esterilla, gatos, gallinero | `src/interior.ts`, `src/adapters/three/interior/` | ✓ |
+| Personajes del borrador (Nevaeh, Doménica) | — | pendiente de decidir |
 | Viaje automático programado entre asteroides | — | pendiente |
 
 Los números de cuidado sin fuente (velocidad de secado, ritmo de juego y de cariño, probabilidad de mordisco, días por etapa) están marcados en el código como **ajuste de juego**. Así se distinguen de los datos reales.

@@ -1,5 +1,6 @@
 import type { Sourced } from "@core/units";
 import type { CatRule } from "./behavior";
+import { Health, type Patient } from "@modules/medical/domain/health";
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -15,6 +16,22 @@ export const RER: Sourced<(kg: number) => number> = {
 export const MER_FACTOR: Sourced<Record<LifeStage, number>> = {
   value: { kitten: 2.5, "neutered-adult": 1.2, "intact-adult": 1.4 },
   source: "https://petnutritionalliance.org/wp-content/uploads/2023/03/MER.RER_.PNA_.pdf",
+};
+
+/**
+ * Cats are obligate carnivores: they need nutrients found in animal tissue (taurine, arachidonic acid,
+ * preformed vitamin A), so on board they eat cultured meat or stored cat food, never the crops.
+ */
+export const OBLIGATE_CARNIVORE: Sourced<true> = {
+  value: true,
+  source: "https://www.merckvetmanual.com/management-and-nutrition/nutrition-small-animals/nutritional-requirements-of-small-animals",
+};
+
+/** Energy density used to turn kcal into grams. Raw chicken breast ≈ 120 kcal/100 g (USDA); dry cat food ≈ 3.8 kcal/g (typical label). */
+export const FOOD_KCAL_PER_G: Sourced<{ meat: number; kibble: number }> = {
+  value: { meat: 1.2, kibble: 3.8 },
+  source: "https://fdc.nal.usda.gov/",
+  note: "Cultured meat is grown from chicken cells; kibble value is a typical label figure.",
 };
 
 /** Game tuning (not measured): how fast needs empty and how stress follows them. */
@@ -34,7 +51,9 @@ export interface CatContext {
 }
 
 /** A cat on board. Time in days. Needs are 0 (empty) .. 1 (fully met). */
-export class Cat {
+export class Cat implements Patient {
+  readonly kind = "gato";
+  readonly health: Health;
   private _satiety = 1;
   private _play = 1;
   private _affection = 1;
@@ -46,7 +65,9 @@ export class Cat {
     readonly name: string,
     readonly massKg: number,
     readonly lifeStage: LifeStage = "neutered-adult",
-  ) {}
+  ) {
+    this.health = new Health(id);
+  }
 
   /** Daily maintenance energy, kcal. */
   get dailyKcal(): number {
@@ -61,11 +82,12 @@ export class Cat {
   get affection(): number {
     return this._affection;
   }
+  /** Pain counts as stress: an injured cat is never calm. */
   get stress(): number {
-    return this._stress;
+    return Math.max(this._stress, this.health.burden);
   }
   get wellbeing(): number {
-    return 1 - this._stress;
+    return 1 - this.stress;
   }
   get rules(): readonly CatRule[] {
     return [...this._rules.values()];
@@ -82,6 +104,7 @@ export class Cat {
     const target = clamp01(unmet + (ctx.resourcesOk ? 0 : t.missingResourcesStress));
     const step = Math.min(1, t.stressFollowPerDay * dtDays);
     this._stress = clamp01(this._stress + (target - this._stress) * step);
+    this.health.tick(dtDays);
   }
 
   feed(kcal: number): void {
@@ -103,7 +126,7 @@ export class Cat {
     this._rules.set(rule.id, rule);
   }
   ruleFor(stimulus: CatRule["when"]): CatRule | undefined {
-    if (this._stress >= CAT_TUNING.ruleBreakStress) return undefined;
+    if (this.stress >= CAT_TUNING.ruleBreakStress) return undefined;
     return [...this._rules.values()].find((r) => r.when === stimulus);
   }
 }

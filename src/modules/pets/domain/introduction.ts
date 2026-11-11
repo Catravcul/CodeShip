@@ -48,6 +48,18 @@ export class Introduction {
     return true;
   }
 
+  /** After a fight the AAFP guide says to go back a step and slow down. */
+  regress(): void {
+    this._calmDays = 0;
+    this._stage = Math.max(0, Math.min(this._stage - 1, STAGES.indexOf("juntos-supervisados") - 1));
+  }
+
+  /** Start at a later stage (cats that already met before the game starts). */
+  startAt(stage: Stage): this {
+    this._stage = STAGES.indexOf(stage);
+    return this;
+  }
+
   /** A hiss sets the current stage's progress back to zero. */
   setback(): void {
     this._calmDays = 0;

@@ -1,7 +1,7 @@
 import type { Cat } from "./cat";
 
-export type Stimulus = "planta-nueva" | "gato-desconocido";
-export type CatAction = "morder-planta" | "olfatear" | "ignorar" | "bufar" | "saludar";
+export type Stimulus = "planta-nueva" | "gato-desconocido" | "gallina";
+export type CatAction = "morder-planta" | "olfatear" | "ignorar" | "bufar" | "saludar" | "acechar";
 
 /** A line of a cat's mind program: `cuando <stimulus> → <action>`, shown as pseudocode or JS. */
 export interface CatRule {
@@ -25,6 +25,11 @@ export const INSTINCTS: Record<Stimulus, readonly (readonly [CatAction, number])
   "gato-desconocido": [
     ["bufar", 0.6],
     ["olfatear", 0.4],
+  ],
+  // Cats are predators of birds; a hen nearby triggers stalking.
+  gallina: [
+    ["acechar", 0.5],
+    ["ignorar", 0.5],
   ],
 };
 

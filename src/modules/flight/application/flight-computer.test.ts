@@ -66,3 +66,58 @@ describe("FlightComputer", () => {
     expect(t.deltaV).toBeGreaterThan(0);
   });
 });
+
+describe("FlightComputer landing", () => {
+  const bennu = () => new Asteroid(BENNU, Vec3.ZERO);
+  const r = BENNU.meanRadiusM.value;
+  const above = (h: number, vy: number) => {
+    const target = bennu();
+    // Start above the north pole (on the spin axis, so the ground does not move under us).
+    const fc = new FlightComputer(Ship.create(explorerDesign()), RigidBodyState.at(new Vec3(0, r + h, 0)).withVelocity(new Vec3(0, vy, 0)), {
+      gravitySources: [target],
+      target,
+    });
+    return fc;
+  };
+
+  it("touching down gently anchors the ship", () => {
+    const fc = above(1.5, -0.05);
+    for (let i = 0; i < 20 * 60 && !fc.landed; i++) fc.update(1 / 60, NO_INPUT);
+    expect(fc.landed).toBe(true);
+    expect(fc.drainEvents()).toContain("landed");
+    expect(fc.telemetry().landed).toBe(true);
+  });
+
+  it("an anchored ship turns with the asteroid and stays on the ground", () => {
+    const target = bennu();
+    const eq = new Vec3(r + 0.9, 0, 0);
+    const fc = new FlightComputer(Ship.create(explorerDesign()), RigidBodyState.at(eq).withVelocity(target.surfaceVelocity(eq).add(new Vec3(-0.02, 0, 0))), {
+      gravitySources: [target],
+      target,
+    });
+    fc.update(0.1, NO_INPUT);
+    expect(fc.landed).toBe(true);
+    fc.update(600, NO_INPUT);
+    expect(fc.telemetry().distanceToSurface).toBeCloseTo(target.surfaceDistance(fc.state.position, fc.simTimeS), 9);
+    // Carried round by the spin: about (r + gear) · sin(ω t) towards -Z.
+    const angle = target.spinRadS * fc.simTimeS;
+    expect(fc.state.position.z).toBeCloseTo(-fc.state.position.length() * Math.sin(angle), 0);
+  });
+
+  it("thrusting lifts off", () => {
+    const fc = above(1.5, -0.05);
+    while (!fc.landed) fc.update(1 / 60, NO_INPUT);
+    fc.drainEvents();
+    fc.update(1, { ...NO_INPUT, translation: new Vec3(0, 1, 0) });
+    expect(fc.landed).toBe(false);
+    expect(fc.drainEvents()).toContain("lifted-off");
+  });
+
+  it("coming in too fast bounces or crashes and damages the hull", () => {
+    const fc = above(3, -2);
+    for (let i = 0; i < 120; i++) fc.update(1 / 60, NO_INPUT);
+    expect(fc.drainEvents()).toContain("crashed");
+    expect(fc.ship.hullIntegrity).toBeLessThan(1);
+    expect(fc.landed).toBe(false);
+  });
+});

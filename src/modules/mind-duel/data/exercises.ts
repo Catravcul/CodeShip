@@ -1,0 +1,143 @@
+import type { Exercise } from "../domain/exercise";
+
+/**
+ * First exercise bank: concept blocks 1–3 of docs/research/indice-de-estudio.md
+ * (sequence, variables, data types). Themed as thoughts of an asteroid's mind.
+ */
+export const EXERCISES: readonly Exercise[] = [
+  {
+    kind: "order",
+    id: "seq-despertar",
+    concept: 1,
+    idea: "Quiero despertar poco a poco",
+    blocks: [
+      { id: "a", pseudo: "sentir el calor del Sol", js: "sentirCalor();" },
+      { id: "b", pseudo: "abrir la mente", js: "abrirMente();" },
+      { id: "c", pseudo: "escuchar a la nave", js: "escuchar(nave);" },
+    ],
+    solution: ["a", "b", "c"],
+  },
+  {
+    kind: "order",
+    id: "seq-girar",
+    concept: 1,
+    idea: "Daré una vuelta para mostrar mi cara oculta",
+    blocks: [
+      { id: "a", pseudo: "fijar el eje de giro", js: "fijarEje();" },
+      { id: "b", pseudo: "empezar a girar", js: "girar();" },
+      { id: "c", pseudo: "mostrar la cara oculta", js: "mostrarCaraOculta();" },
+      { id: "d", pseudo: "detener el giro", js: "detenerGiro();" },
+    ],
+    solution: ["a", "b", "c", "d"],
+  },
+  {
+    kind: "order",
+    id: "var-pulsos",
+    concept: 2,
+    idea: "Mi corazón de roca late a un ritmo",
+    blocks: [
+      { id: "a", pseudo: "guardar 20 en pulsosPorHora", js: "let pulsosPorHora = 20;" },
+      { id: "b", pseudo: "latir pulsosPorHora veces", js: "latir(pulsosPorHora);" },
+      { id: "c", pseudo: "mostrar pulsosPorHora", js: "mostrar(pulsosPorHora);" },
+    ],
+    solution: ["a", "b", "c"],
+  },
+  {
+    kind: "choice",
+    id: "var-predecir",
+    concept: 2,
+    skill: "predecir",
+    idea: "Cuento las rocas que suelto",
+    question: "¿Cuánto vale rocas al final?",
+    code: [
+      { id: "a", pseudo: "guardar 3 en rocas", js: "let rocas = 3;" },
+      { id: "b", pseudo: "guardar rocas + 2 en rocas", js: "rocas = rocas + 2;" },
+      { id: "c", pseudo: "guardar rocas + 1 en rocas", js: "rocas = rocas + 1;" },
+    ],
+    options: ["3", "5", "6", "2"],
+    correct: 2,
+  },
+  {
+    kind: "choice",
+    id: "var-completar",
+    concept: 2,
+    skill: "completar",
+    idea: "Necesito recordar tu nombre",
+    question: "¿Qué falta para que el asteroide recuerde el nombre de la nave?",
+    code: [
+      { id: "a", pseudo: "guardar ___ en nombreNave", js: "let nombreNave = ___;" },
+      { id: "b", pseudo: "saludar a nombreNave", js: "saludar(nombreNave);" },
+    ],
+    options: ['"Explorer"', "saludar", "nombreNave", "= ="],
+    correct: 0,
+  },
+  {
+    kind: "choice",
+    id: "var-reparar",
+    concept: 2,
+    skill: "reparar",
+    idea: "Algo no encaja en mi memoria",
+    question: "¿Qué línea falla?",
+    code: [
+      { id: "a", pseudo: "mostrar brillo", js: "mostrar(brillo);" },
+      { id: "b", pseudo: "guardar 4 en brillo", js: "let brillo = 4;" },
+    ],
+    options: ["Se usa brillo antes de guardarlo", "4 no es un número", "Sobra mostrar", "Está bien"],
+    correct: 0,
+  },
+  {
+    kind: "choice",
+    id: "tipo-elegir",
+    concept: 3,
+    skill: "completar",
+    idea: "¿Estoy despierto o dormido?",
+    question: "¿Qué tipo de dato encaja en despierto?",
+    code: [{ id: "a", pseudo: "guardar ___ en despierto", js: "let despierto = ___;" }],
+    options: ["verdadero (booleano)", '"23" (texto)', "23 (número)", "nada"],
+    correct: 0,
+  },
+  {
+    kind: "choice",
+    id: "tipo-predecir",
+    concept: 3,
+    skill: "predecir",
+    idea: "Junto mi nombre con mi edad",
+    question: "¿Qué muestra?",
+    code: [
+      { id: "a", pseudo: 'guardar "Bennu" en nombre', js: 'let nombre = "Bennu";' },
+      { id: "b", pseudo: "guardar 2 en orbitas", js: "let orbitas = 2;" },
+      { id: "c", pseudo: "mostrar nombre + orbitas", js: "mostrar(nombre + orbitas);" },
+    ],
+    options: ["Bennu2", "Bennu + 2", "3", "Error"],
+    correct: 0,
+  },
+  {
+    kind: "choice",
+    id: "esp-agua",
+    concept: 3,
+    skill: "especificar",
+    idea: "¿Qué quieres de mí exactamente?",
+    question: "¿Qué petición es lo bastante precisa para que el asteroide la cumpla?",
+    code: [],
+    options: [
+      "Dame cosas",
+      "Dame 200 kg de agua de tus minerales hidratados",
+      "Dame agua, mucha",
+      "Haz lo que quieras",
+    ],
+    correct: 1,
+  },
+  {
+    kind: "order",
+    id: "tipo-ordenar",
+    concept: 3,
+    idea: "Me describo para que me conozcas",
+    blocks: [
+      { id: "a", pseudo: 'guardar "Bennu" en nombre', js: 'let nombre = "Bennu";' },
+      { id: "b", pseudo: "guardar 490 en diametro", js: "let diametro = 490;" },
+      { id: "c", pseudo: "guardar verdadero en tieneAgua", js: "let tieneAgua = true;" },
+      { id: "d", pseudo: "presentar nombre, diametro y tieneAgua", js: "presentar(nombre, diametro, tieneAgua);" },
+    ],
+    solution: ["a", "b", "c", "d"],
+  },
+];

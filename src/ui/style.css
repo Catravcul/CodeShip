@@ -10,3 +10,57 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-f
 .hud .ok { color: #7dffb0; }
 .help { right: 18px; bottom: 18px; font-size: 12px; text-align: right; opacity: 0.75; line-height: 1.6; }
 .reticle { position: fixed; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border: 1px solid #7fdcffaa; border-radius: 50%; pointer-events: none; }
+
+/* --- Phase banner and main action ------------------------------------- */
+.banner { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); max-width: 80vw; text-align: center; color: #bfefff; font-size: 14px; pointer-events: none; text-shadow: 0 0 6px #00b7ff88; }
+.banner.aggressive { color: #ff6b5a; font-size: 16px; }
+.banner.persuaded { color: #7dffb0; }
+.action { position: fixed; left: 50%; bottom: 120px; transform: translateX(-50%); z-index: 20; padding: 16px 28px; font: inherit; font-size: 18px; color: #001018; background: #7fdcff; border: 0; border-radius: 14px; box-shadow: 0 0 24px #00b7ff88; }
+.hidden { display: none !important; }
+
+/* --- Touch flight controls --------------------------------------------- */
+.touch { position: fixed; bottom: 14px; display: grid; grid-template-columns: repeat(2, 64px); gap: 8px; z-index: 3; }
+.touch-left { left: 14px; }
+.touch-right { right: 14px; grid-template-columns: repeat(2, 72px); }
+.touch-title { grid-column: 1 / -1; color: #7fdcffaa; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; }
+.touch button { height: 48px; font: inherit; font-size: 14px; color: #bfefff; background: #0b2a36cc; border: 1px solid #7fdcff55; border-radius: 10px; touch-action: none; user-select: none; -webkit-user-select: none; }
+.touch button:active { background: #1b5a72; }
+.touch button.main { grid-column: 1 / -1; background: #3a2400cc; border-color: #ffb34788; color: #ffd8a0; }
+@media (hover: hover) and (pointer: fine) { .touch { display: none; } .action { bottom: 40px; } }
+@media (pointer: coarse) { .help { display: none; } }
+
+/* --- Duel screen -------------------------------------------------------- */
+.duel { position: fixed; inset: 0; z-index: 10; overflow-y: auto; padding: 16px; box-sizing: border-box; padding-inline: max(16px, calc((100vw - 560px) / 2)); background-color: #05060c; background-image: radial-gradient(ellipse at 50% 20%, #1a0f2e, #05060c 70%); color: #e8e4ff; display: flex; flex-direction: column; gap: 12px; }
+body.in-duel .banner, body.in-duel .hud, body.in-duel .touch-left, body.in-duel .touch-right { display: none; }
+.duel-head { display: flex; flex-direction: column; gap: 6px; }
+.duel-title { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #b9a8ff; }
+.meter { display: flex; align-items: center; gap: 4px; font-size: 12px; }
+.meter .label { flex: 0 0 90px; opacity: 0.8; text-align: left; }
+.meter .cell { flex: 1; height: 10px; border-radius: 3px; background: #ffffff1a; }
+.meter.persuasion .cell.on { background: #7dffb0; box-shadow: 0 0 8px #7dffb0aa; }
+.meter.patience .cell.on { background: #ffb347; box-shadow: 0 0 8px #ffb347aa; }
+.idea { font-size: 20px; line-height: 1.35; color: #fff; font-style: italic; text-shadow: 0 0 18px #9b7dff; padding: 6px 0; }
+.question { font-size: 14px; color: #cfc6ff; }
+.toggle { align-self: flex-start; font: inherit; font-size: 12px; color: #b9a8ff; background: none; border: 1px solid #b9a8ff66; border-radius: 999px; padding: 6px 12px; }
+.slots, .tray, .options, .code { display: flex; flex-direction: column; gap: 8px; }
+.tray { padding-top: 10px; border-top: 1px dashed #ffffff22; }
+.block, .option { min-height: 48px; text-align: left; font: inherit; font-size: 15px; color: #f2efff; background: #241a3d; border: 1px solid #6f5bd655; border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
+.block .n { width: 22px; height: 22px; flex: none; display: inline-grid; place-items: center; border-radius: 50%; background: #ffffff14; font-size: 12px; }
+.block.slot { background: transparent; border-style: dashed; color: #ffffff55; }
+.block.placed { background: #2f2557; border-color: #9b7dff; }
+.code { background: #0c0a18; border-radius: 12px; padding: 10px 14px; }
+.code-line { font-size: 15px; padding: 3px 0; color: #d9d2ff; }
+.submit { min-height: 52px; font: inherit; font-size: 17px; color: #10061f; background: #b9a8ff; border: 0; border-radius: 14px; }
+.submit:disabled { opacity: 0.35; }
+.feedback { padding: 8px 12px; border-radius: 10px; font-size: 14px; }
+.feedback.ok { background: #7dffb022; color: #7dffb0; }
+.feedback.bad { background: #ff6b5a22; color: #ff8a7a; }
+
+/* Narrow screens: compact HUD, banner below it so they never overlap. */
+@media (max-width: 600px) {
+  .hud { top: 10px; left: 10px; font-size: 11px; line-height: 1.4; }
+  .hud .big { font-size: 20px; }
+  .hud .small, .hud .lbl { font-size: 10px; }
+  .action { top: 44vh; bottom: auto; }
+  .banner { top: 34vh; max-width: 90vw; background: #05060ccc; padding: 6px 10px; border-radius: 8px; }
+}

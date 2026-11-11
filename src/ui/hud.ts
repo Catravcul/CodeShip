@@ -30,6 +30,7 @@ export class Hud {
       ${this.info.propellants
         .map((p, i) => `<div class="row small">${p.label} ${fmt(((propellantKg[i] ?? 0) / p.capacity) * 100, 0)}%</div>`)
         .join("")}
+      <div class="row ${t.hullIntegrity < 0.5 ? "warn" : ""}">Casco ${fmt(t.hullIntegrity * 100, 0)}%${t.landed ? " · anclada" : ""}</div>
       <div class="row ${assist ? "ok" : "warn"}">Asistente de rotación ${assist ? "ON" : "OFF"}</div>`;
   }
 }

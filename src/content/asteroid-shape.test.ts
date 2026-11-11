@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generateAsteroidShape } from "./asteroid-shape";
+import { asteroidSurfaceFn, generateAsteroidShape } from "./asteroid-shape";
 
 const params = { seed: 7, size: { x: 565, y: 508, z: 535 }, detail: 3, ridge: 0.08, roughness: 0.05, craters: 20 };
 
@@ -31,5 +31,16 @@ describe("generateAsteroidShape", () => {
       }
     }
     expect([...edges.values()].every((n) => n === 2)).toBe(true);
+  });
+});
+
+describe("asteroidSurfaceFn", () => {
+  it("matches the mesh vertices it was generated from", () => {
+    const { positions } = generateAsteroidShape(params);
+    const surface = asteroidSurfaceFn(params);
+    for (let i = 0; i < positions.length; i += 3 * 37) {
+      const p = { x: positions[i]!, y: positions[i + 1]!, z: positions[i + 2]! };
+      expect(surface(p)).toBeCloseTo(Math.hypot(p.x, p.y, p.z), 2);
+    }
   });
 });

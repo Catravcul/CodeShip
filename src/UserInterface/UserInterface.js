@@ -135,7 +135,7 @@ export class UserInterface extends Config {
             const idx = propsTopNav.leftButtons.findIndex(b => b.button.content == button.button.content)
             if (idx < 0) {
                 propsTopNav.leftButtons.push(button)
-                propsTopNav.upKeys.push( { key:'w', handler:() => {this.props.toggleShowCode();console.log('w');} } )
+                propsTopNav.upKeys.push( { key:'w', handler:() => this.props.toggleShowCode() } )
                 this.setState({...this.state, propsTopNav})
             }
         } else {
@@ -158,8 +158,10 @@ export class UserInterface extends Config {
             token: this.state.token
             }}> <UserInterfaceContext.Provider value={{ showLabels:this.state.showLabels, toggleShowLabels:this.toggleShowLabels }}>
                 <div id="user-interface" >
-                    { this.state.showLogin ? '' : <TopNav {...this.state.propsTopNav}/> }
-                    <Nav session={this.state.session} products={this.state.products} token={this.state.token} showLogin={this.state.showLogin}/>
+                    { this.state.showLogin ? '' : <>
+                        <TopNav {...this.state.propsTopNav}/>
+                        <Nav session={this.state.session} products={this.state.products} token={this.state.token} showLogin={this.state.showLogin}/>
+                    </>}
                     <Login updateToken={this.updateToken} hideLog={this.hideLog} showLogin={this.state.showLogin}/>
                     <Menu showMenu={this.state.showMenu} toggleShowMenu={this.toggleShowMenu}/>
                 </div>

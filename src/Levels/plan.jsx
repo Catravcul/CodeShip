@@ -1,11 +1,10 @@
-import { useContext } from "react"
-import { LevelsContext } from "./context"
-
+import { useContext } from "react";
+import { LevelsContext } from "./context";
 
 const Plan = () => {
-    const context = useContext(LevelsContext)
-    
-    return <context.questView />
-}
+	const context = useContext(LevelsContext);
 
-export default Plan
+	return <context.questView />;
+};
+
+export default Plan;

@@ -2,8 +2,8 @@ import Nav from "./nav";
 import Controls from "./controls";
 
 const Drive = {
-    Nav,
-    Controls
-}
+	Nav,
+	Controls,
+};
 
-export default Drive
+export default Drive;

@@ -1,0 +1,142 @@
+const protectiveSystemsComponents = [
+    { 
+        id: 101, 
+        name: "Thermal Protection System (TPS) on Space Shuttles", 
+        manufacturer: "NASA",
+        function: "Protects spacecraft from extreme temperatures during re-entry",
+        usdMillCost: 50, // in million dollars
+    },
+    { 
+        id: 102, 
+        name: "Ablative Heat Shield on Apollo Command Module", 
+        manufacturer: "NASA",
+        function: "Absorbs and dissipates heat during re-entry",
+        usdMillCost: 30, // in million dollars
+    },
+    { 
+        id: 103, 
+        name: "SpaceX Dragon Heat Shield", 
+        manufacturer: "SpaceX",
+        function: "Protects spacecraft during re-entry",
+        usdMillCost: 40, // in million dollars
+    },
+    { 
+        id: 104, 
+        name: "Radiation Shielding on ISS", 
+        manufacturer: "Various",
+        function: "Minimizes astronauts' exposure to space radiation",
+        usdMillCost: 60, // in million dollars
+    },
+    { 
+        id: 105, 
+        name: "Micrometeoroid and Orbital Debris (MMOD) Shielding", 
+        manufacturer: "Various",
+        function: "Protects spacecraft from impacts by micrometeoroids and debris",
+        usdMillCost: 45, // in million dollars
+    },
+    { 
+        id: 106, 
+        name: "SpaceX Starship Heat Shield", 
+        manufacturer: "SpaceX",
+        function: "Protects spacecraft during Earth re-entry and Mars descent",
+        usdMillCost: 80, // in million dollars
+    },
+    { 
+        id: 107, 
+        name: "Asteroid Impact & Deflection Assessment (AIDA) Mission", 
+        manufacturer: "Various",
+        function: "Studies deflection strategies for potentially hazardous asteroids",
+        usdMillCost: 70, // in million dollars
+    },
+    { 
+        id: 108, 
+        name: "Space Weather Monitoring Instruments", 
+        manufacturer: "Various",
+        function: "Monitors space weather events that can impact spacecraft",
+        usdMillCost: 55, // in million dollars
+    },
+    { 
+        id: 109, 
+        name: "Radiation Belt Storm Probes (RBSP)", 
+        manufacturer: "NASA",
+        function: "Studies Earth's radiation belts for spacecraft protection",
+        usdMillCost: 75, // in million dollars
+    },
+    { 
+        id: 110, 
+        name: "Laser Communications Relay Demonstration (LCRD) Terminal", 
+        manufacturer: "NASA",
+        function: "Demonstrates high-speed laser communications in space",
+        usdMillCost: 65, // in million dollars
+    },
+    { 
+        id: 111, 
+        name: "Asteroid Impact Mission (AIM) CubeSat", 
+        manufacturer: "ESA",
+        function: "CubeSat to study binary asteroid system for planetary defense",
+        usdMillCost: 50, // in million dollars
+    },
+    { 
+        id: 112, 
+        name: "SpaceX Crew Dragon Launch Escape System", 
+        manufacturer: "SpaceX",
+        function: "Ensures safe escape of astronauts during launch",
+        usdMillCost: 90, // in million dollars
+    },
+    { 
+        id: 113, 
+        name: "Space Debris Mitigation Guidelines", 
+        manufacturer: "Various",
+        function: "Guidelines to reduce the creation of space debris",
+        usdMillCost: 35, // in million dollars
+    },
+    { 
+        id: 114, 
+        name: "Solar and Cosmic Ray Monitoring Instruments on ISS", 
+        manufacturer: "Various",
+        function: "Monitors solar and cosmic radiation for astronaut safety",
+        usdMillCost: 60, // in million dollars
+    },
+    { 
+        id: 115, 
+        name: "Apollo Lunar Module Thermal Blankets", 
+        manufacturer: "Various",
+        function: "Insulates spacecraft from temperature variations on the Moon",
+        usdMillCost: 40, // in million dollars
+    },
+    { 
+        id: 116, 
+        name: "SpaceX Starship Radiation Shielding", 
+        manufacturer: "SpaceX",
+        function: "Protects crew from cosmic radiation during deep space missions",
+        usdMillCost: 85, // in million dollars
+    },
+    { 
+        id: 117, 
+        name: "Orion Spacecraft Launch Abort System", 
+        manufacturer: "Lockheed Martin",
+        function: "Ensures safe escape of astronauts during launch",
+        usdMillCost: 95, // in million dollars
+    },
+    { 
+        id: 118, 
+        name: "NASA's Near-Earth Object Observations Program", 
+        manufacturer: "NASA",
+        function: "Surveys and tracks near-Earth objects for planetary defense",
+        usdMillCost: 70, // in million dollars
+    },
+    { 
+        id: 119, 
+        name: "Apollo Lunar Module Descent Engine Cover", 
+        manufacturer: "NASA",
+        function: "Protects engine during descent to the lunar surface",
+        usdMillCost: 45, // in million dollars
+    },
+    { 
+        id: 120, 
+        name: "SpaceX Starship Thermal Protection Tiles", 
+        manufacturer: "SpaceX",
+        function: "Protects spacecraft during re-entry into Earth's atmosphere",
+        usdMillCost: 75, // in million dollars
+    },
+];

@@ -3,4 +3,4 @@
 /**
  * values options are DEV, PROD, TEST
  */
-export const mode = 'DEV'
+export const mode = "DEV";

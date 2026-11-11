@@ -1,94 +1,93 @@
-import interact from 'interactjs'
+import interact from "interactjs";
 
 /* The dragging code for '.draggable' from the demo above
  * applies to this demo as well so it doesn't have to be repeated. */
 const dropzoneConfig = {
-    // Require a 75% element overlap for a drop to be possible
-    overlap: 0.75,
-  
-    // listen for drop related events:
-  
-    ondropactivate: function (event) {
-      // add active dropzone feedback
-      event.target.classList.add('drop-active')
-    },
-    ondragenter: function (event) {
-      var draggableElement = event.relatedTarget
-      var dropzoneElement = event.target
-  
-      // feedback the possibility of a drop
-      dropzoneElement.classList.add('drop-target')
-      draggableElement.classList.add('can-drop')
-    //   draggableElement.textContent = 'Dragged in'
-    },
-    ondragleave: function (event) {
-      // remove the drop feedback style
-      event.target.classList.remove('drop-target')
-      event.relatedTarget.classList.remove('can-drop')
-    //   event.relatedTarget.textContent = 'Dragged out'
-    },
-    ondrop: function (event) {
-    //   event.relatedTarget.textContent = 'Dropped'
-    },
-    ondropdeactivate: function (event) {
-      // remove active dropzone feedback
-      event.target.classList.remove('drop-active')
-      event.target.classList.remove('drop-target')
-    }
-}
+	// Require a 75% element overlap for a drop to be possible
+	overlap: 0.75,
+
+	// listen for drop related events:
+
+	ondropactivate: function (event) {
+		// add active dropzone feedback
+		event.target.classList.add("drop-active");
+	},
+	ondragenter: function (event) {
+		var draggableElement = event.relatedTarget;
+		var dropzoneElement = event.target;
+
+		// feedback the possibility of a drop
+		dropzoneElement.classList.add("drop-target");
+		draggableElement.classList.add("can-drop");
+		//   draggableElement.textContent = 'Dragged in'
+	},
+	ondragleave: function (event) {
+		// remove the drop feedback style
+		event.target.classList.remove("drop-target");
+		event.relatedTarget.classList.remove("can-drop");
+		//   event.relatedTarget.textContent = 'Dragged out'
+	},
+	ondrop: function (event) {
+		//   event.relatedTarget.textContent = 'Dropped'
+	},
+	ondropdeactivate: function (event) {
+		// remove active dropzone feedback
+		event.target.classList.remove("drop-active");
+		event.target.classList.remove("drop-target");
+	},
+};
 
 /**
  * enable draggables to be dropped into this
- * @param {Element | string} elmt 
+ * @param {Element | string} elmt
  * @returns {function} it removes all events listeners created
  */
-export const createDropzone = elmt => {
+export const createDropzone = (elmt) => {
+	if (elmt) {
+		const interactible = interact(elmt).dropzone(dropzoneConfig);
+		const removeEvents = () => interactible.unset();
+		return removeEvents;
+	}
 
-  if (elmt) {
-    const interactible = interact(elmt).dropzone(dropzoneConfig)
-    const removeEvents = () => interactible.unset()
-    return removeEvents
-  }
-  
-  return () => {}
-}
+	return () => {};
+};
 
-function dragMoveListener (event) {
-    var target = event.target
-    // keep the dragged position in the data-x/data-y attributes
-    var x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx
-    var y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy
-  
-    // translate the element
-    target.style.transform = 'translate(' + x + 'px, ' + y + 'px)'
-  
-    // update the posiion attributes
-    target.setAttribute('data-x', x)
-    target.setAttribute('data-y', y)
+function dragMoveListener(event) {
+	var target = event.target;
+	// keep the dragged position in the data-x/data-y attributes
+	var x = (parseFloat(target.getAttribute("data-x")) || 0) + event.dx;
+	var y = (parseFloat(target.getAttribute("data-y")) || 0) + event.dy;
+
+	// translate the element
+	target.style.transform = "translate(" + x + "px, " + y + "px)";
+
+	// update the posiion attributes
+	target.setAttribute("data-x", x);
+	target.setAttribute("data-y", y);
 }
 
 const draggableConfig = {
-    inertia: true,
-    modifiers: [
-      interact.modifiers.restrictRect({
-        restriction: 'parent',
-        endOnly: true
-      })
-    ],
-    autoScroll: true,
-    listeners: { move: dragMoveListener }
-}
+	inertia: true,
+	modifiers: [
+		interact.modifiers.restrictRect({
+			restriction: "parent",
+			endOnly: true,
+		}),
+	],
+	autoScroll: true,
+	listeners: { move: dragMoveListener },
+};
 /**
  * enable draggables to be dropped into this
- * @param {Element | string} elmt 
+ * @param {Element | string} elmt
  * @returns {function} it removes all events listeners created
  */
-export const createDraggable = elmt => {
-  if (elmt) {
-    const interactible = interact(elmt).draggable(draggableConfig)
-    const removeEvents = () => interactible.unset()
-    return removeEvents
-  }
-    
-  return () => {}
-}
+export const createDraggable = (elmt) => {
+	if (elmt) {
+		const interactible = interact(elmt).draggable(draggableConfig);
+		const removeEvents = () => interactible.unset();
+		return removeEvents;
+	}
+
+	return () => {};
+};

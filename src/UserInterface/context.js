@@ -1,13 +1,13 @@
-import { createContext } from 'react'
+import { createContext } from "react";
 
 export const SessionContext = createContext({
-    postMessageS: '',
-    session: {},
-    token: '',
-    products: []
-})
+	postMessageS: "",
+	session: {},
+	token: "",
+	products: [],
+});
 
-export const UserInterfaceContext = createContext({ 
-    showLabels: true,
-    toggleShowLabels () {}
-})
+export const UserInterfaceContext = createContext({
+	showLabels: true,
+	toggleShowLabels() {},
+});

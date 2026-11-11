@@ -1,27 +1,27 @@
-import { ThreeModel } from '../ThreeModel'
+import { ThreeModel } from "../ThreeModel";
 
 export class Takeoff extends ThreeModel {
-    static folderPath = '3d/takeoff/'
-    positions
-    rotations
-    scale
-    middlewares = {
-        alignSelf(instance, scene) {
-            const scale = instance.scale || 1
-            scene.scale.x = scale
-            scene.scale.y = scale
-            scene.scale.z = scale
-            for (let index in instance.positions) {
-                const newScene = scene.clone()
-                scene.parent.add(newScene)
-                for (let axis in instance.positions[index]) {
-                    const distance = instance.positions[index][axis]
-                    const grades = instance.rotations[index][axis]
-                    axis = axis.toUpperCase()
-                    newScene['translate' + axis](distance)
-                    newScene['rotate' + axis](grades)
-                }
-            }
-        }
-    }
+	static folderPath = "3d/takeoff/";
+	positions;
+	rotations;
+	scale;
+	middlewares = {
+		alignSelf(instance, scene) {
+			const scale = instance.scale || 1;
+			scene.scale.x = scale;
+			scene.scale.y = scale;
+			scene.scale.z = scale;
+			for (let index in instance.positions) {
+				const newScene = scene.clone();
+				scene.parent.add(newScene);
+				for (let axis in instance.positions[index]) {
+					const distance = instance.positions[index][axis];
+					const grades = instance.rotations[index][axis];
+					axis = axis.toUpperCase();
+					newScene["translate" + axis](distance);
+					newScene["rotate" + axis](grades);
+				}
+			}
+		},
+	};
 }

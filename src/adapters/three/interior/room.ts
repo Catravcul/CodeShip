@@ -4,7 +4,7 @@ import type { MachineId } from "@modules/life-support/domain/machine";
 /** The habitat module sits in the spinning ring: 4 m wide, 12 m long, with gravity for people, cats and hens. */
 export const ROOM = { halfW: 2, halfL: 6, height: 2.6 } as const;
 
-export type StationId = "huerto" | "cocina" | "procesado" | "biorreactor" | "enfermeria" | "panel" | "yoga" | "gatos" | "gallinero";
+export type StationId = "huerto" | "cocina" | "procesado" | "biorreactor" | "enfermeria" | "panel" | "yoga" | "gatos" | "gallinero" | "terreno" | "perros";
 
 /** Station anchor points the player walks to (floor position + where to look). */
 export interface Station {
@@ -26,6 +26,9 @@ export const STATIONS: readonly Station[] = [
   { id: "yoga", label: "Esterilla de yoga", stand: V(0, 0, 3.0), look: V(0, 0.6, 4.0) },
   { id: "gatos", label: "Rincón de los gatos", stand: V(-0.6, 0, 4.8), look: V(-1.5, 0.2, 5.4) },
   { id: "gallinero", label: "Gallinero", stand: V(0.5, 0, 4.7), look: V(1.55, 0.4, 4.7) },
+  // Through the doorway at the far end: the farm deck (adapters/three/interior/farm-deck.ts).
+  { id: "perros", label: "Rincón de los chihuahuas", stand: V(2.4, 0, 7.0), look: V(3.6, 0.15, 7.7) },
+  { id: "terreno", label: "Cubierta de cultivo", stand: V(0, 0, 8.6), look: V(-2, 0.5, 11) },
 ];
 
 export const MACHINE_STATION: Readonly<Record<MachineId, StationId>> = {
@@ -109,7 +112,10 @@ export function buildRoom(): RoomHandles {
   ceiling.material = mat(0xdfe3e8);
   g.add(floor, ceiling);
   g.add(boxAt(0.05, height, halfL * 2, wall, -halfW, height / 2, 0), boxAt(0.05, height, halfL * 2, wall, halfW, height / 2, 0));
-  g.add(boxAt(halfW * 2, height, 0.05, wall, 0, height / 2, -halfL), boxAt(halfW * 2, height, 0.05, wall, 0, height / 2, halfL));
+  g.add(boxAt(halfW * 2, height, 0.05, wall, 0, height / 2, -halfL));
+  // Far wall with a doorway to the farm deck.
+  g.add(boxAt(halfW - 0.5, height, 0.05, wall, -(halfW + 0.5) / 2, height / 2, halfL), boxAt(halfW - 0.5, height, 0.05, wall, (halfW + 0.5) / 2, height / 2, halfL));
+  g.add(boxAt(1.0, height - 2.1, 0.05, wall, 0, 2.1 + (height - 2.1) / 2, halfL));
   // The floor curves up out of sight in a real ring; a stripe down the middle hints at the spin axis.
   g.add(boxAt(0.08, 0.002, halfL * 2, mat(0x7b8592), 0, 0.001, 0));
   const rail = mat(0xe8c547, { metalness: 0.4 });

@@ -31,8 +31,9 @@ import {
 } from "@modules/garden/data/species";
 import { MACHINES } from "@modules/life-support/data/machines";
 import { Hen } from "@modules/poultry/domain/hen";
+import { Dog } from "@modules/pets/domain/dog";
 import { Mailbox } from "@modules/story/domain/mailbox";
-import { NEVAEH_LETTERS } from "@modules/story/data/nevaeh";
+import { STORY } from "@modules/story/data/nevaeh";
 import type { Plant } from "@modules/garden/domain/plant";
 import { seededRandom } from "./content/random";
 import { Interior } from "./interior";
@@ -54,7 +55,7 @@ const expedition = new Expedition(flight, bennu, EXERCISES, 500);
 // Life on board: a long leg is already under way, so the garden has some days behind it.
 const habitat = new Habitat(seededRandom(2026), 3, ship, "Doménica", MACHINES);
 // Nevaeh writes to Doménica through the ship's radio (story rescued from the 2023 draft).
-habitat.mailbox = new Mailbox(NEVAEH_LETTERS);
+habitat.mailbox = new Mailbox(STORY);
 const growFor = (p: Plant, days: number) => {
   for (let t = 0; t < days; t += 0.25) {
     p.tick(0.25, { lit: true });
@@ -86,7 +87,23 @@ habitat.stock("medio-cultivo", 12);
 habitat.adopt(new Cat("luna", "Luna", 4));
 // Nube came aboard at the last stop: the two are still being introduced.
 habitat.adopt(new Cat("nube", "Nube", 3.2))[0]!.startAt("contacto-visual");
-for (const [id, name] of [["clara", "Clara"], ["yema", "Yema"], ["pinta", "Pinta"]] as const) habitat.addHen(new Hen(id, name));
+// Yema is broody: she can adopt a puppy or a kitten if Doménica programs her to.
+for (const [id, name] of [["clara", "Clara"], ["yema", "Yema"], ["pinta", "Pinta"]] as const) habitat.addHen(new Hen(id, name, id === "yema"));
+// Two chihuahuas: Coco, an adult, and Pepa, a puppy a few weeks old.
+habitat.addDog(new Dog("coco", "Coco", 2.4));
+habitat.addDog(new Dog("pepa", "Pepa", 0.9, "cachorro"));
+// The farm deck: eight 15 m² beds of artificial soil, planted in turns so harvests keep coming.
+const farm: [string, Parameters<Habitat["bed"]>[1], number][] = [
+  ["bancal-trigo-1", WHEAT_APOGEE, 60],
+  ["bancal-trigo-2", WHEAT_APOGEE, 20],
+  ["bancal-papa-1", POTATO_NORLAND, 70],
+  ["bancal-papa-2", POTATO_NORLAND, 25],
+  ["bancal-soja", SOYBEAN_HOYT, 50],
+  ["bancal-tomate", TOMATO_RED_ROBIN, 75],
+  ["bancal-lechuga", LETTUCE_OUTREDGEOUS, 20],
+  ["bancal-rabano", RADISH_CHERRY_BELLE, 2],
+];
+for (const [id, sp, days] of farm) growFor(habitat.bed(id, sp, 15), days);
 
 // --- Rendering adapter ------------------------------------------------------
 const root = document.getElementById("app")!;

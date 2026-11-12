@@ -1,20 +1,24 @@
 import type { Exercise } from "@modules/mind-duel/domain/exercise";
 
 /** Something that happened on board or in flight that a letter can answer to. */
-export type StoryEvent = "sacudida" | "asteroide-persuadido" | "asteroide-furioso";
+export type StoryEvent = "sacudida" | "asteroide-persuadido" | "asteroide-furioso" | "familia";
 
 /** When a letter reaches the ship's radio. */
 export type LetterTrigger =
   | { readonly kind: "start" }
   /** `days` after the mission of another letter is done. */
   | { readonly kind: "mission-done"; readonly letterId: string; readonly days: number }
-  | { readonly kind: "event"; readonly event: StoryEvent };
+  | { readonly kind: "event"; readonly event: StoryEvent }
+  /** On a given day of the trip (calls from friends). */
+  | { readonly kind: "day"; readonly day: number };
 
 /** A letter: text, an optional code example and an optional mission (a chain of code challenges). */
 export interface Letter {
   readonly id: string;
   readonly from: string;
   readonly to: string;
+  /** A written letter (default) or a call over the sanctuary's line, shown as its transcript. */
+  readonly channel?: "carta" | "llamada";
   readonly subject: string;
   readonly body: readonly string[];
   readonly example?: { readonly pseudo: string; readonly js: string };
@@ -58,7 +62,9 @@ export class Mailbox {
     this.day += dtDays;
     for (const l of this.letters) {
       const t = l.trigger;
-      if (t.kind !== "mission-done" || this.has(l.id)) continue;
+      if (this.has(l.id)) continue;
+      if (t.kind === "day" && this.day >= t.day) this.deliver(l);
+      if (t.kind !== "mission-done") continue;
       const done = this.doneAt.get(t.letterId);
       if (done !== undefined && this.day >= done + t.days) this.deliver(l);
     }

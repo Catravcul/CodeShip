@@ -8,11 +8,13 @@ export class HenModel {
   private wait = 0;
   private t = Math.random() * 10;
   stress = 0;
+  /** Family member to stay close to. */
+  follow: THREE.Object3D | null = null;
 
   constructor(
     readonly id: string,
     color: number,
-    private readonly bounds: { minX: number; maxX: number; minZ: number; maxZ: number },
+    private bounds: { minX: number; maxX: number; minZ: number; maxZ: number },
   ) {
     const feathers = new THREE.MeshStandardMaterial({ color, roughness: 0.9 });
     const red = new THREE.MeshStandardMaterial({ color: 0xd8282a });
@@ -41,8 +43,14 @@ export class HenModel {
     this.root.position.copy(this.target);
   }
 
+  setBounds(b: { minX: number; maxX: number; minZ: number; maxZ: number }): void {
+    this.bounds = b;
+    this.pick();
+  }
+
   update(dt: number): void {
     this.t += dt;
+    if (this.follow) this.target.copy(this.follow.position).add(new THREE.Vector3(0.2, 0, 0.15));
     const to = this.target.clone().sub(this.root.position);
     to.y = 0;
     const d = to.length();
@@ -53,7 +61,7 @@ export class HenModel {
     } else {
       // Pecking at the bedding.
       this.head.rotation.x = Math.max(0, Math.sin(this.t * 6)) * 0.9;
-      if ((this.wait -= dt) <= 0) {
+      if (!this.follow && (this.wait -= dt) <= 0) {
         this.wait = 1 + Math.random() * 3;
         this.pick();
       }

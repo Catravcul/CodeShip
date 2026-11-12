@@ -1,5 +1,6 @@
 import type { Sourced } from "@core/units";
 import { Health, type Patient } from "@modules/medical/domain/health";
+import { AnimalMind, type AnimalRule, type Stimulus } from "@modules/pets/domain/behavior";
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -20,6 +21,9 @@ export const HEN_TUNING = {
   /** Above this stress a hen stops laying. */
   noLayStress: 0.5,
   stressRelaxPerDay: 0.3,
+  /** Free-range hens calm down faster: room to walk, scratch and dust-bathe. */
+  freeRangeRelaxPerDay: 0.6,
+  ruleBreakStress: 0.8,
 } as const;
 
 /** A laying hen. Time in days. */
@@ -29,10 +33,15 @@ export class Hen implements Patient {
   private _satiety = 1;
   private _stress = 0;
   private _progress = 0;
+  private readonly mind = new AnimalMind();
+  /** Hens are never the young ones in a family. */
+  readonly young = false;
 
   constructor(
     readonly id: string,
     readonly name: string,
+    /** A broody hen sits on her nest and can adopt chicks, or kittens and puppies, as her own. */
+    public broody = false,
   ) {
     this.health = new Health(id);
   }
@@ -48,13 +57,17 @@ export class Hen implements Patient {
     return this._satiety > 0.2 && this.stress < HEN_TUNING.noLayStress && lightHours >= LAYING_LIGHT_HOURS.value[0];
   }
 
-  /** Returns eggs laid during this tick. */
-  tick(dtDays: number, lightHours: number): number {
+  get rules(): readonly AnimalRule[] {
+    return this.mind.rules;
+  }
+
+  /** Returns eggs laid during this tick. A broody hen stops laying while she broods. */
+  tick(dtDays: number, lightHours: number, freeRange = false): number {
     const t = HEN_TUNING;
     this._satiety = clamp01(this._satiety - t.satietyPerDay * dtDays);
-    this._stress = clamp01(this._stress - t.stressRelaxPerDay * dtDays);
+    this._stress = clamp01(this._stress - (freeRange ? t.freeRangeRelaxPerDay : t.stressRelaxPerDay) * dtDays);
     this.health.tick(dtDays);
-    if (!this.laying(lightHours)) return 0;
+    if (this.broody || !this.laying(lightHours)) return 0;
     this._progress += dtDays / t.layIntervalDays;
     const eggs = Math.floor(this._progress);
     this._progress -= eggs;
@@ -66,5 +79,11 @@ export class Hen implements Patient {
   }
   startle(amount: number): void {
     this._stress = clamp01(this._stress + amount);
+  }
+  learn(rule: AnimalRule): void {
+    this.mind.learn(rule);
+  }
+  ruleFor(stimulus: Stimulus): AnimalRule | undefined {
+    return this.mind.ruleFor(stimulus, this.stress, HEN_TUNING.ruleBreakStress);
   }
 }

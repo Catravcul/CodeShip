@@ -1,5 +1,6 @@
 import type { CodeBlock, Exercise } from "@modules/mind-duel/domain/exercise";
 import type { Letter } from "../domain/mailbox";
+import { KUSHAL_CALLS, PROLOGUE } from "./friends";
 
 /**
  * Nevaeh's letters to Doménica, rescued from the 2023 draft (branch recuperar-onedrive,
@@ -126,3 +127,6 @@ export const NEVAEH_LETTERS: readonly Letter[] = [
     postscripts: ["Seguimos investigando quién cortó las comunicaciones. No creo que sea casualidad que esto pase justo ahora."],
   },
 ];
+
+/** Everything the radio can receive: Nevaeh's prologue and letters, and Kushal's calls. */
+export const STORY: readonly Letter[] = [PROLOGUE, ...NEVAEH_LETTERS, ...KUSHAL_CALLS];

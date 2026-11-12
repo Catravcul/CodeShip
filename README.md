@@ -4,6 +4,10 @@ Juego web de pilotaje espacial realista. El jugador vuela en primera persona has
 
 Esta es la versión 2, rehecha desde cero con Three.js y TypeScript. El borrador anterior (React 17) sigue en las ramas `develop`, `top_nav` y `recuperar-onedrive`.
 
+**Preview jugable:** https://catravcul.github.io/CodeShip/ (rama `gh-pages`; se publica con `npx vite build --base=./` y se sube la carpeta compilada a esa rama).
+
+A bordo, Doménica cuida un huerto, una cubierta de cultivo que hace el viaje autosuficiente, gatos, chihuahuas y gallinas libres que pueden llegar a ser una familia, y recibe por radio las cartas de Nevaeh y las llamadas de Kushal. Todo se hace con retos de código. Diseño en [docs/design/vida-a-bordo.md](docs/design/vida-a-bordo.md).
+
 ## Arrancar
 
 ```bash

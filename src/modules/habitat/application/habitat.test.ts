@@ -18,6 +18,10 @@ import { CAT_GRASS, POTATO_NORLAND, TOMATO_RED_ROBIN, WHEAT_APOGEE } from "@modu
 import { RESPECT_HENS } from "@modules/pets/data/rules";
 import { Mailbox } from "@modules/story/domain/mailbox";
 import { NEVAEH_LETTERS } from "@modules/story/data/nevaeh";
+import { Dog } from "@modules/pets/domain/dog";
+import { ANIMAL_LESSONS, DOG_HENS_FAMILY, DOG_RESPECT_HENS, HEN_BROOD, HEN_RESPECT_YOUNG } from "@modules/pets/data/family-lessons";
+import { STORY } from "@modules/story/data/nevaeh";
+import { LETTUCE_OUTREDGEOUS as LETTUCE, SOYBEAN_HOYT } from "@modules/garden/data/species";
 import { Habitat, type ChoreSession, type Conversation, type HabitatEvent } from "./habitat";
 
 const right = (e: Exercise): Answer => (e.kind === "order" ? { kind: "order", order: e.solution } : { kind: "choice", index: e.correct });
@@ -333,7 +337,7 @@ describe("Habitat chores (everything is a code challenge)", () => {
     h.adopt(new Cat("luna", "Luna", 4));
     h.addHen(new Hen("clara", "Clara"));
     expect(count(live(h, 3), "hens-stalked")).toBeGreaterThan(0);
-    const prog = all(h).find((c) => c.kind === "programar-gato" && c.id.endsWith(RESPECT_HENS.rule.id))!;
+    const prog = all(h).find((c) => c.kind === "programar-animal" && c.id.endsWith(RESPECT_HENS.rule.id))!;
     expect(prog.scenario).toContain("acechó a las gallinas");
     finish(h.start(prog, ctx));
     expect(count(live(h, 3), "hens-stalked")).toBe(0);
@@ -355,5 +359,111 @@ describe("Habitat chores (everything is a code challenge)", () => {
     expect(h.mailbox.pendingMissions.map((l) => l.id)).toEqual(["nano-net-textos"]);
     h.jolt(0.3, "Bennu");
     expect(h.mailbox.received.some((r) => r.letter.id === "sacudida")).toBe(true);
+  });
+
+  describe("families on board", () => {
+    const fctx = { ...ctx, lessons: ANIMAL_LESSONS };
+    const fall = (h: Habitat) => h.chores(RECIPES, YOGA_SEQUENCES, fctx);
+    const program = (h: Habitat, animalId: string, ruleId: string) => {
+      const c = fall(h).find((x) => x.kind === "programar-animal" && x.id === `programar-${animalId}-${ruleId}`);
+      expect(c, `${animalId} ${ruleId}`).toBeDefined();
+      finish(h.start(c!, fctx));
+    };
+    /** Keep everyone fed and calm so only their programs matter. */
+    const care = (h: Habitat, days: number) => {
+      const events: HabitatEvent[] = [];
+      for (let t = 0; t < days; t += 0.05) {
+        h.tick(0.05);
+        events.push(...h.drainEvents());
+        for (const a of [...h.cats, ...h.dogs]) {
+          a.feed(a.dailyKcal * 0.05);
+          a.playWith();
+          a.pet();
+        }
+        for (const hen of h.hens) hen.feed();
+        if (h.crew.satiety < 0.5) h.crew.eat();
+        // The sickbay treats anyone hurt in a chase.
+        for (const c of fall(h).filter((x) => x.kind === "atender-paciente")) finish(h.start(c, fctx));
+      }
+      return events;
+    };
+
+    it("programming the coop door frees the hens; free hens peck seedlings until programmed", () => {
+      const h = new Habitat(seededRandom(3), 2, undefined, "Doménica", MACHINES);
+      h.addHen(new Hen("clara", "Clara"));
+      const door = fall(h).find((c) => c.kind === "abrir-gallinero")!;
+      finish(h.start(door, fctx));
+      expect(h.hensFree).toBe(true);
+      h.plant("l1", LETTUCE);
+      expect(count(care(h, 2), "hen-pecked-plant")).toBeGreaterThan(0);
+      program(h, "clara", "gallina-respetar-plantas");
+      h.plant("l2", LETTUCE);
+      expect(count(care(h, 2), "hen-pecked-plant")).toBe(0);
+    });
+
+    it("a dog that chases hens learns to leave them, then to lie with them, and they become family", () => {
+      const h = new Habitat(seededRandom(8), 2, undefined, "Doménica");
+      h.hensFree = true;
+      h.addDog(new Dog("coco", "Coco", 2.5));
+      h.addHen(new Hen("pinta", "Pinta"));
+      expect(count(care(h, 3), "animal-hostile")).toBeGreaterThan(0);
+      expect(fall(h).some((c) => c.id.endsWith(DOG_HENS_FAMILY.rule.id))).toBe(false);
+      program(h, "coco", DOG_RESPECT_HENS.rule.id);
+      care(h, 1);
+      program(h, "coco", DOG_HENS_FAMILY.rule.id);
+      const ev = care(h, 6);
+      expect(count(ev, "animal-hostile")).toBe(0);
+      expect(count(ev, "family-formed")).toBe(1);
+      expect([...h.families[0]!.species].sort()).toEqual(["gallina", "perro"]);
+    });
+
+    it("a broody hen adopts a chihuahua puppy; the family calms Doménica and Kushal calls", () => {
+      const run = (adopt: boolean) => {
+        const h = new Habitat(seededRandom(5), 2, undefined, "Doménica");
+        h.mailbox = new Mailbox(STORY);
+        h.hensFree = true;
+        h.addHen(new Hen("yema", "Yema", true));
+        h.addDog(new Dog("pepa", "Pepa", 0.9, "cachorro"));
+        care(h, 2);
+        if (adopt) {
+          program(h, "yema", HEN_RESPECT_YOUNG.rule.id);
+          care(h, 1);
+          program(h, "yema", HEN_BROOD.rule.id);
+        }
+        const ev = care(h, 20);
+        return { h, ev };
+      };
+      const { h, ev } = run(true);
+      expect(count(ev, "family-formed")).toBe(1);
+      expect(h.families[0]!.motherId).toBe("yema");
+      expect(h.mailbox!.received.some((r) => r.letter.id === "kushal-familia")).toBe(true);
+      const alone = run(false).h.crew;
+      expect(h.crew.loneliness).toBeLessThan(alone.loneliness);
+      expect(h.crew.stress).toBeLessThan(alone.stress);
+    });
+
+    it("dogs eat eggs when there is no cultured meat", () => {
+      const h = new Habitat(seededRandom(1), 2);
+      const coco = new Dog("coco", "Coco", 2.5);
+      h.addDog(coco);
+      h.stock("huevo", 4);
+      h.tick(0.6);
+      const feed = fall(h).find((c) => c.kind === "alimentar-perro")!;
+      finish(h.start(feed, fctx));
+      expect(h.larder("huevo")).toBe(2);
+      expect(coco.satiety).toBeGreaterThan(0.8);
+    });
+
+    it("the racks alone feed a few percent; the farm deck's beds make the trip self-sufficient", () => {
+      const h = new Habitat(seededRandom(1), 2, undefined, "Doménica");
+      for (let i = 0; i < 18; i++) h.plant(`p${i}`, LETTUCE);
+      h.addHen(new Hen("clara", "Clara"));
+      h.adopt(new Cat("luna", "Luna", 4));
+      h.addDog(new Dog("coco", "Coco", 2.5));
+      expect(h.sustainability.ratio).toBeLessThan(0.1);
+      for (let i = 0; i < 8; i++) h.bed(`bancal-${i}`, i % 2 ? SOYBEAN_HOYT : WHEAT_APOGEE, 15);
+      expect(h.sustainability.ratio).toBeGreaterThan(1);
+      expect(all(h).some((c) => c.kind === "regar" && c.targetId?.startsWith("bancal"))).toBe(false);
+    });
   });
 });

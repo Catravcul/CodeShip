@@ -408,6 +408,7 @@ export class EvaMode {
     const total = e.phase === "volviendo" ? `<div class="ok">Volviendo a la escotilla…</div>` : "";
     this.hud.innerHTML = `
       <div class="ititle">Paseo por Bennu · ${e.suitSpec.name}</div>
+      <div class="small">Fuera ${hms(e.elapsedS)} · tiempo ×${e.timeScale}</div>
       ${bar(`O₂ ${s.onSecondary ? `reserva ${Math.round(s.secondaryOxygen * 100)} %` : hms(s.oxygen * e.suitSpec.primaryOxygenS.value)}`, s.onSecondary ? s.secondaryOxygen : s.oxygen, s.status !== "nominal")}
       ${bar(`Filtro CO₂ ${Math.round(s.co2Scrubber * 100)} %`, s.co2Scrubber)}
       ${bar(`Batería ${Math.round(s.battery * 100)} %`, s.battery)}

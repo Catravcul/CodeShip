@@ -19,7 +19,7 @@ import { RESPECT_HENS } from "@modules/pets/data/rules";
 import { Mailbox } from "@modules/story/domain/mailbox";
 import { NEVAEH_LETTERS } from "@modules/story/data/nevaeh";
 import { Dog } from "@modules/pets/domain/dog";
-import { ANIMAL_LESSONS, DOG_HENS_FAMILY, DOG_RESPECT_HENS, HEN_BROOD } from "@modules/pets/data/family-lessons";
+import { ANIMAL_LESSONS, DOG_HENS_FAMILY, DOG_RESPECT_HENS, HEN_BROOD, HEN_RESPECT_YOUNG } from "@modules/pets/data/family-lessons";
 import { STORY } from "@modules/story/data/nevaeh";
 import { LETTUCE_OUTREDGEOUS as LETTUCE, SOYBEAN_HOYT } from "@modules/garden/data/species";
 import { Habitat, type ChoreSession, type Conversation, type HabitatEvent } from "./habitat";
@@ -424,8 +424,12 @@ describe("Habitat chores (everything is a code challenge)", () => {
         h.hensFree = true;
         h.addHen(new Hen("yema", "Yema", true));
         h.addDog(new Dog("pepa", "Pepa", 0.9, "cachorro"));
-        care(h, 1);
-        if (adopt) program(h, "yema", HEN_BROOD.rule.id);
+        care(h, 2);
+        if (adopt) {
+          program(h, "yema", HEN_RESPECT_YOUNG.rule.id);
+          care(h, 1);
+          program(h, "yema", HEN_BROOD.rule.id);
+        }
         const ev = care(h, 20);
         return { h, ev };
       };

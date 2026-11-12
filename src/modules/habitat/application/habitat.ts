@@ -551,7 +551,8 @@ export class Habitat {
 
   /**
    * Lessons that make sense now. Level 1 rules that stop a problem appear once the problem showed
-   * up; warm rules once the animals have met; level 2 (family) on top of the level-1 rule.
+   * up; warm rules once the animals have met; level 2 (family) on top of the level-1 rule when the
+   * animal ever caused that problem.
    */
   private lessonChores(lessons: readonly AnimalLesson[]): Chore[] {
     const out: Chore[] = [];
@@ -562,9 +563,11 @@ export class Habitat {
         if (l.broodyOnly && !(a as Hen).broody) continue;
         const current = a.rules.find((r) => r.when === l.rule.when);
         const level = l.level ?? 1;
-        if (current?.id === l.rule.id || levelOf(current?.id) >= level || levelOf(current?.id) < level - 1) continue;
-        const warm = WARM_ACTIONS.has(l.rule.then);
         const problem = this._seen.get(a.id)?.get(l.rule.when);
+        if (current?.id === l.rule.id || levelOf(current?.id) >= level) continue;
+        // A family rule goes on top of the rule that solved a problem, if there ever was one.
+        if (levelOf(current?.id) < level - 1 && problem) continue;
+        const warm = WARM_ACTIONS.has(l.rule.then);
         const met = this._met.get(a.id)?.get(l.rule.when) ?? problem;
         if (!warm && problem) out.push(lessonChore(a, l, `${problem}: escríbele una regla`));
         else if (warm && met) out.push(lessonChore(a, l, `${met}: prográmalo para hacer familia`));

@@ -243,7 +243,91 @@ Decisión de Berón (2026-11-12): se rescata la historia del borrador. **Doméni
 
 Las misiones repiten la mecánica del borrador: **ordenar las piezas** `let`, nombre, `=` y valor. Se hacen en el panel de la mente de la nave. Las posdatas siguen el arco del borrador: los seres queridos de Doménica escriben preocupados, el fallo de comunicaciones se investiga y al final «alguien estaba detrás». La carta nueva lo continúa.
 
-El retrato original de Nevaeh se perdió; por ahora se muestra un retrato provisional dibujado con SVG.
+El retrato original de Nevaeh se perdió (el borrador apuntaba a `/img/nevaeh/face_100px.webp`). Ahora se dibuja a partir de su hoja de diseño de Cold Sanctuary; ver más abajo.
+
+## Familias de gallinas, gatos y chihuahuas
+
+Decisión de Berón (2026-11-12): las gallinas pueden vivir libres, suben a bordo chihuahuas, y el jugador programa un entorno amable para que gallinas, gatos y perros formen **familias**. Eso le da a Doménica, que pasará años en el espacio sin hablar con su familia, un gran bienestar mental.
+
+**Lo real en que se apoya:**
+
+- **Adopción entre especies.** Hay casos documentados: una gata crió patitos nacidos junto a su camada, y una perra crió un cachorro de leopardo. El reconocimiento materno depende de la oxitocina y se aprende, por eso los criadores recurren a la adopción cruzada ([WCVM, Universidad de Saskatchewan](https://wcvmtoday.usask.ca/scicomm/family-or-foe-how-prey-and-predator-animals-can-develop-mother-child-bonds.php)).
+- **Gallinas cluecas.** Aceptan pollitos ajenos si se los ponen de noche y en calma. En un ensayo, 3 de 4 grupos fueron aceptados; en el que falló, la gallina los picoteó o los ignoró ([SARE FNE08-645](https://projects.sare.org/project-reports/fne08-645/)).
+- **Compañía animal.** La interacción con animales baja el cortisol, la frecuencia cardiaca y la presión arterial, y mejora el ánimo ([Beetz et al. 2012](https://pmc.ncbi.nlm.nih.gov/articles/PMC3408111/)).
+
+**Que una gallina adopte un cachorro o un gatito es una licencia del juego.** Solo hay vídeos y anécdotas, no estudios.
+
+**Cómo funciona** (`modules/family`, `pets/data/family-lessons.ts`):
+
+1. **Gallinas libres.** El jugador programa la puerta automática del gallinero: abre al amanecer y cierra al anochecer, pero solo si están todas dentro. Las gallinas libres se calman antes, pero escarban los plantones hasta que se les programa «buscar bichos en el compost».
+2. **Encuentros.** Cada animal reacciona a los demás según su instinto o según su programa:
+   - El perro persigue a las gallinas y le ladra al gato.
+   - El gato bufa al perro y acecha a las gallinas.
+   - Las gallinas picotean a las crías ajenas.
+3. **Lecciones en dos niveles.**
+   - **Nivel 1** aparece cuando surge el problema: no perseguir, no picotear.
+   - **Nivel 2** es la regla de familia, que se escribe encima de la de nivel 1: tumbarse junto a la gallina, o cobijar a la cría bajo las alas (solo una clueca).
+   - Hay también reglas de amistad sin problema previo: el gato espera a que el perro se calme y lo saluda; el perro invita a jugar con la reverencia de juego.
+4. **Lazos.** Cada encuentro cálido sube el lazo si el otro está tranquilo. Cuidar a una cría lo sube el doble, y así se adopta. Un encuentro hostil lo baja.
+   - Con un lazo de 0,7 o más, dos animales de especies distintas son familia.
+   - La familia crece por miembros compartidos.
+   - Un animal no ataca a su familia, sea cual sea su instinto.
+   - En 3D, las crías siguen a quien las adoptó.
+5. **Doménica.** Su soledad crece cada día lejos de su familia, y las comidas y el yoga no la tocan. Las familias de animales la bajan, y el HUD lo muestra en la barra «Compañía». Cuando se forma la primera familia, Kushal la llama.
+
+**Chihuahuas** (`pets/domain/dog.ts`):
+
+- Coco, adulto de 2,4 kg, y Pepa, cachorra de 0,9 kg. El estándar de la raza dice que un chihuahua no debe pasar de 6 lb, unos 2,7 kg ([Chihuahua Club of America](https://www.chihuahuaclubofamerica.org/thechihuahua/breedstandard)).
+- Energía: RER × 1,6 para un adulto castrado y × 3 para un cachorro de menos de 4 meses ([Pet Nutrition Alliance](https://petnutritionalliance.org/wp-content/uploads/2023/03/MER.RER_.PNA_.pdf)). Coco necesita unas 223 kcal al día.
+- A diferencia de los gatos, los perros aprovechan los almidones cocidos y la proteína vegetal ([Merck](https://www.merckvetmanual.com/management-and-nutrition/nutrition-small-animals/nutritional-requirements-of-small-animals)). Comen carne cultivada o, si no hay, huevos (72 kcal por huevo grande, USDA).
+- Van a la enfermería como cualquier otro paciente.
+
+## La cubierta de cultivo: un viaje autosuficiente
+
+La nave es grande. Detrás del módulo habitable, una puerta da a una **cubierta de cultivo** de 18 × 18 m:
+
+- suelo artificial con colinas suaves y árboles frutales;
+- un cielo de LED;
+- ocho bancales de 15 m² con riego por goteo, que no hay que regar a mano;
+- el compost de las gallinas;
+- el rincón de los chihuahuas.
+
+**¿Cuánto hace falta?** Wheeler et al. (2021), en su revisión de la investigación de la NASA, estiman 40–50 m² de cultivo con luz intensa para dar las calorías de una persona. Esa misma superficie hace todo su O2 y retira su CO2 ([Frontiers](https://www.frontiersin.org/journals/astronomy-and-space-sciences/articles/10.3389/fspas.2021.734343/full)).
+
+**El cálculo del juego** (`life-support/domain/sustainability.ts`):
+
+- Toma 45 m² por persona y lo escala con la energía de cada comensal:
+  - Doménica: ecuación de la NASA para mujeres, unas 2.280 kcal con ejercicio ([JSC-67378](https://ntrs.nasa.gov/api/citations/20205008306/downloads/JSC67378%20Expl%20Nutr%20Reqs%20042020.pdf));
+  - cada gallina: 110 g de pienso a unas 2,9 kcal/g;
+  - gatos y perros: su RER × factor.
+- Es una **cota inferior**, porque alimentar animales a partir de cultivos pierde energía por el camino.
+- Hoy a bordo hacen falta unos 81 m². Los bastidores (4,5 m²) dan un 5 %. Con los bancales hay 124 m², un 150 %, con margen para malas cosechas y futuros tripulantes.
+- El HUD muestra la autosuficiencia en todo momento.
+
+## Historia: Doménica, Nevaeh y Kushal
+
+Canon de Berón (2026-11-12):
+
+- Doménica tenía en la Tierra una situación difícil que la obligó a huir.
+- Llegó a Cold Sanctuary con su grupo de amigos. Ahí le contó sus problemas a **Nevaeh, la Magnate del santuario**, y Nevaeh le habló de ir al espacio. Doménica aceptó sin dudarlo.
+- Pasará años en el espacio sin hablar con su familia.
+- Su amigo **Kushal** la llama a veces por la línea del santuario. Más amigos del grupo se irán incorporando.
+
+En el juego (`story/data/friends.ts`):
+
+- La primera carta, «Antes de que empieces», es Nevaeh recordando esa noche. Los detalles de lo que hizo huir a Doménica quedan sin escribir a propósito.
+- Las llamadas de Kushal llegan por la radio como transcripción. Una llega el día 2 y otra cuando se forma la primera familia.
+
+**Retratos** (`src/ui/portraits.ts`): dibujados con SVG a partir de las hojas de diseño descritas en `docs/diseno-personajes.md` de Cold Sanctuary. Las imágenes de esas hojas no están en ninguno de los dos repositorios.
+
+- **Nevaeh:** bob azul noche con flequillo recto, labios morados, cuello alto blanco, bolero morado y corsé granate con ribete dorado.
+- **Kushal:** gorro de lana rojo, gafas redondas, barba de unos días y chaleco morado con cuello de borrego.
+- **Doménica:** aún no tiene hoja de diseño.
+
+**Próximo:** la nano_net.
+
+- Las misiones de Nevaeh serán vuelos al núcleo que falla, que se arregla con un reto de código.
+- Un asteroide subyugado puede convertirse en **núcleo** de la red. Al programarlo, aprende a generar nodos, moverlos, conectarlos para cubrir un área y unirse a otra red.
 
 ## Qué hay implementado
 
@@ -267,6 +351,10 @@ El retrato original de Nevaeh se perdió; por ahora se muestra un retrato provis
 | Panel de la mente de la nave y reparación por retos | `chores/application/catalog.ts`, `src/interior.ts` | ✓ (cambiar piezas: pendiente) |
 | Interior 3D: caminar, huerto, cocina, molino, laboratorio, enfermería, panel, esterilla, gatos, gallinero | `src/interior.ts`, `src/adapters/three/interior/` | ✓ |
 | Cartas de Nevaeh a Doménica con misiones | `modules/story`, radio en `src/interior.ts` | ✓ con tests |
+| Gallinas libres, chihuahuas, lazos y familias entre especies | `modules/family`, `pets/domain/dog.ts`, `pets/data/family-lessons.ts` | ✓ con tests |
+| Cubierta de cultivo y autosuficiencia | `life-support/domain/sustainability.ts`, `src/adapters/three/interior/farm-deck.ts` | ✓ con tests |
+| Prólogo de Nevaeh, llamadas de Kushal y retratos | `story/data/friends.ts`, `src/ui/portraits.ts` | ✓ con tests |
+| nano_net: núcleos hechos de asteroides | — | siguiente PR |
 | Viaje automático programado entre asteroides | — | pendiente |
 
 Los números de cuidado sin fuente (velocidad de secado, ritmo de juego y de cariño, probabilidad de mordisco, días por etapa) están marcados en el código como **ajuste de juego**. Así se distinguen de los datos reales.

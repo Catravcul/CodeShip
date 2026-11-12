@@ -235,11 +235,31 @@ export const HEN_RESPECT_PLANTS = lesson({
   specify: { question: "¿Qué orden salva los plantones?", options: ["No comas nunca", "Cuando veas una planta nueva, no escarbes alrededor y busca bichos en el compost", "Cuando veas una planta nueva, picotéala poco"], correct: 1 },
 });
 
-/** A broody hen accepts chicks that are not hers when they are placed under her calmly. */
+/** A hen given young that are not hers may peck at them (SARE FNE08-645): first, leave them be. */
+export const HEN_RESPECT_YOUNG = lesson({
+  id: "gallina-no-picotear-crias",
+  species: "gallina",
+  level: 1,
+  when: "cria",
+  then: "ignorar",
+  event: ["cuando vea una cría", "on('cria', (cria) => {"],
+  body: [
+    ["no picotearla", "evitar(cria, 'picotear');"],
+    ["seguir escarbando a su lado", "escarbar(cerca(cria));"],
+  ],
+  ideas: ["¿Qué es esa bola de pelo?", "¿La picoteo?", "Dime cómo tratarla"],
+  predict: { question: "La gallina tiene estrés 0,9. ¿Qué hará al ver al cachorro?", code: STRESS_CHECK, options: ["Sigue la regla y no lo picotea", "Sigue su instinto y puede picotearlo", "Lo cobija"], correct: 1 },
+  specify: { question: "¿Qué orden protege a la cría?", options: ["Cuando veas una cría, no la picotees y sigue escarbando a su lado", "Cuando veas una cría, picotéala suave", "Cuando veas una cría, huye"], correct: 0 },
+});
+
+/**
+ * Level 2 for a broody hen: a broody hen accepts chicks that are not hers when they are placed
+ * under her calmly; here she takes a kitten or a puppy.
+ */
 export const HEN_BROOD = lesson({
   id: "gallina-cobijar-crias",
   species: "gallina",
-  level: 1,
+  level: 2,
   when: "cria",
   then: "cobijar",
   broodyOnly: true,
@@ -262,7 +282,7 @@ export const HEN_BROOD = lesson({
   specify: { question: "¿Qué orden convierte a la clueca en madre?", options: ["Cuando veas una cría, picotéala", "Cuando una cría tenga frío, llámala cloqueando y cobíjala bajo tus alas", "Cuando veas una cría, sal corriendo"], correct: 1 },
 });
 
-export const FAMILY_LESSONS: readonly AnimalLesson[] = [CAT_HENS_FAMILY, CAT_DOG, CAT_YOUNG, DOG_RESPECT_HENS, DOG_HENS_FAMILY, DOG_CATS, DOG_YOUNG, HEN_RESPECT_PLANTS, HEN_BROOD];
+export const FAMILY_LESSONS: readonly AnimalLesson[] = [CAT_HENS_FAMILY, CAT_DOG, CAT_YOUNG, DOG_RESPECT_HENS, DOG_HENS_FAMILY, DOG_CATS, DOG_YOUNG, HEN_RESPECT_PLANTS, HEN_RESPECT_YOUNG, HEN_BROOD];
 
 /** Every lesson for every animal on board. */
 export const ANIMAL_LESSONS: readonly AnimalLesson[] = [...CAT_LESSONS, ...FAMILY_LESSONS];

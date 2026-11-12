@@ -25,6 +25,24 @@ export interface SessionLike {
   readonly maxLives: number;
 }
 
+const UI_KEY = "codeship.retos-ui";
+/** Player setting: compact challenge sheet (small, see-through, more camera) or the full panel. */
+export function compactUi(): boolean {
+  try {
+    return localStorage.getItem(UI_KEY) === "compacta";
+  } catch {
+    return false;
+  }
+}
+export function setCompactUi(on: boolean): void {
+  try {
+    localStorage.setItem(UI_KEY, on ? "compacta" : "panel");
+  } catch {
+    /* private mode: keep it for this session only */
+  }
+  document.body.classList.toggle("ui-compact", on);
+}
+
 export interface SessionText {
   readonly title: string;
   readonly progress: string;
@@ -55,12 +73,15 @@ export class DuelView {
   private readonly el: HTMLElement;
   private showJs = false;
   private placed: string[] = [];
+  /** Counts answers so the feedback line re-animates even when the text repeats. */
+  private answers = 0;
   private feedback: { ok: boolean; text: string } | null = null;
 
   private text: SessionText = asteroidText("");
   private onAnswer: (a: Answer) => { ok: boolean } = () => ({ ok: false });
 
   constructor(root: HTMLElement) {
+    document.body.classList.toggle("ui-compact", compactUi());
     this.el = document.createElement("div");
     this.el.className = "duel hidden";
     root.appendChild(this.el);
@@ -107,6 +128,7 @@ export class DuelView {
       return;
     }
     if (act === "toggle") this.showJs = !this.showJs;
+    if (act === "ui") setCompactUi(!compactUi());
     if (ex?.kind === "order" && act === "place" && t.dataset.id) this.placed.push(t.dataset.id);
     if (ex?.kind === "order" && act === "unplace" && t.dataset.id) this.placed = this.placed.filter((id) => id !== t.dataset.id);
     if (ex?.kind === "order" && act === "submit") this.submit({ kind: "order", order: this.placed });
@@ -117,6 +139,7 @@ export class DuelView {
   private submit(a: Answer): void {
     const { ok } = this.onAnswer(a);
     this.feedback = { ok, text: ok ? this.text.ok : this.text.bad };
+    this.answers++;
     this.placed = [];
   }
 
@@ -128,13 +151,18 @@ export class DuelView {
   private render(): void {
     const d = this.duel!;
     const ex = d.current;
+    const sheetTools = this.text.sheet
+      ? `<div class="duel-tools"><button class="ui-toggle" data-act="ui">${compactUi() ? "Vista amplia" : "Vista compacta"}</button><button class="x" data-act="close" aria-label="Cerrar">×</button></div>`
+      : "";
     const head = `
+      <div class="duel-top">${sheetTools}
       <div class="duel-head">
         <div class="duel-title">${esc(this.text.title)}</div>
         ${this.meter(this.text.progress, d.progress, d.goal, "persuasion")}
         ${this.meter(this.text.lives, d.lives, d.maxLives, "patience")}
       </div>
-      ${this.feedback ? `<div class="feedback ${this.feedback.ok ? "ok" : "bad"}">${this.feedback.text}</div>` : ""}`;
+      ${this.feedback ? `<div class="feedback ${this.feedback.ok ? "ok" : "bad"}" data-n="${this.answers}">${this.feedback.text}</div>` : ""}
+      </div>`;
 
     if (!ex) {
       this.el.innerHTML = `${head}<button class="submit" data-act="close">Cerrar</button>`;

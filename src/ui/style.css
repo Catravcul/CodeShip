@@ -127,3 +127,33 @@ body.in-cockpit .cam-tag.on { display: block; }
 .hud .thrust { color: #7fdcff88; }
 .hud .thrust.on { color: #ffd8a0; }
 @media (pointer: coarse) { .pilot-look { left: auto; right: 18px; margin-left: 0; bottom: 280px; } }
+
+/* Challenge sheet: the status (title, meters, feedback) and the buttons stay visible while scrolling. */
+.duel-top { position: sticky; top: -16px; z-index: 2; margin-top: -16px; padding: 16px 0 8px; display: flex; flex-direction: column; gap: 8px; background-color: #05060c; box-shadow: 0 8px 12px -6px #05060c; }
+.duel.sheet .duel-top { background-color: #05060c; }
+.duel-top { position: sticky; }
+.duel-top:has(.duel-tools) .duel-title { padding-right: 150px; }
+.duel-tools { position: absolute; top: 12px; right: 0; display: flex; gap: 8px; }
+.duel-tools button { font: inherit; font-size: 12px; color: #d9d2ff; background: #ffffff12; border: 1px solid #b9a8ff55; border-radius: 999px; padding: 6px 12px; }
+.duel-tools .x { font-size: 18px; line-height: 1; padding: 4px 12px; }
+.duel .submit { position: sticky; bottom: 0; z-index: 2; box-shadow: 0 -12px 16px -4px #05060c; }
+.feedback { animation: feedback-in 0.5s ease-out; }
+@keyframes feedback-in { from { transform: scale(1.06); filter: brightness(1.8); } to { transform: none; filter: none; } }
+.option:active, .block:active { transform: scale(0.98); filter: brightness(1.3); }
+
+/* Compact challenge UI (setting): smaller, see-through sheet so the 3D scene stays visible. */
+body.ui-compact .duel.sheet { top: 56vh; gap: 6px; padding-top: 10px; background-color: #05060cb8; backdrop-filter: blur(2px); }
+body.ui-compact .duel.sheet .duel-top { top: -10px; margin-top: -10px; padding-top: 10px; gap: 4px; background-color: #05060c; }
+body.ui-compact .duel.sheet .duel-tools { top: 6px; }
+body.ui-compact .duel.sheet .duel-title { font-size: 11px; }
+body.ui-compact .duel.sheet .feedback { padding: 4px 10px; font-size: 13px; }
+body.ui-compact .duel.sheet .idea { font-size: 15px; padding: 0; }
+body.ui-compact .duel.sheet .meter { font-size: 11px; }
+body.ui-compact .duel.sheet .meter .cell { height: 7px; }
+body.ui-compact .duel.sheet .block, body.ui-compact .duel.sheet .option { min-height: 38px; font-size: 13px; padding: 6px 10px; border-radius: 10px; }
+body.ui-compact .duel.sheet .code-line { font-size: 13px; padding: 1px 0; }
+body.ui-compact .duel.sheet .submit { min-height: 42px; font-size: 15px; }
+@media (min-aspect-ratio: 1/1) { body.ui-compact .duel.sheet { top: 0; width: min(380px, 36vw); } }
+
+/* Boards (tasks, radio): the header with the close button stays on top while scrolling. */
+.board-head { position: sticky; top: -12px; z-index: 2; margin: -12px -12px 0; padding: 12px; background: #0a1220; border-radius: 14px 14px 0 0; }

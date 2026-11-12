@@ -4,6 +4,7 @@ import { Quat } from "@core/math/quat";
 import { NODRIZA, IDSS_CONTACT_LIMITS } from "../data/mothership";
 import { Mothership } from "./mothership";
 import { alignment, judgeContact } from "./docking";
+import { inShadow, radiatingAreaM2, radiatorTemperatureK, wingCorners, wingPlanformM2 } from "./thermal";
 import { RigidBodyState } from "@modules/flight/domain/rigid-body";
 
 const PROBE_PORT = new Vec3(0, 1.3, 0.6);
@@ -107,5 +108,50 @@ describe("Docking contact (IDSS limits)", () => {
     expect(why(at(0.02))).toMatch(/lento/);
     expect(why(at(0.07, 0.3))).toMatch(/desalineado/);
     expect(why(at(0.07, 0, 8))).toMatch(/inclinado/);
+  });
+});
+
+describe("Mothership heat rejection and shadow shield", () => {
+  const m = new Mothership(NODRIZA, Vec3.ZERO, Quat.IDENTITY);
+  const l = NODRIZA.layout;
+
+  it("the radiators reject 3.93 MW at ~409 K, above the Brayton cold end (so the study's area is radiating area)", () => {
+    const t = m.radiatorTemperatureK;
+    expect(t).toBeGreaterThan(400);
+    expect(t).toBeLessThan(420);
+    expect(t).toBeGreaterThan(NODRIZA.power.coldEndK.value);
+    // Read as planform (both faces radiating), the same heat would need a mean below the compressor inlet: impossible.
+    const asPlanform = radiatorTemperatureK(m.wasteHeatKw * 1000, 2 * NODRIZA.power.radiatorAreaM2.value, 0.9, 4);
+    expect(asPlanform).toBeLessThan(NODRIZA.power.coldEndK.value);
+    expect(radiatingAreaM2(m.wasteHeatKw * 1000, t, 0.9, 4)).toBeCloseTo(NODRIZA.power.radiatorAreaM2.value, 0);
+  });
+
+  it("the two two-sided wings have half the radiating area as planform", () => {
+    expect(m.radiatorPlanformM2).toBeCloseTo(NODRIZA.power.radiatorAreaM2.value / 2, 6);
+    expect(wingPlanformM2(l.radiator)).toBeCloseTo(690, 6);
+    expect(l.radiator.spanAftM).toBeLessThan(l.radiator.spanM);
+  });
+
+  it("rings, radiators, thruster pods and spine modules sit in the shield's shadow", () => {
+    const cone = m.shadow;
+    const R = NODRIZA.ring.floorRadiusM + 1;
+    const pts: { x: number; y: number; z: number }[] = [];
+    for (const z of [l.habRingZ, l.twinRingZ]) for (const dz of [-NODRIZA.ring.widthM / 2, NODRIZA.ring.widthM / 2]) pts.push({ x: R, y: 0, z: z + dz });
+    for (const s of [1, -1] as const) pts.push(...wingCorners(l.radiator, s));
+    for (const m2 of NODRIZA.propulsion.mounts) for (const sy of [1, -1]) pts.push({ x: m2.faceWidthM / 2, y: sy * (7.5 + m2.faceHeightM / 2), z: l.thrusterZ + 4 });
+    for (const sm of l.spineModules) pts.push({ x: sm.radiusM, y: 0, z: sm.toZ });
+    pts.push({ x: l.nodeRadiusM, y: 0, z: l.nodeZ });
+    for (const p of pts) expect(inShadow(cone, p), JSON.stringify(p)).toBe(true);
+    // The shield is a frustum that casts that cone: wider on the side away from the reactor.
+    expect(m.shieldRadiusAt(l.shield.farZ)).toBeGreaterThan(m.shieldRadiusAt(l.shield.nearZ));
+    expect(inShadow(cone, { x: 0, y: 0, z: l.reactorZ + 1 })).toBe(false);
+  });
+
+  it("spine modules run forward of the rings, back to back, between the node and the hub", () => {
+    const mods = [...l.spineModules].sort((a, b) => a.fromZ - b.fromZ);
+    for (let i = 1; i < mods.length; i++) expect(mods[i]!.fromZ).toBeCloseTo(mods[i - 1]!.toZ, 6);
+    expect(mods[0]!.fromZ).toBeGreaterThan(l.nodeZ);
+    expect(mods.at(-1)!.toZ).toBeLessThan(l.habRingZ - 3);
+    for (const sm of mods) expect(sm.reference).toMatch(/^.+https:\/\//);
   });
 });

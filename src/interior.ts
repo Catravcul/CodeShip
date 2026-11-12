@@ -19,7 +19,8 @@ import { ANIMAL_LESSONS } from "@modules/pets/data/family-lessons";
 import { PROTOCOLS } from "@modules/medical/data/protocols";
 import type { MachineId } from "@modules/life-support/domain/machine";
 import { YOGA_SEQUENCES } from "@modules/wellness/data/yoga";
-import { CAT_BOUNDS, COOP_BOUNDS, MACHINE_STATION, ROOM, STATIONS, POT_SLOTS, buildRoom, drawScreen, type RoomHandles, type Station } from "./adapters/three/interior/room";
+import { WORKOUTS } from "@modules/wellness/data/exercise";
+import { CAT_BOUNDS, COOP, COOP_BOUNDS, crewEndBlocks, MACHINE_STATION, ROOM, STATIONS, POT_SLOTS, buildRoom, drawScreen, type RoomHandles, type Station } from "./adapters/three/interior/room";
 import { HenModel } from "./adapters/three/interior/hen-model";
 import { DogModel } from "./adapters/three/interior/dog-model";
 import { DOOR, FARM, FARM_ROAM, buildFarmDeck, farmModels, type FarmPlantModel } from "./adapters/three/interior/farm-deck";
@@ -35,7 +36,7 @@ import { GravityZones } from "./adapters/three/interior/zones";
 const CAT_COLORS = [0xd9822b, 0x2b2b2b, 0xe8e2d6, 0x8a8f99];
 const HEN_COLORS = [0xb5651d, 0xf2efe6, 0x2a2a2a, 0xc98a4a];
 const DOG_COLORS = [0xd9a066, 0x2a2420, 0xf0e2c8];
-const CONTEXT = { recipes: RECIPES, yoga: YOGA_SEQUENCES, processes: PROCESSES, lessons: ANIMAL_LESSONS };
+const CONTEXT = { recipes: RECIPES, yoga: YOGA_SEQUENCES, processes: PROCESSES, lessons: ANIMAL_LESSONS, workouts: WORKOUTS };
 /** Game days per real second while walking around (a day every ~40 s). Paused during a chore. */
 const DAYS_PER_SECOND = 1 / 40;
 
@@ -43,6 +44,8 @@ const stationFor = (c: Chore): Station["id"] => {
   switch (c.kind) {
     case "yoga":
       return "yoga";
+    case "ejercicio":
+      return "ejercicio";
     case "reparar-nave":
       return "panel";
     case "alimentar-gato":
@@ -222,6 +225,7 @@ export class Interior {
     this.stationBtn.addEventListener("click", () => {
       const s = this.nearStation();
       if (s?.id === "bahia" && this.openBay) return this.openBay();
+      if (s?.id === "camarote") return this.openRadio();
       if (s) this.openBoard(s.id);
     });
     this.board.addEventListener("click", (e) => {
@@ -335,7 +339,7 @@ export class Interior {
     if (this.habitat.hensFree !== this.hensOut) {
       this.hensOut = this.habitat.hensFree;
       for (const m of this.hens.values()) {
-        m.root.position.set(0, 0, DOOR.z + 0.5);
+        m.root.position.set(COOP.gateX, 0, COOP.z);
         m.setBounds(this.hensOut ? FARM_ROAM : COOP_BOUNDS);
       }
     }
@@ -362,7 +366,9 @@ export class Interior {
     const near = !busy && !this.walkTo && (this.zones?.zone ?? "anillo") === "anillo" ? this.nearStation() : undefined;
     const n = near ? this.currentChores().filter((c) => stationFor(c) === near.id).length : 0;
     this.stationBtn.classList.toggle("hidden", !near);
-    if (near) this.stationBtn.textContent = near.id === "bahia" ? "Entrar en la bahía de la nave" : `${near.label}: ${n} ${n === 1 ? "tarea" : "tareas"}`;
+    if (near)
+      this.stationBtn.textContent =
+        near.id === "bahia" ? "Entrar en la bahía de la nave" : near.id === "camarote" ? `Camarote: leer cartas${this.habitat.mailbox?.unread ? ` (${this.habitat.mailbox.unread})` : ""}` : `${near.label}: ${n} ${n === 1 ? "tarea" : "tareas"}`;
     if (performance.now() > this.toastUntil) this.toast.classList.remove("on");
   }
 
@@ -392,7 +398,8 @@ export class Interior {
     const room = z >= -ROOM.halfL + 0.4 && z <= ROOM.halfL - 0.4 && Math.abs(x) <= 1.25;
     const door = Math.abs(x) <= DOOR.halfW - 0.15 && z > 0 && z < ROOM.halfL + 0.6;
     const farm = z >= ROOM.halfL + 0.4 && z <= FARM.maxZ - 1.2 && x >= FARM.minX + 1.2 && x <= FARM.maxX - 1.2;
-    return (room || door || farm) && !this.zones?.blocks(x, z);
+    const coop = Math.abs(x - COOP.x) < COOP.w / 2 + 0.2 && Math.abs(z - COOP.z) < COOP.d / 2 + 0.2;
+    return (room || door || farm) && !coop && !crewEndBlocks(x, z) && !this.zones?.blocks(x, z);
   }
 
   private clampWalk(prev: THREE.Vector3): void {
@@ -526,8 +533,8 @@ export class Interior {
     if (cat && chore.kind === "atender-paciente") {
       cat.goTo(new THREE.Vector3(-1.15, 0, 0.2));
     } else if (cat) {
-      cat.goTo(new THREE.Vector3(-1.1, 0, 5.0));
-      look = new THREE.Vector3(-1.1, 0.2, 5.0);
+      cat.goTo(new THREE.Vector3(-0.75, 0, 5.55));
+      look = new THREE.Vector3(-0.75, 0.2, 5.55);
     }
     this.walkTo = { pos: stand, look, then: () => this.startChore(chore) };
   }
@@ -686,7 +693,8 @@ export class Interior {
       for (let i = 0; i < Math.min(h.nestEggs, 8); i++) {
         const e = new THREE.Mesh(new THREE.SphereGeometry(0.025, 10, 8), new THREE.MeshStandardMaterial({ color: 0xf3e3c8 }));
         e.scale.y = 1.3;
-        e.position.set(1.78 + (i % 2) * 0.06, 0.53, i < 4 ? 5.3 + (i % 2 ? 0.05 : -0.05) : 5.62 + (i % 2 ? 0.05 : -0.05));
+        const nestZ = COOP.z + (i < 4 ? -0.3 : 0.3);
+        e.position.set(COOP.x + COOP.w / 2 - 0.22 + (i % 2) * 0.06, 0.53, nestZ + (i % 4 < 2 ? -0.05 : 0.05));
         eggs.add(e);
       }
     }

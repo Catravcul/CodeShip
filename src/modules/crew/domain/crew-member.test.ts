@@ -11,6 +11,17 @@ describe("CrewMember", () => {
     expect(c.satiety).toBeCloseTo(0.45);
   });
 
+  it("a full workout raises fitness more than a yoga sequence, and calms less", () => {
+    const a = new CrewMember("A");
+    const b = new CrewMember("B");
+    a.startle(0.5);
+    b.startle(0.5);
+    for (let i = 0; i < 4; i++) a.train(4);
+    for (let i = 0; i < 4; i++) b.practice(4);
+    expect(a.fitness).toBeGreaterThan(b.fitness);
+    expect(a.stress).toBeGreaterThan(b.stress);
+  });
+
   it("a full yoga sequence raises fitness and lowers stress", () => {
     const c = new CrewMember("Berón");
     c.startle(0.5);

@@ -5,6 +5,7 @@ import type { RingSpec } from "@modules/gravity/domain/spin-gravity";
 import { RigidBodyState } from "@modules/flight/domain/rigid-body";
 import { clearanceTo, keepOutDelta, type Obstacle } from "@modules/flight/domain/keep-out";
 import type { DockingTarget } from "./docking";
+import { radiatorTemperatureK, shadowRadiusAt, wingPlanformM2, type RadiatorWing, type ShadowCone } from "./thermal";
 import { drivePlan, fitProblem, unitMassKg, type DrivePlan, type ElectricPropellant, type ElectricThruster, type MountFit, type ThrusterMount } from "./propulsion";
 
 export type { Obstacle } from "@modules/flight/domain/keep-out";
@@ -49,9 +50,25 @@ export interface MothershipLayout {
   /** Centre of the habitat ring and of its counter-rotating twin along the spine. */
   readonly habRingZ: number;
   readonly twinRingZ: number;
-  readonly radiator: { readonly fromZ: number; readonly toZ: number; readonly innerX: number; readonly spanM: number };
+  /** Each of the two radiator wings (mirrored in x), in the plane y = 0. */
+  readonly radiator: RadiatorWing;
   readonly reactorZ: number;
+  /** Shadow shield between the reactor and the rest: the cone it casts and where the shield sits. */
+  readonly shield: { readonly halfAngleDeg: number; readonly nearZ: number; readonly farZ: number };
   readonly thrusterZ: number;
+  /** Pressurised modules on the non-rotating spine, forward of the rings (see docs/design/interiores.md). */
+  readonly spineModules: readonly SpineModule[];
+}
+
+/** A pressurised can on the spine: what it holds, where it is along z and how big. */
+export interface SpineModule {
+  readonly id: string;
+  readonly name: string;
+  readonly fromZ: number;
+  readonly toZ: number;
+  readonly radiusM: number;
+  /** Real module it is modelled on. */
+  readonly reference: string;
 }
 
 export interface MothershipSpec {
@@ -62,7 +79,13 @@ export interface MothershipSpec {
     readonly electricKw: Sourced<number>;
     readonly specificMassKgPerKw: Sourced<number>;
     readonly conversionEfficiency: Sourced<number>;
+    /** Total radiating area (both faces of the two-sided panels). */
     readonly radiatorAreaM2: Sourced<number>;
+    readonly radiatorEmissivity: Sourced<number>;
+    /** Coldest point of the Brayton loop (compressor inlet): the radiator cannot run colder, K. */
+    readonly coldEndK: Sourced<number>;
+    /** Radiative sink temperature (deep space with margin), K. */
+    readonly sinkK: Sourced<number>;
   };
   readonly propulsion: PropulsionSpec;
   readonly propellantCapacityKg: number;
@@ -269,6 +292,28 @@ export class Mothership implements DockingTarget {
   get wasteHeatKw(): number {
     const p = this.spec.power;
     return p.electricKw.value * (1 / p.conversionEfficiency.value - 1);
+  }
+
+  /** Planform of the two wings: the panels radiate from both faces, so half the radiating area, m². */
+  get radiatorPlanformM2(): number {
+    return 2 * wingPlanformM2(this.spec.layout.radiator);
+  }
+
+  /** Mean radiator temperature that rejects the waste heat over the radiating area (Stefan–Boltzmann), K. */
+  get radiatorTemperatureK(): number {
+    const p = this.spec.power;
+    return radiatorTemperatureK(this.wasteHeatKw * 1000, p.radiatorAreaM2.value, p.radiatorEmissivity.value, p.sinkK.value);
+  }
+
+  /** The shield's shadow cone (apex at the reactor). */
+  get shadow(): ShadowCone {
+    const l = this.spec.layout;
+    return { reactorZ: l.reactorZ, halfAngleDeg: l.shield.halfAngleDeg };
+  }
+
+  /** Radius the shield must have at body z to cast that cone, m. */
+  shieldRadiusAt(z: number): number {
+    return shadowRadiusAt(this.shadow, z);
   }
 
   // --- Geometry ---------------------------------------------------------------

@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { Plant } from "@modules/garden/domain/plant";
 import { ROOM } from "./room";
+import { textSign } from "./sign";
 
 /**
  * The farm deck: a large hall behind the habitat module, with raised crop beds under an LED
@@ -121,28 +122,7 @@ function cyl(rt: number, rb: number, h: number, m: THREE.Material, x: number, y:
 }
 
 /** A sign that always faces the camera, for naming beds. */
-export function textSign(text: string): THREE.Sprite {
-  const c = document.createElement("canvas");
-  const ctx = c.getContext("2d")!;
-  const font = "bold 44px system-ui, sans-serif";
-  ctx.font = font;
-  c.width = Math.ceil(ctx.measureText(text).width) + 48;
-  c.height = 72;
-  ctx.font = font;
-  ctx.fillStyle = "#0b2a36dd";
-  ctx.beginPath();
-  ctx.roundRect(0, 0, c.width, c.height, 18);
-  ctx.fill();
-  ctx.fillStyle = "#e6f6ff";
-  ctx.textBaseline = "middle";
-  ctx.fillText(text, 24, c.height / 2 + 2);
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false }));
-  const h = 0.32;
-  sprite.scale.set((h * c.width) / c.height, h, 1);
-  return sprite;
-}
+export { textSign };
 
 /** A plant drawn on the farm deck: a bed of one crop or a fruit tree in its planter. */
 export interface FarmPlantModel {

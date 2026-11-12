@@ -9,6 +9,7 @@ export type ChoreKind =
   | "calmar-gato"
   | "cocinar"
   | "yoga"
+  | "ejercicio"
   | "reparar-nave"
   | "cambiar-pieza"
   | "programar-animal"
@@ -57,6 +58,7 @@ export const CHORE_CATEGORY: Readonly<Record<ChoreKind, ChoreCategory>> = {
   "alimentar-gallinas": "animales",
   "recoger-huevos": "animales",
   yoga: "salud",
+  ejercicio: "salud",
   "atender-paciente": "salud",
   "reparar-nave": "nave",
   "reparar-maquina": "nave",

@@ -4,6 +4,7 @@ import { LETTUCE_OUTREDGEOUS } from "@modules/garden/data/species";
 import { CHILE_ESPANOLA } from "@modules/garden/data/species";
 import { RECIPES } from "@modules/kitchen/data/recipes";
 import { SUN_SALUTATION, YOGA_SEQUENCES } from "@modules/wellness/data/yoga";
+import { WORKOUTS } from "@modules/wellness/data/exercise";
 import { Ship } from "@modules/ship/domain/ship";
 import { explorerDesign } from "@modules/ship/data/explorer";
 import type { Answer, Exercise } from "@modules/mind-duel/domain/exercise";
@@ -209,6 +210,17 @@ describe("Habitat chores (everything is a code challenge)", () => {
     const postures = h.drainEvents().filter((e) => e.type === "posture");
     expect(postures).toHaveLength(11);
     expect(h.crew.stress).toBeCloseTo(stress - 0.3);
+  });
+
+  it("a workout in the exercise corner raises fitness more than it calms", () => {
+    const h = new Habitat(seededRandom(1));
+    h.tick(2);
+    const fit = h.crew.fitness;
+    const chore = h.chores([], [], { workouts: WORKOUTS }).find((c) => c.kind === "ejercicio" && c.targetId === "intervalos-4x4")!;
+    expect(chore).toBeDefined();
+    finish(h.start(chore));
+    expect(h.crew.fitness).toBeCloseTo(Math.min(1, fit + 0.35));
+    expect(h.drainEvents()).toContainEqual({ type: "chore-done", choreId: chore.id });
   });
 
   const ctx = { recipes: RECIPES, yoga: YOGA_SEQUENCES, processes: PROCESSES, lessons: CAT_LESSONS };

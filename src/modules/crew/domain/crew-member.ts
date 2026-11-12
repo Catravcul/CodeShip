@@ -10,6 +10,9 @@ export const CREW_TUNING = {
   mealSatiety: 0.45,
   yogaFitness: 0.25,
   yogaCalm: 0.3,
+  /** A whole workout on the exercise corner's machines: more fitness than yoga, less calm. */
+  workoutFitness: 0.35,
+  workoutCalm: 0.1,
   /** Years away from her family: loneliness slowly builds up… */
   isolationStressPerDay: 0.03,
   /** …and animal families on board calm her (see ANIMAL_COMPANY in the family module). */
@@ -104,6 +107,12 @@ export class CrewMember implements Patient {
   practice(of: number): void {
     this._fitness = clamp01(this._fitness + CREW_TUNING.yogaFitness / of);
     this._stress = clamp01(this._stress - CREW_TUNING.yogaCalm / of);
+  }
+
+  /** One step of a workout done; `of` = steps in the workout. */
+  train(of: number): void {
+    this._fitness = clamp01(this._fitness + CREW_TUNING.workoutFitness / of);
+    this._stress = clamp01(this._stress - CREW_TUNING.workoutCalm / of);
   }
 
   startle(amount: number): void {

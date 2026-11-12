@@ -6,6 +6,7 @@ import { Cat } from "@modules/pets/domain/cat";
 import { explorerDesign } from "@modules/ship/data/explorer";
 import { RECIPES } from "@modules/kitchen/data/recipes";
 import { YOGA_SEQUENCES, SUN_SALUTATION } from "@modules/wellness/data/yoga";
+import { DEVICES, WORKOUTS, maxHeartRate } from "@modules/wellness/data/exercise";
 import { PROCESSES } from "@modules/kitchen/data/processes";
 import { MACHINES } from "@modules/life-support/data/machines";
 import { Machine } from "@modules/life-support/domain/machine";
@@ -13,7 +14,7 @@ import { Bioreactor } from "@modules/cultured-meat/domain/bioreactor";
 import { Hen } from "@modules/poultry/domain/hen";
 import { Health } from "@modules/medical/domain/health";
 import { PROTOCOLS } from "@modules/medical/data/protocols";
-import { bioreactorChores, henChores, machineRepairChore, patientChore, processChore, plainStep, catMeal, catChores, cookingChore, plantChores, repairChore, shipCode, swapChore, toCall, yogaChore } from "./catalog";
+import { bioreactorChores, henChores, machineRepairChore, patientChore, processChore, plainStep, catMeal, catChores, cookingChore, plantChores, repairChore, shipCode, swapChore, toCall, workoutChore, yogaChore } from "./catalog";
 import { partById } from "@modules/ship/data/parts";
 import { Ship } from "@modules/ship/domain/ship";
 import { withPart } from "@modules/ship/domain/refit";
@@ -75,6 +76,30 @@ describe("chore catalog", () => {
     const first = chore.exercises[0]!;
     if (first.kind !== "choice") throw new Error("expected a choice");
     expect(first.options[first.correct]).toBe("Pranamasana · exhala");
+  });
+
+  it("exercise: Sprint workouts with real numbers (Tanaka heart rate, the ISS machines' ranges)", () => {
+    const answer = (e: (typeof WORKOUTS)[number], suffix: string) => {
+      const ex = workoutChore(e, 30).exercises.find((x) => x.id.endsWith(suffix))!;
+      if (ex.kind !== "choice") throw new Error("expected a choice");
+      return ex.options[ex.correct];
+    };
+    const fourByFour = WORKOUTS.find((w) => w.id === "intervalos-4x4")!;
+    expect(maxHeartRate.value(30)).toBe(187);
+    expect(answer(fourByFour, "-pulso")).toBe("169 lpm");
+    expect(answer(fourByFour, "-minutos")).toBe("16 min");
+    expect(answer(fourByFour, "-limite")).toBe("19,3 km/h");
+    expect(answer(WORKOUTS.find((w) => w.id === "intervalos-8x30")!, "-minutos")).toBe("4 min");
+    expect(answer(WORKOUTS.find((w) => w.id === "intervalos-8x30")!, "-limite")).toBe("350 W");
+    expect(answer(WORKOUTS.find((w) => w.id === "fuerza-4x8")!, "-reps")).toBe("32");
+    expect(answer(WORKOUTS.find((w) => w.id === "fuerza-4x8")!, "-limite")).toBe("272 kg");
+    expect(answer(WORKOUTS.find((w) => w.id === "continuo-30")!, "-semana")).toBe("90 min");
+    for (const w of WORKOUTS) {
+      const c = workoutChore(w, 30);
+      expect(c.kind).toBe("ejercicio");
+      expect(answer(w, "-anillo")).toBe(DEVICES[w.device].onTheRing);
+      for (const e of c.exercises) if (e.kind === "choice") expect(new Set(e.options).size).toBe(e.options.length);
+    }
   });
 
   it("repair: exactly one line of the ship's code is corrupted, and it is the answer", () => {

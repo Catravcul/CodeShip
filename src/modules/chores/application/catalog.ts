@@ -16,6 +16,7 @@ import { Ship, type ShipDesign } from "@modules/ship/domain/ship";
 import { withPart, type Part, type PartSlot } from "@modules/ship/domain/refit";
 import type { Recipe } from "@modules/kitchen/data/recipes";
 import type { Breath, YogaSequence } from "@modules/wellness/data/yoga";
+import { DEVICES, INTERVAL_HR_FRACTION, maxHeartRate, type Workout } from "@modules/wellness/data/exercise";
 import type { Chore } from "../domain/chore";
 
 // --- Helpers that turn data into exercises -----------------------------------
@@ -360,6 +361,61 @@ export function yogaChore(seq: YogaSequence): Chore {
     );
   });
   return { id: `yoga-${seq.id}`, kind: "yoga", targetId: seq.id, title: seq.name, scenario: `${ps.length} posturas, una por reto`, exercises };
+}
+
+// --- Exercise ----------------------------------------------------------------
+
+/**
+ * A workout of the Sprint protocol on one of the exercise corner's machines: work out its numbers
+ * (target heart rate, hard minutes, the load the machine can really give) and what 1 g changes.
+ */
+export function workoutChore(w: Workout, age: number): Chore {
+  const d = DEVICES[w.device];
+  const r = d.range.value;
+  const sets = w.sets.value;
+  const id = `ejercicio-${w.id}`;
+  const exercises: Exercise[] = [];
+  const asked = Math.round(r.max * 1.15);
+  const clampCode = [block("a", `pedida = ${fmt(asked)} ${r.unit}`, `const pedida = ${asked};`), block("b", `real = limitar(pedida, ${fmt(r.min)}, ${fmt(r.max)})`, `const real = Math.max(${r.min}, Math.min(${r.max}, pedida));`)];
+  if (w.kind === "intervalos") {
+    const hrMax = maxHeartRate.value(age);
+    const target = Math.ceil(INTERVAL_HR_FRACTION.value * hrMax);
+    exercises.push(
+      choice(
+        `${id}-pulso`,
+        2,
+        "predecir",
+        "Cada intervalo, por encima del 90 % del pulso máximo",
+        `Doménica tiene ${age} años: ¿a qué pulso tiene que llegar?`,
+        [block("a", `fcMax = 208 − 0,7 × ${age}`, `const fcMax = 208 - 0.7 * ${age};`), block("b", "objetivo = redondearArriba(0,9 × fcMax)", "const objetivo = Math.ceil(0.9 * fcMax);")],
+        `${target} lpm`,
+        [`${Math.round(hrMax)} lpm`, `${Math.ceil(0.75 * hrMax)} lpm`],
+      ),
+      choice(
+        `${id}-minutos`,
+        3,
+        "predecir",
+        "Los intervalos se repiten en un bucle",
+        "¿Cuántos minutos va a fondo?",
+        [block("a", `repetir(${sets.count}) {`, `for (let i = 0; i < ${sets.count}; i++) {`), block("b", `a fondo ${fmt(sets.workS!)} s`, `aFondo(${sets.workS});`, 1), block("c", "suave hasta recuperar", "suave();", 1), block("d", "}", "}")],
+        `${fmt((sets.count * sets.workS!) / 60)} min`,
+        [`${fmt(sets.workS! / 60)} min`, `${fmt((sets.count * sets.workS!) / 30)} min`],
+      ),
+    );
+  } else if (w.kind === "continuo") {
+    exercises.push(
+      choice(`${id}-semana`, 3, "predecir", "Tres días a la semana, alternando con los intervalos", "¿Cuántos minutos suma a la semana?", [block("a", "repetir(3) {", "for (let dia = 0; dia < 3; dia++) {"), block("b", `pedalear ${fmt(sets.workS! / 60)} min`, `pedalear(${sets.workS! / 60});`, 1), block("c", "}", "}")], `${fmt((3 * sets.workS!) / 60)} min`, [`${fmt(sets.workS! / 60)} min`, `${fmt((6 * sets.workS!) / 60)} min`]),
+    );
+  } else {
+    exercises.push(
+      choice(`${id}-reps`, 3, "predecir", "Series y repeticiones son un bucle dentro de otro", "¿Cuántas repeticiones hace en total?", [block("a", `repetir(${sets.count}) {`, `for (let s = 0; s < ${sets.count}; s++) {`), block("b", `repetir(${sets.reps}) { sentadilla() }`, `for (let r = 0; r < ${sets.reps}; r++) sentadilla();`, 1), block("c", "}", "}")], String(sets.count * sets.reps!), [String(sets.count + sets.reps!), String(sets.reps!)]),
+    );
+  }
+  exercises.push(
+    choice(`${id}-limite`, 2, "predecir", `${d.name}: como la ${d.reference.split(" ")[0]} de la ISS, de ${fmt(r.min)} a ${fmt(r.max)} ${r.unit}`, "Si se le pide más de lo que da, ¿qué da?", clampCode, `${fmt(r.max)} ${r.unit}`, [`${fmt(asked)} ${r.unit}`, `${fmt(r.min)} ${r.unit}`]),
+    choice(`${id}-anillo`, 1, "predecir", `En la ISS: ${d.reference}`, "En el anillo, a 1 g, ¿qué cambia?", [], d.onTheRing, ["Nada: sin arnés saldría flotando", "Hay que atarse: a 4 rpm se resbala de la máquina"]),
+  );
+  return { id, kind: "ejercicio", targetId: w.id, title: w.name, scenario: `${d.name} · protocolo Sprint de la NASA`, exercises };
 }
 
 // --- Ship --------------------------------------------------------------------

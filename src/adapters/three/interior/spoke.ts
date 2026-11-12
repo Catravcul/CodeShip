@@ -1,11 +1,13 @@
 import * as THREE from "three";
 import type { SpinRing } from "@modules/gravity/domain/spin-gravity";
-import { textSign } from "./farm-deck";
+import { textSign } from "./sign";
 
 /**
  * The way out of the ring toward the spin axis: an elevator up a spoke from the habitat module's
  * end wall, the small rotating hub at the top and, past a bearing, the non-rotating spine module
- * where everything floats and whose far hatch leads to the cockpit.
+ * where everything floats and whose far hatch leads to the cockpit. Along the spine, from the
+ * bearing forward: the workshop, the stores, the side hatch to the flight deck and the airlock
+ * with the suits (docs/design/interiores.md; compressed: outside the cans are ~20 m long).
  *
  * Interior frame = ring frame: x along the spin axis, y up (toward the axis), z spinward.
  * The axis runs at height R (the ring's floor radius) above the floor, right over the elevator.
@@ -127,7 +129,7 @@ export function buildSpoke(L: SpokeLayout, ring: SpinRing, roomHeight: number): 
     r.position.set((L.moduleEndX - L.hubHalfX) / 2, L.axisY + Math.cos(a) * (L.tubeR - 0.2), L.z + Math.sin(a) * (L.tubeR - 0.2));
     g.add(r);
   }
-  for (let x = L.hubHalfX + 1.5; x < L.moduleEndX - 1; x += 3) {
+  for (let x = L.hubHalfX + 1.5; x < L.deckHatchX; x += 3) {
     const locker = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 0.25), mat(0x8a96a6));
     locker.position.set(x, L.axisY, L.z - L.tubeR + 0.3);
     g.add(locker);
@@ -140,6 +142,56 @@ export function buildSpoke(L: SpokeLayout, ring: SpinRing, roomHeight: number): 
     l.position.set(x, L.axisY + 1, L.z);
     g.add(l);
   }
+  // Workshop (like a Destiny rack): a glovebox with two glove ports and a 3D printer, on the "floor".
+  const below = L.axisY - L.tubeR + 0.45;
+  const glovebox = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.7, 0.9), mat(0xb8c2cc, { metalness: 0.3 }));
+  glovebox.position.set(4.3, below, L.z);
+  const window = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.02, 0.7), glass);
+  window.position.set(4.3, below + 0.36, L.z);
+  g.add(glovebox, window);
+  for (const dx of [-0.3, 0.3]) {
+    const port = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.025, 6, 16), mat(0x30343c));
+    port.position.set(4.3 + dx, below, L.z + 0.46);
+    g.add(port);
+  }
+  const printer = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.6, 0.6), mat(0x30343c));
+  printer.position.set(6.1, below, L.z + 0.6);
+  const printBed = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.02, 0.4), new THREE.MeshStandardMaterial({ color: 0xff9a3c, emissive: 0xff6a10, emissiveIntensity: 0.6 }));
+  printBed.position.set(6.1, below + 0.31, L.z + 0.6);
+  g.add(printer, printBed);
+  const shopSign = textSign("Taller · guantera e impresora 3D");
+  shopSign.position.set(5, L.axisY - 0.5, L.z + 0.9);
+  g.add(shopSign);
+  // Stores: cargo transfer bags strapped to the "ceiling" (like the ISS PMM).
+  const bag = mat(0xf0ede4);
+  for (let x = 7.6; x < 10.4; x += 0.55)
+    for (const dz of [-0.55, 0, 0.55]) {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.45), bag);
+      b.position.set(x, L.axisY + L.tubeR - 0.45, L.z + dz);
+      g.add(b);
+    }
+  const storeSign = textSign("Almacén · bolsas de carga");
+  storeSign.position.set(9, L.axisY + 0.8, L.z - 0.6);
+  g.add(storeSign);
+  // Airlock end (like Quest's crew lock): two suits on the wall and the outer hatch overhead.
+  const suit = mat(0xf4f4f0);
+  for (const x of [13.2, 14.4]) {
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.35, 0.7), suit);
+    torso.position.set(x, L.axisY + 0.2, L.z - L.tubeR + 0.4);
+    const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.17, 14, 10), new THREE.MeshStandardMaterial({ color: 0xc8a040, metalness: 0.8, roughness: 0.2 }));
+    helmet.position.set(x, L.axisY + 0.2, L.z - L.tubeR + 0.4 + 0.5);
+    const pack = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.25, 0.65), suit);
+    pack.position.set(x, L.axisY - 0.05, L.z - L.tubeR + 0.4);
+    g.add(torso, helmet, pack);
+  }
+  const outer = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.06, 8, 24), mat(0xe8c547, { emissive: 0x806010, emissiveIntensity: 0.4 }));
+  outer.rotation.x = Math.PI / 2;
+  outer.position.set(14, L.axisY + L.tubeR - 0.05, L.z);
+  g.add(outer);
+  const lockSign = textSign("Esclusa · trajes EMU");
+  lockSign.position.set(13.8, L.axisY + 0.9, L.z - 0.7);
+  g.add(lockSign);
+
   // Bearing: it is the line where the turning hub meets the still spine.
   const bearing = new THREE.Group();
   bearing.position.set(L.hubHalfX, L.axisY, L.z);

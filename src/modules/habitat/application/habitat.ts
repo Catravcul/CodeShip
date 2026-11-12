@@ -16,6 +16,7 @@ import { partById } from "@modules/ship/data/parts";
 import type { Recipe } from "@modules/kitchen/data/recipes";
 import { portionNutrients } from "@modules/kitchen/data/nutrition";
 import type { YogaSequence } from "@modules/wellness/data/yoga";
+import type { Workout } from "@modules/wellness/data/exercise";
 import { ChoreRun, type Chore } from "@modules/chores/domain/chore";
 import {
   bioreactorChores,
@@ -34,6 +35,7 @@ import {
   repairChore,
   stepPool,
   yogaChore,
+  workoutChore,
 } from "@modules/chores/application/catalog";
 import type { Stimulus } from "@modules/pets/domain/behavior";
 import type { Hen } from "@modules/poultry/domain/hen";
@@ -147,6 +149,7 @@ export interface ChoreContext {
   readonly yoga?: readonly YogaSequence[];
   readonly processes?: readonly Process[];
   readonly lessons?: readonly AnimalLesson[];
+  readonly workouts?: readonly Workout[];
 }
 
 type Animal = (Cat | Dog | Hen) & Member & { ruleFor: Cat["ruleFor"]; startle(a: number): void; readonly stress: number; readonly rules: readonly AnimalRule[] };
@@ -541,7 +544,7 @@ export class Habitat {
   }
 
   /** Everything that needs doing right now, each as a chain of code challenges. */
-  chores(recipes: readonly Recipe[], yoga: readonly YogaSequence[], more: { processes?: readonly Process[]; lessons?: readonly AnimalLesson[] } = {}): Chore[] {
+  chores(recipes: readonly Recipe[], yoga: readonly YogaSequence[], more: { processes?: readonly Process[]; lessons?: readonly AnimalLesson[]; workouts?: readonly Workout[] } = {}): Chore[] {
     const processes = more.processes ?? [];
     const pool = stepPool([...recipes.map((r) => r.steps.value), ...processes.map((p) => p.steps.value)]);
     const out: Chore[] = [];
@@ -560,6 +563,7 @@ export class Habitat {
     if (this.ship && this.ship.hullIntegrity < 0.999) out.push(repairChore(this.ship.design, this.ship.hullIntegrity, this._repairs + 3, this._scenarios.get("nave")));
     for (const r of recipes) if (this.canCook(r)) out.push(cookingChore(r, pool));
     for (const y of yoga) out.push(yogaChore(y));
+    for (const w of more.workouts ?? []) out.push(workoutChore(w, this.crew.body.age));
     // Nevaeh's missions are nano_net work, done landed on a core (modules/nano-net), not chores on board.
     // A broken machine blocks its chores, except its own repair.
     return out.filter((c) => c.kind === "reparar-maquina" || this.working(c.machine));
@@ -610,6 +614,7 @@ export class Habitat {
     const cat = chore.targetId ? this._cats.get(chore.targetId) : undefined;
     const steps = chore.exercises.length;
     const onStep = (i: number) => {
+      if (chore.kind === "ejercicio") this.crew.train(steps);
       if (chore.kind === "yoga") {
         this.crew.practice(steps);
         this._events.push({ type: "posture", sequenceId: chore.targetId!, index: i });
@@ -737,6 +742,7 @@ export class Habitat {
           break;
         }
         case "yoga":
+        case "ejercicio":
           break;
       }
       this._events.push({ type: "chore-done", choreId: chore.id });

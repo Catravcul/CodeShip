@@ -1,10 +1,17 @@
 import * as THREE from "three";
 import type { MachineId } from "@modules/life-support/domain/machine";
+import { textSign } from "./sign";
 
-/** The habitat module sits in the spinning ring: 4 m wide, 12 m long, with gravity for people, cats and hens. */
+/**
+ * The habitat module sits in the spinning ring: 4 m wide, 12 m long, at 1 g. Laid out like a
+ * long-duration habitat (docs/design/interiores.md): the noisy, wet end with the galley, food
+ * processing and growing racks by the elevator; the sickbay and ship-mind panel in the middle;
+ * the crew end with Doménica's cabin, the hygiene stall and the exercise corner. The hens live on
+ * the farm deck, through the far doorway.
+ */
 export const ROOM = { halfW: 2, halfL: 6, height: 2.6 } as const;
 
-export type StationId = "huerto" | "cocina" | "procesado" | "biorreactor" | "enfermeria" | "panel" | "yoga" | "gatos" | "gallinero" | "terreno" | "perros" | "bahia";
+export type StationId = "huerto" | "cocina" | "procesado" | "biorreactor" | "enfermeria" | "panel" | "yoga" | "ejercicio" | "camarote" | "gatos" | "gallinero" | "terreno" | "perros" | "bahia";
 
 /** Station anchor points the player walks to (floor position + where to look). */
 export interface Station {
@@ -26,8 +33,12 @@ export const STATIONS: readonly Station[] = [
   // Hatch on the left wall to the ship bay (engineering station, see src/ship-bay.ts).
   { id: "bahia", label: "Bahía de la nave", stand: V(-1.1, 0, 2.75), look: V(-2, 1.3, 2.75) },
   { id: "yoga", label: "Esterilla de yoga", stand: V(0, 0, 3.0), look: V(0, 0.6, 4.0) },
-  { id: "gatos", label: "Rincón de los gatos", stand: V(-0.6, 0, 4.8), look: V(-1.5, 0.2, 5.4) },
-  { id: "gallinero", label: "Gallinero", stand: V(0.5, 0, 4.7), look: V(1.55, 0.4, 4.7) },
+  // Crew end: Doménica's cabin (her letters are read there, like the ISS crew quarters' laptop).
+  { id: "camarote", label: "Camarote de Doménica", stand: V(-0.55, 0, 3.95), look: V(-1.7, 0.9, 4.25) },
+  { id: "ejercicio", label: "Rincón de ejercicio", stand: V(0.7, 0, 4.95), look: V(1.6, 0.8, 4.95) },
+  { id: "gatos", label: "Rincón de los gatos", stand: V(-0.4, 0, 5.2), look: V(-1.0, 0.15, 5.7) },
+  // On the farm deck, at the right end of the lawn.
+  { id: "gallinero", label: "Gallinero", stand: V(5.7, 0, 7.4), look: V(7.3, 0.4, 7.4) },
   // Through the doorway at the far end: the farm deck (adapters/three/interior/farm-deck.ts).
   { id: "perros", label: "Rincón de los chihuahuas", stand: V(2.4, 0, 7.0), look: V(3.6, 0.15, 7.7) },
   { id: "terreno", label: "Cubierta de cultivo", stand: V(0, 0, 8.6), look: V(-2, 0.5, 11) },
@@ -43,9 +54,21 @@ export const MACHINE_STATION: Readonly<Record<MachineId, StationId>> = {
   gallinero: "gallinero",
 };
 
+/**
+ * Walls of the crew end the walker must not cross: Doménica's cabin (door opening z 3.85–5.2) and
+ * the hygiene stall, along the left wall.
+ */
+export function crewEndBlocks(x: number, z: number): boolean {
+  if (z < 3.25 || z > ROOM.halfL) return false;
+  const door = z > 3.85 && z < 5.2;
+  return x < (door ? -1.3 : -0.95);
+}
+
 /** Where cats and hens may roam. */
 export const CAT_BOUNDS = { minX: -1.2, maxX: 1.0, minZ: -5, maxZ: 5.6 } as const;
-export const COOP_BOUNDS = { minX: 1.35, maxX: 1.85, minZ: 3.75, maxZ: 5.55 } as const;
+export const COOP_BOUNDS = { minX: 6.75, maxX: 8.0, minZ: 6.6, maxZ: 8.2 } as const;
+/** The coop on the farm deck: pen centre and size (x, z), its gate on the lawn side (−x). */
+export const COOP = { x: 7.4, z: 7.4, w: 1.6, d: 2.0, gateX: 6.6 } as const;
 
 const mat = (color: number, extra: THREE.MeshStandardMaterialParameters = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.75, ...extra });
 const glow = (color: number, intensity = 1.5) => new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: intensity });
@@ -99,7 +122,8 @@ function lamp(lamps: Map<MachineId, THREE.Mesh>, g: THREE.Group, id: MachineId, 
 
 /**
  * The habitat module: shell, growing racks, galley, mill and soy processor, cultured-meat lab,
- * sickbay, ship-mind panel, yoga mat, cat corner and chicken coop.
+ * sickbay, ship-mind panel, exercise corner with the yoga mat, Doménica's cabin, hygiene stall and
+ * the cats' things; plus the chicken coop, which stands on the farm deck.
  */
 export function buildRoom(): RoomHandles {
   const g = new THREE.Group();
@@ -210,30 +234,85 @@ export function buildRoom(): RoomHandles {
   for (const dz of [-0.47, 0.47]) g.add(boxAt(0.03, 1.95, 0.04, glow(0xffb347, 0.8), -halfW + 0.07, 0.975, 2.75 + dz));
   g.add(boxAt(0.03, 0.04, 0.98, glow(0xffb347, 0.8), -halfW + 0.07, 1.97, 2.75));
 
-  // --- Yoga mat, across the room so postures are seen in profile ----------------------------------
+  // --- Exercise corner: yoga mat across the aisle, treadmill, bike and resistance rack ------------
+  // Copies of the ISS countermeasure devices (T2, CEVIS, ARED); at 1 g they need no harness or straps.
   g.add(boxAt(1.85, 0.008, 0.65, mat(0x5aa56e), 0, 0.004, 4.0));
+  const steel = mat(0x5a626e, { metalness: 0.6, roughness: 0.4 });
+  const black = mat(0x22262c);
+  g.add(boxAt(0.75, 0.2, 1.6, steel, 1.55, 0.1, 3.65)); // treadmill deck
+  g.add(boxAt(0.55, 0.012, 1.4, black, 1.55, 0.206, 3.65)); // belt
+  for (const sx of [-1, 1]) g.add(boxAt(0.04, 1.0, 0.04, steel, 1.55 + sx * 0.33, 0.6, 2.95));
+  g.add(boxAt(0.7, 0.04, 0.05, steel, 1.55, 1.1, 2.95), boxAt(0.5, 0.3, 0.05, black, 1.55, 1.3, 2.93));
+  g.add(boxAt(0.36, 0.2, 0.02, glow(0x3fd0ff, 0.6), 1.55, 1.3, 2.96));
+  g.add(boxAt(0.45, 0.06, 0.9, steel, 1.6, 0.03, 4.95)); // bike frame
+  g.add(cylAt(0.04, 0.04, 0.75, steel, 1.6, 0.42, 5.2, 8), cylAt(0.04, 0.04, 0.9, steel, 1.6, 0.5, 4.75, 8));
+  g.add(boxAt(0.14, 0.05, 0.26, black, 1.6, 0.82, 5.2), boxAt(0.42, 0.04, 0.04, black, 1.6, 0.97, 4.72));
+  const flywheel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.06, 18), black);
+  flywheel.rotation.z = Math.PI / 2;
+  flywheel.position.set(1.6, 0.3, 4.8);
+  g.add(flywheel);
+  g.add(boxAt(0.5, 2.0, 0.08, steel, 1.75, 1.0, 5.85), boxAt(1.0, 0.05, 0.05, mat(0xd0d4da, { metalness: 0.8 }), 1.4, 1.35, 5.75)); // resistance rack and bar
+  for (const sx of [-1, 1]) g.add(cylAt(0.1, 0.1, 0.03, black, 1.4 + sx * 0.42, 1.35, 5.75, 14).rotateZ(Math.PI / 2));
+  const exSign = textSign("Ejercicio · cinta, bici y fuerza");
+  exSign.position.set(1.4, 2.25, 4.4);
+  g.add(exSign);
 
-  // --- Cat corner -----------------------------------------------------------------------------------
-  const bed = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.08, 8, 20), mat(0xb08a6a));
-  bed.rotation.x = Math.PI / 2;
-  bed.position.set(-1.5, 0.08, 5.4);
-  g.add(bed, boxAt(0.14, 0.05, 0.14, mat(0x3a7bd5), -1.0, 0.025, 5.7), boxAt(0.14, 0.05, 0.14, mat(0xd5823a), -0.75, 0.025, 5.7));
-  g.add(boxAt(0.12, 0.8, 0.12, mat(0xc8a878), -1.75, 0.4, 4.4));
-  g.add(boxAt(0.5, 0.4, 0.5, mat(0xd8d0c0), -1.65, 0.2, 3.7)); // litter box
-  g.add(boxAt(0.46, 0.02, 0.46, mat(0xbfb59a), -1.65, 0.41, 3.7));
+  // --- Doménica's cabin: a closed booth like an ISS crew quarters, sized for a bunk at 1 g --------
+  const cabinWall = mat(0xe6dccb);
+  g.add(boxAt(0.95, height - 0.1, 0.05, cabinWall, -1.53, (height - 0.1) / 2, 3.3)); // wall to the bay hatch side
+  g.add(boxAt(0.95, height - 0.1, 0.05, cabinWall, -1.53, (height - 0.1) / 2, 5.25)); // wall to the hygiene stall
+  g.add(boxAt(0.05, height - 0.1, 0.55, cabinWall, -1.05, (height - 0.1) / 2, 3.55)); // front wall, door opening behind
+  g.add(boxAt(0.05, 0.5, 1.95, cabinWall, -1.05, height - 0.35, 4.28)); // header over the door
+  const curtain = boxAt(0.02, 1.9, 0.5, mat(0x6f8fb0), -1.03, 1.0, 5.0); // drawn-back curtain
+  g.add(curtain);
+  g.add(boxAt(0.85, 0.45, 1.9, mat(0xb8bec8), -1.55, 0.225, 4.28)); // bunk with drawers
+  g.add(boxAt(0.82, 0.12, 1.85, mat(0x3c6e9e), -1.55, 0.51, 4.28)); // mattress
+  g.add(boxAt(0.5, 0.1, 0.32, mat(0xffffff), -1.6, 0.62, 3.6)); // pillow
+  g.add(boxAt(0.04, 0.5, 0.8, mat(0x30343c), -1.97, 1.35, 4.45)); // personal laptop on the wall
+  g.add(boxAt(0.02, 0.4, 0.68, glow(0x7fdcff, 0.5), -1.94, 1.35, 4.45));
+  for (const [z, c] of [
+    [3.7, 0xf2c6a0],
+    [3.9, 0xa0c8f2],
+  ] as const)
+    g.add(boxAt(0.02, 0.18, 0.14, glow(c, 0.4), -1.95, 1.7, z)); // family photos: Nevaeh and Kushal
+  g.add(boxAt(0.7, 0.05, 1.9, mat(0xc8ced6), -1.55, 1.95, 4.28)); // stowage shelf
+  const reading = new THREE.PointLight(0xffe2b0, 1.2, 2.2, 1.6);
+  reading.position.set(-1.6, 1.6, 3.8);
+  g.add(reading);
+  const cabinSign = textSign("Camarote de Doménica");
+  cabinSign.position.set(-1.0, 2.3, 4.3);
+  g.add(cabinSign);
+  // The cats sleep on her bunk; their scratching post stands at her door.
+  const catBed = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.07, 8, 20), mat(0xb08a6a));
+  catBed.rotation.x = Math.PI / 2;
+  catBed.position.set(-1.55, 0.62, 4.9);
+  g.add(catBed, boxAt(0.12, 0.8, 0.12, mat(0xc8a878), -0.95, 0.4, 3.2));
 
-  // --- Chicken coop: mesh enclosure, nest boxes, perch, feeder and drinker -------------------------
+  // --- Hygiene stall: toilet (like the ISS UWMS) and hand wash, with the cats' litter box ---------
+  g.add(boxAt(0.05, height - 0.1, 0.7, cabinWall, -1.25, (height - 0.1) / 2, 5.65));
+  g.add(cylAt(0.18, 0.2, 0.42, mat(0xf2f4f6), -1.7, 0.21, 5.65), boxAt(0.3, 0.45, 0.2, mat(0xdfe3e8), -1.88, 0.55, 5.65));
+  g.add(boxAt(0.3, 0.05, 0.25, mat(0xf2f4f6), -1.85, 0.95, 5.4));
+  const wcSign = textSign("Aseo");
+  wcSign.position.set(-1.3, 2.25, 5.65);
+  g.add(wcSign);
+  g.add(boxAt(0.45, 0.16, 0.38, mat(0xd8d0c0), -0.98, 0.08, 5.7), boxAt(0.42, 0.02, 0.35, mat(0xbfb59a), -0.98, 0.165, 5.7)); // litter box
+  g.add(boxAt(0.14, 0.05, 0.14, mat(0x3a7bd5), -0.62, 0.025, 5.8), boxAt(0.14, 0.05, 0.14, mat(0xd5823a), -0.42, 0.025, 5.8)); // bowls
+
+  // --- Chicken coop, on the farm deck past the doorway: pen, nest boxes, perch, feeder, drinker ---
   const wire = new THREE.MeshBasicMaterial({ color: 0x9aa6b6, wireframe: true });
-  const pen = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.9, 2.0, 4, 4, 10), wire);
-  pen.position.set(1.6, 0.45, 4.65);
+  const pen = new THREE.Mesh(new THREE.BoxGeometry(COOP.w, 0.9, COOP.d, 6, 4, 8), wire);
+  pen.position.set(COOP.x, 0.45, COOP.z);
   g.add(pen);
-  g.add(boxAt(0.8, 0.02, 2.0, mat(0xd9c38f), 1.6, 0.011, 4.65)); // wood-shaving bedding
-  for (const z of [5.3, 5.62]) g.add(boxAt(0.32, 0.3, 0.3, mat(0xb07a4a), 1.82, 0.35, z)); // nest boxes
+  g.add(boxAt(COOP.w, 0.02, COOP.d, mat(0xd9c38f), COOP.x, 0.011, COOP.z)); // wood-shaving bedding
+  for (const dz of [-0.3, 0.3]) g.add(boxAt(0.32, 0.3, 0.3, mat(0xb07a4a), COOP.x + COOP.w / 2 - 0.2, 0.35, COOP.z + dz)); // nest boxes
   const nestEggs = new THREE.Group();
   g.add(nestEggs);
-  g.add(cylAt(0.015, 0.015, 0.75, mat(0x8a5a32), 1.6, 0.45, 4.0, 6).rotateZ(Math.PI / 2)); // perch
-  g.add(cylAt(0.08, 0.1, 0.12, mat(0xd04a3a), 1.45, 0.06, 4.2), cylAt(0.07, 0.09, 0.14, mat(0x3a7bd5), 1.45, 0.07, 4.45));
-  lamp(lamps, g, "gallinero", 1.2, 0.95, 3.65);
+  g.add(cylAt(0.015, 0.015, 1.4, mat(0x8a5a32), COOP.x, 0.45, COOP.z - 0.6, 6).rotateZ(Math.PI / 2)); // perch
+  g.add(cylAt(0.08, 0.1, 0.12, mat(0xd04a3a), COOP.x - 0.4, 0.06, COOP.z + 0.75), cylAt(0.07, 0.09, 0.14, mat(0x3a7bd5), COOP.x - 0.1, 0.07, COOP.z + 0.75));
+  const coopSign = textSign("Gallinero");
+  coopSign.position.set(COOP.x, 1.35, COOP.z);
+  g.add(coopSign);
+  lamp(lamps, g, "gallinero", COOP.gateX, 0.95, COOP.z - 0.9);
 
   return { group: g, panel, reactorScreen, medScreen, medium, lamps, hob, nestEggs };
 }

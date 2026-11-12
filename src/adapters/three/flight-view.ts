@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { ThrustCommand } from "@modules/ship/domain/ship";
+import type { ShipDesign, ThrustCommand } from "@modules/ship/domain/ship";
 import { VirtualStick, curve } from "../input/stick";
 import { buildCockpit } from "./cockpit";
 import { ShipModel } from "./ship-model";
@@ -39,6 +39,8 @@ export class FlightView {
     private readonly scene: THREE.Scene,
     private readonly camera: THREE.PerspectiveCamera,
     root: HTMLElement,
+    /** The ship's current design, so the exterior model follows part swaps. */
+    private readonly design?: () => ShipDesign,
   ) {
     scene.add(this.rig);
     this.rig.add(this.cockpit, this.ship.root);
@@ -136,6 +138,7 @@ export class FlightView {
     this.rig.quaternion.copy(q);
     this.cockpit.visible = this.mode === "cabina";
     this.ship.root.visible = this.mode !== "cabina";
+    if (this.design) this.ship.setDesign(this.design());
     this.ship.thrust(cmd, performance.now() / 1000);
     const head = new THREE.Quaternion().setFromEuler(new THREE.Euler(this.pitch, this.yaw, 0, "YXZ"));
     if (this.mode === "cabina") {

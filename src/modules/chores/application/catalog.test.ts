@@ -13,7 +13,10 @@ import { Bioreactor } from "@modules/cultured-meat/domain/bioreactor";
 import { Hen } from "@modules/poultry/domain/hen";
 import { Health } from "@modules/medical/domain/health";
 import { PROTOCOLS } from "@modules/medical/data/protocols";
-import { bioreactorChores, henChores, machineRepairChore, patientChore, processChore, plainStep, catMeal, catChores, cookingChore, plantChores, repairChore, shipCode, toCall, yogaChore } from "./catalog";
+import { bioreactorChores, henChores, machineRepairChore, patientChore, processChore, plainStep, catMeal, catChores, cookingChore, plantChores, repairChore, shipCode, swapChore, toCall, yogaChore } from "./catalog";
+import { partById } from "@modules/ship/data/parts";
+import { Ship } from "@modules/ship/domain/ship";
+import { withPart } from "@modules/ship/domain/refit";
 
 function valid(e: Exercise) {
   if (e.kind === "order") {
@@ -115,5 +118,35 @@ describe("chore catalog", () => {
     luna.tick(0.8, { resourcesOk: true });
     expect(catChores(luna, undefined, { meatG: 0, kibbleG: 0 }).some((c) => c.kind === "alimentar-gato")).toBe(false);
     expect(plainStep("cocina hasta {71|50|100} °C")).toBe("cocina hasta 71 °C");
+  });
+});
+
+describe("part swap chores", () => {
+  const full = (d: ReturnType<typeof explorerDesign>) => Ship.create({ ...d, tanks: d.tanks.map((t) => ({ spec: t.spec, fillKg: t.spec.capacityKg })) });
+
+  it("are generated from the real change: new value, delta-v of the new ship and the fitting order", () => {
+    const part = partById("aerojet-mr-104h")!;
+    const c = swapChore(explorerDesign(), "motor", part);
+    expect(c.kind).toBe("cambiar-pieza");
+    expect(c.targetId).toBe("motor:aerojet-mr-104h");
+    expect(c.exercises.map((e) => e.kind)).toEqual(["choice", "choice", "order"]);
+    c.exercises.forEach(valid);
+    const [value, dv] = c.exercises as [Exercise & { kind: "choice" }, Exercise & { kind: "choice" }];
+    expect(value.options[value.correct]).toBe("510");
+    // The changed line shows as a diff: old line removed, new line added.
+    expect(value.code.map((b) => b.pseudo[0])).toEqual(["−", "+"]);
+    const expected = Math.round(full(withPart(explorerDesign(), "motor", part)).mainDeltaV());
+    expect(dv.options[dv.correct]).toBe(`${expected} m/s`);
+  });
+
+  it("a tank swap asks for its capacity", () => {
+    const c = swapChore(explorerDesign(), "tanque-0", partById("tanque-mmh-300")!);
+    const value = c.exercises[0] as Exercise & { kind: "choice" };
+    expect(value.options[value.correct]).toBe("300");
+    c.exercises.forEach(valid);
+  });
+
+  it("an RCS swap is valid too", () => {
+    swapChore(explorerDesign(), "rcs", partById("aerojet-mr-111g")!).exercises.forEach(valid);
   });
 });

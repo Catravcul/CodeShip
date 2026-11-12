@@ -348,7 +348,8 @@ En el juego (`story/data/friends.ts`):
 | Tareas como cadenas de retos generados | `modules/chores` | ✓ con tests |
 | Tripulante (saciedad, forma, estrés) | `modules/crew` | ✓ con tests |
 | Yoga y recetas de Cold Sanctuary | `wellness/data/yoga.ts`, `kitchen/data/recipes.ts` | ✓ |
-| Panel de la mente de la nave y reparación por retos | `chores/application/catalog.ts`, `src/interior.ts` | ✓ (cambiar piezas: pendiente) |
+| Panel de la mente de la nave y reparación por retos | `chores/application/catalog.ts`, `src/interior.ts` | ✓ |
+| Bahía de la nave: vista exterior, estado por pieza y cambio de piezas ([bahia-de-la-nave.md](bahia-de-la-nave.md)) | `modules/ship-bay`, `ship/domain/refit.ts`, `src/ship-bay.ts` | ✓ con tests |
 | Interior 3D: caminar, huerto, cocina, molino, laboratorio, enfermería, panel, esterilla, gatos, gallinero | `src/interior.ts`, `src/adapters/three/interior/` | ✓ |
 | Cartas de Nevaeh a Doménica con misiones | `modules/story`, radio en `src/interior.ts` | ✓ con tests |
 | Gallinas libres, chihuahuas, lazos y familias entre especies | `modules/family`, `pets/domain/dog.ts`, `pets/data/family-lessons.ts` | ✓ con tests |

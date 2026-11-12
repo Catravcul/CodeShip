@@ -10,6 +10,7 @@ export type ChoreKind =
   | "cocinar"
   | "yoga"
   | "reparar-nave"
+  | "cambiar-pieza"
   | "programar-animal"
   | "alimentar-perro"
   | "jugar-perro"

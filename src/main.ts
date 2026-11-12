@@ -37,6 +37,8 @@ import { STORY } from "@modules/story/data/nevaeh";
 import type { Plant } from "@modules/garden/domain/plant";
 import { seededRandom } from "./content/random";
 import { Interior } from "./interior";
+import { SHIP_STORES } from "@modules/ship-bay/data/stores";
+import { ShipBay } from "./ship-bay";
 
 // --- Domain setup -----------------------------------------------------------
 const d = BENNU.dimensionsM.value;
@@ -81,9 +83,7 @@ const garden: [string, Parameters<Habitat["plant"]>[1], number][] = [
 ];
 for (const [id, sp, days] of garden) growFor(habitat.plant(id, sp), days);
 // Stores the ship left with: cat food, hen feed and culture medium for the bioreactor.
-habitat.stock("pienso-gatos", 1500);
-habitat.stock("pienso-gallinas", 4);
-habitat.stock("medio-cultivo", 12);
+for (const s of SHIP_STORES) habitat.stock(s.id, s.capacity);
 habitat.adopt(new Cat("luna", "Luna", 4));
 // Nube came aboard at the last stop: the two are still being introduced.
 habitat.adopt(new Cat("nube", "Nube", 3.2))[0]!.startAt("contacto-visual");
@@ -133,8 +133,9 @@ const hud = new Hud(root, {
   ship: ship.name,
   target: BENNU.name,
   propellants: [
-    { label: "MMH/NTO (motor principal)", capacity: ship.propellantCapacityKg("MMH/NTO") },
-    { label: "Hidracina (RCS)", capacity: ship.propellantCapacityKg("Hydrazine") },
+    // Getters: a tank swap in the ship bay changes the capacity.
+    { label: "MMH/NTO (motor principal)", get capacity() { return ship.propellantCapacityKg("MMH/NTO"); } },
+    { label: "Hidracina (RCS)", get capacity() { return ship.propellantCapacityKg("Hydrazine"); } },
   ],
 });
 
@@ -143,7 +144,7 @@ pilot.onToggleAssist = () => (flight.rotationAssist = !flight.rotationAssist);
 const touch = new TouchPilot(root);
 
 const duelView = new DuelView(root);
-const view = new FlightView(scene, camera, root);
+const view = new FlightView(scene, camera, root, () => ship.design);
 const landBtn = view.addButton("land-btn", () => (flight.landingAssist = !flight.landingAssist));
 window.addEventListener("keydown", (e) => {
   if (e.code === "KeyG" && !e.repeat && !interior.active) flight.landingAssist = !flight.landingAssist;
@@ -176,6 +177,23 @@ modeBtn.addEventListener("click", () => {
   modeBtn.textContent = interior.active ? "Ir a la cabina" : "Ir al interior";
 });
 let lastPhase = expedition.phase;
+
+// Ship bay: the ship from outside, its parts' state and swaps. Reached from the cockpit and the habitat.
+const bay = new ShipBay(root, ship, habitat, duelView);
+const openBay = (from: "cabina" | "interior") => {
+  if (duelView.visible || bay.active) return;
+  if (from === "interior") interior.exit();
+  bay.enter(from);
+};
+bay.onExit = (from) => {
+  if (from === "interior") interior.enter();
+  modeBtn.textContent = interior.active ? "Ir a la cabina" : "Ir al interior";
+};
+interior.openBay = () => openBay("interior");
+view.addButton("bay-btn", () => openBay("cabina")).textContent = "Bahía de la nave";
+window.addEventListener("keydown", (e) => {
+  if (e.code === "KeyB" && !e.repeat && !interior.active && !duelView.visible) bay.active ? bay.exit() : openBay("cabina");
+});
 
 const action = document.createElement("button");
 action.className = "action hidden";
@@ -223,6 +241,7 @@ window.addEventListener("resize", () => {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   interior.resize();
+  bay.resize();
 });
 
 // --- Loop -------------------------------------------------------------------
@@ -230,7 +249,7 @@ let last = performance.now();
 renderer.setAnimationLoop((now) => {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
-  const cmd = interior.active ? NO_INPUT : mergeCommands(pilot.command(), touch.command());
+  const cmd = interior.active || bay.active ? NO_INPUT : mergeCommands(pilot.command(), touch.command());
   const idle = cmd.mainThrottle === 0 && cmd.translation.length() === 0 && cmd.rotation.length() === 0;
   // Time warp only on quiet cruise far from the surface, so landing stays real-time.
   const far = flight.telemetry().distanceToSurface >= WARP_MIN_DISTANCE_M;
@@ -240,10 +259,15 @@ renderer.setAnimationLoop((now) => {
   if (expedition.phase === "aggressive" && lastPhase !== "aggressive") habitat.jolt(0.8, `${BENNU.name}, furioso, sacudió la nave`);
   lastPhase = expedition.phase;
   interior.update(dt);
-  view.enabled = !interior.active && !duelView.visible;
+  view.enabled = !interior.active && !bay.active && !duelView.visible;
   document.body.classList.toggle("in-cockpit", view.enabled);
   if (interior.active) {
     renderer.render(interior.scene, interior.camera);
+    return;
+  }
+  if (bay.active) {
+    bay.update(dt);
+    renderer.render(bay.scene, bay.camera);
     return;
   }
   renderPhase();
@@ -266,4 +290,4 @@ renderer.setAnimationLoop((now) => {
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay };

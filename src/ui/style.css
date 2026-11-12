@@ -127,3 +127,50 @@ body.in-cockpit .cam-tag.on { display: block; }
 .hud .thrust { color: #7fdcff88; }
 .hud .thrust.on { color: #ffd8a0; }
 @media (pointer: coarse) { .pilot-look { left: auto; right: 18px; margin-left: 0; bottom: 280px; } }
+
+/* --- Ship bay (engineering station): exterior view, part list and spec sheet ---- */
+body.in-bay .hud, body.in-bay .help, body.in-bay .reticle, body.in-bay .banner, body.in-bay .action, body.in-bay .touch, body.in-bay .mode-btn, body.in-bay .flight-bar, body.in-bay .cam-tag, body.in-bay .pilot-look { display: none !important; }
+.bay-ui.hidden { display: none !important; }
+.bay-head { position: fixed; top: 12px; left: 12px; z-index: 6; display: flex; flex-direction: column; gap: 2px; color: #e6f6ff; text-shadow: 0 1px 3px #000; pointer-events: none; }
+.bay-head b { font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; color: #ffd27f; }
+.bay-head span { font-size: 12px; opacity: 0.9; }
+.bay-back { position: fixed; top: 12px; right: 12px; z-index: 7; padding: 10px 14px; font: inherit; font-size: 14px; color: #bfefff; background: #0b2a36dd; border: 1px solid #7fdcff66; border-radius: 10px; }
+.bay-panel { position: fixed; z-index: 6; left: 0; right: 0; bottom: 0; height: 46vh; overflow-y: auto; box-sizing: border-box; padding: 10px 12px 18px; background: #0a1220f2; border-top: 1px solid #7fdcff44; border-radius: 16px 16px 0 0; color: #e6f6ff; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+@media (min-aspect-ratio: 1/1) { .bay-panel { top: 0; left: auto; width: min(400px, 40vw); height: auto; padding-top: 60px; border-top: 0; border-left: 1px solid #7fdcff44; border-radius: 0; } }
+.bay-sec { margin-top: 6px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #7fdcffaa; }
+.bay-sec.ok { color: #7dffb0; }
+.bay-item { display: grid; grid-template-columns: 14px 1fr auto; align-items: center; column-gap: 8px; row-gap: 2px; min-height: 44px; padding: 8px 10px; text-align: left; font: inherit; color: #e6f6ff; background: #13243a; border: 1px solid #2c4a6a; border-radius: 10px; }
+.bay-item.sel { border-color: #2fd0ff; background: #173452; }
+.bay-item small { grid-column: 2 / -1; font-size: 11px; color: #ffd27f; }
+.bay-item .mini { width: 54px; height: 6px; border-radius: 3px; background: #ffffff1a; overflow: hidden; }
+.bay-item .mini i { display: block; height: 100%; background: #2f9e6c; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #2f9e6c; }
+.dot.aviso { background: #ff9a1f; box-shadow: 0 0 8px #ff9a1f; }
+.dot.critico { background: #ff2a2a; box-shadow: 0 0 8px #ff2a2a; animation: bay-blink 0.9s infinite; }
+@keyframes bay-blink { 50% { opacity: 0.35; } }
+.bay-detail-head { display: flex; justify-content: space-between; align-items: center; }
+.bay-detail-head button { font: inherit; font-size: 14px; color: #7fdcff; background: none; border: 0; padding: 6px 0; }
+.bay-name { font-size: 16px; color: #fff; }
+.bay-bar { position: relative; height: 18px; border-radius: 5px; background: #00000066; overflow: hidden; }
+.bay-bar span { position: relative; z-index: 1; padding-left: 6px; line-height: 18px; font-size: 12px; }
+.bay-bar i { position: absolute; inset: 0 auto 0 0; background: #2f9e6c; }
+.bay-bar.low i { background: #b5442a; }
+.bay-issue { padding: 6px 10px; border-radius: 8px; font-size: 12px; }
+.bay-issue.aviso { background: #ff9a1f22; color: #ffc27a; }
+.bay-issue.critico { background: #ff2a2a22; color: #ff8a7a; }
+.bay-specs { width: 100%; border-collapse: collapse; font-size: 12px; }
+.bay-specs th { text-align: left; font-weight: normal; color: #9fc3d8; padding: 3px 8px 3px 0; vertical-align: top; width: 38%; }
+.bay-specs td { padding: 3px 0; }
+.bay-specs a { color: #7fdcff; font-size: 11px; }
+.bay-act { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 12px; text-align: left; font: inherit; color: #001018; background: #7dffb0; border: 0; border-radius: 10px; }
+.bay-act.cambiar { background: #ffd27f; color: #1a0f00; }
+.bay-act span { font-size: 11px; opacity: 0.8; }
+.bay-none { margin: 4px 0; opacity: 0.7; }
+.bay-toast { position: fixed; left: 50%; top: 18vh; transform: translateX(-50%); z-index: 12; padding: 8px 14px; background: #000000bb; color: #fff; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+.bay-toast.on { opacity: 1; }
+body.in-bay .bay-look { display: block; }
+.bay-look { left: 12px; bottom: calc(46vh + 14px); width: 96px; height: 96px; opacity: 0.75; }
+.bay-look .knob { left: 26px; top: 26px; width: 44px; height: 44px; }
+@media (min-aspect-ratio: 1/1) { .bay-look { bottom: 22px; } }
+@media (hover: hover) and (pointer: fine) { .bay-look { opacity: 0.6; } }
+body.in-duel .bay-panel, body.in-duel .bay-back, body.in-duel .bay-look { display: none !important; }

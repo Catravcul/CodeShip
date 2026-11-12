@@ -22,6 +22,8 @@ import { Dog } from "@modules/pets/domain/dog";
 import { ANIMAL_LESSONS, DOG_HENS_FAMILY, DOG_RESPECT_HENS, HEN_BROOD, HEN_RESPECT_YOUNG } from "@modules/pets/data/family-lessons";
 import { STORY } from "@modules/story/data/nevaeh";
 import { LETTUCE_OUTREDGEOUS as LETTUCE, SOYBEAN_HOYT } from "@modules/garden/data/species";
+import { swapChore } from "@modules/chores/application/catalog";
+import { partById } from "@modules/ship/data/parts";
 import { Habitat, type ChoreSession, type Conversation, type HabitatEvent } from "./habitat";
 
 const right = (e: Exercise): Answer => (e.kind === "order" ? { kind: "order", order: e.solution } : { kind: "choice", index: e.correct });
@@ -465,5 +467,28 @@ describe("Habitat chores (everything is a code challenge)", () => {
       expect(h.sustainability.ratio).toBeGreaterThan(1);
       expect(all(h).some((c) => c.kind === "regar" && c.targetId?.startsWith("bancal"))).toBe(false);
     });
+  });
+});
+
+describe("Habitat: swapping parts in the ship bay", () => {
+  const swapSetup = () => {
+    const ship = Ship.create(explorerDesign());
+    return { ship, h: new Habitat(seededRandom(9), 3, ship, "Berón") };
+  };
+  const done = (s: ChoreSession, answer = right) => {
+    while (s.run.status === "doing") s.answer(answer(s.run.current!));
+  };
+
+  it("finishing the swap chore refits the real ship", () => {
+    const { h, ship } = swapSetup();
+    done(h.start(swapChore(ship.design, "motor", partById("aerojet-mr-104h")!)));
+    expect(ship.design.mainEngines[0]!.model.id).toBe("aerojet-mr-104h");
+    expect(h.drainEvents().some((e) => e.type === "chore-done")).toBe(true);
+  });
+
+  it("failing it leaves the old part on", () => {
+    const { h, ship } = swapSetup();
+    done(h.start(swapChore(ship.design, "rcs", partById("aerojet-mr-107t")!)), wrong);
+    expect(ship.design.rcs[0]!.model.id).toBe("aerojet-mr-106l");
   });
 });

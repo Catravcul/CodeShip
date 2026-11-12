@@ -26,3 +26,39 @@ export const MR106L: ThrusterModel = {
   propellant: "Hydrazine",
   sources: ["https://satcatalog.com/component/mr-106l-22n"],
 };
+
+/**
+ * Hydrazine monopropellant engine in the 510 N class: a main engine that drinks from the RCS tank.
+ * Steady state "201.0 to 554.2 N" depending on feed pressure; Isp "223 to 237 seconds" (low end used).
+ */
+export const MR104H: ThrusterModel = {
+  id: "aerojet-mr-104h",
+  name: "Aerojet Rocketdyne MR-104H (510 N class)",
+  thrustN: 510, // class thrust; steady state 201.0–554.2 N
+  ispS: 223, // "223 to 237 seconds"
+  dryMassKg: 2.4, // "total mass of 2.4 kg" (engine and valves)
+  propellant: "Hydrazine",
+  sources: ["https://satcatalog.com/component/mr-104h-510n/"],
+};
+
+/** Small attitude thruster: gentle, light and frugal with mass. */
+export const MR111G: ThrusterModel = {
+  id: "aerojet-mr-111g",
+  name: "Aerojet Rocketdyne MR-111G (4 N class)",
+  thrustN: 4, // class thrust; steady state "1.8 to 4.9 N"
+  ispS: 219, // "219 to 229 sec"
+  dryMassKg: 0.37, // engine, valves and heaters
+  propellant: "Hydrazine",
+  sources: ["https://satcatalog.com/component/mr-111g-4n/"],
+};
+
+/** Heavy attitude thruster: five times the push of the MR-106L, for a nimble but thirsty ship. */
+export const MR107T: ThrusterModel = {
+  id: "aerojet-mr-107t",
+  name: "Aerojet Rocketdyne MR-107T (110 N class)",
+  thrustN: 110, // class thrust; steady state "54 to 125 N"
+  ispS: 222, // "222 to 225 sec"
+  dryMassKg: 1.01, // "total mass of 1.01 kg (includes engine, valves, and heaters)"
+  propellant: "Hydrazine",
+  sources: ["https://satcatalog.com/component/mr-107t-110n/"],
+};

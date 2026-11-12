@@ -138,6 +138,8 @@ export class Interior {
   private toastUntil = 0;
   private dayClock = 0;
   active = false;
+  /** Opens the ship bay from its hatch (set by main.ts). */
+  openBay?: () => void;
 
   constructor(
     root: HTMLElement,
@@ -205,6 +207,7 @@ export class Interior {
     this.radioBtn.addEventListener("click", () => this.openRadio());
     this.stationBtn.addEventListener("click", () => {
       const s = this.nearStation();
+      if (s?.id === "bahia" && this.openBay) return this.openBay();
       if (s) this.openBoard(s.id);
     });
     this.board.addEventListener("click", (e) => {
@@ -327,7 +330,7 @@ export class Interior {
     const near = !busy && !this.walkTo ? this.nearStation() : undefined;
     const n = near ? this.currentChores().filter((c) => stationFor(c) === near.id).length : 0;
     this.stationBtn.classList.toggle("hidden", !near);
-    if (near) this.stationBtn.textContent = `${near.label}: ${n} ${n === 1 ? "tarea" : "tareas"}`;
+    if (near) this.stationBtn.textContent = near.id === "bahia" ? "Entrar en la bahía de la nave" : `${near.label}: ${n} ${n === 1 ? "tarea" : "tareas"}`;
     if (performance.now() > this.toastUntil) this.toast.classList.remove("on");
   }
 

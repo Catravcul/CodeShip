@@ -23,6 +23,8 @@ export interface SpokeLayout {
   readonly topY: number;
   /** Rotating hub: |x| ≤ hubHalfX; non-rotating spine module from hubHalfX to moduleEndX. Both of radius tubeR. */
   readonly hubHalfX: number;
+  /** Side hatch of the spine module to the mothership's flight deck (docs/design/cabina-nodriza.md). */
+  readonly deckHatchX: number;
   readonly moduleEndX: number;
   readonly tubeR: number;
 }
@@ -30,7 +32,7 @@ export interface SpokeLayout {
 export function spokeLayout(ring: SpinRing, roomHalfL: number): SpokeLayout {
   const axisY = ring.spec.floorRadiusM;
   const tubeR = 2;
-  return { x: 0, z: -roomHalfL + 0.5, carR: 0.45, shaftR: 0.8, axisY, topY: axisY - tubeR - 2.2, hubHalfX: 2.5, moduleEndX: 16, tubeR };
+  return { x: 0, z: -roomHalfL + 0.5, carR: 0.45, shaftR: 0.8, axisY, topY: axisY - tubeR - 2.2, hubHalfX: 2.5, deckHatchX: 11, moduleEndX: 16, tubeR };
 }
 
 export interface SpokeHandles {
@@ -162,6 +164,13 @@ export function buildSpoke(L: SpokeLayout, ring: SpinRing, roomHeight: number): 
   const hatchSign = textSign("Escotilla a la sonda");
   hatchSign.position.set(L.moduleEndX - 0.4, L.axisY + 1.1, L.z);
   g.add(hatchSign);
+  // Side hatch to the flight deck.
+  const deckHatch = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.06, 8, 28), new THREE.MeshStandardMaterial({ color: 0x9fe8c4, emissive: 0x2f9f6f, emissiveIntensity: 1.1 }));
+  deckHatch.position.set(L.deckHatchX, L.axisY, L.z + L.tubeR - 0.05);
+  g.add(deckHatch);
+  const deckSign = textSign("Puente de mando");
+  deckSign.position.set(L.deckHatchX, L.axisY + 0.95, L.z + L.tubeR - 0.2);
+  g.add(deckSign);
   // Hatch down into the spoke (in the hub's floor, over the elevator).
   const down = new THREE.Mesh(new THREE.TorusGeometry(L.carR + 0.1, 0.05, 8, 24), mat(0xe8c547, { emissive: 0x806010, emissiveIntensity: 0.6 }));
   down.rotation.x = Math.PI / 2;

@@ -63,11 +63,13 @@ export class NavMap {
   private drag: { id: number; x: number; y: number; moved: number } | null = null;
   private screen: { t: NavTarget; x: number; y: number }[] = [];
   private chipsHtml = "";
+  private readonly home: HTMLElement;
 
   constructor(
     root: HTMLElement,
     private readonly deps: NavMapDeps,
   ) {
+    this.home = root;
     this.el = document.createElement("div");
     this.el.className = "nav-map hidden";
     this.el.innerHTML = `
@@ -109,9 +111,27 @@ export class NavMap {
     return !this.el.classList.contains("hidden");
   }
 
+  /** Rendered inside a panel (the mothership's flight deck) rather than as the full-screen overlay. */
+  get embedded(): boolean {
+    return this.el.classList.contains("embedded");
+  }
+
+  /**
+   * Move the map into `host` (a deck panel) or, with no host, back to its overlay. The same map,
+   * state and actions either way; embedded it fills its host and leaves the cockpit HUD alone.
+   */
+  mount(host?: HTMLElement): void {
+    const target = host ?? this.home;
+    if (this.el.parentElement !== target) target.appendChild(this.el);
+    this.el.classList.toggle("embedded", !!host);
+    if (host) document.body.classList.remove("in-map");
+    else if (this.visible) document.body.classList.add("in-map");
+    this.refresh();
+  }
+
   open(): void {
     this.el.classList.remove("hidden");
-    document.body.classList.add("in-map");
+    if (!this.embedded) document.body.classList.add("in-map");
     this.picked ??= this.deps.nav.target;
     this.note = "";
     this.refresh();
@@ -182,7 +202,8 @@ export class NavMap {
           this.note = can.reason ?? "";
           return this.refresh();
         }
-        this.close();
+        // Embedded in a deck panel the map stays put under the challenge sheet.
+        if (!this.embedded) this.close();
         this.deps.onProgram();
         return;
       }

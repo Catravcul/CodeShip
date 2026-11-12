@@ -260,8 +260,8 @@ export class StationInteriorMode {
       const m = lamp.material as THREE.MeshBasicMaterial;
       if (!m.userData.base) m.userData.base = m.color.getHex();
       const on = busy.has(id);
-      m.color.setHex(on ? m.userData.base : 0x2a2a2a);
-      if (on) m.color.multiplyScalar(0.7 + 0.3 * Math.sin(t * 6 + id.length));
+      // Idle: the window stays dimly lit; working: it glows and flickers.
+      m.color.setHex(m.userData.base).multiplyScalar(on ? 0.7 + 0.3 * Math.sin(t * 6 + id.length) : 0.28);
     }
   }
 

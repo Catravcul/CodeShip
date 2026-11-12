@@ -36,7 +36,6 @@ const BASIS: Readonly<Record<Face, [THREE.Vector3, THREE.Vector3]>> = {
   proa: [V(1, 0, 0), V(0, 1, 0)],
   popa: [V(0, 1, 0), V(1, 0, 0)],
 };
-const OPPOSITE: Readonly<Record<Face, Face>> = { suelo: "techo", techo: "suelo", babor: "estribor", estribor: "babor", proa: "popa", popa: "proa" };
 const FACES: readonly Face[] = ["suelo", "techo", "babor", "estribor", "proa", "popa"];
 const axisOf = (n: THREE.Vector3): "x" | "y" | "z" => (Math.abs(n.x) > 0.5 ? "x" : Math.abs(n.y) > 0.5 ? "y" : "z");
 
@@ -150,12 +149,22 @@ const STYLE: Readonly<Record<string, { panel: number; accent: number; glow?: num
   "consola-hangar": { panel: 0x0b1c2a, accent: 0x7fdcff, glow: 0x7fdcff },
 };
 
+/** Basis (u across, v up the front, u × v = inward normal) of a fixture's front: upright on the walls. */
+const FRONT: Readonly<Record<Face, [THREE.Vector3, THREE.Vector3]>> = {
+  babor: [V(0, 0, -1), V(0, 1, 0)],
+  estribor: [V(0, 0, 1), V(0, 1, 0)],
+  proa: [V(1, 0, 0), V(0, 1, 0)],
+  popa: [V(-1, 0, 0), V(0, 1, 0)],
+  suelo: [V(1, 0, 0), V(0, 0, -1)],
+  techo: [V(1, 0, 0), V(0, 0, 1)],
+};
+
 /** The front of a wall fixture: a panel just inside the aisle with an accent and, for machines, a lamp. */
 function fixtureFront(f: Fixture, lamps: Map<MachineId, THREE.Mesh>): THREE.Group {
   const g = new THREE.Group();
   const st = STYLE[f.id] ?? { panel: 0x9aa6b6, accent: 0x5a6270 };
   const n = v3(FACE_NORMAL[f.face]).negate();
-  const [u, v] = BASIS[f.face];
+  const [u, v] = FRONT[f.face];
   const size = v3(f.size);
   const w = Math.abs(size.dot(u));
   const h = Math.abs(size.dot(v));

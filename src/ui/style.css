@@ -235,3 +235,30 @@ body:not(.in-cockpit) .sky-labels { display: none; }
 body.in-cockpit .region-tag.on { display: block; }
 .region-tag.warning, .region-tag.outside { color: #ffd8a0; border: 1px solid #ffb34788; }
 @media (pointer: coarse) { .region-tag { bottom: auto; top: 29vh; left: 10px; transform: none; max-width: 52vw; text-align: left; font-size: 11px; } }
+
+/* --- EVA: outside on the asteroid --------------------------------------- */
+.flight-bar .eva-btn { color: #001018; background: #ffd23f; border-color: #ffd23f; font-weight: 600; }
+body.in-eva .hud, body.in-eva .help, body.in-eva .reticle, body.in-eva .banner, body.in-eva .action, body.in-eva .touch, body.in-eva .mode-btn, body.in-eva .flight-bar, body.in-eva .cam-tag { display: none !important; }
+body.in-eva .eva-move, body.in-eva .eva-look { display: block; }
+body.in-duel .eva-ui { display: none !important; }
+.eva-move { left: 22px; }
+.eva-look { right: 22px; }
+.eva-ui.hidden, .eva-ui .hidden { display: none !important; }
+.eva-hud { position: fixed; top: 12px; left: 12px; width: min(250px, 58vw); color: #e6f6ff; font-size: 12px; line-height: 1.45; text-shadow: 0 1px 2px #000; pointer-events: none; z-index: 4; }
+.eva-hud .ititle { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #ffd23f; margin-bottom: 4px; }
+.eva-hud .bar { position: relative; height: 16px; margin: 3px 0; background: #00000077; border-radius: 4px; overflow: hidden; }
+.eva-hud .bar span { position: relative; z-index: 1; padding-left: 6px; line-height: 16px; }
+.eva-hud .bar i { position: absolute; inset: 0 auto 0 0; background: #2f8e9e; }
+.eva-hud .bar.warn i { background: #c0602a; }
+.eva-hud .warn { color: #ffb347; }
+.eva-hud .ok { color: #7dffb0; }
+.eva-hud .alert { color: #ff6b5a; font-weight: 700; }
+.eva-hud .small { opacity: 0.85; }
+.eva-back { position: fixed; top: 12px; right: 12px; z-index: 6; padding: 10px 14px; font: inherit; font-size: 14px; color: #001018; background: #ffd23f; border: 0; border-radius: 10px; }
+.eva-actions { position: fixed; right: 12px; top: 60px; z-index: 6; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.eva-actions button { padding: 9px 13px; font: inherit; font-size: 13px; color: #d8f6ff; background: #0b2a36cc; border: 1px solid #7fdcff66; border-radius: 10px; touch-action: none; user-select: none; -webkit-user-select: none; }
+.eva-actions .eva-sample { color: #001018; background: #5fe3ff; border-color: #5fe3ff; }
+.eva-toast { position: fixed; left: 50%; top: 18vh; transform: translateX(-50%); z-index: 7; padding: 8px 14px; background: #000000aa; color: #fff; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity 0.3s; pointer-events: none; text-align: center; max-width: min(86vw, 520px); }
+.eva-toast.on { opacity: 1; }
+@media (max-width: 600px) { .eva-toast { top: 222px; font-size: 13px; } .eva-hud { font-size: 11px; } .eva-actions .eva-sample { position: fixed; left: 50%; bottom: 170px; transform: translateX(-50%); white-space: nowrap; } }
+body.in-duel .help { display: none; }

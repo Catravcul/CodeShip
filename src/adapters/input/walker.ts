@@ -13,12 +13,13 @@ export class Walker {
   private readonly lookStick: VirtualStick;
   enabled = false;
 
-  constructor(root: HTMLElement) {
+  /** Stick classes and label can change so another mode (the EVA) gets its own pair. */
+  constructor(root: HTMLElement, sticks = { move: "walk-stick", look: "look-stick", moveLabel: "Caminar" }) {
     window.addEventListener("keydown", (e) => this.enabled && this.keys.add(e.code));
     window.addEventListener("keyup", (e) => this.keys.delete(e.code));
     window.addEventListener("blur", () => this.keys.clear());
-    this.moveStick = new VirtualStick(root, "walk-stick", "Caminar");
-    this.lookStick = new VirtualStick(root, "look-stick", "Mirar");
+    this.moveStick = new VirtualStick(root, sticks.move, sticks.moveLabel);
+    this.lookStick = new VirtualStick(root, sticks.look, "Mirar");
     root.addEventListener("pointerdown", (e) => {
       if (!this.enabled || (e.target as HTMLElement).closest("button, .duel, .board, .vstick")) return;
       if (this.lookId !== null) return;

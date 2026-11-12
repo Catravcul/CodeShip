@@ -44,6 +44,8 @@ En el móvil hay mandos táctiles. Con el botón **Ir al interior** se entra en 
 
 La **bahía de la nave** se abre con el botón **Bahía de la nave** de la cabina, con la tecla B o por la escotilla ámbar del módulo habitable. Muestra la nave por fuera: se orbita arrastrando, con el mando **Orbitar** o con las flechas, y la rueda acerca o aleja. Tocar una pieza en 3D o en la lista abre su ficha con datos reales y acciones. Las piezas que hay que revisar laten en naranja (aviso) o en rojo (crítico). Reparar, cuidar y cambiar el motor, el RCS o los tanques son retos de código, y la maqueta cambia con cada pieza montada (ver [bahia-de-la-nave.md](docs/design/bahia-de-la-nave.md)). **Volver** o Esc devuelve a donde estabas.
 
+Con la nave **anclada**, **Salir de la nave** lleva a Doménica a Bennu con un traje EMU: ponérselo es una cadena de retos y fuera avanza agarrada a las rocas (mando **Moverse** o WASD), se suelta con **Impulso** (Espacio), baja con el SAFER (**Bajar**, F), recoge el cable de 25,9 m (R), toma muestras (Intro) y vuelve con **Volver a la nave** (B). En Bennu la velocidad de escape es ≈0,2 m/s y un paso normal la lanzaría al espacio. Diseño en [docs/design/paseo-espacial.md](docs/design/paseo-espacial.md).
+
 ## Arquitectura
 
 Monolito modular con arquitectura hexagonal. Cada módulo tiene `domain/` (reglas puras, sin motor), `application/` (casos de uso) y `data/` (catálogos con fuentes). Los adaptadores (Three.js, teclado, HUD) viven fuera y dependen del dominio, nunca al revés; `npm run lint:arch` lo comprueba en CI.

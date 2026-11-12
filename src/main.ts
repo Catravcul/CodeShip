@@ -52,6 +52,8 @@ import { NanoNetPanel } from "./ui/nano-net-panel";
 import { buildStartRegion } from "./content/start-region";
 import { AsteroidField } from "./adapters/three/asteroid-field";
 import { SkyBodies } from "./adapters/three/sky-bodies";
+import { Eva } from "@modules/eva/application/eva";
+import { EvaMode } from "./eva-mode";
 
 // --- Domain setup -----------------------------------------------------------
 const d = BENNU.dimensionsM.value;
@@ -205,12 +207,18 @@ const duelSession = () => {
 const interior = new Interior(root, habitat, duelView);
 const nanoView = new NanoNetView(scene, nano.net);
 const nanoPanel = new NanoNetPanel(root, duelView, view.addButton("nano-btn", () => {}), nano, bennuSite);
+// Walks outside on Bennu (EVA): only with the ship anchored.
+const eva = new Eva(flight, bennu, (local) => surface(local), habitat.crew.body.massKg);
+const evaMode = new EvaMode(root, scene, camera, eva, bennu, duelView);
+const evaBtn = view.addButton("eva-btn", () => !duelView.visible && !interior.active && evaMode.startSuitUp());
+evaBtn.textContent = "Salir de la nave";
+evaMode.onExit = () => view.center();
 const modeBtn = document.createElement("button");
 modeBtn.className = "mode-btn";
 modeBtn.textContent = "Ir al interior";
 root.appendChild(modeBtn);
 modeBtn.addEventListener("click", () => {
-  if (duelView.visible) return;
+  if (duelView.visible || evaMode.active) return;
   if (interior.active) interior.exit();
   else interior.enter();
   modeBtn.textContent = interior.active ? "Ir a la cabina" : "Ir al interior";
@@ -255,7 +263,7 @@ root.appendChild(banner);
 function renderPhase(): void {
   const p = expedition.phase;
   const t = flight.telemetry();
-  action.classList.toggle("hidden", nanoPanel.busy || !(p === "landed" || ((p === "persuaded" || p === "aggressive") && duelView.visible)));
+  action.classList.toggle("hidden", nanoPanel.busy || !((p === "landed" && !duelView.visible) || ((p === "persuaded" || p === "aggressive") && duelView.visible)));
   action.textContent = p === "landed" ? "Entrar en su mente" : "Volver a la cabina";
   if (p === "persuaded") {
     banner.textContent = `${BENNU.name} obedece: ${expedition.cargo.map((c) => `${c.kg.toFixed(0)} kg de ${c.material}`).join(", ")} en la bodega`;
@@ -263,7 +271,7 @@ function renderPhase(): void {
     const left = Math.max(0, expedition.safeDistanceM! - t.distanceToSurface);
     banner.textContent = left > 0 ? `¡${BENNU.name} está furioso! Huye: faltan ${left.toFixed(0)} m hasta la distancia segura` : "A salvo. Espera a que se calme";
   } else if (p === "landed") {
-    banner.textContent = "Nave anclada";
+    banner.textContent = "Nave anclada · puedes salir a Bennu con el traje";
   } else {
     banner.textContent =
       t.clearance < 60
@@ -288,7 +296,7 @@ let last = performance.now();
 renderer.setAnimationLoop((now) => {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
-  const cmd = interior.active || bay.active ? NO_INPUT : mergeCommands(pilot.command(), touch.command());
+  const cmd = interior.active || bay.active || evaMode.active ? NO_INPUT : mergeCommands(pilot.command(), touch.command());
   const idle = cmd.mainThrottle === 0 && cmd.translation.length() === 0 && cmd.rotation.length() === 0;
   // Time warp only on quiet cruise far from the surface, so landing stays real-time.
   const far = flight.telemetry().distanceToSurface >= WARP_MIN_DISTANCE_M;
@@ -322,7 +330,7 @@ renderer.setAnimationLoop((now) => {
   }
   lastPhase = expedition.phase;
   interior.update(dt);
-  view.enabled = !interior.active && !bay.active && !duelView.visible;
+  view.enabled = !interior.active && !bay.active && !duelView.visible && !evaMode.active;
   document.body.classList.toggle("in-cockpit", view.enabled);
   if (interior.active) {
     renderer.render(interior.scene, interior.camera);
@@ -333,6 +341,15 @@ renderer.setAnimationLoop((now) => {
     renderer.render(bay.scene, bay.camera);
     return;
   }
+  evaBtn.classList.toggle("hidden", !eva.canLeave || expedition.phase !== "landed");
+  if (evaMode.active) {
+    view.rig.visible = false;
+    evaMode.update(dt, flight.simTimeS);
+    asteroidMesh.rotation.y = bennu.spinRadS * flight.simTimeS;
+    renderer.render(scene, camera);
+    return;
+  }
+  view.rig.visible = true;
   renderPhase();
   nanoPanel.update(flight.landed, fx, !duelView.visible);
   nanoView.update(flight.simTimeS);
@@ -372,4 +389,4 @@ renderer.setAnimationLoop((now) => {
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode };

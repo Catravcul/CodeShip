@@ -46,9 +46,16 @@ Los datos de cultivo son reales (`modules/garden/data/species.ts`):
 | Papa 'Norland' (Biomass Production Chamber, NASA) | Día 91 (91 o 105) | No hace falta | [Wheeler, BPC](https://ntrs.nasa.gov/api/citations/20140017323/downloads/20140017323.pdf) |
 | Soja 'Hoyt' (BPC) | Día 90 (90 o 97) | Autopoliniza | idem |
 | Trigo 'Apogee' (BPC) | Día 77 (77–86) | Autopoliniza | idem |
+| Cacahuete 'Georgia Red' (NFT, Universidad de Tuskegee, programa de soporte vital de la NASA) | Día 110 tras el trasplante; **588 g/m²** de semilla seca | Autopoliniza; las clavijas (ginóforos) bajan al sustrato | [Mortley et al. 2000, HortScience 35(1):46–48](https://journals.ashs.org/downloadpdf/view/journals/hortsci/35/1/article-p46.pdf) |
+| Fresa 'Seascape' (día neutro, Purdue para la NASA) | Fruta desde el día 65 y durante 282 días; en el juego, una recogida cada 35 días (ajuste). **≈ 990 g/m²** por temporada | Hay que **agitar** las flores: sin abejas, la autopolinización se queda corta | [Massa y Mitchell (ASHS 2010)](https://ashs.confex.com/ashs/2010/webprogram/Paper4007.html), [Purdue](https://www.purdue.edu/newsroom/research/2010/100503MitchellStrawberrie.html), rendimiento: [SARE LNE06-241](https://projects.sare.org/project-reports/lne06-241/) (0,59 lb por planta en su peor año, 15.000 plantas/acre), polinización: [U. Minnesota](https://extension.umn.edu/agriculture/specialty-crops/commercial-fruit-production/strawberry-farming/small-or-misshapen-strawberries) |
+| Higuera en maceta (*Ficus carica*, higo común) | Primeros higos a los ~4 meses (día 120); temporada de ~300 días, una recogida cada 40 días (ajuste). **7,86 kg/m²** a 1,25 árboles/m² (≈ 6,3 kg por árbol) | Los higos comunes no necesitan polinizar (partenocarpia) | [Mendoza-Castillo et al. 2017, Exp. Agric.](https://www.cambridge.org/core/journals/experimental-agriculture/article/abs/intensive-production-systems-of-fig-ficus-carica-l-under-greenhouse-conditions/E508363F501D2011BBFCA6FA023386EE), [FreshFruitPortal](https://www.freshfruitportal.com/news/2019/01/14/mexico-pioneering-project-uses-greenhouses-new-growing-methods-to-triple-fig-yields/), [Wikipedia](https://en.wikipedia.org/wiki/Common_fig) |
 | Hierba para gatos (brotes de avena) | ~10 días (ajuste de juego) | — | [Hart et al. 2021](https://escholarship.org/content/qt8x40j557/qt8x40j557.pdf): el 65 % de los gatos come plantas cada semana; es una conducta normal |
 
-**Tóxicas para gatos.** La ASPCA lista la planta del tomate y la de la papa como tóxicas para gatos. Si un gato las muerde, sufre una **intoxicación** y hay que llevarlo a la enfermería.
+**Rendimiento real.** El cacahuete, la fresa y la higuera llevan su rendimiento medido (`edibleYield`): cada cosecha da esa comida repartida entre sus días de cosecha, en porciones de 50 g (cacahuete), 150 g (fresa, una taza USDA) y 100 g (dos higos). Un bancal de cacahuete de 15 m² da unos 8,8 kg. El resto de cultivos sigue con las porciones fijas del juego.
+
+**¿Y los árboles enanos?** La NASA estudia un ciruelo enano con el gen *FT1* que florece en menos de un año ([Wheeler, NTRS 20170011641](https://ntrs.nasa.gov/citations/20170011641)), pero aún no hay datos de cosecha. Por eso los cuatro árboles de la cubierta son higueras en maceta, que sí los tienen.
+
+**Tóxicas para gatos.** La ASPCA lista la planta del tomate, la de la papa y las higueras (*Ficus*: ficina y psoraleno) como tóxicas para gatos; la fresa, como no tóxica ([ASPCA](https://www.aspca.org/pet-care/aspca-poison-control/toxic-and-non-toxic-plants/strawberry)). Si un gato las muerde, sufre una **intoxicación** y hay que llevarlo a la enfermería.
 
 El Veggie usaba LED rojos, azules y verdes. En el juego, «luces encendidas» es la condición para crecer.
 
@@ -159,6 +166,39 @@ Cada tarea es una **cadena de retos en orden** (`modules/chores`): cada reto res
 | Carne cultivada con papas | 250 g de carne y 1 papa | 7, con 71 °C como la carne picada |
 | Milpa con chile | chile | 6 |
 | Mercimek | solo despensa seca | 7 |
+| Cacahuetes tostados | 2 cacahuete | 7, tostar a 160 °C ([Wikipedia](https://en.wikipedia.org/wiki/Peanut_butter)) |
+| Gachas de avena con cacahuete (desayuno) | 1 cacahuete + avena de la despensa | 6 |
+| Llapingachos con salsa de maní (Ecuador) | 2 papa, 2 huevos, 1 cacahuete | 7 ([Wikipedia](https://en.wikipedia.org/wiki/Llapingacho)) |
+| Bol de fruta de la cubierta | fresa, higo y cacahuete | 7 |
+| Desayuno completo: avena, fresas y crema de cacahuete | fresa y crema de cacahuete | 6 |
+| Higos asados con crema de cacahuete (postre) | 2 higos y crema de cacahuete | 5 |
+| Chapati con fresas y crema de cacahuete (postre) | harina, fresa y crema | 6 |
+
+La **crema de cacahuete** se hace en el molino (nuevo proceso): tostar a 160 °C, aflojar la piel con aire a 138 °C, moler en grueso y en fino, salar ([Wikipedia](https://en.wikipedia.org/wiki/Peanut_butter)).
+
+**Nutrición real por porción.** Cada receta dice cuántos gramos de cada alimento lleva una porción (`perPortionG`, valor de juego del tamaño de un plato casero). Los nutrientes por 100 g son de USDA FoodData Central, SR Legacy (`kitchen/data/nutrition.ts`): por ejemplo, cacahuete crudo 567 kcal ([FDC 172430](https://fdc.nal.usda.gov/food-details/172430/nutrients)), fresa 32 kcal, higo 74 kcal. La carne cultivada usa la carne picada 85/15 como sustituta. El tablero de tareas muestra las kcal de cada porción:
+
+| Platillo | kcal por porción |
+| --- | --- |
+| Carne cultivada con papas | 618 |
+| Llapingachos | 600 |
+| Desayuno completo | 539 |
+| Mercimek | 529 |
+| Milpa | 498 |
+| Gachas de avena con cacahuete | 479 |
+| Tortilla de papa | 414 |
+| Chapati con fresas y crema | 349 |
+| Cacahuetes tostados | 293 |
+| Chapati | 231 |
+| Tofu con chile | 214 |
+| Bol de fruta | 207 |
+| Huevos revueltos | 187 |
+| Higos asados | 168 |
+| Ensalada | 113 |
+
+**Comer llena según la energía.** Al cocinar, Doménica come una porción y su saciedad sube kcal ÷ su energía diaria (2.277 kcal, [JSC-67378](https://ntrs.nasa.gov/api/citations/20205008306/downloads/JSC67378%20Expl%20Nutr%20Reqs%20042020.pdf)). La saciedad baja 1 al día, así que tiene que comer lo que gasta.
+
+**Despensa de salida** (`kitchen/data/stores.ts`, valores de juego): 12 papas, 20 porciones de cacahuete (1 kg), 10 de harina, 6 huevos, 500 g de carne cultivada, más pienso y medio de cultivo. La despensa seca (avena, lenteja, frijol, aceite, especias) no se cuenta. Desde el día 1 se pueden cocinar 8 platos, no solo el mercimek, y un día variado (gachas, llapingachos, carne con papas, mercimek, tortilla) suma más de 2.600 kcal. Las higueras empiezan con higos maduros y la fresa en flor, así que la fruta llega con la primera cosecha.
 
 ## Producir toda la comida: el módulo de soporte vital
 
@@ -291,9 +331,10 @@ Decisión de Berón (2026-11-12): las gallinas pueden vivir libres, suben a bord
 
 La nave es grande. Detrás del módulo habitable, una puerta da a una **cubierta de cultivo** de 18 × 18 m:
 
-- suelo artificial con colinas suaves y árboles frutales;
+- suelo de placas, con una alfombra de césped para gallinas y perros junto a la puerta;
 - un cielo de LED;
-- ocho bancales de 15 m² con riego por goteo, que no hay que regar a mano;
+- once bancales de 15 m² con riego por goteo, que no hay que regar a mano: dos filas de cuatro y, junto a la pared del fondo, una tercera fila de tres bancales girados (cacahuete, cacahuete y fresa);
+- cuatro higueras en maceta junto a las paredes, de 0,8 m² cada una, que dan higos de verdad;
 - el compost de las gallinas;
 - el rincón de los chihuahuas.
 
@@ -306,7 +347,7 @@ La nave es grande. Detrás del módulo habitable, una puerta da a una **cubierta
   - cada gallina: 110 g de pienso a unas 2,9 kcal/g;
   - gatos y perros: su RER × factor.
 - Es una **cota inferior**, porque alimentar animales a partir de cultivos pierde energía por el camino.
-- Hoy a bordo hacen falta unos 81 m². Los bastidores (4,5 m²) dan un 5 %. Con los bancales hay 124 m², un 150 %, con margen para malas cosechas y futuros tripulantes.
+- Hoy a bordo hacen falta unos 81 m². Los bastidores (3,75 m² de macetas vivas) dan un 5 %. Con los once bancales (165 m²) y las cuatro higueras (3,2 m²) hay unos 172 m², un 213 %. La cifra de Wheeler supone cultivos básicos como trigo, papa y soja; las dos primeras filas (120 m²) ya bastan solas, y la fruta y los frutos secos dan variedad y margen para malas cosechas y futuros tripulantes.
 - El HUD muestra la autosuficiencia en todo momento.
 
 ## Historia: Doménica, Nevaeh y Kushal
@@ -339,12 +380,12 @@ En el juego (`story/data/friends.ts`):
 | Pieza | Dónde | Estado |
 | --- | --- | --- |
 | Planta (agua, luz, salud, agitar, cosechar) | `modules/garden/domain/plant.ts` | ✓ con tests |
-| Especies con datos reales | `modules/garden/data/species.ts` | ✓ 8 especies |
+| Especies con datos reales | `modules/garden/data/species.ts` | ✓ 11 especies (con cacahuete, fresa e higuera) |
 | Máquinas del soporte vital | `modules/life-support` | ✓ con tests |
 | Biorreactor de carne cultivada | `modules/cultured-meat` | ✓ con tests |
 | Gallinas | `modules/poultry` | ✓ con tests |
 | Salud y enfermería (cualquier paciente) | `modules/medical` | ✓ con tests |
-| Recetas, ingredientes y procesos | `modules/kitchen/data` | ✓ 8 recetas, 3 procesos |
+| Recetas, ingredientes, procesos, nutrición USDA y despensa de salida | `modules/kitchen/data`, `modules/kitchen/domain/nutrition.ts` | ✓ 15 recetas, 4 procesos, con tests |
 | Gato (energía real, necesidades, estrés, reglas) | `modules/pets/domain/cat.ts` | ✓ con tests |
 | Instintos y decisión | `modules/pets/domain/behavior.ts` | ✓ con tests |
 | Presentaciones entre gatos | `modules/pets/domain/introduction.ts` | ✓ con tests |

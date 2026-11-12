@@ -6,6 +6,7 @@ import type { AnimalLesson } from "@modules/pets/data/rules";
 import { DOG_DIET, type Dog } from "@modules/pets/domain/dog";
 import type { Process } from "@modules/kitchen/data/processes";
 import { itemName } from "@modules/kitchen/data/items";
+import { portionNutrients } from "@modules/kitchen/data/nutrition";
 import { Bioreactor, CULTURE } from "@modules/cultured-meat/domain/bioreactor";
 import { HEN_TUNING, LAYING_LIGHT_HOURS, type Hen } from "@modules/poultry/domain/hen";
 import type { Machine } from "@modules/life-support/domain/machine";
@@ -314,7 +315,7 @@ export function cookingChore(r: Recipe, pool: readonly string[] = []): Chore {
     targetId: r.id,
     machine: "cocina",
     title: `Cocinar ${r.name}`,
-    scenario: `Usa ${uses} → ${r.portions} ${r.portions === 1 ? "porción" : "porciones"}`,
+    scenario: `Usa ${uses} → ${r.portions} ${r.portions === 1 ? "porción" : "porciones"} de ${Math.round(portionNutrients(r).kcal)} kcal`,
     exercises: stepChain(`cocinar-${r.id}`, 1, (i) => `${r.name}: paso ${i + 1}`, r.steps.value, pool),
   };
 }

@@ -44,4 +44,16 @@ export const PROCESSES: readonly Process[] = [
       value: ["muele el trigo", "muele la soja", "añade calcio de cáscara triturada", "mezcla el pienso", "guárdalo seco"],
     },
   },
+  {
+    id: "crema-cacahuete",
+    name: "Hacer crema de cacahuete",
+    machine: "molino",
+    inputs: { "cacahuete-georgia-red": 2 },
+    outputs: { "crema-cacahuete": 3 },
+    steps: {
+      source: "https://en.wikipedia.org/wiki/Peanut_butter",
+      note: "Roast at 160 °C, loosen the skins with hot air at 138 °C, then a medium and a fine grind; salt goes in after grinding. 100 g of peanuts give about three 32 g portions.",
+      value: ["tuesta los cacahuetes a {160|60|300} °C", "afloja la piel con aire a {138|40|250} °C", "quítales la piel", "muélelos en grueso", "muélelos en fino", "añade sal", "envasa la crema"],
+    },
+  },
 ];

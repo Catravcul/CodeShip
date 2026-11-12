@@ -29,6 +29,16 @@ export class ShipModel {
     this.mainFlame.rotation.x = Math.PI / 2;
     this.mainFlame.position.z = size.z / 2 + 2.1;
     this.root.add(hull, nose, canopy, bell, this.mainFlame);
+    // Landing legs under the belly (0.5 m, see GEAR_LEG_M) with round pads.
+    for (const sx of [-1, 1])
+      for (const sz of [-1, 1]) {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.6, 6), dark);
+        leg.position.set(sx * (size.x / 2 - 0.25), -size.y / 2 - 0.25, sz * (size.z / 2 - 0.5));
+        leg.rotation.z = sx * 0.25;
+        const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.05, 12), dark);
+        pad.position.set(sx * (size.x / 2 - 0.18), -size.y / 2 - 0.5, sz * (size.z / 2 - 0.5));
+        this.root.add(leg, pad);
+      }
     // Solar wings.
     const cell = new THREE.MeshStandardMaterial({ color: 0x1a2a6a, roughness: 0.3, metalness: 0.5, emissive: 0x050a20 });
     for (const sx of [-1, 1]) {

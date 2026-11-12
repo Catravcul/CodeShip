@@ -12,7 +12,7 @@ export class Hud {
     root.appendChild(this.el);
     const help = document.createElement("div");
     help.className = "help";
-    help.innerHTML = `<b>Controles</b><br>W/S avanzar/retroceder · A/D lateral · R/F subir/bajar<br>Flechas cabeceo/guiñada · Q/E alabeo<br>Espacio motor principal · T asistente de rotación<br>C cambia cámara · V centra la vista · X acelera el tiempo<br><i>Los RCS empujan poco (≈0,07 m/s²): fíjate en el polvo y en la velocidad. El motor principal da ≈0,7 m/s².</i>`;
+    help.innerHTML = `<b>Controles</b><br>W/S avanzar/retroceder · A/D lateral · R/F subir/bajar<br>Flechas cabeceo/guiñada · Q/E alabeo<br>Espacio motor principal · T asistente de rotación · G asistente de aterrizaje<br>C cambia cámara · V centra la vista · X acelera el tiempo<br><i>Para aterrizar, la panza (el tren) debe mirar al suelo; la cámara ventral ayuda.</i><br><i>Los RCS empujan poco (≈0,07 m/s²): fíjate en el polvo y en la velocidad. El motor principal da ≈0,7 m/s².</i>`;
     root.appendChild(help);
   }
 
@@ -22,7 +22,8 @@ export class Hud {
     const closing = t.closingSpeed;
     this.el.innerHTML = `
       <div class="row title">${this.info.ship} → ${this.info.target}</div>
-      <div class="row big">${dist(t.distanceToSurface)} <span class="lbl">a la superficie</span></div>
+      <div class="row big">${dist(Math.max(0, t.clearance))} <span class="lbl">a la superficie</span></div>
+      ${t.clearance < 200 && !t.landed ? `<div class="row ${t.tiltDeg > 30 ? "warn" : "ok"}">Panza ${fmt(t.tiltDeg, 0)}° del suelo <span class="lbl">(máx. 30° para posarse)</span></div>` : ""}
       <div class="row ${closing > 1 ? "warn" : ""}">${fmt(closing, 2)} m/s <span class="lbl">${Math.abs(closing) < 0.01 ? "en reposo relativo" : closing > 0 ? "acercándose" : "alejándose"}</span></div>
       <div class="row small">vel. nave x ${fmt(v.x, 2)} · y ${fmt(v.y, 2)} · z ${fmt(-v.z, 2)} m/s</div>
       <div class="row small">giro ${fmt((w.length() * 180) / Math.PI, 2)} °/s</div>

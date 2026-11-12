@@ -144,6 +144,10 @@ const touch = new TouchPilot(root);
 
 const duelView = new DuelView(root);
 const view = new FlightView(scene, camera, root);
+const landBtn = view.addButton("land-btn", () => (flight.landingAssist = !flight.landingAssist));
+window.addEventListener("keydown", (e) => {
+  if (e.code === "KeyG" && !e.repeat && !interior.active) flight.landingAssist = !flight.landingAssist;
+});
 const duelSession = () => {
   const d = expedition.duel!;
   return {
@@ -204,7 +208,12 @@ function renderPhase(): void {
   } else if (p === "landed") {
     banner.textContent = "Nave anclada";
   } else {
-    banner.textContent = t.distanceToSurface < 60 ? "Aterriza a menos de 0,10 m/s para anclarte" : "";
+    banner.textContent =
+      t.clearance < 60
+        ? t.tiltDeg > 30
+          ? `Gira la panza hacia el suelo (${t.tiltDeg.toFixed(0)}°, máx. 30°): asistente de aterrizaje con G`
+          : "Posa el tren a menos de 0,10 m/s para anclarte"
+        : "";
   }
   banner.className = `banner ${p}`;
 }
@@ -238,6 +247,8 @@ renderer.setAnimationLoop((now) => {
     return;
   }
   renderPhase();
+  landBtn.textContent = `Aterrizaje: ${flight.landingAssist ? "auto" : "manual"}`;
+  landBtn.classList.toggle("on", flight.landingAssist);
 
   const s = flight.state;
   view.update(

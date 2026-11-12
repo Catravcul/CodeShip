@@ -4,9 +4,9 @@ import { VirtualStick, curve } from "../input/stick";
 import { buildCockpit } from "./cockpit";
 import { ShipModel } from "./ship-model";
 
-export type CameraMode = "cabina" | "trasera" | "exterior";
-const MODES: readonly CameraMode[] = ["cabina", "trasera", "exterior"];
-const LABEL: Record<CameraMode, string> = { cabina: "Cabina", trasera: "Trasera", exterior: "Exterior" };
+export type CameraMode = "cabina" | "ventral" | "trasera" | "exterior";
+const MODES: readonly CameraMode[] = ["cabina", "ventral", "trasera", "exterior"];
+const LABEL: Record<CameraMode, string> = { cabina: "Cabina", ventral: "Ventral", trasera: "Trasera", exterior: "Exterior" };
 
 /** Time warp steps for long approaches; only allowed far from the asteroid. */
 export const WARPS = [1, 10, 50] as const;
@@ -113,13 +113,22 @@ export class FlightView {
   private turn(dYaw: number, dPitch: number): void {
     this.yaw += dYaw;
     this.pitch += dPitch;
-    if (this.mode === "cabina") {
+    if (this.mode === "cabina" || this.mode === "ventral") {
       this.yaw = Math.max(-2.6, Math.min(2.6, this.yaw));
       this.pitch = Math.max(-1.2, Math.min(1.2, this.pitch));
     } else this.pitch = Math.max(-1.4, Math.min(1.4, this.pitch));
   }
 
   /** Place ship, camera and dust. `pos`/`q` are the ship pose; `warp` is the warp in effect. */
+  /** Adds a button to the flight bar (used for flight-computer toggles). */
+  addButton(className: string, onClick: () => void): HTMLButtonElement {
+    const b = document.createElement("button");
+    b.className = className;
+    b.addEventListener("click", onClick);
+    this.camBtn.parentElement!.insertBefore(b, this.camBtn);
+    return b;
+  }
+
   update(dt: number, pos: THREE.Vector3, q: THREE.Quaternion, cmd: ThrustCommand, warp: number, warpNote: string): void {
     const s = this.stick.value;
     this.turn(-curve(s.x) * 2.0 * dt, -curve(s.y) * 1.5 * dt);
@@ -132,6 +141,10 @@ export class FlightView {
     if (this.mode === "cabina") {
       this.camera.position.copy(pos);
       this.camera.quaternion.copy(q).multiply(head);
+    } else if (this.mode === "ventral") {
+      // Landing camera under the belly, looking straight down past the legs.
+      this.camera.position.copy(pos).add(new THREE.Vector3(0, -1.05, -0.8).applyQuaternion(q));
+      this.camera.quaternion.copy(q).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2)).multiply(head);
     } else if (this.mode === "trasera") {
       // Camera on the hull's back, looking aft over the engine bell.
       this.camera.position.copy(pos).add(new THREE.Vector3(0, 1.25, 2.55).applyQuaternion(q));

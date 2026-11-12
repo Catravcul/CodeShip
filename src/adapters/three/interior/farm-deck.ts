@@ -3,8 +3,8 @@ import type { Plant } from "@modules/garden/domain/plant";
 import { ROOM } from "./room";
 
 /**
- * The farm deck: a large hall behind the habitat module, with artificial soil shaped into low
- * hills, raised crop beds under an LED "sky", paths, a compost heap for the hens and a corner for
+ * The farm deck: a large hall behind the habitat module, with raised crop beds under an LED
+ * "sky", fruit trees in planters, a turf mat for the animals, a compost heap for the hens and a corner for
  * the chihuahuas. The ship is big enough for it; the beds feed everyone on board.
  */
 export const FARM = { minX: -9, maxX: 9, minZ: ROOM.halfL, maxZ: ROOM.halfL + 18, height: 7 } as const;
@@ -19,10 +19,9 @@ export const BED_SIZE = { x: 3, z: 5 } as const;
 
 const mat = (color: number, extra: THREE.MeshStandardMaterialParameters = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.9, ...extra });
 
-/** Height of the artificial terrain: flat where the beds and paths are, gentle hills along the walls. */
-export function terrainHeight(x: number, z: number): number {
-  const edge = Math.max(0, Math.abs(x) - 7.8) + Math.max(0, z - (FARM.maxZ - 1.2));
-  return Math.min(1.4, edge * 0.9) + 0.06 * Math.sin(x * 1.3) * Math.sin(z * 0.9) * Math.min(1, edge);
+/** The deck is flat: crops grow in raised beds and trees in planters, so no loose soil is needed. */
+export function terrainHeight(_x: number, _z: number): number {
+  return 0;
 }
 
 export function buildFarmDeck(): THREE.Group {
@@ -30,26 +29,14 @@ export function buildFarmDeck(): THREE.Group {
   const w = FARM.maxX - FARM.minX;
   const l = FARM.maxZ - FARM.minZ;
   const cz = (FARM.minZ + FARM.maxZ) / 2;
-  // Terrain with vertex colours: grass on the hills, trodden soil on the paths.
-  const geo = new THREE.PlaneGeometry(w, l, 54, 54);
-  geo.rotateX(-Math.PI / 2);
-  const pos = geo.attributes.position!;
-  const colors: number[] = [];
-  const grass = new THREE.Color(0x5f8f3e);
-  const path = new THREE.Color(0x8a7454);
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i);
-    const z = pos.getZ(i) + cz;
-    pos.setY(i, terrainHeight(x, z));
-    const onPath = Math.abs(x) < 0.9 || Math.abs(z - (ROOM.halfL + 8.25)) < 0.8;
-    const c = (onPath ? path : grass).clone().offsetHSL(0, 0, 0.04 * Math.sin(x * 3.1 + z * 2.3));
-    colors.push(c.r, c.g, c.b);
-  }
-  geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-  geo.computeVertexNormals();
-  const ground = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }));
-  ground.position.z = cz;
-  g.add(ground);
+  // Metal deck plates, and one turf mat where the hens and dogs roam (they need somewhere soft
+  // to scratch and run; it is the only "lawn" on board).
+  g.add(box(w, 0.02, l, mat(0x8d969e, { roughness: 0.6, metalness: 0.3 }), 0, -0.01, cz));
+  for (let x = FARM.minX + 1.5; x < FARM.maxX; x += 1.5) g.add(box(0.015, 0.005, l, mat(0x6d757c), x, 0.002, cz));
+  for (let z = FARM.minZ + 1.5; z < FARM.maxZ; z += 1.5) g.add(box(w, 0.005, 0.015, mat(0x6d757c), 0, 0.002, z));
+  const rw = FARM_ROAM.maxX - FARM_ROAM.minX + 1;
+  const rl = FARM_ROAM.maxZ - FARM_ROAM.minZ + 0.8;
+  g.add(box(rw, 0.03, rl, mat(0x5f8f3e), (FARM_ROAM.minX + FARM_ROAM.maxX) / 2, 0.015, (FARM_ROAM.minZ + FARM_ROAM.maxZ) / 2));
 
   // Hull: walls, and an LED sky panel overhead that runs a day/night cycle.
   const wall = mat(0xb9c2cc);
@@ -98,17 +85,17 @@ export function buildFarmDeck(): THREE.Group {
   const ball = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), mat(0xf2d32c));
   ball.position.set(2.5, 0.05, ROOM.halfL + 2.4);
   g.add(ball);
-  // A couple of fruit trees on the hills.
+  // Fruit trees in big planters along the walls.
   for (const [x, z] of [
     [-8.2, ROOM.halfL + 4],
     [8.2, ROOM.halfL + 9],
     [-8.2, ROOM.halfL + 14],
     [4, FARM.maxZ - 0.8],
   ] as const) {
-    const y = terrainHeight(x, z);
-    g.add(cyl(0.12, 0.16, 1.6, mat(0x6b4a2b), x, y + 0.8, z));
+    g.add(cyl(0.55, 0.45, 0.7, frame, x, 0.35, z), cyl(0.5, 0.5, 0.02, soil, x, 0.71, z));
+    g.add(cyl(0.12, 0.16, 1.6, mat(0x6b4a2b), x, 1.5, z));
     const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(0.9, 0), mat(0x3f7a34));
-    crown.position.set(x, y + 2.1, z);
+    crown.position.set(x, 2.8, z);
     g.add(crown);
   }
   return g;
@@ -123,6 +110,30 @@ function cyl(rt: number, rb: number, h: number, m: THREE.Material, x: number, y:
   const c = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, 10), m);
   c.position.set(x, y, z);
   return c;
+}
+
+/** A sign that always faces the camera, for naming beds. */
+export function textSign(text: string): THREE.Sprite {
+  const c = document.createElement("canvas");
+  const ctx = c.getContext("2d")!;
+  const font = "bold 44px system-ui, sans-serif";
+  ctx.font = font;
+  c.width = Math.ceil(ctx.measureText(text).width) + 48;
+  c.height = 72;
+  ctx.font = font;
+  ctx.fillStyle = "#0b2a36dd";
+  ctx.beginPath();
+  ctx.roundRect(0, 0, c.width, c.height, 18);
+  ctx.fill();
+  ctx.fillStyle = "#e6f6ff";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, 24, c.height / 2 + 2);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false }));
+  const h = 0.32;
+  sprite.scale.set((h * c.width) / c.height, h, 1);
+  return sprite;
 }
 
 /** Rows of one crop filling a bed; height, colour and fruit follow the domain plant. */
@@ -165,6 +176,9 @@ export class BedModel {
         this.crop.setMatrixAt(k++, m);
       }
     this.root.add(this.crop);
+    const label = textSign(`${sp.name} · ${plant.areaM2} m²`);
+    label.position.set(0, 1.5, -BED_SIZE.z / 2);
+    this.root.add(label);
     if (sp.form === "fruto") {
       this.fruit = new THREE.InstancedMesh(new THREE.SphereGeometry(0.045, 6, 5), new THREE.MeshStandardMaterial({ color: 0xd23b2a }), nx * nz);
       k = 0;

@@ -2,7 +2,7 @@ import type { Quat } from "@core/math/quat";
 import { Vec3 } from "@core/math/vec3";
 import type { Ship, ThrustCommand } from "@modules/ship/domain/ship";
 import { RigidBodyState, stepRigidBody } from "../domain/rigid-body";
-import { evaluateContact } from "../domain/contact";
+import { evaluateContact, reachToward } from "../domain/contact";
 
 /** Anything that pulls the ship (asteroids, later planets). */
 export interface GravitySource {
@@ -20,7 +20,7 @@ export interface FlightTarget {
   toWorld(local: Vec3, timeS: number): Vec3;
 }
 
-export type FlightEvent = "landed" | "lifted-off" | "bounced" | "crashed";
+export type FlightEvent = "landed" | "lifted-off" | "bounced" | "crashed" | "tilted";
 
 export const NO_INPUT: ThrustCommand = { mainThrottle: 0, translation: Vec3.ZERO, rotation: Vec3.ZERO };
 
@@ -35,9 +35,17 @@ export interface Telemetry {
   readonly massKg: number;
   readonly landed: boolean;
   readonly hullIntegrity: number;
+  /** Gap between the lowest part of the ship (legs or hull) and the ground, metres. */
+  readonly clearance: number;
+  /** Angle between the belly (body −Y) and the local vertical, degrees. */
+  readonly tiltDeg: number;
 }
 
 const STEP_S = 1 / 120;
+/** Nose cone ahead of the hull box (matches the rendered ship). */
+const NOSE_M = 0.45;
+/** Landing assist: seconds to swing the belly to the ground, and its damping. */
+const LEVEL_TIME_S = 2.5;
 /** How fast the assist tries to cancel rotation; smaller is snappier. */
 const ASSIST_TIME_S = 0.6;
 
@@ -47,6 +55,8 @@ const ASSIST_TIME_S = 0.6;
  */
 export class FlightComputer {
   rotationAssist = true;
+  /** Turns the belly toward the ground (like a lander's attitude hold) while the pilot isn't rotating. */
+  landingAssist = false;
   private accumulator = 0;
   private _simTimeS = 0;
   /** Where the ship is anchored, in the target's own frame, while landed. */
@@ -111,7 +121,21 @@ export class FlightComputer {
       massKg: this.ship.massKg,
       landed: this.landed,
       hullIntegrity: this.ship.hullIntegrity,
+      ...this.groundGeometry(),
     };
+  }
+
+  /** Local down at the ship, how far the ship reaches toward it and how tilted the belly is. */
+  private groundGeometry(): { clearance: number; tiltDeg: number; reach: number; normal: Vec3; tiltRad: number } {
+    const s = this._state;
+    const target = this.world.target;
+    const normal = target ? s.position.sub(target.position).normalize() : Vec3.Y;
+    const downBody = s.toBody(normal.scale(-1));
+    const half = this.ship.design.hull.size.scale(0.5);
+    const reach = reachToward(half, downBody, NOSE_M);
+    const tiltRad = Math.acos(Math.max(-1, Math.min(1, -downBody.y)));
+    const height = target ? target.surfaceDistance(s.position, this._simTimeS) : Infinity;
+    return { clearance: height - reach, tiltDeg: (tiltRad * 180) / Math.PI, reach, normal, tiltRad };
   }
 
   private step(input: ThrustCommand): void {
@@ -125,7 +149,8 @@ export class FlightComputer {
       this.anchor = null;
       this.events.push("lifted-off");
     }
-    const cmd = this.rotationAssist && input.rotation.length() === 0 ? { ...input, rotation: this.dampRotation() } : input;
+    const idleRot = input.rotation.length() === 0;
+    const cmd = idleRot && this.landingAssist && target ? { ...input, rotation: this.levelRotation() } : idleRot && this.rotationAssist ? { ...input, rotation: this.dampRotation() } : input;
     const out = this.ship.fire(cmd, STEP_S);
     let gravity = Vec3.ZERO;
     for (const g of this.world.gravitySources) gravity = gravity.add(g.gravityAt(this._state.position));
@@ -144,13 +169,16 @@ export class FlightComputer {
   }
 
   private checkContact(target: FlightTarget, t: number): void {
-    const s = this._state;
+    let s = this._state;
+    const g = this.groundGeometry();
+    const height = target.surfaceDistance(s.position, t);
+    // Never sink into the ground: push the ship back out to where its hull or legs touch.
+    if (height < g.reach - 0.02) {
+      s = new RigidBodyState(s.position.add(g.normal.scale(g.reach - height)), s.velocity, s.orientation, s.angularVelocityBody);
+      this._state = s;
+    }
     const contact = evaluateContact(
-      {
-        height: target.surfaceDistance(s.position, t),
-        normal: s.position.sub(target.position).normalize(),
-        groundVelocity: target.surfaceVelocity(s.position),
-      },
+      { height: Math.max(height, g.reach - 0.02), normal: g.normal, groundVelocity: target.surfaceVelocity(s.position), reach: g.reach, tiltRad: g.tiltRad },
       s.velocity,
     );
     switch (contact.kind) {
@@ -165,6 +193,10 @@ export class FlightComputer {
       case "bounce":
         this._state = s.withVelocity(contact.velocity);
         this.events.push("bounced");
+        break;
+      case "tilted":
+        this._state = s.withVelocity(contact.velocity);
+        this.events.push("tilted");
         break;
       case "crash":
         this._state = s.withVelocity(contact.velocity);
@@ -183,6 +215,31 @@ export class FlightComputer {
       target.surfaceVelocity(position),
       target.orientationAt(t).multiply(a.orientation),
       Vec3.ZERO,
+    );
+  }
+
+  /** PD controller that swings body +Y onto the local vertical, saturated by RCS authority. */
+  private levelRotation(): Vec3 {
+    const s = this._state;
+    const g = this.groundGeometry();
+    const upBody = s.toBody(g.normal);
+    // Rotation axis (body frame) that turns +Y toward the local up, scaled by the angle.
+    const axis = Vec3.Y.cross(upBody);
+    const err = axis.length() < 1e-9 ? (upBody.y < 0 ? Vec3.X.scale(Math.PI) : Vec3.ZERO) : axis.normalize().scale(g.tiltRad);
+    const w = s.angularVelocityBody;
+    const I = this.ship.inertiaKgM2;
+    const max = this.rcsTorque();
+    const k = 2 / (LEVEL_TIME_S * LEVEL_TIME_S);
+    const c = 2 / LEVEL_TIME_S;
+    const axisCmd = (e: number, wi: number, Ii: number, mi: number) => (mi === 0 ? 0 : Math.max(-1, Math.min(1, ((k * e - c * wi) * Ii) / mi)));
+    return new Vec3(axisCmd(err.x, w.x, I.x, max.x), axisCmd(err.y, w.y, I.y, max.y), axisCmd(err.z, w.z, I.z, max.z));
+  }
+
+  private rcsTorque(): Vec3 {
+    return new Vec3(
+      this.ship.preview({ mainThrottle: 0, translation: Vec3.ZERO, rotation: Vec3.X }).torqueBody.x,
+      this.ship.preview({ mainThrottle: 0, translation: Vec3.ZERO, rotation: Vec3.Y }).torqueBody.y,
+      this.ship.preview({ mainThrottle: 0, translation: Vec3.ZERO, rotation: Vec3.Z }).torqueBody.z,
     );
   }
 

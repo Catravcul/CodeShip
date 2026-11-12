@@ -12,7 +12,7 @@ export class Hud {
     root.appendChild(this.el);
     const help = document.createElement("div");
     help.className = "help";
-    help.innerHTML = `<b>Controles</b><br>W/S avanzar/retroceder · A/D lateral · R/F subir/bajar<br>Flechas cabeceo/guiñada · Q/E alabeo<br>Espacio motor principal · T asistente de rotación · G asistente de aterrizaje<br>C cambia cámara · V centra la vista · X acelera el tiempo<br><i>Para aterrizar, la panza (el tren) debe mirar al suelo; la cámara ventral ayuda.</i><br><i>Los RCS empujan poco (≈0,07 m/s²): fíjate en el polvo y en la velocidad. El motor principal da ≈0,7 m/s².</i>`;
+    help.innerHTML = `<b>Controles</b><br>W/S avanzar/retroceder · A/D lateral · R/F subir/bajar<br>Flechas cabeceo/guiñada · Q/E alabeo<br>Espacio motor principal · T asistente de rotación · G asistente de aterrizaje · K acople<br>C cambia cámara · V centra la vista · X acelera el tiempo<br><i>Para aterrizar, la panza (el tren) debe mirar al suelo; la cámara ventral ayuda.</i><br><i>Los RCS empujan poco (≈0,07 m/s²): fíjate en el polvo y en la velocidad. El motor principal da ≈0,7 m/s².</i>`;
     root.appendChild(help);
   }
 

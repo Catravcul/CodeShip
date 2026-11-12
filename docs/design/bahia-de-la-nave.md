@@ -70,7 +70,7 @@ Cuando una fuente da un rango, se usa el empuje nominal de la clase y el extremo
 
 ## Preguntas abiertas para Berón
 
-- **Escala.** El módulo habitable mide 4 × 12 m y la cubierta de cultivo es aún mayor, pero el casco exterior mide 3 × 2 × 5 m. ¿Añadimos un anillo o módulo habitable visible a la maqueta, con su masa e inercia, o la nave crece?
+- ~~**Escala.**~~ Resuelto: el módulo habitable y la cubierta de cultivo están en la nave nodriza. La bahía tiene dos pestañas, **Sonda** y **Nodriza** ([nave-nodriza.md](nave-nodriza.md)).
 - **Montaje fallido.** El diseño original decía que, si fallas, la pieza queda mal montada y rinde menos. Ahora la pieza vieja se queda. ¿Queremos el estado «mal montada» con su reto de reparar?
 - **Coste de las piezas.** Hoy cambiar una pieza solo cuesta resolver los retos. ¿Deberían salir de la bodega, de lo que cede un asteroide persuadido, o de un puerto?
 - **Energía.** Las alas solares no tienen modelo. ¿Hace falta un balance de energía para que importen, por ejemplo para motores eléctricos como el NEXT o el SPT-100?

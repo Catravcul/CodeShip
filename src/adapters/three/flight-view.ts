@@ -3,12 +3,18 @@ import type { ShipDesign, ThrustCommand } from "@modules/ship/domain/ship";
 import { VirtualStick, curve } from "../input/stick";
 import { buildCockpit } from "./cockpit";
 import { ShipModel } from "./ship-model";
-import { RingModel } from "./ring-model";
-import type { RingSpec } from "@modules/gravity/domain/spin-gravity";
 
-export type CameraMode = "cabina" | "ventral" | "trasera" | "exterior" | "anillo";
-const MODES: readonly CameraMode[] = ["cabina", "ventral", "trasera", "exterior", "anillo"];
-const LABEL: Record<CameraMode, string> = { cabina: "Cabina", ventral: "Ventral", trasera: "Trasera", exterior: "Exterior", anillo: "Anillo" };
+export type CameraMode = "cabina" | "ventral" | "trasera" | "exterior" | "acople" | "nodriza";
+const MODES: readonly CameraMode[] = ["cabina", "ventral", "trasera", "exterior", "acople", "nodriza"];
+const LABEL: Record<CameraMode, string> = { cabina: "Cabina", ventral: "Ventral", trasera: "Trasera", exterior: "Exterior", acople: "Acople", nodriza: "Nodriza" };
+
+/** Where the mothership is (its centre and attitude), so the view can frame it with the probe. */
+export interface MothershipPose {
+  readonly position: THREE.Vector3;
+  readonly quaternion: THREE.Quaternion;
+  /** Toward the Sun, so the "Nodriza" camera starts on the lit side. */
+  readonly sun?: THREE.Vector3;
+}
 
 /** Time warp steps for long approaches; only allowed far from the asteroid. */
 export const WARPS = [1, 10, 50] as const;
@@ -23,8 +29,6 @@ export class FlightView {
   readonly rig = new THREE.Group();
   private readonly cockpit = buildCockpit();
   private readonly ship = new ShipModel();
-  /** The spinning habitat rings over the hull (visible from every camera, also through the canopy). */
-  readonly rings?: RingModel;
   private readonly dust: THREE.Points;
   private readonly dustPos: Float32Array;
   private readonly stick: VirtualStick;
@@ -45,14 +49,11 @@ export class FlightView {
     root: HTMLElement,
     /** The ship's current design, so the exterior model follows part swaps. */
     private readonly design?: () => ShipDesign,
-    private readonly ring?: { spec: RingSpec; omega: () => number },
+    /** The mothership, framed by the "Nodriza" camera together with the probe. */
+    private readonly mothership?: MothershipPose,
   ) {
     scene.add(this.rig);
     this.rig.add(this.cockpit, this.ship.root);
-    if (ring) {
-      this.rings = new RingModel(ring.spec);
-      this.rig.add(this.rings.root);
-    }
     const cabinLight = new THREE.PointLight(0xdfefff, 3, 4, 1);
     cabinLight.position.set(0, 0.7, 0.3);
     this.cockpit.add(cabinLight);
@@ -123,13 +124,13 @@ export class FlightView {
 
   center(): void {
     this.yaw = 0;
-    this.pitch = this.mode === "exterior" ? -0.25 : this.mode === "anillo" ? -0.35 : this.mode === "trasera" ? -0.3 : 0;
+    this.pitch = this.mode === "exterior" ? -0.25 : this.mode === "nodriza" ? -0.3 : this.mode === "trasera" ? -0.3 : 0;
   }
 
   private turn(dYaw: number, dPitch: number): void {
     this.yaw += dYaw;
     this.pitch += dPitch;
-    if (this.mode === "cabina" || this.mode === "ventral") {
+    if (this.mode === "cabina" || this.mode === "ventral" || this.mode === "acople") {
       this.yaw = Math.max(-2.6, Math.min(2.6, this.yaw));
       this.pitch = Math.max(-1.2, Math.min(1.2, this.pitch));
     } else this.pitch = Math.max(-1.4, Math.min(1.4, this.pitch));
@@ -154,7 +155,6 @@ export class FlightView {
     this.ship.root.visible = this.mode !== "cabina";
     if (this.design) this.ship.setDesign(this.design());
     this.ship.thrust(cmd, performance.now() / 1000);
-    if (this.rings && this.ring) this.rings.update(dt, this.ring.omega());
     const head = new THREE.Quaternion().setFromEuler(new THREE.Euler(this.pitch, this.yaw, 0, "YXZ"));
     if (this.mode === "cabina") {
       this.camera.position.copy(pos);
@@ -167,14 +167,28 @@ export class FlightView {
       // Camera on the hull's back, looking aft over the engine bell.
       this.camera.position.copy(pos).add(new THREE.Vector3(0, 1.25, 2.55).applyQuaternion(q));
       this.camera.quaternion.copy(q).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI)).multiply(head);
+    } else if (this.mode === "acople") {
+      // Docking camera beside the dorsal port, looking straight up the docking axis (like the
+      // Apollo LM's overhead window), with the nose toward the top of the screen.
+      this.camera.position.copy(pos).add(new THREE.Vector3(0.45, 1.05, 0.6).applyQuaternion(q));
+      this.camera.quaternion.copy(q).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2)).multiply(head);
     } else {
-      // Orbit 16 m from the ship (or far enough to see the whole ring); dragging or the stick moves around it.
-      const far = this.mode === "anillo" && this.rings;
-      const off = new THREE.Vector3(0, 0, far ? 230 : 16).applyQuaternion(head).applyQuaternion(q);
-      if (far) off.add(new THREE.Vector3(0, this.rings.lowerY, 0).applyQuaternion(q));
-      this.camera.position.copy(pos).add(off);
-      this.camera.up.set(0, 1, 0).applyQuaternion(q);
-      this.camera.lookAt(far ? pos.clone().add(new THREE.Vector3(0, this.rings.lowerY, 0).applyQuaternion(q)) : pos);
+      // Orbit 16 m from the ship; the "Nodriza" camera frames the probe and the mothership together.
+      const m = this.mode === "nodriza" ? this.mothership : undefined;
+      const focus = m ? pos.clone().lerp(m.position, 0.5) : pos;
+      const around = m ? m.quaternion : q;
+      const dist = m ? Math.max(210, pos.distanceTo(m.position) * 1.6) : 16;
+      // Seen from the lit side, a little off the Sun line so the rings show their depth.
+      const base = new THREE.Quaternion();
+      if (m?.sun) {
+        const local = m.sun.clone().applyQuaternion(m.quaternion.clone().invert());
+        local.add(new THREE.Vector3(0.6, 0.3, 0)).normalize();
+        base.setFromUnitVectors(new THREE.Vector3(0, 0, 1), local);
+      }
+      const off = new THREE.Vector3(0, 0, dist).applyQuaternion(head).applyQuaternion(base).applyQuaternion(around);
+      this.camera.position.copy(focus).add(off);
+      this.camera.up.set(0, 1, 0).applyQuaternion(around);
+      this.camera.lookAt(focus);
     }
     // Wrap the dust around the ship so it always surrounds it.
     const p = this.dustPos;

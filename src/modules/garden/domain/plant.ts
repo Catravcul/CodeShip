@@ -50,9 +50,13 @@ export class Plant {
     readonly autoWatered = false,
   ) {}
 
-  /** A farm-deck bed rather than a pot. */
+  /** A farm-deck bed (or a tree's planter) rather than a pot on the racks. */
   get isBed(): boolean {
     return this.areaM2 > PLANT_TUNING.potAreaM2;
+  }
+  /** A fruit tree in a planter on the farm deck. */
+  get isTree(): boolean {
+    return this.species.form === "arbol";
   }
 
   get ageDays(): number {
@@ -124,7 +128,15 @@ export class Plant {
     if (!this.readyToHarvest) throw new Error(`${this.id} is not ready to harvest`);
     this._harvests++;
     const fruitSet = !this.species.needsShaking.value || this._shaken;
-    const perPot = fruitSet ? (this._health >= 0.5 ? 2 : 1) : 0;
+    if (!fruitSet) return { plantId: this.id, portions: 0 };
+    const y = this.species.edibleYield?.value;
+    if (y) {
+      // The measured yield, split over the harvests; a weak plant gives half.
+      const grams = (y.gPerM2 * this.areaM2) / this.species.harvestDays.value.length;
+      const portions = Math.max(1, Math.round((grams * (this._health >= 0.5 ? 1 : 0.5)) / y.portionG));
+      return { plantId: this.id, portions };
+    }
+    const perPot = this._health >= 0.5 ? 2 : 1;
     const portions = perPot * Math.max(1, Math.round(this.areaM2 / PLANT_TUNING.potAreaM2));
     return { plantId: this.id, portions };
   }

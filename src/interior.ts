@@ -12,7 +12,7 @@ import { YOGA_SEQUENCES } from "@modules/wellness/data/yoga";
 import { CAT_BOUNDS, COOP_BOUNDS, MACHINE_STATION, ROOM, STATIONS, POT_SLOTS, buildRoom, drawScreen, type RoomHandles, type Station } from "./adapters/three/interior/room";
 import { HenModel } from "./adapters/three/interior/hen-model";
 import { DogModel } from "./adapters/three/interior/dog-model";
-import { BED_SLOTS, BedModel, DOOR, FARM, FARM_ROAM, buildFarmDeck } from "./adapters/three/interior/farm-deck";
+import { DOOR, FARM, FARM_ROAM, buildFarmDeck, farmModels, type FarmPlantModel } from "./adapters/three/interior/farm-deck";
 import { portrait } from "./ui/portraits";
 import { PlantModel } from "./adapters/three/interior/plant-model";
 import { CatModel } from "./adapters/three/interior/cat-model";
@@ -109,7 +109,7 @@ export class Interior {
   private readonly cats = new Map<string, CatModel>();
   private readonly hens = new Map<string, HenModel>();
   private readonly dogs = new Map<string, DogModel>();
-  private readonly beds: BedModel[] = [];
+  private readonly beds: FarmPlantModel[] = [];
   private hensOut = false;
   private readonly room: RoomHandles;
   private screensKey = "";
@@ -149,13 +149,10 @@ export class Interior {
     this.scene.background = new THREE.Color(0x10141a);
     this.panel = this.room.panel;
     this.scene.add(buildFarmDeck());
-    habitat.plants
-      .filter((p) => p.isBed)
-      .forEach((p, i) => {
-        const m = new BedModel(p, BED_SLOTS[i % BED_SLOTS.length]!);
-        this.beds.push(m);
-        this.scene.add(m.root);
-      });
+    for (const m of farmModels(habitat.plants.filter((p) => p.isBed))) {
+      this.beds.push(m);
+      this.scene.add(m.root);
+    }
     this.pots.forEach((p, i) => {
       const m = new PlantModel(p);
       m.root.position.copy(POT_SLOTS[i % POT_SLOTS.length]!);
@@ -446,7 +443,7 @@ export class Interior {
     const plantIdx = this.pots.findIndex((p) => p.id === chore.targetId);
     const bed = this.beds.find((b) => b.plant.id === chore.targetId);
     if (bed) {
-      stand = bed.root.position.clone().setY(0).add(new THREE.Vector3(1.9, 0, 0));
+      stand = bed.stand.clone();
       look = bed.root.position.clone().setY(0.5);
     } else if (plantIdx >= 0) {
       const slot = POT_SLOTS[plantIdx % POT_SLOTS.length]!;

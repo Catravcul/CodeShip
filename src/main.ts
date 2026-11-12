@@ -22,14 +22,18 @@ import { Cat } from "@modules/pets/domain/cat";
 import {
   CAT_GRASS,
   CHILE_ESPANOLA,
+  FIG_TREE,
   LETTUCE_OUTREDGEOUS,
+  PEANUT_GEORGIA_RED,
   POTATO_NORLAND,
   RADISH_CHERRY_BELLE,
   SOYBEAN_HOYT,
+  STRAWBERRY_SEASCAPE,
   TOMATO_RED_ROBIN,
   WHEAT_APOGEE,
 } from "@modules/garden/data/species";
 import { MACHINES } from "@modules/life-support/data/machines";
+import { LAUNCH_STOCK } from "@modules/kitchen/data/stores";
 import { Hen } from "@modules/poultry/domain/hen";
 import { Dog } from "@modules/pets/domain/dog";
 import { Mailbox } from "@modules/story/domain/mailbox";
@@ -80,10 +84,8 @@ const garden: [string, Parameters<Habitat["plant"]>[1], number][] = [
   ["g1", CAT_GRASS, 12],
 ];
 for (const [id, sp, days] of garden) growFor(habitat.plant(id, sp), days);
-// Stores the ship left with: cat food, hen feed and culture medium for the bioreactor.
-habitat.stock("pienso-gatos", 1500);
-habitat.stock("pienso-gallinas", 4);
-habitat.stock("medio-cultivo", 12);
+// Stores the ship left with: potatoes, peanuts, flour, eggs, meat, animal food and culture medium.
+habitat.stockAll(LAUNCH_STOCK);
 habitat.adopt(new Cat("luna", "Luna", 4));
 // Nube came aboard at the last stop: the two are still being introduced.
 habitat.adopt(new Cat("nube", "Nube", 3.2))[0]!.startAt("contacto-visual");
@@ -92,7 +94,8 @@ for (const [id, name] of [["clara", "Clara"], ["yema", "Yema"], ["pinta", "Pinta
 // Two chihuahuas: Coco, an adult, and Pepa, a puppy a few weeks old.
 habitat.addDog(new Dog("coco", "Coco", 2.4));
 habitat.addDog(new Dog("pepa", "Pepa", 0.9, "cachorro"));
-// The farm deck: eight 15 m² beds of artificial soil, planted in turns so harvests keep coming.
+// The farm deck: eleven 15 m² beds of artificial soil, planted in turns so harvests keep coming,
+// and four fig trees in planters.
 const farm: [string, Parameters<Habitat["bed"]>[1], number][] = [
   ["bancal-trigo-1", WHEAT_APOGEE, 60],
   ["bancal-trigo-2", WHEAT_APOGEE, 20],
@@ -102,8 +105,12 @@ const farm: [string, Parameters<Habitat["bed"]>[1], number][] = [
   ["bancal-tomate", TOMATO_RED_ROBIN, 75],
   ["bancal-lechuga", LETTUCE_OUTREDGEOUS, 20],
   ["bancal-rabano", RADISH_CHERRY_BELLE, 2],
+  ["bancal-cacahuete-1", PEANUT_GEORGIA_RED, 105],
+  ["bancal-cacahuete-2", PEANUT_GEORGIA_RED, 40],
+  ["bancal-fresa", STRAWBERRY_SEASCAPE, 40],
 ];
 for (const [id, sp, days] of farm) growFor(habitat.bed(id, sp, 15), days);
+for (const [i, days] of [120, 120, 90, 60].entries()) growFor(habitat.tree(`higuera-${i + 1}`, FIG_TREE), days);
 
 // --- Rendering adapter ------------------------------------------------------
 const root = document.getElementById("app")!;

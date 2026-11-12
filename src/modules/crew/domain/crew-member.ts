@@ -78,6 +78,12 @@ export class CrewMember implements Patient {
     this._stress = clamp01(this._stress - 0.05);
   }
 
+  /** Eat a plate with this much energy: a day's requirement fills satiety from 0 to 1 (it drains 1 a day). */
+  eatKcal(kcal: number): void {
+    this._satiety = Math.min(1.2, this._satiety + kcal / this.dailyKcal);
+    this._stress = clamp01(this._stress - 0.05);
+  }
+
   /** One posture of a yoga sequence completed; `of` = postures in the sequence. */
   practice(of: number): void {
     this._fitness = clamp01(this._fitness + CREW_TUNING.yogaFitness / of);

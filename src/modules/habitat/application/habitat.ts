@@ -12,6 +12,7 @@ import { Bonds, companionship, FAMILY_TUNING, type Family, type Member } from "@
 import { CrewMember } from "@modules/crew/domain/crew-member";
 import type { ShipDesign } from "@modules/ship/domain/ship";
 import type { Recipe } from "@modules/kitchen/data/recipes";
+import { portionNutrients } from "@modules/kitchen/data/nutrition";
 import type { YogaSequence } from "@modules/wellness/data/yoga";
 import { ChoreRun, type Chore } from "@modules/chores/domain/chore";
 import {
@@ -250,6 +251,16 @@ export class Habitat {
     const p = new Plant(id, species, areaM2, true);
     this._plants.set(id, p);
     return p;
+  }
+
+  /** A fruit tree in a planter on the farm deck, taking the ground one tree needs; drip-watered. */
+  tree(id: string, species: PlantSpecies): Plant {
+    return this.bed(id, species, species.areaPerPlantM2?.value ?? 1);
+  }
+
+  /** Put a whole list of stores in the larder (e.g. the launch stock). */
+  stockAll(items: Readonly<Record<string, number>>): void {
+    for (const [item, n] of Object.entries(items)) this.stock(item, n);
   }
 
   /** How much of everyone's food the growing area can provide (1 = self-sufficient). */
@@ -705,7 +716,8 @@ export class Habitat {
           if (!r || !this.canCook(r)) throw new Error(`Cannot cook ${chore.targetId}`);
           this.use(r.ingredients);
           this.meals += r.portions;
-          this.crew.eat();
+          // Doménica eats one portion: its real energy fills her satiety.
+          this.crew.eatKcal(portionNutrients(r).kcal);
           break;
         }
         case "reparar-nave":

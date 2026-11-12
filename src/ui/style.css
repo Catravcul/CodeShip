@@ -208,3 +208,19 @@ body.in-bay .bay-look { display: block; }
 @media (min-aspect-ratio: 1/1) { .bay-look { bottom: 22px; } }
 @media (hover: hover) and (pointer: fine) { .bay-look { opacity: 0.6; } }
 body.in-duel .bay-panel, body.in-duel .bay-back, body.in-duel .bay-look { display: none !important; }
+/* nano_net: status card (opened from the flight bar) and the core action button. */
+.nano-card { position: fixed; top: 58px; left: 50%; transform: translateX(-50%); z-index: 7; width: min(300px, 92vw); box-sizing: border-box; padding: 10px 12px; color: #d8f6ff; font-size: 13px; line-height: 1.45; background: #05121add; border: 1px solid #7fdcff55; border-radius: 12px; box-shadow: 0 0 18px #00b7ff33; }
+.nano-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; color: #7fdcff; letter-spacing: 0.08em; }
+.nano-head button { font: inherit; color: #d8f6ff; background: none; border: 0; padding: 2px 6px; }
+.nano-row { margin: 3px 0; }
+.nano-row.warn { color: #ffb347; }
+.nano-row.ok { color: #7dffb0; }
+.nano-row.dim { opacity: 0.7; }
+.nano-stages { margin: 4px 0; padding-left: 20px; }
+.nano-stages li { opacity: 0.5; }
+.nano-stages li.on { opacity: 1; color: #7dffb0; }
+.nano-stages li.on::marker { content: "✓ "; }
+.nano-action { background: #a0ffd0; box-shadow: 0 0 24px #40ffa088; }
+body.in-interior .nano-card, body.in-duel .nano-card { display: none !important; }
+body.in-duel .help { display: none; }
+@media (max-width: 600px) { .nano-card { left: 8px; transform: none; top: 10px; width: calc(100vw - 160px); font-size: 12px; } }

@@ -39,6 +39,13 @@ import { seededRandom } from "./content/random";
 import { Interior } from "./interior";
 import { SHIP_STORES } from "@modules/ship-bay/data/stores";
 import { ShipBay } from "./ship-bay";
+import { NanoNet } from "@modules/nano-net/domain/network";
+import { NanoNetOps } from "@modules/nano-net/application/operations";
+import { faultWhat, type NanoSite } from "@modules/nano-net/application/challenges";
+import { REMOTE_NETS } from "@modules/nano-net/data/networks";
+import { faultLetter } from "@modules/story/data/nevaeh";
+import { NanoNetView } from "./adapters/three/nano-net-view";
+import { NanoNetPanel } from "./ui/nano-net-panel";
 
 // --- Domain setup -----------------------------------------------------------
 const d = BENNU.dimensionsM.value;
@@ -58,6 +65,12 @@ const expedition = new Expedition(flight, bennu, EXERCISES, 500);
 const habitat = new Habitat(seededRandom(2026), 3, ship, "Doménica", MACHINES);
 // Nevaeh writes to Doménica through the ship's radio (story rescued from the 2023 draft).
 habitat.mailbox = new Mailbox(STORY);
+// The nano_net: a persuaded Bennu can become a core (docs/design/nano-net.md).
+const nano = new NanoNetOps(new NanoNet(REMOTE_NETS), seededRandom(4242));
+const bennuSite: NanoSite = { id: BENNU.id, name: BENNU.name, position: bennu.position, radiusM: bennu.meanRadiusM, massKg: bennu.massKg, muM3S2: bennu.mu };
+/** The nano_net wears on the same clock as life on board (a game day every ~40 s). */
+const NANO_DAYS_PER_SECOND = 1 / 40;
+let faultLetters = 0;
 const growFor = (p: Plant, days: number) => {
   for (let t = 0; t < days; t += 0.25) {
     p.tick(0.25, { lit: true });
@@ -166,6 +179,8 @@ const duelSession = () => {
   };
 };
 const interior = new Interior(root, habitat, duelView);
+const nanoView = new NanoNetView(scene, nano.net);
+const nanoPanel = new NanoNetPanel(root, duelView, view.addButton("nano-btn", () => {}), nano, bennuSite);
 const modeBtn = document.createElement("button");
 modeBtn.className = "mode-btn";
 modeBtn.textContent = "Ir al interior";
@@ -216,7 +231,7 @@ root.appendChild(banner);
 function renderPhase(): void {
   const p = expedition.phase;
   const t = flight.telemetry();
-  action.classList.toggle("hidden", !(p === "landed" || ((p === "persuaded" || p === "aggressive") && duelView.visible)));
+  action.classList.toggle("hidden", nanoPanel.busy || !(p === "landed" || ((p === "persuaded" || p === "aggressive") && duelView.visible)));
   action.textContent = p === "landed" ? "Entrar en su mente" : "Volver a la cabina";
   if (p === "persuaded") {
     banner.textContent = `${BENNU.name} obedece: ${expedition.cargo.map((c) => `${c.kg.toFixed(0)} kg de ${c.material}`).join(", ")} en la bodega`;
@@ -253,10 +268,29 @@ renderer.setAnimationLoop((now) => {
   const idle = cmd.mainThrottle === 0 && cmd.translation.length() === 0 && cmd.rotation.length() === 0;
   // Time warp only on quiet cruise far from the surface, so landing stays real-time.
   const far = flight.telemetry().distanceToSurface >= WARP_MIN_DISTANCE_M;
-  const warp = expedition.phase === "flight" && idle && far ? view.warpRequested : 1;
-  const warpNote = view.warpRequested > 1 && warp === 1 ? (far ? "tiempo ×1 mientras maniobras" : "tiempo ×1 cerca del asteroide") : warp > 1 ? `tiempo ×${warp}` : "";
+  const sp = flight.state.position;
+  const fx = nano.net.effectsAt(sp);
+  const asked = (expedition.phase === "flight" || expedition.phase === "persuaded") && !flight.landed && idle && far ? view.warpRequested : 1;
+  // Inside the nano_net its speed nodes let time run faster.
+  const warp = asked > 1 ? Math.round(asked * fx.warpFactor) : 1;
+  const warpNote =
+    view.warpRequested > 1 && warp === 1 ? (far ? "tiempo ×1 mientras maniobras" : "tiempo ×1 cerca del asteroide") : warp > 1 ? `tiempo ×${warp}${fx.warpFactor > 1 ? " (nano_net)" : ""}` : "";
   expedition.update(dt * warp, cmd);
-  if (expedition.phase === "aggressive" && lastPhase !== "aggressive") habitat.jolt(0.8, `${BENNU.name}, furioso, sacudió la nave`);
+  // Shield nodes absorb part of the jolt.
+  if (expedition.phase === "aggressive" && lastPhase !== "aggressive") habitat.jolt(0.8 * (1 - fx.safety), `${BENNU.name}, furioso, sacudió la nave`);
+  if (expedition.phase === "persuaded" && lastPhase !== "persuaded") nano.subjugate(bennuSite.id);
+  if (!nanoPanel.busy) nano.tick(dt * NANO_DAYS_PER_SECOND);
+  nano.powerShip(ship, fx, dt * warp);
+  for (const e of nano.drainEvents()) {
+    const box = habitat.mailbox!;
+    if (e.type === "core-planted") box.achieve("nucleo");
+    if (e.type === "stage-learned") box.achieve(e.stage);
+    if (e.type === "repaired") box.achieve("reparar", e.fault.id);
+    if (e.type === "fault") {
+      const core = nano.net.core(e.fault.coreId)!;
+      box.post(faultLetter({ faultId: e.fault.id, coreName: core.name, what: faultWhat(core, e.fault) }, ++faultLetters));
+    }
+  }
   lastPhase = expedition.phase;
   interior.update(dt);
   view.enabled = !interior.active && !bay.active && !duelView.visible;
@@ -271,6 +305,8 @@ renderer.setAnimationLoop((now) => {
     return;
   }
   renderPhase();
+  nanoPanel.update(flight.landed, fx, !duelView.visible);
+  nanoView.update(flight.simTimeS);
   landBtn.textContent = `Aterrizaje: ${flight.landingAssist ? "auto" : "manual"}`;
   landBtn.classList.toggle("on", flight.landingAssist);
 
@@ -290,4 +326,4 @@ renderer.setAnimationLoop((now) => {
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano };

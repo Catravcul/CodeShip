@@ -547,8 +547,7 @@ export class Habitat {
     if (this.ship && this.ship.hullIntegrity < 0.999) out.push(repairChore(this.ship.design, this.ship.hullIntegrity, this._repairs + 3, this._scenarios.get("nave")));
     for (const r of recipes) if (this.canCook(r)) out.push(cookingChore(r, pool));
     for (const y of yoga) out.push(yogaChore(y));
-    for (const l of this.mailbox?.pendingMissions ?? [])
-      out.push({ id: `mision-${l.id}`, kind: "mision", targetId: l.id, title: l.mission!.title, scenario: `Carta de ${l.from}: ${l.subject}`, exercises: l.mission!.exercises });
+    // Nevaeh's missions are nano_net work, done landed on a core (modules/nano-net), not chores on board.
     // A broken machine blocks its chores, except its own repair.
     return out.filter((c) => c.kind === "reparar-maquina" || this.working(c.machine));
   }
@@ -723,9 +722,6 @@ export class Habitat {
           if (this.ship && part) this.ship.refit?.(withPart(this.ship.design, slot, part));
           break;
         }
-        case "mision":
-          this.mailbox?.completeMission(chore.targetId!);
-          break;
         case "yoga":
           break;
       }

@@ -25,7 +25,9 @@ export type ChoreKind =
   | "cultivo-esterilizar"
   | "reparar-maquina"
   | "atender-paciente"
-  | "mision";
+  | "nano-convertir"
+  | "nano-programar"
+  | "nano-reparar";
 
 /** Groups for filtering the task board. */
 export type ChoreCategory = "comida" | "plantas" | "animales" | "nave" | "salud" | "misiones";
@@ -55,7 +57,9 @@ export const CHORE_CATEGORY: Readonly<Record<ChoreKind, ChoreCategory>> = {
   "reparar-nave": "nave",
   "reparar-maquina": "nave",
   "cambiar-pieza": "nave",
-  mision: "misiones",
+  "nano-convertir": "misiones",
+  "nano-programar": "misiones",
+  "nano-reparar": "misiones",
 };
 
 /** A task on board, done by solving code challenges in order. */

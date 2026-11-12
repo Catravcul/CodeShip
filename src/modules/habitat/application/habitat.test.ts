@@ -352,13 +352,14 @@ describe("Habitat chores (everything is a code challenge)", () => {
     expect(w.readyToHarvest).toBe(true);
   });
 
-  it("Nevaeh's letters bring nano_net missions; finishing one brings the next letter", () => {
+  it("Nevaeh's nano_net missions are not chores on board; reaching the goal brings the next letter", () => {
     const h = new Habitat(seededRandom(1), 2, undefined, "Doménica");
     h.mailbox = new Mailbox(NEVAEH_LETTERS);
-    doKind(h, "mision");
-    expect(h.mailbox.pendingMissions).toHaveLength(0);
-    h.tick(0.6);
-    expect(h.mailbox.pendingMissions.map((l) => l.id)).toEqual(["nano-net-textos"]);
+    expect(h.mailbox.pendingMissions.map((l) => l.id)).toEqual(["nano-net-nucleo"]);
+    expect(all(h).some((c) => c.kind.startsWith("nano-"))).toBe(false);
+    h.mailbox.achieve("nucleo");
+    h.tick(0.3);
+    expect(h.mailbox.pendingMissions.map((l) => l.id)).toEqual(["nano-net-generar"]);
     h.jolt(0.3, "Bennu");
     expect(h.mailbox.received.some((r) => r.letter.id === "sacudida")).toBe(true);
   });

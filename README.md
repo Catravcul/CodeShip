@@ -8,6 +8,8 @@ Esta es la versión 2, rehecha desde cero con Three.js y TypeScript. El borrador
 
 A bordo, Doménica cuida un huerto, una cubierta de cultivo que hace el viaje autosuficiente, gatos, chihuahuas y gallinas libres que pueden llegar a ser una familia, y recibe por radio las cartas de Nevaeh y las llamadas de Kushal. Todo se hace con retos de código. Diseño en [docs/design/vida-a-bordo.md](docs/design/vida-a-bordo.md).
 
+Un asteroide persuadido puede convertirse en **núcleo de la nano_net**, la red de nodos que da energía, protección y velocidad. Se le programa por etapas (generar, mover y conectar nodos, enlazar con otra red) y se repara aterrizado en él, siempre con retos de código. Diseño en [docs/design/nano-net.md](docs/design/nano-net.md).
+
 ## Arrancar
 
 ```bash
@@ -52,6 +54,7 @@ src/
     ship-bay/      bahía de la nave: estado por pieza y reglas de atención
     flight/        sólido rígido 6DOF newtoniano, ordenador de vuelo a 120 Hz fijo
     celestial/     asteroides reales: masa, densidad, rotación, gravedad, composición
+    nano-net/      núcleos de la nano_net hechos de asteroides: etapas, nodos, cobertura, averías
   content/         generadores procedurales deterministas (forma de asteroides)
   adapters/three/  escena, cabina, malla del asteroide, estrellas
   adapters/input/  teclado → orden de empuje

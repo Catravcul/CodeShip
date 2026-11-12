@@ -67,6 +67,8 @@ export class StationScreen {
     private readonly duel: DuelView,
     /** Where the ship is now (for the distance and docking). */
     private readonly shipPosition: () => Vec3,
+    /** Where a craft that is out flying is (mothership, the Explorer), if known. */
+    private readonly craftPosition: (id: string) => Vec3 | undefined = () => undefined,
   ) {
     this.view = new StationScene(ship.design);
     this.ui = document.createElement("div");
@@ -260,8 +262,9 @@ export class StationScreen {
     const h = this.ops.station.hangar;
     const crafts = h.crafts
       .map((c) => {
-        const where = c.kind === "nave" ? (this.alongside ? "atracada en la estación" : `fuera, a ${km(this.ops.station.distanceTo(this.shipPosition()))}`) : c.docked ? "en el hangar" : "fuera";
-        return `<div class="st-mat"><b>${esc(c.name)}</b><span>${c.kind === "nave" ? "nave" : "sonda"}</span><small>${esc(where)}${c.massKg ? ` · ${fmtKg(c.massKg)} kg` : ""}</small></div>`;
+        const at = this.craftPosition(c.id);
+        const where = at ? (this.ops.station.isAlongside(at) ? "atracada en la estación" : `fuera, a ${km(this.ops.station.distanceTo(at))}`) : c.docked ? "en el hangar" : "fuera";
+        return `<div class="st-mat"><b>${esc(c.name)}</b><span>${c.kind === "nave" ? "nave nodriza" : "sonda"}</span><small>${esc(where)}${c.massKg ? ` · ${fmtKg(c.massKg)} kg` : ""}</small></div>`;
       })
       .join("");
     const parts = h.partList();

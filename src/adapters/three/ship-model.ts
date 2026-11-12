@@ -100,6 +100,17 @@ export class ShipModel {
         add("casco", leg, pad);
       }
 
+    // Dorsal docking port (the probe latches to the mothership with it), with its guide ring.
+    if (design.dockingPort) {
+      const port = v3(design.dockingPort);
+      const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, port.y - size.y / 2, 20), dark());
+      collar.position.set(port.x, (port.y + size.y / 2) / 2, port.z);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.05, 8, 24), new THREE.MeshStandardMaterial({ color: 0xe8c547, roughness: 0.4, metalness: 0.5 }));
+      ring.rotation.x = Math.PI / 2;
+      ring.position.set(port.x, port.y, port.z);
+      add("casco", collar, ring);
+    }
+
     // --- Main engine ---
     const engine = design.mainEngines[0];
     if (engine) this.buildEngine(engine.model, v3(engine.position), dark);

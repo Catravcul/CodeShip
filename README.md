@@ -33,14 +33,17 @@ npm run build
 | Alabeo | Q / E |
 | Motor principal | Espacio |
 | Asistente de rotación | T |
-| Cambiar cámara (cabina, ventral, trasera, exterior, anillo) | C |
+| Cambiar cámara (cabina, ventral, trasera, exterior, acople, nodriza) | C |
+| Desacoplar / asistente de acople | K |
 | Centrar la vista | V |
 | Acelerar el tiempo (×1, ×10, ×50) | X |
 | Bahía de la nave (abrir / cerrar) | B |
 
 En la cabina, el mando **Mirar** (o arrastrar la pantalla) gira la cabeza del piloto para ver por las ventanas laterales; la cámara trasera muestra lo que queda detrás de la tobera y la exterior orbita alrededor de la nave. Los RCS empujan poco (≈0,07 m/s² con 670 kg), así que el polvo espacial y la línea de propulsores del HUD muestran que la nave se mueve; el motor principal da ≈0,7 m/s². El tiempo acelerado solo actúa sin maniobrar y a más de 150 m del asteroide.
 
-En el móvil hay mandos táctiles. Con el botón **Ir al interior** se entra en el módulo habitable: Doménica se ve en tercera persona (el botón **Vista** pasa a primera persona), se camina con el mando **Caminar** o WASD y se mira con el mando **Mirar**, las flechas o arrastrando. **Tareas** lista lo que hay que hacer a bordo; cada tarea es una cadena de retos de código (ver [vida-a-bordo.md](docs/design/vida-a-bordo.md)). El módulo va en un anillo que gira a 4 rpm y da 1 g. Un ascensor sube por el radio hasta el eje, donde se flota (▲▼ o R/F) y se llega a la cabina ([gravedad.md](docs/design/gravedad.md)). El módulo tiene huerto, cocina, molino, laboratorio de carne cultivada, enfermería, gallinero, rincón de los gatos, esterilla de yoga, el panel de la mente de la nave y la escotilla de la bahía.
+La partida empieza con la sonda **acoplada** bajo la **nave nodriza**, que lleva los anillos de 1 g, el huerto y los camarotes, y se mueve entre asteroides con 18 propulsores eléctricos X3 alimentados por un reactor de 2 MWe. **Desacoplar** (K) suelta la sonda para volar a Bennu. Para volver, el botón **Acople** activa el asistente, que se acerca al puerto dentro de los límites IDSS (0,05–0,10 m/s, 0,10 m, 4°). Diseño en [docs/design/nave-nodriza.md](docs/design/nave-nodriza.md).
+
+En el móvil hay mandos táctiles. Con la sonda acoplada, el botón **Ir al interior** lleva al módulo habitable de la nodriza: Doménica se ve en tercera persona (el botón **Vista** pasa a primera persona), se camina con el mando **Caminar** o WASD y se mira con el mando **Mirar**, las flechas o arrastrando. **Tareas** lista lo que hay que hacer a bordo; cada tarea es una cadena de retos de código (ver [vida-a-bordo.md](docs/design/vida-a-bordo.md)). El módulo va en un anillo que gira a 4 rpm y da 1 g. Un ascensor sube por el radio hasta el eje, donde se flota (▲▼ o R/F) y se llega a la cabina de la sonda ([gravedad.md](docs/design/gravedad.md)). El módulo tiene huerto, cocina, molino, laboratorio de carne cultivada, enfermería, gallinero, rincón de los gatos, esterilla de yoga, el panel de la mente de la nave y la escotilla de la bahía.
 
 La **bahía de la nave** se abre con el botón **Bahía de la nave** de la cabina, con la tecla B o por la escotilla ámbar del módulo habitable. Muestra la nave por fuera: se orbita arrastrando, con el mando **Orbitar** o con las flechas, y la rueda acerca o aleja. Tocar una pieza en 3D o en la lista abre su ficha con datos reales y acciones. Las piezas que hay que revisar laten en naranja (aviso) o en rojo (crítico). Reparar, cuidar y cambiar el motor, el RCS o los tanques son retos de código, y la maqueta cambia con cada pieza montada (ver [bahia-de-la-nave.md](docs/design/bahia-de-la-nave.md)). **Volver** o Esc devuelve a donde estabas.
 
@@ -58,6 +61,7 @@ src/
     ship-bay/      bahía de la nave: estado por pieza y reglas de atención
     flight/        sólido rígido 6DOF newtoniano, ordenador de vuelo a 120 Hz fijo
     celestial/     asteroides reales, órbitas (Kepler), cielo visto desde la zona y zona de vuelo
+    mothership/    nave nodriza: presupuesto de masas, propulsión eléctrica, acople con límites IDSS
     nano-net/      núcleos de la nano_net hechos de asteroides: etapas, nodos, cobertura, averías
   content/         generadores procedurales deterministas (forma de asteroides)
   adapters/three/  escena, cabina, malla del asteroide, estrellas
@@ -79,5 +83,8 @@ Reglas: TDD en `domain/` y `application/`; cada valor real lleva su fuente (`sou
 | 101955 Bennu | 565×535×508 m, radio medio 245,03 m, 7,329×10¹⁰ kg, 1190 kg/m³, rotación 4,296057 h, tipo B | [Wikipedia](https://en.wikipedia.org/wiki/101955_Bennu) |
 | Planetas | Elementos keplerianos medios 1800–2050, radios, leyes de brillo | [JPL (Standish)](https://ssd.jpl.nasa.gov/planets/approx_pos.html), [NASA Fact Sheet](https://nssdc.gsfc.nasa.gov/planetary/factsheet/), [Mallama y Hilton 2018](https://arxiv.org/abs/1808.01973) |
 | 142 Polana y 6 asteroides de su zona | Órbita, diámetros y albedos NEOWISE, rotaciones LCDB | [JPL SBDB](https://ssd-api.jpl.nasa.gov/doc/sbdb.html) |
+| Propulsor Hall X3 (nodriza) | 5,4 N a 99 kW, Isp 1800–2650 s, xenón | [Hall et al. 2019](https://ntrs.nasa.gov/citations/20190004993) |
+| Energía eléctrica nuclear de clase MW | 2 MWe, 19 kg/kWe, 33,7 %, 2760 m² de radiadores | [Harnack et al. 2022](https://ntrs.nasa.gov/api/citations/20220013600/downloads/ASCEND_22_Brayton_Performance_Mass_Sensitivity.pdf) |
+| Contacto de acople IDSS | 0,05–0,10 m/s de cierre, 0,04 m/s lateral, 0,10 m, 4°, 0,2 °/s | [IDSS IDD Rev. F](https://ntrs.nasa.gov/citations/20220011643) |
 
 El casco y los tanques de la nave inicial son valores de juego, a sustituir por piezas reales. La distribución de 24 propulsores RCS en pares dedicados es una simplificación jugable.

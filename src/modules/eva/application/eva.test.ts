@@ -10,7 +10,7 @@ import { explorerDesign } from "@modules/ship/data/explorer";
 import { SAFER } from "../data/suit";
 import { SUIT_UP } from "../data/suit-up";
 import { NO_EVA_INPUT } from "../domain/surface-motion";
-import { Eva, HATCH_REACH_M, shipKeepOut } from "./eva";
+import { EVA_TIME_SCALE, Eva, HATCH_REACH_M, shipKeepOut } from "./eva";
 
 const r = BENNU.meanRadiusM.value;
 const make = () => {
@@ -118,6 +118,20 @@ describe("Eva", () => {
     expect(eva.drainEvents()).toContainEqual({ type: "a-la-deriva" });
     for (let i = 0; i < 60 * 120; i++) eva.update(1 / 60);
     expect(eva.body!.distanceToAnchor).toBeLessThanOrEqual(25.9 + 1e-9);
+  });
+
+  it("time outside runs faster: a real minute uses EVA_TIME_SCALE minutes of oxygen", () => {
+    const used = (scale: number) => {
+      const { flight, eva } = make();
+      land(flight);
+      eva.timeScale = scale;
+      eva.stepOutside();
+      const before = eva.suit.timeLeftS;
+      for (let i = 0; i < 60 * 60; i++) eva.update(1 / 60);
+      expect(eva.elapsedS).toBeCloseTo(60 * scale, 3);
+      return before - eva.suit.timeLeftS;
+    };
+    expect(used(EVA_TIME_SCALE) / used(1)).toBeCloseTo(EVA_TIME_SCALE, 3);
   });
 
   it("when the suit runs low she heads back on her own", () => {

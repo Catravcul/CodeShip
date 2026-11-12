@@ -12,7 +12,9 @@ import { RECIPES } from "@modules/kitchen/data/recipes";
 import { PROCESSES } from "@modules/kitchen/data/processes";
 import { ANIMAL_LESSONS } from "@modules/pets/data/family-lessons";
 import { YOGA_SEQUENCES } from "@modules/wellness/data/yoga";
-import { ShipBayScene } from "./adapters/three/ship-bay-scene";
+import { ShipBayScene, type BayView } from "./adapters/three/ship-bay-scene";
+import { MothershipModel } from "./adapters/three/mothership-model";
+import type { MothershipSpec } from "@modules/mothership/domain/mothership";
 import type { PartId } from "./adapters/three/ship-model";
 import { VirtualStick, curve } from "./adapters/input/stick";
 import type { DuelView, SessionText } from "./ui/duel-view";
@@ -34,6 +36,10 @@ const text = (c: Chore): SessionText => ({
 });
 
 export type BayOrigin = "cabina" | "interior";
+
+/** Parts of the probe; everything else in the bay (machines, farm deck, stores) is on the mothership. */
+const PROBE_PART = (id: string) => id === "casco" || id === "motor" || id === "rcs" || id === "alas-solares" || id.startsWith("tanque-");
+const viewOf = (id: string): BayView => (PROBE_PART(id) ? "sonda" : "nodriza");
 
 /**
  * The ship bay (engineering station): the ship from outside with an orbit camera, every part
@@ -62,27 +68,36 @@ export class ShipBay {
   from: BayOrigin = "cabina";
   /** Called after leaving, with where the player came from. */
   onExit?: (from: BayOrigin) => void;
+  /** Whether the probe is docked: work on the mothership's systems needs Doménica aboard it. */
+  docked: () => boolean = () => true;
+  private readonly tabs: HTMLElement;
 
   constructor(
     root: HTMLElement,
     private readonly ship: Ship,
     private readonly habitat: Habitat,
     private readonly duel: DuelView,
+    private readonly mothership?: MothershipSpec,
   ) {
     this.view = new ShipBayScene(ship.design);
-    this.view.model.setSystems(
-      [...habitat.machines.map((m) => ({ id: `maquina:${m.id}` as PartId, label: m.spec.name })), { id: "cubierta-cultivo", label: "Cubierta de cultivo" }, { id: "despensa", label: "Bodega y despensa" }],
-      true,
-    );
+    const systems = [...habitat.machines.map((m) => ({ id: `maquina:${m.id}` as PartId, label: m.spec.name })), { id: "cubierta-cultivo" as PartId, label: "Cubierta de cultivo" }, { id: "despensa" as PartId, label: "Bodega y despensa" }];
+    if (mothership) this.view.addMothership(new MothershipModel(mothership, systems));
+    // Without a mothership the systems stay as beacons on the probe, as before.
+    else this.view.model.setSystems(systems, true);
     this.ui = document.createElement("div");
     this.ui.className = "bay-ui hidden";
-    this.ui.innerHTML = `<div class="bay-head"><b>Bahía de la nave</b><span class="bay-sum"></span></div><button class="bay-back">Volver</button><div class="bay-panel"></div><div class="bay-toast"></div>`;
+    this.ui.innerHTML = `<div class="bay-head"><b>Bahía de la nave</b><span class="bay-sum"></span></div><div class="bay-tabs${mothership ? "" : " hidden"}"><button data-view="sonda" class="on">Sonda</button><button data-view="nodriza">Nodriza</button></div><button class="bay-back">Volver</button><div class="bay-panel"></div><div class="bay-toast"></div>`;
     root.appendChild(this.ui);
     this.panel = this.ui.querySelector(".bay-panel")!;
     this.sum = this.ui.querySelector(".bay-sum")!;
     this.toast = this.ui.querySelector(".bay-toast")!;
     this.ui.querySelector(".bay-back")!.addEventListener("click", () => this.exit());
     this.panel.addEventListener("click", (e) => this.onPanelClick(e));
+    this.tabs = this.ui.querySelector(".bay-tabs")!;
+    this.tabs.addEventListener("click", (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLElement>("[data-view]");
+      if (b) this.setView(b.dataset.view as BayView);
+    });
     this.stick = new VirtualStick(root, "bay-look", "Orbitar");
 
     // Drag the empty screen to orbit, tap a part to select it, wheel to zoom.
@@ -162,7 +177,23 @@ export class ShipBay {
     return this.habitat.chores(RECIPES, YOGA_SEQUENCES, CONTEXT);
   }
 
+  /** Show the probe or the mothership, with their own parts in the list. */
+  setView(v: BayView): void {
+    if (!this.mothership) return;
+    this.view.setView(v);
+    for (const b of this.tabs.querySelectorAll<HTMLElement>("[data-view]")) b.classList.toggle("on", b.dataset.view === v);
+    this.selected = null;
+    this.panelKey = "";
+    this.refresh();
+  }
+
+  /** Parts of the ship on show (all of them without a mothership). */
+  private shown(list: ComponentStatus[]): ComponentStatus[] {
+    return this.mothership ? list.filter((c) => viewOf(c.id) === this.view.view) : list;
+  }
+
   select(id: PartId | null): void {
+    if (id && this.mothership && viewOf(id) !== this.view.view) this.setView(viewOf(id));
     this.selected = id;
     this.view.select(id);
     this.panelKey = "";
@@ -182,7 +213,7 @@ export class ShipBay {
     this.refreshAt = performance.now() + 500;
     this.list = this.status();
     this.attention = new Map(this.list.map((c) => [c.id as PartId, c.attention]));
-    const urgent = needingAttention(this.list);
+    const urgent = needingAttention(this.shown(this.list));
     const crit = urgent.filter((c) => c.attention === "critico").length;
     this.sum.textContent = urgent.length ? `${urgent.length} ${urgent.length === 1 ? "pieza necesita" : "piezas necesitan"} revisión${crit ? ` · ${crit} crítica${crit === 1 ? "" : "s"}` : ""}` : "Todo en orden";
     this.renderPanel();
@@ -207,13 +238,16 @@ export class ShipBay {
   private renderPanel(): void {
     if (!this.active) return;
     const c = this.selected ? this.list.find((x) => x.id === this.selected) : undefined;
-    const actions = c ? bayActions(c, this.chores(), this.ship.design) : [];
-    const key = JSON.stringify([this.selected, this.list.map((x) => [x.attention, x.issues, x.level, x.health && Math.round(x.health * 100), x.name]), actions.map((a) => a.label + a.detail)]);
+    // Mothership systems need Doménica aboard: undocked, the bay only shows them.
+    const away = !!c && !!this.mothership && viewOf(c.id) === "nodriza" && !this.docked();
+    const actions = c && !away ? bayActions(c, this.chores(), this.ship.design) : [];
+    const key = JSON.stringify([this.view.view, away, this.selected, this.list.map((x) => [x.attention, x.issues, x.level, x.health && Math.round(x.health * 100), x.name]), actions.map((a) => a.label + a.detail)]);
     if (key === this.panelKey) return;
     this.panelKey = key;
     if (!c) {
-      const urgent = needingAttention(this.list);
-      const rest = this.list.filter((x) => x.attention === "ok");
+      const list = this.shown(this.list);
+      const urgent = needingAttention(list);
+      const rest = list.filter((x) => x.attention === "ok");
       this.panel.innerHTML = `
         ${urgent.length ? `<div class="bay-sec">Necesitan revisión</div>${urgent.map((x) => this.row(x)).join("")}` : `<div class="bay-sec ok">Nada que revisar</div>`}
         <div class="bay-sec">Todas las piezas · toca una en la nave o aquí</div>${rest.map((x) => this.row(x)).join("")}`;
@@ -232,7 +266,7 @@ export class ShipBay {
       ${c.issues.map((i) => `<div class="bay-issue ${i.attention}">${esc(i.text)}</div>`).join("")}
       <table class="bay-specs">${specs}</table>
       <div class="bay-sec">Acciones · cada una es una cadena de retos</div>
-      ${acts || `<p class="bay-none">Nada que hacer aquí ahora</p>`}`;
+      ${away ? `<p class="bay-none">Está en la nodriza: acopla la sonda para trabajar aquí</p>` : acts || `<p class="bay-none">Nada que hacer aquí ahora</p>`}`;
     this.actions = actions;
   }
 

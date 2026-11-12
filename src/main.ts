@@ -55,6 +55,10 @@ import { SkyBodies } from "./adapters/three/sky-bodies";
 import { Eva } from "@modules/eva/application/eva";
 import { EvaMode } from "./eva-mode";
 import { SpinRing } from "@modules/gravity/domain/spin-gravity";
+import { Mothership } from "@modules/mothership/domain/mothership";
+import { IDSS_CONTACT_LIMITS, NODRIZA, UNDOCK_PUSH_MS } from "@modules/mothership/data/mothership";
+import { ASSIST_RANGE_M, Docking } from "@modules/mothership/application/docking";
+import { MothershipModel } from "./adapters/three/mothership-model";
 import { Navigator } from "@modules/navigation/application/navigator";
 import { asteroidTarget } from "@modules/navigation/domain/nav-target";
 import { NavigationMode } from "./navigation";
@@ -69,13 +73,17 @@ const ship = Ship.create(explorerDesign());
 const startPos = new Vec3(250, 120, 1600);
 // The starting region: Bennu among real New Polana–family asteroids, inside a soft boundary.
 const region = buildStartRegion(bennu, startPos);
-// The habitat ring is already turning at cruise rate when the game starts (docs/design/gravedad.md).
-const ring = new SpinRing(ship.design.ring!);
-const start = RigidBodyState.at(startPos).withOrientation(
-  // Face the asteroid from the start position.
-  Quat.fromAxisAngle(Vec3.Y, Math.atan2(250, 1600)).multiply(Quat.fromAxisAngle(Vec3.X, -Math.atan2(120, 1620))),
-);
+// Face the asteroid from the start position.
+const startAttitude = Quat.fromAxisAngle(Vec3.Y, Math.atan2(250, 1600)).multiply(Quat.fromAxisAngle(Vec3.X, -Math.atan2(120, 1620)));
+const start = RigidBodyState.at(startPos).withOrientation(startAttitude);
+// The mothership is parked near Bennu with the probe docked under its forward node
+// (docs/design/nave-nodriza.md). Its rings are already turning at cruise rate (gravedad.md).
+const mothership = Mothership.withProbeDockedAt(NODRIZA, startPos, startAttitude, ship.design.dockingPort!);
+const ring = new SpinRing(mothership.spec.ring);
 const flight = new FlightComputer(ship, start, { gravitySources: region.asteroids, target: bennu });
+const docking = new Docking(flight, mothership, IDSS_CONTACT_LIMITS, UNDOCK_PUSH_MS.value);
+docking.dockNow();
+docking.drainEvents();
 const expedition = new Expedition(flight, bennu, EXERCISES, 500);
 // Navigation: any catalogued asteroid of the region can be the target (docs/design/navegacion.md).
 const navTargets = region.asteroids.map(asteroidTarget);
@@ -198,8 +206,14 @@ pilot.onToggleAssist = () => (flight.rotationAssist = !flight.rotationAssist);
 const touch = new TouchPilot(root);
 
 const duelView = new DuelView(root);
-const view = new FlightView(scene, camera, root, () => ship.design, { spec: ring.spec, omega: () => ring.omegaRadS });
+const mothershipModel = new MothershipModel(mothership.spec);
+mothershipModel.root.position.set(mothership.position.x, mothership.position.y, mothership.position.z);
+mothershipModel.root.quaternion.set(mothership.orientation.x, mothership.orientation.y, mothership.orientation.z, mothership.orientation.w);
+scene.add(mothershipModel.root);
+const view = new FlightView(scene, camera, root, () => ship.design, { position: mothershipModel.root.position, quaternion: mothershipModel.root.quaternion, sun: skyBodies.sunDirection });
 const landBtn = view.addButton("land-btn", () => (flight.landingAssist = !flight.landingAssist));
+// Docked: undock. Free: the docking assist (like the landing assist), near the mothership.
+const dockBtn = view.addButton("dock-btn", () => (docking.docked ? docking.undock() : (docking.assist = !docking.assist)));
 const namesBtn = view.addButton("names-btn", () => (skyBodies.labelsOn = !skyBodies.labelsOn));
 const navMode = new NavigationMode(root, nav, duelView, {
   title: `Mapa · ${region.data.name}`,
@@ -215,6 +229,7 @@ root.appendChild(regionTag);
 const regionTitle = `${region.data.name} · ${region.heliocentricAU().length().toFixed(2).replace(".", ",")} UA del Sol`;
 window.addEventListener("keydown", (e) => {
   if (e.code === "KeyG" && !e.repeat && !interior.active) flight.landingAssist = !flight.landingAssist;
+  if (e.code === "KeyK" && !e.repeat && !interior.active && !bay.active && !duelView.visible) dockBtn.click();
 });
 const duelSession = () => {
   const d = expedition.duel!;
@@ -247,6 +262,8 @@ modeBtn.textContent = "Ir al interior";
 root.appendChild(modeBtn);
 modeBtn.addEventListener("click", () => {
   if (duelView.visible || evaMode.active) return;
+  // The rings, the garden and the chores are on the mothership: only reachable while docked.
+  if (!interior.active && !docking.docked) return flash("El interior está en la nodriza: acopla la sonda para entrar");
   if (interior.active) interior.exit();
   else interior.enter();
   modeBtn.textContent = interior.active ? "Ir a la cabina" : "Ir al interior";
@@ -261,7 +278,8 @@ if (interior.zones)
 let lastPhase = expedition.phase;
 
 // Ship bay: the ship from outside, its parts' state and swaps. Reached from the cockpit and the habitat.
-const bay = new ShipBay(root, ship, habitat, duelView);
+const bay = new ShipBay(root, ship, habitat, duelView, mothership.spec);
+bay.docked = () => docking.docked;
 const openBay = (from: "cabina" | "interior") => {
   if (duelView.visible || bay.active) return;
   if (from === "interior") interior.exit();
@@ -294,6 +312,25 @@ action.addEventListener("click", () => {
 const banner = document.createElement("div");
 banner.className = "banner";
 root.appendChild(banner);
+/** A docking message that stays on the banner for a few seconds. */
+let flashText = "";
+let flashUntil = 0;
+function flash(text: string, seconds = 5): void {
+  flashText = text;
+  flashUntil = performance.now() + seconds * 1000;
+}
+const n2 = (v: number) => v.toFixed(2).replace(".", ",");
+/** Docking line for the banner, or "" when the mothership is far. */
+function dockingText(): string {
+  if (performance.now() < flashUntil) return flashText;
+  if (docking.docked) return `Acoplada a la nodriza · Desacoplar (K) para ir a ${expedition.asteroid.data.name} · Mapa (M) para viajar`;
+  const a = docking.alignment();
+  const range = flight.state.position.sub(mothership.port.position).length();
+  if (range > 400) return "";
+  const lim = IDSS_CONTACT_LIMITS;
+  const ok = (good: boolean) => (good ? "✓" : "✗");
+  return `Puerto de la nodriza a ${range < 10 ? n2(Math.max(0, a.axialM)) : range.toFixed(0)} m · cierre ${n2(a.closingMs)} m/s ${ok(a.closingMs >= lim.closingMinMs && a.closingMs <= lim.closingMaxMs)} · lateral ${n2(a.lateralM)} m ${ok(a.lateralM <= lim.lateralMisalignM)} · inclinación ${a.misalignDeg.toFixed(1).replace(".", ",")}° ${ok(a.misalignDeg <= lim.angularMisalignDeg)}${docking.assist ? " · asistente de acople" : " · asistente: K"}`;
+}
 
 function renderPhase(): void {
   const p = expedition.phase;
@@ -307,6 +344,8 @@ function renderPhase(): void {
     banner.textContent = left > 0 ? `¡${expedition.asteroid.data.name} está furioso! Huye: faltan ${left.toFixed(0)} m hasta la distancia segura` : "A salvo. Espera a que se calme";
   } else if (p === "landed") {
     banner.textContent = expedition.asteroid === bennu ? "Nave anclada · puedes salir a Bennu con el traje" : `Nave anclada en ${expedition.asteroid.data.name} · entra en su mente`;
+  } else if (dockingText()) {
+    banner.textContent = dockingText();
   } else {
     banner.textContent =
       t.clearance < 60
@@ -315,7 +354,7 @@ function renderPhase(): void {
           : "Posa el tren a menos de 0,10 m/s para anclarte"
         : "";
   }
-  banner.className = `banner ${p}`;
+  banner.className = `banner ${p}${p === "flight" && dockingText() ? " docking" : ""}`;
 }
 
 window.addEventListener("resize", () => {
@@ -344,10 +383,15 @@ renderer.setAnimationLoop((now) => {
     view.warpRequested > 1 && warp === 1 ? (far ? "tiempo ×1 mientras maniobras" : "tiempo ×1 cerca del asteroide") : warp > 1 ? `tiempo ×${warp}${fx.warpFactor > 1 ? " (nano_net)" : ""}` : "";
   expedition.update(dt * warp, cmd);
   ring.tick(dt);
-  // Region rules: soft boundary push back and no flying through the other rocks (game rules).
-  if (!flight.landed) {
+  // Region rules: soft boundary push back and no flying through the other rocks or the mothership (game rules).
+  if (!flight.landed && !flight.docked) {
     const st = flight.state;
-    flight.applyImpulse(region.boundaryPush(st.position, st.velocity, dt * warp).add(region.avoidObstacles(st.position, st.velocity, expedition.asteroid)));
+    flight.applyImpulse(region.boundaryPush(st.position, st.velocity, dt * warp).add(region.avoidObstacles(st.position, st.velocity, expedition.asteroid)).add(mothership.keepOut(st.position, st.velocity)));
+  }
+  for (const e of docking.drainEvents()) {
+    if (e.type === "docked") flash("Acoplada: ganchos cerrados. Ya puedes ir al interior de la nodriza");
+    if (e.type === "undocked") flash("Desacoplada: los muelles te separan a 0,08 m/s");
+    if (e.type === "rebound") flash(`No engancha: ${e.failures.join(" · ")}${e.damage > 0 ? " · golpe en el casco" : ""}`, 7);
   }
   // Shield nodes absorb part of the jolt.
   if (expedition.phase === "aggressive" && lastPhase !== "aggressive") habitat.jolt(0.8 * (1 - fx.safety), `${expedition.asteroid.data.name}, furioso, sacudió la nave`);
@@ -395,6 +439,12 @@ renderer.setAnimationLoop((now) => {
   nanoView.update(flight.simTimeS);
   landBtn.textContent = `Aterrizaje: ${flight.landingAssist ? "auto" : "manual"}`;
   landBtn.classList.toggle("on", flight.landingAssist);
+  const dockText = docking.docked ? "Desacoplar" : `Acople: ${docking.assist ? "auto" : "manual"}`;
+  if (dockBtn.textContent !== dockText) dockBtn.textContent = dockText;
+  dockBtn.classList.toggle("on", docking.assist && !docking.docked);
+  dockBtn.classList.toggle("hidden", !docking.docked && !docking.inRange());
+  modeBtn.classList.toggle("off", !docking.docked && !interior.active);
+  mothershipModel.update(dt, ring.omegaRadS, now / 1000);
 
   const s = flight.state;
   view.update(
@@ -429,4 +479,4 @@ renderer.setAnimationLoop((now) => {
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, nav, navMode };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, nav, navMode };

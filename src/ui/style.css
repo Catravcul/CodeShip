@@ -271,3 +271,11 @@ body.in-duel .help { display: none; }
 .ihud .grav { color: #9fe8c4; }
 body.in-zero-g .walk-stick span { visibility: hidden; }
 body.in-zero-g .walk-stick::after { content: "Flotar"; position: absolute; left: 0; right: 0; top: -20px; text-align: center; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #9fe8c4; text-shadow: 0 1px 2px #000; pointer-events: none; }
+/* Mothership docking (docs/design/nave-nodriza.md) */
+.banner.docking { color: #ffe7a8; text-shadow: 0 0 6px #ffb34788; }
+.mode-btn.off { opacity: 0.55; border-style: dashed; }
+.flight-bar button.on { color: #7dffb0; border-color: #7dffb0aa; }
+.bay-tabs { position: fixed; top: 52px; left: 12px; z-index: 7; display: flex; gap: 6px; }
+.bay-tabs button { padding: 7px 12px; font: inherit; font-size: 13px; color: #bfefff; background: #0b2a36cc; border: 1px solid #7fdcff66; border-radius: 10px; }
+.bay-tabs button.on { background: #7fdcff; color: #06202b; border-color: #7fdcff; }
+body.in-duel .bay-tabs { display: none !important; }

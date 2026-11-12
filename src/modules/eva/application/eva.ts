@@ -26,6 +26,12 @@ export type EvaEvent =
 export const HATCH_BODY = new Vec3(-1.5, -0.3, 1.9);
 /** Close enough to the hatch to climb back in, metres. Game value. */
 export const HATCH_REACH_M = 2.2;
+/**
+ * Outside the ship time runs faster: an EMU's 8 h of oxygen would be 8 h of play. Each real second
+ * outside counts as this many mission seconds for the suit's consumables and the mission clock;
+ * her motion stays real-time so the microgravity physics still feels right. Game value.
+ */
+export const EVA_TIME_SCALE = 30;
 /** Close enough to a sample to scoop it, metres. Game value. */
 export const SAMPLE_REACH_M = 1.5;
 /** Hull footprint she cannot crawl through: half extents right/forward plus a body margin, metres (hull 3 × 5 m, nose 0.9 m). */
@@ -78,6 +84,10 @@ export class Eva {
   private _shipRight = Vec3.X;
   private _shipForward = Vec3.Z.scale(-1);
   private events: EvaEvent[] = [];
+  /** Mission seconds spent outside on this walk (accelerated by timeScale). */
+  private _elapsedS = 0;
+  /** Mission seconds per real second outside. */
+  timeScale = EVA_TIME_SCALE;
   private wasFloating = false;
   private wasEscaping = false;
   private wasTaut = false;
@@ -106,6 +116,11 @@ export class Eva {
   get phase(): EvaPhase {
     return this._phase;
   }
+  /** Mission time spent outside on this walk, seconds. */
+  get elapsedS(): number {
+    return this._elapsedS;
+  }
+
   get outside(): boolean {
     return this._phase === "fuera" || this._phase === "volviendo";
   }
@@ -194,6 +209,7 @@ export class Eva {
       return { sample, position: groundUnder(this.world, local.add(this._shipRight.scale(r)).add(this._shipForward.scale(f))), collected: false };
     });
     this.suit.recharge();
+    this._elapsedS = 0;
     this._phase = "fuera";
     this._run = undefined;
     this.wasFloating = this.wasEscaping = this.wasTaut = false;
@@ -224,7 +240,9 @@ export class Eva {
     const cmd: EvaInput = returning ? { ...NO_EVA_INPUT, reel: true } : input;
     b.update(dtS, cmd);
     const moving = cmd.move.length() > 0 || cmd.reel;
-    this.suit.tick(dtS, b.mode === "flotando" ? (cmd.jet.length() > 0 ? WORKLOAD.jet : WORKLOAD.rest) : moving ? WORKLOAD.crawl : WORKLOAD.rest);
+    const missionDtS = dtS * this.timeScale;
+    this._elapsedS += missionDtS;
+    this.suit.tick(missionDtS, b.mode === "flotando" ? (cmd.jet.length() > 0 ? WORKLOAD.jet : WORKLOAD.rest) : moving ? WORKLOAD.crawl : WORKLOAD.rest);
 
     const floating = b.mode === "flotando";
     if (!floating && this.wasFloating) this.events.push({ type: "agarrada" });

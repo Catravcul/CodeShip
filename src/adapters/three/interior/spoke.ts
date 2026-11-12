@@ -159,7 +159,7 @@ export function buildSpoke(L: SpokeLayout, ring: SpinRing, roomHeight: number): 
   hatch.rotation.y = Math.PI / 2;
   hatch.position.set(L.moduleEndX - 0.05, L.axisY, L.z);
   g.add(hatch);
-  const hatchSign = textSign("Escotilla a la cabina");
+  const hatchSign = textSign("Escotilla a la sonda");
   hatchSign.position.set(L.moduleEndX - 0.4, L.axisY + 1.1, L.z);
   g.add(hatchSign);
   // Hatch down into the spoke (in the hub's floor, over the elevator).

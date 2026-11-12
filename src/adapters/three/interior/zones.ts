@@ -145,7 +145,7 @@ export class GravityZones {
       label = "Bajar al anillo";
       this.action = () => this.descend();
     } else if (this.zone === "eje" && this.p.x > L.moduleEndX - 2.5) {
-      label = "Ir a la cabina";
+      label = "Ir a la cabina de la sonda";
       this.action = () => this.onCockpit?.();
     }
     this.actionBtn.classList.toggle("hidden", !this.action);

@@ -28,7 +28,7 @@ export interface Guidance {
   command(state: RigidBodyState, simTimeS: number): ThrustCommand | null;
 }
 
-export type FlightEvent = "landed" | "lifted-off" | "bounced" | "crashed" | "tilted";
+export type FlightEvent = "landed" | "lifted-off" | "bounced" | "crashed" | "tilted" | "docked" | "undocked";
 
 export const NO_INPUT: ThrustCommand = { mainThrottle: 0, translation: Vec3.ZERO, rotation: Vec3.ZERO };
 
@@ -42,6 +42,8 @@ export interface Telemetry {
   readonly deltaV: number;
   readonly massKg: number;
   readonly landed: boolean;
+  /** Held to a mothership's docking port. */
+  readonly docked: boolean;
   readonly hullIntegrity: number;
   /** Gap between the lowest part of the ship (legs or hull) and the ground, metres. */
   readonly clearance: number;
@@ -72,6 +74,15 @@ export class FlightComputer {
   private events: FlightEvent[] = [];
   private _guidance: Guidance | null = null;
   private _target: FlightTarget | undefined;
+  /** While docked, the pose the ship is held to (a mothership's port). */
+  private berth: (() => RigidBodyState) | null = null;
+  /**
+   * Optional assist run at every 120 Hz step while the pilot gives no input (e.g. the docking
+   * assist). Returning undefined leaves the usual rotation/landing assists in charge.
+   */
+  autopilot?: (state: RigidBodyState) => ThrustCommand | undefined;
+  /** Called after every integration step while free (e.g. to check for docking contact). */
+  afterStep?: (state: RigidBodyState) => void;
 
   constructor(
     readonly ship: Ship,
@@ -116,6 +127,27 @@ export class FlightComputer {
     return this.anchor !== null;
   }
 
+  get docked(): boolean {
+    return this.berth !== null;
+  }
+
+  /** Latch to a docking port: from now on the ship rides `pose` until `undock`. */
+  dock(pose: () => RigidBodyState): void {
+    this.anchor = null;
+    this.berth = pose;
+    this._state = pose();
+    this.events.push("docked");
+  }
+
+  /** Open the latches and push off with `separation` (world frame, m/s, relative to the port). */
+  undock(separation: Vec3): void {
+    if (!this.berth) return;
+    const p = this.berth();
+    this.berth = null;
+    this._state = p.withVelocity(p.velocity.add(separation));
+    this.events.push("undocked");
+  }
+
   /** Drop the anchors (e.g. an enraged asteroid shakes the ship off). */
   releaseAnchor(): void {
     if (!this.anchor) return;
@@ -126,6 +158,11 @@ export class FlightComputer {
   /** Instant change of velocity (world frame), e.g. a push from outside. */
   applyImpulse(deltaV: Vec3): void {
     this._state = this._state.withVelocity(this._state.velocity.add(deltaV));
+  }
+
+  /** Instant change of position (world frame), e.g. pushed back out of a docking port. */
+  nudge(delta: Vec3): void {
+    this._state = new RigidBodyState(this._state.position.add(delta), this._state.velocity, this._state.orientation, this._state.angularVelocityBody);
   }
 
   /** Events since the last call (landing, lift-off, bounce, crash). */
@@ -159,6 +196,7 @@ export class FlightComputer {
       deltaV: this.ship.mainDeltaV(),
       massKg: this.ship.massKg,
       landed: this.landed,
+      docked: this.docked,
       hullIntegrity: this.ship.hullIntegrity,
       ...this.groundGeometry(),
     };
@@ -179,7 +217,13 @@ export class FlightComputer {
 
   private step(pilotInput: ThrustCommand): void {
     const target = this._target;
+    if (this.berth) {
+      // Docked: the latches hold the ship; thrusters stay quiet until it undocks.
+      this._state = this.berth();
+      return;
+    }
     let input = pilotInput;
+    // Trip guidance first; the docking assist (`autopilot`) only acts when guidance is off.
     if (this._guidance) {
       const auto = this._guidance.command(this._state, this._simTimeS);
       if (auto) input = auto;
@@ -194,6 +238,9 @@ export class FlightComputer {
       this.anchor = null;
       this.events.push("lifted-off");
     }
+    const pilotIdle = input.mainThrottle === 0 && input.translation.length() === 0 && input.rotation.length() === 0;
+    const auto = pilotIdle ? this.autopilot?.(this._state) : undefined;
+    if (auto) input = auto;
     const idleRot = input.rotation.length() === 0;
     const cmd = idleRot && this.landingAssist && target ? { ...input, rotation: this.levelRotation() } : idleRot && this.rotationAssist ? { ...input, rotation: this.dampRotation() } : input;
     const out = this.ship.fire(cmd, STEP_S);
@@ -211,6 +258,7 @@ export class FlightComputer {
       STEP_S,
     );
     if (target) this.checkContact(target, this._simTimeS + STEP_S);
+    if (!this.anchor) this.afterStep?.(this._state);
   }
 
   private checkContact(target: FlightTarget, t: number): void {

@@ -1,4 +1,3 @@
-import { G0 } from "@core/units";
 import type { Mothership } from "@modules/mothership/domain/mothership";
 import type { Alignment, DockingLimits } from "@modules/mothership/domain/docking";
 import type { SpinRing } from "@modules/gravity/domain/spin-gravity";
@@ -70,19 +69,22 @@ export function thrustersFiring(trip: TripProgress | undefined): boolean {
 }
 
 export function propulsionPanel(m: Mothership, trip?: TripProgress): PropulsionPanel {
-  const t = m.spec.thruster;
-  const n = m.spec.thrusterCount;
+  // The fitted mix: per-unit figures are averages over the units the reactor can fire.
+  const d = m.drive;
+  const n = d.firingUnits;
+  const types = [...new Map(d.mounts.filter((x) => x.fitted > 0).map((x) => [x.thruster.id, x.thruster])).values()];
+  const per = (v: number) => (n > 0 ? v / n : 0);
   const firing = thrustersFiring(trip) ? n : 0;
-  const mdot = t.thrustN / (t.ispS * G0); // kg/s per thruster
+  const mdot = per(d.massFlowKgS); // kg/s per thruster
   return {
-    thrusterName: t.name,
+    thrusterName: types.map((t) => t.name).join(" + ") || "sin propulsores",
     thrusterCount: n,
     firing,
-    thrustPerThrusterN: t.thrustN,
+    thrustPerThrusterN: per(d.thrustN),
     totalThrustN: m.thrustN,
-    thrustNowN: firing * t.thrustN,
-    ispS: t.ispS,
-    powerPerThrusterKw: t.powerKw,
+    thrustNowN: firing * per(d.thrustN),
+    ispS: d.ispS,
+    powerPerThrusterKw: per(d.powerKw),
     flowPerThrusterMgS: mdot * 1e6,
     xenonKg: m.propellantKg,
     xenonCapacityKg: m.spec.propellantCapacityKg,
@@ -91,9 +93,9 @@ export function propulsionPanel(m: Mothership, trip?: TripProgress): PropulsionP
     massT: m.massKg / 1000,
     dryMassT: m.dryMassKg / 1000,
     accelMmS2: m.accelerationMs2 * 1000,
-    burnDaysLeft: m.propellantKg / (mdot * n) / 86400,
-    sources: t.sources,
-    note: t.note,
+    burnDaysLeft: d.massFlowKgS > 0 ? m.propellantKg / d.massFlowKgS / 86400 : Infinity,
+    sources: types.flatMap((t) => t.sources),
+    note: types.map((t) => t.note).filter(Boolean).join(" ") || undefined,
   };
 }
 

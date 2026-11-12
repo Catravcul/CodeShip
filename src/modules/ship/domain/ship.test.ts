@@ -116,3 +116,13 @@ describe("Ship.refit", () => {
     expect(ship.propellantKg("Hydrazine")).toBe(20);
   });
 });
+
+describe("Explorer ring", () => {
+  it("carries a counter-rotating 1 g ring that is not part of the contact hull", async () => {
+    const { explorerDesign } = await import("../data/explorer");
+    const d = explorerDesign();
+    expect(d.ring?.counterRotating).toBe(true);
+    expect(d.ring!.floorRadiusM).toBeGreaterThan(d.hull.size.length() * 5);
+    expect(d.hull.size.y).toBe(2);
+  });
+});

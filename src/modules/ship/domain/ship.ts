@@ -2,12 +2,18 @@ import { Vec3 } from "@core/math/vec3";
 import type { HullSpec, MountedThruster, Propellant, TankSpec } from "./components";
 import type { RcsThruster } from "./rcs-layout";
 import { deltaV, massFlow } from "./rocket";
+import type { RingSpec } from "@modules/gravity/domain/spin-gravity";
 
 export interface ShipDesign {
   readonly hull: HullSpec;
   readonly tanks: readonly { spec: TankSpec; fillKg: number }[];
   readonly mainEngines: readonly MountedThruster[];
   readonly rcs: readonly RcsThruster[];
+  /**
+   * Habitat ring(s) on a mast above the hull. Not part of `hull.size` (which is the body that
+   * touches the ground) nor, for now, of the flight mass: see docs/design/gravedad.md.
+   */
+  readonly ring?: RingSpec;
 }
 
 /** Pilot intent, already normalised: throttle 0..1, axes -1..1 in the body frame. */

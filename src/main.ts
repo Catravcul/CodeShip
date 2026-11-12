@@ -54,6 +54,7 @@ import { AsteroidField } from "./adapters/three/asteroid-field";
 import { SkyBodies } from "./adapters/three/sky-bodies";
 import { Eva } from "@modules/eva/application/eva";
 import { EvaMode } from "./eva-mode";
+import { SpinRing } from "@modules/gravity/domain/spin-gravity";
 
 // --- Domain setup -----------------------------------------------------------
 const d = BENNU.dimensionsM.value;
@@ -65,6 +66,8 @@ const ship = Ship.create(explorerDesign());
 const startPos = new Vec3(250, 120, 1600);
 // The starting region: Bennu among real New Polana–family asteroids, inside a soft boundary.
 const region = buildStartRegion(bennu, startPos);
+// The habitat ring is already turning at cruise rate when the game starts (docs/design/gravedad.md).
+const ring = new SpinRing(ship.design.ring!);
 const start = RigidBodyState.at(startPos).withOrientation(
   // Face the asteroid from the start position.
   Quat.fromAxisAngle(Vec3.Y, Math.atan2(250, 1600)).multiply(Quat.fromAxisAngle(Vec3.X, -Math.atan2(120, 1620))),
@@ -178,7 +181,7 @@ pilot.onToggleAssist = () => (flight.rotationAssist = !flight.rotationAssist);
 const touch = new TouchPilot(root);
 
 const duelView = new DuelView(root);
-const view = new FlightView(scene, camera, root, () => ship.design);
+const view = new FlightView(scene, camera, root, () => ship.design, { spec: ring.spec, omega: () => ring.omegaRadS });
 const landBtn = view.addButton("land-btn", () => (flight.landingAssist = !flight.landingAssist));
 const namesBtn = view.addButton("names-btn", () => (skyBodies.labelsOn = !skyBodies.labelsOn));
 const regionTag = document.createElement("div");
@@ -204,7 +207,7 @@ const duelSession = () => {
     maxLives: d.profile.patience,
   };
 };
-const interior = new Interior(root, habitat, duelView);
+const interior = new Interior(root, habitat, duelView, ring);
 const nanoView = new NanoNetView(scene, nano.net);
 const nanoPanel = new NanoNetPanel(root, duelView, view.addButton("nano-btn", () => {}), nano, bennuSite);
 // Walks outside on Bennu (EVA): only with the ship anchored.
@@ -223,6 +226,13 @@ modeBtn.addEventListener("click", () => {
   else interior.enter();
   modeBtn.textContent = interior.active ? "Ir a la cabina" : "Ir al interior";
 });
+// The hatch at the end of the spine opens into the cockpit.
+if (interior.zones)
+  interior.zones.onCockpit = () => {
+    interior.exit();
+    view.setMode("cabina");
+    modeBtn.textContent = "Ir al interior";
+  };
 let lastPhase = expedition.phase;
 
 // Ship bay: the ship from outside, its parts' state and swaps. Reached from the cockpit and the habitat.
@@ -308,6 +318,7 @@ renderer.setAnimationLoop((now) => {
   const warpNote =
     view.warpRequested > 1 && warp === 1 ? (far ? "tiempo ×1 mientras maniobras" : "tiempo ×1 cerca del asteroide") : warp > 1 ? `tiempo ×${warp}${fx.warpFactor > 1 ? " (nano_net)" : ""}` : "";
   expedition.update(dt * warp, cmd);
+  ring.tick(dt);
   // Region rules: soft boundary push back and no flying through the other rocks (game rules).
   if (!flight.landed) {
     const st = flight.state;
@@ -389,4 +400,4 @@ renderer.setAnimationLoop((now) => {
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring };

@@ -29,6 +29,8 @@ import { CatModel } from "./adapters/three/interior/cat-model";
 import { CubeFigure } from "./adapters/three/interior/figure";
 import { Walker } from "./adapters/input/walker";
 import type { DuelView, SessionText } from "./ui/duel-view";
+import type { SpinRing } from "@modules/gravity/domain/spin-gravity";
+import { GravityZones } from "./adapters/three/interior/zones";
 
 const CAT_COLORS = [0xd9822b, 0x2b2b2b, 0xe8e2d6, 0x8a8f99];
 const HEN_COLORS = [0xb5651d, 0xf2efe6, 0x2a2a2a, 0xc98a4a];
@@ -111,7 +113,8 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 /** The walkable habitat module: 3D scene, walking, stations and chores as code challenges. */
 export class Interior {
   readonly scene = new THREE.Scene();
-  readonly camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.03, 50);
+  // Far enough to see up the spoke to the axis (56 m).
+  readonly camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.03, 120);
   private readonly walker: Walker;
   private readonly plants: PlantModel[] = [];
   private readonly cats = new Map<string, CatModel>();
@@ -139,7 +142,9 @@ export class Interior {
   private readonly toast: HTMLElement;
   private yaw = Math.PI;
   private pitch = -0.05;
-  private pos = new THREE.Vector3(0, 0, -4.6);
+  private pos = new THREE.Vector3(0, 0, -4.2);
+  /** Spoke elevator, floating hub and spine, gravity readout (undefined without a ring). */
+  readonly zones?: GravityZones;
   private walkTo: { pos: THREE.Vector3; look: THREE.Vector3; then: () => void } | null = null;
   private session: ChoreSession | null = null;
   private panelKey = "";
@@ -153,6 +158,7 @@ export class Interior {
     root: HTMLElement,
     private readonly habitat: Habitat,
     private readonly duel: DuelView,
+    ring?: SpinRing,
   ) {
     this.room = buildRoom();
     this.scene.add(this.room.group);
@@ -205,6 +211,7 @@ export class Interior {
     this.toast = this.ui.querySelector(".toast")!;
     this.ui.querySelector(".tasks-btn")!.addEventListener("click", () => this.openBoard());
     this.radioBtn = this.ui.querySelector(".radio-btn")!;
+    if (ring) this.zones = new GravityZones(this.ui, this.scene, ring, ROOM.halfL, ROOM.height, (t) => this.say(t));
     this.viewBtn = this.ui.querySelector(".view-btn")!;
     this.viewBtn.addEventListener("click", () => {
       this.thirdPerson = !this.thirdPerson;
@@ -239,6 +246,7 @@ export class Interior {
   enter(): void {
     this.active = true;
     this.walker.enabled = true;
+    if (this.zones) this.zones.enabled = true;
     this.ui.classList.remove("hidden");
     document.body.classList.add("in-interior");
   }
@@ -246,6 +254,8 @@ export class Interior {
   exit(): void {
     this.active = false;
     this.walker.enabled = false;
+    if (this.zones) this.zones.enabled = false;
+    document.body.classList.remove("in-zero-g");
     this.ui.classList.add("hidden");
     this.board.classList.add("hidden");
     document.body.classList.remove("in-interior");
@@ -258,6 +268,8 @@ export class Interior {
   /** Called every frame, also while in the cockpit (time on board keeps running). */
   update(dt: number): void {
     const busy = this.session !== null;
+    // In the cockpit she is weightless; inside, she feels the gravity of where she is.
+    if (this.zones) this.habitat.crewGravityG = this.active ? this.zones.gravityG() : 0;
     if (!busy) {
       const days = dt * DAYS_PER_SECOND;
       this.habitat.tick(days);
@@ -268,7 +280,14 @@ export class Interior {
     if (!this.active) return;
     this.radioBtn.querySelector("b")!.textContent = this.habitat.mailbox?.unread ? String(this.habitat.mailbox.unread) : "";
 
-    if (this.walkTo) {
+    const zone = this.zones?.zone ?? "anillo";
+    if (zone !== "anillo") {
+      // Off the ring: the zones move her (elevator or floating). A chore picked here takes her back down.
+      if (this.walkTo) this.zones!.descend();
+      const look = this.walker.look(dt);
+      this.yaw += look.yaw;
+      this.pitch = Math.max(-1.4, Math.min(1.4, this.pitch + look.pitch));
+    } else if (this.walkTo) {
       // Between the module and the farm deck, walk through the doorway.
       let aim = this.walkTo.pos;
       const here = this.pos.z < ROOM.halfL;
@@ -302,6 +321,7 @@ export class Interior {
       this.stride += prev.distanceTo(this.pos) * 4.2;
       this.clampWalk(prev);
     }
+    this.zones?.update(dt, this.pos, this.yaw, this.pitch, this.walker.move(), busy || this.walkTo !== null);
     this.updateCamera();
 
     for (const p of this.plants) p.sync();
@@ -339,7 +359,7 @@ export class Interior {
     this.figure.update(dt);
     this.syncPanel();
     this.renderHud();
-    const near = !busy && !this.walkTo ? this.nearStation() : undefined;
+    const near = !busy && !this.walkTo && (this.zones?.zone ?? "anillo") === "anillo" ? this.nearStation() : undefined;
     const n = near ? this.currentChores().filter((c) => stationFor(c) === near.id).length : 0;
     this.stationBtn.classList.toggle("hidden", !near);
     if (near) this.stationBtn.textContent = near.id === "bahia" ? "Entrar en la bahía de la nave" : `${near.label}: ${n} ${n === 1 ? "tarea" : "tareas"}`;
@@ -372,7 +392,7 @@ export class Interior {
     const room = z >= -ROOM.halfL + 0.4 && z <= ROOM.halfL - 0.4 && Math.abs(x) <= 1.25;
     const door = Math.abs(x) <= DOOR.halfW - 0.15 && z > 0 && z < ROOM.halfL + 0.6;
     const farm = z >= ROOM.halfL + 0.4 && z <= FARM.maxZ - 1.2 && x >= FARM.minX + 1.2 && x <= FARM.maxX - 1.2;
-    return room || door || farm;
+    return (room || door || farm) && !this.zones?.blocks(x, z);
   }
 
   private clampWalk(prev: THREE.Vector3): void {
@@ -398,6 +418,8 @@ export class Interior {
   private updateCamera(): void {
     const third = this.thirdPerson && !this.session;
     this.avatarRig.visible = third;
+    if (this.zones?.placeCamera(this.camera, this.avatarRig, this.avatar, this.yaw, this.pitch, third)) return;
+    this.avatarRig.quaternion.identity();
     if (!third) {
       this.camera.position.set(this.pos.x, 1.6, this.pos.z);
       this.camera.rotation.set(this.pitch, this.yaw, 0, "YXZ");
@@ -701,6 +723,8 @@ export class Interior {
       <div class="ititle">Día ${Math.floor(this.dayClock) + 1} a bordo</div>
       ${bar("Saciedad", c.satiety)}${bar("Forma", c.fitness)}${bar("Calma", 1 - c.stress)}${bar("Compañía", 1 - c.loneliness)}
       <div class="small">Autosuficiencia: ${Math.round(sus.ratio * 100)} % (${Math.round(sus.areaM2)} de ${Math.round(sus.neededM2)} m² de cultivo)${fam ? ` · Familias: ${fam}` : ""}</div>
-      <div class="small">Despensa: ${larder || "vacía"} · ${this.habitat.meals} platos cocinados</div>`;
+      <div class="small">Despensa: ${larder || "vacía"} · ${this.habitat.meals} platos cocinados</div>${
+        this.zones ? `<div class="small grav">${this.zones.hudLine()}${c.microgravityDays > 0.05 ? ` · ${c.microgravityDays.toFixed(1).replace(".", ",")} días en ingravidez` : ""}</div>` : ""
+      }`;
   }
 }

@@ -33,14 +33,14 @@ npm run build
 | Alabeo | Q / E |
 | Motor principal | Espacio |
 | Asistente de rotación | T |
-| Cambiar cámara (cabina, trasera, exterior) | C |
+| Cambiar cámara (cabina, ventral, trasera, exterior, anillo) | C |
 | Centrar la vista | V |
 | Acelerar el tiempo (×1, ×10, ×50) | X |
 | Bahía de la nave (abrir / cerrar) | B |
 
 En la cabina, el mando **Mirar** (o arrastrar la pantalla) gira la cabeza del piloto para ver por las ventanas laterales; la cámara trasera muestra lo que queda detrás de la tobera y la exterior orbita alrededor de la nave. Los RCS empujan poco (≈0,07 m/s² con 670 kg), así que el polvo espacial y la línea de propulsores del HUD muestran que la nave se mueve; el motor principal da ≈0,7 m/s². El tiempo acelerado solo actúa sin maniobrar y a más de 150 m del asteroide.
 
-En el móvil hay mandos táctiles. Con el botón **Ir al interior** se entra en el módulo habitable: Doménica se ve en tercera persona (el botón **Vista** pasa a primera persona), se camina con el mando **Caminar** o WASD y se mira con el mando **Mirar**, las flechas o arrastrando. **Tareas** lista lo que hay que hacer a bordo; cada tarea es una cadena de retos de código (ver [vida-a-bordo.md](docs/design/vida-a-bordo.md)). El módulo tiene huerto, cocina, molino, laboratorio de carne cultivada, enfermería, gallinero, rincón de los gatos, esterilla de yoga, el panel de la mente de la nave y la escotilla de la bahía.
+En el móvil hay mandos táctiles. Con el botón **Ir al interior** se entra en el módulo habitable: Doménica se ve en tercera persona (el botón **Vista** pasa a primera persona), se camina con el mando **Caminar** o WASD y se mira con el mando **Mirar**, las flechas o arrastrando. **Tareas** lista lo que hay que hacer a bordo; cada tarea es una cadena de retos de código (ver [vida-a-bordo.md](docs/design/vida-a-bordo.md)). El módulo va en un anillo que gira a 4 rpm y da 1 g. Un ascensor sube por el radio hasta el eje, donde se flota (▲▼ o R/F) y se llega a la cabina ([gravedad.md](docs/design/gravedad.md)). El módulo tiene huerto, cocina, molino, laboratorio de carne cultivada, enfermería, gallinero, rincón de los gatos, esterilla de yoga, el panel de la mente de la nave y la escotilla de la bahía.
 
 La **bahía de la nave** se abre con el botón **Bahía de la nave** de la cabina, con la tecla B o por la escotilla ámbar del módulo habitable. Muestra la nave por fuera: se orbita arrastrando, con el mando **Orbitar** o con las flechas, y la rueda acerca o aleja. Tocar una pieza en 3D o en la lista abre su ficha con datos reales y acciones. Las piezas que hay que revisar laten en naranja (aviso) o en rojo (crítico). Reparar, cuidar y cambiar el motor, el RCS o los tanques son retos de código, y la maqueta cambia con cada pieza montada (ver [bahia-de-la-nave.md](docs/design/bahia-de-la-nave.md)). **Volver** o Esc devuelve a donde estabas.
 

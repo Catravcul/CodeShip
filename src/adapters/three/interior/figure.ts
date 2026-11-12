@@ -35,6 +35,8 @@ export const POSES: Record<string, PoseAngles> = {
   "neck-turn": P({ headY: 0.9 }),
   "neck-tilt": P({ headZ: 0.55 }),
   "neck-circle": P({ headX: 0.3, headZ: -0.45 }),
+  // Neutral body posture in microgravity (NASA-STD-3000): arms float forward, hips and knees bend.
+  float: P({ torso: 0.15, headX: 0.15, shoulderX: [-0.9, -0.9], shoulderZ: [0.35, -0.35], elbow: [-0.7, -0.7], hip: [-0.7, -0.7], knee: [1.0, 1.0] }),
   shoulders: P({ shoulderZ: [0.25, -0.25], shoulderX: [0.25, 0.25] }),
 };
 

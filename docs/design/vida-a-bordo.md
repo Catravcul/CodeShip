@@ -268,7 +268,7 @@ Cada máquina tiene una luz: verde si funciona y roja parpadeante si está averi
 
 El botón **Tareas** lista lo pendiente con su escenario. Al elegir una, el personaje camina a la estación y el reto se abre en una hoja inferior, para que se siga viendo la planta, el gato o la postura.
 
-Se camina con los pies en el suelo porque el módulo es un **anillo giratorio con gravedad artificial**. Es una licencia de diseño para poder hacer yoga y cocinar: las naves reales, como la ISS, no la tienen.
+Se camina con los pies en el suelo porque el módulo va en un **anillo que gira**: 56 m de radio a 4 rpm dan 1 g (a = ω²r). La ISS no tiene gravedad porque no gira. Desde el fondo del módulo, un **ascensor sube por el radio**, y la gravedad baja con la altura hasta el **eje**. Allí, y en la espina que lleva a la cabina, se flota. Las cifras, las fuentes y las licencias están en [gravedad.md](gravedad.md).
 
 ## Historia: las cartas de Nevaeh
 
@@ -402,6 +402,7 @@ En el juego (`story/data/friends.ts`):
 | Cubierta de cultivo y autosuficiencia | `life-support/domain/sustainability.ts`, `src/adapters/three/interior/farm-deck.ts` | ✓ con tests |
 | Prólogo de Nevaeh, llamadas de Kushal y retratos | `story/data/friends.ts`, `src/ui/portraits.ts` | ✓ con tests |
 | nano_net: núcleos hechos de asteroides, etapas, averías y reparaciones | `modules/nano-net`, `src/ui/nano-net-panel.ts`, `src/adapters/three/nano-net-view.ts` | ✓ con tests |
+| Anillo giratorio (1 g a 4 rpm, Coriolis, gradiente), radio, eje sin gravedad y efecto en la salud | `modules/gravity`, `src/adapters/three/interior/zones.ts`, [gravedad.md](gravedad.md) | ✓ con tests |
 | Viaje automático programado entre asteroides | — | pendiente |
 
 Los números de cuidado sin fuente (velocidad de secado, ritmo de juego y de cariño, probabilidad de mordisco, días por etapa) están marcados en el código como **ajuste de juego**. Así se distinguen de los datos reales.

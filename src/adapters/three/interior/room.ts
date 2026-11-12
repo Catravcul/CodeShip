@@ -118,7 +118,8 @@ export function buildRoom(): RoomHandles {
   // Far wall with a doorway to the farm deck.
   g.add(boxAt(halfW - 0.5, height, 0.05, wall, -(halfW + 0.5) / 2, height / 2, halfL), boxAt(halfW - 0.5, height, 0.05, wall, (halfW + 0.5) / 2, height / 2, halfL));
   g.add(boxAt(1.0, height - 2.1, 0.05, wall, 0, 2.1 + (height - 2.1) / 2, halfL));
-  // The floor curves up out of sight in a real ring; a stripe down the middle hints at the spin axis.
+  // The floor curves up out of sight in a real ring (2 m over the farm deck at R = 56 m; flat here);
+  // a stripe down the middle runs spinward (+z), along the ring. The spin axis is across it (x).
   g.add(boxAt(0.08, 0.002, halfL * 2, mat(0x7b8592), 0, 0.001, 0));
   const rail = mat(0xe8c547, { metalness: 0.4 });
   for (const x of [-halfW + 0.08, halfW - 0.08]) g.add(boxAt(0.03, 0.03, halfL * 1.9, rail, x, 2.05, 0));
@@ -129,7 +130,7 @@ export function buildRoom(): RoomHandles {
     g.add(l);
   }
   g.add(new THREE.HemisphereLight(0xe8eef8, 0x404650, 0.9));
-  // Hatch to the cockpit.
+  // Hatch to the next ring segment (the cockpit is reached up the spoke: interior/spoke.ts).
   g.add(boxAt(0.9, 1.9, 0.06, mat(0x7c8796, { metalness: 0.5 }), 0, 0.95, -halfL + 0.04));
   g.add(boxAt(0.5, 0.5, 0.02, new THREE.MeshStandardMaterial({ color: 0x050812, emissive: 0x0a1630 }), 0, 1.45, -halfL + 0.08));
 

@@ -21,7 +21,8 @@ Berón preguntó dónde se personaliza la nave. La respuesta es una **segunda es
 | Motor principal | propelente de su tanque, Δv que queda | queda menos de ¼ de su propelente; es crítico si no queda nada | Cambiar el motor |
 | RCS | número de propulsores, modelo, aceleración al avanzar | queda menos de ¼ de hidracina | Cambiar el modelo de RCS |
 | Tanques | nivel, capacidad, densidad y volumen | queda menos de ¼, está vacío o **ningún propulsor lo usa** (masa muerta) | Cambiar el tamaño |
-| Alas solares | — | nunca: aún no hay modelo de energía | — |
+| Fuente de energía, batería, escudo MMOD, sistemas fijos | balance de energía a la distancia de Bennu, autonomía, diámetro crítico de escombros | el balance es negativo o la batería no aguanta una salida | Cambiar la pieza (ver `componentes.md`) |
+| Energía auxiliar y blindaje de la nodriza | kW auxiliares, propulsores que encienden, dosis anual | el límite de carrera llega en menos de 2 años | Cambiar la pieza (ver `componentes.md`) |
 | Máquinas del soporte vital | `Machine.condition` | están por debajo del 80 % (desgaste); son críticas si están averiadas | Reparar la máquina |
 | Cubierta de cultivo | bancales, área, autosuficiencia | la autosuficiencia baja del 100 %, o un bancal está por debajo del 70 % o se ha perdido | Las tareas de sus bancales |
 | Bodega y despensa | pienso de gatos y de gallinas, medio de cultivo | queda menos de ¼ de lo que se llevó al salir; es crítico si no queda nada | — (se repone con recursos, pendiente) |
@@ -73,6 +74,6 @@ Cuando una fuente da un rango, se usa el empuje nominal de la clase y el extremo
 - ~~**Escala.**~~ Resuelto: el módulo habitable y la cubierta de cultivo están en la nave nodriza. La bahía tiene dos pestañas, **Sonda** y **Nodriza** ([nave-nodriza.md](nave-nodriza.md)).
 - **Montaje fallido.** El diseño original decía que, si fallas, la pieza queda mal montada y rinde menos. Ahora la pieza vieja se queda. ¿Queremos el estado «mal montada» con su reto de reparar?
 - **Coste de las piezas.** Hoy cambiar una pieza solo cuesta resolver los retos. ¿Deberían salir de la bodega, de lo que cede un asteroide persuadido, o de un puerto?
-- **Energía.** Las alas solares no tienen modelo. ¿Hace falta un balance de energía para que importen, por ejemplo para motores eléctricos como el NEXT o el SPT-100?
+- **Energía.** Resuelto: hay balance de energía y autonomía de batería (ver `componentes.md`).
 - **Reponer recursos.** La bodega avisa si falta pienso o medio de cultivo, pero aún no hay forma de reponerlos. ¿Se reponen con la carga de los asteroides?
 - **Distribución del RCS.** Hoy solo se cambia el modelo. ¿Queremos poder elegir distribuciones, como 16 propulsores compartidos frente a 24 en pares dedicados?

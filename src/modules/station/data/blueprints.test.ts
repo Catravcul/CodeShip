@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ALL_PARTS } from "@modules/ship/data/parts";
+import { ELECTRIC_THRUSTERS, X3 } from "@modules/mothership/data/thrusters";
 import { BENNU } from "@modules/celestial/data/bennu";
 import { extractToCargo } from "@modules/celestial/domain/resources";
 import { BLUEPRINTS, PROBE_BLUEPRINT, RCS_SET_SIZE, blueprintForPart } from "./blueprints";
@@ -15,6 +16,18 @@ describe("blueprints", () => {
   it("every part of the ship's catalog has one, plus the probe", () => {
     for (const p of ALL_PARTS) expect(blueprintForPart(p.id), p.id).toBeDefined();
     expect(BLUEPRINTS).toContain(PROBE_BLUEPRINT);
+  });
+
+  it("every thruster of the mothership has one: the head is printed, its power unit comes in kits", () => {
+    for (const t of ELECTRIC_THRUSTERS) {
+      const bp = blueprintForPart(t.id)!;
+      expect(bp, t.id).toBeDefined();
+      expect(bp.massKg).toBe(t.thrusterMassKg);
+      expect(metalKg(bp.inputs)).toBeCloseTo(t.thrusterMassKg / STATION_TUNING.fabricationYield, 1);
+      expect(bp.inputs.kit).toBeGreaterThanOrEqual(3);
+    }
+    // A 230 kg X3 needs far more metal than the station starts with.
+    expect(new MaterialStock(STARTING_STOCK).has(blueprintForPart(X3.id)!.inputs)).toBe(false);
   });
 
   it("feedstock is the finished mass over the yield, and an RCS set is the whole set", () => {

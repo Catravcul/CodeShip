@@ -3,6 +3,7 @@ import type { Quat } from "@core/math/quat";
 import { G0, type Sourced } from "@core/units";
 import type { RingSpec } from "@modules/gravity/domain/spin-gravity";
 import { RigidBodyState } from "@modules/flight/domain/rigid-body";
+import { drivePlan, fitProblem, unitMassKg, type DrivePlan, type ElectricPropellant, type ElectricThruster, type MountFit, type ThrusterMount } from "./propulsion";
 
 /**
  * The mothership ("nave nodriza"): the big carrier with the counter-rotating 1 g rings, the farm
@@ -22,15 +23,16 @@ export interface MassItem {
   readonly sources: readonly string[];
 }
 
-/** A real electric thruster at one operating point. */
-export interface ElectricThruster {
-  readonly name: string;
-  readonly thrustN: number;
-  readonly ispS: number;
-  readonly powerKw: number;
-  readonly propellant: string;
-  readonly sources: readonly string[];
-  readonly note?: string;
+export type { ElectricThruster } from "./propulsion";
+
+/** The mothership's electric propulsion: the propellant on board, the mounts and what is fitted. */
+export interface PropulsionSpec {
+  readonly propellant: ElectricPropellant;
+  readonly mounts: readonly ThrusterMount[];
+  /** What is fitted when the game starts. */
+  readonly fitted: readonly MountFit[];
+  /** Electric power the rest of the ship uses (rings, farm lights, life support): not for thrusters. */
+  readonly hotelLoadKw: Sourced<number>;
 }
 
 /** A capsule (segment with a radius) or a ring tube in the body frame, used to keep the probe out. */
@@ -64,8 +66,7 @@ export interface MothershipSpec {
     readonly conversionEfficiency: Sourced<number>;
     readonly radiatorAreaM2: Sourced<number>;
   };
-  readonly thruster: ElectricThruster;
-  readonly thrusterCount: number;
+  readonly propulsion: PropulsionSpec;
   readonly propellantCapacityKg: number;
   /** Mass of the habitat ring alone; the twin is sized from it (same moment of inertia). */
   readonly habRingItems: readonly MassItem[];
@@ -85,6 +86,7 @@ export class Mothership {
   private propellant: number;
   private _position: Vec3;
   private _orientation: Quat;
+  private fits: MountFit[];
 
   constructor(
     readonly spec: MothershipSpec,
@@ -95,6 +97,7 @@ export class Mothership {
     this.propellant = Math.min(propellantKg, spec.propellantCapacityKg);
     this._position = position;
     this._orientation = orientation;
+    this.fits = spec.propulsion.mounts.map((m) => spec.propulsion.fitted.find((f) => f.mountId === m.id)).filter((f): f is MountFit => !!f);
   }
 
   get position(): Vec3 {
@@ -154,6 +157,16 @@ export class Mothership {
         sources: [],
       },
       ...this.spec.otherItems,
+      {
+        id: "propulsores",
+        label: `Propulsores (${this.fits.filter((f) => f.count).map((f) => `${f.count} ${f.thruster.shortName}`).join(" + ") || "ninguno"}) con sus fuentes de potencia`,
+        kg: this.drive.massKg,
+        basis: this.fits
+          .filter((f) => f.count)
+          .map((f) => `${f.count} × (${unitMassKg(f.thruster)} kg: ${f.thruster.thrusterMassKg} kg el propulsor + ${f.thruster.ppuMassKg} kg la fuente)`)
+          .join(" + ") || "Sin propulsores montados",
+        sources: [...new Set(this.fits.flatMap((f) => f.thruster.sources))],
+      },
     ];
   }
   get dryMassKg(): number {
@@ -175,29 +188,78 @@ export class Mothership {
 
   // --- Propulsion -------------------------------------------------------------
 
+  /** What each mount holds now. */
+  get fitted(): readonly MountFit[] {
+    return this.fits;
+  }
+  mount(id: string): ThrusterMount | undefined {
+    return this.spec.propulsion.mounts.find((m) => m.id === id);
+  }
+  fitOf(mountId: string): MountFit | undefined {
+    return this.fits.find((f) => f.mountId === mountId);
+  }
+  /** Power the reactor can give the thrusters: its output less what the rest of the ship uses, kW. */
+  get availableThrusterKw(): number {
+    const p = this.spec.propulsion;
+    return Math.max(0, this.spec.power.electricKw.value - p.hotelLoadKw.value);
+  }
+  /** What the fitted thrusters can do with the power on hand. */
+  get drive(): DrivePlan {
+    return drivePlan(this.fits, this.availableThrusterKw, this.spec.propulsion.propellant);
+  }
+  /**
+   * Fit `count` units of `thruster` on a mount (0 empties it). Returns what was there before.
+   * Throws if the mount does not exist, the units do not fit or cannot use the propellant on board.
+   */
+  refit(mountId: string, thruster: ElectricThruster, count: number): MountFit | undefined {
+    const m = this.mount(mountId);
+    if (!m) throw new Error(`Unknown mount ${mountId}`);
+    const problem = fitProblem(m, thruster, count, this.spec.propulsion.propellant);
+    if (problem) throw new Error(`${count} × ${thruster.id} do not fit on ${mountId}: ${problem.kind}`);
+    const before = this.fitOf(mountId);
+    const next: MountFit = { mountId, thruster, count };
+    this.fits = this.spec.propulsion.mounts.map((x) => (x.id === mountId ? next : this.fitOf(x.id))).filter((f): f is MountFit => !!f);
+    return before;
+  }
+
+  /** A copy with the propellant given (full by default) and one mount refitted: to see a change before making it. */
+  withFit(mountId: string, thruster: ElectricThruster, count: number, propellantKg = this.spec.propellantCapacityKg): Mothership {
+    const copy = new Mothership({ ...this.spec, propulsion: { ...this.spec.propulsion, fitted: this.fits } }, this._position, this._orientation, propellantKg);
+    copy.refit(mountId, thruster, count);
+    return copy;
+  }
+
+  /** Units that fire with the reactor's power. */
+  get thrusterCount(): number {
+    return this.drive.firingUnits;
+  }
   get thrustN(): number {
-    return this.spec.thruster.thrustN * this.spec.thrusterCount;
+    return this.drive.thrustN;
   }
   get thrusterPowerKw(): number {
-    return this.spec.thruster.powerKw * this.spec.thrusterCount;
+    return this.drive.powerKw;
   }
   get accelerationMs2(): number {
     return this.thrustN / this.massKg;
   }
+  /** Effective exhaust speed of the units that fire, m/s (0 if none can). */
   private get exhaustMs(): number {
-    return this.spec.thruster.ispS * G0;
+    return this.drive.ispS * G0;
   }
   /** Delta-v left with the propellant on board, m/s (Tsiolkovsky). */
   deltaV(): number {
+    if (this.exhaustMs <= 0) return 0;
     return this.exhaustMs * Math.log(this.massKg / this.dryMassKg);
   }
   /** Propellant a manoeuvre of `deltaVMs` burns, kg. */
   propellantFor(deltaVMs: number): number {
+    if (this.exhaustMs <= 0) return deltaVMs > 0 ? Infinity : 0;
     return this.massKg * (1 - Math.exp(-deltaVMs / this.exhaustMs));
   }
   /** Days of continuous thrust a manoeuvre of `deltaVMs` takes. */
   burnDays(deltaVMs: number): number {
-    const mdot = this.thrustN / this.exhaustMs;
+    const mdot = this.drive.massFlowKgS;
+    if (mdot <= 0) return deltaVMs > 0 ? Infinity : 0;
     return this.propellantFor(deltaVMs) / mdot / 86400;
   }
   /** Spend propellant on a manoeuvre; false (and nothing spent) if there is not enough. */

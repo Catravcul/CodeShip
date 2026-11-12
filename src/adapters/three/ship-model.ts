@@ -6,7 +6,7 @@ import { explorerDesign } from "@modules/ship/data/explorer";
 import { MMH_DENSITY, MMH_NTO_MIXTURE_RATIO, NTO_DENSITY, PROPELLANT_DENSITY, tankVolumeM3 } from "@modules/ship/data/propellants";
 
 /** Ids of the ship's parts, as the ship bay names them (see modules/ship-bay). */
-export type PartId = "casco" | "motor" | "rcs" | `tanque-${number}` | "alas-solares" | `maquina:${string}` | "cubierta-cultivo" | "despensa";
+export type PartId = "casco" | "motor" | "rcs" | `tanque-${number}` | "alas-solares" | `maquina:${string}` | `propulsor:${string}` | "cubierta-cultivo" | "despensa";
 
 const v3 = (v: { x: number; y: number; z: number }) => new THREE.Vector3(v.x, v.y, v.z);
 const sphereR = (volumeM3: number) => Math.cbrt((3 * volumeM3) / (4 * Math.PI));

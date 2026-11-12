@@ -23,6 +23,7 @@ describe("Mothership mass and propulsion", () => {
   });
 
   it("18 X3 thrusters fit in the reactor's 2 MWe and give ~0.1 mm/s²", () => {
+    expect(m.thrusterPowerKw).toBeLessThanOrEqual(m.availableThrusterKw);
     expect(m.thrusterPowerKw).toBeLessThanOrEqual(NODRIZA.power.electricKw.value);
     expect(m.thrustN).toBeCloseTo(97.2, 1);
     expect(m.accelerationMs2).toBeGreaterThan(5e-5);

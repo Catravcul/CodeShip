@@ -1,7 +1,7 @@
 import type { PartSlot } from "@modules/ship/domain/refit";
 import type { Attention } from "./attention";
 
-export type ComponentKind = "casco" | "motor" | "rcs" | "tanque" | "alas" | "maquina" | "cubierta" | "despensa";
+export type ComponentKind = "casco" | "motor" | "rcs" | "tanque" | "alas" | "maquina" | "cubierta" | "despensa" | "propulsor";
 
 /** A line of the spec sheet: a real value with where it comes from, or a game value marked as such. */
 export interface Spec {

@@ -310,6 +310,9 @@ let lastPhase = expedition.phase;
 // Part swaps take the part from the station's hangar; the old one goes back there.
 const bay = new ShipBay(root, ship, habitat, duelView, mothership.spec, stationOps.station.hangar);
 bay.docked = () => docking.docked;
+// The mothership's thruster mounts are refitted in the bay's Nodriza tab (docs/design/nave-nodriza.md).
+bay.nodriza = mothership;
+bay.onDriveRefit = () => mothershipModel.setThrusters(mothership.fitted);
 const openBay = (from: "cabina" | "interior") => {
   if (duelView.visible || bay.active) return;
   if (from === "interior") interior.exit();

@@ -1,4 +1,6 @@
 import { ALL_PARTS } from "@modules/ship/data/parts";
+import { ELECTRIC_THRUSTERS } from "@modules/mothership/data/thrusters";
+import type { ElectricThruster } from "@modules/mothership/domain/propulsion";
 import type { Part } from "@modules/ship/domain/refit";
 import { STATION_TUNING, type Blueprint, type CraftSpec, type MachineId } from "../domain/blueprint";
 import type { Amounts } from "../domain/materials";
@@ -27,7 +29,24 @@ export const RECIPES = {
   tank: { hierro: 0.85, carbono: 0.15 },
   /** Probe: iron frame, carbon panels, nickel fittings and ceramic heat shield. */
   probe: { hierro: 0.6, carbono: 0.2, niquel: 0.1, ceramica: 0.1 },
+  /** Hall thruster: iron magnetic circuit, ceramic discharge channel, nickel fittings. */
+  hall: { hierro: 0.7, ceramica: 0.2, niquel: 0.1 },
+  /** Gridded ion thruster: iron body and magnets, carbon grids, ceramic insulators, nickel fittings. */
+  ionico: { hierro: 0.5, carbono: 0.3, ceramica: 0.1, niquel: 0.1 },
+  /** Magnetoplasma engine: iron structure, nickel RF couplers, ceramic helicon tube, carbon supports. */
+  vasimr: { hierro: 0.5, niquel: 0.2, ceramica: 0.2, carbono: 0.1 },
 } as const;
+
+/** Imported kits per electric thruster (game values): power processing, cathode and xenon flow control; magnet and RF for VASIMR. */
+const DRIVE_KITS: Readonly<Record<ElectricThruster["family"], number>> = { hall: 3, ionico: 3, vasimr: 10 };
+/** The X3's 100 kW power unit is three times the electronics of a 12 kW one (game value). */
+const kitsFor = (t: ElectricThruster) => DRIVE_KITS[t.family] + (t.family === "hall" && t.powerKw > 50 ? 3 : 0);
+
+const DRIVE_STEPS: Readonly<Record<ElectricThruster["family"], readonly string[]>> = {
+  hall: ["imprime el circuito magnético de hierro", "tornea el canal de cerámica", "monta las bobinas del kit", "monta el cátodo del kit", "prueba el encendido en la cámara de vacío"],
+  ionico: ["imprime la carcasa y los imanes", "corta las rejillas de carbono", "alinea las rejillas", "monta el cátodo y el neutralizador del kit", "prueba el haz en la cámara de vacío"],
+  vasimr: ["imprime la cámara del helicón", "monta el imán superconductor del kit", "monta las antenas de radiofrecuencia", "enfría el imán", "prueba el plasma en la cámara de vacío"],
+};
 
 const PRINT = {
   value: "Impresión 3D de metal capa a capa con láser, como la impresora de metal de la ESA en la ISS (primera pieza de acero en agosto de 2024)",
@@ -81,6 +100,29 @@ export function partBlueprint(p: Part): Blueprint {
   };
 }
 
+/**
+ * The blueprint for one of the mothership's electric thrusters: the head is printed here, its power
+ * processing unit (and cathode, xenon flow control, or VASIMR's magnet and RF) comes in imported kits.
+ */
+export function driveBlueprint(t: ElectricThruster): Blueprint {
+  const m = t.thrusterMassKg;
+  return {
+    id: `plano-${t.id}`,
+    name: `Propulsor ${t.shortName}${t.experimental ? " (experimental)" : ""} para la nodriza`,
+    product: { kind: "part", partId: t.id },
+    machine: "impresora",
+    massKg: m,
+    inputs: feedstock(m, RECIPES[t.family], kitsFor(t)),
+    hours: Math.round(12 + m / 2),
+    process: {
+      ...PRINT,
+      value: `${PRINT.value}. Solo el cabezal: la fuente de potencia (${t.ppuMassKg} kg) llega en kits importados`,
+      note: `${PRINT.note}. Masa del cabezal: la de ${t.shortName} (ver la ficha en la bahía)`,
+    },
+    steps: DRIVE_STEPS[t.family],
+  };
+}
+
 /** A small prospecting probe to send ahead to asteroids (game values). */
 export const PROBE: CraftSpec = {
   id: "sonda",
@@ -102,8 +144,8 @@ export const PROBE_BLUEPRINT: Blueprint = {
   steps: ["imprime el armazón", "pega los paneles de carbono", "monta la electrónica del kit", "carga el programa de vuelo", "prueba la radio"],
 };
 
-/** Every blueprint the station knows: each part of the ship's catalog, and the probe. */
-export const BLUEPRINTS: readonly Blueprint[] = [...ALL_PARTS.map(partBlueprint), PROBE_BLUEPRINT];
+/** Every blueprint the station knows: each part of the ship's catalog, the mothership's thrusters, and the probe. */
+export const BLUEPRINTS: readonly Blueprint[] = [...ALL_PARTS.map(partBlueprint), ...ELECTRIC_THRUSTERS.map(driveBlueprint), PROBE_BLUEPRINT];
 
 export const blueprintById = (id: string): Blueprint | undefined => BLUEPRINTS.find((b) => b.id === id);
 export const blueprintForPart = (partId: string): Blueprint | undefined => BLUEPRINTS.find((b) => b.product.kind === "part" && b.product.partId === partId);

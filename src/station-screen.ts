@@ -7,6 +7,7 @@ import type { Amounts } from "@modules/station/domain/materials";
 import { MATERIALS, cargoMaterial, materialInfo, materialName } from "@modules/station/data/materials";
 import { fmtKg } from "@modules/station/application/challenges";
 import { partById } from "@modules/ship/data/parts";
+import { electricThrusterById } from "@modules/mothership/data/thrusters";
 import { StationScene } from "./adapters/three/station-model";
 import type { DuelView, SessionText } from "./ui/duel-view";
 
@@ -271,7 +272,8 @@ export class StationScreen {
     const partRows = parts
       .map(([id, n]) => {
         const p = partById(id);
-        return `<div class="st-mat"><b>${esc(p ? short(p.name) : id)}</b><span>× ${n}</span><small>Se monta en la bahía de la nave</small></div>`;
+        const drive = electricThrusterById(id);
+        return `<div class="st-mat"><b>${esc(p ? short(p.name) : drive ? `Propulsor ${drive.shortName}` : id)}</b><span>× ${n}</span><small>${drive ? "Se monta en la bahía, pestaña Nodriza, con la sonda acoplada" : "Se monta en la bahía de la nave"}</small></div>`;
       })
       .join("");
     return `<div class="bay-sec">Naves y sondas</div>${crafts}

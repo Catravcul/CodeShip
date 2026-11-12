@@ -15,7 +15,10 @@ import { ANIMAL_LESSONS } from "@modules/pets/data/family-lessons";
 import { YOGA_SEQUENCES } from "@modules/wellness/data/yoga";
 import { ShipBayScene, type BayView } from "./adapters/three/ship-bay-scene";
 import { MothershipModel } from "./adapters/three/mothership-model";
-import type { MothershipSpec } from "@modules/mothership/domain/mothership";
+import type { Mothership, MothershipSpec } from "@modules/mothership/domain/mothership";
+import { ELECTRIC_THRUSTERS } from "@modules/mothership/data/thrusters";
+import { applyDriveRefit, driveOptions, driveRefitChore, type DriveOption } from "@modules/mothership/application/drive-refit";
+import { driveStatus, mountIdOf } from "@modules/ship-bay/application/drive";
 import type { PartId } from "./adapters/three/ship-model";
 import { VirtualStick, curve } from "./adapters/input/stick";
 import type { DuelView, SessionText } from "./ui/duel-view";
@@ -41,7 +44,12 @@ export type BayOrigin = "cabina" | "interior";
 /** Where spare parts come from (the space station's hangar): a swap takes the new part and stores the old one. */
 export interface PartStore extends PartSupply {
   swap(fitted: string, removed?: string): void;
+  take(partId: string): void;
+  put(partId: string, n?: number): void;
 }
+
+/** A bay action, or a refit of one of the mothership's thruster mounts. */
+type Action = BayAction & { readonly drive?: DriveOption };
 
 /** Parts of the probe; everything else in the bay (machines, farm deck, stores) is on the mothership. */
 const PROBE_PART = (id: string) => id === "casco" || id === "motor" || id === "rcs" || id === "alas-solares" || id.startsWith("tanque-");
@@ -61,7 +69,7 @@ export class ShipBay {
   private readonly stick: VirtualStick;
   private selected: PartId | null = null;
   private list: ComponentStatus[] = [];
-  private actions: BayAction[] = [];
+  private actions: Action[] = [];
   private attention = new Map<PartId, Attention>();
   private panelKey = "";
   private refreshAt = 0;
@@ -77,6 +85,11 @@ export class ShipBay {
   /** Whether the probe is docked: work on the mothership's systems needs Doménica aboard it. */
   docked: () => boolean = () => true;
   private readonly tabs: HTMLElement;
+  private mothershipModel?: MothershipModel;
+  /** The live mothership: its thruster mounts appear in the Nodriza tab and can be refitted while docked. */
+  nodriza?: Mothership;
+  /** Called after a thruster refit of the mothership (to update its model in the flight scene). */
+  onDriveRefit?: () => void;
 
   constructor(
     root: HTMLElement,
@@ -89,7 +102,7 @@ export class ShipBay {
   ) {
     this.view = new ShipBayScene(ship.design);
     const systems = [...habitat.machines.map((m) => ({ id: `maquina:${m.id}` as PartId, label: m.spec.name })), { id: "cubierta-cultivo" as PartId, label: "Cubierta de cultivo" }, { id: "despensa" as PartId, label: "Bodega y despensa" }];
-    if (mothership) this.view.addMothership(new MothershipModel(mothership, systems));
+    if (mothership) this.view.addMothership((this.mothershipModel = new MothershipModel(mothership, systems)));
     // Without a mothership the systems stay as beacons on the probe, as before.
     else this.view.model.setSystems(systems, true);
     this.ui = document.createElement("div");
@@ -178,7 +191,8 @@ export class ShipBay {
       const item = ITEMS.find((i) => i.id === s.id);
       return { id: s.id, name: item?.name ?? s.id, amount: this.habitat.larder(s.id), capacity: s.capacity, unit: item?.unit === "día" ? "días" : item?.unit === "lote" ? "lotes" : (item?.unit ?? "") };
     });
-    return bayStatus({ ship: this.ship, machines: this.habitat.machines, beds: this.habitat.plants.filter((p) => p.isBed), sustainability: this.habitat.sustainability, stores });
+    const list = bayStatus({ ship: this.ship, machines: this.habitat.machines, beds: this.habitat.plants.filter((p) => p.isBed), sustainability: this.habitat.sustainability, stores });
+    return this.nodriza && this.mothership ? [...list, ...driveStatus(this.nodriza)] : list;
   }
 
   private chores(): Chore[] {
@@ -248,7 +262,7 @@ export class ShipBay {
     const c = this.selected ? this.list.find((x) => x.id === this.selected) : undefined;
     // Mothership systems need Doménica aboard: undocked, the bay only shows them.
     const away = !!c && !!this.mothership && viewOf(c.id) === "nodriza" && !this.docked();
-    const actions = c && !away ? bayActions(c, this.chores(), this.ship.design, this.parts) : [];
+    const actions = c && !away ? this.actionsFor(c) : [];
     const key = JSON.stringify([this.view.view, away, this.selected, this.list.map((x) => [x.attention, x.issues, x.level, x.health && Math.round(x.health * 100), x.name]), actions.map((a) => a.label + a.detail)]);
     if (key === this.panelKey) return;
     this.panelKey = key;
@@ -278,6 +292,18 @@ export class ShipBay {
     this.actions = actions;
   }
 
+  private actionsFor(c: ComponentStatus): Action[] {
+    const mountId = mountIdOf(c.id);
+    if (!mountId || !this.nodriza) return bayActions(c, this.chores(), this.ship.design, this.parts);
+    return driveOptions(this.nodriza, mountId, ELECTRIC_THRUSTERS, this.parts).map((o) => ({
+      kind: "cambiar",
+      label: o.label,
+      detail: o.locked ? `${o.detail} · ${o.locked}` : o.detail,
+      ...(o.locked ? { locked: true } : {}),
+      drive: o,
+    }));
+  }
+
   private onPanelClick(e: Event): void {
     const t = e.target as HTMLElement;
     if (t.closest("a")) return;
@@ -292,7 +318,8 @@ export class ShipBay {
   }
 
   /** Start the action's chore in the challenge sheet; its effect lands on the real ship/habitat when done. */
-  run(a: BayAction): void {
+  run(a: Action): void {
+    if (a.drive) return this.runDrive(a.drive);
     if (a.locked) return this.say("No está en el hangar: fabrícala en la estación (Planos)");
     let chore: Chore | undefined;
     const removed = a.slot ? installedId(this.ship.design, a.slot, TANK_PARTS) : undefined;
@@ -302,6 +329,36 @@ export class ShipBay {
       if (part && a.slot) chore = swapChore(this.ship.design, a.slot, part);
     }
     if (!chore) return;
+    this.openChore(chore, (status) => {
+      if (status === "done" && chore.kind === "cambiar-pieza" && a.partId && this.parts) this.parts.swap(a.partId, removed);
+      if (status === "done") this.say(chore.kind === "cambiar-pieza" ? `Pieza montada: la nave ha cambiado${this.parts && removed ? " · la vieja va al hangar" : ""}` : "Tarea hecha");
+      else if (status === "failed") this.say("No salió: la pieza sigue como estaba");
+    });
+  }
+
+  /** Refit one of the mothership's thruster mounts: only docked, only with parts in the hangar. */
+  private runDrive(o: DriveOption): void {
+    const m = this.nodriza;
+    if (!m) return;
+    if (o.locked) return this.say(o.locked);
+    if (!this.docked()) return this.say("Acopla la sonda para trabajar en la nodriza");
+    const chore = driveRefitChore(m, o);
+    this.openChore(chore, (status) => {
+      if (status === "failed") return this.say("No salió: los propulsores siguen como estaban");
+      if (status !== "done") return;
+      try {
+        applyDriveRefit(m, o, this.parts);
+      } catch {
+        return this.say("Faltan piezas en el hangar: no se ha cambiado nada");
+      }
+      this.mothershipModel?.setThrusters(m.fitted);
+      this.onDriveRefit?.();
+      this.say(`Propulsores cambiados: ${m.thrustN.toLocaleString("es-ES", { maximumFractionDigits: 1 })} N en total${this.parts ? " · los viejos van al hangar" : ""}`);
+    });
+  }
+
+  /** Open a chore in the challenge sheet; `done` gets how it ended. */
+  private openChore(chore: Chore, done: (status: "done" | "failed" | "doing") => void): void {
     const session = this.habitat.start(chore, CONTEXT);
     const run = session.run;
     this.session = session;
@@ -312,9 +369,7 @@ export class ShipBay {
       this.working = false;
       this.session = null;
       this.layout();
-      if (run.status === "done" && chore.kind === "cambiar-pieza" && a.partId && this.parts) this.parts.swap(a.partId, removed);
-      if (run.status === "done") this.say(chore.kind === "cambiar-pieza" ? `Pieza montada: la nave ha cambiado${this.parts && removed ? " · la vieja va al hangar" : ""}` : "Tarea hecha");
-      else if (run.status === "failed") this.say("No salió: la pieza sigue como estaba");
+      done(run.status);
       this.panelKey = "";
       this.refresh();
     };

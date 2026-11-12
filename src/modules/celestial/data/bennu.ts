@@ -2,6 +2,10 @@ import { Vec3 } from "@core/math/vec3";
 import type { AsteroidData } from "../domain/asteroid";
 
 const WIKI = "https://en.wikipedia.org/wiki/101955_Bennu";
+/** Lauretta et al. 2024, Meteoritics & Planetary Science: the returned sample is CI-chondrite-like. */
+const SAMPLE = "https://arxiv.org/abs/2404.12536";
+/** Lodders 2003, ApJ 591:1220, Table 3: CI chondrite abundances (ppm by mass). */
+const LODDERS = "https://ui.adsabs.harvard.edu/abs/2003ApJ...591.1220L/abstract";
 
 /** 101955 Bennu, visited by OSIRIS-REx. Values copied from the cited page on 2026-11-11. */
 export const BENNU: AsteroidData = {
@@ -20,7 +24,21 @@ export const BENNU: AsteroidData = {
     },
     {
       material: "Carbon",
-      massFraction: { value: [0.045, 0.047], source: WIKI, note: "4.5–4.7 wt% in returned sample; to re-verify against the sample papers" },
+      massFraction: { value: [0.045, 0.047], source: WIKI, note: "4.5–4.7 wt% in returned sample (Lauretta et al. 2024, Table 4)" },
+    },
+    // The bulk rock. Bennu's sample is CI-like (Lauretta et al. 2024: ~80 vol% phyllosilicates,
+    // ~10 % Fe-Ni sulfides, ~5 % magnetite), so iron and nickel take the CI values of Lodders 2003.
+    {
+      material: "Iron (in magnetite and Fe-Ni sulfides)",
+      massFraction: { value: [0.1813, 0.1843], source: LODDERS, note: "CI Fe 182 800 ± 1 470 ppm; assumed for Bennu because the sample is CI-like (" + SAMPLE + ")" },
+    },
+    {
+      material: "Nickel (in Fe-Ni sulfides)",
+      massFraction: { value: [0.0104, 0.0109], source: LODDERS, note: "CI Ni 10 640 ± 210 ppm; assumed for Bennu (CI-like sample)" },
+    },
+    {
+      material: "Silicates (phyllosilicates)",
+      massFraction: { value: [0.55, 0.65], source: SAMPLE, note: "serpentine and smectite, ~80 vol% of the sample; the mass fraction left after the other entries is a game estimate" },
     },
   ],
 };

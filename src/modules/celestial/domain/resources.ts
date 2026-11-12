@@ -7,6 +7,11 @@ const VALUE: Record<string, number> = {
   "Iron-nickel": 8,
   "Platinum-group metals": 20,
   Carbon: 5,
+  // Bulk rock of a carbonaceous asteroid: every one has it, so it does not make one richer than another
+  // (the iron here is bound in oxides and sulfides, not free metal like "Iron-nickel").
+  "Iron (in magnetite and Fe-Ni sulfides)": 0,
+  "Nickel (in Fe-Ni sulfides)": 0,
+  "Silicates (phyllosilicates)": 0,
 };
 
 const mid = (e: CompositionEntry) => (e.massFraction.value[0] + e.massFraction.value[1]) / 2;

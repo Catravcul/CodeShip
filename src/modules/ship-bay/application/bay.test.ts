@@ -107,6 +107,19 @@ describe("ship bay actions", () => {
     expect(motor[0]!.label).toContain("MR-104H");
   });
 
+  it("with a hangar, a swap needs the part there; the rest are shown locked, to build at the station", () => {
+    const ship = Ship.create(explorerDesign());
+    const list = bayStatus(input({ ship }));
+    const empty = bayActions(byId(list, "motor"), [], ship.design, { count: () => 0 });
+    expect(empty).toEqual([expect.objectContaining({ kind: "cambiar", partId: "aerojet-mr-104h", locked: true })]);
+    const tanks = bayActions(byId(list, "tanque-1"), [], ship.design, { count: (id) => (id === "tanque-n2h4-120" ? 2 : 0) });
+    expect(tanks.map((a) => [a.partId, !!a.locked])).toEqual([
+      ["tanque-n2h4-120", false],
+      ["tanque-n2h4-80", true],
+    ]);
+    expect(tanks[0]!.detail).toContain("2 en el hangar");
+  });
+
   it("farm deck actions are the chores of its beds", () => {
     const bed: Chore = { id: "regar-bancal-papa-1", kind: "regar", targetId: "bancal-papa-1", title: "Regar", scenario: "", exercises: [] };
     const pot: Chore = { id: "regar-l1", kind: "regar", targetId: "l1", title: "Regar", scenario: "", exercises: [] };

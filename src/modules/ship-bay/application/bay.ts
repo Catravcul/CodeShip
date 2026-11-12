@@ -214,6 +214,8 @@ export const needingAttention = (list: readonly ComponentStatus[]): ComponentSta
 /** Something the player can do on a part: a chore already pending, or swapping it for a part that fits. */
 export interface BayAction {
   readonly kind: "tarea" | "cambiar";
+  /** A swap whose part is not in the hangar yet: it has to be built at the station first. */
+  readonly locked?: boolean;
   readonly label: string;
   readonly detail: string;
   readonly choreId?: string;
@@ -228,14 +230,26 @@ const choresFor = (c: ComponentStatus, chores: readonly Chore[]): Chore[] => {
   return [];
 };
 
-/** What can be done on a part now. Every action is a chain of code challenges. */
-export function bayActions(c: ComponentStatus, chores: readonly Chore[], design: ShipDesign): BayAction[] {
+/** Spare parts available to fit (the station's hangar). `Hangar` satisfies it. */
+export interface PartSupply {
+  count(partId: string): number;
+}
+
+/**
+ * What can be done on a part now. Every action is a chain of code challenges. With a part supply,
+ * a swap needs that part in the hangar; without one every part on the shelf is free (old behaviour).
+ */
+export function bayActions(c: ComponentStatus, chores: readonly Chore[], design: ShipDesign, supply?: PartSupply): BayAction[] {
   const tasks = choresFor(c, chores).map((x): BayAction => ({ kind: "tarea", label: x.title, detail: `${x.scenario} · ${x.exercises.length} retos`, choreId: x.id }));
   const swaps = c.slot
     ? partOptions(design, c.slot).map((p): BayAction => {
         const what = p.kind === "tank" ? `${p.spec.capacityKg} kg de ${PROP_NAME[p.spec.propellant]}` : `${num(p.model.thrustN)} N · Isp ${p.model.ispS} s · ${num(p.model.dryMassKg, 2)} kg · ${PROP_NAME[p.model.propellant]}`;
-        return { kind: "cambiar", label: `Montar ${short(p.name)}`, detail: what, slot: c.slot!, partId: p.id };
+        const n = supply ? supply.count(p.id) : 1;
+        if (n > 0) return { kind: "cambiar", label: `Montar ${short(p.name)}`, detail: supply ? `${what} · ${n} en el hangar` : what, slot: c.slot!, partId: p.id };
+        return { kind: "cambiar", locked: true, label: `Montar ${short(p.name)}`, detail: `${what} · no hay en el hangar: fabrícala en la estación`, slot: c.slot!, partId: p.id };
       })
     : [];
+  // Parts in the hangar first, the ones still to build after.
+  swaps.sort((a, b) => Number(!!a.locked) - Number(!!b.locked));
   return [...tasks, ...swaps];
 }

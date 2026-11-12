@@ -2,8 +2,9 @@ import type { Ship } from "@modules/ship/domain/ship";
 import type { ChoreSession, Habitat } from "@modules/habitat/application/habitat";
 import type { Chore } from "@modules/chores/domain/chore";
 import { swapChore } from "@modules/chores/application/catalog";
-import { partById } from "@modules/ship/data/parts";
-import { bayActions, bayStatus, needingAttention, type BayAction, type BayStore } from "@modules/ship-bay/application/bay";
+import { TANK_PARTS, partById } from "@modules/ship/data/parts";
+import { installedId } from "@modules/ship/domain/refit";
+import { bayActions, bayStatus, needingAttention, type BayAction, type BayStore, type PartSupply } from "@modules/ship-bay/application/bay";
 import type { ComponentStatus } from "@modules/ship-bay/domain/component";
 import type { Attention } from "@modules/ship-bay/domain/attention";
 import { SHIP_STORES } from "@modules/ship-bay/data/stores";
@@ -34,6 +35,11 @@ const text = (c: Chore): SessionText => ({
 });
 
 export type BayOrigin = "cabina" | "interior";
+
+/** Where spare parts come from (the space station's hangar): a swap takes the new part and stores the old one. */
+export interface PartStore extends PartSupply {
+  swap(fitted: string, removed?: string): void;
+}
 
 /**
  * The ship bay (engineering station): the ship from outside with an orbit camera, every part
@@ -68,6 +74,8 @@ export class ShipBay {
     private readonly ship: Ship,
     private readonly habitat: Habitat,
     private readonly duel: DuelView,
+    /** Without it every part on the shelf is free (as before the station). */
+    private readonly parts?: PartStore,
   ) {
     this.view = new ShipBayScene(ship.design);
     this.view.model.setSystems(
@@ -207,7 +215,7 @@ export class ShipBay {
   private renderPanel(): void {
     if (!this.active) return;
     const c = this.selected ? this.list.find((x) => x.id === this.selected) : undefined;
-    const actions = c ? bayActions(c, this.chores(), this.ship.design) : [];
+    const actions = c ? bayActions(c, this.chores(), this.ship.design, this.parts) : [];
     const key = JSON.stringify([this.selected, this.list.map((x) => [x.attention, x.issues, x.level, x.health && Math.round(x.health * 100), x.name]), actions.map((a) => a.label + a.detail)]);
     if (key === this.panelKey) return;
     this.panelKey = key;
@@ -223,7 +231,7 @@ export class ShipBay {
     const specs = c.specs
       .map((s) => `<tr><th>${esc(cap(s.label))}</th><td>${esc(s.value)}${s.source ? ` <a href="${esc(s.source)}" target="_blank" rel="noopener">fuente</a>` : ""}</td></tr>`)
       .join("");
-    const acts = actions.map((a, i) => `<button class="bay-act ${a.kind}" data-act="${i}"><b>${esc(a.label)}</b><span>${esc(a.detail)}</span></button>`).join("");
+    const acts = actions.map((a, i) => `<button class="bay-act ${a.kind}${a.locked ? " locked" : ""}" data-act="${i}"><b>${esc(a.label)}</b><span>${esc(a.detail)}</span></button>`).join("");
     this.panel.innerHTML = `
       <div class="bay-detail-head"><button data-back>‹ Piezas</button><i class="dot ${DOT[c.attention]}"></i></div>
       <div class="bay-name">${esc(c.name)}</div>
@@ -251,7 +259,9 @@ export class ShipBay {
 
   /** Start the action's chore in the challenge sheet; its effect lands on the real ship/habitat when done. */
   run(a: BayAction): void {
+    if (a.locked) return this.say("No está en el hangar: fabrícala en la estación (Planos)");
     let chore: Chore | undefined;
+    const removed = a.slot ? installedId(this.ship.design, a.slot, TANK_PARTS) : undefined;
     if (a.kind === "tarea") chore = this.chores().find((c) => c.id === a.choreId);
     else {
       const part = a.partId ? partById(a.partId) : undefined;
@@ -268,7 +278,8 @@ export class ShipBay {
       this.working = false;
       this.session = null;
       this.layout();
-      if (run.status === "done") this.say(chore.kind === "cambiar-pieza" ? "Pieza montada: la nave ha cambiado" : "Tarea hecha");
+      if (run.status === "done" && chore.kind === "cambiar-pieza" && a.partId && this.parts) this.parts.swap(a.partId, removed);
+      if (run.status === "done") this.say(chore.kind === "cambiar-pieza" ? `Pieza montada: la nave ha cambiado${this.parts && removed ? " · la vieja va al hangar" : ""}` : "Tarea hecha");
       else if (run.status === "failed") this.say("No salió: la pieza sigue como estaba");
       this.panelKey = "";
       this.refresh();

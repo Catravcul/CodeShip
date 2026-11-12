@@ -45,6 +45,11 @@ export class Expedition {
     return this._phase === "landed";
   }
 
+  /** Empty the hold (e.g. at the space station) and return what was in it. */
+  unloadCargo(): { material: string; kg: number }[] {
+    return this.cargo.splice(0, this.cargo.length);
+  }
+
   update(dtS: number, input: ThrustCommand): void {
     // While in the asteroid's mind the pilot is not at the controls.
     this.flight.update(dtS, this._phase === "duel" ? NO_INPUT : input);

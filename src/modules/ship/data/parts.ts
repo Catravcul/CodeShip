@@ -15,6 +15,9 @@ export const TANK_PARTS: readonly TankPart[] = [
   { kind: "tank", id: "tanque-mmh-300", name: "Tanque MMH/NTO 300 kg", spec: { propellant: "MMH/NTO", capacityKg: 300, dryMassKg: 28 }, note: TANK_NOTE },
   { kind: "tank", id: "tanque-n2h4-40", name: "Tanque de hidracina 40 kg", spec: { propellant: "Hydrazine", capacityKg: 40, dryMassKg: 5 }, note: TANK_NOTE },
   { kind: "tank", id: "tanque-n2h4-80", name: "Tanque de hidracina 80 kg", spec: { propellant: "Hydrazine", capacityKg: 80, dryMassKg: 9 }, note: TANK_NOTE },
+  // Only made at the space station (docs/design/estacion.md).
+  { kind: "tank", id: "tanque-mmh-450", name: "Tanque MMH/NTO 450 kg", spec: { propellant: "MMH/NTO", capacityKg: 450, dryMassKg: 40 }, note: TANK_NOTE },
+  { kind: "tank", id: "tanque-n2h4-120", name: "Tanque de hidracina 120 kg", spec: { propellant: "Hydrazine", capacityKg: 120, dryMassKg: 13 }, note: TANK_NOTE },
 ];
 
 export const ALL_PARTS: readonly Part[] = [...MAIN_ENGINE_PARTS, ...RCS_PARTS, ...TANK_PARTS];

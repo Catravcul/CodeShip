@@ -43,6 +43,9 @@ describe("Expedition", () => {
     while (e.phase === "duel") e.answer(correct(e.duel!.current!));
     expect(e.phase).toBe("persuaded");
     expect(e.cargo.reduce((s, c) => s + c.kg, 0)).toBeCloseTo(500, 6);
+    const unloaded = e.unloadCargo();
+    expect(unloaded.reduce((s, c) => s + c.kg, 0)).toBeCloseTo(500, 6);
+    expect(e.cargo).toHaveLength(0);
   });
 
   it("losing its patience shakes the ship off and the hull suffers until it flees", () => {

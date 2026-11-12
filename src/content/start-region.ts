@@ -11,7 +11,7 @@ export const FILLER_ROCKS = 5000;
  * The game's starting region: Bennu at the centre, six real New Polana–area asteroids at
  * compressed distances, procedural rubble around them and 142 Polana far away.
  */
-export function buildStartRegion(bennu: Asteroid, start: Vec3): Region {
+export function buildStartRegion(bennu: Asteroid, start: Vec3, clear: readonly { centre: Vec3; radiusM: number }[] = []): Region {
   const members = POLANA_MEMBERS.map((m) => new Asteroid(m, POLANA_PLACEMENTS_M[m.id]!));
   const rocks = generateRockField({
     seed: 2026,
@@ -28,6 +28,8 @@ export function buildStartRegion(bennu: Asteroid, start: Vec3): Region {
       { centre: bennu.position, radiusM: bennu.meanRadiusM * 1.6 + 150 },
       { centre: start, radiusM: 300 },
       ...members.map((m) => ({ centre: m.position, radiusM: m.meanRadiusM * OBSTACLE_HULL_FACTOR + 150 })),
+      // Places such as the space station.
+      ...clear,
     ],
   });
   const neighbours = POLANA_NEIGHBOURS.map((n) => ({ asteroid: new Asteroid(n.data, n.position), albedo: n.albedo }));

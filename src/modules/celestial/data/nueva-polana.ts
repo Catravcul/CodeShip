@@ -2,6 +2,7 @@ import { Vec3 } from "@core/math/vec3";
 import type { Sourced } from "@core/units";
 import type { AsteroidData, SpectralType } from "../domain/asteroid";
 import type { RegionData } from "../domain/region";
+import { BENNU } from "./bennu";
 
 const sbdb = (designation: string) => `https://ssd-api.jpl.nasa.gov/sbdb.api?sstr=${encodeURIComponent(designation)}&phys-par=1`;
 const NEOWISE = "NEOWISE diameter/albedo (Masiero et al. 2014, ApJ 791:121) via JPL SBDB, read 2026-11-12";
@@ -53,13 +54,8 @@ function member(s: MemberSpec): AsteroidData & { albedo: Sourced<number> } {
       s.rotationH !== undefined
         ? { value: s.rotationH, source: src, note: "rot_per from the Asteroid Lightcurve Database via SBDB" }
         : { value: s.gameRotationH ?? 6, source: GAME, note: "no measured period; game value" },
-    composition: [
-      {
-        material: "Water (in hydrated minerals)",
-        massFraction: { value: [0.01, 0.062], source: "https://en.wikipedia.org/wiki/101955_Bennu", note: "assumed equal to Bennu's" },
-      },
-      { material: "Carbon", massFraction: { value: [0.045, 0.047], source: "https://en.wikipedia.org/wiki/101955_Bennu", note: "assumed equal to Bennu's" } },
-    ],
+    // Same rock as Bennu (the family's best-known member).
+    composition: BENNU.composition.map((e) => ({ ...e, massFraction: { ...e.massFraction, note: `assumed equal to Bennu's: ${e.massFraction.note ?? ""}` } })),
     albedo: { value: s.albedo, source: src, note: NEOWISE },
   };
 }

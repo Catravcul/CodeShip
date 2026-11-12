@@ -55,6 +55,17 @@ import { SkyBodies } from "./adapters/three/sky-bodies";
 import { Eva } from "@modules/eva/application/eva";
 import { EvaMode } from "./eva-mode";
 import { SpinRing } from "@modules/gravity/domain/spin-gravity";
+import { Station } from "@modules/station/domain/station";
+import { MaterialStock } from "@modules/station/domain/materials";
+import { Hangar } from "@modules/station/domain/hangar";
+import { STATION_TUNING } from "@modules/station/domain/blueprint";
+import { StationOps } from "@modules/station/application/station-ops";
+import { BLUEPRINTS } from "@modules/station/data/blueprints";
+import { REFINE_PROCESSES } from "@modules/station/data/processes";
+import { materialName } from "@modules/station/data/materials";
+import { EXPLORER_CRAFT, POLANA_STATION, STARTING_STOCK } from "@modules/station/data/station";
+import { StationModel } from "./adapters/three/station-model";
+import { StationScreen } from "./station-screen";
 
 // --- Domain setup -----------------------------------------------------------
 const d = BENNU.dimensionsM.value;
@@ -65,7 +76,7 @@ const bennu = new Asteroid(BENNU, Vec3.ZERO, (local) => surface(local));
 const ship = Ship.create(explorerDesign());
 const startPos = new Vec3(250, 120, 1600);
 // The starting region: Bennu among real New Polana–family asteroids, inside a soft boundary.
-const region = buildStartRegion(bennu, startPos);
+const region = buildStartRegion(bennu, startPos, [{ centre: POLANA_STATION.position, radiusM: POLANA_STATION.radiusM * 3 }]);
 // The habitat ring is already turning at cruise rate when the game starts (docs/design/gravedad.md).
 const ring = new SpinRing(ship.design.ring!);
 const start = RigidBodyState.at(startPos).withOrientation(
@@ -74,6 +85,13 @@ const start = RigidBodyState.at(startPos).withOrientation(
 );
 const flight = new FlightComputer(ship, start, { gravitySources: region.asteroids, target: bennu });
 const expedition = new Expedition(flight, bennu, EXERCISES, 500);
+// The space station: refinery, foundry, metal printer and hangar (docs/design/estacion.md).
+const stationOps = new StationOps(
+  new Station(POLANA_STATION, new MaterialStock(STARTING_STOCK), new Hangar({}, [{ ...EXPLORER_CRAFT, name: ship.name, massKg: ship.massKg }])),
+  BLUEPRINTS,
+  REFINE_PROCESSES,
+  materialName,
+);
 
 // Life on board: a long leg is already under way, so the garden has some days behind it.
 const habitat = new Habitat(seededRandom(2026), 3, ship, "Doménica", MACHINES);
@@ -161,6 +179,9 @@ scene.add(field.group);
 
 const asteroidMesh = buildAsteroidMesh(shapeParams, 0x3b3835); // Bennu is very dark; tone mapping lifts it a little.
 scene.add(asteroidMesh);
+const stationModel = new StationModel();
+stationModel.root.position.set(POLANA_STATION.position.x, POLANA_STATION.position.y, POLANA_STATION.position.z);
+scene.add(stationModel.root);
 
 const reticle = document.createElement("div");
 reticle.className = "reticle";
@@ -236,7 +257,8 @@ if (interior.zones)
 let lastPhase = expedition.phase;
 
 // Ship bay: the ship from outside, its parts' state and swaps. Reached from the cockpit and the habitat.
-const bay = new ShipBay(root, ship, habitat, duelView);
+// Part swaps take the part from the station's hangar; the old one goes back there.
+const bay = new ShipBay(root, ship, habitat, duelView, stationOps.station.hangar);
 const openBay = (from: "cabina" | "interior") => {
   if (duelView.visible || bay.active) return;
   if (from === "interior") interior.exit();
@@ -248,6 +270,10 @@ bay.onExit = (from) => {
 };
 interior.openBay = () => openBay("interior");
 view.addButton("bay-btn", () => openBay("cabina")).textContent = "Bahía de la nave";
+// Space station screen. For now it opens from anywhere in the cockpit (remote/test access); alongside it counts as docked.
+const stationScreen = new StationScreen(root, stationOps, ship, expedition, duelView, () => flight.state.position);
+stationScreen.onExit = () => view.center();
+const stationBtn = view.addButton("estacion-btn", () => !duelView.visible && !bay.active && !interior.active && !evaMode.active && stationScreen.enter());
 window.addEventListener("keydown", (e) => {
   if (e.code === "KeyB" && !e.repeat && !interior.active && !duelView.visible) bay.active ? bay.exit() : openBay("cabina");
 });
@@ -299,6 +325,7 @@ window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   interior.resize();
   bay.resize();
+  stationScreen.resize();
 });
 
 // --- Loop -------------------------------------------------------------------
@@ -306,7 +333,7 @@ let last = performance.now();
 renderer.setAnimationLoop((now) => {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
-  const cmd = interior.active || bay.active || evaMode.active ? NO_INPUT : mergeCommands(pilot.command(), touch.command());
+  const cmd = interior.active || bay.active || evaMode.active || stationScreen.active ? NO_INPUT : mergeCommands(pilot.command(), touch.command());
   const idle = cmd.mainThrottle === 0 && cmd.translation.length() === 0 && cmd.rotation.length() === 0;
   // Time warp only on quiet cruise far from the surface, so landing stays real-time.
   const far = flight.telemetry().distanceToSurface >= WARP_MIN_DISTANCE_M;
@@ -340,8 +367,10 @@ renderer.setAnimationLoop((now) => {
     }
   }
   lastPhase = expedition.phase;
+  // The station's machines run on the same clock as life on board.
+  stationOps.station.tick(dt * warp * STATION_TUNING.hoursPerSecond);
   interior.update(dt);
-  view.enabled = !interior.active && !bay.active && !duelView.visible && !evaMode.active;
+  view.enabled = !interior.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active;
   document.body.classList.toggle("in-cockpit", view.enabled);
   if (interior.active) {
     renderer.render(interior.scene, interior.camera);
@@ -350,6 +379,11 @@ renderer.setAnimationLoop((now) => {
   if (bay.active) {
     bay.update(dt);
     renderer.render(bay.scene, bay.camera);
+    return;
+  }
+  if (stationScreen.active) {
+    stationScreen.update(dt);
+    renderer.render(stationScreen.scene, stationScreen.camera);
     return;
   }
   evaBtn.classList.toggle("hidden", !eva.canLeave || expedition.phase !== "landed");
@@ -377,6 +411,9 @@ renderer.setAnimationLoop((now) => {
     warpNote,
   );
   asteroidMesh.rotation.y = bennu.spinRadS * flight.simTimeS;
+  stationModel.update(flight.simTimeS);
+  const stationText = `Estación · ${(stationOps.station.distanceTo(flight.state.position) / 1000).toFixed(1).replace(".", ",")} km`;
+  if (stationBtn.textContent !== stationText) stationBtn.textContent = stationText;
   field.update(camera, window.innerHeight, flight.simTimeS, view.enabled && skyBodies.labelsOn);
   skyBodies.update(camera, renderer.getPixelRatio(), view.enabled);
   const namesText = `Nombres: ${skyBodies.labelsOn ? "sí" : "no"}`;
@@ -400,4 +437,4 @@ renderer.setAnimationLoop((now) => {
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, station: stationScreen, stationOps };

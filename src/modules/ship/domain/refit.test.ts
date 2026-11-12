@@ -41,7 +41,7 @@ describe("refit", () => {
     expect(installedId(d, "tanque-1", TANK_PARTS)).toBe("tanque-n2h4-40");
     expect(partOptions(d, "motor").map((p) => p.id)).toEqual([MR104H.id]);
     expect(partOptions(d, "rcs")).toHaveLength(2);
-    expect(partOptions(d, "tanque-1").map((p) => p.id)).toEqual(["tanque-n2h4-80"]);
+    expect(partOptions(d, "tanque-1").map((p) => p.id)).toEqual(["tanque-n2h4-80", "tanque-n2h4-120"]);
   });
 
   it("a hydrazine main engine leaves the MMH/NTO tank feeding nothing", () => {

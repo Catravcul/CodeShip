@@ -224,7 +224,7 @@ El proceso real, tal como lo documentó Cold Sanctuary: un vial de 10⁹ célula
 
 ## Gallinas
 
-Tres gallinas viven en el gallinero del anillo, donde hay gravedad. Ponen alrededor de un huevo al día (ajuste de juego) si comen, están tranquilas, sanas y tienen **14–16 h de luz** (Merck). El pienso se hace en el molino con trigo, soja y calcio para la cáscara. Un gato sin programar **acecha** a las gallinas: se asustan, dejan de poner y a veces una sale herida. Se arregla programando al gato con la lección «respetar gallinas».
+Tres gallinas viven en el gallinero de la cubierta de cultivo, en el anillo, donde hay gravedad. Ponen alrededor de un huevo al día (ajuste de juego) si comen, están tranquilas, sanas y tienen **14–16 h de luz** (Merck). El pienso se hace en el molino con trigo, soja y calcio para la cáscara. Un gato sin programar **acecha** a las gallinas: se asustan, dejan de poner y a veces una sale herida. Se arregla programando al gato con la lección «respetar gallinas».
 
 ## Qué comen los gatos
 
@@ -260,9 +260,12 @@ El módulo habitable se recorre en primera persona: joystick y arrastrar para mi
 - el **laboratorio de carne cultivada**: tanque de vidrio cuyo medio cambia de rosa a amarillo al acidificarse (como el rojo de fenol), tanque de nitrógeno, campana de flujo y consola con fase, células, pH y glucosa;
 - la **enfermería**: camilla, mesa veterinaria y monitor con los pacientes;
 - el **panel de la mente de la nave**, con su clase y sus valores reales;
-- la **esterilla de yoga**, con la figura de perfil;
-- el **rincón de los gatos**;
-- el **gallinero**, con malla, ponederos (los huevos aparecen en el nido), aseladero, comedero y bebedero.
+- el **rincón de ejercicio**: la esterilla de yoga, con la figura de perfil, una cinta, una bicicleta y una máquina de fuerza (copias de la T2, la CEVIS y la ARED de la ISS) con los entrenamientos del protocolo Sprint de la NASA;
+- el **camarote de Doménica**, con su litera, su portátil para leer las cartas y las fotos de su familia; los gatos duermen en su litera;
+- el **aseo** y, junto a él, el arenero y los cuencos de los gatos;
+- el **gallinero**, ya en la cubierta de cultivo, al final del césped: malla, ponederos (los huevos aparecen en el nido), aseladero, comedero y bebedero.
+
+Por qué están así y con qué referencias: [interiores.md](interiores.md).
 
 Cada máquina tiene una luz: verde si funciona y roja parpadeante si está averiada.
 
@@ -398,7 +401,8 @@ En el juego (`story/data/friends.ts`):
 | Yoga y recetas de Cold Sanctuary | `wellness/data/yoga.ts`, `kitchen/data/recipes.ts` | ✓ |
 | Panel de la mente de la nave y reparación por retos | `chores/application/catalog.ts`, `src/interior.ts` | ✓ |
 | Bahía de la nave: vista exterior, estado por pieza y cambio de piezas ([bahia-de-la-nave.md](bahia-de-la-nave.md)) | `modules/ship-bay`, `ship/domain/refit.ts`, `src/ship-bay.ts` | ✓ con tests |
-| Interior 3D: caminar, huerto, cocina, molino, laboratorio, enfermería, panel, esterilla, gatos, gallinero | `src/interior.ts`, `src/adapters/three/interior/` | ✓ |
+| Interior 3D: caminar, huerto, cocina, molino, laboratorio, enfermería, panel, rincón de ejercicio, camarote, aseo, gatos, gallinero (en la cubierta) | `src/interior.ts`, `src/adapters/three/interior/` | ✓ |
+| Ejercicio con el protocolo Sprint de la NASA (cinta, bici, fuerza) | `wellness/data/exercise.ts`, `workoutChore` | ✓ |
 | Cartas de Nevaeh a Doménica con misiones de la nano_net | `modules/story`, radio en `src/interior.ts` | ✓ con tests |
 | Gallinas libres, chihuahuas, lazos y familias entre especies | `modules/family`, `pets/domain/dog.ts`, `pets/data/family-lessons.ts` | ✓ con tests |
 | Cubierta de cultivo y autosuficiencia | `life-support/domain/sustainability.ts`, `src/adapters/three/interior/farm-deck.ts` | ✓ con tests |

@@ -533,8 +533,8 @@ export class Interior {
     if (cat && chore.kind === "atender-paciente") {
       cat.goTo(new THREE.Vector3(-1.15, 0, 0.2));
     } else if (cat) {
-      cat.goTo(new THREE.Vector3(-0.75, 0, 5.55));
-      look = new THREE.Vector3(-0.75, 0.2, 5.55);
+      cat.goTo(new THREE.Vector3(-0.85, 0, 5.6));
+      look = new THREE.Vector3(-0.85, 0.2, 5.6);
     }
     this.walkTo = { pos: stand, look, then: () => this.startChore(chore) };
   }

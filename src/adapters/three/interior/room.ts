@@ -6,8 +6,8 @@ import { textSign } from "./sign";
  * The habitat module sits in the spinning ring: 4 m wide, 12 m long, at 1 g. Laid out like a
  * long-duration habitat (docs/design/interiores.md): the noisy, wet end with the galley, food
  * processing and growing racks by the elevator; the sickbay and ship-mind panel in the middle;
- * the crew end with Doménica's cabin, the hygiene stall and the exercise corner. The hens live on
- * the farm deck, through the far doorway.
+ * the quiet crew end with Doménica's cabin and the exercise corner next to the sickbay. The hygiene
+ * stall and the hens are on the farm deck, through the far doorway.
  */
 export const ROOM = { halfW: 2, halfL: 6, height: 2.6 } as const;
 
@@ -36,7 +36,7 @@ export const STATIONS: readonly Station[] = [
   // Crew end: Doménica's cabin (her letters are read there, like the ISS crew quarters' laptop).
   { id: "camarote", label: "Camarote de Doménica", stand: V(-0.55, 0, 3.95), look: V(-1.7, 0.9, 4.25) },
   { id: "ejercicio", label: "Rincón de ejercicio", stand: V(0.7, 0, 4.95), look: V(1.6, 0.8, 4.95) },
-  { id: "gatos", label: "Rincón de los gatos", stand: V(-0.4, 0, 5.2), look: V(-1.0, 0.15, 5.7) },
+  { id: "gatos", label: "Rincón de los gatos", stand: V(-0.4, 0, 5.2), look: V(-1.2, 0.15, 5.75) },
   // On the farm deck, at the right end of the lawn.
   { id: "gallinero", label: "Gallinero", stand: V(5.7, 0, 7.4), look: V(7.3, 0.4, 7.4) },
   // Through the doorway at the far end: the farm deck (adapters/three/interior/farm-deck.ts).
@@ -55,14 +55,18 @@ export const MACHINE_STATION: Readonly<Record<MachineId, StationId>> = {
 };
 
 /**
- * Walls of the crew end the walker must not cross: Doménica's cabin (door opening z 3.85–5.2) and
- * the hygiene stall, along the left wall.
+ * Walls the walker must not cross: Doménica's cabin (door opening z 3.85–5.2) along the module's
+ * left wall, and the hygiene stall on the farm deck.
  */
 export function crewEndBlocks(x: number, z: number): boolean {
-  if (z < 3.25 || z > ROOM.halfL) return false;
+  if (z > HYGIENE.minZ - 0.25 && z < HYGIENE.maxZ + 0.25 && x > HYGIENE.minX - 0.25 && x < HYGIENE.maxX + 0.25) return true;
+  if (z < 3.25 || z > 5.35) return false;
   const door = z > 3.85 && z < 5.2;
   return x < (door ? -1.3 : -0.95);
 }
+
+/** The hygiene stall, on the farm deck just left of the doorway (floor rectangle). */
+export const HYGIENE = { minX: -2.6, maxX: -1.2, minZ: ROOM.halfL + 0.06, maxZ: ROOM.halfL + 1.3 } as const;
 
 /** Where cats and hens may roam. */
 export const CAT_BOUNDS = { minX: -1.2, maxX: 1.0, minZ: -5, maxZ: 5.6 } as const;
@@ -122,8 +126,8 @@ function lamp(lamps: Map<MachineId, THREE.Mesh>, g: THREE.Group, id: MachineId, 
 
 /**
  * The habitat module: shell, growing racks, galley, mill and soy processor, cultured-meat lab,
- * sickbay, ship-mind panel, exercise corner with the yoga mat, Doménica's cabin, hygiene stall and
- * the cats' things; plus the chicken coop, which stands on the farm deck.
+ * sickbay, ship-mind panel, exercise corner with the yoga mat, Doménica's cabin and the cats'
+ * things; plus the hygiene stall and the chicken coop, which stand on the farm deck.
  */
 export function buildRoom(): RoomHandles {
   const g = new THREE.Group();
@@ -254,6 +258,7 @@ export function buildRoom(): RoomHandles {
   g.add(boxAt(0.5, 2.0, 0.08, steel, 1.75, 1.0, 5.85), boxAt(1.0, 0.05, 0.05, mat(0xd0d4da, { metalness: 0.8 }), 1.4, 1.35, 5.75)); // resistance rack and bar
   for (const sx of [-1, 1]) g.add(cylAt(0.1, 0.1, 0.03, black, 1.4 + sx * 0.42, 1.35, 5.75, 14).rotateZ(Math.PI / 2));
   const exSign = textSign("Ejercicio · cinta, bici y fuerza");
+  exSign.scale.multiplyScalar(0.7);
   exSign.position.set(1.4, 2.25, 4.4);
   g.add(exSign);
 
@@ -280,6 +285,7 @@ export function buildRoom(): RoomHandles {
   reading.position.set(-1.6, 1.6, 3.8);
   g.add(reading);
   const cabinSign = textSign("Camarote de Doménica");
+  cabinSign.scale.multiplyScalar(0.7);
   cabinSign.position.set(-1.0, 2.3, 4.3);
   g.add(cabinSign);
   // The cats sleep on her bunk; their scratching post stands at her door.
@@ -288,15 +294,24 @@ export function buildRoom(): RoomHandles {
   catBed.position.set(-1.55, 0.62, 4.9);
   g.add(catBed, boxAt(0.12, 0.8, 0.12, mat(0xc8a878), -0.95, 0.4, 3.2));
 
-  // --- Hygiene stall: toilet (like the ISS UWMS) and hand wash, with the cats' litter box ---------
-  g.add(boxAt(0.05, height - 0.1, 0.7, cabinWall, -1.25, (height - 0.1) / 2, 5.65));
-  g.add(cylAt(0.18, 0.2, 0.42, mat(0xf2f4f6), -1.7, 0.21, 5.65), boxAt(0.3, 0.45, 0.2, mat(0xdfe3e8), -1.88, 0.55, 5.65));
-  g.add(boxAt(0.3, 0.05, 0.25, mat(0xf2f4f6), -1.85, 0.95, 5.4));
+  // --- Cats' corner by her cabin: litter box, bowls -----------------------------------------------
+  g.add(boxAt(0.45, 0.16, 0.38, mat(0xd8d0c0), -1.6, 0.08, 5.7), boxAt(0.42, 0.02, 0.35, mat(0xbfb59a), -1.6, 0.165, 5.7)); // litter box
+  g.add(boxAt(0.14, 0.05, 0.14, mat(0x3a7bd5), -0.95, 0.025, 5.8), boxAt(0.14, 0.05, 0.14, mat(0xd5823a), -0.75, 0.025, 5.8)); // bowls
+
+  // --- Hygiene stall, through the doorway on the farm deck: away from the galley and the cabin, as
+  // NASA's Deep Space Habitat studies ask. Toilet like the ISS/Orion UWMS, hand wash, a door.
+  const H = HYGIENE;
+  const stallWall = mat(0xd7dde4);
+  g.add(boxAt(H.maxX - H.minX, 2.2, 0.05, stallWall, (H.minX + H.maxX) / 2, 1.1, H.maxZ));
+  g.add(boxAt(0.05, 2.2, H.maxZ - H.minZ, stallWall, H.minX, 1.1, (H.minZ + H.maxZ) / 2));
+  g.add(boxAt(0.05, 2.2, H.maxZ - H.minZ - 0.7, stallWall, H.maxX, 1.1, H.minZ + (H.maxZ - H.minZ - 0.7) / 2));
+  g.add(boxAt(0.04, 2.0, 0.66, mat(0x7c8796, { metalness: 0.4 }), H.maxX + 0.02, 1.0, H.maxZ - 0.36)); // door, ajar
+  g.add(cylAt(0.18, 0.2, 0.42, mat(0xf2f4f6), H.minX + 0.35, 0.21, H.minZ + 0.45), boxAt(0.3, 0.45, 0.2, mat(0xdfe3e8), H.minX + 0.35, 0.55, H.minZ + 0.18));
+  g.add(boxAt(0.3, 0.05, 0.25, mat(0xf2f4f6), H.minX + 0.2, 0.95, H.maxZ - 0.3));
+  g.add(boxAt(H.maxX - H.minX, 0.03, H.maxZ - H.minZ, stallWall, (H.minX + H.maxX) / 2, 2.2, (H.minZ + H.maxZ) / 2)); // roof
   const wcSign = textSign("Aseo");
-  wcSign.position.set(-1.3, 2.25, 5.65);
+  wcSign.position.set((H.minX + H.maxX) / 2, 2.5, (H.minZ + H.maxZ) / 2);
   g.add(wcSign);
-  g.add(boxAt(0.45, 0.16, 0.38, mat(0xd8d0c0), -0.98, 0.08, 5.7), boxAt(0.42, 0.02, 0.35, mat(0xbfb59a), -0.98, 0.165, 5.7)); // litter box
-  g.add(boxAt(0.14, 0.05, 0.14, mat(0x3a7bd5), -0.62, 0.025, 5.8), boxAt(0.14, 0.05, 0.14, mat(0xd5823a), -0.42, 0.025, 5.8)); // bowls
 
   // --- Chicken coop, on the farm deck past the doorway: pen, nest boxes, perch, feeder, drinker ---
   const wire = new THREE.MeshBasicMaterial({ color: 0x9aa6b6, wireframe: true });
@@ -310,6 +325,7 @@ export function buildRoom(): RoomHandles {
   g.add(cylAt(0.015, 0.015, 1.4, mat(0x8a5a32), COOP.x, 0.45, COOP.z - 0.6, 6).rotateZ(Math.PI / 2)); // perch
   g.add(cylAt(0.08, 0.1, 0.12, mat(0xd04a3a), COOP.x - 0.4, 0.06, COOP.z + 0.75), cylAt(0.07, 0.09, 0.14, mat(0x3a7bd5), COOP.x - 0.1, 0.07, COOP.z + 0.75));
   const coopSign = textSign("Gallinero");
+  coopSign.scale.multiplyScalar(0.7);
   coopSign.position.set(COOP.x, 1.35, COOP.z);
   g.add(coopSign);
   lamp(lamps, g, "gallinero", COOP.gateX, 0.95, COOP.z - 0.9);

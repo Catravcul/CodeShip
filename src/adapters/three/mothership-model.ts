@@ -1,14 +1,20 @@
 import * as THREE from "three";
 import type { MothershipSpec } from "@modules/mothership/domain/mothership";
+import { Mothership } from "@modules/mothership/domain/mothership";
 import { MOUNT_PITCH_FACTOR, mountGrid, type MountFit } from "@modules/mothership/domain/propulsion";
+import { wingCorners } from "@modules/mothership/domain/thermal";
+import { Vec3 } from "@core/math/vec3";
+import { Quat } from "@core/math/quat";
 import type { PartId } from "./ship-model";
 
 /**
  * The mothership seen from outside, in its body frame (spine along z, forward −z): the forward node
  * with the docking port and its approach lights, the non-rotating spine, the two counter-rotating
  * rings (open truss rim with pressurised segments: the habitat module and the big farm deck with its
- * glowing skylights on one, cabins and water tanks on the twin), the radiator wings, the reactor
- * behind its shadow shield and the two thruster pods (what they hold is swappable).
+ * glowing skylights on one, cabins and water tanks on the twin), the pressurised spine modules
+ * (workshop, stores, airlock), the two-sided radiator wings sized from the waste heat and tapered
+ * to stay in the shield's shadow, the reactor behind its conical shadow shield with its Brayton
+ * converters, and the two thruster pods (what they hold is swappable).
  * Systems (life-support machines, farm deck, stores) can be tagged as parts for the ship bay.
  */
 export class MothershipModel {
@@ -38,12 +44,13 @@ export class MothershipModel {
       return c;
     };
 
-    // --- Spine: four longerons and a frame every 8 m (a truss you can see through) ---
+    // --- Spine: four longerons, a frame every 8 m and diagonal bracing on each face (an open truss) ---
     const sl = l.spine.toZ - l.spine.fromZ;
     const sz = (l.spine.toZ + l.spine.fromZ) / 2;
+    const half = l.spine.radiusM * 0.7;
     for (const [x, y] of [[1, 1], [1, -1], [-1, 1], [-1, -1]] as const) {
       const rod = alongZ(0.12, sl, truss, 6);
-      rod.position.set(x * l.spine.radiusM * 0.7, y * l.spine.radiusM * 0.7, sz);
+      rod.position.set(x * half, y * half, sz);
       this.root.add(rod);
     }
     for (let z = l.spine.fromZ; z <= l.spine.toZ; z += 8) {
@@ -51,6 +58,25 @@ export class MothershipModel {
       frame.rotation.z = Math.PI / 4;
       frame.position.z = z;
       this.root.add(frame);
+    }
+    {
+      const bay = 8;
+      const bays = Math.floor(sl / bay);
+      const diag = Math.hypot(bay, 2 * half);
+      const braces = new THREE.InstancedMesh(new THREE.BoxGeometry(0.07, 0.07, diag), truss, bays * 4);
+      const m4 = new THREE.Matrix4();
+      const q = new THREE.Quaternion();
+      const tilt = Math.atan2(2 * half, bay);
+      let k = 0;
+      for (let i = 0; i < bays; i++) {
+        const zc = l.spine.fromZ + (i + 0.5) * bay;
+        const flip = i % 2 ? 1 : -1;
+        for (const [ax, ay, axis] of [[half, 0, "y"], [-half, 0, "y"], [0, half, "x"], [0, -half, "x"]] as const) {
+          q.setFromEuler(axis === "y" ? new THREE.Euler(flip * tilt, 0, 0) : new THREE.Euler(0, flip * tilt, 0));
+          braces.setMatrixAt(k++, m4.compose(new THREE.Vector3(ax, ay, zc), q, new THREE.Vector3(1, 1, 1)));
+        }
+      }
+      this.root.add(braces);
     }
     // Pressurised tunnel through the spine from the node to the hubs (the crew's way to the rings).
     const tunnel = alongZ(0.7, l.twinRingZ - l.nodeZ + r.widthM / 2, shell, 14);
@@ -64,6 +90,25 @@ export class MothershipModel {
     noseCap.rotation.x = -Math.PI / 2;
     noseCap.position.z = l.nodeZ - 4.5;
     this.root.add(node, noseCap);
+    // Pressurised spine modules between the node and the hubs: airlock, stores, workshop.
+    for (const sm of l.spineModules) {
+      const len = sm.toZ - sm.fromZ;
+      const can = alongZ(sm.radiusM, len, shell, 24);
+      can.position.z = (sm.fromZ + sm.toZ) / 2;
+      this.root.add(can);
+      for (const z of [sm.fromZ + 0.15, sm.toZ - 0.15]) {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(sm.radiusM, 0.08, 6, 24), dark);
+        ring.position.z = z;
+        this.root.add(ring);
+      }
+      if (sm.id === "esclusa") {
+        // Outer EVA hatch on the starboard side, with its handrails.
+        const hatch = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.25, 20), dark);
+        hatch.rotation.z = Math.PI / 2;
+        hatch.position.set(sm.radiusM + 0.1, 0, (sm.fromZ + sm.toZ) / 2);
+        this.root.add(hatch);
+      }
+    }
     const p = l.port.position;
     const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.95, 0.5, 24), dark);
     collar.position.set(p.x, p.y + 0.25, p.z);
@@ -90,27 +135,46 @@ export class MothershipModel {
     this.buildRing(this.twin, l.twinRingZ, false, shell, dark, truss, lit, farmGlow, []);
     this.root.add(this.hab, this.twin);
 
-    // --- Radiator wings, edge-on to the reactor ---
+    // --- Radiator wings: two-sided panels, edge-on to the reactor, tapered into the shadow cone ---
     const rad = new THREE.MeshStandardMaterial({ color: 0x9aa3ad, roughness: 0.7, metalness: 0.2, side: THREE.DoubleSide });
-    const rl = l.radiator.toZ - l.radiator.fromZ;
-    for (const s of [-1, 1]) {
-      const wing = box(l.radiator.spanM, 0.12, rl, rad);
-      wing.position.set(s * (l.radiator.innerX + l.radiator.spanM / 2), 0, (l.radiator.fromZ + l.radiator.toZ) / 2);
-      this.root.add(wing);
-      for (let i = 1; i < 6; i++) {
-        const rib = box(l.radiator.spanM, 0.25, 0.25, dark);
-        rib.position.set(wing.position.x, 0, l.radiator.fromZ + (rl * i) / 6);
+    const w = l.radiator;
+    for (const s of [1, -1] as const) {
+      const c = wingCorners(w, s);
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.Float32BufferAttribute([0, 1, 2, 0, 2, 3].flatMap((i) => [c[i]!.x, c[i]!.y, c[i]!.z]), 3));
+      geo.computeVertexNormals();
+      this.root.add(new THREE.Mesh(geo, rad));
+      // Panel seams across the wing and the coolant manifold along its root.
+      const n = 8;
+      for (let i = 1; i < n; i++) {
+        const z = w.fromZ + ((w.toZ - w.fromZ) * i) / n;
+        const span = w.spanM + ((w.spanAftM - w.spanM) * i) / n;
+        const rib = box(span, 0.18, 0.18, dark);
+        rib.position.set(s * (w.innerX + span / 2), 0, z);
         this.root.add(rib);
       }
+      const manifold = alongZ(0.25, w.toZ - w.fromZ, dark, 8);
+      manifold.position.set(s * w.innerX, 0, (w.fromZ + w.toZ) / 2);
+      this.root.add(manifold);
     }
 
-    // --- Reactor behind its shadow shield, at the far end ---
-    const shield = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 1.2, 2.5, 24), dark);
+    // --- Reactor behind its conical shadow shield, and the four Brayton converters ---
+    const ms = new Mothership(spec, Vec3.ZERO, Quat.IDENTITY);
+    const sh = l.shield;
+    // Cylinder +y becomes +z (aft, toward the reactor): narrow top near the reactor, wide base forward.
+    const shield = new THREE.Mesh(new THREE.CylinderGeometry(ms.shieldRadiusAt(sh.nearZ), ms.shieldRadiusAt(sh.farZ), sh.nearZ - sh.farZ, 28), dark);
     shield.rotation.x = Math.PI / 2;
-    shield.position.z = l.reactorZ - 3;
-    const core = new THREE.Mesh(new THREE.SphereGeometry(1.4, 20, 12), new THREE.MeshStandardMaterial({ color: 0x6b6f76, roughness: 0.4, metalness: 0.8 }));
+    shield.position.z = (sh.nearZ + sh.farZ) / 2;
+    const core = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 1.4, 20), new THREE.MeshStandardMaterial({ color: 0x6b6f76, roughness: 0.4, metalness: 0.8 }));
+    core.rotation.x = Math.PI / 2;
     core.position.z = l.reactorZ;
     this.root.add(shield, core);
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+      const conv = alongZ(0.45, 2.4, shell, 12);
+      conv.position.set(Math.cos(a) * 1.6, Math.sin(a) * 1.6, sh.farZ - 3);
+      this.root.add(conv);
+    }
 
     // --- Two thruster pods (mounts), firing aft; what they hold is swappable (setThrusters) ---
     spec.propulsion.mounts.forEach((m, i) => {

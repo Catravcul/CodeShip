@@ -41,9 +41,10 @@ La espina mide 152 m y no gira. Su eje es z, y la proa (−z) mira a Bennu al em
 | Nodo delantero con el puerto de acople | z = −70 m; puerto en su panza | Como el nodo Unity de la ISS. La sonda cuelga debajo, por delante de los anillos, y desde la cabina ve Bennu sin estorbos |
 | Anillo habitable | z = −42 m, radio 56 m, ancho 18 m | El módulo (12 × 4 × 2,6 m) y la cubierta de cultivo (18 × 18 × 7 m) en el suelo, con depósitos de agua al otro lado para equilibrarlo |
 | Anillo gemelo | z = −20 m | Gira al revés con camarotes, almacenes y depósitos de agua |
-| Radiadores | dos alas de 24,6 × 56 m (2755 m²) | De canto respecto al reactor |
-| Reactor y escudo de sombra | z = +74 m | En el extremo opuesto a la tripulación |
-| Propulsores (al empezar, 18 X3) | dos módulos (dorsal y ventral) de 7,5 × 3,4 m, z = +64 m | Empujan hacia proa. Se pueden cambiar: ver «Propulsores intercambiables» |
+| Módulos de la espina | z = −65,5 a −46 m: esclusa, almacén y taller | Como Quest, Leonardo (PMM) y Destiny de la ISS ([interiores.md](interiores.md)) |
+| Radiadores | dos alas trapezoidales de z = +4 a +50 m, 22 m de ancho delante y 8 m detrás: 690 m² de planta cada una | Paneles de dos caras: 1380 m² de planta radian los 2760 m² del estudio. De canto respecto al reactor y dentro de su sombra |
+| Reactor y escudo de sombra | z = +74 m; escudo cónico de z = +70,5 a +72 m | Sombra de 35° de semiángulo (valor de juego) que cubre los anillos, los radiadores, los propulsores y los módulos (test) |
+| Propulsores (al empezar, 18 X3) | dos módulos (dorsal y ventral) de 7,5 × 3,4 m, z = +54 m | Empujan hacia proa. Se pueden cambiar: ver «Propulsores intercambiables» |
 
 Los anillos son una **llanta de celosía** con un pasillo presurizado y segmentos presurizados encima. No son un toro cerrado: un toro presurizado de 56 m de radio, 18 m de ancho y 7 m de alto tendría unos 44 000 m³ por anillo y pesaría miles de toneladas.
 
@@ -61,6 +62,8 @@ Los anillos son una **llanta de celosía** con un pasillo presurizado y segmento
 | Masa específica del sistema de energía | **19 kg/kWe** (90 %: 18–23) | Harnack et al. 2022 |
 | Radiadores | **2760 m²** (90 %: 2300–3500) | Harnack et al. 2022 |
 | Calor que hay que tirar | 3,9 MW | 2 MWe × (1/0,337 − 1) |
+| Emisividad de los radiadores | 0,9 (mínimo 0,8) | Harnack et al. 2022 |
+| Temperatura media de los radiadores | **≈ 409 K** | Nuestra, con Stefan–Boltzmann: 3,93 MW / (0,9 · σ · 2760 m²). Queda por encima de la entrada del compresor (357 K, mismo estudio), así que los 2760 m² son área que radia; ver [interiores.md](interiores.md) |
 
 Resultado, calculado en `Mothership` y comprobado en los tests:
 

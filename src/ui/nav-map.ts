@@ -40,6 +40,16 @@ export interface NavMapDeps {
   onProgram(): void;
 }
 
+/** How a target stands in Nevaeh's missions (modules/missions), for the marks on the map. */
+export interface MissionMark {
+  readonly kind: "principal" | "secundaria";
+  readonly state: "activa" | "hecha" | "bloqueada" | "pendiente";
+  readonly title?: string;
+  readonly why?: string;
+  readonly reward?: string;
+}
+const MARK_TEXT: Record<MissionMark["state"], string> = { activa: "activa", hecha: "hecha", bloqueada: "más adelante", pendiente: "pendiente" };
+
 interface Projected {
   x: number;
   y: number;
@@ -64,6 +74,10 @@ export class NavMap {
   private screen: { t: NavTarget; x: number; y: number }[] = [];
   private chipsHtml = "";
   private readonly home: HTMLElement;
+  /** Set by main: the mission mark of a target (Nevaeh's main missions and side missions). */
+  missionMark?: (targetId: string) => MissionMark | undefined;
+  /** Set by main: open the mission log. */
+  onMissions?: () => void;
 
   constructor(
     root: HTMLElement,
@@ -74,7 +88,7 @@ export class NavMap {
     this.el.className = "nav-map hidden";
     this.el.innerHTML = `
       <div class="nav-head"><div class="nav-title">${esc(deps.title)}</div>
-        <div class="nav-tools"><button data-act="zin" aria-label="Acercar">+</button><button data-act="zout" aria-label="Alejar">−</button><button data-act="view">Cenital</button><button class="x" data-act="close" aria-label="Cerrar mapa">×</button></div></div>
+        <div class="nav-tools"><button data-act="zin" aria-label="Acercar">+</button><button data-act="zout" aria-label="Alejar">−</button><button data-act="view">Cenital</button><button class="missions" data-act="missions">Misiones</button><button class="x" data-act="close" aria-label="Cerrar mapa">×</button></div></div>
       <div class="nav-body"><div class="nav-canvas"><canvas></canvas><div class="nav-hint">Arrastra para girar · toca un asteroide</div></div>
         <div class="nav-side"><div class="nav-chips"></div><div class="nav-card"></div></div></div>`;
     root.appendChild(this.el);
@@ -137,6 +151,13 @@ export class NavMap {
     this.refresh();
   }
 
+  /** Open the map with one target picked (from the mission log). */
+  show(targetId: string): void {
+    const t = this.deps.nav.targets.find((x) => x.id === targetId);
+    if (t) this.picked = t;
+    this.open();
+  }
+
   close(): void {
     this.el.classList.add("hidden");
     document.body.classList.remove("in-map");
@@ -181,6 +202,8 @@ export class NavMap {
         this.elevation = this.elevation > 1.5 ? 0.95 : Math.PI / 2;
         t.textContent = this.elevation > 1.5 ? "Inclinada" : "Cenital";
         return this.draw();
+      case "missions":
+        return this.onMissions?.();
       case "pick":
         this.picked = nav.targets.find((x) => x.id === t.dataset.id);
         this.note = "";
@@ -215,8 +238,10 @@ export class NavMap {
     const ship = this.deps.shipPosition();
     const html = nav.targets
       .map((t) => {
-        const cls = `${t === this.picked ? "on" : ""} ${t === nav.target ? "target" : ""}`;
-        return `<button class="nav-chip ${cls}" data-act="pick" data-id="${esc(t.id)}"><b>${esc(t.name)}</b><span></span></button>`;
+        const m = this.missionMark?.(t.id);
+        const cls = `${t === this.picked ? "on" : ""} ${t === nav.target ? "target" : ""} ${m ? `m-${m.kind} m-${m.state}` : ""}`;
+        const mark = m ? `<i class="mark" title="${m.kind === "principal" ? "Misión de Nevaeh" : "Misión secundaria"}">${m.state === "hecha" ? "✓" : m.kind === "principal" ? "N" : ""}</i>` : "";
+        return `<button class="nav-chip ${cls}" data-act="pick" data-id="${esc(t.id)}"><b>${mark}${esc(t.name)}</b><span></span></button>`;
       })
       .join("");
     if (this.chipsHtml !== html) {
@@ -237,7 +262,7 @@ export class NavMap {
       return;
     }
     const info = this.deps.nav.destination(t);
-    this.card.innerHTML = cardHtml(info, this.note);
+    this.card.innerHTML = cardHtml(info, this.note, this.missionMark?.(t.id));
   }
 
   private pickAt(cx: number, cy: number): void {
@@ -389,6 +414,8 @@ export class NavMap {
         g.lineWidth = 2;
         g.stroke();
       }
+      const m = this.missionMark?.(t.id);
+      if (m) drawMark(g, p.x, p.y, rad, m);
       g.fillStyle = target ? "#bff0ff" : "#e6dfd3";
       g.fillText(t.name, p.x + rad + 7, p.y + 4);
       this.screen.push({ t, x: p.x, y: p.y });
@@ -431,6 +458,45 @@ export class NavMap {
   }
 }
 
+/** Nevaeh's mark: a gold dashed ring and an «N» diamond for a main mission; a small tick for a side mission done. */
+function drawMark(g: CanvasRenderingContext2D, x: number, y: number, rad: number, m: MissionMark): void {
+  const done = m.state === "hecha";
+  if (m.kind === "principal") {
+    g.save();
+    g.beginPath();
+    g.arc(x, y, rad + 10, 0, Math.PI * 2);
+    g.setLineDash(done ? [] : [5, 4]);
+    g.strokeStyle = done ? "#7dffb0aa" : m.state === "activa" ? "#ffcf5a" : "#ffcf5a66";
+    g.lineWidth = m.state === "activa" ? 2.5 : 1.5;
+    g.stroke();
+    const dy = y - rad - 20;
+    g.beginPath();
+    g.moveTo(x, dy - 9);
+    g.lineTo(x + 8, dy);
+    g.lineTo(x, dy + 9);
+    g.lineTo(x - 8, dy);
+    g.closePath();
+    g.fillStyle = done ? "#7dffb0" : "#ffcf5a";
+    g.fill();
+    g.fillStyle = "#1a1000";
+    g.font = "bold 10px ui-monospace, Menlo, monospace";
+    g.textAlign = "center";
+    g.fillText(done ? "✓" : "N", x, dy + 3.5);
+    g.restore();
+  } else if (done) {
+    g.save();
+    g.fillStyle = "#7dffb0";
+    g.font = "bold 12px ui-monospace, Menlo, monospace";
+    g.fillText("✓", x - rad - 12, y + 4);
+    g.restore();
+  }
+}
+
+function missionHtml(m: MissionMark): string {
+  const head = m.kind === "principal" ? `<b>◆ Misión de Nevaeh</b> · ${MARK_TEXT[m.state]}` : `<b>Misión secundaria</b> · ${m.state === "hecha" ? "subyugado" : "sin subyugar"}`;
+  return `<div class="card-mission ${m.kind} ${m.state}">${head}${m.why ? `<p>${esc(m.why)}</p>` : ""}${m.reward ? `<small>Recompensa: ${esc(m.reward)}</small>` : ""}</div>`;
+}
+
 function carrierLine(i: DestinationInfo): string {
   const c = i.trip.carrier!;
   const f = c.facts;
@@ -438,7 +504,7 @@ function carrierLine(i: DestinationInfo): string {
   return `nodriza ${km(c.plan.distanceM)} · Δv ${num(dv, dv < 10 ? 2 : 0)} m/s · ${num(f.propellantKg)} kg de xenón · ${duration(c.plan.totalS)}<br><small>aparca a ${km(f.parkingM)}; la sonda sigue ${km(Math.max(0, f.parkingM - f.approachM))} con su motor</small>`;
 }
 
-function cardHtml(i: DestinationInfo, note: string): string {
+function cardHtml(i: DestinationInfo, note: string, mission?: MissionMark): string {
   const a = i.target.body;
   const d = a.data;
   const dims = d.dimensionsM.value;
@@ -453,6 +519,7 @@ function cardHtml(i: DestinationInfo, note: string): string {
   const badges = `${i.selected ? `<span class="badge target">Destino actual</span>` : ""}${i.persuaded ? `<span class="badge ok">Persuadido</span>` : ""}`;
   return `
     <div class="card-name">${esc(d.name)} ${badges}</div>
+    ${mission ? missionHtml(mission) : ""}
     <dl>
       <dt>Tipo espectral</dt><dd>${esc(d.spectralType.value)}${inferred ? ` <small>inferido del albedo${albedo ? ` ${num(albedo, 3)}` : ""}; sin espectro</small>` : ""}</dd>
       <dt>Tamaño</dt><dd>${num(dims.x / 1000, 2)} × ${num(dims.y / 1000, 2)} × ${num(dims.z / 1000, 2)} km <small>diámetro ${num((a.meanRadiusM * 2) / 1000, 2)} km</small></dd>

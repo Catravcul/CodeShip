@@ -13,7 +13,9 @@ import { Mailbox } from "@modules/story/domain/mailbox";
 import { NEVAEH_LETTERS } from "@modules/story/data/nevaeh";
 import type { Alignment } from "@modules/mothership/domain/docking";
 import { seededRandom } from "../../../content/random";
-import { alerts, commsPanel, dockingPanel, lifePanel, navPanel, panelLevel, powerPanel, propulsionPanel, thrustersFiring, type TripProgress } from "./panels";
+import { MissionLog } from "@modules/missions/domain/mission";
+import { NEVAEH_MISSIONS } from "@modules/missions/data/nevaeh-missions";
+import { alerts, missionsSummary, commsPanel, dockingPanel, lifePanel, navPanel, panelLevel, powerPanel, propulsionPanel, thrustersFiring, type TripProgress } from "./panels";
 
 const ship = () => new Mothership(NODRIZA, Vec3.ZERO, Quat.IDENTITY);
 const burning: TripProgress = { vehicle: "carrier", phase: "burn", remainingM: 5000, etaS: 3600, speedMS: 1, fraction: 0.2 };
@@ -133,6 +135,19 @@ describe("flight deck panels", () => {
     expect(c.letters[1]!.read).toBe(true);
     expect(c.unread).toBe(1);
     expect(c.pendingMissions).toBe(1);
+  });
+
+  it("comms: sums up Nevaeh's mission chain from the mission log", () => {
+    const log = new MissionLog(NEVAEH_MISSIONS, [{ id: "x", name: "X" }]);
+    const m = missionsSummary(log);
+    expect(m.mainTotal).toBe(NEVAEH_MISSIONS.length);
+    expect(m.mainDone).toBe(0);
+    expect(m.active?.targetId).toBe(log.active?.target.id);
+    expect(m.sideTotal).toBe(1);
+    expect(commsPanel([], m).missions).toBe(m);
+    const first = log.active!.target.id;
+    log.update((id) => id === first);
+    expect(missionsSummary(log).mainDone).toBe(1);
   });
 
   it("alerts: a nominal ship is quiet; low xenon, broken machines and an absent probe show up, worst first", () => {

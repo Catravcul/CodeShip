@@ -10,6 +10,7 @@ import {
   commsPanel,
   dockingPanel,
   lifePanel,
+  missionsSummary,
   navPanel,
   panelLevel,
   powerPanel,
@@ -26,6 +27,7 @@ import {
   type ProbeView,
   type PropulsionPanel,
 } from "@modules/flight-deck/application/panels";
+import type { MissionLog } from "@modules/missions/domain/mission";
 import type { NavMap } from "./ui/nav-map";
 import "./ui/flight-deck.css";
 
@@ -42,7 +44,7 @@ const PANELS: readonly [PanelId, string, string][] = [
   ["power", "Energía y calor", "EPS/TCS"],
   ["life", "Vida y hábitat", "ECLSS"],
   ["dock", "Acople", "DOCK"],
-  ["comms", "Radio", "COMM"],
+  ["comms", "Radio y misiones", "COMM"],
 ];
 const TRIP: Record<string, string> = {
   idle: "Sin viaje programado",
@@ -66,6 +68,9 @@ export interface FlightDeckDeps {
   /** Distance from the probe to the mothership's port, m. */
   probeRangeM(): number;
   probe(): ProbeView;
+  /** Nevaeh's missions (modules/missions) and the shared mission log overlay that opens them. */
+  readonly missions?: MissionLog;
+  openMissions?(): void;
 }
 
 interface Views {
@@ -130,10 +135,18 @@ export class FlightDeck {
     this.mapHost.className = "fd-map";
     this.ui.addEventListener("click", (e) => this.onClick(e));
     this.ui.querySelector(".fd-exit")!.addEventListener("click", () => this.leave(this.from));
-    window.addEventListener("keydown", (e) => {
-      if (!this.active || e.repeat) return;
-      if (e.code === "Escape") this.maxed ? this.restore() : this.leave(this.from);
-    });
+    // Capture phase: runs before the overlays' own Escape (mission log, challenge sheet) closes them.
+    window.addEventListener(
+      "keydown",
+      (e) => {
+        if (!this.active || e.repeat || e.code !== "Escape") return;
+        const over = document.body.classList;
+        if (over.contains("in-missions") || over.contains("in-duel")) return;
+        if (this.maxed) this.restore();
+        else this.leave(this.from);
+      },
+      true,
+    );
     matchMedia(COMPACT).addEventListener("change", () => this.active && this.layoutMap());
   }
 
@@ -142,9 +155,9 @@ export class FlightDeck {
   }
 
   enter(from: "interior" | "cabina"): void {
+    this.restore();
     this.from = from;
     this.active = true;
-    this.maxed = null;
     this.letter = null;
     this.html.clear();
     this.lastStatus = this.deps.nav.status;
@@ -178,6 +191,12 @@ export class FlightDeck {
 
   get maximized(): PanelId | null {
     return this.maxed;
+  }
+
+  /** Show one target on the navigation page (the mission log's «Ver en el mapa»). */
+  showTarget(targetId: string): void {
+    if (this.maxed !== "nav") this.maximize("nav");
+    this.deps.map.show(targetId);
   }
 
   maximize(id: PanelId): void {
@@ -234,6 +253,9 @@ export class FlightDeck {
     const id = section?.dataset.panel as PanelId | undefined;
     if (el.closest("[data-back]")) return this.letter ? this.closeLetter() : this.restore();
     if (el.closest("[data-max]") && id) return this.maxed === id ? this.restore() : this.maximize(id);
+    if (el.closest("[data-missions]")) return this.deps.openMissions?.();
+    const onMap = el.closest<HTMLElement>("[data-showmap]");
+    if (onMap) return this.showTarget(onMap.dataset.showmap!);
     const alert = el.closest<HTMLElement>("[data-alert]");
     if (alert) return this.maximize(alert.dataset.alert as PanelId);
     const letter = el.closest<HTMLElement>("[data-letter]");
@@ -260,7 +282,8 @@ export class FlightDeck {
     // Camera at the forward node, looking out along the bow (−z) like the deck's window.
     const l = m.spec.layout;
     const eye = m.toWorld(new Vec3(0, 1.2, l.nodeZ - l.nodeRadiusM - 1.5));
-    const ahead = m.toWorld(new Vec3(0, 1.2, l.nodeZ - 1000));
+    // A little above the bow axis, so the docked probe under the node stays at the sill.
+    const ahead = m.toWorld(new Vec3(0, 90, l.nodeZ - 1000));
     const up = m.orientation.rotate(Vec3.Y);
     this.camera.position.set(eye.x, eye.y, eye.z);
     this.camera.up.set(up.x, up.y, up.z);
@@ -290,7 +313,7 @@ export class FlightDeck {
     const power = powerPanel(d.mothership, trip);
     const life = lifePanel(d.ring, d.habitat);
     const dock = dockingPanel(d.docking, d.probeRangeM(), d.probe());
-    const comms = commsPanel(d.habitat.mailbox?.received ?? []);
+    const comms = commsPanel(d.habitat.mailbox?.received ?? [], d.missions ? missionsSummary(d.missions) : undefined);
     const nav = navPanel(d.nav.target.name, d.nav.status, trip);
     return { nav, prop, power, life, dock, comms, alerts: alerts({ prop, life, dock, comms, nav }) };
   }
@@ -437,7 +460,13 @@ export class FlightDeck {
     const list = (full ? c.letters : c.letters.slice(0, 3))
       .map((l) => `<button class="fd-msg ${l.read ? "" : "new"}" data-letter="${esc(l.id)}"><b>${esc(l.subject)}</b><small>${l.call ? "Llamada" : "Carta"} de ${esc(l.from)} · día ${num(l.day, 1)}${l.missionPending ? " · misión" : ""}</small></button>`)
       .join("");
-    return `<div class="fd-kv"><span>Sin leer</span><b>${c.unread}</b><span>Misiones abiertas</span><b>${c.pendingMissions}</b></div><div class="fd-msgs">${list || `<span class="fd-quiet">Sin mensajes</span>`}</div>`;
+    const m = c.missions;
+    const missions = m
+      ? `<div class="fd-mission">${m.active ? `<small>${esc(m.active.chapter)}</small><b>${esc(m.active.title)}</b><span>Objetivo: ${esc(m.active.targetName)}</span>` : `<b>Sin misión principal activa</b>`}
+          <span>Principales ${m.mainDone} / ${m.mainTotal} · secundarias ${m.sideDone} / ${m.sideTotal}</span>
+          ${full ? `<div class="fd-actions"><button data-missions>Registro de misiones</button>${m.active ? `<button data-showmap="${esc(m.active.targetId)}">Ver en el mapa</button>` : ""}</div>` : ""}</div>`
+      : "";
+    return `${missions}<div class="fd-kv"><span>Sin leer</span><b>${c.unread}</b><span>Cartas con misión</span><b>${c.pendingMissions}</b></div><div class="fd-msgs">${list || `<span class="fd-quiet">Sin mensajes</span>`}</div>`;
   }
 
   private sources(list: readonly string[]): string {

@@ -5,6 +5,7 @@ import type { SpinRing } from "@modules/gravity/domain/spin-gravity";
 import type { Received } from "@modules/story/domain/mailbox";
 import type { AutopilotPhase } from "@modules/navigation/application/autopilot";
 import type { TripStatus } from "@modules/navigation/application/navigator";
+import type { MissionLog } from "@modules/missions/domain/mission";
 
 /**
  * View-models for the mothership's flight deck (docs/design/cabina-nodriza.md): each display page
@@ -258,14 +259,37 @@ export interface CommsLine {
   readonly missionPending: boolean;
 }
 
+/** Nevaeh's mission chain as the radio page sums it up (from modules/missions). */
+export interface MissionsSummary {
+  /** The main mission to fly now, if one is playable. */
+  readonly active?: { readonly title: string; readonly targetId: string; readonly targetName: string; readonly chapter: string };
+  readonly mainDone: number;
+  readonly mainTotal: number;
+  readonly sideDone: number;
+  readonly sideTotal: number;
+}
+
+export function missionsSummary(log: MissionLog): MissionsSummary {
+  const a = log.active;
+  const side = log.sideCount;
+  return {
+    ...(a ? { active: { title: a.title, targetId: a.target.id, targetName: a.target.name, chapter: a.chapterTitle } } : {}),
+    mainDone: log.mainDone,
+    mainTotal: log.main.length,
+    sideDone: side.done,
+    sideTotal: side.total,
+  };
+}
+
 export interface CommsPanel {
+  readonly missions?: MissionsSummary;
   readonly unread: number;
   readonly pendingMissions: number;
   /** Newest first. */
   readonly letters: readonly CommsLine[];
 }
 
-export function commsPanel(received: readonly Received[]): CommsPanel {
+export function commsPanel(received: readonly Received[], missions?: MissionsSummary): CommsPanel {
   const letters = received
     .map((r) => ({
       id: r.letter.id,
@@ -277,7 +301,7 @@ export function commsPanel(received: readonly Received[]): CommsPanel {
       missionPending: !!r.letter.mission && !r.missionDone,
     }))
     .reverse();
-  return { unread: letters.filter((l) => !l.read).length, pendingMissions: letters.filter((l) => l.missionPending).length, letters };
+  return { ...(missions ? { missions } : {}), unread: letters.filter((l) => !l.read).length, pendingMissions: letters.filter((l) => l.missionPending).length, letters };
 }
 
 // --- Navigation -------------------------------------------------------------------

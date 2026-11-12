@@ -58,3 +58,23 @@ body.in-cockpit .autopilot-tag.on { display: block; }
   .autopilot-tag { top: auto; bottom: 31vh; left: 8px; transform: none; width: calc(56vw - 8px); padding: 6px 8px; font-size: 11px; }
   .autopilot-tag .ap-row { flex-direction: column; align-items: stretch; gap: 6px; }
 }
+
+/* Mission marks (docs/design/misiones.md): Nevaeh's main missions in gold, side missions done in green. */
+.nav-tools .missions { color: #1a1000; background: #ffcf5a; border-color: #ffcf5a; font-weight: 600; }
+.nav-chip .mark { display: inline-block; min-width: 16px; margin-right: 5px; font-style: normal; text-align: center; border-radius: 4px; font-size: 11px; }
+.nav-chip.m-principal .mark { color: #1a1000; background: #ffcf5a; }
+.nav-chip.m-principal.m-hecha .mark, .nav-chip.m-secundaria.m-hecha .mark { color: #001a0c; background: #7dffb0; }
+.nav-chip.m-secundaria:not(.m-hecha) .mark { display: none; }
+.nav-chip.m-principal.m-activa { border-color: #ffcf5a; box-shadow: 0 0 0 1px #ffcf5a55 inset; }
+.card-mission { margin: 0 0 10px; padding: 8px 10px; border-radius: 10px; background: #ffffff0d; border-left: 3px solid #7fdcff66; font-size: 12px; }
+.card-mission.principal { background: #ffcf5a14; border-left-color: #ffcf5a; }
+.card-mission.principal b { color: #ffcf5a; }
+.card-mission.hecha { border-left-color: #7dffb0; }
+.card-mission p { margin: 4px 0 2px; line-height: 1.35; }
+.card-mission small { margin-left: 0 !important; }
+/* Narrow phones: the title gets its own line so the tools (with «Misiones») fit. */
+@media (max-width: 520px) {
+  .nav-head { flex-wrap: wrap; row-gap: 6px; }
+  .nav-title { flex-basis: 100%; }
+  .nav-tools { margin-left: auto; }
+}

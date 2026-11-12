@@ -224,7 +224,7 @@ Dos mandos (Flotar y Mirar) en las esquinas de abajo y ▲▼ en medio, para sub
 
 ### Archivos
 
-- Dominio: `modules/station/domain/interior.ts` (`StationInterior`: volúmenes, escotillas, esclusa, cara hacia la que se mira, códigos, objeto cercano, estiba) y `modules/gravity/domain/zero-g.ts`. Datos: `modules/station/data/interior.ts`. Tests: `interior.test.ts` (16) y `zero-g.test.ts` (6).
+- Dominio: `modules/station/domain/interior.ts` (`StationInterior`: volúmenes, escotillas, esclusa, cara hacia la que se mira, códigos, objeto cercano, estiba) y `modules/gravity/domain/zero-g.ts`. Datos: `modules/station/data/interior.ts`. Tests: `interior.test.ts` (15) y `zero-g.test.ts` (6).
 - Adaptadores: `adapters/three/interior/station-rooms.ts` (la escena), `src/station-interior.ts` (modo, mandos y HUD) y `src/ui/station-interior.css`.
 - Compartidos: `main.ts` (crear el modo, el bucle, la vuelta desde la pantalla), `station-dock.ts` (botón «Entrar en la estación») y `interior/zones.ts` (usa `floatStep`).
 

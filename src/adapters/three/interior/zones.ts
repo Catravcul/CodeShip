@@ -51,6 +51,8 @@ export class GravityZones {
   enabled = false;
   /** Called when she goes through the hatch at the end of the spine. */
   onCockpit?: () => void;
+  /** Called at the side hatch of the spine module that leads to the mothership's flight deck. */
+  onFlightDeck?: () => void;
 
   constructor(
     container: HTMLElement,
@@ -144,6 +146,9 @@ export class GravityZones {
     } else if (this.zone === "eje" && !this.autoDown && this.p.distanceTo(new THREE.Vector3(L.x, L.axisY - 0.6, L.z)) < 1.4) {
       label = "Bajar al anillo";
       this.action = () => this.descend();
+    } else if (this.zone === "eje" && this.onFlightDeck && Math.abs(this.p.x - L.deckHatchX) < 1.6) {
+      label = "Ir al puente de mando";
+      this.action = () => this.onFlightDeck?.();
     } else if (this.zone === "eje" && this.p.x > L.moduleEndX - 2.5) {
       label = "Ir a la cabina de la sonda";
       this.action = () => this.onCockpit?.();

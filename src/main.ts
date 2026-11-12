@@ -74,6 +74,7 @@ import { Navigator } from "@modules/navigation/application/navigator";
 import { asteroidTarget } from "@modules/navigation/domain/nav-target";
 import { NavigationMode } from "./navigation";
 import { mothershipCarrier } from "@modules/navigation/application/mothership-carrier";
+import { FlightDeck } from "./flight-deck";
 import { MissionLog } from "@modules/missions/domain/mission";
 import { MissionControl } from "@modules/missions/application/mission-control";
 import { MISSION_LETTERS, NEVAEH_MISSIONS } from "@modules/missions/data/nevaeh-missions";
@@ -267,7 +268,7 @@ view.addButton("map-btn", () => navMode.toggle()).textContent = "Mapa";
 const missionLog = new MissionLogPanel(root, missions, habitat.mailbox);
 navMode.map.missionMark = (id) => missionLog.mark(id);
 navMode.map.onMissions = () => missionLog.open();
-missionLog.onShowOnMap = (id) => navMode.map.show(id);
+missionLog.onShowOnMap = (id) => (deck.active ? deck.showTarget(id) : navMode.map.show(id));
 const missionsBtn = view.addButton("missions-btn", () => !duelView.visible && missionLog.open());
 const regionTag = document.createElement("div");
 regionTag.className = "region-tag";
@@ -275,7 +276,7 @@ root.appendChild(regionTag);
 const regionTitle = `${region.data.name} · ${region.heliocentricAU().length().toFixed(2).replace(".", ",")} UA del Sol`;
 window.addEventListener("keydown", (e) => {
   if (e.code === "KeyG" && !e.repeat && !interior.active) flight.landingAssist = !flight.landingAssist;
-  if (e.code === "KeyK" && !e.repeat && !interior.active && !bay.active && !duelView.visible) dockBtn.click();
+  if (e.code === "KeyK" && !e.repeat && !interior.active && !bay.active && !duelView.visible && !deck.active) dockBtn.click();
 });
 const duelSession = () => {
   const d = expedition.duel!;
@@ -321,6 +322,41 @@ if (interior.zones)
     view.setMode("cabina");
     modeBtn.textContent = "Ir al interior";
   };
+// The mothership's flight deck: from the spine's side hatch, or from the probe's cockpit while docked (docs/design/cabina-nodriza.md).
+const deck = new FlightDeck(root, {
+  mothership,
+  ring,
+  habitat,
+  docking,
+  nav,
+  map: navMode.map,
+  missions: missions.log,
+  openMissions: () => missionLog.open(),
+  probeRangeM: () => flight.state.position.sub(mothership.port.position).length(),
+  probe: () => ({
+    name: ship.name,
+    hullIntegrity: ship.hullIntegrity,
+    propellants: [
+      { label: "MMH/NTO", kg: ship.propellantKg("MMH/NTO"), capacityKg: ship.propellantCapacityKg("MMH/NTO") },
+      { label: "Hidracina", kg: ship.propellantKg("Hydrazine"), capacityKg: ship.propellantCapacityKg("Hydrazine") },
+    ],
+  }),
+});
+if (interior.zones)
+  interior.zones.onFlightDeck = () => {
+    interior.exit();
+    deck.enter("interior");
+  };
+deck.onExit = (to, why) => {
+  if (to === "interior") interior.enter();
+  else view.setMode("cabina");
+  modeBtn.textContent = interior.active ? "Ir a la cabina" : "Ir al interior";
+  if (why) flash(why, 8);
+};
+const deckBtn = view.addButton("deck-btn", () => !duelView.visible && docking.docked && deck.enter("cabina"));
+deckBtn.textContent = "Puente de la nodriza";
+// M and «Mapa» on the deck open its navigation page.
+navMode.toggleOverride = () => deck.active && (deck.toggleNav(), true);
 let lastPhase = expedition.phase;
 
 // Ship bay: the ship from outside, its parts' state and swaps. Reached from the cockpit and the habitat.
@@ -348,7 +384,7 @@ const stationScreen = new StationScreen(root, stationOps, ship, expedition, duel
 stationScreen.onExit = () => view.center();
 const stationBtn = view.addButton("estacion-btn", () => !duelView.visible && !bay.active && !interior.active && !evaMode.active && stationScreen.enter());
 window.addEventListener("keydown", (e) => {
-  if (e.code === "KeyB" && !e.repeat && !interior.active && !duelView.visible) bay.active ? bay.exit() : openBay("cabina");
+  if (e.code === "KeyB" && !e.repeat && !interior.active && !duelView.visible && !deck.active) bay.active ? bay.exit() : openBay("cabina");
 });
 
 const action = document.createElement("button");
@@ -422,6 +458,7 @@ window.addEventListener("resize", () => {
   interior.resize();
   bay.resize();
   stationScreen.resize();
+  deck.resize();
 });
 
 // --- Loop -------------------------------------------------------------------
@@ -429,7 +466,7 @@ let last = performance.now();
 renderer.setAnimationLoop((now) => {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
-  const cmd = interior.active || bay.active || evaMode.active || stationScreen.active || navMode.blocksInput || missionLog.visible ? NO_INPUT : mergeCommands(pilot.command(), touch.command());
+  const cmd = interior.active || deck.active || bay.active || evaMode.active || stationScreen.active || navMode.blocksInput || missionLog.visible ? NO_INPUT : mergeCommands(pilot.command(), touch.command());
   const idle = cmd.mainThrottle === 0 && cmd.translation.length() === 0 && cmd.rotation.length() === 0;
   // Time warp only on quiet cruise far from the surface, so landing stays real-time.
   const far = flight.telemetry().distanceToSurface >= WARP_MIN_DISTANCE_M;
@@ -449,7 +486,8 @@ renderer.setAnimationLoop((now) => {
   }
   for (const e of docking.drainEvents()) {
     if (e.type === "docked") flash("Acoplada: ganchos cerrados. Ya puedes ir al interior de la nodriza");
-    if (e.type === "undocked") flash("Desacoplada: los muelles te separan a 0,08 m/s");
+    // Leaving the deck at a trip's handover already said why.
+    if (e.type === "undocked" && !(nav.status === "autopilot" && performance.now() < flashUntil)) flash("Desacoplada: los muelles te separan a 0,08 m/s");
     if (e.type === "rebound") flash(`No engancha: ${e.failures.join(" · ")}${e.damage > 0 ? " · golpe en el casco" : ""}`, 7);
   }
   // Shield nodes absorb part of the jolt.
@@ -480,8 +518,8 @@ renderer.setAnimationLoop((now) => {
   // The station's machines run on the same clock as life on board.
   stationOps.station.tick(dt * warp * STATION_TUNING.hoursPerSecond);
   interior.update(dt);
-  view.enabled = !interior.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active && !navMode.mapOpen && !missionLog.visible;
-  navMode.canOpen = () => !interior.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active;
+  view.enabled = !interior.active && !deck.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active && !navMode.mapOpen && !missionLog.visible;
+  navMode.canOpen = () => !interior.active && !deck.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active;
   navMode.update(dt, view.warpRequested);
   // The mothership moves on trips: keep its model where the domain has it.
   mothershipModel.root.position.set(mothership.position.x, mothership.position.y, mothership.position.z);
@@ -494,6 +532,12 @@ renderer.setAnimationLoop((now) => {
   if (bay.active) {
     bay.update(dt);
     renderer.render(bay.scene, bay.camera);
+    return;
+  }
+  if (deck.active) {
+    deck.update(dt);
+    asteroidMesh.rotation.y = bennu.spinRadS * flight.simTimeS;
+    renderer.render(scene, deck.camera);
     return;
   }
   if (stationScreen.active) {
@@ -520,6 +564,7 @@ renderer.setAnimationLoop((now) => {
   if (dockBtn.textContent !== dockText) dockBtn.textContent = dockText;
   dockBtn.classList.toggle("on", docking.assist && !docking.docked);
   dockBtn.classList.toggle("hidden", !docking.docked && !docking.inRange());
+  deckBtn.classList.toggle("hidden", !docking.docked);
   modeBtn.classList.toggle("off", !docking.docked && !interior.active);
   mothershipModel.update(dt, ring.omegaRadS, now / 1000);
 
@@ -559,4 +604,4 @@ renderer.setAnimationLoop((now) => {
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, station: stationScreen, stationOps, nav, navMode, missions, missionLog };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, station: stationScreen, stationOps, nav, navMode, missions, missionLog, deck };

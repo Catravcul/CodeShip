@@ -1,6 +1,11 @@
 /* --- Navigation map and trip autopilot (docs/design/navegacion.md) ------------ */
 .nav-map { position: fixed; inset: 0; z-index: 9; display: flex; flex-direction: column; background: radial-gradient(ellipse at 50% 40%, #0a1a26f2, #02060af7 75%); color: #d8f6ff; font-size: 13px; }
 .nav-map.hidden { display: none; }
+/* The map as a panel of the mothership's flight deck: same map, sized by its host (docs/design/cabina-nodriza.md). */
+.nav-map { container: navmap / size; }
+.nav-map.embedded { position: absolute; z-index: auto; background: radial-gradient(ellipse at 50% 40%, #0a1a26, #02060a 80%); }
+.nav-map.embedded .nav-tools .x { display: none; }
+.nav-map.embedded .nav-head { padding-top: 10px; }
 body.in-map .hud, body.in-map .help, body.in-map .reticle, body.in-map .banner, body.in-map .action, body.in-map .touch, body.in-map .mode-btn, body.in-map .flight-bar, body.in-map .cam-tag, body.in-map .pilot-look, body.in-map .region-tag, body.in-map .sky-labels, body.in-map .nano-card, body.in-map .autopilot-tag { display: none !important; }
 .nav-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; padding-top: max(10px, env(safe-area-inset-top)); }
 .nav-title { flex: 1; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #7fdcff; }
@@ -11,7 +16,7 @@ body.in-map .hud, body.in-map .help, body.in-map .reticle, body.in-map .banner, 
 .nav-canvas { position: relative; flex: 1 1 45%; min-height: 180px; touch-action: none; }
 .nav-canvas canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .nav-hint { position: absolute; right: 10px; bottom: 8px; font-size: 11px; opacity: 0.55; pointer-events: none; }
-.nav-side { flex: 0 1 auto; max-height: 52vh; display: flex; flex-direction: column; min-height: 0; border-top: 1px solid #7fdcff33; background: #04121acc; }
+.nav-side { flex: 0 1 auto; max-height: 52cqh; display: flex; flex-direction: column; min-height: 0; border-top: 1px solid #7fdcff33; background: #04121acc; }
 .nav-chips { display: flex; gap: 6px; overflow-x: auto; padding: 8px 10px; flex: none; }
 .nav-chip { flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 6px 10px; font: inherit; font-size: 12px; color: #e6dfd3; background: #0b1c24; border: 1px solid #ffffff22; border-radius: 10px; }
 .nav-chip span { opacity: 0.7; font-size: 11px; }
@@ -31,9 +36,9 @@ body.in-map .hud, body.in-map .help, body.in-map .reticle, body.in-map .banner, 
 .card-actions { display: flex; gap: 8px; margin-top: 10px; }
 .card-actions button { flex: 1; min-height: 46px; font-size: 15px; }
 .card-actions .primary { color: #001018; background: #58d6ff; border-color: #58d6ff; font-weight: 600; }
-@media (min-aspect-ratio: 1/1) {
+@container navmap (min-aspect-ratio: 1/1) and (min-width: 600px) {
   .nav-body { flex-direction: row; }
-  .nav-side { flex: 0 0 min(400px, 40vw); max-height: none; border-top: 0; border-left: 1px solid #7fdcff33; }
+  .nav-side { flex: 0 0 min(400px, 40cqw); max-height: none; border-top: 0; border-left: 1px solid #7fdcff33; }
   .nav-chips { flex-wrap: wrap; }
 }
 

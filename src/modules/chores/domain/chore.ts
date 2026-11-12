@@ -24,7 +24,9 @@ export type ChoreKind =
   | "cultivo-esterilizar"
   | "reparar-maquina"
   | "atender-paciente"
-  | "mision";
+  | "nano-convertir"
+  | "nano-programar"
+  | "nano-reparar";
 
 /** A task on board, done by solving code challenges in order. */
 export interface Chore {

@@ -1,7 +1,20 @@
-import type { Exercise } from "@modules/mind-duel/domain/exercise";
-
 /** Something that happened on board or in flight that a letter can answer to. */
 export type StoryEvent = "sacudida" | "asteroide-persuadido" | "asteroide-furioso" | "familia";
+
+/**
+ * What a nano_net mission asks for: plant a core, teach it a stage, or repair a fault. Missions are
+ * code challenges done landed on the core (modules/nano-net), not on the ship's panel.
+ */
+export type NanoGoal = "nucleo" | "generar" | "mover" | "cubrir" | "enlazar" | "reparar";
+
+/** A mission in a letter. `faultId` ties a repair mission to one fault. */
+export interface Mission {
+  readonly title: string;
+  readonly goal: NanoGoal;
+  readonly faultId?: string;
+  /** Where to go and what to do, shown under the letter. */
+  readonly where: string;
+}
 
 /** When a letter reaches the ship's radio. */
 export type LetterTrigger =
@@ -10,9 +23,11 @@ export type LetterTrigger =
   | { readonly kind: "mission-done"; readonly letterId: string; readonly days: number }
   | { readonly kind: "event"; readonly event: StoryEvent }
   /** On a given day of the trip (calls from friends). */
-  | { readonly kind: "day"; readonly day: number };
+  | { readonly kind: "day"; readonly day: number }
+  /** Written on the spot and handed to `Mailbox.post` (fault reports). */
+  | { readonly kind: "posted" };
 
-/** A letter: text, an optional code example and an optional mission (a chain of code challenges). */
+/** A letter: text, an optional code example and an optional nano_net mission. */
 export interface Letter {
   readonly id: string;
   readonly from: string;
@@ -23,7 +38,7 @@ export interface Letter {
   readonly body: readonly string[];
   readonly example?: { readonly pseudo: string; readonly js: string };
   readonly postscripts: readonly string[];
-  readonly mission?: { readonly title: string; readonly exercises: readonly Exercise[] };
+  readonly mission?: Mission;
   readonly trigger: LetterTrigger;
   /** Where the text comes from (the 2023 draft, or new). */
   readonly origin: string;
@@ -40,6 +55,8 @@ export interface Received {
 export class Mailbox {
   private readonly inbox: Received[] = [];
   private readonly doneAt = new Map<string, number>();
+  /** Goals reached before their letter arrived: that letter's mission comes already done. */
+  private readonly achieved = new Set<NanoGoal>();
   private fresh: Letter[] = [];
   private day = 0;
 
@@ -86,6 +103,21 @@ export class Mailbox {
     this.doneAt.set(letterId, this.day);
   }
 
+  /** The nano_net reached a goal: every pending mission asking for it is done (a repair only for its fault). */
+  achieve(goal: NanoGoal, faultId?: string): void {
+    if (goal !== "reparar") this.achieved.add(goal);
+    for (const r of this.inbox) {
+      const m = r.letter.mission;
+      if (!m || r.missionDone || m.goal !== goal || (m.faultId && m.faultId !== faultId)) continue;
+      this.completeMission(r.letter.id);
+    }
+  }
+
+  /** A letter written on the spot (Nevaeh announcing a fault). Ignored if one with that id arrived already. */
+  post(letter: Letter): void {
+    if (!this.has(letter.id)) this.deliver(letter);
+  }
+
   /** Letters delivered since the last call. */
   drainNew(): Letter[] {
     const out = this.fresh;
@@ -97,7 +129,9 @@ export class Mailbox {
     return this.inbox.some((r) => r.letter.id === id);
   }
   private deliver(l: Letter): void {
-    this.inbox.push({ letter: l, day: this.day, read: false, missionDone: false });
+    const done = !!l.mission && !l.mission.faultId && this.achieved.has(l.mission.goal);
+    this.inbox.push({ letter: l, day: this.day, read: false, missionDone: done });
+    if (done) this.doneAt.set(l.id, this.day);
     this.fresh.push(l);
   }
 }

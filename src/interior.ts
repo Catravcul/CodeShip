@@ -41,8 +41,6 @@ const stationFor = (c: Chore): Station["id"] => {
       return "perros";
     case "programar-animal":
       return c.id.includes("-perro-") ? "perros" : c.id.includes("-gallina-") ? "gallinero" : "gatos";
-    case "mision":
-      return "panel";
     default:
       if (c.targetId?.startsWith("bancal")) return "terreno";
       return c.machine ? MACHINE_STATION[c.machine as MachineId] : "huerto";
@@ -53,7 +51,7 @@ const choreText = (c: Chore): SessionText => ({
   title: c.title,
   progress: c.kind === "yoga" ? "Posturas" : "Pasos",
   lives: "Intentos",
-  order: c.kind === "programar-animal" ? "Ordena su programa" : c.kind === "mision" ? "Ordena la declaración" : "Ordena los pasos",
+  order: c.kind === "programar-animal" ? "Ordena su programa" : "Ordena los pasos",
   submit: "Hacerlo",
   ok: c.kind === "yoga" ? "Entras en la postura" : c.kind === "cocinar" ? "Paso hecho" : "Bien hecho",
   bad: "Así no: inténtalo otra vez",
@@ -560,7 +558,7 @@ export class Interior {
       .map(
         (r) =>
           `<button class="chore ${r.read ? "" : "unread"}" data-letter="${r.letter.id}"><b>${esc(r.letter.subject)}</b><span>${r.letter.channel === "llamada" ? "Llamada de" : "De"} ${esc(r.letter.from)} · día ${Math.floor(r.day) + 1}</span>${
-            r.letter.mission ? `<em>${r.missionDone ? "Misión hecha" : `Misión: ${r.letter.mission.exercises.length} retos`}</em>` : ""
+            r.letter.mission ? `<em>${r.missionDone ? "Misión hecha" : "Misión de la nano_net"}</em>` : ""
           }</button>`,
       )
       .join("");
@@ -574,9 +572,9 @@ export class Interior {
     if (!box || !r) return;
     box.read(id);
     const l = r.letter;
-    const chore = this.currentChores().find((c) => c.kind === "mision" && c.targetId === id);
     const example = l.example ? `<pre>${esc(l.example.pseudo)}\n<i>${esc(l.example.js)}</i></pre>` : "";
-    const action = l.mission ? (r.missionDone ? `<div class="done">✓ Misión hecha</div>` : chore ? `<button class="go" data-chore="${chore.id}">Hacer la misión en el panel</button>` : "") : "";
+    // nano_net missions are flown: they are done landed on the core, from the cockpit.
+    const action = l.mission ? (r.missionDone ? `<div class="done">✓ Misión hecha</div>` : `<div class="done mission"><b>${esc(l.mission.title)}</b><br>${esc(l.mission.where)}</div>`) : "";
     this.board.innerHTML = `<div class="board-head"><button data-radio>‹ Radio</button><button data-close>✕</button></div>
       <div class="letter">
         <div class="letter-head">${portrait(l.from)}<div><b>${esc(l.subject)}</b><small>${l.channel === "llamada" ? `Llamada de ${esc(l.from)} (transcripción)` : `De ${esc(l.from)} para ${esc(l.to)}`}</small></div></div>

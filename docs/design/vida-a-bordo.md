@@ -234,14 +234,19 @@ Se camina con los pies en el suelo porque el módulo es un **anillo giratorio co
 
 Decisión de Berón (2026-11-12): se rescata la historia del borrador. **Doménica** es la protagonista. **Nevaeh** le escribe cartas que llegan por la **radio de la nave** (botón «Radio», con contador de no leídas). Están en `modules/story`.
 
+Las misiones del borrador se hacían en el panel de la nave. Desde la nano_net (2026-11-12) cada carta anuncia una etapa de un núcleo o una avería, y la misión se cumple **aterrizado en el núcleo**, con retos de código. Ver [nano-net.md](nano-net.md).
+
 | Carta | Llega | Misión |
 | --- | --- | --- |
-| Configurar la nano_net: números (borrador, `number.js`) | Al empezar | `let pulsosPorHora = 20`, `capasDeOnda = 10`, `girosPorHora = 60`, y distinguir un número |
-| Configurar la nano_net: textos (borrador, `text.js`) | Medio día después de la misión anterior | Los códigos `'3396815'`, `'8819618'` y `'441319'`, y distinguir un texto |
-| Encendido y apagado (borrador, `boolean.js`) | Medio día después de la anterior | `A001Encendido = true`, `P003Encendido = false`, `A002Encendido = true`, y un `si` con booleano |
+| La nano_net necesita un núcleo (borrador, `number.js`) | Al empezar | Convertir a Bennu en núcleo |
+| Que el núcleo aprenda a generar nodos (borrador, `text.js`) | 0,25 días después de la misión anterior | Etapa «generar nodos» |
+| Mover los nodos a su órbita (nueva) | Igual | Etapa «mover nodos» |
+| Cerrar el anillo y cubrir un área (borrador, `boolean.js`) | Igual | Etapa «cubrir un área» |
+| Enlazar tu red con la nuestra (nueva) | Igual | Etapa «enlazar redes» |
+| Avería en la nano_net (generada) | Con cada avería nueva | Reparar esa avería en el núcleo |
 | ¿Estáis bien? (nueva) | Tras la primera sacudida | — |
 
-Las misiones repiten la mecánica del borrador: **ordenar las piezas** `let`, nombre, `=` y valor. Se hacen en el panel de la mente de la nave. Las posdatas siguen el arco del borrador: los seres queridos de Doménica escriben preocupados, el fallo de comunicaciones se investiga y al final «alguien estaba detrás». La carta nueva lo continúa.
+Las variables del borrador (`pulsosPorHora = 20`, `'3396815'`, `A001Encendido = true`…) siguen vivas dentro de los retos del núcleo. Las posdatas siguen el arco del borrador: los seres queridos de Doménica escriben preocupados, el fallo de comunicaciones se investiga y al final «alguien estaba detrás». La carta nueva lo continúa.
 
 El retrato original de Nevaeh se perdió (el borrador apuntaba a `/img/nevaeh/face_100px.webp`). Ahora se dibuja a partir de su hoja de diseño de Cold Sanctuary; ver más abajo.
 
@@ -324,9 +329,9 @@ En el juego (`story/data/friends.ts`):
 - **Kushal:** gorro de lana rojo, gafas redondas, barba de unos días y chaleco morado con cuello de borrego.
 - **Doménica:** aún no tiene hoja de diseño.
 
-**Próximo:** la nano_net.
+**La nano_net** ya está: ver [nano-net.md](nano-net.md).
 
-- Las misiones de Nevaeh serán vuelos al núcleo que falla, que se arregla con un reto de código.
+- Las misiones de Nevaeh son vuelos al núcleo que falla, que se arregla con un reto de código.
 - Un asteroide subyugado puede convertirse en **núcleo** de la red. Al programarlo, aprende a generar nodos, moverlos, conectarlos para cubrir un área y unirse a otra red.
 
 ## Qué hay implementado
@@ -350,11 +355,11 @@ En el juego (`story/data/friends.ts`):
 | Yoga y recetas de Cold Sanctuary | `wellness/data/yoga.ts`, `kitchen/data/recipes.ts` | ✓ |
 | Panel de la mente de la nave y reparación por retos | `chores/application/catalog.ts`, `src/interior.ts` | ✓ (cambiar piezas: pendiente) |
 | Interior 3D: caminar, huerto, cocina, molino, laboratorio, enfermería, panel, esterilla, gatos, gallinero | `src/interior.ts`, `src/adapters/three/interior/` | ✓ |
-| Cartas de Nevaeh a Doménica con misiones | `modules/story`, radio en `src/interior.ts` | ✓ con tests |
+| Cartas de Nevaeh a Doménica con misiones de la nano_net | `modules/story`, radio en `src/interior.ts` | ✓ con tests |
 | Gallinas libres, chihuahuas, lazos y familias entre especies | `modules/family`, `pets/domain/dog.ts`, `pets/data/family-lessons.ts` | ✓ con tests |
 | Cubierta de cultivo y autosuficiencia | `life-support/domain/sustainability.ts`, `src/adapters/three/interior/farm-deck.ts` | ✓ con tests |
 | Prólogo de Nevaeh, llamadas de Kushal y retratos | `story/data/friends.ts`, `src/ui/portraits.ts` | ✓ con tests |
-| nano_net: núcleos hechos de asteroides | — | siguiente PR |
+| nano_net: núcleos hechos de asteroides, etapas, averías y reparaciones | `modules/nano-net`, `src/ui/nano-net-panel.ts`, `src/adapters/three/nano-net-view.ts` | ✓ con tests |
 | Viaje automático programado entre asteroides | — | pendiente |
 
 Los números de cuidado sin fuente (velocidad de secado, ritmo de juego y de cariño, probabilidad de mordisco, días por etapa) están marcados en el código como **ajuste de juego**. Así se distinguen de los datos reales.

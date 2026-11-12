@@ -16,6 +16,17 @@ export interface TripFacts {
   readonly deltaVAvailableMS: number;
   /** Detours around rocks on the route. */
   readonly detours: number;
+  /** Set when the trip ends docked to a structure's port instead of near an asteroid. */
+  readonly dock?: DockFacts;
+}
+
+/** How a dock trip ends: «Estación» or «Nave nodriza», where the autopilot stops and the IDSS contact speeds. */
+export interface DockFacts {
+  readonly what: string;
+  /** Distance from the port where the docking assist takes over, metres. */
+  readonly handoverM: number;
+  readonly contactMs: number;
+  readonly closingMaxMs: number;
 }
 
 const hash = (s: string) => {
@@ -68,11 +79,12 @@ export function tripChore(f: TripFacts): Chore {
       [`encender el motor ${burn} s hasta ${num(v)} m/s`, `motor.encender(${burn});`],
       [`apagar y navegar ${km(p.coastDistanceM)} sin empuje`, `nave.navegar(${Math.round(p.coastDistanceM)});`],
       ["dar la vuelta: la tobera mira al destino", "nave.voltear();"],
-      [`frenar ${burn} s hasta quedar a ${f.approachM} m`, `motor.encender(${burn});`],
+      [`frenar ${burn} s hasta quedar a ${f.approachM} m${f.dock ? " del puerto" : ""}`, `motor.encender(${burn});`],
       // Distractor: braking with the nose forward would only speed the ship up.
       [`frenar con la proa hacia ${name}`, `motor.encender(${burn}); // proa delante`],
+      ...(f.dock ? ([[`acoplar por el eje del puerto a ${num(f.dock.contactMs, 2)} m/s`, `acople.asistente(${f.dock.contactMs});`]] as const) : []),
     ]),
-    solution: ["a", "b", "c", "d", "e"],
+    solution: f.dock ? ["a", "b", "c", "d", "e", "g"] : ["a", "b", "c", "d", "e"],
   };
 
   const deltaV = choice(
@@ -132,8 +144,12 @@ export function tripChore(f: TripFacts): Chore {
     "Dime exactamente qué quieres",
     "¿Qué orden le das a la IA de la nave para este viaje?",
     [],
-    `Llévame a ${f.approachM} m de la superficie de ${name} sin chocar con rocas, para del todo apuntando al asteroide y devuélveme los mandos`,
-    [`Llévame a ${name}`, `Acelera a tope hacia ${name} y apaga el motor al llegar`, `Llévame a ${name} a ${num(v)} m/s y aterriza tú`],
+    f.dock
+      ? `Llévame a ${f.approachM} m del puerto de ${name} por su eje sin chocar con rocas ni con la estructura, y acopla tocando a menos de ${num(f.dock.closingMaxMs, 2)} m/s`
+      : `Llévame a ${f.approachM} m de la superficie de ${name} sin chocar con rocas, para del todo apuntando al asteroide y devuélveme los mandos`,
+    f.dock
+      ? [`Llévame a ${name}`, `Acelera a tope hacia el puerto de ${name} y frena al tocarlo`, `Llévame a ${name} a ${num(v)} m/s y acopla a esa velocidad`]
+      : [`Llévame a ${name}`, `Acelera a tope hacia ${name} y apaga el motor al llegar`, `Llévame a ${name} a ${num(v)} m/s y aterriza tú`],
   );
 
   return {
@@ -164,6 +180,8 @@ export interface CarrierTripFacts {
   readonly parkingM: number;
   readonly approachM: number;
   readonly detours: number;
+  /** Set when the mothership docks at the end (parkingM is then its stop on the port axis). */
+  readonly dock?: DockFacts;
 }
 
 const sig = (v: number, d = 2) => num(v, v < 0.1 ? 4 : v < 1 ? 3 : d);
@@ -190,9 +208,16 @@ export function carrierTripChore(f: CarrierTripFacts): Chore {
       [`orientar la nodriza hacia ${name}`, `nodriza.orientar("${f.targetId}");`],
       [`encender los ${f.thrusterCount} propulsores Hall ${duration(half)}`, `propulsores.encender(${Math.round(half)});`],
       [`dar la vuelta a mitad de camino (${km(p.distanceM / 2)})`, "nodriza.voltear();"],
-      [`frenar ${duration(half)} hasta aparcar a ${num(f.parkingM)} m`, `propulsores.encender(${Math.round(half)});`],
-      ["desacoplar la sonda", "sonda.desacoplar();"],
-      [`volar la sonda hasta ${f.approachM} m de la superficie`, `sonda.volarHasta(${f.approachM});`],
+      [`frenar ${duration(half)} hasta ${f.dock ? `parar a ${num(f.parkingM)} m del puerto` : `aparcar a ${num(f.parkingM)} m`}`, `propulsores.encender(${Math.round(half)});`],
+      ...((f.dock
+        ? [
+            [`acercarse por el eje del puerto a ${num(f.dock.contactMs, 2)} m/s`, `nodriza.acercar(${f.dock.contactMs});`],
+            ["cerrar los ganchos del puerto IDSS", "puerto.enganchar();"],
+          ]
+        : [
+            ["desacoplar la sonda", "sonda.desacoplar();"],
+            [`volar la sonda hasta ${f.approachM} m de la superficie`, `sonda.volarHasta(${f.approachM});`],
+          ]) as [string, string][]),
       // Distractor: a low-thrust ship can't coast and then stop in time.
       ["apagar los propulsores a mitad de camino y esperar", "propulsores.apagar();"],
     ]),
@@ -253,8 +278,12 @@ export function carrierTripChore(f: CarrierTripFacts): Chore {
     "Dime exactamente qué quieres",
     "¿Qué orden le das a la IA de la nodriza?",
     [],
-    `Lleva la nodriza a ${num(f.parkingM)} m de ${name} rodeando las rocas y para del todo; luego desacopla la sonda, acércala a ${f.approachM} m apuntando al asteroide y devuélveme los mandos`,
-    [`Lleva la nodriza a ${name}`, `Acerca la nodriza a ${f.approachM} m de ${name} y aterriza con ella`, `Desacopla la sonda y que vaya sola hasta ${name}`],
+    f.dock
+      ? `Lleva la nodriza a ${num(f.parkingM)} m del puerto de ${name} rodeando las rocas, alinéala con su eje y acopla tocando a menos de ${num(f.dock.closingMaxMs, 2)} m/s`
+      : `Lleva la nodriza a ${num(f.parkingM)} m de ${name} rodeando las rocas y para del todo; luego desacopla la sonda, acércala a ${f.approachM} m apuntando al asteroide y devuélveme los mandos`,
+    f.dock
+      ? [`Lleva la nodriza a ${name}`, `Acerca la nodriza a ${name} a toda potencia y frena al tocar`, `Desacopla la sonda y que vaya sola hasta ${name}`]
+      : [`Lleva la nodriza a ${name}`, `Acerca la nodriza a ${f.approachM} m de ${name} y aterriza con ella`, `Desacopla la sonda y que vaya sola hasta ${name}`],
   );
 
   return {

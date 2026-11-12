@@ -4,13 +4,13 @@ import type { StationSite } from "../domain/station";
 
 /**
  * The station of the starting region, parked about 1,2 km from Bennu on the side the ship starts on.
- * Game values: position, size and docking range.
+ * Game values: position and docking range. The size is that of the structure (`POLANA_LAYOUT`).
  */
 export const POLANA_STATION: StationSite = {
   id: "estacion-polana",
   name: "Estación Nueva Polana",
   position: new Vec3(-450, 150, 1100),
-  radiusM: 60,
+  radiusM: 66,
   dockingRangeM: 400,
 };
 

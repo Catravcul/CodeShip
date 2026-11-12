@@ -1,8 +1,9 @@
 import type { Vec3 } from "@core/math/vec3";
 import type { Rock } from "@modules/celestial/domain/region";
 import type { DestinationInfo, Navigator } from "@modules/navigation/application/navigator";
-import type { NavTarget } from "@modules/navigation/domain/nav-target";
+import { targetDistance, targetPosition, targetRadius, type NavTarget } from "@modules/navigation/domain/nav-target";
 import { duration, num } from "@modules/navigation/application/trip-chore";
+import { dockCardHtml } from "./nav-dock-card";
 import "./nav-map.css";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
@@ -73,7 +74,7 @@ export class NavMap {
     this.el.innerHTML = `
       <div class="nav-head"><div class="nav-title">${esc(deps.title)}</div>
         <div class="nav-tools"><button data-act="zin" aria-label="Acercar">+</button><button data-act="zout" aria-label="Alejar">−</button><button data-act="view">Cenital</button><button class="x" data-act="close" aria-label="Cerrar mapa">×</button></div></div>
-      <div class="nav-body"><div class="nav-canvas"><canvas></canvas><div class="nav-hint">Arrastra para girar · toca un asteroide</div></div>
+      <div class="nav-body"><div class="nav-canvas"><canvas></canvas><div class="nav-hint">Arrastra para girar · toca un destino</div></div>
         <div class="nav-side"><div class="nav-chips"></div><div class="nav-card"></div></div></div>`;
     root.appendChild(this.el);
     this.canvas = this.el.querySelector("canvas")!;
@@ -204,7 +205,7 @@ export class NavMap {
     }
     nav.targets.forEach((t, i) => {
       const span = this.chips.children[i]?.querySelector("span");
-      const text = km(t.body.position.sub(ship).length() - t.body.meanRadiusM);
+      const text = km(targetDistance(t, ship));
       if (span && span.textContent !== text) span.textContent = text;
     });
   }
@@ -215,8 +216,7 @@ export class NavMap {
       this.card.innerHTML = "";
       return;
     }
-    const info = this.deps.nav.destination(t);
-    this.card.innerHTML = cardHtml(info, this.note);
+    this.card.innerHTML = t.kind === "dock" ? dockCardHtml(this.deps.nav.dockDestination(t), this.note) : cardHtml(this.deps.nav.destination(t), this.note);
   }
 
   private pickAt(cx: number, cy: number): void {
@@ -295,10 +295,12 @@ export class NavMap {
     const nav = this.deps.nav;
     const trip = nav.trip();
     const shipP = P(ship);
-    const centre = nav.target.body.position;
+    // A dock trip aims at the port and stops `handoverM` short; an asteroid trip stops above the surface.
+    const centre = trip.dock ? trip.dock.port.port.position : targetPosition(nav.target);
+    const stopM = trip.dock?.handoverM ?? nav.approachM;
     const lastW = trip.waypoints[trip.waypoints.length - 1] ?? ship;
     const toC = centre.sub(lastW);
-    const arrival = lastW.add(toC.normalize().scale(Math.max(0, toC.length() - (centre.sub(ship).length() - trip.heightM) - nav.approachM)));
+    const arrival = lastW.add(toC.normalize().scale(Math.max(0, toC.length() - (centre.sub(ship).length() - trip.heightM) - stopM)));
     g.setLineDash([6, 5]);
     g.lineWidth = 1.5;
     if (trip.carrier) {
@@ -313,14 +315,16 @@ export class NavMap {
       }
       g.strokeStyle = "#ffb347cc";
       g.stroke();
-      const toC = centre.sub(c.parking);
-      const end = c.parking.add(toC.normalize().scale(Math.max(0, toC.length() - nav.target.body.meanRadiusM - nav.approachM)));
-      const a = P(c.parking), b = P(end);
-      g.beginPath();
-      g.moveTo(a.x, a.y);
-      g.lineTo(b.x, b.y);
-      g.strokeStyle = "#7fdcffcc";
-      g.stroke();
+      if (!c.berthAt) {
+        const toC = centre.sub(c.parking);
+        const end = c.parking.add(toC.normalize().scale(Math.max(0, toC.length() - targetRadius(nav.target) - nav.approachM)));
+        const a = P(c.parking), b = P(end);
+        g.beginPath();
+        g.moveTo(a.x, a.y);
+        g.lineTo(b.x, b.y);
+        g.strokeStyle = "#7fdcffcc";
+        g.stroke();
+      }
     } else {
       g.beginPath();
       g.moveTo(shipP.x, shipP.y);
@@ -333,7 +337,8 @@ export class NavMap {
     }
     g.setLineDash([]);
     const carrier = this.deps.carrierPosition?.();
-    if (carrier) {
+    // The mothership as a destination («Volver a la nodriza») is drawn with the targets.
+    if (carrier && !nav.targets.some((t) => t.kind === "dock" && !t.carrierPort)) {
       const m = P(carrier);
       g.fillStyle = "#ffb347";
       g.fillRect(m.x - 5, m.y - 5, 10, 10);
@@ -344,7 +349,7 @@ export class NavMap {
     this.screen = [];
     g.font = "12px ui-monospace, Menlo, monospace";
     for (const t of nav.targets) {
-      const p = P(t.body.position);
+      const p = P(targetPosition(t));
       const target = t === nav.target;
       const picked = t === this.picked;
       g.strokeStyle = "#ffffff33";
@@ -356,10 +361,20 @@ export class NavMap {
       g.beginPath();
       g.ellipse(p.x, p.gy, 4, 4 * sinE, 0, 0, Math.PI * 2);
       g.stroke();
-      const rad = Math.max(5, t.body.meanRadiusM * s);
+      const rad = Math.max(5, targetRadius(t) * s);
       g.beginPath();
-      g.arc(p.x, p.y, rad, 0, Math.PI * 2);
-      g.fillStyle = target ? "#58d6ff" : "#a99f92";
+      if (t.kind === "dock") {
+        // Structures: a diamond, gold for a station, amber for the mothership.
+        g.moveTo(p.x, p.y - rad - 2);
+        g.lineTo(p.x + rad + 2, p.y);
+        g.lineTo(p.x, p.y + rad + 2);
+        g.lineTo(p.x - rad - 2, p.y);
+        g.closePath();
+        g.fillStyle = target ? "#58d6ff" : t.carrierPort ? "#ffd27f" : "#ffb347";
+      } else {
+        g.arc(p.x, p.y, rad, 0, Math.PI * 2);
+        g.fillStyle = target ? "#58d6ff" : "#a99f92";
+      }
       g.fill();
       if (picked || target) {
         g.beginPath();

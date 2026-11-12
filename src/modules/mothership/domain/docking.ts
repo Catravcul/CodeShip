@@ -31,6 +31,30 @@ export interface PortPose {
   readonly orientation: Quat;
 }
 
+/**
+ * Anything with a docking port a craft can latch to: the mothership, a station's ports. The
+ * docking assist, the contact check and navigation work with this, not with a particular ship.
+ */
+export interface DockingTarget {
+  readonly id: string;
+  readonly name: string;
+  /** The port in world space now. */
+  readonly port: PortPose;
+  /** Pose of a craft latched to the port (its port at `craftPortBody`), at rest with the target. */
+  dockedPose(craftPortBody: Vec3): RigidBodyState;
+}
+
+/**
+ * Where a craft carries its own docking port, body frame: the face, the outward axis and the
+ * direction across the axis that must line up with the target port's `forward` (roll). The probe's
+ * port looks up (+y) with its nose (−z) as forward; the mothership's looks ahead from its nose.
+ */
+export interface CraftPort {
+  readonly position: Vec3;
+  readonly axis: Vec3;
+  readonly forward: Vec3;
+}
+
 /** How the probe's port sits relative to the mothership's port. */
 export interface Alignment {
   /** Gap along the port axis between the two port faces, m (≤ 0 = touching). */
@@ -136,6 +160,16 @@ export const DOCKING_ASSIST = {
 const clamp = (v: number, lo = -1, hi = 1) => Math.max(lo, Math.min(hi, v));
 
 /**
+ * Closing speed the assist wants at `axialM` from the port: a braking profile that ends with the
+ * last `finalM` at contact speed (inside the IDSS 0.05–0.10 m/s window). Shared by the probe's
+ * assist and the mothership's berthing.
+ */
+export function approachSpeed(axialM: number, accelMs2: number, t = DOCKING_ASSIST): number {
+  if (axialM <= t.finalM) return t.contactSpeedMs;
+  return clamp(Math.sqrt(t.brakeShare * accelMs2 * (axialM - t.finalM)), t.contactSpeedMs, t.maxSpeedMs);
+}
+
+/**
  * Docking assist: turns the probe to the port's attitude, centres it on the port axis and closes
  * along it with a braking profile, arriving at about 0.07 m/s. Pure function of the state.
  */
@@ -161,10 +195,11 @@ export function dockingCommand(probe: RigidBodyState, probePortBody: Vec3, port:
   const accel = Math.min(auth.maxAccel.x, auth.maxAccel.y, auth.maxAccel.z);
   let closing: number;
   if (a.misalignDeg > t.turnFirstDeg) closing = 0;
+  // Too slow too close to latch (e.g. just pushed back by the petals): back off a metre and try again.
+  else if ((a.axialM < 0.3 && a.closingMs < t.contactSpeedMs * 0.6) || (a.axialM < 1 && a.closingMs < -0.01)) closing = -0.05;
   else if (a.axialM < 0.5) closing = a.axialM < -0.5 ? -0.3 : t.contactSpeedMs;
   else if (a.lateralM > Math.max(t.corridorM, a.axialM * t.corridorShare)) closing = a.axialM < 6 ? -0.05 : 0;
-  else if (a.axialM <= t.finalM) closing = t.contactSpeedMs;
-  else closing = clamp(Math.sqrt(t.brakeShare * accel * (a.axialM - t.finalM)), t.contactSpeedMs, t.maxSpeedMs);
+  else closing = approachSpeed(a.axialM, accel, t);
   // Below the port plane (behind or above the mothership): back out along the axis first.
   if (a.axialM < -0.5) closing = -0.3;
   // Lateral: approach the axis with the same kind of profile, softly at the end.

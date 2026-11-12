@@ -37,7 +37,7 @@ const make = () => {
   const targets = region.asteroids.map(asteroidTarget);
   const nav = new Navigator(
     flight,
-    { targets, obstaclesFor: (t) => region.obstaclesExcept(t.body), retarget: (t) => expedition.retarget(t.body), carrier: mothershipCarrier(mothership, docking) },
+    { targets, obstaclesFor: (t) => region.obstaclesExcept(t.kind === "asteroid" ? t.body : undefined), retarget: (t) => t.kind !== "asteroid" || expedition.retarget(t.body), carrier: mothershipCarrier(mothership, docking) },
     targets[0]!,
   );
   return { nav, flight, mothership, docking, member, bennu };

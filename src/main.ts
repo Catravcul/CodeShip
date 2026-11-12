@@ -66,12 +66,15 @@ import { materialName } from "@modules/station/data/materials";
 import { EXPLORER_CRAFT, MOTHERSHIP_CRAFT, POLANA_STATION, STARTING_STOCK } from "@modules/station/data/station";
 import { StationModel } from "./adapters/three/station-model";
 import { StationScreen } from "./station-screen";
+import { StationStructure } from "@modules/station/domain/structure";
+import { POLANA_LAYOUT } from "@modules/station/data/structure";
+import { StationDock, dockNavTargets } from "./station-dock";
 import { Mothership } from "@modules/mothership/domain/mothership";
-import { IDSS_CONTACT_LIMITS, NODRIZA, UNDOCK_PUSH_MS } from "@modules/mothership/data/mothership";
+import { IDSS_CONTACT_LIMITS, NODRIZA, NODRIZA_NOSE_PORT, UNDOCK_PUSH_MS } from "@modules/mothership/data/mothership";
 import { ASSIST_RANGE_M, Docking } from "@modules/mothership/application/docking";
 import { MothershipModel } from "./adapters/three/mothership-model";
 import { Navigator } from "@modules/navigation/application/navigator";
-import { asteroidTarget } from "@modules/navigation/domain/nav-target";
+import { asteroidTarget, type NavTarget } from "@modules/navigation/domain/nav-target";
 import { NavigationMode } from "./navigation";
 import { mothershipCarrier } from "@modules/navigation/application/mothership-carrier";
 
@@ -93,8 +96,10 @@ const start = RigidBodyState.at(startPos).withOrientation(startAttitude);
 const mothership = Mothership.withProbeDockedAt(NODRIZA, startPos, startAttitude, ship.design.dockingPort!);
 const ring = new SpinRing(mothership.spec.ring);
 const flight = new FlightComputer(ship, start, { gravitySources: region.asteroids, target: bennu });
-const docking = new Docking(flight, mothership, IDSS_CONTACT_LIMITS, UNDOCK_PUSH_MS.value);
-docking.dockNow();
+// The station is a structure in space with two IDSS ports: the probe docks at one, the mothership at the other.
+const structure = new StationStructure(POLANA_STATION, POLANA_LAYOUT);
+const docking = new Docking(flight, [mothership, ...structure.ports], IDSS_CONTACT_LIMITS, UNDOCK_PUSH_MS.value);
+docking.dockNow(mothership);
 docking.drainEvents();
 const expedition = new Expedition(flight, bennu, EXERCISES, 500);
 // The space station: refinery, foundry, metal printer and hangar (docs/design/estacion.md).
@@ -108,17 +113,21 @@ const stationOps = new StationOps(
   materialName,
 );
 
-// Navigation: any catalogued asteroid of the region can be the target (docs/design/navegacion.md).
-const navTargets = region.asteroids.map(asteroidTarget);
+// Navigation: any catalogued asteroid of the region can be the target (docs/design/navegacion.md),
+// and the station and the mothership, where the trip ends docked (docs/design/estacion.md).
+const carrier = mothershipCarrier(mothership, docking, { nosePort: NODRIZA_NOSE_PORT, limits: IDSS_CONTACT_LIMITS, ports: structure.ports });
+const navTargets: NavTarget[] = [...region.asteroids.map(asteroidTarget), ...dockNavTargets(structure, mothership, carrier.clearanceM)];
+const stationKeepOut = { centre: structure.position, radiusM: structure.boundingRadiusM };
 const nav = new Navigator(
   flight,
   {
     targets: navTargets,
-    obstaclesFor: (t) => region.obstaclesExcept(t.body),
-    retarget: (t) => expedition.retarget(t.body),
+    obstaclesFor: (t) => [...region.obstaclesExcept(t.kind === "asteroid" ? t.body : undefined), ...(t.id === structure.site.id ? [] : [stationKeepOut])],
+    retarget: (t) => t.kind !== "asteroid" || expedition.retarget(t.body),
     isPersuaded: (t) => expedition.isPersuaded(t.id),
-    // With the probe docked, the mothership flies the long part of a trip.
-    carrier: mothershipCarrier(mothership, docking),
+    // With the probe docked, the mothership flies the long part of a trip (and docks at the station).
+    carrier,
+    docking,
   },
   navTargets[0]!,
 );
@@ -209,7 +218,7 @@ scene.add(field.group);
 
 const asteroidMesh = buildAsteroidMesh(shapeParams, 0x3b3835); // Bennu is very dark; tone mapping lifts it a little.
 scene.add(asteroidMesh);
-const stationModel = new StationModel();
+const stationModel = new StationModel(POLANA_LAYOUT, structure.orientation);
 stationModel.root.position.set(POLANA_STATION.position.x, POLANA_STATION.position.y, POLANA_STATION.position.z);
 scene.add(stationModel.root);
 
@@ -241,7 +250,7 @@ scene.add(mothershipModel.root);
 const view = new FlightView(scene, camera, root, () => ship.design, { position: mothershipModel.root.position, quaternion: mothershipModel.root.quaternion, sun: skyBodies.sunDirection });
 const landBtn = view.addButton("land-btn", () => (flight.landingAssist = !flight.landingAssist));
 // Docked: undock. Free: the docking assist (like the landing assist), near the mothership.
-const dockBtn = view.addButton("dock-btn", () => (docking.docked ? docking.undock() : (docking.assist = !docking.assist)));
+const dockBtn = view.addButton("dock-btn", () => (docking.docked ? docking.undock() : docking.toggleAssist()));
 const namesBtn = view.addButton("names-btn", () => (skyBodies.labelsOn = !skyBodies.labelsOn));
 const navMode = new NavigationMode(root, nav, duelView, {
   title: `Mapa · ${region.data.name}`,
@@ -292,7 +301,7 @@ root.appendChild(modeBtn);
 modeBtn.addEventListener("click", () => {
   if (duelView.visible || evaMode.active) return;
   // The rings, the garden and the chores are on the mothership: only reachable while docked.
-  if (!interior.active && !docking.docked) return flash("El interior está en la nodriza: acopla la sonda para entrar");
+  if (!interior.active && docking.dockedTo !== mothership) return flash("El interior está en la nodriza: acopla la sonda para entrar");
   if (interior.active) interior.exit();
   else interior.enter();
   modeBtn.textContent = interior.active ? "Ir a la cabina" : "Ir al interior";
@@ -321,12 +330,17 @@ bay.onExit = (from) => {
 };
 interior.openBay = () => openBay("interior");
 view.addButton("bay-btn", () => openBay("cabina")).textContent = "Bahía de la nave";
-// Space station screen. For now it opens from anywhere in the cockpit (remote/test access); alongside it counts as docked.
+// Space station screen: opens from «Revisar tareas de la estación», shown only docked at the station or within its docking range.
 const stationScreen = new StationScreen(root, stationOps, ship, expedition, duelView, () => flight.state.position, (id) =>
   id === MOTHERSHIP_CRAFT.id ? mothership.position : id === EXPLORER_CRAFT.id ? flight.state.position : undefined,
 );
 stationScreen.onExit = () => view.center();
-const stationBtn = view.addButton("estacion-btn", () => !duelView.visible && !bay.active && !interior.active && !evaMode.active && stationScreen.enter());
+const stationDock = new StationDock(root, (c, f) => view.addButton(c, f), {
+  open: () => !duelView.visible && !bay.active && !interior.active && !evaMode.active && stationScreen.enter(),
+  distanceM: () => stationOps.station.distanceTo(flight.state.position),
+  alongside: () => stationOps.station.isAlongside(flight.state.position),
+  docked: () => structure.ports.some((p) => p === docking.dockedTo) || (docking.dockedTo === mothership && !!mothership.dockedTo),
+});
 window.addEventListener("keydown", (e) => {
   if (e.code === "KeyB" && !e.repeat && !interior.active && !duelView.visible) bay.active ? bay.exit() : openBay("cabina");
 });
@@ -359,15 +373,17 @@ const n2 = (v: number) => v.toFixed(2).replace(".", ",");
 /** Docking line for the banner, or "" when the mothership is far. */
 function dockingText(): string {
   if (performance.now() < flashUntil) return flashText;
-  if (docking.docked) return "Acoplada a la nodriza · K desacopla · M abre el mapa";
+  const on = docking.dockedTo;
+  if (on) return `Acoplada a ${on === mothership ? "la nodriza" : "la estación"}${mothership.dockedTo && on === mothership ? " (atracada en la estación)" : ""} · K desacopla · M abre el mapa`;
   // While the trip autopilot flies away from the port, the docking read-out is noise.
   if (nav.status === "autopilot") return "";
-  const a = docking.alignment();
-  const range = flight.state.position.sub(mothership.port.position).length();
+  const port = docking.current();
+  const a = docking.alignment(port);
+  const range = flight.state.position.sub(port.port.position).length();
   if (range > 400) return "";
   const lim = IDSS_CONTACT_LIMITS;
   const ok = (good: boolean) => (good ? "✓" : "✗");
-  return `Puerto de la nodriza a ${range < 10 ? n2(Math.max(0, a.axialM)) : range.toFixed(0)} m · cierre ${n2(a.closingMs)} m/s ${ok(a.closingMs >= lim.closingMinMs && a.closingMs <= lim.closingMaxMs)} · lateral ${n2(a.lateralM)} m ${ok(a.lateralM <= lim.lateralMisalignM)} · inclinación ${a.misalignDeg.toFixed(1).replace(".", ",")}° ${ok(a.misalignDeg <= lim.angularMisalignDeg)}${docking.assist ? " · asistente de acople" : " · asistente: K"}`;
+  return `Puerto de ${port === mothership ? "la nodriza" : "la estación"} a ${range < 10 ? n2(Math.max(0, a.axialM)) : range.toFixed(0)} m · cierre ${n2(a.closingMs)} m/s ${ok(a.closingMs >= lim.closingMinMs && a.closingMs <= lim.closingMaxMs)} · lateral ${n2(a.lateralM)} m ${ok(a.lateralM <= lim.lateralMisalignM)} · inclinación ${a.misalignDeg.toFixed(1).replace(".", ",")}° ${ok(a.misalignDeg <= lim.angularMisalignDeg)}${docking.assist ? " · asistente de acople" : " · asistente: K"}`;
 }
 
 function renderPhase(): void {
@@ -425,10 +441,10 @@ renderer.setAnimationLoop((now) => {
   // Region rules: soft boundary push back and no flying through the other rocks or the mothership (game rules).
   if (!flight.landed && !flight.docked) {
     const st = flight.state;
-    flight.applyImpulse(region.boundaryPush(st.position, st.velocity, dt * warp).add(region.avoidObstacles(st.position, st.velocity, expedition.asteroid)).add(mothership.keepOut(st.position, st.velocity)));
+    flight.applyImpulse(region.boundaryPush(st.position, st.velocity, dt * warp).add(region.avoidObstacles(st.position, st.velocity, expedition.asteroid)).add(mothership.keepOut(st.position, st.velocity)).add(structure.keepOut(st.position, st.velocity)));
   }
   for (const e of docking.drainEvents()) {
-    if (e.type === "docked") flash("Acoplada: ganchos cerrados. Ya puedes ir al interior de la nodriza");
+    if (e.type === "docked") flash(e.target === mothership ? "Acoplada: ganchos cerrados. Ya puedes ir al interior de la nodriza" : "Acoplada a la estación: ganchos cerrados. Ya puedes revisar sus tareas");
     if (e.type === "undocked") flash("Desacoplada: los muelles te separan a 0,08 m/s");
     if (e.type === "rebound") flash(`No engancha: ${e.failures.join(" · ")}${e.damage > 0 ? " · golpe en el casco" : ""}`, 7);
   }
@@ -505,9 +521,8 @@ renderer.setAnimationLoop((now) => {
     warpNote,
   );
   asteroidMesh.rotation.y = bennu.spinRadS * flight.simTimeS;
-  stationModel.update(flight.simTimeS);
-  const stationText = `Estación · ${(stationOps.station.distanceTo(flight.state.position) / 1000).toFixed(1).replace(".", ",")} km`;
-  if (stationBtn.textContent !== stationText) stationBtn.textContent = stationText;
+  stationModel.update(flight.simTimeS, skyBodies.sunDirection);
+  stationDock.update(view.enabled && !navMode.blocksInput && expedition.phase !== "landed");
   field.update(camera, window.innerHeight, flight.simTimeS, view.enabled && skyBodies.labelsOn);
   skyBodies.update(camera, renderer.getPixelRatio(), view.enabled);
   const namesText = `Nombres: ${skyBodies.labelsOn ? "sí" : "no"}`;
@@ -531,4 +546,4 @@ renderer.setAnimationLoop((now) => {
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, station: stationScreen, stationOps, nav, navMode };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationOps, nav, navMode };

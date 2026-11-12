@@ -24,7 +24,8 @@ const PHASE: Record<AutopilotPhase, string> = {
   coast: "Crucero",
   flip: "Dando la vuelta",
   brake: "Frenando",
-  aim: "Apuntando al asteroide",
+  aim: "Apuntando al destino",
+  dock: "Acoplando por el eje del puerto",
   arrived: "Llegada",
 };
 const km = (m: number) => (m >= 1000 ? `${num(m / 1000, 1)} km` : `${num(m)} m`);
@@ -138,6 +139,8 @@ export class NavigationMode {
     if (nav.status !== this.lastStatus) {
       if (nav.status === "arrived") this.flash(`Llegada: a ${km(nav.approachM)} de ${nav.target.name}. Tienes los mandos: aterriza y entra en su mente`, "done", 10);
       if (nav.status === "autopilot" && this.lastStatus === "carrier") this.flash("La nodriza ha aparcado: la sonda se desacopla y sigue sola", "done");
+      if (nav.status === "docked") this.flash(this.lastStatus === "carrier" ? `La nodriza ha atracado en ${nav.target.name} con la sonda a bordo` : `Acoplada a ${nav.target.name}`, "done", 10);
+      if (nav.status === "manual" && this.lastStatus === "docking") this.flash("Acople cancelado: tienes los mandos", "bad");
       if (nav.status === "failed") this.flash("El plan no compila: vuela a mano o vuelve a programarlo desde el mapa", "bad");
       if (nav.status === "manual" && this.lastStatus === "autopilot") this.flash("Mando manual: el piloto automático se ha desconectado", "bad");
       this.lastStatus = nav.status;

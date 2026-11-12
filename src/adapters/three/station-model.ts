@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import type { ShipDesign } from "@modules/ship/domain/ship";
 import type { MachineId } from "@modules/station/domain/blueprint";
+import type { StationLayout } from "@modules/station/domain/structure";
+import type { Vec3 } from "@core/math/vec3";
 import { ShipModel } from "./ship-model";
 import { buildStarfield } from "./starfield";
 
@@ -9,65 +11,123 @@ const box = (w: number, h: number, d: number, m: THREE.Material) => new THREE.Me
 const cyl = (r: number, h: number, m: THREE.Material, seg = 24) => new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, seg), m);
 
 /**
- * The space station seen from outside, in the region (metres): a truss with solar arrays, two
- * pressurised modules, the refinery tower and the hangar with its lit door. A simple model.
+ * The space station seen from outside, in the region (metres), built from its layout
+ * (docs/design/estacion.md): pressurised modules like the ISS's nodes and the Gateway's HALO, a
+ * truss with four solar wings that turn on their long axis to follow the Sun, radiators, the
+ * fabrication module with the furnace glow, the hangar with its lit door and two IDSS ports with
+ * approach lights and a docking cross. The station holds its attitude.
  */
 export class StationModel {
   readonly root = new THREE.Group();
   private readonly beacons: THREE.Mesh[] = [];
+  private readonly portLights: THREE.Mesh[] = [];
+  private readonly wings: THREE.Object3D[] = [];
 
-  constructor() {
-    const hull = mat(0xc9ced6);
+  constructor(layout: StationLayout, orientation: { x: number; y: number; z: number; w: number } = { x: 0, y: 0, z: 0, w: 1 }) {
+    const hull = mat(0xd9dde3, { metalness: 0.25, roughness: 0.55 });
+    const mli = mat(0xe8e2cf, { metalness: 0.05, roughness: 0.9 });
     const dark = mat(0x3a4250);
-    const truss = box(140, 4, 4, dark);
-    this.root.add(truss);
-    const panel = mat(0x1d3a7a, { metalness: 0.2, roughness: 0.3, emissive: 0x0a1430 });
-    for (const x of [-60, -42, 42, 60]) {
-      const p = box(14, 0.4, 46, panel);
-      p.position.set(x, 0, 0);
-      this.root.add(p);
+    const v = (p: Vec3) => new THREE.Vector3(p.x, p.y, p.z);
+    for (const m of layout.modules) {
+      const a = v(m.from), b = v(m.to);
+      const len = a.distanceTo(b);
+      const g = new THREE.Group();
+      const body = cyl(m.radiusM, len, m.kind === "habitat" ? mli : m.kind === "adaptador" ? dark : hull, 28);
+      g.add(body);
+      // Ribs every metre or so, like the ISS modules' panels.
+      if (m.kind !== "adaptador")
+        for (let k = 1; k < len; k += 1.4) {
+          const rib = new THREE.Mesh(new THREE.TorusGeometry(m.radiusM + 0.02, 0.05, 4, 28), dark);
+          rib.rotation.x = Math.PI / 2;
+          rib.position.y = -len / 2 + k;
+          g.add(rib);
+        }
+      g.position.copy(a.clone().add(b).multiplyScalar(0.5));
+      g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+      this.root.add(g);
+      if (m.kind === "fabrica") {
+        // Furnace glow of the refinery through a port window.
+        const glow = cyl(0.7, 0.3, new THREE.MeshBasicMaterial({ color: 0xff7a2a }));
+        glow.position.copy(g.position).add(new THREE.Vector3(0, -m.radiusM, 0));
+        this.root.add(glow);
+      }
     }
-    for (const [x, len] of [
-      [-18, 26],
-      [18, 26],
-    ] as const) {
-      const m = cyl(5, len, hull);
-      m.rotation.z = Math.PI / 2;
-      m.position.set(x, 7, 0);
-      this.root.add(m);
+    const panel = mat(0x1d3a7a, { metalness: 0.3, roughness: 0.35, emissive: 0x0a1430 });
+    const radiatorMat = mat(0xf4f6f8, { metalness: 0.1, roughness: 0.7 });
+    for (const p of layout.parts) {
+      const c = v(p.centre);
+      if (p.kind === "solar") {
+        // Two blankets on a mast (like an ISS wing); it turns about the mast (beta gimbal).
+        const wing = new THREE.Group();
+        wing.position.copy(c);
+        const h = p.half.y * 2;
+        const mast = cyl(0.15, h, dark, 6);
+        wing.add(mast);
+        for (const s of [-1, 1]) {
+          const blanket = box(p.half.x * 0.92 - 0.5, h * 0.96, 0.08, panel);
+          blanket.position.x = s * (p.half.x * 0.46 + 0.3);
+          wing.add(blanket);
+        }
+        this.wings.push(wing);
+        this.root.add(wing);
+      } else if (p.kind === "radiador") {
+        const r = box(p.half.x * 2, 0.12, p.half.z * 2, radiatorMat);
+        r.position.copy(c);
+        this.root.add(r);
+      } else if (p.kind === "celosia") {
+        const t = box(p.half.x * 2, p.half.y * 2, p.half.z * 2, new THREE.MeshStandardMaterial({ color: 0x8a919c, metalness: 0.6, roughness: 0.5, wireframe: true }));
+        t.position.copy(c);
+        const core = box(p.half.x * 2, p.half.y * 0.6, p.half.z * 0.6, dark);
+        core.position.copy(c);
+        this.root.add(t, core);
+      } else {
+        const hgr = box(p.half.x * 2, p.half.y * 2, p.half.z * 2, hull);
+        hgr.position.copy(c);
+        const door = box(p.half.x * 1.3, p.half.y * 1.4, 0.3, new THREE.MeshBasicMaterial({ color: 0xffd27f }));
+        door.position.copy(c).add(new THREE.Vector3(0, 0, p.half.z + 0.2));
+        this.root.add(hgr, door);
+        const b = new THREE.Mesh(new THREE.SphereGeometry(0.8, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff3030 }));
+        b.position.copy(c).add(new THREE.Vector3(0, p.half.y + 0.8, p.half.z));
+        this.beacons.push(b);
+        this.root.add(b);
+      }
     }
-    // Hangar: a big box under the truss with a lit door facing +z.
-    const hangar = box(40, 18, 30, hull);
-    hangar.position.set(0, -12, 0);
-    this.root.add(hangar);
-    const door = box(26, 12, 0.5, new THREE.MeshBasicMaterial({ color: 0xffd27f }));
-    door.position.set(0, -12, 15.3);
-    this.root.add(door);
-    // Refinery tower with its furnace glow.
-    const tower = cyl(4, 28, dark);
-    tower.position.set(-30, -14, -6);
-    this.root.add(tower);
-    const glow = cyl(4.2, 3, new THREE.MeshBasicMaterial({ color: 0xff7a2a }));
-    glow.position.set(-30, -22, -6);
-    this.root.add(glow);
-    for (const p of [
-      [70, 0, 0],
-      [-70, 0, 0],
-      [0, -21, 15],
-    ] as const) {
-      const b = new THREE.Mesh(new THREE.SphereGeometry(1.4, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff3030 }));
-      b.position.set(p[0], p[1], p[2]);
-      this.beacons.push(b);
-      this.root.add(b);
+    // Docking ports: a yellow guide ring, approach lights and a cross to aim at (like the mothership's).
+    const lit = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    for (const port of layout.ports) {
+      const g = new THREE.Group();
+      g.position.copy(v(port.position));
+      g.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), v(port.normal).normalize());
+      const guide = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.07, 8, 24), new THREE.MeshStandardMaterial({ color: 0xe8c547, emissive: 0x6a5410, emissiveIntensity: 0.6 }));
+      guide.rotation.x = Math.PI / 2;
+      g.add(guide);
+      const c1 = box(0.9, 0.05, 0.08, lit);
+      const c2 = box(0.08, 0.05, 0.9, lit);
+      c1.position.y = c2.position.y = 0.02;
+      g.add(c1, c2);
+      for (const [dx, dz, col] of [[-1.3, 0, 0x30ff60], [1.3, 0, 0xff3030], [0, -1.3, 0xffffff], [0, 1.3, 0xffffff]] as const) {
+        const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 2 }));
+        lamp.position.set(dx, 0.2, dz);
+        this.portLights.push(lamp);
+        g.add(lamp);
+      }
+      this.root.add(g);
     }
+    this.root.quaternion.set(orientation.x, orientation.y, orientation.z, orientation.w);
     this.root.traverse((o) => (o.userData.station = true));
   }
 
-  update(timeS: number): void {
+  update(timeS: number, sun?: THREE.Vector3): void {
     const on = Math.sin(timeS * 3) > 0.6;
     for (const b of this.beacons) b.visible = on;
-    // It holds position slowly turning to keep the arrays on the Sun (game choice).
-    this.root.rotation.y = timeS * 0.01;
+    const blink = Math.sin(timeS * 2) > 0;
+    for (const l of this.portLights) l.visible = blink;
+    // Each wing turns about its mast (y) to face the Sun, like the ISS's beta gimbals.
+    if (sun) {
+      const local = sun.clone().applyQuaternion(this.root.quaternion.clone().invert());
+      const yaw = Math.atan2(local.x, local.z);
+      for (const w of this.wings) w.rotation.y = yaw;
+    }
   }
 }
 

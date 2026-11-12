@@ -315,3 +315,9 @@ body.in-station .hud, body.in-station .help, body.in-station .reticle, body.in-s
 .st-job.run { border-color: #7fdcff88; }
 .bay-act.locked { background: #ffffff14; color: #bcd; }
 .flight-bar .estacion-btn { color: #1a0f00; background: #ffd27f; border-color: #ffd27f; }
+/* «Revisar tareas de la estación»: only near the station; above the touch pads, in the thumb's reach. */
+.station-dock-btn { position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%); z-index: 6; display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 56px; padding: 10px 22px; font: inherit; color: #1a0f00; background: #ffd27f; border: 0; border-radius: 14px; box-shadow: 0 0 22px #ffb34788; }
+.station-dock-btn b { font-size: 16px; }
+.station-dock-btn small { font-size: 11.5px; opacity: 0.8; }
+.station-dock-btn.hidden, body.in-station .station-dock-btn, body.in-map .station-dock-btn, body.in-duel .station-dock-btn, body.in-bay .station-dock-btn, body.in-interior .station-dock-btn, body.in-eva .station-dock-btn { display: none; }
+@media (pointer: coarse) { .station-dock-btn { bottom: calc(232px + env(safe-area-inset-bottom)); width: min(340px, calc(100vw - 32px)); } }

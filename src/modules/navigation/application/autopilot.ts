@@ -5,7 +5,7 @@ import type { Ship, ThrustCommand } from "@modules/ship/domain/ship";
 import { TRANSFER_TUNING, turnTimeS } from "../domain/transfer";
 
 /** What the autopilot is doing, for the HUD. */
-export type AutopilotPhase = "orient" | "burn" | "coast" | "flip" | "brake" | "aim" | "arrived";
+export type AutopilotPhase = "orient" | "burn" | "coast" | "flip" | "brake" | "aim" | "dock" | "arrived";
 
 /** Guidance gains and limits (game values tuned on the Explorer; docs/design/navegacion.md). */
 export const AUTOPILOT_TUNING = {
@@ -63,7 +63,7 @@ export class TripAutopilot implements Guidance {
     /** Detour waypoints before the final leg straight at the target (may be empty). */
     private readonly waypoints: readonly Vec3[],
     readonly cruiseMS: number,
-    readonly approachM = TRANSFER_TUNING.approachM,
+    readonly approachM: number = TRANSFER_TUNING.approachM,
   ) {
     this._status = { phase: "orient", remainingM: Infinity, speedMS: 0, etaS: Infinity };
   }

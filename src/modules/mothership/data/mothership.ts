@@ -1,7 +1,7 @@
 import { Vec3 } from "@core/math/vec3";
 import type { Sourced } from "@core/units";
 import { CODESHIP_RING } from "@modules/gravity/data/ring";
-import type { DockingLimits } from "../domain/docking";
+import type { CraftPort, DockingLimits } from "../domain/docking";
 import type { ElectricThruster, MassItem, MothershipSpec } from "../domain/mothership";
 
 // --- Sources -----------------------------------------------------------------
@@ -104,3 +104,9 @@ export const NODRIZA: MothershipSpec = {
 
 /** Push the docking springs give the probe when it undocks, m/s. Game value inside the IDSS window. */
 export const UNDOCK_PUSH_MS: Sourced<number> = { value: 0.08, source: IDSS_IDD, note: "Valor de juego dentro de la ventana de 0,05–0,10 m/s del contacto" };
+
+/**
+ * The mothership's own IDSS port, on the tip of the forward node (axial, looking ahead), so it can
+ * dock nose-first to a station like a visiting vehicle to the ISS. Game value for the position.
+ */
+export const NODRIZA_NOSE_PORT: CraftPort = { position: new Vec3(0, 0, -76.7), axis: new Vec3(0, 0, -1), forward: new Vec3(0, -1, 0) };

@@ -1,13 +1,12 @@
 import { Vec3 } from "@core/math/vec3";
 import type { FlightComputer } from "@modules/flight/application/flight-computer";
 import { RigidBodyState } from "@modules/flight/domain/rigid-body";
-import type { Mothership } from "../domain/mothership";
-import { alignment, dockingCommand, judgeContact, type Alignment, type Authority, type DockingLimits } from "../domain/docking";
+import { alignment, dockingCommand, judgeContact, type Alignment, type Authority, type DockingLimits, type DockingTarget } from "../domain/docking";
 
 export type DockingEvent =
-  | { readonly type: "docked" }
-  | { readonly type: "undocked" }
-  | { readonly type: "rebound"; readonly failures: readonly string[]; readonly damage: number };
+  | { readonly type: "docked"; readonly target: DockingTarget }
+  | { readonly type: "undocked"; readonly target: DockingTarget }
+  | { readonly type: "rebound"; readonly target: DockingTarget; readonly failures: readonly string[]; readonly damage: number };
 
 /** Lateral offset at which the probe still meets the port's guide ring rather than the node, m. */
 const GUIDE_RADIUS_M = 0.6;
@@ -22,23 +21,33 @@ const DAMAGE_PER_MS = 0.25;
 export const ASSIST_RANGE_M = 3000;
 
 /**
- * Use case: the probe docks with and undocks from the mothership. Hooks into the flight computer's
- * 120 Hz loop: checks every step whether the two ports touch and judges the contact with the IDSS
- * limits; while `assist` is on, flies the approach (like the landing assist).
+ * Use case: the probe docks with and undocks from any docking target (the mothership, a station's
+ * port). Hooks into the flight computer's 120 Hz loop: checks every step whether the probe's port
+ * touches one of the targets' ports and judges the contact with the IDSS limits; while `assist` is
+ * on, flies the approach to the chosen port (like the landing assist).
  */
 export class Docking {
   /** Docking assist on/off (button in the cockpit). */
   assist = false;
+  readonly targets: DockingTarget[];
   private events: DockingEvent[] = [];
   private _last: readonly string[] = [];
+  private _dockedTo: DockingTarget | undefined;
+  /** Port the assist flies to; unset = the nearest one. */
+  private aim: DockingTarget | undefined;
 
   constructor(
     readonly flight: FlightComputer,
-    readonly mothership: Mothership,
+    targets: DockingTarget | readonly DockingTarget[],
     readonly limits: DockingLimits,
     private readonly undockPushMs: number,
   ) {
-    flight.autopilot = (s) => (this.assist && this.inRange(s) ? dockingCommand(s, this.probePort, this.mothership.port, this.authority()) : undefined);
+    this.targets = Array.isArray(targets) ? [...targets] : [targets as DockingTarget];
+    flight.autopilot = (s) => {
+      if (!this.assist) return undefined;
+      const t = this.assistTarget(s);
+      return this.inRange(s, t) ? dockingCommand(s, this.probePort, t.port, this.authority()) : undefined;
+    };
     flight.afterStep = (s) => this.checkContact(s);
   }
 
@@ -51,40 +60,85 @@ export class Docking {
     return this.flight.docked;
   }
 
+  /** What the probe is latched to now. */
+  get dockedTo(): DockingTarget | undefined {
+    return this.flight.docked ? this._dockedTo : undefined;
+  }
+
   /** Why the last contact did not latch (empty after a good one). */
   get lastFailures(): readonly string[] {
     return this._last;
   }
 
-  alignment(): Alignment {
-    return alignment(this.flight.state, this.probePort, this.mothership.port);
+  /** Target whose port is closest to the probe. */
+  nearest(s = this.flight.state): DockingTarget {
+    let best = this.targets[0]!;
+    let bestD = Infinity;
+    for (const t of this.targets) {
+      const d = s.position.sub(t.port.position).length();
+      if (d < bestD) [best, bestD] = [t, d];
+    }
+    return best;
   }
 
-  inRange(s = this.flight.state): boolean {
-    return s.position.sub(this.mothership.port.position).length() <= ASSIST_RANGE_M;
+  /** The port the assist flies to: the one asked for, else the nearest. */
+  assistTarget(s = this.flight.state): DockingTarget {
+    return this.aim ?? this.nearest(s);
+  }
+
+  /** The target the read-outs refer to: the one docked to, else the assist's. */
+  current(): DockingTarget {
+    return this.dockedTo ?? this.assistTarget();
+  }
+
+  /** Turn the assist on toward a given port (navigation's automatic docking) or the nearest one. */
+  assistTo(target?: DockingTarget): void {
+    this.aim = target;
+    this.assist = true;
+  }
+
+  toggleAssist(): void {
+    if (this.assist) this.assist = false;
+    else this.assistTo();
+  }
+
+  alignment(target = this.current()): Alignment {
+    return alignment(this.flight.state, this.probePort, target.port);
+  }
+
+  inRange(s = this.flight.state, target = this.assistTarget(s)): boolean {
+    return s.position.sub(target.port.position).length() <= ASSIST_RANGE_M;
   }
 
   /** Latch now (the game starts docked). */
-  dockNow(): void {
+  dockNow(target: DockingTarget = this.targets[0]!): void {
     if (this.flight.docked) return;
-    this.flight.dock(() => this.mothership.dockedPose(this.probePort));
-    this.assist = false;
-    this._last = [];
-    this.events.push({ type: "docked" });
+    this.latch(target);
   }
 
   /** Open the latches; the springs push the probe away along the port axis. */
   undock(): void {
-    if (!this.flight.docked) return;
-    this.flight.undock(this.mothership.port.normal.scale(this.undockPushMs));
+    const t = this.dockedTo;
+    if (!t) return;
+    this.flight.undock(t.port.normal.scale(this.undockPushMs));
     this.assist = false;
-    this.events.push({ type: "undocked" });
+    this.aim = undefined;
+    this.events.push({ type: "undocked", target: t });
   }
 
   drainEvents(): DockingEvent[] {
     const out = this.events;
     this.events = [];
     return out;
+  }
+
+  private latch(t: DockingTarget): void {
+    this._last = [];
+    this._dockedTo = t;
+    this.flight.dock(() => t.dockedPose(this.probePort));
+    this.assist = false;
+    this.aim = undefined;
+    this.events.push({ type: "docked", target: t });
   }
 
   private authority(): Authority {
@@ -100,18 +154,22 @@ export class Docking {
   }
 
   private checkContact(s: RigidBodyState): void {
-    const a = alignment(s, this.probePort, this.mothership.port);
-    if (a.axialM > 0 || a.axialM < -1 || a.lateralM > NODE_RADIUS_M) return;
+    for (const t of this.targets) {
+      const a = alignment(s, this.probePort, t.port);
+      if (a.axialM > 0 || a.axialM < -1 || a.lateralM > NODE_RADIUS_M) continue;
+      this.contact(s, t, a);
+      return;
+    }
+  }
+
+  private contact(s: RigidBodyState, t: DockingTarget, a: Alignment): void {
     const j = a.lateralM > GUIDE_RADIUS_M ? { capture: false, failures: ["fuera del puerto: has tocado el nodo"] } : judgeContact(a, this.limits);
     if (j.capture) {
-      this._last = [];
-      this.flight.dock(() => this.mothership.dockedPose(this.probePort));
-      this.assist = false;
-      this.events.push({ type: "docked" });
+      this.latch(t);
       return;
     }
     // No latch: the guide petals push the probe back out along the axis.
-    const n = this.mothership.port.normal;
+    const n = t.port.normal;
     const vAxis = s.velocity.dot(n);
     const back = Math.max(0.02, -vAxis * REBOUND);
     const v = s.velocity.sub(n.scale(vAxis)).add(n.scale(back));
@@ -120,6 +178,6 @@ export class Docking {
     this.flight.applyImpulse(v.sub(s.velocity));
     this.flight.nudge(n.scale(-a.axialM + 0.01));
     this._last = j.failures;
-    this.events.push({ type: "rebound", failures: j.failures, damage });
+    this.events.push({ type: "rebound", target: t, failures: j.failures, damage });
   }
 }

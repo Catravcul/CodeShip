@@ -146,7 +146,7 @@ export class Region {
   }
 
   /** Everything the ship must steer around on the way to `target`: rocks and the other asteroids, as hull spheres plus margin. */
-  obstaclesExcept(target: Asteroid): { centre: Vec3; radiusM: number }[] {
+  obstaclesExcept(target?: Asteroid): { centre: Vec3; radiusM: number }[] {
     const hull = (r: number) => r * OBSTACLE_HULL_FACTOR + OBSTACLE_MARGIN_M;
     return [
       ...this.asteroids.filter((a) => a !== target).map((a) => ({ centre: a.position, radiusM: hull(a.meanRadiusM) })),

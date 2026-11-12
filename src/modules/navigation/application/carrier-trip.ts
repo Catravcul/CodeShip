@@ -1,6 +1,15 @@
 import type { Quat } from "@core/math/quat";
 import type { Vec3 } from "@core/math/vec3";
+import type { DockingTarget } from "@modules/mothership/domain/docking";
 import { continuousBurnDistance, type ContinuousBurnPlan } from "../domain/transfer";
+
+/** The mothership closing on a station's port at the end of a trip (the berthing use case). */
+export interface BerthRun {
+  readonly status: "approach" | "docked" | "failed";
+  readonly remainingM: number;
+  readonly speedMs: number;
+  advance(gameS: number): void;
+}
 
 /** What navigation needs from the mothership (and its docking port) to move it with the probe aboard. */
 export interface CarrierPort {
@@ -23,8 +32,19 @@ export interface CarrierPort {
   readonly parkingM: number;
   /** Radius the route keeps clear around the whole ship (rings and spine), metres. */
   readonly clearanceM: number;
+  /** The probe is docked to this carrier. */
   docked(): boolean;
   undock(): void;
+  /** Id of the port the carrier itself is docked at (a station's), if any. */
+  dockedTo?(): string | undefined;
+  /** When docked at a station: the point on its port axis to back out to before a trip. */
+  departure?(): Vec3 | undefined;
+  /** Let go of the station's port (start of a trip). */
+  release?(): void;
+  /** Where the carrier stops before docking at `port`, already turned for the approach. */
+  berthStandoff?(port: DockingTarget): { position: Vec3; orientation: Quat };
+  /** Start the last approach and docking at `port` from where it is. */
+  berth?(port: DockingTarget): BerthRun;
 }
 
 /** Game value: the mothership's hours-long hops play in time-lapse, this many game seconds per real second (before time warp). */

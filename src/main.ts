@@ -37,6 +37,9 @@ import { STORY } from "@modules/story/data/nevaeh";
 import type { Plant } from "@modules/garden/domain/plant";
 import { seededRandom } from "./content/random";
 import { Interior } from "./interior";
+import { buildStartRegion } from "./content/start-region";
+import { AsteroidField } from "./adapters/three/asteroid-field";
+import { SkyBodies } from "./adapters/three/sky-bodies";
 
 // --- Domain setup -----------------------------------------------------------
 const d = BENNU.dimensionsM.value;
@@ -45,11 +48,14 @@ const shapeParams = { seed: 101955, size: { x: d.x, y: d.y, z: d.z }, detail: 6,
 const surface = asteroidSurfaceFn(shapeParams);
 const bennu = new Asteroid(BENNU, Vec3.ZERO, (local) => surface(local));
 const ship = Ship.create(explorerDesign());
-const start = RigidBodyState.at(new Vec3(250, 120, 1600)).withOrientation(
+const startPos = new Vec3(250, 120, 1600);
+// The starting region: Bennu among real New Polana–family asteroids, inside a soft boundary.
+const region = buildStartRegion(bennu, startPos);
+const start = RigidBodyState.at(startPos).withOrientation(
   // Face the asteroid from the start position.
   Quat.fromAxisAngle(Vec3.Y, Math.atan2(250, 1600)).multiply(Quat.fromAxisAngle(Vec3.X, -Math.atan2(120, 1620))),
 );
-const flight = new FlightComputer(ship, start, { gravitySources: [bennu], target: bennu });
+const flight = new FlightComputer(ship, start, { gravitySources: region.asteroids, target: bennu });
 const expedition = new Expedition(flight, bennu, EXERCISES, 500);
 
 // Life on board: a long leg is already under way, so the garden has some days behind it.
@@ -118,9 +124,14 @@ const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerH
 scene.add(camera);
 
 scene.add(buildStarfield(1e6));
+// Sun and planets seen from the region (JPL elements at the game date); the light comes from the Sun disc.
+const skyBodies = new SkyBodies(region.sky(), root);
+scene.add(skyBodies.group);
 const sun = new THREE.DirectionalLight(0xfff4e6, 3.2);
-sun.position.set(-1, 0.4, 0.6).multiplyScalar(1e4);
+sun.position.copy(skyBodies.sunDirection).multiplyScalar(1e4);
 scene.add(sun, new THREE.AmbientLight(0x223344, 0.25));
+const field = new AsteroidField(region, skyBodies.sunDirection, root);
+scene.add(field.group);
 
 const asteroidMesh = buildAsteroidMesh(shapeParams, 0x3b3835); // Bennu is very dark; tone mapping lifts it a little.
 scene.add(asteroidMesh);
@@ -145,6 +156,11 @@ const touch = new TouchPilot(root);
 const duelView = new DuelView(root);
 const view = new FlightView(scene, camera, root);
 const landBtn = view.addButton("land-btn", () => (flight.landingAssist = !flight.landingAssist));
+const namesBtn = view.addButton("names-btn", () => (skyBodies.labelsOn = !skyBodies.labelsOn));
+const regionTag = document.createElement("div");
+regionTag.className = "region-tag";
+root.appendChild(regionTag);
+const regionTitle = `${region.data.name} · ${region.heliocentricAU().length().toFixed(2).replace(".", ",")} UA del Sol`;
 window.addEventListener("keydown", (e) => {
   if (e.code === "KeyG" && !e.repeat && !interior.active) flight.landingAssist = !flight.landingAssist;
 });
@@ -237,6 +253,11 @@ renderer.setAnimationLoop((now) => {
   const warp = expedition.phase === "flight" && idle && far ? view.warpRequested : 1;
   const warpNote = view.warpRequested > 1 && warp === 1 ? (far ? "tiempo ×1 mientras maniobras" : "tiempo ×1 cerca del asteroide") : warp > 1 ? `tiempo ×${warp}` : "";
   expedition.update(dt * warp, cmd);
+  // Region rules: soft boundary push back and no flying through the other rocks (game rules).
+  if (!flight.landed) {
+    const st = flight.state;
+    flight.applyImpulse(region.boundaryPush(st.position, st.velocity, dt * warp).add(region.avoidObstacles(st.position, st.velocity)));
+  }
   if (expedition.phase === "aggressive" && lastPhase !== "aggressive") habitat.jolt(0.8, `${BENNU.name}, furioso, sacudió la nave`);
   lastPhase = expedition.phase;
   interior.update(dt);
@@ -260,10 +281,27 @@ renderer.setAnimationLoop((now) => {
     warpNote,
   );
   asteroidMesh.rotation.y = bennu.spinRadS * flight.simTimeS;
+  field.update(camera, window.innerHeight, flight.simTimeS, view.enabled && skyBodies.labelsOn);
+  skyBodies.update(camera, renderer.getPixelRatio(), view.enabled);
+  const namesText = `Nombres: ${skyBodies.labelsOn ? "sí" : "no"}`;
+  if (namesBtn.textContent !== namesText) namesBtn.textContent = namesText;
+  const edge = region.boundary(flight.state.position);
+  const tagText =
+    edge.zone === "outside"
+      ? "Fuera de la zona de vuelo: el ordenador te devuelve dentro"
+      : edge.zone === "warning"
+        ? `Límite de la zona de vuelo a ${(edge.toEdgeM / 1000).toFixed(1).replace(".", ",")} km: el ordenador te frena`
+        : now < 12000
+          ? regionTitle
+          : "";
+  if (regionTag.textContent !== tagText) {
+    regionTag.textContent = tagText;
+    regionTag.className = `region-tag ${edge.zone}${tagText ? " on" : ""}`;
+  }
 
   hud.render(flight.telemetry(), flight.rotationAssist, [ship.propellantKg("MMH/NTO"), ship.propellantKg("Hydrazine")], thrustText(cmd));
   renderer.render(scene, camera);
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, region, field, skyBodies };

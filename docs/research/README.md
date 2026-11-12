@@ -9,6 +9,7 @@ Investigación documentada con fuentes para diseñar el juego. Revisada el 11 de
 | [asteroides.md](asteroides.md) | Asteroides reales, clases espectrales y recursos que contienen |
 | [componentes-de-nave.md](componentes-de-nave.md) | Motores, propulsores y energía reales con sus especificaciones |
 | [fuentes-de-datos.md](fuentes-de-datos.md) | APIs y servidores MCP para traer datos reales al juego |
+| [sistema-solar.md](sistema-solar.md) | Zona inicial (familia de Nueva Polana), Sol y planetas vistos desde allí, densidad real del cinturón y rendimiento |
 
 ## Qué había del borrador anterior
 

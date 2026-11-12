@@ -6,6 +6,8 @@ Esta es la versión 2, rehecha desde cero con Three.js y TypeScript. El borrador
 
 **Preview jugable:** https://catravcul.github.io/CodeShip/ (rama `gh-pages`; se publica con `npx vite build --base=./` y se sube la carpeta compilada a esa rama).
 
+El juego empieza en el cinturón interior, en la familia de Nueva Polana, de donde probablemente viene Bennu: el Sol y los planetas se ven con su tamaño y brillo reales calculados con los elementos orbitales de JPL, y alrededor hay asteroides reales de la zona y miles de rocas, en una zona de vuelo de 40 km. Detalles y qué se comprime en [docs/research/sistema-solar.md](docs/research/sistema-solar.md).
+
 A bordo, Doménica cuida un huerto, una cubierta de cultivo que hace el viaje autosuficiente, gatos, chihuahuas y gallinas libres que pueden llegar a ser una familia, y recibe por radio las cartas de Nevaeh y las llamadas de Kushal. Todo se hace con retos de código. Diseño en [docs/design/vida-a-bordo.md](docs/design/vida-a-bordo.md).
 
 ## Arrancar
@@ -47,7 +49,7 @@ src/
   modules/
     ship/          nave como composición de componentes reales; masa, inercia, delta-v
     flight/        sólido rígido 6DOF newtoniano, ordenador de vuelo a 120 Hz fijo
-    celestial/     asteroides reales: masa, densidad, rotación, gravedad, composición
+    celestial/     asteroides reales, órbitas (Kepler), cielo visto desde la zona y zona de vuelo
   content/         generadores procedurales deterministas (forma de asteroides)
   adapters/three/  escena, cabina, malla del asteroide, estrellas
   adapters/input/  teclado → orden de empuje
@@ -63,5 +65,7 @@ Reglas: TDD en `domain/` y `application/`; cada valor real lleva su fuente (`sou
 | Motor principal R-4D | 490 N, Isp 312 s, 3,6 kg, MMH/NTO | [Wikipedia](https://en.wikipedia.org/wiki/R-4D) |
 | RCS MR-106L | 22 N (10–34 N), Isp 228–235 s, 0,59 kg, hidracina | [SatCatalog](https://satcatalog.com/component/mr-106l-22n) |
 | 101955 Bennu | 565×535×508 m, radio medio 245,03 m, 7,329×10¹⁰ kg, 1190 kg/m³, rotación 4,296057 h, tipo B | [Wikipedia](https://en.wikipedia.org/wiki/101955_Bennu) |
+| Planetas | Elementos keplerianos medios 1800–2050, radios, leyes de brillo | [JPL (Standish)](https://ssd.jpl.nasa.gov/planets/approx_pos.html), [NASA Fact Sheet](https://nssdc.gsfc.nasa.gov/planetary/factsheet/), [Mallama y Hilton 2018](https://arxiv.org/abs/1808.01973) |
+| 142 Polana y 6 asteroides de su zona | Órbita, diámetros y albedos NEOWISE, rotaciones LCDB | [JPL SBDB](https://ssd-api.jpl.nasa.gov/doc/sbdb.html) |
 
 El casco y los tanques de la nave inicial son valores de juego, a sustituir por piezas reales. La distribución de 24 propulsores RCS en pares dedicados es una simplificación jugable.

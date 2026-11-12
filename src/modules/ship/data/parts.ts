@@ -1,5 +1,7 @@
 import type { ShipDesign } from "../domain/ship";
-import { fits, installedId, type Part, type PartSlot, type TankPart, type ThrusterPart } from "../domain/refit";
+import { fits, installedId, type EquipmentPart, type Part, type PartSlot, type TankPart, type ThrusterPart } from "../domain/refit";
+import { isEquipmentSlot, type Equipment } from "../domain/equipment";
+import { BATTERIES, CABINS, POWER_SOURCES, SHIELDS } from "./equipment";
 import { MR104H, MR106L, MR107T, MR111G, R4D } from "./thrusters";
 
 const thruster = (model: ThrusterPart["model"]): ThrusterPart => ({ kind: "thruster", id: model.id, name: model.name, model });
@@ -20,13 +22,17 @@ export const TANK_PARTS: readonly TankPart[] = [
   { kind: "tank", id: "tanque-n2h4-120", name: "Tanque de hidracina 120 kg", spec: { propellant: "Hydrazine", capacityKg: 120, dryMassKg: 13 }, note: TANK_NOTE },
 ];
 
-export const ALL_PARTS: readonly Part[] = [...MAIN_ENGINE_PARTS, ...RCS_PARTS, ...TANK_PARTS];
+const equipmentPart = (equipment: Equipment): EquipmentPart => ({ kind: "equipment", id: equipment.id, name: equipment.name, equipment });
+/** Cabins, power sources, batteries and shields on the shelf (real components, see equipment.ts). */
+export const EQUIPMENT_PARTS: readonly EquipmentPart[] = [...CABINS, ...POWER_SOURCES, ...BATTERIES, ...SHIELDS].map(equipmentPart);
+
+export const ALL_PARTS: readonly Part[] = [...MAIN_ENGINE_PARTS, ...RCS_PARTS, ...TANK_PARTS, ...EQUIPMENT_PARTS];
 
 export const partById = (id: string): Part | undefined => ALL_PARTS.find((p) => p.id === id);
 
 /** Parts that could replace what is in a slot now. */
 export function partOptions(design: ShipDesign, slot: PartSlot): Part[] {
-  const shelf = slot === "motor" ? MAIN_ENGINE_PARTS : slot === "rcs" ? RCS_PARTS : TANK_PARTS;
+  const shelf: readonly Part[] = slot === "motor" ? MAIN_ENGINE_PARTS : slot === "rcs" ? RCS_PARTS : isEquipmentSlot(slot) ? EQUIPMENT_PARTS : TANK_PARTS;
   const current = installedId(design, slot, TANK_PARTS);
   return shelf.filter((p) => p.id !== current && fits(design, slot, p));
 }

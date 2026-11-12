@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ALL_PARTS } from "@modules/ship/data/parts";
+import { isEmptyPart } from "@modules/ship/domain/refit";
 import { ELECTRIC_THRUSTERS, X3 } from "@modules/mothership/data/thrusters";
 import { BENNU } from "@modules/celestial/data/bennu";
 import { extractToCargo } from "@modules/celestial/domain/resources";
@@ -14,7 +15,7 @@ const metalKg = (inputs: Readonly<Record<string, number>>) => Object.entries(inp
 
 describe("blueprints", () => {
   it("every part of the ship's catalog has one, plus the probe", () => {
-    for (const p of ALL_PARTS) expect(blueprintForPart(p.id), p.id).toBeDefined();
+    for (const p of ALL_PARTS.filter((x) => !isEmptyPart(x))) expect(blueprintForPart(p.id), p.id).toBeDefined();
     expect(BLUEPRINTS).toContain(PROBE_BLUEPRINT);
   });
 

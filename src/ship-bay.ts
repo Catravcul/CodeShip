@@ -3,7 +3,7 @@ import type { ChoreSession, Habitat } from "@modules/habitat/application/habitat
 import type { Chore } from "@modules/chores/domain/chore";
 import { swapChore } from "@modules/chores/application/catalog";
 import { TANK_PARTS, partById } from "@modules/ship/data/parts";
-import { installedId } from "@modules/ship/domain/refit";
+import { installedId, isEmptyPart } from "@modules/ship/domain/refit";
 import { bayActions, bayStatus, needingAttention, type BayAction, type BayStore, type PartSupply } from "@modules/ship-bay/application/bay";
 import type { ComponentStatus } from "@modules/ship-bay/domain/component";
 import type { Attention } from "@modules/ship-bay/domain/attention";
@@ -322,7 +322,10 @@ export class ShipBay {
     if (a.drive) return this.runDrive(a.drive);
     if (a.locked) return this.say("No está en el hangar: fabrícala en la estación (Planos)");
     let chore: Chore | undefined;
-    const removed = a.slot ? installedId(this.ship.design, a.slot, TANK_PARTS) : undefined;
+    const fittedNow = a.slot ? installedId(this.ship.design, a.slot, TANK_PARTS) : undefined;
+    const old = fittedNow ? partById(fittedNow) : undefined;
+    // Taking «nothing» off puts nothing in the hangar.
+    const removed = old && isEmptyPart(old) ? undefined : fittedNow;
     if (a.kind === "tarea") chore = this.chores().find((c) => c.id === a.choreId);
     else {
       const part = a.partId ? partById(a.partId) : undefined;
@@ -330,7 +333,13 @@ export class ShipBay {
     }
     if (!chore) return;
     this.openChore(chore, (status) => {
-      if (status === "done" && chore.kind === "cambiar-pieza" && a.partId && this.parts) this.parts.swap(a.partId, removed);
+      if (status === "done" && chore.kind === "cambiar-pieza" && a.partId && this.parts) {
+        const part = partById(a.partId);
+        // «Nothing» (no shield, no source) is not a part: only the old one goes to the hangar.
+        if (part && isEmptyPart(part)) {
+          if (removed) this.parts.put(removed);
+        } else this.parts.swap(a.partId, removed);
+      }
       if (status === "done") this.say(chore.kind === "cambiar-pieza" ? `Pieza montada: la nave ha cambiado${this.parts && removed ? " · la vieja va al hangar" : ""}` : "Tarea hecha");
       else if (status === "failed") this.say("No salió: la pieza sigue como estaba");
     });

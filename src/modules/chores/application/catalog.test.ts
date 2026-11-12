@@ -174,4 +174,18 @@ describe("part swap chores", () => {
   it("an RCS swap is valid too", () => {
     swapChore(explorerDesign(), "rcs", partById("aerojet-mr-111g")!).exercises.forEach(valid);
   });
+
+  it("an equipment swap asks for the new part's real mass and predicts the Δv with it", () => {
+    for (const id of ["cabina-acero", "rosa-diamond", "li-ion-156", "whipple-al", "sin-fuente"]) {
+      const p = partById(id)!;
+      const slot = p.kind === "equipment" ? (p.equipment.kind as "cabina") : "motor";
+      const c = swapChore(explorerDesign(), slot, p);
+      c.exercises.forEach(valid);
+      expect(c.targetId).toBe(`${slot}:${id}`);
+      const value = c.exercises[0] as Exercise & { kind: "choice" };
+      expect(value.options[value.correct], id).toBe(String(Math.round(p.kind === "equipment" ? p.equipment.massKg : 0)));
+      const dv = c.exercises[1] as Exercise & { kind: "choice" };
+      expect(dv.options[dv.correct]).toBe(`${Math.round(full(withPart(explorerDesign(), slot, p)).mainDeltaV())} m/s`);
+    }
+  });
 });

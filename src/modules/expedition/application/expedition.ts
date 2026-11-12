@@ -85,7 +85,7 @@ export class Expedition {
     }
     if (this._phase === "aggressive" && this.aggression) {
       const { hullDamage, calmed } = this.aggression.update(dtS, this.flight.telemetry().distanceToSurface);
-      this.flight.ship.damage(hullDamage);
+      this.flight.ship.damage(hullDamage, "escombros");
       if (calmed) {
         this.aggression = undefined;
         this._phase = this.flight.landed ? "landed" : "flight";

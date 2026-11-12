@@ -14,6 +14,7 @@ import type { Condition, Patient } from "@modules/medical/domain/health";
 import { ABCDE, PROTOCOLS } from "@modules/medical/data/protocols";
 import { Ship, type ShipDesign } from "@modules/ship/domain/ship";
 import { withPart, type Part, type PartSlot } from "@modules/ship/domain/refit";
+import { EQUIPMENT_SLOTS, equipmentMassKg, isEquipmentSlot, type Equipment, type EquipmentSlot } from "@modules/ship/domain/equipment";
 import type { Recipe } from "@modules/kitchen/data/recipes";
 import type { Breath, YogaSequence } from "@modules/wellness/data/yoga";
 import { DEVICES, INTERVAL_HR_FRACTION, maxHeartRate, type Workout } from "@modules/wellness/data/exercise";
@@ -427,14 +428,28 @@ export function shipCode(design: ShipDesign): CodeBlock[] {
   const main = { ...design.mainEngines[0]!.model, name: shortName(design.mainEngines[0]!.model.name) };
   const rcs = { ...design.rcs[0]!.model, name: shortName(design.rcs[0]!.model.name) };
   const tank = (i: number) => design.tanks[i]!;
+  const fixed = Math.round(equipmentMassKg(design.equipment.filter((e) => !isEquipmentSlot(e.kind))));
   return [
     block("motor", `motor = ${main.name}(empuje ${main.thrustN} N, Isp ${main.ispS} s)`, `this.motor = new Propulsor("${main.id}", { empujeN: ${main.thrustN}, ispS: ${main.ispS} });`),
     block("rcs", `rcs = ${design.rcs.length} × ${rcs.name}(empuje ${rcs.thrustN} N, Isp ${rcs.ispS} s)`, `this.rcs = repetir(${design.rcs.length}, () => new Propulsor("${rcs.id}", { empujeN: ${rcs.thrustN}, ispS: ${rcs.ispS} }));`),
     ...[0, 1].map((i) =>
       block(`tanque${i}`, `tanque${i + 1} = Tanque(${tank(i).spec.propellant}, ${tank(i).spec.capacityKg} kg)`, `this.tanque${i + 1} = new Tanque("${tank(i).spec.propellant}", { capacidadKg: ${tank(i).spec.capacityKg} });`),
     ),
-    block("casco", `casco = Casco(${design.hull.dryMassKg} kg)`, `this.casco = new Casco({ masaKg: ${design.hull.dryMassKg} });`),
+    ...EQUIPMENT_SLOTS.flatMap((slot) => {
+      const e = design.equipment.find((x) => x.kind === slot);
+      return e ? [equipmentLine(slot, e)] : [];
+    }),
+    block("casco", `sistemas = Fijos(${fixed} kg)`, `this.sistemas = new Fijos({ masaKg: ${fixed} });`),
   ];
+}
+
+const EQUIPMENT_CLASS: Readonly<Record<EquipmentSlot, string>> = { cabina: "Cabina", energia: "Fuente", bateria: "Bateria", escudo: "Escudo" };
+const kg = (e: Equipment) => Math.round(e.massKg);
+/** One line of the ship's code for a piece of equipment: its class, real mass and, for power, its watts or Wh. */
+function equipmentLine(slot: EquipmentSlot, e: Equipment): CodeBlock {
+  const extra = slot === "energia" ? `, ${e.powerW} W` : slot === "bateria" ? `, ${e.storageWh ?? 0} Wh` : "";
+  const extraJs = slot === "energia" ? `, potenciaW: ${e.powerW}` : slot === "bateria" ? `, energiaWh: ${e.storageWh ?? 0}` : "";
+  return block(slot, `${slot} = ${EQUIPMENT_CLASS[slot]}("${e.name}", ${kg(e)} kg${extra})`, `this.${slot} = new ${EQUIPMENT_CLASS[slot]}("${e.id}", { masaKg: ${kg(e)}${extraJs} });`);
 }
 
 /** Repair = find the line the damage corrupted in the ship's code, then restore its real value. */
@@ -478,21 +493,21 @@ const PROP_NAME = { "MMH/NTO": "MMH/NTO", Hydrazine: "hidracina" } as const;
  */
 export function swapChore(design: ShipDesign, slot: PartSlot, part: Part, scenario?: string): Chore {
   const next = withPart(design, slot, part);
-  const key = slot === "motor" ? "motor" : slot === "rcs" ? "rcs" : `tanque${slot.slice(7)}`;
-  const before = shipCode(design).find((b) => b.id === key)!;
+  const key = slot === "motor" ? "motor" : slot === "rcs" ? "rcs" : isEquipmentSlot(slot) ? slot : `tanque${slot.slice(7)}`;
+  const before = shipCode(design).find((b) => b.id === key);
   const after = shipCode(next).find((b) => b.id === key)!;
   const id = `cambiar-${slot}-${part.id}`;
-  const isTank = part.kind === "tank";
-  const right = isTank ? part.spec.capacityKg : part.model.thrustN;
-  const unit = isTank ? "kg" : "N";
+  const right = part.kind === "tank" ? part.spec.capacityKg : part.kind === "equipment" ? kg(part.equipment) : part.model.thrustN;
+  const unit = part.kind === "thruster" ? "N" : "kg";
   const gap = (s: string) => s.replace(new RegExp(`${right}( ${unit}|(?=[,} ]))`), (_m, u: string | undefined) => `___${u ?? ""}`);
+  const question = part.kind === "tank" ? "¿Qué capacidad tiene el tanque nuevo?" : part.kind === "equipment" ? `¿Cuánto pesa la pieza nueva (${part.name})?` : `¿Qué empuje real tiene el ${shortName(part.name)}?`;
   const valueEx = choice(
     `${id}-valor`,
     2,
     "completar",
     "Una pieza nueva en mí",
-    isTank ? "¿Qué capacidad tiene el tanque nuevo?" : `¿Qué empuje real tiene el ${shortName(part.name)}?`,
-    [block("old", `− ${before.pseudo}`, `// ${before.js}`), block("new", `+ ${gap(after.pseudo)}`, gap(after.js))],
+    question,
+    [...(before ? [block("old", `− ${before.pseudo}`, `// ${before.js}`)] : []), block("new", `+ ${gap(after.pseudo)}`, gap(after.js))],
     String(right),
     [String(right * 10), String(Math.max(1, Math.round(right / 10)))],
   );
@@ -516,25 +531,39 @@ export function swapChore(design: ShipDesign, slot: PartSlot, part: Part, scenar
     `${dv} m/s`,
     [`${Math.round(dv / 9.80665)} m/s`, `${Math.round(engine.ispS * 9.80665 * (m0 / mf - 1) * 10)} m/s`],
   );
-  const [oldOne, newOne] = isTank ? ["el tanque viejo", "el tanque nuevo"] : slot === "rcs" ? ["los RCS viejos", "los RCS nuevos"] : ["el motor viejo", "el motor nuevo"];
-  const steps = [
-    `cierra las válvulas de ${PROP_NAME[isTank ? part.spec.propellant : part.model.propellant]}`,
-    "purga la línea con helio",
-    `desmonta ${oldOne}`,
-    `monta ${newOne}`,
-    "comprueba que no hay fugas",
-    isTank ? "llénalo y presurízalo" : "haz un encendido de prueba",
-  ];
-  const label = slot === "motor" ? "motor principal" : slot === "rcs" ? "RCS" : "tanque";
+  const steps = part.kind === "equipment" ? EQUIPMENT_STEPS[part.equipment.kind as EquipmentSlot] : propulsionSteps(slot, part);
+  const label = slot === "motor" ? "motor principal" : slot === "rcs" ? "RCS" : isEquipmentSlot(slot) ? EQUIPMENT_LABEL[slot] : "tanque";
   return {
     id,
     kind: "cambiar-pieza",
     targetId: `${slot}:${part.id}`,
     title: `Cambiar ${label}: ${shortName(part.name)}`,
-    scenario: scenario ?? `${before.pseudo} → ${after.pseudo}`,
-    exercises: [valueEx, dvEx, order(`${id}-montaje`, 1, "Con cuidado: hay propelente", steps)],
+    scenario: scenario ?? `${before?.pseudo ?? "(nada)"} → ${after.pseudo}`,
+    exercises: [valueEx, dvEx, order(`${id}-montaje`, 1, part.kind === "equipment" ? EQUIPMENT_CARE[part.equipment.kind as EquipmentSlot] : "Con cuidado: hay propelente", steps)],
   };
 }
+
+function propulsionSteps(slot: PartSlot, part: Part): string[] {
+  const isTank = part.kind === "tank";
+  const propellant = part.kind === "tank" ? part.spec.propellant : part.kind === "thruster" ? part.model.propellant : "MMH/NTO";
+  const [oldOne, newOne] = isTank ? ["el tanque viejo", "el tanque nuevo"] : slot === "rcs" ? ["los RCS viejos", "los RCS nuevos"] : ["el motor viejo", "el motor nuevo"];
+  return [`cierra las válvulas de ${PROP_NAME[propellant]}`, "purga la línea con helio", `desmonta ${oldOne}`, `monta ${newOne}`, "comprueba que no hay fugas", isTank ? "llénalo y presurízalo" : "haz un encendido de prueba"];
+}
+
+const EQUIPMENT_LABEL: Readonly<Record<EquipmentSlot, string>> = { cabina: "cabina", energia: "fuente de energía", bateria: "batería", escudo: "escudo" };
+const EQUIPMENT_CARE: Readonly<Record<EquipmentSlot, string>> = {
+  cabina: "Con cuidado: es la pared que te separa del vacío",
+  energia: "Con cuidado: hay tensión en los cables",
+  bateria: "Con cuidado: una batería en corto se incendia",
+  escudo: "Con cuidado: no dobles el parachoques",
+};
+/** Fitting steps in order (the last challenge orders them). */
+const EQUIPMENT_STEPS: Readonly<Record<EquipmentSlot, readonly string[]>> = {
+  cabina: ["despresuriza la cabina", "saca los asientos y la consola", "suelta la cabina vieja de la estructura", "atornilla la cabina nueva", "prueba la presión con aire", "vuelve a montar los asientos y la consola"],
+  energia: ["desconecta la fuente del bus de energía", "desmonta la fuente vieja", "monta la nueva en su soporte", "conecta los cables al bus", "comprueba la tensión que da"],
+  bateria: ["pasa los equipos a la fuente", "desconecta la batería vieja", "desmonta la batería vieja", "monta la batería nueva", "conecta y comprueba la tensión", "cárgala si es recargable"],
+  escudo: ["suelta las mantas térmicas", "desmonta los soportes del escudo viejo", "monta los soportes nuevos", "coloca el parachoques a su distancia", "vuelve a poner las mantas"],
+};
 
 // --- Cats: programming their minds ------------------------------------------
 

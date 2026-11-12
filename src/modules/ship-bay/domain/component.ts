@@ -8,6 +8,8 @@ export interface Spec {
   readonly label: string;
   readonly value: string;
   readonly source?: string;
+  /** Detail for the full sheet: folded away under the actions so a phone shows the actions first. */
+  readonly more?: boolean;
 }
 
 export interface Issue {

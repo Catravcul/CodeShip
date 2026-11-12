@@ -84,10 +84,10 @@ function equipmentSpecs(e: Equipment): Spec[] {
     { label: "Pieza", value: e.name, ...(e.sources[0] ? { source: e.sources[0] } : {}) },
     { label: "Masa", value: `${num(e.massKg, 1)} kg` },
     ...(e.storageWh ? [{ label: "Energía", value: `${num(e.storageWh / 1000, 1)} kWh${e.rechargeable === false ? " (no se recarga)" : ""}` }] : []),
-    { label: "Materiales", value: e.materials },
-    ...(e.size ? [{ label: "Tamaño", value: e.size }] : []),
-    { label: "Ha volado", value: e.flight },
-    { label: "Cómo se calcula", value: e.basis },
+    { label: "Materiales", value: e.materials, more: true },
+    ...(e.size ? [{ label: "Tamaño", value: e.size, more: true }] : []),
+    { label: "Ha volado", value: e.flight, more: true },
+    { label: "Cómo se calcula", value: e.basis, more: true },
   ];
 }
 
@@ -109,7 +109,7 @@ function powerSpecs(b: PowerBudget): Spec[] {
     { label: "Consume", value: `${num(b.drawnW)} W` },
     { label: "Balance", value: b.netW >= 0 ? `Sobran ${num(b.netW)} W` : `Faltan ${num(-b.netW)} W` },
     { label: "Batería", value: `${num(b.storageWh / 1000, 1)} kWh${b.storageWh && !b.rechargeable ? " (no se recarga)" : ""} · dura ${hours(b.enduranceH)}` },
-    ...b.lines.map((l) => ({ label: l.name, value: `${l.watts > 0 ? "+" : "−"}${num(Math.abs(l.watts))} W` })),
+    ...b.lines.map((l) => ({ label: l.name, value: `${l.watts > 0 ? "+" : "−"}${num(Math.abs(l.watts))} W`, more: true })),
   ];
 }
 
@@ -123,7 +123,7 @@ function equipmentStatus(ship: BayShip): ComponentStatus[] {
   const source = equipmentOf(d.equipment, "energia");
   if (source)
     out.push(
-      status({ id: EQUIPMENT_ID.energia, kind: "energia", name: `Energía: ${source.name.toLowerCase()}`, slot: "energia", issues: powerIssues(budget), specs: [...powerSpecs(budget), ...equipmentSpecs(source)] }),
+      status({ id: EQUIPMENT_ID.energia, kind: "energia", name: `Energía · ${source.name}`, slot: "energia", issues: powerIssues(budget), specs: [...powerSpecs(budget), ...equipmentSpecs(source)] }),
     );
   const battery = equipmentOf(d.equipment, "bateria");
   if (battery) {
@@ -138,13 +138,14 @@ function equipmentStatus(ship: BayShip): ComponentStatus[] {
       status({
         id: EQUIPMENT_ID.escudo,
         kind: "escudo",
-        name: `Escudo: ${shield.name.toLowerCase()}`,
+        name: `Escudo · ${shield.name}`,
         slot: "escudo",
         issues: [],
         specs: [
           { label: "Diámetro crítico", value: `${num(dc * 10, 2)} mm de aluminio a 7 km/s (manual de la NASA)`, source: "https://ntrs.nasa.gov/citations/20090010053" },
           { label: "Daño de las piedras", value: `${pct(k)} del de la cabina de serie sin escudo (regla de juego)` },
           ...equipmentSpecs(shield),
+          { label: "Regla de juego", value: "El daño de las piedras de un asteroide enfadado se divide por cuánto más grande es la partícula que para la pared, comparada con la cabina de serie", more: true },
         ],
       }),
     );
@@ -164,14 +165,14 @@ export function bayStatus(input: BayInput): ComponentStatus[] {
     status({
       id: "casco",
       kind: "casco",
-      name: cabin ? `${d.hull.name}: ${cabin.name.toLowerCase()}` : d.hull.name,
+      name: cabin ? `${d.hull.name} · ${cabin.name}` : d.hull.name,
       health: hull,
       ...(cabin ? { slot: "cabina" as const } : {}),
       issues: byIntegrity(hull) === "ok" ? [] : [{ attention: byIntegrity(hull), text: `Casco al ${pct(hull)}` }],
       specs: [
         ...(cabin ? equipmentSpecs(cabin) : []),
         ...(cabin?.wall ? [{ label: "Pared", value: `${num(cabin.wall.thicknessMm, 2)} mm de ${cabin.wall.material} (${num(wallArealDensityKgM2(cabin.wall), 1)} kg/m²)` }] : []),
-        { label: "Medidas exteriores", value: `${num(d.hull.size.x)} × ${num(d.hull.size.y)} × ${num(d.hull.size.z)} m (valor de juego)` },
+        { label: "Medidas exteriores", value: `${num(d.hull.size.x)} × ${num(d.hull.size.y)} × ${num(d.hull.size.z)} m (valor de juego)`, more: true },
         { label: "Masa en seco", value: `${num(ship.dryMassKg)} kg: la suma de todas las piezas` },
         { label: "Masa total ahora", value: `${num(ship.massKg)} kg` },
       ],
@@ -241,7 +242,8 @@ export function bayStatus(input: BayInput): ComponentStatus[] {
       issues: [],
       specs: [
         { label: "Masa", value: `${num(equipmentMassKg(fixed))} kg en total` },
-        ...fixed.map((e) => ({ label: e.name, value: `${num(e.massKg)} kg${e.powerW ? ` · ${num(-e.powerW)} W` : ""} · ${e.basis}`, ...(e.sources[0] ? { source: e.sources[0] } : {}) })),
+        ...fixed.map((e) => ({ label: e.name, value: `${num(e.massKg)} kg${e.powerW ? ` · ${num(-e.powerW)} W` : ""}`, ...(e.sources[0] ? { source: e.sources[0] } : {}) })),
+        ...fixed.map((e) => ({ label: `${e.name}: cómo se calcula`, value: `${e.basis}. ${e.materials}. ${e.flight}`, more: true })),
       ],
     }),
   );
@@ -344,7 +346,7 @@ export function bayActions(c: ComponentStatus, chores: readonly Chore[], design:
             : p.kind === "equipment"
               ? equipmentSummary(p.equipment)
               : `${num(p.model.thrustN)} N · Isp ${p.model.ispS} s · ${num(p.model.dryMassKg, 2)} kg · ${PROP_NAME[p.model.propellant]}`;
-        if (isEmptyPart(p)) return { kind: "cambiar", label: `Quitar: ${p.name.toLowerCase()}`, detail: supply ? "La pieza que sale va al hangar" : "Deja el hueco vacío", slot: c.slot!, partId: p.id };
+        if (isEmptyPart(p)) return { kind: "cambiar", label: c.slot === "energia" ? "Quitar la fuente: solo batería" : "Quitar el escudo", detail: supply ? "La pieza que sale va al hangar" : "Deja el hueco vacío", slot: c.slot!, partId: p.id };
         const n = supply ? supply.count(p.id) : 1;
         if (n > 0) return { kind: "cambiar", label: `Montar ${short(p.name)}`, detail: supply ? `${what} · ${n} en el hangar` : what, slot: c.slot!, partId: p.id };
         return { kind: "cambiar", locked: true, label: `Montar ${short(p.name)}`, detail: `${what} · no hay en el hangar: fabrícala en la estación`, slot: c.slot!, partId: p.id };

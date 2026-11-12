@@ -6,6 +6,7 @@ import type { MassItem, MothershipSpec } from "../domain/mothership";
 import type { ThrusterMount } from "../domain/propulsion";
 import { forwardSpanFor } from "../domain/thermal";
 import { X3 } from "./thrusters";
+import { AUX_NONE, CAREER_LIMIT, FREE_SPACE_GCR, SHIELD_WATER_20 } from "./equipment";
 
 // --- Sources -----------------------------------------------------------------
 const IDSS_IDD = "International Docking System Standard (IDSS) Interface Definition Document, Rev. F (2022), tabla 3.3.1.1-2 «Initial Contact Conditions»: https://ntrs.nasa.gov/citations/20220011643";
@@ -49,7 +50,7 @@ const SOIL_KG = 11 * 15 * 0.3 * 1200 + 4 * 1000;
 const HAB_RING: MassItem[] = [
   est("casco-presurizado", "Módulo habitable y cubierta de cultivo (cascos presurizados)", Math.round(PRESSURISED_M3 * SHELL_KG_PER_M3), `${Math.round(PRESSURISED_M3)} m³ presurizados × 61 kg/m³ (la proporción del B330)`, [B330]),
   est("sustrato", "Sustrato de los bancales y macetas de las higueras", SOIL_KG, "165 m² × 0,3 m × 1,2 t/m³ (sustrato húmedo, estimación) + 4 macetas de 1 t"),
-  est("agua-blindaje", "Agua (reserva y blindaje del módulo)", 60000, "Estimación: una capa de agua de ~20 cm alrededor del módulo y de las literas, más la reserva del soporte vital"),
+  // The water shield (60 t, 20 cm around the module and the bunks) is swappable: data/equipment.ts.
   est("estructura-anillo", "Llanta de celosía y tres radios con ascensor", 50000, "Estimación: unos 110 kg por metro en 350 m de llanta más los radios; carga radial de ~3 MN a 1 g"),
 ];
 
@@ -88,6 +89,9 @@ export const NODRIZA: MothershipSpec = {
       note: "Valor de juego: luces del huerto (~165 m² a ~0,5 kW/m²), soporte vital, motores de los anillos y la vida a bordo. Los 8 paneles de la ISS dan 75–90 kW",
     },
   },
+  equipment: [AUX_NONE, SHIELD_WATER_20],
+  sunDistanceAu: { value: 1.1264, source: "https://en.wikipedia.org/wiki/101955_Bennu", note: "Semieje mayor de la órbita de Bennu" },
+  radiation: { freeSpaceMSvPerYear: FREE_SPACE_GCR, careerLimitMSv: CAREER_LIMIT },
   /** Game value: 150 t of xenon (about two years of world production; see the doc). */
   propellantCapacityKg: 150000,
   habRingItems: HAB_RING,

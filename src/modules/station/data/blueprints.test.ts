@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ALL_PARTS } from "@modules/ship/data/parts";
 import { isEmptyPart } from "@modules/ship/domain/refit";
+import { MOTHERSHIP_EQUIPMENT } from "@modules/mothership/data/equipment";
 import { ELECTRIC_THRUSTERS, X3 } from "@modules/mothership/data/thrusters";
 import { BENNU } from "@modules/celestial/data/bennu";
 import { extractToCargo } from "@modules/celestial/domain/resources";
@@ -29,6 +30,19 @@ describe("blueprints", () => {
     }
     // A 230 kg X3 needs far more metal than the station starts with.
     expect(new MaterialStock(STARTING_STOCK).has(blueprintForPart(X3.id)!.inputs)).toBe(false);
+  });
+
+  it("the probe's equipment and the mothership's have blueprints; what the rock gives needs few kits, what it cannot give needs many", () => {
+    for (const e of MOTHERSHIP_EQUIPMENT.filter((x) => x.massKg > 0)) expect(blueprintForPart(e.id), e.id).toBeDefined();
+    const kits = (id: string) => blueprintForPart(id)!.inputs.kit ?? 0;
+    // Steel cabin and steel bumper: iron and nickel from the rock.
+    expect(blueprintForPart("cabina-acero")!.inputs.hierro).toBeGreaterThan(400);
+    expect(kits("whipple-acero")).toBe(0);
+    expect(kits("cabina-al-li-2195")).toBeGreaterThan(kits("cabina-acero"));
+    expect(kits("mmrtg-x2")).toBeGreaterThanOrEqual(20);
+    // The water shield is water.
+    expect(blueprintForPart("blindaje-agua-20")!.inputs.agua).toBeCloseTo(60000 / STATION_TUNING.fabricationYield);
+    expect(blueprintForPart("sin-escudo")).toBeUndefined();
   });
 
   it("feedstock is the finished mass over the yield, and an RCS set is the whole set", () => {

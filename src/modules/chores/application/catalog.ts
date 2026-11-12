@@ -537,7 +537,7 @@ export function swapChore(design: ShipDesign, slot: PartSlot, part: Part, scenar
     id,
     kind: "cambiar-pieza",
     targetId: `${slot}:${part.id}`,
-    title: `Cambiar ${label}: ${shortName(part.name)}`,
+    title: part.kind === "equipment" ? part.name : `Cambiar ${label}: ${shortName(part.name)}`,
     scenario: scenario ?? `${before?.pseudo ?? "(nada)"} → ${after.pseudo}`,
     exercises: [valueEx, dvEx, order(`${id}-montaje`, 1, part.kind === "equipment" ? EQUIPMENT_CARE[part.equipment.kind as EquipmentSlot] : "Con cuidado: hay propelente", steps)],
   };

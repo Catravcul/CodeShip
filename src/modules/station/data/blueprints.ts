@@ -1,6 +1,8 @@
 import { ALL_PARTS } from "@modules/ship/data/parts";
 import { ELECTRIC_THRUSTERS } from "@modules/mothership/data/thrusters";
 import type { ElectricThruster } from "@modules/mothership/domain/propulsion";
+import type { MothershipEquipment } from "@modules/mothership/domain/equipment";
+import { MOTHERSHIP_EQUIPMENT } from "@modules/mothership/data/equipment";
 import { isEmptyPart, type Part } from "@modules/ship/domain/refit";
 import type { Equipment } from "@modules/ship/domain/equipment";
 import { STATION_TUNING, type Blueprint, type CraftSpec, type MachineId } from "../domain/blueprint";
@@ -178,6 +180,29 @@ export function driveBlueprint(t: ElectricThruster): Blueprint {
   };
 }
 
+/**
+ * The blueprint for the mothership's auxiliary power or radiation shield. Solar wings: cells in kits,
+ * carbon booms from the rock. Kilopower: the uranium core only comes from outside. Shields: water,
+ * polyethylene (carbon and the hydrogen of water) or slag, all from the rock.
+ */
+export function mothershipEquipmentBlueprint(e: MothershipEquipment): Blueprint {
+  const m = e.massKg;
+  const base = { id: `plano-${e.id}`, name: `${e.name} para la nodriza`, product: { kind: "part" as const, partId: e.id }, massKg: m };
+  if (e.slot === "energia-auxiliar") {
+    if (!e.solar)
+      return { ...base, machine: "impresora", inputs: merge({ kit: 40 }, feedstock(m * 0.5, RECIPES.acero, 0)), hours: Math.round(48 + m / 50), process: { ...ASSEMBLY, value: `${ASSEMBLY.value}: el núcleo de uranio solo puede llegar de fuera` }, steps: ["imprime el blindaje de sombra", "imprime las carcasas de los Stirling", "recibe los núcleos del kit", "monta los tubos de calor", "prueba los Stirling en caliente"] };
+    return { ...base, machine: "impresora", inputs: merge({ kit: Math.ceil(e.powerKw / 10) }, feedstock(m * 0.5, RECIPES.fibra, 0)), hours: Math.round(24 + m / 20), process: ASSEMBLY, steps: ["imprime los mástiles de fibra", "extiende las mantas de células del kit", "suelda las cadenas de células", "enrolla las alas", "prueba el despliegue"] };
+  }
+  const material = e.shield!.material;
+  const shares: Readonly<Record<string, number>> = material === "agua" ? { agua: 1 } : material === "polietileno" ? { carbono: 0.86, agua: 1.29 } : { ceramica: 1 };
+  const steps = material === "agua" ? ["condensa el agua de la roca", "llena las bolsas", "cose las bolsas a las redes", "pesa cada bolsa"] : material === "polietileno" ? ["haz gas de síntesis con carbono y agua", "conviértelo en etileno", "polimeriza el etileno", "prensa los paneles"] : ["muele la escoria", "funde los bloques", "corta los bloques a medida", "pesa cada bloque"];
+  const process =
+    material === "polietileno"
+      ? { value: "Gas de síntesis (CO e H₂) del carbono y el agua de la roca, Fischer–Tropsch hasta etileno y polimerización", source: "https://en.wikipedia.org/wiki/Fischer%E2%80%93Tropsch_process", note: "Recetas y horas: valores de juego" }
+      : { value: material === "agua" ? "Agua de la roca en bolsas, como las bolsas de agua de los camarotes de la ISS" : "Escoria de la electrólisis colada en bloques", source: SRC.mre, note: "Recetas y horas: valores de juego" };
+  return { ...base, machine: material === "agua" ? "refineria" : "fundicion", inputs: feedstock(m, shares, 2), hours: Math.round(48 + m / 500), process, steps };
+}
+
 /** A small prospecting probe to send ahead to asteroids (game values). */
 export const PROBE: CraftSpec = {
   id: "sonda",
@@ -200,7 +225,7 @@ export const PROBE_BLUEPRINT: Blueprint = {
 };
 
 /** Every blueprint the station knows: each part of the ship's catalog, the mothership's thrusters, and the probe. */
-export const BLUEPRINTS: readonly Blueprint[] = [...ALL_PARTS.filter((p) => !isEmptyPart(p)).map(partBlueprint), ...ELECTRIC_THRUSTERS.map(driveBlueprint), PROBE_BLUEPRINT];
+export const BLUEPRINTS: readonly Blueprint[] = [...ALL_PARTS.filter((p) => !isEmptyPart(p)).map(partBlueprint), ...ELECTRIC_THRUSTERS.map(driveBlueprint), ...MOTHERSHIP_EQUIPMENT.filter((e) => e.massKg > 0).map(mothershipEquipmentBlueprint), PROBE_BLUEPRINT];
 
 export const blueprintById = (id: string): Blueprint | undefined => BLUEPRINTS.find((b) => b.id === id);
 export const blueprintForPart = (partId: string): Blueprint | undefined => BLUEPRINTS.find((b) => b.product.kind === "part" && b.product.partId === partId);

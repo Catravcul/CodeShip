@@ -224,3 +224,14 @@ body.in-duel .bay-panel, body.in-duel .bay-back, body.in-duel .bay-look { displa
 body.in-interior .nano-card, body.in-duel .nano-card { display: none !important; }
 body.in-duel .help { display: none; }
 @media (max-width: 600px) { .nano-card { left: 8px; transform: none; top: 10px; width: calc(100vw - 160px); font-size: 12px; } }
+/* --- Sky bodies and region (espacio) ------------------------------------- */
+.sky-labels { position: fixed; inset: 0; pointer-events: none; z-index: 2; overflow: hidden; }
+body:not(.in-cockpit) .sky-labels { display: none; }
+.sky-label { position: absolute; left: 0; top: 0; margin: 6px 0 0 8px; font-size: 11px; color: #d8ecffcc; text-shadow: 0 0 4px #000; white-space: nowrap; }
+.sky-label.sun { color: #ffe9b8; margin-top: 14px; }
+.sky-label.faint { opacity: 0.5; }
+.sky-label.body { color: #9fdcffcc; font-size: 10px; }
+.region-tag { position: fixed; top: 52px; left: 50%; transform: translateX(-50%); z-index: 4; max-width: 86vw; padding: 5px 12px; font-size: 12px; text-align: center; color: #d8f6ff; background: #0b2a36aa; border-radius: 8px; pointer-events: none; display: none; }
+body.in-cockpit .region-tag.on { display: block; }
+.region-tag.warning, .region-tag.outside { color: #ffd8a0; border: 1px solid #ffb34788; }
+@media (pointer: coarse) { .region-tag { bottom: auto; top: 29vh; left: 10px; transform: none; max-width: 52vw; text-align: left; font-size: 11px; } }

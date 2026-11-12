@@ -6,6 +6,8 @@ Esta es la versión 2, rehecha desde cero con Three.js y TypeScript. El borrador
 
 **Preview jugable:** https://catravcul.github.io/CodeShip/ (rama `gh-pages`; se publica con `npx vite build --base=./` y se sube la carpeta compilada a esa rama).
 
+El juego empieza en el cinturón interior, en la familia de Nueva Polana, de donde probablemente viene Bennu: el Sol y los planetas se ven con su tamaño y brillo reales calculados con los elementos orbitales de JPL, y alrededor hay asteroides reales de la zona y miles de rocas, en una zona de vuelo de 40 km. Detalles y qué se comprime en [docs/research/sistema-solar.md](docs/research/sistema-solar.md).
+
 A bordo, Doménica cuida un huerto, una cubierta de cultivo que hace el viaje autosuficiente, gatos, chihuahuas y gallinas libres que pueden llegar a ser una familia, y recibe por radio las cartas de Nevaeh y las llamadas de Kushal. Todo se hace con retos de código. Diseño en [docs/design/vida-a-bordo.md](docs/design/vida-a-bordo.md).
 
 Un asteroide persuadido puede convertirse en **núcleo de la nano_net**, la red de nodos que da energía, protección y velocidad. Se le programa por etapas (generar, mover y conectar nodos, enlazar con otra red) y se repara aterrizado en él, siempre con retos de código. Diseño en [docs/design/nano-net.md](docs/design/nano-net.md).
@@ -53,7 +55,7 @@ src/
     ship/          nave como composición de componentes reales; masa, inercia, delta-v, cambio de piezas
     ship-bay/      bahía de la nave: estado por pieza y reglas de atención
     flight/        sólido rígido 6DOF newtoniano, ordenador de vuelo a 120 Hz fijo
-    celestial/     asteroides reales: masa, densidad, rotación, gravedad, composición
+    celestial/     asteroides reales, órbitas (Kepler), cielo visto desde la zona y zona de vuelo
     nano-net/      núcleos de la nano_net hechos de asteroides: etapas, nodos, cobertura, averías
   content/         generadores procedurales deterministas (forma de asteroides)
   adapters/three/  escena, cabina, malla del asteroide, estrellas
@@ -73,5 +75,7 @@ Reglas: TDD en `domain/` y `application/`; cada valor real lleva su fuente (`sou
 | RCS MR-111G / MR-107T (piezas de cambio) | clase de 4 N, Isp 219–229 s, 0,37 kg / clase de 110 N, Isp 222–225 s, 1,01 kg | [SatCatalog](https://satcatalog.com/component/mr-111g-4n/), [SatCatalog](https://satcatalog.com/component/mr-107t-110n/) |
 | Densidades | hidracina 1021 kg/m³; MMH 875 kg/m³; NTO 1442,46 kg/m³ | [Wikipedia](https://en.wikipedia.org/wiki/Hydrazine), [Wikipedia](https://en.wikipedia.org/wiki/Monomethylhydrazine), [Wikipedia](https://en.wikipedia.org/wiki/Dinitrogen_tetroxide) |
 | 101955 Bennu | 565×535×508 m, radio medio 245,03 m, 7,329×10¹⁰ kg, 1190 kg/m³, rotación 4,296057 h, tipo B | [Wikipedia](https://en.wikipedia.org/wiki/101955_Bennu) |
+| Planetas | Elementos keplerianos medios 1800–2050, radios, leyes de brillo | [JPL (Standish)](https://ssd.jpl.nasa.gov/planets/approx_pos.html), [NASA Fact Sheet](https://nssdc.gsfc.nasa.gov/planetary/factsheet/), [Mallama y Hilton 2018](https://arxiv.org/abs/1808.01973) |
+| 142 Polana y 6 asteroides de su zona | Órbita, diámetros y albedos NEOWISE, rotaciones LCDB | [JPL SBDB](https://ssd-api.jpl.nasa.gov/doc/sbdb.html) |
 
 El casco y los tanques de la nave inicial son valores de juego, a sustituir por piezas reales. La distribución de 24 propulsores RCS en pares dedicados es una simplificación jugable.

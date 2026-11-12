@@ -24,6 +24,7 @@ export type ChoreKind =
   | "cultivo-esterilizar"
   | "reparar-maquina"
   | "atender-paciente"
+  | "salir-eva"
   | "mision";
 
 /** Groups for filtering the task board. */
@@ -53,6 +54,7 @@ export const CHORE_CATEGORY: Readonly<Record<ChoreKind, ChoreCategory>> = {
   "atender-paciente": "salud",
   "reparar-nave": "nave",
   "reparar-maquina": "nave",
+  "salir-eva": "nave",
   mision: "misiones",
 };
 

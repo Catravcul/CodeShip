@@ -16,7 +16,8 @@ export interface PoseAngles {
 }
 
 const STAND: PoseAngles = { rootY: 0.95, rootX: 0, torso: 0, headX: 0, headY: 0, headZ: 0, shoulderX: [0, 0], shoulderZ: [0.08, -0.08], elbow: [0, 0], hip: [0, 0], knee: [0, 0] };
-const P = (o: Partial<PoseAngles>): PoseAngles => ({ ...STAND, ...o });
+/** A pose: standing, with some joints changed. */
+export const P = (o: Partial<PoseAngles>): PoseAngles => ({ ...STAND, ...o });
 
 /** Shapes of the yoga data `pose` keys (approximate, like Cold Sanctuary's cube rig). */
 export const POSES: Record<string, PoseAngles> = {
@@ -46,14 +47,14 @@ function box(w: number, h: number, d: number, color: number, y: number): THREE.M
 /** A cube humanoid (same style as Cold Sanctuary) that eases between poses. */
 export class CubeFigure {
   readonly root = new THREE.Group();
-  private readonly torso = new THREE.Group();
-  private readonly head = new THREE.Group();
+  protected readonly torso = new THREE.Group();
+  protected readonly head = new THREE.Group();
   private readonly shoulders: THREE.Group[] = [];
   private readonly elbows: THREE.Group[] = [];
   private readonly hips: THREE.Group[] = [];
   private readonly knees: THREE.Group[] = [];
   private current: PoseAngles = { ...STAND, shoulderX: [0, 0], shoulderZ: [...STAND.shoulderZ], elbow: [0, 0], hip: [0, 0], knee: [0, 0] };
-  private target: PoseAngles = STAND;
+  protected target: PoseAngles = STAND;
 
   constructor(skin = 0xe0b48c, suit = 0x3d6fa8) {
     this.root.add(box(0.34, 0.16, 0.2, suit, 0)); // pelvis

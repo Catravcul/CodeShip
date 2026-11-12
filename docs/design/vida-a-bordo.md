@@ -268,7 +268,9 @@ Cada máquina tiene una luz: verde si funciona y roja parpadeante si está averi
 
 El botón **Tareas** lista lo pendiente con su escenario. Al elegir una, el personaje camina a la estación y el reto se abre en una hoja inferior, para que se siga viendo la planta, el gato o la postura.
 
-Se camina con los pies en el suelo porque el módulo va en un **anillo que gira**: 56 m de radio a 4 rpm dan 1 g (a = ω²r). La ISS no tiene gravedad porque no gira. Desde el fondo del módulo, un **ascensor sube por el radio**, y la gravedad baja con la altura hasta el **eje**. Allí, y en la espina que lleva a la cabina, se flota. Las cifras, las fuentes y las licencias están en [gravedad.md](gravedad.md).
+Se camina con los pies en el suelo porque el módulo va en un **anillo que gira**: 56 m de radio a 4 rpm dan 1 g (a = ω²r). La ISS no tiene gravedad porque no gira. Desde el fondo del módulo, un **ascensor sube por el radio**, y la gravedad baja con la altura hasta el **eje**. Allí, y en la espina que lleva a la cabina de la sonda, se flota. Las cifras, las fuentes y las licencias están en [gravedad.md](gravedad.md).
+
+**La nodriza y la sonda** ([nave-nodriza.md](nave-nodriza.md)). El anillo, el módulo, la cubierta de cultivo, los animales y las máquinas están en la **nave nodriza**, que se queda aparcada cerca del asteroide. Doménica va a Bennu en la **sonda** (la Explorer). Con la sonda acoplada, **Ir al interior** lleva al anillo y todo funciona como siempre. Con la sonda fuera, el interior no se puede visitar: Doménica está en ingravidez y las tareas se acumulan. La vida a bordo sigue, y al volver hay más trabajo. En la bahía, la pestaña **Nodriza** muestra las máquinas y la cubierta de cultivo, pero solo se puede trabajar en ellas acoplada.
 
 ## Historia: las cartas de Nevaeh
 
@@ -403,6 +405,7 @@ En el juego (`story/data/friends.ts`):
 | Prólogo de Nevaeh, llamadas de Kushal y retratos | `story/data/friends.ts`, `src/ui/portraits.ts` | ✓ con tests |
 | nano_net: núcleos hechos de asteroides, etapas, averías y reparaciones | `modules/nano-net`, `src/ui/nano-net-panel.ts`, `src/adapters/three/nano-net-view.ts` | ✓ con tests |
 | Anillo giratorio (1 g a 4 rpm, Coriolis, gradiente), radio, eje sin gravedad y efecto en la salud | `modules/gravity`, `src/adapters/three/interior/zones.ts`, [gravedad.md](gravedad.md) | ✓ con tests |
+| Nave nodriza (anillos, huerto, motores X3, reactor) y acople de la sonda con límites IDSS | `modules/mothership`, `src/adapters/three/mothership-model.ts`, [nave-nodriza.md](nave-nodriza.md) | ✓ con tests |
 | Viaje automático programado entre asteroides | — | pendiente |
 
 Los números de cuidado sin fuente (velocidad de secado, ritmo de juego y de cariño, probabilidad de mordisco, días por etapa) están marcados en el código como **ajuste de juego**. Así se distinguen de los datos reales.

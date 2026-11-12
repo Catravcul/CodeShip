@@ -117,12 +117,12 @@ describe("Ship.refit", () => {
   });
 });
 
-describe("Explorer ring", () => {
-  it("carries a counter-rotating 1 g ring that is not part of the contact hull", async () => {
+describe("Explorer probe", () => {
+  it("is a light lander with a dorsal docking port and no ring (the rings are on the mothership)", async () => {
     const { explorerDesign } = await import("../data/explorer");
     const d = explorerDesign();
-    expect(d.ring?.counterRotating).toBe(true);
-    expect(d.ring!.floorRadiusM).toBeGreaterThan(d.hull.size.length() * 5);
-    expect(d.hull.size.y).toBe(2);
+    expect("ring" in d).toBe(false);
+    expect(d.dockingPort!.y).toBeGreaterThan(d.hull.size.y / 2);
+    expect(Ship.create(d).massKg).toBeLessThan(1000);
   });
 });

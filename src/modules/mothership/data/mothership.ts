@@ -1,0 +1,106 @@
+import { Vec3 } from "@core/math/vec3";
+import type { Sourced } from "@core/units";
+import { CODESHIP_RING } from "@modules/gravity/data/ring";
+import type { DockingLimits } from "../domain/docking";
+import type { ElectricThruster, MassItem, MothershipSpec } from "../domain/mothership";
+
+// --- Sources -----------------------------------------------------------------
+const IDSS_IDD = "International Docking System Standard (IDSS) Interface Definition Document, Rev. F (2022), tabla 3.3.1.1-2 «Initial Contact Conditions»: https://ntrs.nasa.gov/citations/20220011643";
+const X3_HIGH_POWER = "Hall, S. J. et al. (2019), «High-Power Performance of a 100-kW Class Nested Hall Thruster», IEPC-2017-228: https://ntrs.nasa.gov/citations/20190004993";
+const X3_PEPL = "Plasmadynamics and Electric Propulsion Laboratory (Univ. de Michigan), X3: https://pepl.engin.umich.edu/project/x3-nested-channel-hall-thruster";
+const NEP_MW = "Harnack, C. et al. (2022), «Component-level Performance and Mass Sensitivity Analysis of NEP MW-class Power System», ASCEND 2022: https://ntrs.nasa.gov/api/citations/20220013600/downloads/ASCEND_22_Brayton_Performance_Mass_Sensitivity.pdf";
+const B330 = "Bigelow B330 (módulo hinchable, unos 20 t y 330 m³): https://en.wikipedia.org/wiki/B330";
+const UNITY = "Nodo Unity de la ISS (11 612 kg): https://en.wikipedia.org/wiki/Unity_(ISS_module)";
+const HAYABUSA2 = "Hayabusa2 esperó en su «home position», a unos 20 km de Ryugu, y bajaba desde allí: https://en.wikipedia.org/wiki/Hayabusa2";
+
+/** IDSS initial contact conditions (Rev. F, table 3.3.1.1-2). */
+export const IDSS_CONTACT_LIMITS: DockingLimits = {
+  closingMinMs: 0.05,
+  closingMaxMs: 0.1,
+  lateralRateMs: 0.04,
+  angularRateDegS: 0.2,
+  rollRateDegS: 0.2,
+  lateralMisalignM: 0.1,
+  angularMisalignDeg: 4,
+  rollMisalignDeg: 4,
+  sources: [IDSS_IDD],
+};
+
+/**
+ * NASA/Univ. of Michigan X3 nested-channel Hall thruster at its highest-thrust point: 5.4 N at
+ * 99 kW and 400 V on xenon (Hall et al. 2019). The paper gives Isp 1800–2650 s over all points;
+ * 2250 s is our estimate for this point from P·η = F·g₀·Isp/2 with η ≈ 0.6 (paper: 0.54–0.67).
+ */
+export const X3_HALL_THRUSTER: ElectricThruster = {
+  name: "X3 (propulsor Hall de 3 canales, NASA / Univ. de Michigan)",
+  thrustN: 5.4,
+  ispS: 2250,
+  powerKw: 99,
+  propellant: "Xenón",
+  sources: [X3_HIGH_POWER, X3_PEPL],
+  note: "Isp estimado para el punto de 5,4 N (el artículo da 1800–2650 s según el punto)",
+};
+
+const est = (id: string, label: string, kg: number, basis: string, sources: string[] = []): MassItem => ({ id, label, kg, basis, sources });
+
+// --- Habitat ring (the twin is sized from it) ----------------------------------
+/** Pressurised volume: the habitat module (12 × 4 × 2.6 m) and the farm deck (18 × 18 × 7 m). */
+const PRESSURISED_M3 = 12 * 4 * 2.6 + 18 * 18 * 7;
+/** Bigelow B330: ~20 t for 330 m³, about 61 kg per m³ of pressurised volume. */
+const SHELL_KG_PER_M3 = 20000 / 330;
+/** Eleven 15 m² beds, 0.3 m of substrate at ~1.2 t/m³ wet (estimate), plus four fig planters. */
+const SOIL_KG = 11 * 15 * 0.3 * 1200 + 4 * 1000;
+
+const HAB_RING: MassItem[] = [
+  est("casco-presurizado", "Módulo habitable y cubierta de cultivo (cascos presurizados)", Math.round(PRESSURISED_M3 * SHELL_KG_PER_M3), `${Math.round(PRESSURISED_M3)} m³ presurizados × 61 kg/m³ (la proporción del B330)`, [B330]),
+  est("sustrato", "Sustrato de los bancales y macetas de las higueras", SOIL_KG, "165 m² × 0,3 m × 1,2 t/m³ (sustrato húmedo, estimación) + 4 macetas de 1 t"),
+  est("agua-blindaje", "Agua (reserva y blindaje del módulo)", 60000, "Estimación: una capa de agua de ~20 cm alrededor del módulo y de las literas, más la reserva del soporte vital"),
+  est("estructura-anillo", "Llanta de celosía y tres radios con ascensor", 50000, "Estimación: unos 110 kg por metro en 350 m de llanta más los radios; carga radial de ~3 MN a 1 g"),
+];
+
+const OTHER: MassItem[] = [
+  est("cojinetes", "Cojinetes y motores de giro de los dos anillos", 10000, "Estimación"),
+  est("espina", "Espina (celosía de 152 m)", 23000, "Estimación: ~150 kg por metro"),
+  est("nodo", "Nodo de acople delantero", 11612, "Como el nodo Unity de la ISS", [UNITY]),
+  est("energia", "Reactor de fisión, conversión Brayton y radiadores (2 MWe)", 2000 * 19, "2000 kWe × 19 kg/kWe (estudio de NASA para NEP de clase MW)", [NEP_MW]),
+  est("propulsores", "18 propulsores X3 con sus fuentes de potencia", 18 * 400, "Estimación: ~250 kg por propulsor y ~150 kg por fuente de potencia de 100 kW"),
+  est("tripulacion", "Doménica y los animales", 58 + 30, "58 kg de Doménica; gatos, perros y gallinas, unos 30 kg"),
+];
+
+export const NODRIZA: MothershipSpec = {
+  name: "Codeship Nodriza",
+  ring: CODESHIP_RING,
+  power: {
+    electricKw: { value: 2000, source: NEP_MW, note: "Sistema de referencia del estudio: un reactor, cuatro turbinas Brayton y un radiador" },
+    specificMassKgPerKw: { value: 19, source: NEP_MW, note: "Intervalo de confianza del 90 %: 18–23 kg/kWe" },
+    conversionEfficiency: { value: 0.337, source: NEP_MW },
+    radiatorAreaM2: { value: 2760, source: NEP_MW, note: "Intervalo del 90 %: 2300–3500 m²" },
+  },
+  thruster: X3_HALL_THRUSTER,
+  // 18 × 99 kW = 1.78 MW to the thrusters; the rest of the 2 MWe runs the ship.
+  thrusterCount: 18,
+  /** Game value: 150 t of xenon (about two years of world production; see the doc). */
+  propellantCapacityKg: 150000,
+  habRingItems: HAB_RING,
+  otherItems: OTHER,
+  layout: {
+    lengthM: 152,
+    port: { position: new Vec3(0, -2.7, -70), normal: new Vec3(0, -1, 0) },
+    nodeZ: -70,
+    nodeRadiusM: 2.2,
+    spine: { fromZ: -76, toZ: 76, radiusM: 1.5 },
+    habRingZ: -42,
+    twinRingZ: -20,
+    radiator: { fromZ: 4, toZ: 60, innerX: 3, spanM: 24.6 },
+    reactorZ: 74,
+    thrusterZ: 64,
+  },
+  parkingDistanceM: {
+    value: 1350,
+    source: HAYABUSA2,
+    note: "Valor de juego: la zona de vuelo está comprimida. Hayabusa2 esperaba a ~20 km de Ryugu",
+  },
+};
+
+/** Push the docking springs give the probe when it undocks, m/s. Game value inside the IDSS window. */
+export const UNDOCK_PUSH_MS: Sourced<number> = { value: 0.08, source: IDSS_IDD, note: "Valor de juego dentro de la ventana de 0,05–0,10 m/s del contacto" };

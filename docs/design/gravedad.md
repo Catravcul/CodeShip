@@ -2,6 +2,8 @@
 
 Petición de Berón (2026-11-12): en una nave real no hay gravedad; solo se consigue haciendo girar un anillo o un cilindro. El hábitat y la cubierta de cultivo van en un anillo que gira. La cabina, la bahía y el eje central no giran y allí se flota.
 
+**Actualización (2026-11-12):** los anillos ya no van sobre la Explorer. Ahora son de la **nave nodriza**, y la Explorer pasa a ser una sonda ligera que se acopla con ella. Ver [nave-nodriza.md](nave-nodriza.md). Las cifras del anillo de este documento no cambian.
+
 ## La física
 
 Un suelo que gira empuja hacia fuera todo lo que lleva encima. Ese empuje es la única «gravedad» posible a bordo:
@@ -56,24 +58,16 @@ Globus y Hall repasan los experimentos de la sala giratoria de Pensacola (Graybi
 - Con ataduras (dos módulos unidos por un cable, como hizo el Gemini 11 en 1966 con 30 m de cable y unos 0,00015 g) el radio sale barato. Pero hay que recoger el cable para maniobrar y para posarse, y entonces el hábitat se queda sin gravedad mientras dura el duelo en el asteroide.
 - Bajar a una fracción de g (0,5 g a 3 rpm con 50 m) haría más cómodo el giro. A cambio se pierde la gravedad terrestre, y nadie sabe aún si una gravedad parcial basta para la salud.
 
-Se eligió **1 g a 4 rpm con 56 m**. Es el límite alto, defendido por Globus y Hall, y deja el anillo lo bastante pequeño para posarse en Bennu. **Pregunta para Berón:** ¿prefieres 0,5 g a 3 rpm, más cómodo, o un anillo de 224 m a 2 rpm?
+Se eligió **1 g a 4 rpm con 56 m**. Es el límite alto, defendido por Globus y Hall, y deja el anillo pequeño. Ahora que el anillo va en la nodriza y no tiene que posarse, uno mayor es posible, pero la masa crece con el radio. **Pregunta para Berón:** ¿prefieres 0,5 g a 3 rpm, más cómodo, o un anillo de 224 m a 2 rpm?
 
 ## Forma de la nave
 
-- El **casco** (3 × 2 × 5 m, con la cabina delante y el tren debajo) es el cuerpo que toca el suelo. Las patas, el alcance de contacto, el asistente de aterrizaje y los brazos de palanca de los RCS siguen usando `hull.size`, y nada de eso cambia.
-- Del techo del casco sale un **mástil** (el eje que no gira) con los dos anillos apilados. El de abajo lleva el hábitat y la cubierta de cultivo, y su gemelo de arriba lleva almacenes, agua y camarotes. Giran en sentidos contrarios alrededor del eje vertical del casco (+y), así que quedan **paralelos al suelo** al posarse. Un anillo alrededor de la espina (eje +z, como la Hermes de *The Martian*) chocaría con el asteroide al aterrizar de panza. El borde inferior del anillo queda unos 10 m sobre el suelo, más los ~6 m que baja Bennu a 56 m del punto de contacto por su curvatura. El modelo de contacto no comprueba los anillos (licencia, ver abajo).
-- Cámaras: la **exterior** (16 m) muestra el casco, el mástil y los anillos girando por encima. La nueva cámara **Anillo** se aleja a 230 m para verlos enteros. La **trasera** los ve girar en lo alto, y desde la cabina se ven por el cristal al mirar arriba.
-- `ShipDesign.ring` guarda los datos del anillo (`CODESHIP_RING`).
+Antes los anillos iban en un mástil sobre la Explorer, de 3 × 2 × 5 m, con una licencia de masa: el vuelo solo contaba los ~680 kg del casco. Berón eligió la opción 2, nave nodriza y módulo de aterrizaje ([nave-nodriza.md](nave-nodriza.md)):
 
-### Licencia: la masa
-
-El anillo y su cubierta de cultivo son enormes. Solo la tierra de los bancales pesa unas 40 t (120 m² × 0,3 m × ~1,2 t/m³), y el conjunto andaría por **cientos de toneladas**. Con los motores reales de la Explorer (un R-4D de 490 N y RCS de 22 N), una nave así tardaría minutos en girar 90° y no podría aterrizar con el control que tiene el juego.
-
-Por ahora **el vuelo usa solo la masa del casco** (≈ 680 kg) y no cuenta la inercia de los anillos. El giro de los anillos no afecta al vuelo porque los dos se anulan; eso sí es real. La masa es la parte que no cuadra. Opciones para Berón:
-
-1. **Motores mayores** y reales (un RL10 de ~110 kN de motor principal y R-4D como RCS, como el módulo de servicio Apollo). El vuelo sería más lento y pesado.
-2. **Nave nodriza y módulo de aterrizaje.** El anillo se queda en órbita y la Explorer baja sola. Así lo haría una misión real, pero cambia el bucle de juego.
-3. **Mantener la licencia** (lo que hay ahora), documentada.
+- Los dos anillos giran alrededor de la **espina de la nodriza** (eje z). La nodriza no se posa nunca, así que el problema de chocar con el asteroide desaparece.
+- La nodriza pesa unas **877 t** con el xenón, según un presupuesto de masas estimado partida a partida. La sonda vuelve a pesar lo que se ve (≈ 680 kg). La licencia de masa ya no hace falta.
+- El anillo gemelo pesa lo mismo que el habitable, porque necesita el mismo momento de inercia para que el momento angular total sea cero (test en `mothership.test.ts`).
+- Cámaras: la cámara **Nodriza** muestra la sonda y la nodriza con los anillos girando, y sustituye a la antigua cámara «Anillo».
 
 ## Zonas del interior
 
@@ -83,7 +77,7 @@ Por ahora **el vuelo usa solo la masa del casco** (≈ 680 kg) y no cuenta la in
 | Radio (ascensor de 52 m) | Baja con la altura: 0,82 g a 46 m del eje, 0,47 g a 26 m… | ▲▼ o R/F; carteles con la gravedad cada 10 m |
 | Nudo del eje (aún gira) | 0,018 g a 1 m del eje | Flota y nota una pequeña deriva hacia fuera, más Coriolis |
 | Espina (no gira, tras el cojinete) | 0 g | Flota: mando *Flotar* en la dirección de la mirada, ▲▼ (R/F, Espacio/Mayús); el pasamanos frena la deriva |
-| Cabina | 0 g | Se llega por la escotilla al final de la espina |
+| Cabina de la sonda | 0 g | Se llega por la escotilla al final de la espina, a través del puerto de acople. Solo con la sonda acoplada |
 
 - El **ascensor** va despacio a propósito. A 2 m/s, Coriolis empuja de lado 2ωv = 1,7 m/s² (0,17 g), y el HUD lo muestra. Por eso el viaje dura medio minuto.
 - Si se elige una tarea desde el eje, Doménica baja sola por el radio y luego camina.
@@ -92,10 +86,10 @@ Por ahora **el vuelo usa solo la masa del casco** (≈ 680 kg) y no cuenta la in
 
 ## Salud: tiempo en ingravidez
 
-En microgravedad los huesos pierden de media **entre el 1 y el 1,5 % de su densidad al mes** (NASA, https://www.nasa.gov/reference/risk-of-spaceflight-induced-bone-changes/), además de músculo. En el juego el efecto es pequeño: fuera del anillo la **forma** de Doménica baja un poco más deprisa, 0,05 al día a 0 g (ajuste de juego, proporcional a 1 − g). El HUD cuenta los días que pasa en ingravidez. Pilotar desde la cabina cuenta como ingravidez, y el yoga en el anillo lo compensa.
+En microgravedad los huesos pierden de media **entre el 1 y el 1,5 % de su densidad al mes** (NASA, https://www.nasa.gov/reference/risk-of-spaceflight-induced-bone-changes/), además de músculo. En el juego el efecto es pequeño: fuera del anillo la **forma** de Doménica baja un poco más deprisa, 0,05 al día a 0 g (ajuste de juego, proporcional a 1 − g). El HUD cuenta los días que pasa en ingravidez. Pilotar desde la cabina cuenta como ingravidez, también todo el tiempo que la sonda está fuera de la nodriza, y el yoga en el anillo lo compensa.
 
 ## Pendiente
 
-- Decidir la masa (ver «Licencia»).
-- Que el anillo pueda pararse (`SpinRing.spinDown`, ya probado): por una avería, o para atracar. Entonces todo el interior flotaría.
+- ~~Decidir la masa~~: resuelto con la nave nodriza ([nave-nodriza.md](nave-nodriza.md)).
+- Que el anillo pueda pararse (`SpinRing.spinDown`, ya probado), por ejemplo por una avería. Entonces todo el interior flotaría. Para acoplar no hace falta, porque el puerto está en el nodo, que no gira.
 - Cámaras exteriores en la bahía de la nave y en el EVA mostrando el anillo.

@@ -2,7 +2,6 @@ import { Vec3 } from "@core/math/vec3";
 import type { HullSpec, MountedThruster, Propellant, TankSpec } from "./components";
 import type { RcsThruster } from "./rcs-layout";
 import { deltaV, massFlow } from "./rocket";
-import type { RingSpec } from "@modules/gravity/domain/spin-gravity";
 
 export interface ShipDesign {
   readonly hull: HullSpec;
@@ -10,10 +9,10 @@ export interface ShipDesign {
   readonly mainEngines: readonly MountedThruster[];
   readonly rcs: readonly RcsThruster[];
   /**
-   * Habitat ring(s) on a mast above the hull. Not part of `hull.size` (which is the body that
-   * touches the ground) nor, for now, of the flight mass: see docs/design/gravedad.md.
+   * Docking port (body frame) on top of the hull, facing +y: where the probe latches to the
+   * mothership (docs/design/nave-nodriza.md).
    */
-  readonly ring?: RingSpec;
+  readonly dockingPort?: Vec3;
 }
 
 /** Pilot intent, already normalised: throttle 0..1, axes -1..1 in the body frame. */

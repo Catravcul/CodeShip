@@ -3,6 +3,12 @@ import type { ShipDesign } from "@modules/ship/domain/ship";
 import type { Attention } from "@modules/ship-bay/domain/attention";
 import { ShipModel, type PartId } from "./ship-model";
 import { buildStarfield } from "./starfield";
+import type { MothershipModel } from "./mothership-model";
+
+/** Which ship the bay shows: the probe, or the mothership (scaled down to fit the same camera). */
+export type BayView = "sonda" | "nodriza";
+/** The mothership is shown at 1:10 so the bay's orbit camera and zoom work for both. */
+const MOTHERSHIP_SCALE = 0.1;
 
 const TINT: Readonly<Record<Attention | "seleccion", number>> = { ok: 0x000000, aviso: 0xff9a1f, critico: 0xff2a2a, seleccion: 0x2fd0ff };
 
@@ -31,6 +37,8 @@ export class ShipBayScene {
   private distGoal = 17;
   private turnTo: { yaw: number; pitch: number } | null = null;
   private inset: Inset = { right: 0, bottom: 0 };
+  private _view: BayView = "sonda";
+  private mothership?: MothershipModel;
 
   constructor(design: ShipDesign) {
     this.scene.background = new THREE.Color(0x03050a);
@@ -45,6 +53,37 @@ export class ShipBayScene {
     this.box.visible = false;
   }
 
+  /** Put the mothership in the bay (its systems are its parts). */
+  addMothership(m: MothershipModel): void {
+    this.mothership = m;
+    m.root.scale.setScalar(MOTHERSHIP_SCALE);
+    // Centre it on its rings.
+    m.root.position.set(0, 0, -((m.spec.layout.habRingZ + m.spec.layout.twinRingZ) / 2) * MOTHERSHIP_SCALE);
+    m.root.visible = false;
+    this.scene.add(m.root);
+  }
+
+  get view(): BayView {
+    return this._view;
+  }
+
+  setView(v: BayView): void {
+    if (v === this._view || (v === "nodriza" && !this.mothership)) return;
+    this._view = v;
+    this.model.root.visible = v === "sonda";
+    if (this.mothership) this.mothership.root.visible = v === "nodriza";
+    this.yaw = v === "nodriza" ? 2.6 : 2.35;
+    this.select(null);
+  }
+
+  private get parts(): Map<PartId, THREE.Group> {
+    return this._view === "nodriza" && this.mothership ? this.mothership.parts : this.model.parts;
+  }
+
+  private get root(): THREE.Object3D {
+    return this._view === "nodriza" && this.mothership ? this.mothership.root : this.model.root;
+  }
+
   orbit(dYaw: number, dPitch: number): void {
     if (dYaw || dPitch) this.turnTo = null;
     this.yaw += dYaw;
@@ -52,22 +91,22 @@ export class ShipBayScene {
   }
 
   zoom(factor: number): void {
-    this.distGoal = Math.max(5, Math.min(40, this.distGoal * factor));
+    this.distGoal = Math.max(5, Math.min(this._view === "nodriza" ? 60 : 40, this.distGoal * factor));
   }
 
   /** Ease the camera towards a part (or the whole ship) and outline it. */
   select(id: PartId | null): void {
-    const g = id ? this.model.parts.get(id) : undefined;
+    const g = id ? this.parts.get(id) : undefined;
     if (!g) {
       this.target.set(0, 0, 0);
-      this.distGoal = 17;
+      this.distGoal = this._view === "nodriza" ? 34 : 17;
       this.box.visible = false;
       return;
     }
     const b = new THREE.Box3().setFromObject(g);
     b.getCenter(this.target);
     const r = b.getSize(new THREE.Vector3()).length();
-    this.distGoal = Math.max(6, Math.min(18, r * 2.2 + 4));
+    this.distGoal = Math.max(6, Math.min(this._view === "nodriza" ? 24 : 18, r * 2.2 + 4));
     // Swing round to a three-quarter view of the part's side, so the hull does not hide it.
     const c = this.target;
     if (c.length() > 0.5) {
@@ -84,7 +123,7 @@ export class ShipBayScene {
   pick(clientX: number, clientY: number): PartId | null {
     const ndc = new THREE.Vector2((clientX / window.innerWidth) * 2 - 1, -(clientY / window.innerHeight) * 2 + 1);
     this.raycaster.setFromCamera(ndc, this.camera);
-    for (const hit of this.raycaster.intersectObject(this.model.root, true)) {
+    for (const hit of this.raycaster.intersectObject(this.root, true)) {
       let o: THREE.Object3D | null = hit.object;
       while (o && !o.userData.partId) o = o.parent;
       if (o && o.visible) return o.userData.partId as PartId;
@@ -129,7 +168,7 @@ export class ShipBayScene {
     this.camera.up.set(0, 1, 0);
     this.camera.lookAt(this.focus);
     const pulse = 0.55 + 0.45 * Math.sin(performance.now() / 220);
-    for (const [id, g] of this.model.parts) {
+    for (const [id, g] of this.parts) {
       const a = attention.get(id) ?? "ok";
       const color = id === selected ? TINT.seleccion : TINT[a];
       // The hull is big: a softer pulse keeps the rest of the ship readable.
@@ -150,7 +189,7 @@ export class ShipBayScene {
       });
     }
     if (selected && this.box.visible) {
-      const g = this.model.parts.get(selected);
+      const g = this.parts.get(selected);
       if (g) this.box.box.setFromObject(g).expandByScalar(0.08);
     }
   }

@@ -25,6 +25,7 @@ Petición de Berón (2026-11-12): «La estación debe construirse como las demá
   - Si la nodriza está atracada en la estación y se programa un viaje a un asteroide, primero **retrocede 80 m por el eje del puerto** sin girar (para que los anillos no barran la estación) y luego sigue su ruta.
 - Mientras tanto, el asistente de acople (K) sirve para cualquier puerto: elige el más cercano, o el del viaje. La página «Acople» del puente de la nodriza dice a qué puerto se refiere.
 - El puente y el interior de la nodriza solo se abren con la sonda acoplada a la nodriza (no a la estación).
+- **Por dentro** (petición 2026-11-12, «que se pueda andar por el hangar y el módulo habitable»): atracada, aparece **«Entrar en la estación»** encima de «Revisar tareas». Doménica flota en ingravidez por el Nodo 2, el módulo habitable, el Nodo 1, el módulo de fabricación y, con traje y por la esclusa, el **hangar, que está abierto al vacío**. La refinería, la fundición, la impresora y los estantes del hangar abren su pestaña de esta pantalla. Detalles, referencias y la decisión del hangar en [interiores.md §5](interiores.md#5-la-estación-por-dentro).
 
 ## La estructura
 
@@ -37,7 +38,7 @@ Inspirada en la ISS y en el Gateway lunar (`POLANA_LAYOUT` en `modules/station/d
 | Nodo 2 (atraque) | 5,47 × 4,57 m | Otro nodo como Unity, con los dos puertos |
 | Dos adaptadores de atraque | 1,1 m de alto, 2,4 m de diámetro | [IDA de la ISS](https://en.wikipedia.org/wiki/International_Docking_Adapter); paso de 800 mm del [NASA Docking System](https://en.wikipedia.org/wiki/NASA_Docking_System) (norma IDSS) |
 | Módulo de fabricación (detrás) | 8,5 × 4,3 m | Valor de juego, del tamaño del laboratorio Destiny. Tiene el brillo del horno de la refinería |
-| Hangar (al fondo) | 20 × 14 × 20 m | Valor de juego; la puerta iluminada mira a popa |
+| Hangar (al fondo) | 20 × 14 × 20 m | Valor de juego; la puerta iluminada mira a popa. **Sin presión**: presurizarlo pediría 6,7 t de aire y 28–41 MN en cada pared ([interiores.md §5](interiores.md#el-hangar-sin-presión-decisión)) |
 | Celosía | 88 m de largo, 4,5 m de sección | Valor de juego, como la celosía de la ISS |
 | Cuatro alas solares | 35 × 12 m cada una | [Alas solares de la ISS](https://en.wikipedia.org/wiki/Electrical_system_of_the_International_Space_Station), casi 31 kW cada una (unos 124 kW en total) |
 | Dos radiadores | 23 × 3,4 m | Valor de juego; la ISS expulsa hasta [70 kW](https://en.wikipedia.org/wiki/External_Active_Thermal_Control_System) con los suyos |
@@ -125,6 +126,7 @@ Los **propulsores de la nodriza** siguen la misma regla en la pestaña **Nodriza
 - `modules/station/domain/structure.ts`: `StationStructure` (módulos, piezas, puertos como `DockingTarget`, exclusión y radio). `modules/station/data/structure.ts`: `POLANA_LAYOUT` con sus fuentes.
 - **Acople generalizado** (`modules/mothership`): `DockingTarget` es cualquier cosa con un puerto (la nodriza o un puerto de la estación). `Docking` acepta varios destinos, sabe a cuál está acoplada (`dockedTo`) y el asistente vuela al más cercano o al que se le pida (`assistTo`). `approachSpeed` es el perfil de frenado del asistente, compartido con `Berthing`, el caso de uso con el que la nodriza (que no vuela en el bucle de 120 Hz) se acerca a un puerto y se juzga el contacto con los mismos límites IDSS. La geometría de exclusión pasó a `flight/domain/keep-out.ts` y la usan la nodriza y la estación.
 - **Navegación**: `NavTarget` es ahora `AsteroidTarget | DockTarget`. `Navigator` planea el viaje a un puerto (`probeDockTrip`), pasa al asistente de acople al llegar (estado `docking` y luego `docked`) y, si la nodriza lleva la sonda, la lleva hasta el puerto de la nodriza y la acopla (`CarrierPort.berth`). Valores de juego en `navigation/application/dock-trip.ts`.
+- Interior: `modules/station/domain/interior.ts` y `data/interior.ts` (volúmenes, esclusa, máquinas → pestañas), `src/station-interior.ts` y `adapters/three/interior/station-rooms.ts`.
 - Adaptadores: `adapters/three/station-model.ts` (`StationModel` construido desde `POLANA_LAYOUT`, y `StationScene` dentro del hangar), `src/station-screen.ts` (pestañas y retos), `src/station-dock.ts` (el botón «Revisar tareas», el acceso `?dev` y los destinos del mapa) y `src/ui/nav-dock-card.ts` (ficha del mapa).
 - Cambios en archivos compartidos: Bennu y Nueva Polana (composición), `resources.ts` (pesos), `Expedition.unloadCargo()`, `bay.ts` (`PartSupply`), `ship-bay.ts` (consume del hangar), `start-region.ts` (sin rocas sobre la estación), `parts.ts` (dos tanques nuevos) y `main.ts`. Con el atraque: `main.ts` (estructura, destinos del mapa, botón, exclusión), `nav-map.ts` (destinos de acople), `navigation.ts` (textos), `region.ts` (`obstaclesExcept` sin asteroide), `mothership.ts` (exclusión compartida, `id`, `dockedTo`) y `style.css`.
 

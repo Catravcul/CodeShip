@@ -618,7 +618,7 @@ export class Interior {
       .map(
         (r) =>
           `<button class="chore ${r.read ? "" : "unread"}" data-letter="${r.letter.id}"><b>${esc(r.letter.subject)}</b><span>${r.letter.channel === "llamada" ? "Llamada de" : "De"} ${esc(r.letter.from)} · día ${Math.floor(r.day) + 1}</span>${
-            r.letter.mission ? `<em>${r.missionDone ? "Misión hecha" : "Misión de la nano_net"}</em>` : ""
+            r.letter.mission ? `<em>${r.missionDone ? "Misión hecha" : r.letter.mission.goal === "persuadir" ? "Misión de Nevaeh" : "Misión de la nano_net"}</em>` : ""
           }</button>`,
       )
       .join("");

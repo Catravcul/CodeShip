@@ -74,6 +74,10 @@ import { Navigator } from "@modules/navigation/application/navigator";
 import { asteroidTarget } from "@modules/navigation/domain/nav-target";
 import { NavigationMode } from "./navigation";
 import { mothershipCarrier } from "@modules/navigation/application/mothership-carrier";
+import { MissionLog } from "@modules/missions/domain/mission";
+import { MissionControl } from "@modules/missions/application/mission-control";
+import { MISSION_LETTERS, NEVAEH_MISSIONS } from "@modules/missions/data/nevaeh-missions";
+import { MissionLogPanel } from "./ui/mission-log";
 
 // --- Domain setup -----------------------------------------------------------
 const d = BENNU.dimensionsM.value;
@@ -128,6 +132,13 @@ const habitat = new Habitat(seededRandom(2026), 3, ship, "Doménica", MACHINES);
 // Nevaeh writes to Doménica through the ship's radio (story rescued from the 2023 draft).
 habitat.mailbox = new Mailbox(STORY);
 // The nano_net: a persuaded Bennu can become a core (docs/design/nano-net.md).
+// Nevaeh's main missions and the side missions (docs/design/misiones.md). Rewards go to the station.
+const missions = new MissionControl(
+  new MissionLog(NEVAEH_MISSIONS, navTargets.map((t) => ({ id: t.id, name: t.name }))),
+  habitat.mailbox,
+  MISSION_LETTERS,
+  (a) => stationOps.station.stock.add(a),
+);
 const nano = new NanoNetOps(new NanoNet(REMOTE_NETS), seededRandom(4242));
 const bennuSite: NanoSite = { id: BENNU.id, name: BENNU.name, position: bennu.position, radiusM: bennu.meanRadiusM, massKg: bennu.massKg, muM3S2: bennu.mu };
 /** The nano_net wears on the same clock as life on board (a game day every ~40 s). */
@@ -252,6 +263,12 @@ const navMode = new NavigationMode(root, nav, duelView, {
   carrierPosition: () => mothership.position,
 });
 view.addButton("map-btn", () => navMode.toggle()).textContent = "Mapa";
+// The mission log, from the cockpit and from the map; the map marks Nevaeh's targets.
+const missionLog = new MissionLogPanel(root, missions, habitat.mailbox);
+navMode.map.missionMark = (id) => missionLog.mark(id);
+navMode.map.onMissions = () => missionLog.open();
+missionLog.onShowOnMap = (id) => navMode.map.show(id);
+const missionsBtn = view.addButton("missions-btn", () => !duelView.visible && missionLog.open());
 const regionTag = document.createElement("div");
 regionTag.className = "region-tag";
 root.appendChild(regionTag);
@@ -409,7 +426,7 @@ let last = performance.now();
 renderer.setAnimationLoop((now) => {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
-  const cmd = interior.active || bay.active || evaMode.active || stationScreen.active || navMode.blocksInput ? NO_INPUT : mergeCommands(pilot.command(), touch.command());
+  const cmd = interior.active || bay.active || evaMode.active || stationScreen.active || navMode.blocksInput || missionLog.visible ? NO_INPUT : mergeCommands(pilot.command(), touch.command());
   const idle = cmd.mainThrottle === 0 && cmd.translation.length() === 0 && cmd.rotation.length() === 0;
   // Time warp only on quiet cruise far from the surface, so landing stays real-time.
   const far = flight.telemetry().distanceToSurface >= WARP_MIN_DISTANCE_M;
@@ -449,10 +466,18 @@ renderer.setAnimationLoop((now) => {
     }
   }
   lastPhase = expedition.phase;
+  const notices = missions.update((id) => expedition.isPersuaded(id));
+  if (notices.length) {
+    missionLog.notify(notices.map((n) => n.text).join("\n"), notices[0]!.kind);
+    missionLog.render();
+    navMode.map.refresh();
+  }
+  const missionsText = `Misiones${missionLog.unread ? `<b>•</b>` : ""}`;
+  if (missionsBtn.innerHTML !== missionsText) missionsBtn.innerHTML = missionsText;
   // The station's machines run on the same clock as life on board.
   stationOps.station.tick(dt * warp * STATION_TUNING.hoursPerSecond);
   interior.update(dt);
-  view.enabled = !interior.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active && !navMode.mapOpen;
+  view.enabled = !interior.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active && !navMode.mapOpen && !missionLog.visible;
   navMode.canOpen = () => !interior.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active;
   navMode.update(dt, view.warpRequested);
   // The mothership moves on trips: keep its model where the domain has it.
@@ -531,4 +556,4 @@ renderer.setAnimationLoop((now) => {
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, station: stationScreen, stationOps, nav, navMode };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, station: stationScreen, stationOps, nav, navMode, missions, missionLog };

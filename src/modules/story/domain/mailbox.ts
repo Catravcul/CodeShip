@@ -7,11 +7,15 @@ export type StoryEvent = "sacudida" | "asteroide-persuadido" | "asteroide-furios
  */
 export type NanoGoal = "nucleo" | "generar" | "mover" | "cubrir" | "enlazar" | "reparar";
 
-/** A mission in a letter. `faultId` ties a repair mission to one fault. */
+/** What a letter's mission asks for: a nano_net goal, or persuading one target (Nevaeh's main missions, modules/missions). */
+export type MissionGoal = NanoGoal | "persuadir";
+
+/** A mission in a letter. `faultId` ties a repair mission to one fault; `targetId` names who to persuade. */
 export interface Mission {
   readonly title: string;
-  readonly goal: NanoGoal;
+  readonly goal: MissionGoal;
   readonly faultId?: string;
+  readonly targetId?: string;
   /** Where to go and what to do, shown under the letter. */
   readonly where: string;
 }
@@ -56,7 +60,7 @@ export class Mailbox {
   private readonly inbox: Received[] = [];
   private readonly doneAt = new Map<string, number>();
   /** Goals reached before their letter arrived: that letter's mission comes already done. */
-  private readonly achieved = new Set<NanoGoal>();
+  private readonly achieved = new Set<MissionGoal>();
   private fresh: Letter[] = [];
   private day = 0;
 

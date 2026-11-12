@@ -38,17 +38,19 @@ const km = (m: number) => (m >= 1000 ? `${num(m / 1000, 1)} km` : `${num(m)} m`)
 /**
  * Cockpit side of the station: a big «Revisar tareas de la estación» button that shows up only
  * when the ship is docked at the station or within its docking range, in the thumb's reach above
- * the touch pads. With `?dev`, the flight bar keeps a remote-access button that works anywhere.
+ * the touch pads. Docked, a second button, «Entrar en la estación», takes Doménica inside
+ * (docs/design/interiores.md §5). With `?dev`, the flight bar keeps a remote-access button that works anywhere.
  */
 export class StationDock {
   private readonly btn: HTMLButtonElement;
   private readonly sub: HTMLElement;
   private readonly devBtn: HTMLButtonElement | undefined;
+  private readonly enterBtn: HTMLButtonElement;
 
   constructor(
     root: HTMLElement,
     addFlightButton: (cls: string, onClick: () => void) => HTMLButtonElement,
-    private readonly deps: { open(): void; distanceM(): number; alongside(): boolean; docked(): boolean },
+    private readonly deps: { open(): void; enter(): void; distanceM(): number; alongside(): boolean; docked(): boolean },
   ) {
     this.btn = document.createElement("button");
     this.btn.className = "station-dock-btn hidden";
@@ -56,6 +58,11 @@ export class StationDock {
     this.sub = this.btn.querySelector("small")!;
     this.btn.addEventListener("click", () => deps.open());
     root.appendChild(this.btn);
+    this.enterBtn = document.createElement("button");
+    this.enterBtn.className = "station-enter-btn hidden";
+    this.enterBtn.textContent = "Entrar en la estación";
+    this.enterBtn.addEventListener("click", () => deps.enter());
+    root.appendChild(this.enterBtn);
     if (DEV_ACCESS) this.devBtn = addFlightButton("estacion-btn", () => deps.open());
   }
 
@@ -64,6 +71,7 @@ export class StationDock {
     const near = this.deps.alongside();
     const show = cockpit && near;
     this.btn.classList.toggle("hidden", !show);
+    this.enterBtn.classList.toggle("hidden", !(show && this.deps.docked()));
     document.body.classList.toggle("station-near", show);
     const sub = this.deps.docked() ? "Atracada" : `A ${km(this.deps.distanceM())} de la estación`;
     if (near && this.sub.textContent !== sub) this.sub.textContent = sub;

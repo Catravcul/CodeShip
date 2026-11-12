@@ -69,6 +69,10 @@ import { StationScreen } from "./station-screen";
 import { StationStructure } from "@modules/station/domain/structure";
 import { POLANA_LAYOUT } from "@modules/station/data/structure";
 import { StationDock, dockNavTargets } from "./station-dock";
+import { StationInteriorMode } from "./station-interior";
+import { StationInterior } from "@modules/station/domain/interior";
+import { POLANA_INTERIOR } from "@modules/station/data/interior";
+import { partById } from "@modules/ship/data/parts";
 import { Mothership } from "@modules/mothership/domain/mothership";
 import { IDSS_CONTACT_LIMITS, NODRIZA, NODRIZA_NOSE_PORT, UNDOCK_PUSH_MS } from "@modules/mothership/data/mothership";
 import { ASSIST_RANGE_M, Docking } from "@modules/mothership/application/docking";
@@ -285,7 +289,7 @@ root.appendChild(regionTag);
 const regionTitle = `${region.data.name} · ${region.heliocentricAU().length().toFixed(2).replace(".", ",")} UA del Sol`;
 window.addEventListener("keydown", (e) => {
   if (e.code === "KeyG" && !e.repeat && !interior.active) flight.landingAssist = !flight.landingAssist;
-  if (e.code === "KeyK" && !e.repeat && !interior.active && !bay.active && !duelView.visible && !deck.active) dockBtn.click();
+  if (e.code === "KeyK" && !e.repeat && !interior.active && !stationInside.active && !bay.active && !duelView.visible && !deck.active) dockBtn.click();
 });
 const duelSession = () => {
   const d = expedition.duel!;
@@ -390,15 +394,45 @@ view.addButton("bay-btn", () => openBay("cabina")).textContent = "Bahía de la n
 const stationScreen = new StationScreen(root, stationOps, ship, expedition, duelView, () => flight.state.position, (id) =>
   id === MOTHERSHIP_CRAFT.id ? mothership.position : id === EXPLORER_CRAFT.id ? flight.state.position : undefined,
 );
-stationScreen.onExit = () => view.center();
+// Inside the station (docs/design/interiores.md §5): zero-g modules and the hangar; its machines open the screen's tabs.
+const atStationPort = () => structure.ports.some((p) => p === docking.dockedTo);
+const stationInside = new StationInteriorMode(root, new StationInterior(POLANA_INTERIOR), {
+  busy: () => new Set(stationOps.station.queue().map((j) => j.machine)),
+  store: () => ({ parts: stationOps.station.hangar.partList(), crafts: stationOps.station.hangar.crafts.filter((c) => c.docked) }),
+  partName: (id) => (partById(id)?.name ?? id).replace(/^Aerojet Rocketdyne /, "").replace(/\s*\(.*\)$/, ""),
+  openPanel: (tab) => {
+    stationInside.suspend();
+    screenFromInside = true;
+    stationScreen.enter(tab);
+  },
+  leave: (to) => {
+    const mothershipHere = docking.dockedTo === mothership && !!mothership.dockedTo;
+    if (to === "nodriza" && !mothership.dockedTo) return "La nodriza no está atracada en este puerto";
+    if (to === "sonda" && !atStationPort()) return "La sonda no está en este puerto";
+    stationInside.suspend();
+    // Through the mothership's port she goes into its habitat; otherwise back to the probe's cockpit.
+    if (to === "nodriza") {
+      interior.enter();
+      modeBtn.textContent = "Ir a la cabina";
+      if (!mothershipHere) modeBtn.classList.remove("off");
+    } else view.center();
+  },
+});
+let screenFromInside = false;
+stationScreen.onExit = () => {
+  if (!screenFromInside) return view.center();
+  screenFromInside = false;
+  stationInside.resume();
+};
 const stationDock = new StationDock(root, (c, f) => view.addButton(c, f), {
   open: () => !duelView.visible && !bay.active && !interior.active && !evaMode.active && stationScreen.enter(),
+  enter: () => !duelView.visible && !bay.active && !interior.active && !evaMode.active && stationInside.enter(atStationPort() ? "sonda" : "nodriza"),
   distanceM: () => stationOps.station.distanceTo(flight.state.position),
   alongside: () => stationOps.station.isAlongside(flight.state.position),
-  docked: () => structure.ports.some((p) => p === docking.dockedTo) || (docking.dockedTo === mothership && !!mothership.dockedTo),
+  docked: () => atStationPort() || (docking.dockedTo === mothership && !!mothership.dockedTo),
 });
 window.addEventListener("keydown", (e) => {
-  if (e.code === "KeyB" && !e.repeat && !interior.active && !duelView.visible && !deck.active) bay.active ? bay.exit() : openBay("cabina");
+  if (e.code === "KeyB" && !e.repeat && !interior.active && !stationInside.active && !duelView.visible && !deck.active) bay.active ? bay.exit() : openBay("cabina");
 });
 
 const action = document.createElement("button");
@@ -477,6 +511,7 @@ window.addEventListener("resize", () => {
   interior.resize();
   bay.resize();
   stationScreen.resize();
+  stationInside.resize();
   deck.resize();
 });
 
@@ -485,7 +520,7 @@ let last = performance.now();
 renderer.setAnimationLoop((now) => {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
-  const cmd = interior.active || deck.active || bay.active || evaMode.active || stationScreen.active || navMode.blocksInput || missionLog.visible ? NO_INPUT : mergeCommands(pilot.command(), touch.command());
+  const cmd = interior.active || stationInside.active || deck.active || bay.active || evaMode.active || stationScreen.active || navMode.blocksInput || missionLog.visible ? NO_INPUT : mergeCommands(pilot.command(), touch.command());
   const idle = cmd.mainThrottle === 0 && cmd.translation.length() === 0 && cmd.rotation.length() === 0;
   // Time warp only on quiet cruise far from the surface, so landing stays real-time.
   const far = flight.telemetry().distanceToSurface >= WARP_MIN_DISTANCE_M;
@@ -537,8 +572,8 @@ renderer.setAnimationLoop((now) => {
   // The station's machines run on the same clock as life on board.
   stationOps.station.tick(dt * warp * STATION_TUNING.hoursPerSecond);
   interior.update(dt);
-  view.enabled = !interior.active && !deck.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active && !navMode.mapOpen && !missionLog.visible;
-  navMode.canOpen = () => !interior.active && !deck.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active;
+  view.enabled = !interior.active && !stationInside.active && !deck.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active && !navMode.mapOpen && !missionLog.visible;
+  navMode.canOpen = () => !interior.active && !stationInside.active && !deck.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active;
   navMode.update(dt, view.warpRequested);
   // The mothership moves on trips: keep its model where the domain has it.
   mothershipModel.root.position.set(mothership.position.x, mothership.position.y, mothership.position.z);
@@ -546,6 +581,11 @@ renderer.setAnimationLoop((now) => {
   document.body.classList.toggle("in-cockpit", view.enabled);
   if (interior.active) {
     renderer.render(interior.scene, interior.camera);
+    return;
+  }
+  if (stationInside.active) {
+    stationInside.update(dt);
+    renderer.render(stationInside.scene, stationInside.camera);
     return;
   }
   if (bay.active) {
@@ -622,4 +662,4 @@ renderer.setAnimationLoop((now) => {
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationOps, nav, navMode, missions, missionLog, deck };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, nav, navMode, missions, missionLog, deck };

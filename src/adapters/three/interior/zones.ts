@@ -1,19 +1,15 @@
 import * as THREE from "three";
 import { Vec3 } from "@core/math/vec3";
 import type { SpinRing } from "@modules/gravity/domain/spin-gravity";
+import { FLOAT_TUNING, floatStep } from "@modules/gravity/domain/zero-g";
 import type { CubeFigure } from "./figure";
 import { buildSpoke, spokeLayout, type SpokeHandles, type SpokeLayout } from "./spoke";
 
 /** Where Doménica is: on the ring floor (walking), in the spoke elevator, or floating at the axis. */
 export type GravityZone = "anillo" | "radio" | "eje";
 
-/** Game tuning for moving about in microgravity and riding the spoke elevator. */
+/** Game tuning for riding the spoke elevator (floating uses FLOAT_TUNING, shared with the station). */
 const TUNING = {
-  /** Push from the handrails, m/s², and the most she lets herself drift. */
-  floatPush: 0.9,
-  floatMaxSpeed: 1.6,
-  /** Holding the rails lightly: drift fades by this fraction per second without input. */
-  floatDamping: 0.35,
   /**
    * Elevator: top speed and acceleration. Kept slow on purpose: riding a spoke at v gives a sideways
    * Coriolis push of 2ωv (0.17 g at 2 m/s and 4 rpm), so the 52 m ride takes about half a minute.
@@ -219,28 +215,20 @@ export class GravityZones {
         this.sendCar("down");
         return;
       }
-      push = to.normalize().multiplyScalar(TUNING.floatPush * 2);
+      push = to.normalize().multiplyScalar(FLOAT_TUNING.push * 2);
       this.v.multiplyScalar(Math.exp(-2 * dt));
     } else {
       const fwd = new THREE.Vector3(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
       const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
       const camUp = new THREE.Vector3().crossVectors(right, fwd).normalize();
-      push = fwd.multiplyScalar(move.forward).addScaledVector(right, move.right).addScaledVector(camUp, up).multiplyScalar(TUNING.floatPush);
-      if (push.lengthSq() === 0) this.v.multiplyScalar(Math.exp(-TUNING.floatDamping * dt));
+      push = fwd.multiplyScalar(move.forward).addScaledVector(right, move.right).addScaledVector(camUp, up).multiplyScalar(FLOAT_TUNING.push);
     }
     // In the rotating hub, centrifugal and Coriolis still act (weakly); the spine does not turn.
-    if (this.p.x <= L.hubHalfX) {
-      const a = this.ring.apparentAcceleration(new Vec3(0, this.p.y - L.axisY, this.p.z - L.z), new Vec3(this.v.x, this.v.y, this.v.z));
-      push.add(new THREE.Vector3(a.x, a.y, a.z));
-    }
-    this.v.addScaledVector(push, dt);
-    if (this.v.length() > TUNING.floatMaxSpeed) this.v.setLength(TUNING.floatMaxSpeed);
-    const prev = this.p.clone();
-    this.p.addScaledVector(this.v, dt);
-    if (!this.insideFloat(this.p, 0.45)) {
-      this.p.copy(prev);
-      this.v.multiplyScalar(-0.3);
-    }
+    const a = this.p.x <= L.hubHalfX ? this.ring.apparentAcceleration(new Vec3(0, this.p.y - L.axisY, this.p.z - L.z), new Vec3(this.v.x, this.v.y, this.v.z)) : Vec3.ZERO;
+    const v3 = (q: THREE.Vector3) => new Vec3(q.x, q.y, q.z);
+    const next = floatStep({ position: v3(this.p), velocity: v3(this.v) }, v3(push), a, dt, (q) => this.insideFloat(new THREE.Vector3(q.x, q.y, q.z), 0.45));
+    this.p.set(next.position.x, next.position.y, next.position.z);
+    this.v.set(next.velocity.x, next.velocity.y, next.velocity.z);
   }
 
   /** Inside the hub, the spine module or the top of the shaft, keeping `margin` from the walls. */

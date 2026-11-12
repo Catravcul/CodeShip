@@ -1,0 +1,378 @@
+import * as THREE from "three";
+import { Vec3 } from "@core/math/vec3";
+import { FLOAT_TUNING, floatStep } from "@modules/gravity/domain/zero-g";
+import type { CraftSpec, MachineId } from "@modules/station/domain/blueprint";
+import type { PortUser } from "@modules/station/domain/structure";
+import { faceToward, type Fixture, type StationInterior, type StationPanel } from "@modules/station/domain/interior";
+import { buildStationRooms, crateModel, probeModel, type StationRooms } from "./adapters/three/interior/station-rooms";
+import { CubeFigure } from "./adapters/three/interior/figure";
+import { Walker } from "./adapters/input/walker";
+import "./ui/station-interior.css";
+
+const PANEL_NAME: Readonly<Record<StationPanel, string>> = { materiales: "Materiales", planos: "Planos", fabricacion: "Fabricación", hangar: "Hangar" };
+const FACE_LABEL = { suelo: "el suelo", techo: "el techo", babor: "babor", estribor: "estribor", proa: "proa", popa: "popa" } as const;
+/** Body margin from the walls while floating, m. */
+const BODY = 0.3;
+/** Game value: seconds to empty or fill the airlock (on the ISS it takes hours with the prebreathe). */
+const CYCLE_S = 2.5;
+const CABIN_KPA = 101.3;
+
+export interface StationInteriorDeps {
+  /** Machines working right now (their lamps glow). */
+  busy(): ReadonlySet<MachineId>;
+  /** Spare parts by id and the crafts kept in the hangar. */
+  store(): { parts: readonly [string, number][]; crafts: readonly CraftSpec[] };
+  partName(id: string): string;
+  /** Open a tab of the station's task screen. */
+  openPanel(panel: StationPanel): void;
+  /** Leave through a docking hatch, or back to the cockpit; returns why not, if she cannot. */
+  leave(to: PortUser | "cabina"): string | void;
+}
+
+/**
+ * Inside the station: Doménica floats (the station does not spin) through node 2, the habitat,
+ * node 1, the fabrication module and, suited, the hangar. Same handrail movement as the mothership's
+ * spine; machines open their tab of the station screen (docs/design/interiores.md §5).
+ */
+export class StationInteriorMode {
+  readonly scene = new THREE.Scene();
+  readonly camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.03, 2500);
+  private readonly rooms: StationRooms;
+  private readonly walker: Walker;
+  private readonly avatar = new CubeFigure(0xc99a76, 0x2f7f8f);
+  private readonly suit = new CubeFigure(0xf2f2f2, 0xe9ecef);
+  private readonly rig = new THREE.Group();
+  private readonly ui: HTMLElement;
+  private readonly hud: HTMLElement;
+  private readonly actBtn: HTMLButtonElement;
+  private readonly viewBtn: HTMLButtonElement;
+  private readonly toast: HTMLElement;
+  private readonly keys = new Set<string>();
+  private p = Vec3.ZERO;
+  private v = Vec3.ZERO;
+  private yaw = 0;
+  private pitch = 0;
+  private upDown = 0;
+  private thirdPerson = true;
+  private toastUntil = 0;
+  private storeKey = "";
+  private hudKey = "";
+  private near: Fixture | undefined;
+  private tap: { id: number; x: number; y: number; t: number } | null = null;
+  /** Airlock: emptied with her suited (outer hatch open) or at cabin pressure; `cycling` counts down. */
+  suited = false;
+  private cycling = 0;
+  /** Which port she came in by (the hatch that takes her back). */
+  from: PortUser = "sonda";
+  active = false;
+
+  constructor(
+    root: HTMLElement,
+    readonly interior: StationInterior,
+    private readonly deps: StationInteriorDeps,
+  ) {
+    this.scene.background = new THREE.Color(0x05070c);
+    this.rooms = buildStationRooms(interior.plan);
+    this.scene.add(this.rooms.group);
+    this.avatar.pose("float");
+    this.suit.pose("float");
+    this.rig.add(this.avatar.root, this.suit.root);
+    this.scene.add(this.rig);
+    this.walker = new Walker(root, { move: "sti-move", look: "sti-look", moveLabel: "Flotar" });
+    this.ui = document.createElement("div");
+    this.ui.className = "sti-ui hidden";
+    this.ui.innerHTML = `<div class="sti-hud"></div><button class="sti-tasks">Tareas</button><button class="sti-view"></button><button class="sti-back">Salir</button>
+      <button class="sti-act hidden"></button><div class="sti-updown"><button class="sti-up" aria-label="Hacia el techo">▲</button><button class="sti-down" aria-label="Hacia el suelo">▼</button></div><div class="sti-toast"></div>`;
+    root.appendChild(this.ui);
+    this.hud = this.ui.querySelector(".sti-hud")!;
+    this.actBtn = this.ui.querySelector(".sti-act")!;
+    this.viewBtn = this.ui.querySelector(".sti-view")!;
+    this.toast = this.ui.querySelector(".sti-toast")!;
+    this.ui.querySelector(".sti-tasks")!.addEventListener("click", () => this.deps.openPanel("materiales"));
+    this.ui.querySelector(".sti-back")!.addEventListener("click", () => {
+      if (this.suited) return this.say("Primero vuelve a la esclusa y quítate el traje");
+      const why = this.deps.leave("cabina");
+      if (why) this.say(why);
+    });
+    this.viewBtn.addEventListener("click", () => {
+      this.thirdPerson = !this.thirdPerson;
+      this.syncView();
+    });
+    this.syncView();
+    this.actBtn.addEventListener("click", () => this.near && this.use(this.near, true));
+    for (const [cls, dir] of [
+      [".sti-up", 1],
+      [".sti-down", -1],
+    ] as const) {
+      const b = this.ui.querySelector<HTMLButtonElement>(cls)!;
+      b.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.upDown = dir;
+      });
+      const stop = () => this.upDown === dir && (this.upDown = 0);
+      b.addEventListener("pointerup", stop);
+      b.addEventListener("pointerleave", stop);
+      b.addEventListener("pointercancel", stop);
+    }
+    window.addEventListener("keydown", (e) => {
+      if (!this.active) return;
+      this.keys.add(e.code);
+      if (e.code === "Enter" && !e.repeat && this.near) this.use(this.near, true);
+    });
+    window.addEventListener("keyup", (e) => this.keys.delete(e.code));
+    // A short tap on a machine or rack uses it (dragging looks around).
+    root.addEventListener("pointerdown", (e) => {
+      if (!this.active || (e.target as HTMLElement).tagName !== "CANVAS") return;
+      this.tap = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() };
+    });
+    window.addEventListener("pointerup", (e) => {
+      const t = this.tap;
+      this.tap = null;
+      if (!this.active || !t || t.id !== e.pointerId) return;
+      if (Math.hypot(e.clientX - t.x, e.clientY - t.y) > 10 || performance.now() - t.t > 450) return;
+      this.pick(e.clientX, e.clientY);
+    });
+  }
+
+  /** Come in through the hatch of the port the ship is docked at. */
+  enter(from: PortUser): void {
+    const e = this.interior.plan.entries[from];
+    this.from = from;
+    this.p = e.at;
+    this.v = Vec3.ZERO;
+    this.suited = false;
+    this.cycling = 0;
+    this.yaw = Math.atan2(-e.facing.x, -e.facing.z);
+    this.pitch = from === "sonda" ? 0.05 : 0;
+    this.resume();
+    this.say(from === "sonda" ? "Entras por el suelo del Nodo 2. Aquí no hay gravedad: el techo es «arriba» en toda la estación" : "Entras desde la nodriza por proa del Nodo 2. Aquí no hay gravedad: el techo es «arriba»");
+  }
+
+  /** Show it again after the station screen (same place). */
+  resume(): void {
+    this.active = true;
+    this.walker.enabled = true;
+    this.ui.classList.remove("hidden");
+    document.body.classList.add("in-station-interior");
+    this.resize();
+  }
+
+  /** Hide it (to open the station screen, or to leave). */
+  suspend(): void {
+    this.active = false;
+    this.walker.enabled = false;
+    this.upDown = 0;
+    this.ui.classList.add("hidden");
+    document.body.classList.remove("in-station-interior");
+  }
+
+  resize(): void {
+    this.camera.aspect = window.innerWidth / window.innerHeight;
+    this.camera.updateProjectionMatrix();
+  }
+
+  update(dt: number): void {
+    if (!this.active) return;
+    const look = this.walker.look(dt);
+    this.yaw += look.yaw;
+    this.pitch = Math.max(-1.45, Math.min(1.45, this.pitch + look.pitch));
+    if (this.cycling > 0) {
+      this.cycling = Math.max(0, this.cycling - dt);
+      if (this.cycling === 0) this.say(this.suited ? "Esclusa vacía: abre la escotilla exterior y pasa al hangar" : "Esclusa a presión: ya puedes quitarte el casco y volver al módulo");
+    }
+    const move = this.walker.move();
+    const k = (c: string) => (this.keys.has(c) ? 1 : 0);
+    const up = Math.max(-1, Math.min(1, this.upDown + k("KeyR") + k("Space") - k("KeyF") - k("ShiftLeft")));
+    const fwd = this.lookDir();
+    const right = new Vec3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
+    const camUp = right.cross(fwd).normalize();
+    const input = this.cycling > 0 ? Vec3.ZERO : fwd.scale(move.forward).add(right.scale(move.right)).add(camUp.scale(up)).scale(FLOAT_TUNING.push);
+    const s = floatStep({ position: this.p, velocity: this.v }, input, Vec3.ZERO, dt, (q) => this.interior.fits(q, BODY, this.suited), { collide: "slide" });
+    this.p = s.position;
+    this.v = s.velocity;
+    this.near = this.cycling > 0 ? undefined : this.interior.fixtureNear(this.p);
+    this.syncAction();
+    this.syncMachines();
+    this.syncStore();
+    this.placeCamera();
+    this.fadeSigns();
+    this.renderHud();
+    if (performance.now() > this.toastUntil) this.toast.classList.remove("on");
+  }
+
+  private lookDir(): Vec3 {
+    return new Vec3(-Math.sin(this.yaw) * Math.cos(this.pitch), Math.sin(this.pitch), -Math.cos(this.yaw) * Math.cos(this.pitch));
+  }
+
+  private actionLabel(f: Fixture): string {
+    const a = f.action;
+    if (a.kind === "panel") return `${f.label}: abrir ${PANEL_NAME[a.panel]}`;
+    if (a.kind === "salir") return a.to === "sonda" ? "Volver a la sonda" : "Volver a la nodriza";
+    if (a.kind === "esclusa") return this.suited ? "Llenar la esclusa y quitarse el traje" : "Ponerse el traje y vaciar la esclusa";
+    return `${f.label}: ¿qué es?`;
+  }
+
+  private syncAction(): void {
+    const f = this.near;
+    this.actBtn.classList.toggle("hidden", !f);
+    if (!f) return;
+    const label = this.actionLabel(f);
+    if (this.actBtn.textContent !== label) this.actBtn.textContent = label;
+    this.actBtn.classList.toggle("info", f.action.kind === "info");
+  }
+
+  /** Use a fixture: from the context button (`close`) or by tapping it from further away. */
+  use(f: Fixture, close: boolean): void {
+    const a = f.action;
+    if (a.kind === "panel") {
+      this.say(`${f.label} · ${this.interior.locationCode(f)}`);
+      return this.deps.openPanel(a.panel);
+    }
+    if (a.kind === "info") return this.say(`${f.label} (${this.interior.locationCode(f)}): ${f.info}`, 6);
+    if (!close) return this.say(`${f.label}: acércate para usarla`);
+    if (a.kind === "salir") {
+      if (this.suited) return this.say("Con el traje no: vuelve a la esclusa");
+      const why = this.deps.leave(a.to);
+      return void (why && this.say(why));
+    }
+    // Airlock: only from inside it.
+    if (this.interior.volumeAt(this.p)?.kind !== "esclusa") return this.say("Entra en la esclusa para cambiarte");
+    this.suited = !this.suited;
+    this.cycling = CYCLE_S;
+    this.say(this.suited ? "Traje puesto. Vaciando la esclusa… (en la ISS, el traje y la prerrespiración llevan horas)" : "Llenando la esclusa…", 4);
+  }
+
+  private pick(x: number, y: number): void {
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(new THREE.Vector2((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1), this.camera);
+    const hit = ray.intersectObjects(this.rooms.pickables, false)[0];
+    const id = hit?.object.userData.fixture as string | undefined;
+    const f = id ? this.interior.fixture(id) : undefined;
+    if (!f || !hit || hit.distance > 12) return;
+    this.use(f, this.near?.id === f.id);
+  }
+
+  private syncMachines(): void {
+    const busy = this.deps.busy();
+    const t = performance.now() / 1000;
+    for (const [id, lamp] of this.rooms.lamps) {
+      const m = lamp.material as THREE.MeshBasicMaterial;
+      if (!m.userData.base) m.userData.base = m.color.getHex();
+      const on = busy.has(id);
+      m.color.setHex(on ? m.userData.base : 0x2a2a2a);
+      if (on) m.color.multiplyScalar(0.7 + 0.3 * Math.sin(t * 6 + id.length));
+    }
+  }
+
+  private syncStore(): void {
+    const { parts, crafts } = this.deps.store();
+    const key = JSON.stringify([parts, crafts.map((c) => c.id)]);
+    if (key === this.storeKey) return;
+    this.storeKey = key;
+    const g = this.rooms.store;
+    g.clear();
+    const { crates, probes } = this.interior.stow(parts, crafts);
+    const size = this.interior.plan.storage.crate;
+    const seen = new Set<string>();
+    for (const c of crates) {
+      const m = crateModel(size, seen.has(c.partId) ? undefined : this.deps.partName(c.partId));
+      seen.add(c.partId);
+      m.position.set(c.at.x, c.at.y, c.at.z);
+      m.traverse((o) => (o.userData.fixture = c.at.x < 0 ? "estante-babor" : "estante-estribor"));
+      g.add(m);
+    }
+    for (const p of probes) {
+      const m = probeModel(p.craft.name);
+      m.position.set(p.at.x, p.at.y, p.at.z);
+      m.traverse((o) => (o.userData.fixture = "cunas"));
+      g.add(m);
+    }
+    this.rooms.pickables.splice(0, this.rooms.pickables.length);
+    this.rooms.signs.splice(0, this.rooms.signs.length);
+    this.rooms.group.traverse((o) => {
+      if (o.userData.fixture && !(o instanceof THREE.Sprite)) this.rooms.pickables.push(o);
+      if (o instanceof THREE.Sprite) this.rooms.signs.push(o);
+    });
+  }
+
+  private syncView(): void {
+    this.viewBtn.textContent = this.thirdPerson ? "Vista 3ª" : "Vista 1ª";
+  }
+
+  private placeCamera(): void {
+    const dir = this.lookDir();
+    const p = new THREE.Vector3(this.p.x, this.p.y, this.p.z);
+    const third = this.thirdPerson;
+    this.rig.visible = third;
+    this.avatar.root.visible = !this.suited;
+    this.suit.root.visible = this.suited;
+    (this.suited ? this.suit : this.avatar).update(1 / 60, 4);
+    // Body roughly along the look direction, in the neutral posture of microgravity; head toward the overhead.
+    const tilt = Math.max(0.2, Math.min(2.6, 1.3 - this.pitch));
+    this.rig.quaternion.setFromEuler(new THREE.Euler(tilt, this.yaw + Math.PI, 0, "YXZ"));
+    const centre = new THREE.Vector3(0, 0.9, 0).applyQuaternion(this.rig.quaternion);
+    this.rig.position.copy(p).sub(centre);
+    this.camera.up.set(0, 1, 0);
+    if (!third) {
+      this.camera.position.copy(p);
+      this.camera.rotation.set(this.pitch, this.yaw, 0, "YXZ");
+      return;
+    }
+    const d3 = new THREE.Vector3(dir.x, dir.y, dir.z);
+    const cam = new THREE.Vector3();
+    // In the hangar she can be seen from further back; in a narrow aisle the camera may not fit behind her.
+    const far = this.interior.volumeAt(this.p)?.kind === "hangar" ? 4 : 2.4;
+    // Pull the camera back from her head until it would leave the space she is in (never through a wall).
+    const at = (k: number) => new THREE.Vector3().copy(p).addScaledVector(d3, -k).add(new THREE.Vector3(0, (0.3 * k) / far, 0));
+    let d = 0;
+    for (let k = 0.1; k <= far + 1e-6; k += 0.1) {
+      const q = at(k);
+      if (!this.interior.fits(new Vec3(q.x, q.y, q.z), 0.08, this.suited)) break;
+      d = k;
+    }
+    cam.copy(at(d));
+    if (d < 1.6) {
+      // Too tight to see her from behind: look through her eyes until there is room.
+      this.rig.visible = false;
+      this.camera.position.copy(p);
+      this.camera.rotation.set(this.pitch, this.yaw, 0, "YXZ");
+      return;
+    }
+    this.camera.position.copy(cam);
+    this.camera.lookAt(p.clone().addScaledVector(d3, 1.2));
+  }
+
+  /** Labels too close to the camera would fill the screen: hide them until there is some distance. */
+  private fadeSigns(): void {
+    const cam = this.camera.position;
+    const w = new THREE.Vector3();
+    for (const s of this.rooms.signs) {
+      s.getWorldPosition(w);
+      const d = w.distanceTo(cam);
+      s.visible = d > Math.max(1.0, 4 * s.scale.y) && d < 40 * s.scale.y;
+    }
+  }
+
+  private renderHud(): void {
+    const v = this.interior.volumeAt(this.p);
+    const looking = FACE_LABEL[faceToward(this.lookDir())];
+    const lock = v?.kind === "esclusa";
+    const kpa = lock ? (this.suited ? (this.cycling / CYCLE_S) * CABIN_KPA : (1 - this.cycling / CYCLE_S) * CABIN_KPA) : this.interior.pressurisedAt(this.p, this.suited) ? CABIN_KPA : 0;
+    const air = kpa > 1 ? `${Math.round(kpa)} kPa de aire` : "vacío";
+    const suit = this.suited ? " · con traje" : "";
+    const html = `<div class="sti-title">${v ? `${v.code} · ${v.label}` : "Estación"}</div>
+      <div>Mirando hacia ${looking} · el techo es «arriba»</div>
+      <div class="sti-grav">0 g: la estación no gira · ${air}${suit}</div>${this.near ? `<div class="sti-near">${this.near.label} · ${this.interior.locationCode(this.near)}</div>` : ""}`;
+    if (html !== this.hudKey) {
+      this.hudKey = html;
+      this.hud.innerHTML = html;
+    }
+  }
+
+  private say(text: string, seconds = 3.5): void {
+    this.toast.textContent = text;
+    this.toast.classList.add("on");
+    this.toastUntil = performance.now() + seconds * 1000;
+  }
+}

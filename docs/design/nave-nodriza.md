@@ -43,7 +43,7 @@ La espina mide 152 m y no gira. Su eje es z, y la proa (−z) mira a Bennu al em
 | Anillo gemelo | z = −20 m | Gira al revés con camarotes, almacenes y depósitos de agua |
 | Radiadores | dos alas de 24,6 × 56 m (2755 m²) | De canto respecto al reactor |
 | Reactor y escudo de sombra | z = +74 m | En el extremo opuesto a la tripulación |
-| 18 propulsores X3 | dos módulos de 9, z = +64 m | Empujan hacia proa |
+| Propulsores (al empezar, 18 X3) | dos módulos (dorsal y ventral) de 7,5 × 3,4 m, z = +64 m | Empujan hacia proa. Se pueden cambiar: ver «Propulsores intercambiables» |
 
 Los anillos son una **llanta de celosía** con un pasillo presurizado y segmentos presurizados encima. No son un toro cerrado: un toro presurizado de 56 m de radio, 18 m de ancho y 7 m de alto tendría unos 44 000 m³ por anillo y pesaría miles de toneladas.
 
@@ -55,7 +55,8 @@ Los anillos son una **llanta de celosía** con un pasillo presurizado y segmento
 | Empuje por propulsor | **5,4 N** a 99 kW y 400 V (el máximo medido) | Hall et al. 2019 |
 | Isp | 1800–2650 s según el punto de trabajo; usamos **2250 s** | Estimación nuestra para el punto de 5,4 N: P·η = F·g₀·Isp/2 con η ≈ 0,6 (el artículo da 0,54–0,67) |
 | Propelente | xenón | Hall et al. 2019 |
-| Número | 18 (1,78 MW) | Valor nuestro, cabe en los 2 MWe |
+| Número al empezar | 18, 9 por módulo (1,78 MW) | Valor nuestro, cabe en los 1,8 MW libres del reactor |
+| Masa por unidad | 230 kg el propulsor + 150 kg la fuente de potencia | [PEPL](https://pepl.engin.umich.edu/project/x3-nested-channel-hall-thruster) (Ø80 cm × 20 cm, 230 kg); la fuente es una estimación (~1,5 kg/kW) |
 | Energía | reactor de fisión con 4 turbinas Brayton, **2 MWe**, 33,7 % de rendimiento | [Harnack et al. 2022 (NASA, ASCEND)](https://ntrs.nasa.gov/api/citations/20220013600/downloads/ASCEND_22_Brayton_Performance_Mass_Sensitivity.pdf) |
 | Masa específica del sistema de energía | **19 kg/kWe** (90 %: 18–23) | Harnack et al. 2022 |
 | Radiadores | **2760 m²** (90 %: 2300–3500) | Harnack et al. 2022 |
@@ -70,6 +71,53 @@ Resultado, calculado en `Mothership` y comprobado en los tests:
 **Lo que no es real:** ningún reactor espacial de esta potencia ha volado. Los de 2 MWe son estudios de NASA para misiones tripuladas a Marte. El X3 se ha probado en tierra, pero nunca ha volado. Es la opción más honesta para una nave de cientos de toneladas que tiene que hacer varios km/s.
 
 **«Viaja más rápido».** La nodriza no acelera más que la sonda: acelera unas 6000 veces menos. Lo que sí hace es llegar a otros asteroides, porque tiene 4 km/s de Δv y lleva consigo la gravedad, el huerto y los camarotes. La sonda, con 0,94 km/s y una cabina para salidas cortas, no podría. Los saltos entre asteroides de la familia duran meses, y el juego tendrá que comprimir ese tiempo (lo decide el mapa de navegación).
+
+### Propulsores intercambiables
+
+Petición de Berón (2026-11-12): «que se puedan cambiar los propulsores». Ahora son piezas, como el motor y los RCS de la sonda.
+
+**Montajes.** La nodriza tiene dos módulos de propulsores en la popa, uno encima de la espina (`dorsal`) y otro debajo (`ventral`). Cada módulo tiene una cara de 7,5 × 3,4 m (valor de juego, el de la maqueta) y lleva **varias unidades de un solo tipo**. Los cabezales van en una rejilla cuadrada con un paso de 1,25 diámetros (regla de juego: sitio para los chorros y los cables). Por eso caben 21 X3, 55 AEPS, 24 NEXT-C o 10 VX-200 por módulo.
+
+**El reactor manda.** De los 2000 kWe, **200 kW** son para el resto de la nave: luces del huerto, soporte vital, motores de los anillos (valor de juego; como referencia, los 8 paneles de la ISS dan 75–90 kW, [NASA](https://www.nasa.gov/international-space-station/space-station-facts-and-figures/)). Quedan **1800 kW** para propulsión. Se encienden unidades enteras, una de cada módulo por turno para que la nave no tuerza, mientras quepan en esos 1800 kW. Las que sobran están **paradas**: pesan y no empujan (`drivePlan`, en `domain/propulsion.ts`). El empuje, la Isp efectiva (empuje total ÷ g₀ ÷ caudal total), la aceleración, el Δv, los días de empuje y el xenón de cada maniobra salen de las unidades que encienden. La masa de los propulsores sale de las montadas.
+
+| Propulsor | Empuje | Isp | Potencia | Masa (propulsor + fuente) | Ø | Propelente | Fuente |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| **X3** (Hall de 3 canales, NASA / U. Michigan) | 5,4 N | 2250 s (estimada) | 99 kW | 230 + 150 kg (fuente estimada) | 0,80 m | xenón; también kriptón | [Hall et al. 2019](https://ntrs.nasa.gov/citations/20190004993), [PEPL](https://pepl.engin.umich.edu/project/x3-nested-channel-hall-thruster) |
+| **AEPS / HERMeS** (Hall de 12,5 kW, PPE del Gateway) | 589 mN | 2800 s | 13,3 kW (con la fuente) | <50 + ~50 kg | 0,516 m | xenón | [Jackson et al. 2018](https://ntrs.nasa.gov/api/citations/20180003521/downloads/20180003521.pdf) (tabla 1, §3.1–3.3); [Cassady et al. 2022](https://ntrs.nasa.gov/api/citations/20220007037/downloads/SP2022_438_CASSADY.pdf) (ETU-1: 608 mN, 2882 s) |
+| **NEXT-C** (iónico de rejillas, voló en DART) | 235 mN | 4155 s | 7,33 kW (entrada a la fuente) | <14 + <36 kg | 0,70 m | xenón | [Ficha L3Harris 2022](https://arsuppliernet.l3harris.com/sites/default/files/documents/NEXT-C_Data_sheet_01_2022_FINAL_DIGITAL.pdf), [ficha NASA 2021](https://ntrs.nasa.gov/api/citations/20210024276/downloads/NEXT-C_FactSheet_11_1_21_rev4%20(1).pdf) |
+| **VASIMR VX-200** (Ad Astra) · **experimental** | 5,8 N | 4900 s | 212 kW de continua (200 kW de RF) | 500 (estimación) + 128 kg | 1,2 m (valor de juego) | **argón** (kriptón solo en la etapa helicón) | [Longmier et al. 2014, JPP](https://www.adastrarocket.com/technical-papers-archives/Ben-JPP-2014.pdf) |
+
+Notas sobre los números:
+
+- La Isp del X3 es nuestra: el artículo da 1800–2650 s según el punto, y para el de 5,4 N la estimamos con P·η = F·g₀·Isp/2 y η ≈ 0,6. Los 99 kW son de descarga; no contamos las pérdidas de su fuente.
+- Los 128 kg del VX-200 son sus generadores de RF, con las masas específicas del artículo (0,85 kg/kW × 48 kW + 0,506 kg/kW × 172 kW). El artículo no da la masa del motor ni del imán superconductor: los 500 kg son una estimación nuestra.
+- Un test comprueba que en todos el rendimiento F·g₀·Isp / 2P queda entre 0,4 y 0,8 (sale 0,60–0,66).
+
+**Qué cambia al cambiar** (con el xenón lleno, ambos módulos llenos de cada tipo; calculado por `Mothership` y comprobado en los tests):
+
+| Montaje | Encienden | Empuje | Potencia | Isp | Aceleración | Δv | 1 km/s cuesta |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 2 × 9 X3 (el de salida) | 18 de 18 | 97,2 N | 1782 kW | 2250 s | 0,111 mm/s² | 4,14 km/s | 102 días, 38,8 t de xenón |
+| 2 × 21 X3 | 18 de 42 | 97,2 N | 1782 kW | 2250 s | 0,110 mm/s² | 4,10 km/s | 103 días (24 X3 parados, 9 t muertas) |
+| 2 × 55 AEPS | 110 de 110 | 64,8 N | 1463 kW | 2800 s | 0,074 mm/s² | 5,13 km/s | 154 días, 31,5 t |
+| 2 × 24 NEXT-C | 48 de 48 | 11,3 N | 352 kW | 4155 s | 0,013 mm/s² | 7,69 km/s | 884 días, 21,1 t |
+
+La lección es la de verdad: con la misma potencia, más Isp da menos empuje. El AEPS y el NEXT-C gastan menos xenón, pero tardan mucho más. Los NEXT-C no llegan a usar el reactor porque no caben más en los módulos.
+
+**VASIMR.** Se puede fabricar, pero no montar: usa argón, y la nodriza lleva xenón. La bahía lo enseña bloqueado con ese motivo. Si algún día hay tanques de argón, el dominio ya lo admite (`propulsion.propellant`).
+
+**En el juego.** Los propulsores se fabrican en la estación ([estacion.md](estacion.md), «Planos») y esperan en el hangar. En la bahía, pestaña **Nodriza**, cada módulo es una pieza («Módulo de propulsores dorsal: 9 × X3») con su ficha: el modelo con su fuente, cuántos hay y cuántos encienden, y lo que hace toda la nave (empuje, reactor, aceleración, Δv, lo que cuesta 1 km/s). Las acciones son **añadir uno**, **quitar uno** o **montar n de otro tipo**, con tantos como haya en el hangar y quepan. Solo se puede hacer con la sonda acoplada, y solo con piezas del hangar. Las que salen vuelven al hangar.
+
+Cada cambio es una cadena de retos (`driveRefitChore`, en `application/drive-refit.ts`), como los de la sonda (`swapChore`):
+
+1. **Completar** la línea nueva del código de la nave: el empuje real del propulsor (`+ propulsores.dorsal = 6 × AEPS(___ N, 13,3 kW, Isp 2800 s)`).
+2. **Predecir** cuántos podrán encenderse a la vez: 1800 kW libres, encendiendo de uno en uno mientras quepan. Con 2 × 21 X3, la respuesta es 18, no 42.
+3. **Predecir** el Δv nuevo con Tsiolkovsky y la Isp de la mezcla.
+4. **Ordenar** el montaje: cerrar el xenón, desconectar las fuentes, desmontar, montar, conectar el cátodo, encendido de prueba.
+
+Si se fallan los retos, no cambia nada. Al acabar, la maqueta de la bahía y la de la nodriza en el espacio enseñan los cabezales nuevos en su rejilla.
+
+Capturas (`docs/screenshots/propulsores-*-{mobile,desktop}.png`): 1 el plano del X3 en la estación, 2 la ficha del módulo dorsal, 3 sus acciones (VASIMR bloqueado por el propelente), 4 el primer reto del cambio a 6 AEPS, 5 el módulo ya con los AEPS (52,1 N en total, los 9 X3 en el hangar).
 
 ### Presupuesto de masas (estimaciones)
 
@@ -87,11 +135,11 @@ Cada partida dice de dónde sale en `src/modules/mothership/data/mothership.ts`.
 | Espina (152 m) | 23 | Estimación, ~150 kg/m |
 | Nodo de acople | 11,6 | Como el nodo [Unity](https://en.wikipedia.org/wiki/Unity_(ISS_module)) de la ISS |
 | Reactor, conversión y radiadores | 38 | 2000 kWe × 19 kg/kWe |
-| 18 X3 con sus fuentes de potencia | 7,2 | Estimación: ~250 kg por propulsor y ~150 kg por fuente |
+| 18 X3 con sus fuentes de potencia | 6,8 | Se calcula con lo montado: 18 × (230 kg [PEPL] + 150 kg de fuente, estimación) |
 | Doménica y los animales | 0,1 | |
-| **En seco** | **727** | Más que la ISS (~420 t) |
+| **En seco** | **726** | Más que la ISS (~420 t) |
 | Xenón | 150 | Valor de juego |
-| **Llena** | **877** | |
+| **Llena** | **876** | |
 
 ### Dónde aparca
 

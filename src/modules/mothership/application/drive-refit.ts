@@ -57,7 +57,7 @@ export function driveOptions(m: Mothership, mountId: string, catalog: readonly E
         thruster: t,
         count: f.count + 1,
         label: `Añadir un ${t.shortName}`,
-        detail: `${f.count + 1} de ${max} que caben · ${what(t)}${store ? ` · ${n} en el hangar` : ""}`,
+        detail: `${f.count + 1} de ${max} que caben · ${what(t)}${store && n > 0 ? ` · ${n} en el hangar` : ""}`,
         ...(n > 0 ? {} : { locked: "No hay en el hangar: fabrícalo en la estación (Planos)" }),
       });
     }

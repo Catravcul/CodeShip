@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { MothershipSpec } from "@modules/mothership/domain/mothership";
+import { MOUNT_PITCH_FACTOR, mountGrid, type MountFit } from "@modules/mothership/domain/propulsion";
 import type { PartId } from "./ship-model";
 
 /**
@@ -7,7 +8,7 @@ import type { PartId } from "./ship-model";
  * with the docking port and its approach lights, the non-rotating spine, the two counter-rotating
  * rings (open truss rim with pressurised segments: the habitat module and the big farm deck with its
  * glowing skylights on one, cabins and water tanks on the twin), the radiator wings, the reactor
- * behind its shadow shield and the two pods of X3 Hall thrusters.
+ * behind its shadow shield and the two thruster pods (what they hold is swappable).
  * Systems (life-support machines, farm deck, stores) can be tagged as parts for the ship bay.
  */
 export class MothershipModel {
@@ -17,6 +18,7 @@ export class MothershipModel {
   private readonly twin = new THREE.Group();
   private readonly lights: THREE.Mesh[] = [];
   private angle = 0;
+  private readonly pods = new Map<string, THREE.Group>();
 
   constructor(
     readonly spec: MothershipSpec,
@@ -110,19 +112,49 @@ export class MothershipModel {
     core.position.z = l.reactorZ;
     this.root.add(shield, core);
 
-    // --- Two pods of nine X3 thrusters, firing aft ---
-    const nozzle = new THREE.MeshStandardMaterial({ color: 0x2a2e36, roughness: 0.5, metalness: 0.7, emissive: 0x2050ff, emissiveIntensity: 0.25 });
-    for (const sy of [-1, 1]) {
+    // --- Two thruster pods (mounts), firing aft; what they hold is swappable (setThrusters) ---
+    spec.propulsion.mounts.forEach((m, i) => {
+      const sy = i === 0 ? 1 : -1;
       const strut = box(0.5, 6, 0.5, truss);
       strut.position.set(0, sy * 4, l.thrusterZ);
-      const pod = box(7.5, 3.4, 3, dark);
-      pod.position.set(0, sy * 7.5, l.thrusterZ);
-      this.root.add(strut, pod);
-      for (let i = 0; i < spec.thrusterCount / 2; i++) {
-        // X3 is about 0.8 m across.
-        const t = alongZ(0.4, 0.5, nozzle, 16);
-        t.position.set(-2.4 + (i % 3) * 2.4, sy * 7.5 + (Math.floor(i / 3) - 1) * 1.05, l.thrusterZ + 1.6);
-        this.root.add(t);
+      const g = this.part(`propulsor:${m.id}` as PartId, this.root);
+      // Own material per pod so the bay can tint one alone.
+      const pod = box(m.faceWidthM, m.faceHeightM, 3, (dark as THREE.MeshStandardMaterial).clone());
+      g.position.set(0, sy * 7.5, l.thrusterZ);
+      g.add(pod);
+      this.root.add(strut);
+      this.pods.set(m.id, g);
+    });
+    this.setThrusters(spec.propulsion.fitted);
+  }
+
+  /** Lay out the heads each pod holds on its grid (same pitch rule as the domain). */
+  setThrusters(fits: readonly MountFit[]): void {
+    for (const m of this.spec.propulsion.mounts) {
+      const g = this.pods.get(m.id);
+      if (!g) continue;
+      for (const old of g.children.filter((c) => c.userData.head)) {
+        g.remove(old);
+        if (old instanceof THREE.Mesh) old.geometry.dispose();
+      }
+      const f = fits.find((x) => x.mountId === m.id);
+      if (!f || !f.count) continue;
+      const t = f.thruster;
+      const { cols, rows } = mountGrid(m, t);
+      const pitch = t.diameterM * MOUNT_PITCH_FACTOR;
+      const usedCols = Math.min(cols, Math.ceil(f.count / Math.max(1, rows)));
+      const usedRows = Math.min(rows, Math.ceil(f.count / Math.max(1, usedCols)));
+      const glow = t.family === "vasimr" ? 0xc050ff : t.family === "ionico" ? 0x40a0ff : 0x2050ff;
+      const mat = new THREE.MeshStandardMaterial({ color: 0x2a2e36, roughness: 0.5, metalness: 0.7, emissive: glow, emissiveIntensity: 0.25 });
+      for (let k = 0; k < f.count; k++) {
+        const c = k % usedCols;
+        const r = Math.floor(k / usedCols);
+        const len = t.family === "vasimr" ? 2.5 : 0.5;
+        const head = new THREE.Mesh(new THREE.CylinderGeometry(t.diameterM / 2, t.diameterM / 2, len, 16), mat);
+        head.rotation.x = Math.PI / 2;
+        head.userData.head = true;
+        head.position.set((c - (usedCols - 1) / 2) * pitch, ((usedRows - 1) / 2 - r) * pitch, 1.5 + len / 2);
+        g.add(head);
       }
     }
   }

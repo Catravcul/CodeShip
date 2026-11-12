@@ -28,7 +28,9 @@ export function mothershipCarrier(
     get thrustN() {
       return m.thrustN;
     },
-    thrusterCount: m.spec.thrusterCount,
+    get thrusterCount() {
+      return m.thrusterCount;
+    },
     get massKg() {
       return m.massKg;
     },

@@ -206,7 +206,7 @@ export function carrierTripChore(f: CarrierTripFacts): Chore {
     idea: "Somos grandes y lentos: empujamos todo el camino",
     blocks: lines([
       [`orientar la nodriza hacia ${name}`, `nodriza.orientar("${f.targetId}");`],
-      [`encender los ${f.thrusterCount} propulsores Hall ${duration(half)}`, `propulsores.encender(${Math.round(half)});`],
+      [`encender los ${f.thrusterCount} propulsores eléctricos ${duration(half)}`, `propulsores.encender(${Math.round(half)});`],
       [`dar la vuelta a mitad de camino (${km(p.distanceM / 2)})`, "nodriza.voltear();"],
       [`frenar ${duration(half)} hasta ${f.dock ? `parar a ${num(f.parkingM)} m del puerto` : `aparcar a ${num(f.parkingM)} m`}`, `propulsores.encender(${Math.round(half)});`],
       ...((f.dock
@@ -291,7 +291,7 @@ export function carrierTripChore(f: CarrierTripFacts): Chore {
     kind: "programar-viaje",
     targetId: f.targetId,
     title: `Programar el viaje de la nodriza a ${name}`,
-    scenario: `${km(p.distanceM)} con ${f.thrusterCount} propulsores Hall: Δv ${sig(p.deltaVMS)} m/s, ${num(f.propellantKg)} kg de xenón, ${duration(p.totalS)}${f.detours ? `, rodeando ${f.detours} ${f.detours === 1 ? "roca" : "rocas"}` : ""}`,
+    scenario: `${km(p.distanceM)} con ${f.thrusterCount} propulsores eléctricos: Δv ${sig(p.deltaVMS)} m/s, ${num(f.propellantKg)} kg de xenón, ${duration(p.totalS)}${f.detours ? `, rodeando ${f.detours} ${f.detours === 1 ? "roca" : "rocas"}` : ""}`,
     exercises: [sequence, deltaV, time, repair, spec],
   };
 }

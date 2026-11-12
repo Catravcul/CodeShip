@@ -2,12 +2,12 @@ import { Vec3 } from "@core/math/vec3";
 import type { Sourced } from "@core/units";
 import { CODESHIP_RING } from "@modules/gravity/data/ring";
 import type { CraftPort, DockingLimits } from "../domain/docking";
-import type { ElectricThruster, MassItem, MothershipSpec } from "../domain/mothership";
+import type { MassItem, MothershipSpec } from "../domain/mothership";
+import type { ThrusterMount } from "../domain/propulsion";
+import { X3 } from "./thrusters";
 
 // --- Sources -----------------------------------------------------------------
 const IDSS_IDD = "International Docking System Standard (IDSS) Interface Definition Document, Rev. F (2022), tabla 3.3.1.1-2 «Initial Contact Conditions»: https://ntrs.nasa.gov/citations/20220011643";
-const X3_HIGH_POWER = "Hall, S. J. et al. (2019), «High-Power Performance of a 100-kW Class Nested Hall Thruster», IEPC-2017-228: https://ntrs.nasa.gov/citations/20190004993";
-const X3_PEPL = "Plasmadynamics and Electric Propulsion Laboratory (Univ. de Michigan), X3: https://pepl.engin.umich.edu/project/x3-nested-channel-hall-thruster";
 const NEP_MW = "Harnack, C. et al. (2022), «Component-level Performance and Mass Sensitivity Analysis of NEP MW-class Power System», ASCEND 2022: https://ntrs.nasa.gov/api/citations/20220013600/downloads/ASCEND_22_Brayton_Performance_Mass_Sensitivity.pdf";
 const B330 = "Bigelow B330 (módulo hinchable, unos 20 t y 330 m³): https://en.wikipedia.org/wiki/B330";
 const UNITY = "Nodo Unity de la ISS (11 612 kg): https://en.wikipedia.org/wiki/Unity_(ISS_module)";
@@ -26,20 +26,11 @@ export const IDSS_CONTACT_LIMITS: DockingLimits = {
   sources: [IDSS_IDD],
 };
 
-/**
- * NASA/Univ. of Michigan X3 nested-channel Hall thruster at its highest-thrust point: 5.4 N at
- * 99 kW and 400 V on xenon (Hall et al. 2019). The paper gives Isp 1800–2650 s over all points;
- * 2250 s is our estimate for this point from P·η = F·g₀·Isp/2 with η ≈ 0.6 (paper: 0.54–0.67).
- */
-export const X3_HALL_THRUSTER: ElectricThruster = {
-  name: "X3 (propulsor Hall de 3 canales, NASA / Univ. de Michigan)",
-  thrustN: 5.4,
-  ispS: 2250,
-  powerKw: 99,
-  propellant: "Xenón",
-  sources: [X3_HIGH_POWER, X3_PEPL],
-  note: "Isp estimado para el punto de 5,4 N (el artículo da 1800–2650 s según el punto)",
-};
+/** Two pods of thrusters at the aft end, above and below the spine. Face size: game values (the 3D model's pods). */
+export const THRUSTER_MOUNTS: readonly ThrusterMount[] = [
+  { id: "dorsal", name: "Módulo de propulsores dorsal", faceWidthM: 7.5, faceHeightM: 3.4 },
+  { id: "ventral", name: "Módulo de propulsores ventral", faceWidthM: 7.5, faceHeightM: 3.4 },
+];
 
 const est = (id: string, label: string, kg: number, basis: string, sources: string[] = []): MassItem => ({ id, label, kg, basis, sources });
 
@@ -63,7 +54,7 @@ const OTHER: MassItem[] = [
   est("espina", "Espina (celosía de 152 m)", 23000, "Estimación: ~150 kg por metro"),
   est("nodo", "Nodo de acople delantero", 11612, "Como el nodo Unity de la ISS", [UNITY]),
   est("energia", "Reactor de fisión, conversión Brayton y radiadores (2 MWe)", 2000 * 19, "2000 kWe × 19 kg/kWe (estudio de NASA para NEP de clase MW)", [NEP_MW]),
-  est("propulsores", "18 propulsores X3 con sus fuentes de potencia", 18 * 400, "Estimación: ~250 kg por propulsor y ~150 kg por fuente de potencia de 100 kW"),
+  // The thrusters' line is worked out from what is fitted (Mothership.massBudget).
   est("tripulacion", "Doménica y los animales", 58 + 30, "58 kg de Doménica; gatos, perros y gallinas, unos 30 kg"),
 ];
 
@@ -76,9 +67,20 @@ export const NODRIZA: MothershipSpec = {
     conversionEfficiency: { value: 0.337, source: NEP_MW },
     radiatorAreaM2: { value: 2760, source: NEP_MW, note: "Intervalo del 90 %: 2300–3500 m²" },
   },
-  thruster: X3_HALL_THRUSTER,
-  // 18 × 99 kW = 1.78 MW to the thrusters; the rest of the 2 MWe runs the ship.
-  thrusterCount: 18,
+  propulsion: {
+    propellant: "xenon",
+    mounts: THRUSTER_MOUNTS,
+    // 18 × 99 kW = 1.78 MW to the thrusters; the rest of the 2 MWe runs the ship.
+    fitted: [
+      { mountId: "dorsal", thruster: X3, count: 9 },
+      { mountId: "ventral", thruster: X3, count: 9 },
+    ],
+    hotelLoadKw: {
+      value: 200,
+      source: "https://www.nasa.gov/international-space-station/space-station-facts-and-figures/",
+      note: "Valor de juego: luces del huerto (~165 m² a ~0,5 kW/m²), soporte vital, motores de los anillos y la vida a bordo. Los 8 paneles de la ISS dan 75–90 kW",
+    },
+  },
   /** Game value: 150 t of xenon (about two years of world production; see the doc). */
   propellantCapacityKg: 150000,
   habRingItems: HAB_RING,

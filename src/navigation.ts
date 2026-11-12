@@ -64,7 +64,7 @@ export class NavigationMode {
     this.lastStatus = nav.status;
     window.addEventListener("keydown", (e) => {
       if (e.code === "KeyM" && !e.repeat) this.toggle();
-      if (e.code === "Escape" && this.map.visible) this.map.close();
+      if (e.code === "Escape" && this.map.visible && !this.map.embedded) this.map.close();
     });
   }
 
@@ -77,7 +77,11 @@ export class NavigationMode {
     return this.map.visible || this.nav.status === "programming";
   }
 
+  /** Set by main: M and «Mapa» go somewhere else first (the deck's navigation panel); true if handled. */
+  toggleOverride?: () => boolean;
+
   toggle(): void {
+    if (this.toggleOverride?.()) return;
     if (this.map.visible) this.map.close();
     else if (this.canOpen()) this.map.open();
   }

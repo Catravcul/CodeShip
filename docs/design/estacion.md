@@ -23,7 +23,8 @@ Petición de Berón (2026-11-12): «La estación debe construirse como las demá
   - **Con la sonda suelta** (o acoplada a la estación), vuela la sonda: rodea las rocas hasta un punto a 300 m en el eje del puerto de la sonda, frena a 40 m y el **asistente de acople** hace el resto, con los mismos límites IDSS que en la nodriza.
   - **«Volver a la nodriza»** hace lo mismo hacia el puerto de la nodriza. Si ya estás acoplada, el mapa lo dice y no deja programarlo.
   - Si la nodriza está atracada en la estación y se programa un viaje a un asteroide, primero **retrocede 80 m por el eje del puerto** sin girar (para que los anillos no barran la estación) y luego sigue su ruta.
-- Mientras tanto, el asistente de acople (K) sirve para cualquier puerto: elige el más cercano, o el del viaje.
+- Mientras tanto, el asistente de acople (K) sirve para cualquier puerto: elige el más cercano, o el del viaje. La página «Acople» del puente de la nodriza dice a qué puerto se refiere.
+- El puente y el interior de la nodriza solo se abren con la sonda acoplada a la nodriza (no a la estación).
 
 ## La estructura
 
@@ -97,6 +98,7 @@ Hay un plano para **cada pieza del catálogo** (`ALL_PARTS`) y dos tanques nuevo
 - **Motores bipropelentes** (R-4D): 50 % de níquel, 40 % de hierro, 10 % de cerámica y 2 kits. Se hacen en la **impresora 3D de metal**, por láser y capa a capa, como la [impresora de metal de la ESA en la ISS](https://www.tomshardware.com/3d-printing/scientists-print-3d-metal-parts-in-space-for-the-first-time-a-key-ability-for-long-distance-long-duration-missions) (primera pieza de acero inoxidable en agosto de 2024).
 - **Propulsores de hidracina** (MR-104H y RCS): 60 % de hierro, 30 % de níquel y 10 % de cerámica. Llevan un kit con el catalizador [S-405](https://en.wikipedia.org/wiki/Monopropellant_rocket). El RCS se fabrica como **juego de 24**, porque al cambiarlo se cambian los 24, y necesita 2 kits más.
 - **Tanques**: un forro de hierro envuelto en fibra de carbono ([COPV](https://en.wikipedia.org/wiki/Composite_overwrapped_pressure_vessel)), con 85 % de hierro, 15 % de carbono y 1 kit. Se hacen en la **fundición**.
+- **Propulsores de la nodriza** (X3, AEPS, NEXT-C y VASIMR VX-200; datos y fuentes en [nave-nodriza.md](nave-nodriza.md), «Propulsores intercambiables»). Se imprime **solo el cabezal**, con su masa real (230, 50, 14 y 500 kg). La fuente de potencia, el cátodo y el control de flujo de xenón llegan en kits importados: 3 kits, 6 para el X3 (su fuente es de 100 kW) y 10 para el VX-200 (imán superconductor y generadores de RF). Recetas de juego: Hall, 70 % de hierro (circuito magnético), 20 % de cerámica (canal) y 10 % de níquel; iónico, 50 % de hierro, 30 % de carbono (rejillas), 10 % de cerámica y 10 % de níquel; VASIMR, 50 % de hierro, 20 % de níquel, 20 % de cerámica y 10 % de carbono. Horas: 12 + ½ por kg (127 h el X3). Un X3 pide 287,5 kg de material: hace falta refinar mucho Bennu. El VX-200 se puede fabricar, pero no montar, porque usa argón (ver la pregunta abierta).
 - Las horas son valores de juego: unas 6 + 5 por kg en la impresora y unas 4 + ½ por kg en la fundición.
 
 Al empezar se puede fabricar un tanque o el MR-104H, pero no el juego de 24 MR-107T. Con una carga de Bennu, un lote de carbonilo y uno de electrólisis ya alcanza (hay un test que lo comprueba). El níquel es escaso (≈1 % de la roca) y es lo que limita los motores.
@@ -113,6 +115,8 @@ Si se resuelven, se toman los materiales y el trabajo entra en la cola. Si se fa
 
 `bayActions` recibe ahora el hangar (`PartSupply`). Una pieza que está en el hangar se ofrece como siempre, con «n en el hangar». Si no está, sale **bloqueada** y la bahía dice «no hay en el hangar: fabrícala en la estación». Al montarla, la pieza sale del hangar y **la vieja vuelve a él**, así que se puede volver a cambiar. Sin hangar (por ejemplo en los tests antiguos), todo sigue siendo libre como antes.
 
+Los **propulsores de la nodriza** siguen la misma regla en la pestaña **Nodriza**, y además solo con la sonda acoplada. Cada módulo de propulsores (dorsal y ventral) ofrece añadir uno, quitar uno o montar n de otro tipo, con los que haya en el hangar. Los que salen vuelven al hangar (`applyDriveRefit`). En la pestaña Hangar de la estación aparecen como «Propulsor X3 × 9».
+
 ## Arquitectura
 
 - `modules/station/domain`: `MaterialStock`, `Blueprint`, `RefineProcess`, `STATION_TUNING`, `Hangar` y `Station` (descargar, refinar, fabricar, colas por máquina y `tick(horas)`).
@@ -126,7 +130,7 @@ Si se resuelven, se toman los materiales y el trabajo entra en la cola. Si se fa
 
 ## Capturas
 
-`docs/screenshots/estacion-atraque-*-{desktop,mobile}.png`: 1 cabina en la salida (sin botón), 2 ficha de la estación en el mapa, 3 primer reto del viaje, 4 la nodriza en viaje, 5 nodriza atracada con el botón «Revisar tareas», 6 vista exterior, 7 pantalla de la estación, 8 la nodriza atracada vista desde fuera, 9 la sonda acoplando en el puerto de la sonda, 10 y 11 sonda acoplada a la estación.
+`docs/screenshots/estacion-atraque-*-{desktop,mobile}.png` (iPhone 13 y 1280 × 800): 1 cabina en la salida (sin botón), 2 ficha de la estación en el mapa, 3 primer reto del viaje, 4 la nodriza en viaje, 5 nodriza atracada con el botón «Revisar tareas», 6 vista exterior, 7 pantalla de la estación, 8 la nodriza atracada vista desde fuera, 9 la sonda acoplando en el puerto de la sonda, 10 y 11 sonda acoplada a la estación.
 
 Capturas anteriores:
 
@@ -141,5 +145,6 @@ Capturas anteriores:
 - **Usos del agua y del oxígeno.** Se acumulan, pero aún no sirven para nada. ¿Rellenan el soporte vital de la nodriza, o hacen propelente (H₂/O₂ con un motor nuevo)? ¿Se repone el pienso o el medio de cultivo con carbono?
 - **Sondas.** La sonda fabricada se queda en el hangar. ¿Qué hace: prospectar asteroides antes del duelo, transportar carga, servir de nodo de la nano_net?
 - **Montaje fallido.** Si se fallan los retos de fabricar, no se pierde material. ¿Queremos que se pierda una parte (desecho)?
+- **Propulsores de la nodriza.** ¿Damos a la nodriza tanques de argón o de kriptón para que el VASIMR (y el X3 con kriptón) sirvan de algo, o quitamos el plano del VX-200 hasta entonces? ¿Mezclar tipos en un mismo módulo? ¿Encender a media potencia (los Hall se pueden regular) en vez de solo unidades enteras?
 - **Colisión con la estación** (resuelto): la estación es un obstáculo y tiene dos puertos IDSS.
 - **Otras estaciones.** `StationStructure` y `DockTarget` sirven para más estaciones. ¿Habrá más, por ejemplo en otras regiones?

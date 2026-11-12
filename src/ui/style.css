@@ -8,7 +8,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-f
 .hud .lbl { font-size: 12px; opacity: 0.7; }
 .hud .warn { color: #ffb347; }
 .hud .ok { color: #7dffb0; }
-.help { right: 18px; bottom: 18px; font-size: 12px; text-align: right; opacity: 0.75; line-height: 1.6; }
+.help { right: 18px; bottom: 18px; max-width: 380px; font-size: 12px; text-align: right; opacity: 0.75; line-height: 1.6; }
 .reticle { position: fixed; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border: 1px solid #7fdcffaa; border-radius: 50%; pointer-events: none; }
 
 /* --- Phase banner and main action ------------------------------------- */
@@ -86,10 +86,13 @@ body.in-duel .mode-btn { display: none; }
 .board .chore em { font-size: 11px; color: #ffd27f; font-style: normal; }
 .toast { position: fixed; left: 50%; top: 22vh; transform: translateX(-50%); z-index: 7; padding: 8px 14px; background: #000000aa; color: #fff; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity 0.3s; pointer-events: none; text-align: center; max-width: 86vw; }
 .toast.on { opacity: 1; }
-.walk-stick { display: none; position: fixed; left: 22px; bottom: 26px; width: 120px; height: 120px; border-radius: 50%; background: #ffffff14; border: 1px solid #ffffff44; z-index: 5; touch-action: none; }
-.walk-stick .knob { position: absolute; left: 35px; top: 35px; width: 50px; height: 50px; border-radius: 50%; background: #7fdcff88; }
-@media (pointer: coarse) { body.in-interior .walk-stick { display: block; } }
-body.in-duel .walk-stick, body.in-duel .interior-ui { display: none; }
+.vstick { display: none; position: fixed; bottom: 26px; width: 120px; height: 120px; border-radius: 50%; background: #ffffff14; border: 1px solid #ffffff44; z-index: 5; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
+.vstick .knob { position: absolute; left: 35px; top: 35px; width: 50px; height: 50px; border-radius: 50%; background: #7fdcff88; pointer-events: none; }
+.vstick span { position: absolute; left: 0; right: 0; top: -20px; text-align: center; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #ffffffaa; text-shadow: 0 1px 2px #000; pointer-events: none; }
+.walk-stick { left: 22px; }
+.look-stick { right: 22px; }
+body.in-interior .walk-stick, body.in-interior .look-stick { display: block; }
+body.in-duel .vstick, body.in-duel .interior-ui { display: none !important; }
 /* Chores: the challenge sits in a bottom sheet so the plant, cat or yoga figure stays visible above. */
 .duel.sheet { top: 38vh; border-radius: 18px 18px 0 0; background-image: none; background-color: #05060cf2; }
 @media (min-aspect-ratio: 1/1) { .duel.sheet { top: 0; left: auto; right: 0; width: min(480px, 46vw); padding-inline: 16px; border-radius: 18px 0 0 18px; } }
@@ -109,4 +112,18 @@ body.in-duel .walk-stick, body.in-duel .interior-ui { display: none; }
 .letter .go { align-self: flex-start; padding: 10px 14px; font: inherit; color: #001018; background: #7dffb0; border: 0; border-radius: 10px; }
 .letter .done { color: #7dffb0; font-size: 13px; }
 .board .chore.unread b::after { content: " •"; color: #ff6b6b; }
-body.in-duel .tasks-btn, body.in-duel .radio-btn { display: none; }
+.view-btn { position: fixed; top: 150px; right: 12px; z-index: 6; padding: 8px 12px; font: inherit; font-size: 13px; color: #d8f6ff; background: #0b2a36cc; border: 1px solid #7fdcff66; border-radius: 10px; }
+body.in-duel .tasks-btn, body.in-duel .radio-btn, body.in-duel .view-btn { display: none; }
+
+/* Cockpit: look stick, camera / time-warp buttons and the camera tag. */
+.pilot-look { left: 50%; margin-left: -60px; bottom: 22px; }
+body.in-cockpit .pilot-look { display: block; }
+.flight-bar { position: fixed; top: 58px; right: 12px; z-index: 6; display: none; flex-direction: column; align-items: flex-end; gap: 6px; }
+body.in-cockpit .flight-bar { display: flex; }
+.flight-bar button { padding: 8px 12px; font: inherit; font-size: 13px; color: #d8f6ff; background: #0b2a36cc; border: 1px solid #7fdcff66; border-radius: 10px; }
+.flight-bar button.limited { color: #ffd8a0; border-color: #ffb34788; }
+.cam-tag { position: fixed; top: calc(50% + 28px); left: 50%; transform: translateX(-50%); z-index: 4; padding: 4px 10px; font-size: 12px; color: #d8f6ff; background: #0b2a36aa; border-radius: 8px; pointer-events: none; display: none; }
+body.in-cockpit .cam-tag.on { display: block; }
+.hud .thrust { color: #7fdcff88; }
+.hud .thrust.on { color: #ffd8a0; }
+@media (pointer: coarse) { .pilot-look { left: auto; right: 18px; margin-left: 0; bottom: 280px; } }

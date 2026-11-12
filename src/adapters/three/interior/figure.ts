@@ -94,6 +94,14 @@ export class CubeFigure {
     this.target = POSES[key] ?? STAND;
   }
 
+  /** Walking gait: `phase` advances with distance, `amount` 0 (standing) … 1 (full stride). */
+  walk(phase: number, amount: number): void {
+    const s = Math.sin(phase) * 0.55 * amount;
+    const k = Math.max(0, Math.sin(phase + Math.PI / 2)) * 0.6 * amount;
+    const k2 = Math.max(0, -Math.sin(phase + Math.PI / 2)) * 0.6 * amount;
+    this.target = P({ hip: [-s, s], knee: [k, k2], shoulderX: [s * 0.8, -s * 0.8], elbow: [-0.25 * amount, -0.25 * amount] });
+  }
+
   /** Ease toward the target pose; `k` = fraction per second. */
   update(dt: number, k = 3): void {
     const a = 1 - Math.exp(-k * dt);

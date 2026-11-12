@@ -13,7 +13,7 @@ import { asteroidSurfaceFn } from "./content/asteroid-shape";
 import { TouchPilot, mergeCommands } from "./adapters/input/touch";
 import { DuelView, asteroidText } from "./ui/duel-view";
 import { buildAsteroidMesh } from "./adapters/three/asteroid-mesh";
-import { buildCockpit } from "./adapters/three/cockpit";
+import { FlightView, WARP_MIN_DISTANCE_M, thrustText } from "./adapters/three/flight-view";
 import { buildStarfield } from "./adapters/three/starfield";
 import { KeyboardPilot } from "./adapters/input/keyboard";
 import { Hud } from "./ui/hud";
@@ -116,10 +116,6 @@ root.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, 2e6);
 scene.add(camera);
-camera.add(buildCockpit());
-const cabinLight = new THREE.PointLight(0x9fdcff, 0.6, 3);
-cabinLight.position.set(0, 0.3, -0.3);
-camera.add(cabinLight);
 
 scene.add(buildStarfield(1e6));
 const sun = new THREE.DirectionalLight(0xfff4e6, 3.2);
@@ -147,6 +143,7 @@ pilot.onToggleAssist = () => (flight.rotationAssist = !flight.rotationAssist);
 const touch = new TouchPilot(root);
 
 const duelView = new DuelView(root);
+const view = new FlightView(scene, camera, root);
 const duelSession = () => {
   const d = expedition.duel!;
   return {
@@ -224,10 +221,18 @@ let last = performance.now();
 renderer.setAnimationLoop((now) => {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
-  expedition.update(dt, interior.active ? NO_INPUT : mergeCommands(pilot.command(), touch.command()));
+  const cmd = interior.active ? NO_INPUT : mergeCommands(pilot.command(), touch.command());
+  const idle = cmd.mainThrottle === 0 && cmd.translation.length() === 0 && cmd.rotation.length() === 0;
+  // Time warp only on quiet cruise far from the surface, so landing stays real-time.
+  const far = flight.telemetry().distanceToSurface >= WARP_MIN_DISTANCE_M;
+  const warp = expedition.phase === "flight" && idle && far ? view.warpRequested : 1;
+  const warpNote = view.warpRequested > 1 && warp === 1 ? (far ? "tiempo ×1 mientras maniobras" : "tiempo ×1 cerca del asteroide") : warp > 1 ? `tiempo ×${warp}` : "";
+  expedition.update(dt * warp, cmd);
   if (expedition.phase === "aggressive" && lastPhase !== "aggressive") habitat.jolt(0.8, `${BENNU.name}, furioso, sacudió la nave`);
   lastPhase = expedition.phase;
   interior.update(dt);
+  view.enabled = !interior.active && !duelView.visible;
+  document.body.classList.toggle("in-cockpit", view.enabled);
   if (interior.active) {
     renderer.render(interior.scene, interior.camera);
     return;
@@ -235,13 +240,19 @@ renderer.setAnimationLoop((now) => {
   renderPhase();
 
   const s = flight.state;
-  camera.position.set(s.position.x, s.position.y, s.position.z);
-  camera.quaternion.set(s.orientation.x, s.orientation.y, s.orientation.z, s.orientation.w);
+  view.update(
+    dt,
+    new THREE.Vector3(s.position.x, s.position.y, s.position.z),
+    new THREE.Quaternion(s.orientation.x, s.orientation.y, s.orientation.z, s.orientation.w),
+    cmd,
+    warp,
+    warpNote,
+  );
   asteroidMesh.rotation.y = bennu.spinRadS * flight.simTimeS;
 
-  hud.render(flight.telemetry(), flight.rotationAssist, [ship.propellantKg("MMH/NTO"), ship.propellantKg("Hydrazine")]);
+  hud.render(flight.telemetry(), flight.rotationAssist, [ship.propellantKg("MMH/NTO"), ship.propellantKg("Hydrazine")], thrustText(cmd));
   renderer.render(scene, camera);
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view };

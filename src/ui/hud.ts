@@ -12,11 +12,11 @@ export class Hud {
     root.appendChild(this.el);
     const help = document.createElement("div");
     help.className = "help";
-    help.innerHTML = `<b>Controles</b><br>W/S avanzar/retroceder · A/D lateral · R/F subir/bajar<br>Flechas cabeceo/guiñada · Q/E alabeo<br>Espacio motor principal · T asistente de rotación`;
+    help.innerHTML = `<b>Controles</b><br>W/S avanzar/retroceder · A/D lateral · R/F subir/bajar<br>Flechas cabeceo/guiñada · Q/E alabeo<br>Espacio motor principal · T asistente de rotación<br>C cambia cámara · V centra la vista · X acelera el tiempo<br><i>Los RCS empujan poco (≈0,07 m/s²): fíjate en el polvo y en la velocidad. El motor principal da ≈0,7 m/s².</i>`;
     root.appendChild(help);
   }
 
-  render(t: Telemetry, assist: boolean, propellantKg: number[]): void {
+  render(t: Telemetry, assist: boolean, propellantKg: number[], thrust = ""): void {
     const v = t.relativeVelocityBody;
     const w = t.angularVelocityBody;
     const closing = t.closingSpeed;
@@ -31,6 +31,7 @@ export class Hud {
         .map((p, i) => `<div class="row small">${p.label} ${fmt(((propellantKg[i] ?? 0) / p.capacity) * 100, 0)}%</div>`)
         .join("")}
       <div class="row ${t.hullIntegrity < 0.5 ? "warn" : ""}">Casco ${fmt(t.hullIntegrity * 100, 0)}%${t.landed ? " · anclada" : ""}</div>
-      <div class="row ${assist ? "ok" : "warn"}">Asistente de rotación ${assist ? "ON" : "OFF"}</div>`;
+      <div class="row ${assist ? "ok" : "warn"}">Asistente de rotación ${assist ? "ON" : "OFF"}</div>
+      <div class="row thrust ${thrust ? "on" : ""}">${thrust ? `▶ ${thrust}` : "propulsores en reposo"}</div>`;
   }
 }

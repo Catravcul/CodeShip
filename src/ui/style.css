@@ -51,7 +51,7 @@ body.in-duel .banner, body.in-duel .hud, body.in-duel .touch-left, body.in-duel 
 .code { background: #0c0a18; border-radius: 12px; padding: 10px 14px; }
 .code-line { font-size: 15px; padding: 3px 0; color: #d9d2ff; }
 .submit { min-height: 52px; font: inherit; font-size: 17px; color: #10061f; background: #b9a8ff; border: 0; border-radius: 14px; }
-.submit:disabled { opacity: 0.35; }
+.submit:disabled { background: #3d3760; color: #8f88b8; }
 .feedback { padding: 8px 12px; border-radius: 10px; font-size: 14px; }
 .feedback.ok { background: #7dffb022; color: #7dffb0; }
 .feedback.bad { background: #ff6b5a22; color: #ff8a7a; }

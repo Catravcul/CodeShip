@@ -20,6 +20,9 @@ const MATERIAL: Record<string, string> = {
   Carbon: "Carbono",
   "Iron-nickel": "Hierro-níquel",
   "Platinum-group metals": "Metales del grupo del platino",
+  "Iron (in magnetite and Fe-Ni sulfides)": "Hierro (en magnetita y sulfuros de Fe-Ni)",
+  "Nickel (in Fe-Ni sulfides)": "Níquel (en sulfuros de Fe-Ni)",
+  "Silicates (phyllosilicates)": "Silicatos (filosilicatos)",
 };
 const CONCEPT = ["", "secuencia", "variables", "tipos de datos", "operaciones", "condicionales", "bucles", "funciones", "listas y objetos", "eventos", "composición"];
 

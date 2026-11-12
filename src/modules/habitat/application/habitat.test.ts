@@ -16,6 +16,8 @@ import { MACHINES } from "@modules/life-support/data/machines";
 import { PROCESSES } from "@modules/kitchen/data/processes";
 import { CAT_GRASS, POTATO_NORLAND, TOMATO_RED_ROBIN, WHEAT_APOGEE } from "@modules/garden/data/species";
 import { RESPECT_HENS } from "@modules/pets/data/rules";
+import { Mailbox } from "@modules/story/domain/mailbox";
+import { NEVAEH_LETTERS } from "@modules/story/data/nevaeh";
 import { Habitat, type ChoreSession, type Conversation, type HabitatEvent } from "./habitat";
 
 const right = (e: Exercise): Answer => (e.kind === "order" ? { kind: "order", order: e.solution } : { kind: "choice", index: e.correct });
@@ -342,5 +344,16 @@ describe("Habitat chores (everything is a code challenge)", () => {
     const w = h.plant("w1", WHEAT_APOGEE);
     for (let d = 0; d < 77; d++) w.tick(1, { lit: true }), w.waterIt();
     expect(w.readyToHarvest).toBe(true);
+  });
+
+  it("Nevaeh's letters bring nano_net missions; finishing one brings the next letter", () => {
+    const h = new Habitat(seededRandom(1), 2, undefined, "Doménica");
+    h.mailbox = new Mailbox(NEVAEH_LETTERS);
+    doKind(h, "mision");
+    expect(h.mailbox.pendingMissions).toHaveLength(0);
+    h.tick(0.6);
+    expect(h.mailbox.pendingMissions.map((l) => l.id)).toEqual(["nano-net-textos"]);
+    h.jolt(0.3, "Bennu");
+    expect(h.mailbox.received.some((r) => r.letter.id === "sacudida")).toBe(true);
   });
 });

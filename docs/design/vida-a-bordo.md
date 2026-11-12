@@ -230,6 +230,21 @@ El botón **Tareas** lista lo pendiente con su escenario. Al elegir una, el pers
 
 Se camina con los pies en el suelo porque el módulo es un **anillo giratorio con gravedad artificial**. Es una licencia de diseño para poder hacer yoga y cocinar: las naves reales, como la ISS, no la tienen.
 
+## Historia: las cartas de Nevaeh
+
+Decisión de Berón (2026-11-12): se rescata la historia del borrador. **Doménica** es la protagonista. **Nevaeh** le escribe cartas que llegan por la **radio de la nave** (botón «Radio», con contador de no leídas). Están en `modules/story`.
+
+| Carta | Llega | Misión |
+| --- | --- | --- |
+| Configurar la nano_net: números (borrador, `number.js`) | Al empezar | `let pulsosPorHora = 20`, `capasDeOnda = 10`, `girosPorHora = 60`, y distinguir un número |
+| Configurar la nano_net: textos (borrador, `text.js`) | Medio día después de la misión anterior | Los códigos `'3396815'`, `'8819618'` y `'441319'`, y distinguir un texto |
+| Encendido y apagado (borrador, `boolean.js`) | Medio día después de la anterior | `A001Encendido = true`, `P003Encendido = false`, `A002Encendido = true`, y un `si` con booleano |
+| ¿Estáis bien? (nueva) | Tras la primera sacudida | — |
+
+Las misiones repiten la mecánica del borrador: **ordenar las piezas** `let`, nombre, `=` y valor. Se hacen en el panel de la mente de la nave. Las posdatas siguen el arco del borrador: los seres queridos de Doménica escriben preocupados, el fallo de comunicaciones se investiga y al final «alguien estaba detrás». La carta nueva lo continúa.
+
+El retrato original de Nevaeh se perdió; por ahora se muestra un retrato provisional dibujado con SVG.
+
 ## Qué hay implementado
 
 | Pieza | Dónde | Estado |
@@ -251,7 +266,7 @@ Se camina con los pies en el suelo porque el módulo es un **anillo giratorio co
 | Yoga y recetas de Cold Sanctuary | `wellness/data/yoga.ts`, `kitchen/data/recipes.ts` | ✓ |
 | Panel de la mente de la nave y reparación por retos | `chores/application/catalog.ts`, `src/interior.ts` | ✓ (cambiar piezas: pendiente) |
 | Interior 3D: caminar, huerto, cocina, molino, laboratorio, enfermería, panel, esterilla, gatos, gallinero | `src/interior.ts`, `src/adapters/three/interior/` | ✓ |
-| Personajes del borrador (Nevaeh, Doménica) | — | pendiente de decidir |
+| Cartas de Nevaeh a Doménica con misiones | `modules/story`, radio en `src/interior.ts` | ✓ con tests |
 | Viaje automático programado entre asteroides | — | pendiente |
 
 Los números de cuidado sin fuente (velocidad de secado, ritmo de juego y de cariño, probabilidad de mordisco, días por etapa) están marcados en el código como **ajuste de juego**. Así se distinguen de los datos reales.

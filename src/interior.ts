@@ -33,6 +33,8 @@ const stationFor = (c: Chore): Station["id"] => {
     case "calmar-gato":
     case "programar-gato":
       return "gatos";
+    case "mision":
+      return "panel";
     default:
       return c.machine ? MACHINE_STATION[c.machine as MachineId] : "huerto";
   }
@@ -42,7 +44,7 @@ const choreText = (c: Chore): SessionText => ({
   title: c.title,
   progress: c.kind === "yoga" ? "Posturas" : "Pasos",
   lives: "Intentos",
-  order: c.kind === "programar-gato" ? "Ordena su programa" : "Ordena los pasos",
+  order: c.kind === "programar-gato" ? "Ordena su programa" : c.kind === "mision" ? "Ordena la declaración" : "Ordena los pasos",
   submit: "Hacerlo",
   ok: c.kind === "yoga" ? "Entras en la postura" : c.kind === "cocinar" ? "Paso hecho" : "Bien hecho",
   bad: "Así no: inténtalo otra vez",
@@ -81,6 +83,17 @@ const EVENT_TEXT = (h: Habitat, e: HabitatEvent): string | undefined => {
   }
 };
 
+const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+
+/** Placeholder portrait (the draft's image of Nevaeh is lost): a simple face with the sender's initial. */
+const portrait = (name: string) => `<svg viewBox="0 0 56 56" aria-hidden="true">
+  <circle cx="28" cy="28" r="27" fill="#1d3b52" stroke="#7fdcff" stroke-width="2"/>
+  <path d="M10 50c3-11 11-15 18-15s15 4 18 15" fill="#7fdcff"/>
+  <circle cx="28" cy="22" r="10" fill="#c99a76"/>
+  <path d="M17 22c0-9 5-13 11-13s11 4 11 13c-3-5-7-6-11-6s-8 1-11 6z" fill="#2a1a12"/>
+  <text x="46" y="52" font-size="12" font-family="monospace" fill="#ffd27f">${esc(name[0] ?? "?")}</text>
+</svg>`;
+
 /** The walkable habitat module: 3D scene, walking, stations and chores as code challenges. */
 export class Interior {
   readonly scene = new THREE.Scene();
@@ -93,6 +106,7 @@ export class Interior {
   private screensKey = "";
   private screensAt = 0;
   private cooking = false;
+  private readonly radioBtn: HTMLButtonElement;
   private readonly figure = new CubeFigure();
   private readonly panel: THREE.Mesh;
   private readonly ui: HTMLElement;
@@ -144,19 +158,24 @@ export class Interior {
     this.walker = new Walker(root);
     this.ui = document.createElement("div");
     this.ui.className = "interior-ui hidden";
-    this.ui.innerHTML = `<div class="ihud"></div><button class="tasks-btn">Tareas</button><div class="board hidden"></div><button class="station-btn hidden"></button><div class="toast"></div>`;
+    this.ui.innerHTML = `<div class="ihud"></div><button class="tasks-btn">Tareas</button><button class="radio-btn">Radio<b></b></button><div class="board hidden"></div><button class="station-btn hidden"></button><div class="toast"></div>`;
     root.appendChild(this.ui);
     this.hud = this.ui.querySelector(".ihud")!;
     this.board = this.ui.querySelector(".board")!;
     this.stationBtn = this.ui.querySelector(".station-btn")!;
     this.toast = this.ui.querySelector(".toast")!;
     this.ui.querySelector(".tasks-btn")!.addEventListener("click", () => this.openBoard());
+    this.radioBtn = this.ui.querySelector(".radio-btn")!;
+    this.radioBtn.addEventListener("click", () => this.openRadio());
     this.stationBtn.addEventListener("click", () => {
       const s = this.nearStation();
       if (s) this.openBoard(s.id);
     });
     this.board.addEventListener("click", (e) => {
       const t = (e.target as HTMLElement).closest<HTMLElement>("[data-chore]");
+      const letter = (e.target as HTMLElement).closest<HTMLElement>("[data-letter]");
+      if (letter) return this.openLetter(letter.dataset.letter!);
+      if ((e.target as HTMLElement).closest("[data-radio]")) return this.openRadio();
       if ((e.target as HTMLElement).closest("[data-close]")) this.board.classList.add("hidden");
       if (!t) return;
       const chore = this.currentChores().find((c) => c.id === t.dataset.chore);
@@ -194,7 +213,9 @@ export class Interior {
       this.dayClock += days;
     }
     for (const e of this.habitat.drainEvents()) this.onEvent(e);
+    for (const l of this.habitat.mailbox?.drainNew() ?? []) this.say(`Carta de ${l.from}: ${l.subject}`);
     if (!this.active) return;
+    this.radioBtn.querySelector("b")!.textContent = this.habitat.mailbox?.unread ? String(this.habitat.mailbox.unread) : "";
 
     if (this.walkTo) {
       const to = this.walkTo.pos.clone().sub(this.pos);
@@ -364,11 +385,49 @@ export class Interior {
       if (p) this.figure.pose(p.pose);
     }
     const text = EVENT_TEXT(this.habitat, e);
-    if (text && this.active) {
-      this.toast.textContent = text;
-      this.toast.classList.add("on");
-      this.toastUntil = performance.now() + 3000;
-    }
+    if (text) this.say(text);
+  }
+
+  private say(text: string): void {
+    if (!this.active) return;
+    this.toast.textContent = text;
+    this.toast.classList.add("on");
+    this.toastUntil = performance.now() + 3000;
+  }
+
+  /** The radio: Nevaeh's letters, newest first. */
+  private openRadio(): void {
+    const box = this.habitat.mailbox;
+    const items = [...(box?.received ?? [])]
+      .reverse()
+      .map(
+        (r) =>
+          `<button class="chore ${r.read ? "" : "unread"}" data-letter="${r.letter.id}"><b>${esc(r.letter.subject)}</b><span>De ${esc(r.letter.from)} · día ${Math.floor(r.day) + 1}</span>${
+            r.letter.mission ? `<em>${r.missionDone ? "Misión hecha" : `Misión: ${r.letter.mission.exercises.length} retos`}</em>` : ""
+          }</button>`,
+      )
+      .join("");
+    this.board.innerHTML = `<div class="board-head"><b>Radio de la nave</b><button data-close>✕</button></div>${items || "<p>Sin cartas</p>"}`;
+    this.board.classList.remove("hidden");
+  }
+
+  private openLetter(id: string): void {
+    const box = this.habitat.mailbox;
+    const r = box?.received.find((x) => x.letter.id === id);
+    if (!box || !r) return;
+    box.read(id);
+    const l = r.letter;
+    const chore = this.currentChores().find((c) => c.kind === "mision" && c.targetId === id);
+    const example = l.example ? `<pre>${esc(l.example.pseudo)}\n<i>${esc(l.example.js)}</i></pre>` : "";
+    const action = l.mission ? (r.missionDone ? `<div class="done">✓ Misión hecha</div>` : chore ? `<button class="go" data-chore="${chore.id}">Hacer la misión en el panel</button>` : "") : "";
+    this.board.innerHTML = `<div class="board-head"><button data-radio>‹ Radio</button><button data-close>✕</button></div>
+      <div class="letter">
+        <div class="letter-head">${portrait(l.from)}<div><b>${esc(l.subject)}</b><small>De ${esc(l.from)} para ${esc(l.to)}</small></div></div>
+        ${l.body.map((p) => `<p>${esc(p)}</p>`).join("")}${example}
+        ${l.postscripts.map((p) => `<p class="ps">P. D.: ${esc(p)}</p>`).join("")}
+        ${action}
+      </div>`;
+    this.board.classList.remove("hidden");
   }
 
   private syncPanel(): void {

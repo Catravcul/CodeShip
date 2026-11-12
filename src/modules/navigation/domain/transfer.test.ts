@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planTransfer, turnTimeS } from "./transfer";
+import { continuousBurnDistance, planContinuousBurn, planTransfer, turnTimeS } from "./transfer";
 
 describe("planTransfer", () => {
   it("burn, coast and brake add up to the distance, and the time is d/v + v/a", () => {
@@ -28,5 +28,15 @@ describe("turnTimeS", () => {
   it("is 2√(θ/α) without a rate cap and θ/ω + ω/α with one", () => {
     expect(turnTimeS(Math.PI, 0.01, 10)).toBeCloseTo(2 * Math.sqrt(Math.PI / 0.01), 9);
     expect(turnTimeS(Math.PI, 0.1, 0.15)).toBeCloseTo(Math.PI / 0.15 + 0.15 / 0.1, 9);
+  });
+});
+
+describe("planContinuousBurn", () => {
+  it("accelerates half way and brakes the other half: t = 2√(d/a), Δv = 2√(d·a)", () => {
+    const p = planContinuousBurn(9000, 6.5e-5);
+    expect(p.totalS).toBeCloseTo(2 * Math.sqrt(9000 / 6.5e-5), 6);
+    expect(p.deltaVMS).toBeCloseTo(2 * Math.sqrt(9000 * 6.5e-5), 9);
+    expect(continuousBurnDistance(p, p.totalS / 2)).toBeCloseTo(4500, 6);
+    expect(continuousBurnDistance(p, p.totalS)).toBe(9000);
   });
 });

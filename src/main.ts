@@ -62,6 +62,7 @@ import { MothershipModel } from "./adapters/three/mothership-model";
 import { Navigator } from "@modules/navigation/application/navigator";
 import { asteroidTarget } from "@modules/navigation/domain/nav-target";
 import { NavigationMode } from "./navigation";
+import { mothershipCarrier } from "@modules/navigation/application/mothership-carrier";
 
 // --- Domain setup -----------------------------------------------------------
 const d = BENNU.dimensionsM.value;
@@ -94,6 +95,8 @@ const nav = new Navigator(
     obstaclesFor: (t) => region.obstaclesExcept(t.body),
     retarget: (t) => expedition.retarget(t.body),
     isPersuaded: (t) => expedition.isPersuaded(t.id),
+    // With the probe docked, the mothership flies the long part of a trip.
+    carrier: mothershipCarrier(mothership, docking),
   },
   navTargets[0]!,
 );
@@ -221,6 +224,7 @@ const navMode = new NavigationMode(root, nav, duelView, {
   rocks: region.rocks,
   shipPosition: () => flight.state.position,
   shipNose: () => flight.state.toWorld(new Vec3(0, 0, -1)),
+  carrierPosition: () => mothership.position,
 });
 view.addButton("map-btn", () => navMode.toggle()).textContent = "Mapa";
 const regionTag = document.createElement("div");
@@ -323,7 +327,9 @@ const n2 = (v: number) => v.toFixed(2).replace(".", ",");
 /** Docking line for the banner, or "" when the mothership is far. */
 function dockingText(): string {
   if (performance.now() < flashUntil) return flashText;
-  if (docking.docked) return `Acoplada a la nodriza · Desacoplar (K) para ir a ${expedition.asteroid.data.name} · Mapa (M) para viajar`;
+  if (docking.docked) return "Acoplada a la nodriza · K desacopla · M abre el mapa";
+  // While the trip autopilot flies away from the port, the docking read-out is noise.
+  if (nav.status === "autopilot") return "";
   const a = docking.alignment();
   const range = flight.state.position.sub(mothership.port.position).length();
   if (range > 400) return "";
@@ -413,7 +419,10 @@ renderer.setAnimationLoop((now) => {
   interior.update(dt);
   view.enabled = !interior.active && !bay.active && !duelView.visible && !evaMode.active && !navMode.mapOpen;
   navMode.canOpen = () => !interior.active && !bay.active && !duelView.visible && !evaMode.active;
-  navMode.update();
+  navMode.update(dt, view.warpRequested);
+  // The mothership moves on trips: keep its model where the domain has it.
+  mothershipModel.root.position.set(mothership.position.x, mothership.position.y, mothership.position.z);
+  mothershipModel.root.quaternion.set(mothership.orientation.x, mothership.orientation.y, mothership.orientation.z, mothership.orientation.w);
   document.body.classList.toggle("in-cockpit", view.enabled);
   if (interior.active) {
     renderer.render(interior.scene, interior.camera);

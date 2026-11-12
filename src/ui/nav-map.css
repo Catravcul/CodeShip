@@ -50,6 +50,6 @@ body.in-cockpit .autopilot-tag.on { display: block; }
 .flight-bar .map-btn { color: #001018; background: #58d6ff; border-color: #58d6ff; font-weight: 600; }
 /* Phones: left column under the HUD, clear of the flight bar and the touch pads. */
 @media (pointer: coarse) {
-  .autopilot-tag { top: 38vh; left: 8px; transform: none; width: calc(56vw - 8px); padding: 6px 8px; font-size: 11px; }
+  .autopilot-tag { top: auto; bottom: 31vh; left: 8px; transform: none; width: calc(56vw - 8px); padding: 6px 8px; font-size: 11px; }
   .autopilot-tag .ap-row { flex-direction: column; align-items: stretch; gap: 6px; }
 }

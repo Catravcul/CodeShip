@@ -1,6 +1,6 @@
 import type { ChoiceExercise, CodeBlock, Concept, OrderExercise } from "@modules/mind-duel/domain/exercise";
 import type { Chore } from "@modules/chores/domain/chore";
-import type { TransferPlan } from "../domain/transfer";
+import type { ContinuousBurnPlan, TransferPlan } from "../domain/transfer";
 
 /** The real numbers of one hop, as the challenges show them. */
 export interface TripFacts {
@@ -143,5 +143,126 @@ export function tripChore(f: TripFacts): Chore {
     title: `Programar el viaje a ${name}`,
     scenario: `${km(p.distanceM)} hasta el punto de llegada${f.detours ? `, rodeando ${f.detours} ${f.detours === 1 ? "roca" : "rocas"}` : ""}: crucero ${num(v)} m/s, Δv ${num(p.deltaVMS)} m/s`,
     exercises: [sequence, deltaV, timeOfFlight, repair, spec],
+  };
+}
+
+/** The real numbers of a mothership hop (low thrust, no coast) and of the probe's last leg. */
+export interface CarrierTripFacts {
+  readonly targetId: string;
+  readonly targetName: string;
+  readonly carrierName: string;
+  readonly plan: ContinuousBurnPlan;
+  readonly thrusterCount: number;
+  readonly thrustN: number;
+  readonly massKg: number;
+  /** Δv left in the mothership, m/s. */
+  readonly deltaVAvailableMS: number;
+  /** Days of thrust and kilograms of propellant the hop burns. */
+  readonly burnDays: number;
+  readonly propellantKg: number;
+  /** Where it parks above the surface, and how close the probe then goes, metres. */
+  readonly parkingM: number;
+  readonly approachM: number;
+  readonly detours: number;
+}
+
+const sig = (v: number, d = 2) => num(v, v < 0.1 ? 4 : v < 1 ? 3 : d);
+const tonnes = (kg: number) => `${num(kg / 1000)} t`;
+
+/**
+ * Programming a trip of the mothership with the probe docked: the electric thrusters push all the
+ * way (accelerate half, turn round, brake half), it parks above the target and the probe undocks
+ * for the last leg. Same five kinds of challenge as the probe hop, with the mothership's numbers.
+ */
+export function carrierTripChore(f: CarrierTripFacts): Chore {
+  const p = f.plan;
+  const id = `viaje-nodriza-${f.targetId}`;
+  const a = p.accelMS2;
+  const name = f.targetName;
+  const half = p.totalS / 2;
+
+  const sequence: OrderExercise = {
+    kind: "order",
+    id: `${id}-maniobra`,
+    concept: 1,
+    idea: "Somos grandes y lentos: empujamos todo el camino",
+    blocks: lines([
+      [`orientar la nodriza hacia ${name}`, `nodriza.orientar("${f.targetId}");`],
+      [`encender los ${f.thrusterCount} propulsores Hall ${duration(half)}`, `propulsores.encender(${Math.round(half)});`],
+      [`dar la vuelta a mitad de camino (${km(p.distanceM / 2)})`, "nodriza.voltear();"],
+      [`frenar ${duration(half)} hasta aparcar a ${num(f.parkingM)} m`, `propulsores.encender(${Math.round(half)});`],
+      ["desacoplar la sonda", "sonda.desacoplar();"],
+      [`volar la sonda hasta ${f.approachM} m de la superficie`, `sonda.volarHasta(${f.approachM});`],
+      // Distractor: a low-thrust ship can't coast and then stop in time.
+      ["apagar los propulsores a mitad de camino y esperar", "propulsores.apagar();"],
+    ]),
+    solution: ["a", "b", "c", "d", "e", "f"],
+  };
+
+  const deltaV = choice(
+    `${id}-dv`,
+    4,
+    "completar",
+    "¿Cuánto empuje me cuesta?",
+    `Empujamos la mitad del camino y frenamos la otra mitad. ¿Qué número falta para el Δv?`,
+    lines([
+      [`variable distancia = ${num(p.distanceM)} m`, `const distancia = ${Math.round(p.distanceM)};`],
+      [`variable a = ${num(f.thrustN, 1)} N / ${tonnes(f.massKg)}   // ${sig(a * 1e6, 1)} µm/s²`, `const a = ${f.thrustN.toFixed(1)} / ${Math.round(f.massKg)};`],
+      ["variable dv = ___ × raíz(distancia × a)", "const dv = ___ * Math.sqrt(distancia * a);"],
+      [`// = ${sig(p.deltaVMS)} m/s de los ${num(f.deltaVAvailableMS)} m/s que quedan`, `// ${p.deltaVMS.toFixed(3)} m/s`],
+    ]),
+    "2",
+    ["1", "4", "0,5"],
+  );
+
+  const time = choice(
+    `${id}-tiempo`,
+    4,
+    "predecir",
+    "¿Cuánto dura el viaje?",
+    `Con ${sig(a * 1e6, 1)} µm/s² de aceleración, ¿cuánto tarda la nodriza?`,
+    lines([
+      [`variable distancia = ${num(p.distanceM)} m`, `const distancia = ${Math.round(p.distanceM)};`],
+      [`variable a = ${sig(a * 1e6, 1)} × 10⁻⁶ m/s²`, `const a = ${a.toExponential(3)};`],
+      ["variable t = 2 × raíz(distancia / a)", "const t = 2 * Math.sqrt(distancia / a);"],
+    ]),
+    duration(p.totalS),
+    [duration(p.totalS / 2), duration(p.totalS * 2), duration(p.distanceM / Math.max(1e-9, p.peakMS))],
+  );
+
+  const repair = choice(
+    `${id}-vuelta`,
+    5,
+    "reparar",
+    "No me da tiempo a frenar",
+    `La nodriza llega a ${name} todavía rápida y se pasa. ¿Cómo queda bien la línea 1?`,
+    lines([
+      ["si recorrido >= distancia / 4 entonces", "if (recorrido >= distancia / 4) {"],
+      ["voltear()", "voltear();", 1],
+      ["frenar()", "frenar();", 1],
+      ["fin", "}"],
+    ]),
+    "si recorrido >= distancia / 2 entonces",
+    ["si recorrido >= distancia entonces", "si recorrido >= distancia / 8 entonces"],
+  );
+
+  const spec = choice(
+    `${id}-ia`,
+    10,
+    "especificar",
+    "Dime exactamente qué quieres",
+    "¿Qué orden le das a la IA de la nodriza?",
+    [],
+    `Lleva la nodriza a ${num(f.parkingM)} m de ${name} rodeando las rocas y para del todo; luego desacopla la sonda, acércala a ${f.approachM} m apuntando al asteroide y devuélveme los mandos`,
+    [`Lleva la nodriza a ${name}`, `Acerca la nodriza a ${f.approachM} m de ${name} y aterriza con ella`, `Desacopla la sonda y que vaya sola hasta ${name}`],
+  );
+
+  return {
+    id,
+    kind: "programar-viaje",
+    targetId: f.targetId,
+    title: `Programar el viaje de la nodriza a ${name}`,
+    scenario: `${km(p.distanceM)} con ${f.thrusterCount} propulsores Hall: Δv ${sig(p.deltaVMS)} m/s, ${num(f.propellantKg)} kg de xenón, ${duration(p.totalS)}${f.detours ? `, rodeando ${f.detours} ${f.detours === 1 ? "roca" : "rocas"}` : ""}`,
+    exercises: [sequence, deltaV, time, repair, spec],
   };
 }

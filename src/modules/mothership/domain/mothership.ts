@@ -83,14 +83,31 @@ const PORT_FREE_RADIUS_M = 14;
 
 export class Mothership {
   private propellant: number;
+  private _position: Vec3;
+  private _orientation: Quat;
 
   constructor(
     readonly spec: MothershipSpec,
-    readonly position: Vec3,
-    readonly orientation: Quat,
+    position: Vec3,
+    orientation: Quat,
     propellantKg = spec.propellantCapacityKg,
   ) {
     this.propellant = Math.min(propellantKg, spec.propellantCapacityKg);
+    this._position = position;
+    this._orientation = orientation;
+  }
+
+  get position(): Vec3 {
+    return this._position;
+  }
+  get orientation(): Quat {
+    return this._orientation;
+  }
+
+  /** Move the whole ship (a trip between parking points; docs/design/navegacion.md). A docked probe rides along. */
+  moveTo(position: Vec3, orientation: Quat = this._orientation): void {
+    this._position = position;
+    this._orientation = orientation;
   }
 
   /**

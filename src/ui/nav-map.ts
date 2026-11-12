@@ -31,6 +31,8 @@ export interface NavMapDeps {
   shipPosition(): Vec3;
   /** Nose direction, world frame. */
   shipNose(): Vec3;
+  /** Where the mothership is, if there is one. */
+  carrierPosition?(): Vec3;
   /** Program the trip to the selected target (closes the map and opens the challenges). */
   onProgram(): void;
 }
@@ -294,17 +296,46 @@ export class NavMap {
     const lastW = trip.waypoints[trip.waypoints.length - 1] ?? ship;
     const toC = centre.sub(lastW);
     const arrival = lastW.add(toC.normalize().scale(Math.max(0, toC.length() - (centre.sub(ship).length() - trip.heightM) - nav.approachM)));
-    g.beginPath();
-    g.moveTo(shipP.x, shipP.y);
-    for (const wpt of [...trip.waypoints, arrival]) {
-      const p = P(wpt);
-      g.lineTo(p.x, p.y);
-    }
-    g.strokeStyle = "#7fdcffcc";
     g.setLineDash([6, 5]);
     g.lineWidth = 1.5;
-    g.stroke();
+    if (trip.carrier) {
+      // The mothership's hop (amber), then the probe's last stretch (cyan).
+      const c = trip.carrier;
+      g.beginPath();
+      const c0 = P(c.from);
+      g.moveTo(c0.x, c0.y);
+      for (const wpt of c.path) {
+        const p = P(wpt);
+        g.lineTo(p.x, p.y);
+      }
+      g.strokeStyle = "#ffb347cc";
+      g.stroke();
+      const toC = centre.sub(c.parking);
+      const end = c.parking.add(toC.normalize().scale(Math.max(0, toC.length() - nav.target.body.meanRadiusM - nav.approachM)));
+      const a = P(c.parking), b = P(end);
+      g.beginPath();
+      g.moveTo(a.x, a.y);
+      g.lineTo(b.x, b.y);
+      g.strokeStyle = "#7fdcffcc";
+      g.stroke();
+    } else {
+      g.beginPath();
+      g.moveTo(shipP.x, shipP.y);
+      for (const wpt of [...trip.waypoints, arrival]) {
+        const p = P(wpt);
+        g.lineTo(p.x, p.y);
+      }
+      g.strokeStyle = "#7fdcffcc";
+      g.stroke();
+    }
     g.setLineDash([]);
+    const carrier = this.deps.carrierPosition?.();
+    if (carrier) {
+      const m = P(carrier);
+      g.fillStyle = "#ffb347";
+      g.fillRect(m.x - 5, m.y - 5, 10, 10);
+      g.fillText("Nodriza", m.x + 9, m.y + 16);
+    }
 
     // Catalogued asteroids on stalks.
     this.screen = [];
@@ -376,6 +407,13 @@ export class NavMap {
   }
 }
 
+function carrierLine(i: DestinationInfo): string {
+  const c = i.trip.carrier!;
+  const f = c.facts;
+  const dv = c.plan.deltaVMS;
+  return `nodriza ${km(c.plan.distanceM)} · Δv ${num(dv, dv < 10 ? 2 : 0)} m/s · ${num(f.propellantKg)} kg de xenón · ${duration(c.plan.totalS)}<br><small>aparca a ${km(f.parkingM)}; la sonda sigue ${km(Math.max(0, f.parkingM - f.approachM))} con su motor</small>`;
+}
+
 function cardHtml(i: DestinationInfo, note: string): string {
   const a = i.target.body;
   const d = a.data;
@@ -400,7 +438,7 @@ function cardHtml(i: DestinationInfo, note: string): string {
       <dt>Distancia</dt><dd>${km(i.trip.heightM)} a la superficie</dd>
       <dt>Recursos</dt><dd><ul>${res || "<li>sin datos</li>"}</ul><small>riqueza ${num(i.richness * 100)} %</small></dd>
       <dt>Duelo</dt><dd>dificultad ${num(i.duel.difficulty * 100)} % · ${i.duel.persuasionGoal} ideas · paciencia ${i.duel.patience} <small>hasta ${CONCEPT[i.duel.maxConcept]}</small></dd>
-      <dt>Viaje</dt><dd>${p.feasible ? `${km(p.distanceM)}${i.trip.waypoints.length ? ` (${i.trip.waypoints.length} desvío${i.trip.waypoints.length > 1 ? "s" : ""})` : ""} · crucero ${num(p.cruiseMS)} m/s · Δv ${num(p.deltaVMS)} m/s · ${duration(p.totalS)}` : "sin combustible para el viaje"}</dd>
+      <dt>Viaje</dt><dd>${i.trip.carrier ? carrierLine(i) : p.feasible ? `${km(p.distanceM)}${i.trip.waypoints.length ? ` (${i.trip.waypoints.length} desvío${i.trip.waypoints.length > 1 ? "s" : ""})` : ""} · crucero ${num(p.cruiseMS)} m/s · Δv ${num(p.deltaVMS)} m/s · ${duration(p.totalS)}` : "sin combustible para el viaje"}</dd>
     </dl>
     <a class="card-src" href="${esc(d.meanRadiusM.source)}" target="_blank" rel="noopener">Fuente de los datos</a>
     ${note ? `<div class="card-note">${esc(note)}</div>` : ""}

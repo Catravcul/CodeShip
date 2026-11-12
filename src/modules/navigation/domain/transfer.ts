@@ -76,3 +76,29 @@ export function turnTimeS(angleRad: number, alphaRadS2: number, maxRateRadS: num
   if (a < (maxRateRadS * maxRateRadS) / alphaRadS2) return 2 * Math.sqrt(a / alphaRadS2);
   return a / maxRateRadS + maxRateRadS / alphaRadS2;
 }
+
+/**
+ * A low-thrust hop with no coast (electric thrusters): accelerate half way, turn round, brake the
+ * other half. Peak speed √(d·a), time 2·√(d/a), Δv 2·√(d·a).
+ */
+export interface ContinuousBurnPlan {
+  readonly distanceM: number;
+  readonly accelMS2: number;
+  readonly peakMS: number;
+  readonly totalS: number;
+  readonly deltaVMS: number;
+}
+
+export function planContinuousBurn(distanceM: number, accelMS2: number): ContinuousBurnPlan {
+  const d = Math.max(0, distanceM);
+  if (accelMS2 <= 0) return { distanceM: d, accelMS2, peakMS: 0, totalS: Infinity, deltaVMS: Infinity };
+  return { distanceM: d, accelMS2, peakMS: Math.sqrt(d * accelMS2), totalS: 2 * Math.sqrt(d / accelMS2), deltaVMS: 2 * Math.sqrt(d * accelMS2) };
+}
+
+/** Distance covered after `t` seconds of a continuous-burn hop. */
+export function continuousBurnDistance(p: ContinuousBurnPlan, t: number): number {
+  const T = p.totalS;
+  if (t <= 0) return 0;
+  if (t >= T) return p.distanceM;
+  return t <= T / 2 ? 0.5 * p.accelMS2 * t * t : p.distanceM - 0.5 * p.accelMS2 * (T - t) ** 2;
+}

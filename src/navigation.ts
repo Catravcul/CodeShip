@@ -3,6 +3,7 @@ import type { Rock } from "@modules/celestial/domain/region";
 import type { Navigator } from "@modules/navigation/application/navigator";
 import type { AutopilotPhase } from "@modules/navigation/application/autopilot";
 import { duration, num } from "@modules/navigation/application/trip-chore";
+import { CARRIER_TIMELAPSE } from "@modules/navigation/application/carrier-trip";
 import type { DuelView, SessionText } from "./ui/duel-view";
 import { NavMap } from "./ui/nav-map";
 
@@ -48,7 +49,7 @@ export class NavigationMode {
     root: HTMLElement,
     private readonly nav: Navigator,
     private readonly duel: DuelView,
-    opts: { title: string; boundaryRadiusM: number; rocks: readonly Rock[]; shipPosition(): Vec3; shipNose(): Vec3 },
+    opts: { title: string; boundaryRadiusM: number; rocks: readonly Rock[]; shipPosition(): Vec3; shipNose(): Vec3; carrierPosition?(): Vec3 },
   ) {
     this.map = new NavMap(root, { nav, ...opts, onProgram: () => this.program() });
     this.tag = document.createElement("div");
@@ -116,7 +117,7 @@ export class NavigationMode {
       { ...TRIP_TEXT, title: run.chore.title },
       (a) => {
         const ok = nav.answer(a);
-        if (nav.status === "autopilot") {
+        if (nav.status === "autopilot" || nav.status === "carrier") {
           restore();
           setTimeout(() => this.duel.hide(), 900);
         }
@@ -129,12 +130,14 @@ export class NavigationMode {
     this.message = { text, cls, until: performance.now() + seconds * 1000 };
   }
 
-  update(): void {
+  /** Each frame, with the real frame time and the time warp the pilot asked for. */
+  update(dtS: number, warp = 1): void {
     const nav = this.nav;
-    nav.update();
+    nav.update(dtS, warp);
     const now = performance.now();
     if (nav.status !== this.lastStatus) {
       if (nav.status === "arrived") this.flash(`Llegada: a ${km(nav.approachM)} de ${nav.target.name}. Tienes los mandos: aterriza y entra en su mente`, "done", 10);
+      if (nav.status === "autopilot" && this.lastStatus === "carrier") this.flash("La nodriza ha aparcado: la sonda se desacopla y sigue sola", "done");
       if (nav.status === "failed") this.flash("El plan no compila: vuela a mano o vuelve a programarlo desde el mapa", "bad");
       if (nav.status === "manual" && this.lastStatus === "autopilot") this.flash("Mando manual: el piloto automático se ha desconectado", "bad");
       this.lastStatus = nav.status;
@@ -147,7 +150,9 @@ export class NavigationMode {
     let text = "";
     let cls = "";
     if (p) {
-      text = `Piloto automático → ${nav.target.name}\n${PHASE[p.phase]} · ${num(p.speedMS, 1)} m/s · faltan ${km(p.remainingM)} · ${duration(p.etaS)}${p.phase === "coast" ? " · X acelera el tiempo" : ""}`;
+      const who = p.vehicle === "carrier" ? "Nodriza en viaje" : "Piloto automático";
+      const lapse = p.vehicle === "carrier" ? ` · cámara rápida ×${CARRIER_TIMELAPSE * warp}` : "";
+      text = `${who} → ${nav.target.name}\n${PHASE[p.phase]} · ${num(p.speedMS, p.speedMS < 1 ? 2 : 1)} m/s · faltan ${km(p.remainingM)} · ${duration(p.etaS)}${lapse}${p.phase === "coast" ? " · X acelera el tiempo" : ""}`;
       (this.bar.firstElementChild as HTMLElement).style.width = `${(p.fraction * 100).toFixed(1)}%`;
     } else if (this.message && now < this.message.until) {
       text = this.message.text;

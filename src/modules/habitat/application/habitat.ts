@@ -175,6 +175,8 @@ export class Habitat {
   hensFree = false;
   readonly bonds = new Bonds();
   readonly crew: CrewMember;
+  /** Gravity the crew member feels right now, in g (set by whoever knows where she is: ring floor, spoke, hub, cockpit). */
+  crewGravityG: number | undefined = undefined;
   readonly bioreactor = new Bioreactor();
   /** The ship's radio: letters and their missions, if the story is on. */
   mailbox?: Mailbox;
@@ -291,7 +293,7 @@ export class Habitat {
 
   tick(dtDays: number): void {
     const t = HABITAT_TUNING;
-    this.crew.tick(dtDays, companionship(this.families));
+    this.crew.tick(dtDays, companionship(this.families), this.crewGravityG);
     this.mailbox?.tick(dtDays);
     const lit = this.lightsOn && this.working("bastidores");
     for (const p of this._plants.values()) {

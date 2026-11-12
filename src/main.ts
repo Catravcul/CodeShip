@@ -37,6 +37,7 @@ import { STORY } from "@modules/story/data/nevaeh";
 import type { Plant } from "@modules/garden/domain/plant";
 import { seededRandom } from "./content/random";
 import { Interior } from "./interior";
+import { SpinRing } from "@modules/gravity/domain/spin-gravity";
 
 // --- Domain setup -----------------------------------------------------------
 const d = BENNU.dimensionsM.value;
@@ -45,6 +46,8 @@ const shapeParams = { seed: 101955, size: { x: d.x, y: d.y, z: d.z }, detail: 6,
 const surface = asteroidSurfaceFn(shapeParams);
 const bennu = new Asteroid(BENNU, Vec3.ZERO, (local) => surface(local));
 const ship = Ship.create(explorerDesign());
+// The habitat ring is already turning at cruise rate when the game starts (docs/design/gravedad.md).
+const ring = new SpinRing(ship.design.ring!);
 const start = RigidBodyState.at(new Vec3(250, 120, 1600)).withOrientation(
   // Face the asteroid from the start position.
   Quat.fromAxisAngle(Vec3.Y, Math.atan2(250, 1600)).multiply(Quat.fromAxisAngle(Vec3.X, -Math.atan2(120, 1620))),
@@ -143,7 +146,7 @@ pilot.onToggleAssist = () => (flight.rotationAssist = !flight.rotationAssist);
 const touch = new TouchPilot(root);
 
 const duelView = new DuelView(root);
-const view = new FlightView(scene, camera, root);
+const view = new FlightView(scene, camera, root, { spec: ring.spec, omega: () => ring.omegaRadS });
 const landBtn = view.addButton("land-btn", () => (flight.landingAssist = !flight.landingAssist));
 window.addEventListener("keydown", (e) => {
   if (e.code === "KeyG" && !e.repeat && !interior.active) flight.landingAssist = !flight.landingAssist;
@@ -164,7 +167,7 @@ const duelSession = () => {
     maxLives: d.profile.patience,
   };
 };
-const interior = new Interior(root, habitat, duelView);
+const interior = new Interior(root, habitat, duelView, ring);
 const modeBtn = document.createElement("button");
 modeBtn.className = "mode-btn";
 modeBtn.textContent = "Ir al interior";
@@ -175,6 +178,13 @@ modeBtn.addEventListener("click", () => {
   else interior.enter();
   modeBtn.textContent = interior.active ? "Ir a la cabina" : "Ir al interior";
 });
+// The hatch at the end of the spine opens into the cockpit.
+if (interior.zones)
+  interior.zones.onCockpit = () => {
+    interior.exit();
+    view.setMode("cabina");
+    modeBtn.textContent = "Ir al interior";
+  };
 let lastPhase = expedition.phase;
 
 const action = document.createElement("button");
@@ -237,6 +247,7 @@ renderer.setAnimationLoop((now) => {
   const warp = expedition.phase === "flight" && idle && far ? view.warpRequested : 1;
   const warpNote = view.warpRequested > 1 && warp === 1 ? (far ? "tiempo ×1 mientras maniobras" : "tiempo ×1 cerca del asteroide") : warp > 1 ? `tiempo ×${warp}` : "";
   expedition.update(dt * warp, cmd);
+  ring.tick(dt);
   if (expedition.phase === "aggressive" && lastPhase !== "aggressive") habitat.jolt(0.8, `${BENNU.name}, furioso, sacudió la nave`);
   lastPhase = expedition.phase;
   interior.update(dt);
@@ -266,4 +277,4 @@ renderer.setAnimationLoop((now) => {
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, ring };

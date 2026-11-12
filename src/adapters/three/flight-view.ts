@@ -3,10 +3,12 @@ import type { ThrustCommand } from "@modules/ship/domain/ship";
 import { VirtualStick, curve } from "../input/stick";
 import { buildCockpit } from "./cockpit";
 import { ShipModel } from "./ship-model";
+import { RingModel } from "./ring-model";
+import type { RingSpec } from "@modules/gravity/domain/spin-gravity";
 
-export type CameraMode = "cabina" | "ventral" | "trasera" | "exterior";
-const MODES: readonly CameraMode[] = ["cabina", "ventral", "trasera", "exterior"];
-const LABEL: Record<CameraMode, string> = { cabina: "Cabina", ventral: "Ventral", trasera: "Trasera", exterior: "Exterior" };
+export type CameraMode = "cabina" | "ventral" | "trasera" | "exterior" | "anillo";
+const MODES: readonly CameraMode[] = ["cabina", "ventral", "trasera", "exterior", "anillo"];
+const LABEL: Record<CameraMode, string> = { cabina: "Cabina", ventral: "Ventral", trasera: "Trasera", exterior: "Exterior", anillo: "Anillo" };
 
 /** Time warp steps for long approaches; only allowed far from the asteroid. */
 export const WARPS = [1, 10, 50] as const;
@@ -21,6 +23,8 @@ export class FlightView {
   readonly rig = new THREE.Group();
   private readonly cockpit = buildCockpit();
   private readonly ship = new ShipModel();
+  /** The spinning habitat rings over the hull (visible from every camera, also through the canopy). */
+  readonly rings?: RingModel;
   private readonly dust: THREE.Points;
   private readonly dustPos: Float32Array;
   private readonly stick: VirtualStick;
@@ -39,9 +43,14 @@ export class FlightView {
     private readonly scene: THREE.Scene,
     private readonly camera: THREE.PerspectiveCamera,
     root: HTMLElement,
+    private readonly ring?: { spec: RingSpec; omega: () => number },
   ) {
     scene.add(this.rig);
     this.rig.add(this.cockpit, this.ship.root);
+    if (ring) {
+      this.rings = new RingModel(ring.spec);
+      this.rig.add(this.rings.root);
+    }
     const cabinLight = new THREE.PointLight(0xdfefff, 3, 4, 1);
     cabinLight.position.set(0, 0.7, 0.3);
     this.cockpit.add(cabinLight);
@@ -100,6 +109,11 @@ export class FlightView {
     return this.mode;
   }
 
+  setMode(mode: CameraMode): void {
+    this.mode = mode;
+    this.center();
+  }
+
   /** Time warp asked for; the caller drops it to 1 near the asteroid or while thrusting. */
   get warpRequested(): number {
     return WARPS[this.warpIdx]!;
@@ -107,7 +121,7 @@ export class FlightView {
 
   center(): void {
     this.yaw = 0;
-    this.pitch = this.mode === "exterior" ? -0.25 : this.mode === "trasera" ? -0.3 : 0;
+    this.pitch = this.mode === "exterior" ? -0.25 : this.mode === "anillo" ? -0.35 : this.mode === "trasera" ? -0.3 : 0;
   }
 
   private turn(dYaw: number, dPitch: number): void {
@@ -137,6 +151,7 @@ export class FlightView {
     this.cockpit.visible = this.mode === "cabina";
     this.ship.root.visible = this.mode !== "cabina";
     this.ship.thrust(cmd, performance.now() / 1000);
+    if (this.rings && this.ring) this.rings.update(dt, this.ring.omega());
     const head = new THREE.Quaternion().setFromEuler(new THREE.Euler(this.pitch, this.yaw, 0, "YXZ"));
     if (this.mode === "cabina") {
       this.camera.position.copy(pos);
@@ -150,11 +165,13 @@ export class FlightView {
       this.camera.position.copy(pos).add(new THREE.Vector3(0, 1.25, 2.55).applyQuaternion(q));
       this.camera.quaternion.copy(q).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI)).multiply(head);
     } else {
-      // Orbit 16 m from the ship; dragging or the stick moves around it.
-      const off = new THREE.Vector3(0, 0, 16).applyQuaternion(head).applyQuaternion(q);
+      // Orbit 16 m from the ship (or far enough to see the whole ring); dragging or the stick moves around it.
+      const far = this.mode === "anillo" && this.rings;
+      const off = new THREE.Vector3(0, 0, far ? 230 : 16).applyQuaternion(head).applyQuaternion(q);
+      if (far) off.add(new THREE.Vector3(0, this.rings.lowerY, 0).applyQuaternion(q));
       this.camera.position.copy(pos).add(off);
       this.camera.up.set(0, 1, 0).applyQuaternion(q);
-      this.camera.lookAt(pos);
+      this.camera.lookAt(far ? pos.clone().add(new THREE.Vector3(0, this.rings.lowerY, 0).applyQuaternion(q)) : pos);
     }
     // Wrap the dust around the ship so it always surrounds it.
     const p = this.dustPos;

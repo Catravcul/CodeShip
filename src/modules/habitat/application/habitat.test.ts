@@ -467,3 +467,16 @@ describe("Habitat chores (everything is a code challenge)", () => {
     });
   });
 });
+
+describe("Habitat crew gravity", () => {
+  it("passes the gravity the crew feels to her daily tick", () => {
+    const ring = new Habitat(seededRandom(1), 0);
+    const hub = new Habitat(seededRandom(1), 0);
+    hub.crewGravityG = 0;
+    ring.crewGravityG = 1;
+    ring.tick(0.5);
+    hub.tick(0.5);
+    expect(hub.crew.microgravityDays).toBeCloseTo(0.5);
+    expect(hub.crew.fitness).toBeLessThan(ring.crew.fitness);
+  });
+});

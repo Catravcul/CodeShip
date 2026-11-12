@@ -20,4 +20,23 @@ describe("CrewMember", () => {
     expect(c.stress).toBeCloseTo(before.s - 0.3);
     expect(c.wellbeing).toBeGreaterThan(before.h);
   });
+
+  it("loses a little more fitness in microgravity than in the ring, and counts the days", () => {
+    const ring = new CrewMember("Doménica");
+    const hub = new CrewMember("Doménica");
+    ring.tick(1, undefined, 1);
+    hub.tick(1, undefined, 0);
+    expect(hub.fitness).toBeLessThan(ring.fitness);
+    expect(ring.fitness - hub.fitness).toBeLessThan(0.1);
+    expect(hub.microgravityDays).toBeCloseTo(1);
+    expect(ring.microgravityDays).toBe(0);
+  });
+
+  it("without a gravity value (tests, old saves) nothing changes", () => {
+    const a = new CrewMember("A");
+    const b = new CrewMember("B");
+    a.tick(0.5);
+    b.tick(0.5, undefined, 1);
+    expect(a.fitness).toBe(b.fitness);
+  });
 });

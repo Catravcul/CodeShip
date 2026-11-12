@@ -22,15 +22,41 @@ export class Expedition {
   private _duel: MindDuel | undefined;
   private aggression: Aggression | undefined;
   private duelCount = 0;
+  /** Asteroids already persuaded on this trip (they don't hand over their resources twice). */
+  private readonly persuaded = new Set<string>();
   readonly cargo: { material: string; kg: number }[] = [];
 
   constructor(
     readonly flight: FlightComputer,
-    readonly asteroid: Asteroid,
+    private _asteroid: Asteroid,
     private readonly exercises: readonly Exercise[],
     readonly cargoCapacityKg: number,
     private readonly seed = 1,
   ) {}
+
+  get asteroid(): Asteroid {
+    return this._asteroid;
+  }
+
+  /** Whether the visit can switch to another asteroid now: flying free, not in a duel or fleeing. */
+  get canRetarget(): boolean {
+    return !this.flight.landed && (this._phase === "flight" || this._phase === "persuaded");
+  }
+
+  isPersuaded(asteroidId: string): boolean {
+    return this.persuaded.has(asteroidId);
+  }
+
+  /** Make another asteroid the target of the visit: flight telemetry, landing and duel follow it. */
+  retarget(asteroid: Asteroid): boolean {
+    if (!this.canRetarget) return false;
+    if (asteroid === this._asteroid) return true;
+    this._asteroid = asteroid;
+    this.flight.setTarget(asteroid);
+    this._duel = undefined;
+    this._phase = this.persuaded.has(asteroid.data.id) ? "persuaded" : "flight";
+    return true;
+  }
 
   get phase(): Phase {
     return this._phase;
@@ -80,6 +106,7 @@ export class Expedition {
     for (const e of events) {
       if (e.type === "asteroid-persuaded") {
         this._phase = "persuaded";
+        this.persuaded.add(this.asteroid.data.id);
         this.cargo.push(...extractToCargo(this.asteroid.data.composition, this.cargoCapacityKg));
       }
       if (e.type === "asteroid-enraged") {

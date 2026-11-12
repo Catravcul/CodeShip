@@ -127,10 +127,10 @@ export class Region {
 
   /**
    * Velocity change that stops the ship from flying into a rock or a catalogued asteroid other
-   * than the target (the target has real contact and landing). Removes the approaching part of
+   * than the current target (the target has real contact and landing). Removes the approaching part of
    * the velocity once inside a rock's hull plus margin. A game simplification.
    */
-  avoidObstacles(position: Vec3, velocity: Vec3): Vec3 {
+  avoidObstacles(position: Vec3, velocity: Vec3, target: Asteroid = this.target): Vec3 {
     let dv = Vec3.ZERO;
     const check = (centre: Vec3, radiusM: number) => {
       const rel = position.sub(centre);
@@ -140,9 +140,18 @@ export class Region {
       const vIn = velocity.add(dv).dot(n);
       if (vIn < 0) dv = dv.sub(n.scale(vIn));
     };
-    for (const a of this.asteroids.slice(1)) check(a.position, a.meanRadiusM);
+    for (const a of this.asteroids) if (a !== target) check(a.position, a.meanRadiusM);
     for (const r of this.rocks) check(r.position, r.radiusM);
     return dv;
+  }
+
+  /** Everything the ship must steer around on the way to `target`: rocks and the other asteroids, as hull spheres plus margin. */
+  obstaclesExcept(target: Asteroid): { centre: Vec3; radiusM: number }[] {
+    const hull = (r: number) => r * OBSTACLE_HULL_FACTOR + OBSTACLE_MARGIN_M;
+    return [
+      ...this.asteroids.filter((a) => a !== target).map((a) => ({ centre: a.position, radiusM: hull(a.meanRadiusM) })),
+      ...this.rocks.map((r) => ({ centre: r.position, radiusM: hull(r.radiusM) })),
+    ];
   }
 
   /** Catalogued asteroid whose surface is closest to a point. */

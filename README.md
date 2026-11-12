@@ -40,6 +40,7 @@ npm run build
 | Centrar la vista | V |
 | Acelerar el tiempo (×1, ×10, ×50) | X |
 | Bahía de la nave (abrir / cerrar) | B |
+| Mapa de navegación (abrir / cerrar) | M |
 
 En la cabina, el mando **Mirar** (o arrastrar la pantalla) gira la cabeza del piloto para ver por las ventanas laterales; la cámara trasera muestra lo que queda detrás de la tobera y la exterior orbita alrededor de la nave. Los RCS empujan poco (≈0,07 m/s² con 670 kg), así que el polvo espacial y la línea de propulsores del HUD muestran que la nave se mueve; el motor principal da ≈0,7 m/s². El tiempo acelerado solo actúa sin maniobrar y a más de 150 m del asteroide.
 
@@ -50,6 +51,8 @@ En el móvil hay mandos táctiles. Con la sonda acoplada, el botón **Ir al inte
 La **bahía de la nave** se abre con el botón **Bahía de la nave** de la cabina, con la tecla B o por la escotilla ámbar del módulo habitable. Muestra la nave por fuera: se orbita arrastrando, con el mando **Orbitar** o con las flechas, y la rueda acerca o aleja. Tocar una pieza en 3D o en la lista abre su ficha con datos reales y acciones. Las piezas que hay que revisar laten en naranja (aviso) o en rojo (crítico). Reparar, cuidar y cambiar el motor, el RCS o los tanques son retos de código, y la maqueta cambia con cada pieza montada (ver [bahia-de-la-nave.md](docs/design/bahia-de-la-nave.md)). **Volver** o Esc devuelve a donde estabas.
 
 Con la nave **anclada**, **Salir de la nave** lleva a Doménica a Bennu con un traje EMU: ponérselo es una cadena de retos y fuera avanza agarrada a las rocas (mando **Moverse** o WASD), se suelta con **Impulso** (Espacio), baja con el SAFER (**Bajar**, F), recoge el cable de 25,9 m (R), toma muestras (Intro) y vuelve con **Volver a la nave** (B). En Bennu la velocidad de escape es ≈0,2 m/s y un paso normal la lanzaría al espacio. Diseño en [docs/design/paseo-espacial.md](docs/design/paseo-espacial.md).
+
+**Mapa** (botón de la barra de vuelo o M) muestra la zona en un esquema 3D con Bennu y los seis asteroides reales de Nueva Polana; la ficha de cada uno trae sus datos reales, el duelo que espera y el coste del viaje. **Programar viaje** abre una cadena de retos con los números reales del salto (ordenar la maniobra, completar el Δv, predecir el tiempo, reparar la línea de frenado, especificar la orden); resuelta, la nodriza lleva la sonda acoplada hasta su punto de aparcamiento y la sonda sigue sola con su piloto automático hasta 300 m, donde devuelve los mandos para aterrizar a mano. Cualquier asteroide de la lista se puede aterrizar y persuadir. Diseño en [docs/design/navegacion.md](docs/design/navegacion.md).
 
 ## Arquitectura
 
@@ -63,6 +66,7 @@ src/
     ship-bay/      bahía de la nave: estado por pieza y reglas de atención
     flight/        sólido rígido 6DOF newtoniano, ordenador de vuelo a 120 Hz fijo
     celestial/     asteroides reales, órbitas (Kepler), cielo visto desde la zona y zona de vuelo
+    navigation/    mapa, destinos, retos del viaje y piloto automático (sonda y nodriza)
     mothership/    nave nodriza: presupuesto de masas, propulsión eléctrica, acople con límites IDSS
     nano-net/      núcleos de la nano_net hechos de asteroides: etapas, nodos, cobertura, averías
     station/       estación espacial: materiales, refinería, planos, colas de fabricación y hangar

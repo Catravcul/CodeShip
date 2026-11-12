@@ -4,6 +4,7 @@ import { chooseLod, pixelsPerRadian } from "@modules/celestial/domain/lod";
 import { generateAsteroidShape } from "../../content/asteroid-shape";
 import { seededRandom } from "../../content/random";
 import { buildAsteroidMesh } from "./asteroid-mesh";
+import { memberShapeParams } from "../../content/start-region";
 
 /** Grey level that makes a body of geometric albedo p look right next to Bennu (0x3b ≈ albedo 0.044). */
 export function albedoColour(albedo: number, type: string): THREE.Color {
@@ -78,9 +79,9 @@ export class AsteroidField {
     root.appendChild(this.labelLayer);
     // Catalogued members (all but the target, which main.ts draws with its landing surface).
     for (const a of region.asteroids.slice(1)) {
-      const d = a.data.dimensionsM.value;
       const albedo = (a.data as { albedo?: { value: number } }).albedo?.value ?? 0.05;
-      const mesh = buildAsteroidMesh({ seed: Number.parseInt(a.data.id, 36) % 100000, size: { x: d.x, y: d.y, z: d.z }, detail: 4, ridge: 0.03, roughness: 0.08, craters: 45 }, albedoColour(albedo, "C"), 150);
+      // Same parameters as the surface the ship lands on (content/start-region.ts).
+      const mesh = buildAsteroidMesh(memberShapeParams(a.data), albedoColour(albedo, "C"), 150);
       mesh.position.set(a.position.x, a.position.y, a.position.z);
       this.group.add(mesh);
       this.members.push({ mesh, spin: a.spinRadS });

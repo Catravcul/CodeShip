@@ -70,6 +70,10 @@ import { Mothership } from "@modules/mothership/domain/mothership";
 import { IDSS_CONTACT_LIMITS, NODRIZA, UNDOCK_PUSH_MS } from "@modules/mothership/data/mothership";
 import { ASSIST_RANGE_M, Docking } from "@modules/mothership/application/docking";
 import { MothershipModel } from "./adapters/three/mothership-model";
+import { Navigator } from "@modules/navigation/application/navigator";
+import { asteroidTarget } from "@modules/navigation/domain/nav-target";
+import { NavigationMode } from "./navigation";
+import { mothershipCarrier } from "@modules/navigation/application/mothership-carrier";
 
 // --- Domain setup -----------------------------------------------------------
 const d = BENNU.dimensionsM.value;
@@ -102,6 +106,21 @@ const stationOps = new StationOps(
   BLUEPRINTS,
   REFINE_PROCESSES,
   materialName,
+);
+
+// Navigation: any catalogued asteroid of the region can be the target (docs/design/navegacion.md).
+const navTargets = region.asteroids.map(asteroidTarget);
+const nav = new Navigator(
+  flight,
+  {
+    targets: navTargets,
+    obstaclesFor: (t) => region.obstaclesExcept(t.body),
+    retarget: (t) => expedition.retarget(t.body),
+    isPersuaded: (t) => expedition.isPersuaded(t.id),
+    // With the probe docked, the mothership flies the long part of a trip.
+    carrier: mothershipCarrier(mothership, docking),
+  },
+  navTargets[0]!,
 );
 
 // Life on board: a long leg is already under way, so the garden has some days behind it.
@@ -200,7 +219,9 @@ root.appendChild(reticle);
 
 const hud = new Hud(root, {
   ship: ship.name,
-  target: BENNU.name,
+  get target() {
+    return expedition.asteroid.data.name;
+  },
   propellants: [
     // Getters: a tank swap in the ship bay changes the capacity.
     { label: "MMH/NTO (motor principal)", get capacity() { return ship.propellantCapacityKg("MMH/NTO"); } },
@@ -222,6 +243,15 @@ const landBtn = view.addButton("land-btn", () => (flight.landingAssist = !flight
 // Docked: undock. Free: the docking assist (like the landing assist), near the mothership.
 const dockBtn = view.addButton("dock-btn", () => (docking.docked ? docking.undock() : (docking.assist = !docking.assist)));
 const namesBtn = view.addButton("names-btn", () => (skyBodies.labelsOn = !skyBodies.labelsOn));
+const navMode = new NavigationMode(root, nav, duelView, {
+  title: `Mapa · ${region.data.name}`,
+  boundaryRadiusM: region.data.boundaryRadiusM,
+  rocks: region.rocks,
+  shipPosition: () => flight.state.position,
+  shipNose: () => flight.state.toWorld(new Vec3(0, 0, -1)),
+  carrierPosition: () => mothership.position,
+});
+view.addButton("map-btn", () => navMode.toggle()).textContent = "Mapa";
 const regionTag = document.createElement("div");
 regionTag.className = "region-tag";
 root.appendChild(regionTag);
@@ -307,7 +337,7 @@ root.appendChild(action);
 action.addEventListener("click", () => {
   if (expedition.canStartDuel) {
     expedition.startDuel();
-    duelView.show(duelSession(), asteroidText(BENNU.name), (answer) => {
+    duelView.show(duelSession(), asteroidText(expedition.asteroid.data.name), (answer) => {
       const events = expedition.answer(answer);
       return { ok: events.some((e) => e.type === "idea-accepted") };
     });
@@ -329,7 +359,9 @@ const n2 = (v: number) => v.toFixed(2).replace(".", ",");
 /** Docking line for the banner, or "" when the mothership is far. */
 function dockingText(): string {
   if (performance.now() < flashUntil) return flashText;
-  if (docking.docked) return "Acoplada a la nodriza · Desacoplar (K) para ir a Bennu";
+  if (docking.docked) return "Acoplada a la nodriza · K desacopla · M abre el mapa";
+  // While the trip autopilot flies away from the port, the docking read-out is noise.
+  if (nav.status === "autopilot") return "";
   const a = docking.alignment();
   const range = flight.state.position.sub(mothership.port.position).length();
   if (range > 400) return "";
@@ -344,12 +376,12 @@ function renderPhase(): void {
   action.classList.toggle("hidden", nanoPanel.busy || !((p === "landed" && !duelView.visible) || ((p === "persuaded" || p === "aggressive") && duelView.visible)));
   action.textContent = p === "landed" ? "Entrar en su mente" : "Volver a la cabina";
   if (p === "persuaded") {
-    banner.textContent = `${BENNU.name} obedece: ${expedition.cargo.map((c) => `${c.kg.toFixed(0)} kg de ${c.material}`).join(", ")} en la bodega`;
+    banner.textContent = `${expedition.asteroid.data.name} obedece: ${expedition.cargo.map((c) => `${c.kg.toFixed(0)} kg de ${c.material}`).join(", ")} en la bodega`;
   } else if (p === "aggressive") {
     const left = Math.max(0, expedition.safeDistanceM! - t.distanceToSurface);
-    banner.textContent = left > 0 ? `¡${BENNU.name} está furioso! Huye: faltan ${left.toFixed(0)} m hasta la distancia segura` : "A salvo. Espera a que se calme";
+    banner.textContent = left > 0 ? `¡${expedition.asteroid.data.name} está furioso! Huye: faltan ${left.toFixed(0)} m hasta la distancia segura` : "A salvo. Espera a que se calme";
   } else if (p === "landed") {
-    banner.textContent = "Nave anclada · puedes salir a Bennu con el traje";
+    banner.textContent = expedition.asteroid === bennu ? "Nave anclada · puedes salir a Bennu con el traje" : `Nave anclada en ${expedition.asteroid.data.name} · entra en su mente`;
   } else if (dockingText()) {
     banner.textContent = dockingText();
   } else {
@@ -377,7 +409,7 @@ let last = performance.now();
 renderer.setAnimationLoop((now) => {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
-  const cmd = interior.active || bay.active || evaMode.active || stationScreen.active ? NO_INPUT : mergeCommands(pilot.command(), touch.command());
+  const cmd = interior.active || bay.active || evaMode.active || stationScreen.active || navMode.blocksInput ? NO_INPUT : mergeCommands(pilot.command(), touch.command());
   const idle = cmd.mainThrottle === 0 && cmd.translation.length() === 0 && cmd.rotation.length() === 0;
   // Time warp only on quiet cruise far from the surface, so landing stays real-time.
   const far = flight.telemetry().distanceToSurface >= WARP_MIN_DISTANCE_M;
@@ -393,7 +425,7 @@ renderer.setAnimationLoop((now) => {
   // Region rules: soft boundary push back and no flying through the other rocks or the mothership (game rules).
   if (!flight.landed && !flight.docked) {
     const st = flight.state;
-    flight.applyImpulse(region.boundaryPush(st.position, st.velocity, dt * warp).add(region.avoidObstacles(st.position, st.velocity)).add(mothership.keepOut(st.position, st.velocity)));
+    flight.applyImpulse(region.boundaryPush(st.position, st.velocity, dt * warp).add(region.avoidObstacles(st.position, st.velocity, expedition.asteroid)).add(mothership.keepOut(st.position, st.velocity)));
   }
   for (const e of docking.drainEvents()) {
     if (e.type === "docked") flash("Acoplada: ganchos cerrados. Ya puedes ir al interior de la nodriza");
@@ -401,8 +433,9 @@ renderer.setAnimationLoop((now) => {
     if (e.type === "rebound") flash(`No engancha: ${e.failures.join(" · ")}${e.damage > 0 ? " · golpe en el casco" : ""}`, 7);
   }
   // Shield nodes absorb part of the jolt.
-  if (expedition.phase === "aggressive" && lastPhase !== "aggressive") habitat.jolt(0.8 * (1 - fx.safety), `${BENNU.name}, furioso, sacudió la nave`);
-  if (expedition.phase === "persuaded" && lastPhase !== "persuaded") nano.subjugate(bennuSite.id);
+  if (expedition.phase === "aggressive" && lastPhase !== "aggressive") habitat.jolt(0.8 * (1 - fx.safety), `${expedition.asteroid.data.name}, furioso, sacudió la nave`);
+  // The nano_net core site is Bennu for now (docs/design/nano-net.md).
+  if (expedition.phase === "persuaded" && lastPhase !== "persuaded" && expedition.asteroid === bennu) nano.subjugate(bennuSite.id);
   if (!nanoPanel.busy) nano.tick(dt * NANO_DAYS_PER_SECOND);
   nano.powerShip(ship, fx, dt * warp);
   for (const e of nano.drainEvents()) {
@@ -419,7 +452,12 @@ renderer.setAnimationLoop((now) => {
   // The station's machines run on the same clock as life on board.
   stationOps.station.tick(dt * warp * STATION_TUNING.hoursPerSecond);
   interior.update(dt);
-  view.enabled = !interior.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active;
+  view.enabled = !interior.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active && !navMode.mapOpen;
+  navMode.canOpen = () => !interior.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active;
+  navMode.update(dt, view.warpRequested);
+  // The mothership moves on trips: keep its model where the domain has it.
+  mothershipModel.root.position.set(mothership.position.x, mothership.position.y, mothership.position.z);
+  mothershipModel.root.quaternion.set(mothership.orientation.x, mothership.orientation.y, mothership.orientation.z, mothership.orientation.w);
   document.body.classList.toggle("in-cockpit", view.enabled);
   if (interior.active) {
     renderer.render(interior.scene, interior.camera);
@@ -435,7 +473,8 @@ renderer.setAnimationLoop((now) => {
     renderer.render(stationScreen.scene, stationScreen.camera);
     return;
   }
-  evaBtn.classList.toggle("hidden", !eva.canLeave || expedition.phase !== "landed");
+  // The suit walk is modelled on Bennu's surface and gravity only.
+  evaBtn.classList.toggle("hidden", !eva.canLeave || expedition.phase !== "landed" || expedition.asteroid !== bennu);
   if (evaMode.active) {
     view.rig.visible = false;
     evaMode.update(dt, flight.simTimeS);
@@ -445,7 +484,7 @@ renderer.setAnimationLoop((now) => {
   }
   view.rig.visible = true;
   renderPhase();
-  nanoPanel.update(flight.landed, fx, !duelView.visible);
+  nanoPanel.update(flight.landed && expedition.asteroid === bennu, fx, !duelView.visible);
   nanoView.update(flight.simTimeS);
   landBtn.textContent = `Aterrizaje: ${flight.landingAssist ? "auto" : "manual"}`;
   landBtn.classList.toggle("on", flight.landingAssist);
@@ -492,4 +531,4 @@ renderer.setAnimationLoop((now) => {
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, station: stationScreen, stationOps };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, station: stationScreen, stationOps, nav, navMode };

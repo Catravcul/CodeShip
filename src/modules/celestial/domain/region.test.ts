@@ -107,6 +107,14 @@ describe("other bodies in the field", () => {
     expect(region.avoidObstacles(new Vec3(5300, 0, 0), new Vec3(-1, 0, 0)).x).toBeCloseTo(1, 9);
   });
 
+  it("when another asteroid is the target, that one gets real contact and Bennu becomes an obstacle", () => {
+    expect(region.avoidObstacles(new Vec3(5300, 0, 0), new Vec3(-1, 0, 0), other).length()).toBe(0);
+    expect(region.avoidObstacles(new Vec3(0, 0, 250), new Vec3(0, 0, -1), other).z).toBeCloseTo(1, 9);
+    const keepOut = region.obstaclesExcept(other);
+    expect(keepOut.some((o) => o.centre === other.position)).toBe(false);
+    expect(keepOut.length).toBe(region.asteroids.length - 1 + region.rocks.length);
+  });
+
   it("finds the nearest asteroid by distance to its surface", () => {
     const n = region.nearestAsteroid(new Vec3(4000, 0, 0));
     expect(n.asteroid).toBe(other);

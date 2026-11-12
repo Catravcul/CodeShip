@@ -1,11 +1,21 @@
 import type { Exercise } from "@modules/mind-duel/domain/exercise";
-import type { CatRule } from "../domain/behavior";
+import type { AnimalRule, Species } from "../domain/behavior";
 
-/** A rule the player can write into a cat's mind, and the ideas that must be solved to write it. */
-export interface CatLesson {
-  readonly rule: CatRule;
+/** A rule the player can write into an animal's mind, and the ideas that must be solved to write it. */
+export interface AnimalLesson {
+  readonly rule: AnimalRule;
   readonly exercises: readonly Exercise[];
+  /** Whose mind it is for (default: cats). */
+  readonly species?: Species;
+  /**
+   * 1: stop a problem (respect plants, hens…). 2: build a family on top of a level-1 rule for the
+   * same stimulus (snuggle with the hens once you no longer stalk them).
+   */
+  readonly level?: 1 | 2;
+  /** Only a broody hen can learn it. */
+  readonly broodyOnly?: boolean;
 }
+export type CatLesson = AnimalLesson;
 
 export const RESPECT_PLANTS: CatLesson = {
   rule: {

@@ -10,11 +10,13 @@ export class CatModel {
   private t = Math.random() * 10;
   /** 0 calm … 1 scared: a scared cat hides low and fast. */
   stress = 0;
+  /** Family member to stay close to. */
+  follow: THREE.Object3D | null = null;
 
   constructor(
     readonly id: string,
     color: number,
-    private readonly bounds: { minX: number; maxX: number; minZ: number; maxZ: number },
+    private bounds: { minX: number; maxX: number; minZ: number; maxZ: number },
   ) {
     const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.85 });
     const dark = new THREE.MeshStandardMaterial({ color: 0x1a1a1a });
@@ -46,12 +48,14 @@ export class CatModel {
   }
 
   goTo(p: THREE.Vector3): void {
+    this.follow = null;
     this.target.set(p.x, 0, p.z);
     this.wait = 0;
   }
 
   update(dt: number): void {
     this.t += dt;
+    if (this.follow) this.target.copy(this.follow.position).add(new THREE.Vector3(-0.25, 0, 0.1));
     const to = this.target.clone().sub(this.root.position);
     to.y = 0;
     const d = to.length();
@@ -60,7 +64,7 @@ export class CatModel {
       this.root.rotation.y = Math.atan2(to.x, to.z);
       this.root.position.addScaledVector(to.normalize(), Math.min(d, speed * dt));
       this.body.position.y = Math.abs(Math.sin(this.t * 10)) * 0.01;
-    } else if ((this.wait -= dt) <= 0) {
+    } else if (!this.follow && (this.wait -= dt) <= 0) {
       this.wait = 2 + Math.random() * 5;
       this.pickTarget();
     }

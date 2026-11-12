@@ -5,12 +5,15 @@ import { shipCode } from "@modules/chores/application/catalog";
 import { RECIPES } from "@modules/kitchen/data/recipes";
 import { PROCESSES } from "@modules/kitchen/data/processes";
 import { ITEMS } from "@modules/kitchen/data/items";
-import { CAT_LESSONS } from "@modules/pets/data/rules";
+import { ANIMAL_LESSONS } from "@modules/pets/data/family-lessons";
 import { PROTOCOLS } from "@modules/medical/data/protocols";
 import type { MachineId } from "@modules/life-support/domain/machine";
 import { YOGA_SEQUENCES } from "@modules/wellness/data/yoga";
 import { CAT_BOUNDS, COOP_BOUNDS, MACHINE_STATION, ROOM, STATIONS, POT_SLOTS, buildRoom, drawScreen, type RoomHandles, type Station } from "./adapters/three/interior/room";
 import { HenModel } from "./adapters/three/interior/hen-model";
+import { DogModel } from "./adapters/three/interior/dog-model";
+import { BED_SLOTS, BedModel, DOOR, FARM, FARM_ROAM, buildFarmDeck } from "./adapters/three/interior/farm-deck";
+import { portrait } from "./ui/portraits";
 import { PlantModel } from "./adapters/three/interior/plant-model";
 import { CatModel } from "./adapters/three/interior/cat-model";
 import { CubeFigure } from "./adapters/three/interior/figure";
@@ -19,7 +22,8 @@ import type { DuelView, SessionText } from "./ui/duel-view";
 
 const CAT_COLORS = [0xd9822b, 0x2b2b2b, 0xe8e2d6, 0x8a8f99];
 const HEN_COLORS = [0xb5651d, 0xf2efe6, 0x2a2a2a, 0xc98a4a];
-const CONTEXT = { recipes: RECIPES, yoga: YOGA_SEQUENCES, processes: PROCESSES, lessons: CAT_LESSONS };
+const DOG_COLORS = [0xd9a066, 0x2a2420, 0xf0e2c8];
+const CONTEXT = { recipes: RECIPES, yoga: YOGA_SEQUENCES, processes: PROCESSES, lessons: ANIMAL_LESSONS };
 /** Game days per real second while walking around (a day every ~40 s). Paused during a chore. */
 const DAYS_PER_SECOND = 1 / 40;
 
@@ -31,11 +35,16 @@ const stationFor = (c: Chore): Station["id"] => {
       return "panel";
     case "alimentar-gato":
     case "calmar-gato":
-    case "programar-gato":
       return "gatos";
+    case "alimentar-perro":
+    case "jugar-perro":
+      return "perros";
+    case "programar-animal":
+      return c.id.includes("-perro-") ? "perros" : c.id.includes("-gallina-") ? "gallinero" : "gatos";
     case "mision":
       return "panel";
     default:
+      if (c.targetId?.startsWith("bancal")) return "terreno";
       return c.machine ? MACHINE_STATION[c.machine as MachineId] : "huerto";
   }
 };
@@ -44,7 +53,7 @@ const choreText = (c: Chore): SessionText => ({
   title: c.title,
   progress: c.kind === "yoga" ? "Posturas" : "Pasos",
   lives: "Intentos",
-  order: c.kind === "programar-gato" ? "Ordena su programa" : c.kind === "mision" ? "Ordena la declaración" : "Ordena los pasos",
+  order: c.kind === "programar-animal" ? "Ordena su programa" : c.kind === "mision" ? "Ordena la declaración" : "Ordena los pasos",
   submit: "Hacerlo",
   ok: c.kind === "yoga" ? "Entras en la postura" : c.kind === "cocinar" ? "Paso hecho" : "Bien hecho",
   bad: "Así no: inténtalo otra vez",
@@ -78,21 +87,18 @@ const EVENT_TEXT = (h: Habitat, e: HabitatEvent): string | undefined => {
       return "¡Sacudida! Revisa plantas, animales, máquinas y nave";
     case "chore-done":
       return "Tarea hecha";
+    case "hen-pecked-plant":
+      return `${who(e.henId)} ha escarbado un plantón`;
+    case "animal-hostile":
+      return `${who(e.actorId)} ${e.action === "perseguir" ? "persigue" : e.action === "ladrar" ? "le ladra" : e.action === "picotear" ? "picotea" : "le bufa"} a ${who(e.targetId)}`;
+    case "family-formed":
+      return `¡${e.memberIds.map(who).join(" y ")} ya son familia!`;
     default:
       return undefined;
   }
 };
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
-
-/** Placeholder portrait (the draft's image of Nevaeh is lost): a simple face with the sender's initial. */
-const portrait = (name: string) => `<svg viewBox="0 0 56 56" aria-hidden="true">
-  <circle cx="28" cy="28" r="27" fill="#1d3b52" stroke="#7fdcff" stroke-width="2"/>
-  <path d="M10 50c3-11 11-15 18-15s15 4 18 15" fill="#7fdcff"/>
-  <circle cx="28" cy="22" r="10" fill="#c99a76"/>
-  <path d="M17 22c0-9 5-13 11-13s11 4 11 13c-3-5-7-6-11-6s-8 1-11 6z" fill="#2a1a12"/>
-  <text x="46" y="52" font-size="12" font-family="monospace" fill="#ffd27f">${esc(name[0] ?? "?")}</text>
-</svg>`;
 
 /** The walkable habitat module: 3D scene, walking, stations and chores as code challenges. */
 export class Interior {
@@ -102,6 +108,9 @@ export class Interior {
   private readonly plants: PlantModel[] = [];
   private readonly cats = new Map<string, CatModel>();
   private readonly hens = new Map<string, HenModel>();
+  private readonly dogs = new Map<string, DogModel>();
+  private readonly beds: BedModel[] = [];
+  private hensOut = false;
   private readonly room: RoomHandles;
   private screensKey = "";
   private screensAt = 0;
@@ -133,7 +142,15 @@ export class Interior {
     this.scene.add(this.room.group);
     this.scene.background = new THREE.Color(0x10141a);
     this.panel = this.room.panel;
-    habitat.plants.forEach((p, i) => {
+    this.scene.add(buildFarmDeck());
+    habitat.plants
+      .filter((p) => p.isBed)
+      .forEach((p, i) => {
+        const m = new BedModel(p, BED_SLOTS[i % BED_SLOTS.length]!);
+        this.beds.push(m);
+        this.scene.add(m.root);
+      });
+    this.pots.forEach((p, i) => {
       const m = new PlantModel(p);
       m.root.position.copy(POT_SLOTS[i % POT_SLOTS.length]!);
       this.plants.push(m);
@@ -147,6 +164,11 @@ export class Interior {
     habitat.hens.forEach((h, i) => {
       const m = new HenModel(h.id, HEN_COLORS[i % HEN_COLORS.length]!, COOP_BOUNDS);
       this.hens.set(h.id, m);
+      this.scene.add(m.root);
+    });
+    habitat.dogs.forEach((d, i) => {
+      const m = new DogModel(d.id, DOG_COLORS[i % DOG_COLORS.length]!, FARM_ROAM, d.young);
+      this.dogs.set(d.id, m);
       this.scene.add(m.root);
     });
     const mat = new THREE.Group();
@@ -213,19 +235,27 @@ export class Interior {
       this.dayClock += days;
     }
     for (const e of this.habitat.drainEvents()) this.onEvent(e);
-    for (const l of this.habitat.mailbox?.drainNew() ?? []) this.say(`Carta de ${l.from}: ${l.subject}`);
+    for (const l of this.habitat.mailbox?.drainNew() ?? []) this.say(l.channel === "llamada" ? `Llamada de ${l.from}` : `Carta de ${l.from}: ${l.subject}`);
     if (!this.active) return;
     this.radioBtn.querySelector("b")!.textContent = this.habitat.mailbox?.unread ? String(this.habitat.mailbox.unread) : "";
 
     if (this.walkTo) {
-      const to = this.walkTo.pos.clone().sub(this.pos);
+      // Between the module and the farm deck, walk through the doorway.
+      let aim = this.walkTo.pos;
+      const here = this.pos.z < ROOM.halfL;
+      if (here !== aim.z < ROOM.halfL) {
+        const near = new THREE.Vector3(0, 0, ROOM.halfL + (here ? -0.6 : 0.6));
+        const inDoorway = Math.abs(this.pos.x) < 0.05 && Math.abs(this.pos.z - ROOM.halfL) <= 0.65;
+        aim = inDoorway ? new THREE.Vector3(0, 0, ROOM.halfL + (here ? 0.65 : -0.65)) : near;
+      }
+      const to = aim.clone().sub(this.pos);
       const d = to.length();
-      if (d < 0.05) {
+      if (aim === this.walkTo.pos && d < 0.05) {
         const then = this.walkTo.then;
         this.faceTowards(this.walkTo.look);
         this.walkTo = null;
         then();
-      } else this.pos.addScaledVector(to.normalize(), Math.min(d, 2.2 * dt));
+      } else if (d > 1e-6) this.pos.addScaledVector(to.normalize(), Math.min(d, 2.2 * dt));
     } else if (!busy) {
       const look = this.walker.look(dt);
       this.yaw += look.yaw;
@@ -233,9 +263,9 @@ export class Interior {
       const m = this.walker.move();
       const fwd = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
       const right = new THREE.Vector3(-fwd.z, 0, fwd.x);
+      const prev = this.pos.clone();
       this.pos.addScaledVector(fwd, m.forward * 1.6 * dt).addScaledVector(right, m.right * 1.6 * dt);
-      this.pos.x = Math.max(-1.25, Math.min(1.25, this.pos.x));
-      this.pos.z = Math.max(-ROOM.halfL + 0.4, Math.min(ROOM.halfL - 0.4, this.pos.z));
+      this.clampWalk(prev);
     }
     this.updateCamera();
 
@@ -247,6 +277,13 @@ export class Interior {
         m.update(dt);
       }
     }
+    if (this.habitat.hensFree !== this.hensOut) {
+      this.hensOut = this.habitat.hensFree;
+      for (const m of this.hens.values()) {
+        m.root.position.set(0, 0, DOOR.z + 0.5);
+        m.setBounds(this.hensOut ? FARM_ROAM : COOP_BOUNDS);
+      }
+    }
     for (const h of this.habitat.hens) {
       const m = this.hens.get(h.id);
       if (m) {
@@ -254,6 +291,15 @@ export class Interior {
         m.update(dt);
       }
     }
+    for (const d of this.habitat.dogs) {
+      const m = this.dogs.get(d.id);
+      if (m) {
+        m.stress = d.stress;
+        m.update(dt);
+      }
+    }
+    this.syncFamilies();
+    for (const b of this.beds) b.sync();
     this.syncMachines();
     this.figure.update(dt);
     this.syncPanel();
@@ -263,6 +309,43 @@ export class Interior {
     this.stationBtn.classList.toggle("hidden", !near);
     if (near) this.stationBtn.textContent = `${near.label}: ${n} ${n === 1 ? "tarea" : "tareas"}`;
     if (performance.now() > this.toastUntil) this.toast.classList.remove("on");
+  }
+
+  private get pots() {
+    return this.habitat.plants.filter((p) => !p.isBed);
+  }
+
+  private model(id: string): { root: THREE.Object3D; follow: THREE.Object3D | null } | undefined {
+    return this.cats.get(id) ?? this.dogs.get(id) ?? this.hens.get(id);
+  }
+
+  /** The young follow whoever adopted them; other family members keep close to the first one. */
+  private syncFamilies(): void {
+    for (const f of this.habitat.families) {
+      const lead = f.motherId ?? f.members[0]!.id;
+      const leader = this.model(lead);
+      if (!leader) continue;
+      for (const m of f.members) {
+        const mm = m.id === lead ? undefined : this.model(m.id);
+        if (mm && !mm.follow) mm.follow = leader.root;
+      }
+    }
+  }
+
+  /** Inside the module, through the doorway, or on the farm deck; anything else is a wall. */
+  private walkable(x: number, z: number): boolean {
+    const room = z >= -ROOM.halfL + 0.4 && z <= ROOM.halfL - 0.4 && Math.abs(x) <= 1.25;
+    const door = Math.abs(x) <= DOOR.halfW - 0.15 && z > 0 && z < ROOM.halfL + 0.6;
+    const farm = z >= ROOM.halfL + 0.4 && z <= FARM.maxZ - 1.2 && x >= FARM.minX + 1.2 && x <= FARM.maxX - 1.2;
+    return room || door || farm;
+  }
+
+  private clampWalk(prev: THREE.Vector3): void {
+    const p = this.pos;
+    if (this.walkable(p.x, p.z)) return;
+    if (this.walkable(p.x, prev.z)) p.z = prev.z;
+    else if (this.walkable(prev.x, p.z)) p.x = prev.x;
+    else p.copy(prev);
   }
 
   private updateCamera(): void {
@@ -305,11 +388,30 @@ export class Interior {
       stand = new THREE.Vector3(0, 0, 1.3);
       look = new THREE.Vector3(0, 0.8, 4.0);
     }
-    const plantIdx = this.habitat.plants.findIndex((p) => p.id === chore.targetId);
-    if (plantIdx >= 0) {
+    const plantIdx = this.pots.findIndex((p) => p.id === chore.targetId);
+    const bed = this.beds.find((b) => b.plant.id === chore.targetId);
+    if (bed) {
+      stand = bed.root.position.clone().setY(0).add(new THREE.Vector3(1.9, 0, 0));
+      look = bed.root.position.clone().setY(0.5);
+    } else if (plantIdx >= 0) {
       const slot = POT_SLOTS[plantIdx % POT_SLOTS.length]!;
       stand = new THREE.Vector3(0.3, 0, slot.z);
       look = slot.clone().setY(slot.y + 0.25);
+    }
+    const dog = chore.targetId ? this.dogs.get(chore.targetId) : undefined;
+    if (dog && chore.kind === "atender-paciente") dog.goTo(new THREE.Vector3(-1.15, 0, 0.2));
+    else if (dog) {
+      dog.goTo(new THREE.Vector3(3.3, 0, 7.6));
+      look = new THREE.Vector3(3.3, 0.15, 7.6);
+    }
+    // Free hens come over to the lawn by the doorway to be programmed or fed.
+    const hen = chore.targetId ? this.hens.get(chore.targetId) : undefined;
+    if (hen && this.habitat.hensFree && chore.kind !== "atender-paciente") {
+      stand = new THREE.Vector3(0, 0, ROOM.halfL + 0.8);
+      look = new THREE.Vector3(0.4, 0.15, ROOM.halfL + 1.6);
+      hen.follow = null;
+      hen.setBounds({ minX: 0.35, maxX: 0.45, minZ: ROOM.halfL + 1.55, maxZ: ROOM.halfL + 1.65 });
+      setTimeout(() => hen.setBounds(FARM_ROAM), 15000);
     }
     const cat = chore.targetId ? this.cats.get(chore.targetId) : undefined;
     if (cat && chore.kind === "atender-paciente") {
@@ -402,7 +504,7 @@ export class Interior {
       .reverse()
       .map(
         (r) =>
-          `<button class="chore ${r.read ? "" : "unread"}" data-letter="${r.letter.id}"><b>${esc(r.letter.subject)}</b><span>De ${esc(r.letter.from)} · día ${Math.floor(r.day) + 1}</span>${
+          `<button class="chore ${r.read ? "" : "unread"}" data-letter="${r.letter.id}"><b>${esc(r.letter.subject)}</b><span>${r.letter.channel === "llamada" ? "Llamada de" : "De"} ${esc(r.letter.from)} · día ${Math.floor(r.day) + 1}</span>${
             r.letter.mission ? `<em>${r.missionDone ? "Misión hecha" : `Misión: ${r.letter.mission.exercises.length} retos`}</em>` : ""
           }</button>`,
       )
@@ -422,9 +524,9 @@ export class Interior {
     const action = l.mission ? (r.missionDone ? `<div class="done">✓ Misión hecha</div>` : chore ? `<button class="go" data-chore="${chore.id}">Hacer la misión en el panel</button>` : "") : "";
     this.board.innerHTML = `<div class="board-head"><button data-radio>‹ Radio</button><button data-close>✕</button></div>
       <div class="letter">
-        <div class="letter-head">${portrait(l.from)}<div><b>${esc(l.subject)}</b><small>De ${esc(l.from)} para ${esc(l.to)}</small></div></div>
+        <div class="letter-head">${portrait(l.from)}<div><b>${esc(l.subject)}</b><small>${l.channel === "llamada" ? `Llamada de ${esc(l.from)} (transcripción)` : `De ${esc(l.from)} para ${esc(l.to)}`}</small></div></div>
         ${l.body.map((p) => `<p>${esc(p)}</p>`).join("")}${example}
-        ${l.postscripts.map((p) => `<p class="ps">P. D.: ${esc(p)}</p>`).join("")}
+        ${l.postscripts.map((p) => `<p class="ps">${l.channel === "llamada" ? "" : "P. D.: "}${esc(p)}</p>`).join("")}
         ${action}
       </div>`;
     this.board.classList.remove("hidden");
@@ -497,13 +599,17 @@ export class Interior {
   private renderHud(): void {
     const c = this.habitat.crew;
     const bar = (label: string, v: number, cls = "") => `<div class="bar ${cls}"><span>${label}</span><i style="width:${Math.round(Math.min(1, v) * 100)}%"></i></div>`;
+    const sus = this.habitat.sustainability;
+    const name = (id: string) => this.habitat.patients.find((p) => p.id === id)?.name ?? id;
+    const fam = this.habitat.families.map((f) => f.members.map((m) => name(m.id)).join(", ")).join(" · ");
     const larder = ITEMS.map((i) => [i, this.habitat.larder(i.id)] as const)
       .filter(([, n]) => n > 0)
       .map(([i, n]) => `${n}${i.unit === "g" ? " g" : ""} ${i.name}`)
       .join(" · ");
     this.hud.innerHTML = `
       <div class="ititle">Día ${Math.floor(this.dayClock) + 1} a bordo</div>
-      ${bar("Saciedad", c.satiety)}${bar("Forma", c.fitness)}${bar("Calma", 1 - c.stress)}
+      ${bar("Saciedad", c.satiety)}${bar("Forma", c.fitness)}${bar("Calma", 1 - c.stress)}${bar("Compañía", 1 - c.loneliness)}
+      <div class="small">Autosuficiencia: ${Math.round(sus.ratio * 100)} % (${Math.round(sus.areaM2)} de ${Math.round(sus.neededM2)} m² de cultivo)${fam ? ` · Familias: ${fam}` : ""}</div>
       <div class="small">Despensa: ${larder || "vacía"} · ${this.habitat.meals} platos cocinados</div>`;
   }
 }

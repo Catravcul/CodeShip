@@ -15,6 +15,8 @@ export const PLANT_TUNING = {
   /** Chile flowers from this fraction of its first harvest day (tuning; PH-04 gives no flowering day). */
   floweringAt: 0.5,
   newForDays: 3,
+  /** Growing area of one pot on the racks, m² (tuning: one hydroponic cell). */
+  potAreaM2: 0.25,
 } as const;
 
 export interface PlantEnvironment {
@@ -28,7 +30,10 @@ export interface Harvest {
   readonly portions: number;
 }
 
-/** A plant in a pot on board. Time is in days. */
+/**
+ * A plant in a pot on board, or a whole bed of one crop on the farm deck (`areaM2` larger, watered
+ * by drip lines). Time is in days.
+ */
 export class Plant {
   private _age = 0;
   private _development = 0;
@@ -40,7 +45,15 @@ export class Plant {
   constructor(
     readonly id: string,
     readonly species: PlantSpecies,
+    readonly areaM2: number = PLANT_TUNING.potAreaM2,
+    /** Drip irrigation on the farm deck's soil: never dries out. */
+    readonly autoWatered = false,
   ) {}
+
+  /** A farm-deck bed rather than a pot. */
+  get isBed(): boolean {
+    return this.areaM2 > PLANT_TUNING.potAreaM2;
+  }
 
   get ageDays(): number {
     return this._age;
@@ -81,7 +94,7 @@ export class Plant {
     if (!this.alive || dtDays <= 0) return;
     const t = PLANT_TUNING;
     this._age += dtDays;
-    this._water = clamp01(this._water - t.waterPerDay * dtDays);
+    this._water = this.autoWatered ? 1 : clamp01(this._water - t.waterPerDay * dtDays);
     if (this._water < t.dryBelow) this._health = clamp01(this._health - t.dryDamagePerDay * dtDays);
     else this._health = clamp01(this._health + t.recoveryPerDay * dtDays);
     if (!this.alive || !env.lit) return;
@@ -111,7 +124,8 @@ export class Plant {
     if (!this.readyToHarvest) throw new Error(`${this.id} is not ready to harvest`);
     this._harvests++;
     const fruitSet = !this.species.needsShaking.value || this._shaken;
-    const portions = fruitSet ? (this._health >= 0.5 ? 2 : 1) : 0;
+    const perPot = fruitSet ? (this._health >= 0.5 ? 2 : 1) : 0;
+    const portions = perPot * Math.max(1, Math.round(this.areaM2 / PLANT_TUNING.potAreaM2));
     return { plantId: this.id, portions };
   }
 }

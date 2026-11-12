@@ -2,7 +2,8 @@ import type { ChoiceExercise, CodeBlock, Concept, Exercise, OrderExercise } from
 import type { Plant } from "@modules/garden/domain/plant";
 import { PLANT_TUNING } from "@modules/garden/domain/plant";
 import { FOOD_KCAL_PER_G, MER_FACTOR, RER, type Cat } from "@modules/pets/domain/cat";
-import type { CatLesson } from "@modules/pets/data/rules";
+import type { AnimalLesson } from "@modules/pets/data/rules";
+import { DOG_DIET, type Dog } from "@modules/pets/domain/dog";
 import type { Process } from "@modules/kitchen/data/processes";
 import { itemName } from "@modules/kitchen/data/items";
 import { Bioreactor, CULTURE } from "@modules/cultured-meat/domain/bioreactor";
@@ -413,14 +414,154 @@ export function repairChore(design: ShipDesign, hull: number, seed: number, scen
 // --- Cats: programming their minds ------------------------------------------
 
 /** Writing a rule into a cat's mind is a chore too: the lesson's ideas, in order. */
-export function catLessonChore(c: Cat, lesson: CatLesson, scenario: string): Chore {
+/** Write a rule into any animal's mind (cat, dog or hen): one challenge per idea of the lesson. */
+export function lessonChore(a: { id: string; name: string }, lesson: AnimalLesson, scenario: string): Chore {
   return {
-    id: `programar-${c.id}-${lesson.rule.id}`,
-    kind: "programar-gato",
-    targetId: c.id,
-    title: `Programar a ${c.name}: ${lesson.rule.id.replace(/-/g, " ")}`,
+    id: `programar-${a.id}-${lesson.rule.id}`,
+    kind: "programar-animal",
+    targetId: a.id,
+    title: `Programar a ${a.name}: ${lesson.rule.id.replace(/^(gato|perro|gallina)-/, "").replace(/-/g, " ")}`,
     scenario,
     exercises: lesson.exercises,
+  };
+}
+/** @deprecated name kept for older call sites. */
+export const catLessonChore = lessonChore;
+
+// --- Dogs --------------------------------------------------------------------
+
+export interface DogFood {
+  readonly meatG: number;
+  readonly eggs: number;
+}
+
+/** Half a day's energy: cultured meat if there is enough, otherwise eggs (dogs are not obligate carnivores). */
+export function dogMeal(d: Dog, food: DogFood): { kcal: number; food: "meat" | "egg"; amount: number } | undefined {
+  const kcal = Math.round(d.dailyKcal / 2);
+  const meat = Math.round(kcal / DOG_DIET.value.meatKcalPerG);
+  if (food.meatG >= meat) return { kcal, food: "meat", amount: meat };
+  const eggs = Math.max(1, Math.round(kcal / DOG_DIET.value.eggKcal));
+  if (food.eggs >= eggs) return { kcal, food: "egg", amount: eggs };
+  return undefined;
+}
+
+export function dogChores(d: Dog, scenario?: string, food: DogFood = { meatG: Infinity, eggs: Infinity }): Chore[] {
+  const out: Chore[] = [];
+  const meal = dogMeal(d, food);
+  if (d.satiety < 0.5 && meal) {
+    const rer = RER.value(d.massKg);
+    const factor = Math.round((d.dailyKcal / rer) * 10) / 10;
+    const right = meal.food === "meat" ? `${meal.amount} g de carne` : `${meal.amount} ${meal.amount === 1 ? "huevo" : "huevos"}`;
+    out.push({
+      id: `alimentar-${d.id}`,
+      kind: "alimentar-perro",
+      targetId: d.id,
+      title: `Dar de comer a ${d.name}`,
+      scenario: `${d.name} gimotea y da vueltas junto a su cuenco`,
+      exercises: [
+        choice(
+          `alimentar-${d.id}-racion`,
+          4,
+          "predecir",
+          "¡Comida, comida!",
+          `${d.name} es un ${d.breed} de ${fmt(d.massKg)} kg. ¿Cuántas kcal lleva su comida?`,
+          [
+            block("a", `guardar 70 × ${fmt(d.massKg)}^0,75 en reposo`, `const reposo = 70 * ${d.massKg} ** 0.75; // ≈ ${Math.round(rer)}`),
+            block("b", `guardar reposo × ${fmt(factor)} en diario`, `const diario = reposo * ${factor};`),
+            block("c", "guardar diario ÷ 2 en comida", "const comida = diario / 2;"),
+          ],
+          `${meal.kcal} kcal`,
+          [`${Math.round(rer / 2)} kcal`, `${Math.round(rer * factor)} kcal`, `${meal.kcal * 3} kcal`],
+        ),
+        choice(
+          `alimentar-${d.id}-que`,
+          5,
+          "predecir",
+          "Como de todo, pero poquito",
+          meal.food === "meat"
+            ? `La carne cultivada da ${fmt(DOG_DIET.value.meatKcalPerG)} kcal/g. ¿Qué sirves?`
+            : `No queda carne; un huevo da ${DOG_DIET.value.eggKcal} kcal. ¿Qué sirves?`,
+          [
+            block("a", "si despensa.carne ≥ comida ÷ 1,2 entonces", "if (despensa.carne >= comida / 1.2) {"),
+            block("b", "servir carne", "servir('carne', Math.round(comida / 1.2));", 1),
+            block("c", "si no", "} else {"),
+            block("d", "servir huevos cocidos", `servir('huevo', Math.round(comida / ${DOG_DIET.value.eggKcal}));`, 1),
+            block("e", "fin", "}"),
+          ],
+          right,
+          meal.food === "meat" ? [`${meal.kcal} g de carne`, `${Math.round(meal.amount / 4)} g de carne`, "un plato de lechuga"] : [`${meal.amount + 3} huevos`, "un huevo crudo con cáscara", "nada"],
+        ),
+        order(`alimentar-${d.id}-pasos`, 1, "Siéntate… ¡bien!", ["pedirle que se siente", "servir la ración", "cambiar el agua"]),
+      ],
+    });
+  }
+  if (d.stress > 0.5 || d.play < 0.4) {
+    out.push({
+      id: `jugar-${d.id}`,
+      kind: "jugar-perro",
+      targetId: d.id,
+      title: `Jugar con ${d.name}`,
+      scenario: scenario ?? (d.stress > 0.5 ? `${d.name} tiembla y ladra a todo` : `${d.name} te trae su pelota`),
+      exercises: [
+        choice(
+          `jugar-${d.id}-cola`,
+          5,
+          "predecir",
+          "¿Jugamos?",
+          `${d.name} baja el pecho y levanta la cola (reverencia de juego). ¿Qué hace el programa?`,
+          [
+            block("a", "si perro.reverencia entonces", "if (perro.reverencia) {"),
+            block("b", "lanzar la pelota", "lanzar('pelota');", 1),
+            block("c", "si no", "} else {"),
+            block("d", "acariciarlo despacio", "acariciar(perro);", 1),
+            block("e", "fin", "}"),
+          ],
+          "Lanza la pelota",
+          ["Lo acaricia despacio", "Lo ignora"],
+        ),
+        order(`jugar-${d.id}-pasos`, 1, "Un paseo por la cubierta", ["ponerle el arnés", "pasear por la cubierta de cultivo", "jugar a la pelota", "darle agua al volver"]),
+      ],
+    });
+  }
+  return out;
+}
+
+/** Program the automatic coop door so the hens range free by day and are shut in at night. */
+export function coopDoorChore(): Chore {
+  return {
+    id: "abrir-gallinero",
+    kind: "abrir-gallinero",
+    machine: "gallinero",
+    title: "Programar la puerta del gallinero",
+    scenario: "Las gallinas pueden vivir libres por la nave: escarbar en la cubierta de cultivo y volver a dormir al gallinero",
+    exercises: [
+      {
+        kind: "order",
+        id: "puerta-gallinero-orden",
+        concept: 9,
+        idea: "Al amanecer queremos salir",
+        blocks: [
+          block("a", "cuando amanezca", "on('amanecer', () => {"),
+          block("b", "abrir la puerta", "puerta.abrir();", 1),
+          block("c", "fin", "});"),
+          block("d", "cuando anochezca", "on('anochecer', () => {"),
+          block("e", "contar las gallinas dentro", "const dentro = sensor.contar();", 1),
+          block("f", "cerrar la puerta si están todas", "if (dentro === gallinas.length) puerta.cerrar();", 1),
+          block("g", "fin", "});"),
+        ],
+        solution: ["a", "b", "c", "d", "e", "f", "g"],
+      },
+      choice(
+        "puerta-gallinero-predecir",
+        5,
+        "predecir",
+        "Clara se quedó fuera",
+        "Al anochecer hay 2 gallinas dentro de 3. ¿Qué hace la puerta?",
+        [block("a", "si dentro == gallinas.longitud entonces", "if (dentro === gallinas.length) {"), block("b", "cerrar()", "puerta.cerrar();", 1), block("c", "fin", "}")],
+        "Se queda abierta hasta que entre la que falta",
+        ["Se cierra", "Se cierra y vuelve a abrir"],
+      ),
+    ],
   };
 }
 

@@ -3,10 +3,12 @@ import type { DuelProfile } from "@modules/mind-duel/domain/difficulty";
 import { MindDuel } from "@modules/mind-duel/domain/duel";
 import { Plant } from "@modules/garden/domain/plant";
 import type { PlantSpecies } from "@modules/garden/domain/species";
-import { decide } from "@modules/pets/domain/behavior";
+import { decide, HOSTILE_ACTIONS, INSTINCTS_BY_SPECIES, WARM_ACTIONS, type AnimalAction, type AnimalRule } from "@modules/pets/domain/behavior";
 import type { Cat } from "@modules/pets/domain/cat";
+import type { Dog } from "@modules/pets/domain/dog";
 import { Introduction } from "@modules/pets/domain/introduction";
-import type { CatLesson } from "@modules/pets/data/rules";
+import type { AnimalLesson, CatLesson } from "@modules/pets/data/rules";
+import { Bonds, companionship, FAMILY_TUNING, type Family, type Member } from "@modules/family/domain/family";
 import { CrewMember } from "@modules/crew/domain/crew-member";
 import type { ShipDesign } from "@modules/ship/domain/ship";
 import type { Recipe } from "@modules/kitchen/data/recipes";
@@ -15,9 +17,12 @@ import { ChoreRun, type Chore } from "@modules/chores/domain/chore";
 import {
   bioreactorChores,
   catChores,
-  catLessonChore,
   catMeal,
+  coopDoorChore,
   cookingChore,
+  dogChores,
+  dogMeal,
+  lessonChore,
   henChores,
   machineRepairChore,
   patientChore,
@@ -34,6 +39,7 @@ import { Machine, type MachineId, type MachineSpec } from "@modules/life-support
 import type { Process } from "@modules/kitchen/data/processes";
 import type { Patient } from "@modules/medical/domain/health";
 import type { Mailbox } from "@modules/story/domain/mailbox";
+import { HEN_FEED_KCAL, selfSufficiency, type Eater, type Sustainability } from "@modules/life-support/domain/sustainability";
 
 export type HabitatEvent =
   | { type: "plant-bitten"; catId: string; plantId: string }
@@ -54,7 +60,11 @@ export type HabitatEvent =
   | { type: "eggs-laid"; count: number }
   | { type: "culture-stage"; stage: CultureStage }
   | { type: "machine-broken"; machineId: MachineId }
-  | { type: "injured"; patientId: string; cause: string };
+  | { type: "injured"; patientId: string; cause: string }
+  | { type: "hen-pecked-plant"; henId: string; plantId: string }
+  | { type: "animal-hostile"; actorId: string; targetId: string; action: AnimalAction }
+  | { type: "animal-warm"; actorId: string; targetId: string; action: AnimalAction }
+  | { type: "family-formed"; memberIds: readonly string[] };
 
 /** The ship as the habitat sees it: its design (for its code) and its hull. */
 export interface RepairableShip {
@@ -81,6 +91,13 @@ export const HABITAT_TUNING = {
   toxicBiteSeverity: 0.5,
   /** Hours of light in the coop (Merck: 14–16 h for laying hens). */
   coopLightHours: 16,
+  /** Meetings per day between two animals of different species roaming the ship together. */
+  encountersPerDay: 2,
+  /** Free-range hens visit the farm deck's new seedlings. */
+  henPlantVisitsPerDay: 1,
+  henPeckSeverity: 0.2,
+  hostileStartle: 0.3,
+  chaseInjuryChance: 0.1,
   catTalk: { difficulty: 0.2, persuasionGoal: 2, patience: 2, maxBlocks: 6, distractors: false, maxConcept: 10 } satisfies DuelProfile,
 } as const;
 
@@ -124,8 +141,10 @@ export interface ChoreContext {
   readonly recipes?: readonly Recipe[];
   readonly yoga?: readonly YogaSequence[];
   readonly processes?: readonly Process[];
-  readonly lessons?: readonly CatLesson[];
+  readonly lessons?: readonly AnimalLesson[];
 }
+
+type Animal = (Cat | Dog | Hen) & Member & { ruleFor: Cat["ruleFor"]; startle(a: number): void; readonly stress: number; readonly rules: readonly AnimalRule[] };
 
 /**
  * Life on board during long legs: plants grow, cats and hens live, the bioreactor grows meat, the
@@ -136,6 +155,10 @@ export class Habitat {
   private readonly _plants = new Map<string, Plant>();
   private readonly _cats = new Map<string, Cat>();
   private readonly _hens = new Map<string, Hen>();
+  private readonly _dogs = new Map<string, Dog>();
+  private readonly _familyKeys = new Set<string>();
+  /** Stimuli each animal has met calmly: family lessons make sense once they know each other. */
+  private readonly _met = new Map<string, Map<Stimulus, string>>();
   private readonly _intros: Introduction[] = [];
   private readonly _larder = new Map<string, number>();
   private readonly _scenarios = new Map<string, string>();
@@ -148,6 +171,9 @@ export class Habitat {
   nestEggs = 0;
   meals = 0;
   lightsOn = true;
+  /** The coop door is programmed: hens roam the ship by day and sleep in the coop. */
+  hensFree = false;
+  readonly bonds = new Bonds();
   readonly crew: CrewMember;
   readonly bioreactor = new Bioreactor();
   /** The ship's radio: letters and their missions, if the story is on. */
@@ -174,12 +200,23 @@ export class Habitat {
   get hens(): readonly Hen[] {
     return [...this._hens.values()];
   }
+  get dogs(): readonly Dog[] {
+    return [...this._dogs.values()];
+  }
+  /** Cats, dogs and hens. */
+  get animals(): readonly Animal[] {
+    return [...this._cats.values(), ...this._dogs.values(), ...this._hens.values()] as Animal[];
+  }
+  /** Families of different species tied by strong bonds. */
+  get families(): Family[] {
+    return this.bonds.families(this.animals);
+  }
   get machines(): readonly Machine[] {
     return [...this._machines.values()];
   }
   /** Everyone the sickbay looks after: the crew, the cats, the hens (and future characters). */
   get patients(): readonly Patient[] {
-    return [this.crew, ...this._cats.values(), ...this._hens.values()];
+    return [this.crew, ...this._cats.values(), ...this._dogs.values(), ...this._hens.values()];
   }
   get introductions(): readonly Introduction[] {
     return this._intros;
@@ -208,6 +245,24 @@ export class Habitat {
     return p;
   }
 
+  /** A bed of one crop on the farm deck's artificial soil, watered by drip lines. */
+  bed(id: string, species: PlantSpecies, areaM2: number): Plant {
+    const p = new Plant(id, species, areaM2, true);
+    this._plants.set(id, p);
+    return p;
+  }
+
+  /** How much of everyone's food the growing area can provide (1 = self-sufficient). */
+  get sustainability(): Sustainability {
+    const eaters: Eater[] = [
+      { name: this.crew.name, kcal: this.crew.dailyKcal },
+      ...[...this._cats.values(), ...this._dogs.values()].map((a) => ({ name: a.name, kcal: a.dailyKcal })),
+      ...[...this._hens.values()].map((h) => ({ name: h.name, kcal: HEN_FEED_KCAL.value })),
+    ];
+    const area = this.plants.filter((p) => p.alive).reduce((s, p) => s + p.areaM2, 0);
+    return selfSufficiency(area, eaters, this.crew.dailyKcal);
+  }
+
   /** Bring a cat aboard. Every resident must be introduced to it step by step. */
   adopt(cat: Cat): Introduction[] {
     const made: Introduction[] = [];
@@ -224,6 +279,10 @@ export class Habitat {
     this._hens.set(hen.id, hen);
   }
 
+  addDog(dog: Dog): void {
+    this._dogs.set(dog.id, dog);
+  }
+
   drainEvents(): HabitatEvent[] {
     const out = this._events;
     this._events = [];
@@ -232,7 +291,7 @@ export class Habitat {
 
   tick(dtDays: number): void {
     const t = HABITAT_TUNING;
-    this.crew.tick(dtDays);
+    this.crew.tick(dtDays, companionship(this.families));
     this.mailbox?.tick(dtDays);
     const lit = this.lightsOn && this.working("bastidores");
     for (const p of this._plants.values()) {
@@ -241,9 +300,10 @@ export class Habitat {
       if (wasAlive && !p.alive) this._events.push({ type: "plant-died", plantId: p.id });
     }
     for (const c of this._cats.values()) c.tick(dtDays, { resourcesOk: this.resourcesOk });
+    for (const d of this._dogs.values()) d.tick(dtDays, { resourcesOk: true });
     const light = this.lightsOn && this.working("gallinero") ? t.coopLightHours : 0;
     let eggs = 0;
-    for (const h of this._hens.values()) eggs += h.tick(dtDays, light);
+    for (const h of this._hens.values()) eggs += h.tick(dtDays, light, this.hensFree);
     if (eggs) {
       this.nestEggs += eggs;
       this._events.push({ type: "eggs-laid", count: eggs });
@@ -283,7 +343,15 @@ export class Habitat {
     // Cats and hens: an unprogrammed cat stalks them.
     if (this._hens.size) {
       for (const c of this._cats.values()) {
-        if (!this.happens(t.henVisitsPerDay, dtDays) || decide(c, "gallina", this.rng) !== "acechar") continue;
+        if (!this.happens(t.henVisitsPerDay, dtDays)) continue;
+        const act = decide(c, "gallina", this.rng);
+        if (act !== "acechar") {
+          if (this.hensFree) {
+            const hens = this.hens;
+            this.meet(c, hens[Math.floor(this.rng() * hens.length)]!, "gallina", act);
+          }
+          continue;
+        }
         const what = `${c.name} acechó a las gallinas`;
         for (const h of this._hens.values()) h.startle(t.stalkStress);
         this._scenarios.set("gallinas", what);
@@ -329,6 +397,86 @@ export class Habitat {
       if (intro.tick(dtDays, a.stress, b.stress, friendly))
         this._events.push({ type: "introduction-advanced", newcomerId: a.id, residentId: b.id, stage: intro.stage });
     }
+    this.encounters(dtDays);
+  }
+
+  /** Free hens, dogs and cats meeting around the ship; then families are checked. */
+  private encounters(dtDays: number): void {
+    const t = HABITAT_TUNING;
+    if (this.hensFree) {
+      for (const h of this._hens.values())
+        for (const p of this._plants.values()) {
+          if (!p.isNew || !p.alive || !this.happens(t.henPlantVisitsPerDay, dtDays)) continue;
+          const act = decide(h, "planta-nueva", this.rng, INSTINCTS_BY_SPECIES.gallina);
+          if (act !== "picotear") continue;
+          p.damage(t.henPeckSeverity);
+          const what = `${h.name} escarbó y picoteó ${p.species.name.toLowerCase()} (${p.id})`;
+          this._scenarios.set(p.id, what);
+          this.see(h.id, "planta-nueva", what);
+          this._events.push({ type: "hen-pecked-plant", henId: h.id, plantId: p.id });
+        }
+    }
+    const animals = this.animals.filter((a) => a.kind !== "gallina" || this.hensFree);
+    for (const x of animals)
+      for (const y of animals) {
+        if (x === y) continue;
+        // Cats meeting cats go through introductions; cats meeting hens are handled above.
+        if (x.kind === "gato" && (y.kind === "gato" ? !y.young || x.young : y.kind === "gallina")) continue;
+        const s = this.stimulusFor(x, y);
+        if (!s || !this.happens(t.encountersPerDay, dtDays)) continue;
+        this.meet(x, y, s, decide(x, s, this.rng, INSTINCTS_BY_SPECIES[x.kind]));
+      }
+    const families = this.families;
+    for (const f of families) {
+      const ids = f.members.map((m) => m.id).sort();
+      const k = ids.join("|");
+      if (this._familyKeys.has(k)) continue;
+      this._familyKeys.add(k);
+      this._events.push({ type: "family-formed", memberIds: ids });
+      this.mailbox?.notify("familia");
+    }
+  }
+
+  private stimulusFor(x: Animal, y: Animal): Stimulus | undefined {
+    if (y.young && !x.young) return "cria";
+    if (x.kind === "gallina") return undefined;
+    if (y.kind === "gallina") return "gallina";
+    if (y.kind === "perro" && x.kind === "gato") return "perro";
+    if (y.kind === "gato" && x.kind === "perro") return "gato";
+    return undefined;
+  }
+
+  /** `x` reacts to `y`: warm acts bond them (brooding a young one bonds fastest), hostile ones hurt. */
+  private meet(x: Animal, y: Animal, s: Stimulus, decided: AnimalAction): void {
+    const t = HABITAT_TUNING;
+    const ft = FAMILY_TUNING;
+    let act: AnimalAction = decided === "cobijar" && !(x.kind === "gallina" && (x as Hen).broody) ? "ignorar" : decided;
+    // Family is family: an animal does not chase or peck the one it grew up with, whatever its instinct.
+    if (HOSTILE_ACTIONS.has(act) && this.bonds.get(x.id, y.id) >= ft.familyAt) act = "acurrucarse";
+    if (WARM_ACTIONS.has(act)) {
+      this.remember(this._met, x.id, s, `${x.name} conoce a ${y.name}`);
+      if (y.stress >= 0.5) return;
+      const amount = ft.warmMeetingBond * (s === "cria" ? ft.motherBonus : 1);
+      if (s === "cria") this.bonds.nurture(x.id, y.id, amount);
+      else this.bonds.add(x.id, y.id, amount);
+      this._events.push({ type: "animal-warm", actorId: x.id, targetId: y.id, action: act });
+      return;
+    }
+    if (!HOSTILE_ACTIONS.has(act)) {
+      this.remember(this._met, x.id, s, `${x.name} conoce a ${y.name}`);
+      return;
+    }
+    y.startle(t.hostileStartle);
+    this.bonds.add(x.id, y.id, -ft.hostileBondLoss);
+    const verb: Partial<Record<AnimalAction, string>> = { perseguir: "persiguió", ladrar: "ladró", bufar: "bufó", picotear: "picoteó", acechar: "acechó" };
+    const why = `${x.name} ${verb[act] ?? act} a ${y.name}`;
+    this._scenarios.set(x.id, why);
+    this.see(x.id, s, why);
+    this._events.push({ type: "animal-hostile", actorId: x.id, targetId: y.id, action: act });
+    if ((act === "perseguir" || act === "picotear") && this.rng() < t.chaseInjuryChance) {
+      y.health.add("herida", 0.3, why);
+      this._events.push({ type: "injured", patientId: y.id, cause: "herida" });
+    }
   }
 
   /**
@@ -347,6 +495,10 @@ export class Habitat {
       this._scenarios.set(c.id, `${cause}: ${c.name} se escondió temblando`);
     }
     for (const h of this._hens.values()) h.startle(0.7 * s);
+    for (const d of this._dogs.values()) {
+      d.startle(0.6 * s);
+      this._scenarios.set(d.id, `${cause}: ${d.name} ladra temblando bajo la cama`);
+    }
     if (this._hens.size) this._scenarios.set("gallinas", `${cause}: las gallinas dejaron de poner del susto`);
     this.crew.startle(0.3 * s);
     if (s >= 0.5) {
@@ -372,7 +524,7 @@ export class Habitat {
   }
 
   /** Everything that needs doing right now, each as a chain of code challenges. */
-  chores(recipes: readonly Recipe[], yoga: readonly YogaSequence[], more: { processes?: readonly Process[]; lessons?: readonly CatLesson[] } = {}): Chore[] {
+  chores(recipes: readonly Recipe[], yoga: readonly YogaSequence[], more: { processes?: readonly Process[]; lessons?: readonly AnimalLesson[] } = {}): Chore[] {
     const processes = more.processes ?? [];
     const pool = stepPool([...recipes.map((r) => r.steps.value), ...processes.map((p) => p.steps.value)]);
     const out: Chore[] = [];
@@ -380,13 +532,11 @@ export class Habitat {
     for (const pt of this.patients) for (const c of pt.health.untreated) out.push(patientChore(pt, c, pool));
     for (const p of this._plants.values()) out.push(...plantChores(p, this._scenarios.get(p.id)));
     const food = { meatG: this.larder("carne-cultivada"), kibbleG: this.larder("pienso-gatos") };
-    for (const c of this._cats.values()) {
-      out.push(...catChores(c, this._scenarios.get(c.id), food));
-      for (const l of more.lessons ?? []) {
-        const why = this._seen.get(c.id)?.get(l.rule.when);
-        if (why && !c.rules.some((r) => r.id === l.rule.id)) out.push(catLessonChore(c, l, `${why}: escríbele una regla`));
-      }
-    }
+    for (const c of this._cats.values()) out.push(...catChores(c, this._scenarios.get(c.id), food));
+    const dogFood = { meatG: this.larder("carne-cultivada"), eggs: this.larder("huevo") };
+    for (const d of this._dogs.values()) out.push(...dogChores(d, this._scenarios.get(d.id), dogFood));
+    out.push(...this.lessonChores(more.lessons ?? []));
+    if (this._hens.size && !this.hensFree) out.push(coopDoorChore());
     out.push(...henChores(this.hens, this.nestEggs, this.larder("pienso-gallinas"), this.lightsOn && this.working("gallinero") ? HABITAT_TUNING.coopLightHours : 0));
     out.push(...bioreactorChores(this.bioreactor, this.larder("medio-cultivo"), this._scenarios.get("cultivo")));
     for (const p of processes) if (this.has(p.inputs)) out.push(processChore(p, pool));
@@ -397,6 +547,30 @@ export class Habitat {
       out.push({ id: `mision-${l.id}`, kind: "mision", targetId: l.id, title: l.mission!.title, scenario: `Carta de ${l.from}: ${l.subject}`, exercises: l.mission!.exercises });
     // A broken machine blocks its chores, except its own repair.
     return out.filter((c) => c.kind === "reparar-maquina" || this.working(c.machine));
+  }
+
+  /**
+   * Lessons that make sense now. Level 1 rules that stop a problem appear once the problem showed
+   * up; warm rules once the animals have met; level 2 (family) on top of the level-1 rule.
+   */
+  private lessonChores(lessons: readonly AnimalLesson[]): Chore[] {
+    const out: Chore[] = [];
+    const levelOf = (id: string | undefined) => (id ? (lessons.find((l) => l.rule.id === id)?.level ?? 1) : 0);
+    for (const a of this.animals) {
+      for (const l of lessons) {
+        if ((l.species ?? "gato") !== a.kind) continue;
+        if (l.broodyOnly && !(a as Hen).broody) continue;
+        const current = a.rules.find((r) => r.when === l.rule.when);
+        const level = l.level ?? 1;
+        if (current?.id === l.rule.id || levelOf(current?.id) >= level || levelOf(current?.id) < level - 1) continue;
+        const warm = WARM_ACTIONS.has(l.rule.then);
+        const problem = this._seen.get(a.id)?.get(l.rule.when);
+        const met = this._met.get(a.id)?.get(l.rule.when) ?? problem;
+        if (!warm && problem) out.push(lessonChore(a, l, `${problem}: escríbele una regla`));
+        else if (warm && met) out.push(lessonChore(a, l, `${met}: prográmalo para hacer familia`));
+      }
+    }
+    return out;
   }
 
   canCook(r: Recipe): boolean {
@@ -452,13 +626,33 @@ export class Habitat {
           cat!.startle(-0.4);
           this._scenarios.delete(cat!.id);
           break;
-        case "programar-gato": {
-          const lesson = context.lessons?.find((l) => chore.id === `programar-${cat!.id}-${l.rule.id}`);
-          if (!lesson) throw new Error(`Unknown lesson for ${chore.id}`);
-          cat!.learn(lesson.rule);
-          this._events.push({ type: "rule-learned", catId: cat!.id, ruleId: lesson.rule.id });
+        case "programar-animal": {
+          const lesson = context.lessons?.find((l) => chore.id === `programar-${chore.targetId}-${l.rule.id}`);
+          const animal = this.animals.find((a) => a.id === chore.targetId);
+          if (!lesson || !animal) throw new Error(`Unknown lesson for ${chore.id}`);
+          animal.learn(lesson.rule);
+          this._events.push({ type: "rule-learned", catId: animal.id, ruleId: lesson.rule.id });
           break;
         }
+        case "alimentar-perro": {
+          const d = this._dogs.get(chore.targetId!)!;
+          const meal = dogMeal(d, { meatG: this.larder("carne-cultivada"), eggs: this.larder("huevo") });
+          if (!meal) throw new Error(`No food for ${d.id}`);
+          this.stock(meal.food === "meat" ? "carne-cultivada" : "huevo", -meal.amount);
+          d.feed(meal.kcal);
+          break;
+        }
+        case "jugar-perro": {
+          const d = this._dogs.get(chore.targetId!)!;
+          d.playWith();
+          d.pet();
+          d.startle(-0.4);
+          this._scenarios.delete(d.id);
+          break;
+        }
+        case "abrir-gallinero":
+          this.hensFree = true;
+          break;
         case "alimentar-gallinas":
           this.stock("pienso-gallinas", -1);
           for (const h of this._hens.values()) h.feed();
@@ -544,9 +738,13 @@ export class Habitat {
     );
   }
 
-  private see(catId: string, stimulus: Stimulus, why: string): void {
-    if (!this._seen.has(catId)) this._seen.set(catId, new Map());
-    this._seen.get(catId)!.set(stimulus, why);
+  private see(animalId: string, stimulus: Stimulus, why: string): void {
+    this.remember(this._seen, animalId, stimulus, why);
+  }
+
+  private remember(map: Map<string, Map<Stimulus, string>>, id: string, stimulus: Stimulus, why: string): void {
+    if (!map.has(id)) map.set(id, new Map());
+    map.get(id)!.set(stimulus, why);
   }
 
   /** Poisson event with `ratePerDay` during `dtDays`. */

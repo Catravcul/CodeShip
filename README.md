@@ -29,8 +29,13 @@ npm run build
 | Alabeo | Q / E |
 | Motor principal | Espacio |
 | Asistente de rotación | T |
+| Cambiar cámara (cabina, trasera, exterior) | C |
+| Centrar la vista | V |
+| Acelerar el tiempo (×1, ×10, ×50) | X |
 
-En el móvil hay mandos táctiles. Con el botón **Ir al interior** se entra en el módulo habitable: se camina con WASD (o el joystick) y se mira con las flechas o arrastrando. **Tareas** lista lo que hay que hacer a bordo; cada tarea es una cadena de retos de código (ver [vida-a-bordo.md](docs/design/vida-a-bordo.md)). El módulo tiene huerto, cocina, molino, laboratorio de carne cultivada, enfermería, gallinero, rincón de los gatos, esterilla de yoga y el panel de la mente de la nave.
+En la cabina, el mando **Mirar** (o arrastrar la pantalla) gira la cabeza del piloto para ver por las ventanas laterales; la cámara trasera muestra lo que queda detrás de la tobera y la exterior orbita alrededor de la nave. Los RCS empujan poco (≈0,07 m/s² con 670 kg), así que el polvo espacial y la línea de propulsores del HUD muestran que la nave se mueve; el motor principal da ≈0,7 m/s². El tiempo acelerado solo actúa sin maniobrar y a más de 150 m del asteroide.
+
+En el móvil hay mandos táctiles. Con el botón **Ir al interior** se entra en el módulo habitable: Doménica se ve en tercera persona (el botón **Vista** pasa a primera persona), se camina con el mando **Caminar** o WASD y se mira con el mando **Mirar**, las flechas o arrastrando. **Tareas** lista lo que hay que hacer a bordo; cada tarea es una cadena de retos de código (ver [vida-a-bordo.md](docs/design/vida-a-bordo.md)). El módulo tiene huerto, cocina, molino, laboratorio de carne cultivada, enfermería, gallinero, rincón de los gatos, esterilla de yoga y el panel de la mente de la nave.
 
 ## Arquitectura
 

@@ -117,6 +117,12 @@ export class Interior {
   private cooking = false;
   private readonly radioBtn: HTMLButtonElement;
   private readonly figure = new CubeFigure();
+  /** Doménica, seen from behind in third person. */
+  private readonly avatar = new CubeFigure(0xc99a76, 0x2f7f8f);
+  private readonly avatarRig = new THREE.Group();
+  private thirdPerson = true;
+  private stride = 0;
+  private readonly viewBtn: HTMLButtonElement;
   private readonly panel: THREE.Mesh;
   private readonly ui: HTMLElement;
   private readonly hud: HTMLElement;
@@ -177,10 +183,12 @@ export class Interior {
     mat.add(this.figure.root);
     this.scene.add(mat);
 
+    this.avatarRig.add(this.avatar.root);
+    this.scene.add(this.avatarRig);
     this.walker = new Walker(root);
     this.ui = document.createElement("div");
     this.ui.className = "interior-ui hidden";
-    this.ui.innerHTML = `<div class="ihud"></div><button class="tasks-btn">Tareas</button><button class="radio-btn">Radio<b></b></button><div class="board hidden"></div><button class="station-btn hidden"></button><div class="toast"></div>`;
+    this.ui.innerHTML = `<div class="ihud"></div><button class="tasks-btn">Tareas</button><button class="radio-btn">Radio<b></b></button><button class="view-btn"></button><div class="board hidden"></div><button class="station-btn hidden"></button><div class="toast"></div>`;
     root.appendChild(this.ui);
     this.hud = this.ui.querySelector(".ihud")!;
     this.board = this.ui.querySelector(".board")!;
@@ -188,6 +196,12 @@ export class Interior {
     this.toast = this.ui.querySelector(".toast")!;
     this.ui.querySelector(".tasks-btn")!.addEventListener("click", () => this.openBoard());
     this.radioBtn = this.ui.querySelector(".radio-btn")!;
+    this.viewBtn = this.ui.querySelector(".view-btn")!;
+    this.viewBtn.addEventListener("click", () => {
+      this.thirdPerson = !this.thirdPerson;
+      this.syncViewBtn();
+    });
+    this.syncViewBtn();
     this.radioBtn.addEventListener("click", () => this.openRadio());
     this.stationBtn.addEventListener("click", () => {
       const s = this.nearStation();
@@ -255,7 +269,12 @@ export class Interior {
         this.faceTowards(this.walkTo.look);
         this.walkTo = null;
         then();
-      } else if (d > 1e-6) this.pos.addScaledVector(to.normalize(), Math.min(d, 2.2 * dt));
+      } else if (d > 1e-6) {
+        const step = Math.min(d, 2.2 * dt);
+        this.pos.addScaledVector(to.normalize(), step);
+        this.yaw = Math.atan2(-to.x, -to.z);
+        this.stride += step * 4.2;
+      }
     } else if (!busy) {
       const look = this.walker.look(dt);
       this.yaw += look.yaw;
@@ -265,6 +284,7 @@ export class Interior {
       const right = new THREE.Vector3(-fwd.z, 0, fwd.x);
       const prev = this.pos.clone();
       this.pos.addScaledVector(fwd, m.forward * 1.6 * dt).addScaledVector(right, m.right * 1.6 * dt);
+      this.stride += prev.distanceTo(this.pos) * 4.2;
       this.clampWalk(prev);
     }
     this.updateCamera();
@@ -348,9 +368,44 @@ export class Interior {
     else p.copy(prev);
   }
 
+  private syncViewBtn(): void {
+    this.viewBtn.textContent = this.thirdPerson ? "Vista: 3ª persona" : "Vista: 1ª persona";
+  }
+
+  /** Room, doorway or farm deck, with a margin from the walls (for the third-person camera). */
+  private inside(x: number, z: number): boolean {
+    const room = Math.abs(x) < ROOM.halfW - 0.15 && Math.abs(z) < ROOM.halfL - 0.15;
+    const door = Math.abs(x) < DOOR.halfW - 0.1 && Math.abs(z - ROOM.halfL) < 0.3;
+    const farm = x > FARM.minX + 0.3 && x < FARM.maxX - 0.3 && z > ROOM.halfL + 0.2 && z < FARM.maxZ - 0.3;
+    return room || door || farm;
+  }
+
   private updateCamera(): void {
-    this.camera.position.set(this.pos.x, 1.6, this.pos.z);
-    this.camera.rotation.set(this.pitch, this.yaw, 0, "YXZ");
+    const third = this.thirdPerson && !this.session;
+    this.avatarRig.visible = third;
+    if (!third) {
+      this.camera.position.set(this.pos.x, 1.6, this.pos.z);
+      this.camera.rotation.set(this.pitch, this.yaw, 0, "YXZ");
+      return;
+    }
+    // Doménica walks where the player goes; the camera follows behind her shoulders.
+    this.avatarRig.position.set(this.pos.x, 0, this.pos.z);
+    this.avatarRig.rotation.y = this.yaw + Math.PI;
+    const moving = this.walkTo !== null || this.walker.move().forward !== 0 || this.walker.move().right !== 0;
+    if (moving) this.avatar.walk(this.stride, 1);
+    else this.avatar.pose("stand");
+    this.avatar.update(1 / 60, 10);
+    const dir = new THREE.Vector3(-Math.sin(this.yaw) * Math.cos(this.pitch), Math.sin(this.pitch), -Math.cos(this.yaw) * Math.cos(this.pitch));
+    const head = new THREE.Vector3(this.pos.x, 1.55, this.pos.z);
+    let d = 2.0;
+    const cam = new THREE.Vector3();
+    for (; d > 0.35; d -= 0.1) {
+      cam.copy(head).addScaledVector(dir, -d).add(new THREE.Vector3(0, 0.35, 0));
+      const ceiling = cam.z > ROOM.halfL + 0.2 ? FARM.height - 0.3 : ROOM.height - 0.15;
+      if (this.inside(cam.x, cam.z) && cam.y > 0.3 && cam.y < ceiling) break;
+    }
+    this.camera.position.copy(cam);
+    this.camera.lookAt(head.clone().addScaledVector(dir, 1.2));
   }
 
   private faceTowards(p: THREE.Vector3): void {

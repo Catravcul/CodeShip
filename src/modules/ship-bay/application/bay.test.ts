@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { POWER_NONE, SHIELD_NONE, SHIELD_WHIPPLE, SHIELD_WHIPPLE_NODE, SHIELD_WHIPPLE_STEEL } from "@modules/ship/data/equipment";
 import { Ship } from "@modules/ship/domain/ship";
 import { explorerDesign } from "@modules/ship/data/explorer";
 import { partById } from "@modules/ship/data/parts";
@@ -23,7 +24,7 @@ const input = (over: Partial<BayInput> = {}): BayInput => ({
 const byId = (list: ReturnType<typeof bayStatus>, id: string) => list.find((c) => c.id === id)!;
 
 describe("ship bay status", () => {
-  it("lists every part: hull, engine, RCS, each tank, wings, each machine, farm deck and stores", () => {
+  it("lists every part: hull, engine, RCS, each tank, power, battery, shield, fixed systems, each machine, farm deck and stores", () => {
     const list = bayStatus(input());
     expect(list.map((c) => c.id)).toEqual([
       "casco",
@@ -32,6 +33,9 @@ describe("ship bay status", () => {
       "tanque-0",
       "tanque-1",
       "alas-solares",
+      "bateria",
+      "escudo-mmod",
+      "sistemas-fijos",
       ...MACHINES.map((m) => `maquina:${m.id}`),
       "cubierta-cultivo",
       "despensa",
@@ -99,7 +103,10 @@ describe("ship bay actions", () => {
     const chores: Chore[] = [repairChore(ship.design, ship.hullIntegrity, 1), machineRepairChore(machines[0]!, 0)];
     const list = bayStatus(input({ ship, machines }));
     const hull = bayActions(byId(list, "casco"), chores, ship.design);
-    expect(hull).toEqual([expect.objectContaining({ kind: "tarea", choreId: chores[0]!.id })]);
+    expect(hull[0]).toEqual(expect.objectContaining({ kind: "tarea", choreId: chores[0]!.id }));
+    // The hull is the cabin: the other cabins can replace it.
+    expect(hull.slice(1).every((a) => a.kind === "cambiar" && a.slot === "cabina")).toBe(true);
+    expect(hull.length).toBe(5);
     const machine = bayActions(byId(list, `maquina:${machines[0]!.id}`), chores, ship.design);
     expect(machine[0]!.choreId).toBe(chores[1]!.id);
     const motor = bayActions(byId(list, "motor"), chores, ship.design);
@@ -125,5 +132,38 @@ describe("ship bay actions", () => {
     const pot: Chore = { id: "regar-l1", kind: "regar", targetId: "l1", title: "Regar", scenario: "", exercises: [] };
     const list = bayStatus(input());
     expect(bayActions(byId(list, "cubierta-cultivo"), [bed, pot], explorerDesign()).map((a) => a.choreId)).toEqual([bed.id]);
+  });
+});
+
+describe("ship bay: equipment", () => {
+  it("the hull's dry mass is the sum of the fitted parts, shown in the hull's sheet", () => {
+    const ship = Ship.create(explorerDesign());
+    const hull = byId(bayStatus(input({ ship })), "casco");
+    expect(hull.slot).toBe("cabina");
+    expect(hull.specs.find((s) => s.label === "Masa en seco")!.value).toContain(Math.round(ship.dryMassKg).toLocaleString("es-ES"));
+  });
+
+  it("the power entry shows production against consumption; with no source the battery's hours are a warning", () => {
+    const ok = byId(bayStatus(input()), "alas-solares");
+    expect(ok.attention).toBe("ok");
+    expect(ok.specs.find((s) => s.label === "Balance")!.value).toMatch(/^Sobran/);
+    const ship = Ship.create(withPart(explorerDesign(), "energia", partById(POWER_NONE.id)!));
+    const dark = byId(bayStatus(input({ ship })), "alas-solares");
+    expect(dark.specs.find((s) => s.label === "Balance")!.value).toMatch(/^Faltan 660 W/);
+    expect(dark.attention).toBe("aviso");
+  });
+
+  it("removing the shield or the source needs nothing from the hangar", () => {
+    const ship = Ship.create(withPart(explorerDesign(), "escudo", partById(SHIELD_WHIPPLE.id)!));
+    const shield = bayActions(byId(bayStatus(input({ ship })), "escudo-mmod"), [], ship.design, { count: () => 0 });
+    const none = shield.find((a) => a.partId === SHIELD_NONE.id)!;
+    expect(none.locked).toBeUndefined();
+    expect(shield.filter((a) => a.locked).map((a) => a.partId)).toEqual([SHIELD_WHIPPLE_STEEL.id, SHIELD_WHIPPLE_NODE.id]);
+  });
+
+  it("a shield's sheet shows its critical diameter and how much debris damage gets through", () => {
+    const ship = Ship.create(withPart(explorerDesign(), "escudo", partById(SHIELD_WHIPPLE.id)!));
+    const s = byId(bayStatus(input({ ship })), "escudo-mmod");
+    expect(s.specs.find((x) => x.label === "Daño de las piedras")!.value).toMatch(/^1\d %/);
   });
 });

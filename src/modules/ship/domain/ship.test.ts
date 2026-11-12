@@ -9,7 +9,8 @@ const main: ThrusterModel = { id: "m", name: "Main", thrustN: 500, ispS: 300, dr
 const rcs: ThrusterModel = { id: "r", name: "RCS", thrustN: 20, ispS: 200, dryMassKg: 1, propellant: "Hydrazine", sources: [] };
 
 const design = (): ShipDesign => ({
-  hull: { name: "Test hull", dryMassKg: 300, size: new Vec3(2, 2, 4) },
+  hull: { name: "Test hull", size: new Vec3(2, 2, 4) },
+  equipment: [{ id: "s", name: "Estructura", kind: "estructura", massKg: 300, powerW: 0, materials: "", flight: "", basis: "", sources: [] }],
   tanks: [
     { spec: { propellant: "MMH/NTO", capacityKg: 100, dryMassKg: 10 }, fillKg: 100 },
     { spec: { propellant: "Hydrazine", capacityKg: 20, dryMassKg: 2 }, fillKg: 20 },
@@ -21,7 +22,7 @@ const design = (): ShipDesign => ({
 const idle = { mainThrottle: 0, translation: Vec3.ZERO, rotation: Vec3.ZERO };
 
 describe("Ship", () => {
-  it("adds up hull, thrusters, tanks and propellant mass", () => {
+  it("adds up equipment, thrusters, tanks and propellant mass", () => {
     const ship = Ship.create(design());
     expect(ship.rcsCount).toBe(24);
     expect(ship.dryMassKg).toBe(300 + 5 + 24 * 1 + 10 + 2);
@@ -123,6 +124,23 @@ describe("Explorer probe", () => {
     const d = explorerDesign();
     expect("ring" in d).toBe(false);
     expect(d.dockingPort!.y).toBeGreaterThan(d.hull.size.y / 2);
-    expect(Ship.create(d).massKg).toBeLessThan(1000);
+    // Every kilogram is a fitted part now: lighter than the lunar module's ascent stage (2150 kg dry), not a 420 kg placeholder.
+    const ship = Ship.create(d);
+    expect(ship.dryMassKg).toBeGreaterThan(1000);
+    expect(ship.dryMassKg).toBeLessThan(2150);
+  });
+
+  it("debris damage is cut by the shield; a crash is not", async () => {
+    const { explorerDesign } = await import("../data/explorer");
+    const { partById } = await import("../data/parts");
+    const { withPart } = await import("./refit");
+    const bare = Ship.create(explorerDesign());
+    bare.damage(0.2, "escombros");
+    expect(bare.hullIntegrity).toBeCloseTo(0.8);
+    const shielded = Ship.create(withPart(explorerDesign(), "escudo", partById("whipple-al")!));
+    shielded.damage(0.2, "escombros");
+    expect(shielded.hullIntegrity).toBeGreaterThan(0.95);
+    shielded.damage(0.2);
+    expect(shielded.hullIntegrity).toBeLessThan(0.8);
   });
 });

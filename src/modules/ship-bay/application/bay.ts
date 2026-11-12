@@ -1,8 +1,12 @@
 import type { Propellant, ThrusterModel } from "@modules/ship/domain/components";
 import type { ShipDesign } from "@modules/ship/domain/ship";
-import { feeds, type PartSlot } from "@modules/ship/domain/refit";
+import { feeds, isEmptyPart, type PartSlot } from "@modules/ship/domain/refit";
 import { partOptions } from "@modules/ship/data/parts";
 import { PROPELLANT_DENSITY, tankVolumeM3 } from "@modules/ship/data/propellants";
+import { REGION_SUN_AU } from "@modules/ship/data/equipment";
+import { equipmentMassKg, equipmentOf, isEquipmentSlot, wallArealDensityKgM2, type Equipment, type EquipmentSlot } from "@modules/ship/domain/equipment";
+import { powerBudget, type PowerBudget } from "@modules/ship/domain/power";
+import { criticalDiameterCm, debrisDamageFactor } from "@modules/ship/domain/mmod";
 import type { Machine } from "@modules/life-support/domain/machine";
 import type { Sustainability } from "@modules/life-support/domain/sustainability";
 import type { Chore } from "@modules/chores/domain/chore";
@@ -14,6 +18,7 @@ export interface BayShip {
   readonly design: ShipDesign;
   readonly hullIntegrity: number;
   readonly massKg: number;
+  readonly dryMassKg: number;
   propellantKg(p: Propellant): number;
   propellantCapacityKg(p: Propellant): number;
   mainDeltaV(): number;
@@ -73,22 +78,102 @@ function status(c: Omit<ComponentStatus, "attention">): ComponentStatus {
   return { ...c, attention: worst(c.issues.map((i) => i.attention)) };
 }
 
+/** Spec lines every piece of equipment shows: mass, power, materials, flight history and how it was worked out. */
+function equipmentSpecs(e: Equipment): Spec[] {
+  return [
+    { label: "Pieza", value: e.name, ...(e.sources[0] ? { source: e.sources[0] } : {}) },
+    { label: "Masa", value: `${num(e.massKg, 1)} kg` },
+    ...(e.storageWh ? [{ label: "Energía", value: `${num(e.storageWh / 1000, 1)} kWh${e.rechargeable === false ? " (no se recarga)" : ""}` }] : []),
+    { label: "Materiales", value: e.materials, more: true },
+    ...(e.size ? [{ label: "Tamaño", value: e.size, more: true }] : []),
+    { label: "Ha volado", value: e.flight, more: true },
+    { label: "Cómo se calcula", value: e.basis, more: true },
+  ];
+}
+
+const hours = (h: number) => (h === Infinity ? "sin límite" : h >= 48 ? `${num(h / 24, 1)} días` : `${num(h, 1)} h`);
+
+/** Bay warnings for the power budget (game thresholds: a sortie should last a working day). */
+export const POWER_TUNING = { sortieHours: 8 } as const;
+
+function powerIssues(b: PowerBudget): Issue[] {
+  if (b.netW >= 0) return [];
+  if (b.storageWh <= 0) return [{ attention: "critico", text: `Faltan ${num(-b.netW)} W y no hay batería` }];
+  if (b.enduranceH < POWER_TUNING.sortieHours) return [{ attention: "aviso", text: `Faltan ${num(-b.netW)} W: la batería dura ${hours(b.enduranceH)}` }];
+  return [];
+}
+
+function powerSpecs(b: PowerBudget): Spec[] {
+  return [
+    { label: "Produce", value: `${num(b.producedW)} W a ${num(REGION_SUN_AU.value, 2)} UA del Sol`, source: REGION_SUN_AU.source },
+    { label: "Consume", value: `${num(b.drawnW)} W` },
+    { label: "Balance", value: b.netW >= 0 ? `Sobran ${num(b.netW)} W` : `Faltan ${num(-b.netW)} W` },
+    { label: "Batería", value: `${num(b.storageWh / 1000, 1)} kWh${b.storageWh && !b.rechargeable ? " (no se recarga)" : ""} · dura ${hours(b.enduranceH)}` },
+    ...b.lines.map((l) => ({ label: l.name, value: `${l.watts > 0 ? "+" : "−"}${num(Math.abs(l.watts))} W`, more: true })),
+  ];
+}
+
+const EQUIPMENT_ID: Readonly<Record<Exclude<EquipmentSlot, "cabina">, string>> = { energia: "alas-solares", bateria: "bateria", escudo: "escudo-mmod" };
+
+/** Power source, battery and micrometeoroid shield (the cabin is the hull's entry). */
+function equipmentStatus(ship: BayShip): ComponentStatus[] {
+  const d = ship.design;
+  const budget = powerBudget(d.equipment, REGION_SUN_AU.value);
+  const out: ComponentStatus[] = [];
+  const source = equipmentOf(d.equipment, "energia");
+  if (source)
+    out.push(
+      status({ id: EQUIPMENT_ID.energia, kind: "energia", name: `Energía · ${source.name}`, slot: "energia", issues: powerIssues(budget), specs: [...powerSpecs(budget), ...equipmentSpecs(source)] }),
+    );
+  const battery = equipmentOf(d.equipment, "bateria");
+  if (battery) {
+    const issues: Issue[] = battery.rechargeable === false && budget.netW >= 0 ? [{ attention: "aviso", text: "Es primaria: lo que sobra de la fuente no la recarga" }] : [];
+    out.push(status({ id: EQUIPMENT_ID.bateria, kind: "bateria", name: battery.name, slot: "bateria", issues, specs: [{ label: "Dura", value: hours(budget.enduranceH) }, ...equipmentSpecs(battery)] }));
+  }
+  const shield = equipmentOf(d.equipment, "escudo");
+  if (shield) {
+    const dc = criticalDiameterCm(d.equipment);
+    const k = debrisDamageFactor(d.equipment);
+    out.push(
+      status({
+        id: EQUIPMENT_ID.escudo,
+        kind: "escudo",
+        name: `Escudo · ${shield.name}`,
+        slot: "escudo",
+        issues: [],
+        specs: [
+          { label: "Diámetro crítico", value: `${num(dc * 10, 2)} mm de aluminio a 7 km/s (manual de la NASA)`, source: "https://ntrs.nasa.gov/citations/20090010053" },
+          { label: "Daño de las piedras", value: `${pct(k)} del de la cabina de serie sin escudo (regla de juego)` },
+          ...equipmentSpecs(shield),
+          { label: "Regla de juego", value: "El daño de las piedras de un asteroide enfadado se divide por cuánto más grande es la partícula que para la pared, comparada con la cabina de serie", more: true },
+        ],
+      }),
+    );
+  }
+  return out;
+}
+
 /** Every selectable part of the ship with its state, its problems and its spec sheet. */
 export function bayStatus(input: BayInput): ComponentStatus[] {
   const { ship } = input;
   const d = ship.design;
   const out: ComponentStatus[] = [];
   const hull = ship.hullIntegrity;
+  const cabin = equipmentOf(d.equipment, "cabina");
+  const fixed = d.equipment.filter((e) => !isEquipmentSlot(e.kind));
   out.push(
     status({
       id: "casco",
       kind: "casco",
-      name: d.hull.name,
+      name: cabin ? `${d.hull.name} · ${cabin.name}` : d.hull.name,
       health: hull,
+      ...(cabin ? { slot: "cabina" as const } : {}),
       issues: byIntegrity(hull) === "ok" ? [] : [{ attention: byIntegrity(hull), text: `Casco al ${pct(hull)}` }],
       specs: [
-        { label: "Medidas", value: `${num(d.hull.size.x)} × ${num(d.hull.size.y)} × ${num(d.hull.size.z)} m (valor de juego)` },
-        { label: "Masa del casco", value: `${num(d.hull.dryMassKg)} kg (valor de juego)` },
+        ...(cabin ? equipmentSpecs(cabin) : []),
+        ...(cabin?.wall ? [{ label: "Pared", value: `${num(cabin.wall.thicknessMm, 2)} mm de ${cabin.wall.material} (${num(wallArealDensityKgM2(cabin.wall), 1)} kg/m²)` }] : []),
+        { label: "Medidas exteriores", value: `${num(d.hull.size.x)} × ${num(d.hull.size.y)} × ${num(d.hull.size.z)} m (valor de juego)`, more: true },
+        { label: "Masa en seco", value: `${num(ship.dryMassKg)} kg: la suma de todas las piezas` },
         { label: "Masa total ahora", value: `${num(ship.massKg)} kg` },
       ],
     }),
@@ -148,15 +233,17 @@ export function bayStatus(input: BayInput): ComponentStatus[] {
       }),
     );
   });
+  out.push(...equipmentStatus(ship));
   out.push(
     status({
-      id: "alas-solares",
-      kind: "alas",
-      name: "Alas solares",
+      id: "sistemas-fijos",
+      kind: "sistemas",
+      name: "Estructura y sistemas fijos",
       issues: [],
       specs: [
-        { label: "Medidas", value: "2 alas de 3,2 × 1,4 m (valor de juego)" },
-        { label: "Energía", value: "Sin modelo todavía: no limitan nada" },
+        { label: "Masa", value: `${num(equipmentMassKg(fixed))} kg en total` },
+        ...fixed.map((e) => ({ label: e.name, value: `${num(e.massKg)} kg${e.powerW ? ` · ${num(-e.powerW)} W` : ""}`, ...(e.sources[0] ? { source: e.sources[0] } : {}) })),
+        ...fixed.map((e) => ({ label: `${e.name}: cómo se calcula`, value: `${e.basis}. ${e.materials}. ${e.flight}`, more: true })),
       ],
     }),
   );
@@ -230,6 +317,16 @@ const choresFor = (c: ComponentStatus, chores: readonly Chore[]): Chore[] => {
   return [];
 };
 
+/** One line for a piece of equipment in the bay's swap list: mass and what it does. */
+export function equipmentSummary(e: Equipment): string {
+  const parts = [`${num(e.massKg, 1)} kg`];
+  if (e.powerW > 0) parts.push(`${num(e.powerW)} W${e.solar ? " a 1 UA" : ""}`);
+  if (e.storageWh) parts.push(`${num(e.storageWh / 1000, 1)} kWh${e.rechargeable === false ? " sin recarga" : ""}`);
+  if (e.wall) parts.push(`pared de ${num(e.wall.thicknessMm, 2)} mm`);
+  if (e.bumper) parts.push(`parachoques de ${num(e.bumper.thicknessCm * 10, 2)} mm a ${e.bumper.standoffCm} cm`);
+  return parts.join(" · ");
+}
+
 /** Spare parts available to fit (the station's hangar). `Hangar` satisfies it. */
 export interface PartSupply {
   count(partId: string): number;
@@ -243,7 +340,13 @@ export function bayActions(c: ComponentStatus, chores: readonly Chore[], design:
   const tasks = choresFor(c, chores).map((x): BayAction => ({ kind: "tarea", label: x.title, detail: `${x.scenario} · ${x.exercises.length} retos`, choreId: x.id }));
   const swaps = c.slot
     ? partOptions(design, c.slot).map((p): BayAction => {
-        const what = p.kind === "tank" ? `${p.spec.capacityKg} kg de ${PROP_NAME[p.spec.propellant]}` : `${num(p.model.thrustN)} N · Isp ${p.model.ispS} s · ${num(p.model.dryMassKg, 2)} kg · ${PROP_NAME[p.model.propellant]}`;
+        const what =
+          p.kind === "tank"
+            ? `${p.spec.capacityKg} kg de ${PROP_NAME[p.spec.propellant]}`
+            : p.kind === "equipment"
+              ? equipmentSummary(p.equipment)
+              : `${num(p.model.thrustN)} N · Isp ${p.model.ispS} s · ${num(p.model.dryMassKg, 2)} kg · ${PROP_NAME[p.model.propellant]}`;
+        if (isEmptyPart(p)) return { kind: "cambiar", label: c.slot === "energia" ? "Quitar la fuente: solo batería" : "Quitar el escudo", detail: supply ? "La pieza que sale va al hangar" : "Deja el hueco vacío", slot: c.slot!, partId: p.id };
         const n = supply ? supply.count(p.id) : 1;
         if (n > 0) return { kind: "cambiar", label: `Montar ${short(p.name)}`, detail: supply ? `${what} · ${n} en el hangar` : what, slot: c.slot!, partId: p.id };
         return { kind: "cambiar", locked: true, label: `Montar ${short(p.name)}`, detail: `${what} · no hay en el hangar: fabrícala en la estación`, slot: c.slot!, partId: p.id };

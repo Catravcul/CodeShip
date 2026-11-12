@@ -1,5 +1,7 @@
 import { Vec3 } from "@core/math/vec3";
 import type { HullSpec, MountedThruster, Propellant, TankSpec } from "./components";
+import { equipmentMassKg, type Equipment } from "./equipment";
+import { debrisDamageFactor } from "./mmod";
 import type { RcsThruster } from "./rcs-layout";
 import { deltaV, massFlow } from "./rocket";
 
@@ -8,6 +10,8 @@ export interface ShipDesign {
   readonly tanks: readonly { spec: TankSpec; fillKg: number }[];
   readonly mainEngines: readonly MountedThruster[];
   readonly rcs: readonly RcsThruster[];
+  /** Cabin, power, battery, shield and the fixed systems: everything else that has mass. */
+  readonly equipment: readonly Equipment[];
   /**
    * Docking port (body frame) on top of the hull, facing +y: where the probe latches to the
    * mothership (docs/design/nave-nodriza.md).
@@ -26,6 +30,9 @@ export interface ThrustOutput {
   readonly forceBody: Vec3;
   readonly torqueBody: Vec3;
 }
+
+/** What hurt the hull: a crash or contact, or debris thrown by an asteroid. */
+export type DamageCause = "choque" | "escombros";
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -73,7 +80,7 @@ export class Ship {
     const d = this.design;
     const thrusters = [...d.mainEngines, ...d.rcs].reduce((m, t) => m + t.model.dryMassKg, 0);
     const tanks = d.tanks.reduce((m, t) => m + t.spec.dryMassKg, 0);
-    return d.hull.dryMassKg + thrusters + tanks;
+    return equipmentMassKg(d.equipment) + thrusters + tanks;
   }
 
   get massKg(): number {
@@ -87,8 +94,13 @@ export class Ship {
     return this._hull;
   }
 
-  damage(fraction: number): void {
-    this._hull = Math.max(0, this._hull - Math.max(0, fraction));
+  /**
+   * Lose hull integrity. Debris (an angry asteroid's rocks) is cut down by the cabin wall and the
+   * micrometeoroid shield (`debrisDamageFactor`); a crash or a hard contact is not.
+   */
+  damage(fraction: number, cause: DamageCause = "choque"): void {
+    const k = cause === "escombros" ? debrisDamageFactor(this.design.equipment) : 1;
+    this._hull = Math.max(0, this._hull - Math.max(0, fraction) * k);
   }
 
   repair(fraction: number): void {

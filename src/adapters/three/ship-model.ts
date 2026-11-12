@@ -6,7 +6,7 @@ import { explorerDesign } from "@modules/ship/data/explorer";
 import { MMH_DENSITY, MMH_NTO_MIXTURE_RATIO, NTO_DENSITY, PROPELLANT_DENSITY, tankVolumeM3 } from "@modules/ship/data/propellants";
 
 /** Ids of the ship's parts, as the ship bay names them (see modules/ship-bay). */
-export type PartId = "casco" | "motor" | "rcs" | `tanque-${number}` | "alas-solares" | `maquina:${string}` | `propulsor:${string}` | "cubierta-cultivo" | "despensa";
+export type PartId = "casco" | "motor" | "rcs" | `tanque-${number}` | "alas-solares" | "bateria" | "escudo-mmod" | "sistemas-fijos" | `nodriza-equipo:${string}` | `maquina:${string}` | `propulsor:${string}` | "cubierta-cultivo" | "despensa";
 
 const v3 = (v: { x: number; y: number; z: number }) => new THREE.Vector3(v.x, v.y, v.z);
 const sphereR = (volumeM3: number) => Math.cbrt((3 * volumeM3) / (4 * Math.PI));
@@ -115,14 +115,49 @@ export class ShipModel {
     const engine = design.mainEngines[0];
     if (engine) this.buildEngine(engine.model, v3(engine.position), dark);
 
-    // --- Solar wings ---
-    const cell = new THREE.MeshStandardMaterial({ color: 0x1a2a6a, roughness: 0.3, metalness: 0.5, emissive: 0x050a20 });
-    for (const sx of [-1, 1]) {
-      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.08, 0.08), dark());
-      arm.position.set(sx * (size.x / 2 + 0.4), 0, 0.6);
-      const wing = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.04, 1.4), sx < 0 ? cell : cell.clone());
-      wing.position.set(sx * (size.x / 2 + 2.4), 0, 0.6);
-      add("alas-solares", arm, wing);
+    // --- Power source: what is fitted (solar wings sized by power, RTGs, or nothing) ---
+    const source = design.equipment.find((e) => e.kind === "energia");
+    if (source?.solar) {
+      // The starting 1.5 kW wings are drawn 3.2 × 1.4 m; others scale with power (ROSA is long and narrow).
+      const k = Math.sqrt(source.powerW / 1500);
+      const span = source.id.startsWith("rosa") ? 8.6 / 2 : 3.2 * k;
+      const chord = source.id.startsWith("rosa") ? 0.8 : 1.4 * k;
+      const cell = new THREE.MeshStandardMaterial({ color: 0x1a2a6a, roughness: 0.3, metalness: 0.5, emissive: 0x050a20 });
+      for (const sx of [-1, 1]) {
+        const arm = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.08, 0.08), dark());
+        arm.position.set(sx * (size.x / 2 + 0.4), 0, 0.6);
+        const wing = new THREE.Mesh(new THREE.BoxGeometry(span, 0.04, chord), sx < 0 ? cell : cell.clone());
+        wing.position.set(sx * (size.x / 2 + 0.8 + span / 2), 0, 0.6);
+        add("alas-solares", arm, wing);
+      }
+    } else if (source && source.powerW > 0) {
+      // Two finned RTG cylinders (0.67 m long, 0.64 m across the fins) on struts at the stern.
+      for (const sx of [-1, 1]) {
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.67, 12), dark());
+        const fins = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.6, 0.04), dark());
+        const fins2 = fins.clone();
+        fins2.rotation.y = Math.PI / 2;
+        const g = new THREE.Group();
+        g.add(body, fins, fins2);
+        g.position.set(sx * (size.x / 2 + 0.5), 0, size.z / 2 - 0.6);
+        add("alas-solares", g);
+      }
+    }
+    // --- Whipple shield: a thin bumper standing off the cabin's sides and belly (the canopy and port stay clear) ---
+    const shield = design.equipment.find((e) => e.kind === "escudo" && e.bumper);
+    if (shield?.bumper) {
+      const off = shield.bumper.standoffCm / 100;
+      const sheet = new THREE.MeshStandardMaterial({ color: shield.bumper.material === "Acero" ? 0x8a8f96 : 0xc9ced6, roughness: 0.6, metalness: 0.7, transparent: true, opacity: 0.55 });
+      const len = size.z * 0.45;
+      const z = -size.z / 2 + len / 2 + 0.1;
+      const belly = new THREE.Mesh(new THREE.BoxGeometry(size.x + 2 * off, 0.02, len), sheet);
+      belly.position.set(0, -size.y / 2 - off, z);
+      add("escudo-mmod", belly);
+      for (const sx of [-1, 1]) {
+        const side = new THREE.Mesh(new THREE.BoxGeometry(0.02, size.y + off, len), sheet);
+        side.position.set(sx * (size.x / 2 + off), -off / 2, z);
+        add("escudo-mmod", side);
+      }
     }
 
     // --- Tanks: sphere volume = capacity / density. MMH/NTO is a pair (fuel left, oxidizer right). ---

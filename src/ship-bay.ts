@@ -3,7 +3,7 @@ import type { ChoreSession, Habitat } from "@modules/habitat/application/habitat
 import type { Chore } from "@modules/chores/domain/chore";
 import { swapChore } from "@modules/chores/application/catalog";
 import { TANK_PARTS, partById } from "@modules/ship/data/parts";
-import { installedId } from "@modules/ship/domain/refit";
+import { installedId, isEmptyPart } from "@modules/ship/domain/refit";
 import { bayActions, bayStatus, needingAttention, type BayAction, type BayStore, type PartSupply } from "@modules/ship-bay/application/bay";
 import type { ComponentStatus } from "@modules/ship-bay/domain/component";
 import type { Attention } from "@modules/ship-bay/domain/attention";
@@ -19,6 +19,9 @@ import type { Mothership, MothershipSpec } from "@modules/mothership/domain/moth
 import { ELECTRIC_THRUSTERS } from "@modules/mothership/data/thrusters";
 import { applyDriveRefit, driveOptions, driveRefitChore, type DriveOption } from "@modules/mothership/application/drive-refit";
 import { driveStatus, mountIdOf } from "@modules/ship-bay/application/drive";
+import { equipmentSlotOf, mothershipEquipmentStatus } from "@modules/ship-bay/application/mothership-equipment";
+import { applyEquipmentRefit, equipmentOptions, equipmentRefitChore, type EquipmentOption } from "@modules/mothership/application/equipment-refit";
+import { MOTHERSHIP_EQUIPMENT } from "@modules/mothership/data/equipment";
 import type { PartId } from "./adapters/three/ship-model";
 import { VirtualStick, curve } from "./adapters/input/stick";
 import type { DuelView, SessionText } from "./ui/duel-view";
@@ -48,11 +51,12 @@ export interface PartStore extends PartSupply {
   put(partId: string, n?: number): void;
 }
 
-/** A bay action, or a refit of one of the mothership's thruster mounts. */
-type Action = BayAction & { readonly drive?: DriveOption };
+/** A bay action, a refit of one of the mothership's thruster mounts, or a swap of its equipment. */
+type Action = BayAction & { readonly drive?: DriveOption; readonly equip?: EquipmentOption };
 
 /** Parts of the probe; everything else in the bay (machines, farm deck, stores) is on the mothership. */
-const PROBE_PART = (id: string) => id === "casco" || id === "motor" || id === "rcs" || id === "alas-solares" || id.startsWith("tanque-");
+const PROBE_IDS = new Set(["casco", "motor", "rcs", "alas-solares", "bateria", "escudo-mmod", "sistemas-fijos"]);
+const PROBE_PART = (id: string) => PROBE_IDS.has(id) || id.startsWith("tanque-");
 const viewOf = (id: string): BayView => (PROBE_PART(id) ? "sonda" : "nodriza");
 
 /**
@@ -192,7 +196,7 @@ export class ShipBay {
       return { id: s.id, name: item?.name ?? s.id, amount: this.habitat.larder(s.id), capacity: s.capacity, unit: item?.unit === "día" ? "días" : item?.unit === "lote" ? "lotes" : (item?.unit ?? "") };
     });
     const list = bayStatus({ ship: this.ship, machines: this.habitat.machines, beds: this.habitat.plants.filter((p) => p.isBed), sustainability: this.habitat.sustainability, stores });
-    return this.nodriza && this.mothership ? [...list, ...driveStatus(this.nodriza)] : list;
+    return this.nodriza && this.mothership ? [...list, ...driveStatus(this.nodriza), ...mothershipEquipmentStatus(this.nodriza)] : list;
   }
 
   private chores(): Chore[] {
@@ -276,9 +280,11 @@ export class ShipBay {
       return;
     }
     const bar = (label: string, v: number, extra = "") => `<div class="bay-bar ${v < 0.5 ? "low" : ""}"><span>${label} ${Math.round(v * 100)} %${extra}</span><i style="width:${Math.round(Math.max(0, Math.min(1, v)) * 100)}%"></i></div>`;
-    const specs = c.specs
-      .map((s) => `<tr><th>${esc(cap(s.label))}</th><td>${esc(s.value)}${s.source ? ` <a href="${esc(s.source)}" target="_blank" rel="noopener">fuente</a>` : ""}</td></tr>`)
-      .join("");
+    const tr = (s: ComponentStatus["specs"][number]) => `<tr><th>${esc(cap(s.label))}</th><td>${esc(s.value)}${s.source ? ` <a href="${esc(s.source)}" target="_blank" rel="noopener">fuente</a>` : ""}</td></tr>`;
+    const specs = c.specs.filter((s) => !s.more).map(tr).join("");
+    // The long detail (materials, flight history, how each number was reached) folds under the actions.
+    const more = c.specs.filter((s) => s.more);
+    const sheet = more.length ? `<details class="bay-more"><summary>Ficha completa y fuentes</summary><table class="bay-specs">${more.map(tr).join("")}</table></details>` : "";
     const acts = actions.map((a, i) => `<button class="bay-act ${a.kind}${a.locked ? " locked" : ""}" data-act="${i}"><b>${esc(a.label)}</b><span>${esc(a.detail)}</span></button>`).join("");
     this.panel.innerHTML = `
       <div class="bay-detail-head"><button data-back>‹ Piezas</button><i class="dot ${DOT[c.attention]}"></i></div>
@@ -288,11 +294,21 @@ export class ShipBay {
       ${c.issues.map((i) => `<div class="bay-issue ${i.attention}">${esc(i.text)}</div>`).join("")}
       <table class="bay-specs">${specs}</table>
       <div class="bay-sec">Acciones · cada una es una cadena de retos</div>
-      ${away ? `<p class="bay-none">Está en la nodriza: acopla la sonda para trabajar aquí</p>` : acts || `<p class="bay-none">Nada que hacer aquí ahora</p>`}`;
+      ${away ? `<p class="bay-none">Está en la nodriza: acopla la sonda para trabajar aquí</p>` : acts || `<p class="bay-none">Nada que hacer aquí ahora</p>`}
+      ${sheet}`;
     this.actions = actions;
   }
 
   private actionsFor(c: ComponentStatus): Action[] {
+    const slot = equipmentSlotOf(c.id);
+    if (slot && this.nodriza)
+      return equipmentOptions(this.nodriza, slot, MOTHERSHIP_EQUIPMENT, this.parts).map((o) => ({
+        kind: "cambiar",
+        label: o.label,
+        detail: o.locked ? `${o.detail} · ${o.locked}` : o.detail,
+        ...(o.locked ? { locked: true } : {}),
+        equip: o,
+      }));
     const mountId = mountIdOf(c.id);
     if (!mountId || !this.nodriza) return bayActions(c, this.chores(), this.ship.design, this.parts);
     return driveOptions(this.nodriza, mountId, ELECTRIC_THRUSTERS, this.parts).map((o) => ({
@@ -320,9 +336,13 @@ export class ShipBay {
   /** Start the action's chore in the challenge sheet; its effect lands on the real ship/habitat when done. */
   run(a: Action): void {
     if (a.drive) return this.runDrive(a.drive);
+    if (a.equip) return this.runEquipment(a.equip);
     if (a.locked) return this.say("No está en el hangar: fabrícala en la estación (Planos)");
     let chore: Chore | undefined;
-    const removed = a.slot ? installedId(this.ship.design, a.slot, TANK_PARTS) : undefined;
+    const fittedNow = a.slot ? installedId(this.ship.design, a.slot, TANK_PARTS) : undefined;
+    const old = fittedNow ? partById(fittedNow) : undefined;
+    // Taking «nothing» off puts nothing in the hangar.
+    const removed = old && isEmptyPart(old) ? undefined : fittedNow;
     if (a.kind === "tarea") chore = this.chores().find((c) => c.id === a.choreId);
     else {
       const part = a.partId ? partById(a.partId) : undefined;
@@ -330,7 +350,13 @@ export class ShipBay {
     }
     if (!chore) return;
     this.openChore(chore, (status) => {
-      if (status === "done" && chore.kind === "cambiar-pieza" && a.partId && this.parts) this.parts.swap(a.partId, removed);
+      if (status === "done" && chore.kind === "cambiar-pieza" && a.partId && this.parts) {
+        const part = partById(a.partId);
+        // «Nothing» (no shield, no source) is not a part: only the old one goes to the hangar.
+        if (part && isEmptyPart(part)) {
+          if (removed) this.parts.put(removed);
+        } else this.parts.swap(a.partId, removed);
+      }
       if (status === "done") this.say(chore.kind === "cambiar-pieza" ? `Pieza montada: la nave ha cambiado${this.parts && removed ? " · la vieja va al hangar" : ""}` : "Tarea hecha");
       else if (status === "failed") this.say("No salió: la pieza sigue como estaba");
     });
@@ -354,6 +380,25 @@ export class ShipBay {
       this.mothershipModel?.setThrusters(m.fitted);
       this.onDriveRefit?.();
       this.say(`Propulsores cambiados: ${m.thrustN.toLocaleString("es-ES", { maximumFractionDigits: 1 })} N en total${this.parts ? " · los viejos van al hangar" : ""}`);
+    });
+  }
+
+  /** Swap the mothership's auxiliary power or radiation shield: only docked, only with the part in the hangar. */
+  private runEquipment(o: EquipmentOption): void {
+    const m = this.nodriza;
+    if (!m) return;
+    if (o.locked) return this.say(o.locked);
+    if (!this.docked()) return this.say("Acopla la sonda para trabajar en la nodriza");
+    this.openChore(equipmentRefitChore(m, o.equipment), (status) => {
+      if (status === "failed") return this.say("No salió: la nodriza sigue como estaba");
+      if (status !== "done") return;
+      try {
+        applyEquipmentRefit(m, o.equipment, this.parts);
+      } catch {
+        return this.say("Falta la pieza en el hangar: no se ha cambiado nada");
+      }
+      this.onDriveRefit?.();
+      this.say(`Montado: ${o.equipment.name}${this.parts ? " · lo viejo va al hangar" : ""}`);
     });
   }
 

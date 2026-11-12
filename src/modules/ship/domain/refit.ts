@@ -1,9 +1,10 @@
 import type { Propellant, TankSpec, ThrusterModel } from "./components";
+import { isEquipmentSlot, type Equipment, type EquipmentSlot } from "./equipment";
 import { buildRcsLayout } from "./rcs-layout";
 import type { ShipDesign } from "./ship";
 
-/** Where a part goes: the main engine, the RCS set, or one of the tanks by index. */
-export type PartSlot = "motor" | "rcs" | `tanque-${number}`;
+/** Where a part goes: the main engine, the RCS set, one of the tanks by index, or an equipment slot. */
+export type PartSlot = "motor" | "rcs" | `tanque-${number}` | EquipmentSlot;
 
 export interface ThrusterPart {
   readonly kind: "thruster";
@@ -21,7 +22,18 @@ export interface TankPart {
   readonly note: string;
 }
 
-export type Part = ThrusterPart | TankPart;
+/** Cabin, power source, battery or shield. */
+export interface EquipmentPart {
+  readonly kind: "equipment";
+  readonly id: string;
+  readonly name: string;
+  readonly equipment: Equipment;
+}
+
+export type Part = ThrusterPart | TankPart | EquipmentPart;
+
+/** «Nothing» in a slot (no shield, no power source): taking the old part off needs nothing from the hangar. */
+export const isEmptyPart = (p: Part): boolean => p.kind === "equipment" && p.equipment.massKg === 0;
 
 const tankIndex = (slot: PartSlot): number => {
   const m = /^tanque-(\d+)$/.exec(slot);
@@ -33,6 +45,7 @@ const tankIndex = (slot: PartSlot): number => {
 export function fits(design: ShipDesign, slot: PartSlot, part: Part): boolean {
   if (slot === "motor") return part.kind === "thruster";
   if (slot === "rcs") return part.kind === "thruster" && part.model.thrustN < 200;
+  if (isEquipmentSlot(slot)) return part.kind === "equipment" && part.equipment.kind === slot;
   const t = design.tanks[tankIndex(slot)];
   return part.kind === "tank" && !!t && t.spec.propellant === part.spec.propellant;
 }
@@ -42,6 +55,11 @@ export function withPart(design: ShipDesign, slot: PartSlot, part: Part): ShipDe
   if (!fits(design, slot, part)) throw new Error(`${part.id} does not fit in ${slot}`);
   if (part.kind === "thruster" && slot === "motor") return { ...design, mainEngines: design.mainEngines.map((e, i) => (i === 0 ? { ...e, model: part.model } : e)) };
   if (part.kind === "thruster") return { ...design, rcs: buildRcsLayout(part.model, design.hull.size) };
+  if (part.kind === "equipment") {
+    const had = design.equipment.some((e) => e.kind === part.equipment.kind);
+    const equipment = had ? design.equipment.map((e) => (e.kind === part.equipment.kind ? part.equipment : e)) : [...design.equipment, part.equipment];
+    return { ...design, equipment };
+  }
   const i = tankIndex(slot);
   return { ...design, tanks: design.tanks.map((t, k) => (k === i ? { spec: (part as TankPart).spec, fillKg: Math.min(t.fillKg, (part as TankPart).spec.capacityKg) } : t)) };
 }
@@ -50,6 +68,7 @@ export function withPart(design: ShipDesign, slot: PartSlot, part: Part): ShipDe
 export function installedId(design: ShipDesign, slot: PartSlot, tanks: readonly TankPart[] = []): string | undefined {
   if (slot === "motor") return design.mainEngines[0]?.model.id;
   if (slot === "rcs") return design.rcs[0]?.model.id;
+  if (isEquipmentSlot(slot)) return design.equipment.find((e) => e.kind === slot)?.id;
   const t = design.tanks[tankIndex(slot)];
   return tanks.find((p) => t && p.spec.propellant === t.spec.propellant && p.spec.capacityKg === t.spec.capacityKg)?.id;
 }

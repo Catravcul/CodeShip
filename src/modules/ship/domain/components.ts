@@ -27,9 +27,9 @@ export interface TankSpec {
   readonly dryMassKg: number;
 }
 
+/** The craft's name and outer box. Its mass is the sum of its parts (`ShipDesign.equipment`). */
 export interface HullSpec {
   readonly name: string;
-  readonly dryMassKg: number;
   /** Bounding box in metres (x = width, y = height, z = length). Used for inertia. */
   readonly size: Vec3;
 }

@@ -6,6 +6,7 @@ import { RigidBodyState } from "@modules/flight/domain/rigid-body";
 import { clearanceTo, keepOutDelta, type Obstacle } from "@modules/flight/domain/keep-out";
 import type { DockingTarget } from "./docking";
 import { radiatorTemperatureK, shadowRadiusAt, wingPlanformM2, type RadiatorWing, type ShadowCone } from "./thermal";
+import { auxPowerKw, relativeDose, type MothershipEquipment, type MothershipSlot } from "./equipment";
 import { drivePlan, fitProblem, unitMassKg, type DrivePlan, type ElectricPropellant, type ElectricThruster, type MountFit, type ThrusterMount } from "./propulsion";
 
 export type { Obstacle } from "@modules/flight/domain/keep-out";
@@ -88,6 +89,16 @@ export interface MothershipSpec {
     readonly sinkK: Sourced<number>;
   };
   readonly propulsion: PropulsionSpec;
+  /** Swappable equipment fitted at the start: auxiliary power and the habitat's radiation shield. */
+  readonly equipment: readonly MothershipEquipment[];
+  /** Distance from the Sun where it works (solar wings give 1/r² of their 1 AU power), AU. */
+  readonly sunDistanceAu: Sourced<number>;
+  readonly radiation: {
+    /** Cosmic-ray dose with no shield, solar minimum, mSv per year. */
+    readonly freeSpaceMSvPerYear: Sourced<number>;
+    /** Career limit of effective dose, mSv. */
+    readonly careerLimitMSv: Sourced<number>;
+  };
   readonly propellantCapacityKg: number;
   /** Mass of the habitat ring alone; the twin is sized from it (same moment of inertia). */
   readonly habRingItems: readonly MassItem[];
@@ -98,6 +109,9 @@ export interface MothershipSpec {
   readonly parkingDistanceM: Sourced<number>;
 }
 
+/** A piece of equipment as a line of the mass budget. */
+const equipmentItem = (e: MothershipEquipment): MassItem => ({ id: e.slot, label: e.name, kg: e.massKg, basis: e.basis, sources: e.sources });
+
 export class Mothership implements DockingTarget {
   readonly id = "nodriza";
   /** Id of the port the mothership itself is docked to (a station's), if any. */
@@ -106,6 +120,7 @@ export class Mothership implements DockingTarget {
   private _position: Vec3;
   private _orientation: Quat;
   private fits: MountFit[];
+  private equip: Map<MothershipSlot, MothershipEquipment>;
 
   constructor(
     readonly spec: MothershipSpec,
@@ -117,6 +132,7 @@ export class Mothership implements DockingTarget {
     this._position = position;
     this._orientation = orientation;
     this.fits = spec.propulsion.mounts.map((m) => spec.propulsion.fitted.find((f) => f.mountId === m.id)).filter((f): f is MountFit => !!f);
+    this.equip = new Map(spec.equipment.map((e) => [e.slot, e]));
   }
 
   get position(): Vec3 {
@@ -154,8 +170,13 @@ export class Mothership implements DockingTarget {
 
   // --- Mass -----------------------------------------------------------------
 
+  /** The habitat ring's lines: the fixed ones and the radiation shield fitted around the module. */
+  get habRingLines(): MassItem[] {
+    const shield = this.equipment("blindaje");
+    return shield ? [...this.spec.habRingItems, equipmentItem(shield)] : [...this.spec.habRingItems];
+  }
   get habRingMassKg(): number {
-    return this.spec.habRingItems.reduce((m, i) => m + i.kg, 0);
+    return this.habRingLines.reduce((m, i) => m + i.kg, 0);
   }
   /**
    * The twin turns the other way at the same radius and rate, so it must have the same moment of
@@ -166,8 +187,9 @@ export class Mothership implements DockingTarget {
   }
   /** Every dry line of the budget, the twin ring included. */
   get massBudget(): MassItem[] {
+    const aux = this.equipment("energia-auxiliar");
     return [
-      ...this.spec.habRingItems,
+      ...this.habRingLines,
       {
         id: "anillo-gemelo",
         label: "Anillo gemelo (camarotes, almacenes, agua)",
@@ -176,6 +198,7 @@ export class Mothership implements DockingTarget {
         sources: [],
       },
       ...this.spec.otherItems,
+      ...(aux && aux.massKg ? [equipmentItem(aux)] : []),
       {
         id: "propulsores",
         label: `Propulsores (${this.fits.filter((f) => f.count).map((f) => `${f.count} ${f.thruster.shortName}`).join(" + ") || "ninguno"}) con sus fuentes de potencia`,
@@ -217,10 +240,47 @@ export class Mothership implements DockingTarget {
   fitOf(mountId: string): MountFit | undefined {
     return this.fits.find((f) => f.mountId === mountId);
   }
-  /** Power the reactor can give the thrusters: its output less what the rest of the ship uses, kW. */
+  /** Power the reactor and the auxiliary source give the thrusters: their output less what the rest of the ship uses, kW. */
   get availableThrusterKw(): number {
     const p = this.spec.propulsion;
-    return Math.max(0, this.spec.power.electricKw.value - p.hotelLoadKw.value);
+    return Math.max(0, this.spec.power.electricKw.value + this.auxiliaryKw - p.hotelLoadKw.value);
+  }
+
+  // --- Equipment (auxiliary power, radiation shield) ---------------------------------
+
+  /** What is fitted in a slot. */
+  equipment(slot: MothershipSlot): MothershipEquipment | undefined {
+    return this.equip.get(slot);
+  }
+  get fittedEquipment(): MothershipEquipment[] {
+    return [...this.equip.values()];
+  }
+  /** Fit a piece of equipment in its slot; returns what was there. */
+  fitEquipment(e: MothershipEquipment): MothershipEquipment | undefined {
+    const before = this.equip.get(e.slot);
+    this.equip.set(e.slot, e);
+    return before;
+  }
+  /** A copy with full propellant and one piece of equipment swapped: to see a change before making it. */
+  withEquipment(e: MothershipEquipment, propellantKg = this.spec.propellantCapacityKg): Mothership {
+    const copy = new Mothership({ ...this.spec, propulsion: { ...this.spec.propulsion, fitted: this.fits }, equipment: this.fittedEquipment }, this._position, this._orientation, propellantKg);
+    copy.fitEquipment(e);
+    return copy;
+  }
+  /** Power the auxiliary source adds where the ship is, kW. */
+  get auxiliaryKw(): number {
+    const e = this.equipment("energia-auxiliar");
+    return e ? auxPowerKw(e, this.spec.sunDistanceAu.value) : 0;
+  }
+  /** Cosmic-ray dose inside the habitat with the shield fitted, mSv per year (the module's own wall not counted). */
+  get crewDoseMSvPerYear(): number {
+    const s = this.equipment("blindaje")?.shield;
+    const k = s ? relativeDose(s.material, s.arealDensityGcm2) : 1;
+    return this.spec.radiation.freeSpaceMSvPerYear.value * k;
+  }
+  /** Years aboard until the career limit is reached. */
+  get yearsToCareerLimit(): number {
+    return this.spec.radiation.careerLimitMSv.value / this.crewDoseMSvPerYear;
   }
   /** What the fitted thrusters can do with the power on hand. */
   get drive(): DrivePlan {
@@ -243,7 +303,7 @@ export class Mothership implements DockingTarget {
 
   /** A copy with the propellant given (full by default) and one mount refitted: to see a change before making it. */
   withFit(mountId: string, thruster: ElectricThruster, count: number, propellantKg = this.spec.propellantCapacityKg): Mothership {
-    const copy = new Mothership({ ...this.spec, propulsion: { ...this.spec.propulsion, fitted: this.fits } }, this._position, this._orientation, propellantKg);
+    const copy = new Mothership({ ...this.spec, propulsion: { ...this.spec.propulsion, fitted: this.fits }, equipment: this.fittedEquipment }, this._position, this._orientation, propellantKg);
     copy.refit(mountId, thruster, count);
     return copy;
   }

@@ -62,8 +62,10 @@ export class StationDock {
   /** Each frame: `cockpit` is true while the cockpit is showing with nothing over it. */
   update(cockpit: boolean): void {
     const near = this.deps.alongside();
-    this.btn.classList.toggle("hidden", !(cockpit && near));
-    const sub = this.deps.docked() ? "Atracada" : `A ${km(this.deps.distanceM())} · dentro del alcance de atraque`;
+    const show = cockpit && near;
+    this.btn.classList.toggle("hidden", !show);
+    document.body.classList.toggle("station-near", show);
+    const sub = this.deps.docked() ? "Atracada" : `A ${km(this.deps.distanceM())} de la estación`;
     if (near && this.sub.textContent !== sub) this.sub.textContent = sub;
     if (this.devBtn) {
       const t = `Estación · ${km(this.deps.distanceM())} (dev)`;

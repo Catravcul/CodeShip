@@ -13,9 +13,40 @@ Persuadir un asteroide → la bodega se llena con su roca real → Descargar en 
 
 ## Cómo se llega
 
-- **Estación Nueva Polana**, aparcada a unos 1,2 km de Bennu, a 0,9 km del punto de salida. Se ve por la ventana izquierda de la cabina: celosía con paneles solares, dos módulos, la torre de la refinería y el hangar con la puerta iluminada. Posición, tamaño y distancia son **valores de juego** (`POLANA_STATION` en `modules/station/data/station.ts`).
-- **Botón «Estación · 0,9 km»** en la barra de vuelo de la cabina. Por ahora abre la estación **desde cualquier sitio** (acceso remoto de prueba, para probar sin volar hasta allí). A menos de 400 m la cabecera dice **Atracada** y la sonda aparece aparcada en el hangar 3D. Con el mapa de navegación, la estación es un destino más: `StationSite` tiene `id`, `name`, `position`, `radiusM` y `dockingRangeM`, y `Station.isAlongside(p)` dice si una nave está atracada.
-- **Volver** o Esc regresan a la cabina. Mientras tanto la sonda queda sin órdenes, igual que en la bahía.
+Petición de Berón (2026-11-12): «La estación debe construirse como las demás estaciones: la estructura existe en el espacio y, al acercarte, aparece la opción de revisar las tareas».
+
+- **Estación Nueva Polana**, a unos 1,2 km de Bennu y a 0,9 km del punto de salida. Es una **estructura física**: la sonda no la puede atravesar (misma regla de exclusión que la nodriza, que se apaga cerca de los puertos para poder acoplar).
+- **Botón «Revisar tareas de la estación»**: aparece solo cuando la nave está **acoplada a la estación o a menos de 400 m** (`dockingRangeM`, valor de juego), también con la sonda a bordo de la nodriza atracada. En el móvil va en la columna izquierda, justo encima de los mandos táctiles, al alcance del pulgar y sin tapar la barra de vuelo; la tira del piloto automático sube encima. En el escritorio va abajo, centrado. Abre la pantalla de la estación de siempre.
+- **Acceso remoto**: ya no existe en el juego normal. Con `?dev` en la URL vuelve el botón «Estación · 0,9 km (dev)» de la barra de vuelo, que abre la estación desde cualquier sitio (para pruebas y capturas).
+- **En el mapa** hay dos destinos nuevos además de los asteroides: la **Estación Nueva Polana** (rombo dorado) y la **Nodriza** (rombo ámbar). Su ficha muestra la distancia al puerto, los puertos IDSS, los límites de contacto y el viaje. El botón dice **«Ir a la estación»** o **«Volver a la nodriza»** y programa el viaje con la **misma cadena de retos** (ordenar la maniobra, Δv, tiempo, reparar el frenado y la orden a la IA), con un bloque y una respuesta nuevos sobre el acople a 0,07 m/s.
+  - **Con la sonda acoplada a la nodriza**, «Ir a la estación» lleva **a la nodriza entera**: vuela con sus propulsores Hall (en cámara rápida, como los demás viajes), para a 80 m en el eje del puerto de la nodriza, se acerca a 0,07 m/s y **acopla sola**. La sonda llega a bordo.
+  - **Con la sonda suelta** (o acoplada a la estación), vuela la sonda: rodea las rocas hasta un punto a 300 m en el eje del puerto de la sonda, frena a 40 m y el **asistente de acople** hace el resto, con los mismos límites IDSS que en la nodriza.
+  - **«Volver a la nodriza»** hace lo mismo hacia el puerto de la nodriza. Si ya estás acoplada, el mapa lo dice y no deja programarlo.
+  - Si la nodriza está atracada en la estación y se programa un viaje a un asteroide, primero **retrocede 80 m por el eje del puerto** sin girar (para que los anillos no barran la estación) y luego sigue su ruta.
+- Mientras tanto, el asistente de acople (K) sirve para cualquier puerto: elige el más cercano, o el del viaje.
+
+## La estructura
+
+Inspirada en la ISS y en el Gateway lunar (`POLANA_LAYOUT` en `modules/station/data/structure.ts`). Ejes de la estación: x a lo largo de la celosía, y hacia arriba, z hacia popa. Mantiene su orientación; solo las alas solares giran sobre su eje largo para seguir al Sol, como las juntas beta (BGA) de la ISS.
+
+| Pieza | Tamaño | Base |
+| --- | --- | --- |
+| Nodo 1 (centro) | 5,47 × 4,57 m | [Nodo Unity de la ISS](https://en.wikipedia.org/wiki/Unity_(ISS_module)) |
+| Módulo habitable (delante) | 6,1 × 3 m | [HALO del Gateway lunar](https://handwiki.org/wiki/Astronomy:Habitation_and_Logistics_Outpost) |
+| Nodo 2 (atraque) | 5,47 × 4,57 m | Otro nodo como Unity, con los dos puertos |
+| Dos adaptadores de atraque | 1,1 m de alto, 2,4 m de diámetro | [IDA de la ISS](https://en.wikipedia.org/wiki/International_Docking_Adapter); paso de 800 mm del [NASA Docking System](https://en.wikipedia.org/wiki/NASA_Docking_System) (norma IDSS) |
+| Módulo de fabricación (detrás) | 8,5 × 4,3 m | Valor de juego, del tamaño del laboratorio Destiny. Tiene el brillo del horno de la refinería |
+| Hangar (al fondo) | 20 × 14 × 20 m | Valor de juego; la puerta iluminada mira a popa |
+| Celosía | 88 m de largo, 4,5 m de sección | Valor de juego, como la celosía de la ISS |
+| Cuatro alas solares | 35 × 12 m cada una | [Alas solares de la ISS](https://en.wikipedia.org/wiki/Electrical_system_of_the_International_Space_Station), casi 31 kW cada una (unos 124 kW en total) |
+| Dos radiadores | 23 × 3,4 m | Valor de juego; la ISS expulsa hasta [70 kW](https://en.wikipedia.org/wiki/External_Active_Thermal_Control_System) con los suyos |
+
+**Puertos** (norma IDSS, los mismos límites de contacto que la nodriza: 0,05–0,10 m/s de cierre, 0,10 m de desalineación lateral, 4° de inclinación):
+
+- **Puerto de la sonda**: debajo del nodo 2 (nadir). La sonda acopla con el techo contra el puerto, igual que en la nodriza.
+- **Puerto de la nodriza**: en la punta del nodo 2, mirando hacia delante. La nodriza acopla de proa con un puerto IDSS nuevo en la punta de su nodo delantero (`NODRIZA_NOSE_PORT`, posición de juego), como un vehículo que visita la ISS. Así queda delante de la estación: sus anillos (56 m de radio) quedan a más de 10 m de cualquier parte de la estación (hay un test).
+
+La estructura completa cabe en una esfera de 66 m (`radiusM` de la estación). Las rutas del mapa la rodean como a una roca.
 
 ## La pantalla
 
@@ -87,18 +118,28 @@ Si se resuelven, se toman los materiales y el trabajo entra en la cola. Si se fa
 - `modules/station/domain`: `MaterialStock`, `Blueprint`, `RefineProcess`, `STATION_TUNING`, `Hangar` y `Station` (descargar, refinar, fabricar, colas por máquina y `tick(horas)`).
 - `modules/station/application`: `StationOps` (planos con lo que falta, refinería, sesiones de retos) y `challenges.ts` (`fabricationChore` y `refineChore`, que reutilizan `ChoreRun`, `stepChain` y `DuelView`).
 - `modules/station/data`: materiales y mapa desde la carga, procesos, planos, estación y fuentes.
-- Adaptadores: `adapters/three/station-model.ts` (`StationModel` en la región y `StationScene` dentro del hangar) y `src/station-screen.ts` (pestañas y retos).
-- Cambios en archivos compartidos: Bennu y Nueva Polana (composición), `resources.ts` (pesos), `Expedition.unloadCargo()`, `bay.ts` (`PartSupply`), `ship-bay.ts` (consume del hangar), `start-region.ts` (sin rocas sobre la estación), `parts.ts` (dos tanques nuevos) y `main.ts`.
+- `modules/station/domain/structure.ts`: `StationStructure` (módulos, piezas, puertos como `DockingTarget`, exclusión y radio). `modules/station/data/structure.ts`: `POLANA_LAYOUT` con sus fuentes.
+- **Acople generalizado** (`modules/mothership`): `DockingTarget` es cualquier cosa con un puerto (la nodriza o un puerto de la estación). `Docking` acepta varios destinos, sabe a cuál está acoplada (`dockedTo`) y el asistente vuela al más cercano o al que se le pida (`assistTo`). `approachSpeed` es el perfil de frenado del asistente, compartido con `Berthing`, el caso de uso con el que la nodriza (que no vuela en el bucle de 120 Hz) se acerca a un puerto y se juzga el contacto con los mismos límites IDSS. La geometría de exclusión pasó a `flight/domain/keep-out.ts` y la usan la nodriza y la estación.
+- **Navegación**: `NavTarget` es ahora `AsteroidTarget | DockTarget`. `Navigator` planea el viaje a un puerto (`probeDockTrip`), pasa al asistente de acople al llegar (estado `docking` y luego `docked`) y, si la nodriza lleva la sonda, la lleva hasta el puerto de la nodriza y la acopla (`CarrierPort.berth`). Valores de juego en `navigation/application/dock-trip.ts`.
+- Adaptadores: `adapters/three/station-model.ts` (`StationModel` construido desde `POLANA_LAYOUT`, y `StationScene` dentro del hangar), `src/station-screen.ts` (pestañas y retos), `src/station-dock.ts` (el botón «Revisar tareas», el acceso `?dev` y los destinos del mapa) y `src/ui/nav-dock-card.ts` (ficha del mapa).
+- Cambios en archivos compartidos: Bennu y Nueva Polana (composición), `resources.ts` (pesos), `Expedition.unloadCargo()`, `bay.ts` (`PartSupply`), `ship-bay.ts` (consume del hangar), `start-region.ts` (sin rocas sobre la estación), `parts.ts` (dos tanques nuevos) y `main.ts`. Con el atraque: `main.ts` (estructura, destinos del mapa, botón, exclusión), `nav-map.ts` (destinos de acople), `navigation.ts` (textos), `region.ts` (`obstaclesExcept` sin asteroide), `mothership.ts` (exclusión compartida, `id`, `dockedTo`) y `style.css`.
 
 ## Capturas
+
+`docs/screenshots/estacion-atraque-*-{desktop,mobile}.png`: 1 cabina en la salida (sin botón), 2 ficha de la estación en el mapa, 3 primer reto del viaje, 4 la nodriza en viaje, 5 nodriza atracada con el botón «Revisar tareas», 6 vista exterior, 7 pantalla de la estación, 8 la nodriza atracada vista desde fuera, 9 la sonda acoplando en el puerto de la sonda, 10 y 11 sonda acoplada a la estación.
+
+Capturas anteriores:
 
 `docs/screenshots/estacion-*-{desktop,mobile}.png`, de 0 (cabina y estación vista por la ventana) a 7 (bahía con pieza disponible y pieza bloqueada). La sonda se coloca junto a la estación por código, porque aún no hay piloto automático.
 
 ## Preguntas abiertas para Berón
 
-- **¿Acceso solo atracado?** Hoy el botón abre la estación desde cualquier sitio. ¿Lo limitamos a estar atracado (a menos de 400 m) cuando haya mapa o piloto automático? ¿Y las piezas del hangar solo se montan estando allí, o la nodriza lleva un almacén propio?
+- **Acceso solo atracado** (resuelto): el botón aparece solo acoplada o a menos de 400 m. Queda abierto si las piezas del hangar se montan solo estando allí o si la nodriza lleva un almacén propio. Hoy la bahía de la nave sigue cogiendo piezas del hangar desde cualquier sitio.
+- **¿400 m o solo acoplada?** Hoy basta con estar a menos de 400 m. ¿Lo dejamos así o exigimos estar acoplada?
+- **Interior con la nodriza atracada.** El interior de la nodriza solo se abre con la sonda acoplada a la nodriza. Si la sonda está en el puerto de la estación y la nodriza también está atracada, ¿se puede pasar andando por la estación?
 - **Kits importados.** ¿Cómo se consiguen más: comercio con el santuario, misiones de Nevaeh o, más adelante, fabricar electrónica?
 - **Usos del agua y del oxígeno.** Se acumulan, pero aún no sirven para nada. ¿Rellenan el soporte vital de la nodriza, o hacen propelente (H₂/O₂ con un motor nuevo)? ¿Se repone el pienso o el medio de cultivo con carbono?
 - **Sondas.** La sonda fabricada se queda en el hangar. ¿Qué hace: prospectar asteroides antes del duelo, transportar carga, servir de nodo de la nano_net?
 - **Montaje fallido.** Si se fallan los retos de fabricar, no se pierde material. ¿Queremos que se pierda una parte (desecho)?
-- **Colisión con la estación.** La estación aún no es un obstáculo físico para la sonda ni tiene puerto de atraque propio, como el de la nodriza.
+- **Colisión con la estación** (resuelto): la estación es un obstáculo y tiene dos puertos IDSS.
+- **Otras estaciones.** `StationStructure` y `DockTarget` sirven para más estaciones. ¿Habrá más, por ejemplo en otras regiones?

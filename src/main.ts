@@ -390,10 +390,13 @@ const n2 = (v: number) => v.toFixed(2).replace(".", ",");
 /** Docking line for the banner, or "" when the mothership is far. */
 function dockingText(): string {
   if (performance.now() < flashUntil) return flashText;
+  // During a mothership trip the autopilot strip says where it is going.
+  if (nav.status === "carrier") return "";
   const on = docking.dockedTo;
-  if (on) return `Acoplada a ${on === mothership ? "la nodriza" : "la estación"}${mothership.dockedTo && on === mothership ? " (atracada en la estación)" : ""} · K desacopla · M abre el mapa`;
+  if (on) return `${on === mothership && mothership.dockedTo ? "Nodriza atracada en la estación" : `Acoplada a ${on === mothership ? "la nodriza" : "la estación"}`} · K desacopla · M abre el mapa`;
   // While the trip autopilot flies away from the port, the docking read-out is noise.
-  if (nav.status === "autopilot") return "";
+  // The autopilot strip already shows the automatic docking's progress.
+  if (nav.status === "autopilot" || nav.status === "docking") return "";
   const port = docking.current();
   const a = docking.alignment(port);
   const range = flight.state.position.sub(port.port.position).length();

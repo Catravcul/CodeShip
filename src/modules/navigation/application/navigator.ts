@@ -89,7 +89,7 @@ export interface DockingPort {
   readonly assist: boolean;
   assistTo(target: DockingTarget): void;
   undock(): void;
-  alignment(target: DockingTarget): { readonly axialM: number; readonly closingMs: number };
+  alignment(target: DockingTarget): { readonly axialM: number; readonly lateralM: number; readonly closingMs: number };
 }
 
 export interface NavigatorPorts {
@@ -447,7 +447,8 @@ export class Navigator {
     const t = this._target;
     if (this._status === "docking" && t.kind === "dock" && this.ports.docking) {
       const a = this.ports.docking.alignment(t.probePort);
-      const r = Math.max(0, a.axialM);
+      // Straight-line gap to the port (off the axis it first backs out and centres).
+      const r = Math.hypot(Math.max(0, a.axialM), a.lateralM);
       return { vehicle: "probe", phase: "dock", remainingM: r, etaS: r / Math.max(0.05, a.closingMs), speedMS: Math.abs(a.closingMs), fraction: 1 - Math.min(1, r / DOCK_TRIP.handoverM) };
     }
     const ct = this._carrierTrip;

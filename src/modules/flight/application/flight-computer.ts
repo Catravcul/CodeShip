@@ -20,6 +20,14 @@ export interface FlightTarget {
   toWorld(local: Vec3, timeS: number): Vec3;
 }
 
+/**
+ * Port for trip guidance (the trip autopilot). Asked for a command every simulation step, so
+ * it keeps flying correctly under time warp. Returns null once it hands control back.
+ */
+export interface Guidance {
+  command(state: RigidBodyState, simTimeS: number): ThrustCommand | null;
+}
+
 export type FlightEvent = "landed" | "lifted-off" | "bounced" | "crashed" | "tilted";
 
 export const NO_INPUT: ThrustCommand = { mainThrottle: 0, translation: Vec3.ZERO, rotation: Vec3.ZERO };
@@ -62,12 +70,41 @@ export class FlightComputer {
   /** Where the ship is anchored, in the target's own frame, while landed. */
   private anchor: { position: Vec3; orientation: Quat } | null = null;
   private events: FlightEvent[] = [];
+  private _guidance: Guidance | null = null;
+  private _target: FlightTarget | undefined;
 
   constructor(
     readonly ship: Ship,
     private _state: RigidBodyState,
     private readonly world: { gravitySources: readonly GravitySource[]; target?: FlightTarget },
-  ) {}
+  ) {
+    this._target = world.target;
+  }
+
+  /** The body the telemetry, contact and landing refer to. */
+  get target(): FlightTarget | undefined {
+    return this._target;
+  }
+
+  /** Point the flight computer at another body. Not while anchored to the current one. */
+  setTarget(target: FlightTarget): void {
+    if (this.anchor) throw new Error("Cannot change target while landed");
+    this._target = target;
+  }
+
+  /** Trip guidance flying the ship now (null when the pilot has the controls). */
+  get guidance(): Guidance | null {
+    return this._guidance;
+  }
+
+  /** Hand the controls to automatic guidance until it returns null or the pilot touches the controls. */
+  engage(guidance: Guidance): void {
+    this._guidance = guidance;
+  }
+
+  disengage(): void {
+    this._guidance = null;
+  }
 
   get state(): RigidBodyState {
     return this._state;
@@ -99,6 +136,8 @@ export class FlightComputer {
   }
 
   update(realDtS: number, input: ThrustCommand): void {
+    // Any pilot input takes the controls back from the autopilot.
+    if (this._guidance && (input.mainThrottle > 0 || input.translation.length() > 0 || input.rotation.length() > 0)) this._guidance = null;
     this.accumulator += realDtS;
     while (this.accumulator >= STEP_S - 1e-12) {
       this.step(input);
@@ -109,7 +148,7 @@ export class FlightComputer {
 
   telemetry(): Telemetry {
     const s = this._state;
-    const target = this.world.target;
+    const target = this._target;
     const rel = target ? s.position.sub(target.position) : s.position;
     const dist = rel.length();
     return {
@@ -128,7 +167,7 @@ export class FlightComputer {
   /** Local down at the ship, how far the ship reaches toward it and how tilted the belly is. */
   private groundGeometry(): { clearance: number; tiltDeg: number; reach: number; normal: Vec3; tiltRad: number } {
     const s = this._state;
-    const target = this.world.target;
+    const target = this._target;
     const normal = target ? s.position.sub(target.position).normalize() : Vec3.Y;
     const downBody = s.toBody(normal.scale(-1));
     const half = this.ship.design.hull.size.scale(0.5);
@@ -138,8 +177,14 @@ export class FlightComputer {
     return { clearance: height - reach, tiltDeg: (tiltRad * 180) / Math.PI, reach, normal, tiltRad };
   }
 
-  private step(input: ThrustCommand): void {
-    const target = this.world.target;
+  private step(pilotInput: ThrustCommand): void {
+    const target = this._target;
+    let input = pilotInput;
+    if (this._guidance) {
+      const auto = this._guidance.command(this._state, this._simTimeS);
+      if (auto) input = auto;
+      else this._guidance = null;
+    }
     if (this.anchor && target) {
       const thrusting = input.mainThrottle > 0 || input.translation.length() > 0;
       if (!thrusting) {

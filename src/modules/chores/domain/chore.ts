@@ -28,7 +28,8 @@ export type ChoreKind =
   | "nano-convertir"
   | "nano-programar"
   | "nano-reparar"
-  | "salir-eva";
+  | "salir-eva"
+  | "programar-viaje";
 
 /** Groups for filtering the task board. */
 export type ChoreCategory = "comida" | "plantas" | "animales" | "nave" | "salud" | "misiones";
@@ -62,6 +63,7 @@ export const CHORE_CATEGORY: Readonly<Record<ChoreKind, ChoreCategory>> = {
   "nano-programar": "misiones",
   "nano-reparar": "misiones",
   "salir-eva": "nave",
+  "programar-viaje": "misiones",
 };
 
 /** A task on board, done by solving code challenges in order. */

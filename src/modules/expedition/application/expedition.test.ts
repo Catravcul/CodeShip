@@ -8,6 +8,9 @@ import { EXERCISES } from "@modules/mind-duel/data/exercises";
 import type { Answer, Exercise } from "@modules/mind-duel/domain/exercise";
 import { Ship } from "@modules/ship/domain/ship";
 import { explorerDesign } from "@modules/ship/data/explorer";
+import { POLANA_MEMBERS } from "@modules/celestial/data/nueva-polana";
+import { duelProfileFor } from "@modules/mind-duel/domain/difficulty";
+import { resourceRichness } from "@modules/celestial/domain/resources";
 import { Expedition } from "./expedition";
 
 const r = BENNU.meanRadiusM.value;
@@ -74,5 +77,29 @@ describe("Expedition", () => {
     e.startDuel();
     e.update(2, { ...NO_INPUT, mainThrottle: 1 });
     expect(e.flight.landed).toBe(true);
+  });
+
+  it("can switch to another asteroid, land on it and duel a mind as hard as its mass and resources", () => {
+    const bennu = new Asteroid(BENNU, Vec3.ZERO);
+    const data = POLANA_MEMBERS[0]!;
+    const member = new Asteroid(data, new Vec3(-4200, 900, -9000));
+    const above = member.position.add(new Vec3(0, data.meanRadiusM.value + 1.5, 0));
+    const flight = new FlightComputer(Ship.create(explorerDesign()), RigidBodyState.at(above).withVelocity(member.surfaceVelocity(above).add(new Vec3(0, -0.05, 0))), {
+      gravitySources: [bennu, member],
+      target: bennu,
+    });
+    const e = new Expedition(flight, bennu, EXERCISES, 500);
+    expect(e.retarget(member)).toBe(true);
+    expect(e.asteroid).toBe(member);
+    expect(flight.target).toBe(member);
+    land(e);
+    expect(e.phase).toBe("landed");
+    expect(e.retarget(bennu)).toBe(false);
+    e.startDuel();
+    const expected = duelProfileFor({ massKg: member.massKg, richness: resourceRichness(data.composition) });
+    expect(e.duel!.profile).toEqual(expected);
+    while (e.phase === "duel") e.answer(correct(e.duel!.current!));
+    expect(e.phase).toBe("persuaded");
+    expect(e.isPersuaded(data.id)).toBe(true);
   });
 });

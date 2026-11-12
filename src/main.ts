@@ -55,6 +55,9 @@ import { SkyBodies } from "./adapters/three/sky-bodies";
 import { Eva } from "@modules/eva/application/eva";
 import { EvaMode } from "./eva-mode";
 import { SpinRing } from "@modules/gravity/domain/spin-gravity";
+import { Navigator } from "@modules/navigation/application/navigator";
+import { asteroidTarget } from "@modules/navigation/domain/nav-target";
+import { NavigationMode } from "./navigation";
 
 // --- Domain setup -----------------------------------------------------------
 const d = BENNU.dimensionsM.value;
@@ -74,6 +77,18 @@ const start = RigidBodyState.at(startPos).withOrientation(
 );
 const flight = new FlightComputer(ship, start, { gravitySources: region.asteroids, target: bennu });
 const expedition = new Expedition(flight, bennu, EXERCISES, 500);
+// Navigation: any catalogued asteroid of the region can be the target (docs/design/navegacion.md).
+const navTargets = region.asteroids.map(asteroidTarget);
+const nav = new Navigator(
+  flight,
+  {
+    targets: navTargets,
+    obstaclesFor: (t) => region.obstaclesExcept(t.body),
+    retarget: (t) => expedition.retarget(t.body),
+    isPersuaded: (t) => expedition.isPersuaded(t.id),
+  },
+  navTargets[0]!,
+);
 
 // Life on board: a long leg is already under way, so the garden has some days behind it.
 const habitat = new Habitat(seededRandom(2026), 3, ship, "Doménica", MACHINES);
@@ -168,7 +183,9 @@ root.appendChild(reticle);
 
 const hud = new Hud(root, {
   ship: ship.name,
-  target: BENNU.name,
+  get target() {
+    return expedition.asteroid.data.name;
+  },
   propellants: [
     // Getters: a tank swap in the ship bay changes the capacity.
     { label: "MMH/NTO (motor principal)", get capacity() { return ship.propellantCapacityKg("MMH/NTO"); } },
@@ -184,6 +201,14 @@ const duelView = new DuelView(root);
 const view = new FlightView(scene, camera, root, () => ship.design, { spec: ring.spec, omega: () => ring.omegaRadS });
 const landBtn = view.addButton("land-btn", () => (flight.landingAssist = !flight.landingAssist));
 const namesBtn = view.addButton("names-btn", () => (skyBodies.labelsOn = !skyBodies.labelsOn));
+const navMode = new NavigationMode(root, nav, duelView, {
+  title: `Mapa · ${region.data.name}`,
+  boundaryRadiusM: region.data.boundaryRadiusM,
+  rocks: region.rocks,
+  shipPosition: () => flight.state.position,
+  shipNose: () => flight.state.toWorld(new Vec3(0, 0, -1)),
+});
+view.addButton("map-btn", () => navMode.toggle()).textContent = "Mapa";
 const regionTag = document.createElement("div");
 regionTag.className = "region-tag";
 root.appendChild(regionTag);
@@ -258,7 +283,7 @@ root.appendChild(action);
 action.addEventListener("click", () => {
   if (expedition.canStartDuel) {
     expedition.startDuel();
-    duelView.show(duelSession(), asteroidText(BENNU.name), (answer) => {
+    duelView.show(duelSession(), asteroidText(expedition.asteroid.data.name), (answer) => {
       const events = expedition.answer(answer);
       return { ok: events.some((e) => e.type === "idea-accepted") };
     });
@@ -276,12 +301,12 @@ function renderPhase(): void {
   action.classList.toggle("hidden", nanoPanel.busy || !((p === "landed" && !duelView.visible) || ((p === "persuaded" || p === "aggressive") && duelView.visible)));
   action.textContent = p === "landed" ? "Entrar en su mente" : "Volver a la cabina";
   if (p === "persuaded") {
-    banner.textContent = `${BENNU.name} obedece: ${expedition.cargo.map((c) => `${c.kg.toFixed(0)} kg de ${c.material}`).join(", ")} en la bodega`;
+    banner.textContent = `${expedition.asteroid.data.name} obedece: ${expedition.cargo.map((c) => `${c.kg.toFixed(0)} kg de ${c.material}`).join(", ")} en la bodega`;
   } else if (p === "aggressive") {
     const left = Math.max(0, expedition.safeDistanceM! - t.distanceToSurface);
-    banner.textContent = left > 0 ? `¡${BENNU.name} está furioso! Huye: faltan ${left.toFixed(0)} m hasta la distancia segura` : "A salvo. Espera a que se calme";
+    banner.textContent = left > 0 ? `¡${expedition.asteroid.data.name} está furioso! Huye: faltan ${left.toFixed(0)} m hasta la distancia segura` : "A salvo. Espera a que se calme";
   } else if (p === "landed") {
-    banner.textContent = "Nave anclada · puedes salir a Bennu con el traje";
+    banner.textContent = expedition.asteroid === bennu ? "Nave anclada · puedes salir a Bennu con el traje" : `Nave anclada en ${expedition.asteroid.data.name} · entra en su mente`;
   } else {
     banner.textContent =
       t.clearance < 60
@@ -306,7 +331,7 @@ let last = performance.now();
 renderer.setAnimationLoop((now) => {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
-  const cmd = interior.active || bay.active || evaMode.active ? NO_INPUT : mergeCommands(pilot.command(), touch.command());
+  const cmd = interior.active || bay.active || evaMode.active || navMode.blocksInput ? NO_INPUT : mergeCommands(pilot.command(), touch.command());
   const idle = cmd.mainThrottle === 0 && cmd.translation.length() === 0 && cmd.rotation.length() === 0;
   // Time warp only on quiet cruise far from the surface, so landing stays real-time.
   const far = flight.telemetry().distanceToSurface >= WARP_MIN_DISTANCE_M;
@@ -322,11 +347,12 @@ renderer.setAnimationLoop((now) => {
   // Region rules: soft boundary push back and no flying through the other rocks (game rules).
   if (!flight.landed) {
     const st = flight.state;
-    flight.applyImpulse(region.boundaryPush(st.position, st.velocity, dt * warp).add(region.avoidObstacles(st.position, st.velocity)));
+    flight.applyImpulse(region.boundaryPush(st.position, st.velocity, dt * warp).add(region.avoidObstacles(st.position, st.velocity, expedition.asteroid)));
   }
   // Shield nodes absorb part of the jolt.
-  if (expedition.phase === "aggressive" && lastPhase !== "aggressive") habitat.jolt(0.8 * (1 - fx.safety), `${BENNU.name}, furioso, sacudió la nave`);
-  if (expedition.phase === "persuaded" && lastPhase !== "persuaded") nano.subjugate(bennuSite.id);
+  if (expedition.phase === "aggressive" && lastPhase !== "aggressive") habitat.jolt(0.8 * (1 - fx.safety), `${expedition.asteroid.data.name}, furioso, sacudió la nave`);
+  // The nano_net core site is Bennu for now (docs/design/nano-net.md).
+  if (expedition.phase === "persuaded" && lastPhase !== "persuaded" && expedition.asteroid === bennu) nano.subjugate(bennuSite.id);
   if (!nanoPanel.busy) nano.tick(dt * NANO_DAYS_PER_SECOND);
   nano.powerShip(ship, fx, dt * warp);
   for (const e of nano.drainEvents()) {
@@ -341,7 +367,9 @@ renderer.setAnimationLoop((now) => {
   }
   lastPhase = expedition.phase;
   interior.update(dt);
-  view.enabled = !interior.active && !bay.active && !duelView.visible && !evaMode.active;
+  view.enabled = !interior.active && !bay.active && !duelView.visible && !evaMode.active && !navMode.mapOpen;
+  navMode.canOpen = () => !interior.active && !bay.active && !duelView.visible && !evaMode.active;
+  navMode.update();
   document.body.classList.toggle("in-cockpit", view.enabled);
   if (interior.active) {
     renderer.render(interior.scene, interior.camera);
@@ -352,7 +380,8 @@ renderer.setAnimationLoop((now) => {
     renderer.render(bay.scene, bay.camera);
     return;
   }
-  evaBtn.classList.toggle("hidden", !eva.canLeave || expedition.phase !== "landed");
+  // The suit walk is modelled on Bennu's surface and gravity only.
+  evaBtn.classList.toggle("hidden", !eva.canLeave || expedition.phase !== "landed" || expedition.asteroid !== bennu);
   if (evaMode.active) {
     view.rig.visible = false;
     evaMode.update(dt, flight.simTimeS);
@@ -362,7 +391,7 @@ renderer.setAnimationLoop((now) => {
   }
   view.rig.visible = true;
   renderPhase();
-  nanoPanel.update(flight.landed, fx, !duelView.visible);
+  nanoPanel.update(flight.landed && expedition.asteroid === bennu, fx, !duelView.visible);
   nanoView.update(flight.simTimeS);
   landBtn.textContent = `Aterrizaje: ${flight.landingAssist ? "auto" : "manual"}`;
   landBtn.classList.toggle("on", flight.landingAssist);
@@ -400,4 +429,4 @@ renderer.setAnimationLoop((now) => {
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, nav, navMode };

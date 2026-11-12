@@ -11,6 +11,8 @@ import type { AnimalLesson, CatLesson } from "@modules/pets/data/rules";
 import { Bonds, companionship, FAMILY_TUNING, type Family, type Member } from "@modules/family/domain/family";
 import { CrewMember } from "@modules/crew/domain/crew-member";
 import type { ShipDesign } from "@modules/ship/domain/ship";
+import { withPart, type PartSlot } from "@modules/ship/domain/refit";
+import { partById } from "@modules/ship/data/parts";
 import type { Recipe } from "@modules/kitchen/data/recipes";
 import type { YogaSequence } from "@modules/wellness/data/yoga";
 import { ChoreRun, type Chore } from "@modules/chores/domain/chore";
@@ -71,6 +73,8 @@ export interface RepairableShip {
   readonly design: ShipDesign;
   readonly hullIntegrity: number;
   repair(fraction: number): void;
+  /** Swap parts (ship bay). Optional so simple setups and tests can leave it out. */
+  refit?(design: ShipDesign): void;
 }
 
 /** Game tuning for life on board. Encounter rates are per day. */
@@ -713,6 +717,12 @@ export class Habitat {
           this._repairs++;
           if ((this.ship?.hullIntegrity ?? 1) >= 0.999) this._scenarios.delete("nave");
           break;
+        case "cambiar-pieza": {
+          const [slot, partId] = chore.targetId!.split(":") as [PartSlot, string];
+          const part = partById(partId);
+          if (this.ship && part) this.ship.refit?.(withPart(this.ship.design, slot, part));
+          break;
+        }
         case "mision":
           this.mailbox?.completeMission(chore.targetId!);
           break;

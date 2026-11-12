@@ -4,7 +4,7 @@ import type { MachineId } from "@modules/life-support/domain/machine";
 /** The habitat module sits in the spinning ring: 4 m wide, 12 m long, with gravity for people, cats and hens. */
 export const ROOM = { halfW: 2, halfL: 6, height: 2.6 } as const;
 
-export type StationId = "huerto" | "cocina" | "procesado" | "biorreactor" | "enfermeria" | "panel" | "yoga" | "gatos" | "gallinero" | "terreno" | "perros";
+export type StationId = "huerto" | "cocina" | "procesado" | "biorreactor" | "enfermeria" | "panel" | "yoga" | "gatos" | "gallinero" | "terreno" | "perros" | "bahia";
 
 /** Station anchor points the player walks to (floor position + where to look). */
 export interface Station {
@@ -23,6 +23,8 @@ export const STATIONS: readonly Station[] = [
   { id: "biorreactor", label: "Laboratorio de carne cultivada", stand: V(-0.3, 0, -0.4), look: V(1.6, 1.15, -0.4) },
   { id: "enfermeria", label: "Enfermería", stand: V(0.5, 0, 1.3), look: V(-1.5, 0.75, 0.6) },
   { id: "panel", label: "Mente de la nave", stand: V(0.5, 0, 2.0), look: V(1.95, 1.4, 2.0) },
+  // Hatch on the left wall to the ship bay (engineering station, see src/ship-bay.ts).
+  { id: "bahia", label: "Bahía de la nave", stand: V(-1.1, 0, 2.75), look: V(-2, 1.3, 2.75) },
   { id: "yoga", label: "Esterilla de yoga", stand: V(0, 0, 3.0), look: V(0, 0.6, 4.0) },
   { id: "gatos", label: "Rincón de los gatos", stand: V(-0.6, 0, 4.8), look: V(-1.5, 0.2, 5.4) },
   { id: "gallinero", label: "Gallinero", stand: V(0.5, 0, 4.7), look: V(1.55, 0.4, 4.7) },
@@ -200,6 +202,12 @@ export function buildRoom(): RoomHandles {
   // --- Ship-mind panel ----------------------------------------------------------------------------
   const panel = screen(1.4, 0.9, halfW - 0.04, 1.4, 2.0, -Math.PI / 2);
   g.add(panel, boxAt(0.03, 1.0, 1.5, mat(0x30343c), halfW - 0.02, 1.4, 2.0));
+
+  // --- Hatch to the ship bay: a door with a window and an amber frame -----------------------------
+  g.add(boxAt(0.06, 1.95, 0.9, mat(0x7c8796, { metalness: 0.5 }), -halfW + 0.04, 0.975, 2.75));
+  g.add(boxAt(0.02, 0.4, 0.5, new THREE.MeshStandardMaterial({ color: 0x050812, emissive: 0x0a1630 }), -halfW + 0.08, 1.45, 2.75));
+  for (const dz of [-0.47, 0.47]) g.add(boxAt(0.03, 1.95, 0.04, glow(0xffb347, 0.8), -halfW + 0.07, 0.975, 2.75 + dz));
+  g.add(boxAt(0.03, 0.04, 0.98, glow(0xffb347, 0.8), -halfW + 0.07, 1.97, 2.75));
 
   // --- Yoga mat, across the room so postures are seen in profile ----------------------------------
   g.add(boxAt(1.85, 0.008, 0.65, mat(0x5aa56e), 0, 0.004, 4.0));

@@ -29,11 +29,25 @@ export class Ship {
   private readonly fuel = new Map<Propellant, number>();
   private _hull = 1;
 
-  private constructor(readonly design: ShipDesign) {
-    for (const t of design.tanks) {
+  private constructor(private _design: ShipDesign) {
+    for (const t of _design.tanks) {
       if (t.fillKg < 0 || t.fillKg > t.spec.capacityKg) throw new RangeError(`Tank fill out of range: ${t.fillKg} kg`);
       this.fuel.set(t.spec.propellant, (this.fuel.get(t.spec.propellant) ?? 0) + t.fillKg);
     }
+  }
+
+  /** The parts bolted on right now. Changes only through `refit`. */
+  get design(): ShipDesign {
+    return this._design;
+  }
+
+  /**
+   * Swap parts: propellant on board stays, except what no longer fits in the new tanks (it is vented).
+   * Tank fills in the new design are ignored: the propellant is the ship's, not the drawing's.
+   */
+  refit(design: ShipDesign): void {
+    this._design = design;
+    for (const [p, kg] of [...this.fuel]) this.fuel.set(p, Math.min(kg, this.propellantCapacityKg(p)));
   }
 
   static create(design: ShipDesign): Ship {

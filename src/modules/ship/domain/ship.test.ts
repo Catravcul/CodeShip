@@ -96,3 +96,23 @@ describe("Ship.preview", () => {
     expect(ship.massKg).toBe(before);
   });
 });
+
+describe("Ship.refit", () => {
+  it("swaps parts and recomputes mass, keeping the propellant on board", () => {
+    const ship = Ship.create(design());
+    const heavier: ThrusterModel = { ...main, id: "m2", thrustN: 1000, dryMassKg: 15 };
+    const d = design();
+    ship.refit({ ...d, mainEngines: [{ ...d.mainEngines[0]!, model: heavier }] });
+    expect(ship.dryMassKg).toBe(300 + 15 + 24 + 12);
+    expect(ship.propellantKg("MMH/NTO")).toBe(100);
+    expect(ship.fire({ ...idle, mainThrottle: 1 }, 0.001).forceBody.z).toBeCloseTo(-1000);
+  });
+
+  it("vents what no longer fits in a smaller tank", () => {
+    const ship = Ship.create(design());
+    const d = design();
+    ship.refit({ ...d, tanks: [{ spec: { ...d.tanks[0]!.spec, capacityKg: 60 }, fillKg: 0 }, d.tanks[1]!] });
+    expect(ship.propellantKg("MMH/NTO")).toBe(60);
+    expect(ship.propellantKg("Hydrazine")).toBe(20);
+  });
+});

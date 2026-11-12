@@ -11,7 +11,8 @@ import { HEN_TUNING, LAYING_LIGHT_HOURS, type Hen } from "@modules/poultry/domai
 import type { Machine } from "@modules/life-support/domain/machine";
 import type { Condition, Patient } from "@modules/medical/domain/health";
 import { ABCDE, PROTOCOLS } from "@modules/medical/data/protocols";
-import type { ShipDesign } from "@modules/ship/domain/ship";
+import { Ship, type ShipDesign } from "@modules/ship/domain/ship";
+import { withPart, type Part, type PartSlot } from "@modules/ship/domain/refit";
 import type { Recipe } from "@modules/kitchen/data/recipes";
 import type { Breath, YogaSequence } from "@modules/wellness/data/yoga";
 import type { Chore } from "../domain/chore";
@@ -408,6 +409,73 @@ export function repairChore(design: ShipDesign, hull: number, seed: number, scen
         [String(main.thrustN * 10), String(Math.round(main.thrustN / 10))],
       ),
     ],
+  };
+}
+
+const fullTanks = (d: ShipDesign) => Ship.create({ ...d, tanks: d.tanks.map((t) => ({ spec: t.spec, fillKg: t.spec.capacityKg })) });
+const PROP_NAME = { "MMH/NTO": "MMH/NTO", Hydrazine: "hidracina" } as const;
+
+/**
+ * Swapping a part (ship bay): complete the new line of the ship's code (shown as a diff), predict the
+ * new ship's delta-v with Tsiolkovsky and full tanks, then order the fitting. Generated from the change.
+ */
+export function swapChore(design: ShipDesign, slot: PartSlot, part: Part, scenario?: string): Chore {
+  const next = withPart(design, slot, part);
+  const key = slot === "motor" ? "motor" : slot === "rcs" ? "rcs" : `tanque${slot.slice(7)}`;
+  const before = shipCode(design).find((b) => b.id === key)!;
+  const after = shipCode(next).find((b) => b.id === key)!;
+  const id = `cambiar-${slot}-${part.id}`;
+  const isTank = part.kind === "tank";
+  const right = isTank ? part.spec.capacityKg : part.model.thrustN;
+  const unit = isTank ? "kg" : "N";
+  const gap = (s: string) => s.replace(new RegExp(`${right}( ${unit}|(?=[,} ]))`), (_m, u: string | undefined) => `___${u ?? ""}`);
+  const valueEx = choice(
+    `${id}-valor`,
+    2,
+    "completar",
+    "Una pieza nueva en mí",
+    isTank ? "¿Qué capacidad tiene el tanque nuevo?" : `¿Qué empuje real tiene el ${shortName(part.name)}?`,
+    [block("old", `− ${before.pseudo}`, `// ${before.js}`), block("new", `+ ${gap(after.pseudo)}`, gap(after.js))],
+    String(right),
+    [String(right * 10), String(Math.max(1, Math.round(right / 10)))],
+  );
+  const ship = fullTanks(next);
+  const engine = next.mainEngines[0]!.model;
+  const prop = ship.propellantKg(engine.propellant);
+  const m0 = Math.round(ship.massKg);
+  const mf = Math.round(ship.massKg - prop);
+  const dv = Math.round(ship.mainDeltaV());
+  const dvEx = choice(
+    `${id}-dv`,
+    3,
+    "predecir",
+    "¿Hasta dónde llegaré ahora?",
+    `Con los tanques llenos, ¿qué Δv tendrá la nave con el motor ${shortName(engine.name)}?`,
+    [
+      block("isp", `isp = ${engine.ispS} s; g0 = 9,81 m/s²`, `const isp = ${engine.ispS}, g0 = 9.80665;`),
+      block("m", `m0 = ${m0} kg; mf = ${mf} kg`, `const m0 = ${m0}, mf = ${mf};`),
+      block("dv", "dv = isp · g0 · ln(m0 / mf)", "const dv = isp * g0 * Math.log(m0 / mf);"),
+    ],
+    `${dv} m/s`,
+    [`${Math.round(dv / 9.80665)} m/s`, `${Math.round(engine.ispS * 9.80665 * (m0 / mf - 1) * 10)} m/s`],
+  );
+  const [oldOne, newOne] = isTank ? ["el tanque viejo", "el tanque nuevo"] : slot === "rcs" ? ["los RCS viejos", "los RCS nuevos"] : ["el motor viejo", "el motor nuevo"];
+  const steps = [
+    `cierra las válvulas de ${PROP_NAME[isTank ? part.spec.propellant : part.model.propellant]}`,
+    "purga la línea con helio",
+    `desmonta ${oldOne}`,
+    `monta ${newOne}`,
+    "comprueba que no hay fugas",
+    isTank ? "llénalo y presurízalo" : "haz un encendido de prueba",
+  ];
+  const label = slot === "motor" ? "motor principal" : slot === "rcs" ? "RCS" : "tanque";
+  return {
+    id,
+    kind: "cambiar-pieza",
+    targetId: `${slot}:${part.id}`,
+    title: `Cambiar ${label}: ${shortName(part.name)}`,
+    scenario: scenario ?? `${before.pseudo} → ${after.pseudo}`,
+    exercises: [valueEx, dvEx, order(`${id}-montaje`, 1, "Con cuidado: hay propelente", steps)],
   };
 }
 

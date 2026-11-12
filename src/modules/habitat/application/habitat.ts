@@ -33,6 +33,7 @@ import { Bioreactor, type CultureStage } from "@modules/cultured-meat/domain/bio
 import { Machine, type MachineId, type MachineSpec } from "@modules/life-support/domain/machine";
 import type { Process } from "@modules/kitchen/data/processes";
 import type { Patient } from "@modules/medical/domain/health";
+import type { Mailbox } from "@modules/story/domain/mailbox";
 
 export type HabitatEvent =
   | { type: "plant-bitten"; catId: string; plantId: string }
@@ -149,6 +150,8 @@ export class Habitat {
   lightsOn = true;
   readonly crew: CrewMember;
   readonly bioreactor = new Bioreactor();
+  /** The ship's radio: letters and their missions, if the story is on. */
+  mailbox?: Mailbox;
 
   constructor(
     private readonly rng: () => number,
@@ -230,6 +233,7 @@ export class Habitat {
   tick(dtDays: number): void {
     const t = HABITAT_TUNING;
     this.crew.tick(dtDays);
+    this.mailbox?.tick(dtDays);
     const lit = this.lightsOn && this.working("bastidores");
     for (const p of this._plants.values()) {
       const wasAlive = p.alive;
@@ -364,6 +368,7 @@ export class Habitat {
     }
     this._scenarios.set("nave", `${cause}: el casco tiene daños`);
     this._events.push({ type: "jolt", severity: s });
+    this.mailbox?.notify("sacudida");
   }
 
   /** Everything that needs doing right now, each as a chain of code challenges. */
@@ -388,6 +393,8 @@ export class Habitat {
     if (this.ship && this.ship.hullIntegrity < 0.999) out.push(repairChore(this.ship.design, this.ship.hullIntegrity, this._repairs + 3, this._scenarios.get("nave")));
     for (const r of recipes) if (this.canCook(r)) out.push(cookingChore(r, pool));
     for (const y of yoga) out.push(yogaChore(y));
+    for (const l of this.mailbox?.pendingMissions ?? [])
+      out.push({ id: `mision-${l.id}`, kind: "mision", targetId: l.id, title: l.mission!.title, scenario: `Carta de ${l.from}: ${l.subject}`, exercises: l.mission!.exercises });
     // A broken machine blocks its chores, except its own repair.
     return out.filter((c) => c.kind === "reparar-maquina" || this.working(c.machine));
   }
@@ -508,6 +515,9 @@ export class Habitat {
           this.ship?.repair(HABITAT_TUNING.repairPerChore);
           this._repairs++;
           if ((this.ship?.hullIntegrity ?? 1) >= 0.999) this._scenarios.delete("nave");
+          break;
+        case "mision":
+          this.mailbox?.completeMission(chore.targetId!);
           break;
         case "yoga":
           break;

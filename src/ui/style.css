@@ -93,3 +93,20 @@ body.in-duel .walk-stick, body.in-duel .interior-ui { display: none; }
 /* Chores: the challenge sits in a bottom sheet so the plant, cat or yoga figure stays visible above. */
 .duel.sheet { top: 38vh; border-radius: 18px 18px 0 0; background-image: none; background-color: #05060cf2; }
 @media (min-aspect-ratio: 1/1) { .duel.sheet { top: 0; left: auto; right: 0; width: min(480px, 46vw); padding-inline: 16px; border-radius: 18px 0 0 18px; } }
+
+/* Ship radio: Nevaeh's letters */
+.radio-btn { position: fixed; top: 104px; right: 12px; z-index: 6; padding: 10px 14px; font: inherit; font-size: 14px; color: #1a0f00; background: #ffd27f; border: 0; border-radius: 10px; }
+.radio-btn b { display: inline-block; min-width: 18px; margin-left: 6px; padding: 0 5px; border-radius: 9px; background: #d8282a; color: #fff; font-size: 12px; }
+.radio-btn b:empty { display: none; }
+.letter { display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 1.5; }
+.letter-head { display: flex; gap: 12px; align-items: center; }
+.letter-head svg { flex: none; width: 56px; height: 56px; }
+.letter-head small { display: block; opacity: 0.7; font-size: 12px; }
+.letter p { margin: 0; }
+.letter .ps { font-style: italic; opacity: 0.9; }
+.letter pre { margin: 0; padding: 8px 10px; background: #050b14; border-radius: 8px; color: #c6f0ff; white-space: pre-wrap; font-size: 13px; }
+.letter pre i { color: #7fa8c8; font-style: normal; }
+.letter .go { align-self: flex-start; padding: 10px 14px; font: inherit; color: #001018; background: #7dffb0; border: 0; border-radius: 10px; }
+.letter .done { color: #7dffb0; font-size: 13px; }
+.board .chore.unread b::after { content: " •"; color: #ff6b6b; }
+body.in-duel .tasks-btn, body.in-duel .radio-btn { display: none; }

@@ -31,6 +31,8 @@ import {
 } from "@modules/garden/data/species";
 import { MACHINES } from "@modules/life-support/data/machines";
 import { Hen } from "@modules/poultry/domain/hen";
+import { Mailbox } from "@modules/story/domain/mailbox";
+import { NEVAEH_LETTERS } from "@modules/story/data/nevaeh";
 import type { Plant } from "@modules/garden/domain/plant";
 import { seededRandom } from "./content/random";
 import { Interior } from "./interior";
@@ -50,7 +52,9 @@ const flight = new FlightComputer(ship, start, { gravitySources: [bennu], target
 const expedition = new Expedition(flight, bennu, EXERCISES, 500);
 
 // Life on board: a long leg is already under way, so the garden has some days behind it.
-const habitat = new Habitat(seededRandom(2026), 3, ship, "Berón", MACHINES);
+const habitat = new Habitat(seededRandom(2026), 3, ship, "Doménica", MACHINES);
+// Nevaeh writes to Doménica through the ship's radio (story rescued from the 2023 draft).
+habitat.mailbox = new Mailbox(NEVAEH_LETTERS);
 const growFor = (p: Plant, days: number) => {
   for (let t = 0; t < days; t += 0.25) {
     p.tick(0.25, { lit: true });

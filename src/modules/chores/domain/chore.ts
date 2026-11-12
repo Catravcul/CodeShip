@@ -20,7 +20,8 @@ export type ChoreKind =
   | "cultivo-cosechar"
   | "cultivo-esterilizar"
   | "reparar-maquina"
-  | "atender-paciente";
+  | "atender-paciente"
+  | "mision";
 
 /** A task on board, done by solving code challenges in order. */
 export interface Chore {

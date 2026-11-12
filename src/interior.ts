@@ -1,6 +1,16 @@
 import * as THREE from "three";
 import type { Habitat, HabitatEvent, ChoreSession } from "@modules/habitat/application/habitat";
-import type { Chore } from "@modules/chores/domain/chore";
+import { CHORE_CATEGORY, type Chore, type ChoreCategory } from "@modules/chores/domain/chore";
+
+const CATEGORY_ORDER: readonly ChoreCategory[] = ["comida", "plantas", "animales", "salud", "nave", "misiones"];
+const CATEGORY_LABEL: Readonly<Record<ChoreCategory, string>> = {
+  comida: "Comida",
+  plantas: "Plantas",
+  animales: "Animales",
+  salud: "Salud",
+  nave: "Nave",
+  misiones: "Misiones",
+};
 import { shipCode } from "@modules/chores/application/catalog";
 import { RECIPES } from "@modules/kitchen/data/recipes";
 import { PROCESSES } from "@modules/kitchen/data/processes";
@@ -181,6 +191,8 @@ export class Interior {
     mat.position.set(0.2, 0, 4.0);
     mat.rotation.y = -Math.PI / 2; // profile to the room, like a yoga teacher's side view
     mat.add(this.figure.root);
+    // The demo figure only appears while a yoga session shows the postures.
+    this.figure.root.visible = false;
     this.scene.add(mat);
 
     this.avatarRig.add(this.avatar.root);
@@ -212,6 +224,11 @@ export class Interior {
       const letter = (e.target as HTMLElement).closest<HTMLElement>("[data-letter]");
       if (letter) return this.openLetter(letter.dataset.letter!);
       if ((e.target as HTMLElement).closest("[data-radio]")) return this.openRadio();
+      const cat = (e.target as HTMLElement).closest<HTMLElement>("[data-cat]");
+      if (cat) {
+        this.category = (cat.dataset.cat || null) as ChoreCategory | null;
+        return this.openBoard(this.boardFilter);
+      }
       if ((e.target as HTMLElement).closest("[data-close]")) this.board.classList.add("hidden");
       if (!t) return;
       const chore = this.currentChores().find((c) => c.id === t.dataset.chore);
@@ -422,15 +439,32 @@ export class Interior {
     return this.habitat.chores(RECIPES, YOGA_SEQUENCES, CONTEXT);
   }
 
+  private boardFilter: Station["id"] | undefined;
+  /** Category chosen in the task board's filter row (all when null). */
+  private category: ChoreCategory | null = null;
+
   private openBoard(filter?: Station["id"]): void {
-    const chores = this.currentChores().filter((c) => !filter || stationFor(c) === filter);
+    const all = this.currentChores().filter((c) => !filter || stationFor(c) === filter);
+    const counts = new Map<ChoreCategory, number>();
+    for (const c of all) counts.set(CHORE_CATEGORY[c.kind], (counts.get(CHORE_CATEGORY[c.kind]) ?? 0) + 1);
+    if (this.category && !counts.has(this.category)) this.category = null;
+    const chores = all.filter((c) => !this.category || CHORE_CATEGORY[c.kind] === this.category);
     const title = filter ? STATIONS.find((s) => s.id === filter)!.label : "Tareas a bordo";
+    const chip = (cat: ChoreCategory | null, label: string, n: number) =>
+      `<button class="chip ${this.category === cat ? "on" : ""}" data-cat="${cat ?? ""}">${label} <small>${n}</small></button>`;
+    const chips =
+      counts.size > 1
+        ? `<div class="chips">${chip(null, "Todas", all.length)}${CATEGORY_ORDER.filter((c) => counts.has(c))
+            .map((c) => chip(c, CATEGORY_LABEL[c], counts.get(c)!))
+            .join("")}</div>`
+        : "";
     const items = chores
       .map(
         (c) => `<button class="chore" data-chore="${c.id}"><b>${c.title}</b><span>${c.scenario}</span><em>${c.exercises.length} retos</em></button>`,
       )
       .join("");
-    this.board.innerHTML = `<div class="board-head"><b>${title}</b><button data-close>✕</button></div>${items || "<p>Nada pendiente aquí</p>"}`;
+    this.boardFilter = filter;
+    this.board.innerHTML = `<div class="board-head"><b>${title}</b><button data-close>✕</button>${chips}</div>${items || "<p>Nada pendiente aquí</p>"}`;
     this.board.classList.remove("hidden");
   }
 
@@ -508,7 +542,10 @@ export class Interior {
     this.cooking = chore.kind === "cocinar";
     this.session = session;
     const run = session.run;
-    if (chore.kind === "yoga") this.figure.pose("stand");
+    if (chore.kind === "yoga") {
+      this.figure.pose("stand");
+      this.figure.root.visible = true;
+    }
     this.duel.show(
       {
         get current() {
@@ -533,6 +570,7 @@ export class Interior {
     this.cooking = false;
     this.frameForSheet(false);
     this.figure.pose("stand");
+    this.figure.root.visible = false;
   }
 
   private onEvent(e: HabitatEvent): void {

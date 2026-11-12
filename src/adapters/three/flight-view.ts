@@ -42,8 +42,8 @@ export class FlightView {
   ) {
     scene.add(this.rig);
     this.rig.add(this.cockpit, this.ship.root);
-    const cabinLight = new THREE.PointLight(0x9fdcff, 0.6, 3);
-    cabinLight.position.set(0, 0.3, -0.3);
+    const cabinLight = new THREE.PointLight(0xdfefff, 3, 4, 1);
+    cabinLight.position.set(0, 0.7, 0.3);
     this.cockpit.add(cabinLight);
 
     // Dust: points in a 160 m box around the ship, wrapped as it moves.

@@ -26,6 +26,36 @@ export type ChoreKind =
   | "atender-paciente"
   | "mision";
 
+/** Groups for filtering the task board. */
+export type ChoreCategory = "comida" | "plantas" | "animales" | "nave" | "salud" | "misiones";
+
+export const CHORE_CATEGORY: Readonly<Record<ChoreKind, ChoreCategory>> = {
+  regar: "plantas",
+  agitar: "plantas",
+  cosechar: "plantas",
+  "curar-planta": "plantas",
+  "cultivo-sembrar": "comida",
+  "cultivo-renovar": "comida",
+  "cultivo-diferenciar": "comida",
+  "cultivo-cosechar": "comida",
+  "cultivo-esterilizar": "comida",
+  cocinar: "comida",
+  procesar: "comida",
+  "alimentar-gato": "animales",
+  "calmar-gato": "animales",
+  "programar-animal": "animales",
+  "alimentar-perro": "animales",
+  "jugar-perro": "animales",
+  "abrir-gallinero": "animales",
+  "alimentar-gallinas": "animales",
+  "recoger-huevos": "animales",
+  yoga: "salud",
+  "atender-paciente": "salud",
+  "reparar-nave": "nave",
+  "reparar-maquina": "nave",
+  mision: "misiones",
+};
+
 /** A task on board, done by solving code challenges in order. */
 export interface Chore {
   readonly id: string;

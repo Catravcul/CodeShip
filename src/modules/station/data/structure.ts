@@ -1,5 +1,6 @@
 import { Vec3 } from "@core/math/vec3";
 import type { PressurisedModule, StationLayout, StationPortSpec, StructurePart } from "../domain/structure";
+import type { BerthSpec } from "../domain/outfit";
 
 // --- Sources -------------------------------------------------------------------
 export const STRUCTURE_SOURCES = {
@@ -98,3 +99,13 @@ const PORTS: StationPortSpec[] = [
 ];
 
 export const POLANA_LAYOUT: StationLayout = { modules: MODULES, parts: PARTS, ports: PORTS };
+
+/**
+ * Node 1's two capped radial ports (port and starboard), like the spare CBM ports of Unity: where new
+ * modules are berthed. The forward and aft ones carry the habitat and the fabrication module, and the
+ * zenith one faces the truss.
+ */
+export const POLANA_BERTHS: readonly BerthSpec[] = [
+  { id: "nodo-1-babor", label: "Nodo 1, puerto de babor", position: new Vec3(-NODE_R, 0, 0), normal: new Vec3(-1, 0, 0) },
+  { id: "nodo-1-estribor", label: "Nodo 1, puerto de estribor", position: new Vec3(NODE_R, 0, 0), normal: new Vec3(1, 0, 0) },
+];

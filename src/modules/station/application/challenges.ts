@@ -1,8 +1,9 @@
 import type { ChoiceExercise, CodeBlock, Concept, OrderExercise } from "@modules/mind-duel/domain/exercise";
 import type { Chore } from "@modules/chores/domain/chore";
 import { stepChain, toCall } from "@modules/chores/application/catalog";
-import { STATION_TUNING, batchScale, refineRun, type Blueprint, type RefineProcess } from "../domain/blueprint";
+import { MACHINE_NAME, STATION_TUNING, batchScale, refineRun, type Blueprint, type RefineProcess } from "../domain/blueprint";
 import type { MaterialId, MaterialStock } from "../domain/materials";
+import type { StationOutfit } from "../domain/outfit";
 
 const hash = (s: string) => {
   let h = 2166136261;
@@ -79,8 +80,65 @@ export function fabricationChore(bp: Blueprint, stock: MaterialStock, materialNa
     targetId: bp.id,
     machine: bp.machine,
     title: `Fabricar ${bp.name}`,
-    scenario: `${fmtKg(bp.massKg)} kg · ${bp.hours} h en la ${bp.machine === "impresora" ? "impresora 3D" : bp.machine === "fundicion" ? "fundición" : "refinería"}`,
+    scenario: `${fmtKg(bp.massKg)} kg · ${bp.hours} h en ${MACHINE_NAME[bp.machine].toLowerCase()}`,
     exercises: [massEx, leftEx, order(`${id}-pasos`, "Paso a paso, como dice el plano", bp.steps)],
+  };
+}
+
+/** What is left in store of the material a blueprint uses most. */
+function leftInStore(id: string, bp: Blueprint, stock: MaterialStock, materialName: (id: MaterialId) => string): ChoiceExercise {
+  const [mat, need] = mainInput(bp.inputs);
+  const have = stock.amount(mat);
+  const v = camel(mat);
+  return choice(
+    `${id}-queda`,
+    4,
+    "predecir",
+    `Cuento el ${materialName(mat).toLowerCase()} del almacén`,
+    `¿Cuánto ${materialName(mat).toLowerCase()} quedará en el almacén?`,
+    [
+      block("a", `almacen.${v} = ${fmtKg(have)} kg`, `almacen.${v} = ${jsNum(have)};`),
+      block("b", `almacen.${v} = almacen.${v} − ${fmtKg(need)} kg`, `almacen.${v} -= ${jsNum(need)};`),
+    ],
+    `${fmtKg(have - need)} kg`,
+    [`${fmtKg(have + need)} kg`, `${fmtKg(need)} kg`],
+  );
+}
+
+/**
+ * Building a module or a piece of equipment: predict the power left once it runs (the wings give,
+ * the radiators limit, the machines draw), what is left in store, then order the steps.
+ */
+export function growthChore(bp: Blueprint, outfit: StationOutfit, stock: MaterialStock, materialName: (id: MaterialId) => string = (id) => id): Chore {
+  const p = bp.product;
+  const addKw = p.kind === "module" ? p.module.powerKw : p.kind === "equipment" ? p.equipment.powerKw - (p.equipment.upgrades ? (outfit.equipment.find((e) => e.spec.id === (p.equipment as { upgrades?: string }).upgrades)?.spec.powerKw ?? 0) : 0) : 0;
+  const cap = outfit.capacityKw;
+  const draw = outfit.drawKw;
+  const id = `construir-${bp.id}`;
+  const kw = (v: number) => `${fmtKg(v)} kW`;
+  const powerEx = choice(
+    `${id}-energia`,
+    4,
+    "predecir",
+    "Toda la electricidad acaba en calor: manda lo menos que dan las alas o expulsan los radiadores",
+    "¿Cuánta energía quedará libre en la estación?",
+    [
+      block("a", `alas = ${kw(outfit.supplyKw)}`, `const alas = ${jsNum(outfit.supplyKw)};`),
+      block("r", `radiadores = ${kw(outfit.rejectKw)}`, `const radiadores = ${jsNum(outfit.rejectKw)};`),
+      block("g", `gasto = ${kw(draw)} + ${kw(addKw)}`, `const gasto = ${jsNum(draw)} + ${jsNum(addKw)};`),
+      block("l", "libre = min(alas, radiadores) − gasto", "const libre = Math.min(alas, radiadores) - gasto;"),
+    ],
+    kw(cap - draw - addKw),
+    [kw(Math.max(outfit.supplyKw, outfit.rejectKw) - draw - addKw), kw(cap - draw + addKw), kw(outfit.supplyKw + outfit.rejectKw - draw - addKw)],
+  );
+  return {
+    id,
+    kind: "fabricar",
+    targetId: bp.id,
+    machine: bp.machine,
+    title: `${p.kind === "module" ? "Construir" : "Montar"} ${bp.name}`,
+    scenario: `${bp.hours} h en ${MACHINE_NAME[bp.machine].toLowerCase()} · +${kw(addKw)}`,
+    exercises: [powerEx, leftInStore(id, bp, stock, materialName), order(`${id}-pasos`, "Paso a paso, como dice el plano", bp.steps)],
   };
 }
 

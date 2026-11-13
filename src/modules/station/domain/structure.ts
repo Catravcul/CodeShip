@@ -10,7 +10,7 @@ import type { StationSite } from "./station";
 export interface PressurisedModule {
   readonly id: string;
   readonly label: string;
-  readonly kind: "nodo" | "habitat" | "fabrica" | "adaptador";
+  readonly kind: "nodo" | "habitat" | "fabrica" | "adaptador" | "agricola" | "planta";
   readonly from: Vec3;
   readonly to: Vec3;
   readonly radiusM: number;
@@ -67,13 +67,28 @@ export interface StationPort extends DockingTarget {
  */
 export class StationStructure {
   readonly ports: readonly StationPort[];
+  private current: StationLayout;
 
   constructor(
     readonly site: StationSite,
-    readonly layout: StationLayout,
+    layout: StationLayout,
     readonly orientation: Quat = Quat.IDENTITY,
   ) {
+    this.current = layout;
     this.ports = layout.ports.map((p) => this.makePort(p));
+  }
+
+  get layout(): StationLayout {
+    return this.current;
+  }
+
+  /**
+   * The station grew (a module berthed, the hangar extended): new modules and parts. The docking
+   * ports stay where they are, so craft docked to them stay docked.
+   */
+  setLayout(layout: StationLayout): void {
+    if (layout.ports.length !== this.current.ports.length || layout.ports.some((p, i) => p.id !== this.current.ports[i]!.id)) throw new Error("The docking ports cannot change");
+    this.current = layout;
   }
 
   get position(): Vec3 {

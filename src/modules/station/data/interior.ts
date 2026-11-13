@@ -1,7 +1,8 @@
 import { Vec3 } from "@core/math/vec3";
-import type { Box, Fixture, InteriorVolume, StationInteriorPlan } from "../domain/interior";
+import type { Box, Face, Fixture, InteriorVolume, StationInteriorPlan } from "../domain/interior";
+import type { InstalledEquipment, StationOutfit } from "../domain/outfit";
 import type { PressurisedModule, StationLayout } from "../domain/structure";
-import { SRC } from "./sources";
+import { GROWTH_SOURCES, startingOutfit } from "./outfit";
 import { POLANA_LAYOUT, STRUCTURE_SOURCES } from "./structure";
 
 // --- Sources -------------------------------------------------------------------
@@ -35,7 +36,16 @@ const AISLE = {
   habitat: { x: 0.6, y: 0.85, basis: "Valor de juego: pasillo de 1,2 × 1,7 m dentro de los 3 m de diámetro del HALO", source: STRUCTURE_SOURCES.halo },
   /** Destiny-sized: a 2 × 2 m passage between ISPR racks 0,86 m deep on the four faces. */
   fabrica: { x: 1.0, y: 1.0, basis: "Valor de juego: pasillo de 2 × 2 m entre bastidores ISPR de 0,86 m de fondo, como en Destiny", source: S.destiny },
+  /** Columbus is 4,48 m across: the same 2 × 2 m passage between its ISPR racks. */
+  planta: { x: 1.0, y: 1.0, basis: "Valor de juego: pasillo de 2 × 2 m entre bastidores ISPR, como en Columbus", source: GROWTH_SOURCES.columbus },
+  /** B330 is 6,7 m across: a 4,4 m square hall between the crop walls. */
+  agricola: { x: 2.2, y: 2.2, basis: "Valor de juego: nave de 4,4 × 4,4 m entre las paredes de cultivo, dentro de los 6,7 m de diámetro del B330", source: GROWTH_SOURCES.b330 },
 } as const;
+
+/** Depth of an ISPR rack, m. */
+const RACK_DEPTH = 0.86;
+/** Width of an ISPR rack, m. */
+const RACK_WIDTH = 1.05;
 
 /** CBM hatchway, 1,27 m square. */
 const CBM_HALF = 1.27 / 2;
@@ -47,10 +57,43 @@ const LOCK = { len: 2.1, x: 0.85, y: 0.95, hatchHalf: 0.5 };
 const span = (m: PressurisedModule) => ({ min: Math.min(m.from.z, m.to.z), max: Math.max(m.from.z, m.to.z) });
 
 /**
- * Builds the interior from the station's structure: the pressurised stack along z (node 2 with the
- * docking adapters, the habitat, node 1, the fabrication module), an airlock and the hangar.
+ * Where a piece of equipment stands: its rack bays on one long wall of its module. Along z the walls
+ * are port and starboard; along x (modules on node 1's side ports) forward and aft. Bays count from
+ * the end nearest node 1.
  */
-export function stationInteriorPlan(layout: StationLayout = POLANA_LAYOUT): StationInteriorPlan {
+function rackFixture(e: InstalledEquipment, vol: InteriorVolume, racksPerSide: number): Fixture {
+  const k = vol.half.x > vol.half.z ? "x" : "z";
+  const len = 2 * vol.half[k];
+  const pitch = len / racksPerSide;
+  const sign = Math.sign(vol.centre[k] || 1);
+  const start = vol.centre[k] - sign * vol.half[k];
+  const along = start + sign * (e.place.first + e.place.count / 2) * pitch;
+  const width = pitch * e.place.count - (pitch - RACK_WIDTH);
+  const h = 2 * vol.half.y - 0.1;
+  const face: Face = k === "z" ? (e.place.side === 0 ? "babor" : "estribor") : e.place.side === 0 ? "proa" : "popa";
+  const at = k === "z" ? new Vec3(e.place.side === 0 ? -vol.half.x : vol.half.x, vol.centre.y, along) : new Vec3(along, vol.centre.y, e.place.side === 0 ? vol.centre.z - vol.half.z : vol.centre.z + vol.half.z);
+  const size = k === "z" ? new Vec3(RACK_DEPTH, h, width) : new Vec3(width, h, RACK_DEPTH);
+  return {
+    id: e.spec.id,
+    label: e.spec.name,
+    volume: vol.id,
+    face,
+    at,
+    size,
+    action: { kind: "panel", panel: e.spec.panel },
+    ...(e.spec.machine ? { machine: e.spec.machine } : {}),
+    info: e.spec.info,
+    source: e.spec.basis.source,
+  };
+}
+
+/**
+ * Builds the interior from the station's structure and outfit: the pressurised stack along z (node 2
+ * with the docking adapters, the habitat, node 1, the fabrication module), the modules berthed on
+ * node 1's side ports (along x), an airlock and the hangar. The machines stand in the rack bays the
+ * outfit gives them.
+ */
+export function stationInteriorPlan(layout: StationLayout = POLANA_LAYOUT, outfit: StationOutfit = startingOutfit()): StationInteriorPlan {
   const mod = (id: string) => {
     const m = layout.modules.find((x) => x.id === id);
     if (!m) throw new Error(`No module ${id}`);
@@ -67,7 +110,7 @@ export function stationInteriorPlan(layout: StationLayout = POLANA_LAYOUT): Stat
   const lock = { min: fab.max, max: fab.max + LOCK.len };
   const hangar = { min: hangarPart.centre.z - hangarPart.half.z, max: hangarPart.centre.z + hangarPart.half.z };
 
-  const aisle = (id: string, code: string, label: string, kind: "nodo" | "habitat" | "fabrica", z: { min: number; max: number }): InteriorVolume => ({
+  const aisle = (id: string, code: string, label: string, kind: keyof typeof AISLE, z: { min: number; max: number }): InteriorVolume => ({
     id,
     code,
     label,
@@ -96,7 +139,7 @@ export function stationInteriorPlan(layout: StationLayout = POLANA_LAYOUT): Stat
     aisle("nodo-2", "NOD2", "Nodo 2 (atraque)", "nodo", n2),
     aisle("habitat", "HAB1", "Módulo habitable", "habitat", hab),
     aisle("nodo-1", "NOD1", "Nodo 1", "nodo", n1),
-    aisle("fabrica", "FAB1", "Módulo de fabricación", "fabrica", fab),
+    aisle("fabrica", outfit.module("fabrica")?.code ?? "FAB1", "Módulo de fabricación", "fabrica", fab),
     {
       id: "esclusa",
       code: "ESC1",
@@ -194,14 +237,6 @@ export function stationInteriorPlan(layout: StationLayout = POLANA_LAYOUT): Stat
     fx({ id: "botiquin", label: "Botiquín", volume: "habitat", face: "techo", at: new Vec3(0, H.y, habZ(0.33)), size: new Vec3(0.9, 0.4, 0.5), action: { kind: "info" }, info: "Botiquín y monitor (lo mínimo de un CHeCS). La enfermería está en la nodriza" }),
     fx({ id: "camarote-babor", label: "Camarote", volume: "habitat", face: "babor", at: new Vec3(-H.x, 0, habZ(0.8)), size: new Vec3(0.75, 1.7, 1.4), action: { kind: "info" }, info: "Camarote para visitas (~1,8 m³, como los ~2 m³ de la ISS): saco de dormir sujeto a la pared, luz, ventilación y portátil", source: S.crewQuarters }),
     fx({ id: "camarote-estribor", label: "Camarote", volume: "habitat", face: "estribor", at: new Vec3(H.x, 0, habZ(0.8)), size: new Vec3(0.75, 1.7, 1.4), action: { kind: "info" }, info: "Segundo camarote para visitas, en el extremo tranquilo del módulo, lejos del aseo y de la cocina", source: S.crewQuarters }),
-    // Node 1: free radial ports.
-    fx({ id: "puerto-babor", label: "Puerto radial libre", volume: "nodo-1", face: "babor", at: new Vec3(-N.x, 0, 0), size: new Vec3(0.1, 1.27, 1.27), action: { kind: "info" }, info: "Puerto CBM cerrado: como Unity, este nodo tiene seis puertos y quedan libres para crecer", source: STRUCTURE_SOURCES.unity }),
-    fx({ id: "puerto-estribor", label: "Puerto radial libre", volume: "nodo-1", face: "estribor", at: new Vec3(N.x, 0, 0), size: new Vec3(0.1, 1.27, 1.27), action: { kind: "info" }, info: "Puerto CBM cerrado, con su tapa", source: S.cbm }),
-    // Fabrication module (Destiny-sized): the machines in ISPR-sized racks.
-    fx({ id: "refineria", label: "Refinería", volume: "fabrica", face: "babor", at: new Vec3(-F.x, 0, fabZ(0.2)), size: new Vec3(0.86, 1.9, 1.05), action: { kind: "panel", panel: "propelente" }, machine: "refineria", info: "Horno sellado de la refinería y planta de propelente: saca el agua de la roca, separa el hierro y el níquel, y hace hidrógeno, amoníaco, hidracina y NTO", source: SRC.thermalExtraction }),
-    fx({ id: "guantera", label: "Guantera", volume: "fabrica", face: "estribor", at: new Vec3(F.x, 0, fabZ(0.2)), size: new Vec3(0.86, 1.9, 1.05), action: { kind: "panel", panel: "materiales" }, info: "Guantera como la MSG (255 L, puertos de 40 cm): aquí se miran las muestras de roca sin que el polvo flote por el módulo", source: S.msg }),
-    fx({ id: "fundicion", label: "Fundición", volume: "fabrica", face: "babor", at: new Vec3(-F.x, 0, fabZ(0.5)), size: new Vec3(0.86, 1.9, 1.05), action: { kind: "panel", panel: "fabricacion" }, machine: "fundicion", info: "Fundición: funde y cuela el metal refinado; su cola de trabajos está en Fabricación", source: SRC.mre }),
-    fx({ id: "impresora", label: "Impresora 3D de metal", volume: "fabrica", face: "estribor", at: new Vec3(F.x, 0, fabZ(0.5)), size: new Vec3(0.86, 1.9, 1.05), action: { kind: "panel", panel: "planos" }, machine: "impresora", info: "Impresora de metal como la de la ESA en la ISS (acero, 2024): imprime lo que digan los planos", source: SRC.metalPrinter }),
     fx({ id: "esclusa-carga", label: "Esclusa de carga", volume: "fabrica", face: "techo", at: new Vec3(0, F.y, fabZ(0.82)), size: new Vec3(1.0, 0.5, 1.0), action: { kind: "panel", panel: "hangar" }, info: "Esclusa de carga como la Bishop de la ISS: pasa las piezas fabricadas al hangar sin vaciar el módulo", source: S.bishop }),
     // Airlock and hangar.
     fx({ id: "trajes", label: "Trajes y esclusa", volume: "esclusa", face: "estribor", at: new Vec3(LOCK.x, 0, (lock.min + lock.max) / 2), size: new Vec3(0.4, 1.7, 1.2), action: { kind: "esclusa" }, info: "Dos trajes, como en la esclusa Quest. El hangar está al vacío: hay que vaciar la esclusa para pasar", source: S.quest }),
@@ -211,6 +246,49 @@ export function stationInteriorPlan(layout: StationLayout = POLANA_LAYOUT): Stat
     fx({ id: "cunas", label: "Sondas fabricadas", volume: "hangar", face: "suelo", at: new Vec3(0, hc.y - hz.y + 2.4, hc.z + 1), size: new Vec3(12, 2.4, 9), action: { kind: "panel", panel: "hangar" }, info: "Cunas de las sondas construidas en la estación" }),
     fx({ id: "puerta-hangar", label: "Puerta del hangar", volume: "hangar", face: "popa", at: new Vec3(0, 0, hangar.max - 0.2), size: new Vec3(16, 11, 0.1), action: { kind: "info" }, info: "La puerta mira a popa y está abierta: el hangar no tiene aire, como la bodega del transbordador", source: S.shuttleBay }),
   ];
+
+  // --- Modules berthed on the side ports (along x) ---------------------------------------
+  const used = outfit.usedBerths();
+  const CAP = new Vec3(0.1, 1.27, 1.27);
+  for (const m of outfit.modules) {
+    if (!m.spec || m.spec.kind === "hangar" || !m.berth) continue;
+    const pm = layout.modules.find((x) => x.id === m.id);
+    const berth = outfit.berths.find((b) => b.id === m.berth);
+    if (!pm || !berth) continue;
+    const kind = m.spec.kind;
+    const a = AISLE[kind];
+    const s = Math.sign(berth.normal.x) || 1;
+    const x0 = pm.from.x;
+    const x1 = pm.to.x;
+    volumes.push({ id: m.id, code: m.code, label: m.label, kind, centre: new Vec3((x0 + x1) / 2, 0, 0), half: new Vec3(Math.abs(x1 - x0) / 2, a.y, a.x), pressurised: true, basis: a.basis, source: a.source });
+    // The hatch: from node 1's aisle through the CBM to the module, or across the joint between two modules.
+    const fromNode = berth.id.startsWith("nodo-1");
+    const inner = fromNode ? N.x - 0.3 : Math.abs(x0) - 0.5;
+    const outer = Math.abs(x0) + 0.5;
+    volumes.push({
+      id: `escotilla-${m.id}`,
+      code: "ESC",
+      label: `Escotilla ${berth.label.replace(/, puerto de \w+$/, "")} – ${m.label}`,
+      kind: "escotilla",
+      centre: new Vec3((s * (inner + outer)) / 2, 0, 0),
+      half: new Vec3((outer - inner) / 2, CBM_HALF, CBM_HALF),
+      through: "x",
+      pressurised: true,
+      basis: "Escotilla CBM de 1,27 m de lado, como entre los módulos de la ISS",
+      source: S.cbm,
+    });
+    if (m.spec.endPort && !used.has(`${m.id}-extremo`))
+      fixtures.push({ id: `puerto-${m.id}`, label: "Puerto libre", volume: m.id, face: s > 0 ? "estribor" : "babor", at: new Vec3(x1, 0, 0), size: CAP, action: { kind: "info" }, info: "Puerto CBM cerrado en el extremo: aquí se puede atracar otro módulo", source: S.cbm });
+  }
+  // Node 1's capped radial ports, while nothing is berthed there.
+  if (!used.has("nodo-1-babor")) fixtures.push({ id: "puerto-babor", label: "Puerto radial libre", volume: "nodo-1", face: "babor", at: new Vec3(-N.x, 0, 0), size: CAP, action: { kind: "info" }, info: "Puerto CBM cerrado: como Unity, este nodo tiene seis puertos; aquí se atraca un módulo nuevo (Planos → Módulos)", source: STRUCTURE_SOURCES.unity });
+  if (!used.has("nodo-1-estribor")) fixtures.push({ id: "puerto-estribor", label: "Puerto radial libre", volume: "nodo-1", face: "estribor", at: new Vec3(N.x, 0, 0), size: CAP, action: { kind: "info" }, info: "Puerto CBM cerrado, con su tapa: aquí se atraca un módulo nuevo (Planos → Módulos)", source: S.cbm });
+  // Equipment in every module's rack bays.
+  for (const e of outfit.equipment) {
+    const vol = volumes.find((v) => v.id === e.moduleId);
+    const om = outfit.module(e.moduleId);
+    if (vol && om) fixtures.push(rackFixture(e, vol, om.racksPerSide));
+  }
 
   return {
     volumes,

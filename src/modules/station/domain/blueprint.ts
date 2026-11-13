@@ -1,11 +1,25 @@
 import type { Sourced } from "@core/units";
 import { scaleAmounts, type Amounts, type MaterialStock } from "./materials";
+import type { EquipmentSpec, ModuleSpec } from "./outfit";
 
 /**
  * Station machines. Each one works through its own queue, one job at a time. The propellant plant
  * (`planta`) makes propellants; the refuelling line (`repostaje`) moves them into a docked craft.
+ * The welder (`soldadora`) and the composites cell (`compuestos`) exist once their equipment is
+ * built; `montaje` is the outside assembly (the arm that berths a new module).
  */
-export type MachineId = "refineria" | "fundicion" | "impresora" | "planta" | "repostaje";
+export type MachineId = "refineria" | "fundicion" | "impresora" | "planta" | "repostaje" | "soldadora" | "compuestos" | "montaje";
+
+export const MACHINE_NAME: Readonly<Record<MachineId, string>> = {
+  refineria: "Refinería",
+  fundicion: "Fundición",
+  impresora: "Impresora 3D de metal",
+  planta: "Planta de propelente",
+  repostaje: "Línea de repostaje",
+  soldadora: "Soldadora",
+  compuestos: "Celda de compuestos",
+  montaje: "Montaje exterior",
+};
 
 /** A ship or probe kept in the hangar. */
 export interface CraftSpec {
@@ -16,8 +30,19 @@ export interface CraftSpec {
   readonly note?: string;
 }
 
-/** What a blueprint makes: a part for the ship bay, or a whole craft for the hangar. */
-export type Product = { readonly kind: "part"; readonly partId: string } | { readonly kind: "craft"; readonly craft: CraftSpec };
+/**
+ * What a blueprint makes: a part for the ship bay (or for the station itself), a whole craft for the
+ * hangar, a new module for the station's structure, or a piece of equipment inside a module.
+ */
+export type Product =
+  | { readonly kind: "part"; readonly partId: string }
+  | { readonly kind: "craft"; readonly craft: CraftSpec }
+  | { readonly kind: "module"; readonly module: ModuleSpec }
+  | { readonly kind: "equipment"; readonly equipment: EquipmentSpec };
+
+/** The three kinds of blueprint the Planos tab groups: station modules, equipment, components. */
+export type BlueprintKind = "modulo" | "equipo" | "componente";
+export const blueprintKind = (bp: Blueprint): BlueprintKind => (bp.product.kind === "module" ? "modulo" : bp.product.kind === "equipment" ? "equipo" : "componente");
 
 /** How to make one thing at the station: what goes in, which machine, how and how long. */
 export interface Blueprint {
@@ -35,6 +60,8 @@ export interface Blueprint {
   readonly process: Sourced<string>;
   /** Steps in order (the last challenge orders them). */
   readonly steps: readonly string[];
+  /** Equipment that must be installed in the station before this can be made (its id). */
+  readonly requires?: string;
 }
 
 /** A refinery batch: raw rock in, refined materials out. */
@@ -52,6 +79,8 @@ export interface RefineProcess {
   readonly energyKwh?: Sourced<number>;
   /** Steps in order; `{right|wrong|wrong}` marks a real value to fill in. */
   readonly steps: Sourced<readonly string[]>;
+  /** Equipment that must be installed for this process (its id). */
+  readonly requires?: string;
 }
 
 /** Game tuning of the station (not real data). */

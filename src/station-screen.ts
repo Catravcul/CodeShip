@@ -3,7 +3,9 @@ import type { Ship } from "@modules/ship/domain/ship";
 import type { Expedition } from "@modules/expedition/application/expedition";
 import type { StationOps, StationSession } from "@modules/station/application/station-ops";
 import type { RefuelOps, RefuelStatus } from "@modules/station/application/refuel";
-import type { MachineId } from "@modules/station/domain/blueprint";
+import { MACHINE_NAME, type BlueprintKind, type MachineId } from "@modules/station/domain/blueprint";
+import { MODULE_KIND_NAME } from "@modules/station/domain/outfit";
+import { equipmentById, stationComponentById } from "@modules/station/data/outfit";
 import type { Amounts } from "@modules/station/domain/materials";
 import { MATERIALS, cargoMaterial, materialInfo, materialName } from "@modules/station/data/materials";
 import { fmtKg } from "@modules/station/application/challenges";
@@ -11,6 +13,7 @@ import { partById } from "@modules/ship/data/parts";
 import { electricThrusterById } from "@modules/mothership/data/thrusters";
 import { StationScene } from "./adapters/three/station-model";
 import type { DuelView, SessionText } from "./ui/duel-view";
+import "./ui/station-growth.css";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 const km = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1).replace(".", ",")} km` : `${Math.round(m)} m`);
@@ -27,7 +30,13 @@ const TABS: readonly [StationTab, string][] = [
   ["fabricacion", "Fabricación"],
   ["hangar", "Hangar"],
 ];
-const MACHINE: Readonly<Record<MachineId, string>> = { refineria: "Refinería", fundicion: "Fundición", impresora: "Impresora 3D de metal", planta: "Planta de propelente", repostaje: "Línea de repostaje" };
+const MACHINE = MACHINE_NAME;
+const PLAN_KINDS: readonly [BlueprintKind, string][] = [
+  ["modulo", "Módulos"],
+  ["equipo", "Equipo"],
+  ["componente", "Componentes"],
+];
+const kw = (v: number) => `${(Math.round(v * 10) / 10).toLocaleString("es-ES")} kW`;
 type ChoreMode = "refinar" | "fabricar" | "repostar";
 const kwh = (v: number) => `${fmtKg(v)} kWh`;
 const STAGE: Readonly<Record<string, string>> = { bruto: "Roca de la bodega (sin refinar)", refinado: "Refinados", importado: "Importados (no se pueden hacer aquí)" };
@@ -56,6 +65,8 @@ export class StationScreen {
   private readonly sub: HTMLElement;
   private readonly toast: HTMLElement;
   tab: StationTab = "materiales";
+  /** Which kind of blueprint the Planos tab shows. */
+  planKind: BlueprintKind = "componente";
   active = false;
   /** The chore open in the sheet, if any (exposed for automated checks). */
   session: StationSession | null = null;
@@ -230,7 +241,7 @@ export class StationScreen {
     const cards = (machine: MachineId) => this.ops
       .refining()
       .filter(({ process: p }) => p.machine === machine)
-      .map(({ process: p, scale, canRun }) => {
+      .map(({ process: p, scale, canRun, locked }) => {
         // What one run would be: the batch the store allows, or a full one when it allows none.
         const k = canRun ? Math.min(1, scale) : 1;
         const ins = Object.entries(p.inputs)
@@ -242,8 +253,9 @@ export class StationScreen {
         return `<div class="st-card"><div class="st-row"><b>${esc(p.name)}</b><span>${hrs(p.hours * k)}</span></div>
           <small>${esc(p.process.value)} · <a href="${esc(p.process.source)}" target="_blank" rel="noopener">fuente</a></small>
           ${p.energyKwh ? `<small>Energía: ${kwh(p.energyKwh.value * k)} ${canRun ? "por este lote" : "por lote"} · ${esc(p.energyKwh.note ?? "")} · <a href="${esc(p.energyKwh.source)}" target="_blank" rel="noopener">fuente</a></small>` : p.process.note ? `<small>${esc(p.process.note)}</small>` : ""}
+          ${locked ? `<div class="st-lock">${esc(locked)}</div>` : ""}
           ${canRun ? `<div class="st-io">${ins} → ${outs}${k < 1 ? ` (lote al ${Math.round(k * 100)} %)` : ""}</div>` : `<div class="st-io miss">${machine === "planta" ? "Faltan materiales" : "Falta roca"}: ${Object.entries(p.inputs).map(([id, n]) => `${qty(id, n)} ${esc(materialName(id).toLowerCase())}`).join(" + ")} por lote</div>`}
-          <button class="st-btn" data-refine="${esc(p.id)}" ${canRun ? "" : "disabled"}>${machine === "planta" ? "Producir" : "Refinar"}</button></div>`;
+          <button class="st-btn" data-refine="${esc(p.id)}" ${canRun ? "" : "disabled"}>${locked ? "Bloqueado" : machine === "planta" ? "Producir" : "Refinar"}</button></div>`;
       })
       .join("");
     return `${this.refuelCards()}${hold}${groups}<div class="bay-sec">Refinería · cada lote es una cadena de retos</div>${cards("refineria")}
@@ -282,24 +294,63 @@ export class StationScreen {
       <button class="st-btn" data-refuel="${esc(s.target.id)}" ${s.canStart ? "" : "disabled"}>${s.canStart ? `Repostar · ${hrs(s.hours)}` : s.loadKg > 0 ? "Repostar" : job ? "Repostando" : s.plan.every((p) => p.roomKg <= 0.0005) ? "Tanques llenos" : "Sin propelente en el almacén"}</button></div>`;
   }
 
+  /** Planos: grouped by kind (modules, equipment, components), each locked one saying what unlocks it. */
   private plans(): string {
-    const plans = this.ops.plans();
-    const ready = plans.filter((p) => p.canBuild);
+    const all = this.ops.plans();
+    const o = this.ops.station.outfit;
+    const plans = all.filter((p) => p.kind === this.planKind);
+    const seg = `<div class="st-seg" role="tablist">${PLAN_KINDS.map(([k, label]) => {
+      const n = all.filter((p) => p.kind === k && p.canBuild).length;
+      return `<button role="tab" data-plan-kind="${k}" class="${k === this.planKind ? "on" : ""}">${label}${n ? ` <i>${n}</i>` : ""}</button>`;
+    }).join("")}</div>`;
+    const free = o ? o.capacityKw - o.drawKw : 0;
+    const summary = o
+      ? `<div class="st-power"><span>Energía <b>${kw(o.drawKw)}</b> de ${kw(o.capacityKw)}</span><span>Puertos libres <b>${o.berths.filter((b) => !o.usedBerths().has(b.id)).length}</b></span><span>Bastidores libres <b>${o.modules.reduce((n, m) => n + o.freeRacks(m.id), 0)}</b></span><i style="width:${Math.round(Math.min(1, o.drawKw / Math.max(1e-9, o.capacityKw)) * 100)}%" class="${free < 0.1 * o.capacityKw ? "low" : ""}"></i></div>`
+      : "";
+    const intro: Readonly<Record<BlueprintKind, string>> = {
+      modulo: "Módulos nuevos: se atracan en un puerto libre y la estación crece.",
+      equipo: "Máquinas para los bastidores de los módulos: cada una desbloquea componentes nuevos. Las mejoras sustituyen a la máquina que mejoran.",
+      componente: "Piezas para el módulo de aterrizaje, la nodriza y la estación. Cada una necesita su máquina.",
+    };
     const card = (p: (typeof plans)[number]) => {
       const bp = p.blueprint;
-      return `<div class="st-card ${p.canBuild ? "" : "locked"}"><div class="st-row"><b>${esc(bp.name)}</b><span>${fmtKg(bp.massKg)} kg · ${hrs(bp.hours)}</span></div>
+      const pr = bp.product;
+      const extra: string[] = [];
+      if (pr.kind === "module") {
+        const m = pr.module;
+        extra.push(m.kind === "hangar" ? `+${fmtKg(m.hangarExtraM ?? 0)} m de hangar` : `${fmtKg(m.lengthM)} × ${fmtKg(m.diameterM)} m · ${2 * m.racksPerSide} bastidores${m.endPort ? " · puerto en el extremo" : ""}`, `${kw(m.powerKw)}`);
+      } else if (pr.kind === "equipment") {
+        const e = pr.equipment;
+        extra.push(`${e.racks} ${e.racks === 1 ? "bastidor" : "bastidores"} en un ${e.fitsIn.map((k) => MODULE_KIND_NAME[k]).join(" o ")}`, kw(e.powerKw));
+        if (e.upgrades) extra.push(`sustituye a ${esc(equipmentById(e.upgrades)?.name ?? e.upgrades)}`);
+        if (e.rate && e.rate > 1) extra.push(`${e.rate} veces más rápida`);
+      } else if (pr.kind === "part" && stationComponentById(pr.partId)) extra.push("para la estación: se monta en la bahía, pestaña Estación");
+      const need = bp.requires ? `<span class="st-chip ${o && !o.has(bp.requires) ? "miss" : "ok"}">Necesita ${esc(o?.name(bp.requires) ?? bp.requires)}</span>` : "";
+      const verb = pr.kind === "module" ? "Construir" : pr.kind === "equipment" ? "Montar" : "Fabricar";
+      const btn = p.built ? `<span class="st-have">Ya está en la estación</span>` : `<button class="st-btn" data-build="${esc(bp.id)}" ${p.canBuild ? "" : "disabled"}>${p.canBuild ? verb : p.locked ? "Bloqueado" : "Faltan materiales"}</button>`;
+      return `<div class="st-card ${p.canBuild ? "" : "locked"}${p.built ? " built" : ""}"><div class="st-row"><b>${esc(bp.name)}</b><span>${fmtKg(bp.massKg)} kg · ${hrs(bp.hours)}</span></div>
+        ${extra.length ? `<div class="st-io">${extra.join(" · ")}</div>` : ""}
+        ${p.locked && !p.built ? `<div class="st-lock">${esc(p.locked)}</div>` : ""}
         <small>${esc(MACHINE[bp.machine])} · ${esc(bp.process.value)} · <a href="${esc(bp.process.source)}" target="_blank" rel="noopener">fuente</a></small>
-        <div class="st-chips">${this.chips(bp.inputs, p.missing)}</div>
-        <div class="st-row">${p.inHangar ? `<span class="st-have">${p.inHangar} en el hangar</span>` : "<span></span>"}<button class="st-btn" data-build="${esc(bp.id)}" ${p.canBuild ? "" : "disabled"}>${p.canBuild ? "Fabricar" : "Faltan materiales"}</button></div></div>`;
+        <div class="st-chips">${need}${p.built ? "" : this.chips(bp.inputs, p.missing)}</div>
+        <div class="st-row">${p.inHangar ? `<span class="st-have">${p.inHangar} en el hangar</span>` : "<span></span>"}${btn}</div></div>`;
     };
-    return `<p class="st-dim">${ready.length} de ${plans.length} planos se pueden fabricar ya. Fabricar consume los materiales.</p>
-      ${ready.length ? `<div class="bay-sec ok">Se pueden fabricar</div>${ready.map(card).join("")}` : ""}
-      <div class="bay-sec">Faltan materiales</div>${plans.filter((p) => !p.canBuild).map(card).join("")}`;
+    const ready = plans.filter((p) => p.canBuild);
+    const short = plans.filter((p) => !p.canBuild && !p.locked && !p.built);
+    const locked = plans.filter((p) => p.locked && !p.built);
+    const built = plans.filter((p) => p.built);
+    const sec = (title: string, list: typeof plans, cls = "") => (list.length ? `<div class="bay-sec ${cls}">${title}</div>${list.map(card).join("")}` : "");
+    return `${seg}${summary}<p class="st-dim">${intro[this.planKind]} ${ready.length} de ${plans.length} se pueden hacer ya.</p>
+      ${sec("Se pueden hacer", ready, "ok")}${sec("Faltan materiales", short)}${sec("Bloqueados · primero hay que construir lo que piden", locked)}${sec("Ya en la estación", built)}`;
   }
 
   private queue(): string {
     const st = this.ops.station;
+    const o = st.outfit;
+    // Machines that do not exist yet (no equipment, nothing queued) stay out of the list.
+    const shown = (m: MachineId) => !o || st.queue(m).length > 0 || ["fundicion", "repostaje", "refineria", "impresora", "planta"].includes(m) || o.equipment.some((e) => e.spec.machine === m);
     return (Object.keys(MACHINE) as MachineId[])
+      .filter(shown)
       .map((m) => {
         const jobs = st.queue(m);
         const rows = jobs
@@ -327,7 +378,8 @@ export class StationScreen {
       .map(([id, n]) => {
         const p = partById(id);
         const drive = electricThrusterById(id);
-        return `<div class="st-mat"><b>${esc(p ? short(p.name) : drive ? `Propulsor ${drive.shortName}` : id)}</b><span>× ${n}</span><small>${drive ? "Se monta en la bahía, pestaña Nodriza, con la nodriza atracada aquí" : "Se monta en la bahía de la nave"}</small></div>`;
+        const sc = stationComponentById(id);
+        return `<div class="st-mat"><b>${esc(p ? short(p.name) : drive ? `Propulsor ${drive.shortName}` : sc ? sc.name : id)}</b><span>× ${n}</span><small>${drive ? "Se monta en la bahía, pestaña Nodriza, con la nodriza atracada aquí" : sc ? "Se monta en la bahía, pestaña Estación" : "Se monta en la bahía de la nave"}</small></div>`;
       })
       .join("");
     const bay = this.onBay ? `<button class="st-btn" data-bay>Abrir la bahía de la nave</button>` : "";
@@ -342,6 +394,14 @@ export class StationScreen {
     if (t.closest("[data-bay]")) return this.onBay?.();
     const r = t.closest<HTMLElement>("[data-refine]");
     if (r) return this.start(this.ops.startRefining(r.dataset.refine!), "refinar");
+    const k = t.closest<HTMLElement>("[data-plan-kind]");
+    if (k) {
+      this.planKind = k.dataset.planKind as BlueprintKind;
+      this.key = "";
+      this.render();
+      this.panel.scrollTop = 0;
+      return;
+    }
     const b = t.closest<HTMLElement>("[data-build]");
     if (b) return this.start(this.ops.startFabrication(b.dataset.build!), "fabricar");
     const f = t.closest<HTMLElement>("[data-refuel]");

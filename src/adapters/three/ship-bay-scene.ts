@@ -5,10 +5,18 @@ import { ShipModel, type PartId } from "./ship-model";
 import { buildStarfield } from "./starfield";
 import type { MothershipModel } from "./mothership-model";
 
-/** Which ship the bay shows: the probe, or the mothership (scaled down to fit the same camera). */
-export type BayView = "sonda" | "nodriza";
+/** Which ship the bay shows: the probe, the mothership (scaled down to fit the same camera) or the station. */
+export type BayView = "sonda" | "nodriza" | "estacion";
 /** The mothership is shown at 1:10 so the bay's orbit camera and zoom work for both. */
 const MOTHERSHIP_SCALE = 0.1;
+/** The station (about 90 m across its wings) at 1:4. */
+const STATION_SCALE = 0.25;
+
+/** A model the bay can show as the station: its root and its swappable parts by slot. */
+export interface BayStationModel {
+  readonly root: THREE.Object3D;
+  readonly slots: ReadonlyMap<string, THREE.Object3D>;
+}
 
 const TINT: Readonly<Record<Attention | "seleccion", number>> = { ok: 0x000000, aviso: 0xff9a1f, critico: 0xff2a2a, seleccion: 0x2fd0ff };
 
@@ -39,6 +47,8 @@ export class ShipBayScene {
   private inset: Inset = { right: 0, bottom: 0 };
   private _view: BayView = "sonda";
   private mothership?: MothershipModel;
+  private station?: { readonly root: THREE.Object3D; readonly parts: Map<PartId, THREE.Group> };
+  private stationModel?: BayStationModel;
 
   constructor(design: ShipDesign) {
     this.scene.background = new THREE.Color(0x03050a);
@@ -63,24 +73,49 @@ export class ShipBayScene {
     this.scene.add(m.root);
   }
 
+  /** Put the station in the bay (its wings, radiators and shield are its parts). */
+  addStation(m: BayStationModel): void {
+    const holder = new THREE.Group();
+    holder.scale.setScalar(STATION_SCALE);
+    // The station model carries its attitude; the bay shows it in its own frame.
+    m.root.quaternion.identity();
+    m.root.position.set(0, 0, 0);
+    holder.add(m.root);
+    holder.visible = this._view === "estacion";
+    this.scene.add(holder);
+    this.stationModel = m;
+    this.station = { root: holder, parts: new Map() };
+    this.syncStation();
+  }
+
+  /** The station model was rebuilt (it grew): pick up its new slot groups. */
+  syncStation(): void {
+    if (!this.station || !this.stationModel) return;
+    this.station.parts.clear();
+    for (const [id, g] of this.stationModel.slots) this.station.parts.set(`estacion:${id}` as PartId, g as THREE.Group);
+  }
+
   get view(): BayView {
     return this._view;
   }
 
   setView(v: BayView): void {
-    if (v === this._view || (v === "nodriza" && !this.mothership)) return;
+    if (v === this._view || (v === "nodriza" && !this.mothership) || (v === "estacion" && !this.station)) return;
     this._view = v;
     this.model.root.visible = v === "sonda";
     if (this.mothership) this.mothership.root.visible = v === "nodriza";
-    this.yaw = v === "nodriza" ? 2.6 : 2.35;
+    if (this.station) this.station.root.visible = v === "estacion";
+    this.yaw = v === "sonda" ? 2.35 : 2.6;
     this.select(null);
   }
 
   private get parts(): Map<PartId, THREE.Group> {
+    if (this._view === "estacion" && this.station) return this.station.parts;
     return this._view === "nodriza" && this.mothership ? this.mothership.parts : this.model.parts;
   }
 
   private get root(): THREE.Object3D {
+    if (this._view === "estacion" && this.station) return this.station.root;
     return this._view === "nodriza" && this.mothership ? this.mothership.root : this.model.root;
   }
 
@@ -91,7 +126,7 @@ export class ShipBayScene {
   }
 
   zoom(factor: number): void {
-    this.distGoal = Math.max(5, Math.min(this._view === "nodriza" ? 60 : 40, this.distGoal * factor));
+    this.distGoal = Math.max(5, Math.min(this._view === "sonda" ? 40 : 60, this.distGoal * factor));
   }
 
   /** Ease the camera towards a part (or the whole ship) and outline it. */
@@ -99,14 +134,14 @@ export class ShipBayScene {
     const g = id ? this.parts.get(id) : undefined;
     if (!g) {
       this.target.set(0, 0, 0);
-      this.distGoal = this._view === "nodriza" ? 34 : 17;
+      this.distGoal = this._view === "sonda" ? 17 : 34;
       this.box.visible = false;
       return;
     }
     const b = new THREE.Box3().setFromObject(g);
     b.getCenter(this.target);
     const r = b.getSize(new THREE.Vector3()).length();
-    this.distGoal = Math.max(6, Math.min(this._view === "nodriza" ? 24 : 18, r * 2.2 + 4));
+    this.distGoal = Math.max(6, Math.min(this._view === "sonda" ? 18 : 24, r * 2.2 + 4));
     // Swing round to a three-quarter view of the part's side, so the hull does not hide it.
     const c = this.target;
     if (c.length() > 0.5) {

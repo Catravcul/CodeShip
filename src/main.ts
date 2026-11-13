@@ -71,11 +71,11 @@ import { EXPLORER_CRAFT, MOTHERSHIP_CRAFT, POLANA_STATION, STARTING_STOCK } from
 import { StationModel } from "./adapters/three/station-model";
 import { StationScreen } from "./station-screen";
 import { StationStructure } from "@modules/station/domain/structure";
-import { POLANA_LAYOUT } from "@modules/station/data/structure";
 import { StationDock, dockNavTargets } from "./station-dock";
 import { StationInteriorMode } from "./station-interior";
 import { StationInterior } from "@modules/station/domain/interior";
-import { POLANA_INTERIOR } from "@modules/station/data/interior";
+import { stationInteriorPlan } from "@modules/station/data/interior";
+import { startingOutfit } from "@modules/station/data/outfit";
 import { partById } from "@modules/ship/data/parts";
 import { Mothership } from "@modules/mothership/domain/mothership";
 import { IDSS_CONTACT_LIMITS, NODRIZA, NODRIZA_NOSE_PORT, UNDOCK_PUSH_MS } from "@modules/mothership/data/mothership";
@@ -113,7 +113,9 @@ const mothership = Mothership.withProbeDockedAt(NODRIZA, startPos, startAttitude
 const ring = new SpinRing(mothership.spec.ring);
 const flight = new FlightComputer(ship, start, { gravitySources: region.asteroids, target: bennu });
 // The station is a structure in space with two IDSS ports: the probe docks at one, the mothership at the other.
-const structure = new StationStructure(POLANA_STATION, POLANA_LAYOUT);
+// What it is built of grows (docs/design/estacion.md, «La estación crece»): modules, equipment, wings and radiators.
+const stationOutfit = startingOutfit();
+const structure = new StationStructure(POLANA_STATION, stationOutfit.layout);
 const docking = new Docking(flight, [mothership, ...structure.ports], IDSS_CONTACT_LIMITS, UNDOCK_PUSH_MS.value);
 docking.dockNow(mothership);
 docking.drainEvents();
@@ -123,7 +125,7 @@ const stationOps = new StationOps(
   new Station(POLANA_STATION, new MaterialStock(STARTING_STOCK), new Hangar({}, [
     { ...MOTHERSHIP_CRAFT, name: mothership.spec.name, massKg: mothership.massKg },
     { ...EXPLORER_CRAFT, name: ship.name, massKg: ship.massKg },
-  ])),
+  ]), stationOutfit),
   BLUEPRINTS,
   [...REFINE_PROCESSES, ...PROPELLANT_PROCESSES],
   materialName,
@@ -247,7 +249,7 @@ scene.add(field.group);
 
 const asteroidMesh = buildAsteroidMesh(shapeParams, 0x3b3835); // Bennu is very dark; tone mapping lifts it a little.
 scene.add(asteroidMesh);
-const stationModel = new StationModel(POLANA_LAYOUT, structure.orientation);
+const stationModel = new StationModel(stationOutfit.layout, structure.orientation);
 stationModel.root.position.set(POLANA_STATION.position.x, POLANA_STATION.position.y, POLANA_STATION.position.z);
 scene.add(stationModel.root);
 
@@ -465,6 +467,8 @@ bay.docked = () => !!mothership.dockedTo;
 // The mothership's thruster mounts are refitted in the bay's Nodriza tab (docs/design/nave-nodriza.md).
 bay.nodriza = mothership;
 bay.onDriveRefit = () => mothershipModel.setThrusters(mothership.fitted);
+// The station's own wings, radiators and shield in the bay's «Estación» tab.
+bay.setStation(stationOutfit, new StationModel(stationOutfit.layout));
 // Refuelling (docs/design/estacion.md, «Repostar»): the lander at the station's port or on the mothership
 // berthed there, and the mothership's xenon while she is berthed.
 const mothershipAtStation = () => !!mothership.dockedTo;
@@ -484,7 +488,7 @@ const stationScreen = new StationScreen(
   refuelOps,
 );
 // Inside the station (docs/design/interiores.md §5): zero-g modules and the hangar; its machines open the screen's tabs.
-const stationInside = new StationInteriorMode(root, new StationInterior(POLANA_INTERIOR), {
+const stationInside = new StationInteriorMode(root, new StationInterior(stationInteriorPlan(stationOutfit.layout, stationOutfit)), {
   busy: () => new Set(stationOps.station.queue().map((j) => j.machine)),
   store: () => ({ parts: stationOps.station.hangar.partList(), crafts: stationOps.station.hangar.crafts.filter((c) => c.docked) }),
   partName: (id) => (partById(id)?.name ?? id).replace(/^Aerojet Rocketdyne /, "").replace(/\s*\(.*\)$/, ""),
@@ -507,6 +511,14 @@ const stationInside = new StationInteriorMode(root, new StationInterior(POLANA_I
     else view.center();
   },
 });
+let stationGrownAt = stationOutfit.version;
+/** The station grew: new modules in the structure (keep-out), the model outside and the rooms inside. */
+const regrowStation = () => {
+  stationGrownAt = stationOutfit.version;
+  structure.setLayout(stationOutfit.layout);
+  stationModel.rebuild(stationOutfit.layout);
+  stationInside.rebuild(new StationInterior(stationInteriorPlan(stationOutfit.layout, stationOutfit)));
+};
 let screenFromInside = false;
 let screenToBay = false;
 stationScreen.onExit = () => {
@@ -669,6 +681,8 @@ renderer.setAnimationLoop((now) => {
   }
   // The station's machines run on the same clock as life on board.
   stationOps.station.tick(dt * warp * STATION_TUNING.hoursPerSecond);
+  // A module berthed or equipment installed: the structure, its model and the walkable interior follow.
+  if (stationOutfit.version !== stationGrownAt) regrowStation();
   interior.update(dt);
   view.enabled = !interior.active && !stationInside.active && !deck.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active && !navMode.mapOpen && !missionLog.visible;
   navMode.update(dt, view.warpRequested);

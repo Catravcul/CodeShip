@@ -2,6 +2,7 @@ import type { Vec3 } from "@core/math/vec3";
 import { refineRun, batchScale, canRefine, type Blueprint, type CraftSpec, type MachineId, type RefineProcess } from "./blueprint";
 import type { Hangar } from "./hangar";
 import type { Amounts, MaterialId, MaterialStock } from "./materials";
+import type { EquipmentSpec, ModuleSpec, StationOutfit } from "./outfit";
 
 /** Where the station is: a place in the region a ship (or the navigation map) can head for. */
 export interface StationSite {
@@ -25,6 +26,8 @@ export type JobOutput =
   | { readonly kind: "materials"; readonly amounts: Amounts }
   | { readonly kind: "part"; readonly partId: string }
   | { readonly kind: "craft"; readonly craft: CraftSpec }
+  | { readonly kind: "module"; readonly module: ModuleSpec }
+  | { readonly kind: "equipment"; readonly equipment: EquipmentSpec }
   | ({ readonly kind: "transfer" } & Transfer);
 
 /** A craft that takes propellant at the end of a transfer. False if it cannot now (it undocked). */
@@ -40,7 +43,7 @@ export interface Job {
   readonly output: JobOutput;
 }
 
-export type StationEvent = { readonly type: "job-done"; readonly job: Job };
+export type StationEvent = { readonly type: "job-done"; readonly job: Job } | { readonly type: "grew"; readonly job: Job };
 
 /**
  * A space station with a materials store, its machines (refinery, foundry, metal printer, propellant
@@ -59,6 +62,11 @@ export class Station {
     readonly site: StationSite,
     readonly stock: MaterialStock,
     readonly hangar: Hangar,
+    /**
+     * Modules, equipment and the station's own components. Without it nothing is locked behind
+     * equipment (as before the station could grow).
+     */
+    readonly outfit?: StationOutfit,
   ) {
     this._position = site.position;
   }
@@ -95,20 +103,44 @@ export class Station {
     return this.jobs.find((j) => j.machine === job.machine) === job;
   }
 
-  canFabricate(bp: Blueprint): boolean {
-    return this.stock.has(bp.inputs);
+  /**
+   * Why a blueprint cannot be made whatever the store holds: the equipment it needs, a free port or
+   * rack bays, power. Undefined when nothing but materials stands in the way.
+   */
+  locked(bp: Blueprint): string | undefined {
+    const o = this.outfit;
+    if (!o) return undefined;
+    const p = bp.product;
+    return o.missingEquipment(bp.requires) ?? (p.kind === "module" ? o.moduleBlocker(p.module) : p.kind === "equipment" ? o.equipmentBlocker(p.equipment) : undefined);
   }
 
-  /** Take the blueprint's materials and queue it on its machine. */
+  /** Why a refinery or plant process cannot run whatever the store holds (its equipment). */
+  processLocked(p: RefineProcess): string | undefined {
+    return this.outfit?.missingEquipment(p.requires);
+  }
+
+  canFabricate(bp: Blueprint): boolean {
+    return this.stock.has(bp.inputs) && !this.locked(bp);
+  }
+
+  /** Take the blueprint's materials and queue it on its machine (a module claims its port, equipment its racks). */
   fabricate(bp: Blueprint): Job {
+    const why = this.locked(bp);
+    if (why) throw new Error(`${bp.id}: ${why}`);
     this.stock.take(bp.inputs);
-    const output: JobOutput = bp.product.kind === "part" ? { kind: "part", partId: bp.product.partId } : { kind: "craft", craft: bp.product.craft };
+    const p = bp.product;
+    if (p.kind === "module") this.outfit?.claimModule(p.module);
+    if (p.kind === "equipment") this.outfit?.claimEquipment(p.equipment);
+    const output: JobOutput =
+      p.kind === "part" ? { kind: "part", partId: p.partId } : p.kind === "craft" ? { kind: "craft", craft: p.craft } : p.kind === "module" ? { kind: "module", module: p.module } : { kind: "equipment", equipment: p.equipment };
     return this.enqueue(bp.machine, bp.name, bp.hours, output);
   }
 
   /** Take as much of a batch as the stock allows (up to one) and queue it in the refinery. */
   refine(p: RefineProcess): Job {
     if (!canRefine(p, this.stock)) throw new Error(`Not enough raw material for ${p.id}`);
+    const why = this.processLocked(p);
+    if (why) throw new Error(`${p.id}: ${why}`);
     const run = refineRun(p, batchScale(p, this.stock));
     this.stock.take(run.inputs);
     return this.enqueue(p.machine, p.name, run.hours, { kind: "materials", amounts: run.outputs });
@@ -133,7 +165,9 @@ export class Station {
     return this.jobs.flatMap((j) => (j.output.kind === "transfer" && j.output.craftId === craftId ? [j.output] : []));
   }
 
-  private enqueue(machine: MachineId, label: string, hours: number, output: JobOutput): Job {
+  /** Machine hours of a job: a better machine (an upgrade) works faster. */
+  private enqueue(machine: MachineId, label: string, baseHours: number, output: JobOutput): Job {
+    const hours = baseHours / (this.outfit?.rate(machine) ?? 1);
     const job: Job = { id: this.nextId++, machine, label, hoursTotal: hours, hoursLeft: hours, output };
     this.jobs.push(job);
     return job;
@@ -163,7 +197,11 @@ export class Station {
     if (o.kind === "materials") this.stock.add(o.amounts);
     else if (o.kind === "part") this.hangar.put(o.partId);
     else if (o.kind === "craft") this.hangar.addCraft(o.craft);
-    else if (!this.receivers.get(o.craftId)?.(o.loads)) this.stock.add(o.taken);
+    else if (o.kind === "module" || o.kind === "equipment") {
+      if (o.kind === "module") this.outfit?.completeModule(o.module);
+      else this.outfit?.completeEquipment(o.equipment);
+      this.events.push({ type: "grew", job });
+    } else if (!this.receivers.get(o.craftId)?.(o.loads)) this.stock.add(o.taken);
     this.events.push({ type: "job-done", job });
   }
 

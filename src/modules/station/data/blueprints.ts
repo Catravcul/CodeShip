@@ -8,6 +8,7 @@ import type { Equipment } from "@modules/ship/domain/equipment";
 import { STATION_TUNING, type Blueprint, type CraftSpec, type MachineId } from "../domain/blueprint";
 import type { Amounts } from "../domain/materials";
 import { SRC } from "./sources";
+import { EQ_BIG_PRINTER, EQ_COMPOSITES, EQ_EBW, EQ_FOUNDRY, EQ_PRINTER, EQ_REFINERY, GROWTH_BLUEPRINTS, SMALL_PRINTER_MAX_KG } from "./outfit";
 
 /** RCS thrusters are swapped as the whole set the hull carries (`buildRcsLayout`). */
 export const RCS_SET_SIZE = 24;
@@ -93,7 +94,7 @@ function equipmentRecipe(e: Equipment): Pick<Blueprint, "machine" | "inputs" | "
     const shell = m - 120;
     const fittings = feedstock(120, RECIPES.acero, 1);
     if (e.wall?.material.startsWith("Acero")) return { machine: "impresora", inputs: feedstock(m, RECIPES.acero, 2), hours, process: PRINT, steps: ["imprime los paneles de acero", "suelda los paneles", "monta las escotillas y ventanas del kit", "prueba la presión con aire"] };
-    if (e.wall?.material === "CFRP") return { machine: "fundicion", inputs: merge(feedstock(shell, RECIPES.fibra, 4), fittings), hours, process: LAYUP, steps: ["enrolla la fibra sobre el molde", "impregna la fibra con la resina del kit", "cura la cabina en el horno", "pega los anillos de las escotillas", "prueba la presión con aire"] };
+    if (e.wall?.material === "CFRP") return { machine: "compuestos", inputs: merge(feedstock(shell, RECIPES.fibra, 4), fittings), hours, process: LAYUP, steps: ["enrolla la fibra sobre el molde", "impregna la fibra con la resina del kit", "cura la cabina en el horno", "pega los anillos de las escotillas", "prueba la presión con aire"] };
     return { machine: "fundicion", inputs: merge({ kit: importKits(shell) }, fittings), hours, process: WELD, steps: ["corta la chapa importada", "curva los paneles", "suelda los paneles por fricción", "monta las escotillas y ventanas", "prueba la presión con aire"] };
   }
   if (e.kind === "escudo") {
@@ -103,7 +104,7 @@ function equipmentRecipe(e: Equipment): Pick<Blueprint, "machine" | "inputs" | "
   if (e.kind === "energia") {
     if (!e.solar) return { machine: "impresora", inputs: merge({ kit: 20 }, feedstock(m * 0.3, RECIPES.acero, 0)), hours, process: { ...ASSEMBLY, value: `${ASSEMBLY.value}: el plutonio-238 solo puede llegar de fuera` }, steps: ["imprime las aletas del radiador", "recibe las fuentes de calor del kit", "monta los termopares", "comprueba la potencia"] };
     const kits = Math.ceil(e.powerW / 500);
-    return { machine: "impresora", inputs: merge({ kit: kits }, feedstock(m * 0.6, RECIPES.fibra, 0)), hours, process: ASSEMBLY, steps: ["imprime los paneles de fibra", "pega las células del kit", "suelda las cadenas de células", "monta las bisagras", "comprueba la potencia al sol"] };
+    return { machine: "compuestos", inputs: merge({ kit: kits }, feedstock(m * 0.6, RECIPES.fibra, 0)), hours, process: ASSEMBLY, steps: ["lamina los paneles de fibra", "pega las células del kit", "suelda las cadenas de células", "monta las bisagras", "comprueba la potencia al sol"] };
   }
   // Battery: the cells are imported; the boxes are printed here.
   const kits = Math.ceil((e.storageWh ?? 0) / 1000);
@@ -128,7 +129,7 @@ function tankBlueprint(p: Extract<Part, { kind: "tank" }>): Blueprint {
     id: `plano-${p.id}`,
     name: p.name,
     product: { kind: "part", partId: p.id },
-    machine: "fundicion",
+    machine: "soldadora",
     massKg: m,
     // Brackets and the lines are steel from the rock (a tenth of the dry mass, game value).
     inputs: merge({ kit: kits }, feedstock(m * 0.1, RECIPES.acero, 0)),
@@ -207,7 +208,7 @@ export function mothershipEquipmentBlueprint(e: MothershipEquipment): Blueprint 
   if (e.slot === "energia-auxiliar") {
     if (!e.solar)
       return { ...base, machine: "impresora", inputs: merge({ kit: 40 }, feedstock(m * 0.5, RECIPES.acero, 0)), hours: Math.round(48 + m / 50), process: { ...ASSEMBLY, value: `${ASSEMBLY.value}: el núcleo de uranio solo puede llegar de fuera` }, steps: ["imprime el blindaje de sombra", "imprime las carcasas de los Stirling", "recibe los núcleos del kit", "monta los tubos de calor", "prueba los Stirling en caliente"] };
-    return { ...base, machine: "impresora", inputs: merge({ kit: Math.ceil(e.powerKw / 10) }, feedstock(m * 0.5, RECIPES.fibra, 0)), hours: Math.round(24 + m / 20), process: ASSEMBLY, steps: ["imprime los mástiles de fibra", "extiende las mantas de células del kit", "suelda las cadenas de células", "enrolla las alas", "prueba el despliegue"] };
+    return { ...base, machine: "compuestos", inputs: merge({ kit: Math.ceil(e.powerKw / 10) }, feedstock(m * 0.5, RECIPES.fibra, 0)), hours: Math.round(24 + m / 20), process: ASSEMBLY, steps: ["lamina los mástiles de fibra", "extiende las mantas de células del kit", "suelda las cadenas de células", "enrolla las alas", "prueba el despliegue"] };
   }
   const material = e.shield!.material;
   const shares: Readonly<Record<string, number>> = material === "agua" ? { agua: 1 } : material === "polietileno" ? { carbono: 0.86, agua: 1.29 } : { ceramica: 1 };
@@ -238,10 +239,33 @@ export const PROBE_BLUEPRINT: Blueprint = {
   hours: 36,
   process: PRINT,
   steps: ["imprime el armazón", "pega los paneles de carbono", "monta la electrónica del kit", "carga el programa de vuelo", "prueba la radio"],
+  requires: EQ_PRINTER.id,
 };
 
-/** Every blueprint the station knows: each part of the ship's catalog, the mothership's thrusters, and the probe. */
-export const BLUEPRINTS: readonly Blueprint[] = [...ALL_PARTS.filter((p) => !isEmptyPart(p)).map(partBlueprint), ...ELECTRIC_THRUSTERS.map(driveBlueprint), ...MOTHERSHIP_EQUIPMENT.filter((e) => e.massKg > 0).map(mothershipEquipmentBlueprint), PROBE_BLUEPRINT];
+/**
+ * The equipment a component needs, from the machine that makes it: the basic printer only prints
+ * small parts (up to `SMALL_PRINTER_MAX_KG`), bigger ones need the big printer; tanks need the
+ * electron-beam welder and fibre parts the composites cell.
+ */
+export function requirementFor(machine: MachineId, massKg: number): string | undefined {
+  if (machine === "impresora") return massKg > SMALL_PRINTER_MAX_KG ? EQ_BIG_PRINTER.id : EQ_PRINTER.id;
+  if (machine === "fundicion") return EQ_FOUNDRY.id;
+  if (machine === "refineria") return EQ_REFINERY.id;
+  if (machine === "soldadora") return EQ_EBW.id;
+  if (machine === "compuestos") return EQ_COMPOSITES.id;
+  return undefined;
+}
+const withRequirement = (bp: Blueprint): Blueprint => {
+  if (bp.requires) return bp;
+  const requires = requirementFor(bp.machine, bp.massKg);
+  return requires ? { ...bp, requires } : bp;
+};
+
+/** Ship and probe components: each part of the ship's catalog, the mothership's thrusters and equipment, and the probe. */
+export const COMPONENT_BLUEPRINTS: readonly Blueprint[] = [...ALL_PARTS.filter((p) => !isEmptyPart(p)).map(partBlueprint), ...ELECTRIC_THRUSTERS.map(driveBlueprint), ...MOTHERSHIP_EQUIPMENT.filter((e) => e.massKg > 0).map(mothershipEquipmentBlueprint), PROBE_BLUEPRINT].map(withRequirement);
+
+/** Every blueprint the station knows: its modules and equipment, the station's components, and the ships' components. */
+export const BLUEPRINTS: readonly Blueprint[] = [...GROWTH_BLUEPRINTS, ...COMPONENT_BLUEPRINTS];
 
 export const blueprintById = (id: string): Blueprint | undefined => BLUEPRINTS.find((b) => b.id === id);
 export const blueprintForPart = (partId: string): Blueprint | undefined => BLUEPRINTS.find((b) => b.product.kind === "part" && b.product.partId === partId);

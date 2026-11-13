@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { Vec3 } from "@core/math/vec3";
 import { POLANA_LAYOUT } from "../data/structure";
-import { POLANA_INTERIOR, hangarPressureCase } from "../data/interior";
+import { POLANA_INTERIOR, hangarPressureCase, stationInteriorPlan } from "../data/interior";
+import { EQ_BIG_PRINTER, EQ_CARBONYL, EQ_COMPOSITES, EQ_CROPS, EQ_EBW, MOD_FAB2, MOD_FARM, MOD_HANGAR, RADIATORS_DOUBLE, startingOutfit } from "../data/outfit";
+import { BLUEPRINTS } from "../data/blueprints";
+import { MATERIALS } from "../data/materials";
+import { POLANA_STATION } from "../data/station";
+import { MaterialStock } from "./materials";
+import { Hangar } from "./hangar";
+import { Station } from "./station";
 import { StationInterior, distanceToBox, faceToward, fixtureBox } from "./interior";
 
 const interior = new StationInterior(POLANA_INTERIOR);
@@ -155,5 +162,76 @@ describe("station interior (sized from the structure)", () => {
     expect(c.volumeM3).toBeCloseTo(5600, 0);
     expect(c.airKg).toBeGreaterThan(6500);
     expect(c.wallLoadMN).toBeGreaterThan(40);
+  });
+});
+
+describe("station interior as the station grows (generated from the outfit)", () => {
+  const grown = () => {
+    const st = new Station(POLANA_STATION, new MaterialStock(Object.fromEntries(MATERIALS.map((m) => [m.id, 1e6]))), new Hangar(), startingOutfit());
+    for (const id of [`plano-equipo-${EQ_EBW.id}`, `plano-equipo-${EQ_COMPOSITES.id}`, `plano-equipo-${EQ_CARBONYL.id}`, `plano-modulo-${MOD_FAB2.id}`, `plano-modulo-${MOD_FARM.id}`, `plano-equipo-${EQ_BIG_PRINTER.id}`, `plano-modulo-${MOD_HANGAR.id}`]) {
+      st.fabricate(BLUEPRINTS.find((b) => b.id === id)!);
+      st.tick(1e5);
+    }
+    st.outfit!.fitComponent(RADIATORS_DOUBLE);
+    st.fabricate(BLUEPRINTS.find((b) => b.id === `plano-equipo-${EQ_CROPS.id}`)!);
+    st.tick(1e5);
+    const o = st.outfit!;
+    return { o, inside: new StationInterior(stationInteriorPlan(o.layout, o)) };
+  };
+
+  it("the base plan's machines come from the starting equipment, in the fabrication module's racks", () => {
+    for (const id of ["refineria", "guantera", "fundicion", "impresora", "planta"]) expect(interior.fixture(id)?.volume, id).toBe("fabrica");
+    expect(interior.fixture("puerto-babor")).toBeDefined();
+  });
+
+  it("a berthed module is a new aisle along x reached through a CBM hatch from node 1; its port cap is gone", () => {
+    const { o, inside } = grown();
+    expect(inside.plan.fixtures.some((f) => f.id === "puerto-babor" || f.id === "puerto-estribor")).toBe(false);
+    for (const m of [MOD_FAB2, MOD_FARM]) {
+      const v = inside.volume(m.id)!;
+      expect(2 * v.half.x).toBeCloseTo(m.lengthM, 2);
+      const pm = o.layout.modules.find((x) => x.id === m.id)!;
+      expect(Math.hypot(v.half.y, v.half.z)).toBeLessThan(pm.radiusM);
+      const far = new Vec3(v.centre.x + Math.sign(v.centre.x) * (v.half.x - 0.5), 0, 0);
+      // From the probe's entry: into node 1, then sideways into the new module.
+      const sonda = POLANA_INTERIOR.entries.sonda.at;
+      const ok = (a: Vec3, b: Vec3) => {
+        const n = Math.ceil(b.sub(a).length() / 0.05);
+        for (let k = 0; k <= n; k++) if (!inside.fits(a.add(b.sub(a).scale(k / n)), BODY, false)) return false;
+        return true;
+      };
+      expect(ok(sonda, new Vec3(0, 0, sonda.z)) && ok(new Vec3(0, 0, sonda.z), Vec3.ZERO) && ok(Vec3.ZERO, far), m.id).toBe(true);
+      expect(inside.pressurisedAt(far)).toBe(true);
+    }
+  });
+
+  it("new equipment stands in its module's racks and opens its tab; codes count along the module", () => {
+    const { inside } = grown();
+    const crops = inside.fixture(EQ_CROPS.id)!;
+    expect(crops.volume).toBe(MOD_FARM.id);
+    expect(["proa", "popa"]).toContain(crops.face);
+    expect(inside.locationCode(crops)).toMatch(/^AGR1[FA][1-6]$/);
+    expect(inside.fixture(EQ_BIG_PRINTER.id)!.volume).toBe("fabrica");
+    expect(inside.fixture("impresora")).toBeUndefined();
+    expect(inside.fixture(EQ_EBW.id)!.action).toEqual({ kind: "panel", panel: "planos" });
+    // Every fixture can still be reached.
+    for (const f of inside.plan.fixtures.filter((x) => x.volume !== "hangar")) {
+      const v = inside.volume(f.volume)!;
+      let ok = false;
+      for (let k = 0; k <= 40 && !ok; k++) {
+        const p = f.at.add(v.centre.sub(f.at).scale(k / 40));
+        // Toward the aisle's axis, keeping the position along the module (or along the axis for an end port).
+        const endCap = f.face === "babor" || f.face === "estribor" ? v.half.x > v.half.z : f.face === "proa" || f.face === "popa" ? v.half.z > v.half.x : false;
+        const along = v.half.x > v.half.z ? "x" : "z";
+        const q = endCap ? p : new Vec3(along === "x" ? f.at.x : p.x, p.y, along === "z" ? f.at.z : p.z);
+        ok = inside.fits(q, BODY, false) && distanceToBox(fixtureBox(f), q) <= 1.0;
+      }
+      expect(ok, f.id).toBe(true);
+    }
+  });
+
+  it("the extended hangar has more room for spare parts", () => {
+    const { inside } = grown();
+    expect(2 * inside.volume("hangar")!.half.z).toBeGreaterThan(2 * interior.volume("hangar")!.half.z + 9);
   });
 });

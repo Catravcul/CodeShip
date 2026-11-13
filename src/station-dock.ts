@@ -11,7 +11,10 @@ export function dockNavTargets(structure: StationStructure, mothership: Mothersh
       id: structure.site.id,
       name: structure.site.name,
       what: "Estación",
-      position: structure.position,
+      // A getter: the station can move under its own engines (survival mode).
+      get position() {
+        return structure.position;
+      },
       radiusM: structure.boundingRadiusM,
       probePort: structure.portFor("sonda")!,
       carrierPort: structure.portFor("nodriza")!,

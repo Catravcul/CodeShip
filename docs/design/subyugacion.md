@@ -168,6 +168,11 @@ modelos de forma reales).
 - `expedition/application/expedition.test.ts`: duelo por fases, recompensas, ira por fase, aviso a la ira con la fase y espera a que se calme.
 - `eva/application/eva.test.ts`: tumbarse, ser lanzada y recogida por el cable, EVA en otro asteroide.
 
+Capturas (móvil iPhone 13 y escritorio 1280×800): `docs/screenshots/subyugacion-1*` (sonda: puente,
+lanzada, aproximación, posada, duelo, resultado, confianza en el mapa, recuperada),
+`subyugacion-2*` (módulo: mapa, aproximación, anclado, duelo, resultado, siguiente paso) y
+`subyugacion-3*` (traje: fuera, tumbada, duelo, resultado).
+
 ## 7. Preguntas abiertas
 
 - ¿La estación debería fabricar sondas (plano y materiales) en vez de reponerlas gratis?

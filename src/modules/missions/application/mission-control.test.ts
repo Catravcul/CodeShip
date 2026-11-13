@@ -104,4 +104,14 @@ describe("Nevaeh's missions data", () => {
     expect(m2.why).toMatch(/2,44 km/);
     expect(m2.why).toMatch(/124 veces/);
   });
+
+  it("Nevaeh pays credits for main missions and for each side mission", () => {
+    const box = new Mailbox(STORY);
+    const paid: [number, string][] = [];
+    const ctl = new MissionControl(new MissionLog(NEVAEH_MISSIONS, TARGETS), box, MISSION_LETTERS, () => undefined, (c, why) => paid.push([c, why]), 400);
+    const side = TARGETS.find((t) => !NEVAEH_MISSIONS.some((m) => m.target.id === t.id))!;
+    const notes = ctl.update((id) => id === BENNU.id || id === side.id);
+    expect(paid.map((p) => p[0]).sort()).toEqual([1500, 400].sort());
+    expect(notes.find((n) => n.kind === "secundaria")!.text).toMatch(/400 créditos/);
+  });
 });

@@ -65,6 +65,7 @@ import { StationOps } from "@modules/station/application/station-ops";
 import { BLUEPRINTS } from "@modules/station/data/blueprints";
 import { REFINE_PROCESSES } from "@modules/station/data/processes";
 import { PROPELLANT_PROCESSES } from "@modules/station/data/propellant-processes";
+import { COMET_PROCESSES } from "@modules/station/data/comet-processes";
 import { RefuelOps, mothershipRefuelTarget, shipRefuelTarget } from "@modules/station/application/refuel";
 import { materialName } from "@modules/station/data/materials";
 import { EXPLORER_CRAFT, MOTHERSHIP_CRAFT, POLANA_STATION, STARTING_STOCK } from "@modules/station/data/station";
@@ -127,7 +128,7 @@ const stationOps = new StationOps(
     { ...EXPLORER_CRAFT, name: ship.name, massKg: ship.massKg },
   ]), stationOutfit),
   BLUEPRINTS,
-  [...REFINE_PROCESSES, ...PROPELLANT_PROCESSES],
+  [...REFINE_PROCESSES, ...COMET_PROCESSES, ...PROPELLANT_PROCESSES],
   materialName,
 );
 

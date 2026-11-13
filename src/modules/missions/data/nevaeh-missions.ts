@@ -17,6 +17,11 @@ const MARS_SRC = "https://en.wikipedia.org/wiki/Mars";
 const ORIGIN = "Nueva: misiones principales de Nevaeh (docs/design/misiones.md).";
 const GAME = "valor de juego";
 
+/** Credits Nevaeh pays for each side mission (a target subjugated off the main chain). Game value. */
+export const SIDE_MISSION_CREDITS = 400;
+/** Credits the station starts with: Nevaeh's first stipend. Game value. */
+export const STARTING_CREDITS = 1000;
+
 /** Spanish number: decimal comma, thin grouping. */
 const es = (n: number, d = 0) => n.toLocaleString("es-ES", { minimumFractionDigits: d, maximumFractionDigits: d });
 /** 9,05 × 10¹² */
@@ -70,7 +75,7 @@ export const NEVAEH_MISSIONS: readonly MainMission[] = [
       { label: "Tipo", value: `${BENNU.spectralType.value} (rico en carbono)`, source: BENNU.spectralType.source, note: "medido" },
       ...asteroidFacts(BENNU, true),
     ],
-    reward: { amounts: { kit: 2 }, text: "2 kits importados" },
+    reward: { amounts: { kit: 2 }, credits: 1500, text: "2 kits importados y 1500 créditos" },
     // Asked for in the first nano_net letter (modules/story/data/nevaeh.ts).
     letterId: "nano-net-nucleo",
     playable: true,
@@ -83,7 +88,7 @@ export const NEVAEH_MISSIONS: readonly MainMission[] = [
     title: `Persuadir a ${BIG.name}`,
     why: `Es el más grande de los vecinos de Bennu: ${es(diameterKm(BIG), 2)} km y unas ${es(bennuTimes(BIG))} veces su masa. Con él la red tendrá roca de sobra para crecer.`,
     facts: asteroidFacts(BIG, false),
-    reward: { amounts: { kit: 2 }, text: "2 kits importados" },
+    reward: { amounts: { kit: 2 }, credits: 1500, text: "2 kits importados y 1500 créditos" },
     letterId: "mision-242916",
     playable: true,
   },
@@ -95,7 +100,7 @@ export const NEVAEH_MISSIONS: readonly MainMission[] = [
     title: `Persuadir a ${DARK.name}`,
     why: `Es el más oscuro de los vecinos de Bennu (albedo ${es(DARK_ALBEDO.value, 3)}): es casi negro y los telescopios del santuario apenas lo ven. Nevaeh sospecha que alguien se esconde a su sombra.`,
     facts: [{ label: "Albedo", value: es(DARK_ALBEDO.value, 3), source: DARK_ALBEDO.source, note: "medido (NEOWISE)" }, ...asteroidFacts(DARK, false)],
-    reward: { amounts: { kit: 3 }, text: "3 kits importados" },
+    reward: { amounts: { kit: 3 }, credits: 2500, text: "3 kits importados y 2500 créditos" },
     letterId: "mision-58587",
     playable: true,
   },

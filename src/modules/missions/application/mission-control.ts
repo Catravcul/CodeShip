@@ -21,6 +21,10 @@ export class MissionControl {
     letters: readonly Letter[],
     /** Give a reward to the station's store. */
     private readonly grant: (amounts: Readonly<Record<string, number>>) => void,
+    /** Pay credits into the station's account (main rewards and each side mission). */
+    private readonly pay?: (credits: number, why: string) => void,
+    /** Credits per side mission. */
+    private readonly sideCredits = 0,
   ) {
     this.letters = new Map(letters.map((l) => [l.id, l]));
     const first = log.current;
@@ -43,6 +47,7 @@ export class MissionControl {
         const r = this.mailbox.received.find((x) => x.letter.id === m.letterId);
         if (r?.letter.mission?.goal === "persuadir" && !r.missionDone) this.mailbox.completeMission(m.letterId);
         if (m.reward) this.grant(m.reward.amounts);
+        if (m.reward?.credits) this.pay?.(m.reward.credits, `Misión: ${m.title}`);
         return { kind: "cumplida", text: `Misión de Nevaeh cumplida: ${m.title}${m.reward ? ` · llegan ${m.reward.text} a la estación` : ""}` };
       }
       case "main-active":
@@ -53,7 +58,9 @@ export class MissionControl {
         return { kind: "anunciada", text: `Carta de Nevaeh sobre ${e.mission.target.name}: misión bloqueada por ahora` };
       case "side-done": {
         const c = this.log.sideCount;
-        return { kind: "secundaria", text: `Misión secundaria: ${e.target.name} subyugado (${c.done}/${c.total})` };
+        const paid = this.pay && this.sideCredits > 0;
+        if (paid) this.pay!(this.sideCredits, `Misión secundaria: ${e.target.name}`);
+        return { kind: "secundaria", text: `Misión secundaria: ${e.target.name} subyugado (${c.done}/${c.total})${paid ? ` · Nevaeh paga ${this.sideCredits} créditos` : ""}` };
       }
     }
   }

@@ -178,5 +178,5 @@ En `docs/screenshots/ira-{rocas,explosivo,supervivencia}-{mobile,desktop}.png` (
 - **El traje (fase 3)** está modelado en el dominio pero no conectado.
 - **Qué pasa cuando un casco llega a 0** en el módulo, la nodriza o la estación: ¿fin de partida, rescate, reparación?
 - **Huida de la nodriza:** solo se guía, no se automatiza. ¿Debe huir sola, como la estación?
-- **Embestida:** Bennu (nivel 1) no lanza nada al módulo, pero ahora puede embestirlo. ¿Es lo que se quiere, o la embestida debería limitarse a los blancos de su nivel? ¿Y embestir a la nodriza o a la estación (hoy no son «naves que lo enfadaron»)?
+- **Embestida:** Bennu (nivel 1) no lanza nada al módulo, pero ahora puede embestirlo. ¿Es lo que se quiere, o la embestida debería limitarse a los blancos de su nivel? ¿Y embestir a la nodriza o a la estación (hoy no son «naves que lo enfadaron»)? En el tramo comprimido de un viaje del módulo (hasta ×60) el aviso dura menos de 0,1 s real y no se puede esquivar (CV-17, HC-03 en `docs/qa/casos.md`): ¿debe una embestida frenar la cámara rápida del viaje?
 - **La dosis de Doménica** se acumula y se muestra, pero todavía no afecta a su salud (`medical`).

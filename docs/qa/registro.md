@@ -49,7 +49,7 @@ caso y las anteriores quedan en sus run logs.
 | IRA-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | IRA-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | IRA-04 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
-| IRA-05 | Sin probar | | | Pendiente de fusionar la rama `embestida` |
+| IRA-05 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); capturas `embestida-*` con Playwright (iPhone 13 y 1280×800, sin errores de página) |
 | EST-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | EST-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | EST-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -102,7 +102,7 @@ caso y las anteriores quedan en sus run logs.
 | CV-14 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK |
 | CV-15 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK · **HC-05** |
 | CV-16 | No aplica | | | No hay partidas guardadas (**HC-06**) |
-| CV-17 | Sin probar | | | Espera a la rama `embestida` |
+| CV-17 | Probado (suite) | 2026-11-13 | | `embestida.test.ts`: OK · **HC-03** |
 
 ## Última ejecución por run log
 

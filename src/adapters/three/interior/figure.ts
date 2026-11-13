@@ -38,6 +38,16 @@ export const POSES: Record<string, PoseAngles> = {
   // Neutral body posture in microgravity (NASA-STD-3000): arms float forward, hips and knees bend.
   float: P({ torso: 0.15, headX: 0.15, shoulderX: [-0.9, -0.9], shoulderZ: [0.35, -0.35], elbow: [-0.7, -0.7], hip: [-0.7, -0.7], knee: [1.0, 1.0] }),
   shoulders: P({ shoulderZ: [0.25, -0.25], shoulderX: [0.25, 0.25] }),
+  // Moving about in zero g (docs/design/ingravidez.md). Holding a rail: one arm up to it, legs loose.
+  hold: P({ torso: 0.1, headX: -0.2, shoulderX: [-2.2, -0.9], shoulderZ: [0.05, -0.35], elbow: [-0.25, -0.7], hip: [-0.4, -0.25], knee: [0.6, 0.4] }),
+  // Pushing off: arms swept back toward the rail behind her, body straightening.
+  push: P({ torso: -0.05, headX: -0.5, shoulderX: [0.5, 0.5], shoulderZ: [0.15, -0.15], elbow: [-0.2, -0.2], hip: [0.05, 0.05], knee: [0.1, 0.1] }),
+  // Gliding head first («Superman»): body extended, arms forward, head up to see where she goes.
+  glide: P({ torso: -0.05, headX: -0.6, shoulderX: [-2.95, -2.95], shoulderZ: [0.12, -0.12], elbow: [-0.1, -0.1], hip: [0.05, 0.05], knee: [0.15, 0.15] }),
+  // Reaching for a rail as it comes: arms out ahead, knees tucking to soak up the stop.
+  reach: P({ torso: 0.15, headX: -0.4, shoulderX: [-2.5, -2.3], shoulderZ: [0.2, -0.2], elbow: [-0.35, -0.35], hip: [-0.6, -0.6], knee: [0.9, 0.9] }),
+  // Braced on a bare wall with both hands.
+  brace: P({ torso: 0.2, headX: -0.1, shoulderX: [-1.6, -1.6], shoulderZ: [0.25, -0.25], elbow: [-0.9, -0.9], hip: [-0.5, -0.5], knee: [0.8, 0.8] }),
 };
 
 function box(w: number, h: number, d: number, color: number, y: number): THREE.Mesh {
@@ -95,6 +105,16 @@ export class CubeFigure {
 
   pose(key: string): void {
     this.target = POSES[key] ?? STAND;
+  }
+
+  /** Ease toward explicit joint angles (procedural motions such as hand over hand). */
+  poseAngles(a: PoseAngles): void {
+    this.target = a;
+  }
+
+  /** World position of a hand (0 or 1), from the current joint angles; the caller updates world matrices. */
+  handWorld(i: 0 | 1, out: THREE.Vector3): THREE.Vector3 {
+    return this.elbows[i]!.localToWorld(out.set(0, -0.28, 0));
   }
 
   /** Walking gait: `phase` advances with distance, `amount` 0 (standing) … 1 (full stride). */

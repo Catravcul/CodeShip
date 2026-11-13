@@ -119,16 +119,8 @@ export function buildSpoke(L: SpokeLayout, ring: SpinRing, roomHeight: number): 
     end.position.set(sx < 0 ? -L.hubHalfX : L.moduleEndX, L.axisY, L.z);
     g.add(end);
   }
-  // Non-rotating spine module, its handrails, lockers and lights.
+  // Non-rotating spine module, its lockers and lights (the handrails are built from the domain's rail list, zones.ts).
   g.add(axialTube(L.tubeR, L.hubHalfX, L.moduleEndX, mat(0xe8e2d6, { side: THREE.BackSide }), L));
-  const railMat = mat(0xe8c547, { metalness: 0.4 });
-  for (let k = 0; k < 4; k++) {
-    const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
-    const r = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, L.moduleEndX + L.hubHalfX - 0.4, 6), railMat);
-    r.rotation.z = Math.PI / 2;
-    r.position.set((L.moduleEndX - L.hubHalfX) / 2, L.axisY + Math.cos(a) * (L.tubeR - 0.2), L.z + Math.sin(a) * (L.tubeR - 0.2));
-    g.add(r);
-  }
   for (let x = L.hubHalfX + 1.5; x < L.deckHatchX; x += 3) {
     const locker = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 0.25), mat(0x8a96a6));
     locker.position.set(x, L.axisY, L.z - L.tubeR + 0.3);

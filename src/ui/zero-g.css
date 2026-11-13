@@ -1,0 +1,13 @@
+/* --- Zero-g movement: push off a rail, catch a rail (docs/design/ingravidez.md) --- */
+.zg-controls { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 6; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.zg-controls.hidden, .zg-controls .hidden { display: none !important; }
+.zg-push { width: 104px; height: 104px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: inherit; color: #001018; background: #ffd27f; border: 0; box-shadow: 0 0 18px #ffb34766; touch-action: none; user-select: none; -webkit-user-select: none; }
+.zg-push b { font-size: 14px; }
+.zg-push small { font-size: 10px; opacity: 0.75; }
+.zg-push.hard { background: #ff9a3c; box-shadow: 0 0 24px #ff7a2a; }
+.zg-grab { min-height: 44px; padding: 8px 16px; font: inherit; font-size: 14px; font-weight: 600; color: #001018; background: #9fe8c4; border: 0; border-radius: 12px; box-shadow: 0 0 14px #3fd09a88; touch-action: none; }
+body.in-duel .zg-controls { display: none !important; }
+@media (max-width: 600px) {
+  .zg-push { width: 92px; height: 92px; }
+}
+.sti-hud .sti-move-line { color: #d8f6ff; }

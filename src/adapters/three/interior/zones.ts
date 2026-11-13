@@ -1,14 +1,17 @@
 import * as THREE from "three";
 import { Vec3 } from "@core/math/vec3";
 import type { SpinRing } from "@modules/gravity/domain/spin-gravity";
-import { FLOAT_TUNING, floatStep } from "@modules/gravity/domain/zero-g";
+import { discRails, RailGraph, tubeRails, type Handrail } from "@modules/gravity/domain/handrails";
+import { IVA, ivaStep, startAt, type IvaEvent, type IvaState, type IvaWorld } from "@modules/gravity/domain/iva";
+import { ZeroGControls } from "../../input/zero-g-controls";
 import type { CubeFigure } from "./figure";
+import { buildRails, FloatingBody } from "./zero-g-body";
 import { buildSpoke, spokeLayout, type SpokeHandles, type SpokeLayout } from "./spoke";
 
 /** Where Doménica is: on the ring floor (walking), in the spoke elevator, or floating at the axis. */
 export type GravityZone = "anillo" | "radio" | "eje";
 
-/** Game tuning for riding the spoke elevator (floating uses FLOAT_TUNING, shared with the station). */
+/** Game tuning for riding the spoke elevator (floating uses the shared rail movement, gravity/domain/iva.ts). */
 const TUNING = {
   /**
    * Elevator: top speed and acceleration. Kept slow on purpose: riding a spoke at v gives a sideways
@@ -19,6 +22,25 @@ const TUNING = {
 } as const;
 
 const fmt = (v: number, d = 2) => v.toFixed(d).replace(".", ",");
+/** Game value: the air in the hub and spine drifts toward the cockpit end at 0,1 m/s (NASA-STD-3001 V2 6107: 0,08–0,61 m/s). */
+const AIR = new Vec3(0.1, 0, 0);
+/** Body margin from the walls while floating, m. */
+const BODY = 0.45;
+
+/**
+ * Handrails of the hub and the spine (docs/design/ingravidez.md): four rows round the wall, one bar
+ * per rack bay, separate on each side of the bearing; bars round the hatches at both ends; and an
+ * upright bar at the top of the shaft, by the ladder, to hold on when the elevator arrives.
+ */
+export function axisHandrails(L: SpokeLayout): Handrail[] {
+  return [
+    ...tubeRails("cubo", L.axisY, L.z, L.tubeR, -L.hubHalfX + 0.2, L.hubHalfX - 0.2),
+    ...tubeRails("espina", L.axisY, L.z, L.tubeR, L.hubHalfX + 0.2, L.moduleEndX - 0.2),
+    ...discRails("cubo-fondo", -L.hubHalfX, 1, L.axisY, L.z, 1.1),
+    ...discRails("espina-fondo", L.moduleEndX, -1, L.axisY, L.z, 1.1),
+    { id: "pozo", a: new Vec3(L.x, L.topY + 1.15, L.z - L.shaftR + 0.08), b: new Vec3(L.x, L.axisY - L.tubeR - 0.1, L.z - L.shaftR + 0.08), normal: new Vec3(0, 0, 1) },
+  ];
+}
 
 /**
  * Gravity zones of the interior: the spoke elevator, the floating hub/spine and the HUD line with
@@ -30,7 +52,12 @@ export class GravityZones {
   private readonly spoke: SpokeHandles;
   /** Body centre while floating (eje), car floor while riding (radio). */
   private readonly p = new THREE.Vector3();
-  private readonly v = new THREE.Vector3();
+  /** Floating at the axis: rails only (docs/design/ingravidez.md). */
+  private iva: IvaState = { position: Vec3.ZERO, velocity: Vec3.ZERO, motion: { kind: "deriva" } };
+  private readonly graph: RailGraph;
+  private readonly world: IvaWorld;
+  private readonly zg: ZeroGControls;
+  private body: FloatingBody | null = null;
   private carY = 0;
   private carV = 0;
   private carTarget = 0;
@@ -61,12 +88,22 @@ export class GravityZones {
     this.layout = spokeLayout(ring, roomHalfL);
     this.spoke = buildSpoke(this.layout, ring, roomHeight);
     scene.add(this.spoke.group);
+    this.graph = new RailGraph(axisHandrails(this.layout));
+    scene.add(buildRails(this.graph.rails));
+    this.world = {
+      graph: this.graph,
+      fits: (q) => this.insideFloat(new THREE.Vector3(q.x, q.y, q.z), BODY),
+      // In the rotating hub, centrifugal and Coriolis still act (weakly); the spine does not turn.
+      extra: (q, v) => (q.x <= this.layout.hubHalfX ? this.ring.apparentAcceleration(new Vec3(0, q.y - this.layout.axisY, q.z - this.layout.z), v) : Vec3.ZERO),
+      air: () => AIR,
+    };
     this.ballMesh.visible = false;
     scene.add(this.ballMesh);
     this.ui = document.createElement("div");
     this.ui.className = "zones-ui";
     this.ui.innerHTML = `<button class="zone-btn hidden"></button><button class="throw-btn hidden">Lanzar pelota</button><div class="updown hidden"><button class="zg-up" aria-label="Subir">▲</button><button class="zg-down" aria-label="Bajar">▼</button></div>`;
     container.appendChild(this.ui);
+    this.zg = new ZeroGControls(container);
     this.actionBtn = this.ui.querySelector(".zone-btn")!;
     this.throwBtn = this.ui.querySelector(".throw-btn")!;
     this.actionBtn.addEventListener("click", () => this.action?.());
@@ -152,7 +189,9 @@ export class GravityZones {
     this.actionBtn.classList.toggle("hidden", !this.action);
     this.actionBtn.textContent = label;
     this.throwBtn.classList.toggle("hidden", busy || this.zone !== "anillo" || this.ring.omegaRadS === 0);
-    this.ui.querySelector(".updown")!.classList.toggle("hidden", this.zone === "anillo");
+    this.ui.querySelector(".updown")!.classList.toggle("hidden", this.zone !== "radio");
+    const floating = this.enabled && this.zone === "eje" && !this.autoDown;
+    this.zg.show(floating, floating && this.iva.motion.kind === "planeo" && !!this.graph.nearest(this.iva.position, IVA.reachM));
     document.body.classList.toggle("in-zero-g", this.enabled && this.zone === "eje");
   }
 
@@ -187,9 +226,11 @@ export class GravityZones {
       this.carV = 0;
       if (this.carTarget === L.topY) {
         this.zone = "eje";
-        this.p.set(L.x, L.axisY - 0.5, L.z);
-        this.v.set(0, 0.25, 0);
-        this.say("Ingravidez: muévete con el mando y ▲▼; el pasamanos te frena");
+        // She comes out of the car holding the bar by the ladder.
+        this.iva = startAt(this.graph, new Vec3(L.x, L.axisY - 0.5, L.z));
+        this.p.set(this.iva.position.x, this.iva.position.y, this.iva.position.z);
+        this.body?.reset();
+        this.say("Ingravidez: agárrate a los asideros e impúlsate. En el aire no se frena ni se gira hasta el siguiente asidero");
       } else if (this.carTarget === 0) {
         this.zone = "anillo";
         pos.set(L.x, 0, L.z + 0.9);
@@ -200,9 +241,6 @@ export class GravityZones {
 
   private float(dt: number, yaw: number, pitch: number, move: { forward: number; right: number }): void {
     const L = this.layout;
-    const k = (c: string) => (this.keys.has(c) ? 1 : 0);
-    const up = Math.max(-1, Math.min(1, this.upDown + k("KeyR") + k("Space") - k("KeyF") - k("ShiftLeft")));
-    let push: THREE.Vector3;
     if (this.autoDown) {
       // Pull herself along the rails to the hatch over the spoke, then into the car.
       const hatch = new THREE.Vector3(L.x, L.topY + 1.2, L.z);
@@ -215,20 +253,33 @@ export class GravityZones {
         this.sendCar("down");
         return;
       }
-      push = to.normalize().multiplyScalar(FLOAT_TUNING.push * 2);
-      this.v.multiplyScalar(Math.exp(-2 * dt));
-    } else {
-      const fwd = new THREE.Vector3(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
-      const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
-      const camUp = new THREE.Vector3().crossVectors(right, fwd).normalize();
-      push = fwd.multiplyScalar(move.forward).addScaledVector(right, move.right).addScaledVector(camUp, up).multiplyScalar(FLOAT_TUNING.push);
+      this.p.addScaledVector(to.normalize(), Math.min(to.length(), IVA.glide.suave * dt));
+      this.iva = { position: new Vec3(this.p.x, this.p.y, this.p.z), velocity: new Vec3(to.x, to.y, to.z).scale(IVA.glide.suave), motion: { kind: "planeo" } };
+      return;
     }
-    // In the rotating hub, centrifugal and Coriolis still act (weakly); the spine does not turn.
-    const a = this.p.x <= L.hubHalfX ? this.ring.apparentAcceleration(new Vec3(0, this.p.y - L.axisY, this.p.z - L.z), new Vec3(this.v.x, this.v.y, this.v.z)) : Vec3.ZERO;
-    const v3 = (q: THREE.Vector3) => new Vec3(q.x, q.y, q.z);
-    const next = floatStep({ position: v3(this.p), velocity: v3(this.v) }, v3(push), a, dt, (q) => this.insideFloat(new THREE.Vector3(q.x, q.y, q.z), 0.45));
-    this.p.set(next.position.x, next.position.y, next.position.z);
-    this.v.set(next.velocity.x, next.velocity.y, next.velocity.z);
+    const k = (c: string) => (this.keys.has(c) ? 1 : 0);
+    const up = Math.max(-1, Math.min(1, this.upDown + k("KeyR") - k("KeyF")));
+    const fwd = new Vec3(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
+    const right = new Vec3(Math.cos(yaw), 0, -Math.sin(yaw));
+    const camUp = right.cross(fwd).normalize();
+    const stick = fwd.scale(move.forward).add(right.scale(move.right)).add(camUp.scale(up));
+    const strength = this.zg.takePush();
+    const push = strength ? { dir: stick.length() > 0.2 ? stick : fwd, strength } : undefined;
+    const r = ivaStep(this.iva, { ...(push ? { push } : {}), along: stick, grab: this.zg.takeGrab() }, this.world, dt);
+    this.iva = r.state;
+    this.p.set(r.state.position.x, r.state.position.y, r.state.position.z);
+    for (const e of r.events) this.tell(e);
+  }
+
+  private tell(e: IvaEvent): void {
+    const n = (x: number) => fmt(x, 1);
+    if (e.kind === "impulso" && e.speed > IVA.glide.suave) this.say(`Impulso fuerte: ${n(e.speed)} m/s, unos ${Math.round(e.forceN)} N en los brazos`);
+    else if (e.kind === "agarra" && e.speed > 0.7) this.say(`Llegas a ${n(e.speed)} m/s: frenas con unos ${Math.round(e.forceN)} N en los brazos`);
+    else if (e.kind === "pared") this.say("Te paras contra la pared con las manos: desde aquí también puedes impulsarte");
+    else if (e.kind === "golpe") this.say(`¡Golpe contra la pared a ${n(e.speed)} m/s! Rebotas`);
+    else if (e.kind === "deriva") this.say("A la deriva: no llegas a nada. Solo te mueve el aire de la ventilación, muy despacio");
+    else if (e.kind === "sin-impulso")
+      this.say(e.why === "en-vuelo" ? "En el aire no puedes cambiar de rumbo: espera al próximo asidero o pulsa «Agarrarse»" : e.why === "contra-la-pared" ? "No puedes empujarte hacia la pared que sujetas" : "No hay nada en lo que apoyarse: el aire te llevará a una pared");
   }
 
   /** Inside the hub, the spine module or the top of the shaft, keeping `margin` from the walls. */
@@ -264,26 +315,25 @@ export class GravityZones {
       camera.lookAt(L.x - side.x * 0.3, this.carY + (portrait ? 8 : 4.5), L.z - side.z * 0.3);
       return true;
     }
-    // Floating: body roughly along the look direction, in the neutral posture astronauts relax into.
-    avatar.pose("float");
-    avatar.update(1 / 60, 4);
-    const tilt = Math.max(0.2, Math.min(2.6, 1.3 - pitch));
-    rig.quaternion.setFromEuler(new THREE.Euler(tilt, yaw + Math.PI, 0, "YXZ"));
-    const centre = new THREE.Vector3(0, 0.9, 0).applyQuaternion(rig.quaternion);
-    rig.position.copy(this.p).sub(centre);
+    // Floating: holding rails, pushing off, gliding head first (docs/design/ingravidez.md).
+    this.body ??= new FloatingBody(rig);
+    this.body.update(avatar, this.iva, this.graph, dir, 1 / 60);
     if (!third) {
       camera.position.copy(this.p);
       camera.rotation.set(pitch, yaw, 0, "YXZ");
       return true;
     }
+    // Follow her body as drawn (a hand on a rail shifts it off the physics point).
+    const seen = this.body.centre();
+    const at = this.insideFloat(seen, 0.15) ? seen : this.p;
     const cam = new THREE.Vector3();
     for (let d = 2.4; d > 0.4; d -= 0.1) {
-      cam.copy(this.p).addScaledVector(dir, -d).add(new THREE.Vector3(0, 0.25, 0));
+      cam.copy(at).addScaledVector(dir, -d).add(new THREE.Vector3(0, 0.25, 0));
       if (this.insideFloat(cam, 0.15)) break;
     }
     camera.position.copy(cam);
     camera.up.set(0, 1, 0);
-    camera.lookAt(this.p.clone().addScaledVector(dir, 1.2));
+    camera.lookAt(at.clone().addScaledVector(dir, 1.2));
     return true;
   }
 

@@ -1,12 +1,16 @@
 import * as THREE from "three";
 import { Vec3 } from "@core/math/vec3";
-import { FLOAT_TUNING, floatStep } from "@modules/gravity/domain/zero-g";
+import { RailGraph } from "@modules/gravity/domain/handrails";
+import { IVA, ivaStep, startAt, type IvaEvent, type IvaState, type IvaWorld } from "@modules/gravity/domain/iva";
+import { stationHandrails } from "@modules/station/data/handrails";
 import type { CraftSpec, MachineId } from "@modules/station/domain/blueprint";
 import type { PortUser } from "@modules/station/domain/structure";
 import { faceToward, type Fixture, type StationInterior, type StationPanel } from "@modules/station/domain/interior";
 import { buildStationRooms, crateModel, probeModel, type StationRooms } from "./adapters/three/interior/station-rooms";
 import { CubeFigure } from "./adapters/three/interior/figure";
 import { Walker } from "./adapters/input/walker";
+import { ZeroGControls } from "./adapters/input/zero-g-controls";
+import { buildRails, FloatingBody } from "./adapters/three/interior/zero-g-body";
 import "./ui/station-interior.css";
 
 const PANEL_NAME: Readonly<Record<StationPanel, string>> = { materiales: "Materiales", planos: "Planos", fabricacion: "Fabricación", hangar: "Hangar", propelente: "Planta de propelente" };
@@ -16,6 +20,9 @@ const BODY = 0.3;
 /** Game value: seconds to empty or fill the airlock (on the ISS it takes hours with the prebreathe). */
 const CYCLE_S = 2.5;
 const CABIN_KPA = 101.3;
+/** Game value: the cabin air drifts aft at 0,1 m/s (ventilation, within NASA-STD-3001 V2 6107's 0,08–0,61 m/s). */
+const AIR = new Vec3(0, 0, 0.1);
+const num = (x: number, d = 2) => x.toFixed(d).replace(".", ",");
 
 export interface StationInteriorDeps {
   /** Machines working right now (their lamps glow). */
@@ -49,10 +56,14 @@ export class StationInteriorMode {
   private readonly toast: HTMLElement;
   private readonly keys = new Set<string>();
   private p = Vec3.ZERO;
-  private v = Vec3.ZERO;
+  /** How she moves about: holding rails, pushing off, gliding (docs/design/ingravidez.md). */
+  private iva: IvaState = { position: Vec3.ZERO, velocity: Vec3.ZERO, motion: { kind: "deriva" } };
+  private readonly graph: RailGraph;
+  private readonly world: IvaWorld;
+  private readonly body: FloatingBody;
+  private readonly zg: ZeroGControls;
   private yaw = 0;
   private pitch = 0;
-  private upDown = 0;
   private thirdPerson = true;
   private toastUntil = 0;
   private storeKey = "";
@@ -74,16 +85,26 @@ export class StationInteriorMode {
     this.scene.background = new THREE.Color(0x05070c);
     this.rooms = buildStationRooms(interior.plan);
     this.scene.add(this.rooms.group);
+    this.graph = new RailGraph(stationHandrails(interior.plan));
+    this.scene.add(buildRails(this.graph.rails));
+    this.world = {
+      graph: this.graph,
+      fits: (q) => this.interior.fits(q, BODY, this.suited),
+      air: (q) => (this.interior.pressurisedAt(q, this.suited) ? AIR : Vec3.ZERO),
+      portals: interior.plan.volumes.filter((v) => v.kind === "escotilla" || v.kind === "esclusa").map((v) => v.centre),
+    };
     this.avatar.pose("float");
     this.suit.pose("float");
     this.rig.add(this.avatar.root, this.suit.root);
     this.scene.add(this.rig);
-    this.walker = new Walker(root, { move: "sti-move", look: "sti-look", moveLabel: "Flotar" });
+    this.body = new FloatingBody(this.rig);
+    this.walker = new Walker(root, { move: "sti-move", look: "sti-look", moveLabel: "Manos" });
     this.ui = document.createElement("div");
     this.ui.className = "sti-ui hidden";
     this.ui.innerHTML = `<div class="sti-hud"></div><button class="sti-tasks">Tareas</button><button class="sti-view"></button><button class="sti-back">Salir</button>
-      <button class="sti-act hidden"></button><div class="sti-updown"><button class="sti-up" aria-label="Hacia el techo">▲</button><button class="sti-down" aria-label="Hacia el suelo">▼</button></div><div class="sti-toast"></div>`;
+      <button class="sti-act hidden"></button><div class="sti-toast"></div>`;
     root.appendChild(this.ui);
+    this.zg = new ZeroGControls(root);
     this.hud = this.ui.querySelector(".sti-hud")!;
     this.actBtn = this.ui.querySelector(".sti-act")!;
     this.viewBtn = this.ui.querySelector(".sti-view")!;
@@ -100,21 +121,6 @@ export class StationInteriorMode {
     });
     this.syncView();
     this.actBtn.addEventListener("click", () => this.near && this.use(this.near, true));
-    for (const [cls, dir] of [
-      [".sti-up", 1],
-      [".sti-down", -1],
-    ] as const) {
-      const b = this.ui.querySelector<HTMLButtonElement>(cls)!;
-      b.addEventListener("pointerdown", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.upDown = dir;
-      });
-      const stop = () => this.upDown === dir && (this.upDown = 0);
-      b.addEventListener("pointerup", stop);
-      b.addEventListener("pointerleave", stop);
-      b.addEventListener("pointercancel", stop);
-    }
     window.addEventListener("keydown", (e) => {
       if (!this.active) return;
       this.keys.add(e.code);
@@ -139,8 +145,9 @@ export class StationInteriorMode {
   enter(from: PortUser): void {
     const e = this.interior.plan.entries[from];
     this.from = from;
-    this.p = e.at;
-    this.v = Vec3.ZERO;
+    this.iva = startAt(this.graph, e.at);
+    this.p = this.iva.position;
+    this.body.reset();
     this.suited = false;
     this.cycling = 0;
     this.yaw = Math.atan2(-e.facing.x, -e.facing.z);
@@ -154,6 +161,7 @@ export class StationInteriorMode {
     this.active = true;
     this.walker.enabled = true;
     this.ui.classList.remove("hidden");
+    this.zg.show(true);
     document.body.classList.add("in-station-interior");
     this.resize();
   }
@@ -162,8 +170,8 @@ export class StationInteriorMode {
   suspend(): void {
     this.active = false;
     this.walker.enabled = false;
-    this.upDown = 0;
     this.ui.classList.add("hidden");
+    this.zg.show(false);
     document.body.classList.remove("in-station-interior");
   }
 
@@ -181,16 +189,7 @@ export class StationInteriorMode {
       this.cycling = Math.max(0, this.cycling - dt);
       if (this.cycling === 0) this.say(this.suited ? "Esclusa vacía: abre la escotilla exterior y pasa al hangar" : "Esclusa a presión: ya puedes quitarte el casco y volver al módulo");
     }
-    const move = this.walker.move();
-    const k = (c: string) => (this.keys.has(c) ? 1 : 0);
-    const up = Math.max(-1, Math.min(1, this.upDown + k("KeyR") + k("Space") - k("KeyF") - k("ShiftLeft")));
-    const fwd = this.lookDir();
-    const right = new Vec3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
-    const camUp = right.cross(fwd).normalize();
-    const input = this.cycling > 0 ? Vec3.ZERO : fwd.scale(move.forward).add(right.scale(move.right)).add(camUp.scale(up)).scale(FLOAT_TUNING.push);
-    const s = floatStep({ position: this.p, velocity: this.v }, input, Vec3.ZERO, dt, (q) => this.interior.fits(q, BODY, this.suited), { collide: "slide" });
-    this.p = s.position;
-    this.v = s.velocity;
+    this.moveAbout(dt);
     this.near = this.cycling > 0 ? undefined : this.interior.fixtureNear(this.p);
     this.syncAction();
     this.syncMachines();
@@ -199,6 +198,47 @@ export class StationInteriorMode {
     this.fadeSigns();
     this.renderHud();
     if (performance.now() > this.toastUntil) this.toast.classList.remove("on");
+  }
+
+  /** Rails only: hold, go hand over hand, push off, glide, catch the next rail (docs/design/ingravidez.md). */
+  private moveAbout(dt: number): void {
+    const move = this.walker.move();
+    const fwd = this.lookDir();
+    const right = new Vec3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
+    const stick = fwd.scale(move.forward).add(right.scale(move.right));
+    const busy = this.cycling > 0;
+    const strength = busy ? null : this.zg.takePush();
+    const grab = this.zg.takeGrab();
+    // Push toward the stick's direction if she is steering, else where she looks.
+    const push = strength ? { dir: stick.length() > 0.2 ? stick : fwd, strength } : undefined;
+    const r = ivaStep(this.iva, { ...(push ? { push } : {}), ...(busy ? {} : { along: stick }), grab }, this.world, dt);
+    this.iva = r.state;
+    this.p = r.state.position;
+    for (const e of r.events) this.tell(e);
+    const m = this.iva.motion;
+    this.zg.show(this.active, m.kind === "planeo" && !!this.graph.nearest(this.p, IVA.reachM));
+  }
+
+  private tell(e: IvaEvent): void {
+    if (e.kind === "impulso" && e.speed > IVA.glide.suave) this.say(`Impulso fuerte: ${num(e.speed, 1)} m/s, unos ${Math.round(e.forceN)} N en los brazos`);
+    else if (e.kind === "agarra" && e.speed > 0.7) this.say(`Llegas a ${num(e.speed, 1)} m/s: frenas con unos ${Math.round(e.forceN)} N en los brazos`);
+    else if (e.kind === "pared") this.say("Te paras contra la pared con las manos: desde aquí también puedes impulsarte");
+    else if (e.kind === "golpe") this.say(`¡Golpe contra la pared a ${num(e.speed, 1)} m/s! Rebotas`);
+    else if (e.kind === "deriva") this.say("A la deriva: no llegas a nada. Solo te mueve el aire de la ventilación, muy despacio", 5);
+    else if (e.kind === "sin-impulso")
+      this.say(e.why === "en-vuelo" ? "En el aire no puedes cambiar de rumbo: espera al próximo asidero o pulsa «Agarrarse»" : e.why === "contra-la-pared" ? "No puedes empujarte hacia la pared que sujetas" : "No hay nada en lo que apoyarse: el aire te llevará a una pared");
+  }
+
+  private motionLine(): string {
+    const m = this.iva.motion;
+    const v = num(this.iva.velocity.length());
+    if (m.kind === "sujeta") return "Sujeta a un asidero";
+    if (m.kind === "mano-a-mano") return "Mano a mano por los asideros";
+    if (m.kind === "impulso") return "Impulsándose…";
+    if (m.kind === "planeo") return `Planeando a ${v} m/s, sin frenar`;
+    if (m.kind === "agarrando") return "Agarrando el asidero";
+    if (m.kind === "pared") return "Apoyada en la pared";
+    return `A la deriva (${num(this.iva.velocity.length(), 3)} m/s)`;
   }
 
   private lookDir(): Vec3 {
@@ -307,13 +347,13 @@ export class StationInteriorMode {
     this.rig.visible = third;
     this.avatar.root.visible = !this.suited;
     this.suit.root.visible = this.suited;
-    (this.suited ? this.suit : this.avatar).update(1 / 60, 4);
-    // Body roughly along the look direction, in the neutral posture of microgravity; head toward the overhead.
-    const tilt = Math.max(0.2, Math.min(2.6, 1.3 - this.pitch));
-    this.rig.quaternion.setFromEuler(new THREE.Euler(tilt, this.yaw + Math.PI, 0, "YXZ"));
-    const centre = new THREE.Vector3(0, 0.9, 0).applyQuaternion(this.rig.quaternion);
-    this.rig.position.copy(p).sub(centre);
+    this.body.update(this.suited ? this.suit : this.avatar, this.iva, this.graph, new THREE.Vector3(dir.x, dir.y, dir.z), 1 / 60);
     this.camera.up.set(0, 1, 0);
+    // Third person: follow her body as drawn (when it fits), so a hand on a rail does not push her off screen.
+    if (third) {
+      const c = this.body.centre();
+      if (this.interior.fits(new Vec3(c.x, c.y, c.z), 0.1, this.suited)) p.copy(c);
+    }
     if (!third) {
       this.camera.position.copy(p);
       this.camera.rotation.set(this.pitch, this.yaw, 0, "YXZ");
@@ -332,7 +372,7 @@ export class StationInteriorMode {
       d = k;
     }
     cam.copy(at(d));
-    if (d < 1.6) {
+    if (d < 1.1) {
       // Too tight to see her from behind: look through her eyes until there is room.
       this.rig.visible = false;
       this.camera.position.copy(p);
@@ -363,7 +403,7 @@ export class StationInteriorMode {
     const suit = this.suited ? " · con traje" : "";
     const html = `<div class="sti-title">${v ? `${v.code} · ${v.label}` : "Estación"}</div>
       <div>Mirando hacia ${looking} · el techo es «arriba»</div>
-      <div class="sti-grav">0 g: la estación no gira · ${air}${suit}</div>${this.near ? `<div class="sti-near">${this.near.label} · ${this.interior.locationCode(this.near)}</div>` : ""}`;
+      <div class="sti-grav">0 g: la estación no gira · ${air}${suit}</div><div class="sti-move-line">${this.motionLine()}</div>${this.near ? `<div class="sti-near">${this.near.label} · ${this.interior.locationCode(this.near)}</div>` : ""}`;
     if (html !== this.hudKey) {
       this.hudKey = html;
       this.hud.innerHTML = html;

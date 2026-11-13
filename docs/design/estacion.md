@@ -82,6 +82,35 @@ Los miembros pequeños de la familia de Nueva Polana usan la misma composición,
 
 Los **kits importados** (electrónica, válvulas y el lecho catalizador S-405 de iridio sobre alúmina) aún no se pueden hacer con roca. La estación empieza con 6. Se basa en la idea de arrancar la industria espacial con un sistema «subreplicante» abastecido desde la Tierra ([Metzger et al. 2013](https://arxiv.org/abs/1612.03238)).
 
+### Capacidad del almacén y reservas
+
+El almacén tiene **tope** (decisión HC-02 de [docs/qa](../qa/casos.md)) y crece con los módulos
+(`STORE_STOWAGE` en `data/store.ts`, `storeCapacityKg`). Cada módulo trae bastidores de almacén del
+tamaño de un **ISPR** de la ISS: 1,571 m³ y unos 700 kg de carga cada uno
+([Wikipedia: ISPR](https://en.wikipedia.org/wiki/International_Standard_Payload_Rack), reales). Cuántos
+bastidores trae cada clase de módulo es valor de juego, del orden de la ISS (Unity, el nodo 1, lleva 4
+ISPR, [Wikipedia](https://en.wikipedia.org/wiki/Unity_(ISS_module))):
+
+| Módulo | Bastidores de almacén | kg |
+| --- | --- | --- |
+| Nodo | 4 | 2 800 |
+| Módulo habitable | 2 | 1 400 |
+| Fabricación, planta, agrícola | 4 | 2 800 |
+| Hangar | roca a granel, sin presión (como la bodega de 20 t de la nodriza) | 20 000 |
+
+La estación de partida (dos nodos, el habitable y la fábrica) guarda **9,8 t**; cada módulo nuevo suma
+2,8 t y el hangar 20 t. Los **propelentes** (xenón, hidracina, NTO, MMH…) van en los depósitos de la
+planta y no cuentan; los kits cuentan a 25 kg cada uno. Lo que llega con el almacén lleno **se queda
+en su origen**: el asteroide de nivel 4 guarda su roca (no se extrae), los paquetes y pedidos esperan en
+el buzón, un lote acabado espera en su máquina y lo que no cabe de una bodega se queda en ella. La
+pestaña Materiales enseña «Almacén · usado de total» y «Almacén lleno».
+
+**Reservas** (decisión HC-04): cada proceso puede reservar parte del almacén con una prioridad
+(`MaterialStock.reserve`, `STOCK_PRIORITY`). La producción de propelente va primero: el almacén guarda
+el amoníaco de una tanda de hidracina y otra de NTO (3,4 kg, `PROPELLANT_RESERVE`, valor de juego), y
+«Abonar con amoníaco» solo usa lo que pasa de esa reserva. La pestaña Materiales y la de Vida enseñan lo
+reservado.
+
 ## Refinería
 
 Cada lote es una cadena de retos. Primero hay que **predecir cuánto sale** con la proporción real del proceso. Después viene **un reto por paso**, y los pasos con un valor real (las temperaturas) piden ese valor. Si falta roca para un lote entero, se refina el lote parcial que permita el almacén (mínimo 10 %).

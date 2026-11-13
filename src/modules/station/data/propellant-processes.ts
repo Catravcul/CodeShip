@@ -1,4 +1,5 @@
 import type { RefineProcess } from "../domain/blueprint";
+import type { Amounts } from "../domain/materials";
 import { SRC } from "./sources";
 
 const GAME = "Cantidades por lote y horas: valores de juego";
@@ -118,3 +119,15 @@ export const PROPELLANT_PROCESSES: readonly RefineProcess[] = [
     },
   },
 ];
+
+/** Plant products that are propellant (their feedstock is reserved for them). */
+const PROPELLANT_PRODUCTS = ["hidracina", "nto"];
+
+/**
+ * What the store keeps for propellant production (HC-04 in docs/qa): the ammonia of one batch of each
+ * process that makes a propellant from it (hydrazine 1,7 kg and NTO 1,7 kg). The living machines'
+ * fertiliser only uses ammonia above it. One batch each is a game value.
+ */
+export const PROPELLANT_RESERVE: Amounts = {
+  amoniaco: PROPELLANT_PROCESSES.filter((p) => PROPELLANT_PRODUCTS.some((id) => (p.outputs[id] ?? 0) > 0)).reduce((s, p) => s + (p.inputs.amoniaco ?? 0), 0),
+};

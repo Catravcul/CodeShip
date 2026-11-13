@@ -157,6 +157,25 @@ export function moduleAt(spec: ModuleSpec, berth: BerthSpec): PressurisedModule 
   };
 }
 
+/** Stowage of the station's store by kind of module (data: `STORE_STOWAGE`). */
+export interface StoreStowage {
+  /** Payload of one rack bay of stowage, kg. */
+  readonly rackKg: number;
+  /** Volume of one rack bay, m³ (shown, not enforced). */
+  readonly rackM3: number;
+  /** Rack bays of stowage each kind of module keeps. */
+  readonly racksByKind: Readonly<Partial<Record<OutfitModule["kind"], number>>>;
+  /** Bulk room for raw rock (unpressurised), kg by kind of module. */
+  readonly bulkKgByKind: Readonly<Partial<Record<OutfitModule["kind"], number>>>;
+  readonly source: string;
+  readonly note: string;
+}
+
+/** Capacity of the store for a set of modules, kg: rack bays of stowage plus bulk room (HC-02). */
+export function storeCapacityKg(modules: readonly Pick<OutfitModule, "kind">[], st: StoreStowage): number {
+  return modules.reduce((s, m) => s + (st.racksByKind[m.kind] ?? 0) * st.rackKg + (st.bulkKgByKind[m.kind] ?? 0), 0);
+}
+
 const endBerth = (spec: ModuleSpec, berth: BerthSpec): BerthSpec => ({ id: `${spec.id}-extremo`, label: `Extremo del ${spec.name.charAt(0).toLowerCase()}${spec.name.slice(1)}`, position: berth.position.add(berth.normal.scale(spec.lengthM)), normal: berth.normal });
 
 /**

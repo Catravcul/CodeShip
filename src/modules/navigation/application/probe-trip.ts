@@ -253,7 +253,7 @@ export class ProbeTrip {
    * Once per frame with the real frame time, after the probe's physics ran at `lapse`: keeps the
    * clock and notices the hand-over, the pilot taking the controls or the probe being lost.
    */
-  update(realDtS: number): void {
+  update(realDtS: number, held = false): void {
     if (this._status !== "flying" || !this._autopilot || !this.flying) return;
     const f = this.flying;
     if (f !== this.ports.flight()) {
@@ -264,7 +264,8 @@ export class ProbeTrip {
       return;
     }
     if (f.guidance === this._autopilot) {
-      this.clock?.advance(realDtS, remainingEstimateS(this._autopilot.status));
+      // Held by a threat (HC-03): the probe flew at ×1 and the time-lapse clock waits.
+      if (!held) this.clock?.advance(realDtS, remainingEstimateS(this._autopilot.status));
       return;
     }
     if (this._autopilot.arrived && this.nextLeg) {

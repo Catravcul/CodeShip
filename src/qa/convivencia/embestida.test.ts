@@ -21,9 +21,11 @@ function world(active: () => boolean) {
 }
 
 /** Frames of main for `realS` real seconds at a trip lapse; returns the events with the real time they came at. */
-function play(w: ReturnType<typeof world>, realS: number, lapse: number): { atS: number; e: WrathEvent }[] {
+function play(w: ReturnType<typeof world>, realS: number, lapse: number, threatCheck = true): { atS: number; e: WrathEvent }[] {
   const out: { atS: number; e: WrathEvent }[] = [];
   let t = 0;
+  // Main asks the wrath, before each frame, whether something threatens the craft that travels (HC-03).
+  const threat = () => threatCheck && w.wrath.threatened("aterrizador");
   frames(realS, 1 / 60, lapse, (c) => {
     t += 1 / 60;
     w.wrath.setAnger(BENNU.id, 1);
@@ -31,7 +33,7 @@ function play(w: ReturnType<typeof world>, realS: number, lapse: number): { atS:
     w.frame(c);
     w.lander.log.pos = w.lander.log.pos.add(w.lander.log.vel.scale(c.missionS));
     for (const e of w.wrath.drainEvents()) out.push({ atS: t, e });
-  });
+  }, 1, threat);
   return out;
 }
 
@@ -56,15 +58,23 @@ describe("CV · embestida con otros procesos", () => {
     expect(hit ? hit.atS - wind.atS : Infinity).toBeGreaterThan(30);
   });
 
-  it("CV-17 en el tramo comprimido del módulo (×60) el aviso dura menos de 0,1 s real y el choque llega en ~1 s: no se puede esquivar (HC-03)", () => {
+  it("CV-17 en el tramo comprimido del módulo (×60) la amenaza baja el viaje a ×1: el aviso dura sus 5 s reales y da tiempo a esquivar (HC-03)", () => {
     const w = world(() => true);
     w.wrath.duelFailed(BENNU.id, 2, ["aterrizador"]);
-    const ev = play(w, 3, 60);
+    const ev = play(w, 60, 60);
     const wind = ev.find((x) => x.e.type === "ram-windup")!;
     const charge = ev.find((x) => x.e.type === "ram-charge")!;
+    expect(charge.atS - wind.atS).toBeCloseTo(RAM.windupS, 0);
+    const hit = ev.find((x) => x.e.type === "ram-hit");
+    expect(hit ? hit.atS - wind.atS : Infinity).toBeGreaterThan(30);
+  });
+
+  it("CV-17 sin mirar las amenazas (como antes de HC-03) el aviso a ×60 dura menos de 0,1 s real y el choque llega en ~1 s", () => {
+    const w = world(() => true);
+    w.wrath.duelFailed(BENNU.id, 2, ["aterrizador"]);
+    const ev = play(w, 3, 60, false);
+    const wind = ev.find((x) => x.e.type === "ram-windup")!;
     const hit = ev.find((x) => x.e.type === "ram-hit")!;
-    expect(charge.atS - wind.atS).toBeLessThan(0.1);
     expect(hit.atS - wind.atS).toBeLessThan(1.5);
-    expect(w.lander.log.damage).toBeGreaterThan(0.1);
   });
 });

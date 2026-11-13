@@ -158,7 +158,7 @@ export class WrathMode {
 
   /** Time may run fast while nothing is flying at you and you are out of reach. */
   get allowsWarp(): boolean {
-    return this.wrath.threats("aterrizador").length === 0 && !this.wrath.fleeGuidance("aterrizador") && !this.wrath.ramAt("aterrizador") && !this.wrath.ramAt("sonda");
+    return !this.wrath.threatened("aterrizador") && !this.wrath.ramAt("sonda");
   }
 
   /** The ram coming at a craft Doménica controls (the lander, or the probe), the soonest. */

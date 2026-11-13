@@ -284,10 +284,32 @@ export class StationScreen {
           <button class="st-btn" data-refine="${esc(p.id)}" ${canRun ? "" : "disabled"}>${locked ? "Bloqueado" : machine === "planta" ? "Producir" : "Refinar"}</button></div>`;
       })
       .join("");
-    return `${this.refuelCards()}${hold}${groups}<div class="bay-sec">Refinería · cada lote es una cadena de retos</div>${cards("refineria")}
+    return `${this.refuelCards()}${this.storeCard()}${hold}${groups}<div class="bay-sec">Refinería · cada lote es una cadena de retos</div>${cards("refineria")}
       <div class="bay-sec" id="st-propelente">Planta de propelente</div>
       <p class="st-dim">Del agua salen hidrógeno y oxígeno; del nitrógeno de la roca, amoníaco, hidracina y NTO. El nitrógeno es escaso: una bodega de Bennu trae poco más de 1 kg. El MMH, el LMP-103S, el helio y el xenón no se pueden hacer aquí y llegan importados.</p>
       ${cards("planta")}<div class="bay-sec">Depósitos de propelente</div>${tanks}`;
+  }
+
+  /** The store's capacity, used and total, and «Almacén lleno» (HC-02 in docs/qa). */
+  private storeCard(): string {
+    const stock = this.ops.station.stock;
+    const cap = stock.capacityKg;
+    if (!Number.isFinite(cap)) return "";
+    const used = stock.usedKg;
+    const t = (kg: number) => `${(kg / 1000).toFixed(1).replace(".", ",")} t`;
+    const share = Math.min(1, used / Math.max(1, cap));
+    return `<div class="st-card st-store"><div class="st-row"><b>Almacén</b><span>${t(used)} de ${t(cap)}</span></div>
+      <div class="bay-bar"><span>${Math.round(share * 100)} %</span><i style="width:${Math.round(share * 100)}%"></i></div>
+      ${stock.full ? `<div class="st-lock">Almacén lleno: la extracción, los paquetes y los lotes esperan. Refina o gasta material, o monta otro módulo</div>` : ""}
+      ${this.reservedLine()}
+      <small>Cada módulo trae bastidores de almacén del tamaño de un ISPR de la ISS (700 kg y 1,571 m³ cada uno); el hangar guarda roca a granel. Los propelentes van en sus depósitos y no cuentan</small></div>`;
+  }
+
+  /** What the store keeps for propellant (HC-04), one short line. */
+  private reservedLine(): string {
+    const r = this.ops.station.stock.reservations();
+    if (!r.length) return "";
+    return `<small class="st-reserve">Reservado para propelente: ${r.map((x) => `${esc(materialName(x.material).toLowerCase())} ${qty(x.material, x.kg)}`).join(", ")} (la planta tiene prioridad; el abono usa lo que sobra)</small>`;
   }
 
   /** «Repostar»: one card per craft docked at the station, at the top of Materiales. */
@@ -384,6 +406,7 @@ export class StationScreen {
         const rows = jobs
           .map((j, i) => {
             const done = 1 - j.hoursLeft / Math.max(1e-9, j.hoursTotal);
+            if (i === 0 && j.hoursLeft <= 1e-9) return `<div class="st-job run"><div class="st-row"><b>${esc(j.label)}</b><span>hecho</span></div><div class="st-lock">Almacén lleno: el lote espera en la máquina</div></div>`;
             return `<div class="st-job ${i === 0 ? "run" : ""}"><div class="st-row"><b>${esc(j.label)}</b><span>${i === 0 ? `quedan ${hrs(j.hoursLeft)}` : "en cola"}</span></div><div class="bay-bar"><span>${Math.round(done * 100)} %</span><i style="width:${Math.round(done * 100)}%"></i></div></div>`;
           })
           .join("");
@@ -542,6 +565,7 @@ export class StationScreen {
       .map((d) => {
         const done = 1 - d.hoursLeft / Math.max(1e-9, d.hoursTotal);
         const from = d.source === "santuario" ? "Santuario" : d.source === "remolcador" ? "Remolcador" : "Lanzador";
+        if (d.waiting) return `<div class="st-job run"><div class="st-row"><b>${esc(d.label)}</b><span>${from} · en el buzón</span></div><div class="st-lock">Almacén lleno: espera a que haya sitio</div></div>`;
         return `<div class="st-job run"><div class="st-row"><b>${esc(d.label)}</b><span>${from} · quedan ${hrs(d.hoursLeft)}</span></div><div class="bay-bar"><span>${Math.round(done * 100)} %</span><i style="width:${Math.round(done * 100)}%"></i></div></div>`;
       })
       .slice(0, 8)
@@ -619,7 +643,7 @@ export class StationScreen {
     const nh3 = this.ops.station.stock.amount("amoniaco");
     const nitrogen = `<div class="st-card"><div class="st-row"><b>Nitrógeno: el bucle no lo cierra</b><span>${pct(n.share)} local</span></div>
       <small>El bucle solo devuelve el nitrógeno que traen los residuos (${gN(bio.lab.process("bucle")?.outputs.fertilizante)} por hora) y los campos comen ${gN(bio.lab.process("cultivo")?.inputs.fertilizante)} por hora: el resto llega como fertilizante importado (${fmtKg(this.ops.station.stock.amount("fertilizante"))} kg N en el almacén). El amoníaco de los cometas (pestaña Importar) o el de la planta de propelente lo cubre: cada 17 kg de amoníaco llevan 14 kg de nitrógeno.${bio.iceCo2KgPerDay > 0 ? ` El hielo de CO₂ de cometa da a los campos ${fmtKg(bio.iceCo2KgPerDay)} kg de CO₂ al día.` : ""}</small>
-      <div class="st-row"><span>Amoníaco en el almacén: ${fmtKg(nh3)} kg</span><button class="st-btn lf-toggle ${bio.ammoniaFertiliser ? "on" : ""}" data-ammonia>${bio.ammoniaFertiliser ? "Abonando con amoníaco" : "Abonar con amoníaco"}</button></div></div>`;
+      <div class="st-row"><span>Amoníaco en el almacén: ${fmtKg(nh3)} kg${this.ops.station.stock.reservedKg("amoniaco") > 0 ? ` · ${fmtKg(this.ops.station.stock.reservedKg("amoniaco"))} kg reservados para propelente: el abono usa ${fmtKg(bio.ammoniaForFertiliser)} kg` : ""}</span><button class="st-btn lf-toggle ${bio.ammoniaFertiliser ? "on" : ""}" data-ammonia>${bio.ammoniaFertiliser ? "Abonando con amoníaco" : "Abonar con amoníaco"}</button></div></div>`;
     const cards = bio.status().map((s) => this.bioCard(s)).join("");
     return `<div class="lf-head"><div class="lf-big"><div class="lf-pct">${pct(all)}</div><div class="lf-cap">autosuficiente</div></div><small>Media de oxígeno, comida, agua y resina hechos aquí. Cada fila: lo local frente a lo que se necesita.</small></div>
       <div class="bay-sec">Autosuficiencia · al ritmo de ahora</div><div class="st-card lf-gauge">${gauge}</div>
@@ -655,9 +679,11 @@ export class StationScreen {
   }
 
   unload(): void {
-    const { stored, ignored } = this.ops.station.unload(this.expedition.unloadCargo(), cargoMaterial);
+    const { stored, ignored, left } = this.ops.station.unload(this.expedition.unloadCargo(), cargoMaterial);
+    // What does not fit stays in the lander's hold (HC-02).
+    this.expedition.cargo.push(...left);
     const kg = Object.values(stored).reduce((s, n) => s + n, 0);
-    this.say(`${fmtKg(kg)} kg descargados${ignored.length ? ` · sin uso: ${ignored.join(", ")}` : ""}`);
+    this.say(`${fmtKg(kg)} kg descargados${left.length ? " · Almacén lleno: el resto sigue en la bodega" : ""}${ignored.length ? ` · sin uso: ${ignored.join(", ")}` : ""}`);
     this.key = "";
     this.render();
   }
@@ -675,6 +701,9 @@ export class StationScreen {
         if (mode === "ajustar") {
           this.say("Ajustado: rinde al 100 % durante 240 h");
           this.show("vida");
+        } else if (session.refused) {
+          this.say(session.refused);
+          this.show(mode === "importar" ? "importar" : "fabricacion");
         } else if (mode === "importar") {
           this.say("Hecho: mira «En camino»");
           this.show("importar");

@@ -8,14 +8,18 @@ import { fabricationChore, growthChore, refineChore } from "./challenges";
 
 /** A station chore in progress: same rules as chores on board (in order, a few mistakes allowed). */
 export class StationSession {
+  /** Solved, but what it was for could not be done: why, for the player (HC-05: an order without credits). */
+  refused?: string;
+
   constructor(
     readonly chore: Chore,
     readonly run: ChoreRun,
-    private readonly onDone: () => void,
+    /** Runs when the chain is solved; a string means it was refused, and says why. */
+    private readonly onDone: () => void | string,
   ) {}
   answer(a: Answer): boolean {
     const ok = this.run.submit(a);
-    if (this.run.status === "done") this.onDone();
+    if (this.run.status === "done") this.refused = this.onDone() || undefined;
     return ok;
   }
 }

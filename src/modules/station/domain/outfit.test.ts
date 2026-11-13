@@ -4,6 +4,7 @@ import { MaterialStock } from "./materials";
 import { Hangar } from "./hangar";
 import { Station } from "./station";
 import { StationStructure } from "./structure";
+import { storeCapacityKg } from "./outfit";
 import { POLANA_STATION } from "../data/station";
 import {
   EQUIPMENT,
@@ -269,5 +270,37 @@ describe("station components", () => {
     expect(o.drawKw).toBeGreaterThan(70);
     expect(o.componentBlocker(eatcs)).toMatch(/radiadores/);
     expect(() => o.fitComponent(eatcs)).toThrow();
+  });
+});
+
+describe("store capacity by module (HC-02)", () => {
+  it("the starting station keeps 14 rack bays of stowage (9,8 t) and every new module adds its own", async () => {
+    const { STORE_STOWAGE } = await import("../data/store");
+    const o = startingOutfit();
+    expect(storeCapacityKg(o.modules, STORE_STOWAGE)).toBe(14 * 700);
+    const st = new Station(POLANA_STATION, new MaterialStock(Object.fromEntries(MATERIALS.map((m) => [m.id, 1e6]))), new Hangar(), o);
+    for (const id of [`plano-equipo-${EQ_EBW.id}`, `plano-equipo-${EQ_COMPOSITES.id}`, `plano-modulo-${MOD_FARM.id}`]) {
+      st.fabricate(GROWTH_BLUEPRINTS.find((b) => b.id === id) ?? BLUEPRINTS.find((b) => b.id === id)!);
+      st.tick(1e4);
+    }
+    expect(storeCapacityKg(o.modules, STORE_STOWAGE)).toBe(18 * 700);
+    // The hangar keeps raw rock in bulk.
+    expect(storeCapacityKg([{ kind: "hangar" }], STORE_STOWAGE)).toBe(20000);
+  });
+});
+
+describe("what takes room in the store (HC-02)", () => {
+  it("propellants live in the depot's tanks and take no rack room; kits weigh 25 kg each", async () => {
+    const { storeKgOf } = await import("../data/store");
+    expect(storeKgOf("xenon", 20000)).toBe(0);
+    expect(storeKgOf("hidracina", 45)).toBe(0);
+    expect(storeKgOf("kit", 2)).toBe(50);
+    expect(storeKgOf("silicatos", 10)).toBe(10);
+    const { STARTING_STOCK } = await import("../data/station");
+    const { STORE_STOWAGE } = await import("../data/store");
+    const s = new MaterialStock(STARTING_STOCK, { capacityKg: () => storeCapacityKg(startingOutfit().modules, STORE_STOWAGE), kgOf: storeKgOf });
+    // The starting store is well under its 9,8 t.
+    expect(s.usedKg).toBeLessThan(1000);
+    expect(s.full).toBe(false);
   });
 });

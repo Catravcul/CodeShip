@@ -97,6 +97,8 @@ const MIN_RATE_ANGER = 0.25;
 const MAX_AGE_S = 300;
 /** Integration step, s. */
 const STEP_S = 0.1;
+/** Most steps one `update` takes (60 s of game time at 0,1 s); a longer call takes coarser steps. */
+const MAX_STEPS_PER_CALL = 600;
 /** Fragments and X-rays reach this far from a burst before they are negligible, m. */
 const BURST_RANGE_M = 400;
 
@@ -431,15 +433,38 @@ export class AsteroidWrath {
       .sort((a, b) => a.etaS - b.etaS);
   }
 
+  /**
+   * Something of the wrath is coming for a target: a projectile flying at it, a ram aimed at it, an
+   * angry asteroid that has it within reach, or one chasing it (the chase ends when it escapes the
+   * reach, IRA-03). Time may not run fast then (docs/qa, HC-03).
+   */
+  threatened(targetId: string): boolean {
+    if (this.threats(targetId).length > 0 || this.ramAt(targetId) || this.fleeGuidance(targetId)) return true;
+    for (const m of this.moods.values()) if (!m.anger.calm && this.quarry(m)?.id === targetId) return true;
+    return false;
+  }
+
   drainEvents(): WrathEvent[] {
     const e = this.events;
     this.events = [];
     return e;
   }
 
-  /** Let `dtS` seconds of game time pass. */
+  /**
+   * Let `dtS` seconds of game time pass, in steps of 0,1 s. A call longer than `MAX_STEPS_PER_CALL`
+   * steps (a compressed trip above ×600 at a slow frame) is split into that many coarser sub-steps, so
+   * the anger keeps the mission clock's pace without costing more steps per frame (bug B-02 in docs/qa).
+   */
   update(dtS: number): void {
-    this.accumulator += Math.min(dtS, 60);
+    if (!(dtS > 0)) return;
+    if (dtS > MAX_STEPS_PER_CALL * STEP_S) {
+      const total = dtS + this.accumulator;
+      this.accumulator = 0;
+      const h = total / MAX_STEPS_PER_CALL;
+      for (let i = 0; i < MAX_STEPS_PER_CALL; i++) this.step(h);
+      return;
+    }
+    this.accumulator += dtS;
     while (this.accumulator >= STEP_S - 1e-9) {
       this.step(STEP_S);
       this.accumulator -= STEP_S;

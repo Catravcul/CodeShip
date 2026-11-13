@@ -38,6 +38,8 @@ export interface StationEnd {
   radiusM(): number;
   send(source: string, label: string, goods: Readonly<Record<string, number>>, hours: number): unknown;
   goods(p: Package): Readonly<Record<string, number>>;
+  /** Free room in the station's store, kg (HC-02): a level-4 extraction waits while a lot does not fit. Unlimited if absent. */
+  roomKg?(): number;
 }
 
 /** Port: the travel ship's hold (level 2 packages). */
@@ -75,7 +77,9 @@ export type ServiceEvent =
   | { readonly type: "deja-de-perseguir"; readonly asteroidId: string; readonly name: string }
   | { readonly type: "sale"; readonly asteroidId: string; readonly name: string; readonly etaS: number }
   | { readonly type: "llega"; readonly asteroidId: string; readonly name: string }
-  | { readonly type: "agotado"; readonly asteroidId: string; readonly name: string };
+  | { readonly type: "agotado"; readonly asteroidId: string; readonly name: string }
+  /** The station's store has no room for the next lot: the asteroid keeps its rock until there is (HC-02). */
+  | { readonly type: "almacen-lleno"; readonly asteroidId: string; readonly name: string };
 
 /** Game tuning of the services (labelled game values). */
 export const SERVICE_TUNING = {
@@ -101,6 +105,8 @@ interface Service {
   /** Station-relative park offset once a level-4 trip starts. */
   parkOffset?: Vec3;
   extraction?: FullExtraction;
+  /** Parked, but the store is full: nothing is extracted (HC-02). */
+  storeFull?: boolean;
   chasing?: string;
   inFlight: { kg: Package; leftS: number; flightS: number }[];
 }
@@ -145,6 +151,11 @@ export class AsteroidServices {
 
   extraction(asteroidId: string): FullExtraction | undefined {
     return this.services.get(asteroidId)?.extraction;
+  }
+
+  /** Parked and waiting because the station's store is full (HC-02). */
+  storeFull(asteroidId: string): boolean {
+    return !!this.services.get(asteroidId)?.storeFull;
   }
 
   /** Packages flying to the travel ship now. */
@@ -289,6 +300,14 @@ export class AsteroidServices {
     s.body.moveTo(goal, Vec3.ZERO);
     const x = s.extraction;
     if (!x || s.mode === "agotado") return;
+    // «Almacén lleno»: the rock stays in the asteroid until a lot fits (HC-02).
+    const room = this.d.station.roomKg?.() ?? Infinity;
+    if (room + 1e-6 < Math.min(x.lotKg, x.remainingKg)) {
+      if (!s.storeFull) this.events.push({ type: "almacen-lleno", asteroidId: s.body.data.id, name: s.body.data.name });
+      s.storeFull = true;
+      return;
+    }
+    s.storeFull = false;
     const lot = x.step(dt * this.workRate * this.d.stationHoursPerSecond);
     if (lot) this.d.station.send(s.body.data.id, `Extracción de ${s.body.data.name}`, this.d.station.goods(lot), 0);
     if (x.done) {

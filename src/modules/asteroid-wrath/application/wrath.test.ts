@@ -44,6 +44,20 @@ const run = (w: AsteroidWrath, seconds: number) => {
 describe("asteroid wrath", () => {
   const bennu = new Asteroid(BENNU, Vec3.ZERO);
 
+  it("threatened: a craft is threatened while an angry asteroid chases it, and no longer once it calms (HC-03)", () => {
+    const w = new AsteroidWrath([new Asteroid(BENNU, Vec3.ZERO)]);
+    const lander = target("aterrizador", "aterrizador", new Vec3(0, 0, BENNU.meanRadiusM.value + 300), { crewed: true });
+    const far = target("sonda", "sonda", new Vec3(0, 0, 50000));
+    w.addTarget(lander.t);
+    w.addTarget(far.t);
+    expect(w.threatened("aterrizador")).toBe(false);
+    w.duelFailed(BENNU.id, 2);
+    expect(w.threatened("aterrizador")).toBe(true);
+    expect(w.threatened("sonda")).toBe(false);
+    w.setAnger(BENNU.id, 0);
+    expect(w.threatened("aterrizador")).toBe(false);
+  });
+
   it("a calm asteroid throws nothing and can be dueled; a failed duel makes it angry and blocks a retry", () => {
     const w = new AsteroidWrath([bennu]);
     const probe = target("sonda", "sonda", new Vec3(0, 300, 0));

@@ -58,17 +58,19 @@ import { Eva } from "@modules/eva/application/eva";
 import { EvaMode } from "./eva-mode";
 import { SpinRing } from "@modules/gravity/domain/spin-gravity";
 import { Station } from "@modules/station/domain/station";
-import { MaterialStock } from "@modules/station/domain/materials";
+import { MaterialStock, STOCK_PRIORITY } from "@modules/station/domain/materials";
 import { Hangar } from "@modules/station/domain/hangar";
 import { STATION_TUNING } from "@modules/station/domain/blueprint";
 import { StationOps } from "@modules/station/application/station-ops";
 import { BLUEPRINTS } from "@modules/station/data/blueprints";
 import { REFINE_PROCESSES } from "@modules/station/data/processes";
-import { PROPELLANT_PROCESSES } from "@modules/station/data/propellant-processes";
+import { PROPELLANT_PROCESSES, PROPELLANT_RESERVE } from "@modules/station/data/propellant-processes";
 import { COMET_PROCESSES } from "@modules/station/data/comet-processes";
 import { RefuelOps, mothershipRefuelTarget, shipRefuelTarget } from "@modules/station/application/refuel";
 import { materialName } from "@modules/station/data/materials";
 import { EXPLORER_CRAFT, MOTHERSHIP_CRAFT, POLANA_STATION, STARTING_STOCK } from "@modules/station/data/station";
+import { STORE_STOWAGE, storeKgOf } from "@modules/station/data/store";
+import { storeCapacityKg } from "@modules/station/domain/outfit";
 import { StationModel } from "./adapters/three/station-model";
 import { StationScreen } from "./station-screen";
 import { StationStructure } from "@modules/station/domain/structure";
@@ -142,7 +144,8 @@ docking.drainEvents();
 const expedition = new Expedition(flight, bennu, EXERCISES, 500);
 // The space station: refinery, foundry, metal printer and hangar (docs/design/estacion.md).
 const stationOps = new StationOps(
-  new Station(POLANA_STATION, new MaterialStock(STARTING_STOCK), new Hangar({}, [
+  // The store's capacity grows with the modules (HC-02 in docs/qa, data/store.ts).
+  new Station(POLANA_STATION, new MaterialStock(STARTING_STOCK, { capacityKg: () => storeCapacityKg(stationOutfit.modules, STORE_STOWAGE), kgOf: storeKgOf }), new Hangar({}, [
     { ...MOTHERSHIP_CRAFT, name: mothership.spec.name, massKg: mothership.massKg },
     { ...EXPLORER_CRAFT, name: ship.name, massKg: ship.massKg },
   ]), stationOutfit),
@@ -151,6 +154,8 @@ const stationOps = new StationOps(
   [...REFINE_PROCESSES, ...COMET_PROCESSES, ...PROPELLANT_PROCESSES],
   materialName,
 );
+// Propellant production keeps its ammonia first: the fertiliser only uses what is above it (HC-04).
+stationOps.station.stock.reserve("propelente", PROPELLANT_RESERVE, STOCK_PRIORITY.propelente);
 
 // Navigation: any catalogued asteroid of the region can be the target (docs/design/navegacion.md),
 // and the station and the mothership, where the trip ends docked (docs/design/estacion.md).
@@ -529,6 +534,7 @@ const levels = new LevelsUi({
   mothership,
   station: stationOps.station,
   inbox: importOps.inbox,
+  storeRoomKg: () => stationOps.station.stock.roomKg - importOps.deliveries.pending.filter((d) => d.hoursLeft <= 1e-9).reduce((s, d) => s + stationOps.station.stock.massKg(d.goods), 0),
   stationPosition: () => structure.position,
   stationRadiusM: () => structure.boundingRadiusM,
   wrath: wrathMode.wrath,
@@ -565,7 +571,9 @@ const tripPreview = new TripPreview(root);
 tripChip.onView = () => (tripPreview.open = !tripPreview.open);
 tripChip.onTake = () => (probeTravel.trip.active ? probeTravel.trip.cancel() : nav.cancel());
 const km = (m: number) => (m >= 1000 ? `${num(m / 1000, 1)} km` : `${num(m)} m`);
-const lapseText = (l: number) => (l > 1 ? ` · ×${num(l)}` : "");
+/** A wrath threat holds the trip at ×1 (HC-03): set each frame by the loop. */
+let tripHeld = false;
+const lapseText = (l: number) => (tripHeld && l > 1 ? " · ×1 por amenaza" : l > 1 ? ` · ×${num(l)}` : "");
 /** What the chip shows and what the preview follows, for the trip flying now. */
 function tripNow(): { chip: TripChipData; subject: PreviewSubject } | undefined {
   const pp = probeTravel.trip.progress();
@@ -816,10 +824,16 @@ renderer.setAnimationLoop((now) => {
   const tripLapse = probeTravel.trip.active ? probeTravel.trip.lapse : nav.lapse;
   // Inside the nano_net its speed nodes let time run faster.
   // Every clock of the frame in one place, tested in src/qa/convivencia (docs/qa/entrelazamiento.md).
-  const world = frameClocks(dt, tripLapse, asked > 1 ? Math.round(asked * fx.warpFactor) : 1, STATION_TUNING.hoursPerSecond);
+  // A wrath threat to the craft that travels (projectile, ram, chase) drops the trip to ×1 until it ends (HC-03).
+  const tripCraft = probeTravel.trip.active ? "sonda" : nav.status === "carrier" ? "nodriza" : nav.status === "autopilot" ? "aterrizador" : undefined;
+  const threat = tripLapse > 1 && !!tripCraft && wrathMode.wrath.threatened(tripCraft);
+  const world = frameClocks(dt, tripLapse, asked > 1 ? Math.round(asked * fx.warpFactor) : 1, STATION_TUNING.hoursPerSecond, threat);
   const warp = world.warp;
-  const warpNote =
-    tripLapse > 1
+  if (world.held && !tripHeld) flash("⚠ Amenaza: el viaje baja a ×1 hasta que pase. Esquiva o espera", 6);
+  tripHeld = world.held;
+  const warpNote = world.held
+    ? `⚠ Amenaza: viaje a ×1 hasta que pase${wrathMode.bannerText() ? ` · ${wrathMode.bannerText()}` : ""}`
+    : tripLapse > 1
       ? `viaje en cámara rápida ×${num(tripLapse)}`
       : warpAsk > 1 && warp === 1
         ? far
@@ -833,7 +847,7 @@ renderer.setAnimationLoop((now) => {
   // Asteroids that move themselves (level 4 trip, chase after a failed duel), packages and the hold.
   levels.update(dt * warp, world.stationHours);
   asteroidMesh.position.set(bennu.position.x, bennu.position.y, bennu.position.z);
-  probeTravel.update(dt);
+  probeTravel.update(dt, world.held);
   wrathMode.update(dt * warp, dt, subj.piloting ? subj.probeMode.camera : camera, view.enabled || deck.active || subj.piloting);
   ring.tick(dt);
   // Region rules: soft boundary push back and no flying through the other rocks or the mothership (game rules).
@@ -853,7 +867,8 @@ renderer.setAnimationLoop((now) => {
   // Only a subjugated asteroid (all three stages) can become a core (docs/design/subyugacion.md).
   // Level 1 of the subjugation makes it eligible as a core: wired in `levels` (subjugation-levels.ts).
   // Life on board keeps its pace (one day every 40 s), or the trip's if that is faster.
-  if (!nanoPanel.busy) nano.tick(tripLapse > 1 ? world.lifeDays : dt * NANO_DAYS_PER_SECOND);
+  // Life on board (and the nano_net's wear) runs with the manual warp too (HC-01).
+  if (!nanoPanel.busy) nano.tick(world.lifeDays);
   nano.powerShip(ship, fx, dt * warp);
   for (const e of nano.drainEvents()) {
     const box = habitat.mailbox!;
@@ -888,7 +903,9 @@ renderer.setAnimationLoop((now) => {
             ? `Lanzador de masas montado en ${e.bodyName}`
             : e.type === "pedido"
               ? `Pedido al Santuario: ${e.credits.toLocaleString("es-ES")} créditos`
-              : "";
+              : e.type === "almacen-lleno"
+                ? `Almacén lleno: ${e.delivery.label} espera en el buzón`
+                : "";
     if (!text) continue;
     stationScreen.notice(text);
     flash(text, 5);
@@ -897,7 +914,7 @@ renderer.setAnimationLoop((now) => {
   if (stationOutfit.version !== stationGrownAt) regrowStation();
   interior.update(dt, world.lifeDays);
   view.enabled = !interior.active && !stationInside.active && !deck.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active && !navMode.mapOpen && !missionLog.visible;
-  navMode.update(dt);
+  navMode.update(dt, world.held);
   const trip = tripNow();
   tripChip.update(trip?.chip, tripPreview.visible);
   tripPreview.follow(trip?.subject);

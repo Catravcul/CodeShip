@@ -53,7 +53,11 @@ export type ImportEvent =
   | { readonly type: "llegada"; readonly delivery: Delivery }
   | { readonly type: "remolque"; readonly bodyName: string; readonly hours: number }
   | { readonly type: "lanzador"; readonly bodyName: string }
-  | { readonly type: "paquete"; readonly bodyName: string };
+  | { readonly type: "paquete"; readonly bodyName: string }
+  /** An order's chain was solved without the credits to pay it: nothing was ordered (HC-05). */
+  | { readonly type: "sin-creditos"; readonly label: string; readonly missingCredits: number }
+  /** A delivery arrived but the store has no room: it waits in the inbox (HC-02). */
+  | { readonly type: "almacen-lleno"; readonly delivery: Delivery };
 
 /** The tug out on a haul. */
 export interface Tow {
@@ -77,6 +81,7 @@ export class ImportOps {
   readonly drivers: MassDriver[] = [];
   private _tow: Tow | undefined;
   private events: ImportEvent[] = [];
+  private readonly announcedFull = new Set<number>();
 
   constructor(
     readonly station: Station,
@@ -119,7 +124,7 @@ export class ImportOps {
   orderBlocker(goods: Amounts, launcherId: string): string | undefined {
     if (this.massKg(goods) <= 0) return "El pedido está vacío";
     const q = this.quote(goods, launcherId);
-    if (!this.wallet.canSpend(q.credits)) return `Faltan ${(q.credits - this.wallet.balance).toLocaleString("es-ES")} créditos`;
+    if (!this.wallet.canSpend(q.credits)) return `Faltan ${Math.ceil(q.credits - this.wallet.balance).toLocaleString("es-ES")} créditos`;
     return undefined;
   }
 
@@ -131,7 +136,12 @@ export class ImportOps {
     const q = this.quote(goods, launcherId);
     const chore = orderChore(label, q, l.name);
     return new StationSession(chore, new ChoreRun(chore, 2), () => {
-      if (!this.wallet.canSpend(q.credits)) return;
+      // Credits spent meanwhile (another order solved first): say so instead of doing nothing (HC-05).
+      if (!this.wallet.canSpend(q.credits)) {
+        const missing = Math.ceil(q.credits - this.wallet.balance);
+        this.events.push({ type: "sin-creditos", label, missingCredits: missing });
+        return `No se pidió: faltan ${missing.toLocaleString("es-ES")} créditos`;
+      }
       this.wallet.spend(q.credits, `Pedido al Santuario: ${label}`);
       const delivery = this.deliveries.send("santuario", label, goods, q.gameHours);
       this.events.push({ type: "pedido", delivery, credits: q.credits });
@@ -241,8 +251,20 @@ export class ImportOps {
       const { goods } = this.goodsFrom(b, drv.spec.packageKg);
       for (let i = 0; i < n; i++) this.deliveries.send("lanzador", `Paquete de ${b.name}`, goods, flightHours(this.distanceM(b), drv.spec.launchSpeedMs));
     }
-    for (const del of this.deliveries.tick(hours)) {
-      this.station.stock.add(del.goods);
+    const stock = this.station.stock;
+    // Into the store only what fits: the rest waits in the inbox («Almacén lleno», HC-02).
+    const landed = this.deliveries.tick(hours, (d) => {
+      if (!stock.fits(d.goods)) return false;
+      stock.add(d.goods);
+      return true;
+    });
+    for (const d of this.deliveries.waiting) {
+      if (this.announcedFull.has(d.id)) continue;
+      this.announcedFull.add(d.id);
+      this.events.push({ type: "almacen-lleno", delivery: d });
+    }
+    for (const del of landed) {
+      this.announcedFull.delete(del.id);
       if (del.source === "remolcador" && this._tow?.delivery === del) {
         const craft = this.station.hangar.crafts.find((c) => c.id === this._tow!.craftId);
         if (craft) craft.docked = true;

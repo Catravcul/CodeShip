@@ -148,17 +148,35 @@ export interface FrameClocks extends WorldStep {
   readonly warp: number;
   /** Station hours this frame (machines, biosystems, the import inbox and the asteroids' services). */
   readonly stationHours: number;
+  /**
+   * A trip is under way but a threat of the asteroids' wrath holds it at ×1 this frame: its time-lapse
+   * clock must not count the frame (it resumes its lapse when the threat ends).
+   */
+  readonly held: boolean;
 }
 
 /**
- * The clocks of one frame, as main wires them: during a compressed trip the mission clock runs at the
- * trip's lapse (whatever the manual warp asks) and the station follows life on board; outside a trip
- * the manual warp (already cleared by main: idle, far, nothing flying at you) speeds up the mission
- * clock and the station, while life on board keeps its pace (open question HC-01 in docs/qa).
+ * The clocks of one frame, as main wires them (docs/qa/entrelazamiento.md):
+ * - during a compressed trip the mission clock runs at the trip's lapse (whatever the manual warp asks)
+ *   and life on board keeps its own pace, unless the trip compresses more than it;
+ * - outside a trip the manual warp (already cleared by main: idle, far, nothing flying at you) speeds up
+ *   the mission clock and life on board alike (decision HC-01 in docs/qa);
+ * - a `threat` of the wrath to the craft that travels (a projectile, a ram, a chase within reach) drops
+ *   everything to ×1, the trip's lapse included (decision HC-03): the trip is `held`;
+ * - the station always follows life on board: 24 station hours per day on board.
  */
-export function frameClocks(realDtS: number, tripLapse: number, manualWarp: number, stationHoursPerRealS: number): FrameClocks {
-  const warp = tripLapse > 1 ? tripLapse : manualWarp > 1 ? manualWarp : 1;
-  const w = worldStep(realDtS, tripLapse);
+export function frameClocks(realDtS: number, tripLapse: number, manualWarp: number, stationHoursPerRealS: number, threat = false): FrameClocks {
   const dt = Math.max(0, realDtS);
-  return { missionS: dt * warp, lifeDays: w.lifeDays, warp, stationHours: tripLapse > 1 ? w.lifeDays * 24 : dt * warp * stationHoursPerRealS };
+  const onTrip = tripLapse > 1;
+  if (threat) {
+    const w = worldStep(dt, 1);
+    return { missionS: w.missionS, lifeDays: w.lifeDays, warp: 1, stationHours: w.lifeDays * 24, held: onTrip };
+  }
+  if (onTrip) {
+    const w = worldStep(dt, tripLapse);
+    return { missionS: w.missionS, lifeDays: w.lifeDays, warp: tripLapse, stationHours: w.lifeDays * 24, held: false };
+  }
+  const warp = manualWarp > 1 ? manualWarp : 1;
+  const stationHours = dt * warp * stationHoursPerRealS;
+  return { missionS: dt * warp, lifeDays: stationHours / 24, warp, stationHours, held: false };
 }

@@ -51,10 +51,10 @@ describe("CV · ira de los asteroides con otros procesos", () => {
     expect(w.services.mode(BENNU.id)).toBe("persigue");
   });
 
-  // B-02: AsteroidWrath.update keeps at most 60 s of game time per call. A long mothership hop plays
-  // above ×600 (the cap shared with the lander's leg), and below 10 fps main's frame is capped at 0,1 s:
-  // more than 60 s of mission clock per frame, and the anger falls behind it.
-  it.fails("CV-07 a pocos fps y cámara rápida de más de ×600 la ira se apaga al ritmo del reloj de misión (B-02)", () => {
+  // B-02 (arreglado): AsteroidWrath.update kept at most 60 s of game time per call. A long mothership hop
+  // plays above ×600 (the cap shared with the lander's leg), and below 10 fps main's frame is capped at
+  // 0,1 s: more than 60 s of mission clock per frame. Now a long call is split into coarser sub-steps.
+  it("CV-07 a pocos fps y cámara rápida de más de ×600 la ira se apaga al ritmo del reloj de misión (B-02)", () => {
     // Mothership 30 km (≈9,1 h) plus the lander's last 2 min: the cap is shared, the hop plays above ×600.
     const [carrierS] = legBudgets([
       { gameS: 9.1 * 3600, lapse: TRAVEL_TIME.lapse.carrier },

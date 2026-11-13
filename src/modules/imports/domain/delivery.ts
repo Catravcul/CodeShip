@@ -14,6 +14,8 @@ export interface Delivery {
   readonly goods: Amounts;
   readonly hoursTotal: number;
   hoursLeft: number;
+  /** Arrived, but the store had no room for it («Almacén lleno», HC-02): it waits in the inbox. */
+  waiting?: boolean;
 }
 
 /**
@@ -42,11 +44,31 @@ export class DeliveryLine implements StationInbox {
     return d;
   }
 
-  /** Let `hours` pass; returns what arrived, soonest first. */
-  tick(hours: number): Delivery[] {
+  /** Arrived and waiting for room in the store. */
+  get waiting(): readonly Delivery[] {
+    return this.list.filter((d) => d.waiting);
+  }
+
+  /**
+   * Let `hours` pass; returns what landed, soonest first. `accept` is the store saying whether it has
+   * room for a delivery (and taking it): a refused one, and every one after it, waits in the inbox
+   * until a later tick (HC-02).
+   */
+  tick(hours: number, accept: (d: Delivery) => boolean = () => true): Delivery[] {
     for (const d of this.list) d.hoursLeft = Math.max(0, d.hoursLeft - hours);
     const arrived = this.list.filter((d) => d.hoursLeft <= 1e-9).sort((a, b) => a.id - b.id);
-    for (const d of arrived) this.list.splice(this.list.indexOf(d), 1);
-    return arrived;
+    const landed: Delivery[] = [];
+    let open = true;
+    for (const d of arrived) {
+      open &&= accept(d);
+      if (!open) {
+        d.waiting = true;
+        continue;
+      }
+      d.waiting = false;
+      this.list.splice(this.list.indexOf(d), 1);
+      landed.push(d);
+    }
+    return landed;
   }
 }

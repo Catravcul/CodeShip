@@ -32,6 +32,8 @@ export interface LevelsDeps {
   readonly station: Station;
   /** The station's delivery inbox (imports module): level 3 packages and level 4 lots land through it. */
   readonly inbox: StationInbox;
+  /** Free room in the store, kg, minus what already waits in the inbox (HC-02): level 4 waits when a lot does not fit. */
+  readonly storeRoomKg?: () => number;
   readonly stationPosition: () => Vec3;
   readonly stationRadiusM: () => number;
   readonly wrath: PursuitPort;
@@ -72,6 +74,7 @@ export class LevelsUi {
         radiusM: d.stationRadiusM,
         send: (source, label, goods, hours) => d.inbox.send(source, label, goods, hours),
         goods: (p) => toStore(p),
+        roomKg: d.storeRoomKg,
       },
       ship: { position: () => d.mothership.position, load: (p) => this.hold.load(p) },
       wrath: d.wrath,
@@ -97,10 +100,13 @@ export class LevelsUi {
       }
     }
     // Berthed at the station: the travel ship's hold goes into the store.
-    if (this.d.mothership.dockedTo && this.hold.loadKg > 0) {
+    // With the store full, what does not fit stays in the hold (HC-02) and is tried again later.
+    if (this.d.mothership.dockedTo && this.hold.loadKg > 0 && !this.d.station.stock.full) {
       const load = this.hold.loadKg;
-      this.d.station.unload(this.hold.unload(), cargoMaterial);
-      this.radio(`<b>Bodega de la nodriza</b> descargada en la estación: ${kg(load)} de roca de asteroide`);
+      const { left } = this.d.station.unload(this.hold.unload(), cargoMaterial);
+      this.hold.load(left);
+      const moved = load - this.hold.loadKg;
+      if (moved > 1) this.radio(`<b>Bodega de la nodriza</b> descargada en la estación: ${kg(moved)} de roca de asteroide${this.hold.loadKg > 1 ? ` · Almacén lleno: quedan ${kg(this.hold.loadKg)} en la bodega` : ""}`);
     }
     for (const e of this.services.drainEvents()) this.react(e);
   }
@@ -122,6 +128,8 @@ export class LevelsUi {
         return this.radio(`${name} aparca junto a la estación: la refinería ya recibe su roca`);
       case "agotado":
         return this.radio(`${name}: extraído entero`);
+      case "almacen-lleno":
+        return this.radio(`Almacén lleno: ${name} guarda su roca hasta que haya sitio. Refina o gasta material en la estación`);
     }
   }
 
@@ -158,7 +166,7 @@ export class LevelsUi {
       case "aparcado":
       case "agotado": {
         const x = s.extraction(id);
-        return { level, tone: "aparcado", short: `en la estación · extraídos ${kg(x?.takenKg ?? 0)}` };
+        return { level, tone: "aparcado", short: `en la estación · extraídos ${kg(x?.takenKg ?? 0)}${s.storeFull(id) ? " · Almacén lleno" : ""}` };
       }
     }
     if (!r?.subjugated) return undefined;

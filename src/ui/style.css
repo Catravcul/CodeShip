@@ -167,7 +167,8 @@ body.ui-compact .duel, body.ui-compact .duel.sheet { inset: 0; width: auto; bord
 body.ui-compact .duel > *, body.ui-compact .duel button, body.ui-compact .duel a { pointer-events: auto; }
 body.ui-compact .duel { color: #d8f6ff; text-shadow: 0 0 3px #000, 0 0 10px #000c; }
 body.ui-compact .duel .duel-top { position: fixed; top: 10px; left: 12px; right: 12px; margin: 0; padding: 0; gap: 4px; background: none; box-shadow: none; max-width: 520px; }
-body.ui-compact .duel .duel-tools { top: 0; }
+body.ui-compact .duel .duel-tools { position: static; order: -1; align-self: flex-end; }
+body.ui-compact .duel .duel-top:has(.duel-tools) .duel-title { padding-right: 0; }
 body.ui-compact .duel .duel-tools button { color: #d8f6ff; background: #0b2a3699; border-color: #7fdcff55; text-shadow: none; }
 body.ui-compact .duel .duel-title { font-size: 11px; color: #7fdcff; }
 /* HUD readouts: same speed-style numbers, on a dark see-through plate so they read over any background (WCAG AA). */

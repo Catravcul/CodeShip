@@ -9,8 +9,11 @@ export const JOURNEYS = [
   { id: "PX-04", name: "acciones-movil", title: "Botones de cada pantalla de un iPhone 13 (390×664 visibles de 390×844): capturas, solapes y objetivos de toque", mobile: true, throttle: 1 },
   { id: "PX-05", name: "acciones-escritorio", title: "Botones de cada pantalla a 1280×800: capturas y solapes", mobile: false, throttle: 1 },
   { id: "PX-06", name: "ordenar", title: "Programar un viaje: orden erróneo con ✓/✗ por casilla y Reintentar; paso a paso con aviso al momento; ambas vistas" },
-  { id: "PX-07", name: "habitaculo-movil", title: "Habitáculo del módulo en un iPhone 13: levantarse, desacoplar en la consola, ajustes en la esterilla, «Ir» de una tarea de vuelo y consolas del puente", mobile: true, throttle: 1 },
-  { id: "PX-08", name: "habitaculo-escritorio", title: "Habitáculo del módulo y consolas del puente a 1280×800", mobile: false, throttle: 1 },
+  { id: "PX-07", name: "aterrizaje-programa", title: "Programar: un paso del viaje se dibuja al acertarlo; la sonda aterriza en Bennu por programa con toques (un fallo)" },
+  { id: "PX-08", name: "aterrizaje-manual", title: "Aterrizar a mano: indicadores X/Y/Z con colores, sitio en la cámara ventral, vz en rojo si cae deprisa" },
+  { id: "PX-09", name: "aterrizaje-escritorio", title: "A 1280×800: indicadores del módulo y aterrizaje del módulo por programa con clics", mobile: false },
+  { id: "PX-10", name: "habitaculo-movil", title: "Habitáculo del módulo en un iPhone 13: levantarse, desacoplar en la consola, ajustes en la esterilla, «Ir» de una tarea de vuelo y consolas del puente", mobile: true, throttle: 1 },
+  { id: "PX-11", name: "habitaculo-escritorio", title: "Habitáculo del módulo y consolas del puente a 1280×800", mobile: false, throttle: 1 },
 ];
 
 /**

@@ -116,7 +116,7 @@ la base común `src/walk-room.ts`.
 
 ## Casos y recorridos
 
-HAB-01 a HAB-07 en [casos.md](../qa/casos.md). Recorridos PX-07 (`habitaculo-movil`) y PX-08
+HAB-01 a HAB-07 en [casos.md](../qa/casos.md). Recorridos PX-10 (`habitaculo-movil`) y PX-11
 (`habitaculo-escritorio`), con capturas en `docs/screenshots/habitaculo-*.png`.
 
 ## Preguntas abiertas

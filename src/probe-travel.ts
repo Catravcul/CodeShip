@@ -9,7 +9,8 @@ import type { Region } from "@modules/celestial/domain/region";
 import type { RigidBodyState } from "@modules/flight/domain/rigid-body";
 import type { DuelView } from "./ui/duel-view";
 import type { ProbeMode } from "./probe-mode";
-import { openTripSheet } from "./navigation";
+import { openTripSheet, TRIP_TEXT } from "./navigation";
+import type { StepVisual } from "./ui/step-visual";
 
 export interface ProbeTravelDeps {
   readonly probe: ProbeOps;
@@ -21,6 +22,8 @@ export interface ProbeTravelDeps {
   /** Keep-out radius round the whole mothership, m. */
   readonly mothershipClearanceM: number;
   bayPose(): RigidBodyState;
+  /** The step visual of a hop about to be programmed (route, burn, arrival, braking point). */
+  stepVisual?(goal: ProbeGoal): StepVisual | undefined;
   /** Why no probe trip can start (the mothership or the lander already on a compressed trip), if so. */
   busy(): string | undefined;
 }
@@ -85,6 +88,8 @@ export class ProbeTravel {
       () => {
         if (t.status === "programming") t.cancel();
       },
+      TRIP_TEXT,
+      this.d.stepVisual?.(g),
     );
   }
 

@@ -14,6 +14,7 @@ import { EXERCISES } from "@modules/mind-duel/data/exercises";
 import { asteroidSurfaceFn } from "./content/asteroid-shape";
 import { TouchPilot, mergeCommands } from "./adapters/input/touch";
 import { DuelView, setStepByStep, stepByStep } from "./ui/duel-view";
+import { LANDING_MODE_LABEL, landingMode, setLandingMode, type LandingMode } from "./ui/landing-readout";
 import { buildAsteroidMesh } from "./adapters/three/asteroid-mesh";
 import { FlightView, WARP_MIN_DISTANCE_M, thrustText } from "./adapters/three/flight-view";
 import { buildStarfield } from "./adapters/three/starfield";
@@ -88,11 +89,16 @@ import { IDSS_CONTACT_LIMITS, NODRIZA, NODRIZA_NOSE_PORT, UNDOCK_PUSH_MS } from 
 import { ASSIST_RANGE_M, Docking } from "@modules/mothership/application/docking";
 import { MothershipModel } from "./adapters/three/mothership-model";
 import { Navigator } from "@modules/navigation/application/navigator";
-import { asteroidTarget, targetPosition, type NavTarget } from "@modules/navigation/domain/nav-target";
+import { asteroidTarget, targetPosition, targetRadius, type NavTarget } from "@modules/navigation/domain/nav-target";
 import { NavigationMode, PHASE } from "./navigation";
 import { TRAVEL_TIME, frameClocks } from "@modules/navigation/domain/travel-time";
 import { duration, num } from "@modules/navigation/application/trip-chore";
 import { ProbeTravel } from "./probe-travel";
+import { LandingProgram } from "@modules/navigation/application/landing-program";
+import { LandingUi } from "./landing";
+import { PlanOverlay } from "./adapters/three/plan-overlay";
+import { tripSketch } from "@modules/navigation/application/plan-sketch";
+import { PROBE_TRIP, ProbeTrip } from "@modules/navigation/application/probe-trip";
 import { TripChip, type TripChipData } from "./ui/trip-chip";
 import { TripPreview, type PreviewSubject } from "./adapters/three/trip-preview";
 import { mothershipCarrier } from "@modules/navigation/application/mothership-carrier";
@@ -615,18 +621,79 @@ const probeTravel = new ProbeTravel({
   duel: duelView,
   mothershipClearanceM: carrier.clearanceM,
   bayPose: () => subj.bayPose(),
-  busy: () => (nav.status === "carrier" || nav.status === "autopilot" || nav.status === "docking" ? "La nave ya está de viaje: espera a que llegue" : undefined),
+  stepVisual: (g) =>
+    planOverlay.visual(() => {
+      const trip = probeTravel.trip;
+      const h = trip.hop(g);
+      const probe = subj.probe;
+      const bay = subj.bayPose();
+      const from = probe.status === "estibada" ? bay.position : probe.flight.state.position;
+      const last = h.waypoints[h.waypoints.length - 1] ?? from;
+      const up = mothership.orientation.rotate(Vec3.Y);
+      const arrival =
+        g.kind === "bay" ? bay.position.add(up.scale(PROBE_TRIP.bayHandoverM)) : g.body.position.sub(g.body.position.sub(last).normalize().scale(g.body.meanRadiusM + PROBE_TRIP.approachM));
+      return tripSketch({ from, waypoints: h.waypoints, arrival, brakeM: h.plan.burnDistanceM, cruiseMS: h.plan.cruiseMS, deltaVMS: h.plan.deltaVMS, totalS: h.plan.totalS, targetName: ProbeTrip.goalName(g) });
+    }),
+  busy: () => (nav.status === "carrier" || nav.status === "autopilot" || nav.status === "docking" ? "La nave ya está de viaje: espera a que llegue" : landingBusy()),
 });
 function navBusy(carrierTrip: boolean): string | undefined {
   if (probeTravel.trip.active) return "La sonda está de viaje: espera a que llegue o toma su mando";
+  if (landingBusy()) return landingBusy();
   if (carrierTrip && subj.probe.out) return "La sonda está fuera: recógela antes de mover la nodriza";
   return undefined;
 }
+// Each programming step answered right draws what it does (route, burn, arrival, braking point; site,
+// drift, descent curve, flare, anchors) before the autopilot flies it.
+const planOverlay = new PlanOverlay(scene, root);
+navMode.stepVisual = () =>
+  planOverlay.visual(() => {
+    const t = nav.trip();
+    const from = t.carrier?.from ?? flight.state.position;
+    const way = [...(t.carrier ? [...t.carrier.path, t.carrier.parking] : []), ...t.waypoints];
+    const last = way[way.length - 1] ?? from;
+    const centre = targetPosition(nav.target);
+    const arrival = t.dock ? t.dock.entry : centre.sub(centre.sub(last).normalize().scale(targetRadius(nav.target) + t.facts.approachM));
+    return tripSketch({ from, waypoints: way, arrival, brakeM: t.plan.burnDistanceM, cruiseMS: t.plan.cruiseMS, deltaVMS: t.plan.deltaVMS, totalS: t.travel?.gameS ?? t.plan.totalS, targetName: nav.target.name });
+  });
+// Landing (docs/design/aterrizaje.md): by hand with the landing readout, or by program with a chain of
+// challenges; the lander's and the probe's share the same use case. One compressed thing at a time.
+const describeBody = (t: unknown) => {
+  const a = region.asteroids.find((x) => x === t);
+  return a ? { id: a.data.id, name: a.data.name } : undefined;
+};
+const tripsFlying = () => (nav.status === "carrier" || nav.status === "autopilot" || nav.status === "docking" ? "La nave ya está de viaje: espera a que llegue" : probeTravel.trip.active ? "La sonda está de viaje: espera a que llegue o toma su mando" : undefined);
+const landerLanding = new LandingProgram({ craft: "modulo", flight: () => flight, describe: describeBody, busy: () => tripsFlying() ?? (probeLanding.active ? "La sonda está aterrizando con su programa" : undefined) });
+const probeLanding = new LandingProgram({ craft: "sonda", flight: () => subj.probe.flight, describe: describeBody, busy: () => tripsFlying() ?? (landerLanding.active ? "El módulo está aterrizando con su programa" : undefined) });
+function landingBusy(): string | undefined {
+  return landerLanding.active || probeLanding.active ? "Un aterrizaje por programa está en marcha: espera a que se pose" : undefined;
+}
+const landerLandingUi = new LandingUi({
+  program: landerLanding,
+  host: root,
+  kind: "lander",
+  duel: duelView,
+  active: () => view.enabled && !subj.piloting,
+  camera: () => camera,
+  say: (t) => flash(t, 7),
+  targetName: () => expedition.asteroid.data.name,
+  overlay: planOverlay,
+});
+const probeLandingUi = new LandingUi({
+  program: probeLanding,
+  host: root,
+  kind: "probe",
+  duel: duelView,
+  active: () => subj.piloting,
+  camera: () => subj.probeMode.camera,
+  say: (t) => subj.probeMode.say(t, 7),
+  overlay: planOverlay,
+  targetName: () => describeBody(subj.probe.flight.target)?.name ?? expedition.asteroid.data.name,
+});
 // The trip chip and the live preview, on screen wherever she is while a vehicle flies itself.
 const tripChip = new TripChip(root);
 const tripPreview = new TripPreview(root);
 tripChip.onView = () => (tripPreview.open = !tripPreview.open);
-tripChip.onTake = () => (probeTravel.trip.active ? probeTravel.trip.cancel() : nav.cancel());
+tripChip.onTake = () => (probeTravel.trip.active ? probeTravel.trip.cancel() : probeLanding.active ? probeLanding.cancel() : landerLanding.active ? landerLanding.cancel() : nav.cancel());
 const km = (m: number) => (m >= 1000 ? `${num(m / 1000, 1)} km` : `${num(m)} m`);
 /** A wrath threat holds the trip at ×1 (HC-03): set each frame by the loop. */
 let tripHeld = false;
@@ -641,6 +708,10 @@ function tripNow(): { chip: TripChipData; subject: PreviewSubject } | undefined 
       subject: { label: "Sonda · en directo", sizeM: 1.2, pose: () => f().state, goal: () => (probeTravel.trip.goal?.kind === "asteroid" ? probeTravel.trip.goal.body.position : subj.bayPose().position) },
     };
   }
+  const probeChip = probeLandingUi.chip("Sonda");
+  if (probeChip) return { chip: probeChip, subject: { label: "Sonda · aterrizando", sizeM: 1.2, pose: () => subj.probe.flight.state, goal: () => probeLanding.siteWorld() ?? subj.probe.flight.state.position } };
+  const landerChip = landerLandingUi.chip("Módulo");
+  if (landerChip) return { chip: landerChip, subject: { label: "Módulo · aterrizando", sizeM: 14, pose: () => flight.state, goal: () => landerLanding.siteWorld() ?? flight.state.position } };
   const p = nav.progress();
   if (!p) return undefined;
   const carrierLeg = p.vehicle === "carrier";
@@ -764,6 +835,15 @@ settingsPanel.addRow({
   help: "«Ordenar todo y enviar» o «Paso a paso» (cada paso se comprueba al momento)",
   value: () => (stepByStep() ? "Paso a paso" : "Ordenar todo"),
   next: () => setStepByStep(!stepByStep()),
+});
+// How to land: ask each time, by hand or by program (landing-readout.ts keeps it).
+const LANDING_MODES: readonly LandingMode[] = ["preguntar", "manual", "programa"];
+settingsPanel.addRow({
+  id: "aterrizaje",
+  label: "Aterrizaje",
+  help: "Al acercarte: preguntar cada vez, a mano con los indicadores o con un programa de retos",
+  value: () => LANDING_MODE_LABEL[landingMode()],
+  next: () => setLandingMode(LANDING_MODES[(LANDING_MODES.indexOf(landingMode()) + 1) % LANDING_MODES.length]!),
 });
 interior.openSettings = () => {
   settingsFrom = "nodriza";
@@ -1063,11 +1143,11 @@ renderer.setAnimationLoop((now) => {
   const fx = nano.net.effectsAt(sp);
   const asked = (expedition.phase === "flight" || expedition.phase === "persuaded" || (expedition.phase === "aggressive" && wrathMode.allowsWarp)) && (subj.piloting ? subj.probe.status === "en-vuelo" : !flight.landed) && idle && far ? warpAsk : 1;
   // A vehicle flying itself on a compressed trip sets the pace of the whole world (docs/design/viajes.md).
-  const tripLapse = probeTravel.trip.active ? probeTravel.trip.lapse : nav.lapse;
+  const tripLapse = probeTravel.trip.active ? probeTravel.trip.lapse : probeLanding.active ? probeLanding.lapse : landerLanding.active ? landerLanding.lapse : nav.lapse;
   // Inside the nano_net its speed nodes let time run faster.
   // Every clock of the frame in one place, tested in src/qa/convivencia (docs/qa/entrelazamiento.md).
   // A wrath threat to the craft that travels (projectile, ram, chase) drops the trip to ×1 until it ends (HC-03).
-  const tripCraft = probeTravel.trip.active ? "sonda" : nav.status === "carrier" ? "nodriza" : nav.status === "autopilot" ? "aterrizador" : undefined;
+  const tripCraft = probeTravel.trip.active || probeLanding.active ? "sonda" : nav.status === "carrier" ? "nodriza" : nav.status === "autopilot" || landerLanding.active ? "aterrizador" : undefined;
   const threat = tripLapse > 1 && !!tripCraft && wrathMode.wrath.threatened(tripCraft);
   const world = frameClocks(dt, tripLapse, asked > 1 ? Math.round(asked * fx.warpFactor) : 1, STATION_TUNING.hoursPerSecond, threat);
   const warp = world.warp;
@@ -1090,6 +1170,8 @@ renderer.setAnimationLoop((now) => {
   levels.update(dt * warp, world.stationHours);
   asteroidMesh.position.set(bennu.position.x, bennu.position.y, bennu.position.z);
   probeTravel.update(dt, world.held);
+  landerLandingUi.update();
+  probeLandingUi.update();
   wrathMode.update(dt * warp, dt, subj.piloting ? subj.probeMode.camera : camera, view.enabled || deck.active || subj.piloting);
   ring.tick(dt);
   // Region rules: soft boundary push back and no flying through the other rocks or the mothership (game rules).
@@ -1282,9 +1364,9 @@ const ctxDock = document.createElement("div");
 ctxDock.className = "ctx-dock";
 root.appendChild(ctxDock);
 ctxDock.append(banner, regionTag);
-for (const sel of [".nano-action", ".rapport-chip", ".trip-chip"]) {
+for (const sel of [".nano-action", ".trip-chip", ".land-offer.lander", ".land-box.probe"]) {
   const el = root.querySelector(sel);
   if (el) ctxDock.appendChild(el);
 }
 
-(window as unknown as { codeship: unknown }).codeship = { cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, tripPreview, tripChip, duelView, levels };
+(window as unknown as { codeship: unknown }).codeship = { cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, tripPreview, tripChip, duelView, levels };

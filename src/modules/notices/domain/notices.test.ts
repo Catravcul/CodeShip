@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Vec3 } from "@core/math/vec3";
 import { AMBIENT, ambientOpacity, ambientVisible, NoticeQueue, type ViewCone } from "./notices";
 
-describe("NoticeQueue (H24: the player's notices come first)", () => {
+describe("VID-08 NoticeQueue (H24: the player's notices come first)", () => {
   it("an alert does not replace the player's notice: it waits and shows after it", () => {
     const q = new NoticeQueue();
     q.push("Bajas al anillo para «Regar»", "jugador", 0, 3);
@@ -43,7 +43,7 @@ describe("NoticeQueue (H24: the player's notices come first)", () => {
   });
 });
 
-describe("ambient notices: only where the player looks", () => {
+describe("VID-08 ambient notices: only where the player looks", () => {
   const cam: ViewCone = { position: Vec3.ZERO, forward: new Vec3(0, 0, -1), up: Vec3.Y, fovY: (70 * Math.PI) / 180, aspect: 390 / 664 };
 
   it("in front and inside the field of view: shown", () => {

@@ -31,7 +31,7 @@ describe("arrows relative to the view", () => {
   });
 });
 
-describe("landing points and hops", () => {
+describe("ING-03 landing points and hops", () => {
   it("every rail whose body point fits is a landing point", () => {
     expect(hops.points.length).toBe(rails.filter((r) => fits(holdAt(railGraph, r.id, 0.5).body)).length);
     expect(hops.points.length).toBeGreaterThan(30);
@@ -76,7 +76,7 @@ describe("landing points and hops", () => {
     expect(hops.reachable(hops.points[0]!).size).toBe(hops.points.length);
   });
 
-  it("works in a wide tube too (the mothership's spine): rows round the wall, all linked", () => {
+  it("ING-04 works in a wide tube too (the mothership's 5,5 m spine): rows round the wall, all linked", () => {
     const R = 2.75;
     const tube = new RailGraph(tubeRails("t", 0, 0, R, 0, 12, 8, Math.PI / 8));
     const g = new HopGraph(tube, (p) => Math.hypot(p.y, p.z) < R - 0.45 && p.x > 0.45 && p.x < 11.55);
@@ -98,7 +98,7 @@ describe("hop speeds", () => {
   });
 });
 
-describe("the hop as a motion", () => {
+describe("ING-03 the hop as a motion", () => {
   const holding = (rail: string, t: number): IvaState => ({ position: holdAt(railGraph, rail, t).body, velocity: Vec3.ZERO, motion: { kind: "sujeta", rail, t, hands: 0 } });
 
   const fly = (s: IvaState, hop: ReturnType<typeof planHop>, maxS = 20) => {

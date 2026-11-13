@@ -60,7 +60,7 @@ describe("station handrails", () => {
   });
 });
 
-describe("ING-02 hopping with the arrows through the station", () => {
+describe("ING-03 hopping with the arrows through the station", () => {
   const hopsFor = (plan: typeof POLANA_INTERIOR, suited: boolean) => {
     const inside = new StationInterior(plan);
     return new HopGraph(new RailGraph(stationHandrails(plan)), (p) => inside.fits(p, 0.3, suited), stationPortals(plan));

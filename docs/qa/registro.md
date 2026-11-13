@@ -73,11 +73,14 @@ caso y las anteriores quedan en sus run logs.
 | VID-05 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | VID-06 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | VID-07 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| VID-08 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); el recorrido PX-02 lo juega |
 | EVA-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | EVA-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | EVA-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | ING-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | ING-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| ING-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); el recorrido PX-02 lo juega |
+| ING-04 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); capturas `flechas-*` |
 | NNT-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | NNT-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | NNT-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |

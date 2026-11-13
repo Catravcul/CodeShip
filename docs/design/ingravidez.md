@@ -75,21 +75,14 @@ Esta es justo la regla que implementa la fase A: **solo se avanza de asidero en 
   - dos junto a cada escotilla de atraque;
   - en el hangar, una rejilla cada 2,5 m en suelo, techo, paredes y proa (como los asideros EVA del exterior).
 - **Nave nodriza** (`zones.ts`, `axisHandrails`):
-  - cuatro filas por el tubo del cubo y por las de la espina, separadas a cada lado del cojinete;
+  - ocho filas por el tubo del cubo y por las de la espina, separadas a cada lado del cojinete;
   - cuatro barras alrededor de las escotillas de los dos extremos;
   - una barra vertical en lo alto del pozo del ascensor: al llegar arriba, se sale del ascensor agarrada a ella.
 - Todas las barras son **amarillas y del mismo modelo** (un color estándar, MSIS §11.8.2.2.2), con dos patas hasta la pared.
 
 **Por qué arregla el fallo:** antes, la figura llevaba siempre la pose `float` mientras el cuerpo se deslizaba con el joystick, y por eso parecía quieta. Ahora cada fase tiene su pose: agarrar, empujar, volar de cabeza, alcanzar el asidero y sujetarse. Además, el cuerpo gira con suavidad hacia la orientación de cada fase.
 
-**Controles en el iPhone:**
-
-- **Joystick izquierdo («Manos»):** avanzar mano a mano mientras está sujeta.
-- **Botón central «Impulsarse»:** tocar da un impulso normal; mantenerlo, uno fuerte.
-- **«Agarrarse»:** aparece encima del botón central solo en vuelo y con un asidero al alcance.
-- **Joystick derecho o arrastrar:** mirar, como antes.
-
-En la nodriza, ▲▼ siguen moviendo el ascensor. En el teclado: espacio, Mayús+espacio, G y R/F (arriba/abajo de la cámara para la dirección del impulso).
+**Controles de la fase A (sustituidos por la fase C):** joystick «Manos» para ir mano a mano, botón «Impulsarse» (mantener: fuerte) y «Agarrarse» en vuelo. Desde la fase C el jugador no empuja a mano: usa el mando de flechas. El dominio conserva el impulso libre, el agarre en vuelo, la pared y la deriva (ING-01), pero no los usa ningún control.
 
 **Código:**
 
@@ -99,6 +92,59 @@ En la nodriza, ▲▼ siguen moviendo el ascensor. En el teclado: espacio, Mayú
 - `src/adapters/input/zero-g-controls.ts`: botones y teclas.
 
 Las dos zonas sin gravedad (cubo y espina de la nodriza, y la estación) usan el mismo dominio. Pruebas: `handrails.test.ts`, `iva.test.ts` y `station/data/handrails.test.ts`.
+
+## Fase C (hecha): mando de flechas, túneles más amplios y avisos donde suceden
+
+Petición del diseñador (2026-11-13): «flotar me resulta difícil y poco divertido […] podría ser más agradable si los túneles fuesen más amplios y si el mando de manos pasara a ser mando de dirección […] el mando de manos se reemplaza por un mando de flechas y cada flecha lleva al personaje a apuntar al siguiente punto de aterrizaje configurado, saltar y acoplarse, las flechas se deshabilitan hasta que termine la transición […] los avisos de ambiente solo deberían ser visibles cuando el jugador mira hacia donde sucede y se puede mostrar con un estilo más similar al hud».
+
+### El mando de flechas
+
+**Regla:** el jugador no empuja ni frena: elige **adónde** con una flecha y ella hace el resto, como la tripulación con experiencia, que toca los asideros sobre todo al final de un vuelo libre y para cambiar de dirección (MSIS §8.9.2). Cada salto es: **apuntar → impulso → planeo → agarre**.
+
+- **Puntos de aterrizaje** (`hops.ts`, `HopGraph`): cada asidero da uno, en su centro (o en `landT`), con el cuerpo a 0,5 m de la pared. Son los asideros que ya había (filas de los pasillos y del tubo, barras junto a las escotillas y a las escotillas de atraque, rejilla del hangar, barra del pozo) **más una barra en cada puesto de trabajo** (máquinas, consolas, trajes), delante de él y algo por debajo del centro: el asidero entre la cintura y el hombro que MSIS §11.7.2.3.2 pide junto a cada sujeción de pies. La barra del pozo se usa por su extremo alto (`landT` 0,9), a la vista del cubo.
+- **Saltos**: de un punto a otro hay salto si están a 0,5–7 m y el cuerpo cabe en toda la línea recta (muestreo cada 10 cm con el mismo `fits` que el vuelo). **Escotillas**: si un punto ve una escotilla, hay además un salto que se alinea con su eje (0,4 m antes del plano, o a su altura si ya está junto al mamparo), la cruza y llega al **primer punto del otro módulo** (el más cercano a la salida, mejor si está en línea). Se calculan al pedirlos y se guardan.
+- **Qué flecha va adónde**, relativa a la vista: ▲ hacia donde mira la cámara (mirar al techo y pulsar ▲ lleva al techo), ▼ hacia atrás, ◀ ▶ a los lados. Entre los saltos cuyo primer tramo (o la salida de la escotilla) cae en un **cono de 50°**, gana el más alineado y, a igualdad, el de longitud más cercana a **2,5 m** (dos bahías de bastidor): puntuación = ángulo/50° + 0,5·|L − 2,5|/2,5.
+- **Marcadores**: un círculo tenue con la flecha sobre el asidero al que llevaría cada flecha (se ocultan a menos de 1,4 m de la cámara); durante el salto solo queda el destino, más brillante. Una flecha sin destino se ve apagada.
+- **Durante el salto** las cuatro flechas se apagan y no responden; al agarrarse vuelven. **Mantener** una flecha encadena saltos en esa dirección. Teclado: flechas o WASD (en ingravidez las flechas del teclado ya no giran la vista; Q/E y arrastrar, sí).
+- **Nadie se queda atascada**: siempre está sujeta a un punto o saltando hacia uno; los tests comprueban que desde la entrada se llega a todos los puntos de la estación (con módulos añadidos) y del tubo.
+
+| Fase del salto | Qué pasa | Valores |
+| --- | --- | --- |
+| **Apunta** | Gira hacia el primer tramo (giro más rápido, 9/s). | 0,25 s (valor de juego) |
+| **Impulso** | Fuerza constante durante la extensión del brazo. | 0,35 m; a 0,85 m/s, ~60 N |
+| **Planeo** | Línea recta a velocidad constante; en una escotilla, el tramo siguiente. | v = L/3 s, entre **0,5 y 1,0 m/s** |
+| **Agarre** | Los brazos se doblan hasta parar en el asidero. | 0,3 m; a 1,0 m/s, ~97 N |
+
+**Por qué 0,5–1,0 m/s:** el Skylab midió 0,4–0,6 m/s de punto a punto y ~1,8 m/s jugando (MSIS §8.7.2); el «vuelo vigoroso» llegaba a ~1,9 m/s (Amir y Newman). Un salto de 3 m o más va a 1,0 m/s, una traslación rápida pero lejos del juego libre; frenar a 1,0 m/s en 0,3 m son ~97 N, por debajo del máximo medido en la Mir (137 N). Un salto típico de 2,5 m dura unos 4 s.
+
+**Ayuda de juego:** durante un salto no actúan la deriva del aire ni las fuerzas del cubo que gira (Coriolis): el salto acaba siempre donde se apuntó. No es poco: en el cubo, a 2,2 m del eje y a 4 rpm, la fuerza centrífuga es ω²r ≈ 0,39 m/s² (0,04 g), y en un salto de 4 s desviaría unos 3 m. Se ignora para que el salto sea predecible; queda como pregunta abierta si el cubo debería sentirse durante los saltos (por ejemplo, saltos más cortos allí).
+
+### Túneles más amplios
+
+| Dónde | Antes | Ahora | Referencia real |
+| --- | --- | --- | --- |
+| Cubo y espina de la nodriza (tubo abierto) | 4 m | **5,5 m** de diámetro (valor de juego) | Módulos de la ISS: 4,2–4,5 m por fuera (Destiny 4,3 m), con un pasillo de ~2 m entre bastidores; la nodriza es una nave grande y su cubo mide 6 m por fuera |
+| Pozo del ascensor | 1,6 m | **2 m** (valor de juego) | Una escotilla CBM de 1,27 m cabe con holgura |
+| Pasillo del módulo habitable | 1,2 × 1,7 m | **1,6 × 1,9 m** (valor de juego) | HALO mide 3 m de diámetro: quedan 0,55–0,7 m de equipamiento alrededor |
+| Nodos, fabricación, escotillas CBM | sin cambios | 2,4 m, 2 m, 1,27 m | Unity, Destiny, CBM (`station/data/interior.ts`) |
+
+En el tubo hay ahora ocho filas a ~2,1 m unas de otras; las barras de los extremos rodean la escotilla a 1,4 m del eje. La **cámara en tercera persona** se aleja hasta 3,2 m detrás de ella y se acerca al eje del tubo (en la estación, al centro del pasillo), lejos de las taquillas y las bolsas de las paredes, así que cabe detrás aunque ella esté en un rincón.
+
+### Avisos donde suceden
+
+- **La vida a bordo** («Coco le ladra a Luna», un gato que mordisquea una planta, una gallina que escarba, una familia nueva) ya no usa el aviso central: aparece como una **etiqueta pequeña del HUD** (monoespaciada, fina, sobre una placa translúcida, con un trazo hacia el animal) flotando sobre quien lo hace, y lo sigue si se mueve.
+- **Solo se ve si ella mira hacia allí** (`ambientVisible`): delante de la cámara, dentro del 92 % de su campo de visión, a 0,4–14 m y en el mismo espacio (en el anillo y al mismo lado de la puerta entre el módulo y la cubierta de cultivo; desde el eje no se ve nada del anillo). Dura 5 s, se apaga en el último segundo y, si no se ha mirado, se pierde.
+- **Prioridad (H24):** el aviso central es del jugador. Un aviso suyo sale enseguida y sustituye a lo que hubiera; una **alerta** (herida, avería, cultivo perdido, sacudida, carta) espera a que acabe el aviso del jugador (cola de 3, sin repetir). Así «Bajas al anillo para…» ya no se pierde.
+
+### Código de la fase C
+
+- `src/modules/gravity/domain/hops.ts`: puntos de aterrizaje, saltos (rectos y por escotillas), elección por flecha, alcance.
+- `src/modules/gravity/domain/iva.ts`: estado `salto` y sus fases (`hopPhase`, `alongPath`).
+- `src/modules/notices/domain/notices.ts`: `NoticeQueue` y `ambientVisible`.
+- `src/adapters/input/arrow-pad.ts` y `src/ui/zero-g.css`: el mando de flechas (sustituye a `zero-g-controls.ts`).
+- `src/adapters/three/interior/hop-control.ts`: marcadores y de flecha a salto; `ambient-notices.ts`: etiquetas de ambiente.
+- `src/modules/station/data/handrails.ts`: barras de los puestos y escotillas de la estación (`stationPortals`).
+- Pruebas: `hops.test.ts`, `iva.test.ts`, `station/data/handrails.test.ts` (ING-03, ING-04) y `notices.test.ts` (VID-08). Recorrido PX-02 (`tools/experiencia/movimiento.mjs`).
 
 ## Fase B (más detallada)
 
@@ -147,6 +193,13 @@ Las dos zonas sin gravedad (cubo y espina de la nodriza, y la estación) usan el
 - Payload Equipment Restraint System, riel «seat track» de los bastidores de la ISS: https://ntrs.nasa.gov/api/citations/20030066313/downloads/20030066313.pdf
 
 ## Capturas
+
+- `docs/screenshots/flechas-1-nodriza-{movil,escritorio}.png`: sujeta en la espina de la nodriza (5,5 m), con el mando de flechas y los marcadores de lo que haría cada flecha.
+- `docs/screenshots/flechas-2-salto-{movil,escritorio}.png`: en pleno salto: las flechas apagadas y el destino marcado.
+- `docs/screenshots/flechas-3-estacion-escotilla-{movil,escritorio}.png`: en la estación, ▲ cruza la escotilla CBM del Nodo 2 al módulo habitable.
+- `docs/screenshots/flechas-4-aviso-ambiente-{movil,escritorio}.png`: en el anillo, el aviso del jugador arriba y «Coco le ladra a Luna» flotando sobre el perro, con estilo HUD.
+
+Fase A:
 
 - `docs/screenshots/ingravidez-1-impulso-{mobile,desktop}.png`: se impulsa desde el asidero junto a la escotilla de atraque del Nodo 2; los brazos van hacia atrás.
 - `docs/screenshots/ingravidez-2-planeo-{mobile,desktop}.png`: vuela de cabeza hacia el módulo habitable, a 0,50 m/s y sin frenar. En el móvil se ve «Agarrarse» porque hay un asidero al alcance.

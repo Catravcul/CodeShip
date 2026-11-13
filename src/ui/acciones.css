@@ -7,7 +7,7 @@
 .ctx-dock > * { position: static !important; inset: auto !important; transform: none !important; margin: 0 !important; max-width: none !important; width: auto !important; pointer-events: auto; box-sizing: border-box; }
 .ctx-dock > .banner, .ctx-dock > .rapport-chip, .ctx-dock > .region-tag { pointer-events: none; }
 /* Bottom up: primary action, its message, trust chip, trip chip, where you are. */
-.ctx-dock > .action { order: 1; }
+.ctx-dock > .action, .ctx-dock > .nano-action { order: 1; }
 .ctx-dock > .mode-btn { order: 2; }
 .ctx-dock > .eva-btn { order: 3; }
 .ctx-dock > .banner { order: 4; }
@@ -50,3 +50,5 @@ body.in-cockpit .ctx-dock > .rapport-chip, body.in-cockpit .ctx-dock > .trip-chi
 .help { right: auto; left: 18px; text-align: left; }
 /* The interior status (bars, larder, gravity) gets a dark plate: over bright signs and lights it could not be read. */
 .ihud { box-sizing: border-box; padding: 6px 8px; background: #05141cc4; border-radius: 10px; }
+/* A mission notice during a challenge drops to the bottom: on top it covered the result («Conseguido»). */
+body.in-duel .ml-toast { top: auto !important; bottom: calc(16px + env(safe-area-inset-bottom)); }

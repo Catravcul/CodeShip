@@ -46,10 +46,18 @@ export async function mision(j) {
   });
   await p.waitForFunction(() => window.codeship.expedition.phase === "landed", null, { timeout: 180000 });
   await p.waitForTimeout(800);
-  const action = (await j.texts(".action"))[0] ?? "";
-  j.check("posado, aparece el botón para entrar en su mente", action.length > 0, action);
+  await j.setup("la fase de la sonda ya está hecha en Bennu (posar la sonda a mano lleva minutos)", () => {
+    const ex = window.codeship.expedition;
+    ex.rapport.of(ex.asteroid.data.id).succeed("sonda");
+  });
+  await p.waitForTimeout(800);
+  const action = (await j.texts(".ctx-dock > .action:not(.nano-action)"))[0] ?? "";
+  j.check("posado, aparece el botón para entrar en su mente, sobre el pulgar derecho", /mente|Convencer/.test(action), action);
+  const box = await p.locator(".ctx-dock > .action:not(.nano-action)").boundingBox();
+  const vp = p.viewportSize();
+  j.check("la acción principal está en la mitad derecha y en la mitad de abajo", box && box.x + box.width / 2 > vp.width / 2 && box.y > vp.height / 2, box ? `${Math.round(box.x)},${Math.round(box.y)}` : "");
   await j.shot("posado");
-  await j.tap(".action", action || "acción");
+  await j.tap(".ctx-dock > .action:not(.nano-action)", action || "acción");
   await p.locator(".duel:not(.hidden)").waitFor({ timeout: 30000 });
   await p.waitForTimeout(400);
   const fails0 = (await j.texts(".duel .stat.fails"))[0] ?? "";
@@ -61,17 +69,38 @@ export async function mision(j) {
   j.check("una idea errónea suma un fallo y lo dice", /Fallos 1\//.test(fails1) && /✗/.test(fb), `${fails1} · ${fb}`);
   await j.shot("duelo-fallo");
   for (let n = 0; n < 12 && (await p.evaluate(() => window.codeship.expedition.phase)) === "duel"; n++) await j.answer(key, true);
-  const phase = await p.evaluate(() => window.codeship.expedition.phase);
-  j.check("con las ideas correctas Bennu queda persuadido", phase === "persuaded", phase);
   const result = (await j.texts(".duel .result"))[0] ?? "";
   j.check("la pantalla del duelo dice «Conseguido» y cuántos fallos hubo", /Conseguido/.test(result) && /1 fallo/.test(result), result);
+  const extra = await j.texts(".ctx-dock > .action:not(.nano-action)");
+  j.check("al terminar el duelo hay un solo botón para volver", extra.length === 0, extra.join(" / "));
   await j.shot("duelo-conseguido");
   await p.waitForTimeout(1000);
+  await j.tap(".duel button.end", "Continuar");
+  await p.waitForTimeout(800);
+
+  // Stage 3: out in the suit and lying on Bennu.
+  await j.tap(".eva-btn", "Salir de la nave");
+  await p.locator(".duel:not(.hidden)").waitFor({ timeout: 30000 });
+  for (let n = 0; n < 8 && (await p.evaluate(() => window.codeship.eva.phase)) === "preparando"; n++) await j.answer(() => window.codeship.eva._run?.current ?? null);
+  await j.tapAt(p.locator(".duel button.end"));
+  await p.waitForTimeout(2500);
+  j.check("con el traje puesto, sale al exterior", await p.evaluate(() => window.codeship.eva.outside), await p.evaluate(() => window.codeship.eva.phase));
+  await j.shot("fuera");
+  await j.tap(".eva-lie", "Tumbarse sobre el asteroide");
+  await p.locator(".duel:not(.hidden)").waitFor({ timeout: 30000 });
+  for (let n = 0; n < 14 && (await p.evaluate(() => window.codeship.expedition.phase)) === "duel"; n++) await j.answer(key, true);
+  const phase = await p.evaluate(() => window.codeship.expedition.phase);
+  j.check("con las tres fases, Bennu queda persuadido", phase === "persuaded", phase);
+  await p.waitForTimeout(1500);
   const toast = (await j.texts(".ml-toast"))[0] ?? "";
   j.check("un aviso dice que la misión de Nevaeh está cumplida", /cumplida/i.test(toast), toast);
-  const buttons = await j.texts(".duel button.end, .action");
-  if (buttons.length > 1) j.problem(`Al terminar el duelo hay dos botones para lo mismo: ${buttons.join(" / ")}`);
-  await j.tap(".duel button.end", "Continuar");
+  const covers = await p.evaluate(() => {
+    const a = document.querySelector(".ml-toast.on")?.getBoundingClientRect();
+    const b = document.querySelector(".duel .result")?.getBoundingClientRect();
+    return !!a && !!b && a.bottom > b.top && a.top < b.bottom;
+  });
+  j.check("el aviso de la misión no tapa el resultado del duelo", !covers);
+  await j.shot("mision-cumplida");
+  await j.tapAt(p.locator(".duel button.end"));
   await p.waitForTimeout(600);
-  await j.shot("tras-el-duelo");
 }

@@ -1010,7 +1010,8 @@ renderer.setAnimationLoop((now) => {
 const ctxDock = document.createElement("div");
 ctxDock.className = "ctx-dock";
 root.appendChild(ctxDock);
-for (const sel of [".action", ".mode-btn", ".eva-btn", ".banner", ".rapport-chip", ".trip-chip", ".region-tag"]) {
+ctxDock.append(action, modeBtn, evaBtn, banner, regionTag);
+for (const sel of [".nano-action", ".rapport-chip", ".trip-chip"]) {
   const el = root.querySelector(sel);
   if (el) ctxDock.appendChild(el);
 }

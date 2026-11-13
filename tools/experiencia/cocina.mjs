@@ -3,6 +3,7 @@
 
 /** What the player reads in the recipe (src/modules/kitchen/data/processes.ts): the steps in order. */
 const CREMA = ["tuesta los cacahuetes a 160 °C", "afloja la piel con aire a 138 °C", "quítales la piel", "muélelos en grueso", "muélelos en fino", "añade sal", "envasa la crema"];
+const TOSTADOS = ["saca los cacahuetes de la despensa", "pélalos", "extiéndelos en la bandeja", "tuéstalos a 160 °C", "remueve a media cocción", "déjalos enfriar", "sirve con una pizca de sal"];
 const VALUE = /a (\d+) °C$/;
 
 const stats = async (j) => {
@@ -95,18 +96,23 @@ export async function cocina(j) {
     return bg;
   });
   j.check("en HUD los indicadores llevan placa oscura (contraste AA sobre la escena)", /rgba\(2, 10, 18, 0\.8/.test(contrast), contrast);
-  // Step 1 asks which step comes first: tap a wrong one, then another wrong one.
+  // Fail every wrong option of each step, then take the right one, until the recipe is lost.
   let lost = false;
-  for (let k = 0; k < 6 && !lost; k++) {
-    const opts = (await j.texts(".duel .option:not(.wrong)")).filter((o) => o !== "saca los cacahuetes de la despensa");
-    if (!opts.length) break;
-    await choose(j, opts[0]);
-    s = await stats(j);
-    if (k === 0) {
-      j.check("en HUD, un fallo queda escrito: Fallos 1/2", /Fallos 1\/2/.test(s.fails), s.fails);
-      await j.shot("hud-fallo");
+  let first = true;
+  for (const step of TOSTADOS) {
+    for (const o of (await j.texts(".duel .option:not(.wrong)")).filter((x) => x !== answerFor(step))) {
+      await choose(j, o);
+      s = await stats(j);
+      if (first) {
+        j.check("en HUD, un fallo queda escrito: Fallos 1/3 en ámbar", /Fallos 1\/3/.test(s.fails) && (await j.color(".duel .stat.fails")) === "rgb(255, 179, 71)", s.fails);
+        await j.shot("hud-fallo");
+        first = false;
+      }
+      lost = (await j.texts(".duel .result")).length > 0;
+      if (lost) break;
     }
-    lost = (await j.texts(".duel .result")).length > 0;
+    if (lost) break;
+    await choose(j, answerFor(step));
   }
   const r2 = (await j.texts(".duel .result"))[0] ?? "";
   j.check("con todos los fallos, la pantalla dice «Reto perdido» (no parece terminado con éxito)", /Reto perdido/.test(r2), r2);

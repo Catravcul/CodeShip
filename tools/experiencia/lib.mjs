@@ -102,12 +102,17 @@ export class Journey {
     let b = await loc.boundingBox();
     if (!b) return false;
     const vh = this.page.viewportSize().height;
-    if (b.y < 0 || b.y + b.height > vh) {
+    const covered = await loc.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return !hit || !(el === hit || el.contains(hit));
+    });
+    if (b.y < 0 || b.y + b.height > vh || covered) {
       // Off screen: a player scrolls first. Worth knowing when it is an answer to a challenge.
       const what = (await loc.textContent())?.trim().slice(0, 30);
       if (!this.scrolled) this.problem(`Hay que desplazar la pantalla para llegar a «${what}»: no cabe en ${this.page.viewportSize().width}×${vh}`);
       this.scrolled = true;
-      await loc.scrollIntoViewIfNeeded();
+      await loc.evaluate((el) => el.scrollIntoView({ block: "center" }));
       await this.page.waitForTimeout(200);
       b = await loc.boundingBox();
     }

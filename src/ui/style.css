@@ -112,6 +112,8 @@ body.in-interior .walk-stick, body.in-interior .look-stick { display: block; }
 body.in-duel .vstick, body.in-duel .interior-ui { display: none !important; }
 /* Chores: the challenge sits in a bottom sheet so the plant, cat or yoga figure stays visible above. */
 .duel.sheet { top: 38vh; border-radius: 18px 18px 0 0; background-image: none; background-color: #05060cf2; }
+/* Short phones (Safari bars shown): a bit more sheet and a smaller idea, so the options fit with less scrolling. */
+@media (max-height: 760px) and (max-aspect-ratio: 1/1) { .duel.sheet { top: 30vh; } .duel.sheet .idea { font-size: 16px; padding: 0; } }
 @media (min-aspect-ratio: 1/1) { .duel.sheet { top: 0; left: auto; right: 0; width: min(480px, 46vw); padding-inline: 16px; border-radius: 18px 0 0 18px; } }
 
 /* Ship radio: Nevaeh's letters */
@@ -170,6 +172,7 @@ body.ui-compact .duel .duel-tools button { color: #d8f6ff; background: #0b2a3699
 body.ui-compact .duel .duel-title { font-size: 11px; color: #7fdcff; }
 /* HUD readouts: same speed-style numbers, on a dark see-through plate so they read over any background (WCAG AA). */
 body.ui-compact .duel .duel-stats { align-self: flex-start; padding: 4px 12px; border-radius: 10px; background: #020a12d9; box-shadow: 0 0 0 1px #7fdcff33; }
+body.ui-compact .duel .duel-title { align-self: flex-start; padding: 2px 8px; border-radius: 6px; background: #020a12d9; }
 body.ui-compact .duel .stat { text-shadow: 0 0 2px #000, 0 0 6px currentColor; }
 body.ui-compact .duel .stat b { font-size: 22px; }
 body.ui-compact .duel .feedback { align-self: flex-start; padding: 4px 10px; font-size: 14px; background: #020a12d9; text-shadow: none; }

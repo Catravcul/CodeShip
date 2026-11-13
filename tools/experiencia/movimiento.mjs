@@ -31,8 +31,7 @@ export async function movimiento(j) {
   j.check("al entrar, la escotilla deja en ingravidez con el botón Impulsarse", (await j.texts(".zg-push")).length === 1);
   const before = (await j.texts(".interior-ui .ihud"))[0] ?? "";
   const shot0 = await p.screenshot();
-  const push = await p.locator(".zg-push").boundingBox();
-  await p.touchscreen.tap(push.x + push.width / 2, push.y + push.height / 2);
+  await j.tapAt(p.locator(".zg-push:visible"));
   await p.waitForTimeout(3000);
   const after = (await j.texts(".interior-ui .ihud"))[0] ?? "";
   j.check("un toque en Impulsarse la hace planear (lo dice el HUD)", /Planeando|Impulso|sujeta|Agarrada/i.test(after) && after !== before, after.match(/Espina[^·]*·[^·]*·[^·]*/)?.[0] ?? after.slice(-80));

@@ -1,5 +1,5 @@
 // The lander's crew cabin, the general settings at the yoga mat, the task list and the bridge's consoles
-// (docs/design/habitaculo.md). Played at 390×844 (PX-06) and 1280×800 (PX-07); its captures go to
+// (docs/design/habitaculo.md). Played at 390×844 (PX-07) and 1280×800 (PX-08); its captures go to
 // docs/screenshots/habitaculo-<pantalla>-<movil|escritorio>.png.
 import { mkdirSync } from "node:fs";
 

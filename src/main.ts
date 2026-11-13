@@ -13,7 +13,7 @@ import { Expedition } from "@modules/expedition/application/expedition";
 import { EXERCISES } from "@modules/mind-duel/data/exercises";
 import { asteroidSurfaceFn } from "./content/asteroid-shape";
 import { TouchPilot, mergeCommands } from "./adapters/input/touch";
-import { DuelView } from "./ui/duel-view";
+import { DuelView, setStepByStep, stepByStep } from "./ui/duel-view";
 import { buildAsteroidMesh } from "./adapters/three/asteroid-mesh";
 import { FlightView, WARP_MIN_DISTANCE_M, thrustText } from "./adapters/three/flight-view";
 import { buildStarfield } from "./adapters/three/starfield";
@@ -757,6 +757,14 @@ settingsPanel.onClose = () => {
   else interior.standUp();
   settingsFrom = null;
 };
+// The answer mode of order challenges, kept by duel-view.ts next to the challenge view.
+settingsPanel.addRow({
+  id: "ordenar",
+  label: "Retos de ordenar",
+  help: "«Ordenar todo y enviar» o «Paso a paso» (cada paso se comprueba al momento)",
+  value: () => (stepByStep() ? "Paso a paso" : "Ordenar todo"),
+  next: () => setStepByStep(!stepByStep()),
+});
 interior.openSettings = () => {
   settingsFrom = "nodriza";
   settingsPanel.open("Doménica en loto en la esterilla del rincón de ejercicio (nodriza)");

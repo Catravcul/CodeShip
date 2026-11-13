@@ -227,15 +227,11 @@ export class WrathMode {
     if (e.type === "pulse") say(`Pulso de radiación sobre ${NAMES[this.wrath.target(e.targetId)?.kind ?? ""]}: ${mSv(e.doseMSv)} tras el blindaje`);
     if (e.type === "escaped") say(`${NAMES[this.wrath.target(e.targetId)?.kind ?? ""]} fuera de su alcance`);
     if (e.type === "calmed") say("Se ha calmado: puedes volver a intentarlo");
-    const who = (id: string) => NAMES[this.wrath.target(id)?.kind ?? ""] ?? id;
     const rock = (id: string) => this.d.asteroids.find((x) => x.data.id === id)?.data.name ?? id;
-    if (e.type === "ram-windup") {
-      say(`¡${rock(e.asteroidId)} se lanza contra ${who(e.targetId)}! Esquiva de lado ${metres(e.dodgeM)}`);
-      ramAlarm();
-    }
-    if (e.type === "ram-charge") say(`¡${rock(e.asteroidId)} embiste! Hasta ${dec(this.wrath.ram(e.asteroidId)?.topSpeedMs ?? 0)} m/s`);
+    // The wind-up and the charge have their own line on the card; the warning is the sound.
+    if (e.type === "ram-windup") ramAlarm();
     if (e.type === "ram-hit") {
-      say(`¡Embestida a ${dec(e.closingMs)} m/s sobre ${who(e.targetId)}! ${kJ(e.absorbedJ)} · −${pct(e.fraction)} de casco · empujón de ${dec(e.deltaVMs)} m/s`);
+      say(`¡Embestida a ${dec(e.closingMs)} m/s${e.targetId === "sonda" ? " sobre la sonda" : ""}! −${pct(e.fraction)} de casco · ${kJ(e.absorbedJ)} · empujón de ${dec(e.deltaVMs)} m/s`);
       impactThud();
       // Felt in the cockpit of the craft that took it.
       if (e.targetId === "aterrizador" || e.targetId === "sonda") this.panel.impact(e.fraction);
@@ -268,7 +264,7 @@ export class WrathMode {
     let flee: WrathPanelModel["flee"];
     const ram = this.ramOnYou();
     const ramLine = ram
-      ? `¡EMBESTIDA → ${SHORT[ram.targetId] ?? ram.targetId}! ${ram.phase === "preparando" ? `sale en ${timeText(ram.windupLeftS)}` : `${dec(ram.speedMs)} m/s`} · choque en ${timeText(ram.etaS)}`
+      ? `¡EMBESTIDA${ram.targetId === "sonda" ? " → sonda" : ""}! ${ram.phase === "preparando" ? `Sale en ${timeText(ram.windupLeftS)}` : `${dec(ram.speedMs)} m/s`} · choque en ${timeText(ram.etaS)}`
       : undefined;
     if (ram && ram.targetId === craft && !onShip) {
       const b = this.d.flight.state.toBody(ram.dodgeDirection);

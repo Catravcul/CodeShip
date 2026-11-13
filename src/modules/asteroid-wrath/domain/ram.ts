@@ -16,16 +16,19 @@ export const RAM = {
   minChargeSpeedMs: 5,
   /** And only if it can close on the craft at least this fast: top speed − the craft's speed away from it, m/s (game value). */
   minClosingMs: 2,
-  /** A ram-prone asteroid closes to this far from its surface before it charges, m (game value). */
-  chargeGapM: 150,
+  /**
+   * A ram-prone asteroid closes to this far from its surface before it charges, m (game value): a run
+   * of about a minute for Bennu, enough for the lander (0,27 m/s²) to turn and burn 248 m sideways.
+   */
+  chargeGapM: 400,
   /** It starts winding up once the craft is this close to its surface, m (game value). */
-  startGapM: 300,
+  startGapM: 600,
   /** …but not closer than this: it needs a run-up for the hit to count, m (game value). Closer, it shadows the craft. */
   minRunUpM: 50,
   /** Wind-up: the warning time before it sets off, s (game value: long enough to start a sideways burn). */
-  windupS: 4,
+  windupS: 5,
   /** A charge that has not hit after this long is given up, s (game value). */
-  maxChargeS: 60,
+  maxChargeS: 120,
   /** Rest between charges, s, on top of the time it needs to turn around (game value). */
   cooldownS: 10,
   /**

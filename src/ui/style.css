@@ -163,7 +163,10 @@ body.in-cockpit .cam-tag.on { display: block; }
 
 /* HUD challenge UI (setting): no panel. The challenge floats over the 3D scene like the cockpit HUD:
    bare text with a dark halo, see-through buttons, the scene visible behind everything. */
-body.ui-compact .duel, body.ui-compact .duel.sheet { inset: 0; width: auto; border-radius: 0; background: none; background-color: transparent; backdrop-filter: none; pointer-events: none; justify-content: flex-end; gap: 8px; padding-top: 140px; }
+body.ui-compact .duel, body.ui-compact .duel.sheet { inset: 0; width: auto; border-radius: 0; background: none; background-color: transparent; backdrop-filter: none; pointer-events: none; justify-content: flex-start; gap: 8px; padding-top: 140px; }
+/* Bottom-anchored but scrollable: a flexible spacer pushes short sheets down and shrinks to zero when the
+   content is taller than the screen (justify-content: flex-end would push the overflow off the top, unreachable). */
+body.ui-compact .duel::before { content: ""; flex: 1 1 auto; }
 body.ui-compact .duel > *, body.ui-compact .duel button, body.ui-compact .duel a { pointer-events: auto; }
 body.ui-compact .duel { color: #d8f6ff; text-shadow: 0 0 3px #000, 0 0 10px #000c; }
 body.ui-compact .duel .duel-top { position: fixed; top: 10px; left: 12px; right: 12px; margin: 0; padding: 0; gap: 4px; background: none; box-shadow: none; max-width: 520px; }

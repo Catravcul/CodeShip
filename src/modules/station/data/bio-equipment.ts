@@ -11,7 +11,7 @@ const GAME = "Masa, potencia, receta y horas: valores de juego";
 export const EQ_BIO_LAB: EquipmentSpec = {
   id: "laboratorio-bio",
   name: "Laboratorio de biología",
-  fitsIn: ["fabrica", "agricola", "planta"],
+  fitsIn: ["agricola"],
   racks: 1,
   massKg: 450,
   powerKw: 1,
@@ -22,7 +22,7 @@ export const EQ_BIO_LAB: EquipmentSpec = {
 export const EQ_SPIRULINA: EquipmentSpec = {
   id: "fotobiorreactor-espirulina",
   name: "Fotobiorreactor de espirulina",
-  fitsIn: ["agricola", "fabrica"],
+  fitsIn: ["agricola"],
   racks: 2,
   massKg: 1000,
   powerKw: 2.5,

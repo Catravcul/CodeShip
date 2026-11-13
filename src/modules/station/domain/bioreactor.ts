@@ -171,8 +171,10 @@ export interface GaugeRow {
   readonly local: number;
   /** Needed per day, or used in total for resin. */
   readonly need: number;
-  /** What has to come from outside to cover the need (need − local, never below 0). */
+  /** What has to come from elsewhere to cover the need (need − local, never below 0). */
   readonly imported: number;
+  /** Where that rest comes from («del electrolizador», «fertilizante importado»…). */
+  readonly rest: string;
   readonly unit: string;
   /** local / need, 0..1. */
   readonly share: number;
@@ -211,12 +213,13 @@ export interface GaugeInput {
 }
 
 const share = (local: number, need: number) => (need > 0 ? Math.max(0, Math.min(1, local / need)) : 0);
-const row = (id: GaugeId, label: string, local: number, need: number, unit: string, note: string, full = false): GaugeRow => ({
+const row = (id: GaugeId, label: string, local: number, need: number, unit: string, note: string, rest: string, full = false): GaugeRow => ({
   id,
   label,
   local,
   need,
   imported: Math.max(0, need - local),
+  rest,
   unit,
   share: need > 0 ? share(local, need) : full ? 1 : 0,
   note,
@@ -241,16 +244,17 @@ export function selfSufficiencyGauge(g: GaugeInput): GaugeRow[] {
   const resinAll = g.resinLocalKg + g.resinImportedKg;
   const nNote = nNeed > 0 && nLocal < nNeed ? `El bucle devuelve ${pct(nLocal / nNeed)} del nitrógeno que comen cultivos y biorreactores: el resto es fertilizante importado` : "Fertilizante que el bucle saca de los residuos frente al que comen cultivos y biorreactores";
   return [
-    row("oxigeno", "Oxígeno", o2, g.crew * g.needs.o2KgPerDay, "kg/día", "Neto: lo que dan las plantas y la espirulina menos lo que respiran las bacterias del hidrógeno"),
-    row("comida", "Comida", kcal, g.eatersKcalPerDay, "kcal/día", "Cosecha, espirulina y proteína frente a lo que comen la tripulación y los animales"),
-    row("co2", "CO₂ absorbido", co2, g.crew * g.needs.co2KgPerDay, "kg/día", "Lo que los cultivos y biorreactores se comen del CO₂ que exhala la tripulación"),
-    row("agua", "Agua", waterNeed * waterShare, waterNeed, "kg/día", g.wasteLoopRuns ? "El ECLSS recupera el 98 % y el bucle de residuos cierra el resto" : "El ECLSS recupera el 98 %, como la ISS; el resto se repone con agua de la roca o importada"),
-    row("nitrogeno", "Nitrógeno", nLocal, nNeed, "kg N/día", nNote, nLocal > 0),
-    row("resina", "Resina", g.resinLocalKg, resinAll, "kg", "Parte de toda la resina de la estación que salió del biorreactor de PHB"),
+    row("oxigeno", "Oxígeno", o2, g.crew * g.needs.o2KgPerDay, "kg/día", `Neto: las plantas y la espirulina dan ${kg(made("oxigeno"))} kg al día y las bacterias del hidrógeno respiran ${kg(used("oxigeno"))} kg`, "del electrolizador"),
+    row("comida", "Comida", kcal, g.eatersKcalPerDay, "kcal/día", "Cosecha, espirulina y proteína frente a lo que comen la tripulación y los animales", "de la despensa"),
+    row("co2", "CO₂ absorbido", co2, g.crew * g.needs.co2KgPerDay, "kg/día", "Lo que los cultivos y biorreactores se comen del CO₂ que exhala la tripulación", "lo quita el CDRA"),
+    row("agua", "Agua", waterNeed * waterShare, waterNeed, "kg/día", g.wasteLoopRuns ? "El ECLSS recupera el 98 % y el bucle de residuos cierra el resto" : "El ECLSS recupera el 98 %, como la ISS; el resto se repone con agua de la roca o importada", "de la roca o importada"),
+    row("nitrogeno", "Nitrógeno", nLocal, nNeed, "kg N/día", nNote, "fertilizante importado", nLocal > 0),
+    row("resina", "Resina", g.resinLocalKg, resinAll, "kg", "Parte de toda la resina de la estación que salió del biorreactor de PHB", "importada"),
   ];
 }
 
 const pct = (v: number) => `${Math.round(v * 100)} %`;
+const kg = (v: number) => (Math.round(v * 100) / 100).toLocaleString("es-ES");
 
 /** One number for the whole station: the mean of the life rows (oxygen, food, water) and resin. */
 export const overallSelfSufficiency = (rows: readonly GaugeRow[]): number => {

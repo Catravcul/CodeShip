@@ -605,7 +605,7 @@ export class StationScreen {
     const gauge = rows
       .map((r) => {
         const low = r.share < 0.5;
-        const imp = r.imported > 1e-6 ? ` · <em>${gaugeQty(r, r.imported)} importado</em>` : "";
+        const imp = r.imported > 1e-6 ? ` · <em>${gaugeQty(r, r.imported)} ${esc(r.rest)}</em>` : "";
         return `<div class="lf-row"><div class="st-row"><b>${esc(r.label)}</b><span>${pct(r.share)} local</span></div>
           <div class="bay-bar ${low ? "low" : ""}"><span>${gaugeQty(r, r.local)} de ${gaugeQty(r, r.need)}${r.unit === "kg" ? "" : " al día"}</span><i style="width:${Math.round(r.share * 100)}%"></i></div>
           <small>${esc(r.note)}${imp}</small></div>`;
@@ -622,7 +622,7 @@ export class StationScreen {
       <small>El bucle solo devuelve el nitrógeno que traen los residuos (${gN(bio.lab.process("bucle")?.outputs.fertilizante)} por hora) y los campos comen ${gN(bio.lab.process("cultivo")?.inputs.fertilizante)} por hora: el resto llega como fertilizante importado (${fmtKg(this.ops.station.stock.amount("fertilizante"))} kg N en el almacén). El amoníaco de los cometas (pestaña Importar) o el de la planta de propelente lo cubre: cada 17 kg de amoníaco llevan 14 kg de nitrógeno.${bio.iceCo2KgPerDay > 0 ? ` El hielo de CO₂ de cometa da a los campos ${fmtKg(bio.iceCo2KgPerDay)} kg de CO₂ al día.` : ""}</small>
       <div class="st-row"><span>Amoníaco en el almacén: ${fmtKg(nh3)} kg</span><button class="st-btn lf-toggle ${bio.ammoniaFertiliser ? "on" : ""}" data-ammonia>${bio.ammoniaFertiliser ? "Abonando con amoníaco" : "Abonar con amoníaco"}</button></div></div>`;
     const cards = bio.status().map((s) => this.bioCard(s)).join("");
-    return `<div class="lf-head"><div class="lf-big"><b>${pct(all)}</b><span>autosuficiente</span></div><small>Media de oxígeno, comida, agua y resina hechos aquí. Cada fila: lo local frente a lo que se necesita.</small></div>
+    return `<div class="lf-head"><div class="lf-big"><div class="lf-pct">${pct(all)}</div><div class="lf-cap">autosuficiente</div></div><small>Media de oxígeno, comida, agua y resina hechos aquí. Cada fila: lo local frente a lo que se necesita.</small></div>
       <div class="bay-sec">Autosuficiencia · al ritmo de ahora</div><div class="st-card lf-gauge">${gauge}</div>
       ${foodCard}${nitrogen}<div class="bay-sec">Máquinas vivas · cada ajuste es una cadena de retos</div>${cards}`;
   }

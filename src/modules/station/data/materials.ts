@@ -1,11 +1,12 @@
 import type { MaterialId } from "../domain/materials";
 import { SRC } from "./sources";
+import { BIO_MATERIALS } from "./bio-materials";
 
 export interface MaterialInfo {
   readonly id: MaterialId;
   readonly name: string;
-  /** bruto: rock straight from a hold; refinado: out of the refinery; importado: cannot be made here yet. */
-  readonly stage: "bruto" | "refinado" | "importado";
+  /** bruto: rock straight from a hold; refinado: out of the refinery; importado: cannot be made here yet; biologico: grown by crops and bioreactors. */
+  readonly stage: "bruto" | "refinado" | "importado" | "biologico";
   readonly unit: "kg" | "kits";
   readonly note: string;
   readonly source?: string;
@@ -43,6 +44,8 @@ export const MATERIALS: readonly MaterialInfo[] = [
   { id: "lmp-103s", name: "LMP-103S", stage: "importado", unit: "kg", note: "Monopropelente de dinitramida de amonio: su síntesis pide ácidos nítrico y sulfúrico concentrados", source: SRC.adn, propellant: true },
   { id: "helio", name: "Helio", stage: "importado", unit: "kg", note: "Presurizante del par: la roca solo guarda trazas, 9,17 ng/g", source: SRC.ciAbundances, propellant: true },
   { id: "xenon", name: "Xenón", stage: "importado", unit: "kg", note: "Propelente de la nodriza: la roca guarda 0,17 ng/g, nada que se pueda sacar", source: SRC.ciAbundances, propellant: true },
+  // Grown by the crop fields and the bioreactors (docs/design/autosustento.md).
+  ...BIO_MATERIALS,
 ];
 
 export const materialInfo = (id: MaterialId): MaterialInfo | undefined => MATERIALS.find((m) => m.id === id);

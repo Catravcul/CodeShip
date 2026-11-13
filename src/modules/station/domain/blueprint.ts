@@ -63,6 +63,8 @@ export interface Blueprint {
   readonly steps: readonly string[];
   /** Equipment that must be installed in the station before this can be made (its id). */
   readonly requires?: string;
+  /** Module that must be built first (its spec id): the biology lab needs the agricultural module. */
+  readonly requiresModule?: string;
 }
 
 /** A refinery batch: raw rock in, refined materials out. */

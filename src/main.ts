@@ -77,6 +77,9 @@ import { StationInteriorMode } from "./station-interior";
 import { StationInterior } from "@modules/station/domain/interior";
 import { stationInteriorPlan } from "@modules/station/data/interior";
 import { startingOutfit } from "@modules/station/data/outfit";
+import { BioOps } from "@modules/station/application/bio-ops";
+import { BIO_KCAL_PER_KG, BIO_OUTPUT_USE, BIO_PROCESSES, CREW_NEEDS, LARDER_UNITS, STATION_CREW } from "@modules/station/data/bio";
+import { BIO_STARTING_STOCK } from "@modules/station/data/bio-materials";
 import { partById } from "@modules/ship/data/parts";
 import { Mothership } from "@modules/mothership/domain/mothership";
 import { IDSS_CONTACT_LIMITS, NODRIZA, NODRIZA_NOSE_PORT, UNDOCK_PUSH_MS } from "@modules/mothership/data/mothership";
@@ -547,6 +550,17 @@ const refuelOps = new RefuelOps(stationOps.station, [
   mothershipRefuelTarget(mothership, mothershipAtStation),
 ]);
 // Space station screen: its machines and the «Tareas» button inside the station open its tabs.
+// The station's living machines (docs/design/autosustento.md): crop fields and the biology lab's reactors.
+const bioOps = new BioOps(stationOutfit, stationOps.station.stock, BIO_PROCESSES, {
+  needs: CREW_NEEDS,
+  kcalPerKg: BIO_KCAL_PER_KG,
+  uses: BIO_OUTPUT_USE,
+  larderUnits: LARDER_UNITS,
+  crew: () => STATION_CREW,
+  eatersKcalPerDay: () => habitat.sustainability.kcalPerDay,
+  resinImportedKg: BIO_STARTING_STOCK.resina,
+  materialName,
+});
 const stationScreen = new StationScreen(
   root,
   stationOps,
@@ -557,6 +571,9 @@ const stationScreen = new StationScreen(
   (id) => (id === MOTHERSHIP_CRAFT.id ? mothership.position : id === EXPLORER_CRAFT.id ? flight.state.position : undefined),
   refuelOps,
   importOps,
+  bioOps,
+  // Food from the crops goes to the mothership's larder while she is berthed here.
+  () => (mothership.dockedTo ? habitat : undefined),
 );
 // Inside the station (docs/design/interiores.md §5): zero-g modules and the hangar; its machines open the screen's tabs.
 const stationInside = new StationInteriorMode(root, new StationInterior(stationInteriorPlan(stationOutfit.layout, stationOutfit)), {
@@ -756,6 +773,7 @@ renderer.setAnimationLoop((now) => {
   }
   // The station's machines run on the same clock as life on board.
   stationOps.station.tick(dt * warp * STATION_TUNING.hoursPerSecond);
+  bioOps.tick(dt * warp * STATION_TUNING.hoursPerSecond);
   importOps.tick(dt * warp * STATION_TUNING.hoursPerSecond);
   for (const e of importOps.drainEvents()) {
     const text =
@@ -879,4 +897,4 @@ renderer.setAnimationLoop((now) => {
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, refuelOps, importOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, levels };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, levels };

@@ -1,6 +1,7 @@
 import { Vec3 } from "@core/math/vec3";
 import type { Craft } from "../domain/hangar";
 import type { StationSite } from "../domain/station";
+import { BIO_STARTING_STOCK } from "./bio-materials";
 
 /**
  * The station of the starting region, parked about 1,2 km from Bennu on the side the ship starts on.
@@ -17,7 +18,8 @@ export const POLANA_STATION: StationSite = {
 /**
  * What the station had in store when the game starts (game values). The propellants are one fill
  * of the probe's pair and its hydrazine tank, a spare bottle of helium and some xenon for the
- * mothership: all imported (docs/design/estacion.md, «Planta de propelente»).
+ * mothership: all imported (docs/design/estacion.md, «Planta de propelente»). Imported fertiliser and
+ * PHB resin for the crops and the composites cell (docs/design/autosustento.md).
  */
 export const STARTING_STOCK = {
   agua: 40,
@@ -32,6 +34,7 @@ export const STARTING_STOCK = {
   hidracina: 45,
   helio: 3,
   xenon: 20000,
+  ...BIO_STARTING_STOCK,
 } as const;
 
 /** The mothership (rings, farm deck, life on board), parked near Bennu. Mass is filled in at start. */

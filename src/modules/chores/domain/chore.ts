@@ -33,6 +33,7 @@ export type ChoreKind =
   | "fabricar"
   | "refinar"
   | "repostar"
+  | "ajustar-biorreactor"
   | "programar-viaje"
   /** Ordering from the Sanctuary, a tug haul or a mass driver install (modules/imports). */
   | "importar";
@@ -73,6 +74,7 @@ export const CHORE_CATEGORY: Readonly<Record<ChoreKind, ChoreCategory>> = {
   fabricar: "nave",
   refinar: "nave",
   repostar: "nave",
+  "ajustar-biorreactor": "plantas",
   "programar-viaje": "misiones",
   importar: "nave",
 };

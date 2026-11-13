@@ -172,12 +172,16 @@ export class StationOutfit {
   private readonly pendingEquipment = new Map<string, { spec: EquipmentSpec; moduleId: string; place: RackPlace }>();
   version = 0;
   private cache?: { version: number; layout: StationLayout; berths: BerthSpec[] };
+  private readonly moduleNames = new Map<string, string>();
 
   constructor(
     readonly base: OutfitBase,
     /** Every equipment spec, to name what a blueprint needs. */
     private readonly catalog: readonly EquipmentSpec[] = [],
+    /** Every module spec, to name a module a blueprint needs. */
+    modules: readonly ModuleSpec[] = [],
   ) {
+    for (const m of modules) this.moduleNames.set(m.id, m.name);
     this.modules = [...base.modules];
     this.equipment = base.equipment.map((e) => ({ ...e, supersedes: [] }));
     for (const c of base.components) this.fitted.set(c.slot, c);
@@ -345,6 +349,13 @@ export class StationOutfit {
   /** Why something needing this equipment cannot be made now (undefined if it can). */
   missingEquipment(requires: string | undefined): string | undefined {
     return requires && !this.has(requires) ? `Necesita ${this.name(requires)} (Planos → Equipo)` : undefined;
+  }
+
+  /** Why something needing this module cannot be made now (undefined if it is built). */
+  missingModule(specId: string | undefined): string | undefined {
+    if (!specId || this.hasModule(specId)) return undefined;
+    const name = this.modules.find((m) => m.spec?.id === specId)?.label ?? this.moduleNames.get(specId) ?? specId;
+    return `Necesita el ${name.charAt(0).toLowerCase()}${name.slice(1)} (Planos → Módulos)`;
   }
 
   private powerShort(addKw: number): string | undefined {

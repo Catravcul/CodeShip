@@ -3,6 +3,8 @@ import type { Ship } from "@modules/ship/domain/ship";
 import type { Expedition } from "@modules/expedition/application/expedition";
 import type { StationOps, StationSession } from "@modules/station/application/station-ops";
 import type { RefuelOps, RefuelStatus } from "@modules/station/application/refuel";
+import type { BioOps, BioStatus, Larder } from "@modules/station/application/bio-ops";
+import { overallSelfSufficiency, type GaugeRow } from "@modules/station/domain/bioreactor";
 import { MACHINE_NAME, type BlueprintKind, type MachineId } from "@modules/station/domain/blueprint";
 import { MODULE_KIND_NAME } from "@modules/station/domain/outfit";
 import { equipmentById, stationComponentById } from "@modules/station/data/outfit";
@@ -21,6 +23,7 @@ import { TOW_DIAMETERS_M } from "@modules/imports/data/craft";
 import { COMET_SRC } from "@modules/celestial/data/comets";
 import { USD_PER_CREDIT } from "@modules/imports/domain/wallet";
 import "./ui/station-growth.css";
+import "./ui/station-life.css";
 import "./ui/imports.css";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
@@ -29,7 +32,7 @@ const hrs = (h: number) => (h >= 10 ? `${Math.round(h)} h` : `${h.toFixed(1).rep
 const qty = (id: string, n: number) => (materialInfo(id)?.unit === "kits" ? `${Math.round(n)} ${Math.round(n) === 1 ? "kit" : "kits"}` : `${fmtKg(n)} kg`);
 const short = (n: string) => n.replace(/^Aerojet Rocketdyne /, "").replace(/\s*\(.*\)$/, "");
 
-export type StationTab = "materiales" | "planos" | "fabricacion" | "hangar" | "importar";
+export type StationTab = "materiales" | "planos" | "fabricacion" | "hangar" | "importar" | "vida";
 /** Places inside a tab the screen can open at: the propellant plant and the refuelling card (both in Materiales). */
 export type StationFocus = "propelente" | "repostar";
 const TABS: readonly [StationTab, string][] = [
@@ -38,6 +41,7 @@ const TABS: readonly [StationTab, string][] = [
   ["fabricacion", "Fabricación"],
   ["hangar", "Hangar"],
   ["importar", "Importar"],
+  ["vida", "Vida"],
 ];
 const MACHINE = MACHINE_NAME;
 const PLAN_KINDS: readonly [BlueprintKind, string][] = [
@@ -46,15 +50,23 @@ const PLAN_KINDS: readonly [BlueprintKind, string][] = [
   ["componente", "Componentes"],
 ];
 const kw = (v: number) => `${(Math.round(v * 10) / 10).toLocaleString("es-ES")} kW`;
-type ChoreMode = "refinar" | "fabricar" | "repostar" | "importar";
+type ChoreMode = "refinar" | "fabricar" | "repostar" | "importar" | "ajustar";
 const kwh = (v: number) => `${fmtKg(v)} kWh`;
-const STAGE: Readonly<Record<string, string>> = { bruto: "Roca de la bodega (sin refinar)", refinado: "Refinados", importado: "Importados (no se pueden hacer aquí)" };
+const STAGE: Readonly<Record<string, string>> = { bruto: "Roca de la bodega (sin refinar)", refinado: "Refinados", importado: "Importados (no se pueden hacer aquí)", biologico: "Biológicos (cultivos y biorreactores)" };
+const BIO_STATE: Readonly<Record<string, string>> = { parado: "Parado", "en-marcha": "En marcha", desajustado: "Desajustado" };
+const pct = (v: number) => `${Math.round(v * 100)} %`;
+const gN = (kg = 0) => `${(Math.round(kg * 1e5) / 100).toLocaleString("es-ES")} g N`;
+const perDayQty = (kgPerHour: number) => {
+  const d = kgPerHour * 24;
+  return d >= 1 ? `${fmtKg(d)} kg` : `${fmtKg(d * 1000)} g`;
+};
+const gaugeQty = (r: GaugeRow, v: number) => (r.unit === "kcal/día" ? `${Math.round(v).toLocaleString("es-ES")} kcal` : r.unit === "kg N/día" ? `${fmtKg(v * 1000)} g N` : `${fmtKg(v)} kg`);
 
 const text = (title: string, mode: ChoreMode): SessionText => ({
   title,
   progress: "Pasos",
   lives: "Intentos",
-  order: mode === "refinar" ? "Ordena el proceso" : mode === "repostar" ? "Ordena el repostaje" : mode === "importar" ? "Ordena el viaje" : "Ordena la fabricación",
+  order: mode === "refinar" ? "Ordena el proceso" : mode === "repostar" ? "Ordena el repostaje" : mode === "importar" ? "Ordena el viaje" : mode === "ajustar" ? "Ordena la ronda" : "Ordena la fabricación",
   submit: "Hacerlo",
   ok: "Bien hecho",
   bad: "Así no: inténtalo otra vez",
@@ -101,12 +113,16 @@ export class StationScreen {
     readonly refuel?: RefuelOps,
     /** Orders to the Sanctuary and the station's own import sources (tab «Importar»). */
     readonly imports?: ImportOps,
+    /** The living machines and the self-sufficiency gauge (Vida). */
+    readonly bio?: BioOps,
+    /** The mothership's larder, when she is berthed here (food from the crops goes there). */
+    private readonly larder: () => Larder | undefined = () => undefined,
   ) {
     this.view = new StationScene(ship.design);
     this.ui = document.createElement("div");
     this.ui.className = "st-ui hidden";
     this.ui.innerHTML = `<div class="st-head"><b>${esc(ops.station.site.name)}</b><span class="st-sub"></span></div><button class="bay-back st-back">Volver</button>
-      <div class="st-panel"><div class="st-tabs" role="tablist">${TABS.map(([id, label]) => `<button role="tab" data-tab="${id}">${label}</button>`).join("")}</div><div class="st-body"></div></div><div class="bay-toast st-toast"></div>`;
+      <div class="st-panel"><div class="st-tabs${bio ? " six" : ""}" role="tablist">${TABS.filter(([id]) => id !== "vida" || bio).map(([id, label]) => `<button role="tab" data-tab="${id}">${label}</button>`).join("")}</div><div class="st-body"></div></div><div class="bay-toast st-toast"></div>`;
     root.appendChild(this.ui);
     this.panel = this.ui.querySelector(".st-body")!;
     this.sub = this.ui.querySelector(".st-sub")!;
@@ -205,7 +221,7 @@ export class StationScreen {
     const d = st.distanceTo(this.shipPosition());
     const subText = this.alongside ? `Atracada · a ${km(d)}` : `A ${km(d)} · acceso remoto de prueba`;
     if (this.sub.textContent !== subText) this.sub.textContent = subText;
-    const html = this.tab === "materiales" ? this.materials() : this.tab === "planos" ? this.plans() : this.tab === "fabricacion" ? this.queue() : this.tab === "importar" ? this.importTab() : this.hangar();
+    const html = this.tab === "materiales" ? this.materials() : this.tab === "planos" ? this.plans() : this.tab === "fabricacion" ? this.queue() : this.tab === "importar" ? this.importTab() : this.tab === "vida" ? this.life() : this.hangar();
     if (html === this.key) return;
     this.key = html;
     this.panel.innerHTML = html;
@@ -229,12 +245,12 @@ export class StationScreen {
          <div class="st-chips">${cargo.map((c) => `<span class="st-chip">${esc(materialName(cargoMaterial(c.material) ?? c.material))} ${fmtKg(c.kg)} kg</span>`).join("")}</div>
          <button class="st-btn" data-unload>Descargar la bodega en la estación</button></div>`
       : `<p class="st-dim">La bodega está vacía. Persuade un asteroide: su roca llena la bodega y aquí se descarga.</p>`;
-    const groups = (["bruto", "refinado", "importado"] as const)
+    const groups = (["bruto", "refinado", "importado", "biologico"] as const)
       .map((stage) => {
         const rows = MATERIALS.filter((m) => m.stage === stage && !m.propellant)
           .map((m) => ({ m, n: st.stock.amount(m.id) }))
           .filter((r) => r.n > 0.005 || stage !== "bruto");
-        if (!rows.length) return "";
+        if (!rows.length || (stage === "biologico" && rows.every((r) => r.n <= 0.005))) return "";
         return `<div class="bay-sec">${STAGE[stage]}</div>${rows
           .map(
             ({ m, n }) =>
@@ -336,7 +352,9 @@ export class StationScreen {
         if (e.upgrades) extra.push(`sustituye a ${esc(equipmentById(e.upgrades)?.name ?? e.upgrades)}`);
         if (e.rate && e.rate > 1) extra.push(`${e.rate} veces más rápida`);
       } else if (pr.kind === "part" && stationComponentById(pr.partId)) extra.push("para la estación: se monta en la bahía, pestaña Estación");
-      const need = bp.requires ? `<span class="st-chip ${o && !o.has(bp.requires) ? "miss" : "ok"}">Necesita ${esc(o?.name(bp.requires) ?? bp.requires)}</span>` : "";
+      const need =
+        (bp.requires ? `<span class="st-chip ${o && !o.has(bp.requires) ? "miss" : "ok"}">Necesita ${esc(o?.name(bp.requires) ?? bp.requires)}</span>` : "") +
+        (bp.requiresModule ? `<span class="st-chip ${o && !o.hasModule(bp.requiresModule) ? "miss" : "ok"}">Necesita el módulo agrícola</span>` : "");
       const verb = pr.kind === "module" ? "Construir" : pr.kind === "equipment" ? "Montar" : "Fabricar";
       const btn = p.built ? `<span class="st-have">Ya está en la estación</span>` : `<button class="st-btn" data-build="${esc(bp.id)}" ${p.canBuild ? "" : "disabled"}>${p.canBuild ? verb : p.locked ? "Bloqueado" : "Faltan materiales"}</button>`;
       return `<div class="st-card ${p.canBuild ? "" : "locked"}${p.built ? " built" : ""}"><div class="st-row"><b>${esc(bp.name)}</b><span>${fmtKg(bp.massKg)} kg · ${hrs(bp.hours)}</span></div>
@@ -415,6 +433,14 @@ export class StationScreen {
     }
     const b = t.closest<HTMLElement>("[data-build]");
     if (b) return this.start(this.ops.startFabrication(b.dataset.build!), "fabricar");
+    const tune = t.closest<HTMLElement>("[data-tune]");
+    if (tune && this.bio) return this.start(this.bio.startTuning(tune.dataset.tune!), "ajustar");
+    if (t.closest("[data-larder]")) return this.shipFood();
+    if (t.closest("[data-ammonia]") && this.bio) {
+      this.bio.ammoniaFertiliser = !this.bio.ammoniaFertiliser;
+      this.key = "";
+      return this.render();
+    }
     const f = t.closest<HTMLElement>("[data-refuel]");
     if (f && this.refuel) return this.start(this.refuel.startRefuel(f.dataset.refuel!), "repostar");
     if (this.imports) this.onImportClick(t);
@@ -570,6 +596,65 @@ export class StationScreen {
       <p class="st-dim">Los cometas traen hielo de agua y de CO₂; el CO y otros volátiles se evaporan antes de poder guardarlos${src(COMET_SRC.gasProduction)}.</p>`;
   }
 
+  /** Vida: the self-sufficiency gauge, the larder, nitrogen and each living machine. */
+  private life(): string {
+    const bio = this.bio;
+    if (!bio) return "";
+    const rows = bio.gauge();
+    const all = overallSelfSufficiency(rows);
+    const gauge = rows
+      .map((r) => {
+        const low = r.share < 0.5;
+        const imp = r.imported > 1e-6 ? ` · <em>${gaugeQty(r, r.imported)} ${esc(r.rest)}</em>` : "";
+        return `<div class="lf-row"><div class="st-row"><b>${esc(r.label)}</b><span>${pct(r.share)} local</span></div>
+          <div class="bay-bar ${low ? "low" : ""}"><span>${gaugeQty(r, r.local)} de ${gaugeQty(r, r.need)}${r.unit === "kg" ? "" : " al día"}</span><i style="width:${Math.round(r.share * 100)}%"></i></div>
+          <small>${esc(r.note)}${imp}</small></div>`;
+      })
+      .join("");
+    const larder = this.larder();
+    const food = bio.forLarder();
+    const foodCard = `<div class="st-card"><div class="st-row"><b>Despensa de la nodriza</b><span>${larder ? "atracada" : "no atracada"}</span></div>
+      ${food.length ? `<div class="st-chips">${food.map((f) => `<span class="st-chip ok">${f.units.toLocaleString("es-ES")} ${esc(f.unit.label)}</span>`).join("")}</div>` : `<small>Aún no hay cosecha en el almacén.</small>`}
+      <button class="st-btn" data-larder ${larder && food.length ? "" : "disabled"}>${larder ? "Enviar a la despensa" : "Atraca la nodriza para enviarla"}</button></div>`;
+    const n = rows.find((r) => r.id === "nitrogeno")!;
+    const nh3 = this.ops.station.stock.amount("amoniaco");
+    const nitrogen = `<div class="st-card"><div class="st-row"><b>Nitrógeno: el bucle no lo cierra</b><span>${pct(n.share)} local</span></div>
+      <small>El bucle solo devuelve el nitrógeno que traen los residuos (${gN(bio.lab.process("bucle")?.outputs.fertilizante)} por hora) y los campos comen ${gN(bio.lab.process("cultivo")?.inputs.fertilizante)} por hora: el resto llega como fertilizante importado (${fmtKg(this.ops.station.stock.amount("fertilizante"))} kg N en el almacén). El amoníaco de los cometas (pestaña Importar) o el de la planta de propelente lo cubre: cada 17 kg de amoníaco llevan 14 kg de nitrógeno.${bio.iceCo2KgPerDay > 0 ? ` El hielo de CO₂ de cometa da a los campos ${fmtKg(bio.iceCo2KgPerDay)} kg de CO₂ al día.` : ""}</small>
+      <div class="st-row"><span>Amoníaco en el almacén: ${fmtKg(nh3)} kg</span><button class="st-btn lf-toggle ${bio.ammoniaFertiliser ? "on" : ""}" data-ammonia>${bio.ammoniaFertiliser ? "Abonando con amoníaco" : "Abonar con amoníaco"}</button></div></div>`;
+    const cards = bio.status().map((s) => this.bioCard(s)).join("");
+    return `<div class="lf-head"><div class="lf-big"><div class="lf-pct">${pct(all)}</div><div class="lf-cap">autosuficiente</div></div><small>Media de oxígeno, comida, agua y resina hechos aquí. Cada fila: lo local frente a lo que se necesita.</small></div>
+      <div class="bay-sec">Autosuficiencia · al ritmo de ahora</div><div class="st-card lf-gauge">${gauge}</div>
+      ${foodCard}${nitrogen}<div class="bay-sec">Máquinas vivas · cada ajuste es una cadena de retos</div>${cards}`;
+  }
+
+  private bioCard(s: BioStatus): string {
+    const p = s.process;
+    const flow = (a: Readonly<Record<string, number>>) =>
+      Object.entries(a)
+        .map(([id, n]) => `${perDayQty(n)} ${esc(materialName(id).toLowerCase())}`)
+        .join(" + ");
+    const state = s.installed ? BIO_STATE[s.state]! : "Sin montar";
+    const left = s.state === "en-marcha" ? `<div class="bay-bar"><span>ajustado: quedan ${hrs(s.hoursLeft)}</span><i style="width:${Math.round((s.hoursLeft / 240) * 100)}%"></i></div>` : "";
+    const speed = s.installed && s.state !== "parado" ? `<div class="st-io ${s.run.short ? "miss" : ""}">Rinde al ${pct(s.run.k)}${s.run.short ? ` · le falta ${esc(materialName(s.run.short).toLowerCase())}` : ""} · ${kw(s.powerKw)}</div>` : "";
+    const why = this.bio?.tuneBlocker(p.id);
+    const verb = s.state === "parado" ? "Poner en marcha" : "Ajustar";
+    return `<div class="st-card lf-bio ${s.installed ? "" : "locked"}"><div class="st-row"><b>${esc(p.name)}</b><span class="lf-state ${s.installed ? s.state : "off"}">${state}</span></div>
+      <small>${esc(p.organism)}</small>
+      <div class="st-io">Al día: ${flow(p.inputs)} → ${flow(p.outputs)}</div>${left}${speed}
+      <small>${esc(p.basis.value)}${p.basis.note ? ` · ${esc(p.basis.note)}` : ""} · <a href="${esc(p.basis.source)}" target="_blank" rel="noopener">fuente</a></small>
+      ${why ? `<div class="st-lock">${esc(why)}</div>` : `<button class="st-btn" data-tune="${esc(p.id)}">${verb}</button>`}</div>`;
+  }
+
+  /** Crops to the mothership's larder. */
+  private shipFood(): void {
+    const larder = this.larder();
+    if (!this.bio || !larder) return;
+    const sent = this.bio.shipToLarder(larder);
+    this.say(sent.length ? `A la despensa: ${sent.map((x) => `${x.units.toLocaleString("es-ES")} ${x.unit.label}`).join(", ")}` : "No hay nada que enviar");
+    this.key = "";
+    this.render();
+  }
+
   unload(): void {
     const { stored, ignored } = this.ops.station.unload(this.expedition.unloadCargo(), cargoMaterial);
     const kg = Object.values(stored).reduce((s, n) => s + n, 0);
@@ -588,14 +673,17 @@ export class StationScreen {
       this.session = null;
       this.layout();
       if (run.status === "done") {
-        if (mode === "importar") {
+        if (mode === "ajustar") {
+          this.say("Ajustado: rinde al 100 % durante 240 h");
+          this.show("vida");
+        } else if (mode === "importar") {
           this.say("Hecho: mira «En camino»");
           this.show("importar");
         } else {
           this.say(mode === "refinar" ? "Lote en marcha: mira Fabricación" : mode === "repostar" ? "Trasvasando propelente: mira Fabricación" : "En marcha: mira Fabricación");
           this.show("fabricacion");
         }
-      } else if (run.status === "failed") this.say(mode === "importar" ? "No salió: inténtalo otra vez" : mode === "repostar" ? "No salió: el propelente sigue en el almacén" : "No salió: los materiales siguen en el almacén");
+      } else if (run.status === "failed") this.say(mode === "ajustar" ? "No salió: sigue como estaba" : mode === "importar" ? "No salió: inténtalo otra vez" : mode === "repostar" ? "No salió: el propelente sigue en el almacén" : "No salió: los materiales siguen en el almacén");
       this.key = "";
       this.render();
     };

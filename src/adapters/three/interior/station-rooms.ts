@@ -152,10 +152,20 @@ const STYLE: Readonly<Record<string, { panel: number; accent: number; glow?: num
   "impresora-grande": { panel: 0x3d4552, accent: 0x9fd8ff, glow: 0x2fd0ff },
   "planta-grande": { panel: 0x4f6b7a, accent: 0x9fd8ff, glow: 0x7fffd4 },
   "campos-cultivo": { panel: 0x2f5a35, accent: 0x9ad48a, glow: 0xe070ff },
+  // The biology lab and its reactors (docs/design/autosustento.md): rack fronts with windows on what grows inside.
+  "laboratorio-bio": { panel: 0xe6ecef, accent: 0x2f9e6c, glow: 0x9fd8ff },
+  "fotobiorreactor-espirulina": { panel: 0x23413a, accent: 0x7dffb0, glow: 0x2fbf6a },
+  "bucle-melissa": { panel: 0x4a4436, accent: 0xc8a96a, glow: 0xb08a3a },
+  "biorreactor-phb": { panel: 0x3d4552, accent: 0xf2e6c8, glow: 0xf2e6c8 },
+  "tanques-biomineria": { panel: 0x4a3f3a, accent: 0xd89a5a, glow: 0x6fa0a8 },
+  "reactor-proteina": { panel: 0x3d4552, accent: 0xffd27f, glow: 0xe8d9a0 },
   trajes: { panel: 0x7f8a99, accent: 0xf2f2f2 },
   "consola-hangar": { panel: 0x0b1c2a, accent: 0x7fdcff, glow: 0x7fdcff },
   "consola-bahia": { panel: 0x0b1c2a, accent: 0xffb347, glow: 0x7fdcff },
 };
+
+/** Bioreactor fronts: how many vertical vessels show through the window (the lab shows its glovebox). */
+const BIO_VESSELS: Readonly<Record<string, number>> = { "fotobiorreactor-espirulina": 6, "bucle-melissa": 3, "biorreactor-phb": 1, "tanques-biomineria": 2, "reactor-proteina": 1 };
 
 /** Basis (u across, v up the front, u × v = inward normal) of a fixture's front: upright on the walls. */
 const FRONT: Readonly<Record<Face, [THREE.Vector3, THREE.Vector3]>> = {
@@ -195,6 +205,21 @@ function fixtureFront(f: Fixture, lamps: Map<MachineId, THREE.Mesh>): THREE.Grou
       const dv = -h / 2 + (t + 0.5) * (h / tiers);
       plate(w * 0.96, 0.05, 0, dv + 0.25, 0.06, 0xe070ff, true, 0.02);
       plate(w * 0.94, 0.22, 0, dv - 0.05, 0.12, 0x4caf50, false, 0.18);
+    }
+  } else if (BIO_VESSELS[f.id] || f.id === "laboratorio-bio") {
+    // A living machine: accent band, a dark window and glowing vessels (tubes, tanks) behind it.
+    plate(w * 0.9, 0.08, 0, h / 2 - 0.12, 0.05, st.accent);
+    const n = BIO_VESSELS[f.id] ?? 0;
+    const winH = h * 0.62;
+    plate(w * 0.86, winH, 0, -h * 0.05, 0.035, 0x0b141a, true, 0.02);
+    for (let i = 0; i < n; i++) {
+      const du = -w * 0.4 + ((i + 0.5) * (w * 0.8)) / n;
+      plate(Math.min(0.32, (w * 0.8) / n - 0.06), winH * 0.9, du, -h * 0.05, 0.06, st.glow!, true, 0.05);
+    }
+    if (f.id === "laboratorio-bio") {
+      // Glovebox ports and a lit bench.
+      plate(w * 0.8, 0.3, 0, -h * 0.05, 0.05, st.glow!, true, 0.02);
+      for (const sgn of [-1, 1]) plate(0.26, 0.26, sgn * w * 0.2, -h * 0.3, 0.06, 0x111111);
     }
   } else if (f.id.startsWith("salir") || f.id.startsWith("puerto") || f.id === "esclusa-carga") {
     // Hatch: frame and a handle.

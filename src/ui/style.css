@@ -185,7 +185,7 @@ body.ui-compact .duel .block, body.ui-compact .duel .option { min-height: 44px; 
 body.ui-compact .duel .block.slot { background: #02101a99; color: #d8f6ffaa; }
 body.ui-compact .duel .block.placed { background: #1f5a70f0; border: 2px solid #7fdcff; color: #fff; }
 body.ui-compact .duel .option.wrong { background: #3a1018f0; border: 2px solid #ff6b5a; color: #ffc4bb; }
-body.ui-compact .duel .submit { min-height: 42px; font-size: 15px; background: #b9a8ffcc; box-shadow: none; text-shadow: none; }
+body.ui-compact .duel .submit { min-height: 44px; font-size: 15px; background: #b9a8ffcc; box-shadow: none; text-shadow: none; }
 body.ui-compact .duel .question { color: #d8f6ff; font-size: 13px; }
 body.ui-compact .duel .toggle { color: #d8f6ff; background: #0b2a3699; border-color: #7fdcff55; text-shadow: none; align-self: flex-start; }
 body.ui-compact .duel .submit:disabled { background: #3d376099; }

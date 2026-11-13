@@ -41,9 +41,15 @@ export async function movimiento(j) {
   // A chore picked in 0 g: she has to go down; it must say so.
   await j.tap(".tasks-btn", "Tareas");
   await p.waitForTimeout(400);
+  // Other life on board may speak right after (the dog, the kids): keep every line the toast showed.
+  await p.evaluate(() => {
+    const el = document.querySelector(".interior-ui .toast");
+    window.__toasts = [];
+    if (el) new MutationObserver(() => window.__toasts.push(el.textContent)).observe(el, { childList: true, characterData: true, subtree: true });
+  });
   await j.tap(".board .chore", "primera tarea");
   await p.waitForTimeout(500);
-  const toast = (await j.texts(".interior-ui .toast"))[0] ?? "";
+  const toast = (await p.evaluate(() => window.__toasts)).find((t) => /Bajas al anillo/.test(t)) ?? (await j.texts(".interior-ui .toast"))[0] ?? "";
   j.check("al elegir una tarea en el eje avisa de que baja al anillo", /Bajas al anillo/.test(toast), toast);
   await j.shot("tarea-desde-el-eje");
 

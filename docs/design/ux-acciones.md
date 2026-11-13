@@ -47,6 +47,7 @@ Hecha jugando: el recorrido `acciones-movil` / `acciones-escritorio` de la suite
 | Consola de la sonda | Ya seguía la regla: «Lanzar sonda» encima de MOVER; «Volver al puente» arriba a la derecha. | Igual; el viaje en curso se coloca sobre GIRAR para no tapar su acción. |
 | Estación: interior y las 6 pestañas (Materiales, Planos, Fabricación, Hangar, Importar, Vida) | Sin solapes. Pestañas en dos filas de tres en el móvil, Volver arriba a la derecha. | Igual. |
 | Paseo espacial | Antes de salir, el reto de ponerse el traje en hoja inferior (sin solapes). Fuera: estado arriba a la izquierda, Volver a la nave arriba, acciones (Impulso, Bajar, Recoger cable, Tomar muestra) abajo a la derecha. | Igual. |
+| Cabina con un asteroide enfadado (rama `embestida`) | En escritorio la ficha de sometimiento (confianza y niveles) arriba al centro tapaba la cabecera de la tarjeta de ira; en el móvil, la línea de radio de los niveles (abajo a 330 px) caía encima de la tarjeta, del mando MIRAR y de la etiqueta de región. | La ficha ya vive en la columna de contexto (abajo a la derecha). Con la tarjeta de ira a la vista, la radio de los niveles va **a su derecha** en el móvil y **encima de MIRAR** en escritorio. La auditoría pone a Bennu enfadado y una línea de radio a la vez (`cabina-ira`). 0 solapes. |
 
 Capturas (antes / después), en `docs/screenshots/`:
 
@@ -61,6 +62,8 @@ Capturas (antes / después), en `docs/screenshots/`:
 | Tablero de tareas, móvil | ![](../screenshots/ux-antes-tareas-movil.png) | ![](../screenshots/ux-despues-tareas-movil.png) |
 | Sonda, móvil | ![](../screenshots/ux-antes-sonda-movil.png) | ![](../screenshots/ux-despues-sonda-movil.png) |
 | Estación, pestaña Vida, móvil | ![](../screenshots/ux-antes-estacion-vida-movil.png) | ![](../screenshots/ux-despues-estacion-vida-movil.png) |
+| Asteroide enfadado y radio, móvil | (nueva con `embestida`) | ![](../screenshots/ux-despues-cabina-ira-movil.png) |
+| Asteroide enfadado y radio, escritorio | (nueva con `embestida`) | ![](../screenshots/ux-despues-cabina-ira-escritorio.png) |
 
 ## 3. La organización
 

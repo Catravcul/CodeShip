@@ -103,11 +103,11 @@ caso y las anteriores quedan en sus run logs.
 | CV-15 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK · **HC-05** |
 | CV-16 | No aplica | | | No hay partidas guardadas (**HC-06**) |
 | CV-17 | Probado (suite) | 2026-11-13 | | `embestida.test.ts`: OK · **HC-03** |
-| PX-01 | Sin probar | | | Recorrido `tools/experiencia/`; sin run log |
-| PX-02 | Sin probar | | | Recorrido `tools/experiencia/`; sin run log |
-| PX-03 | Sin probar | | | Recorrido `tools/experiencia/`; sin run log |
-| PX-04 | Sin probar | | | Recorrido `tools/experiencia/`; sin run log |
-| PX-05 | Sin probar | | | Recorrido `tools/experiencia/`; sin run log |
+| PX-01 | FAIL | 2026-11-13 | `8e86aae` | [run](runs/2026-11-13-1041-PX-01-PX-02-PX-03-PX-04-PX-05.md): 34 OK, 1 FALLA |
+| PX-02 | FAIL | 2026-11-13 | `8e86aae` | [run](runs/2026-11-13-1041-PX-01-PX-02-PX-03-PX-04-PX-05.md): 10 OK, 1 FALLA |
+| PX-03 | Probado (en vivo) | 2026-11-13 | `8e86aae` | [run](runs/2026-11-13-1041-PX-01-PX-02-PX-03-PX-04-PX-05.md): 15 OK |
+| PX-04 | Probado (en vivo) | 2026-11-13 | `8e86aae` | [run](runs/2026-11-13-1041-PX-01-PX-02-PX-03-PX-04-PX-05.md): 22 OK |
+| PX-05 | Probado (en vivo) | 2026-11-13 | `8e86aae` | [run](runs/2026-11-13-1041-PX-01-PX-02-PX-03-PX-04-PX-05.md): 22 OK |
 
 ## Última ejecución por run log
 
@@ -115,4 +115,5 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-13 10:41 | PX-01, PX-02, PX-03, PX-04, PX-05 | Experiencia (Playwright) | 3/5 recorridos bien | [run](runs/2026-11-13-1041-PX-01-PX-02-PX-03-PX-04-PX-05.md) |
 | 2026-11-13 10:18 | CV-01 a CV-15 | Vitest (`npx vitest run src/qa`) | 24 OK · 1 `.fails` esperado (CV-07, B-02) | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md) |

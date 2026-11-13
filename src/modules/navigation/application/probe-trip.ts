@@ -7,7 +7,7 @@ import type { Asteroid } from "@modules/celestial/domain/asteroid";
 import type { Obstacle } from "../domain/route";
 import { TRANSFER_TUNING } from "../domain/transfer";
 import { realSeconds, TRAVEL_TIME, TravelClock } from "../domain/travel-time";
-import { AUTOPILOT_TUNING, TripAutopilot, type AutopilotPhase } from "./autopilot";
+import { AUTOPILOT_TUNING, remainingEstimateS, TripAutopilot, type AutopilotPhase } from "./autopilot";
 import { planHop, type Hop } from "./hop";
 import { tripChore, type TripFacts } from "./trip-chore";
 
@@ -246,7 +246,7 @@ export class ProbeTrip {
 
   /** Game seconds per real second while the probe flies itself (1 otherwise). */
   get lapse(): number {
-    return this._status === "flying" && this.clock && this._autopilot ? this.clock.lapse(this._autopilot.status.etaS) : 1;
+    return this._status === "flying" && this.clock && this._autopilot ? this.clock.lapse(remainingEstimateS(this._autopilot.status)) : 1;
   }
 
   /**
@@ -264,7 +264,7 @@ export class ProbeTrip {
       return;
     }
     if (f.guidance === this._autopilot) {
-      this.clock?.advance(realDtS, this._autopilot.status.etaS);
+      this.clock?.advance(realDtS, remainingEstimateS(this._autopilot.status));
       return;
     }
     if (this._autopilot.arrived && this.nextLeg) {
@@ -292,8 +292,8 @@ export class ProbeTrip {
       goalName: ProbeTrip.goalName(this._goal),
       phase: s.phase,
       remainingM: remaining,
-      etaS: Number.isFinite(s.etaS) ? s.etaS : Math.max(0, this.clock.plannedGameS - this.clock.gameElapsedS),
-      etaRealS: this.clock.etaRealS(s.etaS),
+      etaS: remainingEstimateS(s) ?? Math.max(0, this.clock.plannedGameS - this.clock.gameElapsedS),
+      etaRealS: this.clock.etaRealS(remainingEstimateS(s)),
       speedMS: s.speedMS,
       fraction: Math.max(0, Math.min(1, 1 - remaining / this.startDistanceM)),
       lapse: this.lapse,

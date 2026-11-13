@@ -197,3 +197,12 @@ export class TripAutopilot implements Guidance {
     return null;
   }
 }
+
+/**
+ * Game seconds left as the trip's clock should use them: while still turning or speeding up the
+ * autopilot's own estimate is far too pessimistic (it divides by the speed it has so far), so the
+ * plan is used instead (undefined).
+ */
+export function remainingEstimateS(s: AutopilotStatus): number | undefined {
+  return s.phase === "orient" || s.phase === "burn" ? undefined : s.etaS;
+}

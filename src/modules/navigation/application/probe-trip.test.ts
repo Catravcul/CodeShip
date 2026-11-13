@@ -86,7 +86,10 @@ describe("ProbeTrip (the probe's long trips)", () => {
     const p = trip.progress()!;
     expect(p.lapse).toBeGreaterThanOrEqual(TRAVEL_TIME.lapse.probe);
     expect(p.etaRealS).toBeLessThanOrEqual(TRAVEL_TIME.capS + 1e-6);
-    const real = fly(probe, trip, 200);
+    // Speeding up, the lapse stays near the plan's (not the autopilot's pessimistic early estimate).
+    fly(probe, trip, 3);
+    expect(trip.lapse).toBeLessThan(p.lapse * 1.5);
+    const real = 3 + fly(probe, trip, 200);
     expect(trip.status).toBe("arrived");
     expect(real).toBeLessThanOrEqual(TRAVEL_TIME.capS + 10);
     const h = probe.flight.telemetry().distanceToSurface;

@@ -45,7 +45,8 @@ export class TripPreview {
     const h = Math.round(w * 0.62);
     // On the phone: left, clear of the right-hand column of buttons.
     const x = W < 700 ? 8 : W - w - 12;
-    const y = W < 700 ? 96 : Math.max(12, H - h - 120);
+    // Desktop: right, under the column of buttons and above the help text.
+    const y = W < 700 ? 96 : Math.min(220, Math.max(12, H - h - 120));
     return { x, y, w, h };
   }
 

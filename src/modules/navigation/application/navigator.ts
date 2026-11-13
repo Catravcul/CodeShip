@@ -9,7 +9,7 @@ import { planContinuousBurn, planTransfer, TRANSFER_TUNING, type ContinuousBurnP
 import { facing } from "../domain/attitude";
 import { portFlightTarget, targetDistance, type AsteroidTarget, type DockTarget, type NavTarget } from "../domain/nav-target";
 import type { DockingTarget } from "@modules/mothership/domain/docking";
-import { TripAutopilot, type AutopilotPhase } from "./autopilot";
+import { remainingEstimateS, TripAutopilot, type AutopilotPhase } from "./autopilot";
 import { CarrierTrip, type BerthRun, type CarrierPort } from "./carrier-trip";
 import { legBudgets, TRAVEL_TIME, TravelClock } from "../domain/travel-time";
 import { carrierTripChore, tripChore, type CarrierTripFacts, type DockFacts, type TripFacts } from "./trip-chore";
@@ -436,7 +436,7 @@ export class Navigator {
   get lapse(): number {
     if (this._status === "carrier" && this._berthing) return TRAVEL_TIME.lapse.carrier;
     if (this._status === "carrier" && this._carrierTrip && this.clock) return this.clock.lapse(this._carrierTrip.remainingS);
-    if (this._status === "autopilot" && this._autopilot && this.clock) return this.clock.lapse(this._autopilot.status.etaS);
+    if (this._status === "autopilot" && this._autopilot && this.clock) return this.clock.lapse(remainingEstimateS(this._autopilot.status));
     return 1;
   }
 
@@ -445,7 +445,7 @@ export class Navigator {
     const c = this.clock;
     if (!c) return 0;
     if (this._status === "carrier" && this._carrierTrip) return c.etaRealS(this._carrierTrip.remainingS) + (this.landerBudgetS ?? 0);
-    if (this._status === "autopilot" && this._autopilot) return c.etaRealS(this._autopilot.status.etaS);
+    if (this._status === "autopilot" && this._autopilot) return c.etaRealS(remainingEstimateS(this._autopilot.status));
     return 0;
   }
 
@@ -485,7 +485,7 @@ export class Navigator {
     if (this._status !== "autopilot" || !this._autopilot) return;
     // The physics ran at `lapse` this frame (main steps it); keep the clock's books.
     if (this.flight.guidance === this._autopilot) {
-      this.clock?.advance(realDtS, this._autopilot.status.etaS);
+      this.clock?.advance(realDtS, remainingEstimateS(this._autopilot.status));
       return;
     }
     if (this._autopilot.arrived) this.clock?.arrive();
@@ -531,6 +531,7 @@ export class Navigator {
     if (this._status !== "autopilot" || !this._autopilot) return undefined;
     const s = this._autopilot.status;
     const remaining = Number.isFinite(s.remainingM) ? s.remainingM : this.startDistanceM;
-    return { ...s, vehicle: "probe", remainingM: remaining, fraction: Math.max(0, Math.min(1, 1 - remaining / this.startDistanceM)) };
+    const etaS = remainingEstimateS(s) ?? Math.max(0, (this.clock?.plannedGameS ?? 0) - (this.clock?.gameElapsedS ?? 0));
+    return { ...s, etaS, vehicle: "probe", remainingM: remaining, fraction: Math.max(0, Math.min(1, 1 - remaining / this.startDistanceM)) };
   }
 }

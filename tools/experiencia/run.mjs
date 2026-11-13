@@ -12,8 +12,9 @@ import { cocina } from "./cocina.mjs";
 import { movimiento } from "./movimiento.mjs";
 import { mision } from "./mision.mjs";
 import { acciones } from "./acciones.mjs";
+import { ordenar } from "./ordenar.mjs";
 
-const PLAY = { cocina, movimiento, mision, "acciones-movil": acciones, "acciones-escritorio": acciones };
+const PLAY = { cocina, movimiento, mision, "acciones-movil": acciones, "acciones-escritorio": acciones, ordenar };
 
 const now = new Date();
 const stamp = now.toISOString().replace(/[:.]/g, "-").slice(0, 19);

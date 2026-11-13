@@ -87,6 +87,8 @@ caso y las anteriores quedan en sus run logs.
 | UI-01 | Sin probar | | | Sin test: es un adaptador del DOM |
 | UI-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | UI-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| UI-04 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| UI-05 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | CV-01 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK |
 | CV-02 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-01** cerrado |
 | CV-03 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK · **B-01** arreglado |
@@ -109,6 +111,7 @@ caso y las anteriores quedan en sus run logs.
 | PX-03 | Probado (en vivo) | 2026-11-13 | `8eaa0bb` | [run](runs/2026-11-13-1415-PX-01-PX-03.md): 15 OK |
 | PX-04 | Probado (en vivo) | 2026-11-13 | `d6b05e0` | [run](runs/2026-11-13-1100-PX-01-PX-02-PX-03-PX-04-PX-05.md): 22 OK |
 | PX-05 | Probado (en vivo) | 2026-11-13 | `d6b05e0` | [run](runs/2026-11-13-1100-PX-01-PX-02-PX-03-PX-04-PX-05.md): 22 OK |
+| PX-06 | Sin probar | | | |
 
 ## Última ejecución por run log
 

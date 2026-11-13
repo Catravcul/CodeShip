@@ -193,6 +193,8 @@ Columna QA: cómo se comprueba jugando, o «Solo test» si no tiene sentido hace
 | UI-01 | Vista HUD y vista panel de los retos: el botón cambia al momento y se recuerda en `localStorage` | Sin test (adaptador) | Jugar: botón «Vista HUD» |
 | UI-02 | Los paneles del puente leen el estado real (propulsión, energía, vida, acople, radio, alertas) | `panels.test.ts` | Jugar: puente |
 | UI-03 | Una cadena de retos falla tras demasiados errores y repetir un fallo no cuenta | `chore.test.ts` | Jugar (recorrido PX `cocina`) |
+| UI-04 | Retos de ordenar, modo «Ordenar todo y enviar» (por defecto): un orden erróneo cuesta un fallo y deja cada casilla marcada ✓ (verde, «en su sitio») o ✗ (rojo, «no va aquí») hasta que el jugador pulsa «Reintentar: quitar los ✗» o la edita; Reintentar deja los ✓ en su sitio y devuelve los ✗ a la bandeja. Igual en vista panel (sin cambiar sus medidores) y en HUD | `order-steps.test.ts` | Jugar (recorrido PX `ordenar`) |
+| UI-05 | Retos de ordenar, modo «Paso a paso» (botón junto a «Vista HUD», guardado en `localStorage` `codeship.retos-ordenar`, `stepByStep()/setStepByStep()` para los ajustes): cada bloque se comprueba al tocarlo; uno erróneo se avisa al momento, queda tachado ✗ en la bandeja y cuenta un fallo (como un orden erróneo: en un duelo con un asteroide pasa a la idea siguiente); repetir el mismo bloque erróneo en el mismo paso no cuenta; el orden completo cuenta un acierto. Pasar a paso a paso vacía las casillas (no revela gratis cuáles estaban bien) | `order-steps.test.ts`, `chore.test.ts`, `duel.test.ts` | Jugar (recorrido PX `ordenar`) |
 
 ### Convivencia de procesos (CV)
 
@@ -254,6 +256,7 @@ fila del recorrido en [registro.md](registro.md).
 | PX-03 | `mision` | La radio avisa de cartas; una trae la misión de Bennu; el registro abre con 0 hechas. Posado (fase de la sonda preparada), la acción principal aparece abajo a la derecha; un fallo suma «Fallos 1/N»; ganar muestra «Conseguido» con un solo botón para volver. Con el traje, tumbarse y ganar el tercer duelo: Bennu persuadido y aviso de misión cumplida que no tapa el resultado. | iPhone 13, CPU ×4 |
 | PX-04 | `acciones-movil` | Cada pantalla (cabina acoplada y libre, ingravidez, anillo, tareas, puente, mapa, sonda, posado, traje, paseo, estación y sus seis pestañas) sin controles solapados a 390×664 visibles; capturas `ux-<antes/despues>-*-movil.png`. | iPhone 13, CPU ×1 |
 | PX-05 | `acciones-escritorio` | Lo mismo a 1280×800; capturas `ux-*-escritorio.png`. | Escritorio, CPU ×1 |
+| PX-06 | `ordenar` | Programar el viaje a Bennu desde el puente: con los pasos 2 y 3 cambiados, «Fallos 1/2», ✓ verde en las casillas buenas y ✗ rojo en las dos malas (con nombre), el aviso «3 de 5 en su sitio», las marcas siguen a la vista y en vista HUD; Reintentar deja los ✓ y vacía los ✗; completado, «Aciertos 1/…» sin más fallos. Otra vez en «Paso a paso» (se guarda y sigue tras recargar): un paso bien queda con ✓, uno erróneo avisa «no va en el paso 2», tacha el bloque y suma un fallo; repetirlo no suma; en vista panel los medidores siguen como eran. Capturas `ordenar-{panel,hud}-{todo,pasos}`. | iPhone 13, CPU ×4 |
 
 ---
 

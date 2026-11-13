@@ -74,7 +74,7 @@ const MAX_MESHES_PER_PROTOTYPE = 160;
  */
 export class AsteroidField {
   readonly group = new THREE.Group();
-  private readonly members: { mesh: THREE.Group; spin: number }[] = [];
+  private readonly members: { mesh: THREE.Group; spin: number; body: { position: { x: number; y: number; z: number } }; label: number; glow?: THREE.Group }[] = [];
   private readonly instanced: THREE.InstancedMesh[] = [];
   private readonly visible: Float32Array;
   private readonly visibleAttr: THREE.BufferAttribute;
@@ -103,8 +103,9 @@ export class AsteroidField {
       mesh.position.set(a.position.x, a.position.y, a.position.z);
       this.group.add(mesh);
       // An active comet: a faint coma and a dust tail pointing away from the Sun (docs/design/importacion.md).
-      if (a.data.kind === "cometa") this.group.add(cometGlow(a.position, a.meanRadiusM, sunDir));
-      this.members.push({ mesh, spin: a.spinRadS });
+      const glow = a.data.kind === "cometa" ? cometGlow(a.position, a.meanRadiusM, sunDir) : undefined;
+      if (glow) this.group.add(glow);
+      this.members.push({ mesh, spin: a.spinRadS, body: a, label: this.labels.length, glow });
       const el = document.createElement("div");
       el.className = "sky-label body";
       this.labelLayer.appendChild(el);
@@ -190,7 +191,14 @@ export class AsteroidField {
 
   update(camera: THREE.PerspectiveCamera, heightPx: number, simTimeS: number, labels = true): void {
     this.placeLabels(camera, labels);
-    for (const m of this.members) m.mesh.rotation.y = m.spin * simTimeS;
+    for (const m of this.members) {
+      m.mesh.rotation.y = m.spin * simTimeS;
+      // Asteroids move themselves with their gravity drive (subjugation levels, wrath chase).
+      const p = m.body.position;
+      m.mesh.position.set(p.x, p.y, p.z);
+      m.glow?.position.set(p.x, p.y, p.z);
+      this.labels[m.label]?.pos.set(p.x, p.y, p.z);
+    }
     for (const n of this.neighbour) n.position.copy(camera.position).add(n.userData.dir as THREE.Vector3);
     const ppr = pixelsPerRadian(camera.fov, heightPx);
     this.pointMat.uniforms.uPxPerRad!.value = ppr;

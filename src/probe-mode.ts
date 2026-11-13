@@ -24,6 +24,8 @@ export interface ProbeModeDeps {
   /** Stage 1 can start now (parked on the target, stage on offer). */
   canStartDuel(): boolean;
   startDuel(): void;
+  /** Label of the duel button when a level duel is on offer (subjugation levels); undefined for the stage. */
+  duelLabel?(): string | undefined;
   /** Keyboard flight command (shared with the cockpit). */
   keyboard(): ThrustCommand;
 }
@@ -230,7 +232,7 @@ export class ProbeMode {
     show(this.btn.launch, p.canLaunch);
     show(this.btn.duel, p.status === "posada" && !angry);
     this.btn.duel.disabled = !d.canStartDuel();
-    this.btn.duel.textContent = d.canStartDuel() ? "Entrar en su mente · fase 1" : r.next === "sonda" ? "Entrar en su mente · fase 1" : "Fase 1 hecha: recupérala";
+    this.btn.duel.textContent = d.duelLabel?.() ?? (d.canStartDuel() ? "Entrar en su mente · fase 1" : r.next === "sonda" ? "Entrar en su mente · fase 1" : "Fase 1 hecha: recupérala");
     show(this.btn.assist, p.out);
     this.btn.assist.textContent = `Aterrizaje: ${f.landingAssist ? "auto" : "manual"}`;
     this.btn.assist.classList.toggle("on", f.landingAssist);

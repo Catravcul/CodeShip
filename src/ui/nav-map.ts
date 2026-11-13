@@ -80,6 +80,8 @@ export class NavMap {
   missionMark?: (targetId: string) => MissionMark | undefined;
   /** Set by main: the subjugation block of an asteroid's card (stages, trust, next step), as HTML. */
   rapportMark?: (targetId: string) => string;
+  /** Set by main: an asteroid's subjugation level and what it is doing (net core, packages, trip, chase). */
+  levelMark?: (targetId: string) => MapLevelMark | undefined;
   /** Set by main: open the mission log. */
   onMissions?: () => void;
 
@@ -436,6 +438,8 @@ export class NavMap {
       if (m) drawMark(g, p.x, p.y, rad, m);
       g.fillStyle = target ? "#bff0ff" : "#e6dfd3";
       g.fillText(t.name, p.x + rad + 7, p.y + 4);
+      const lm = t.kind === "asteroid" ? this.levelMark?.(t.id) : undefined;
+      if (lm) drawLevel(g, p, rad, lm, lm.goal ? P(lm.goal) : undefined);
       this.screen.push({ t, x: p.x, y: p.y });
     }
 
@@ -474,6 +478,73 @@ export class NavMap {
     g.fillStyle = "#d8f6ff";
     g.fillText(km(bar), 14, h - 22);
   }
+}
+
+/** What the map shows of a subjugated (or angry, moving) asteroid. */
+export interface MapLevelMark {
+  readonly level: number;
+  readonly tone: "obedece" | "red" | "nave" | "estacion" | "viaje" | "aparcado" | "persigue" | "vuelve";
+  readonly short: string;
+  readonly goal?: { x: number; y: number; z: number };
+}
+
+const LEVEL_TONE: Record<MapLevelMark["tone"], string> = {
+  obedece: "#7dffb0",
+  red: "#b48cff",
+  nave: "#ffd27f",
+  estacion: "#ffb347",
+  viaje: "#58d6ff",
+  aparcado: "#ffd27f",
+  persigue: "#ff6b5a",
+  vuelve: "#9aa4ae",
+};
+
+/** Level badge (a hexagon with the level), what it is doing under its name, and a dashed line to where it is heading. */
+function drawLevel(g: CanvasRenderingContext2D, p: Projected, rad: number, m: MapLevelMark, goal?: Projected): void {
+  const c = LEVEL_TONE[m.tone];
+  g.save();
+  if (goal) {
+    g.setLineDash([3, 4]);
+    g.strokeStyle = c;
+    g.lineWidth = 1.5;
+    g.beginPath();
+    g.moveTo(p.x, p.y);
+    g.lineTo(goal.x, goal.y);
+    g.stroke();
+    g.setLineDash([]);
+    g.beginPath();
+    g.arc(goal.x, goal.y, 3, 0, Math.PI * 2);
+    g.fillStyle = c;
+    g.fill();
+  }
+  if (m.level > 0) {
+    const x = p.x - rad - 9, y = p.y - rad - 4, r = 8;
+    g.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = Math.PI / 6 + (i * Math.PI) / 3;
+      if (i === 0) g.moveTo(x + r * Math.cos(a), y + r * Math.sin(a));
+      else g.lineTo(x + r * Math.cos(a), y + r * Math.sin(a));
+    }
+    g.closePath();
+    g.fillStyle = c;
+    g.fill();
+    g.fillStyle = "#1a1000";
+    g.font = "bold 10px ui-monospace, Menlo, monospace";
+    g.textAlign = "center";
+    g.fillText(String(m.level), x, y + 3.5);
+  }
+  if (m.tone === "persigue") {
+    g.beginPath();
+    g.arc(p.x, p.y, rad + 8, 0, Math.PI * 2);
+    g.strokeStyle = c;
+    g.lineWidth = 2;
+    g.stroke();
+  }
+  g.textAlign = "left";
+  g.font = "11px ui-monospace, Menlo, monospace";
+  g.fillStyle = c;
+  g.fillText(m.short, p.x + rad + 7, p.y + 17);
+  g.restore();
 }
 
 /** Nevaeh's mark: a gold dashed ring and an «N» diamond for a main mission; a small tick for a side mission done. */

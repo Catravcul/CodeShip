@@ -10,6 +10,7 @@ import { Ship, type ThrustCommand } from "@modules/ship/domain/ship";
 import { PROBE_BATTERY_WH, PROBE_HULL, PROBE_LOAD_W, PROBES_ON_BOARD, probeDesign } from "@modules/ship/data/probe";
 import { ProbeOps } from "@modules/subjugation/application/probe-ops";
 import { stageIndex, type Stage } from "@modules/subjugation/domain/rapport";
+import { LEVEL_NAME, type Level } from "@modules/subjugation/domain/levels";
 import type { Eva } from "@modules/eva/application/eva";
 import type { EvaMode } from "./eva-mode";
 import type { FlightDeck } from "./flight-deck";
@@ -29,11 +30,25 @@ export function stageDuelText(name: string, stage: Stage): SessionText {
   return { ...t, title: `${t.title} · ${STAGE_TITLE[stage]}` };
 }
 
+/** The duel screen's texts for a subjugation level. */
+export function levelDuelText(name: string, level: Level): SessionText {
+  const t = asteroidText(name);
+  return { ...t, title: `${t.title} · nivel ${level}` };
+}
+
+const LEVEL_DONE: Readonly<Record<Level, string>> = {
+  1: "aportará a la nano_net: ya puede ser núcleo de la red",
+  2: "enviará paquetes de su roca a la bodega de la nodriza cada día",
+  3: "enviará paquetes de su roca a la estación cada día",
+  4: "irá a la estación por su cuenta para que la extraigan entera: despega y se pondrá en marcha",
+};
+
 /** One line on how a won stage went (banner and toasts). */
 export function stageResultText(e: Expedition): string {
   const r = e.lastResult;
   const name = e.asteroid.data.name;
   if (!r) return "";
+  if (r.level) return r.persuaded ? `${name} acepta el nivel ${r.level}: ${LEVEL_DONE[r.level]}` : `¡${name} se niega a ${LEVEL_NAME[r.level]} y se enfada! Te persigue con su gravedad: huye`;
   if (!r.persuaded) return `¡${name} se enfada! Su confianza baja`;
   const load = r.cargo.length ? `: ${r.cargo.map((c) => `${kg(c.kg)} kg de ${c.material}`).join(", ")} en la bodega` : "";
   switch (r.stage) {
@@ -105,13 +120,14 @@ export class SubjugationUi {
       targetName: () => ex.asteroid.data.name,
       bond: () => ex.bond,
       angry: () => ex.phase === "aggressive",
-      canStartDuel: () => ex.canStartStage("sonda"),
-      startDuel: () => this.startDuel("sonda"),
+      canStartDuel: () => ex.canStartStage("sonda") || ex.canStartLevel("sonda"),
+      startDuel: () => (ex.canStartLevel("sonda") ? this.startLevelDuel("sonda") : this.startDuel("sonda")),
+      duelLabel: () => (ex.bond.nextLevel && ex.bond.subjugated ? (ex.canStartLevel("sonda") ? `Convencer · nivel ${ex.bond.nextLevel}` : `Nivel ${ex.bond.nextLevel}: ${ex.bond.levelBlock() || "espera a que se calme"}`) : undefined),
       keyboard: d.keyboard,
     });
     d.deck.addStatusButton("fd-probe", "Sonda", () => this.probeMode.enter());
     this.chip = new RapportChip(d.root);
-    d.map.rapportMark = (id) => rapportCardHtml(ex.rapport.peek(id), ex.phase === "aggressive" && id === ex.asteroid.data.id);
+    d.map.rapportMark = (id) => rapportCardHtml(ex.rapport.peek(id), ex.phase === "aggressive" && id === ex.asteroid.data.id, this.activityOf?.(id) ?? "");
 
     d.evaMode.canSubjugate = () => ex.canStartStage("traje");
     d.evaMode.onLieDown = () => this.startDuel("traje");
@@ -186,12 +202,29 @@ export class SubjugationUi {
     };
   }
 
+  /** What a subjugated asteroid is doing now (set by the levels wiring), for the HUD chip. */
+  activityOf?: (asteroidId: string) => string;
+
+  /** Enter its mind again to persuade it into the next level, through the lander or the parked probe. */
+  startLevelDuel(via: "nave" | "sonda"): void {
+    const ex = this.d.expedition;
+    if (!ex.canStartLevel(via)) return;
+    const level = ex.startLevelDuel(via);
+    this.duelStage = via;
+    this.showDuel(levelDuelText(ex.asteroid.data.name, level), via);
+  }
+
   /** Enter the mind at `stage` and show the duel screen. */
   startDuel(stage: Stage): void {
     const ex = this.d.expedition;
     if (!ex.canStartStage(stage)) return;
     ex.startDuel(stage);
     this.duelStage = stage;
+    this.showDuel(stageDuelText(ex.asteroid.data.name, stage), stage);
+  }
+
+  private showDuel(text: SessionText, stage: Stage): void {
+    const ex = this.d.expedition;
     const duel = ex.duel!;
     this.d.duelView.show(
       {
@@ -207,7 +240,7 @@ export class SubjugationUi {
         },
         maxLives: duel.profile.patience,
       },
-      stageDuelText(ex.asteroid.data.name, stage),
+      text,
       (a: Answer) => {
         const events = ex.answer(a);
         if (events.some((e) => e.type === "asteroid-enraged")) this.onEnraged(stage);
@@ -222,6 +255,7 @@ export class SubjugationUi {
     if (stage === "sonda") this.probe.shakeOff();
     // Faster than Bennu's escape speed: she flies off and the tether catches her.
     if (stage === "traje") this.d.eva.throwOff(0.25);
+    if (ex.level) return this.say(stageResultText(ex));
     this.say(`¡${ex.asteroid.data.name} está furioso! ${stage === "sonda" ? "Rescata la sonda si puedes, o abandónala" : stage === "traje" ? "Vuelve al módulo y huye" : "Huye a la distancia segura"}`);
   }
 
@@ -279,7 +313,7 @@ export class SubjugationUi {
     if (!this.d.eva.outside) this.suitDamage = 0;
     const t = ex.asteroid;
     const near = t.surfaceDistance(this.probeMode.active ? f.state.position : cockpit.landerPosition, f.simTimeS) < CHIP_RANGE_M;
-    this.chip.update(cockpit.visible && near && !this.probeMode.active, t.data.name, ex.rapport.peek(t.data.id), ex.phase === "aggressive");
+    this.chip.update(cockpit.visible && near && !this.probeMode.active, t.data.name, ex.rapport.peek(t.data.id), ex.phase === "aggressive", this.activityOf?.(t.data.id) ?? "");
   }
 
   /** The lander's banner while landed: what its stage allows here. */
@@ -287,7 +321,12 @@ export class SubjugationUi {
     const ex = this.d.expedition;
     const r = ex.bond;
     const name = ex.asteroid.data.name;
-    if (r.subjugated) return `${name} obedece · puedes salir con el traje`;
+    if (r.subjugated) {
+      const l = r.nextLevel;
+      if (!l) return `${name} · nivel máximo: despega y se irá a la estación`;
+      if (ex.canStartLevel()) return `${name} obedece (nivel ${r.level}/4) · convéncelo del nivel ${l}: ${LEVEL_NAME[l]}`;
+      return `${name} obedece (nivel ${r.level}/4) · nivel ${l}: ${r.levelBlock() || "espera a que se calme"}`;
+    }
     if (r.next === "sonda") return `${name} no te conoce: primero la sonda, desde el puente de la nodriza (fase 1)`;
     if (r.next === "traje") return `${name} confía en ti · sal con el traje y túmbate sobre él (fase 3)`;
     return `Módulo anclado en ${name} · entra en su mente (fase ${stageIndex("nave") + 1})`;

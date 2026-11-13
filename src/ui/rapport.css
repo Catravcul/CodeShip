@@ -49,3 +49,14 @@ body.in-probe .fd, body.in-probe #app > .touch, body.in-probe .banner, body.in-p
 .eva-actions .eva-lie { color: #001018; background: #ffd27f; border-color: #ffd27f; }
 @media (hover: none), (pointer: coarse) { body.in-probe .probe-ui .touch { display: grid !important; } }
 .pr-actions button:disabled { opacity: 0.55; }
+
+/* Subjugation levels (after the three stages) and what the asteroid is doing now. */
+.rp-levels .rp-dot.lv { font-size: 10px; padding: 2px 3px; }
+.rp-levels .rp-dot.lv.done { background: #ffd27f; border-color: #ffd27f; }
+.rp-job { margin: 3px 0; font-size: 12px; color: #ffd27f; }
+.rapport-chip .rp-job { font-size: 11px; }
+.radio-toast { position: fixed; left: 50%; transform: translateX(-50%); top: 92px; z-index: 6; width: min(420px, calc(100vw - 24px)); box-sizing: border-box; padding: 6px 10px; font-size: 12px; line-height: 1.35; color: #fff3d6; background: #1d1404e6; border: 1px solid #ffd27f88; border-radius: 10px; pointer-events: none; opacity: 0; transition: opacity 0.3s; }
+.radio-toast.on { opacity: 1; }
+.radio-toast b { color: #ffd27f; }
+@media (max-width: 600px) { .radio-toast { top: auto; bottom: 330px; font-size: 11px; } }
+body.in-duel .radio-toast, body.in-interior .radio-toast { display: none; }

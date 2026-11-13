@@ -94,6 +94,7 @@ import { MissionLogPanel } from "./ui/mission-log";
 import { SubjugationUi, stageDuelText, stageResultText } from "./subjugation";
 import { BENNU_SAMPLES } from "@modules/eva/data/samples";
 import { WrathMode } from "./wrath-mode";
+import { LevelsUi } from "./subjugation-levels";
 import { Wallet } from "@modules/imports/domain/wallet";
 import { ImportOps } from "@modules/imports/application/import-ops";
 import { LAUNCHERS, TRANSFER_STAGE, GAME_HOURS_PER_TRANSIT_DAY } from "@modules/imports/data/launchers";
@@ -490,7 +491,6 @@ navMode.onBlocked = () => view.enabled && flash("El mapa está en el puente de l
 // nano_net: its status card opens from the deck; the core action stays in the lander, anchored on the core.
 const nanoPanel = new NanoNetPanel(root, duelView, deck.nanoBtn, nano, bennuSite);
 let lastPhase = expedition.phase;
-let bennuSubjugated = false;
 // Subjugation in three stages: the uncrewed probe from the deck, the lander, the suit (docs/design/subyugacion.md).
 const subj = new SubjugationUi({
   root,
@@ -509,6 +509,25 @@ const subj = new SubjugationUi({
   // The EMU suit is about 145 kg (NASA); her body mass comes from the crew model.
   crewMassKg: habitat.crew.body.massKg + 145,
 });
+// Subjugation levels after the three stages (docs/design/subyugacion.md §«Niveles»): nano_net, packages to
+// the travel ship and to the station, the final trip; and every asteroid's gravity drive (chase after a failed duel).
+const levels = new LevelsUi({
+  root,
+  asteroids: region.asteroids,
+  expedition,
+  mothership,
+  station: stationOps.station,
+  inbox: importOps.inbox,
+  stationPosition: () => structure.position,
+  stationRadiusM: () => structure.boundingRadiusM,
+  wrath: wrathMode.wrath,
+  nano,
+  anchoredOn: (id) => (flight.landed && expedition.asteroid.data.id === id) || subj.probe.parkedOn === id,
+  secondsPerDay: 1 / NANO_DAYS_PER_SECOND,
+  stationHoursPerSecond: STATION_TUNING.hoursPerSecond,
+});
+subj.activityOf = (id) => levels.activity(id);
+navMode.map.levelMark = (id) => levels.mark(id);
 
 // Ship bay: only at the station (docs/design/accesos.md): its console in node 2, B inside, or the
 // hangar tab of the station screen. Part swaps take the part from the station's hangar; the old one goes back there.
@@ -596,7 +615,9 @@ const action = document.createElement("button");
 action.className = "action hidden";
 root.appendChild(action);
 action.addEventListener("click", () => {
-  if (expedition.canStartDuel) {
+  if (expedition.canStartLevel("nave")) {
+    subj.startLevelDuel("nave");
+  } else if (expedition.canStartDuel) {
     expedition.startDuel("nave");
     duelView.show(duelSession(), stageDuelText(expedition.asteroid.data.name, "nave"), (answer) => {
       const events = expedition.answer(answer);
@@ -640,8 +661,8 @@ function dockingText(): string {
 function renderPhase(): void {
   const p = expedition.phase;
   const t = flight.telemetry();
-  action.classList.toggle("hidden", nanoPanel.busy || !((p === "landed" && expedition.canStartDuel && !duelView.visible) || ((p === "persuaded" || p === "aggressive") && duelView.visible)));
-  action.textContent = p === "landed" ? "Entrar en su mente" : "Volver a la cabina";
+  action.classList.toggle("hidden", nanoPanel.busy || !((p === "landed" && (expedition.canStartDuel || expedition.canStartLevel("nave")) && !duelView.visible) || ((p === "persuaded" || p === "aggressive") && duelView.visible)));
+  action.textContent = p === "landed" ? (expedition.canStartLevel("nave") ? `Convencer · nivel ${expedition.bond.nextLevel}` : "Entrar en su mente") : "Volver a la cabina";
   if (p === "persuaded") {
     banner.textContent = stageResultText(expedition);
   } else if (p === "aggressive") {
@@ -693,6 +714,9 @@ renderer.setAnimationLoop((now) => {
     warpAsk > 1 && warp === 1 ? (far ? "tiempo ×1 mientras maniobras" : "tiempo ×1 cerca del asteroide") : warp > 1 ? `tiempo ×${warp}${fx.warpFactor > 1 ? " (nano_net)" : ""}` : "";
   expedition.update(dt * warp, cmd);
   subj.update(dt, warp, warpNote, { visible: view.enabled, landerPosition: flight.state.position });
+  // Asteroids that move themselves (level 4 trip, chase after a failed duel), packages and the hold.
+  levels.update(dt * warp);
+  asteroidMesh.position.set(bennu.position.x, bennu.position.y, bennu.position.z);
   wrathMode.update(dt * warp, dt, subj.piloting ? subj.probeMode.camera : camera, view.enabled || deck.active || subj.piloting);
   ring.tick(dt);
   // Region rules: soft boundary push back and no flying through the other rocks or the mothership (game rules).
@@ -710,8 +734,7 @@ renderer.setAnimationLoop((now) => {
   if (expedition.phase === "aggressive" && lastPhase !== "aggressive") habitat.jolt(0.8 * (1 - fx.safety), `${expedition.asteroid.data.name}, furioso, sacudió la nave`);
   // The nano_net core site is Bennu for now (docs/design/nano-net.md).
   // Only a subjugated asteroid (all three stages) can become a core (docs/design/subyugacion.md).
-  if (expedition.isPersuaded(bennuSite.id) && !bennuSubjugated) nano.subjugate(bennuSite.id);
-  bennuSubjugated = expedition.isPersuaded(bennuSite.id);
+  // Level 1 of the subjugation makes it eligible as a core: wired in `levels` (subjugation-levels.ts).
   if (!nanoPanel.busy) nano.tick(dt * NANO_DAYS_PER_SECOND);
   nano.powerShip(ship, fx, dt * warp);
   for (const e of nano.drainEvents()) {
@@ -856,4 +879,4 @@ renderer.setAnimationLoop((now) => {
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, refuelOps, importOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, refuelOps, importOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, levels };

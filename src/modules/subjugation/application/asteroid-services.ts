@@ -143,6 +143,12 @@ export class AsteroidServices {
     return n;
   }
 
+  /** Where a level-4 asteroid is heading: its parking spot by the station (undefined when it is not on that trip). */
+  destination(asteroidId: string): Vec3 | undefined {
+    const s = this.services.get(asteroidId);
+    return s && (s.mode === "viaja" || s.mode === "espera") ? this.parkPoint(s) : undefined;
+  }
+
   /** Game seconds to the station for a level-4 asteroid still on its way (undefined otherwise). */
   etaS(asteroidId: string): number | undefined {
     const s = this.services.get(asteroidId);

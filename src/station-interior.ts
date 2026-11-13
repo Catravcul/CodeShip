@@ -404,7 +404,18 @@ export class StationInteriorMode {
     // In flight, from a little higher, so her stretched-out body reads from the side.
     const mk = this.iva.motion.kind;
     const lift = mk === "planeo" || mk === "impulso" || mk === "agarrando" || mk === "salto" ? 0.6 : 0;
-    const at = (k: number) => new THREE.Vector3().copy(p).addScaledVector(d3, -k).add(new THREE.Vector3(0, ((0.3 + lift) * k) / far, 0));
+    // Back along the view and toward the middle of the aisle (the roomiest line, where the rails are
+    // not): from a rail in a corner the camera still fits behind her (docs/design/ingravidez.md).
+    const vol = this.interior.volumeAt(this.p);
+    const toMid = new THREE.Vector3(0, 0.3, 0);
+    if (vol && vol.kind !== "hangar") {
+      const long = vol.half.x >= vol.half.y && vol.half.x >= vol.half.z ? "x" : vol.half.z >= vol.half.y ? "z" : "y";
+      toMid.set(vol.centre.x - p.x, vol.centre.y - p.y, vol.centre.z - p.z);
+      toMid[long] = 0;
+      if (toMid.lengthSq() < 0.01) toMid.set(0, 0.3, 0);
+      else toMid.multiplyScalar(0.8);
+    }
+    const at = (k: number) => new THREE.Vector3().copy(p).addScaledVector(d3, -k).addScaledVector(toMid, Math.min(1, k / 1.2)).add(new THREE.Vector3(0, (lift * k) / far, 0));
     let d = 0;
     for (let k = 0.1; k <= far + 1e-6; k += 0.1) {
       const q = at(k);

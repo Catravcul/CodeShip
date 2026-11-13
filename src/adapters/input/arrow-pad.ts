@@ -72,9 +72,9 @@ export class ArrowPad {
     this.key = key;
     this.el.classList.toggle("busy", busy);
     for (const [a, b] of this.buttons) {
-      const off = busy || !available[a];
-      b.classList.toggle("none", !available[a]);
-      b.setAttribute("aria-disabled", String(off));
+      // While hopping every arrow is off (the pad dims); what each will do is known again on arrival.
+      if (!busy) b.classList.toggle("none", !available[a]);
+      b.setAttribute("aria-disabled", String(busy || !available[a]));
     }
   }
 

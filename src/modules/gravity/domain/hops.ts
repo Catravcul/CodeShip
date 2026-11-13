@@ -164,14 +164,15 @@ export class HopGraph {
     if (Math.abs(rel) < 1e-6) return undefined;
     const side = Math.sign(rel);
     const lead = h.halfDepth + HOP.hatchLeadM;
-    const entry = h.centre.add(ax.scale(side * lead));
+    // Line up on the hatch's axis first: `lead` before it, or level with her when she is already
+    // closer than that (right beside the bulkhead).
+    const entry = h.centre.add(ax.scale(side * Math.min(lead, Math.abs(rel))));
     const exit = h.centre.add(ax.scale(-side * lead));
     if (entry.sub(from.body).length() > HOP.maxM) return undefined;
-    // Already in line with the hatch (between the entry point and it): head straight for the exit.
-    const lined = Math.abs(rel) <= lead;
-    const head = lined ? [from.body] : [from.body, entry];
-    if (!lined && !this.clear(from.body, entry)) return undefined;
-    if (!this.clear(lined ? from.body : entry, exit)) return undefined;
+    const onAxis = entry.sub(from.body).length() < 0.05;
+    const head = onAxis ? [from.body] : [from.body, entry];
+    if (!onAxis && !this.clear(from.body, entry)) return undefined;
+    if (!this.clear(onAxis ? from.body : entry, exit)) return undefined;
     let best: { q: LandingPoint; score: number } | undefined;
     for (const q of this.points) {
       const beyond = q.body.sub(h.centre).dot(ax) * -side;
@@ -186,8 +187,9 @@ export class HopGraph {
     }
     if (!best) return undefined;
     const path = [...head, exit, best.q.body];
-    // It aims at the hatch itself (the first leg may line her up on it from the side).
-    return { to: best.q, path, length: pathLength(path), aim: h.centre.sub(from.body).normalize(), hatch: true };
+    // It aims at the far side of the hatch (the first leg may line her up on it from the side, even
+    // from right beside the bulkhead).
+    return { to: best.q, path, length: pathLength(path), aim: exit.sub(from.body).normalize(), hatch: true };
   }
 
   /**

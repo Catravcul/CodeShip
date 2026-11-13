@@ -2,8 +2,9 @@ import * as THREE from "three";
 import { Vec3 } from "@core/math/vec3";
 import type { SpinRing } from "@modules/gravity/domain/spin-gravity";
 import { discRails, RailGraph, tubeRails, type Handrail } from "@modules/gravity/domain/handrails";
-import { IVA, ivaStep, startAt, type IvaEvent, type IvaState, type IvaWorld } from "@modules/gravity/domain/iva";
-import { ZeroGControls } from "../../input/zero-g-controls";
+import { IVA, ivaStep, type IvaEvent, type IvaState, type IvaWorld } from "@modules/gravity/domain/iva";
+import { HopGraph } from "@modules/gravity/domain/hops";
+import { HopControl } from "./hop-control";
 import type { CubeFigure } from "./figure";
 import { buildRails, FloatingBody, motionLabel } from "./zero-g-body";
 import { buildSpoke, spokeLayout, type SpokeHandles, type SpokeLayout } from "./spoke";
@@ -28,19 +29,22 @@ const fmt = (v: number, d = 2) => v.toFixed(d).replace(".", ",");
 const AIR = new Vec3(0.1, 0, 0);
 /** Body margin from the walls while floating, m. */
 const BODY = 0.45;
+/** Furthest the third-person camera sits behind her in the hub and spine, m (the tube is 5,5 m across). */
+const CAMERA_BACK_M = 3.2;
 
 /**
- * Handrails of the hub and the spine (docs/design/ingravidez.md): eight rows round the wall (one every ~1,5 m), one bar
+ * Handrails of the hub and the spine (docs/design/ingravidez.md): eight rows round the wall (one every ~2,1 m), one bar
  * per rack bay, separate on each side of the bearing; bars round the hatches at both ends; and an
- * upright bar at the top of the shaft, by the ladder, to hold on when the elevator arrives.
+ * upright bar at the top of the shaft, by the ladder, to hold on when the elevator arrives (she lands
+ * on its top end, in sight of the hub).
  */
 export function axisHandrails(L: SpokeLayout): Handrail[] {
   return [
     ...tubeRails("cubo", L.axisY, L.z, L.tubeR, -L.hubHalfX + 0.2, L.hubHalfX - 0.2, 8, Math.PI / 8),
     ...tubeRails("espina", L.axisY, L.z, L.tubeR, L.hubHalfX + 0.2, L.moduleEndX - 0.2, 8, Math.PI / 8),
-    ...discRails("cubo-fondo", -L.hubHalfX, 1, L.axisY, L.z, 1.1),
-    ...discRails("espina-fondo", L.moduleEndX, -1, L.axisY, L.z, 1.1),
-    { id: "pozo", a: new Vec3(L.x, L.topY + 1.15, L.z - L.shaftR + 0.08), b: new Vec3(L.x, L.axisY - L.tubeR - 0.1, L.z - L.shaftR + 0.08), normal: new Vec3(0, 0, 1) },
+    ...discRails("cubo-fondo", -L.hubHalfX, 1, L.axisY, L.z, 1.4),
+    ...discRails("espina-fondo", L.moduleEndX, -1, L.axisY, L.z, 1.4),
+    { id: "pozo", a: new Vec3(L.x, L.topY + 1.15, L.z - L.shaftR + 0.08), b: new Vec3(L.x, L.axisY - L.tubeR - 0.1, L.z - L.shaftR + 0.08), normal: new Vec3(0, 0, 1), landT: 0.9 },
   ];
 }
 
@@ -57,8 +61,9 @@ export class GravityZones {
   /** Floating at the axis: rails only (docs/design/ingravidez.md). */
   private iva: IvaState = { position: Vec3.ZERO, velocity: Vec3.ZERO, motion: { kind: "deriva" } };
   private readonly graph: RailGraph;
+  private readonly hops: HopGraph;
   private readonly world: IvaWorld;
-  private readonly zg: ZeroGControls;
+  private readonly hop: HopControl;
   private body: FloatingBody | null = null;
   private carY = 0;
   private carV = 0;
@@ -75,7 +80,17 @@ export class GravityZones {
   private ball: { mesh: THREE.Mesh; points: THREE.Vector3[]; t: number; total: number; note: string } | null = null;
   private readonly ballMesh = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 8), new THREE.MeshStandardMaterial({ color: 0xf2d32c, roughness: 0.6 }));
   private view = { yaw: 0, pitch: 0, pos: new THREE.Vector3() };
-  enabled = false;
+  /** Where the camera was last frame (to hide hop markers right by it). */
+  private readonly eye = new THREE.Vector3();
+  private on = false;
+  /** Inside the mothership (false in the cockpit and elsewhere: the arrow pad hides). */
+  get enabled(): boolean {
+    return this.on;
+  }
+  set enabled(v: boolean) {
+    this.on = v;
+    if (!v) this.hop?.hide();
+  }
   /**
    * The docking hatches at the end of the spine, as they are now: down to the lander when it is
    * docked here, across to the station when the ship is berthed there. Empty: the hatch is shut.
@@ -110,7 +125,9 @@ export class GravityZones {
     this.ui.className = "zones-ui";
     this.ui.innerHTML = `<button class="zone-btn hidden"></button><button class="zone-btn zone-btn2 hidden"></button><button class="throw-btn hidden">Lanzar pelota</button><div class="updown hidden"><button class="zg-up" aria-label="Subir">▲</button><button class="zg-down" aria-label="Bajar">▼</button></div>`;
     container.appendChild(this.ui);
-    this.zg = new ZeroGControls(container);
+    this.hops = new HopGraph(this.graph, (q) => this.insideFloat(new THREE.Vector3(q.x, q.y, q.z), BODY));
+    this.hop = new HopControl(container, scene);
+    this.hop.setGraph(this.hops);
     this.actionBtn = this.ui.querySelector(".zone-btn")!;
     this.throwBtn = this.ui.querySelector(".throw-btn")!;
     this.actionBtn2 = this.ui.querySelector(".zone-btn2")!;
@@ -178,7 +195,7 @@ export class GravityZones {
     this.updateBall(dt);
     const L = this.layout;
     if (this.zone === "radio") this.rideCar(dt, pos);
-    else if (this.zone === "eje") this.float(dt, yaw, pitch, move);
+    else if (this.zone === "eje") this.float(dt, yaw, pitch);
     this.spoke.car.position.y = this.zone === "radio" ? this.carY : this.zone === "eje" ? L.topY : 0;
     // Context button.
     this.action = null;
@@ -207,8 +224,7 @@ export class GravityZones {
     if (this.actionBtn2.textContent !== label2) this.actionBtn2.textContent = label2;
     this.throwBtn.classList.toggle("hidden", busy || this.zone !== "anillo" || this.ring.omegaRadS === 0);
     this.ui.querySelector(".updown")!.classList.toggle("hidden", this.zone !== "radio");
-    const floating = this.enabled && this.zone === "eje" && !this.autoDown;
-    this.zg.show(floating, floating && this.iva.motion.kind === "planeo" && !!this.graph.nearest(this.iva.position, IVA.reachM));
+    if (!(this.enabled && this.zone === "eje" && !this.autoDown)) this.hop.hide();
     document.body.classList.toggle("in-zero-g", this.enabled && this.zone === "eje");
   }
 
@@ -218,7 +234,7 @@ export class GravityZones {
     this.zone = "eje";
     this.autoDown = false;
     // She comes in holding the bars round the hatch.
-    this.iva = startAt(this.graph, new Vec3(L.moduleEndX - 1.6, L.axisY, L.z));
+    this.iva = this.holdNearest(new Vec3(L.moduleEndX - 1.6, L.axisY, L.z));
     this.p.set(this.iva.position.x, this.iva.position.y, this.iva.position.z);
     this.body?.reset();
     this.say("Entras por la escotilla de la espina: 0 g. El anillo está al otro lado del eje");
@@ -256,10 +272,10 @@ export class GravityZones {
       if (this.carTarget === L.topY) {
         this.zone = "eje";
         // She comes out of the car holding the bar by the ladder.
-        this.iva = startAt(this.graph, new Vec3(L.x, L.axisY - 0.5, L.z));
+        this.iva = this.holdNearest(new Vec3(L.x, L.axisY - 0.5, L.z));
         this.p.set(this.iva.position.x, this.iva.position.y, this.iva.position.z);
         this.body?.reset();
-        this.say("Ingravidez: agárrate a los asideros e impúlsate. En el aire no se frena ni se gira hasta el siguiente asidero");
+        this.say("Ingravidez: las flechas te llevan de asidero en asidero. En el aire no se frena ni se gira hasta llegar");
       } else if (this.carTarget === 0) {
         this.zone = "anillo";
         pos.set(L.x, 0, L.z + 0.9);
@@ -268,7 +284,13 @@ export class GravityZones {
     }
   }
 
-  private float(dt: number, yaw: number, pitch: number, move: { forward: number; right: number }): void {
+  /** Holding the landing point nearest to p (coming in, out of the elevator). */
+  private holdNearest(p: Vec3): IvaState {
+    const q = this.hops.nearest(p)!;
+    return { position: q.body, velocity: Vec3.ZERO, motion: { kind: "sujeta", rail: q.rail, t: q.t, hands: 0 } };
+  }
+
+  private float(dt: number, yaw: number, pitch: number): void {
     const L = this.layout;
     if (this.autoDown) {
       // Pull herself along the rails to the hatch over the spoke, then into the car.
@@ -284,17 +306,14 @@ export class GravityZones {
       }
       this.p.addScaledVector(to.normalize(), Math.min(to.length(), TUNING.railPull * dt));
       this.iva = { position: new Vec3(this.p.x, this.p.y, this.p.z), velocity: new Vec3(to.x, to.y, to.z).scale(TUNING.railPull), motion: { kind: "planeo" } };
+      this.hop.hide();
       return;
     }
-    const k = (c: string) => (this.keys.has(c) ? 1 : 0);
-    const up = Math.max(-1, Math.min(1, this.upDown + k("KeyR") - k("KeyF")));
     const fwd = new Vec3(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
     const right = new Vec3(Math.cos(yaw), 0, -Math.sin(yaw));
-    const camUp = right.cross(fwd).normalize();
-    const stick = fwd.scale(move.forward).add(right.scale(move.right)).add(camUp.scale(up));
-    const strength = this.zg.takePush();
-    const push = strength ? { dir: stick.length() > 0.2 ? stick : fwd, strength } : undefined;
-    const r = ivaStep(this.iva, { ...(push ? { push } : {}), along: stick, grab: this.zg.takeGrab() }, this.world, dt);
+    // Arrows hop from landing point to landing point (docs/design/ingravidez.md, «Fase C: flechas»).
+    const hop = this.hop.update(this.iva, { forward: fwd, right }, this.enabled, dt, this.eye);
+    const r = ivaStep(this.iva, hop ? { hop } : {}, this.world, dt);
     this.iva = r.state;
     this.p.set(r.state.position.x, r.state.position.y, r.state.position.z);
     for (const e of r.events) this.tell(e);
@@ -302,13 +321,12 @@ export class GravityZones {
 
   private tell(e: IvaEvent): void {
     const n = (x: number) => fmt(x, 1);
-    if (e.kind === "impulso" && e.speed > IVA.glide.suave) this.say(`Impulso fuerte: ${n(e.speed)} m/s, unos ${Math.round(e.forceN)} N en los brazos`);
-    else if (e.kind === "agarra" && e.speed > 0.7) this.say(`Llegas a ${n(e.speed)} m/s: frenas con unos ${Math.round(e.forceN)} N en los brazos`);
-    else if (e.kind === "pared") this.say("Te paras contra la pared con las manos: desde aquí también puedes impulsarte");
+    // Hops (the arrows) say their speed on the HUD line, not in a notice.
+    if (e.kind === "pared") this.say("Te paras contra la pared con las manos: desde aquí también puedes impulsarte");
     else if (e.kind === "golpe") this.say(`¡Golpe contra la pared a ${n(e.speed)} m/s! Rebotas`);
     else if (e.kind === "deriva") this.say("A la deriva: no llegas a nada. Solo te mueve el aire de la ventilación, muy despacio");
     else if (e.kind === "sin-impulso")
-      this.say(e.why === "en-vuelo" ? "En el aire no puedes cambiar de rumbo: espera al próximo asidero o pulsa «Agarrarse»" : e.why === "contra-la-pared" ? "No puedes empujarte hacia la pared que sujetas" : "No hay nada en lo que apoyarse: el aire te llevará a una pared");
+      this.say(e.why === "en-vuelo" ? "En el aire no puedes cambiar de rumbo: espera al próximo asidero" : e.why === "contra-la-pared" ? "No puedes empujarte hacia la pared que sujetas" : "No hay nada en lo que apoyarse: el aire te llevará a una pared");
   }
 
   /** Inside the hub, the spine module or the top of the shaft, keeping `margin` from the walls. */
@@ -348,6 +366,7 @@ export class GravityZones {
     this.body ??= new FloatingBody(rig);
     this.body.update(avatar, this.iva, this.graph, dir, 1 / 60);
     if (!third) {
+      this.eye.copy(this.p);
       camera.position.copy(this.p);
       camera.rotation.set(pitch, yaw, 0, "YXZ");
       return true;
@@ -358,13 +377,21 @@ export class GravityZones {
     const cam = new THREE.Vector3();
     // In flight, from a little higher, so her stretched-out body reads from the side and not only from her soles.
     const k = this.iva.motion.kind;
-    const lift = k === "planeo" || k === "impulso" || k === "agarrando" ? 0.8 : 0;
-    // Back along the view; where a wall is close behind her, also rise above her to keep her in sight.
-    for (let d = 2.4; d > 0.4; d -= 0.1) {
-      cam.copy(at).addScaledVector(dir, -d).add(new THREE.Vector3(0, 0.25 + lift + Math.max(0, 2.4 - d) * 0.6, 0));
-      if (this.insideFloat(cam, 0.15)) break;
+    const lift = k === "planeo" || k === "impulso" || k === "agarrando" || k === "salto" ? 0.8 : 0;
+    // Back along the view and a little toward the tube's axis (the roomiest place, clear of the
+    // lockers and bags on the walls); where a wall is close behind her, further toward the axis.
+    const inward = new THREE.Vector3(0, L.axisY - at.y, L.z - at.z);
+    const radial = inward.length();
+    if (at.y < L.axisY - L.tubeR || radial < 1e-2) inward.set(0, 1, 0);
+    inward.normalize();
+    // Most of the way to the axis: the camera looks down the middle of the tube with her beside it.
+    const toAxis = at.y < L.axisY - L.tubeR ? 0 : 0.6 * radial;
+    for (let d = CAMERA_BACK_M; d > 0.4; d -= 0.1) {
+      cam.copy(at).addScaledVector(dir, -d).addScaledVector(inward, Math.max(0.25 + lift, toAxis) + Math.max(0, CAMERA_BACK_M - d) * 0.6);
+      if (this.insideFloat(cam, 0.6)) break;
     }
     camera.position.copy(cam);
+    this.eye.copy(cam);
     camera.up.set(0, 1, 0);
     camera.lookAt(at.clone().addScaledVector(dir, 1.2));
     return true;

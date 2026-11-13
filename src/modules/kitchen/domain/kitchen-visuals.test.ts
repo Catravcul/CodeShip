@@ -10,8 +10,8 @@ const visualsOf = (id: string) => {
   return kitchenVisuals(r.steps.value, { ingredients: Object.keys(r.ingredients) });
 };
 
-describe("VID-08 kitchen step visuals", () => {
-  it("VID-08 scrambled eggs: fridge, crack into the bowl, hot pan, stir in the pan, cook with heat, season, plate", () => {
+describe("VID-09 kitchen step visuals", () => {
+  it("VID-09 scrambled eggs: fridge, crack into the bowl, hot pan, stir in the pan, cook with heat, season, plate", () => {
     const v = visualsOf("huevos-revueltos");
     expect(v.map((x) => x.action)).toEqual(["tomar", "cascar", "calentar", "remover", "calentar", "sazonar", "emplatar"]);
     expect(v[0]).toMatchObject({ place: "nevera", tint: "huevo" });
@@ -21,7 +21,7 @@ describe("VID-08 kitchen step visuals", () => {
     expect(v[6]).toMatchObject({ place: "encimera", vessel: "plato" });
   });
 
-  it("VID-08 every step of every recipe and process resolves to a real action (no fallback gesture)", () => {
+  it("VID-09 every step of every recipe and process resolves to a real action (no fallback gesture)", () => {
     for (const r of RECIPES) {
       const v = kitchenVisuals(r.steps.value, { ingredients: Object.keys(r.ingredients) });
       expect(v).toHaveLength(r.steps.value.length);
@@ -33,7 +33,7 @@ describe("VID-08 kitchen step visuals", () => {
     }
   });
 
-  it("VID-08 processes happen at their machine: grinding at the mill, boiling soy in the processor", () => {
+  it("VID-09 processes happen at their machine: grinding at the mill, boiling soy in the processor", () => {
     const mill = PROCESSES.find((p) => p.id === "moler-trigo")!;
     expect(kitchenVisuals(mill.steps.value, { machine: mill.machine }).find((x) => x.action === "moler")?.place).toBe("molino");
     const tofu = PROCESSES.find((p) => p.id === "hacer-tofu")!;
@@ -41,7 +41,7 @@ describe("VID-08 kitchen step visuals", () => {
     expect(tv[2]).toMatchObject({ action: "hervir", place: "procesador", heat: true });
   });
 
-  it("VID-08 oven, pot and dry stores: roasting goes in the oven, porridge in the pot, oats from the cupboard", () => {
+  it("VID-09 oven, pot and dry stores: roasting goes in the oven, porridge in the pot, oats from the cupboard", () => {
     expect(visualsOf("cacahuetes-tostados")[3]).toMatchObject({ action: "hornear", place: "horno", heat: true });
     const g = visualsOf("gachas-avena");
     expect(g[0]).toMatchObject({ action: "tomar", place: "despensa", tint: "avena" });
@@ -49,7 +49,7 @@ describe("VID-08 kitchen step visuals", () => {
     expect(g[2]).toMatchObject({ action: "remover", place: "fogon", vessel: "olla" });
   });
 
-  it("VID-08 an unknown step falls back to a gesture at the counter", () => {
+  it("VID-09 an unknown step falls back to a gesture at the counter", () => {
     expect(classifyStep("canta una canción")).toBeUndefined();
     expect(kitchenVisuals(["canta una canción"])[0]).toMatchObject({ action: "gesto", place: "encimera", tint: "generico" });
   });

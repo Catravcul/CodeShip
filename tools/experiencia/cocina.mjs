@@ -53,7 +53,7 @@ export async function cocina(j) {
   });
   await j.resetPerf();
 
-  // Pasos visibles (VID-08): every right step of scrambled eggs is acted out at the galley.
+  // Pasos visibles (VID-09): every right step of scrambled eggs is acted out at the galley.
   await j.tap(".tasks-btn", "Tareas");
   await p.waitForTimeout(400);
   await j.tap('.board .chore:has-text("Cocinar Huevos revueltos")', "Cocinar Huevos revueltos");
@@ -126,7 +126,7 @@ export async function cocina(j) {
   await j.shot("despensa");
   await j.tap(".ihud", "estado de Doménica (pliega)");
 
-  // Pasos visibles en otras áreas (VID-09): a harvest «paso a paso» acts out each right pick at once; the coop door, a program.
+  // Pasos visibles en otras áreas (VID-10): a harvest «paso a paso» acts out each right pick at once; the coop door, a program.
   await p.evaluate(() => localStorage.setItem("codeship.retos-ordenar", "pasos"));
   await j.tap(".tasks-btn", "Tareas");
   await p.waitForTimeout(400);

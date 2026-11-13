@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { Handrail, RailGraph } from "@modules/gravity/domain/handrails";
 import { closestOnRail, railPoint } from "@modules/gravity/domain/handrails";
-import { pushDurationS, type IvaState } from "@modules/gravity/domain/iva";
+import { alongPath, hopPhase, pushDurationS, type IvaState } from "@modules/gravity/domain/iva";
 import { P, POSES, type CubeFigure } from "./figure";
 
 const RAIL_COLOR = 0xe8c547;
@@ -17,6 +17,13 @@ export function motionLabel(s: IvaState): string {
   if (m.kind === "planeo") return `Planeando a ${v} m/s, sin frenar`;
   if (m.kind === "agarrando") return "Agarrando el asidero";
   if (m.kind === "pared") return "Apoyada en la pared";
+  if (m.kind === "salto") {
+    const ph = hopPhase(m);
+    if (ph === "apunta") return "Apunta al siguiente asidero";
+    if (ph === "impulso") return `Se impulsa hacia ${num(m.speed)} m/s`;
+    if (ph === "planeo") return `Planeando a ${v} m/s hacia el asidero`;
+    return "Agarrando el asidero";
+  }
   return `A la deriva (${num(s.velocity.length(), 3)} m/s)`;
 }
 
@@ -162,6 +169,15 @@ export class FloatingBody {
         fig.pose("brace");
         break;
       }
+      case "salto": {
+        // A hop: she turns head first toward the next leg, pushes, glides and reaches for the rail.
+        const ph = hopPhase(m);
+        const dir = V(alongPath(m.path, m.s + 0.05).dir);
+        up = dir;
+        front = Math.abs(dir.y) > 0.9 ? look.clone().negate() : WORLD_UP.clone().negate();
+        fig.pose(ph === "apunta" ? "hold" : ph === "impulso" ? "push" : ph === "planeo" ? (m.length - m.s < 1.2 ? "reach" : "glide") : "reach");
+        break;
+      }
       case "deriva": {
         up = this.bodyUp();
         front = WORLD_UP.clone().negate();
@@ -169,11 +185,12 @@ export class FloatingBody {
         break;
       }
     }
-    fig.update(dt, m.kind === "impulso" || m.kind === "agarrando" ? 6 : 4);
-    // Turn smoothly toward the new attitude (the body rotates; it does not snap).
+    fig.update(dt, m.kind === "impulso" || m.kind === "agarrando" || m.kind === "salto" ? 6 : 4);
+    // Turn smoothly toward the new attitude (the body rotates; it does not snap). Aiming a hop turns her briskly.
     const want = frame(up, front, look);
+    const rate = m.kind === "salto" ? 9 : 5;
     if (!this.placed) this.q.copy(want);
-    else this.q.slerp(want, 1 - Math.exp(-5 * dt));
+    else this.q.slerp(want, 1 - Math.exp(-rate * dt));
     this.rig.quaternion.copy(this.q);
     // Place it: a hand on the grip, or the body centre (0,9 m above the feet) at p.
     let target: THREE.Vector3;

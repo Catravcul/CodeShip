@@ -220,7 +220,7 @@ Para **salir**: por la escotilla del módulo se vuelve a la cabina y por la de l
 
 ### Móvil primero
 
-Dos mandos en las esquinas de abajo: Manos, para avanzar mano a mano por los asideros, y Mirar. En medio va el botón «Impulsarse», y «Agarrarse» aparece solo en vuelo ([ingravidez.md](ingravidez.md)). El botón de contexto va encima, al alcance del pulgar. Arriba a la izquierda va el HUD y a la derecha tres botones cortos: «Tareas», «Vista 3ª/1ª» y «Salir». Los rótulos flotantes se esconden cuando están tan cerca que taparían la pantalla. La cámara en 3ª persona nunca atraviesa una pared: si no cabe detrás de Doménica (de lado en un pasillo de 1,2 m), pasa a 1ª persona hasta que hay sitio. En el escritorio se usan WASD y las flechas; Espacio para impulsarse (Mayús+Espacio, fuerte), G para agarrarse e Intro para usar.
+Dos mandos en las esquinas de abajo: las flechas de salto, que llevan de asidero en asidero (fase C de [ingravidez.md](ingravidez.md)), y Mirar. El botón de contexto va encima, al alcance del pulgar. Arriba a la izquierda va el HUD y a la derecha tres botones cortos: «Tareas», «Vista 3ª/1ª» y «Salir». Los rótulos flotantes se esconden cuando están tan cerca que taparían la pantalla. La cámara en 3ª persona nunca atraviesa una pared: se acerca al centro del pasillo y, si aun así no cabe detrás de Doménica, pasa a 1ª persona hasta que hay sitio. En el escritorio, las flechas o WASD saltan, Q/E y arrastrar miran e Intro usa.
 
 ### Archivos
 

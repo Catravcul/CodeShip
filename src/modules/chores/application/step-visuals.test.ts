@@ -54,8 +54,8 @@ function domesticChores(): Chore[] {
   ];
 }
 
-describe("VID-09 every chore on board shows its solved steps", () => {
-  it("VID-09 every exercise of every domestic chore resolves to at least one visual, never the bare fallback gesture", () => {
+describe("VID-10 every chore on board shows its solved steps", () => {
+  it("VID-10 every exercise of every domestic chore resolves to at least one visual, never the bare fallback gesture", () => {
     const chores = domesticChores();
     expect(new Set(chores.map((c) => c.kind))).toEqual(
       new Set(["curar-planta", "regar", "cosechar", "alimentar-gato", "calmar-gato", "recoger-huevos", "abrir-gallinero", "cocinar", "procesar", "yoga", "ejercicio", "reparar-nave", "reparar-maquina", "cultivo-sembrar", "atender-paciente", ...chores.map((c) => c.kind)]),
@@ -68,7 +68,7 @@ describe("VID-09 every chore on board shows its solved steps", () => {
       });
   });
 
-  it("VID-09 each area acts in its own way: water, serve, pet, program, fix, treat, pose", () => {
+  it("VID-10 each area acts in its own way: water, serve, pet, program, fix, treat, pose", () => {
     const chores = domesticChores();
     const of = (kind: string) => actions(chores.find((c) => c.kind === kind)!);
     expect(of("regar")).toContain("regar");
@@ -84,12 +84,12 @@ describe("VID-09 every chore on board shows its solved steps", () => {
     expect(of("cultivo-sembrar")).toEqual(expect.arrayContaining(["tomar", "verter", "programar"]));
   });
 
-  it("VID-09 cooking keeps the kitchen's detail: one visual per recipe step, with its galley spot", () => {
+  it("VID-10 cooking keeps the kitchen's detail: one visual per recipe step, with its galley spot", () => {
     const eggs = cookingChore(RECIPES.find((r) => r.id === "huevos-revueltos")!);
     expect(eggs.exercises.map((_, i) => source.visuals(eggs, i)![0]!.place)).toEqual(["nevera", "encimera", "fogon", "fogon", "fogon", "fogon", "encimera"]);
   });
 
-  it("VID-09 every kind of chore has an area, and the sources chain: the first that knows the challenge answers", () => {
+  it("VID-10 every kind of chore has an area, and the sources chain: the first that knows the challenge answers", () => {
     for (const a of Object.values(STEP_AREAS)) expect(a.fallback).toBeTruthy();
     const none = { visuals: () => undefined };
     const one = { visuals: () => [{ action: "regar" as const, place: "objetivo" }] };

@@ -73,13 +73,16 @@ caso y las anteriores quedan en sus run logs.
 | VID-05 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | VID-06 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | VID-07 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
-| VID-08 | Solo test | | | `kitchen-visuals.test.ts`; jugado en PX-01 |
-| VID-09 | Solo test | | | `step-visuals.test.ts`; jugado en PX-01 |
+| VID-08 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); el recorrido PX-02 lo juega |
+| VID-09 | Solo test | | | `kitchen-visuals.test.ts`; jugado en PX-01 |
+| VID-10 | Solo test | | | `step-visuals.test.ts`; jugado en PX-01 |
 | EVA-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | EVA-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | EVA-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | ING-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | ING-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| ING-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); el recorrido PX-02 lo juega |
+| ING-04 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); capturas `flechas-*` |
 | NNT-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | NNT-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | NNT-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -108,12 +111,12 @@ caso y las anteriores quedan en sus run logs.
 | CV-15 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-05** cerrado; botón bloqueado en `hc-pedido-sin-creditos-mobile.png` |
 | CV-16 | No aplica | | | No hay partidas guardadas (**HC-06**) |
 | CV-17 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-03** cerrado: el aviso dura 5 s reales en el tramo ×60 |
-| PX-01 | Probado (en vivo) | 2026-11-13 | `d02f84b` | [run](runs/2026-11-13-1532-PX-01-PX-05.md): 34 OK |
-| PX-02 | Probado (en vivo) | 2026-11-13 | `d02f84b` | [run](runs/2026-11-13-1514-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06.md): 11 OK |
-| PX-03 | Probado (en vivo) | 2026-11-13 | `d02f84b` | [run](runs/2026-11-13-1514-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06.md): 15 OK |
-| PX-04 | Probado (en vivo) | 2026-11-13 | `d02f84b` | [run](runs/2026-11-13-1514-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06.md): 22 OK |
-| PX-05 | FAIL | 2026-11-13 | `d02f84b` | [run](runs/2026-11-13-1538-PX-05.md): 3 OK, 1 FALLA (captura agotada por la carga de la máquina, H29) |
-| PX-06 | Probado (en vivo) | 2026-11-13 | `d02f84b` | [run](runs/2026-11-13-1514-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06.md): 20 OK |
+| PX-01 | Probado (en vivo) | 2026-11-13 | `dd51557` | [run](runs/2026-11-13-1546-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06.md): 34 OK |
+| PX-02 | Probado (en vivo) | 2026-11-13 | `dd51557` | [run](runs/2026-11-13-1546-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06.md): 16 OK |
+| PX-03 | Probado (en vivo) | 2026-11-13 | `dd51557` | [run](runs/2026-11-13-1546-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06.md): 15 OK |
+| PX-04 | Probado (en vivo) | 2026-11-13 | `dd51557` | [run](runs/2026-11-13-1546-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06.md): 22 OK |
+| PX-05 | FAIL | 2026-11-13 | `dd51557` | [run](runs/2026-11-13-1546-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06.md): 3 OK, 1 FALLA (captura agotada por la carga de la máquina, H29; la ingravidez a 1280×800 sí pasa sin solapes) |
+| PX-06 | Probado (en vivo) | 2026-11-13 | `dd51557` | [run](runs/2026-11-13-1546-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06.md): 20 OK |
 
 ## Última ejecución por run log
 
@@ -121,9 +124,11 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-13 15:46 | PX-01, PX-02, PX-03, PX-04, PX-05, PX-06 | Experiencia (Playwright) | 5/6 recorridos bien | [run](runs/2026-11-13-1546-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06.md) |
 | 2026-11-13 15:38 | PX-05 | Experiencia (Playwright) | 0/1 recorridos bien | [run](runs/2026-11-13-1538-PX-05.md) |
 | 2026-11-13 15:32 | PX-01, PX-05 | Experiencia (Playwright) | 1/2 recorridos bien | [run](runs/2026-11-13-1532-PX-01-PX-05.md) |
 | 2026-11-13 15:14 | PX-01, PX-02, PX-03, PX-04, PX-05, PX-06 | Experiencia (Playwright) | 4/6 recorridos bien | [run](runs/2026-11-13-1514-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06.md) |
+| 2026-11-13 14:55 | PX-01, PX-02, PX-03, PX-04, PX-05 | Experiencia (Playwright) | 4/5 recorridos bien | [run](runs/2026-11-13-1455-PX-01-PX-02-PX-03-PX-04-PX-05.md) |
 | 2026-11-13 14:15 | PX-01, PX-03 | Experiencia (Playwright) | 2/2 recorridos bien | [run](runs/2026-11-13-1415-PX-01-PX-03.md) |
 | 2026-11-13 14:06 | PX-01 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-13-1406-PX-01.md) |
 | 2026-11-13 11:11 | PX-01 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-13-1111-PX-01.md) |

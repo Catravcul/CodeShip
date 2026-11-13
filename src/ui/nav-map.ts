@@ -519,7 +519,7 @@ function carrierLine(i: DestinationInfo): string {
   const c = i.trip.carrier!;
   const f = c.facts;
   const dv = c.plan.deltaVMS;
-  return `nodriza ${km(c.plan.distanceM)} · Δv ${num(dv, dv < 10 ? 2 : 0)} m/s · ${num(f.propellantKg)} kg de xenón · ${duration(c.plan.totalS)}<br><small>aparca a ${km(f.parkingM)}; la sonda sigue ${km(Math.max(0, f.parkingM - f.approachM))} con su motor</small>`;
+  return `nodriza ${km(c.plan.distanceM)} · Δv ${num(dv, dv < 10 ? 2 : 0)} m/s · ${num(f.propellantKg)} kg de xenón · ${duration(c.plan.totalS)}<br><small>aparca a ${km(f.parkingM)}; el módulo sigue ${km(Math.max(0, f.parkingM - f.approachM))} con su motor</small>`;
 }
 
 function cardHtml(i: DestinationInfo, note: string, mission?: MissionMark, rapport = ""): string {

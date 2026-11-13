@@ -154,8 +154,10 @@ export class Interior {
   private toastUntil = 0;
   private dayClock = 0;
   active = false;
-  /** Opens the ship bay from its hatch (set by main.ts). */
-  openBay?: () => void;
+  /** Opens the flight deck's navigation page from the ring's navigation console (set by main.ts). */
+  openNavConsole?: () => void;
+  /** Opens the mission log from the radio (set by main.ts). */
+  openMissions?: () => void;
 
   constructor(
     root: HTMLElement,
@@ -224,7 +226,7 @@ export class Interior {
     this.radioBtn.addEventListener("click", () => this.openRadio());
     this.stationBtn.addEventListener("click", () => {
       const s = this.nearStation();
-      if (s?.id === "bahia" && this.openBay) return this.openBay();
+      if (s?.id === "navegacion" && this.openNavConsole) return this.openNavConsole();
       if (s?.id === "camarote") return this.openRadio();
       if (s) this.openBoard(s.id);
     });
@@ -233,6 +235,10 @@ export class Interior {
       const letter = (e.target as HTMLElement).closest<HTMLElement>("[data-letter]");
       if (letter) return this.openLetter(letter.dataset.letter!);
       if ((e.target as HTMLElement).closest("[data-radio]")) return this.openRadio();
+      if ((e.target as HTMLElement).closest("[data-missions]") && this.openMissions) {
+        this.board.classList.add("hidden");
+        return this.openMissions();
+      }
       const cat = (e.target as HTMLElement).closest<HTMLElement>("[data-cat]");
       if (cat) {
         this.category = (cat.dataset.cat || null) as ChoreCategory | null;
@@ -247,7 +253,14 @@ export class Interior {
     this.updateCamera();
   }
 
-  enter(): void {
+  /** Go inside; `at: "escotilla"` comes aboard through the docking hatch at the end of the spine. */
+  enter(at?: "escotilla"): void {
+    if (at === "escotilla" && this.zones) {
+      this.zones.arriveAtHatch();
+      // Facing back along the spine, towards the hub and the ring.
+      this.yaw = Math.PI / 2;
+      this.pitch = 0;
+    }
     this.active = true;
     this.walker.enabled = true;
     if (this.zones) this.zones.enabled = true;
@@ -368,7 +381,7 @@ export class Interior {
     this.stationBtn.classList.toggle("hidden", !near);
     if (near)
       this.stationBtn.textContent =
-        near.id === "bahia" ? "Entrar en la bahía de la nave" : near.id === "camarote" ? `Camarote: leer cartas${this.habitat.mailbox?.unread ? ` (${this.habitat.mailbox.unread})` : ""}` : `${near.label}: ${n} ${n === 1 ? "tarea" : "tareas"}`;
+        near.id === "navegacion" ? "Consola de navegación: mapa, viajes y misiones" : near.id === "camarote" ? `Camarote: leer cartas${this.habitat.mailbox?.unread ? ` (${this.habitat.mailbox.unread})` : ""}` : `${near.label}: ${n} ${n === 1 ? "tarea" : "tareas"}`;
     if (performance.now() > this.toastUntil) this.toast.classList.remove("on");
   }
 
@@ -629,7 +642,8 @@ export class Interior {
           }</button>`,
       )
       .join("");
-    this.board.innerHTML = `<div class="board-head"><b>Radio de la nave</b><button data-close>✕</button></div>${items || "<p>Sin cartas</p>"}`;
+    const log = this.openMissions ? `<button data-missions>Registro de misiones</button>` : "";
+    this.board.innerHTML = `<div class="board-head"><b>Radio de la nave</b>${log}<button data-close>✕</button></div>${items || "<p>Sin cartas</p>"}`;
     this.board.classList.remove("hidden");
   }
 

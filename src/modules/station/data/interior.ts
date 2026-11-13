@@ -127,7 +127,7 @@ export function stationInteriorPlan(layout: StationLayout = POLANA_LAYOUT): Stat
     {
       id: "tunel-sonda",
       code: "IDA1",
-      label: "Adaptador de atraque de la sonda",
+      label: "Adaptador de atraque del módulo de aterrizaje",
       kind: "escotilla",
       centre: new Vec3(0, (idaSonda.to.y - AISLE.nodo.y + 0.2) / 2, n2Mid),
       half: new Vec3(IDSS_HALF, (-AISLE.nodo.y + 0.2 - idaSonda.to.y) / 2, IDSS_HALF),
@@ -183,8 +183,10 @@ export function stationInteriorPlan(layout: StationLayout = POLANA_LAYOUT): Stat
   const fx = (f: Fixture): Fixture => f;
   const fixtures: Fixture[] = [
     // Node 2: the two docking hatches.
-    fx({ id: "salir-sonda", label: "Escotilla de la sonda", volume: "nodo-2", face: "suelo", at: new Vec3(0, -N.y, n2Mid), size: new Vec3(0.8, 0.1, 0.8), action: { kind: "salir", to: "sonda" }, info: "Escotilla IDSS: por aquí vuelves a la cabina de la sonda", source: STRUCTURE_SOURCES.nds }),
+    fx({ id: "salir-sonda", label: "Escotilla del módulo", volume: "nodo-2", face: "suelo", at: new Vec3(0, -N.y, n2Mid), size: new Vec3(0.8, 0.1, 0.8), action: { kind: "salir", to: "sonda" }, info: "Escotilla IDSS: por aquí vuelves a la cabina del módulo de aterrizaje", source: STRUCTURE_SOURCES.nds }),
     fx({ id: "salir-nodriza", label: "Escotilla de la nodriza", volume: "nodo-2", face: "proa", at: new Vec3(0, 0, n2.min), size: new Vec3(0.8, 0.8, 0.1), action: { kind: "salir", to: "nodriza" }, info: "Escotilla IDSS: por aquí se pasa a la nodriza atracada", source: STRUCTURE_SOURCES.nds }),
+    // The ship bay's console, by the two docking hatches: the docked ships seen by the hangar cameras.
+    fx({ id: "consola-bahia", label: "Consola de la bahía", volume: "nodo-2", face: "babor", at: new Vec3(-N.x, 0.1, n2Mid - 0.6), size: new Vec3(0.1, 0.8, 1.1), action: { kind: "bahia" }, info: "Bahía de la nave: aquí se revisan y se cambian las piezas del módulo de aterrizaje y de la nodriza atracados" }),
     fx({ id: "carga-nodo2", label: "Bolsas de carga", volume: "nodo-2", face: "techo", at: new Vec3(0, N.y, n2Mid + 1.2), size: new Vec3(1.6, 0.6, 1.2), action: { kind: "info" }, info: "Bolsas de carga atadas al techo, como en los nodos de la ISS" }),
     // Habitat (HALO-like): exercise and hygiene by node 1, galley and table in the middle, crew quarters at the quiet end.
     fx({ id: "ejercicio", label: "Ejercicio", volume: "habitat", face: "estribor", at: new Vec3(H.x, 0, habZ(0.17)), size: new Vec3(0.6, 1.5, 1.3), action: { kind: "info" }, info: "Bicicleta sin sillín como la CEVIS (25–350 W) y un volante de inercia como el de Orion: en ingravidez hay que hacer ejercicio cada día", source: S.exercise }),

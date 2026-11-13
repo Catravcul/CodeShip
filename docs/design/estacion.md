@@ -7,7 +7,7 @@ Petición de Berón (2026-11-12): «Las piezas nuevas se fabrican con los recurs
 ```
 Persuadir un asteroide → la bodega se llena con su roca real → Descargar en la estación
       → Refinería (cadena de retos + horas de máquina) → materiales refinados
-      → Planos: Fabricar (cadena de retos + horas) → la pieza o la sonda llega al hangar
+      → Planos: Fabricar (cadena de retos + horas) → la pieza o el módulo de aterrizaje llega al hangar
       → Bahía de la nave: montar la pieza (necesita tenerla en el hangar; la vieja vuelve al hangar)
 Agua y nitrógeno de la roca → Planta de propelente → hidracina y NTO en el almacén (+ importados)
       → Atracada: Repostar (cadena de retos + horas de trasvase) → tanques llenos
@@ -17,17 +17,17 @@ Agua y nitrógeno de la roca → Planta de propelente → hidracina y NTO en el 
 
 Petición de Berón (2026-11-12): «La estación debe construirse como las demás estaciones: la estructura existe en el espacio y, al acercarte, aparece la opción de revisar las tareas».
 
-- **Estación Nueva Polana**, a unos 1,2 km de Bennu y a 0,9 km del punto de salida. Es una **estructura física**: la sonda no la puede atravesar (misma regla de exclusión que la nodriza, que se apaga cerca de los puertos para poder acoplar).
-- **Botón «Revisar tareas de la estación»**: aparece solo cuando la nave está **acoplada a la estación o a menos de 400 m** (`dockingRangeM`, valor de juego), también con la sonda a bordo de la nodriza atracada. En el móvil va en la columna izquierda, justo encima de los mandos táctiles, al alcance del pulgar y sin tapar la barra de vuelo; la tira del piloto automático sube encima. En el escritorio va abajo, centrado. Abre la pantalla de la estación de siempre.
+- **Estación Nueva Polana**, a unos 1,2 km de Bennu y a 0,9 km del punto de salida. Es una **estructura física**: el módulo no la puede atravesar (misma regla de exclusión que la nodriza, que se apaga cerca de los puertos para poder acoplar).
+- ~~**Botón «Revisar tareas de la estación»**~~ (quitado en la fase 1 de accesos, [accesos.md](accesos.md): las tareas de la estación se abren solo desde dentro, con **Tareas** o sus máquinas): aparecía solo cuando la nave está **acoplada a la estación o a menos de 400 m** (`dockingRangeM`, valor de juego), también con el módulo a bordo de la nodriza atracada. En el móvil va en la columna izquierda, justo encima de los mandos táctiles, al alcance del pulgar y sin tapar la barra de vuelo; la tira del piloto automático sube encima. En el escritorio va abajo, centrado. Abre la pantalla de la estación de siempre.
 - **Acceso remoto**: ya no existe en el juego normal. Con `?dev` en la URL vuelve el botón «Estación · 0,9 km (dev)» de la barra de vuelo, que abre la estación desde cualquier sitio (para pruebas y capturas).
 - **En el mapa** hay dos destinos nuevos además de los asteroides: la **Estación Nueva Polana** (rombo dorado) y la **Nodriza** (rombo ámbar). Su ficha muestra la distancia al puerto, los puertos IDSS, los límites de contacto y el viaje. El botón dice **«Ir a la estación»** o **«Volver a la nodriza»** y programa el viaje con la **misma cadena de retos** (ordenar la maniobra, Δv, tiempo, reparar el frenado y la orden a la IA), con un bloque y una respuesta nuevos sobre el acople a 0,07 m/s.
-  - **Con la sonda acoplada a la nodriza**, «Ir a la estación» lleva **a la nodriza entera**: vuela con sus propulsores Hall (en cámara rápida, como los demás viajes), para a 80 m en el eje del puerto de la nodriza, se acerca a 0,07 m/s y **acopla sola**. La sonda llega a bordo.
-  - **Con la sonda suelta** (o acoplada a la estación), vuela la sonda: rodea las rocas hasta un punto a 300 m en el eje del puerto de la sonda, frena a 40 m y el **asistente de acople** hace el resto, con los mismos límites IDSS que en la nodriza.
+  - **Con el módulo acoplado a la nodriza**, «Ir a la estación» lleva **a la nodriza entera**: vuela con sus propulsores Hall (en cámara rápida, como los demás viajes), para a 80 m en el eje del puerto de la nodriza, se acerca a 0,07 m/s y **acopla sola**. El módulo llega a bordo.
+  - **Con el módulo suelto** (o acoplado a la estación), vuela el módulo: rodea las rocas hasta un punto a 300 m en el eje del puerto del módulo, frena a 40 m y el **asistente de acople** hace el resto, con los mismos límites IDSS que en la nodriza.
   - **«Volver a la nodriza»** hace lo mismo hacia el puerto de la nodriza. Si ya estás acoplada, el mapa lo dice y no deja programarlo.
   - Si la nodriza está atracada en la estación y se programa un viaje a un asteroide, primero **retrocede 80 m por el eje del puerto** sin girar (para que los anillos no barran la estación) y luego sigue su ruta.
 - Mientras tanto, el asistente de acople (K) sirve para cualquier puerto: elige el más cercano, o el del viaje. La página «Acople» del puente de la nodriza dice a qué puerto se refiere.
-- El puente y el interior de la nodriza solo se abren con la sonda acoplada a la nodriza (no a la estación).
-- **Por dentro** (petición 2026-11-12, «que se pueda andar por el hangar y el módulo habitable»): atracada, aparece **«Entrar en la estación»** encima de «Revisar tareas». Doménica flota en ingravidez por el Nodo 2, el módulo habitable, el Nodo 1, el módulo de fabricación y, con traje y por la esclusa, el **hangar, que está abierto al vacío**. La refinería, la fundición, la impresora y los estantes del hangar abren su pestaña de esta pantalla. Detalles, referencias y la decisión del hangar en [interiores.md §5](interiores.md#5-la-estación-por-dentro).
+- El puente y el interior de la nodriza solo se abren con el módulo acoplado a la nodriza (no a la estación).
+- **Por dentro** (petición 2026-11-12, «que se pueda andar por el hangar y el módulo habitable»): con el módulo acoplado a su puerto, el botón de la escotilla de la cabina dice **«Entrar en la estación»**; con la nodriza atracada, se pasa desde la escotilla de su espina (**Pasar a la estación**). La **bahía de la nave** tiene consola en el Nodo 2 (y B, y un botón en la pestaña Hangar). Doménica flota en ingravidez por el Nodo 2, el módulo habitable, el Nodo 1, el módulo de fabricación y, con traje y por la esclusa, el **hangar, que está abierto al vacío**. La refinería, la fundición, la impresora y los estantes del hangar abren su pestaña de esta pantalla. Detalles, referencias y la decisión del hangar en [interiores.md §5](interiores.md#5-la-estación-por-dentro).
 
 ## La estructura
 
@@ -47,14 +47,14 @@ Inspirada en la ISS y en el Gateway lunar (`POLANA_LAYOUT` en `modules/station/d
 
 **Puertos** (norma IDSS, los mismos límites de contacto que la nodriza: 0,05–0,10 m/s de cierre, 0,10 m de desalineación lateral, 4° de inclinación):
 
-- **Puerto de la sonda**: debajo del nodo 2 (nadir). La sonda acopla con el techo contra el puerto, igual que en la nodriza.
+- **Puerto del módulo**: debajo del nodo 2 (nadir). El módulo acopla con el techo contra el puerto, igual que en la nodriza.
 - **Puerto de la nodriza**: en la punta del nodo 2, mirando hacia delante. La nodriza acopla de proa con un puerto IDSS nuevo en la punta de su nodo delantero (`NODRIZA_NOSE_PORT`, posición de juego), como un vehículo que visita la ISS. Así queda delante de la estación: sus anillos (56 m de radio) quedan a más de 10 m de cualquier parte de la estación (hay un test).
 
 La estructura completa cabe en una esfera de 66 m (`radiusM` de la estación). Las rutas del mapa la rodean como a una roca.
 
 ## La pantalla
 
-En el móvil, arriba se ve el hangar en 3D y abajo hay un panel con cuatro pestañas. En horizontal, el panel va a la derecha. El hangar muestra la sonda (si está atracada), las tres máquinas, que se encienden mientras trabajan, el estante de piezas de repuesto y las sondas fabricadas. Se gira arrastrando.
+En el móvil, arriba se ve el hangar en 3D y abajo hay un panel con cuatro pestañas. En horizontal, el panel va a la derecha. El hangar muestra el módulo (si está acoplado), las tres máquinas, que se encienden mientras trabajan, el estante de piezas de repuesto y las sondas fabricadas. Se gira arrastrando.
 
 | Pestaña | Qué hay |
 | --- | --- |
@@ -114,7 +114,7 @@ Los propelentes que queman nuestras naves (MMH/NTO, hidracina, LMP-103S y el xen
 | Helio | **No: importado** | CI: 9,17 ng/g (partes por mil millones). Nada que sacar | Lodders, Palme y Gail 2009 |
 | Xenón (y kriptón, argón) | **No: importado** | CI: **Xe 0,174 ng/g**, Kr 0,052 ng/g, Ar 1,33 ng/g. Las 150 t de la nodriza pedirían ~9 × 10¹⁴ kg de roca, unas 12 000 Bennus. En la Tierra se producían 5000–7000 m³ al año (1998) | Lodders, Palme y Gail 2009; [Xenón](https://en.wikipedia.org/wiki/Xenon) |
 
-**La decisión:** la planta hace **hidrógeno, amoníaco, hidracina y NTO** (química real, nitrógeno real de Bennu), pero el nitrógeno da para poco: es un goteo que complementa lo importado. El **MMH, el LMP-103S, el helio y el xenón** solo llegan importados, como los kits. La estación empieza con una carga del par y del tanque de hidracina de la sonda (170 kg de MMH, 280 de NTO, 45 de hidracina), 3 kg de helio y 20 t de xenón (valores de juego).
+**La decisión:** la planta hace **hidrógeno, amoníaco, hidracina y NTO** (química real, nitrógeno real de Bennu), pero el nitrógeno da para poco: es un goteo que complementa lo importado. El **MMH, el LMP-103S, el helio y el xenón** solo llegan importados, como los kits. La estación empieza con una carga del par y del tanque de hidracina del módulo (170 kg de MMH, 280 de NTO, 45 de hidracina), 3 kg de helio y 20 t de xenón (valores de juego).
 
 ### Procesos de la planta (`PROPELLANT_PROCESSES`)
 
@@ -131,7 +131,7 @@ Cada lote es la misma cadena de retos que la refinería (`refineChore`): predeci
 
 ### Repostar
 
-Con la **sonda acoplada al puerto de la estación** (o a bordo de la nodriza atracada), o con la **nodriza atracada**, Materiales muestra arriba **Repostar** con una tarjeta por nave: cada depósito con lo que lleva, su capacidad, lo que cargará y, si algo falta en el almacén, qué. Debajo, lo que saldrá del almacén.
+Con el **módulo de aterrizaje acoplado al puerto de la estación** (o a bordo de la nodriza atracada), o con la **nodriza atracada**, Materiales muestra arriba **Repostar** con una tarjeta por nave: cada depósito con lo que lleva, su capacidad, lo que cargará y, si algo falta en el almacén, qué. Debajo, lo que saldrá del almacén.
 
 - **Par MMH/NTO**: un kg del par se reparte a la razón de mezcla 1,65: 0,377 kg de MMH y 0,623 kg de NTO. Además, el **helio**: en un sistema regulado el gas que llenó el volumen vaciado no vuelve a la botella (las válvulas antirretorno lo impiden), así que se purga y la botella se rellena con lo mismo: volumen por kg × 3,2527 kg/m³ (helio a 20 bar, NIST) = **2,8 g de helio por kg** cargado.
 - **Hidracina y LMP-103S** (tanques de purga con diafragma): no gastan gas. El líquido que entra vuelve a comprimir el gas del otro lado del diafragma hasta la presión de partida.
@@ -142,9 +142,9 @@ Con la **sonda acoplada al puerto de la estación** (o a bordo de la nodriza atr
 
 1. Si hay par: **cuánto NTO va al tanque de oxidante** (`nto = par · razonMezcla / (1 + razonMezcla)`). Errores típicos: la parte del MMH o multiplicar sin dividir.
 2. **Cuántas horas tarda el trasvase** (`horas = carga / caudal`).
-3. **Un reto por paso de la conexión**. Sonda: conectar la manguera a la válvula de servicio, purgar la manguera con helio, comprobar que el regulador da **20 bar** (la presión regulada del juego, estimación), trasvasar combustible y oxidante por líneas separadas, buscar fugas con el detector de helio, cerrar y desconectar. Nodriza: conectar, hacer vacío en la línea, mantenerla por encima de **17 °C** (punto crítico del xenón, 16,6 °C: sin líquido, una sola fase), trasvasar, buscar fugas, cerrar. Se basan en la carga de hidracina por la válvula de servicio con purga de la manguera ([JPL, NPO-20679](https://www.techbriefs.com/component/content/article/6967-npo-20679)) y en la prueba de fugas con helio y vacío antes de cargar ([ESA, Biomass](https://www.spacedaily.com/reports/Biomass_satellite_prepped_for_launch_fuel_load_999.html)).
+3. **Un reto por paso de la conexión**. Módulo: conectar la manguera a la válvula de servicio, purgar la manguera con helio, comprobar que el regulador da **20 bar** (la presión regulada del juego, estimación), trasvasar combustible y oxidante por líneas separadas, buscar fugas con el detector de helio, cerrar y desconectar. Nodriza: conectar, hacer vacío en la línea, mantenerla por encima de **17 °C** (punto crítico del xenón, 16,6 °C: sin líquido, una sola fase), trasvasar, buscar fugas, cerrar. Se basan en la carga de hidracina por la válvula de servicio con purga de la manguera ([JPL, NPO-20679](https://www.techbriefs.com/component/content/article/6967-npo-20679)) y en la prueba de fugas con helio y vacío antes de cargar ([ESA, Biomass](https://www.spacedaily.com/reports/Biomass_satellite_prepped_for_launch_fuel_load_999.html)).
 
-Al resolverla, el propelente sale del almacén y el trasvase entra en la **línea de repostaje**: 60 kg/h para la sonda (el par entero en ~7 h) y 2500 kg/h de xenón (150 t en 60 h). Son **valores de juego**; el primer trasvase en órbita de Tianzhou 1 a Tiangong 2 tardó unos cinco días ([Spaceflight Now](https://spaceflightnow.com/2017/04/27/tianzhou-1-freighter-achieves-chinas-first-in-space-refueling-demo/)). El propelente llega a bordo al acabar. Si la nave se ha ido, todo vuelve al almacén. Si se falla la cadena, no se gasta nada.
+Al resolverla, el propelente sale del almacén y el trasvase entra en la **línea de repostaje**: 60 kg/h para el módulo (el par entero en ~7 h) y 2500 kg/h de xenón (150 t en 60 h). Son **valores de juego**; el primer trasvase en órbita de Tianzhou 1 a Tiangong 2 tardó unos cinco días ([Spaceflight Now](https://spaceflightnow.com/2017/04/27/tianzhou-1-freighter-achieves-chinas-first-in-space-refueling-demo/)). El propelente llega a bordo al acabar. Si la nave se ha ido, todo vuelve al almacén. Si se falla la cadena, no se gasta nada.
 
 **En la estación por dentro**, la refinería abre Materiales directamente en la planta de propelente.
 
@@ -173,7 +173,7 @@ Si se resuelven, se toman los materiales y el trabajo entra en la cola. Si se fa
 
 `bayActions` recibe ahora el hangar (`PartSupply`). Una pieza que está en el hangar se ofrece como siempre, con «n en el hangar». Si no está, sale **bloqueada** y la bahía dice «no hay en el hangar: fabrícala en la estación». Al montarla, la pieza sale del hangar y **la vieja vuelve a él**, así que se puede volver a cambiar. Sin hangar (por ejemplo en los tests antiguos), todo sigue siendo libre como antes.
 
-Los **propulsores de la nodriza** siguen la misma regla en la pestaña **Nodriza**, y además solo con la sonda acoplada. Cada módulo de propulsores (dorsal y ventral) ofrece añadir uno, quitar uno o montar n de otro tipo, con los que haya en el hangar. Los que salen vuelven al hangar (`applyDriveRefit`). En la pestaña Hangar de la estación aparecen como «Propulsor X3 × 9».
+Los **propulsores de la nodriza** siguen la misma regla en la pestaña **Nodriza**, y además solo con el módulo acoplado. Cada módulo de propulsores (dorsal y ventral) ofrece añadir uno, quitar uno o montar n de otro tipo, con los que haya en el hangar. Los que salen vuelven al hangar (`applyDriveRefit`). En la pestaña Hangar de la estación aparecen como «Propulsor X3 × 9».
 
 ## Arquitectura
 
@@ -184,7 +184,7 @@ Los **propulsores de la nodriza** siguen la misma regla en la pestaña **Nodriza
 - `modules/station/data`: materiales y mapa desde la carga, procesos, planos, estación y fuentes.
 - `modules/station/domain/structure.ts`: `StationStructure` (módulos, piezas, puertos como `DockingTarget`, exclusión y radio). `modules/station/data/structure.ts`: `POLANA_LAYOUT` con sus fuentes.
 - **Acople generalizado** (`modules/mothership`): `DockingTarget` es cualquier cosa con un puerto (la nodriza o un puerto de la estación). `Docking` acepta varios destinos, sabe a cuál está acoplada (`dockedTo`) y el asistente vuela al más cercano o al que se le pida (`assistTo`). `approachSpeed` es el perfil de frenado del asistente, compartido con `Berthing`, el caso de uso con el que la nodriza (que no vuela en el bucle de 120 Hz) se acerca a un puerto y se juzga el contacto con los mismos límites IDSS. La geometría de exclusión pasó a `flight/domain/keep-out.ts` y la usan la nodriza y la estación.
-- **Navegación**: `NavTarget` es ahora `AsteroidTarget | DockTarget`. `Navigator` planea el viaje a un puerto (`probeDockTrip`), pasa al asistente de acople al llegar (estado `docking` y luego `docked`) y, si la nodriza lleva la sonda, la lleva hasta el puerto de la nodriza y la acopla (`CarrierPort.berth`). Valores de juego en `navigation/application/dock-trip.ts`.
+- **Navegación**: `NavTarget` es ahora `AsteroidTarget | DockTarget`. `Navigator` planea el viaje a un puerto (`probeDockTrip`), pasa al asistente de acople al llegar (estado `docking` y luego `docked`) y, si la nodriza lleva el módulo, lo lleva hasta el puerto de la nodriza y la acopla (`CarrierPort.berth`). Valores de juego en `navigation/application/dock-trip.ts`.
 - Interior: `modules/station/domain/interior.ts` y `data/interior.ts` (volúmenes, esclusa, máquinas → pestañas), `src/station-interior.ts` y `adapters/three/interior/station-rooms.ts`.
 - Adaptadores: `adapters/three/station-model.ts` (`StationModel` construido desde `POLANA_LAYOUT`, y `StationScene` dentro del hangar), `src/station-screen.ts` (pestañas y retos), `src/station-dock.ts` (el botón «Revisar tareas», el acceso `?dev` y los destinos del mapa) y `src/ui/nav-dock-card.ts` (ficha del mapa).
 - Cambios en archivos compartidos con la planta de propelente: `celestial/data/bennu.ts` (nitrógeno), `celestial/domain/resources.ts` (peso 0), `ship/domain/ship.ts` (`refuel`), `mothership/domain/mothership.ts` (`refuel`), `chores/domain/chore.ts` (tipo `repostar`), `station/domain/interior.ts` y `data/interior.ts` (la refinería abre la planta), `station-interior.ts`, `station-screen.ts`, `ui/nav-map.ts` (nombre del nitrógeno), `ui/style.css` y `main.ts`.
@@ -192,26 +192,26 @@ Los **propulsores de la nodriza** siguen la misma regla en la pestaña **Nodriza
 
 ## Capturas
 
-`docs/screenshots/refineria-*-{mobile,desktop}.png` (iPhone 13 y 1280 × 800): 1 Repostar con la sonda y la nodriza atracadas, 2 primer reto (cuánto NTO), 3 reto de la presión del regulador, 4 trasvase en marcha, 5 planta de propelente, 6 cola de la línea de repostaje. La sonda y la nodriza se atracan y se vacían en parte por código para la captura.
+`docs/screenshots/refineria-*-{mobile,desktop}.png` (iPhone 13 y 1280 × 800): 1 Repostar con el módulo y la nodriza atracados, 2 primer reto (cuánto NTO), 3 reto de la presión del regulador, 4 trasvase en marcha, 5 planta de propelente, 6 cola de la línea de repostaje. El módulo y la nodriza se atracan y se vacían en parte por código para la captura.
 
-`docs/screenshots/estacion-atraque-*-{desktop,mobile}.png` (iPhone 13 y 1280 × 800): 1 cabina en la salida (sin botón), 2 ficha de la estación en el mapa, 3 primer reto del viaje, 4 la nodriza en viaje, 5 nodriza atracada con el botón «Revisar tareas», 6 vista exterior, 7 pantalla de la estación, 8 la nodriza atracada vista desde fuera, 9 la sonda acoplando en el puerto de la sonda, 10 y 11 sonda acoplada a la estación.
+`docs/screenshots/estacion-atraque-*-{desktop,mobile}.png` (iPhone 13 y 1280 × 800): 1 cabina en la salida (sin botón), 2 ficha de la estación en el mapa, 3 primer reto del viaje, 4 la nodriza en viaje, 5 nodriza atracada con el botón «Revisar tareas», 6 vista exterior, 7 pantalla de la estación, 8 la nodriza atracada vista desde fuera, 9 el módulo acoplando en el puerto del módulo, 10 y 11 módulo acoplado a la estación.
 
 Capturas anteriores:
 
-`docs/screenshots/estacion-*-{desktop,mobile}.png`, de 0 (cabina y estación vista por la ventana) a 7 (bahía con pieza disponible y pieza bloqueada). La sonda se coloca junto a la estación por código, porque aún no hay piloto automático.
+`docs/screenshots/estacion-*-{desktop,mobile}.png`, de 0 (cabina y estación vista por la ventana) a 7 (bahía con pieza disponible y pieza bloqueada). El módulo se coloca junto a la estación por código, porque aún no hay piloto automático.
 
 ## Preguntas abiertas para Berón
 
 - **Acceso solo atracado** (resuelto): el botón aparece solo acoplada o a menos de 400 m. Queda abierto si las piezas del hangar se montan solo estando allí o si la nodriza lleva un almacén propio. Hoy la bahía de la nave sigue cogiendo piezas del hangar desde cualquier sitio.
 - **¿400 m o solo acoplada?** Hoy basta con estar a menos de 400 m. ¿Lo dejamos así o exigimos estar acoplada?
-- **Interior con la nodriza atracada.** El interior de la nodriza solo se abre con la sonda acoplada a la nodriza. Si la sonda está en el puerto de la estación y la nodriza también está atracada, ¿se puede pasar andando por la estación?
+- **Interior con la nodriza atracada.** El interior de la nodriza solo se abre con el módulo acoplado a la nodriza. Si el módulo está en el puerto de la estación y la nodriza también está atracada, ¿se puede pasar andando por la estación?
 - **Kits importados.** ¿Cómo se consiguen más: comercio con el santuario, misiones de Nevaeh o, más adelante, fabricar electrónica?
 - **Usos del agua y del oxígeno.** Ahora la planta los usa para hidrógeno, hidracina y NTO, pero sobran. ¿Rellenan el soporte vital de la nodriza, o hacen propelente (H₂/O₂ con un motor nuevo)? ¿Se repone el pienso o el medio de cultivo con carbono?
 - **Importados de propelente.** El MMH, el LMP-103S, el helio y el xenón solo llegan importados, y la estación empieza con una carga. ¿Cómo llegan más: misiones de Nevaeh, comercio, un carguero periódico?
 - **Nitrógeno escaso.** Una bodega de Bennu da ~1,4 kg de N: ~1,1 kg de hidracina o ~3,8 kg de NTO. ¿Lo dejamos así (es lo real) o buscamos asteroides más ricos en nitrógeno? ¿Una bodega mayor para la roca?
 - **Repostar sin trasvase visible.** El propelente entra al final del trasvase, de golpe. ¿Lo queremos poco a poco? ¿Bloqueamos el desacople mientras la manguera está conectada? Hoy, si la nave se va, el propelente vuelve al almacén.
 - **Energía de la estación.** La planta da los kWh de cada lote, pero la estación no tiene balance de energía (sus alas dan ~124 kW). ¿Lo añadimos, de modo que la electrólisis compita con las demás máquinas?
-- **Sondas.** La sonda fabricada se queda en el hangar. ¿Qué hace: prospectar asteroides antes del duelo, transportar carga, servir de nodo de la nano_net?
+- **Sondas.** El módulo fabricada se queda en el hangar. ¿Qué hace: prospectar asteroides antes del duelo, transportar carga, servir de nodo de la nano_net?
 - **Montaje fallido.** Si se fallan los retos de fabricar, no se pierde material. ¿Queremos que se pierda una parte (desecho)?
 - **Propulsores de la nodriza.** ¿Damos a la nodriza tanques de argón o de kriptón para que el VASIMR (y el X3 con kriptón) sirvan de algo, o quitamos el plano del VX-200 hasta entonces? ¿Mezclar tipos en un mismo módulo? ¿Encender a media potencia (los Hall se pueden regular) en vez de solo unidades enteras?
 - **Colisión con la estación** (resuelto): la estación es un obstáculo y tiene dos puertos IDSS.

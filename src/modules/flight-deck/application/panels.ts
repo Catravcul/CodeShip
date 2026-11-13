@@ -347,8 +347,8 @@ export function alerts(p: { prop: PropulsionPanel; life: LifePanel; dock: Dockin
   if (p.life.wellbeing < T.wellbeingCaution) out.push({ level: "caution", panel: "life", text: `${p.life.crewName}: bienestar bajo` });
   if (p.life.foodRatio < T.foodCaution) out.push({ level: "advisory", panel: "life", text: "El huerto no cubre la comida" });
   if (p.life.spinFraction < 0.999) out.push({ level: "advisory", panel: "life", text: p.life.spinningUp ? "Anillos acelerando" : "Anillos frenando" });
-  if (!p.dock.docked) out.push({ level: "advisory", panel: "dock", text: "Sonda fuera" });
-  if (p.dock.probe && p.dock.probe.hullIntegrity < 0.5) out.push({ level: "caution", panel: "dock", text: "Casco de la sonda dañado" });
+  if (!p.dock.docked) out.push({ level: "advisory", panel: "dock", text: "Módulo fuera" });
+  if (p.dock.probe && p.dock.probe.hullIntegrity < 0.5) out.push({ level: "caution", panel: "dock", text: "Casco del módulo dañado" });
   if (p.nav.status === "failed") out.push({ level: "caution", panel: "nav", text: "Plan de viaje rechazado" });
   if (p.comms.unread > 0) out.push({ level: "advisory", panel: "comms", text: `${p.comms.unread} mensaje${p.comms.unread > 1 ? "s" : ""} sin leer` });
   const rank: Record<Level, number> = { warning: 0, caution: 1, advisory: 2, nominal: 3 };

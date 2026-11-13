@@ -4,8 +4,11 @@ Berón preguntó dónde se personaliza la nave. La respuesta es una **segunda es
 
 ## Cómo se llega
 
-- **Desde la cabina:** botón **Bahía de la nave** en la barra de vuelo, o la tecla **B**.
-- **Desde el módulo habitable:** por la escotilla con marco ámbar de la pared izquierda, entre la enfermería y la esterilla de yoga. Al acercarse aparece **Entrar en la bahía de la nave**.
+Desde la fase 1 de accesos ([accesos.md](accesos.md)) la bahía está **solo en la estación**:
+
+- **Consola de la bahía** en el Nodo 2 (pared de babor, junto a las escotillas de atraque), o la tecla **B** dentro de la estación.
+- **Pantalla de la estación**, pestaña **Hangar**: botón **Abrir la bahía de la nave**.
+- Ya no hay botón en la cabina del módulo de aterrizaje ni escotilla en el módulo habitable de la nodriza (allí hay ahora una consola de navegación). Las piezas de la nodriza solo se cambian con la nodriza atracada en la estación.
 - **Volver** (o Esc) devuelve a donde estabas. Mientras estás en la bahía, la nave sigue a la deriva sin órdenes, igual que con el interior abierto.
 
 ## Qué se ve
@@ -71,7 +74,7 @@ Cuando una fuente da un rango, se usa el empuje nominal de la clase y el extremo
 
 ## Preguntas abiertas para Berón
 
-- ~~**Escala.**~~ Resuelto: el módulo habitable y la cubierta de cultivo están en la nave nodriza. La bahía tiene dos pestañas, **Sonda** y **Nodriza** ([nave-nodriza.md](nave-nodriza.md)).
+- ~~**Escala.**~~ Resuelto: el módulo habitable y la cubierta de cultivo están en la nave nodriza. La bahía tiene dos pestañas, **Módulo** (de aterrizaje) y **Nodriza** ([nave-nodriza.md](nave-nodriza.md)).
 - **Montaje fallido.** El diseño original decía que, si fallas, la pieza queda mal montada y rinde menos. Ahora la pieza vieja se queda. ¿Queremos el estado «mal montada» con su reto de reparar?
 - **Coste de las piezas.** Hoy cambiar una pieza solo cuesta resolver los retos. ¿Deberían salir de la bodega, de lo que cede un asteroide persuadido, o de un puerto?
 - **Energía.** Resuelto: hay balance de energía y autonomía de batería (ver `componentes.md`).

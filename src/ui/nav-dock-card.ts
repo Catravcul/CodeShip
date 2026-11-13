@@ -18,17 +18,17 @@ export function dockCardHtml(i: DockDestinationInfo, note: string): string {
   const lim = IDSS_CONTACT_LIMITS;
   const badges = `${i.selected ? `<span class="badge target">Destino actual</span>` : ""}${i.docked ? `<span class="badge ok">Acoplada</span>` : ""}${i.carrierDocked ? `<span class="badge ok">Nodriza atracada</span>` : ""}`;
   const travel = c
-    ? `nodriza ${km(c.plan.distanceM)} · Δv ${num(c.plan.deltaVMS, c.plan.deltaVMS < 10 ? 2 : 0)} m/s · ${num(c.facts.propellantKg)} kg de xenón · ${duration(c.plan.totalS)}<br><small>para a ${km(DOCK_TRIP.berthStandoffM)} en el eje del puerto y acopla sola a ${num(DOCK_TRIP.contactMs, 2)} m/s, con la sonda a bordo</small>`
+    ? `nodriza ${km(c.plan.distanceM)} · Δv ${num(c.plan.deltaVMS, c.plan.deltaVMS < 10 ? 2 : 0)} m/s · ${num(c.facts.propellantKg)} kg de xenón · ${duration(c.plan.totalS)}<br><small>para a ${km(DOCK_TRIP.berthStandoffM)} en el eje del puerto y acopla sola a ${num(DOCK_TRIP.contactMs, 2)} m/s, con el módulo acoplado</small>`
     : p.feasible
-      ? `sonda ${km(p.distanceM)}${trip.waypoints.length > 1 ? ` (${trip.waypoints.length - 1} desvío${trip.waypoints.length > 2 ? "s" : ""})` : ""} · crucero ${num(p.cruiseMS)} m/s · Δv ${num(p.deltaVMS)} m/s · ${duration(p.totalS)}<br><small>para a ${km(DOCK_TRIP.handoverM)} en el eje del puerto; el asistente de acople hace el resto</small>`
+      ? `módulo ${km(p.distanceM)}${trip.waypoints.length > 1 ? ` (${trip.waypoints.length - 1} desvío${trip.waypoints.length > 2 ? "s" : ""})` : ""} · crucero ${num(p.cruiseMS)} m/s · Δv ${num(p.deltaVMS)} m/s · ${duration(p.totalS)}<br><small>para a ${km(DOCK_TRIP.handoverM)} en el eje del puerto; el asistente de acople hace el resto</small>`
       : "sin combustible para el viaje";
-  const ports = t.carrierPort ? "Dos puertos IDSS: uno para la sonda (abajo) y otro para la nodriza (delante)" : "Puerto IDSS bajo el nodo delantero";
+  const ports = t.carrierPort ? "Dos puertos IDSS: uno para el módulo de aterrizaje (abajo) y otro para la nodriza (delante)" : "Puerto IDSS bajo el nodo delantero";
   const can = !i.docked;
   return `
     <div class="card-name">${esc(t.name)} ${badges}</div>
     <dl>
       <dt>Qué es</dt><dd>${esc(t.what)}</dd>
-      <dt>Distancia</dt><dd>${km(i.distanceM)} al puerto de la sonda</dd>
+      <dt>Distancia</dt><dd>${km(i.distanceM)} al puerto del módulo</dd>
       <dt>Atraque</dt><dd>${ports} <small>paso de 800 mm, como los adaptadores IDA de la ISS</small></dd>
       <dt>Contacto</dt><dd>${num(lim.closingMinMs, 2)}–${num(lim.closingMaxMs, 2)} m/s · lateral ≤ ${num(lim.lateralMisalignM, 2)} m · inclinación ≤ ${num(lim.angularMisalignDeg)}° <small>límites IDSS</small></dd>
       <dt>Viaje</dt><dd>${i.docked ? "ya estás acoplada aquí" : travel}</dd>

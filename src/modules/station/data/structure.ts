@@ -31,7 +31,7 @@ const MODULES: PressurisedModule[] = [
   { id: "nodo-1", label: "Nodo 1", kind: "nodo", from: new Vec3(0, 0, -NODE1_HALF), to: new Vec3(0, 0, NODE1_HALF), radiusM: NODE_R, basis: "Como el nodo Unity de la ISS", source: S.unity },
   { id: "habitat", label: "Módulo habitable", kind: "habitat", from: new Vec3(0, 0, -NODE1_HALF), to: new Vec3(0, 0, NODE2_FROM), radiusM: 1.5, basis: "Como el HALO del Gateway lunar", source: S.halo },
   { id: "nodo-2", label: "Nodo 2 (atraque)", kind: "nodo", from: new Vec3(0, 0, NODE2_FROM), to: new Vec3(0, 0, NODE2_TO), radiusM: NODE_R, basis: "Otro nodo como Unity, con los dos puertos de atraque", source: S.unity },
-  { id: "ida-sonda", label: "Adaptador de atraque de la sonda", kind: "adaptador", from: new Vec3(0, -NODE_R, NODE2_MID), to: new Vec3(0, -NODE_R - IDA_H, NODE2_MID), radiusM: IDA_R, basis: "Como un IDA de la ISS (norma IDSS)", source: S.ida },
+  { id: "ida-sonda", label: "Adaptador de atraque del módulo de aterrizaje", kind: "adaptador", from: new Vec3(0, -NODE_R, NODE2_MID), to: new Vec3(0, -NODE_R - IDA_H, NODE2_MID), radiusM: IDA_R, basis: "Como un IDA de la ISS (norma IDSS)", source: S.ida },
   { id: "ida-nodriza", label: "Adaptador de atraque de la nodriza", kind: "adaptador", from: new Vec3(0, 0, NODE2_TO), to: new Vec3(0, 0, NODE2_TO - IDA_H), radiusM: IDA_R, basis: "Como un IDA de la ISS (norma IDSS)", source: S.ida },
   {
     id: "fabrica",
@@ -93,7 +93,7 @@ const PARTS: StructurePart[] = [
  * wings and the radiators.
  */
 const PORTS: StationPortSpec[] = [
-  { id: "estacion-puerto-sonda", name: "Estación (puerto de la sonda)", user: "sonda", position: new Vec3(0, -NODE_R - IDA_H, NODE2_MID), normal: new Vec3(0, -1, 0), forward: new Vec3(0, 0, -1) },
+  { id: "estacion-puerto-sonda", name: "Estación (puerto del módulo)", user: "sonda", position: new Vec3(0, -NODE_R - IDA_H, NODE2_MID), normal: new Vec3(0, -1, 0), forward: new Vec3(0, 0, -1) },
   { id: "estacion-puerto-nodriza", name: "Estación (puerto de la nodriza)", user: "nodriza", position: new Vec3(0, 0, NODE2_TO - IDA_H), normal: new Vec3(0, 0, -1), forward: new Vec3(0, -1, 0) },
 ];
 

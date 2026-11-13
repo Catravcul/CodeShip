@@ -2,7 +2,7 @@
 
 Petición de Berón (2026-11-12): en una nave real no hay gravedad; solo se consigue haciendo girar un anillo o un cilindro. El hábitat y la cubierta de cultivo van en un anillo que gira. La cabina, la bahía y el eje central no giran y allí se flota.
 
-**Actualización (2026-11-12):** los anillos ya no van sobre la Explorer. Ahora son de la **nave nodriza**, y la Explorer pasa a ser una sonda ligera que se acopla con ella. Ver [nave-nodriza.md](nave-nodriza.md). Las cifras del anillo de este documento no cambian.
+**Actualización (2026-11-12):** los anillos ya no van sobre la Explorer. Ahora son de la **nave nodriza**, y la Explorer pasa a ser un módulo de aterrizaje ligero que se acopla con ella. Ver [nave-nodriza.md](nave-nodriza.md). Las cifras del anillo de este documento no cambian.
 
 ## La física
 
@@ -65,9 +65,9 @@ Se eligió **1 g a 4 rpm con 56 m**. Es el límite alto, defendido por Globus y 
 Antes los anillos iban en un mástil sobre la Explorer, de 3 × 2 × 5 m, con una licencia de masa: el vuelo solo contaba los ~680 kg del casco. Berón eligió la opción 2, nave nodriza y módulo de aterrizaje ([nave-nodriza.md](nave-nodriza.md)):
 
 - Los dos anillos giran alrededor de la **espina de la nodriza** (eje z). La nodriza no se posa nunca, así que el problema de chocar con el asteroide desaparece.
-- La nodriza pesa unas **877 t** con el xenón, según un presupuesto de masas estimado partida a partida. La sonda vuelve a pesar lo que se ve (≈ 680 kg). La licencia de masa ya no hace falta.
+- La nodriza pesa unas **877 t** con el xenón, según un presupuesto de masas estimado partida a partida. El módulo de aterrizaje vuelve a pesar lo que se ve (≈ 680 kg). La licencia de masa ya no hace falta.
 - El anillo gemelo pesa lo mismo que el habitable, porque necesita el mismo momento de inercia para que el momento angular total sea cero (test en `mothership.test.ts`).
-- Cámaras: la cámara **Nodriza** muestra la sonda y la nodriza con los anillos girando, y sustituye a la antigua cámara «Anillo».
+- Cámaras: la cámara **Nodriza** muestra el módulo y la nodriza con los anillos girando, y sustituye a la antigua cámara «Anillo».
 
 ## Zonas del interior
 
@@ -77,7 +77,7 @@ Antes los anillos iban en un mástil sobre la Explorer, de 3 × 2 × 5 m, con un
 | Radio (ascensor de 52 m) | Baja con la altura: 0,82 g a 46 m del eje, 0,47 g a 26 m… | ▲▼ o R/F; carteles con la gravedad cada 10 m |
 | Nudo del eje (aún gira) | 0,018 g a 1 m del eje | Flota y nota una pequeña deriva hacia fuera, más Coriolis |
 | Espina (no gira, tras el cojinete) | 0 g | Flota: mando *Flotar* en la dirección de la mirada, ▲▼ (R/F, Espacio/Mayús); el pasamanos frena la deriva |
-| Cabina de la sonda | 0 g | Se llega por la escotilla al final de la espina, a través del puerto de acople. Solo con la sonda acoplada |
+| Cabina del módulo | 0 g | Se llega por la escotilla al final de la espina, a través del puerto de acople. Solo con el módulo acoplado |
 
 - El **ascensor** va despacio a propósito. A 2 m/s, Coriolis empuja de lado 2ωv = 1,7 m/s² (0,17 g), y el HUD lo muestra. Por eso el viaje dura medio minuto.
 - Si se elige una tarea desde el eje, Doménica baja sola por el radio y luego camina.
@@ -86,7 +86,7 @@ Antes los anillos iban en un mástil sobre la Explorer, de 3 × 2 × 5 m, con un
 
 ## Salud: tiempo en ingravidez
 
-En microgravedad los huesos pierden de media **entre el 1 y el 1,5 % de su densidad al mes** (NASA, https://www.nasa.gov/reference/risk-of-spaceflight-induced-bone-changes/), además de músculo. En el juego el efecto es pequeño: fuera del anillo la **forma** de Doménica baja un poco más deprisa, 0,05 al día a 0 g (ajuste de juego, proporcional a 1 − g). El HUD cuenta los días que pasa en ingravidez. Pilotar desde la cabina cuenta como ingravidez, también todo el tiempo que la sonda está fuera de la nodriza, y el yoga en el anillo lo compensa.
+En microgravedad los huesos pierden de media **entre el 1 y el 1,5 % de su densidad al mes** (NASA, https://www.nasa.gov/reference/risk-of-spaceflight-induced-bone-changes/), además de músculo. En el juego el efecto es pequeño: fuera del anillo la **forma** de Doménica baja un poco más deprisa, 0,05 al día a 0 g (ajuste de juego, proporcional a 1 − g). El HUD cuenta los días que pasa en ingravidez. Pilotar desde la cabina cuenta como ingravidez, también todo el tiempo que el módulo está fuera de la nodriza, y el yoga en el anillo lo compensa.
 
 ## Pendiente
 

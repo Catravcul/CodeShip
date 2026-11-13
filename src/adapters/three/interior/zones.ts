@@ -39,14 +39,19 @@ export class GravityZones {
   private readonly keys = new Set<string>();
   private readonly ui: HTMLElement;
   private readonly actionBtn: HTMLButtonElement;
+  private readonly actionBtn2: HTMLButtonElement;
+  private action2: (() => void) | null = null;
   private readonly throwBtn: HTMLButtonElement;
   private action: (() => void) | null = null;
   private ball: { mesh: THREE.Mesh; points: THREE.Vector3[]; t: number; total: number; note: string } | null = null;
   private readonly ballMesh = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 8), new THREE.MeshStandardMaterial({ color: 0xf2d32c, roughness: 0.6 }));
   private view = { yaw: 0, pitch: 0, pos: new THREE.Vector3() };
   enabled = false;
-  /** Called when she goes through the hatch at the end of the spine. */
-  onCockpit?: () => void;
+  /**
+   * The docking hatches at the end of the spine, as they are now: down to the lander when it is
+   * docked here, across to the station when the ship is berthed there. Empty: the hatch is shut.
+   */
+  endHatches?: () => readonly { label: string; go: () => void }[];
   /** Called at the side hatch of the spine module that leads to the mothership's flight deck. */
   onFlightDeck?: () => void;
 
@@ -65,11 +70,13 @@ export class GravityZones {
     scene.add(this.ballMesh);
     this.ui = document.createElement("div");
     this.ui.className = "zones-ui";
-    this.ui.innerHTML = `<button class="zone-btn hidden"></button><button class="throw-btn hidden">Lanzar pelota</button><div class="updown hidden"><button class="zg-up" aria-label="Subir">▲</button><button class="zg-down" aria-label="Bajar">▼</button></div>`;
+    this.ui.innerHTML = `<button class="zone-btn hidden"></button><button class="zone-btn zone-btn2 hidden"></button><button class="throw-btn hidden">Lanzar pelota</button><div class="updown hidden"><button class="zg-up" aria-label="Subir">▲</button><button class="zg-down" aria-label="Bajar">▼</button></div>`;
     container.appendChild(this.ui);
     this.actionBtn = this.ui.querySelector(".zone-btn")!;
     this.throwBtn = this.ui.querySelector(".throw-btn")!;
+    this.actionBtn2 = this.ui.querySelector(".zone-btn2")!;
     this.actionBtn.addEventListener("click", () => this.action?.());
+    this.actionBtn2.addEventListener("click", () => this.action2?.());
     this.throwBtn.addEventListener("click", () => this.throwBall());
     for (const [cls, dir] of [
       [".zg-up", 1],
@@ -135,7 +142,9 @@ export class GravityZones {
     this.spoke.car.position.y = this.zone === "radio" ? this.carY : this.zone === "eje" ? L.topY : 0;
     // Context button.
     this.action = null;
+    this.action2 = null;
     let label = "";
+    let label2 = "";
     if (!busy && this.zone === "anillo" && Math.hypot(pos.x - L.x, pos.z - L.z) < 1.25) {
       label = "Subir al eje por el radio";
       this.action = () => this.ride("up", pos);
@@ -146,14 +155,29 @@ export class GravityZones {
       label = "Ir al puente de mando";
       this.action = () => this.onFlightDeck?.();
     } else if (this.zone === "eje" && this.p.x > L.moduleEndX - 2.5) {
-      label = "Ir a la cabina de la sonda";
-      this.action = () => this.onCockpit?.();
+      const [a, b] = this.endHatches?.() ?? [];
+      if (a) [label, this.action] = [a.label, a.go];
+      if (b) [label2, this.action2] = [b.label, b.go];
+      if (!a && this.p.x > L.moduleEndX - 1.2) label = "Escotilla cerrada: no hay nada acoplado";
     }
-    this.actionBtn.classList.toggle("hidden", !this.action);
+    this.actionBtn.classList.toggle("hidden", !label);
+    this.actionBtn.classList.toggle("info", !this.action);
     this.actionBtn.textContent = label;
+    this.actionBtn2.classList.toggle("hidden", !this.action2);
+    if (this.actionBtn2.textContent !== label2) this.actionBtn2.textContent = label2;
     this.throwBtn.classList.toggle("hidden", busy || this.zone !== "anillo" || this.ring.omegaRadS === 0);
     this.ui.querySelector(".updown")!.classList.toggle("hidden", this.zone === "anillo");
     document.body.classList.toggle("in-zero-g", this.enabled && this.zone === "eje");
+  }
+
+  /** Come aboard through the docking hatch at the end of the spine (floating, weightless). */
+  arriveAtHatch(): void {
+    const L = this.layout;
+    this.zone = "eje";
+    this.autoDown = false;
+    this.p.set(L.moduleEndX - 1.6, L.axisY, L.z);
+    this.v.set(0, 0, 0);
+    this.say("Entras por la escotilla de la espina: 0 g. El anillo está al otro lado del eje");
   }
 
   /** Go back down to the ring (also used when a chore is picked from the hub). */

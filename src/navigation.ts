@@ -31,8 +31,9 @@ const PHASE: Record<AutopilotPhase, string> = {
 const km = (m: number) => (m >= 1000 ? `${num(m / 1000, 1)} km` : `${num(m)} m`);
 
 /**
- * Cockpit side of navigation: the map (flight-bar button «Mapa» or M), the trip challenges in the
- * shared challenge sheet and the autopilot strip with its progress and «Tomar el mando».
+ * Navigation: the map (on the travel ship's flight deck, NAV page or M there), the trip challenges in
+ * the shared challenge sheet and the autopilot strip with its progress and «Tomar el mando». The
+ * lander's cockpit has no map (docs/design/accesos.md): M there only says where the map is.
  */
 export class NavigationMode {
   readonly map: NavMap;
@@ -43,8 +44,10 @@ export class NavigationMode {
   private message: { text: string; cls: string; until: number } | null = null;
   private lastStatus: string;
   private refreshAt = 0;
-  /** Set by main: whether the cockpit is showing (not inside, in the bay, on EVA or in a duel). */
+  /** Set by main: whether the map may open here as an overlay (it may not in the lander's cockpit). */
   canOpen: () => boolean = () => true;
+  /** Set by main: M was pressed where the map cannot open. */
+  onBlocked?: () => void;
 
   constructor(
     root: HTMLElement,
@@ -84,6 +87,7 @@ export class NavigationMode {
     if (this.toggleOverride?.()) return;
     if (this.map.visible) this.map.close();
     else if (this.canOpen()) this.map.open();
+    else this.onBlocked?.();
   }
 
   /** Open the trip challenges for the current target. */
@@ -142,10 +146,10 @@ export class NavigationMode {
     const now = performance.now();
     if (nav.status !== this.lastStatus) {
       if (nav.status === "arrived") this.flash(`Llegada: a ${km(nav.approachM)} de ${nav.target.name}. Tienes los mandos: aterriza y entra en su mente`, "done", 10);
-      if (nav.status === "autopilot" && this.lastStatus === "carrier") this.flash("La nodriza ha aparcado: la sonda se desacopla y sigue sola", "done");
-      if (nav.status === "docked") this.flash(this.lastStatus === "carrier" ? `La nodriza ha atracado en ${nav.target.name} con la sonda a bordo` : `Acoplada a ${nav.target.name}`, "done", 10);
+      if (nav.status === "autopilot" && this.lastStatus === "carrier") this.flash("La nodriza ha aparcado: el módulo de aterrizaje se desacopla y sigue solo", "done");
+      if (nav.status === "docked") this.flash(this.lastStatus === "carrier" ? `La nodriza ha atracado en ${nav.target.name} con el módulo de aterrizaje acoplado` : `Módulo acoplado a ${nav.target.name}`, "done", 10);
       if (nav.status === "manual" && this.lastStatus === "docking") this.flash("Acople cancelado: tienes los mandos", "bad");
-      if (nav.status === "failed") this.flash("El plan no compila: vuela a mano o vuelve a programarlo desde el mapa", "bad");
+      if (nav.status === "failed") this.flash("El plan no compila: vuela a mano o vuelve a programarlo desde el mapa de la nave de viaje", "bad");
       if (nav.status === "manual" && this.lastStatus === "autopilot") this.flash("Mando manual: el piloto automático se ha desconectado", "bad");
       this.lastStatus = nav.status;
     }

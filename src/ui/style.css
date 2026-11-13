@@ -67,8 +67,8 @@ body.in-duel .banner, body.in-duel .hud, body.in-duel .touch-left, body.in-duel 
 
 /* --- Interior (habitat module) ------------------------------------------ */
 body.in-interior .hud, body.in-interior .help, body.in-interior .reticle, body.in-interior .banner, body.in-interior .action, body.in-interior .touch { display: none !important; }
-.mode-btn { position: fixed; top: 12px; right: 12px; z-index: 6; padding: 10px 14px; font: inherit; font-size: 14px; color: #bfefff; background: #0b2a36dd; border: 1px solid #7fdcff66; border-radius: 10px; }
-body.in-duel .mode-btn { display: none; }
+.mode-btn { position: fixed; top: 12px; right: 12px; z-index: 6; padding: 10px 14px; font: inherit; font-size: 14px; font-weight: 700; color: #001018; background: #9fe8c4; border: 0; border-radius: 10px; box-shadow: 0 0 14px #3fd09a66; }
+body.in-duel .mode-btn, body.in-interior .mode-btn { display: none; }
 .interior-ui.hidden, .interior-ui .hidden { display: none !important; }
 .ihud { position: fixed; top: 12px; left: 12px; width: min(230px, 55vw); color: #e6f6ff; font-size: 12px; text-shadow: 0 1px 2px #000; pointer-events: none; z-index: 4; }
 .ihud .ititle { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: #7fdcff; margin-bottom: 4px; }
@@ -126,6 +126,7 @@ body.in-cockpit .flight-bar { display: flex; }
 body.in-cockpit .cam-tag.on { display: block; }
 .hud .thrust { color: #7fdcff88; }
 .hud .thrust.on { color: #ffd8a0; }
+.hud .mail { color: #ffd76a; opacity: 1; }
 @media (pointer: coarse) { .pilot-look { left: auto; right: 18px; margin-left: 0; bottom: 280px; } }
 
 /* Challenge sheet: the status (title, meters, feedback) and the buttons stay visible while scrolling. */
@@ -162,6 +163,7 @@ body.ui-compact .duel.sheet .submit { min-height: 42px; font-size: 15px; }
 .board-head .chip { flex: none; font: inherit; font-size: 12px; color: #cfe8f5; background: #13243a; border: 1px solid #2c4a6a; border-radius: 999px; padding: 5px 10px; }
 .board-head .chip small { opacity: 0.7; }
 .board-head .chip.on { background: #7fdcff; color: #06202b; border-color: #7fdcff; }
+.board-head [data-missions] { margin-left: auto; margin-right: 8px; font-size: 13px; padding: 6px 10px; border: 1px solid #e0b84a; border-radius: 8px; color: #ffd76a; }
 /* --- Ship bay (engineering station): exterior view, part list and spec sheet ---- */
 body.in-bay .hud, body.in-bay .help, body.in-bay .reticle, body.in-bay .banner, body.in-bay .action, body.in-bay .touch, body.in-bay .mode-btn, body.in-bay .flight-bar, body.in-bay .cam-tag, body.in-bay .pilot-look { display: none !important; }
 .bay-ui.hidden { display: none !important; }
@@ -267,6 +269,8 @@ body.in-duel .help { display: none; }
 
 /* Gravity zones: spoke elevator and the floating hub (docs/design/gravedad.md) */
 .zone-btn { position: fixed; left: 50%; bottom: 210px; transform: translateX(-50%); z-index: 6; padding: 12px 20px; font: inherit; font-size: 15px; color: #001018; background: #9fe8c4; border: 0; border-radius: 14px; box-shadow: 0 0 18px #3fd09a88; white-space: nowrap; }
+.zone-btn2 { bottom: 266px; background: #ffd76a; box-shadow: 0 0 18px #e0b84a88; }
+.zone-btn.info { background: #2a3540; color: #cfe8f5; box-shadow: none; }
 .throw-btn { position: fixed; right: 12px; top: 196px; z-index: 6; padding: 8px 12px; font: inherit; font-size: 13px; color: #1a1400; background: #f2d32c; border: 0; border-radius: 10px; }
 .updown { position: fixed; right: 158px; bottom: 30px; z-index: 6; display: flex; flex-direction: column; gap: 10px; }
 .updown button { width: 54px; height: 54px; border-radius: 50%; font-size: 20px; color: #e6f6ff; background: #0b2a36dd; border: 1px solid #7fdcff88; touch-action: none; user-select: none; -webkit-user-select: none; }
@@ -275,7 +279,6 @@ body.in-zero-g .walk-stick span { visibility: hidden; }
 body.in-zero-g .walk-stick::after { content: "Flotar"; position: absolute; left: 0; right: 0; top: -20px; text-align: center; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #9fe8c4; text-shadow: 0 1px 2px #000; pointer-events: none; }
 /* Mothership docking (docs/design/nave-nodriza.md) */
 .banner.docking { color: #ffe7a8; text-shadow: 0 0 6px #ffb34788; }
-.mode-btn.off { opacity: 0.55; border-style: dashed; }
 .flight-bar button.on { color: #7dffb0; border-color: #7dffb0aa; }
 .bay-tabs { position: fixed; top: 52px; left: 12px; z-index: 7; display: flex; gap: 6px; }
 .bay-tabs button { padding: 7px 12px; font: inherit; font-size: 13px; color: #bfefff; background: #0b2a36cc; border: 1px solid #7fdcff66; border-radius: 10px; }
@@ -317,14 +320,4 @@ body.in-station .hud, body.in-station .help, body.in-station .reticle, body.in-s
 .st-job.run { border-color: #7fdcff88; }
 .bay-act.locked { background: #ffffff14; color: #bcd; }
 .flight-bar .estacion-btn { color: #1a0f00; background: #ffd27f; border-color: #ffd27f; }
-/* «Revisar tareas de la estación»: only near the station; above the touch pads, in the thumb's reach. */
-.station-dock-btn { position: fixed; left: 50%; bottom: 150px; transform: translateX(-50%); z-index: 6; display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 56px; padding: 10px 22px; font: inherit; color: #1a0f00; background: #ffd27f; border: 0; border-radius: 14px; box-shadow: 0 0 22px #ffb34788; }
-.station-dock-btn b { font-size: 16px; }
-.station-dock-btn small { font-size: 11.5px; opacity: 0.8; }
-.station-dock-btn.hidden, body.in-station .station-dock-btn, body.in-map .station-dock-btn, body.in-duel .station-dock-btn, body.in-bay .station-dock-btn, body.in-interior .station-dock-btn, body.in-eva .station-dock-btn { display: none; }
-/* Phones: left column above the touch pads (the flight bar keeps the right); the autopilot strip moves up over it. */
-@media (pointer: coarse) {
-  .station-dock-btn { left: 8px; transform: none; bottom: calc(232px + env(safe-area-inset-bottom)); width: calc(56vw - 8px); padding: 8px 10px; }
-  .station-dock-btn b { font-size: 14px; }
-  body.station-near .autopilot-tag { bottom: calc(304px + env(safe-area-inset-bottom)); }
-}
+@media (max-width: 600px) { .mode-btn { max-width: 44vw; padding: 8px 12px; font-size: 13px; line-height: 1.25; } }

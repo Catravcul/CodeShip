@@ -50,7 +50,7 @@ const TRIP: Record<string, string> = {
   idle: "Sin viaje programado",
   programming: "Programando el viaje",
   carrier: "La nodriza viaja",
-  autopilot: "La sonda sigue sola",
+  autopilot: "El módulo sigue solo",
   arrived: "Llegada",
   manual: "Mando manual",
   failed: "El plan no compila",
@@ -88,7 +88,7 @@ interface Views {
  * status bar always on top and six display pages (navigation, propulsion, power/thermal, life,
  * docking, radio) fed by the flight-deck view-models. Wide screens show all six at once and each
  * one works in place; on a phone they are tiles and a tap opens one full screen. The navigation
- * page is the same NavMap as the cockpit overlay, mounted in the panel.
+ * page holds the NavMap: the map and trip programming live only on the travel ship (docs/design/accesos.md).
  */
 export class FlightDeck {
   readonly camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.5, 2e6);
@@ -98,13 +98,15 @@ export class FlightDeck {
   private readonly sections = new Map<PanelId, HTMLElement>();
   private readonly mapHost: HTMLElement;
   private readonly window: HTMLElement;
+  /** The nano_net status button on the status bar (main hands it to the nano_net panel). */
+  readonly nanoBtn: HTMLButtonElement;
   private maxed: PanelId | null = null;
   private letter: string | null = null;
   private refreshAt = 0;
   private html = new Map<string, string>();
   private lastStatus = "";
   active = false;
-  /** Where Doménica came from: the hub of the interior or the probe's cockpit. */
+  /** Where Doménica goes back to: the spine of the interior (or, at a trip's handover, the lander's cockpit). */
   from: "interior" | "cabina" = "interior";
   /** Leave the deck, back to `to`. Set by main. */
   onExit?: (to: "interior" | "cabina", why?: string) => void;
@@ -116,7 +118,7 @@ export class FlightDeck {
     this.ui = document.createElement("div");
     this.ui.className = "fd hidden";
     this.ui.innerHTML = `
-      <div class="fd-status"><b class="fd-title">Puente · ${esc(deps.mothership.name)}</b><div class="fd-items"></div><div class="fd-alerts"></div><button class="fd-exit">Volver</button></div>
+      <div class="fd-status"><b class="fd-title">Puente · ${esc(deps.mothership.name)}</b><div class="fd-items"></div><div class="fd-alerts"></div><button class="fd-nano">nano_net</button><button class="fd-exit">Volver</button></div>
       <div class="fd-window" aria-hidden="true"><span>Ventana de proa</span></div>
       <div class="fd-console">${PANELS.map(
         ([id, label, code]) => `<section class="fd-panel" data-panel="${id}" style="grid-area:${id}">
@@ -126,6 +128,7 @@ export class FlightDeck {
     root.appendChild(this.ui);
     this.status = this.ui.querySelector(".fd-status")!;
     this.window = this.ui.querySelector(".fd-window")!;
+    this.nanoBtn = this.ui.querySelector(".fd-nano")!;
     for (const [id] of PANELS) {
       const s = this.ui.querySelector<HTMLElement>(`[data-panel="${id}"]`)!;
       this.sections.set(id, s);
@@ -297,7 +300,7 @@ export class FlightDeck {
     // At the parking point the probe undocks and flies on: the pilot goes down to it.
     if (this.lastStatus === "carrier" && st === "autopilot") {
       this.lastStatus = st;
-      return this.leave("cabina", "La nodriza ha aparcado: bajas a la sonda, que sigue sola hacia el destino");
+      return this.leave("cabina", "La nodriza ha aparcado: bajas al módulo de aterrizaje, que sigue solo hacia el destino");
     }
     this.lastStatus = st;
     const now = performance.now();
@@ -340,7 +343,7 @@ export class FlightDeck {
         ["Empuje", `${num(v.prop.thrustNowN, 1)} N`],
         ["Red", `${num(v.power.electricKw / 1000, 1)} MWe`],
         ["Anillo", `${num(v.life.floorG, 2)} g`],
-        ["Sonda", v.dock.docked ? "acoplada" : "fuera"],
+        ["Módulo", v.dock.docked ? "acoplado" : "fuera"],
       ]
         .map(([k, x]) => `<span><small>${k}</small>${x}</span>`)
         .join(""),
@@ -368,7 +371,7 @@ export class FlightDeck {
   private tripLine(n: NavPanel): string {
     const t = n.trip;
     if (!t) return TRIP[n.status] ?? n.status;
-    return `${t.vehicle === "carrier" ? "Nodriza" : "Sonda"} ${PHASE[t.phase] ?? t.phase} · ${num(t.speedMS, t.speedMS < 1 ? 2 : 1)} m/s · faltan ${km(t.remainingM)} · ${duration(t.etaS)}`;
+    return `${t.vehicle === "carrier" ? "Nodriza" : "Módulo"} ${PHASE[t.phase] ?? t.phase} · ${num(t.speedMS, t.speedMS < 1 ? 2 : 1)} m/s · faltan ${km(t.remainingM)} · ${duration(t.etaS)}`;
   }
 
   /** Tile (phone grid): destination and trip, no map. */
@@ -434,8 +437,8 @@ export class FlightDeck {
   private dockHtml(d: DockingPanel, full: boolean): string {
     const probe = d.probe;
     const state = d.docked
-      ? `<div class="fd-big ok">Acoplada · ganchos cerrados</div>${d.portName ? `<div class="fd-line">${esc(d.portName)}</div>` : ""}`
-      : `<div class="fd-big">Sonda a ${km(d.rangeM)}</div><div class="fd-line">${d.portName ? `Puerto: ${esc(d.portName)} · ` : ""}${d.assist ? "Asistente de acople activo" : "Vuelo manual"}</div>`;
+      ? `<div class="fd-big ok">Módulo acoplado · ganchos cerrados</div>${d.portName ? `<div class="fd-line">${esc(d.portName)}</div>` : ""}`
+      : `<div class="fd-big">Módulo a ${km(d.rangeM)}</div><div class="fd-line">${d.portName ? `Puerto: ${esc(d.portName)} · ` : ""}${d.assist ? "Asistente de acople activo" : "Vuelo manual"}</div>`;
     const checks = d.checks.length
       ? `<table class="fd-checks">${d.checks.map((c) => `<tr class="${c.ok ? "ok" : "bad"}"><td>${c.label}</td><td>${num(c.value, 2)} ${c.unit}</td><td><small>${c.limit}</small></td><td>${c.ok ? "✓" : "✗"}</td></tr>`).join("")}</table>`
       : "";
@@ -443,7 +446,7 @@ export class FlightDeck {
     if (!full) return head;
     const fails = d.lastFailures.length ? `<p class="fd-note">Último contacto: ${esc(d.lastFailures.join(" · "))}</p>` : "";
     const tanks = probe ? `<div class="fd-kv">${probe.propellants.map((t) => `<span>${esc(t.label)}</span><b>${num(t.kg)} / ${num(t.capacityKg)} kg</b>`).join("")}</div>` : "";
-    return `${head}${tanks}${checks}${fails}<p class="fd-hint">Límites de contacto del estándar IDSS. La sonda se acopla y desacopla desde su cabina (K).</p>${this.sources(d.sources)}`;
+    return `${head}${tanks}${checks}${fails}<p class="fd-hint">Límites de contacto del estándar IDSS. El módulo de aterrizaje se acopla y desacopla desde su cabina (K).</p>${this.sources(d.sources)}`;
   }
 
   private commsHtml(c: CommsPanel, full: boolean): string {

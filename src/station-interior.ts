@@ -25,8 +25,10 @@ export interface StationInteriorDeps {
   partName(id: string): string;
   /** Open a tab of the station's task screen. */
   openPanel(panel: StationPanel): void;
-  /** Leave through a docking hatch, or back to the cockpit; returns why not, if she cannot. */
-  leave(to: PortUser | "cabina"): string | void;
+  /** Open the ship bay (its console in node 2, or B). */
+  openBay(): void;
+  /** Leave through a docking hatch; returns why not, if she cannot. */
+  leave(to: PortUser): string | void;
 }
 
 /**
@@ -91,7 +93,8 @@ export class StationInteriorMode {
     this.ui.querySelector(".sti-tasks")!.addEventListener("click", () => this.deps.openPanel("materiales"));
     this.ui.querySelector(".sti-back")!.addEventListener("click", () => {
       if (this.suited) return this.say("Primero vuelve a la esclusa y quítate el traje");
-      const why = this.deps.leave("cabina");
+      // «Salir» goes back through the hatch she came in by: the only way out is a docked vehicle.
+      const why = this.deps.leave(this.from);
       if (why) this.say(why);
     });
     this.viewBtn.addEventListener("click", () => {
@@ -119,6 +122,7 @@ export class StationInteriorMode {
       if (!this.active) return;
       this.keys.add(e.code);
       if (e.code === "Enter" && !e.repeat && this.near) this.use(this.near, true);
+      if (e.code === "KeyB" && !e.repeat && !this.suited) this.deps.openBay();
     });
     window.addEventListener("keyup", (e) => this.keys.delete(e.code));
     // A short tap on a machine or rack uses it (dragging looks around).
@@ -146,7 +150,7 @@ export class StationInteriorMode {
     this.yaw = Math.atan2(-e.facing.x, -e.facing.z);
     this.pitch = from === "sonda" ? 0.05 : 0;
     this.resume();
-    this.say(from === "sonda" ? "Entras por el suelo del Nodo 2. Aquí no hay gravedad: el techo es «arriba» en toda la estación" : "Entras desde la nodriza por proa del Nodo 2. Aquí no hay gravedad: el techo es «arriba»");
+    this.say(from === "sonda" ? "Entras desde el módulo de aterrizaje por el suelo del Nodo 2. Aquí no hay gravedad: el techo es «arriba» en toda la estación" : "Entras desde la nodriza por proa del Nodo 2. Aquí no hay gravedad: el techo es «arriba»");
   }
 
   /** Show it again after the station screen (same place). */
@@ -208,7 +212,8 @@ export class StationInteriorMode {
   private actionLabel(f: Fixture): string {
     const a = f.action;
     if (a.kind === "panel") return `${f.label}: abrir ${PANEL_NAME[a.panel]}`;
-    if (a.kind === "salir") return a.to === "sonda" ? "Volver a la sonda" : "Volver a la nodriza";
+    if (a.kind === "salir") return a.to === "sonda" ? "Volver al módulo de aterrizaje" : "Pasar a la nodriza";
+    if (a.kind === "bahia") return "Abrir la bahía de la nave";
     if (a.kind === "esclusa") return this.suited ? "Llenar la esclusa y quitarse el traje" : "Ponerse el traje y vaciar la esclusa";
     return `${f.label}: ¿qué es?`;
   }
@@ -230,6 +235,7 @@ export class StationInteriorMode {
       return this.deps.openPanel(a.panel);
     }
     if (a.kind === "info") return this.say(`${f.label} (${this.interior.locationCode(f)}): ${f.info}`, 6);
+    if (a.kind === "bahia") return this.deps.openBay();
     if (!close) return this.say(`${f.label}: acércate para usarla`);
     if (a.kind === "salir") {
       if (this.suited) return this.say("Con el traje no: vuelve a la esclusa");

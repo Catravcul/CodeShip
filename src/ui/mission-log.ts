@@ -10,9 +10,10 @@ const STATE: Record<MissionState, string> = { activa: "Activa", hecha: "Hecha", 
 const KIND = { asteroide: "asteroide", luna: "luna", planeta: "planeta" } as const;
 
 /**
- * The mission log («Misiones»), reachable from the cockpit and the map: Nevaeh's main missions by
- * chapter (done, active, locked), the side missions (every other asteroid) and her letters, so a
- * mission can be read without going inside to the radio.
+ * The mission log («Misiones»), reachable on the travel ship: from the flight deck's COMM page, the
+ * map and the radio (docs/design/accesos.md). Nevaeh's main missions by chapter (done, active,
+ * locked), the side missions (every other asteroid) and her letters. In the lander's cockpit only
+ * the notice toast shows (it does not open the log there).
  */
 export class MissionLogPanel {
   readonly el: HTMLElement;
@@ -23,6 +24,8 @@ export class MissionLogPanel {
   /** Set by main: show a target on the map (closes the log). */
   onShowOnMap?: (targetId: string) => void;
   onClose?: () => void;
+  /** Set by main: whether the log can open here (a tap on the toast elsewhere only dismisses it). */
+  canOpen: () => boolean = () => true;
 
   constructor(
     root: HTMLElement,
@@ -36,7 +39,7 @@ export class MissionLogPanel {
     this.toast.className = "ml-toast";
     this.toast.addEventListener("click", () => {
       this.toast.classList.remove("on");
-      this.open();
+      if (this.canOpen()) this.open();
     });
     root.appendChild(this.toast);
     this.el.addEventListener("click", (e) => {

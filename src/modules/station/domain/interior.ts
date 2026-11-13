@@ -54,6 +54,8 @@ export type FixtureAction =
   | { readonly kind: "panel"; readonly panel: StationPanel }
   | { readonly kind: "info" }
   | { readonly kind: "salir"; readonly to: PortUser }
+  /** The ship bay: configure the parts of the docked ships (docs/design/accesos.md). */
+  | { readonly kind: "bahia" }
   | { readonly kind: "esclusa" };
 
 /** Something mounted in a module: a machine, a rack, a hatch. */

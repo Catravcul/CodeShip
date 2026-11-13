@@ -12,11 +12,12 @@ export class Hud {
     root.appendChild(this.el);
     const help = document.createElement("div");
     help.className = "help";
-    help.innerHTML = `<b>Controles</b><br>W/S avanzar/retroceder · A/D lateral · R/F subir/bajar<br>Flechas cabeceo/guiñada · Q/E alabeo<br>Espacio motor principal · T asistente de rotación · G asistente de aterrizaje · K acople<br>C cambia cámara · V centra la vista · X acelera el tiempo<br><i>Para aterrizar, la panza (el tren) debe mirar al suelo; la cámara ventral ayuda.</i><br><i>Los RCS empujan poco (unas centésimas de m/s²): fíjate en el polvo y en la velocidad. El motor principal empuja unas diez veces más; las cifras de cada pieza están en la bahía.</i>`;
+    help.innerHTML = `<b>Controles</b><br>W/S avanzar/retroceder · A/D lateral · R/F subir/bajar<br>Flechas cabeceo/guiñada · Q/E alabeo<br>Espacio motor principal · T asistente de rotación · G asistente de aterrizaje · K acople<br>C cambia cámara · V centra la vista · X acelera el tiempo<br><i>Para aterrizar, la panza (el tren) debe mirar al suelo; la cámara ventral ayuda.</i><br><i>Los RCS empujan poco (unas centésimas de m/s²): fíjate en el polvo y en la velocidad. El motor principal empuja unas diez veces más; las cifras de cada pieza están en la bahía de la estación.</i><br><i>El mapa, los viajes y las misiones están en el puente de la nave de viaje; la bahía, en la estación. Se pasa de uno a otro acoplando el módulo.</i>`;
     root.appendChild(help);
   }
 
-  render(t: Telemetry, assist: boolean, propellantKg: number[], thrust = ""): void {
+  /** `unreadMissions`: Nevaeh's news waiting in the travel ship's mission log (only a reminder here). */
+  render(t: Telemetry, assist: boolean, propellantKg: number[], thrust = "", unreadMissions = 0): void {
     const v = t.relativeVelocityBody;
     const w = t.angularVelocityBody;
     const closing = t.closingSpeed;
@@ -33,6 +34,7 @@ export class Hud {
         .join("")}
       <div class="row ${t.hullIntegrity < 0.5 ? "warn" : ""}">Casco ${fmt(t.hullIntegrity * 100, 0)}%${t.landed ? " · anclada" : ""}</div>
       <div class="row ${assist ? "ok" : "warn"}">Asistente de rotación ${assist ? "ON" : "OFF"}</div>
-      <div class="row thrust ${thrust ? "on" : ""}">${thrust ? `▶ ${thrust}` : "propulsores en reposo"}</div>`;
+      <div class="row thrust ${thrust ? "on" : ""}">${thrust ? `▶ ${thrust}` : "propulsores en reposo"}</div>
+      ${unreadMissions ? `<div class="row small mail">● ${unreadMissions === 1 ? "Novedad" : `${unreadMissions} novedades`} en Misiones · en la nave de viaje</div>` : ""}`;
   }
 }

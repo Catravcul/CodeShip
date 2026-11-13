@@ -11,7 +11,7 @@ import { textSign } from "./sign";
  */
 export const ROOM = { halfW: 2, halfL: 6, height: 2.6 } as const;
 
-export type StationId = "huerto" | "cocina" | "procesado" | "biorreactor" | "enfermeria" | "panel" | "yoga" | "ejercicio" | "camarote" | "gatos" | "gallinero" | "terreno" | "perros" | "bahia";
+export type StationId = "huerto" | "cocina" | "procesado" | "biorreactor" | "enfermeria" | "panel" | "yoga" | "ejercicio" | "camarote" | "gatos" | "gallinero" | "terreno" | "perros" | "navegacion";
 
 /** Station anchor points the player walks to (floor position + where to look). */
 export interface Station {
@@ -30,8 +30,8 @@ export const STATIONS: readonly Station[] = [
   { id: "biorreactor", label: "Laboratorio de carne cultivada", stand: V(-0.3, 0, -0.4), look: V(1.6, 1.15, -0.4) },
   { id: "enfermeria", label: "Enfermería", stand: V(0.5, 0, 1.3), look: V(-1.5, 0.75, 0.6) },
   { id: "panel", label: "Mente de la nave", stand: V(0.5, 0, 2.0), look: V(1.95, 1.4, 2.0) },
-  // Hatch on the left wall to the ship bay (engineering station, see src/ship-bay.ts).
-  { id: "bahia", label: "Bahía de la nave", stand: V(-1.1, 0, 2.75), look: V(-2, 1.3, 2.75) },
+  // Navigation console on the left wall: repeats the flight deck (map, trips, missions, nano_net).
+  { id: "navegacion", label: "Consola de navegación", stand: V(-1.1, 0, 2.75), look: V(-2, 1.3, 2.75) },
   { id: "yoga", label: "Esterilla de yoga", stand: V(0, 0, 3.0), look: V(0, 0.6, 4.0) },
   // Crew end: Doménica's cabin (her letters are read there, like the ISS crew quarters' laptop).
   { id: "camarote", label: "Camarote de Doménica", stand: V(-0.55, 0, 3.95), look: V(-1.7, 0.9, 4.25) },
@@ -232,11 +232,17 @@ export function buildRoom(): RoomHandles {
   const panel = screen(1.4, 0.9, halfW - 0.04, 1.4, 2.0, -Math.PI / 2);
   g.add(panel, boxAt(0.03, 1.0, 1.5, mat(0x30343c), halfW - 0.02, 1.4, 2.0));
 
-  // --- Hatch to the ship bay: a door with a window and an amber frame -----------------------------
-  g.add(boxAt(0.06, 1.95, 0.9, mat(0x7c8796, { metalness: 0.5 }), -halfW + 0.04, 0.975, 2.75));
-  g.add(boxAt(0.02, 0.4, 0.5, new THREE.MeshStandardMaterial({ color: 0x050812, emissive: 0x0a1630 }), -halfW + 0.08, 1.45, 2.75));
-  for (const dz of [-0.47, 0.47]) g.add(boxAt(0.03, 1.95, 0.04, glow(0xffb347, 0.8), -halfW + 0.07, 0.975, 2.75 + dz));
-  g.add(boxAt(0.03, 0.04, 0.98, glow(0xffb347, 0.8), -halfW + 0.07, 1.97, 2.75));
+  // --- Navigation console: a dark map screen with a few lit targets, on a grey wall panel -----------
+  // The ship bay is not here any more: it is at the station (docs/design/accesos.md).
+  g.add(boxAt(0.06, 1.1, 0.9, mat(0x7c8796, { metalness: 0.5 }), -halfW + 0.04, 1.3, 2.75));
+  g.add(boxAt(0.02, 0.7, 0.78, new THREE.MeshStandardMaterial({ color: 0x050812, emissive: 0x0a1630 }), -halfW + 0.08, 1.35, 2.75));
+  for (const [dy, dz, c] of [[0.15, -0.2, 0x58d6ff], [-0.1, 0.12, 0x58d6ff], [0.05, 0.28, 0xffb347], [-0.2, -0.25, 0x58d6ff]] as const)
+    g.add(boxAt(0.02, 0.04, 0.04, glow(c, 1.2), -halfW + 0.095, 1.35 + dy, 2.75 + dz));
+  g.add(boxAt(0.03, 0.04, 0.9, glow(0x58d6ff, 0.6), -halfW + 0.07, 0.72, 2.75));
+  const navSign = textSign("Navegación · mapa y misiones");
+  navSign.scale.multiplyScalar(0.6);
+  navSign.position.set(-halfW + 0.1, 2.05, 2.75);
+  g.add(navSign);
 
   // --- Exercise corner: yoga mat across the aisle, treadmill, bike and resistance rack ------------
   // Copies of the ISS countermeasure devices (T2, CEVIS, ARED); at 1 g they need no harness or straps.

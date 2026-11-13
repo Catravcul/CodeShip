@@ -20,4 +20,4 @@ export const STARTING_STOCK = { agua: 40, hierro: 30, niquel: 5, carbono: 6, cer
 /** The mothership (rings, farm deck, life on board), parked near Bennu. Mass is filled in at start. */
 export const MOTHERSHIP_CRAFT: Craft = { id: "nodriza", name: "Nodriza", kind: "nave", massKg: 0, docked: false, note: "Anillos, huerto y vida a bordo" };
 /** The Explorer: the light probe the player flies, which docks on the mothership. */
-export const EXPLORER_CRAFT: Craft = { id: "explorador", name: "Explorador", kind: "sonda", massKg: 0, docked: false, note: "La sonda que pilotas" };
+export const EXPLORER_CRAFT: Craft = { id: "explorador", name: "Explorador", kind: "sonda", massKg: 0, docked: false, note: "El módulo de aterrizaje que pilotas" };

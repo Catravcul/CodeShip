@@ -23,7 +23,7 @@ export const FACE_LETTER: Readonly<Record<Face, string>> = { suelo: "D", techo: 
 
 /** Tabs of the station's task screen a machine can open. */
 /** A tab of the station screen, or the propellant plant inside Materiales. */
-export type StationPanel = "materiales" | "planos" | "fabricacion" | "hangar" | "propelente";
+export type StationPanel = "materiales" | "planos" | "fabricacion" | "hangar" | "propelente" | "vida";
 
 /** An axis-aligned box in the station's body frame. */
 export interface Box {

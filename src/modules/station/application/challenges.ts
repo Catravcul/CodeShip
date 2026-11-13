@@ -10,23 +10,23 @@ const hash = (s: string) => {
   for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
   return h >>> 0;
 };
-const block = (id: string, pseudo: string, js = toCall(pseudo)): CodeBlock => ({ id, pseudo, js });
+export const block = (id: string, pseudo: string, js = toCall(pseudo)): CodeBlock => ({ id, pseudo, js });
 
-function choice(id: string, concept: Concept, skill: ChoiceExercise["skill"], idea: string, question: string, code: readonly CodeBlock[], right: string, wrong: readonly string[]): ChoiceExercise {
+export function choice(id: string, concept: Concept, skill: ChoiceExercise["skill"], idea: string, question: string, code: readonly CodeBlock[], right: string, wrong: readonly string[]): ChoiceExercise {
   const options = [...new Set(wrong.filter((w) => w !== right))];
   const at = hash(id) % (options.length + 1);
   options.splice(at, 0, right);
   return { kind: "choice", id, concept, skill, idea, question, code, options, correct: at };
 }
 
-function order(id: string, idea: string, steps: readonly string[]): OrderExercise {
+export function order(id: string, idea: string, steps: readonly string[]): OrderExercise {
   const blocks = steps.map((s, i) => block(String.fromCharCode(97 + i), s));
   return { kind: "order", id, concept: 1, idea, blocks, solution: blocks.map((b) => b.id) };
 }
 
 /** Spanish number: up to two decimals, comma. */
 export const fmtKg = (v: number): string => (Math.round(v * 100) / 100).toLocaleString("es-ES", { maximumFractionDigits: 2 });
-const jsNum = (v: number) => String(Math.round(v * 100) / 100);
+export const jsNum = (v: number) => String(Math.round(v * 100) / 100);
 const camel = (id: string) => id.replace(/-(\w)/g, (_, c: string) => c.toUpperCase());
 
 /** The input the blueprint needs most of (imported kits aside). */

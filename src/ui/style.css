@@ -303,7 +303,7 @@ body.in-station .hud, body.in-station .help, body.in-station .reticle, body.in-s
 .st-head span { font-size: 12px; opacity: 0.9; }
 .st-panel { position: fixed; z-index: 6; left: 0; right: 0; bottom: 0; height: 58vh; box-sizing: border-box; display: flex; flex-direction: column; background: #0a1220f2; border-top: 1px solid #7fdcff44; border-radius: 16px 16px 0 0; color: #e6f6ff; font-size: 13px; }
 @media (min-aspect-ratio: 1/1) { .st-panel { top: 0; left: auto; width: min(440px, 44vw); height: auto; padding-top: 56px; border-top: 0; border-left: 1px solid #7fdcff44; border-radius: 0; } }
-.st-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 8px 10px 6px; border-bottom: 1px solid #7fdcff22; }
+.st-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 8px 10px 6px; border-bottom: 1px solid #7fdcff22; }
 .st-tabs button { min-height: 40px; padding: 6px 2px; font: inherit; font-size: 12.5px; color: #9fc3d8; background: #13243a; border: 1px solid #2c4a6a; border-radius: 10px; }
 .st-tabs button.on { color: #001018; background: #7fdcff; border-color: #7fdcff; font-weight: 600; }
 .st-body { flex: 1; overflow-y: auto; padding: 8px 12px 18px; display: flex; flex-direction: column; gap: 6px; }

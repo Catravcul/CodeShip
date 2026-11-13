@@ -14,6 +14,15 @@ const VALUE: Record<string, number> = {
   "Silicates (phyllosilicates)": 0,
   // A trace (0.24 wt%) in every carbonaceous asteroid: it makes none richer than another.
   "Nitrogen (in ammonium salts and organics)": 0,
+  // A comet's ice (docs/design/importacion.md): water is propellant and life; nitrogen is the scarcest thing out here.
+  "Water ice": 10,
+  "Carbon dioxide ice": 3,
+  // CO sublimates near 25 K: it boils away before the station can keep it.
+  "Carbon monoxide ice": 0,
+  "Ammonia (ice and ammonium salts)": 15,
+  "Other volatiles (H2S, O2, CH3OH…)": 0,
+  "Refractory organics (CHON)": 5,
+  "Silicates and sulfides (dust)": 0,
 };
 
 const mid = (e: CompositionEntry) => (e.massFraction.value[0] + e.massFraction.value[1]) / 2;

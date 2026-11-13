@@ -81,3 +81,8 @@ body:has(.interior-ui .board:not(.hidden)) .vstick { display: none !important; }
 @media (min-width: 900px) {
   body.in-cockpit.wrath-on .radio-toast { top: auto; bottom: 170px; }
 }
+
+/* While a challenge is open nothing else can be used: hide every vehicle control and context chip so the
+   camera stays as clear as possible (designer, 2026-11-13: the probe's controls kept showing in HUD mode). */
+body.in-duel .probe-ui, body.in-duel .bar-toggle, body.in-duel .region-tag, body.in-duel .ctx-dock,
+body.in-duel .trip-chip, body.in-duel .rapport-chip, body.in-duel .autopilot-tag, body.in-duel .eva-btn { display: none !important; }

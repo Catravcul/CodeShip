@@ -66,6 +66,7 @@ const stationFor = (c: Chore): Station["id"] => {
 const choreText = (c: Chore): SessionText => ({
   title: c.title,
   progress: c.kind === "yoga" ? "Posturas" : "Pasos",
+  lives: "Intentos",
   order: c.kind === "programar-animal" ? "Ordena su programa" : "Ordena los pasos",
   submit: "Hacerlo",
   ok: c.kind === "yoga" ? "Entras en la postura" : c.kind === "cocinar" ? "Paso hecho" : "Bien hecho",

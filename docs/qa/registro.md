@@ -104,9 +104,9 @@ caso y las anteriores quedan en sus run logs.
 | CV-15 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-05** cerrado; botón bloqueado en `hc-pedido-sin-creditos-mobile.png` |
 | CV-16 | No aplica | | | No hay partidas guardadas (**HC-06**) |
 | CV-17 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-03** cerrado: el aviso dura 5 s reales en el tramo ×60 |
-| PX-01 | Probado (en vivo) | 2026-11-13 | `b07c800` | [run](runs/2026-11-13-1111-PX-01.md): 34 OK |
+| PX-01 | Probado (en vivo) | 2026-11-13 | `8eaa0bb` | [run](runs/2026-11-13-1415-PX-01-PX-03.md): 34 OK |
 | PX-02 | Probado (en vivo) | 2026-11-13 | `d6b05e0` | [run](runs/2026-11-13-1100-PX-01-PX-02-PX-03-PX-04-PX-05.md): 11 OK |
-| PX-03 | Probado (en vivo) | 2026-11-13 | `d6b05e0` | [run](runs/2026-11-13-1100-PX-01-PX-02-PX-03-PX-04-PX-05.md): 15 OK |
+| PX-03 | Probado (en vivo) | 2026-11-13 | `8eaa0bb` | [run](runs/2026-11-13-1415-PX-01-PX-03.md): 15 OK |
 | PX-04 | Probado (en vivo) | 2026-11-13 | `d6b05e0` | [run](runs/2026-11-13-1100-PX-01-PX-02-PX-03-PX-04-PX-05.md): 22 OK |
 | PX-05 | Probado (en vivo) | 2026-11-13 | `d6b05e0` | [run](runs/2026-11-13-1100-PX-01-PX-02-PX-03-PX-04-PX-05.md): 22 OK |
 
@@ -116,6 +116,8 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-13 14:15 | PX-01, PX-03 | Experiencia (Playwright) | 2/2 recorridos bien | [run](runs/2026-11-13-1415-PX-01-PX-03.md) |
+| 2026-11-13 14:06 | PX-01 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-13-1406-PX-01.md) |
 | 2026-11-13 11:11 | PX-01 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-13-1111-PX-01.md) |
 | 2026-11-13 11:00 | PX-01, PX-02, PX-03, PX-04, PX-05 | Experiencia (Playwright) | 5/5 recorridos bien | [run](runs/2026-11-13-1100-PX-01-PX-02-PX-03-PX-04-PX-05.md) |
 | 2026-11-13 12:00 | CV-01 a CV-17, EST-05 (decisiones HC-01 a HC-05 y B-02) | Vitest (`npx vitest run src/qa`) y Playwright iPhone 13 | 32 OK · 0 `.fails`; en vivo 3 capturas sin errores de página | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md) |

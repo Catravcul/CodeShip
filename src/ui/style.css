@@ -37,7 +37,16 @@ body.in-duel .banner, body.in-duel .hud, body.in-duel .touch-left, body.in-duel 
 /* Hits and failures as written readouts, in the cockpit HUD's speed style (monospace, glow, big number):
    green once there is a hit; failures pale at 0, amber after one, red when one more loses the challenge.
    A changed number pulses. Failures only ever count up: a wrong answer is never un-marked. */
-.duel-stats { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 22px; }
+.meter { display: flex; align-items: center; gap: 4px; font-size: 12px; }
+.meter .label { flex: 0 0 90px; opacity: 0.8; text-align: left; }
+.meter .cell { flex: 1; height: 10px; border-radius: 3px; background: #ffffff1a; }
+.meter.persuasion .cell.on { background: #7dffb0; box-shadow: 0 0 8px #7dffb0aa; }
+.meter.patience .cell.on { background: #ffb347; box-shadow: 0 0 8px #ffb347aa; }
+.duel-meters { display: flex; flex-direction: column; gap: 4px; }
+/* The written readouts are the HUD view's; the panel keeps its meters. */
+.duel-stats { display: none; }
+body.ui-compact .duel .duel-meters { display: none; }
+body.ui-compact .duel .duel-stats { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 22px; }
 .stat { font-size: 14px; color: #bfefff; text-shadow: 0 0 6px #00b7ff88; letter-spacing: 0.02em; white-space: nowrap; }
 .stat b { display: inline-block; font-size: 24px; font-weight: 700; line-height: 1.1; }
 .stat .lbl { font-size: 12px; opacity: 0.75; }
@@ -162,7 +171,10 @@ body.in-cockpit .cam-tag.on { display: block; }
 
 /* HUD challenge UI (setting): no panel. The challenge floats over the 3D scene like the cockpit HUD:
    bare text with a dark halo, see-through buttons, the scene visible behind everything. */
-body.ui-compact .duel, body.ui-compact .duel.sheet { inset: 0; width: auto; border-radius: 0; background: none; background-color: transparent; backdrop-filter: none; pointer-events: none; justify-content: flex-end; gap: 8px; padding-top: 140px; }
+body.ui-compact .duel, body.ui-compact .duel.sheet { inset: 0; width: auto; border-radius: 0; background: none; background-color: transparent; backdrop-filter: none; pointer-events: none; justify-content: flex-start; gap: 8px; padding-top: 140px; }
+/* Bottom-anchored but scrollable: a flexible spacer pushes short sheets down and shrinks to zero when the
+   content is taller than the screen (justify-content: flex-end would push the overflow off the top, unreachable). */
+body.ui-compact .duel::before { content: ""; flex: 1 1 auto; }
 body.ui-compact .duel > *, body.ui-compact .duel button, body.ui-compact .duel a { pointer-events: auto; }
 body.ui-compact .duel { color: #d8f6ff; text-shadow: 0 0 3px #000, 0 0 10px #000c; }
 body.ui-compact .duel .duel-top { position: fixed; top: 10px; left: 12px; right: 12px; margin: 0; padding: 0; gap: 4px; background: none; box-shadow: none; max-width: 520px; }

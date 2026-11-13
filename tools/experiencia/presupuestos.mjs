@@ -8,6 +8,9 @@ export const JOURNEYS = [
   { id: "PX-03", name: "mision", title: "Misión 1 de Nevaeh: carta, registro, las tres fases en Bennu y duelo con un fallo" },
   { id: "PX-04", name: "acciones-movil", title: "Botones de cada pantalla de un iPhone 13 (390×664 visibles de 390×844): capturas, solapes y objetivos de toque", mobile: true, throttle: 1 },
   { id: "PX-05", name: "acciones-escritorio", title: "Botones de cada pantalla a 1280×800: capturas y solapes", mobile: false, throttle: 1 },
+  { id: "PX-06", name: "aterrizaje-programa", title: "Programar: un paso del viaje se dibuja al acertarlo; la sonda aterriza en Bennu por programa con toques (un fallo)" },
+  { id: "PX-07", name: "aterrizaje-manual", title: "Aterrizar a mano: indicadores X/Y/Z con colores, sitio en la cámara ventral, vz en rojo si cae deprisa" },
+  { id: "PX-08", name: "aterrizaje-escritorio", title: "A 1280×800: indicadores del módulo y aterrizaje del módulo por programa con clics", mobile: false },
 ];
 
 /**

@@ -58,6 +58,10 @@ Columna QA: cómo se comprueba jugando, o «Solo test» si no tiene sentido hace
 | VUE-03 | El asistente de acople mete el módulo en el puerto dentro de los límites IDSS; un contacto fuera de límites rebota y dice por qué; acoplado, ignora el empuje y se suelta con el muelle | `docking.test.ts`, `mothership.test.ts` | Jugar: K, botón Acople |
 | VUE-04 | La nodriza atraca sola en la estación dentro de IDSS y sus anillos y radiadores no tocan la estación | `berthing.test.ts`, `dock-trip.test.ts` | Jugar: viaje a «Estación» con el módulo acoplado |
 | VUE-05 | Propulsión de la nodriza: 18 X3 en los 2 MWe, Δv y xenón de su presupuesto de masas | `propulsion.test.ts`, `mothership.test.ts`, `panels.test.ts` | Solo test |
+| VUE-06 | Indicadores de aterrizaje: X (derecha) e Y (adelante) tumbados en el suelo y Z la vertical local, también inclinada o de lado; el punto de toque previsto sale de la deriva y la velocidad de bajada | `landing-frame.test.ts` | PX-07: indicadores en la cabina, sitio en la cámara ventral |
+| VUE-07 | Colores de los indicadores frente a los límites de `contact.ts`: verde hasta 2/3, ámbar hasta el límite, rojo después; la bajada segura es 0,10 m/s + √(2·a·0,5·h) y en el contacto vale el límite de 0,10 m/s; inclinación con 30° | `landing-frame.test.ts` | PX-07: vz en rojo cayendo a 4 m/s a 40 m |
+| VUE-08 | Aterrizaje por programa: cadena de cinco retos con los números reales del descenso (sitio, deriva del suelo por el giro, curva de frenado con el RCS, frenado final, anclas) | `landing-program.test.ts` | PX-06, PX-08 |
+| VUE-09 | El ordenador de descenso posa el módulo en su sitio dentro de los límites; un fallo lo posa fuera del centro, dos rebotan sin daño (se reprograma), tres no cargan; tocar los mandos devuelve el control; la oferta solo aparece en la zona de aproximación (< 450 m) | `landing-program.test.ts` | PX-08: el módulo se posa por programa |
 
 ### Navegación, mapa y viajes comprimidos (NAV)
 
@@ -69,6 +73,7 @@ Columna QA: cómo se comprueba jugando, o «Solo test» si no tiene sentido hace
 | NAV-04 | Viaje comprimido: nunca más de 75 s reales; el tope se reparte entre los tramos; la cámara rápida se ajusta a la estimación | `travel-time.test.ts`, `carrier-trip.test.ts`, `navigator.test.ts` | Jugar: viaje de la nodriza a 242916, cronometrar |
 | NAV-05 | Con el módulo acoplado la nodriza hace el tramo largo y suelta el módulo cerca; solo un viaje comprimido a la vez | `carrier-trip.test.ts`, `dock-trip.test.ts` | Jugar: con la sonda de viaje, intentar programar la nodriza |
 | NAV-06 | Región: límite suave, rocas como obstáculos, cielo con efemérides de JPL, LOD de las rocas | `region.test.ts`, `orbit.test.ts`, `sky.test.ts`, `lod.test.ts`, `asteroid.test.ts`, `asteroid-field.test.ts` | Solo test |
+| NAV-07 | Cada paso bien respondido al programar un viaje (sonda, módulo, nodriza) o un aterrizaje se dibuja al momento: ruta, empuje, llegada, punto de frenado; sitio, deriva, curva de descenso, frenado final, anclas; cerrar los retos lo borra | `plan-sketch.test.ts` | PX-06: «Ruta trazada» y «Sitio fijado» |
 
 ### Sonda (SON)
 
@@ -78,6 +83,7 @@ Columna QA: cómo se comprueba jugando, o «Solo test» si no tiene sentido hace
 | SON-02 | El brazo solo la agarra lenta y cerca de la bahía; vuelve cargada | `probe-ops.test.ts`, `probe-trip.test.ts` | Jugar: volver a la nodriza |
 | SON-03 | Se pierde por escombros, radiación o batería (~15 h); la siguiente ocupa su sitio; la estación repone el bastidor | `probe-ops.test.ts` | Solo test |
 | SON-04 | Viaje largo de la sonda: retos, vuela sola en cámara rápida y espera a ~300 m (posarla es manual); tocar los mandos devuelve el control | `probe-trip.test.ts` | Jugar: Programar viaje a… |
+| SON-05 | La sonda aterriza por programa en Bennu y las anclas de rosca sujetan dentro de su sitio de 1,5 m, con un fallo también | `landing-program.test.ts` | PX-06 |
 
 ### Subyugación en tres fases y duelos (SUB)
 
@@ -254,6 +260,9 @@ fila del recorrido en [registro.md](registro.md).
 | PX-03 | `mision` | La radio avisa de cartas; una trae la misión de Bennu; el registro abre con 0 hechas. Posado (fase de la sonda preparada), la acción principal aparece abajo a la derecha; un fallo suma «Fallos 1/N»; ganar muestra «Conseguido» con un solo botón para volver. Con el traje, tumbarse y ganar el tercer duelo: Bennu persuadido y aviso de misión cumplida que no tapa el resultado. | iPhone 13, CPU ×4 |
 | PX-04 | `acciones-movil` | Cada pantalla (cabina acoplada y libre, ingravidez, anillo, tareas, puente, mapa, sonda, posado, traje, paseo, estación y sus seis pestañas) sin controles solapados a 390×664 visibles; capturas `ux-<antes/despues>-*-movil.png`. | iPhone 13, CPU ×1 |
 | PX-05 | `acciones-escritorio` | Lo mismo a 1280×800; capturas `ux-*-escritorio.png`. | Escritorio, CPU ×1 |
+| PX-06 | `aterrizaje-programa` | En el mapa del puente, un paso del viaje bien respondido dibuja la ruta y lo dice («✓ Ruta trazada»), el siguiente añade el empuje y cerrar lo borra. La sonda a 300 m de Bennu muestra X/Y/Z, vx/vy/vz e inclinación (en rojo: llega de proa); «Aterrizar con un programa», primer paso marca el sitio, un fallo a propósito, el programa vuela con la ficha de viaje y la sonda se posa sola: «Posada por programa a N m». Capturas `aterrizaje-*-movil.png`. | iPhone 13, CPU ×4 |
+| PX-07 | `aterrizaje-manual` | El módulo a 250 m bajando a 0,5 m/s: indicadores con vz en verde, la oferta en la columna de contexto, sin tapar botones; la cámara ventral muestra el sitio; cayendo a 4 m/s a 40 m, vz y el marco en rojo. | iPhone 13, CPU ×4 |
+| PX-08 | `aterrizaje-escritorio` | Lo de PX-07 a 1280×800 y el módulo aterrizado por programa con clics (el primer paso marca el sitio). | Escritorio, CPU ×4 |
 
 ---
 

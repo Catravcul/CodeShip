@@ -29,6 +29,7 @@ Cada recorrido tiene un ID estable (`PX-01`…) en la sección «Experiencia del
 | PX-02 `movimiento` | Propulsores de la cabina con W y la velocidad del HUD; Impulsarse en ingravidez; una tarea elegida desde el eje (avisa de que baja); caminar y mirar con los mandos del anillo. |
 | PX-03 `mision` | Radio → carta de Nevaeh → registro de misiones → posado en Bennu → duelo con un fallo a propósito → misión cumplida. |
 | PX-04 `acciones-movil`, PX-05 `acciones-escritorio` | Visita cada pantalla (cabina, ingravidez, anillo, tareas, puente, mapa, sonda, vuelo libre, posado, paseo, estación y sus pestañas), la captura como `ux-<antes/despues>-<pantalla>-<movil/escritorio>.png` y lista los controles que se solapan. |
+| PX-06 `aterrizaje-programa`, PX-07 `aterrizaje-manual`, PX-08 `aterrizaje-escritorio` | Un paso del viaje se dibuja al acertarlo; la sonda aterriza por programa con toques; los indicadores de aterrizaje del módulo aparecen y cambian de color; el módulo aterriza por programa a 1280×800 ([aterrizaje.md](design/aterrizaje.md)). |
 
 ```
 npm run experiencia                 # compila, sirve dist/ y juega todos los recorridos

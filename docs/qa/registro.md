@@ -27,16 +27,22 @@ caso y las anteriores quedan en sus run logs.
 | VUE-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | VUE-04 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | VUE-05 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| VUE-06 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| VUE-07 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| VUE-08 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| VUE-09 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | NAV-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | NAV-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | NAV-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | NAV-04 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | NAV-05 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | NAV-06 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| NAV-07 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SON-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SON-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SON-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SON-04 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SON-05 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SUB-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SUB-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SUB-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -109,6 +115,9 @@ caso y las anteriores quedan en sus run logs.
 | PX-03 | Probado (en vivo) | 2026-11-13 | `8eaa0bb` | [run](runs/2026-11-13-1415-PX-01-PX-03.md): 15 OK |
 | PX-04 | Probado (en vivo) | 2026-11-13 | `d6b05e0` | [run](runs/2026-11-13-1100-PX-01-PX-02-PX-03-PX-04-PX-05.md): 22 OK |
 | PX-05 | Probado (en vivo) | 2026-11-13 | `d6b05e0` | [run](runs/2026-11-13-1100-PX-01-PX-02-PX-03-PX-04-PX-05.md): 22 OK |
+| PX-06 | Sin probar | | | |
+| PX-07 | Sin probar | | | |
+| PX-08 | Sin probar | | | |
 
 ## Última ejecución por run log
 

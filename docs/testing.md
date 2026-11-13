@@ -26,7 +26,7 @@ Cada recorrido tiene un ID estable (`PX-01`…) en la sección «Experiencia del
 | Recorrido | Qué juega |
 | --- | --- |
 | PX-01 `cocina` | Entra en la nave, abre Tareas, hace la crema de cacahuete tocando **tres veces la misma opción errónea** (el informe del diseñador) y luego los siete pasos; después cocina cacahuetes tostados en **vista HUD**, falla hasta perder y da un toque rápido de más sobre el resultado. |
-| PX-02 `movimiento` | Propulsores de la cabina con W y la velocidad del HUD; Impulsarse en ingravidez; una tarea elegida desde el eje (avisa de que baja); caminar y mirar con los mandos del anillo. |
+| PX-02 `movimiento` | Propulsores de la cabina con W y la velocidad del HUD; el mando de flechas en ingravidez (salto, flechas apagadas durante el salto); avisos del jugador sin pisar (H24) y de ambiente a la vista; una tarea elegida desde el eje (avisa de que baja); caminar y mirar con los mandos del anillo. |
 | PX-03 `mision` | Radio → carta de Nevaeh → registro de misiones → posado en Bennu → duelo con un fallo a propósito → misión cumplida. |
 | PX-04 `acciones-movil`, PX-05 `acciones-escritorio` | Visita cada pantalla (cabina, ingravidez, anillo, tareas, puente, mapa, sonda, vuelo libre, posado, paseo, estación y sus pestañas), la captura como `ux-<antes/despues>-<pantalla>-<movil/escritorio>.png` y lista los controles que se solapan. |
 

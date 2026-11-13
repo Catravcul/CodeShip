@@ -1,6 +1,6 @@
 import { Vec3 } from "@core/math/vec3";
 import type { AsteroidData } from "@modules/celestial/domain/asteroid";
-import { chaseProfile, driveTripS, homeProfile, stepDrive, transitProfile, type DriveProfile } from "@modules/celestial/domain/gravity-drive";
+import { chaseProfile, driveTripS, homeProfile, stepCharge, stepDrive, transitProfile, type DriveProfile } from "@modules/celestial/domain/gravity-drive";
 import type { RapportBook } from "../domain/rapport";
 import { FullExtraction, packageKg, shipPackage, stationPackage, YIELD_TUNING, type Package } from "../domain/yields";
 
@@ -17,7 +17,16 @@ export interface DrivenBody {
 /** What an angry asteroid is chasing (the wrath module's `pursuit`). */
 export interface PursuitPort {
   anger(asteroidId: string): number;
-  pursuit(asteroidId: string): { targetId: string; targetName: string; position(): Vec3; velocity(): Vec3; standoffM: number } | undefined;
+  pursuit(asteroidId: string): { targetId: string; targetName: string; position(): Vec3; velocity(): Vec3; standoffM: number; charge?: ChargeOrder } | undefined;
+}
+
+/** A ram under way: while it charges it sprints along `direction` (no braking) instead of chasing. */
+export interface ChargeOrder {
+  readonly phase: "preparando" | "embistiendo";
+  readonly aim: Vec3;
+  readonly direction: Vec3;
+  readonly accelMs2: number;
+  readonly topSpeedMs: number;
 }
 
 /**
@@ -182,6 +191,10 @@ export class AsteroidServices {
         this.events.push({ type: "persigue", asteroidId: id, name: s.body.data.name, targetName: chase.targetName });
       }
       s.mode = "persigue";
+      if (chase.charge?.phase === "embistiendo") {
+        const next = stepCharge({ position: s.body.position, velocity: s.body.velocity }, chase.charge.direction, chase.charge, dt);
+        return s.body.moveTo(next.position, next.velocity);
+      }
       return this.drive(s, { position: chase.position(), velocity: chase.velocity() }, chaseProfile(s.body.massKg, this.d.wrath!.anger(id)), dt, chase.standoffM);
     }
     if (s.chasing) {

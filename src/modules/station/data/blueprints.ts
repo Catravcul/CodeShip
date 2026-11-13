@@ -41,8 +41,8 @@ export const RECIPES = {
   vasimr: { hierro: 0.5, niquel: 0.2, ceramica: 0.2, carbono: 0.1 },
   /** Iron-nickel steel (like a maraging steel): pressure walls, bumpers, frames. */
   acero: { hierro: 0.8, niquel: 0.2 },
-  /** Carbon fibre (the resin comes in kits). */
-  fibra: { carbono: 1 },
+  /** Carbon fibre in PHB resin: about 60 % fibre by mass (CFRP is 50–65 % fibre by volume). */
+  fibra: { carbono: 0.6, resina: 0.4 },
 } as const;
 
 /** Imported kits per electric thruster (game values): power processing, cathode and xenon flow control; magnet and RF for VASIMR. */
@@ -78,7 +78,7 @@ const WELD = {
 const LAYUP = {
   value: "Fibra de carbono enrollada y curada en horno, como el Composite Crew Module de la NASA",
   source: "https://compositesworld.com/articles/building-on-ccm-lessons-learned(2)",
-  note: "La fibra sale del carbono de la roca y la resina llega en kits. Recetas y horas: valores de juego",
+  note: "La fibra sale del carbono de la roca; la resina es PHB, importada al principio y luego del biorreactor. Recetas y horas: valores de juego",
 };
 const ASSEMBLY = {
   value: "Montaje de componentes importados (células, electrónica, combustible nuclear) sobre una estructura hecha aquí",
@@ -94,7 +94,7 @@ function equipmentRecipe(e: Equipment): Pick<Blueprint, "machine" | "inputs" | "
     const shell = m - 120;
     const fittings = feedstock(120, RECIPES.acero, 1);
     if (e.wall?.material.startsWith("Acero")) return { machine: "impresora", inputs: feedstock(m, RECIPES.acero, 2), hours, process: PRINT, steps: ["imprime los paneles de acero", "suelda los paneles", "monta las escotillas y ventanas del kit", "prueba la presión con aire"] };
-    if (e.wall?.material === "CFRP") return { machine: "compuestos", inputs: merge(feedstock(shell, RECIPES.fibra, 4), fittings), hours, process: LAYUP, steps: ["enrolla la fibra sobre el molde", "impregna la fibra con la resina del kit", "cura la cabina en el horno", "pega los anillos de las escotillas", "prueba la presión con aire"] };
+    if (e.wall?.material === "CFRP") return { machine: "compuestos", inputs: merge(feedstock(shell, RECIPES.fibra, 4), fittings), hours, process: LAYUP, steps: ["enrolla la fibra sobre el molde", "impregna la fibra con la resina PHB", "cura la cabina en el horno", "pega los anillos de las escotillas", "prueba la presión con aire"] };
     return { machine: "fundicion", inputs: merge({ kit: importKits(shell) }, fittings), hours, process: WELD, steps: ["corta la chapa importada", "curva los paneles", "suelda los paneles por fricción", "monta las escotillas y ventanas", "prueba la presión con aire"] };
   }
   if (e.kind === "escudo") {

@@ -111,7 +111,7 @@ export class Station {
     const o = this.outfit;
     if (!o) return undefined;
     const p = bp.product;
-    return o.missingEquipment(bp.requires) ?? (p.kind === "module" ? o.moduleBlocker(p.module) : p.kind === "equipment" ? o.equipmentBlocker(p.equipment) : undefined);
+    return o.missingEquipment(bp.requires) ?? o.missingModule(bp.requiresModule) ?? (p.kind === "module" ? o.moduleBlocker(p.module) : p.kind === "equipment" ? o.equipmentBlocker(p.equipment) : undefined);
   }
 
   /** Why a refinery or plant process cannot run whatever the store holds (its equipment). */

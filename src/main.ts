@@ -83,8 +83,13 @@ import { IDSS_CONTACT_LIMITS, NODRIZA, NODRIZA_NOSE_PORT, UNDOCK_PUSH_MS } from 
 import { ASSIST_RANGE_M, Docking } from "@modules/mothership/application/docking";
 import { MothershipModel } from "./adapters/three/mothership-model";
 import { Navigator } from "@modules/navigation/application/navigator";
-import { asteroidTarget, type NavTarget } from "@modules/navigation/domain/nav-target";
-import { NavigationMode } from "./navigation";
+import { asteroidTarget, targetPosition, type NavTarget } from "@modules/navigation/domain/nav-target";
+import { NavigationMode, PHASE } from "./navigation";
+import { worldStep } from "@modules/navigation/domain/travel-time";
+import { duration, num } from "@modules/navigation/application/trip-chore";
+import { ProbeTravel } from "./probe-travel";
+import { TripChip, type TripChipData } from "./ui/trip-chip";
+import { TripPreview, type PreviewSubject } from "./adapters/three/trip-preview";
 import { mothershipCarrier } from "@modules/navigation/application/mothership-carrier";
 import { FlightDeck } from "./flight-deck";
 import { MissionLog } from "@modules/missions/domain/mission";
@@ -163,6 +168,8 @@ const nav = new Navigator(
     // With the probe docked, the mothership flies the long part of a trip (and docks at the station).
     carrier,
     docking,
+    // One compressed trip at a time; the mothership doesn't leave its probe behind (docs/design/viajes.md).
+    busy: (carrierTrip) => navBusy(carrierTrip),
   },
   navTargets[0]!,
 );
@@ -510,6 +517,51 @@ const subj = new SubjugationUi({
   crewMassKg: habitat.crew.body.massKg + 145,
 });
 
+// Long trips of the probe: programmed with challenges, flown in time-lapse, parked by hand (docs/design/viajes.md).
+const probeTravel = new ProbeTravel({
+  probe: subj.probe,
+  probeMode: subj.probeMode,
+  expedition,
+  region,
+  mothership,
+  duel: duelView,
+  mothershipClearanceM: carrier.clearanceM,
+  bayPose: () => subj.bayPose(),
+  busy: () => (nav.status === "carrier" || nav.status === "autopilot" || nav.status === "docking" ? "La nave ya está de viaje: espera a que llegue" : undefined),
+});
+function navBusy(carrierTrip: boolean): string | undefined {
+  if (probeTravel.trip.active) return "La sonda está de viaje: espera a que llegue o toma su mando";
+  if (carrierTrip && subj.probe.out) return "La sonda está fuera: recógela antes de mover la nodriza";
+  return undefined;
+}
+// The trip chip and the live preview, on screen wherever she is while a vehicle flies itself.
+const tripChip = new TripChip(root);
+const tripPreview = new TripPreview(root);
+tripChip.onView = () => (tripPreview.open = !tripPreview.open);
+tripChip.onTake = () => (probeTravel.trip.active ? probeTravel.trip.cancel() : nav.cancel());
+const km = (m: number) => (m >= 1000 ? `${num(m / 1000, 1)} km` : `${num(m)} m`);
+const lapseText = (l: number) => (l > 1 ? ` · ×${num(l)}` : "");
+/** What the chip shows and what the preview follows, for the trip flying now. */
+function tripNow(): { chip: TripChipData; subject: PreviewSubject } | undefined {
+  const pp = probeTravel.trip.progress();
+  if (pp) {
+    const f = () => subj.probe.flight;
+    return {
+      chip: { who: "Sonda", goal: pp.goalName, etaRealS: pp.etaRealS, fraction: pp.fraction, detail: `${PHASE[pp.phase]} · ${num(pp.speedMS, 1)} m/s · faltan ${km(pp.remainingM)} · ${duration(pp.etaS)} de vuelo${lapseText(pp.lapse)}` },
+      subject: { label: "Sonda · en directo", sizeM: 1.2, pose: () => f().state, goal: () => (probeTravel.trip.goal?.kind === "asteroid" ? probeTravel.trip.goal.body.position : subj.bayPose().position) },
+    };
+  }
+  const p = nav.progress();
+  if (!p) return undefined;
+  const carrierLeg = p.vehicle === "carrier";
+  return {
+    chip: { who: carrierLeg ? "Nodriza" : "Módulo", goal: nav.target.name, etaRealS: p.etaRealS, fraction: p.fraction, detail: `${PHASE[p.phase]} · ${num(p.speedMS, p.speedMS < 1 ? 2 : 1)} m/s · faltan ${km(p.remainingM)} · ${duration(p.etaS)} de vuelo${lapseText(p.lapse)}` },
+    subject: carrierLeg
+      ? { label: "Nodriza · en directo", sizeM: 170, pose: () => ({ position: mothership.position, orientation: mothership.orientation }), goal: () => targetPosition(nav.target) }
+      : { label: "Módulo · en directo", sizeM: 14, pose: () => flight.state, goal: () => targetPosition(nav.target) },
+  };
+}
+
 // Ship bay: only at the station (docs/design/accesos.md): its console in node 2, B inside, or the
 // hangar tab of the station screen. Part swaps take the part from the station's hangar; the old one goes back there.
 const bay = new ShipBay(root, ship, habitat, duelView, mothership.spec, stationOps.station.hangar);
@@ -674,6 +726,16 @@ window.addEventListener("resize", () => {
 });
 
 // --- Loop -------------------------------------------------------------------
+/** Draw the frame's view, then the live trip preview over a corner of it. */
+function present(sc: THREE.Scene, cam: THREE.Camera): void {
+  renderer.render(sc, cam);
+  if (!tripPreview.visible) return;
+  // The lander's model only follows the flight in the cockpit view: place it for the preview too.
+  const st = flight.state;
+  view.rig.position.set(st.position.x, st.position.y, st.position.z);
+  view.rig.quaternion.set(st.orientation.x, st.orientation.y, st.orientation.z, st.orientation.w);
+  tripPreview.render(renderer, scene);
+}
 let last = performance.now();
 renderer.setAnimationLoop((now) => {
   const dt = Math.min((now - last) / 1000, 0.1);
@@ -687,12 +749,24 @@ renderer.setAnimationLoop((now) => {
   const sp = flight.state.position;
   const fx = nano.net.effectsAt(sp);
   const asked = (expedition.phase === "flight" || expedition.phase === "persuaded" || (expedition.phase === "aggressive" && wrathMode.allowsWarp)) && (subj.piloting ? subj.probe.status === "en-vuelo" : !flight.landed) && idle && far ? warpAsk : 1;
+  // A vehicle flying itself on a compressed trip sets the pace of the whole world (docs/design/viajes.md).
+  const tripLapse = probeTravel.trip.active ? probeTravel.trip.lapse : nav.lapse;
   // Inside the nano_net its speed nodes let time run faster.
-  const warp = asked > 1 ? Math.round(asked * fx.warpFactor) : 1;
+  const warp = tripLapse > 1 ? tripLapse : asked > 1 ? Math.round(asked * fx.warpFactor) : 1;
+  const world = worldStep(dt, tripLapse);
   const warpNote =
-    warpAsk > 1 && warp === 1 ? (far ? "tiempo ×1 mientras maniobras" : "tiempo ×1 cerca del asteroide") : warp > 1 ? `tiempo ×${warp}${fx.warpFactor > 1 ? " (nano_net)" : ""}` : "";
+    tripLapse > 1
+      ? `viaje en cámara rápida ×${num(tripLapse)}`
+      : warpAsk > 1 && warp === 1
+        ? far
+          ? "tiempo ×1 mientras maniobras"
+          : "tiempo ×1 cerca del asteroide"
+        : warp > 1
+          ? `tiempo ×${warp}${fx.warpFactor > 1 ? " (nano_net)" : ""}`
+          : "";
   expedition.update(dt * warp, cmd);
   subj.update(dt, warp, warpNote, { visible: view.enabled, landerPosition: flight.state.position });
+  probeTravel.update(dt);
   wrathMode.update(dt * warp, dt, subj.piloting ? subj.probeMode.camera : camera, view.enabled || deck.active || subj.piloting);
   ring.tick(dt);
   // Region rules: soft boundary push back and no flying through the other rocks or the mothership (game rules).
@@ -712,7 +786,8 @@ renderer.setAnimationLoop((now) => {
   // Only a subjugated asteroid (all three stages) can become a core (docs/design/subyugacion.md).
   if (expedition.isPersuaded(bennuSite.id) && !bennuSubjugated) nano.subjugate(bennuSite.id);
   bennuSubjugated = expedition.isPersuaded(bennuSite.id);
-  if (!nanoPanel.busy) nano.tick(dt * NANO_DAYS_PER_SECOND);
+  // Life on board keeps its pace (one day every 40 s), or the trip's if that is faster.
+  if (!nanoPanel.busy) nano.tick(tripLapse > 1 ? world.lifeDays : dt * NANO_DAYS_PER_SECOND);
   nano.powerShip(ship, fx, dt * warp);
   for (const e of nano.drainEvents()) {
     const box = habitat.mailbox!;
@@ -731,9 +806,11 @@ renderer.setAnimationLoop((now) => {
     missionLog.render();
     navMode.map.refresh();
   }
-  // The station's machines run on the same clock as life on board.
-  stationOps.station.tick(dt * warp * STATION_TUNING.hoursPerSecond);
-  importOps.tick(dt * warp * STATION_TUNING.hoursPerSecond);
+  // The station's machines and the import inbox run on the same clock as life on board; on a
+  // compressed trip they follow the world step (never slower than the voyage).
+  const stationHours = tripLapse > 1 ? world.lifeDays * 24 : dt * warp * STATION_TUNING.hoursPerSecond;
+  stationOps.station.tick(stationHours);
+  importOps.tick(stationHours);
   for (const e of importOps.drainEvents()) {
     const text =
       e.type === "llegada"
@@ -751,43 +828,46 @@ renderer.setAnimationLoop((now) => {
   }
   // A module berthed or equipment installed: the structure, its model and the walkable interior follow.
   if (stationOutfit.version !== stationGrownAt) regrowStation();
-  interior.update(dt);
+  interior.update(dt, world.lifeDays);
   view.enabled = !interior.active && !stationInside.active && !deck.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active && !navMode.mapOpen && !missionLog.visible;
-  navMode.update(dt, view.warpRequested);
+  navMode.update(dt);
+  const trip = tripNow();
+  tripChip.update(trip?.chip, tripPreview.visible);
+  tripPreview.follow(trip?.subject);
   // The mothership moves on trips: keep its model where the domain has it.
   mothershipModel.root.position.set(mothership.position.x, mothership.position.y, mothership.position.z);
   mothershipModel.root.quaternion.set(mothership.orientation.x, mothership.orientation.y, mothership.orientation.z, mothership.orientation.w);
   document.body.classList.toggle("in-cockpit", view.enabled);
   if (interior.active) {
-    renderer.render(interior.scene, interior.camera);
+    present(interior.scene, interior.camera);
     return;
   }
   if (stationInside.active) {
     stationInside.update(dt);
-    renderer.render(stationInside.scene, stationInside.camera);
+    present(stationInside.scene, stationInside.camera);
     return;
   }
   if (bay.active) {
     bay.update(dt);
-    renderer.render(bay.scene, bay.camera);
+    present(bay.scene, bay.camera);
     return;
   }
   if (subj.piloting) {
     asteroidMesh.rotation.y = bennu.spinRadS * flight.simTimeS;
     field.update(subj.probeMode.camera, window.innerHeight, flight.simTimeS, false);
-    renderer.render(scene, subj.probeMode.camera);
+    present(scene, subj.probeMode.camera);
     return;
   }
   if (deck.active) {
     deck.update(dt);
     nanoPanel.update(flight.landed && expedition.asteroid === bennu, fx, { action: false, card: !duelView.visible });
     asteroidMesh.rotation.y = bennu.spinRadS * flight.simTimeS;
-    renderer.render(scene, deck.camera);
+    present(scene, deck.camera);
     return;
   }
   if (stationScreen.active) {
     stationScreen.update(dt);
-    renderer.render(stationScreen.scene, stationScreen.camera);
+    present(stationScreen.scene, stationScreen.camera);
     return;
   }
   // The suit walk works on any asteroid of the region: its own gravity, spin and surface. Samples only on Bennu.
@@ -799,7 +879,7 @@ renderer.setAnimationLoop((now) => {
     asteroidMesh.rotation.y = bennu.spinRadS * flight.simTimeS;
     // The other asteroids' meshes turn with them too (she may be walking on one).
     field.update(camera, window.innerHeight, flight.simTimeS, false);
-    renderer.render(scene, camera);
+    present(scene, camera);
     return;
   }
   view.rig.visible = true;
@@ -852,8 +932,8 @@ renderer.setAnimationLoop((now) => {
   }
 
   hud.render(flight.telemetry(), flight.rotationAssist, ship.propellants.map((p) => ship.propellantKg(p)), thrustText(cmd), missionLog.unread);
-  renderer.render(scene, camera);
+  present(scene, camera);
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, refuelOps, importOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, refuelOps, importOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, tripPreview, tripChip, duelView };

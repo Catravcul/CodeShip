@@ -59,7 +59,7 @@ export class ProbeMode {
   constructor(
     root: HTMLElement,
     scene: THREE.Scene,
-    private readonly deps: ProbeModeDeps,
+    readonly deps: ProbeModeDeps,
   ) {
     scene.add(this.model.root);
     this.ui = document.createElement("div");

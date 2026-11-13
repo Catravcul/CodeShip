@@ -44,3 +44,5 @@ body.in-map .trip-chip { display: none; }
 .trip-pip.on { display: block; }
 .trip-pip .tp-label { position: absolute; left: 6px; top: 5px; padding: 1px 6px; font-size: 11px; color: #d8f6ff; background: #08202bcc; border-radius: 6px; }
 .trip-pip .tp-close { position: absolute; right: 4px; top: 4px; width: 30px; height: 30px; font-size: 16px; line-height: 1; color: #d8f6ff; background: #08202bcc; border: 0; border-radius: 8px; pointer-events: auto; }
+/* The chip carries the trip progress everywhere; the cockpit strip keeps its messages. */
+body.on-trip .autopilot-tag { display: none !important; }

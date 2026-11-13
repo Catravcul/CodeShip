@@ -283,12 +283,12 @@ export class Interior {
   }
 
   /** Called every frame, also while in the cockpit (time on board keeps running). */
-  update(dt: number): void {
+  update(dt: number, days: number = dt * DAYS_PER_SECOND): void {
     const busy = this.session !== null;
     // In the cockpit she is weightless; inside, she feels the gravity of where she is.
     if (this.zones) this.habitat.crewGravityG = this.active ? this.zones.gravityG() : 0;
     if (!busy) {
-      const days = dt * DAYS_PER_SECOND;
+      // `days`: life on board's pace, or the trip's if a compressed trip runs faster (docs/design/viajes.md).
       this.habitat.tick(days);
       this.dayClock += days;
     }

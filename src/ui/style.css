@@ -34,11 +34,20 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-f
 body.in-duel .banner, body.in-duel .hud, body.in-duel .touch-left, body.in-duel .touch-right { display: none; }
 .duel-head { display: flex; flex-direction: column; gap: 6px; }
 .duel-title { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #b9a8ff; }
-.meter { display: flex; align-items: center; gap: 4px; font-size: 12px; }
-.meter .label { flex: 0 0 90px; opacity: 0.8; text-align: left; }
-.meter .cell { flex: 1; height: 10px; border-radius: 3px; background: #ffffff1a; }
-.meter.persuasion .cell.on { background: #7dffb0; box-shadow: 0 0 8px #7dffb0aa; }
-.meter.patience .cell.on { background: #ffb347; box-shadow: 0 0 8px #ffb347aa; }
+/* Hits and failures as written readouts, in the cockpit HUD's speed style (monospace, glow, big number):
+   green once there is a hit; failures pale at 0, amber after one, red when one more loses the challenge.
+   A changed number pulses. Failures only ever count up: a wrong answer is never un-marked. */
+.duel-stats { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 22px; }
+.stat { font-size: 14px; color: #bfefff; text-shadow: 0 0 6px #00b7ff88; letter-spacing: 0.02em; white-space: nowrap; }
+.stat b { display: inline-block; font-size: 24px; font-weight: 700; line-height: 1.1; }
+.stat .lbl { font-size: 12px; opacity: 0.75; }
+.stat.hits.good { color: #7dffb0; text-shadow: 0 0 6px #7dffb088; }
+.stat.fails.warn { color: #ffb347; text-shadow: 0 0 6px #ffb34788; }
+.stat.fails.danger { color: #ff7a6b; text-shadow: 0 0 6px #ff5a4a99; }
+.stat.fails.danger .lbl { opacity: 1; }
+.stat.bump b { animation: stat-bump 0.7s ease-out; }
+@keyframes stat-bump { 0% { transform: scale(1.6); filter: brightness(2.2); } 60% { transform: scale(0.95); } 100% { transform: none; filter: none; } }
+@media (prefers-reduced-motion: reduce) { .stat.bump b { animation: none; } }
 .idea { font-size: 20px; line-height: 1.35; color: #fff; font-style: italic; text-shadow: 0 0 18px #9b7dff; padding: 6px 0; }
 .question { font-size: 14px; color: #cfc6ff; }
 .toggle { align-self: flex-start; font: inherit; font-size: 12px; color: #b9a8ff; background: none; border: 1px solid #b9a8ff66; border-radius: 999px; padding: 6px 12px; }
@@ -55,6 +64,14 @@ body.in-duel .banner, body.in-duel .hud, body.in-duel .touch-left, body.in-duel 
 .feedback { padding: 8px 12px; border-radius: 10px; font-size: 14px; }
 .feedback.ok { background: #7dffb022; color: #7dffb0; }
 .feedback.bad { background: #ff6b5a22; color: #ff8a7a; }
+/* An option already answered wrong stays marked (red, crossed) for the rest of the step; tapping it again costs nothing. */
+.option.wrong { background: #3a1018; border-color: #ff6b5a; color: #ffb4aa; }
+.option.wrong .mark { flex: none; width: 22px; height: 22px; display: inline-grid; place-items: center; border-radius: 50%; background: #ff6b5a; color: #1a0508; font-weight: 700; }
+.result { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 14px; font-size: 14px; }
+.result b { font-size: 22px; }
+.result.won { background: #0d2a1c; color: #7dffb0; border: 1px solid #7dffb0; }
+.result.lost { background: #2a0d10; color: #ffb4aa; border: 1px solid #ff6b5a; }
+.result.lost b { color: #ff7a6b; }
 
 /* Narrow screens: compact HUD, banner below it so they never overlap. */
 @media (max-width: 600px) {
@@ -151,15 +168,20 @@ body.ui-compact .duel .duel-top { position: fixed; top: 10px; left: 12px; right:
 body.ui-compact .duel .duel-tools { top: 0; }
 body.ui-compact .duel .duel-tools button { color: #d8f6ff; background: #0b2a3699; border-color: #7fdcff55; text-shadow: none; }
 body.ui-compact .duel .duel-title { font-size: 11px; color: #7fdcff; }
-body.ui-compact .duel .meter { font-size: 11px; }
-body.ui-compact .duel .meter .cell { height: 6px; background: #ffffff22; }
-body.ui-compact .duel .feedback { padding: 2px 0; background: none; font-size: 13px; }
+/* HUD readouts: same speed-style numbers, on a dark see-through plate so they read over any background (WCAG AA). */
+body.ui-compact .duel .duel-stats { align-self: flex-start; padding: 4px 12px; border-radius: 10px; background: #020a12d9; box-shadow: 0 0 0 1px #7fdcff33; }
+body.ui-compact .duel .stat { text-shadow: 0 0 2px #000, 0 0 6px currentColor; }
+body.ui-compact .duel .stat b { font-size: 22px; }
+body.ui-compact .duel .feedback { align-self: flex-start; padding: 4px 10px; font-size: 14px; background: #020a12d9; text-shadow: none; }
+body.ui-compact .duel .feedback.ok { color: #7dffb0; box-shadow: 0 0 0 1px #7dffb066; }
+body.ui-compact .duel .feedback.bad { color: #ff9a8c; box-shadow: 0 0 0 1px #ff6b5a88; }
 body.ui-compact .duel .idea { font-size: 15px; padding: 0; color: #fff; text-shadow: 0 0 3px #000, 0 0 14px #000; }
 body.ui-compact .duel .code { background: #00000066; padding: 6px 10px; }
 body.ui-compact .duel .code-line { font-size: 13px; padding: 1px 0; color: #d8f6ff; }
-body.ui-compact .duel .block, body.ui-compact .duel .option { min-height: 38px; font-size: 13px; padding: 6px 10px; border-radius: 10px; color: #d8f6ff; background: #0b2a3699; border-color: #7fdcff55; text-shadow: none; }
-body.ui-compact .duel .block.slot { background: #00000033; color: #d8f6ff88; }
-body.ui-compact .duel .block.placed { background: #1f4a5ccc; border-color: #7fdcffaa; }
+body.ui-compact .duel .block, body.ui-compact .duel .option { min-height: 44px; font-size: 14px; padding: 6px 12px; border-radius: 10px; color: #eafaff; background: #06202bdd; border-color: #7fdcff88; text-shadow: none; }
+body.ui-compact .duel .block.slot { background: #02101a99; color: #d8f6ffaa; }
+body.ui-compact .duel .block.placed { background: #1f5a70f0; border: 2px solid #7fdcff; color: #fff; }
+body.ui-compact .duel .option.wrong { background: #3a1018f0; border: 2px solid #ff6b5a; color: #ffc4bb; }
 body.ui-compact .duel .submit { min-height: 42px; font-size: 15px; background: #b9a8ffcc; box-shadow: none; text-shadow: none; }
 body.ui-compact .duel .question { color: #d8f6ff; font-size: 13px; }
 body.ui-compact .duel .toggle { color: #d8f6ff; background: #0b2a3699; border-color: #7fdcff55; text-shadow: none; align-self: flex-start; }

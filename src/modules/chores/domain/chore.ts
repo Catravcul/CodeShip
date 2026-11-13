@@ -1,4 +1,5 @@
 import { isCorrect, type Answer, type Exercise } from "@modules/mind-duel/domain/exercise";
+import { Attempts } from "@modules/mind-duel/domain/attempts";
 
 export type ChoreKind =
   | "regar"
@@ -100,11 +101,14 @@ export type ChoreStatus = "doing" | "done" | "failed";
 /**
  * Doing a chore: exercises in the given order (unlike an asteroid duel, never shuffled).
  * Each solved exercise is a step done; too many mistakes and the chore must be retried.
+ * A wrong answer stays recorded for its step: giving the same wrong answer again is not a new
+ * mistake (a repeated tap on the same wrong option costs nothing and changes nothing).
  */
 export class ChoreRun {
   private _step = 0;
   private _mistakes = 0;
   private _status: ChoreStatus = "doing";
+  private readonly attempts = new Attempts();
 
   constructor(
     readonly chore: Chore,
@@ -122,6 +126,9 @@ export class ChoreRun {
   get steps(): number {
     return this.chore.exercises.length;
   }
+  get mistakes(): number {
+    return this._mistakes;
+  }
   get mistakesLeft(): number {
     return this.maxMistakes - this._mistakes;
   }
@@ -129,11 +136,19 @@ export class ChoreRun {
     return this._status === "doing" ? this.chore.exercises[this._step] : undefined;
   }
 
-  /** Returns whether the answer was right. */
+  /** Whether this answer was already given, wrong, to the current step. */
+  tried(answer: Answer): boolean {
+    this.attempts.on(this.current);
+    return this.attempts.repeated(answer);
+  }
+
+  /** Returns whether the answer was right. A repeated wrong answer returns false and counts nothing. */
   submit(answer: Answer): boolean {
     const ex = this.current;
     if (!ex) throw new Error("Chore is over");
+    if (this.tried(answer)) return false;
     const ok = isCorrect(ex, answer);
+    this.attempts.record(answer, ok);
     if (ok) {
       this._step++;
       if (this._step >= this.steps) this._status = "done";

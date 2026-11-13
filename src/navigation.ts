@@ -9,8 +9,7 @@ import { NavMap } from "./ui/nav-map";
 
 const TRIP_TEXT: SessionText = {
   title: "Programar el viaje",
-  progress: "Plan",
-  lives: "Intentos",
+  progress: "Pasos",
   order: "Ordena la maniobra",
   submit: "Cargar en el piloto automático",
   ok: "Correcto: el ordenador de vuelo lo acepta",

@@ -39,7 +39,6 @@ const DOT: Readonly<Record<Attention, string>> = { ok: "ok", aviso: "aviso", cri
 const text = (c: Chore): SessionText => ({
   title: c.title,
   progress: "Pasos",
-  lives: "Intentos",
   order: "Ordena el montaje",
   submit: "Hacerlo",
   ok: "Bien hecho",

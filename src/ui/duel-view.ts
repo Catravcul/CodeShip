@@ -1,4 +1,5 @@
 import type { Answer, CodeBlock, Exercise } from "@modules/mind-duel/domain/exercise";
+import { Attempts, sessionOutcome } from "@modules/mind-duel/domain/attempts";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
@@ -45,8 +46,8 @@ export function setCompactUi(on: boolean): void {
 
 export interface SessionText {
   readonly title: string;
+  /** What a right answer is, in plural, shown after the hit count ("Pasos", "Posturas", "Persuasión"). */
   readonly progress: string;
-  readonly lives: string;
   readonly order: string;
   readonly submit: string;
   readonly ok: string;
@@ -57,8 +58,7 @@ export interface SessionText {
 
 export const asteroidText = (name: string): SessionText => ({
   title: `Mente de ${name}`,
-  progress: "Persuasión",
-  lives: "Paciencia",
+  progress: "Ideas",
   order: "Ordena el pensamiento",
   submit: "Enviar idea",
   ok: "La idea encaja: el asteroide se deja persuadir",
@@ -76,6 +76,12 @@ export class DuelView {
   /** Counts answers so the feedback line re-animates even when the text repeats. */
   private answers = 0;
   private feedback: { ok: boolean; text: string } | null = null;
+  /** Wrong answers already given to the challenge on screen: shown crossed out, never sent twice. */
+  private readonly attempts = new Attempts();
+  /** Meter values at the last render, to pulse the one that changed. */
+  private shown = { progress: 0, fails: 0 };
+  /** Taps are ignored until then: a double tap never answers twice nor hits the button that replaces the options. */
+  private lockedUntil = 0;
 
   private text: SessionText = asteroidText("");
   private onAnswer: (a: Answer) => { ok: boolean } = () => ({ ok: false });
@@ -97,6 +103,9 @@ export class DuelView {
     this.el.classList.toggle("sheet", !!text.sheet);
     this.placed = [];
     this.feedback = null;
+    this.attempts.on(undefined);
+    this.shown = { progress: session.progress, fails: session.maxLives - session.lives };
+    this.lockedUntil = 0;
     this.el.classList.remove("hidden");
     document.body.classList.add("in-duel");
     this.render();
@@ -122,35 +131,50 @@ export class DuelView {
     if (!t || !this.duel) return;
     const ex = this.duel.current;
     const act = t.dataset.act;
-    if (act === "close") {
+    if (act === "toggle") this.showJs = !this.showJs;
+    else if (act === "ui") setCompactUi(!compactUi());
+    else if (performance.now() < this.lockedUntil || t.hasAttribute("disabled")) return;
+    else if (act === "close") {
       this.hide();
       this.onClose?.();
       return;
-    }
-    if (act === "toggle") this.showJs = !this.showJs;
-    if (act === "ui") setCompactUi(!compactUi());
-    if (ex?.kind === "order" && act === "place" && t.dataset.id) this.placed.push(t.dataset.id);
-    if (ex?.kind === "order" && act === "unplace" && t.dataset.id) this.placed = this.placed.filter((id) => id !== t.dataset.id);
-    if (ex?.kind === "order" && act === "submit") this.submit({ kind: "order", order: this.placed });
-    if (ex?.kind === "choice" && act === "choose") this.submit({ kind: "choice", index: Number(t.dataset.index) });
+    } else if (ex?.kind === "order" && act === "place" && t.dataset.id) this.placed.push(t.dataset.id);
+    else if (ex?.kind === "order" && act === "unplace" && t.dataset.id) this.placed = this.placed.filter((id) => id !== t.dataset.id);
+    else if (ex?.kind === "order" && act === "submit") this.submit({ kind: "order", order: this.placed });
+    else if (ex?.kind === "choice" && act === "choose") this.submit({ kind: "choice", index: Number(t.dataset.index) });
     this.render();
   }
 
   private submit(a: Answer): void {
-    const { ok } = this.onAnswer(a);
-    this.feedback = { ok, text: ok ? this.text.ok : this.text.bad };
+    this.attempts.on(this.duel!.current);
     this.answers++;
+    if (this.attempts.repeated(a)) {
+      // Already answered wrong: it stays a failure, costs nothing more and changes nothing.
+      this.feedback = { ok: false, text: a.kind === "order" ? "Ese orden ya falló: cambia algo" : "Esa ya falló: prueba otra" };
+      this.placed = a.kind === "order" ? [...a.order] : [];
+      return;
+    }
+    const { ok } = this.onAnswer(a);
+    this.attempts.record(a, ok);
+    this.feedback = { ok, text: ok ? this.text.ok : this.text.bad };
     this.placed = [];
+    this.lockedUntil = performance.now() + (this.duel!.current ? 300 : 900);
   }
 
-  private meter(label: string, value: number, max: number, cls: string): string {
-    const cells = Array.from({ length: max }, (_, i) => `<span class="cell ${i < value ? "on" : ""}"></span>`).join("");
-    return `<div class="meter ${cls}"><span class="label">${label}</span>${cells}</div>`;
+  /** Written indicator, styled like the cockpit's speed readout: the number is what matters. */
+  private stat(cls: string, label: string, value: number, max: number, unit: string, level: string, changed: boolean): string {
+    return `<div class="stat ${cls} ${level} ${changed ? "bump" : ""}" data-n="${this.answers}" role="status"><span class="k">${label}</span> <b>${value}/${max}</b>${unit ? ` <span class="lbl">${esc(unit)}</span>` : ""}</div>`;
   }
 
   private render(): void {
     const d = this.duel!;
     const ex = d.current;
+    this.attempts.on(ex);
+    const fails = d.maxLives - d.lives;
+    const hitsChanged = d.progress !== this.shown.progress;
+    const failsChanged = fails !== this.shown.fails;
+    this.shown = { progress: d.progress, fails };
+    const failLevel = fails === 0 ? "calm" : d.lives <= 1 ? "danger" : "warn";
     const sheetTools = this.text.sheet
       ? `<div class="duel-tools"><button class="ui-toggle" data-act="ui">${compactUi() ? "Vista panel" : "Vista HUD"}</button><button class="x" data-act="close" aria-label="Cerrar">×</button></div>`
       : "";
@@ -158,14 +182,20 @@ export class DuelView {
       <div class="duel-top">${sheetTools}
       <div class="duel-head">
         <div class="duel-title">${esc(this.text.title)}</div>
-        ${this.meter(this.text.progress, d.progress, d.goal, "persuasion")}
-        ${this.meter(this.text.lives, d.lives, d.maxLives, "patience")}
+        <div class="duel-stats">
+          ${this.stat("hits", "Aciertos", d.progress, d.goal, this.text.progress.toLowerCase(), d.progress > 0 ? "good" : "calm", hitsChanged)}
+          ${this.stat("fails", "Fallos", fails, d.maxLives, d.lives === 1 && ex ? "uno más y se pierde" : "", failLevel, failsChanged)}
+        </div>
       </div>
-      ${this.feedback ? `<div class="feedback ${this.feedback.ok ? "ok" : "bad"}" data-n="${this.answers}">${this.feedback.text}</div>` : ""}
+      ${this.feedback && ex ? `<div class="feedback ${this.feedback.ok ? "ok" : "bad"}" data-n="${this.answers}" role="alert">${this.feedback.ok ? "✓" : "✗"} ${esc(this.feedback.text)}</div>` : ""}
       </div>`;
 
     if (!ex) {
-      this.el.innerHTML = `${head}<button class="submit" data-act="close">Cerrar</button>`;
+      const won = sessionOutcome(d) === "won";
+      const result = won
+        ? `<div class="result won" role="alert"><b>✓ Conseguido</b><span>${d.progress}/${d.goal} ${esc(this.text.progress.toLowerCase())} con ${fails} ${fails === 1 ? "fallo" : "fallos"}</span></div>`
+        : `<div class="result lost" role="alert"><b>✗ Reto perdido</b><span>${fails} fallos de ${d.maxLives}: no se ha gastado nada, puedes volver a intentarlo</span></div>`;
+      this.el.innerHTML = `${head}${result}<button class="submit end" data-act="close">${won ? "Continuar" : "Cerrar"}</button>`;
       return;
     }
 
@@ -193,8 +223,15 @@ export class DuelView {
         <div class="tray">${tray}</div>
         <button class="submit" data-act="submit" ${full ? "" : "disabled"}>${esc(this.text.submit)}</button>`;
     } else {
+      const wrong = new Set(this.attempts.wrongChoices());
       const code = ex.code.map((b) => `<div class="code-line">${this.face(b)}</div>`).join("");
-      const options = ex.options.map((o, i) => `<button class="option" data-act="choose" data-index="${i}">${esc(o)}</button>`).join("");
+      const options = ex.options
+        .map((o, i) =>
+          wrong.has(i)
+            ? `<button class="option wrong" data-act="choose" data-index="${i}" aria-disabled="true"><span class="mark" aria-label="falló">✗</span>${esc(o)}</button>`
+            : `<button class="option" data-act="choose" data-index="${i}">${esc(o)}</button>`,
+        )
+        .join("");
       body = `
         ${code ? `<div class="code">${code}</div>` : ""}
         <div class="question">${esc(ex.question)}</div>

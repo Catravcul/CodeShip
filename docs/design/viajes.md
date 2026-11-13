@@ -1,6 +1,6 @@
 # Viajes: retos de código y cámara rápida con tope
 
-Regla del diseñador: «Los aterrizajes son manuales, pero para viajes de la nave y sonda siendo que son muy largos se pueden sustituir por los retos de código, entonces se mueven solos y el tiempo real se reduce de modo que se puede ver a la sonda o nave volar desde su preview pero el tiempo no supera un tope de segundos, en ese tiempo el jugador puede resolver otras tareas».
+Regla del diseñador (ampliada después: el aterrizaje también puede ser por reto, [aterrizaje.md](aterrizaje.md)): «Los aterrizajes son manuales, pero para viajes de la nave y sonda siendo que son muy largos se pueden sustituir por los retos de código, entonces se mueven solos y el tiempo real se reduce de modo que se puede ver a la sonda o nave volar desde su preview pero el tiempo no supera un tope de segundos, en ese tiempo el jugador puede resolver otras tareas».
 
 ## Cómo se juega
 
@@ -11,9 +11,9 @@ Regla del diseñador: «Los aterrizajes son manuales, pero para viajes de la nav
 3. **Mientras tanto.** Se puede hacer cualquier otra cosa: caminar por el anillo, tareas, huerto, estación, radio. La **ficha de viaje** (abajo, en cualquier pantalla) dice quién viaja y adónde, **cuándo llega en segundos reales**, la fase, la velocidad, lo que falta, la duración real del vuelo y la cámara rápida (×N). Tiene dos botones:
    - **Ver**: abre la **vista en directo** (una segunda cámara sobre la escena del espacio, en una esquina; arriba en el móvil). Sigue a la nodriza, al módulo o a la sonda con su destino al fondo. «×» o **Ocultar** la cierran.
    - **Mando**: toma el mando (el piloto automático se desconecta; tocar los mandos del vehículo hace lo mismo).
-4. **Llegada manual.** El vehículo llega cerca y devuelve los mandos parado:
-   - módulo: a unos 300 m de la superficie, como antes; aterrizar es manual;
-   - sonda: a unos 300 m del asteroide; **posarla es manual** (fase 1 de la subyugación, [subyugacion.md](subyugacion.md));
+4. **Llegada.** El vehículo llega cerca y devuelve los mandos parado:
+   - módulo: a unos 300 m de la superficie; se aterriza **a mano con los indicadores X/Y/Z** o **por programa** (otra cadena de retos), ver [aterrizaje.md](aterrizaje.md);
+   - sonda: a unos 300 m del asteroide; posarla (fase 1 de la subyugación, [subyugacion.md](subyugacion.md)) también es a mano o por programa ([aterrizaje.md](aterrizaje.md));
    - sonda de vuelta: a unos 60 m de la bahía; acercarla a 10 m para que la agarre el brazo es manual;
    - nodriza a una estación: atraca sola, como antes (es un atraque, no un aterrizaje).
 
@@ -76,4 +76,6 @@ Capturas (`docs/screenshots/viajes-*-mobile.png` en iPhone 13 y `viajes-*-deskto
 6. `viajes-6`: consola de la sonda con «Programar viaje a…».
 7. `viajes-7`: la sonda volando sola.
 8. `viajes-8`: en el puente, «Ver» la sonda.
-9. `viajes-9`: la sonda espera a 300 m: posarla es manual.
+9. `viajes-9`: la sonda espera a 300 m: posarla a mano o por programa ([aterrizaje.md](aterrizaje.md)).
+
+Cada paso bien respondido al programar el viaje dibuja su parte del plan (ruta, empuje, llegada, punto de frenado): [aterrizaje.md](aterrizaje.md#cada-paso-se-ve).

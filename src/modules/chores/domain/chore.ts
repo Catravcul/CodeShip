@@ -36,6 +36,8 @@ export type ChoreKind =
   | "repostar"
   | "ajustar-biorreactor"
   | "programar-viaje"
+  /** Programming a landing for the guidance computer (docs/design/aterrizaje.md). */
+  | "programar-aterrizaje"
   /** Ordering from the Sanctuary, a tug haul or a mass driver install (modules/imports). */
   | "importar";
 
@@ -77,6 +79,7 @@ export const CHORE_CATEGORY: Readonly<Record<ChoreKind, ChoreCategory>> = {
   repostar: "nave",
   "ajustar-biorreactor": "plantas",
   "programar-viaje": "misiones",
+  "programar-aterrizaje": "misiones",
   importar: "nave",
 };
 

@@ -1,0 +1,50 @@
+/* Landing readout and offer (docs/design/aterrizaje.md): mono, high contrast, few elements. */
+.land-box { position: fixed; z-index: 8; display: flex; flex-direction: column; align-items: stretch; gap: 6px; width: 206px; pointer-events: none; }
+.land-box.lander { right: 8px; top: 60px; }
+@media (min-width: 900px) {
+  .land-box { width: 232px; }
+  .land-box.lander { right: 18px; top: 300px; }
+}
+body:not(.in-cockpit) .land-box.lander, body:not(.in-cockpit) .land-mark.lander { display: none; }
+/* The probe's readout and offer ride in the context column of its console (top of the stack). */
+.ctx-dock > .land-box.probe { order: 8; gap: 6px; }
+body:not(.in-probe) .ctx-dock > .land-box.probe, body:not(.in-probe) .land-mark.probe { display: none; }
+body.in-duel .land-box, body.in-duel .land-mark { display: none !important; }
+
+.landing-readout { display: flex; align-items: center; gap: 6px; padding: 5px 7px; color: #e6fbff; background: #03101acc; border: 1px solid #7fdcff66; border-radius: 10px; font: 11px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; text-shadow: 0 0 3px #000; }
+.landing-readout.hidden { display: none; }
+.landing-readout[data-verdict="bad"] { border-color: #ff6b6b; }
+.landing-readout[data-verdict="ok"] { border-color: #7dffb088; }
+.lr-dial { flex: none; }
+.lr-lines { min-width: 0; white-space: nowrap; }
+.lr-lines span { display: inline-block; min-width: 7ch; }
+.lr-lines span + span { min-width: 0; }
+.lr-title { color: #7fdcff; letter-spacing: 0.06em; text-transform: uppercase; font-size: 10px; overflow: hidden; text-overflow: ellipsis; }
+.landing-readout .ok { color: #7dffb0; }
+.landing-readout .warn { color: #ffc04d; }
+.landing-readout .bad { color: #ff6b6b; font-weight: 700; }
+.lr-rim { fill: #03101a99; stroke: #7fdcff55; stroke-width: 1; }
+.lr-axis { stroke: #7fdcff44; stroke-width: 0.8; }
+.lr-site { fill: none; stroke: #7dffb0; stroke-width: 1.2; stroke-dasharray: 2 2; }
+.lr-td { fill: none; stroke-width: 1.6; }
+.lr-vel { stroke-width: 1.6; stroke-linecap: round; }
+@media (min-width: 900px) { .landing-readout { font-size: 12px; } }
+
+.land-offer { pointer-events: auto; min-height: 44px; padding: 8px 10px; font: inherit; font-size: 13px; color: #d8f6ff; background: #0b2a36e6; border: 1px solid #7fdcff88; border-radius: 10px; }
+.land-offer.primary { color: #001018; background: #ffd27f; border-color: #ffd27f; font-weight: 700; }
+.land-offer.hidden { display: none !important; }
+/* The lander's offer sits in the context column (docs/design/ux-acciones.md), the probe's under its readout. */
+.ctx-dock > .land-offer { order: 1; min-height: 48px; font-size: 15px; }
+body:not(.in-cockpit) .ctx-dock > .land-offer { display: none; }
+
+/* The site on screen: a dashed ring with its label, placed by the camera's projection. */
+.land-mark { position: fixed; left: 0; top: 0; z-index: 3; pointer-events: none; display: none; }
+.land-mark.on { display: block; }
+.land-mark i { position: absolute; left: -14px; top: -14px; width: 28px; height: 28px; border: 2px dashed #7dffb0; border-radius: 50%; box-sizing: border-box; }
+.land-mark span { position: absolute; left: 16px; top: -7px; font: 10px ui-monospace, monospace; color: #7dffb0; text-shadow: 0 0 3px #000; }
+
+/* Plan caption (step visuals): what the step just answered right did, over the visible scene. */
+.plan-caption { position: fixed; z-index: 11; top: 10px; left: 10px; max-width: min(380px, calc(100vw - 20px)); box-sizing: border-box; padding: 6px 10px; font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; color: #e6fbff; background: #03101ae6; border: 1px solid #7dffb0aa; border-radius: 10px; pointer-events: none; display: none; }
+.plan-caption.on { display: block; animation: plan-in 0.35s ease-out; }
+@keyframes plan-in { from { opacity: 0; transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .plan-caption.on { animation: none; } }

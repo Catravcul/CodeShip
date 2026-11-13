@@ -123,7 +123,7 @@ describe("CV · almacén, energía y créditos compartidos", () => {
     expect(o.equipmentBlocker(probe)).toMatch(/Falta energía/);
   });
 
-  it("CV-15 dos pedidos en retos a la vez con créditos para uno: el segundo, resuelto, no cobra ni envía nada y no avisa (HC-05)", () => {
+  it("CV-15 dos pedidos en retos a la vez con créditos para uno: el segundo, resuelto, no cobra ni envía nada y dice cuántos créditos faltan (HC-05)", () => {
     const station = new Station(POLANA_STATION, new MaterialStock({}), new Hangar());
     const c67p = COMETS.find((c) => c.id === "67p")!;
     const ops = new ImportOps(station, new Wallet(0), {
@@ -156,7 +156,11 @@ describe("CV · almacén, energía y créditos compartidos", () => {
     solveAll(b);
     expect(ops.wallet.balance).toBeCloseTo(q.credits * 0.5, 6);
     expect(ops.deliveries.pending).toHaveLength(1);
-    expect(ops.drainEvents().filter((e) => e.type === "pedido")).toHaveLength(1);
+    expect(a.refused).toBeUndefined();
+    expect(b.refused).toBe(`No se pidió: faltan ${Math.ceil(q.credits * 0.5).toLocaleString("es-ES")} créditos`);
+    const events = ops.drainEvents();
+    expect(events.filter((e) => e.type === "pedido")).toHaveLength(1);
+    expect(events.filter((e) => e.type === "sin-creditos")).toHaveLength(1);
     // With half an order left a new one cannot even start: the blocker says what is missing.
     expect(ops.orderBlocker({ kit: 1 }, "falcon-heavy")).toMatch(/Faltan/);
     // A mission that pays while a chain is open lets that chain through when it is solved.

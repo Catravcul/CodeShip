@@ -702,6 +702,9 @@ export class StationScreen {
         if (mode === "ajustar") {
           this.say("Ajustado: rinde al 100 % durante 240 h");
           this.show("vida");
+        } else if (session.refused) {
+          this.say(session.refused);
+          this.show(mode === "importar" ? "importar" : "fabricacion");
         } else if (mode === "importar") {
           this.say("Hecho: mira «En camino»");
           this.show("importar");

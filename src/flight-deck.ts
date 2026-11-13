@@ -154,7 +154,17 @@ export class FlightDeck {
     return matchMedia(COMPACT).matches;
   }
 
-  enter(from: "interior" | "cabina"): void {
+  /** A button in the status bar for a console that lives in its own file (e.g. the probe's). */
+  addStatusButton(className: string, label: string, onClick: () => void): HTMLButtonElement {
+    const b = document.createElement("button");
+    b.className = `fd-exit ${className}`;
+    b.textContent = label;
+    b.addEventListener("click", onClick);
+    this.status.insertBefore(b, this.status.querySelector(".fd-exit"));
+    return b;
+  }
+
+    enter(from: "interior" | "cabina"): void {
     this.restore();
     this.from = from;
     this.active = true;

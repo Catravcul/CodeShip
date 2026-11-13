@@ -48,7 +48,9 @@ export async function movimiento(j) {
     window.__toasts = [];
     if (el) new MutationObserver(() => window.__toasts.push(el.textContent)).observe(el, { childList: true, characterData: true, subtree: true });
   });
-  await j.tap(".board .chore", "primera tarea");
+  // The task list has every task: the ring's chores are under Comida, Plantas, Animales, Salud, Nave.
+  await j.tap('.task-board [data-group="comida"]', "Comida");
+  await j.tap(".task-board .tb-go", "Ir: primera tarea de comida");
   await p.waitForTimeout(500);
   const toast = (await p.evaluate(() => window.__toasts)).find((t) => /Bajas al anillo/.test(t)) ?? (await j.texts(".interior-ui .toast"))[0] ?? "";
   j.check("al elegir una tarea en el eje avisa de que baja al anillo", /Bajas al anillo/.test(toast), toast);

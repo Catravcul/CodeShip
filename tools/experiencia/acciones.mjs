@@ -10,7 +10,8 @@ async function audit(j, id, title) {
   const over = await j.overlaps();
   const buttons = await j.texts("button");
   const file = `ux-${j.opts.prefix}-${id}-${j.opts.mobile ? "movil" : "escritorio"}`;
-  await j.page.screenshot({ path: `${j.dir}/${file}.png` });
+  // Other browsers on the same machine can slow SwiftShader down: a capture may take longer than 30 s.
+  await j.page.screenshot({ path: `${j.dir}/${file}.png`, timeout: 120000 });
   j.shots.push(`${file}.png`);
   j.check(`${title}: ningún botón se solapa con otro`, over.length === 0, over.slice(0, 4).join("; "));
   j.audit = j.audit ?? [];

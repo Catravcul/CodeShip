@@ -179,7 +179,9 @@ export class Journey {
       await this.setup(`camina hasta «${id}»`, ([r, m]) => window.codeship[r].goTo(m), [room, id]);
       await this.page.waitForFunction(([r, m]) => window.codeship[r].near() === m, [room, id], { timeout: 20000 }).catch(() => {});
     }
-    await this.page.waitForTimeout(700);
+    // She stops at the machine and its card comes up.
+    await this.page.waitForFunction(() => !!document.querySelector(".room-ui:not(.hidden) .cab-machine:not(.hidden)"), null, { timeout: 8000 }).catch(() => {});
+    await this.page.waitForTimeout(500);
     if (!act) return true;
     return this.tap(`.room-ui:not(.hidden) .cab-machine [data-act="${act}"]`, what);
   }

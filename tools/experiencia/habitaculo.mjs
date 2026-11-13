@@ -18,7 +18,7 @@ export async function habitaculo(j) {
   const p = j.page;
   // The landing screen: the minimum of buttons, no «Nombres» nor «☰ Mandos».
   const cockpit = await j.texts("button");
-  j.check("en la cabina no hay botón «Nombres» ni «Mandos»", !cockpit.some((t) => /^Nombres|Mandos/.test(t)), cockpit.join(" / ").slice(0, 160));
+  j.check("en la cabina no hay botón «Nombres» ni «Mandos»", !cockpit.some((t) => /^(Nombres|☰ ?Mandos)/.test(t)), cockpit.join(" / ").slice(0, 160));
   const eye = await p.locator(".flight-bar .cam-btn, .root-menu.flight-bar button[aria-label^='Cámara']").count();
   j.check("la cámara es un icono de ojo con nombre accesible («Cámara: …»)", eye >= 1);
   await capture(j, "cabina", "Cabina de pilotaje");

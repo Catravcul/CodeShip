@@ -142,8 +142,13 @@ export class LevelsUi {
     const level = r?.subjugated ? r.level : 0;
     const s = this.services;
     switch (s.mode(id)) {
-      case "persigue":
-        return { level, tone: "persigue", short: `persigue a ${this.d.wrath.pursuit(id)?.targetName ?? "la nave"} · ${a.velocity.length().toFixed(1).replace(".", ",")} m/s`, goal: this.d.wrath.pursuit(id)?.position() };
+      case "persigue": {
+        const p = this.d.wrath.pursuit(id);
+        const v = `${a.velocity.length().toFixed(1).replace(".", ",")} m/s`;
+        // A ram: the line goes to where it aims (docs/design/poderes-ira.md, «Embestida»).
+        if (p?.charge) return { level, tone: "persigue", short: `${p.charge.phase === "preparando" ? "va a embestir" : "¡embiste!"} a ${p.targetName} · ${v}`, goal: p.charge.aim };
+        return { level, tone: "persigue", short: `persigue a ${p?.targetName ?? "la nave"} · ${v}`, goal: p?.position() };
+      }
       case "vuelve":
         return { level, tone: "vuelve", short: "vuelve a su sitio", goal: s.home(id) };
       case "espera":

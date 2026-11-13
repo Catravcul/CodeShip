@@ -13,6 +13,16 @@
 .wrath-flee .arrow { display: inline-block; width: 18px; height: 18px; line-height: 18px; text-align: center; border-radius: 50%; background: #0c3a26; border: 1px solid #9fffc8; font-size: 13px; }
 .wrath-flee.trapped { color: #ff8a7a; }
 .wrath-flee.safe { color: #9fffc8; font-weight: normal; }
+.wrath-ram { color: #fff; background: #c0150a; border-radius: 4px; padding: 2px 4px; font-weight: bold; animation: ram-blink 0.5s steps(2) infinite; }
+@keyframes ram-blink { 50% { background: #ff5a2a; } }
+.wrath-flee.dodge { color: #ffd27f; }
+.wrath-flee.dodge .arrow { background: #3a2a0c; border-color: #ffd27f; }
+/* Ram impact: the view shakes and a flash covers the screen for a moment. */
+.ram-flash { position: fixed; inset: 0; z-index: 40; pointer-events: none; opacity: 0; background: radial-gradient(circle, #fff6e0 0%, #ffb347aa 40%, #ff3a2a55 100%); }
+.ram-flash.on { animation: ram-flash 0.9s ease-out; }
+@keyframes ram-flash { 0% { opacity: 0.95; } 100% { opacity: 0; } }
+body.ram-shake canvas { animation: ram-shake 0.6s linear; }
+@keyframes ram-shake { 0%, 100% { transform: none; } 15% { transform: translate(var(--ram-shake), calc(-0.6 * var(--ram-shake))); } 30% { transform: translate(calc(-0.8 * var(--ram-shake)), calc(0.5 * var(--ram-shake))); } 45% { transform: translate(calc(0.6 * var(--ram-shake)), calc(0.7 * var(--ram-shake))); } 60% { transform: translate(calc(-0.4 * var(--ram-shake)), calc(-0.3 * var(--ram-shake))); } 80% { transform: translate(calc(0.2 * var(--ram-shake)), 0); } }
 .wrath-survival { color: #1a0a00; background: #ffb347; border-radius: 4px; padding: 2px 4px; font-weight: bold; }
 .wrath-status { opacity: 0.8; font-size: 10px; display: none; }
 /* Phones: the card takes the banner's place while an asteroid is angry (its alerts say the same). */

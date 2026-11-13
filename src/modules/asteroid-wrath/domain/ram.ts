@@ -20,6 +20,8 @@ export const RAM = {
   chargeGapM: 150,
   /** It starts winding up once the craft is this close to its surface, m (game value). */
   startGapM: 300,
+  /** …but not closer than this: it needs a run-up for the hit to count, m (game value). Closer, it shadows the craft. */
+  minRunUpM: 50,
   /** Wind-up: the warning time before it sets off, s (game value: long enough to start a sideways burn). */
   windupS: 4,
   /** A charge that has not hit after this long is given up, s (game value). */
@@ -68,6 +70,7 @@ export function chooseAttack(i: AttackInput): { attack: Attack; reason: string }
   if (!ramCapable(i.chargeTopSpeedMs)) return { attack: "lanzar", reason: "demasiado lento para embestir" };
   if (i.chargeTopSpeedMs - i.recedeMs < RAM.minClosingMs) return { attack: "lanzar", reason: "la nave huye más rápido de lo que él cierra" };
   if (i.gapM > RAM.startGapM) return { attack: "lanzar", reason: "aún lejos" };
+  if (i.gapM < RAM.minRunUpM) return { attack: "lanzar", reason: "demasiado cerca para coger carrera" };
   return { attack: "embestir", reason: "rápido y cerca" };
 }
 

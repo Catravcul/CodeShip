@@ -12,11 +12,12 @@ import type { StationStructure } from "@modules/station/domain/structure";
 import type { Station } from "@modules/station/domain/station";
 import { POLANA_DRIVE } from "@modules/station/data/drive";
 import type { Expedition } from "@modules/expedition/application/expedition";
-import { AsteroidWrath, type WrathEvent, type WrathTarget } from "@modules/asteroid-wrath/application/wrath";
+import { AsteroidWrath, type RamView, type WrathEvent, type WrathTarget } from "@modules/asteroid-wrath/application/wrath";
 import { StationEscape } from "@modules/asteroid-wrath/application/station-escape";
 import { HULL_ENERGY_J, Hull, wallDebrisFactor, whippleDebrisFactor, type Protection } from "@modules/asteroid-wrath/domain/protection";
 import { DOSE_MARKS } from "@modules/asteroid-wrath/domain/radiation";
 import { WrathView } from "./adapters/three/wrath-view";
+import { impactThud, ramAlarm, unlockAudio } from "./adapters/audio/alarm";
 import { WrathPanel, timeText, type WrathPanelModel } from "./ui/wrath-panel";
 
 /** Station hull behind ISS-node Whipple shields: 0,48 cm aluminium rear wall plus the 0,16 cm bumper, g/cm² (estimate). */
@@ -27,6 +28,9 @@ const NAMES: Record<string, string> = { sonda: "sonda", aterrizador: "módulo de
 const SHORT: Record<string, string> = { sonda: "sonda", aterrizador: "módulo", traje: "traje", nodriza: "nodriza", estacion: "estación" };
 const KIND_WORD: Record<string, [string, string]> = { roca: ["roca", "rocas"], carga: ["carga", "cargas"], nuclear: ["carga nuclear", "cargas nucleares"] };
 const pct = (x: number) => `${Math.round(x * 100)} %`;
+const dec = (x: number, d = 1) => x.toFixed(d).replace(".", ",");
+const kJ = (j: number) => (j >= 1e6 ? `${dec(j / 1e6)} MJ` : `${Math.round(j / 1000)} kJ`);
+const metres = (m: number) => (m >= 1000 ? `${dec(m / 1000)} km` : `${Math.round(m)} m`);
 const mSv = (x: number) => `${x < 10 ? x.toFixed(1).replace(".", ",") : x.toFixed(0)} mSv`;
 
 export interface WrathDeps {
@@ -68,6 +72,7 @@ export class WrathMode {
     this.view = new WrathView(d.scene);
     this.panel = new WrathPanel(d.root);
     d.expedition.wrath = this.wrath;
+    unlockAudio();
     for (const t of [this.landerTarget(), this.mothershipTarget(), this.stationTarget()]) this.wrath.addTarget(t);
   }
 
@@ -89,6 +94,7 @@ export class WrathMode {
       velocity: () => flight.state.velocity,
       // Docked, it is part of the ship or station it hangs from.
       active: () => !docking.docked,
+      landed: () => flight.landed,
       protection: (): Protection => {
         const wall = equipmentOf(ship.design.equipment, "cabina")?.wall;
         return {
@@ -152,13 +158,22 @@ export class WrathMode {
 
   /** Time may run fast while nothing is flying at you and you are out of reach. */
   get allowsWarp(): boolean {
-    return this.wrath.threats("aterrizador").length === 0 && !this.wrath.fleeGuidance("aterrizador");
+    return this.wrath.threats("aterrizador").length === 0 && !this.wrath.fleeGuidance("aterrizador") && !this.wrath.ramAt("aterrizador") && !this.wrath.ramAt("sonda");
+  }
+
+  /** The ram coming at a craft Doménica controls (the lander, or the probe), the soonest. */
+  private ramOnYou(): RamView | undefined {
+    const a = this.wrath.ramAt("aterrizador");
+    const b = this.wrath.ramAt("sonda");
+    return a && b ? (a.etaS <= b.etaS ? a : b) : (a ?? b);
   }
 
   /** Short banner line while an asteroid is angry with you, or "". */
   bannerText(): string {
     const a = this.wrath.angry()[0];
     if (!a) return "";
+    const r = this.ramOnYou();
+    if (r) return `¡${r.asteroidName} ${r.phase === "preparando" ? "va a embestir" : "embiste"} a ${SHORT[r.targetId] ?? r.targetId}! Esquiva de lado`;
     const g = this.wrath.fleeGuidance("aterrizador");
     if (g?.trapped) return `¡${a.body.data.name} te atrapa con su gravedad!`;
     if (g) return `¡${a.body.data.name} está furioso! Huye`;
@@ -174,7 +189,7 @@ export class WrathMode {
     for (const e of events) this.react(e);
     this.sayBurst(events);
     const shells = this.wrath.angry().map((a) => ({ id: a.body.data.id, centre: a.body.position, radiusM: a.body.meanRadiusM + this.wrath.reachM(a.body.data.id), level: a.level }));
-    this.view.update(dt, camera, this.wrath.projectiles, events, shells);
+    this.view.update(dt, camera, this.wrath.projectiles, events, shells, this.wrath.rams());
     this.panel.render(inCockpit ? this.model() : null);
   }
 
@@ -212,6 +227,21 @@ export class WrathMode {
     if (e.type === "pulse") say(`Pulso de radiación sobre ${NAMES[this.wrath.target(e.targetId)?.kind ?? ""]}: ${mSv(e.doseMSv)} tras el blindaje`);
     if (e.type === "escaped") say(`${NAMES[this.wrath.target(e.targetId)?.kind ?? ""]} fuera de su alcance`);
     if (e.type === "calmed") say("Se ha calmado: puedes volver a intentarlo");
+    const who = (id: string) => NAMES[this.wrath.target(id)?.kind ?? ""] ?? id;
+    const rock = (id: string) => this.d.asteroids.find((x) => x.data.id === id)?.data.name ?? id;
+    if (e.type === "ram-windup") {
+      say(`¡${rock(e.asteroidId)} se lanza contra ${who(e.targetId)}! Esquiva de lado ${metres(e.dodgeM)}`);
+      ramAlarm();
+    }
+    if (e.type === "ram-charge") say(`¡${rock(e.asteroidId)} embiste! Hasta ${dec(this.wrath.ram(e.asteroidId)?.topSpeedMs ?? 0)} m/s`);
+    if (e.type === "ram-hit") {
+      say(`¡Embestida a ${dec(e.closingMs)} m/s sobre ${who(e.targetId)}! ${kJ(e.absorbedJ)} · −${pct(e.fraction)} de casco · empujón de ${dec(e.deltaVMs)} m/s`);
+      impactThud();
+      // Felt in the cockpit of the craft that took it.
+      if (e.targetId === "aterrizador" || e.targetId === "sonda") this.panel.impact(e.fraction);
+    }
+    if (e.type === "ram-miss") say(`Esquivado: ${rock(e.asteroidId)} se pasa ${metres(e.stopM)} de largo y tarda ${timeText(e.turnaroundS)} en volver`);
+    if (e.type === "shaken") say(`${rock(e.asteroidId)} se sacude y te despega de su superficie`);
   }
 
   private model(): WrathPanelModel | null {
@@ -236,7 +266,14 @@ export class WrathMode {
     const craft = onShip ? "nodriza" : this.d.docking.docked ? undefined : "aterrizador";
     const g = craft ? this.wrath.fleeGuidance(craft) : null;
     let flee: WrathPanelModel["flee"];
-    if (a && craft) {
+    const ram = this.ramOnYou();
+    const ramLine = ram
+      ? `¡EMBESTIDA → ${SHORT[ram.targetId] ?? ram.targetId}! ${ram.phase === "preparando" ? `sale en ${timeText(ram.windupLeftS)}` : `${dec(ram.speedMs)} m/s`} · choque en ${timeText(ram.etaS)}`
+      : undefined;
+    if (ram && ram.targetId === craft && !onShip) {
+      const b = this.d.flight.state.toBody(ram.dodgeDirection);
+      flee = { angleDeg: (Math.atan2(b.x, b.y) * 180) / Math.PI, behind: b.z > 0.3, distanceM: ram.dodgeLeftM, trapped: false, dodge: true };
+    } else if (a && craft) {
       if (g) {
         const b = onShip ? this.d.mothership.orientation.conjugate().rotate(g.direction) : this.d.flight.state.toBody(g.direction);
         flee = { angleDeg: (Math.atan2(b.x, b.y) * 180) / Math.PI, behind: b.z > 0.3, distanceM: g.distanceM, trapped: g.trapped };
@@ -260,6 +297,7 @@ export class WrathMode {
       calmInS: a?.timeToCalmS ?? 0,
       threats: threatLines,
       flee,
+      ram: ramLine,
       status,
       survival: survivalText,
       alert: this.clock < this.alertUntil ? this.alert : undefined,

@@ -21,6 +21,8 @@ describe("ram: the choice (game rule)", () => {
 
   it("charges only from close: farther out it closes in first", () => {
     expect(chooseAttack({ ...base, gapM: RAM.startGapM + 1 }).attack).toBe("lanzar");
+    // Too close for a run-up: it shadows the craft until it opens some distance.
+    expect(chooseAttack({ ...base, gapM: RAM.minRunUpM - 1 }).attack).toBe("lanzar");
   });
 
   it("shakes off a craft landed on it instead of ramming; does not charge one landed elsewhere, nor the suit", () => {

@@ -165,11 +165,15 @@ export interface RamView {
   /** Seconds to impact if the craft holds its course. */
   readonly etaS: number;
   readonly from: Vec3;
+  /** Where the asteroid's centre is now. */
+  readonly at: Vec3;
   readonly aim: Vec3;
   readonly speedMs: number;
   readonly topSpeedMs: number;
   /** Sideways shift that dodges it, m, and the way to go (world unit vector). */
   readonly dodgeM: number;
+  /** What is still missing of that shift: the craft's offset from the charge line counts (0 = out of its path). */
+  readonly dodgeLeftM: number;
   readonly dodgeDirection: Vec3;
 }
 
@@ -276,12 +280,19 @@ export class AsteroidWrath {
       windupLeftS: r.phase === "preparando" ? r.leftS : 0,
       etaS,
       from: r.phase === "preparando" ? m.body.position : r.from,
+      at: m.body.position,
       aim: r.aim,
       speedMs: v.length(),
       topSpeedMs: r.profile.topSpeedMs,
       dodgeM: m.body.meanRadiusM + t.radiusM,
+      dodgeLeftM: Math.max(0, m.body.meanRadiusM + t.radiusM - rel.sub(r.direction.scale(rel.dot(r.direction))).length()),
       dodgeDirection: dodgeDirection(r.direction, rel),
     };
+  }
+
+  /** Every ram under way. */
+  rams(): RamView[] {
+    return [...this.moods.keys()].map((id) => this.ram(id)).filter((r): r is RamView => !!r);
   }
 
   /** The ram coming at a craft, if any (the soonest). */
@@ -442,7 +453,7 @@ export class AsteroidWrath {
       }
       this.trackEscapes(m);
       this.grip(m, dt);
-      this.rams(m, dt);
+      this.ramStep(m, dt);
       m.cooldownS -= dt;
       // Committed to a ram: nothing is thrown until it is over.
       if (m.ram) m.cooldownS = Math.max(m.cooldownS, 0.5);
@@ -474,7 +485,7 @@ export class AsteroidWrath {
 
   // --- Ram (docs/design/poderes-ira.md, «Embestida») -----------------------------
 
-  private rams(m: Mood, dt: number): void {
+  private ramStep(m: Mood, dt: number): void {
     m.ramCooldownS -= dt;
     if (!m.ram) return this.considerRam(m);
     const r = m.ram;

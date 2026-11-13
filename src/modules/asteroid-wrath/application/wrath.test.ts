@@ -277,6 +277,7 @@ describe("asteroid wrath", () => {
       const events: ReturnType<AsteroidWrath["drainEvents"]> = [];
       let dodging = false;
       let angerAtMiss = 0;
+      const dodgeLeft: number[] = [];
       fly(w, b, c, 120, () => {
         const e = w.drainEvents();
         events.push(...e);
@@ -284,8 +285,12 @@ describe("asteroid wrath", () => {
         // The player sees the line and burns sideways: 1 m/s² for a few seconds is plenty against 4 s of wind-up and a slow sprint.
         if (!dodging && e.some((x) => x.type === "ram-charge")) dodging = true;
         if (dodging && c.log.vel.x < 20) c.log.vel = c.log.vel.add(new Vec3(0.1, 0, 0));
+        const r = w.ram(BENNU.id);
+        if (r?.phase === "embistiendo") dodgeLeft.push(r.dodgeLeftM);
       });
       expect(events.some((e) => e.type === "ram-hit")).toBe(false);
+      expect(dodgeLeft.at(0)).toBeGreaterThan(200);
+      expect(dodgeLeft.at(-1)).toBe(0);
       const miss = events.find((e) => e.type === "ram-miss");
       expect(miss).toBeDefined();
       if (miss?.type !== "ram-miss") throw new Error();

@@ -91,7 +91,7 @@ Consultado el 2026-11-13.
 - Dominio: `flight/domain/landing-frame.ts` (marco local, lecturas, colores).
 - Casos de uso: `navigation/application/landing-program.ts` (oferta, sitio, programa, estados, lecturas), `landing-guidance.ts`, `landing-chore.ts`, `plan-sketch.ts`.
 - Interfaz: `src/landing.ts` (cabina y consola de la sonda), `src/ui/landing-readout.ts` y `aterrizaje.css`, `src/adapters/three/plan-overlay.ts`, `src/navigation.ts` (`openTripSheet` con su `StepVisual`).
-- QA: VUE-06 a VUE-09, SON-05, NAV-07 y los recorridos PX-06 a PX-08 en [docs/qa/casos.md](../qa/casos.md).
+- QA: VUE-06 a VUE-09, SON-05, NAV-07 y los recorridos PX-07 a PX-09 en [docs/qa/casos.md](../qa/casos.md).
 
 Capturas (`docs/screenshots/aterrizaje-*-movil.png` en iPhone 13 y `-escritorio.png` a 1280×800):
 

@@ -12,9 +12,10 @@ import { cocina } from "./cocina.mjs";
 import { movimiento } from "./movimiento.mjs";
 import { mision } from "./mision.mjs";
 import { acciones } from "./acciones.mjs";
+import { ordenar } from "./ordenar.mjs";
 import { aterrizajePrograma, aterrizajeManual, aterrizajeEscritorio } from "./aterrizaje.mjs";
 
-const PLAY = { cocina, movimiento, mision, "acciones-movil": acciones, "acciones-escritorio": acciones, "aterrizaje-programa": aterrizajePrograma, "aterrizaje-manual": aterrizajeManual, "aterrizaje-escritorio": aterrizajeEscritorio };
+const PLAY = { cocina, movimiento, mision, "acciones-movil": acciones, "acciones-escritorio": acciones, ordenar, "aterrizaje-programa": aterrizajePrograma, "aterrizaje-manual": aterrizajeManual, "aterrizaje-escritorio": aterrizajeEscritorio };
 
 const now = new Date();
 const stamp = now.toISOString().replace(/[:.]/g, "-").slice(0, 19);

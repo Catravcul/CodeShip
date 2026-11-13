@@ -153,7 +153,23 @@ export class Journey {
     const ex = await this.page.evaluate(oracle);
     if (!ex) return false;
     if (ex.kind === "choice") return this.tapAt(this.page.locator(".duel .option").nth(right ? ex.correct : (ex.correct + 1) % ex.options.length));
-    for (const id of right ? ex.solution : [...ex.solution].reverse()) await this.tapAt(this.page.locator(`.duel .tray [data-id="${id}"]`));
+    // After a wrong order the ✓ stay and «Reintentar» sends the ✗ back to the tray (only the missing blocks are tapped).
+    const retry = this.page.locator(".duel .submit.retry");
+    if (await retry.count()) await this.tapAt(retry);
+    const inTray = async (id) => (await this.page.locator(`.duel .tray [data-id="${id}"]`).count()) > 0;
+    const pick = (id) => this.tapAt(this.page.locator(`.duel .tray [data-id="${id}"]`));
+    // «Paso a paso» (codeship.retos-ordenar): each pick is checked at once, there is no send button.
+    if (await this.page.evaluate(() => localStorage.getItem("codeship.retos-ordenar") === "pasos")) {
+      const next = await this.page.locator(".duel .slots .placed").count();
+      if (right) {
+        for (const id of ex.solution) if (await inTray(id)) await pick(id);
+        return true;
+      }
+      const ids = await this.page.$$eval(".duel .tray [data-id]", (els) => els.map((e) => e.dataset.id));
+      const wrong = ids.find((id) => id !== ex.solution[next]);
+      return wrong ? pick(wrong) : false;
+    }
+    for (const id of right ? ex.solution : [...ex.solution].reverse()) if (await inTray(id)) await pick(id);
     return this.tapAt(this.page.locator(".duel .submit"));
   }
 

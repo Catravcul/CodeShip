@@ -76,6 +76,13 @@ body.ui-compact .duel .duel-stats { display: flex; flex-wrap: wrap; align-items:
 /* An option already answered wrong stays marked (red, crossed) for the rest of the step; tapping it again costs nothing. */
 .option.wrong { background: #3a1018; border-color: #ff6b5a; color: #ffb4aa; }
 .option.wrong .mark { flex: none; width: 22px; height: 22px; display: inline-grid; place-items: center; border-radius: 50%; background: #ff6b5a; color: #1a0508; font-weight: 700; }
+/* Order challenges: ✓/✗ on each slot after a wrong order, and wrong picks step by step (icon + colour). */
+.block .mark { flex: none; width: 22px; height: 22px; display: inline-grid; place-items: center; border-radius: 50%; font-weight: 700; }
+.block.placed .mark { margin-left: auto; }
+.block .mark.ok { background: #5ee08f; color: #04160b; }
+.block .mark.bad { background: #ff6b5a; color: #1a0508; }
+.block.placed.ok { border-color: #5ee08f; }
+.block.placed.bad, .block.wrong { background: #3a1018; border-color: #ff6b5a; color: #ffb4aa; }
 .result { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 14px; font-size: 14px; }
 .result b { font-size: 22px; }
 .result.won { background: #0d2a1c; color: #7dffb0; border: 1px solid #7dffb0; }
@@ -164,6 +171,9 @@ body.in-cockpit .cam-tag.on { display: block; }
 .duel-top:has(.duel-tools) .duel-title { padding-right: 150px; }
 .duel-tools { position: absolute; top: 12px; right: 0; display: flex; gap: 8px; }
 .duel-tools button { font: inherit; font-size: 12px; color: #d9d2ff; background: #ffffff12; border: 1px solid #b9a8ff55; border-radius: 999px; padding: 6px 12px; }
+/* With the order mode toggle the tools need their own row above the title. */
+.duel-top:has(.order-toggle) .duel-tools { position: static; align-self: flex-end; }
+.duel-top:has(.order-toggle) .duel-title { padding-right: 0; }
 .duel-tools .x { font-size: 18px; line-height: 1; padding: 4px 12px; }
 .duel .submit { position: sticky; bottom: 0; z-index: 2; box-shadow: 0 -12px 16px -4px #05060c; }
 .feedback { animation: feedback-in 0.5s ease-out; }
@@ -197,6 +207,8 @@ body.ui-compact .duel .code-line { font-size: 13px; padding: 1px 0; color: #d8f6
 body.ui-compact .duel .block, body.ui-compact .duel .option { min-height: 44px; font-size: 14px; padding: 6px 12px; border-radius: 10px; color: #eafaff; background: #06202bdd; border-color: #7fdcff88; text-shadow: none; }
 body.ui-compact .duel .block.slot { background: #02101a99; color: #d8f6ffaa; }
 body.ui-compact .duel .block.placed { background: #1f5a70f0; border: 2px solid #7fdcff; color: #fff; }
+body.ui-compact .duel .block.placed.ok { border: 2px solid #5ee08f; }
+body.ui-compact .duel .block.placed.bad, body.ui-compact .duel .block.wrong { background: #3a1018f0; border: 2px solid #ff6b5a; color: #ffc4bb; }
 body.ui-compact .duel .option.wrong { background: #3a1018f0; border: 2px solid #ff6b5a; color: #ffc4bb; }
 body.ui-compact .duel .submit { min-height: 44px; font-size: 15px; background: #b9a8ffcc; box-shadow: none; text-shadow: none; }
 body.ui-compact .duel .question { color: #d8f6ff; font-size: 13px; }

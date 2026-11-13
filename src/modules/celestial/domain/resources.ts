@@ -12,6 +12,8 @@ const VALUE: Record<string, number> = {
   "Iron (in magnetite and Fe-Ni sulfides)": 0,
   "Nickel (in Fe-Ni sulfides)": 0,
   "Silicates (phyllosilicates)": 0,
+  // A trace (0.24 wt%) in every carbonaceous asteroid: it makes none richer than another.
+  "Nitrogen (in ammonium salts and organics)": 0,
 };
 
 const mid = (e: CompositionEntry) => (e.massFraction.value[0] + e.massFraction.value[1]) / 2;

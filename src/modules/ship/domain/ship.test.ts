@@ -169,3 +169,18 @@ describe("Explorer default propulsion (docs/design/componentes.md, «Recomendaci
     expect(445 / ship.massKg).toBeGreaterThan(0.25);
   });
 });
+
+describe("refuelling", () => {
+  it("loads up to the tanks' capacity and says how much it took", () => {
+    const d = design();
+    const ship = Ship.create({ ...d, tanks: [{ spec: d.tanks[0]!.spec, fillKg: 0 }, ...d.tanks.slice(1)] });
+    const p = d.tanks[0]!.spec.propellant;
+    const cap = ship.propellantCapacityKg(p);
+    expect(ship.refuel(p, 10)).toBe(10);
+    expect(ship.refuel(p, cap)).toBeCloseTo(cap - 10, 9);
+    expect(ship.propellantKg(p)).toBeCloseTo(cap, 9);
+    expect(ship.refuel(p, 5)).toBe(0);
+    expect(ship.refuel(p, -3)).toBe(0);
+  });
+});
+

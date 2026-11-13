@@ -20,5 +20,13 @@ export const STORE_STOWAGE: StoreStowage = {
   note: "1,571 m³ y 700 kg por bastidor ISPR (reales); Unity tiene 4 ISPR (real, https://en.wikipedia.org/wiki/Unity_(ISS_module)); bastidores de almacén por módulo y bodega a granel del hangar: valores de juego",
 };
 
-/** Mass in the store of `n` of a material, kg: kits are counted in units of `KG_PER_IMPORTED_KIT`. */
-export const storeKgOf = (id: MaterialId, n: number): number => (materialInfo(id)?.unit === "kits" ? n * KG_PER_IMPORTED_KIT : n);
+/**
+ * Room that `n` of a material takes in the store's racks, kg: kits are counted in units of
+ * `KG_PER_IMPORTED_KIT`; propellants (xenon, hydrazine, NTO…) live in the propellant depot's own tanks
+ * («Depósitos de propelente») and take none.
+ */
+export const storeKgOf = (id: MaterialId, n: number): number => {
+  const m = materialInfo(id);
+  if (m?.propellant) return 0;
+  return m?.unit === "kits" ? n * KG_PER_IMPORTED_KIT : n;
+};

@@ -288,3 +288,19 @@ describe("store capacity by module (HC-02)", () => {
     expect(storeCapacityKg([{ kind: "hangar" }], STORE_STOWAGE)).toBe(20000);
   });
 });
+
+describe("what takes room in the store (HC-02)", () => {
+  it("propellants live in the depot's tanks and take no rack room; kits weigh 25 kg each", async () => {
+    const { storeKgOf } = await import("../data/store");
+    expect(storeKgOf("xenon", 20000)).toBe(0);
+    expect(storeKgOf("hidracina", 45)).toBe(0);
+    expect(storeKgOf("kit", 2)).toBe(50);
+    expect(storeKgOf("silicatos", 10)).toBe(10);
+    const { STARTING_STOCK } = await import("../data/station");
+    const { STORE_STOWAGE } = await import("../data/store");
+    const s = new MaterialStock(STARTING_STOCK, { capacityKg: () => storeCapacityKg(startingOutfit().modules, STORE_STOWAGE), kgOf: storeKgOf });
+    // The starting store is well under its 9,8 t.
+    expect(s.usedKg).toBeLessThan(1000);
+    expect(s.full).toBe(false);
+  });
+});

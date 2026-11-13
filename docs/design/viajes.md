@@ -57,6 +57,8 @@ Durante un viaje comprimido, el bucle principal usa la cámara rápida del viaje
 - **Reloj de la misión** (física de vuelo, giro de los asteroides, ira de los asteroides y su calma, batería de la sonda, propulsión de la nano_net): avanza tiempo × cámara rápida. Acoplada, la física da todos los pasos de golpe (`FlightComputer.update`), así que ×600 no cuesta nada.
 - **Vida a bordo** (tripulación, huerto, animales, biorreactor, nano_net) y **estación** (máquinas, buzón de importaciones del Santuario y biosistemas): ya van a su propio ritmo, un día cada 40 s reales (×2160). Durante el viaje avanzan max(su ritmo, el tiempo del viaje). Con ×600 nada cambia; un viaje que comprimiera más que ×2160 los arrastraría con él, así que a bordo nunca pasa menos tiempo que en el viaje.
 - **Servicios de los asteroides** (paquetes de nivel 2 y 3, confianza que devuelve el servicio, extracción de nivel 4): van con la estación; solo su movimiento va con el reloj de la misión. Los tres relojes salen de `frameClocks` (mismo fichero) y los prueban los casos CV de [docs/qa](../qa/README.md).
+- **Tiempo ×10/×50 a mano** (fuera de un viaje): acelera igual el reloj de misión, la vida a bordo y la estación (decisión HC-01): con ×10 un día de a bordo dura 4 s reales.
+- **Amenaza durante un viaje** (decisión HC-03): si la ira va a por la nave que viaja (un proyectil hacia ella, una embestida, un asteroide que la persigue o la tiene a su alcance; `AsteroidWrath.threatened`), el viaje baja a **×1** con el aviso «⚠ Amenaza: viaje a ×1 hasta que pase», el reloj de la cámara rápida no cuenta esos segundos y, al pasar la amenaza, el viaje sigue con su cámara rápida. Así una embestida en el tramo del módulo avisa sus 5 s reales y se puede esquivar.
 
 ## Archivos
 

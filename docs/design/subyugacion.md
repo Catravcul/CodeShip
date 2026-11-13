@@ -278,8 +278,9 @@ Pruebas: `levels.test.ts`, `yields.test.ts`, `asteroid-services.test.ts`, `gravi
 - El nivel 1 ahora hace falta para ser núcleo (antes bastaba con subyugar). ¿Correcto?
 - ¿Los niveles 2 y 3 deberían sumarse (enviar a la nave y a la estación a la vez)? Ahora solo hace la
   tarea de su nivel más alto.
-- La extracción de nivel 4 no se acaba nunca en la práctica (Bennu: millones de horas). ¿Tope de
-  almacén o una tasa que crezca con el equipo de la estación?
+- ~~La extracción de nivel 4 no se acaba nunca en la práctica (Bennu: millones de horas). ¿Tope de
+  almacén o una tasa que crezca con el equipo de la estación?~~ Decidido (HC-02): el almacén tiene
+  tope por módulos y, lleno, el asteroide guarda su roca ([estacion.md](estacion.md)).
 - ¿La estación debería fabricar sondas (plano y materiales) en vez de reponerlas gratis?
 - ¿Volver a la bahía a mano desde 1,3 km es demasiado largo? Se podría añadir un «volver a la
   nodriza» automático con la guía de viaje.

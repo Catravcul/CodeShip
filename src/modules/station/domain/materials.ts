@@ -27,7 +27,7 @@ export interface Reservation {
 export interface StockOptions {
   /** Capacity of the store now, kg (it grows with the modules); unlimited by default. */
   readonly capacityKg?: () => number;
-  /** Mass of `n` of a material, kg (kits are counted in units); `n` by default. */
+  /** Room `n` of a material takes, kg (kits are counted in units; a material kept elsewhere, 0); `n` by default. */
   readonly kgOf?: (id: MaterialId, n: number) => number;
 }
 

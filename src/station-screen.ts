@@ -303,7 +303,7 @@ export class StationScreen {
       <div class="bay-bar"><span>${Math.round(share * 100)} %</span><i style="width:${Math.round(share * 100)}%"></i></div>
       ${stock.full ? `<div class="st-lock">Almacén lleno: la extracción, los paquetes y los lotes esperan. Refina o gasta material, o monta otro módulo</div>` : ""}
       ${this.reservedLine()}
-      <small>Cada módulo trae bastidores de almacén del tamaño de un ISPR de la ISS (700 kg y 1,571 m³ cada uno); el hangar guarda roca a granel</small></div>`;
+      <small>Cada módulo trae bastidores de almacén del tamaño de un ISPR de la ISS (700 kg y 1,571 m³ cada uno); el hangar guarda roca a granel. Los propelentes van en sus depósitos y no cuentan</small></div>`;
   }
 
   /** What the store keeps for propellant (HC-04), one short line. */

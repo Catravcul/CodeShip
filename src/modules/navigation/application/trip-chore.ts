@@ -18,6 +18,8 @@ export interface TripFacts {
   readonly detours: number;
   /** Set when the trip ends docked to a structure's port instead of near an asteroid. */
   readonly dock?: DockFacts;
+  /** Set when the trip ends beside the mothership's bay, for its arm to grab the probe. */
+  readonly arm?: boolean;
 }
 
 /** How a dock trip ends: «Estación» or «Nave nodriza», where the autopilot stops and the IDSS contact speeds. */
@@ -146,7 +148,9 @@ export function tripChore(f: TripFacts): Chore {
     [],
     f.dock
       ? `Llévame a ${f.approachM} m del puerto de ${name} por su eje sin chocar con rocas ni con la estructura, y acopla tocando a menos de ${num(f.dock.closingMaxMs, 2)} m/s`
-      : `Llévame a ${f.approachM} m de la superficie de ${name} sin chocar con rocas, para del todo apuntando al asteroide y devuélveme los mandos`,
+      : f.arm
+        ? `Llévame a ${f.approachM} m de la bahía de ${name} sin chocar con rocas ni con su casco, para del todo y devuélveme los mandos para que la agarre el brazo`
+        : `Llévame a ${f.approachM} m de la superficie de ${name} sin chocar con rocas, para del todo apuntando al asteroide y devuélveme los mandos`,
     f.dock
       ? [`Llévame a ${name}`, `Acelera a tope hacia el puerto de ${name} y frena al tocarlo`, `Llévame a ${name} a ${num(v)} m/s y acopla a esa velocidad`]
       : [`Llévame a ${name}`, `Acelera a tope hacia ${name} y apaga el motor al llegar`, `Llévame a ${name} a ${num(v)} m/s y aterriza tú`],

@@ -1,0 +1,48 @@
+/* Trip chip and live preview (docs/design/viajes.md). Mobile first: a compact pill under the top bar. */
+.trip-chip {
+  position: fixed;
+  left: 50%;
+  bottom: calc(8px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 9;
+  width: min(380px, calc(100vw - 16px));
+  box-sizing: border-box;
+  padding: 6px 8px 6px 10px;
+  color: #d8f6ff;
+  font-size: 12px;
+  background: #08202bee;
+  border: 1px solid #58d6ffaa;
+  border-radius: 12px;
+  box-shadow: 0 4px 18px #0008;
+  display: none;
+}
+.trip-chip.on { display: block; }
+.trip-chip .tc-row { display: flex; align-items: center; gap: 6px; }
+.trip-chip .tc-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trip-chip .tc-eta { white-space: nowrap; color: #9fe8ff; font-variant-numeric: tabular-nums; }
+.trip-chip button { min-height: 32px; padding: 0 10px; font: inherit; font-weight: 600; color: #08202b; background: #58d6ff; border: 0; border-radius: 8px; }
+.trip-chip .tc-take { color: #d8f6ff; background: #ffffff1c; }
+.trip-chip .tc-view[aria-pressed="true"] { background: #a8ecff; }
+.trip-chip .tc-detail { margin-top: 3px; font-size: 11px; color: #a9cfdc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trip-chip .tc-bar { height: 4px; margin-top: 5px; border-radius: 2px; background: #ffffff1a; overflow: hidden; }
+.trip-chip .tc-bar i { display: block; height: 100%; background: #58d6ff; }
+/* The touch pads sit at the bottom of the cockpit and the probe console: lift the chip above them. */
+body.in-cockpit .trip-chip, body.in-probe .trip-chip { bottom: calc(168px + env(safe-area-inset-bottom)); }
+/* The challenge sheet and the map go over it. */
+body.in-map .trip-chip { display: none; }
+
+.trip-pip {
+  position: fixed;
+  z-index: 9;
+  box-sizing: border-box;
+  border: 1px solid #58d6ffaa;
+  border-radius: 10px;
+  pointer-events: none;
+  box-shadow: 0 4px 18px #0008;
+  display: none;
+}
+.trip-pip.on { display: block; }
+.trip-pip .tp-label { position: absolute; left: 6px; top: 5px; padding: 1px 6px; font-size: 11px; color: #d8f6ff; background: #08202bcc; border-radius: 6px; }
+.trip-pip .tp-close { position: absolute; right: 4px; top: 4px; width: 30px; height: 30px; font-size: 16px; line-height: 1; color: #d8f6ff; background: #08202bcc; border: 0; border-radius: 8px; pointer-events: auto; }
+/* The chip carries the trip progress everywhere; the cockpit strip keeps its messages. */
+body.on-trip .autopilot-tag { display: none !important; }

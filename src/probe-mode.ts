@@ -28,6 +28,12 @@ export interface ProbeModeDeps {
   duelLabel?(): string | undefined;
   /** Keyboard flight command (shared with the cockpit). */
   keyboard(): ThrustCommand;
+  /**
+   * Automatic long trips (docs/design/viajes.md): which can be programmed now (`to`: the far target's
+   * name; `home`: back to the bay) and how to start one.
+   */
+  tripOffer?(): { readonly to?: string; readonly home?: boolean; readonly flying?: boolean };
+  programTrip?(home: boolean): void;
 }
 
 /**
@@ -43,7 +49,7 @@ export class ProbeMode {
   private readonly rapport: HTMLElement;
   private readonly msg: HTMLElement;
   private readonly title: HTMLElement;
-  private readonly btn: Record<"launch" | "assist" | "duel" | "recover" | "abandon" | "warp", HTMLButtonElement>;
+  private readonly btn: Record<"launch" | "assist" | "duel" | "recover" | "abandon" | "warp" | "trip" | "home", HTMLButtonElement>;
   private readonly touch: TouchPilot;
   private msgUntil = 0;
   private warpIdx = 0;
@@ -55,7 +61,7 @@ export class ProbeMode {
   constructor(
     root: HTMLElement,
     scene: THREE.Scene,
-    private readonly deps: ProbeModeDeps,
+    readonly deps: ProbeModeDeps,
   ) {
     scene.add(this.model.root);
     this.ui = document.createElement("div");
@@ -66,6 +72,8 @@ export class ProbeMode {
       <div class="pr-rapport"></div>
       <div class="pr-msg"></div>
       <div class="pr-actions">
+        <button data-act="trip" class="primary">Programar viaje</button>
+        <button data-act="home">Programar vuelta</button>
         <button data-act="launch" class="primary">Lanzar sonda</button>
         <button data-act="duel" class="primary">Entrar en su mente · fase 1</button>
         <button data-act="assist">Aterrizaje: manual</button>
@@ -79,7 +87,7 @@ export class ProbeMode {
     this.msg = this.ui.querySelector(".pr-msg")!;
     this.title = this.ui.querySelector(".pr-title")!;
     const b = (k: string) => this.ui.querySelector<HTMLButtonElement>(`[data-act="${k}"]`)!;
-    this.btn = { launch: b("launch"), assist: b("assist"), duel: b("duel"), recover: b("recover"), abandon: b("abandon"), warp: b("warp") };
+    this.btn = { launch: b("launch"), assist: b("assist"), duel: b("duel"), recover: b("recover"), abandon: b("abandon"), warp: b("warp"), trip: b("trip"), home: b("home") };
     this.touch = new TouchPilot(this.ui);
     this.ui.querySelector(".pr-exit")!.addEventListener("click", () => this.exit());
     this.ui.addEventListener("click", (e) => this.onClick(e));
@@ -143,6 +151,12 @@ export class ProbeMode {
         break;
       case "recover":
         if (!p.recover()) this.say(`El brazo agarra a menos de ${PROBE_TUNING.captureRangeM} m de la bahía y a menos de ${fmt(PROBE_TUNING.captureSpeedMs)} m/s`);
+        break;
+      case "trip":
+        this.deps.programTrip?.(false);
+        break;
+      case "home":
+        this.deps.programTrip?.(true);
         break;
       case "warp":
         this.warpIdx = (this.warpIdx + 1) % WARPS.length;
@@ -240,7 +254,13 @@ export class ProbeMode {
     this.btn.recover.classList.toggle("primary", p.canRecover);
     this.btn.recover.textContent = p.canRecover ? "Recuperar con el brazo" : `Recuperar: acércala (${dist(bay.distanceM)})`;
     show(this.btn.abandon, p.out);
-    show(this.btn.warp, p.status === "en-vuelo");
+    const offer = d.tripOffer?.() ?? {};
+    show(this.btn.trip, !!offer.to);
+    this.btn.trip.textContent = `Programar viaje a ${offer.to ?? ""}`;
+    show(this.btn.home, !!offer.home);
+    this.btn.home.textContent = "Programar vuelta a la nodriza";
+    // On an automatic trip the time-lapse is the trip's.
+    show(this.btn.warp, p.status === "en-vuelo" && !offer.flying);
     this.btn.warp.textContent = `Tiempo ×${this.warpRequested}`;
   }
 }

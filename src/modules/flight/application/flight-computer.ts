@@ -178,6 +178,15 @@ export class FlightComputer {
     // Any pilot input takes the controls back from the autopilot.
     if (this._guidance && (input.mainThrottle > 0 || input.translation.length() > 0 || input.rotation.length() > 0)) this._guidance = null;
     this.accumulator += realDtS;
+    if (this.berth) {
+      // Docked: the latches hold the ship and every step would be the same, so skip them in one go
+      // (a mothership trip in time-lapse passes thousands of steps a frame).
+      const n = Math.floor((this.accumulator + 1e-12) / STEP_S);
+      this.accumulator -= n * STEP_S;
+      this._simTimeS += n * STEP_S;
+      this._state = this.berth();
+      return;
+    }
     while (this.accumulator >= STEP_S - 1e-12) {
       this.step(input);
       this.accumulator -= STEP_S;

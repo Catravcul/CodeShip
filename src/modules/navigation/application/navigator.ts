@@ -9,10 +9,12 @@ import { planContinuousBurn, planTransfer, TRANSFER_TUNING, type ContinuousBurnP
 import { facing } from "../domain/attitude";
 import { portFlightTarget, targetDistance, type AsteroidTarget, type DockTarget, type NavTarget } from "../domain/nav-target";
 import type { DockingTarget } from "@modules/mothership/domain/docking";
-import { TripAutopilot, type AutopilotPhase } from "./autopilot";
-import { CARRIER_TIMELAPSE, CarrierTrip, type BerthRun, type CarrierPort } from "./carrier-trip";
+import { remainingEstimateS, TripAutopilot, type AutopilotPhase } from "./autopilot";
+import { CarrierTrip, type BerthRun, type CarrierPort } from "./carrier-trip";
+import { legBudgets, TRAVEL_TIME, TravelClock } from "../domain/travel-time";
 import { carrierTripChore, tripChore, type CarrierTripFacts, type DockFacts, type TripFacts } from "./trip-chore";
 import { DOCK_TRIP } from "./dock-trip";
+import { planHop } from "./hop";
 
 /**
  * `carrier`: the mothership is flying with the probe docked (and, at a station, docking itself);
@@ -53,6 +55,23 @@ export interface Trip {
   readonly facts: TripFacts;
   /** Set for a dock target: the probe ends docked to this port. */
   readonly dock?: DockLeg;
+  /** Game time of the whole trip (physics of each leg) and the real seconds it plays in (compressed, capped). */
+  readonly travel?: TripTime;
+}
+
+/** How long a trip is: game seconds of flight and the real seconds of its time-lapse (docs/design/viajes.md). */
+export interface TripTime {
+  readonly gameS: number;
+  readonly realS: number;
+  /** Real seconds of each leg: [mothership, lander] or [lander]. */
+  readonly legsRealS: readonly number[];
+}
+
+/** Game and real seconds of a trip's legs. */
+export function tripTime(t: Pick<Trip, "carrier" | "plan">): TripTime {
+  const legs = [...(t.carrier ? [{ gameS: t.carrier.plan.totalS, lapse: TRAVEL_TIME.lapse.carrier }] : []), { gameS: t.plan.totalS, lapse: TRAVEL_TIME.lapse.lander }];
+  const legsRealS = legBudgets(legs);
+  return { gameS: legs.reduce((s, l) => s + l.gameS, 0), realS: legsRealS.reduce((s, x) => s + x, 0), legsRealS };
 }
 
 /** What the map card shows about a destination. */
@@ -103,6 +122,23 @@ export interface NavigatorPorts {
   readonly carrier?: CarrierPort;
   /** The probe's docking assist: a dock trip ends with it. */
   readonly docking?: DockingPort;
+  /** Why no trip can start now (another vehicle is on a compressed trip, the probe is out…), if so. */
+  busy?(carrier: boolean): string | undefined;
+}
+
+/** Trip progress for the HUD. `vehicle: "probe"` is the lander (the craft the cockpit flies). */
+export interface TripProgress {
+  readonly vehicle: "carrier" | "probe";
+  readonly phase: AutopilotPhase;
+  readonly remainingM: number;
+  /** Game seconds left. */
+  readonly etaS: number;
+  readonly speedMS: number;
+  readonly fraction: number;
+  /** Real seconds left at the time-lapse. */
+  readonly etaRealS: number;
+  /** Game seconds per real second now. */
+  readonly lapse: number;
 }
 
 /**
@@ -119,6 +155,9 @@ export class Navigator {
   private _carrierTrip: CarrierTrip | undefined;
   private _berthing: BerthRun | undefined;
   private startDistanceM = 0;
+  /** Time-lapse of the leg flying now, and the real seconds kept for the lander's leg after the mothership's. */
+  private clock: TravelClock | undefined;
+  private landerBudgetS: number | undefined;
 
   constructor(
     private readonly flight: FlightComputer,
@@ -163,6 +202,11 @@ export class Navigator {
 
   /** The hop to a target from where the ship is right now. */
   trip(t: NavTarget = this._target): Trip {
+    const trip = this.trip_(t);
+    return { ...trip, travel: tripTime(trip) };
+  }
+
+  private trip_(t: NavTarget): Trip {
     const c = this.ports.carrier;
     if (c && c.docked()) {
       if (t.kind === "asteroid" && t.body.surfaceDistance(c.position, this.flight.simTimeS) > c.parkingM + this.approachM) return this.carrierTrip_(t, c);
@@ -244,32 +288,18 @@ export class Navigator {
   }
 
   private probeTrip(t: AsteroidTarget): Trip {
-    const ship = this.flight.ship;
-    const s = this.flight.state;
-    const centre = t.body.position;
-    const height = t.body.surfaceDistance(s.position, this.flight.simTimeS);
-    const toCentre = centre.sub(s.position);
-    const surfaceR = toCentre.length() - height;
-    const u = toCentre.length() > 0 ? toCentre.normalize() : Vec3.Z;
-    const arrival = s.position.add(u.scale(Math.max(0, height - this.approachM)));
-    const route = planRoute(s.position, arrival, this.ports.obstaclesFor(t));
-    const waypoints = route.slice(0, -1);
-    const last = waypoints[waypoints.length - 1];
-    const distanceM = last ? pathLength(s.position, waypoints) + Math.max(0, centre.sub(last).length() - surfaceR - this.approachM) : Math.max(0, height - this.approachM);
-    const thrustN = ship.mainEngines.reduce((f, e) => f + e.model.thrustN, 0);
-    const accel = ship.preview({ mainThrottle: 1, translation: Vec3.ZERO, rotation: Vec3.ZERO }).forceBody.length() / ship.massKg;
-    const plan = planTransfer({ distanceM, accelMS2: accel, deltaVAvailableMS: ship.mainDeltaV() });
+    const h = planHop(this.flight, t.body, this.ports.obstaclesFor(t), this.approachM);
     const facts: TripFacts = {
       targetId: t.id,
       targetName: t.name,
-      plan,
+      plan: h.plan,
       approachM: this.approachM,
-      thrustN,
-      massKg: ship.massKg,
-      deltaVAvailableMS: ship.mainDeltaV(),
-      detours: waypoints.length,
+      thrustN: h.thrustN,
+      massKg: h.massKg,
+      deltaVAvailableMS: h.deltaVAvailableMS,
+      detours: h.waypoints.length,
     };
-    return { target: t, waypoints, heightM: height, plan, facts };
+    return { target: t, waypoints: h.waypoints, heightM: h.heightM, plan: h.plan, facts };
   }
 
   destination(t: AsteroidTarget): DestinationInfo {
@@ -306,6 +336,8 @@ export class Navigator {
     const t = this._target;
     if (t.kind === "dock" && this.ports.docking?.dockedTo === t.probePort) return { ok: false, reason: `Ya estás acoplada a ${t.name}` };
     const trip = this.trip();
+    const busy = this.ports.busy?.(!!trip.carrier);
+    if (busy) return { ok: false, reason: busy };
     if (t.kind === "asteroid" && trip.heightM <= this.approachM + 50) return { ok: false, reason: `Ya estás a menos de ${this.approachM + 50} m: aterriza a mano` };
     if (trip.carrier) {
       if (trip.carrier.plan.deltaVMS > this.ports.carrier!.deltaV()) return { ok: false, reason: "A la nodriza no le queda xenón para ese viaje" };
@@ -355,6 +387,9 @@ export class Navigator {
       const berth = now.carrier.berthAt;
       const q = berth ? c.berthStandoff!(berth).orientation : leaving ? c.orientation : facing(now.carrier.parking.sub(now.carrier.from));
       this._carrierTrip = new CarrierTrip(c, now.carrier.from, now.carrier.path, now.carrier.plan, q);
+      const budget = tripTime(now).legsRealS;
+      this.clock = new TravelClock(now.carrier.plan.totalS, budget[0] ?? 0);
+      this.landerBudgetS = budget[1];
       this.startDistanceM = Math.max(1, now.carrier.plan.distanceM);
       this._status = "carrier";
       return;
@@ -374,6 +409,9 @@ export class Navigator {
     this._autopilot = new TripAutopilot(this.flight.ship, body, now.waypoints, Math.max(1, now.plan.cruiseMS), now.dock?.handoverM ?? this.approachM);
     this.flight.engage(this._autopilot);
     this.startDistanceM = Math.max(1, now.plan.distanceM);
+    const budget = this.landerBudgetS ?? tripTime(now).legsRealS[0] ?? 0;
+    this.landerBudgetS = undefined;
+    this.clock = new TravelClock(now.plan.totalS, budget, { minLapse: 1, maxLapse: TRAVEL_TIME.maxPhysicsLapse });
     this._status = "autopilot";
   }
 
@@ -385,16 +423,39 @@ export class Navigator {
     this._carrierTrip = undefined;
     this._berthing = undefined;
     this.run = undefined;
+    this.clock?.cancel();
+    this.clock = undefined;
+    this.landerBudgetS = undefined;
+  }
+
+  /**
+   * Game seconds per real second while a trip flies itself (1 otherwise): the mothership's hop and the
+   * lander's leg play in time-lapse, never longer than the cap (docs/design/viajes.md). Main runs the
+   * mission clock (physics, wrath, station) at this pace.
+   */
+  get lapse(): number {
+    if (this._status === "carrier" && this._berthing) return TRAVEL_TIME.lapse.carrier;
+    if (this._status === "carrier" && this._carrierTrip && this.clock) return this.clock.lapse(this._carrierTrip.remainingS);
+    if (this._status === "autopilot" && this._autopilot && this.clock) return this.clock.lapse(remainingEstimateS(this._autopilot.status));
+    return 1;
+  }
+
+  /** Real seconds left for the leg flying now (the lander's leg after the mothership's included). */
+  private etaRealS(): number {
+    const c = this.clock;
+    if (!c) return 0;
+    if (this._status === "carrier" && this._carrierTrip) return c.etaRealS(this._carrierTrip.remainingS) + (this.landerBudgetS ?? 0);
+    if (this._status === "autopilot" && this._autopilot) return c.etaRealS(remainingEstimateS(this._autopilot.status));
+    return 0;
   }
 
   /**
    * Call once per frame with the real frame time and the time warp: moves the mothership (in
    * time-lapse) and notices when the autopilot handed over or the pilot took the controls.
    */
-  update(realDtS = 0, warp = 1): void {
-    const gameS = realDtS * warp * CARRIER_TIMELAPSE;
+  update(realDtS = 0): void {
     if (this._status === "carrier" && this._berthing) {
-      this._berthing.advance(gameS);
+      this._berthing.advance(realDtS * TRAVEL_TIME.lapse.carrier);
       if (this._berthing.status !== "approach") {
         this._status = this._berthing.status === "docked" ? "docked" : "failed";
         this._berthing = undefined;
@@ -402,8 +463,9 @@ export class Navigator {
       return;
     }
     if (this._status === "carrier" && this._carrierTrip) {
-      this._carrierTrip.advance(gameS);
+      this._carrierTrip.advance(this.clock ? this.clock.advance(realDtS, this._carrierTrip.remainingS) : realDtS);
       if (this._carrierTrip.done) {
+        this.clock?.arrive();
         const berth = this._target.kind === "dock" ? this._target.carrierPort : undefined;
         this._carrierTrip = undefined;
         // At a station the mothership docks itself; at an asteroid the probe flies the last leg.
@@ -421,7 +483,13 @@ export class Navigator {
       return;
     }
     if (this._status !== "autopilot" || !this._autopilot) return;
-    if (this.flight.guidance === this._autopilot) return;
+    // The physics ran at `lapse` this frame (main steps it); keep the clock's books.
+    if (this.flight.guidance === this._autopilot) {
+      this.clock?.advance(realDtS, remainingEstimateS(this._autopilot.status));
+      return;
+    }
+    if (this._autopilot.arrived) this.clock?.arrive();
+    else this.clock?.cancel();
     if (!this._autopilot.arrived) {
       this._status = "manual";
       return;
@@ -437,7 +505,12 @@ export class Navigator {
   }
 
   /** Autopilot progress for the HUD, while it flies. */
-  progress(): { vehicle: "carrier" | "probe"; phase: AutopilotPhase; remainingM: number; etaS: number; speedMS: number; fraction: number } | undefined {
+  progress(): TripProgress | undefined {
+    const p = this.progress_();
+    return p ? { ...p, etaRealS: this.etaRealS(), lapse: this.lapse } : undefined;
+  }
+
+  private progress_(): Omit<TripProgress, "etaRealS" | "lapse"> | undefined {
     const b = this._berthing;
     if (this._status === "carrier" && b) {
       const r = b.remainingM;
@@ -458,6 +531,7 @@ export class Navigator {
     if (this._status !== "autopilot" || !this._autopilot) return undefined;
     const s = this._autopilot.status;
     const remaining = Number.isFinite(s.remainingM) ? s.remainingM : this.startDistanceM;
-    return { ...s, vehicle: "probe", remainingM: remaining, fraction: Math.max(0, Math.min(1, 1 - remaining / this.startDistanceM)) };
+    const etaS = remainingEstimateS(s) ?? Math.max(0, (this.clock?.plannedGameS ?? 0) - (this.clock?.gameElapsedS ?? 0));
+    return { ...s, etaS, vehicle: "probe", remainingM: remaining, fraction: Math.max(0, Math.min(1, 1 - remaining / this.startDistanceM)) };
   }
 }

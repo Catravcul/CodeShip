@@ -115,8 +115,11 @@ export async function ordenar(j) {
   await p.waitForTimeout(400);
   [hits] = await readStats(j);
   j.check("con todos los pasos bien, el reto cuenta un acierto", /Aciertos 1\//.test(hits), hits);
-  await p.reload();
-  await p.waitForFunction(() => window.codeship, null, { timeout: 120000 });
-  const after = await p.evaluate(() => localStorage.getItem("codeship.retos-ordenar"));
-  j.check("tras recargar sigue en paso a paso", after === "pasos", after);
+  // Opening the game again on the same device (a second tab, so this one keeps its performance sampler).
+  const again = await p.context().newPage();
+  await again.goto(p.url());
+  await again.waitForFunction(() => window.codeship, null, { timeout: 120000 });
+  const after = await again.evaluate(() => localStorage.getItem("codeship.retos-ordenar"));
+  await again.close();
+  j.check("al volver a abrir el juego sigue en paso a paso", after === "pasos", after);
 }

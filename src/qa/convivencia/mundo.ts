@@ -24,12 +24,12 @@ import { BOARD_DAYS_PER_REAL_S, frameClocks, type FrameClocks } from "@modules/n
 export const DAY_REAL_S = 1 / BOARD_DAYS_PER_REAL_S;
 
 /** The clocks of one frame, as main computes them. */
-export const clocks = (dt: number, tripLapse = 1, manualWarp = 1): FrameClocks => frameClocks(dt, tripLapse, manualWarp, STATION_TUNING.hoursPerSecond);
+export const clocks = (dt: number, tripLapse = 1, manualWarp = 1, threat = false): FrameClocks => frameClocks(dt, tripLapse, manualWarp, STATION_TUNING.hoursPerSecond, threat);
 
 /** Run `realS` seconds of frames of `dt`, calling `frame` with each frame's clocks. */
-export function frames(realS: number, dt: number, tripLapse: number, frame: (c: FrameClocks) => void, manualWarp = 1): void {
+export function frames(realS: number, dt: number, tripLapse: number, frame: (c: FrameClocks) => void, manualWarp = 1, threat: () => boolean = () => false): void {
   const n = Math.round(realS / dt);
-  for (let i = 0; i < n; i++) frame(clocks(dt, tripLapse, manualWarp));
+  for (let i = 0; i < n; i++) frame(clocks(dt, tripLapse, manualWarp, threat()));
 }
 
 /** A wrath target that stands still (or where the test puts it) and records what it takes. */

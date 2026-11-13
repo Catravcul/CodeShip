@@ -112,6 +112,28 @@ describe("Navigator", () => {
     expect(h).toBeLessThan(400);
   }, 60_000);
 
+  it("a trip held by a threat (HC-03) flies at ×1 without spending its real budget, and resumes its lapse after", () => {
+    const { nav, flight, member } = make();
+    nav.select(member.data.id);
+    const run = nav.startProgramming();
+    while (run.current) nav.answer(right(run.current));
+    for (let i = 0; i < 20; i++) {
+      flight.update(0.1 * nav.lapse, NO_INPUT);
+      nav.update(0.1);
+    }
+    const eta = nav.progress()!.etaRealS;
+    const lapse = nav.lapse;
+    expect(lapse).toBeGreaterThan(1);
+    // Ten real seconds at ×1 under a threat: the physics runs at ×1 and the trip's clock waits.
+    for (let i = 0; i < 100; i++) {
+      flight.update(0.1, NO_INPUT);
+      nav.update(0.1, true);
+    }
+    expect(nav.status).toBe("autopilot");
+    expect(nav.progress()!.etaRealS).toBeGreaterThan(eta - 1);
+    expect(nav.lapse).toBeGreaterThan(1);
+  }, 30_000);
+
   it("failing the challenges leaves the ship under manual control", () => {
     const { nav, flight, member } = make();
     nav.select(member.data.id);

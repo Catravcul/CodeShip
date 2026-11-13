@@ -450,12 +450,13 @@ export class Navigator {
   }
 
   /**
-   * Call once per frame with the real frame time and the time warp: moves the mothership (in
-   * time-lapse) and notices when the autopilot handed over or the pilot took the controls.
+   * Call once per frame with the real frame time: moves the mothership (in time-lapse) and notices when
+   * the autopilot handed over or the pilot took the controls. `held`: a threat of the wrath holds the
+   * trip at ×1 this frame (main's `frameClocks`, HC-03): the time-lapse clock does not count it.
    */
-  update(realDtS = 0): void {
+  update(realDtS = 0, held = false): void {
     if (this._status === "carrier" && this._berthing) {
-      this._berthing.advance(realDtS * TRAVEL_TIME.lapse.carrier);
+      this._berthing.advance(realDtS * (held ? 1 : TRAVEL_TIME.lapse.carrier));
       if (this._berthing.status !== "approach") {
         this._status = this._berthing.status === "docked" ? "docked" : "failed";
         this._berthing = undefined;
@@ -463,7 +464,8 @@ export class Navigator {
       return;
     }
     if (this._status === "carrier" && this._carrierTrip) {
-      this._carrierTrip.advance(this.clock ? this.clock.advance(realDtS, this._carrierTrip.remainingS) : realDtS);
+      // Held by a threat (HC-03): the mothership flies at ×1 and the time-lapse clock waits.
+      this._carrierTrip.advance(this.clock && !held ? this.clock.advance(realDtS, this._carrierTrip.remainingS) : realDtS);
       if (this._carrierTrip.done) {
         this.clock?.arrive();
         const berth = this._target.kind === "dock" ? this._target.carrierPort : undefined;
@@ -485,7 +487,7 @@ export class Navigator {
     if (this._status !== "autopilot" || !this._autopilot) return;
     // The physics ran at `lapse` this frame (main steps it); keep the clock's books.
     if (this.flight.guidance === this._autopilot) {
-      this.clock?.advance(realDtS, remainingEstimateS(this._autopilot.status));
+      if (!held) this.clock?.advance(realDtS, remainingEstimateS(this._autopilot.status));
       return;
     }
     if (this._autopilot.arrived) this.clock?.arrive();

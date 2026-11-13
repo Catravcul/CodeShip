@@ -433,6 +433,17 @@ export class AsteroidWrath {
       .sort((a, b) => a.etaS - b.etaS);
   }
 
+  /**
+   * Something of the wrath is coming for a target: a projectile flying at it, a ram aimed at it, an
+   * angry asteroid that has it within reach, or one chasing it (the chase ends when it escapes the
+   * reach, IRA-03). Time may not run fast then (docs/qa, HC-03).
+   */
+  threatened(targetId: string): boolean {
+    if (this.threats(targetId).length > 0 || this.ramAt(targetId) || this.fleeGuidance(targetId)) return true;
+    for (const m of this.moods.values()) if (!m.anger.calm && this.quarry(m)?.id === targetId) return true;
+    return false;
+  }
+
   drainEvents(): WrathEvent[] {
     const e = this.events;
     this.events = [];

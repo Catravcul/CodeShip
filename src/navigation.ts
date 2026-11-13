@@ -158,9 +158,9 @@ export class NavigationMode {
   }
 
   /** Each frame, with the real frame time (the trip's time-lapse is the navigator's own). */
-  update(dtS: number): void {
+  update(dtS: number, held = false): void {
     const nav = this.nav;
-    nav.update(dtS);
+    nav.update(dtS, held);
     const now = performance.now();
     if (nav.status !== this.lastStatus) {
       if (nav.status === "arrived") this.flash(`Llegada: a ${km(nav.approachM)} de ${nav.target.name}. Tienes los mandos: aterriza y entra en su mente`, "done", 10);

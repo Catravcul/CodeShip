@@ -89,10 +89,10 @@ export class ProbeTravel {
   }
 
   /** Each frame, after the probe's physics ran at the trip's lapse. */
-  update(dtS: number): void {
+  update(dtS: number, held = false): void {
     const t = this.trip;
     const goal = t.goal;
-    t.update(dtS);
+    t.update(dtS, held);
     if (t.status === this.last) return;
     const say = (s: string) => this.d.probeMode.say(s, 8);
     if (t.status === "flying") say(`Plan cargado: la sonda vuela sola hacia ${goal ? ProbeTrip.goalName(goal) : ""}. Puedes hacer otras cosas; «Ver» la enseña en directo`);

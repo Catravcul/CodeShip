@@ -564,7 +564,9 @@ const tripPreview = new TripPreview(root);
 tripChip.onView = () => (tripPreview.open = !tripPreview.open);
 tripChip.onTake = () => (probeTravel.trip.active ? probeTravel.trip.cancel() : nav.cancel());
 const km = (m: number) => (m >= 1000 ? `${num(m / 1000, 1)} km` : `${num(m)} m`);
-const lapseText = (l: number) => (l > 1 ? ` · ×${num(l)}` : "");
+/** A wrath threat holds the trip at ×1 (HC-03): set each frame by the loop. */
+let tripHeld = false;
+const lapseText = (l: number) => (tripHeld && l > 1 ? " · ×1 por amenaza" : l > 1 ? ` · ×${num(l)}` : "");
 /** What the chip shows and what the preview follows, for the trip flying now. */
 function tripNow(): { chip: TripChipData; subject: PreviewSubject } | undefined {
   const pp = probeTravel.trip.progress();
@@ -793,10 +795,16 @@ renderer.setAnimationLoop((now) => {
   const tripLapse = probeTravel.trip.active ? probeTravel.trip.lapse : nav.lapse;
   // Inside the nano_net its speed nodes let time run faster.
   // Every clock of the frame in one place, tested in src/qa/convivencia (docs/qa/entrelazamiento.md).
-  const world = frameClocks(dt, tripLapse, asked > 1 ? Math.round(asked * fx.warpFactor) : 1, STATION_TUNING.hoursPerSecond);
+  // A wrath threat to the craft that travels (projectile, ram, chase) drops the trip to ×1 until it ends (HC-03).
+  const tripCraft = probeTravel.trip.active ? "sonda" : nav.status === "carrier" ? "nodriza" : nav.status === "autopilot" ? "aterrizador" : undefined;
+  const threat = tripLapse > 1 && !!tripCraft && wrathMode.wrath.threatened(tripCraft);
+  const world = frameClocks(dt, tripLapse, asked > 1 ? Math.round(asked * fx.warpFactor) : 1, STATION_TUNING.hoursPerSecond, threat);
   const warp = world.warp;
-  const warpNote =
-    tripLapse > 1
+  if (world.held && !tripHeld) flash("⚠ Amenaza: el viaje baja a ×1 hasta que pase. Esquiva o espera", 6);
+  tripHeld = world.held;
+  const warpNote = world.held
+    ? `⚠ Amenaza: viaje a ×1 hasta que pase${wrathMode.bannerText() ? ` · ${wrathMode.bannerText()}` : ""}`
+    : tripLapse > 1
       ? `viaje en cámara rápida ×${num(tripLapse)}`
       : warpAsk > 1 && warp === 1
         ? far
@@ -810,7 +818,7 @@ renderer.setAnimationLoop((now) => {
   // Asteroids that move themselves (level 4 trip, chase after a failed duel), packages and the hold.
   levels.update(dt * warp, world.stationHours);
   asteroidMesh.position.set(bennu.position.x, bennu.position.y, bennu.position.z);
-  probeTravel.update(dt);
+  probeTravel.update(dt, world.held);
   wrathMode.update(dt * warp, dt, subj.piloting ? subj.probeMode.camera : camera, view.enabled || deck.active || subj.piloting);
   ring.tick(dt);
   // Region rules: soft boundary push back and no flying through the other rocks or the mothership (game rules).
@@ -830,7 +838,8 @@ renderer.setAnimationLoop((now) => {
   // Only a subjugated asteroid (all three stages) can become a core (docs/design/subyugacion.md).
   // Level 1 of the subjugation makes it eligible as a core: wired in `levels` (subjugation-levels.ts).
   // Life on board keeps its pace (one day every 40 s), or the trip's if that is faster.
-  if (!nanoPanel.busy) nano.tick(tripLapse > 1 ? world.lifeDays : dt * NANO_DAYS_PER_SECOND);
+  // Life on board (and the nano_net's wear) runs with the manual warp too (HC-01).
+  if (!nanoPanel.busy) nano.tick(world.lifeDays);
   nano.powerShip(ship, fx, dt * warp);
   for (const e of nano.drainEvents()) {
     const box = habitat.mailbox!;
@@ -874,7 +883,7 @@ renderer.setAnimationLoop((now) => {
   if (stationOutfit.version !== stationGrownAt) regrowStation();
   interior.update(dt, world.lifeDays);
   view.enabled = !interior.active && !stationInside.active && !deck.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active && !navMode.mapOpen && !missionLog.visible;
-  navMode.update(dt);
+  navMode.update(dt, world.held);
   const trip = tripNow();
   tripChip.update(trip?.chip, tripPreview.visible);
   tripPreview.follow(trip?.subject);

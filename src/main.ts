@@ -90,6 +90,7 @@ import { MissionLog } from "@modules/missions/domain/mission";
 import { MissionControl } from "@modules/missions/application/mission-control";
 import { MISSION_LETTERS, NEVAEH_MISSIONS } from "@modules/missions/data/nevaeh-missions";
 import { MissionLogPanel } from "./ui/mission-log";
+import { WrathMode } from "./wrath-mode";
 
 // --- Domain setup -----------------------------------------------------------
 const d = BENNU.dimensionsM.value;
@@ -132,7 +133,13 @@ const stationOps = new StationOps(
 // and the station and the mothership, where the trip ends docked (docs/design/estacion.md).
 const carrier = mothershipCarrier(mothership, docking, { nosePort: NODRIZA_NOSE_PORT, limits: IDSS_CONTACT_LIMITS, ports: structure.ports });
 const navTargets: NavTarget[] = [...region.asteroids.map(asteroidTarget), ...dockNavTargets(structure, mothership, carrier.clearanceM)];
-const stationKeepOut = { centre: structure.position, radiusM: structure.boundingRadiusM };
+// A getter: the station can move under its own engines (survival mode).
+const stationKeepOut = {
+  get centre() {
+    return structure.position;
+  },
+  radiusM: structure.boundingRadiusM,
+};
 const nav = new Navigator(
   flight,
   {
@@ -243,6 +250,21 @@ scene.add(asteroidMesh);
 const stationModel = new StationModel(stationOutfit.layout, structure.orientation);
 stationModel.root.position.set(POLANA_STATION.position.x, POLANA_STATION.position.y, POLANA_STATION.position.z);
 scene.add(stationModel.root);
+
+// The asteroids' wrath after a failed duel (docs/design/poderes-ira.md): attacks, survival mode, anger card.
+const wrathMode = new WrathMode({
+  root,
+  scene,
+  asteroids: region.asteroids,
+  flight,
+  ship,
+  expedition,
+  mothership,
+  docking,
+  structure,
+  station: stationOps.station,
+  placeStation: (p) => stationModel.root.position.set(p.x, p.y, p.z),
+});
 
 const reticle = document.createElement("div");
 reticle.className = "reticle";
@@ -551,8 +573,7 @@ function renderPhase(): void {
   if (p === "persuaded") {
     banner.textContent = `${expedition.asteroid.data.name} obedece: ${expedition.cargo.map((c) => `${c.kg.toFixed(0)} kg de ${c.material}`).join(", ")} en la bodega`;
   } else if (p === "aggressive") {
-    const left = Math.max(0, expedition.safeDistanceM! - t.distanceToSurface);
-    banner.textContent = left > 0 ? `¡${expedition.asteroid.data.name} está furioso! Huye: faltan ${left.toFixed(0)} m hasta la distancia segura` : "A salvo. Espera a que se calme";
+    banner.textContent = wrathMode.bannerText() || `${expedition.asteroid.data.name} se calma`;
   } else if (p === "landed") {
     banner.textContent = expedition.asteroid === bennu ? "Nave anclada · puedes salir a Bennu con el traje" : `Nave anclada en ${expedition.asteroid.data.name} · entra en su mente`;
   } else if (dockingText()) {
@@ -590,12 +611,13 @@ renderer.setAnimationLoop((now) => {
   const far = flight.telemetry().distanceToSurface >= WARP_MIN_DISTANCE_M;
   const sp = flight.state.position;
   const fx = nano.net.effectsAt(sp);
-  const asked = (expedition.phase === "flight" || expedition.phase === "persuaded") && !flight.landed && idle && far ? view.warpRequested : 1;
+  const asked = (expedition.phase === "flight" || expedition.phase === "persuaded" || (expedition.phase === "aggressive" && wrathMode.allowsWarp)) && !flight.landed && idle && far ? view.warpRequested : 1;
   // Inside the nano_net its speed nodes let time run faster.
   const warp = asked > 1 ? Math.round(asked * fx.warpFactor) : 1;
   const warpNote =
     view.warpRequested > 1 && warp === 1 ? (far ? "tiempo ×1 mientras maniobras" : "tiempo ×1 cerca del asteroide") : warp > 1 ? `tiempo ×${warp}${fx.warpFactor > 1 ? " (nano_net)" : ""}` : "";
   expedition.update(dt * warp, cmd);
+  wrathMode.update(dt * warp, dt, camera, view.enabled || deck.active);
   ring.tick(dt);
   // Region rules: soft boundary push back and no flying through the other rocks or the mothership (game rules).
   if (!flight.landed && !flight.docked) {
@@ -731,4 +753,4 @@ renderer.setAnimationLoop((now) => {
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, refuelOps, nav, navMode, missions, missionLog, deck };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, refuelOps, nav, navMode, missions, missionLog, deck, wrathMode };

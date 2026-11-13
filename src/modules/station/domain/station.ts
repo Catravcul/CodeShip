@@ -55,6 +55,7 @@ export class Station {
   private readonly jobs: Job[] = [];
   private nextId = 1;
   private events: StationEvent[] = [];
+  private _position: Vec3;
   private readonly receivers = new Map<string, TransferReceiver>();
 
   constructor(
@@ -66,7 +67,18 @@ export class Station {
      * equipment (as before the station could grow).
      */
     readonly outfit?: StationOutfit,
-  ) {}
+  ) {
+    this._position = site.position;
+  }
+
+  /** Where the station is now: it starts at its site and can move under its own engines. */
+  get position(): Vec3 {
+    return this._position;
+  }
+
+  moveTo(position: Vec3): void {
+    this._position = position;
+  }
 
   /** Raw cargo into the store. Materials the station has no use for stay out and are returned. */
   unload(cargo: readonly { material: string; kg: number }[], toMaterial: (cargoMaterial: string) => MaterialId | undefined): { stored: Amounts; ignored: string[] } {
@@ -201,7 +213,7 @@ export class Station {
 
   /** Distance from a point to the station, metres. */
   distanceTo(p: Vec3): number {
-    return p.sub(this.site.position).length();
+    return p.sub(this._position).length();
   }
   isAlongside(p: Vec3): boolean {
     return this.distanceTo(p) <= this.site.dockingRangeM;

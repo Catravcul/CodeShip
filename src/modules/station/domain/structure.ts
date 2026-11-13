@@ -68,6 +68,7 @@ export interface StationPort extends DockingTarget {
 export class StationStructure {
   readonly ports: readonly StationPort[];
   private current: StationLayout;
+  private _position: Vec3;
 
   constructor(
     readonly site: StationSite,
@@ -75,6 +76,7 @@ export class StationStructure {
     readonly orientation: Quat = Quat.IDENTITY,
   ) {
     this.current = layout;
+    this._position = site.position;
     this.ports = layout.ports.map((p) => this.makePort(p));
   }
 
@@ -92,7 +94,12 @@ export class StationStructure {
   }
 
   get position(): Vec3 {
-    return this.site.position;
+    return this._position;
+  }
+
+  /** Move the whole structure (its own engines, survival mode: docs/design/poderes-ira.md). Ports follow. */
+  moveTo(position: Vec3): void {
+    this._position = position;
   }
 
   toWorld(body: Vec3): Vec3 {

@@ -53,4 +53,15 @@ export const SRC = {
   tianzhouRefuel: "https://spaceflightnow.com/2017/04/27/tianzhou-1-freighter-achieves-chinas-first-in-space-refueling-demo/",
   /** Xenon: boils at −108,1 °C; critical point 289,733 K (16,6 °C) and 5,842 MPa; world production ~5000–7000 m³ in 1998. */
   xenon: "https://en.wikipedia.org/wiki/Xenon",
+  // --- Comet ice (docs/design/importacion.md). Checked 2026-11-13.
+  /** Läuter et al. 2020, MNRAS: gas 67P lost in 2014–2016, by species (H2O 4,0e9 kg, CO2 7,2e8 kg, NH3 1,5e7 kg). */
+  cometGas: "https://arxiv.org/abs/2006.01750",
+  /** Enthalpy of fusion of water ice: 333,55 kJ/kg at 0 °C. */
+  iceFusion: "https://en.wikipedia.org/wiki/Enthalpy_of_fusion",
+  /** Ice: specific heat about 2,05 kJ/(kg·K) near 0 °C; liquid water 4,18 kJ/(kg·K). */
+  iceHeat: "https://en.wikipedia.org/wiki/Ice",
+  /** MOXIE on Perseverance: solid-oxide electrolysis CO2 → CO + ½ O2 at ~800 °C, 122 g of O2 made on Mars in 2021–2023. */
+  moxie: "https://en.wikipedia.org/wiki/Mars_Oxygen_In-Situ_Resource_Utilization_Experiment",
+  /** Boudouard reaction: 2 CO ⇌ C + CO2, carbon deposits on iron below ~700 °C. */
+  boudouard: "https://en.wikipedia.org/wiki/Boudouard_reaction",
 } as const;

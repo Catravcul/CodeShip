@@ -33,7 +33,9 @@ export type ChoreKind =
   | "fabricar"
   | "refinar"
   | "repostar"
-  | "programar-viaje";
+  | "programar-viaje"
+  /** Ordering from the Sanctuary, a tug haul or a mass driver install (modules/imports). */
+  | "importar";
 
 /** Groups for filtering the task board. */
 export type ChoreCategory = "comida" | "plantas" | "animales" | "nave" | "salud" | "misiones";
@@ -72,6 +74,7 @@ export const CHORE_CATEGORY: Readonly<Record<ChoreKind, ChoreCategory>> = {
   refinar: "nave",
   repostar: "nave",
   "programar-viaje": "misiones",
+  importar: "nave",
 };
 
 /** A task on board, done by solving code challenges in order. */

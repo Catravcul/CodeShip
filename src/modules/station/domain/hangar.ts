@@ -43,6 +43,13 @@ export class Hangar {
     return craft;
   }
 
+  /** A craft leaves the station for good (a mass driver installed on a body). */
+  removeCraft(id: string): Craft {
+    const i = this.crafts.findIndex((c) => c.id === id);
+    if (i < 0) throw new Error(`No craft ${id} in the hangar`);
+    return this.crafts.splice(i, 1)[0]!;
+  }
+
   /** Spare parts by id, most first. */
   partList(): [string, number][] {
     return [...this.parts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));

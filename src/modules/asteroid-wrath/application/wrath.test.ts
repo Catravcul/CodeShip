@@ -4,6 +4,7 @@ import { Asteroid } from "@modules/celestial/domain/asteroid";
 import { BENNU } from "@modules/celestial/data/bennu";
 import { POLANA_MEMBERS } from "@modules/celestial/data/nueva-polana";
 import { DA_1986, CERES } from "../data/reference-bodies";
+import { COMETS } from "@modules/celestial/data/comets";
 import { HULL_ENERGY_J, PROBE_ELECTRONICS_TOLERANCE_MSV, type Protection } from "../domain/protection";
 import type { TargetKind } from "../domain/power";
 import { AsteroidWrath, type WrathTarget } from "./wrath";
@@ -144,5 +145,23 @@ describe("asteroid wrath", () => {
 
   it("refuses unknown asteroids", () => {
     expect(() => new AsteroidWrath([bennu]).duelFailed("nope", 1)).toThrow();
+  });
+
+  it("an angry comet fires outgassing jets: dust on the target and a push away from it", () => {
+    const c67p = new Asteroid(COMETS.find((c) => c.id === "67p")!, Vec3.ZERO);
+    const w = new AsteroidWrath([c67p]);
+    const probe = target("sonda", "sonda", new Vec3(0, c67p.meanRadiusM + 300, 0));
+    w.addTarget({ ...probe.t, massKg: () => 30 });
+    w.duelFailed("67p", 3);
+    run(w, 60);
+    const jets = w.drainEvents().filter((e) => e.type === "jet");
+    expect(jets.length).toBeGreaterThan(0);
+    const j = jets[0]!;
+    if (j.type !== "jet") throw new Error();
+    expect(j.interceptedKg).toBeGreaterThan(0);
+    expect(j.deltaVMs).toBeGreaterThan(0);
+    // The push points away from the comet.
+    expect(probe.log.pulled.y).toBeGreaterThan(0);
+    expect(probe.log.causes).toContain("chorro");
   });
 });

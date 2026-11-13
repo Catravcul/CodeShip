@@ -11,7 +11,8 @@ export type PowerTier = 1 | 2 | 3 | 4 | 5;
 /** Who an attack can reach: the uncrewed probe, the crewed lander (and the crew in a suit), the travel ship, the station. */
 export type TargetKind = "sonda" | "aterrizador" | "traje" | "nodriza" | "estacion";
 
-export type Weapon = "roca" | "carga" | "pulso" | "nuclear" | "agarre";
+/** `chorro`: a comet's outgassing jet (docs/design/importacion.md). */
+export type Weapon = "roca" | "carga" | "pulso" | "nuclear" | "agarre" | "chorro";
 
 export interface TierSpec {
   readonly tier: PowerTier;
@@ -134,6 +135,8 @@ export interface AsteroidPower {
   readonly metalFraction: number;
   /** Why it got this tier, in Spanish for the player. */
   readonly reason: string;
+  /** A comet: on top of its tier it fires outgassing jets. */
+  readonly comet: boolean;
 }
 
 const pct = (x: number) => `${(x * 100).toFixed(1).replace(".", ",")} %`;
@@ -168,7 +171,11 @@ export function powerOf(data: AsteroidData): AsteroidPower {
     tier = 1;
     reason = `${diameterM.toFixed(0)} m, un montón de escombros: lanza piedras`;
   }
-  return { tier, spec: TIERS[tier], diameterM, escapeSpeedMs, surfaceGravityMs2, volatileFraction, volatilesAssumed, metalFraction, reason };
+  const comet = data.kind === "cometa";
+  // A comet's ice is its weapon too: it opens vents and fires gas and dust (Rosetta's outbursts on 67P).
+  const spec: TierSpec = comet ? { ...TIERS[tier], weapons: [...TIERS[tier].weapons, "chorro"], summary: `${TIERS[tier].summary}; y, como cometa, dispara chorros de gas y polvo` } : TIERS[tier];
+  if (comet) reason = `${reason} · cometa: dispara chorros de gas y polvo`;
+  return { tier, spec, diameterM, escapeSpeedMs, surfaceGravityMs2, volatileFraction, volatilesAssumed, metalFraction, reason, comet };
 }
 
 /** Whether a tier's attacks can reach a kind of target. */

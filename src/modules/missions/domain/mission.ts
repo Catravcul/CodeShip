@@ -13,6 +13,8 @@ export interface MissionFact {
 /** What finishing a main mission gives: station materials by id (kg or kit units). Game values. */
 export interface MissionReward {
   readonly amounts: Readonly<Record<string, number>>;
+  /** Credits Nevaeh pays, spent on imports from the Sanctuary (1 crédito = 1 000 US$; game values). */
+  readonly credits?: number;
   /** In-game words, e.g. "2 kits importados". */
   readonly text: string;
 }

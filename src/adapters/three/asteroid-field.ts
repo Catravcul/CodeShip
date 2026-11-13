@@ -45,6 +45,24 @@ const FRAG = /* glsl */ `
     gl_FragColor = vec4(vColour, smoothstep(1.0, 0.5, r));
   }`;
 
+/** Coma (a soft additive shell) and a dust tail away from the Sun, for a comet's nucleus. */
+function cometGlow(at: { x: number; y: number; z: number }, radiusM: number, sunDir: THREE.Vector3): THREE.Group {
+  const g = new THREE.Group();
+  g.position.set(at.x, at.y, at.z);
+  const coma = new THREE.Mesh(
+    new THREE.SphereGeometry(radiusM * 2.4, 32, 16),
+    new THREE.MeshBasicMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0.07, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide }),
+  );
+  const len = radiusM * 9;
+  const tailGeo = new THREE.ConeGeometry(radiusM * 1.8, len, 24, 1, true);
+  tailGeo.translate(0, -len / 2, 0);
+  tailGeo.rotateX(Math.PI);
+  const tail = new THREE.Mesh(tailGeo, new THREE.MeshBasicMaterial({ color: 0xcfe6ff, transparent: true, opacity: 0.05, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  tail.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), sunDir.clone().normalize().negate());
+  g.add(coma, tail);
+  return g;
+}
+
 const PROTOTYPES = 4;
 const MAX_MESHES_PER_PROTOTYPE = 160;
 
@@ -84,6 +102,8 @@ export class AsteroidField {
       const mesh = buildAsteroidMesh(memberShapeParams(a.data), albedoColour(albedo, "C"), 150);
       mesh.position.set(a.position.x, a.position.y, a.position.z);
       this.group.add(mesh);
+      // An active comet: a faint coma and a dust tail pointing away from the Sun (docs/design/importacion.md).
+      if (a.data.kind === "cometa") this.group.add(cometGlow(a.position, a.meanRadiusM, sunDir));
       this.members.push({ mesh, spin: a.spinRadS });
       const el = document.createElement("div");
       el.className = "sky-label body";

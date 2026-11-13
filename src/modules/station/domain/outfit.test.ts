@@ -4,6 +4,7 @@ import { MaterialStock } from "./materials";
 import { Hangar } from "./hangar";
 import { Station } from "./station";
 import { StationStructure } from "./structure";
+import { storeCapacityKg } from "./outfit";
 import { POLANA_STATION } from "../data/station";
 import {
   EQUIPMENT,
@@ -269,5 +270,21 @@ describe("station components", () => {
     expect(o.drawKw).toBeGreaterThan(70);
     expect(o.componentBlocker(eatcs)).toMatch(/radiadores/);
     expect(() => o.fitComponent(eatcs)).toThrow();
+  });
+});
+
+describe("store capacity by module (HC-02)", () => {
+  it("the starting station keeps 14 rack bays of stowage (9,8 t) and every new module adds its own", async () => {
+    const { STORE_STOWAGE } = await import("../data/store");
+    const o = startingOutfit();
+    expect(storeCapacityKg(o.modules, STORE_STOWAGE)).toBe(14 * 700);
+    const st = new Station(POLANA_STATION, new MaterialStock(Object.fromEntries(MATERIALS.map((m) => [m.id, 1e6]))), new Hangar(), o);
+    for (const id of [`plano-equipo-${EQ_EBW.id}`, `plano-equipo-${EQ_COMPOSITES.id}`, `plano-modulo-${MOD_FARM.id}`]) {
+      st.fabricate(GROWTH_BLUEPRINTS.find((b) => b.id === id) ?? BLUEPRINTS.find((b) => b.id === id)!);
+      st.tick(1e4);
+    }
+    expect(storeCapacityKg(o.modules, STORE_STOWAGE)).toBe(18 * 700);
+    // The hangar keeps raw rock in bulk.
+    expect(storeCapacityKg([{ kind: "hangar" }], STORE_STOWAGE)).toBe(20000);
   });
 });

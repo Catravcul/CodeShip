@@ -80,17 +80,41 @@ export class Station {
     this._position = position;
   }
 
-  /** Raw cargo into the store. Materials the station has no use for stay out and are returned. */
-  unload(cargo: readonly { material: string; kg: number }[], toMaterial: (cargoMaterial: string) => MaterialId | undefined): { stored: Amounts; ignored: string[] } {
-    const stored: Record<MaterialId, number> = {};
+  /**
+   * Raw cargo into the store. Materials the station has no use for stay out and are returned
+   * (`ignored`); with the store short of room, what fits goes in, in proportion, and the rest is given
+   * back to the hold (`left`, HC-02).
+   */
+  unload(
+    cargo: readonly { material: string; kg: number }[],
+    toMaterial: (cargoMaterial: string) => MaterialId | undefined,
+  ): { stored: Amounts; ignored: string[]; left: { material: string; kg: number }[] } {
+    const wanted: Record<MaterialId, number> = {};
     const ignored: string[] = [];
+    const usable: { material: string; kg: number; id: MaterialId }[] = [];
     for (const c of cargo) {
       const id = toMaterial(c.material);
       if (!id) ignored.push(c.material);
-      else stored[id] = (stored[id] ?? 0) + c.kg;
+      else {
+        wanted[id] = (wanted[id] ?? 0) + c.kg;
+        usable.push({ ...c, id });
+      }
+    }
+    const mass = this.stock.massKg(wanted);
+    const k = mass > 0 ? Math.min(1, this.stock.roomKg / mass) : 1;
+    const stored: Record<MaterialId, number> = {};
+    const left: { material: string; kg: number }[] = [];
+    for (const c of usable) {
+      stored[c.id] = (stored[c.id] ?? 0) + c.kg * k;
+      if (k < 1) left.push({ material: c.material, kg: c.kg * (1 - k) });
     }
     this.stock.add(stored);
-    return { stored, ignored };
+    return { stored, ignored, left };
+  }
+
+  /** Batches done but waiting on their machine for room in the store («Almacén lleno»). */
+  storeFullJobs(): Job[] {
+    return this.jobs.filter((j) => j.hoursLeft <= 1e-9 && j.output.kind === "materials");
   }
 
   /** Jobs waiting or running, in order. The first per machine is the one being worked. */
@@ -186,6 +210,8 @@ export class Station {
         t -= used;
         if (job.hoursLeft > 1e-9) break;
         job.hoursLeft = 0;
+        // A batch that does not fit in the store waits, done, on its machine (HC-02).
+        if (job.output.kind === "materials" && !this.stock.fits(job.output.amounts)) break;
         this.jobs.splice(this.jobs.indexOf(job), 1);
         this.deliver(job);
       }

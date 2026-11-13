@@ -56,12 +56,14 @@ export function wrathTarget(id: string, kind: TargetKind, position: Vec3, opts: 
  * The asteroids' services wired to a real station and its delivery inbox (main: LevelsUi with the
  * import inbox), and the mothership's hold as a list of kg.
  */
-export function servicesWorld(opts: { wrath?: PursuitPort; anchored?: () => boolean; stationPosition?: () => Vec3 } = {}) {
+export function servicesWorld(opts: { wrath?: PursuitPort; anchored?: () => boolean; stationPosition?: () => Vec3; capacityKg?: () => number } = {}) {
   const bennu = new Asteroid(BENNU, Vec3.ZERO);
   const member = new Asteroid(POLANA_MEMBERS[0]!, new Vec3(-4200, 900, -9000));
   const book = new RapportBook();
   const inbox = new DeliveryLine();
-  const station = new Station(POLANA_STATION, new MaterialStock({}), new Hangar());
+  const station = new Station(POLANA_STATION, new MaterialStock({}, { capacityKg: opts.capacityKg }), new Hangar());
+  /** Room in the store minus what already waits in the inbox (main: `storeRoomKg` of LevelsUi). */
+  const roomKg = () => station.stock.roomKg - inbox.pending.filter((d) => d.hoursLeft <= 1e-9).reduce((s, d) => s + station.stock.massKg(d.goods), 0);
   const hold: number[] = [];
   const services = new AsteroidServices([bennu, member], {
     rapport: book,
@@ -70,6 +72,7 @@ export function servicesWorld(opts: { wrath?: PursuitPort; anchored?: () => bool
       radiusM: () => POLANA_STATION.radiusM,
       send: (source, label, goods, hours) => inbox.send(source, label, goods, hours),
       goods: (p) => Object.fromEntries(p.map((c) => [c.material, c.kg])),
+      roomKg,
     },
     ship: { position: () => new Vec3(250, 120, 1600), load: (p) => (hold.push(packageKg(p)), packageKg(p)) },
     wrath: opts.wrath,
@@ -80,9 +83,10 @@ export function servicesWorld(opts: { wrath?: PursuitPort; anchored?: () => bool
   /** One frame of main: services on the mission clock and the station clock, then the inbox and the machines. */
   const frame = (c: FrameClocks) => {
     services.update(c.missionS, c.stationHours);
-    for (const d of inbox.tick(c.stationHours)) station.stock.add(d.goods);
+    // Main: ImportOps.tick lands only what fits; the rest waits in the inbox (HC-02).
+    inbox.tick(c.stationHours, (d) => station.stock.fits(d.goods) && (station.stock.add(d.goods), true));
     station.tick(c.stationHours);
   };
   const storedKg = () => station.stock.entries().reduce((s, [, kg]) => s + kg, 0);
-  return { bennu, member, book, inbox, station, hold, services, frame, storedKg };
+  return { bennu, member, book, inbox, station, hold, services, frame, storedKg, roomKg };
 }

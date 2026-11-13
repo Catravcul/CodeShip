@@ -7,6 +7,9 @@ import { describe, expect, it } from "vitest";
 import { POLANA_MEMBERS } from "@modules/celestial/data/nueva-polana";
 import { BENNU } from "@modules/celestial/data/bennu";
 import { extractionRateKgPerHour } from "@modules/subjugation/domain/yields";
+import { storeCapacityKg } from "@modules/station/domain/outfit";
+import { startingOutfit } from "@modules/station/data/outfit";
+import { STORE_STOWAGE } from "@modules/station/data/store";
 import { DAY_REAL_S, frames, servicesWorld } from "./mundo";
 
 const MEMBER = POLANA_MEMBERS[0]!;
@@ -59,17 +62,40 @@ describe("CV · niveles de subyugación y viaje comprimido", () => {
     expect(Math.abs(x.takenKg - before - extractionRateKgPerHour(BENNU) * hours)).toBeLessThanOrEqual(x.lotKg);
   });
 
-  it("CV-05 la extracción de nivel 4 llena el almacén sin tope: crece sin fallar (HC-02, pregunta abierta)", () => {
-    const w = servicesWorld();
+  it("CV-05 la extracción de nivel 4 llena el almacén hasta su capacidad y para: el asteroide guarda el resto (HC-02)", () => {
+    // The starting station: 14 rack bays of stowage of 700 kg (data/store.ts).
+    const capacity = storeCapacityKg(startingOutfit().modules, STORE_STOWAGE);
+    const w = servicesWorld({ capacityKg: () => capacity });
     w.book.of(BENNU.id).setLevel(4);
     frames(120, 0.25, 1, w.frame);
-    const kg0 = w.storedKg();
-    // Ten game days by the station.
+    // Ten game days by the station: the extraction alone would bring over 100 t.
     frames(10 * DAY_REAL_S, 0.25, 1, w.frame);
-    const kg1 = w.storedKg();
-    expect(kg1).toBeGreaterThan(kg0 + 9 * 24 * extractionRateKgPerHour(BENNU) * 0.9);
-    expect(Number.isFinite(kg1)).toBe(true);
-    // Nothing in the store limits it: no capacity, nothing refused.
-    expect(w.station.stock.entries().every(([, kg]) => kg >= 0)).toBe(true);
+    expect(w.storedKg()).toBeLessThanOrEqual(capacity + 1e-6);
+    expect(w.storedKg()).toBeGreaterThan(capacity - 1000);
+    expect(w.services.storeFull(BENNU.id)).toBe(true);
+    const x = w.services.extraction(BENNU.id)!;
+    expect(x.takenKg).toBeLessThanOrEqual(capacity + 1e-6);
+    expect(w.services.drainEvents().filter((e) => e.type === "almacen-lleno")).toHaveLength(1);
+    // The refinery (here: someone takes 5 t out) frees room and the extraction goes on.
+    const [rock, rockKg] = w.station.stock.entries()[0]!;
+    w.station.stock.take({ [rock]: Math.min(5000, rockKg) });
+    const before = x.takenKg;
+    frames(DAY_REAL_S, 0.25, 1, w.frame);
+    expect(x.takenKg).toBeGreaterThan(before + 1000);
+    expect(w.storedKg()).toBeLessThanOrEqual(capacity + 1e-6);
+  });
+
+  it("CV-05 con el almacén lleno los paquetes de nivel 3 esperan en el buzón y entran al hacer sitio (HC-02)", () => {
+    let capacity = 0;
+    const w = servicesWorld({ capacityKg: () => capacity });
+    w.book.of(MEMBER.id).setLevel(3);
+    // A package a day, about 60 station hours of flight from 58587.
+    frames(6 * DAY_REAL_S, 0.25, 1, w.frame);
+    expect(w.storedKg()).toBe(0);
+    expect(w.inbox.waiting.length).toBeGreaterThan(0);
+    capacity = 1e9;
+    frames(1, 0.25, 1, w.frame);
+    expect(w.inbox.waiting).toHaveLength(0);
+    expect(w.storedKg()).toBeGreaterThan(0);
   });
 });

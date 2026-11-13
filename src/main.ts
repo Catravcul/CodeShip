@@ -69,6 +69,8 @@ import { COMET_PROCESSES } from "@modules/station/data/comet-processes";
 import { RefuelOps, mothershipRefuelTarget, shipRefuelTarget } from "@modules/station/application/refuel";
 import { materialName } from "@modules/station/data/materials";
 import { EXPLORER_CRAFT, MOTHERSHIP_CRAFT, POLANA_STATION, STARTING_STOCK } from "@modules/station/data/station";
+import { STORE_STOWAGE, storeKgOf } from "@modules/station/data/store";
+import { storeCapacityKg } from "@modules/station/domain/outfit";
 import { StationModel } from "./adapters/three/station-model";
 import { StationScreen } from "./station-screen";
 import { StationStructure } from "@modules/station/domain/structure";
@@ -141,7 +143,8 @@ docking.drainEvents();
 const expedition = new Expedition(flight, bennu, EXERCISES, 500);
 // The space station: refinery, foundry, metal printer and hangar (docs/design/estacion.md).
 const stationOps = new StationOps(
-  new Station(POLANA_STATION, new MaterialStock(STARTING_STOCK), new Hangar({}, [
+  // The store's capacity grows with the modules (HC-02 in docs/qa, data/store.ts).
+  new Station(POLANA_STATION, new MaterialStock(STARTING_STOCK, { capacityKg: () => storeCapacityKg(stationOutfit.modules, STORE_STOWAGE), kgOf: storeKgOf }), new Hangar({}, [
     { ...MOTHERSHIP_CRAFT, name: mothership.spec.name, massKg: mothership.massKg },
     { ...EXPLORER_CRAFT, name: ship.name, massKg: ship.massKg },
   ]), stationOutfit),
@@ -528,6 +531,7 @@ const levels = new LevelsUi({
   mothership,
   station: stationOps.station,
   inbox: importOps.inbox,
+  storeRoomKg: () => stationOps.station.stock.roomKg - importOps.deliveries.pending.filter((d) => d.hoursLeft <= 1e-9).reduce((s, d) => s + stationOps.station.stock.massKg(d.goods), 0),
   stationPosition: () => structure.position,
   stationRadiusM: () => structure.boundingRadiusM,
   wrath: wrathMode.wrath,
@@ -874,7 +878,9 @@ renderer.setAnimationLoop((now) => {
             ? `Lanzador de masas montado en ${e.bodyName}`
             : e.type === "pedido"
               ? `Pedido al Santuario: ${e.credits.toLocaleString("es-ES")} créditos`
-              : "";
+              : e.type === "almacen-lleno"
+                ? `Almacén lleno: ${e.delivery.label} espera en el buzón`
+                : "";
     if (!text) continue;
     stationScreen.notice(text);
     flash(text, 5);

@@ -285,10 +285,24 @@ export class StationScreen {
           <button class="st-btn" data-refine="${esc(p.id)}" ${canRun ? "" : "disabled"}>${locked ? "Bloqueado" : machine === "planta" ? "Producir" : "Refinar"}</button></div>`;
       })
       .join("");
-    return `${this.refuelCards()}${hold}${groups}<div class="bay-sec">Refinería · cada lote es una cadena de retos</div>${cards("refineria")}
+    return `${this.refuelCards()}${this.storeCard()}${hold}${groups}<div class="bay-sec">Refinería · cada lote es una cadena de retos</div>${cards("refineria")}
       <div class="bay-sec" id="st-propelente">Planta de propelente</div>
       <p class="st-dim">Del agua salen hidrógeno y oxígeno; del nitrógeno de la roca, amoníaco, hidracina y NTO. El nitrógeno es escaso: una bodega de Bennu trae poco más de 1 kg. El MMH, el LMP-103S, el helio y el xenón no se pueden hacer aquí y llegan importados.</p>
       ${cards("planta")}<div class="bay-sec">Depósitos de propelente</div>${tanks}`;
+  }
+
+  /** The store's capacity, used and total, and «Almacén lleno» (HC-02 in docs/qa). */
+  private storeCard(): string {
+    const stock = this.ops.station.stock;
+    const cap = stock.capacityKg;
+    if (!Number.isFinite(cap)) return "";
+    const used = stock.usedKg;
+    const t = (kg: number) => `${(kg / 1000).toFixed(1).replace(".", ",")} t`;
+    const share = Math.min(1, used / Math.max(1, cap));
+    return `<div class="st-card st-store"><div class="st-row"><b>Almacén</b><span>${t(used)} de ${t(cap)}</span></div>
+      <div class="bay-bar"><span>${Math.round(share * 100)} %</span><i style="width:${Math.round(share * 100)}%"></i></div>
+      ${stock.full ? `<div class="st-lock">Almacén lleno: la extracción, los paquetes y los lotes esperan. Refina o gasta material, o monta otro módulo</div>` : ""}
+      <small>Cada módulo trae bastidores de almacén del tamaño de un ISPR de la ISS (700 kg y 1,571 m³ cada uno); el hangar guarda roca a granel</small></div>`;
   }
 
   /** «Repostar»: one card per craft docked at the station, at the top of Materiales. */
@@ -385,6 +399,7 @@ export class StationScreen {
         const rows = jobs
           .map((j, i) => {
             const done = 1 - j.hoursLeft / Math.max(1e-9, j.hoursTotal);
+            if (i === 0 && j.hoursLeft <= 1e-9) return `<div class="st-job run"><div class="st-row"><b>${esc(j.label)}</b><span>hecho</span></div><div class="st-lock">Almacén lleno: el lote espera en la máquina</div></div>`;
             return `<div class="st-job ${i === 0 ? "run" : ""}"><div class="st-row"><b>${esc(j.label)}</b><span>${i === 0 ? `quedan ${hrs(j.hoursLeft)}` : "en cola"}</span></div><div class="bay-bar"><span>${Math.round(done * 100)} %</span><i style="width:${Math.round(done * 100)}%"></i></div></div>`;
           })
           .join("");
@@ -543,6 +558,7 @@ export class StationScreen {
       .map((d) => {
         const done = 1 - d.hoursLeft / Math.max(1e-9, d.hoursTotal);
         const from = d.source === "santuario" ? "Santuario" : d.source === "remolcador" ? "Remolcador" : "Lanzador";
+        if (d.waiting) return `<div class="st-job run"><div class="st-row"><b>${esc(d.label)}</b><span>${from} · en el buzón</span></div><div class="st-lock">Almacén lleno: espera a que haya sitio</div></div>`;
         return `<div class="st-job run"><div class="st-row"><b>${esc(d.label)}</b><span>${from} · quedan ${hrs(d.hoursLeft)}</span></div><div class="bay-bar"><span>${Math.round(done * 100)} %</span><i style="width:${Math.round(done * 100)}%"></i></div></div>`;
       })
       .slice(0, 8)
@@ -656,9 +672,11 @@ export class StationScreen {
   }
 
   unload(): void {
-    const { stored, ignored } = this.ops.station.unload(this.expedition.unloadCargo(), cargoMaterial);
+    const { stored, ignored, left } = this.ops.station.unload(this.expedition.unloadCargo(), cargoMaterial);
+    // What does not fit stays in the lander's hold (HC-02).
+    this.expedition.cargo.push(...left);
     const kg = Object.values(stored).reduce((s, n) => s + n, 0);
-    this.say(`${fmtKg(kg)} kg descargados${ignored.length ? ` · sin uso: ${ignored.join(", ")}` : ""}`);
+    this.say(`${fmtKg(kg)} kg descargados${left.length ? " · Almacén lleno: el resto sigue en la bodega" : ""}${ignored.length ? ` · sin uso: ${ignored.join(", ")}` : ""}`);
     this.key = "";
     this.render();
   }

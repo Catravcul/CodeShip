@@ -3,6 +3,7 @@ import type { Amounts } from "../domain/materials";
 import { StationOutfit, type EquipmentSpec, type ModuleSpec, type OutfitBase, type OutfitModule, type StationComponent } from "../domain/outfit";
 import { SRC } from "./sources";
 import { POLANA_BERTHS, POLANA_LAYOUT, STRUCTURE_SOURCES } from "./structure";
+import { BIO_EQUIPMENT, EQ_BIO_LAB, EQ_BIOMINING, EQ_LOOP, EQ_PHB, EQ_PROTEIN, EQ_SPIRULINA } from "./bio-equipment";
 
 /**
  * How the station grows: the modules it can berth, the equipment that goes in their racks and the
@@ -238,7 +239,7 @@ export const EQ_CROPS: EquipmentSpec = {
 };
 
 export const BASE_EQUIPMENT: readonly EquipmentSpec[] = [EQ_REFINERY, EQ_GLOVEBOX, EQ_FOUNDRY, EQ_PRINTER, EQ_PLANT];
-export const EQUIPMENT: readonly EquipmentSpec[] = [...BASE_EQUIPMENT, EQ_CARBONYL, EQ_EBW, EQ_COMPOSITES, EQ_BIG_PRINTER, EQ_BIG_PLANT, EQ_CROPS];
+export const EQUIPMENT: readonly EquipmentSpec[] = [...BASE_EQUIPMENT, EQ_CARBONYL, EQ_EBW, EQ_COMPOSITES, EQ_BIG_PRINTER, EQ_BIG_PLANT, EQ_CROPS, ...BIO_EQUIPMENT];
 export const equipmentById = (id: string): EquipmentSpec | undefined => EQUIPMENT.find((e) => e.id === id);
 
 /** The basic printer only makes small parts (game value: the ESA printer's are under 250 g). */
@@ -329,7 +330,7 @@ export const STARTING_OUTFIT: OutfitBase = {
 };
 
 /** A fresh outfit as the station starts. */
-export const startingOutfit = (): StationOutfit => new StationOutfit(STARTING_OUTFIT, EQUIPMENT);
+export const startingOutfit = (): StationOutfit => new StationOutfit(STARTING_OUTFIT, EQUIPMENT, MODULES);
 
 // --- Blueprints -------------------------------------------------------------------------
 
@@ -376,6 +377,24 @@ export const EQUIPMENT_BLUEPRINTS: readonly Blueprint[] = [
   eq(EQ_CROPS, "compuestos", EQ_COMPOSITES.id, { carbono: 40, hierro: 60, agua: 200, kit: 8 }, 72, ["lamina las bandejas de fibra", "monta los paneles de LED del kit", "tiende el riego", "siembra las semillas", "enciende la luz"]),
 ];
 
+/**
+ * The biology lab and its reactors (docs/design/autosustento.md): the lab needs the agricultural
+ * module, every reactor needs the lab. Steel and slag glass from the rock, pumps, sensors and the
+ * starter cultures in kits. Recipes and hours: game values.
+ */
+const bio = (e: EquipmentSpec, machine: Blueprint["machine"], requires: string | undefined, inputs: Amounts, hours: number, steps: readonly string[]): Blueprint => {
+  const bp = growth(`plano-equipo-${e.id}`, { kind: "equipment", equipment: e }, e.name, e.massKg, machine, requires, inputs, hours, { value: e.basis.value, source: e.basis.source, note: e.basis.note ?? GAME }, steps);
+  return e === EQ_BIO_LAB ? { ...bp, requiresModule: MOD_FARM.id } : bp;
+};
+export const BIO_BLUEPRINTS: readonly Blueprint[] = [
+  bio(EQ_BIO_LAB, "fundicion", undefined, { hierro: 300, niquel: 20, ceramica: 40, kit: 4 }, 60, ["cuela el bastidor y la mesa", "monta la guantera y el banco del kit", "conecta el aire y la energía", "prueba la estanqueidad de la guantera"]),
+  bio(EQ_SPIRULINA, "fundicion", EQ_BIO_LAB.id, { hierro: 500, ceramica: 300, kit: 3 }, 80, ["funde la escoria en tubos de vidrio", "monta los tubos en los bastidores", "tiende los LED del kit", "conecta el CO₂ y el oxígeno al aire de la estación"]),
+  bio(EQ_LOOP, "fundicion", EQ_BIO_LAB.id, { hierro: 1100, niquel: 50, ceramica: 150, kit: 4 }, 120, ["cuela los tres depósitos", "monta las bombas y los sensores del kit", "une los depósitos en fila", "conecta la salida al riego de los cultivos"]),
+  bio(EQ_PHB, "fundicion", EQ_BIO_LAB.id, { hierro: 180, niquel: 20, kit: 2 }, 48, ["cuela el depósito a presión", "monta la entrada de gases del kit", "conecta el hidrógeno, el oxígeno y el CO₂", "prueba las fugas con helio"]),
+  bio(EQ_BIOMINING, "fundicion", EQ_BIO_LAB.id, { hierro: 700, ceramica: 200, kit: 2 }, 60, ["cuela los tanques", "reviste los tanques de cerámica", "monta los agitadores del kit", "conecta la salida a la fundición"]),
+  bio(EQ_PROTEIN, "fundicion", EQ_BIO_LAB.id, { hierro: 180, niquel: 20, kit: 3 }, 48, ["cuela el depósito a presión", "monta la entrada de gases del kit", "conecta el hidrógeno y el CO₂", "monta el secador del polvo"]),
+];
+
 /** The station's own components: built here, fitted in the «Estación» tab. */
 export const STATION_COMPONENT_BLUEPRINTS: readonly Blueprint[] = [
   comp(WINGS_IROSA, "compuestos", EQ_COMPOSITES.id, { carbono: 400, kit: 80 }, 120, ["lamina los mástiles enrollables", "extiende las mantas de células del kit", "suelda las cadenas de células", "enrolla las alas"]),
@@ -383,4 +402,4 @@ export const STATION_COMPONENT_BLUEPRINTS: readonly Blueprint[] = [
   comp(SHIELD_STUFFED, "compuestos", EQ_COMPOSITES.id, { hierro: 800, carbono: 300, kit: 20 }, 100, ["imprime las láminas exteriores", "cose las mantas de Nextel y Kevlar del kit", "monta los separadores", "comprueba la separación"]),
 ];
 
-export const GROWTH_BLUEPRINTS: readonly Blueprint[] = [...MODULE_BLUEPRINTS, ...EQUIPMENT_BLUEPRINTS, ...STATION_COMPONENT_BLUEPRINTS];
+export const GROWTH_BLUEPRINTS: readonly Blueprint[] = [...MODULE_BLUEPRINTS, ...EQUIPMENT_BLUEPRINTS, ...BIO_BLUEPRINTS, ...STATION_COMPONENT_BLUEPRINTS];

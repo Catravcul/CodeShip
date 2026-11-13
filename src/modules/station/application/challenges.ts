@@ -4,6 +4,7 @@ import { stepChain, toCall } from "@modules/chores/application/catalog";
 import { MACHINE_NAME, STATION_TUNING, batchScale, refineRun, type Blueprint, type RefineProcess } from "../domain/blueprint";
 import type { MaterialId, MaterialStock } from "../domain/materials";
 import type { StationOutfit } from "../domain/outfit";
+import type { BioProcess } from "../domain/bioreactor";
 
 const hash = (s: string) => {
   let h = 2166136261;
@@ -176,5 +177,86 @@ export function refineChore(p: RefineProcess, stock: MaterialStock, materialName
       .map(([m, n]) => `${fmtKg(n)} kg de ${materialName(m).toLowerCase()}`)
       .join(", ")} · ${fmtKg(run.hours)} h`,
     exercises: [outEx, ...stepChain(id, 1, (i) => `${p.name}: paso ${i + 1}`, p.steps.value, pool)],
+  };
+}
+
+/** What a tuning chore needs to know about the process, its machine and the store. */
+export interface BioTuneContext {
+  /** Power the equipment draws, kW. */
+  readonly powerKw: number;
+  readonly stock: MaterialStock;
+  /** Where each output goes («el aire de la estación»…). */
+  readonly uses: Readonly<Record<MaterialId, string>>;
+  readonly materialName?: (id: MaterialId) => string;
+}
+
+/**
+ * Tuning a living machine: game quantities only. What each kg of its main output costs in power, which
+ * input of the store runs out first at full speed (or how long the only one lasts), where the main
+ * output goes, and the maintenance round in order (revisa, ajusta el caudal, recoge).
+ */
+export function bioTuneChore(p: BioProcess, ctx: BioTuneContext): Chore {
+  const name = ctx.materialName ?? ((id: MaterialId) => id);
+  const low = (id: MaterialId) => name(id).toLowerCase();
+  const id = `ajustar-${p.id}`;
+  const [outId, outRate] = Object.entries(p.outputs)[0]!;
+  const kwhPerKg = ctx.powerKw / outRate;
+  const energyEx = choice(
+    `${id}-energia`,
+    4,
+    "predecir",
+    "La luz y las bombas no son gratis: cada kilo cuesta su energía",
+    `¿Cuántos kWh cuesta cada kg de ${low(outId)}?`,
+    [
+      block("p", `potencia = ${fmtKg(ctx.powerKw)} kW`, `const potencia = ${jsNum(ctx.powerKw)};`),
+      block("s", `sale = ${fmtKg(outRate * 1000)} g por hora`, `const sale = ${jsNum(outRate)}; // kg/h`),
+      block("e", "kWhPorKg = potencia / sale", "const kWhPorKg = potencia / sale;"),
+    ],
+    `${fmtKg(kwhPerKg)} kWh`,
+    [`${fmtKg(ctx.powerKw * outRate)} kWh`, `${fmtKg(ctx.powerKw * 24)} kWh`, `${fmtKg(kwhPerKg / 24)} kWh`],
+  );
+  const ins = Object.entries(p.inputs).map(([m, rate]) => ({ m, rate, have: ctx.stock.amount(m), hours: ctx.stock.amount(m) / rate }));
+  const v = (m: MaterialId) => camel(m);
+  const stockBlocks = ins.map((x, i) => block(String.fromCharCode(97 + i), `almacen.${v(x.m)} = ${fmtKg(x.have)} kg · gasta ${fmtKg(x.rate * 1000)} g/h`, `almacen.${v(x.m)} = ${jsNum(x.have)}; // gasta ${x.rate} kg/h`));
+  const sorted = [...ins].sort((a, b) => a.hours - b.hours);
+  // Ask which input runs out first only when one clearly does; otherwise what comes out in a day.
+  const clear = sorted.length > 1 && sorted[1]!.hours - sorted[0]!.hours > 1e-6 * Math.max(1, sorted[1]!.hours);
+  const balanceEx = clear
+    ? choice(
+        `${id}-entrada`,
+        4,
+        "predecir",
+        "La que se acaba antes frena todo el proceso",
+        "A toda marcha, ¿qué entrada del almacén se acaba antes?",
+        [...stockBlocks, block("h", "horas = almacen / gasto", "const horas = almacen / gasto;")],
+        name(sorted[0]!.m),
+        ins.filter((x) => x !== sorted[0]).map((x) => name(x.m)),
+      )
+    : choice(
+        `${id}-dia`,
+        4,
+        "predecir",
+        "Un proceso continuo: lo que sale por hora, por las horas del día",
+        `A toda marcha, ¿cuánto ${low(outId)} sale en un día?`,
+        [block("s", `sale = ${fmtKg(outRate * 1000)} g por hora`, `const sale = ${jsNum(outRate)}; // kg/h`), block("d", "dia = sale · 24", "const dia = sale * 24;")],
+        `${fmtKg(outRate * 24)} kg`,
+        [`${fmtKg(outRate)} kg`, `${fmtKg(outRate * 60)} kg`, `${fmtKg(outRate / 24)} kg`],
+      );
+  const use = ctx.uses[outId] ?? "el almacén";
+  const others = [...new Set(Object.values(ctx.uses))].filter((u) => u !== use);
+  const pick = (k: number) => others[(hash(`${id}-${k}`) % Math.max(1, others.length)) | 0];
+  const wrong = [...new Set([pick(1), pick(2), pick(3)].filter((x): x is string => !!x))].slice(0, 2);
+  const useEx = choice(`${id}-destino`, 1, "predecir", "Nada se tira: cada salida alimenta otro sistema", `¿A dónde va el ${low(outId)} que sale?`, [block("o", `sale ${low(outId)}`, `const sale = "${outId}";`)], use, wrong.length ? wrong : ["el espacio", "la basura"]);
+  return {
+    id,
+    kind: "ajustar-biorreactor",
+    targetId: p.id,
+    title: `Ajustar ${p.name.charAt(0).toLowerCase()}${p.name.slice(1)}`,
+    scenario: `${fmtKg(ctx.powerKw)} kW · ${Object.entries(p.inputs)
+      .map(([m, n]) => `${fmtKg(n * 1000)} g/h de ${low(m)}`)
+      .join(" + ")} → ${Object.entries(p.outputs)
+      .map(([m, n]) => `${fmtKg(n * 1000)} g/h de ${low(m)}`)
+      .join(" + ")}`,
+    exercises: [energyEx, balanceEx, useEx, order(`${id}-pasos`, "La ronda de mantenimiento, en orden", p.steps)],
   };
 }

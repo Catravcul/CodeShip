@@ -13,7 +13,7 @@ import { ZeroGControls } from "./adapters/input/zero-g-controls";
 import { buildRails, FloatingBody, motionLabel } from "./adapters/three/interior/zero-g-body";
 import "./ui/station-interior.css";
 
-const PANEL_NAME: Readonly<Record<StationPanel, string>> = { materiales: "Materiales", planos: "Planos", fabricacion: "Fabricación", hangar: "Hangar", propelente: "Planta de propelente" };
+const PANEL_NAME: Readonly<Record<StationPanel, string>> = { materiales: "Materiales", planos: "Planos", fabricacion: "Fabricación", hangar: "Hangar", propelente: "Planta de propelente", vida: "Vida" };
 const FACE_LABEL = { suelo: "el suelo", techo: "el techo", babor: "babor", estribor: "estribor", proa: "proa", popa: "popa" } as const;
 /** Body margin from the walls while floating, m. */
 const BODY = 0.3;

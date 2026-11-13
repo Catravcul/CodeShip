@@ -33,6 +33,7 @@ export type ChoreKind =
   | "fabricar"
   | "refinar"
   | "repostar"
+  | "ajustar-biorreactor"
   | "programar-viaje";
 
 /** Groups for filtering the task board. */
@@ -71,6 +72,7 @@ export const CHORE_CATEGORY: Readonly<Record<ChoreKind, ChoreCategory>> = {
   fabricar: "nave",
   refinar: "nave",
   repostar: "nave",
+  "ajustar-biorreactor": "plantas",
   "programar-viaje": "misiones",
 };
 

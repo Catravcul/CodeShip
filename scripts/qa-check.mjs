@@ -8,7 +8,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-const AREAS = ["VUE", "NAV", "SON", "SUB", "NIV", "IRA", "EST", "REF", "BIO", "IMP", "VID", "EVA", "ING", "NNT", "MIS", "UI", "CV", "PX"];
+const AREAS = ["VUE", "NAV", "SON", "SUB", "NIV", "IRA", "EST", "REF", "BIO", "IMP", "VID", "EVA", "ING", "NNT", "MIS", "UI", "HAB", "CV", "PX"];
 const CASE = new RegExp(`\\b(?:${AREAS.join("|")})-\\d{2}\\b`, "g");
 const ISSUE = /\b(?:B|HC)-\d{2}\b/g;
 

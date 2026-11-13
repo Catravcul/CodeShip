@@ -5,7 +5,7 @@ import { discRails, RailGraph, tubeRails, type Handrail } from "@modules/gravity
 import { IVA, ivaStep, startAt, type IvaEvent, type IvaState, type IvaWorld } from "@modules/gravity/domain/iva";
 import { ZeroGControls } from "../../input/zero-g-controls";
 import type { CubeFigure } from "./figure";
-import { buildRails, FloatingBody } from "./zero-g-body";
+import { buildRails, FloatingBody, motionLabel } from "./zero-g-body";
 import { buildSpoke, spokeLayout, type SpokeHandles, type SpokeLayout } from "./spoke";
 
 /** Where Doménica is: on the ring floor (walking), in the spoke elevator, or floating at the axis. */
@@ -28,14 +28,14 @@ const AIR = new Vec3(0.1, 0, 0);
 const BODY = 0.45;
 
 /**
- * Handrails of the hub and the spine (docs/design/ingravidez.md): four rows round the wall, one bar
+ * Handrails of the hub and the spine (docs/design/ingravidez.md): eight rows round the wall (one every ~1,5 m), one bar
  * per rack bay, separate on each side of the bearing; bars round the hatches at both ends; and an
  * upright bar at the top of the shaft, by the ladder, to hold on when the elevator arrives.
  */
 export function axisHandrails(L: SpokeLayout): Handrail[] {
   return [
-    ...tubeRails("cubo", L.axisY, L.z, L.tubeR, -L.hubHalfX + 0.2, L.hubHalfX - 0.2),
-    ...tubeRails("espina", L.axisY, L.z, L.tubeR, L.hubHalfX + 0.2, L.moduleEndX - 0.2),
+    ...tubeRails("cubo", L.axisY, L.z, L.tubeR, -L.hubHalfX + 0.2, L.hubHalfX - 0.2, 8, Math.PI / 8),
+    ...tubeRails("espina", L.axisY, L.z, L.tubeR, L.hubHalfX + 0.2, L.moduleEndX - 0.2, 8, Math.PI / 8),
     ...discRails("cubo-fondo", -L.hubHalfX, 1, L.axisY, L.z, 1.1),
     ...discRails("espina-fondo", L.moduleEndX, -1, L.axisY, L.z, 1.1),
     { id: "pozo", a: new Vec3(L.x, L.topY + 1.15, L.z - L.shaftR + 0.08), b: new Vec3(L.x, L.axisY - L.tubeR - 0.1, L.z - L.shaftR + 0.08), normal: new Vec3(0, 0, 1) },
@@ -165,7 +165,8 @@ export class GravityZones {
       const cor = this.ring.coriolis(new Vec3(0, this.carV, 0)).length();
       return `Radio: ${fmt(this.layout.axisY - this.carY, 0)} m del eje · gravedad ${fmt(g)} g${cor > 0.01 ? ` · Coriolis ${fmt(cor)} m/s² hacia un lado` : ""}`;
     }
-    return this.p.x > this.layout.hubHalfX ? "Espina: no gira · 0 g (ingravidez)" : `Eje: ${fmt(g, 3)} g · aún gira con el anillo`;
+    const where = this.p.x > this.layout.hubHalfX ? "Espina: no gira · 0 g (ingravidez)" : `Eje: ${fmt(g, 3)} g · aún gira con el anillo`;
+    return `${where} · ${motionLabel(this.iva)}`;
   }
 
   /** Every frame. `pos` is the interior's walking position (shared; written when she comes back to the ring). */
@@ -353,8 +354,12 @@ export class GravityZones {
     const seen = this.body.centre();
     const at = this.insideFloat(seen, 0.15) ? seen : this.p;
     const cam = new THREE.Vector3();
+    // In flight, from a little higher, so her stretched-out body reads from the side and not only from her soles.
+    const k = this.iva.motion.kind;
+    const lift = k === "planeo" || k === "impulso" || k === "agarrando" ? 0.8 : 0;
+    // Back along the view; where a wall is close behind her, also rise above her to keep her in sight.
     for (let d = 2.4; d > 0.4; d -= 0.1) {
-      cam.copy(at).addScaledVector(dir, -d).add(new THREE.Vector3(0, 0.25, 0));
+      cam.copy(at).addScaledVector(dir, -d).add(new THREE.Vector3(0, 0.25 + lift + Math.max(0, 2.4 - d) * 0.6, 0));
       if (this.insideFloat(cam, 0.15)) break;
     }
     camera.position.copy(cam);

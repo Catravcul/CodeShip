@@ -10,7 +10,7 @@ import { buildStationRooms, crateModel, probeModel, type StationRooms } from "./
 import { CubeFigure } from "./adapters/three/interior/figure";
 import { Walker } from "./adapters/input/walker";
 import { ZeroGControls } from "./adapters/input/zero-g-controls";
-import { buildRails, FloatingBody } from "./adapters/three/interior/zero-g-body";
+import { buildRails, FloatingBody, motionLabel } from "./adapters/three/interior/zero-g-body";
 import "./ui/station-interior.css";
 
 const PANEL_NAME: Readonly<Record<StationPanel, string>> = { materiales: "Materiales", planos: "Planos", fabricacion: "Fabricación", hangar: "Hangar", propelente: "Planta de propelente" };
@@ -60,8 +60,9 @@ export class StationInteriorMode {
   private p = Vec3.ZERO;
   /** How she moves about: holding rails, pushing off, gliding (docs/design/ingravidez.md). */
   private iva: IvaState = { position: Vec3.ZERO, velocity: Vec3.ZERO, motion: { kind: "deriva" } };
-  private readonly graph: RailGraph;
-  private readonly world: IvaWorld;
+  private graph!: RailGraph;
+  private world!: IvaWorld;
+  private railMesh: THREE.Group | null = null;
   private readonly body: FloatingBody;
   private readonly zg: ZeroGControls;
   private yaw = 0;
@@ -87,14 +88,7 @@ export class StationInteriorMode {
     this.scene.background = new THREE.Color(0x05070c);
     this.rooms = buildStationRooms(interior.plan);
     this.scene.add(this.rooms.group);
-    this.graph = new RailGraph(stationHandrails(interior.plan));
-    this.scene.add(buildRails(this.graph.rails));
-    this.world = {
-      graph: this.graph,
-      fits: (q) => this.interior.fits(q, BODY, this.suited),
-      air: (q) => (this.interior.pressurisedAt(q, this.suited) ? AIR : Vec3.ZERO),
-      portals: interior.plan.volumes.filter((v) => v.kind === "escotilla" || v.kind === "esclusa").map((v) => v.centre),
-    };
+    this.buildRails();
     this.avatar.pose("float");
     this.suit.pose("float");
     this.rig.add(this.avatar.root, this.suit.root);
@@ -159,6 +153,28 @@ export class StationInteriorMode {
     this.scene.add(this.rooms.group);
     this.storeKey = "";
     this.near = undefined;
+    this.buildRails();
+    // Hold on to the nearest rail of the new layout.
+    this.iva = startAt(this.graph, this.iva.position);
+    this.p = this.iva.position;
+  }
+
+  /** Handrails of the current layout (every module corridor gets its rows; docs/design/ingravidez.md). */
+  private buildRails(): void {
+    if (this.railMesh) {
+      this.scene.remove(this.railMesh);
+      this.railMesh.traverse((o) => o instanceof THREE.Mesh && o.geometry.dispose());
+    }
+    const plan = this.interior.plan;
+    this.graph = new RailGraph(stationHandrails(plan));
+    this.railMesh = buildRails(this.graph.rails);
+    this.scene.add(this.railMesh);
+    this.world = {
+      graph: this.graph,
+      fits: (q) => this.interior.fits(q, BODY, this.suited),
+      air: (q) => (this.interior.pressurisedAt(q, this.suited) ? AIR : Vec3.ZERO),
+      portals: plan.volumes.filter((v) => v.kind === "escotilla" || v.kind === "esclusa").map((v) => v.centre),
+    };
   }
 
   /** Come in through the hatch of the port the ship is docked at. */
@@ -247,18 +263,6 @@ export class StationInteriorMode {
     else if (e.kind === "deriva") this.say("A la deriva: no llegas a nada. Solo te mueve el aire de la ventilación, muy despacio", 5);
     else if (e.kind === "sin-impulso")
       this.say(e.why === "en-vuelo" ? "En el aire no puedes cambiar de rumbo: espera al próximo asidero o pulsa «Agarrarse»" : e.why === "contra-la-pared" ? "No puedes empujarte hacia la pared que sujetas" : "No hay nada en lo que apoyarse: el aire te llevará a una pared");
-  }
-
-  private motionLine(): string {
-    const m = this.iva.motion;
-    const v = num(this.iva.velocity.length());
-    if (m.kind === "sujeta") return "Sujeta a un asidero";
-    if (m.kind === "mano-a-mano") return "Mano a mano por los asideros";
-    if (m.kind === "impulso") return "Impulsándose…";
-    if (m.kind === "planeo") return `Planeando a ${v} m/s, sin frenar`;
-    if (m.kind === "agarrando") return "Agarrando el asidero";
-    if (m.kind === "pared") return "Apoyada en la pared";
-    return `A la deriva (${num(this.iva.velocity.length(), 3)} m/s)`;
   }
 
   private lookDir(): Vec3 {
@@ -386,7 +390,10 @@ export class StationInteriorMode {
     // In the hangar she can be seen from further back; in a narrow aisle the camera may not fit behind her.
     const far = this.interior.volumeAt(this.p)?.kind === "hangar" ? 4 : 2.4;
     // Pull the camera back from her head until it would leave the space she is in (never through a wall).
-    const at = (k: number) => new THREE.Vector3().copy(p).addScaledVector(d3, -k).add(new THREE.Vector3(0, (0.3 * k) / far, 0));
+    // In flight, from a little higher, so her stretched-out body reads from the side.
+    const mk = this.iva.motion.kind;
+    const lift = mk === "planeo" || mk === "impulso" || mk === "agarrando" ? 0.6 : 0;
+    const at = (k: number) => new THREE.Vector3().copy(p).addScaledVector(d3, -k).add(new THREE.Vector3(0, ((0.3 + lift) * k) / far, 0));
     let d = 0;
     for (let k = 0.1; k <= far + 1e-6; k += 0.1) {
       const q = at(k);
@@ -425,7 +432,7 @@ export class StationInteriorMode {
     const suit = this.suited ? " · con traje" : "";
     const html = `<div class="sti-title">${v ? `${v.code} · ${v.label}` : "Estación"}</div>
       <div>Mirando hacia ${looking} · el techo es «arriba»</div>
-      <div class="sti-grav">0 g: la estación no gira · ${air}${suit}</div><div class="sti-move-line">${this.motionLine()}</div>${this.near ? `<div class="sti-near">${this.near.label} · ${this.interior.locationCode(this.near)}</div>` : ""}`;
+      <div class="sti-grav">0 g: la estación no gira · ${air}${suit}</div><div class="sti-move-line">${motionLabel(this.iva)}</div>${this.near ? `<div class="sti-near">${this.near.label} · ${this.interior.locationCode(this.near)}</div>` : ""}`;
     if (html !== this.hudKey) {
       this.hudKey = html;
       this.hud.innerHTML = html;

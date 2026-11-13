@@ -167,7 +167,7 @@ Petición de diseño (2026-11-12): «Que se pueda andar por dentro de la estaci�
 
 ### Ingravidez y vertical local
 
-La estación no gira, así que dentro hay **0 g** en todas partes. Doménica **flota** con el mismo movimiento de la espina de la nodriza (pasamanos: empuje de 0,9 m/s², 1,6 m/s como máximo y la deriva se frena sola al soltar). Ese movimiento salió de `zones.ts` a `modules/gravity/domain/zero-g.ts` (`floatStep`, con tests) y lo usan las dos naves. En la estación, al tocar una pared **se desliza** a lo largo de ella en vez de rebotar.
+La estación no gira, así que dentro hay **0 g** en todas partes. Doménica se mueve igual que en la espina de la nodriza: **de asidero en asidero**. Se agarra, se impulsa, vuela en línea recta sin frenar y agarra el siguiente asidero. Ver [ingravidez.md](ingravidez.md); el dominio compartido es `modules/gravity/domain/iva.ts`. (Antes flotaba con un empuje continuo, `floatStep`, que ya no existe.)
 
 Toda la estación tiene la **misma vertical local**, como pide la NASA (NASA-STD-3001 Vol. 2, [V2 8007](https://www.nasa.gov/reference/8-0-architecture-vol-2): orientación coherente respecto a una vertical definida, sobre todo sin gravedad). El **techo** mira al cenit (+y), la **proa** a −z y el **estribor** a +x. Las ayudas para orientarse (V2 8010 y V2 8011) son:
 
@@ -220,13 +220,13 @@ Para **salir**: por la escotilla del módulo se vuelve a la cabina y por la de l
 
 ### Móvil primero
 
-Dos mandos (Flotar y Mirar) en las esquinas de abajo y ▲▼ en medio, para subir hacia el techo y bajar hacia el suelo. El botón de contexto va encima, al alcance del pulgar. Arriba a la izquierda va el HUD y a la derecha tres botones cortos: «Tareas», «Vista 3ª/1ª» y «Salir». Los rótulos flotantes se esconden cuando están tan cerca que taparían la pantalla. La cámara en 3ª persona nunca atraviesa una pared: si no cabe detrás de Doménica (de lado en un pasillo de 1,2 m), pasa a 1ª persona hasta que hay sitio. En el escritorio se usan WASD, las flechas, R/F o Espacio/Mayús para subir y bajar, e Intro para usar.
+Dos mandos en las esquinas de abajo: Manos, para avanzar mano a mano por los asideros, y Mirar. En medio va el botón «Impulsarse», y «Agarrarse» aparece solo en vuelo ([ingravidez.md](ingravidez.md)). El botón de contexto va encima, al alcance del pulgar. Arriba a la izquierda va el HUD y a la derecha tres botones cortos: «Tareas», «Vista 3ª/1ª» y «Salir». Los rótulos flotantes se esconden cuando están tan cerca que taparían la pantalla. La cámara en 3ª persona nunca atraviesa una pared: si no cabe detrás de Doménica (de lado en un pasillo de 1,2 m), pasa a 1ª persona hasta que hay sitio. En el escritorio se usan WASD y las flechas; Espacio para impulsarse (Mayús+Espacio, fuerte), G para agarrarse e Intro para usar.
 
 ### Archivos
 
-- Dominio: `modules/station/domain/interior.ts` (`StationInterior`: volúmenes, escotillas, esclusa, cara hacia la que se mira, códigos, objeto cercano, estiba) y `modules/gravity/domain/zero-g.ts`. Datos: `modules/station/data/interior.ts`. Tests: `interior.test.ts` (15) y `zero-g.test.ts` (6).
+- Dominio: `modules/station/domain/interior.ts` (`StationInterior`: volúmenes, escotillas, esclusa, cara hacia la que se mira, códigos, objeto cercano, estiba) y `modules/gravity/domain/iva.ts` y `handrails.ts`. Datos: `modules/station/data/interior.ts` y `handrails.ts`. Tests: `interior.test.ts`, `iva.test.ts`, `handrails.test.ts`.
 - Adaptadores: `adapters/three/interior/station-rooms.ts` (la escena), `src/station-interior.ts` (modo, mandos y HUD) y `src/ui/station-interior.css`.
-- Compartidos: `main.ts` (crear el modo, el bucle, la vuelta desde la pantalla), `station-dock.ts` (botón «Entrar en la estación») y `interior/zones.ts` (usa `floatStep`).
+- Compartidos: `main.ts` (crear el modo, el bucle, la vuelta desde la pantalla), `station-dock.ts` (botón «Entrar en la estación») y `interior/zones.ts` (el mismo movimiento por asideros).
 
 ## 6. Capturas
 

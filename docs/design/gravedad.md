@@ -76,7 +76,7 @@ Antes los anillos iban en un mástil sobre la Explorer, de 3 × 2 × 5 m, con un
 | Anillo (módulo y cubierta de cultivo) | 1,00 g en los pies, 0,97 g en la cabeza | Camina como antes |
 | Radio (ascensor de 52 m) | Baja con la altura: 0,82 g a 46 m del eje, 0,47 g a 26 m… | ▲▼ o R/F; carteles con la gravedad cada 10 m |
 | Nudo del eje (aún gira) | 0,018 g a 1 m del eje | Flota y nota una pequeña deriva hacia fuera, más Coriolis |
-| Espina (no gira, tras el cojinete) | 0 g | Flota: mando *Flotar* en la dirección de la mirada, ▲▼ (R/F, Espacio/Mayús); el pasamanos frena la deriva |
+| Espina (no gira, tras el cojinete) | 0 g | De asidero en asidero: se agarra, se impulsa y vuela sin frenar hasta el siguiente ([ingravidez.md](ingravidez.md)) |
 | Cabina del módulo | 0 g | Se llega por la escotilla al final de la espina, a través del puerto de acople. Solo con el módulo acoplado |
 
 - El **ascensor** va despacio a propósito. A 2 m/s, Coriolis empuja de lado 2ωv = 1,7 m/s² (0,17 g), y el HUD lo muestra. Por eso el viaje dura medio minuto.

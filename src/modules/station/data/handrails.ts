@@ -9,8 +9,8 @@ const CBM_HALF = 1.27 / 2;
 const HANGAR_PITCH_M = 2.5;
 
 /**
- * The station's handrails (docs/design/ingravidez.md): four rows along every module's aisle (one
- * bar per rack bay), bars beside the hatches on the end bulkheads, two beside each docking hatch,
+ * The station's handrails (docs/design/ingravidez.md): four rows along every module's aisle, generated
+ * modules included (one bar per rack bay), bars beside the hatches on the end bulkheads, two beside each docking hatch,
  * and a grid on the hangar's walls. Bars where her body would not fit (behind the hangar's racks or
  * the airlock's shell) are left out.
  */
@@ -24,8 +24,10 @@ export function stationHandrails(plan: StationInteriorPlan): Handrail[] {
       rails.push(...gridRails(box, ["-y", "+y", "-x", "+x", "-z"], HANGAR_PITCH_M));
       continue;
     }
-    rails.push(...aisleRails(box, "z", "x"));
-    for (const end of [-1, 1] as const) rails.push(...hatchRails(box, "z", "x", end, CBM_HALF));
+    // The aisle runs along the module's long axis: z on the main stack, x in the radial modules.
+    const [along, side] = v.half.x > v.half.z ? (["x", "z"] as const) : (["z", "x"] as const);
+    rails.push(...aisleRails(box, along, side));
+    for (const end of [-1, 1] as const) rails.push(...hatchRails(box, along, side, end, CBM_HALF));
   }
   // Two bars beside each docking hatch, on its wall.
   for (const f of plan.fixtures.filter((x) => x.action.kind === "salir")) {

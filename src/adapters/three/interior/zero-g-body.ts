@@ -5,6 +5,21 @@ import { pushDurationS, type IvaState } from "@modules/gravity/domain/iva";
 import { P, POSES, type CubeFigure } from "./figure";
 
 const RAIL_COLOR = 0xe8c547;
+const num = (v: number, d = 2) => v.toFixed(d).replace(".", ",");
+
+/** One line on what she is doing while floating (HUD). */
+export function motionLabel(s: IvaState): string {
+  const m = s.motion;
+  const v = num(s.velocity.length());
+  if (m.kind === "sujeta") return "Sujeta a un asidero";
+  if (m.kind === "mano-a-mano") return "Mano a mano por los asideros";
+  if (m.kind === "impulso") return "Impulsándose…";
+  if (m.kind === "planeo") return `Planeando a ${v} m/s, sin frenar`;
+  if (m.kind === "agarrando") return "Agarrando el asidero";
+  if (m.kind === "pared") return "Apoyada en la pared";
+  return `A la deriva (${num(s.velocity.length(), 3)} m/s)`;
+}
+
 
 /**
  * The handrails as 3D bars: a round grip on two short standoffs to its wall (ISS IVA handrails are

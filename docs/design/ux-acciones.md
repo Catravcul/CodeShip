@@ -23,11 +23,11 @@ Encargo del diseñador: probar la jugabilidad y la UX, investigar cómo ordenar 
 
 1. **Una sola acción principal, siempre en el mismo sitio.** La acción que pide el momento (entrar en la nave, salir al exterior, entrar en su mente, lanzar la sonda) vive en la **columna de contexto**: encima del pulgar derecho en la cabina y en la sonda; abajo al centro, encima de los mandos, en los modos de caminar (interior, estación, paseo).
 2. **Pulgar izquierdo orienta, pulgar derecho mueve y actúa.** En la cabina, GIRAR y MIRAR a la izquierda; MOVER, Motor y la acción principal a la derecha.
-3. **Lo secundario, plegado.** En el móvil los conmutadores de vuelo (aterrizaje, acople, nombres, cámara, tiempo, centrar) van en el menú **☰ Mandos** de arriba a la derecha. En escritorio, con sitio, siguen a la vista.
+3. **Lo secundario, plegado.** Los mandos de vuelo secundarios (aterrizaje, acople, tiempo, centrar) son iconos que brotan de una raíz arriba a la derecha y se recogen solos (§3, «Iconos de raíz»). Los ajustes que no cambian mientras se vuela (Nombres, ayuda de teclado, vista de retos, cámara inicial, sonido) no están en el HUD: están en la esterilla de yoga ([habitaculo.md](habitaculo.md)).
 4. **El estado arriba a la izquierda, breve.** El HUD de la cabina enseña en el móvil lo esencial (distancia, velocidad, Δv, casco, asistente, propulsores); las componentes de la velocidad, el giro y cada tanque quedan para el escritorio.
 5. **El contexto agrupado.** El mensaje que explica la acción, la confianza del asteroide, el viaje en curso y la región van juntos en la columna de contexto, encima de la acción, en ese orden de abajo arriba (lo más ligado a la acción, más cerca).
 6. **Nada se solapa** a 390×664 (iPhone 13 con las barras de Safari) ni a 1280×800. La suite de experiencia lo comprueba en cada pantalla.
-7. **Objetivos de toque ≥ 44×44 px** en el móvil: botones de menú (Tareas, Radio, Vista, Mandos), cierres ✕, chips de filtro, pestañas, botones del viaje y opciones de los retos (también en la vista HUD). La suite lo comprueba antes de cada toque, junto con que nada tape el centro del control y que tenga nombre accesible.
+7. **Objetivos de toque ≥ 44×44 px** en el móvil: botones de menú (Tareas, Radio, Vista, iconos de raíz), cierres ✕, chips de filtro, pestañas, botones del viaje y opciones de los retos (también en la vista HUD). La suite lo comprueba antes de cada toque, junto con que nada tape el centro del control y que tenga nombre accesible.
 8. **Un fallo se ve con forma y color**: ✗ y rojo en la opción, número en ámbar o rojo; un acierto, ✓ y verde. Nunca solo color.
 
 ## 2. Auditoría
@@ -71,14 +71,14 @@ Capturas (antes / después), en `docs/screenshots/`:
 
 ```
 ┌──────────────────────────────┐
-│ HUD breve          ☰ Mandos  │  estado arriba-izq · secundario plegado arriba-dcha
+│ HUD breve        ojo ⇧ raíz  │  estado arriba-izq · ojo, levantarse y raíz arriba-dcha
 │ (distancia, velocidad, Δv…)  │
 │               ┌────────────┐ │
 │               │ región     │ │
 │               │ viaje      │ │  columna de contexto
-│   escena      │ confianza  │ │  (de abajo arriba: lo más ligado a la acción, más cerca)
+│   escena      │            │ │  (de abajo arriba: lo más ligado a la acción, más cerca)
 │               │ aviso      │ │
-│  ( MIRAR )    │[ACCIÓN]    │ │  acción principal: grande, sobre el pulgar derecho
+│  ( MIRAR )    │            │ │  (las acciones de modo, en máquinas del habitáculo)
 │ GIRAR         │ MOVER      │ │
 │ ▲ ◀           │ Avanzar …  │ │
 │ ▶ ▼           │ … Motor    │ │
@@ -86,8 +86,9 @@ Capturas (antes / después), en `docs/screenshots/`:
   pulgar izquierdo: orienta      pulgar derecho: mueve y actúa
 ```
 
-- **☰ Mandos** despliega Aterrizaje, Acople, Nombres, Cámara, Tiempo, Centrar (y en desarrollo, Estación). En escritorio la columna sigue a la vista: hay sitio y el ratón llega a todo.
-- La **columna de contexto** (`.ctx-dock`, creada en `main.ts`) reúne, de abajo arriba: la acción principal (Entrar en su mente / Convencer · nivel N, Entrar en la nave de viaje / en la estación, Salir de la nave), el aviso que la explica, la ficha de confianza del asteroide, el chip del viaje y la región. Fuera de la cabina solo muestra el chip del viaje, abajo al centro, donde estaba.
+- **Iconos de raíz** (antes «☰ Mandos», retirado): arriba a la derecha, fijos, el **ojo** (cámara: cabina, exterior, ventral, trasera; 1ª/3ª persona; nombre accesible «Cámara: …», tecla C) y **Levantarse** (al habitáculo, H). De la raíz brotan Aterrizaje (G), Acople (K, solo en alcance), Tiempo y Centrar, y se recogen a los 5 s. Las etiquetas salen con una pulsación larga o siempre con la ayuda de teclado encendida. Todos ≥ 44 px y con nombre.
+- **Sin botones de modo en la cabina:** «Entrar en la nave de viaje / en la estación», «Salir de la nave» (EVA), «Entrar en su mente» y «Nombres» ya no están en el HUD. Son máquinas del habitáculo del módulo: consola de acople, escotilla EVA, consola de la mente y esterilla ([habitaculo.md](habitaculo.md)). Fase y confianza del asteroide tampoco: viven en la consola de la mente y en la ficha del mapa.
+- La **columna de contexto** (`.ctx-dock`, creada en `main.ts`) reúne el aviso, el chip del viaje y la región. Fuera de la cabina solo muestra el chip del viaje, abajo al centro, donde estaba.
 - El HUD del móvil oculta las líneas de detalle (componentes de la velocidad, giro, cada tanque); en escritorio siguen.
 - Después de un duelo, su pantalla de resultado tiene el botón para volver (Continuar / Cerrar): ya no aparece además «Volver a la cabina» encima.
 
@@ -96,9 +97,13 @@ Capturas (antes / después), en `docs/screenshots/`:
 | Sitio | Qué va | Cabina | Sonda | Interior / estación | Paseo |
 | --- | --- | --- | --- | --- | --- |
 | Arriba a la izquierda | Estado | HUD | telemetría | barras, despensa, gravedad | traje, oxígeno, cable |
-| Arriba a la derecha | Salir / menú | ☰ Mandos | Volver al puente | Tareas, Radio, Vista (Salir en la estación) | Volver a la nave |
-| Sobre el pulgar derecho / abajo al centro | Acción principal del momento | columna de contexto | Lanzar sonda, Convencer | botón de la zona («Bajar al módulo», «Cocina: 8 tareas») | Impulso, Tomar muestra |
+| Arriba a la derecha | Salir / menú | ojo, Levantarse, raíz | Volver al puente | Tareas, Radio, Vista (Salir en la estación); en el habitáculo y el puente, ojo y Tareas | Volver a la nave |
+| Sobre el pulgar derecho / abajo al centro | Acción principal del momento | aviso (la acción, en una máquina del habitáculo) | Lanzar sonda, Convencer | botón de la zona («Bajar al módulo», «Cocina: 8 tareas») | Impulso, Tomar muestra |
 | Abajo, a los lados | Mandos de movimiento | GIRAR+MIRAR / MOVER | GIRAR / MOVER | Caminar o Manos / Mirar (+ Impulsarse) | Caminar / Mirar |
+
+### Habitáculo del módulo y puente de la nodriza
+
+Salas a pie con cámara de casa de muñecas: arriba a la izquierda dónde está; arriba a la derecha el ojo (3ª/1ª persona, V) y Tareas (T); abajo MOVERSE y MIRAR; la tarjeta de la máquina junto a la que está, abajo (móvil) o abajo a la derecha (escritorio), con su acción principal (Intro). Un toque sobre una máquina la lleva andando. En el puente, bajo el título, la lista corta de avisos y una luz de color en cada consola. Con un reto abierto, todo eso se oculta (como H26).
 
 ## 4. Los retos: el fallo de los tres toques y la vista HUD
 
@@ -146,11 +151,12 @@ Apuntados por la suite (`j.problem`) o vistos en sus capturas:
 | 8 | El estado del interior no se leía sobre carteles claros. | Arreglado: placa oscura. |
 | 9 | En la hoja de retos (390×664 visibles) la tercera opción o la bandeja de «ordenar» quedan por debajo del borde: hay que desplazar. | Mejorado (hoja más alta y frase más pequeña en pantallas bajas); en los retos de ordenar con cinco o más bloques sigue haciendo falta desplazar. Abierto: probar una bandeja en horizontal. |
 | 10 | En el eje, el cartel 3D «Puente de mando» queda cortado arriba, detrás del estado. | Abierto (cosmético). |
+| 11 | La cabina tenía nueve botones a la vista (Mandos, Nombres, Cámara, Entrar, EVA, duelo, ficha de confianza…). | Arreglado: ojo, Levantarse y la raíz; lo demás en máquinas del habitáculo y en la esterilla. |
 
 ## 6. Reglas para lo que venga
 
 1. Toda acción nueva que dependa del momento entra en la columna de contexto (o en el botón de zona de los modos de caminar), no en una esquina nueva.
-2. Un conmutador o ajuste nuevo de vuelo va en ☰ Mandos.
+2. Un mando de vuelo nuevo es un icono de la raíz (≥ 44 px, con nombre accesible y tecla); un ajuste que no cambia mientras se vuela va en los ajustes de la esterilla. Una acción de modo (entrar, salir, desacoplar) es una máquina del habitáculo, no un botón del HUD.
 3. Ningún elemento fijo nuevo sin pasar `npm run experiencia -- acciones-movil acciones-escritorio`: 0 solapes en 390×664 y 1280×800.
 4. Botones ≥ 44 px de alto en móvil; texto sobre la escena con placa o halo hasta 4,5:1.
 5. El feedback de un acierto o un fallo lleva forma (✓/✗) además de color, y un número que solo sube.

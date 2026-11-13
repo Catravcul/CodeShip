@@ -194,6 +194,20 @@ Columna QA: cómo se comprueba jugando, o «Solo test» si no tiene sentido hace
 | UI-02 | Los paneles del puente leen el estado real (propulsión, energía, vida, acople, radio, alertas) | `panels.test.ts` | Jugar: puente |
 | UI-03 | Una cadena de retos falla tras demasiados errores y repetir un fallo no cuenta | `chore.test.ts` | Jugar (recorrido PX `cocina`) |
 
+### Habitáculo del módulo, ajustes, tareas y puente de consolas (HAB)
+
+Diseño en [habitaculo.md](../design/habitaculo.md).
+
+| ID | Qué tiene que pasar | Test / fixture | QA |
+|---|---|---|---|
+| HAB-01 | El habitáculo del módulo se recorre a pie: el suelo la mantiene dentro y fuera de los asientos, cada máquina está en suelo libre y se usa solo de pie junto a ella, y el camino entre dos máquinas rodea los asientos | `cabin.test.ts` | Jugar (recorrido PX `habitaculo-movil`) |
+| HAB-02 | Las máquinas sustituyen botones del HUD: la consola de acople desacopla, arma el asistente o entra en el vehículo acoplado; la escotilla EVA solo abre anclada y dice por qué no; el asiento sienta a pilotar; la esterilla abre los ajustes | `cabin.test.ts` | Jugar (recorrido PX `habitaculo-movil`) |
+| HAB-03 | Ajustes generales (Nombres, Ayuda de teclado, Vista de retos, Cámara al pilotar, Sonido) solo en una esterilla, guardados en `localStorage`; la ayuda de teclado sale del soporte táctil y de la primera entrada hasta que la jugadora la elige | `settings.test.ts` | Jugar: esterilla del módulo y de la nodriza |
+| HAB-04 | Fase y confianza del asteroide fuera del HUD de vuelo: la consola de la mente (habitáculo y puente) las muestra y ofrece el duelo solo cuando la fase lo permite | `cabin.test.ts` | Jugar (recorrido PX `mision`) |
+| HAB-05 | La lista de tareas reúne todas (vuelo, viajes, misión, nano_net, estación, importación, bio, combustible, reparaciones, tareas de a bordo), agrupadas y con el lugar donde se hacen | `task-list.test.ts` | Jugar: botón Tareas |
+| HAB-06 | «Ir» de una tarea la lleva por las escotillas abiertas; si el vehículo no está acoplado, la lleva a lo que los une y dice por qué | `task-list.test.ts` | Jugar (recorrido PX `habitaculo-movil`) |
+| HAB-07 | El puente de la nodriza es una sala de consolas: una por página (navegación, propulsión, energía, vida, acople, radio), más sonda, mente del asteroide y nano_net; cada una abre solo su página | `bridge.test.ts` | Jugar (recorrido PX `habitaculo-escritorio`) |
+
 ### Convivencia de procesos (CV)
 
 Qué pasa cuando dos procesos actúan sobre el mismo estado a la vez. El mapa de qué estado comparten
@@ -251,9 +265,11 @@ fila del recorrido en [registro.md](registro.md).
 | --- | --- | --- | --- |
 | PX-01 | `cocina` | Tres toques sobre la misma opción errónea dejan **Fallos 1/3**, la opción marcada con ✗ y el paso sin avanzar ni terminar; con los siete pasos bien, «✓ Conseguido 7/7 con 1 fallo» y la despensa (al tocar el estado) con crema de cacahuete. En vista HUD: fallos en ámbar sobre placa oscura, rojo al tope, «✗ Reto perdido» que un toque inmediato no cierra, y la receta sigue disponible. | iPhone 13, CPU ×4 |
 | PX-02 | `movimiento` | W enciende el RCS y el HUD lo dice; la velocidad deja de estar en reposo. En la escotilla, Impulsarse la mueve (lo dice el HUD y cambia la vista). Una tarea elegida en el eje avisa «Bajas al anillo». En el anillo, Caminar avanza la vista y el HUD dice la gravedad. | iPhone 13, CPU ×4 |
-| PX-03 | `mision` | La radio avisa de cartas; una trae la misión de Bennu; el registro abre con 0 hechas. Posado (fase de la sonda preparada), la acción principal aparece abajo a la derecha; un fallo suma «Fallos 1/N»; ganar muestra «Conseguido» con un solo botón para volver. Con el traje, tumbarse y ganar el tercer duelo: Bennu persuadido y aviso de misión cumplida que no tapa el resultado. | iPhone 13, CPU ×4 |
-| PX-04 | `acciones-movil` | Cada pantalla (cabina acoplada y libre, ingravidez, anillo, tareas, puente, mapa, sonda, posado, traje, paseo, estación y sus seis pestañas) sin controles solapados a 390×664 visibles; capturas `ux-<antes/despues>-*-movil.png`. | iPhone 13, CPU ×1 |
+| PX-03 | `mision` | La radio avisa de cartas; una trae la misión de Bennu; el registro abre con 0 hechas. Posado (fase de la sonda preparada), la vista de vuelo no muestra fase ni confianza; levantada, la consola de la mente del habitáculo abre el duelo; un fallo suma «Fallos 1/N»; ganar muestra «Conseguido» con un solo botón para volver. Con el traje, tumbarse y ganar el tercer duelo: Bennu persuadido y aviso de misión cumplida que no tapa el resultado. | iPhone 13, CPU ×4 |
+| PX-04 | `acciones-movil` | Cada pantalla (cabina acoplada y libre, ingravidez, anillo, tareas, puente de consolas, mapa, sonda, mente del asteroide, posado, habitáculo, traje, paseo, estación y sus seis pestañas) sin controles solapados a 390×664 visibles; capturas `ux-<antes/despues>-*-movil.png`. | iPhone 13, CPU ×1 |
 | PX-05 | `acciones-escritorio` | Lo mismo a 1280×800; capturas `ux-*-escritorio.png`. | Escritorio, CPU ×1 |
+| PX-06 | `habitaculo-movil` | Sin «Nombres» ni «☰ Mandos» en la cabina y la cámara como icono de ojo con nombre. Levantarse, caminar a la consola de acople y desacoplar; en la esterilla, los ajustes: Ayuda de teclado cambia las pistas y se guarda; Tareas agrupadas y «Ir» a «Aterriza el módulo» la sienta a pilotar. En el puente, la consola de propulsión abre solo su página, «Volver» la deja junto a la consola, y la consola de la mente muestra fase y confianza. Capturas `docs/screenshots/habitaculo-*-movil.png`. | iPhone 13, CPU ×1 |
+| PX-07 | `habitaculo-escritorio` | Lo mismo a 1280×800; capturas `docs/screenshots/habitaculo-*-escritorio.png`. | Escritorio, CPU ×1 |
 
 ---
 

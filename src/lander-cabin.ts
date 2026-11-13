@@ -55,6 +55,12 @@ export class LanderCabin {
   private stride = 0;
   private thirdPerson = true;
   private seated = false;
+  /** The third-person camera is at the rear bulkhead (she is forward) or at the console (she is aft). */
+  private camAtRear = true;
+  /** The capsule's meshes that can stand between the camera and her, and those hidden this frame. */
+  private readonly walls: THREE.Object3D[] = [];
+  private readonly hidden: THREE.Object3D[] = [];
+  private readonly ray = new THREE.Raycaster();
   private walkTo: { id: CabinStationId; path: FloorPoint[]; then?: () => void } | null = null;
   private machineKey = "";
   private mindKey = "";
@@ -68,6 +74,9 @@ export class LanderCabin {
     const cabin = buildCockpit();
     cabin.position.y = -FLOOR_Y;
     this.scene.add(cabin);
+    cabin.traverse((o) => {
+      if ((o as THREE.Mesh).isMesh) this.walls.push(o);
+    });
     this.scene.add(new THREE.AmbientLight(0xb8c8d8, 1.1));
     const lamp = new THREE.PointLight(0xdfefff, 6, 5, 1);
     lamp.position.set(0, 1.55, 0.3);
@@ -118,7 +127,7 @@ export class LanderCabin {
       this.hits.push(hit);
     }
 
-    this.avatar.root.scale.setScalar(0.95);
+    this.avatar.root.scale.setScalar(0.92);
     this.rig.add(this.avatar.root);
     this.scene.add(this.rig);
     this.walker = new Walker(root, { move: "cab-move", look: "cab-look", moveLabel: "Moverse" });
@@ -268,9 +277,10 @@ export class LanderCabin {
     } else if (!busy && !this.seated) {
       const m = this.walker.move();
       if (m.forward || m.right) {
-        // Third person: the camera looks aft from the console, so «up» on the stick goes aft.
-        const fwd = this.thirdPerson ? { x: 0, z: 1 } : { x: -Math.sin(this.yaw), z: -Math.cos(this.yaw) };
-        const right = this.thirdPerson ? { x: -1, z: 0 } : { x: -fwd.z, z: fwd.x };
+        // Third person: «up» on the stick goes away from the camera (aft or forward, see place()).
+        const aft = this.camAtRear ? -1 : 1;
+        const fwd = this.thirdPerson ? { x: 0, z: aft } : { x: -Math.sin(this.yaw), z: -Math.cos(this.yaw) };
+        const right = this.thirdPerson ? { x: -aft, z: 0 } : { x: -fwd.z, z: fwd.x };
         const vx = fwd.x * m.forward + right.x * m.right;
         const vz = fwd.z * m.forward + right.z * m.right;
         const prev = this.pos;
@@ -297,14 +307,53 @@ export class LanderCabin {
     const third = this.thirdPerson || this.seated;
     this.rig.visible = third;
     if (third) {
-      // From the top of the console, looking aft over the cabin: the whole capsule fits in view.
-      this.camera.position.set(this.pos.x * 0.35, 1.5, -0.52);
-      this.camera.lookAt(this.pos.x * 0.8, this.seated ? 0.35 : 0.75, this.pos.z);
+      // A dollhouse camera: above and outside the capsule, beyond the rear bulkhead (she is forward) or the
+      // console (she is aft); whatever wall or roof stands between it and her is hidden (cutaway). In 2 m
+      // of cabin a camera behind her shoulders would be inside the wall.
+      if (this.camAtRear && this.pos.z > 0.5) this.camAtRear = false;
+      else if (!this.camAtRear && this.pos.z < 0.15) this.camAtRear = true;
+      const rear = this.camAtRear;
+      this.lens(55, 0.05);
+      this.camera.position.set(this.pos.x * 0.4, 2.55, rear ? 2.35 : -2.15);
+      // Seated in lotus under the settings sheet: aim low so she shows in the top of the screen.
+      this.camera.lookAt(this.pos.x * 0.85, this.seated ? -0.2 : 0.55, this.pos.z + (rear ? -0.2 : 0.2));
+      this.cutaway();
     } else {
+      this.cutaway(true);
+      this.lens(72, 0.02);
       this.camera.position.set(this.pos.x, 1.45, this.pos.z);
       this.camera.rotation.set(this.pitch, this.yaw, 0, "YXZ");
     }
     for (const [id, m] of this.markers) (m.material as THREE.MeshBasicMaterial).opacity = id === this.near() ? 0.9 : 0.35;
+  }
+
+  /** Hide the walls between the dollhouse camera and her (rays to her head, chest and feet). */
+  private cutaway(none = false): void {
+    for (const m of this.hidden) m.visible = true;
+    this.hidden.length = 0;
+    if (none) return;
+    this.scene.updateMatrixWorld();
+    const from = this.camera.position;
+    for (const y of [1.45, 0.9, 0.2]) {
+      const to = new THREE.Vector3(this.pos.x, this.seated ? y * 0.45 : y, this.pos.z);
+      const dir = to.clone().sub(from);
+      const len = dir.length();
+      this.ray.set(from, dir.normalize());
+      this.ray.far = len - 0.2;
+      for (const h of this.ray.intersectObjects(this.walls, false)) {
+        if (h.object.visible) {
+          h.object.visible = false;
+          this.hidden.push(h.object);
+        }
+      }
+    }
+  }
+
+  private lens(fov: number, near: number): void {
+    if (this.camera.fov === fov && this.camera.near === near) return;
+    this.camera.fov = fov;
+    this.camera.near = near;
+    this.camera.updateProjectionMatrix();
   }
 
   private face(p: { x: number; y: number; z: number }): void {

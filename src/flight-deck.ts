@@ -456,7 +456,7 @@ export class FlightDeck {
     if (!full) return head;
     const fails = d.lastFailures.length ? `<p class="fd-note">Último contacto: ${esc(d.lastFailures.join(" · "))}</p>` : "";
     const tanks = probe ? `<div class="fd-kv">${probe.propellants.map((t) => `<span>${esc(t.label)}</span><b>${num(t.kg)} / ${num(t.capacityKg)} kg</b>`).join("")}</div>` : "";
-    return `${head}${tanks}${checks}${fails}<p class="fd-hint">Límites de contacto del estándar IDSS. El módulo de aterrizaje se acopla y desacopla desde su cabina (K).</p>${this.sources(d.sources)}`;
+    return `${head}${tanks}${checks}${fails}<p class="fd-hint">Límites de contacto del estándar IDSS. El módulo de aterrizaje se desacopla desde la consola de acople de su habitáculo; se acopla con su asistente, desde la cabina.</p>${this.sources(d.sources)}`;
   }
 
   private commsHtml(c: CommsPanel, full: boolean): string {

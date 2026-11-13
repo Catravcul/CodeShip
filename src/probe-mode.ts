@@ -1,3 +1,4 @@
+import { settings } from "./ui/settings-store";
 import * as THREE from "three";
 import { Vec3 } from "@core/math/vec3";
 import type { ThrustCommand } from "@modules/ship/domain/ship";
@@ -236,7 +237,7 @@ export class ProbeMode {
        <span class="${t.hullIntegrity < 0.5 ? "bad" : ""}">casco ${Math.round(t.hullIntegrity * 100)} %</span>
        <span>bahía a ${dist(bay.distanceM)}</span>
        ${warp > 1 || warpNote ? `<span>${warpNote || `tiempo ×${warp}`}</span>` : ""}
-       ${near ? `<span class="warn">${t.tiltDeg > 30 ? `Gira la panza al suelo (${fmt(t.tiltDeg, 0)}°): asistente con G` : "Posa las patas a menos de 0,10 m/s"}</span>` : ""}`,
+       ${near ? `<span class="warn">${t.tiltDeg > 30 ? `Gira la panza al suelo (${fmt(t.tiltDeg, 0)}°): asistente${settings.key(" con G")}` : "Posa las patas a menos de 0,10 m/s"}</span>` : ""}`,
     );
     const angry = d.angry();
     const r = d.bond();

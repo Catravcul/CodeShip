@@ -146,7 +146,7 @@ export class LevelsUi {
         const p = this.d.wrath.pursuit(id);
         const v = `${a.velocity.length().toFixed(1).replace(".", ",")} m/s`;
         // A ram: the line goes to where it aims (docs/design/poderes-ira.md, «Embestida»).
-        if (p?.charge) return { level, tone: "persigue", short: `${p.charge.phase === "preparando" ? "va a embestir" : "¡embiste!"} a ${p.targetName} · ${v}`, goal: p.charge.aim };
+        if (p?.charge) return { level, tone: "persigue", short: `${p.charge.phase === "preparando" ? "va a embestir" : "embiste"} a ${p.targetName} · ${v}`, goal: p.charge.aim };
         return { level, tone: "persigue", short: `persigue a ${p?.targetName ?? "la nave"} · ${v}`, goal: p?.position() };
       }
       case "vuelve":

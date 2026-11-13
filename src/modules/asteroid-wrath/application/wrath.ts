@@ -320,7 +320,12 @@ export class AsteroidWrath {
 
   /** Test and demo hook: set an asteroid's anger directly (0..1). */
   setAnger(asteroidId: string, level: number): void {
-    this.mood(asteroidId).anger.set(level);
+    const m = this.mood(asteroidId);
+    m.anger.set(level);
+    if (m.anger.calm) {
+      m.ram = undefined;
+      m.ramCooldownS = 0;
+    }
   }
 
   /**

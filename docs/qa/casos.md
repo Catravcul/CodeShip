@@ -114,6 +114,7 @@ Columna QA: cómo se comprueba jugando, o «Solo test» si no tiene sentido hace
 | EST-01 | El almacén nunca va a negativo; fabricar toma los materiales y la pieza llega al hangar al acabar; las máquinas trabajan en paralelo | `station.test.ts`, `station-ops.test.ts`, `blueprints.test.ts` | Jugar: Planos |
 | EST-02 | Crecer: equipo y módulos ocupan bastidores y puertos y reservan energía al ponerse en cola; sin energía, bloqueado y dice por qué | `outfit.test.ts`, `structure.test.ts`, `station-ops.test.ts` | Jugar: Planos → Equipo |
 | EST-03 | El interior se genera del equipo montado: pasillos, escotillas, esclusa y consolas de cada máquina | `interior.test.ts`, `handrails.test.ts` (estación) | Jugar: Entrar en la estación |
+| EST-05 | El almacén tiene capacidad por módulos (bastidores ISPR de 700 kg, el hangar 20 t a granel; los propelentes no cuentan); lo que no cabe se queda en su origen (lote en su máquina, pedido en el buzón, roca en la bodega o el asteroide) y la UI dice «Almacén lleno». Los procesos reservan con prioridad: el propelente primero | `station.test.ts`, `outfit.test.ts`, `delivery.test.ts`, `niveles.test.ts`, `almacen.test.ts` | Jugar: pestaña Materiales (captura `hc-almacen-mobile.png`) |
 | EST-04 | Bahía: cada pieza con datos reales, avisos por gravedad, cambios con piezas del hangar como cadenas de retos | `bay.test.ts`, `attention.test.ts`, `refit.test.ts`, `equipment.test.ts`, `drive-refit.test.ts`, `equipment-refit.test.ts`, `mothership-equipment.test.ts`, `drive.test.ts`, `parts.test.ts` | Jugar: B en la estación |
 
 ### Refinería y propelente (REF)
@@ -205,22 +206,22 @@ Clase: **Alineado** (se comportan bien juntos), **Choque** (resultado incorrecto
 | ID | Procesos | Qué tiene que pasar | Clase | Test / fixture | Áreas |
 |---|---|---|---|---|---|
 | CV-01 | Viaje comprimido × vida a bordo × estación | El reloj de misión va a la cámara rápida; la estación avanza 24 h por día de a bordo; si el viaje comprime más que la vida, la arrastra | Alineado | `relojes.test.ts` | NAV, VID, EST |
-| CV-02 | Tiempo ×N manual × vida a bordo × estación | Hoy: la estación (y los niveles) corren ×N, la vida a bordo y la nano_net no | Choque (HC-01) | `relojes.test.ts` | NAV, VID, EST, NIV |
+| CV-02 | Tiempo ×N manual × vida a bordo × estación | Con ×N a mano la vida a bordo, la nano_net, la estación y los niveles corren ×N juntos: 24 h de estación por día de a bordo | Arreglado (HC-01) | `relojes.test.ts` | NAV, VID, EST, NIV |
 | CV-03 | Viaje comprimido × paquetes de nivel 2/3 y confianza | Un paquete por día de a bordo (40 s reales) aunque el viaje vaya a ×600 | Arreglado (B-01) | `niveles.test.ts` | NAV, NIV |
 | CV-04 | Viaje comprimido × extracción de nivel 4 | La extracción va a las horas de la estación, no a la cámara rápida | Arreglado (B-01) | `niveles.test.ts` | NAV, NIV, EST |
-| CV-05 | Extracción de nivel 4 × almacén | El almacén crece sin tope y sin fallar | Choque (HC-02) | `niveles.test.ts` | NIV, EST |
+| CV-05 | Extracción de nivel 4 × almacén | El almacén tiene tope por módulos (9,8 t al empezar); lleno, el asteroide guarda su roca y los paquetes esperan en el buzón; al hacer sitio siguen | Arreglado (HC-02) | `niveles.test.ts` | NIV, EST, IMP |
 | CV-06 | Ira × viaje de la nodriza | Con el módulo acoplado nadie lo persigue; la ira se apaga en el reloj de misión; si se desacopla aún furioso, la persecución empieza | Alineado | `ira.test.ts` | IRA, NAV |
-| CV-07 | Ira × cámara rápida > ×600 a menos de 10 fps | La ira se apaga al ritmo del reloj de misión | Choque (B-02) | `ira.test.ts` (`.fails`) | IRA, NAV |
-| CV-08 | Cámara rápida de un viaje × amenazas de la ira | Hoy la cámara rápida del viaje no se frena con proyectiles en camino (la manual sí) | Choque (HC-03) | `relojes.test.ts` | NAV, IRA |
+| CV-07 | Ira × cámara rápida > ×600 a menos de 10 fps | La ira se apaga al ritmo del reloj de misión | Arreglado (B-02) | `ira.test.ts` | IRA, NAV |
+| CV-08 | Cámara rápida de un viaje × amenazas de la ira | Una amenaza a la nave que viaja (proyectil, embestida, persecución) baja el viaje a ×1 con aviso y lo retiene; al pasar sigue su cámara rápida | Arreglado (HC-03) | `relojes.test.ts`, `navigator.test.ts`, `wrath.test.ts` | NAV, IRA |
 | CV-09 | Supervivencia × importación × nivel 4 aparcado | La estación huye; los pedidos llegan al almacén; el asteroide aparcado la sigue y sigue entregando; al calmarse frena | Alineado | `supervivencia.test.ts` | IRA, IMP, NIV, EST |
-| CV-10 | Biorreactores × planta de propelente (amoníaco) | Nunca negativo; la planta toma al poner en cola, la biología por tick; nadie reserva | Alineado / choque (HC-04) | `almacen.test.ts` | BIO, REF, EST |
+| CV-10 | Biorreactores × planta de propelente (amoníaco) | Nunca negativo; la planta toma al poner en cola, la biología por tick; el propelente reserva 3,4 kg de amoníaco y el abono solo usa lo que pasa de la reserva | Arreglado (HC-04) | `almacen.test.ts` | BIO, REF, EST |
 | CV-11 | Crecer la estación × biorreactores en marcha | La energía cuenta lo montado y lo que está en obra; los biorreactores trabajando no la cambian; dos obras no reservan la misma | Alineado | `almacen.test.ts` | EST, BIO |
 | CV-12 | Duelo de la sonda fallado × módulo volando | Persigue a la sonda, no al módulo; perdida la sonda, se queda quieto hasta calmarse | Alineado | `ira.test.ts` | SON, SUB, IRA |
 | CV-13 | Fase 3 fallada × persecución con Doménica fuera | Persigue al traje o al módulo pero se queda a su distancia: nunca se les echa encima | Alineado | `ira.test.ts` | EVA, SUB, IRA |
 | CV-14 | Sonda perdida × su viaje comprimido | El viaje acaba en fallo, la cámara rápida vuelve a ×1, la nodriza queda libre y la siguiente sonda puede viajar | Alineado | `sonda.test.ts` | SON, NAV |
-| CV-15 | Dos pedidos en retos × créditos para uno | El segundo, resuelto, no cobra ni envía nada (y hoy no avisa); un pago a mitad de la cadena lo deja pasar | Choque menor (HC-05) | `almacen.test.ts` | IMP, MIS |
+| CV-15 | Dos pedidos en retos × créditos para uno | El botón de pedir se bloquea con «Faltan N créditos»; el segundo, resuelto, no cobra ni envía nada y dice «No se pidió: faltan N créditos»; un pago a mitad de la cadena lo deja pasar | Arreglado (HC-05) | `almacen.test.ts` | IMP, MIS |
 | CV-16 | Guardar y cargar a mitad de viaje | No hay partidas guardadas: recargar empieza de cero | No aplica (HC-06) | — | NAV |
-| CV-17 | Embestida × viaje comprimido | Con el módulo acoplado (viaje de la nodriza) no hay embestida. A ×1 el aviso dura 5 s reales y la carga más de 30 s. En el tramo comprimido del módulo (×60) el aviso dura < 0,1 s real y el choque llega en ~1 s: no se puede esquivar | Choque (HC-03) | `embestida.test.ts` | IRA, NAV |
+| CV-17 | Embestida × viaje comprimido | Con el módulo acoplado (viaje de la nodriza) no hay embestida. A ×1 el aviso dura 5 s reales y la carga más de 30 s. En el tramo comprimido del módulo (×60) la amenaza baja el viaje a ×1: el aviso dura sus 5 s reales y se puede esquivar (sin mirar la amenaza, el choque llegaría en ~1 s) | Arreglado (HC-03) | `embestida.test.ts` | IRA, NAV |
 
 #### Casos con carrera
 
@@ -235,6 +236,7 @@ van al run log.
 | CV-12 | Sonda posada en Bennu, despegar con el módulo; fallar el duelo de la sonda; abandonar la sonda | Test y en vivo |
 | CV-14 | Sonda de viaje; en mitad, dejar que la ira la destruya (o forzar la batería por código) e intentar programar la nodriza | Test; en vivo probabilístico |
 | CV-07 | Solo test: hace falta < 10 fps y un salto de la nodriza de más de ~25 km |  |
+| CV-17 | Programar un viaje del módulo y, en el tramo comprimido, fallar un duelo (o `wrathMode.wrath.duelFailed` por código): el viaje baja a ×1 con «⚠ Amenaza» y sigue al calmarse | Test y en vivo (Playwright, `hc-viaje-amenaza-mobile.png`) |
 
 ### Experiencia del jugador (PX)
 
@@ -250,10 +252,10 @@ su `docs/testing.md`): los IDs `PX-nn` y sus filas del registro entran con esa r
 | ID | Caso | Detalle | Estado |
 |---|---|---|---|
 | B-01 | CV-03, CV-04 | `AsteroidServices` contaba los días de los paquetes de nivel 2 y 3, la confianza que devuelve el servicio y las horas de extracción de nivel 4 con el reloj de misión (`dt × warp`). En un viaje de la nodriza a ×600, 30 s reales daban 449 paquetes en vez de 0 | Arreglado en `qa-casos`: `update(dtS, stationHours)` y `LevelsUi.update` reciben las horas de la estación de `frameClocks` |
-| B-02 | CV-07 | `AsteroidWrath.update` descarta lo que pase de 60 s de juego por llamada. Un salto largo de la nodriza va a más de ×600 (el tope se reparte con el tramo del módulo: ≈ ×629 para 30 km) y a menos de 10 fps `main` limita el fotograma a 0,1 s: la ira se apaga más despacio que el reloj de misión (≈ 9 % en el test) | Abierto: subir el tope cuesta pasos por fotograma; decidir entre tope en pasos o repartir en varias llamadas |
-| HC-01 | CV-02 | Con el tiempo ×10/×50 manual la estación, su buzón, los biosistemas y los servicios de los niveles corren ×N y la vida a bordo y la nano_net no. ¿Debe la vida a bordo acelerar también, o la estación no? | Decisión de diseño |
-| HC-02 | CV-05 | El almacén no tiene tope: la extracción de nivel 4 lo llena sin límite (pregunta abierta de subyugacion.md) | Decisión de diseño |
-| HC-03 | CV-08, CV-17 | La regla de poderes-ira.md («tiempo acelerado solo si nada vuela hacia el módulo») solo frena la cámara rápida manual, no la de un viaje del módulo (hasta ×60). Lo mismo con una embestida: `allowsWarp` la cuenta, pero la cámara rápida del viaje no | Decisión de diseño |
-| HC-04 | CV-10 | Nada reserva el almacén: el abono con amoníaco (activado por defecto) puede gastar el amoníaco que el jugador guardaba para hidracina | Decisión de diseño |
-| HC-05 | CV-15 | Resolver la cadena de un pedido sin créditos no hace nada y no avisa: el jugador no sabe por qué no llegó | Abierto |
+| B-02 | CV-07 | `AsteroidWrath.update` descartaba lo que pasara de 60 s de juego por llamada. Un salto largo de la nodriza va a más de ×600 (≈ ×629 para 30 km) y a menos de 10 fps `main` limita el fotograma a 0,1 s: la ira se apagaba ≈ 9 % más despacio que el reloj de misión | Arreglado en `decisiones-hc` (`5a68872`): tope en pasos (600 por llamada); una llamada más larga se reparte en 600 subpasos más gruesos |
+| HC-01 | CV-02 | Con el tiempo ×10/×50 manual la estación, su buzón, los biosistemas y los servicios de los niveles corrían ×N y la vida a bordo y la nano_net no | Cerrado en `decisiones-hc` (`f60ac62`): decidido que la vida a bordo acelera también; `frameClocks` da 24 h de estación por día de a bordo siempre |
+| HC-02 | CV-05 | El almacén no tenía tope: la extracción de nivel 4 lo llenaba sin límite (pregunta abierta de subyugacion.md) | Cerrado en `decisiones-hc` (`9f8354f`, `c21eebe`): capacidad por módulos en bastidores ISPR (700 kg), 9,8 t al empezar; lleno, lo que llega se queda en su origen y la UI dice «Almacén lleno» |
+| HC-03 | CV-08, CV-17 | La regla de poderes-ira.md («tiempo acelerado solo si nada vuela hacia el módulo») solo frenaba la cámara rápida manual, no la de un viaje del módulo (hasta ×60), ni con una embestida | Cerrado en `decisiones-hc` (`f60ac62`): `AsteroidWrath.threatened` y `frameClocks(…, threat)` bajan el viaje a ×1 con aviso y lo retienen (`held`) hasta que pasa |
+| HC-04 | CV-10 | Nada reservaba el almacén: el abono con amoníaco (activado por defecto) podía gastar el amoníaco guardado para hidracina | Cerrado en `decisiones-hc` (`4832217`): reservas por proceso con prioridad; el propelente reserva 3,4 kg de amoníaco y va primero |
+| HC-05 | CV-15 | Resolver la cadena de un pedido sin créditos no hacía nada y no avisaba | Cerrado en `decisiones-hc` (`b098bf1`): botón bloqueado con «Faltan N créditos»; si se llega igual, «No se pidió: faltan N créditos» y evento `sin-creditos` |
 | HC-06 | CV-16 | No hay partidas guardadas (solo la preferencia de la vista de retos en `localStorage`) | Sin plan |

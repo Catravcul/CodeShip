@@ -229,11 +229,14 @@ export class WrathMode {
       const what = [...k.n].map(([kind, n]) => `${n} ${KIND_WORD[kind]![n === 1 ? 0 : 1]}`).join(" + ");
       return `${what} → ${SHORT[t] ?? t}${Number.isFinite(k.eta) ? ` · ${timeText(k.eta)}` : ""}`;
     });
-    const g = this.wrath.fleeGuidance("aterrizador");
+    // The craft Doménica flies: the lander, or the travel ship when the lander is docked to it (flight deck).
+    const onShip = this.d.docking.dockedTo === this.d.mothership;
+    const craft = onShip ? "nodriza" : this.d.docking.docked ? undefined : "aterrizador";
+    const g = craft ? this.wrath.fleeGuidance(craft) : null;
     let flee: WrathPanelModel["flee"];
-    if (a && !this.d.docking.docked) {
+    if (a && craft) {
       if (g) {
-        const b = this.d.flight.state.toBody(g.direction);
+        const b = onShip ? this.d.mothership.orientation.conjugate().rotate(g.direction) : this.d.flight.state.toBody(g.direction);
         flee = { angleDeg: (Math.atan2(b.x, b.y) * 180) / Math.PI, behind: b.z > 0.3, distanceM: g.distanceM, trapped: g.trapped };
       } else flee = { angleDeg: 0, behind: false, distanceM: 0, trapped: false };
     }

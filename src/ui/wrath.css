@@ -17,7 +17,8 @@
 .wrath-status { opacity: 0.8; font-size: 10px; display: none; }
 /* Phones: the card takes the banner's place while an asteroid is angry (its alerts say the same). */
 @media (max-width: 899px) { body.wrath-on.in-cockpit .banner { display: none; } }
-body:not(.in-cockpit) .wrath-card { display: none; }
+body:not(.in-cockpit):not(.in-deck) .wrath-card { display: none; }
+body.in-deck .wrath-card { z-index: 30; }
 @media (min-width: 900px) {
   .wrath-card { left: 50%; bottom: auto; top: 96px; transform: translateX(-50%); width: 360px; font-size: 13px; padding: 10px 12px; gap: 4px; }
   .wrath-head { flex-direction: row; justify-content: space-between; align-items: baseline; gap: 8px; }
@@ -25,4 +26,10 @@ body:not(.in-cockpit) .wrath-card { display: none; }
   .wrath-status { font-size: 12px; display: block; }
   .wrath-meter { height: 15px; }
   .wrath-meter span { line-height: 15px; font-size: 11px; }
+}
+/* Flight deck: a strip at the bottom on phones, over the bow window's right side on a desktop. */
+body.in-deck .wrath-card { top: auto; bottom: 8px; left: 8px; right: 8px; width: auto; max-height: 26vh; overflow: hidden; transform: none; }
+@media (min-width: 900px) {
+  body.in-deck .wrath-card { top: 60px; bottom: auto; left: auto; right: 12px; width: 360px; max-height: 142px; font-size: 11px; gap: 2px; padding: 6px 10px; }
+  body.in-deck .wrath-status { display: none; }
 }

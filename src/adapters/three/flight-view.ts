@@ -80,7 +80,7 @@ export class FlightView {
       this.mode = MODES[(MODES.indexOf(this.mode) + 1) % MODES.length]!;
       this.center();
     });
-    this.warpBtn.addEventListener("click", () => (this.warpIdx = (this.warpIdx + 1) % WARPS.length));
+    this.warpBtn.addEventListener("click", () => this.warpAvailable && (this.warpIdx = (this.warpIdx + 1) % WARPS.length));
     bar.querySelector(".center-btn")!.addEventListener("click", () => this.center());
     this.tag = document.createElement("div");
     this.tag.className = "cam-tag";
@@ -115,6 +115,19 @@ export class FlightView {
   setMode(mode: CameraMode): void {
     this.mode = mode;
     this.center();
+  }
+
+  /**
+   * Whether the time-warp button makes sense now (set by main each frame): off while docked,
+   * anchored or close to the surface. Turning it off also drops any warp asked for.
+   */
+  set warpAvailable(on: boolean) {
+    if (!on) this.warpIdx = 0;
+    this.warpBtn.classList.toggle("hidden", !on);
+  }
+
+  get warpAvailable(): boolean {
+    return !this.warpBtn.classList.contains("hidden");
   }
 
   /** Time warp asked for; the caller drops it to 1 near the asteroid or while thrusting. */

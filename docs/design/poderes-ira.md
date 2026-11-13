@@ -112,7 +112,7 @@ Cuando un asteroide enfadado de nivel 4 o 5 tiene la estación a su alcance, `St
 ## 6. Lo que ve el jugador
 
 - **En 3D:** cada roca es un poliedro con un resplandor naranja; las cargas son esferas amarillas y las nucleares blancas verdosas. Todas dejan estela y se agrandan con la distancia para que se vean. Al reventar, una carga hace un destello y una nube de puntos que se abre. El pulso de radiación es un rayo violeta. Cada asteroide enfadado lleva una cáscara roja tenue en el borde de su alcance.
-- **Tarjeta de ira**, en el HUD y no como botón nuevo. En el móvil va a la izquierda, bajo el HUD de vuelo; en el escritorio, arriba en el centro. Muestra:
+- **Tarjeta de ira**, en el HUD y no como botón nuevo. En el móvil va a la izquierda, bajo el HUD de vuelo; en el escritorio, arriba en el centro. También sale **en el puente de la nodriza**: en el móvil, como una franja abajo; en el escritorio, sobre la ventana de proa. Desde el puente, la guía de huida es la de la nodriza. Muestra:
   - el asteroide y su poder;
   - el medidor de ira y el tiempo hasta la calma;
   - el modo supervivencia (distancia que le falta a la estación, su velocidad, el Δv que le queda);
@@ -129,7 +129,8 @@ Cuando un asteroide enfadado de nivel 4 o 5 tiene la estación a su alcance, `St
 En `docs/screenshots/ira-{rocas,explosivo,supervivencia}-{mobile,desktop}.png` (iPhone 13 y 1280 × 800):
 
 - **Rocas y explosivo:** duelo fallido en la fase 2 contra 58587 (nivel 3), desde 700 m y con la cámara exterior.
-- **Supervivencia:** Bennu con poder de nivel 4 mediante el gancho de demostración `demoTier`, porque en la región no hay ningún asteroide de nivel 4. El juego nunca lo llama.
+- **Supervivencia:** el módulo frente a la estación, con Bennu con poder de nivel 4 mediante el gancho de demostración `demoTier`, porque en la región no hay ningún asteroide de nivel 4. El juego nunca lo llama.
+- **Puente:** `ira-puente-{mobile,desktop}.png`, la misma situación vista desde el puente de la nodriza.
 
 ## 8. Preguntas abiertas
 

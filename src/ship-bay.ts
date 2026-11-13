@@ -42,7 +42,8 @@ const text = (c: Chore): SessionText => ({
   sheet: true,
 });
 
-export type BayOrigin = "cabina" | "interior";
+/** Where the bay was opened from: the station's walkable interior or its task screen (docs/design/accesos.md). */
+export type BayOrigin = "estacion" | "pantalla";
 
 /** Where spare parts come from (the space station's hangar): a swap takes the new part and stores the old one. */
 export interface PartStore extends PartSupply {
@@ -63,6 +64,8 @@ const viewOf = (id: string): BayView => (PROBE_PART(id) ? "sonda" : "nodriza");
  * The ship bay (engineering station): the ship from outside with an orbit camera, every part
  * selectable, the parts that need a look highlighted and listed, and for each part its real spec
  * sheet and the chores that can be done on it (repairs, care, part swaps), all as code challenges.
+ * It opens only at the station: its bay console, the B key inside it, or the hangar tab of its task
+ * screen (docs/design/accesos.md).
  */
 export class ShipBay {
   readonly view: ShipBayScene;
@@ -83,10 +86,10 @@ export class ShipBay {
   session: ChoreSession | null = null;
   private drag: { id: number; x: number; y: number; moved: boolean } | null = null;
   active = false;
-  from: BayOrigin = "cabina";
+  from: BayOrigin = "estacion";
   /** Called after leaving, with where the player came from. */
   onExit?: (from: BayOrigin) => void;
-  /** Whether the probe is docked: work on the mothership's systems needs Doménica aboard it. */
+  /** Whether the mothership is berthed at the station: work on its systems needs it here. */
   docked: () => boolean = () => true;
   private readonly tabs: HTMLElement;
   private mothershipModel?: MothershipModel;
@@ -111,7 +114,7 @@ export class ShipBay {
     else this.view.model.setSystems(systems, true);
     this.ui = document.createElement("div");
     this.ui.className = "bay-ui hidden";
-    this.ui.innerHTML = `<div class="bay-head"><b>Bahía de la nave</b><span class="bay-sum"></span></div><div class="bay-tabs${mothership ? "" : " hidden"}"><button data-view="sonda" class="on">Sonda</button><button data-view="nodriza">Nodriza</button></div><button class="bay-back">Volver</button><div class="bay-panel"></div><div class="bay-toast"></div>`;
+    this.ui.innerHTML = `<div class="bay-head"><b>Bahía de la nave</b><span class="bay-sum"></span></div><div class="bay-tabs${mothership ? "" : " hidden"}"><button data-view="sonda" class="on">Módulo</button><button data-view="nodriza">Nodriza</button></div><button class="bay-back">Volver</button><div class="bay-panel"></div><div class="bay-toast"></div>`;
     root.appendChild(this.ui);
     this.panel = this.ui.querySelector(".bay-panel")!;
     this.sum = this.ui.querySelector(".bay-sum")!;
@@ -264,7 +267,7 @@ export class ShipBay {
   private renderPanel(): void {
     if (!this.active) return;
     const c = this.selected ? this.list.find((x) => x.id === this.selected) : undefined;
-    // Mothership systems need Doménica aboard: undocked, the bay only shows them.
+    // Mothership systems need the mothership berthed at the station: away, the bay only shows them.
     const away = !!c && !!this.mothership && viewOf(c.id) === "nodriza" && !this.docked();
     const actions = c && !away ? this.actionsFor(c) : [];
     const key = JSON.stringify([this.view.view, away, this.selected, this.list.map((x) => [x.attention, x.issues, x.level, x.health && Math.round(x.health * 100), x.name]), actions.map((a) => a.label + a.detail)]);
@@ -294,7 +297,7 @@ export class ShipBay {
       ${c.issues.map((i) => `<div class="bay-issue ${i.attention}">${esc(i.text)}</div>`).join("")}
       <table class="bay-specs">${specs}</table>
       <div class="bay-sec">Acciones · cada una es una cadena de retos</div>
-      ${away ? `<p class="bay-none">Está en la nodriza: acopla la sonda para trabajar aquí</p>` : acts || `<p class="bay-none">Nada que hacer aquí ahora</p>`}
+      ${away ? `<p class="bay-none">Está en la nodriza: atrácala en la estación para trabajar aquí</p>` : acts || `<p class="bay-none">Nada que hacer aquí ahora</p>`}
       ${sheet}`;
     this.actions = actions;
   }
@@ -367,7 +370,7 @@ export class ShipBay {
     const m = this.nodriza;
     if (!m) return;
     if (o.locked) return this.say(o.locked);
-    if (!this.docked()) return this.say("Acopla la sonda para trabajar en la nodriza");
+    if (!this.docked()) return this.say("Atraca la nodriza en la estación para trabajar en ella");
     const chore = driveRefitChore(m, o);
     this.openChore(chore, (status) => {
       if (status === "failed") return this.say("No salió: los propulsores siguen como estaban");
@@ -388,7 +391,7 @@ export class ShipBay {
     const m = this.nodriza;
     if (!m) return;
     if (o.locked) return this.say(o.locked);
-    if (!this.docked()) return this.say("Acopla la sonda para trabajar en la nodriza");
+    if (!this.docked()) return this.say("Atraca la nodriza en la estación para trabajar en ella");
     this.openChore(equipmentRefitChore(m, o.equipment), (status) => {
       if (status === "failed") return this.say("No salió: la nodriza sigue como estaba");
       if (status !== "done") return;

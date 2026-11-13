@@ -213,7 +213,7 @@ export function buildSpoke(L: SpokeLayout, ring: SpinRing, roomHeight: number): 
   hatch.rotation.y = Math.PI / 2;
   hatch.position.set(L.moduleEndX - 0.05, L.axisY, L.z);
   g.add(hatch);
-  const hatchSign = textSign("Escotilla a la sonda");
+  const hatchSign = textSign("Escotilla de atraque");
   hatchSign.position.set(L.moduleEndX - 0.4, L.axisY + 1.1, L.z);
   g.add(hatchSign);
   // Side hatch to the flight deck.

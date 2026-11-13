@@ -22,7 +22,8 @@ export const FACE_NORMAL: Readonly<Record<Face, Vec3>> = {
 export const FACE_LETTER: Readonly<Record<Face, string>> = { suelo: "D", techo: "O", babor: "P", estribor: "S", proa: "F", popa: "A" };
 
 /** Tabs of the station's task screen a machine can open. */
-export type StationPanel = "materiales" | "planos" | "fabricacion" | "hangar";
+/** A tab of the station screen, or the propellant plant inside Materiales. */
+export type StationPanel = "materiales" | "planos" | "fabricacion" | "hangar" | "propelente";
 
 /** An axis-aligned box in the station's body frame. */
 export interface Box {
@@ -54,6 +55,8 @@ export type FixtureAction =
   | { readonly kind: "panel"; readonly panel: StationPanel }
   | { readonly kind: "info" }
   | { readonly kind: "salir"; readonly to: PortUser }
+  /** The ship bay: configure the parts of the docked ships (docs/design/accesos.md). */
+  | { readonly kind: "bahia" }
   | { readonly kind: "esclusa" };
 
 /** Something mounted in a module: a machine, a rack, a hatch. */

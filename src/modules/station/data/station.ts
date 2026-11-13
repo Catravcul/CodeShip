@@ -14,10 +14,27 @@ export const POLANA_STATION: StationSite = {
   dockingRangeM: 400,
 };
 
-/** What the station had in store when the game starts (game values). */
-export const STARTING_STOCK = { agua: 40, hierro: 30, niquel: 5, carbono: 6, ceramica: 4, oxigeno: 20, kit: 6 } as const;
+/**
+ * What the station had in store when the game starts (game values). The propellants are one fill
+ * of the probe's pair and its hydrazine tank, a spare bottle of helium and some xenon for the
+ * mothership: all imported (docs/design/estacion.md, «Planta de propelente»).
+ */
+export const STARTING_STOCK = {
+  agua: 40,
+  hierro: 30,
+  niquel: 5,
+  carbono: 6,
+  ceramica: 4,
+  oxigeno: 20,
+  kit: 6,
+  mmh: 170,
+  nto: 280,
+  hidracina: 45,
+  helio: 3,
+  xenon: 20000,
+} as const;
 
 /** The mothership (rings, farm deck, life on board), parked near Bennu. Mass is filled in at start. */
 export const MOTHERSHIP_CRAFT: Craft = { id: "nodriza", name: "Nodriza", kind: "nave", massKg: 0, docked: false, note: "Anillos, huerto y vida a bordo" };
 /** The Explorer: the light probe the player flies, which docks on the mothership. */
-export const EXPLORER_CRAFT: Craft = { id: "explorador", name: "Explorador", kind: "sonda", massKg: 0, docked: false, note: "La sonda que pilotas" };
+export const EXPLORER_CRAFT: Craft = { id: "explorador", name: "Explorador", kind: "sonda", massKg: 0, docked: false, note: "El módulo de aterrizaje que pilotas" };

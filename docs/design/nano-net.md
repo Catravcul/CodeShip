@@ -84,7 +84,7 @@ modules/nano-net/
   application/challenges.ts  retos generados del estado y de los datos reales del asteroide
   application/operations.ts  NanoNetOps: qué se puede hacer aterrizado, sesiones de retos, eventos
 adapters/three/nano-net-view.ts  nodos como puntos luminosos, haces, enlaces y la banda cubierta
-ui/nano-net-panel.ts            botón «nano_net» en la barra de vuelo, tarjeta de estado y botón de acción
+ui/nano-net-panel.ts            botón «nano_net» en la barra de estado del puente de la nodriza (tarjeta de estado) y botón de acción en la cabina del módulo, anclado en el núcleo (accesos.md)
 ```
 
 - El dominio y la aplicación no dependen de Three.js ni del DOM (`npm run lint:arch`).

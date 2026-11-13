@@ -1,5 +1,5 @@
 // The one place where the experience suite's journeys and performance budgets are declared.
-// docs/testing.md and docs/qa/px.md must match these (npm run check:docs).
+// docs/testing.md and docs/qa/casos.md (section PX) and docs/qa/registro.md must match these (npm run check:docs).
 
 /** Stable journey IDs: never renumbered or reused; a journey that no longer applies becomes «Retirado». */
 export const JOURNEYS = [

@@ -21,7 +21,7 @@ Lo único que no hace un jugador son las **preparaciones**, marcadas con `·` en
 
 ### Recorridos (`tools/experiencia/`)
 
-Cada recorrido tiene un ID estable (`PX-01`…) en el catálogo [qa/px.md](qa/px.md), con su estado; cada ejecución deja un registro en `docs/qa/runs/<fecha>-PX-….md`. **Sin registro de ejecución no hay «Probado».**
+Cada recorrido tiene un ID estable (`PX-01`…) en la sección «Experiencia del jugador (PX)» de [qa/casos.md](qa/casos.md), con su estado en [qa/registro.md](qa/registro.md); cada ejecución deja un registro en `docs/qa/runs/<fecha>-PX-….md`. **Sin registro de ejecución no hay «Probado».**
 
 | Recorrido | Qué juega |
 | --- | --- |
@@ -36,7 +36,7 @@ npm run experiencia -- cocina mision
 EXPERIENCIA_URL=http://localhost:5173/ node tools/experiencia/run.mjs cocina   # contra un servidor ya en marcha
 ```
 
-Salida: `experiencia-informe/<fecha>/report.md`, `report.json` y las capturas (carpeta ignorada por git), más el registro `docs/qa/runs/<fecha>-PX-….md` (commit, tabla de recorridos, comprobaciones y rendimiento frente a presupuesto) y la fila de estado de cada recorrido en `docs/qa/px.md`. El proceso sale con 1 si falla alguna comprobación, si un recorrido esperado no hizo **ninguna** comprobación, si una medida falta o si se pasa algún presupuesto que aplica.
+Salida: `experiencia-informe/<fecha>/report.md`, `report.json` y las capturas (carpeta ignorada por git), más el registro `docs/qa/runs/<fecha>-PX-….md` (commit, tabla de recorridos, comprobaciones y rendimiento frente a presupuesto) la fila de cada recorrido en `docs/qa/registro.md` y una línea en su tabla de ejecuciones. El proceso sale con 1 si falla alguna comprobación, si un recorrido esperado no hizo **ninguna** comprobación, si una medida falta o si se pasa algún presupuesto que aplica.
 
 Antes de cada toque se comprueban tres invariantes (como los ayudantes de invariantes de Natuka): el objetivo mide al menos **44×44 px** en el móvil (24×24 en escritorio), nada tapa su centro (`elementFromPoint`) y tiene nombre accesible (texto o `aria-label`). Cada control se comprueba una vez por recorrido.
 

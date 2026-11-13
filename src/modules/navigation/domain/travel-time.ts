@@ -141,3 +141,24 @@ export function worldStep(realDtS: number, lapse: number, boardDaysPerRealS: num
   const missionS = Math.max(0, realDtS) * Math.max(1, lapse);
   return { missionS, lifeDays: Math.max(Math.max(0, realDtS) * boardDaysPerRealS, missionS / 86400) };
 }
+
+/** Every clock the main loop advances in one frame (docs/qa/entrelazamiento.md, «Relojes»). */
+export interface FrameClocks extends WorldStep {
+  /** Game seconds per real second of the mission clock: the trip's lapse, else the manual time warp. */
+  readonly warp: number;
+  /** Station hours this frame (machines, biosystems, the import inbox and the asteroids' services). */
+  readonly stationHours: number;
+}
+
+/**
+ * The clocks of one frame, as main wires them: during a compressed trip the mission clock runs at the
+ * trip's lapse (whatever the manual warp asks) and the station follows life on board; outside a trip
+ * the manual warp (already cleared by main: idle, far, nothing flying at you) speeds up the mission
+ * clock and the station, while life on board keeps its pace (open question HC-01 in docs/qa).
+ */
+export function frameClocks(realDtS: number, tripLapse: number, manualWarp: number, stationHoursPerRealS: number): FrameClocks {
+  const warp = tripLapse > 1 ? tripLapse : manualWarp > 1 ? manualWarp : 1;
+  const w = worldStep(realDtS, tripLapse);
+  const dt = Math.max(0, realDtS);
+  return { missionS: dt * warp, lifeDays: w.lifeDays, warp, stationHours: tripLapse > 1 ? w.lifeDays * 24 : dt * warp * stationHoursPerRealS };
+}

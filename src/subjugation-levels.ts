@@ -85,9 +85,9 @@ export class LevelsUi {
     d.root.appendChild(this.toast);
   }
 
-  /** One frame of game time (`gameDt`, time warp included). */
-  update(gameDt: number): void {
-    this.services.update(gameDt);
+  /** One frame of game time (`gameDt`, time warp included) and of the station clock (`stationHours`). */
+  update(gameDt: number, stationHours?: number): void {
+    this.services.update(gameDt, stationHours);
     // Level 1 and up: the asteroid may become a nano_net core (docs/design/nano-net.md).
     for (const a of this.d.asteroids) {
       const id = a.data.id;

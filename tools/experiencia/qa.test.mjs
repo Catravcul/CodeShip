@@ -62,15 +62,27 @@ describe("run log and registro", () => {
     expect(md).toContain("no medido");
   });
 
-  it("replaces a journey's registro row and adds new ones", () => {
-    const md = "| ID | Recorrido | Qué | Modo |\n|---|---|---|---|\n| PX-01 | `cocina` | algo | móvil |\n\n| ID | Recorrido | Estado | Fecha | Commit | Registro |\n|---|---|---|---|---|---|\n| PX-01 | Cocinar | Sin probar | – | – | – |\n";
-    const out = updateRegistro(md, [
-      { id: "PX-01", title: "Cocinar", state: "Probado", date: "2026-11-13", commit: "abc", log: "r.md" },
-      { id: "PX-02", title: "Moverse", state: "Falla", date: "2026-11-13", commit: "abc", log: "r.md" },
-    ]);
-    expect(out).toContain("| PX-01 | Cocinar | Probado | 2026-11-13 | `abc` | [r.md](runs/r.md) |");
-    expect(out).toContain("| PX-01 | `cocina` | algo | móvil |");
-    expect(out.indexOf("| PX-02 |")).toBeGreaterThan(out.indexOf("| PX-01 | Cocinar"));
+  it("rewrites a journey's row in registro.md and lists the run on top of the run table", () => {
+    const md = [
+      "## Estado por caso", "", "| ID | Estado | Fecha | Commit | Evidencia / run |", "|---|---|---|---|---|",
+      "| CV-01 | Probado (suite) | 2026-11-13 | `x` | [run](runs/a.md): OK |", "| PX-01 | Sin probar | | | sin run log |",
+      "", "## Última ejecución por run log", "", "| Fecha | Casos | Modo | Resultado | Run |", "|---|---|---|---|---|",
+      "| 2026-11-13 10:18 | CV-01 | Vitest | OK | [run](runs/a.md) |", "",
+    ].join("\n");
+    const out = updateRegistro(md, {
+      when: "2026-11-13 11:05",
+      log: "r.md",
+      rows: [
+        { id: "PX-01", passed: true, date: "2026-11-13", commit: "abc", summary: "12 OK" },
+        { id: "PX-02", passed: false, date: "2026-11-13", commit: "abc", summary: "1 FALLA" },
+      ],
+    });
+    expect(out).toContain("| PX-01 | Probado (en vivo) | 2026-11-13 | `abc` | [run](runs/r.md): 12 OK |");
+    expect(out).toContain("| CV-01 | Probado (suite) |");
+    expect(out.indexOf("| PX-02 | FAIL |")).toBeGreaterThan(out.indexOf("| PX-01 | Probado"));
+    expect(out.indexOf("| PX-02 | FAIL |")).toBeLessThan(out.indexOf("## Última"));
+    const runs = out.slice(out.indexOf("## Última"));
+    expect(runs.indexOf("| 2026-11-13 11:05 | PX-01, PX-02 | Experiencia (Playwright) | 1/2 recorridos bien | [run](runs/r.md) |")).toBeLessThan(runs.indexOf("10:18"));
   });
 
   it("journey IDs are unique and stable in shape", () => {

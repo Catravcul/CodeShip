@@ -78,21 +78,29 @@ export function renderRunLog({ date, commit, branch, env, results }) {
   return out.join("\n") + "\n";
 }
 
-/** Replaces (or adds) each journey's status row (docs/qa/px.md, «Estado»). Rows: | ID | Recorrido | Estado | Fecha | Commit | Registro |. */
-export function updateRegistro(md, rows) {
+/**
+ * Updates docs/qa/registro.md (owned by the QA case system, docs/qa/README.md) after a run:
+ * each journey's row in «Estado por caso» (| ID | Estado | Fecha | Commit | Evidencia / run |) and a new
+ * line on top of «Última ejecución por run log».
+ */
+export function updateRegistro(md, { when, log, rows }) {
   const lines = md.split("\n");
-  // The status table is the one whose header has an «Estado» column (px.md also has the catalogue above it).
-  const head = lines.findIndex((l) => /^\| ID \| Recorrido \| Estado \|/.test(l));
-  const from = head < 0 ? 0 : head;
+  const runsAt = lines.findIndex((l) => /^## Última ejecución/.test(l));
+  const end = runsAt < 0 ? lines.length : runsAt;
   for (const r of rows) {
-    const row = `| ${r.id} | ${r.title} | ${r.state} | ${r.date} | \`${r.commit}\` | [${r.log}](runs/${r.log}) |`;
-    const i = lines.findIndex((l, k) => k > from && l.startsWith(`| ${r.id} |`));
+    const row = `| ${r.id} | ${r.passed ? "Probado (en vivo)" : "FAIL"} | ${r.date} | \`${r.commit}\` | [run](runs/${log}): ${r.summary} |`;
+    const i = lines.findIndex((l, k) => k < end && l.startsWith(`| ${r.id} |`));
     if (i >= 0) lines[i] = row;
     else {
-      let last = from + 1;
-      lines.forEach((l, k) => k > from && l.startsWith("| PX-") && (last = k));
+      let last = -1;
+      lines.forEach((l, k) => k < end && l.startsWith("| ") && (last = k));
       lines.splice(last + 1, 0, row);
     }
+  }
+  const sep = lines.findIndex((l, k) => k > runsAt && runsAt >= 0 && /^\|---/.test(l));
+  if (sep >= 0) {
+    const ok = rows.filter((r) => r.passed).length;
+    lines.splice(sep + 1, 0, `| ${when} | ${rows.map((r) => r.id).join(", ")} | Experiencia (Playwright) | ${ok}/${rows.length} recorridos bien | [run](runs/${log}) |`);
   }
   return lines.join("\n");
 }

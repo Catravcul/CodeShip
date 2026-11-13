@@ -1,11 +1,12 @@
 // Docs that are a contract with the code (idea from Natuka's check-docs.sh): fails when
-// docs/testing.md's budget table or docs/qa/px.md drift from tools/experiencia/presupuestos.mjs.
-import { readFileSync } from "node:fs";
+// docs/testing.md's budget table, the PX catalogue in docs/qa/casos.md or its rows in docs/qa/registro.md drift from tools/experiencia/presupuestos.mjs.
+import { existsSync, readFileSync } from "node:fs";
 import { BUDGETS, JOURNEYS } from "../tools/experiencia/presupuestos.mjs";
 
 const problems = [];
 const testing = readFileSync("docs/testing.md", "utf8");
-const px = readFileSync("docs/qa/px.md", "utf8");
+const casos = readFileSync("docs/qa/casos.md", "utf8").split("\n");
+const registro = readFileSync("docs/qa/registro.md", "utf8").split("\n");
 
 for (const b of BUDGETS) {
   const cell = `${b.max}${b.unit ? ` ${b.unit}` : ""}`;
@@ -21,20 +22,15 @@ const budgetRows = testing.split("\n").filter((l) => /^\| [^|]+ \| \d+/.test(l))
 if (budgetRows !== BUDGETS.length) problems.push(`docs/testing.md: ${budgetRows} filas de presupuesto, el código declara ${BUDGETS.length}`);
 
 for (const j of JOURNEYS) {
-  if (!px.split("\n").some((l) => l.startsWith(`| ${j.id} | \`${j.name}\` |`))) problems.push(`docs/qa/px.md: falta ${j.id} \`${j.name}\` en el catálogo`);
-  if (px.split("\n").filter((l) => l.startsWith(`| ${j.id} |`)).length < 2) problems.push(`docs/qa/px.md: falta la fila de estado de ${j.id}`);
+  if (!casos.some((l) => l.startsWith(`| ${j.id} | \`${j.name}\` |`))) problems.push(`docs/qa/casos.md: falta ${j.id} \`${j.name}\` en la sección PX`);
+  if (!registro.some((l) => l.startsWith(`| ${j.id} |`))) problems.push(`docs/qa/registro.md: falta la fila de ${j.id}`);
 }
-for (const id of new Set([...px.matchAll(/^\| (PX-\d+) \|/gm)].map((m) => m[1])))
-  if (!JOURNEYS.some((j) => j.id === id)) problems.push(`docs/qa/px.md: ${id} no está en presupuestos.mjs (si ya no aplica, márcalo Retirado y déjalo en el código)`);
-// «Probado» needs its run log.
-for (const l of px.split("\n").filter((x) => x.includes("| Probado |"))) {
+for (const id of new Set(casos.flatMap((l) => /^\| (PX-\d+) \|/.exec(l)?.[1] ?? [])))
+  if (!JOURNEYS.some((j) => j.id === id)) problems.push(`docs/qa/casos.md: ${id} no está en presupuestos.mjs (si ya no aplica, márcalo Retirado y déjalo en el código)`);
+// A journey «Probado» needs its run log on disk.
+for (const l of registro.filter((x) => /^\| PX-\d+ \| Probado/.test(x))) {
   const m = /\(runs\/([^)]+)\)/.exec(l);
-  try {
-    if (!m) throw new Error();
-    readFileSync(`docs/qa/runs/${m[1]}`);
-  } catch {
-    problems.push(`docs/qa/px.md: ${l.split("|")[1].trim()} está Probado sin registro de ejecución`);
-  }
+  if (!m || !existsSync(`docs/qa/runs/${m[1]}`)) problems.push(`docs/qa/registro.md: ${l.split("|")[1].trim()} está Probado sin registro de ejecución`);
 }
 
 for (const p of problems) console.error(p);

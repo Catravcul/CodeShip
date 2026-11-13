@@ -1,7 +1,7 @@
-// Runs the player-experience journeys (docs/testing.md, catalogue in docs/qa/px.md).
+// Runs the player-experience journeys (docs/testing.md, catalogue in docs/qa/casos.md, section PX).
 // Usage: npm run experiencia [-- PX-01 cocina …]   (EXPERIENCIA_URL to use a running server)
 // Writes experiencia-informe/<fecha>/ (report.md, report.json, screenshots) and the run log
-// docs/qa/runs/<fecha>-PX-….md, and updates the status table of docs/qa/px.md: no run log, no «Probado».
+// docs/qa/runs/<fecha>-PX-….md, and updates the journeys' rows in docs/qa/registro.md: no run log, no «Probado».
 import { spawn, execSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -86,10 +86,16 @@ if (!process.env.EXPERIENCIA_SIN_REGISTRO) {
   mkdirSync(runs, { recursive: true });
   const name = runLogName(now, results.map((r) => r.id));
   writeFileSync(join(runs, name), log);
-  const reg = join("docs", "qa", "px.md");
+  const reg = join("docs", "qa", "registro.md");
   if (existsSync(reg)) {
-    const rows = results.map((r) => ({ id: r.id, title: r.title, state: r.passed ? "Probado" : "Falla", date: now.toISOString().slice(0, 10), commit: commit.split(" ")[0], log: name }));
-    writeFileSync(reg, updateRegistro(readFileSync(reg, "utf8"), rows));
+    const date = now.toISOString().slice(0, 10);
+    const rows = results.map((r) => {
+      const ok = r.checks.filter((c) => c.ok === true && !c.setup).length;
+      const bad = r.checks.filter((c) => c.ok === false).length;
+      return { id: r.id, passed: r.passed, date, commit: commit.split(" ")[0], summary: bad ? `${ok} OK, ${bad} FALLA` : `${ok} OK` };
+    });
+    const when = `${date} ${now.toISOString().slice(11, 16)}`;
+    writeFileSync(reg, updateRegistro(readFileSync(reg, "utf8"), { when, log: name, rows }));
   }
   console.log(`Registro de la ejecución: ${join(runs, name)}`);
 }

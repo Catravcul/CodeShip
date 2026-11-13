@@ -145,3 +145,9 @@ Las dos zonas sin gravedad (cubo y espina de la nodriza, y la estación) usan el
 - Suraev, atascado en medio del Nodo 3: https://www.universetoday.com/110440/why-trapping-somebody-in-space-only-takes-a-breeze-and-other-highlights-from-expedition-40/
 - «Gecko Mobility Aids for a Common Habitat Architecture» (NASA, 2022; cita a Behrendsen 2013 y los comentarios de la tripulación): https://ntrs.nasa.gov/api/citations/20220019245/downloads/Gecko%20Mobility%20Aids%20for%20a%20Common%20Habitat%20Architecture.pdf
 - Payload Equipment Restraint System, riel «seat track» de los bastidores de la ISS: https://ntrs.nasa.gov/api/citations/20030066313/downloads/20030066313.pdf
+
+## Capturas
+
+- `docs/screenshots/ingravidez-1-impulso-{mobile,desktop}.png`: se impulsa desde el asidero junto a la escotilla de atraque del Nodo 2; los brazos van hacia atrás.
+- `docs/screenshots/ingravidez-2-planeo-{mobile,desktop}.png`: vuela de cabeza hacia el módulo habitable, a 0,50 m/s y sin frenar. En el móvil se ve «Agarrarse» porque hay un asidero al alcance.
+- `docs/screenshots/ingravidez-3-agarre-{mobile,desktop}.png`: tras cruzar la espina de la nodriza, agarra un asidero del fondo del cubo junto a la escotilla.

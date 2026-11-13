@@ -12,7 +12,7 @@ export class Hud {
     root.appendChild(this.el);
     const help = document.createElement("div");
     help.className = "help";
-    help.innerHTML = `<b>Controles</b><br>W/S avanzar/retroceder · A/D lateral · R/F subir/bajar<br>Flechas cabeceo/guiñada · Q/E alabeo<br>Espacio motor principal · T asistente de rotación · G asistente de aterrizaje · K acople<br>C cambia cámara · V centra la vista · X acelera el tiempo<br><i>Para aterrizar, la panza (el tren) debe mirar al suelo; la cámara ventral ayuda.</i><br><i>Los RCS empujan poco (unas centésimas de m/s²): fíjate en el polvo y en la velocidad. El motor principal empuja unas diez veces más; las cifras de cada pieza están en la bahía de la estación.</i><br><i>El mapa, los viajes y las misiones están en el puente de la nave de viaje; la bahía, en la estación. Se pasa de uno a otro acoplando el módulo.</i>`;
+    help.innerHTML = `<b>Controles</b><br>W/S avanzar/retroceder · A/D lateral · R/F subir/bajar<br>Flechas cabeceo/guiñada · Q/E alabeo<br>Espacio motor principal · T asistente de rotación · G asistente de aterrizaje · K acople<br>C cambia cámara · V centra la vista · X acelera el tiempo · H levantarse al habitáculo<br><i>Para aterrizar, la panza (el tren) debe mirar al suelo; la cámara ventral ayuda.</i><br><i>Los RCS empujan poco (unas centésimas de m/s²): fíjate en el polvo y en la velocidad. El motor principal empuja unas diez veces más; las cifras de cada pieza están en la bahía de la estación.</i><br><i>El mapa, los viajes y las misiones están en el puente de la nave de viaje; la bahía, en la estación. Se pasa de uno a otro acoplando el módulo.</i>`;
     root.appendChild(help);
   }
 

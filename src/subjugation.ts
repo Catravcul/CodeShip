@@ -17,7 +17,7 @@ import type { FlightDeck } from "./flight-deck";
 import { ProbeMode } from "./probe-mode";
 import { asteroidText, type DuelView, type SessionText } from "./ui/duel-view";
 import type { NavMap } from "./ui/nav-map";
-import { RapportChip, rapportCardHtml } from "./ui/rapport-view";
+import { rapportCardHtml } from "./ui/rapport-view";
 import type { WrathTarget } from "@modules/asteroid-wrath/application/wrath";
 import { HULL_ENERGY_J, PROBE_ELECTRONICS_TOLERANCE_MSV } from "@modules/asteroid-wrath/domain/protection";
 
@@ -63,8 +63,6 @@ export function stageResultText(e: Expedition): string {
 
 /** Mothership body frame: the probe's bay on top of the forward node, opposite the lander's port. Game value. */
 export const PROBE_BAY_BODY = new Vec3(0, 2.2 + PROBE_HULL.y / 2 + 0.55, -70);
-/** Show the HUD chip within this distance of the target's surface, m. Game value. */
-const CHIP_RANGE_M = 6000;
 
 export interface SubjugationDeps {
   readonly root: HTMLElement;
@@ -96,12 +94,12 @@ const SUIT_RETREAT_AT = 0.3;
 
 /**
  * Wiring of the subjugation's three stages (docs/design/subyugacion.md): the probe and its console on
- * the flight deck, the stage duels, the lie-down in the suit, the map card block and the HUD chip.
+ * the flight deck, the stage duels, the lie-down in the suit and the map card block. The phase and trust
+ * are not on the flight HUD (they got in the way of landing): they live on the asteroid's mind consoles.
  */
 export class SubjugationUi {
   readonly probe: ProbeOps;
   readonly probeMode: ProbeMode;
-  readonly chip: RapportChip;
   private duelStage: Stage | undefined;
 
   constructor(private readonly d: SubjugationDeps) {
@@ -126,7 +124,6 @@ export class SubjugationUi {
       keyboard: d.keyboard,
     });
     d.deck.addStatusButton("fd-probe", "Sonda", () => this.probeMode.enter());
-    this.chip = new RapportChip(d.root);
     d.map.rapportMark = (id) => rapportCardHtml(ex.rapport.peek(id), ex.phase === "aggressive" && id === ex.asteroid.data.id, this.activityOf?.(id) ?? "");
 
     d.evaMode.canSubjugate = () => ex.canStartStage("traje");
@@ -203,7 +200,7 @@ export class SubjugationUi {
     };
   }
 
-  /** What a subjugated asteroid is doing now (set by the levels wiring), for the HUD chip. */
+  /** What a subjugated asteroid is doing now (set by the levels wiring), for the mind consoles and the map. */
   activityOf?: (asteroidId: string) => string;
 
   /** Enter its mind again to persuade it into the next level, through the lander or the parked probe. */
@@ -290,7 +287,7 @@ export class SubjugationUi {
 
   /**
    * Every frame: keep the probe on the expedition's target, fly it (or let it ride its bay), keep it
-   * out of the rocks, apply the asteroid's anger, and refresh its console and the HUD chip.
+   * out of the rocks, apply the asteroid's anger, and refresh its console.
    */
   update(dt: number, warp: number, warpNote: string, cockpit: { visible: boolean; landerPosition: Vec3 }): void {
     const { expedition: ex, region, mothership } = this.d;
@@ -312,9 +309,6 @@ export class SubjugationUi {
     for (const e of p.drainEvents()) this.probeMode.onEvent(e);
     this.probeMode.update(dt, warp, warpNote);
     if (!this.d.eva.outside) this.suitDamage = 0;
-    const t = ex.asteroid;
-    const near = t.surfaceDistance(this.probeMode.active ? f.state.position : cockpit.landerPosition, f.simTimeS) < CHIP_RANGE_M;
-    this.chip.update(cockpit.visible && near && !this.probeMode.active, t.data.name, ex.rapport.peek(t.data.id), ex.phase === "aggressive", this.activityOf?.(t.data.id) ?? "");
   }
 
   /** The lander's banner while landed: what its stage allows here. */

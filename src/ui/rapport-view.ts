@@ -53,28 +53,50 @@ export function rapportCardHtml(r: Rapport | undefined, angry = false, activity 
   </div>`;
 }
 
+/** What the next step asks, in a few words, for the one-line summary. */
+function nextShort(r: Rapport | undefined): string {
+  switch (r ? r.next : "sonda") {
+    case "sonda":
+      return "lanza la sonda";
+    case "nave":
+      return "aterriza el módulo y entra en su mente";
+    case "traje":
+      return "sal con el traje";
+    default:
+      return r?.nextLevel ? `convéncelo del nivel ${r.nextLevel}` : "nivel máximo";
+  }
+}
+
 /**
- * The HUD chip near an asteroid: its stages, its trust and the next step, so the player always knows
- * how deep into its mind they are and what comes next. Mobile first: one compact line plus the dots.
+ * One clear line about an asteroid's subjugation (designer's request: the old chip with the Sonda /
+ * Módulo / Traje markers looked like buttons): «Bennu · fase 2 de 3: aterriza el módulo · confianza 25 %».
  */
-export class RapportChip {
-  private readonly el: HTMLElement;
-  private html = "";
+export function rapportLine(name: string, r: Rapport | undefined, angry = false): string {
+  const trust = `confianza ${pct(r?.trust ?? 0)}`;
+  if (angry) return `${name} · furioso · ${trust}`;
+  if (r?.subjugated) return `${name} · nivel ${r.level} de 4: ${nextShort(r)} · ${trust}`;
+  return `${name} · fase ${Math.min(3, (r?.stagesDone ?? 0) + 1)} de 3: ${nextShort(r)} · ${trust}`;
+}
 
-  constructor(root: HTMLElement) {
-    this.el = document.createElement("div");
-    this.el.className = "rapport-chip hidden";
-    root.appendChild(this.el);
-  }
+/**
+ * The asteroid's mind console (lander cabin and the travel ship's science console): the one line, its
+ * steps as plain text (done ✓, now ▸) and the next step. Nothing here is tappable but the console's action.
+ */
+export function mindConsoleHtml(name: string, r: Rapport | undefined, angry = false, activity = ""): string {
+  const done = r?.stagesDone ?? 0;
+  const steps = r?.subjugated
+    ? LEVELS.map((l) => `<span class="${l <= r.level ? "done" : l === r.nextLevel ? "now" : ""}">${l <= r.level ? "✓" : l === r.nextLevel ? "▸" : "·"} ${l} ${LEVEL_SHORT[l]}</span>`).join(" · ")
+    : STAGES.map((s, i) => `<span class="${i < done ? "done" : i === done ? "now" : ""}">${i < done ? "✓" : i === done ? "▸" : "·"} ${i + 1} ${STAGE_SHORT[s]}</span>`).join(" · ");
+  return `<div class="mind-line">${esc(rapportLine(name, r, angry))}</div><div class="rp-trust" aria-hidden="true"><i style="width:${((r?.trust ?? 0) * 100).toFixed(0)}%"></i></div><div class="mind-steps">${r?.subjugated ? "Niveles" : "Fases"}: ${steps}</div>${activity ? `<div class="rp-job">${esc(activity)}</div>` : ""}<div class="mind-next">${esc(nextStepText(r, angry))}</div>`;
+}
 
-  update(show: boolean, name: string, r: Rapport | undefined, angry: boolean, activity = ""): void {
-    this.el.classList.toggle("hidden", !show);
-    if (!show) return;
-    const html = `<div class="rp-line"><b>${esc(name)}</b>${r?.subjugated ? ` · nivel ${r.level}/4` : ""} · confianza ${pct(r?.trust ?? 0)}</div>${r?.subjugated ? levelDots(r) : `<div class="rp-dots">${stageDots(r)}</div>`}${activity ? `<div class="rp-job">${esc(activity)}</div>` : ""}<small>${esc(nextStepText(r, angry))}</small>`;
-    if (html !== this.html) {
-      this.el.innerHTML = html;
-      this.html = html;
-    }
-    this.el.classList.toggle("angry", angry);
-  }
+/** The same, as lines for a 3D screen (drawScreen: «+» green, «!» amber). */
+export function mindScreenLines(name: string, r: Rapport | undefined, angry = false): string[] {
+  const done = r?.stagesDone ?? 0;
+  return [
+    `${angry ? "!" : "+"}${name}`,
+    r?.subjugated ? `nivel ${r.level} de 4` : `fase ${Math.min(3, done + 1)} de 3`,
+    `confianza ${pct(r?.trust ?? 0)}`,
+    r?.subjugated ? LEVELS.map((l) => (l <= r.level ? `[${l}]` : ` ${l} `)).join("") : STAGES.map((s, i) => (i < done ? `[${STAGE_SHORT[s]}]` : STAGE_SHORT[s])).join(" "),
+  ];
 }

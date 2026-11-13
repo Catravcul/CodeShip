@@ -1,0 +1,39 @@
+/* The lander's crew cabin (docs/design/habitaculo.md): machines instead of HUD buttons. */
+.cab-ui { position: fixed; inset: 0; z-index: 8; pointer-events: none; color: #d8f6ff; }
+.cab-ui.hidden { display: none; }
+.cab-ui > * { pointer-events: auto; }
+.cab-where { position: fixed; top: calc(10px + env(safe-area-inset-top)); left: 12px; padding: 6px 10px; font-size: 13px; background: #05141cc4; border-radius: 10px; pointer-events: none; }
+.root-menu.cab-menu { top: calc(10px + env(safe-area-inset-top)); right: 10px; }
+.cab-machine { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(160px + env(safe-area-inset-bottom)); width: min(380px, calc(100vw - 24px)); box-sizing: border-box; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; background: #05141ce6; border: 1px solid #7fdcff55; border-radius: 14px; font-size: 13px; }
+.cab-machine.hidden { display: none; }
+.cm-head { display: flex; flex-direction: column; gap: 2px; }
+.cm-head b { font-size: 15px; color: #ffd27f; }
+.cm-head small { color: #a9c8d8; }
+.cm-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+.cm-acts button { flex: 1 1 auto; min-height: 48px; padding: 8px 14px; font: inherit; font-weight: 700; color: #d8f6ff; background: #0b2a36; border: 1px solid #7fdcff66; border-radius: 12px; }
+.cm-acts button.primary { color: #001018; background: #9fe8c4; border-color: #9fe8c4; }
+.cm-acts button:disabled { opacity: 0.5; color: #d8f6ff; background: #0b2a36; border-color: #7fdcff33; }
+.cm-acts kbd { font: inherit; font-size: 11px; font-weight: 400; opacity: 0.8; }
+.cm-why { margin: 0; font-size: 12px; color: #ffd8a0; }
+/* The asteroid's mind: one clear line, then its steps as plain text (not buttons). */
+.cm-mind .mind-line { font-size: 14px; font-weight: 600; }
+.cm-mind .mind-steps { margin-top: 4px; font-size: 12px; color: #a9c8d8; }
+.cm-mind .mind-steps .done { color: #7dffb0; }
+.cm-mind .mind-steps .now { color: #ffd27f; font-weight: 700; }
+.cm-mind .mind-next { margin-top: 4px; font-size: 12px; color: #bfefff; }
+.cm-mind .rp-trust { height: 5px; }
+.cab-toast { position: fixed; left: 50%; transform: translateX(-50%); top: calc(60px + env(safe-area-inset-top)); width: min(420px, calc(100vw - 24px)); box-sizing: border-box; padding: 6px 10px; font-size: 13px; text-align: center; background: #000a; border-radius: 10px; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+.cab-toast.on { opacity: 1; }
+.cab-fade { position: fixed; inset: 0; z-index: 30; background: #000; opacity: 0; pointer-events: none; }
+.cab-fade.go { animation: cab-fade 0.45s ease-out; }
+@keyframes cab-fade { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .cab-fade.go { animation: none; } }
+.vstick.cab-move { left: 22px; }
+.vstick.cab-look { right: 22px; }
+body.in-cabin .vstick.cab-move, body.in-cabin .vstick.cab-look { display: block; }
+body.in-cabin .vstick.cab-move span { color: #9fe8c4; }
+body.in-cabin .hud, body.in-cabin .help, body.in-cabin .reticle, body.in-cabin .banner, body.in-cabin .action, body.in-cabin .touch, body.in-cabin .mode-btn,
+body.in-cabin .cam-tag, body.in-cabin .pilot-look, body.in-cabin .region-tag, body.in-cabin .sky-labels, body.in-cabin .nano-card, body.in-cabin .autopilot-tag, body.in-cabin .walk-stick, body.in-cabin .look-stick { display: none !important; }
+body.in-duel .cab-ui, body.in-duel .vstick.cab-move, body.in-duel .vstick.cab-look, body.in-settings .cab-machine { display: none !important; }
+body.in-settings .cab-menu { display: none; }
+@media (min-width: 900px) and (pointer: fine) { .cab-machine { left: auto; right: 18px; transform: none; bottom: 170px; } }

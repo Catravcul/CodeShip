@@ -32,6 +32,7 @@ import { Walker } from "./adapters/input/walker";
 import type { DuelView, SessionText } from "./ui/duel-view";
 import type { SpinRing } from "@modules/gravity/domain/spin-gravity";
 import { GravityZones } from "./adapters/three/interior/zones";
+import { ICON } from "./ui/icons";
 
 const CAT_COLORS = [0xd9822b, 0x2b2b2b, 0xe8e2d6, 0x8a8f99];
 const HEN_COLORS = [0xb5651d, 0xf2efe6, 0x2a2a2a, 0xc98a4a];
@@ -157,6 +158,13 @@ export class Interior {
   openNavConsole?: () => void;
   /** Opens the mission log from the radio (set by main.ts). */
   openMissions?: () => void;
+  /** Opens the board with every task of the game (set by main.ts). */
+  openAllTasks?: () => void;
+  /** The general settings, opened sitting in lotus on the exercise corner's mat (set by main.ts). */
+  openSettings?: () => void;
+  private readonly matBtn: HTMLButtonElement;
+  /** Sitting in lotus on the mat while the settings are open. */
+  private lotus = false;
 
   constructor(
     root: HTMLElement,
@@ -207,7 +215,7 @@ export class Interior {
     this.walker = new Walker(root);
     this.ui = document.createElement("div");
     this.ui.className = "interior-ui hidden";
-    this.ui.innerHTML = `<div class="ihud"></div><button class="tasks-btn">Tareas</button><button class="radio-btn">Radio<b></b></button><button class="view-btn"></button><div class="board hidden"></div><button class="station-btn hidden"></button><div class="toast"></div>`;
+    this.ui.innerHTML = `<div class="ihud"></div><button class="tasks-btn">Tareas</button><button class="radio-btn">Radio<b></b></button><button class="view-btn">${ICON.eye}</button><div class="board hidden"></div><button class="station-btn hidden"></button><button class="mat-btn hidden">Sentarse en loto: ajustes</button><div class="toast"></div>`;
     root.appendChild(this.ui);
     this.hud = this.ui.querySelector(".ihud")!;
     // On phones the larder and self-sufficiency lines fold away: a tap on the status shows them (docs/design/ux-acciones.md).
@@ -215,7 +223,10 @@ export class Interior {
     this.board = this.ui.querySelector(".board")!;
     this.stationBtn = this.ui.querySelector(".station-btn")!;
     this.toast = this.ui.querySelector(".toast")!;
-    this.ui.querySelector(".tasks-btn")!.addEventListener("click", () => this.openBoard());
+    // «Tareas» lists every task of the game when main.ts wires the shared board (docs/design/habitaculo.md §Tareas).
+    this.ui.querySelector(".tasks-btn")!.addEventListener("click", () => (this.openAllTasks ? this.openAllTasks() : this.openBoard()));
+    this.matBtn = this.ui.querySelector(".mat-btn")!;
+    this.matBtn.addEventListener("click", () => this.sitForSettings());
     this.radioBtn = this.ui.querySelector(".radio-btn")!;
     if (ring) this.zones = new GravityZones(this.ui, this.scene, ring, ROOM.halfL, ROOM.height, (t) => this.say(t));
     this.viewBtn = this.ui.querySelector(".view-btn")!;
@@ -380,6 +391,7 @@ export class Interior {
     const near = !busy && !this.walkTo && (this.zones?.zone ?? "anillo") === "anillo" ? this.nearStation() : undefined;
     const n = near ? this.currentChores().filter((c) => stationFor(c) === near.id).length : 0;
     this.stationBtn.classList.toggle("hidden", !near);
+    this.matBtn.classList.toggle("hidden", near?.id !== "yoga" || !this.openSettings || this.lotus);
     if (near)
       this.stationBtn.textContent =
         near.id === "navegacion" ? "Consola de navegación: mapa, viajes y misiones" : near.id === "camarote" ? `Camarote: leer cartas${this.habitat.mailbox?.unread ? ` (${this.habitat.mailbox.unread})` : ""}` : `${near.label}: ${n} ${n === 1 ? "tarea" : "tareas"}`;
@@ -425,7 +437,42 @@ export class Interior {
   }
 
   private syncViewBtn(): void {
-    this.viewBtn.textContent = this.thirdPerson ? "Vista: 3ª persona" : "Vista: 1ª persona";
+    const label = this.thirdPerson ? "Vista: 3ª persona" : "Vista: 1ª persona";
+    this.viewBtn.setAttribute("aria-label", label);
+    this.viewBtn.title = label;
+  }
+
+  /** At the yoga mat: sit in lotus and open the general settings; standing up closes them. */
+  sitForSettings(): void {
+    if (!this.openSettings || this.session) return;
+    const mat = STATIONS.find((x) => x.id === "yoga")!;
+    const sit = () => {
+      this.lotus = true;
+      this.pos.set(0.2, 0, 3.9);
+      this.yaw = 0;
+      this.thirdPerson = true;
+      this.syncViewBtn();
+      this.openSettings?.();
+    };
+    this.walkTo = { pos: mat.stand.clone(), look: mat.look.clone(), then: sit };
+  }
+
+  /** The settings closed: she stands up from the mat. */
+  standUp(): void {
+    this.lotus = false;
+  }
+
+  /** The board's chores as plain facts for the shared task list (title, where, category). */
+  choreFacts(): { id: string; title: string; detail: string; category: ChoreCategory; station: string }[] {
+    return this.currentChores().map((c) => ({ id: c.id, title: c.title, detail: `${STATIONS.find((s) => s.id === stationFor(c))?.label ?? ""} · ${c.exercises.length} retos`, category: CHORE_CATEGORY[c.kind], station: stationFor(c) }));
+  }
+
+  /** Walk to a chore's machine and start it (from the shared task list's «Ir»). */
+  doChore(id: string): boolean {
+    const chore = this.currentChores().find((c) => c.id === id);
+    if (!chore) return false;
+    this.goAndDo(chore);
+    return true;
   }
 
   /** Room, doorway or farm deck, with a margin from the walls (for the third-person camera). */
@@ -450,7 +497,8 @@ export class Interior {
     this.avatarRig.position.set(this.pos.x, 0, this.pos.z);
     this.avatarRig.rotation.y = this.yaw + Math.PI;
     const moving = this.walkTo !== null || this.walker.move().forward !== 0 || this.walker.move().right !== 0;
-    if (moving) this.avatar.walk(this.stride, 1);
+    if (this.lotus) this.avatar.pose("lotus");
+    else if (moving) this.avatar.walk(this.stride, 1);
     else this.avatar.pose("stand");
     this.avatar.update(1 / 60, 10);
     const dir = new THREE.Vector3(-Math.sin(this.yaw) * Math.cos(this.pitch), Math.sin(this.pitch), -Math.cos(this.yaw) * Math.cos(this.pitch));

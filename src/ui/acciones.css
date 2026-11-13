@@ -32,16 +32,10 @@ body.in-cockpit .ctx-dock > .rapport-chip, body.in-cockpit .ctx-dock > .trip-chi
   body.in-cockpit .ctx-dock > .region-tag { font-size: 11px; text-align: left; }
   /* Left thumb: turning (GIRAR) and looking (MIRAR) together. */
   body.in-cockpit .pilot-look { left: 14px; right: auto; margin-left: 0; bottom: calc(222px + env(safe-area-inset-bottom)); }
-  /* Mandos: the flight toggles fold into a menu at the top right. */
-  .flight-bar { top: 10px; right: 10px; }
-  .flight-bar:not(.open) > button:not(.bar-toggle) { display: none; }
-  .flight-bar.open { padding: 6px; background: #05141ce6; border: 1px solid #7fdcff44; border-radius: 12px; }
-  .flight-bar button { min-height: 40px; }
   /* A shorter HUD: the detail lines (velocity components, spin, each tank) stay on desktop. */
   .hud { max-width: calc(100vw - 140px); }
   .hud .row.small:not(.mail) { display: none; }
 }
-@media (pointer: fine) { .flight-bar .bar-toggle { display: none; } }
 /* Probe console: its own primary action sits over the right thumb, so the trip chip goes over the left one. */
 @media (pointer: coarse) { body.in-probe .ctx-dock { left: 10px; transform: none; bottom: calc(222px + env(safe-area-inset-bottom)); width: calc(52vw - 10px); } }
 /* With the task board or the radio open, the interior's notices drop to the bottom instead of covering the list. */

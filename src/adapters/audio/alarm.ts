@@ -3,8 +3,14 @@
  * the browser has no audio or has not been allowed to play yet.
  */
 let ctx: AudioContext | null | undefined;
+/** General setting «Sonido» (docs/design/habitaculo.md §Ajustes): off, the cues stay silent. */
+let soundOn = true;
+export function setSound(on: boolean): void {
+  soundOn = on;
+}
 
 function audio(): AudioContext | null {
+  if (!soundOn) return null;
   if (ctx !== undefined) return ctx;
   try {
     const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;

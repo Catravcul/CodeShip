@@ -131,16 +131,15 @@ body.in-duel .vstick, body.in-duel .interior-ui { display: none !important; }
 .letter .go { align-self: flex-start; padding: 10px 14px; font: inherit; color: #001018; background: #7dffb0; border: 0; border-radius: 10px; }
 .letter .done { color: #7dffb0; font-size: 13px; }
 .board .chore.unread b::after { content: " •"; color: #ff6b6b; }
-.view-btn { position: fixed; top: 150px; right: 12px; z-index: 6; padding: 8px 12px; font: inherit; font-size: 13px; color: #d8f6ff; background: #0b2a36cc; border: 1px solid #7fdcff66; border-radius: 10px; }
+.view-btn { position: fixed; top: 150px; right: 12px; z-index: 6; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; color: #d8f6ff; background: #0b2a36cc; border: 1px solid #7fdcff66; border-radius: 50%; }
 body.in-duel .tasks-btn, body.in-duel .radio-btn, body.in-duel .view-btn { display: none; }
 
 /* Cockpit: look stick, camera / time-warp buttons and the camera tag. */
 .pilot-look { left: 50%; margin-left: -60px; bottom: 22px; }
 body.in-cockpit .pilot-look { display: block; }
-.flight-bar { position: fixed; top: 58px; right: 12px; z-index: 6; display: none; flex-direction: column; align-items: flex-end; gap: 6px; }
-body.in-cockpit .flight-bar { display: flex; }
-.flight-bar button { padding: 8px 12px; font: inherit; font-size: 13px; color: #d8f6ff; background: #0b2a36cc; border: 1px solid #7fdcff66; border-radius: 10px; }
-.flight-bar button.limited { color: #ffd8a0; border-color: #ffb34788; }
+/* The cockpit's root menu of icons (ui/root-menu.ts): top right, only in the cockpit. */
+.root-menu.flight-bar { top: calc(10px + env(safe-area-inset-top)); right: 10px; display: none; }
+body.in-cockpit .root-menu.flight-bar { display: flex; }
 .cam-tag { position: fixed; top: calc(50% + 28px); left: 50%; transform: translateX(-50%); z-index: 4; padding: 4px 10px; font-size: 12px; color: #d8f6ff; background: #0b2a36aa; border-radius: 8px; pointer-events: none; display: none; }
 body.in-cockpit .cam-tag.on { display: block; }
 .hud .thrust { color: #7fdcff88; }
@@ -277,7 +276,6 @@ body.in-cockpit .region-tag.on { display: block; }
 @media (pointer: coarse) { .region-tag { bottom: auto; top: 29vh; left: 10px; transform: none; max-width: 52vw; text-align: left; font-size: 11px; } }
 
 /* --- EVA: outside on the asteroid --------------------------------------- */
-.flight-bar .eva-btn { color: #001018; background: #ffd23f; border-color: #ffd23f; font-weight: 600; }
 body.in-eva .hud, body.in-eva .help, body.in-eva .reticle, body.in-eva .banner, body.in-eva .action, body.in-eva .touch, body.in-eva .mode-btn, body.in-eva .flight-bar, body.in-eva .cam-tag { display: none !important; }
 body.in-eva .eva-move, body.in-eva .eva-look { display: block; }
 body.in-duel .eva-ui { display: none !important; }
@@ -315,7 +313,6 @@ body.in-zero-g .walk-stick span { visibility: hidden; }
 body.in-zero-g .walk-stick::after { content: "Manos"; position: absolute; left: 0; right: 0; top: -20px; text-align: center; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #9fe8c4; text-shadow: 0 1px 2px #000; pointer-events: none; }
 /* Mothership docking (docs/design/nave-nodriza.md) */
 .banner.docking { color: #ffe7a8; text-shadow: 0 0 6px #ffb34788; }
-.flight-bar button.on { color: #7dffb0; border-color: #7dffb0aa; }
 .bay-tabs { position: fixed; top: 52px; left: 12px; z-index: 7; display: flex; gap: 6px; }
 .bay-tabs button { padding: 7px 12px; font: inherit; font-size: 13px; color: #bfefff; background: #0b2a36cc; border: 1px solid #7fdcff66; border-radius: 10px; }
 .bay-tabs button.on { background: #7fdcff; color: #06202b; border-color: #7fdcff; }
@@ -363,3 +360,9 @@ body.in-station .hud, body.in-station .help, body.in-station .reticle, body.in-s
 /* Doménica's portrait at the head of the crew HUD. */
 .ihud-who { display: flex; align-items: center; gap: 8px; }
 .ihud-who .portrait-img { width: 36px; height: 36px; flex: none; }
+/* The exercise corner's mat: sit in lotus to open the general settings (docs/design/habitaculo.md §Ajustes). */
+.mat-btn { position: fixed; left: 50%; bottom: 214px; transform: translateX(-50%); z-index: 6; min-height: 48px; padding: 10px 18px; font: inherit; font-size: 15px; color: #001018; background: #c7a8ff; border: 0; border-radius: 14px; }
+.mat-btn.hidden { display: none; }
+body.in-duel .mat-btn, body.in-settings .mat-btn, body.in-zero-g .mat-btn { display: none; }
+/* Keyboard hints only with «Ayuda de teclado» on (general settings). */
+body:not(.kbd-help) .help { display: none !important; }

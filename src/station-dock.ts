@@ -57,6 +57,9 @@ export class StationDock {
   update(): void {
     if (!this.devBtn) return;
     const t = `Estación · ${km(this.deps.distanceM())} (dev)`;
-    if (this.devBtn.textContent !== t) this.devBtn.textContent = t;
+    if (this.devBtn.title !== t) {
+      this.devBtn.title = t;
+      this.devBtn.setAttribute("aria-label", t);
+    }
   }
 }

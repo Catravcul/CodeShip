@@ -69,3 +69,21 @@ describe("lander crew cabin (docs/design/habitaculo.md)", () => {
     expect(locked.why).toBe("Primero la sonda");
   });
 });
+
+describe("walking between the cabin's machines (HAB-01)", () => {
+  it("HAB-01 the way from any machine to any other goes around the seats, never through them", async () => {
+    const { floorPath, clearPath } = await import("./cabin");
+    const f = LANDER_CABIN.floor;
+    for (const a of LANDER_CABIN.stations)
+      for (const b of LANDER_CABIN.stations) {
+        if (a === b) continue;
+        const path = floorPath(f, a.stand, b.stand);
+        expect(path[path.length - 1]).toEqual(b.stand);
+        let p = a.stand;
+        for (const q of path) {
+          expect(clearPath(f, p, q)).toBe(true);
+          p = q;
+        }
+      }
+  });
+});

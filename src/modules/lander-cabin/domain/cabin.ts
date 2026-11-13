@@ -137,3 +137,32 @@ export function cabinActions(id: CabinStationId, s: CabinState): CabinAction[] {
       return [{ id: "asistente-acople", label: "Asistente de acople", enabled: false, why: "Acércate a menos de 3 km de un puerto (nodriza o estación)" }];
   }
 }
+
+/** Whether the straight segment from `a` to `b` stays on the floor and off the furniture (sampled every 2 cm). */
+export function clearPath(f: CabinFloor, a: FloorPoint, b: FloorPoint): boolean {
+  const n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / 0.02));
+  for (let i = 0; i <= n; i++) {
+    const p = { x: a.x + ((b.x - a.x) * i) / n, z: a.z + ((b.z - a.z) * i) / n };
+    if (p.x < f.minX || p.x > f.maxX || p.z < f.minZ || p.z > f.maxZ || f.blocked.some((r) => inside(r, p))) return false;
+  }
+  return true;
+}
+
+/**
+ * Waypoints from `from` to `to` (the last one is `to`): straight when clear, otherwise along the front
+ * aisle (between the console and the seats) or the rear one (behind them).
+ */
+export function floorPath(f: CabinFloor, from: FloorPoint, to: FloorPoint, aisles: readonly number[] = [-0.25, 0.85]): FloorPoint[] {
+  if (clearPath(f, from, to)) return [to];
+  for (const z of aisles) {
+    const legs = [from, { x: from.x, z }, { x: to.x, z }, to];
+    if (legs.every((p, i) => i === 0 || clearPath(f, legs[i - 1]!, p))) return legs.slice(1);
+  }
+  // Around the outside of the pilot's seat on the port aisle.
+  for (const z of aisles) {
+    const x = f.minX + 0.2;
+    const legs = [from, { x: from.x, z }, { x, z }, { x, z: aisles.find((a) => a !== z)! }, { x: to.x, z: aisles.find((a) => a !== z)! }, to];
+    if (legs.every((p, i) => i === 0 || clearPath(f, legs[i - 1]!, p))) return legs.slice(1);
+  }
+  return [to];
+}

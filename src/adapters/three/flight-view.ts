@@ -3,10 +3,14 @@ import type { ShipDesign, ThrustCommand } from "@modules/ship/domain/ship";
 import { VirtualStick, curve } from "../input/stick";
 import { buildCockpit } from "./cockpit";
 import { ShipModel } from "./ship-model";
+import { RootMenu, type RootItem } from "../../ui/root-menu";
+import { ICON } from "../../ui/icons";
 
 export type CameraMode = "cabina" | "ventral" | "trasera" | "exterior" | "acople" | "nodriza";
 const MODES: readonly CameraMode[] = ["cabina", "ventral", "trasera", "exterior", "acople", "nodriza"];
 const LABEL: Record<CameraMode, string> = { cabina: "Cabina", ventral: "Ventral", trasera: "Trasera", exterior: "Exterior", acople: "Acople", nodriza: "Nodriza" };
+/** First or third person, for the eye icon's name. */
+const PERSON: Record<CameraMode, string> = { cabina: "1ª persona", ventral: "1ª persona", trasera: "1ª persona", acople: "1ª persona", exterior: "3ª persona", nodriza: "3ª persona" };
 
 /** Where the mothership is (its centre and attitude), so the view can frame it with the probe. */
 export interface MothershipPose {
@@ -35,6 +39,8 @@ export class FlightView {
   private readonly camBtn: HTMLButtonElement;
   private readonly warpBtn: HTMLButtonElement;
   private readonly tag: HTMLElement;
+  /** The cockpit's icons: the eye (camera) pinned, the flight toggles folded into the root. */
+  readonly menu: RootMenu;
   private mode: CameraMode = "cabina";
   private yaw = 0;
   private pitch = 0;
@@ -70,21 +76,14 @@ export class FlightView {
 
     this.stick = new VirtualStick(root, "pilot-look", "Mirar");
     this.stick.el.addEventListener("dblclick", () => this.center());
-    const bar = document.createElement("div");
-    bar.className = "flight-bar";
-    // On phones the flight toggles fold into a menu (progressive disclosure, docs/design/ux-acciones.md).
-    bar.innerHTML = `<button class="bar-toggle" aria-expanded="false">☰ Mandos</button><button class="cam-btn"></button><button class="warp-btn"></button><button class="center-btn">Centrar</button>`;
-    root.appendChild(bar);
-    const toggle = bar.querySelector<HTMLButtonElement>(".bar-toggle")!;
-    toggle.addEventListener("click", () => toggle.setAttribute("aria-expanded", String(bar.classList.toggle("open"))));
-    this.camBtn = bar.querySelector(".cam-btn")!;
-    this.warpBtn = bar.querySelector(".warp-btn")!;
-    this.camBtn.addEventListener("click", () => {
+    // Icons that sprout from a root (docs/design/ux-acciones.md §Iconos): only the eye is always out.
+    this.menu = new RootMenu(root, "flight-bar", "Mandos de vuelo", ICON.root);
+    this.camBtn = this.menu.add({ className: "cam-btn", icon: ICON.eye, label: "Cámara", key: "C", pinned: true }, () => {
       this.mode = MODES[(MODES.indexOf(this.mode) + 1) % MODES.length]!;
       this.center();
     });
-    this.warpBtn.addEventListener("click", () => this.warpAvailable && (this.warpIdx = (this.warpIdx + 1) % WARPS.length));
-    bar.querySelector(".center-btn")!.addEventListener("click", () => this.center());
+    this.warpBtn = this.menu.add({ className: "warp-btn", icon: ICON.warp, label: "Tiempo ×1", key: "X" }, () => this.warpAvailable && (this.warpIdx = (this.warpIdx + 1) % WARPS.length));
+    this.menu.add({ className: "center-btn", icon: ICON.center, label: "Centrar la vista", key: "V" }, () => this.center());
     this.tag = document.createElement("div");
     this.tag.className = "cam-tag";
     root.appendChild(this.tag);
@@ -126,7 +125,9 @@ export class FlightView {
    */
   set warpAvailable(on: boolean) {
     if (!on) this.warpIdx = 0;
+    if (this.warpBtn.classList.contains("hidden") === !on) return;
     this.warpBtn.classList.toggle("hidden", !on);
+    this.menu.sync();
   }
 
   get warpAvailable(): boolean {
@@ -153,13 +154,9 @@ export class FlightView {
   }
 
   /** Place ship, camera and dust. `pos`/`q` are the ship pose; `warp` is the warp in effect. */
-  /** Adds a button to the flight bar (used for flight-computer toggles). */
-  addButton(className: string, onClick: () => void): HTMLButtonElement {
-    const b = document.createElement("button");
-    b.className = className;
-    b.addEventListener("click", onClick);
-    this.camBtn.parentElement!.insertBefore(b, this.camBtn);
-    return b;
+  /** Adds an icon to the cockpit's root menu (flight-computer toggles). */
+  addButton(className: string, onClick: () => void, item: Partial<RootItem> = {}): HTMLButtonElement {
+    return this.menu.add({ className, icon: item.icon ?? ICON.root, label: item.label ?? className, ...(item.key ? { key: item.key } : {}), ...(item.pinned ? { pinned: true } : {}) }, onClick);
   }
 
   update(dt: number, pos: THREE.Vector3, q: THREE.Quaternion, cmd: ThrustCommand, warp: number, warpNote: string): void {
@@ -217,8 +214,8 @@ export class FlightView {
         p[i + k] = v;
       }
     (this.dust.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
-    this.camBtn.textContent = `Cámara: ${LABEL[this.mode]}`;
-    this.warpBtn.textContent = `Tiempo ×${this.warpRequested}`;
+    this.menu.relabel(this.camBtn, `Cámara: ${LABEL[this.mode]} · ${PERSON[this.mode]}`, "C");
+    this.menu.relabel(this.warpBtn, `Tiempo ×${this.warpRequested}`, "X");
     this.warpBtn.classList.toggle("limited", warp < this.warpRequested);
     this.tag.textContent = this.mode === "cabina" ? warpNote : `Cámara ${LABEL[this.mode].toLowerCase()}${warpNote ? ` · ${warpNote}` : ""}`;
     this.tag.classList.toggle("on", this.tag.textContent !== "");

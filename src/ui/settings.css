@@ -1,0 +1,21 @@
+/* General settings (docs/design/habitaculo.md §Ajustes): same look as the challenge sheet (panel) or floating (HUD). */
+.settings-sheet { position: fixed; left: 0; right: 0; bottom: 0; top: 38vh; z-index: 12; overflow-y: auto; box-sizing: border-box; padding: 16px; padding-inline: max(16px, calc((100vw - 560px) / 2)); padding-bottom: calc(16px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 8px; color: #e8e4ff; background-color: #05060cf2; border-radius: 18px 18px 0 0; font-size: 14px; }
+.settings-sheet.hidden { display: none; }
+@media (min-aspect-ratio: 1/1) { .settings-sheet { top: 0; left: auto; width: min(480px, 46vw); padding-inline: 16px; border-radius: 18px 0 0 18px; } }
+.set-top { position: relative; display: flex; flex-direction: column; gap: 2px; padding-right: 150px; min-height: 44px; }
+.set-title { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #b9a8ff; }
+.set-where { font-size: 12px; color: #bfefff; }
+.set-tools { position: absolute; top: 0; right: 0; display: flex; gap: 8px; }
+.set-tools button { min-height: 44px; min-width: 44px; box-sizing: border-box; font: inherit; font-size: 12px; color: #d9d2ff; background: #ffffff12; border: 1px solid #b9a8ff55; border-radius: 999px; padding: 6px 12px; }
+.set-tools .x { font-size: 20px; line-height: 1; }
+.set-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 8px 12px; font: inherit; text-align: left; color: #e8e4ff; background: #ffffff0d; border: 1px solid #b9a8ff33; border-radius: 12px; }
+.set-row span { display: flex; flex-direction: column; gap: 2px; }
+.set-row small { font-size: 11px; color: #a9b8c8; }
+.set-row em { font-style: normal; font-weight: 700; color: #7dffb0; white-space: nowrap; }
+.set-row em.off { color: #ffb347; }
+.set-note { margin: 4px 0 0; font-size: 11px; color: #8a96a8; }
+/* HUD: floating over the scene, on a dark plate per row so it reads over any background (ux-acciones.md §4). */
+.settings-sheet.hud { top: auto; max-height: 64vh; background: none; color: #d8f6ff; text-shadow: 0 0 3px #000, 0 0 10px #000c; }
+.settings-sheet.hud .set-row { background: #020a12d9; border-color: #7fdcff55; }
+.settings-sheet.hud .set-top { padding: 6px 150px 6px 10px; background: #020a12d9; border-radius: 10px; }
+body.in-settings .vstick, body.in-settings .zone-btn, body.in-settings .station-btn, body.in-settings .cab-ui .cab-machine { display: none !important; }

@@ -67,6 +67,15 @@ export class SuitFigure extends CubeFigure {
     this.target = P({ rootY: 0.95, headX: 0.25, shoulderZ: [0.55 + b, -0.55 - b], shoulderX: [-0.3, -0.3], elbow: [-0.5, -0.5], hip: [-0.25, -0.15], knee: [0.45, 0.35] });
   }
 
+  /**
+   * Lying face down on the asteroid with arms and legs open: the whole front of the suit on the
+   * regolith, the backpack up. A slow breath lifts the back a little.
+   */
+  lie(t: number): void {
+    const breath = Math.sin(t * 1.1) * 0.015;
+    this.target = P({ rootY: 0.16 + breath, rootX: Math.PI / 2, headX: -0.35, shoulderX: [-2.7, -2.7], shoulderZ: [0.55, -0.55], hip: [0, 0], knee: [0.05, 0.05] });
+  }
+
   jetting(on: boolean): void {
     for (const j of this.jets) j.visible = on;
   }

@@ -150,4 +150,49 @@ describe("shipKeepOut", () => {
     expect(k(new Vec3(1.5, 0, 0)).x).toBeCloseTo(1.8, 9);
     expect(k(new Vec3(5, 0, 0)).x).toBe(5);
   });
+
+  it("lies face down on the asteroid: still, no crawling, until she gets up", () => {
+    const { flight, eva } = make();
+    land(flight);
+    expect(eva.lieDown()).toBe(false);
+    eva.stepOutside();
+    expect(eva.canLieDown).toBe(true);
+    expect(eva.lieDown()).toBe(true);
+    expect(eva.lying).toBe(true);
+    expect(eva.canLieDown).toBe(false);
+    const at = eva.body!.position;
+    eva.update(2, input({ move: new Vec3(1, 0, 0) }));
+    expect(eva.body!.position.sub(at).length()).toBeLessThan(1e-6);
+    eva.standUp();
+    expect(eva.lying).toBe(false);
+    expect(eva.drainEvents().map((e) => e.type)).toEqual(["salida", "tumbada", "en-pie"]);
+  });
+
+  it("an angry asteroid throws her off; the tether and the winch bring her back aboard", () => {
+    const { flight, eva } = make();
+    land(flight);
+    eva.stepOutside();
+    eva.lieDown();
+    eva.throwOff(0.3);
+    expect(eva.lying).toBe(false);
+    expect(eva.body!.mode).toBe("flotando");
+    expect(eva.phase).toBe("volviendo");
+    for (let i = 0; i < 600 && eva.outside; i++) eva.update(1, NO_EVA_INPUT);
+    expect(eva.phase).toBe("dentro");
+  });
+
+  it("walks on another asteroid with its own gravity and shape, without Bennu's samples", () => {
+    const { flight, eva } = make();
+    const big = new Asteroid({ ...BENNU, id: "big", massKg: { ...BENNU.massKg, value: BENNU.massKg.value * 8 } }, Vec3.ZERO, () => r);
+    eva.retarget(big);
+    expect(eva.asteroid).toBe(big);
+    land(flight);
+    eva.stepOutside();
+    expect(eva.spots).toHaveLength(0);
+    const bennuEscape = Math.sqrt((2 * new Asteroid(BENNU, Vec3.ZERO).mu) / r);
+    expect(eva.body!.escapeSpeedMs).toBeGreaterThan(2 * bennuEscape);
+    // Not while outside.
+    eva.retarget(new Asteroid(BENNU, Vec3.ZERO));
+    expect(eva.asteroid).toBe(big);
+  });
 });

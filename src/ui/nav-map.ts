@@ -78,6 +78,8 @@ export class NavMap {
   private readonly home: HTMLElement;
   /** Set by main: the mission mark of a target (Nevaeh's main missions and side missions). */
   missionMark?: (targetId: string) => MissionMark | undefined;
+  /** Set by main: the subjugation block of an asteroid's card (stages, trust, next step), as HTML. */
+  rapportMark?: (targetId: string) => string;
   /** Set by main: open the mission log. */
   onMissions?: () => void;
 
@@ -263,7 +265,7 @@ export class NavMap {
       this.card.innerHTML = "";
       return;
     }
-    this.card.innerHTML = t.kind === "dock" ? dockCardHtml(this.deps.nav.dockDestination(t), this.note) : cardHtml(this.deps.nav.destination(t), this.note, this.missionMark?.(t.id));
+    this.card.innerHTML = t.kind === "dock" ? dockCardHtml(this.deps.nav.dockDestination(t), this.note) : cardHtml(this.deps.nav.destination(t), this.note, this.missionMark?.(t.id), this.rapportMark?.(t.id));
   }
 
   private pickAt(cx: number, cy: number): void {
@@ -520,7 +522,7 @@ function carrierLine(i: DestinationInfo): string {
   return `nodriza ${km(c.plan.distanceM)} · Δv ${num(dv, dv < 10 ? 2 : 0)} m/s · ${num(f.propellantKg)} kg de xenón · ${duration(c.plan.totalS)}<br><small>aparca a ${km(f.parkingM)}; el módulo sigue ${km(Math.max(0, f.parkingM - f.approachM))} con su motor</small>`;
 }
 
-function cardHtml(i: DestinationInfo, note: string, mission?: MissionMark): string {
+function cardHtml(i: DestinationInfo, note: string, mission?: MissionMark, rapport = ""): string {
   const a = i.target.body;
   const d = a.data;
   const dims = d.dimensionsM.value;
@@ -532,10 +534,10 @@ function cardHtml(i: DestinationInfo, note: string, mission?: MissionMark): stri
   const res = d.composition
     .map((c) => `<li>${esc(MATERIAL[c.material] ?? c.material)}: ${num(c.massFraction.value[0] * 100, 1)}–${num(c.massFraction.value[1] * 100, 1)} %</li>`)
     .join("");
-  const badges = `${i.selected ? `<span class="badge target">Destino actual</span>` : ""}${i.persuaded ? `<span class="badge ok">Persuadido</span>` : ""}`;
+  const badges = `${i.selected ? `<span class="badge target">Destino actual</span>` : ""}${i.persuaded ? `<span class="badge ok">Subyugado</span>` : ""}`;
   return `
     <div class="card-name">${esc(d.name)} ${badges}</div>
-    ${mission ? missionHtml(mission) : ""}
+    ${mission ? missionHtml(mission) : ""}${rapport}
     <dl>
       <dt>Tipo espectral</dt><dd>${esc(d.spectralType.value)}${inferred ? ` <small>inferido del albedo${albedo ? ` ${num(albedo, 3)}` : ""}; sin espectro</small>` : ""}</dd>
       <dt>Tamaño</dt><dd>${num(dims.x / 1000, 2)} × ${num(dims.y / 1000, 2)} × ${num(dims.z / 1000, 2)} km <small>diámetro ${num((a.meanRadiusM * 2) / 1000, 2)} km</small></dd>

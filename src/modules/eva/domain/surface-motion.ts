@@ -172,6 +172,11 @@ export class EvaBody {
     }
   }
 
+  /** Come to rest where she holds on (lying down on the ground). */
+  stop(): void {
+    if (this._mode === "agarrada") this._v = Vec3.ZERO;
+  }
+
   /** Instant change of velocity (local frame); lets go of the ground. */
   applyImpulse(dv: Vec3): void {
     this._mode = "flotando";

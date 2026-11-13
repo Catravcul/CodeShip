@@ -66,13 +66,21 @@ export class EvaMode {
   active = false;
   /** Called when she is back aboard. */
   onExit?: () => void;
+  /** Whether lying down opens a duel now (stage 3 on offer here). Set by main. */
+  canSubjugate?: () => boolean;
+  /** She lay down on the asteroid: start the stage 3 duel. Set by main. */
+  onLieDown?: () => void;
+  private readonly lieBtn: HTMLButtonElement;
+
+  private get asteroid(): Asteroid {
+    return this.eva.asteroid;
+  }
 
   constructor(
     root: HTMLElement,
     private readonly scene: THREE.Scene,
     private readonly camera: THREE.PerspectiveCamera,
     private readonly eva: Eva,
-    private readonly asteroid: Asteroid,
     private readonly duel: DuelView,
   ) {
     this.walker = new Walker(root, { move: "eva-move", look: "eva-look", moveLabel: "Moverse" });
@@ -101,7 +109,7 @@ export class EvaMode {
     this.ui = document.createElement("div");
     this.ui.className = "eva-ui hidden";
     this.ui.innerHTML = `<div class="eva-hud"></div><button class="eva-back">Volver a la nave</button>
-      <div class="eva-actions"><button class="eva-sample hidden">Tomar muestra</button><button class="eva-reel">Recoger cable</button><button class="eva-down">Bajar</button><button class="eva-jump">Impulso</button></div>
+      <div class="eva-actions"><button class="eva-lie hidden">Tumbarse sobre el asteroide</button><button class="eva-sample hidden">Tomar muestra</button><button class="eva-reel">Recoger cable</button><button class="eva-down">Bajar</button><button class="eva-jump">Impulso</button></div>
       <div class="eva-toast"></div>`;
     root.appendChild(this.ui);
     this.hud = this.ui.querySelector(".eva-hud")!;
@@ -109,6 +117,8 @@ export class EvaMode {
     this.sampleBtn = this.ui.querySelector(".eva-sample")!;
     this.jumpBtn = this.ui.querySelector(".eva-jump")!;
     this.downBtn = this.ui.querySelector(".eva-down")!;
+    this.lieBtn = this.ui.querySelector(".eva-lie")!;
+    this.lieBtn.addEventListener("click", () => this.toggleLie());
     this.ui.querySelector(".eva-back")!.addEventListener("click", () => this.eva.requestReturn());
     this.sampleBtn.addEventListener("click", () => this.eva.collect());
     const hold = (el: Element, on: () => void, off: () => void) => {
@@ -127,6 +137,7 @@ export class EvaMode {
       if (e.code === "Space") this.pressUp();
       if (e.code === "Enter") this.eva.collect();
       if (e.code === "KeyB") this.eva.requestReturn();
+      if (e.code === "KeyT") this.toggleLie();
     });
     window.addEventListener("keyup", (e) => this.keys.delete(e.code));
     window.addEventListener("blur", () => this.keys.clear());
@@ -137,6 +148,22 @@ export class EvaMode {
       if (this.eva.phase === "preparando") this.eva.cancelSuitUp();
       else prev?.();
     };
+  }
+
+  /** "Tumbarse sobre el asteroide": full body contact; with stage 3 on offer it opens the duel. */
+  private toggleLie(): void {
+    if (this.eva.lying) {
+      this.eva.standUp();
+      return;
+    }
+    if (!this.eva.lieDown()) return;
+    if (this.canSubjugate?.()) this.onLieDown?.();
+    else this.say(`Tumbada sobre ${this.asteroid.data.name}. Su mente aún no se abre a este contacto`, 4500);
+  }
+
+  /** Say something on the suit's toast (from main: duel results). */
+  tell(text: string, ms = 5000): void {
+    this.say(text, ms);
   }
 
   /** "Salir de la nave": the suit-up chain, then outside. */
@@ -199,7 +226,7 @@ export class EvaMode {
       this.markers.push(g);
       this.scene.add(g);
     }
-    this.say("Fuera. En Bennu un paso normal te lanzaría al espacio: avanza agarrada a las rocas");
+    this.say(`Fuera. En ${this.asteroid.data.name} un paso normal te lanzaría al espacio: avanza agarrada a las rocas`);
   }
 
   private leave(): void {
@@ -236,6 +263,10 @@ export class EvaMode {
         return this.say("Queda poco oxígeno: vuelve a la nave", 5000);
       case "reserva":
         return this.say("Oxígeno de reserva: el traje te lleva de vuelta", 5000);
+      case "tumbada":
+        return this.say("Tumbada boca abajo, brazos abiertos: todo el cuerpo toca la roca");
+      case "lanzada":
+        return this.say("¡Te lanza! El cable te sujeta y el torno te devuelve a la escotilla", 6000);
       case "dentro":
         return this.leave();
     }
@@ -274,7 +305,8 @@ export class EvaMode {
       if (this.eva.body) {
         const crawling = !floating && body.velocity.length() > 0.01;
         this.stride += body.velocity.length() * dt * 14;
-        if (floating) this.figure.float(this.clock);
+        if (this.eva.lying) this.figure.lie(this.clock);
+        else if (floating) this.figure.float(this.clock);
         else this.figure.crawl(this.stride, crawling ? 1 : 0.2);
         this.figure.update(dt, floating ? 1.5 : 6);
         this.puffClock += dt;
@@ -407,7 +439,7 @@ export class EvaMode {
     const taken = e.spots.filter((x) => x.collected).length;
     const total = e.phase === "volviendo" ? `<div class="ok">Volviendo a la escotilla…</div>` : "";
     this.hud.innerHTML = `
-      <div class="ititle">Paseo por Bennu · ${e.suitSpec.name}</div>
+      <div class="ititle">Paseo por ${e.asteroid.data.name} · ${e.suitSpec.name}</div>
       <div class="small">Fuera ${hms(e.elapsedS)} · tiempo ×${e.timeScale}</div>
       ${bar(`O₂ ${s.onSecondary ? `reserva ${Math.round(s.secondaryOxygen * 100)} %` : hms(s.oxygen * e.suitSpec.primaryOxygenS.value)}`, s.onSecondary ? s.secondaryOxygen : s.oxygen, s.status !== "nominal")}
       ${bar(`Filtro CO₂ ${Math.round(s.co2Scrubber * 100)} %`, s.co2Scrubber)}
@@ -417,6 +449,8 @@ export class EvaMode {
       ${status}${total}
       <div class="small">g ${Math.round(e.localGravity * 1e6)} µm/s² · escape ${fmt(b.escapeSpeedMs)} m/s</div>
       <div class="small">Muestras ${taken}/${e.spots.length}${e.collectedG ? ` · ${e.collectedG} g` : ""}</div>`;
+    this.lieBtn.classList.toggle("hidden", !(e.canLieDown || e.lying));
+    this.lieBtn.textContent = e.lying ? "Levantarse" : this.canSubjugate?.() ? "Tumbarse sobre el asteroide · fase 3" : "Tumbarse sobre el asteroide";
     const near = e.nearSample;
     this.sampleBtn.classList.toggle("hidden", !near);
     if (near) this.sampleBtn.textContent = `Tomar muestra: ${near.sample.name}`;

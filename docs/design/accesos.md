@@ -11,7 +11,7 @@ La **fase 1** solo ordena los accesos: no hay mecánicas nuevas.
 | Estación-fábrica | Estación Nueva Polana | `modules/station`, `StationInteriorMode`, `StationScreen` |
 | Nave de viaje | La **nodriza** (Codeship Nodriza) | `Mothership`, `FlightDeck`, `Interior` |
 | Módulo de aterrizaje tripulado | **Módulo de aterrizaje**, en corto **módulo** (antes «sonda»; la Codeship Explorer) | `Ship`, `explorerDesign`, ids `"sonda"` (sin cambiar: puertos, pestaña de la bahía, entradas de la estación) |
-| Sonda sin tripulación | **Sonda** (palabra reservada; fase posterior) | planos `"sonda"` del hangar |
+| Sonda sin tripulación | **Sonda** (Sonda Centinela, cubesat tipo Juventas; ver [subyugacion.md](subyugacion.md)) | `ProbeOps`, `probeDesign`, `ProbeMode`; planos `"sonda"` del hangar |
 
 ## Qué hay en cada sitio
 
@@ -22,7 +22,7 @@ La **fase 1** solo ordena los accesos: no hay mecánicas nuevas.
 | **Nave de viaje: puente** | Mapa y programación de viajes (página NAV, M), radio y **Registro de misiones** (COMM), botón **nano_net** (tarjeta de estado), propulsión, energía, vida, acople | Escotilla lateral de la espina, o la **consola de navegación** del anillo |
 | **Nave de viaje: anillo** | Tareas de a bordo, radio con **Registro de misiones**, **consola de navegación** (abre el puente en NAV) | Por el radio desde el eje |
 | **Estación** | Andar por sus módulos, **Tareas** (pantalla: materiales, refinería, **Repostar**, planos, fabricación, hangar), **bahía de la nave** (consola del Nodo 2, B, o botón en la pestaña Hangar), **Salir** por la escotilla por la que se entró | **Entrar en la estación** desde la cabina del módulo acoplado a su puerto; **Pasar a la estación** desde la espina de la nodriza atracada |
-| **Sonda** | (fase posterior) pilotada a distancia desde la nave de viaje | — |
+| **Sonda** | Pilotada a distancia desde la nave de viaje: lanzar, posar, entrar en su mente (fase 1), recuperar con el brazo o abandonar ([subyugacion.md](subyugacion.md)) | Botón **Sonda** en la barra de estado del puente de la nodriza |
 
 Reglas:
 

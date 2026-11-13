@@ -13,7 +13,7 @@ import { Expedition } from "@modules/expedition/application/expedition";
 import { EXERCISES } from "@modules/mind-duel/data/exercises";
 import { asteroidSurfaceFn } from "./content/asteroid-shape";
 import { TouchPilot, mergeCommands } from "./adapters/input/touch";
-import { DuelView, asteroidText } from "./ui/duel-view";
+import { DuelView } from "./ui/duel-view";
 import { buildAsteroidMesh } from "./adapters/three/asteroid-mesh";
 import { FlightView, WARP_MIN_DISTANCE_M, thrustText } from "./adapters/three/flight-view";
 import { buildStarfield } from "./adapters/three/starfield";
@@ -90,6 +90,8 @@ import { MissionLog } from "@modules/missions/domain/mission";
 import { MissionControl } from "@modules/missions/application/mission-control";
 import { MISSION_LETTERS, NEVAEH_MISSIONS } from "@modules/missions/data/nevaeh-missions";
 import { MissionLogPanel } from "./ui/mission-log";
+import { SubjugationUi, stageDuelText, stageResultText } from "./subjugation";
+import { BENNU_SAMPLES } from "@modules/eva/data/samples";
 import { WrathMode } from "./wrath-mode";
 
 // --- Domain setup -----------------------------------------------------------
@@ -357,7 +359,7 @@ const interior = new Interior(root, habitat, duelView, ring);
 const nanoView = new NanoNetView(scene, nano.net);
 // Walks outside on Bennu (EVA): only with the lander anchored.
 const eva = new Eva(flight, bennu, (local) => surface(local), habitat.crew.body.massKg);
-const evaMode = new EvaMode(root, scene, camera, eva, bennu, duelView);
+const evaMode = new EvaMode(root, scene, camera, eva, duelView);
 const evaBtn = view.addButton("eva-btn", () => !duelView.visible && !interior.active && evaMode.startSuitUp());
 evaBtn.textContent = "Salir de la nave";
 evaMode.onExit = () => view.center();
@@ -439,6 +441,23 @@ navMode.onBlocked = () => view.enabled && flash("El mapa está en el puente de l
 // nano_net: its status card opens from the deck; the core action stays in the lander, anchored on the core.
 const nanoPanel = new NanoNetPanel(root, duelView, deck.nanoBtn, nano, bennuSite);
 let lastPhase = expedition.phase;
+let bennuSubjugated = false;
+// Subjugation in three stages: the uncrewed probe from the deck, the lander, the suit (docs/design/subyugacion.md).
+const subj = new SubjugationUi({
+  root,
+  scene,
+  expedition,
+  region,
+  mothership,
+  deck,
+  duelView,
+  eva,
+  evaMode,
+  map: navMode.map,
+  keyboard: () => pilot.command(),
+  atStation: () => atStationPort() || (docking.dockedTo === mothership && !!mothership.dockedTo),
+  wrath: wrathMode.wrath,
+});
 
 // Ship bay: only at the station (docs/design/accesos.md): its console in node 2, B inside, or the
 // hangar tab of the station screen. Part swaps take the part from the station's hangar; the old one goes back there.
@@ -526,13 +545,14 @@ action.className = "action hidden";
 root.appendChild(action);
 action.addEventListener("click", () => {
   if (expedition.canStartDuel) {
-    expedition.startDuel();
-    duelView.show(duelSession(), asteroidText(expedition.asteroid.data.name), (answer) => {
+    expedition.startDuel("nave");
+    duelView.show(duelSession(), stageDuelText(expedition.asteroid.data.name, "nave"), (answer) => {
       const events = expedition.answer(answer);
       return { ok: events.some((e) => e.type === "idea-accepted") };
     });
   } else if (expedition.phase === "persuaded" || expedition.phase === "aggressive") {
     duelView.hide();
+    expedition.acknowledge();
   }
 });
 const banner = document.createElement("div");
@@ -568,14 +588,14 @@ function dockingText(): string {
 function renderPhase(): void {
   const p = expedition.phase;
   const t = flight.telemetry();
-  action.classList.toggle("hidden", nanoPanel.busy || !((p === "landed" && !duelView.visible) || ((p === "persuaded" || p === "aggressive") && duelView.visible)));
+  action.classList.toggle("hidden", nanoPanel.busy || !((p === "landed" && expedition.canStartDuel && !duelView.visible) || ((p === "persuaded" || p === "aggressive") && duelView.visible)));
   action.textContent = p === "landed" ? "Entrar en su mente" : "Volver a la cabina";
   if (p === "persuaded") {
-    banner.textContent = `${expedition.asteroid.data.name} obedece: ${expedition.cargo.map((c) => `${c.kg.toFixed(0)} kg de ${c.material}`).join(", ")} en la bodega`;
+    banner.textContent = stageResultText(expedition);
   } else if (p === "aggressive") {
     banner.textContent = wrathMode.bannerText() || `${expedition.asteroid.data.name} se calma`;
   } else if (p === "landed") {
-    banner.textContent = expedition.asteroid === bennu ? "Nave anclada · puedes salir a Bennu con el traje" : `Nave anclada en ${expedition.asteroid.data.name} · entra en su mente`;
+    banner.textContent = subj.landedText();
   } else if (dockingText()) {
     banner.textContent = dockingText();
   } else {
@@ -598,6 +618,7 @@ window.addEventListener("resize", () => {
   stationScreen.resize();
   stationInside.resize();
   deck.resize();
+  subj.probeMode.resize();
 });
 
 // --- Loop -------------------------------------------------------------------
@@ -605,19 +626,22 @@ let last = performance.now();
 renderer.setAnimationLoop((now) => {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
-  const cmd = interior.active || stationInside.active || deck.active || bay.active || evaMode.active || stationScreen.active || navMode.blocksInput || missionLog.visible ? NO_INPUT : mergeCommands(pilot.command(), touch.command());
-  const idle = cmd.mainThrottle === 0 && cmd.translation.length() === 0 && cmd.rotation.length() === 0;
+  const cmd = subj.piloting || interior.active || stationInside.active || deck.active || bay.active || evaMode.active || stationScreen.active || navMode.blocksInput || missionLog.visible ? NO_INPUT : mergeCommands(pilot.command(), touch.command());
+  const flown = subj.piloting ? subj.probeMode.command() : cmd;
+  const idle = flown.mainThrottle === 0 && flown.translation.length() === 0 && flown.rotation.length() === 0;
   // Time warp only on quiet cruise far from the surface, so landing stays real-time.
-  const far = flight.telemetry().distanceToSurface >= WARP_MIN_DISTANCE_M;
+  const far = subj.pilotedDistanceM(flight.telemetry().distanceToSurface) >= WARP_MIN_DISTANCE_M;
+  const warpAsk = subj.piloting ? subj.probeMode.warpRequested : view.warpRequested;
   const sp = flight.state.position;
   const fx = nano.net.effectsAt(sp);
-  const asked = (expedition.phase === "flight" || expedition.phase === "persuaded" || (expedition.phase === "aggressive" && wrathMode.allowsWarp)) && !flight.landed && idle && far ? view.warpRequested : 1;
+  const asked = (expedition.phase === "flight" || expedition.phase === "persuaded" || (expedition.phase === "aggressive" && wrathMode.allowsWarp)) && (subj.piloting ? subj.probe.status === "en-vuelo" : !flight.landed) && idle && far ? warpAsk : 1;
   // Inside the nano_net its speed nodes let time run faster.
   const warp = asked > 1 ? Math.round(asked * fx.warpFactor) : 1;
   const warpNote =
-    view.warpRequested > 1 && warp === 1 ? (far ? "tiempo ×1 mientras maniobras" : "tiempo ×1 cerca del asteroide") : warp > 1 ? `tiempo ×${warp}${fx.warpFactor > 1 ? " (nano_net)" : ""}` : "";
+    warpAsk > 1 && warp === 1 ? (far ? "tiempo ×1 mientras maniobras" : "tiempo ×1 cerca del asteroide") : warp > 1 ? `tiempo ×${warp}${fx.warpFactor > 1 ? " (nano_net)" : ""}` : "";
   expedition.update(dt * warp, cmd);
-  wrathMode.update(dt * warp, dt, camera, view.enabled || deck.active);
+  subj.update(dt, warp, warpNote, { visible: view.enabled, landerPosition: flight.state.position });
+  wrathMode.update(dt * warp, dt, subj.piloting ? subj.probeMode.camera : camera, view.enabled || deck.active || subj.piloting);
   ring.tick(dt);
   // Region rules: soft boundary push back and no flying through the other rocks or the mothership (game rules).
   if (!flight.landed && !flight.docked) {
@@ -633,7 +657,9 @@ renderer.setAnimationLoop((now) => {
   // Shield nodes absorb part of the jolt.
   if (expedition.phase === "aggressive" && lastPhase !== "aggressive") habitat.jolt(0.8 * (1 - fx.safety), `${expedition.asteroid.data.name}, furioso, sacudió la nave`);
   // The nano_net core site is Bennu for now (docs/design/nano-net.md).
-  if (expedition.phase === "persuaded" && lastPhase !== "persuaded" && expedition.asteroid === bennu) nano.subjugate(bennuSite.id);
+  // Only a subjugated asteroid (all three stages) can become a core (docs/design/subyugacion.md).
+  if (expedition.isPersuaded(bennuSite.id) && !bennuSubjugated) nano.subjugate(bennuSite.id);
+  bennuSubjugated = expedition.isPersuaded(bennuSite.id);
   if (!nanoPanel.busy) nano.tick(dt * NANO_DAYS_PER_SECOND);
   nano.powerShip(ship, fx, dt * warp);
   for (const e of nano.drainEvents()) {
@@ -678,6 +704,12 @@ renderer.setAnimationLoop((now) => {
     renderer.render(bay.scene, bay.camera);
     return;
   }
+  if (subj.piloting) {
+    asteroidMesh.rotation.y = bennu.spinRadS * flight.simTimeS;
+    field.update(subj.probeMode.camera, window.innerHeight, flight.simTimeS, false);
+    renderer.render(scene, subj.probeMode.camera);
+    return;
+  }
   if (deck.active) {
     deck.update(dt);
     nanoPanel.update(flight.landed && expedition.asteroid === bennu, fx, { action: false, card: !duelView.visible });
@@ -690,12 +722,15 @@ renderer.setAnimationLoop((now) => {
     renderer.render(stationScreen.scene, stationScreen.camera);
     return;
   }
-  // The suit walk is modelled on Bennu's surface and gravity only.
-  evaBtn.classList.toggle("hidden", !eva.canLeave || expedition.phase !== "landed" || expedition.asteroid !== bennu);
+  // The suit walk works on any asteroid of the region: its own gravity, spin and surface. Samples only on Bennu.
+  if (eva.phase === "dentro" && eva.asteroid !== expedition.asteroid) eva.retarget(expedition.asteroid, expedition.asteroid === bennu ? BENNU_SAMPLES : []);
+  evaBtn.classList.toggle("hidden", !eva.canLeave || expedition.phase !== "landed");
   if (evaMode.active) {
     view.rig.visible = false;
     evaMode.update(dt, flight.simTimeS);
     asteroidMesh.rotation.y = bennu.spinRadS * flight.simTimeS;
+    // The other asteroids' meshes turn with them too (she may be walking on one).
+    field.update(camera, window.innerHeight, flight.simTimeS, false);
     renderer.render(scene, camera);
     return;
   }
@@ -753,4 +788,4 @@ renderer.setAnimationLoop((now) => {
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, refuelOps, nav, navMode, missions, missionLog, deck, wrathMode };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, refuelOps, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe };

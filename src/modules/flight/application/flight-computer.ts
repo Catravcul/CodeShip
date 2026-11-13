@@ -87,9 +87,11 @@ export class FlightComputer {
   constructor(
     readonly ship: Ship,
     private _state: RigidBodyState,
-    private readonly world: { gravitySources: readonly GravitySource[]; target?: FlightTarget },
+    private readonly world: { gravitySources: readonly GravitySource[]; target?: FlightTarget; startTimeS?: number },
   ) {
     this._target = world.target;
+    // A craft that joins later (a new probe) shares the mission clock, so asteroids turn the same for both.
+    this._simTimeS = world.startTimeS ?? 0;
   }
 
   /** The body the telemetry, contact and landing refer to. */

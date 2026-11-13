@@ -170,7 +170,7 @@ En `docs/screenshots/ira-{rocas,explosivo,supervivencia}-{mobile,desktop}.png` (
 - **Rocas y explosivo:** duelo fallido en la fase 2 contra 58587 (nivel 3), desde 700 m y con la cámara exterior.
 - **Supervivencia:** el módulo frente a la estación, con Bennu con poder de nivel 4 mediante el gancho de demostración `demoTier`, porque en la región no hay ningún asteroide de nivel 4. El juego nunca lo llama.
 - **Puente:** `ira-puente-{mobile,desktop}.png`, la misma situación vista desde el puente de la nodriza.
-- **Embestida:** `embestida-{1-aviso,2-carga,3-impacto,4-esquiva,5-pasada,6-mapa}-{mobile,desktop}.png`. El módulo parado a 240 m de Bennu, duelo fallido de fase 2 con la ira fijada a 1 por código. Aviso, carga, choque; luego otra carga esquivada con un empuje lateral puesto por código, la pasada de largo y la línea en el mapa del puente.
+- **Embestida:** `embestida-{1-aviso,2-carga,3-impacto,4-esquiva,5-pasada,6-mapa}-{mobile,desktop}.png`. El módulo parado a 240 m de Bennu, duelo fallido de fase 2 con la ira fijada a 1 por código. Aviso, carga, choque; luego otra carga, desde 110 m, esquivada con un empuje lateral puesto por código, la pasada de largo y el mapa (marca «va a embestir», línea hasta el punto al que apunta). El aviso de radio se oculta por código en las capturas para que no tape la tarjeta.
 
 ## 8. Preguntas abiertas
 

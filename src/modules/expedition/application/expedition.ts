@@ -7,7 +7,7 @@ import { duelProfileFor } from "@modules/mind-duel/domain/difficulty";
 import { MindDuel, type DuelEvent } from "@modules/mind-duel/domain/duel";
 import type { Answer, Exercise } from "@modules/mind-duel/domain/exercise";
 import type { ThrustCommand } from "@modules/ship/domain/ship";
-import { RapportBook, STAGE_REWARD, type Rapport, type Stage, type StageReward } from "@modules/subjugation/domain/rapport";
+import { RapportBook, STAGE_REWARD, stageIndex, type Rapport, type Stage, type StageReward } from "@modules/subjugation/domain/rapport";
 
 export type Phase = "flight" | "landed" | "duel" | "persuaded" | "aggressive";
 
@@ -52,6 +52,13 @@ export class Expedition {
   private pendingShakeOff = false;
   readonly cargo: { material: string; kg: number }[] = [];
   contacts: ContactPorts = {};
+  /**
+   * What an enraged asteroid does after a failed duel (docs/design/poderes-ira.md). When set, it is
+   * told of every failure and the old close-range debris damage is off; `canRetry` then gates new duels.
+   */
+  wrath?: { duelFailed(asteroidId: string, phase: 1 | 2 | 3): void; canRetry(asteroidId: string): boolean };
+  /** Duel phase of the duel running now or of the last one (1 probe, 2 lander, 3 suit); set by `startDuel`. */
+  duelPhase: 1 | 2 | 3 = 2;
 
   constructor(
     readonly flight: FlightComputer,
@@ -69,7 +76,7 @@ export class Expedition {
 
   /** Whether the visit can switch to another asteroid now: flying free, not in a duel or fleeing. */
   get canRetarget(): boolean {
-    return !this.flight.landed && (this._phase === "flight" || this._phase === "persuaded");
+    return !this.flight.landed && (this._phase === "flight" || this._phase === "persuaded" || (this._phase === "aggressive" && !!this.wrath));
   }
 
   /** Subjugated: all three stages done. Eligible as a nano_net core and for Nevaeh's missions. */
@@ -120,6 +127,8 @@ export class Expedition {
   /** Whether the duel of `stage` can start now against the current asteroid. */
   canStartStage(stage: Stage): boolean {
     if (!this.bond.canAttempt(stage)) return false;
+    // After a failed duel it must calm down first (docs/design/poderes-ira.md).
+    if (this.wrath && !this.wrath.canRetry(this._asteroid.data.id)) return false;
     const c = this.contacts;
     switch (stage) {
       case "sonda":
@@ -148,19 +157,23 @@ export class Expedition {
       if (e === "landed" && this._phase === "flight") this._phase = "landed";
       if (e === "lifted-off" && this._phase === "landed") this._phase = "flight";
     }
-    if (this._phase === "aggressive" && this.aggression) {
+    if (this._phase === "aggressive") {
       // With Doménica outside the lander stays put; once she is aboard the asteroid shakes it off.
       const outside = !!this.contacts.suitOutside?.();
       if (this.pendingShakeOff && !outside) {
         this.pendingShakeOff = false;
         this.shakeOff();
       }
-      const { hullDamage, calmed } = this.aggression.update(dtS, this.flight.telemetry().distanceToSurface);
-      // Trust tempers its anger (docs/design/subyugacion.md).
-      if (!outside) this.flight.ship.damage(hullDamage * this.bond.danger, "escombros");
-      if (calmed) {
-        this.aggression = undefined;
-        this._phase = this.flight.landed ? "landed" : "flight";
+      if (this.wrath) {
+        if (this.wrath.canRetry(this.asteroid.data.id)) this._phase = this.flight.landed ? "landed" : "flight";
+      } else if (this.aggression) {
+        const { hullDamage, calmed } = this.aggression.update(dtS, this.flight.telemetry().distanceToSurface);
+        // Trust tempers its anger (docs/design/subyugacion.md).
+        if (!outside) this.flight.ship.damage(hullDamage * this.bond.danger, "escombros");
+        if (calmed) {
+          this.aggression = undefined;
+          this._phase = this.flight.landed ? "landed" : "flight";
+        }
       }
     }
   }
@@ -171,6 +184,7 @@ export class Expedition {
     const base = duelProfileFor({ massKg: this.asteroid.massKg, richness: resourceRichness(this.asteroid.data.composition) });
     this._duel = MindDuel.start(this.bond.profile(base, stage), this.exercises, this.seed + this.duelCount++);
     this._stage = stage;
+    this.duelPhase = (stageIndex(stage) + 1) as 1 | 2 | 3;
     this._result = undefined;
     this._phase = "duel";
   }
@@ -190,7 +204,8 @@ export class Expedition {
         this._phase = "aggressive";
         this.bond.fail();
         this._result = { stage, persuaded: false, cargo: [] };
-        this.aggression = new Aggression(this.asteroid.meanRadiusM);
+        if (this.wrath) this.wrath.duelFailed(this.asteroid.data.id, this.duelPhase);
+        else this.aggression = new Aggression(this.asteroid.meanRadiusM);
         // The probe's own shake-off belongs to the probe; the lander is shaken off at once, or
         // as soon as Doménica is back aboard after the suit stage.
         if (stage === "nave") this.shakeOff();

@@ -52,6 +52,7 @@ export class ProbeOps {
   private _serial = 1;
   private _batteryWh: number;
   private shaken = false;
+  private doseMSv = 0;
   private events: ProbeEvent[] = [];
 
   /**
@@ -151,6 +152,13 @@ export class ProbeOps {
     this._onBoard = this.spec.probes;
   }
 
+  /** Radiation on its electronics (an angry asteroid's pulse); past `toleranceMSv` it is lost. */
+  irradiate(mSv: number, toleranceMSv: number): void {
+    if (!this.out) return;
+    this.doseMSv += mSv;
+    if (this.doseMSv >= toleranceMSv) this.lose("destruida");
+  }
+
   /** The asteroid throws the parked probe off its surface. */
   shakeOff(): void {
     if (this._status !== "posada") return;
@@ -188,9 +196,10 @@ export class ProbeOps {
       if (d < threat.safeDistanceM) {
         const closeness = 1 - Math.max(0, d) / threat.safeDistanceM;
         f.ship.damage(PROBE_TUNING.maxDamagePerS * closeness * threat.danger * dtS, "escombros");
-        if (f.ship.hullIntegrity <= 0) this.lose("destruida");
       }
     } else this.shaken = false;
+    // Whatever hit it (debris here, or an asteroid's attacks through the wrath module).
+    if (f.ship.hullIntegrity <= 0) this.lose("destruida");
   }
 
   private lose(why: "abandonada" | "destruida" | "sin-bateria"): void {
@@ -209,5 +218,6 @@ export class ProbeOps {
     this._status = "estibada";
     this._batteryWh = this.spec.batteryWh;
     this.shaken = false;
+    this.doseMSv = 0;
   }
 }

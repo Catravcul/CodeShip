@@ -92,6 +92,7 @@ import { MISSION_LETTERS, NEVAEH_MISSIONS } from "@modules/missions/data/nevaeh-
 import { MissionLogPanel } from "./ui/mission-log";
 import { SubjugationUi, stageDuelText, stageResultText } from "./subjugation";
 import { BENNU_SAMPLES } from "@modules/eva/data/samples";
+import { WrathMode } from "./wrath-mode";
 
 // --- Domain setup -----------------------------------------------------------
 const d = BENNU.dimensionsM.value;
@@ -132,7 +133,13 @@ const stationOps = new StationOps(
 // and the station and the mothership, where the trip ends docked (docs/design/estacion.md).
 const carrier = mothershipCarrier(mothership, docking, { nosePort: NODRIZA_NOSE_PORT, limits: IDSS_CONTACT_LIMITS, ports: structure.ports });
 const navTargets: NavTarget[] = [...region.asteroids.map(asteroidTarget), ...dockNavTargets(structure, mothership, carrier.clearanceM)];
-const stationKeepOut = { centre: structure.position, radiusM: structure.boundingRadiusM };
+// A getter: the station can move under its own engines (survival mode).
+const stationKeepOut = {
+  get centre() {
+    return structure.position;
+  },
+  radiusM: structure.boundingRadiusM,
+};
 const nav = new Navigator(
   flight,
   {
@@ -243,6 +250,21 @@ scene.add(asteroidMesh);
 const stationModel = new StationModel(POLANA_LAYOUT, structure.orientation);
 stationModel.root.position.set(POLANA_STATION.position.x, POLANA_STATION.position.y, POLANA_STATION.position.z);
 scene.add(stationModel.root);
+
+// The asteroids' wrath after a failed duel (docs/design/poderes-ira.md): attacks, survival mode, anger card.
+const wrathMode = new WrathMode({
+  root,
+  scene,
+  asteroids: region.asteroids,
+  flight,
+  ship,
+  expedition,
+  mothership,
+  docking,
+  structure,
+  station: stationOps.station,
+  placeStation: (p) => stationModel.root.position.set(p.x, p.y, p.z),
+});
 
 const reticle = document.createElement("div");
 reticle.className = "reticle";
@@ -432,6 +454,7 @@ const subj = new SubjugationUi({
   map: navMode.map,
   keyboard: () => pilot.command(),
   atStation: () => atStationPort() || (docking.dockedTo === mothership && !!mothership.dockedTo),
+  wrath: wrathMode.wrath,
 });
 
 // Ship bay: only at the station (docs/design/accesos.md): its console in node 2, B inside, or the
@@ -558,8 +581,7 @@ function renderPhase(): void {
   if (p === "persuaded") {
     banner.textContent = stageResultText(expedition);
   } else if (p === "aggressive") {
-    const left = Math.max(0, expedition.safeDistanceM! - t.distanceToSurface);
-    banner.textContent = left > 0 ? `¡${expedition.asteroid.data.name} está furioso! Huye: faltan ${left.toFixed(0)} m hasta la distancia segura` : "A salvo. Espera a que se calme";
+    banner.textContent = wrathMode.bannerText() || `${expedition.asteroid.data.name} se calma`;
   } else if (p === "landed") {
     banner.textContent = subj.landedText();
   } else if (dockingText()) {
@@ -594,19 +616,20 @@ renderer.setAnimationLoop((now) => {
   last = now;
   const cmd = subj.piloting || interior.active || stationInside.active || deck.active || bay.active || evaMode.active || stationScreen.active || navMode.blocksInput || missionLog.visible ? NO_INPUT : mergeCommands(pilot.command(), touch.command());
   const flown = subj.piloting ? subj.probeMode.command() : cmd;
-  const idle = flown.mainThrottle === 0 && cmd.translation.length() === 0 && cmd.rotation.length() === 0;
+  const idle = flown.mainThrottle === 0 && flown.translation.length() === 0 && flown.rotation.length() === 0;
   // Time warp only on quiet cruise far from the surface, so landing stays real-time.
   const far = subj.pilotedDistanceM(flight.telemetry().distanceToSurface) >= WARP_MIN_DISTANCE_M;
   const warpAsk = subj.piloting ? subj.probeMode.warpRequested : view.warpRequested;
   const sp = flight.state.position;
   const fx = nano.net.effectsAt(sp);
-  const asked = (expedition.phase === "flight" || expedition.phase === "persuaded") && (subj.piloting ? subj.probe.status === "en-vuelo" : !flight.landed) && idle && far ? warpAsk : 1;
+  const asked = (expedition.phase === "flight" || expedition.phase === "persuaded" || (expedition.phase === "aggressive" && wrathMode.allowsWarp)) && (subj.piloting ? subj.probe.status === "en-vuelo" : !flight.landed) && idle && far ? warpAsk : 1;
   // Inside the nano_net its speed nodes let time run faster.
   const warp = asked > 1 ? Math.round(asked * fx.warpFactor) : 1;
   const warpNote =
     warpAsk > 1 && warp === 1 ? (far ? "tiempo ×1 mientras maniobras" : "tiempo ×1 cerca del asteroide") : warp > 1 ? `tiempo ×${warp}${fx.warpFactor > 1 ? " (nano_net)" : ""}` : "";
   expedition.update(dt * warp, cmd);
   subj.update(dt, warp, warpNote, { visible: view.enabled, landerPosition: flight.state.position });
+  wrathMode.update(dt * warp, dt, subj.piloting ? subj.probeMode.camera : camera, view.enabled || deck.active || subj.piloting);
   ring.tick(dt);
   // Region rules: soft boundary push back and no flying through the other rocks or the mothership (game rules).
   if (!flight.landed && !flight.docked) {
@@ -751,4 +774,4 @@ renderer.setAnimationLoop((now) => {
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, refuelOps, nav, navMode, missions, missionLog, deck, subj, probe: subj.probe };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, refuelOps, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe };

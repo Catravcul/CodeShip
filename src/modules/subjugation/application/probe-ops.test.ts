@@ -136,4 +136,14 @@ describe("ProbeOps", () => {
     fly(ops, 61);
     expect(ops.drainEvents()).toContainEqual({ type: "perdida", why: "sin-bateria" });
   });
+
+  it("radiation past its electronics' tolerance loses it", () => {
+    const { ops } = setup(400);
+    ops.launch(new Vec3(0, 1, 0));
+    ops.irradiate(30_000, 50_000);
+    expect(ops.serial).toBe(1);
+    ops.irradiate(30_000, 50_000);
+    expect(ops.drainEvents()).toContainEqual({ type: "perdida", why: "destruida" });
+    expect(ops.serial).toBe(2);
+  });
 });

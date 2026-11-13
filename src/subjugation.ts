@@ -17,6 +17,8 @@ import { ProbeMode } from "./probe-mode";
 import { asteroidText, type DuelView, type SessionText } from "./ui/duel-view";
 import type { NavMap } from "./ui/nav-map";
 import { RapportChip, rapportCardHtml } from "./ui/rapport-view";
+import type { WrathTarget } from "@modules/asteroid-wrath/application/wrath";
+import { HULL_ENERGY_J, PROBE_ELECTRONICS_TOLERANCE_MSV } from "@modules/asteroid-wrath/domain/protection";
 
 const STAGE_TITLE: Readonly<Record<Stage, string>> = { sonda: "fase 1 · sonda", nave: "fase 2 · módulo", traje: "fase 3 · traje" };
 const kg = (v: number) => v.toFixed(0);
@@ -63,7 +65,17 @@ export interface SubjugationDeps {
   keyboard(): ThrustCommand;
   /** Docked at the station (directly or through the mothership): spare probes are restocked. */
   atStation(): boolean;
+  /** The asteroids' wrath (docs/design/poderes-ira.md): the probe and Doménica in her suit join its targets. */
+  readonly wrath?: { addTarget(t: WrathTarget): void };
 }
+
+/**
+ * EMU shielding against radiation, aluminium-equivalent g/cm². Estimate: the suit's layers are
+ * a few tenths of a g/cm²; game value until a sourced figure is wired.
+ */
+const SUIT_SHIELD_GCM2 = 0.3;
+/** Suit damage (0..1) that sends her back to the hatch at once. Game value. */
+const SUIT_RETREAT_AT = 0.3;
 
 /**
  * Wiring of the subjugation's three stages (docs/design/subyugacion.md): the probe and its console on
@@ -102,11 +114,70 @@ export class SubjugationUi {
     d.evaMode.canSubjugate = () => ex.canStartStage("traje");
     d.evaMode.onLieDown = () => this.startDuel("traje");
 
+    if (d.wrath) for (const t of [this.probeTarget(), this.suitTarget()]) d.wrath.addTarget(t);
+
     // Closing the duel screen after a won duel: back to where the pilot was.
     const prev = d.duelView.onClose;
     d.duelView.onClose = () => {
       this.closeDuel();
       prev?.();
+    };
+  }
+
+  /** Damage the suit has taken on this walk, 0..1. */
+  suitDamage = 0;
+  /** Dose Doménica took outside, mSv. */
+  suitDoseMSv = 0;
+
+  /** The probe as a target of an angry asteroid: tiny, unshielded, electronics that fail under radiation. */
+  private probeTarget(): WrathTarget {
+    const p = this.probe;
+    const ship = () => p.flight.ship;
+    return {
+      id: "sonda",
+      kind: "sonda",
+      name: "sonda",
+      radiusM: 0.4,
+      position: () => p.flight.state.position,
+      velocity: () => p.flight.state.velocity,
+      // Stowed, it is part of the travel ship.
+      active: () => p.out,
+      protection: () => ({ hullEnergyJ: HULL_ENERGY_J.sonda, debrisFactor: 1, electronicsToleranceMSv: PROBE_ELECTRONICS_TOLERANCE_MSV }),
+      damage: (f) => ship().damage(f, "choque"),
+      dose: (mSv) => p.irradiate(mSv, PROBE_ELECTRONICS_TOLERANCE_MSV),
+      pull: (dv) => {
+        if (p.status === "posada") p.shakeOff();
+        p.flight.applyImpulse(dv);
+      },
+      thrustAccelMs2: () => ship().preview({ mainThrottle: 1, translation: Vec3.ZERO, rotation: Vec3.ZERO }).forceBody.length() / ship().massKg,
+    };
+  }
+
+  /** Doménica outside in her suit (stage 3): hits send her back to the hatch; a grip pulls her off the ground. */
+  private suitTarget(): WrathTarget {
+    const { eva, evaMode } = this.d;
+    const t = () => eva.flight.simTimeS;
+    const local = () => eva.body?.position ?? Vec3.ZERO;
+    return {
+      id: "traje",
+      kind: "traje",
+      name: "Doménica (traje)",
+      radiusM: 1,
+      position: () => eva.asteroid.toWorld(local(), t()),
+      velocity: () => eva.asteroid.surfaceVelocity(eva.asteroid.toWorld(local(), t())),
+      active: () => eva.outside && !!eva.body,
+      protection: () => ({ hullEnergyJ: HULL_ENERGY_J.traje, debrisFactor: 1, radiation: { material: "aluminio", arealDensityGcm2: SUIT_SHIELD_GCM2 } }),
+      damage: (f) => {
+        this.suitDamage = Math.min(1, this.suitDamage + f);
+        evaMode.tell(`¡Impacto en el traje! Daño ${Math.round(this.suitDamage * 100)} %${this.suitDamage >= SUIT_RETREAT_AT ? ": vuelve a la escotilla" : ""}`, 5000);
+        if (this.suitDamage >= SUIT_RETREAT_AT) eva.requestReturn();
+      },
+      dose: (mSv) => (this.suitDoseMSv += mSv),
+      pull: (dv) => {
+        const b = eva.body;
+        if (b) b.applyImpulse(eva.asteroid.orientationAt(t()).conjugate().rotate(dv));
+      },
+      thrustAccelMs2: () => eva.jetAccelMs2,
     };
   }
 
@@ -200,6 +271,7 @@ export class SubjugationUi {
     }
     for (const e of p.drainEvents()) this.probeMode.onEvent(e);
     this.probeMode.update(dt, warp, warpNote);
+    if (!this.d.eva.outside) this.suitDamage = 0;
     const t = ex.asteroid;
     const near = t.surfaceDistance(this.probeMode.active ? f.state.position : cockpit.landerPosition, f.simTimeS) < CHIP_RANGE_M;
     this.chip.update(cockpit.visible && near && !this.probeMode.active, t.data.name, ex.rapport.peek(t.data.id), ex.phase === "aggressive");

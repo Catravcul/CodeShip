@@ -132,10 +132,9 @@ export async function aterrizajeManual(j) {
   const over = await j.overlaps();
   j.check("los indicadores no tapan ningún botón", over.length === 0, over.slice(0, 3).join("; "));
   await j.shot("modulo-indicadores");
-  if (j.opts.mobile !== false) await j.tap(".bar-toggle", "☰ Mandos");
+  // The eye icon, pinned (no «☰ Mandos» to open first).
   await j.tap(".cam-btn", "Cámara");
   await p.waitForTimeout(400);
-  if (j.opts.mobile !== false) await j.tap(".bar-toggle", "☰ Mandos");
   await p.waitForTimeout(800);
   j.check("con la cámara ventral se ve el sitio marcado en el suelo", (await j.texts(".land-mark.on span")).length > 0);
   await j.shot("modulo-ventral");

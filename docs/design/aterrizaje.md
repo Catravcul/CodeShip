@@ -93,12 +93,12 @@ Consultado el 2026-11-13.
 - Interfaz: `src/landing.ts` (cabina y consola de la sonda), `src/ui/landing-readout.ts` y `aterrizaje.css`, `src/adapters/three/plan-overlay.ts`, `src/navigation.ts` (`openTripSheet` con su `StepVisual`).
 - QA: VUE-06 a VUE-09, SON-05, NAV-07 y los recorridos PX-07 a PX-09 en [docs/qa/casos.md](../qa/casos.md).
 
-Capturas (`docs/screenshots/aterrizaje-*-movil.png` en iPhone 13 y `-escritorio.png` a 1280×800):
+Capturas del recorrido de QA (`docs/screenshots/aterrizaje-*-movil.png` en iPhone 13 y `-escritorio.png` a 1280×800; PX-07 a PX-09):
 
-1. `aterrizaje-1-viaje-paso-ruta`: un paso del viaje bien respondido dibuja la ruta.
-2. `aterrizaje-2-sonda-zona`: la sonda a 300 m con los indicadores y la oferta.
-3. `aterrizaje-3-sonda-reto-sitio`: primer reto del aterrizaje, el sitio marcado.
-4. `aterrizaje-4-sonda-bajando`: el programa vuela; ficha de viaje.
-5. `aterrizaje-5-sonda-posada`.
-6. `aterrizaje-6-modulo-indicadores`, `aterrizaje-7-modulo-ventral`, `aterrizaje-8-modulo-demasiado-rapido`.
-7. `aterrizaje-9-modulo-posado-escritorio`: el módulo aterrizado por programa.
+1. `aterrizaje-1-viaje-paso-ruta-movil`: un paso del viaje bien respondido dibuja la ruta.
+2. `aterrizaje-2-sonda-zona-movil`: la sonda a 300 m con los indicadores y la oferta.
+3. `aterrizaje-3-sonda-reto-sitio-movil`: primer reto del aterrizaje, el sitio fijado.
+4. `aterrizaje-4-sonda-bajando-movil`: el programa vuela; ficha de viaje.
+5. `aterrizaje-5-sonda-posada-movil`.
+6. `aterrizaje-6-modulo-indicadores-{movil,escritorio}`, `aterrizaje-7-modulo-ventral-*`, `aterrizaje-8-modulo-demasiado-rapido-*`.
+7. `aterrizaje-9-modulo-reto-escritorio`, `aterrizaje-10-modulo-bajando-escritorio`, `aterrizaje-11-modulo-posado-escritorio`: el módulo aterrizado por programa.

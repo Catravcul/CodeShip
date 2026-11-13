@@ -439,7 +439,8 @@ export class NavMap {
       g.fillStyle = target ? "#bff0ff" : "#e6dfd3";
       g.fillText(t.name, p.x + rad + 7, p.y + 4);
       const lm = t.kind === "asteroid" ? this.levelMark?.(t.id) : undefined;
-      if (lm) drawLevel(g, p, rad, lm, lm.goal ? P(lm.goal) : undefined);
+      // Narrow screens: the line under the name only for the picked one, the target and a chaser (the badge always).
+      if (lm) drawLevel(g, p, rad, lm, lm.goal ? P(lm.goal) : undefined, w >= 600 || picked || target || lm.tone === "persigue");
       this.screen.push({ t, x: p.x, y: p.y });
     }
 
@@ -500,7 +501,7 @@ const LEVEL_TONE: Record<MapLevelMark["tone"], string> = {
 };
 
 /** Level badge (a hexagon with the level), what it is doing under its name, and a dashed line to where it is heading. */
-function drawLevel(g: CanvasRenderingContext2D, p: Projected, rad: number, m: MapLevelMark, goal?: Projected): void {
+function drawLevel(g: CanvasRenderingContext2D, p: Projected, rad: number, m: MapLevelMark, goal: Projected | undefined, text: boolean): void {
   const c = LEVEL_TONE[m.tone];
   g.save();
   if (goal) {
@@ -540,10 +541,12 @@ function drawLevel(g: CanvasRenderingContext2D, p: Projected, rad: number, m: Ma
     g.lineWidth = 2;
     g.stroke();
   }
-  g.textAlign = "left";
-  g.font = "11px ui-monospace, Menlo, monospace";
-  g.fillStyle = c;
-  g.fillText(m.short, p.x + rad + 7, p.y + 17);
+  if (text) {
+    g.textAlign = "left";
+    g.font = "11px ui-monospace, Menlo, monospace";
+    g.fillStyle = c;
+    g.fillText(m.short, p.x + rad + 7, p.y + 17);
+  }
   g.restore();
 }
 

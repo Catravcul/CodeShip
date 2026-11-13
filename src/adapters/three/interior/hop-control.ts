@@ -8,6 +8,8 @@ const GLYPH: Readonly<Record<Arrow, string>> = { arriba: "▲", abajo: "▼", iz
 /** Recompute the targets when the view turns more than this (cos of ~3°), or every this many seconds. */
 const TURN_COS = Math.cos((3 * Math.PI) / 180);
 const REFRESH_S = 0.4;
+/** Markers closer than this to the camera are hidden, m. */
+const NEAR_EYE_M = 1.4;
 
 /** A faint round marker with an arrow glyph, 0,22 m across (what that arrow would land on). */
 function marker(glyph: string): THREE.Sprite {
@@ -81,7 +83,7 @@ export class HopControl {
    * Every frame while floating: returns the hop to start, if an arrow asks for one. `enabled` false
    * (another mode, a chore, the airlock cycling) hides the pad.
    */
-  update(s: IvaState, view: ViewFrame, enabled: boolean, dt: number): HopPlan | undefined {
+  update(s: IvaState, view: ViewFrame, enabled: boolean, dt: number, eye?: THREE.Vector3): HopPlan | undefined {
     const g = this.hops;
     if (!enabled || !g) {
       this.hide();
@@ -121,6 +123,8 @@ export class HopControl {
       const r = g.rails.rail(e.to.rail);
       const at = e.to.grip.add(r.normal.scale(0.12));
       mk.position.set(at.x, at.y, at.z);
+      // Right by the camera it would fill the screen: the pad's arrow says enough.
+      if (eye && mk.position.distanceTo(eye) < NEAR_EYE_M) mk.visible = false;
     }
     const a = this.pad.take();
     const e = a ? this.targets[a] : undefined;

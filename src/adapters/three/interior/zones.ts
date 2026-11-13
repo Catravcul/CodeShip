@@ -80,6 +80,8 @@ export class GravityZones {
   private ball: { mesh: THREE.Mesh; points: THREE.Vector3[]; t: number; total: number; note: string } | null = null;
   private readonly ballMesh = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 8), new THREE.MeshStandardMaterial({ color: 0xf2d32c, roughness: 0.6 }));
   private view = { yaw: 0, pitch: 0, pos: new THREE.Vector3() };
+  /** Where the camera was last frame (to hide hop markers right by it). */
+  private readonly eye = new THREE.Vector3();
   private on = false;
   /** Inside the mothership (false in the cockpit and elsewhere: the arrow pad hides). */
   get enabled(): boolean {
@@ -310,7 +312,7 @@ export class GravityZones {
     const fwd = new Vec3(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
     const right = new Vec3(Math.cos(yaw), 0, -Math.sin(yaw));
     // Arrows hop from landing point to landing point (docs/design/ingravidez.md, «Fase C: flechas»).
-    const hop = this.hop.update(this.iva, { forward: fwd, right }, this.enabled, dt);
+    const hop = this.hop.update(this.iva, { forward: fwd, right }, this.enabled, dt, this.eye);
     const r = ivaStep(this.iva, hop ? { hop } : {}, this.world, dt);
     this.iva = r.state;
     this.p.set(r.state.position.x, r.state.position.y, r.state.position.z);
@@ -364,6 +366,7 @@ export class GravityZones {
     this.body ??= new FloatingBody(rig);
     this.body.update(avatar, this.iva, this.graph, dir, 1 / 60);
     if (!third) {
+      this.eye.copy(this.p);
       camera.position.copy(this.p);
       camera.rotation.set(pitch, yaw, 0, "YXZ");
       return true;
@@ -375,12 +378,17 @@ export class GravityZones {
     // In flight, from a little higher, so her stretched-out body reads from the side and not only from her soles.
     const k = this.iva.motion.kind;
     const lift = k === "planeo" || k === "impulso" || k === "agarrando" || k === "salto" ? 0.8 : 0;
-    // Back along the view; where a wall is close behind her, also rise above her to keep her in sight.
+    // Back along the view and a little toward the tube's axis (the roomiest place, clear of the
+    // lockers and bags on the walls); where a wall is close behind her, further toward the axis.
+    const inward = new THREE.Vector3(0, L.axisY - at.y, L.z - at.z);
+    if (at.y < L.axisY - L.tubeR || inward.lengthSq() < 1e-4) inward.set(0, 1, 0);
+    inward.normalize();
     for (let d = CAMERA_BACK_M; d > 0.4; d -= 0.1) {
-      cam.copy(at).addScaledVector(dir, -d).add(new THREE.Vector3(0, 0.25 + lift + Math.max(0, CAMERA_BACK_M - d) * 0.6, 0));
-      if (this.insideFloat(cam, 0.15)) break;
+      cam.copy(at).addScaledVector(dir, -d).addScaledVector(inward, 0.25 + lift + Math.max(0, CAMERA_BACK_M - d) * 0.6);
+      if (this.insideFloat(cam, 0.6)) break;
     }
     camera.position.copy(cam);
+    this.eye.copy(cam);
     camera.up.set(0, 1, 0);
     camera.lookAt(at.clone().addScaledVector(dir, 1.2));
     return true;

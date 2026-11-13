@@ -260,7 +260,7 @@ export class StationInteriorMode {
     if (this.hopsSuited !== this.suited) this.buildHops();
     const fwd = this.lookDir();
     const right = new Vec3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
-    const hop = this.hop.update(this.iva, { forward: fwd, right }, this.active && this.cycling === 0, dt);
+    const hop = this.hop.update(this.iva, { forward: fwd, right }, this.active && this.cycling === 0, dt, this.camera.position);
     const r = ivaStep(this.iva, hop ? { hop } : {}, this.world, dt);
     this.iva = r.state;
     this.p = r.state.position;

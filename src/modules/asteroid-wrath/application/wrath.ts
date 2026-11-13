@@ -448,6 +448,7 @@ export class AsteroidWrath {
         m.inReach.clear();
         m.offenders.clear();
         m.ram = undefined;
+        m.ramCooldownS = 0;
         this.events.push({ type: "calmed", asteroidId: m.body.data.id });
         continue;
       }

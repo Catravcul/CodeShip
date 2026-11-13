@@ -53,6 +53,12 @@ export class TripPreview {
   /** Follow `s` (undefined hides it). */
   follow(s: PreviewSubject | undefined): void {
     this.subject = s;
+    // The trip is over: close it (the next trip starts with it closed) and hide the frame now,
+    // since no render will run to do it.
+    if (!s) {
+      this.open = false;
+      this.frame.classList.remove("on");
+    }
   }
 
   get visible(): boolean {

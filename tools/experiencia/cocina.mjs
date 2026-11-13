@@ -5,6 +5,17 @@
 const CREMA = ["tuesta los cacahuetes a 160 °C", "afloja la piel con aire a 138 °C", "quítales la piel", "muélelos en grueso", "muélelos en fino", "añade sal", "envasa la crema"];
 const TOSTADOS = ["saca los cacahuetes de la despensa", "pélalos", "extiéndelos en la bandeja", "tuéstalos a 160 °C", "remueve a media cocción", "déjalos enfriar", "sirve con una pizca de sal"];
 const VALUE = /a (\d+) °C$/;
+/** Scrambled eggs (the designer's report) and what each right step shows in 3D (src/modules/kitchen/domain/kitchen-visuals.ts). */
+const HUEVOS = ["ve a la nevera", "toma los huevos", "calienta la plancha", "revuelve los huevos", "cocina hasta 71 °C", "especia con sal y pimienta", "emplata"];
+const SE_VE = ["tomar", "cascar", "calentar", "remover", "calentar", "sazonar", "emplatar"];
+
+/** The step acted out in 3D (`data-paso` on the habitat's UI, src/interior.ts): waits until it shows. */
+const seesStep = (j, action, timeout = 15000) =>
+  j.page
+    .waitForFunction((a) => document.querySelector(".interior-ui")?.dataset.paso === a && window.codeship.interior.steps.root.visible, action, { timeout })
+    .then(() => true)
+    .catch(() => false);
+const stepTag = (j) => j.page.evaluate(() => `${document.querySelector(".interior-ui")?.dataset.paso} (${document.querySelector(".interior-ui")?.dataset.pasos} pasos)`);
 
 /** Hits and failures as the player reads them: the HUD's written readouts, or the panel's meters (their label). */
 export const readStats = async (j) => {
@@ -43,6 +54,26 @@ export async function cocina(j) {
   });
   await j.resetPerf();
 
+  // Pasos visibles (VID-09): every right step of scrambled eggs is acted out at the galley.
+  await j.tap(".tasks-btn", "Tareas");
+  await p.waitForTimeout(400);
+  await j.tap('.task-board .tb-task:has-text("Cocinar Huevos revueltos") .tb-go', "Ir: Cocinar Huevos revueltos");
+  await j.waitDuel(120000);
+  j.check("al abrir la receta, Doménica está en la cocina (la escena se ve sobre la hoja del reto)", await p.evaluate(() => window.codeship.interior.steps.framing && window.codeship.interior.avatarRig.visible));
+  for (const [i, step] of HUEVOS.entries()) {
+    await choose(j, answerFor(step));
+    const seen = await seesStep(j, SE_VE[i]);
+    j.check(`huevos, paso ${i + 1} bien («${step}»): se ve «${SE_VE[i]}» en la cocina`, seen, await stepTag(j));
+    if (i === 0) await j.shot("huevos-nevera");
+    if (i === 1) await j.shot("huevos-cascar");
+    if (i === 3) await j.shot("huevos-remover");
+  }
+  const eggs = (await j.texts(".duel .result"))[0] ?? "";
+  j.check("los huevos revueltos quedan «Conseguido» 7/7", /Conseguido/.test(eggs) && /7\/7/.test(eggs), eggs);
+  await j.tap(".duel button.end", "Continuar");
+  await p.waitForTimeout(600);
+  j.check("al cerrar la receta, los utensilios se recogen", await p.evaluate(() => !window.codeship.interior.steps.root.visible && !document.querySelector(".interior-ui").dataset.paso));
+
   await j.tap(".tasks-btn", "Tareas");
   await p.waitForTimeout(400);
   const list = await j.texts(".task-board .tb-task b");
@@ -72,8 +103,11 @@ export async function cocina(j) {
   const lit = await j.page.evaluate(() => document.querySelectorAll(".duel .meter.patience .cell.on").length);
   j.check("en vista panel, el medidor de intentos apaga una casilla (2 de 3)", lit === 2, String(lit));
 
+  const CREMA_SE_VE = ["hornear", "hornear", "cortar", "moler", "moler", "sazonar", "emplatar"];
   for (const [i, step] of CREMA.entries()) {
     await choose(j, answerFor(step));
+    if (i === 0 || i === 3) j.check(`crema, paso ${i + 1} bien: se ve «${CREMA_SE_VE[i]}» en el molino`, await seesStep(j, CREMA_SE_VE[i]), await stepTag(j));
+    if (i === 3) await j.shot("crema-moler");
     s = await stats(j);
     if (i < CREMA.length - 1) j.check(`paso ${i + 1} bien: Aciertos ${i + 1}/7`, s.hits.includes(`Aciertos ${i + 1}/7`), s.hits);
     if (i === 0) {
@@ -92,6 +126,31 @@ export async function cocina(j) {
   j.check("la despensa (al tocar el estado) ya muestra crema de cacahuete", /crema de cacahuete/.test(larder), larder.slice(0, 160));
   await j.shot("despensa");
   await j.tap(".ihud", "estado de Doménica (pliega)");
+
+  // Pasos visibles en otras áreas (VID-10): a harvest «paso a paso» acts out each right pick at once; the coop door, a program.
+  await p.evaluate(() => localStorage.setItem("codeship.retos-ordenar", "pasos"));
+  await j.tap(".tasks-btn", "Tareas");
+  await p.waitForTimeout(400);
+  await j.tap('.task-board .tb-task:has-text("Cosechar Rábano") .tb-go', "Ir: Cosechar Rábano");
+  await j.waitDuel(120000);
+  const harvest = await p.evaluate(() => window.codeship.interior.session.run.current);
+  await j.tapAt(p.locator(`.duel .tray [data-id="${harvest.solution[0]}"]`));
+  j.check("cosechar paso a paso: el primer bloque bien ya se ve («revisar») sin terminar el orden", await seesStep(j, "revisar"), await stepTag(j));
+  for (const id of harvest.solution.slice(1)) await j.tapAt(p.locator(`.duel .tray [data-id="${id}"]`));
+  j.check("cosechar: el último bloque se ve («cosechar», cesta junto al rábano)", await seesStep(j, "cosechar"), await stepTag(j));
+  await j.shot("cosechar");
+  await j.tap('.duel [data-act="close"]', "Cerrar");
+  await p.waitForTimeout(400);
+  await p.evaluate(() => localStorage.removeItem("codeship.retos-ordenar"));
+  await j.tap(".tasks-btn", "Tareas");
+  await p.waitForTimeout(400);
+  await j.tap('.task-board .tb-task:has-text("Programar la puerta del gallinero") .tb-go', "Ir: Programar la puerta del gallinero");
+  await j.waitDuel(120000);
+  await j.answer(() => window.codeship.interior.session?.run.current);
+  j.check("gallinero: el programa bien enviado se ve («programar», pantalla holográfica)", await seesStep(j, "programar"), await stepTag(j));
+  await j.shot("gallinero");
+  await j.tap('.duel [data-act="close"]', "Cerrar");
+  await p.waitForTimeout(400);
 
   // HUD view, a recipe lost on purpose: three different wrong answers.
   await j.tap(".tasks-btn", "Tareas");

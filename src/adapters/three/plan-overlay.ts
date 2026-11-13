@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { SketchItem, SketchStep, SketchTone } from "@modules/navigation/application/plan-sketch";
-import type { StepVisual } from "../../ui/step-visual";
+import type { StepVisual } from "@modules/chores/domain/step-visual";
 
 const COLOUR: Record<SketchTone, number> = { plan: 0x7fdcff, burn: 0xffb347, brake: 0xff7a5a, site: 0x7dffb0, ok: 0x7dffb0 };
 

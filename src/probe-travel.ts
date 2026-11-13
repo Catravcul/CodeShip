@@ -10,7 +10,7 @@ import type { RigidBodyState } from "@modules/flight/domain/rigid-body";
 import type { DuelView } from "./ui/duel-view";
 import type { ProbeMode } from "./probe-mode";
 import { openTripSheet, TRIP_TEXT } from "./navigation";
-import type { StepVisual } from "./ui/step-visual";
+import type { StepVisual } from "@modules/chores/domain/step-visual";
 
 export interface ProbeTravelDeps {
   readonly probe: ProbeOps;

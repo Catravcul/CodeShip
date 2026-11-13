@@ -63,7 +63,7 @@ Un recuadro pequeño, en monoespaciada y con mucho contraste, solo en la zona de
 
 ## Cada paso se ve
 
-Regla del diseñador: cada reto debe mostrar el paso correcto ocurriendo. Al acertar un paso de programar un **viaje** (módulo, nodriza o sonda) o un **aterrizaje**, su parte del plan aparece al momento en 3D (líneas, sin luces nuevas) con una línea de texto sobre la escena (`navigation/application/plan-sketch.ts`, dibujado en `adapters/three/plan-overlay.ts`; puerto `StepVisual` en `ui/step-visual.ts`, para unificarlo con los pasos visibles de las tareas):
+Regla del diseñador: cada reto debe mostrar el paso correcto ocurriendo. Al acertar un paso de programar un **viaje** (módulo, nodriza o sonda) o un **aterrizaje**, su parte del plan aparece al momento en 3D (líneas, sin luces nuevas) con una línea de texto sobre la escena (`navigation/application/plan-sketch.ts`, dibujado en `adapters/three/plan-overlay.ts`; puerto `StepVisual` en `modules/chores/domain/step-visual.ts`, el mismo que usan los pasos visibles de las tareas):
 
 | Paso | Viaje | Aterrizaje |
 | --- | --- | --- |

@@ -80,6 +80,8 @@ caso y las anteriores quedan en sus run logs.
 | VID-06 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | VID-07 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | VID-08 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); el recorrido PX-02 lo juega |
+| VID-09 | Solo test | | | `kitchen-visuals.test.ts`; jugado en PX-01 |
+| VID-10 | Solo test | | | `step-visuals.test.ts`; jugado en PX-01 |
 | EVA-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | EVA-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | EVA-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -122,15 +124,15 @@ caso y las anteriores quedan en sus run logs.
 | CV-15 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-05** cerrado; botón bloqueado en `hc-pedido-sin-creditos-mobile.png` |
 | CV-16 | No aplica | | | No hay partidas guardadas (**HC-06**) |
 | CV-17 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-03** cerrado: el aviso dura 5 s reales en el tramo ×60 |
-| PX-01 | Probado (en vivo) | 2026-11-13 | `2b064f2` | [run](runs/2026-11-13-1555-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09.md): 34 OK |
-| PX-02 | Probado (en vivo) | 2026-11-13 | `808f372` | [run](runs/2026-11-13-1632-PX-02-PX-07-PX-08-PX-09.md): 16 OK |
-| PX-03 | Probado (en vivo) | 2026-11-13 | `2b064f2` | [run](runs/2026-11-13-1555-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09.md): 15 OK |
-| PX-04 | Probado (en vivo) | 2026-11-13 | `2b064f2` | [run](runs/2026-11-13-1555-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09.md): 22 OK |
-| PX-05 | Probado (en vivo) | 2026-11-13 | `2b064f2` | [run](runs/2026-11-13-1555-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09.md): 22 OK |
-| PX-06 | Probado (en vivo) | 2026-11-13 | `2b064f2` | [run](runs/2026-11-13-1555-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09.md): 20 OK |
-| PX-07 | Probado (en vivo) | 2026-11-13 | `808f372` | [run](runs/2026-11-13-1632-PX-02-PX-07-PX-08-PX-09.md): 13 OK |
-| PX-08 | Probado (en vivo) | 2026-11-13 | `808f372` | [run](runs/2026-11-13-1632-PX-02-PX-07-PX-08-PX-09.md): 7 OK |
-| PX-09 | Probado (en vivo) | 2026-11-13 | `808f372` | [run](runs/2026-11-13-1632-PX-02-PX-07-PX-08-PX-09.md): 9 OK |
+| PX-01 | Probado (en vivo) | 2026-11-13 | `f36e69e` | [run](runs/2026-11-13-1645-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09.md): 49 OK |
+| PX-02 | Probado (en vivo) | 2026-11-13 | `f36e69e` | [run](runs/2026-11-13-1645-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09.md): 16 OK |
+| PX-03 | Probado (en vivo) | 2026-11-13 | `f36e69e` | [run](runs/2026-11-13-1645-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09.md): 15 OK |
+| PX-04 | Probado (en vivo) | 2026-11-13 | `f36e69e` | [run](runs/2026-11-13-1645-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09.md): 22 OK |
+| PX-05 | Probado (en vivo) | 2026-11-13 | `f36e69e` | [run](runs/2026-11-13-1645-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09.md): 22 OK |
+| PX-06 | Probado (en vivo) | 2026-11-13 | `f36e69e` | [run](runs/2026-11-13-1645-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09.md): 20 OK |
+| PX-07 | Probado (en vivo) | 2026-11-13 | `f36e69e` | [run](runs/2026-11-13-1645-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09.md): 13 OK |
+| PX-08 | Probado (en vivo) | 2026-11-13 | `f36e69e` | [run](runs/2026-11-13-1645-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09.md): 7 OK |
+| PX-09 | Probado (en vivo) | 2026-11-13 | `f36e69e` | [run](runs/2026-11-13-1645-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09.md): 9 OK |
 | PX-10 | Sin probar | | | Recorrido nuevo |
 | PX-11 | Sin probar | | | Recorrido nuevo |
 
@@ -140,6 +142,7 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-13 16:45 | PX-01, PX-02, PX-03, PX-04, PX-05, PX-06, PX-07, PX-08, PX-09 | Experiencia (Playwright) | 9/9 recorridos bien | [run](runs/2026-11-13-1645-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09.md) |
 | 2026-11-13 16:32 | PX-02, PX-07, PX-08, PX-09 | Experiencia (Playwright) | 4/4 recorridos bien | [run](runs/2026-11-13-1632-PX-02-PX-07-PX-08-PX-09.md) |
 | 2026-11-13 15:55 | PX-01, PX-02, PX-03, PX-04, PX-05, PX-06, PX-07, PX-08, PX-09 | Experiencia (Playwright) | 9/9 recorridos bien | [run](runs/2026-11-13-1555-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09.md) |
 | 2026-11-13 15:46 | PX-01, PX-02, PX-03, PX-04, PX-05, PX-06 | Experiencia (Playwright) | 5/6 recorridos bien | [run](runs/2026-11-13-1546-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06.md) |

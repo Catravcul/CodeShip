@@ -250,4 +250,63 @@ describe("Expedition", () => {
     expect(e.phase).not.toBe("aggressive");
     expect(e.canStartStage("sonda")).toBe(true);
   });
+
+  describe("subjugation levels (after the three stages)", () => {
+    const subjugatedAndLanded = () => {
+      const e = make();
+      e.rapport.of(BENNU.id).succeed("nave");
+      e.rapport.of(BENNU.id).succeed("traje");
+      land(e);
+      return e;
+    };
+
+    it("no level duel before it obeys", () => {
+      const e = make();
+      land(e);
+      expect(e.canStartLevel()).toBe(false);
+      expect(() => e.startLevelDuel()).toThrow();
+    });
+
+    it("from the anchored lander, each won duel raises it one level, up to 4, with a harder duel each time", () => {
+      const e = subjugatedAndLanded();
+      let lastGoal = 0;
+      for (const l of [1, 2, 3, 4]) {
+        expect(e.canStartLevel()).toBe(true);
+        expect(e.startLevelDuel()).toBe(l);
+        expect(e.duel!.profile.persuasionGoal).toBeGreaterThan(lastGoal);
+        lastGoal = e.duel!.profile.persuasionGoal;
+        while (inDuel(e)) e.answer(correct(e.duel!.current!));
+        expect(e.lastResult).toMatchObject({ level: l, persuaded: true, stage: "nave" });
+        expect(e.bond.level).toBe(l);
+        // A level adds no cargo to the lander: what it gives comes later, by itself.
+        expect(e.cargo).toHaveLength(0);
+        e.acknowledge();
+      }
+      expect(e.canStartLevel()).toBe(false);
+    });
+
+    it("through the parked probe too", () => {
+      const e = subjugatedAndLanded();
+      expect(e.canStartLevel("sonda")).toBe(false);
+      e.contacts = { probeParkedOn: () => BENNU.id };
+      expect(e.canStartLevel("sonda")).toBe(true);
+      e.startLevelDuel("sonda");
+      expect(e.duelPhase).toBe(1);
+    });
+
+    it("a failed level duel costs trust (not the level), enrages it against the lander and shakes it off", () => {
+      const e = subjugatedAndLanded();
+      const calls: [string, number, readonly string[] | undefined][] = [];
+      e.wrath = { duelFailed: (id, phase, who) => calls.push([id, phase, who]), canRetry: () => calls.length === 0 };
+      const trust = e.bond.trust;
+      e.startLevelDuel();
+      while (inDuel(e)) e.answer(wrong(e.duel!.current!));
+      expect(e.phase).toBe("aggressive");
+      expect(e.lastResult).toMatchObject({ level: 1, persuaded: false });
+      expect(e.bond.level).toBe(0);
+      expect(e.bond.trust).toBeLessThan(trust);
+      expect(calls).toEqual([[BENNU.id, 2, ["aterrizador"]]]);
+      expect(e.flight.landed).toBe(false);
+    });
+  });
 });

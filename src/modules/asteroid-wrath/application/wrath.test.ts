@@ -164,4 +164,27 @@ describe("asteroid wrath", () => {
     expect(probe.log.pulled.y).toBeGreaterThan(0);
     expect(probe.log.causes).toContain("chorro");
   });
+
+  it("chases the craft that enraged it (the nearest active one) until it calms down", () => {
+    const b = new Asteroid(BENNU, Vec3.ZERO);
+    const w = new AsteroidWrath([b]);
+    const probe = target("sonda", "sonda", new Vec3(0, 900, 0));
+    const lander = target("aterrizador", "aterrizador", new Vec3(0, 0, 400), { crewed: true });
+    w.addTarget(probe.t);
+    w.addTarget(lander.t);
+    expect(w.pursuit(BENNU.id)).toBeUndefined();
+    // Phase 2 (lander): it chases the lander, not the probe.
+    w.duelFailed(BENNU.id, 2);
+    const p = w.pursuit(BENNU.id)!;
+    expect(p.targetId).toBe("aterrizador");
+    expect(p.standoffM).toBeGreaterThan(b.meanRadiusM);
+    // Phase 3 offends both the suit and the lander; an explicit list overrides the phase.
+    w.duelFailed(BENNU.id, 1, ["sonda"]);
+    expect(w.pursuit(BENNU.id)!.targetId).toBe("aterrizador");
+    lander.log.pos = new Vec3(0, 0, 5000);
+    expect(w.pursuit(BENNU.id)!.targetId).toBe("sonda");
+    run(w, 600);
+    expect(w.anger(BENNU.id)).toBe(0);
+    expect(w.pursuit(BENNU.id)).toBeUndefined();
+  });
 });

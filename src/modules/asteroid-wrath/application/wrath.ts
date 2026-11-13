@@ -100,6 +100,23 @@ interface Mood {
   throws: number;
   /** Targets that were in reach on the last step (to announce escapes). */
   inReach: Set<string>;
+  /** Who enraged it (target ids): it chases them with its gravity drive until it calms down. */
+  offenders: Set<string>;
+}
+
+/** Who a failed duel at each phase enrages it against: the craft in contact with it. */
+export const OFFENDERS_BY_PHASE: Readonly<Record<DuelPhase, readonly string[]>> = { 1: ["sonda"], 2: ["aterrizador"], 3: ["traje", "aterrizador"] };
+/** A chasing asteroid holds this fraction of its reach from the craft it chases (game value): close enough to hit it. */
+export const CHASE_STANDOFF_OF_REACH = 0.4;
+
+/** What an angry asteroid is chasing now (docs/design/poderes-ira.md, «Persecución»). */
+export interface Pursuit {
+  readonly targetId: string;
+  readonly targetName: string;
+  position(): Vec3;
+  velocity(): Vec3;
+  /** Centre-to-craft distance it keeps, m. */
+  readonly standoffM: number;
 }
 
 /**
@@ -120,7 +137,7 @@ export class AsteroidWrath {
   constructor(bodies: readonly WrathBody[], seed = 7) {
     for (const b of bodies) {
       const power = powerOf(b.data);
-      this.moods.set(b.data.id, { body: b, power, anger: new Anger(power.spec.angerHalfLifeS), cooldownS: 0, throws: 0, inReach: new Set() });
+      this.moods.set(b.data.id, { body: b, power, anger: new Anger(power.spec.angerHalfLifeS), cooldownS: 0, throws: 0, inReach: new Set(), offenders: new Set() });
     }
     let s = seed >>> 0 || 1;
     this.rng = () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 2 ** 32);
@@ -144,11 +161,32 @@ export class AsteroidWrath {
    * Entry point for the subjugation flow: a duel failed at `phase` on an asteroid. Its anger jumps,
    * and it starts throwing at the next step.
    */
-  duelFailed(asteroidId: string, phase: DuelPhase): void {
+  duelFailed(asteroidId: string, phase: DuelPhase, offenders: readonly string[] = OFFENDERS_BY_PHASE[phase]): void {
     const m = this.mood(asteroidId);
     m.anger.provoke(phase);
+    for (const o of offenders) m.offenders.add(o);
     m.cooldownS = Math.min(m.cooldownS, 1);
     this.events.push({ type: "enraged", asteroidId, tier: m.power.tier, level: m.anger.level });
+  }
+
+  /**
+   * The craft an angry asteroid chases (its gravity drive moves it, game fiction): the nearest active
+   * one among those that enraged it. Undefined when it is calm or none of them is out in space.
+   */
+  pursuit(asteroidId: string): Pursuit | undefined {
+    const m = this.moods.get(asteroidId);
+    if (!m || m.anger.calm) return undefined;
+    let best: WrathTarget | undefined;
+    let bestD = Infinity;
+    for (const id of m.offenders) {
+      const t = this.targets.get(id);
+      if (!t || !t.active()) continue;
+      const d = t.position().sub(m.body.position).length();
+      if (d < bestD) [best, bestD] = [t, d];
+    }
+    if (!best) return undefined;
+    const t = best;
+    return { targetId: t.id, targetName: t.name, position: () => t.position(), velocity: () => t.velocity(), standoffM: m.body.meanRadiusM + CHASE_STANDOFF_OF_REACH * reachOf(m) };
   }
 
   /** Whether a new duel can be tried: the asteroid is calm again. */
@@ -292,6 +330,7 @@ export class AsteroidWrath {
       if (m.anger.calm) continue;
       if (m.anger.tick(dt)) {
         m.inReach.clear();
+        m.offenders.clear();
         this.events.push({ type: "calmed", asteroidId: m.body.data.id });
         continue;
       }

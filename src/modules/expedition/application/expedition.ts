@@ -8,6 +8,10 @@ import { MindDuel, type DuelEvent } from "@modules/mind-duel/domain/duel";
 import type { Answer, Exercise } from "@modules/mind-duel/domain/exercise";
 import type { ThrustCommand } from "@modules/ship/domain/ship";
 import { RapportBook, STAGE_REWARD, stageIndex, type Rapport, type Stage, type StageReward } from "@modules/subjugation/domain/rapport";
+import type { Level } from "@modules/subjugation/domain/levels";
+
+/** Anger phase of a failed level duel (docs/design/subyugacion.md §«Niveles»): the two first levels anger it like the lander's stage, the two last like the suit's. */
+const LEVEL_ANGER_PHASE: Readonly<Record<Level, 2 | 3>> = { 1: 2, 2: 2, 3: 3, 4: 3 };
 
 export type Phase = "flight" | "landed" | "duel" | "persuaded" | "aggressive";
 
@@ -32,6 +36,8 @@ export interface DuelResult {
   readonly stage: Stage;
   readonly persuaded: boolean;
   readonly reward?: StageReward;
+  /** A level duel (after the three stages): the level it was about. `stage` is then the craft in contact. */
+  readonly level?: Level;
   readonly cargo: readonly { material: string; kg: number }[];
 }
 
@@ -47,6 +53,7 @@ export class Expedition {
   private aggression: Aggression | undefined;
   private duelCount = 0;
   private _stage: Stage | undefined;
+  private _level: Level | undefined;
   private _result: DuelResult | undefined;
   /** An enraged asteroid shakes the lander off once Doménica is back aboard. */
   private pendingShakeOff = false;
@@ -56,7 +63,7 @@ export class Expedition {
    * What an enraged asteroid does after a failed duel (docs/design/poderes-ira.md). When set, it is
    * told of every failure and the old close-range debris damage is off; `canRetry` then gates new duels.
    */
-  wrath?: { duelFailed(asteroidId: string, phase: 1 | 2 | 3): void; canRetry(asteroidId: string): boolean };
+  wrath?: { duelFailed(asteroidId: string, phase: 1 | 2 | 3, offenders?: readonly string[]): void; canRetry(asteroidId: string): boolean };
   /** Duel phase of the duel running now or of the last one (1 probe, 2 lander, 3 suit); set by `startDuel`. */
   duelPhase: 1 | 2 | 3 = 2;
 
@@ -140,6 +147,38 @@ export class Expedition {
     }
   }
 
+  /** Level of the duel running now or of the last one, if it was a level duel. */
+  get level(): Level | undefined {
+    return this._level;
+  }
+
+  /**
+   * Whether the duel of the next subjugation level can start now, through `via`: the lander anchored
+   * on it (Doménica aboard) or the probe parked on it. Needs the level on offer (trust) and calm.
+   */
+  canStartLevel(via: "nave" | "sonda" = "nave"): boolean {
+    const l = this.bond.nextLevel;
+    if (!l || !this.bond.canAttemptLevel(l)) return false;
+    if (this.wrath && !this.wrath.canRetry(this._asteroid.data.id)) return false;
+    const c = this.contacts;
+    if (via === "sonda") return (this._phase === "flight" || this._phase === "landed") && c.probeParkedOn?.() === this._asteroid.data.id;
+    return this._phase === "landed" && !c.suitOutside?.();
+  }
+
+  /** Enter its mind again to persuade it into the next level (levels.ts). */
+  startLevelDuel(via: "nave" | "sonda" = "nave"): Level {
+    if (!this.canStartLevel(via)) throw new Error(`Cannot start a level duel via ${via} in phase ${this._phase}`);
+    const level = this.bond.nextLevel!;
+    const base = duelProfileFor({ massKg: this.asteroid.massKg, richness: resourceRichness(this.asteroid.data.composition) });
+    this._duel = MindDuel.start(this.bond.levelProfile(base, level), this.exercises, this.seed + this.duelCount++);
+    this._stage = via;
+    this._level = level;
+    this.duelPhase = via === "sonda" ? 1 : LEVEL_ANGER_PHASE[level];
+    this._result = undefined;
+    this._phase = "duel";
+    return level;
+  }
+
   /** Back from a won duel: to the lander's state (landed or flying). */
   acknowledge(): void {
     if (this._phase === "persuaded") this._phase = this.flight.landed ? "landed" : "flight";
@@ -184,6 +223,7 @@ export class Expedition {
     const base = duelProfileFor({ massKg: this.asteroid.massKg, richness: resourceRichness(this.asteroid.data.composition) });
     this._duel = MindDuel.start(this.bond.profile(base, stage), this.exercises, this.seed + this.duelCount++);
     this._stage = stage;
+    this._level = undefined;
     this.duelPhase = (stageIndex(stage) + 1) as 1 | 2 | 3;
     this._result = undefined;
     this._phase = "duel";
@@ -194,6 +234,23 @@ export class Expedition {
     const events = this._duel.submit(a);
     for (const e of events) {
       const stage = this._stage ?? "nave";
+      const level = this._level;
+      if (level && e.type === "asteroid-persuaded") {
+        this._phase = "persuaded";
+        this.bond.succeedLevel(level);
+        this._result = { stage, level, persuaded: true, cargo: [] };
+        continue;
+      }
+      if (level && e.type === "asteroid-enraged") {
+        this._phase = "aggressive";
+        this.bond.fail();
+        this._result = { stage, level, persuaded: false, cargo: [] };
+        // It chases the craft it was talking through; the lander is shaken off at once.
+        if (this.wrath) this.wrath.duelFailed(this.asteroid.data.id, this.duelPhase, [stage === "sonda" ? "sonda" : "aterrizador"]);
+        else this.aggression = new Aggression(this.asteroid.meanRadiusM);
+        if (stage === "nave") this.shakeOff();
+        continue;
+      }
       if (e.type === "asteroid-persuaded") {
         this._phase = "persuaded";
         const reward = this.bond.succeed(stage);

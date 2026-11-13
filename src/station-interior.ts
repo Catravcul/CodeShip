@@ -2,15 +2,16 @@ import { DOMENICA_HAIR } from "./ui/portraits";
 import * as THREE from "three";
 import { Vec3 } from "@core/math/vec3";
 import { RailGraph } from "@modules/gravity/domain/handrails";
-import { IVA, ivaStep, startAt, type IvaEvent, type IvaState, type IvaWorld } from "@modules/gravity/domain/iva";
-import { stationHandrails } from "@modules/station/data/handrails";
+import { IVA, ivaStep, type IvaEvent, type IvaState, type IvaWorld } from "@modules/gravity/domain/iva";
+import { HopGraph } from "@modules/gravity/domain/hops";
+import { stationHandrails, stationPortals } from "@modules/station/data/handrails";
 import type { CraftSpec, MachineId } from "@modules/station/domain/blueprint";
 import type { PortUser } from "@modules/station/domain/structure";
 import { faceToward, type Fixture, type StationInterior, type StationPanel } from "@modules/station/domain/interior";
 import { buildStationRooms, crateModel, probeModel, type StationRooms } from "./adapters/three/interior/station-rooms";
 import { CubeFigure } from "./adapters/three/interior/figure";
 import { Walker } from "./adapters/input/walker";
-import { ZeroGControls } from "./adapters/input/zero-g-controls";
+import { HopControl } from "./adapters/three/interior/hop-control";
 import { buildRails, FloatingBody, motionLabel } from "./adapters/three/interior/zero-g-body";
 import "./ui/station-interior.css";
 
@@ -62,10 +63,12 @@ export class StationInteriorMode {
   /** How she moves about: holding rails, pushing off, gliding (docs/design/ingravidez.md). */
   private iva: IvaState = { position: Vec3.ZERO, velocity: Vec3.ZERO, motion: { kind: "deriva" } };
   private graph!: RailGraph;
+  private hops!: HopGraph;
+  private hopsSuited = false;
   private world!: IvaWorld;
   private railMesh: THREE.Group | null = null;
   private readonly body: FloatingBody;
-  private readonly zg: ZeroGControls;
+  private readonly hop: HopControl;
   private yaw = 0;
   private pitch = 0;
   private thirdPerson = true;
@@ -89,19 +92,20 @@ export class StationInteriorMode {
     this.scene.background = new THREE.Color(0x05070c);
     this.rooms = buildStationRooms(interior.plan);
     this.scene.add(this.rooms.group);
+    this.hop = new HopControl(root, this.scene);
     this.buildRails();
     this.avatar.pose("float");
     this.suit.pose("float");
     this.rig.add(this.avatar.root, this.suit.root);
     this.scene.add(this.rig);
     this.body = new FloatingBody(this.rig);
-    this.walker = new Walker(root, { move: "sti-move", look: "sti-look", moveLabel: "Manos" });
+    this.walker = new Walker(root, { move: "sti-move", look: "sti-look", moveLabel: "Mover" });
+    this.walker.arrowsLook = false;
     this.ui = document.createElement("div");
     this.ui.className = "sti-ui hidden";
     this.ui.innerHTML = `<div class="sti-hud"></div><button class="sti-tasks">Tareas</button><button class="sti-view"></button><button class="sti-back">Salir</button>
       <button class="sti-act hidden"></button><div class="sti-toast"></div>`;
     root.appendChild(this.ui);
-    this.zg = new ZeroGControls(root);
     this.hud = this.ui.querySelector(".sti-hud")!;
     this.actBtn = this.ui.querySelector(".sti-act")!;
     this.viewBtn = this.ui.querySelector(".sti-view")!;
@@ -155,8 +159,8 @@ export class StationInteriorMode {
     this.storeKey = "";
     this.near = undefined;
     this.buildRails();
-    // Hold on to the nearest rail of the new layout.
-    this.iva = startAt(this.graph, this.iva.position);
+    // Hold on to the nearest landing point of the new layout.
+    this.iva = this.holdNearest(this.iva.position);
     this.p = this.iva.position;
   }
 
@@ -176,13 +180,28 @@ export class StationInteriorMode {
       air: (q) => (this.interior.pressurisedAt(q, this.suited) ? AIR : Vec3.ZERO),
       portals: plan.volumes.filter((v) => v.kind === "escotilla" || v.kind === "esclusa").map((v) => v.centre),
     };
+    this.buildHops();
+  }
+
+  /** Landing points and hops (docs/design/ingravidez.md, «Fase C: flechas»); what fits depends on the suit, so rebuilt with it. */
+  private buildHops(): void {
+    this.hops = new HopGraph(this.graph, (q) => this.interior.fits(q, BODY, this.suited), stationPortals(this.interior.plan));
+    this.hopsSuited = this.suited;
+    this.hop.setGraph(this.hops);
+  }
+
+  /** Holding the landing point nearest to p. */
+  private holdNearest(p: Vec3): IvaState {
+    const q = this.hops.nearest(p);
+    if (!q) return { position: p, velocity: Vec3.ZERO, motion: { kind: "deriva" } };
+    return { position: q.body, velocity: Vec3.ZERO, motion: { kind: "sujeta", rail: q.rail, t: q.t, hands: 0 } };
   }
 
   /** Come in through the hatch of the port the ship is docked at. */
   enter(from: PortUser): void {
     const e = this.interior.plan.entries[from];
     this.from = from;
-    this.iva = startAt(this.graph, e.at);
+    this.iva = this.holdNearest(e.at);
     this.p = this.iva.position;
     this.body.reset();
     this.suited = false;
@@ -198,7 +217,6 @@ export class StationInteriorMode {
     this.active = true;
     this.walker.enabled = true;
     this.ui.classList.remove("hidden");
-    this.zg.show(true);
     document.body.classList.add("in-station-interior");
     this.resize();
   }
@@ -208,7 +226,7 @@ export class StationInteriorMode {
     this.active = false;
     this.walker.enabled = false;
     this.ui.classList.add("hidden");
-    this.zg.show(false);
+    this.hop.hide();
     document.body.classList.remove("in-station-interior");
   }
 
@@ -237,33 +255,25 @@ export class StationInteriorMode {
     if (performance.now() > this.toastUntil) this.toast.classList.remove("on");
   }
 
-  /** Rails only: hold, go hand over hand, push off, glide, catch the next rail (docs/design/ingravidez.md). */
+  /** Rails only: the arrows hop from landing point to landing point (docs/design/ingravidez.md, «Fase C: flechas»). */
   private moveAbout(dt: number): void {
-    const move = this.walker.move();
+    if (this.hopsSuited !== this.suited) this.buildHops();
     const fwd = this.lookDir();
     const right = new Vec3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
-    const stick = fwd.scale(move.forward).add(right.scale(move.right));
-    const busy = this.cycling > 0;
-    const strength = busy ? null : this.zg.takePush();
-    const grab = this.zg.takeGrab();
-    // Push toward the stick's direction if she is steering, else where she looks.
-    const push = strength ? { dir: stick.length() > 0.2 ? stick : fwd, strength } : undefined;
-    const r = ivaStep(this.iva, { ...(push ? { push } : {}), ...(busy ? {} : { along: stick }), grab }, this.world, dt);
+    const hop = this.hop.update(this.iva, { forward: fwd, right }, this.active && this.cycling === 0, dt, this.camera.position);
+    const r = ivaStep(this.iva, hop ? { hop } : {}, this.world, dt);
     this.iva = r.state;
     this.p = r.state.position;
     for (const e of r.events) this.tell(e);
-    const m = this.iva.motion;
-    this.zg.show(this.active, m.kind === "planeo" && !!this.graph.nearest(this.p, IVA.reachM));
   }
 
   private tell(e: IvaEvent): void {
-    if (e.kind === "impulso" && e.speed > IVA.glide.suave) this.say(`Impulso fuerte: ${num(e.speed, 1)} m/s, unos ${Math.round(e.forceN)} N en los brazos`);
-    else if (e.kind === "agarra" && e.speed > 0.7) this.say(`Llegas a ${num(e.speed, 1)} m/s: frenas con unos ${Math.round(e.forceN)} N en los brazos`);
-    else if (e.kind === "pared") this.say("Te paras contra la pared con las manos: desde aquí también puedes impulsarte");
+    // Hops (the arrows) say their speed on the HUD line, not in a notice.
+    if (e.kind === "pared") this.say("Te paras contra la pared con las manos: desde aquí también puedes impulsarte");
     else if (e.kind === "golpe") this.say(`¡Golpe contra la pared a ${num(e.speed, 1)} m/s! Rebotas`);
     else if (e.kind === "deriva") this.say("A la deriva: no llegas a nada. Solo te mueve el aire de la ventilación, muy despacio", 5);
     else if (e.kind === "sin-impulso")
-      this.say(e.why === "en-vuelo" ? "En el aire no puedes cambiar de rumbo: espera al próximo asidero o pulsa «Agarrarse»" : e.why === "contra-la-pared" ? "No puedes empujarte hacia la pared que sujetas" : "No hay nada en lo que apoyarse: el aire te llevará a una pared");
+      this.say(e.why === "en-vuelo" ? "En el aire no puedes cambiar de rumbo: espera al próximo asidero" : e.why === "contra-la-pared" ? "No puedes empujarte hacia la pared que sujetas" : "No hay nada en lo que apoyarse: el aire te llevará a una pared");
   }
 
   private lookDir(): Vec3 {
@@ -393,8 +403,19 @@ export class StationInteriorMode {
     // Pull the camera back from her head until it would leave the space she is in (never through a wall).
     // In flight, from a little higher, so her stretched-out body reads from the side.
     const mk = this.iva.motion.kind;
-    const lift = mk === "planeo" || mk === "impulso" || mk === "agarrando" ? 0.6 : 0;
-    const at = (k: number) => new THREE.Vector3().copy(p).addScaledVector(d3, -k).add(new THREE.Vector3(0, ((0.3 + lift) * k) / far, 0));
+    const lift = mk === "planeo" || mk === "impulso" || mk === "agarrando" || mk === "salto" ? 0.6 : 0;
+    // Back along the view and toward the middle of the aisle (the roomiest line, where the rails are
+    // not): from a rail in a corner the camera still fits behind her (docs/design/ingravidez.md).
+    const vol = this.interior.volumeAt(this.p);
+    const toMid = new THREE.Vector3(0, 0.3, 0);
+    if (vol && vol.kind !== "hangar") {
+      const long = vol.half.x >= vol.half.y && vol.half.x >= vol.half.z ? "x" : vol.half.z >= vol.half.y ? "z" : "y";
+      toMid.set(vol.centre.x - p.x, vol.centre.y - p.y, vol.centre.z - p.z);
+      toMid[long] = 0;
+      if (toMid.lengthSq() < 0.01) toMid.set(0, 0.3, 0);
+      else toMid.multiplyScalar(0.8);
+    }
+    const at = (k: number) => new THREE.Vector3().copy(p).addScaledVector(d3, -k).addScaledVector(toMid, Math.min(1, k / 1.2)).add(new THREE.Vector3(0, (lift * k) / far, 0));
     let d = 0;
     for (let k = 0.1; k <= far + 1e-6; k += 0.1) {
       const q = at(k);

@@ -160,6 +160,7 @@ Columna QA: cómo se comprueba jugando, o «Solo test» si no tiene sentido hace
 | VID-05 | Tareas: cadenas de retos que fallan tras demasiados errores y aplican su efecto al resolverse | `chore.test.ts`, `catalog.test.ts`, `habitat.test.ts` | Jugar: Tareas |
 | VID-06 | Una sacudida de un asteroide furioso rompe máquinas y crea escenarios de cuidado | `habitat.test.ts` | Jugar |
 | VID-07 | Tripulación, ejercicio, yoga, carne cultivada y soporte vital | `crew-member.test.ts`, `habitat.test.ts`, `bioreactor.test.ts` (carne cultivada), `sustainability.test.ts` | Solo test |
+| VID-08 | Avisos: los del jugador tienen prioridad y las alertas esperan su turno (H24); la vida a bordo («Pepa le ladra a Nube») flota donde sucede, como texto del HUD, solo si ese punto está a la vista | `notices.test.ts` | Jugar: recorrido PX `movimiento` |
 
 ### Paseo espacial (EVA)
 
@@ -173,8 +174,10 @@ Columna QA: cómo se comprueba jugando, o «Solo test» si no tiene sentido hace
 
 | ID | Qué tiene que pasar | Test / fixture | QA |
 |---|---|---|---|
-| ING-01 | De asidero en asidero: impulso, planeo sin dirección, agarre del asidero previsto; contra la pared rebota | `iva.test.ts`, `handrails.test.ts` (gravedad) | Jugar: espina de la nodriza (recorrido PX `movimiento`) |
+| ING-01 | De asidero en asidero: impulso, planeo sin dirección, agarre del asidero previsto; contra la pared rebota (dominio; el jugador ya no empuja a mano, ver ING-03) | `iva.test.ts`, `handrails.test.ts` (gravedad) | Solo test |
 | ING-02 | Anillo de 4 rpm y 1 g; en el eje las fuerzas aparentes curvan el vuelo | `spin-gravity.test.ts`, `ring.test.ts`, `iva.test.ts` | Jugar: ascensor |
+| ING-03 | Mando de flechas: cada flecha (relativa a la vista) elige el siguiente punto de aterrizaje en un cono de 50°, ella apunta, se impulsa, planea a 0,5–1,0 m/s y se agarra; las flechas se apagan durante el salto y vuelven al llegar; hacia una escotilla la cruza hasta el primer punto del otro módulo; desde cualquier punto se llega a todos (nadie se queda atascada) | `hops.test.ts`, `station/data/handrails.test.ts` | Jugar: espina de la nodriza y estación (recorrido PX `movimiento`) |
+| ING-04 | Túneles más amplios: la espina y el cubo de la nodriza miden 5,5 m (pozo de 2 m) y el pasillo del módulo habitable 1,6 × 1,9 m; la cámara en tercera persona cabe detrás de ella | `hops.test.ts` (tubo de 5,5 m) | Jugar: capturas `flechas-*` |
 
 ### nano_net (NNT)
 
@@ -258,7 +261,7 @@ fila del recorrido en [registro.md](registro.md).
 | ID | Recorrido | Qué debe pasar | Modo |
 | --- | --- | --- | --- |
 | PX-01 | `cocina` | Tres toques sobre la misma opción errónea dejan **Fallos 1/3**, la opción marcada con ✗ y el paso sin avanzar ni terminar; con los siete pasos bien, «✓ Conseguido 7/7 con 1 fallo» y la despensa (al tocar el estado) con crema de cacahuete. En vista HUD: fallos en ámbar sobre placa oscura, rojo al tope, «✗ Reto perdido» que un toque inmediato no cierra, y la receta sigue disponible. | iPhone 13, CPU ×4 |
-| PX-02 | `movimiento` | W enciende el RCS y el HUD lo dice; la velocidad deja de estar en reposo. En la escotilla, Impulsarse la mueve (lo dice el HUD y cambia la vista). Una tarea elegida en el eje avisa «Bajas al anillo». En el anillo, Caminar avanza la vista y el HUD dice la gravedad. | iPhone 13, CPU ×4 |
+| PX-02 | `movimiento` | W enciende el RCS y el HUD lo dice; la velocidad deja de estar en reposo. En la escotilla aparece el mando de flechas (sin «Manos» ni «Impulsarse»); ▲ la lleva al siguiente asidero (apunta, se impulsa, planea, se agarra: lo dice el HUD), las flechas se apagan durante el salto y vuelven al llegar. Una tarea elegida en el eje avisa «Bajas al anillo» y ni un aviso de ambiente ni una alerta lo pisan (H24). En el anillo, Caminar avanza la vista, el HUD dice la gravedad y, mirando al perro, «… le ladra a …» flota sobre él como texto del HUD. | iPhone 13, CPU ×4 |
 | PX-03 | `mision` | La radio avisa de cartas; una trae la misión de Bennu; el registro abre con 0 hechas. Posado (fase de la sonda preparada), la acción principal aparece abajo a la derecha; un fallo suma «Fallos 1/N»; ganar muestra «Conseguido» con un solo botón para volver. Con el traje, tumbarse y ganar el tercer duelo: Bennu persuadido y aviso de misión cumplida que no tapa el resultado. | iPhone 13, CPU ×4 |
 | PX-04 | `acciones-movil` | Cada pantalla (cabina acoplada y libre, ingravidez, anillo, tareas, puente, mapa, sonda, posado, traje, paseo, estación y sus seis pestañas) sin controles solapados a 390×664 visibles; capturas `ux-<antes/despues>-*-movil.png`. | iPhone 13, CPU ×1 |
 | PX-05 | `acciones-escritorio` | Lo mismo a 1280×800; capturas `ux-*-escritorio.png`. | Escritorio, CPU ×1 |

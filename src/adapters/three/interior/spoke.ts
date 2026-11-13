@@ -33,8 +33,12 @@ export interface SpokeLayout {
 
 export function spokeLayout(ring: SpinRing, roomHalfL: number): SpokeLayout {
   const axisY = ring.spec.floorRadiusM;
-  const tubeR = 2;
-  return { x: 0, z: -roomHalfL + 0.5, carR: 0.45, shaftR: 0.8, axisY, topY: axisY - tubeR - 2.2, hubHalfX: 2.5, deckHatchX: 11, moduleEndX: 16, tubeR };
+  // Game values (docs/design/ingravidez.md, «Túneles más amplios»): ISS modules are ~4,2–4,5 m across
+  // outside with a ~2 m aisle between racks; this large ship's hub and spine are open tubes 5,5 m
+  // across (the hub's shell outside is 6 m), so the third-person camera fits behind her. The shaft
+  // is 2 m across (a 1,27 m CBM hatch would fit with room to spare).
+  const tubeR = 2.75;
+  return { x: 0, z: -roomHalfL + 0.5, carR: 0.45, shaftR: 1.0, axisY, topY: axisY - tubeR - 2.2, hubHalfX: 2.5, deckHatchX: 11, moduleEndX: 16, tubeR };
 }
 
 export interface SpokeHandles {

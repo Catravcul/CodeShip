@@ -32,6 +32,8 @@ import { Walker } from "./adapters/input/walker";
 import type { DuelView, SessionText } from "./ui/duel-view";
 import type { SpinRing } from "@modules/gravity/domain/spin-gravity";
 import { GravityZones } from "./adapters/three/interior/zones";
+import { AmbientNotices } from "./adapters/three/interior/ambient-notices";
+import { NoticeQueue, type NoticeLevel } from "@modules/notices/domain/notices";
 
 const CAT_COLORS = [0xd9822b, 0x2b2b2b, 0xe8e2d6, 0x8a8f99];
 const HEN_COLORS = [0xb5651d, 0xf2efe6, 0x2a2a2a, 0xc98a4a];
@@ -111,6 +113,28 @@ const EVENT_TEXT = (h: Habitat, e: HabitatEvent): string | undefined => {
   }
 };
 
+/** Life on board that floats where it happens, only in view (docs/design/ingravidez.md, «Avisos»): who it happens to. */
+const AMBIENT_WHO = (e: HabitatEvent): string | undefined => {
+  switch (e.type) {
+    case "plant-bitten":
+    case "cat-grass":
+    case "hens-stalked":
+      return e.catId;
+    case "cats-hissed":
+      return e.a;
+    case "hen-pecked-plant":
+      return e.henId;
+    case "animal-hostile":
+      return e.actorId;
+    case "introduction-advanced":
+      return e.newcomerId;
+    case "family-formed":
+      return e.memberIds[0];
+    default:
+      return undefined;
+  }
+};
+
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
 /** The walkable habitat module: 3D scene, walking, stations and chores as code challenges. */
@@ -151,7 +175,10 @@ export class Interior {
   private walkTo: { pos: THREE.Vector3; look: THREE.Vector3; then: () => void } | null = null;
   private session: ChoreSession | null = null;
   private panelKey = "";
-  private toastUntil = 0;
+  /** The toast: the player's own notices first, alerts wait (H24). */
+  private readonly notices = new NoticeQueue();
+  private toastText = "";
+  private readonly ambient: AmbientNotices;
   private dayClock = 0;
   active = false;
   /** Opens the flight deck's navigation page from the ring's navigation console (set by main.ts). */
@@ -216,6 +243,7 @@ export class Interior {
     this.board = this.ui.querySelector(".board")!;
     this.stationBtn = this.ui.querySelector(".station-btn")!;
     this.toast = this.ui.querySelector(".toast")!;
+    this.ambient = new AmbientNotices(this.ui);
     this.ui.querySelector(".tasks-btn")!.addEventListener("click", () => this.openBoard());
     this.radioBtn = this.ui.querySelector(".radio-btn")!;
     if (ring) this.zones = new GravityZones(this.ui, this.scene, ring, ROOM.halfL, ROOM.height, (t) => this.say(t));
@@ -295,11 +323,13 @@ export class Interior {
       this.dayClock += days;
     }
     for (const e of this.habitat.drainEvents()) this.onEvent(e);
-    for (const l of this.habitat.mailbox?.drainNew() ?? []) this.say(l.channel === "llamada" ? `Llamada de ${l.from}` : `Carta de ${l.from}: ${l.subject}`);
+    for (const l of this.habitat.mailbox?.drainNew() ?? []) this.say(l.channel === "llamada" ? `Llamada de ${l.from}` : `Carta de ${l.from}: ${l.subject}`, "alerta");
     if (!this.active) return;
     this.radioBtn.querySelector("b")!.textContent = this.habitat.mailbox?.unread ? String(this.habitat.mailbox.unread) : "";
 
     const zone = this.zones?.zone ?? "anillo";
+    // In 0 g the arrow keys hop (arrow-pad.ts); on the ring they look around.
+    this.walker.arrowsLook = zone !== "eje";
     if (zone !== "anillo") {
       // Off the ring: the zones move her (elevator or floating). A chore picked here takes her back down.
       if (this.walkTo) this.zones!.descend();
@@ -384,7 +414,19 @@ export class Interior {
     if (near)
       this.stationBtn.textContent =
         near.id === "navegacion" ? "Consola de navegación: mapa, viajes y misiones" : near.id === "camarote" ? `Camarote: leer cartas${this.habitat.mailbox?.unread ? ` (${this.habitat.mailbox.unread})` : ""}` : `${near.label}: ${n} ${n === 1 ? "tarea" : "tareas"}`;
-    if (performance.now() > this.toastUntil) this.toast.classList.remove("on");
+    this.syncNotices();
+  }
+
+  /** The toast from the queue, and the life-aboard labels where they happen (only on the ring, same side of the doorway). */
+  private syncNotices(): void {
+    const now = performance.now() / 1000;
+    const n = this.notices.current(now);
+    if (n && n.text !== this.toastText) this.toast.textContent = n.text;
+    this.toastText = n?.text ?? "";
+    this.toast.classList.toggle("on", !!n);
+    const ring = (this.zones?.zone ?? "anillo") === "anillo";
+    const camDeck = this.camera.position.z > ROOM.halfL;
+    this.ambient.update(this.camera, (p) => ring && p.z > ROOM.halfL === camDeck, now);
   }
 
   private get pots() {
@@ -624,14 +666,20 @@ export class Interior {
       if (p) this.figure.pose(p.pose);
     }
     const text = EVENT_TEXT(this.habitat, e);
-    if (text) this.say(text);
+    if (!text) return;
+    const who = AMBIENT_WHO(e);
+    const m = who ? this.model(who) : undefined;
+    if (m) {
+      if (this.active) this.ambient.add(text, () => m.root.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.55, 0)), performance.now() / 1000);
+      return;
+    }
+    this.say(text, e.type === "chore-done" ? "jugador" : "alerta");
   }
 
-  private say(text: string): void {
+  /** A notice in the toast: the player's own (default) come first; alerts wait their turn (H24). */
+  private say(text: string, level: NoticeLevel = "jugador"): void {
     if (!this.active) return;
-    this.toast.textContent = text;
-    this.toast.classList.add("on");
-    this.toastUntil = performance.now() + 3000;
+    this.notices.push(text, level, performance.now() / 1000);
   }
 
   /** The radio: Nevaeh's letters, newest first. */

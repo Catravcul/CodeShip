@@ -173,8 +173,111 @@ lanzada, aproximación, posada, duelo, resultado, confianza en el mapa, recupera
 `subyugacion-2*` (módulo: mapa, aproximación, anclado, duelo, resultado, siguiente paso) y
 `subyugacion-3*` (traje: fuera, tumbada, duelo, resultado).
 
-## 7. Preguntas abiertas
+## 7. Niveles de subyugación (después de las tres fases)
 
+Palabras del diseñador: «cada asteroide tiene cierto control sobre la gravedad como para moverse a sí
+mismos, de ahí que sea un negocio super lucrativo, es posible convencer a un asteroide a que vaya por
+su cuenta a la estación y a gran velocidad y también le da el poder para perseguir a la nave espacial
+que le ha hecho enfurecer hasta calmarse, la subyugación tiene niveles, un asteroide puede ser
+convencido para aportar a la nano net, enviar recursos a la nave, enviar recursos a la estación y como
+nivel máximo ir hasta la estación para que se le extraigan todos los materiales».
+
+Código: `subjugation/domain/levels.ts` (niveles, perfil del duelo), `subjugation/domain/yields.ts`
+(lo que da), `celestial/domain/gravity-drive.ts` (motor gravitatorio),
+`subjugation/application/asteroid-services.ts` (paquetes, viaje final, persecución),
+`mothership/domain/hold.ts` (bodega de la nodriza), `src/subjugation-levels.ts` (conexión, radio,
+mapa). El remolcador y el lanzador de masas son otra cosa (fuentes pasivas sin subyugar,
+[importacion.md](importacion.md)).
+
+### Los cuatro niveles
+
+Al terminar las tres fases el asteroide **obedece** (nivel 0: cuenta para las misiones de Nevaeh).
+Cada nivel se gana con otro duelo de código, desde el módulo anclado («Convencer · nivel N») o desde
+la sonda posada. Los niveles se suben en orden y nunca se pierden.
+
+| Nivel | Qué hace | Confianza necesaria |
+|---|---|---|
+| 1 | Aporta a la nano_net: ya puede ser **núcleo** (antes bastaba con subyugarlo) | 80 % |
+| 2 | Envía cada día de juego un paquete de su roca a la **bodega de la nodriza** | 85 % |
+| 3 | Envía cada día un paquete mayor a la **estación** (buzón `StationInbox` de importación) | 90 % |
+| 4 | **Viaja él solo a la estación**, aparca a su lado y la refinería recibe toda su masa, lote a lote | 95 % |
+
+Valores de juego: un nivel ganado da +5 % de confianza; un duelo de nivel fallado quita 10 % (no el
+nivel), lo enfada y **persigue** a la nave con la que se habló (módulo o sonda). La confianza vuelve
+sirviendo tranquilo: +2 % por día de juego. Así, tras un fallo hay que esperar unos días (unos 3 min
+reales) para el siguiente nivel.
+
+Duelo de cada nivel (`levelDuelProfile`): profundidad 2 + nivel (el traje es 2), así que +0,15 de
+dificultad y +2 bloques de conceptos por profundidad (máx. 10), bloques máx. base + 2 + nivel, ideas
+base + 1 + nivel, distractores siempre, paciencia base + confianza/0,25 − nivel (mín. 2). La ira de un
+fallo es la de la fase 2 en los niveles 1–2 y la de la fase 3 en los niveles 3–4.
+
+### Lo que da (escalado por masa y composición reales)
+
+Factor = ∛(M / M_Bennu) × (0,5 + riqueza). La masa es la de SBDB/NEOWISE con la densidad de Bennu; la
+riqueza (`resourceRichness`) sale de la composición medida de Bennu (0,59). Bennu = 1,09; 242916
+(2,44 km) ≈ 5,4.
+
+| | Bennu | 242916 (2006 OS2) |
+|---|---|---|
+| Nivel 2: paquete diario a la nodriza (250 kg × factor) | 272 kg | 1,36 t |
+| Nivel 3: paquete diario a la estación (1000 kg × factor) | 1,09 t | 5,4 t |
+| Nivel 4: extracción (500 kg/h × factor) | 545 kg/h ≈ 13 t/día | 2,7 t/h ≈ 65 t/día |
+| Nivel 4: total que extraer | 7,3 × 10¹⁰ kg | 9,0 × 10¹² kg |
+
+Los paquetes llevan su composición real (`extractToCargo`) y vuelan de verdad a 100 m/s: llegan
+cuando cubren la distancia. Los de la estación entran por el buzón de importación con esas horas de
+vuelo; los de la nodriza caen en su bodega (20 t, valor de juego), que se descarga en el almacén de la
+estación en cuanto la nodriza atraca. Un día de juego son 40 s, como la vida a bordo.
+
+### Se mueven solos: motor gravitatorio (ficción de juego)
+
+`gravity-drive.ts`. Aceleración a plena voluntad: 0,06 m/s² para Bennu × (M_Bennu / M)^(1/6) (los
+grandes son más lentos, pero se mueven). La guía (`stepDrive`) persigue un objetivo que puede moverse
+con la curva de frenado discreta y nunca pasa de su velocidad máxima.
+
+- **Viaje final (nivel 4)**: ×20 la aceleración (1,2 m/s² Bennu, 0,54 m/s² 242916), hasta
+  60 m/s × factor de masa. Espera a que el módulo y la sonda se suelten de él; luego sale, aparca a
+  300 m de la esfera de la estación por el lado del que llega (girando si ya hay otro aparcado) y la
+  sigue si la estación huye (modo supervivencia). Bennu tarda ~1 min de juego; 242916 unos 4 min.
+  Se ve moverse en el mapa (línea a su destino) y en 3D junto a la estación.
+- **Tiempo de viaje comprimido**: el viaje corre en tiempo de juego (con el ×tiempo del piloto). El
+  gancho `LevelsUi.travelTimeScale(etaJuegoS)` (por defecto 1) es para la rama `viajes-retos`: devuelve
+  cuántas veces más rápido correr el viaje para respetar su tope de segundos reales.
+- **Persecución (ira)**: `AsteroidWrath.pursuit(id)` da la nave que lo enfadó (sonda en fase 1, módulo
+  en fase 2, traje y módulo en fase 3; un duelo de nivel nombra la nave por la que se habló) y la más
+  cercana activa. El asteroide se acerca hasta 0,4 × su alcance de la superficie, para que sus armas
+  lleguen. Aceleración 0,5–1 × la base según la ira; velocidad máx. 4 m/s × ira (Bennu): el módulo, con
+  su motor, lo deja atrás; si no, hay que esperar a que se calme. Calmado, vuelve a su sitio a ritmo
+  tranquilo y retoma su trabajo. Mientras está furioso no trabaja.
+
+### Interfaz
+
+- **Cabina**: en el asteroide que obedece el botón dice «Convencer · nivel N»; el cartel dice el nivel,
+  el siguiente y lo que falta (confianza o calma). La consola de la sonda tiene el mismo botón.
+- **Chip y ficha del mapa**: cuatro casillas de nivel (Red, Nave, Estación, Viaje) y lo que está haciendo.
+- **Mapa**: hexágono con el nivel junto al asteroide, color por tarea (morado red, oro nave, naranja
+  estación, azul viaje, rojo persecución con anillo, gris vuelta), una línea corta bajo el nombre y una
+  línea discontinua hasta su destino cuando se mueve.
+- **Radio**: aviso arriba (abajo en móvil) por cada paquete, salida, llegada, persecución y descarga de
+  la bodega; los paquetes que llegan a la estación salen además en el aviso de importación.
+
+Capturas (iPhone 13 y 1280×800, con el estado puesto por código para llegar a los niveles altos):
+`docs/screenshots/niveles-1-convencer`, `-2-duelo-nivel`, `-3-nivel1`, `-4-paquete-radio`, `-5-mapa`,
+`-6-mapa-persigue`, `-7-aparcado-3d` (`-mobile` / `-desktop`).
+
+Pruebas: `levels.test.ts`, `yields.test.ts`, `asteroid-services.test.ts`, `gravity-drive.test.ts`,
+`hold.test.ts`, la persecución en `wrath.test.ts` y los duelos de nivel en `expedition.test.ts`.
+
+## 8. Preguntas abiertas
+
+- Si el asteroide de nivel 4 era núcleo de la nano_net, el núcleo se queda donde estaba (el sitio de la
+  red es fijo). ¿Debería impedirse el nivel 4 a un núcleo, o llevarse la red consigo?
+- El nivel 1 ahora hace falta para ser núcleo (antes bastaba con subyugar). ¿Correcto?
+- ¿Los niveles 2 y 3 deberían sumarse (enviar a la nave y a la estación a la vez)? Ahora solo hace la
+  tarea de su nivel más alto.
+- La extracción de nivel 4 no se acaba nunca en la práctica (Bennu: millones de horas). ¿Tope de
+  almacén o una tasa que crezca con el equipo de la estación?
 - ¿La estación debería fabricar sondas (plano y materiales) en vez de reponerlas gratis?
 - ¿Volver a la bahía a mano desde 1,3 km es demasiado largo? Se podría añadir un «volver a la
   nodriza» automático con la guía de viaje.

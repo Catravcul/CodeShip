@@ -10,7 +10,7 @@ const STAGE_SHORT: Readonly<Record<Stage, string>> = { sonda: "Sonda", nave: "M�
 /** What to do next with this asteroid, in one line. */
 export function nextStepText(r: Rapport | undefined, angry = false): string {
   if (angry) return "Está furioso: rescata la sonda si puedes, o huye con el módulo";
-  switch (r?.next ?? "sonda") {
+  switch (r ? r.next : "sonda") {
     case "sonda":
       return "No te conoce: lanza la sonda desde el puente de la nodriza y pósala en él";
     case "nave":

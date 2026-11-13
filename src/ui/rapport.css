@@ -58,5 +58,6 @@ body.in-probe .fd, body.in-probe #app > .touch, body.in-probe .banner, body.in-p
 .radio-toast { position: fixed; left: 50%; transform: translateX(-50%); top: 92px; z-index: 6; width: min(420px, calc(100vw - 24px)); box-sizing: border-box; padding: 6px 10px; font-size: 12px; line-height: 1.35; color: #fff3d6; background: #1d1404e6; border: 1px solid #ffd27f88; border-radius: 10px; pointer-events: none; opacity: 0; transition: opacity 0.3s; }
 .radio-toast.on { opacity: 1; }
 .radio-toast b { color: #ffd27f; }
+.radio-toast { top: 150px; }
 @media (max-width: 600px) { .radio-toast { top: auto; bottom: 330px; font-size: 11px; } }
 body.in-duel .radio-toast, body.in-interior .radio-toast { display: none; }

@@ -16,9 +16,7 @@ async function choose(j, text) {
   const i = opts.findIndex((o) => o.replace(/^✗\s*/, "") === text);
   if (i < 0) return j.check(`la opción «${text}» está en pantalla`, false, opts.join(" | "));
   // A finger on the button's centre (also on an option marked as failed: a player can still tap it).
-  const b = await j.page.locator(".duel .option").nth(i).boundingBox();
-  await j.page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
-  await j.page.waitForTimeout(450);
+  await j.tapAt(j.page.locator(".duel .option").nth(i));
   return true;
 }
 

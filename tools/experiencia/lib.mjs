@@ -87,12 +87,47 @@ export class Journey {
     const loc = this.page.locator(selector).first();
     try {
       await loc.waitFor({ state: "visible", timeout: 15000 });
-      await loc.tap({ timeout: 15000 });
+      // A finger on a phone, the mouse on a desktop.
+      if (this.opts.mobile === false) await loc.click({ timeout: 15000 });
+      else await loc.tap({ timeout: 15000 });
       return true;
     } catch (e) {
       this.check(`se puede tocar «${what}»`, false, e.message.split("\n")[0]);
       return false;
     }
+  }
+
+  /** A finger (or the mouse on desktop) on the centre of an element, whatever its state. */
+  async tapAt(loc) {
+    let b = await loc.boundingBox();
+    if (!b) return false;
+    const vh = this.page.viewportSize().height;
+    if (b.y < 0 || b.y + b.height > vh) {
+      // Off screen: a player scrolls first. Worth knowing when it is an answer to a challenge.
+      const what = (await loc.textContent())?.trim().slice(0, 30);
+      if (!this.scrolled) this.problem(`Hay que desplazar la pantalla para llegar a «${what}»: no cabe en ${this.page.viewportSize().width}×${vh}`);
+      this.scrolled = true;
+      await loc.scrollIntoViewIfNeeded();
+      await this.page.waitForTimeout(200);
+      b = await loc.boundingBox();
+    }
+    if (!b) return false;
+    if (this.opts.mobile === false) await this.page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+    else await this.page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+    await this.page.waitForTimeout(450);
+    return true;
+  }
+
+  /**
+   * Answers the challenge on screen with taps: right, or wrong on purpose. `oracle` runs in the page
+   * and returns the challenge being shown (the answer key a player who knows the code would have).
+   */
+  async answer(oracle, right = true) {
+    const ex = await this.page.evaluate(oracle);
+    if (!ex) return false;
+    if (ex.kind === "choice") return this.tapAt(this.page.locator(".duel .option").nth(right ? ex.correct : (ex.correct + 1) % ex.options.length));
+    for (const id of right ? ex.solution : [...ex.solution].reverse()) await this.tapAt(this.page.locator(`.duel .tray [data-id="${id}"]`));
+    return this.tapAt(this.page.locator(".duel .submit"));
   }
 
   async key(code, ms = 0) {
@@ -165,7 +200,7 @@ export class Journey {
   }
 
   /** Pairs of visible buttons that overlap on screen (each one hides part of the other). */
-  async overlaps(selector = "button, .chip, .trip-chip, .rapport-chip, .hud, .banner, .vstick, .region-tag, .cam-tag, .toast.on") {
+  async overlaps(selector = "button, .chip, .trip-chip, .rapport-chip, .hud, .help, .banner, .vstick, .region-tag, .cam-tag, .toast.on") {
     return this.page.evaluate((sel) => {
       const vis = [...document.querySelectorAll(sel)].filter((el) => {
         const s = getComputedStyle(el);
@@ -186,6 +221,8 @@ export class Journey {
           const a = vis[i];
           const b = vis[j];
           if (a.contains(b) || b.contains(a)) continue;
+          // A sticky button over a scrolling list is by design: the list scrolls out from under it.
+          if (getComputedStyle(a).position === "sticky" || getComputedStyle(b).position === "sticky") continue;
           const r = a.getBoundingClientRect();
           const q = b.getBoundingClientRect();
           const w = Math.min(r.right, q.right) - Math.max(r.left, q.left);

@@ -1,0 +1,52 @@
+/* Action layout (docs/design/ux-acciones.md).
+   Rules: one context column for what the moment asks for; secondary toggles in a menu on phones;
+   left thumb turns and looks, right thumb moves and acts; nothing overlaps at 390×664 or 1280×800. */
+
+/* The context column. Outside the cockpit it only shows the trip chip, bottom-centre as before. */
+.ctx-dock { position: fixed; z-index: 9; left: 50%; bottom: calc(8px + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(380px, calc(100vw - 16px)); display: flex; flex-direction: column-reverse; align-items: stretch; gap: 6px; pointer-events: none; }
+.ctx-dock > * { position: static !important; inset: auto !important; transform: none !important; margin: 0 !important; max-width: none !important; width: auto !important; pointer-events: auto; box-sizing: border-box; }
+.ctx-dock > .banner, .ctx-dock > .rapport-chip, .ctx-dock > .region-tag { pointer-events: none; }
+/* Bottom up: primary action, its message, trust chip, trip chip, where you are. */
+.ctx-dock > .action { order: 1; }
+.ctx-dock > .mode-btn { order: 2; }
+.ctx-dock > .eva-btn { order: 3; }
+.ctx-dock > .banner { order: 4; }
+.ctx-dock > .rapport-chip { order: 5; }
+.ctx-dock > .trip-chip { order: 6; }
+.ctx-dock > .region-tag { order: 7; }
+/* Out of the cockpit the moved buttons and tags keep their own hiding rules; the EVA button only shows in it. */
+.ctx-dock > .eva-btn { display: none; }
+body.in-cockpit .ctx-dock > .eva-btn:not(.hidden) { display: block; }
+.ctx-dock > .eva-btn { min-height: 48px; padding: 10px 16px; font: inherit; font-size: 15px; font-weight: 700; color: #001018; background: #ffd23f; border: 0; border-radius: 12px; }
+.ctx-dock > .action { padding: 12px 16px; font-size: 16px; min-height: 52px; }
+.ctx-dock > .mode-btn { min-height: 48px; }
+.ctx-dock > .banner { text-align: right; background: #05060cd9; padding: 6px 10px; border-radius: 8px; font-size: 13px; }
+.ctx-dock > .banner:empty { display: none; }
+
+/* Cockpit: the column sits bottom-right, over the right thumb. */
+body.in-cockpit .ctx-dock { left: auto; right: 16px; transform: none; bottom: 24px; width: min(360px, 34vw); align-items: flex-end; }
+body.in-cockpit .ctx-dock > .rapport-chip, body.in-cockpit .ctx-dock > .trip-chip, body.in-cockpit .ctx-dock > .region-tag { align-self: stretch; }
+@media (pointer: coarse) {
+  /* Above the MOVER pad (4 rows) and right of the MIRAR stick. */
+  body.in-cockpit .ctx-dock { right: 10px; bottom: calc(266px + env(safe-area-inset-bottom)); width: calc(100vw - 150px); }
+  body.in-cockpit .ctx-dock > .region-tag { font-size: 11px; text-align: left; }
+  /* Left thumb: turning (GIRAR) and looking (MIRAR) together. */
+  body.in-cockpit .pilot-look { left: 14px; right: auto; margin-left: 0; bottom: calc(222px + env(safe-area-inset-bottom)); }
+  /* Mandos: the flight toggles fold into a menu at the top right. */
+  .flight-bar { top: 10px; right: 10px; }
+  .flight-bar:not(.open) > button:not(.bar-toggle) { display: none; }
+  .flight-bar.open { padding: 6px; background: #05141ce6; border: 1px solid #7fdcff44; border-radius: 12px; }
+  .flight-bar button { min-height: 40px; }
+  /* A shorter HUD: the detail lines (velocity components, spin, each tank) stay on desktop. */
+  .hud { max-width: calc(100vw - 140px); }
+  .hud .row.small:not(.mail) { display: none; }
+}
+@media (pointer: fine) { .flight-bar .bar-toggle { display: none; } }
+/* Probe console: its own primary action sits over the right thumb, so the trip chip goes over the left one. */
+@media (pointer: coarse) { body.in-probe .ctx-dock { left: 10px; transform: none; bottom: calc(222px + env(safe-area-inset-bottom)); width: calc(52vw - 10px); } }
+/* With the task board or the radio open, the interior's notices drop to the bottom instead of covering the list. */
+.interior-ui .board:not(.hidden) ~ .toast { top: auto; bottom: calc(16px + env(safe-area-inset-bottom)); }
+/* Desktop: the keyboard help moves to the bottom left, free on desktop (no touch pads), so the context column has the right. */
+.help { right: auto; left: 18px; text-align: left; }
+/* The interior status (bars, larder, gravity) gets a dark plate: over bright signs and lights it could not be read. */
+.ihud { box-sizing: border-box; padding: 6px 8px; background: #05141cc4; border-radius: 10px; }

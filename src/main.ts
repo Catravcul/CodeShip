@@ -111,6 +111,7 @@ import { IMPORT_BLUEPRINTS } from "@modules/imports/data/blueprints";
 import { importGood } from "@modules/imports/data/goods";
 import { orderLetter } from "@modules/imports/data/letters";
 import { cargoMaterial } from "@modules/station/data/materials";
+import "./ui/acciones.css";
 import { G } from "@core/units";
 
 // --- Domain setup -----------------------------------------------------------
@@ -732,7 +733,8 @@ function dockingText(): string {
 function renderPhase(): void {
   const p = expedition.phase;
   const t = flight.telemetry();
-  action.classList.toggle("hidden", nanoPanel.busy || !((p === "landed" && (expedition.canStartDuel || expedition.canStartLevel("nave")) && !duelView.visible) || ((p === "persuaded" || p === "aggressive") && duelView.visible)));
+  // After the duel, its own result screen has the way back (Continuar / Cerrar): no second button for it.
+  action.classList.toggle("hidden", nanoPanel.busy || !(p === "landed" && (expedition.canStartDuel || expedition.canStartLevel("nave")) && !duelView.visible));
   action.textContent = p === "landed" ? (expedition.canStartLevel("nave") ? `Convencer · nivel ${expedition.bond.nextLevel}` : "Entrar en su mente") : "Volver a la cabina";
   if (p === "persuaded") {
     banner.textContent = stageResultText(expedition);
@@ -1000,4 +1002,17 @@ renderer.setAnimationLoop((now) => {
 });
 
 // Exposed for automated checks and debugging.
+// --- Action layout (docs/design/ux-acciones.md) -----------------------------
+// One place for what the moment asks for: the context column. In the cockpit it sits over the right
+// thumb (above the MOVER pad on phones, bottom-right on desktop); from the bottom up it holds the
+// primary action (enter, go outside, convince…), the message that explains it, the asteroid's trust
+// chip, the trip chip and where you are. Secondary flight toggles live in the Mandos menu.
+const ctxDock = document.createElement("div");
+ctxDock.className = "ctx-dock";
+root.appendChild(ctxDock);
+for (const sel of [".action", ".mode-btn", ".eva-btn", ".banner", ".rapport-chip", ".trip-chip", ".region-tag"]) {
+  const el = root.querySelector(sel);
+  if (el) ctxDock.appendChild(el);
+}
+
 (window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, tripPreview, tripChip, duelView, levels };

@@ -1,37 +1,8 @@
 // Nevaeh's first mission end to end: read the letter on the radio, find it in the mission log, land on
 // Bennu, convince its mind in the duel (one wrong answer on purpose) and see the mission done.
 
-/**
- * The answer key: what a player who knows the code would answer. Reading the right option is the
- * oracle, not an action: every action below is a tap on a visible control.
- */
-const key = () => {
-  const ex = window.codeship.expedition.duel?.current;
-  if (!ex) return null;
-  return ex.kind === "choice" ? { kind: "choice", index: ex.correct, options: ex.options } : { kind: "order", solution: ex.solution };
-};
-
-async function tapCentre(j, loc) {
-  const b = await loc.boundingBox();
-  await j.page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
-  await j.page.waitForTimeout(450);
-}
-
-/** Answers the challenge on screen: right, or wrong on purpose. */
-async function answer(j, right) {
-  const p = j.page;
-  const k = await p.evaluate(key);
-  if (!k) return false;
-  if (k.kind === "choice") {
-    const i = right ? k.index : (k.index + 1) % k.options.length;
-    await tapCentre(j, p.locator(".duel .option").nth(i));
-    return true;
-  }
-  const order = right ? k.solution : [...k.solution].reverse();
-  for (const id of order) await tapCentre(j, p.locator(`.duel .tray [data-id="${id}"]`));
-  await tapCentre(j, p.locator(".duel .submit"));
-  return true;
-}
+/** The answer key: the challenge on screen, as a player who knows the code would read it. */
+const key = () => window.codeship.expedition.duel?.current ?? null;
 
 export async function mision(j) {
   const p = j.page;
@@ -84,12 +55,12 @@ export async function mision(j) {
   const fails0 = (await j.texts(".duel .stat.fails"))[0] ?? "";
   j.check("el duelo muestra Aciertos y Fallos escritos", /Fallos 0\//.test(fails0), fails0);
 
-  await answer(j, false);
+  await j.answer(key, false);
   const fails1 = (await j.texts(".duel .stat.fails"))[0] ?? "";
   const fb = (await j.texts(".duel .feedback"))[0] ?? "";
   j.check("una idea errónea suma un fallo y lo dice", /Fallos 1\//.test(fails1) && /✗/.test(fb), `${fails1} · ${fb}`);
   await j.shot("duelo-fallo");
-  for (let n = 0; n < 12 && (await p.evaluate(() => window.codeship.expedition.phase)) === "duel"; n++) await answer(j, true);
+  for (let n = 0; n < 12 && (await p.evaluate(() => window.codeship.expedition.phase)) === "duel"; n++) await j.answer(key, true);
   const phase = await p.evaluate(() => window.codeship.expedition.phase);
   j.check("con las ideas correctas Bennu queda persuadido", phase === "persuaded", phase);
   const result = (await j.texts(".duel .result"))[0] ?? "";

@@ -13,8 +13,8 @@ const JOURNEYS = {
   cocina: ["Cocinar paso a paso: crema de cacahuete con un fallo repetido, receta perdida en vista HUD", cocina],
   movimiento: ["Moverse: propulsores de la cabina, impulso en ingravidez, caminar por el anillo", movimiento],
   mision: ["Misión 1 de Nevaeh: carta, registro, aterrizaje en Bennu y duelo con un fallo", mision],
-  "acciones-movil": ["Botones de cada pantalla a 390×844: capturas y solapes", acciones, { mobile: true }],
-  "acciones-escritorio": ["Botones de cada pantalla a 1280×800: capturas y solapes", acciones, { mobile: false }],
+  "acciones-movil": ["Botones de cada pantalla de un iPhone 13 (390×664 visibles de 390×844): capturas y solapes", acciones, { mobile: true, throttle: 1 }],
+  "acciones-escritorio": ["Botones de cada pantalla a 1280×800: capturas y solapes", acciones, { mobile: false, throttle: 1 }],
 };
 
 const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
@@ -56,7 +56,7 @@ for (const [name, [title, play, opts = {}]] of Object.entries(JOURNEYS)) {
 }
 server?.kill();
 
-const md = [`# Experiencia del jugador · ${stamp}`, "", `iPhone 13 (390×844, táctil), CPU ×4 más lenta. Capturas en esta carpeta.`, ""];
+const md = [`# Experiencia del jugador · ${stamp}`, "", `iPhone 13 (pantalla 390×844; 390×664 visibles con las barras de Safari; táctil), CPU ×4 más lenta (los recorridos de botones, sin frenar). Capturas en esta carpeta.`, ""];
 for (const r of results) {
   md.push(`## ${r.ok ? "✓" : "✗"} ${r.title}`, "");
   for (const c of r.checks) md.push(`- ${c.setup ? "·" : c.ok ? "✓" : "✗"} ${c.name}${c.detail ? ` — ${c.detail}` : ""}`);

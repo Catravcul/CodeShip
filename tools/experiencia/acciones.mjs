@@ -70,7 +70,11 @@ export async function acciones(j) {
   await p.waitForFunction(() => window.codeship.expedition.phase === "landed", null, { timeout: 180000 });
   await audit(j, "aterrizado", "Módulo posado en Bennu");
   if ((await j.texts(".eva-btn")).length) {
-    await j.tap(".eva-btn", "Salir al exterior");
+    await j.tap(".eva-btn", "Salir de la nave");
+    await p.locator(".duel:not(.hidden)").waitFor({ timeout: 30000 });
+    await audit(j, "eva-traje", "Ponerse el traje (reto)");
+    for (let n = 0; n < 8 && (await p.evaluate(() => window.codeship.eva.phase)) === "preparando"; n++) await j.answer(() => window.codeship.eva._run?.current ?? null);
+    await j.tapAt(p.locator(".duel button.end"));
     await p.waitForTimeout(2500);
     await audit(j, "eva", "Paseo espacial");
   }

@@ -72,8 +72,11 @@ export class FlightView {
     this.stick.el.addEventListener("dblclick", () => this.center());
     const bar = document.createElement("div");
     bar.className = "flight-bar";
-    bar.innerHTML = `<button class="cam-btn"></button><button class="warp-btn"></button><button class="center-btn">Centrar</button>`;
+    // On phones the flight toggles fold into a menu (progressive disclosure, docs/design/ux-acciones.md).
+    bar.innerHTML = `<button class="bar-toggle" aria-expanded="false">☰ Mandos</button><button class="cam-btn"></button><button class="warp-btn"></button><button class="center-btn">Centrar</button>`;
     root.appendChild(bar);
+    const toggle = bar.querySelector<HTMLButtonElement>(".bar-toggle")!;
+    toggle.addEventListener("click", () => toggle.setAttribute("aria-expanded", String(bar.classList.toggle("open"))));
     this.camBtn = bar.querySelector(".cam-btn")!;
     this.warpBtn = bar.querySelector(".warp-btn")!;
     this.camBtn.addEventListener("click", () => {

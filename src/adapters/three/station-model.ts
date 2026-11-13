@@ -19,11 +19,42 @@ const cyl = (r: number, h: number, m: THREE.Material, seg = 24) => new THREE.Mes
  */
 export class StationModel {
   readonly root = new THREE.Group();
-  private readonly beacons: THREE.Mesh[] = [];
-  private readonly portLights: THREE.Mesh[] = [];
-  private readonly wings: THREE.Object3D[] = [];
+  private beacons: THREE.Mesh[] = [];
+  private portLights: THREE.Mesh[] = [];
+  private wings: THREE.Object3D[] = [];
+  /** The station's swappable components as groups (the bay's «Estación» tab tints and picks them). */
+  readonly slots = new Map<string, THREE.Group>();
 
   constructor(layout: StationLayout, orientation: { x: number; y: number; z: number; w: number } = { x: 0, y: 0, z: 0, w: 1 }) {
+    this.build(layout);
+    this.root.quaternion.set(orientation.x, orientation.y, orientation.z, orientation.w);
+  }
+
+  /** The station grew: build it again from its new layout (same place and attitude). */
+  rebuild(layout: StationLayout): void {
+    this.root.traverse((o) => {
+      if (o instanceof THREE.Mesh) o.geometry.dispose();
+    });
+    this.root.clear();
+    this.beacons = [];
+    this.portLights = [];
+    this.wings = [];
+    this.slots.clear();
+    this.build(layout);
+  }
+
+  private build(layout: StationLayout): void {
+    const slot = (id: string) => {
+      let g = this.slots.get(id);
+      if (!g) {
+        g = new THREE.Group();
+        g.userData.partId = `estacion:${id}`;
+        this.slots.set(id, g);
+        this.root.add(g);
+      }
+      return g;
+    };
+    const shell = slot("escudo");
     const hull = mat(0xd9dde3, { metalness: 0.25, roughness: 0.55 });
     const mli = mat(0xe8e2cf, { metalness: 0.05, roughness: 0.9 });
     const dark = mat(0x3a4250);
@@ -32,7 +63,8 @@ export class StationModel {
       const a = v(m.from), b = v(m.to);
       const len = a.distanceTo(b);
       const g = new THREE.Group();
-      const body = cyl(m.radiusM, len, m.kind === "habitat" ? mli : m.kind === "adaptador" ? dark : hull, 28);
+      // Inflatable modules (the farm, like a B330) and the habitat wear white blankets.
+      const body = cyl(m.radiusM, len, m.kind === "habitat" || m.kind === "agricola" ? mli : m.kind === "adaptador" ? dark : hull, 28);
       g.add(body);
       // Ribs every metre or so, like the ISS modules' panels.
       if (m.kind !== "adaptador")
@@ -44,7 +76,15 @@ export class StationModel {
         }
       g.position.copy(a.clone().add(b).multiplyScalar(0.5));
       g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
-      this.root.add(g);
+      shell.add(g);
+      if (m.kind === "agricola") {
+        // Grow lights glowing pink through a row of windows.
+        for (let k = -2; k <= 2; k++) {
+          const win = box(0.9, 0.2, 0.5, new THREE.MeshBasicMaterial({ color: 0xe070ff }));
+          win.position.copy(g.position).add(new THREE.Vector3(((a.x < b.x ? 1 : -1) * k * len) / 6, m.radiusM, 0));
+          this.root.add(win);
+        }
+      }
       if (m.kind === "fabrica") {
         // Furnace glow of the refinery through a port window.
         const glow = cyl(0.7, 0.3, new THREE.MeshBasicMaterial({ color: 0xff7a2a }));
@@ -69,11 +109,11 @@ export class StationModel {
           wing.add(blanket);
         }
         this.wings.push(wing);
-        this.root.add(wing);
+        slot("alas").add(wing);
       } else if (p.kind === "radiador") {
         const r = box(p.half.x * 2, 0.12, p.half.z * 2, radiatorMat);
         r.position.copy(c);
-        this.root.add(r);
+        slot("radiadores").add(r);
       } else if (p.kind === "celosia") {
         const t = box(p.half.x * 2, p.half.y * 2, p.half.z * 2, new THREE.MeshStandardMaterial({ color: 0x8a919c, metalness: 0.6, roughness: 0.5, wireframe: true }));
         t.position.copy(c);
@@ -81,7 +121,7 @@ export class StationModel {
         core.position.copy(c);
         this.root.add(t, core);
       } else {
-        const hgr = box(p.half.x * 2, p.half.y * 2, p.half.z * 2, hull);
+        const hgr = box(p.half.x * 2, p.half.y * 2, p.half.z * 2, hull.clone());
         hgr.position.copy(c);
         const door = box(p.half.x * 1.3, p.half.y * 1.4, 0.3, new THREE.MeshBasicMaterial({ color: 0xffd27f }));
         door.position.copy(c).add(new THREE.Vector3(0, 0, p.half.z + 0.2));
@@ -113,7 +153,6 @@ export class StationModel {
       }
       this.root.add(g);
     }
-    this.root.quaternion.set(orientation.x, orientation.y, orientation.z, orientation.w);
     this.root.traverse((o) => (o.userData.station = true));
   }
 

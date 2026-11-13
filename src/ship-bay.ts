@@ -23,6 +23,11 @@ import { equipmentSlotOf, mothershipEquipmentStatus } from "@modules/ship-bay/ap
 import { applyEquipmentRefit, equipmentOptions, equipmentRefitChore, type EquipmentOption } from "@modules/mothership/application/equipment-refit";
 import { MOTHERSHIP_EQUIPMENT } from "@modules/mothership/data/equipment";
 import type { PartId } from "./adapters/three/ship-model";
+import type { BayStationModel } from "./adapters/three/ship-bay-scene";
+import type { StationOutfit } from "@modules/station/domain/outfit";
+import { STATION_COMPONENTS } from "@modules/station/data/outfit";
+import { applyStationRefit, stationOptions, stationRefitChore, type StationComponentOption } from "@modules/station/application/station-refit";
+import { stationEquipmentStatus, stationSlotOf } from "@modules/ship-bay/application/station-equipment";
 import { VirtualStick, curve } from "./adapters/input/stick";
 import type { DuelView, SessionText } from "./ui/duel-view";
 
@@ -53,12 +58,12 @@ export interface PartStore extends PartSupply {
 }
 
 /** A bay action, a refit of one of the mothership's thruster mounts, or a swap of its equipment. */
-type Action = BayAction & { readonly drive?: DriveOption; readonly equip?: EquipmentOption };
+type Action = BayAction & { readonly drive?: DriveOption; readonly equip?: EquipmentOption; readonly station?: StationComponentOption };
 
 /** Parts of the probe; everything else in the bay (machines, farm deck, stores) is on the mothership. */
 const PROBE_IDS = new Set(["casco", "motor", "rcs", "alas-solares", "bateria", "escudo-mmod", "sistemas-fijos"]);
 const PROBE_PART = (id: string) => PROBE_IDS.has(id) || id.startsWith("tanque-");
-const viewOf = (id: string): BayView => (PROBE_PART(id) ? "sonda" : "nodriza");
+const viewOf = (id: string): BayView => (id.startsWith("estacion:") ? "estacion" : PROBE_PART(id) ? "sonda" : "nodriza");
 
 /**
  * The ship bay (engineering station): the ship from outside with an orbit camera, every part
@@ -97,6 +102,10 @@ export class ShipBay {
   nodriza?: Mothership;
   /** Called after a thruster refit of the mothership (to update its model in the flight scene). */
   onDriveRefit?: () => void;
+  /** The station the bay is in: its wings, radiators and shield in the «Estación» tab. */
+  private outfit?: StationOutfit;
+  private stationModel?: BayStationModel & { rebuild(layout: StationOutfit["layout"]): void };
+  private stationVersion = -1;
 
   constructor(
     root: HTMLElement,
@@ -163,6 +172,19 @@ export class ShipBay {
     });
   }
 
+  /**
+   * Add the «Estación» tab: the station's own components, swapped like the mothership's equipment
+   * with parts from the hangar (docs/design/estacion.md, «La estación crece»).
+   */
+  setStation(outfit: StationOutfit, model: BayStationModel & { rebuild(layout: StationOutfit["layout"]): void }): void {
+    this.outfit = outfit;
+    this.stationModel = model;
+    this.view.addStation(model);
+    this.stationVersion = outfit.version;
+    this.tabs.classList.remove("hidden");
+    if (!this.tabs.querySelector('[data-view="estacion"]')) this.tabs.insertAdjacentHTML("beforeend", `<button data-view="estacion">Estación</button>`);
+  }
+
   enter(from: BayOrigin): void {
     this.from = from;
     this.active = true;
@@ -199,7 +221,8 @@ export class ShipBay {
       return { id: s.id, name: item?.name ?? s.id, amount: this.habitat.larder(s.id), capacity: s.capacity, unit: item?.unit === "día" ? "días" : item?.unit === "lote" ? "lotes" : (item?.unit ?? "") };
     });
     const list = bayStatus({ ship: this.ship, machines: this.habitat.machines, beds: this.habitat.plants.filter((p) => p.isBed), sustainability: this.habitat.sustainability, stores });
-    return this.nodriza && this.mothership ? [...list, ...driveStatus(this.nodriza), ...mothershipEquipmentStatus(this.nodriza)] : list;
+    const all = this.nodriza && this.mothership ? [...list, ...driveStatus(this.nodriza), ...mothershipEquipmentStatus(this.nodriza)] : list;
+    return this.outfit ? [...all, ...stationEquipmentStatus(this.outfit)] : all;
   }
 
   private chores(): Chore[] {
@@ -208,7 +231,7 @@ export class ShipBay {
 
   /** Show the probe or the mothership, with their own parts in the list. */
   setView(v: BayView): void {
-    if (!this.mothership) return;
+    if (!this.mothership && !(v === "estacion" && this.outfit)) return;
     this.view.setView(v);
     for (const b of this.tabs.querySelectorAll<HTMLElement>("[data-view]")) b.classList.toggle("on", b.dataset.view === v);
     this.selected = null;
@@ -218,11 +241,11 @@ export class ShipBay {
 
   /** Parts of the ship on show (all of them without a mothership). */
   private shown(list: ComponentStatus[]): ComponentStatus[] {
-    return this.mothership ? list.filter((c) => viewOf(c.id) === this.view.view) : list;
+    return this.mothership || this.outfit ? list.filter((c) => viewOf(c.id) === this.view.view) : list;
   }
 
   select(id: PartId | null): void {
-    if (id && this.mothership && viewOf(id) !== this.view.view) this.setView(viewOf(id));
+    if (id && (this.mothership || this.outfit) && viewOf(id) !== this.view.view) this.setView(viewOf(id));
     this.selected = id;
     this.view.select(id);
     this.panelKey = "";
@@ -240,6 +263,12 @@ export class ShipBay {
 
   private refresh(): void {
     this.refreshAt = performance.now() + 500;
+    // The station grew since the model was built: rebuild it.
+    if (this.outfit && this.stationModel && this.outfit.version !== this.stationVersion) {
+      this.stationVersion = this.outfit.version;
+      this.stationModel.rebuild(this.outfit.layout);
+      this.view.syncStation();
+    }
     this.list = this.status();
     this.attention = new Map(this.list.map((c) => [c.id as PartId, c.attention]));
     const urgent = needingAttention(this.shown(this.list));
@@ -303,6 +332,15 @@ export class ShipBay {
   }
 
   private actionsFor(c: ComponentStatus): Action[] {
+    const stationSlot = stationSlotOf(c.id);
+    if (stationSlot && this.outfit && this.parts)
+      return stationOptions(this.outfit, stationSlot, STATION_COMPONENTS, this.parts).map((o) => ({
+        kind: "cambiar",
+        label: o.label,
+        detail: o.locked ? `${o.detail} · ${o.locked}` : o.detail,
+        ...(o.locked ? { locked: true } : {}),
+        station: o,
+      }));
     const slot = equipmentSlotOf(c.id);
     if (slot && this.nodriza)
       return equipmentOptions(this.nodriza, slot, MOTHERSHIP_EQUIPMENT, this.parts).map((o) => ({
@@ -340,6 +378,7 @@ export class ShipBay {
   run(a: Action): void {
     if (a.drive) return this.runDrive(a.drive);
     if (a.equip) return this.runEquipment(a.equip);
+    if (a.station) return this.runStation(a.station);
     if (a.locked) return this.say("No está en el hangar: fabrícala en la estación (Planos)");
     let chore: Chore | undefined;
     const fittedNow = a.slot ? installedId(this.ship.design, a.slot, TANK_PARTS) : undefined;
@@ -402,6 +441,24 @@ export class ShipBay {
       }
       this.onDriveRefit?.();
       this.say(`Montado: ${o.equipment.name}${this.parts ? " · lo viejo va al hangar" : ""}`);
+    });
+  }
+
+  /** Swap one of the station's own components (wings, radiators, shield) with one from the hangar. */
+  private runStation(o: StationComponentOption): void {
+    const out = this.outfit;
+    const store = this.parts;
+    if (!out || !store) return;
+    if (o.locked) return this.say(o.locked);
+    this.openChore(stationRefitChore(out, o.component), (status) => {
+      if (status === "failed") return this.say("No salió: la estación sigue como estaba");
+      if (status !== "done") return;
+      try {
+        applyStationRefit(out, o.component, store);
+      } catch {
+        return this.say("No se ha podido montar: no se ha cambiado nada");
+      }
+      this.say(`Montado: ${o.component.name} · lo viejo va al hangar · la estación puede usar ${out.capacityKw.toLocaleString("es-ES")} kW`);
     });
   }
 

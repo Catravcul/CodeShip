@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { Vec3 } from "@core/math/vec3";
 import type { MachineId } from "@modules/station/domain/blueprint";
-import { FACE_NORMAL, fixtureBox, type Box, type Face, type Fixture, type InteriorVolume, type StationInteriorPlan } from "@modules/station/domain/interior";
+import { FACE_NORMAL, fixtureBox, longAxis, type Box, type Face, type Fixture, type InteriorVolume, type StationInteriorPlan } from "@modules/station/domain/interior";
 import { textSign } from "./sign";
 import { CubeFigure } from "./figure";
 import { buildStarfield } from "../starfield";
@@ -145,6 +145,13 @@ const STYLE: Readonly<Record<string, { panel: number; accent: number; glow?: num
   fundicion: { panel: 0x6b5a4a, accent: 0x8a929e, glow: 0xffb347 },
   impresora: { panel: 0x3d4552, accent: 0x9fd8ff, glow: 0x2fd0ff },
   "esclusa-carga": { panel: 0x9aa6b6, accent: 0xffc84a },
+  planta: { panel: 0x4f6b7a, accent: 0x9fd8ff, glow: 0x7fffd4 },
+  "reactor-carbonilo": { panel: 0x5d5466, accent: 0xb0a0c8, glow: 0xffd27f },
+  "soldadora-haz": { panel: 0x3a4250, accent: 0x7fdcff, glow: 0x6f8cff },
+  "celda-compuestos": { panel: 0x2b2f36, accent: 0x9aa6b6, glow: 0xffb347 },
+  "impresora-grande": { panel: 0x3d4552, accent: 0x9fd8ff, glow: 0x2fd0ff },
+  "planta-grande": { panel: 0x4f6b7a, accent: 0x9fd8ff, glow: 0x7fffd4 },
+  "campos-cultivo": { panel: 0x2f5a35, accent: 0x9ad48a, glow: 0xe070ff },
   trajes: { panel: 0x7f8a99, accent: 0xf2f2f2 },
   "consola-hangar": { panel: 0x0b1c2a, accent: 0x7fdcff, glow: 0x7fdcff },
   "consola-bahia": { panel: 0x0b1c2a, accent: 0xffb347, glow: 0x7fdcff },
@@ -181,7 +188,15 @@ function fixtureFront(f: Fixture, lamps: Map<MachineId, THREE.Mesh>): THREE.Grou
   };
   const body = plate(w, h, 0, 0, 0.02, st.panel);
   body.userData.fixture = f.id;
-  if (f.id.startsWith("salir") || f.id.startsWith("puerto") || f.id === "esclusa-carga") {
+  if (f.id === "campos-cultivo") {
+    // Crop trays: green shelves of plants under pink grow lights.
+    const tiers = Math.max(2, Math.floor(h / 0.7));
+    for (let t = 0; t < tiers; t++) {
+      const dv = -h / 2 + (t + 0.5) * (h / tiers);
+      plate(w * 0.96, 0.05, 0, dv + 0.25, 0.06, 0xe070ff, true, 0.02);
+      plate(w * 0.94, 0.22, 0, dv - 0.05, 0.12, 0x4caf50, false, 0.18);
+    }
+  } else if (f.id.startsWith("salir") || f.id.startsWith("puerto") || f.id === "esclusa-carga") {
     // Hatch: frame and a handle.
     for (const s of [-1, 1]) {
       plate(0.08, h, (s * (w - 0.08)) / 2, 0, 0.05, st.accent);
@@ -318,19 +333,21 @@ export function buildStationRooms(plan: StationInteriorPlan): StationRooms {
       continue;
     }
     const hangar = vol.kind === "hangar";
+    const k = longAxis(vol);
     for (const f of FACES) {
       if (hangar && f === "popa") continue; // the door is open
       const fc = faceOf(vol, f);
       const m = rectWithHoles(fc.c, fc.u, fc.v, fc.hu, fc.hv, holesIn(fc, vol, plan.volumes), hangar ? hangarMat : faceMat[f]);
       group.add(m);
       // Local-vertical labels near both ends of each long wall (V2 8011: cues to find one's way).
-      if (!hangar && f !== "proa" && f !== "popa" && vol.half.z > 1) {
+      if (!hangar && axisOf(fc.n) !== k && vol.half[k] > 1) {
         for (const s of [-1, 1]) {
           // Upright for someone facing forward: on the deck the text's top points forward, on the overhead aft.
           const up = f === "suelo" ? V(0, 0, -1) : f === "techo" ? V(0, 0, 1) : V(0, 1, 0);
-          const along = vol.centre.z + s * (vol.half.z - 0.45);
-          const at = f === "suelo" || f === "techo" ? V(fc.c.x, fc.c.y, along) : V(fc.c.x, vol.centre.y + vol.half.y - 0.14, along);
-          group.add(wallText(`${vol.code} · ${FACE_NAME[f]}`, at, up, fc.n));
+          const along = vol.centre[k] + s * (vol.half[k] - 0.45);
+          const base = f === "suelo" || f === "techo" ? fc.c.clone() : V(fc.c.x, vol.centre.y + vol.half.y - 0.14, fc.c.z);
+          base[k] = along;
+          group.add(wallText(`${vol.code} · ${FACE_NAME[f]}`, base, up, fc.n));
         }
       }
     }
@@ -342,36 +359,44 @@ export function buildStationRooms(plan: StationInteriorPlan): StationRooms {
       hangarDressing(vol, plan, group);
       continue;
     }
-    // Seams between rack bays (ISPR racks are 1,05 m wide) on the four long faces.
-    const bays = Math.max(1, Math.round((2 * vol.half.z) / 1.05));
+    // Seams between rack bays (ISPR racks are 1,05 m wide) on the four long faces, along the module.
+    const across = k === "z" ? "x" : "z";
+    const bays = Math.max(1, Math.round((2 * vol.half[k]) / 1.05));
     const seamMat = mat(0x6f7a88);
     for (let i = 1; i < bays; i++) {
-      const z = vol.centre.z - vol.half.z + (i * 2 * vol.half.z) / bays;
-      for (const [w, h, x, y] of [
-        [0.03, 2 * vol.half.y, vol.half.x - 0.01, 0],
-        [0.03, 2 * vol.half.y, -vol.half.x + 0.01, 0],
-        [2 * vol.half.x, 0.03, 0, vol.half.y - 0.01],
-        [2 * vol.half.x, 0.03, 0, -vol.half.y + 0.01],
+      const at = vol.centre[k] - vol.half[k] + (i * 2 * vol.half[k]) / bays;
+      for (const [w, h, a, y] of [
+        [0.03, 2 * vol.half.y, vol.half[across] - 0.01, 0],
+        [0.03, 2 * vol.half.y, -vol.half[across] + 0.01, 0],
+        [2 * vol.half[across], 0.03, 0, vol.half.y - 0.01],
+        [2 * vol.half[across], 0.03, 0, -vol.half.y + 0.01],
       ] as const) {
-        const seam = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.03), seamMat);
-        seam.position.set(vol.centre.x + x, vol.centre.y + y, z);
+        const seam = new THREE.Mesh(k === "z" ? new THREE.BoxGeometry(w, h, 0.03) : new THREE.BoxGeometry(0.03, h, w), seamMat);
+        seam.position.set(vol.centre.x, vol.centre.y + y, vol.centre.z);
+        seam.position[across] += a;
+        seam.position[k] = at;
         group.add(seam);
       }
     }
     // Light strips on the overhead and a lamp, like the ISS's overhead lights.
     for (const s of [-1, 1]) {
-      const l = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.02, 2 * vol.half.z - 0.8), strip);
-      l.position.set(vol.centre.x + s * vol.half.x * 0.5, vol.centre.y + vol.half.y - 0.02, vol.centre.z);
+      const len = 2 * vol.half[k] - 0.8;
+      const l = new THREE.Mesh(k === "z" ? new THREE.BoxGeometry(0.12, 0.02, len) : new THREE.BoxGeometry(len, 0.02, 0.12), strip);
+      l.position.set(vol.centre.x, vol.centre.y + vol.half.y - 0.02, vol.centre.z);
+      l.position[across] += s * vol.half[across] * 0.5;
       group.add(l);
     }
-    const light = new THREE.PointLight(0xf2f6ff, 6, 2 * vol.half.z + 4, 1.4);
+    const light = new THREE.PointLight(0xf2f6ff, 6, 2 * vol.half[k] + 4, 1.4);
     light.position.set(vol.centre.x, vol.centre.y + vol.half.y - 0.3, vol.centre.z);
     group.add(light);
-    // Module sign at each end.
+    // Module sign at one end.
     if (vol.kind !== "esclusa") {
       const sign = textSign(vol.label);
       sign.scale.multiplyScalar(0.7);
-      sign.position.set(vol.centre.x, vol.centre.y + vol.half.y - 0.35, vol.centre.z - vol.half.z + 0.35);
+      sign.position.set(vol.centre.x, vol.centre.y + vol.half.y - 0.35, vol.centre.z);
+      // Along the stack it hangs at the forward end, as before; on a side module at the node 1 end.
+      if (k === "z") sign.position.z = vol.centre.z - vol.half.z + 0.35;
+      else sign.position.x = vol.centre.x - Math.sign(vol.centre.x) * (vol.half.x - 0.35);
       group.add(sign);
     }
   }

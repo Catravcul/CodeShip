@@ -59,8 +59,8 @@ En el móvil, arriba se ve el hangar en 3D y abajo hay un panel con cuatro pesta
 | Pestaña | Qué hay |
 | --- | --- |
 | **Materiales** | Arriba, con una nave atracada, **Repostar** (ver [Planta de propelente y repostaje](#planta-de-propelente-y-repostaje)). Después, la bodega de la nave y el botón **Descargar la bodega en la estación**. Debajo, el almacén: roca sin refinar, refinados e importados, cada uno con su nota y su fuente. Al final está la **refinería**: cada proceso con lo que entra y lo que sale en el lote posible, y el botón **Refinar**. Después, la **planta de propelente** (botón **Producir**) y los **depósitos de propelente**. |
-| **Planos** | Lo que se puede fabricar ya y lo que no. Cada plano indica su máquina, el proceso real con su fuente, la masa y las horas. Los materiales salen en verde si hay suficientes y en rojo con lo que falta («faltan 4,1 kg»). También dice cuántas piezas iguales hay en el hangar. |
-| **Fabricación** | La cola de cada máquina (refinería, fundición, impresora 3D de metal, planta de propelente y línea de repostaje), con barra de progreso y las horas que quedan. Cada máquina hace un trabajo detrás de otro, y las tres trabajan a la vez. |
+| **Planos** | Arriba, tres botones: **Módulos**, **Equipo** y **Componentes** (con cuántos se pueden hacer ya), y la barra de energía de la estación (gasto de capacidad, puertos y bastidores libres). Cada grupo se divide en «Se pueden hacer», «Faltan materiales», «Bloqueados» (con la razón en naranja: «Necesita Soldadora por haz de electrones (Planos → Equipo)», «No cabe…», «Falta energía…») y «Ya en la estación». Cada plano indica su máquina, la máquina que necesita (verde si está, roja si no), el proceso real con su fuente, la masa y las horas. Ver [La estación crece](#la-estación-crece). |
+| **Fabricación** | La cola de cada máquina (refinería, fundición, impresora 3D de metal, planta de propelente, línea de repostaje y, cuando existen, soldadora, celda de compuestos y montaje exterior), con barra de progreso y las horas que quedan. Cada máquina hace un trabajo detrás de otro, y las tres trabajan a la vez. |
 | **Hangar** | Las naves y sondas: la **nodriza**, el **Explorer** y las sondas fabricadas, con dónde está cada una. Debajo, las piezas de repuesto. |
 
 Las horas de máquina corren con el mismo reloj que la vida a bordo, un día de juego cada 40 s (`STATION_TUNING.hoursPerSecond`).
@@ -155,11 +155,11 @@ Hay un plano para **cada pieza del catálogo** (`ALL_PARTS`). Desde el 13 de nov
 - **Material** = masa de la pieza ÷ rendimiento (0,8, valor de juego: viruta, soportes y descartes), repartido según la receta del tipo de pieza. Más los kits.
 - **Motores bipropelentes** (R-4D): 50 % de níquel, 40 % de hierro, 10 % de cerámica y 2 kits. Se hacen en la **impresora 3D de metal**, por láser y capa a capa, como la [impresora de metal de la ESA en la ISS](https://www.tomshardware.com/3d-printing/scientists-print-3d-metal-parts-in-space-for-the-first-time-a-key-ability-for-long-distance-long-duration-missions) (primera pieza de acero inoxidable en agosto de 2024).
 - **Propulsores de hidracina** (MR-104H y RCS): 60 % de hierro, 30 % de níquel y 10 % de cerámica. Llevan un kit con el catalizador [S-405](https://en.wikipedia.org/wiki/Monopropellant_rocket). El RCS se fabrica como **juego de 24**, porque al cambiarlo se cambian los 24, y necesita 2 kits más.
-- **Tanques**: un forro de hierro envuelto en fibra de carbono ([COPV](https://en.wikipedia.org/wiki/Composite_overwrapped_pressure_vessel)), con 85 % de hierro, 15 % de carbono y 1 kit. Se hacen en la **fundición**.
+- **Tanques**: hemisferios de titanio importados en kits, soldados aquí por haz de electrones: se hacen en la **soldadora** y necesitan haberla montado.
 - **Propulsores de la nodriza** (X3, AEPS, NEXT-C y VASIMR VX-200; datos y fuentes en [nave-nodriza.md](nave-nodriza.md), «Propulsores intercambiables»). Se imprime **solo el cabezal**, con su masa real (230, 50, 14 y 500 kg). La fuente de potencia, el cátodo y el control de flujo de xenón llegan en kits importados: 3 kits, 6 para el X3 (su fuente es de 100 kW) y 10 para el VX-200 (imán superconductor y generadores de RF). Recetas de juego: Hall, 70 % de hierro (circuito magnético), 20 % de cerámica (canal) y 10 % de níquel; iónico, 50 % de hierro, 30 % de carbono (rejillas), 10 % de cerámica y 10 % de níquel; VASIMR, 50 % de hierro, 20 % de níquel, 20 % de cerámica y 10 % de carbono. Horas: 12 + ½ por kg (127 h el X3). Un X3 pide 287,5 kg de material: hace falta refinar mucho Bennu. El VX-200 se puede fabricar, pero no montar, porque usa argón (ver la pregunta abierta).
 - Las horas son valores de juego: unas 6 + 5 por kg en la impresora y unas 4 + ½ por kg en la fundición.
 
-Al empezar se puede fabricar un tanque o el MR-104H, pero no el juego de 24 MR-107T. Con una carga de Bennu, un lote de carbonilo y uno de electrólisis ya alcanza (hay un test que lo comprueba). El níquel es escaso (≈1 % de la roca) y es lo que limita los motores.
+Con los materiales de salida alcanza para un tanque o el MR-104H, pero no para el juego de 24 MR-107T; el tanque además pide la soldadora (ver [La estación crece](#la-estación-crece)). Con una carga de Bennu, un lote de carbonilo y uno de electrólisis ya alcanza (hay un test que lo comprueba). El níquel es escaso (≈1 % de la roca) y es lo que limita los motores.
 
 **Retos de fabricar** (`fabricationChore`):
 
@@ -168,6 +168,86 @@ Al empezar se puede fabricar un tanque o el MR-104H, pero no el juego de 24 MR-1
 3. **Ordenar** los pasos del plano.
 
 Si se resuelven, se toman los materiales y el trabajo entra en la cola. Si se fallan, no se gasta nada.
+
+## La estación crece
+
+Petición de Berón (2026-11-13, traducida): «La estación tendrá que crecer para crear las fábricas de los componentes nuevos que se desbloqueen. Podría haber planos de componentes de las naves y de las fábricas que hacen esos componentes: primero hay que desbloquear o construir la fábrica y después el componente. Para algunos componentes, en vez de agrandar la estación, se trataría de mejorar su interior: añadir, sustituir o mejorar el equipo interno para que pueda hacer componentes nuevos». Y: «dentro de la estación se configuran los componentes de las naves y también los de la propia estación».
+
+### Tres clases de plano
+
+| Clase | Qué hace | Ejemplos |
+| --- | --- | --- |
+| **Módulo** | Un módulo presurizado nuevo que se atraca en un puerto CBM libre (o la ampliación del hangar). La estructura, su masa y su consumo crecen | Segundo módulo de fabricación, módulo agrícola, módulo de la planta, ampliación del hangar |
+| **Equipo** | Una máquina en los bastidores de un módulo: se añade, o sustituye a la que mejora | Reactor de carbonilo, soldadora por haz de electrones, celda de compuestos, impresora grande, planta grande, campos de cultivo |
+| **Componente** | Una pieza para el módulo de aterrizaje, la nodriza o la propia estación. Cada una nombra el equipo que necesita | Motores, tanques, cabinas, alas, radiadores… |
+
+### El árbol
+
+```
+Al empezar (FAB1): horno de la refinería · guantera · fundición · impresora pequeña · planta de propelente pequeña
+├─ Fundición → Reactor de carbonilo ──→ refinar hierro y níquel (proceso «carbonilo»)
+│                 └─ Impresora grande (sustituye a la pequeña, ×2 de rápida) → piezas de más de 40 kg
+│                         ├─ Radiadores dobles (estación, 140 kW)
+│                         └─ Ampliación del hangar (+10 m)
+├─ Impresora → Soldadora por haz de electrones → tanques de titanio
+│                 ├─ Segundo módulo de fabricación (Destiny, 12 bastidores, puerto al final)
+│                 └─ Módulo de la planta (Columbus, 10 bastidores, puerto al final)
+│                         └─ Planta grande (sustituye a la pequeña, ×3 de rápida, 4 bastidores)
+└─ Fundición → Celda de compuestos → cabina de fibra, alas solares, ROSA de la nodriza
+                  ├─ Alas iROSA (estación, 204 kW)  ·  Whipple relleno (estación)
+                  └─ Módulo agrícola (B330 hinchable, 16 bastidores) → Campos de cultivo (60 m²)
+```
+
+Los componentes heredan la máquina de su plano: impresora (pequeña hasta 40 kg, grande por encima; valor de juego, porque la impresora de la ESA solo hace piezas de menos de 250 g), fundición, refinería, soldadora (tanques) o celda de compuestos (fibra). Con las mejoras el componente sigue valiendo: la impresora grande cuenta como la pequeña. **Lo que cambia al empezar:** el proceso carbonilo de la refinería pide el reactor de carbonilo (barato: 20 kg de hierro, 2 de níquel, 2 de cerámica y 2 kits), y los tanques piden la soldadora. Es el arranque de [Metzger et al. 2013](https://arxiv.org/abs/1612.03238): máquinas pequeñas que hacen el material y las piezas de las siguientes.
+
+### Referencias reales
+
+| Pieza | Base | Fuente |
+| --- | --- | --- |
+| Segundo módulo de fabricación | Destiny: 8,53 × 4,27 m, 14 520 kg, 24 bastidores (seis por cara), hasta 13 de experimentos. Aquí 12 bastidores para equipo (6 por cara) | [Destiny](https://en.wikipedia.org/wiki/Destiny_(ISS_module)) |
+| Módulo de la planta | Columbus: 6,871 × 4,477 m, 10 300 kg, 10 bastidores ISPR | [Columbus](https://en.wikipedia.org/wiki/Columbus_(ISS_module)) |
+| Módulo agrícola | B330 de Bigelow, hinchable: 16,88 × 6,7 m, 23 t, 330 m³ | [B330](https://en.wikipedia.org/wiki/B330) |
+| Bastidor | ISPR: ~1,571 m³, hasta 700 kg de equipo | [ISPR](https://en.wikipedia.org/wiki/International_Standard_Payload_Rack) |
+| Impresora pequeña | Impresora de metal de la ESA en Columbus: ~180 kg, piezas de acero de menos de 250 g | [ESA](https://www.esa.int/Science_Exploration/Human_and_Robotic_Exploration/ESA_launches_first_metal_3D_printer_to_ISS) |
+| Soldadora | Herramienta URI del Instituto Paton: Savitskaya cortó y soldó titanio y acero fuera de la Salyut 7 (25-7-1984) | [Savitskaya](https://en.wikipedia.org/wiki/Svetlana_Savitskaya), [EBW](https://en.wikipedia.org/wiki/Electron-beam_welding) |
+| Celda de compuestos | Composite Crew Module de la NASA | [CompositesWorld](https://compositesworld.com/articles/building-on-ccm-lessons-learned(2)) |
+| Reactor de carbonilo | Proceso carbonilo para el metal de los asteroides; Mond: Ni(CO)₄ a 50–60 °C | [NTRS](https://ntrs.nasa.gov/citations/19910015913), [Mond](https://en.wikipedia.org/wiki/Mond_process) |
+| Planta | Electrolizador PEM, ~55 kWh/kg de H₂ | [DOE](https://www.energy.gov/eere/fuelcells/technical-targets-proton-exchange-membrane-electrolysis) |
+| Campos de cultivo | Veggie y APH de la ISS (0,13–0,2 m² cada uno) en una pared entera | [NASA](https://www.nasa.gov/missions/station/growing-plants-in-space/) |
+| Atraque | Canadarm2 y los CBM | [MSS](https://en.wikipedia.org/wiki/Mobile_Servicing_System) |
+| Alas | 4 alas de la ISS (~31 kW cada una); iROSA: «más de 20 kW» cada una, ~600 kg en la ficha | [ISS](https://en.wikipedia.org/wiki/Electrical_system_of_the_International_Space_Station), [iROSA](https://space.skyrocket.de/doc_sdat/irosa-1.htm) |
+| Radiadores | EATCS de la ISS: hasta 70 kW | [EATCS](https://en.wikipedia.org/wiki/External_Active_Thermal_Control_System) |
+| Escudo | Whipple; Whipple relleno de Nextel y Kevlar como en Destiny y Columbus | [Whipple](https://en.wikipedia.org/wiki/Whipple_shield) |
+
+**Valores de juego** (marcados en los datos): las recetas y horas de módulos, equipo y componentes de la estación; la potencia de cada máquina; la masa de las alas, radiadores, escudos, celosía (45 t) y del módulo habitable; el límite de 40 kg de la impresora pequeña; el área de cultivo (60 m², ~300 W/m² de luz). Las recetas de los módulos son solo lo que se hace aquí (anillos, vigas y bastidores con metal de la roca); su masa real no sale entera de la roca.
+
+### Reglas
+
+- **Puertos**: el nodo 1 tiene dos puertos CBM libres (babor y estribor). Un módulo se atraca en el primero libre donde **cabe** (su caja no toca otro módulo ni la celosía, las alas, los radiadores o el hangar: hay un test). Los módulos de fabricación y de la planta traen un puerto en su extremo, así que la estación puede crecer hacia fuera hasta que las alas lo impiden (a 32 m del centro). La ampliación del hangar no usa puerto.
+- **Bastidores**: cada módulo tiene bastidores en sus dos paredes largas (FAB1 y FAB2: 6 + 6; planta: 5 + 5; agrícola: 8 + 8). El equipo ocupa bastidores seguidos en una pared. Una mejora va donde estaba la máquina que mejora (si su módulo le sirve; si no, la planta grande se va al módulo de la planta y deja libre su bastidor en FAB1).
+- **Energía**: la estación puede usar lo **menos** entre lo que dan las alas (124 kW al empezar) y lo que expulsan los radiadores (70 kW): toda la electricidad acaba en calor. Al empezar gasta 36 kW. Montar algo que no cabe en la energía está bloqueado («Falta energía… mejora las alas o los radiadores en la pestaña Estación»).
+- **Reservas**: al poner algo en cola se reservan su puerto, sus bastidores y su energía, así que dos trabajos no pueden pedir el mismo sitio.
+- **Rapidez**: la impresora grande trabaja el doble de rápido y la planta grande el triple (las horas de los trabajos nuevos se dividen).
+- **Retos de construir** (`growthChore`): 1) predecir la energía libre: `libre = min(alas, radiadores) − gasto`, con los números reales de la estación; 2) lo que queda en el almacén; 3) ordenar los pasos del plano.
+
+### Configurar la estación: bahía, pestaña «Estación»
+
+La bahía (que ahora solo se abre dentro de la estación) tiene una tercera pestaña, **Estación**, con el mismo patrón que la nodriza: la estación en 3D (a 1:4), sus **alas solares**, **radiadores** y **escudo** como piezas que se tocan o se eligen en la lista, su ficha (energía, masa, módulos y lo que hay en cada uno, con bastidores libres) y las opciones del hangar. Montar una pieza es una cadena de retos (predecir la capacidad nueva y ordenar los pasos); la vieja vuelve al hangar. No se pueden montar radiadores o alas que dejen la estación sin energía para lo que ya tiene (`componentBlocker`). Los componentes de la estación se fabrican en Planos → Componentes.
+
+No hay propulsión de la estación todavía: si `poderes-ira` le da un motor, sería otra ranura (`StationSlot`).
+
+### Lo que se ve
+
+- **Por fuera** (`StationModel.rebuild`): cada módulo nuevo aparece en su puerto; el agrícola es blanco (hinchable) con ventanas rosas de luz de cultivo; el hangar se alarga. La estructura de vuelo (`StationStructure.setLayout`) toma la nueva forma para la exclusión, y los puertos de atraque no cambian.
+- **Por dentro** (`stationInteriorPlan(layout, outfit)`): el interior se genera de los datos. Cada módulo nuevo es un pasillo a lo largo de x con su escotilla CBM desde el nodo 1 (la tapa del puerto desaparece), con su código (FAB2, PLA1, AGR1) y sus bastidores en las paredes de proa y popa. Cada máquina es un frontal de bastidor en su sitio, con su luz y su pestaña; los campos de cultivo son bandejas verdes bajo LED rosas.
+
+### Arquitectura
+
+- `modules/station/domain/outfit.ts`: `ModuleSpec`, `EquipmentSpec`, `StationComponent`, `BerthSpec` y `StationOutfit` (módulos, equipo y bastidores, energía y masa, puertos y si un módulo cabe, bloqueos, reservas y `version`).
+- `domain/blueprint.ts`: `Product` con `module` y `equipment`, `requires` en planos y procesos, `blueprintKind`, máquinas nuevas (`soldadora`, `compuestos`, `montaje`) y `MACHINE_NAME`. `domain/station.ts`: `Station` con `outfit` opcional (sin él nada se bloquea, como antes), `locked`, `processLocked`, evento `grew` y rapidez por máquina. `domain/structure.ts`: `setLayout`.
+- `data/outfit.ts`: catálogo, `STARTING_OUTFIT`, `startingOutfit()` y los planos de crecimiento. `data/blueprints.ts`: `requirementFor` y `COMPONENT_BLUEPRINTS`.
+- `application/station-ops.ts` (`PlanStatus.kind`, `locked`, `built`), `challenges.ts` (`growthChore`) y `station-refit.ts` (opciones, cambio y reto de la pestaña Estación). `ship-bay/application/station-equipment.ts`: fichas de la pestaña.
+- Adaptadores: `station-screen.ts` y `ui/station-growth.css` (Planos por clase), `ship-bay.ts` y `ship-bay-scene.ts` (pestaña Estación), `station-model.ts` (`rebuild`, ranuras), `interior/station-rooms.ts` (módulos a lo largo de x, campos de cultivo), `station-interior.ts` (`rebuild`) y `main.ts` (`regrowStation`).
 
 ## Bahía de la nave: las piezas salen del hangar
 
@@ -192,6 +272,8 @@ Los **propulsores de la nodriza** siguen la misma regla en la pestaña **Nodriza
 
 ## Capturas
 
+`docs/screenshots/estacion-crece-*-{mobile,desktop}.png` (iPhone 13 y 1280 × 800): 1 Planos → Equipo al empezar, 2 Planos → Módulos (bloqueados y por qué), 3 Planos → Componentes, 4 primer reto de montar el reactor de carbonilo (energía libre), 5 bahía, pestaña Estación, con la estación crecida, 6 los radiadores seleccionados con sus opciones, 7 Planos → Equipo con la estación crecida, 8 interior desde la entrada, 9 nodo 1 con las escotillas nuevas, 10 segundo módulo de fabricación por dentro, 11 módulo agrícola con los campos de cultivo. La estación se hace crecer por código para las capturas.
+
 `docs/screenshots/refineria-*-{mobile,desktop}.png` (iPhone 13 y 1280 × 800): 1 Repostar con el módulo y la nodriza atracados, 2 primer reto (cuánto NTO), 3 reto de la presión del regulador, 4 trasvase en marcha, 5 planta de propelente, 6 cola de la línea de repostaje. El módulo y la nodriza se atracan y se vacían en parte por código para la captura.
 
 `docs/screenshots/estacion-atraque-*-{desktop,mobile}.png` (iPhone 13 y 1280 × 800): 1 cabina en la salida (sin botón), 2 ficha de la estación en el mapa, 3 primer reto del viaje, 4 la nodriza en viaje, 5 nodriza atracada con el botón «Revisar tareas», 6 vista exterior, 7 pantalla de la estación, 8 la nodriza atracada vista desde fuera, 9 el módulo acoplando en el puerto del módulo, 10 y 11 módulo acoplado a la estación.
@@ -201,6 +283,12 @@ Capturas anteriores:
 `docs/screenshots/estacion-*-{desktop,mobile}.png`, de 0 (cabina y estación vista por la ventana) a 7 (bahía con pieza disponible y pieza bloqueada). El módulo se coloca junto a la estación por código, porque aún no hay piloto automático.
 
 ## Preguntas abiertas para Berón
+
+- **La estación crece.** ¿Bloquear el proceso carbonilo detrás del reactor (como ahora) es demasiado duro para empezar? Se puede construir enseguida con el almacén inicial. ¿Los tanques deben pedir la soldadora desde el principio?
+- **Módulos caros.** Un módulo pide toneladas de hierro (2,4 t el de fabricación): son metas largas. ¿Las queremos así, o con kits de módulo importados (comercio, Nevaeh)?
+- **¿Qué hace el módulo agrícola?** Hoy da 60 m² de cultivo y gasta 21 kW, pero la comida no entra en ningún sistema de la estación. ¿Abastece la despensa de la nodriza, produce oxígeno, o hace la resina de los compuestos?
+- **Más puertos.** Solo hay dos ramas (babor y estribor del nodo 1) y las alas limitan su largo. ¿Un nodo 3 como Tranquility para más puertos? ¿Desmontar módulos?
+- **Energía.** Hoy solo bloquea construir. ¿Debe la estación ir más lenta (o parar máquinas) si falta energía, por ejemplo en sombra o si se quitan las alas?
 
 - **Acceso solo atracado** (resuelto): el botón aparece solo acoplada o a menos de 400 m. Queda abierto si las piezas del hangar se montan solo estando allí o si la nodriza lleva un almacén propio. Hoy la bahía de la nave sigue cogiendo piezas del hangar desde cualquier sitio.
 - **¿400 m o solo acoplada?** Hoy basta con estar a menos de 400 m. ¿Lo dejamos así o exigimos estar acoplada?

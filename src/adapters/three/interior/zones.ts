@@ -19,6 +19,8 @@ const TUNING = {
    */
   carSpeed: 2,
   carAccel: 0.5,
+  /** Going down for a chore picked in 0 g: she pulls herself hand over hand along the rails (game value, brisker than a free glide). */
+  railPull: 1.5,
 } as const;
 
 const fmt = (v: number, d = 2) => v.toFixed(d).replace(".", ",");
@@ -280,8 +282,8 @@ export class GravityZones {
         this.sendCar("down");
         return;
       }
-      this.p.addScaledVector(to.normalize(), Math.min(to.length(), IVA.glide.suave * dt));
-      this.iva = { position: new Vec3(this.p.x, this.p.y, this.p.z), velocity: new Vec3(to.x, to.y, to.z).scale(IVA.glide.suave), motion: { kind: "planeo" } };
+      this.p.addScaledVector(to.normalize(), Math.min(to.length(), TUNING.railPull * dt));
+      this.iva = { position: new Vec3(this.p.x, this.p.y, this.p.z), velocity: new Vec3(to.x, to.y, to.z).scale(TUNING.railPull), motion: { kind: "planeo" } };
       return;
     }
     const k = (c: string) => (this.keys.has(c) ? 1 : 0);

@@ -777,9 +777,30 @@ function present(sc: THREE.Scene, cam: THREE.Camera): void {
   tripPreview.render(renderer, scene);
 }
 let last = performance.now();
+/**
+ * Test hook, only in dev builds or with `?prueba` in the URL: the last frame's draw calls and
+ * triangles for the player-experience suite (tools/experiencia, docs/testing.md).
+ */
+const frameStats = import.meta.env.DEV || new URLSearchParams(location.search).has("prueba") ? { calls: 0, triangles: 0, frames: 0 } : null;
+if (frameStats) {
+  renderer.info.autoReset = false;
+  (window as unknown as { __codeshipFrame: typeof frameStats }).__codeshipFrame = frameStats;
+}
+let firstFrame = true;
 renderer.setAnimationLoop((now) => {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
+  if (firstFrame) {
+    // Load time to the first interactive frame (read by the experience suite).
+    firstFrame = false;
+    performance.mark("codeship-primer-fotograma");
+  }
+  if (frameStats) {
+    frameStats.calls = renderer.info.render.calls;
+    frameStats.triangles = renderer.info.render.triangles;
+    frameStats.frames++;
+    renderer.info.reset();
+  }
   const cmd = subj.piloting || interior.active || stationInside.active || deck.active || bay.active || evaMode.active || stationScreen.active || navMode.blocksInput || missionLog.visible ? NO_INPUT : mergeCommands(pilot.command(), touch.command());
   const flown = subj.piloting ? subj.probeMode.command() : cmd;
   const idle = flown.mainThrottle === 0 && flown.translation.length() === 0 && flown.rotation.length() === 0;

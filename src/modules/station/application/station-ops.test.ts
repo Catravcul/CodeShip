@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { failingAnswer } from "@modules/chores/domain/testing";
 import { isCorrect, type Answer, type Exercise } from "@modules/mind-duel/domain/exercise";
 import { MaterialStock } from "../domain/materials";
 import { Hangar } from "../domain/hangar";
@@ -61,7 +62,7 @@ describe("station ops", () => {
   it("solving the chain takes the materials and queues the job; failing changes nothing", () => {
     const o = ops();
     const fail = o.startFabrication("plano-tanque-n2h4-80397");
-    while (fail.run.status === "doing") fail.answer(wrong(fail.run.current!));
+    while (fail.run.status === "doing") fail.answer(failingAnswer(fail.run));
     expect(o.station.queue()).toHaveLength(0);
     expect(o.station.stock.amount("hierro")).toBe(30);
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { failingAnswer } from "@modules/chores/domain/testing";
 import { Vec3 } from "@core/math/vec3";
 import { Ship } from "@modules/ship/domain/ship";
 import { explorerDesign } from "@modules/ship/data/explorer";
@@ -116,7 +117,7 @@ describe("Navigator", () => {
     const { nav, flight, member } = make();
     nav.select(member.data.id);
     const run = nav.startProgramming();
-    while (run.current) nav.answer(wrong(run.current));
+    while (run.current) nav.answer(failingAnswer(run));
     expect(nav.status).toBe("failed");
     expect(flight.guidance).toBeNull();
   }, 30_000);

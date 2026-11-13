@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { failingAnswer } from "@modules/chores/domain/testing";
 import { Vec3 } from "@core/math/vec3";
 import { G } from "@core/units";
 import type { Chore } from "@modules/chores/domain/chore";
@@ -104,7 +105,7 @@ describe("nano_net operations", () => {
     ops.subjugate(site.id);
     const c = only(ops, "nano-convertir");
     const s = ops.start(c, site);
-    while (s.run.status === "doing") s.answer(wrong(s.run.current!));
+    while (s.run.status === "doing") s.answer(failingAnswer(s.run));
     expect(s.run.status).toBe("failed");
     expect(ops.net.core(site.id)).toBeUndefined();
     expect(ops.drainEvents()).toEqual([{ type: "chore-failed", choreId: c.id }]);

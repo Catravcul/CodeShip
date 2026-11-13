@@ -509,6 +509,8 @@ export class Interior {
 
   private goAndDo(chore: Chore): void {
     this.board.classList.add("hidden");
+    // Picked from the hub or the spine: she has to go down the spoke first; say so, or the tap looks ignored.
+    if ((this.zones?.zone ?? "anillo") !== "anillo") this.say(`Bajas al anillo para «${chore.title}»: el ascensor del radio tarda medio minuto`);
     const st = STATIONS.find((s) => s.id === stationFor(chore))!;
     let look = st.look.clone();
     let stand = st.stand.clone();

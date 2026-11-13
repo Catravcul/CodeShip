@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { failingAnswer } from "@modules/chores/domain/testing";
 import { seededRandom } from "../../../content/random";
 import { LETTUCE_OUTREDGEOUS } from "@modules/garden/data/species";
 import { CHILE_ESPANOLA } from "@modules/garden/data/species";
@@ -159,7 +160,8 @@ describe("Habitat chores (everything is a code challenge)", () => {
     h.jolt(1, "Bennu sacudió la nave");
     const plant = h.plants[0]!;
     const before = plant.health;
-    finish(h.start(find(h, "curar-planta")!), wrong);
+    const session = h.start(find(h, "curar-planta")!);
+    while (session.run.status === "doing") session.answer(failingAnswer(session.run));
     expect(plant.health).toBe(before);
     expect(h.drainEvents().some((e) => e.type === "chore-failed")).toBe(true);
   });
@@ -548,7 +550,8 @@ describe("Habitat: swapping parts in the ship bay", () => {
 
   it("failing it leaves the old part on", () => {
     const { h, ship } = swapSetup();
-    done(h.start(swapChore(ship.design, "rcs", partById("aerojet-mr-107t")!)), wrong);
+    const s = h.start(swapChore(ship.design, "rcs", partById("aerojet-mr-107t")!));
+    while (s.run.status === "doing") s.answer(failingAnswer(s.run));
     expect(ship.design.rcs[0]!.model.id).toBe("aerojet-mr-106l");
   });
 });

@@ -147,6 +147,7 @@ const STYLE: Readonly<Record<string, { panel: number; accent: number; glow?: num
   "esclusa-carga": { panel: 0x9aa6b6, accent: 0xffc84a },
   trajes: { panel: 0x7f8a99, accent: 0xf2f2f2 },
   "consola-hangar": { panel: 0x0b1c2a, accent: 0x7fdcff, glow: 0x7fdcff },
+  "consola-bahia": { panel: 0x0b1c2a, accent: 0xffb347, glow: 0x7fdcff },
 };
 
 /** Basis (u across, v up the front, u × v = inward normal) of a fixture's front: upright on the walls. */

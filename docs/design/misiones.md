@@ -21,8 +21,8 @@ Carta de Nevaeh (radio) → objetivo marcado en el mapa (rombo «N») → vuela,
 
 | Lugar | Qué muestra |
 | --- | --- |
-| Cabina, botón **Misiones** (dorado; punto rojo si hay una carta de misión sin leer) | El registro de misiones |
-| Mapa, botón **Misiones** en la cabecera | El mismo registro, encima del mapa |
+| Puente de la nodriza, página COMM, **Registro de misiones**; y la radio del anillo, **Registro de misiones** | El registro de misiones. En la cabina del módulo de aterrizaje solo queda un aviso en el HUD («Novedad en Misiones · en la nave de viaje») (fase 1 de accesos, [accesos.md](accesos.md)) |
+| Mapa (página NAV del puente), botón **Misiones** en la cabecera | El mismo registro, encima del mapa |
 | Mapa, lienzo | Anillo dorado discontinuo y rombo «N» sobre los objetivos que Nevaeh ya pidió; un rombo verde con ✓ cuando ya está hecha; un ✓ verde junto a cada secundaria subyugada |
 | Mapa, fichas y tarjeta | La marca «N» o ✓ en la ficha; en la tarjeta, el porqué de la misión y su recompensa |
 | Aviso dorado arriba (toca para abrir el registro) | «Misión de Nevaeh cumplida…», «Carta de Nevaeh…», «Misión secundaria…» |

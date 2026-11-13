@@ -1,10 +1,10 @@
-# Interiores reales: sonda, nodriza y estación
+# Interiores reales: módulo de aterrizaje, nodriza y estación
 
-Petición de diseño (2026-11-12): «¿Podemos recrear el interior real de la sonda y pasar la cocina, el hospital, el dormitorio, el yoga, etc. a la nave nodriza? También podemos reorganizar para poner zonas en la estación, y la nodriza también se haría más fiel a la realidad».
+Petición de diseño (2026-11-12): «¿Podemos recrear el interior real del módulo de aterrizaje y pasar la cocina, el hospital, el dormitorio, el yoga, etc. a la nave nodriza? También podemos reorganizar para poner zonas en la estación, y la nodriza también se haría más fiel a la realidad».
 
-**Respuesta corta:** la cocina, la enfermería, el yoga y las máquinas ya estaban en la nodriza desde que se separaron las dos naves ([nave-nodriza.md](nave-nodriza.md)); la sonda solo tenía una cabina con dos asientos. Lo que faltaba era que cada nave se pareciera a su referencia real:
+**Respuesta corta:** la cocina, la enfermería, el yoga y las máquinas ya estaban en la nodriza desde que se separaron las dos naves ([nave-nodriza.md](nave-nodriza.md)); el módulo solo tenía una cabina con dos asientos. Lo que faltaba era que cada nave se pareciera a su referencia real:
 
-- **Sonda:** su cabina es ahora la de una cápsula pequeña (módulo lunar Apolo, Orion, Crew Dragon, Starliner): dos asientos con los mandos de mano, consola de cristal con interruptores físicos, escotilla de acople en el techo, escotilla lateral para salir con el traje, el traje, el aseo con cortina y los cartuchos de CO₂. Nada de cocina ni de camas.
+- **Módulo de aterrizaje:** su cabina es ahora la de una cápsula pequeña (módulo lunar Apolo, Orion, Crew Dragon, Starliner): dos asientos con los mandos de mano, consola de cristal con interruptores físicos, escotilla de acople en el techo, escotilla lateral para salir con el traje, el traje, el aseo con cortina y los cartuchos de CO₂. Nada de cocina ni de camas.
 - **Nodriza:** el módulo del anillo se ordena como un hábitat de larga duración de la NASA (Deep Space Habitat, TransHab), con dos zonas que faltaban: el **camarote de Doménica** y un **rincón de ejercicio** con las máquinas de la ISS y el protocolo Sprint. El aseo y el gallinero pasan a la cubierta de cultivo. La espina sin gravedad tiene **taller, almacén y esclusa**. Por fuera, los **radiadores** salen del calor del reactor y quedan dentro de la **sombra de su escudo**, y la espina lleva sus módulos presurizados.
 - **Estación:** ya se puede recorrer por dentro (§5): nodos, módulo habitable, módulo de fabricación con sus máquinas, esclusa y hangar sin presión, todo en ingravidez.
 
@@ -12,7 +12,7 @@ Petición de diseño (2026-11-12): «¿Podemos recrear el interior real de la so
 
 | Zona | Antes | Ahora |
 | --- | --- | --- |
-| Cabina de vuelo | Sonda (`adapters/three/cockpit.ts`): dos asientos, consola de tres pantallas, máscaras, extintor, agua, botiquín y una «escotilla al hábitat» en el mamparo trasero | Sonda, rehecha como cápsula. La escotilla al hábitat estaba mal: la sonda se acopla por el techo, así que ahora la escotilla de acople está arriba |
+| Cabina de vuelo | Módulo de aterrizaje (`adapters/three/cockpit.ts`): dos asientos, consola de tres pantallas, máscaras, extintor, agua, botiquín y una «escotilla al hábitat» en el mamparo trasero | Módulo, rehecha como cápsula. La escotilla al hábitat estaba mal: el módulo se acopla por el techo, así que ahora la escotilla de acople está arriba |
 | Puente de mando | Nodriza, nodo delantero (`src/flight-deck.ts`) | Igual |
 | Cocina, molino y procesador de soja, laboratorio de carne, huerto en bastidores | Nodriza, módulo del anillo (`interior/room.ts`) | Igual, en el extremo «ruidoso» del módulo, junto al ascensor |
 | Enfermería | Nodriza, módulo del anillo | Igual, en el centro, junto al rincón de ejercicio |
@@ -26,7 +26,7 @@ Petición de diseño (2026-11-12): «¿Podemos recrear el interior real de la so
 | Taller, almacén, esclusa | La espina tenía taquillas genéricas | **Nuevo:** taller (guantera e impresora 3D), almacén (bolsas de carga) y esclusa con dos trajes |
 | Hangar y fabricación | Estación (pantalla 2D y maqueta) | Igual; interiores como siguiente paso (§5) |
 
-## 2. La sonda: una cápsula
+## 2. El módulo: una cápsula
 
 ### Referencias
 
@@ -53,7 +53,7 @@ Vista desde el asiento del piloto, mirando a proa:
 
 **Licencia:** la ventana delantera es mucho mayor que la de cualquier cápsula real (las del módulo lunar eran triángulos pequeños). Así se puede aterrizar mirando. Las cámaras (ventral, trasera, exterior, acople, nodriza) y el HUD siguen igual.
 
-**Pendiente (pregunta 3 de nave-nodriza.md):** la sonda pesa ~680 kg y la etapa de ascenso del módulo lunar pesaba 2150 kg en seco. La cabina ahora parece real; la masa sigue siendo una licencia.
+**Pendiente (pregunta 3 de nave-nodriza.md):** el módulo pesa ~680 kg y la etapa de ascenso del módulo lunar pesaba 2150 kg en seco. La cabina ahora parece real; la masa sigue siendo una licencia.
 
 ## 3. La nodriza
 
@@ -120,7 +120,7 @@ Cada reto resuelto suma forma a Doménica (`CrewMember.train`): un entrenamiento
 
 ### La espina sin gravedad
 
-Interior (`interior/spoke.ts`): desde el cojinete hacia proa, el **taller** (una guantera con dos puertos para los guantes, como la MSG de Destiny, y una impresora 3D), el **almacén** (bolsas de carga atadas al «techo», como en el PMM Leonardo), la escotilla verde al **puente de mando**, la **esclusa** con dos trajes EMU y la escotilla exterior, y al final la escotilla a la sonda. Por dentro, la espina está comprimida a 13,5 m; por fuera, los módulos ocupan unos 20 m.
+Interior (`interior/spoke.ts`): desde el cojinete hacia proa, el **taller** (una guantera con dos puertos para los guantes, como la MSG de Destiny, y una impresora 3D), el **almacén** (bolsas de carga atadas al «techo», como en el PMM Leonardo), la escotilla verde al **puente de mando**, la **esclusa** con dos trajes EMU y la escotilla exterior, y al final la escotilla al módulo. Por dentro, la espina está comprimida a 13,5 m; por fuera, los módulos ocupan unos 20 m.
 
 Fuera (`NODRIZA.layout.spineModules`, dibujados en `mothership-model.ts`):
 
@@ -163,7 +163,7 @@ Comprobado en el navegador (iPhone 13 y 1280 × 800): caminar con el mando táct
 
 Petición de diseño (2026-11-12): «Que se pueda andar por dentro de la estación, tanto por el hangar como por el módulo habitable».
 
-**Cómo se entra:** con la sonda acoplada a la estación, o con la nodriza atracada en ella y la sonda a bordo, en la cabina aparece **«Entrar en la estación»** encima de **«Revisar tareas de la estación»**, que se queda como atajo a la pantalla de siempre. Doménica entra por la escotilla del puerto donde está la nave: por el **suelo del Nodo 2** si viene de la sonda o por **proa del Nodo 2** si viene de la nodriza.
+**Cómo se entra:** con el módulo acoplado a la estación, o con la nodriza atracada en ella y el módulo a bordo, se entra por la escotilla donde está acoplado el vehículo: **«Entrar en la estación»** en la cabina del módulo, o **Pasar a la estación** en la escotilla de la espina de la nodriza. **Salir** devuelve por la escotilla por la que se entró ([accesos.md](accesos.md)). Doménica entra por la escotilla del puerto donde está la nave: por el **suelo del Nodo 2** si viene del módulo o por **proa del Nodo 2** si viene de la nodriza.
 
 ### Ingravidez y vertical local
 
@@ -182,7 +182,7 @@ El espacio libre de cada módulo es un **pasillo** entre lo que va en las parede
 
 | Código | Módulo | Largo | Pasillo | Qué hay |
 | --- | --- | --- | --- | --- |
-| NOD2 | Nodo 2 (atraque), como [Unity](https://en.wikipedia.org/wiki/Unity_(ISS_module)) | 5,47 m | 2,4 × 2,4 m | Escotilla IDSS de la sonda en el suelo y de la nodriza a proa; bolsas de carga en el techo |
+| NOD2 | Nodo 2 (atraque), como [Unity](https://en.wikipedia.org/wiki/Unity_(ISS_module)) | 5,47 m | 2,4 × 2,4 m | Escotilla IDSS del módulo en el suelo y de la nodriza a proa; bolsas de carga en el techo |
 | HAB1 | Módulo habitable, como el [HALO](https://handwiki.org/wiki/Astronomy:Habitation_and_Logistics_Outpost) (3 m de diámetro) | 6,1 m | 1,2 × 1,7 m | Desde el Nodo 1: **ejercicio** (estribor: bicicleta como la CEVIS y volante de inercia como el de Orion) y **aseo** cerrado con UWMS (babor); en el centro, la **cocina** de calentar con grifo de agua (estribor), la **mesa** con cinchas y velcro (suelo) y el **botiquín** (techo); en el extremo tranquilo, junto al Nodo 2, **dos camarotes para visitas** (~1,8 m³ cada uno, como los ~2 m³ de la ISS) |
 | NOD1 | Nodo 1, como Unity | 5,47 m | 2,4 × 2,4 m | Dos puertos radiales CBM libres, tapados |
 | FAB1 | Módulo de fabricación, como [Destiny](https://en.wikipedia.org/wiki/Destiny_(ISS_module)) (24 bastidores, seis por cara) | 8,5 m | 2 × 2 m | **Refinería** (babor) y **guantera** como la [MSG](https://en.wikipedia.org/wiki/Microgravity_Science_Glovebox) (estribor, 255 L, puertos de 40 cm); **fundición** (babor) e **impresora 3D de metal** (estribor, [como la de la ESA en la ISS](https://www.tomshardware.com/3d-printing/scientists-print-3d-metal-parts-in-space-for-the-first-time-a-key-ability-for-long-distance-long-duration-missions)); **esclusa de carga** en el techo, como la [Bishop](https://en.wikipedia.org/wiki/Bishop_Airlock_Module), para pasar piezas al hangar |
@@ -203,7 +203,7 @@ El hábitat sigue el orden del Deep Space Habitat (§3): el ejercicio y el aseo 
 
 **La esclusa** (`fits(p, margen, conTraje)` en el dominio): la escotilla interior solo se abre con la esclusa **a presión** y la exterior solo **vacía y con traje**. El botón «Ponerse el traje y vaciar la esclusa» cambia de estado en 2,5 s, mientras el HUD baja de 101 a 0 kPa. Es una **licencia**: en la ISS, ponerse el traje y la prerrespiración llevan horas (Quest baja la cabina a 70 kPa la noche antes). Con el traje no se puede volver a la nave: primero hay que llenar la esclusa y quitárselo.
 
-En el hangar se ven las **piezas de repuesto** en cajas sobre los estantes, con el nombre de la pieza en la primera caja de cada tipo, y las **sondas fabricadas** en sus cunas, con su nombre. Salen de `Hangar` del dominio (`StationInterior.stow`). La nodriza y la sonda que pilotas no están dentro: están atracadas fuera.
+En el hangar se ven las **piezas de repuesto** en cajas sobre los estantes, con el nombre de la pieza en la primera caja de cada tipo, y las **sondas fabricadas** en sus cunas, con su nombre. Salen de `Hangar` del dominio (`StationInterior.stow`). La nodriza y el módulo que pilotas no están dentro: están atracadas fuera.
 
 ### Las máquinas abren la pantalla de la estación
 
@@ -216,7 +216,7 @@ En el hangar se ven las **piezas de repuesto** en cajas sobre los estantes, con 
 
 Se abre de dos maneras: **acercándose**, porque aparece un botón verde abajo («Refinería: abrir Materiales»; también con Intro), o **tocándola** en la pantalla a menos de 12 m. Al cerrar la pantalla («Volver») Doménica sigue donde estaba. Las ventanas de la refinería, la fundición y la impresora brillan y parpadean mientras su cola trabaja, y se quedan tenues cuando la máquina para. Lo que no es máquina (cocina, aseo, camarotes, ejercicio, puertos…) da un botón «¿qué es?» con una línea y su referencia. **Tareas** (arriba) abre la pantalla directamente.
 
-Para **salir**: por la escotilla de la sonda se vuelve a la cabina y por la de la nodriza al interior de la nodriza, si cada nave está atracada en su puerto. «Salir», arriba, vuelve a la cabina desde cualquier sitio, salvo con el traje puesto.
+Para **salir**: por la escotilla del módulo se vuelve a la cabina y por la de la nodriza al interior de la nodriza, si cada nave está atracada en su puerto. «Salir», arriba, vuelve a la cabina desde cualquier sitio, salvo con el traje puesto.
 
 ### Móvil primero
 
@@ -232,7 +232,7 @@ Dos mandos (Flotar y Mirar) en las esquinas de abajo y ▲▼ en medio, para sub
 
 `docs/screenshots/interiores-*-{mobile,desktop}.png` (iPhone 13 y 1280 × 800):
 
-1. Cabina de la sonda mirando a proa · 2, 2b. Mirando atrás: escotilla EVA y traje; aseo, cartuchos de CO₂ y botiquín · 2c. La escotilla de acople del techo
+1. Cabina del módulo mirando a proa · 2, 2b. Mirando atrás: escotilla EVA y traje; aseo, cartuchos de CO₂ y botiquín · 2c. La escotilla de acople del techo
 3. El módulo del anillo hacia el extremo tranquilo (ejercicio, camarote) · 4. El camarote
 5. La estación de ejercicio con sus cuatro tareas · 6. El primer reto (pulso objetivo)
 7. El gallinero en la cubierta de cultivo · 8. La espina: taller y almacén · 9. La esclusa con los trajes
@@ -240,18 +240,18 @@ Dos mandos (Flotar y Mirar) en las esquinas de abajo y ▲▼ en medio, para sub
 
 `docs/screenshots/estacion-interior-*-{mobile,desktop}.png` (iPhone 13 y 1280 × 800):
 
-1. Cabina acoplada a la estación con «Entrar en la estación» · 2. Nodo 2 al entrar desde la sonda · 3. Módulo habitable: mesa, camarotes y botiquín
+1. Cabina acoplada a la estación con «Entrar en la estación» · 2. Nodo 2 al entrar desde el módulo · 3. Módulo habitable: mesa, camarotes y botiquín
 4. Del Nodo 1 al módulo de fabricación · 5. La refinería con su botón · 6. La pestaña Materiales abierta desde la refinería · 7. La impresora y, al fondo, la esclusa
 8. Los trajes en la esclusa · 9. La escotilla exterior, con la esclusa vacía · 10. El hangar desde la puerta, hacia la esclusa · 11. Estantes y sondas en sus cunas
 
 ## Preguntas para Berón
 
-1. **Masa de la sonda.** La cabina ya parece una cápsula de 8 m³, pero pesa ~680 kg (la etapa de ascenso del módulo lunar pesaba 2150 kg en seco). ¿La subimos, aunque los RCS empujen menos?
+1. **Masa del módulo.** La cabina ya parece una cápsula de 8 m³, pero pesa ~680 kg (la etapa de ascenso del módulo lunar pesaba 2150 kg en seco). ¿La subimos, aunque los RCS empujen menos?
 2. **¿Más tripulación?** El Deep Space Habitat y TransHab son para 4–6 personas. Con Doménica sola, un camarote basta. Si vienen visitas (Nevaeh, Kushal), ¿usamos los camarotes del anillo gemelo, que hoy no tienen interior?
-3. **Ventana de la sonda.** ¿Te vale la ventana grande, que es una licencia, o prefieres ventanas pequeñas como las del módulo lunar y aterrizar más con las cámaras?
+3. **Ventana del módulo.** ¿Te vale la ventana grande, que es una licencia, o prefieres ventanas pequeñas como las del módulo lunar y aterrizar más con las cámaras?
 4. **Estación.** Hecho (§5). Quedan dudas nuevas en la lista de abajo.
 5. **Escudo de sombra.** 35° es un valor de juego. Los diseños reales alejan el reactor con un mástil largo para que el escudo sea pequeño. ¿Alargamos la nodriza por popa?
 6. **Hangar sin presión.** ¿Te vale entrar con traje por la esclusa, o prefieres una galería presurizada con ventanas (como la Cupola de la ISS) desde la que se vea el hangar sin salir?
 7. **Esclusa rápida.** Ponerse el traje y vaciar la esclusa lleva 2,5 s; en la ISS lleva horas. ¿Lo dejamos así o hacemos un pequeño reto (el protocolo de prerrespiración) cada vez?
-8. **Paso directo nodriza → estación.** Hoy se entra desde la cabina de la sonda. ¿Añadimos en la espina de la nodriza un botón «Ir a la estación» cuando está atracada?
+8. **Paso directo nodriza → estación.** Hoy se entra desde la cabina del módulo. ¿Añadimos en la espina de la nodriza un botón «Ir a la estación» cuando está atracada?
 9. **Visitas.** Los camarotes del módulo habitable están vacíos. ¿Quién viene a dormir a la estación (Nevaeh, Kushal, la tripulación que traiga la historia)?

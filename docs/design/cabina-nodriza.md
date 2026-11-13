@@ -2,7 +2,7 @@
 
 Petición de diseño (2026-11-12): «En la cabina de la nodriza podemos reconstruir los mandos y paneles reales, y el mapa podría ser uno de los paneles, o proponer una opción mejor».
 
-**Propuesta:** un puente de «cabina de cristal» como el de Orion y Crew Dragon, con seis páginas de pantalla y una barra de estado fija. El mapa de navegación es una de esas páginas: es el mismo componente que el mapa de la cabina de la sonda, montado dentro del panel. La nodriza no se pilota a mano. Sus propulsores eléctricos empujan durante horas o días, así que el puente no tiene palancas de mando: tiene pantallas para planificar el viaje y para vigilar la propulsión, la energía y el hábitat.
+**Propuesta:** un puente de «cabina de cristal» como el de Orion y Crew Dragon, con seis páginas de pantalla y una barra de estado fija. El mapa de navegación es una de esas páginas: es el mismo componente que el mapa de la cabina del módulo de aterrizaje, montado dentro del panel. La nodriza no se pilota a mano. Sus propulsores eléctricos empujan durante horas o días, así que el puente no tiene palancas de mando: tiene pantallas para planificar el viaje y para vigilar la propulsión, la energía y el hábitat.
 
 Código: `src/modules/flight-deck/application/panels.ts` (modelos de vista con tests), `src/flight-deck.ts` (la pantalla), `src/ui/flight-deck.css`. El mapa de `src/ui/nav-map.ts` ahora se puede montar en un panel (`NavMap.mount`).
 
@@ -25,23 +25,23 @@ Cada página lleva el código de su sistema, como en las naves reales: NAV, PROP
 
 | Página | Qué muestra | De dónde sale |
 | --- | --- | --- |
-| **Navegación** | El mapa de la región con todas sus funciones: girar, acercar, elegir un destino, fijarlo, programar el viaje y abrir «Misiones». Encima, una franja con el viaje en curso | `NavMap` (el mismo de la cabina de la sonda) y `Navigator.progress()` |
+| **Navegación** | El mapa de la región con todas sus funciones: girar, acercar, elegir un destino, fijarlo, programar el viaje y abrir «Misiones». Encima, una franja con el viaje en curso | `NavMap` (el mismo de la cabina del módulo) y `Navigator.progress()` |
 | **Propulsión** | Las 18 toberas en dos módulos de 9, encendidas mientras la nodriza acelera o frena (apagadas al dar la vuelta). Empuje, Δv restante (Tsiolkovsky), xenón, caudal por propulsor (ṁ = F / (Isp·g₀) ≈ 245 mg/s), masa, aceleración y días de empuje que quedan | `Mothership` y su ficha `NODRIZA` |
 | **Energía y calor** | Reactor de 2 MWe (5,9 MWt con la conversión Brayton del 33,7 %), reparto entre propulsores (1782 kW si están encendidos) y el resto de la nave, calor a radiar (3,93 MW) y carga de los radiadores (1,43 kW/m² en 2760 m²) | `Mothership.wasteHeatKw` y la ficha de energía (Harnack et al. 2022) |
 | **Vida y hábitat** | Giro del anillo, gravedad en el suelo, velocidad de la llanta, bienestar, saciedad y forma de Doménica, días en ingravidez, plantas vivas y listas para cosechar, superficie de cultivo y cuánta comida cubre, animales y máquinas en marcha | `SpinRing`, `Habitat` |
-| **Acople** | Acoplada o no. Si está fuera: distancia al puerto, asistente y la comprobación de cada condición de contacto (cierre, desvío, inclinación y alabeo) frente a los límites IDSS. También el casco y los tanques de la sonda | `Docking`, `IDSS_CONTACT_LIMITS`, `Ship` |
+| **Acople** | Acoplada o no. Si está fuera: distancia al puerto, asistente y la comprobación de cada condición de contacto (cierre, desvío, inclinación y alabeo) frente a los límites IDSS. También el casco y los tanques del módulo | `Docking`, `IDSS_CONTACT_LIMITS`, `Ship` |
 | **Radio y misiones** | La misión principal activa de Nevaeh, con botones a «Registro de misiones» y «Ver en el mapa». Debajo, los mensajes recibidos (sin leer, con misión), que se leen dentro del panel | `MissionLog` (modules/missions), `Mailbox`. El registro es el mismo de la cabina (`src/ui/mission-log.ts`) |
 
-**Alertas:** la barra de estado enumera las alertas de la más grave a la menos grave, y el marco de cada página toma el color de su peor alerta. Si todo va bien, se lee «Sin avisos» (quiet/dark). Los umbrales son valores de juego: xenón por debajo del 20 % (precaución) y del 5 % (aviso), máquinas averiadas, bienestar por debajo del 35 %, huerto por debajo del 80 % de la comida, anillos sin la velocidad de crucero, sonda fuera, casco de la sonda por debajo del 50 % y mensajes sin leer. Tocar una alerta abre su página.
+**Alertas:** la barra de estado enumera las alertas de la más grave a la menos grave, y el marco de cada página toma el color de su peor alerta. Si todo va bien, se lee «Sin avisos» (quiet/dark). Los umbrales son valores de juego: xenón por debajo del 20 % (precaución) y del 5 % (aviso), máquinas averiadas, bienestar por debajo del 35 %, huerto por debajo del 80 % de la comida, anillos sin la velocidad de crucero, módulo fuera, casco del módulo por debajo del 50 % y mensajes sin leer. Tocar una alerta abre su página.
 
 ## Cómo se usa
 
-- **Entrar:** desde el eje del anillo, flotando por la espina hasta la escotilla verde lateral «Puente de mando», que da al botón «Ir al puente de mando». Desde la cabina de la sonda acoplada también vale el botón **Puente de la nodriza**. Sin acoplar no hay puente: Doménica está en la sonda.
+- **Entrar:** desde el eje del anillo, flotando por la espina hasta la escotilla verde lateral «Puente de mando», que da al botón «Ir al puente de mando». También la **consola de navegación** del anillo abre el puente en la página NAV. Desde la fase 1 de accesos ([accesos.md](accesos.md)) ya no hay botón **Puente de la nodriza** en la cabina del módulo: se entra por la escotilla de la espina.
 - **Escritorio:** la ventana de proa (la escena 3D real, vista desde el nodo delantero) y debajo la consola con las seis páginas a la vez. La de navegación, en el centro y más grande, se usa allí mismo. ⤢ abre cualquier página a pantalla completa y ‹ o Esc vuelve.
 - **Móvil:** la barra de estado, una franja de ventana y un mosaico de 2 × 3 resúmenes (3 × 2 en horizontal). Un toque abre la página a pantalla completa y entonces se puede usar entera. En la de navegación aparece el mapa, con todas sus funciones.
-- **M y «Mapa»:** en la cabina de la sonda abren el mapa superpuesto, como antes. En el puente, M abre y cierra la página de navegación.
-- **Programar un viaje** desde el puente usa los mismos retos de código. Mientras la nodriza viaja se ven las toberas encendidas, el empuje y el reparto de energía. Al aparcar, la sonda se desacopla y sigue sola: el puente se cierra y Doménica baja a la sonda, con el aviso «La nodriza ha aparcado: bajas a la sonda…».
-- **Volver** (o Esc) lleva de vuelta a donde estaba: el eje o la cabina de la sonda.
+- **M:** en el puente abre y cierra la página de navegación. En la cabina del módulo no hay mapa: M solo recuerda que está en el puente de la nave de viaje. El botón **nano_net** de la barra de estado abre la tarjeta de la nano_net.
+- **Programar un viaje** desde el puente usa los mismos retos de código. Mientras la nodriza viaja se ven las toberas encendidas, el empuje y el reparto de energía. Al aparcar, el módulo se desacopla y sigue solo: el puente se cierra y Doménica baja al módulo, con el aviso «La nodriza ha aparcado: bajas al módulo…».
+- **Volver** (o Esc) lleva de vuelta a donde estaba: el eje o la cabina del módulo.
 
 ## Licencias
 
@@ -51,7 +51,7 @@ Cada página lleva el código de su sistema, como en las naves reales: NAV, PROP
 
 ## Preguntas abiertas
 
-1. ¿Debe poder **desacoplarse la sonda** desde la página de Acople? Ahora solo informa: se desacopla desde la cabina de la sonda (K), porque Doménica tiene que estar dentro.
-2. Al llegar la nodriza, el **relevo automático a la sonda** saca a Doménica del puente. ¿Preferimos que se quede y que la sonda siga sola sin ella, como un dron?
+1. ¿Debe poder **desacoplarse el módulo** desde la página de Acople? Ahora solo informa: se desacopla desde la cabina del módulo (K), porque Doménica tiene que estar dentro.
+2. Al llegar la nodriza, el **relevo automático al módulo** saca a Doménica del puente. ¿Preferimos que se quede y que el módulo siga solo sin ella, como un dron?
 3. Cuando el equipo de la estación termine la estación física y el atraque, la página de Acople podría mostrar también el puerto de la estación.
 4. ¿Merece la pena una maqueta 3D de la consola, con las pantallas como texturas, o basta la ventana 3D con la consola HTML, que se puede usar con el dedo?

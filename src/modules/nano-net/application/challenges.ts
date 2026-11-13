@@ -71,7 +71,7 @@ export function convertChore(site: NanoSite): Chore {
     title: `Convertir ${site.name} en núcleo`,
     scenario: `${site.name} ya obedece: su mente puede aprender a ser una célula madre de la nano_net`,
     exercises: [
-      steps(`nano-convertir-${site.id}-semilla`, "Siembra en mí la semilla", ["anclar la sonda al regolito", "leer la mente persuadida", "escribir el programa semilla", "arrancar el núcleo"]),
+      steps(`nano-convertir-${site.id}-semilla`, "Siembra en mí la semilla", ["anclar el módulo al regolito", "leer la mente persuadida", "escribir el programa semilla", "arrancar el núcleo"]),
       choice(
         `nano-convertir-${site.id}-mu`,
         3,

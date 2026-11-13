@@ -274,8 +274,12 @@ mothershipModel.root.position.set(mothership.position.x, mothership.position.y, 
 mothershipModel.root.quaternion.set(mothership.orientation.x, mothership.orientation.y, mothership.orientation.z, mothership.orientation.w);
 scene.add(mothershipModel.root);
 const view = new FlightView(scene, camera, root, () => ship.design, { position: mothershipModel.root.position, quaternion: mothershipModel.root.quaternion, sun: skyBodies.sunDirection });
+// The lander's cockpit keeps only what its pilot needs (docs/design/accesos.md): landing and docking
+// assists, sky labels, camera, time warp when it makes sense, the suit-up on Bennu and, docked, the
+// hatch into the vehicle it is docked to. The map, the missions and the nano_net are on the travel
+// ship; the bay, the blueprints and the fabrication at the station.
 const landBtn = view.addButton("land-btn", () => (flight.landingAssist = !flight.landingAssist));
-// Docked: undock. Free: the docking assist (like the landing assist), near the mothership.
+// Docked: undock. Free: the docking assist (like the landing assist), near a port.
 const dockBtn = view.addButton("dock-btn", () => (docking.docked ? docking.undock() : docking.toggleAssist()));
 const namesBtn = view.addButton("names-btn", () => (skyBodies.labelsOn = !skyBodies.labelsOn));
 const navMode = new NavigationMode(root, nav, duelView, {
@@ -286,13 +290,21 @@ const navMode = new NavigationMode(root, nav, duelView, {
   shipNose: () => flight.state.toWorld(new Vec3(0, 0, -1)),
   carrierPosition: () => mothership.position,
 });
-view.addButton("map-btn", () => navMode.toggle()).textContent = "Mapa";
-// The mission log, from the cockpit and from the map; the map marks Nevaeh's targets.
+// The map only lives on the deck's navigation page: no overlay anywhere else.
+navMode.canOpen = () => false;
+// The mission log, on the travel ship: deck COMM page, the map and the radio. The map marks Nevaeh's targets.
 const missionLog = new MissionLogPanel(root, missions, habitat.mailbox);
 navMode.map.missionMark = (id) => missionLog.mark(id);
 navMode.map.onMissions = () => missionLog.open();
-missionLog.onShowOnMap = (id) => (deck.active ? deck.showTarget(id) : navMode.map.show(id));
-const missionsBtn = view.addButton("missions-btn", () => !duelView.visible && missionLog.open());
+missionLog.canOpen = () => deck.active || interior.active;
+missionLog.onShowOnMap = (id) => {
+  // From the radio on the ring: up to the deck's navigation page.
+  if (!deck.active && interior.active) {
+    interior.exit();
+    deck.enter("interior");
+  }
+  if (deck.active) deck.showTarget(id);
+};
 const regionTag = document.createElement("div");
 regionTag.className = "region-tag";
 root.appendChild(regionTag);
@@ -319,33 +331,52 @@ const duelSession = () => {
 };
 const interior = new Interior(root, habitat, duelView, ring);
 const nanoView = new NanoNetView(scene, nano.net);
-const nanoPanel = new NanoNetPanel(root, duelView, view.addButton("nano-btn", () => {}), nano, bennuSite);
-// Walks outside on Bennu (EVA): only with the ship anchored.
+// Walks outside on Bennu (EVA): only with the lander anchored.
 const eva = new Eva(flight, bennu, (local) => surface(local), habitat.crew.body.massKg);
 const evaMode = new EvaMode(root, scene, camera, eva, bennu, duelView);
 const evaBtn = view.addButton("eva-btn", () => !duelView.visible && !interior.active && evaMode.startSuitUp());
 evaBtn.textContent = "Salir de la nave";
 evaMode.onExit = () => view.center();
+
+// The lander's hatch: docked, it leads into the vehicle it is docked to, and only there.
+const atStationPort = () => structure.ports.some((p) => p === docking.dockedTo);
+const hatchInto = (): "nave" | "estacion" | null => (docking.dockedTo === mothership ? "nave" : atStationPort() ? "estacion" : null);
 const modeBtn = document.createElement("button");
-modeBtn.className = "mode-btn";
-modeBtn.textContent = "Ir al interior";
+modeBtn.className = "mode-btn hidden";
 root.appendChild(modeBtn);
 modeBtn.addEventListener("click", () => {
-  if (duelView.visible || evaMode.active) return;
-  // The rings, the garden and the chores are on the mothership: only reachable while docked.
-  if (!interior.active && docking.dockedTo !== mothership) return flash("El interior está en la nodriza: acopla la sonda para entrar");
-  if (interior.active) interior.exit();
-  else interior.enter();
-  modeBtn.textContent = interior.active ? "Ir a la cabina" : "Ir al interior";
+  if (duelView.visible || evaMode.active || interior.active || stationInside.active || deck.active || bay.active) return;
+  const to = hatchInto();
+  if (to === "nave") interior.enter("escotilla");
+  else if (to === "estacion") stationInside.enter("sonda");
 });
-// The hatch at the end of the spine opens into the cockpit.
+// The docking hatches at the end of the spine: down to the lander, or across to the station.
 if (interior.zones)
-  interior.zones.onCockpit = () => {
-    interior.exit();
-    view.setMode("cabina");
-    modeBtn.textContent = "Ir al interior";
-  };
-// The mothership's flight deck: from the spine's side hatch, or from the probe's cockpit while docked (docs/design/cabina-nodriza.md).
+  interior.zones.endHatches = () => [
+    ...(docking.dockedTo === mothership
+      ? [
+          {
+            label: "Bajar al módulo de aterrizaje",
+            go: () => {
+              interior.exit();
+              view.setMode("cabina");
+            },
+          },
+        ]
+      : []),
+    ...(mothership.dockedTo
+      ? [
+          {
+            label: "Pasar a la estación",
+            go: () => {
+              interior.exit();
+              stationInside.enter("nodriza");
+            },
+          },
+        ]
+      : []),
+  ];
+// The travel ship's flight deck: from the spine's side hatch or the ring's navigation console (docs/design/cabina-nodriza.md).
 const deck = new FlightDeck(root, {
   mothership,
   ring,
@@ -367,45 +398,40 @@ if (interior.zones)
     interior.exit();
     deck.enter("interior");
   };
+interior.openNavConsole = () => {
+  interior.exit();
+  deck.enter("interior");
+  deck.maximize("nav");
+};
+interior.openMissions = () => missionLog.open();
 deck.onExit = (to, why) => {
   if (to === "interior") interior.enter();
   else view.setMode("cabina");
-  modeBtn.textContent = interior.active ? "Ir a la cabina" : "Ir al interior";
   if (why) flash(why, 8);
 };
-const deckBtn = view.addButton("deck-btn", () => !duelView.visible && docking.dockedTo === mothership && deck.enter("cabina"));
-deckBtn.textContent = "Puente de la nodriza";
-// M and «Mapa» on the deck open its navigation page.
+// M on the deck opens its navigation page; in the lander's cockpit it only says where the map is.
 navMode.toggleOverride = () => deck.active && (deck.toggleNav(), true);
+navMode.onBlocked = () => view.enabled && flash("El mapa está en el puente de la nave de viaje: acopla el módulo y entra", 5);
+// nano_net: its status card opens from the deck; the core action stays in the lander, anchored on the core.
+const nanoPanel = new NanoNetPanel(root, duelView, deck.nanoBtn, nano, bennuSite);
 let lastPhase = expedition.phase;
 
-// Ship bay: the ship from outside, its parts' state and swaps. Reached from the cockpit and the habitat.
-// Part swaps take the part from the station's hangar; the old one goes back there.
+// Ship bay: only at the station (docs/design/accesos.md): its console in node 2, B inside, or the
+// hangar tab of the station screen. Part swaps take the part from the station's hangar; the old one goes back there.
 const bay = new ShipBay(root, ship, habitat, duelView, mothership.spec, stationOps.station.hangar);
-bay.docked = () => docking.docked;
+// The mothership's systems are worked on while it is berthed at the station.
+bay.docked = () => !!mothership.dockedTo;
 // The mothership's thruster mounts are refitted in the bay's Nodriza tab (docs/design/nave-nodriza.md).
 bay.nodriza = mothership;
 bay.onDriveRefit = () => mothershipModel.setThrusters(mothership.fitted);
-const openBay = (from: "cabina" | "interior") => {
-  if (duelView.visible || bay.active) return;
-  if (from === "interior") interior.exit();
-  bay.enter(from);
-};
-bay.onExit = (from) => {
-  if (from === "interior") interior.enter();
-  modeBtn.textContent = interior.active ? "Ir a la cabina" : "Ir al interior";
-};
-interior.openBay = () => openBay("interior");
-view.addButton("bay-btn", () => openBay("cabina")).textContent = "Bahía de la nave";
-// Space station screen: opens from «Revisar tareas de la estación», shown only docked at the station or within its docking range.
-// Refuelling (docs/design/estacion.md, «Repostar»): the probe at the station's port or on the mothership
+// Refuelling (docs/design/estacion.md, «Repostar»): the lander at the station's port or on the mothership
 // berthed there, and the mothership's xenon while she is berthed.
-const atStationPort = () => structure.ports.some((p) => p === docking.dockedTo);
 const mothershipAtStation = () => !!mothership.dockedTo;
 const refuelOps = new RefuelOps(stationOps.station, [
   shipRefuelTarget(ship, EXPLORER_CRAFT.id, () => atStationPort() || (docking.dockedTo === mothership && mothershipAtStation())),
   mothershipRefuelTarget(mothership, mothershipAtStation),
 ]);
+// Space station screen: its machines and the «Tareas» button inside the station open its tabs.
 const stationScreen = new StationScreen(
   root,
   stationOps,
@@ -426,34 +452,39 @@ const stationInside = new StationInteriorMode(root, new StationInterior(POLANA_I
     screenFromInside = true;
     stationScreen.enter(tab);
   },
-  leave: (to) => {
-    const mothershipHere = docking.dockedTo === mothership && !!mothership.dockedTo;
-    if (to === "nodriza" && !mothership.dockedTo) return "La nodriza no está atracada en este puerto";
-    if (to === "sonda" && !atStationPort()) return "La sonda no está en este puerto";
+  openBay: () => {
+    if (duelView.visible || bay.active) return;
     stationInside.suspend();
-    // Through the mothership's port she goes into its habitat; otherwise back to the probe's cockpit.
-    if (to === "nodriza") {
-      interior.enter();
-      modeBtn.textContent = "Ir a la cabina";
-      if (!mothershipHere) modeBtn.classList.remove("off");
-    } else view.center();
+    bay.enter("estacion");
+  },
+  leave: (to) => {
+    if (to === "nodriza" && !mothership.dockedTo) return "La nodriza no está atracada en este puerto";
+    if (to === "sonda" && !atStationPort()) return "El módulo de aterrizaje no está en este puerto";
+    stationInside.suspend();
+    // Through the mothership's port she comes aboard at its spine hatch; otherwise back to the lander's cockpit.
+    if (to === "nodriza") interior.enter("escotilla");
+    else view.center();
   },
 });
 let screenFromInside = false;
+let screenToBay = false;
 stationScreen.onExit = () => {
+  if (screenToBay) return;
   if (!screenFromInside) return view.center();
   screenFromInside = false;
   stationInside.resume();
 };
-const stationDock = new StationDock(root, (c, f) => view.addButton(c, f), {
+stationScreen.onBay = () => {
+  if (duelView.visible || bay.active) return;
+  screenToBay = true;
+  stationScreen.exit();
+  screenToBay = false;
+  bay.enter("pantalla");
+};
+bay.onExit = (from) => (from === "pantalla" ? stationScreen.enter("hangar") : stationInside.resume());
+const stationDock = new StationDock((c, f) => view.addButton(c, f), {
   open: () => !duelView.visible && !bay.active && !interior.active && !evaMode.active && stationScreen.enter(),
-  enter: () => !duelView.visible && !bay.active && !interior.active && !evaMode.active && stationInside.enter(atStationPort() ? "sonda" : "nodriza"),
   distanceM: () => stationOps.station.distanceTo(flight.state.position),
-  alongside: () => stationOps.station.isAlongside(flight.state.position),
-  docked: () => atStationPort() || (docking.dockedTo === mothership && !!mothership.dockedTo),
-});
-window.addEventListener("keydown", (e) => {
-  if (e.code === "KeyB" && !e.repeat && !interior.active && !stationInside.active && !duelView.visible && !deck.active) bay.active ? bay.exit() : openBay("cabina");
 });
 
 const action = document.createElement("button");
@@ -487,7 +518,7 @@ function dockingText(): string {
   // During a mothership trip the autopilot strip says where it is going.
   if (nav.status === "carrier") return "";
   const on = docking.dockedTo;
-  if (on) return `${on === mothership && mothership.dockedTo ? "Nodriza atracada en la estación" : `Acoplada a ${on === mothership ? "la nodriza" : "la estación"}`} · K desacopla · M abre el mapa`;
+  if (on) return `${on === mothership && mothership.dockedTo ? "Nodriza atracada en la estación" : `Módulo acoplado a ${on === mothership ? "la nodriza" : "la estación"}`} · K desacopla`;
   // While the trip autopilot flies away from the port, the docking read-out is noise.
   // The autopilot strip already shows the automatic docking's progress.
   if (nav.status === "autopilot" || nav.status === "docking") return "";
@@ -560,7 +591,7 @@ renderer.setAnimationLoop((now) => {
     flight.applyImpulse(region.boundaryPush(st.position, st.velocity, dt * warp).add(region.avoidObstacles(st.position, st.velocity, expedition.asteroid)).add(mothership.keepOut(st.position, st.velocity)).add(structure.keepOut(st.position, st.velocity)));
   }
   for (const e of docking.drainEvents()) {
-    if (e.type === "docked") flash(e.target === mothership ? "Acoplada: ganchos cerrados. Ya puedes ir al interior de la nodriza" : "Acoplada a la estación: ganchos cerrados. Ya puedes revisar sus tareas");
+    if (e.type === "docked") flash(e.target === mothership ? "Acoplado: ganchos cerrados. Ya puedes entrar en la nave de viaje" : "Acoplado a la estación: ganchos cerrados. Ya puedes entrar en ella");
     // Leaving the deck at a trip's handover already said why.
     if (e.type === "undocked" && !(nav.status === "autopilot" && performance.now() < flashUntil)) flash("Desacoplada: los muelles te separan a 0,08 m/s");
     if (e.type === "rebound") flash(`No engancha: ${e.failures.join(" · ")}${e.damage > 0 ? " · golpe en el casco" : ""}`, 7);
@@ -588,13 +619,10 @@ renderer.setAnimationLoop((now) => {
     missionLog.render();
     navMode.map.refresh();
   }
-  const missionsText = `Misiones${missionLog.unread ? `<b>•</b>` : ""}`;
-  if (missionsBtn.innerHTML !== missionsText) missionsBtn.innerHTML = missionsText;
   // The station's machines run on the same clock as life on board.
   stationOps.station.tick(dt * warp * STATION_TUNING.hoursPerSecond);
   interior.update(dt);
   view.enabled = !interior.active && !stationInside.active && !deck.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active && !navMode.mapOpen && !missionLog.visible;
-  navMode.canOpen = () => !interior.active && !stationInside.active && !deck.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active;
   navMode.update(dt, view.warpRequested);
   // The mothership moves on trips: keep its model where the domain has it.
   mothershipModel.root.position.set(mothership.position.x, mothership.position.y, mothership.position.z);
@@ -616,6 +644,7 @@ renderer.setAnimationLoop((now) => {
   }
   if (deck.active) {
     deck.update(dt);
+    nanoPanel.update(flight.landed && expedition.asteroid === bennu, fx, { action: false, card: !duelView.visible });
     asteroidMesh.rotation.y = bennu.spinRadS * flight.simTimeS;
     renderer.render(scene, deck.camera);
     return;
@@ -636,7 +665,7 @@ renderer.setAnimationLoop((now) => {
   }
   view.rig.visible = true;
   renderPhase();
-  nanoPanel.update(flight.landed && expedition.asteroid === bennu, fx, !duelView.visible);
+  nanoPanel.update(flight.landed && expedition.asteroid === bennu, fx, { action: !duelView.visible, card: false });
   nanoView.update(flight.simTimeS);
   landBtn.textContent = `Aterrizaje: ${flight.landingAssist ? "auto" : "manual"}`;
   landBtn.classList.toggle("on", flight.landingAssist);
@@ -644,8 +673,13 @@ renderer.setAnimationLoop((now) => {
   if (dockBtn.textContent !== dockText) dockBtn.textContent = dockText;
   dockBtn.classList.toggle("on", docking.assist && !docking.docked);
   dockBtn.classList.toggle("hidden", !docking.docked && !docking.inRange());
-  deckBtn.classList.toggle("hidden", docking.dockedTo !== mothership);
-  modeBtn.classList.toggle("off", docking.dockedTo !== mothership && !interior.active);
+  // Landing assist only off a port; time warp only on free flight, far from the surface (or to switch it off).
+  landBtn.classList.toggle("hidden", docking.docked);
+  view.warpAvailable = !docking.docked && !flight.landed && (far || view.warpRequested > 1);
+  const into = hatchInto();
+  const hatchText = into === "nave" ? "Entrar en la nave de viaje" : into === "estacion" ? "Entrar en la estación" : "";
+  if (modeBtn.textContent !== hatchText) modeBtn.textContent = hatchText;
+  modeBtn.classList.toggle("hidden", !into);
   mothershipModel.update(dt, ring.omegaRadS, now / 1000);
 
   const s = flight.state;
@@ -659,7 +693,7 @@ renderer.setAnimationLoop((now) => {
   );
   asteroidMesh.rotation.y = bennu.spinRadS * flight.simTimeS;
   stationModel.update(flight.simTimeS, skyBodies.sunDirection);
-  stationDock.update(view.enabled && !navMode.blocksInput && expedition.phase !== "landed");
+  stationDock.update();
   field.update(camera, window.innerHeight, flight.simTimeS, view.enabled && skyBodies.labelsOn);
   skyBodies.update(camera, renderer.getPixelRatio(), view.enabled);
   const namesText = `Nombres: ${skyBodies.labelsOn ? "sí" : "no"}`;
@@ -678,7 +712,7 @@ renderer.setAnimationLoop((now) => {
     regionTag.className = `region-tag ${edge.zone}${tagText ? " on" : ""}`;
   }
 
-  hud.render(flight.telemetry(), flight.rotationAssist, ship.propellants.map((p) => ship.propellantKg(p)), thrustText(cmd));
+  hud.render(flight.telemetry(), flight.rotationAssist, ship.propellants.map((p) => ship.propellantKg(p)), thrustText(cmd), missionLog.unread);
   renderer.render(scene, camera);
 });
 

@@ -1,5 +1,6 @@
 import { Vec3 } from "@core/math/vec3";
 import { aisleRails, gridRails, hatchRails, RAIL_LAYOUT, type Handrail } from "@modules/gravity/domain/handrails";
+import type { Portal } from "@modules/gravity/domain/hops";
 import { IVA } from "@modules/gravity/domain/iva";
 import { FACE_NORMAL, StationInterior, type StationInteriorPlan } from "../domain/interior";
 
@@ -41,6 +42,30 @@ export function stationHandrails(plan: StationInteriorPlan): Handrail[] {
       rails.push({ id: `${f.id}:${s < 0 ? "i" : "d"}`, a: c.sub(h), b: c.add(h), normal: n });
     }
   }
+  // A bar at each work station (machines, consoles, the airlock's suits), in front of it a little
+  // below its middle: the handhold by a foot restraint, between waist and shoulder (NASA-STD-3000
+  // §11.7.2.3.2). Hopping lands her facing the machine.
+  for (const f of plan.fixtures) {
+    const k = f.action.kind;
+    if (k !== "panel" && k !== "bahia" && k !== "esclusa") continue;
+    if (plan.volumes.find((v) => v.id === f.volume)?.kind === "hangar") continue;
+    const n = FACE_NORMAL[f.face].scale(-1);
+    const wall = Math.abs(n.y) < 0.5;
+    const runs = wall ? (Math.abs(n.x) > 0.5 ? new Vec3(0, 0, 1) : new Vec3(1, 0, 0)) : new Vec3(0, 0, 1);
+    const c = f.at.add(n.scale(RAIL_LAYOUT.standoffM)).add(wall ? new Vec3(0, -0.35, 0) : Vec3.ZERO);
+    const h = runs.scale(RAIL_LAYOUT.lengthM / 2);
+    rails.push({ id: `${f.id}:puesto`, a: c.sub(h), b: c.add(h), normal: n });
+  }
   const body = (r: Handrail) => r.a.add(r.b).scale(0.5).add(r.normal.scale(IVA.holdM));
   return rails.filter((r) => interior.fits(body(r), 0.3, false) || interior.fits(body(r), 0.3, true));
+}
+
+/** The hatches between modules, for hopping through them (gravity/domain/hops.ts). */
+export function stationPortals(plan: StationInteriorPlan): Portal[] {
+  return plan.volumes
+    .filter((v) => v.kind === "escotilla" && v.through)
+    .map((v) => {
+      const k = v.through!;
+      return { centre: v.centre, axis: new Vec3(k === "x" ? 1 : 0, k === "y" ? 1 : 0, k === "z" ? 1 : 0), halfDepth: v.half[k] };
+    });
 }

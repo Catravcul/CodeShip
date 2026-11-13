@@ -99,7 +99,7 @@ Capturas (antes / después), en `docs/screenshots/`:
 | Arriba a la izquierda | Estado | HUD | telemetría | barras, despensa, gravedad | traje, oxígeno, cable |
 | Arriba a la derecha | Salir / menú | ojo, Levantarse, raíz | Volver al puente | Tareas, Radio, Vista (Salir en la estación); en el habitáculo y el puente, ojo y Tareas | Volver a la nave |
 | Sobre el pulgar derecho / abajo al centro | Acción principal del momento | aviso (la acción, en una máquina del habitáculo) | Lanzar sonda, Convencer | botón de la zona («Bajar al módulo», «Cocina: 8 tareas») | Impulso, Tomar muestra |
-| Abajo, a los lados | Mandos de movimiento | GIRAR+MIRAR / MOVER | GIRAR / MOVER | Caminar o Manos / Mirar (+ Impulsarse) | Caminar / Mirar |
+| Abajo, a los lados | Mandos de movimiento | GIRAR+MIRAR / MOVER | GIRAR / MOVER | Caminar o flechas de salto (0 g) / Mirar | Caminar / Mirar |
 
 ### Habitáculo del módulo y puente de la nodriza
 

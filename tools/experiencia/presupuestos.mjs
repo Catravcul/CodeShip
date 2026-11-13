@@ -4,7 +4,7 @@
 /** Stable journey IDs: never renumbered or reused; a journey that no longer applies becomes «Retirado». */
 export const JOURNEYS = [
   { id: "PX-01", name: "cocina", title: "Cocinar paso a paso: crema de cacahuete con un fallo repetido, receta perdida en vista HUD" },
-  { id: "PX-02", name: "movimiento", title: "Moverse: propulsores de la cabina, impulso en ingravidez, caminar por el anillo" },
+  { id: "PX-02", name: "movimiento", title: "Moverse: propulsores de la cabina, flechas en ingravidez, caminar por el anillo" },
   { id: "PX-03", name: "mision", title: "Misión 1 de Nevaeh: carta, registro, las tres fases en Bennu y duelo con un fallo" },
   { id: "PX-04", name: "acciones-movil", title: "Botones de cada pantalla de un iPhone 13 (390×664 visibles de 390×844): capturas, solapes y objetivos de toque", mobile: true, throttle: 1 },
   { id: "PX-05", name: "acciones-escritorio", title: "Botones de cada pantalla a 1280×800: capturas y solapes", mobile: false, throttle: 1 },

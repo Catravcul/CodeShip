@@ -71,7 +71,54 @@ export type Motion =
   /** Braced against a wall with her hands (she landed on a bare wall): she can push off it again. */
   | { readonly kind: "pared"; readonly normal: Vec3 }
   /** Out of reach of everything and (almost) still: only the air moves her. */
-  | { readonly kind: "deriva" };
+  | { readonly kind: "deriva" }
+  /**
+   * A hop to a landing point (hops.ts): she turns to aim, pushes off, glides and catches the rail,
+   * along `path` (straight legs; more than one only through a hatch). `s` is the distance covered.
+   */
+  | { readonly kind: "salto"; readonly path: readonly Vec3[]; readonly rail: string; readonly t: number; readonly speed: number; readonly length: number; readonly s: number; readonly v: number; readonly elapsed: number };
+
+/** A hop asked for: the body's path, the rail and point she lands on, and her glide speed. */
+export interface HopPlan {
+  readonly path: readonly Vec3[];
+  readonly rail: string;
+  readonly t: number;
+  readonly speed: number;
+}
+
+/** Phase of a hop, for the pose and the HUD. */
+export type HopPhase = "apunta" | "impulso" | "planeo" | "agarre";
+
+/** Seconds she turns to aim before a hop (game value; HOP.aimS in hops.ts reads it). */
+export const HOP_AIM_S = 0.25;
+
+/** Push stroke and catch distance of a hop, shortened in proportion on very short hops. */
+function hopStroke(length: number): { push: number; catch: number } {
+  const k = Math.min(1, length / (IVA.strokeM + IVA.catchM));
+  return { push: IVA.strokeM * k, catch: IVA.catchM * k };
+}
+
+export function hopPhase(m: Extract<Motion, { kind: "salto" }>): HopPhase {
+  if (m.elapsed < HOP_AIM_S) return "apunta";
+  const st = hopStroke(m.length);
+  if (m.s < st.push && m.v < m.speed - 1e-6) return "impulso";
+  if (m.length - m.s <= st.catch) return "agarre";
+  return "planeo";
+}
+
+/** Point at distance s along a path of straight legs, and the unit direction of that leg. */
+export function alongPath(path: readonly Vec3[], s: number): { p: Vec3; dir: Vec3 } {
+  let left = Math.max(0, s);
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1]!;
+    const seg = path[i]!.sub(a);
+    const L = seg.length();
+    if (L < 1e-9) continue;
+    if (left <= L || i === path.length - 1) return { p: a.add(seg.scale(Math.min(1, left / L))), dir: seg.scale(1 / L) };
+    left -= L;
+  }
+  return { p: path[path.length - 1]!, dir: path.length > 1 ? path[path.length - 1]!.sub(path[0]!).normalize() : Vec3.Z };
+}
 
 export interface GlideTarget {
   readonly rail: string;
@@ -130,6 +177,8 @@ export interface IvaIntent {
   readonly along?: Vec3;
   /** While flying: grab the nearest rail in reach now. */
   readonly grab?: boolean;
+  /** Hop to a landing point (only while holding a rail or braced; hops.ts). */
+  readonly hop?: HopPlan;
 }
 
 export type IvaEvent =
@@ -138,6 +187,8 @@ export type IvaEvent =
   | { readonly kind: "pared"; readonly speed: number; readonly forceN: number }
   | { readonly kind: "golpe"; readonly speed: number }
   | { readonly kind: "deriva" }
+  /** A hop ended: she holds the rail she aimed at. */
+  | { readonly kind: "llega"; readonly rail: string }
   | { readonly kind: "sin-impulso"; readonly why: "en-vuelo" | "a-la-deriva" | "contra-la-pared" };
 
 /** Where she holds a rail: the grip point and her body centre an arm's length off the wall. */
@@ -223,6 +274,14 @@ export function ivaStep(s: IvaState, intent: IvaIntent, world: IvaWorld, dt: num
   const m = s.motion;
   const g = world.graph;
 
+  // --- A hop to a landing point (hops.ts) ------------------------------------------
+  if (intent.hop && (m.kind === "sujeta" || m.kind === "pared") && intent.hop.path.length >= 2) {
+    const h = intent.hop;
+    let length = 0;
+    for (let i = 1; i < h.path.length; i++) length += h.path[i]!.sub(h.path[i - 1]!).length();
+    return { state: { position: h.path[0]!, velocity: Vec3.ZERO, motion: { kind: "salto", path: h.path, rail: h.rail, t: h.t, speed: h.speed, length, s: 0, v: 0, elapsed: 0 } }, events };
+  }
+
   // --- A push --------------------------------------------------------------------
   if (intent.push && intent.push.dir.length() > 0) {
     const n = pushNormal(world, s);
@@ -290,7 +349,38 @@ export function ivaStep(s: IvaState, intent: IvaIntent, world: IvaWorld, dt: num
     case "planeo":
     case "deriva":
       return { state: fly(s, intent, world, dt, events), events };
+    case "salto":
+      return { state: hopStep(s, m, dt, events), events };
   }
+}
+
+/**
+ * One step of a hop: turn to aim (HOP_AIM_S), push at constant force over the arm's stroke up to the
+ * glide speed, glide straight, and bend the arms over the catch distance to stop at the rail. The
+ * forces are the same as a push and a catch (F = m v² / 2s). Game help: no air drift or spin forces
+ * during a hop, so it always lands where it was aimed.
+ */
+function hopStep(s: IvaState, m: Extract<Motion, { kind: "salto" }>, dt: number, events: IvaEvent[]): IvaState {
+  if (m.elapsed < HOP_AIM_S) {
+    const elapsed = m.elapsed + dt;
+    if (elapsed >= HOP_AIM_S) events.push({ kind: "impulso", speed: m.speed, forceN: armForceN(m.speed, hopStroke(m.length).push) });
+    return { ...s, velocity: Vec3.ZERO, motion: { ...m, elapsed } };
+  }
+  const st = hopStroke(m.length);
+  const accel = (m.speed * m.speed) / (2 * Math.max(1e-3, st.push));
+  const brake = (m.speed * m.speed) / (2 * Math.max(1e-3, st.catch));
+  const left = m.length - m.s;
+  // Speed: up while pushing, steady in the glide, down as the arms bend at the end (never quite 0, so it ends).
+  const vBrake = Math.sqrt(2 * brake * Math.max(0, left));
+  const v = Math.max(Math.min(m.speed, m.v + accel * dt, vBrake), Math.min(0.08, m.speed));
+  const sNext = m.s + v * dt;
+  if (m.length - m.s > st.catch && m.length - sNext <= st.catch) events.push({ kind: "agarra", rail: m.rail, speed: m.v, forceN: armForceN(m.v, Math.max(1e-3, st.catch)) });
+  if (sNext >= m.length) {
+    events.push({ kind: "llega", rail: m.rail });
+    return { position: m.path[m.path.length - 1]!, velocity: Vec3.ZERO, motion: { kind: "sujeta", rail: m.rail, t: m.t, hands: 0 } };
+  }
+  const at = alongPath(m.path, sNext);
+  return { position: at.p, velocity: at.dir.scale(v), motion: { ...m, s: sNext, v, elapsed: m.elapsed + dt } };
 }
 
 function handOverHand(s: IvaState, m: Extract<Motion, { kind: "sujeta" }>, along: Vec3 | undefined, world: IvaWorld, dt: number): IvaState {

@@ -12,6 +12,8 @@ export interface Handrail {
   readonly b: Vec3;
   /** Unit vector from the wall the rail is mounted on into the free space. */
   readonly normal: Vec3;
+  /** Where on the bar she lands when hopping to it (0…1, default the middle; hops.ts). */
+  readonly landT?: number;
 }
 
 /**

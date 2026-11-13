@@ -2,6 +2,7 @@ import type { Vec3 } from "@core/math/vec3";
 import type { Ship } from "@modules/ship/domain/ship";
 import type { Expedition } from "@modules/expedition/application/expedition";
 import type { StationOps, StationSession } from "@modules/station/application/station-ops";
+import type { RefuelOps, RefuelStatus } from "@modules/station/application/refuel";
 import type { MachineId } from "@modules/station/domain/blueprint";
 import type { Amounts } from "@modules/station/domain/materials";
 import { MATERIALS, cargoMaterial, materialInfo, materialName } from "@modules/station/data/materials";
@@ -18,20 +19,24 @@ const qty = (id: string, n: number) => (materialInfo(id)?.unit === "kits" ? `${M
 const short = (n: string) => n.replace(/^Aerojet Rocketdyne /, "").replace(/\s*\(.*\)$/, "");
 
 export type StationTab = "materiales" | "planos" | "fabricacion" | "hangar";
+/** Places inside a tab the screen can open at: the propellant plant and the refuelling card (both in Materiales). */
+export type StationFocus = "propelente" | "repostar";
 const TABS: readonly [StationTab, string][] = [
   ["materiales", "Materiales"],
   ["planos", "Planos"],
   ["fabricacion", "Fabricación"],
   ["hangar", "Hangar"],
 ];
-const MACHINE: Readonly<Record<MachineId, string>> = { refineria: "Refinería", fundicion: "Fundición", impresora: "Impresora 3D de metal" };
+const MACHINE: Readonly<Record<MachineId, string>> = { refineria: "Refinería", fundicion: "Fundición", impresora: "Impresora 3D de metal", planta: "Planta de propelente", repostaje: "Línea de repostaje" };
+type ChoreMode = "refinar" | "fabricar" | "repostar";
+const kwh = (v: number) => `${fmtKg(v)} kWh`;
 const STAGE: Readonly<Record<string, string>> = { bruto: "Roca de la bodega (sin refinar)", refinado: "Refinados", importado: "Importados (no se pueden hacer aquí)" };
 
-const text = (title: string, refine: boolean): SessionText => ({
+const text = (title: string, mode: ChoreMode): SessionText => ({
   title,
   progress: "Pasos",
   lives: "Intentos",
-  order: refine ? "Ordena el proceso" : "Ordena la fabricación",
+  order: mode === "refinar" ? "Ordena el proceso" : mode === "repostar" ? "Ordena el repostaje" : "Ordena la fabricación",
   submit: "Hacerlo",
   ok: "Bien hecho",
   bad: "Así no: inténtalo otra vez",
@@ -70,6 +75,8 @@ export class StationScreen {
     private readonly shipPosition: () => Vec3,
     /** Where a craft that is out flying is (mothership, the Explorer), if known. */
     private readonly craftPosition: (id: string) => Vec3 | undefined = () => undefined,
+    /** The refuelling line for docked craft (Materiales, «Repostar»). */
+    readonly refuel?: RefuelOps,
   ) {
     this.view = new StationScene(ship.design);
     this.ui = document.createElement("div");
@@ -118,11 +125,14 @@ export class StationScreen {
     return this.ops.station.isAlongside(this.shipPosition());
   }
 
-  enter(tab: StationTab = this.tab): void {
+  /** Open the screen at a tab, or at the plant or the refuelling card (both in Materiales). */
+  enter(tab: StationTab | StationFocus = this.tab): void {
     this.active = true;
     this.ui.classList.remove("hidden");
     document.body.classList.add("in-station");
-    this.show(tab);
+    const focus = tab === "propelente" || tab === "repostar" ? tab : undefined;
+    this.show(focus ? "materiales" : (tab as StationTab));
+    if (focus) this.panel.querySelector(`#st-${focus}`)?.scrollIntoView({ block: "start" });
     this.layout();
   }
 
@@ -197,7 +207,7 @@ export class StationScreen {
       : `<p class="st-dim">La bodega está vacía. Persuade un asteroide: su roca llena la bodega y aquí se descarga.</p>`;
     const groups = (["bruto", "refinado", "importado"] as const)
       .map((stage) => {
-        const rows = MATERIALS.filter((m) => m.stage === stage)
+        const rows = MATERIALS.filter((m) => m.stage === stage && !m.propellant)
           .map((m) => ({ m, n: st.stock.amount(m.id) }))
           .filter((r) => r.n > 0.005 || stage !== "bruto");
         if (!rows.length) return "";
@@ -209,23 +219,65 @@ export class StationScreen {
           .join("")}`;
       })
       .join("");
-    const refinery = this.ops
+    const tanks = MATERIALS.filter((m) => m.propellant)
+      .map((m) => {
+        const n = st.stock.amount(m.id);
+        return `<div class="st-mat ${n > 0.005 ? "" : "zero"}"><b>${esc(m.name)}</b><span>${qty(m.id, n)}</span><small>${m.stage === "importado" ? "Importado · " : "Se hace aquí · "}${esc(m.note)}${m.source ? ` · <a href="${esc(m.source)}" target="_blank" rel="noopener">fuente</a>` : ""}</small></div>`;
+      })
+      .join("");
+    const cards = (machine: MachineId) => this.ops
       .refining()
+      .filter(({ process: p }) => p.machine === machine)
       .map(({ process: p, scale, canRun }) => {
-        const k = Math.min(1, scale);
+        // What one run would be: the batch the store allows, or a full one when it allows none.
+        const k = canRun ? Math.min(1, scale) : 1;
         const ins = Object.entries(p.inputs)
           .map(([id, n]) => `${qty(id, n * k)} ${esc(materialName(id).toLowerCase())}`)
           .join(" + ");
         const outs = Object.entries(p.outputs)
           .map(([id, n]) => `${qty(id, n * k)} ${esc(materialName(id).toLowerCase())}`)
           .join(" + ");
-        return `<div class="st-card"><div class="st-row"><b>${esc(p.name)}</b><span>${hrs(p.hours * Math.max(k, 0.0001))}</span></div>
+        return `<div class="st-card"><div class="st-row"><b>${esc(p.name)}</b><span>${hrs(p.hours * k)}</span></div>
           <small>${esc(p.process.value)} · <a href="${esc(p.process.source)}" target="_blank" rel="noopener">fuente</a></small>
-          ${canRun ? `<div class="st-io">${ins} → ${outs}${k < 1 ? ` (lote al ${Math.round(k * 100)} %)` : ""}</div>` : `<div class="st-io miss">Falta roca: ${Object.entries(p.inputs).map(([id, n]) => `${qty(id, n)} ${esc(materialName(id).toLowerCase())}`).join(" + ")} por lote</div>`}
-          <button class="st-btn" data-refine="${esc(p.id)}" ${canRun ? "" : "disabled"}>Refinar</button></div>`;
+          ${p.energyKwh ? `<small>Energía: ${kwh(p.energyKwh.value * k)} ${canRun ? "por este lote" : "por lote"} · ${esc(p.energyKwh.note ?? "")} · <a href="${esc(p.energyKwh.source)}" target="_blank" rel="noopener">fuente</a></small>` : p.process.note ? `<small>${esc(p.process.note)}</small>` : ""}
+          ${canRun ? `<div class="st-io">${ins} → ${outs}${k < 1 ? ` (lote al ${Math.round(k * 100)} %)` : ""}</div>` : `<div class="st-io miss">${machine === "planta" ? "Faltan materiales" : "Falta roca"}: ${Object.entries(p.inputs).map(([id, n]) => `${qty(id, n)} ${esc(materialName(id).toLowerCase())}`).join(" + ")} por lote</div>`}
+          <button class="st-btn" data-refine="${esc(p.id)}" ${canRun ? "" : "disabled"}>${machine === "planta" ? "Producir" : "Refinar"}</button></div>`;
       })
       .join("");
-    return `${hold}${groups}<div class="bay-sec">Refinería · cada lote es una cadena de retos</div>${refinery}`;
+    return `${this.refuelCards()}${hold}${groups}<div class="bay-sec">Refinería · cada lote es una cadena de retos</div>${cards("refineria")}
+      <div class="bay-sec" id="st-propelente">Planta de propelente</div>
+      <p class="st-dim">Del agua salen hidrógeno y oxígeno; del nitrógeno de la roca, amoníaco, hidracina y NTO. El nitrógeno es escaso: una bodega de Bennu trae poco más de 1 kg. El MMH, el LMP-103S, el helio y el xenón no se pueden hacer aquí y llegan importados.</p>
+      ${cards("planta")}<div class="bay-sec">Depósitos de propelente</div>${tanks}`;
+  }
+
+  /** «Repostar»: one card per craft docked at the station, at the top of Materiales. */
+  private refuelCards(): string {
+    if (!this.refuel) return "";
+    const docked = this.refuel.all().filter((s) => s.docked);
+    if (!docked.length) return `<div class="bay-sec" id="st-repostar">Repostar</div><p class="st-dim">Para repostar, atraca la sonda o la nodriza en un puerto de la estación.</p>`;
+    return `<div class="bay-sec" id="st-repostar">Repostar · naves atracadas</div>${docked.map((s) => this.refuelCard(s)).join("")}`;
+  }
+
+  private refuelCard(s: RefuelStatus): string {
+    const lines = s.plan
+      .map((p) => {
+        const l = p.line;
+        const full = l.capacityKg > 0 ? l.onBoardKg / l.capacityKg : 1;
+        const what = p.roomKg <= 0.0005 ? (s.jobs.length && l.onBoardKg < l.capacityKg - 0.0005 ? "en camino" : "lleno") : p.loadKg > 0 ? `carga ${fmtKg(p.loadKg)} kg` : "sin existencias";
+        const short = p.shortOf ? ` · falta ${esc(materialName(p.shortOf).toLowerCase())}` : "";
+        return `<div class="st-fuel"><div class="st-row"><b>${esc(l.label)}</b><span>${fmtKg(l.onBoardKg)} / ${fmtKg(l.capacityKg)} kg</span></div><div class="bay-bar"><span>${esc(what)}${short}</span><i style="width:${Math.round(full * 100)}%"></i></div></div>`;
+      })
+      .join("");
+    const takes = Object.entries(s.takes)
+      .filter(([, n]) => n > 0.0005)
+      .map(([id, n]) => `<span class="st-chip ok">${esc(materialName(id))} ${qty(id, n)}</span>`)
+      .join("");
+    const job = s.jobs[0];
+    const running = job && this.ops.station.running(job);
+    const status = job ? `<div class="st-io">${running ? `Trasvasando: quedan ${hrs(job.hoursLeft)}` : "Trasvase en cola"}</div>` : "";
+    return `<div class="st-card st-refuel"><div class="st-row"><b>${esc(s.target.name)}</b><span>atracada</span></div>${lines}${status}
+      ${takes ? `<small>Sale del almacén:</small><div class="st-chips">${takes}</div>` : ""}
+      <button class="st-btn" data-refuel="${esc(s.target.id)}" ${s.canStart ? "" : "disabled"}>${s.canStart ? `Repostar · ${hrs(s.hours)}` : s.loadKg > 0 ? "Repostar" : job ? "Repostando" : s.plan.every((p) => p.roomKg <= 0.0005) ? "Tanques llenos" : "Sin propelente en el almacén"}</button></div>`;
   }
 
   private plans(): string {
@@ -285,9 +337,11 @@ export class StationScreen {
     if (t.closest("a") || this.duel.visible) return;
     if (t.closest("[data-unload]")) return this.unload();
     const r = t.closest<HTMLElement>("[data-refine]");
-    if (r) return this.start(this.ops.startRefining(r.dataset.refine!), true);
+    if (r) return this.start(this.ops.startRefining(r.dataset.refine!), "refinar");
     const b = t.closest<HTMLElement>("[data-build]");
-    if (b) return this.start(this.ops.startFabrication(b.dataset.build!), false);
+    if (b) return this.start(this.ops.startFabrication(b.dataset.build!), "fabricar");
+    const f = t.closest<HTMLElement>("[data-refuel]");
+    if (f && this.refuel) return this.start(this.refuel.startRefuel(f.dataset.refuel!), "repostar");
   }
 
   unload(): void {
@@ -299,7 +353,7 @@ export class StationScreen {
   }
 
   /** Open a station chore in the challenge sheet; the job is queued when the chain is solved. */
-  start(session: StationSession, refine: boolean): void {
+  start(session: StationSession, mode: ChoreMode): void {
     const run = session.run;
     this.session = session;
     const prevClose = this.duel.onClose;
@@ -308,9 +362,9 @@ export class StationScreen {
       this.session = null;
       this.layout();
       if (run.status === "done") {
-        this.say(refine ? "Lote en la refinería: mira Fabricación" : "En marcha: mira Fabricación");
+        this.say(mode === "refinar" ? "Lote en marcha: mira Fabricación" : mode === "repostar" ? "Trasvasando propelente: mira Fabricación" : "En marcha: mira Fabricación");
         this.show("fabricacion");
-      } else if (run.status === "failed") this.say("No salió: los materiales siguen en el almacén");
+      } else if (run.status === "failed") this.say(mode === "repostar" ? "No salió: el propelente sigue en el almacén" : "No salió: los materiales siguen en el almacén");
       this.key = "";
       this.render();
     };
@@ -328,7 +382,7 @@ export class StationScreen {
         },
         maxLives: run.maxMistakes,
       },
-      text(session.chore.title, refine),
+      text(session.chore.title, mode),
       (a) => ({ ok: session.answer(a) }),
     );
     this.layout();

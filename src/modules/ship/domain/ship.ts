@@ -124,6 +124,16 @@ export class Ship {
     return this.fuel.get(p) ?? 0;
   }
 
+  /**
+   * Load propellant into the tanks of one propellant (a station's refuelling line): never past their
+   * capacity. Returns the kg taken.
+   */
+  refuel(p: Propellant, kg: number): number {
+    const took = Math.max(0, Math.min(kg, this.propellantCapacityKg(p) - this.propellantKg(p)));
+    if (took > 0) this.fuel.set(p, this.propellantKg(p) + took);
+    return took;
+  }
+
   /** The propellants the tanks hold, each once, in tank order. */
   get propellants(): Propellant[] {
     return [...new Set(this.design.tanks.map((t) => t.spec.propellant))];

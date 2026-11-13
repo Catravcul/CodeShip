@@ -14,7 +14,21 @@ export interface StationSite {
   readonly dockingRangeM: number;
 }
 
-export type JobOutput = { readonly kind: "materials"; readonly amounts: Amounts } | { readonly kind: "part"; readonly partId: string } | { readonly kind: "craft"; readonly craft: CraftSpec };
+/** Propellant moving into a docked craft: kg per propellant line of the craft, and what it took from the store. */
+export interface Transfer {
+  readonly craftId: string;
+  readonly loads: Readonly<Record<string, number>>;
+  readonly taken: Amounts;
+}
+
+export type JobOutput =
+  | { readonly kind: "materials"; readonly amounts: Amounts }
+  | { readonly kind: "part"; readonly partId: string }
+  | { readonly kind: "craft"; readonly craft: CraftSpec }
+  | ({ readonly kind: "transfer" } & Transfer);
+
+/** A craft that takes propellant at the end of a transfer. False if it cannot now (it undocked). */
+export type TransferReceiver = (loads: Readonly<Record<string, number>>) => boolean;
 
 /** Work queued on a machine. Inputs are taken when it is queued; the output arrives when it ends. */
 export interface Job {
@@ -29,14 +43,16 @@ export interface Job {
 export type StationEvent = { readonly type: "job-done"; readonly job: Job };
 
 /**
- * A space station with a materials store, three machines (refinery, foundry, metal printer) and a
- * hangar. Raw rock from a hold is refined into metals, oxygen and ceramics; blueprints turn those
- * into parts and probes that wait in the hangar until a ship fits them.
+ * A space station with a materials store, its machines (refinery, foundry, metal printer, propellant
+ * plant and refuelling line) and a hangar. Raw rock from a hold is refined into metals, oxygen,
+ * ceramics and propellants; blueprints turn those into parts and probes that wait in the hangar
+ * until a ship fits them, and docked craft take propellant from the store.
  */
 export class Station {
   private readonly jobs: Job[] = [];
   private nextId = 1;
   private events: StationEvent[] = [];
+  private readonly receivers = new Map<string, TransferReceiver>();
 
   constructor(
     readonly site: StationSite,
@@ -86,6 +102,25 @@ export class Station {
     return this.enqueue(p.machine, p.name, run.hours, { kind: "materials", amounts: run.outputs });
   }
 
+  /** Who takes the propellant of a transfer to a craft. */
+  setReceiver(craftId: string, receive: TransferReceiver): void {
+    this.receivers.set(craftId, receive);
+  }
+
+  /**
+   * Take the propellant from the store and queue its transfer on the refuelling line. When the job
+   * ends the craft receives it; if it cannot (it left), everything goes back to the store.
+   */
+  transfer(label: string, t: Transfer, hours: number): Job {
+    this.stock.take(t.taken);
+    return this.enqueue("repostaje", label, hours, { kind: "transfer", ...t });
+  }
+
+  /** Transfers waiting or running for a craft. */
+  pendingTransfers(craftId: string): Transfer[] {
+    return this.jobs.flatMap((j) => (j.output.kind === "transfer" && j.output.craftId === craftId ? [j.output] : []));
+  }
+
   private enqueue(machine: MachineId, label: string, hours: number, output: JobOutput): Job {
     const job: Job = { id: this.nextId++, machine, label, hoursTotal: hours, hoursLeft: hours, output };
     this.jobs.push(job);
@@ -115,7 +150,8 @@ export class Station {
     const o = job.output;
     if (o.kind === "materials") this.stock.add(o.amounts);
     else if (o.kind === "part") this.hangar.put(o.partId);
-    else this.hangar.addCraft(o.craft);
+    else if (o.kind === "craft") this.hangar.addCraft(o.craft);
+    else if (!this.receivers.get(o.craftId)?.(o.loads)) this.stock.add(o.taken);
     this.events.push({ type: "job-done", job });
   }
 

@@ -9,7 +9,7 @@ import { CubeFigure } from "./adapters/three/interior/figure";
 import { Walker } from "./adapters/input/walker";
 import "./ui/station-interior.css";
 
-const PANEL_NAME: Readonly<Record<StationPanel, string>> = { materiales: "Materiales", planos: "Planos", fabricacion: "Fabricación", hangar: "Hangar" };
+const PANEL_NAME: Readonly<Record<StationPanel, string>> = { materiales: "Materiales", planos: "Planos", fabricacion: "Fabricación", hangar: "Hangar", propelente: "Planta de propelente" };
 const FACE_LABEL = { suelo: "el suelo", techo: "el techo", babor: "babor", estribor: "estribor", proa: "proa", popa: "popa" } as const;
 /** Body margin from the walls while floating, m. */
 const BODY = 0.3;

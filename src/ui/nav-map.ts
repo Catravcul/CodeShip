@@ -24,6 +24,7 @@ const MATERIAL: Record<string, string> = {
   "Iron (in magnetite and Fe-Ni sulfides)": "Hierro (en magnetita y sulfuros de Fe-Ni)",
   "Nickel (in Fe-Ni sulfides)": "Níquel (en sulfuros de Fe-Ni)",
   "Silicates (phyllosilicates)": "Silicatos (filosilicatos)",
+  "Nitrogen (in ammonium salts and organics)": "Nitrógeno (en sales de amonio y orgánicos)",
 };
 const CONCEPT = ["", "secuencia", "variables", "tipos de datos", "operaciones", "condicionales", "bucles", "funciones", "listas y objetos", "eventos", "composición"];
 

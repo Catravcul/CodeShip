@@ -26,7 +26,7 @@ export interface SessionLike {
 }
 
 const UI_KEY = "codeship.retos-ui";
-/** Player setting: compact challenge sheet (small, see-through, more camera) or the full panel. */
+/** Player setting: HUD challenge UI (floating over the scene like the cockpit HUD) or the full panel. */
 export function compactUi(): boolean {
   try {
     return localStorage.getItem(UI_KEY) === "compacta";
@@ -152,7 +152,7 @@ export class DuelView {
     const d = this.duel!;
     const ex = d.current;
     const sheetTools = this.text.sheet
-      ? `<div class="duel-tools"><button class="ui-toggle" data-act="ui">${compactUi() ? "Vista amplia" : "Vista compacta"}</button><button class="x" data-act="close" aria-label="Cerrar">×</button></div>`
+      ? `<div class="duel-tools"><button class="ui-toggle" data-act="ui">${compactUi() ? "Vista panel" : "Vista HUD"}</button><button class="x" data-act="close" aria-label="Cerrar">×</button></div>`
       : "";
     const head = `
       <div class="duel-top">${sheetTools}

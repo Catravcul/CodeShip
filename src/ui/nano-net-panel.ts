@@ -19,6 +19,7 @@ const actionLabel = (c: Chore): string => {
 const sessionText = (c: Chore): SessionText => ({
   title: c.title,
   progress: "Pasos",
+  lives: "Intentos",
   order: "Ordena el programa del núcleo",
   submit: "Programar",
   ok: c.kind === "nano-reparar" ? "El núcleo acepta el arreglo" : "El núcleo aprende la línea",

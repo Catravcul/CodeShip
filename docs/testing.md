@@ -29,6 +29,7 @@ Cada recorrido tiene un ID estable (`PX-01`…) en la sección «Experiencia del
 | PX-02 `movimiento` | Propulsores de la cabina con W y la velocidad del HUD; el mando de flechas en ingravidez (salto, flechas apagadas durante el salto); avisos del jugador sin pisar (H24) y de ambiente a la vista; una tarea elegida desde el eje (avisa de que baja); caminar y mirar con los mandos del anillo. |
 | PX-03 `mision` | Radio → carta de Nevaeh → registro de misiones → posado en Bennu → duelo con un fallo a propósito → misión cumplida. |
 | PX-04 `acciones-movil`, PX-05 `acciones-escritorio` | Visita cada pantalla (cabina, ingravidez, anillo, tareas, puente, mapa, sonda, vuelo libre, posado, paseo, estación y sus pestañas), la captura como `ux-<antes/despues>-<pantalla>-<movil/escritorio>.png` y lista los controles que se solapan. |
+| PX-06 `ordenar` | En el puente programa el viaje a Bennu: un orden con dos pasos cambiados (marcas ✓/✗ por casilla en las dos vistas, Reintentar que deja los buenos) y, en otro intento, **paso a paso** (aviso al momento, un fallo por bloque erróneo, repetirlo no cuenta). Capturas `ordenar-*` (copiadas a `docs/screenshots/`). |
 
 ```
 npm run experiencia                 # compila, sirve dist/ y juega todos los recorridos

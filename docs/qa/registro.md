@@ -90,6 +90,8 @@ caso y las anteriores quedan en sus run logs.
 | UI-01 | Sin probar | | | Sin test: es un adaptador del DOM |
 | UI-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | UI-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| UI-04 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| UI-05 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | CV-01 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK |
 | CV-02 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-01** cerrado |
 | CV-03 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK · **B-01** arreglado |
@@ -107,11 +109,12 @@ caso y las anteriores quedan en sus run logs.
 | CV-15 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-05** cerrado; botón bloqueado en `hc-pedido-sin-creditos-mobile.png` |
 | CV-16 | No aplica | | | No hay partidas guardadas (**HC-06**) |
 | CV-17 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-03** cerrado: el aviso dura 5 s reales en el tramo ×60 |
-| PX-01 | Probado (en vivo) | 2026-11-13 | `bebcf3d` | [run](runs/2026-11-13-1455-PX-01-PX-02-PX-03-PX-04-PX-05.md): 34 OK |
+| PX-01 | Probado (en vivo) | 2026-11-13 | `d02f84b` | [run](runs/2026-11-13-1532-PX-01-PX-05.md): 34 OK |
 | PX-02 | Probado (en vivo) | 2026-11-13 | `bebcf3d` | [run](runs/2026-11-13-1455-PX-01-PX-02-PX-03-PX-04-PX-05.md): 16 OK |
-| PX-03 | Probado (en vivo) | 2026-11-13 | `bebcf3d` | [run](runs/2026-11-13-1455-PX-01-PX-02-PX-03-PX-04-PX-05.md): 15 OK |
-| PX-04 | Probado (en vivo) | 2026-11-13 | `bebcf3d` | [run](runs/2026-11-13-1455-PX-01-PX-02-PX-03-PX-04-PX-05.md): 22 OK |
-| PX-05 | FAIL | 2026-11-13 | `bebcf3d` | [run](runs/2026-11-13-1455-PX-01-PX-02-PX-03-PX-04-PX-05.md): 2 OK, 1 FALLA |
+| PX-03 | Probado (en vivo) | 2026-11-13 | `d02f84b` | [run](runs/2026-11-13-1514-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06.md): 15 OK |
+| PX-04 | Probado (en vivo) | 2026-11-13 | `d02f84b` | [run](runs/2026-11-13-1514-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06.md): 22 OK |
+| PX-05 | FAIL | 2026-11-13 | `d02f84b` | [run](runs/2026-11-13-1538-PX-05.md): 3 OK, 1 FALLA (captura agotada por la carga de la máquina, H29) |
+| PX-06 | Probado (en vivo) | 2026-11-13 | `d02f84b` | [run](runs/2026-11-13-1514-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06.md): 20 OK |
 
 ## Última ejecución por run log
 
@@ -119,7 +122,12 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-13 15:38 | PX-05 | Experiencia (Playwright) | 0/1 recorridos bien | [run](runs/2026-11-13-1538-PX-05.md) |
+| 2026-11-13 15:32 | PX-01, PX-05 | Experiencia (Playwright) | 1/2 recorridos bien | [run](runs/2026-11-13-1532-PX-01-PX-05.md) |
+| 2026-11-13 15:14 | PX-01, PX-02, PX-03, PX-04, PX-05, PX-06 | Experiencia (Playwright) | 4/6 recorridos bien | [run](runs/2026-11-13-1514-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06.md) |
 | 2026-11-13 14:55 | PX-01, PX-02, PX-03, PX-04, PX-05 | Experiencia (Playwright) | 4/5 recorridos bien | [run](runs/2026-11-13-1455-PX-01-PX-02-PX-03-PX-04-PX-05.md) |
+| 2026-11-13 14:15 | PX-01, PX-03 | Experiencia (Playwright) | 2/2 recorridos bien | [run](runs/2026-11-13-1415-PX-01-PX-03.md) |
+| 2026-11-13 14:06 | PX-01 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-13-1406-PX-01.md) |
 | 2026-11-13 11:11 | PX-01 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-13-1111-PX-01.md) |
 | 2026-11-13 11:00 | PX-01, PX-02, PX-03, PX-04, PX-05 | Experiencia (Playwright) | 5/5 recorridos bien | [run](runs/2026-11-13-1100-PX-01-PX-02-PX-03-PX-04-PX-05.md) |
 | 2026-11-13 12:00 | CV-01 a CV-17, EST-05 (decisiones HC-01 a HC-05 y B-02) | Vitest (`npx vitest run src/qa`) y Playwright iPhone 13 | 32 OK · 0 `.fails`; en vivo 3 capturas sin errores de página | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md) |

@@ -6,8 +6,15 @@ const CREMA = ["tuesta los cacahuetes a 160 °C", "afloja la piel con aire a 138
 const TOSTADOS = ["saca los cacahuetes de la despensa", "pélalos", "extiéndelos en la bandeja", "tuéstalos a 160 °C", "remueve a media cocción", "déjalos enfriar", "sirve con una pizca de sal"];
 const VALUE = /a (\d+) °C$/;
 
+/** Hits and failures as the player reads them: the HUD's written readouts, or the panel's meters (their label). */
+export const readStats = async (j) => {
+  const hud = [(await j.texts(".duel .stat.hits"))[0], (await j.texts(".duel .stat.fails"))[0]];
+  if (hud[0] || hud[1]) return hud;
+  return j.page.evaluate(() => [".duel .meter.persuasion", ".duel .meter.patience"].map((s) => document.querySelector(s)?.getAttribute("aria-label") ?? ""));
+};
+
 const stats = async (j) => {
-  const [hits = "", fails = ""] = [(await j.texts(".duel .stat.hits"))[0], (await j.texts(".duel .stat.fails"))[0]];
+  const [hits = "", fails = ""] = await readStats(j);
   return { hits, fails, q: (await j.texts(".duel .question"))[0] ?? "", fb: (await j.texts(".duel .feedback"))[0] ?? "" };
 };
 
@@ -60,16 +67,17 @@ export async function cocina(j) {
     if (k > 1) j.check(`toque ${k}: el aviso dice que esa ya falló`, /ya falló/.test(s.fb), s.fb);
     await j.shot(`crema-toque-${k}`);
   }
-  const amber = await j.color(".duel .stat.fails");
-  j.check("Fallos 1/3 se pinta en ámbar (como la velocidad en aviso)", amber === "rgb(255, 179, 71)", amber);
+  // Panel view (unchanged since its creation): the patience meter loses one lit cell.
+  const lit = await j.page.evaluate(() => document.querySelectorAll(".duel .meter.patience .cell.on").length);
+  j.check("en vista panel, el medidor de intentos apaga una casilla (2 de 3)", lit === 2, String(lit));
 
   for (const [i, step] of CREMA.entries()) {
     await choose(j, answerFor(step));
     s = await stats(j);
     if (i < CREMA.length - 1) j.check(`paso ${i + 1} bien: Aciertos ${i + 1}/7`, s.hits.includes(`Aciertos ${i + 1}/7`), s.hits);
     if (i === 0) {
-      const green = await j.color(".duel .stat.hits");
-      j.check("Aciertos se pinta en verde tras el primer acierto", green === "rgb(125, 255, 176)", green);
+      const on = await j.page.evaluate(() => document.querySelectorAll(".duel .meter.persuasion .cell.on").length);
+      j.check("en vista panel, el medidor de pasos enciende una casilla tras el primer acierto", on === 1, String(on));
       await j.shot("crema-acierto");
     }
   }

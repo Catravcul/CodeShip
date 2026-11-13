@@ -1,3 +1,4 @@
+import { readStats } from "./cocina.mjs";
 // Nevaeh's first mission end to end: read the letter on the radio, find it in the mission log, land on
 // Bennu, convince its mind in the duel (one wrong answer on purpose) and see the mission done.
 
@@ -60,11 +61,11 @@ export async function mision(j) {
   await j.tap(".ctx-dock > .action:not(.nano-action)", action || "acción");
   await j.waitDuel(30000);
   await p.waitForTimeout(400);
-  const fails0 = (await j.texts(".duel .stat.fails"))[0] ?? "";
-  j.check("el duelo muestra Aciertos y Fallos escritos", /Fallos 0\//.test(fails0), fails0);
+  const fails0 = (await readStats(j))[1] ?? "";
+  j.check("el duelo muestra Aciertos y Fallos", /Fallos 0\//.test(fails0), fails0);
 
   await j.answer(key, false);
-  const fails1 = (await j.texts(".duel .stat.fails"))[0] ?? "";
+  const fails1 = (await readStats(j))[1] ?? "";
   const fb = (await j.texts(".duel .feedback"))[0] ?? "";
   j.check("una idea errónea suma un fallo y lo dice", /Fallos 1\//.test(fails1) && /✗/.test(fb), `${fails1} · ${fb}`);
   await j.shot("duelo-fallo");

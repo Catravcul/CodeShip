@@ -37,7 +37,16 @@ body.in-duel .banner, body.in-duel .hud, body.in-duel .touch-left, body.in-duel 
 /* Hits and failures as written readouts, in the cockpit HUD's speed style (monospace, glow, big number):
    green once there is a hit; failures pale at 0, amber after one, red when one more loses the challenge.
    A changed number pulses. Failures only ever count up: a wrong answer is never un-marked. */
-.duel-stats { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 22px; }
+.meter { display: flex; align-items: center; gap: 4px; font-size: 12px; }
+.meter .label { flex: 0 0 90px; opacity: 0.8; text-align: left; }
+.meter .cell { flex: 1; height: 10px; border-radius: 3px; background: #ffffff1a; }
+.meter.persuasion .cell.on { background: #7dffb0; box-shadow: 0 0 8px #7dffb0aa; }
+.meter.patience .cell.on { background: #ffb347; box-shadow: 0 0 8px #ffb347aa; }
+.duel-meters { display: flex; flex-direction: column; gap: 4px; }
+/* The written readouts are the HUD view's; the panel keeps its meters. */
+.duel-stats { display: none; }
+body.ui-compact .duel .duel-meters { display: none; }
+body.ui-compact .duel .duel-stats { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 22px; }
 .stat { font-size: 14px; color: #bfefff; text-shadow: 0 0 6px #00b7ff88; letter-spacing: 0.02em; white-space: nowrap; }
 .stat b { display: inline-block; font-size: 24px; font-weight: 700; line-height: 1.1; }
 .stat .lbl { font-size: 12px; opacity: 0.75; }
@@ -67,6 +76,13 @@ body.in-duel .banner, body.in-duel .hud, body.in-duel .touch-left, body.in-duel 
 /* An option already answered wrong stays marked (red, crossed) for the rest of the step; tapping it again costs nothing. */
 .option.wrong { background: #3a1018; border-color: #ff6b5a; color: #ffb4aa; }
 .option.wrong .mark { flex: none; width: 22px; height: 22px; display: inline-grid; place-items: center; border-radius: 50%; background: #ff6b5a; color: #1a0508; font-weight: 700; }
+/* Order challenges: ✓/✗ on each slot after a wrong order, and wrong picks step by step (icon + colour). */
+.block .mark { flex: none; width: 22px; height: 22px; display: inline-grid; place-items: center; border-radius: 50%; font-weight: 700; }
+.block.placed .mark { margin-left: auto; }
+.block .mark.ok { background: #5ee08f; color: #04160b; }
+.block .mark.bad { background: #ff6b5a; color: #1a0508; }
+.block.placed.ok { border-color: #5ee08f; }
+.block.placed.bad, .block.wrong { background: #3a1018; border-color: #ff6b5a; color: #ffb4aa; }
 .result { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 14px; font-size: 14px; }
 .result b { font-size: 22px; }
 .result.won { background: #0d2a1c; color: #7dffb0; border: 1px solid #7dffb0; }
@@ -155,6 +171,9 @@ body.in-cockpit .cam-tag.on { display: block; }
 .duel-top:has(.duel-tools) .duel-title { padding-right: 150px; }
 .duel-tools { position: absolute; top: 12px; right: 0; display: flex; gap: 8px; }
 .duel-tools button { font: inherit; font-size: 12px; color: #d9d2ff; background: #ffffff12; border: 1px solid #b9a8ff55; border-radius: 999px; padding: 6px 12px; }
+/* With the order mode toggle the tools need their own row above the title. */
+.duel-top:has(.order-toggle) .duel-tools { position: static; align-self: flex-end; }
+.duel-top:has(.order-toggle) .duel-title { padding-right: 0; }
 .duel-tools .x { font-size: 18px; line-height: 1; padding: 4px 12px; }
 .duel .submit { position: sticky; bottom: 0; z-index: 2; box-shadow: 0 -12px 16px -4px #05060c; }
 .feedback { animation: feedback-in 0.5s ease-out; }
@@ -163,7 +182,10 @@ body.in-cockpit .cam-tag.on { display: block; }
 
 /* HUD challenge UI (setting): no panel. The challenge floats over the 3D scene like the cockpit HUD:
    bare text with a dark halo, see-through buttons, the scene visible behind everything. */
-body.ui-compact .duel, body.ui-compact .duel.sheet { inset: 0; width: auto; border-radius: 0; background: none; background-color: transparent; backdrop-filter: none; pointer-events: none; justify-content: flex-end; gap: 8px; padding-top: 140px; }
+body.ui-compact .duel, body.ui-compact .duel.sheet { inset: 0; width: auto; border-radius: 0; background: none; background-color: transparent; backdrop-filter: none; pointer-events: none; justify-content: flex-start; gap: 8px; padding-top: 140px; }
+/* Bottom-anchored but scrollable: a flexible spacer pushes short sheets down and shrinks to zero when the
+   content is taller than the screen (justify-content: flex-end would push the overflow off the top, unreachable). */
+body.ui-compact .duel::before { content: ""; flex: 1 1 auto; }
 body.ui-compact .duel > *, body.ui-compact .duel button, body.ui-compact .duel a { pointer-events: auto; }
 body.ui-compact .duel { color: #d8f6ff; text-shadow: 0 0 3px #000, 0 0 10px #000c; }
 body.ui-compact .duel .duel-top { position: fixed; top: 10px; left: 12px; right: 12px; margin: 0; padding: 0; gap: 4px; background: none; box-shadow: none; max-width: 520px; }
@@ -185,6 +207,8 @@ body.ui-compact .duel .code-line { font-size: 13px; padding: 1px 0; color: #d8f6
 body.ui-compact .duel .block, body.ui-compact .duel .option { min-height: 44px; font-size: 14px; padding: 6px 12px; border-radius: 10px; color: #eafaff; background: #06202bdd; border-color: #7fdcff88; text-shadow: none; }
 body.ui-compact .duel .block.slot { background: #02101a99; color: #d8f6ffaa; }
 body.ui-compact .duel .block.placed { background: #1f5a70f0; border: 2px solid #7fdcff; color: #fff; }
+body.ui-compact .duel .block.placed.ok { border: 2px solid #5ee08f; }
+body.ui-compact .duel .block.placed.bad, body.ui-compact .duel .block.wrong { background: #3a1018f0; border: 2px solid #ff6b5a; color: #ffc4bb; }
 body.ui-compact .duel .option.wrong { background: #3a1018f0; border: 2px solid #ff6b5a; color: #ffc4bb; }
 body.ui-compact .duel .submit { min-height: 44px; font-size: 15px; background: #b9a8ffcc; box-shadow: none; text-shadow: none; }
 body.ui-compact .duel .question { color: #d8f6ff; font-size: 13px; }

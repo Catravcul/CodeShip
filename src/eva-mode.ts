@@ -13,6 +13,7 @@ import type { DuelView, SessionText } from "./ui/duel-view";
 const SUIT_UP_TEXT: SessionText = {
   title: "Ponerse el traje y salir",
   progress: "Pasos",
+  lives: "Intentos",
   order: "Ordena la preparación",
   submit: "Hacerlo",
   ok: "Comprobado",

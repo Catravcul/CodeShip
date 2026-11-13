@@ -61,14 +61,25 @@ el traje tiene una más.
 
 ### Si sale mal
 
-El asteroide se enfada (`aggressive`); la confianza baja 0,1. Los ataques por nivel son del agente
-`poderes-ira`; aquí solo se reparte quién sufre:
-- **Sonda**: la sacude de la superficie (0,4 m/s) y sus escombros la desgastan dentro de la
-  distancia segura (daño × peligro). Hay que **rescatarla** (llevarla a la bahía) o **abandonarla**.
-- **Nave**: como antes, sacude el módulo y hay que huir más allá de la distancia segura.
-- **Traje**: la lanza a 0,25 m/s (más que la velocidad de escape de Bennu); el cable la sujeta y el
-  torno la devuelve a la escotilla. Mientras está fuera el módulo no sufre; en cuanto entra, el
-  asteroide lo sacude y hay que huir.
+El asteroide se enfada (`aggressive`) y su confianza baja 0,1. Los ataques son del módulo de la ira
+([poderes-ira.md](poderes-ira.md), `src/modules/asteroid-wrath`): `Expedition.startDuel` pone
+`duelPhase` (1 sonda, 2 módulo, 3 traje) y un fracaso llama a `wrath.duelFailed(id, fase)`; ningún
+duelo nuevo empieza en ese asteroide hasta que `wrath.canRetry(id)` (se ha calmado). La sonda y
+Doménica con el traje están registradas como objetivos de la ira (`SubjugationUi`):
+
+- **Sonda** (`kind: "sonda"`, activa fuera de su bahía): los impactos le quitan casco, la radiación
+  se acumula en su electrónica (se pierde al pasar la tolerancia del módulo de la ira) y el agarre
+  gravitatorio la arranca del suelo. Además el asteroide la sacude de la superficie (0,4 m/s). Hay
+  que **rescatarla** (llevarla a la bahía) o **abandonarla**.
+- **Módulo**: como antes, lo sacude y hay que huir fuera de su alcance.
+- **Traje** (`kind: "traje"`, activo mientras está fuera): al fallar la lanza a 0,25 m/s (más que la
+  velocidad de escape de Bennu); el cable la sujeta y el torno la devuelve a la escotilla. Los
+  impactos dañan el traje (con un 30 % de daño vuelve sola a la escotilla), la radiación pasa por
+  ~0,3 g/cm² de aluminio equivalente (estimación) y el agarre la despega del suelo. Mientras está
+  fuera el módulo no se sacude; en cuanto entra, el asteroide lo sacude y hay que huir.
+
+Sin el módulo de la ira (pruebas) queda el modelo antiguo de escombros (`Aggression`), multiplicado
+por el peligro (1 − 0,75 × confianza).
 
 ## 2. La sonda sin tripulación
 
@@ -153,8 +164,8 @@ modelos de forma reales).
 
 - `subjugation/domain/rapport.test.ts`: orden de las fases, confianza, peligro, perfiles.
 - `subjugation/application/probe-ops.test.ts`: la sonda real (masa, Δv, empuje), estiba, lanzamiento,
-  aterrizaje, ira (sacudida, escombros, pérdida y relevo), brazo, reposición, batería.
-- `expedition/application/expedition.test.ts`: duelo por fases, recompensas, ira por fase.
+  aterrizaje, ira (sacudida, escombros, radiación, pérdida y relevo), brazo, reposición, batería.
+- `expedition/application/expedition.test.ts`: duelo por fases, recompensas, ira por fase, aviso a la ira con la fase y espera a que se calme.
 - `eva/application/eva.test.ts`: tumbarse, ser lanzada y recogida por el cable, EVA en otro asteroide.
 
 ## 7. Preguntas abiertas

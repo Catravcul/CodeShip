@@ -18,7 +18,7 @@ import { asteroidText, type DuelView, type SessionText } from "./ui/duel-view";
 import type { NavMap } from "./ui/nav-map";
 import { RapportChip, rapportCardHtml } from "./ui/rapport-view";
 
-const STAGE_TITLE: Readonly<Record<Stage, string>> = { sonda: "fase 1 · sonda", nave: "fase 2 · nave", traje: "fase 3 · traje" };
+const STAGE_TITLE: Readonly<Record<Stage, string>> = { sonda: "fase 1 · sonda", nave: "fase 2 · módulo", traje: "fase 3 · traje" };
 const kg = (v: number) => v.toFixed(0);
 
 /** The duel screen's texts for a stage: the same mind, a deeper level. */
@@ -146,7 +146,7 @@ export class SubjugationUi {
     if (stage === "sonda") this.probe.shakeOff();
     // Faster than Bennu's escape speed: she flies off and the tether catches her.
     if (stage === "traje") this.d.eva.throwOff(0.25);
-    this.say(`¡${ex.asteroid.data.name} está furioso! ${stage === "sonda" ? "Rescata la sonda si puedes, o abandónala" : stage === "traje" ? "Vuelve a la nave y huye" : "Huye a la distancia segura"}`);
+    this.say(`¡${ex.asteroid.data.name} está furioso! ${stage === "sonda" ? "Rescata la sonda si puedes, o abandónala" : stage === "traje" ? "Vuelve al módulo y huye" : "Huye a la distancia segura"}`);
   }
 
   private closeDuel(): void {

@@ -182,8 +182,8 @@ export class ProbeMode {
     this.model.update(dt, firing);
     if (!this.active) return;
     // Chase camera a little behind and above it, looking along its nose.
-    const behind = s.toWorld(new Vec3(0, 0.3, 1.25)).add(s.position);
-    const ahead = s.toWorld(new Vec3(0, 0.05, -3)).add(s.position);
+    const behind = s.toWorld(new Vec3(0.35, 0.75, 2.4)).add(s.position);
+    const ahead = s.toWorld(new Vec3(0, -0.1, -4)).add(s.position);
     const up = s.toWorld(Vec3.Y);
     this.camera.position.set(behind.x, behind.y, behind.z);
     this.camera.up.set(up.x, up.y, up.z);

@@ -4,11 +4,11 @@ import "./rapport.css";
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 const pct = (f: number) => `${Math.round(f * 100)} %`;
 
-const STAGE_SHORT: Readonly<Record<Stage, string>> = { sonda: "Sonda", nave: "Nave", traje: "Traje" };
+const STAGE_SHORT: Readonly<Record<Stage, string>> = { sonda: "Sonda", nave: "Módulo", traje: "Traje" };
 
 /** What to do next with this asteroid, in one line. */
 export function nextStepText(r: Rapport | undefined, angry = false): string {
-  if (angry) return "Está furioso: rescata la sonda si puedes, o huye con la nave";
+  if (angry) return "Está furioso: rescata la sonda si puedes, o huye con el módulo";
   switch (r?.next ?? "sonda") {
     case "sonda":
       return "No te conoce: lanza la sonda desde el puente de la nodriza y pósala en él";

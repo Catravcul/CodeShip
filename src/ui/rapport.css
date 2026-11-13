@@ -14,7 +14,7 @@
 .rapport-chip.angry { border-color: #ff6b5a; color: #ffd0c8; }
 .rapport-chip small { display: block; color: #bfefff; opacity: 0.9; }
 body.in-duel .rapport-chip, body.in-interior .rapport-chip, body.in-bay .rapport-chip, body.in-map .rapport-chip { display: none; }
-@media (max-width: 600px) { .rapport-chip { top: auto; bottom: 236px; width: calc(100vw - 24px); font-size: 11px; } }
+@media (max-width: 600px) { .rapport-chip { top: auto; bottom: 262px; width: calc(100vw - 24px); font-size: 11px; } }
 
 /* The probe's console: its camera on the 3D scene, telemetry, actions and the flight pads. */
 body.in-probe .fd, body.in-probe #app > .touch, body.in-probe .banner, body.in-probe .action { display: none !important; }
@@ -24,13 +24,14 @@ body.in-probe .fd, body.in-probe #app > .touch, body.in-probe .banner, body.in-p
 .pr-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 12px; padding-top: max(8px, env(safe-area-inset-top)); background: #05080bd9; border-bottom: 1px solid #2a3540; pointer-events: auto; }
 .pr-top b { color: #ffd27f; }
 .pr-top .pr-cam { font-size: 11px; color: #7f93a3; }
+@media (max-width: 600px) { .pr-top .pr-cam { display: none; } }
 .pr-top .pr-exit { margin-left: auto; padding: 8px 14px; min-height: 36px; color: #001018; background: #9fe8c4; border: 0; border-radius: 8px; }
 .pr-tele { display: flex; flex-wrap: wrap; gap: 2px 12px; padding: 6px 12px; font-variant-numeric: tabular-nums; text-shadow: 0 0 4px #000; }
 .pr-tele .warn { color: #ffb347; }
 .pr-tele .bad { color: #ff6b5a; }
-.pr-rapport { margin: 0 12px; width: min(360px, calc(100vw - 24px)); padding: 6px 10px; border-radius: 10px; background: #05141ccc; border: 1px solid #7fdcff44; font-size: 12px; }
+.pr-rapport { box-sizing: border-box; margin: 0 12px; width: min(360px, calc(100vw - 24px)); padding: 6px 10px; border-radius: 10px; background: #05141ccc; border: 1px solid #7fdcff44; font-size: 12px; }
 .pr-rapport.angry { border-color: #ff6b5a; }
-.pr-msg { position: fixed; top: 46%; left: 50%; transform: translate(-50%, -50%); max-width: 80vw; padding: 6px 12px; text-align: center; font-size: 14px; color: #fff; background: #0008; border-radius: 10px; opacity: 0; transition: opacity 0.3s; }
+.pr-msg { margin: 6px 12px 0; width: min(360px, calc(100vw - 24px)); box-sizing: border-box; padding: 6px 10px; font-size: 13px; color: #fff; background: #000a; border-radius: 10px; opacity: 0; transition: opacity 0.3s; }
 .pr-msg.on { opacity: 1; }
 .pr-actions { position: fixed; right: 12px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: stretch; gap: 6px; width: 190px; }
 .pr-actions button { padding: 9px 12px; min-height: 40px; color: #d8f6ff; background: #0b2a36e6; border: 1px solid #7fdcff66; border-radius: 10px; }
@@ -40,7 +41,7 @@ body.in-probe .fd, body.in-probe #app > .touch, body.in-probe .banner, body.in-p
 .pr-actions button.hidden { display: none; }
 .probe-ui .touch { z-index: 10; }
 @media (pointer: coarse), (max-width: 760px) {
-  .pr-actions { top: auto; transform: none; bottom: 248px; right: 10px; width: 160px; }
+  .pr-actions { top: auto; transform: none; bottom: 268px; right: 10px; width: 160px; }
   .pr-actions button { min-height: 36px; padding: 6px 10px; font-size: 12px; }
   .pr-tele { font-size: 11px; }
 }

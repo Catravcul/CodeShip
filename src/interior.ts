@@ -32,11 +32,15 @@ import { Walker } from "./adapters/input/walker";
 import type { DuelView, SessionText } from "./ui/duel-view";
 import type { SpinRing } from "@modules/gravity/domain/spin-gravity";
 import { GravityZones } from "./adapters/three/interior/zones";
+import { KITCHEN_FRAMES, StepShow, type StepFrame } from "./adapters/three/interior/step-show";
+import { choreVisuals } from "@modules/chores/application/step-visuals";
 
 const CAT_COLORS = [0xd9822b, 0x2b2b2b, 0xe8e2d6, 0x8a8f99];
 const HEN_COLORS = [0xb5651d, 0xf2efe6, 0x2a2a2a, 0xc98a4a];
 const DOG_COLORS = [0xd9a066, 0x2a2420, 0xf0e2c8];
 const CONTEXT = { recipes: RECIPES, yoga: YOGA_SEQUENCES, processes: PROCESSES, lessons: ANIMAL_LESSONS, workouts: WORKOUTS };
+/** What each solved step looks like (docs/design/vida-a-bordo.md, «Pasos visibles»). */
+const STEP_VISUALS = choreVisuals(CONTEXT);
 /** Game days per real second while walking around (a day every ~40 s). Paused during a chore. */
 const DAYS_PER_SECOND = 1 / 40;
 
@@ -134,6 +138,11 @@ export class Interior {
   /** Doménica, seen from behind in third person. */
   private readonly avatar = new CubeFigure(0xe8b48f, 0x2f7f8f, DOMENICA_HAIR, true);
   private readonly avatarRig = new THREE.Group();
+  /** Solved steps acted out at the station: Doménica's gesture and a small prop. */
+  readonly steps = new StepShow();
+  private stepTag = "";
+  /** Floating labels hidden while a chore is framed (they are for finding your way, not for watching a step). */
+  private hiddenLabels: THREE.Object3D[] = [];
   private thirdPerson = true;
   private stride = 0;
   private readonly viewBtn: HTMLButtonElement;
@@ -205,6 +214,7 @@ export class Interior {
 
     this.avatarRig.add(this.avatar.root);
     this.scene.add(this.avatarRig);
+    this.scene.add(this.steps.root);
     this.walker = new Walker(root);
     this.ui = document.createElement("div");
     this.ui.className = "interior-ui hidden";
@@ -278,6 +288,8 @@ export class Interior {
     this.ui.classList.add("hidden");
     this.board.classList.add("hidden");
     document.body.classList.remove("in-interior");
+    // Leaving the module frees the step props (a chore can't be open out here).
+    if (!this.session) this.steps.dispose();
   }
 
   resize(): void {
@@ -341,7 +353,8 @@ export class Interior {
       this.clampWalk(prev);
     }
     this.zones?.update(dt, this.pos, this.yaw, this.pitch, this.walker.move(), busy || this.walkTo !== null);
-    this.updateCamera();
+    this.updateCamera(dt);
+    this.syncStepTag();
 
     for (const p of this.plants) p.sync();
     for (const c of this.habitat.cats) {
@@ -437,7 +450,8 @@ export class Interior {
     return room || door || farm;
   }
 
-  private updateCamera(): void {
+  private updateCamera(dt = 1 / 60): void {
+    if (this.session && this.steps.frame(dt, this.camera, this.avatarRig, this.avatar)) return;
     const third = this.thirdPerson && !this.session;
     this.avatarRig.visible = third;
     if (this.zones?.placeCamera(this.camera, this.avatarRig, this.avatar, this.yaw, this.pitch, third)) return;
@@ -553,7 +567,7 @@ export class Interior {
       cat.goTo(new THREE.Vector3(-0.85, 0, 5.6));
       look = new THREE.Vector3(-0.85, 0.2, 5.6);
     }
-    this.walkTo = { pos: stand, look, then: () => this.startChore(chore) };
+    this.walkTo = { pos: stand, look, then: () => this.startChore(chore, stand, look) };
   }
 
   /**
@@ -575,12 +589,22 @@ export class Interior {
     const fullW = landscape ? 1.44 * w : w;
     const fullH = landscape ? h : 1.6 * h;
     this.camera.aspect = fullW / fullH;
-    this.camera.fov = (2 * Math.atan(Math.tan((35 * Math.PI) / 180) * (fullH / h)) * 180) / Math.PI;
+    // With Doménica acting the steps out, a phone's strip above the sheet takes a wider view (the whole counter).
+    const half = !landscape && this.steps.framing ? 52 : 35;
+    this.camera.fov = (2 * Math.atan(Math.tan((half * Math.PI) / 180) * (fullH / h)) * 180) / Math.PI;
     this.camera.setViewOffset(fullW, fullH, fullW - w, fullH - h, w, h);
     this.camera.updateProjectionMatrix();
   }
 
-  private startChore(chore: Chore): void {
+  private startChore(chore: Chore, stand?: THREE.Vector3, look?: THREE.Vector3): void {
+    const frame = stand && look ? this.stepFrame(chore, stand, look) : undefined;
+    if (frame) {
+      this.steps.begin(frame);
+      this.scene.traverse((o) => {
+        if ((o as THREE.Sprite).isSprite && o.visible) this.hiddenLabels.push(o);
+      });
+      for (const l of this.hiddenLabels) l.visible = false;
+    }
     this.frameForSheet(true);
     const session = this.habitat.start(chore, CONTEXT);
     this.cooking = chore.kind === "cocinar";
@@ -605,12 +629,63 @@ export class Interior {
         maxLives: run.maxMistakes,
       },
       choreText(chore),
-      (a) => ({ ok: session.answer(a) }),
+      (a) => {
+        const index = run.step;
+        const ok = session.answer(a);
+        // A right answer acts the step out; the next one can be answered meanwhile (the queue speeds up).
+        if (ok && this.steps.framing) this.steps.play(STEP_VISUALS.visuals(chore, index) ?? []);
+        return { ok };
+      },
     );
+  }
+
+  /**
+   * How a chore's station is framed while its steps play: Doménica at the counter for the galley and the
+   * mill (KITCHEN_FRAMES), otherwise beside her target with the camera over her shoulder. Yoga keeps its
+   * demo figure on the mat (the posture is the step's visual), so it is not framed here.
+   */
+  private stepFrame(chore: Chore, stand: THREE.Vector3, look: THREE.Vector3): StepFrame | undefined {
+    if (chore.kind === "yoga") return undefined;
+    const st = stationFor(chore);
+    if (st === "cocina" || st === "procesado") return { ...KITCHEN_FRAMES[st], target: look.clone() };
+    const dir = new THREE.Vector3(look.x - stand.x, 0, look.z - stand.z);
+    const d = dir.length();
+    if (d < 1e-3) return undefined;
+    dir.divideScalar(d);
+    const side = new THREE.Vector3(-dir.z, 0, dir.x);
+    // She stands just short of the target and a little to one side, so the camera sees both her and it.
+    // On the farm deck the station's own stand is already at the bed's edge.
+    const near = look.y < 0.5 ? 0.45 : 0.55;
+    const feet = look.z > ROOM.halfL ? new THREE.Vector3(stand.x, 0, stand.z) : new THREE.Vector3(look.x, 0, look.z).addScaledVector(dir, -Math.min(d, near));
+    const aside = feet.clone().addScaledVector(side, -0.3);
+    if (this.inside(aside.x, aside.z)) feet.copy(aside);
+    const cam = new THREE.Vector3();
+    for (let back = 1.7; back > 0.4; back -= 0.1) {
+      for (const k of [0.75, 0.4, 0]) {
+        cam.set(look.x, 1.9, look.z).addScaledVector(dir, -back).addScaledVector(side, k * back);
+        const ceiling = cam.z > ROOM.halfL + 0.2 ? FARM.height - 0.3 : ROOM.height - 0.15;
+        if (this.inside(cam.x, cam.z) && cam.y < ceiling) break;
+      }
+      if (this.inside(cam.x, cam.z)) break;
+    }
+    const focus = new THREE.Vector3(look.x, look.y, look.z).lerp(new THREE.Vector3(feet.x, 0.9, feet.z), 0.3);
+    return { stand: feet, yaw: Math.atan2(dir.x, dir.z), camera: cam, look: focus, target: look.clone() };
+  }
+
+  /** The step showing, on the UI root (`data-paso`, `data-pasos`): read by the experience suite. */
+  private syncStepTag(): void {
+    const tag = `${this.steps.current?.action ?? ""}|${this.steps.played}`;
+    if (tag === this.stepTag) return;
+    this.stepTag = tag;
+    this.ui.dataset.paso = this.steps.current?.action ?? "";
+    this.ui.dataset.pasos = String(this.steps.played);
   }
 
   private endChore(): void {
     this.session = null;
+    this.steps.clear();
+    for (const l of this.hiddenLabels) l.visible = true;
+    this.hiddenLabels.length = 0;
     this.cooking = false;
     this.frameForSheet(false);
     this.figure.pose("stand");
@@ -704,7 +779,8 @@ export class Interior {
     med.scale.y = b.stage === "proliferando" ? 0.4 + 0.6 * Math.min(1, b.glucose + 0.3) : 1;
     med.position.y = 0.125 + 0.375 * med.scale.y;
     const hob = this.room.hob.material as THREE.MeshStandardMaterial;
-    hob.emissiveIntensity = this.cooking ? 1.4 + 0.3 * Math.sin(performance.now() / 120) : 0.15;
+    // Lit while cooking, brighter while a step heats the pan or the pot.
+    hob.emissiveIntensity = this.cooking ? 0.6 + 1.2 * this.steps.heat + 0.3 * Math.sin(performance.now() / 120) : 0.15;
     const eggs = this.room.nestEggs;
     if (eggs.children.length !== Math.min(h.nestEggs, 8)) {
       eggs.clear();

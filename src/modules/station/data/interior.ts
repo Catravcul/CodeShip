@@ -32,8 +32,8 @@ const S = INTERIOR_SOURCES;
 const AISLE = {
   /** Unity is 4,57 m across: a 2,4 m square passage between stowage racks. */
   nodo: { x: 1.2, y: 1.2, basis: "Valor de juego: pasillo de 2,4 × 2,4 m dentro de un nodo de 4,57 m como Unity", source: STRUCTURE_SOURCES.unity },
-  /** HALO is 3 m across: a 1,2 × 1,7 m passage, ~0,75 m of outfitting on each side. */
-  habitat: { x: 0.6, y: 0.85, basis: "Valor de juego: pasillo de 1,2 × 1,7 m dentro de los 3 m de diámetro del HALO", source: STRUCTURE_SOURCES.halo },
+  /** HALO is 3 m across: a 1,6 × 1,9 m passage, ~0,55–0,7 m of outfitting round it (widened so the third-person camera fits, docs/design/ingravidez.md). */
+  habitat: { x: 0.8, y: 0.95, basis: "Valor de juego: pasillo de 1,6 × 1,9 m dentro de los 3 m de diámetro del HALO (ensanchado para la cámara en tercera persona)", source: STRUCTURE_SOURCES.halo },
   /** Destiny-sized: a 2 × 2 m passage between ISPR racks 0,86 m deep on the four faces. */
   fabrica: { x: 1.0, y: 1.0, basis: "Valor de juego: pasillo de 2 × 2 m entre bastidores ISPR de 0,86 m de fondo, como en Destiny", source: S.destiny },
   /** Columbus is 4,48 m across: the same 2 × 2 m passage between its ISPR racks. */

@@ -64,6 +64,7 @@ export class WrathView {
     for (const e of events) {
       if (e.type === "burst") this.burst(v3(e.position), e.kind, e.radiusM);
       if (e.type === "pulse") this.beam(v3(e.from), v3(e.to));
+      if (e.type === "jet") this.jet(v3(e.from), v3(e.to));
     }
     for (let i = this.flashes.length - 1; i >= 0; i--) {
       const f = this.flashes[i]!;
@@ -154,6 +155,21 @@ export class WrathView {
     line.frustumCulled = false;
     this.group.add(line);
     this.flashes.push({ obj: line, age: 0, life: 0.8, grow: 0, update: (t) => ((line.material as THREE.LineBasicMaterial).opacity = 1 - t) });
+  }
+
+  /** A comet's jet: a pale cone of gas and dust from the vent toward the target, fading out. */
+  private jet(from: THREE.Vector3, to: THREE.Vector3): void {
+    const len = from.distanceTo(to);
+    const geo = new THREE.ConeGeometry(Math.tan(Math.PI / 18) * len, len, 24, 1, true);
+    // The cone's apex at the vent, opening toward the target.
+    geo.translate(0, -len / 2, 0);
+    geo.rotateX(Math.PI);
+    const cone = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xdfe8f2, transparent: true, opacity: 0.35, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
+    cone.position.copy(from);
+    cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), to.clone().sub(from).normalize());
+    cone.frustumCulled = false;
+    this.group.add(cone);
+    this.flashes.push({ obj: cone, age: 0, life: 3, grow: 0, update: (t) => ((cone.material as THREE.MeshBasicMaterial).opacity = 0.35 * (1 - t)) });
   }
 
   private updateShells(shells: readonly { id: string; centre: Vec3; radiusM: number; level: number }[]): void {

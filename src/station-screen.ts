@@ -15,8 +15,16 @@ import { partById } from "@modules/ship/data/parts";
 import { electricThrusterById } from "@modules/mothership/data/thrusters";
 import { StationScene } from "./adapters/three/station-model";
 import type { DuelView, SessionText } from "./ui/duel-view";
+import type { ImportOps } from "@modules/imports/application/import-ops";
+import { IMPORT_GOODS } from "@modules/imports/data/goods";
+import { LAUNCHERS, TRANSFER_STAGE } from "@modules/imports/data/launchers";
+import { IMPORT_SRC } from "@modules/imports/data/sources";
+import { TOW_DIAMETERS_M } from "@modules/imports/data/craft";
+import { COMET_SRC } from "@modules/celestial/data/comets";
+import { USD_PER_CREDIT } from "@modules/imports/domain/wallet";
 import "./ui/station-growth.css";
 import "./ui/station-life.css";
+import "./ui/imports.css";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 const km = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1).replace(".", ",")} km` : `${Math.round(m)} m`);
@@ -24,7 +32,7 @@ const hrs = (h: number) => (h >= 10 ? `${Math.round(h)} h` : `${h.toFixed(1).rep
 const qty = (id: string, n: number) => (materialInfo(id)?.unit === "kits" ? `${Math.round(n)} ${Math.round(n) === 1 ? "kit" : "kits"}` : `${fmtKg(n)} kg`);
 const short = (n: string) => n.replace(/^Aerojet Rocketdyne /, "").replace(/\s*\(.*\)$/, "");
 
-export type StationTab = "materiales" | "planos" | "fabricacion" | "hangar" | "vida";
+export type StationTab = "materiales" | "planos" | "fabricacion" | "hangar" | "importar" | "vida";
 /** Places inside a tab the screen can open at: the propellant plant and the refuelling card (both in Materiales). */
 export type StationFocus = "propelente" | "repostar";
 const TABS: readonly [StationTab, string][] = [
@@ -32,6 +40,7 @@ const TABS: readonly [StationTab, string][] = [
   ["planos", "Planos"],
   ["fabricacion", "Fabricación"],
   ["hangar", "Hangar"],
+  ["importar", "Importar"],
   ["vida", "Vida"],
 ];
 const MACHINE = MACHINE_NAME;
@@ -41,7 +50,7 @@ const PLAN_KINDS: readonly [BlueprintKind, string][] = [
   ["componente", "Componentes"],
 ];
 const kw = (v: number) => `${(Math.round(v * 10) / 10).toLocaleString("es-ES")} kW`;
-type ChoreMode = "refinar" | "fabricar" | "repostar" | "ajustar";
+type ChoreMode = "refinar" | "fabricar" | "repostar" | "importar" | "ajustar";
 const kwh = (v: number) => `${fmtKg(v)} kWh`;
 const STAGE: Readonly<Record<string, string>> = { bruto: "Roca de la bodega (sin refinar)", refinado: "Refinados", importado: "Importados (no se pueden hacer aquí)", biologico: "Biológicos (cultivos y biorreactores)" };
 const BIO_STATE: Readonly<Record<string, string>> = { parado: "Parado", "en-marcha": "En marcha", desajustado: "Desajustado" };
@@ -57,7 +66,7 @@ const text = (title: string, mode: ChoreMode): SessionText => ({
   title,
   progress: "Pasos",
   lives: "Intentos",
-  order: mode === "refinar" ? "Ordena el proceso" : mode === "repostar" ? "Ordena el repostaje" : mode === "ajustar" ? "Ordena la ronda" : "Ordena la fabricación",
+  order: mode === "refinar" ? "Ordena el proceso" : mode === "repostar" ? "Ordena el repostaje" : mode === "importar" ? "Ordena el viaje" : mode === "ajustar" ? "Ordena la ronda" : "Ordena la fabricación",
   submit: "Hacerlo",
   ok: "Bien hecho",
   bad: "Así no: inténtalo otra vez",
@@ -102,6 +111,8 @@ export class StationScreen {
     private readonly craftPosition: (id: string) => Vec3 | undefined = () => undefined,
     /** The refuelling line for docked craft (Materiales, «Repostar»). */
     readonly refuel?: RefuelOps,
+    /** Orders to the Sanctuary and the station's own import sources (tab «Importar»). */
+    readonly imports?: ImportOps,
     /** The living machines and the self-sufficiency gauge (Vida). */
     readonly bio?: BioOps,
     /** The mothership's larder, when she is berthed here (food from the crops goes there). */
@@ -111,7 +122,7 @@ export class StationScreen {
     this.ui = document.createElement("div");
     this.ui.className = "st-ui hidden";
     this.ui.innerHTML = `<div class="st-head"><b>${esc(ops.station.site.name)}</b><span class="st-sub"></span></div><button class="bay-back st-back">Volver</button>
-      <div class="st-panel"><div class="st-tabs${bio ? " five" : ""}" role="tablist">${TABS.filter(([id]) => id !== "vida" || bio).map(([id, label]) => `<button role="tab" data-tab="${id}">${label}</button>`).join("")}</div><div class="st-body"></div></div><div class="bay-toast st-toast"></div>`;
+      <div class="st-panel"><div class="st-tabs${bio ? " six" : ""}" role="tablist">${TABS.filter(([id]) => id !== "vida" || bio).map(([id, label]) => `<button role="tab" data-tab="${id}">${label}</button>`).join("")}</div><div class="st-body"></div></div><div class="bay-toast st-toast"></div>`;
     root.appendChild(this.ui);
     this.panel = this.ui.querySelector(".st-body")!;
     this.sub = this.ui.querySelector(".st-sub")!;
@@ -210,7 +221,7 @@ export class StationScreen {
     const d = st.distanceTo(this.shipPosition());
     const subText = this.alongside ? `Atracada · a ${km(d)}` : `A ${km(d)} · acceso remoto de prueba`;
     if (this.sub.textContent !== subText) this.sub.textContent = subText;
-    const html = this.tab === "materiales" ? this.materials() : this.tab === "planos" ? this.plans() : this.tab === "fabricacion" ? this.queue() : this.tab === "vida" ? this.life() : this.hangar();
+    const html = this.tab === "materiales" ? this.materials() : this.tab === "planos" ? this.plans() : this.tab === "fabricacion" ? this.queue() : this.tab === "importar" ? this.importTab() : this.tab === "vida" ? this.life() : this.hangar();
     if (html === this.key) return;
     this.key = html;
     this.panel.innerHTML = html;
@@ -388,7 +399,7 @@ export class StationScreen {
       .map((c) => {
         const at = this.craftPosition(c.id);
         const where = at ? (this.ops.station.isAlongside(at) ? "atracada en la estación" : `fuera, a ${km(this.ops.station.distanceTo(at))}`) : c.docked ? "en el hangar" : "fuera";
-        return `<div class="st-mat"><b>${esc(c.name)}</b><span>${c.kind === "nave" ? "nave nodriza" : c.id === "explorador" ? "módulo de aterrizaje" : "sonda"}</span><small>${esc(where)}${c.massKg ? ` · ${fmtKg(c.massKg)} kg` : ""}</small></div>`;
+        return `<div class="st-mat"><b>${esc(c.name)}</b><span>${c.kind === "nave" ? "nave nodriza" : c.kind === "remolcador" ? "remolcador" : c.kind === "lanzador" ? "lanzador de masas" : c.id === "explorador" ? "módulo de aterrizaje" : "sonda"}</span><small>${esc(where)}${c.massKg ? ` · ${fmtKg(c.massKg)} kg` : ""}</small></div>`;
       })
       .join("");
     const parts = h.partList();
@@ -432,6 +443,157 @@ export class StationScreen {
     }
     const f = t.closest<HTMLElement>("[data-refuel]");
     if (f && this.refuel) return this.start(this.refuel.startRefuel(f.dataset.refuel!), "repostar");
+    if (this.imports) this.onImportClick(t);
+  }
+
+  // --- Importar --------------------------------------------------------------
+
+  /** The order being put together in the Importar tab: units per material. */
+  order: Record<string, number> = {};
+  launcherId = "falcon-heavy";
+  /** Body and boulder size picked for the tug, and the body picked for a mass driver. */
+  towBody = "";
+  towDiameterM = 1;
+  driverBody = "";
+
+  private onImportClick(t: HTMLElement): void {
+    const im = this.imports!;
+    const rerender = () => {
+      this.key = "";
+      this.render();
+    };
+    const plus = t.closest<HTMLElement>("[data-good-plus]");
+    const minus = t.closest<HTMLElement>("[data-good-minus]");
+    if (plus || minus) {
+      const id = (plus ?? minus)!.dataset[plus ? "goodPlus" : "goodMinus"]!;
+      const g = IMPORT_GOODS.find((x) => x.id === id)!;
+      this.order[id] = Math.max(0, (this.order[id] ?? 0) + (plus ? g.step : -g.step));
+      return rerender();
+    }
+    const l = t.closest<HTMLElement>("[data-launcher]");
+    if (l) {
+      this.launcherId = l.dataset.launcher!;
+      return rerender();
+    }
+    if (t.closest("[data-order]")) {
+      const goods = Object.fromEntries(Object.entries(this.order).filter(([, n]) => n > 0));
+      return this.start(im.startOrder(goods, this.launcherId, this.orderLabel(goods)), "importar");
+    }
+    const tb = t.closest<HTMLElement>("[data-tow-body]");
+    if (tb) {
+      this.towBody = tb.dataset.towBody!;
+      return rerender();
+    }
+    const td = t.closest<HTMLElement>("[data-tow-d]");
+    if (td) {
+      this.towDiameterM = Number(td.dataset.towD);
+      return rerender();
+    }
+    if (t.closest("[data-tow]")) return this.start(im.startTow(this.towBody, this.towDiameterM), "importar");
+    const db = t.closest<HTMLElement>("[data-driver-body]");
+    if (db) {
+      this.driverBody = db.dataset.driverBody!;
+      return rerender();
+    }
+    if (t.closest("[data-install]")) return this.start(im.startInstall(this.driverBody), "importar");
+  }
+
+  private orderLabel(goods: Amounts): string {
+    return Object.entries(goods)
+      .map(([id, n]) => `${qty(id, n)} de ${materialName(id).toLowerCase()}`)
+      .join(", ");
+  }
+
+  private importTab(): string {
+    const im = this.imports;
+    if (!im) return `<p class="st-dim">Sin radio con el Santuario.</p>`;
+    const es = (v: number, d = 0) => v.toLocaleString("es-ES", { minimumFractionDigits: d, maximumFractionDigits: d });
+    const src = (u: string, label = "fuente") => (u.startsWith("http") ? ` · <a href="${esc(u)}" target="_blank" rel="noopener">${label}</a>` : "");
+    const w = im.wallet;
+    const last = w.history.slice(-3).reverse();
+    const wallet = `<div class="st-card"><div class="st-row"><b>Créditos</b><span class="im-credits">${es(w.balance)}</span></div>
+      <small>Nevaeh paga cada misión. 1 crédito = ${es(USD_PER_CREDIT)} US$ (valor de juego).</small>
+      ${last.length ? `<div class="st-chips">${last.map((m) => `<span class="st-chip ${m.credits >= 0 ? "ok" : "miss"}">${m.credits >= 0 ? "+" : ""}${es(m.credits)} · ${esc(m.why)}</span>`).join("")}</div>` : ""}</div>`;
+
+    const goods = Object.fromEntries(Object.entries(this.order).filter(([, n]) => n > 0));
+    const seg = `<div class="st-seg im-seg" role="tablist">${LAUNCHERS.map((l) => `<button role="tab" data-launcher="${l.id}" class="${l.id === this.launcherId ? "on" : ""}">${esc(l.name.replace(" (objetivo)", "*"))}</button>`).join("")}</div>`;
+    const rows = IMPORT_GOODS.map((g) => {
+      const n = this.order[g.id] ?? 0;
+      return `<div class="im-good"><span><b>${esc(materialName(g.id))}</b><small>${g.id === "kit" ? `${g.kgPerUnit} kg cada uno · ` : ""}en almacén ${qty(g.id, this.ops.station.stock.amount(g.id))}</small></span>
+        <button class="im-step" data-good-minus="${g.id}" aria-label="Menos" ${n ? "" : "disabled"}>−</button><b class="im-n">${qty(g.id, n)}</b><button class="im-step" data-good-plus="${g.id}" aria-label="Más">+</button></div>`;
+    }).join("");
+    const l = LAUNCHERS.find((x) => x.id === this.launcherId)!;
+    const q = im.quote(Object.keys(goods).length ? goods : { kit: 1 }, this.launcherId);
+    const empty = !Object.keys(goods).length;
+    const why = empty ? "Añade algo al pedido" : im.orderBlocker(goods, this.launcherId);
+    const au = this.ops.station && q.transfer;
+    const breakdown = `<div class="st-card im-quote"><div class="st-row"><b>${empty ? "Ejemplo: 1 kit" : "Tu pedido"}</b><span>${es(q.massKg, 1)} kg</span></div>
+      <div class="im-line"><span>Δv desde la órbita baja</span><b>${es(au.departMs / 1000, 2)} + ${es(au.arriveMs / 1000, 2)} km/s</b></div>
+      <small>Hohmann de la Tierra (1 UA) a la región: encendido de salida en LEO y de llegada para igualar la órbita${src(IMPORT_SRC.hohmann)}${src(IMPORT_SRC.oberth, "Oberth")}</small>
+      <div class="im-line"><span>Ecuación del cohete</span><b>× ${es(q.leoKgPerKg, 1)} kg en LEO por kg</b></div>
+      <small>Dos etapas que se sueltan al vaciarse, Isp ${TRANSFER_STAGE.ispS.value} s (Raptor Vacuum) y tanques del ${es(TRANSFER_STAGE.tankage.value * 100)} % (valor de juego)${src(IMPORT_SRC.rocketEquation)}${src(TRANSFER_STAGE.ispS.source, "Raptor")}</small>
+      <div class="im-line"><span>Lanzamiento a LEO</span><b>${es(q.leoKg)} kg × ${es(q.usdPerKgLeo)} US$/kg</b></div>
+      <small>${esc(l.usdPerKg.note ?? "")}${src(l.usdPerKg.source)}</small>
+      <div class="im-line total"><span>Coste</span><b>${es(q.credits)} créditos</b></div>
+      <div class="im-line"><span>Viaje</span><b>${es(q.transitDays)} días → ${hrs(q.gameHours)} de estación</b></div>
+      <small>Un día real de transferencia es una hora del reloj de la estación (valor de juego).</small>
+      <button class="st-btn" data-order ${why ? "disabled" : ""}>${why ? esc(why) : "Pedir por radio a Nevaeh"}</button></div>`;
+
+    const pending = im.deliveries.pending
+      .map((d) => {
+        const done = 1 - d.hoursLeft / Math.max(1e-9, d.hoursTotal);
+        const from = d.source === "santuario" ? "Santuario" : d.source === "remolcador" ? "Remolcador" : "Lanzador";
+        return `<div class="st-job run"><div class="st-row"><b>${esc(d.label)}</b><span>${from} · quedan ${hrs(d.hoursLeft)}</span></div><div class="bay-bar"><span>${Math.round(done * 100)} %</span><i style="width:${Math.round(done * 100)}%"></i></div></div>`;
+      })
+      .slice(0, 8)
+      .join("");
+
+    const sources = im.sources();
+    const pick = (attr: string, sel: string) =>
+      `<div class="st-chips">${sources.map((b) => `<button class="st-chip im-pick ${b.id === sel ? "on" : ""}" data-${attr}="${esc(b.id)}">${esc(b.name)}${b.comet ? " ☄" : ""}</button>`).join("")}</div>`;
+    if (!sources.some((b) => b.id === this.towBody)) this.towBody = sources[0]?.id ?? "";
+    if (!sources.some((b) => b.id === this.driverBody)) this.driverBody = sources[0]?.id ?? "";
+    const noSources = `<p class="st-dim">No hay cuerpos catalogados a mano.</p>`;
+    let tug: string;
+    if (im.tow) {
+      const t = im.tow;
+      tug = `<div class="st-io">Fuera: trae una roca de ${es(t.plan.boulderKg)} kg de ${esc(t.bodyName)} · quedan ${hrs(t.delivery.hoursLeft)}</div>`;
+    } else if (!im.tug) tug = `<p class="st-dim">Construye el remolcador en Planos → Componentes (necesita la impresora de metal grande).</p>`;
+    else if (!sources.length) tug = noSources;
+    else {
+      const p = im.towPlan(this.towBody, this.towDiameterM);
+      const block = im.towBlocker(this.towBody, this.towDiameterM);
+      const dseg = `<div class="st-seg im-seg">${TOW_DIAMETERS_M.map((d) => `<button data-tow-d="${d}" class="${d === this.towDiameterM ? "on" : ""}">Roca de ${String(d).replace(".", ",")} m</button>`).join("")}</div>`;
+      tug = `${pick("tow-body", this.towBody)}${dseg}
+        <div class="im-line"><span>Roca</span><b>${es(p.boulderKg)} kg</b></div>
+        <div class="im-line"><span>Empuje</span><b>${es(p.thrustN, 2)} N</b></div>
+        <div class="im-line"><span>Ida · captura · vuelta</span><b>${hrs(p.out.hours)} · ${hrs(p.captureHours)} · ${hrs(p.back.hours)}</b></div>
+        <div class="im-line"><span>Xenón</span><b>${es(p.xenonKg, 2)} kg</b></div>
+        <button class="st-btn" data-tow ${block ? "disabled" : ""}>${block ? esc(block) : "Remolcar"}</button>`;
+    }
+    const installed = im.drivers
+      .map((d) => `<div class="st-job run"><div class="st-row"><b>${esc(d.bodyName)}</b><span>${d.launched} paquetes</span></div><div class="bay-bar"><span>llenando el cubo</span><i style="width:${Math.round(d.progress * 100)}%"></i></div></div>`)
+      .join("");
+    let driver = installed;
+    if (im.driverCraft) {
+      if (!sources.length) driver += noSources;
+      else {
+        const block = im.installBlocker(this.driverBody);
+        driver += `${pick("driver-body", this.driverBody)}<button class="st-btn" data-install ${block ? "disabled" : ""}>${block ? esc(block) : "Montar el lanzador"}</button>`;
+      }
+    } else if (!im.drivers.length) driver += `<p class="st-dim">Construye un lanzador de masas en Planos → Componentes (necesita la soldadora por haz de electrones).</p>`;
+    return `${wallet}
+      <div class="bay-sec">Pedir al Santuario por radio</div>
+      <p class="st-dim">Nevaeh lo lanza desde la Tierra. Casi todo lo que se paga es propelente: cada kilo necesita muchos en la órbita baja.</p>
+      ${seg}${rows}${breakdown}
+      ${pending ? `<div class="bay-sec">En camino</div>${pending}` : ""}
+      <div class="bay-sec">Fuentes propias</div>
+      <p class="st-dim">Funcionan con cualquier asteroide o cometa, sin subyugarlo: lentas y modestas, pero no cuestan créditos.</p>
+      <div class="st-card"><div class="st-row"><b>Remolcador SEP</b><span>40 kW · Isp 3 000 s</span></div>
+        <small>Como el estudio de Keck de 2012 (roca de ~7 m y ~500 t en 6–10 años) y la opción B de ARM (una roca de hasta 4 m)${src(IMPORT_SRC.keck, "Keck")}${src(IMPORT_SRC.arm, "ARM")}</small>${tug}</div>
+      <div class="st-card"><div class="st-row"><b>Lanzador de masas</b><span>112 m/s · 10,5 kg</span></div>
+        <small>Como el Mass Driver Two de O'Neill (5 000 m/s²) y los cubos de 10,5 kg de su lanzador lunar; un paquete cada 8 h (valor de juego)${src(IMPORT_SRC.massDriver)}${src(IMPORT_SRC.massDriverAmes, "Ames 1977")}</small>${driver}</div>
+      <p class="st-dim">Los cometas traen hielo de agua y de CO₂; el CO y otros volátiles se evaporan antes de poder guardarlos${src(COMET_SRC.gasProduction)}.</p>`;
   }
 
   /** Vida: the self-sufficiency gauge, the larder, nitrogen and each living machine. */
@@ -457,7 +619,7 @@ export class StationScreen {
     const n = rows.find((r) => r.id === "nitrogeno")!;
     const nh3 = this.ops.station.stock.amount("amoniaco");
     const nitrogen = `<div class="st-card"><div class="st-row"><b>Nitrógeno: el bucle no lo cierra</b><span>${pct(n.share)} local</span></div>
-      <small>El bucle solo devuelve el nitrógeno que traen los residuos (${gN(bio.lab.process("bucle")?.outputs.fertilizante)} por hora) y los campos comen ${gN(bio.lab.process("cultivo")?.inputs.fertilizante)} por hora: el resto llega como fertilizante importado (${fmtKg(this.ops.station.stock.amount("fertilizante"))} kg N en el almacén). El amoníaco de la planta de propelente o, más adelante, el de los cometas puede cubrirlo.</small>
+      <small>El bucle solo devuelve el nitrógeno que traen los residuos (${gN(bio.lab.process("bucle")?.outputs.fertilizante)} por hora) y los campos comen ${gN(bio.lab.process("cultivo")?.inputs.fertilizante)} por hora: el resto llega como fertilizante importado (${fmtKg(this.ops.station.stock.amount("fertilizante"))} kg N en el almacén). El amoníaco de los cometas (pestaña Importar) o el de la planta de propelente lo cubre: cada 17 kg de amoníaco llevan 14 kg de nitrógeno.${bio.iceCo2KgPerDay > 0 ? ` El hielo de CO₂ de cometa da a los campos ${fmtKg(bio.iceCo2KgPerDay)} kg de CO₂ al día.` : ""}</small>
       <div class="st-row"><span>Amoníaco en el almacén: ${fmtKg(nh3)} kg</span><button class="st-btn lf-toggle ${bio.ammoniaFertiliser ? "on" : ""}" data-ammonia>${bio.ammoniaFertiliser ? "Abonando con amoníaco" : "Abonar con amoníaco"}</button></div></div>`;
     const cards = bio.status().map((s) => this.bioCard(s)).join("");
     return `<div class="lf-head"><div class="lf-big"><b>${pct(all)}</b><span>autosuficiente</span></div><small>Media de oxígeno, comida, agua y resina hechos aquí. Cada fila: lo local frente a lo que se necesita.</small></div>
@@ -514,11 +676,14 @@ export class StationScreen {
         if (mode === "ajustar") {
           this.say("Ajustado: rinde al 100 % durante 240 h");
           this.show("vida");
+        } else if (mode === "importar") {
+          this.say("Hecho: mira «En camino»");
+          this.show("importar");
         } else {
           this.say(mode === "refinar" ? "Lote en marcha: mira Fabricación" : mode === "repostar" ? "Trasvasando propelente: mira Fabricación" : "En marcha: mira Fabricación");
           this.show("fabricacion");
         }
-      } else if (run.status === "failed") this.say(mode === "ajustar" ? "No salió: sigue como estaba" : mode === "repostar" ? "No salió: el propelente sigue en el almacén" : "No salió: los materiales siguen en el almacén");
+      } else if (run.status === "failed") this.say(mode === "ajustar" ? "No salió: sigue como estaba" : mode === "importar" ? "No salió: inténtalo otra vez" : mode === "repostar" ? "No salió: el propelente sigue en el almacén" : "No salió: los materiales siguen en el almacén");
       this.key = "";
       this.render();
     };
@@ -540,6 +705,11 @@ export class StationScreen {
       (a) => ({ ok: session.answer(a) }),
     );
     this.layout();
+  }
+
+  /** A short note on the screen's toast (an import arrived…). */
+  notice(msg: string): void {
+    if (this.active) this.say(msg);
   }
 
   private say(msg: string): void {

@@ -57,9 +57,15 @@ export class BioOps {
   readonly lab: BioLab;
   /** Nitrogen supplies besides the loop: the hook for comet ammonia. */
   readonly nitrogenSources: NitrogenSource[] = [];
-  /** Top up the fertiliser with ammonia from the store (propellant plant, or comets when they come). */
-  ammoniaFertiliser = false;
+  /**
+   * Top up the fertiliser with ammonia from the store: comet ammonia (docs/design/importacion.md) or the
+   * propellant plant's. On by default: it is what closes the nitrogen the loop cannot.
+   */
+  ammoniaFertiliser = true;
+  /** Sublimate comet CO₂ ice for the crops when the crew's breath is not enough. */
+  co2FromIce = true;
   private ammoniaNPerHour = 0;
+  private iceCo2PerHour = 0;
 
   constructor(
     readonly outfit: StationOutfit,
@@ -84,13 +90,33 @@ export class BioOps {
     for (const p of this.lab.processes) if (p.startsWhenBuilt && this.installed(p) && this.lab.state(p.id) === "parado") this.lab.tune(p.id);
     this.ammoniaNPerHour = this.ammoniaFertiliser ? this.topUpNitrogen(hours) / hours : 0;
     const crewCo2 = (this.cfg.crew() * this.cfg.needs.co2KgPerDay) / 24;
+    this.iceCo2PerHour = this.co2FromIce ? this.topUpCo2(hours, crewCo2 * hours) / hours : 0;
     this.lab.tick(hours, this.stock, (id) => this.outfit.has(id), crewCo2);
+  }
+
+  /** What the running processes would take of a material this tick at their tuned speed, kg. */
+  private demand(m: MaterialId, hours: number): number {
+    return this.lab.processes.reduce((s, p) => s + (this.installed(p) ? (p.inputs[m] ?? 0) * this.lab.efficiency(p.id) * hours : 0), 0);
+  }
+
+  /** Sublimate comet CO₂ ice for what the crew's breath and the store do not cover; kg of CO₂. */
+  private topUpCo2(hours: number, exhaled: number): number {
+    const short = this.demand("co2", hours) - exhaled - this.stock.amount("co2");
+    const n = Math.min(Math.max(0, short), this.stock.amount("hielo-co2"));
+    if (n <= 1e-12) return 0;
+    this.stock.take({ "hielo-co2": n });
+    this.stock.add({ co2: n });
+    return n;
+  }
+
+  /** Comet CO₂ ice sublimated for the crops in the last tick, kg a day. */
+  get iceCo2KgPerDay(): number {
+    return this.iceCo2PerHour * 24;
   }
 
   /** Turn store ammonia into fertiliser for what the running processes will take this tick; kg of N. */
   private topUpNitrogen(hours: number): number {
-    const need = this.lab.processes.reduce((s, p) => s + (this.installed(p) ? (p.inputs.fertilizante ?? 0) * this.lab.efficiency(p.id) * hours : 0), 0);
-    const short = need - this.stock.amount("fertilizante");
+    const short = this.demand("fertilizante", hours) - this.stock.amount("fertilizante");
     const n = Math.min(Math.max(0, short), this.stock.amount("amoniaco") * N_IN_NH3);
     if (n <= 1e-12) return 0;
     this.stock.take({ amoniaco: n / N_IN_NH3 });
@@ -121,7 +147,7 @@ export class BioOps {
   /** Nitrogen supplies counted in the gauge: the store's ammonia, if used, and any plugged-in source. */
   nitrogen(): NitrogenSource[] {
     const out = [...this.nitrogenSources];
-    if (this.ammoniaNPerHour > 0) out.push({ id: "amoniaco", label: "Amoníaco del almacén", kgNPerDay: this.ammoniaNPerHour * 24, local: true });
+    if (this.ammoniaNPerHour > 0) out.push({ id: "amoniaco", label: "Amoníaco de cometas o de la planta", kgNPerDay: this.ammoniaNPerHour * 24, local: true });
     return out;
   }
 

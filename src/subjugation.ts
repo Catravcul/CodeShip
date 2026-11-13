@@ -67,6 +67,8 @@ export interface SubjugationDeps {
   atStation(): boolean;
   /** The asteroids' wrath (docs/design/poderes-ira.md): the probe and Doménica in her suit join its targets. */
   readonly wrath?: { addTarget(t: WrathTarget): void };
+  /** Doménica plus her suit, kg (a comet's jet pushes her by momentum / mass). */
+  readonly crewMassKg?: number;
 }
 
 /**
@@ -150,6 +152,7 @@ export class SubjugationUi {
         p.flight.applyImpulse(dv);
       },
       thrustAccelMs2: () => ship().preview({ mainThrottle: 1, translation: Vec3.ZERO, rotation: Vec3.ZERO }).forceBody.length() / ship().massKg,
+      massKg: () => ship().massKg,
     };
   }
 
@@ -178,6 +181,8 @@ export class SubjugationUi {
         if (b) b.applyImpulse(eva.asteroid.orientationAt(t()).conjugate().rotate(dv));
       },
       thrustAccelMs2: () => eva.jetAccelMs2,
+      // Doménica and her suit: the EMU is about 145 kg (NASA), her own mass is the crew model's.
+      massKg: () => this.d.crewMassKg ?? 200,
     };
   }
 

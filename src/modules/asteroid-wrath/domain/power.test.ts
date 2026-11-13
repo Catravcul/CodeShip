@@ -3,6 +3,7 @@ import { BENNU } from "@modules/celestial/data/bennu";
 import { POLANA_MEMBERS, POLANA_NEIGHBOURS } from "@modules/celestial/data/nueva-polana";
 import { CERES, DA_1986, EROS, PSYCHE } from "../data/reference-bodies";
 import { powerOf, reaches, TIERS } from "./power";
+import { COMETS } from "@modules/celestial/data/comets";
 
 describe("asteroid power from real data", () => {
   it("Bennu, a 490 m rubble pile, throws rocks (tier 1) and can only reach the probe", () => {
@@ -43,5 +44,16 @@ describe("asteroid power from real data", () => {
     for (const t of [2, 3, 4, 5] as const) for (const k of TIERS[(t - 1) as 1 | 2 | 3 | 4].reaches) expect(reaches(t, k)).toBe(true);
     expect([1, 2, 3, 4, 5].filter((t) => reaches(t as 1, "estacion"))).toEqual([4, 5]);
     expect([1, 2, 3, 4, 5].filter((t) => reaches(t as 1, "nodriza"))).toEqual([3, 4, 5]);
+  });
+
+  it("comets keep the tier of their size and ice and add outgassing jets", () => {
+    for (const c of COMETS) {
+      const p = powerOf(c);
+      expect(p.comet).toBe(true);
+      expect(p.spec.weapons).toContain("chorro");
+      expect(p.volatileFraction).toBeGreaterThan(0.05);
+      expect(p.tier).toBe(3);
+    }
+    expect(powerOf(BENNU).spec.weapons).not.toContain("chorro");
   });
 });

@@ -112,10 +112,24 @@ describe("BioOps: the station's living machines", () => {
     expect(ops.gauge().find((r) => r.id === "nitrogeno")!.share).toBeCloseTo(1);
   });
 
-  it("with ammonia fertiliser on, store ammonia covers the fertiliser the crops run short of", () => {
+  it("comet CO₂ ice tops up the crops when the crew's breath is not enough", () => {
+    const { ops, stock } = grownStation();
+    ops.co2FromIce = false;
+    ops.tick(24);
+    expect(ops.lab.run("cultivo").short).toBe("co2");
+    stock.add({ "hielo-co2": 10 });
+    ops.co2FromIce = true;
+    ops.tick(24);
+    expect(ops.lab.run("cultivo").k).toBeCloseTo(1);
+    expect(stock.amount("hielo-co2")).toBeLessThan(10);
+    expect(ops.iceCo2KgPerDay).toBeGreaterThan(0);
+  });
+
+  it("with ammonia fertiliser on (comet ammonia), store ammonia covers the fertiliser the crops run short of", () => {
     const { ops, stock } = grownStation();
     stock.take({ fertilizante: 4 });
     stock.add({ amoniaco: 1 });
+    ops.ammoniaFertiliser = false;
     ops.tick(24);
     expect(ops.lab.run("cultivo").short).toBe("fertilizante");
     ops.ammoniaFertiliser = true;

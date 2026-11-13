@@ -7,6 +7,7 @@ import { powerOf, reaches, TIERS, type AsteroidPower, type PowerTier, type Targe
 import { closestApproachM, interceptVelocity, kineticEnergyJ, rockDiameterM, sphereMassKg, stepProjectile, type Projectile, type ProjectileKind } from "../domain/projectile";
 import { BLUNT_ROCK_KG, impactFraction, type Protection } from "../domain/protection";
 import { PULSE, pulseDoseMSv, shieldedDoseMSv } from "../domain/radiation";
+import { JET, jetOnTarget } from "../domain/jet";
 
 /** An asteroid that can get angry: the celestial `Asteroid` fits this. */
 export interface WrathBody {
@@ -32,13 +33,15 @@ export interface WrathTarget {
   active(): boolean;
   protection(): Protection;
   /** Lose hull integrity (already cut down by its protection). */
-  damage(fraction: number, cause: ProjectileKind | "pulso"): void;
+  damage(fraction: number, cause: ProjectileKind | "pulso" | "chorro"): void;
   /** Crew dose behind its shield, mSv. */
   dose?(mSv: number): void;
   /** Velocity change from a gravity grip, m/s (world). */
   pull?(deltaV: Vec3): void;
   /** Thrust acceleration it can make now, m/s² (to tell whether escape is possible). */
   thrustAccelMs2?(): number;
+  /** Its mass, kg: a comet's jet pushes it by momentum / mass. Without it the jet only sandblasts. */
+  massKg?(): number;
 }
 
 export type WrathEvent =
@@ -48,7 +51,9 @@ export type WrathEvent =
   | { readonly type: "hit"; readonly targetId: string; readonly kind: ProjectileKind; readonly energyJ: number; readonly fraction: number }
   | { readonly type: "burst"; readonly kind: "carga" | "nuclear"; readonly position: Vec3; readonly radiusM: number }
   | { readonly type: "pulse"; readonly asteroidId: string; readonly targetId: string; readonly from: Vec3; readonly to: Vec3; readonly doseMSv: number }
-  | { readonly type: "escaped"; readonly asteroidId: string; readonly targetId: string };
+  | { readonly type: "escaped"; readonly asteroidId: string; readonly targetId: string }
+  /** A comet's outgassing jet: the dust it put on the target and the push it gave. */
+  | { readonly type: "jet"; readonly asteroidId: string; readonly targetId: string; readonly from: Vec3; readonly to: Vec3; readonly interceptedKg: number; readonly deltaVMs: number; readonly fraction: number };
 
 /** Where to go to be out of reach: straight away from the asteroid, this far. */
 export interface FleeGuidance {
@@ -170,7 +175,8 @@ export class AsteroidWrath {
    */
   demoTier(asteroidId: string, tier: PowerTier): void {
     const m = this.mood(asteroidId);
-    const power: AsteroidPower = { ...m.power, tier, spec: TIERS[tier], reason: `demostración: poder ${tier}` };
+    const spec = m.power.comet ? { ...TIERS[tier], weapons: [...TIERS[tier].weapons, "chorro" as const] } : TIERS[tier];
+    const power: AsteroidPower = { ...m.power, tier, spec, reason: `demostración: poder ${tier}` };
     this.moods.set(asteroidId, { ...m, power, anger: new Anger(TIERS[tier].angerHalfLifeS) });
   }
 
@@ -325,6 +331,7 @@ export class AsteroidWrath {
     const t = inReach[m.throws % inReach.length]!;
     m.throws++;
     const w = m.power.spec.weapons;
+    if (w.includes("chorro") && m.throws % JET.everyThrows === 0) return this.jet(m, t);
     if (w.includes("pulso") && m.throws % PULSE.everyThrows === 0) return this.pulse(m, t);
     if (this._projectiles.length >= MAX_PROJECTILES) return;
     const kind: ProjectileKind = w.includes("nuclear") && m.anger.level > 0.8 && m.throws % 5 === 0 ? "nuclear" : w.includes("carga") && m.throws % 2 === 0 ? "carga" : "roca";
@@ -355,6 +362,22 @@ export class AsteroidWrath {
     const raw = pulseDoseMSv(m.body.meanRadiusM, to.sub(m.body.position).length(), m.anger.level);
     const dose = this.irradiate(t, raw);
     this.events.push({ type: "pulse", asteroidId: m.body.data.id, targetId: t.id, from: m.body.position, to, doseMSv: dose });
+  }
+
+  /** A comet's jet: dust from the vent facing the target, a push of momentum / mass and a sandblast through its protection. */
+  private jet(m: Mood, t: WrathTarget): void {
+    const c = m.body.position;
+    const to = t.position();
+    const rel = to.sub(c);
+    const dir = rel.length() > 1e-9 ? rel.normalize() : Vec3.Y;
+    const from = c.add(dir.scale(m.body.meanRadiusM));
+    const hit = jetOnTarget(this.surfaceDistance(m, to), t.radiusM, m.anger.level, m.power.spec.rockSpeedMs);
+    const mass = t.massKg?.();
+    const deltaVMs = mass && mass > 0 ? hit.momentumKgMs / mass : 0;
+    if (deltaVMs > 0) t.pull?.(dir.scale(deltaVMs));
+    const fraction = impactFraction(hit.energyJ, t.protection(), false);
+    if (fraction > 0) t.damage(fraction, "chorro");
+    this.events.push({ type: "jet", asteroidId: m.body.data.id, targetId: t.id, from, to, interceptedKg: hit.interceptedKg, deltaVMs, fraction });
   }
 
   /** Apply an unshielded dose to a target: crew dose behind its shield, or electronics damage. Returns the dose that got in. */

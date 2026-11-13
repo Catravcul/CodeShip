@@ -105,6 +105,7 @@ export class WrathMode {
         flight.applyImpulse(dv);
       },
       thrustAccelMs2: () => ship.preview({ mainThrottle: 1, translation: Vec3.ZERO, rotation: Vec3.ZERO }).forceBody.length() / ship.massKg,
+      massKg: () => ship.massKg,
     };
   }
 
@@ -207,6 +208,7 @@ export class WrathMode {
       this.alertUntil = this.clock + 4;
     };
     if (e.type === "hit") say(`¡Impacto en ${NAMES[this.wrath.target(e.targetId)?.kind ?? ""] ?? e.targetId}! −${(e.fraction * 100).toFixed(e.fraction < 0.01 ? 1 : 0).replace(".", ",")} % de casco`);
+    if (e.type === "jet") say(`¡Chorro de gas y polvo sobre ${NAMES[this.wrath.target(e.targetId)?.kind ?? ""] ?? e.targetId}! ${e.interceptedKg < 1 ? e.interceptedKg.toFixed(2).replace(".", ",") : Math.round(e.interceptedKg)} kg de polvo${e.deltaVMs > 0.001 ? ` · empuje de ${e.deltaVMs < 0.1 ? (e.deltaVMs * 100).toFixed(1).replace(".", ",") + " cm/s" : e.deltaVMs.toFixed(2).replace(".", ",") + " m/s"}` : ""}`);
     if (e.type === "pulse") say(`Pulso de radiación sobre ${NAMES[this.wrath.target(e.targetId)?.kind ?? ""]}: ${mSv(e.doseMSv)} tras el blindaje`);
     if (e.type === "escaped") say(`${NAMES[this.wrath.target(e.targetId)?.kind ?? ""]} fuera de su alcance`);
     if (e.type === "calmed") say("Se ha calmado: puedes volver a intentarlo");

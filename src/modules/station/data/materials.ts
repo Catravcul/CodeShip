@@ -21,6 +21,8 @@ export const MATERIALS: readonly MaterialInfo[] = [
   { id: "mineral-niquel", name: "Níquel en sulfuros", stage: "bruto", unit: "kg", note: "Pentlandita y otros sulfuros de hierro y níquel", source: SRC.bennuSample },
   { id: "nitrogeno-roca", name: "Nitrógeno en sales de amonio y orgánicos", stage: "bruto", unit: "kg", note: "El 0,23–0,25 % de la roca de Bennu: poco, pero es todo el nitrógeno que hay para hacer amoníaco", source: SRC.bennuNitrogen },
   { id: "silicatos", name: "Silicatos (filosilicatos)", stage: "bruto", unit: "kg", note: "El grueso de la roca: serpentina y esmectita ricas en magnesio", source: SRC.bennuSample },
+  { id: "hielo-agua", name: "Hielo de agua de cometa", stage: "bruto", unit: "kg", note: "Hielo sucio de un núcleo de cometa: tres cuartas partes de lo que suelta 67P es agua", source: SRC.cometGas },
+  { id: "hielo-co2", name: "Hielo de dióxido de carbono", stage: "bruto", unit: "kg", note: "El segundo hielo de los cometas (13 % de lo que perdió 67P): de él salen oxígeno y carbono", source: SRC.cometGas },
   { id: "agua", name: "Agua", stage: "refinado", unit: "kg", note: "Condensada en la trampa fría del horno", source: SRC.thermalExtraction },
   { id: "hierro", name: "Hierro (carbonilo)", stage: "refinado", unit: "kg", note: "Polvo de hierro muy puro del pentacarbonilo", source: SRC.carbonylAsteroid },
   { id: "niquel", name: "Níquel (carbonilo)", stage: "refinado", unit: "kg", note: "Níquel puro del tetracarbonilo", source: SRC.mond },
@@ -58,5 +60,12 @@ const FROM_CARGO: Readonly<Record<string, MaterialId>> = {
   "Nickel (in Fe-Ni sulfides)": "mineral-niquel",
   "Silicates (phyllosilicates)": "silicatos",
   "Nitrogen (in ammonium salts and organics)": "nitrogeno-roca",
+  // A comet's hold (modules/celestial/data/comets.ts). CO ice and the other volatiles boil away near
+  // 25–90 K before they can be kept: the station has no use for them.
+  "Water ice": "hielo-agua",
+  "Carbon dioxide ice": "hielo-co2",
+  "Ammonia (ice and ammonium salts)": "amoniaco",
+  "Refractory organics (CHON)": "carbono",
+  "Silicates and sulfides (dust)": "silicatos",
 };
 export const cargoMaterial = (cargo: string): MaterialId | undefined => FROM_CARGO[cargo];

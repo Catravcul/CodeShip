@@ -53,6 +53,11 @@ export class Asteroid {
     return this.orientationAt(timeS).rotate(local).add(this.position);
   }
 
+  /** Distance from the centre to the surface along the ray through a local point (the real shape). */
+  surfaceRadius(local: Vec3): number {
+    return this.shape(local);
+  }
+
   /** Height above the real surface, metres (negative = inside). */
   surfaceDistance(world: Vec3, timeS: number): number {
     const local = this.toLocal(world, timeS);

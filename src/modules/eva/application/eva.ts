@@ -20,7 +20,10 @@ export type EvaEvent =
   | { type: "cable-tenso" }
   | { type: "muestra"; sample: RegolithSample }
   | { type: "volver" }
-  | { type: "reserva" };
+  | { type: "reserva" }
+  | { type: "tumbada" }
+  | { type: "en-pie" }
+  | { type: "lanzada" };
 
 /** Airlock hatch on the ship's left flank, body frame (x right, y up, −z forward). Matches the rendered ship. */
 export const HATCH_BODY = new Vec3(-1.5, -0.3, 1.9);
@@ -94,20 +97,80 @@ export class Eva {
   private lastStatus = "nominal";
   /** Grams of regolith in the sample bag. */
   collectedG = 0;
+  /** Lying face down on the asteroid, full body contact (stage 3 of the subjugation). */
+  private _lying = false;
+  private _asteroid: Asteroid;
+  private _samples: readonly RegolithSample[];
 
   constructor(
     readonly flight: FlightComputer,
-    readonly asteroid: Asteroid,
+    asteroid: Asteroid,
     surface: (local: Vec3) => number,
     crewMassKg = 58,
     readonly suitSpec: SuitSpec = EMU,
     readonly jetpack: JetpackSpec = SAFER,
-    readonly samples: readonly RegolithSample[] = BENNU_SAMPLES,
+    samples: readonly RegolithSample[] = BENNU_SAMPLES,
   ) {
+    this._asteroid = asteroid;
+    this._samples = samples;
     this.suit = new Suit(suitSpec);
     this._world = { mu: asteroid.mu, spinRadS: asteroid.spinRadS, surface, meanRadiusM: asteroid.meanRadiusM };
     this.massKg = crewMassKg + suitSpec.massKg.value + jetpack.massKg.value;
     this.jetAccelMs2 = (jetpack.thrustPerThrusterN.value * jetpack.thrustersPerAxis.value) / this.massKg;
+  }
+
+  get asteroid(): Asteroid {
+    return this._asteroid;
+  }
+  get samples(): readonly RegolithSample[] {
+    return this._samples;
+  }
+
+  /**
+   * Walk on another asteroid: its real gravity (μ), spin and the same surface the lander touches.
+   * Only from inside the lander. Samples are Bennu's (the only ones with lab results); elsewhere none.
+   */
+  retarget(asteroid: Asteroid, samples: readonly RegolithSample[] = []): void {
+    if (this._phase !== "dentro" || asteroid === this._asteroid) return;
+    this._asteroid = asteroid;
+    this._samples = samples;
+    this._world = { mu: asteroid.mu, spinRadS: asteroid.spinRadS, surface: (l) => asteroid.surfaceRadius(l), meanRadiusM: asteroid.meanRadiusM };
+  }
+
+  get lying(): boolean {
+    return this._lying;
+  }
+  /** Holding on to the ground outside, not lying yet. */
+  get canLieDown(): boolean {
+    return this._phase === "fuera" && !this._lying && this._body?.mode === "agarrada";
+  }
+
+  /** "Tumbarse sobre el asteroide": face down, arms open, the whole body on the regolith. */
+  lieDown(): boolean {
+    if (!this.canLieDown) return false;
+    this._lying = true;
+    this._body!.stop();
+    this.events.push({ type: "tumbada" });
+    return true;
+  }
+
+  standUp(): void {
+    if (!this._lying) return;
+    this._lying = false;
+    this.events.push({ type: "en-pie" });
+  }
+
+  /**
+   * An angry asteroid throws her off (failed stage 3): a push along the local up; the tether holds
+   * her and the winch reels her back to the hatch.
+   */
+  throwOff(speedMs: number): void {
+    const b = this._body;
+    if (!this.outside || !b) return;
+    this._lying = false;
+    b.applyImpulse(b.normal.scale(speedMs));
+    this._phase = "volviendo";
+    this.events.push({ type: "lanzada" });
   }
 
   get world(): EvaWorld {
@@ -204,7 +267,7 @@ export class Eva {
     this._world = { ...this._world, keepOut: shipKeepOut(local, this._shipRight, this._shipForward) };
     const start = groundUnder(this.world, this._hatch.add(this._shipRight.scale(0.8 * Math.sign(HATCH_BODY.x))));
     this._body = new EvaBody(this.world, start, { anchor: this._hatch, lengthM: SAFETY_TETHER_M.value }, { accelMs2: this.jetAccelMs2, deltaVMs: this.jetpack.deltaVMs.value });
-    this._spots = this.samples.map((sample, i) => {
+    this._spots = this._samples.map((sample, i) => {
       const [r, f] = SAMPLE_SPOTS[i % SAMPLE_SPOTS.length]!;
       return { sample, position: groundUnder(this.world, local.add(this._shipRight.scale(r)).add(this._shipForward.scale(f))), collected: false };
     });
@@ -220,6 +283,7 @@ export class Eva {
   /** "Volver a la nave": climb in if at the hatch, otherwise head back (crawl and reel) until there. */
   requestReturn(): void {
     if (!this.outside) return;
+    this._lying = false;
     if (this.canBoard) this.board();
     else this._phase = "volviendo";
   }
@@ -237,7 +301,7 @@ export class Eva {
     const b = this._body;
     if (!this.outside || !b) return;
     const returning = this._phase === "volviendo";
-    const cmd: EvaInput = returning ? { ...NO_EVA_INPUT, reel: true } : input;
+    const cmd: EvaInput = returning ? { ...NO_EVA_INPUT, reel: true } : this._lying ? NO_EVA_INPUT : input;
     b.update(dtS, cmd);
     const moving = cmd.move.length() > 0 || cmd.reel;
     const missionDtS = dtS * this.timeScale;
@@ -264,6 +328,7 @@ export class Eva {
 
   private board(): void {
     this._phase = "dentro";
+    this._lying = false;
     this._body = undefined;
     this.events.push({ type: "dentro" });
   }

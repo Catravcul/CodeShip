@@ -66,6 +66,13 @@ export async function acciones(j) {
   // Free flight, then landed on Bennu: the crowded state.
   await j.setup("desacopla el módulo", () => window.codeship.docking.undock());
   await audit(j, "cabina-libre", "Cabina en vuelo libre");
+  // An angry asteroid (docs/design/poderes-ira.md): its card, the level chip and a radio line at once.
+  await j.setup("Bennu enfadado y una línea de radio de los niveles", () => {
+    const c = window.codeship;
+    c.wrathMode.wrath.setAnger(c.region.target.data.id, 0.7);
+    c.levels.radio("<b>101955 Bennu</b> se pone en marcha hacia la estación: llega en 3 h");
+  });
+  await audit(j, "cabina-ira", "Cabina con un asteroide enfadado y radio");
   await j.setup("posa el módulo sobre Bennu (aterrizar a mano lleva minutos)", landOnBennu);
   await p.waitForFunction(() => window.codeship.expedition.phase === "landed", null, { timeout: 180000 });
   await audit(j, "aterrizado", "Módulo posado en Bennu");
@@ -74,8 +81,9 @@ export async function acciones(j) {
     await j.waitDuel(30000);
     await audit(j, "eva-traje", "Ponerse el traje (reto)");
     for (let n = 0; n < 8 && (await p.evaluate(() => window.codeship.eva.phase)) === "preparando"; n++) await j.answer(() => window.codeship.eva._run?.current ?? null);
-    await j.tapAt(p.locator(".duel button.end"));
-    await p.waitForTimeout(2500);
+    // Won, she steps out on her own after 0.6 s: the card closes itself (eva-mode.ts).
+    await p.waitForFunction(() => document.body.classList.contains("in-eva"), null, { timeout: 30000 });
+    await p.waitForTimeout(1500);
     await audit(j, "eva", "Paseo espacial");
   }
   await p.reload();

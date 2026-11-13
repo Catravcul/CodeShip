@@ -233,7 +233,7 @@ export class Journey {
   }
 
   /** Pairs of visible buttons that overlap on screen (each one hides part of the other). */
-  async overlaps(selector = "button, .chip, .trip-chip, .rapport-chip, .hud, .help, .banner, .vstick, .region-tag, .cam-tag, .toast.on") {
+  async overlaps(selector = "button, .chip, .trip-chip, .rapport-chip, .hud, .help, .banner, .vstick, .region-tag, .cam-tag, .toast.on, .wrath-card:not(.hidden), .radio-toast.on") {
     return this.page.evaluate((sel) => {
       const vis = [...document.querySelectorAll(sel)].filter((el) => {
         const s = getComputedStyle(el);

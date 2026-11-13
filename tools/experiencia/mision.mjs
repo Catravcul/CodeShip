@@ -82,8 +82,9 @@ export async function mision(j) {
   await j.tap(".eva-btn", "Salir de la nave");
   await j.waitDuel(30000);
   for (let n = 0; n < 8 && (await p.evaluate(() => window.codeship.eva.phase)) === "preparando"; n++) await j.answer(() => window.codeship.eva._run?.current ?? null);
-  await j.tapAt(p.locator(".duel button.end"));
-  await p.waitForTimeout(2500);
+  // Won, she steps out on her own after 0.6 s and the card closes itself (eva-mode.ts).
+  await p.waitForFunction(() => document.body.classList.contains("in-eva"), null, { timeout: 30000 }).catch(() => {});
+  await p.waitForTimeout(1500);
   j.check("con el traje puesto, sale al exterior", await p.evaluate(() => window.codeship.eva.outside), await p.evaluate(() => window.codeship.eva.phase));
   await j.shot("fuera");
   await j.tap(".eva-lie", "Tumbarse sobre el asteroide");

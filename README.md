@@ -21,6 +21,7 @@ npm install
 npm run dev        # http://localhost:5173
 npm test           # tests del dominio (Vitest)
 npm run lint:arch  # comprueba que el dominio no dependa de Three.js ni del DOM
+npm run qa:check   # casos de QA, registro y tests cuadran (docs/qa/README.md)
 npm run build
 ```
 

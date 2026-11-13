@@ -431,7 +431,7 @@ bloque bien se ve en cuanto se toca.
   sitio (nevera, despensa, encimera, fogón, horno, molino, procesador), su recipiente, el color del
   alimento y si hay calor; recorre la receta recordando qué está caliente, así «revuelve los huevos»
   después de «calienta la plancha» pasa en la sartén. Huevos revueltos: nevera → cascar en el bol →
-  plancha → remover → cocinar a 71 °C → sazonar → emplatar.
+  plancha → remover → cocinar a 71 °C → sazonar → emplatar (capturas `docs/screenshots/cocina-huevos-*`).
 - **Demás tareas** (`src/modules/chores/application/step-visuals.ts`): una tabla por tipo de tarea dice
   cómo actúa cada área (regar con regadera, servir la ración en el cuenco, mimar, programar con una
   pantalla holográfica, reparar con llave y chispas, curar con botiquín) y qué se ve cuando el paso es un

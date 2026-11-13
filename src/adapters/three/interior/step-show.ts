@@ -37,7 +37,7 @@ export interface StepFrame {
 }
 
 export const KITCHEN_FRAMES: Readonly<Record<"cocina" | "procesado", Omit<StepFrame, "target">>> = {
-  cocina: { stand: new THREE.Vector3(1.0, 0, -4.4), yaw: Math.PI / 2, camera: new THREE.Vector3(-1.2, 2.1, -2.6), look: new THREE.Vector3(1.6, 0.95, -3.5), slide: { axis: "z", min: -5.45, max: -3.3, offset: -0.4 } },
+  cocina: { stand: new THREE.Vector3(1.0, 0, -4.4), yaw: Math.PI / 2, camera: new THREE.Vector3(-0.95, 2.05, -2.8), look: new THREE.Vector3(1.55, 0.95, -4.3), slide: { axis: "z", min: -5.45, max: -3.3, offset: -0.4 } },
   procesado: { stand: new THREE.Vector3(1.0, 0, -2.3), yaw: Math.PI / 2, camera: new THREE.Vector3(-1.2, 2.1, -0.9), look: new THREE.Vector3(1.5, 0.9, -2.35), slide: { axis: "z", min: -3.2, max: -1.8, offset: -0.4 } },
 };
 
@@ -366,7 +366,7 @@ export class StepShow implements StepVisualPlayer {
     for (const o of [p.bowl, p.pot, p.plate, p.jar, p.tray, p.board, p.knife, p.spoon, p.shaker, ...p.food, ...p.shells, p.can, p.scissors, p.basket, p.ball, p.tablet, p.wrench, p.kit]) o.visible = false;
     p.fridgeInside.visible = p.fridgeDoor.visible = p.ovenGlow.visible = false;
     p.bowl.scale.set(0.085, 0.06, 0.085);
-    for (const f of p.food) f.scale.setScalar(0.03);
+    for (const f of p.food) f.scale.setScalar(0.04);
     for (const sh of p.shells) sh.scale.set(0.024, 0.031, 0.024);
     this.foodMat!.color.setHex(TINT[v.tint ?? "generico"] ?? TINT.generico!);
     const s = this.spotOf(v, this.spot);
@@ -597,7 +597,7 @@ export class StepShow implements StepVisualPlayer {
       this.life.fill(0);
     }
     this.dotMat!.color.setHex(color);
-    this.dotMat!.size = mode === "rise" ? 0.05 : 0.03;
+    this.dotMat!.size = mode === "rise" ? 0.07 : 0.04;
     this.rate = rate;
   }
   private rate = 1;

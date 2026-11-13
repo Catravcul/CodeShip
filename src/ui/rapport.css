@@ -14,7 +14,7 @@
 .rapport-chip.angry { border-color: #ff6b5a; color: #ffd0c8; }
 .rapport-chip small { display: block; color: #bfefff; opacity: 0.9; }
 body.in-duel .rapport-chip, body.in-interior .rapport-chip, body.in-bay .rapport-chip, body.in-map .rapport-chip { display: none; }
-@media (max-width: 600px) { .rapport-chip { top: auto; bottom: 262px; width: calc(100vw - 24px); font-size: 11px; } }
+@media (max-width: 600px) { .rapport-chip { top: auto; bottom: 250px; width: calc(100vw - 24px); padding: 4px 8px; font-size: 11px; } .rapport-chip small { display: none; } .rapport-chip .rp-dots { margin: 2px 0 0; } }
 
 /* The probe's console: its camera on the 3D scene, telemetry, actions and the flight pads. */
 body.in-probe .fd, body.in-probe #app > .touch, body.in-probe .banner, body.in-probe .action { display: none !important; }
@@ -48,3 +48,4 @@ body.in-probe .fd, body.in-probe #app > .touch, body.in-probe .banner, body.in-p
 .fd-probe { background: #ffd27f !important; }
 .eva-actions .eva-lie { color: #001018; background: #ffd27f; border-color: #ffd27f; }
 @media (hover: none), (pointer: coarse) { body.in-probe .probe-ui .touch { display: grid !important; } }
+.pr-actions button:disabled { opacity: 0.55; }

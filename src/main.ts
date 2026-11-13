@@ -588,7 +588,7 @@ function dockingText(): string {
 function renderPhase(): void {
   const p = expedition.phase;
   const t = flight.telemetry();
-  action.classList.toggle("hidden", nanoPanel.busy || !((p === "landed" && !duelView.visible) || ((p === "persuaded" || p === "aggressive") && duelView.visible)));
+  action.classList.toggle("hidden", nanoPanel.busy || !((p === "landed" && expedition.canStartDuel && !duelView.visible) || ((p === "persuaded" || p === "aggressive") && duelView.visible)));
   action.textContent = p === "landed" ? "Entrar en su mente" : "Volver a la cabina";
   if (p === "persuaded") {
     banner.textContent = stageResultText(expedition);

@@ -230,7 +230,7 @@ export class ProbeMode {
     show(this.btn.launch, p.canLaunch);
     show(this.btn.duel, p.status === "posada" && !angry);
     this.btn.duel.disabled = !d.canStartDuel();
-    this.btn.duel.textContent = d.canStartDuel() ? "Entrar en su mente · fase 1" : r.next === "sonda" ? "Entrar en su mente · fase 1" : "Fase 1 ya hecha aquí";
+    this.btn.duel.textContent = d.canStartDuel() ? "Entrar en su mente · fase 1" : r.next === "sonda" ? "Entrar en su mente · fase 1" : "Fase 1 hecha: recupérala";
     show(this.btn.assist, p.out);
     this.btn.assist.textContent = `Aterrizaje: ${f.landingAssist ? "auto" : "manual"}`;
     this.btn.assist.classList.toggle("on", f.landingAssist);

@@ -114,7 +114,36 @@ Capturas (antes / después), en `docs/screenshots/`:
 - En la vista HUD van sobre una **placa oscura** (`#020a12` al 85 %) con halo negro: incluso con la escena blanca detrás el contraste es ≈ 11:1 (verde), ≈ 8:1 (ámbar) y ≈ 5:1 (rojo), por encima del AA (4,5:1).
 - Opciones en HUD: fondo casi opaco, 44 px de alto, borde de 2 px para el bloque colocado (seleccionado) y para la opción fallada (roja con ✗).
 
-## 5. Reglas para lo que venga
+Antes (código de `integracion` al empezar), el mismo recorrido `cocina`: tres toques sobre «60 °C».
+
+| Toque 1 | Toque 2 | Toque 3, vista HUD: reto perdido sin decirlo |
+| --- | --- | --- |
+| ![](../screenshots/ux-antes-reto-toque-1-movil.png) | ![](../screenshots/ux-antes-reto-toque-2-movil.png) | ![](../screenshots/ux-antes-reto-toque-3-hud-movil.png) |
+
+Después:
+
+| Toque 3: sigue «Fallos 1/3», la opción marcada | Vista HUD con un fallo | Vista HUD, reto perdido |
+| --- | --- | --- |
+| ![](../screenshots/ux-despues-reto-toque-3-movil.png) | ![](../screenshots/ux-despues-reto-hud-fallo-movil.png) | ![](../screenshots/ux-despues-reto-hud-perdido-movil.png) |
+
+## 5. Problemas encontrados jugando
+
+Apuntados por la suite (`j.problem`) o vistos en sus capturas:
+
+| # | Problema | Estado |
+| --- | --- | --- |
+| 1 | Repetir la misma opción errónea contaba un fallo nuevo cada vez y terminaba perdiendo el reto (crema de cacahuete). | Arreglado (dominio + pantalla). |
+| 2 | Barras de aciertos e intentos casi invisibles en HUD; «Intentos» contaba hacia abajo. | Arreglado: indicadores escritos que solo suben. |
+| 3 | Al perder, «inténtalo otra vez» y un «Cerrar» donde estaban las opciones: un toque de más cerraba sin ver nada. | Arreglado: resultado explícito y 0,9 s sin toques. |
+| 4 | Tras ganar un duelo con un asteroide, dos botones para lo mismo («Volver a la cabina» y «Cerrar»). | Arreglado: solo el del resultado. |
+| 5 | Elegir una tarea flotando en el eje no daba ninguna señal y tardaba más de un minuto (planeo a 0,5 m/s + ascensor de medio minuto). | Arreglado: aviso y tirón por los asideros a 1,5 m/s. El ascensor sigue lento a propósito (Coriolis). |
+| 6 | En la cabina del móvil los conmutadores tapaban el HUD; la acción principal se perdía entre ellos. | Arreglado (sección 3). |
+| 7 | Avisos encima de la lista de tareas; aviso de misión encima del resultado del duelo. | Arreglado. |
+| 8 | El estado del interior no se leía sobre carteles claros. | Arreglado: placa oscura. |
+| 9 | En la hoja de retos (390×664 visibles) la tercera opción o la bandeja de «ordenar» quedan por debajo del borde: hay que desplazar. | Mejorado (hoja más alta y frase más pequeña en pantallas bajas); en los retos de ordenar con cinco o más bloques sigue haciendo falta desplazar. Abierto: probar una bandeja en horizontal. |
+| 10 | En el eje, el cartel 3D «Puente de mando» queda cortado arriba, detrás del estado. | Abierto (cosmético). |
+
+## 6. Reglas para lo que venga
 
 1. Toda acción nueva que dependa del momento entra en la columna de contexto (o en el botón de zona de los modos de caminar), no en una esquina nueva.
 2. Un conmutador o ajuste nuevo de vuelo va en ☰ Mandos.

@@ -60,8 +60,10 @@ export class Journey {
     await cdp.send("Emulation.setCPUThrottlingRate", { rate: throttle });
     const t0 = Date.now();
     await this.page.goto(url);
-    await this.page.waitForFunction(() => performance.getEntriesByName("codeship-primer-fotograma").length > 0 && window.codeship, null, { timeout: 120000 });
-    this.loadMs = await this.page.evaluate(() => performance.getEntriesByName("codeship-primer-fotograma")[0].startTime);
+    await this.page.waitForFunction(() => window.codeship, null, { timeout: 120000 });
+    await this.page.waitForFunction(() => performance.getEntriesByName("codeship-primer-fotograma").length > 0, null, { timeout: 30000 }).catch(() => {});
+    // The mark the game loop sets on its first frame (older builds without it: when the page had the game).
+    this.loadMs = await this.page.evaluate(() => performance.getEntriesByName("codeship-primer-fotograma")[0]?.startTime ?? performance.now());
     this.wallLoadMs = Date.now() - t0;
     this.gpu = await this.page.evaluate(() => {
       const gl = document.querySelector("canvas")?.getContext("webgl2");

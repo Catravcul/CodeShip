@@ -214,8 +214,10 @@ export class GravityZones {
     const L = this.layout;
     this.zone = "eje";
     this.autoDown = false;
-    this.p.set(L.moduleEndX - 1.6, L.axisY, L.z);
-    this.v.set(0, 0, 0);
+    // She comes in holding the bars round the hatch.
+    this.iva = startAt(this.graph, new Vec3(L.moduleEndX - 1.6, L.axisY, L.z));
+    this.p.set(this.iva.position.x, this.iva.position.y, this.iva.position.z);
+    this.body?.reset();
     this.say("Entras por la escotilla de la espina: 0 g. El anillo está al otro lado del eje");
   }
 

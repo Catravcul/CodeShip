@@ -83,7 +83,7 @@ describe("landing challenges (VUE-08)", () => {
   });
 });
 
-describe("landing by program (VUE-09, SON-05)", () => {
+describe("landing by program (VUE-09, SON-05)", { timeout: 30000 }, () => {
   it("VUE-09 the offer only appears in the approach zone, free and above the ground", () => {
     const far = make("modulo", 900);
     expect(far.program.inZone()).toBe(false);

@@ -33,8 +33,7 @@ La franja de **Piloto automático** o **Nodriza en viaje**, bajo la etiqueta de 
 
 ### Tiempo
 
-- **Módulo.** El viaje dura unos minutos. En el crucero la nave va sin empuje y la tecla **X** (o **Tiempo ×10 / ×50**) acelera el tiempo como siempre. La guía se calcula en cada paso de 120 Hz de la simulación, así que funciona igual con el tiempo acelerado.
-- **Nodriza.** Su aceleración es de unos 110 µm/s² (97 N para unas 875 t), así que un salto de 9 km dura unas 5 horas. Se juega en cámara rápida (`CARRIER_TIMELAPSE` = ×1000, valor de juego), multiplicada por el tiempo acelerado que pida el piloto. Mientras viaja, el módulo sigue acoplado y se puede ir al interior.
+Los viajes programados vuelan solos en cámara rápida y nunca duran más de 75 s reales; mientras tanto se puede hacer cualquier otra cosa, con la ficha de viaje y la vista en directo («Ver»). Todo en [viajes.md](viajes.md). Con la nodriza, un salto de 9 km (unas 5 horas de empuje Hall) se ve en unos 30 s.
 
 ## Los retos del viaje
 

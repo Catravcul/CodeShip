@@ -16,6 +16,9 @@ export const TRANSFER_TUNING = {
   brakeShare: 0.8,
 } as const;
 
+/** Trip planning values (another craft may use its own, e.g. the probe's smaller Δv share). */
+export type TransferTuning = { readonly [K in keyof typeof TRANSFER_TUNING]: number };
+
 export interface TransferInput {
   /** Path length from the ship to the hand-over point, metres. */
   readonly distanceM: number;
@@ -48,7 +51,7 @@ export interface TransferPlan {
  * Plans the hop: cruise speed limited by the tuning, by the Δv budget and by the distance (it must
  * reach cruise and stop again), rounded down to whole m/s so the challenges use clean numbers.
  */
-export function planTransfer(input: TransferInput, tuning = TRANSFER_TUNING): TransferPlan {
+export function planTransfer(input: TransferInput, tuning: TransferTuning = TRANSFER_TUNING): TransferPlan {
   const d = Math.max(0, input.distanceM);
   const a = input.accelMS2;
   const byBudget = (input.deltaVAvailableMS * tuning.maxDeltaVShare) / 2;

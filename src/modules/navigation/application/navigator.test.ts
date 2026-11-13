@@ -13,6 +13,7 @@ import { EXERCISES } from "@modules/mind-duel/data/exercises";
 import type { Answer, Exercise } from "@modules/mind-duel/domain/exercise";
 import { asteroidTarget } from "../domain/nav-target";
 import { Navigator } from "./navigator";
+import { TRAVEL_TIME } from "../domain/travel-time";
 
 const right = (ex: Exercise): Answer => (ex.kind === "order" ? { kind: "order", order: ex.solution } : { kind: "choice", index: ex.correct });
 const wrong = (ex: Exercise): Answer => (ex.kind === "order" ? { kind: "order", order: [...ex.solution].reverse() } : { kind: "choice", index: (ex.correct + 1) % ex.options.length });
@@ -85,6 +86,31 @@ describe("Navigator", () => {
     expect(h).toBeGreaterThan(200);
     expect(h).toBeLessThan(400);
   }, 30_000);
+
+  it("in time-lapse the lander's hop flies itself within the cap of real seconds and still hands over near 300 m", () => {
+    const { nav, flight, member } = make();
+    nav.select(member.data.id);
+    const planned = nav.trip().travel!;
+    expect(planned.realS).toBeLessThanOrEqual(TRAVEL_TIME.capS);
+    const run = nav.startProgramming();
+    while (run.current) nav.answer(right(run.current));
+    let realS = 0;
+    let top = 0;
+    for (let i = 0; i < 3000 && nav.status === "autopilot"; i++) {
+      const lapse = nav.lapse;
+      top = Math.max(top, lapse);
+      flight.update(0.1 * lapse, NO_INPUT);
+      nav.update(0.1);
+      realS += 0.1;
+    }
+    expect(nav.status).toBe("arrived");
+    expect(nav.lapse).toBe(1);
+    expect(top).toBeLessThanOrEqual(TRAVEL_TIME.maxPhysicsLapse);
+    expect(realS).toBeLessThanOrEqual(TRAVEL_TIME.capS + 5);
+    const h = flight.telemetry().distanceToSurface;
+    expect(h).toBeGreaterThan(200);
+    expect(h).toBeLessThan(400);
+  }, 60_000);
 
   it("failing the challenges leaves the ship under manual control", () => {
     const { nav, flight, member } = make();

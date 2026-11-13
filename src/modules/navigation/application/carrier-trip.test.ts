@@ -18,7 +18,7 @@ import type { Answer, Exercise } from "@modules/mind-duel/domain/exercise";
 import { asteroidTarget } from "../domain/nav-target";
 import { Navigator } from "./navigator";
 import { mothershipCarrier } from "./mothership-carrier";
-import { CARRIER_TIMELAPSE } from "./carrier-trip";
+import { TRAVEL_TIME } from "../domain/travel-time";
 
 const right = (ex: Exercise): Answer => (ex.kind === "order" ? { kind: "order", order: ex.solution } : { kind: "choice", index: ex.correct });
 
@@ -66,12 +66,16 @@ describe("Trip with the mothership", () => {
     while (run.current) nav.answer(right(run.current));
     expect(nav.status).toBe("carrier");
     expect(mothership.propellantKg).toBeLessThan(xenon);
-    // Time-lapse: one real second moves CARRIER_TIMELAPSE game seconds.
-    for (let i = 0; i < 400 && nav.status === "carrier"; i++) {
-      nav.update(1, 1);
-      flight.update(1 / 60, NO_INPUT);
+    // Time-lapse: the hours-long hop plays in the real seconds of its budget, never more than the cap.
+    const budget = nav.trip().travel!;
+    let realS = 0;
+    for (let i = 0; i < 4000 && nav.status === "carrier"; i++) {
+      nav.update(0.1);
+      flight.update(0.1 * nav.lapse, NO_INPUT);
+      realS += 0.1;
       expect(docking.docked || nav.status !== "carrier").toBe(true);
     }
+    expect(realS).toBeLessThanOrEqual(TRAVEL_TIME.capS);
     expect(nav.status).toBe("autopilot");
     expect(docking.docked).toBe(false);
     expect(mothership.position.sub(member.position).length()).toBeCloseTo(member.meanRadiusM + NODRIZA.parkingDistanceM.value, 0);
@@ -83,8 +87,34 @@ describe("Trip with the mothership", () => {
     const h = flight.telemetry().distanceToSurface;
     expect(h).toBeGreaterThan(200);
     expect(h).toBeLessThan(400);
-    expect(CARRIER_TIMELAPSE).toBeGreaterThan(1);
+    expect(budget.realS).toBeLessThanOrEqual(TRAVEL_TIME.capS);
   }, 30_000);
+
+  it("the trip card gives the game duration (hours of Hall burn) and the real seconds it plays in", () => {
+    const { nav, member } = make();
+    nav.select(member.data.id);
+    const t = nav.trip();
+    const tt = t.travel!;
+    expect(tt.gameS).toBeCloseTo(t.carrier!.plan.totalS + t.plan.totalS, 6);
+    expect(tt.legsRealS).toHaveLength(2);
+    expect(tt.realS).toBeGreaterThan(10);
+    expect(tt.realS).toBeLessThanOrEqual(TRAVEL_TIME.capS);
+    // While the mothership flies, the lapse is about its base pace and the HUD gets a real-time ETA.
+    const run = nav.startProgramming();
+    while (run.current) nav.answer(right(run.current));
+    nav.update(1);
+    const p = nav.progress()!;
+    expect(p.lapse).toBeCloseTo(TRAVEL_TIME.lapse.carrier, 0);
+    expect(p.etaRealS).toBeLessThan(tt.realS);
+    expect(p.etaRealS).toBeGreaterThan(tt.realS - 2);
+  });
+
+  it("another compressed trip under way blocks programming", () => {
+    const { nav, member } = make();
+    nav.select(member.data.id);
+    (nav as unknown as { ports: { busy: (c: boolean) => string } }).ports.busy = (c) => (c ? "La sonda está fuera" : "");
+    expect(nav.canProgram()).toEqual({ ok: false, reason: "La sonda está fuera" });
+  });
 
   it("near the target already (the start by Bennu) the probe undocks and flies the hop itself", () => {
     const { nav, docking } = make();

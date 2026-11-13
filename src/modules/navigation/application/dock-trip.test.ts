@@ -99,7 +99,7 @@ describe("Trips that end docked", () => {
     expect(nav.status).toBe("carrier");
     let sawDockPhase = false;
     for (let i = 0; i < 2000 && nav.status === "carrier"; i++) {
-      nav.update(0.5, 1);
+      nav.update(0.5);
       if (nav.progress()?.phase === "dock") sawDockPhase = true;
     }
     expect(sawDockPhase).toBe(true);
@@ -117,7 +117,7 @@ describe("Trips that end docked", () => {
     const { nav, mothership, station, member } = make();
     nav.select(station.id);
     program(nav);
-    for (let i = 0; i < 2000 && nav.status === "carrier"; i++) nav.update(0.5, 1);
+    for (let i = 0; i < 2000 && nav.status === "carrier"; i++) nav.update(0.5);
     const docked = mothership.position;
     const q = mothership.orientation;
     nav.select(member.data.id);

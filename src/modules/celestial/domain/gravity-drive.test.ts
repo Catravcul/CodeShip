@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Vec3 } from "@core/math/vec3";
-import { chaseProfile, driveAccelMs2, driveTripS, GRAVITY_DRIVE, homeProfile, stepDrive, transitProfile, type DriveState } from "./gravity-drive";
+import { chargeProfile, chaseProfile, driveAccelMs2, driveTripS, GRAVITY_DRIVE, homeProfile, stepCharge, stepDrive, transitProfile, type DriveState } from "./gravity-drive";
 
 const BENNU_KG = 7.329e10;
 const MEMBER_KG = 9e12; // a 2,4 km member at Bennu's density
@@ -72,5 +72,27 @@ describe("gravity drive (game fiction)", () => {
     const target = new Vec3(800, 0, 0);
     for (let i = 0; i < 4000; i++) s = stepDrive(s, { position: target }, p, 0.5, 200);
     expect(Math.abs(target.sub(s.position).length() - 200)).toBeLessThan(2);
+  });
+});
+
+describe("gravity drive: a charge (ram)", () => {
+  it("sprints harder and faster than it chases; heavier bodies sprint slower", () => {
+    const c = chargeProfile(BENNU_KG, 1);
+    expect(c.accelMs2).toBeCloseTo(chaseProfile(BENNU_KG, 1).accelMs2 * GRAVITY_DRIVE.chargeBoost, 9);
+    expect(c.topSpeedMs).toBeCloseTo(8, 6);
+    expect(chargeProfile(MEMBER_KG, 1).topSpeedMs).toBeLessThan(c.topSpeedMs / 2);
+    expect(chargeProfile(BENNU_KG, 0).topSpeedMs).toBeLessThan(c.topSpeedMs);
+  });
+
+  it("flies straight along the locked direction, never above its top speed, and does not brake", () => {
+    const p = chargeProfile(BENNU_KG, 1);
+    let s: DriveState = { position: Vec3.ZERO, velocity: new Vec3(0, 1, 0) };
+    for (let i = 0; i < 400; i++) s = stepCharge(s, Vec3.X, p, 0.1);
+    expect(s.velocity.length()).toBeCloseTo(p.topSpeedMs, 6);
+    expect(Math.abs(s.velocity.y)).toBeLessThan(1e-9);
+    // Accelerating from rest: v = a·t until the top speed.
+    let r: DriveState = { position: Vec3.ZERO, velocity: Vec3.ZERO };
+    for (let i = 0; i < 10; i++) r = stepCharge(r, Vec3.X, p, 0.1);
+    expect(r.velocity.x).toBeCloseTo(p.accelMs2 * 1, 9);
   });
 });

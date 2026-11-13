@@ -6,7 +6,7 @@ import { POLANA_MEMBERS } from "@modules/celestial/data/nueva-polana";
 import { chaseProfile, driveTripS, transitProfile } from "@modules/celestial/domain/gravity-drive";
 import { RapportBook } from "../domain/rapport";
 import { packageKg, shipPackage, stationPackage } from "../domain/yields";
-import { AsteroidServices, SERVICE_TUNING, type PursuitPort, type ServiceDeps } from "./asteroid-services";
+import { AsteroidServices, SERVICE_TUNING, type ChargeOrder, type PursuitPort, type ServiceDeps } from "./asteroid-services";
 
 const DAY_S = 40;
 
@@ -146,10 +146,10 @@ describe("what subjugated asteroids do, level by level", () => {
 
 describe("an angry asteroid chases what enraged it", () => {
   function chaser() {
-    const state = { anger: 1, target: new Vec3(0, 0, 1500), velocity: Vec3.ZERO };
+    const state = { anger: 1, target: new Vec3(0, 0, 1500), velocity: Vec3.ZERO, charge: undefined as ChargeOrder | undefined };
     const wrath: PursuitPort = {
       anger: () => state.anger,
-      pursuit: (id) => (id === BENNU.id && state.anger > 0 ? { targetId: "aterrizador", targetName: "módulo", position: () => state.target, velocity: () => state.velocity, standoffM: 800 } : undefined),
+      pursuit: (id) => (id === BENNU.id && state.anger > 0 ? { targetId: "aterrizador", targetName: "módulo", position: () => state.target, velocity: () => state.velocity, standoffM: 800, charge: state.charge } : undefined),
     };
     return { state, w: world({ wrath }) };
   }
@@ -172,6 +172,16 @@ describe("an angry asteroid chases what enraged it", () => {
       w.s.update(1);
     }
     expect(state.target.sub(w.bennu.position).length()).toBeGreaterThan(3000);
+  });
+
+  it("charging, it sprints straight along the locked line and does not brake at its standoff", () => {
+    const { w, state } = chaser();
+    state.charge = { phase: "embistiendo", aim: state.target, direction: Vec3.Z, accelMs2: 0.6, topSpeedMs: 8 };
+    w.run(300);
+    // Far past the craft (1500 m out): it flies on at its sprint speed.
+    expect(w.bennu.position.z).toBeGreaterThan(1500);
+    expect(w.bennu.velocity.z).toBeCloseTo(8, 6);
+    expect(Math.abs(w.bennu.position.x) + Math.abs(w.bennu.position.y)).toBeLessThan(1e-6);
   });
 
   it("once calm it flies back home and goes back to work", () => {

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { Vec3 } from "@core/math/vec3";
 import type { Projectile } from "@modules/asteroid-wrath/domain/projectile";
-import type { WrathEvent } from "@modules/asteroid-wrath/application/wrath";
+import type { RamView, WrathEvent } from "@modules/asteroid-wrath/application/wrath";
 
 const TRAIL = 60;
 const v3 = (v: Vec3) => new THREE.Vector3(v.x, v.y, v.z);
@@ -34,6 +34,8 @@ export class WrathView {
   private readonly shots = new Map<number, Shot>();
   private readonly flashes: Flash[] = [];
   private readonly shells = new Map<string, THREE.Mesh>();
+  private readonly ramLines = new Map<string, { aimLine: THREE.Line; trail: THREE.Line; mark: THREE.Mesh }>();
+  private clock = 0;
   private readonly rockGeo = new THREE.IcosahedronGeometry(1, 0);
   private readonly ballGeo = new THREE.SphereGeometry(1, 12, 8);
 
@@ -43,7 +45,8 @@ export class WrathView {
   }
 
   /** Projectiles in flight now, events since the last frame, and the angry asteroids' reach shells. */
-  update(dt: number, camera: THREE.Camera, projectiles: readonly Projectile[], events: readonly WrathEvent[], shells: readonly { id: string; centre: Vec3; radiusM: number; level: number }[]): void {
+  update(dt: number, camera: THREE.Camera, projectiles: readonly Projectile[], events: readonly WrathEvent[], shells: readonly { id: string; centre: Vec3; radiusM: number; level: number }[], rams: readonly RamView[] = []): void {
+    this.clock += dt;
     for (const s of this.shots.values()) s.seen = false;
     const cam = camera.getWorldPosition(new THREE.Vector3());
     for (const p of projectiles) {
@@ -65,6 +68,7 @@ export class WrathView {
       if (e.type === "burst") this.burst(v3(e.position), e.kind, e.radiusM);
       if (e.type === "pulse") this.beam(v3(e.from), v3(e.to));
       if (e.type === "jet") this.jet(v3(e.from), v3(e.to));
+      if (e.type === "ram-hit") this.impact(v3(e.position), e.fraction);
     }
     for (let i = this.flashes.length - 1; i >= 0; i--) {
       const f = this.flashes[i]!;
@@ -77,6 +81,69 @@ export class WrathView {
       }
     }
     this.updateShells(shells);
+    this.updateRams(rams, cam);
+  }
+
+  /**
+   * A ram: a red line from the asteroid to where it aims (blinking while it winds up, solid once it
+   * charges), a ring on the aim point and a streak along the way it has come.
+   */
+  private updateRams(rams: readonly RamView[], cam: THREE.Vector3): void {
+    const live = new Set(rams.map((r) => r.asteroidId));
+    for (const [id, l] of this.ramLines)
+      if (!live.has(id)) {
+        this.group.remove(l.aimLine, l.trail, l.mark);
+        for (const o of [l.aimLine, l.trail, l.mark]) {
+          o.geometry.dispose();
+          (o.material as THREE.Material).dispose();
+        }
+        this.ramLines.delete(id);
+      }
+    for (const r of rams) {
+      let l = this.ramLines.get(r.asteroidId);
+      if (!l) {
+        const mat = (c: number, o: number) => new THREE.LineBasicMaterial({ color: c, transparent: true, opacity: o, depthWrite: false, depthTest: false });
+        const aimLine = new THREE.Line(new THREE.BufferGeometry(), mat(0xff3a2a, 1));
+        const trail = new THREE.Line(new THREE.BufferGeometry(), mat(0xffb347, 0.8));
+        const mark = new THREE.Mesh(new THREE.RingGeometry(0.8, 1, 40), new THREE.MeshBasicMaterial({ color: 0xff3a2a, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false, depthTest: false }));
+        for (const o of [aimLine, trail, mark]) {
+          o.frustumCulled = false;
+          o.renderOrder = 10;
+        }
+        this.group.add(aimLine, trail, mark);
+        l = { aimLine, trail, mark };
+        this.ramLines.set(r.asteroidId, l);
+      }
+      const at = v3(r.at);
+      const aim = v3(r.aim);
+      l.aimLine.geometry.setFromPoints([at, aim]);
+      l.trail.geometry.setFromPoints([v3(r.from), at]);
+      l.trail.visible = r.phase === "embistiendo";
+      const blink = r.phase === "preparando" ? 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(this.clock * 12)) : 1;
+      (l.aimLine.material as THREE.LineBasicMaterial).opacity = blink;
+      l.mark.position.copy(aim);
+      l.mark.lookAt(cam);
+      l.mark.scale.setScalar(Math.max(r.dodgeM * 0.15, cam.distanceTo(aim) * 0.04));
+      (l.mark.material as THREE.MeshBasicMaterial).opacity = blink;
+    }
+  }
+
+  /** The asteroid hits a craft: a white-orange flash that swells and fades. */
+  private impact(at: THREE.Vector3, fraction: number): void {
+    const ball = new THREE.Mesh(this.ballGeo, new THREE.MeshBasicMaterial({ color: 0xffe0b0, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false }));
+    ball.position.copy(at);
+    this.group.add(ball);
+    const size = 10 + 40 * Math.min(1, fraction);
+    this.flashes.push({
+      obj: ball,
+      age: 0,
+      life: 1.5,
+      grow: size,
+      update: (t) => {
+        ball.scale.setScalar(Math.max(1, size * Math.sqrt(t)));
+        (ball.material as THREE.MeshBasicMaterial).opacity = 1 - t;
+      },
+    });
   }
 
   private addShot(p: Projectile): Shot {

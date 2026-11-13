@@ -28,6 +28,13 @@ export const GRAVITY_DRIVE = {
   transitTopSpeedMs: 60,
   /** Cruise home after calming down, as a fraction of the chase profile at anger 0. */
   homeEffort: 0.5,
+  /**
+   * A ram (docs/design/poderes-ira.md, «Embestida») is a sprint: ×this the chase acceleration, half the
+   * push of a willing trip (game value).
+   */
+  chargeBoost: 10,
+  /** A sprint drops the braking reserve of the chase: ×this its top speed (game value; Bennu at full anger, 8 m/s). */
+  chargeTopFactor: 2,
 } as const;
 
 /** How hard a body can push itself: acceleration and top speed. */
@@ -52,6 +59,12 @@ export function chaseProfile(massKg: number, anger: number): DriveProfile {
   const effort = lo + (hi - lo) * Math.min(1, Math.max(0, anger));
   const k = driveMassFactor(massKg);
   return { accelMs2: driveAccelMs2(massKg) * effort, topSpeedMs: GRAVITY_DRIVE.chaseTopSpeedMs * k * effort };
+}
+
+/** A ram: the chase profile at this anger, sprinting (no braking reserve). */
+export function chargeProfile(massKg: number, anger: number): DriveProfile {
+  const c = chaseProfile(massKg, anger);
+  return { accelMs2: c.accelMs2 * GRAVITY_DRIVE.chargeBoost, topSpeedMs: c.topSpeedMs * GRAVITY_DRIVE.chargeTopFactor };
 }
 
 /** Calm cruise back to where it lives. */
@@ -93,6 +106,18 @@ export function stepDrive(s: DriveState, goal: { position: Vec3; velocity?: Vec3
   const max = p.accelMs2 * dtS;
   const applied = dv.length() > max ? dv.normalize().scale(max) : dv;
   const velocity = s.velocity.add(applied);
+  return { position: s.position.add(velocity.scale(dtS)), velocity };
+}
+
+/**
+ * One step of a charge: a straight sprint along `direction` (a unit vector locked when it set off).
+ * It wants `direction · top` and changes its velocity towards it by at most a·dt, so whatever sideways
+ * drift it had is cancelled first. No braking: it means to hit, and it overshoots if it misses.
+ */
+export function stepCharge(s: DriveState, direction: Vec3, p: DriveProfile, dtS: number): DriveState {
+  const dv = direction.scale(p.topSpeedMs).sub(s.velocity);
+  const max = p.accelMs2 * dtS;
+  const velocity = s.velocity.add(dv.length() > max ? dv.normalize().scale(max) : dv);
   return { position: s.position.add(velocity.scale(dtS)), velocity };
 }
 

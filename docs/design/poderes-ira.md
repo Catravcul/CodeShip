@@ -74,6 +74,45 @@ En el vacío **no hay onda expansiva ni sobrepresión**, porque no hay aire que 
 
 Dentro de 3 radios, el asteroide añade un tirón hacia sí: `max(0,05; 5 · g_superficie) · ira`, que se apaga en línea recta hasta el borde. En Ceres (g = 0,284 m/s²) el tirón llega a 1,4 m/s², y el motor del módulo da unos 0,33 m/s². **Escapar es imposible** hasta que la ira baje o se salga de la zona de agarre. La tarjeta lo avisa en rojo. El alcance de un cuerpo de nivel 5 llega como mínimo al borde de su agarre.
 
+### Embestida (cualquier nivel, si es rápido)
+
+Regla del diseñador: «si el asteroide es lo suficientemente rápido puede probar de impactar directo en lugar de lanzar cosas». Un asteroide enfadado que persigue a la nave que lo enfadó (`pursuit`, motor gravitatorio de [subyugacion.md](subyugacion.md)) puede **cargar contra ella y chocar con todo su cuerpo**. Código: `domain/ram.ts` (regla y física), `chargeProfile` y `stepCharge` en `celestial/domain/gravity-drive.ts`, y la máquina de estados en `AsteroidWrath` (`ram`, `ramAt`, `rams`).
+
+**Cuándo embiste** (`chooseAttack`, valores de juego):
+
+1. Solo a la **sonda** y al **módulo** en vuelo, y solo si se conoce su masa. A Doménica con el traje nunca la embiste.
+2. Una nave **posada sobre él** no se embiste: se la **sacude** de la superficie (0,5 m/s hacia fuera, como la sacudida tras un duelo fallido). Una nave posada en otro cuerpo no se embiste. Una nave acoplada no es un blanco.
+3. Su velocidad de carrera debe llegar a **5 m/s**. La carrera es un esprint del motor gravitatorio: ×10 la aceleración de persecución y ×2 su velocidad máxima, sin reserva para frenar. Como el motor escala con (M_Bennu/M)^(1/6), **los pequeños son los rápidos**: Bennu llega a 8 m/s con la ira a tope (7 m/s con la ira de un duelo de fase 2), 2009 UF113 (1,2 km) a 5,1 m/s solo con la ira por encima de 0,95, y los demás miembros de 1,3–2,4 km (3,6–4,9 m/s) **nunca embisten: siguen lanzando**. Polana, Psyche o Ceres, menos aún.
+4. Debe poder **cerrar más rápido de lo que la nave huye**: velocidad de carrera − velocidad de la nave alejándose ≥ 2 m/s.
+5. Debe estar cerca: la nave a menos de 600 m de su superficie y a más de 50 m (necesita carrerilla; más cerca, la sigue pegado a ella).
+
+Un asteroide capaz de embestir se acerca hasta 400 m de su superficie en lugar de quedarse al 40 % de su alcance.
+
+**Aviso y carga.** Primero **se prepara 5 s** sin lanzar nada: aviso «¡Bennu se lanza contra módulo! Esquiva de lado 248 m», tres pitidos (Web Audio, `adapters/audio/alarm.ts`), línea roja parpadeante en 3D desde el asteroide hasta el punto al que apunta, con un anillo, y línea en el mapa hasta ese punto («va a embestir a módulo», luego «embiste a módulo»). Al acabar, **fija la dirección** hacia donde estará la nave si mantiene su velocidad y sale en línea recta (`stepCharge`): acelera hacia esa dirección hasta su velocidad de carrera y no frena. La tarjeta de ira muestra «¡EMBESTIDA → módulo! · 7,8 m/s · choque en 25 s» y la flecha cambia a **«Esquiva de lado N m»**: la dirección perpendicular a la carga y lo que falta para salir de su trayectoria (radio del asteroide + radio de la nave). Mientras hay una embestida no se permite el tiempo acelerado.
+
+**Choque** (`ramImpact`): física de dos cuerpos a lo largo de la línea de centros.
+
+- Masa reducida μ = m₁m₂/(m₁+m₂). Contra un asteroide es casi la masa de la nave.
+- Energía en el sistema del centro de masas: ½·μ·v_rel² ([colisión inelástica](https://en.wikipedia.org/wiki/Inelastic_collision)).
+- Lo que el rebote no devuelve, ½·μ·v_n²·(1 − e²), aplasta el casco. Solo cuenta la componente normal v_n: un roce en el borde hace mucho menos.
+- **Coeficiente de restitución e = 0,38**: el primer contacto de **Philae** con el cometa 67P, que llegó a ~1,0 m/s y rebotó a ~0,38 m/s ([Biele et al. 2015, Science 349:aaa9816](https://doi.org/10.1126/science.aaa9816); rebote de 38 cm/s en [ESA, «Three touchdowns for Rosetta's lander», 2014](https://www.esa.int/Science_Exploration/Space_Science/Rosetta/Three_touchdowns_for_Rosetta_s_lander)). La superficie de Bennu es igual de suelta: cohesión casi nula, como una piscina de bolas ([Walsh et al. 2022, Science Advances 8:eabm6229](https://doi.org/10.1126/sciadv.abm6229); [Lauretta et al. 2022, Science 377:285](https://doi.org/10.1126/science.abm1018)). Usarlo para un choque nave–asteroide es una estimación. [Coeficiente de restitución](https://en.wikipedia.org/wiki/Coefficient_of_restitution).
+- Impulso J = (1 + e)·μ·v_n: la nave sale despedida con Δv = J/m_nave hacia fuera; el asteroide cambia J/M, nada.
+- El daño pasa por el **mismo modelo de protección** que las rocas (`impactFraction`) como choque romo: un Whipple no para un asteroide.
+
+Masas reales de las naves: módulo de aterrizaje 1649 kg (`Ship.massKg` del diseño de serie, 0,27 m/s² con el motor principal), sonda según su diseño.
+
+| Bennu contra el módulo (1649 kg) | Ira 0,45 | Ira 0,75 | Ira 1 |
+| --- | --- | --- | --- |
+| Aceleración y velocidad de carrera | 0,44 m/s², 5,8 m/s | 0,53 m/s², 7,0 m/s | 0,60 m/s², 8,0 m/s |
+| ½·μ·v² | 28 kJ | 40 kJ | 53 kJ |
+| Absorbido (1 − e²) → casco | 24 kJ → −12 % | 35 kJ → −17 % | 45 kJ → −23 % |
+| Empujón de la nave | 8,0 m/s | 9,7 m/s | 11,0 m/s |
+| Carrera desde 400 m | 75 s | 63 s | 56 s |
+
+**Esquiva y pasada de largo.** Para esquivarlo hay que apartarse de lado su radio más el de la nave: 248 m contra Bennu, que con el motor del módulo (0,27 m/s²) son unos 43 s de empuje. Los 5 s de aviso y el minuto de carrera dan tiempo a girar y quemar de lado. Si falla, el asteroide sigue: ya no tiene el empuje del esprint y frena con su aceleración de persecución. Se pasa **v²/2a** de largo (533 m para Bennu a 8 m/s con 0,06 m/s²) y tarda **2v/a** en volver al punto donde falló (4 min 27 s): para entonces Bennu ya se ha calmado. Después de un choque o un fallo espera eso más 10 s para volver a cargar. Una carga que no acierta en 120 s se da por fallada.
+
+**En pantalla:** destello blanco-naranja en el punto del choque (3D), la vista tiembla y un destello cubre la pantalla en la nave que lo recibe, un golpe sordo, y el aviso «¡Embestida a 7,8 m/s sobre módulo de aterrizaje! 45 kJ · −23 % de casco · empujón de 11 m/s». Si se esquiva: «Esquivado: Bennu se pasa 533 m de largo y tarda 4 min 27 s en volver».
+
 ## 4. A quién ataca y hasta dónde
 
 Cada nivel tiene un **alcance**, medido desde la superficie (valores de juego): 2, 3, 5, 8 y 12 km. Mientras un blanco del tipo adecuado está dentro, el asteroide le lanza cosas por turnos. Cuando sale:
@@ -131,6 +170,7 @@ En `docs/screenshots/ira-{rocas,explosivo,supervivencia}-{mobile,desktop}.png` (
 - **Rocas y explosivo:** duelo fallido en la fase 2 contra 58587 (nivel 3), desde 700 m y con la cámara exterior.
 - **Supervivencia:** el módulo frente a la estación, con Bennu con poder de nivel 4 mediante el gancho de demostración `demoTier`, porque en la región no hay ningún asteroide de nivel 4. El juego nunca lo llama.
 - **Puente:** `ira-puente-{mobile,desktop}.png`, la misma situación vista desde el puente de la nodriza.
+- **Embestida:** `embestida-{1-aviso,2-carga,3-impacto,4-esquiva,5-pasada,6-mapa}-{mobile,desktop}.png`. El módulo parado a 240 m de Bennu, duelo fallido de fase 2 con la ira fijada a 1 por código. Aviso, carga, choque; luego otra carga, desde 110 m, esquivada con un empuje lateral puesto por código, la pasada de largo y el mapa (marca «va a embestir», línea hasta el punto al que apunta). El aviso de radio se oculta por código en las capturas para que no tape la tarjeta.
 
 ## 8. Preguntas abiertas
 
@@ -138,4 +178,5 @@ En `docs/screenshots/ira-{rocas,explosivo,supervivencia}-{mobile,desktop}.png` (
 - **El traje (fase 3)** está modelado en el dominio pero no conectado.
 - **Qué pasa cuando un casco llega a 0** en el módulo, la nodriza o la estación: ¿fin de partida, rescate, reparación?
 - **Huida de la nodriza:** solo se guía, no se automatiza. ¿Debe huir sola, como la estación?
+- **Embestida:** Bennu (nivel 1) no lanza nada al módulo, pero ahora puede embestirlo. ¿Es lo que se quiere, o la embestida debería limitarse a los blancos de su nivel? ¿Y embestir a la nodriza o a la estación (hoy no son «naves que lo enfadaron»)? En el tramo comprimido de un viaje del módulo (hasta ×60) el aviso dura menos de 0,1 s real y no se puede esquivar (CV-17, HC-03 en `docs/qa/casos.md`): ¿debe una embestida frenar la cámara rápida del viaje?
 - **La dosis de Doménica** se acumula y se muestra, pero todavía no afecta a su salud (`medical`).

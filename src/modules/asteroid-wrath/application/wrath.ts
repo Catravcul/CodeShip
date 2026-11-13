@@ -8,12 +8,16 @@ import { closestApproachM, interceptVelocity, kineticEnergyJ, rockDiameterM, sph
 import { BLUNT_ROCK_KG, impactFraction, type Protection } from "../domain/protection";
 import { PULSE, pulseDoseMSv, shieldedDoseMSv } from "../domain/radiation";
 import { JET, jetOnTarget } from "../domain/jet";
+import { chooseAttack, chargeTimeS, dodgeDirection, dodgeNeeded, overshoot, RAM, ramCapable, ramImpact } from "../domain/ram";
+import { chargeProfile, chaseProfile, type DriveProfile } from "@modules/celestial/domain/gravity-drive";
 
 /** An asteroid that can get angry: the celestial `Asteroid` fits this. */
 export interface WrathBody {
   readonly data: AsteroidData;
   readonly position: Vec3;
   readonly meanRadiusM: number;
+  /** How fast it moves (its gravity drive); still if absent. */
+  readonly velocity?: Vec3;
   gravityAt(p: Vec3): Vec3;
 }
 
@@ -33,7 +37,9 @@ export interface WrathTarget {
   active(): boolean;
   protection(): Protection;
   /** Lose hull integrity (already cut down by its protection). */
-  damage(fraction: number, cause: ProjectileKind | "pulso" | "chorro"): void;
+  damage(fraction: number, cause: ProjectileKind | "pulso" | "chorro" | "embestida"): void;
+  /** Resting on a surface (a landed craft is shaken off, never rammed). */
+  landed?(): boolean;
   /** Crew dose behind its shield, mSv. */
   dose?(mSv: number): void;
   /** Velocity change from a gravity grip, m/s (world). */
@@ -53,7 +59,15 @@ export type WrathEvent =
   | { readonly type: "pulse"; readonly asteroidId: string; readonly targetId: string; readonly from: Vec3; readonly to: Vec3; readonly doseMSv: number }
   | { readonly type: "escaped"; readonly asteroidId: string; readonly targetId: string }
   /** A comet's outgassing jet: the dust it put on the target and the push it gave. */
-  | { readonly type: "jet"; readonly asteroidId: string; readonly targetId: string; readonly from: Vec3; readonly to: Vec3; readonly interceptedKg: number; readonly deltaVMs: number; readonly fraction: number };
+  | { readonly type: "jet"; readonly asteroidId: string; readonly targetId: string; readonly from: Vec3; readonly to: Vec3; readonly interceptedKg: number; readonly deltaVMs: number; readonly fraction: number }
+  /** A ram is coming: it gathers itself for `windupS`, then sprints at the craft (docs/design/poderes-ira.md, «Embestida»). */
+  | { readonly type: "ram-windup"; readonly asteroidId: string; readonly targetId: string; readonly windupS: number; readonly etaS: number; readonly topSpeedMs: number; readonly dodgeM: number; readonly dodgeAccelMs2: number }
+  | { readonly type: "ram-charge"; readonly asteroidId: string; readonly targetId: string; readonly from: Vec3; readonly aim: Vec3 }
+  | { readonly type: "ram-hit"; readonly asteroidId: string; readonly targetId: string; readonly position: Vec3; readonly closingMs: number; readonly energyJ: number; readonly absorbedJ: number; readonly deltaVMs: number; readonly fraction: number }
+  /** Dodged: it flies on `stopM` past the craft and needs `turnaroundS` to come back. */
+  | { readonly type: "ram-miss"; readonly asteroidId: string; readonly targetId: string; readonly speedMs: number; readonly stopM: number; readonly turnaroundS: number }
+  /** A craft landed on it is shaken off its back instead of rammed. */
+  | { readonly type: "shaken"; readonly asteroidId: string; readonly targetId: string; readonly deltaVMs: number };
 
 /** Where to go to be out of reach: straight away from the asteroid, this far. */
 export interface FleeGuidance {
@@ -92,6 +106,22 @@ function reachOf(m: Mood): number {
   return m.power.spec.weapons.includes("agarre") ? Math.max(r, gripRadiusM(m.body.meanRadiusM) - m.body.meanRadiusM) : r;
 }
 
+interface RamState {
+  phase: "preparando" | "embistiendo";
+  readonly targetId: string;
+  /** Wind-up seconds left. */
+  leftS: number;
+  /** Seconds since it set off. */
+  ageS: number;
+  /** Where it set off from, and where it aims (the craft's predicted position). */
+  from: Vec3;
+  aim: Vec3;
+  direction: Vec3;
+  profile: DriveProfile;
+  /** Craft relative to its centre on the last step (for the swept hit test). */
+  prevRel?: Vec3;
+}
+
 interface Mood {
   readonly body: WrathBody;
   readonly power: AsteroidPower;
@@ -102,6 +132,9 @@ interface Mood {
   inReach: Set<string>;
   /** Who enraged it (target ids): it chases them with its gravity drive until it calms down. */
   offenders: Set<string>;
+  ram?: RamState;
+  /** Seconds until it may charge (or shake a craft off) again. */
+  ramCooldownS: number;
 }
 
 /** Who a failed duel at each phase enrages it against: the craft in contact with it. */
@@ -117,6 +150,31 @@ export interface Pursuit {
   velocity(): Vec3;
   /** Centre-to-craft distance it keeps, m. */
   readonly standoffM: number;
+  /** A ram under way: winding up (it holds) or charging (it sprints along `direction` with this profile, no braking). */
+  readonly charge?: { readonly phase: "preparando" | "embistiendo"; readonly aim: Vec3; readonly direction: Vec3; readonly accelMs2: number; readonly topSpeedMs: number };
+}
+
+/** A ram for the HUD, the map and the 3D view. */
+export interface RamView {
+  readonly asteroidId: string;
+  readonly asteroidName: string;
+  readonly targetId: string;
+  readonly phase: "preparando" | "embistiendo";
+  /** Wind-up seconds left (0 once it has set off). */
+  readonly windupLeftS: number;
+  /** Seconds to impact if the craft holds its course. */
+  readonly etaS: number;
+  readonly from: Vec3;
+  /** Where the asteroid's centre is now. */
+  readonly at: Vec3;
+  readonly aim: Vec3;
+  readonly speedMs: number;
+  readonly topSpeedMs: number;
+  /** Sideways shift that dodges it, m, and the way to go (world unit vector). */
+  readonly dodgeM: number;
+  /** What is still missing of that shift: the craft's offset from the charge line counts (0 = out of its path). */
+  readonly dodgeLeftM: number;
+  readonly dodgeDirection: Vec3;
 }
 
 /**
@@ -137,7 +195,7 @@ export class AsteroidWrath {
   constructor(bodies: readonly WrathBody[], seed = 7) {
     for (const b of bodies) {
       const power = powerOf(b.data);
-      this.moods.set(b.data.id, { body: b, power, anger: new Anger(power.spec.angerHalfLifeS), cooldownS: 0, throws: 0, inReach: new Set(), offenders: new Set() });
+      this.moods.set(b.data.id, { body: b, power, anger: new Anger(power.spec.angerHalfLifeS), cooldownS: 0, throws: 0, inReach: new Set(), offenders: new Set(), ramCooldownS: 0 });
     }
     let s = seed >>> 0 || 1;
     this.rng = () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 2 ** 32);
@@ -176,6 +234,17 @@ export class AsteroidWrath {
   pursuit(asteroidId: string): Pursuit | undefined {
     const m = this.moods.get(asteroidId);
     if (!m || m.anger.calm) return undefined;
+    const t = this.quarry(m);
+    if (!t) return undefined;
+    const r = m.ram;
+    const standoffM = m.body.meanRadiusM + (this.ramProne(m, t) ? RAM.chargeGapM : CHASE_STANDOFF_OF_REACH * reachOf(m));
+    const charge = r ? { phase: r.phase, aim: r.aim, direction: r.direction, accelMs2: r.profile.accelMs2, topSpeedMs: r.profile.topSpeedMs } : undefined;
+    return { targetId: t.id, targetName: t.name, position: () => t.position(), velocity: () => t.velocity(), standoffM, charge };
+  }
+
+  /** The craft it chases: the one it is ramming, or the nearest active one that enraged it. */
+  private quarry(m: Mood): WrathTarget | undefined {
+    if (m.ram) return this.targets.get(m.ram.targetId);
     let best: WrathTarget | undefined;
     let bestD = Infinity;
     for (const id of m.offenders) {
@@ -184,9 +253,56 @@ export class AsteroidWrath {
       const d = t.position().sub(m.body.position).length();
       if (d < bestD) [best, bestD] = [t, d];
     }
-    if (!best) return undefined;
-    const t = best;
-    return { targetId: t.id, targetName: t.name, position: () => t.position(), velocity: () => t.velocity(), standoffM: m.body.meanRadiusM + CHASE_STANDOFF_OF_REACH * reachOf(m) };
+    return best;
+  }
+
+  /** Fast enough to ram this craft some time: it then closes to its charge gap instead of holding back to throw. */
+  private ramProne(m: Mood, t: WrathTarget): boolean {
+    return RAM.targets.includes(t.kind) && !!t.massKg?.() && ramCapable(chargeProfile(m.body.data.massKg.value, m.anger.level).topSpeedMs);
+  }
+
+  /** The ram an asteroid is winding up or charging, if any. */
+  ram(asteroidId: string): RamView | undefined {
+    const m = this.moods.get(asteroidId);
+    const r = m?.ram;
+    const t = r && this.targets.get(r.targetId);
+    if (!m || !r || !t) return undefined;
+    const rel = t.position().sub(m.body.position);
+    const v = m.body.velocity ?? Vec3.ZERO;
+    const closing = v.sub(t.velocity()).dot(r.direction);
+    const gap = Math.max(0, rel.length() - m.body.meanRadiusM - t.radiusM);
+    const etaS = (r.phase === "preparando" ? r.leftS : 0) + chargeTimeS(gap, r.profile.accelMs2, r.profile.topSpeedMs, r.phase === "preparando" ? 0 : closing);
+    return {
+      asteroidId,
+      asteroidName: m.body.data.name,
+      targetId: r.targetId,
+      phase: r.phase,
+      windupLeftS: r.phase === "preparando" ? r.leftS : 0,
+      etaS,
+      from: r.phase === "preparando" ? m.body.position : r.from,
+      at: m.body.position,
+      aim: r.aim,
+      speedMs: v.length(),
+      topSpeedMs: r.profile.topSpeedMs,
+      dodgeM: m.body.meanRadiusM + t.radiusM,
+      dodgeLeftM: Math.max(0, m.body.meanRadiusM + t.radiusM - rel.sub(r.direction.scale(rel.dot(r.direction))).length()),
+      dodgeDirection: dodgeDirection(r.direction, rel),
+    };
+  }
+
+  /** Every ram under way. */
+  rams(): RamView[] {
+    return [...this.moods.keys()].map((id) => this.ram(id)).filter((r): r is RamView => !!r);
+  }
+
+  /** The ram coming at a craft, if any (the soonest). */
+  ramAt(targetId: string): RamView | undefined {
+    let best: RamView | undefined;
+    for (const id of this.moods.keys()) {
+      const r = this.ram(id);
+      if (r && r.targetId === targetId && (!best || r.etaS < best.etaS)) best = r;
+    }
+    return best;
   }
 
   /** Whether a new duel can be tried: the asteroid is calm again. */
@@ -204,7 +320,12 @@ export class AsteroidWrath {
 
   /** Test and demo hook: set an asteroid's anger directly (0..1). */
   setAnger(asteroidId: string, level: number): void {
-    this.mood(asteroidId).anger.set(level);
+    const m = this.mood(asteroidId);
+    m.anger.set(level);
+    if (m.anger.calm) {
+      m.ram = undefined;
+      m.ramCooldownS = 0;
+    }
   }
 
   /**
@@ -215,7 +336,7 @@ export class AsteroidWrath {
     const m = this.mood(asteroidId);
     const spec = m.power.comet ? { ...TIERS[tier], weapons: [...TIERS[tier].weapons, "chorro" as const] } : TIERS[tier];
     const power: AsteroidPower = { ...m.power, tier, spec, reason: `demostración: poder ${tier}` };
-    this.moods.set(asteroidId, { ...m, power, anger: new Anger(TIERS[tier].angerHalfLifeS) });
+    this.moods.set(asteroidId, { ...m, power, anger: new Anger(TIERS[tier].angerHalfLifeS), ram: undefined });
   }
 
   // --- Targets -----------------------------------------------------------------
@@ -331,13 +452,18 @@ export class AsteroidWrath {
       if (m.anger.tick(dt)) {
         m.inReach.clear();
         m.offenders.clear();
+        m.ram = undefined;
+        m.ramCooldownS = 0;
         this.events.push({ type: "calmed", asteroidId: m.body.data.id });
         continue;
       }
       this.trackEscapes(m);
       this.grip(m, dt);
+      this.ramStep(m, dt);
       m.cooldownS -= dt;
-      if (m.cooldownS <= 0) {
+      // Committed to a ram: nothing is thrown until it is over.
+      if (m.ram) m.cooldownS = Math.max(m.cooldownS, 0.5);
+      else if (m.cooldownS <= 0) {
         m.cooldownS = m.power.spec.fireIntervalS / Math.max(m.anger.level, MIN_RATE_ANGER);
         this.fire(m);
       }
@@ -361,6 +487,107 @@ export class AsteroidWrath {
       if (p.sub(m.body.position).length() >= gripRadiusM(m.body.meanRadiusM)) continue;
       t.pull(gripAt(m.body.position, p, m.power.surfaceGravityMs2, m.body.meanRadiusM, m.anger.level).scale(dt));
     }
+  }
+
+  // --- Ram (docs/design/poderes-ira.md, «Embestida») -----------------------------
+
+  private ramStep(m: Mood, dt: number): void {
+    m.ramCooldownS -= dt;
+    if (!m.ram) return this.considerRam(m);
+    const r = m.ram;
+    const t = this.targets.get(r.targetId);
+    if (!t || !t.active()) {
+      m.ram = undefined;
+      m.ramCooldownS = RAM.cooldownS;
+      return;
+    }
+    if (r.phase === "preparando") {
+      r.leftS -= dt;
+      r.aim = this.predictAim(m, t, r.profile);
+      if (r.leftS > 0) return;
+      r.phase = "embistiendo";
+      r.from = m.body.position;
+      r.direction = r.aim.sub(m.body.position).normalize();
+      r.prevRel = t.position().sub(m.body.position);
+      this.events.push({ type: "ram-charge", asteroidId: m.body.data.id, targetId: t.id, from: r.from, aim: r.aim });
+      return;
+    }
+    r.ageS += dt;
+    const rel = t.position().sub(m.body.position);
+    const prev = r.prevRel ?? rel;
+    r.prevRel = rel;
+    // Swept test: the closest the craft came to its centre between the two steps.
+    const seg = rel.sub(prev);
+    const k = seg.dot(seg) > 1e-12 ? Math.min(1, Math.max(0, -prev.dot(seg) / seg.dot(seg))) : 1;
+    const closest = prev.add(seg.scale(k));
+    const hitR = m.body.meanRadiusM + t.radiusM;
+    if (closest.length() <= hitR) return this.ramHit(m, t, closest.length() > 1e-9 ? closest.normalize() : r.direction);
+    const vRel = (m.body.velocity ?? Vec3.ZERO).sub(t.velocity()).dot(r.direction);
+    if (rel.dot(r.direction) < 0 || r.ageS > RAM.maxChargeS) {
+      const o = overshoot(Math.max(0, vRel), chaseProfile(m.body.data.massKg.value, m.anger.level).accelMs2);
+      this.events.push({ type: "ram-miss", asteroidId: m.body.data.id, targetId: t.id, speedMs: Math.max(0, vRel), stopM: o.stopM, turnaroundS: o.turnaroundS });
+      m.ram = undefined;
+      m.ramCooldownS = RAM.cooldownS + o.turnaroundS;
+    }
+  }
+
+  /** Not ramming: should it start (or shake off a craft sitting on it)? */
+  private considerRam(m: Mood): void {
+    if (m.ramCooldownS > 0) return;
+    const t = this.quarry(m);
+    if (!t) return;
+    const c = m.body.position;
+    const rel = t.position().sub(c);
+    const d = rel.length();
+    const n = d > 1e-9 ? rel.scale(1 / d) : Vec3.Y;
+    const gapM = d - m.body.meanRadiusM;
+    const profile = chargeProfile(m.body.data.massKg.value, m.anger.level);
+    const { attack } = chooseAttack({
+      kind: t.kind,
+      landed: t.landed?.() ?? false,
+      onThisBody: gapM < RAM.onSurfaceM,
+      chargeTopSpeedMs: profile.topSpeedMs,
+      recedeMs: t.velocity().sub(m.body.velocity ?? Vec3.ZERO).dot(n),
+      gapM,
+      craftMassKg: t.massKg?.(),
+    });
+    if (attack === "sacudir") {
+      t.pull?.(n.scale(RAM.shakeOffMs));
+      this.events.push({ type: "shaken", asteroidId: m.body.data.id, targetId: t.id, deltaVMs: RAM.shakeOffMs });
+      m.ramCooldownS = RAM.cooldownS;
+      return;
+    }
+    if (attack !== "embestir") return;
+    const aim = this.predictAim(m, t, profile);
+    m.ram = { phase: "preparando", targetId: t.id, leftS: RAM.windupS, ageS: 0, from: c, aim, direction: aim.sub(c).normalize(), profile };
+    const etaS = RAM.windupS + chargeTimeS(Math.max(0, gapM - t.radiusM), profile.accelMs2, profile.topSpeedMs);
+    const dodge = dodgeNeeded(m.body.meanRadiusM, t.radiusM, etaS);
+    this.events.push({ type: "ram-windup", asteroidId: m.body.data.id, targetId: t.id, windupS: RAM.windupS, etaS, topSpeedMs: profile.topSpeedMs, dodgeM: dodge.lateralM, dodgeAccelMs2: dodge.accelMs2 });
+  }
+
+  /** Where the craft will be when it gets there if it holds its velocity (two passes of the charge time). */
+  private predictAim(m: Mood, t: WrathTarget, p: DriveProfile): Vec3 {
+    const c = m.body.position;
+    let aim = t.position();
+    for (let i = 0; i < 2; i++) {
+      const gap = Math.max(0, aim.sub(c).length() - m.body.meanRadiusM - t.radiusM);
+      aim = t.position().add(t.velocity().scale(chargeTimeS(gap, p.accelMs2, p.topSpeedMs)));
+    }
+    return aim;
+  }
+
+  private ramHit(m: Mood, t: WrathTarget, normal: Vec3): void {
+    const craftKg = t.massKg?.() ?? 1;
+    const relV = (m.body.velocity ?? Vec3.ZERO).sub(t.velocity());
+    const h = ramImpact(m.body.data.massKg.value, craftKg, relV, normal);
+    // A whole asteroid is the bluntest impact there is: the micrometeoroid shield does not help.
+    const fraction = impactFraction(h.absorbedJ, t.protection(), true);
+    if (fraction > 0) t.damage(fraction, "embestida");
+    t.pull?.(h.craftDeltaV);
+    this.events.push({ type: "ram-hit", asteroidId: m.body.data.id, targetId: t.id, position: t.position(), closingMs: h.closingMs, energyJ: h.energyJ, absorbedJ: h.absorbedJ, deltaVMs: h.craftDeltaV.length(), fraction });
+    const o = overshoot(h.closingMs, chaseProfile(m.body.data.massKg.value, m.anger.level).accelMs2);
+    m.ram = undefined;
+    m.ramCooldownS = RAM.cooldownS + o.turnaroundS;
   }
 
   /** Pick the next target in reach (round robin) and throw what the tier allows. */

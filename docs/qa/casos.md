@@ -105,7 +105,7 @@ Columna QA: cómo se comprueba jugando, o «Solo test» si no tiene sentido hace
 | IRA-02 | Proyectiles con cinemática real y guiado limitado; cada impacto pasa por la protección real; cargas, pulsos y chorros de cometa | `projectile.test.ts`, `effects.test.ts`, `jet.test.ts`, `wrath.test.ts` | Jugar (`demoTier`) |
 | IRA-03 | Persigue a la nave que lo enfadó, la más cercana activa, hasta calmarse; huir fuera del alcance acaba la persecución | `wrath.test.ts`, `gravity-drive.test.ts` | Jugar |
 | IRA-04 | Modo supervivencia: con la estación a su alcance, la estación huye con sus motores y frena al salir | `station-escape.test.ts`, `wrath.test.ts` | Jugar (`demoTier` 4) |
-| IRA-05 | Embestida (rama `embestida`): el asteroide carga contra la nave y se puede esquivar | En la rama `embestida`: `ram.test.ts`, `wrath.test.ts` | Pendiente de fusionar |
+| IRA-05 | Embestida: un asteroide rápido (Bennu) avisa 5 s y carga contra la sonda o el módulo; choque con ½·μ·v² y restitución de Philae a través de la protección; una esquiva lateral lo hace pasarse de largo v²/2a; los grandes y lentos siguen lanzando; a una nave posada encima la sacude | `ram.test.ts`, `wrath.test.ts`, `gravity-drive.test.ts`, `asteroid-services.test.ts`, `embestida.test.ts` | Jugar (capturas `embestida-*`) |
 
 ### Estación, planos y montaje (EST)
 
@@ -220,7 +220,7 @@ Clase: **Alineado** (se comportan bien juntos), **Choque** (resultado incorrecto
 | CV-14 | Sonda perdida × su viaje comprimido | El viaje acaba en fallo, la cámara rápida vuelve a ×1, la nodriza queda libre y la siguiente sonda puede viajar | Alineado | `sonda.test.ts` | SON, NAV |
 | CV-15 | Dos pedidos en retos × créditos para uno | El segundo, resuelto, no cobra ni envía nada (y hoy no avisa); un pago a mitad de la cadena lo deja pasar | Choque menor (HC-05) | `almacen.test.ts` | IMP, MIS |
 | CV-16 | Guardar y cargar a mitad de viaje | No hay partidas guardadas: recargar empieza de cero | No aplica (HC-06) | — | NAV |
-| CV-17 | Embestida × viaje comprimido (rama `embestida`) | Reservado: una embestida contra la nodriza o el módulo durante un viaje | Sin escribir | — | IRA, NAV |
+| CV-17 | Embestida × viaje comprimido | Con el módulo acoplado (viaje de la nodriza) no hay embestida. A ×1 el aviso dura 5 s reales y la carga más de 30 s. En el tramo comprimido del módulo (×60) el aviso dura < 0,1 s real y el choque llega en ~1 s: no se puede esquivar | Choque (HC-03) | `embestida.test.ts` | IRA, NAV |
 
 #### Casos con carrera
 
@@ -263,7 +263,7 @@ fila del recorrido en [registro.md](registro.md).
 | B-02 | CV-07 | `AsteroidWrath.update` descarta lo que pase de 60 s de juego por llamada. Un salto largo de la nodriza va a más de ×600 (el tope se reparte con el tramo del módulo: ≈ ×629 para 30 km) y a menos de 10 fps `main` limita el fotograma a 0,1 s: la ira se apaga más despacio que el reloj de misión (≈ 9 % en el test) | Abierto: subir el tope cuesta pasos por fotograma; decidir entre tope en pasos o repartir en varias llamadas |
 | HC-01 | CV-02 | Con el tiempo ×10/×50 manual la estación, su buzón, los biosistemas y los servicios de los niveles corren ×N y la vida a bordo y la nano_net no. ¿Debe la vida a bordo acelerar también, o la estación no? | Decisión de diseño |
 | HC-02 | CV-05 | El almacén no tiene tope: la extracción de nivel 4 lo llena sin límite (pregunta abierta de subyugacion.md) | Decisión de diseño |
-| HC-03 | CV-08 | La regla de poderes-ira.md («tiempo acelerado solo si nada vuela hacia el módulo») solo frena la cámara rápida manual, no la de un viaje del módulo (hasta ×60) | Decisión de diseño |
+| HC-03 | CV-08, CV-17 | La regla de poderes-ira.md («tiempo acelerado solo si nada vuela hacia el módulo») solo frena la cámara rápida manual, no la de un viaje del módulo (hasta ×60). Lo mismo con una embestida: `allowsWarp` la cuenta, pero la cámara rápida del viaje no | Decisión de diseño |
 | HC-04 | CV-10 | Nada reserva el almacén: el abono con amoníaco (activado por defecto) puede gastar el amoníaco que el jugador guardaba para hidracina | Decisión de diseño |
 | HC-05 | CV-15 | Resolver la cadena de un pedido sin créditos no hace nada y no avisa: el jugador no sabe por qué no llegó | Abierto |
 | HC-06 | CV-16 | No hay partidas guardadas (solo la preferencia de la vista de retos en `localStorage`) | Sin plan |

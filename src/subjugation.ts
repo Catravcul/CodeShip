@@ -160,6 +160,7 @@ export class SubjugationUi {
       velocity: () => p.flight.state.velocity,
       // Stowed, it is part of the travel ship.
       active: () => p.out,
+      landed: () => p.status === "posada",
       protection: () => ({ hullEnergyJ: HULL_ENERGY_J.sonda, debrisFactor: 1, electronicsToleranceMSv: PROBE_ELECTRONICS_TOLERANCE_MSV }),
       damage: (f) => ship().damage(f, "choque"),
       dose: (mSv) => p.irradiate(mSv, PROBE_ELECTRONICS_TOLERANCE_MSV),

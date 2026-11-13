@@ -250,6 +250,8 @@ con la curva de frenado discreta y nunca pasa de su velocidad máxima.
   lleguen. Aceleración 0,5–1 × la base según la ira; velocidad máx. 4 m/s × ira (Bennu): el módulo, con
   su motor, lo deja atrás; si no, hay que esperar a que se calme. Calmado, vuelve a su sitio a ritmo
   tranquilo y retoma su trabajo. Mientras está furioso no trabaja.
+  Si es lo bastante rápido (Bennu), en lugar de quedarse a distancia de tiro se acerca a 400 m y
+  **embiste**: ver [poderes-ira.md](poderes-ira.md), «Embestida» (`ChargeOrder` en `PursuitPort`, `stepCharge`).
 
 ### Interfaz
 

@@ -55,7 +55,6 @@ export class TripAutopilot implements Guidance {
   private aiming = false;
   private _arrived = false;
   private _status: AutopilotStatus;
-  private readonly tuning = AUTOPILOT_TUNING;
 
   constructor(
     private readonly ship: Ship,
@@ -64,6 +63,8 @@ export class TripAutopilot implements Guidance {
     private readonly waypoints: readonly Vec3[],
     readonly cruiseMS: number,
     readonly approachM: number = TRANSFER_TUNING.approachM,
+    /** Gains: a craft with a much weaker engine (the probe) follows the plan more tightly. */
+    private readonly tuning: { readonly [K in keyof typeof AUTOPILOT_TUNING]: number } = AUTOPILOT_TUNING,
   ) {
     this._status = { phase: "orient", remainingM: Infinity, speedMS: 0, etaS: Infinity };
   }

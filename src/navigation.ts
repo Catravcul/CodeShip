@@ -3,11 +3,12 @@ import type { Rock } from "@modules/celestial/domain/region";
 import type { Navigator } from "@modules/navigation/application/navigator";
 import type { AutopilotPhase } from "@modules/navigation/application/autopilot";
 import { duration, num } from "@modules/navigation/application/trip-chore";
-import { CARRIER_TIMELAPSE } from "@modules/navigation/application/carrier-trip";
+import type { ChoreRun } from "@modules/chores/domain/chore";
+import type { Answer } from "@modules/mind-duel/domain/exercise";
 import type { DuelView, SessionText } from "./ui/duel-view";
 import { NavMap } from "./ui/nav-map";
 
-const TRIP_TEXT: SessionText = {
+export const TRIP_TEXT: SessionText = {
   title: "Programar el viaje",
   progress: "Plan",
   lives: "Intentos",
@@ -18,7 +19,7 @@ const TRIP_TEXT: SessionText = {
   sheet: true,
 };
 
-const PHASE: Record<AutopilotPhase, string> = {
+export const PHASE: Record<AutopilotPhase, string> = {
   orient: "Orientando la proa",
   burn: "Acelerando",
   coast: "Crucero",
@@ -29,6 +30,48 @@ const PHASE: Record<AutopilotPhase, string> = {
   arrived: "Llegada",
 };
 const km = (m: number) => (m >= 1000 ? `${num(m / 1000, 1)} km` : `${num(m)} m`);
+
+/**
+ * Opens a trip's chain of challenges in the shared challenge sheet (also used by the probe's trips).
+ * `flying()` turns true once the plan is loaded: the sheet then closes by itself; closing it before
+ * calls `abort`.
+ */
+export function openTripSheet(duel: DuelView, run: ChoreRun, answer: (a: Answer) => boolean, flying: () => boolean, abort: () => void): void {
+  // The challenge sheet is shared with chores and the suit-up: chain its close handler.
+  const prev = duel.onClose;
+  const restore = () => {
+    if (duel.onClose === close) duel.onClose = prev;
+  };
+  const close = () => {
+    abort();
+    restore();
+  };
+  duel.onClose = close;
+  duel.show(
+    {
+      get current() {
+        return run.current;
+      },
+      get progress() {
+        return run.step;
+      },
+      goal: run.steps,
+      get lives() {
+        return run.mistakesLeft;
+      },
+      maxLives: run.maxMistakes,
+    },
+    { ...TRIP_TEXT, title: run.chore.title },
+    (a) => {
+      const ok = answer(a);
+      if (flying()) {
+        restore();
+        setTimeout(() => duel.hide(), 900);
+      }
+      return { ok };
+    },
+  );
+}
 
 /**
  * Navigation: the map (on the travel ship's flight deck, NAV page or M there), the trip challenges in
@@ -99,38 +142,13 @@ export class NavigationMode {
     }
     const run = this.nav.startProgramming();
     const nav = this.nav;
-    // The challenge sheet is shared with chores and the suit-up: chain its close handler.
-    const prev = this.duel.onClose;
-    const restore = () => {
-      if (this.duel.onClose === close) this.duel.onClose = prev;
-    };
-    const close = () => {
-      if (nav.status === "programming") nav.cancel();
-      restore();
-    };
-    this.duel.onClose = close;
-    this.duel.show(
-      {
-        get current() {
-          return run.current;
-        },
-        get progress() {
-          return run.step;
-        },
-        goal: run.steps,
-        get lives() {
-          return run.mistakesLeft;
-        },
-        maxLives: run.maxMistakes,
-      },
-      { ...TRIP_TEXT, title: run.chore.title },
-      (a) => {
-        const ok = nav.answer(a);
-        if (nav.status === "autopilot" || nav.status === "carrier") {
-          restore();
-          setTimeout(() => this.duel.hide(), 900);
-        }
-        return { ok };
+    openTripSheet(
+      this.duel,
+      run,
+      (a) => nav.answer(a),
+      () => nav.status === "autopilot" || nav.status === "carrier",
+      () => {
+        if (nav.status === "programming") nav.cancel();
       },
     );
   }
@@ -139,10 +157,10 @@ export class NavigationMode {
     this.message = { text, cls, until: performance.now() + seconds * 1000 };
   }
 
-  /** Each frame, with the real frame time and the time warp the pilot asked for. */
-  update(dtS: number, warp = 1): void {
+  /** Each frame, with the real frame time (the trip's time-lapse is the navigator's own). */
+  update(dtS: number): void {
     const nav = this.nav;
-    nav.update(dtS, warp);
+    nav.update(dtS);
     const now = performance.now();
     if (nav.status !== this.lastStatus) {
       if (nav.status === "arrived") this.flash(`Llegada: a ${km(nav.approachM)} de ${nav.target.name}. Tienes los mandos: aterriza y entra en su mente`, "done", 10);
@@ -162,8 +180,8 @@ export class NavigationMode {
     let cls = "";
     if (p) {
       const who = p.vehicle === "carrier" ? "Nodriza en viaje" : "Piloto automático";
-      const lapse = p.vehicle === "carrier" ? ` · cámara rápida ×${CARRIER_TIMELAPSE * warp}` : "";
-      text = `${who} → ${nav.target.name}\n${PHASE[p.phase]} · ${num(p.speedMS, p.speedMS < 1 ? 2 : 1)} m/s · faltan ${km(p.remainingM)} · ${duration(p.etaS)}${lapse}${p.phase === "coast" ? " · X acelera el tiempo" : ""}`;
+      const lapse = p.lapse > 1 ? ` · cámara rápida ×${num(p.lapse)}` : "";
+      text = `${who} → ${nav.target.name}\n${PHASE[p.phase]} · ${num(p.speedMS, p.speedMS < 1 ? 2 : 1)} m/s · faltan ${km(p.remainingM)} · ${duration(p.etaS)} de vuelo, llega en ${duration(p.etaRealS)}${lapse}`;
       (this.bar.firstElementChild as HTMLElement).style.width = `${(p.fraction * 100).toFixed(1)}%`;
     } else if (this.message && now < this.message.until) {
       text = this.message.text;

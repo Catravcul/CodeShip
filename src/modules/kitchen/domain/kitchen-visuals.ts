@@ -1,4 +1,4 @@
-import { classifyStep, normalizeStep, type StepAction, type StepVisual } from "@modules/chores/domain/step-visual";
+import { classifyStep, normalizeStep, type StepAction, type StepAct } from "@modules/chores/domain/step-visual";
 
 /**
  * Where a kitchen step happens: spots of the galley (nevera, despensa, encimera, fogón, horno) and of the
@@ -51,19 +51,19 @@ export interface KitchenContext {
  * hot (a pan or a pot), so «revuelve los huevos» after «calienta la plancha» happens in the pan.
  * Every step of the data resolves to an action (tests); an unknown verb falls back to a gesture at the counter.
  */
-export function kitchenVisuals(steps: readonly string[], ctx: KitchenContext = {}): StepVisual[] {
+export function kitchenVisuals(steps: readonly string[], ctx: KitchenContext = {}): StepAct[] {
   const base = (ctx.ingredients ?? []).map((id) => foodOf(normalizeStep(id.replace(/-/g, " ")))).find((f) => f) ?? "generico";
   const mill = ctx.machine === "molino";
   const soy = ctx.machine === "procesador-soja";
   let hot: "sarten" | "olla" | "bandeja" | undefined;
   let food: FoodTint = base;
-  const at = (x: StepVisual): StepVisual => (soy && x.place === "fogon" ? { ...x, place: "procesador" } : x);
+  const at = (x: StepAct): StepAct => (soy && x.place === "fogon" ? { ...x, place: "procesador" } : x);
   return steps.map((raw) => at(visual(raw)));
-  function visual(raw: string): StepVisual {
+  function visual(raw: string): StepAct {
     const s = normalizeStep(raw);
     const action: StepAction = OVERRIDES[s] ?? classifyStep(raw) ?? "gesto";
     food = foodOf(s) ?? food;
-    const v = (place: KitchenPlace, vessel?: string, heat?: boolean): StepVisual => ({ action, place, tint: food, ...(vessel ? { vessel } : {}), ...(heat ? { heat } : {}) });
+    const v = (place: KitchenPlace, vessel?: string, heat?: boolean): StepAct => ({ action, place, tint: food, ...(vessel ? { vessel } : {}), ...(heat ? { heat } : {}) });
     const panWord = /sarten|plancha/.test(s);
     switch (action) {
       case "tomar":

@@ -19,7 +19,7 @@ import { bioreactorChores, catChores, coopDoorChore, cookingChore, henChores, ma
 import { choreVisuals, STEP_AREAS } from "./step-visuals";
 
 const source = choreVisuals({ recipes: RECIPES, processes: PROCESSES });
-const actions = (c: Chore) => c.exercises.flatMap((_, i) => source.visuals(c, i)!.map((v) => v.action));
+const actions = (c: Chore) => c.exercises.flatMap((_, i) => source.acts(c, i)!.map((v) => v.action));
 
 function domesticChores(): Chore[] {
   const hurt = new Plant("l1", LETTUCE_OUTREDGEOUS);
@@ -62,7 +62,7 @@ describe("VID-10 every chore on board shows its solved steps", () => {
     );
     for (const c of chores)
       c.exercises.forEach((_, i) => {
-        const v = source.visuals(c, i);
+        const v = source.acts(c, i);
         expect(v?.length, `${c.id} reto ${i + 1}`).toBeGreaterThan(0);
         for (const x of v!) expect(x.action, `${c.id} reto ${i + 1}`).not.toBe("gesto");
       });
@@ -86,15 +86,15 @@ describe("VID-10 every chore on board shows its solved steps", () => {
 
   it("VID-10 cooking keeps the kitchen's detail: one visual per recipe step, with its galley spot", () => {
     const eggs = cookingChore(RECIPES.find((r) => r.id === "huevos-revueltos")!);
-    expect(eggs.exercises.map((_, i) => source.visuals(eggs, i)![0]!.place)).toEqual(["nevera", "encimera", "fogon", "fogon", "fogon", "fogon", "encimera"]);
+    expect(eggs.exercises.map((_, i) => source.acts(eggs, i)![0]!.place)).toEqual(["nevera", "encimera", "fogon", "fogon", "fogon", "fogon", "encimera"]);
   });
 
   it("VID-10 every kind of chore has an area, and the sources chain: the first that knows the challenge answers", () => {
     for (const a of Object.values(STEP_AREAS)) expect(a.fallback).toBeTruthy();
-    const none = { visuals: () => undefined };
-    const one = { visuals: () => [{ action: "regar" as const, place: "objetivo" }] };
-    expect(firstSource<number>(none, one).visuals(0, 0)).toEqual([{ action: "regar", place: "objetivo" }]);
-    expect(firstSource<number>(none).visuals(0, 0)).toBeUndefined();
+    const none = { acts: () => undefined };
+    const one = { acts: () => [{ action: "regar" as const, place: "objetivo" }] };
+    expect(firstSource<number>(none, one).acts(0, 0)).toEqual([{ action: "regar", place: "objetivo" }]);
+    expect(firstSource<number>(none).acts(0, 0)).toBeUndefined();
     expect(classifyStep("4. llenar la regadera")).toBe("verter");
     expect(classifyStep("0,4")).toBeUndefined();
   });

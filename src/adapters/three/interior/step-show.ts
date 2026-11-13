@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { StepVisual, StepVisualPlayer } from "@modules/chores/domain/step-visual";
+import type { StepAct } from "@modules/chores/domain/step-visual";
 import { P, type CubeFigure, type PoseAngles } from "./figure";
 
 /**
@@ -107,15 +107,15 @@ const clamp01 = (t: number) => Math.max(0, Math.min(1, t));
 /** 0 → 1 → 0 over [a, b]. */
 const bump = (t: number, a: number, b: number) => (t <= a || t >= b ? 0 : Math.sin(((t - a) / (b - a)) * Math.PI));
 
-export class StepShow implements StepVisualPlayer {
+export class StepShow {
   readonly root = new THREE.Group();
   private props?: Props;
   private readonly owned: { geos: THREE.BufferGeometry[]; mats: THREE.Material[] } = { geos: [], mats: [] };
   private foodMat?: THREE.MeshStandardMaterial;
   private dotMat?: THREE.PointsMaterial;
-  private readonly queue: StepVisual[] = [];
-  private now: StepVisual | undefined;
-  private last: StepVisual | undefined;
+  private readonly queue: StepAct[] = [];
+  private now: StepAct | undefined;
+  private last: StepAct | undefined;
   private t = 1;
   private frameDef: StepFrame | undefined;
   private readonly feet = new THREE.Vector3();
@@ -133,7 +133,7 @@ export class StepShow implements StepVisualPlayer {
   /** Steps acted out since the chore began (test hook). */
   played = 0;
 
-  get current(): StepVisual | undefined {
+  get current(): StepAct | undefined {
     return this.now ?? this.last;
   }
 
@@ -154,7 +154,7 @@ export class StepShow implements StepVisualPlayer {
     this.root.visible = true;
   }
 
-  play(visuals: readonly StepVisual[]): void {
+  play(visuals: readonly StepAct[]): void {
     if (!this.frameDef) return;
     for (const v of visuals) this.queue.push(v);
     while (this.queue.length > MAX_QUEUE) this.queue.shift();
@@ -238,11 +238,11 @@ export class StepShow implements StepVisualPlayer {
   }
 
   /** Low targets (a cat bowl, a hen) are worked on crouching. */
-  private low(v: StepVisual): boolean {
+  private low(v: StepAct): boolean {
     return v.place === "objetivo" && (this.frameDef?.target.y ?? 1) < 0.5;
   }
 
-  private spotOf(v: StepVisual, out: THREE.Vector3): THREE.Vector3 {
+  private spotOf(v: StepAct, out: THREE.Vector3): THREE.Vector3 {
     const s = KITCHEN_SPOTS[v.place];
     return out.copy(s ?? this.frameDef!.target);
   }
@@ -361,7 +361,7 @@ export class StepShow implements StepVisualPlayer {
   }
 
   /** Puts the step's props where they go at time `t` (0…1) of the step. */
-  private animate(v: StepVisual, t: number): void {
+  private animate(v: StepAct, t: number): void {
     const p = this.props!;
     for (const o of [p.bowl, p.pot, p.plate, p.jar, p.tray, p.board, p.knife, p.spoon, p.shaker, ...p.food, ...p.shells, p.can, p.scissors, p.basket, p.ball, p.tablet, p.wrench, p.kit]) o.visible = false;
     p.fridgeInside.visible = p.fridgeDoor.visible = p.ovenGlow.visible = false;
@@ -660,7 +660,7 @@ const CROUCH = (o: Partial<PoseAngles>): PoseAngles => P({ rootY: 0.62, torso: 0
  * The figure's gesture for a step at time `t` (0…1), `clock` in seconds for repeated motions.
  * Arm 1 is her right arm. Shapes after Cold Sanctuary's KitchenCook.Gesture (stir in circles, cut up and down…).
  */
-export function gesture(v: StepVisual, t: number, clock: number, low: boolean): PoseAngles {
+export function gesture(v: StepAct, t: number, clock: number, low: boolean): PoseAngles {
   const s = Math.sin(clock * 8);
   const c = Math.cos(clock * 8);
   const base = (o: Partial<PoseAngles>) => (low ? CROUCH(o) : P({ headX: 0.4, ...o }));

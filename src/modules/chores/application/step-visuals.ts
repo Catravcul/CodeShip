@@ -2,7 +2,7 @@ import type { Recipe } from "@modules/kitchen/data/recipes";
 import type { Process } from "@modules/kitchen/data/processes";
 import { kitchenVisuals } from "@modules/kitchen/domain/kitchen-visuals";
 import type { Chore, ChoreKind } from "../domain/chore";
-import { classifyStep, exerciseTexts, firstSource, type StepAction, type StepVisual, type StepVisualSource } from "../domain/step-visual";
+import { classifyStep, exerciseTexts, firstSource, type StepAction, type StepAct, type StepActSource } from "../domain/step-visual";
 
 /**
  * How each kind of chore acts its solved steps out (docs/design/vida-a-bordo.md, «Pasos visibles»).
@@ -57,6 +57,7 @@ export const STEP_AREAS: Readonly<Record<ChoreKind, Area>> = {
   refinar: STATION,
   repostar: { fallback: "reparar" },
   "programar-viaje": STATION,
+  "programar-aterrizaje": STATION,
   importar: STATION,
 };
 
@@ -64,14 +65,14 @@ export const STEP_AREAS: Readonly<Record<ChoreKind, Area>> = {
 const MAX_PER_STEP = 4;
 
 /** Any chore: the verbs of its solved exercise's texts, through its area's table. */
-export const areaVisuals: StepVisualSource<Chore> = {
-  visuals(chore, index) {
+export const areaVisuals: StepActSource<Chore> = {
+  acts(chore, index) {
     const ex = chore.exercises[index];
     if (!ex) return undefined;
     const area = STEP_AREAS[chore.kind];
     const out = exerciseTexts(ex)
       .slice(0, MAX_PER_STEP)
-      .map((text): StepVisual => {
+      .map((text): StepAct => {
         const verb = classifyStep(text);
         const action = area.only ?? (verb ? (area.remap?.[verb] ?? verb) : area.fallback);
         return { action, place: "objetivo", ...(area.tint ? { tint: area.tint } : {}) };
@@ -81,12 +82,12 @@ export const areaVisuals: StepVisualSource<Chore> = {
 };
 
 /** Recipes and processes: each step with its galley spot, vessel, food and heat (kitchen-visuals.ts). */
-export function kitchenSource(ctx: { readonly recipes: readonly Recipe[]; readonly processes?: readonly Process[] }): StepVisualSource<Chore> {
-  const cache = new Map<string, readonly StepVisual[]>();
-  const all = (c: Chore): readonly StepVisual[] | undefined => {
+export function kitchenSource(ctx: { readonly recipes: readonly Recipe[]; readonly processes?: readonly Process[] }): StepActSource<Chore> {
+  const cache = new Map<string, readonly StepAct[]>();
+  const all = (c: Chore): readonly StepAct[] | undefined => {
     const hit = cache.get(c.id);
     if (hit) return hit;
-    let v: StepVisual[] | undefined;
+    let v: StepAct[] | undefined;
     if (c.kind === "cocinar") {
       const r = ctx.recipes.find((x) => x.id === c.targetId);
       if (r) v = kitchenVisuals(r.steps.value, { ingredients: Object.keys(r.ingredients) });
@@ -98,7 +99,7 @@ export function kitchenSource(ctx: { readonly recipes: readonly Recipe[]; readon
     return v;
   };
   return {
-    visuals(c, i) {
+    acts(c, i) {
       const v = all(c)?.[i];
       return v ? [v] : undefined;
     },
@@ -106,4 +107,4 @@ export function kitchenSource(ctx: { readonly recipes: readonly Recipe[]; readon
 }
 
 /** Every chore on board: the kitchen's detailed visuals first, then the area tables. */
-export const choreVisuals = (ctx: { readonly recipes: readonly Recipe[]; readonly processes?: readonly Process[] }): StepVisualSource<Chore> => firstSource(kitchenSource(ctx), areaVisuals);
+export const choreVisuals = (ctx: { readonly recipes: readonly Recipe[]; readonly processes?: readonly Process[] }): StepActSource<Chore> => firstSource(kitchenSource(ctx), areaVisuals);

@@ -1,13 +1,27 @@
 import type { Exercise } from "@modules/mind-duel/domain/exercise";
 
 /**
- * Step visuals: what a solved step looks like in 3D (docs/design/vida-a-bordo.md, «Pasos visibles»).
+ * Step visuals: a challenge step answered right shows what it does, right away (designer: «cada reto debe
+ * mostrar el paso correcto ocurriendo»; docs/design/vida-a-bordo.md, «Pasos visibles»).
  *
- * A challenge source (a chore, a recipe, a trip…) turns each solved step into one or more
- * `StepVisual`s from a small shared vocabulary of actions; a player in the view (Three.js) shows them
- * with pooled props, a gesture of the figure and a few particles. Sources and players never see each
- * other: the domain says *what* happens, the adapter decides *how* it looks.
+ * One port for every challenge sheet (chores on board, trips, landings…): `StepVisual`. The sheet calls
+ * `stepDone(i)` after step i is solved and `clear()` when it closes; how it looks is up to the adapter
+ * (the habitat acts chores out with Doménica and pooled props, the flight view draws trip and landing plans).
+ *
+ * For areas that act steps out with a figure, a source turns each solved step into `StepAct`s from a small
+ * shared vocabulary of actions (`StepActSource`, chained with `firstSource`): the domain says *what*
+ * happens, the adapter decides *how* it looks.
  */
+export interface StepVisual {
+  /** Step `index` (0-based, in chain order) was just answered right. */
+  stepDone(index: number): void;
+  /** «Paso a paso» in an order challenge: block `part` of step `index` was placed right (optional). */
+  partDone?(index: number, part: number): void;
+  /** The chain was solved: keep the result on screen a little, then clear it. */
+  finish(): void;
+  /** Closed or failed: remove everything now. */
+  clear(): void;
+}
 
 /** Kitchen verbs (after Cold Sanctuary's KitchenCook: take, wash, cut, cook, stir, season, plate). */
 export type KitchenAction =
@@ -36,7 +50,7 @@ export type CareAction = "regar" | "agitar" | "cosechar" | "servir" | "mimar" | 
  */
 export type StepAction = KitchenAction | CareAction | "gesto";
 
-export interface StepVisual {
+export interface StepAct {
   readonly action: StepAction;
   /**
    * Where it happens: `objetivo` is the challenge's own target (the pot, the cat, the machine the camera
@@ -52,29 +66,20 @@ export interface StepVisual {
 }
 
 /**
- * Port: a challenge source turns its solved steps into visuals. `index` is the step just solved
+ * A challenge source turns its solved steps into acts. `index` is the step just solved
  * (0-based, the run's step before the answer). Returns undefined when the source does not know the challenge,
  * so sources can be chained with `firstSource`.
  */
-export interface StepVisualSource<C> {
-  visuals(challenge: C, index: number): readonly StepVisual[] | undefined;
-}
-
-/** Port: shows the visuals in a view. Queues them; a new step while one plays makes the queue run faster. */
-export interface StepVisualPlayer {
-  play(visuals: readonly StepVisual[]): void;
-  /** Drops what is queued and hides every prop (leaving the challenge). */
-  clear(): void;
-  /** What is showing now, for tests and the `data-paso` attribute. */
-  readonly current: StepVisual | undefined;
+export interface StepActSource<C> {
+  acts(challenge: C, index: number): readonly StepAct[] | undefined;
 }
 
 /** The first source that knows the challenge answers. */
-export function firstSource<C>(...sources: readonly StepVisualSource<C>[]): StepVisualSource<C> {
+export function firstSource<C>(...sources: readonly StepActSource<C>[]): StepActSource<C> {
   return {
-    visuals(c, i) {
+    acts(c, i) {
       for (const s of sources) {
-        const v = s.visuals(c, i);
+        const v = s.acts(c, i);
         if (v) return v;
       }
       return undefined;
@@ -146,4 +151,4 @@ export function exerciseTexts(ex: Exercise): string[] {
 }
 
 /** The fallback visual: a hands-on gesture at the target. */
-export const FALLBACK_VISUAL: StepVisual = { action: "gesto", place: "objetivo" };
+export const FALLBACK_ACT: StepAct = { action: "gesto", place: "objetivo" };

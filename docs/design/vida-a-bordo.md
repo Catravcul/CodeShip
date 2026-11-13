@@ -438,10 +438,12 @@ bloque bien se ve en cuanto se toca.
   número o una línea de código. El yoga ya mostraba la postura en la esterilla y se queda así. Las tareas
   de la estación (refinería, biorreactor, fabricación) tienen su acción en la tabla, pero se hacen desde
   su pantalla y no tienen a Doménica delante.
-- **Puerto para otras áreas**: `StepVisualSource<C>.visuals(reto, índice)` devuelve los `StepVisual`
-  (acción, sitio, color, recipiente, calor) del paso resuelto o `undefined` si no conoce el reto
-  (`firstSource` encadena fuentes); `StepVisualPlayer` (`play`, `clear`, `current`) los muestra. El
-  reproductor del módulo es `src/adapters/three/interior/step-show.ts`.
+- **Un solo puerto** (`src/modules/chores/domain/step-visual.ts`): `StepVisual` es lo que llama toda hoja
+  de retos: `stepDone(i)` al acertar el paso i, `partDone(i, bloque)` en «Paso a paso», `finish()` y
+  `clear()`. El módulo lo implementa con Doménica y los utensilios (`adapters/three/interior/step-show.ts`);
+  viajes y aterrizajes, dibujando su plan (`adapters/three/plan-overlay.ts`, docs/design/aterrizaje.md).
+  Las tareas traducen cada paso a `StepAct` (acción, sitio, color, recipiente, calor) con una
+  `StepActSource` (`firstSource` encadena la de cocina y la de áreas).
 - **Rendimiento**: los utensilios se crean una vez (cuatro geometrías y una docena de materiales
   compartidos) y se reutilizan; 32 partículas en un solo `Points` hacen vapor, gotas, polvo y chispas;
   sin luces ni sombras nuevas; todo se libera al salir del módulo. Medido con la suite de experiencia

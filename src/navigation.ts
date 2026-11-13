@@ -7,7 +7,7 @@ import type { ChoreRun } from "@modules/chores/domain/chore";
 import type { Answer } from "@modules/mind-duel/domain/exercise";
 import type { DuelView, SessionText } from "./ui/duel-view";
 import { NavMap } from "./ui/nav-map";
-import type { StepVisual } from "./ui/step-visual";
+import type { StepVisual } from "@modules/chores/domain/step-visual";
 
 export const TRIP_TEXT: SessionText = {
   title: "Programar el viaje",

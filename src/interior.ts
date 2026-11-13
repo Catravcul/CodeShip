@@ -34,6 +34,7 @@ import type { SpinRing } from "@modules/gravity/domain/spin-gravity";
 import { GravityZones } from "./adapters/three/interior/zones";
 import { KITCHEN_FRAMES, StepShow, type StepFrame } from "./adapters/three/interior/step-show";
 import { choreVisuals } from "@modules/chores/application/step-visuals";
+import type { StepVisual } from "@modules/chores/domain/step-visual";
 import { AmbientNotices } from "./adapters/three/interior/ambient-notices";
 import { NoticeQueue, type NoticeLevel } from "@modules/notices/domain/notices";
 
@@ -167,8 +168,8 @@ export class Interior {
   private stepTag = "";
   /** Floating labels hidden while a chore is framed (they are for finding your way, not for watching a step). */
   private hiddenLabels: THREE.Object3D[] = [];
-  /** Blocks of the order challenge on screen already acted out pick by pick. */
-  private picked = { id: "", n: 0 };
+  /** The open chore's step visual. */
+  private visual: StepVisual | undefined;
   private thirdPerson = true;
   private stride = 0;
   private readonly viewBtn: HTMLButtonElement;
@@ -654,6 +655,7 @@ export class Interior {
     this.cooking = chore.kind === "cocinar";
     this.session = session;
     const run = session.run;
+    const visual = (this.visual = this.choreVisual(chore));
     if (chore.kind === "yoga") {
       this.figure.pose("stand");
       this.figure.root.visible = true;
@@ -675,22 +677,37 @@ export class Interior {
       choreText(chore),
       (a) => {
         const index = run.step;
-        const exId = run.current?.id;
         const ok = session.answer(a);
         // A right answer acts the step out; the next one can be answered meanwhile (the queue speeds up).
-        // Picks already acted out one by one («Paso a paso») are not played again.
-        if (ok && this.steps.framing) this.steps.play((STEP_VISUALS.visuals(chore, index) ?? []).slice(exId === this.picked.id ? this.picked.n : 0));
-        this.picked = { id: "", n: 0 };
+        if (ok) visual.stepDone(index);
         return { ok };
       },
     );
     // «Paso a paso» in an order challenge: each right pick is a step done, acted out at once.
     this.duel.onRightPick = (id, slot) => {
-      const ex = run.current;
-      if (!this.steps.framing || ex?.id !== id) return;
-      const v = STEP_VISUALS.visuals(chore, run.step)?.[slot];
-      if (v) this.steps.play([v]);
-      this.picked = { id, n: slot + 1 };
+      if (run.current?.id === id) visual.partDone?.(run.step, slot);
+    };
+  }
+
+  /**
+   * The chore's `StepVisual` (the port every challenge sheet uses): its solved steps acted out at the
+   * station by Doménica (`StepShow`). Blocks already acted out pick by pick are not played again.
+   */
+  private choreVisual(chore: Chore): StepVisual {
+    let picked = { index: -1, n: 0 };
+    const acts = (i: number) => STEP_VISUALS.acts(chore, i) ?? [];
+    return {
+      stepDone: (index) => {
+        if (this.steps.framing) this.steps.play(acts(index).slice(picked.index === index ? picked.n : 0));
+        picked = { index: -1, n: 0 };
+      },
+      partDone: (index, part) => {
+        const v = acts(index)[part];
+        if (v && this.steps.framing) this.steps.play([v]);
+        picked = { index, n: part + 1 };
+      },
+      finish: () => {},
+      clear: () => this.steps.clear(),
     };
   }
 
@@ -739,8 +756,8 @@ export class Interior {
   private endChore(): void {
     this.session = null;
     this.duel.onRightPick = undefined;
-    this.picked = { id: "", n: 0 };
-    this.steps.clear();
+    this.visual?.clear();
+    this.visual = undefined;
     for (const l of this.hiddenLabels) l.visible = true;
     this.hiddenLabels.length = 0;
     this.cooking = false;

@@ -28,6 +28,22 @@ describe("FlightComputer", () => {
     expect(a.simTimeS).toBeCloseTo(1, 9);
   });
 
+  it("docked, a long time-lapse passes in one go: the clock advances and the ship rides its port", () => {
+    const fc = make();
+    let calls = 0;
+    const port = new Vec3(10, 0, 3000);
+    fc.dock(() => {
+      calls++;
+      return RigidBodyState.at(port);
+    });
+    calls = 0;
+    // A mothership trip frame at ×600: 60 game seconds, 7200 steps of 120 Hz.
+    fc.update(60, NO_INPUT);
+    expect(fc.simTimeS).toBeCloseTo(60, 6);
+    expect(fc.state.position.z).toBe(3000);
+    expect(calls).toBe(1);
+  });
+
   it("the main engine accelerates the ship forward at F/m", () => {
     const fc = make({ gravity: false });
     const m0 = fc.ship.massKg;

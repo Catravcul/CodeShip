@@ -322,9 +322,16 @@ export class FlightComputer {
     const w = s.angularVelocityBody;
     const I = this.ship.inertiaKgM2;
     const max = this.rcsTorque();
-    const k = 2 / (LEVEL_TIME_S * LEVEL_TIME_S);
-    const c = 2 / LEVEL_TIME_S;
-    const axisCmd = (e: number, wi: number, Ii: number, mi: number) => (mi === 0 ? 0 : Math.max(-1, Math.min(1, ((k * e - c * wi) * Ii) / mi)));
+    // Rate the belly may swing at: e / LEVEL_TIME_S near the target, but never faster than the RCS can
+    // brake to zero over the angle left using half its real authority (α = torque / inertia), so a
+    // heavier ship or weaker thrusters swing slower instead of overshooting. A rate loop then follows it.
+    const axisCmd = (e: number, wi: number, Ii: number, mi: number) => {
+      if (mi === 0) return 0;
+      const alpha = Math.abs(mi) / Ii;
+      const brake = Math.sqrt(alpha * Math.abs(e));
+      const wanted = Math.sign(e) * Math.min(brake, Math.abs(e) / LEVEL_TIME_S);
+      return Math.max(-1, Math.min(1, ((wanted - wi) * Ii) / (mi * ASSIST_TIME_S)));
+    };
     return new Vec3(axisCmd(err.x, w.x, I.x, max.x), axisCmd(err.y, w.y, I.y, max.y), axisCmd(err.z, w.z, I.z, max.z));
   }
 

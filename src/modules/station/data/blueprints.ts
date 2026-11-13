@@ -60,11 +60,6 @@ const PRINT = {
   source: SRC.metalPrinter,
   note: "Recetas de material, rendimiento y horas: valores de juego",
 };
-const COPV = {
-  value: "Forro metálico fundido y torneado, envuelto con fibra de carbono: un tanque compuesto (COPV)",
-  source: SRC.copv,
-  note: "La fibra sale del carbono de la roca. Recetas y horas: valores de juego",
-};
 
 /** Imported plate or cells: one kit stands for this many kg of what the rock cannot give (game value). */
 export const KG_PER_IMPORTED_KIT = 25;
@@ -115,33 +110,54 @@ function equipmentRecipe(e: Equipment): Pick<Blueprint, "machine" | "inputs" | "
   return { machine: "impresora", inputs: merge({ kit: kits }, feedstock(m * 0.2, RECIPES.acero, 0)), hours, process: ASSEMBLY, steps: ["imprime las cajas", "coloca las células del kit", "suelda las conexiones", "monta la electrónica de carga", "comprueba la tensión"] };
 }
 
+const TITANIUM_TANK = {
+  value: "Hemisferios de titanio Ti-6Al-4V importados, soldados aquí con el diafragma o el PMD dentro; la botella de helio llega hecha",
+  source: "https://northropgrumman.com/space/diaphragm-tanks-data-sheets-sorted-by-volume",
+  note: "La roca no da titanio en cantidad: 1 kit por cada 25 kg de titanio, más 1 por el diafragma o el PMD y 1 por el regulador. Horas: valores de juego",
+};
+
+/** A tank slot from the station: titanium shells and the helium bottle are imported; the welding and the proof test are done here. */
+function tankBlueprint(p: Extract<Part, { kind: "tank" }>): Blueprint {
+  const m = p.spec.dryMassKg;
+  const b = p.spec.build;
+  const he = b?.pressurant;
+  const shellKg = b ? b.count * b.tank.massKg : m;
+  const kits = importKits(shellKg) + 1 + (he ? importKits(he.bottle.massKg) + 1 : 0);
+  const pressure = b ? `prueba la presión con agua a 1,5 × ${num(b.tank.meopBar)} bar` : "prueba la presión con agua";
+  return {
+    id: `plano-${p.id}`,
+    name: p.name,
+    product: { kind: "part", partId: p.id },
+    machine: "fundicion",
+    massKg: m,
+    // Brackets and the lines are steel from the rock (a tenth of the dry mass, game value).
+    inputs: merge({ kit: kits }, feedstock(m * 0.1, RECIPES.acero, 0)),
+    hours: Math.round(4 + m / 2),
+    process: TITANIUM_TANK,
+    steps: he
+      ? ["recibe los hemisferios de titanio del kit", "monta el PMD dentro", "suelda los hemisferios por haz de electrones", pressure, "monta la botella de helio y el regulador", "comprueba las fugas con helio"]
+      : ["recibe los hemisferios de titanio del kit", "coloca el diafragma", "suelda los hemisferios por haz de electrones", pressure, "comprueba las fugas con helio"],
+  };
+}
+const num = (v: number) => v.toLocaleString("es-ES", { maximumFractionDigits: 1 });
+
 const short = (n: string) => n.replace(/^Aerojet Rocketdyne /, "").replace(/\s*\(.*\)$/, "");
 
 /** The blueprint for a ship part in the catalog. */
 export function partBlueprint(p: Part): Blueprint {
   if (p.kind === "equipment") return { id: `plano-${p.id}`, name: p.name, product: { kind: "part", partId: p.id }, massKg: p.equipment.massKg, ...equipmentRecipe(p.equipment) };
-  if (p.kind === "tank") {
-    const m = p.spec.dryMassKg;
-    return {
-      id: `plano-${p.id}`,
-      name: p.name,
-      product: { kind: "part", partId: p.id },
-      machine: "fundicion",
-      massKg: m,
-      inputs: feedstock(m, RECIPES.tank, 1),
-      hours: Math.round(4 + m / 2),
-      process: COPV,
-      steps: ["funde el forro del tanque", "tornea el forro hasta su espesor", "enrolla la fibra de carbono", "cura la resina en el horno", "prueba la presión con agua"],
-    };
-  }
+  if (p.kind === "tank") return tankBlueprint(p);
   const model = p.model;
   const rcs = model.thrustN < 200;
   const count = rcs ? RCS_SET_SIZE : 1;
   const m = round(model.dryMassKg * count);
-  const mono = model.propellant === "Hydrazine";
-  // Valves and electronics (and the S-405 catalyst for hydrazine); a whole RCS set needs two more.
-  const kits = 2 + (rcs ? 2 : 0);
+  const mono = model.propellant !== "MMH/NTO";
+  // Valves and electronics (and the catalyst bed for a monopropellant); a whole RCS set needs two more;
+  // a niobium, rhenium-iridium or platinum chamber is a refractory metal the rock does not give.
+  const refractory = model.sheet?.importedChamber ?? false;
+  const kits = 2 + (rcs ? 2 : 0) + (refractory ? (rcs ? 2 : 1) : 0);
   const machine: MachineId = "impresora";
+  const chamber = model.sheet ? `. Cámara: ${model.sheet.chamber.charAt(0).toLowerCase()}${model.sheet.chamber.slice(1)}${refractory ? " (llega en un kit importado)" : ""}` : "";
   return {
     id: `plano-${p.id}`,
     name: rcs ? `Juego de ${count} RCS ${short(p.name)}` : `Motor ${short(p.name)}`,
@@ -150,7 +166,7 @@ export function partBlueprint(p: Part): Blueprint {
     massKg: m,
     inputs: feedstock(m, mono ? RECIPES.monopropellant : RECIPES.bipropellant, kits),
     hours: Math.round(6 + 5 * m),
-    process: mono ? { ...PRINT, value: `${PRINT.value}. El lecho catalizador S-405 (iridio sobre alúmina) llega en un kit importado` } : PRINT,
+    process: mono ? { ...PRINT, value: `${PRINT.value}. El lecho catalizador (iridio sobre alúmina) llega en un kit importado${chamber}` } : { ...PRINT, value: `${PRINT.value}${chamber}` },
     steps: mono
       ? ["carga el polvo de hierro y níquel", "imprime la cámara capa a capa", "monta el lecho catalizador del kit", "suelda la válvula del kit", "prueba la estanqueidad con helio"]
       : ["carga el polvo de níquel y hierro", "imprime la cámara y la tobera", "recubre la tobera de cerámica", "monta las válvulas del kit", "prueba la estanqueidad con helio"],

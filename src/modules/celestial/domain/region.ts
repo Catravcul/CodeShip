@@ -47,7 +47,7 @@ export interface BoundaryStatus {
   readonly toEdgeM: number;
 }
 
-/** Strongest push back at the edge, m/s². Beats the main engine (≈0,7 m/s²) so the edge can't be crossed. */
+/** Strongest push back at the edge, m/s². Beats the default main engine (≈0,3 m/s²); past the edge the outward velocity is cancelled, so even a big engine cannot cross it. */
 export const BOUNDARY_PUSH_MS2 = 1.2;
 /** Gap kept around rocks by the anti-collision rule, metres (about the ship's size). */
 export const OBSTACLE_MARGIN_M = 4;

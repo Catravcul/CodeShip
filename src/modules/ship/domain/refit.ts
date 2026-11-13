@@ -1,4 +1,4 @@
-import type { Propellant, TankSpec, ThrusterModel } from "./components";
+import { feedSystemOf, type Propellant, type TankSpec, type ThrusterModel } from "./components";
 import { isEquipmentSlot, type Equipment, type EquipmentSlot } from "./equipment";
 import { buildRcsLayout } from "./rcs-layout";
 import type { ShipDesign } from "./ship";
@@ -18,8 +18,6 @@ export interface TankPart {
   readonly id: string;
   readonly name: string;
   readonly spec: TankSpec;
-  /** Tanks and hulls are game values until real parts replace them. */
-  readonly note: string;
 }
 
 /** Cabin, power source, battery or shield. */
@@ -41,13 +39,17 @@ const tankIndex = (slot: PartSlot): number => {
   return Number(m[1]);
 };
 
-/** Whether a part fits a slot: engines in the engine bay, RCS thrusters in the RCS set, a tank where a tank of that propellant is. */
+/**
+ * Whether a part fits a slot: engines in the engine bay, RCS thrusters in the RCS set, and a tank where
+ * a tank of the same feed system is (a helium-fed pair for a pair; a blowdown tank of hydrazine or
+ * LMP-103S for a blowdown tank: the diaphragm tanks are the same family).
+ */
 export function fits(design: ShipDesign, slot: PartSlot, part: Part): boolean {
   if (slot === "motor") return part.kind === "thruster";
   if (slot === "rcs") return part.kind === "thruster" && part.model.thrustN < 200;
   if (isEquipmentSlot(slot)) return part.kind === "equipment" && part.equipment.kind === slot;
   const t = design.tanks[tankIndex(slot)];
-  return part.kind === "tank" && !!t && t.spec.propellant === part.spec.propellant;
+  return part.kind === "tank" && !!t && feedSystemOf(t.spec.propellant) === feedSystemOf(part.spec.propellant);
 }
 
 /** The design with one part swapped. The main engine keeps its mount; RCS are laid out again for the hull. */
@@ -64,13 +66,16 @@ export function withPart(design: ShipDesign, slot: PartSlot, part: Part): ShipDe
   return { ...design, tanks: design.tanks.map((t, k) => (k === i ? { spec: (part as TankPart).spec, fillKg: Math.min(t.fillKg, (part as TankPart).spec.capacityKg) } : t)) };
 }
 
-/** Id of the part installed in a slot (tanks are matched by propellant and capacity). */
+/** Id of the part installed in a slot (tanks are matched by their real tanks, or by propellant and capacity). */
 export function installedId(design: ShipDesign, slot: PartSlot, tanks: readonly TankPart[] = []): string | undefined {
   if (slot === "motor") return design.mainEngines[0]?.model.id;
   if (slot === "rcs") return design.rcs[0]?.model.id;
   if (isEquipmentSlot(slot)) return design.equipment.find((e) => e.kind === slot)?.id;
   const t = design.tanks[tankIndex(slot)];
-  return tanks.find((p) => t && p.spec.propellant === t.spec.propellant && p.spec.capacityKg === t.spec.capacityKg)?.id;
+  if (!t) return undefined;
+  const same = (p: TankPart) =>
+    p.spec.propellant === t.spec.propellant && (p.spec.build && t.spec.build ? p.spec.build.tank.id === t.spec.build.tank.id && p.spec.build.count === t.spec.build.count : p.spec.capacityKg === t.spec.capacityKg);
+  return tanks.find(same)?.id;
 }
 
 /** Whether any thruster drinks this propellant: a tank nobody uses is dead mass. */

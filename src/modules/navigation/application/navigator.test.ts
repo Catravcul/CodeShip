@@ -53,7 +53,7 @@ describe("Navigator", () => {
     nav.select(member.data.id);
     const trip = nav.trip();
     expect(trip.waypoints.length).toBeGreaterThan(0);
-    expect(trip.plan.accelMS2).toBeCloseTo(490 / nav["flight"].ship.massKg, 6);
+    expect(trip.plan.accelMS2).toBeCloseTo(nav["flight"].ship.mainEngines[0]!.model.thrustN / nav["flight"].ship.massKg, 6);
     expect(trip.plan.cruiseMS).toBe(25);
   }, 30_000);
 

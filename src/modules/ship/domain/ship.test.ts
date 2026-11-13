@@ -144,3 +144,28 @@ describe("Explorer probe", () => {
     expect(shielded.hullIntegrity).toBeLessThan(0.8);
   });
 });
+
+describe("Ship.refit with a new tank", () => {
+  it("the swapped tank leaves with its share; the new one comes loaded from the station", () => {
+    const ship = Ship.create(design());
+    ship.fire({ ...idle, mainThrottle: 1 }, 10);
+    const d = ship.design;
+    const green = { propellant: "LMP-103S" as const, capacityKg: 30, dryMassKg: 3 };
+    ship.refit({ ...d, tanks: [d.tanks[0]!, { spec: green, fillKg: 0 }] });
+    expect(ship.propellantKg("Hydrazine")).toBe(0);
+    expect(ship.propellantKg("LMP-103S")).toBe(30);
+    expect(ship.propellantKg("MMH/NTO")).toBeLessThan(100);
+  });
+});
+
+describe("Explorer default propulsion (docs/design/componentes.md, «Recomendación»)", () => {
+  it("HiPAT on MESSENGER's pair: Δv from the rocket equation with the real masses", async () => {
+    const { explorerDesign } = await import("../data/explorer");
+    const ship = Ship.create(explorerDesign());
+    const prop = ship.propellantKg("MMH/NTO");
+    expect(prop).toBe(438);
+    expect(ship.mainDeltaV()).toBeCloseTo(322 * G0 * Math.log(ship.massKg / (ship.massKg - prop)), 6);
+    expect(ship.mainDeltaV()).toBeGreaterThan(900);
+    expect(445 / ship.massKg).toBeGreaterThan(0.25);
+  });
+});

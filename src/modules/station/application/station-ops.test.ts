@@ -49,7 +49,7 @@ describe("station challenges", () => {
 describe("station ops", () => {
   it("lists what can be built and what is missing", () => {
     const plans = ops().plans();
-    const tank = plans.find((p) => p.blueprint.id === "plano-tanque-n2h4-80")!;
+    const tank = plans.find((p) => p.blueprint.id === "plano-tanque-n2h4-80397")!;
     expect(tank.canBuild).toBe(true);
     const big = plans.find((p) => p.blueprint.id === "plano-aerojet-mr-107t")!;
     expect(big.canBuild).toBe(false);
@@ -58,22 +58,22 @@ describe("station ops", () => {
 
   it("solving the chain takes the materials and queues the job; failing changes nothing", () => {
     const o = ops();
-    const fail = o.startFabrication("plano-tanque-n2h4-80");
+    const fail = o.startFabrication("plano-tanque-n2h4-80397");
     while (fail.run.status === "doing") fail.answer(wrong(fail.run.current!));
     expect(o.station.queue()).toHaveLength(0);
     expect(o.station.stock.amount("hierro")).toBe(30);
 
-    const s = o.startFabrication("plano-tanque-n2h4-80");
+    const s = o.startFabrication("plano-tanque-n2h4-80397");
     while (s.run.status === "doing") s.answer(right(s.run.current!));
     expect(o.station.queue("fundicion")).toHaveLength(1);
     expect(o.station.stock.amount("hierro")).toBeLessThan(30);
     o.station.tick(100);
-    expect(o.station.hangar.count("tanque-n2h4-80")).toBe(1);
-    expect(o.plans().find((p) => p.blueprint.id === "plano-tanque-n2h4-80")!.inHangar).toBe(1);
+    expect(o.station.hangar.count("tanque-n2h4-80397")).toBe(1);
+    expect(o.plans().find((p) => p.blueprint.id === "plano-tanque-n2h4-80397")!.inHangar).toBe(1);
   });
 
   it("cannot start what it has no materials for", () => {
-    expect(() => ops({}).startFabrication("plano-tanque-n2h4-80")).toThrow();
+    expect(() => ops({}).startFabrication("plano-tanque-n2h4-80397")).toThrow();
     expect(() => ops({}).startRefining("mre")).toThrow();
     expect(ops({ silicatos: 50 }).refining().find((r) => r.process.id === "mre")!.scale).toBeCloseTo(0.5);
   });

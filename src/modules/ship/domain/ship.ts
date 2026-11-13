@@ -55,9 +55,22 @@ export class Ship {
 
   /**
    * Swap parts: propellant on board stays, except what no longer fits in the new tanks (it is vented).
-   * Tank fills in the new design are ignored: the propellant is the ship's, not the drawing's.
+   * A tank that is swapped leaves with its share of the pool, and the new one comes from the station
+   * loaded and pressurised (the last step of the swap). Tank fills in the new design are ignored.
    */
   refit(design: ShipDesign): void {
+    const old = this._design;
+    design.tanks.forEach((t, i) => {
+      const was = old.tanks[i];
+      if (was && was.spec === t.spec) return;
+      if (was) {
+        const p = was.spec.propellant;
+        const pool = this.propellantCapacityKg(p);
+        const kg = this.propellantKg(p);
+        this.fuel.set(p, Math.max(0, kg - (pool > 0 ? (kg * was.spec.capacityKg) / pool : 0)));
+      }
+      this.fuel.set(t.spec.propellant, this.propellantKg(t.spec.propellant) + t.spec.capacityKg);
+    });
     this._design = design;
     for (const [p, kg] of [...this.fuel]) this.fuel.set(p, Math.min(kg, this.propellantCapacityKg(p)));
   }
@@ -109,6 +122,11 @@ export class Ship {
 
   propellantKg(p: Propellant): number {
     return this.fuel.get(p) ?? 0;
+  }
+
+  /** The propellants the tanks hold, each once, in tank order. */
+  get propellants(): Propellant[] {
+    return [...new Set(this.design.tanks.map((t) => t.spec.propellant))];
   }
 
   propellantCapacityKg(p: Propellant): number {

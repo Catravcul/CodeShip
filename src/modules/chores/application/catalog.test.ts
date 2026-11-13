@@ -15,7 +15,7 @@ import { Hen } from "@modules/poultry/domain/hen";
 import { Health } from "@modules/medical/domain/health";
 import { PROTOCOLS } from "@modules/medical/data/protocols";
 import { bioreactorChores, henChores, machineRepairChore, patientChore, processChore, plainStep, catMeal, catChores, cookingChore, plantChores, repairChore, shipCode, swapChore, toCall, workoutChore, yogaChore } from "./catalog";
-import { partById } from "@modules/ship/data/parts";
+import { partById, partOptions } from "@modules/ship/data/parts";
 import { Ship } from "@modules/ship/domain/ship";
 import { withPart } from "@modules/ship/domain/refit";
 
@@ -111,7 +111,7 @@ describe("chore catalog", () => {
       expect(changed).toHaveLength(1);
       expect(ex.options[ex.correct]).toBe(changed[0]!.pseudo);
     }
-    expect(original[0]).toContain("490 N");
+    expect(original[0]).toContain("445 N");
   });
 
   it("production, animals, machines and the sickbay all make valid challenges", () => {
@@ -165,14 +165,19 @@ describe("part swap chores", () => {
   });
 
   it("a tank swap asks for its capacity", () => {
-    const c = swapChore(explorerDesign(), "tanque-0", partById("tanque-mmh-300")!);
+    const c = swapChore(explorerDesign(), "tanque-0", partById("par-mmh-ost25")!);
     const value = c.exercises[0] as Exercise & { kind: "choice" };
-    expect(value.options[value.correct]).toBe("300");
+    expect(value.options[value.correct]).toBe("620");
     c.exercises.forEach(valid);
   });
 
   it("an RCS swap is valid too", () => {
     swapChore(explorerDesign(), "rcs", partById("aerojet-mr-111g")!).exercises.forEach(valid);
+  });
+
+  it("every engine, RCS and tank on the shelf makes a valid swap chain", () => {
+    const d = explorerDesign();
+    for (const slot of ["motor", "rcs", "tanque-0", "tanque-1"] as const) for (const p of partOptions(d, slot)) swapChore(d, slot, p).exercises.forEach(valid);
   });
 
   it("an equipment swap asks for the new part's real mass and predicts the Δv with it", () => {

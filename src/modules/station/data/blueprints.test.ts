@@ -46,8 +46,15 @@ describe("blueprints", () => {
   });
 
   it("feedstock is the finished mass over the yield, and an RCS set is the whole set", () => {
-    const tank = blueprintForPart("tanque-n2h4-40")!;
-    expect(metalKg(tank.inputs)).toBeCloseTo(5 / STATION_TUNING.fabricationYield, 1);
+    // A titanium tank: the shells are imported (kits); only the steel brackets come from the rock.
+    const tank = blueprintForPart("tanque-n2h4-80397")!;
+    expect(tank.massKg).toBeCloseTo(4.54, 2);
+    expect(metalKg(tank.inputs)).toBeCloseTo((0.1 * 4.54) / STATION_TUNING.fabricationYield, 1);
+    expect(tank.inputs.kit).toBe(2);
+    // A pair also brings its helium bottle and regulator.
+    expect(blueprintForPart("par-mmh-80433")!.inputs.kit).toBe(1 + 1 + 1 + 1);
+    // A refractory chamber (iridium-lined rhenium) is one more imported kit.
+    expect(blueprintForPart("aerojet-r-4d-15-hipat")!.inputs.kit).toBe(3);
     const rcs = blueprintForPart("aerojet-mr-111g")!;
     expect(rcs.massKg).toBeCloseTo(0.37 * RCS_SET_SIZE, 2);
     expect(rcs.inputs.kit).toBe(4);
@@ -76,7 +83,7 @@ describe("blueprints", () => {
 
   it("at the start a tank and the MR-104H can be built but not the big RCS set; one load of Bennu makes it possible", () => {
     const stock = new MaterialStock(STARTING_STOCK);
-    expect(stock.has(blueprintForPart("tanque-n2h4-80")!.inputs)).toBe(true);
+    expect(stock.has(blueprintForPart("tanque-n2h4-80397")!.inputs)).toBe(true);
     expect(stock.has(blueprintForPart("aerojet-mr-104h")!.inputs)).toBe(true);
     const big = blueprintForPart("aerojet-mr-107t")!;
     expect(stock.has(big.inputs)).toBe(false);

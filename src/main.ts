@@ -3,6 +3,8 @@ import { Vec3 } from "@core/math/vec3";
 import { Quat } from "@core/math/quat";
 import { Ship } from "@modules/ship/domain/ship";
 import { explorerDesign } from "@modules/ship/data/explorer";
+import { PROPELLANT_NAME } from "@modules/ship/data/propellants";
+import type { Propellant } from "@modules/ship/domain/components";
 import { Asteroid } from "@modules/celestial/domain/asteroid";
 import { BENNU } from "@modules/celestial/data/bennu";
 import { RigidBodyState } from "@modules/flight/domain/rigid-body";
@@ -242,16 +244,22 @@ const reticle = document.createElement("div");
 reticle.className = "reticle";
 root.appendChild(reticle);
 
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+/** «Hidracina (RCS)»: the propellant and which thrusters drink it. */
+function propellantLabel(p: Propellant): string {
+  const main = ship.mainEngines.some((e) => e.model.propellant === p);
+  const rcs = ship.design.rcs.some((t) => t.model.propellant === p);
+  return `${cap(PROPELLANT_NAME[p])} (${main && rcs ? "motor y RCS" : main ? "motor principal" : rcs ? "RCS" : "sin uso"})`;
+}
 const hud = new Hud(root, {
   ship: ship.name,
   get target() {
     return expedition.asteroid.data.name;
   },
-  propellants: [
-    // Getters: a tank swap in the ship bay changes the capacity.
-    { label: "MMH/NTO (motor principal)", get capacity() { return ship.propellantCapacityKg("MMH/NTO"); } },
-    { label: "Hidracina (RCS)", get capacity() { return ship.propellantCapacityKg("Hydrazine"); } },
-  ],
+  // A getter: a tank or thruster swap in the ship bay changes what is carried and what drinks it.
+  get propellants() {
+    return ship.propellants.map((p) => ({ label: propellantLabel(p), capacity: ship.propellantCapacityKg(p) }));
+  },
 });
 
 const pilot = new KeyboardPilot(window);
@@ -349,10 +357,7 @@ const deck = new FlightDeck(root, {
   probe: () => ({
     name: ship.name,
     hullIntegrity: ship.hullIntegrity,
-    propellants: [
-      { label: "MMH/NTO", kg: ship.propellantKg("MMH/NTO"), capacityKg: ship.propellantCapacityKg("MMH/NTO") },
-      { label: "Hidracina", kg: ship.propellantKg("Hydrazine"), capacityKg: ship.propellantCapacityKg("Hydrazine") },
-    ],
+    propellants: ship.propellants.map((p) => ({ label: cap(PROPELLANT_NAME[p]), kg: ship.propellantKg(p), capacityKg: ship.propellantCapacityKg(p) })),
   }),
 });
 if (interior.zones)
@@ -657,7 +662,7 @@ renderer.setAnimationLoop((now) => {
     regionTag.className = `region-tag ${edge.zone}${tagText ? " on" : ""}`;
   }
 
-  hud.render(flight.telemetry(), flight.rotationAssist, [ship.propellantKg("MMH/NTO"), ship.propellantKg("Hydrazine")], thrustText(cmd));
+  hud.render(flight.telemetry(), flight.rotationAssist, ship.propellants.map((p) => ship.propellantKg(p)), thrustText(cmd));
   renderer.render(scene, camera);
 });
 

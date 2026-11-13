@@ -32,7 +32,7 @@ describe("FlightComputer", () => {
     const fc = make({ gravity: false });
     const m0 = fc.ship.massKg;
     fc.update(1, { ...NO_INPUT, mainThrottle: 1 });
-    expect(-fc.state.velocity.z).toBeCloseTo(490 / m0, 2);
+    expect(-fc.state.velocity.z).toBeCloseTo(fc.ship.mainEngines[0]!.model.thrustN / m0, 2);
   });
 
   it("Bennu's gravity slowly pulls a resting ship in", () => {

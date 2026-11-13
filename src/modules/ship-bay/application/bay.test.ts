@@ -46,8 +46,12 @@ describe("ship bay status", () => {
   it("shows real specs with their sources", () => {
     const motor = byId(bayStatus(input()), "motor");
     expect(motor.slot).toBe("motor");
-    expect(motor.specs.find((s) => s.label === "Empuje")!.value).toBe("490 N");
-    expect(motor.specs.some((s) => s.source?.includes("wikipedia.org/wiki/R-4D"))).toBe(true);
+    expect(motor.specs.find((s) => s.label === "Empuje")!.value).toMatch(/^445 N/);
+    expect(motor.specs.some((s) => s.source?.includes("l3harris.com"))).toBe(true);
+    expect(motor.specs.find((s) => s.label === "Cámara")!.value).toMatch(/iridio/);
+    const tank = byId(bayStatus(input()), "tanque-0");
+    expect(tank.specs.find((s) => s.label === "Tanques")!.value).toContain("80433-1");
+    expect(tank.specs.find((s) => s.label === "Presurización")!.value).toMatch(/helio/i);
     const rcs = byId(bayStatus(input()), "rcs");
     expect(rcs.specs.find((s) => s.label === "Propulsores")!.value).toBe("24");
   });
@@ -67,7 +71,7 @@ describe("ship bay status", () => {
     const dry = Ship.create({ ...d, tanks: [{ spec: d.tanks[0]!.spec, fillKg: 20 }, d.tanks[1]!] });
     const list = bayStatus(input({ ship: dry }));
     expect(byId(list, "tanque-0").attention).toBe("aviso");
-    expect(byId(list, "tanque-0").level).toEqual({ amount: 20, capacity: 180, unit: "kg" });
+    expect(byId(list, "tanque-0").level).toEqual({ amount: 20, capacity: 438, unit: "kg" });
     expect(byId(list, "motor").attention).toBe("aviso");
     expect(byId(list, "rcs").attention).toBe("ok");
   });
@@ -110,20 +114,21 @@ describe("ship bay actions", () => {
     const machine = bayActions(byId(list, `maquina:${machines[0]!.id}`), chores, ship.design);
     expect(machine[0]!.choreId).toBe(chores[1]!.id);
     const motor = bayActions(byId(list, "motor"), chores, ship.design);
-    expect(motor).toEqual([expect.objectContaining({ kind: "cambiar", slot: "motor", partId: "aerojet-mr-104h" })]);
-    expect(motor[0]!.label).toContain("MR-104H");
+    expect(motor.every((a) => a.kind === "cambiar" && a.slot === "motor")).toBe(true);
+    expect(motor.map((a) => a.partId)).toContain("aerojet-mr-104h");
+    expect(motor.find((a) => a.partId === "aerojet-mr-104h")!.label).toContain("MR-104H");
   });
 
   it("with a hangar, a swap needs the part there; the rest are shown locked, to build at the station", () => {
     const ship = Ship.create(explorerDesign());
     const list = bayStatus(input({ ship }));
     const empty = bayActions(byId(list, "motor"), [], ship.design, { count: () => 0 });
-    expect(empty).toEqual([expect.objectContaining({ kind: "cambiar", partId: "aerojet-mr-104h", locked: true })]);
-    const tanks = bayActions(byId(list, "tanque-1"), [], ship.design, { count: (id) => (id === "tanque-n2h4-120" ? 2 : 0) });
-    expect(tanks.map((a) => [a.partId, !!a.locked])).toEqual([
-      ["tanque-n2h4-120", false],
-      ["tanque-n2h4-80", true],
-    ]);
+    expect(empty.length).toBeGreaterThan(1);
+    expect(empty.every((a) => a.kind === "cambiar" && a.locked)).toBe(true);
+    const tanks = bayActions(byId(list, "tanque-1"), [], ship.design, { count: (id) => (id === "tanque-n2h4-80325" ? 2 : 0) });
+    expect(tanks[0]!.partId).toBe("tanque-n2h4-80325");
+    expect(tanks[0]!.locked).toBeFalsy();
+    expect(tanks.slice(1).every((a) => a.locked)).toBe(true);
     expect(tanks[0]!.detail).toContain("2 en el hangar");
   });
 

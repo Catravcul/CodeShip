@@ -1,25 +1,38 @@
 import type { ShipDesign } from "../domain/ship";
 import { fits, installedId, type EquipmentPart, type Part, type PartSlot, type TankPart, type ThrusterPart } from "../domain/refit";
 import { isEquipmentSlot, type Equipment } from "../domain/equipment";
+import type { TankSpec } from "../domain/components";
 import { BATTERIES, CABINS, POWER_SOURCES, SHIELDS } from "./equipment";
-import { MR104H, MR106L, MR107T, MR111G, R4D } from "./thrusters";
+import { MAIN_ENGINES, RCS_THRUSTERS } from "./thrusters";
+import { LMP_80498_X2, LMP_80498_X4, N2H4_80274, N2H4_80325, N2H4_80397, N2H4_80407, N2H4_80428, PAIR_80433, PAIR_80546, PAIR_80599, PAIR_OST25 } from "./tanks";
 
 const thruster = (model: ThrusterPart["model"]): ThrusterPart => ({ kind: "thruster", id: model.id, name: model.name, model });
-const TANK_NOTE = "Valor de juego: capacidad y masa en vacío a sustituir por un tanque real";
 
 /** Main engines on the shelf (real models). */
-export const MAIN_ENGINE_PARTS: readonly ThrusterPart[] = [thruster(R4D), thruster(MR104H)];
+export const MAIN_ENGINE_PARTS: readonly ThrusterPart[] = MAIN_ENGINES.map(thruster);
 /** Attitude thrusters on the shelf (real models). */
-export const RCS_PARTS: readonly ThrusterPart[] = [thruster(MR106L), thruster(MR111G), thruster(MR107T)];
-/** Tanks on the shelf. Game values: dry mass is about a tenth of the capacity, like the starter tanks. */
+export const RCS_PARTS: readonly ThrusterPart[] = RCS_THRUSTERS.map(thruster);
+
+const NAME: Readonly<Record<TankSpec["propellant"], string>> = { "MMH/NTO": "Par MMH/NTO", Hydrazine: "Tanque de hidracina", "LMP-103S": "Tanque de LMP-103S" };
+function tank(id: string, spec: TankSpec): TankPart {
+  const b = spec.build!;
+  const what = b.count > 1 ? `${b.count} × ${b.tank.maker} ${b.tank.id}` : `${b.tank.maker} ${b.tank.id}`;
+  return { kind: "tank", id, name: `${NAME[spec.propellant]} ${spec.capacityKg} kg (${what})`, spec };
+}
+
+/** Tanks on the shelf: real titanium tanks, capacity and mass worked out from their data sheets (tanks.ts). */
 export const TANK_PARTS: readonly TankPart[] = [
-  { kind: "tank", id: "tanque-mmh-180", name: "Tanque MMH/NTO 180 kg", spec: { propellant: "MMH/NTO", capacityKg: 180, dryMassKg: 18 }, note: TANK_NOTE },
-  { kind: "tank", id: "tanque-mmh-300", name: "Tanque MMH/NTO 300 kg", spec: { propellant: "MMH/NTO", capacityKg: 300, dryMassKg: 28 }, note: TANK_NOTE },
-  { kind: "tank", id: "tanque-n2h4-40", name: "Tanque de hidracina 40 kg", spec: { propellant: "Hydrazine", capacityKg: 40, dryMassKg: 5 }, note: TANK_NOTE },
-  { kind: "tank", id: "tanque-n2h4-80", name: "Tanque de hidracina 80 kg", spec: { propellant: "Hydrazine", capacityKg: 80, dryMassKg: 9 }, note: TANK_NOTE },
-  // Only made at the space station (docs/design/estacion.md).
-  { kind: "tank", id: "tanque-mmh-450", name: "Tanque MMH/NTO 450 kg", spec: { propellant: "MMH/NTO", capacityKg: 450, dryMassKg: 40 }, note: TANK_NOTE },
-  { kind: "tank", id: "tanque-n2h4-120", name: "Tanque de hidracina 120 kg", spec: { propellant: "Hydrazine", capacityKg: 120, dryMassKg: 13 }, note: TANK_NOTE },
+  tank("par-mmh-80599", PAIR_80599),
+  tank("par-mmh-80546", PAIR_80546),
+  tank("par-mmh-80433", PAIR_80433),
+  tank("par-mmh-ost25", PAIR_OST25),
+  tank("tanque-n2h4-80397", N2H4_80397),
+  tank("tanque-n2h4-80274", N2H4_80274),
+  tank("tanque-n2h4-80428", N2H4_80428),
+  tank("tanque-n2h4-80325", N2H4_80325),
+  tank("tanque-n2h4-80407", N2H4_80407),
+  tank("tanque-lmp-80498x2", LMP_80498_X2),
+  tank("tanque-lmp-80498x4", LMP_80498_X4),
 ];
 
 const equipmentPart = (equipment: Equipment): EquipmentPart => ({ kind: "equipment", id: equipment.id, name: equipment.name, equipment });

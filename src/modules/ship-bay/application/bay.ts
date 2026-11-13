@@ -1,8 +1,8 @@
-import type { Propellant, ThrusterModel } from "@modules/ship/domain/components";
+import type { Propellant, TankSpec, ThrusterModel } from "@modules/ship/domain/components";
 import type { ShipDesign } from "@modules/ship/domain/ship";
 import { feeds, isEmptyPart, type PartSlot } from "@modules/ship/domain/refit";
 import { partOptions } from "@modules/ship/data/parts";
-import { PROPELLANT_DENSITY, tankVolumeM3 } from "@modules/ship/data/propellants";
+import { PROPELLANT_DENSITY, PROPELLANT_NAME } from "@modules/ship/data/propellants";
 import { REGION_SUN_AU } from "@modules/ship/data/equipment";
 import { equipmentMassKg, equipmentOf, isEquipmentSlot, wallArealDensityKgM2, type Equipment, type EquipmentSlot } from "@modules/ship/domain/equipment";
 import { powerBudget, type PowerBudget } from "@modules/ship/domain/power";
@@ -50,19 +50,33 @@ export interface BayInput {
   readonly stores: readonly BayStore[];
 }
 
-const PROP_NAME: Readonly<Record<Propellant, string>> = { "MMH/NTO": "MMH/NTO", Hydrazine: "hidracina" };
+const PROP_NAME = PROPELLANT_NAME;
 const num = (v: number, digits = 0) => v.toLocaleString("es-ES", { maximumFractionDigits: digits, minimumFractionDigits: 0 });
 const pct = (v: number) => `${Math.round(v * 100)} %`;
 const short = (n: string) => n.replace(/^Aerojet Rocketdyne /, "").replace(/\s*\(.*\)$/, "");
 
-function thrusterSpecs(m: ThrusterModel): Spec[] {
+function thrusterSpecs(m: ThrusterModel, massKg: number): Spec[] {
   const src = m.sources[0];
+  const sh = m.sheet;
   return [
     { label: "Modelo", value: m.name, ...(src ? { source: src } : {}) },
-    { label: "Empuje", value: `${num(m.thrustN)} N` },
-    { label: "Isp", value: `${m.ispS} s` },
+    { label: "Empuje", value: `${num(m.thrustN)} N${sh ? ` (${sh.thrustRange})` : ""}` },
+    { label: "Isp", value: `${num(m.ispS, 1)} s en vacío${sh && sh.ispRange !== `${m.ispS} s` ? ` (${sh.ispRange}; se usa el valor bajo)` : ""}` },
     { label: "Masa", value: `${num(m.dryMassKg, 2)} kg` },
-    { label: "Propelente", value: PROP_NAME[m.propellant] },
+    { label: "Propelente", value: PROP_NAME[m.propellant] + (sh?.mixtureRatio ? ` (oxidante/combustible ${num(sh.mixtureRatio, 2)})` : "") },
+    { label: "Aceleración", value: `${num(m.thrustN / massKg, 3)} m/s² con la nave como está` },
+    ...(sh
+      ? [
+          { label: "Encendidos y vida", value: sh.life, more: true },
+          { label: "Regulación", value: sh.throttle, more: true },
+          ...(sh.inletPressure ? [{ label: "Presión de entrada", value: sh.inletPressure, more: true }] : []),
+          { label: "Consumo eléctrico", value: sh.power, more: true },
+          { label: "Cámara", value: sh.chamber, more: true },
+          { label: "Ha volado", value: sh.flight, more: true },
+          { label: "Estado", value: sh.status, more: true },
+          ...m.sources.slice(1).map((u, i) => ({ label: `Fuente ${i + 2}`, value: new URL(u).hostname, source: u, more: true })),
+        ]
+      : []),
   ];
 }
 
@@ -153,6 +167,31 @@ function equipmentStatus(ship: BayShip): ComponentStatus[] {
   return out;
 }
 
+/** A tank slot's sheet: what the real tanks hold and weigh, and the helium line of a pair. */
+function tankSpecs(spec: TankSpec): Spec[] {
+  const p = spec.propellant;
+  const b = spec.build;
+  const density = { label: "Densidad", value: `${num(PROPELLANT_DENSITY[p].value)} kg/m³`, source: PROPELLANT_DENSITY[p].source };
+  if (!b) return [{ label: "Capacidad", value: `${num(spec.capacityKg)} kg` }, { label: "Masa en vacío", value: `${num(spec.dryMassKg, 1)} kg` }, density];
+  const volume = b.count * b.tank.volumeL;
+  const he = b.pressurant;
+  return [
+    { label: "Capacidad", value: `${num(spec.capacityKg)} kg = ${num(volume, 1)} L × ${num(PROPELLANT_DENSITY[p].value)} kg/m³ × ${pct(b.fillFraction)} de llenado` },
+    { label: "Masa en vacío", value: `${num(spec.dryMassKg, 1)} kg${he ? " con el helio" : ""} (${pct(spec.dryMassKg / spec.capacityKg)} de lo que lleva)` },
+    { label: "Tanques", value: `${b.count} × ${b.tank.maker} ${b.tank.id}: ${num(b.tank.volumeL, 1)} L, ${num(b.tank.meopBar, 1)} bar, ${num(b.tank.massKg, 2)} kg`, source: b.tank.source },
+    ...(he
+      ? [
+          { label: "Presurización", value: `Helio: ${he.bottle.maker} ${he.bottle.id} (${num(he.bottle.volumeL, 1)} L a ${num(he.bottle.meopBar)} bar, ${num(he.bottle.massKg, 2)} kg) + ${num(he.heliumKg, 2)} kg de helio + ${num(he.hardwareKg)} kg de regulador y válvulas (estimación)`, source: he.bottle.source },
+          { label: "Cuenta del helio", value: `${he.basis}. Isoterma a 20 °C, densidades del NIST`, more: true },
+        ]
+      : [{ label: "Presurización", value: "En purga: el gas del hueco empuja un diafragma y la presión cae 4:1 (no hay botella)" }]),
+    { label: "Llenado", value: b.fillBasis, more: true },
+    density,
+    { label: "Material", value: b.tank.material, more: true },
+    { label: "Ha volado", value: b.tank.flight, more: true },
+  ];
+}
+
 /** Every selectable part of the ship with its state, its problems and its spec sheet. */
 export function bayStatus(input: BayInput): ComponentStatus[] {
   const { ship } = input;
@@ -187,7 +226,7 @@ export function bayStatus(input: BayInput): ComponentStatus[] {
         name: `Motor principal ${short(engine.model.name)}`,
         slot: "motor",
         issues: supplyIssues(ship, engine.model.propellant),
-        specs: [...thrusterSpecs(engine.model), { label: "Δv que queda", value: `${num(ship.mainDeltaV())} m/s` }],
+        specs: [{ label: "Δv que queda", value: `${num(ship.mainDeltaV())} m/s` }, ...thrusterSpecs(engine.model, ship.massKg)],
       }),
     );
   }
@@ -202,8 +241,8 @@ export function bayStatus(input: BayInput): ComponentStatus[] {
         issues: supplyIssues(ship, rcs.model.propellant),
         specs: [
           { label: "Propulsores", value: String(d.rcs.length) },
-          ...thrusterSpecs(rcs.model),
-          { label: "Aceleración al avanzar", value: `${num((2 * rcs.model.thrustN) / ship.massKg, 3)} m/s²` },
+          { label: "Aceleración al avanzar", value: `${num((2 * rcs.model.thrustN) / ship.massKg, 3)} m/s² (dos propulsores por sentido)` },
+          ...thrusterSpecs(rcs.model, ship.massKg).filter((x) => x.label !== "Aceleración"),
         ],
       }),
     );
@@ -220,16 +259,11 @@ export function bayStatus(input: BayInput): ComponentStatus[] {
       status({
         id: `tanque-${i}`,
         kind: "tanque",
-        name: `Tanque de ${PROP_NAME[p]}`,
+        name: t.spec.build ? `${p === "MMH/NTO" ? "Par" : "Tanque"} de ${PROP_NAME[p]} · ${t.spec.build.count > 1 ? `${t.spec.build.count} × ` : ""}${t.spec.build.tank.id}` : `Tanque de ${PROP_NAME[p]}`,
         slot: `tanque-${i}` as PartSlot,
         level: { amount: Math.round(amount * 10) / 10, capacity: t.spec.capacityKg, unit: "kg" },
         issues,
-        specs: [
-          { label: "Capacidad", value: `${num(t.spec.capacityKg)} kg (valor de juego)` },
-          { label: "Masa en vacío", value: `${num(t.spec.dryMassKg)} kg (valor de juego)` },
-          { label: "Densidad", value: `${num(PROPELLANT_DENSITY[p].value)} kg/m³`, source: PROPELLANT_DENSITY[p].source },
-          { label: "Volumen", value: `${num(tankVolumeM3(p, t.spec.capacityKg), 3)} m³` },
-        ],
+        specs: tankSpecs(t.spec),
       }),
     );
   });
@@ -342,7 +376,7 @@ export function bayActions(c: ComponentStatus, chores: readonly Chore[], design:
     ? partOptions(design, c.slot).map((p): BayAction => {
         const what =
           p.kind === "tank"
-            ? `${p.spec.capacityKg} kg de ${PROP_NAME[p.spec.propellant]}`
+            ? `${p.spec.capacityKg} kg de ${PROP_NAME[p.spec.propellant]} · ${num(p.spec.dryMassKg, 1)} kg en vacío`
             : p.kind === "equipment"
               ? equipmentSummary(p.equipment)
               : `${num(p.model.thrustN)} N · Isp ${p.model.ispS} s · ${num(p.model.dryMassKg, 2)} kg · ${PROP_NAME[p.model.propellant]}`;

@@ -13,6 +13,7 @@ import type { Machine } from "@modules/life-support/domain/machine";
 import type { Condition, Patient } from "@modules/medical/domain/health";
 import { ABCDE, PROTOCOLS } from "@modules/medical/data/protocols";
 import { Ship, type ShipDesign } from "@modules/ship/domain/ship";
+import { PROPELLANT_NAME } from "@modules/ship/data/propellants";
 import { withPart, type Part, type PartSlot } from "@modules/ship/domain/refit";
 import { EQUIPMENT_SLOTS, equipmentMassKg, isEquipmentSlot, type Equipment, type EquipmentSlot } from "@modules/ship/domain/equipment";
 import type { Recipe } from "@modules/kitchen/data/recipes";
@@ -485,7 +486,7 @@ export function repairChore(design: ShipDesign, hull: number, seed: number, scen
 }
 
 const fullTanks = (d: ShipDesign) => Ship.create({ ...d, tanks: d.tanks.map((t) => ({ spec: t.spec, fillKg: t.spec.capacityKg })) });
-const PROP_NAME = { "MMH/NTO": "MMH/NTO", Hydrazine: "hidracina" } as const;
+const PROP_NAME = PROPELLANT_NAME;
 
 /**
  * Swapping a part (ship bay): complete the new line of the ship's code (shown as a diff), predict the

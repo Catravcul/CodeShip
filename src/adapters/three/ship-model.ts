@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { ShipDesign, ThrustCommand } from "@modules/ship/domain/ship";
-import type { Propellant, ThrusterModel } from "@modules/ship/domain/components";
+import type { TankSpec, ThrusterModel } from "@modules/ship/domain/components";
 import type { RcsThruster } from "@modules/ship/domain/rcs-layout";
 import { explorerDesign } from "@modules/ship/data/explorer";
 import { MMH_DENSITY, MMH_NTO_MIXTURE_RATIO, NTO_DENSITY, PROPELLANT_DENSITY, tankVolumeM3 } from "@modules/ship/data/propellants";
@@ -161,7 +161,7 @@ export class ShipModel {
     }
 
     // --- Tanks: sphere volume = capacity / density. MMH/NTO is a pair (fuel left, oxidizer right). ---
-    design.tanks.forEach((t, i) => this.buildTank(i, t.spec.propellant, t.spec.capacityKg, size));
+    design.tanks.forEach((t, i) => this.buildTank(i, t.spec, size));
 
     // --- RCS: one pod per mount point, one nozzle per thruster, pointing along its exhaust. ---
     this.buildRcs(design.rcs, size, dark);
@@ -171,8 +171,8 @@ export class ShipModel {
   }
 
   private buildEngine(m: ThrusterModel, at: THREE.Vector3, dark: () => THREE.MeshStandardMaterial): void {
-    // Drawn larger than life so it reads at 16 m; size grows with the square root of thrust.
-    const k = Math.sqrt(m.thrustN / 490);
+    // Drawn larger than life so it reads at 16 m; size grows with the square root of thrust (capped: the OMS would not fit).
+    const k = Math.min(2, Math.sqrt(m.thrustN / 490));
     const g = this.part("motor");
     const biprop = m.propellant === "MMH/NTO";
     if (biprop) {
@@ -206,14 +206,18 @@ export class ShipModel {
     this.root.add(this.mainFlame);
   }
 
-  private buildTank(i: number, p: Propellant, capacityKg: number, size: THREE.Vector3): void {
+  /** Tanks drawn at their real volume (the catalogue tanks), or from capacity / density for a bare spec. */
+  private buildTank(i: number, spec: TankSpec, size: THREE.Vector3): void {
+    const p = spec.propellant;
     const id: PartId = `tanque-${i}`;
     const g = this.part(id);
     const steel = (c: number) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.4, metalness: 0.3 });
+    const b = spec.build;
     if (p === "MMH/NTO") {
+      // Fuel and oxidizer: at O/F 1.65 both take the same volume.
       const of = MMH_NTO_MIXTURE_RATIO;
-      const fuel = capacityKg / (1 + of) / MMH_DENSITY;
-      const ox = (capacityKg * of) / (1 + of) / NTO_DENSITY;
+      const fuel = b ? b.tank.volumeL / 1000 : spec.capacityKg / (1 + of) / MMH_DENSITY;
+      const ox = b ? b.tank.volumeL / 1000 : (spec.capacityKg * of) / (1 + of) / NTO_DENSITY;
       [
         [-1, fuel, 0xc9a0a0],
         [1, ox, 0xa0b4c9],
@@ -226,13 +230,24 @@ export class ShipModel {
         strap.rotation.y = Math.PI / 2;
         g.add(s, strap);
       });
+      // The helium bottle sits between them, on the back.
+      if (b?.pressurant) {
+        const r = sphereR(b.pressurant.bottle.volumeL / 1000);
+        const he = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), steel(0x8a8f99));
+        he.position.set(0, size.y / 2 + r * 0.6, -1.6);
+        g.add(he);
+      }
     } else {
-      const r = sphereR(tankVolumeM3(p, capacityKg));
-      const s = new THREE.Mesh(new THREE.SphereGeometry(r, 20, 14), steel(0xe0e4ea));
-      s.position.set(0, size.y / 2 + r * 0.55, 1.2);
-      const strap = new THREE.Mesh(new THREE.TorusGeometry(r * 1.01, 0.025, 6, 24), steel(0x40444c));
-      strap.position.copy(s.position);
-      g.add(s, strap);
+      const count = b?.count ?? 1;
+      const r = sphereR(b ? b.tank.volumeL / 1000 : tankVolumeM3(p, spec.capacityKg));
+      const color = p === "LMP-103S" ? 0xcfe3c8 : 0xe0e4ea;
+      for (let k = 0; k < count; k++) {
+        const s = new THREE.Mesh(new THREE.SphereGeometry(r, 20, 14), steel(color));
+        s.position.set((k - (count - 1) / 2) * r * 2.2, size.y / 2 + r * 0.55, 1.2);
+        const strap = new THREE.Mesh(new THREE.TorusGeometry(r * 1.01, 0.025, 6, 24), steel(0x40444c));
+        strap.position.copy(s.position);
+        g.add(s, strap);
+      }
     }
     g.userData.densityKgM3 = PROPELLANT_DENSITY[p].value;
   }

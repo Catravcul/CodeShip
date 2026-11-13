@@ -65,6 +65,7 @@ const gaugeQty = (r: GaugeRow, v: number) => (r.unit === "kcal/día" ? `${Math.r
 const text = (title: string, mode: ChoreMode): SessionText => ({
   title,
   progress: "Pasos",
+  lives: "Intentos",
   order: mode === "refinar" ? "Ordena el proceso" : mode === "repostar" ? "Ordena el repostaje" : mode === "importar" ? "Ordena el viaje" : mode === "ajustar" ? "Ordena la ronda" : "Ordena la fabricación",
   submit: "Hacerlo",
   ok: "Bien hecho",

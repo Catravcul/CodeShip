@@ -46,8 +46,12 @@ export function setCompactUi(on: boolean): void {
 
 export interface SessionText {
   readonly title: string;
-  /** What a right answer is, in plural, shown after the hit count ("Pasos", "Posturas", "Persuasión"). */
+  /** Panel view: label of the progress meter ("Persuasión", "Plan", "Pasos"). */
   readonly progress: string;
+  /** Panel view: label of the lives meter ("Paciencia", "Intentos"). */
+  readonly lives?: string;
+  /** HUD view: what a right answer is, in plural, after the hit count ("ideas", "pasos"); defaults to `progress`. */
+  readonly unit?: string;
   readonly order: string;
   readonly submit: string;
   readonly ok: string;
@@ -58,7 +62,9 @@ export interface SessionText {
 
 export const asteroidText = (name: string): SessionText => ({
   title: `Mente de ${name}`,
-  progress: "Ideas",
+  progress: "Persuasión",
+  lives: "Paciencia",
+  unit: "ideas",
   order: "Ordena el pensamiento",
   submit: "Enviar idea",
   ok: "La idea encaja: el asteroide se deja persuadir",
@@ -162,6 +168,13 @@ export class DuelView {
   }
 
   /** Written indicator, styled like the cockpit's speed readout: the number is what matters. */
+  /** Panel view (unchanged since its creation): a row of cells per meter. The label is for screen readers and checks. */
+  private meter(label: string, value: number, max: number, cls: string, aria: string): string {
+    const cells = Array.from({ length: max }, (_, i) => `<span class="cell ${i < value ? "on" : ""}"></span>`).join("");
+    return `<div class="meter ${cls}" role="status" aria-label="${esc(aria)}"><span class="label">${esc(label)}</span>${cells}</div>`;
+  }
+
+  /** HUD view: written indicator, styled like the cockpit's speed readout. */
   private stat(cls: string, label: string, value: number, max: number, unit: string, level: string, changed: boolean): string {
     return `<div class="stat ${cls} ${level} ${changed ? "bump" : ""}" data-n="${this.answers}" role="status"><span class="k">${label}</span> <b>${value}/${max}</b>${unit ? ` <span class="lbl">${esc(unit)}</span>` : ""}</div>`;
   }
@@ -182,8 +195,12 @@ export class DuelView {
       <div class="duel-top">${sheetTools}
       <div class="duel-head">
         <div class="duel-title">${esc(this.text.title)}</div>
+        <div class="duel-meters">
+          ${this.meter(this.text.progress, d.progress, d.goal, "persuasion", `Aciertos ${d.progress}/${d.goal}`)}
+          ${this.meter(this.text.lives ?? "Intentos", d.lives, d.maxLives, "patience", `Fallos ${fails}/${d.maxLives}`)}
+        </div>
         <div class="duel-stats">
-          ${this.stat("hits", "Aciertos", d.progress, d.goal, this.text.progress.toLowerCase(), d.progress > 0 ? "good" : "calm", hitsChanged)}
+          ${this.stat("hits", "Aciertos", d.progress, d.goal, (this.text.unit ?? this.text.progress).toLowerCase(), d.progress > 0 ? "good" : "calm", hitsChanged)}
           ${this.stat("fails", "Fallos", fails, d.maxLives, d.lives === 1 && ex ? "uno más y se pierde" : "", failLevel, failsChanged)}
         </div>
       </div>

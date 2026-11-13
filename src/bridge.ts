@@ -23,7 +23,7 @@ const LEVEL_COLOR: Readonly<Record<string, number>> = { warning: 0xff3b30, cauti
 const PAGE: Partial<Record<BridgeStationId, PanelId>> = { nav: "nav", prop: "prop", power: "power", life: "life", dock: "dock", comms: "comms" };
 
 /** The forward node: deck, curved walls as panels, the bow window and one desk per console. */
-function bridgeGeometry(): { group: THREE.Group; screens: Map<BridgeStationId, THREE.Mesh>; lamps: Map<BridgeStationId, THREE.Mesh> } {
+function bridgeGeometry(): { group: THREE.Group; screens: Map<BridgeStationId, THREE.Mesh>; lamps: Map<BridgeStationId, THREE.Mesh>; ends: { bow: THREE.Object3D; aft: THREE.Object3D } } {
   const g = new THREE.Group();
   const wall = new THREE.MeshStandardMaterial({ color: 0xd9dcd6, roughness: 0.9 });
   const dark = new THREE.MeshStandardMaterial({ color: 0x2a2f36, roughness: 0.6, metalness: 0.5 });
@@ -40,22 +40,35 @@ function bridgeGeometry(): { group: THREE.Group; screens: Map<BridgeStationId, T
   box(W, 0.05, L, new THREE.MeshStandardMaterial({ color: 0x3a414b, roughness: 0.7 }), 0, -0.025, 0.05);
   box(W, 0.05, L, wall, 0, H, 0.05);
   for (const sx of [-1, 1]) box(0.05, H, L, wall, (sx * W) / 2, H / 2, 0.05);
-  box(W, H, 0.05, wall, 0, H / 2, 2.15);
+  const aft = box(W, H, 0.05, wall, 0, H / 2, 2.15);
   // Bow: a wall with a wide window onto the stars (the real view is the bridge's NAV page and the probe's camera).
-  box(W, 0.7, 0.05, wall, 0, 0.35, -2.05);
-  box(W, 0.5, 0.05, wall, 0, H - 0.25, -2.05);
-  const sky = new THREE.Mesh(new THREE.PlaneGeometry(W, H - 1.2), new THREE.MeshBasicMaterial({ color: 0x02040a }));
+  // The bow goes as a whole under the dollhouse cutaway: wall strips, the window and its stars.
+  const bow = new THREE.Group();
+  g.add(bow);
+  const sky = new THREE.Mesh(new THREE.PlaneGeometry(W, H - 1.2), new THREE.MeshBasicMaterial({ color: 0x02040a, side: THREE.DoubleSide }));
   sky.position.set(0, 0.7 + (H - 1.2) / 2, -2.1);
-  g.add(sky);
+  bow.add(sky);
+  for (const [h, y] of [
+    [0.7, 0.35],
+    [0.5, H - 0.25],
+  ] as const) {
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(W, h, 0.05), wall);
+    strip.position.set(0, y, -2.05);
+    strip.userData.cutWith = bow;
+    bow.add(strip);
+  }
+  sky.userData.cutWith = bow;
   const stars = new THREE.BufferGeometry();
   const pts: number[] = [];
-  for (let i = 0; i < 160; i++) pts.push((Math.random() - 0.5) * 3.8, 0.75 + Math.random() * (H - 1.3), -2.09);
+  // In the sky's own frame, so the cutaway hides them with the window.
+  for (let i = 0; i < 160; i++) pts.push((Math.random() - 0.5) * 3.8, (Math.random() - 0.5) * (H - 1.3), 0.01);
   stars.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
-  g.add(new THREE.Points(stars, new THREE.PointsMaterial({ color: 0xffffff, size: 0.015 })));
+  sky.add(new THREE.Points(stars, new THREE.PointsMaterial({ color: 0xffffff, size: 0.015 })));
   // Hatch to the spine, aft.
   const ring = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.05, 8, 28), dark);
-  ring.position.set(0, 1.1, 2.1);
-  g.add(ring);
+  // On the aft wall, so the dollhouse cutaway hides both together.
+  ring.position.set(0, 1.1 - H / 2, -0.05);
+  aft.add(ring);
   // Handrails along the walls (zero g).
   for (const sx of [-1, 1]) box(0.03, 0.03, 3.6, new THREE.MeshStandardMaterial({ color: 0xf2c230 }), sx * 1.92, 1.6, 0);
   const screens = new Map<BridgeStationId, THREE.Mesh>();
@@ -81,7 +94,7 @@ function bridgeGeometry(): { group: THREE.Group; screens: Map<BridgeStationId, T
   const light = new THREE.PointLight(0xdfefff, 10, 8, 1);
   light.position.set(0, H - 0.3, 0);
   g.add(light, new THREE.AmbientLight(0xb8c8d8, 1.0));
-  return { group: g, screens, lamps };
+  return { group: g, screens, lamps, ends: { bow, aft } };
 }
 
 /**
@@ -93,6 +106,7 @@ function bridgeGeometry(): { group: THREE.Group; screens: Map<BridgeStationId, T
 export class BridgeRoom extends WalkRoom<BridgeStationId> {
   private readonly screens: Map<BridgeStationId, THREE.Mesh>;
   private readonly lamps: Map<BridgeStationId, THREE.Mesh>;
+  private readonly ends: { bow: THREE.Object3D; aft: THREE.Object3D };
   private readonly alertBox: HTMLElement;
   private mindKey = "";
   private alertKey = "";
@@ -106,6 +120,7 @@ export class BridgeRoom extends WalkRoom<BridgeStationId> {
     super(root, { layout: BRIDGE, cls: "puente", title: `Puente · ${shipName}`, geometry: g.group, speedMs: 0.9, signs: ["nav", "prop", "power", "life", "dock", "sonda", "mente", "comms", "nano", "salida"], cameraBackM: 1.6 });
     this.screens = g.screens;
     this.lamps = g.lamps;
+    this.ends = g.ends;
     this.alertBox = document.createElement("div");
     this.alertBox.className = "br-alerts";
     this.ui.appendChild(this.alertBox);
@@ -144,11 +159,18 @@ export class BridgeRoom extends WalkRoom<BridgeStationId> {
   }
 
   /** Walk to a console and use it (the task list's «Ir»). */
-  useConsole(id: BridgeStationId, action = "abrir"): void {
-    this.goTo(id, () => this.act(id, action));
+  useConsole(id: BridgeStationId, action = "abrir", then?: () => void): void {
+    this.goTo(id, () => {
+      this.act(id, action);
+      then?.();
+    });
   }
 
   protected override tick(): void {
+    // The dollhouse camera looks over an end wall it is outside of: that wall goes, as a whole.
+    const z = this.camera.position.z;
+    this.ends.bow.visible = z > -2.0;
+    this.ends.aft.visible = z < 2.1;
     const mind = this.deps.mind();
     const key = mind.screen.join("|");
     if (key !== this.mindKey) {

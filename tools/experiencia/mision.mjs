@@ -6,7 +6,8 @@ const key = () => window.codeship.expedition.duel?.current ?? null;
 
 export async function mision(j) {
   const p = j.page;
-  await j.tap(".mode-btn", "Entrar en la nave de viaje");
+  await j.tap(".stand-btn", "Levantarse: habitáculo");
+  await j.useMachine("cabin", "acople", "entrar-nodriza", "Entrar en la nave de viaje");
   await p.waitForTimeout(800);
   const badge = (await j.texts(".radio-btn b"))[0] ?? "";
   j.check("la Radio avisa de cartas sin leer", Number(badge) > 0, badge);
@@ -51,13 +52,12 @@ export async function mision(j) {
     ex.rapport.of(ex.asteroid.data.id).succeed("sonda");
   });
   await p.waitForTimeout(800);
-  const action = (await j.texts(".ctx-dock > .action:not(.nano-action)"))[0] ?? "";
-  j.check("posado, aparece el botón para entrar en su mente, sobre el pulgar derecho", /mente|Convencer/.test(action), action);
-  const box = await p.locator(".ctx-dock > .action:not(.nano-action)").boundingBox();
-  const vp = p.viewportSize();
-  j.check("la acción principal está en la mitad derecha y en la mitad de abajo", box && box.x + box.width / 2 > vp.width / 2 && box.y > vp.height / 2, box ? `${Math.round(box.x)},${Math.round(box.y)}` : "");
+  // During the landing the flight view shows no phase or trust: the mind is a console in the cabin (HAB-04).
+  const flightHud = await j.texts(".rapport-chip, .ctx-dock > .action:not(.nano-action)");
+  j.check("posado, la vista de vuelo no muestra fase ni confianza ni botón de la mente", flightHud.length === 0, flightHud.join(" / "));
   await j.shot("posado");
-  await j.tap(".ctx-dock > .action:not(.nano-action)", action || "acción");
+  await j.tap(".stand-btn", "Levantarse: habitáculo");
+  await j.useMachine("cabin", "mente", "mente", "Entrar en su mente");
   await j.waitDuel(30000);
   await p.waitForTimeout(400);
   const fails0 = (await j.texts(".duel .stat.fails"))[0] ?? "";
@@ -79,7 +79,7 @@ export async function mision(j) {
   await p.waitForTimeout(800);
 
   // Stage 3: out in the suit and lying on Bennu.
-  await j.tap(".eva-btn", "Salir de la nave");
+  await j.useMachine("cabin", "escotilla", "salir-eva", "Ponerse el traje y salir");
   await j.waitDuel(30000);
   for (let n = 0; n < 8 && (await p.evaluate(() => window.codeship.eva.phase)) === "preparando"; n++) await j.answer(() => window.codeship.eva._run?.current ?? null);
   // Won, she steps out on her own after 0.6 s and the card closes itself (eva-mode.ts).

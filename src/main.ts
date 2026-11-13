@@ -115,6 +115,7 @@ import { orderLetter } from "@modules/imports/data/letters";
 import { cargoMaterial } from "@modules/station/data/materials";
 import "./ui/acciones.css";
 import { LanderCabin } from "./lander-cabin";
+import { BridgeRoom } from "./bridge";
 import { settings } from "./ui/settings-store";
 import { SettingsPanel } from "./ui/settings-panel";
 import { TaskBoard } from "./ui/task-board";
@@ -406,12 +407,13 @@ navMode.canOpen = () => false;
 const missionLog = new MissionLogPanel(root, missions, habitat.mailbox);
 navMode.map.missionMark = (id) => missionLog.mark(id);
 navMode.map.onMissions = () => missionLog.open();
-missionLog.canOpen = () => deck.active || interior.active;
+missionLog.canOpen = () => deck.active || interior.active || bridge.active;
 missionLog.onShowOnMap = (id) => {
-  // From the radio on the ring: up to the deck's navigation page.
-  if (!deck.active && interior.active) {
-    interior.exit();
-    deck.enter("interior");
+  // From the radio on the ring or the bridge's radio console: to the bridge's navigation console.
+  if (!deck.active && (interior.active || bridge.active)) {
+    if (interior.active) interior.exit();
+    if (missionLog.visible) missionLog.close();
+    deck.enter(bridge.active ? "puente" : "interior", "nav");
   }
   if (deck.active) deck.showTarget(id);
 };
@@ -453,7 +455,7 @@ const atStationPort = () => structure.ports.some((p) => p === docking.dockedTo);
 const hatchInto = (): "nave" | "estacion" | null => (docking.dockedTo === mothership ? "nave" : atStationPort() ? "estacion" : null);
 /** Through the docking hatch in the cabin's roof, into the vehicle the lander is docked to. */
 function throughHatch(): void {
-  if (duelView.visible || evaMode.active || interior.active || stationInside.active || deck.active || bay.active) return;
+  if (duelView.visible || evaMode.active || interior.active || stationInside.active || deck.active || bay.active || bridge.active) return;
   const to = hatchInto();
   if (!to) return;
   cabin.exit();
@@ -506,18 +508,18 @@ const deck = new FlightDeck(root, {
 if (interior.zones)
   interior.zones.onFlightDeck = () => {
     interior.exit();
-    deck.enter("interior");
+    bridge.enter("salida");
   };
 interior.openNavConsole = () => {
   interior.exit();
-  deck.enter("interior");
-  deck.maximize("nav");
+  deck.enter("interior", "nav");
 };
 interior.openMissions = () => missionLog.open();
 deck.onExit = (to, why) => {
+  // From a bridge console, she is still standing at it (the bridge stays open under the page).
   if (to === "interior") interior.enter();
-  else view.setMode("cabina");
-  if (why) flash(why, 8);
+  else if (to === "cabina") view.setMode("cabina");
+  if (why) (bridge.active ? bridge.say(why, 8) : flash(why, 8));
 };
 // M on the deck opens its navigation page; in the lander's cockpit it only says where the map is.
 navMode.toggleOverride = () => deck.active && (deck.toggleNav(), true);
@@ -565,6 +567,43 @@ const levels = new LevelsUi({
 levels.travelTimeScale = (etaGameS) => Math.max(1, etaGameS / TRAVEL_TIME.capS);
 subj.activityOf = (id) => levels.activity(id);
 navMode.map.levelMark = (id) => levels.mark(id);
+
+// The travel ship's bridge: a room of consoles, one machine per page (docs/design/habitaculo.md §Puente).
+const probeMind = () => {
+  const ex = expedition;
+  const can = ex.canStartStage("sonda") || ex.canStartLevel("sonda");
+  const label = ex.bond.subjugated && ex.bond.nextLevel ? `Convencer · nivel ${ex.bond.nextLevel}` : "Entrar en su mente por la sonda";
+  const why = subj.probe.parkedOn ? ex.bond.levelBlock() || "Ahora su mente no escucha por la sonda" : "Aparca la sonda sobre el asteroide desde la consola de la sonda";
+  return can ? { label, enabled: true } : { label, enabled: false, why };
+};
+const bridge = new BridgeRoom(
+  root,
+  {
+    openPanel: (id) => deck.enter("puente", id),
+    openMissions: () => missionLog.open(),
+    openNano: () => deck.nanoBtn.click(),
+    openProbe: () => subj.probeMode.enter(),
+    mind: () => {
+      const a = expedition.asteroid;
+      const r = expedition.rapport.peek(a.data.id);
+      const angry = expedition.phase === "aggressive";
+      return { html: mindConsoleHtml(a.data.name, r, angry, levels.activity(a.data.id)), screen: mindScreenLines(a.data.name, r, angry), action: probeMind() };
+    },
+    startMind: () => {
+      if (duelView.visible) return;
+      if (expedition.canStartLevel("sonda")) subj.startLevelDuel("sonda");
+      else subj.startDuel("sonda");
+    },
+    leave: () => {
+      bridge.exit();
+      interior.enter();
+    },
+    alerts: () => deck.alertsNow(),
+    openTasks: () => taskBoard.open(),
+  },
+  mothership.name,
+);
+subj.onSay = (text) => (bridge.active ? bridge.say(text, 7) : flash(text, 7));
 
 // Long trips of the probe: programmed with challenges, flown in time-lapse, parked by hand (docs/design/viajes.md).
 const probeTravel = new ProbeTravel({
@@ -792,7 +831,7 @@ const cabin = new LanderCabin(root, {
 });
 
 /** Which vehicle she is in now, and which hatches are open between them. */
-const crewIn = (): Vehicle => (interior.active || deck.active || subj.piloting ? "nodriza" : stationInside.active || stationScreen.active || bay.active ? "estacion" : "modulo");
+const crewIn = (): Vehicle => (interior.active || bridge.active || deck.active || subj.piloting ? "nodriza" : stationInside.active || stationScreen.active || bay.active ? "estacion" : "modulo");
 const vehicleLinks = () => ({ moduloNodriza: docking.dockedTo === mothership, moduloEstacion: atStationPort(), nodrizaEstacion: !!mothership.dockedTo });
 /** Every task of the game, from every module (docs/design/habitaculo.md §Tareas). */
 function allTasks(): Task[] {
@@ -806,6 +845,7 @@ function allTasks(): Task[] {
     }),
     expeditionTarget: expedition.asteroid.data.id,
     landedOn,
+    probeParkedOn: subj.probe.parkedOn ?? null,
     mission: active ? { title: active.title, targetId: active.target.id, targetName: active.target.name } : null,
     nanoFaults: nano.net.faults().map((f) => {
       const core = nano.net.core(f.coreId)!;
@@ -830,6 +870,7 @@ function leaveEverything(): void {
   if (interior.active) interior.exit();
   if (deck.active) deck.exit();
   if (subj.piloting) subj.probeMode.exit();
+  if (bridge.active) bridge.exit();
   if (missionLog.visible) missionLog.close();
   if (bay.active) {
     bay.onExit = () => undefined;
@@ -845,6 +886,11 @@ function leaveEverything(): void {
 }
 /** Arrive at a task's place: the machine, the console or the screen where it is done. */
 function arriveAt(place: TaskPlace, t?: Task): void {
+  // Already on the travel ship's ring or spine: she walks to the machine from where she is.
+  if (place.vehicle === "nodriza" && place.spot === "anillo" && interior.active) {
+    if (t?.chore) interior.doChore(t.chore);
+    return;
+  }
   leaveEverything();
   switch (place.vehicle) {
     case "modulo":
@@ -856,10 +902,15 @@ function arriveAt(place: TaskPlace, t?: Task): void {
         if (t?.chore) interior.doChore(t.chore);
         return;
       }
-      deck.enter("interior");
-      if (place.page === "nav") return place.target ? deck.showTarget(place.target) : deck.maximize("nav");
-      if (place.page === "sonda") return subj.probeMode.enter();
-      return missionLog.open();
+      // On the bridge, at the console of the task: it opens as she gets there.
+      bridge.enter("salida");
+      if (place.page === "nav")
+        return bridge.useConsole("nav", "abrir", () => {
+          if (place.target) deck.showTarget(place.target);
+        });
+      if (place.page === "sonda") return bridge.useConsole("sonda");
+      if (place.page === "mente") return bridge.goTo("mente");
+      return bridge.useConsole("comms", "misiones");
     case "estacion":
       stationInside.enter(atStationPort() ? "sonda" : "nodriza");
       stationInside.suspend();
@@ -874,6 +925,7 @@ function goToTask(t: Task): void {
   if (r.kind === "ir") return arriveAt(t.place, t);
   arriveAt(r.via);
   if (cabin.active) cabin.say(r.why, 7);
+  else if (bridge.active) bridge.say(r.why, 7);
   else flash(r.why, 7);
 }
 
@@ -949,6 +1001,7 @@ window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   interior.resize();
   cabin.resize();
+  bridge.resize();
   bay.resize();
   stationScreen.resize();
   stationInside.resize();
@@ -992,7 +1045,7 @@ renderer.setAnimationLoop((now) => {
     frameStats.frames++;
     renderer.info.reset();
   }
-  const cmd = subj.piloting || cabin.active || interior.active || stationInside.active || deck.active || bay.active || evaMode.active || stationScreen.active || navMode.blocksInput || missionLog.visible ? NO_INPUT : mergeCommands(pilot.command(), touch.command());
+  const cmd = subj.piloting || cabin.active || bridge.active || interior.active || stationInside.active || deck.active || bay.active || evaMode.active || stationScreen.active || navMode.blocksInput || missionLog.visible ? NO_INPUT : mergeCommands(pilot.command(), touch.command());
   const flown = subj.piloting ? subj.probeMode.command() : cmd;
   const idle = flown.mainThrottle === 0 && flown.translation.length() === 0 && flown.rotation.length() === 0;
   // Time warp only on quiet cruise far from the surface, so landing stays real-time.
@@ -1094,7 +1147,7 @@ renderer.setAnimationLoop((now) => {
   // A module berthed or equipment installed: the structure, its model and the walkable interior follow.
   if (stationOutfit.version !== stationGrownAt) regrowStation();
   interior.update(dt, world.lifeDays);
-  view.enabled = !cabin.active && !interior.active && !stationInside.active && !deck.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active && !navMode.mapOpen && !missionLog.visible;
+  view.enabled = !cabin.active && !bridge.active && !interior.active && !stationInside.active && !deck.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active && !navMode.mapOpen && !missionLog.visible;
   navMode.update(dt, world.held);
   const trip = tripNow();
   tripChip.update(trip?.chip, tripPreview.visible);
@@ -1136,6 +1189,12 @@ renderer.setAnimationLoop((now) => {
     nanoPanel.update(flight.landed && expedition.asteroid === bennu, fx, { action: false, card: !duelView.visible });
     asteroidMesh.rotation.y = bennu.spinRadS * flight.simTimeS;
     present(scene, deck.camera);
+    return;
+  }
+  if (bridge.active) {
+    bridge.update(dt);
+    nanoPanel.update(flight.landed && expedition.asteroid === bennu, fx, { action: false, card: !duelView.visible });
+    present(bridge.scene, bridge.camera);
     return;
   }
   if (stationScreen.active) {
@@ -1220,4 +1279,4 @@ for (const sel of [".nano-action", ".rapport-chip", ".trip-chip"]) {
   if (el) ctxDock.appendChild(el);
 }
 
-(window as unknown as { codeship: unknown }).codeship = { cabin, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, tripPreview, tripChip, duelView, levels };
+(window as unknown as { codeship: unknown }).codeship = { cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, tripPreview, tripChip, duelView, levels };

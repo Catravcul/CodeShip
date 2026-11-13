@@ -344,9 +344,11 @@ export abstract class WalkRoom<Id extends string> {
       this.ray.set(from, dir.normalize());
       this.ray.far = len - 0.2;
       for (const h of this.ray.intersectObjects(this.walls, false)) {
-        if (h.object.visible) {
-          h.object.visible = false;
-          this.hidden.push(h.object);
+        // A piece of a wall that goes as a whole (the bridge's bow: strips and window) names it in `cutWith`.
+        const o = (h.object.userData.cutWith as THREE.Object3D | undefined) ?? h.object;
+        if (o.visible) {
+          o.visible = false;
+          this.hidden.push(o);
         }
       }
     }

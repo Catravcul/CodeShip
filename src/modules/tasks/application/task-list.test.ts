@@ -41,6 +41,14 @@ describe("task list: every task of the game, grouped, with where it is done (doc
     expect(collectTasks(facts({ asteroids: [{ ...bennu, next: undefined, subjugated: true, level: 4 }] })).some((x) => x.id === "fase-bennu")).toBe(false);
   });
 
+  it("HAB-05 with the probe parked on it, its mind is entered from the bridge's mind console (phase 1 and levels)", () => {
+    const p1 = collectTasks(facts({ asteroids: [bennu], probeParkedOn: "bennu" })).find((x) => x.id === "fase-bennu")!;
+    expect(p1.place).toEqual({ vehicle: "nodriza", spot: "puente", page: "mente" });
+    expect(p1.title).toMatch(/mente de Bennu.*fase 1 de 3/);
+    const lv = collectTasks(facts({ asteroids: [{ ...bennu, next: undefined, subjugated: true, level: 1, nextLevel: 2 }], probeParkedOn: "bennu" })).find((x) => x.id === "fase-bennu")!;
+    expect(lv.place).toEqual({ vehicle: "nodriza", spot: "puente", page: "mente" });
+  });
+
   it("HAB-05 a phase on another asteroid starts with a trip programmed on the bridge's map", () => {
     const ryugu = { ...bennu, id: "ryugu", name: "Ryugu", next: "nave" as const };
     const t = collectTasks(facts({ asteroids: [bennu, ryugu] }));

@@ -113,4 +113,4 @@ body.in-deck .nano-card { z-index: 9; top: 64px; }
 }
 /* One console, one page (docs/design/habitaculo.md §Puente): the bridge is a room; each console shows only its page. */
 .fd.single .fd-panel:not(.max), .fd.single [data-max], .fd.single .fd-nano, .fd.single .fd-probe, .fd.single .fd-window, .fd.single .fd-alerts { display: none !important; }
-.fd.single .fd-exit { min-height: 44px; min-width: 44px; }
+.fd.single .fd-exit, .fd.single .fd-panel.max .fd-back { min-height: 44px; min-width: 44px; }

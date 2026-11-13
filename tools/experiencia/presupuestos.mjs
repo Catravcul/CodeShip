@@ -8,6 +8,8 @@ export const JOURNEYS = [
   { id: "PX-03", name: "mision", title: "Misión 1 de Nevaeh: carta, registro, las tres fases en Bennu y duelo con un fallo" },
   { id: "PX-04", name: "acciones-movil", title: "Botones de cada pantalla de un iPhone 13 (390×664 visibles de 390×844): capturas, solapes y objetivos de toque", mobile: true, throttle: 1 },
   { id: "PX-05", name: "acciones-escritorio", title: "Botones de cada pantalla a 1280×800: capturas y solapes", mobile: false, throttle: 1 },
+  { id: "PX-06", name: "habitaculo-movil", title: "Habitáculo del módulo en un iPhone 13: levantarse, desacoplar en la consola, ajustes en la esterilla, «Ir» de una tarea de vuelo y consolas del puente", mobile: true, throttle: 1 },
+  { id: "PX-07", name: "habitaculo-escritorio", title: "Habitáculo del módulo y consolas del puente a 1280×800", mobile: false, throttle: 1 },
 ];
 
 /**

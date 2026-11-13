@@ -157,6 +157,33 @@ export class Journey {
     return this.tapAt(this.page.locator(".duel .submit"));
   }
 
+  /**
+   * In a walkable room (the lander's cabin or the bridge, src/walk-room.ts): a tap on the machine walks her
+   * there, then a tap on its card's button (none with `act` null: only walk there). `room` is the key of window.codeship ("cabin" or "bridge").
+   */
+  async useMachine(room, id, act, what) {
+    const pt = await this.page.evaluate(([r, m]) => {
+      const p = window.codeship[r].screenPoint(m);
+      const hit = document.elementFromPoint(p.x, p.y);
+      return { ...p, free: !!hit && hit.tagName === "CANVAS" };
+    }, [room, id]);
+    const vp = this.page.viewportSize();
+    if (pt.free && pt.x > 0 && pt.y > 0 && pt.x < vp.width && pt.y < vp.height) {
+      if (this.opts.mobile === false) await this.page.mouse.click(pt.x, pt.y);
+      else await this.page.touchscreen.tap(pt.x, pt.y);
+    } else await this.setup(`camina hasta «${id}» (la máquina no se ve en pantalla)`, ([r, m]) => window.codeship[r].goTo(m), [room, id]);
+    try {
+      await this.page.waitForFunction(([r, m]) => window.codeship[r].near() === m, [room, id], { timeout: 20000 });
+    } catch {
+      // The tap did not reach the machine (behind another one): walk there the way the task list does.
+      await this.setup(`camina hasta «${id}»`, ([r, m]) => window.codeship[r].goTo(m), [room, id]);
+      await this.page.waitForFunction(([r, m]) => window.codeship[r].near() === m, [room, id], { timeout: 20000 }).catch(() => {});
+    }
+    await this.page.waitForTimeout(700);
+    if (!act) return true;
+    return this.tap(`.room-ui:not(.hidden) .cab-machine [data-act="${act}"]`, what);
+  }
+
   /** Waits until the challenge screen is up. */
   async waitDuel(timeout = 30000) {
     await this.page.waitForFunction(() => [...document.querySelectorAll(".duel")].some((e) => !e.classList.contains("hidden")), null, { timeout });

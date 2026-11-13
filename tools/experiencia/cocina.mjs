@@ -25,7 +25,8 @@ const answerFor = (step) => (VALUE.test(step) ? `${VALUE.exec(step)[1]} °C` : s
 
 export async function cocina(j) {
   const p = j.page;
-  await j.tap(".mode-btn", "Entrar en la nave de viaje");
+  await j.tap(".stand-btn", "Levantarse: habitáculo");
+  await j.useMachine("cabin", "acople", "entrar-nodriza", "Entrar en la nave de viaje");
   await p.waitForTimeout(800);
   j.check("al entrar en la nave se ven Tareas y Radio", (await j.texts(".tasks-btn")).length === 1 && (await j.texts(".radio-btn")).length === 1);
   await j.setup("la llevamos al anillo (bajar del eje por el radio lleva un minuto; se juega en «movimiento»)", () => {
@@ -37,10 +38,10 @@ export async function cocina(j) {
 
   await j.tap(".tasks-btn", "Tareas");
   await p.waitForTimeout(400);
-  const list = await j.texts(".board .chore b");
+  const list = await j.texts(".task-board .tb-task b");
   j.check("la lista de tareas ofrece «Hacer crema de cacahuete»", list.includes("Hacer crema de cacahuete"), `${list.length} tareas`);
   await j.shot("tareas");
-  await j.tap('.board .chore:has-text("Hacer crema de cacahuete")', "Hacer crema de cacahuete");
+  await j.tap('.task-board .tb-task:has-text("Hacer crema de cacahuete") .tb-go', "Ir: Hacer crema de cacahuete");
   await j.waitDuel(120000);
   await p.waitForTimeout(400);
   let s = await stats(j);
@@ -87,7 +88,7 @@ export async function cocina(j) {
   // HUD view, a recipe lost on purpose: three different wrong answers.
   await j.tap(".tasks-btn", "Tareas");
   await p.waitForTimeout(400);
-  await j.tap('.board .chore:has-text("Cocinar Cacahuetes tostados")', "Cocinar Cacahuetes tostados");
+  await j.tap('.task-board .tb-task:has-text("Cocinar Cacahuetes tostados") .tb-go', "Ir: Cocinar Cacahuetes tostados");
   await j.waitDuel(120000);
   await j.tap('.duel [data-act="ui"]', "Vista HUD");
   await p.waitForTimeout(400);
@@ -140,7 +141,7 @@ export async function cocina(j) {
   j.check("Cerrar vuelve a la nave", (await j.texts(".duel")).length === 0 && (await j.texts(".tasks-btn")).length === 1);
   await j.tap(".tasks-btn", "Tareas");
   await p.waitForTimeout(300);
-  j.check("tras perder, la receta sigue en la lista para reintentarla (no se gastó nada)", (await j.texts(".board .chore b")).includes("Cocinar Cacahuetes tostados"));
-  await j.tap(".board [data-close]", "✕");
+  j.check("tras perder, la receta sigue en la lista para reintentarla (no se gastó nada)", (await j.texts(".task-board .tb-task b")).includes("Cocinar Cacahuetes tostados"));
+  await j.tap(".task-board [data-close]", "Cerrar tareas");
   await p.evaluate(() => localStorage.removeItem("codeship.retos-ui"));
 }

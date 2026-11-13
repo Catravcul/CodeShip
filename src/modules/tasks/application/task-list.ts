@@ -11,7 +11,7 @@ export type Vehicle = "modulo" | "nodriza" | "estacion";
 /** Where a task is done. */
 export type TaskPlace =
   | { readonly vehicle: "nodriza"; readonly spot: "anillo"; readonly station: string }
-  | { readonly vehicle: "nodriza"; readonly spot: "puente"; readonly page: "nav" | "sonda" | "misiones"; readonly target?: string }
+  | { readonly vehicle: "nodriza"; readonly spot: "puente"; readonly page: "nav" | "sonda" | "mente" | "misiones"; readonly target?: string }
   | { readonly vehicle: "modulo"; readonly spot: "asiento" | "acople" | "mente" | "escotilla" | "esterilla" }
   | { readonly vehicle: "estacion"; readonly spot: "pantalla"; readonly tab: "materiales" | "planos" | "fabricacion" | "hangar" | "importar" | "vida" }
   | { readonly vehicle: "estacion"; readonly spot: "bahia" };
@@ -49,6 +49,8 @@ export interface TaskFacts {
   readonly expeditionTarget: string;
   /** Asteroid the lander is anchored on, if any. */
   readonly landedOn: string | null;
+  /** Asteroid the probe is parked on, if any: its mind is reached from the bridge's mind console. */
+  readonly probeParkedOn?: string | null;
   readonly mission: { title: string; targetId: string; targetName: string } | null;
   readonly nanoFaults: readonly { id: string; what: string; coreName: string }[];
   /** nano_net work the lander can do where it is anchored. */
@@ -68,9 +70,12 @@ const PHASE: Readonly<Record<Stage, number>> = { sonda: 1, nave: 2, traje: 3 };
 function phaseTask(a: TaskFacts["asteroids"][number], f: TaskFacts): Task | undefined {
   const here = a.id === f.expeditionTarget;
   const landed = f.landedOn === a.id;
+  const parked = f.probeParkedOn === a.id;
   const id = `fase-${a.id}`;
+  const bridgeMind = { vehicle: "nodriza", spot: "puente", page: "mente" } as const;
   if (a.subjugated) {
     if (!a.nextLevel) return undefined;
+    if (parked && !landed) return { id, group: "vuelo", title: `Convencer a ${a.name} del nivel ${a.nextLevel}`, detail: "Consola de la mente, en el puente de la nodriza (por la sonda aparcada)", place: bridgeMind };
     return {
       id,
       group: "vuelo",
@@ -84,6 +89,7 @@ function phaseTask(a: TaskFacts["asteroids"][number], f: TaskFacts): Task | unde
   const where = here ? "" : " (primero, el viaje)";
   switch (a.next) {
     case "sonda":
+      if (parked) return { id, group: "vuelo", title: `Entrar en la mente de ${a.name} · fase ${n} de 3`, detail: "Consola de la mente, en el puente de la nodriza (por la sonda aparcada)", place: bridgeMind };
       return { id, group: "vuelo", title: `Lanzar la sonda a ${a.name} · fase ${n} de 3`, detail: `Consola de la sonda, en el puente de la nodriza${where}`, place: { vehicle: "nodriza", spot: "puente", page: "sonda" } };
     case "nave":
       return landed

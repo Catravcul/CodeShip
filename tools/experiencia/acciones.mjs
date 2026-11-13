@@ -36,7 +36,8 @@ export async function acciones(j) {
   await audit(j, "cabina-acoplada", "Cabina del módulo, acoplado a la nodriza");
 
   // Interior: 0 g at the spine hatch, then the ring.
-  await j.tap(".mode-btn", "Entrar en la nave de viaje");
+  await j.tap(".stand-btn", "Levantarse: habitáculo");
+  await j.useMachine("cabin", "acople", "entrar-nodriza", "Entrar en la nave de viaje");
   await audit(j, "ingravidez", "Interior en ingravidez (escotilla de la espina)");
   await j.setup("la llevamos al anillo", () => {
     const z = window.codeship.interior.zones;
@@ -46,19 +47,26 @@ export async function acciones(j) {
   await audit(j, "anillo", "Interior en el anillo");
   await j.tap(".tasks-btn", "Tareas");
   await audit(j, "tareas", "Tablero de tareas");
-  await j.tap(".board [data-close]", "✕");
-  await p.evaluate(() => window.codeship.interior.openNavConsole());
+  await j.tap(".task-board [data-close]", "Cerrar tareas");
+  // The bridge: a room of consoles, each opening only its own page (docs/design/habitaculo.md §Puente).
+  await j.setup("la llevamos a la escotilla del puente (en la espina)", () => {
+    const c = window.codeship;
+    c.interior.exit();
+    c.bridge.enter("salida");
+  });
+  await audit(j, "puente", "Puente de mando: sala de consolas");
+  await j.useMachine("bridge", "nav", "abrir", "Usar la consola: Navegación");
   await p.waitForTimeout(1200);
-  await audit(j, "mapa", "Puente de mando con el mapa");
-  await p.evaluate(() => window.codeship.deck.restore());
-  await p.waitForTimeout(400);
-  await audit(j, "puente", "Puente de mando");
-  if ((await j.texts(".fd-probe")).length) {
-    await j.tap(".fd-probe", "Sonda");
-    await audit(j, "sonda", "Consola de la sonda");
-    await p.keyboard.press("Escape");
-    await p.evaluate(() => window.codeship.probe && document.querySelector(".probe-ui .pm-exit, .probe-ui [data-exit]")?.click());
-  }
+  await audit(j, "mapa", "Consola de navegación con el mapa");
+  await j.tap(".fd-panel.max .fd-back", "Volver al puente");
+  await j.useMachine("bridge", "sonda", "abrir", "Tomar el mando de la sonda");
+  await p.waitForTimeout(800);
+  await audit(j, "sonda", "Consola de la sonda");
+  await j.tap(".pr-exit", "Volver al puente");
+  await j.useMachine("bridge", "mente", null);
+  const why = (await j.texts(".room-ui:not(.hidden) .cab-machine"))[0] ?? "";
+  j.check("la consola de la mente del puente dice qué falta para entrar por la sonda", /sonda/i.test(why), why.slice(0, 120));
+  await audit(j, "mente-puente", "Consola de la mente del asteroide (puente)");
   await p.reload();
   await p.waitForFunction(() => window.codeship, null, { timeout: 120000 });
   await p.waitForTimeout(1500);
@@ -76,8 +84,10 @@ export async function acciones(j) {
   await j.setup("posa el módulo sobre Bennu (aterrizar a mano lleva minutos)", landOnBennu);
   await p.waitForFunction(() => window.codeship.expedition.phase === "landed", null, { timeout: 180000 });
   await audit(j, "aterrizado", "Módulo posado en Bennu");
-  if ((await j.texts(".eva-btn")).length) {
-    await j.tap(".eva-btn", "Salir de la nave");
+  await j.tap(".stand-btn", "Levantarse: habitáculo");
+  await audit(j, "habitaculo", "Habitáculo del módulo, posado");
+  {
+    await j.useMachine("cabin", "escotilla", "salir-eva", "Ponerse el traje y salir");
     await j.waitDuel(30000);
     await audit(j, "eva-traje", "Ponerse el traje (reto)");
     for (let n = 0; n < 8 && (await p.evaluate(() => window.codeship.eva.phase)) === "preparando"; n++) await j.answer(() => window.codeship.eva._run?.current ?? null);
@@ -97,7 +107,8 @@ export async function acciones(j) {
     c.docking.dockNow(c.structure.portFor("sonda"));
   });
   await audit(j, "estacion-acoplado", "Cabina acoplada a la estación");
-  await j.tap(".mode-btn", "Entrar en la estación");
+  await j.tap(".stand-btn", "Levantarse: habitáculo");
+  await j.useMachine("cabin", "acople", "entrar-estacion", "Entrar en la estación");
   await p.waitForTimeout(800);
   await audit(j, "estacion-interior", "Interior de la estación");
   await j.tap(".sti-tasks", "Tareas de la estación");

@@ -26,7 +26,8 @@ export async function movimiento(j) {
 
   // Back in, through the hatch: 0 g.
   await j.setup("vuelve a acoplar en la nodriza", () => window.codeship.docking.dockNow(window.codeship.mothership));
-  await j.tap(".mode-btn", "Entrar en la nave de viaje");
+  await j.tap(".stand-btn", "Levantarse: habitáculo");
+  await j.useMachine("cabin", "acople", "entrar-nodriza", "Entrar en la nave de viaje");
   await p.waitForTimeout(1000);
   j.check("al entrar, la escotilla deja en ingravidez con el botón Impulsarse", (await j.texts(".zg-push")).length === 1);
   const before = (await j.texts(".interior-ui .ihud"))[0] ?? "";

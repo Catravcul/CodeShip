@@ -123,7 +123,6 @@ export class SubjugationUi {
       duelLabel: () => (ex.bond.nextLevel && ex.bond.subjugated ? (ex.canStartLevel("sonda") ? `Convencer · nivel ${ex.bond.nextLevel}` : `Nivel ${ex.bond.nextLevel}: ${ex.bond.levelBlock() || "espera a que se calme"}`) : undefined),
       keyboard: d.keyboard,
     });
-    d.deck.addStatusButton("fd-probe", "Sonda", () => this.probeMode.enter());
     d.map.rapportMark = (id) => rapportCardHtml(ex.rapport.peek(id), ex.phase === "aggressive" && id === ex.asteroid.data.id, this.activityOf?.(id) ?? "");
 
     d.evaMode.canSubjugate = () => ex.canStartStage("traje");
@@ -267,7 +266,11 @@ export class SubjugationUi {
   private say(text: string): void {
     if (this.probeMode.active) this.probeMode.say(text, 7);
     else if (this.d.evaMode.active) this.d.evaMode.tell(text, 7000);
+    else this.onSay?.(text);
   }
+
+  /** Where the duel's result is said when neither the probe nor the suit is on screen (the bridge's mind console). */
+  onSay?: (text: string) => void;
 
   /** Pose of the probe's bay on the travel ship now (debug and checks). */
   bayPose(): RigidBodyState {

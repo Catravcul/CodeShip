@@ -13,6 +13,21 @@ interface Row {
   next(s: GameSettings): GameSettings[keyof GameSettings];
 }
 
+/**
+ * A setting kept by another module (e.g. the answer mode of order challenges, kept by duel-view.ts like
+ * the challenge view): it adds its own row with `SettingsPanel.addRow`.
+ */
+export interface ExtraRow {
+  id: string;
+  label: string;
+  help: string;
+  value(): string;
+  /** Change to the next value. */
+  next(): void;
+  /** For on/off settings: read as a switch. */
+  on?(): boolean;
+}
+
 const yes = (b: boolean) => (b ? "Sí" : "No");
 const ROWS: readonly Row[] = [
   { key: "names", label: "Nombres", help: "Nombres del Sol, los planetas y los asteroides sobre la vista de vuelo", value: (s) => yes(s.names), next: (s) => !s.names },
@@ -29,6 +44,7 @@ const ROWS: readonly Row[] = [
  */
 export class SettingsPanel {
   private readonly el: HTMLElement;
+  private readonly extras: ExtraRow[] = [];
   onClose?: () => void;
 
   constructor(root: HTMLElement) {
@@ -40,6 +56,11 @@ export class SettingsPanel {
     this.el.addEventListener("click", (e) => {
       const t = e.target as HTMLElement;
       if (t.closest("[data-close]")) return this.close();
+      const x = t.closest<HTMLElement>("[data-extra]");
+      if (x) {
+        this.extras.find((r) => r.id === x.dataset.extra)?.next();
+        return this.render();
+      }
       const b = t.closest<HTMLElement>("[data-key]");
       if (!b) return;
       const row = ROWS.find((r) => r.key === b.dataset.key);
@@ -47,6 +68,12 @@ export class SettingsPanel {
       this.render();
     });
     window.addEventListener("keydown", (e) => this.visible && e.code === "Escape" && this.close());
+  }
+
+  /** A row for a setting another module keeps (shown after the general ones). */
+  addRow(row: ExtraRow): void {
+    this.extras.push(row);
+    if (this.visible) this.render();
   }
 
   get visible(): boolean {
@@ -78,6 +105,12 @@ export class SettingsPanel {
         const on = typeof s[r.key] === "boolean" ? String(s[r.key]) : undefined;
         return `<button class="set-row" data-key="${r.key}" ${on ? `role="switch" aria-checked="${on}"` : ""} aria-label="${r.label}: ${r.value(s)}"><span><b>${r.label}</b><small>${r.help}</small></span><em class="${on === "false" ? "off" : ""}">${r.value(s)}</em></button>`;
       }).join("")}
+      ${this.extras
+        .map((r) => {
+          const on = r.on ? String(r.on()) : undefined;
+          return `<button class="set-row" data-extra="${r.id}" ${on ? `role="switch" aria-checked="${on}"` : ""} aria-label="${r.label}: ${r.value()}"><span><b>${r.label}</b><small>${r.help}</small></span><em>${r.value()}</em></button>`;
+        })
+        .join("")}
       <p class="set-note">Los ajustes se guardan en este navegador. Solo se cambian sentada en una esterilla: la del habitáculo del módulo o la del rincón de ejercicio de la nodriza.</p>`;
   }
 }

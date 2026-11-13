@@ -9,16 +9,8 @@ import { join } from "node:path";
 const require = createRequire(import.meta.url);
 const { chromium, devices } = require("playwright");
 
-/** Performance budgets (docs/testing.md). Frame and long-task budgets only bind on a real GPU. */
-export const BUDGETS = {
-  loadMs: 8000,
-  frameP95Ms: 33,
-  slowFramesPct: 10,
-  longTasksPerMin: 30,
-  heapMB: 350,
-  drawCalls: 600,
-  trianglesK: 2000,
-};
+import { BUDGETS, TOUCH_MIN_PX } from "./presupuestos.mjs";
+import { checkBudgets, journeyPasses, verdict } from "./qa.mjs";
 
 const SAMPLER = `(() => {
   const s = (window.__exp = { frames: [], longTasks: [], since: performance.now(), stamp: 0 });
@@ -63,7 +55,8 @@ export class Journey {
     await this.page.waitForFunction(() => window.codeship, null, { timeout: 120000 });
     await this.page.waitForFunction(() => performance.getEntriesByName("codeship-primer-fotograma").length > 0, null, { timeout: 30000 }).catch(() => {});
     // The mark the game loop sets on its first frame (older builds without it: when the page had the game).
-    this.loadMs = await this.page.evaluate(() => performance.getEntriesByName("codeship-primer-fotograma")[0]?.startTime ?? performance.now());
+    this.loadMs = await this.page.evaluate(() => performance.getEntriesByName("codeship-primer-fotograma")[0]?.startTime);
+    this.loadMarked = typeof this.loadMs === "number";
     this.wallLoadMs = Date.now() - t0;
     this.gpu = await this.page.evaluate(() => {
       const gl = document.querySelector("canvas")?.getContext("webgl2");
@@ -89,6 +82,7 @@ export class Journey {
     const loc = this.page.locator(selector).first();
     try {
       await loc.waitFor({ state: "visible", timeout: 15000 });
+      await this.invariants(loc, what);
       // A finger on a phone, the mouse on a desktop.
       if (this.opts.mobile === false) await loc.click({ timeout: 15000 });
       else await loc.tap({ timeout: 15000 });
@@ -97,6 +91,31 @@ export class Journey {
       this.check(`se puede tocar «${what}»`, false, e.message.split("\n")[0]);
       return false;
     }
+  }
+
+  /**
+   * Checked before every tap (Natuka's invariant helpers): the target is big enough for a finger
+   * (44 px on phones, 24 px on desktop), nothing covers its centre and it has an accessible name.
+   * Each control is reported once per journey.
+   */
+  async invariants(loc, what) {
+    const min = this.opts.mobile === false ? TOUCH_MIN_PX.desktop : TOUCH_MIN_PX.mobile;
+    // Off screen (in a list), a player scrolls to it first.
+    await loc.scrollIntoViewIfNeeded().catch(() => {});
+    const r = await loc.evaluate((el) => {
+      const b = el.getBoundingClientRect();
+      const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+      const name = (el.getAttribute("aria-label") || el.textContent || el.getAttribute("title") || "").trim().replace(/\s+/g, " ");
+      return { w: Math.round(b.width), h: Math.round(b.height), covered: !hit || !(el === hit || el.contains(hit)), coveredBy: hit ? `${hit.className || hit.tagName}`.toString().split(" ")[0] : "nada", name };
+    });
+    const label = what ?? r.name.slice(0, 30);
+    this.invariantsSeen ??= new Set();
+    if (this.invariantsSeen.has(label)) return;
+    this.invariantsSeen.add(label);
+    this.tapsChecked = (this.tapsChecked ?? 0) + 1;
+    if (r.w < min || r.h < min) this.check(`objetivo de toque «${label}» de al menos ${min}×${min} px`, false, `${r.w}×${r.h}`);
+    if (r.covered) this.check(`«${label}» no está tapado por otro elemento`, false, `tapado por ${r.coveredBy}`);
+    if (!r.name) this.check(`«${label}» tiene nombre accesible`, false);
   }
 
   /** A finger (or the mouse on desktop) on the centre of an element, whatever its state. */
@@ -119,6 +138,7 @@ export class Journey {
       b = await loc.boundingBox();
     }
     if (!b) return false;
+    await this.invariants(loc);
     if (this.opts.mobile === false) await this.page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
     else await this.page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
     await this.page.waitForTimeout(450);
@@ -135,6 +155,12 @@ export class Journey {
     if (ex.kind === "choice") return this.tapAt(this.page.locator(".duel .option").nth(right ? ex.correct : (ex.correct + 1) % ex.options.length));
     for (const id of right ? ex.solution : [...ex.solution].reverse()) await this.tapAt(this.page.locator(`.duel .tray [data-id="${id}"]`));
     return this.tapAt(this.page.locator(".duel .submit"));
+  }
+
+  /** Waits until the challenge screen is up. */
+  async waitDuel(timeout = 30000) {
+    await this.page.waitForFunction(() => [...document.querySelectorAll(".duel")].some((e) => !e.classList.contains("hidden")), null, { timeout });
+    await this.page.waitForTimeout(400);
   }
 
   async key(code, ms = 0) {
@@ -250,25 +276,29 @@ export class Journey {
   async measure() {
     const m = await this.page.evaluate(() => {
       const s = window.__exp;
-      const f = window.__codeshipFrame || { calls: 0, triangles: 0 };
+      const f = window.__codeshipFrame;
       const mem = performance.memory;
-      return { frames: s.frames.slice(1), longTasks: s.longTasks.filter((t) => t.at >= s.since), seconds: (performance.now() - s.since) / 1000, calls: f.calls, triangles: f.triangles, heap: mem ? mem.usedJSHeapSize : 0 };
+      // Sentinel: a missing sampler, hook or memory API is reported as missing, never as 0.
+      if (!s) return null;
+      return { frames: s.frames.slice(1), longTasks: s.longTasks.filter((t) => t.at >= s.since), seconds: (performance.now() - s.since) / 1000, calls: f?.calls, triangles: f?.triangles, heap: mem?.usedJSHeapSize };
     });
-    const frames = m.frames;
+    const frames = m?.frames ?? [];
+    const has = frames.length > 0;
+    const num = (v, f) => (typeof v === "number" && Number.isFinite(v) ? f(v) : undefined);
     this.perf = {
       frames: frames.length,
-      seconds: +m.seconds.toFixed(1),
-      fps: +(frames.length / Math.max(1, m.seconds)).toFixed(1),
-      frameMedianMs: +pct(frames, 50).toFixed(1),
-      frameP95Ms: +pct(frames, 95).toFixed(1),
-      slowFramesPct: frames.length ? +((100 * frames.filter((x) => x > 33).length) / frames.length).toFixed(1) : 0,
-      longTasks: m.longTasks.length,
-      longTasksPerMin: +((60 * m.longTasks.length) / Math.max(1, m.seconds)).toFixed(1),
-      longestTaskMs: Math.round(Math.max(0, ...m.longTasks.map((t) => t.ms))),
-      heapMB: +(m.heap / 1048576).toFixed(1),
-      drawCalls: m.calls,
-      trianglesK: +(m.triangles / 1000).toFixed(1),
-      loadMs: Math.round(this.loadMs),
+      seconds: m ? +m.seconds.toFixed(1) : 0,
+      fps: has ? +(frames.length / Math.max(1, m.seconds)).toFixed(1) : undefined,
+      frameMedianMs: has ? +pct(frames, 50).toFixed(1) : undefined,
+      frameP95Ms: has ? +pct(frames, 95).toFixed(1) : undefined,
+      slowFramesPct: has ? +((100 * frames.filter((x) => x > 33).length) / frames.length).toFixed(1) : undefined,
+      longTasks: m?.longTasks.length,
+      longTasksPerMin: m ? +((60 * m.longTasks.length) / Math.max(1, m.seconds)).toFixed(1) : undefined,
+      longestTaskMs: m ? Math.round(Math.max(0, ...m.longTasks.map((t) => t.ms))) : undefined,
+      heapMB: num(m?.heap, (v) => +(v / 1048576).toFixed(1)),
+      drawCalls: num(m?.calls, (v) => v),
+      trianglesK: num(m?.triangles, (v) => +(v / 1000).toFixed(1)),
+      loadMs: this.loadMarked ? Math.round(this.loadMs) : undefined,
       gpu: this.gpu,
     };
     return this.perf;
@@ -276,30 +306,29 @@ export class Journey {
 
   /** Budget results: GPU-bound budgets only bind on a hardware GPU (or with EXPERIENCIA_ESTRICTO=1). */
   budgets() {
-    const p = this.perf;
-    const softwareGl = /swiftshader|llvmpipe|software/i.test(p.gpu) && !process.env.EXPERIENCIA_ESTRICTO;
-    const rows = [
-      ["Carga hasta el primer fotograma", p.loadMs, BUDGETS.loadMs, "ms", true],
-      ["Fotograma p95", p.frameP95Ms, BUDGETS.frameP95Ms, "ms", true],
-      ["Fotogramas de más de 33 ms", p.slowFramesPct, BUDGETS.slowFramesPct, "%", true],
-      ["Tareas largas por minuto", p.longTasksPerMin, BUDGETS.longTasksPerMin, "", true],
-      ["Memoria JS", p.heapMB, BUDGETS.heapMB, "MB", false],
-      ["Llamadas de dibujo por fotograma", p.drawCalls, BUDGETS.drawCalls, "", false],
-      ["Triángulos por fotograma", p.trianglesK, BUDGETS.trianglesK, "k", false],
-    ];
-    return rows.map(([name, value, max, unit, gpuBound]) => ({ name, value, max, unit, ok: value <= max, binding: !(gpuBound && softwareGl) }));
+    const softwareGl = /swiftshader|llvmpipe|software/i.test(this.perf.gpu ?? "");
+    return checkBudgets(this.perf, BUDGETS, { softwareGl, strict: !!process.env.EXPERIENCIA_ESTRICTO });
   }
 
   async close() {
-    await this.measure();
+    // Empty-suite guard: a journey that checked nothing is a failure, not a pass.
+    if (this.checks.filter((c) => !c.setup).length === 0) this.check("el recorrido hizo alguna comprobación", false, "0 comprobaciones");
+    try {
+      await this.measure();
+    } catch (e) {
+      this.perf = { gpu: this.gpu, frames: 0 };
+      this.check("se pudo medir el rendimiento", false, e.message.split("\n")[0]);
+    }
     this.check("ningún error de JavaScript en la página", this.errors.length === 0, this.errors.slice(0, 3).join(" | "));
-    await this.browser.close();
+    await this.browser?.close();
     const budgets = this.budgets();
-    const failedBudgets = budgets.filter((b) => b.binding && !b.ok);
     return {
+      id: this.opts.id,
       name: this.name,
       title: this.title,
-      ok: this.checks.every((c) => c.ok) && failedBudgets.length === 0,
+      verdict: verdict(this.checks),
+      passed: journeyPasses(this.checks, budgets),
+      tapsChecked: this.tapsChecked ?? 0,
       checks: this.checks,
       problems: this.problems,
       shots: this.shots,

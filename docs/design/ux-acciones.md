@@ -27,7 +27,7 @@ Encargo del diseñador: probar la jugabilidad y la UX, investigar cómo ordenar 
 4. **El estado arriba a la izquierda, breve.** El HUD de la cabina enseña en el móvil lo esencial (distancia, velocidad, Δv, casco, asistente, propulsores); las componentes de la velocidad, el giro y cada tanque quedan para el escritorio.
 5. **El contexto agrupado.** El mensaje que explica la acción, la confianza del asteroide, el viaje en curso y la región van juntos en la columna de contexto, encima de la acción, en ese orden de abajo arriba (lo más ligado a la acción, más cerca).
 6. **Nada se solapa** a 390×664 (iPhone 13 con las barras de Safari) ni a 1280×800. La suite de experiencia lo comprueba en cada pantalla.
-7. **Objetivos de toque ≥ 44 px** de alto en los botones nuevos y en las opciones de los retos (también en la vista HUD).
+7. **Objetivos de toque ≥ 44×44 px** en el móvil: botones de menú (Tareas, Radio, Vista, Mandos), cierres ✕, chips de filtro, pestañas, botones del viaje y opciones de los retos (también en la vista HUD). La suite lo comprueba antes de cada toque, junto con que nada tape el centro del control y que tenga nombre accesible.
 8. **Un fallo se ve con forma y color**: ✗ y rojo en la opción, número en ámbar o rojo; un acierto, ✓ y verde. Nunca solo color.
 
 ## 2. Auditoría
@@ -41,6 +41,7 @@ Hecha jugando: el recorrido `acciones-movil` / `acciones-escritorio` de la suite
 | Cabina, escritorio | La etiqueta de región tapaba la ficha de confianza; posado, el aviso tapaba la ficha y el HUD. | Columna de contexto abajo a la derecha; la ayuda de teclado pasa abajo a la izquierda. 0 solapes. |
 | Reto (duelo, tareas), vista HUD | Barras de aciertos y de «Intentos» casi transparentes (celdas `#ffffff22`); «Intentos» contaba hacia abajo, así que un fallo **apagaba** una celda (se leía como «desmarcar»); la opción fallada no quedaba marcada y se podía volver a tocar; al perder, la pantalla seguía diciendo «inténtalo otra vez» y el «Cerrar» aparecía donde estaban las opciones. | Ver la sección 4. |
 | Interior: ingravidez y anillo | Consistente: estado arriba a la izquierda, Tareas/Radio/Vista arriba a la derecha, la acción de la zona («Bajar al módulo», «Cocina: 8 tareas») abajo al centro encima de los mandos. El estado del interior no se leía sobre carteles claros. Elegir una tarea en el eje no decía nada y tardaba minutos (planeo a 0,5 m/s + ascensor). | Placa oscura bajo el estado; elegir una tarea en el eje avisa «Bajas al anillo para…» y ella se impulsa por los asideros a 1,5 m/s. |
+| Estado del interior en el móvil (con el retrato de Doménica) | Retrato, cuatro barras, autosuficiencia, despensa (cinco líneas) y gravedad: un bloque de media pantalla que tapaba la escena por la izquierda. | Retrato y nombre, las cuatro barras más finas y la línea de gravedad; **autosuficiencia y despensa se pliegan** y se ven tocando el estado (▾/▴). En escritorio, todo a la vista. |
 | Tablero de tareas | Los avisos del interior caían encima de la lista. | Con el tablero o la radio abiertos, los avisos bajan al pie. |
 | Puente de mando, mapa | Sin solapes. Volver arriba a la derecha, como en la estación y la sonda. | Igual. |
 | Consola de la sonda | Ya seguía la regla: «Lanzar sonda» encima de MOVER; «Volver al puente» arriba a la derecha. | Igual; el viaje en curso se coloca sobre GIRAR para no tapar su acción. |

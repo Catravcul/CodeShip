@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint:arch": "node scripts/check-architecture.mjs",
-    "experiencia": "vite build && node tools/experiencia/run.mjs"
+    "experiencia": "vite build && node tools/experiencia/run.mjs",
+    "check:docs": "node scripts/check-docs.mjs"
   },
   "dependencies": {
     "three": "^0.187.0"

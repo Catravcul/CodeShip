@@ -41,7 +41,7 @@ export async function cocina(j) {
   j.check("la lista de tareas ofrece «Hacer crema de cacahuete»", list.includes("Hacer crema de cacahuete"), `${list.length} tareas`);
   await j.shot("tareas");
   await j.tap('.board .chore:has-text("Hacer crema de cacahuete")', "Hacer crema de cacahuete");
-  await p.locator(".duel:not(.hidden)").waitFor({ timeout: 120000 });
+  await j.waitDuel(120000);
   await p.waitForTimeout(400);
   let s = await stats(j);
   j.check("el reto empieza con Aciertos 0/7 y Fallos 0/3 escritos", /Aciertos 0\/7/.test(s.hits) && /Fallos 0\/3/.test(s.fails), `${s.hits} · ${s.fails}`);
@@ -78,14 +78,17 @@ export async function cocina(j) {
   await j.shot("crema-conseguido");
   await j.tap('.duel button.end', "Continuar");
   await p.waitForTimeout(600);
-  const hud = (await j.texts(".interior-ui .ihud"))[0] ?? "";
-  j.check("la despensa ya muestra crema de cacahuete", /crema de cacahuete/.test(hud), hud.slice(0, 160));
+  if (j.opts.mobile !== false && (await j.texts(".ihud .more")).length === 0) await j.tap(".ihud", "estado de Doménica (despliega la despensa)");
+  const larder = (await j.texts(".ihud .more")).join(" ");
+  j.check("la despensa (al tocar el estado) ya muestra crema de cacahuete", /crema de cacahuete/.test(larder), larder.slice(0, 160));
+  await j.shot("despensa");
+  await j.tap(".ihud", "estado de Doménica (pliega)");
 
   // HUD view, a recipe lost on purpose: three different wrong answers.
   await j.tap(".tasks-btn", "Tareas");
   await p.waitForTimeout(400);
   await j.tap('.board .chore:has-text("Cocinar Cacahuetes tostados")', "Cocinar Cacahuetes tostados");
-  await p.locator(".duel:not(.hidden)").waitFor({ timeout: 120000 });
+  await j.waitDuel(120000);
   await j.tap('.duel [data-act="ui"]', "Vista HUD");
   await p.waitForTimeout(400);
   j.check("el botón cambia a la vista HUD", await p.evaluate(() => document.body.classList.contains("ui-compact")));
@@ -101,6 +104,18 @@ export async function cocina(j) {
   let first = true;
   for (const step of TOSTADOS) {
     for (const o of (await j.texts(".duel .option:not(.wrong)")).filter((x) => x !== answerFor(step))) {
+      if (/Fallos 2\/3/.test((await stats(j)).fails)) {
+        // The losing tap, as a nervous double tap: the second lands where the options were.
+        const i = (await j.texts(".duel .option")).findIndex((x) => x === o);
+        const b = await p.locator(".duel .option").nth(i).boundingBox();
+        await p.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+        await p.waitForTimeout(150);
+        await p.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+        await p.waitForTimeout(150);
+        j.check("un doble toque al perder no cierra el resultado sin verlo", (await j.texts(".duel .result")).length === 1);
+        lost = true;
+        break;
+      }
       await choose(j, o);
       s = await stats(j);
       if (first) {
@@ -118,11 +133,6 @@ export async function cocina(j) {
   j.check("con todos los fallos, la pantalla dice «Reto perdido» (no parece terminado con éxito)", /Reto perdido/.test(r2), r2);
   const red = await j.color(".duel .stat.fails");
   j.check("Fallos al tope se pinta en rojo", red === "rgb(255, 122, 107)", red);
-  // A quick extra tap where the options were must not close it.
-  const box = await p.locator(".duel button.end").boundingBox();
-  await p.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
-  await p.waitForTimeout(100);
-  j.check("un toque inmediato tras perder no cierra el resultado sin verlo", (await j.texts(".duel .result")).length === 1);
   await j.shot("hud-perdido");
   await p.waitForTimeout(1000);
   await j.tap(".duel button.end", "Cerrar");

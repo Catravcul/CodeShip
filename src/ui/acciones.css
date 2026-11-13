@@ -52,3 +52,29 @@ body.in-cockpit .ctx-dock > .rapport-chip, body.in-cockpit .ctx-dock > .trip-chi
 .ihud { box-sizing: border-box; padding: 6px 8px; background: #05141cc4; border-radius: 10px; }
 /* A mission notice during a challenge drops to the bottom: on top it covered the result («Conseguido»). */
 body.in-duel .ml-toast { top: auto !important; bottom: calc(16px + env(safe-area-inset-bottom)); }
+/* Interior status on phones: portrait, the four bars and where she is; larder and self-sufficiency fold under a tap. */
+@media (pointer: coarse) {
+  .ihud { pointer-events: auto; width: min(210px, 54vw); font-size: 11px; }
+  .ihud .bar { height: 14px; margin: 2px 0; }
+  .ihud .bar span { line-height: 14px; }
+  .ihud:not(.open) .more { display: none; }
+  .ihud .ihud-who::after { content: "▾"; margin-left: auto; color: #7fdcff; }
+  .ihud.open .ihud-who::after { content: "▴"; }
+  .ihud-who .portrait-img { width: 30px; height: 30px; }
+}
+/* The task board and the radio hang from the top, leaving the bottom for notices. */
+.interior-ui .board { top: 10px; transform: translateX(-50%); max-height: calc(100% - 110px); }
+/* Touch targets of at least 44×44 px on phones (Apple HIG; checked before every tap by the experience suite). */
+@media (pointer: coarse) {
+  .tasks-btn, .radio-btn, .view-btn, .board-head button, .board-head .chip, .duel-tools button, .duel .toggle, .trip-chip button, .flight-bar button,
+  .mission-log button, .ml-head .x, .st-tabs button, .st-back, .sti-ui button, .zone-btn, .eva-ui button, .pr-exit, .station-btn, .throw-btn, .fd-exit {
+    min-height: 44px !important; min-width: 44px !important; box-sizing: border-box;
+  }
+  /* Interior notices below the right-hand menu column, above the zone button. */
+  .interior-ui .toast { top: 40vh; }
+  .board-head .chip { display: inline-flex; align-items: center; }
+}
+/* Desktop floor (WCAG 2.5.8): the board's close buttons were 23 px. */
+.board-head button { min-width: 28px; min-height: 28px; }
+/* With the task board or the radio open (a modal), the walking sticks under it are hidden. */
+body:has(.interior-ui .board:not(.hidden)) .vstick { display: none !important; }

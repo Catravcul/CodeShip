@@ -34,7 +34,7 @@ export async function movimiento(j) {
   await j.tapAt(p.locator(".zg-push:visible"));
   await p.waitForTimeout(3000);
   const after = (await j.texts(".interior-ui .ihud"))[0] ?? "";
-  j.check("un toque en Impulsarse la hace planear (lo dice el HUD)", /Planeando|Impulso|sujeta|Agarrada/i.test(after) && after !== before, after.match(/Espina[^·]*·[^·]*·[^·]*/)?.[0] ?? after.slice(-80));
+  j.check("un toque en Impulsarse la hace planear (lo dice el HUD)", /Planeando|Impuls|sujeta|Agarrada/i.test(after) && after !== before, after.match(/Espina[^·]*·[^·]*·[^·]*/)?.[0] ?? after.slice(-80));
   j.check("la vista cambia al impulsarse", differs(shot0, await p.screenshot()));
   await j.shot("ingravidez");
 

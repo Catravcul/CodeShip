@@ -58,7 +58,7 @@ export async function mision(j) {
   j.check("la acción principal está en la mitad derecha y en la mitad de abajo", box && box.x + box.width / 2 > vp.width / 2 && box.y > vp.height / 2, box ? `${Math.round(box.x)},${Math.round(box.y)}` : "");
   await j.shot("posado");
   await j.tap(".ctx-dock > .action:not(.nano-action)", action || "acción");
-  await p.locator(".duel:not(.hidden)").waitFor({ timeout: 30000 });
+  await j.waitDuel(30000);
   await p.waitForTimeout(400);
   const fails0 = (await j.texts(".duel .stat.fails"))[0] ?? "";
   j.check("el duelo muestra Aciertos y Fallos escritos", /Fallos 0\//.test(fails0), fails0);
@@ -80,14 +80,14 @@ export async function mision(j) {
 
   // Stage 3: out in the suit and lying on Bennu.
   await j.tap(".eva-btn", "Salir de la nave");
-  await p.locator(".duel:not(.hidden)").waitFor({ timeout: 30000 });
+  await j.waitDuel(30000);
   for (let n = 0; n < 8 && (await p.evaluate(() => window.codeship.eva.phase)) === "preparando"; n++) await j.answer(() => window.codeship.eva._run?.current ?? null);
   await j.tapAt(p.locator(".duel button.end"));
   await p.waitForTimeout(2500);
   j.check("con el traje puesto, sale al exterior", await p.evaluate(() => window.codeship.eva.outside), await p.evaluate(() => window.codeship.eva.phase));
   await j.shot("fuera");
   await j.tap(".eva-lie", "Tumbarse sobre el asteroide");
-  await p.locator(".duel:not(.hidden)").waitFor({ timeout: 30000 });
+  await j.waitDuel(30000);
   for (let n = 0; n < 14 && (await p.evaluate(() => window.codeship.expedition.phase)) === "duel"; n++) await j.answer(key, true);
   const phase = await p.evaluate(() => window.codeship.expedition.phase);
   j.check("con las tres fases, Bennu queda persuadido", phase === "persuaded", phase);

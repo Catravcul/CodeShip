@@ -210,6 +210,8 @@ export class Interior {
     this.ui.innerHTML = `<div class="ihud"></div><button class="tasks-btn">Tareas</button><button class="radio-btn">Radio<b></b></button><button class="view-btn"></button><div class="board hidden"></div><button class="station-btn hidden"></button><div class="toast"></div>`;
     root.appendChild(this.ui);
     this.hud = this.ui.querySelector(".ihud")!;
+    // On phones the larder and self-sufficiency lines fold away: a tap on the status shows them (docs/design/ux-acciones.md).
+    this.hud.addEventListener("click", () => this.hud.classList.toggle("open"));
     this.board = this.ui.querySelector(".board")!;
     this.stationBtn = this.ui.querySelector(".station-btn")!;
     this.toast = this.ui.querySelector(".toast")!;
@@ -745,8 +747,8 @@ export class Interior {
     this.hud.innerHTML = `
       <div class="ititle ihud-who">${portrait("Doménica")}<span>Doménica · día ${Math.floor(this.dayClock) + 1} a bordo</span></div>
       ${bar("Saciedad", c.satiety)}${bar("Forma", c.fitness)}${bar("Calma", 1 - c.stress)}${bar("Compañía", 1 - c.loneliness)}
-      <div class="small">Autosuficiencia: ${Math.round(sus.ratio * 100)} % (${Math.round(sus.areaM2)} de ${Math.round(sus.neededM2)} m² de cultivo)${fam ? ` · Familias: ${fam}` : ""}</div>
-      <div class="small">Despensa: ${larder || "vacía"} · ${this.habitat.meals} platos cocinados</div>${
+      <div class="small more">Autosuficiencia: ${Math.round(sus.ratio * 100)} % (${Math.round(sus.areaM2)} de ${Math.round(sus.neededM2)} m² de cultivo)${fam ? ` · Familias: ${fam}` : ""}</div>
+      <div class="small more">Despensa: ${larder || "vacía"} · ${this.habitat.meals} platos cocinados</div>${
         this.zones ? `<div class="small grav">${this.zones.hudLine()}${c.microgravityDays > 0.05 ? ` · ${c.microgravityDays.toFixed(1).replace(".", ",")} días en ingravidez` : ""}</div>` : ""
       }`;
   }

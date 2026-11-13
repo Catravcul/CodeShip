@@ -37,7 +37,7 @@ const body: ImportBody = {
   comet: true,
 };
 
-function setup(opts: { credits?: number; subjugated?: boolean; crafts?: boolean } = {}) {
+function setup(opts: { credits?: number; crafts?: boolean } = {}) {
   const hangar = new Hangar();
   if (opts.crafts) {
     hangar.addCraft(TUG_CRAFT);
@@ -48,7 +48,6 @@ function setup(opts: { credits?: number; subjugated?: boolean; crafts?: boolean 
   const ops = new ImportOps(station, new Wallet(opts.credits ?? 0), {
     regionAU: () => 2.1,
     bodies: () => [body],
-    isSubjugated: () => opts.subjugated ?? false,
     toMaterial: cargoMaterial,
     launchers: LAUNCHERS,
     stage: { ispS: TRANSFER_STAGE.ispS.value, tankage: TRANSFER_STAGE.tankage.value },
@@ -89,29 +88,38 @@ describe("imports from the Sanctuary", () => {
 });
 
 describe("the station's own sources", () => {
-  it("only a subjugated body, with the tug home and xenon in store", () => {
-    expect(setup({ crafts: true }).ops.towBlocker("67p", 2)).toMatch(/subyugado/);
-    expect(setup({ subjugated: true }).ops.towBlocker("67p", 2)).toMatch(/Construye/);
-    expect(setup({ subjugated: true, crafts: true }).ops.towBlocker("67p", 5)).toMatch(/4 m/);
+  it("works on any body, no subjugation needed: only the tug home, xenon and the arms' size", () => {
+    expect(setup({ crafts: true }).ops.towBlocker("67p", 2)).toBeUndefined();
+    expect(setup().ops.towBlocker("67p", 2)).toMatch(/Construye/);
+    expect(setup({ crafts: true }).ops.towBlocker("67p", 5)).toMatch(/4 m/);
+    expect(setup({ crafts: true }).ops.installBlocker("67p")).toBeUndefined();
+  });
+
+  it("other mechanics can send goods to the station through the inbox", () => {
+    const { ops, station } = setup();
+    ops.inbox.send("asteroide", "Agua de 242916", { agua: 12 }, 2);
+    ops.tick(2.01);
+    expect(station.stock.amount("agua")).toBe(12);
+    expect(ops.drainEvents()).toMatchObject([{ type: "llegada" }]);
   });
 
   it("the tug hauls a comet boulder: water ice and CO2 ice reach the store, CO boils away", () => {
-    const { ops, station } = setup({ subjugated: true, crafts: true });
-    const plan = ops.towPlan("67p", 3);
-    solve(ops.startTow("67p", 3));
+    const { ops, station } = setup({ crafts: true });
+    const plan = ops.towPlan("67p", 2);
+    solve(ops.startTow("67p", 2));
     expect(ops.tug).toBeUndefined();
     expect(ops.tow?.bodyName).toBe(c67p.name);
     expect(station.stock.amount("xenon")).toBeCloseTo(50 - plan.xenonKg, 6);
     ops.tick(plan.totalHours + 0.01);
     expect(ops.tug).toBeDefined();
-    expect(station.stock.amount("hielo-agua")).toBeGreaterThan(1000);
-    expect(station.stock.amount("hielo-co2")).toBeGreaterThan(100);
+    expect(station.stock.amount("hielo-agua")).toBeGreaterThan(300);
+    expect(station.stock.amount("hielo-co2")).toBeGreaterThan(40);
     const lost = ops.goodsFrom(body, plan.boulderKg).lostKg;
     expect(lost).toBeGreaterThan(0);
   });
 
-  it("a mass driver set on the comet sends a package every few hours", () => {
-    const { ops, station } = setup({ subjugated: true, crafts: true });
+  it("a mass driver set on the comet (not subjugated) sends a small package every few hours", () => {
+    const { ops, station } = setup({ crafts: true });
     solve(ops.startInstall("67p"));
     expect(ops.driverCraft).toBeUndefined();
     expect(station.hangar.crafts.some((c) => c.kind === "lanzador")).toBe(false);

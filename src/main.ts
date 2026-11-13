@@ -89,11 +89,20 @@ import { mothershipCarrier } from "@modules/navigation/application/mothership-ca
 import { FlightDeck } from "./flight-deck";
 import { MissionLog } from "@modules/missions/domain/mission";
 import { MissionControl } from "@modules/missions/application/mission-control";
-import { MISSION_LETTERS, NEVAEH_MISSIONS } from "@modules/missions/data/nevaeh-missions";
+import { MISSION_LETTERS, NEVAEH_MISSIONS, SIDE_MISSION_CREDITS, STARTING_CREDITS } from "@modules/missions/data/nevaeh-missions";
 import { MissionLogPanel } from "./ui/mission-log";
 import { SubjugationUi, stageDuelText, stageResultText } from "./subjugation";
 import { BENNU_SAMPLES } from "@modules/eva/data/samples";
 import { WrathMode } from "./wrath-mode";
+import { Wallet } from "@modules/imports/domain/wallet";
+import { ImportOps } from "@modules/imports/application/import-ops";
+import { LAUNCHERS, TRANSFER_STAGE, GAME_HOURS_PER_TRANSIT_DAY } from "@modules/imports/data/launchers";
+import { MASS_DRIVER, TUG } from "@modules/imports/data/craft";
+import { IMPORT_BLUEPRINTS } from "@modules/imports/data/blueprints";
+import { importGood } from "@modules/imports/data/goods";
+import { orderLetter } from "@modules/imports/data/letters";
+import { cargoMaterial } from "@modules/station/data/materials";
+import { G } from "@core/units";
 
 // --- Domain setup -----------------------------------------------------------
 const d = BENNU.dimensionsM.value;
@@ -127,7 +136,8 @@ const stationOps = new StationOps(
     { ...MOTHERSHIP_CRAFT, name: mothership.spec.name, massKg: mothership.massKg },
     { ...EXPLORER_CRAFT, name: ship.name, massKg: ship.massKg },
   ]), stationOutfit),
-  BLUEPRINTS,
+  // The station's own import sources (tug, mass driver) sit in the same blueprint tree.
+  [...BLUEPRINTS, ...IMPORT_BLUEPRINTS],
   [...REFINE_PROCESSES, ...COMET_PROCESSES, ...PROPELLANT_PROCESSES],
   materialName,
 );
@@ -163,12 +173,50 @@ const habitat = new Habitat(seededRandom(2026), 3, ship, "Doménica", MACHINES);
 habitat.mailbox = new Mailbox(STORY);
 // The nano_net: a persuaded Bennu can become a core (docs/design/nano-net.md).
 // Nevaeh's main missions and the side missions (docs/design/misiones.md). Rewards go to the station.
+// Nevaeh's credits: a first stipend, then what each mission pays (spent on imports).
+const wallet = new Wallet(STARTING_CREDITS);
 const missions = new MissionControl(
   new MissionLog(NEVAEH_MISSIONS, navTargets.map((t) => ({ id: t.id, name: t.name }))),
   habitat.mailbox,
   MISSION_LETTERS,
   (a) => stationOps.station.stock.add(a),
+  (credits, why) => wallet.earn(credits, why),
+  SIDE_MISSION_CREDITS,
 );
+// Imports (docs/design/importacion.md): orders to the Sanctuary paid in credits, the tug and the mass driver.
+let orderLetters = 0;
+const importOps = new ImportOps(stationOps.station, wallet, {
+  regionAU: () => region.heliocentricAU().length(),
+  bodies: () =>
+    region.asteroids.map((a) => ({
+      id: a.data.id,
+      name: a.data.name,
+      position: a.position,
+      meanRadiusM: a.meanRadiusM,
+      densityKgM3: a.data.densityKgM3.value,
+      escapeSpeedMs: Math.sqrt((2 * G * a.massKg) / a.meanRadiusM),
+      composition: a.data.composition,
+      comet: a.data.kind === "cometa",
+    })),
+  toMaterial: cargoMaterial,
+  launchers: LAUNCHERS,
+  stage: { ispS: TRANSFER_STAGE.ispS.value, tankage: TRANSFER_STAGE.tankage.value },
+  gameHoursPerTransitDay: GAME_HOURS_PER_TRANSIT_DAY,
+  kgPerUnit: (id) => importGood(id)?.kgPerUnit ?? 1,
+  tug: TUG,
+  driver: MASS_DRIVER,
+  onOrder: (q, goods, l) =>
+    habitat.mailbox!.post(
+      orderLetter(
+        ++orderLetters,
+        Object.entries(goods)
+          .map(([id, n]) => `${importGood(id)?.kgPerUnit === 1 ? `${n} kg de` : `${n}`} ${materialName(id).toLowerCase()}`)
+          .join(", "),
+        q,
+        l.name,
+      ),
+    ),
+});
 const nano = new NanoNetOps(new NanoNet(REMOTE_NETS), seededRandom(4242));
 const bennuSite: NanoSite = { id: BENNU.id, name: BENNU.name, position: bennu.position, radiusM: bennu.meanRadiusM, massKg: bennu.massKg, muM3S2: bennu.mu };
 /** The nano_net wears on the same clock as life on board (a game day every ~40 s). */
@@ -489,6 +537,7 @@ const stationScreen = new StationScreen(
   () => flight.state.position,
   (id) => (id === MOTHERSHIP_CRAFT.id ? mothership.position : id === EXPLORER_CRAFT.id ? flight.state.position : undefined),
   refuelOps,
+  importOps,
 );
 // Inside the station (docs/design/interiores.md §5): zero-g modules and the hangar; its machines open the screen's tabs.
 const stationInside = new StationInteriorMode(root, new StationInterior(stationInteriorPlan(stationOutfit.layout, stationOutfit)), {
@@ -684,6 +733,22 @@ renderer.setAnimationLoop((now) => {
   }
   // The station's machines run on the same clock as life on board.
   stationOps.station.tick(dt * warp * STATION_TUNING.hoursPerSecond);
+  importOps.tick(dt * warp * STATION_TUNING.hoursPerSecond);
+  for (const e of importOps.drainEvents()) {
+    const text =
+      e.type === "llegada"
+        ? `Llega a la estación: ${e.delivery.label}`
+        : e.type === "remolque"
+          ? `El remolcador sale hacia ${e.bodyName}`
+          : e.type === "lanzador"
+            ? `Lanzador de masas montado en ${e.bodyName}`
+            : e.type === "pedido"
+              ? `Pedido al Santuario: ${e.credits.toLocaleString("es-ES")} créditos`
+              : "";
+    if (!text) continue;
+    stationScreen.notice(text);
+    flash(text, 5);
+  }
   // A module berthed or equipment installed: the structure, its model and the walkable interior follow.
   if (stationOutfit.version !== stationGrownAt) regrowStation();
   interior.update(dt);
@@ -791,4 +856,4 @@ renderer.setAnimationLoop((now) => {
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, refuelOps, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, refuelOps, importOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe };

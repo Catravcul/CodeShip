@@ -1,5 +1,5 @@
 /**
- * A mass driver set on a subjugated body: a coil gun that flings bagged regolith at the station, where
+ * A mass driver set on a small body (no subjugation needed): a coil gun that flings bagged regolith at the station, where
  * a catcher stops it (O'Neill's lunar launcher, Ames 1977). Here it only has to beat a small body's
  * escape speed, so Mass Driver Two's 112 m/s is plenty.
  */

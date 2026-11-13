@@ -1,7 +1,10 @@
 import type { Amounts } from "@modules/station/domain/materials";
 
-/** Where a delivery comes from: an order to the Sanctuary, the tug's boulder or a mass-driver package. */
-export type DeliverySource = "santuario" | "remolcador" | "lanzador";
+/**
+ * Where a delivery comes from: an order to the Sanctuary, the tug's boulder or a mass-driver package.
+ * Other sources (a subjugated asteroid sending resources, branch niveles-subyugacion) name their own.
+ */
+export type DeliverySource = "santuario" | "remolcador" | "lanzador" | (string & {});
 
 export interface Delivery {
   readonly id: number;
@@ -14,10 +17,18 @@ export interface Delivery {
 }
 
 /**
+ * Port: how anything sends goods to the station. Whoever has something on its way calls `send` with
+ * the hours it takes on the station clock; the goods land in the store when they run out.
+ */
+export interface StationInbox {
+  send(source: DeliverySource, label: string, goods: Amounts, hours: number): Delivery;
+}
+
+/**
  * Everything on its way to the station. Unlike machine jobs they travel in parallel: each one
  * counts its own hours on the station clock and lands when they run out.
  */
-export class DeliveryLine {
+export class DeliveryLine implements StationInbox {
   private readonly list: Delivery[] = [];
   private nextId = 1;
 

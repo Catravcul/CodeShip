@@ -6,14 +6,14 @@ import { StationSession } from "@modules/station/application/station-ops";
 import type { Craft } from "@modules/station/domain/hangar";
 import type { Amounts, MaterialId } from "@modules/station/domain/materials";
 import type { Station } from "@modules/station/domain/station";
-import { DeliveryLine, type Delivery } from "../domain/delivery";
+import { DeliveryLine, type Delivery, type StationInbox } from "../domain/delivery";
 import { escapes, flightHours, MassDriver, type MassDriverSpec } from "../domain/mass-driver";
 import { importQuote, type ImportQuote } from "../domain/quote";
 import { towPlan, type TowPlan, type TugSpec } from "../domain/tug";
 import type { Wallet } from "../domain/wallet";
 import { installChore, orderChore, towChore } from "./challenges";
 
-/** A body the station can haul from or set a mass driver on. */
+/** A small body the station can haul a boulder from or set a mass driver on (no subjugation needed). */
 export interface ImportBody {
   readonly id: string;
   readonly name: string;
@@ -35,7 +35,6 @@ export interface ImportDeps {
   /** The region's distance from the Sun now, AU. */
   readonly regionAU: () => number;
   readonly bodies: () => readonly ImportBody[];
-  readonly isSubjugated: (bodyId: string) => boolean;
   /** Which store a body's material goes to (undefined: it boils away or has no use). */
   readonly toMaterial: (cargo: string) => MaterialId | undefined;
   readonly launchers: readonly Launcher[];
@@ -68,8 +67,10 @@ export interface Tow {
 /**
  * Use case: the three ways the station brings in what it cannot make (docs/design/importacion.md).
  * Orders to the Sanctuary are paid in credits and fly a Hohmann transfer; the tug hauls a boulder off
- * a subjugated body; a mass driver on a subjugated body throws packages at the station. Each one
- * starts as a chain of code challenges, like the rest of the station.
+ * any small body; a mass driver set on one throws small packages at the station. The last two are the
+ * early, passive sources: they need no subjugation and give slow, modest yields (a subjugated
+ * asteroid's own deliveries are another mechanic, which can use `inbox`). Each one starts as a chain
+ * of code challenges, like the rest of the station.
  */
 export class ImportOps {
   readonly deliveries = new DeliveryLine();
@@ -82,6 +83,11 @@ export class ImportOps {
     readonly wallet: Wallet,
     private readonly d: ImportDeps,
   ) {}
+
+  /** The port other mechanics send goods to the station through (they land on the station clock). */
+  get inbox(): StationInbox {
+    return this.deliveries;
+  }
 
   get tow(): Tow | undefined {
     return this._tow;
@@ -135,9 +141,9 @@ export class ImportOps {
 
   // --- Own sources -----------------------------------------------------------
 
-  /** Subjugated bodies (they obey: they let the tug lift a boulder and a driver sit on them). */
+  /** Bodies the tug and the mass driver can work on: every catalogued small body of the region. */
   sources(): ImportBody[] {
-    return this.d.bodies().filter((b) => this.d.isSubjugated(b.id));
+    return [...this.d.bodies()];
   }
 
   private body(id: string): ImportBody {
@@ -182,7 +188,6 @@ export class ImportOps {
 
   towBlocker(bodyId: string, diameterM: number): string | undefined {
     if (!this.tug) return this._tow ? "El remolcador está fuera" : "Construye el remolcador en Planos";
-    if (!this.d.isSubjugated(bodyId)) return "Solo un cuerpo subyugado deja que le quiten una roca";
     if (diameterM > this.d.tug.maxBoulderM) return `Los brazos solo cierran rocas de hasta ${this.d.tug.maxBoulderM} m`;
     const p = this.towPlan(bodyId, diameterM);
     if (this.station.stock.amount("xenon") + 1e-9 < p.xenonKg) return `Falta xenón: ${p.xenonKg.toFixed(2).replace(".", ",")} kg`;
@@ -208,7 +213,6 @@ export class ImportOps {
 
   installBlocker(bodyId: string): string | undefined {
     if (!this.driverCraft) return "Construye un lanzador de masas en Planos";
-    if (!this.d.isSubjugated(bodyId)) return "Solo un cuerpo subyugado deja que lo minen";
     if (this.drivers.some((x) => x.bodyId === bodyId)) return "Ya tiene un lanzador";
     if (!escapes(this.d.driver.launchSpeedMs, this.body(bodyId).escapeSpeedMs)) return "Los paquetes no escaparían de su gravedad";
     return undefined;

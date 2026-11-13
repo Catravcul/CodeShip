@@ -28,6 +28,12 @@ export const TUG: TugSpec & { readonly sources: Readonly<Record<string, string>>
   },
 };
 
+/**
+ * Boulder sizes the tug is sent for: an early, modest source works loose rocks of 1–2 m off bodies
+ * that do not obey (game value, under the arms' 4 m): 0,6 to 5 t of Bennu-like rock per haul.
+ */
+export const TOW_DIAMETERS_M: readonly number[] = [1, 1.5, 2];
+
 export const TUG_CRAFT: CraftSpec = {
   id: "remolcador",
   name: "Remolcador SEP",
@@ -41,7 +47,8 @@ export const MASS_DRIVER: MassDriverSpec & { readonly sources: Readonly<Record<s
   launchSpeedMs: 112,
   accelMs2: 5000,
   packageKg: 10.5,
-  packHours: 4,
+  // A slow, modest source (game value): one package every 8 h, about 31 kg a game day.
+  packHours: 8,
   sources: { launchSpeedMs: IMPORT_SRC.massDriver, accelMs2: IMPORT_SRC.massDriver, packageKg: IMPORT_SRC.massDriverAmes, packHours: "game value" },
 };
 

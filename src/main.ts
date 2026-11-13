@@ -64,6 +64,8 @@ import { STATION_TUNING } from "@modules/station/domain/blueprint";
 import { StationOps } from "@modules/station/application/station-ops";
 import { BLUEPRINTS } from "@modules/station/data/blueprints";
 import { REFINE_PROCESSES } from "@modules/station/data/processes";
+import { PROPELLANT_PROCESSES } from "@modules/station/data/propellant-processes";
+import { RefuelOps, mothershipRefuelTarget, shipRefuelTarget } from "@modules/station/application/refuel";
 import { materialName } from "@modules/station/data/materials";
 import { EXPLORER_CRAFT, MOTHERSHIP_CRAFT, POLANA_STATION, STARTING_STOCK } from "@modules/station/data/station";
 import { StationModel } from "./adapters/three/station-model";
@@ -120,7 +122,7 @@ const stationOps = new StationOps(
     { ...EXPLORER_CRAFT, name: ship.name, massKg: ship.massKg },
   ])),
   BLUEPRINTS,
-  REFINE_PROCESSES,
+  [...REFINE_PROCESSES, ...PROPELLANT_PROCESSES],
   materialName,
 );
 
@@ -396,11 +398,25 @@ bay.onExit = (from) => {
 interior.openBay = () => openBay("interior");
 view.addButton("bay-btn", () => openBay("cabina")).textContent = "Bahía de la nave";
 // Space station screen: opens from «Revisar tareas de la estación», shown only docked at the station or within its docking range.
-const stationScreen = new StationScreen(root, stationOps, ship, expedition, duelView, () => flight.state.position, (id) =>
-  id === MOTHERSHIP_CRAFT.id ? mothership.position : id === EXPLORER_CRAFT.id ? flight.state.position : undefined,
+// Refuelling (docs/design/estacion.md, «Repostar»): the probe at the station's port or on the mothership
+// berthed there, and the mothership's xenon while she is berthed.
+const atStationPort = () => structure.ports.some((p) => p === docking.dockedTo);
+const mothershipAtStation = () => !!mothership.dockedTo;
+const refuelOps = new RefuelOps(stationOps.station, [
+  shipRefuelTarget(ship, EXPLORER_CRAFT.id, () => atStationPort() || (docking.dockedTo === mothership && mothershipAtStation())),
+  mothershipRefuelTarget(mothership, mothershipAtStation),
+]);
+const stationScreen = new StationScreen(
+  root,
+  stationOps,
+  ship,
+  expedition,
+  duelView,
+  () => flight.state.position,
+  (id) => (id === MOTHERSHIP_CRAFT.id ? mothership.position : id === EXPLORER_CRAFT.id ? flight.state.position : undefined),
+  refuelOps,
 );
 // Inside the station (docs/design/interiores.md §5): zero-g modules and the hangar; its machines open the screen's tabs.
-const atStationPort = () => structure.ports.some((p) => p === docking.dockedTo);
 const stationInside = new StationInteriorMode(root, new StationInterior(POLANA_INTERIOR), {
   busy: () => new Set(stationOps.station.queue().map((j) => j.machine)),
   store: () => ({ parts: stationOps.station.hangar.partList(), crafts: stationOps.station.hangar.crafts.filter((c) => c.docked) }),
@@ -667,4 +683,4 @@ renderer.setAnimationLoop((now) => {
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, nav, navMode, missions, missionLog, deck };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, refuelOps, nav, navMode, missions, missionLog, deck };

@@ -1,8 +1,11 @@
 import type { Sourced } from "@core/units";
 import { scaleAmounts, type Amounts, type MaterialStock } from "./materials";
 
-/** Station machines. Each one works through its own queue, one job at a time. */
-export type MachineId = "refineria" | "fundicion" | "impresora";
+/**
+ * Station machines. Each one works through its own queue, one job at a time. The propellant plant
+ * (`planta`) makes propellants; the refuelling line (`repostaje`) moves them into a docked craft.
+ */
+export type MachineId = "refineria" | "fundicion" | "impresora" | "planta" | "repostaje";
 
 /** A ship or probe kept in the hangar. */
 export interface CraftSpec {
@@ -45,6 +48,8 @@ export interface RefineProcess {
   /** Game hours for a full batch. */
   readonly hours: number;
   readonly process: Sourced<string>;
+  /** Electric energy of a full batch, kWh, where a source gives it (absent when none does). */
+  readonly energyKwh?: Sourced<number>;
   /** Steps in order; `{right|wrong|wrong}` marks a real value to fill in. */
   readonly steps: Sourced<readonly string[]>;
 }

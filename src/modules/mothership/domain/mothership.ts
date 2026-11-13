@@ -341,6 +341,12 @@ export class Mothership implements DockingTarget {
     if (mdot <= 0) return deltaVMs > 0 ? Infinity : 0;
     return this.propellantFor(deltaVMs) / mdot / 86400;
   }
+  /** Load xenon (docked at a station): never past the tanks' capacity. Returns the kg taken. */
+  refuel(kg: number): number {
+    const took = Math.max(0, Math.min(kg, this.spec.propellantCapacityKg - this.propellant));
+    this.propellant += took;
+    return took;
+  }
   /** Spend propellant on a manoeuvre; false (and nothing spent) if there is not enough. */
   burn(deltaVMs: number): boolean {
     const kg = this.propellantFor(deltaVMs);

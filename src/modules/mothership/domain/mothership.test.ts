@@ -155,3 +155,13 @@ describe("Mothership heat rejection and shadow shield", () => {
     for (const sm of mods) expect(sm.reference).toMatch(/^.+https:\/\//);
   });
 });
+
+describe("mothership refuelling", () => {
+  it("takes xenon up to the tanks' capacity", () => {
+    const m = new Mothership(NODRIZA, Vec3.ZERO, Quat.IDENTITY, NODRIZA.propellantCapacityKg - 1000);
+    expect(m.refuel(400)).toBe(400);
+    expect(m.refuel(5000)).toBe(600);
+    expect(m.propellantKg).toBe(NODRIZA.propellantCapacityKg);
+  });
+});
+

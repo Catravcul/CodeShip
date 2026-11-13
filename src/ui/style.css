@@ -313,6 +313,8 @@ body.in-station .hud, body.in-station .help, body.in-station .reticle, body.in-s
 .st-mat.zero { opacity: 0.55; }
 .st-dim { margin: 4px 0; opacity: 0.75; font-size: 12px; }
 .st-have { color: #7dffb0 !important; }
+.st-fuel { display: flex; flex-direction: column; gap: 3px; }
+.st-refuel { border-color: #7dffb066; }
 .st-job { padding: 8px 10px; background: #13243a; border: 1px solid #2c4a6a; border-radius: 10px; display: flex; flex-direction: column; gap: 6px; }
 .st-job.run { border-color: #7fdcff88; }
 .bay-act.locked { background: #ffffff14; color: #bcd; }

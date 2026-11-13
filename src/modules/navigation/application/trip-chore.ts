@@ -215,8 +215,8 @@ export function carrierTripChore(f: CarrierTripFacts): Chore {
             ["cerrar los ganchos del puerto IDSS", "puerto.enganchar();"],
           ]
         : [
-            ["desacoplar la sonda", "sonda.desacoplar();"],
-            [`volar la sonda hasta ${f.approachM} m de la superficie`, `sonda.volarHasta(${f.approachM});`],
+            ["desacoplar el módulo de aterrizaje", "modulo.desacoplar();"],
+            [`volar el módulo hasta ${f.approachM} m de la superficie`, `modulo.volarHasta(${f.approachM});`],
           ]) as [string, string][]),
       // Distractor: a low-thrust ship can't coast and then stop in time.
       ["apagar los propulsores a mitad de camino y esperar", "propulsores.apagar();"],
@@ -280,10 +280,10 @@ export function carrierTripChore(f: CarrierTripFacts): Chore {
     [],
     f.dock
       ? `Lleva la nodriza a ${num(f.parkingM)} m del puerto de ${name} rodeando las rocas, alinéala con su eje y acopla tocando a menos de ${num(f.dock.closingMaxMs, 2)} m/s`
-      : `Lleva la nodriza a ${num(f.parkingM)} m de ${name} rodeando las rocas y para del todo; luego desacopla la sonda, acércala a ${f.approachM} m apuntando al asteroide y devuélveme los mandos`,
+      : `Lleva la nodriza a ${num(f.parkingM)} m de ${name} rodeando las rocas y para del todo; luego desacopla el módulo de aterrizaje, acércalo a ${f.approachM} m apuntando al asteroide y devuélveme los mandos`,
     f.dock
-      ? [`Lleva la nodriza a ${name}`, `Acerca la nodriza a ${name} a toda potencia y frena al tocar`, `Desacopla la sonda y que vaya sola hasta ${name}`]
-      : [`Lleva la nodriza a ${name}`, `Acerca la nodriza a ${f.approachM} m de ${name} y aterriza con ella`, `Desacopla la sonda y que vaya sola hasta ${name}`],
+      ? [`Lleva la nodriza a ${name}`, `Acerca la nodriza a ${name} a toda potencia y frena al tocar`, `Desacopla el módulo y que vaya solo hasta ${name}`]
+      : [`Lleva la nodriza a ${name}`, `Acerca la nodriza a ${f.approachM} m de ${name} y aterriza con ella`, `Desacopla el módulo y que vaya solo hasta ${name}`],
   );
 
   return {

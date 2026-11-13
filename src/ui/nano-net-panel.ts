@@ -28,8 +28,9 @@ const sessionText = (c: Chore): SessionText => ({
 });
 
 /**
- * Compact nano_net status for the cockpit (a pill in the flight bar that opens a small card) and the
- * action button to convert, program or repair a core while landed on it. Challenges open in the
+ * Compact nano_net status, opened from a button on the travel ship's flight deck (a small card),
+ * and the lander's action button to convert, program or repair a core while anchored on it
+ * (docs/design/accesos.md). Challenges open in the
  * shared DuelView as a bottom sheet, so the nodes stay visible above.
  */
 export class NanoNetPanel {
@@ -94,16 +95,18 @@ export class NanoNetPanel {
     );
   }
 
-  update(landed: boolean, fx: NetEffects, show: boolean): void {
+  /** `show.action`: the lander's core action may show; `show.card`: the status card may show (on the deck). */
+  update(landed: boolean, fx: NetEffects, show: { action: boolean; card: boolean }): void {
     if (this.session && !this.duel.visible) this.session = null;
     const core = this.ops.net.core(this.site.id);
     const faults = this.ops.net.faults();
     this.pill.textContent = core ? `nano_net ${core.connectedNodes().length}/${core.nodes.length}${faults.length ? ` ⚠${faults.length}` : ""}` : "nano_net";
     this.pill.classList.toggle("limited", faults.length > 0);
     this.next = this.ops.actionsAt(this.site, landed)[0];
-    this.action.classList.toggle("hidden", !show || !this.next || this.busy);
+    this.action.classList.toggle("hidden", !show.action || !this.next || this.busy);
     if (this.next) this.action.textContent = actionLabel(this.next);
-    this.card.classList.toggle("hidden", !show || !this.open || this.busy);
+    if (!show.card) this.open = false;
+    this.card.classList.toggle("hidden", !show.card || !this.open || this.busy);
     if (!this.open) return;
 
     const key = JSON.stringify([core?.learned, core?.connectedNodes().length, faults.map((f) => f.id), num(fx.warpFactor), num(fx.energyKw), num(fx.safety, 2), landed]);
@@ -118,7 +121,7 @@ export class NanoNetPanel {
       : `<div class="nano-row">Sin núcleos. Persuade un asteroide, aterriza y conviértelo en núcleo.</div>`;
     const here = fx.covered
       ? `<div class="nano-row ok">Dentro de la red: tiempo ×${num(fx.warpFactor, 2)} · ${num(fx.energyKw)} kW · escudo ${Math.round(fx.safety * 100)} %</div>`
-      : `<div class="nano-row dim">La nave está fuera de la red</div>`;
+      : `<div class="nano-row dim">El módulo de aterrizaje está fuera de la red</div>`;
     this.card.innerHTML = `<div class="nano-head"><b>nano_net</b><button data-close>✕</button></div>${body}${here}`;
   }
 }

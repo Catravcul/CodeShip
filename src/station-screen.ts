@@ -64,6 +64,8 @@ export class StationScreen {
   private toastUntil = 0;
   private drag: { id: number; x: number; moved: boolean } | null = null;
   onExit?: () => void;
+  /** Open the ship bay (from the hangar tab); set by main. */
+  onBay?: () => void;
 
   constructor(
     root: HTMLElement,
@@ -254,7 +256,7 @@ export class StationScreen {
   private refuelCards(): string {
     if (!this.refuel) return "";
     const docked = this.refuel.all().filter((s) => s.docked);
-    if (!docked.length) return `<div class="bay-sec" id="st-repostar">Repostar</div><p class="st-dim">Para repostar, atraca la sonda o la nodriza en un puerto de la estación.</p>`;
+    if (!docked.length) return `<div class="bay-sec" id="st-repostar">Repostar</div><p class="st-dim">Para repostar, acopla el módulo de aterrizaje o atraca la nodriza en un puerto de la estación.</p>`;
     return `<div class="bay-sec" id="st-repostar">Repostar · naves atracadas</div>${docked.map((s) => this.refuelCard(s)).join("")}`;
   }
 
@@ -317,7 +319,7 @@ export class StationScreen {
       .map((c) => {
         const at = this.craftPosition(c.id);
         const where = at ? (this.ops.station.isAlongside(at) ? "atracada en la estación" : `fuera, a ${km(this.ops.station.distanceTo(at))}`) : c.docked ? "en el hangar" : "fuera";
-        return `<div class="st-mat"><b>${esc(c.name)}</b><span>${c.kind === "nave" ? "nave nodriza" : "sonda"}</span><small>${esc(where)}${c.massKg ? ` · ${fmtKg(c.massKg)} kg` : ""}</small></div>`;
+        return `<div class="st-mat"><b>${esc(c.name)}</b><span>${c.kind === "nave" ? "nave nodriza" : c.id === "explorador" ? "módulo de aterrizaje" : "sonda"}</span><small>${esc(where)}${c.massKg ? ` · ${fmtKg(c.massKg)} kg` : ""}</small></div>`;
       })
       .join("");
     const parts = h.partList();
@@ -325,10 +327,11 @@ export class StationScreen {
       .map(([id, n]) => {
         const p = partById(id);
         const drive = electricThrusterById(id);
-        return `<div class="st-mat"><b>${esc(p ? short(p.name) : drive ? `Propulsor ${drive.shortName}` : id)}</b><span>× ${n}</span><small>${drive ? "Se monta en la bahía, pestaña Nodriza, con la sonda acoplada" : "Se monta en la bahía de la nave"}</small></div>`;
+        return `<div class="st-mat"><b>${esc(p ? short(p.name) : drive ? `Propulsor ${drive.shortName}` : id)}</b><span>× ${n}</span><small>${drive ? "Se monta en la bahía, pestaña Nodriza, con la nodriza atracada aquí" : "Se monta en la bahía de la nave"}</small></div>`;
       })
       .join("");
-    return `<div class="bay-sec">Naves y sondas</div>${crafts}
+    const bay = this.onBay ? `<button class="st-btn" data-bay>Abrir la bahía de la nave</button>` : "";
+    return `${bay}<div class="bay-sec">Naves y sondas</div>${crafts}
       <div class="bay-sec">Piezas de repuesto</div>${partRows || `<p class="st-dim">No hay piezas. Fabrícalas en Planos; al cambiar una pieza en la bahía, la vieja vuelve aquí.</p>`}`;
   }
 
@@ -336,6 +339,7 @@ export class StationScreen {
     const t = e.target as HTMLElement;
     if (t.closest("a") || this.duel.visible) return;
     if (t.closest("[data-unload]")) return this.unload();
+    if (t.closest("[data-bay]")) return this.onBay?.();
     const r = t.closest<HTMLElement>("[data-refine]");
     if (r) return this.start(this.ops.startRefining(r.dataset.refine!), "refinar");
     const b = t.closest<HTMLElement>("[data-build]");

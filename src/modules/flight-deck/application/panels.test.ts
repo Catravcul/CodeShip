@@ -118,11 +118,11 @@ describe("flight deck panels", () => {
     const probe = { name: "Explorer", hullIntegrity: 0.4, propellants: [] };
     expect(dockingPanel(view(true, aligned()), 0, probe).probe).toBe(probe);
     // With several ports (the mothership's and the station's) it names the one it refers to.
-    const atStation = dockingPanel({ ...view(false, aligned()), current: () => ({ name: "Estación (puerto de la sonda)" }) }, 30);
-    expect(atStation.portName).toBe("Estación (puerto de la sonda)");
+    const atStation = dockingPanel({ ...view(false, aligned()), current: () => ({ name: "Estación (puerto del módulo)" }) }, 30);
+    expect(atStation.portName).toBe("Estación (puerto del módulo)");
     const dock = dockingPanel(view(true, aligned()), 0, probe);
     const quiet = { prop: propulsionPanel(ship()), life: lifePanel(new SpinRing(CODESHIP_RING), habitat()), comms: commsPanel([]), nav: navPanel("Bennu", "idle") };
-    expect(alerts({ ...quiet, dock }).find((a) => a.panel === "dock")).toMatchObject({ level: "caution", text: "Casco de la sonda dañado" });
+    expect(alerts({ ...quiet, dock }).find((a) => a.panel === "dock")).toMatchObject({ level: "caution", text: "Casco del módulo dañado" });
   });
 
   it("comms: newest letter first, unread and pending missions counted", () => {

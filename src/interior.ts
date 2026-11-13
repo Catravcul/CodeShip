@@ -24,7 +24,7 @@ import { CAT_BOUNDS, COOP, COOP_BOUNDS, crewEndBlocks, MACHINE_STATION, ROOM, ST
 import { HenModel } from "./adapters/three/interior/hen-model";
 import { DogModel } from "./adapters/three/interior/dog-model";
 import { DOOR, FARM, FARM_ROAM, buildFarmDeck, farmModels, type FarmPlantModel } from "./adapters/three/interior/farm-deck";
-import { portrait } from "./ui/portraits";
+import { DOMENICA_HAIR, portrait } from "./ui/portraits";
 import { PlantModel } from "./adapters/three/interior/plant-model";
 import { CatModel } from "./adapters/three/interior/cat-model";
 import { CubeFigure } from "./adapters/three/interior/figure";
@@ -132,7 +132,7 @@ export class Interior {
   private readonly radioBtn: HTMLButtonElement;
   private readonly figure = new CubeFigure();
   /** Doménica, seen from behind in third person. */
-  private readonly avatar = new CubeFigure(0xc99a76, 0x2f7f8f);
+  private readonly avatar = new CubeFigure(0xe8b48f, 0x2f7f8f, DOMENICA_HAIR, true);
   private readonly avatarRig = new THREE.Group();
   private thirdPerson = true;
   private stride = 0;
@@ -742,7 +742,7 @@ export class Interior {
       .map(([i, n]) => `${n}${i.unit === "g" ? " g" : ""} ${i.name}`)
       .join(" · ");
     this.hud.innerHTML = `
-      <div class="ititle">Día ${Math.floor(this.dayClock) + 1} a bordo</div>
+      <div class="ititle ihud-who">${portrait("Doménica")}<span>Doménica · día ${Math.floor(this.dayClock) + 1} a bordo</span></div>
       ${bar("Saciedad", c.satiety)}${bar("Forma", c.fitness)}${bar("Calma", 1 - c.stress)}${bar("Compañía", 1 - c.loneliness)}
       <div class="small">Autosuficiencia: ${Math.round(sus.ratio * 100)} % (${Math.round(sus.areaM2)} de ${Math.round(sus.neededM2)} m² de cultivo)${fam ? ` · Familias: ${fam}` : ""}</div>
       <div class="small">Despensa: ${larder || "vacía"} · ${this.habitat.meals} platos cocinados</div>${

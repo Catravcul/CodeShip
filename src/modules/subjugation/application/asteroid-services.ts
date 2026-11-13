@@ -118,6 +118,8 @@ export class AsteroidServices {
   private readonly services = new Map<string, Service>();
   private events: ServiceEvent[] = [];
   private acc = 0;
+  /** Station-clock seconds of work per mission second this frame (1 outside a compressed trip). */
+  private workRate = 1;
 
   constructor(
     bodies: readonly DrivenBody[],
@@ -166,8 +168,15 @@ export class AsteroidServices {
     return driveTripS(goal.sub(s.body.position).length(), transitProfile(s.body.massKg));
   }
 
-  /** Let `dtS` seconds of game time pass. */
-  update(dtS: number): void {
+  /**
+   * Let `dtS` seconds of mission time pass (the drives, the chase and the packages' flight). What the
+   * asteroids make runs on the station clock: `stationHours` (main's, a game day every 40 real seconds,
+   * which a compressed trip does not speed up); by default the mission time at `stationHoursPerSecond`.
+   * Bug B-01 in docs/qa: packages, trust and extraction used to follow the trip's lapse.
+   */
+  update(dtS: number, stationHours?: number): void {
+    const plain = dtS * this.d.stationHoursPerSecond;
+    this.workRate = stationHours !== undefined && plain > 0 ? stationHours / plain : 1;
     this.acc += Math.min(dtS, 120);
     const step = SERVICE_TUNING.stepS;
     while (this.acc >= step - 1e-9) {
@@ -214,7 +223,7 @@ export class AsteroidServices {
       return;
     }
     s.mode = "en-casa";
-    const days = dt / this.d.secondsPerDay;
+    const days = (dt * this.workRate) / this.d.secondsPerDay;
     r?.serve(days);
     if (level === 2) {
       s.shipDays += days;
@@ -280,7 +289,7 @@ export class AsteroidServices {
     s.body.moveTo(goal, Vec3.ZERO);
     const x = s.extraction;
     if (!x || s.mode === "agotado") return;
-    const lot = x.step(dt * this.d.stationHoursPerSecond);
+    const lot = x.step(dt * this.workRate * this.d.stationHoursPerSecond);
     if (lot) this.d.station.send(s.body.data.id, `Extracción de ${s.body.data.name}`, this.d.station.goods(lot), 0);
     if (x.done) {
       s.mode = "agotado";

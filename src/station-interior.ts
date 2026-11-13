@@ -1,3 +1,4 @@
+import { DOMENICA_HAIR } from "./ui/portraits";
 import * as THREE from "three";
 import { Vec3 } from "@core/math/vec3";
 import { RailGraph } from "@modules/gravity/domain/handrails";
@@ -48,7 +49,7 @@ export class StationInteriorMode {
   readonly camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.03, 2500);
   private rooms: StationRooms;
   private readonly walker: Walker;
-  private readonly avatar = new CubeFigure(0xc99a76, 0x2f7f8f);
+  private readonly avatar = new CubeFigure(0xe8b48f, 0x2f7f8f, DOMENICA_HAIR, true);
   private readonly suit = new CubeFigure(0xf2f2f2, 0xe9ecef);
   private readonly rig = new THREE.Group();
   private readonly ui: HTMLElement;

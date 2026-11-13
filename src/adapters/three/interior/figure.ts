@@ -68,7 +68,8 @@ export class CubeFigure {
   private current: PoseAngles = { ...STAND, shoulderX: [0, 0], shoulderZ: [...STAND.shoulderZ], elbow: [0, 0], hip: [0, 0], knee: [0, 0] };
   protected target: PoseAngles = STAND;
 
-  constructor(skin = 0xe0b48c, suit = 0x3d6fa8) {
+  /** `longHair` adds hair down to the shoulders (Doménica: long lavender hair, from her portrait). */
+  constructor(skin = 0xe0b48c, suit = 0x3d6fa8, hair = 0x3a2a1e, longHair = false) {
     this.root.add(box(0.34, 0.16, 0.2, suit, 0)); // pelvis
     this.root.add(this.torso);
     this.torso.add(box(0.38, 0.5, 0.22, suit, 0.3));
@@ -76,7 +77,11 @@ export class CubeFigure {
     this.head.position.y = 0.58;
     this.head.add(box(0.22, 0.25, 0.22, skin, 0.13));
     for (const side of [1, -1]) this.head.add(box(0.035, 0.035, 0.01, 0x222222, 0.16).translateX(0.05 * side).translateZ(0.111));
-    this.head.add(box(0.24, 0.07, 0.24, 0x3a2a1e, 0.27)); // hair
+    this.head.add(box(0.24, 0.07, 0.24, hair, 0.27)); // hair
+    if (longHair) {
+      this.head.add(box(0.25, 0.34, 0.06, hair, 0.1).translateZ(-0.1)); // down the back
+      for (const side of [1, -1]) this.head.add(box(0.03, 0.3, 0.2, hair, 0.11).translateX(0.12 * side).translateZ(-0.01)); // framing the face
+    }
     for (const side of [1, -1]) {
       const sh = new THREE.Group();
       sh.position.set(0.25 * side, 0.52, 0);

@@ -381,10 +381,13 @@ export class GravityZones {
     // Back along the view and a little toward the tube's axis (the roomiest place, clear of the
     // lockers and bags on the walls); where a wall is close behind her, further toward the axis.
     const inward = new THREE.Vector3(0, L.axisY - at.y, L.z - at.z);
-    if (at.y < L.axisY - L.tubeR || inward.lengthSq() < 1e-4) inward.set(0, 1, 0);
+    const radial = inward.length();
+    if (at.y < L.axisY - L.tubeR || radial < 1e-2) inward.set(0, 1, 0);
     inward.normalize();
+    // Most of the way to the axis: the camera looks down the middle of the tube with her beside it.
+    const toAxis = at.y < L.axisY - L.tubeR ? 0 : 0.6 * radial;
     for (let d = CAMERA_BACK_M; d > 0.4; d -= 0.1) {
-      cam.copy(at).addScaledVector(dir, -d).addScaledVector(inward, 0.25 + lift + Math.max(0, CAMERA_BACK_M - d) * 0.6);
+      cam.copy(at).addScaledVector(dir, -d).addScaledVector(inward, Math.max(0.25 + lift, toAxis) + Math.max(0, CAMERA_BACK_M - d) * 0.6);
       if (this.insideFloat(cam, 0.6)) break;
     }
     camera.position.copy(cam);

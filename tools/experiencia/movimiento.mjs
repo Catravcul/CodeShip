@@ -35,7 +35,8 @@ export async function movimiento(j) {
   const before = (await j.texts(".interior-ui .ihud"))[0] ?? "";
   const shot0 = await p.screenshot();
   await j.tap(".interior-ui .zg-arriba", "▲ Saltar hacia delante");
-  await p.waitForTimeout(500);
+  await p.waitForFunction(() => document.querySelector(".interior-ui .zg-pad")?.classList.contains("busy"), null, { timeout: 15000 }).catch(() => {});
+  await p.waitForTimeout(300);
   const during = await p.evaluate(() => {
     const pad = document.querySelector(".interior-ui .zg-pad");
     return { busy: pad?.classList.contains("busy"), off: [...(pad?.querySelectorAll(".zg-arrow") ?? [])].every((b) => b.getAttribute("aria-disabled") === "true") };

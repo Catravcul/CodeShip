@@ -24,8 +24,9 @@ export interface CabinFloor extends FloorRect {
 
 export type CabinStationId = "asiento" | "acople" | "mente" | "escotilla" | "esterilla";
 
-export interface CabinStation {
-  readonly id: CabinStationId;
+/** A machine of a walkable room (the lander's cabin, the travel ship's bridge). */
+export interface CabinStation<Id extends string = CabinStationId> {
+  readonly id: Id;
   readonly label: string;
   /** Where she stands to use it. */
   readonly stand: FloorPoint;
@@ -35,9 +36,9 @@ export interface CabinStation {
   readonly what: string;
 }
 
-export interface CabinLayout {
+export interface CabinLayout<Id extends string = CabinStationId> {
   readonly floor: CabinFloor;
-  readonly stations: readonly CabinStation[];
+  readonly stations: readonly CabinStation<Id>[];
   /** How close she must stand to a machine to use it, m. */
   readonly reachM: number;
   readonly heightM: number;
@@ -101,8 +102,8 @@ export function clampToFloor(f: CabinFloor, p: FloorPoint, prev?: FloorPoint): F
 }
 
 /** The machine she is standing at, if any (the nearest within reach). */
-export function nearestStation(layout: CabinLayout, p: FloorPoint): CabinStation | undefined {
-  let best: CabinStation | undefined;
+export function nearestStation<Id extends string>(layout: CabinLayout<Id>, p: FloorPoint): CabinStation<Id> | undefined {
+  let best: CabinStation<Id> | undefined;
   let bestD = layout.reachM;
   for (const s of layout.stations) {
     const d = Math.hypot(s.stand.x - p.x, s.stand.z - p.z);

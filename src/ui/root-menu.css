@@ -24,3 +24,4 @@
 .root-menu button:hover .rm-label, .root-menu button.rm-show .rm-label { display: block; }
 body.kbd-help .root-menu.open .rm-shoots .rm-label, body.kbd-help .rm-pinned .rm-label { display: block; }
 @media (pointer: coarse) { .root-menu button:hover .rm-label { display: none; } .root-menu button.rm-show .rm-label { display: block; } }
+body.in-duel .root-menu, body.in-settings .root-menu.flight-bar { display: none !important; }

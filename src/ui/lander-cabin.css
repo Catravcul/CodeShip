@@ -1,7 +1,7 @@
 /* The lander's crew cabin (docs/design/habitaculo.md): machines instead of HUD buttons. */
-.cab-ui { position: fixed; inset: 0; z-index: 8; pointer-events: none; color: #d8f6ff; }
-.cab-ui.hidden { display: none; }
-.cab-ui > * { pointer-events: auto; }
+.room-ui { position: fixed; inset: 0; z-index: 8; pointer-events: none; color: #d8f6ff; }
+.room-ui.hidden { display: none; }
+.room-ui > * { pointer-events: auto; }
 .cab-where { position: fixed; top: calc(10px + env(safe-area-inset-top)); left: 12px; padding: 6px 10px; font-size: 13px; background: #05141cc4; border-radius: 10px; pointer-events: none; }
 .root-menu.cab-menu { top: calc(10px + env(safe-area-inset-top)); right: 10px; }
 .cab-machine { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(160px + env(safe-area-inset-bottom)); width: min(380px, calc(100vw - 24px)); box-sizing: border-box; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; background: #05141ce6; border: 1px solid #7fdcff55; border-radius: 14px; font-size: 13px; }
@@ -28,12 +28,14 @@
 .cab-fade.go { animation: cab-fade 0.45s ease-out; }
 @keyframes cab-fade { from { opacity: 1; } to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .cab-fade.go { animation: none; } }
-.vstick.cab-move { left: 22px; }
-.vstick.cab-look { right: 22px; }
-body.in-cabin .vstick.cab-move, body.in-cabin .vstick.cab-look { display: block; }
-body.in-cabin .vstick.cab-move span { color: #9fe8c4; }
-body.in-cabin .hud, body.in-cabin .help, body.in-cabin .reticle, body.in-cabin .banner, body.in-cabin .action, body.in-cabin .touch, body.in-cabin .mode-btn,
-body.in-cabin .cam-tag, body.in-cabin .pilot-look, body.in-cabin .region-tag, body.in-cabin .sky-labels, body.in-cabin .nano-card, body.in-cabin .autopilot-tag, body.in-cabin .walk-stick, body.in-cabin .look-stick { display: none !important; }
-body.in-duel .cab-ui, body.in-duel .vstick.cab-move, body.in-duel .vstick.cab-look, body.in-settings .cab-machine { display: none !important; }
+.vstick.room-move { left: 22px; }
+.vstick.room-look { right: 22px; }
+body.in-cab .vstick.cab-move, body.in-cab .vstick.cab-look, body.in-puente .vstick.puente-move, body.in-puente .vstick.puente-look { display: block; }
+.vstick.room-move span { color: #9fe8c4; }
+body.in-room .hud, body.in-room .help, body.in-room .reticle, body.in-room .banner, body.in-room .action, body.in-room .touch, body.in-room .mode-btn,
+body.in-room .cam-tag, body.in-room .pilot-look, body.in-room .region-tag, body.in-room .sky-labels, body.in-room .nano-card, body.in-room .autopilot-tag, body.in-room .walk-stick, body.in-room .look-stick { display: none !important; }
+body.in-duel .room-ui, body.in-duel .vstick.room-move, body.in-duel .vstick.room-look, body.in-settings .cab-machine,
+body.in-deck .room-ui, body.in-deck .vstick.room-move, body.in-deck .vstick.room-look, body.in-probe .room-ui, body.in-probe .vstick.room-move, body.in-probe .vstick.room-look,
+body.in-missions .vstick.room-move, body.in-missions .vstick.room-look { display: none !important; }
 body.in-settings .cab-menu { display: none; }
 @media (min-width: 900px) and (pointer: fine) { .cab-machine { left: auto; right: 18px; transform: none; bottom: 170px; } }

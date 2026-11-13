@@ -18,4 +18,4 @@
 .settings-sheet.hud { top: auto; max-height: 64vh; background: none; color: #d8f6ff; text-shadow: 0 0 3px #000, 0 0 10px #000c; }
 .settings-sheet.hud .set-row { background: #020a12d9; border-color: #7fdcff55; }
 .settings-sheet.hud .set-top { padding: 6px 150px 6px 10px; background: #020a12d9; border-radius: 10px; }
-body.in-settings .vstick, body.in-settings .zone-btn, body.in-settings .station-btn, body.in-settings .cab-ui .cab-machine { display: none !important; }
+body.in-settings .vstick, body.in-settings .zone-btn, body.in-settings .station-btn, body.in-settings .room-ui .cab-machine { display: none !important; }

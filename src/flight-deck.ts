@@ -58,6 +58,9 @@ const TRIP: Record<string, string> = {
 const PHASE: Record<string, string> = { burn: "acelerando", flip: "dando la vuelta", brake: "frenando", coast: "crucero", orient: "orientando", aim: "apuntando", arrived: "llegada" };
 const LEVEL: Record<string, string> = { warning: "Aviso", caution: "Precaución", advisory: "Nota" };
 
+/** Where she was when she opened a console: the bridge room, the ring (navigation console) or, at a trip's handover, the lander. */
+export type DeckOrigin = "puente" | "interior" | "cabina";
+
 export interface FlightDeckDeps {
   readonly mothership: Mothership;
   readonly ring: SpinRing;
@@ -107,9 +110,9 @@ export class FlightDeck {
   private lastStatus = "";
   active = false;
   /** Where Doménica goes back to: the spine of the interior (or, at a trip's handover, the lander's cockpit). */
-  from: "interior" | "cabina" = "interior";
+  from: DeckOrigin = "puente";
   /** Leave the deck, back to `to`. Set by main. */
-  onExit?: (to: "interior" | "cabina", why?: string) => void;
+  onExit?: (to: DeckOrigin, why?: string) => void;
 
   constructor(
     root: HTMLElement,
@@ -167,7 +170,12 @@ export class FlightDeck {
     return b;
   }
 
-    enter(from: "interior" | "cabina"): void {
+    /**
+   * Open one console's page (docs/design/habitaculo.md §Puente): the bridge is a room of consoles and each
+   * shows only its own page, full screen, with «Volver» back to where she stood.
+   */
+  enter(from: DeckOrigin, panel: PanelId = "nav"): void {
+    this.ui.classList.remove("single");
     this.restore();
     this.from = from;
     this.active = true;
@@ -177,13 +185,15 @@ export class FlightDeck {
     this.ui.classList.remove("hidden");
     document.body.classList.add("in-deck");
     this.resize();
-    this.render();
-    this.layoutMap();
+    this.maximize(panel);
+    this.ui.classList.add("single");
+    this.ui.querySelector(".fd-title")!.textContent = `${PANELS.find(([id]) => id === panel)![1]} · ${this.deps.mothership.name}`;
   }
 
   exit(): void {
     if (!this.active) return;
     this.active = false;
+    this.ui.classList.remove("single");
     this.restore();
     this.deps.map.close();
     this.deps.map.mount();
@@ -191,7 +201,7 @@ export class FlightDeck {
     document.body.classList.remove("in-deck");
   }
 
-  private leave(to: "interior" | "cabina", why?: string): void {
+  private leave(to: DeckOrigin, why?: string): void {
     this.exit();
     this.onExit?.(to, why);
   }
@@ -224,6 +234,8 @@ export class FlightDeck {
 
   restore(): void {
     if (!this.maxed) return;
+    // One console, one page: going back from it is leaving the console.
+    if (this.active && this.ui.classList.contains("single")) return this.leave(this.from);
     this.sections.get(this.maxed)!.classList.remove("max");
     this.ui.classList.remove("has-max");
     this.maxed = null;
@@ -317,6 +329,11 @@ export class FlightDeck {
     if (now < this.refreshAt) return;
     this.refreshAt = now + 250;
     this.render();
+  }
+
+  /** The bridge's alerts now (lights on its consoles). */
+  alertsNow(): Alert[] {
+    return this.views().alerts;
   }
 
   private views(): Views {

@@ -29,6 +29,7 @@ body.in-probe .fd, body.in-probe #app > .touch, body.in-probe .banner, body.in-p
 .pr-tele { display: flex; flex-wrap: wrap; gap: 2px 12px; padding: 6px 12px; font-variant-numeric: tabular-nums; text-shadow: 0 0 4px #000; }
 .pr-tele .warn { color: #ffb347; }
 .pr-tele .bad { color: #ff6b5a; }
+.pr-rapport.hidden { display: none; }
 .pr-rapport { box-sizing: border-box; margin: 0 12px; width: min(360px, calc(100vw - 24px)); padding: 6px 10px; border-radius: 10px; background: #05141ccc; border: 1px solid #7fdcff44; font-size: 12px; }
 .pr-rapport.angry { border-color: #ff6b5a; }
 .pr-msg { margin: 6px 12px 0; width: min(360px, calc(100vw - 24px)); box-sizing: border-box; padding: 6px 10px; font-size: 13px; color: #fff; background: #000a; border-radius: 10px; opacity: 0; transition: opacity 0.3s; }

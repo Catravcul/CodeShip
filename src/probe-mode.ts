@@ -8,7 +8,6 @@ import type { Rapport } from "@modules/subjugation/domain/rapport";
 import { PROBE_HULL } from "@modules/ship/data/probe";
 import { ProbeModel } from "./adapters/three/probe-model";
 import { TouchPilot, mergeCommands } from "./adapters/input/touch";
-import { stageDots, nextStepText } from "./ui/rapport-view";
 
 const fmt = (v: number, d = 2) => v.toFixed(d).replace(".", ",");
 const dist = (m: number) => (m >= 1000 ? `${fmt(m / 1000, 2)} km` : `${fmt(m, m < 10 ? 2 : 0)} m`);
@@ -50,7 +49,7 @@ export class ProbeMode {
   private readonly rapport: HTMLElement;
   private readonly msg: HTMLElement;
   private readonly title: HTMLElement;
-  private readonly btn: Record<"launch" | "assist" | "duel" | "recover" | "abandon" | "warp" | "trip" | "home", HTMLButtonElement>;
+  private readonly btn: Record<"launch" | "assist" | "recover" | "abandon" | "warp" | "trip" | "home", HTMLButtonElement>;
   private readonly touch: TouchPilot;
   private msgUntil = 0;
   private warpIdx = 0;
@@ -76,7 +75,6 @@ export class ProbeMode {
         <button data-act="trip" class="primary">Programar viaje</button>
         <button data-act="home">Programar vuelta</button>
         <button data-act="launch" class="primary">Lanzar sonda</button>
-        <button data-act="duel" class="primary">Entrar en su mente · fase 1</button>
         <button data-act="assist">Aterrizaje: manual</button>
         <button data-act="recover">Recuperar con el brazo</button>
         <button data-act="warp">Tiempo ×1</button>
@@ -88,7 +86,7 @@ export class ProbeMode {
     this.msg = this.ui.querySelector(".pr-msg")!;
     this.title = this.ui.querySelector(".pr-title")!;
     const b = (k: string) => this.ui.querySelector<HTMLButtonElement>(`[data-act="${k}"]`)!;
-    this.btn = { launch: b("launch"), assist: b("assist"), duel: b("duel"), recover: b("recover"), abandon: b("abandon"), warp: b("warp"), trip: b("trip"), home: b("home") };
+    this.btn = { launch: b("launch"), assist: b("assist"), recover: b("recover"), abandon: b("abandon"), warp: b("warp"), trip: b("trip"), home: b("home") };
     this.touch = new TouchPilot(this.ui);
     this.ui.querySelector(".pr-exit")!.addEventListener("click", () => this.exit());
     this.ui.addEventListener("click", (e) => this.onClick(e));
@@ -146,9 +144,6 @@ export class ProbeMode {
         break;
       case "assist":
         p.flight.landingAssist = !p.flight.landingAssist;
-        break;
-      case "duel":
-        if (this.deps.canStartDuel()) this.deps.startDuel();
         break;
       case "recover":
         if (!p.recover()) this.say(`El brazo agarra a menos de ${PROBE_TUNING.captureRangeM} m de la bahía y a menos de ${fmt(PROBE_TUNING.captureSpeedMs)} m/s`);
@@ -241,13 +236,13 @@ export class ProbeMode {
     );
     const angry = d.angry();
     const r = d.bond();
+    // Only what flying it needs (designer, 2026-11-13): the asteroid's phase, trust and mind are on the
+    // bridge's mind console. Parked and with a duel on offer, one line says where to go.
     this.rapport.classList.toggle("angry", angry);
-    this.set(this.rapport, `<b>${esc(d.targetName())}</b> · confianza ${Math.round(r.trust * 100)} %<div class="rp-dots">${stageDots(r)}</div><small>${esc(nextStepText(r, angry))}</small>`);
+    this.set(this.rapport, p.status === "posada" && !angry && d.canStartDuel() ? `Sonda posada en ${esc(d.targetName())}: su mente está en la consola de la mente del asteroide, junto a esta` : p.status === "posada" && r.next !== "sonda" ? "Fase de la sonda hecha: recupérala con el brazo" : "");
+    this.rapport.classList.toggle("hidden", this.rapport.innerHTML === "");
     const show = (b: HTMLButtonElement, on: boolean) => b.classList.toggle("hidden", !on);
     show(this.btn.launch, p.canLaunch);
-    show(this.btn.duel, p.status === "posada" && !angry);
-    this.btn.duel.disabled = !d.canStartDuel();
-    this.btn.duel.textContent = d.duelLabel?.() ?? (d.canStartDuel() ? "Entrar en su mente · fase 1" : r.next === "sonda" ? "Entrar en su mente · fase 1" : "Fase 1 hecha: recupérala");
     show(this.btn.assist, p.out);
     this.btn.assist.textContent = `Aterrizaje: ${f.landingAssist ? "auto" : "manual"}`;
     this.btn.assist.classList.toggle("on", f.landingAssist);

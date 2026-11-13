@@ -358,3 +358,7 @@ body.in-station .hud, body.in-station .help, body.in-station .reticle, body.in-s
 .bay-act.locked { background: #ffffff14; color: #bcd; }
 .flight-bar .estacion-btn { color: #1a0f00; background: #ffd27f; border-color: #ffd27f; }
 @media (max-width: 600px) { .mode-btn { max-width: 44vw; padding: 8px 12px; font-size: 13px; line-height: 1.25; } }
+
+/* Doménica's portrait at the head of the crew HUD. */
+.ihud-who { display: flex; align-items: center; gap: 8px; }
+.ihud-who .portrait-img { width: 36px; height: 36px; flex: none; }

@@ -71,11 +71,11 @@ import { EXPLORER_CRAFT, MOTHERSHIP_CRAFT, POLANA_STATION, STARTING_STOCK } from
 import { StationModel } from "./adapters/three/station-model";
 import { StationScreen } from "./station-screen";
 import { StationStructure } from "@modules/station/domain/structure";
-import { POLANA_LAYOUT } from "@modules/station/data/structure";
 import { StationDock, dockNavTargets } from "./station-dock";
 import { StationInteriorMode } from "./station-interior";
 import { StationInterior } from "@modules/station/domain/interior";
-import { POLANA_INTERIOR } from "@modules/station/data/interior";
+import { stationInteriorPlan } from "@modules/station/data/interior";
+import { startingOutfit } from "@modules/station/data/outfit";
 import { partById } from "@modules/ship/data/parts";
 import { Mothership } from "@modules/mothership/domain/mothership";
 import { IDSS_CONTACT_LIMITS, NODRIZA, NODRIZA_NOSE_PORT, UNDOCK_PUSH_MS } from "@modules/mothership/data/mothership";
@@ -90,6 +90,7 @@ import { MissionLog } from "@modules/missions/domain/mission";
 import { MissionControl } from "@modules/missions/application/mission-control";
 import { MISSION_LETTERS, NEVAEH_MISSIONS } from "@modules/missions/data/nevaeh-missions";
 import { MissionLogPanel } from "./ui/mission-log";
+import { WrathMode } from "./wrath-mode";
 
 // --- Domain setup -----------------------------------------------------------
 const d = BENNU.dimensionsM.value;
@@ -110,7 +111,9 @@ const mothership = Mothership.withProbeDockedAt(NODRIZA, startPos, startAttitude
 const ring = new SpinRing(mothership.spec.ring);
 const flight = new FlightComputer(ship, start, { gravitySources: region.asteroids, target: bennu });
 // The station is a structure in space with two IDSS ports: the probe docks at one, the mothership at the other.
-const structure = new StationStructure(POLANA_STATION, POLANA_LAYOUT);
+// What it is built of grows (docs/design/estacion.md, «La estación crece»): modules, equipment, wings and radiators.
+const stationOutfit = startingOutfit();
+const structure = new StationStructure(POLANA_STATION, stationOutfit.layout);
 const docking = new Docking(flight, [mothership, ...structure.ports], IDSS_CONTACT_LIMITS, UNDOCK_PUSH_MS.value);
 docking.dockNow(mothership);
 docking.drainEvents();
@@ -120,7 +123,7 @@ const stationOps = new StationOps(
   new Station(POLANA_STATION, new MaterialStock(STARTING_STOCK), new Hangar({}, [
     { ...MOTHERSHIP_CRAFT, name: mothership.spec.name, massKg: mothership.massKg },
     { ...EXPLORER_CRAFT, name: ship.name, massKg: ship.massKg },
-  ])),
+  ]), stationOutfit),
   BLUEPRINTS,
   [...REFINE_PROCESSES, ...PROPELLANT_PROCESSES],
   materialName,
@@ -130,7 +133,13 @@ const stationOps = new StationOps(
 // and the station and the mothership, where the trip ends docked (docs/design/estacion.md).
 const carrier = mothershipCarrier(mothership, docking, { nosePort: NODRIZA_NOSE_PORT, limits: IDSS_CONTACT_LIMITS, ports: structure.ports });
 const navTargets: NavTarget[] = [...region.asteroids.map(asteroidTarget), ...dockNavTargets(structure, mothership, carrier.clearanceM)];
-const stationKeepOut = { centre: structure.position, radiusM: structure.boundingRadiusM };
+// A getter: the station can move under its own engines (survival mode).
+const stationKeepOut = {
+  get centre() {
+    return structure.position;
+  },
+  radiusM: structure.boundingRadiusM,
+};
 const nav = new Navigator(
   flight,
   {
@@ -238,9 +247,24 @@ scene.add(field.group);
 
 const asteroidMesh = buildAsteroidMesh(shapeParams, 0x3b3835); // Bennu is very dark; tone mapping lifts it a little.
 scene.add(asteroidMesh);
-const stationModel = new StationModel(POLANA_LAYOUT, structure.orientation);
+const stationModel = new StationModel(stationOutfit.layout, structure.orientation);
 stationModel.root.position.set(POLANA_STATION.position.x, POLANA_STATION.position.y, POLANA_STATION.position.z);
 scene.add(stationModel.root);
+
+// The asteroids' wrath after a failed duel (docs/design/poderes-ira.md): attacks, survival mode, anger card.
+const wrathMode = new WrathMode({
+  root,
+  scene,
+  asteroids: region.asteroids,
+  flight,
+  ship,
+  expedition,
+  mothership,
+  docking,
+  structure,
+  station: stationOps.station,
+  placeStation: (p) => stationModel.root.position.set(p.x, p.y, p.z),
+});
 
 const reticle = document.createElement("div");
 reticle.className = "reticle";
@@ -424,6 +448,8 @@ bay.docked = () => !!mothership.dockedTo;
 // The mothership's thruster mounts are refitted in the bay's Nodriza tab (docs/design/nave-nodriza.md).
 bay.nodriza = mothership;
 bay.onDriveRefit = () => mothershipModel.setThrusters(mothership.fitted);
+// The station's own wings, radiators and shield in the bay's «Estación» tab.
+bay.setStation(stationOutfit, new StationModel(stationOutfit.layout));
 // Refuelling (docs/design/estacion.md, «Repostar»): the lander at the station's port or on the mothership
 // berthed there, and the mothership's xenon while she is berthed.
 const mothershipAtStation = () => !!mothership.dockedTo;
@@ -443,7 +469,7 @@ const stationScreen = new StationScreen(
   refuelOps,
 );
 // Inside the station (docs/design/interiores.md §5): zero-g modules and the hangar; its machines open the screen's tabs.
-const stationInside = new StationInteriorMode(root, new StationInterior(POLANA_INTERIOR), {
+const stationInside = new StationInteriorMode(root, new StationInterior(stationInteriorPlan(stationOutfit.layout, stationOutfit)), {
   busy: () => new Set(stationOps.station.queue().map((j) => j.machine)),
   store: () => ({ parts: stationOps.station.hangar.partList(), crafts: stationOps.station.hangar.crafts.filter((c) => c.docked) }),
   partName: (id) => (partById(id)?.name ?? id).replace(/^Aerojet Rocketdyne /, "").replace(/\s*\(.*\)$/, ""),
@@ -466,6 +492,14 @@ const stationInside = new StationInteriorMode(root, new StationInterior(POLANA_I
     else view.center();
   },
 });
+let stationGrownAt = stationOutfit.version;
+/** The station grew: new modules in the structure (keep-out), the model outside and the rooms inside. */
+const regrowStation = () => {
+  stationGrownAt = stationOutfit.version;
+  structure.setLayout(stationOutfit.layout);
+  stationModel.rebuild(stationOutfit.layout);
+  stationInside.rebuild(new StationInterior(stationInteriorPlan(stationOutfit.layout, stationOutfit)));
+};
 let screenFromInside = false;
 let screenToBay = false;
 stationScreen.onExit = () => {
@@ -539,8 +573,7 @@ function renderPhase(): void {
   if (p === "persuaded") {
     banner.textContent = `${expedition.asteroid.data.name} obedece: ${expedition.cargo.map((c) => `${c.kg.toFixed(0)} kg de ${c.material}`).join(", ")} en la bodega`;
   } else if (p === "aggressive") {
-    const left = Math.max(0, expedition.safeDistanceM! - t.distanceToSurface);
-    banner.textContent = left > 0 ? `¡${expedition.asteroid.data.name} está furioso! Huye: faltan ${left.toFixed(0)} m hasta la distancia segura` : "A salvo. Espera a que se calme";
+    banner.textContent = wrathMode.bannerText() || `${expedition.asteroid.data.name} se calma`;
   } else if (p === "landed") {
     banner.textContent = expedition.asteroid === bennu ? "Nave anclada · puedes salir a Bennu con el traje" : `Nave anclada en ${expedition.asteroid.data.name} · entra en su mente`;
   } else if (dockingText()) {
@@ -578,12 +611,13 @@ renderer.setAnimationLoop((now) => {
   const far = flight.telemetry().distanceToSurface >= WARP_MIN_DISTANCE_M;
   const sp = flight.state.position;
   const fx = nano.net.effectsAt(sp);
-  const asked = (expedition.phase === "flight" || expedition.phase === "persuaded") && !flight.landed && idle && far ? view.warpRequested : 1;
+  const asked = (expedition.phase === "flight" || expedition.phase === "persuaded" || (expedition.phase === "aggressive" && wrathMode.allowsWarp)) && !flight.landed && idle && far ? view.warpRequested : 1;
   // Inside the nano_net its speed nodes let time run faster.
   const warp = asked > 1 ? Math.round(asked * fx.warpFactor) : 1;
   const warpNote =
     view.warpRequested > 1 && warp === 1 ? (far ? "tiempo ×1 mientras maniobras" : "tiempo ×1 cerca del asteroide") : warp > 1 ? `tiempo ×${warp}${fx.warpFactor > 1 ? " (nano_net)" : ""}` : "";
   expedition.update(dt * warp, cmd);
+  wrathMode.update(dt * warp, dt, camera, view.enabled || deck.active);
   ring.tick(dt);
   // Region rules: soft boundary push back and no flying through the other rocks or the mothership (game rules).
   if (!flight.landed && !flight.docked) {
@@ -621,6 +655,8 @@ renderer.setAnimationLoop((now) => {
   }
   // The station's machines run on the same clock as life on board.
   stationOps.station.tick(dt * warp * STATION_TUNING.hoursPerSecond);
+  // A module berthed or equipment installed: the structure, its model and the walkable interior follow.
+  if (stationOutfit.version !== stationGrownAt) regrowStation();
   interior.update(dt);
   view.enabled = !interior.active && !stationInside.active && !deck.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active && !navMode.mapOpen && !missionLog.visible;
   navMode.update(dt, view.warpRequested);
@@ -717,4 +753,4 @@ renderer.setAnimationLoop((now) => {
 });
 
 // Exposed for automated checks and debugging.
-(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, refuelOps, nav, navMode, missions, missionLog, deck };
+(window as unknown as { codeship: unknown }).codeship = { flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, refuelOps, nav, navMode, missions, missionLog, deck, wrathMode };

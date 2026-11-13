@@ -46,7 +46,7 @@ export interface StationInteriorDeps {
 export class StationInteriorMode {
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.03, 2500);
-  private readonly rooms: StationRooms;
+  private rooms: StationRooms;
   private readonly walker: Walker;
   private readonly avatar = new CubeFigure(0xc99a76, 0x2f7f8f);
   private readonly suit = new CubeFigure(0xf2f2f2, 0xe9ecef);
@@ -81,7 +81,7 @@ export class StationInteriorMode {
 
   constructor(
     root: HTMLElement,
-    readonly interior: StationInterior,
+    public interior: StationInterior,
     private readonly deps: StationInteriorDeps,
   ) {
     this.scene.background = new THREE.Color(0x05070c);
@@ -143,6 +143,22 @@ export class StationInteriorMode {
       if (Math.hypot(e.clientX - t.x, e.clientY - t.y) > 10 || performance.now() - t.t > 450) return;
       this.pick(e.clientX, e.clientY);
     });
+  }
+
+  /**
+   * The station grew (a module berthed, equipment installed or swapped): build the rooms again from
+   * the new interior. She stays where she is.
+   */
+  rebuild(interior: StationInterior): void {
+    this.scene.remove(this.rooms.group);
+    this.rooms.group.traverse((o) => {
+      if (o instanceof THREE.Mesh) o.geometry.dispose();
+    });
+    this.interior = interior;
+    this.rooms = buildStationRooms(interior.plan);
+    this.scene.add(this.rooms.group);
+    this.storeKey = "";
+    this.near = undefined;
   }
 
   /** Come in through the hatch of the port the ship is docked at. */

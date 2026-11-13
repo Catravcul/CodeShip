@@ -25,6 +25,13 @@ export class Expedition {
   /** Asteroids already persuaded on this trip (they don't hand over their resources twice). */
   private readonly persuaded = new Set<string>();
   readonly cargo: { material: string; kg: number }[] = [];
+  /**
+   * What an enraged asteroid does after a failed duel (docs/design/poderes-ira.md). When set, it is
+   * told of every failure and the old close-range debris damage is off; `canRetry` then gates new duels.
+   */
+  wrath?: { duelFailed(asteroidId: string, phase: 1 | 2 | 3): void; canRetry(asteroidId: string): boolean };
+  /** Duel phase this visit runs at (1 probe, 2 lander, 3 suit); the flown craft is the lander. */
+  duelPhase: 1 | 2 | 3 = 2;
 
   constructor(
     readonly flight: FlightComputer,
@@ -40,7 +47,7 @@ export class Expedition {
 
   /** Whether the visit can switch to another asteroid now: flying free, not in a duel or fleeing. */
   get canRetarget(): boolean {
-    return !this.flight.landed && (this._phase === "flight" || this._phase === "persuaded");
+    return !this.flight.landed && (this._phase === "flight" || this._phase === "persuaded" || (this._phase === "aggressive" && !!this.wrath));
   }
 
   isPersuaded(asteroidId: string): boolean {
@@ -68,7 +75,7 @@ export class Expedition {
     return this.aggression?.safeDistanceM;
   }
   get canStartDuel(): boolean {
-    return this._phase === "landed";
+    return this._phase === "landed" && (!this.wrath || this.wrath.canRetry(this.asteroid.data.id));
   }
 
   /** Empty the hold (e.g. at the space station) and return what was in it. */
@@ -83,7 +90,9 @@ export class Expedition {
       if (e === "landed" && this._phase === "flight") this._phase = "landed";
       if (e === "lifted-off" && this._phase === "landed") this._phase = "flight";
     }
-    if (this._phase === "aggressive" && this.aggression) {
+    if (this._phase === "aggressive" && this.wrath) {
+      if (this.wrath.canRetry(this.asteroid.data.id)) this._phase = this.flight.landed ? "landed" : "flight";
+    } else if (this._phase === "aggressive" && this.aggression) {
       const { hullDamage, calmed } = this.aggression.update(dtS, this.flight.telemetry().distanceToSurface);
       this.flight.ship.damage(hullDamage, "escombros");
       if (calmed) {
@@ -111,7 +120,8 @@ export class Expedition {
       }
       if (e.type === "asteroid-enraged") {
         this._phase = "aggressive";
-        this.aggression = new Aggression(this.asteroid.meanRadiusM);
+        if (this.wrath) this.wrath.duelFailed(this.asteroid.data.id, this.duelPhase);
+        else this.aggression = new Aggression(this.asteroid.meanRadiusM);
         this.shakeOff();
       }
     }

@@ -1,0 +1,13 @@
+/* Planos grouped by kind (Módulos, Equipo, Componentes) and the station's power bar (docs/design/estacion.md, «La estación crece»). */
+.st-seg { flex-shrink: 0; position: sticky; top: -1px; z-index: 2; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 6px 0 8px; background: inherit; backdrop-filter: blur(6px); }
+.st-seg button { min-height: 40px; padding: 6px 2px; font: inherit; font-size: 12.5px; white-space: nowrap; color: #bfefff; background: #0e2236; border: 1px solid #2c4a6a; border-radius: 10px; }
+.st-seg button.on { color: #001018; background: #ffd27f; border-color: #ffd27f; font-weight: 600; }
+.st-seg button i { font-style: normal; display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 2px; border-radius: 999px; background: #2f9e6c; color: #eafff3; font-size: 11px; }
+.st-power { flex-shrink: 0; position: relative; display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 8px 10px 12px; margin-bottom: 6px; border-radius: 10px; background: #ffffff0d; font-size: 12px; color: #a9c7d8; overflow: hidden; }
+.st-power b { color: #e6f8ff; }
+.st-power i { position: absolute; left: 0; bottom: 0; height: 4px; background: #7fdcff; }
+.st-power i.low { background: #ff9a1f; }
+.st-lock { padding: 6px 8px; border-radius: 8px; background: #ff9a1f1f; border-left: 3px solid #ff9a1f; color: #ffd8a8; font-size: 12.5px; }
+.st-card.built { opacity: 0.75; }
+.st-card.built .st-have { color: #9dffc8; }
+.st-card, .st-lock, .bay-sec { flex-shrink: 0; }

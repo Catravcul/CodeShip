@@ -8,7 +8,9 @@ import { REFINE_PROCESSES } from "../data/processes";
 import { POLANA_STATION, STARTING_STOCK } from "../data/station";
 import { materialName } from "../data/materials";
 import { StationOps } from "./station-ops";
-import { fabricationChore, refineChore } from "./challenges";
+import { fabricationChore, growthChore, refineChore } from "./challenges";
+import { startingOutfit, EQ_CARBONYL, EQ_EBW, RADIATORS_DOUBLE, STATION_COMPONENTS, WINGS_IROSA } from "../data/outfit";
+import { applyStationRefit, stationOptions, stationRefitChore } from "./station-refit";
 
 const right = (ex: Exercise): Answer => (ex.kind === "order" ? { kind: "order", order: ex.solution } : { kind: "choice", index: ex.correct });
 const wrong = (ex: Exercise): Answer => (ex.kind === "order" ? { kind: "order", order: [...ex.solution].reverse() } : { kind: "choice", index: (ex.correct + 1) % ex.options.length });
@@ -65,7 +67,7 @@ describe("station ops", () => {
 
     const s = o.startFabrication("plano-tanque-n2h4-80397");
     while (s.run.status === "doing") s.answer(right(s.run.current!));
-    expect(o.station.queue("fundicion")).toHaveLength(1);
+    expect(o.station.queue("soldadora")).toHaveLength(1);
     expect(o.station.stock.amount("hierro")).toBeLessThan(30);
     o.station.tick(100);
     expect(o.station.hangar.count("tanque-n2h4-80397")).toBe(1);
@@ -84,5 +86,61 @@ describe("station ops", () => {
     while (s.run.status === "doing") s.answer(right(s.run.current!));
     o.station.tick(100);
     expect(o.station.hangar.crafts.map((c) => c.kind)).toEqual(["sonda"]);
+  });
+});
+
+describe("station ops with an outfit (the station grows)", () => {
+  const grown = (stock: Record<string, number> = { ...STARTING_STOCK }) => new StationOps(new Station(POLANA_STATION, new MaterialStock(stock), new Hangar(), startingOutfit()), BLUEPRINTS, REFINE_PROCESSES, materialName);
+
+  it("plans say which kind each blueprint is and why a locked one is locked", () => {
+    const plans = grown().plans();
+    expect(new Set(plans.map((p) => p.kind))).toEqual(new Set(["modulo", "equipo", "componente"]));
+    const tank = plans.find((p) => p.blueprint.id === "plano-tanque-n2h4-80397")!;
+    expect(tank.canBuild).toBe(false);
+    expect(tank.locked).toMatch(/Soldadora/);
+    const reactor = plans.find((p) => p.blueprint.id === `plano-equipo-${EQ_CARBONYL.id}`)!;
+    expect(reactor.locked).toBeUndefined();
+    expect(reactor.canBuild).toBe(true);
+    expect(plans.find((p) => p.blueprint.id === "plano-equipo-impresora")).toBeUndefined();
+    expect(grown().refining().find((r) => r.process.id === "carbonilo")!.locked).toMatch(/carbonilo/);
+  });
+
+  it("building equipment is a chain: power left, store left, then the steps; solving it queues the job", () => {
+    const o = grown();
+    const s = o.startFabrication(`plano-equipo-${EQ_EBW.id}`);
+    s.chore.exercises.forEach(valid);
+    const power = s.chore.exercises[0] as Exercise & { kind: "choice" };
+    const out = o.station.outfit!;
+    expect(power.options[power.correct]).toBe(`${(Math.round((out.capacityKw - out.drawKw - EQ_EBW.powerKw) * 100) / 100).toLocaleString("es-ES")} kW`);
+    while (s.run.status === "doing") s.answer(right(s.run.current!));
+    expect(o.station.queue("impresora")).toHaveLength(1);
+    o.station.tick(1000);
+    expect(out.has(EQ_EBW.id)).toBe(true);
+    expect(o.plans().find((p) => p.blueprint.id === `plano-equipo-${EQ_EBW.id}`)!.built).toBe(true);
+    expect(o.plans().find((p) => p.blueprint.id === "plano-tanque-n2h4-80397")!.canBuild).toBe(true);
+  });
+
+  it("every growth blueprint makes a valid chain", () => {
+    const out = startingOutfit();
+    const stock = new MaterialStock({ hierro: 5000, niquel: 500, ceramica: 500, carbono: 1000, agua: 1000, kit: 200 });
+    for (const bp of BLUEPRINTS.filter((b) => b.product.kind === "module" || b.product.kind === "equipment")) growthChore(bp, out, stock, materialName).exercises.forEach(valid);
+  });
+
+  it("the Estación tab swaps a station component from the hangar; the old one goes back", () => {
+    const out = startingOutfit();
+    const hangar = new Hangar();
+    expect(stationOptions(out, "radiadores", STATION_COMPONENTS, hangar)[0]!.locked).toMatch(/hangar/);
+    hangar.put(RADIATORS_DOUBLE.id);
+    const opt = stationOptions(out, "radiadores", STATION_COMPONENTS, hangar)[0]!;
+    expect(opt.locked).toBeUndefined();
+    const chore = stationRefitChore(out, RADIATORS_DOUBLE);
+    chore.exercises.forEach(valid);
+    const c = chore.exercises[0] as Exercise & { kind: "choice" };
+    expect(c.options[c.correct]).toBe("124 kW");
+    applyStationRefit(out, RADIATORS_DOUBLE, hangar);
+    expect(out.component("radiadores")).toBe(RADIATORS_DOUBLE);
+    expect(hangar.count("radiadores-eatcs")).toBe(1);
+    expect(hangar.count(RADIATORS_DOUBLE.id)).toBe(0);
+    expect(() => applyStationRefit(out, WINGS_IROSA, hangar)).toThrow();
   });
 });

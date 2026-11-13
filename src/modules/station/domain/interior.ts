@@ -37,7 +37,7 @@ export interface InteriorVolume extends Box {
   /** Short location code (NOD2, HAB1, FAB1...). */
   readonly code: string;
   readonly label: string;
-  readonly kind: "nodo" | "habitat" | "fabrica" | "esclusa" | "hangar" | "escotilla";
+  readonly kind: "nodo" | "habitat" | "fabrica" | "agricola" | "planta" | "esclusa" | "hangar" | "escotilla";
   readonly pressurised: boolean;
   /**
    * Hatches only: the axis she goes through (not shrunk by the body margin, so she can pass) and
@@ -100,6 +100,9 @@ export interface HangarStorage {
 
 const inBox = (b: Box, p: Vec3, margin: Vec3) =>
   Math.abs(p.x - b.centre.x) <= b.half.x - margin.x && Math.abs(p.y - b.centre.y) <= b.half.y - margin.y && Math.abs(p.z - b.centre.z) <= b.half.z - margin.z;
+
+/** The axis a module runs along: z for the stack, x for modules on node 1's side ports. */
+export const longAxis = (b: Box): "x" | "z" => (b.half.x > b.half.z ? "x" : "z");
 
 /** The space a fixture takes: from its front back into its wall. */
 export function fixtureBox(f: Fixture): Box {
@@ -185,10 +188,11 @@ export class StationInterior {
     return this.plan.fixtures.filter((f) => f.action.kind === "panel" && f.action.panel === panel);
   }
 
-  /** Location code of a fixture, like the ISS's: module code + face letter + bay (FAB1S2). */
+  /** Location code of a fixture, like the ISS's: module code + face letter + bay (FAB1S2), counted along the module. */
   locationCode(f: Fixture): string {
     const v = this.volume(f.volume)!;
-    const along = (f.at.z - (v.centre.z - v.half.z)) / (2 * v.half.z);
+    const k = longAxis(v);
+    const along = Math.abs(f.at[k] - (v.centre[k] - Math.sign(v.centre[k] || 1) * v.half[k])) / (2 * v.half[k]);
     const bay = Math.max(1, Math.min(6, Math.floor(along * 6) + 1));
     return `${v.code}${FACE_LETTER[f.face]}${bay}`;
   }

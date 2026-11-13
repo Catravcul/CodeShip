@@ -74,6 +74,32 @@ describe("Expedition", () => {
     expect(e.phase).toBe("flight");
   });
 
+  it("with the asteroid's wrath wired in, a failed duel is reported with its phase and no duel starts until it calms", () => {
+    const e = make();
+    const calls: [string, number][] = [];
+    let calm = true;
+    e.wrath = {
+      duelFailed: (id, phase) => {
+        calls.push([id, phase]);
+        calm = false;
+      },
+      canRetry: () => calm,
+    };
+    land(e);
+    e.startDuel();
+    while (e.phase === "duel") e.answer(wrong(e.duel!.current!));
+    expect(calls).toEqual([[BENNU.id, 2]]);
+    expect(e.phase).toBe("aggressive");
+    e.update(5, NO_INPUT);
+    // The wrath module owns the damage now: no close-range debris from the old rule.
+    expect(e.flight.ship.hullIntegrity).toBe(1);
+    land(e);
+    expect(e.canStartDuel).toBe(false);
+    calm = true;
+    e.update(0.1, NO_INPUT);
+    expect(e.phase).toBe(e.flight.landed ? "landed" : "flight");
+  });
+
   it("pilot input is ignored while inside the asteroid's mind", () => {
     const e = make();
     land(e);

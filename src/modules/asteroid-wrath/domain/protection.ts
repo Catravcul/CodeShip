@@ -20,12 +20,12 @@ export interface Protection {
 }
 
 /**
- * Energy that wrecks each kind of target, J. Game values, chosen so a tier-2 block (about a tonne at
- * 6 m/s) takes a quarter of the lander and the big ships shrug off rocks but not a nuclear burst.
+ * Energy that wrecks each kind of target, J. Game values, chosen so a metre-sized block from a 2,3 km body
+ * (about 740 kg at 20 m/s, 150 kJ, a car crash) takes three quarters of the lander and the big ships shrug off rocks but not a nuclear burst.
  */
 export const HULL_ENERGY_J: Readonly<Record<TargetKind, number>> = {
   sonda: 3e3,
-  aterrizador: 60e3,
+  aterrizador: 200e3,
   traje: 1.5e3,
   nodriza: 30e6,
   estacion: 50e6,

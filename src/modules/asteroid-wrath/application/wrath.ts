@@ -3,7 +3,7 @@ import type { AsteroidData } from "@modules/celestial/domain/asteroid";
 import { Anger, type DuelPhase } from "../domain/anger";
 import { BLAST, fragmentEnergyOnTargetJ, nuclearDoseMSv, nuclearEnergyOnTargetJ, volatileCharge } from "../domain/blast";
 import { escapeImpossible, gripAt, gripRadiusM } from "../domain/grip";
-import { powerOf, reaches, type AsteroidPower, type TargetKind } from "../domain/power";
+import { powerOf, reaches, TIERS, type AsteroidPower, type PowerTier, type TargetKind } from "../domain/power";
 import { closestApproachM, interceptVelocity, kineticEnergyJ, rockDiameterM, sphereMassKg, stepProjectile, type Projectile, type ProjectileKind } from "../domain/projectile";
 import { BLUNT_ROCK_KG, impactFraction, type Protection } from "../domain/protection";
 import { PULSE, pulseDoseMSv, shieldedDoseMSv } from "../domain/radiation";
@@ -162,6 +162,16 @@ export class AsteroidWrath {
   /** Test and demo hook: set an asteroid's anger directly (0..1). */
   setAnger(asteroidId: string, level: number): void {
     this.mood(asteroidId).anger.set(level);
+  }
+
+  /**
+   * Demo hook (screenshots, manual checks): give an asteroid another tier's powers while keeping its real
+   * size and composition. The game never calls it; tiers come from real data.
+   */
+  demoTier(asteroidId: string, tier: PowerTier): void {
+    const m = this.mood(asteroidId);
+    const power: AsteroidPower = { ...m.power, tier, spec: TIERS[tier], reason: `demostración: poder ${tier}` };
+    this.moods.set(asteroidId, { ...m, power, anger: new Anger(TIERS[tier].angerHalfLifeS) });
   }
 
   // --- Targets -----------------------------------------------------------------

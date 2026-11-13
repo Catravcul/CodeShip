@@ -61,7 +61,7 @@ export const TIERS: Readonly<Record<PowerTier, TierSpec>> = {
     reachM: 3000,
     angerHalfLifeS: 60,
     fireIntervalS: 3,
-    rockSpeedMs: 12,
+    rockSpeedMs: 15,
     guidanceMs2: 0.08,
   },
   3: {
@@ -73,7 +73,7 @@ export const TIERS: Readonly<Record<PowerTier, TierSpec>> = {
     reachM: 5000,
     angerHalfLifeS: 120,
     fireIntervalS: 3.5,
-    rockSpeedMs: 12,
+    rockSpeedMs: 20,
     guidanceMs2: 0.12,
   },
   4: {
@@ -85,7 +85,7 @@ export const TIERS: Readonly<Record<PowerTier, TierSpec>> = {
     reachM: 8000,
     angerHalfLifeS: 240,
     fireIntervalS: 4,
-    rockSpeedMs: 15,
+    rockSpeedMs: 25,
     guidanceMs2: 0.15,
   },
   5: {
@@ -97,7 +97,7 @@ export const TIERS: Readonly<Record<PowerTier, TierSpec>> = {
     reachM: 12000,
     angerHalfLifeS: 480,
     fireIntervalS: 4,
-    rockSpeedMs: 20,
+    rockSpeedMs: 30,
     guidanceMs2: 0.2,
   },
 };

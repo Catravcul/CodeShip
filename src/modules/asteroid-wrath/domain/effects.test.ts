@@ -32,8 +32,8 @@ describe("protection", () => {
     const k = whippleDebrisFactor((4 / 1.3) * 0.95 * (2.84 / 2.7) / 10, SHIELD_WHIPPLE.bumper!);
     expect(k).toBeLessThan(0.2);
     const shielded: Protection = { ...bare, debrisFactor: k };
-    expect(impactFraction(6000, shielded, false)).toBeCloseTo(0.1 * k, 6);
-    expect(impactFraction(6000, shielded, true)).toBeCloseTo(0.1, 6);
+    expect(impactFraction(20_000, shielded, false)).toBeCloseTo(0.1 * k, 6);
+    expect(impactFraction(20_000, shielded, true)).toBeCloseTo(0.1, 6);
   });
 
   it("a 20 g/cm² water wall stops much more than the lander's cabin wall", () => {

@@ -9,6 +9,20 @@ const EPS = 1e-9;
 /** Scale every amount (a partial batch of a process). */
 export const scaleAmounts = (a: Amounts, k: number): Amounts => Object.fromEntries(Object.entries(a).map(([id, n]) => [id, n * k]));
 
+/**
+ * Priorities of the processes that draw on the store (HC-04 in docs/qa): lower is first. Propellant
+ * (the plant's hydrazine and NTO, and their feedstock) comes before the living machines' fertiliser.
+ */
+export const STOCK_PRIORITY = { propelente: 0, bio: 10 } as const;
+
+/** Part of the store kept for a process: others with a lower priority cannot use it. */
+export interface Reservation {
+  readonly holder: string;
+  readonly material: MaterialId;
+  readonly kg: number;
+  readonly priority: number;
+}
+
 /** How big the store is and what its contents weigh (docs/design/estacion.md, «Almacén»). */
 export interface StockOptions {
   /** Capacity of the store now, kg (it grows with the modules); unlimited by default. */
@@ -25,6 +39,7 @@ export interface StockOptions {
  */
 export class MaterialStock {
   private readonly kg = new Map<MaterialId, number>();
+  private readonly held: Reservation[] = [];
 
   constructor(
     initial: Amounts = {},
@@ -57,6 +72,26 @@ export class MaterialStock {
   /** Whether `a` fits in the free room. */
   fits(a: Amounts): boolean {
     return this.massKg(a) <= this.roomKg + 1e-6;
+  }
+
+  /** Keep `amounts` for `holder` (replaces what it kept before) at `priority` (`STOCK_PRIORITY`). */
+  reserve(holder: string, amounts: Amounts, priority: number): void {
+    for (let i = this.held.length - 1; i >= 0; i--) if (this.held[i]!.holder === holder) this.held.splice(i, 1);
+    for (const [material, kg] of Object.entries(amounts)) if (kg > 0) this.held.push({ holder, material, kg, priority });
+  }
+
+  reservations(): readonly Reservation[] {
+    return this.held;
+  }
+
+  /** What is kept of a material for processes before `priority` (all reservations by default), kg. */
+  reservedKg(id: MaterialId, priority = Infinity): number {
+    return this.held.reduce((s, r) => s + (r.material === id && r.priority < priority ? r.kg : 0), 0);
+  }
+
+  /** What a process of `priority` may take of a material: what is above the reservations before it. */
+  availableTo(id: MaterialId, priority: number): number {
+    return Math.max(0, this.amount(id) - this.reservedKg(id, priority));
   }
 
   /** «Almacén lleno»: less than a gram of room. */

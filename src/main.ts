@@ -58,13 +58,13 @@ import { Eva } from "@modules/eva/application/eva";
 import { EvaMode } from "./eva-mode";
 import { SpinRing } from "@modules/gravity/domain/spin-gravity";
 import { Station } from "@modules/station/domain/station";
-import { MaterialStock } from "@modules/station/domain/materials";
+import { MaterialStock, STOCK_PRIORITY } from "@modules/station/domain/materials";
 import { Hangar } from "@modules/station/domain/hangar";
 import { STATION_TUNING } from "@modules/station/domain/blueprint";
 import { StationOps } from "@modules/station/application/station-ops";
 import { BLUEPRINTS } from "@modules/station/data/blueprints";
 import { REFINE_PROCESSES } from "@modules/station/data/processes";
-import { PROPELLANT_PROCESSES } from "@modules/station/data/propellant-processes";
+import { PROPELLANT_PROCESSES, PROPELLANT_RESERVE } from "@modules/station/data/propellant-processes";
 import { COMET_PROCESSES } from "@modules/station/data/comet-processes";
 import { RefuelOps, mothershipRefuelTarget, shipRefuelTarget } from "@modules/station/application/refuel";
 import { materialName } from "@modules/station/data/materials";
@@ -153,6 +153,8 @@ const stationOps = new StationOps(
   [...REFINE_PROCESSES, ...COMET_PROCESSES, ...PROPELLANT_PROCESSES],
   materialName,
 );
+// Propellant production keeps its ammonia first: the fertiliser only uses what is above it (HC-04).
+stationOps.station.stock.reserve("propelente", PROPELLANT_RESERVE, STOCK_PRIORITY.propelente);
 
 // Navigation: any catalogued asteroid of the region can be the target (docs/design/navegacion.md),
 // and the station and the mothership, where the trip ends docked (docs/design/estacion.md).

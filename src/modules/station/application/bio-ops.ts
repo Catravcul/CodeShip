@@ -1,6 +1,6 @@
 import { ChoreRun } from "@modules/chores/domain/chore";
 import { BioLab, selfSufficiencyGauge, type BioProcess, type BioRun, type BioState, type CrewNeeds, type GaugeRow, type NitrogenSource } from "../domain/bioreactor";
-import type { Amounts, MaterialId, MaterialStock } from "../domain/materials";
+import { STOCK_PRIORITY, type Amounts, type MaterialId, type MaterialStock } from "../domain/materials";
 import type { StationOutfit } from "../domain/outfit";
 import { bioTuneChore } from "./challenges";
 import { StationSession } from "./station-ops";
@@ -114,10 +114,16 @@ export class BioOps {
     return this.iceCo2PerHour * 24;
   }
 
+  /** Ammonia the fertiliser may use: what is above the propellant reservation, kg. */
+  get ammoniaForFertiliser(): number {
+    return this.stock.availableTo("amoniaco", STOCK_PRIORITY.bio);
+  }
+
   /** Turn store ammonia into fertiliser for what the running processes will take this tick; kg of N. */
   private topUpNitrogen(hours: number): number {
     const short = this.demand("fertilizante", hours) - this.stock.amount("fertilizante");
-    const n = Math.min(Math.max(0, short), this.stock.amount("amoniaco") * N_IN_NH3);
+    // Only the ammonia above what propellant production keeps (HC-04 in docs/qa).
+    const n = Math.min(Math.max(0, short), this.stock.availableTo("amoniaco", STOCK_PRIORITY.bio) * N_IN_NH3);
     if (n <= 1e-12) return 0;
     this.stock.take({ amoniaco: n / N_IN_NH3 });
     this.stock.add({ fertilizante: n });

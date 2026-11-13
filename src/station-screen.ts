@@ -302,7 +302,15 @@ export class StationScreen {
     return `<div class="st-card st-store"><div class="st-row"><b>Almacén</b><span>${t(used)} de ${t(cap)}</span></div>
       <div class="bay-bar"><span>${Math.round(share * 100)} %</span><i style="width:${Math.round(share * 100)}%"></i></div>
       ${stock.full ? `<div class="st-lock">Almacén lleno: la extracción, los paquetes y los lotes esperan. Refina o gasta material, o monta otro módulo</div>` : ""}
+      ${this.reservedLine()}
       <small>Cada módulo trae bastidores de almacén del tamaño de un ISPR de la ISS (700 kg y 1,571 m³ cada uno); el hangar guarda roca a granel</small></div>`;
+  }
+
+  /** What the store keeps for propellant (HC-04), one short line. */
+  private reservedLine(): string {
+    const r = this.ops.station.stock.reservations();
+    if (!r.length) return "";
+    return `<small class="st-reserve">Reservado para propelente: ${r.map((x) => `${esc(materialName(x.material).toLowerCase())} ${qty(x.material, x.kg)}`).join(", ")} (la planta tiene prioridad; el abono usa lo que sobra)</small>`;
   }
 
   /** «Repostar»: one card per craft docked at the station, at the top of Materiales. */
@@ -636,7 +644,7 @@ export class StationScreen {
     const nh3 = this.ops.station.stock.amount("amoniaco");
     const nitrogen = `<div class="st-card"><div class="st-row"><b>Nitrógeno: el bucle no lo cierra</b><span>${pct(n.share)} local</span></div>
       <small>El bucle solo devuelve el nitrógeno que traen los residuos (${gN(bio.lab.process("bucle")?.outputs.fertilizante)} por hora) y los campos comen ${gN(bio.lab.process("cultivo")?.inputs.fertilizante)} por hora: el resto llega como fertilizante importado (${fmtKg(this.ops.station.stock.amount("fertilizante"))} kg N en el almacén). El amoníaco de los cometas (pestaña Importar) o el de la planta de propelente lo cubre: cada 17 kg de amoníaco llevan 14 kg de nitrógeno.${bio.iceCo2KgPerDay > 0 ? ` El hielo de CO₂ de cometa da a los campos ${fmtKg(bio.iceCo2KgPerDay)} kg de CO₂ al día.` : ""}</small>
-      <div class="st-row"><span>Amoníaco en el almacén: ${fmtKg(nh3)} kg</span><button class="st-btn lf-toggle ${bio.ammoniaFertiliser ? "on" : ""}" data-ammonia>${bio.ammoniaFertiliser ? "Abonando con amoníaco" : "Abonar con amoníaco"}</button></div></div>`;
+      <div class="st-row"><span>Amoníaco en el almacén: ${fmtKg(nh3)} kg${this.ops.station.stock.reservedKg("amoniaco") > 0 ? ` · ${fmtKg(this.ops.station.stock.reservedKg("amoniaco"))} kg reservados para propelente: el abono usa ${fmtKg(bio.ammoniaForFertiliser)} kg` : ""}</span><button class="st-btn lf-toggle ${bio.ammoniaFertiliser ? "on" : ""}" data-ammonia>${bio.ammoniaFertiliser ? "Abonando con amoníaco" : "Abonar con amoníaco"}</button></div></div>`;
     const cards = bio.status().map((s) => this.bioCard(s)).join("");
     return `<div class="lf-head"><div class="lf-big"><div class="lf-pct">${pct(all)}</div><div class="lf-cap">autosuficiente</div></div><small>Media de oxígeno, comida, agua y resina hechos aquí. Cada fila: lo local frente a lo que se necesita.</small></div>
       <div class="bay-sec">Autosuficiencia · al ritmo de ahora</div><div class="st-card lf-gauge">${gauge}</div>

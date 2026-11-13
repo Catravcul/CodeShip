@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Vec3 } from "@core/math/vec3";
-import { MaterialStock } from "./materials";
+import { MaterialStock, STOCK_PRIORITY } from "./materials";
 import { Hangar } from "./hangar";
 import { Station, type StationSite } from "./station";
 import { batchScale, canRefine, type Blueprint, type RefineProcess } from "./blueprint";
@@ -164,5 +164,22 @@ describe("store capacity (HC-02)", () => {
       { material: "b", kg: 25 },
     ]);
     expect(st.stock.full).toBe(true);
+  });
+});
+
+describe("store reservations (HC-04)", () => {
+  it("a process with a lower priority only sees what is above the reservations of the higher ones", () => {
+    const s = new MaterialStock({ amoniaco: 5 });
+    s.reserve("propelente", { amoniaco: 3.4 }, STOCK_PRIORITY.propelente);
+    expect(s.reservedKg("amoniaco")).toBeCloseTo(3.4, 9);
+    expect(s.availableTo("amoniaco", STOCK_PRIORITY.bio)).toBeCloseTo(1.6, 9);
+    // The reservation's owner sees it all.
+    expect(s.availableTo("amoniaco", STOCK_PRIORITY.propelente)).toBe(5);
+    s.take({ amoniaco: 3 });
+    expect(s.availableTo("amoniaco", STOCK_PRIORITY.bio)).toBe(0);
+    // A new reservation by the same holder replaces the old one.
+    s.reserve("propelente", { amoniaco: 1 }, STOCK_PRIORITY.propelente);
+    expect(s.availableTo("amoniaco", STOCK_PRIORITY.bio)).toBeCloseTo(1, 9);
+    expect(s.reservations()).toEqual([{ holder: "propelente", material: "amoniaco", kg: 1, priority: STOCK_PRIORITY.propelente }]);
   });
 });

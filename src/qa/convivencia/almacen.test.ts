@@ -8,7 +8,7 @@ import { G } from "@core/units";
 import type { Answer, Exercise } from "@modules/mind-duel/domain/exercise";
 import { BioOps } from "@modules/station/application/bio-ops";
 import type { StationSession } from "@modules/station/application/station-ops";
-import { MaterialStock } from "@modules/station/domain/materials";
+import { MaterialStock, STOCK_PRIORITY } from "@modules/station/domain/materials";
 import { Hangar } from "@modules/station/domain/hangar";
 import { Station } from "@modules/station/domain/station";
 import { BIO_KCAL_PER_KG, BIO_OUTPUT_USE, BIO_PROCESSES, CREW_NEEDS, LARDER_UNITS } from "@modules/station/data/bio";
@@ -16,7 +16,7 @@ import { EQ_BIO_LAB, EQ_PROTEIN } from "@modules/station/data/bio-equipment";
 import { BLUEPRINTS } from "@modules/station/data/blueprints";
 import { EQ_COMPOSITES, EQ_CROPS, EQ_EBW, MOD_FARM, RADIATORS_DOUBLE, WINGS_IROSA, startingOutfit } from "@modules/station/data/outfit";
 import { MATERIALS, cargoMaterial } from "@modules/station/data/materials";
-import { PROPELLANT_PROCESSES } from "@modules/station/data/propellant-processes";
+import { PROPELLANT_PROCESSES, PROPELLANT_RESERVE } from "@modules/station/data/propellant-processes";
 import { POLANA_STATION } from "@modules/station/data/station";
 import { COMETS } from "@modules/celestial/data/comets";
 import { ImportOps } from "@modules/imports/application/import-ops";
@@ -47,6 +47,8 @@ function grownStation() {
     eatersKcalPerDay: () => 4000,
     resinImportedKg: 120,
   });
+  // As main: propellant production keeps its feedstock first (HC-04).
+  st.stock.reserve("propelente", PROPELLANT_RESERVE, STOCK_PRIORITY.propelente);
   /** Leave exactly `kg` of ammonia and no fertiliser in the store. */
   const ammonia = (kg: number) => {
     st.stock.take({ amoniaco: st.stock.amount("amoniaco"), fertilizante: st.stock.amount("fertilizante") });
@@ -70,17 +72,25 @@ describe("CV · almacén, energía y créditos compartidos", () => {
     expect(g.bio.lab.run("cultivo").short).toBe("fertilizante");
   });
 
-  it("CV-10 al revés: el abono con amoníaco se come primero el amoníaco y la planta solo hace media tanda (HC-04, sin reservas)", () => {
+  it("CV-10 al revés: con poco amoníaco el abono no toca la reserva de propelente y la planta hace su tanda entera (HC-04)", () => {
     const g = grownStation();
+    expect(PROPELLANT_RESERVE.amoniaco).toBeCloseTo(3.4, 9);
     g.ammonia(1.72);
     g.bio.tick(24);
-    const left = g.st.stock.amount("amoniaco");
-    expect(left).toBeLessThan(1.7);
-    expect(left).toBeGreaterThan(0);
+    expect(g.st.stock.amount("amoniaco")).toBeCloseTo(1.72, 9);
+    expect(g.bio.lab.run("cultivo").short).toBe("fertilizante");
     const job = g.st.refine(HYDRAZINE);
-    // A partial batch: the hours scale with what was left.
-    expect(job.hoursTotal).toBeLessThan(HYDRAZINE.hours);
+    expect(job.hoursTotal).toBeCloseTo(HYDRAZINE.hours / (g.outfit.rate("planta") ?? 1), 9);
     expect(g.negatives()).toEqual([]);
+  });
+
+  it("CV-10 con amoníaco de sobra el abono usa solo lo que pasa de la reserva de propelente (HC-04)", () => {
+    const g = grownStation();
+    g.ammonia(4);
+    expect(g.bio.ammoniaForFertiliser).toBeCloseTo(0.6, 9);
+    for (let i = 0; i < 30; i++) g.bio.tick(24);
+    expect(g.st.stock.amount("amoniaco")).toBeCloseTo(3.4, 6);
+    expect(g.bio.ammoniaForFertiliser).toBeCloseTo(0, 6);
   });
 
   it("CV-10 la refinería y los biorreactores intercalados muchas veces no dejan nunca el almacén en negativo", () => {

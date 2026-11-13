@@ -88,7 +88,7 @@ import { MothershipModel } from "./adapters/three/mothership-model";
 import { Navigator } from "@modules/navigation/application/navigator";
 import { asteroidTarget, targetPosition, type NavTarget } from "@modules/navigation/domain/nav-target";
 import { NavigationMode, PHASE } from "./navigation";
-import { TRAVEL_TIME, worldStep } from "@modules/navigation/domain/travel-time";
+import { TRAVEL_TIME, frameClocks } from "@modules/navigation/domain/travel-time";
 import { duration, num } from "@modules/navigation/application/trip-chore";
 import { ProbeTravel } from "./probe-travel";
 import { TripChip, type TripChipData } from "./ui/trip-chip";
@@ -792,8 +792,9 @@ renderer.setAnimationLoop((now) => {
   // A vehicle flying itself on a compressed trip sets the pace of the whole world (docs/design/viajes.md).
   const tripLapse = probeTravel.trip.active ? probeTravel.trip.lapse : nav.lapse;
   // Inside the nano_net its speed nodes let time run faster.
-  const warp = tripLapse > 1 ? tripLapse : asked > 1 ? Math.round(asked * fx.warpFactor) : 1;
-  const world = worldStep(dt, tripLapse);
+  // Every clock of the frame in one place, tested in src/qa/convivencia (docs/qa/entrelazamiento.md).
+  const world = frameClocks(dt, tripLapse, asked > 1 ? Math.round(asked * fx.warpFactor) : 1, STATION_TUNING.hoursPerSecond);
+  const warp = world.warp;
   const warpNote =
     tripLapse > 1
       ? `viaje en cámara rápida ×${num(tripLapse)}`
@@ -807,7 +808,7 @@ renderer.setAnimationLoop((now) => {
   expedition.update(dt * warp, cmd);
   subj.update(dt, warp, warpNote, { visible: view.enabled, landerPosition: flight.state.position });
   // Asteroids that move themselves (level 4 trip, chase after a failed duel), packages and the hold.
-  levels.update(dt * warp);
+  levels.update(dt * warp, world.stationHours);
   asteroidMesh.position.set(bennu.position.x, bennu.position.y, bennu.position.z);
   probeTravel.update(dt);
   wrathMode.update(dt * warp, dt, subj.piloting ? subj.probeMode.camera : camera, view.enabled || deck.active || subj.piloting);
@@ -850,7 +851,7 @@ renderer.setAnimationLoop((now) => {
   }
   // The station's machines, its biosystems and the import inbox run on the same clock as life on
   // board; on a compressed trip they follow the world step (never slower than the voyage).
-  const stationHours = tripLapse > 1 ? world.lifeDays * 24 : dt * warp * STATION_TUNING.hoursPerSecond;
+  const stationHours = world.stationHours;
   stationOps.station.tick(stationHours);
   bioOps.tick(stationHours);
   importOps.tick(stationHours);

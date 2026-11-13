@@ -93,6 +93,13 @@ describe("landing by program (VUE-09, SON-05)", () => {
     expect(near.program.canProgram()).toEqual({ ok: true });
     // The readout's site is picked below the craft as it enters the zone.
     expect(near.program.missM()!).toBeLessThan(0.5);
+    const r = near.program.readout()!;
+    expect(r.z).toBeGreaterThan(250);
+    expect(Math.hypot(r.x, r.y)).toBeLessThan(0.5);
+    // Moving with the ground: no relative speed, and it would not land anywhere yet.
+    expect(Math.hypot(r.vx, r.vy, r.vz)).toBeLessThan(0.01);
+    expect(r.touchdown).toBeUndefined();
+    expect(far.program.readout()).toBeUndefined();
   });
 
   it("VUE-09 the lander, programmed without mistakes, touches down on the site within the limits and anchors", () => {

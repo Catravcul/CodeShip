@@ -7,6 +7,7 @@ import type { ChoreRun } from "@modules/chores/domain/chore";
 import type { Answer } from "@modules/mind-duel/domain/exercise";
 import type { DuelView, SessionText } from "./ui/duel-view";
 import { NavMap } from "./ui/nav-map";
+import type { StepVisual } from "./ui/step-visual";
 
 export const TRIP_TEXT: SessionText = {
   title: "Programar el viaje",
@@ -37,7 +38,7 @@ const km = (m: number) => (m >= 1000 ? `${num(m / 1000, 1)} km` : `${num(m)} m`)
  * `flying()` turns true once the plan is loaded: the sheet then closes by itself; closing it before
  * calls `abort`.
  */
-export function openTripSheet(duel: DuelView, run: ChoreRun, answer: (a: Answer) => boolean, flying: () => boolean, abort: () => void): void {
+export function openTripSheet(duel: DuelView, run: ChoreRun, answer: (a: Answer) => boolean, flying: () => boolean, abort: () => void, text: SessionText = TRIP_TEXT, visual?: StepVisual): void {
   // The challenge sheet is shared with chores and the suit-up: chain its close handler.
   const prev = duel.onClose;
   const restore = () => {
@@ -45,6 +46,7 @@ export function openTripSheet(duel: DuelView, run: ChoreRun, answer: (a: Answer)
   };
   const close = () => {
     abort();
+    visual?.clear();
     restore();
   };
   duel.onClose = close;
@@ -62,10 +64,15 @@ export function openTripSheet(duel: DuelView, run: ChoreRun, answer: (a: Answer)
       },
       maxLives: run.maxMistakes,
     },
-    { ...TRIP_TEXT, title: run.chore.title },
+    { ...text, title: run.chore.title },
     (a) => {
+      const step = run.step;
       const ok = answer(a);
+      // Each step answered right shows what it does at once (the plan builds up before it flies).
+      if (ok) visual?.stepDone(step);
+      if (run.status === "failed") visual?.clear();
       if (flying()) {
+        visual?.finish();
         restore();
         setTimeout(() => duel.hide(), 900);
       }
@@ -124,6 +131,9 @@ export class NavigationMode {
     return this.map.visible || this.nav.status === "programming";
   }
 
+  /** Set by main: the step visual of the trip about to be programmed (route, burn, arrival, braking point). */
+  stepVisual?: () => StepVisual | undefined;
+
   /** Set by main: M and «Mapa» go somewhere else first (the deck's navigation panel); true if handled. */
   toggleOverride?: () => boolean;
 
@@ -151,6 +161,8 @@ export class NavigationMode {
       () => {
         if (nav.status === "programming") nav.cancel();
       },
+      TRIP_TEXT,
+      this.stepVisual?.(),
     );
   }
 

@@ -2,8 +2,10 @@ import { Vec3 } from "@core/math/vec3";
 import type { FlightComputer, FlightTarget } from "@modules/flight/application/flight-computer";
 import { ChoreRun } from "@modules/chores/domain/chore";
 import type { Answer } from "@modules/mind-duel/domain/exercise";
+import { landingFrame, landingReadout, type LandingReadout } from "@modules/flight/domain/landing-frame";
 import { LANDING_GUIDANCE, LandingGuidance, type LandingPhase } from "./landing-guidance";
 import { landingChore, type LandingFacts } from "./landing-chore";
+import { landingSketch, type SketchStep } from "./plan-sketch";
 
 /** Who lands: the uncrewed probe (screw anchors) or the crewed lander (its legs). */
 export type LandingCraft = "sonda" | "modulo";
@@ -279,6 +281,51 @@ export class LandingProgram {
     if (this._status !== "flying" || !g) return undefined;
     const s = g.status;
     return { phase: s.phase, clearanceM: s.clearanceM, missM: s.missM, speedMs: s.speedMs, etaS: s.etaS, lapse: this.lapse };
+  }
+
+  /**
+   * The landing readout (docs/design/aterrizaje.md) for the craft now: position and velocity from the
+   * site in the local frame, predicted touchdown and colours. Undefined outside the approach zone.
+   */
+  readout(): LandingReadout | undefined {
+    const site = this.siteWorld();
+    const f = this.ports.flight();
+    const t = f.target;
+    if (!site || !t || f.docked) return undefined;
+    const s = f.state;
+    const up = s.position.sub(t.position).normalize();
+    const tel = f.telemetry();
+    const m = f.ship.massKg;
+    const rcs = (axis: Vec3) => Math.abs(f.ship.preview({ mainThrottle: 0, translation: axis, rotation: Vec3.ZERO }).forceBody.dot(axis)) / m;
+    return landingReadout({
+      frame: landingFrame(up, s.toWorld(Vec3.X), s.toWorld(new Vec3(0, 0, -1)), s.toWorld(Vec3.Y)),
+      offset: s.position.sub(site),
+      velocity: s.velocity.sub(t.surfaceVelocity(s.position)),
+      clearanceM: Math.max(0, tel.clearance),
+      tiltDeg: tel.tiltDeg,
+      brakeMs2: Math.min(rcs(Vec3.X), rcs(Vec3.Y), rcs(Vec3.Z)),
+      siteRadiusM: this.siteRadiusM,
+    });
+  }
+
+  /** What each landing challenge adds to the plan on screen, once answered right (plan-sketch.ts). */
+  sketch(): SketchStep[] {
+    const f = this.ports.flight();
+    const site = this.siteWorld();
+    const t = f.target;
+    if (!site || !t) return [];
+    const facts = this.facts();
+    return landingSketch({
+      craft: f.state.position,
+      site,
+      up: site.sub(t.position).normalize(),
+      siteRadiusM: this.siteRadiusM,
+      groundVelocity: t.surfaceVelocity(f.state.position).sub(t.surfaceVelocity(t.position)),
+      maxDescentMs: facts.maxDescentMs,
+      flareM: facts.flareM,
+      touchdownMs: facts.touchdownMs,
+      brakeMs2: facts.rcsAccelMs2 * LANDING_GUIDANCE.brakeShare,
+    });
   }
 
   /** Horizontal distance from the craft to the site, m (after a landing: how close it came). */

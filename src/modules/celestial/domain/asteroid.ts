@@ -11,9 +11,14 @@ export interface CompositionEntry {
   readonly massFraction: Sourced<[number, number]>;
 }
 
+/** A rocky asteroid or an icy comet nucleus (both can be subjugated; a comet's ice gives volatiles). */
+export type SmallBodyKind = "asteroide" | "cometa";
+
 export interface AsteroidData {
   readonly id: string;
   readonly name: string;
+  /** Absent means an asteroid. */
+  readonly kind?: SmallBodyKind;
   readonly spectralType: Sourced<SpectralType>;
   /** Extents in metres (x, y, z). */
   readonly dimensionsM: Sourced<Vec3>;

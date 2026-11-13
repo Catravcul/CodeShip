@@ -457,6 +457,8 @@ const subj = new SubjugationUi({
   keyboard: () => pilot.command(),
   atStation: () => atStationPort() || (docking.dockedTo === mothership && !!mothership.dockedTo),
   wrath: wrathMode.wrath,
+  // The EMU suit is about 145 kg (NASA); her body mass comes from the crew model.
+  crewMassKg: habitat.crew.body.massKg + 145,
 });
 
 // Ship bay: only at the station (docs/design/accesos.md): its console in node 2, B inside, or the

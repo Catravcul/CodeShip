@@ -83,7 +83,7 @@ describe("station interior (sized from the structure)", () => {
       const a = interior.fixture(id)!.action;
       return a.kind === "panel" ? a.panel : undefined;
     };
-    expect(panel("refineria")).toBe("materiales");
+    expect(panel("refineria")).toBe("propelente");
     expect(panel("fundicion")).toBe("fabricacion");
     expect(panel("impresora")).toBe("planos");
     expect(panel("consola-hangar")).toBe("hangar");

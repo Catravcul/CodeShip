@@ -22,7 +22,8 @@ export const FACE_NORMAL: Readonly<Record<Face, Vec3>> = {
 export const FACE_LETTER: Readonly<Record<Face, string>> = { suelo: "D", techo: "O", babor: "P", estribor: "S", proa: "F", popa: "A" };
 
 /** Tabs of the station's task screen a machine can open. */
-export type StationPanel = "materiales" | "planos" | "fabricacion" | "hangar";
+/** A tab of the station screen, or the propellant plant inside Materiales. */
+export type StationPanel = "materiales" | "planos" | "fabricacion" | "hangar" | "propelente";
 
 /** An axis-aligned box in the station's body frame. */
 export interface Box {

@@ -26,6 +26,14 @@ export const BENNU: AsteroidData = {
       material: "Carbon",
       massFraction: { value: [0.045, 0.047], source: WIKI, note: "4.5–4.7 wt% in returned sample (Lauretta et al. 2024, Table 4)" },
     },
+    {
+      material: "Nitrogen (in ammonium salts and organics)",
+      massFraction: {
+        value: [0.0023, 0.0025],
+        source: "https://ntrs.nasa.gov/api/citations/20250001355/downloads/GlavinAbundantSTI.pdf",
+        note: "N 0.23–0.25 wt% in Bennu aggregates; water-extracted ammonia ~13.6 µmol/g, 75 × Ryugu's (Glavin et al. 2025, Nature Astronomy)",
+      },
+    },
     // The bulk rock. Bennu's sample is CI-like (Lauretta et al. 2024: ~80 vol% phyllosilicates,
     // ~10 % Fe-Ni sulfides, ~5 % magnetite), so iron and nickel take the CI values of Lodders 2003.
     {

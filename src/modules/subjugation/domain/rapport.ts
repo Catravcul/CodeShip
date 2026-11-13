@@ -1,5 +1,6 @@
 import type { Concept } from "@modules/mind-duel/domain/exercise";
 import type { DuelProfile } from "@modules/mind-duel/domain/difficulty";
+import { LEVEL_TUNING, LEVELS, levelDuelProfile, type Level } from "./levels";
 
 /**
  * Subjugating an asteroid ("entrar en su mente") happens in three stages, each one closer
@@ -82,6 +83,7 @@ export class Rapport {
   private _done = 0;
   private _trust = 0;
   private _failures = 0;
+  private _level = 0;
 
   constructor(readonly asteroidId: string) {}
 
@@ -110,6 +112,53 @@ export class Rapport {
   /** Multiplies the harm its anger does: lower as it trusts her more. */
   get danger(): number {
     return 1 - SUBJUGATION_TUNING.dangerRelief * this._trust;
+  }
+
+  /** Level of subjugation reached after the three stages, 0..4 (levels.ts). */
+  get level(): number {
+    return this._level;
+  }
+
+  /** The level to persuade it into next, once it obeys; undefined before that and after level 4. */
+  get nextLevel(): Level | undefined {
+    return this.subjugated ? LEVELS[this._level] : undefined;
+  }
+
+  /** Only the next level, and only with enough trust for it. */
+  canAttemptLevel(level: Level): boolean {
+    return level === this.nextLevel && this._trust + 1e-9 >= LEVEL_TUNING.trustToOffer[level];
+  }
+
+  /** Why the next level is not on offer yet ("" when it is, or there is none). */
+  levelBlock(): string {
+    const l = this.nextLevel;
+    if (!l || this.canAttemptLevel(l)) return "";
+    return `le falta confianza: ${Math.round(this._trust * 100)} % de ${Math.round(LEVEL_TUNING.trustToOffer[l] * 100)} %`;
+  }
+
+  /** The duel of `level` against this asteroid, from its base profile. */
+  levelProfile(base: DuelProfile, level: Level): DuelProfile {
+    return levelDuelProfile(base, level, this._trust);
+  }
+
+  succeedLevel(level: Level): void {
+    if (!this.canAttemptLevel(level)) throw new Error(`Level ${level} is not on offer (next: ${this.nextLevel ?? "none"})`);
+    this._level = level;
+    this._trust = clamp01(this._trust + LEVEL_TUNING.trustGain);
+  }
+
+  /** Game days of calm service: a subjugated asteroid slowly wins back the trust a failure cost. */
+  serve(days: number): void {
+    if (this.subjugated && days > 0) this._trust = clamp01(this._trust + LEVEL_TUNING.trustPerServiceDay * days);
+  }
+
+  /** Test and demo hook: set the level reached directly (screenshots reach level 4 by code). */
+  setLevel(level: number): void {
+    if (!this.subjugated) {
+      this._done = STAGES.length;
+      this._trust = 1;
+    }
+    this._level = Math.max(0, Math.min(LEVELS.length, Math.round(level)));
   }
 
   /** Only the next stage is offered: stage N+1 opens after stage N succeeded here. */

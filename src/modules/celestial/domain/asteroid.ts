@@ -30,14 +30,33 @@ export type SurfaceShape = (local: Vec3) => number;
 
 export class Asteroid {
   private readonly shape: SurfaceShape;
+  private _position: Vec3;
+  private _velocity = Vec3.ZERO;
 
   /** @param shape optional real surface; defaults to a sphere of the mean radius. */
   constructor(
     readonly data: AsteroidData,
-    readonly position: Vec3,
+    position: Vec3,
     shape?: SurfaceShape,
   ) {
+    this._position = position;
     this.shape = shape ?? (() => this.meanRadiusM);
+  }
+
+  /** Centre, world frame, m. It can change: asteroids move themselves with their gravity drive (game fiction, gravity-drive.ts). */
+  get position(): Vec3 {
+    return this._position;
+  }
+
+  /** Velocity of its centre, world frame, m/s (zero unless its gravity drive is moving it). */
+  get velocity(): Vec3 {
+    return this._velocity;
+  }
+
+  /** Move the body (its gravity drive): whatever is anchored on it rides along in its frame. */
+  moveTo(position: Vec3, velocity: Vec3 = Vec3.ZERO): void {
+    this._position = position;
+    this._velocity = velocity;
   }
 
   /** Orientation after t seconds of spin around its own Y axis. */
@@ -64,9 +83,9 @@ export class Asteroid {
     return local.length() - this.shape(local);
   }
 
-  /** Velocity of the ground under a point, due to the asteroid's spin. */
+  /** Velocity of the ground under a point: the asteroid's spin plus its own motion. */
   surfaceVelocity(world: Vec3): Vec3 {
-    return new Vec3(0, this.spinRadS, 0).cross(world.sub(this.position));
+    return new Vec3(0, this.spinRadS, 0).cross(world.sub(this.position)).add(this._velocity);
   }
 
   get massKg(): number {

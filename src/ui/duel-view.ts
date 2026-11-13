@@ -116,6 +116,9 @@ export class DuelView {
   /** Taps are ignored until then: a double tap never answers twice nor hits the button that replaces the options. */
   private lockedUntil = 0;
 
+  /** «Paso a paso»: a right pick, checked at once (`slot` = its place in the order), e.g. to act the step out in 3D. */
+  onRightPick?: (exerciseId: string, slot: number) => void;
+
   private text: SessionText = asteroidText("");
   private onAnswer: (a: Answer) => { ok: boolean } = () => ({ ok: false });
 
@@ -219,6 +222,7 @@ export class DuelView {
     const v = pickStep(ex, placed, id, this.attempts);
     if (v.kind === "right") {
       this.slots = [...placed, id];
+      this.onRightPick?.(ex.id, placed.length);
       if (v.done) this.submit({ kind: "order", order: this.slots as string[] });
       return;
     }

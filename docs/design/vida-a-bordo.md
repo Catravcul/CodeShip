@@ -413,3 +413,36 @@ En el juego (`story/data/friends.ts`):
 | Viaje automático programado entre asteroides | — | pendiente |
 
 Los números de cuidado sin fuente (velocidad de secado, ritmo de juego y de cariño, probabilidad de mordisco, días por etapa) están marcados en el código como **ajuste de juego**. Así se distinguen de los datos reales.
+
+## Pasos visibles
+
+Cada paso resuelto de una tarea se ve en 3D en su estación: Doménica se pone delante (la cámara la ve
+por encima del hombro, sobre la hoja del reto en el móvil o a su izquierda en horizontal), hace el gesto
+del paso y un utensilio pequeño lo muestra durante unos dos segundos. Se puede contestar el siguiente paso
+mientras tanto: los pasos hacen cola y, si hay cola, el que se ve va más deprisa. En «Paso a paso» cada
+bloque bien se ve en cuanto se toca.
+
+- **Vocabulario** (`src/modules/chores/domain/step-visual.ts`): acciones de cocina (tomar, lavar, cortar,
+  cascar, batir, remover, verter, calentar, hervir, hornear, moler, amasar, sazonar, reposar, emplatar,
+  como el `KitchenCook` de Cold Sanctuary) y de cuidado (regar, agitar, cosechar, servir, mimar, jugar,
+  programar, revisar, reparar, curar, postura, entrenar); `gesto` es el comodín. El verbo con que empieza
+  el texto del paso elige la acción.
+- **Cocina** (`src/modules/kitchen/domain/kitchen-visuals.ts`): cada paso de cada receta y proceso con su
+  sitio (nevera, despensa, encimera, fogón, horno, molino, procesador), su recipiente, el color del
+  alimento y si hay calor; recorre la receta recordando qué está caliente, así «revuelve los huevos»
+  después de «calienta la plancha» pasa en la sartén. Huevos revueltos: nevera → cascar en el bol →
+  plancha → remover → cocinar a 71 °C → sazonar → emplatar.
+- **Demás tareas** (`src/modules/chores/application/step-visuals.ts`): una tabla por tipo de tarea dice
+  cómo actúa cada área (regar con regadera, servir la ración en el cuenco, mimar, programar con una
+  pantalla holográfica, reparar con llave y chispas, curar con botiquín) y qué se ve cuando el paso es un
+  número o una línea de código. El yoga ya mostraba la postura en la esterilla y se queda así. Las tareas
+  de la estación (refinería, biorreactor, fabricación) tienen su acción en la tabla, pero se hacen desde
+  su pantalla y no tienen a Doménica delante.
+- **Puerto para otras áreas**: `StepVisualSource<C>.visuals(reto, índice)` devuelve los `StepVisual`
+  (acción, sitio, color, recipiente, calor) del paso resuelto o `undefined` si no conoce el reto
+  (`firstSource` encadena fuentes); `StepVisualPlayer` (`play`, `clear`, `current`) los muestra. El
+  reproductor del módulo es `src/adapters/three/interior/step-show.ts`.
+- **Rendimiento**: los utensilios se crean una vez (cuatro geometrías y una docena de materiales
+  compartidos) y se reutilizan; 32 partículas en un solo `Points` hacen vapor, gotas, polvo y chispas;
+  sin luces ni sombras nuevas; todo se libera al salir del módulo. Medido con la suite de experiencia
+  (docs/testing.md).

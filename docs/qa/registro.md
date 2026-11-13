@@ -73,6 +73,8 @@ caso y las anteriores quedan en sus run logs.
 | VID-05 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | VID-06 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | VID-07 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| VID-08 | Solo test | | | `kitchen-visuals.test.ts`; jugado en PX-01 |
+| VID-09 | Solo test | | | `step-visuals.test.ts`; jugado en PX-01 |
 | EVA-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | EVA-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | EVA-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |

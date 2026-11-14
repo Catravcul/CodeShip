@@ -60,11 +60,11 @@ caso y las anteriores quedan en sus run logs.
 | EST-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | EST-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | EST-04 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
-| EST-20 | Probado (en vivo) | 2026-11-14 | `5476fbf` | [run](runs/2026-11-14-1800-PX-12.md): PX-12 y la suite |
-| EST-21 | Probado (en vivo) | 2026-11-14 | `5476fbf` | [run](runs/2026-11-14-1800-PX-12.md): PX-12 y la suite |
-| EST-22 | Probado (en vivo) | 2026-11-14 | `5476fbf` | [run](runs/2026-11-14-1800-PX-12.md): PX-12 y la suite |
-| EST-23 | Probado (en vivo) | 2026-11-14 | `5476fbf` | [run](runs/2026-11-14-1800-PX-12.md): PX-12 y la suite |
-| EST-24 | Probado (en vivo) | 2026-11-14 | `5476fbf` | [run](runs/2026-11-14-1800-PX-12.md): PX-12 y la suite |
+| EST-20 | Probado (en vivo) | 2026-11-14 | `f1df8fc` | [run](runs/2026-11-14-1806-PX-04-PX-10-PX-12.md): PX-12 y la suite |
+| EST-21 | Probado (en vivo) | 2026-11-14 | `f1df8fc` | [run](runs/2026-11-14-1806-PX-04-PX-10-PX-12.md): PX-12 y la suite |
+| EST-22 | Probado (en vivo) | 2026-11-14 | `f1df8fc` | [run](runs/2026-11-14-1806-PX-04-PX-10-PX-12.md): PX-12 y la suite |
+| EST-23 | Probado (en vivo) | 2026-11-14 | `f1df8fc` | [run](runs/2026-11-14-1806-PX-04-PX-10-PX-12.md): PX-12 y la suite |
+| EST-24 | Probado (en vivo) | 2026-11-14 | `f1df8fc` | [run](runs/2026-11-14-1806-PX-04-PX-10-PX-12.md): PX-12 y la suite |
 | EST-05 | Parcial | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): suite OK; en vivo solo la tarjeta del almacén lleno (`hc-almacen-mobile.png`) |
 | REF-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | REF-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |

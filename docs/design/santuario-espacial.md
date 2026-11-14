@@ -2,7 +2,7 @@
 
 Petición de Berón (2026-11-14, traducida): «¿Podríamos tener túneles de agua? ¿Se puede nadar en el espacio? La idea sería usar también ese mecanismo para guardar agua. El agua se guardaría en zonas sin gravedad y facilitaría que los astronautas se movieran. Hasta podríamos tener peces. En la estación, todo el hangar podría ser una reserva de agua con un mecanismo de ríos artificiales, porque entiendo que hacen falta para mantener el oxígeno del agua para los peces, ¿o algo así? ¿Quizá es más fácil tener fauna marina en el espacio? Las zonas abisales no reciben sol, así que imagino que las criaturas abisales no lo echarían de menos. ¿Quizá algunos insectos y animales nocturnos también estarían mejor preparados para el espacio? Así que empecemos con el santuario espacial. Como viste en Cold Sanctuary, hay santuarios terrestres, marinos y subterráneos, cada uno con sus adaptaciones, su fauna local y autosustentable. De hecho Cold Sanctuary tiene reglas para crear áreas y pisos. Revísalas, toma lo mejor y adáptalo si hace falta».
 
-Investigación con fuentes: [agua-y-fauna-en-ingravidez.md](../research/agua-y-fauna-en-ingravidez.md). Código de reglas: `src/modules/sanctuary/` (solo dominio y datos; sin 3D todavía).
+Investigación con fuentes: [agua-y-fauna-en-ingravidez.md](../research/agua-y-fauna-en-ingravidez.md). Código de reglas: `src/modules/sanctuary/` (dominio, datos y casos de uso). El **acuario del anillo** ya está en el juego (§7–§9): tanque en 3D en la cubierta de cultivo, cuidados, amistad y ayuda.
 
 ## Respuestas cortas
 
@@ -37,8 +37,8 @@ Datos en `src/modules/sanctuary/data/areas.ts`; un test comprueba que **cada esp
 
 | Área | Clase | Dónde | Gravedad · luz | Agua | Fauna y flora | Bucle |
 | --- | --- | --- | --- | --- | --- | --- |
-| **Jardín del anillo** (hub) | Terrestre | Nodriza, cubierta de cultivo | 1 g · día/noche | — | Cultivos, grillos, polillas (más las gallinas y los perros que ya hay) | Cultivos → insectos → compost |
-| **Acuario del anillo** | Marino | Nodriza, suelo del borde | 1 g · día/noche | 1 m³ (1 t) | Medaka, caracol *Biomphalaria*, ceratófilo, biofiltro | Ceratófilo → peces y caracoles → bacterias |
+| **Jardín del anillo** (hub) | Terrestre | Nodriza, cubierta de cultivo | 1 g · día/noche | — | Cultivos, grillos, polillas, lombrices y colémbolos (más las gallinas y los perros que ya hay) | Cultivos → insectos → compost |
+| **Acuario del anillo** | Marino | Nodriza, suelo del borde | 1 g · día/noche | 1 m³ (1 t) | Medaka, caracol *Biomphalaria*, gamba roja, ceratófilo, biofiltro | Ceratófilo → peces y caracoles → bacterias |
 | **Cueva del anillo** | Subterráneo | Nodriza, cubierta a oscuras | 1 g · oscuridad | 0,5 m³ | Pez ciego, bacterias del hidrógeno, grillos, cucarachas | Quimiosíntesis → peces e insectos → detritívoros |
 | **Esfera de agua** | Marino | Estación, módulo agrícola (B330) | 0 g · día/noche | Esfera de 4 m (33,5 t) | Medaka, pez cebra, caracol, ceratófilo, *Euglena*, biofiltro | Como C.E.B.A.S., más grande |
 | **Insectario ingrávido** | Aéreo | Estación, módulo agrícola | 0 g · penumbra | — | Polillas, moscas, cucarachas, los campos de cultivo | Cultivos → polillas → moscas y cucarachas |
@@ -133,7 +133,98 @@ Igual que la estación crece ([estacion.md, «La estación crece»](estacion.md#
 
 **Cuidar** cada área después es una tarea de la lista de Tareas (categoría *animales* o *plantas*), como ajustar un biorreactor: revisar el oxígeno, limpiar el filtro, alimentar, recoger huevos. Si no se cuida, el área rinde menos y avisa.
 
-## 7. Plan por fases (cada fase, una rama)
+## 7. El canon: amigos y familia, nunca comida
+
+Berón (2026-11-14): «Los peces son amigos. La idea raíz de los santuarios es que humanos, animales, insectos, bacterias y plantas se hagan amigos, se hagan familia».
+
+- **Ningún animal del santuario es comida**, ni los peces ni los insectos. La tilapia del río es un vecino, no una granja; el tenebrio y la mosca soldado reciclan, no se comen. La proteína de la tripulación sigue siendo la del huerto, la carne cultivada y el reactor de proteína.
+- **Familia entre especies:** el santuario usa la misma regla que gatos, perros y gallinas (`family/domain/family.ts`): cada encuentro calmado suma vínculo (`warmMeetingBond`, 0,12) y desde `familyAt` (0,7) son familia. En el acuario, **cada tarea de cuidado bien hecha es un encuentro cálido** con el banco.
+- **Bienestar:** con amigos en el tanque la Calma de Doménica sube un poco cada día; mirar un acuario más poblado bajó el pulso y mejoró el ánimo de los visitantes del National Marine Aquarium ([Cracknell et al. 2016](https://pubmed.ncbi.nlm.nih.gov/27818525/)).
+- **Las bacterias y las plantas también cuentan:** el biofiltro y el ceratófilo son parte de la familia del tanque; «ciclar» el filtro es convencer a las bacterias de quedarse.
+
+## 8. Pedir ayuda: un reto de programar mentes
+
+En Codeship hablar con una mente es **leer o escribir su programa** (el duelo de mentes). En Cold Sanctuary modificar pensamientos ajenos es un hechizo avanzado (`spells-suprahechizo-and-thoughts.md`); aquí es el **núcleo del juego**: además de hacer que los animales se lleven bien, sirve para **pedirles ayuda**.
+
+1. **Hacer amistad** (`amistad-acuario`): tras cuidarlos al menos una vez, un programa en la mente del banco: «cuando Doménica se acerque al cristal → recordar su cara y nadar hacia ella en banco». Se apoya en que los peces aprenden caras humanas ([pez arquero, 81 %](https://www.ox.ac.uk/node/509329)). Tres retos: ordenar el programa, predecir qué hace el banco con calma 0,8, y elegir la orden que no asusta.
+2. **Pedir ayuda** (`ayuda-acuario`), solo a amigos, una regla por tarea y durante 10 días de juego:
+   - **Caracoles: limpiar el cristal.** «cuando el cristal tenga algas → subir y rasparlas con la rádula; al terminar, volver al fondo». Efecto: las algas bajan al momento y siguen bajando (raspan 0,25 al día más), la tarea «Limpiar el cristal» desaparece y en 3D los caracoles suben al cristal. El reto de reparar enseña el peligro: un `si no → comer(ceratofilo)` se comería la planta que da el oxígeno.
+   - **Medakas: avisar del agua.** «cuando el nitrato pase de 30 mg/L o falte oxígeno → subir en banco al cristal». Efecto: el cambio de agua se pide a 30 mg/L en vez de a 40, y el banco sube a la superficie y lo dice. Real: con poco oxígeno los peces suben a respirar la película de la superficie antes de morir ([Small et al. 2014](https://pmc.ncbi.nlm.nih.gov/articles/PMC3984153)).
+3. **La ficha de cada especie dice qué ayuda puede dar** (`Species.help` en `data/fauna.ts`): artemias que alimentan, dafnias que aclaran el agua, gambas que limpian el biofilm, lombrices que hacen tierra, mosca soldado que recicla los restos, gusanos de seda que hilan cuerda para los asideros, abejas que polinizan en el anillo.
+
+**Licencia marcada:** la conducta es real; que una regla escrita la desencadene a voluntad es la licencia del juego, como los hechizos de Cold Sanctuary.
+
+## 9. El acuario del anillo (lo que ya está)
+
+| Pieza | Qué hace | Código |
+| --- | --- | --- |
+| Tanque | 1,6 × 0,8 × 0,8 m (1 m³) sobre un mueble, contra la pared de la puerta de la cubierta de cultivo, a 2 m de todo (HAB-08) | `habitat/data/ring-module.ts` (`acuario`), `adapters/three/interior/aquarium-model.ts` |
+| Habitantes | 40 medakas (un solo banco, como el `Swarm` de Cold Sanctuary), 12 caracoles, gambas rojas, ceratófilo y biofiltro | `data/areas.ts`, `domain/aquarium.ts` |
+| Bucle | Pienso → amonio (TAN = pienso × proteína × 0,092) → biofiltro → nitrato → ceratófilo; algas que crecen con la luz y el nitrato y que raspan los caracoles; hambre | `RingAquarium.tick` |
+| Cuidados | Dar de comer (ración por peso), limpiar el cristal, cambiar el 20 % del agua: retos de código con **pasos visibles** (puerto `StepVisual`: escamas que caen, cristal que se limpia, el programa brilla sobre el tanque) | `application/aquarium-ops.ts`, `chores/application/step-visuals.ts` |
+| Amistad y ayuda | §7 y §8 | `data/aquarium-lessons.ts` |
+| Estado | Una línea en el estado de Doménica: nitrato, algas, «medakas amigas», quién ayuda | `ui/aquarium-text.ts` |
+| QA | VID-11 a VID-13 y el recorrido PX-13 `acuario` | `aquarium.test.ts`, `aquarium-ops.test.ts`, `tools/experiencia/acuario.mjs` |
+
+## 10. Progresión: de la medaka a las criaturas poderosas
+
+En Cold Sanctuary, Doménica se hace fuerte para **jugar con los animales más poderosos** (la ballena, el oso polar): solo juegan los criados por humanos, los de vínculo suficiente o los muy relajados; un oso salvaje sigue la ley natural (`world-topology-and-planes.md` §4.1). Tras dominar el yoga aprende hechizos avanzados que parecen magia.
+
+**El equivalente espacial** sube por **dos escaleras a la vez**: el **yoga** (Calma y Forma de la tripulación, ya en `CrewMember`) y la **destreza mental** (nivel de los duelos y de la subyugación, ya en `mind-duel` y `subjugation-levels`). Cada escalón pide algo de las dos:
+
+| Nivel | Criaturas | Por qué son «más poderosas» | Pide |
+| --- | --- | --- | --- |
+| 1 · Acuario | Medaka, caracoles, gambas | Mentes simples, un banco | Cuidar una vez |
+| 2 · Enjambres | Abejas del anillo, polillas y gusanos de seda del insectario | Muchas mentes a la vez: la regla debe valer para todo el enjambre | Calma ≥ 0,6; duelos de nivel 2 |
+| 3 · Mentes grandes | **Calamar bobtail** y **pulpo** (acuario salado del anillo) | Cerebros grandes que aprenden y escapan; un mal programa los enfada (agresividad del duelo) | Calma ≥ 0,7; programas con bucles y condiciones |
+| 4 · «La ballena» | **El río del hangar** como un solo organismo: tilapias, bancos y plantas | Una mente colectiva enorme; acercarse es nadar (modo nado, fase 7) | Forma ≥ 0,7 para nadar; duelos de nivel 4 |
+| 5 · «El oso polar» | **Los asteroides furiosos** que hoy se subyugan | La mente más fuerte del juego. En vez de subyugarlos, **hacerlos familia**: que acepten «jugar» (dejar minar, cambiar de órbita) | Yoga avanzado y la subyugación completa |
+
+Como en Cold Sanctuary, una criatura que no es amiga sigue su naturaleza: el pulpo se escapa del tanque, el asteroide embiste. El vínculo (cuidar + jugar) es lo que desbloquea pedirles más.
+
+## 11. Biomas de la estación a su tamaño real
+
+Cifras en la investigación (§12). La nodriza lleva los recursos de la tripulación y **biomas pequeños en su anillo** (sobra suelo: 6 334 m² por anillo y la cubierta de cultivo usa 324). La estación **aloja los biomas grandes**:
+
+| Bioma | Dónde | Tamaño | Gravedad | Fauna (ver catálogo) |
+| --- | --- | --- | --- | --- |
+| Acuario del anillo (hecho) | Nodriza, cubierta de cultivo | 1 m³ | 1 g | Medaka, caracol, gamba roja, ceratófilo |
+| Bosque del anillo | Nodriza, sector de 40 × 18 m | 720 m² | 1 g | Frutales, abejas, lombrices, colémbolos, cochinillas |
+| Acuario salado | Nodriza, cubierta del anillo | 2–5 m³ (+ el mismo peso en el anillo gemelo) | 1 g | Artemia, medusa luna (kreisel), calamar bobtail |
+| Esfera de agua | Estación, módulo agrícola (330 m³) | 33,5 t | 0 g | Medaka, pez cebra, caracol, anfípodo, dafnia, ceratófilo |
+| Insectario | Estación, módulo agrícola | — | 0 g | Polillas, gusanos de seda, grillos, mosca soldado |
+| **Módulo bioma** (nuevo) | Estación, hinchable como el BA 2100, atracado en uno de los **dos puertos laterales libres del Nodo 1** (la estación le da sola puerta con nombre, pasillo y asideros) | 2 250 m³; tambor interior de 10 m × 12 m | 0,1–0,3 g en el tambor, 0 g en el eje | Bosque de aire y suelo: lombrices, tenebrio, cochinillas, colémbolos, plantas trepadoras |
+| Río del hangar | Estación, hangar | 346 t | 0,1 g | Medaka, pez cebra, tilapia, caracol |
+
+## 12. Estaciones-árbol: la red de estaciones
+
+Berón: «reutiliza la idea de los edificios-árbol de Cold Sanctuary: estaciones espaciales que actúan como edificios-árbol, con máquinas espaciales para pasar de una a otra. Así podrían entrar más personajes, como Cold Sanctuary empezó con pocas plataformas y ahora tiene varios edificios para todos sus habitantes».
+
+En Cold Sanctuary (`construcciones-elevadas.md`, `plano-edificios.md`, `transporte-alfombras.md`): lo construido no ocupa el suelo de la naturaleza; los edificios crecen en pisos sobre un tronco (lo pesado abajo, lo silencioso arriba); las plataformas cercanas se unen con puentes y las lejanas con **alfombras voladoras automáticas** desde una pista en lo alto de cada edificio.
+
+| Cold Sanctuary | Codeship |
+| --- | --- |
+| **Edificio-árbol**: tronco y pisos | **Estación-árbol**: una **viga central** (el tronco) con los módulos como ramas; cerca del tronco lo pesado y ruidoso (fábrica, planta), en las puntas lo silencioso (habitáculos, yoga, biomas) |
+| Puentes entre plataformas cercanas | **Pasillos presurizados** entre módulos de la misma estación |
+| Pista de alfombras en el último piso | Un **puerto de traslado** en la punta de cada estación |
+| **Alfombra voladora** automática: tocar, elegir destino, ir sentado | **Lanzadera de traslado** automática (como la Soyuz T-15 que fue de la Mir a la Salyut 7 en 1986): se toca la máquina del puerto, se elige la estación, Doménica va sentada y se acopla sola |
+| Arboleda residencial: un dormitorio por persona | **Estación-hogar** de cada grupo nuevo: así entran personajes |
+
+**Cómo entran personajes:** cada estación nueva trae a sus habitantes (una familia de científicos para el módulo bioma, una tripulación de mineros, los cuidadores del río). La red empieza con la nodriza y la estación de hoy y crece de una en una, como Cold Sanctuary pasó de pocas plataformas a varios edificios. Cada estación es un **plano** con requisitos (`missingRequirements`) y su pieza de tronco.
+
+## 13. Plan por fases (fauna, amistad y estaciones-árbol)
+
+| Fase | Rama | Qué entra | Tamaño |
+| --- | --- | --- | --- |
+| A | `santuario-fauna` (esta) | Investigación de fauna y medio (§10–§13 de la investigación), catálogo ampliado con fuentes y ayudas, regla de salinidad, **acuario del anillo** jugable (cuidados, amistad, ayuda), PX-13 | Hecha |
+| B | `santuario-familia` | Guardar el estado del acuario; el banco y los caracoles en la línea de Familias; más ayudas (gambas, dafnias) y el reto de ciclar el biofiltro | Pequeña |
+| C | `santuario-salado` | Acuario salado del anillo: artemia, medusa luna en kreisel, calamar bobtail; anillo gemelo con su contrapeso de agua | Media |
+| D | `santuario-bosque` | Bosque del anillo: abejas, lombrices, colémbolos, mosca soldado y tenebrio que reciclan los restos de la cocina | Media |
+| E | `santuario-esfera` (antes fase 3) | Esfera de 0 g con lo que ya voló (medaka, anfípodos, dafnias) | Media |
+| F | `estaciones-arbol` | Red de estaciones: puerto de traslado, lanzadera automática, segunda estación con el **módulo bioma** y sus personajes | Grande |
+| G | `santuario-poderosos` | Progresión §10: enjambres, cefalópodos, el río como una mente, asteroides como familia | Grande |
+
+## 14. Plan original por fases (fase 0)
 
 | Fase | Rama | Qué entra | Tamaño |
 | --- | --- | --- | --- |
@@ -148,14 +239,19 @@ Igual que la estación crece ([estacion.md, «La estación crece»](estacion.md#
 
 Cada fase con su documento de diseño, capturas en móvil y escritorio y los recorridos de QA que toquen.
 
-## 8. Decisiones abiertas para Berón
+## 15. Decisiones abiertas para Berón
 
 1. **El hub:** ¿el santuario terrestre es la cubierta de cultivo de la nodriza (lo que propongo) o queremos un anillo propio en la estación (una centrífuga nueva, cara)?
 2. **Primer santuario:** propongo el **acuario del anillo** (1 m³, medaka, caracol y ceratófilo). ¿Te vale, o prefieres empezar por la esfera en 0 g, más espectacular y más difícil?
-3. **Nadar:** ¿solo en el río del hangar (realista, al final del árbol) o también como licencia de ficción antes, marcada como tal?
-4. **¿Se comen los peces?** La tilapia es pez de granja. La ética de Cold Sanctuary es no dañar animales. ¿Los peces del santuario son solo santuario, o una granja aparte?
+3. **Nadar:** sin respuesta; se queda solo en el río del hangar y la ficción marcada para más adelante.
+4. ~~**¿Se comen los peces?**~~ **Respondida (2026-11-14):** no; los peces son amigos (§7).
 5. **Agua salada:** ¿abrimos un acuario salado en el anillo para el calamar bobtail (que voló a la ISS y brilla con sus bacterias)?
 6. **El abismo:** ¿descartamos la fauna abisal real (presión) o aceptamos un tanque hiperbárico pequeño como laboratorio, o como licencia mágica?
 7. **El núcleo:** Cold Sanctuary tiene un quinto santuario, el Núcleo. ¿Tiene un equivalente aquí (por ejemplo, junto al reactor de la nodriza) o lo dejamos?
 8. **Murciélagos:** no hay datos de vuelo. ¿Los queremos más adelante, en un anillo y con mucho volumen?
 9. **El agua del río:** ¿cuánto tiempo de juego para traer 346 t? Con el remolcador son unos 70 viajes; ¿añadimos un carguero de hielo de cometa?
+10. **Caracol:** *Biomphalaria* tiene vuelo pero hospeda la esquistosomiasis; la nerita no ha volado pero no se multiplica en agua dulce y limpia mejor. ¿Mantenemos *Biomphalaria* de laboratorio (lo que propongo, por su historial) o cambiamos a nerita en el acuario del anillo?
+11. **Escalera de poder (§10):** ¿te valen el pulpo como «mente grande» y los asteroides como «oso polar»? El pulpo no ha volado y pide agua salada.
+12. **Módulo bioma (§11):** ¿un hinchable del tamaño del BA 2100 (2 250 m³) en la estación, con un tambor interior de 0,1–0,3 g?
+13. **Estaciones-árbol (§12):** ¿lanzadera automática (realista, como la Soyuz T-15) o un transporte con licencia (un «tubo» de traslado)? ¿Qué personajes llegan con la segunda estación?
+14. **Cuántos peces:** 40 medakas en 1 m³ es una carga muy suave (el tanque es estable y apenas pide cambios de agua). ¿Más peces y más tareas, o así de tranquilo?

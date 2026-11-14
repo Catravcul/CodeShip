@@ -13,6 +13,15 @@ describe("fauna catalogue", () => {
     for (const s of SANCTUARY_SPECIES) expect(s.source, s.id).toMatch(/^https:\/\//);
   });
 
+  it("every living species but the counter-examples says how it can help once befriended", () => {
+    for (const s of SANCTUARY_SPECIES.filter((x) => x.id !== "granadero")) expect(s.help, s.id).toBeTruthy();
+  });
+
+  it("the sea-water species (Artemia, moon jellyfish, bobtail squid) fit no planned fresh-water area", () => {
+    for (const id of ["artemia", "medusa-luna", "calamar-bobtail"])
+      expect(SANCTUARY_AREAS.filter((a) => fit(speciesById(id)!, a).ok).map((a) => a.id), id).toEqual([]);
+  });
+
   it("ids are unique", () => {
     expect(new Set(SANCTUARY_SPECIES.map((s) => s.id)).size).toBe(SANCTUARY_SPECIES.length);
   });

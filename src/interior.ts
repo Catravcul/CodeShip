@@ -40,6 +40,9 @@ import { choreVisuals } from "@modules/chores/application/step-visuals";
 import type { StepVisual } from "@modules/chores/domain/step-visual";
 import { AmbientNotices } from "./adapters/three/interior/ambient-notices";
 import { NoticeQueue, type NoticeLevel } from "@modules/notices/domain/notices";
+import { AquariumOps, isAquariumChore } from "@modules/sanctuary/application/aquarium-ops";
+import { AquariumModel } from "./adapters/three/interior/aquarium-model";
+import { aquariumEventText, aquariumStatus } from "./ui/aquarium-text";
 
 const CAT_COLORS = [0xd9822b, 0x2b2b2b, 0xe8e2d6, 0x8a8f99];
 const HEN_COLORS = [0xb5651d, 0xf2efe6, 0x2a2a2a, 0xc98a4a];
@@ -51,6 +54,7 @@ const STEP_VISUALS = choreVisuals(CONTEXT);
 const DAYS_PER_SECOND = 1 / 40;
 
 const stationFor = (c: Chore): Station["id"] => {
+  if (isAquariumChore(c)) return "acuario";
   switch (c.kind) {
     case "yoga":
       return "yoga";
@@ -168,6 +172,9 @@ export class Interior {
   private readonly avatarRig = new THREE.Group();
   /** Solved steps acted out at the station: Doménica's gesture and a small prop. */
   readonly steps = new StepShow();
+  /** The ring aquarium on the farm deck (docs/design/santuario-espacial.md): its use cases and its 3D tank. */
+  readonly aquarium: AquariumOps;
+  readonly tank: AquariumModel;
   private stepTag = "";
   /** Floating labels hidden while a chore is framed (they are for finding your way, not for watching a step). */
   private hiddenLabels: THREE.Object3D[] = [];
@@ -253,6 +260,10 @@ export class Interior {
     this.figure.root.visible = false;
     this.scene.add(mat);
 
+    this.aquarium = new AquariumOps(undefined, habitat.crew);
+    const at = STATIONS.find((s) => s.id === "acuario")!.look;
+    this.tank = new AquariumModel(new THREE.Vector3(at.x, 0, at.z));
+    this.scene.add(this.tank.root);
     this.avatarRig.add(this.avatar.root);
     this.scene.add(this.avatarRig);
     this.scene.add(this.steps.root);
@@ -351,9 +362,11 @@ export class Interior {
     if (!busy) {
       // `days`: life on board's pace, or the trip's if a compressed trip runs faster (docs/design/viajes.md).
       this.habitat.tick(days);
+      this.aquarium.tick(days);
       this.dayClock += days;
     }
     for (const e of this.habitat.drainEvents()) this.onEvent(e);
+    for (const e of this.aquarium.drainEvents()) this.say(aquariumEventText(e), e.type === "aviso" ? "alerta" : "jugador");
     for (const l of this.habitat.mailbox?.drainNew() ?? []) this.say(l.channel === "llamada" ? `Llamada de ${l.from}` : `Carta de ${l.from}: ${l.subject}`, "alerta");
     if (!this.active) return;
     this.radioBtn.querySelector("b")!.textContent = this.habitat.mailbox?.unread ? String(this.habitat.mailbox.unread) : "";
@@ -435,6 +448,7 @@ export class Interior {
       }
     }
     this.syncFamilies();
+    this.tank.update(dt, this.aquarium.tank, this.pos);
     for (const b of this.beds) b.sync();
     this.syncMachines();
     this.figure.update(dt);
@@ -596,7 +610,7 @@ export class Interior {
   }
 
   private currentChores(): Chore[] {
-    return this.habitat.chores(RECIPES, YOGA_SEQUENCES, CONTEXT);
+    return [...this.habitat.chores(RECIPES, YOGA_SEQUENCES, CONTEXT), ...this.aquarium.chores()];
   }
 
   private boardFilter: Station["id"] | undefined;
@@ -710,7 +724,7 @@ export class Interior {
       for (const l of this.hiddenLabels) l.visible = false;
     }
     this.frameForSheet(true);
-    const session = this.habitat.start(chore, CONTEXT);
+    const session = isAquariumChore(chore) ? this.aquarium.start(chore) : this.habitat.start(chore, CONTEXT);
     this.cooking = chore.kind === "cocinar";
     this.session = session;
     const run = session.run;
@@ -757,6 +771,7 @@ export class Interior {
     const acts = (i: number) => STEP_VISUALS.acts(chore, i) ?? [];
     return {
       stepDone: (index) => {
+        if (isAquariumChore(chore)) this.tank.react(acts(index));
         if (this.steps.framing) this.steps.play(acts(index).slice(picked.index === index ? picked.n : 0));
         picked = { index: -1, n: 0 };
       },
@@ -964,6 +979,7 @@ export class Interior {
       <div class="ititle ihud-who">${portrait("Doménica")}<span>Doménica · día ${Math.floor(this.dayClock) + 1} a bordo</span></div>
       ${bar("Saciedad", c.satiety)}${bar("Forma", c.fitness)}${bar("Calma", 1 - c.stress)}${bar("Compañía", 1 - c.loneliness)}
       <div class="small more">Autosuficiencia: ${Math.round(sus.ratio * 100)} % (${Math.round(sus.areaM2)} de ${Math.round(sus.neededM2)} m² de cultivo)${fam ? ` · Familias: ${fam}` : ""}</div>
+      <div class="small more">${aquariumStatus(this.aquarium.tank)}</div>
       <div class="small more">Despensa: ${larder || "vacía"} · ${this.habitat.meals} platos cocinados</div>${
         this.zones ? `<div class="small grav">${this.zones.hudLine()}${c.microgravityDays > 0.05 ? ` · ${c.microgravityDays.toFixed(1).replace(".", ",")} días en ingravidez` : ""}</div>` : ""
       }`;

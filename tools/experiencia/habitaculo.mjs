@@ -71,7 +71,7 @@ export async function habitaculo(j) {
     c.bridge.enter("salida");
   });
   await capture(j, "puente", "Puente: sala de consolas");
-  await j.useMachine("bridge", "prop", "abrir", "Usar la consola: Propulsión");
+  await j.useMachine("bridge", "prop", "abrir", "Usar la consola: Pilotaje y propulsión");
   await p.waitForTimeout(800);
   const shown = await p.$$eval(".fd .fd-panel", (els) => els.filter((e) => getComputedStyle(e).display !== "none").length);
   j.check("la consola de propulsión abre solo su página", shown === 1, `${shown} páginas a la vista`);

@@ -47,6 +47,8 @@ export interface BridgeScreen {
   readonly matrix: THREE.Matrix4;
   /** Atlas pixels per screen height (320 for a cell, 640 for the plot table's block). */
   readonly pxTall: number;
+  /** The one she faces at the station (the middle of three). */
+  readonly main: boolean;
 }
 
 export interface BridgeModel {
@@ -158,7 +160,7 @@ export function buildBridge(k: number): BridgeModel {
   aftKit.box(0.4 * k, 0.3 * k, 0.04 * k, COL.bezel, at(hatchM, 0, 0, -0.02 * k));
   const hatchCell = nextCell();
   atlas.quad(hatchCell, 0.34 * k, 0.21 * k, at(hatchM, 0, 0, 0.002), "aft");
-  screens.push({ station: "salida", kind: "hatch", title: "Escotilla", rect: hatchCell, w: 0.34 * k, h: 0.21 * k, matrix: at(hatchM, 0, 0, 0.002), pxTall: 320 });
+  screens.push({ station: "salida", kind: "hatch", title: "Escotilla", rect: hatchCell, w: 0.34 * k, h: 0.21 * k, matrix: at(hatchM, 0, 0, 0.002), pxTall: 320, main: true });
   aim.set("salida", new THREE.Vector3(0, 1.1 * k, L / 2));
   top.set("salida", 1.1 * k + 0.6 * k);
   lampAt.set("salida", new THREE.Vector3(0.75 * k, 1.25 + 0.2 * k, L / 2 - 0.06 * k));
@@ -187,7 +189,7 @@ export function buildBridge(k: number): BridgeModel {
     return { m: at(I, s.stand.x * k + dir.x * standoff, 0, s.stand.z * k + dir.y * standoff, 0, yaw), dir };
   };
   /** A screen with its bezel, tilted so it faces her eye (MSIS: under 30° off its normal). */
-  const display = (s: CabinStation<BridgeStationId>, base: THREE.Matrix4, x: number, y: number, z: number, w: number, h: number, eye: number, kind: ScreenKind, title: string, toe = 0): THREE.Matrix4 => {
+  const display = (s: CabinStation<BridgeStationId>, base: THREE.Matrix4, x: number, y: number, z: number, w: number, h: number, eye: number, kind: ScreenKind, title: string, toe = 0, isMain = true): THREE.Matrix4 => {
     const c = new THREE.Vector3(x, y, z).applyMatrix4(base);
     const flat = Math.hypot(c.x - s.stand.x * k, c.z - s.stand.z * k);
     const pitch = Math.atan2(eye - c.y, flat);
@@ -198,7 +200,7 @@ export function buildBridge(k: number): BridgeModel {
     const rect = nextCell();
     const q = at(m, 0, 0, 0.002);
     atlas.quad(rect, w, h, q);
-    screens.push({ station: s.id, kind, title, rect, w, h, matrix: q, pxTall: 320 });
+    screens.push({ station: s.id, kind, title, rect, w, h, matrix: q, pxTall: 320, main: isMain });
     return m;
   };
   /** A row of toggle switches, a keypad and two guarded switches on a sloped shelf (frame: shelf centre). */
@@ -254,7 +256,7 @@ export function buildBridge(k: number): BridgeModel {
       main.box(tw + 0.06 * k, td + 0.06 * k, 0.05, COL.bezel, at(surf, 0, 0, -0.03));
       const q = at(surf, 0, 0, 0.002);
       atlas.quad(plotBlock, tw, td, q);
-      screens.push({ station: "nav", kind: "plot", title: "Mesa de navegación", rect: plotBlock, w: tw, h: td, matrix: q, pxTall: 640 });
+      screens.push({ station: "nav", kind: "plot", title: "Mesa de navegación", rect: plotBlock, w: tw, h: td, matrix: q, pxTall: 640, main: true });
       // In the glass's frame: x across, y up the slope, z out of the glass.
       const p = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z).applyMatrix4(surf);
       const hx = tw / 2 + 0.05 * k;
@@ -299,7 +301,7 @@ export function buildBridge(k: number): BridgeModel {
       let mid: THREE.Matrix4 | undefined;
       list.forEach(([kind, title], i) => {
         const x = (i - 1) * (dw + 0.04 * k);
-        const mm = display(s, m, x, yc, zc + (i === 1 ? 0 : 0.04 * k), dw, dh, E.eyeSeatedM, kind, title, -(i - 1) * 0.3);
+        const mm = display(s, m, x, yc, zc + (i === 1 ? 0 : 0.04 * k), dw, dh, E.eyeSeatedM, kind, title, -(i - 1) * 0.3, i === 1);
         if (i === 1) mid = mm;
       });
       aim.set(s.id, new THREE.Vector3(0, 0, 0).applyMatrix4(mid!));

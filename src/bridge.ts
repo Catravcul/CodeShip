@@ -111,7 +111,7 @@ export class BridgeRoom extends WalkRoom<BridgeStationId> {
   protected override measureExtra(px: (v: THREE.Vector3) => { x: number; y: number; z: number }): unknown {
     const screens: Record<string, { w: number; h: number; titlePx: number; bodyPx: number }> = {};
     for (const sc of this.model.screens) {
-      if (screens[sc.station]) continue;
+      if (!sc.main) continue;
       const c = [
         [-1, -1],
         [1, -1],
@@ -135,7 +135,7 @@ export class BridgeRoom extends WalkRoom<BridgeStationId> {
         return { what: c.what, px: +Math.hypot(b.x - a.x, b.y - a.y).toFixed(1), dist: +this.camera.position.distanceTo(c.at).toFixed(2) };
       });
     const eye = this.camera.position;
-    const main = this.model.screens.find((s) => s.station === near);
+    const main = this.model.screens.find((s) => s.station === near && s.main);
     let eyeToScreen: number | undefined;
     let offNormalDeg: number | undefined;
     if (main) {
@@ -149,10 +149,12 @@ export class BridgeRoom extends WalkRoom<BridgeStationId> {
 
   protected override tick(): void {
     // The dollhouse camera looks over an end wall it is outside of: that wall goes, as a whole.
+    // In first person (the camera inside, under the ceiling) both stay.
     const z = this.camera.position.z;
     const L = 8 * this.k;
-    this.model.ends.bow.visible = z > -L / 4;
-    this.model.ends.aft.visible = z < L / 4;
+    const outside = this.camera.position.y > BRIDGE.heightM * this.k;
+    this.model.ends.bow.visible = !outside || z > -L / 4;
+    this.model.ends.aft.visible = !outside || z < L / 4;
     const mind = this.deps.mind();
     const alerts = this.deps.alerts();
     const key = mind.screen.join("|") + "#" + alerts.map((a) => a.level + a.panel + a.text).join("|");

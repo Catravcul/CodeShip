@@ -460,7 +460,7 @@ export abstract class WalkRoom<Id extends string> {
     const a = st ? this.aim(st) : { x: p.x * k, y: p.y, z: p.z * k };
     this.yaw = Math.atan2(-(a.x - this.pos.x * k), -(a.z - this.pos.z * k));
     // A little under it, so the machine sits in the upper half of the phone, above its card.
-    this.pitch = Math.atan2(a.y - eye, Math.hypot(a.x - this.pos.x * k, a.z - this.pos.z * k)) - CARD_BIAS_RAD;
+    this.pitch = Math.atan2(a.y - eye, Math.hypot(a.x - this.pos.x * k, a.z - this.pos.z * k)) - (eye === EYE_SEATED_M ? CARD_BIAS_RAD / 2 : CARD_BIAS_RAD);
   }
 
   /** Where she looks at a machine, drawn m (a room puts it on the machine's screen). */

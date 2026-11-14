@@ -9,7 +9,7 @@ import { ACTION_REACH_M, type Interactable } from "@core/spacing";
  */
 export const RING_MODULE = { halfW: 2, halfL: 9, height: 2.6 } as const;
 
-export type RingStationId = "huerto" | "cocina" | "procesado" | "biorreactor" | "enfermeria" | "panel" | "yoga" | "ejercicio" | "camarote" | "gatos" | "gallinero" | "terreno" | "perros" | "navegacion";
+export type RingStationId = "huerto" | "cocina" | "procesado" | "biorreactor" | "enfermeria" | "panel" | "yoga" | "ejercicio" | "camarote" | "gatos" | "gallinero" | "terreno" | "perros" | "navegacion" | "acuario";
 
 /** A station of the ring: where she stands to use it (floor, m) and what she looks at (the thing). */
 export interface RingStationData {
@@ -46,6 +46,8 @@ export const RING_STATIONS: readonly RingStationData[] = [
   { id: "perros", label: "Rincón de los chihuahuas", stand: { x: 2.4, z: D + 1.0 }, look: { x: 3.6, y: 0.15, z: D + 1.7 } },
   { id: "gallinero", label: "Gallinero", stand: { x: 5.7, z: D + 1.4 }, look: { x: 7.3, y: 0.4, z: D + 1.4 } },
   { id: "terreno", label: "Cubierta de cultivo", stand: { x: 0, z: D + 2.6 }, look: { x: -2, y: 0.5, z: D + 5 } },
+  // The ring aquarium (1 m³, docs/design/santuario-espacial.md) against the doorway wall, left of the hygiene stall.
+  { id: "acuario", label: "Acuario del anillo", stand: { x: -4.0, z: D + 1.6 }, look: { x: -4.0, y: 1.1, z: D + 0.5 } },
 ];
 
 /** The elevator up the spoke, at the near end wall: its column (the thing) and where its button shows. */

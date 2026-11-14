@@ -32,6 +32,7 @@ Cada recorrido tiene un ID estable (`PX-01`…) en la sección «Experiencia del
 | PX-06 `ordenar` | En el puente programa el viaje a Bennu: un orden con dos pasos cambiados (marcas ✓/✗ por casilla en las dos vistas, Reintentar que deja los buenos) y, en otro intento, **paso a paso** (aviso al momento, un fallo por bloque erróneo, repetirlo no cuenta). Capturas `ordenar-*` (copiadas a `docs/screenshots/`). |
 | PX-07 `aterrizaje-programa`, PX-08 `aterrizaje-manual`, PX-09 `aterrizaje-escritorio` | Un paso del viaje se dibuja al acertarlo; la sonda aterriza por programa con toques; los indicadores de aterrizaje del módulo aparecen y cambian de color; el módulo aterriza por programa a 1280×800 ([aterrizaje.md](design/aterrizaje.md)). |
 | PX-10 `habitaculo-movil`, PX-11 `habitaculo-escritorio` | Habitáculo del módulo: sin Nombres ni Mandos, levantarse y desacoplar en la consola, ajustes en la esterilla (ayuda de teclado), «Ir» de una tarea de vuelo, y las consolas del puente (cada una abre solo su página; la mente aparte de la sonda). Capturas en `docs/screenshots/habitaculo-*-<movil/escritorio>.png`. |
+| PX-12 `acuario` | Acuario del anillo: «Ir» hasta el tanque, dar de comer con escamas en el tanque, hacer amistad con las medakas (programa), pedir ayuda a los caracoles (bajan las algas) y a las medakas (avisan del nitrato y aparece el cambio de agua). Capturas en `docs/screenshots/acuario-*-movil.png`. |
 
 ```
 npm run experiencia                 # compila, sirve dist/ y juega todos los recorridos

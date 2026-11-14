@@ -59,6 +59,10 @@ export const STEP_AREAS: Readonly<Record<ChoreKind, Area>> = {
   "programar-viaje": STATION,
   "programar-aterrizaje": STATION,
   importar: STATION,
+  // The ring aquarium: flakes are served, the glass washed, water poured; befriending and help are mind programs.
+  "cuidar-acuario": { fallback: "revisar", tint: "agua", remap: { verter: "servir", emplatar: "servir", cortar: "lavar", tomar: "revisar" } },
+  "amistad-acuario": { fallback: "programar", only: "programar" },
+  "ayuda-acuario": { fallback: "programar", only: "programar" },
 };
 
 /** At most this many visuals for one solved exercise (an ordered list of steps acts out its first ones). */

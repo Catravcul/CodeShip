@@ -14,6 +14,7 @@ export const JOURNEYS = [
   { id: "PX-09", name: "aterrizaje-escritorio", title: "A 1280×800: indicadores del módulo y aterrizaje del módulo por programa con clics", mobile: false },
   { id: "PX-10", name: "habitaculo-movil", title: "Habitáculo del módulo en un iPhone 13: levantarse, desacoplar en la consola, ajustes en la esterilla, «Ir» de una tarea de vuelo y consolas del puente", mobile: true, throttle: 1 },
   { id: "PX-11", name: "habitaculo-escritorio", title: "Habitáculo del módulo y consolas del puente a 1280×800", mobile: false, throttle: 1 },
+  { id: "PX-12", name: "acuario", title: "Acuario del anillo en un iPhone 13: «Ir» hasta el tanque, dar de comer con pasos visibles, hacer amistad con las medakas, pedir ayuda a los caracoles y a las medakas y ver el efecto" },
 ];
 
 /**

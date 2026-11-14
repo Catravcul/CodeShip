@@ -55,6 +55,13 @@ describe("which fauna fits an area", () => {
     expect(fit(bee, area({ gravityG: 1, tempC: [20, 25] })).reasons).toEqual(["habitat"]);
   });
 
+  it("sea and fresh water do not mix: a moon jellyfish needs a salt tank, a medaka a fresh one", () => {
+    const jelly: Species = { id: "medusa", name: "Medusa luna", habitat: "agua", role: "consumidor", zeroG: "ok", salt: true, tempC: [18, 26], minWaterL: 10, source: SRC };
+    expect(fit(jelly, area({ gravityG: 1 })).reasons).toEqual(["salinidad"]);
+    expect(fit(jelly, area({ gravityG: 1, salt: true }))).toEqual({ ok: true, reasons: [] });
+    expect(fit(medaka, area({ salt: true })).reasons).toEqual(["salinidad"]);
+  });
+
   it("abyssal fish need their pressure and their cold", () => {
     const r = fit(grenadier, area({ gravityG: 1, waterM3: 1, light: "oscuridad" })).reasons;
     expect(r).toContain("falta-presion");

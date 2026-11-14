@@ -29,6 +29,13 @@ export interface Species {
   readonly minWaterL?: number;
   /** Pressure it needs to live, kPa (deep-sea species). */
   readonly minPressureKpa?: number;
+  /** Lives in sea water (aquatic species); fresh water otherwise. */
+  readonly salt?: boolean;
+  /**
+   * What it can do for the crew once befriended and asked through its mind (docs/design/santuario-espacial.md,
+   * «Pedir ayuda»): a playable task loosely grounded in its real behaviour.
+   */
+  readonly help?: string;
   /** Where the facts come from (flight, behaviour, needs). */
   readonly source: string;
   readonly note?: string;
@@ -44,6 +51,7 @@ export type FitReason =
   | "sin-datos-en-ingravidez"
   | "necesita-luz"
   | "falta-presion"
+  | "salinidad"
   | "temperatura";
 
 export interface Fit {
@@ -62,6 +70,8 @@ export function fit(species: Species, area: SanctuaryArea): Fit {
   if (species.habitat === "agua") {
     if (area.waterM3 <= 0) reasons.push("sin-agua");
     else if (species.minWaterL !== undefined && area.waterM3 * 1000 < species.minWaterL) reasons.push("poca-agua");
+    // Sea water and fresh water do not mix in one tank: osmosis kills either side.
+    if (area.waterM3 > 0 && !!species.salt !== !!area.salt) reasons.push("salinidad");
   }
   if (gravityRegime(area.gravityG) === "ingravidez") {
     if (species.zeroG === "orienta-con-luz" && area.light === "oscuridad") reasons.push("ingravidez-a-oscuras");

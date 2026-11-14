@@ -65,7 +65,7 @@ export const SPINE_X = {
 } as const;
 
 /** Angle round the tube of the launchers' lane: along the floor, a little off its middle (where the ladder runs). */
-export const LAUNCH_ANGLE = Math.PI + 0.4;
+export const LAUNCH_ANGLE = Math.PI - 0.4;
 
 /** A point at x, at an angle round the tube (rad: 0 the ceiling (+y), π the floor, +π/2 the spinward wall (+z)), r from the axis. */
 export function spineAt(L: SpineLayout, x: number, angle: number, r: number): Vec3 {
@@ -110,8 +110,8 @@ export function spineHandrails(L: SpineLayout): Handrail[] {
     ...tubeRails("cubo", L.axisY, L.z, L.tubeR, -L.hubHalfX + 0.2, L.hubHalfX - 0.2, 8, Math.PI / 8),
     ...tubeRails("espina", L.axisY, L.z, L.tubeR, L.hubHalfX + 0.2, L.moduleEndX - 0.2, 8, Math.PI / 8),
     ...discRails("cubo-fondo", -L.hubHalfX, 1, L.axisY, L.z, 1.4),
-    // The docking hatch's lower bar is its grab point.
-    ...fondo.map((r) => (r.id === "espina-fondo:2" ? { ...r, poi: "atraque" } : r)),
+    // The docking hatch's side bar, level with the axis, is its grab point (she arrives there looking down the spine).
+    ...fondo.map((r) => (r.id === "espina-fondo:1" ? { ...r, poi: "atraque" } : r)),
     { id: "pozo", a: new Vec3(L.x, L.topY + 1.15, L.z - L.shaftR + 0.08), b: new Vec3(L.x, L.axisY - L.tubeR - 0.1, L.z - L.shaftR + 0.08), normal: new Vec3(0, 0, 1), landT: 0.9, poi: "ascensor" },
     poiBar(L, "lanzador-popa", "lanzador-popa", SPINE_X.lanzadorPopa, LAUNCH_ANGLE),
     poiBar(L, "lanzador-proa", "lanzador-proa", SPINE_X.lanzadorProa, LAUNCH_ANGLE),

@@ -37,6 +37,27 @@ export function axisHandrails(L: SpokeLayout): Handrail[] {
   return spineHandrails(L);
 }
 
+/** The tag on each thing one can tap in the hub and spine: an amber ring with a dot (shared material). */
+function poiIcon(): THREE.SpriteMaterial {
+  const c = document.createElement("canvas");
+  c.width = c.height = 64;
+  const ctx = c.getContext("2d")!;
+  ctx.strokeStyle = "#ffc24a";
+  ctx.lineWidth = 7;
+  ctx.fillStyle = "#1a1206aa";
+  ctx.beginPath();
+  ctx.arc(32, 32, 25, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#ffc24a";
+  ctx.beginPath();
+  ctx.arc(32, 32, 9, 0, Math.PI * 2);
+  ctx.fill();
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
+}
+
 /**
  * Gravity zones of the interior: the spoke elevator, the floating hub/spine and the HUD line with
  * the gravity felt where Doménica is. The ring floor keeps the walking code in interior.ts.
@@ -127,12 +148,34 @@ export class GravityZones {
     this.hop.onArrive = (id) => this.arrived(id);
     // Each point of interest: an invisible sphere to tap (the tap chains hops to its grab point).
     this.pois = spinePois(this.layout);
+    // The ladders can be tapped too: she hops to the rung nearest the tap.
+    for (const r of this.graph.rails.filter((x) => x.ladder)) {
+      const a = new THREE.Vector3(r.a.x, r.a.y, r.a.z);
+      const b = new THREE.Vector3(r.b.x, r.b.y, r.b.z);
+      const len = a.distanceTo(b);
+      const hit = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, len, 6), new THREE.MeshBasicMaterial({ visible: false }));
+      hit.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+      hit.position.copy(a).add(b).multiplyScalar(0.5);
+      hit.userData.ladder = r.id;
+      scene.add(hit);
+      this.picks.push(hit);
+    }
+    const icon = poiIcon();
     for (const p of this.pois) {
       const hit = new THREE.Mesh(new THREE.SphereGeometry(0.7, 8, 6), new THREE.MeshBasicMaterial({ visible: false }));
       hit.position.set(p.centre.x, p.centre.y, p.centre.z);
       hit.userData.poi = p.id;
       scene.add(hit);
       this.picks.push(hit);
+      // A small round tag on it, so the things one can tap read from down the spine.
+      const tag = new THREE.Sprite(icon);
+      tag.scale.set(0.3, 0.3, 1);
+      const inward = new THREE.Vector3(0, this.layout.axisY - p.centre.y, this.layout.z - p.centre.z);
+      if (inward.lengthSq() > 1e-6) inward.normalize().multiplyScalar(0.35);
+      else inward.set(-0.35, 0, 0);
+      tag.position.set(p.centre.x + inward.x, p.centre.y + inward.y, p.centre.z + inward.z);
+      tag.renderOrder = 4;
+      scene.add(tag);
     }
     // A short tap on the canvas, on a thing in the hub or spine: she hops there by herself (dragging looks around).
     container.addEventListener("pointerdown", (e) => {
@@ -144,8 +187,9 @@ export class GravityZones {
       this.tap = null;
       if (!t || t.id !== e.pointerId || !this.enabled || this.zone !== "eje") return;
       if (Math.hypot(e.clientX - t.x, e.clientY - t.y) > 10 || performance.now() - t.t > 450) return;
-      const id = this.poiAt(e.clientX, e.clientY);
-      if (id) this.goToPoi(id);
+      const hit = this.pickAt(e.clientX, e.clientY);
+      if (hit?.poi) this.goToPoi(hit.poi);
+      else if (hit?.ladder) this.goToLadder(hit.ladder, hit.point);
     });
     this.actionBtn = this.ui.querySelector(".zone-btn")!;
     this.throwBtn = this.ui.querySelector(".throw-btn")!;
@@ -323,20 +367,31 @@ export class GravityZones {
 
   /** Where a thing of the hub or spine is on screen (for the experience suite: taps a player can make). */
   screenPoint(id: string): { x: number; y: number; visible: boolean } {
-    const p = this.pois.find((q) => q.id === id);
+    const p = this.pois.find((q) => q.id === id)?.centre ?? (this.graph.rails.some((r) => r.id === id && r.ladder) ? this.graph.rail(id).a.add(this.graph.rail(id).b).scale(0.5) : undefined);
     if (!p || !this.camera) return { x: -1, y: -1, visible: false };
-    const v = new THREE.Vector3(p.centre.x, p.centre.y, p.centre.z).project(this.camera);
+    const v = new THREE.Vector3(p.x, p.y, p.z).project(this.camera);
     const x = ((v.x + 1) / 2) * window.innerWidth;
     const y = ((1 - v.y) / 2) * window.innerHeight;
     return { x, y, visible: v.z < 1 && Math.abs(v.x) < 1 && Math.abs(v.y) < 1 };
   }
 
-  private poiAt(x: number, y: number): string | undefined {
+  private pickAt(x: number, y: number): { poi?: string; ladder?: string; point: Vec3 } | undefined {
     if (!this.camera) return undefined;
     const ray = new THREE.Raycaster();
     ray.setFromCamera(new THREE.Vector2((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1), this.camera);
     const hit = ray.intersectObjects(this.picks, false)[0];
-    return hit && hit.distance < 25 ? (hit.object.userData.poi as string) : undefined;
+    if (!hit || hit.distance > 25) return undefined;
+    const point = new Vec3(hit.point.x, hit.point.y, hit.point.z);
+    return { ...(hit.object.userData.poi ? { poi: hit.object.userData.poi as string } : {}), ...(hit.object.userData.ladder ? { ladder: hit.object.userData.ladder as string } : {}), point };
+  }
+
+  /** Hop by herself to the rung of a ladder nearest to a point. */
+  goToLadder(rail: string, near: Vec3): boolean {
+    let best: LandingPoint | undefined;
+    for (const q of this.hops.points) if (q.rail === rail && (!best || q.grip.sub(near).length() < best.grip.sub(near).length())) best = q;
+    if (!best || this.zone !== "eje") return false;
+    this.say("Saltas a la escalera: ▲ ▼ trepan por ella");
+    return this.hop.goTo(best.id);
   }
 
   private ride(dir: "up" | "down", pos: THREE.Vector3): void {

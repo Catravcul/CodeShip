@@ -229,10 +229,18 @@ export class HopControl {
     const out: Partial<Record<Arrow, ArrowDo>> = {};
     const m = s.motion;
     const rail = m.kind === "sujeta" ? g.rails.rail(m.rail) : undefined;
+    // On a ladder ▲ ▼ climb it (▲ the way the view looks, or up it when it is level with the view);
+    // ◀ ▶ climb too when they lie along it, otherwise they hop off.
+    const axis = rail?.ladder ? rail.b.sub(rail.a).normalize() : undefined;
     for (const a of ARROWS) {
-      if (rail?.ladder) {
-        const axis = rail.b.sub(rail.a).normalize();
+      if (axis) {
         const k = arrowVector(a, view).dot(axis);
+        if (a === "arriba" || a === "abajo") {
+          const ahead = view.forward.normalize().dot(axis);
+          const way = Math.abs(ahead) > 0.2 ? Math.sign(ahead) : Math.sign(axis.y) || 1;
+          out[a] = { climb: axis.scale(a === "arriba" ? way : -way) };
+          continue;
+        }
         if (Math.abs(k) > CLIMB_COS) {
           out[a] = { climb: axis.scale(Math.sign(k)) };
           continue;

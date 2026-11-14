@@ -2,11 +2,9 @@ import { describe, expect, it } from "vitest";
 import { MACHINE_SCALE, WORLD_SCALE, drawnSpacing, toReal, toWorld } from "./scale";
 import { INTERACTABLE_SPACING } from "./spacing";
 
-describe("ESC-01 one scale for interiors and machinery", () => {
-  it("draws bigger than real, but not so big that a desk reaches her chest", () => {
-    expect(WORLD_SCALE).toBeGreaterThanOrEqual(1);
-    // A 0,75 m desk (real seated work surface) under 2× would be 1,5 m: chest height of a 1,65 m woman.
-    expect(0.75 * WORLD_SCALE).toBeLessThan(1.2);
+describe("HAB-12 one scale for interiors and machinery", () => {
+  it("is the measured 1,5×: bigger than real, under the 2× that puts a console's screen out of reach", () => {
+    expect(WORLD_SCALE).toBe(1.5);
     expect(MACHINE_SCALE).toBe(WORLD_SCALE);
   });
 

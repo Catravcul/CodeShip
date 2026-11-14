@@ -8,6 +8,8 @@
 export type ChallengeView = "panel" | "hud";
 /** Cockpit camera the lander starts in when the pilot sits down. */
 export type StartCamera = "cabina" | "exterior" | "ventral" | "trasera";
+/** How she is seen walking about rooms and modules: through her eyes or from behind/outside. */
+export type WalkView = "primera" | "tercera";
 /** What the first input of a session was. */
 export type FirstInput = "tecla" | "toque" | "raton";
 
@@ -22,12 +24,15 @@ export interface GameSettings {
   readonly firstInputSeen: boolean;
   readonly challengeView: ChallengeView;
   readonly camera: StartCamera;
+  /** View on foot in rooms (bridge, cabin, ring, station). First person by default (Berón, 2026-11-14); the eye icon toggles it for the visit. */
+  readonly walkView: WalkView;
   /** Synthesised alarms (ram warning, impacts). */
   readonly sound: boolean;
 }
 
 export const CHALLENGE_VIEWS: readonly ChallengeView[] = ["panel", "hud"];
 export const START_CAMERAS: readonly StartCamera[] = ["cabina", "exterior", "ventral", "trasera"];
+export const WALK_VIEWS: readonly WalkView[] = ["primera", "tercera"];
 
 export const DEFAULT_SETTINGS: GameSettings = {
   names: true,
@@ -36,6 +41,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   firstInputSeen: false,
   challengeView: "panel",
   camera: "cabina",
+  walkView: "primera",
   sound: true,
 };
 
@@ -89,6 +95,7 @@ export function parseSettings(raw: string | null, env: { touchCapable: boolean; 
     firstInputSeen: chosen,
     challengeView: o ? oneOf(o.challengeView, CHALLENGE_VIEWS, legacy) : legacy,
     camera: oneOf(o?.camera, START_CAMERAS, DEFAULT_SETTINGS.camera),
+    walkView: oneOf(o?.walkView, WALK_VIEWS, DEFAULT_SETTINGS.walkView),
     sound: bool(o?.sound, DEFAULT_SETTINGS.sound),
   };
 }

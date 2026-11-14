@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { clampToFloor, floorPath, nearestStation, type CabinLayout, type FloorPoint } from "@modules/lander-cabin/domain/cabin";
+import { clampToFloor, floorPath, nearestStation, type CabinLayout, type CabinStation, type FloorPoint } from "@modules/lander-cabin/domain/cabin";
 import { CubeFigure } from "./adapters/three/interior/figure";
 import { textSign } from "./adapters/three/interior/sign";
 import { Walker } from "./adapters/input/walker";
@@ -34,7 +34,26 @@ export interface WalkRoomOptions<Id extends string> {
   readonly background?: number;
   /** Where the camera stands outside the room, beyond its ends, m from them. */
   readonly cameraBackM?: number;
+  /**
+   * Drawing scale of the room (src/core/scale.ts): the layout stays in real metres and is drawn `scale`
+   * times bigger on the floor plan; `geometry` comes already drawn at that scale. Heights are not
+   * scaled here (her eye, seats and work surfaces stay at body height). Default 1.
+   */
+  readonly scale?: number;
+  /** Height of a machine's sign, drawn m (default: a little over what she looks at). */
+  signY?(s: CabinStation<Id>): number;
 }
+
+/** Eye heights of the first-person camera, m: standing, and belted to a seat (data/bridge.ts BRIDGE_ERGONOMICS). */
+const EYE_STANDING_M = 1.45;
+const EYE_SEATED_M = 1.2;
+/** Seated, her eye is this far behind the seat's centre (back against the backrest), m. */
+const SEATED_EYE_BACK_M = 0.12;
+/** The machine's card covers the bottom of a phone: she looks this much under what she faces, rad (≈ 9°). */
+const CARD_BIAS_RAD = 0.16;
+/** Signs: their drawn size over textSign's 0,32 m plate, and the least they show on the phone, px tall (text ≈ 12 px). */
+const SIGN_SCALE = 0.5;
+export const SIGN_MIN_PX = 28;
 
 /**
  * A small walkable room whose machines replace HUD buttons (docs/design/habitaculo.md): Doménica in
@@ -56,11 +75,17 @@ export abstract class WalkRoom<Id extends string> {
   private readonly viewBtn: HTMLButtonElement;
   private readonly hits: THREE.Object3D[] = [];
   private readonly markers = new Map<Id, THREE.Mesh>();
+  private readonly signs = new Map<Id, THREE.Sprite>();
+  /** Drawing scale of the floor plan (WalkRoomOptions.scale). */
+  protected readonly k: number;
+  /** Belted to the seat of the station she is at (pilot, probe): lower eye, seated pose. */
+  protected chair = false;
+  private eye = EYE_STANDING_M;
   protected pos: FloorPoint;
   protected yaw = Math.PI;
   private pitch = 0;
   private stride = 0;
-  private thirdPerson = true;
+  private thirdPerson = settings.value.walkView === "tercera";
   protected seated = false;
   private camAtRear = true;
   private readonly walls: THREE.Object3D[] = [];
@@ -75,6 +100,7 @@ export abstract class WalkRoom<Id extends string> {
     protected readonly opts: WalkRoomOptions<Id>,
   ) {
     const L = opts.layout;
+    const k = (this.k = opts.scale ?? 1);
     this.pos = { ...L.stations[0]!.stand };
     this.scene.background = new THREE.Color(opts.background ?? 0x05070a);
     this.scene.add(opts.geometry);
@@ -85,19 +111,24 @@ export abstract class WalkRoom<Id extends string> {
     for (const s of L.stations) {
       const ring = new THREE.Mesh(new THREE.RingGeometry(0.11, 0.14, 28), new THREE.MeshBasicMaterial({ color: 0x7fdcff, transparent: true, opacity: 0.35, side: THREE.DoubleSide }));
       ring.rotation.x = -Math.PI / 2;
-      ring.position.set(s.stand.x, 0.015, s.stand.z);
+      ring.position.set(s.stand.x * k, 0.015, s.stand.z * k);
+      ring.scale.setScalar(k);
       this.scene.add(ring);
       this.markers.set(s.id, ring);
       if (opts.signs?.includes(s.id)) {
         const sign = textSign(s.label);
-        sign.scale.multiplyScalar(0.2);
-        sign.position.set(s.look.x * 0.8 + s.stand.x * 0.2, Math.min(L.heightM - 0.2, s.look.y + 0.28), s.look.z * 0.8 + s.stand.z * 0.2);
+        sign.scale.multiplyScalar(SIGN_SCALE * k);
+        sign.userData.base = sign.scale.clone();
+        const y = opts.signY ? opts.signY(s) : Math.min(L.heightM * k - 0.2, s.look.y + 0.28);
+        sign.position.set((s.look.x * 0.8 + s.stand.x * 0.2) * k, y, (s.look.z * 0.8 + s.stand.z * 0.2) * k);
         (sign.material as THREE.SpriteMaterial).depthTest = false;
         sign.renderOrder = 10;
         this.scene.add(sign);
+        this.signs.set(s.id, sign);
       }
-      const hit = new THREE.Mesh(new THREE.BoxGeometry(0.42, 1.4, 0.42), new THREE.MeshBasicMaterial({ visible: false }));
-      hit.position.set((s.stand.x + s.look.x) / 2, 0.7, (s.stand.z + s.look.z) / 2);
+      // The tap box: where she stands and the machine, as tall as a console.
+      const hit = new THREE.Mesh(new THREE.BoxGeometry(0.42 * k, 1.5, 0.42 * k), new THREE.MeshBasicMaterial({ visible: false }));
+      hit.position.set(((s.stand.x + s.look.x) / 2) * k, 0.75, ((s.stand.z + s.look.z) / 2) * k);
       hit.userData.station = s.id;
       this.scene.add(hit);
       this.hits.push(hit);
@@ -114,9 +145,9 @@ export abstract class WalkRoom<Id extends string> {
     this.machine = this.ui.querySelector(".cab-machine")!;
     this.toast = this.ui.querySelector(".cab-toast")!;
     this.menu = new RootMenu(this.ui, "cab-menu", "Más", ICON.root);
-    this.viewBtn = this.menu.add({ className: "cab-view", icon: ICON.eye, label: "Vista: 3ª persona", key: "V", pinned: true }, () => {
+    this.viewBtn = this.menu.add({ className: "cab-view", icon: ICON.eye, label: `Vista: ${this.thirdPerson ? "3ª" : "1ª"} persona`, key: "V", pinned: true }, () => {
       this.thirdPerson = !this.thirdPerson;
-      this.menu.relabel(this.viewBtn, `Vista: ${this.thirdPerson ? "3ª" : "1ª"} persona`, "V");
+      this.syncView();
     });
     this.menu.add({ className: "cab-tasks", icon: ICON.tasks, label: "Tareas", key: "T", pinned: true }, () => this.openTasks());
     this.machine.addEventListener("click", (e) => {
@@ -163,10 +194,16 @@ export abstract class WalkRoom<Id extends string> {
     return b.contains("in-duel") || b.contains("in-settings") || b.contains("in-tasks") || b.contains("in-deck") || b.contains("in-probe") || b.contains("in-missions");
   }
 
-  /** Go in at a machine. */
+  private syncView(): void {
+    this.menu.relabel(this.viewBtn, `Vista: ${this.thirdPerson ? "3ª" : "1ª"} persona`, "V");
+  }
+
+  /** Go in at a machine. The view on foot starts as the settings say (first person unless chosen otherwise). */
   enter(at: Id = this.opts.layout.stations[0]!.id): void {
     const s = this.opts.layout.stations.find((x) => x.id === at)!;
     this.pos = { ...s.stand };
+    this.thirdPerson = settings.value.walkView === "tercera";
+    this.syncView();
     this.face(s.look);
     this.walkTo = null;
     this.seated = false;
@@ -280,7 +317,13 @@ export abstract class WalkRoom<Id extends string> {
         moving = step > 1e-4;
       }
     }
+    // At a seated station (pilot, probe) she belts in as soon as she stops there.
+    const at = !this.walkTo && !moving ? this.station(this.near()) : undefined;
+    this.chair = !this.seated && !!at?.seated;
+    const eye = this.chair ? EYE_SEATED_M : EYE_STANDING_M;
+    this.eye += (eye - this.eye) * Math.min(1, dt * 6);
     if (this.seated) this.avatar.pose("lotus");
+    else if (this.chair) this.avatar.poseAngles(POSE_SEAT);
     else if (moving) this.avatar.poseAngles({ ...POSE_HOLD, hip: [Math.sin(this.stride) * 0.25 - 0.3, -Math.sin(this.stride) * 0.25 - 0.3] });
     else this.avatar.pose("stand");
     this.avatar.update(dt, 8);
@@ -301,8 +344,13 @@ export abstract class WalkRoom<Id extends string> {
     return [f.minZ + 0.25, f.maxZ - 0.07];
   }
 
+  private station(id: Id | undefined): CabinStation<Id> | undefined {
+    return id === undefined ? undefined : this.opts.layout.stations.find((x) => x.id === id);
+  }
+
   private place(): void {
-    this.rig.position.set(this.pos.x, 0, this.pos.z);
+    const k = this.k;
+    this.rig.position.set(this.pos.x * k, 0, this.pos.z * k);
     this.rig.rotation.y = this.yaw + Math.PI;
     const third = this.thirdPerson || this.seated;
     this.rig.visible = third;
@@ -316,18 +364,59 @@ export abstract class WalkRoom<Id extends string> {
       const rear = this.camAtRear;
       const back = this.opts.cameraBackM ?? 1.4;
       this.lens(55, 0.05);
-      this.camera.position.set(this.pos.x * 0.4, this.opts.layout.heightM + 0.85, rear ? f.maxZ + back : f.minZ - back);
+      this.camera.position.set(this.pos.x * 0.4 * k, this.opts.layout.heightM * k + 0.85, rear ? f.maxZ * k + back : f.minZ * k - back);
       // Seated in lotus under the settings sheet: aim low so she shows in the top of the screen.
-      this.camera.lookAt(this.pos.x * 0.85, this.seated ? -0.2 : 0.55, this.pos.z + (rear ? -0.2 : 0.2));
+      this.camera.lookAt(this.pos.x * 0.85 * k, this.seated ? -0.2 : 0.55, (this.pos.z + (rear ? -0.2 : 0.2)) * k);
       this.cutaway();
     } else {
       this.cutaway(true);
       this.lens(72, 0.02);
-      this.camera.position.set(this.pos.x, 1.45, this.pos.z);
+      // Belted in, her head rests back toward the seat's headrest.
+      const st = this.chair ? this.station(this.near()) : undefined;
+      const back = st ? new THREE.Vector2(st.stand.x - st.look.x, st.stand.z - st.look.z).normalize().multiplyScalar(SEATED_EYE_BACK_M) : new THREE.Vector2();
+      this.camera.position.set(this.pos.x * k + back.x, this.eye, this.pos.z * k + back.y);
       this.camera.rotation.set(this.pitch, this.yaw, 0, "YXZ");
     }
     const near = this.near();
     for (const [id, m] of this.markers) (m.material as THREE.MeshBasicMaterial).opacity = id === near ? 0.9 : 0.35;
+    // In first person the sign of the machine she is at would sit in her face: its screen says what it is.
+    for (const [id, sign] of this.signs) sign.visible = third || id !== near;
+    this.declutter();
+  }
+
+  /**
+   * Signs stay readable and apart on a phone: a far one grows to SIGN_MIN_PX tall, and where two would
+   * overlap on screen only the nearer shows (the 2 m rule keeps them apart up close; across the room
+   * one can stand behind another).
+   */
+  private declutter(): void {
+    this.camera.updateMatrixWorld();
+    const H = window.innerHeight;
+    const f = H / 2 / Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
+    const fwd = new THREE.Vector3();
+    this.camera.getWorldDirection(fwd);
+    const shown: { x0: number; x1: number; y0: number; y1: number }[] = [];
+    const list = [...this.signs.values()]
+      .filter((s) => s.visible)
+      .map((s) => ({ s, d: s.position.clone().sub(this.camera.position).dot(fwd) }))
+      .sort((a, b) => a.d - b.d);
+    for (const { s, d } of list) {
+      const base = s.userData.base as THREE.Vector3;
+      if (d <= 0.05) {
+        s.scale.copy(base);
+        continue;
+      }
+      const grow = Math.max(1, (SIGN_MIN_PX * d) / (f * base.y));
+      s.scale.set(base.x * grow, base.y * grow, 1);
+      const c = s.position.clone().project(this.camera);
+      const x = ((c.x + 1) / 2) * window.innerWidth;
+      const y = ((1 - c.y) / 2) * H;
+      const hw = (f * s.scale.x) / d / 2;
+      const hh = (f * s.scale.y) / d / 2;
+      const r = { x0: x - hw, x1: x + hw, y0: y - hh, y1: y + hh };
+      if (shown.some((q) => q.x0 < r.x1 && r.x0 < q.x1 && q.y0 < r.y1 && r.y0 < q.y1)) s.visible = false;
+      else shown.push(r);
+    }
   }
 
   /** Hide the walls between the dollhouse camera and her (rays to her head, chest and feet). */
@@ -338,13 +427,15 @@ export abstract class WalkRoom<Id extends string> {
     this.scene.updateMatrixWorld();
     const from = this.camera.position;
     for (const y of [1.45, 0.9, 0.2]) {
-      const to = new THREE.Vector3(this.pos.x, this.seated ? y * 0.45 : y, this.pos.z);
+      const to = new THREE.Vector3(this.pos.x * this.k, this.seated ? y * 0.45 : y, this.pos.z * this.k);
       const dir = to.clone().sub(from);
       const len = dir.length();
       this.ray.set(from, dir.normalize());
       this.ray.far = len - 0.2;
       for (const h of this.ray.intersectObjects(this.walls, false)) {
         // A piece of a wall that goes as a whole (the bridge's bow: strips and window) names it in `cutWith`.
+        // Merged machinery (the bridge's consoles) stays: hiding it would hide every console at once.
+        if (h.object.userData.noCut) continue;
         const o = (h.object.userData.cutWith as THREE.Object3D | undefined) ?? h.object;
         if (o.visible) {
           o.visible = false;
@@ -361,9 +452,60 @@ export abstract class WalkRoom<Id extends string> {
     this.camera.updateProjectionMatrix();
   }
 
+  /** Turn to a point of the layout (real x, z; y is a height, drawn m). */
   protected face(p: { x: number; y: number; z: number }): void {
-    this.yaw = Math.atan2(-(p.x - this.pos.x), -(p.z - this.pos.z));
-    this.pitch = Math.atan2(p.y - 1.45, Math.hypot(p.x - this.pos.x, p.z - this.pos.z));
+    const k = this.k;
+    const st = this.opts.layout.stations.find((s) => s.look === p);
+    const eye = st?.seated && Math.hypot(st.stand.x - this.pos.x, st.stand.z - this.pos.z) < 0.05 ? EYE_SEATED_M : EYE_STANDING_M;
+    const a = st ? this.aim(st) : { x: p.x * k, y: p.y, z: p.z * k };
+    this.yaw = Math.atan2(-(a.x - this.pos.x * k), -(a.z - this.pos.z * k));
+    // A little under it, so the machine sits in the upper half of the phone, above its card.
+    this.pitch = Math.atan2(a.y - eye, Math.hypot(a.x - this.pos.x * k, a.z - this.pos.z * k)) - CARD_BIAS_RAD;
+  }
+
+  /** Where she looks at a machine, drawn m (a room puts it on the machine's screen). */
+  protected aim(s: CabinStation<Id>): { x: number; y: number; z: number } {
+    return { x: s.look.x * this.k, y: s.look.y, z: s.look.z * this.k };
+  }
+
+  /**
+   * On-screen sizes, px, for the experience suite and the scale study (docs/design/escala.md): each
+   * sign's height and width, each tap box, and what the room adds (its screens and controls).
+   */
+  measure(): { signs: Record<string, { w: number; h: number; x: number; y: number; onScreen: boolean }>; hits: Record<string, { w: number; h: number }>; extra: unknown } {
+    this.scene.updateMatrixWorld();
+    this.camera.updateMatrixWorld();
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const px = (v: THREE.Vector3) => {
+      const q = v.clone().project(this.camera);
+      return { x: ((q.x + 1) / 2) * W, y: ((1 - q.y) / 2) * H, z: q.z };
+    };
+    const right = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 0);
+    const up = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 1);
+    const signs: Record<string, { w: number; h: number; x: number; y: number; onScreen: boolean }> = {};
+    for (const [id, s] of this.signs) {
+      if (!s.visible) continue;
+      const c = px(s.position);
+      const t = px(s.position.clone().addScaledVector(up, s.scale.y / 2));
+      const b = px(s.position.clone().addScaledVector(up, -s.scale.y / 2));
+      const r = px(s.position.clone().addScaledVector(right, s.scale.x / 2));
+      const l = px(s.position.clone().addScaledVector(right, -s.scale.x / 2));
+      signs[id] = { w: Math.round(Math.abs(r.x - l.x)), h: Math.round(Math.abs(b.y - t.y)), x: Math.round(c.x), y: Math.round(c.y), onScreen: c.z < 1 && c.x > 0 && c.x < W && c.y > 0 && c.y < H };
+    }
+    const hits: Record<string, { w: number; h: number }> = {};
+    for (const h of this.hits) {
+      const box = new THREE.Box3().setFromObject(h);
+      const pts = [0, 1].flatMap((i) => [0, 1].flatMap((j) => [0, 1].map((m) => px(new THREE.Vector3(i ? box.max.x : box.min.x, j ? box.max.y : box.min.y, m ? box.max.z : box.min.z)))));
+      if (pts.some((p) => p.z > 1)) continue;
+      hits[h.userData.station as string] = { w: Math.round(Math.max(...pts.map((p) => p.x)) - Math.min(...pts.map((p) => p.x))), h: Math.round(Math.max(...pts.map((p) => p.y)) - Math.min(...pts.map((p) => p.y))) };
+    }
+    return { signs, hits, extra: this.measureExtra(px) };
+  }
+
+  /** What a room adds to `measure()`. */
+  protected measureExtra(_px: (v: THREE.Vector3) => { x: number; y: number; z: number }): unknown {
+    return null;
   }
 
   private stationAt(x: number, y: number): Id | undefined {
@@ -395,6 +537,9 @@ export abstract class WalkRoom<Id extends string> {
     }
   }
 }
+
+/** Belted to a restraint seat in neutral posture (MSIS: hips and knees ~50°), hands on the RHC and THC. */
+const POSE_SEAT = { rootY: 0.55, rootX: 0, torso: 0.1, headX: 0.2, headY: 0, headZ: 0, shoulderX: [-0.75, -0.75] as [number, number], shoulderZ: [0.2, -0.2] as [number, number], elbow: [-0.9, -0.9] as [number, number], hip: [-1.25, -1.25] as [number, number], knee: [1.3, 1.3] as [number, number] };
 
 /** Hand over hand along the rails (the cube rig's «hold»), for moving about in microgravity. */
 const POSE_HOLD = { rootY: 0.98, rootX: 0, torso: 0.1, headX: -0.1, headY: 0, headZ: 0, shoulderX: [-2.2, -0.9] as [number, number], shoulderZ: [0.05, -0.35] as [number, number], elbow: [-0.25, -0.7] as [number, number], hip: [-0.3, -0.3] as [number, number], knee: [0.4, 0.3] as [number, number] };

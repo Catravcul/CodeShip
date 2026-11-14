@@ -34,6 +34,7 @@ import type { DuelView, SessionText } from "./ui/duel-view";
 import type { SpinRing } from "@modules/gravity/domain/spin-gravity";
 import { GravityZones } from "./adapters/three/interior/zones";
 import { ICON } from "./ui/icons";
+import { settings } from "./ui/settings-store";
 import { KITCHEN_FRAMES, StepShow, type StepFrame } from "./adapters/three/interior/step-show";
 import { choreVisuals } from "@modules/chores/application/step-visuals";
 import type { StepVisual } from "@modules/chores/domain/step-visual";
@@ -172,7 +173,8 @@ export class Interior {
   private hiddenLabels: THREE.Object3D[] = [];
   /** The open chore's step visual. */
   private visual: StepVisual | undefined;
-  private thirdPerson = true;
+  /** First person unless the settings say otherwise (Berón, 2026-11-14); the eye toggles it for the visit. */
+  private thirdPerson = settings.value.walkView === "tercera";
   private stride = 0;
   private readonly viewBtn: HTMLButtonElement;
   private readonly panel: THREE.Mesh;
@@ -310,6 +312,8 @@ export class Interior {
 
   /** Go inside; `at: "escotilla"` comes aboard through the docking hatch at the end of the spine. */
   enter(at?: "escotilla"): void {
+    this.thirdPerson = settings.value.walkView === "tercera";
+    this.syncViewBtn();
     if (at === "escotilla" && this.zones) {
       this.zones.arriveAtHatch();
       // Facing back along the spine, towards the hub and the ring.
@@ -520,6 +524,8 @@ export class Interior {
   /** The settings closed: she stands up from the mat. */
   standUp(): void {
     this.lotus = false;
+    this.thirdPerson = settings.value.walkView === "tercera";
+    this.syncViewBtn();
   }
 
   /** The board's chores as plain facts for the shared task list (title, where, category). */

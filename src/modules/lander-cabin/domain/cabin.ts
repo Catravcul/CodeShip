@@ -34,6 +34,8 @@ export interface CabinStation<Id extends string = CabinStationId> {
   readonly look: { readonly x: number; readonly y: number; readonly z: number };
   /** One line on what it is, for its sign and the task board. */
   readonly what: string;
+  /** She uses it sitting, belted to a seat with her feet in its loops (the bridge's pilot and probe stations). */
+  readonly seated?: boolean;
 }
 
 export interface CabinLayout<Id extends string = CabinStationId> {
@@ -159,6 +161,12 @@ export function floorPath(f: CabinFloor, from: FloorPoint, to: FloorPoint, aisle
     const legs = [from, { x: from.x, z }, { x: to.x, z }, to];
     if (legs.every((p, i) => i === 0 || clearPath(f, legs[i - 1]!, p))) return legs.slice(1);
   }
+  // Beside something fixed in the middle of the floor (the bridge's plot table): along a lane on either side of it.
+  for (const b of f.blocked)
+    for (const x of [b.minX - 0.15, b.maxX + 0.15]) {
+      const legs = [from, { x, z: from.z }, { x, z: to.z }, to];
+      if (legs.every((p, i) => i === 0 || clearPath(f, legs[i - 1]!, p))) return legs.slice(1);
+    }
   // Around the outside of the pilot's seat on the port aisle.
   for (const z of aisles) {
     const x = f.minX + 0.2;

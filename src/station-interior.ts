@@ -1,4 +1,5 @@
 import { DOMENICA_HAIR } from "./ui/portraits";
+import { settings } from "./ui/settings-store";
 import * as THREE from "three";
 import { Vec3 } from "@core/math/vec3";
 import { RailGraph } from "@modules/gravity/domain/handrails";
@@ -71,7 +72,8 @@ export class StationInteriorMode {
   private readonly hop: HopControl;
   private yaw = 0;
   private pitch = 0;
-  private thirdPerson = true;
+  /** First person unless the settings say otherwise; the eye toggles it for the visit. */
+  private thirdPerson = settings.value.walkView === "tercera";
   private toastUntil = 0;
   private storeKey = "";
   private hudKey = "";
@@ -209,6 +211,8 @@ export class StationInteriorMode {
 
   /** Come in through the hatch of the port the ship is docked at. */
   enter(from: PortUser): void {
+    this.thirdPerson = settings.value.walkView === "tercera";
+    this.syncView();
     const e = this.interior.plan.entries[from];
     this.from = from;
     this.iva = this.holdNearest(e.at);

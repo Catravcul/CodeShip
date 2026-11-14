@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { failingAnswer } from "@modules/chores/domain/testing";
 import { seededRandom } from "../../../content/random";
 import { LETTUCE_OUTREDGEOUS } from "@modules/garden/data/species";
 import { CHILE_ESPANOLA } from "@modules/garden/data/species";
 import { RECIPES } from "@modules/kitchen/data/recipes";
 import { SUN_SALUTATION, YOGA_SEQUENCES } from "@modules/wellness/data/yoga";
+import { WORKOUTS } from "@modules/wellness/data/exercise";
 import { Ship } from "@modules/ship/domain/ship";
 import { explorerDesign } from "@modules/ship/data/explorer";
 import type { Answer, Exercise } from "@modules/mind-duel/domain/exercise";
@@ -22,6 +24,11 @@ import { Dog } from "@modules/pets/domain/dog";
 import { ANIMAL_LESSONS, DOG_HENS_FAMILY, DOG_RESPECT_HENS, HEN_BROOD, HEN_RESPECT_YOUNG } from "@modules/pets/data/family-lessons";
 import { STORY } from "@modules/story/data/nevaeh";
 import { LETTUCE_OUTREDGEOUS as LETTUCE, SOYBEAN_HOYT } from "@modules/garden/data/species";
+import { swapChore } from "@modules/chores/application/catalog";
+import { partById } from "@modules/ship/data/parts";
+import { FIG_TREE, PEANUT_GEORGIA_RED, STRAWBERRY_SEASCAPE } from "@modules/garden/data/species";
+import { LAUNCH_STOCK } from "@modules/kitchen/data/stores";
+import { portionNutrients } from "@modules/kitchen/data/nutrition";
 import { Habitat, type ChoreSession, type Conversation, type HabitatEvent } from "./habitat";
 
 const right = (e: Exercise): Answer => (e.kind === "order" ? { kind: "order", order: e.solution } : { kind: "choice", index: e.correct });
@@ -153,7 +160,8 @@ describe("Habitat chores (everything is a code challenge)", () => {
     h.jolt(1, "Bennu sacudió la nave");
     const plant = h.plants[0]!;
     const before = plant.health;
-    finish(h.start(find(h, "curar-planta")!), wrong);
+    const session = h.start(find(h, "curar-planta")!);
+    while (session.run.status === "doing") session.answer(failingAnswer(session.run));
     expect(plant.health).toBe(before);
     expect(h.drainEvents().some((e) => e.type === "chore-failed")).toBe(true);
   });
@@ -204,6 +212,17 @@ describe("Habitat chores (everything is a code challenge)", () => {
     const postures = h.drainEvents().filter((e) => e.type === "posture");
     expect(postures).toHaveLength(11);
     expect(h.crew.stress).toBeCloseTo(stress - 0.3);
+  });
+
+  it("a workout in the exercise corner raises fitness more than it calms", () => {
+    const h = new Habitat(seededRandom(1));
+    h.tick(2);
+    const fit = h.crew.fitness;
+    const chore = h.chores([], [], { workouts: WORKOUTS }).find((c) => c.kind === "ejercicio" && c.targetId === "intervalos-4x4")!;
+    expect(chore).toBeDefined();
+    finish(h.start(chore));
+    expect(h.crew.fitness).toBeCloseTo(Math.min(1, fit + 0.35));
+    expect(h.drainEvents()).toContainEqual({ type: "chore-done", choreId: chore.id });
   });
 
   const ctx = { recipes: RECIPES, yoga: YOGA_SEQUENCES, processes: PROCESSES, lessons: CAT_LESSONS };
@@ -350,13 +369,14 @@ describe("Habitat chores (everything is a code challenge)", () => {
     expect(w.readyToHarvest).toBe(true);
   });
 
-  it("Nevaeh's letters bring nano_net missions; finishing one brings the next letter", () => {
+  it("Nevaeh's nano_net missions are not chores on board; reaching the goal brings the next letter", () => {
     const h = new Habitat(seededRandom(1), 2, undefined, "Doménica");
     h.mailbox = new Mailbox(NEVAEH_LETTERS);
-    doKind(h, "mision");
-    expect(h.mailbox.pendingMissions).toHaveLength(0);
-    h.tick(0.6);
-    expect(h.mailbox.pendingMissions.map((l) => l.id)).toEqual(["nano-net-textos"]);
+    expect(h.mailbox.pendingMissions.map((l) => l.id)).toEqual(["nano-net-nucleo"]);
+    expect(all(h).some((c) => c.kind.startsWith("nano-"))).toBe(false);
+    h.mailbox.achieve("nucleo");
+    h.tick(0.3);
+    expect(h.mailbox.pendingMissions.map((l) => l.id)).toEqual(["nano-net-generar"]);
     h.jolt(0.3, "Bennu");
     expect(h.mailbox.received.some((r) => r.letter.id === "sacudida")).toBe(true);
   });
@@ -454,6 +474,45 @@ describe("Habitat chores (everything is a code challenge)", () => {
       expect(coco.satiety).toBeGreaterThan(0.8);
     });
 
+    it("on day 1 the launch stock offers several dishes, not only the lentil soup", () => {
+      const h = new Habitat(seededRandom(1), 2, undefined, "Doménica", MACHINES);
+      h.stockAll(LAUNCH_STOCK);
+      const meals = all(h).filter((c) => c.kind === "cocinar").map((c) => c.targetId);
+      expect(meals.length).toBeGreaterThanOrEqual(5);
+      expect(meals).toEqual(expect.arrayContaining(["mercimek", "cacahuetes-tostados", "gachas-avena", "llapingachos", "carne-papas"]));
+      expect(all(h).some((c) => c.id === "procesar-crema-cacahuete")).toBe(true);
+    });
+
+    it("a plate fills satiety by its real energy: a day's kcal fill it from empty", () => {
+      const h = new Habitat(seededRandom(1), 2, undefined, "Doménica");
+      h.stockAll(LAUNCH_STOCK);
+      h.tick(0.8);
+      const before = h.crew.satiety;
+      doKind(h, "cocinar", (id) => id === "cocinar-llapingachos");
+      const r = RECIPES.find((x) => x.id === "llapingachos")!;
+      expect(h.crew.satiety - before).toBeCloseTo(portionNutrients(r).kcal / h.crew.dailyKcal, 2);
+      expect(h.larder("cacahuete-georgia-red")).toBe(LAUNCH_STOCK["cacahuete-georgia-red"]! - 1);
+    });
+
+    it("fig trees in planters and fruit beds are harvested into the larder and make a fruit bowl", () => {
+      const h = new Habitat(seededRandom(1), 2, undefined, "Doménica");
+      const fig = h.tree("higuera-1", FIG_TREE);
+      expect(fig.areaM2).toBeCloseTo(0.8);
+      const straw = h.bed("bancal-fresa", STRAWBERRY_SEASCAPE, 15);
+      h.stock("cacahuete-georgia-red", 1);
+      for (let d = 0; d < 120 && !fig.readyToHarvest; d += 0.5) {
+        h.tick(0.5);
+        const shake = all(h).find((c) => c.kind === "agitar");
+        if (shake) finish(h.start(shake, ctx));
+      }
+      for (const id of ["higuera-1", "bancal-fresa"]) doKind(h, "cosechar", (x) => x.endsWith(id));
+      expect(h.larder("higo")).toBeGreaterThan(5);
+      expect(h.larder("fresa-seascape")).toBeGreaterThan(5);
+      expect(straw.alive).toBe(true);
+      doKind(h, "cocinar", (id) => id === "cocinar-bol-fruta");
+      expect(h.meals).toBe(2);
+    });
+
     it("the racks alone feed a few percent; the farm deck's beds make the trip self-sufficient", () => {
       const h = new Habitat(seededRandom(1), 2, undefined, "Doménica");
       for (let i = 0; i < 18; i++) h.plant(`p${i}`, LETTUCE);
@@ -463,7 +522,49 @@ describe("Habitat chores (everything is a code challenge)", () => {
       expect(h.sustainability.ratio).toBeLessThan(0.1);
       for (let i = 0; i < 8; i++) h.bed(`bancal-${i}`, i % 2 ? SOYBEAN_HOYT : WHEAT_APOGEE, 15);
       expect(h.sustainability.ratio).toBeGreaterThan(1);
+      // The new row of beds and the four fig trees add their ground to the count.
+      const before = h.sustainability.areaM2;
+      for (let i = 0; i < 3; i++) h.bed(`bancal-nuevo-${i}`, i ? PEANUT_GEORGIA_RED : STRAWBERRY_SEASCAPE, 15);
+      for (let i = 0; i < 4; i++) h.tree(`higuera-${i}`, FIG_TREE);
+      expect(h.sustainability.areaM2).toBeCloseTo(before + 45 + 3.2);
       expect(all(h).some((c) => c.kind === "regar" && c.targetId?.startsWith("bancal"))).toBe(false);
     });
+  });
+});
+
+describe("Habitat: swapping parts in the ship bay", () => {
+  const swapSetup = () => {
+    const ship = Ship.create(explorerDesign());
+    return { ship, h: new Habitat(seededRandom(9), 3, ship, "Berón") };
+  };
+  const done = (s: ChoreSession, answer = right) => {
+    while (s.run.status === "doing") s.answer(answer(s.run.current!));
+  };
+
+  it("finishing the swap chore refits the real ship", () => {
+    const { h, ship } = swapSetup();
+    done(h.start(swapChore(ship.design, "motor", partById("aerojet-mr-104h")!)));
+    expect(ship.design.mainEngines[0]!.model.id).toBe("aerojet-mr-104h");
+    expect(h.drainEvents().some((e) => e.type === "chore-done")).toBe(true);
+  });
+
+  it("failing it leaves the old part on", () => {
+    const { h, ship } = swapSetup();
+    const s = h.start(swapChore(ship.design, "rcs", partById("aerojet-mr-107t")!));
+    while (s.run.status === "doing") s.answer(failingAnswer(s.run));
+    expect(ship.design.rcs[0]!.model.id).toBe("aerojet-mr-106l");
+  });
+});
+
+describe("Habitat crew gravity", () => {
+  it("passes the gravity the crew feels to her daily tick", () => {
+    const ring = new Habitat(seededRandom(1), 0);
+    const hub = new Habitat(seededRandom(1), 0);
+    hub.crewGravityG = 0;
+    ring.crewGravityG = 1;
+    ring.tick(0.5);
+    hub.tick(0.5);
+    expect(hub.crew.microgravityDays).toBeCloseTo(0.5);
+    expect(hub.crew.fitness).toBeLessThan(ring.crew.fitness);
   });
 });

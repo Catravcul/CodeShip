@@ -1,8 +1,13 @@
 name: CI
 on:
   push:
-    branches: [develop, rehacer-threejs]
+    branches: [develop, rehacer-threejs, integracion]
   pull_request:
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  TZ: UTC
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -13,7 +18,30 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run lint:arch
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
+      # Separate steps: one red step does not hide the others (`!cancelled()` rather than `always()`).
+      - name: Unit tests
+        run: npm test
+      - name: Typecheck
+        if: ${{ !cancelled() }}
+        run: npm run typecheck
+      - name: Architecture
+        if: ${{ !cancelled() }}
+        run: npm run lint:arch
+      - name: Docs match the code (budgets, journeys)
+        if: ${{ !cancelled() }}
+        run: npm run check:docs
+      - name: Build
+        if: ${{ !cancelled() }}
+        run: npm run build
+      - name: Playwright (Chromium)
+        if: ${{ !cancelled() }}
+        run: npm install --no-save playwright && npx playwright install --with-deps chromium
+      - name: Player experience (docs/testing.md)
+        if: ${{ !cancelled() }}
+        # The runner has no GPU: frame budgets are informative there (SwiftShader); the run log is uploaded, not committed.
+        run: EXPERIENCIA_SIN_REGISTRO=1 EXPERIENCIA_OUT=experiencia-informe/ci npm run experiencia
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: experiencia
+          path: experiencia-informe/ci

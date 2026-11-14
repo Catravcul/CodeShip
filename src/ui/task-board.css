@@ -1,0 +1,11 @@
+/* Every task of the game, grouped, with «Ir» (docs/design/habitaculo.md §Tareas). */
+.task-board { z-index: 11; top: 10px; transform: translateX(-50%); max-height: calc(100% - 20px); }
+.task-board.hidden { display: none; }
+.tb-group { margin: 6px 0 0; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: #7fdcff; }
+.tb-task { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: #13243a; border: 1px solid #2c4a6a; border-radius: 10px; }
+.tb-task > div { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tb-task span { font-size: 12px; opacity: 0.85; }
+.tb-go { flex: none; min-width: 52px; min-height: 44px; font: inherit; font-weight: 700; color: #001018; background: #7fdcff; border: 0; border-radius: 10px; }
+.task-board .board-head button[data-close] { min-width: 44px; min-height: 44px; }
+.task-board .chip { min-height: 44px; display: inline-flex; align-items: center; }
+body.in-tasks .vstick, body.in-tasks .zg-controls, body.in-tasks .cab-machine { display: none !important; }

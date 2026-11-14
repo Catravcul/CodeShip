@@ -3,7 +3,7 @@ import { generateAsteroidShape, type AsteroidShapeParams } from "../../content/a
 import { seededRandom } from "../../content/random";
 
 /** Builds the render mesh of an asteroid: the generated body plus scattered boulders. */
-export function buildAsteroidMesh(params: AsteroidShapeParams, colour: THREE.ColorRepresentation): THREE.Group {
+export function buildAsteroidMesh(params: AsteroidShapeParams, colour: THREE.ColorRepresentation, boulderCount = 400): THREE.Group {
   const group = new THREE.Group();
   const shape = generateAsteroidShape(params);
   const geometry = new THREE.BufferGeometry();
@@ -28,7 +28,7 @@ export function buildAsteroidMesh(params: AsteroidShapeParams, colour: THREE.Col
 
   // Boulders resting on the surface (Bennu is strewn with them, some tens of metres across).
   const boulderGeo = new THREE.DodecahedronGeometry(1, 0);
-  const count = 400;
+  const count = boulderCount;
   const boulders = new THREE.InstancedMesh(boulderGeo, material, count);
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
@@ -42,6 +42,6 @@ export function buildAsteroidMesh(params: AsteroidShapeParams, colour: THREE.Col
     boulders.setMatrixAt(i, m);
     boulders.setColorAt(i, base.clone().multiplyScalar(0.7 + rnd() * 0.5));
   }
-  group.add(boulders);
+  if (count > 0) group.add(boulders);
   return group;
 }

@@ -1,0 +1,49 @@
+/* The lander's crew cabin (docs/design/habitaculo.md): machines instead of HUD buttons. */
+.room-ui { position: fixed; inset: 0; z-index: 8; pointer-events: none; color: #d8f6ff; }
+.room-ui.hidden { display: none; }
+.room-ui > * { pointer-events: auto; }
+.cab-where { position: fixed; top: calc(10px + env(safe-area-inset-top)); left: 12px; padding: 6px 10px; font-size: 13px; background: #05141cc4; border-radius: 10px; pointer-events: none; }
+.root-menu.cab-menu { top: calc(10px + env(safe-area-inset-top)); right: 10px; }
+.cab-machine { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(160px + env(safe-area-inset-bottom)); width: min(380px, calc(100vw - 24px)); box-sizing: border-box; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; background: #05141ce6; border: 1px solid #7fdcff55; border-radius: 14px; font-size: 13px; }
+.cab-machine.hidden { display: none; }
+.cm-head { display: flex; flex-direction: column; gap: 2px; }
+.cm-head b { font-size: 15px; color: #ffd27f; }
+.cm-head small { color: #a9c8d8; }
+.cm-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+.cm-acts button { flex: 1 1 auto; min-height: 48px; padding: 8px 14px; font: inherit; font-weight: 700; color: #d8f6ff; background: #0b2a36; border: 1px solid #7fdcff66; border-radius: 12px; }
+.cm-acts button.primary { color: #001018; background: #9fe8c4; border-color: #9fe8c4; }
+.cm-acts button:disabled { opacity: 0.5; color: #d8f6ff; background: #0b2a36; border-color: #7fdcff33; }
+.cm-acts kbd { font: inherit; font-size: 11px; font-weight: 400; opacity: 0.8; }
+.cm-why { margin: 0; font-size: 12px; color: #ffd8a0; }
+/* The asteroid's mind: one clear line, then its steps as plain text (not buttons). */
+.cm-mind .mind-line { font-size: 14px; font-weight: 600; }
+.cm-mind .mind-steps { margin-top: 4px; font-size: 12px; color: #a9c8d8; }
+.cm-mind .mind-steps .done { color: #7dffb0; }
+.cm-mind .mind-steps .now { color: #ffd27f; font-weight: 700; }
+.cm-mind .mind-next { margin-top: 4px; font-size: 12px; color: #bfefff; }
+.cm-mind .rp-trust { height: 5px; }
+.cab-toast { position: fixed; left: 50%; transform: translateX(-50%); top: calc(60px + env(safe-area-inset-top)); width: min(420px, calc(100vw - 24px)); box-sizing: border-box; padding: 6px 10px; font-size: 13px; text-align: center; background: #000a; border-radius: 10px; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+.cab-toast.on { opacity: 1; }
+.cab-fade { position: fixed; inset: 0; z-index: 30; background: #000; opacity: 0; pointer-events: none; }
+.cab-fade.go { animation: cab-fade 0.45s ease-out; }
+@keyframes cab-fade { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .cab-fade.go { animation: none; } }
+.vstick.room-move { left: 22px; }
+.vstick.room-look { right: 22px; }
+body.in-cab .vstick.cab-move, body.in-cab .vstick.cab-look, body.in-puente .vstick.puente-move, body.in-puente .vstick.puente-look { display: block; }
+.vstick.room-move span { color: #9fe8c4; }
+body.in-room .hud, body.in-room .help, body.in-room .reticle, body.in-room .banner, body.in-room .action, body.in-room .touch, body.in-room .mode-btn,
+body.in-room .cam-tag, body.in-room .pilot-look, body.in-room .region-tag, body.in-room .sky-labels, body.in-room .nano-card, body.in-room .autopilot-tag, body.in-room .walk-stick, body.in-room .look-stick { display: none !important; }
+body.in-duel .room-ui, body.in-duel .vstick.room-move, body.in-duel .vstick.room-look, body.in-settings .cab-machine,
+body.in-deck .room-ui, body.in-deck .vstick.room-move, body.in-deck .vstick.room-look, body.in-probe .room-ui, body.in-probe .vstick.room-move, body.in-probe .vstick.room-look,
+body.in-missions .vstick.room-move, body.in-missions .vstick.room-look { display: none !important; }
+body.in-settings .cab-menu { display: none; }
+@media (min-width: 900px) and (pointer: fine) { .cab-machine { left: auto; right: 18px; transform: none; bottom: 170px; } }
+/* The travel ship's bridge (src/bridge.ts): a compact list of what needs attention, under the title. */
+.br-alerts { position: fixed; top: calc(58px + env(safe-area-inset-top)); left: 12px; z-index: 6; display: flex; flex-direction: column; gap: 4px; max-width: min(360px, calc(100vw - 80px)); pointer-events: none; }
+.br-alert { padding: 4px 10px; font-size: 12px; line-height: 1.35; color: #d8f6ff; background: #05141ce0; border: 1px solid #7fdcff44; border-left: 4px solid #37e07a; border-radius: 8px; }
+.br-alert.warning { border-left-color: #ff3b30; color: #ffd0cc; }
+.br-alert.caution { border-left-color: #ffb347; }
+.br-alert.advisory { border-left-color: #7fdcff; }
+/* The nano_net console's card shows over the bridge. */
+body.in-room.in-puente .nano-card:not(.hidden) { display: block !important; z-index: 9; }

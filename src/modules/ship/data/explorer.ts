@@ -1,22 +1,32 @@
 import { Vec3 } from "@core/math/vec3";
 import type { ShipDesign } from "../domain/ship";
 import { buildRcsLayout } from "../domain/rcs-layout";
-import { MR106L, R4D } from "./thrusters";
+import { HIPAT, MR106L } from "./thrusters";
+import { N2H4_80274, PAIR_80433 } from "./tanks";
+import { BATTERY_LI5, CABIN_AL2195, FIXED_SYSTEMS, POWER_RIGID, SHIELD_NONE } from "./equipment";
 
 const HULL_SIZE = new Vec3(3, 2, 5);
 
 /**
- * Starter ship. Thrusters are real models (see thrusters.ts); the hull and tanks are
- * game values sized like a small uncrewed-class craft until real parts replace them.
+ * The probe (sonda): a light lander with legs that flies from the mothership to the asteroid and
+ * back. Its cabin is only for short sorties; the rings, the garden and the cabins are on the
+ * mothership (docs/design/nave-nodriza.md). The dry mass is the sum of real components (equipment.ts,
+ * docs/design/componentes.md). Propulsion follows Cassini's split: an MMH/NTO main engine fed by
+ * helium from a pair of titanium tanks (MESSENGER's), and hydrazine attitude thrusters on their own
+ * blowdown tank (Dawn's). See «Recomendación» in componentes.md for the Δv working.
  */
 export function explorerDesign(): ShipDesign {
   return {
-    hull: { name: "Codeship Explorer", dryMassKg: 420, size: HULL_SIZE },
+    hull: { name: "Codeship Explorer", size: HULL_SIZE },
     tanks: [
-      { spec: { propellant: "MMH/NTO", capacityKg: 180, dryMassKg: 18 }, fillKg: 180 },
-      { spec: { propellant: "Hydrazine", capacityKg: 40, dryMassKg: 5 }, fillKg: 40 },
+      { spec: PAIR_80433, fillKg: PAIR_80433.capacityKg },
+      { spec: N2H4_80274, fillKg: N2H4_80274.capacityKg },
     ],
-    mainEngines: [{ model: R4D, position: new Vec3(0, 0, HULL_SIZE.z / 2), direction: new Vec3(0, 0, -1) }],
+    mainEngines: [{ model: HIPAT, position: new Vec3(0, 0, HULL_SIZE.z / 2), direction: new Vec3(0, 0, -1) }],
     rcs: buildRcsLayout(MR106L, HULL_SIZE),
+    equipment: [CABIN_AL2195, POWER_RIGID, BATTERY_LI5, SHIELD_NONE, ...FIXED_SYSTEMS],
+    // Dorsal docking port, like the Apollo LM's overhead hatch: the probe hangs under the
+    // mothership's node and the pilot keeps the view forward. Behind the canopy.
+    dockingPort: new Vec3(0, HULL_SIZE.y / 2 + 0.3, 0.6),
   };
 }

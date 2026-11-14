@@ -1,5 +1,7 @@
 import { Vec3 } from "@core/math/vec3";
 import type { HullSpec, MountedThruster, Propellant, TankSpec } from "./components";
+import { equipmentMassKg, type Equipment } from "./equipment";
+import { debrisDamageFactor } from "./mmod";
 import type { RcsThruster } from "./rcs-layout";
 import { deltaV, massFlow } from "./rocket";
 
@@ -8,6 +10,13 @@ export interface ShipDesign {
   readonly tanks: readonly { spec: TankSpec; fillKg: number }[];
   readonly mainEngines: readonly MountedThruster[];
   readonly rcs: readonly RcsThruster[];
+  /** Cabin, power, battery, shield and the fixed systems: everything else that has mass. */
+  readonly equipment: readonly Equipment[];
+  /**
+   * Docking port (body frame) on top of the hull, facing +y: where the probe latches to the
+   * mothership (docs/design/nave-nodriza.md).
+   */
+  readonly dockingPort?: Vec3;
 }
 
 /** Pilot intent, already normalised: throttle 0..1, axes -1..1 in the body frame. */
@@ -22,6 +31,9 @@ export interface ThrustOutput {
   readonly torqueBody: Vec3;
 }
 
+/** What hurt the hull: a crash or contact, or debris thrown by an asteroid. */
+export type DamageCause = "choque" | "escombros";
+
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
 /** A ship assembled from real components. Owns its propellant state; knows nothing about rendering. */
@@ -29,11 +41,38 @@ export class Ship {
   private readonly fuel = new Map<Propellant, number>();
   private _hull = 1;
 
-  private constructor(readonly design: ShipDesign) {
-    for (const t of design.tanks) {
+  private constructor(private _design: ShipDesign) {
+    for (const t of _design.tanks) {
       if (t.fillKg < 0 || t.fillKg > t.spec.capacityKg) throw new RangeError(`Tank fill out of range: ${t.fillKg} kg`);
       this.fuel.set(t.spec.propellant, (this.fuel.get(t.spec.propellant) ?? 0) + t.fillKg);
     }
+  }
+
+  /** The parts bolted on right now. Changes only through `refit`. */
+  get design(): ShipDesign {
+    return this._design;
+  }
+
+  /**
+   * Swap parts: propellant on board stays, except what no longer fits in the new tanks (it is vented).
+   * A tank that is swapped leaves with its share of the pool, and the new one comes from the station
+   * loaded and pressurised (the last step of the swap). Tank fills in the new design are ignored.
+   */
+  refit(design: ShipDesign): void {
+    const old = this._design;
+    design.tanks.forEach((t, i) => {
+      const was = old.tanks[i];
+      if (was && was.spec === t.spec) return;
+      if (was) {
+        const p = was.spec.propellant;
+        const pool = this.propellantCapacityKg(p);
+        const kg = this.propellantKg(p);
+        this.fuel.set(p, Math.max(0, kg - (pool > 0 ? (kg * was.spec.capacityKg) / pool : 0)));
+      }
+      this.fuel.set(t.spec.propellant, this.propellantKg(t.spec.propellant) + t.spec.capacityKg);
+    });
+    this._design = design;
+    for (const [p, kg] of [...this.fuel]) this.fuel.set(p, Math.min(kg, this.propellantCapacityKg(p)));
   }
 
   static create(design: ShipDesign): Ship {
@@ -54,7 +93,7 @@ export class Ship {
     const d = this.design;
     const thrusters = [...d.mainEngines, ...d.rcs].reduce((m, t) => m + t.model.dryMassKg, 0);
     const tanks = d.tanks.reduce((m, t) => m + t.spec.dryMassKg, 0);
-    return d.hull.dryMassKg + thrusters + tanks;
+    return equipmentMassKg(d.equipment) + thrusters + tanks;
   }
 
   get massKg(): number {
@@ -68,8 +107,13 @@ export class Ship {
     return this._hull;
   }
 
-  damage(fraction: number): void {
-    this._hull = Math.max(0, this._hull - Math.max(0, fraction));
+  /**
+   * Lose hull integrity. Debris (an angry asteroid's rocks) is cut down by the cabin wall and the
+   * micrometeoroid shield (`debrisDamageFactor`); a crash or a hard contact is not.
+   */
+  damage(fraction: number, cause: DamageCause = "choque"): void {
+    const k = cause === "escombros" ? debrisDamageFactor(this.design.equipment) : 1;
+    this._hull = Math.max(0, this._hull - Math.max(0, fraction) * k);
   }
 
   repair(fraction: number): void {
@@ -78,6 +122,21 @@ export class Ship {
 
   propellantKg(p: Propellant): number {
     return this.fuel.get(p) ?? 0;
+  }
+
+  /**
+   * Load propellant into the tanks of one propellant (a station's refuelling line): never past their
+   * capacity. Returns the kg taken.
+   */
+  refuel(p: Propellant, kg: number): number {
+    const took = Math.max(0, Math.min(kg, this.propellantCapacityKg(p) - this.propellantKg(p)));
+    if (took > 0) this.fuel.set(p, this.propellantKg(p) + took);
+    return took;
+  }
+
+  /** The propellants the tanks hold, each once, in tank order. */
+  get propellants(): Propellant[] {
+    return [...new Set(this.design.tanks.map((t) => t.spec.propellant))];
   }
 
   propellantCapacityKg(p: Propellant): number {

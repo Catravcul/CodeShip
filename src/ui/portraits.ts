@@ -1,8 +1,14 @@
 /**
  * Portraits for the radio, drawn from the design sheets described in Cold Sanctuary's
  * docs/diseno-personajes.md (the sheet images themselves are not in either repository).
- * Nevaeh is the Magnate of Cold Sanctuary.
+ * Nevaeh is the Magnate of Cold Sanctuary. Doménica's portrait is the designer's own drawing
+ * (src/assets/domenica-face.webp, 100×100).
  */
+import domenicaFace from "../assets/domenica-face.webp";
+
+/** Doménica's long lavender hair, sampled from her portrait (used by the 3D figure too). */
+export const DOMENICA_HAIR = 0x9f86d6;
+
 const frame = (inner: string) => `<svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="27" fill="#1d3b52" stroke="#7fdcff" stroke-width="2"/>${inner}</svg>`;
 
 /** Navy bob with straight fringe and long front locks, brown eyes, purple lips, high white collar, purple bolero, maroon corset with gold trim. */
@@ -34,7 +40,10 @@ const initial = (name: string) =>
   frame(`<path d="M10 50c3-11 11-15 18-15s15 4 18 15" fill="#7fdcff"/><circle cx="28" cy="22" r="10" fill="#c99a76"/>
   <text x="46" y="52" font-size="12" font-family="monospace" fill="#ffd27f">${name[0]?.replace(/[<&>]/g, "") ?? "?"}</text>`);
 
+const DOMENICA = `<img class="portrait-img" src="${domenicaFace}" alt="" width="56" height="56" style="border-radius:50%;border:2px solid #7fdcff;object-fit:cover;background:#1d3b52">`;
+
 export function portrait(name: string): string {
+  if (name === "Doménica") return DOMENICA;
   if (name === "Nevaeh") return NEVAEH;
   if (name === "Kushal") return KUSHAL;
   return initial(name);

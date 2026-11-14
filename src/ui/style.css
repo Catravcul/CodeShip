@@ -34,11 +34,29 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-f
 body.in-duel .banner, body.in-duel .hud, body.in-duel .touch-left, body.in-duel .touch-right { display: none; }
 .duel-head { display: flex; flex-direction: column; gap: 6px; }
 .duel-title { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #b9a8ff; }
+/* Hits and failures as written readouts, in the cockpit HUD's speed style (monospace, glow, big number):
+   green once there is a hit; failures pale at 0, amber after one, red when one more loses the challenge.
+   A changed number pulses. Failures only ever count up: a wrong answer is never un-marked. */
 .meter { display: flex; align-items: center; gap: 4px; font-size: 12px; }
 .meter .label { flex: 0 0 90px; opacity: 0.8; text-align: left; }
 .meter .cell { flex: 1; height: 10px; border-radius: 3px; background: #ffffff1a; }
 .meter.persuasion .cell.on { background: #7dffb0; box-shadow: 0 0 8px #7dffb0aa; }
 .meter.patience .cell.on { background: #ffb347; box-shadow: 0 0 8px #ffb347aa; }
+.duel-meters { display: flex; flex-direction: column; gap: 4px; }
+/* The written readouts are the HUD view's; the panel keeps its meters. */
+.duel-stats { display: none; }
+body.ui-compact .duel .duel-meters { display: none; }
+body.ui-compact .duel .duel-stats { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 22px; }
+.stat { font-size: 14px; color: #bfefff; text-shadow: 0 0 6px #00b7ff88; letter-spacing: 0.02em; white-space: nowrap; }
+.stat b { display: inline-block; font-size: 24px; font-weight: 700; line-height: 1.1; }
+.stat .lbl { font-size: 12px; opacity: 0.75; }
+.stat.hits.good { color: #7dffb0; text-shadow: 0 0 6px #7dffb088; }
+.stat.fails.warn { color: #ffb347; text-shadow: 0 0 6px #ffb34788; }
+.stat.fails.danger { color: #ff7a6b; text-shadow: 0 0 6px #ff5a4a99; }
+.stat.fails.danger .lbl { opacity: 1; }
+.stat.bump b { animation: stat-bump 0.7s ease-out; }
+@keyframes stat-bump { 0% { transform: scale(1.6); filter: brightness(2.2); } 60% { transform: scale(0.95); } 100% { transform: none; filter: none; } }
+@media (prefers-reduced-motion: reduce) { .stat.bump b { animation: none; } }
 .idea { font-size: 20px; line-height: 1.35; color: #fff; font-style: italic; text-shadow: 0 0 18px #9b7dff; padding: 6px 0; }
 .question { font-size: 14px; color: #cfc6ff; }
 .toggle { align-self: flex-start; font: inherit; font-size: 12px; color: #b9a8ff; background: none; border: 1px solid #b9a8ff66; border-radius: 999px; padding: 6px 12px; }
@@ -51,10 +69,25 @@ body.in-duel .banner, body.in-duel .hud, body.in-duel .touch-left, body.in-duel 
 .code { background: #0c0a18; border-radius: 12px; padding: 10px 14px; }
 .code-line { font-size: 15px; padding: 3px 0; color: #d9d2ff; }
 .submit { min-height: 52px; font: inherit; font-size: 17px; color: #10061f; background: #b9a8ff; border: 0; border-radius: 14px; }
-.submit:disabled { opacity: 0.35; }
+.submit:disabled { background: #3d3760; color: #8f88b8; }
 .feedback { padding: 8px 12px; border-radius: 10px; font-size: 14px; }
 .feedback.ok { background: #7dffb022; color: #7dffb0; }
 .feedback.bad { background: #ff6b5a22; color: #ff8a7a; }
+/* An option already answered wrong stays marked (red, crossed) for the rest of the step; tapping it again costs nothing. */
+.option.wrong { background: #3a1018; border-color: #ff6b5a; color: #ffb4aa; }
+.option.wrong .mark { flex: none; width: 22px; height: 22px; display: inline-grid; place-items: center; border-radius: 50%; background: #ff6b5a; color: #1a0508; font-weight: 700; }
+/* Order challenges: ✓/✗ on each slot after a wrong order, and wrong picks step by step (icon + colour). */
+.block .mark { flex: none; width: 22px; height: 22px; display: inline-grid; place-items: center; border-radius: 50%; font-weight: 700; }
+.block.placed .mark { margin-left: auto; }
+.block .mark.ok { background: #5ee08f; color: #04160b; }
+.block .mark.bad { background: #ff6b5a; color: #1a0508; }
+.block.placed.ok { border-color: #5ee08f; }
+.block.placed.bad, .block.wrong { background: #3a1018; border-color: #ff6b5a; color: #ffb4aa; }
+.result { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 14px; font-size: 14px; }
+.result b { font-size: 22px; }
+.result.won { background: #0d2a1c; color: #7dffb0; border: 1px solid #7dffb0; }
+.result.lost { background: #2a0d10; color: #ffb4aa; border: 1px solid #ff6b5a; }
+.result.lost b { color: #ff7a6b; }
 
 /* Narrow screens: compact HUD, banner below it so they never overlap. */
 @media (max-width: 600px) {
@@ -67,8 +100,8 @@ body.in-duel .banner, body.in-duel .hud, body.in-duel .touch-left, body.in-duel 
 
 /* --- Interior (habitat module) ------------------------------------------ */
 body.in-interior .hud, body.in-interior .help, body.in-interior .reticle, body.in-interior .banner, body.in-interior .action, body.in-interior .touch { display: none !important; }
-.mode-btn { position: fixed; top: 12px; right: 12px; z-index: 6; padding: 10px 14px; font: inherit; font-size: 14px; color: #bfefff; background: #0b2a36dd; border: 1px solid #7fdcff66; border-radius: 10px; }
-body.in-duel .mode-btn { display: none; }
+.mode-btn { position: fixed; top: 12px; right: 12px; z-index: 6; padding: 10px 14px; font: inherit; font-size: 14px; font-weight: 700; color: #001018; background: #9fe8c4; border: 0; border-radius: 10px; box-shadow: 0 0 14px #3fd09a66; }
+body.in-duel .mode-btn, body.in-interior .mode-btn { display: none; }
 .interior-ui.hidden, .interior-ui .hidden { display: none !important; }
 .ihud { position: fixed; top: 12px; left: 12px; width: min(230px, 55vw); color: #e6f6ff; font-size: 12px; text-shadow: 0 1px 2px #000; pointer-events: none; z-index: 4; }
 .ihud .ititle { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: #7fdcff; margin-bottom: 4px; }
@@ -77,7 +110,7 @@ body.in-duel .mode-btn { display: none; }
 .ihud .bar i { position: absolute; inset: 0 auto 0 0; background: #2f9e6c; }
 .ihud .small { margin-top: 4px; opacity: 0.9; }
 .tasks-btn { position: fixed; top: 58px; right: 12px; z-index: 6; padding: 10px 14px; font: inherit; font-size: 14px; color: #001018; background: #7fdcff; border: 0; border-radius: 10px; }
-.station-btn { position: fixed; left: 50%; bottom: 150px; transform: translateX(-50%); z-index: 6; padding: 14px 22px; font: inherit; font-size: 16px; color: #001018; background: #ffd27f; border: 0; border-radius: 14px; box-shadow: 0 0 18px #ffb34788; }
+.station-btn { position: fixed; left: 50%; bottom: 150px; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 24px); z-index: 6; padding: 14px 22px; font: inherit; font-size: 16px; color: #001018; background: #ffd27f; border: 0; border-radius: 14px; box-shadow: 0 0 18px #ffb34788; }
 .board { position: fixed; z-index: 8; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(520px, 92vw); max-height: 80vh; overflow-y: auto; padding: 12px; box-sizing: border-box; background: #0a1220f2; border: 1px solid #7fdcff55; border-radius: 14px; color: #e6f6ff; display: flex; flex-direction: column; gap: 8px; }
 .board-head { display: flex; justify-content: space-between; align-items: center; font-size: 15px; }
 .board-head button { font: inherit; color: #e6f6ff; background: none; border: 0; font-size: 18px; }
@@ -95,6 +128,8 @@ body.in-interior .walk-stick, body.in-interior .look-stick { display: block; }
 body.in-duel .vstick, body.in-duel .interior-ui { display: none !important; }
 /* Chores: the challenge sits in a bottom sheet so the plant, cat or yoga figure stays visible above. */
 .duel.sheet { top: 38vh; border-radius: 18px 18px 0 0; background-image: none; background-color: #05060cf2; }
+/* Short phones (Safari bars shown): a bit more sheet and a smaller idea, so the options fit with less scrolling. */
+@media (max-height: 760px) and (max-aspect-ratio: 1/1) { .duel.sheet { top: 30vh; } .duel.sheet .idea { font-size: 16px; padding: 0; } }
 @media (min-aspect-ratio: 1/1) { .duel.sheet { top: 0; left: auto; right: 0; width: min(480px, 46vw); padding-inline: 16px; border-radius: 18px 0 0 18px; } }
 
 /* Ship radio: Nevaeh's letters */
@@ -112,18 +147,246 @@ body.in-duel .vstick, body.in-duel .interior-ui { display: none !important; }
 .letter .go { align-self: flex-start; padding: 10px 14px; font: inherit; color: #001018; background: #7dffb0; border: 0; border-radius: 10px; }
 .letter .done { color: #7dffb0; font-size: 13px; }
 .board .chore.unread b::after { content: " •"; color: #ff6b6b; }
-.view-btn { position: fixed; top: 150px; right: 12px; z-index: 6; padding: 8px 12px; font: inherit; font-size: 13px; color: #d8f6ff; background: #0b2a36cc; border: 1px solid #7fdcff66; border-radius: 10px; }
+.view-btn { position: fixed; top: 150px; right: 12px; z-index: 6; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; color: #d8f6ff; background: #0b2a36cc; border: 1px solid #7fdcff66; border-radius: 50%; }
 body.in-duel .tasks-btn, body.in-duel .radio-btn, body.in-duel .view-btn { display: none; }
 
 /* Cockpit: look stick, camera / time-warp buttons and the camera tag. */
 .pilot-look { left: 50%; margin-left: -60px; bottom: 22px; }
 body.in-cockpit .pilot-look { display: block; }
-.flight-bar { position: fixed; top: 58px; right: 12px; z-index: 6; display: none; flex-direction: column; align-items: flex-end; gap: 6px; }
-body.in-cockpit .flight-bar { display: flex; }
-.flight-bar button { padding: 8px 12px; font: inherit; font-size: 13px; color: #d8f6ff; background: #0b2a36cc; border: 1px solid #7fdcff66; border-radius: 10px; }
-.flight-bar button.limited { color: #ffd8a0; border-color: #ffb34788; }
+/* The cockpit's root menu of icons (ui/root-menu.ts): top right, only in the cockpit. */
+.root-menu.flight-bar { top: calc(10px + env(safe-area-inset-top)); right: 10px; display: none; }
+body.in-cockpit .root-menu.flight-bar { display: flex; }
 .cam-tag { position: fixed; top: calc(50% + 28px); left: 50%; transform: translateX(-50%); z-index: 4; padding: 4px 10px; font-size: 12px; color: #d8f6ff; background: #0b2a36aa; border-radius: 8px; pointer-events: none; display: none; }
 body.in-cockpit .cam-tag.on { display: block; }
 .hud .thrust { color: #7fdcff88; }
 .hud .thrust.on { color: #ffd8a0; }
+.hud .mail { color: #ffd76a; opacity: 1; }
 @media (pointer: coarse) { .pilot-look { left: auto; right: 18px; margin-left: 0; bottom: 280px; } }
+
+/* Challenge sheet: the status (title, meters, feedback) and the buttons stay visible while scrolling. */
+.duel-top { position: sticky; top: -16px; z-index: 2; margin-top: -16px; padding: 16px 0 8px; display: flex; flex-direction: column; gap: 8px; background-color: #05060c; box-shadow: 0 8px 12px -6px #05060c; }
+.duel.sheet .duel-top { background-color: #05060c; }
+.duel-top { position: sticky; }
+.duel-top:has(.duel-tools) .duel-title { padding-right: 150px; }
+.duel-tools { position: absolute; top: 12px; right: 0; display: flex; gap: 8px; }
+.duel-tools button { font: inherit; font-size: 12px; color: #d9d2ff; background: #ffffff12; border: 1px solid #b9a8ff55; border-radius: 999px; padding: 6px 12px; }
+/* With the order mode toggle the tools need their own row above the title. */
+.duel-top:has(.order-toggle) .duel-tools { position: static; align-self: flex-end; }
+.duel-top:has(.order-toggle) .duel-title { padding-right: 0; }
+.duel-tools .x { font-size: 18px; line-height: 1; padding: 4px 12px; }
+.duel .submit { position: sticky; bottom: 0; z-index: 2; box-shadow: 0 -12px 16px -4px #05060c; }
+.feedback { animation: feedback-in 0.5s ease-out; }
+@keyframes feedback-in { from { transform: scale(1.06); filter: brightness(1.8); } to { transform: none; filter: none; } }
+.option:active, .block:active { transform: scale(0.98); filter: brightness(1.3); }
+
+/* HUD challenge UI (setting): no panel. The challenge floats over the 3D scene like the cockpit HUD:
+   bare text with a dark halo, see-through buttons, the scene visible behind everything. */
+body.ui-compact .duel, body.ui-compact .duel.sheet { inset: 0; width: auto; border-radius: 0; background: none; background-color: transparent; backdrop-filter: none; pointer-events: none; justify-content: flex-start; gap: 8px; padding-top: 140px; }
+/* Bottom-anchored but scrollable: a flexible spacer pushes short sheets down and shrinks to zero when the
+   content is taller than the screen (justify-content: flex-end would push the overflow off the top, unreachable). */
+body.ui-compact .duel::before { content: ""; flex: 1 1 auto; }
+body.ui-compact .duel > *, body.ui-compact .duel button, body.ui-compact .duel a { pointer-events: auto; }
+body.ui-compact .duel { color: #d8f6ff; text-shadow: 0 0 3px #000, 0 0 10px #000c; }
+body.ui-compact .duel .duel-top { position: fixed; top: 10px; left: 12px; right: 12px; margin: 0; padding: 0; gap: 4px; background: none; box-shadow: none; max-width: 520px; }
+body.ui-compact .duel .duel-tools { position: static; order: -1; align-self: flex-end; }
+body.ui-compact .duel .duel-top:has(.duel-tools) .duel-title { padding-right: 0; }
+body.ui-compact .duel .duel-tools button { color: #d8f6ff; background: #0b2a3699; border-color: #7fdcff55; text-shadow: none; }
+body.ui-compact .duel .duel-title { font-size: 11px; color: #7fdcff; }
+/* HUD readouts: same speed-style numbers, on a dark see-through plate so they read over any background (WCAG AA). */
+body.ui-compact .duel .duel-stats { align-self: flex-start; padding: 4px 12px; border-radius: 10px; background: #020a12d9; box-shadow: 0 0 0 1px #7fdcff33; }
+body.ui-compact .duel .duel-title { align-self: flex-start; padding: 2px 8px; border-radius: 6px; background: #020a12d9; }
+body.ui-compact .duel .stat { text-shadow: 0 0 2px #000, 0 0 6px currentColor; }
+body.ui-compact .duel .stat b { font-size: 22px; }
+body.ui-compact .duel .feedback { align-self: flex-start; padding: 4px 10px; font-size: 14px; background: #020a12d9; text-shadow: none; }
+body.ui-compact .duel .feedback.ok { color: #7dffb0; box-shadow: 0 0 0 1px #7dffb066; }
+body.ui-compact .duel .feedback.bad { color: #ff9a8c; box-shadow: 0 0 0 1px #ff6b5a88; }
+body.ui-compact .duel .idea { font-size: 15px; padding: 0; color: #fff; text-shadow: 0 0 3px #000, 0 0 14px #000; }
+body.ui-compact .duel .code { background: #00000066; padding: 6px 10px; }
+body.ui-compact .duel .code-line { font-size: 13px; padding: 1px 0; color: #d8f6ff; }
+body.ui-compact .duel .block, body.ui-compact .duel .option { min-height: 44px; font-size: 14px; padding: 6px 12px; border-radius: 10px; color: #eafaff; background: #06202bdd; border-color: #7fdcff88; text-shadow: none; }
+body.ui-compact .duel .block.slot { background: #02101a99; color: #d8f6ffaa; }
+body.ui-compact .duel .block.placed { background: #1f5a70f0; border: 2px solid #7fdcff; color: #fff; }
+body.ui-compact .duel .block.placed.ok { border: 2px solid #5ee08f; }
+body.ui-compact .duel .block.placed.bad, body.ui-compact .duel .block.wrong { background: #3a1018f0; border: 2px solid #ff6b5a; color: #ffc4bb; }
+body.ui-compact .duel .option.wrong { background: #3a1018f0; border: 2px solid #ff6b5a; color: #ffc4bb; }
+body.ui-compact .duel .submit { min-height: 44px; font-size: 15px; background: #b9a8ffcc; box-shadow: none; text-shadow: none; }
+body.ui-compact .duel .question { color: #d8f6ff; font-size: 13px; }
+body.ui-compact .duel .toggle { color: #d8f6ff; background: #0b2a3699; border-color: #7fdcff55; text-shadow: none; align-self: flex-start; }
+body.ui-compact .duel .submit:disabled { background: #3d376099; }
+@media (min-aspect-ratio: 1/1) { body.ui-compact .duel, body.ui-compact .duel.sheet { left: auto; width: min(420px, 40vw); padding-inline: 16px; padding-top: 12px; } body.ui-compact .duel .duel-top { left: 18px; right: auto; width: min(460px, 50vw); } }
+
+/* Boards (tasks, radio): the header with the close button stays on top while scrolling. */
+.board-head { position: sticky; top: -12px; z-index: 2; margin: -12px -12px 0; padding: 12px; background: #0a1220; border-radius: 14px 14px 0 0; }
+.board-head { flex-wrap: wrap; row-gap: 8px; }
+.board-head .chips { flex-basis: 100%; display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.board-head .chip { flex: none; font: inherit; font-size: 12px; color: #cfe8f5; background: #13243a; border: 1px solid #2c4a6a; border-radius: 999px; padding: 5px 10px; }
+.board-head .chip small { opacity: 0.7; }
+.board-head .chip.on { background: #7fdcff; color: #06202b; border-color: #7fdcff; }
+.board-head [data-missions] { margin-left: auto; margin-right: 8px; font-size: 13px; padding: 6px 10px; border: 1px solid #e0b84a; border-radius: 8px; color: #ffd76a; }
+/* --- Ship bay (engineering station): exterior view, part list and spec sheet ---- */
+body.in-bay .hud, body.in-bay .help, body.in-bay .reticle, body.in-bay .banner, body.in-bay .action, body.in-bay .touch, body.in-bay .mode-btn, body.in-bay .flight-bar, body.in-bay .cam-tag, body.in-bay .pilot-look { display: none !important; }
+.bay-ui.hidden { display: none !important; }
+.bay-head { position: fixed; top: 12px; left: 12px; z-index: 6; display: flex; flex-direction: column; gap: 2px; color: #e6f6ff; text-shadow: 0 1px 3px #000; pointer-events: none; }
+.bay-head b { font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; color: #ffd27f; }
+.bay-head span { font-size: 12px; opacity: 0.9; }
+.bay-back { position: fixed; top: 12px; right: 12px; z-index: 7; padding: 10px 14px; font: inherit; font-size: 14px; color: #bfefff; background: #0b2a36dd; border: 1px solid #7fdcff66; border-radius: 10px; }
+.bay-panel { position: fixed; z-index: 6; left: 0; right: 0; bottom: 0; height: 46vh; overflow-y: auto; box-sizing: border-box; padding: 10px 12px 18px; background: #0a1220f2; border-top: 1px solid #7fdcff44; border-radius: 16px 16px 0 0; color: #e6f6ff; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+@media (min-aspect-ratio: 1/1) { .bay-panel { top: 0; left: auto; width: min(400px, 40vw); height: auto; padding-top: 60px; border-top: 0; border-left: 1px solid #7fdcff44; border-radius: 0; } }
+.bay-sec { margin-top: 6px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #7fdcffaa; }
+.bay-sec.ok { color: #7dffb0; }
+.bay-item { display: grid; grid-template-columns: 14px 1fr auto; align-items: center; column-gap: 8px; row-gap: 2px; min-height: 44px; padding: 8px 10px; text-align: left; font: inherit; color: #e6f6ff; background: #13243a; border: 1px solid #2c4a6a; border-radius: 10px; }
+.bay-item.sel { border-color: #2fd0ff; background: #173452; }
+.bay-item small { grid-column: 2 / -1; font-size: 11px; color: #ffd27f; }
+.bay-item .mini { width: 54px; height: 6px; border-radius: 3px; background: #ffffff1a; overflow: hidden; }
+.bay-item .mini i { display: block; height: 100%; background: #2f9e6c; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #2f9e6c; }
+.dot.aviso { background: #ff9a1f; box-shadow: 0 0 8px #ff9a1f; }
+.dot.critico { background: #ff2a2a; box-shadow: 0 0 8px #ff2a2a; animation: bay-blink 0.9s infinite; }
+@keyframes bay-blink { 50% { opacity: 0.35; } }
+.bay-detail-head { display: flex; justify-content: space-between; align-items: center; }
+.bay-detail-head button { font: inherit; font-size: 14px; color: #7fdcff; background: none; border: 0; padding: 6px 0; }
+.bay-name { font-size: 16px; color: #fff; }
+.bay-bar { position: relative; height: 18px; border-radius: 5px; background: #00000066; overflow: hidden; }
+.bay-bar span { position: relative; z-index: 1; padding-left: 6px; line-height: 18px; font-size: 12px; }
+.bay-bar i { position: absolute; inset: 0 auto 0 0; background: #2f9e6c; }
+.bay-bar.low i { background: #b5442a; }
+.bay-issue { padding: 6px 10px; border-radius: 8px; font-size: 12px; }
+.bay-issue.aviso { background: #ff9a1f22; color: #ffc27a; }
+.bay-issue.critico { background: #ff2a2a22; color: #ff8a7a; }
+.bay-specs { width: 100%; border-collapse: collapse; font-size: 12px; }
+.bay-specs th { text-align: left; font-weight: normal; color: #9fc3d8; padding: 3px 8px 3px 0; vertical-align: top; width: 38%; }
+.bay-specs td { padding: 3px 0; }
+.bay-specs a { color: #7fdcff; font-size: 11px; }
+.bay-act { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 12px; text-align: left; font: inherit; color: #001018; background: #7dffb0; border: 0; border-radius: 10px; }
+.bay-act.cambiar { background: #ffd27f; color: #1a0f00; }
+.bay-act span { font-size: 11px; opacity: 0.8; }
+.bay-none { margin: 4px 0; opacity: 0.7; }
+.bay-more { font-size: 12px; }
+.bay-more summary { min-height: 44px; display: flex; align-items: center; color: #7fdcff; cursor: pointer; }
+.bay-toast { position: fixed; left: 50%; top: 18vh; transform: translateX(-50%); z-index: 12; padding: 8px 14px; background: #000000bb; color: #fff; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+.bay-toast.on { opacity: 1; }
+body.in-bay .bay-look { display: block; }
+.bay-look { left: 12px; bottom: calc(46vh + 14px); width: 96px; height: 96px; opacity: 0.75; }
+.bay-look .knob { left: 26px; top: 26px; width: 44px; height: 44px; }
+@media (min-aspect-ratio: 1/1) { .bay-look { bottom: 22px; } }
+@media (hover: hover) and (pointer: fine) { .bay-look { opacity: 0.6; } }
+body.in-duel .bay-panel, body.in-duel .bay-back, body.in-duel .bay-look { display: none !important; }
+/* nano_net: status card (opened from the flight bar) and the core action button. */
+.nano-card { position: fixed; top: 58px; left: 50%; transform: translateX(-50%); z-index: 7; width: min(300px, 92vw); box-sizing: border-box; padding: 10px 12px; color: #d8f6ff; font-size: 13px; line-height: 1.45; background: #05121add; border: 1px solid #7fdcff55; border-radius: 12px; box-shadow: 0 0 18px #00b7ff33; }
+.nano-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; color: #7fdcff; letter-spacing: 0.08em; }
+.nano-head button { font: inherit; color: #d8f6ff; background: none; border: 0; padding: 2px 6px; }
+.nano-row { margin: 3px 0; }
+.nano-row.warn { color: #ffb347; }
+.nano-row.ok { color: #7dffb0; }
+.nano-row.dim { opacity: 0.7; }
+.nano-stages { margin: 4px 0; padding-left: 20px; }
+.nano-stages li { opacity: 0.5; }
+.nano-stages li.on { opacity: 1; color: #7dffb0; }
+.nano-stages li.on::marker { content: "✓ "; }
+.nano-action { background: #a0ffd0; box-shadow: 0 0 24px #40ffa088; }
+body.in-interior .nano-card, body.in-duel .nano-card { display: none !important; }
+body.in-duel .help { display: none; }
+@media (max-width: 600px) { .nano-card { left: 8px; transform: none; top: 10px; width: calc(100vw - 160px); font-size: 12px; } }
+/* --- Sky bodies and region (espacio) ------------------------------------- */
+.sky-labels { position: fixed; inset: 0; pointer-events: none; z-index: 2; overflow: hidden; }
+body:not(.in-cockpit) .sky-labels { display: none; }
+.sky-label { position: absolute; left: 0; top: 0; margin: 6px 0 0 8px; font-size: 11px; color: #d8ecffcc; text-shadow: 0 0 4px #000; white-space: nowrap; }
+.sky-label.sun { color: #ffe9b8; margin-top: 14px; }
+.sky-label.faint { opacity: 0.5; }
+.sky-label.body { color: #9fdcffcc; font-size: 10px; }
+.region-tag { position: fixed; top: 52px; left: 50%; transform: translateX(-50%); z-index: 4; max-width: 86vw; padding: 5px 12px; font-size: 12px; text-align: center; color: #d8f6ff; background: #0b2a36aa; border-radius: 8px; pointer-events: none; display: none; }
+body.in-cockpit .region-tag.on { display: block; }
+.region-tag.warning, .region-tag.outside { color: #ffd8a0; border: 1px solid #ffb34788; }
+@media (pointer: coarse) { .region-tag { bottom: auto; top: 29vh; left: 10px; transform: none; max-width: 52vw; text-align: left; font-size: 11px; } }
+
+/* --- EVA: outside on the asteroid --------------------------------------- */
+body.in-eva .hud, body.in-eva .help, body.in-eva .reticle, body.in-eva .banner, body.in-eva .action, body.in-eva .touch, body.in-eva .mode-btn, body.in-eva .flight-bar, body.in-eva .cam-tag { display: none !important; }
+body.in-eva .eva-move, body.in-eva .eva-look { display: block; }
+body.in-duel .eva-ui { display: none !important; }
+.eva-move { left: 22px; }
+.eva-look { right: 22px; }
+.eva-ui.hidden, .eva-ui .hidden { display: none !important; }
+.eva-hud { position: fixed; top: 12px; left: 12px; width: min(250px, 58vw); color: #e6f6ff; font-size: 12px; line-height: 1.45; text-shadow: 0 1px 2px #000; pointer-events: none; z-index: 4; }
+.eva-hud .ititle { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #ffd23f; margin-bottom: 4px; }
+.eva-hud .bar { position: relative; height: 16px; margin: 3px 0; background: #00000077; border-radius: 4px; overflow: hidden; }
+.eva-hud .bar span { position: relative; z-index: 1; padding-left: 6px; line-height: 16px; }
+.eva-hud .bar i { position: absolute; inset: 0 auto 0 0; background: #2f8e9e; }
+.eva-hud .bar.warn i { background: #c0602a; }
+.eva-hud .warn { color: #ffb347; }
+.eva-hud .ok { color: #7dffb0; }
+.eva-hud .alert { color: #ff6b5a; font-weight: 700; }
+.eva-hud .small { opacity: 0.85; }
+.eva-back { position: fixed; top: 12px; right: 12px; z-index: 6; padding: 10px 14px; font: inherit; font-size: 14px; color: #001018; background: #ffd23f; border: 0; border-radius: 10px; }
+.eva-actions { position: fixed; right: 12px; top: 60px; z-index: 6; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.eva-actions button { padding: 9px 13px; font: inherit; font-size: 13px; color: #d8f6ff; background: #0b2a36cc; border: 1px solid #7fdcff66; border-radius: 10px; touch-action: none; user-select: none; -webkit-user-select: none; }
+.eva-actions .eva-sample { color: #001018; background: #5fe3ff; border-color: #5fe3ff; }
+.eva-toast { position: fixed; left: 50%; top: 18vh; transform: translateX(-50%); z-index: 7; padding: 8px 14px; background: #000000aa; color: #fff; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity 0.3s; pointer-events: none; text-align: center; max-width: min(86vw, 520px); }
+.eva-toast.on { opacity: 1; }
+@media (max-width: 600px) { .eva-toast { top: 222px; font-size: 13px; } .eva-hud { font-size: 11px; } .eva-actions .eva-sample { position: fixed; left: 50%; bottom: 170px; transform: translateX(-50%); white-space: nowrap; } }
+body.in-duel .help { display: none; }
+
+/* Gravity zones: spoke elevator and the floating hub (docs/design/gravedad.md) */
+.zone-btn { position: fixed; left: 50%; bottom: 210px; transform: translateX(-50%); z-index: 6; padding: 12px 20px; font: inherit; font-size: 15px; color: #001018; background: #9fe8c4; border: 0; border-radius: 14px; box-shadow: 0 0 18px #3fd09a88; white-space: nowrap; }
+.zone-btn2 { bottom: 266px; background: #ffd76a; box-shadow: 0 0 18px #e0b84a88; }
+.zone-btn.info { background: #2a3540; color: #cfe8f5; box-shadow: none; }
+.throw-btn { position: fixed; right: 12px; top: 196px; z-index: 6; padding: 8px 12px; font: inherit; font-size: 13px; color: #1a1400; background: #f2d32c; border: 0; border-radius: 10px; }
+.updown { position: fixed; right: 158px; bottom: 30px; z-index: 6; display: flex; flex-direction: column; gap: 10px; }
+.updown button { width: 54px; height: 54px; border-radius: 50%; font-size: 20px; color: #e6f6ff; background: #0b2a36dd; border: 1px solid #7fdcff88; touch-action: none; user-select: none; -webkit-user-select: none; }
+.ihud .grav { color: #9fe8c4; }
+/* In 0 g the arrow pad (zero-g.css) takes the walking stick's place. */
+body.in-zero-g .walk-stick { display: none !important; }
+/* Mothership docking (docs/design/nave-nodriza.md) */
+.banner.docking { color: #ffe7a8; text-shadow: 0 0 6px #ffb34788; }
+.bay-tabs { position: fixed; top: 52px; left: 12px; z-index: 7; display: flex; gap: 6px; }
+.bay-tabs button { padding: 7px 12px; font: inherit; font-size: 13px; color: #bfefff; background: #0b2a36cc; border: 1px solid #7fdcff66; border-radius: 10px; }
+.bay-tabs button.on { background: #7fdcff; color: #06202b; border-color: #7fdcff; }
+body.in-duel .bay-tabs { display: none !important; }
+
+/* Space station (docs/design/estacion.md): hangar in 3D, panel with tabs on the right (landscape) or at the bottom (portrait). */
+body.in-station .hud, body.in-station .help, body.in-station .reticle, body.in-station .banner, body.in-station .action, body.in-station .touch, body.in-station .mode-btn, body.in-station .flight-bar, body.in-station .cam-tag, body.in-station .pilot-look, body.in-station .region-tag, body.in-station .vstick { display: none !important; }
+.st-ui.hidden { display: none !important; }
+.st-head { position: fixed; top: 12px; left: 12px; z-index: 6; display: flex; flex-direction: column; gap: 2px; color: #e6f6ff; text-shadow: 0 1px 3px #000; pointer-events: none; }
+.st-head b { font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; color: #ffd27f; }
+.st-head span { font-size: 12px; opacity: 0.9; }
+.st-panel { position: fixed; z-index: 6; left: 0; right: 0; bottom: 0; height: 58vh; box-sizing: border-box; display: flex; flex-direction: column; background: #0a1220f2; border-top: 1px solid #7fdcff44; border-radius: 16px 16px 0 0; color: #e6f6ff; font-size: 13px; }
+@media (min-aspect-ratio: 1/1) { .st-panel { top: 0; left: auto; width: min(440px, 44vw); height: auto; padding-top: 56px; border-top: 0; border-left: 1px solid #7fdcff44; border-radius: 0; } }
+.st-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 8px 10px 6px; border-bottom: 1px solid #7fdcff22; }
+.st-tabs button { min-height: 40px; padding: 6px 2px; font: inherit; font-size: 12.5px; color: #9fc3d8; background: #13243a; border: 1px solid #2c4a6a; border-radius: 10px; }
+.st-tabs button.on { color: #001018; background: #7fdcff; border-color: #7fdcff; font-weight: 600; }
+.st-body { flex: 1; overflow-y: auto; padding: 8px 12px 18px; display: flex; flex-direction: column; gap: 6px; }
+.st-card { display: flex; flex-direction: column; gap: 6px; padding: 10px; background: #13243a; border: 1px solid #2c4a6a; border-radius: 10px; }
+.st-card.locked { opacity: 0.82; }
+.st-card small, .st-mat small { font-size: 11px; color: #9fc3d8; }
+.st-card a, .st-mat a { color: #7fdcff; }
+.st-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.st-row span { font-size: 12px; color: #bfefff; white-space: nowrap; }
+.st-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.st-chip { padding: 3px 8px; border-radius: 999px; font-size: 11.5px; background: #ffffff12; }
+.st-chip.ok { background: #2f9e6c33; color: #9dffc8; }
+.st-chip.miss { background: #ff2a2a26; color: #ffa595; }
+.st-io { font-size: 12px; color: #d8f6ff; }
+.st-io.miss { color: #ffc27a; }
+.st-btn { align-self: flex-end; min-height: 40px; padding: 8px 14px; font: inherit; font-size: 13px; font-weight: 600; color: #001018; background: #7dffb0; border: 0; border-radius: 10px; }
+.st-btn:disabled { color: #9fc3d8; background: #ffffff14; font-weight: normal; }
+.st-mat { display: grid; grid-template-columns: 1fr auto; column-gap: 8px; row-gap: 2px; padding: 8px 10px; background: #13243a; border: 1px solid #2c4a6a; border-radius: 10px; }
+.st-mat small { grid-column: 1 / -1; }
+.st-mat.zero { opacity: 0.55; }
+.st-dim { margin: 4px 0; opacity: 0.75; font-size: 12px; }
+.st-have { color: #7dffb0 !important; }
+.st-fuel { display: flex; flex-direction: column; gap: 3px; }
+.st-refuel { border-color: #7dffb066; }
+.st-job { padding: 8px 10px; background: #13243a; border: 1px solid #2c4a6a; border-radius: 10px; display: flex; flex-direction: column; gap: 6px; }
+.st-job.run { border-color: #7fdcff88; }
+.bay-act.locked { background: #ffffff14; color: #bcd; }
+.flight-bar .estacion-btn { color: #1a0f00; background: #ffd27f; border-color: #ffd27f; }
+@media (max-width: 600px) { .mode-btn { max-width: 44vw; padding: 8px 12px; font-size: 13px; line-height: 1.25; } }
+
+/* Doménica's portrait at the head of the crew HUD. */
+.ihud-who { display: flex; align-items: center; gap: 8px; }
+.ihud-who .portrait-img { width: 36px; height: 36px; flex: none; }
+/* The exercise corner's mat: sit in lotus to open the general settings (docs/design/habitaculo.md §Ajustes). */
+.mat-btn { position: fixed; left: 50%; bottom: 214px; transform: translateX(-50%); z-index: 6; min-height: 48px; padding: 10px 18px; font: inherit; font-size: 15px; color: #001018; background: #c7a8ff; border: 0; border-radius: 14px; }
+.mat-btn.hidden { display: none; }
+body.in-duel .mat-btn, body.in-settings .mat-btn, body.in-zero-g .mat-btn { display: none; }
+/* Keyboard hints only with «Ayuda de teclado» on (general settings). */
+body:not(.kbd-help) .help { display: none !important; }

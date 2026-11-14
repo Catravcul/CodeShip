@@ -1,0 +1,27 @@
+/* Root icon menus (docs/design/ux-acciones.md §Iconos): icons sprout from a root and fold back. */
+.root-menu { position: fixed; z-index: 7; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; pointer-events: none; }
+.root-menu > * { pointer-events: auto; }
+.rm-pinned, .rm-shoots { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.rm-shoots { order: 2; }
+.rm-root { order: 1; }
+.root-menu button { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 0; box-sizing: border-box; color: #d8f6ff; background: #0b2a36cc; border: 1px solid #7fdcff66; border-radius: 50%; cursor: pointer; }
+.root-menu button.hidden { display: none; }
+.root-menu button.on { color: #7dffb0; border-color: #7dffb0aa; }
+.root-menu button.limited { color: #ffd8a0; border-color: #ffb34788; }
+.root-menu .rm-root { background: #05141ce6; }
+.root-menu.open .rm-root { color: #001018; background: #7fdcff; }
+/* Folded: the shoots shrink into the root. Out: they grow one after another. */
+.rm-shoots > button { transform: scale(0.2) translateY(-30px); opacity: 0; visibility: hidden; transition: transform 0.18s ease-out, opacity 0.18s, visibility 0s 0.18s; }
+.root-menu.open .rm-shoots > button { transform: none; opacity: 1; visibility: visible; transition: transform 0.18s ease-out, opacity 0.18s; }
+.root-menu.open .rm-shoots > button:nth-child(2) { transition-delay: 0.03s; }
+.root-menu.open .rm-shoots > button:nth-child(3) { transition-delay: 0.06s; }
+.root-menu.open .rm-shoots > button:nth-child(4) { transition-delay: 0.09s; }
+.root-menu:not(.open) .rm-shoots { position: absolute; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .rm-shoots > button { transition: none !important; } }
+/* Labels: on hover, on a long press, or always with keyboard help. */
+.rm-label { position: absolute; right: calc(100% + 8px); top: 50%; transform: translateY(-50%); padding: 3px 8px; font-size: 12px; white-space: nowrap; color: #d8f6ff; background: #05141ce6; border: 1px solid #7fdcff44; border-radius: 8px; pointer-events: none; display: none; }
+.rm-label kbd { font: inherit; font-weight: 700; color: #ffd27f; }
+.root-menu button:hover .rm-label, .root-menu button.rm-show .rm-label { display: block; }
+body.kbd-help .root-menu.open .rm-shoots .rm-label, body.kbd-help .rm-pinned .rm-label { display: block; }
+@media (pointer: coarse) { .root-menu button:hover .rm-label { display: none; } .root-menu button.rm-show .rm-label { display: block; } }
+body.in-duel .root-menu, body.in-settings .root-menu.flight-bar { display: none !important; }

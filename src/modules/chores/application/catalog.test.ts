@@ -6,6 +6,7 @@ import { Cat } from "@modules/pets/domain/cat";
 import { explorerDesign } from "@modules/ship/data/explorer";
 import { RECIPES } from "@modules/kitchen/data/recipes";
 import { YOGA_SEQUENCES, SUN_SALUTATION } from "@modules/wellness/data/yoga";
+import { DEVICES, WORKOUTS, maxHeartRate } from "@modules/wellness/data/exercise";
 import { PROCESSES } from "@modules/kitchen/data/processes";
 import { MACHINES } from "@modules/life-support/data/machines";
 import { Machine } from "@modules/life-support/domain/machine";
@@ -13,7 +14,10 @@ import { Bioreactor } from "@modules/cultured-meat/domain/bioreactor";
 import { Hen } from "@modules/poultry/domain/hen";
 import { Health } from "@modules/medical/domain/health";
 import { PROTOCOLS } from "@modules/medical/data/protocols";
-import { bioreactorChores, henChores, machineRepairChore, patientChore, processChore, plainStep, catMeal, catChores, cookingChore, plantChores, repairChore, shipCode, toCall, yogaChore } from "./catalog";
+import { bioreactorChores, henChores, machineRepairChore, patientChore, processChore, plainStep, catMeal, catChores, cookingChore, plantChores, repairChore, shipCode, swapChore, toCall, workoutChore, yogaChore } from "./catalog";
+import { partById, partOptions } from "@modules/ship/data/parts";
+import { Ship } from "@modules/ship/domain/ship";
+import { withPart } from "@modules/ship/domain/refit";
 
 function valid(e: Exercise) {
   if (e.kind === "order") {
@@ -74,6 +78,30 @@ describe("chore catalog", () => {
     expect(first.options[first.correct]).toBe("Pranamasana · exhala");
   });
 
+  it("exercise: Sprint workouts with real numbers (Tanaka heart rate, the ISS machines' ranges)", () => {
+    const answer = (e: (typeof WORKOUTS)[number], suffix: string) => {
+      const ex = workoutChore(e, 30).exercises.find((x) => x.id.endsWith(suffix))!;
+      if (ex.kind !== "choice") throw new Error("expected a choice");
+      return ex.options[ex.correct];
+    };
+    const fourByFour = WORKOUTS.find((w) => w.id === "intervalos-4x4")!;
+    expect(maxHeartRate.value(30)).toBe(187);
+    expect(answer(fourByFour, "-pulso")).toBe("169 lpm");
+    expect(answer(fourByFour, "-minutos")).toBe("16 min");
+    expect(answer(fourByFour, "-limite")).toBe("19,3 km/h");
+    expect(answer(WORKOUTS.find((w) => w.id === "intervalos-8x30")!, "-minutos")).toBe("4 min");
+    expect(answer(WORKOUTS.find((w) => w.id === "intervalos-8x30")!, "-limite")).toBe("350 W");
+    expect(answer(WORKOUTS.find((w) => w.id === "fuerza-4x8")!, "-reps")).toBe("32");
+    expect(answer(WORKOUTS.find((w) => w.id === "fuerza-4x8")!, "-limite")).toBe("272 kg");
+    expect(answer(WORKOUTS.find((w) => w.id === "continuo-30")!, "-semana")).toBe("90 min");
+    for (const w of WORKOUTS) {
+      const c = workoutChore(w, 30);
+      expect(c.kind).toBe("ejercicio");
+      expect(answer(w, "-anillo")).toBe(DEVICES[w.device].onTheRing);
+      for (const e of c.exercises) if (e.kind === "choice") expect(new Set(e.options).size).toBe(e.options.length);
+    }
+  });
+
   it("repair: exactly one line of the ship's code is corrupted, and it is the answer", () => {
     const original = shipCode(explorerDesign()).map((b) => b.pseudo);
     for (let seed = 0; seed < 5; seed++) {
@@ -83,7 +111,7 @@ describe("chore catalog", () => {
       expect(changed).toHaveLength(1);
       expect(ex.options[ex.correct]).toBe(changed[0]!.pseudo);
     }
-    expect(original[0]).toContain("490 N");
+    expect(original[0]).toContain("445 N");
   });
 
   it("production, animals, machines and the sickbay all make valid challenges", () => {
@@ -115,5 +143,54 @@ describe("chore catalog", () => {
     luna.tick(0.8, { resourcesOk: true });
     expect(catChores(luna, undefined, { meatG: 0, kibbleG: 0 }).some((c) => c.kind === "alimentar-gato")).toBe(false);
     expect(plainStep("cocina hasta {71|50|100} °C")).toBe("cocina hasta 71 °C");
+  });
+});
+
+describe("part swap chores", () => {
+  const full = (d: ReturnType<typeof explorerDesign>) => Ship.create({ ...d, tanks: d.tanks.map((t) => ({ spec: t.spec, fillKg: t.spec.capacityKg })) });
+
+  it("are generated from the real change: new value, delta-v of the new ship and the fitting order", () => {
+    const part = partById("aerojet-mr-104h")!;
+    const c = swapChore(explorerDesign(), "motor", part);
+    expect(c.kind).toBe("cambiar-pieza");
+    expect(c.targetId).toBe("motor:aerojet-mr-104h");
+    expect(c.exercises.map((e) => e.kind)).toEqual(["choice", "choice", "order"]);
+    c.exercises.forEach(valid);
+    const [value, dv] = c.exercises as [Exercise & { kind: "choice" }, Exercise & { kind: "choice" }];
+    expect(value.options[value.correct]).toBe("510");
+    // The changed line shows as a diff: old line removed, new line added.
+    expect(value.code.map((b) => b.pseudo[0])).toEqual(["−", "+"]);
+    const expected = Math.round(full(withPart(explorerDesign(), "motor", part)).mainDeltaV());
+    expect(dv.options[dv.correct]).toBe(`${expected} m/s`);
+  });
+
+  it("a tank swap asks for its capacity", () => {
+    const c = swapChore(explorerDesign(), "tanque-0", partById("par-mmh-ost25")!);
+    const value = c.exercises[0] as Exercise & { kind: "choice" };
+    expect(value.options[value.correct]).toBe("620");
+    c.exercises.forEach(valid);
+  });
+
+  it("an RCS swap is valid too", () => {
+    swapChore(explorerDesign(), "rcs", partById("aerojet-mr-111g")!).exercises.forEach(valid);
+  });
+
+  it("every engine, RCS and tank on the shelf makes a valid swap chain", () => {
+    const d = explorerDesign();
+    for (const slot of ["motor", "rcs", "tanque-0", "tanque-1"] as const) for (const p of partOptions(d, slot)) swapChore(d, slot, p).exercises.forEach(valid);
+  });
+
+  it("an equipment swap asks for the new part's real mass and predicts the Δv with it", () => {
+    for (const id of ["cabina-acero", "rosa-diamond", "li-ion-156", "whipple-al", "sin-fuente"]) {
+      const p = partById(id)!;
+      const slot = p.kind === "equipment" ? (p.equipment.kind as "cabina") : "motor";
+      const c = swapChore(explorerDesign(), slot, p);
+      c.exercises.forEach(valid);
+      expect(c.targetId).toBe(`${slot}:${id}`);
+      const value = c.exercises[0] as Exercise & { kind: "choice" };
+      expect(value.options[value.correct], id).toBe(String(Math.round(p.kind === "equipment" ? p.equipment.massKg : 0)));
+      const dv = c.exercises[1] as Exercise & { kind: "choice" };
+      expect(dv.options[dv.correct]).toBe(`${Math.round(full(withPart(explorerDesign(), slot, p)).mainDeltaV())} m/s`);
+    }
   });
 });

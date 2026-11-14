@@ -8,5 +8,5 @@ export default defineConfig({
       "@modules": fileURLToPath(new URL("./src/modules", import.meta.url)),
     },
   },
-  test: { include: ["src/**/*.test.ts"], environment: "node" },
+  test: { include: ["src/**/*.test.ts", "tools/**/*.test.mjs"], environment: "node" },
 });

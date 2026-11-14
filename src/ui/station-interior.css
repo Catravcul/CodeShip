@@ -1,0 +1,29 @@
+/* --- Inside the station (zero g) ------------------------------------------ */
+body.in-station-interior .hud, body.in-station-interior .help, body.in-station-interior .reticle, body.in-station-interior .banner,
+body.in-station-interior .action, body.in-station-interior .touch, body.in-station-interior .mode-btn, body.in-station-interior .flight-bar,
+body.in-station-interior .cam-tag, body.in-station-interior .pilot-look, body.in-station-interior .region-tag, body.in-station-interior .nano-card,
+body.in-station-interior .station-dock-btn, body.in-station-interior .walk-stick, body.in-station-interior .look-stick { display: none !important; }
+body.in-station-interior .sti-look { display: block; }
+/* The arrow pad (zero-g.css) hops from rail to rail: no movement stick in the station. */
+.sti-move { display: none !important; }
+.sti-look { right: 22px; }
+body.in-duel .sti-ui, body.in-duel .sti-move, body.in-duel .sti-look, body.in-station .sti-move, body.in-station .sti-look { display: none !important; }
+.sti-ui.hidden, .sti-ui .hidden { display: none !important; }
+/* The station uses the walkable rooms' look (lander-cabin.css): title top left, root icons top right, the card of what is in front. */
+.sti-hud { max-width: min(250px, calc(100vw - 90px)); line-height: 1.35; z-index: 4; }
+.sti-hud .sti-title { font-weight: 700; color: #7fdcff; }
+.sti-hud .sti-grav, .sti-hud .sti-move-line { font-size: 11px; color: #a9c8d8; }
+.sti-head { flex-direction: row; align-items: flex-start; gap: 10px; }
+.sti-head > div { display: flex; flex-direction: column; gap: 2px; }
+.sti-icon { flex: 0 0 auto; display: inline-flex; width: 32px; height: 32px; align-items: center; justify-content: center; color: #ffd27f; background: #0b2a36; border: 1px solid #7fdcff55; border-radius: 50%; }
+.sti-card.sti-card { bottom: calc(190px + env(safe-area-inset-bottom)); }
+.sti-card small { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+body.in-tasks .sti-card, body.in-settings .sti-card, body.in-settings .sti-menu { display: none !important; }
+.sti-toast.cab-toast { top: calc(110px + env(safe-area-inset-top)); z-index: 7; }
+body.in-station-interior .vstick.sti-move span, body.in-station-interior .vstick.sti-look span { color: #9fe8c4; }
+/* Cockpit: the button to go inside the station, next to «Revisar tareas». */
+.station-enter-btn { position: fixed; left: 50%; bottom: 214px; transform: translateX(-50%); z-index: 6; min-height: 48px; padding: 10px 22px; font: inherit; font-size: 15px; font-weight: 700; color: #001018; background: #9fe8c4; border: 0; border-radius: 14px; box-shadow: 0 0 18px #3fd09a88; }
+.station-enter-btn.hidden, body.in-station .station-enter-btn, body.in-map .station-enter-btn, body.in-duel .station-enter-btn, body.in-bay .station-enter-btn, body.in-interior .station-enter-btn, body.in-eva .station-enter-btn, body.in-station-interior .station-enter-btn { display: none; }
+@media (pointer: coarse) {
+  .station-enter-btn { left: 8px; transform: none; bottom: calc(300px + env(safe-area-inset-bottom)); width: calc(56vw - 8px); padding: 8px 10px; font-size: 14px; }
+}

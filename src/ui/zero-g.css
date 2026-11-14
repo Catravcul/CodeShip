@@ -1,0 +1,25 @@
+/* --- Zero-g movement: the arrow pad hops from landing point to landing point (docs/design/ingravidez.md) --- */
+.zg-pad { position: fixed; left: 16px; bottom: calc(22px + env(safe-area-inset-bottom)); z-index: 6; width: 168px; height: 168px; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); gap: 2px; touch-action: none; user-select: none; -webkit-user-select: none; }
+.zg-pad.hidden { display: none !important; }
+.zg-arrow { width: 100%; height: 100%; min-width: 48px; min-height: 48px; padding: 0; font: inherit; font-size: 20px; line-height: 1; color: #d8f6ff; background: #0b2a36cc; border: 1px solid #7fdcff88; border-radius: 12px; box-shadow: 0 0 10px #00b7ff33; touch-action: none; transition: opacity 0.15s, background 0.15s; }
+.zg-arriba { grid-area: 1 / 2; }
+.zg-izquierda { grid-area: 2 / 1; }
+.zg-derecha { grid-area: 2 / 3; }
+.zg-abajo { grid-area: 3 / 2; }
+.zg-pad-label { grid-area: 2 / 2; align-self: center; justify-self: center; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: #9fe8c4; text-shadow: 0 1px 2px #000; pointer-events: none; }
+.zg-arrow:active { background: #7fdcff; color: #001018; }
+.zg-arrow.none { opacity: 0.3; }
+.zg-pad.busy .zg-arrow { opacity: 0.25; background: #0b2a3699; box-shadow: none; }
+.zg-pad.busy .zg-pad-label::after { content: "…"; }
+body.in-duel .zg-pad, body.in-station .zg-pad { display: none !important; }
+@media (pointer: fine) and (min-width: 900px) {
+  .zg-pad { width: 150px; height: 150px; }
+}
+.sti-hud .sti-move-line { color: #d8f6ff; }
+
+/* --- Life-aboard notices: small HUD labels where it happens, only in view (docs/design/ingravidez.md, «Avisos») --- */
+.amb-notes { position: fixed; inset: 0; z-index: 4; pointer-events: none; overflow: hidden; }
+.amb-note { position: absolute; display: none; transform: translate(-50%, -100%); max-width: min(60vw, 260px); padding: 3px 8px; font: 500 11px/1.35 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: 0.02em; color: #bfefff; text-shadow: 0 0 6px #00b7ff88; background: #06141c99; border: 1px solid #7fdcff55; border-radius: 6px; white-space: normal; text-align: center; transition: opacity 0.2s; }
+.amb-note.on { display: block; }
+.amb-note::after { content: ""; position: absolute; left: 50%; bottom: -7px; width: 1px; height: 6px; background: #7fdcff88; }
+body.in-duel .amb-notes { display: none; }

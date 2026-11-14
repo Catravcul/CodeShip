@@ -1,0 +1,327 @@
+# Catálogo de casos de QA
+
+Qué tiene que pasar en Codeship, qué lo cubre (test de Vitest, recorrido o QA jugando) y cómo se
+comprueba a mano. Este fichero es el **catálogo**: dice qué tiene que pasar, no si pasó. El estado y
+la evidencia de cada caso viven en [registro.md](registro.md); cada ejecución deja su run log en
+[runs/](runs/); lo que se encontró, en [hallazgos.md](hallazgos.md). El mapa de estado compartido del
+que salen los casos de convivencia está en [entrelazamiento.md](entrelazamiento.md). El flujo de
+trabajo, en [README.md](README.md).
+
+## Reglas
+
+- **Un ID no se reutiliza ni se renumera.** Un caso que deja de aplicar pasa a `Retirado` en el
+  registro y aquí se tacha (`~~VUE-03~~`); no se borra, porque los títulos de los tests, los run logs y
+  los hallazgos apuntan a él.
+- **Sin evidencia no hay «probado».** Ver [registro.md](registro.md).
+- **El ID va en el título del test** cuando el test se escribe para el caso (todos los CV):
+  `it("CV-03 un viaje comprimido no multiplica…")`. Los tests anteriores a este catálogo se citan por
+  fichero; al tocarlos se puede añadir el ID al título.
+- **Casos con carrera** (una acción a mitad de otro proceso): el caso dice qué acción se hace y en qué
+  momento; el run log la anota en «Acción a mitad». Si al jugar no llegan a cruzarse se anota «no
+  reproducido», nunca OK.
+- `npm run qa:check` comprueba que los ficheros citados existen, que cada ID tiene fila en el
+  registro, que los casos con test propio tienen un test con su ID y que ningún test cita un ID que no
+  está aquí.
+
+## IDs
+
+- **Áreas**: VUE vuelo, aterrizaje y acople · NAV navegación, mapa y viajes comprimidos · SON sonda ·
+  SUB subyugación en tres fases y duelos · NIV niveles de subyugación · IRA poderes de la ira ·
+  EST estación, planos y montaje · REF refinería y propelente · BIO autosustento ·
+  IMP importación · VID vida a bordo · EVA paseo espacial · ING ingravidez · NNT nano_net ·
+  MIS misiones, radio y créditos · UI interfaz de retos · CV convivencia de procesos ·
+  PX experiencia del jugador.
+- Bugs abiertos o arreglados: `B-nn`. Huecos (comportamiento sin decidir o sin cubrir): `HC-nn`.
+  Hallazgos de una ejecución: `Hn` (en [hallazgos.md](hallazgos.md)).
+- El siguiente ID libre de un área es el último más uno, aunque haya retirados.
+
+## Cómo se usa
+
+- **Funcionalidad nueva.** Primero el caso aquí, con el siguiente ID libre de su área (y un CV por
+  cada estado compartido que toque, mirando [entrelazamiento.md](entrelazamiento.md)). Después el test
+  en rojo con el ID en el título, el arreglo y la QA con su run log.
+- **Antes de fusionar una rama.** Los casos de las áreas que toca el diff, y todos los CV cuya fila
+  cita esas áreas, son la lista de regresiones. `npx vitest run src/qa` corre todos los CV.
+
+---
+
+## Casos
+
+Columna QA: cómo se comprueba jugando, o «Solo test» si no tiene sentido hacerlo a mano.
+
+### Vuelo, aterrizaje y acople (VUE)
+
+| ID | Qué tiene que pasar | Test / fixture | QA |
+|---|---|---|---|
+| VUE-01 | La física corre a 120 Hz fijos sea cual sea el fotograma; el motor acelera a F/m; sin asistente el giro no se para | `flight-computer.test.ts`, `rigid-body.test.ts`, `ship.test.ts`, `rocket.test.ts` | Jugar: W y Espacio, ver la velocidad del HUD |
+| VUE-02 | Posarse despacio ancla la nave y gira con el asteroide; demasiado rápido rebota o se estrella con daño; con el casco (no las patas) resbala | `flight-computer.test.ts`, `contact.test.ts` | Jugar: aterrizar en Bennu a < 0,1 m/s y a 1 m/s |
+| VUE-03 | El asistente de acople mete el módulo en el puerto dentro de los límites IDSS; un contacto fuera de límites rebota y dice por qué; acoplado, ignora el empuje y se suelta con el muelle | `docking.test.ts`, `mothership.test.ts` | Jugar: K, botón Acople |
+| VUE-04 | La nodriza atraca sola en la estación dentro de IDSS y sus anillos y radiadores no tocan la estación | `berthing.test.ts`, `dock-trip.test.ts` | Jugar: viaje a «Estación» con el módulo acoplado |
+| VUE-05 | Propulsión de la nodriza: 18 X3 en los 2 MWe, Δv y xenón de su presupuesto de masas | `propulsion.test.ts`, `mothership.test.ts`, `panels.test.ts` | Solo test |
+| VUE-06 | Indicadores de aterrizaje: X (derecha) e Y (adelante) tumbados en el suelo y Z la vertical local, también inclinada o de lado; el punto de toque previsto sale de la deriva y la velocidad de bajada | `landing-frame.test.ts` | PX-08: indicadores en la cabina, sitio en la cámara ventral |
+| VUE-07 | Colores de los indicadores frente a los límites de `contact.ts`: verde hasta 2/3, ámbar hasta el límite, rojo después; la bajada segura es 0,10 m/s + √(2·a·0,5·h) y en el contacto vale el límite de 0,10 m/s; inclinación con 30° | `landing-frame.test.ts` | PX-08: vz en rojo cayendo a 4 m/s a 40 m |
+| VUE-08 | Aterrizaje por programa: cadena de cinco retos con los números reales del descenso (sitio, deriva del suelo por el giro, curva de frenado con el RCS, frenado final, anclas) | `landing-program.test.ts` | PX-07, PX-09 |
+| VUE-09 | El ordenador de descenso posa el módulo en su sitio dentro de los límites; un fallo lo posa fuera del centro, dos rebotan sin daño (se reprograma), tres no cargan; tocar los mandos devuelve el control; la oferta solo aparece en la zona de aproximación (< 450 m) | `landing-program.test.ts` | PX-09: el módulo se posa por programa |
+
+### Navegación, mapa y viajes comprimidos (NAV)
+
+| ID | Qué tiene que pasar | Test / fixture | QA |
+|---|---|---|---|
+| NAV-01 | Elegir un asteroide en el mapa lo hace objetivo del vuelo y de la expedición; no se cambia de destino posado | `navigator.test.ts` | Jugar: M, elegir 58587 |
+| NAV-02 | La ruta rodea las rocas y se planifica con el motor real; la ficha da dificultad del duelo y coste | `navigator.test.ts`, `route.test.ts`, `transfer.test.ts`, `trip-chore.test.ts` | Jugar: ficha del mapa |
+| NAV-03 | Resolver los retos del viaje enciende el piloto automático, que devuelve los mandos a ~300 m; fallarlos deja el control manual | `navigator.test.ts`, `autopilot.test.ts` | Jugar: Programar viaje |
+| NAV-04 | Viaje comprimido: nunca más de 75 s reales; el tope se reparte entre los tramos; la cámara rápida se ajusta a la estimación | `travel-time.test.ts`, `carrier-trip.test.ts`, `navigator.test.ts` | Jugar: viaje de la nodriza a 242916, cronometrar |
+| NAV-05 | Con el módulo acoplado la nodriza hace el tramo largo y suelta el módulo cerca; solo un viaje comprimido a la vez | `carrier-trip.test.ts`, `dock-trip.test.ts` | Jugar: con la sonda de viaje, intentar programar la nodriza |
+| NAV-06 | Región: límite suave, rocas como obstáculos, cielo con efemérides de JPL, LOD de las rocas | `region.test.ts`, `orbit.test.ts`, `sky.test.ts`, `lod.test.ts`, `asteroid.test.ts`, `asteroid-field.test.ts` | Solo test |
+| NAV-07 | Cada paso bien respondido al programar un viaje (sonda, módulo, nodriza) o un aterrizaje se dibuja al momento: ruta, empuje, llegada, punto de frenado; sitio, deriva, curva de descenso, frenado final, anclas; cerrar los retos lo borra | `plan-sketch.test.ts` | PX-07: «Ruta trazada» y «Sitio fijado» |
+
+### Sonda (SON)
+
+| ID | Qué tiene que pasar | Test / fixture | QA |
+|---|---|---|---|
+| SON-01 | La sonda es una nave real (~17 kg, Δv de decenas de m/s); sale estibada, se lanza con los muelles y se posa | `probe-ops.test.ts` | Jugar: consola de la sonda en el puente |
+| SON-02 | El brazo solo la agarra lenta y cerca de la bahía; vuelve cargada | `probe-ops.test.ts`, `probe-trip.test.ts` | Jugar: volver a la nodriza |
+| SON-03 | Se pierde por escombros, radiación o batería (~15 h); la siguiente ocupa su sitio; la estación repone el bastidor | `probe-ops.test.ts` | Solo test |
+| SON-04 | Viaje largo de la sonda: retos, vuela sola en cámara rápida y espera a ~300 m (posarla es manual); tocar los mandos devuelve el control | `probe-trip.test.ts` | Jugar: Programar viaje a… |
+| SON-05 | La sonda aterriza por programa en Bennu y las anclas de rosca sujetan dentro de su sitio de 1,5 m, con un fallo también | `landing-program.test.ts` | PX-07 |
+
+### Subyugación en tres fases y duelos (SUB)
+
+| ID | Qué tiene que pasar | Test / fixture | QA |
+|---|---|---|---|
+| SUB-01 | Duelo mental: ideas correctas persuaden, las erróneas cuestan paciencia; sin paciencia se enfada; misma semilla, mismas ideas | `duel.test.ts`, `difficulty.test.ts`, `aggression.test.ts`, `exercises.test.ts` | Jugar: duelo en Bennu |
+| SUB-02 | Las fases van en orden (sonda, módulo, traje); cada una da confianza y su recompensa; solo con las tres está subyugado | `expedition.test.ts`, `rapport.test.ts` | Jugar: las tres fases en Bennu |
+| SUB-03 | Un duelo fallado se notifica a la ira con su fase y no hay otro duelo hasta que se calma | `expedition.test.ts`, `wrath.test.ts` | Jugar: fallar a propósito |
+| SUB-04 | Fallar la fase del traje no sacude el módulo hasta que Doménica está dentro | `expedition.test.ts` | Jugar |
+
+### Niveles de subyugación (NIV)
+
+| ID | Qué tiene que pasar | Test / fixture | QA |
+|---|---|---|---|
+| NIV-01 | Niveles 1–4 en orden, cada uno con más confianza; un fallo cuesta confianza, nunca un nivel | `levels.test.ts`, `rapport.test.ts`, `expedition.test.ts` | Jugar: Convencer · nivel N |
+| NIV-02 | Nivel 2: un paquete al día a la bodega de la nodriza (20 t), que se descarga al atracar | `asteroid-services.test.ts`, `hold.test.ts`, `yields.test.ts` | Jugar (estado puesto por código) |
+| NIV-03 | Nivel 3: un paquete mayor al día al buzón de la estación, con sus horas de vuelo | `asteroid-services.test.ts`, `yields.test.ts` | Jugar (estado puesto por código) |
+| NIV-04 | Nivel 4: espera a que nada esté anclado, viaja a la estación, aparca y se extrae lote a lote | `asteroid-services.test.ts`, `gravity-drive.test.ts` | Jugar: mapa con la línea a su destino |
+
+### Poderes de la ira (IRA)
+
+| ID | Qué tiene que pasar | Test / fixture | QA |
+|---|---|---|---|
+| IRA-01 | El nivel de poder sale de los datos reales; la ira baja con su vida media y al calmarse se puede reintentar | `power.test.ts`, `anger.test.ts`, `wrath.test.ts` | Jugar: tarjeta de ira |
+| IRA-02 | Proyectiles con cinemática real y guiado limitado; cada impacto pasa por la protección real; cargas, pulsos y chorros de cometa | `projectile.test.ts`, `effects.test.ts`, `jet.test.ts`, `wrath.test.ts` | Jugar (`demoTier`) |
+| IRA-03 | Persigue a la nave que lo enfadó, la más cercana activa, hasta calmarse; huir fuera del alcance acaba la persecución | `wrath.test.ts`, `gravity-drive.test.ts` | Jugar |
+| IRA-04 | Modo supervivencia: con la estación a su alcance, la estación huye con sus motores y frena al salir | `station-escape.test.ts`, `wrath.test.ts` | Jugar (`demoTier` 4) |
+| IRA-05 | Embestida: un asteroide rápido (Bennu) avisa 5 s y carga contra la sonda o el módulo; choque con ½·μ·v² y restitución de Philae a través de la protección; una esquiva lateral lo hace pasarse de largo v²/2a; los grandes y lentos siguen lanzando; a una nave posada encima la sacude | `ram.test.ts`, `wrath.test.ts`, `gravity-drive.test.ts`, `asteroid-services.test.ts`, `embestida.test.ts` | Jugar (capturas `embestida-*`) |
+
+### Estación, planos y montaje (EST)
+
+| ID | Qué tiene que pasar | Test / fixture | QA |
+|---|---|---|---|
+| EST-01 | El almacén nunca va a negativo; fabricar toma los materiales y la pieza llega al hangar al acabar; las máquinas trabajan en paralelo | `station.test.ts`, `station-ops.test.ts`, `blueprints.test.ts` | Jugar: Planos |
+| EST-02 | Crecer: equipo y módulos ocupan bastidores y puertos y reservan energía al ponerse en cola; sin energía, bloqueado y dice por qué | `outfit.test.ts`, `structure.test.ts`, `station-ops.test.ts` | Jugar: Planos → Equipo |
+| EST-03 | El interior se genera del equipo montado: pasillos, escotillas, esclusa y consolas de cada máquina | `interior.test.ts`, `handrails.test.ts` (estación) | Jugar: Entrar en la estación |
+| EST-05 | El almacén tiene capacidad por módulos (bastidores ISPR de 700 kg, el hangar 20 t a granel; los propelentes no cuentan); lo que no cabe se queda en su origen (lote en su máquina, pedido en el buzón, roca en la bodega o el asteroide) y la UI dice «Almacén lleno». Los procesos reservan con prioridad: el propelente primero | `station.test.ts`, `outfit.test.ts`, `delivery.test.ts`, `niveles.test.ts`, `almacen.test.ts` | Jugar: pestaña Materiales (captura `hc-almacen-mobile.png`) |
+| EST-20 | La estación tiene sus zonas de tripulación (cocina, camarotes, aseo, ejercicio y esterilla) con fuentes reales; a la escala jugada (`MACHINE_SCALE`) todo interactuable queda a 2 m de otro y todas las zonas se alcanzan desde la escotilla del módulo | `crew-areas.test.ts`, `spacing.test.ts` (estación) | PX-12 (capturas `estacion-*-movil.png`) |
+| EST-21 | Cada escotilla entre zonas es una puerta en cada lado con nombre, icono y «Entrar en <zona>»; las cerradas (esclusa, módulo en el hangar, nodriza ausente) dicen por qué y qué las abre; nunca un «?» | `crew-areas.test.ts`, `interior.test.ts` | PX-12 |
+| EST-22 | Hangar de 20 × 14 × 20 m: el módulo cabe y el brazo lo mete y lo saca; la nodriza (152 m, 877 t) atraca fuera; la bahía está en el hangar | `hangar-berth.test.ts` | PX-12 |
+| EST-23 | La cocina de la estación cocina con su propia despensa y el motor de tareas compartido; el yoga y el ejercicio entrenan a la misma Doménica; dormir la calma; los víveres para el viaje van a la nodriza atracada | `station-crew.test.ts` | PX-12 |
+| EST-24 | Toda lista de tareas de la estación (icono Tareas y consola del hangar) es la global con «Ir»; las tareas de sus zonas entran en ella y «Ir» la lleva a la máquina | `task-list.test.ts` | PX-12 |
+| EST-04 | Bahía: cada pieza con datos reales, avisos por gravedad, cambios con piezas del hangar como cadenas de retos | `bay.test.ts`, `attention.test.ts`, `refit.test.ts`, `equipment.test.ts`, `drive-refit.test.ts`, `equipment-refit.test.ts`, `mothership-equipment.test.ts`, `drive.test.ts`, `parts.test.ts` | Jugar: B en la estación |
+
+### Refinería y propelente (REF)
+
+| ID | Qué tiene que pasar | Test / fixture | QA |
+|---|---|---|---|
+| REF-01 | Refinar con las temperaturas reales; con roca escasa, media tanda | `station-ops.test.ts`, `station.test.ts` | Jugar: pestaña Refinería |
+| REF-02 | Planta de propelente: agua → H₂ + O₂, amoníaco, hidracina, NTO; cometas: hielo de agua y de CO₂ | `propellant-processes.test.ts`, `comet-processes.test.ts` | Solo test |
+| REF-03 | Repostaje: se toma del almacén al poner en cola; si la nave se fue, vuelve al almacén; la nodriza solo atracada | `refuel.test.ts` (aplicación y dominio) | Jugar: Repostar |
+
+### Autosustento (BIO)
+
+| ID | Qué tiene que pasar | Test / fixture | QA |
+|---|---|---|---|
+| BIO-01 | Los cultivos arrancan solos al montarse; los reactores se ajustan con retos y bajan a la mitad al desajustarse | `bio-ops.test.ts`, `bioreactor.test.ts` (estación) | Jugar: pestaña Vida |
+| BIO-02 | Cada proceso va al ritmo de su entrada más escasa y dice cuál; el CO₂ de la tripulación entra antes | `bioreactor.test.ts` (estación) | Solo test |
+| BIO-03 | Indicador de autosustento honesto: nitrógeno importado salvo fuente local (amoníaco de cometas) | `bio-ops.test.ts`, `bioreactor.test.ts`, `bio.test.ts` | Jugar: indicador |
+| BIO-04 | La comida va a la despensa de la nodriza en unidades enteras | `bio-ops.test.ts` | Jugar |
+
+### Importación (IMP)
+
+| ID | Qué tiene que pasar | Test / fixture | QA |
+|---|---|---|---|
+| IMP-01 | Pedido al Santuario: precio por lanzador, se paga al resolver los retos, llega tras el tránsito | `import-ops.test.ts`, `transfer.test.ts` (importación) | Jugar: pestaña Importar |
+| IMP-02 | Remolcador SEP: empuje, tiempo y xenón reales; trae una roca y vuelve al hangar | `tug.test.ts`, `import-ops.test.ts` | Jugar |
+| IMP-03 | Lanzador de masas: solo donde los paquetes escapan; lanza un paquete cada pocas horas | `tug.test.ts`, `import-ops.test.ts` | Jugar |
+| IMP-04 | Cometas 67P, 46P y 133P con datos de SBDB y composición de Rosetta | `comets.test.ts` | Solo test |
+
+### Vida a bordo (VID)
+
+| ID | Qué tiene que pasar | Test / fixture | QA |
+|---|---|---|---|
+| VID-01 | Huerto y cubierta de cultivo crecen con datos reales; la cubierta hace el viaje autosuficiente | `plant.test.ts`, `species.test.ts`, `habitat.test.ts` | Jugar: huerto |
+| VID-02 | Cocina: cada paso de receta es un reto; la carga de salida da varios platos; saciedad por kcal reales | `recipes.test.ts`, `nutrition.test.ts`, `habitat.test.ts`, `catalog.test.ts` | Jugar: Tareas → cocina (recorrido PX `cocina`) |
+| VID-03 | Animales: gatos, perros y gallinas con necesidades reales, presentaciones, familias y reglas programadas | `pets.test.ts`, `dog.test.ts`, `hen.test.ts`, `family.test.ts`, `habitat.test.ts` | Jugar |
+| VID-04 | Enfermería: heridas que empeoran sin tratar; lo grave pide la cama | `health.test.ts`, `habitat.test.ts` | Jugar |
+| VID-05 | Tareas: cadenas de retos que fallan tras demasiados errores y aplican su efecto al resolverse | `chore.test.ts`, `catalog.test.ts`, `habitat.test.ts` | Jugar: Tareas |
+| VID-06 | Una sacudida de un asteroide furioso rompe máquinas y crea escenarios de cuidado | `habitat.test.ts` | Jugar |
+| VID-07 | Tripulación, ejercicio, yoga, carne cultivada y soporte vital | `crew-member.test.ts`, `habitat.test.ts`, `bioreactor.test.ts` (carne cultivada), `sustainability.test.ts` | Solo test |
+| VID-08 | Avisos: los del jugador tienen prioridad y las alertas esperan su turno (H24); la vida a bordo («Pepa le ladra a Nube») flota donde sucede, como texto del HUD, solo si ese punto está a la vista | `notices.test.ts` | Jugar: recorrido PX `movimiento` |
+| VID-09 | Pasos visibles en la cocina: cada paso bien de cada receta y proceso se ve en 3D en su sitio (nevera, despensa, encimera, fogón, horno, molino, procesador) con el gesto de Doménica; nada cae en el gesto genérico; un paso desconocido sí | `kitchen-visuals.test.ts` | Recorrido PX `cocina` (huevos revueltos y crema de cacahuete) |
+| VID-10 | Pasos visibles en las demás tareas a bordo (plantas, animales, laboratorio, máquinas, nave, enfermería; el yoga ya muestra la postura): cada reto resuelto tiene su acción; en «Paso a paso» cada bloque bien se ve al momento | `step-visuals.test.ts` | Recorrido PX `cocina` (cosechar paso a paso, puerta del gallinero) |
+| VID-11 | Acuario del anillo (1 m³ en la cubierta de cultivo): bucle cerrado con datos (amonio del pienso, biofiltro, nitrato que se lleva el ceratófilo, algas que raspan los caracoles, hambre); tareas de cuidado (dar de comer, limpiar el cristal, cambiar el 20 % del agua) como retos con sus pasos visibles en el tanque | `aquarium.test.ts`, `aquarium-ops.test.ts`, `catalog.test.ts` | Recorrido PX `acuario` |
+| VID-12 | Amistad con las medakas: cada cuidado es un encuentro cálido (vínculo de la familia); el programa «hacer amistad» las hace amigas, calma a Doménica y el banco viene al cristal cuando ella se acerca. Los peces son amigos, nunca comida | `aquarium.test.ts`, `aquarium-ops.test.ts` | Recorrido PX `acuario` |
+| VID-13 | Pedir ayuda (programa en su mente, solo a amigos): los caracoles suben al cristal y bajan las algas (la tarea de limpiar desaparece); las medakas vigilan el agua y avisan desde 30 mg/L de nitrato, lo que adelanta el cambio de agua | `aquarium.test.ts`, `aquarium-ops.test.ts` | Recorrido PX `acuario` |
+
+### Paseo espacial (EVA)
+
+| ID | Qué tiene que pasar | Test / fixture | QA |
+|---|---|---|---|
+| EVA-01 | Solo posada; ponerse el traje es una cadena de retos; fuera avanza agarrada, se suelta con impulso y el cable la sujeta | `eva.test.ts`, `surface-motion.test.ts`, `suit.test.ts` | Jugar: Salir de la nave |
+| EVA-02 | El oxígeno se gasta más deprisa fuera; con poco vuelve sola | `eva.test.ts`, `suit.test.ts` | Jugar |
+| EVA-03 | Se tumba sobre el asteroide (fase 3); un asteroide furioso la tira y el cable la recoge | `eva.test.ts` | Jugar |
+
+### Ingravidez (ING)
+
+| ID | Qué tiene que pasar | Test / fixture | QA |
+|---|---|---|---|
+| ING-01 | De asidero en asidero: impulso, planeo sin dirección, agarre del asidero previsto; contra la pared rebota (dominio; el jugador ya no empuja a mano, ver ING-03) | `iva.test.ts`, `handrails.test.ts` (gravedad) | Solo test |
+| ING-02 | Anillo de 4 rpm y 1 g; en el eje las fuerzas aparentes curvan el vuelo | `spin-gravity.test.ts`, `ring.test.ts`, `iva.test.ts` | Jugar: ascensor |
+| ING-03 | Mando de flechas: cada flecha (relativa a la vista) elige el siguiente punto de aterrizaje en un cono de 50°, ella apunta, se impulsa, planea a 0,6–1,2 m/s y se agarra; las flechas se apagan durante el salto y vuelven al llegar; hacia una escotilla la cruza hasta el primer punto del otro módulo; desde cualquier punto se llega a todos (nadie se queda atascada) | `hops.test.ts`, `station/data/handrails.test.ts` | Jugar: espina de la nodriza y estación (recorrido PX `movimiento`) |
+| ING-04 | Túneles más amplios: la espina y el cubo de la nodriza miden 5,5 m (pozo de 2 m) y el pasillo del módulo habitable 1,6 × 1,9 m; la cámara en tercera persona cabe detrás de ella | `hops.test.ts` (tubo de 5,5 m) | Jugar: capturas `flechas-*` |
+| ING-05 | Asideros en los puntos de interés: cada escotilla, máquina, consola, los trajes, el ascensor y los lanzadores de la espina, y cada aparato de la estación, tienen su barra; las flechas los prefieren; al llegar aparece su acción; tocar uno (o «Ir» de una tarea) encadena saltos hasta él por la ruta más rápida | `hops.test.ts`, `spine.test.ts`, `station/data/handrails.test.ts` | Jugar (recorrido PX `movimiento`: toques en la espina) |
+| ING-06 | Más rápido: saltos a 0,6–1,2 m/s con 0,35 m de impulso y de frenada; con la flecha pulsada los saltos se encadenan sin la pausa de apuntar; la mejor cadena de la escotilla de atraque al ascensor pasa de 20,1 s a 13,1 s | `hops.test.ts`, `spine.test.ts` | Jugar (recorrido PX `movimiento`) |
+| ING-07 | Lanzadores: placa de muelle en cada extremo de la espina que la lanza a 2,5 m/s a la red del otro extremo; 181 N en los pies (1,0 m de muelle) y 130 N en la red (1,4 m), dentro de lo medido; se definen en una lista de datos | `hops.test.ts`, `spine.test.ts` | Jugar (recorrido PX `movimiento`: botón «Lanzarse a la red…») |
+| ING-08 | Escaleras: una a lo largo del suelo de la espina y otra vertical en la pared del cubo; con ▲ ▼ pulsada trepa sin parar a 0,6 m/s (más rápido que saltar para 1 m), las flechas de lado la sueltan de un salto | `hops.test.ts`, `iva.test.ts`, `spine.test.ts` | Jugar (recorrido PX `movimiento`: ▲ pulsada en la escalera) |
+
+### nano_net (NNT)
+
+| ID | Qué tiene que pasar | Test / fixture | QA |
+|---|---|---|---|
+| NNT-01 | Un asteroide de nivel 1 puede ser núcleo; las etapas se programan con retos hasta enlazar con el relé | `operations.test.ts`, `core.test.ts`, `network.test.ts` | Jugar |
+| NNT-02 | El tiempo rompe nodos; las averías son misiones de reparación posado en el núcleo | `operations.test.ts`, `core.test.ts` | Jugar |
+| NNT-03 | Dentro de la cobertura la energía repara el casco y los nodos de velocidad aceleran el tiempo | `operations.test.ts`, `network.test.ts` | Solo test |
+
+### Misiones, radio y créditos (MIS)
+
+| ID | Qué tiene que pasar | Test / fixture | QA |
+|---|---|---|---|
+| MIS-01 | Misiones de Nevaeh en orden, con carta y recompensa; las secundarias se avisan una vez | `mission.test.ts`, `mission-control.test.ts` | Jugar: radio (recorrido PX `mision`) |
+| MIS-02 | Nevaeh paga créditos por misión; la cartera nunca va a negativo | `mission-control.test.ts`, `tug.test.ts` | Solo test |
+| MIS-03 | El buzón entrega las cartas en orden y marca logros | `mailbox.test.ts` | Jugar |
+
+### Interfaz de retos (UI)
+
+| ID | Qué tiene que pasar | Test / fixture | QA |
+|---|---|---|---|
+| UI-01 | Vista HUD y vista panel de los retos: el botón cambia al momento y se recuerda en `localStorage` | Sin test (adaptador) | Jugar: botón «Vista HUD» |
+| UI-02 | Los paneles del puente leen el estado real (propulsión, energía, vida, acople, radio, alertas) | `panels.test.ts` | Jugar: puente |
+| UI-03 | Una cadena de retos falla tras demasiados errores y repetir un fallo no cuenta | `chore.test.ts` | Jugar (recorrido PX `cocina`) |
+| UI-04 | Retos de ordenar, modo «Ordenar todo y enviar» (por defecto): un orden erróneo cuesta un fallo y deja cada casilla marcada ✓ (verde, «en su sitio») o ✗ (rojo, «no va aquí») hasta que el jugador pulsa «Reintentar: quitar los ✗» o la edita; Reintentar deja los ✓ en su sitio y devuelve los ✗ a la bandeja. Igual en vista panel (sin cambiar sus medidores) y en HUD | `order-steps.test.ts` | Jugar (recorrido PX `ordenar`) |
+| UI-05 | Retos de ordenar, modo «Paso a paso» (botón junto a «Vista HUD», guardado en `localStorage` `codeship.retos-ordenar`, `stepByStep()/setStepByStep()` para los ajustes): cada bloque se comprueba al tocarlo; uno erróneo se avisa al momento, queda tachado ✗ en la bandeja y cuenta un fallo (como un orden erróneo: en un duelo con un asteroide pasa a la idea siguiente); repetir el mismo bloque erróneo en el mismo paso no cuenta; el orden completo cuenta un acierto. Pasar a paso a paso vacía las casillas (no revela gratis cuáles estaban bien) | `order-steps.test.ts`, `chore.test.ts`, `duel.test.ts` | Jugar (recorrido PX `ordenar`) |
+
+### Habitáculo del módulo, ajustes, tareas y puente de consolas (HAB)
+
+Diseño en [habitaculo.md](../design/habitaculo.md).
+
+| ID | Qué tiene que pasar | Test / fixture | QA |
+|---|---|---|---|
+| HAB-01 | El habitáculo del módulo se recorre a pie: el suelo la mantiene dentro y fuera de los asientos, cada máquina está en suelo libre y se usa solo de pie junto a ella, y el camino entre dos máquinas rodea los asientos | `cabin.test.ts` | Jugar (recorrido PX `habitaculo-movil`) |
+| HAB-02 | Las máquinas sustituyen botones del HUD: la consola de acople desacopla, arma el asistente o entra en el vehículo acoplado; la escotilla EVA solo abre anclada y dice por qué no; el asiento sienta a pilotar; la esterilla abre los ajustes | `cabin.test.ts` | Jugar (recorrido PX `habitaculo-movil`) |
+| HAB-03 | Ajustes generales (Nombres, Ayuda de teclado, Vista de retos, Cámara al pilotar, Sonido) solo en una esterilla, guardados en `localStorage`; la ayuda de teclado sale del soporte táctil y de la primera entrada hasta que la jugadora la elige | `settings.test.ts` | Jugar: esterilla del módulo y de la nodriza |
+| HAB-04 | Fase y confianza del asteroide fuera del HUD de vuelo: la consola de la mente (habitáculo y puente) las muestra y ofrece el duelo solo cuando la fase lo permite | `cabin.test.ts` | Jugar (recorrido PX `mision`) |
+| HAB-05 | La lista de tareas reúne todas (vuelo, viajes, misión, nano_net, estación, importación, bio, combustible, reparaciones, tareas de a bordo), agrupadas y con el lugar donde se hacen | `task-list.test.ts` | Jugar: botón Tareas |
+| HAB-06 | «Ir» de una tarea la lleva por las escotillas abiertas; si el vehículo no está acoplado, la lleva a lo que los une y dice por qué | `task-list.test.ts` | Jugar (recorrido PX `habitaculo-movil`) |
+| HAB-07 | El puente de la nodriza es una sala de consolas: una por página (navegación, propulsión, energía, vida, acople, radio), más sonda, mente del asteroide y nano_net; cada una abre solo su página | `bridge.test.ts` | Jugar (recorrido PX `habitaculo-escritorio`) |
+| HAB-08 | Espacio entre interactuables (regla de Cold Sanctuary, 2,0 m): en el anillo, la granja, el puente, la espina y la estación, cualquier par de cosas que se usan está a 2 m o más entre centros y entre puntos de acción, y el botón sale a menos de 1 m, así que nunca dos a la vez; excepciones: la cápsula del módulo (tamaño real) y los aparatos de bastidores contiguos de la estación (paso de la ISS) | `spacing.test.ts`, `spine.test.ts` | Jugar (recorrido PX `movimiento`: esterilla, ejercicio y camarote) |
+| HAB-12 | Una sola escala de dibujo para interiores y maquinaria (`WORLD_SCALE` = `MACHINE_SCALE` = 1,5, [escala.md](../design/escala.md)): los datos guardan medidas reales y se escalan al dibujar; los personajes y las alturas donde el cuerpo toca la máquina no se escalan | `scale.test.ts` | Jugar (recorrido PX `puente-real`) |
+| HAB-13 | El puente sigue la investigación ([puente.md](../design/puente.md)): piloto y sonda sentados con RHC y THC frente a la ventana de proa, acople estilo TORU, mesa de trayectorias en el centro (se rodea), consolas de sistemas en las paredes; pantallas a 0,33–0,71 m del ojo y a menos de 30° de su normal (MSIS); fuentes enlazadas | `bridge.test.ts` | Jugar (recorrido PX `puente-real`) |
+| HAB-14 | A pie, la vista empieza en 1ª persona (ajuste «Vista a pie», por defecto 1ª) en el puente, el habitáculo, el anillo y la estación; el ojo pasa a 3ª persona en cada visita; «Cámara al pilotar» sigue en Cabina | `settings.test.ts` | Jugar (recorrido PX `puente-real`) |
+| HAB-20 | «Ir a una tarea» es un ajuste de la esterilla: **Viaje** por defecto o **Teletransporte**, guardado en `codeship.ajustes`; el teletransporte hace un fundido y avisa «Teletransporte (ajustes)» ([viaje-a-una-tarea.md](../design/viaje-a-una-tarea.md)) | `settings.test.ts` | Jugar (recorrido PX `viaje`) |
+| HAB-21 | El viaje a una tarea es el camino real más rápido por un grafo de lugares y traslados con su duración real (andar, ascensor del radio, saltos con escaleras y lanzadores, escotillas abiertas solo con los vehículos unidos, vuelo del módulo con acople o de la nodriza con atraque); sin camino, dice por qué (un vuelo que no puede salir antes que una escotilla cerrada) | `journey.test.ts`, `journey-world.test.ts`, `dock-trip.test.ts` | Jugar (recorrido PX `viaje`) |
+| HAB-22 | Durante el viaje se ocultan los mandos de movimiento, sale «Parar» (la deja donde está y devuelve los mandos; «Ir» otra vez sigue desde allí), una línea dice el tramo y la llegada, y la cámara sigue libre (arrastrar, el ojo, el ciclo de cámaras); primera persona por defecto y también en tercera | Sin test: adaptador (`src/journey.ts`) | Jugar (recorrido PX `viaje`) |
+
+### Convivencia de procesos (CV)
+
+Qué pasa cuando dos procesos actúan sobre el mismo estado a la vez. El mapa de qué estado comparten
+está en [entrelazamiento.md](entrelazamiento.md). Los tests están en `src/qa/convivencia/` y llevan el
+ID en el título; arman los módulos como los arma `main.ts`, sin Three.js ni DOM.
+
+Clase: **Alineado** (se comportan bien juntos), **Choque** (resultado incorrecto o sin decidir),
+**Arreglado** (era un choque, ahora alineado), **No aplica**.
+
+| ID | Procesos | Qué tiene que pasar | Clase | Test / fixture | Áreas |
+|---|---|---|---|---|---|
+| CV-01 | Viaje comprimido × vida a bordo × estación | El reloj de misión va a la cámara rápida; la estación avanza 24 h por día de a bordo; si el viaje comprime más que la vida, la arrastra | Alineado | `relojes.test.ts` | NAV, VID, EST |
+| CV-02 | Tiempo ×N manual × vida a bordo × estación | Con ×N a mano la vida a bordo, la nano_net, la estación y los niveles corren ×N juntos: 24 h de estación por día de a bordo | Arreglado (HC-01) | `relojes.test.ts` | NAV, VID, EST, NIV |
+| CV-03 | Viaje comprimido × paquetes de nivel 2/3 y confianza | Un paquete por día de a bordo (40 s reales) aunque el viaje vaya a ×600 | Arreglado (B-01) | `niveles.test.ts` | NAV, NIV |
+| CV-04 | Viaje comprimido × extracción de nivel 4 | La extracción va a las horas de la estación, no a la cámara rápida | Arreglado (B-01) | `niveles.test.ts` | NAV, NIV, EST |
+| CV-05 | Extracción de nivel 4 × almacén | El almacén tiene tope por módulos (9,8 t al empezar); lleno, el asteroide guarda su roca y los paquetes esperan en el buzón; al hacer sitio siguen | Arreglado (HC-02) | `niveles.test.ts` | NIV, EST, IMP |
+| CV-06 | Ira × viaje de la nodriza | Con el módulo acoplado nadie lo persigue; la ira se apaga en el reloj de misión; si se desacopla aún furioso, la persecución empieza | Alineado | `ira.test.ts` | IRA, NAV |
+| CV-07 | Ira × cámara rápida > ×600 a menos de 10 fps | La ira se apaga al ritmo del reloj de misión | Arreglado (B-02) | `ira.test.ts` | IRA, NAV |
+| CV-08 | Cámara rápida de un viaje × amenazas de la ira | Una amenaza a la nave que viaja (proyectil, embestida, persecución) baja el viaje a ×1 con aviso y lo retiene; al pasar sigue su cámara rápida | Arreglado (HC-03) | `relojes.test.ts`, `navigator.test.ts`, `wrath.test.ts` | NAV, IRA |
+| CV-09 | Supervivencia × importación × nivel 4 aparcado | La estación huye; los pedidos llegan al almacén; el asteroide aparcado la sigue y sigue entregando; al calmarse frena | Alineado | `supervivencia.test.ts` | IRA, IMP, NIV, EST |
+| CV-10 | Biorreactores × planta de propelente (amoníaco) | Nunca negativo; la planta toma al poner en cola, la biología por tick; el propelente reserva 3,4 kg de amoníaco y el abono solo usa lo que pasa de la reserva | Arreglado (HC-04) | `almacen.test.ts` | BIO, REF, EST |
+| CV-11 | Crecer la estación × biorreactores en marcha | La energía cuenta lo montado y lo que está en obra; los biorreactores trabajando no la cambian; dos obras no reservan la misma | Alineado | `almacen.test.ts` | EST, BIO |
+| CV-12 | Duelo de la sonda fallado × módulo volando | Persigue a la sonda, no al módulo; perdida la sonda, se queda quieto hasta calmarse | Alineado | `ira.test.ts` | SON, SUB, IRA |
+| CV-13 | Fase 3 fallada × persecución con Doménica fuera | Persigue al traje o al módulo pero se queda a su distancia: nunca se les echa encima | Alineado | `ira.test.ts` | EVA, SUB, IRA |
+| CV-14 | Sonda perdida × su viaje comprimido | El viaje acaba en fallo, la cámara rápida vuelve a ×1, la nodriza queda libre y la siguiente sonda puede viajar | Alineado | `sonda.test.ts` | SON, NAV |
+| CV-15 | Dos pedidos en retos × créditos para uno | El botón de pedir se bloquea con «Faltan N créditos»; el segundo, resuelto, no cobra ni envía nada y dice «No se pidió: faltan N créditos»; un pago a mitad de la cadena lo deja pasar | Arreglado (HC-05) | `almacen.test.ts` | IMP, MIS |
+| CV-16 | Guardar y cargar a mitad de viaje | No hay partidas guardadas: recargar empieza de cero | No aplica (HC-06) | — | NAV |
+| CV-17 | Embestida × viaje comprimido | Con el módulo acoplado (viaje de la nodriza) no hay embestida. A ×1 el aviso dura 5 s reales y la carga más de 30 s. En el tramo comprimido del módulo (×60) la amenaza baja el viaje a ×1: el aviso dura sus 5 s reales y se puede esquivar (sin mirar la amenaza, el choque llegaría en ~1 s) | Arreglado (HC-03) | `embestida.test.ts` | IRA, NAV |
+
+#### Casos con carrera
+
+Cómo se provoca cada cruce jugando, o por qué solo lo cubre el test. La acción a mitad y su momento
+van al run log.
+
+| ID | Acción a mitad | Cubierto por |
+|---|---|---|
+| CV-03 | Con Bennu en nivel 3 (por código), programar un viaje de la nodriza y, durante los 30 s, mirar el aviso de radio: no debe llegar más de un paquete | Test; en vivo con estado puesto por código |
+| CV-06 | Fallar el duelo de la fase 2 en Bennu, despegar, acoplar y programar un viaje; al llegar, desacoplar | Test y en vivo |
+| CV-09 | Con `demoTier(4)` en Bennu y un pedido en camino, fallar un duelo; ver la pestaña Importar mientras la estación huye | Test y en vivo |
+| CV-12 | Sonda posada en Bennu, despegar con el módulo; fallar el duelo de la sonda; abandonar la sonda | Test y en vivo |
+| CV-14 | Sonda de viaje; en mitad, dejar que la ira la destruya (o forzar la batería por código) e intentar programar la nodriza | Test; en vivo probabilístico |
+| CV-07 | Solo test: hace falta < 10 fps y un salto de la nodriza de más de ~25 km |  |
+| CV-17 | Programar un viaje del módulo y, en el tramo comprimido, fallar un duelo (o `wrathMode.wrath.duelFailed` por código): el viaje baja a ×1 con «⚠ Amenaza» y sigue al calmarse | Test y en vivo (Playwright, `hc-viaje-amenaza-mobile.png`) |
+
+### Experiencia del jugador (PX)
+
+Recorridos completos jugados con toques reales (`touchscreen.tap`) en el perfil iPhone 13 de Playwright con la CPU ×4,
+con capturas, comprobaciones de toque (≥ 44 px, no tapado, con nombre) y rendimiento frente a presupuesto. Código en
+`tools/experiencia/` (`npm run experiencia`), diseño y presupuestos en [docs/testing.md](../testing.md). Los IDs no se
+reutilizan: un recorrido que deja de aplicar pasa a `Retirado`. La lista debe coincidir con `JOURNEYS` de
+`tools/experiencia/presupuestos.mjs` (`npm run check:docs`). Cada ejecución deja `runs/<fecha>-PX-….md` y reescribe la
+fila del recorrido en [registro.md](registro.md).
+
+| ID | Recorrido | Qué debe pasar | Modo |
+| --- | --- | --- | --- |
+| PX-01 | `cocina` | Tres toques sobre la misma opción errónea dejan **Fallos 1/3**, la opción marcada con ✗ y el paso sin avanzar ni terminar; con los siete pasos bien, «✓ Conseguido 7/7 con 1 fallo» y la despensa (al tocar el estado) con crema de cacahuete. En vista HUD: fallos en ámbar sobre placa oscura, rojo al tope, «✗ Reto perdido» que un toque inmediato no cierra, y la receta sigue disponible. Pasos visibles: en los huevos revueltos cada paso bien se ve en la cocina (nevera, cascar en el bol, plancha, remover, sazonar, emplatar) y al cerrar se recogen los utensilios; en la crema, el horno y el molino; cosechar «paso a paso» muestra el primer bloque bien sin terminar el orden; el programa del gallinero se ve. | iPhone 13, CPU ×4 |
+| PX-02 | `movimiento` | W enciende el RCS y el HUD lo dice; la velocidad deja de estar en reposo. En la escotilla aparece el mando de flechas (sin «Manos» ni «Impulsarse»); ▲ la lleva al siguiente asidero (apunta, se impulsa, planea, se agarra: lo dice el HUD), las flechas se apagan durante el salto y vuelven al llegar. Una tarea elegida en el eje avisa «Bajas al anillo» y ni un aviso de ambiente ni una alerta lo pisan (H24). Cruza la espina solo con toques visibles: la etiqueta del lanzador de proa (encadena saltos hasta él), «Lanzarse a la red de popa», la escalera del cubo (▲ pulsada trepa) y «Ir» de una tarea hasta el ascensor; mide el tiempo. En el anillo, Caminar avanza la vista, el HUD dice la gravedad y, mirando al perro, «… le ladra a …» flota sobre él como texto del HUD; junto al rincón de ejercicio, el camarote y la esterilla sale un solo botón, el suyo, sin tapar a otro (HAB-08). | iPhone 13, CPU ×4 |
+| PX-03 | `mision` | La radio avisa de cartas; una trae la misión de Bennu; el registro abre con 0 hechas. Posado (fase de la sonda preparada), la vista de vuelo no muestra fase ni confianza; levantada, la consola de la mente del habitáculo abre el duelo; un fallo suma «Fallos 1/N»; ganar muestra «Conseguido» con un solo botón para volver. Con el traje, tumbarse y ganar el tercer duelo: Bennu persuadido y aviso de misión cumplida que no tapa el resultado. | iPhone 13, CPU ×4 |
+| PX-04 | `acciones-movil` | Cada pantalla (cabina acoplada y libre, ingravidez, anillo, tareas, puente de consolas, mapa, sonda, mente del asteroide, posado, habitáculo, traje, paseo, estación y sus seis pestañas) sin controles solapados a 390×664 visibles; capturas `ux-<antes/despues>-*-movil.png`. | iPhone 13, CPU ×1 |
+| PX-05 | `acciones-escritorio` | Lo mismo a 1280×800; capturas `ux-*-escritorio.png`. | Escritorio, CPU ×1 |
+| PX-06 | `ordenar` | Programar el viaje a Bennu desde el puente: con los pasos 2 y 3 cambiados, «Fallos 1/2», ✓ verde en las casillas buenas y ✗ rojo en las dos malas (con nombre), el aviso «3 de 5 en su sitio», las marcas siguen a la vista y en vista HUD; Reintentar deja los ✓ y vacía los ✗; completado, «Aciertos 1/…» sin más fallos. Otra vez en «Paso a paso» (se guarda y sigue al volver a abrir el juego): un paso bien queda con ✓, uno erróneo avisa «no va en el paso 2», tacha el bloque y suma un fallo; repetirlo no suma; en vista panel los medidores siguen como eran. Capturas `ordenar-{panel,hud}-{todo,pasos}`. | iPhone 13, CPU ×4 |
+| PX-07 | `aterrizaje-programa` | En el mapa del puente, un paso del viaje bien respondido dibuja la ruta y lo dice («✓ Ruta trazada»), el siguiente añade el empuje y cerrar lo borra. La sonda a 300 m de Bennu muestra X/Y/Z, vx/vy/vz e inclinación (en rojo: llega de proa); «Aterrizar con un programa», primer paso marca el sitio, un fallo a propósito, el programa vuela con la ficha de viaje y la sonda se posa sola: «Posada por programa a N m». Capturas `aterrizaje-*-movil.png`. | iPhone 13, CPU ×4 |
+| PX-08 | `aterrizaje-manual` | El módulo a 250 m bajando a 0,5 m/s: indicadores con vz en verde, la oferta en la columna de contexto, sin tapar botones; la cámara ventral muestra el sitio; cayendo a 4 m/s a 40 m, vz y el marco en rojo. | iPhone 13, CPU ×4 |
+| PX-09 | `aterrizaje-escritorio` | Lo de PX-08 a 1280×800 y el módulo aterrizado por programa con clics (el primer paso marca el sitio). | Escritorio, CPU ×4 |
+| PX-10 | `habitaculo-movil` | Sin «Nombres» ni «☰ Mandos» en la cabina y la cámara como icono de ojo con nombre. Levantarse, caminar a la consola de acople y desacoplar; en la esterilla, los ajustes: Ayuda de teclado cambia las pistas y se guarda; Tareas agrupadas y «Ir» a «Aterriza el módulo» la sienta a pilotar. En el puente, la consola de propulsión abre solo su página, «Volver» la deja junto a la consola, y la consola de la mente muestra fase y confianza. Capturas `docs/screenshots/habitaculo-*-movil.png`. | iPhone 13, CPU ×1 |
+| PX-11 | `habitaculo-escritorio` | Lo mismo a 1280×800; capturas `docs/screenshots/habitaculo-*-escritorio.png`. | Escritorio, CPU ×1 |
+| PX-12 | `estacion-movil` | Entrar en la estación por la escotilla del módulo: primera persona e iconos de raíz, sin los botones viejos. Una puerta con nombre e icono y «Entrar en Módulo habitable» que la lleva al otro lado. La cocina cocina un plato y gasta la despensa de la estación. Dormir en un camarote. Ajustes en la esterilla. «Ir» de una tarea de yoga de la estación la lleva a la esterilla y empieza. En el hangar, el brazo mete el módulo y se ve. La consola del hangar abre la lista global entera. La escotilla del módulo dice por qué está cerrada. Capturas `docs/screenshots/estacion-*-movil.png`. | iPhone 13, CPU ×1 |
+| PX-13 | `acuario` | Tareas → «Ir» a «Dar de comer a las medakas» la lleva andando al acuario de la cubierta de cultivo; al acertar el orden caen escamas en el tanque; «Conseguido» y el banco sin hambre. Junto al tanque sale un solo botón, «Acuario del anillo: N tareas» (HAB-08). «Hacer amistad con las medakas» (programa, se ve «programar» y el tanque brilla): el estado dice «medakas amigas» y el banco viene al cristal junto a ella. «Pedir ayuda a los caracoles»: «caracoles limpiando el cristal», las algas bajan y desaparece «Limpiar el cristal». «Pedir ayuda a las medakas»: avisan «el nitrato está alto», el banco sube a la superficie y aparece el cambio de agua, que deja el nitrato en ~30 mg/L; Calma > 0. Capturas `docs/screenshots/acuario-*-movil.png`. | iPhone 13, CPU ×4 |
+| PX-14 | `viaje` | En la esterilla del módulo, «Ir a una tarea» dice «Viaje»; cambiado a «Teletransporte» se guarda, e «Ir» a una tarea del anillo llega al momento con el aviso «Teletransporte (ajustes)». De vuelta a «Viaje» en la esterilla del anillo, «Ir» a una tarea de la estación: empieza en primera persona, la ruta pasa por el ascensor, la espina y la escotilla de atraque, se ocultan los mandos de movimiento, se ve «Parar» y la línea con el tramo y la llegada, arrastrar gira la cámara andando y en el ascensor, el ojo pasa a tercera persona y sigue andando sola. En la espina, «Parar» la deja allí con las flechas de vuelta; «Ir» otra vez sigue desde allí, cruza la escotilla y llega a la pestaña de la tarea. Capturas `docs/screenshots/viaje-*-movil.png`. | iPhone 13, CPU ×1 |
+| PX-15 | `puente-real` | Entrar al puente: 1ª persona por defecto. Desde la escotilla ningún cartel tapa a otro. Desde la mesa de navegación, cada consola (pilotaje, sonda, acople, vida, energía, mente, nano_net, radio y escotilla) tiene su cartel legible (≥ 28 px), sin solaparse, una caja de toque de al menos 44×44 px no tapada por la interfaz, y un toque la lleva a ella con su ficha. En el mando de la sonda se sienta (ojo a 1,2 m, pantalla a 0,33–0,71 m y < 30°) y toma el mando; la mesa abre solo la página NAV; el ojo pasa a 3ª persona. Capturas `docs/screenshots/puente-*.png` (antes: `puente-antes-*.png`). | iPhone 13, CPU ×1 |
+
+---
+
+## Bugs y huecos conocidos
+
+| ID | Caso | Detalle | Estado |
+|---|---|---|---|
+| B-01 | CV-03, CV-04 | `AsteroidServices` contaba los días de los paquetes de nivel 2 y 3, la confianza que devuelve el servicio y las horas de extracción de nivel 4 con el reloj de misión (`dt × warp`). En un viaje de la nodriza a ×600, 30 s reales daban 449 paquetes en vez de 0 | Arreglado en `qa-casos`: `update(dtS, stationHours)` y `LevelsUi.update` reciben las horas de la estación de `frameClocks` |
+| B-02 | CV-07 | `AsteroidWrath.update` descartaba lo que pasara de 60 s de juego por llamada. Un salto largo de la nodriza va a más de ×600 (≈ ×629 para 30 km) y a menos de 10 fps `main` limita el fotograma a 0,1 s: la ira se apagaba ≈ 9 % más despacio que el reloj de misión | Arreglado en `decisiones-hc` (`5a68872`): tope en pasos (600 por llamada); una llamada más larga se reparte en 600 subpasos más gruesos |
+| HC-01 | CV-02 | Con el tiempo ×10/×50 manual la estación, su buzón, los biosistemas y los servicios de los niveles corrían ×N y la vida a bordo y la nano_net no | Cerrado en `decisiones-hc` (`f60ac62`): decidido que la vida a bordo acelera también; `frameClocks` da 24 h de estación por día de a bordo siempre |
+| HC-02 | CV-05 | El almacén no tenía tope: la extracción de nivel 4 lo llenaba sin límite (pregunta abierta de subyugacion.md) | Cerrado en `decisiones-hc` (`9f8354f`, `c21eebe`): capacidad por módulos en bastidores ISPR (700 kg), 9,8 t al empezar; lleno, lo que llega se queda en su origen y la UI dice «Almacén lleno» |
+| HC-03 | CV-08, CV-17 | La regla de poderes-ira.md («tiempo acelerado solo si nada vuela hacia el módulo») solo frenaba la cámara rápida manual, no la de un viaje del módulo (hasta ×60), ni con una embestida | Cerrado en `decisiones-hc` (`f60ac62`): `AsteroidWrath.threatened` y `frameClocks(…, threat)` bajan el viaje a ×1 con aviso y lo retienen (`held`) hasta que pasa |
+| HC-04 | CV-10 | Nada reservaba el almacén: el abono con amoníaco (activado por defecto) podía gastar el amoníaco guardado para hidracina | Cerrado en `decisiones-hc` (`4832217`): reservas por proceso con prioridad; el propelente reserva 3,4 kg de amoníaco y va primero |
+| HC-05 | CV-15 | Resolver la cadena de un pedido sin créditos no hacía nada y no avisaba | Cerrado en `decisiones-hc` (`b098bf1`): botón bloqueado con «Faltan N créditos»; si se llega igual, «No se pidió: faltan N créditos» y evento `sin-creditos` |
+| HC-06 | CV-16 | No hay partidas guardadas (solo la preferencia de la vista de retos en `localStorage`) | Sin plan |

@@ -11,8 +11,12 @@ import type { AnimalLesson, CatLesson } from "@modules/pets/data/rules";
 import { Bonds, companionship, FAMILY_TUNING, type Family, type Member } from "@modules/family/domain/family";
 import { CrewMember } from "@modules/crew/domain/crew-member";
 import type { ShipDesign } from "@modules/ship/domain/ship";
+import { withPart, type PartSlot } from "@modules/ship/domain/refit";
+import { partById } from "@modules/ship/data/parts";
 import type { Recipe } from "@modules/kitchen/data/recipes";
+import { portionNutrients } from "@modules/kitchen/data/nutrition";
 import type { YogaSequence } from "@modules/wellness/data/yoga";
+import type { Workout } from "@modules/wellness/data/exercise";
 import { ChoreRun, type Chore } from "@modules/chores/domain/chore";
 import {
   bioreactorChores,
@@ -31,6 +35,7 @@ import {
   repairChore,
   stepPool,
   yogaChore,
+  workoutChore,
 } from "@modules/chores/application/catalog";
 import type { Stimulus } from "@modules/pets/domain/behavior";
 import type { Hen } from "@modules/poultry/domain/hen";
@@ -71,6 +76,8 @@ export interface RepairableShip {
   readonly design: ShipDesign;
   readonly hullIntegrity: number;
   repair(fraction: number): void;
+  /** Swap parts (ship bay). Optional so simple setups and tests can leave it out. */
+  refit?(design: ShipDesign): void;
 }
 
 /** Game tuning for life on board. Encounter rates are per day. */
@@ -142,6 +149,7 @@ export interface ChoreContext {
   readonly yoga?: readonly YogaSequence[];
   readonly processes?: readonly Process[];
   readonly lessons?: readonly AnimalLesson[];
+  readonly workouts?: readonly Workout[];
 }
 
 type Animal = (Cat | Dog | Hen) & Member & { ruleFor: Cat["ruleFor"]; startle(a: number): void; readonly stress: number; readonly rules: readonly AnimalRule[] };
@@ -175,6 +183,8 @@ export class Habitat {
   hensFree = false;
   readonly bonds = new Bonds();
   readonly crew: CrewMember;
+  /** Gravity the crew member feels right now, in g (set by whoever knows where she is: ring floor, spoke, hub, cockpit). */
+  crewGravityG: number | undefined = undefined;
   readonly bioreactor = new Bioreactor();
   /** The ship's radio: letters and their missions, if the story is on. */
   mailbox?: Mailbox;
@@ -186,8 +196,10 @@ export class Habitat {
     readonly ship?: RepairableShip,
     crewName = "Tripulante",
     machines: readonly MachineSpec[] = [],
+    /** The same person in another place (the station's galley and mat): share her body, do not make a new one. */
+    crew?: CrewMember,
   ) {
-    this.crew = new CrewMember(crewName);
+    this.crew = crew ?? new CrewMember(crewName);
     for (const m of machines) this._machines.set(m.id, new Machine(m));
   }
 
@@ -227,6 +239,10 @@ export class Habitat {
   larder(item: string): number {
     return this._larder.get(item) ?? 0;
   }
+  /** Everything in the larder, with what is left of each. */
+  larderItems(): [string, number][] {
+    return [...this._larder.entries()].filter(([, n]) => n > 0);
+  }
   stock(item: string, amount: number): void {
     this._larder.set(item, this.larder(item) + amount);
   }
@@ -250,6 +266,16 @@ export class Habitat {
     const p = new Plant(id, species, areaM2, true);
     this._plants.set(id, p);
     return p;
+  }
+
+  /** A fruit tree in a planter on the farm deck, taking the ground one tree needs; drip-watered. */
+  tree(id: string, species: PlantSpecies): Plant {
+    return this.bed(id, species, species.areaPerPlantM2?.value ?? 1);
+  }
+
+  /** Put a whole list of stores in the larder (e.g. the launch stock). */
+  stockAll(items: Readonly<Record<string, number>>): void {
+    for (const [item, n] of Object.entries(items)) this.stock(item, n);
   }
 
   /** How much of everyone's food the growing area can provide (1 = self-sufficient). */
@@ -291,7 +317,7 @@ export class Habitat {
 
   tick(dtDays: number): void {
     const t = HABITAT_TUNING;
-    this.crew.tick(dtDays, companionship(this.families));
+    this.crew.tick(dtDays, companionship(this.families), this.crewGravityG);
     this.mailbox?.tick(dtDays);
     const lit = this.lightsOn && this.working("bastidores");
     for (const p of this._plants.values()) {
@@ -524,7 +550,7 @@ export class Habitat {
   }
 
   /** Everything that needs doing right now, each as a chain of code challenges. */
-  chores(recipes: readonly Recipe[], yoga: readonly YogaSequence[], more: { processes?: readonly Process[]; lessons?: readonly AnimalLesson[] } = {}): Chore[] {
+  chores(recipes: readonly Recipe[], yoga: readonly YogaSequence[], more: { processes?: readonly Process[]; lessons?: readonly AnimalLesson[]; workouts?: readonly Workout[] } = {}): Chore[] {
     const processes = more.processes ?? [];
     const pool = stepPool([...recipes.map((r) => r.steps.value), ...processes.map((p) => p.steps.value)]);
     const out: Chore[] = [];
@@ -543,8 +569,8 @@ export class Habitat {
     if (this.ship && this.ship.hullIntegrity < 0.999) out.push(repairChore(this.ship.design, this.ship.hullIntegrity, this._repairs + 3, this._scenarios.get("nave")));
     for (const r of recipes) if (this.canCook(r)) out.push(cookingChore(r, pool));
     for (const y of yoga) out.push(yogaChore(y));
-    for (const l of this.mailbox?.pendingMissions ?? [])
-      out.push({ id: `mision-${l.id}`, kind: "mision", targetId: l.id, title: l.mission!.title, scenario: `Carta de ${l.from}: ${l.subject}`, exercises: l.mission!.exercises });
+    for (const w of more.workouts ?? []) out.push(workoutChore(w, this.crew.body.age));
+    // Nevaeh's missions are nano_net work, done landed on a core (modules/nano-net), not chores on board.
     // A broken machine blocks its chores, except its own repair.
     return out.filter((c) => c.kind === "reparar-maquina" || this.working(c.machine));
   }
@@ -594,6 +620,7 @@ export class Habitat {
     const cat = chore.targetId ? this._cats.get(chore.targetId) : undefined;
     const steps = chore.exercises.length;
     const onStep = (i: number) => {
+      if (chore.kind === "ejercicio") this.crew.train(steps);
       if (chore.kind === "yoga") {
         this.crew.practice(steps);
         this._events.push({ type: "posture", sequenceId: chore.targetId!, index: i });
@@ -705,7 +732,8 @@ export class Habitat {
           if (!r || !this.canCook(r)) throw new Error(`Cannot cook ${chore.targetId}`);
           this.use(r.ingredients);
           this.meals += r.portions;
-          this.crew.eat();
+          // Doménica eats one portion: its real energy fills her satiety.
+          this.crew.eatKcal(portionNutrients(r).kcal);
           break;
         }
         case "reparar-nave":
@@ -713,10 +741,14 @@ export class Habitat {
           this._repairs++;
           if ((this.ship?.hullIntegrity ?? 1) >= 0.999) this._scenarios.delete("nave");
           break;
-        case "mision":
-          this.mailbox?.completeMission(chore.targetId!);
+        case "cambiar-pieza": {
+          const [slot, partId] = chore.targetId!.split(":") as [PartSlot, string];
+          const part = partById(partId);
+          if (this.ship && part) this.ship.refit?.(withPart(this.ship.design, slot, part));
           break;
+        }
         case "yoga":
+        case "ejercicio":
           break;
       }
       this._events.push({ type: "chore-done", choreId: chore.id });

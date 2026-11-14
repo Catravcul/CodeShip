@@ -1,12 +1,24 @@
 import * as THREE from "three";
-import type { ThrustCommand } from "@modules/ship/domain/ship";
+import type { ShipDesign, ThrustCommand } from "@modules/ship/domain/ship";
 import { VirtualStick, curve } from "../input/stick";
 import { buildCockpit } from "./cockpit";
 import { ShipModel } from "./ship-model";
+import { RootMenu, type RootItem } from "../../ui/root-menu";
+import { ICON } from "../../ui/icons";
 
-export type CameraMode = "cabina" | "trasera" | "exterior";
-const MODES: readonly CameraMode[] = ["cabina", "trasera", "exterior"];
-const LABEL: Record<CameraMode, string> = { cabina: "Cabina", trasera: "Trasera", exterior: "Exterior" };
+export type CameraMode = "cabina" | "ventral" | "trasera" | "exterior" | "acople" | "nodriza";
+const MODES: readonly CameraMode[] = ["cabina", "ventral", "trasera", "exterior", "acople", "nodriza"];
+const LABEL: Record<CameraMode, string> = { cabina: "Cabina", ventral: "Ventral", trasera: "Trasera", exterior: "Exterior", acople: "Acople", nodriza: "Nodriza" };
+/** First or third person, for the eye icon's name. */
+const PERSON: Record<CameraMode, string> = { cabina: "1ª persona", ventral: "1ª persona", trasera: "1ª persona", acople: "1ª persona", exterior: "3ª persona", nodriza: "3ª persona" };
+
+/** Where the mothership is (its centre and attitude), so the view can frame it with the probe. */
+export interface MothershipPose {
+  readonly position: THREE.Vector3;
+  readonly quaternion: THREE.Quaternion;
+  /** Toward the Sun, so the "Nodriza" camera starts on the lit side. */
+  readonly sun?: THREE.Vector3;
+}
 
 /** Time warp steps for long approaches; only allowed far from the asteroid. */
 export const WARPS = [1, 10, 50] as const;
@@ -27,6 +39,8 @@ export class FlightView {
   private readonly camBtn: HTMLButtonElement;
   private readonly warpBtn: HTMLButtonElement;
   private readonly tag: HTMLElement;
+  /** The cockpit's icons: the eye (camera) pinned, the flight toggles folded into the root. */
+  readonly menu: RootMenu;
   private mode: CameraMode = "cabina";
   private yaw = 0;
   private pitch = 0;
@@ -39,11 +53,15 @@ export class FlightView {
     private readonly scene: THREE.Scene,
     private readonly camera: THREE.PerspectiveCamera,
     root: HTMLElement,
+    /** The ship's current design, so the exterior model follows part swaps. */
+    private readonly design?: () => ShipDesign,
+    /** The mothership, framed by the "Nodriza" camera together with the probe. */
+    private readonly mothership?: MothershipPose,
   ) {
     scene.add(this.rig);
     this.rig.add(this.cockpit, this.ship.root);
-    const cabinLight = new THREE.PointLight(0x9fdcff, 0.6, 3);
-    cabinLight.position.set(0, 0.3, -0.3);
+    const cabinLight = new THREE.PointLight(0xdfefff, 3, 4, 1);
+    cabinLight.position.set(0, 0.7, 0.3);
     this.cockpit.add(cabinLight);
 
     // Dust: points in a 160 m box around the ship, wrapped as it moves.
@@ -58,18 +76,14 @@ export class FlightView {
 
     this.stick = new VirtualStick(root, "pilot-look", "Mirar");
     this.stick.el.addEventListener("dblclick", () => this.center());
-    const bar = document.createElement("div");
-    bar.className = "flight-bar";
-    bar.innerHTML = `<button class="cam-btn"></button><button class="warp-btn"></button><button class="center-btn">Centrar</button>`;
-    root.appendChild(bar);
-    this.camBtn = bar.querySelector(".cam-btn")!;
-    this.warpBtn = bar.querySelector(".warp-btn")!;
-    this.camBtn.addEventListener("click", () => {
+    // Icons that sprout from a root (docs/design/ux-acciones.md §Iconos): only the eye is always out.
+    this.menu = new RootMenu(root, "flight-bar", "Mandos de vuelo", ICON.root);
+    this.camBtn = this.menu.add({ className: "cam-btn", icon: ICON.eye, label: "Cámara", key: "C", pinned: true }, () => {
       this.mode = MODES[(MODES.indexOf(this.mode) + 1) % MODES.length]!;
       this.center();
     });
-    this.warpBtn.addEventListener("click", () => (this.warpIdx = (this.warpIdx + 1) % WARPS.length));
-    bar.querySelector(".center-btn")!.addEventListener("click", () => this.center());
+    this.warpBtn = this.menu.add({ className: "warp-btn", icon: ICON.warp, label: "Tiempo ×1", key: "X" }, () => this.warpAvailable && (this.warpIdx = (this.warpIdx + 1) % WARPS.length));
+    this.menu.add({ className: "center-btn", icon: ICON.center, label: "Centrar la vista", key: "V" }, () => this.center());
     this.tag = document.createElement("div");
     this.tag.className = "cam-tag";
     root.appendChild(this.tag);
@@ -100,6 +114,26 @@ export class FlightView {
     return this.mode;
   }
 
+  setMode(mode: CameraMode): void {
+    this.mode = mode;
+    this.center();
+  }
+
+  /**
+   * Whether the time-warp button makes sense now (set by main each frame): off while docked,
+   * anchored or close to the surface. Turning it off also drops any warp asked for.
+   */
+  set warpAvailable(on: boolean) {
+    if (!on) this.warpIdx = 0;
+    if (this.warpBtn.classList.contains("hidden") === !on) return;
+    this.warpBtn.classList.toggle("hidden", !on);
+    this.menu.sync();
+  }
+
+  get warpAvailable(): boolean {
+    return !this.warpBtn.classList.contains("hidden");
+  }
+
   /** Time warp asked for; the caller drops it to 1 near the asteroid or while thrusting. */
   get warpRequested(): number {
     return WARPS[this.warpIdx]!;
@@ -107,19 +141,24 @@ export class FlightView {
 
   center(): void {
     this.yaw = 0;
-    this.pitch = this.mode === "exterior" ? -0.25 : this.mode === "trasera" ? -0.3 : 0;
+    this.pitch = this.mode === "exterior" ? -0.25 : this.mode === "nodriza" ? -0.3 : this.mode === "trasera" ? -0.3 : 0;
   }
 
   private turn(dYaw: number, dPitch: number): void {
     this.yaw += dYaw;
     this.pitch += dPitch;
-    if (this.mode === "cabina") {
+    if (this.mode === "cabina" || this.mode === "ventral" || this.mode === "acople") {
       this.yaw = Math.max(-2.6, Math.min(2.6, this.yaw));
       this.pitch = Math.max(-1.2, Math.min(1.2, this.pitch));
     } else this.pitch = Math.max(-1.4, Math.min(1.4, this.pitch));
   }
 
   /** Place ship, camera and dust. `pos`/`q` are the ship pose; `warp` is the warp in effect. */
+  /** Adds an icon to the cockpit's root menu (flight-computer toggles). */
+  addButton(className: string, onClick: () => void, item: Partial<RootItem> = {}): HTMLButtonElement {
+    return this.menu.add({ className, icon: item.icon ?? ICON.root, label: item.label ?? className, ...(item.key ? { key: item.key } : {}), ...(item.pinned ? { pinned: true } : {}) }, onClick);
+  }
+
   update(dt: number, pos: THREE.Vector3, q: THREE.Quaternion, cmd: ThrustCommand, warp: number, warpNote: string): void {
     const s = this.stick.value;
     this.turn(-curve(s.x) * 2.0 * dt, -curve(s.y) * 1.5 * dt);
@@ -127,21 +166,42 @@ export class FlightView {
     this.rig.quaternion.copy(q);
     this.cockpit.visible = this.mode === "cabina";
     this.ship.root.visible = this.mode !== "cabina";
+    if (this.design) this.ship.setDesign(this.design());
     this.ship.thrust(cmd, performance.now() / 1000);
     const head = new THREE.Quaternion().setFromEuler(new THREE.Euler(this.pitch, this.yaw, 0, "YXZ"));
     if (this.mode === "cabina") {
       this.camera.position.copy(pos);
       this.camera.quaternion.copy(q).multiply(head);
+    } else if (this.mode === "ventral") {
+      // Landing camera under the belly, looking straight down past the legs.
+      this.camera.position.copy(pos).add(new THREE.Vector3(0, -1.05, -0.8).applyQuaternion(q));
+      this.camera.quaternion.copy(q).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2)).multiply(head);
     } else if (this.mode === "trasera") {
       // Camera on the hull's back, looking aft over the engine bell.
       this.camera.position.copy(pos).add(new THREE.Vector3(0, 1.25, 2.55).applyQuaternion(q));
       this.camera.quaternion.copy(q).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI)).multiply(head);
+    } else if (this.mode === "acople") {
+      // Docking camera beside the dorsal port, looking straight up the docking axis (like the
+      // Apollo LM's overhead window), with the nose toward the top of the screen.
+      this.camera.position.copy(pos).add(new THREE.Vector3(0.45, 1.05, 0.6).applyQuaternion(q));
+      this.camera.quaternion.copy(q).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2)).multiply(head);
     } else {
-      // Orbit 16 m from the ship; dragging or the stick moves around it.
-      const off = new THREE.Vector3(0, 0, 16).applyQuaternion(head).applyQuaternion(q);
-      this.camera.position.copy(pos).add(off);
-      this.camera.up.set(0, 1, 0).applyQuaternion(q);
-      this.camera.lookAt(pos);
+      // Orbit 16 m from the ship; the "Nodriza" camera frames the probe and the mothership together.
+      const m = this.mode === "nodriza" ? this.mothership : undefined;
+      const focus = m ? pos.clone().lerp(m.position, 0.5) : pos;
+      const around = m ? m.quaternion : q;
+      const dist = m ? Math.max(210, pos.distanceTo(m.position) * 1.6) : 16;
+      // Seen from the lit side, a little off the Sun line so the rings show their depth.
+      const base = new THREE.Quaternion();
+      if (m?.sun) {
+        const local = m.sun.clone().applyQuaternion(m.quaternion.clone().invert());
+        local.add(new THREE.Vector3(0.6, 0.3, 0)).normalize();
+        base.setFromUnitVectors(new THREE.Vector3(0, 0, 1), local);
+      }
+      const off = new THREE.Vector3(0, 0, dist).applyQuaternion(head).applyQuaternion(base).applyQuaternion(around);
+      this.camera.position.copy(focus).add(off);
+      this.camera.up.set(0, 1, 0).applyQuaternion(around);
+      this.camera.lookAt(focus);
     }
     // Wrap the dust around the ship so it always surrounds it.
     const p = this.dustPos;
@@ -154,8 +214,8 @@ export class FlightView {
         p[i + k] = v;
       }
     (this.dust.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
-    this.camBtn.textContent = `Cámara: ${LABEL[this.mode]}`;
-    this.warpBtn.textContent = `Tiempo ×${this.warpRequested}`;
+    this.menu.relabel(this.camBtn, `Cámara: ${LABEL[this.mode]} · ${PERSON[this.mode]}`, "C");
+    this.menu.relabel(this.warpBtn, `Tiempo ×${this.warpRequested}`, "X");
     this.warpBtn.classList.toggle("limited", warp < this.warpRequested);
     this.tag.textContent = this.mode === "cabina" ? warpNote : `Cámara ${LABEL[this.mode].toLowerCase()}${warpNote ? ` · ${warpNote}` : ""}`;
     this.tag.classList.toggle("on", this.tag.textContent !== "");

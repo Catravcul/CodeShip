@@ -1,0 +1,15 @@
+/* Tab «Importar» of the station screen (docs/design/importacion.md). Mobile first. */
+.st-body .im-seg { position: static; backdrop-filter: none; }
+.im-credits { font-size: 18px; font-weight: 700; color: #ffd27f; }
+.im-good { display: grid; grid-template-columns: 1fr 40px 74px 40px; align-items: center; gap: 6px; padding: 6px 0; border-bottom: 1px solid #ffffff10; }
+.im-good > span { display: flex; flex-direction: column; min-width: 0; }
+.im-good small { color: #8fb3c9; font-size: 11px; }
+.im-step { min-height: 40px; font: inherit; font-size: 20px; color: #bfefff; background: #0e2236; border: 1px solid #2c4a6a; border-radius: 10px; }
+.im-step:disabled { opacity: 0.35; }
+.im-n { text-align: center; font-size: 13px; }
+.im-quote small, .st-card small { display: block; }
+.im-line { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; padding: 3px 0; color: #d8f6ff; }
+.im-line b { text-align: right; }
+.im-line.total { font-size: 15px; color: #ffd27f; border-top: 1px solid #ffffff22; margin-top: 4px; padding-top: 6px; }
+.st-chip.im-pick { border: 1px solid #2c4a6a; color: #bfefff; font: inherit; font-size: 12px; min-height: 34px; padding: 4px 10px; }
+.st-chip.im-pick.on { background: #ffd27f; color: #001018; border-color: #ffd27f; font-weight: 600; }

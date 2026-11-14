@@ -12,13 +12,16 @@ export class Walker {
   private readonly moveStick: VirtualStick;
   private readonly lookStick: VirtualStick;
   enabled = false;
+  /** Whether the arrow keys look around (off in zero g, where they hop: arrow-pad.ts). */
+  arrowsLook = true;
 
-  constructor(root: HTMLElement) {
+  /** Stick classes and label can change so another mode (the EVA) gets its own pair. */
+  constructor(root: HTMLElement, sticks = { move: "walk-stick", look: "look-stick", moveLabel: "Caminar" }) {
     window.addEventListener("keydown", (e) => this.enabled && this.keys.add(e.code));
     window.addEventListener("keyup", (e) => this.keys.delete(e.code));
     window.addEventListener("blur", () => this.keys.clear());
-    this.moveStick = new VirtualStick(root, "walk-stick", "Caminar");
-    this.lookStick = new VirtualStick(root, "look-stick", "Mirar");
+    this.moveStick = new VirtualStick(root, sticks.move, sticks.moveLabel);
+    this.lookStick = new VirtualStick(root, sticks.look, "Mirar");
     root.addEventListener("pointerdown", (e) => {
       if (!this.enabled || (e.target as HTMLElement).closest("button, .duel, .board, .vstick")) return;
       if (this.lookId !== null) return;
@@ -50,9 +53,10 @@ export class Walker {
   look(dt: number): { yaw: number; pitch: number } {
     const k = (c: string) => (this.keys.has(c) ? 1 : 0);
     const s = this.lookStick.value;
+    const ar = (c: string) => (this.arrowsLook ? k(c) : 0);
     const out = {
-      yaw: -this.lookDelta.x * 0.006 + (k("ArrowLeft") - k("ArrowRight") + k("KeyQ") - k("KeyE") - curve(s.x)) * 2.0 * dt,
-      pitch: -this.lookDelta.y * 0.006 + (k("ArrowUp") - k("ArrowDown") - curve(s.y)) * 1.4 * dt,
+      yaw: -this.lookDelta.x * 0.006 + (ar("ArrowLeft") - ar("ArrowRight") + k("KeyQ") - k("KeyE") - curve(s.x)) * 2.0 * dt,
+      pitch: -this.lookDelta.y * 0.006 + (ar("ArrowUp") - ar("ArrowDown") - curve(s.y)) * 1.4 * dt,
     };
     this.lookDelta = { x: 0, y: 0 };
     return out;

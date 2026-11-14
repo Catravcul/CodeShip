@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { Quat } from "@core/math/quat";
 import { Vec3 } from "@core/math/vec3";
 import { Ship } from "@modules/ship/domain/ship";
 import { explorerDesign } from "@modules/ship/data/explorer";
@@ -27,11 +28,27 @@ describe("FlightComputer", () => {
     expect(a.simTimeS).toBeCloseTo(1, 9);
   });
 
+  it("docked, a long time-lapse passes in one go: the clock advances and the ship rides its port", () => {
+    const fc = make();
+    let calls = 0;
+    const port = new Vec3(10, 0, 3000);
+    fc.dock(() => {
+      calls++;
+      return RigidBodyState.at(port);
+    });
+    calls = 0;
+    // A mothership trip frame at ×600: 60 game seconds, 7200 steps of 120 Hz.
+    fc.update(60, NO_INPUT);
+    expect(fc.simTimeS).toBeCloseTo(60, 6);
+    expect(fc.state.position.z).toBe(3000);
+    expect(calls).toBe(1);
+  });
+
   it("the main engine accelerates the ship forward at F/m", () => {
     const fc = make({ gravity: false });
     const m0 = fc.ship.massKg;
     fc.update(1, { ...NO_INPUT, mainThrottle: 1 });
-    expect(-fc.state.velocity.z).toBeCloseTo(490 / m0, 2);
+    expect(-fc.state.velocity.z).toBeCloseTo(fc.ship.mainEngines[0]!.model.thrustN / m0, 2);
   });
 
   it("Bennu's gravity slowly pulls a resting ship in", () => {
@@ -90,8 +107,10 @@ describe("FlightComputer landing", () => {
 
   it("an anchored ship turns with the asteroid and stays on the ground", () => {
     const target = bennu();
-    const eq = new Vec3(r + 0.9, 0, 0);
-    const fc = new FlightComputer(Ship.create(explorerDesign()), RigidBodyState.at(eq).withVelocity(target.surfaceVelocity(eq).add(new Vec3(-0.02, 0, 0))), {
+    const eq = new Vec3(r + 1.4, 0, 0);
+    // Belly (body −Y) facing the ground at the equator.
+    const bellyDown = Quat.fromAxisAngle(Vec3.Z, -Math.PI / 2);
+    const fc = new FlightComputer(Ship.create(explorerDesign()), RigidBodyState.at(eq).withOrientation(bellyDown).withVelocity(target.surfaceVelocity(eq).add(new Vec3(-0.02, 0, 0))), {
       gravitySources: [target],
       target,
     });
@@ -102,6 +121,33 @@ describe("FlightComputer landing", () => {
     // Carried round by the spin: about (r + gear) · sin(ω t) towards -Z.
     const angle = target.spinRadS * fc.simTimeS;
     expect(fc.state.position.z).toBeCloseTo(-fc.state.position.length() * Math.sin(angle), 0);
+  });
+
+  it("touching down on the hull (not the legs) slides off instead of anchoring", () => {
+    const target = bennu();
+    const eq = new Vec3(r + 2.5, 0, 0);
+    // Nose pointing at the ground: the nose reaches 2.95 m, so it touches first and nothing sinks in.
+    const noseDown = Quat.fromAxisAngle(Vec3.Y, -Math.PI / 2);
+    const fc = new FlightComputer(Ship.create(explorerDesign()), RigidBodyState.at(eq).withOrientation(noseDown).withVelocity(target.surfaceVelocity(eq).add(new Vec3(-0.05, 0, 0))), {
+      gravitySources: [target],
+      target,
+    });
+    for (let i = 0; i < 60 * 30; i++) fc.update(1 / 60, NO_INPUT);
+    expect(fc.landed).toBe(false);
+    expect(fc.drainEvents()).toContain("tilted");
+    expect(fc.telemetry().clearance).toBeGreaterThan(-0.05);
+  });
+
+  it("the landing assist turns the belly to the ground", () => {
+    const target = bennu();
+    const fc = new FlightComputer(Ship.create(explorerDesign()), RigidBodyState.at(new Vec3(0, r + 50, 0)).withOrientation(Quat.fromAxisAngle(Vec3.X, 1.2)), {
+      gravitySources: [target],
+      target,
+    });
+    fc.landingAssist = true;
+    expect(fc.telemetry().tiltDeg).toBeGreaterThan(60);
+    for (let i = 0; i < 60 * 40; i++) fc.update(1 / 60, NO_INPUT);
+    expect(fc.telemetry().tiltDeg).toBeLessThan(5);
   });
 
   it("thrusting lifts off", () => {

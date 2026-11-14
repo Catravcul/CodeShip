@@ -164,7 +164,7 @@ En Codeship hablar con una mente es **leer o escribir su programa** (el duelo de
 | Cuidados | Dar de comer (ración por peso), limpiar el cristal, cambiar el 20 % del agua: retos de código con **pasos visibles** (puerto `StepVisual`: escamas que caen, cristal que se limpia, el programa brilla sobre el tanque) | `application/aquarium-ops.ts`, `chores/application/step-visuals.ts` |
 | Amistad y ayuda | §7 y §8 | `data/aquarium-lessons.ts` |
 | Estado | Una línea en el estado de Doménica: nitrato, algas, «medakas amigas», quién ayuda | `ui/aquarium-text.ts` |
-| QA | VID-11 a VID-13 y el recorrido PX-12 `acuario` | `aquarium.test.ts`, `aquarium-ops.test.ts`, `tools/experiencia/acuario.mjs` |
+| QA | VID-11 a VID-13 y el recorrido PX-13 `acuario` | `aquarium.test.ts`, `aquarium-ops.test.ts`, `tools/experiencia/acuario.mjs` |
 
 ## 10. Progresión: de la medaka a las criaturas poderosas
 
@@ -193,7 +193,7 @@ Cifras en la investigación (§12). La nodriza lleva los recursos de la tripulac
 | Acuario salado | Nodriza, cubierta del anillo | 2–5 m³ (+ el mismo peso en el anillo gemelo) | 1 g | Artemia, medusa luna (kreisel), calamar bobtail |
 | Esfera de agua | Estación, módulo agrícola (330 m³) | 33,5 t | 0 g | Medaka, pez cebra, caracol, anfípodo, dafnia, ceratófilo |
 | Insectario | Estación, módulo agrícola | — | 0 g | Polillas, gusanos de seda, grillos, mosca soldado |
-| **Módulo bioma** (nuevo) | Estación, hinchable como el BA 2100 | 2 250 m³; tambor interior de 10 m × 12 m | 0,1–0,3 g en el tambor, 0 g en el eje | Bosque de aire y suelo: lombrices, tenebrio, cochinillas, colémbolos, plantas trepadoras |
+| **Módulo bioma** (nuevo) | Estación, hinchable como el BA 2100, atracado en uno de los **dos puertos laterales libres del Nodo 1** (la estación le da sola puerta con nombre, pasillo y asideros) | 2 250 m³; tambor interior de 10 m × 12 m | 0,1–0,3 g en el tambor, 0 g en el eje | Bosque de aire y suelo: lombrices, tenebrio, cochinillas, colémbolos, plantas trepadoras |
 | Río del hangar | Estación, hangar | 346 t | 0,1 g | Medaka, pez cebra, tilapia, caracol |
 
 ## 12. Estaciones-árbol: la red de estaciones
@@ -216,7 +216,7 @@ En Cold Sanctuary (`construcciones-elevadas.md`, `plano-edificios.md`, `transpor
 
 | Fase | Rama | Qué entra | Tamaño |
 | --- | --- | --- | --- |
-| A | `santuario-fauna` (esta) | Investigación de fauna y medio (§10–§13 de la investigación), catálogo ampliado con fuentes y ayudas, regla de salinidad, **acuario del anillo** jugable (cuidados, amistad, ayuda), PX-12 | Hecha |
+| A | `santuario-fauna` (esta) | Investigación de fauna y medio (§10–§13 de la investigación), catálogo ampliado con fuentes y ayudas, regla de salinidad, **acuario del anillo** jugable (cuidados, amistad, ayuda), PX-13 | Hecha |
 | B | `santuario-familia` | Guardar el estado del acuario; el banco y los caracoles en la línea de Familias; más ayudas (gambas, dafnias) y el reto de ciclar el biofiltro | Pequeña |
 | C | `santuario-salado` | Acuario salado del anillo: artemia, medusa luna en kreisel, calamar bobtail; anillo gemelo con su contrapeso de agua | Media |
 | D | `santuario-bosque` | Bosque del anillo: abejas, lombrices, colémbolos, mosca soldado y tenebrio que reciclan los restos de la cocina | Media |

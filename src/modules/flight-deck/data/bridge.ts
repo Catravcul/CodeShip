@@ -16,22 +16,27 @@ export const BRIDGE_SOURCES = {
   cupola: "La estación de robótica de la Cupola: un puesto aparte con sus mandos y ventanas para el brazo: https://en.wikipedia.org/wiki/Cupola_(ISS_module)",
 } as const;
 
-/** The forward node of the mothership (radius 2.2 m in data/mothership.ts): 3.2 × 3.3 m of deck between the consoles. */
+/**
+ * The mothership's bridge deck: 6,4 × 8 m of floor with the consoles round the walls. Game value:
+ * enlarged from the 3,2 × 3,3 m of the forward node (radius 2,2 m in data/mothership.ts) so that each
+ * console, and the place where she stands at it, is 2 m from the next (HAB-08, the spacing rule taken
+ * from Cold Sanctuary): ten consoles in the old node were 0,7–1,4 m apart.
+ */
 export const BRIDGE: CabinLayout<BridgeStationId> = {
-  floor: { minX: -1.6, maxX: 1.6, minZ: -1.6, maxZ: 1.7, blocked: [] },
+  floor: { minX: -2.9, maxX: 2.9, minZ: -3.6, maxZ: 3.6, blocked: [] },
   stations: [
-    { id: "salida", label: "Escotilla a la espina", stand: { x: 0, z: 1.55 }, look: { x: 0, y: 1.1, z: 2.0 }, what: "Volver a la espina de la nodriza" },
-    { id: "nav", label: "Navegación", stand: { x: 0, z: -1.3 }, look: { x: 0, y: 1.1, z: -1.95 }, what: "Mapa, destinos y programar viajes (NAV)" },
-    { id: "prop", label: "Propulsión", stand: { x: -1.0, z: -1.1 }, look: { x: -1.65, y: 1.0, z: -1.6 }, what: "Los 18 propulsores X3, xenón y Δv (PROP)" },
-    { id: "power", label: "Energía y calor", stand: { x: 1.0, z: -1.1 }, look: { x: 1.65, y: 1.0, z: -1.6 }, what: "Reactor, baterías y radiadores (EPS/TCS)" },
-    { id: "life", label: "Vida y hábitat", stand: { x: -1.1, z: 0 }, look: { x: -1.75, y: 1.0, z: 0 }, what: "Aire, agua, gravedad del anillo y despensa (ECLSS)" },
-    { id: "dock", label: "Acople", stand: { x: 1.1, z: 0 }, look: { x: 1.75, y: 1.0, z: 0 }, what: "Puertos, el módulo de aterrizaje y la estación (DOCK)" },
-    { id: "sonda", label: "Mando de la sonda", stand: { x: -1.0, z: 1.0 }, look: { x: -1.65, y: 1.0, z: 1.4 }, what: "Lanzar, pilotar, posar y recuperar la sonda; sus viajes" },
-    { id: "mente", label: "Mente del asteroide", stand: { x: 1.0, z: 1.0 }, look: { x: 1.65, y: 1.0, z: 1.4 }, what: "Fase, confianza y niveles; el duelo a través de la sonda posada" },
-    { id: "comms", label: "Radio y misiones", stand: { x: -0.7, z: 1.5 }, look: { x: -0.75, y: 1.0, z: 1.95 }, what: "Cartas, llamadas y el registro de misiones (COMM)" },
-    { id: "nano", label: "nano_net", stand: { x: 0.7, z: 1.5 }, look: { x: 0.75, y: 1.0, z: 1.95 }, what: "Núcleos, nodos y averías de la red" },
+    { id: "salida", label: "Escotilla a la espina", stand: { x: 0, z: 3.35 }, look: { x: 0, y: 1.1, z: 4.0 }, what: "Volver a la espina de la nodriza" },
+    { id: "nav", label: "Navegación", stand: { x: 0, z: -3.35 }, look: { x: 0, y: 1.1, z: -3.75 }, what: "Mapa, destinos y programar viajes (NAV)" },
+    { id: "prop", label: "Propulsión", stand: { x: -2.0, z: -3.35 }, look: { x: -2.0, y: 1.0, z: -3.75 }, what: "Los 18 propulsores X3, xenón y Δv (PROP)" },
+    { id: "power", label: "Energía y calor", stand: { x: 2.0, z: -3.35 }, look: { x: 2.0, y: 1.0, z: -3.75 }, what: "Reactor, baterías y radiadores (EPS/TCS)" },
+    { id: "life", label: "Vida y hábitat", stand: { x: -2.55, z: -1.2 }, look: { x: -2.95, y: 1.0, z: -1.2 }, what: "Aire, agua, gravedad del anillo y despensa (ECLSS)" },
+    { id: "dock", label: "Acople", stand: { x: 2.55, z: -1.2 }, look: { x: 2.95, y: 1.0, z: -1.2 }, what: "Puertos, el módulo de aterrizaje y la estación (DOCK)" },
+    { id: "sonda", label: "Mando de la sonda", stand: { x: -2.55, z: 1.2 }, look: { x: -2.95, y: 1.0, z: 1.2 }, what: "Lanzar, pilotar, posar y recuperar la sonda; sus viajes" },
+    { id: "mente", label: "Mente del asteroide", stand: { x: 2.55, z: 1.2 }, look: { x: 2.95, y: 1.0, z: 1.2 }, what: "Fase, confianza y niveles; el duelo a través de la sonda posada" },
+    { id: "comms", label: "Radio y misiones", stand: { x: -2.0, z: 3.35 }, look: { x: -2.0, y: 1.0, z: 3.75 }, what: "Cartas, llamadas y el registro de misiones (COMM)" },
+    { id: "nano", label: "nano_net", stand: { x: 2.0, z: 3.35 }, look: { x: 2.0, y: 1.0, z: 3.75 }, what: "Núcleos, nodos y averías de la red" },
   ],
   reachM: 0.25,
   heightM: 2.4,
-  habitableM3: 28,
+  habitableM3: 120,
 };

@@ -20,6 +20,7 @@ import { PROTOCOLS } from "@modules/medical/data/protocols";
 import type { MachineId } from "@modules/life-support/domain/machine";
 import { YOGA_SEQUENCES } from "@modules/wellness/data/yoga";
 import { WORKOUTS } from "@modules/wellness/data/exercise";
+import { RING_REACH_M } from "@modules/habitat/data/ring-module";
 import { CAT_BOUNDS, COOP, COOP_BOUNDS, crewEndBlocks, MACHINE_STATION, ROOM, STATIONS, POT_SLOTS, buildRoom, drawScreen, type RoomHandles, type Station } from "./adapters/three/interior/room";
 import { HenModel } from "./adapters/three/interior/hen-model";
 import { DogModel } from "./adapters/three/interior/dog-model";
@@ -243,8 +244,8 @@ export class Interior {
       this.scene.add(m.root);
     });
     const mat = new THREE.Group();
-    mat.position.set(0.2, 0, 4.0);
-    mat.rotation.y = -Math.PI / 2; // profile to the room, like a yoga teacher's side view
+    mat.position.set(1.5, 0, 7.8);
+    mat.rotation.y = Math.PI; // along the mat (it lies along the wall): her profile to the aisle, like a yoga teacher's side view
     mat.add(this.figure.root);
     // The demo figure only appears while a yoga session shows the postures.
     this.figure.root.visible = false;
@@ -581,7 +582,11 @@ export class Interior {
   }
 
   private nearStation(): Station | undefined {
-    return STATIONS.find((s) => s.stand.distanceTo(new THREE.Vector3(this.pos.x, 0, this.pos.z)) < 1.0);
+    // The nearest within reach: stations are 2 m apart and the reach is under half that (HAB-08), so one at most.
+    const here = new THREE.Vector3(this.pos.x, 0, this.pos.z);
+    let best: Station | undefined;
+    for (const s of STATIONS) if (s.stand.distanceTo(here) < RING_REACH_M && (!best || s.stand.distanceTo(here) < best.stand.distanceTo(here))) best = s;
+    return best;
   }
 
   private currentChores(): Chore[] {
@@ -625,8 +630,8 @@ export class Interior {
     let look = st.look.clone();
     let stand = st.stand.clone();
     if (chore.kind === "yoga") {
-      stand = new THREE.Vector3(0, 0, 1.3);
-      look = new THREE.Vector3(0, 0.8, 4.0);
+      stand = new THREE.Vector3(-0.2, 0, 5.6);
+      look = new THREE.Vector3(1.5, 0.8, 7.8);
     }
     const plantIdx = this.pots.findIndex((p) => p.id === chore.targetId);
     const bed = this.beds.find((b) => b.plant.id === chore.targetId);
@@ -641,8 +646,8 @@ export class Interior {
     const dog = chore.targetId ? this.dogs.get(chore.targetId) : undefined;
     if (dog && chore.kind === "atender-paciente") dog.goTo(new THREE.Vector3(-1.15, 0, 0.2));
     else if (dog) {
-      dog.goTo(new THREE.Vector3(3.3, 0, 7.6));
-      look = new THREE.Vector3(3.3, 0.15, 7.6);
+      dog.goTo(new THREE.Vector3(3.3, 0, ROOM.halfL + 1.6));
+      look = new THREE.Vector3(3.3, 0.15, ROOM.halfL + 1.6);
     }
     // Free hens come over to the lawn by the doorway to be programmed or fed.
     const hen = chore.targetId ? this.hens.get(chore.targetId) : undefined;
@@ -657,8 +662,8 @@ export class Interior {
     if (cat && chore.kind === "atender-paciente") {
       cat.goTo(new THREE.Vector3(-1.15, 0, 0.2));
     } else if (cat) {
-      cat.goTo(new THREE.Vector3(-0.85, 0, 5.6));
-      look = new THREE.Vector3(-0.85, 0.2, 5.6);
+      cat.goTo(new THREE.Vector3(-0.85, 0, 7.9));
+      look = new THREE.Vector3(-0.85, 0.2, 7.9);
     }
     this.walkTo = { pos: stand, look, then: () => this.startChore(chore, stand, look) };
   }

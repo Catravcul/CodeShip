@@ -24,6 +24,11 @@ export const IVA = {
   catchM: 0.3,
   /** Hand over hand along the rails, m/s. Game value, like moving bulky equipment on Skylab (0,15–0,30 m/s). */
   handSpeed: 0.3,
+  /**
+   * Climbing a ladder hand over hand, m/s: the top of Skylab's point-to-point rate (0,4–0,6 m/s,
+   * NASA-STD-3000 §8.7.2). Steady, with a hand always on a rung, so it beats a hop on short runs.
+   */
+  ladderSpeed: 0.6,
   /** Push-off speeds, m/s: an ordinary push (Skylab 0,4–0,6) and a hard one. */
   glide: { suave: 0.5, fuerte: 1.0 },
   /** Landing faster than this along a wall's normal, she can no longer soak it up with her arms: she bounces. Game value. */
@@ -76,7 +81,23 @@ export type Motion =
    * A hop to a landing point (hops.ts): she turns to aim, pushes off, glides and catches the rail,
    * along `path` (straight legs; more than one only through a hatch). `s` is the distance covered.
    */
-  | { readonly kind: "salto"; readonly path: readonly Vec3[]; readonly rail: string; readonly t: number; readonly speed: number; readonly length: number; readonly s: number; readonly v: number; readonly elapsed: number };
+  | {
+      readonly kind: "salto";
+      readonly path: readonly Vec3[];
+      readonly rail: string;
+      readonly t: number;
+      readonly speed: number;
+      readonly length: number;
+      readonly s: number;
+      readonly v: number;
+      readonly elapsed: number;
+      /** Seconds of aiming first (0 when chained: she keeps her momentum of mind), push stroke and catch distance, m. */
+      readonly aimS: number;
+      readonly pushM: number;
+      readonly catchM: number;
+      /** Fired by a launcher (spring push, caught by a net). */
+      readonly launcher?: string;
+    };
 
 /** A hop asked for: the body's path, the rail and point she lands on, and her glide speed. */
 export interface HopPlan {
@@ -84,6 +105,12 @@ export interface HopPlan {
   readonly rail: string;
   readonly t: number;
   readonly speed: number;
+  /** Aim pause, s (default HOP_AIM_S; 0 when chaining hops). */
+  readonly aimS?: number;
+  /** Push stroke and catch distance, m (default the arm's: IVA.strokeM, IVA.catchM; a launcher's spring and net are longer). */
+  readonly pushM?: number;
+  readonly catchM?: number;
+  readonly launcher?: string;
 }
 
 /** Phase of a hop, for the pose and the HUD. */
@@ -93,14 +120,14 @@ export type HopPhase = "apunta" | "impulso" | "planeo" | "agarre";
 export const HOP_AIM_S = 0.25;
 
 /** Push stroke and catch distance of a hop, shortened in proportion on very short hops. */
-function hopStroke(length: number): { push: number; catch: number } {
-  const k = Math.min(1, length / (IVA.strokeM + IVA.catchM));
-  return { push: IVA.strokeM * k, catch: IVA.catchM * k };
+function hopStroke(m: { length: number; pushM: number; catchM: number }): { push: number; catch: number } {
+  const k = Math.min(1, m.length / (m.pushM + m.catchM));
+  return { push: m.pushM * k, catch: m.catchM * k };
 }
 
 export function hopPhase(m: Extract<Motion, { kind: "salto" }>): HopPhase {
-  if (m.elapsed < HOP_AIM_S) return "apunta";
-  const st = hopStroke(m.length);
+  if (m.elapsed < m.aimS) return "apunta";
+  const st = hopStroke(m);
   if (m.s < st.push && m.v < m.speed - 1e-6) return "impulso";
   if (m.length - m.s <= st.catch) return "agarre";
   return "planeo";
@@ -279,7 +306,23 @@ export function ivaStep(s: IvaState, intent: IvaIntent, world: IvaWorld, dt: num
     const h = intent.hop;
     let length = 0;
     for (let i = 1; i < h.path.length; i++) length += h.path[i]!.sub(h.path[i - 1]!).length();
-    return { state: { position: h.path[0]!, velocity: Vec3.ZERO, motion: { kind: "salto", path: h.path, rail: h.rail, t: h.t, speed: h.speed, length, s: 0, v: 0, elapsed: 0 } }, events };
+    const motion: Motion = {
+      kind: "salto",
+      path: h.path,
+      rail: h.rail,
+      t: h.t,
+      speed: h.speed,
+      length,
+      s: 0,
+      v: 0,
+      elapsed: 0,
+      aimS: h.aimS ?? HOP_AIM_S,
+      pushM: h.pushM ?? IVA.strokeM,
+      catchM: h.catchM ?? IVA.catchM,
+      ...(h.launcher ? { launcher: h.launcher } : {}),
+    };
+    if (motion.aimS <= 0) events.push({ kind: "impulso", speed: h.speed, forceN: armForceN(h.speed, hopStroke(motion).push) });
+    return { state: { position: h.path[0]!, velocity: Vec3.ZERO, motion }, events };
   }
 
   // --- A push --------------------------------------------------------------------
@@ -361,12 +404,12 @@ export function ivaStep(s: IvaState, intent: IvaIntent, world: IvaWorld, dt: num
  * during a hop, so it always lands where it was aimed.
  */
 function hopStep(s: IvaState, m: Extract<Motion, { kind: "salto" }>, dt: number, events: IvaEvent[]): IvaState {
-  if (m.elapsed < HOP_AIM_S) {
+  if (m.elapsed < m.aimS) {
     const elapsed = m.elapsed + dt;
-    if (elapsed >= HOP_AIM_S) events.push({ kind: "impulso", speed: m.speed, forceN: armForceN(m.speed, hopStroke(m.length).push) });
+    if (elapsed >= m.aimS) events.push({ kind: "impulso", speed: m.speed, forceN: armForceN(m.speed, hopStroke(m).push) });
     return { ...s, velocity: Vec3.ZERO, motion: { ...m, elapsed } };
   }
-  const st = hopStroke(m.length);
+  const st = hopStroke(m);
   const accel = (m.speed * m.speed) / (2 * Math.max(1e-3, st.push));
   const brake = (m.speed * m.speed) / (2 * Math.max(1e-3, st.catch));
   const left = m.length - m.s;
@@ -387,6 +430,8 @@ function handOverHand(s: IvaState, m: Extract<Motion, { kind: "sujeta" }>, along
   const g = world.graph;
   if (!along || along.length() < 0.15) return s;
   const r = g.rail(m.rail);
+  // On a ladder she only climbs along it (stepping off is a hop).
+  if (r.ladder && Math.abs(along.normalize().dot(r.b.sub(r.a).normalize())) < 0.6) return s;
   const axis = r.b.sub(r.a);
   const len = axis.length();
   const u = axis.scale(1 / len);
@@ -395,7 +440,8 @@ function handOverHand(s: IvaState, m: Extract<Motion, { kind: "sujeta" }>, along
   // Slide the grip along this bar while the wish is mostly along it and there is bar left.
   const room = k > 0 ? m.t < 1 : m.t > 0;
   if (Math.abs(k) > 0.6 && room) {
-    const t = Math.max(0, Math.min(1, m.t + (Math.sign(k) * IVA.handSpeed * Math.min(1, along.length()) * dt) / len));
+    const speed = r.ladder ? IVA.ladderSpeed : IVA.handSpeed;
+    const t = Math.max(0, Math.min(1, m.t + (Math.sign(k) * speed * Math.min(1, along.length()) * dt) / len));
     const body = holdAt(g, m.rail, t).body;
     if (!world.fits(body)) return s;
     return { position: body, velocity: Vec3.ZERO, motion: { ...m, t, hands: m.hands + Math.abs(t - m.t) * len } };

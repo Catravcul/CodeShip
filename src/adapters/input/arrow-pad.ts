@@ -8,7 +8,8 @@ const LABEL: Readonly<Record<Arrow, string>> = { arriba: "Saltar hacia delante",
 /**
  * The zero-g arrow pad (docs/design/ingravidez.md, «Fase C: flechas»): each arrow hops to the next
  * landing point that way, relative to the view. While a hop is under way the pad is disabled (dimmed);
- * an arrow with nothing that way is dimmed too. Holding an arrow chains hops. Keys: arrows or WASD.
+ * an arrow with nothing that way is dimmed too. Holding an arrow chains hops without the aim pause, or
+ * climbs a ladder. Keys: arrows or WASD.
  */
 export class ArrowPad {
   private readonly el: HTMLElement;
@@ -78,10 +79,21 @@ export class ArrowPad {
     }
   }
 
-  /** The arrow tapped since the last call; or, with none, the one still held (to chain hops). */
-  take(): Arrow | null {
-    const a = this.tapped ?? (this.busy ? null : this.holding);
-    this.tapped = null;
-    return a;
+  /**
+   * The arrow tapped since the last call; or, with none, the one still held (to chain hops: `repeat`
+   * says so, and the chained hop skips the aim pause).
+   */
+  take(): { arrow: Arrow; repeat: boolean } | null {
+    if (this.tapped) {
+      const arrow = this.tapped;
+      this.tapped = null;
+      return { arrow, repeat: false };
+    }
+    return !this.busy && this.holding ? { arrow: this.holding, repeat: true } : null;
+  }
+
+  /** The arrow held down now, if any (to climb a ladder while it is held). */
+  held(): Arrow | null {
+    return this.holding;
   }
 }

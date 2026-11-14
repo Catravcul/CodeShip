@@ -34,26 +34,27 @@ function bridgeGeometry(): { group: THREE.Group; screens: Map<BridgeStationId, T
     g.add(b);
     return b;
   };
-  const W = 4.0;
-  const L = 4.2;
+  // The deck: 6,4 × 8 m (data/bridge.ts), its walls just outside the floor she walks on.
+  const W = 6.4;
+  const L = 8.0;
   const H = BRIDGE.heightM;
-  box(W, 0.05, L, new THREE.MeshStandardMaterial({ color: 0x3a414b, roughness: 0.7 }), 0, -0.025, 0.05);
-  box(W, 0.05, L, wall, 0, H, 0.05);
-  for (const sx of [-1, 1]) box(0.05, H, L, wall, (sx * W) / 2, H / 2, 0.05);
-  const aft = box(W, H, 0.05, wall, 0, H / 2, 2.15);
+  box(W, 0.05, L, new THREE.MeshStandardMaterial({ color: 0x3a414b, roughness: 0.7 }), 0, -0.025, 0);
+  box(W, 0.05, L, wall, 0, H, 0);
+  for (const sx of [-1, 1]) box(0.05, H, L, wall, (sx * W) / 2, H / 2, 0);
+  const aft = box(W, H, 0.05, wall, 0, H / 2, L / 2 + 0.05);
   // Bow: a wall with a wide window onto the stars (the real view is the bridge's NAV page and the probe's camera).
   // The bow goes as a whole under the dollhouse cutaway: wall strips, the window and its stars.
   const bow = new THREE.Group();
   g.add(bow);
   const sky = new THREE.Mesh(new THREE.PlaneGeometry(W, H - 1.2), new THREE.MeshBasicMaterial({ color: 0x02040a, side: THREE.DoubleSide }));
-  sky.position.set(0, 0.7 + (H - 1.2) / 2, -2.1);
+  sky.position.set(0, 0.7 + (H - 1.2) / 2, -L / 2 - 0.05);
   bow.add(sky);
   for (const [h, y] of [
     [0.7, 0.35],
     [0.5, H - 0.25],
   ] as const) {
     const strip = new THREE.Mesh(new THREE.BoxGeometry(W, h, 0.05), wall);
-    strip.position.set(0, y, -2.05);
+    strip.position.set(0, y, -L / 2);
     strip.userData.cutWith = bow;
     bow.add(strip);
   }
@@ -61,7 +62,7 @@ function bridgeGeometry(): { group: THREE.Group; screens: Map<BridgeStationId, T
   const stars = new THREE.BufferGeometry();
   const pts: number[] = [];
   // In the sky's own frame, so the cutaway hides them with the window.
-  for (let i = 0; i < 160; i++) pts.push((Math.random() - 0.5) * 3.8, (Math.random() - 0.5) * (H - 1.3), 0.01);
+  for (let i = 0; i < 160; i++) pts.push((Math.random() - 0.5) * (W - 0.2), (Math.random() - 0.5) * (H - 1.3), 0.01);
   stars.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
   sky.add(new THREE.Points(stars, new THREE.PointsMaterial({ color: 0xffffff, size: 0.015 })));
   // Hatch to the spine, aft.
@@ -70,7 +71,7 @@ function bridgeGeometry(): { group: THREE.Group; screens: Map<BridgeStationId, T
   ring.position.set(0, 1.1 - H / 2, -0.05);
   aft.add(ring);
   // Handrails along the walls (zero g).
-  for (const sx of [-1, 1]) box(0.03, 0.03, 3.6, new THREE.MeshStandardMaterial({ color: 0xf2c230 }), sx * 1.92, 1.6, 0);
+  for (const sx of [-1, 1]) box(0.03, 0.03, L - 0.6, new THREE.MeshStandardMaterial({ color: 0xf2c230 }), sx * (W / 2 - 0.08), 1.6, 0);
   const screens = new Map<BridgeStationId, THREE.Mesh>();
   const lamps = new Map<BridgeStationId, THREE.Mesh>();
   for (const s of BRIDGE.stations) {
@@ -91,9 +92,12 @@ function bridgeGeometry(): { group: THREE.Group; screens: Map<BridgeStationId, T
     g.add(lamp);
     lamps.set(s.id, lamp);
   }
-  const light = new THREE.PointLight(0xdfefff, 10, 8, 1);
-  light.position.set(0, H - 0.3, 0);
-  g.add(light, new THREE.AmbientLight(0xb8c8d8, 1.0));
+  for (const z of [-2, 2]) {
+    const light = new THREE.PointLight(0xdfefff, 10, 8, 1);
+    light.position.set(0, H - 0.3, z);
+    g.add(light);
+  }
+  g.add(new THREE.AmbientLight(0xb8c8d8, 1.0));
   return { group: g, screens, lamps, ends: { bow, aft } };
 }
 

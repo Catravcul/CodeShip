@@ -14,6 +14,13 @@ export interface Handrail {
   readonly normal: Vec3;
   /** Where on the bar she lands when hopping to it (0…1, default the middle; hops.ts). */
   readonly landT?: number;
+  /**
+   * The point of interest this handhold serves (a hatch, a machine, a console, the suits…): holding it
+   * shows that thing's action, and the arrows prefer it (docs/design/ingravidez.md, «Fase D»).
+   */
+  readonly poi?: string;
+  /** A ladder (a long rail with rungs): she climbs it hand over hand while an arrow along it is held. */
+  readonly ladder?: boolean;
 }
 
 /**

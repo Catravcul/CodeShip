@@ -188,6 +188,16 @@ export class StationInteriorMode {
     this.hops = new HopGraph(this.graph, (q) => this.interior.fits(q, BODY, this.suited), stationPortals(this.interior.plan));
     this.hopsSuited = this.suited;
     this.hop.setGraph(this.hops);
+    this.hop.onArrive = (id) => {
+      const f = this.hops.points.find((p) => p.id === id)?.poi;
+      if (f) this.say(`${this.interior.fixture(f)?.label ?? f}: ya estás aquí`);
+    };
+  }
+
+  /** Hop by herself to a fixture's grab point (for the experience suite and the HUD). */
+  goToFixture(id: string): boolean {
+    const at = this.hops.poiPoint(id);
+    return !!at && this.hop.goTo(at.id);
   }
 
   /** Holding the landing point nearest to p. */
@@ -245,7 +255,9 @@ export class StationInteriorMode {
       if (this.cycling === 0) this.say(this.suited ? "Esclusa vacía: abre la escotilla exterior y pasa al hangar" : "Esclusa a presión: ya puedes quitarte el casco y volver al módulo");
     }
     this.moveAbout(dt);
-    this.near = this.cycling > 0 ? undefined : this.interior.fixtureNear(this.p);
+    // Holding a thing's grab point shows its action; elsewhere, the nearest thing within reach.
+    const held = this.hop.holding(this.iva)?.poi;
+    this.near = this.cycling > 0 ? undefined : held ? this.interior.fixture(held) : this.interior.fixtureNear(this.p);
     this.syncAction();
     this.syncMachines();
     this.syncStore();
@@ -260,8 +272,8 @@ export class StationInteriorMode {
     if (this.hopsSuited !== this.suited) this.buildHops();
     const fwd = this.lookDir();
     const right = new Vec3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
-    const hop = this.hop.update(this.iva, { forward: fwd, right }, this.active && this.cycling === 0, dt, this.camera.position);
-    const r = ivaStep(this.iva, hop ? { hop } : {}, this.world, dt);
+    const intent = this.hop.update(this.iva, { forward: fwd, right }, this.active && this.cycling === 0, dt, this.camera.position);
+    const r = ivaStep(this.iva, intent, this.world, dt);
     this.iva = r.state;
     this.p = r.state.position;
     for (const e of r.events) this.tell(e);
@@ -326,8 +338,12 @@ export class StationInteriorMode {
     const hit = ray.intersectObjects(this.rooms.pickables, false)[0];
     const id = hit?.object.userData.fixture as string | undefined;
     const f = id ? this.interior.fixture(id) : undefined;
-    if (!f || !hit || hit.distance > 12) return;
-    this.use(f, this.near?.id === f.id);
+    if (!f || !hit || hit.distance > 25) return;
+    if (this.near?.id === f.id) return this.use(f, true);
+    // Far away: she hops there by herself, hop after hop (docs/design/ingravidez.md, «Fase D»).
+    const at = this.hops.poiPoint(f.id);
+    if (at && this.cycling === 0 && this.hop.goTo(at.id)) return this.say(`Saltas hasta: ${f.label}`);
+    if (hit.distance <= 12) this.use(f, false);
   }
 
   private syncMachines(): void {
@@ -454,7 +470,7 @@ export class StationInteriorMode {
     const suit = this.suited ? " · con traje" : "";
     const html = `<div class="sti-title">${v ? `${v.code} · ${v.label}` : "Estación"}</div>
       <div>Mirando hacia ${looking} · el techo es «arriba»</div>
-      <div class="sti-grav">0 g: la estación no gira · ${air}${suit}</div><div class="sti-move-line">${motionLabel(this.iva)}</div>${this.near ? `<div class="sti-near">${this.near.label} · ${this.interior.locationCode(this.near)}</div>` : ""}`;
+      <div class="sti-grav">0 g: la estación no gira · ${air}${suit}</div><div class="sti-move-line">${motionLabel(this.iva, this.near && this.hop.holding(this.iva)?.poi === this.near.id ? { poi: this.near.label } : {})}</div>${this.near ? `<div class="sti-near">${this.near.label} · ${this.interior.locationCode(this.near)}</div>` : ""}`;
     if (html !== this.hudKey) {
       this.hudKey = html;
       this.hud.innerHTML = html;

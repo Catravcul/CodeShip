@@ -8,10 +8,13 @@ const RAIL_COLOR = 0xe8c547;
 const num = (v: number, d = 2) => v.toFixed(d).replace(".", ",");
 
 /** One line on what she is doing while floating (HUD). */
-export function motionLabel(s: IvaState): string {
+export function motionLabel(s: IvaState, at?: { readonly poi?: string; readonly ladder?: boolean; readonly climbing?: boolean }): string {
   const m = s.motion;
   const v = num(s.velocity.length());
-  if (m.kind === "sujeta") return "Sujeta a un asidero";
+  if (m.kind === "sujeta") {
+    if (at?.ladder) return at.climbing ? `Sujeta a la escalera, trepando a ${num(0.6, 1)} m/s` : "Sujeta a la escalera";
+    return at?.poi ? `Sujeta junto a: ${at.poi}` : "Sujeta a un asidero";
+  }
   if (m.kind === "mano-a-mano") return "Mano a mano por los asideros";
   if (m.kind === "impulso") return "Impulsándose…";
   if (m.kind === "planeo") return `Planeando a ${v} m/s, sin frenar`;
@@ -19,6 +22,11 @@ export function motionLabel(s: IvaState): string {
   if (m.kind === "pared") return "Apoyada en la pared";
   if (m.kind === "salto") {
     const ph = hopPhase(m);
+    if (m.launcher) {
+      if (ph === "apunta" || ph === "impulso") return `El lanzador la empuja a ${num(m.speed)} m/s`;
+      if (ph === "planeo") return `Lanzada a ${v} m/s hacia la red`;
+      return "La red la frena";
+    }
     if (ph === "apunta") return "Apunta al siguiente asidero";
     if (ph === "impulso") return `Se impulsa hacia ${num(m.speed)} m/s`;
     if (ph === "planeo") return `Planeando a ${v} m/s hacia el asidero`;
@@ -32,8 +40,9 @@ export function motionLabel(s: IvaState): string {
  * The handrails as 3D bars: a round grip on two short standoffs to its wall (ISS IVA handrails are
  * bolted to the rack fronts; a single colour so they read at a glance, NASA-STD-3000 §11.8.2.2.2).
  */
-export function buildRails(rails: readonly Handrail[]): THREE.Group {
+export function buildRails(all: readonly Handrail[]): THREE.Group {
   const g = new THREE.Group();
+  const rails = all.filter((r) => !r.ladder);
   const mat = new THREE.MeshStandardMaterial({ color: RAIL_COLOR, roughness: 0.45, metalness: 0.35 });
   const bar = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.018, 0.018, 1, 8), mat, Math.max(1, rails.length));
   const feet = new THREE.InstancedMesh(new THREE.BoxGeometry(0.03, 1, 0.03), mat, Math.max(1, 2 * rails.length));
@@ -60,6 +69,30 @@ export function buildRails(rails: readonly Handrail[]): THREE.Group {
   bar.count = rails.length;
   feet.count = 2 * rails.length;
   g.add(bar, feet);
+  // Ladders: two stiles 0,4 m apart and a rung every 0,3 m (the grip line is the middle of the rungs).
+  for (const r of all.filter((x) => x.ladder)) {
+    const a = v(r.a);
+    const b = v(r.b);
+    const d = b.clone().sub(a);
+    const len = d.length();
+    const u = d.clone().normalize();
+    const side = u.clone().cross(v(r.normal)).normalize();
+    const stileGeo = new THREE.CylinderGeometry(0.022, 0.022, len, 8);
+    for (const k of [-0.2, 0.2]) {
+      const stile = new THREE.Mesh(stileGeo, mat);
+      stile.quaternion.setFromUnitVectors(up, u);
+      stile.position.copy(a).add(b).multiplyScalar(0.5).addScaledVector(side, k);
+      g.add(stile);
+    }
+    const rungs = Math.max(2, Math.round(len / 0.3));
+    const rung = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.016, 0.016, 0.4, 6), mat, rungs + 1);
+    q.setFromUnitVectors(up, side);
+    for (let i = 0; i <= rungs; i++) {
+      m.compose(a.clone().addScaledVector(u, (i / rungs) * len), q, new THREE.Vector3(1, 1, 1));
+      rung.setMatrixAt(i, m);
+    }
+    g.add(rung);
+  }
   return g;
 }
 

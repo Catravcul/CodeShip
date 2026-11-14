@@ -1,9 +1,11 @@
 import * as THREE from "three";
 import { Vec3 } from "@core/math/vec3";
 import type { SpinRing } from "@modules/gravity/domain/spin-gravity";
-import { discRails, RailGraph, tubeRails, type Handrail } from "@modules/gravity/domain/handrails";
-import { IVA, ivaStep, type IvaEvent, type IvaState, type IvaWorld } from "@modules/gravity/domain/iva";
-import { HopGraph } from "@modules/gravity/domain/hops";
+import { RailGraph, type Handrail } from "@modules/gravity/domain/handrails";
+import { ivaStep, type IvaEvent, type IvaState, type IvaWorld } from "@modules/gravity/domain/iva";
+import { HopGraph, type LandingPoint } from "@modules/gravity/domain/hops";
+import { spineFits, spineHandrails, spineLaunchers, spinePois, type SpinePoi } from "@modules/gravity/data/spine";
+import { RING_ELEVATOR, RING_REACH_M } from "@modules/habitat/data/ring-module";
 import { HopControl } from "./hop-control";
 import type { CubeFigure } from "./figure";
 import { buildRails, FloatingBody, motionLabel } from "./zero-g-body";
@@ -20,8 +22,6 @@ const TUNING = {
    */
   carSpeed: 2,
   carAccel: 0.5,
-  /** Going down for a chore picked in 0 g: she pulls herself hand over hand along the rails (game value, brisker than a free glide). */
-  railPull: 1.5,
 } as const;
 
 const fmt = (v: number, d = 2) => v.toFixed(d).replace(".", ",");
@@ -32,20 +32,9 @@ const BODY = 0.45;
 /** Furthest the third-person camera sits behind her in the hub and spine, m (the tube is 5,5 m across). */
 const CAMERA_BACK_M = 3.2;
 
-/**
- * Handrails of the hub and the spine (docs/design/ingravidez.md): eight rows round the wall (one every ~2,1 m), one bar
- * per rack bay, separate on each side of the bearing; bars round the hatches at both ends; and an
- * upright bar at the top of the shaft, by the ladder, to hold on when the elevator arrives (she lands
- * on its top end, in sight of the hub).
- */
+/** Handrails of the hub and the spine, with a grab point at every point of interest, ladders and launchers (gravity/data/spine.ts). */
 export function axisHandrails(L: SpokeLayout): Handrail[] {
-  return [
-    ...tubeRails("cubo", L.axisY, L.z, L.tubeR, -L.hubHalfX + 0.2, L.hubHalfX - 0.2, 8, Math.PI / 8),
-    ...tubeRails("espina", L.axisY, L.z, L.tubeR, L.hubHalfX + 0.2, L.moduleEndX - 0.2, 8, Math.PI / 8),
-    ...discRails("cubo-fondo", -L.hubHalfX, 1, L.axisY, L.z, 1.4),
-    ...discRails("espina-fondo", L.moduleEndX, -1, L.axisY, L.z, 1.4),
-    { id: "pozo", a: new Vec3(L.x, L.topY + 1.15, L.z - L.shaftR + 0.08), b: new Vec3(L.x, L.axisY - L.tubeR - 0.1, L.z - L.shaftR + 0.08), normal: new Vec3(0, 0, 1), landT: 0.9 },
-  ];
+  return spineHandrails(L);
 }
 
 /**
@@ -64,6 +53,13 @@ export class GravityZones {
   private readonly hops: HopGraph;
   private readonly world: IvaWorld;
   private readonly hop: HopControl;
+  /** The things one can use in the hub and spine, and invisible boxes to tap them. */
+  private readonly pois: readonly SpinePoi[];
+  private readonly picks: THREE.Object3D[] = [];
+  private camera: THREE.Camera | null = null;
+  private tap: { id: number; x: number; y: number; t: number } | null = null;
+  /** Climbing a ladder this frame (for the HUD). */
+  private climbing = false;
   private body: FloatingBody | null = null;
   private carY = 0;
   private carV = 0;
@@ -125,9 +121,32 @@ export class GravityZones {
     this.ui.className = "zones-ui";
     this.ui.innerHTML = `<button class="zone-btn hidden"></button><button class="zone-btn zone-btn2 hidden"></button><button class="throw-btn hidden">Lanzar pelota</button><div class="updown hidden"><button class="zg-up" aria-label="Subir">▲</button><button class="zg-down" aria-label="Bajar">▼</button></div>`;
     container.appendChild(this.ui);
-    this.hops = new HopGraph(this.graph, (q) => this.insideFloat(new THREE.Vector3(q.x, q.y, q.z), BODY));
+    this.hops = new HopGraph(this.graph, (q) => this.insideFloat(new THREE.Vector3(q.x, q.y, q.z), BODY), [], spineLaunchers());
     this.hop = new HopControl(container, scene);
     this.hop.setGraph(this.hops);
+    this.hop.onArrive = (id) => this.arrived(id);
+    // Each point of interest: an invisible sphere to tap (the tap chains hops to its grab point).
+    this.pois = spinePois(this.layout);
+    for (const p of this.pois) {
+      const hit = new THREE.Mesh(new THREE.SphereGeometry(0.7, 8, 6), new THREE.MeshBasicMaterial({ visible: false }));
+      hit.position.set(p.centre.x, p.centre.y, p.centre.z);
+      hit.userData.poi = p.id;
+      scene.add(hit);
+      this.picks.push(hit);
+    }
+    // A short tap on the canvas, on a thing in the hub or spine: she hops there by herself (dragging looks around).
+    container.addEventListener("pointerdown", (e) => {
+      if (!this.enabled || this.zone !== "eje" || (e.target as HTMLElement).tagName !== "CANVAS") return;
+      this.tap = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() };
+    });
+    window.addEventListener("pointerup", (e) => {
+      const t = this.tap;
+      this.tap = null;
+      if (!t || t.id !== e.pointerId || !this.enabled || this.zone !== "eje") return;
+      if (Math.hypot(e.clientX - t.x, e.clientY - t.y) > 10 || performance.now() - t.t > 450) return;
+      const id = this.poiAt(e.clientX, e.clientY);
+      if (id) this.goToPoi(id);
+    });
     this.actionBtn = this.ui.querySelector(".zone-btn")!;
     this.throwBtn = this.ui.querySelector(".throw-btn")!;
     this.actionBtn2 = this.ui.querySelector(".zone-btn2")!;
@@ -185,7 +204,10 @@ export class GravityZones {
       return `Radio: ${fmt(this.layout.axisY - this.carY, 0)} m del eje · gravedad ${fmt(g)} g${cor > 0.01 ? ` · Coriolis ${fmt(cor)} m/s² hacia un lado` : ""}`;
     }
     const where = this.p.x > this.layout.hubHalfX ? "Espina: no gira · 0 g (ingravidez)" : `Eje: ${fmt(g, 3)} g · aún gira con el anillo`;
-    return `${where} · ${motionLabel(this.iva)}`;
+    const m = this.iva.motion;
+    const ladder = m.kind === "sujeta" && this.graph.rail(m.rail).ladder;
+    const poi = this.heldPoi()?.label;
+    return `${where} · ${motionLabel(this.iva, { ...(poi ? { poi } : {}), ...(ladder ? { ladder: true } : {}), climbing: this.climbing })}`;
   }
 
   /** Every frame. `pos` is the interior's walking position (shared; written when she comes back to the ring). */
@@ -202,20 +224,33 @@ export class GravityZones {
     this.action2 = null;
     let label = "";
     let label2 = "";
-    if (!busy && this.zone === "anillo" && Math.hypot(pos.x - L.x, pos.z - L.z) < 1.25) {
+    if (!busy && this.zone === "anillo" && Math.hypot(pos.x - RING_ELEVATOR.anchor.x, pos.z - RING_ELEVATOR.anchor.z) < RING_REACH_M) {
       label = "Subir al eje por el radio";
       this.action = () => this.ride("up", pos);
-    } else if (this.zone === "eje" && !this.autoDown && this.p.distanceTo(new THREE.Vector3(L.x, L.axisY - 0.6, L.z)) < 1.4) {
-      label = "Bajar al anillo";
-      this.action = () => this.descend();
-    } else if (this.zone === "eje" && this.onFlightDeck && Math.abs(this.p.x - L.deckHatchX) < 1.6) {
-      label = "Ir al puente de mando";
-      this.action = () => this.onFlightDeck?.();
-    } else if (this.zone === "eje" && this.p.x > L.moduleEndX - 2.5) {
-      const [a, b] = this.endHatches?.() ?? [];
-      if (a) [label, this.action] = [a.label, a.go];
-      if (b) [label2, this.action2] = [b.label, b.go];
-      if (!a && this.p.x > L.moduleEndX - 1.2) label = "Escotilla cerrada: no hay nada acoplado";
+    } else if (this.zone === "eje" && !this.autoDown) {
+      // Holding the grab point of a thing shows that thing's action (docs/design/ingravidez.md, «Fase D»).
+      const poi = this.heldPoi();
+      if (poi?.action === "bajar") {
+        label = "Bajar al anillo";
+        this.action = () => this.descend();
+      } else if (poi?.action === "puente" && this.onFlightDeck) {
+        label = "Ir al puente de mando";
+        this.action = () => this.onFlightDeck?.();
+      } else if (poi?.action === "atraque") {
+        const [a, b] = this.endHatches?.() ?? [];
+        if (a) [label, this.action] = [a.label, a.go];
+        if (b) [label2, this.action2] = [b.label, b.go];
+        if (!a) label = "Escotilla cerrada: no hay nada acoplado";
+      } else if (poi?.action === "lanzador") {
+        const l = this.hops.launchers.find((x) => x.from === this.hops.poiPoint(poi.id)?.rail);
+        if (l) {
+          label = l.id === "lanzador-popa" ? "Lanzarse a la red de proa" : "Lanzarse a la red de popa";
+          this.action = () => this.hop.goTo(this.hops.pointOf(l.to)!.id);
+        }
+      } else if (poi?.action === "info") {
+        label = `${poi.label}: ¿qué es?`;
+        this.action = () => this.say(poi.info ?? poi.label);
+      }
     }
     this.actionBtn.classList.toggle("hidden", !label);
     this.actionBtn.classList.toggle("info", !this.action);
@@ -224,26 +259,84 @@ export class GravityZones {
     if (this.actionBtn2.textContent !== label2) this.actionBtn2.textContent = label2;
     this.throwBtn.classList.toggle("hidden", busy || this.zone !== "anillo" || this.ring.omegaRadS === 0);
     this.ui.querySelector(".updown")!.classList.toggle("hidden", this.zone !== "radio");
-    if (!(this.enabled && this.zone === "eje" && !this.autoDown)) this.hop.hide();
+    if (!(this.enabled && this.zone === "eje")) this.hop.hide();
     document.body.classList.toggle("in-zero-g", this.enabled && this.zone === "eje");
   }
 
   /** Come aboard through the docking hatch at the end of the spine (floating, weightless). */
   arriveAtHatch(): void {
-    const L = this.layout;
     this.zone = "eje";
     this.autoDown = false;
-    // She comes in holding the bars round the hatch.
-    this.iva = this.holdNearest(new Vec3(L.moduleEndX - 1.6, L.axisY, L.z));
+    this.hop.cancel();
+    // She comes in holding the hatch's own grab bar (its buttons show at once).
+    this.iva = this.holdPoint(this.hops.poiPoint("atraque")!);
     this.p.set(this.iva.position.x, this.iva.position.y, this.iva.position.z);
     this.body?.reset();
     this.say("Entras por la escotilla de la espina: 0 g. El anillo está al otro lado del eje");
   }
 
-  /** Go back down to the ring (also used when a chore is picked from the hub). */
+  /**
+   * Go back down to the ring (also used when a chore is picked from the hub): she hops by herself to
+   * the elevator's grab bar, and the car takes her down.
+   */
   descend(): void {
     if (this.zone === "radio") return this.sendCar("down");
-    if (this.zone === "eje") this.autoDown = true;
+    if (this.zone !== "eje") return;
+    const at = this.hops.poiPoint("ascensor")!;
+    if (this.hop.holding(this.iva)?.id === at.id) return this.intoCar();
+    this.autoDown = true;
+    this.hop.goTo(at.id);
+  }
+
+  /** From the elevator's grab bar into the car, and down. */
+  private intoCar(): void {
+    this.autoDown = false;
+    this.hop.cancel();
+    this.zone = "radio";
+    this.carY = this.layout.topY;
+    this.carV = 0;
+    this.sendCar("down");
+  }
+
+  /** A chain of hops arrived at a point. */
+  private arrived(id: string): void {
+    if (this.autoDown && id === this.hops.poiPoint("ascensor")?.id) return this.intoCar();
+    const poi = this.pois.find((p) => this.hops.poiPoint(p.id)?.id === id);
+    if (poi) this.say(`${poi.label}: ya estás aquí`);
+  }
+
+  /** Hop by herself to a thing of the hub or spine (a tap on it, or the HUD). */
+  goToPoi(id: string): boolean {
+    const at = this.hops.poiPoint(id);
+    if (!at || this.zone !== "eje") return false;
+    if (this.hop.holding(this.iva)?.id === at.id) return true;
+    const poi = this.pois.find((p) => p.id === id);
+    if (poi) this.say(`Saltas hasta: ${poi.label}`);
+    return this.hop.goTo(at.id);
+  }
+
+  /** The thing whose grab point she holds now, if any. */
+  heldPoi(): SpinePoi | undefined {
+    const at = this.hop.holding(this.iva);
+    return at?.poi ? this.pois.find((p) => p.id === at.poi) : undefined;
+  }
+
+  /** Where a thing of the hub or spine is on screen (for the experience suite: taps a player can make). */
+  screenPoint(id: string): { x: number; y: number; visible: boolean } {
+    const p = this.pois.find((q) => q.id === id);
+    if (!p || !this.camera) return { x: -1, y: -1, visible: false };
+    const v = new THREE.Vector3(p.centre.x, p.centre.y, p.centre.z).project(this.camera);
+    const x = ((v.x + 1) / 2) * window.innerWidth;
+    const y = ((1 - v.y) / 2) * window.innerHeight;
+    return { x, y, visible: v.z < 1 && Math.abs(v.x) < 1 && Math.abs(v.y) < 1 };
+  }
+
+  private poiAt(x: number, y: number): string | undefined {
+    if (!this.camera) return undefined;
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(new THREE.Vector2((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1), this.camera);
+    const hit = ray.intersectObjects(this.picks, false)[0];
+    return hit && hit.distance < 25 ? (hit.object.userData.poi as string) : undefined;
   }
 
   private ride(dir: "up" | "down", pos: THREE.Vector3): void {
@@ -271,8 +364,8 @@ export class GravityZones {
       this.carV = 0;
       if (this.carTarget === L.topY) {
         this.zone = "eje";
-        // She comes out of the car holding the bar by the ladder.
-        this.iva = this.holdNearest(new Vec3(L.x, L.axisY - 0.5, L.z));
+        // She comes out of the car holding the elevator's grab bar at the top of the shaft.
+        this.iva = this.holdPoint(this.hops.poiPoint("ascensor")!);
         this.p.set(this.iva.position.x, this.iva.position.y, this.iva.position.z);
         this.body?.reset();
         this.say("Ingravidez: las flechas te llevan de asidero en asidero. En el aire no se frena ni se gira hasta llegar");
@@ -284,39 +377,23 @@ export class GravityZones {
     }
   }
 
-  /** Holding the landing point nearest to p (coming in, out of the elevator). */
-  private holdNearest(p: Vec3): IvaState {
-    const q = this.hops.nearest(p)!;
+  /** Holding a landing point (coming in, out of the elevator). */
+  private holdPoint(q: LandingPoint): IvaState {
     return { position: q.body, velocity: Vec3.ZERO, motion: { kind: "sujeta", rail: q.rail, t: q.t, hands: 0 } };
   }
 
   private float(dt: number, yaw: number, pitch: number): void {
-    const L = this.layout;
-    if (this.autoDown) {
-      // Pull herself along the rails to the hatch over the spoke, then into the car.
-      const hatch = new THREE.Vector3(L.x, L.topY + 1.2, L.z);
-      const to = hatch.clone().sub(this.p);
-      if (to.length() < 0.25) {
-        this.autoDown = false;
-        this.zone = "radio";
-        this.carY = L.topY;
-        this.carV = 0;
-        this.sendCar("down");
-        return;
-      }
-      this.p.addScaledVector(to.normalize(), Math.min(to.length(), TUNING.railPull * dt));
-      this.iva = { position: new Vec3(this.p.x, this.p.y, this.p.z), velocity: new Vec3(to.x, to.y, to.z).scale(TUNING.railPull), motion: { kind: "planeo" } };
-      this.hop.hide();
-      return;
-    }
     const fwd = new Vec3(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
     const right = new Vec3(Math.cos(yaw), 0, -Math.sin(yaw));
-    // Arrows hop from landing point to landing point (docs/design/ingravidez.md, «Fase C: flechas»).
-    const hop = this.hop.update(this.iva, { forward: fwd, right }, this.enabled, dt, this.eye);
-    const r = ivaStep(this.iva, hop ? { hop } : {}, this.world, dt);
+    // Arrows hop from landing point to landing point, climb ladders, or a chosen point is hopped to by
+    // itself (docs/design/ingravidez.md, «Fase C: flechas» and «Fase D»).
+    const intent = this.hop.update(this.iva, { forward: fwd, right }, this.enabled, dt, this.eye);
+    this.climbing = !!intent.along;
+    const r = ivaStep(this.iva, intent, this.world, dt);
     this.iva = r.state;
     this.p.set(r.state.position.x, r.state.position.y, r.state.position.z);
     for (const e of r.events) this.tell(e);
+    if (intent.hop?.launcher) this.say(`El lanzador te empuja a ${fmt(intent.hop.speed, 1)} m/s: la red del otro extremo te frena`);
   }
 
   private tell(e: IvaEvent): void {
@@ -331,15 +408,12 @@ export class GravityZones {
 
   /** Inside the hub, the spine module or the top of the shaft, keeping `margin` from the walls. */
   private insideFloat(q: THREE.Vector3, margin: number): boolean {
-    const L = this.layout;
-    const r = Math.hypot(q.y - L.axisY, q.z - L.z);
-    const tube = q.x > -L.hubHalfX + margin && q.x < L.moduleEndX - margin && r < L.tubeR - margin;
-    const shaft = Math.hypot(q.x - L.x, q.z - L.z) < L.shaftR - Math.min(margin, 0.3) && q.y > L.topY + 0.9 && q.y <= L.axisY;
-    return tube || shaft;
+    return spineFits(this.layout, q, margin);
   }
 
   /** Place the avatar and camera off the ring. Returns false on the ring (interior.ts does it). */
   placeCamera(camera: THREE.PerspectiveCamera, rig: THREE.Group, avatar: CubeFigure, yaw: number, pitch: number, third: boolean): boolean {
+    this.camera = camera;
     if (this.zone === "anillo") return false;
     const L = this.layout;
     const dir = new THREE.Vector3(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));

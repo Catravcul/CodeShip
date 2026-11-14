@@ -39,22 +39,24 @@ export function stationHandrails(plan: StationInteriorPlan): Handrail[] {
     for (const s of [-1, 1]) {
       const c = f.at.add(n.scale(RAIL_LAYOUT.standoffM)).add(across.scale(s * off));
       const h = runs.scale(RAIL_LAYOUT.lengthM / 2);
-      rails.push({ id: `${f.id}:${s < 0 ? "i" : "d"}`, a: c.sub(h), b: c.add(h), normal: n });
+      // The second bar (away from the bay console) is the hatch's grab point (its action shows while she holds it).
+      rails.push({ id: `${f.id}:${s < 0 ? "i" : "d"}`, a: c.sub(h), b: c.add(h), normal: n, ...(s > 0 ? { poi: f.id } : {}) });
     }
   }
-  // A bar at each work station (machines, consoles, the airlock's suits), in front of it a little
-  // below its middle: the handhold by a foot restraint, between waist and shoulder (NASA-STD-3000
-  // §11.7.2.3.2). Hopping lands her facing the machine.
+  // A bar at each thing one can use (machines, consoles, the airlock's suits, the galley, the cabins…),
+  // in front of it a little below its middle: the handhold by a foot restraint, between waist and
+  // shoulder (NASA-STD-3000 §11.7.2.3.2). It is the thing's grab point: hopping there lands her facing
+  // it and shows its action (docs/design/ingravidez.md, «Fase D»).
   for (const f of plan.fixtures) {
     const k = f.action.kind;
-    if (k !== "panel" && k !== "bahia" && k !== "esclusa") continue;
+    if (k === "salir") continue;
     if (plan.volumes.find((v) => v.id === f.volume)?.kind === "hangar") continue;
     const n = FACE_NORMAL[f.face].scale(-1);
     const wall = Math.abs(n.y) < 0.5;
     const runs = wall ? (Math.abs(n.x) > 0.5 ? new Vec3(0, 0, 1) : new Vec3(1, 0, 0)) : new Vec3(0, 0, 1);
     const c = f.at.add(n.scale(RAIL_LAYOUT.standoffM)).add(wall ? new Vec3(0, -0.35, 0) : Vec3.ZERO);
     const h = runs.scale(RAIL_LAYOUT.lengthM / 2);
-    rails.push({ id: `${f.id}:puesto`, a: c.sub(h), b: c.add(h), normal: n });
+    rails.push({ id: `${f.id}:puesto`, a: c.sub(h), b: c.add(h), normal: n, poi: f.id });
   }
   const body = (r: Handrail) => r.a.add(r.b).scale(0.5).add(r.normal.scale(IVA.holdM));
   return rails.filter((r) => interior.fits(body(r), 0.3, false) || interior.fits(body(r), 0.3, true));

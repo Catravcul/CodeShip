@@ -1,6 +1,6 @@
 import { Vec3 } from "@core/math/vec3";
 import { railPoint, type RailGraph } from "./handrails";
-import { HOP_AIM_S, IVA, type HopPlan } from "./iva";
+import { armForceN, HOP_AIM_S, IVA, type HopPlan } from "./iva";
 
 /**
  * Hop navigation in zero g (docs/design/ingravidez.md, «Fase C: flechas»): the player does not steer
@@ -21,11 +21,20 @@ export const HOP = {
   /** Seconds to turn and aim before pushing off (game value). */
   aimS: HOP_AIM_S,
   /**
-   * Glide speed by hop length: about 3 s of glide per hop, between Skylab's ordinary point-to-point
-   * rate (0,4–0,6 m/s) and a brisk translation of 1 m/s (well under the ~1,8 m/s seen in play),
-   * NASA-STD-3000 §8.7.2.
+   * Glide speed by hop length (docs/design/ingravidez.md, «Fase D»): about 1,6 s of glide per hop,
+   * from just over Skylab's ordinary point-to-point rate (0,4–0,6 m/s) up to a firm 1,2 m/s, still
+   * well under the ~1,8 m/s of Skylab's play and the ~1,9 m/s «vigorous soaring» (NASA-STD-3000
+   * §8.7.2; Amir & Newman). Pushing and catching over HOP.pushM / HOP.catchM at 1,2 m/s is
+   * ~119 N, under the 137 N peak measured on Mir.
    */
-  speed: { min: 0.5, max: 1.0, perM: 1 / 3 },
+  speed: { min: 0.6, max: 1.2, perM: 1 / 1.6 },
+  /** Push stroke (arms and a little of the legs) and catch distance (arms bending, knees tucking) of a hop, m. Game values. */
+  pushM: 0.35,
+  catchM: 0.35,
+  /** Taken off a hop's score when it lands on a point of interest (a hatch, a machine…): the arrows go from interest to interest. */
+  poiBonus: 0.45,
+  /** Landing points along a ladder, one every this many metres (an ISPR rack bay). */
+  ladderPitchM: 1.05,
   /** Line-of-sight sampling step, m. */
   losStepM: 0.1,
   /** Before and after a hatch, she lines up this far from its plane, m (game value). */
@@ -39,6 +48,33 @@ export interface LandingPoint {
   readonly t: number;
   readonly grip: Vec3;
   readonly body: Vec3;
+  /** The point of interest it serves (its rail's `poi`). */
+  readonly poi?: string;
+  /** On a ladder. */
+  readonly ladder?: boolean;
+}
+
+/**
+ * A launcher (docs/design/ingravidez.md, «Fase D»): a push station at the end of a long run, a
+ * sprung foot plate she crouches on that sends her straight to a catch net at the far end. Speed,
+ * stroke and net travel set the loads (F = m v² / 2s).
+ */
+export interface Launcher {
+  readonly id: string;
+  readonly label: string;
+  /** Rail she holds to use it, and the rail by the catch net she lands on. */
+  readonly from: string;
+  readonly to: string;
+  /** Speed she leaves at, m/s. */
+  readonly speedMS: number;
+  /** Spring travel (her legs extend with it) and the net's give, m. */
+  readonly strokeM: number;
+  readonly catchM: number;
+}
+
+/** Force of a launch and of the net's catch, N (F = m v² / 2s, her mass IVA.massKg). */
+export function launcherLoads(l: Launcher): { pushN: number; catchN: number } {
+  return { pushN: armForceN(l.speedMS, l.strokeM), catchN: armForceN(l.speedMS, l.catchM) };
 }
 
 /** A hatch between two modules: its centre, the unit axis through it and its depth either side of the centre. */
@@ -57,6 +93,8 @@ export interface HopEdge {
   readonly aim: Vec3;
   /** Whether it goes through a hatch. */
   readonly hatch: boolean;
+  /** Fired by this launcher. */
+  readonly launcher?: Launcher;
 }
 
 export type Arrow = "arriba" | "abajo" | "izquierda" | "derecha";
@@ -85,6 +123,20 @@ export function hopSpeed(lengthM: number): number {
   return Math.max(HOP.speed.min, Math.min(HOP.speed.max, lengthM * HOP.speed.perM));
 }
 
+/**
+ * How long a hop takes, s: aim (unless chained), push at constant force over the stroke, glide,
+ * catch at constant force (the same phases as `ivaStep`).
+ */
+export function hopSeconds(e: HopEdge, chained = false): number {
+  const v = e.launcher ? e.launcher.speedMS : hopSpeed(e.length);
+  const push0 = e.launcher ? e.launcher.strokeM : HOP.pushM;
+  const catch0 = e.launcher ? e.launcher.catchM : HOP.catchM;
+  const k = Math.min(1, e.length / (push0 + catch0));
+  const push = push0 * k;
+  const ctch = catch0 * k;
+  return (chained ? 0 : HOP.aimS) + (2 * push) / v + Math.max(0, e.length - push - ctch) / v + (2 * ctch) / v;
+}
+
 const pathLength = (path: readonly Vec3[]) => path.reduce((s, p, i) => (i === 0 ? 0 : s + p.sub(path[i - 1]!).length()), 0);
 
 /**
@@ -98,27 +150,58 @@ export class HopGraph {
   private readonly byRail = new Map<string, LandingPoint>();
   private readonly cache = new Map<string, HopEdge[]>();
 
+  private readonly onRail = new Map<string, LandingPoint[]>();
+
   constructor(
     readonly rails: RailGraph,
     private readonly fits: (p: Vec3) => boolean,
     private readonly portals: readonly Portal[] = [],
+    readonly launchers: readonly Launcher[] = [],
   ) {
     const pts: LandingPoint[] = [];
-    for (const r of rails.rails) {
-      const t = r.landT ?? 0.5;
+    const add = (r: (typeof rails.rails)[number], t: number, id: string) => {
       const grip = railPoint(r, t);
       const body = grip.add(r.normal.scale(IVA.holdM));
-      if (!fits(body)) continue;
-      const p = { id: r.id, rail: r.id, t, grip, body };
+      if (!fits(body)) return;
+      const p: LandingPoint = { id, rail: r.id, t, grip, body, ...(r.poi ? { poi: r.poi } : {}), ...(r.ladder ? { ladder: true } : {}) };
       pts.push(p);
-      this.byRail.set(r.id, p);
+      if (!this.byRail.has(r.id) || t === (r.landT ?? 0.5)) this.byRail.set(r.id, p);
+      this.onRail.set(r.id, [...(this.onRail.get(r.id) ?? []), p]);
+    };
+    for (const r of rails.rails) {
+      if (!r.ladder) {
+        add(r, r.landT ?? 0.5, r.id);
+        continue;
+      }
+      // A ladder: a landing point every rack bay along it (rungs she can hop on to or off from).
+      const len = r.b.sub(r.a).length();
+      const n = Math.max(1, Math.round(len / HOP.ladderPitchM));
+      for (let i = 0; i <= n; i++) add(r, i / n, `${r.id}@${i}`);
     }
     this.points = pts;
+    for (const l of launchers) if (!this.byRail.has(l.from) || !this.byRail.has(l.to)) throw new Error(`Launcher ${l.id}: no landing point at ${l.from} or ${l.to}`);
   }
 
-  /** The landing point on a rail, if it has one. */
+  /** The landing point on a rail, if it has one (on a ladder: its main one). */
   pointOf(rail: string): LandingPoint | undefined {
     return this.byRail.get(rail);
+  }
+
+  /** The landing point on a rail nearest to parameter t (where she is on a ladder). */
+  pointAt(rail: string, t: number): LandingPoint | undefined {
+    const on = this.onRail.get(rail);
+    if (!on?.length) return undefined;
+    return on.reduce((a, b) => (Math.abs(b.t - t) < Math.abs(a.t - t) ? b : a));
+  }
+
+  /** The landing point of a point of interest (its handhold). */
+  poiPoint(poi: string): LandingPoint | undefined {
+    return this.points.find((p) => p.poi === poi);
+  }
+
+  /** The points of interest of the place, with their handholds. */
+  pois(): readonly LandingPoint[] {
+    return this.points.filter((p) => p.poi);
   }
 
   /** The landing point nearest to p (to start from after coming in). */
@@ -143,7 +226,7 @@ export class HopGraph {
     const out: HopEdge[] = [];
     const direct = new Set<string>();
     for (const q of this.points) {
-      if (q.id === from.id) continue;
+      if (q.id === from.id || (q.rail === from.rail && from.ladder)) continue;
       const d = q.body.sub(from.body).length();
       if (d < HOP.minM || d > HOP.maxM || !this.clear(from.body, q.body)) continue;
       out.push({ to: q, path: [from.body, q.body], length: d, aim: q.body.sub(from.body).normalize(), hatch: false });
@@ -152,6 +235,14 @@ export class HopGraph {
     for (const portal of this.portals) {
       const e = this.throughHatch(from, portal, direct);
       if (e) out.push(e);
+    }
+    // A launcher sends her from its plate straight to its net, however far.
+    for (const l of this.launchers) {
+      if (l.from !== from.rail) continue;
+      const to = this.byRail.get(l.to)!;
+      if (!this.clear(from.body, to.body)) continue;
+      const d = to.body.sub(from.body);
+      out.push({ to, path: [from.body, to.body], length: d.length(), aim: d.normalize(), hatch: false, launcher: l });
     }
     this.cache.set(from.id, out);
     return out;
@@ -202,7 +293,9 @@ export class HopGraph {
     for (const e of this.edges(from)) {
       const ang = Math.acos(Math.max(-1, Math.min(1, e.aim.dot(d))));
       if (ang > HOP.coneRad) continue;
-      const score = ang / HOP.coneRad + (0.5 * Math.abs(e.length - HOP.preferM)) / HOP.preferM;
+      // In line first, then a comfortable length; points of interest and launchers win close calls.
+      const len = e.launcher ? 0 : (0.5 * Math.abs(e.length - HOP.preferM)) / HOP.preferM;
+      const score = ang / HOP.coneRad + len - (e.to.poi || e.launcher ? HOP.poiBonus : 0);
       if (!best || score < best.score) best = { e, score };
     }
     return best?.e;
@@ -212,6 +305,42 @@ export class HopGraph {
   targets(from: LandingPoint, view: ViewFrame): Readonly<Record<Arrow, HopEdge | undefined>> {
     const out = {} as Record<Arrow, HopEdge | undefined>;
     for (const a of ARROWS) out[a] = this.pick(from, arrowVector(a, view));
+    return out;
+  }
+
+  /**
+   * The quickest chain of hops from a point to another (Dijkstra on `hopSeconds`, the hops after
+   * the first chained without the aim pause). Empty if she is already there; undefined if it cannot be reached.
+   */
+  route(from: LandingPoint, toId: string): HopEdge[] | undefined {
+    if (from.id === toId) return [];
+    const best = new Map<string, number>([[from.id, 0]]);
+    const prev = new Map<string, { at: LandingPoint; e: HopEdge }>();
+    const open: LandingPoint[] = [from];
+    const done = new Set<string>();
+    while (open.length) {
+      let i = 0;
+      for (let k = 1; k < open.length; k++) if (best.get(open[k]!.id)! < best.get(open[i]!.id)!) i = k;
+      const p = open.splice(i, 1)[0]!;
+      if (done.has(p.id)) continue;
+      done.add(p.id);
+      if (p.id === toId) break;
+      for (const e of this.edges(p)) {
+        const t = best.get(p.id)! + hopSeconds(e, p.id !== from.id);
+        if (t < (best.get(e.to.id) ?? Infinity)) {
+          best.set(e.to.id, t);
+          prev.set(e.to.id, { at: p, e });
+          open.push(e.to);
+        }
+      }
+    }
+    if (!prev.has(toId)) return undefined;
+    const out: HopEdge[] = [];
+    for (let id = toId; id !== from.id; ) {
+      const step = prev.get(id)!;
+      out.unshift(step.e);
+      id = step.at.id;
+    }
     return out;
   }
 
@@ -232,7 +361,9 @@ export class HopGraph {
 }
 
 /** A hop to carry out (`ivaStep` with `{ hop }`), starting where she is now. */
-export function planHop(e: HopEdge, from: Vec3 = e.path[0]!): HopPlan {
+export function planHop(e: HopEdge, from: Vec3 = e.path[0]!, chained = false): HopPlan {
   const path = [from, ...e.path.slice(1)];
-  return { path, rail: e.to.rail, t: e.to.t, speed: hopSpeed(pathLength(path)) };
+  const aimS = chained ? 0 : HOP.aimS;
+  if (e.launcher) return { path, rail: e.to.rail, t: e.to.t, speed: e.launcher.speedMS, aimS, pushM: e.launcher.strokeM, catchM: e.launcher.catchM, launcher: e.launcher.id };
+  return { path, rail: e.to.rail, t: e.to.t, speed: hopSpeed(pathLength(path)), aimS, pushM: HOP.pushM, catchM: HOP.catchM };
 }

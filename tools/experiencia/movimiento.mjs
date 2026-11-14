@@ -184,7 +184,8 @@ export async function movimiento(j) {
   });
   if (seen) {
     await p.waitForTimeout(800);
-    const label = (await j.texts(".amb-note.on"))[0] ?? "";
+    // Other life aboard may be in view too (a cat stalking the hens): any of the labels on screen.
+    const label = (await j.texts(".amb-note.on")).join(" · ");
     const toastNow = (await j.texts(".interior-ui .toast.on"))[0] ?? "";
     j.check("mirando hacia donde sucede, el aviso de ambiente flota allí con estilo HUD (no en el aviso del jugador)", /ladra/.test(label) && !/ladra/.test(toastNow), label);
     await j.shot("aviso-ambiente");

@@ -1,0 +1,113 @@
+import { HUB_AREA_ID, type SanctuaryArea } from "../domain/area";
+import { ringPoolVolumeM3, sphereVolumeM3 } from "../domain/water";
+
+/**
+ * The space sanctuary's areas, in build order (docs/design/santuario-espacial.md §2 and §6).
+ * Sizes, temperatures and requirements are game values; the physics behind each choice is sourced in the docs.
+ */
+export const SANCTUARY_AREAS: readonly SanctuaryArea[] = [
+  {
+    id: HUB_AREA_ID,
+    name: "Jardín del anillo",
+    kind: "terrestre",
+    host: "nodriza",
+    gravityG: 1,
+    light: "fotoperiodo",
+    waterM3: 0,
+    pressureKpa: 101.3,
+    tempC: [20, 26],
+    residents: ["cultivos", "grillo", "polilla"],
+    // The compost and the waste loop of the farm deck decompose.
+    support: ["descomponedor"],
+    requires: { areas: [], station: [] },
+    hub: true,
+  },
+  {
+    id: "acuario-anillo",
+    name: "Acuario del anillo",
+    kind: "marino",
+    host: "nodriza",
+    gravityG: 1,
+    light: "fotoperiodo",
+    waterM3: 1,
+    pressureKpa: 101.3,
+    tempC: [24, 28],
+    residents: ["medaka", "caracol", "ceratofilo", "nitrificantes"],
+    support: [],
+    requires: { areas: [HUB_AREA_ID], station: [] },
+  },
+  {
+    id: "cueva-anillo",
+    name: "Cueva del anillo",
+    kind: "subterraneo",
+    host: "nodriza",
+    gravityG: 1,
+    light: "oscuridad",
+    waterM3: 0.5,
+    pressureKpa: 101.3,
+    tempC: [22, 26],
+    residents: ["pez-ciego", "bacterias-hidrogeno", "nitrificantes", "cucaracha", "grillo"],
+    support: [],
+    requires: { areas: ["acuario-anillo"], station: ["laboratorio-bio"] },
+  },
+  {
+    id: "esfera-de-agua",
+    name: "Esfera de agua",
+    kind: "marino",
+    host: "estacion",
+    gravityG: 0,
+    light: "fotoperiodo",
+    waterM3: Math.round(sphereVolumeM3(4) * 10) / 10,
+    pressureKpa: 101.3,
+    tempC: [24, 28],
+    residents: ["medaka", "pez-cebra", "caracol", "ceratofilo", "euglena", "nitrificantes"],
+    // The artificial-lung membrane trades O2 and CO2 with the cabin air.
+    support: [],
+    requires: { areas: ["acuario-anillo"], station: ["modulo-agricola", "laboratorio-bio"] },
+  },
+  {
+    id: "insectario-ingravido",
+    name: "Insectario ingrávido",
+    kind: "aereo",
+    host: "estacion",
+    gravityG: 0,
+    light: "penumbra",
+    waterM3: 0,
+    pressureKpa: 101.3,
+    tempC: [20, 28],
+    residents: ["cultivos", "polilla", "mosca", "cucaracha"],
+    support: [],
+    requires: { areas: [], station: ["modulo-agricola", "campos-cultivo"] },
+  },
+  {
+    id: "modulo-oscuro",
+    name: "Módulo oscuro",
+    kind: "subterraneo",
+    host: "estacion",
+    gravityG: 0,
+    light: "oscuridad",
+    waterM3: 0.2,
+    pressureKpa: 101.3,
+    tempC: [25, 28],
+    residents: ["bacterias-hidrogeno", "tardigrado", "grillo", "cucaracha"],
+    support: [],
+    requires: { areas: ["cueva-anillo", "insectario-ingravido"], station: ["reactor-proteina"] },
+  },
+  {
+    id: "rio-del-hangar",
+    name: "Río del hangar",
+    kind: "marino",
+    host: "estacion",
+    // Two counter-rotating drums, 6 m in radius and 5 m long, at ~3.9 rpm: 0.1 g at the wall, so bubbles rise toward the air core.
+    gravityG: 0.1,
+    light: "fotoperiodo",
+    waterM3: Math.round(ringPoolVolumeM3(6, 1, 10) * 10) / 10,
+    pressureKpa: 101.3,
+    tempC: [24, 28],
+    residents: ["medaka", "pez-cebra", "tilapia", "caracol", "ceratofilo", "euglena", "nitrificantes"],
+    support: [],
+    requires: { areas: ["esfera-de-agua"], station: ["hangar-ampliado"] },
+  },
+];
+
+export const areaById = (id: string): SanctuaryArea | undefined => SANCTUARY_AREAS.find((a) => a.id === id);

@@ -37,7 +37,11 @@ Los vuelos cambian cómo están unidos los vehículos (dónde está acoplado el 
 
 ## Primera persona por defecto
 
-El anillo, el puente, el habitáculo y la estación empiezan en primera persona (el ojo pasa a tercera). En la esterilla se ve desde fuera y, al levantarse, vuelve la vista que tenía.
+El anillo, el puente, el habitáculo y la estación empiezan en primera persona, según el ajuste «Vista a pie» (el ojo pasa a tercera durante la visita). En la esterilla se ve desde fuera y, al levantarse, vuelve la vista que tenía.
+
+## Escala del dibujo
+
+Los interiores se dibujan a `WORLD_SCALE` = 1,5 ([escala.md](escala.md)). El plan del puente y del habitáculo está en metros reales y las salas mueven a Doménica en esas mismas unidades (solo el dibujo se multiplica), así que sus tiempos no cambian. La estación se recorre ya escalada (`scaleInteriorPlan`), y el viaje planifica sobre ese mismo plano, con sus saltos ya más largos.
 
 ## Tiempos del camino (planificados)
 

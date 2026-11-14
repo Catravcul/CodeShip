@@ -53,7 +53,9 @@ export async function estacion(j) {
   await j.tap('.sti-card [data-act^="chore:cocinar"]', "Cocinar un plato");
   await j.waitDuel();
   for (let i = 0; i < 12 && (await p.evaluate(() => !!window.codeship.stationLife.session?.run.current)); i++) await j.answer(() => window.codeship.stationLife.session?.run.current);
-  await j.tap('.duel [data-act="close"]', "Continuar");
+  // The result locks its buttons for 0,9 s (duel-view.ts) so a late tap does not close it unseen.
+  await p.waitForTimeout(1000);
+  await j.tap(".duel button.end", "Continuar");
   const after = await p.evaluate(() => JSON.stringify(window.codeship.stationCrew.larder()));
   j.check("cocinar gasta la despensa de la estación (no la de la nodriza)", before !== after, `${before} → ${after}`);
 

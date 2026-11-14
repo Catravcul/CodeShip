@@ -16,7 +16,7 @@ export const SANCTUARY_AREAS: readonly SanctuaryArea[] = [
     waterM3: 0,
     pressureKpa: 101.3,
     tempC: [20, 26],
-    residents: ["cultivos", "grillo", "polilla"],
+    residents: ["cultivos", "grillo", "polilla", "lombriz", "colembolo"],
     // The compost and the waste loop of the farm deck decompose.
     support: ["descomponedor"],
     requires: { areas: [], station: [] },
@@ -32,7 +32,7 @@ export const SANCTUARY_AREAS: readonly SanctuaryArea[] = [
     waterM3: 1,
     pressureKpa: 101.3,
     tempC: [24, 28],
-    residents: ["medaka", "caracol", "ceratofilo", "nitrificantes"],
+    residents: ["medaka", "caracol", "ceratofilo", "gamba-roja", "nitrificantes"],
     support: [],
     requires: { areas: [HUB_AREA_ID], station: [] },
   },

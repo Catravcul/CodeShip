@@ -39,7 +39,11 @@ export type ChoreKind =
   /** Programming a landing for the guidance computer (docs/design/aterrizaje.md). */
   | "programar-aterrizaje"
   /** Ordering from the Sanctuary, a tug haul or a mass driver install (modules/imports). */
-  | "importar";
+  | "importar"
+  /** The ring aquarium (modules/sanctuary): care, befriending the school, asking the snails or fish for help. */
+  | "cuidar-acuario"
+  | "amistad-acuario"
+  | "ayuda-acuario";
 
 /** Groups for filtering the task board. */
 export type ChoreCategory = "comida" | "plantas" | "animales" | "nave" | "salud" | "misiones";
@@ -81,6 +85,9 @@ export const CHORE_CATEGORY: Readonly<Record<ChoreKind, ChoreCategory>> = {
   "programar-viaje": "misiones",
   "programar-aterrizaje": "misiones",
   importar: "nave",
+  "cuidar-acuario": "animales",
+  "amistad-acuario": "animales",
+  "ayuda-acuario": "animales",
 };
 
 /** A task on board, done by solving code challenges in order. */

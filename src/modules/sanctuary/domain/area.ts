@@ -24,6 +24,8 @@ export interface SanctuaryArea {
   readonly light: Light;
   /** Water the area holds, m³ (0 for a dry area). 1 m³ = 1 t. */
   readonly waterM3: number;
+  /** The water is sea water (a marine tank); fresh water otherwise. */
+  readonly salt?: boolean;
   /** Absolute pressure of the air or water the fauna lives in, kPa. */
   readonly pressureKpa: number;
   /** Temperature the area keeps, °C (min, max). */

@@ -1,6 +1,6 @@
 # Agua y fauna en ingravidez
 
-Investigación para el **santuario espacial** ([diseño](../design/santuario-espacial.md)). Responde a las preguntas de Berón (2026-11-14): ¿se puede nadar en el espacio?, ¿sirve el agua para guardar reservas y moverse?, ¿se pueden tener peces?, ¿hacen falta «ríos» para oxigenar el agua?, ¿lo tienen más fácil la fauna abisal, los insectos y los animales nocturnos? Consultado el 14 de noviembre de 2026. Las fuentes están al final y, las que usa el código, en `src/modules/sanctuary/data/sources.ts`.
+Investigación para el **santuario espacial** ([diseño](../design/santuario-espacial.md)). Responde a las preguntas de Berón (2026-11-14): ¿se puede nadar en el espacio?, ¿sirve el agua para guardar reservas y moverse?, ¿se pueden tener peces?, ¿hacen falta «ríos» para oxigenar el agua?, ¿lo tienen más fácil la fauna abisal, los insectos y los animales nocturnos? Consultado el 14 de noviembre de 2026; la segunda ronda (§10–§13) responde a la petición de Berón del mismo día sobre fauna, amistad y biomas. Las fuentes están al final y, las que usa el código, en `src/modules/sanctuary/data/sources.ts`.
 
 ## Resumen
 
@@ -135,6 +135,108 @@ Las brazadas en el aire apenas empujan. Mark Kelly (STS-124) avisó de que en Ki
 | **Voyager / Gateway Foundation** | Rueda que gira; gravedad ajustable por el ritmo de giro | Sin datos publicados de agua ni de piscina ([Universe Today](https://www.universetoday.com/articles/gateway-foundation-gives-a-detailed-update-on-its-voyager-station-concept)) |
 
 **Lo que aprendemos:** el agua grande va **en lo que gira** (piscina de Kalpana, peces del toro de Stanford), y lo que gira va **por parejas** (O'Neill, los anillos de la nodriza). En 0 g, solo volúmenes pequeños y cerrados (AQH, Tiangong).
+
+## 10. Segunda ronda (2026-11-14): qué fauna vive mejor en acuarios y módulos cerrados
+
+Petición de Berón: «investiga los animales marinos mejor adaptados al espacio y a estos acuarios artificiales, y en general los animales mejor preparados para vivir en un medio artificial; y cómo ofrecerles un medio adecuado». Y el canon: **los animales son amigos, nunca comida**; a cada especie se le puede **pedir ayuda** cuando es amiga y se programa su mente. La columna «Ayuda» es jugable y se apoya, de lejos, en una conducta real.
+
+**Leyenda de evidencia:** *vuelo* = ha vivido en órbita; *cerrado* = vive años en un sistema cerrado en tierra; *simulante* = probado en regolito simulado; *sin vuelo* = solo datos de laboratorio.
+
+### 10.1 Peces
+
+| Especie | Evidencia | Espacio y masa | Papel | Ayuda (jugable) |
+| --- | --- | --- | --- | --- |
+| **Medaka** (*Oryzias latipes*) | Vuelo: se apareó en el IML-2 (1994); hasta tres generaciones en el AQH ([Ijiri 1995](https://www.jstage.jst.go.jp/article/bss/9/1/9_1_3/_article), [JAXA AQH](https://iss.jaxa.jp/en/kiboexp/pm/aqh)) | 3–4 cm, ~0,5 g (valor de juego); tanques del AQH de 0,7 L | Consumidor | **Avisar del agua**: con poco oxígeno los peces suben a la superficie antes de enfermar ([Small et al. 2014](https://pmc.ncbi.nlm.nih.gov/articles/PMC3984153)); también comen larvas de mosquito, aunque menos que la gambusia ([J. Trop. Med. Hyg.](https://www.jstage.jst.go.jp/article/tmh1973/17/2/17_2_157/_article/-char/en)) |
+| **Pez cebra** (*Danio rerio*) | Vuelo: 43 días y puesta en Tiangong (2024) ([IHB-CAS](https://english.ihb.cas.cn/newsroom/itm/202501/t20250117_898908.html)) | 4 peces en 1,2 L | Consumidor | Avisar del agua; su puesta dice que el tanque está sano |
+| **Xifo** (*Xiphophorus helleri*) | Vuelo: C.E.B.A.S. (STS-89, STS-90) ([SAE 1999-01-1988](https://saemobilus.sae.org/papers/cebas-minimodule-development-realization-perspectives-1999-01-1988)) | 8–12 cm; ~2 L por pez (juego) | Consumidor | Come algas filamentosas |
+| **Cíclidos** (tilapia, *Oreochromis mossambicus*) | Vuelo de larvas: Omegahab (Bion-M1, 2013) ([DLR](https://dlr.de/en/latest/news/2013/20130419_lift-off-mini-ecosystem-and-mini-satellites-en-route-to-space_6797/@@download/file)); vuelo en cohete a 0,0001 g frente a una centrífuga a 0,04 g ([U. Hohenheim](https://www.uni-hohenheim.de/uploads/media/TEXUS_Presse_Sept2007.pdf)) | Adultos de 20–40 cm: ≥ 100 L | Consumidor | Come algas y restos vegetales del río. **No es granja**: es un vecino del río |
+| **Pez ciego** (*Astyanax mexicanus*) | Sin vuelo; −27 % de gasto ([Moran 2014](https://www.sciencenews.org/blog/wild-things/blind-cavefish-got-no-circadian-rhythm)) | ≥ 40 L | Consumidor | Guía a oscuras en la cueva |
+
+**El pez arquero reconoce caras humanas** (81 % de acierto entre 44 caras; [Newport et al. 2016, Oxford](https://www.ox.ac.uk/node/509329)): es el apoyo real de «hacer amistad» (el banco aprende la cara de Doménica).
+
+### 10.2 Crustáceos
+
+| Especie | Evidencia | Espacio y masa | Papel | Ayuda |
+| --- | --- | --- | --- | --- |
+| **Artemia** (*A. franciscana*) | Vuelo: quistes reactivados en órbita (STS-37, STS-43, 1991) eclosionaron como en tierra (~40 %) y mudaron ([Spooner 1994, NTRS](https://ntrs.nasa.gov/citations/19950029060)) | Mililitros; quistes secos durante años | Consumidor | **Alimentar a los demás**: comida viva que se guarda seca. Agua salada |
+| **Dafnia** (*Daphnia magna*) | Vuelo: crió en 10 días de transbordador y vivió 4 meses en la Mir (ABS); la mitad hacía bucles ([Ijiri 1998](https://www.jstage.jst.go.jp/article/bss/12/4/12_4_377/_article)); propuesta para módulos acuáticos de soporte vital ([Trotter 2015](https://epub.uni-bayreuth.de/3166/1/npjmgrav201516.pdf)) | 1 L basta | Consumidor (filtrador) | **Aclarar el agua verde** |
+| **Anfípodos** (*Hyalella*) | Vuelo: 4 meses en la Mir sin bucles (ABS); Omegahab (2013) | 1 L | Descomponedor | Recoger hojas muertas del fondo |
+| **Copépodos** | Solo han volado sus **huevos de resistencia**, dentro y fuera de la ISS ([Alekseev 2022](https://mdpi.com/2075-1729/12/1/47)) | — | Consumidor | Plancton de reserva que repuebla tras un fallo |
+| **Gamba roja** (*Neocaridina davidi*) | Sin vuelo. NASA KSC la propone para soporte vital ([Brown et al. 2021](https://ouci.dntb.gov.ua/works/4MzpZ1xl)); las gambas *Halocaridina* del EcoSphere viven 2–3 años (algunas más de 12) en un frasco sellado ([EcoSphere](https://en.wikipedia.org/wiki/Ecosphere_(aquarium))) | ≥ 10 L | Descomponedor | **Limpiar biofilm y comida sobrante** |
+| **Cochinilla de agua** (*Asellus aquaticus*) | Sin vuelo; detritívoro muy estudiado ([Lafuente 2021](https://www.frontiersin.org/articles/10.3389/fevo.2021.748212)) | 5 L; agua fresca (5–25 °C) | Descomponedor | Desmenuzar hojas para las bacterias |
+| **Cangrejo de río** | Sin registro de vuelo encontrado | Territorial, pide escondites y espacio; trepa y escapa | Omnívoro | **Fuera de la primera tanda**: se come caracoles y gambas, y en 0 g no hay fondo que patrullar |
+
+### 10.3 Moluscos y cnidarios
+
+| Especie | Evidencia | Espacio y masa | Papel | Ayuda |
+| --- | --- | --- | --- | --- |
+| **Caracol *Biomphalaria*** | Vuelo: C.E.B.A.S., Omegahab, Neurolab (se aparearon en órbita) | 0,5 L | Consumidor | **Limpiar el cristal** (raspa con la rádula). Ojo: es el huésped de la esquistosomiasis ([CDC](https://www.cdc.gov/dpdx/schistosomiasis/index.html)): solo líneas de laboratorio sin parásito |
+| **Caracol nerita** | Sin vuelo; el mejor limpiacristales y **no se multiplica en agua dulce** ([Chewy](https://www.chewy.com/education/fish/general/nerite-snail-care-guide)) | ≥ 20 L | Consumidor | Limpiar algas duras sin plaga de caracoles |
+| **Calamar bobtail** (*Euprymna scolopes*) | Vuelo: >120 crías a la ISS (2021) ([U. Hawái](https://hawaii.edu/news/2021/06/24/squids-in-space)) | ≥ 20 L de agua salada | Consumidor | Iluminar el tanque salado de noche con sus bacterias |
+| **Medusa luna** (*Aurelia*) | Vuelo: 2 478 pólipos en el SLS-1 (STS-40, 1991); formaron sus estatolitos, pero 6 veces más éfiras nacidas en órbita pulsaban mal al volver a 1 g ([Space Centre](https://www.spacecentre.co.uk/news/space-now-blog/from-the-sea-to-the-stars-jellyfish-in-space/)) | Tanque **kreisel** redondo y sin esquinas, ≥ 50 L de agua salada fría (10–22 °C) | Consumidor | **Calmar**: su pulso lento se mira como un fuego (bienestar con acuarios: [Cracknell 2016](https://pubmed.ncbi.nlm.nih.gov/27818525/)) |
+| **Corales** | Sin registro de corales adultos en órbita encontrado | Agua salada estable, luz fuerte, mucha química | Productor (simbiosis) | **Fuera por ahora**: el arrecife es el acuario más difícil; posible en el anillo como meta tardía |
+
+### 10.4 Insectos y otros invertebrados de tierra
+
+| Especie | Evidencia | Espacio | Papel | Ayuda |
+| --- | --- | --- | --- | --- |
+| **Grillo** (*Acheta*) | Vuelo: Neurolab ([kit STS-90](https://www.nasa.gov/wp-content/uploads/2023/05/sts-090-press-kit.pdf)) | Cajas pequeñas | Consumidor | Marca el anochecer con su canto |
+| **Gusano de seda** (*Bombyx mori*) | Vuelo: 5 de 6 hicieron el capullo en Tiangong-2 (2016) ([China Daily](https://covid-19.chinadaily.com.cn/usa/china/2016-11/10/content_27332553.htm)) | Bandejas con hoja de morera | Consumidor | **Hilar seda** para cuerdas y redes de asideros |
+| **Mosca soldado negra** (*Hermetia illucens*) | Simulante: pupó y emergió en regolito lunar simulado ([Romano & Stefanini 2024](https://iris.sssup.it/handle/11382/567652)); sus larvas pasan el 13–21 % de los restos de comida (seco) a biomasa ([Peguero 2022](https://www.frontiersin.org/articles/10.3389/fsufs.2021.745894/full)) | Cajas de larvas; los adultos no comen | Descomponedor | **Reciclar los restos de la cocina** |
+| **Tenebrio** (*Tenebrio molitor*) | Equipo del Palacio Lunar (Beihang): con paja y hojas viejas, la paja baja un 48 % ([Li, Zhao y Liu 2013](https://buaa.globalimpact.cn/en/publications/feasibility-of-feeding-yellow-mealworm-tenebrio-molitor-l-in-bior/)) | Bandejas | Descomponedor | Comerse la paja del trigo |
+| **Colémbolos** (*Folsomia*) | Sin vuelo; descomponedores y bioindicadores ([collemboles.fr](https://collemboles.fr/en/biotope-and-role/71-springtails-bioindicators.html)) | Suelo húmedo | Descomponedor | Limpiar el moho de los bancales; avisar si el suelo se contamina |
+| **Cochinilla de la humedad** (*Porcellio*) | Sin vuelo ([Woodlouse](https://en.wikipedia.org/wiki/Woodlouse)) | Hojarasca húmeda | Descomponedor | Descomponer hojarasca bajo los árboles |
+| **Lombriz roja** (*Eisenia fetida*) | Simulante: crió en suelo de Marte simulado con estiércol (Wageningen, 2017) ([UPI](https://www.gpsdaily.com/reports/Earthworms_can_reproduce_in_Mars-like_soil_999.html)) | Bancales | Descomponedor | **Hacer tierra** (humus) y airearla |
+| **Tardígrado** | Vuelo: secos, sobrevivieron al vacío (FOTON-M3) | Musgo húmedo | Consumidor | Vigía de la humedad: se seca antes que nadie |
+| **Abeja** | STS-3: no voló con control en 0 g | Anillo con luz de día | Consumidor | Polinizar en el anillo |
+
+**Lo más importante:**
+1. **Para el acuario de 1 g del anillo** sirve casi cualquier especie de acuario de agua dulce templada: el vuelo solo importa en 0 g. Por eso se añade la **gamba roja** (limpieza y restos) a medaka, caracol, ceratófilo y biofiltro.
+2. **Para 0 g**, los mejores son los que ya han vivido meses en órbita: **medaka, pez cebra, xifo, caracoles, anfípodos, dafnias** (estas hacen bucles) y **ceratófilo**. El experimento ABS de la Mir es casi un catálogo: anfípodos, caracoles, ostrácodos y dafnias con ceratófilo, 4 meses, criando.
+3. **Los que se guardan secos** (quistes de artemia, huevos de dafnia y copépodo, tardígrados) son el **banco de semillas** del santuario: repueblan tras un fallo.
+4. **Descomponedores de tierra**: mosca soldado (restos de cocina), tenebrio (paja), lombriz (compost a humus) y colémbolos: cierran el bucle del huerto.
+5. **Fuera de la primera tanda**: cangrejo de río (depredador territorial), corales (química difícil), murciélagos y fauna abisal.
+
+## 11. Cómo dar a cada especie un medio adecuado
+
+| Factor | En el anillo (1 g) | En 0 g | Fuente |
+| --- | --- | --- | --- |
+| **Luz** | Ciclo día/noche con LEDs (el AQH: 0–1 000 lux) | Luz **desde un lado fijo**: los peces ponen el lomo hacia ella | [JAXA AQH](https://iss.jaxa.jp/en/kiboexp/pm/aqh), Skylab (§5) |
+| **Temperatura** | 24–28 °C para la mayoría de los tropicales; 10–22 °C para medusas y *Asellus* (otro tanque) | Igual; sin convección, el calor del LED no se mezcla: hace falta circulación | AQH 25–30 °C |
+| **Flujo** | Bomba y biofiltro; corriente suave | Siempre encendida (0–0,5 L/min por tanque en el AQH); las medusas, en tanque **kreisel** circular | AQH |
+| **Oxigenación** | Burbujas y superficie | **Membrana** (pulmón artificial) y trampa de burbujas | AQH (§6) |
+| **Sustrato** | Grava fina para caracoles y bacterias; el ceratófilo no tiene raíces | Sin grava suelta: biofiltro en cartucho; plantas flotantes | C.E.B.A.S. |
+| **Rotación y gravedad** | Lo que no tiene vuelo va al anillo; a 4 rpm la cabeza de un pez no nota el gradiente | Solo especies con vuelo | [ring.ts](../../src/modules/gravity/data/ring.ts) |
+| **Ruido y vibración** | Bombas sobre soportes elásticos, lejos del cristal (valor de diseño) | Igual: los peces oyen la vibración por la línea lateral | Valor de diseño |
+| **Agua de reserva** | Quistes y huevos secos de artemia, dafnia y copépodo | Igual | §10 |
+| **Salinidad** | Agua dulce y salada **nunca juntas**: la regla `fit` lo comprueba (`salinidad`) | Igual | `fauna.ts` |
+
+**Cuánto pienso y cuánto nitrato en el acuario de 1 m³** (`domain/aquarium.ts`): 40 medakas de 0,5 g comen el 3 % de su peso al día (0,6 g). La regla de acuicultura TAN = pienso × proteína × 0,092 da 22 mg de amonio al día, 0,022 mg/L; el biofiltro lo pasa a nitrato (×4,43) y el ceratófilo se lleva una parte. Un tanque grande y poco poblado es **estable**: el nitrato sube muy despacio y basta un cambio del 20 % de vez en cuando.
+
+## 12. Tamaños reales de la nodriza y de la estación, y qué biomas caben
+
+Datos del repositorio:
+
+| Pieza | Tamaño | Superficie o volumen | Fuente en el código |
+| --- | --- | --- | --- |
+| **Anillo habitable** de la nodriza (y su gemelo, que gira al revés) | Radio del suelo 56 m, 18 m de ancho, cubiertas de 7 m, 4 rpm, 1 g | 2π·56 = **352 m** de perímetro; **6 334 m²** de suelo por anillo | `gravity/data/ring.ts` |
+| Cubierta de cultivo del juego | 18 × 18 m | 324 m² (**5 %** del suelo de un anillo) | `farm-deck.ts` |
+| Nodriza | 152 m de largo, **877 t** | — | `mothership/data/mothership.ts` |
+| Estación: nodos | 5,47 × 4,57 m (como Unity) | ~90 m³ cada uno | `station/data/structure.ts` |
+| Estación: módulo habitable | 6,1 × 3 m (como HALO) | ~43 m³ | ídem |
+| Estación: **módulo agrícola** | 16,88 × 6,7 m (como el B330) | **330 m³** | `station/data/outfit.ts` |
+| Estación: **hangar** (sin presión) | 20 × 14 × 20 m, +10 m con la ampliación | 5 600 m³ (8 400 con la ampliación) | ídem |
+| Referencia: **BA 2100 «Olympus»** | 12,6 m de diámetro, 17,8 m de largo, 65–100 t | **2 250 m³** | [Wikipedia](https://en.wikipedia.org/wiki/BA_2100) |
+
+**Qué cabe:**
+
+- **Nodriza (anillo, 1 g):** sobra suelo. Un sector del anillo de 40 m de arco × 18 m (720 m²) es un **bosque de anillo** (frutales, abejas, lombrices, colémbolos, cochinillas). Un **estanque** de 100 m² y 1 m de hondo son 100 t: hay que poner las mismas 100 t en el anillo gemelo (agua de reserva), porque los dos anillos deben tener el mismo momento de inercia. La nodriza lleva los recursos de la tripulación; sus biomas son pequeños y cercanos.
+- **Estación (0 g):** con las piezas de hoy, solo el módulo agrícola de 330 m³ (esfera de 4 m, insectario). Para los **biomas grandes** que imagina Berón hace falta un módulo nuevo: un **módulo bioma** hinchable del tamaño del BA 2100 (2 250 m³) da para un **tambor giratorio interior** de 10 m de diámetro y 12 m de largo (~940 m³) con suelo a 0,1–0,3 g, o para un bosque de aire en 0 g con polillas, gusanos de seda y plantas trepadoras sobre redes. El hangar ya tiene su **río de dos tambores** (346 t).
+
+## 13. Estaciones conectadas: precedentes reales
+
+- **Soyuz T-15 (1986)** voló de la Mir a la Salyut 7 (5–6 de mayo) y volvió a la Mir (25–26 de junio): la primera nave que visitó y se acopló a dos estaciones en la misma misión ([Wikipedia](https://en.wikipedia.org/wiki/Soyuz_T-15)). Es el precedente del «transporte entre estaciones-árbol».
+- En una misma órbita, dos estaciones a unos kilómetros se alcanzan con un pequeño vehículo de traslado en horas (maniobra de encuentro, como los vuelos de la nodriza a la estación en el juego).
 
 ## Fuentes
 

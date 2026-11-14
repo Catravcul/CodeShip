@@ -2,7 +2,7 @@ import { Vec3 } from "@core/math/vec3";
 import { aisleRails, gridRails, hatchRails, RAIL_LAYOUT, type Handrail } from "@modules/gravity/domain/handrails";
 import type { Portal } from "@modules/gravity/domain/hops";
 import { IVA } from "@modules/gravity/domain/iva";
-import { FACE_NORMAL, StationInterior, type StationInteriorPlan } from "../domain/interior";
+import { FACE_NORMAL, StationInterior, type Fixture, type StationInteriorPlan } from "../domain/interior";
 
 /** CBM hatchway half-width (1,27 m square), as in data/interior.ts. */
 const CBM_HALF = 1.27 / 2;
@@ -18,17 +18,27 @@ const HANGAR_PITCH_M = 2.5;
 export function stationHandrails(plan: StationInteriorPlan): Handrail[] {
   const interior = new StationInterior(plan);
   const rails: Handrail[] = [];
+  // Drawn bigger than real (MACHINE_SCALE), the hatches grow with the rooms; the bars stay hand-sized.
+  const hatchHalf = CBM_HALF * (plan.scale ?? 1);
   for (const v of plan.volumes) {
     if (v.kind === "escotilla") continue;
     const box = { id: v.id, centre: v.centre, half: v.half };
     if (v.kind === "hangar") {
       rails.push(...gridRails(box, ["-y", "+y", "-x", "+x", "-z"], HANGAR_PITCH_M));
+      // The outer hatch's door, seen from the hangar: a bar beside it on the airlock's shell.
+      for (const d of plan.fixtures.filter((f) => f.action.kind === "puerta" && f.volume === v.id)) {
+        const n = FACE_NORMAL[d.face].scale(-1);
+        const c = d.at.add(n.scale(RAIL_LAYOUT.standoffM)).add(new Vec3(d.size.x / 2 + 0.25, 0, 0));
+        const h = new Vec3(0, RAIL_LAYOUT.lengthM / 2, 0);
+        rails.push({ id: `${v.id}:puerta-${d.id}`, a: c.sub(h), b: c.add(h), normal: n, poi: d.id });
+      }
       continue;
     }
     // The aisle runs along the module's long axis: z on the main stack, x in the radial modules.
     const [along, side] = v.half.x > v.half.z ? (["x", "z"] as const) : (["z", "x"] as const);
     rails.push(...aisleRails(box, along, side));
-    for (const end of [-1, 1] as const) rails.push(...hatchRails(box, along, side, end, CBM_HALF));
+    const fitsBar = (r: Handrail) => interior.fits(r.a.add(r.b).scale(0.5).add(r.normal.scale(IVA.holdM)), 0.3, false);
+    for (const end of [-1, 1] as const) rails.push(...doorRails(plan, hatchRails(box, along, side, end, hatchHalf).filter(fitsBar), v.id, along, end));
   }
   // Two bars beside each docking hatch, on its wall.
   for (const f of plan.fixtures.filter((x) => x.action.kind === "salir")) {
@@ -50,7 +60,9 @@ export function stationHandrails(plan: StationInteriorPlan): Handrail[] {
   for (const f of plan.fixtures) {
     const k = f.action.kind;
     if (k === "salir") continue;
-    if (plan.volumes.find((v) => v.id === f.volume)?.kind === "hangar") continue;
+    // Doors take a bar beside their hatch (above); in the hangar only the consoles have their own bar.
+    if (k === "puerta") continue;
+    if (plan.volumes.find((v) => v.id === f.volume)?.kind === "hangar" && k !== "hangar" && k !== "bahia") continue;
     const n = FACE_NORMAL[f.face].scale(-1);
     const wall = Math.abs(n.y) < 0.5;
     const runs = wall ? (Math.abs(n.x) > 0.5 ? new Vec3(0, 0, 1) : new Vec3(1, 0, 0)) : new Vec3(0, 0, 1);
@@ -60,6 +72,37 @@ export function stationHandrails(plan: StationInteriorPlan): Handrail[] {
   }
   const body = (r: Handrail) => r.a.add(r.b).scale(0.5).add(r.normal.scale(IVA.holdM));
   return rails.filter((r) => interior.fits(body(r), 0.3, false) || interior.fits(body(r), 0.3, true));
+}
+
+/**
+ * The bar beside a hatch on an end bulkhead is the door's grab point (holding it shows «Entrar en…»):
+ * of the two bars, the one further from the other things one can use, so their buttons never meet.
+ */
+function doorRails(plan: StationInteriorPlan, bars: Handrail[], volume: string, along: "x" | "z", end: -1 | 1): Handrail[] {
+  const v = plan.volumes.find((x) => x.id === volume)!;
+  const wall = v.centre[along] + end * v.half[along];
+  const door = plan.fixtures.find((f) => f.action.kind === "puerta" && f.volume === volume && Math.abs(f.at[along] - wall) < (plan.scale ?? 1));
+  if (!door) return bars;
+  // No room beside the hatchway on the bulkhead (it is as wide as the aisle): a bar on each side wall by it.
+  if (!bars.length) bars = sideBars(v, door, along);
+  const others = plan.fixtures.filter((f) => f.action.kind !== "puerta" && f.volume === volume);
+  const mid = (r: Handrail) => r.a.add(r.b).scale(0.5);
+  const clearance = (r: Handrail) => Math.min(Infinity, ...others.map((f) => mid(r).sub(f.at).length()));
+  const best = bars.reduce((a, b) => (clearance(b) > clearance(a) ? b : a));
+  return bars.map((r) => (r === best ? { ...r, poi: door.id } : r));
+}
+
+/** Two upright bars on the side walls just inside a bulkhead, for a door whose hatchway fills the aisle. */
+function sideBars(v: { id: string; centre: Vec3; half: Vec3 }, door: Fixture, along: "x" | "z"): Handrail[] {
+  const across = along === "z" ? "x" : "z";
+  const n = FACE_NORMAL[door.face];
+  const h = new Vec3(0, RAIL_LAYOUT.lengthM / 2, 0);
+  return [-1, 1].map((s) => {
+    const off = v.half[across] - RAIL_LAYOUT.standoffM;
+    const c = new Vec3(across === "x" ? v.centre.x + s * off : door.at.x, v.centre.y, across === "z" ? v.centre.z + s * off : door.at.z).sub(n.scale(0.5));
+    const normal = new Vec3(across === "x" ? -s : 0, 0, across === "z" ? -s : 0);
+    return { id: `${v.id}:puerta-${door.id}-${s < 0 ? "i" : "d"}`, a: c.sub(h), b: c.add(h), normal };
+  });
 }
 
 /** The hatches between modules, for hopping through them (gravity/domain/hops.ts). */

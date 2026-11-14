@@ -77,6 +77,15 @@ import { StationScreen } from "./station-screen";
 import { StationStructure } from "@modules/station/domain/structure";
 import { StationDock, dockNavTargets } from "./station-dock";
 import { StationInteriorMode } from "./station-interior";
+import { StationLife } from "./station-life";
+import { STATION_AREA_NAME, StationCrew } from "@modules/station/application/station-crew";
+import { STATION_LARDER } from "@modules/station/data/galley";
+import { LanderBerth } from "@modules/station/domain/hangar-berth";
+import { scaleInteriorPlan } from "@modules/station/domain/interior";
+import { MACHINE_SCALE } from "@core/machine-scale";
+import { RECIPES } from "@modules/kitchen/data/recipes";
+import { YOGA_SEQUENCES } from "@modules/wellness/data/yoga";
+import { WORKOUTS } from "@modules/wellness/data/exercise";
 import { StationInterior } from "@modules/station/domain/interior";
 import { stationInteriorPlan } from "@modules/station/data/interior";
 import { startingOutfit } from "@modules/station/data/outfit";
@@ -763,11 +772,43 @@ const stationScreen = new StationScreen(
   refuelOps,
   importOps,
   bioOps,
-  // Food from the crops goes to the mothership's larder while she is berthed here.
-  () => (mothership.dockedTo ? habitat : undefined),
+  // Food from the crops goes to the station's own larder (its galley); trip stores go aboard from the galley.
+  () => stationCrew.habitat,
 );
+// Doménica's life at the station (docs/design/estacion-tripulacion.md): the same chores engine, the station's larder, her one body.
+const stationHabitat = new Habitat(seededRandom(2027), 0, undefined, habitat.crew.name, [], habitat.crew);
+stationHabitat.stockAll(STATION_LARDER);
+const stationCrew = new StationCrew(stationHabitat, { recipes: RECIPES, yoga: YOGA_SEQUENCES, workouts: WORKOUTS });
+/** The lander on its port or lifted into the hangar by the station's arm. */
+const landerBerth = new LanderBerth();
+const landerInHangar = () => {
+  if (!atStationPort()) landerBerth.reset();
+  return landerBerth.inHangar;
+};
+const stationLife = new StationLife({
+  crew: stationCrew,
+  berth: landerBerth,
+  duel: duelView,
+  atPort: atStationPort,
+  mothershipLarder: () => (mothership.dockedTo ? habitat : undefined),
+  openTasks: () => taskBoard.open(),
+  openInventory: () => {
+    stationInside.suspend();
+    screenFromInside = true;
+    stationScreen.enter("hangar");
+  },
+  openSettings: () => {
+    settingsFrom = "estacion";
+    stationInside.sitLotus(true);
+    settingsPanel.open("Doménica en loto en la esterilla del Nodo 1 (estación)");
+  },
+  say: (t, sec) => stationInside.say(t, sec),
+  changed: () => undefined,
+});
+/** The station's interior as it is drawn and walked: MACHINE_SCALE times its real size. */
+const playInterior = () => new StationInterior(scaleInteriorPlan(stationInteriorPlan(stationOutfit.layout, stationOutfit), MACHINE_SCALE));
 // Inside the station (docs/design/interiores.md §5): zero-g modules and the hangar; its machines open the screen's tabs.
-const stationInside = new StationInteriorMode(root, new StationInterior(stationInteriorPlan(stationOutfit.layout, stationOutfit)), {
+const stationInside = new StationInteriorMode(root, playInterior(), {
   busy: () => new Set(stationOps.station.queue().map((j) => j.machine)),
   store: () => ({ parts: stationOps.station.hangar.partList(), crafts: stationOps.station.hangar.crafts.filter((c) => c.docked) }),
   partName: (id) => (partById(id)?.name ?? id).replace(/^Aerojet Rocketdyne /, "").replace(/\s*\(.*\)$/, ""),
@@ -781,6 +822,20 @@ const stationInside = new StationInteriorMode(root, new StationInterior(stationI
     stationInside.suspend();
     bay.enter("estacion");
   },
+  cannotLeave: (to) =>
+    to === "nodriza"
+      ? mothership.dockedTo
+        ? undefined
+        : "Cerrada: la nodriza no está atracada en este puerto"
+      : !atStationPort()
+        ? "Cerrada: el módulo de aterrizaje no está en este puerto"
+        : landerInHangar()
+          ? "Cerrada: el módulo está en el hangar. Sácalo a su puerto en la consola del hangar"
+          : undefined,
+  openTasks: () => taskBoard.open(),
+  actions: (f) => stationLife.actions(f),
+  act: (f, a) => stationLife.act(f, a),
+  landerInHangar,
   leave: (to) => {
     if (to === "nodriza" && !mothership.dockedTo) return "La nodriza no está atracada en este puerto";
     if (to === "sonda" && !atStationPort()) return "El módulo de aterrizaje no está en este puerto";
@@ -796,7 +851,7 @@ const regrowStation = () => {
   stationGrownAt = stationOutfit.version;
   structure.setLayout(stationOutfit.layout);
   stationModel.rebuild(stationOutfit.layout);
-  stationInside.rebuild(new StationInterior(stationInteriorPlan(stationOutfit.layout, stationOutfit)));
+  stationInside.rebuild(playInterior());
 };
 let screenFromInside = false;
 let screenToBay = false;
@@ -822,9 +877,10 @@ const stationDock = new StationDock((c, f) => view.addButton(c, f), {
 
 // --- The lander's cabin, the general settings and the task list (docs/design/habitaculo.md) --------
 const settingsPanel = new SettingsPanel(root);
-let settingsFrom: "cabina" | "nodriza" | null = null;
+let settingsFrom: "cabina" | "nodriza" | "estacion" | null = null;
 settingsPanel.onClose = () => {
   if (settingsFrom === "cabina") cabin.standUp();
+  else if (settingsFrom === "estacion") stationInside.sitLotus(false);
   else interior.standUp();
   settingsFrom = null;
 };
@@ -946,6 +1002,7 @@ function allTasks(): Task[] {
     credits: wallet.balance,
     refuel: ship.propellants.some((p) => ship.propellantKg(p) < 0.5 * ship.propellantCapacityKg(p)),
     repairs: needingAttention(bay.status()).map((c) => ({ id: c.id, name: c.name, critical: c.attention === "critico" })),
+    stationChores: stationLife.taskFacts(),
   });
 }
 const taskBoard = new TaskBoard(root, allTasks);
@@ -974,6 +1031,12 @@ function leaveEverything(): void {
 }
 /** Arrive at a task's place: the machine, the console or the screen where it is done. */
 function arriveAt(place: TaskPlace, t?: Task): void {
+  const wasInStation = stationInside.active || stationScreen.active || bay.active;
+  // To the lander from the station: the arm puts it back on its port first.
+  if (place.vehicle === "modulo" && landerBerth.inHangar) {
+    landerBerth.moveOut();
+    flash("El brazo devuelve el módulo del hangar a su puerto", 6);
+  }
   // Already on the travel ship's ring or spine: she walks to the machine from where she is.
   if (place.vehicle === "nodriza" && place.spot === "anillo" && interior.active) {
     if (t?.chore) interior.doChore(t.chore);
@@ -999,12 +1062,35 @@ function arriveAt(place: TaskPlace, t?: Task): void {
       if (place.page === "sonda") return bridge.useConsole("sonda");
       if (place.page === "mente") return bridge.goTo("mente");
       return bridge.useConsole("comms", "misiones");
-    case "estacion":
-      stationInside.enter(atStationPort() ? "sonda" : "nodriza");
-      stationInside.suspend();
-      if (place.spot === "bahia") return bay.enter("estacion");
-      screenFromInside = true;
-      return stationScreen.enter(place.tab);
+    case "estacion": {
+      // Inside the station she hops from where she is; from outside, in through the hatch she has.
+      if (!wasInStation) stationInside.enter(atStationPort() ? "sonda" : "nodriza");
+      else stationInside.resume();
+      if (place.spot === "tripulacion") {
+        const chore = t?.chore;
+        const start = () => {
+          if (chore) stationLife.startChore(chore);
+        };
+        if (!wasInStation && stationInside.placeAt(place.area)) return start();
+        if (stationInside.goToFixture(place.area, start)) return stationInside.say(`Vas a: ${STATION_AREA_NAME[place.area as keyof typeof STATION_AREA_NAME] ?? place.area}`);
+        // Out of reach from here (suited in the hangar): the task takes her there.
+        if (stationInside.placeAt(place.area)) start();
+        return;
+      }
+      // The ship bay and the machines of a tab: hop to their console, then open it; a tab with no machine opens at once.
+      const fixture = place.spot === "bahia" ? "consola-bahia" : stationInside.interior.fixturesFor(place.tab === "importar" ? "materiales" : place.tab)[0]?.id;
+      const open = () => {
+        stationInside.suspend();
+        if (place.spot === "bahia") return bay.enter("estacion");
+        screenFromInside = true;
+        stationScreen.enter(place.tab);
+      };
+      if (place.spot !== "bahia" && fixture && place.tab !== "importar") {
+        if (!wasInStation && stationInside.placeAt(fixture)) return open();
+        if (stationInside.goToFixture(fixture, open)) return;
+      }
+      return open();
+    }
   }
 }
 /** The task list's «Ir»: through open hatches to the place, or to what joins the vehicles, saying why. */
@@ -1369,4 +1455,4 @@ for (const sel of [".nano-action", ".trip-chip", ".land-offer.lander", ".land-bo
   if (el) ctxDock.appendChild(el);
 }
 
-(window as unknown as { codeship: unknown }).codeship = { cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, tripPreview, tripChip, duelView, levels };
+(window as unknown as { codeship: unknown }).codeship = { cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, landerBerth, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, tripPreview, tripChip, duelView, levels };

@@ -25,6 +25,12 @@ describe("task list: every task of the game, grouped, with where it is done (doc
     expect(t).toEqual([{ id: "c1", group: "plantas", title: "Regar", detail: "Lechuga", place: { vehicle: "nodriza", spot: "anillo", station: "huerto" }, chore: "c1" }]);
   });
 
+  it("EST-24 the station's crew chores are tasks at its galley or mat, apart from the mothership's", () => {
+    const t = collectTasks(facts({ chores: [{ id: "cocinar-chapati", title: "Cocinar Chapati", detail: "Cocina", category: "comida", station: "cocina" }], stationChores: [{ id: "cocinar-chapati", title: "Cocinar Chapati", detail: "Cocina de la estación", category: "comida", area: "cocina" }] }));
+    expect(t.map((x) => x.id)).toEqual(["cocinar-chapati", "est-cocinar-chapati"]);
+    expect(t[1]).toMatchObject({ group: "comida", place: { vehicle: "estacion", spot: "tripulacion", area: "cocina" }, chore: "cocinar-chapati" });
+  });
+
   it("HAB-05 the subjugation phases are flight tasks done at the right place: probe from the bridge, lander, suit", () => {
     const p1 = collectTasks(facts({ asteroids: [bennu] })).find((x) => x.id === "fase-bennu")!;
     expect(p1).toMatchObject({ group: "vuelo", place: { vehicle: "nodriza", spot: "puente", page: "sonda" } });

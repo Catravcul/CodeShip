@@ -14,7 +14,9 @@ export type TaskPlace =
   | { readonly vehicle: "nodriza"; readonly spot: "puente"; readonly page: "nav" | "sonda" | "mente" | "misiones"; readonly target?: string }
   | { readonly vehicle: "modulo"; readonly spot: "asiento" | "acople" | "mente" | "escotilla" | "esterilla" }
   | { readonly vehicle: "estacion"; readonly spot: "pantalla"; readonly tab: "materiales" | "planos" | "fabricacion" | "hangar" | "importar" | "vida" }
-  | { readonly vehicle: "estacion"; readonly spot: "bahia" };
+  | { readonly vehicle: "estacion"; readonly spot: "bahia" }
+  /** The station's own crew areas (galley, mat, exercise): its chores (docs/design/estacion-tripulacion.md). */
+  | { readonly vehicle: "estacion"; readonly spot: "tripulacion"; readonly area: string };
 
 export type TaskGroupId = "vuelo" | "viajes" | "misiones" | "estacion" | "nave" | "comida" | "plantas" | "animales" | "salud";
 
@@ -36,13 +38,15 @@ export interface Task {
   readonly title: string;
   readonly detail: string;
   readonly place: TaskPlace;
-  /** A chore of the board: the ring's machine runs it. */
+  /** A chore of the board: the ring's machine (or the station's crew area) runs it. */
   readonly chore?: string;
 }
 
 export interface TaskFacts {
   /** The board's chores on the travel ship, with the machine of the ring where each is done. */
   readonly chores: readonly { id: string; title: string; detail: string; category: "comida" | "plantas" | "animales" | "salud" | "nave" | "misiones"; station: string }[];
+  /** Chores of the station's crew areas (its own larder), with the area where each is done. */
+  readonly stationChores?: readonly { id: string; title: string; detail: string; category: "comida" | "salud"; area: string }[];
   /** Every catalogued asteroid with its rapport. */
   readonly asteroids: readonly { id: string; name: string; persuaded: boolean; next: Stage | undefined; subjugated: boolean; level: number; nextLevel: number | undefined }[];
   /** The asteroid the lander and the probe work on now. */
@@ -123,6 +127,7 @@ export function collectTasks(f: TaskFacts): Task[] {
   if (f.refuel) out.push({ id: "repostar", group: "nave", title: "Repostar", detail: "Estación, pestaña Materiales (con el módulo o la nodriza en su puerto)", place: { vehicle: "estacion", spot: "pantalla", tab: "materiales" } });
   for (const x of f.repairs) out.push({ id: `reparar-${x.id}`, group: "nave", title: `Revisar ${x.name}${x.critical ? " (crítico)" : ""}`, detail: "Bahía de la nave, en la estación", place: { vehicle: "estacion", spot: "bahia" } });
   for (const c of f.chores) out.push({ id: c.id, group: c.category, title: c.title, detail: c.detail, place: { vehicle: "nodriza", spot: "anillo", station: c.station }, chore: c.id });
+  for (const c of f.stationChores ?? []) out.push({ id: `est-${c.id}`, group: c.category, title: c.title, detail: c.detail, place: { vehicle: "estacion", spot: "tripulacion", area: c.area }, chore: c.id });
   return out;
 }
 

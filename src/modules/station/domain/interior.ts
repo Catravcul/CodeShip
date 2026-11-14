@@ -50,9 +50,18 @@ export interface InteriorVolume extends Box {
   readonly source?: string;
 }
 
+/** The station's own crew areas (docs/design/estacion-tripulacion.md). */
+export type CrewArea = "cocina" | "camarotes" | "aseo" | "ejercicio" | "esterilla";
+
 /** What a fixture does when she reaches it or taps it. */
 export type FixtureAction =
   | { readonly kind: "panel"; readonly panel: StationPanel }
+  /** A hatch between two areas, seen from one side: it takes her through to `to` (a volume id). */
+  | { readonly kind: "puerta"; readonly to: string; readonly hatch: string }
+  /** A crew area: galley, cabins, hygiene, exercise, the yoga mat. */
+  | { readonly kind: "tripulacion"; readonly area: CrewArea }
+  /** The hangar's console: the station's task list, the lander's berth and the inventory. */
+  | { readonly kind: "hangar" }
   | { readonly kind: "info" }
   | { readonly kind: "salir"; readonly to: PortUser }
   /** The ship bay: configure the parts of the docked ships (docs/design/accesos.md). */
@@ -87,6 +96,10 @@ export interface StationInteriorPlan {
   readonly entries: Readonly<Record<PortUser, { readonly at: Vec3; readonly facing: Vec3 }>>;
   /** Hangar storage: racks for spare parts and cradles for probes. */
   readonly storage: HangarStorage;
+  /** Where the lander rests in the hangar once the station's arm has berthed it there (deck centre of its hull). */
+  readonly landerBerth?: Vec3;
+  /** How much bigger than real it is drawn (`scaleInteriorPlan`); 1 or absent: real size. */
+  readonly scale?: number;
 }
 
 /** Racks (one crate per slot) and cradles in the hangar. */
@@ -96,6 +109,23 @@ export interface HangarStorage {
   /** Cradles on the deck, in fill order: centre of each probe. */
   readonly cradles: readonly Vec3[];
   readonly crate: Vec3;
+}
+
+/**
+ * The plan drawn `k` times bigger than real, about the station's origin (docs/design/estacion-tripulacion.md,
+ * «Escala»): rooms, hatches, machines and hangar grow; she does not. The real sizes stay in the data.
+ */
+export function scaleInteriorPlan(plan: StationInteriorPlan, k: number): StationInteriorPlan {
+  const box = <B extends Box>(b: B): B => ({ ...b, centre: b.centre.scale(k), half: b.half.scale(k) });
+  return {
+    volumes: plan.volumes.map(box),
+    fixtures: plan.fixtures.map((f) => ({ ...f, at: f.at.scale(k), size: f.size.scale(k) })),
+    solids: plan.solids.map(box),
+    entries: { sonda: { ...plan.entries.sonda, at: plan.entries.sonda.at.scale(k) }, nodriza: { ...plan.entries.nodriza, at: plan.entries.nodriza.at.scale(k) } },
+    storage: { rackSlots: plan.storage.rackSlots.map((p) => p.scale(k)), cradles: plan.storage.cradles.map((p) => p.scale(k)), crate: plan.storage.crate.scale(k) },
+    ...(plan.landerBerth ? { landerBerth: plan.landerBerth.scale(k) } : {}),
+    scale: (plan.scale ?? 1) * k,
+  };
 }
 
 const inBox = (b: Box, p: Vec3, margin: Vec3) =>
@@ -177,6 +207,18 @@ export class StationInterior {
       }
     }
     return best;
+  }
+
+  /**
+   * Why a door cannot be opened now, or nothing: the airlock's two hatches are never open at once
+   * (the hangar is at vacuum). `suited`: the airlock is emptied with her in a suit.
+   */
+  doorLock(f: Fixture, suited: boolean): string | undefined {
+    if (f.action.kind !== "puerta") return undefined;
+    const h = this.volume(f.action.hatch);
+    if (h?.needs === "traje" && !suited) return "Cerrada: al otro lado está el hangar, al vacío. Se abre con el traje puesto y la esclusa vacía («Trajes y esclusa»)";
+    if (h?.needs === "presion" && suited) return "Cerrada: la esclusa está vacía. Llénala y quítate el traje en «Trajes y esclusa» para volver a la estación";
+    return undefined;
   }
 
   fixture(id: string): Fixture | undefined {

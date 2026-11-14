@@ -112,7 +112,14 @@ export async function acciones(j) {
   await j.useMachine("cabin", "acople", "entrar-estacion", "Entrar en la estación");
   await p.waitForTimeout(800);
   await audit(j, "estacion-interior", "Interior de la estación");
-  await j.tap(".sti-tasks", "Tareas de la estación");
+  await j.tap(".sti-ui .sti-tasks", "Tareas de la estación");
+  await p.waitForTimeout(600);
+  j.check("en la estación, Tareas abre la lista global con «Ir»", (await p.locator(".task-board:not(.hidden) .tb-go").count()) > 0);
+  await audit(j, "estacion-tareas", "Lista de tareas en la estación");
+  await j.tap(".task-board [data-close]", "Cerrar tareas");
+  // The screen's tabs: from a machine's card (the refinery opens Materiales).
+  await j.setup("Doménica va hasta la refinería", () => window.codeship.stationInside.placeAt("refineria"));
+  await j.tap('.sti-card [data-act="abrir"]', "Abrir (refinería)");
   await p.waitForTimeout(600);
   const tabs = await p.$$eval(".st-tabs [data-tab]", (els) => els.map((e) => e.dataset.tab));
   j.check("la pantalla de la estación tiene sus pestañas", tabs.length >= 5, tabs.join(", "));

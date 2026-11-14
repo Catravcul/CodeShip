@@ -178,7 +178,7 @@ export class GravityZones {
       scene.add(tag);
     }
     // A short tap on the canvas, on a thing in the hub or spine: she hops there by herself (dragging looks around).
-    container.addEventListener("pointerdown", (e) => {
+    window.addEventListener("pointerdown", (e) => {
       if (!this.enabled || this.zone !== "eje" || (e.target as HTMLElement).tagName !== "CANVAS") return;
       this.tap = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() };
     });
@@ -366,13 +366,14 @@ export class GravityZones {
   }
 
   /** Where a thing of the hub or spine is on screen (for the experience suite: taps a player can make). */
-  screenPoint(id: string): { x: number; y: number; visible: boolean } {
+  screenPoint(id: string): { x: number; y: number; visible: boolean; behind?: boolean } {
     const p = this.pois.find((q) => q.id === id)?.centre ?? (this.graph.rails.some((r) => r.id === id && r.ladder) ? this.graph.rail(id).a.add(this.graph.rail(id).b).scale(0.5) : undefined);
     if (!p || !this.camera) return { x: -1, y: -1, visible: false };
     const v = new THREE.Vector3(p.x, p.y, p.z).project(this.camera);
     const x = ((v.x + 1) / 2) * window.innerWidth;
     const y = ((1 - v.y) / 2) * window.innerHeight;
-    return { x, y, visible: v.z < 1 && Math.abs(v.x) < 1 && Math.abs(v.y) < 1 };
+    const behind = new THREE.Vector3(p.x, p.y, p.z).applyMatrix4(this.camera.matrixWorldInverse).z > 0;
+    return { x, y, visible: !behind && v.z < 1 && Math.abs(v.x) < 1 && Math.abs(v.y) < 1, behind };
   }
 
   private pickAt(x: number, y: number): { poi?: string; ladder?: string; point: Vec3 } | undefined {

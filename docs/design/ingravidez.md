@@ -117,7 +117,7 @@ Petición del diseñador (2026-11-13): «flotar me resulta difícil y poco diver
 
 **Por qué 0,5–1,0 m/s:** el Skylab midió 0,4–0,6 m/s de punto a punto y ~1,8 m/s jugando (MSIS §8.7.2); el «vuelo vigoroso» llegaba a ~1,9 m/s (Amir y Newman). Un salto de 3 m o más va a 1,0 m/s, una traslación rápida pero lejos del juego libre; frenar a 1,0 m/s en 0,3 m son ~97 N, por debajo del máximo medido en la Mir (137 N). Un salto típico de 2,5 m dura unos 4 s.
 
-**Ayuda de juego:** durante un salto no actúan la deriva del aire ni las fuerzas del cubo que gira (Coriolis): el salto acaba siempre donde se apuntó. No es poco: en el cubo, a 2,2 m del eje y a 4 rpm, la fuerza centrífuga es ω²r ≈ 0,39 m/s² (0,04 g), y en un salto de 4 s desviaría unos 3 m. Se ignora para que el salto sea predecible; queda como pregunta abierta si el cubo debería sentirse durante los saltos (por ejemplo, saltos más cortos allí).
+**Ayuda de juego:** durante un salto (y en el vuelo de un lanzador) no actúan la deriva del aire ni las fuerzas del cubo que gira (Coriolis): el salto acaba siempre donde se apuntó. No es poco: en el cubo, a 2,2 m del eje y a 4 rpm, la fuerza centrífuga es ω²r ≈ 0,39 m/s² (0,04 g), y en un salto de 4 s desviaría unos 3 m. Se ignora para que el salto sea predecible; queda como pregunta abierta si el cubo debería sentirse durante los saltos (por ejemplo, saltos más cortos allí).
 
 ### Túneles más amplios
 
@@ -145,6 +145,78 @@ En el tubo hay ahora ocho filas a ~2,1 m unas de otras; las barras de los extrem
 - `src/adapters/three/interior/hop-control.ts`: marcadores y de flecha a salto; `ambient-notices.ts`: etiquetas de ambiente.
 - `src/modules/station/data/handrails.ts`: barras de los puestos y escotillas de la estación (`stationPortals`).
 - Pruebas: `hops.test.ts`, `iva.test.ts`, `station/data/handrails.test.ts` (ING-03, ING-04) y `notices.test.ts` (VID-08). Recorrido PX-02 (`tools/experiencia/movimiento.mjs`).
+
+## Fase D (hecha): la espina, más rápida, con asideros en lo que importa, lanzadores y escaleras
+
+Petición del diseñador (2026-11-14, desde el móvil): moverse por la espina es difícil y lento. Quiere asideros en los puntos de interés, impulsos más rápidos y fuertes, lanzadores y escaleras. Además, en el anillo los botones de tareas se pisan en máquinas cercanas (esterilla de yoga, máquina de ejercicio, camarote); Cold Sanctuary lo resolvió dejando mucho espacio entre interactuables (ver interiores.md, «Espacio entre interactuables»).
+
+### Qué dicen las fuentes sobre ir deprisa
+
+| Dato | Valor | Fuente |
+| --- | --- | --- |
+| Skylab, de un punto a otro | 0,4–0,6 m/s | MSIS §8.7.2 |
+| Skylab, jugando | ~1,8 m/s | MSIS §8.7.2 |
+| «Vuelo vigoroso» del Skylab (peor caso) | ~1,9 m/s, cargas cercanas a 500 N | Amir y Newman |
+| Fuerzas medidas en la Mir (2 806 movimientos) | mediana 16 N, media 21 ± 18 N, máximo 137 N | Amir y Newman |
+| Fuerza media de un astronauta (Columbia, 1994) | 28 N; los modelos de estación usaban 800 N | Newman, MIT News 1996 |
+| Impulso con las piernas (vuelo parabólico) | 224,6 ± 74,6 N de pico, entre 65,8 y 461,9 N | Aviat. Space Environ. Med. 2009 |
+| Una escalera en ingravidez | «solo sirve de guía ligera para dirigir el movimiento» | NASA, Common Habitat (2022) |
+
+No hay una cifra publicada de la velocidad de traslación de la tripulación de la ISS: la referencia sigue siendo el Skylab. Tampoco hay lanzadores de muelle en ninguna nave; son un invento de juego, con cargas dentro de lo medido.
+
+### Puntos de interés con asidero
+
+- Cada **escotilla, máquina, consola, los trajes, el ascensor y los lanzadores** de la espina (`gravity/data/spine.ts`, `spinePois`), y cada aparato de la estación (`station/data/handrails.ts`), tienen **su barra** (`Handrail.poi`): justo al lado, hacia el suelo, para que el cuerpo flote delante de la cosa (MSIS §11.7.2.3.2: un asidero entre la cintura y el hombro en cada puesto).
+- **Las flechas los prefieren**: a su puntuación se resta 0,45 (`HOP.poiBonus`), así que ▲ por la espina va de una cosa a la siguiente (de la guantera a la impresora 3D…).
+- **Al llegar** aparece su acción: «Bajar al anillo», «Abrir la escotilla del puente», «Lanzarse a la red de popa», o «Guantera del taller: ¿qué es?».
+- **Tocarlos** (su etiqueta ámbar o la cosa) o pulsar **«Ir»** de una tarea **encadena saltos** hasta allí por la ruta más rápida (`HopGraph.route`, Dijkstra por tiempo de salto).
+
+### Saltos más rápidos
+
+| Fase | Antes (fase C) | Ahora |
+| --- | --- | --- |
+| Velocidad de planeo | v = L/3 s, 0,5–1,0 m/s | v = L/1,6 s, **0,6–1,2 m/s** |
+| Impulso | 0,35 m | 0,35 m (a 1,2 m/s, 120 N) |
+| Agarre | 0,3 m (a 1,0 m/s, 97 N) | **0,35 m** (a 1,2 m/s, 120 N, bajo los 137 N de la Mir) |
+| Apuntar | 0,25 s en cada salto | 0,25 s en el primero; **con la flecha pulsada, 0 s** (saltos encadenados) |
+
+1,2 m/s es el doble del Skylab de punto a punto y dos tercios de lo que se hacía jugando; las cargas siguen dentro de lo medido.
+
+### Lanzadores (`spineLaunchers`)
+
+Una placa de muelle en el suelo de cada extremo de la espina, junto a la escalera, que la lanza a la **red** del otro extremo. Son datos: cada entrada dice dónde está, adónde lanza, la velocidad, el recorrido del muelle y lo que cede la red.
+
+| Valor | Cifra | Por qué |
+| --- | --- | --- |
+| Velocidad | **2,5 m/s** | Más que el «vuelo vigoroso» del Skylab (~1,9 m/s), porque empuja una máquina y no una persona |
+| Muelle | 1,0 m | F = m v² / 2s = 58 × 2,5² / 2 = **181 N** en los pies, dentro de los impulsos con las piernas medidos (66–462 N, media 225 N) |
+| Red | 1,4 m | **130 N** repartidos por el cuerpo, por debajo del máximo de la Mir (137 N) |
+
+### Escaleras
+
+- Una **a lo largo del suelo de la espina** (horizontal) y otra **vertical en la pared del fondo del cubo**, junto a su escotilla. Son rieles con un punto de aterrizaje cada 1,05 m.
+- Sujeta a una, **▲ ▼ pulsadas trepan sin parar a 0,6 m/s** (▲ hacia donde mira la vista; si la escalera cruza la vista, hacia arriba). ◀ ▶ trepan si van a lo largo de ella y, si no, la sueltan de un salto.
+- Para 1 m trepar tarda 1,7 s; un salto de 1 m, con apuntar, impulso y agarre, más de 2 s. Para tramos largos, el salto o el lanzador ganan.
+- Se tocan como los puntos de interés: un toque la lleva al peldaño más cercano.
+
+### Cruzar la espina: antes y después
+
+De la escotilla de atraque al ascensor (`spine.test.ts`):
+
+| Cómo | Antes | Ahora |
+| --- | --- | --- |
+| La mejor cadena de saltos posible | **20,1 s** (reglas de la fase C, sin lanzador) | **13,1 s** (4 saltos, uno con el lanzador) |
+| Solo ▲, sin tocar nada | 28,7 s (7 saltos) | 17,2 s (6 saltos) |
+
+El recorrido PX-02 la cruza solo con toques visibles (etiqueta del lanzador, su botón, la escalera, «Ir»): ver el run log.
+
+### Código de la fase D
+
+- `src/modules/gravity/domain/hops.ts`: `HOP`, `Launcher` y `launcherLoads`, puntos de las escaleras, `poiPoint`, `route`, `hopSeconds`.
+- `src/modules/gravity/domain/iva.ts`: saltos con apuntar, impulso y agarre propios, y lanzador; trepar por escaleras (`IVA.ladderSpeed`).
+- `src/modules/gravity/data/spine.ts`: la espina como datos (barras, puntos de interés, escaleras, lanzadores, `spineInteractables`).
+- `src/adapters/three/interior/hop-control.ts` (saltos encadenados, rutas, trepar), `zones.ts` (etiquetas, toques, botones), `spoke.ts` (lanzadores y redes), `zero-g-body.ts` (escaleras).
+- Pruebas: `hops.test.ts`, `spine.test.ts` (ING-05 a ING-08). Recorrido PX-02.
 
 ## Fase B (más detallada)
 
@@ -190,6 +262,8 @@ En el tubo hay ahora ocho filas a ~2,1 m unas de otras; las barras de los extrem
 - Karen Nyberg se impulsa con un pelo (2013): https://www.space.com/23293-astronaut-hair-zero-gravity-video.html
 - Suraev, atascado en medio del Nodo 3: https://www.universetoday.com/110440/why-trapping-somebody-in-space-only-takes-a-breeze-and-other-highlights-from-expedition-40/
 - «Gecko Mobility Aids for a Common Habitat Architecture» (NASA, 2022; cita a Behrendsen 2013 y los comentarios de la tripulación): https://ntrs.nasa.gov/api/citations/20220019245/downloads/Gecko%20Mobility%20Aids%20for%20a%20Common%20Habitat%20Architecture.pdf
+- Newman, D. J., fuerzas de la tripulación en el Columbia (MIT News, 1996): https://news.mit.edu/1996/astronauts-0605
+- «Vertical Translation System for the Common Habitat Architecture» (NASA, 2022): https://ntrs.nasa.gov/api/citations/20220010356/downloads/Vertical%20Translation%20System%20for%20the%20Common%20Habitat%20Architecture.pdf
 - Payload Equipment Restraint System, riel «seat track» de los bastidores de la ISS: https://ntrs.nasa.gov/api/citations/20030066313/downloads/20030066313.pdf
 
 ## Capturas

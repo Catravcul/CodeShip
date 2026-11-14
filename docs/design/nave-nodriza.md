@@ -39,7 +39,7 @@ La espina mide 152 m y no gira. Su eje es z, y la proa (−z) mira a Bennu al em
 | Parte | Dónde | Notas |
 | --- | --- | --- |
 | Nodo delantero con el puerto de acople | z = −70 m; puerto en su panza | Como el nodo Unity de la ISS. El módulo cuelga debajo, por delante de los anillos, y desde la cabina ve Bennu sin estorbos |
-| Anillo habitable | z = −42 m, radio 56 m, ancho 18 m | El módulo (12 × 4 × 2,6 m) y la cubierta de cultivo (18 × 18 × 7 m) en el suelo, con depósitos de agua al otro lado para equilibrarlo |
+| Anillo habitable | z = −42 m, radio 56 m, ancho 18 m | El módulo (18 × 4 × 2,6 m) y la cubierta de cultivo (18 × 18 × 7 m) en el suelo, con depósitos de agua al otro lado para equilibrarlo |
 | Anillo gemelo | z = −20 m | Gira al revés con camarotes, almacenes y depósitos de agua |
 | Módulos de la espina | z = −65,5 a −46 m: esclusa, almacén y taller | Como Quest, Leonardo (PMM) y Destiny de la ISS ([interiores.md](interiores.md)) |
 | Radiadores | dos alas trapezoidales de z = +4 a +50 m, 22 m de ancho delante y 8 m detrás: 690 m² de planta cada una | Paneles de dos caras: 1380 m² de planta radian los 2760 m² del estudio. De canto respecto al reactor y dentro de su sombra |

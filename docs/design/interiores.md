@@ -67,7 +67,9 @@ Vista desde el asiento del piloto, mirando a proa:
 | **Ejercicio en la ISS** | **T2** (cinta Woodway modificada, 2,4–19,3 km/h, con arnés y gomas), **CEVIS** (bicicleta de 25–350 W a 30–120 rpm), **ARED** (cilindros de vacío, 11–272 kg). El estudio **Sprint** probó un plan de alta intensidad: 3 días de intervalos (8 × 30 s, 6 × 2 min, 4 × 4 min) y 3 de 30 min continuos al 75 % del VO2 pico, más fuerza 3 días (4 × 12, 4 × 8 o 4 × 6). Unas **6 h a la semana**, frente a las 9–10 del programa normal | Las tres máquinas y los entrenamientos | [English et al. 2020, npj Microgravity](https://pmc.ncbi.nlm.nih.gov/articles/PMC7434884) |
 | **Pulso máximo** | 208 − 0,7 × edad | Objetivo de los intervalos: más del 90 % | [Tanaka et al. 2001](https://doi.org/10.1016/S0735-1097(00)01054-8) |
 
-### El módulo del anillo (12 × 4 × 2,6 m, a 1 g)
+### El módulo del anillo (18 × 4 × 2,6 m, a 1 g)
+
+Se alargó de 12 a 18 m (2026-11-14) para dejar 2 m entre todo lo que se usa (ver «Espacio entre interactuables»): el rincón de ejercicio, la esterilla, el camarote y los gatos estaban a 1,1 m unos de otros. Un anillo de 56 m de radio mide 352 m de vuelta: el módulo más largo no cuesta nada en el diseño (`modules/habitat/data/ring-module.ts`, `RING_MODULE` y `RING_STATIONS`).
 
 `src/adapters/three/interior/room.ts`. El eje z va a lo largo del suelo del anillo, del ascensor (−z) a la puerta de la cubierta de cultivo (+z).
 
@@ -75,8 +77,8 @@ Vista desde el asiento del piloto, mirando a proa:
  −z  ascensor ·································································· puerta a la cubierta  +z
  izq. │ bastidores del huerto (18 macetas) │ enfermería │ escotilla │ camarote de Doménica │ gatos │
       │                                    │            │  bahía    │ (litera, portátil)   │       │
- centro                                          esterilla de yoga (cruzada)
- der. │ cocina · nevera · molino · soja · laboratorio de carne │ mente de la nave │ cinta · bici · fuerza │
+ centro                                          (pasillo libre de 2 m)
+ der. │ cocina · nevera · molino · soja · laboratorio de carne │ mente de la nave │ cinta · bici · fuerza │ esterilla de yoga │
        └──────── extremo ruidoso (agua, ruido, olores) ────────┘                 └─ extremo tranquilo ─┘
 ```
 
@@ -89,9 +91,10 @@ Vista desde el asiento del piloto, mirando a proa:
 | Enfermería (CHeCS) | izq., z −0,4 a +2,1 | Camilla, mesa veterinaria, armario, monitor | atender pacientes (personas y animales) |
 | Mente de la nave | der., z +2 | Panel con la clase de la nave | reparar la nave |
 | Escotilla de la bahía | izq., z +2,75 | Puerta con marco ámbar | abrir la bahía |
-| **Rincón de ejercicio** | centro y der., z +2,9 a +5,9 | Esterilla de yoga, cinta (T2), bicicleta (CEVIS) y estante de fuerza con barra (ARED) | yoga, **ejercicio** (nuevo) |
-| **Camarote de Doménica** | izq., z +3,3 a +5,25 | Cabina cerrada de 0,95 × 1,95 m: litera con cajones, estante, portátil, dos fotos (Nevaeh y Kushal), luz de lectura, cortina. Los gatos duermen en su litera | El botón «Camarote: leer cartas» abre la radio |
-| Gatos | izq., z +5,3 a +6, junto al camarote | Arenero y cuencos; el rascador está en la puerta del camarote | alimentar y calmar gatos |
+| **Rincón de ejercicio** | der., z +3,9 a +6,7 | Cinta (T2), bicicleta (CEVIS) y estante de fuerza con barra (ARED) | **ejercicio** |
+| **Esterilla de yoga** | der., z +6,9 a +8,7, a lo largo de la pared | Esterilla de 0,65 × 1,85 m con su letrero | yoga, ajustes (sentarse en loto) |
+| **Camarote de Doménica** | izq., z +4,2 a +6,2 | Cabina cerrada de 0,95 × 1,95 m: litera con cajones, estante, portátil, dos fotos (Nevaeh y Kushal), luz de lectura, cortina. Los gatos duermen en su litera | El botón «Camarote: leer cartas» abre la radio |
+| Gatos | izq., z +7,4 a +8,5, al fondo | Arenero y cuencos; el rascador está en la puerta del camarote | alimentar y calmar gatos |
 
 En el anillo hay 1 g, así que las máquinas son las de la Tierra: la cinta no necesita el arnés con gomas de la T2 ni la bicicleta las correas de la CEVIS. Eso es parte de uno de los retos. La de fuerza se queda como la ARED: no pesa lo que levanta.
 
@@ -104,6 +107,27 @@ En el anillo hay 1 g, así que las máquinas son las de la Tierra: la cinta no n
 | **Aseo** | a la izquierda de la puerta, 1,4 × 1,25 m, con puerta | El Deep Space Habitat no quiere el aseo junto a la cocina ni junto a los camarotes |
 | **Gallinero** | al final del césped, a la derecha (x ≈ 7,4) | Las gallinas no deben vivir junto a la cocina y la enfermería. En la cubierta tienen el césped y el compost al lado, y las gallinas libres salen por su puerta |
 | Perros, bancales, higueras | igual que antes | |
+
+### Espacio entre interactuables (regla de Cold Sanctuary)
+
+**Regla: 2,0 m** entre dos cosas que se usan, medidos entre sus centros (donde están la cosa y su letrero) y entre sus puntos de acción (donde se pone de pie o se agarra para que salga su botón). El botón sale a menos de **0,9 m** del punto de acción (`ACTION_REACH_M`, menos de la mitad), así que **nunca salen dos a la vez**. En `src/core/spacing.ts` (`INTERACTABLE_SPACING`, `spacingViolations`).
+
+**De dónde sale.** Cold Sanctuary tuvo el mismo problema (botones de acción amontonados) y lo resolvió con espacio: el diseñador pidió «2 m entre objetos» (`docs/edificios-investigacion.md`, 2026-10-24), su `FurnitureSpacing.cs` comprueba 2,0 m entre bloques de laboratorio (regla `Bloque_`) y su edificio de entrenamiento deja ≥ 2,0 m entre huellas de máquinas (`docs/entrenamiento-areas.md` §3.6). Codeship toma la misma cifra.
+
+**Por qué basta en un iPhone 13** (390 pt de ancho, 70° de campo vertical, ≈45° de ancho en vertical): dos letreros de ~1,5 m separados 2 m quedan uno junto a otro a cualquier distancia, no uno encima del otro; y como el botón sale solo dentro de 0,9 m, al llegar a una máquina el de la vecina ya no está.
+
+| Dónde | Qué se hizo | Test |
+| --- | --- | --- |
+| Módulo del anillo y cubierta de cultivo | Módulo alargado a 18 m; puestos a 1 m de cada pared (2 m de pasillo entre los de una y otra); ejercicio, camarote, esterilla y gatos separados; el ascensor cuenta | `habitat/data/spacing.test.ts` |
+| Cocina y molino | Dos puestos a 2,1 m | ídem |
+| Puente de mando | Ampliado a 6,4 × 8 m (antes 4 × 4,2; 120 m³ habitables, antes 28); diez consolas y la escotilla a 2 m | ídem |
+| Espina de la nodriza | Puntos de interés y sus barras a 2 m o más (guantera 5,0 m, impresora 7,1, almacén 8,6, puente 11, trajes 13,5, lanzadores 2,9 y 14,5) | `gravity/data/spine.test.ts` |
+| Estación | Aparatos del módulo habitable en zigzag; un puesto por zona (se juntaron la mesa con la cocina y el botiquín con los camarotes); consola de la bahía y esclusa de carga desplazadas | `habitat/data/spacing.test.ts` |
+
+**Excepciones (abiertas):**
+
+- **La cabina del módulo de aterrizaje** es de tamaño real (una cápsula): no caben 2 m. Allí solo se garantiza que dos puestos están a más de dos alcances del botón, así que nunca salen dos a la vez.
+- **Aparatos en bastidores contiguos de la estación** (paso de 1,41 m, como los ISPR de la ISS): en ingravidez cada uno muestra su acción solo mientras ella sujeta su propia barra, así que tampoco se pisan.
 
 ### El ejercicio (dominio)
 
@@ -120,7 +144,7 @@ Cada reto resuelto suma forma a Doménica (`CrewMember.train`): un entrenamiento
 
 ### La espina sin gravedad
 
-Interior (`interior/spoke.ts`): desde el cojinete hacia proa, el **taller** (una guantera con dos puertos para los guantes, como la MSG de Destiny, y una impresora 3D), el **almacén** (bolsas de carga atadas al «techo», como en el PMM Leonardo), la escotilla verde al **puente de mando**, la **esclusa** con dos trajes EMU y la escotilla exterior, y al final la escotilla al módulo. Por dentro, la espina está comprimida a 13,5 m; por fuera, los módulos ocupan unos 20 m.
+Interior (`interior/spoke.ts`): desde el cojinete hacia proa, el **taller** (una guantera con dos puertos para los guantes, como la MSG de Destiny, y una impresora 3D), el **almacén** (bolsas de carga atadas al «techo», como en el PMM Leonardo), la escotilla verde al **puente de mando**, la **esclusa** con dos trajes EMU y la escotilla exterior, y al final la escotilla al módulo. Por dentro, la espina está comprimida a 13,5 m, con asideros en cada cosa, dos lanzadores con red y dos escaleras (ingravidez.md, «Fase D»); por fuera, los módulos ocupan unos 20 m.
 
 Fuera (`NODRIZA.layout.spineModules`, dibujados en `mothership-model.ts`):
 

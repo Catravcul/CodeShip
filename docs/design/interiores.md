@@ -124,6 +124,8 @@ En el anillo hay 1 g, así que las máquinas son las de la Tierra: la cinta no n
 | Espina de la nodriza | Puntos de interés y sus barras a 2 m o más (guantera 5,0 m, impresora 7,1, almacén 8,6, puente 11, trajes 13,5, lanzadores 2,9 y 14,5) | `gravity/data/spine.test.ts` |
 | Estación | Aparatos del módulo habitable en zigzag; un puesto por zona (se juntaron la mesa con la cocina y el botiquín con los camarotes); consola de la bahía y esclusa de carga desplazadas | `habitat/data/spacing.test.ts` |
 
+Capturas (iPhone 13, recorrido PX-02 y PX-10): `docs/screenshots/separacion-{1-ejercicio,2-camarote,3-esterilla,4-puente}-movil.png`: junto a cada puesto, un solo botón, el suyo.
+
 **Excepciones (abiertas):**
 
 - **La cabina del módulo de aterrizaje** es de tamaño real (una cápsula): no caben 2 m. Allí solo se garantiza que dos puestos están a más de dos alcances del botón, así que nunca salen dos a la vez.

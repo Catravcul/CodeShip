@@ -278,3 +278,5 @@ Fase A:
 - `docs/screenshots/ingravidez-1-impulso-{mobile,desktop}.png`: se impulsa desde el asidero junto a la escotilla de atraque del Nodo 2; los brazos van hacia atrás.
 - `docs/screenshots/ingravidez-2-planeo-{mobile,desktop}.png`: vuela de cabeza hacia el módulo habitable, a 0,50 m/s y sin frenar. En el móvil se ve «Agarrarse» porque hay un asidero al alcance.
 - `docs/screenshots/ingravidez-3-agarre-{mobile,desktop}.png`: tras cruzar la espina de la nodriza, agarra un asidero del fondo del cubo junto a la escotilla.
+- `docs/screenshots/espina-1-lanzador-movil.png`: sujeta al lanzador de proa (la etiqueta del lanzador y el botón «Lanzarse a la red de popa»).
+- `docs/screenshots/espina-2-escalera-movil.png`: trepando por la escalera del cubo con ▲ pulsada («trepando a 0,6 m/s» en el HUD).

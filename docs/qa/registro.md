@@ -117,6 +117,9 @@ caso y las anteriores quedan en sus run logs.
 | HAB-06 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | HAB-07 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | HAB-08 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); el recorrido PX-02 lo juega |
+| HAB-12 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); el recorrido PX-15 lo juega |
+| HAB-13 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); el recorrido PX-15 lo juega |
+| HAB-14 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); el recorrido PX-15 lo juega |
 | CV-01 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK |
 | CV-02 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-01** cerrado |
 | CV-03 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK · **B-01** arreglado |
@@ -146,6 +149,7 @@ caso y las anteriores quedan en sus run logs.
 | PX-10 | Probado (en vivo) | 2026-11-14 | `f1df8fc` | [run](runs/2026-11-14-1806-PX-04-PX-10-PX-12.md): 21 OK |
 | PX-11 | Probado (en vivo) | 2026-11-14 | `cb310e1` | [run](runs/2026-11-14-1626-PX-01-PX-02-PX-04-PX-05-PX-10-PX-11.md): 21 OK |
 | PX-12 | Probado (en vivo) | 2026-11-14 | `f1df8fc` | [run](runs/2026-11-14-1806-PX-04-PX-10-PX-12.md): 23 OK |
+| PX-15 | Pendiente | | | Sin run log todavía |
 
 ## Última ejecución por run log
 

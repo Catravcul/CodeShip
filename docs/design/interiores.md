@@ -187,6 +187,11 @@ Comprobado en el navegador (iPhone 13 y 1280 × 800): caminar con el mando táct
 
 ## 5. La estación por dentro
 
+> Actualizado en [estacion-tripulacion.md](estacion-tripulacion.md) (2026-11-14). La estación tiene ahora
+> zonas propias de tripulación (cocina, camarotes, aseo, ejercicio y esterilla) y puertas con nombre.
+> El módulo entra en el hangar y la bahía está allí. La interfaz es la del habitáculo (primera persona,
+> iconos de raíz y tarjetas). Se dibuja a `MACHINE_SCALE` = 1,5.
+
 Petición de diseño (2026-11-12): «Que se pueda andar por dentro de la estación, tanto por el hangar como por el módulo habitable».
 
 **Cómo se entra:** con el módulo acoplado a la estación, o con la nodriza atracada en ella y el módulo a bordo, se entra por la escotilla donde está acoplado el vehículo: **«Entrar en la estación»** en la cabina del módulo, o **Pasar a la estación** en la escotilla de la espina de la nodriza. **Salir** devuelve por la escotilla por la que se entró ([accesos.md](accesos.md)). Doménica entra por la escotilla del puerto donde está la nave: por el **suelo del Nodo 2** si viene del módulo o por **proa del Nodo 2** si viene de la nodriza.

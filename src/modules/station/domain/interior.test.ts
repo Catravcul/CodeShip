@@ -9,7 +9,7 @@ import { POLANA_STATION } from "../data/station";
 import { MaterialStock } from "./materials";
 import { Hangar } from "./hangar";
 import { Station } from "./station";
-import { StationInterior, distanceToBox, faceToward, fixtureBox } from "./interior";
+import { FACE_NORMAL, StationInterior, distanceToBox, faceToward, fixtureBox } from "./interior";
 
 const interior = new StationInterior(POLANA_INTERIOR);
 const BODY = 0.3;
@@ -93,7 +93,8 @@ describe("station interior (sized from the structure)", () => {
     expect(panel("refineria")).toBe("propelente");
     expect(panel("fundicion")).toBe("fabricacion");
     expect(panel("impresora")).toBe("planos");
-    expect(panel("consola-hangar")).toBe("hangar");
+    expect(interior.fixture("consola-hangar")!.action.kind).toBe("hangar");
+    expect(panel("estante-babor")).toBe("hangar");
     for (const p of ["materiales", "planos", "fabricacion", "hangar"] as const) expect(interior.fixturesFor(p).length).toBeGreaterThan(0);
     expect(interior.fixture("refineria")!.machine).toBe("refineria");
   });
@@ -101,6 +102,12 @@ describe("station interior (sized from the structure)", () => {
   it("every fixture can be reached from somewhere she fits", () => {
     for (const f of POLANA_INTERIOR.fixtures) {
       const suited = f.volume === "hangar";
+      if (f.action.kind === "puerta") {
+        // A door: just inside its own side of the hatch, on whichever side of the airlock's state it opens.
+        const p = f.at.sub(FACE_NORMAL[f.face].scale(0.6));
+        expect(interior.fits(p, BODY, false) || interior.fits(p, BODY, true), f.id).toBe(true);
+        continue;
+      }
       const v = interior.volume(f.volume)!;
       // Walk from the fixture's front toward the volume's axis until she fits.
       let ok = false;

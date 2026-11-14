@@ -196,8 +196,10 @@ export class Habitat {
     readonly ship?: RepairableShip,
     crewName = "Tripulante",
     machines: readonly MachineSpec[] = [],
+    /** The same person in another place (the station's galley and mat): share her body, do not make a new one. */
+    crew?: CrewMember,
   ) {
-    this.crew = new CrewMember(crewName);
+    this.crew = crew ?? new CrewMember(crewName);
     for (const m of machines) this._machines.set(m.id, new Machine(m));
   }
 
@@ -236,6 +238,10 @@ export class Habitat {
   }
   larder(item: string): number {
     return this._larder.get(item) ?? 0;
+  }
+  /** Everything in the larder, with what is left of each. */
+  larderItems(): [string, number][] {
+    return [...this._larder.entries()].filter(([, n]) => n > 0);
   }
   stock(item: string, amount: number): void {
     this._larder.set(item, this.larder(item) + amount);

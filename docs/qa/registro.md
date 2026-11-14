@@ -60,6 +60,11 @@ caso y las anteriores quedan en sus run logs.
 | EST-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | EST-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | EST-04 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| EST-20 | Probado (en vivo) | 2026-11-14 | `5476fbf` | [run](runs/2026-11-14-1800-PX-12.md): PX-12 y la suite |
+| EST-21 | Probado (en vivo) | 2026-11-14 | `5476fbf` | [run](runs/2026-11-14-1800-PX-12.md): PX-12 y la suite |
+| EST-22 | Probado (en vivo) | 2026-11-14 | `5476fbf` | [run](runs/2026-11-14-1800-PX-12.md): PX-12 y la suite |
+| EST-23 | Probado (en vivo) | 2026-11-14 | `5476fbf` | [run](runs/2026-11-14-1800-PX-12.md): PX-12 y la suite |
+| EST-24 | Probado (en vivo) | 2026-11-14 | `5476fbf` | [run](runs/2026-11-14-1800-PX-12.md): PX-12 y la suite |
 | EST-05 | Parcial | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): suite OK; en vivo solo la tarjeta del almacén lleno (`hc-almacen-mobile.png`) |
 | REF-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | REF-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -140,6 +145,7 @@ caso y las anteriores quedan en sus run logs.
 | PX-09 | Probado (en vivo) | 2026-11-13 | `f59ae5a` | [run](runs/2026-11-13-1713-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09-PX-10-PX-11.md): 9 OK |
 | PX-10 | Probado (en vivo) | 2026-11-14 | `cb310e1` | [run](runs/2026-11-14-1626-PX-01-PX-02-PX-04-PX-05-PX-10-PX-11.md): 21 OK |
 | PX-11 | Probado (en vivo) | 2026-11-14 | `cb310e1` | [run](runs/2026-11-14-1626-PX-01-PX-02-PX-04-PX-05-PX-10-PX-11.md): 21 OK |
+| PX-12 | Probado (en vivo) | 2026-11-14 | `5476fbf` | [run](runs/2026-11-14-1800-PX-12.md): 23 OK |
 
 ## Última ejecución por run log
 
@@ -147,6 +153,7 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-14 18:00 | PX-12 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-14-1800-PX-12.md) |
 | 2026-11-14 16:26 | PX-01, PX-02, PX-04, PX-05, PX-10, PX-11 | Experiencia (Playwright) | 6/6 recorridos bien | [run](runs/2026-11-14-1626-PX-01-PX-02-PX-04-PX-05-PX-10-PX-11.md) |
 | 2026-11-13 17:13 | PX-01, PX-02, PX-03, PX-04, PX-05, PX-06, PX-07, PX-08, PX-09, PX-10, PX-11 | Experiencia (Playwright) | 11/11 recorridos bien | [run](runs/2026-11-13-1713-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09-PX-10-PX-11.md) |
 | 2026-11-13 16:45 | PX-01, PX-02, PX-03, PX-04, PX-05, PX-06, PX-07, PX-08, PX-09 | Experiencia (Playwright) | 9/9 recorridos bien | [run](runs/2026-11-13-1645-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09.md) |

@@ -137,6 +137,8 @@ const STYLE: Readonly<Record<string, { panel: number; accent: number; glow?: num
   mesa: { panel: 0xb8bec6, accent: 0x5a6270 },
   botiquin: { panel: 0xf2f2f2, accent: 0xd8282a },
   "camarote-babor": { panel: 0x3b6ea8, accent: 0xdfe6ee },
+  camarotes: { panel: 0x3b6ea8, accent: 0xdfe6ee, glow: 0xffe6a8 },
+  esterilla: { panel: 0x7a4fb0, accent: 0xd8c8f0 },
   "camarote-estribor": { panel: 0x8a5aa8, accent: 0xdfe6ee },
   "puerto-babor": { panel: 0x9aa6b6, accent: 0x5a6270 },
   "puerto-estribor": { panel: 0x9aa6b6, accent: 0x5a6270 },
@@ -178,7 +180,7 @@ const FRONT: Readonly<Record<Face, [THREE.Vector3, THREE.Vector3]>> = {
 };
 
 /** The front of a wall fixture: a panel just inside the aisle with an accent and, for machines, a lamp. */
-function fixtureFront(f: Fixture, lamps: Map<MachineId, THREE.Mesh>): THREE.Group {
+function fixtureFront(f: Fixture, lamps: Map<MachineId, THREE.Mesh>, scale = 1): THREE.Group {
   const g = new THREE.Group();
   const st = STYLE[f.id] ?? { panel: 0x9aa6b6, accent: 0x5a6270 };
   const n = v3(FACE_NORMAL[f.face]).negate();
@@ -196,9 +198,29 @@ function fixtureFront(f: Fixture, lamps: Map<MachineId, THREE.Mesh>): THREE.Grou
     g.add(m);
     return m;
   };
+  if (f.action.kind === "puerta") {
+    // A door: the hatch stays open to look through; a yellow frame, a pickable pane and the sign of where it leads.
+    const pane = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.02), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+    pane.quaternion.copy(q);
+    pane.position.copy(at);
+    pane.userData.fixture = f.id;
+    g.add(pane);
+    for (const s of [-1, 1]) {
+      plate(0.1, h + 0.2, (s * (w + 0.1)) / 2, 0, 0.03, 0xffc84a, true);
+      plate(w + 0.2, 0.1, 0, (s * (h + 0.1)) / 2, 0.03, 0xffc84a, true);
+    }
+    const sign = textSign(`→ ${f.label.replace(/^Escotilla · /, "")}`);
+    sign.scale.multiplyScalar(0.55 * Math.sqrt(scale));
+    sign.position.copy(at).addScaledVector(V(0, 1, 0), h / 2 + 0.35).addScaledVector(n, 0.15);
+    g.add(sign);
+    return g;
+  }
   const body = plate(w, h, 0, 0, 0.02, st.panel);
   body.userData.fixture = f.id;
-  if (f.id === "campos-cultivo") {
+  if (f.id === "esterilla") {
+    // A rolled-out mat with foot straps.
+    for (const s of [-1, 1]) plate(w * 0.8, 0.06, 0, s * h * 0.3, 0.04, st.accent);
+  } else if (f.id === "campos-cultivo") {
     // Crop trays: green shelves of plants under pink grow lights.
     const tiers = Math.max(2, Math.floor(h / 0.7));
     for (let t = 0; t < tiers; t++) {
@@ -241,7 +263,7 @@ function fixtureFront(f: Fixture, lamps: Map<MachineId, THREE.Mesh>): THREE.Grou
       if (f.machine) lamps.set(f.machine, lamp);
     }
     if (f.id === "guantera") for (const s of [-1, 1]) plate(0.3, 0.3, s * 0.25, -h * 0.2, 0.05, 0x111111);
-    if (f.id.startsWith("camarote")) plate(0.12, h * 0.6, w * 0.35, 0, 0.05, st.accent);
+    if (f.id.startsWith("camarote")) for (const k of [-1, 1]) plate(0.12, h * 0.6, k * w * 0.35, 0, 0.05, st.accent);
     if (f.id === "trajes")
       for (const s of [-1, 1]) {
         // Two suits hung on the wall, like the EMUs in Quest's crew lock.
@@ -258,7 +280,7 @@ function fixtureFront(f: Fixture, lamps: Map<MachineId, THREE.Mesh>): THREE.Grou
   }
   // Name above the fixture (or just off a deck/overhead one), always facing the camera.
   const sign = textSign(f.label);
-  sign.scale.multiplyScalar(f.volume === "hangar" ? 1.2 : 0.6);
+  sign.scale.multiplyScalar((f.volume === "hangar" ? 1.2 : 0.6) * Math.sqrt(scale));
   const off = f.face === "techo" || f.face === "suelo" ? at.clone().addScaledVector(n, 0.25) : at.clone().addScaledVector(n, 0.2).addScaledVector(V(0, 1, 0), Math.min(h / 2 + 0.05, 0.75));
   sign.position.copy(off);
   g.add(sign);
@@ -466,8 +488,8 @@ export function buildStationRooms(plan: StationInteriorPlan): StationRooms {
     group.add(sign);
   }
   for (const f of plan.fixtures) {
-    if (f.volume === "hangar" && f.id !== "consola-hangar") continue;
-    const g = fixtureFront(f, lamps);
+    if (f.volume === "hangar" && f.action.kind !== "hangar" && f.action.kind !== "bahia" && f.action.kind !== "puerta") continue;
+    const g = fixtureFront(f, lamps, plan.scale ?? 1);
     group.add(g);
   }
   const signs: THREE.Sprite[] = [];
@@ -480,6 +502,41 @@ export function buildStationRooms(plan: StationInteriorPlan): StationRooms {
   group.add(new THREE.HemisphereLight(0xeef4ff, 0x3a404a, 1.4));
   group.add(new THREE.AmbientLight(0xffffff, 0.25));
   return { group, pickables, lamps, store, signs };
+}
+
+/**
+ * The lander on its cradle in the hangar (docs/design/estacion-tripulacion.md, «Hangar»): hull 3 × 2 × 5 m,
+ * four legs, the docking ring on its roof and its name; `k` is the interior's drawing scale.
+ */
+export function landerModel(k = 1): THREE.Group {
+  const g = new THREE.Group();
+  const hull = new THREE.Mesh(new THREE.BoxGeometry(3, 2, 5), mat(0xe9ecef));
+  hull.position.y = 1.2;
+  g.add(hull);
+  const glass = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.5, 0.05), new THREE.MeshBasicMaterial({ color: 0x7fdcff }));
+  glass.position.set(0, 1.6, -2.53);
+  g.add(glass);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.12, 8, 24), mat(0xffc84a));
+  ring.rotation.x = Math.PI / 2;
+  ring.position.y = 2.3;
+  g.add(ring);
+  for (const sx of [-1, 1])
+    for (const sz of [-1, 1]) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 1.4, 8), mat(0x56606e));
+      leg.position.set(sx * 1.7, 0.4, sz * 2.2);
+      leg.rotation.z = sx * 0.35;
+      g.add(leg);
+    }
+  const cradle = new THREE.Mesh(new THREE.BoxGeometry(4, 0.3, 6), mat(0x3d4552));
+  cradle.position.y = -0.35;
+  g.add(cradle);
+  const sign = textSign("Módulo de aterrizaje · en el hangar");
+  sign.scale.multiplyScalar(1.4);
+  sign.position.y = 3.4;
+  g.add(sign);
+  g.scale.setScalar(k);
+  g.traverse((o) => (o.userData.fixture = "consola-hangar"));
+  return g;
 }
 
 /** A built probe on its cradle: a white bus with solar wings and its name. */

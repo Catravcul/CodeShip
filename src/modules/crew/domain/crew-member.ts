@@ -13,6 +13,8 @@ export const CREW_TUNING = {
   /** A whole workout on the exercise corner's machines: more fitness than yoga, less calm. */
   workoutFitness: 0.35,
   workoutCalm: 0.1,
+  /** A sleep in a crew cabin (the station's quarters): calm, nothing else. */
+  restCalm: 0.25,
   /** Years away from her family: loneliness slowly builds up… */
   isolationStressPerDay: 0.03,
   /** …and animal families on board calm her (see ANIMAL_COMPANY in the family module). */
@@ -113,6 +115,11 @@ export class CrewMember implements Patient {
   train(of: number): void {
     this._fitness = clamp01(this._fitness + CREW_TUNING.workoutFitness / of);
     this._stress = clamp01(this._stress - CREW_TUNING.workoutCalm / of);
+  }
+
+  /** A night in a quiet cabin. */
+  rest(): void {
+    this._stress = clamp01(this._stress - CREW_TUNING.restCalm);
   }
 
   startle(amount: number): void {

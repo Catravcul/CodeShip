@@ -8,6 +8,8 @@
 export type ChallengeView = "panel" | "hud";
 /** Cockpit camera the lander starts in when the pilot sits down. */
 export type StartCamera = "cabina" | "exterior" | "ventral" | "trasera";
+/** How the task list's «Ir» takes her there: the whole real way, or straight there (docs/design/viaje-a-una-tarea.md). */
+export type TaskTravel = "viaje" | "teletransporte";
 /** What the first input of a session was. */
 export type FirstInput = "tecla" | "toque" | "raton";
 
@@ -24,10 +26,13 @@ export interface GameSettings {
   readonly camera: StartCamera;
   /** Synthesised alarms (ram warning, impacts). */
   readonly sound: boolean;
+  /** «Ir a una tarea»: travel the real route (default) or teleport. */
+  readonly taskTravel: TaskTravel;
 }
 
 export const CHALLENGE_VIEWS: readonly ChallengeView[] = ["panel", "hud"];
 export const START_CAMERAS: readonly StartCamera[] = ["cabina", "exterior", "ventral", "trasera"];
+export const TASK_TRAVELS: readonly TaskTravel[] = ["viaje", "teletransporte"];
 
 export const DEFAULT_SETTINGS: GameSettings = {
   names: true,
@@ -37,6 +42,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   challengeView: "panel",
   camera: "cabina",
   sound: true,
+  taskTravel: "viaje",
 };
 
 /**
@@ -90,5 +96,6 @@ export function parseSettings(raw: string | null, env: { touchCapable: boolean; 
     challengeView: o ? oneOf(o.challengeView, CHALLENGE_VIEWS, legacy) : legacy,
     camera: oneOf(o?.camera, START_CAMERAS, DEFAULT_SETTINGS.camera),
     sound: bool(o?.sound, DEFAULT_SETTINGS.sound),
+    taskTravel: oneOf(o?.taskTravel, TASK_TRAVELS, DEFAULT_SETTINGS.taskTravel),
   };
 }

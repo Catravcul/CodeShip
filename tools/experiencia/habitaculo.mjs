@@ -59,7 +59,8 @@ export async function habitaculo(j) {
   const flightTask = '.task-board .tb-task:has-text("Aterriza el módulo") .tb-go';
   if (await p.locator(flightTask).count()) {
     await j.tap(flightTask, "Ir: Aterriza el módulo");
-    await p.waitForTimeout(900);
+    // In travel mode (the default) she walks to the seat and sits down by herself.
+    await p.waitForFunction(() => !window.codeship.cabin.active && document.body.classList.contains("in-cockpit"), null, { timeout: 20000 }).catch(() => {});
     const seated = await p.evaluate(() => !window.codeship.cabin.active && document.body.classList.contains("in-cockpit"));
     j.check("«Ir» a una tarea de vuelo la sienta en el asiento del piloto", seated);
   } else j.check("la lista ofrece «Aterriza el módulo» tras la fase de la sonda", false);

@@ -71,7 +71,8 @@ export class StationInteriorMode {
   private readonly hop: HopControl;
   private yaw = 0;
   private pitch = 0;
-  private thirdPerson = true;
+  /** First person by default (the designer's call, 2026-11-14); the view button switches. */
+  private thirdPerson = false;
   private toastUntil = 0;
   private storeKey = "";
   private hudKey = "";
@@ -132,7 +133,8 @@ export class StationInteriorMode {
     window.addEventListener("keyup", (e) => this.keys.delete(e.code));
     // A short tap on a machine or rack uses it (dragging looks around).
     root.addEventListener("pointerdown", (e) => {
-      if (!this.active || (e.target as HTMLElement).tagName !== "CANVAS") return;
+      // While the task list's travel moves her, a tap does not send her elsewhere (dragging still looks).
+      if (!this.active || (e.target as HTMLElement).tagName !== "CANVAS" || document.body.classList.contains("in-journey")) return;
       this.tap = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() };
     });
     window.addEventListener("pointerup", (e) => {
@@ -198,6 +200,32 @@ export class StationInteriorMode {
   goToFixture(id: string): boolean {
     const at = this.hops.poiPoint(id);
     return !!at && this.hop.goTo(at.id);
+  }
+
+  /** The fixture whose grab point she holds, if any. */
+  heldFixture(): string | undefined {
+    return this.hop.holding(this.iva)?.poi;
+  }
+
+  /** Whether she is hopping by herself to a chosen point. */
+  get routing(): boolean {
+    return this.hop.routing;
+  }
+
+  /** Stop a chain of hops where she is (she still catches the next hold). */
+  stopHops(): void {
+    this.hop.cancel();
+  }
+
+  /** The landing point she holds, or the nearest one (to plan a journey from where she is). */
+  pointNow(): string | undefined {
+    return (this.hop.holding(this.iva) ?? this.hops.nearest(this.iva.position))?.id;
+  }
+
+  /** Out through a docking hatch (the task list's travel); returns why not, if she cannot. */
+  exitBy(to: PortUser): string | void {
+    if (this.suited) return "Primero vuelve a la esclusa y quítate el traje";
+    return this.deps.leave(to);
   }
 
   /** Holding the landing point nearest to p. */

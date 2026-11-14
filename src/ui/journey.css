@@ -1,0 +1,13 @@
+/* The task list's travel mode (docs/design/viaje-a-una-tarea.md): one line with the next leg and the
+   time left, and one «Parar». While she travels by herself the movement controls hide; the look stick,
+   dragging the view, the eye icon and the camera cycle stay. */
+.journey-bar { position: fixed; left: 12px; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 30; display: flex; flex-direction: column; gap: 8px; width: min(300px, calc(100vw - 184px)); padding: 10px; border-radius: 16px; background: #06141cdd; border: 1px solid #7fdcff66; color: #d8f6ff; font-size: 14px; line-height: 1.3; box-shadow: 0 2px 14px #0008; }
+.journey-bar.hidden { display: none; }
+.journey-bar .jb-text b { display: block; font-weight: 600; }
+.journey-bar .jb-text small { color: #9fe8c4; font-size: 13px; }
+.journey-bar .jb-stop { flex: none; min-width: 88px; width: 100%; min-height: 48px; padding: 0 18px; border: 0; border-radius: 12px; font: inherit; font-size: 16px; font-weight: 700; color: #1a0606; background: #ffb08a; box-shadow: 0 0 14px #ff8a5a66; }
+.journey-note { position: fixed; left: 50%; top: 30vh; transform: translateX(-50%); z-index: 31; max-width: calc(100vw - 32px); padding: 8px 14px; border-radius: 12px; background: #0b1b24ee; border: 1px solid #ffc24a88; color: #ffe2a8; font-size: 14px; text-align: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+.journey-note.on { opacity: 1; }
+body.in-journey .walk-stick, body.in-journey .vstick.room-move, body.in-journey .vstick.sti-move, body.in-journey .zg-pad, body.in-journey .updown,
+body.in-journey .touch, body.in-journey .zone-btn, body.in-journey .sti-act, body.in-journey .station-btn, body.in-journey .throw-btn, body.in-journey .mat-btn,
+body.in-journey .room-ui .cab-machine, body.in-journey .ap-take { display: none !important; }

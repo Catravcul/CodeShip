@@ -45,4 +45,11 @@ describe("general settings (docs/design/habitaculo.md §Ajustes)", () => {
     expect(back.keyboardHelp).toBe(true);
     expect(noteFirstInput(back, "toque").keyboardHelp).toBe(true);
   });
+  it("HAB-20 «Ir a una tarea» travels the real route by default; teleport is kept as a choice and junk falls back to travel", () => {
+    expect(DEFAULT_SETTINGS.taskTravel).toBe("viaje");
+    const s = changeSetting(DEFAULT_SETTINGS, "taskTravel", "teletransporte");
+    expect(parseSettings(serializeSettings(s), { touchCapable: true }).taskTravel).toBe("teletransporte");
+    expect(parseSettings(JSON.stringify({ taskTravel: "volar" }), { touchCapable: true }).taskTravel).toBe("viaje");
+    expect(parseSettings(null, { touchCapable: true }).taskTravel).toBe("viaje");
+  });
 });

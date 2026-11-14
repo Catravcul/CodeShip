@@ -172,7 +172,11 @@ export class Interior {
   private hiddenLabels: THREE.Object3D[] = [];
   /** The open chore's step visual. */
   private visual: StepVisual | undefined;
-  private thirdPerson = true;
+  /** First person by default (the designer's call, 2026-11-14); the eye icon switches. */
+  private thirdPerson = false;
+  /** While she walks by herself: the way she walks and how far the player turned the view from it. */
+  private heading = 0;
+  private walkLook = 0;
   private stride = 0;
   private readonly viewBtn: HTMLButtonElement;
   private readonly panel: THREE.Mesh;
@@ -206,6 +210,7 @@ export class Interior {
   private readonly matBtn: HTMLButtonElement;
   /** Sitting in lotus on the mat while the settings are open. */
   private lotus = false;
+  private thirdBeforeLotus = false;
 
   constructor(
     root: HTMLElement,
@@ -378,11 +383,17 @@ export class Interior {
         const then = this.walkTo.then;
         this.faceTowards(this.walkTo.look);
         this.walkTo = null;
+        this.walkLook = 0;
         then();
       } else if (d > 1e-6) {
         const step = Math.min(d, 2.2 * dt);
         this.pos.addScaledVector(to.normalize(), step);
-        this.yaw = Math.atan2(-to.x, -to.z);
+        // The view stays free while she walks by herself: a drag turns it from the way she walks.
+        const look = this.walker.look(dt);
+        this.walkLook += look.yaw;
+        this.pitch = Math.max(-1.2, Math.min(1.2, this.pitch + look.pitch));
+        this.heading = Math.atan2(-to.x, -to.z);
+        this.yaw = this.heading + this.walkLook;
         this.stride += step * 4.2;
       }
     } else if (!busy) {
@@ -510,6 +521,8 @@ export class Interior {
       this.lotus = true;
       this.pos.set(0.2, 0, 3.9);
       this.yaw = 0;
+      // Seen from outside while she sits; standing up gives back the view she had.
+      this.thirdBeforeLotus = this.thirdPerson;
       this.thirdPerson = true;
       this.syncViewBtn();
       this.openSettings?.();
@@ -517,8 +530,40 @@ export class Interior {
     this.walkTo = { pos: mat.stand.clone(), look: mat.look.clone(), then: sit };
   }
 
+  /** Walk by herself to a floor point of the ring, then `then` (the task list's travel, docs/design/viaje-a-una-tarea.md). */
+  autoWalkTo(stand: { x: number; z: number }, look: { x: number; y: number; z: number }, then: () => void = () => undefined): void {
+    this.walkLook = 0;
+    this.walkTo = { pos: new THREE.Vector3(stand.x, 0, stand.z), look: new THREE.Vector3(look.x, look.y, look.z), then };
+  }
+
+  /** Whether she is walking by herself to a point of the ring. */
+  get autoWalking(): boolean {
+    return this.walkTo !== null;
+  }
+
+  /** Stop where she is: no walk by herself, no chain of hops, the car stays. */
+  stopAuto(): void {
+    this.walkTo = null;
+    this.walkLook = 0;
+    this.zones?.stopHops();
+  }
+
+  /** Where she stands on the ring's floor. */
+  floorAt(): { x: number; z: number } {
+    return { x: this.pos.x, z: this.pos.z };
+  }
+
+  /** Into the spoke's car and up to the axis (she stands at its door). */
+  rideUp(): void {
+    this.zones?.rideUp(this.pos);
+  }
+
   /** The settings closed: she stands up from the mat. */
   standUp(): void {
+    if (this.lotus) {
+      this.thirdPerson = this.thirdBeforeLotus;
+      this.syncViewBtn();
+    }
     this.lotus = false;
   }
 
@@ -556,7 +601,7 @@ export class Interior {
     }
     // Doménica walks where the player goes; the camera follows behind her shoulders.
     this.avatarRig.position.set(this.pos.x, 0, this.pos.z);
-    this.avatarRig.rotation.y = this.yaw + Math.PI;
+    this.avatarRig.rotation.y = (this.walkTo ? this.heading : this.yaw) + Math.PI;
     const moving = this.walkTo !== null || this.walker.move().forward !== 0 || this.walker.move().right !== 0;
     if (this.lotus) this.avatar.pose("lotus");
     else if (moving) this.avatar.walk(this.stride, 1);

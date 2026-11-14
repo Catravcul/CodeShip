@@ -60,7 +60,10 @@ export abstract class WalkRoom<Id extends string> {
   protected yaw = Math.PI;
   private pitch = 0;
   private stride = 0;
-  private thirdPerson = true;
+  /** First person by default (the designer's call, 2026-11-14); the eye icon switches. */
+  private thirdPerson = false;
+  /** While she walks by herself, how far the player turned the view from the way she walks. */
+  private walkLook = 0;
   protected seated = false;
   private camAtRear = true;
   private readonly walls: THREE.Object3D[] = [];
@@ -114,7 +117,7 @@ export abstract class WalkRoom<Id extends string> {
     this.machine = this.ui.querySelector(".cab-machine")!;
     this.toast = this.ui.querySelector(".cab-toast")!;
     this.menu = new RootMenu(this.ui, "cab-menu", "Más", ICON.root);
-    this.viewBtn = this.menu.add({ className: "cab-view", icon: ICON.eye, label: "Vista: 3ª persona", key: "V", pinned: true }, () => {
+    this.viewBtn = this.menu.add({ className: "cab-view", icon: ICON.eye, label: "Vista: 1ª persona", key: "V", pinned: true }, () => {
       this.thirdPerson = !this.thirdPerson;
       this.menu.relabel(this.viewBtn, `Vista: ${this.thirdPerson ? "3ª" : "1ª"} persona`, "V");
     });
@@ -126,7 +129,7 @@ export abstract class WalkRoom<Id extends string> {
     });
     // A tap on a machine walks her there.
     root.addEventListener("click", (e) => {
-      if (!this.active || this.busy() || (e.target as HTMLElement).closest("button, .board, .vstick, .cab-machine, .settings-sheet, .duel, .fd, .probe-ui, .mission-log")) return;
+      if (!this.active || this.busy() || document.body.classList.contains("in-journey") || (e.target as HTMLElement).closest("button, .board, .vstick, .cab-machine, .settings-sheet, .duel, .fd, .probe-ui, .mission-log")) return;
       const id = this.stationAt(e.clientX, e.clientY);
       if (id) this.goTo(id);
     });
@@ -207,6 +210,22 @@ export abstract class WalkRoom<Id extends string> {
     this.walkTo = { id, path: floorPath(this.opts.layout.floor, this.pos, s.stand, this.aisles()), ...(then ? { then } : {}) };
   }
 
+  /** Whether she is walking by herself to a machine. */
+  get walking(): boolean {
+    return this.walkTo !== null;
+  }
+
+  /** Stop where she is (the task list's «Parar»). */
+  stopWalk(): void {
+    this.walkTo = null;
+    this.walkLook = 0;
+  }
+
+  /** Where she stands on the floor. */
+  get position(): FloorPoint {
+    return { ...this.pos };
+  }
+
   /** The machine she is standing at. */
   near(): Id | undefined {
     return nearestStation(this.opts.layout, this.pos)?.id;
@@ -239,7 +258,9 @@ export abstract class WalkRoom<Id extends string> {
     const busy = this.busy();
     const look = this.walker.look(dt);
     if (!busy && !this.seated && !this.thirdPerson) {
-      this.yaw += look.yaw;
+      // Walking by herself, a drag turns the view from the way she walks (the camera stays free).
+      if (this.walkTo) this.walkLook += look.yaw;
+      else this.yaw += look.yaw;
       this.pitch = Math.max(-1.2, Math.min(1.3, this.pitch + look.pitch));
     }
     let moving = false;
@@ -254,12 +275,13 @@ export abstract class WalkRoom<Id extends string> {
       else if (d < 0.02) {
         const then = this.walkTo.then;
         this.walkTo = null;
+        this.walkLook = 0;
         this.face(s.look);
         then?.();
       } else {
         const step = Math.min(d, speed * dt);
         this.pos = { x: this.pos.x + (dx / d) * step, z: this.pos.z + (dz / d) * step };
-        this.yaw = Math.atan2(-dx, -dz);
+        this.yaw = Math.atan2(-dx, -dz) + this.walkLook;
         this.stride += step * 5;
         moving = true;
       }

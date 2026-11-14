@@ -32,6 +32,19 @@ export function spineLayout(axisY: number, roomHalfL: number): SpineLayout & { r
   return { x: 0, z: -roomHalfL + 0.5, carR: 0.45, shaftR: 1.0, axisY, topY: axisY - tubeR - 2.2, hubHalfX: 2.5, deckHatchX: 11, moduleEndX: 16, tubeR };
 }
 
+/**
+ * The spoke's elevator car (game values). Kept slow on purpose: riding a spoke at v gives a sideways
+ * Coriolis push of 2ωv (0,17 g at 2 m/s and 4 rpm), so the ~51 m ride takes about half a minute.
+ */
+export const SPOKE_CAR = { speedMs: 2, accelMs2: 0.5 } as const;
+
+/** Seconds the car takes over h metres, from rest to rest (accelerate, cruise, brake). */
+export function carRideSeconds(h: number, car: { readonly speedMs: number; readonly accelMs2: number } = SPOKE_CAR): number {
+  const ramp = (car.speedMs * car.speedMs) / car.accelMs2;
+  if (h <= ramp) return 2 * Math.sqrt(h / car.accelMs2);
+  return (2 * car.speedMs) / car.accelMs2 + (h - ramp) / car.speedMs;
+}
+
 /** Whether a body centre at p fits in the hub, the spine or the top of the shaft, `margin` from the walls. */
 export function spineFits(L: SpineLayout, p: { x: number; y: number; z: number }, margin: number): boolean {
   const r = Math.hypot(p.y - L.axisY, p.z - L.z);

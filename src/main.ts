@@ -125,12 +125,14 @@ import { BridgeRoom } from "./bridge";
 import { settings } from "./ui/settings-store";
 import { SettingsPanel } from "./ui/settings-panel";
 import { TaskBoard } from "./ui/task-board";
+import { JourneyDriver } from "./journey";
 import { ICON } from "./ui/icons";
 import { mindConsoleHtml, mindScreenLines } from "./ui/rapport-view";
 import { setSound } from "./adapters/audio/alarm";
 import { collectTasks, routeTo, type Task, type TaskPlace, type Vehicle } from "@modules/tasks/application/task-list";
 import type { CabinActionId, CabinState } from "@modules/lander-cabin/domain/cabin";
 import { needingAttention } from "@modules/ship-bay/application/bay";
+import { TASK_TRAVELS } from "@modules/settings/domain/settings";
 import { G } from "@core/units";
 
 // --- Domain setup -----------------------------------------------------------
@@ -992,13 +994,7 @@ function arriveAt(place: TaskPlace, t?: Task): void {
       }
       // On the bridge, at the console of the task: it opens as she gets there.
       bridge.enter("salida");
-      if (place.page === "nav")
-        return bridge.useConsole("nav", "abrir", () => {
-          if (place.target) deck.showTarget(place.target);
-        });
-      if (place.page === "sonda") return bridge.useConsole("sonda");
-      if (place.page === "mente") return bridge.goTo("mente");
-      return bridge.useConsole("comms", "misiones");
+      return useBridgeConsole(place);
     case "estacion":
       stationInside.enter(atStationPort() ? "sonda" : "nodriza");
       stationInside.suspend();
@@ -1007,8 +1003,57 @@ function arriveAt(place: TaskPlace, t?: Task): void {
       return stationScreen.enter(place.tab);
   }
 }
-/** The task list's «Ir»: through open hatches to the place, or to what joins the vehicles, saying why. */
+/** Walk to the bridge console of a task and use it (it opens as she gets there). */
+function useBridgeConsole(place: Extract<TaskPlace, { spot: "puente" }>): void {
+  if (place.page === "nav")
+    return bridge.useConsole("nav", "abrir", () => {
+      if (place.target) deck.showTarget(place.target);
+    });
+  if (place.page === "sonda") return bridge.useConsole("sonda");
+  if (place.page === "mente") return bridge.goTo("mente");
+  return bridge.useConsole("comms", "misiones");
+}
+// «Ir a una tarea» (docs/design/viaje-a-una-tarea.md): the whole real way (default) or teleport, at the yoga mat.
+const journey = new JourneyDriver(root, {
+  interior,
+  cabin,
+  bridge,
+  station: stationInside,
+  nav,
+  ringRadiusM: ring.spec.floorRadiusM,
+  stationTarget: structure.site.id,
+  mothershipTarget: mothership.id,
+  joins: () => ({ lander: docking.dockedTo === mothership ? "nodriza" : atStationPort() ? "estacion" : null, mothershipAtStation: !!mothership.dockedTo }),
+  seated: () => view.enabled,
+  sitDown,
+  landerAccelMs2: () => ship.preview({ mainThrottle: 0, translation: new Vec3(0, 0, -1), rotation: Vec3.ZERO }).forceBody.length() / ship.massKg,
+  settle: () => {
+    if (missionLog.visible) missionLog.close();
+    if (deck.active && bridge.active) deck.exit();
+    if (stationScreen.active && screenFromInside) stationScreen.exit();
+    if (bay.active) bay.exit();
+  },
+  finish: (place, t) => {
+    if (place.vehicle === "nodriza") return place.spot === "anillo" ? void (t.chore && interior.doChore(t.chore)) : useBridgeConsole(place);
+    if (place.vehicle === "modulo") return place.spot === "asiento" && !view.enabled ? sitDown() : undefined;
+    stationInside.suspend();
+    if (place.spot === "bahia") return bay.enter("estacion");
+    screenFromInside = true;
+    stationScreen.enter(place.tab);
+  },
+});
+settingsPanel.addRow({
+  id: "ir-a-tarea",
+  label: "Ir a una tarea",
+  help: "«Viaje»: va andando, en ascensor, saltando y volando por el camino real (con «Parar»); «Teletransporte»: aparece allí",
+  value: () => (settings.value.taskTravel === "viaje" ? "Viaje" : "Teletransporte"),
+  next: () => settings.set("taskTravel", TASK_TRAVELS[(TASK_TRAVELS.indexOf(settings.value.taskTravel) + 1) % TASK_TRAVELS.length]!),
+});
+/** The task list's «Ir»: the real journey there, or (teleport, a setting) straight there through open hatches, or to what joins the vehicles, saying why. */
 function goToTask(t: Task): void {
+  if (settings.value.taskTravel === "viaje") return void journey.start(t);
+  fade();
+  journey.say("Teletransporte (ajustes)");
   const r = routeTo(t.place, { crew: crewIn(), links: vehicleLinks() });
   if (r.kind === "ir") return arriveAt(t.place, t);
   arriveAt(r.via);
@@ -1237,6 +1282,7 @@ renderer.setAnimationLoop((now) => {
   // A module berthed or equipment installed: the structure, its model and the walkable interior follow.
   if (stationOutfit.version !== stationGrownAt) regrowStation();
   interior.update(dt, world.lifeDays);
+  journey.update(dt);
   view.enabled = !cabin.active && !bridge.active && !interior.active && !stationInside.active && !deck.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active && !navMode.mapOpen && !missionLog.visible;
   navMode.update(dt, world.held);
   const trip = tripNow();
@@ -1369,4 +1415,4 @@ for (const sel of [".nano-action", ".trip-chip", ".land-offer.lander", ".land-bo
   if (el) ctxDock.appendChild(el);
 }
 
-(window as unknown as { codeship: unknown }).codeship = { cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, tripPreview, tripChip, duelView, levels };
+(window as unknown as { codeship: unknown }).codeship = { journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, tripPreview, tripChip, duelView, levels };

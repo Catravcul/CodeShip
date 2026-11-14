@@ -89,6 +89,25 @@ describe("Trips that end docked", () => {
     expect(docking.dockedTo).toBe(station.probePort);
   }, 60_000);
 
+  it("HAB-21 the task list's travel: the lander alone undocks from the mothership and docks at the station, with no challenges", () => {
+    const { nav, flight, docking, mothership, station } = make();
+    expect(nav.landerTrip(station).carrier).toBeUndefined();
+    expect(nav.landerTrip(station).travel!.realS).toBeGreaterThan(0);
+    expect(nav.flyLander(station.id).ok).toBe(true);
+    expect(nav.status).toBe("autopilot");
+    expect(docking.dockedTo).toBeUndefined();
+    for (let t = 0; t < 3600 && nav.status !== "docked" && nav.status !== "manual"; t += 0.5) {
+      flight.update(0.5, NO_INPUT);
+      nav.update();
+    }
+    expect(nav.status).toBe("docked");
+    expect(docking.dockedTo).toBe(station.probePort);
+    // The mothership stayed where it was.
+    expect(mothership.dockedTo).toBeUndefined();
+    // Already there: refused, with the reason.
+    expect(nav.flyLander(station.id)).toEqual({ ok: false, reason: `Ya estás acoplada a ${station.name}` });
+  }, 60_000);
+
   it("with the probe aboard, the mothership flies to the station and docks itself at its port within IDSS limits", () => {
     const { nav, mothership, docking, flight, station } = make();
     nav.select(station.id);
@@ -111,6 +130,20 @@ describe("Trips that end docked", () => {
     expect(flight.state.position.sub(station.position).length()).toBeLessThan(POLANA_STATION.dockingRangeM);
     // Already there: no new mothership trip to the same port; the probe would fly the short hop.
     expect(nav.trip(station).carrier).toBeUndefined();
+  }, 60_000);
+
+  it("HAB-21 the task list's travel: the travel ship carries the lander to its berth at the station, with no challenges", () => {
+    const { nav, mothership, docking, station } = make();
+    expect(nav.canCarry(station).ok).toBe(true);
+    expect(nav.carry(station.id).ok).toBe(true);
+    expect(nav.status).toBe("carrier");
+    for (let i = 0; i < 2000 && nav.status === "carrier"; i++) nav.update(0.5);
+    expect(nav.status).toBe("docked");
+    expect(mothership.dockedTo).toBe(station.carrierPort!.id);
+    expect(docking.dockedTo).toBe(mothership);
+    // Without the lander aboard, it does not go.
+    docking.undock();
+    expect(nav.canCarry(station)).toMatchObject({ ok: false });
   }, 60_000);
 
   it("from the station, a trip to an asteroid backs the mothership out along the port axis first", () => {

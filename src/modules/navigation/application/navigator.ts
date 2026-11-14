@@ -347,6 +347,62 @@ export class Navigator {
     return { ok: true };
   }
 
+  /** The lander's own trip to a target, never carried by the travel ship (the task list's travel mode). */
+  landerTrip(t: NavTarget = this._target): Trip {
+    const trip = t.kind === "dock" ? this.probeDockTrip(t) : this.probeTrip(t);
+    return { ...trip, travel: tripTime(trip) };
+  }
+
+  /** Whether the lander alone can fly to a target now, and why not. */
+  canFlyLander(t: NavTarget): { ok: boolean; reason?: string } {
+    if (this.flight.landed) return { ok: false, reason: "Despega antes de volar a otro sitio" };
+    if (this._status === "autopilot" || this._status === "carrier" || this._status === "docking") return { ok: false, reason: "El piloto automático ya está volando" };
+    if (t.kind === "dock" && this.ports.docking?.dockedTo === t.probePort) return { ok: false, reason: `Ya estás acoplada a ${t.name}` };
+    const busy = this.ports.busy?.(false);
+    if (busy) return { ok: false, reason: busy };
+    if (!this.landerTrip(t).plan.feasible) return { ok: false, reason: "No queda combustible en el motor principal" };
+    return { ok: true };
+  }
+
+  /**
+   * The lander alone to a target, with no challenges (the task list's «Ir» in travel mode,
+   * docs/design/viaje-a-una-tarea.md): undock, the compressed autopilot leg and, at a port, the docking assist.
+   */
+  flyLander(id: string): { ok: boolean; reason?: string } {
+    const t = this.ports.targets.find((x) => x.id === id);
+    if (!t) return { ok: false, reason: "Destino desconocido" };
+    const can = this.canFlyLander(t);
+    if (!can.ok) return can;
+    const sel = this.select(id);
+    if (!sel.ok) return sel;
+    this.landerBudgetS = undefined;
+    this.engageProbe(t);
+    return { ok: true };
+  }
+
+  /** Whether the travel ship can carry the lander to a target now (no challenges), and why not. */
+  canCarry(t: NavTarget): { ok: boolean; reason?: string } {
+    if (this._status === "autopilot" || this._status === "carrier" || this._status === "docking") return { ok: false, reason: "El piloto automático ya está volando" };
+    const trip = this.trip(t);
+    if (!trip.carrier) return { ok: false, reason: "La nodriza solo vuela con el módulo de aterrizaje acoplado" };
+    const busy = this.ports.busy?.(true);
+    if (busy) return { ok: false, reason: busy };
+    if (trip.carrier.plan.deltaVMS > this.ports.carrier!.deltaV()) return { ok: false, reason: "A la nodriza no le queda xenón para ese viaje" };
+    return { ok: true };
+  }
+
+  /** The travel ship carries the lander to a target, with no challenges (the task list's travel mode). */
+  carry(id: string): { ok: boolean; reason?: string } {
+    const t = this.ports.targets.find((x) => x.id === id);
+    if (!t) return { ok: false, reason: "Destino desconocido" };
+    const can = this.canCarry(t);
+    if (!can.ok) return can;
+    const sel = this.select(id);
+    if (!sel.ok) return sel;
+    this.engage(this.trip(t));
+    return this._status === "carrier" ? { ok: true } : { ok: false, reason: "La nodriza no ha podido encender los motores" };
+  }
+
   /** Start the chain of challenges that programs the hop. */
   startProgramming(): ChoreRun {
     const can = this.canProgram();

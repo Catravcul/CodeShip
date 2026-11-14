@@ -4,7 +4,7 @@ import type { SpinRing } from "@modules/gravity/domain/spin-gravity";
 import { RailGraph, type Handrail } from "@modules/gravity/domain/handrails";
 import { ivaStep, type IvaEvent, type IvaState, type IvaWorld } from "@modules/gravity/domain/iva";
 import { HopGraph, type LandingPoint } from "@modules/gravity/domain/hops";
-import { spineFits, spineHandrails, spineLaunchers, spinePois, type SpinePoi } from "@modules/gravity/data/spine";
+import { SPOKE_CAR, spineFits, spineHandrails, spineLaunchers, spinePois, type SpinePoi } from "@modules/gravity/data/spine";
 import { RING_ELEVATOR, RING_REACH_M } from "@modules/habitat/data/ring-module";
 import { HopControl } from "./hop-control";
 import type { CubeFigure } from "./figure";
@@ -14,15 +14,8 @@ import { buildSpoke, spokeLayout, type SpokeHandles, type SpokeLayout } from "./
 /** Where Doménica is: on the ring floor (walking), in the spoke elevator, or floating at the axis. */
 export type GravityZone = "anillo" | "radio" | "eje";
 
-/** Game tuning for riding the spoke elevator (floating uses the shared rail movement, gravity/domain/iva.ts). */
-const TUNING = {
-  /**
-   * Elevator: top speed and acceleration. Kept slow on purpose: riding a spoke at v gives a sideways
-   * Coriolis push of 2ωv (0.17 g at 2 m/s and 4 rpm), so the 52 m ride takes about half a minute.
-   */
-  carSpeed: 2,
-  carAccel: 0.5,
-} as const;
+/** Game tuning for riding the spoke elevator (gravity/data/spine.ts; floating uses the shared rail movement, gravity/domain/iva.ts). */
+const TUNING = { carSpeed: SPOKE_CAR.speedMs, carAccel: SPOKE_CAR.accelMs2 } as const;
 
 const fmt = (v: number, d = 2) => v.toFixed(d).replace(".", ",");
 /** Game value: the air in the hub and spine drifts toward the cockpit end at 0,1 m/s (NASA-STD-3001 V2 6107: 0,08–0,61 m/s). */
@@ -179,7 +172,8 @@ export class GravityZones {
     }
     // A short tap on the canvas, on a thing in the hub or spine: she hops there by herself (dragging looks around).
     window.addEventListener("pointerdown", (e) => {
-      if (!this.enabled || this.zone !== "eje" || (e.target as HTMLElement).tagName !== "CANVAS") return;
+      // While the task list's travel moves her, a tap does not send her elsewhere (dragging still looks).
+      if (!this.enabled || this.zone !== "eje" || (e.target as HTMLElement).tagName !== "CANVAS" || document.body.classList.contains("in-journey")) return;
       this.tap = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() };
     });
     window.addEventListener("pointerup", (e) => {
@@ -357,6 +351,33 @@ export class GravityZones {
     const poi = this.pois.find((p) => p.id === id);
     if (poi) this.say(`Saltas hasta: ${poi.label}`);
     return this.hop.goTo(at.id);
+  }
+
+  /** Up the spoke from the ring (the task list's travel: she is at the car's door). */
+  rideUp(pos: THREE.Vector3): void {
+    if (this.zone === "anillo") this.ride("up", pos);
+    else if (this.zone === "radio") this.sendCar("up");
+  }
+
+  /** The car is going up (or waits at the top). */
+  get carGoingUp(): boolean {
+    return this.carTarget > 0;
+  }
+
+  /** Stop a chain of hops where she is (she still catches the next hold). */
+  stopHops(): void {
+    this.autoDown = false;
+    this.hop.cancel();
+  }
+
+  /** Whether she is hopping by herself to a chosen point. */
+  get routing(): boolean {
+    return this.hop.routing || this.autoDown;
+  }
+
+  /** The landing point she holds, or the nearest one (to plan a journey from where she is). */
+  pointNow(): string | undefined {
+    return (this.hop.holding(this.iva) ?? this.hops.nearest(this.iva.position))?.id;
   }
 
   /** The thing whose grab point she holds now, if any. */

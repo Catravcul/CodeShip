@@ -882,7 +882,7 @@ export class Interior {
   }
 
   /** A notice in the toast: the player's own (default) come first; alerts wait their turn (H24). */
-  private say(text: string, level: NoticeLevel = "jugador"): void {
+  say(text: string, level: NoticeLevel = "jugador"): void {
     if (!this.active) return;
     this.notices.push(text, level, performance.now() / 1000);
   }

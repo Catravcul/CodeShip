@@ -1,3 +1,5 @@
+import { MACHINE_SCALE } from "@core/machine-scale";
+import { scaleInteriorPlan } from "@modules/station/domain/interior";
 import { describe, expect, it } from "vitest";
 import { ACTION_REACH_M, INTERACTABLE_SPACING, minSpacing, spacingViolations, type Interactable } from "@core/spacing";
 import { BRIDGE } from "@modules/flight-deck/data/bridge";
@@ -40,16 +42,22 @@ describe("HAB-08 room between interactables (the rule from Cold Sanctuary)", () 
     expect(BRIDGE.floor.maxX - BRIDGE.floor.minX).toBeGreaterThan(5);
   });
 
-  it("station: every fixture and its grab point 2 m apart, except machines side by side in a module's rack bays (ISS pitch)", () => {
-    const rails = stationHandrails(POLANA_INTERIOR);
-    const items: (Interactable & { rack: string | undefined })[] = POLANA_INTERIOR.fixtures.map((f) => {
+  it("station: every fixture and its grab point 2 m apart as drawn (MACHINE_SCALE), except machines side by side in a module's rack bays (ISS pitch) and the two sides of one hatch", () => {
+    const plan = scaleInteriorPlan(POLANA_INTERIOR, MACHINE_SCALE);
+    const rails = stationHandrails(plan);
+    const rackDepth = 0.86 * MACHINE_SCALE;
+    const hatch = (id: string) => {
+      const a = plan.fixtures.find((f) => f.id === id)?.action;
+      return a?.kind === "puerta" ? a.hatch : undefined;
+    };
+    const items: (Interactable & { rack: string | undefined })[] = plan.fixtures.map((f) => {
       const r = rails.find((x) => x.poi === f.id);
-      return { id: f.id, centre: f.at, anchor: r ? r.a.add(r.b).scale(0.5) : f.at, rack: Math.abs(f.size.x - 0.86) < 1e-6 || Math.abs(f.size.z - 0.86) < 1e-6 ? f.volume : undefined };
+      return { id: f.id, centre: f.at, anchor: r ? r.a.add(r.b).scale(0.5) : f.at, rack: Math.abs(f.size.x - rackDepth) < 1e-6 || Math.abs(f.size.z - rackDepth) < 1e-6 ? f.volume : undefined };
     });
     const bad = spacingViolations(items).filter((v) => {
       const a = items.find((i) => i.id === v.a)!;
       const b = items.find((i) => i.id === v.b)!;
-      return !(a.rack && a.rack === b.rack);
+      return !(a.rack && a.rack === b.rack) && !(hatch(v.a) && hatch(v.a) === hatch(v.b));
     });
     expect(bad).toEqual([]);
   });

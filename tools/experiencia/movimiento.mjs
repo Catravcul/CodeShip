@@ -154,6 +154,7 @@ export async function movimiento(j) {
   // Walking on the ring with the left stick.
   await j.setup("la llevamos al anillo (sin esperar el ascensor)", () => {
     const i = window.codeship.interior;
+    window.codeship.journey?.stop();
     i.walkTo = null;
     i.zones.zone = "anillo";
     i.zones.autoDown = false;

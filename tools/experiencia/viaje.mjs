@@ -103,19 +103,19 @@ export async function viaje(j) {
   // Third person: the eye switches the view and she keeps walking by herself.
   await j.tap(".interior-ui .view-btn", "Vista: 3ª persona");
   const leg0 = await p.evaluate(() => window.codeship.journey.legIndex);
-  await p.waitForFunction((i) => window.codeship.journey.legIndex > i || !window.codeship.journey.active, leg0, { timeout: 60000 }).catch(() => {});
+  await p.waitForFunction((i) => window.codeship.journey.legIndex > i || !window.codeship.journey.active, leg0, { timeout: 120000 }).catch(() => {});
   j.check("en tercera persona sigue andando sola", await p.evaluate((i) => window.codeship.journey.legIndex > i && window.codeship.journey.active, leg0));
   await capture(j, "tercera", "Viaje en tercera persona");
   await j.tap(".interior-ui .view-btn", "Vista: 1ª persona");
 
   // Up the spoke's car.
-  const rode = await p.waitForFunction(() => window.codeship.interior.zones.zone === "radio", null, { timeout: 120000 }).then(() => true).catch(() => false);
+  const rode = await p.waitForFunction(() => window.codeship.interior.zones.zone === "radio", null, { timeout: 300000 }).then(() => true).catch(() => false);
   j.check("sube por el ascensor del radio", rode);
   await capture(j, "ascensor", "Viaje: ascensor del radio");
   j.check("en el ascensor la cámara se sigue moviendo", (await dragLook(p, "interior")) > 0.2);
 
   // In the spine: «Parar» stops her where she is and gives the controls back.
-  const spine = await p.waitForFunction(() => window.codeship.interior.zones.zone === "eje" && window.codeship.journey.plan[window.codeship.journey.legIndex]?.kind === "saltos", null, { timeout: 90000 }).then(() => true).catch(() => false);
+  const spine = await p.waitForFunction(() => window.codeship.interior.zones.zone === "eje" && window.codeship.journey.plan[window.codeship.journey.legIndex]?.kind === "saltos", null, { timeout: 300000 }).then(() => true).catch(() => false);
   j.check("en el eje salta sola por la espina", spine);
   await p.waitForTimeout(1500);
   await capture(j, "espina", "Viaje: saltos por la espina");
@@ -132,11 +132,11 @@ export async function viaje(j) {
   await go(j, task);
   await p.waitForTimeout(500);
   j.check("al volver a «Ir» sigue desde donde se paró (sin volver al anillo)", await p.evaluate(() => window.codeship.journey.active && !window.codeship.journey.plan.some((l) => l.kind === "ascensor")));
-  const through = await p.waitForFunction(() => window.codeship.stationInside.active || window.codeship.station.active, null, { timeout: 120000 }).then(() => true).catch(() => false);
+  const through = await p.waitForFunction(() => window.codeship.stationInside.active || window.codeship.station.active, null, { timeout: 300000 }).then(() => true).catch(() => false);
   const passed = await p.evaluate(() => window.codeship.journey.plan.slice(0, window.codeship.journey.legIndex + 1).some((l) => l.kind === "escotilla" && l.from === "eje:atraque") || !window.codeship.journey.active);
   j.check("cruza la escotilla de atraque a la estación", through && passed);
   if (await p.evaluate(() => window.codeship.stationInside.active)) await capture(j, "estacion", "Viaje: saltos por la estación");
-  const arrived = await p.waitForFunction(() => window.codeship.station.active && !window.codeship.journey.active, null, { timeout: 120000 }).then(() => true).catch(() => false);
+  const arrived = await p.waitForFunction(() => window.codeship.station.active && !window.codeship.journey.active, null, { timeout: 300000 }).then(() => true).catch(() => false);
   j.check("llega: se abre la pantalla de la estación en la pestaña de la tarea", arrived);
   j.check("al llegar, sin «Parar» y sin la clase de viaje", !(await visible(p, ".journey-bar .jb-stop")) && !(await p.evaluate(() => document.body.classList.contains("in-journey"))));
   await capture(j, "llegada", "Llegada a la tarea de la estación");

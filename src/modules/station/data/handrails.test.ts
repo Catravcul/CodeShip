@@ -71,7 +71,8 @@ describe("ING-03 hopping with the arrows through the station", () => {
     const start = g.nearest(POLANA_INTERIOR.entries.sonda.at)!;
     const reach = g.reachable(start);
     // The hangar is behind the airlock's outer hatch: only suited.
-    expect(reach.size).toBe(g.points.filter((p) => !p.id.startsWith("hangar:")).length);
+    const inHangar = (p: { body: Vec3 }) => interior.volumeAt(p.body)?.kind === "hangar";
+    expect(reach.size).toBe(g.points.filter((p) => !inHangar(p)).length);
     // Through every CBM hatch: points in node 2, the habitat, node 1, fabrication and the airlock.
     for (const id of ["nodo-2", "habitat", "nodo-1", "fabrica", "esclusa"]) expect([...reach].some((r) => r.startsWith(`${id}:`)), id).toBe(true);
   });
@@ -90,6 +91,7 @@ describe("ING-03 hopping with the arrows through the station", () => {
     }
     const plan = stationInteriorPlan(o.layout, o);
     const g = hopsFor(plan, false);
-    expect(g.reachable(g.nearest(plan.entries.sonda.at)!).size).toBe(g.points.filter((p) => !p.id.startsWith("hangar:")).length);
+    const grown = new StationInterior(plan);
+    expect(g.reachable(g.nearest(plan.entries.sonda.at)!).size).toBe(g.points.filter((p) => grown.volumeAt(p.body)?.kind !== "hangar").length);
   });
 });

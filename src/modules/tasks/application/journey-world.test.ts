@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { CODESHIP_RING } from "@modules/gravity/data/ring";
 import { carRideSeconds } from "@modules/gravity/data/spine";
 import { stationInteriorPlan } from "@modules/station/data/interior";
-import { StationInterior } from "@modules/station/domain/interior";
+import { scaleInteriorPlan, StationInterior } from "@modules/station/domain/interior";
+import { MACHINE_SCALE } from "@core/machine-scale";
 import { planJourney, type CrewJoins } from "../domain/journey";
 import { dockingSeconds, journeyTransfers, herePlace, stationPointOf, taskGoal, type JourneyFacts } from "./journey-world";
 
@@ -80,5 +81,19 @@ describe("HAB-21 The real journey to a task (travel mode)", () => {
     const s = dockingSeconds(40, 0.2);
     expect(s).toBeGreaterThan(40);
     expect(s).toBeLessThan(200);
+  });
+  it("in the station as it is played (drawn bigger, with doors and crew areas): to a machine in the air and to the galley", () => {
+    const big = new StationInterior(scaleInteriorPlan(stationInteriorPlan(), MACHINE_SCALE));
+    const f = facts({ station: big, joins: { lander: "nodriza", mothershipAtStation: true } });
+    const to = taskGoal({ vehicle: "estacion", spot: "pantalla", tab: "planos" }, big)!;
+    expect(plan(f, to).kind).toBe("ruta");
+    const area = big.plan.fixtures.find((x) => x.action.kind === "tripulacion")!;
+    const galley = taskGoal({ vehicle: "estacion", spot: "tripulacion", area: area.id }, big)!;
+    expect(galley).toBe(`estacion:${area.id}`);
+    const p = plan(f, galley);
+    expect(p.kind === "ruta" && p.legs.at(-1)!.kind).toBe("saltos");
+    // A hangar task goes to a machine she can reach without the suit.
+    const hangar = taskGoal({ vehicle: "estacion", spot: "pantalla", tab: "hangar" }, big)!;
+    expect(big.volume(big.fixture(hangar.split(":")[1]!)!.volume)?.pressurised).toBe(true);
   });
 });

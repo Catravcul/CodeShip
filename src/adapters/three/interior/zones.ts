@@ -344,12 +344,12 @@ export class GravityZones {
   }
 
   /** Hop by herself to a thing of the hub or spine (a tap on it, or the HUD). */
-  goToPoi(id: string): boolean {
+  goToPoi(id: string, quiet = false): boolean {
     const at = this.hops.poiPoint(id);
     if (!at || this.zone !== "eje") return false;
     if (this.hop.holding(this.iva)?.id === at.id) return true;
     const poi = this.pois.find((p) => p.id === id);
-    if (poi) this.say(`Saltas hasta: ${poi.label}`);
+    if (poi && !quiet) this.say(`Saltas hasta: ${poi.label}`);
     return this.hop.goTo(at.id);
   }
 

@@ -21,6 +21,11 @@ export const INTERIOR_SOURCES = {
   orion: "Orion: volante de inercia para el ejercicio en una cápsula pequeña: https://en.wikipedia.org/wiki/Orion_(spacecraft)",
   iss: "ISS: 916 m³ presurizados en total: https://en.wikipedia.org/wiki/International_Space_Station",
   shuttleBay: "Bodega del transbordador: 18,3 × 4,6 m, sin presurizar, con las puertas abiertas en órbita: https://en.wikipedia.org/wiki/Space_Shuttle_orbiter",
+  harmony: "Harmony (Nodo 2 de la ISS): 70 m³ habitables y los camarotes de cuatro astronautas: https://en.wikipedia.org/wiki/Harmony_(ISS_module)",
+  tranquility: "Tranquility (Nodo 3 de la ISS): el aseo y las máquinas de ejercicio (T2, ARED) están en un nodo: https://en.wikipedia.org/wiki/Tranquility_(ISS_module)",
+  haven1: "Haven-1 (Vast): 10,1 m de largo, 4,4 m de diámetro, 45 m³ habitables para cuatro personas: https://en.wikipedia.org/wiki/Haven-1",
+  axiomHab: "Axiom Hab One: unos 11 m de largo y 4,2 m de diámetro, camarotes para cuatro tripulantes: https://thespacebucket.com/the-exact-design-of-axioms-commercial-space-station/",
+  starlab: "Starlab: módulo habitable de 8 m de diámetro, 450 m³ presurizados para cuatro personas: https://en.wikipedia.org/wiki/Starlab_Space",
 } as const;
 
 const S = INTERIOR_SOURCES;
@@ -228,24 +233,28 @@ export function stationInteriorPlan(layout: StationLayout = POLANA_LAYOUT, outfi
     // Node 2: the two docking hatches.
     fx({ id: "salir-sonda", label: "Escotilla del módulo", volume: "nodo-2", face: "suelo", at: new Vec3(0, -N.y, n2Mid), size: new Vec3(0.8, 0.1, 0.8), action: { kind: "salir", to: "sonda" }, info: "Escotilla IDSS: por aquí vuelves a la cabina del módulo de aterrizaje", source: STRUCTURE_SOURCES.nds }),
     fx({ id: "salir-nodriza", label: "Escotilla de la nodriza", volume: "nodo-2", face: "proa", at: new Vec3(0, 0, n2.min), size: new Vec3(0.8, 0.8, 0.1), action: { kind: "salir", to: "nodriza" }, info: "Escotilla IDSS: por aquí se pasa a la nodriza atracada", source: STRUCTURE_SOURCES.nds }),
-    // The ship bay's console, by the two docking hatches: the docked ships seen by the hangar cameras.
-    fx({ id: "consola-bahia", label: "Consola de la bahía", volume: "nodo-2", face: "babor", at: new Vec3(-N.x, 0.1, n2Mid - 0.95), size: new Vec3(0.1, 0.8, 1.1), action: { kind: "bahia" }, info: "Bahía de la nave: aquí se revisan y se cambian las piezas del módulo de aterrizaje y de la nodriza atracados" }),
     fx({ id: "carga-nodo2", label: "Bolsas de carga", volume: "nodo-2", face: "techo", at: new Vec3(0, N.y, n2Mid + 1.2), size: new Vec3(1.6, 0.6, 1.2), action: { kind: "info" }, info: "Bolsas de carga atadas al techo, como en los nodos de la ISS" }),
-    // Habitat (HALO-like), zigzagging from wall to wall so each thing is 2 m from the next (HAB-08):
-    // exercise and hygiene by node 1, the galley with its table in the middle, the crew quarters at the quiet end.
-    fx({ id: "ejercicio", label: "Ejercicio", volume: "habitat", face: "estribor", at: new Vec3(H.x, 0, habZ(0.12)), size: new Vec3(0.6, 1.5, 1.3), action: { kind: "info" }, info: "Bicicleta sin sillín como la CEVIS (25–350 W) y un volante de inercia como el de Orion: en ingravidez hay que hacer ejercicio cada día", source: S.exercise }),
-    fx({ id: "aseo", label: "Aseo", volume: "habitat", face: "babor", at: new Vec3(-H.x, 0, habZ(0.38)), size: new Vec3(0.7, 1.6, 1.0), action: { kind: "info" }, info: "Aseo cerrado con un UWMS, el de la ISS desde 2020: el aire arrastra lo que en la Tierra cae", source: S.uwms }),
-    fx({ id: "cocina", label: "Cocina y mesa", volume: "habitat", face: "estribor", at: new Vec3(H.x, 0.2, habZ(0.62)), size: new Vec3(0.6, 1.2, 1.3), action: { kind: "info" }, info: "Calentador de comida y grifo de agua caliente y fría, como en la ISS, y una mesa con cinchas y velcro como la del nodo Unity: aquí solo se calienta; para cocinar está la nodriza, a 1 g", source: STRUCTURE_SOURCES.unity }),
-    fx({ id: "camarote-babor", label: "Camarotes y botiquín", volume: "habitat", face: "babor", at: new Vec3(-H.x, 0, habZ(0.88)), size: new Vec3(0.75, 1.7, 1.4), action: { kind: "info" }, info: "Dos camarotes para visitas (~1,8 m³ cada uno, como los ~2 m³ de la ISS: saco de dormir sujeto a la pared, luz, ventilación y portátil) y el botiquín con su monitor (lo mínimo de un CHeCS). La enfermería está en la nodriza", source: S.crewQuarters }),
-    fx({ id: "esclusa-carga", label: "Esclusa de carga", volume: "fabrica", face: "techo", at: new Vec3(0, F.y, fabZ(0.92)), size: new Vec3(1.0, 0.5, 1.0), action: { kind: "panel", panel: "hangar" }, info: "Esclusa de carga como la Bishop de la ISS: pasa las piezas fabricadas al hangar sin vaciar el módulo", source: S.bishop }),
+    // The station's own crew areas (docs/design/estacion-tripulacion.md): hygiene, galley and cabins in
+    // the habitat, zigzagging from wall to wall 2 m apart once drawn; exercise and the yoga mat in node 1, like Tranquility.
+    fx({ id: "aseo", label: "Aseo", volume: "habitat", face: "babor", at: new Vec3(-H.x, 0, habZ(0.28)), size: new Vec3(0.7, 1.6, 1.0), action: { kind: "tripulacion", area: "aseo" }, info: "Aseo cerrado con un UWMS, el de la ISS desde 2020: el aire arrastra lo que en la Tierra cae", source: S.uwms }),
+    fx({ id: "cocina", label: "Cocina y mesa", volume: "habitat", face: "estribor", at: new Vec3(H.x, 0.2, habZ(0.5)), size: new Vec3(0.6, 1.2, 1.3), action: { kind: "tripulacion", area: "cocina" }, info: "Cocina de la estación: horno cerrado, calentador y grifo de agua caliente y fría como en la ISS, y una mesa con cinchas y velcro como la del nodo Unity. Cocina con la despensa de la estación", source: STRUCTURE_SOURCES.unity }),
+    fx({ id: "camarotes", label: "Camarotes", volume: "habitat", face: "babor", at: new Vec3(-H.x, 0, habZ(0.72)), size: new Vec3(0.75, 1.7, 1.4), action: { kind: "tripulacion", area: "camarotes" }, info: "Cuatro camarotes como los de Harmony o los de Axiom Hab One, de unos 2 m³ cada uno: saco de dormir sujeto a la pared, luz, ventilación y portátil; con el botiquín (la enfermería está en la nodriza)", source: S.crewQuarters }),
+    fx({ id: "ejercicio", label: "Ejercicio", volume: "nodo-1", face: "suelo", at: new Vec3(0, -N.y, -1.33), size: new Vec3(1.2, 0.3, 1.4), action: { kind: "tripulacion", area: "ejercicio" }, info: "Bicicleta sin sillín como la CEVIS (25–350 W) y un volante de inercia como el de Orion, en un nodo como en Tranquility: en ingravidez hay que hacer ejercicio cada día", source: S.exercise }),
+    fx({ id: "esterilla", label: "Esterilla de yoga", volume: "nodo-1", face: "suelo", at: new Vec3(0, -N.y, 1.33), size: new Vec3(0.9, 0.1, 1.4), action: { kind: "tripulacion", area: "esterilla" }, info: "Esterilla con cinchas para los pies: yoga y, sentada en loto, los ajustes generales", source: S.tranquility }),
+    fx({ id: "esclusa-carga", label: "Esclusa de carga", volume: "fabrica", face: "techo", at: new Vec3(0, F.y, fabZ(0.8)), size: new Vec3(1.0, 0.5, 1.0), action: { kind: "panel", panel: "hangar" }, info: "Esclusa de carga como la Bishop de la ISS: pasa las piezas fabricadas al hangar sin vaciar el módulo", source: S.bishop }),
     // Airlock and hangar.
     fx({ id: "trajes", label: "Trajes y esclusa", volume: "esclusa", face: "estribor", at: new Vec3(LOCK.x, 0, (lock.min + lock.max) / 2), size: new Vec3(0.4, 1.7, 1.2), action: { kind: "esclusa" }, info: "Dos trajes, como en la esclusa Quest. El hangar está al vacío: hay que vaciar la esclusa para pasar", source: S.quest }),
-    fx({ id: "consola-hangar", label: "Consola del hangar", volume: "hangar", face: "proa", at: new Vec3(-2.2, 0.6, lock.max + 0.1), size: new Vec3(0.7, 0.5, 0.1), action: { kind: "panel", panel: "hangar" }, info: "Lista de naves, sondas y piezas guardadas" }),
+    fx({ id: "consola-hangar", label: "Consola del hangar", volume: "hangar", face: "proa", at: new Vec3(-2.2, 0.6, lock.max + 0.1), size: new Vec3(0.7, 0.5, 0.1), action: { kind: "hangar" }, info: "Tareas de la estación, el brazo que mete el módulo en el hangar y el inventario de naves, sondas y piezas" }),
+    // The ship bay: next to where the lander rests (docs/design/estacion-tripulacion.md, «Hangar»).
+    fx({ id: "consola-bahia", label: "Bahía de la nave", volume: "hangar", face: "proa", at: new Vec3(2.2, 0.6, lock.max + 0.1), size: new Vec3(0.7, 0.5, 0.1), action: { kind: "bahia" }, info: "Bahía de la nave: aquí se revisan y se cambian las piezas del módulo (en el hangar) y de la nodriza (atracada fuera)" }),
     fx({ id: "estante-babor", label: "Piezas de repuesto", volume: "hangar", face: "babor", at: new Vec3(-(hz.x - rackDepth), hc.y - hz.y / 2, (rackZ.min + rackZ.max) / 2), size: new Vec3(rackDepth, hz.y, rackZ.max - rackZ.min), action: { kind: "panel", panel: "hangar" }, info: "Estantes de piezas de repuesto: se montan en la bahía de la nave" }),
     fx({ id: "estante-estribor", label: "Piezas de repuesto", volume: "hangar", face: "estribor", at: new Vec3(hz.x - rackDepth, hc.y - hz.y / 2, (rackZ.min + rackZ.max) / 2), size: new Vec3(rackDepth, hz.y, rackZ.max - rackZ.min), action: { kind: "panel", panel: "hangar" }, info: "Estantes de piezas de repuesto: se montan en la bahía de la nave" }),
     fx({ id: "cunas", label: "Sondas fabricadas", volume: "hangar", face: "suelo", at: new Vec3(0, hc.y - hz.y + 2.4, hc.z + 1), size: new Vec3(12, 2.4, 9), action: { kind: "panel", panel: "hangar" }, info: "Cunas de las sondas construidas en la estación" }),
     fx({ id: "puerta-hangar", label: "Puerta del hangar", volume: "hangar", face: "popa", at: new Vec3(0, 0, hangar.max - 0.2), size: new Vec3(16, 11, 0.1), action: { kind: "info" }, info: "La puerta mira a popa y está abierta: el hangar no tiene aire, como la bodega del transbordador", source: S.shuttleBay }),
   ];
+
+  // In free fall the berth is a frame mid-hangar, straight ahead of the two consoles (game value).
+  const landerBerth = new Vec3(0, hc.y - 2, hc.z - 3);
 
   // --- Modules berthed on the side ports (along x) ---------------------------------------
   const used = outfit.usedBerths();
@@ -290,16 +299,58 @@ export function stationInteriorPlan(layout: StationLayout = POLANA_LAYOUT, outfi
     if (vol && om) fixtures.push(rackFixture(e, vol, om.racksPerSide));
   }
 
+  fixtures.push(...doorFixtures(volumes));
   return {
     volumes,
     fixtures,
     solids,
+    landerBerth,
     entries: {
       sonda: { at: new Vec3(0, -N.y + 0.6, n2Mid), facing: new Vec3(0, 0, 1) },
       nodriza: { at: new Vec3(0, 0, n2.min + 0.9), facing: new Vec3(0, 0, 1) },
     },
     storage: { rackSlots, cradles, crate: new Vec3(0.9, 0.9, 0.9) },
   };
+}
+
+/**
+ * Each hatch between two areas, seen from each side: a door fixture on that side's bulkhead that names
+ * where it leads (docs/design/estacion-tripulacion.md, «Puertas»). The docking tunnels have their
+ * own hatches (`salir-*`).
+ */
+function doorFixtures(volumes: readonly InteriorVolume[]): Fixture[] {
+  const out: Fixture[] = [];
+  for (const h of volumes) {
+    if (h.kind !== "escotilla" || !h.through || h.id.startsWith("tunel")) continue;
+    const k = h.through;
+    const axis = new Vec3(k === "x" ? 1 : 0, 0, k === "z" ? 1 : 0);
+    const sideOf = (s: number) => {
+      const p = h.centre.add(axis.scale(s * (h.half[k] + 0.3)));
+      return volumes.find((v) => v.kind !== "escotilla" && Math.abs(p.x - v.centre.x) <= v.half.x && Math.abs(p.y - v.centre.y) <= v.half.y && Math.abs(p.z - v.centre.z) <= v.half.z);
+    };
+    const a = sideOf(-1);
+    const b = sideOf(1);
+    if (!a || !b) continue;
+    for (const [from, to, s] of [[a, b, -1], [b, a, 1]] as const) {
+      // Seen from `from`, the hatch is on its wall toward `to`.
+      const face: Face = k === "z" ? (s < 0 ? "popa" : "proa") : s < 0 ? "estribor" : "babor";
+      const side = h.half.y;
+      out.push({
+        id: `puerta-${h.id}-${from.id}`,
+        label: `Escotilla · ${to.label}`,
+        volume: from.id,
+        face,
+        // On its own side of the hatchway, so the two sides of one hatch never compete for her (in the
+        // short airlock, on the bulkhead itself: the suits sit between its two hatches).
+        at: h.centre.add(axis.scale(from.kind === "esclusa" ? 0 : s * h.half[k])),
+        size: k === "z" ? new Vec3(2 * side, 2 * side, 0.1) : new Vec3(0.1, 2 * side, 2 * side),
+        action: { kind: "puerta", to: to.id, hatch: h.id },
+        info: `${h.label}: de ${from.label} a ${to.label}`,
+        source: h.source ?? S.cbm,
+      });
+    }
+  }
+  return out;
 }
 
 /** Numbers behind the hangar decision (docs/design/interiores.md §5): air mass and load on a wall. */

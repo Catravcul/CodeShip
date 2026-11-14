@@ -86,13 +86,20 @@ export function taskGoal(place: TaskPlace, station: StationInterior): string | u
     case "modulo":
       return `modulo:${place.spot}`;
     case "estacion": {
+      const fx = station.plan.fixtures;
       if (place.spot === "bahia") {
-        const f = station.plan.fixtures.find((x) => x.action.kind === "bahia");
+        const f = fx.find((x) => x.action.kind === "bahia");
+        return f && `estacion:${f.id}`;
+      }
+      if (place.spot === "tripulacion") {
+        const f = fx.find((x) => x.action.kind === "tripulacion" && (x.id === place.area || x.action.area === place.area));
         return f && `estacion:${f.id}`;
       }
       // Imports, and the life tab before any bioreactor is installed, open from the store's glovebox.
-      const f = station.fixturesFor(place.tab === "importar" ? "materiales" : place.tab)[0] ?? station.fixturesFor("materiales")[0];
-      return f && `estacion:${f.id}`;
+      // Machines in the pressurised modules first: the hangar is at vacuum (a suit and the airlock).
+      const inAir = (list: readonly { volume: string }[]) => [...list].sort((a, b) => Number(!station.volume(a.volume)?.pressurised) - Number(!station.volume(b.volume)?.pressurised));
+      const f = inAir(station.fixturesFor(place.tab === "importar" ? "materiales" : place.tab))[0] ?? station.fixturesFor("materiales")[0];
+      return f && `estacion:${(f as { id: string }).id}`;
     }
   }
 }
@@ -141,6 +148,9 @@ function spine(radiusM: number): Spine {
   return s;
 }
 
+/** The station's fixtures a journey can end at or leave by: machines, the bay, the crew areas, the docking hatches. */
+const GOAL_KINDS: ReadonlySet<string> = new Set(["panel", "bahia", "salir", "tripulacion", "hangar"]);
+
 const stationGraphs = new WeakMap<StationInterior, { g: HopGraph; legs: Transfer[] }>();
 /** The station's hop graph and its hops between hatches and machines (worked out once per layout). */
 function stationGraph(st: StationInterior): { g: HopGraph; legs: Transfer[] } {
@@ -148,7 +158,7 @@ function stationGraph(st: StationInterior): { g: HopGraph; legs: Transfer[] } {
   if (hit) return hit;
   const g = new HopGraph(new RailGraph(stationHandrails(st.plan)), (q) => st.fits(q, JOURNEY_PACE.stationBodyM, false), stationPortals(st.plan));
   const exits = st.plan.fixtures.filter((f) => f.action.kind === "salir");
-  const goals = st.plan.fixtures.filter((f) => f.action.kind === "panel" || f.action.kind === "bahia" || f.action.kind === "salir");
+  const goals = st.plan.fixtures.filter((f) => GOAL_KINDS.has(f.action.kind));
   const legs: Transfer[] = [];
   for (const a of exits)
     for (const b of goals) {
@@ -251,7 +261,7 @@ function fromHere(f: JourneyFacts, sp: Spine, stG: HopGraph): Transfer[] {
   } else if (h.room === "estacion") {
     const p = stG.points.find((q) => q.id === h.point);
     for (const fx of f.station.plan.fixtures) {
-      if (fx.action.kind !== "panel" && fx.action.kind !== "bahia" && fx.action.kind !== "salir") continue;
+      if (!GOAL_KINDS.has(fx.action.kind)) continue;
       const to = stG.poiPoint(fx.id);
       const s = p && to && hopChainSeconds(stG, p, to.id);
       if (s !== undefined) out.push({ from, to: `estacion:${fx.id}`, kind: "saltos", seconds: s, label: `Saltos hasta: ${fx.label}` });

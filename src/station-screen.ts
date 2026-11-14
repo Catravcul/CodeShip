@@ -115,7 +115,7 @@ export class StationScreen {
     readonly imports?: ImportOps,
     /** The living machines and the self-sufficiency gauge (Vida). */
     readonly bio?: BioOps,
-    /** The mothership's larder, when she is berthed here (food from the crops goes there). */
+    /** The station's own larder, its galley's (food from the crops goes there; trip stores go aboard from the galley). */
     private readonly larder: () => Larder | undefined = () => undefined,
   ) {
     this.view = new StationScene(ship.design);
@@ -637,9 +637,9 @@ export class StationScreen {
       .join("");
     const larder = this.larder();
     const food = bio.forLarder();
-    const foodCard = `<div class="st-card"><div class="st-row"><b>Despensa de la nodriza</b><span>${larder ? "atracada" : "no atracada"}</span></div>
+    const foodCard = `<div class="st-card"><div class="st-row"><b>Despensa de la estación</b><span>la cocina del módulo habitable</span></div>
       ${food.length ? `<div class="st-chips">${food.map((f) => `<span class="st-chip ok">${f.units.toLocaleString("es-ES")} ${esc(f.unit.label)}</span>`).join("")}</div>` : `<small>Aún no hay cosecha en el almacén.</small>`}
-      <button class="st-btn" data-larder ${larder && food.length ? "" : "disabled"}>${larder ? "Enviar a la despensa" : "Atraca la nodriza para enviarla"}</button></div>`;
+      <button class="st-btn" data-larder ${larder && food.length ? "" : "disabled"}>Enviar a la despensa</button></div>`;
     const n = rows.find((r) => r.id === "nitrogeno")!;
     const nh3 = this.ops.station.stock.amount("amoniaco");
     const nitrogen = `<div class="st-card"><div class="st-row"><b>Nitrógeno: el bucle no lo cierra</b><span>${pct(n.share)} local</span></div>

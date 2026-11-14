@@ -120,6 +120,7 @@ export class JourneyDriver {
       return false;
     }
     const joins = this.d.joins();
+    const interior = this.d.interior;
     const plan = planJourney(journeyTransfers({ here, joins, ringRadiusM: this.d.ringRadiusM, station: this.d.station.interior, flights: this.flights(joins) }), { place: herePlace(here), joins }, goal);
     if (plan.kind === "bloqueado") {
       this.say(`No puedes llegar: ${plan.why}`, 7);
@@ -129,6 +130,9 @@ export class JourneyDriver {
       this.d.finish(t.place, t);
       return true;
     }
+    // From the hub or the spine down to a ring chore: the spoke takes half a minute; say so, or the tap looks ignored.
+    if (interior.active && interior.zones?.zone !== "anillo" && plan.legs.some((l) => l.kind === "ascensor" && l.to.startsWith("anillo:")))
+      interior.say(`Bajas al anillo para «${t.title}»: el ascensor del radio tarda medio minuto`);
     this.task = t;
     this.legs = plan.legs;
     this.index = 0;
@@ -300,7 +304,7 @@ export class JourneyDriver {
           const poi = POI_OF(leg.to);
           return {
             ready: () => interior.active && zones?.zone === "eje",
-            begin: () => void zones?.goToPoi(poi),
+            begin: () => void zones?.goToPoi(poi, true),
             done: () => zones?.heldPoi()?.id === poi,
             failed: () => (this.elapsed > 0.6 && !zones?.routing && zones?.heldPoi()?.id !== poi ? "Saltos interrumpidos" : undefined),
           };

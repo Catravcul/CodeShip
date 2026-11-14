@@ -9,7 +9,8 @@ pantalla queda lo mínimo para volar.
 
 Es la misma cápsula que el piloto ve desde el asiento (`adapters/three/cockpit.ts`) con el suelo a la altura
 de sus pies. Doménica camina por ella con cámara de casa de muñecas: la cámara queda fuera y por encima, y
-se quitan las paredes que hay entre ella y la cámara. Con el ojo (V) pasa a 1ª persona.
+se quitan las paredes que hay entre ella y la cámara, si se elige la 3ª persona. Por defecto se ve en 1ª
+persona (ajuste «Vista a pie»). Con el ojo (V) se cambia.
 
 | Máquina | Qué hace | Sustituye |
 | --- | --- | --- |
@@ -45,7 +46,8 @@ misma opción panel/HUD.
 | Nombres | Nombres del Sol, los planetas y los asteroides sobre la vista de vuelo (antes, un botón del HUD) |
 | Ayuda de teclado | Muestra las teclas en botones y tarjetas («K desacopla», `Intro`) y las etiquetas de los iconos. Al empezar está encendida sin pantalla táctil y apagada con ella. La primera entrada (tecla o toque) la ajusta, hasta que la jugadora la elige. |
 | Vista de retos | Panel u HUD (la misma preferencia que el botón de los retos) |
-| Cámara al pilotar | Cabina, exterior, ventral o trasera al sentarse |
+| Cámara al pilotar | Cabina, exterior, ventral o trasera al sentarse (por defecto Cabina, en 1ª persona) |
+| Vista a pie | 1ª persona (por defecto) o 3ª al caminar por el puente, el habitáculo, el anillo y la estación; el ojo la cambia en cada visita |
 | Sonido | Alarmas de embestida e impactos |
 
 Se guardan en `localStorage` (`codeship.ajustes`). La vista de retos sigue leyendo `codeship.retos-ui`.
@@ -91,13 +93,17 @@ no está acoplado, la lleva a lo que los une (el mapa del puente o el asiento) y
 El puente era un panel con las seis páginas, nano_net y la sonda a la vez. Ahora es el nodo de proa, una sala
 a pie con una consola por máquina:
 
+La disposición y los modelos salen de la investigación de [puente.md](puente.md) (Orion, Cupola, TORU, Houston,
+submarinos, drones, ROV y el MSIS). Se dibuja a la escala de [escala.md](escala.md).
+
 | Consola | Abre |
 | --- | --- |
-| Navegación | solo la página NAV (mapa, destinos, viajes) |
-| Propulsión, Energía y calor, Vida y hábitat, Acople | solo su página |
+| Mesa de navegación (centro) | solo la página NAV (mapa, destinos, viajes) |
+| Pilotaje y propulsión (proa, sentada) | la página PROP |
+| Energía y calor, Vida y hábitat, Acople | solo su página |
 | Radio y misiones | la página de radio y el registro de misiones |
 | nano_net | su ficha de estado |
-| Mando de la sonda | la vista de la sonda: solo lo de volar (lanzar, pilotar, posar, recoger) |
+| Mando de la sonda (proa, sentada con RHC y THC) | la vista de la sonda: solo lo de volar (lanzar, pilotar, posar, recoger) |
 | Mente del asteroide | fase, confianza y niveles, y el duelo **por la sonda** cuando está aparcada sobre él |
 | Escotilla a la espina | volver a la nodriza |
 

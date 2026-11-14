@@ -34,6 +34,15 @@ describe("general settings (docs/design/habitaculo.md §Ajustes)", () => {
     expect(parseSettings("not json", { touchCapable: false }).keyboardHelp).toBe(true);
   });
 
+  it("HAB-14 on foot the view starts in first person (Berón); a stored third person is kept, junk falls back", () => {
+    expect(DEFAULT_SETTINGS.walkView).toBe("primera");
+    expect(DEFAULT_SETTINGS.camera).toBe("cabina");
+    expect(parseSettings(null, { touchCapable: true }).walkView).toBe("primera");
+    const third = changeSetting(DEFAULT_SETTINGS, "walkView", "tercera");
+    expect(parseSettings(serializeSettings(third), { touchCapable: true }).walkView).toBe("tercera");
+    expect(parseSettings('{"walkView":"cenital"}', { touchCapable: true }).walkView).toBe("primera");
+  });
+
   it("HAB-03 the older challenge-view preference is kept when there are no settings yet", () => {
     expect(parseSettings(null, { touchCapable: true, legacyChallengeView: "compacta" }).challengeView).toBe("hud");
     expect(parseSettings(null, { touchCapable: true, legacyChallengeView: "panel" }).challengeView).toBe("panel");

@@ -111,8 +111,8 @@ export class StationInteriorMode {
   private readonly hop: HopControl;
   private yaw = 0;
   private pitch = 0;
-  /** First person by default (designer, 2026-11-14); the eye icon toggles. */
-  private thirdPerson = false;
+  /** First person unless the settings say otherwise; the eye toggles it for the visit. */
+  private thirdPerson = settings.value.walkView === "tercera";
   private toastUntil = 0;
   private storeKey = "";
   private hudKey = "";
@@ -337,6 +337,8 @@ export class StationInteriorMode {
 
   /** Come in through the hatch of the port the ship is docked at. */
   enter(from: PortUser): void {
+    this.thirdPerson = settings.value.walkView === "tercera";
+    this.syncView();
     const e = this.interior.plan.entries[from];
     this.from = from;
     this.iva = this.holdNearest(e.at);

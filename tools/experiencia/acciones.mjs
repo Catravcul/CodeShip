@@ -56,7 +56,7 @@ export async function acciones(j) {
     c.bridge.enter("salida");
   });
   await audit(j, "puente", "Puente de mando: sala de consolas");
-  await j.useMachine("bridge", "nav", "abrir", "Usar la consola: Navegación");
+  await j.useMachine("bridge", "nav", "abrir", "Usar la consola: Mesa de navegación");
   await p.waitForTimeout(1200);
   await audit(j, "mapa", "Consola de navegación con el mapa");
   await j.tap(".fd-panel.max .fd-back", "Volver al puente");

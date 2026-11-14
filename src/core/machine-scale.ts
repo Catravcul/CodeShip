@@ -1,7 +1,5 @@
 /**
- * How much bigger than real the walkable interiors and their machines are drawn, so they read on a
- * phone's camera (docs/design/estacion-tripulacion.md, «Escala»). The data keeps the real sizes with
- * their sources; only what is drawn and walked through is scaled. The designer suggested ~1,5×
- * (2026-11-14); it is the one number to change (shared with the bridge's scale when it lands).
+ * Kept for the station's imports: the one scale lives in src/core/scale.ts (WORLD_SCALE = MACHINE_SCALE),
+ * measured on the phone in docs/design/escala.md and shared by the station and the bridge.
  */
-export const MACHINE_SCALE = 1.5;
+export { MACHINE_SCALE } from "./scale";

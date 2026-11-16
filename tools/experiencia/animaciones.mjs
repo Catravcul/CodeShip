@@ -407,8 +407,10 @@ export async function animaciones(j) {
   });
   // A new game has no animals (docs/design/catalogo-especies.md): every adoptable kind that has chores (the
   // fish and snails of the aquatic habitat, the mice of the rodent habitat), from the catalogue.
-  await adoptar(j, [["medaka", "peces"], ["caracol", "caracoles"], ["raton", "mascotas"]]);
-  await llegan(j);
+  if (ring) {
+    await adoptar(j, [["medaka", "peces"], ["caracol", "caracoles"], ["raton", "mascotas"]]);
+    await llegan(j);
+  }
   // Every larder item of the data (src/modules/kitchen/data/items.ts), so every recipe and process can be made.
   const items = [...readFileSync(join("src", "modules", "kitchen", "data", "items.ts"), "utf8").matchAll(/id: "([a-z0-9-]+)"/g)].map((m) => m[1]);
   await j.setup("despensa llena para cada receta y proceso; una sacudida rompe máquinas, vuelca macetas, hiere y contamina; pasa medio día (hambre y sed)", (ids) => {

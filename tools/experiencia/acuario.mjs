@@ -1,8 +1,11 @@
 // The ring aquarium on the farm deck (docs/design/santuario-espacial.md, «Acuario del anillo»): walk to the
 // tank with «Ir», feed the medaka (each right step shows on the tank), befriend the school with a mind
 // program, ask the snails to clean the glass and the medaka to watch the water, and see the effect.
+// A new game has an empty tank: the medaka and the nerites come from the species catalogue first
+// (docs/design/catalogo-especies.md), and the snails are befriended before they help.
 // Captures go to docs/screenshots/acuario-<paso>-movil.png.
 import { mkdirSync } from "node:fs";
+import { adoptar, llegan } from "./catalogo.mjs";
 
 const seesStep = (j, action, timeout = 15000) =>
   j.page
@@ -65,6 +68,12 @@ export async function acuario(j) {
   });
   await j.resetPerf();
 
+  // 0. The tank starts empty: medaka and nerites from the catalogue, with taps.
+  await adoptar(j, [["medaka", "peces"], ["nerita", "caracoles"]]);
+  await llegan(j);
+  const stocked = await p.evaluate(() => ({ fish: window.codeship.interior.aquarium.tank.fishCount, snails: window.codeship.interior.aquarium.tank.snailCount }));
+  j.check("han llegado las medakas y las neritas al tanque", stocked.fish > 0 && stocked.snails > 0, JSON.stringify(stocked));
+
   // 1. Care chore from the task list: «Ir» walks her to the tank on the farm deck.
   await j.tap(".tasks-btn", "Tareas");
   await p.waitForTimeout(400);
@@ -97,7 +106,10 @@ export async function acuario(j) {
   j.check("con ella delante, el banco viene al cristal", (await p.evaluate(() => window.codeship.interior.tank.school)) === "cristal");
   await capture(j, "banco-en-el-cristal");
 
-  // 3. Ask the snails for help: they climb the glass and the algae go down.
+  // 3. Befriend the snails, then ask them for help: they climb the glass and the algae go down.
+  await stationChore(j, "acuario-amistad-caracoles", "Hacer amistad con los caracoles");
+  await solveAll(j, "amistad con los caracoles", "programar");
+  await j.tap(".duel button.end", "Continuar");
   const before = algaePct(await hudStatus(j));
   await stationChore(j, "acuario-ayuda-caracoles-limpian", "Pedir ayuda a los caracoles");
   await solveAll(j, "ayuda de los caracoles", "programar");

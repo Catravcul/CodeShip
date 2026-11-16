@@ -71,6 +71,52 @@ export const BEFRIEND_SCHOOL: AquariumLesson = {
   ],
 };
 
+/**
+ * Making friends with the snails: they stop pulling into the shell when her shadow falls on the glass. Pond
+ * snails learn by association (Lymnaea stagnalis is a classic model of learning and memory), and a shadow
+ * makes snails withdraw: the rule turns «shadow» into «the one who brings food».
+ */
+export const BEFRIEND_SNAILS: AquariumLesson = {
+  id: "caracoles-amigos",
+  pseudo: "cuando la sombra de Doménica pase por el cristal → no esconderse: seguir raspando",
+  js: "on('sombra-de-domenica', c => { if (conoce(c, 'Doménica')) seguir(c, 'raspar'); });",
+  basis: "Los caracoles de agua dulce aprenden por asociación (Lymnaea stagnalis es un modelo clásico de memoria) y se esconden en la concha cuando pasa una sombra.",
+  source: "https://en.wikipedia.org/wiki/Lymnaea_stagnalis",
+  exercises: [
+    {
+      kind: "order",
+      id: "acuario-amistad-caracoles-programa",
+      concept: 9,
+      idea: "Una sombra… ¿un pájaro? Aquí no hay pájaros",
+      blocks: [
+        { id: "a", pseudo: "cuando pase la sombra de Doménica", js: "on('sombra-de-domenica', (caracol) => {" },
+        { id: "b", pseudo: "si ya la conoce", js: "if (conoce(caracol, 'Doménica')) {", indent: 1 },
+        { id: "c", pseudo: "no esconderse: seguir raspando", js: "seguir(caracol, 'raspar');", indent: 2 },
+        { id: "d", pseudo: "fin del si", js: "}", indent: 1 },
+        { id: "e", pseudo: "fin", js: "});" },
+      ],
+      solution: ["a", "b", "c", "d", "e"],
+    },
+    {
+      kind: "choice",
+      id: "acuario-amistad-caracoles-predecir",
+      concept: 5,
+      skill: "predecir",
+      idea: "¿Sacamos los ojos o nos metemos en la concha?",
+      question: "Pasa una sombra y el caracol conoce a Doménica. ¿Qué hace?",
+      code: [
+        { id: "a", pseudo: "si conoce(sombra) entonces", js: "if (conoce(sombra)) {" },
+        { id: "b", pseudo: "seguir raspando", js: "seguir('raspar');", indent: 1 },
+        { id: "c", pseudo: "si no", js: "} else {" },
+        { id: "d", pseudo: "meterse en la concha", js: "esconderse('concha');", indent: 1 },
+        { id: "e", pseudo: "fin", js: "}" },
+      ],
+      options: ["Se mete en la concha", "Sigue raspando el cristal", "Se suelta y cae al fondo"],
+      correct: 1,
+    },
+  ],
+};
+
 /** Help programs, one per helper. */
 export const HELP_LESSONS: Readonly<Record<AquariumHelper, AquariumLesson & { readonly who: string; readonly task: string }>> = {
   "caracoles-limpian": {

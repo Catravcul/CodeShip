@@ -43,7 +43,10 @@ export type ChoreKind =
   /** The ring aquarium (modules/sanctuary): care, befriending the school, asking the snails or fish for help. */
   | "cuidar-acuario"
   | "amistad-acuario"
-  | "ayuda-acuario";
+  | "ayuda-acuario"
+  /** A colony adopted from the species catalogue (modules/adoption): befriending it, asking it for help. */
+  | "amistad-especie"
+  | "ayuda-especie";
 
 /** Groups for filtering the task board. */
 export type ChoreCategory = "comida" | "plantas" | "animales" | "nave" | "salud" | "misiones";
@@ -88,6 +91,8 @@ export const CHORE_CATEGORY: Readonly<Record<ChoreKind, ChoreCategory>> = {
   "cuidar-acuario": "animales",
   "amistad-acuario": "animales",
   "ayuda-acuario": "animales",
+  "amistad-especie": "animales",
+  "ayuda-especie": "animales",
 };
 
 /** A task on board, done by solving code challenges in order. */

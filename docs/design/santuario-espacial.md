@@ -159,12 +159,13 @@ En Codeship hablar con una mente es **leer o escribir su programa** (el duelo de
 | Pieza | Qué hace | Código |
 | --- | --- | --- |
 | Tanque | 1,6 × 0,8 × 0,8 m (1 m³) sobre un mueble, contra la pared de la puerta de la cubierta de cultivo, a 2 m de todo (HAB-08) | `habitat/data/ring-module.ts` (`acuario`), `adapters/three/interior/aquarium-model.ts` |
-| Habitantes | 40 medakas (un solo banco, como el `Swarm` de Cold Sanctuary), 12 caracoles, gambas rojas, ceratófilo y biofiltro | `data/areas.ts`, `domain/aquarium.ts` |
+| Habitantes | Una partida nueva empieza con el tanque **sin peces ni caracoles**: solo ceratófilo y biofiltro. Las medakas (un solo banco, como el `Swarm` de Cold Sanctuary; otras especies de peces se suman al mismo banco como «los peces») y los caracoles llegan desde el [catálogo de especies](catalogo-especies.md) (`RingAquarium.stock`) | `data/areas.ts`, `domain/aquarium.ts` |
 | Bucle | Pienso → amonio (TAN = pienso × proteína × 0,092) → biofiltro → nitrato → ceratófilo; algas que crecen con la luz y el nitrato y que raspan los caracoles; hambre | `RingAquarium.tick` |
 | Cuidados | Dar de comer (ración por peso), limpiar el cristal, cambiar el 20 % del agua: retos de código con **pasos visibles** (puerto `StepVisual`: escamas que caen, cristal que se limpia, el programa brilla sobre el tanque) | `application/aquarium-ops.ts`, `chores/application/step-visuals.ts` |
 | Amistad y ayuda | §7 y §8 | `data/aquarium-lessons.ts` |
-| Estado | Una línea en el estado de Doménica: nitrato, algas, «medakas amigas», quién ayuda | `ui/aquarium-text.ts` |
-| QA | VID-11 a VID-13 y el recorrido PX-13 `acuario` | `aquarium.test.ts`, `aquarium-ops.test.ts`, `tools/experiencia/acuario.mjs` |
+| Amistad con los caracoles | Su propio programa (`acuario-amistad-caracoles`): solo con caracoles amigos se les pide limpiar el cristal | `domain/aquarium.ts` (`befriend("caracoles")`) |
+| Estado | Una línea en el estado de Doménica: nitrato, algas, «medakas amigas», «caracoles amigos», quién ayuda; sin peces dice «sin peces (adóptalos en el catálogo)» | `ui/aquarium-text.ts` |
+| QA | VID-11 a VID-13, VID-30 y los recorridos PX-13 `acuario` y PX-27 `catalogo` | `aquarium.test.ts`, `aquarium-ops.test.ts`, `tools/experiencia/acuario.mjs` |
 
 ## 10. Progresión: de la medaka a las criaturas poderosas
 

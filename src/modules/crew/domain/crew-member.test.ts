@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CrewMember, mealPortions } from "./crew-member";
+import { CREW_TUNING, CrewMember, mealPortions } from "./crew-member";
 import { BOARD_DAY_REAL_S } from "@core/board-time";
 
 describe("CrewMember", () => {
@@ -53,8 +53,8 @@ describe("CrewMember", () => {
   });
 });
 
-describe("VID-20 ritmo de los días: el hambre vuelve unas tres veces por día de a bordo", () => {
-  /** Days of life eating a meal (a third of her day) each time she gets hungry; returns the hunger onsets per day. */
+describe("VID-20 ritmo de los días: el hambre vuelve dos veces por día de a bordo", () => {
+  /** Days of life eating a meal (half of her day) each time she gets hungry; returns the hunger onsets per day. */
   const onsetsPerDay = (days: number, mealKcal?: (c: CrewMember) => number): number => {
     const c = new CrewMember("Doménica");
     const dt = 1 / 2000;
@@ -72,22 +72,24 @@ describe("VID-20 ritmo de los días: el hambre vuelve unas tres veces por día d
     return onsets / days;
   };
 
-  it("eating a real meal each time (a third of her daily energy), she is hungry three times a day", () => {
-    expect(onsetsPerDay(10)).toBeGreaterThanOrEqual(2.8);
-    expect(onsetsPerDay(10)).toBeLessThanOrEqual(3.2);
+  it("eating a real meal each time (half of her daily energy), she is hungry twice a day (Berón: «las comidas serán 2 al día»)", () => {
+    expect(CREW_TUNING.mealShareOfDay).toBe(1 / 2);
+    expect(onsetsPerDay(10)).toBeGreaterThanOrEqual(1.9);
+    expect(onsetsPerDay(10)).toBeLessThanOrEqual(2.1);
   });
 
-  it("a day on board lasts 24 real minutes: hungry every ~8 real minutes, not every 13 s as with the 40 s day", () => {
+  it("a day on board lasts 24 real minutes: hungry every ~12 real minutes, not every 13 s as with the 40 s day", () => {
     expect(BOARD_DAY_REAL_S).toBe(1440);
     const realMinutesBetweenMeals = BOARD_DAY_REAL_S / 60 / onsetsPerDay(10);
-    expect(realMinutesBetweenMeals).toBeGreaterThan(7);
-    expect(realMinutesBetweenMeals).toBeLessThan(9);
+    expect(realMinutesBetweenMeals).toBeGreaterThan(11);
+    expect(realMinutesBetweenMeals).toBeLessThan(13);
   });
 
-  it("a meal is the portions that make about a third of her day: one big plate, two small ones, never more than the dish", () => {
+  it("a meal is the portions that make about half of her day: two big plates or two small ones, never more than the dish", () => {
     const meal = new CrewMember("Doménica").mealKcal;
-    expect(meal).toBeGreaterThan(700);
-    expect(mealPortions(618, 2, meal)).toBe(1);
+    expect(meal).toBeGreaterThan(1050);
+    expect(mealPortions(618, 2, meal)).toBe(2);
+    expect(mealPortions(618, 4, meal)).toBe(2);
     expect(mealPortions(360, 2, meal)).toBe(2);
     expect(mealPortions(113, 2, meal)).toBe(2);
     expect(mealPortions(187, 1, meal)).toBe(1);

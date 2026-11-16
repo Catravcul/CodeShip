@@ -1,4 +1,5 @@
 // Moving around: the lander's thrusters in the cockpit, floating in 0 g at the spine, walking on the ring.
+import { adoptar, llegan } from "./catalogo.mjs";
 
 const differs = (a, b) => {
   if (a.length !== b.length) return true;
@@ -9,6 +10,10 @@ const differs = (a, b) => {
 
 export async function movimiento(j) {
   const p = j.page;
+  // A new game has no animals (docs/design/catalogo-especies.md): a cat and a dog from the catalogue, for the ring's life.
+  await adoptar(j, [["gato", "mascotas"], ["perro-mestizo", "mascotas"]]);
+  await llegan(j);
+  j.check("han llegado un gato y un perro", await p.evaluate(() => window.codeship.habitat.cats.length === 1 && window.codeship.habitat.dogs.length === 1));
   // Cockpit: undocked, fire the forward RCS with W and watch the speed readout.
   await j.setup("desacopla el módulo de la nodriza", () => window.codeship.docking.undock());
   const hud0 = (await j.texts(".hud"))[0] ?? "";

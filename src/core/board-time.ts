@@ -6,7 +6,8 @@
  *
  * Berón (2026-11-16): «los días pasan muy rápido, ¿por eso el hambre parece constante?». It was 40 s, so
  * she was hungry every 13 s. Now 24 real minutes, the ratio of The Sims (a game minute every real
- * second): hungry about three times a day, one meal every ~8 real minutes, a few per play session.
+ * second). Berón (2026-11-16): «las comidas serán 2 al día»: hungry about twice a day, one meal every
+ * ~12 real minutes, two or three per play session.
  * Compared in vida-a-bordo.md with Stardew Valley (~14 min), Don't Starve (8 min), Animal Crossing (real
  * time) and Cold Sanctuary (60 min). Game value.
  */

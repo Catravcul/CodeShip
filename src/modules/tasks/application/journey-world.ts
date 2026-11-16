@@ -93,7 +93,8 @@ export function taskGoal(place: TaskPlace, station: StationInterior): string | u
         return f && `estacion:${f.id}`;
       }
       if (place.spot === "tripulacion") {
-        const f = fx.find((x) => x.action.kind === "tripulacion" && (x.id === place.area || x.action.area === place.area));
+        // A crew area, or a life-support rack (its tasks use the rack's fixture id as their area).
+        const f = fx.find((x) => (x.action.kind === "tripulacion" && (x.id === place.area || x.action.area === place.area)) || (x.action.kind === "soporte-vital" && x.id === place.area));
         return f && `estacion:${f.id}`;
       }
       // Imports, and the life tab before any bioreactor is installed, open from the store's glovebox.
@@ -149,7 +150,7 @@ function spine(radiusM: number): Spine {
 }
 
 /** The station's fixtures a journey can end at or leave by: machines, the bay, the crew areas, the docking hatches. */
-const GOAL_KINDS: ReadonlySet<string> = new Set(["panel", "bahia", "salir", "tripulacion", "hangar"]);
+const GOAL_KINDS: ReadonlySet<string> = new Set(["panel", "bahia", "salir", "tripulacion", "hangar", "soporte-vital"]);
 
 const stationGraphs = new WeakMap<StationInterior, { g: HopGraph; legs: Transfer[] }>();
 /** The station's hop graph and its hops between hatches and machines (worked out once per layout). */

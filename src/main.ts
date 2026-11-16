@@ -81,6 +81,8 @@ import { StationStructure } from "@modules/station/domain/structure";
 import { StationDock, dockNavTargets } from "./station-dock";
 import { StationInteriorMode } from "./station-interior";
 import { StationLife } from "./station-life";
+import { LifeSupportGame } from "./life-support-game";
+import { STATION_LIFE_SUPPORT } from "@modules/life-support/data/hosts";
 import { STATION_AREA_NAME, StationCrew } from "@modules/station/application/station-crew";
 import { STATION_LARDER } from "@modules/station/data/galley";
 import { LanderBerth } from "@modules/station/domain/hangar-berth";
@@ -857,7 +859,10 @@ const stationLife = new StationLife({
   say: (t, sec) => stationInside.say(t, sec),
   changed: () => undefined,
   openDockView: () => dryDock.open("hangar"),
+  otherChore: (id) => lifeSupport.startChore(id),
 });
+// Real life support (docs/design/soporte-vital.md): the station hosts the racks for now; Doménica weighs 58 kg.
+const lifeSupport = new LifeSupportGame({ duel: duelView, say: (t, sec) => stationInside.say(t, sec), rack: (id) => stationInside.rack(id), frame: (at) => stationInside.frame(at), unframe: () => stationInside.unframe(), openTasks: () => taskBoard.open() }, STATION_LIFE_SUPPORT, 58);
 /** The station's interior as it is drawn and walked: MACHINE_SCALE times its real size. */
 const playInterior = () => new StationInterior(scaleInteriorPlan(stationInteriorPlan(stationOutfit.layout, stationOutfit), MACHINE_SCALE));
 // Inside the station (docs/design/interiores.md §5): zero-g modules and the hangar; its machines open the screen's tabs.
@@ -886,8 +891,10 @@ const stationInside = new StationInteriorMode(root, playInterior(), {
           ? "Cerrada: el módulo está en el hangar. Sácalo a su puerto en la consola del hangar"
           : undefined,
   openTasks: () => taskBoard.open(),
-  actions: (f) => stationLife.actions(f),
-  act: (f, a) => stationLife.act(f, a),
+  actions: (f) => (f.action.kind === "soporte-vital" ? lifeSupport.actions(f) : stationLife.actions(f)),
+  act: (f, a) => (f.action.kind === "soporte-vital" ? lifeSupport.act(f, a) : stationLife.act(f, a)),
+  readout: (f) => lifeSupport.readout(f),
+  rackState: (f) => lifeSupport.rackState(f),
   landerInHangar,
   lookOut: () => dryDock.open("ventanilla"),
   leave: (to) => {
@@ -1058,7 +1065,7 @@ function allTasks(): Task[] {
     credits: wallet.balance,
     refuel: ship.propellants.some((p) => ship.propellantKg(p) < 0.5 * ship.propellantCapacityKg(p)),
     repairs: needingAttention(bay.status()).map((c) => ({ id: c.id, name: c.name, critical: c.attention === "critico" })),
-    stationChores: stationLife.taskFacts(),
+    stationChores: [...stationLife.taskFacts(), ...lifeSupport.taskFacts()],
   });
 }
 const taskBoard = new TaskBoard(root, allTasks);
@@ -1414,6 +1421,7 @@ renderer.setAnimationLoop((now) => {
   stationOps.station.tick(stationHours);
   bioOps.tick(stationHours);
   importOps.tick(stationHours);
+  lifeSupport.tick(stationHours);
   for (const e of importOps.drainEvents()) {
     // Animals from the Sanctuary: they go to their area and say so themselves.
     if (e.type === "llegada" && sanctuary.delivered(e.delivery)) continue;
@@ -1577,4 +1585,4 @@ for (const sel of [".nano-action", ".trip-chip", ".land-offer.lander", ".land-bo
   if (el) ctxDock.appendChild(el);
 }
 
-(window as unknown as { codeship: unknown }).codeship = { sanctuary, journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, starship, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, landerBerth, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels, dryDock };
+(window as unknown as { codeship: unknown }).codeship = { sanctuary, journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, starship, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, lifeSupport, stationCrew, landerBerth, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels, dryDock };

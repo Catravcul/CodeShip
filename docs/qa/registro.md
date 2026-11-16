@@ -95,6 +95,17 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | BIO-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | BIO-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | BIO-04 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SV-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SV-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SV-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SV-04 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SV-05 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SV-06 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SV-07 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SV-08 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SV-09 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SV-10 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SV-11 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | IMP-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | IMP-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | IMP-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -176,8 +187,8 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | CV-20 | Solo test | | | `comidas.test.ts` (verde en la suite completa) |
 | PX-01 | Probado (en vivo) | 2026-11-16 | `1c1b689` | [run](runs/2026-11-16-1923-PX-01-PX-02-PX-13-PX-27.md): 54 OK |
 | PX-02 | FAIL | 2026-11-16 | `1c1b689` | [run](runs/2026-11-16-1923-PX-01-PX-02-PX-13-PX-27.md): 28 OK, 1 FALLA |
-| PX-03 | FAIL | 2026-11-16 | `f0b770b` | [run](runs/2026-11-16-1952-PX-03-PX-04-PX-06-PX-10-PX-12-PX-15.md): 15 OK, 4 FALLA |
-| PX-04 | FAIL | 2026-11-16 | `f0b770b` | [run](runs/2026-11-16-1952-PX-03-PX-04-PX-06-PX-10-PX-12-PX-15.md): 17 OK, 2 FALLA |
+| PX-03 | Probado (en vivo) | 2026-11-16 | `454aa6d` | [run](runs/2026-11-16-2005-PX-03.md): 17 OK |
+| PX-04 | Probado (en vivo) | 2026-11-16 | `9b15623` | [run](runs/2026-11-16-1805-PX-04-PX-12.md): 27 OK |
 | PX-05 | Probado (en vivo) | 2026-11-14 | `cb310e1` | [run](runs/2026-11-14-1626-PX-01-PX-02-PX-04-PX-05-PX-10-PX-11.md): 25 OK |
 | PX-06 | FAIL | 2026-11-16 | `f0b770b` | [run](runs/2026-11-16-1952-PX-03-PX-04-PX-06-PX-10-PX-12-PX-15.md): 1 OK, 2 FALLA |
 | PX-07 | Probado (en vivo) | 2026-11-13 | `f59ae5a` | [run](runs/2026-11-13-1713-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09-PX-10-PX-11.md): 13 OK |
@@ -185,7 +196,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-09 | Probado (en vivo) | 2026-11-13 | `f59ae5a` | [run](runs/2026-11-13-1713-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09-PX-10-PX-11.md): 9 OK |
 | PX-10 | FAIL | 2026-11-16 | `f0b770b` | [run](runs/2026-11-16-1952-PX-03-PX-04-PX-06-PX-10-PX-12-PX-15.md): 7 OK, 2 FALLA |
 | PX-11 | Probado (en vivo) | 2026-11-16 | `75bea64` | [run](runs/2026-11-16-1500-PX-02-PX-10-PX-11.md): 26 OK |
-| PX-12 | FAIL | 2026-11-16 | `f0b770b` | [run](runs/2026-11-16-1952-PX-03-PX-04-PX-06-PX-10-PX-12-PX-15.md): 1 OK, 3 FALLA |
+| PX-12 | Probado (en vivo) | 2026-11-16 | `aa52928` | [run](runs/2026-11-16-2021-PX-12.md): 24 OK |
 | PX-13 | Probado (en vivo) | 2026-11-16 | `1c1b689` | [run](runs/2026-11-16-1923-PX-01-PX-02-PX-13-PX-27.md): 42 OK |
 | PX-14 | Probado (en vivo) | 2026-11-16 | `be7ba22` | [run](runs/2026-11-16-1835-PX-14-PX-15-PX-25.md): 34 OK |
 | PX-15 | Probado (en vivo) | 2026-11-16 | `f0b770b` | [run](runs/2026-11-16-1952-PX-03-PX-04-PX-06-PX-10-PX-12-PX-15.md): 61 OK |
@@ -194,6 +205,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-24 | Probado (en vivo) | 2026-11-16 | `ef23e9a` | [run](runs/2026-11-16-1800-PX-24.md): 10 OK |
 | PX-20 | FAIL | 2026-11-16 | `c033d52` | [run](runs/2026-11-16-1702-PX-20.md): 256 OK, 7 FALLA |
 | PX-25 | Probado (en vivo) | 2026-11-16 | `be7ba22` | [run](runs/2026-11-16-1835-PX-14-PX-15-PX-25.md): 40 OK |
+| PX-30 | Probado (en vivo) | 2026-11-16 | `aa52928` | [run](runs/2026-11-16-2019-PX-30.md): 30 OK |
 | PX-27 | Probado (en vivo) | 2026-11-16 | `1c1b689` | [run](runs/2026-11-16-1952-PX-27.md): 28 OK |
 | PX-28 | Probado (en vivo) | 2026-11-16 | `f0b770b` | [run](runs/2026-11-16-2019-PX-28.md): 36 OK |
 
@@ -203,10 +215,13 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-16 20:21 | PX-12 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-2021-PX-12.md) |
 | 2026-11-16 20:19 | PX-28 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-2019-PX-28.md) |
+| 2026-11-16 20:19 | PX-30 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-2019-PX-30.md) |
 | 2026-11-16 20:16 | PX-28 | Experiencia (Playwright) | 0/1 recorridos bien | [run](runs/2026-11-16-2016-PX-28.md) |
 | 2026-11-16 20:11 | PX-28 | Experiencia (Playwright) | 0/1 recorridos bien | [run](runs/2026-11-16-2011-PX-28.md) |
 | 2026-11-16 20:09 | PX-28 | Experiencia (Playwright) | 0/1 recorridos bien | [run](runs/2026-11-16-2009-PX-28.md) |
+| 2026-11-16 20:05 | PX-03 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-2005-PX-03.md) |
 | 2026-11-16 19:52 | PX-03, PX-04, PX-06, PX-10, PX-12, PX-15 | Experiencia (Playwright) | 1/6 recorridos bien | [run](runs/2026-11-16-1952-PX-03-PX-04-PX-06-PX-10-PX-12-PX-15.md) |
 | 2026-11-16 19:52 | PX-27 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-1952-PX-27.md) |
 | 2026-11-16 19:23 | PX-01, PX-02, PX-13, PX-27 | Experiencia (Playwright) | 2/4 recorridos bien | [run](runs/2026-11-16-1923-PX-01-PX-02-PX-13-PX-27.md) |

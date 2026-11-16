@@ -4,6 +4,7 @@ import type { InstalledEquipment, StationOutfit } from "../domain/outfit";
 import type { PressurisedModule, StationLayout } from "../domain/structure";
 import { GROWTH_SOURCES, startingOutfit } from "./outfit";
 import { POLANA_LAYOUT, STRUCTURE_SOURCES } from "./structure";
+import { NODE2_ECLSS, eclssFixtures } from "./eclss-placement";
 
 // --- Sources -------------------------------------------------------------------
 export const INTERIOR_SOURCES = {
@@ -292,6 +293,8 @@ export function stationInteriorPlan(layout: StationLayout = POLANA_LAYOUT, outfi
   // Node 1's capped radial ports, while nothing is berthed there.
   if (!used.has("nodo-1-babor")) fixtures.push({ id: "puerto-babor", label: "Puerto radial libre", volume: "nodo-1", face: "babor", at: new Vec3(-N.x, 0, 0), size: CAP, action: { kind: "info" }, info: "Puerto CBM cerrado: como Unity, este nodo tiene seis puertos; aquí se atraca un módulo nuevo (Planos → Módulos)", source: STRUCTURE_SOURCES.unity });
   if (!used.has("nodo-1-estribor")) fixtures.push({ id: "puerto-estribor", label: "Puerto radial libre", volume: "nodo-1", face: "estribor", at: new Vec3(N.x, 0, 0), size: CAP, action: { kind: "info" }, info: "Puerto CBM cerrado, con su tapa: aquí se atraca un módulo nuevo (Planos → Módulos)", source: S.cbm });
+  // Real life support (docs/design/soporte-vital.md): its racks on node 2's walls, like Tranquility's.
+  fixtures.push(...eclssFixtures(volumes.find((v) => v.id === "nodo-2")!, NODE2_ECLSS));
   // Equipment in every module's rack bays.
   for (const e of outfit.equipment) {
     const vol = volumes.find((v) => v.id === e.moduleId);

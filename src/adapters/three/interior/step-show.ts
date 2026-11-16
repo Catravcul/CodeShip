@@ -487,6 +487,13 @@ export class StepShow {
     return out.copy(this.feet).lerp(s, d > 1e-3 ? Math.min(0.65, 0.5 / d) : 0).setY(0.02);
   }
 
+  /** Shows the floor bowl by a low target and returns where its contents sit (in `this.v`). */
+  private bowlAt(s: THREE.Vector3): THREE.Vector3 {
+    const bowl = this.floorBowl(this.v, s);
+    this.show(this.props!.bowl, bowl.x, bowl.y + 0.02, bowl.z).scale.set(0.08, 0.04, 0.08);
+    return bowl.setY(bowl.y + 0.04);
+  }
+
   /** In front of her at her hands (for a target's steps: what she holds or works in), height `y` clamped. */
   private atHands(out: THREE.Vector3, y: number): THREE.Vector3 {
     const f = this.df!;
@@ -680,7 +687,7 @@ export class StepShow {
       }
       case "verter":
       case "sazonar": {
-        const at = v.place === "objetivo" ? (this.low(v) ? this.floorBowl(this.v, s) : this.v.copy(s)) : vessel();
+        const at = v.place === "objetivo" ? (this.low(v) ? this.bowlAt(s) : this.v.copy(s)) : vessel();
         const tool = v.action === "sazonar" ? p.shaker : p.jar;
         const tip = this.show(tool, at.x, at.y + 0.2 + 0.02 * Math.sin(this.clock * (v.action === "sazonar" ? 30 : 3)), at.z);
         tip.rotation.z = v.action === "sazonar" ? Math.PI : 2.0 * bump(t, 0.1, 0.95);
@@ -751,7 +758,8 @@ export class StepShow {
         break;
       }
       case "lavar": {
-        const at = v.place === "objetivo" ? this.v.copy(s) : vessel();
+        // A low target's drinker is lifted and washed over her right hand, where her body does not hide it.
+        const at = v.place === "objetivo" ? (this.low(v) ? this.v.copy(this.hand).setY(this.hand.y + 0.12) : this.v.copy(s)) : vessel();
         pile(at, 2, 0.025, 1);
         this.emitAt(at.x, at.y + 0.3, at.z, "fall", TINT.agua!);
         break;
@@ -813,9 +821,8 @@ export class StepShow {
           if (t < 0.85) this.emitAt(s.x, s.y + 0.15, s.z, "fall", TINT[v.tint ?? "comida"] ?? 0x9a5a3a);
           break;
         }
-        const bowl = this.floorBowl(this.v, s);
-        this.show(p.bowl, bowl.x, bowl.y + 0.02, bowl.z).scale.set(0.08, 0.04, 0.08);
-        pile(this.v.set(bowl.x, bowl.y + 0.04, bowl.z), Math.round(1 + 3 * clamp01(t / 0.7)), 0.025);
+        const bowl = this.bowlAt(s);
+        pile(bowl, Math.round(1 + 3 * clamp01(t / 0.7)), 0.025);
         if (t < 0.7) this.emitAt(bowl.x, bowl.y + 0.35, bowl.z, "fall", TINT[v.tint ?? "comida"] ?? 0x9a5a3a);
         break;
       }

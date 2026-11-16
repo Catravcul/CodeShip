@@ -925,7 +925,8 @@ export class Interior {
       }
       if (this.inside(cam.x, cam.z)) break;
     }
-    const focus = new THREE.Vector3(look.x, look.y, look.z).lerp(new THREE.Vector3(feet.x, 0.9, feet.z), 0.3);
+    // A low target is worked at a bowl on the floor by her feet: the camera looks between it and the target.
+    const focus = new THREE.Vector3(look.x, look.y, look.z).lerp(new THREE.Vector3(feet.x, 0.9, feet.z), look.y < 0.5 ? 0.6 : 0.3);
     return { stand: feet, yaw: Math.atan2(dir.x, dir.z), camera: cam, look: focus, target: look.clone() };
   }
 

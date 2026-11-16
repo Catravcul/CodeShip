@@ -444,10 +444,6 @@ bloque bien se ve en cuanto se toca.
   sus pies. La cocina de la estación es compacta (horno, calentador y grifo en un mismo puesto, como en la
   ISS): todos sus pasos ocurren en ese puesto. Si la pantalla se abre desde fuera (el módulo acoplado), no hay
   nadie en la máquina y no se representa.
-- **nano_net** (`src/modules/nano-net/application/nano-sketch.ts`): Doménica está sentada en la cabina del
-  módulo posado sobre el núcleo; cada paso dibuja sobre él, con la misma capa que los planes de viaje: el
-  anillo del núcleo que crece paso a paso, los nodos que nacen a 40 m, su subida a la órbita de 600 m, el
-  área que cubre un nodo, el enlace con otra red. La cámara mira hacia abajo como en un aterrizaje.
 - **Nada atraviesa la escena**: el cuenco que se deja en el suelo busca un hueco libre al alcance de su mano
   si el sitio de siempre está ocupado (la pata de un gato, un mueble): `StepShow.clearOf`.
 - **Un solo puerto** (`src/modules/chores/domain/step-visual.ts`): `StepVisual` es lo que llama toda hoja

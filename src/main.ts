@@ -52,7 +52,6 @@ import { REMOTE_NETS } from "@modules/nano-net/data/networks";
 import { faultLetter } from "@modules/story/data/nevaeh";
 import { NanoNetView } from "./adapters/three/nano-net-view";
 import { NanoNetPanel } from "./ui/nano-net-panel";
-import { nanoSketch } from "@modules/nano-net/application/nano-sketch";
 import { buildStartRegion } from "./content/start-region";
 import { AsteroidField } from "./adapters/three/asteroid-field";
 import { SkyBodies } from "./adapters/three/sky-bodies";
@@ -553,14 +552,6 @@ navMode.toggleOverride = () => deck.active && (deck.toggleNav(), true);
 navMode.onBlocked = () => view.enabled && flash("El mapa está en el puente de la nave de viaje: acopla el módulo y entra", 5);
 // nano_net: its status card opens from the deck; the core action stays in the lander, anchored on the core.
 const nanoPanel = new NanoNetPanel(root, duelView, deck.nanoBtn, nano, bennuSite);
-// Each solved step draws over the core (PX-20), seen from the lander's belly camera like a landing plan.
-nanoPanel.stepVisual = (chore) =>
-  planOverlay.visual(() => {
-    const at = flight.state.position;
-    const core = nano.net.core(bennuSite.id);
-    return nanoSketch(chore, { core: at, up: at.sub(bennu.position), ...(core ? { remote: nano.net.remoteInRange(core)?.position } : {}) });
-  });
-nanoPanel.frameSheet = (s) => view.landingSheet(s);
 let lastPhase = expedition.phase;
 // Subjugation in three stages: the uncrewed probe from the deck, the lander, the suit (docs/design/subyugacion.md).
 const subj = new SubjugationUi({
@@ -1562,4 +1553,4 @@ for (const sel of [".nano-action", ".trip-chip", ".land-offer.lander", ".land-bo
   if (el) ctxDock.appendChild(el);
 }
 
-(window as unknown as { codeship: unknown }).codeship = { journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, nanoPanel, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, landerBerth, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels, dryDock };
+(window as unknown as { codeship: unknown }).codeship = { journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, landerBerth, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels, dryDock };

@@ -246,20 +246,6 @@ async function freshGame(j) {
   return p;
 }
 
-/** Posa el módulo sobre Bennu (como acciones.mjs: aterrizar a mano lleva minutos). */
-const landOnBennu = () => {
-  const c = window.codeship;
-  const f = c.flight;
-  const s = f.state;
-  const P = s.position.constructor;
-  const Q = s.orientation.constructor;
-  c.docking.undock();
-  const bennu = c.region.target;
-  let y = 400;
-  while (bennu.surfaceDistance(new P(0, y, 0), f.simTimeS) > 3.2) y -= 0.1;
-  f._state = new s.constructor(new P(0, y, 0), new P(0, -0.07, 0), Q.IDENTITY, new P(0, 0, 0));
-};
-
 /**
  * The station (docs/design/estacion-tripulacion.md): the galley's dish and one chore of each machine
  * (refine, fabricate, the biology lab, import), each acted out by Doménica at its fixture.
@@ -342,27 +328,6 @@ async function playStation(j, rows) {
       await auditSheet(j, rows, { id: "estacion-importar", title: "Estación: importar (pedido de xenón)" }, machineOracle, "stationInside");
     }
     await j.tap(".st-back", "Volver");
-  }
-}
-
-/** nano_net on Bennu (docs/design/nano-net.md): landed on the core, converting it and teaching its first stages; each step draws over the core. */
-async function playNano(j, rows) {
-  const p = j.page;
-  await j.setup("Bennu obedece (su mente persuadida) y el módulo se posa sobre él", landOnBennu);
-  await j.setup("Bennu persuadido: puede ser núcleo", () => window.codeship.nano.subjugate(window.codeship.region.target.data.id));
-  await p.waitForFunction(() => window.codeship.expedition.phase === "landed", null, { timeout: 180000 });
-  await p.waitForTimeout(800);
-  for (let k = 0; k < 4; k++) {
-    if (!(await p.locator(".nano-action:not(.hidden)").count())) break;
-    const title = (await j.texts(".nano-action"))[0] ?? "nano_net";
-    if (!(await j.tap(".nano-action", title))) break;
-    await j.waitDuel(30000);
-    await p.waitForTimeout(400);
-    await playPlan(j, rows, `nano_net: ${title}`, () => window.codeship.nanoPanel.current ?? null, `nano-${k + 1}`);
-    await p.waitForTimeout(1000);
-    if (await p.locator(".duel:not(.hidden) button.end").count()) await j.tap(".duel:not(.hidden) button.end", "Continuar");
-    else if (await p.locator('.duel:not(.hidden) [data-act="close"]').count()) await j.tap('.duel:not(.hidden) [data-act="close"]', "×");
-    await p.waitForTimeout(800);
   }
 }
 
@@ -505,17 +470,11 @@ export async function animaciones(j) {
     await playStation(j, rows);
   }
 
-  // nano_net: landed on Bennu, each solved step draws over the core.
-  if (want("nano")) {
-    p = await freshGame(j);
-    await playNano(j, rows);
-  }
-
   extra.push(
     "El viaje desde la consola de navegación del anillo: el mapa cubre la escena, así que el plan se dibuja en el mapa, encuadrado en la franja sobre la hoja (sus puntos se miden en el mapa).",
   );
   extra.push(
-    "Estación (escala 1,5): la cocina y las máquinas (refinar, fabricar, laboratorio de biología, importar) con Doménica en los estribos de cada una; nano_net: cada paso dibuja sobre el núcleo, visto desde la cámara ventral del módulo posado.",
+    "Estación (escala 1,5): la cocina y las máquinas (refinar, fabricar, laboratorio de biología, importar) con Doménica en los estribos de cada una. Sin visual de pasos, aplazados con nano_net (sistema ficticio, al backlog): los retos de nano_net.",
   );
   const bad = rows.filter((r) => !r.ok).length;
   j.check(`auditoría: ${rows.length - bad} de ${rows.length} pasos se ven bien`, bad === 0, rows.filter((r) => !r.ok).slice(0, 4).map((r) => `${r.chore.title} / ${r.step}: ${r.why[0]}`).join(" | "));

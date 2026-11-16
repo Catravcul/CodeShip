@@ -4,7 +4,6 @@ import { faultWhat } from "@modules/nano-net/application/challenges";
 import { STAGES, type NetEffects, type Stage } from "@modules/nano-net/domain/core";
 import type { Chore } from "@modules/chores/domain/chore";
 import type { DuelView, SessionText } from "./duel-view";
-import type { StepVisual } from "@modules/chores/domain/step-visual";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 const STAGE_NAME: Record<Stage, string> = { generar: "Generar nodos", mover: "Mover nodos", cubrir: "Cubrir un área", enlazar: "Enlazar redes" };
@@ -41,10 +40,6 @@ export class NanoNetPanel {
   private next: Chore | undefined;
   private open = false;
   private cardKey = "";
-  /** Set by main: what each solved step draws over the core (nano-sketch.ts, through the plan overlay). */
-  stepVisual?: (chore: Chore) => StepVisual | undefined;
-  /** Set by main: frame the view for the sheet (the lander's camera looking down at the core), and back. */
-  frameSheet?: (state: "open" | "closed") => void;
 
   constructor(
     root: HTMLElement,
@@ -69,11 +64,6 @@ export class NanoNetPanel {
     this.action.addEventListener("click", () => this.start());
   }
 
-  /** The exercise on screen, if a nano_net challenge is open (the experience suite's answer key). */
-  get current() {
-    return this.session?.run.current;
-  }
-
   /** A nano_net challenge is open. */
   get busy(): boolean {
     return this.session !== null;
@@ -86,16 +76,6 @@ export class NanoNetPanel {
     this.session = session;
     this.open = false;
     const run = session.run;
-    const visual = this.stepVisual?.(chore);
-    if (visual) this.frameSheet?.("open");
-    const prev = this.duel.onClose;
-    this.duel.onClose = () => {
-      this.duel.onClose = prev;
-      if (run.status === "done") visual?.finish();
-      else visual?.clear();
-      if (visual) this.frameSheet?.("closed");
-      prev?.();
-    };
     this.duel.show(
       {
         get current() {
@@ -111,12 +91,7 @@ export class NanoNetPanel {
         maxLives: run.maxMistakes,
       },
       sessionText(chore),
-      (a) => {
-        const index = run.step;
-        const ok = session.answer(a);
-        if (ok) visual?.stepDone(index);
-        return { ok };
-      },
+      (a) => ({ ok: session.answer(a) }),
     );
   }
 

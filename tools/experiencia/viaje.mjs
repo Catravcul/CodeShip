@@ -1,4 +1,4 @@
-// «Ir a una tarea» (docs/design/viaje-a-una-tarea.md): the setting at the yoga mat, teleport (fade and
+// «Ir a una tarea» (docs/design/viaje-a-una-tarea.md): the switch at the top of the task list, teleport (fade and
 // notice) and the real journey from the ring to a station task: the movement controls hide, «Parar» shows
 // and stops her midway, the camera still turns, and she goes by the spoke's car, the spine and the docking
 // hatch. Played on an iPhone 13 with visible taps; captures in docs/screenshots/viaje-*-movil.png.
@@ -52,43 +52,39 @@ const MOVE = ".walk-stick, .vstick.room-move, .vstick.sti-move, .zg-pad, .updown
 
 export async function viaje(j) {
   const p = j.page;
-  // The setting: at the lander cabin's mat, «Ir a una tarea» is «Viaje» unless she chose otherwise.
+  // The switch: at the top of the task list, «Viaje» unless she chose otherwise; no row at the mat any more.
   await j.tap(".stand-btn", "Levantarse: habitáculo");
   await p.waitForTimeout(800);
   await j.useMachine("cabin", "esterilla", "ajustes", "Sentarse en loto: ajustes");
   await p.waitForTimeout(500);
-  const row = (await j.texts('.settings-sheet [data-extra="ir-a-tarea"]'))[0] ?? "";
-  j.check("en la esterilla, «Ir a una tarea» dice «Viaje» por defecto", /Ir a una tarea/.test(row) && /Viaje/.test(row), row);
-  await capture(j, "ajuste", "Ajuste «Ir a una tarea»");
-  await j.tap('.settings-sheet [data-extra="ir-a-tarea"]', "Ir a una tarea");
-  const saved = await p.evaluate(() => JSON.parse(localStorage.getItem("codeship.ajustes") ?? "{}").taskTravel);
-  j.check("cambiar a «Teletransporte» se guarda en codeship.ajustes", saved === "teletransporte", String(saved));
+  j.check("en la esterilla ya no está «Ir a una tarea» (está en la lista de tareas)", !(await j.texts('.settings-sheet [data-extra="ir-a-tarea"]')).length);
   await j.tap(".settings-sheet [data-close]", "Levantarse y cerrar los ajustes");
-
-  // Teleport: a ring chore from the cabin, at once, with a fade and the notice that it is a choice.
   const chore = await taskTitle(p, "anillo");
   await j.tap(".room-ui:not(.hidden) .cab-tasks", "Tareas");
+  const on = (await j.texts(".task-board .tb-travel .on"))[0] ?? "";
+  j.check("en la lista de tareas, el interruptor dice «Viaje» por defecto", on === "Viaje", on);
+  await capture(j, "ajuste", "Interruptor Viaje / Teletransporte en Tareas");
+  await j.tap('.task-board .tb-travel [data-travel="teletransporte"]', "Teletransporte");
+  const saved = await p.evaluate(() => JSON.parse(localStorage.getItem("codeship.ajustes") ?? "{}").taskTravel);
+  j.check("cambiar a «Teletransporte» se guarda en codeship.ajustes", saved === "teletransporte", String(saved));
+
+  // Teleport: a ring chore from the cabin, at once, with a fade and the notice that it is a choice.
   await go(j, chore);
   await p.waitForTimeout(250);
   const note = (await j.texts(".journey-note.on"))[0] ?? "";
-  j.check("teletransporte: aviso «Teletransporte (ajustes)»", /Teletransporte \(ajustes\)/.test(note), note);
+  j.check("teletransporte: aviso «Teletransporte (elegido en Tareas)»", /Teletransporte \(elegido en Tareas\)/.test(note), note);
   j.check("teletransporte: llega al anillo al momento, sin «Parar»", (await p.evaluate(() => window.codeship.interior.active && !window.codeship.journey.active)) && !(await visible(p, ".journey-bar .jb-stop")));
   await capture(j, "teletransporte", "Teletransporte con aviso");
   await p.waitForFunction(() => [...document.querySelectorAll(".duel")].some((e) => !e.classList.contains("hidden")), null, { timeout: 20000 }).catch(() => {});
   if ((await j.texts(".duel .x")).length) await j.tap(".duel .x", "Cerrar el reto");
 
-  // Back to «Viaje» at the ring's yoga mat.
-  await j.setup("camina hasta la esterilla de yoga del anillo y se sienta (ajustes)", () => window.codeship.interior.sitForSettings());
-  await p.waitForFunction(() => document.body.classList.contains("in-settings"), null, { timeout: 20000 }).catch(() => {});
-  await j.tap('.settings-sheet [data-extra="ir-a-tarea"]', "Ir a una tarea");
-  j.check("en la esterilla del anillo vuelve a «Viaje»", await p.evaluate(() => window.codeship.settings.value.taskTravel === "viaje"));
-  await j.tap(".settings-sheet [data-close]", "Levantarse y cerrar los ajustes");
-
-  // Travel: from the ring to a station task.
+  // Travel: from the ring to a station task, back to «Viaje» in the list itself.
   const task = await taskTitle(p, "estacion");
   if (!task) return j.check("hay una tarea de la estación en la lista", false);
   j.check("empieza en primera persona", await p.evaluate(() => !window.codeship.interior.thirdPerson));
   await j.tap(".tasks-btn", "Tareas");
+  await j.tap('.task-board .tb-travel [data-travel="viaje"]', "Viaje");
+  j.check("en la lista de tareas vuelve a «Viaje»", await p.evaluate(() => window.codeship.settings.value.taskTravel === "viaje"));
   await go(j, task);
   await p.waitForTimeout(600);
   const plan = await p.evaluate(() => window.codeship.journey.plan.map((l) => ({ kind: l.kind, from: l.from, to: l.to, s: Math.round(l.seconds) })));

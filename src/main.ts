@@ -73,6 +73,8 @@ import { EXPLORER_CRAFT, MOTHERSHIP_CRAFT, POLANA_STATION, STARTING_STOCK } from
 import { STORE_STOWAGE, storeKgOf } from "@modules/station/data/store";
 import { storeCapacityKg } from "@modules/station/domain/outfit";
 import { StationModel } from "./adapters/three/station-model";
+import { DryDockStage } from "./dry-dock";
+import { POLANA_DRY_DOCK } from "@modules/station/data/dry-dock";
 import { StationScreen } from "./station-screen";
 import { StationStructure } from "@modules/station/domain/structure";
 import { StationDock, dockNavTargets } from "./station-dock";
@@ -141,7 +143,6 @@ import { setSound } from "./adapters/audio/alarm";
 import { collectTasks, routeTo, type Task, type TaskPlace, type Vehicle } from "@modules/tasks/application/task-list";
 import type { CabinActionId, CabinState } from "@modules/lander-cabin/domain/cabin";
 import { needingAttention } from "@modules/ship-bay/application/bay";
-import { TASK_TRAVELS } from "@modules/settings/domain/settings";
 import { G } from "@core/units";
 
 // --- Domain setup -----------------------------------------------------------
@@ -346,6 +347,12 @@ scene.add(asteroidMesh);
 const stationModel = new StationModel(stationOutfit.layout, structure.orientation);
 stationModel.root.position.set(POLANA_STATION.position.x, POLANA_STATION.position.y, POLANA_STATION.position.z);
 scene.add(stationModel.root);
+// The dry dock for the mothership (docs/design/dique-seco.md): an open cradle in front of node 2.
+const dryDock = new DryDockStage(root, scene, stationModel.root, POLANA_DRY_DOCK, {
+  shipName: "La nodriza",
+  berthed: () => !!mothership.dockedTo,
+  approaching: () => nav.status === "carrier" && nav.target.id === structure.site.id,
+});
 
 // The asteroids' wrath after a failed duel (docs/design/poderes-ira.md): attacks, survival mode, anger card.
 const wrathMode = new WrathMode({
@@ -704,34 +711,50 @@ const probeLandingUi = new LandingUi({
 // The trip chip and the live preview, on screen wherever she is while a vehicle flies itself.
 const tripChip = new TripChip(root);
 const tripPreview = new TripPreview(root);
-tripChip.onView = () => (tripPreview.open = !tripPreview.open);
+/** «Ver trayecto» (trip chip and journey bar): the flying vehicle on its drawn path, the camera following it. */
+const togglePath = () => (tripPreview.open = !tripPreview.open);
+tripChip.onView = togglePath;
 tripChip.onTake = () => (probeTravel.trip.active ? probeTravel.trip.cancel() : probeLanding.active ? probeLanding.cancel() : landerLanding.active ? landerLanding.cancel() : nav.cancel());
 const km = (m: number) => (m >= 1000 ? `${num(m / 1000, 1)} km` : `${num(m)} m`);
 /** A wrath threat holds the trip at ×1 (HC-03): set each frame by the loop. */
 let tripHeld = false;
 const lapseText = (l: number) => (tripHeld && l > 1 ? " · ×1 por amenaza" : l > 1 ? ` · ×${num(l)}` : "");
+/** The planned path of the trip flying now, kept from its first frame (`key` names the trip). */
+let routeOf: { key: string; points: readonly Vec3[] } = { key: "", points: [] };
+const keptRoute = (key: string, plan: () => readonly Vec3[]) => () => {
+  if (routeOf.key !== key) routeOf = { key, points: plan() };
+  return routeOf.points;
+};
 /** What the chip shows and what the preview follows, for the trip flying now. */
 function tripNow(): { chip: TripChipData; subject: PreviewSubject } | undefined {
   const pp = probeTravel.trip.progress();
   if (pp) {
     const f = () => subj.probe.flight;
+    const g = probeTravel.trip.goal;
+    const goal = () => (g?.kind === "asteroid" ? g.body.position : subj.bayPose().position);
+    const route = keptRoute(`sonda:${pp.goalName}`, () => {
+      const h = g && probeTravel.trip.hop(g);
+      const from = f().state.position;
+      const end = g?.kind === "asteroid" ? g.body.position.sub(g.body.position.sub(h?.waypoints.at(-1) ?? from).normalize().scale(g.body.meanRadiusM + PROBE_TRIP.approachM)) : subj.bayPose().position;
+      return [from, ...(h?.waypoints ?? []), end];
+    });
     return {
       chip: { who: "Sonda", goal: pp.goalName, etaRealS: pp.etaRealS, fraction: pp.fraction, detail: `${PHASE[pp.phase]} · ${num(pp.speedMS, 1)} m/s · faltan ${km(pp.remainingM)} · ${duration(pp.etaS)} de vuelo${lapseText(pp.lapse)}` },
-      subject: { label: "Sonda · en directo", sizeM: 1.2, pose: () => f().state, goal: () => (probeTravel.trip.goal?.kind === "asteroid" ? probeTravel.trip.goal.body.position : subj.bayPose().position) },
+      subject: { label: "Sonda · trayecto", sizeM: 1.2, pose: () => f().state, goal, route },
     };
   }
   const probeChip = probeLandingUi.chip("Sonda");
-  if (probeChip) return { chip: probeChip, subject: { label: "Sonda · aterrizando", sizeM: 1.2, pose: () => subj.probe.flight.state, goal: () => probeLanding.siteWorld() ?? subj.probe.flight.state.position } };
+  if (probeChip) return { chip: probeChip, subject: { label: "Sonda · aterrizando", sizeM: 1.2, pose: () => subj.probe.flight.state, goal: () => probeLanding.siteWorld() ?? subj.probe.flight.state.position, route: keptRoute("sonda:aterrizaje", () => [subj.probe.flight.state.position, probeLanding.siteWorld() ?? subj.probe.flight.state.position]) } };
   const landerChip = landerLandingUi.chip("Módulo");
-  if (landerChip) return { chip: landerChip, subject: { label: "Módulo · aterrizando", sizeM: 14, pose: () => flight.state, goal: () => landerLanding.siteWorld() ?? flight.state.position } };
+  if (landerChip) return { chip: landerChip, subject: { label: "Módulo · aterrizando", sizeM: 14, pose: () => flight.state, goal: () => landerLanding.siteWorld() ?? flight.state.position, route: keptRoute("modulo:aterrizaje", () => [flight.state.position, landerLanding.siteWorld() ?? flight.state.position]) } };
   const p = nav.progress();
   if (!p) return undefined;
   const carrierLeg = p.vehicle === "carrier";
   return {
     chip: { who: carrierLeg ? "Nodriza" : "Módulo", goal: nav.target.name, etaRealS: p.etaRealS, fraction: p.fraction, detail: `${PHASE[p.phase]} · ${num(p.speedMS, p.speedMS < 1 ? 2 : 1)} m/s · faltan ${km(p.remainingM)} · ${duration(p.etaS)} de vuelo${lapseText(p.lapse)}` },
     subject: carrierLeg
-      ? { label: "Nodriza · en directo", sizeM: 170, pose: () => ({ position: mothership.position, orientation: mothership.orientation }), goal: () => targetPosition(nav.target) }
-      : { label: "Módulo · en directo", sizeM: 14, pose: () => flight.state, goal: () => targetPosition(nav.target) },
+      ? { label: "Nodriza · trayecto", sizeM: 170, pose: () => ({ position: mothership.position, orientation: mothership.orientation }), goal: () => targetPosition(nav.target), route: () => nav.route }
+      : { label: "Módulo · trayecto", sizeM: 14, pose: () => flight.state, goal: () => targetPosition(nav.target), route: () => nav.route },
   };
 }
 
@@ -807,6 +830,7 @@ const stationLife = new StationLife({
   },
   say: (t, sec) => stationInside.say(t, sec),
   changed: () => undefined,
+  openDockView: () => dryDock.open("hangar"),
 });
 /** The station's interior as it is drawn and walked: MACHINE_SCALE times its real size. */
 const playInterior = () => new StationInterior(scaleInteriorPlan(stationInteriorPlan(stationOutfit.layout, stationOutfit), MACHINE_SCALE));
@@ -839,6 +863,7 @@ const stationInside = new StationInteriorMode(root, playInterior(), {
   actions: (f) => stationLife.actions(f),
   act: (f, a) => stationLife.act(f, a),
   landerInHangar,
+  lookOut: () => dryDock.open("ventanilla"),
   leave: (to) => {
     if (to === "nodriza" && !mothership.dockedTo) return "La nodriza no está atracada en este puerto";
     if (to === "sonda" && !atStationPort()) return "El módulo de aterrizaje no está en este puerto";
@@ -1100,7 +1125,7 @@ function useBridgeConsole(place: Extract<TaskPlace, { spot: "puente" }>): void {
   if (place.page === "mente") return bridge.goTo("mente");
   return bridge.useConsole("comms", "misiones");
 }
-// «Ir a una tarea» (docs/design/viaje-a-una-tarea.md): the whole real way (default) or teleport, at the yoga mat.
+// «Ir a una tarea» (docs/design/viaje-a-una-tarea.md): the whole real way (default) or teleport, chosen in the task list.
 const journey = new JourneyDriver(root, {
   interior,
   cabin,
@@ -1120,6 +1145,8 @@ const journey = new JourneyDriver(root, {
     if (stationScreen.active && screenFromInside) stationScreen.exit();
     if (bay.active) bay.exit();
   },
+  togglePath,
+  viewingPath: () => tripPreview.visible,
   finish: (place, t) => {
     if (place.vehicle === "nodriza") return place.spot === "anillo" ? void (t.chore && interior.doChore(t.chore)) : useBridgeConsole(place);
     if (place.vehicle === "modulo") return place.spot === "asiento" && !view.enabled ? sitDown() : undefined;
@@ -1130,18 +1157,12 @@ const journey = new JourneyDriver(root, {
     stationScreen.enter(place.tab);
   },
 });
-settingsPanel.addRow({
-  id: "ir-a-tarea",
-  label: "Ir a una tarea",
-  help: "«Viaje»: va andando, en ascensor, saltando y volando por el camino real (con «Parar»); «Teletransporte»: aparece allí",
-  value: () => (settings.value.taskTravel === "viaje" ? "Viaje" : "Teletransporte"),
-  next: () => settings.set("taskTravel", TASK_TRAVELS[(TASK_TRAVELS.indexOf(settings.value.taskTravel) + 1) % TASK_TRAVELS.length]!),
-});
+// How «Ir» gets there (viaje / teletransporte) is a switch at the top of the task list (TaskBoard), its only place.
 /** The task list's «Ir»: the real journey there, or (teleport, a setting) straight there through open hatches, or to what joins the vehicles, saying why. */
 function goToTask(t: Task): void {
   if (settings.value.taskTravel === "viaje") return void journey.start(t);
   fade();
-  journey.say("Teletransporte (ajustes)");
+  journey.say("Teletransporte (elegido en Tareas)");
   const r = routeTo(t.place, { crew: crewIn(), links: vehicleLinks() });
   if (r.kind === "ir") return arriveAt(t.place, t);
   arriveAt(r.via);
@@ -1234,9 +1255,9 @@ window.addEventListener("resize", () => {
 /** The view drawn last (the animation audit projects the trip and landing plans with it). */
 const shownView: { scene: THREE.Scene; camera: THREE.Camera } = { scene, camera };
 const planAudit = (sheetTop: number) => planOverlay.audit(shownView.scene, shownView.camera, sheetTop, { w: renderer.domElement.clientWidth, h: renderer.domElement.clientHeight });
-/** Draw the frame's view, then the live trip preview over a corner of it. */
+/** Draw the frame's view, then the live trip view over it («Ver trayecto»: the whole screen, so the room is not drawn). */
 function present(sc: THREE.Scene, cam: THREE.Camera): void {
-  renderer.render(sc, cam);
+  if (!(tripPreview.visible && tripPreview.full)) renderer.render(sc, cam);
   shownView.scene = sc;
   shownView.camera = cam;
   if (!tripPreview.visible) return;
@@ -1384,6 +1405,8 @@ renderer.setAnimationLoop((now) => {
   // The mothership moves on trips: keep its model where the domain has it.
   mothershipModel.root.position.set(mothership.position.x, mothership.position.y, mothership.position.z);
   mothershipModel.root.quaternion.set(mothership.orientation.x, mothership.orientation.y, mothership.orientation.z, mothership.orientation.w);
+  dryDock.update(dt);
+  if (dryDock.viewing && !stationInside.active) dryDock.view.close();
   document.body.classList.toggle("in-cockpit", view.enabled);
   if (interior.active) {
     present(interior.scene, interior.camera);
@@ -1399,7 +1422,12 @@ renderer.setAnimationLoop((now) => {
   }
   if (stationInside.active) {
     stationInside.update(dt);
-    present(stationInside.scene, stationInside.camera);
+    // The dry dock's cameras: the space scene from beside the dock, over the station.
+    if (dryDock.viewing) {
+      mothershipModel.update(dt, ring.omegaRadS, now / 1000);
+      stationModel.update(flight.simTimeS, skyBodies.sunDirection);
+      present(scene, dryDock.view.camera);
+    } else present(stationInside.scene, stationInside.camera);
     return;
   }
   if (bay.active) {
@@ -1508,4 +1536,4 @@ for (const sel of [".nano-action", ".trip-chip", ".land-offer.lander", ".land-bo
   if (el) ctxDock.appendChild(el);
 }
 
-(window as unknown as { codeship: unknown }).codeship = { journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, landerBerth, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels };
+(window as unknown as { codeship: unknown }).codeship = { journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, landerBerth, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels, dryDock };

@@ -70,17 +70,17 @@ const program = (nav: Navigator) => {
 };
 
 describe("Trips that end docked", () => {
-  it("the probe alone flies to the station's axis and the docking assist latches it to the probe port", () => {
+  it("the lander's own trip still flies to the station's axis and the docking assist latches it to its port", () => {
     const { nav, flight, docking, structure, station } = make({ undocked: new Vec3(-200, -300, 1300) });
-    expect(nav.select(station.id).ok).toBe(true);
-    const trip = nav.trip();
+    const trip = nav.landerTrip(station);
     expect(trip.carrier).toBeUndefined();
     expect(trip.dock?.port).toBe(station.probePort);
     // The way in is out on the port axis, outside the structure.
     expect(structure.clearance(trip.dock!.entry)).toBeGreaterThan(20);
     expect(trip.facts.dock?.handoverM).toBe(DOCK_TRIP.handoverM);
-    program(nav);
+    expect(nav.flyLander(station.id).ok).toBe(true);
     expect(nav.status).toBe("autopilot");
+    expect(nav.route.length).toBeGreaterThanOrEqual(2);
     for (let t = 0; t < 3600 && nav.status !== "docked" && nav.status !== "manual"; t += 0.5) {
       flight.update(0.5, NO_INPUT);
       nav.update();
@@ -88,6 +88,38 @@ describe("Trips that end docked", () => {
     expect(nav.status).toBe("docked");
     expect(docking.dockedTo).toBe(station.probePort);
   }, 60_000);
+
+  it("EST-27 to the station the mothership flies, even with the lander away: she berths in the dry dock and leaves the lander where it is", () => {
+    const { nav, flight, docking, mothership, station } = make({ undocked: new Vec3(-200, -300, 1300) });
+    expect(nav.carrierFlies(station)).toBe(true);
+    expect(nav.select(station.id).ok).toBe(true);
+    const trip = nav.trip();
+    expect(trip.carrier?.berthAt).toBe(station.carrierPort);
+    // Real numbers: the continuous-burn plan of her thrusters, compressed into the real-time budget.
+    expect(trip.carrier!.plan.totalS).toBeGreaterThan(0);
+    expect(trip.travel!.realS).toBeGreaterThan(0);
+    expect(nav.canCarry(station).ok).toBe(true);
+    const lander = flight.state.position;
+    expect(nav.carry(station.id).ok).toBe(true);
+    expect(nav.carrying).toBe(false);
+    // The planned way: from where she was to her berth.
+    expect(nav.route[0]!.sub(trip.carrier!.from).length()).toBeLessThan(1);
+    for (let i = 0; i < 2000 && nav.status === "carrier"; i++) nav.update(0.5);
+    expect(nav.status).toBe("docked");
+    expect(mothership.dockedTo).toBe(station.carrierPort!.id);
+    expect(nav.route.at(-1)!.sub(mothership.position).length()).toBeLessThan(1);
+    expect(docking.dockedTo).toBeUndefined();
+    expect(flight.state.position.sub(lander).length()).toBeLessThan(1);
+    // Already in the dock: nothing to fly, and it says why.
+    expect(nav.canCarry(station).reason).toMatch(/dique/);
+  }, 60_000);
+
+  it("EST-27 the lander landed does not keep the mothership from flying to the station", () => {
+    const { nav, flight, station } = make({ undocked: new Vec3(-200, -300, 1300) });
+    Object.defineProperty(flight, "landed", { get: () => true });
+    expect(nav.select(station.id).ok).toBe(true);
+    expect(nav.canProgram().ok).toBe(true);
+  }, 30_000);
 
   it("HAB-21 the task list's travel: the lander alone undocks from the mothership and docks at the station, with no challenges", () => {
     const { nav, flight, docking, mothership, station } = make();
@@ -141,9 +173,11 @@ describe("Trips that end docked", () => {
     expect(nav.status).toBe("docked");
     expect(mothership.dockedTo).toBe(station.carrierPort!.id);
     expect(docking.dockedTo).toBe(mothership);
-    // Without the lander aboard, it does not go.
+    expect(nav.carrying).toBe(true);
+    // To an asteroid, without the lander aboard, it does not go (she parks for the lander to land).
     docking.undock();
-    expect(nav.canCarry(station)).toMatchObject({ ok: false });
+    const bennu = nav.targets[0]!;
+    expect(nav.canCarry(bennu)).toMatchObject({ ok: false });
   }, 60_000);
 
   it("from the station, a trip to an asteroid backs the mothership out along the port axis first", () => {
@@ -189,7 +223,8 @@ describe("Trips that end docked", () => {
     const run = nav.startProgramming();
     const ex = run.chore.exercises;
     const order = ex.find((e) => e.kind === "order")!;
-    expect(order.kind === "order" && order.blocks.some((b) => /acoplar/.test(b.pseudo))).toBe(true);
+    // The mothership's trip: she goes into the dry dock and its arms hold her.
+    expect(order.kind === "order" && order.blocks.some((b) => /dique seco/.test(b.pseudo))).toBe(true);
     const spec = ex[ex.length - 1]!;
     expect(spec.kind === "choice" && spec.options[spec.correct]).toMatch(/0,10 m\/s/);
   }, 30_000);

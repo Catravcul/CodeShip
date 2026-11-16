@@ -1,4 +1,6 @@
 import { groupTasks, type Task, type TaskGroupId } from "@modules/tasks/application/task-list";
+import { TASK_TRAVELS, type TaskTravel } from "@modules/settings/domain/settings";
+import { settings } from "./settings-store";
 import "./task-board.css";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
@@ -6,7 +8,9 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 /**
  * The task board with every task of the game (docs/design/habitaculo.md §Tareas), grouped (flight first),
  * each with «Ir» that takes her to the machine or the vehicle where it is done. Opened from the
- * «Tareas» button of the travel ship, the lander's cabin and the station.
+ * «Tareas» button of the travel ship, the lander's cabin and the station. At the top, the switch
+ * «Viaje / Teletransporte» says how «Ir» gets there (docs/design/viaje-a-una-tarea.md); it is the
+ * setting `taskTravel` of `codeship.ajustes`, its only place.
  */
 export class TaskBoard {
   private readonly el: HTMLElement;
@@ -27,6 +31,11 @@ export class TaskBoard {
     this.el.addEventListener("click", (e) => {
       const t = e.target as HTMLElement;
       if (t.closest("[data-close]")) return this.close();
+      const mode = t.closest<HTMLElement>("[data-travel]");
+      if (mode) {
+        settings.set("taskTravel", mode.dataset.travel as TaskTravel);
+        return this.render();
+      }
       const chip = t.closest<HTMLElement>("[data-group]");
       if (chip) {
         this.group = (chip.dataset.group || null) as TaskGroupId | null;
@@ -50,6 +59,8 @@ export class TaskBoard {
     this.group = group;
     this.render();
     this.el.classList.remove("hidden");
+    // Always from the top: the switch and the groups first.
+    this.el.scrollTop = 0;
     document.body.classList.add("in-tasks");
   }
 
@@ -73,6 +84,9 @@ export class TaskBoard {
             .join("")}`,
       )
       .join("");
-    this.el.innerHTML = `<div class="board-head"><b>Tareas</b><button data-close aria-label="Cerrar tareas">✕</button>${chips}</div>${body || "<p>Nada pendiente</p>"}`;
+    const LABEL: Record<TaskTravel, string> = { viaje: "Viaje", teletransporte: "Teletransporte" };
+    const now = settings.value.taskTravel;
+    const travel = `<div class="tb-travel" role="radiogroup" aria-label="Ir a una tarea">${TASK_TRAVELS.map((m) => `<button role="radio" data-travel="${m}" aria-checked="${m === now}" class="${m === now ? "on" : ""}">${LABEL[m]}</button>`).join("")}</div><small class="tb-travel-help">${now === "viaje" ? "«Ir» hace el camino real: andando, en ascensor, saltando y en la nodriza (con «Parar»)" : "«Ir» aparece allí al momento"}</small>`;
+    this.el.innerHTML = `<div class="board-head"><b>Tareas</b><button data-close aria-label="Cerrar tareas">✕</button>${travel}${chips}</div>${body || "<p>Nada pendiente</p>"}`;
   }
 }

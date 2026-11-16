@@ -58,11 +58,12 @@ export interface JourneyFacts {
   readonly ringRadiusM: number;
   readonly station: StationInterior;
   readonly flights: {
-    /** The lander from wherever it is to the station's lander port (undock, autopilot, docking assist). */
-    readonly landerToStation?: JourneyFlight;
-    /** The lander back to the travel ship's port. */
+    /** The lander back to the travel ship's port (from a body, or from wherever it was left). */
     readonly landerToMothership?: JourneyFlight;
-    /** The travel ship, with the lander aboard, to its berth at the station. */
+    /**
+     * The travel ship to her berth in the station's dry dock (docs/design/dique-seco.md), the lander
+     * aboard or not: the long trips are hers, the lander is for landing. There is no lander flight to the station.
+     */
     readonly carrierToStation?: JourneyFlight;
   };
 }
@@ -221,13 +222,12 @@ export function journeyTransfers(f: JourneyFacts): Transfer[] {
   if (sonda) both("modulo:acople", `estacion:${sonda.id}`, "escotilla", JOURNEY_PACE.hatchS, "Por la escotilla del techo a la estación", "Por la escotilla al módulo de aterrizaje", { open: landerHere, shut: "El módulo de aterrizaje no está acoplado a la estación" });
   if (nodriza) both("eje:atraque", `estacion:${nodriza.id}`, "escotilla", JOURNEY_PACE.hatchS, "Por la escotilla de atraque a la estación", "Por la escotilla a la espina de la nodriza", { open: shipHere, shut: "La nodriza no está atracada en la estación" });
   both("eje:atraque", "modulo:acople", "escotilla", JOURNEY_PACE.hatchS, "Por la escotilla de atraque al módulo", "Por la escotilla del techo a la nodriza", { open: landerAboard, shut: "El módulo de aterrizaje no está acoplado a la nodriza" });
-  // The flights: from the pilot seat (the lander) or a navigation console (the travel ship).
+  // The flights: the lander home to the travel ship from its pilot seat; the travel ship to the station from a navigation console.
   const fl = f.flights;
-  if (fl.landerToStation) out.push({ from: "modulo:asiento", to: "modulo:asiento", kind: "vuelo", seconds: fl.landerToStation.seconds, label: "Volar y acoplar en la estación", open: (j) => j.lander !== "estacion", then: (j) => ({ ...j, lander: "estacion" }), ...(fl.landerToStation.blocked ? { blocked: fl.landerToStation.blocked } : {}) });
   if (fl.landerToMothership) out.push({ from: "modulo:asiento", to: "modulo:asiento", kind: "vuelo", seconds: fl.landerToMothership.seconds, label: "Volar y acoplar en la nodriza", open: (j) => j.lander !== "nodriza", then: (j) => ({ ...j, lander: "nodriza" }), ...(fl.landerToMothership.blocked ? { blocked: fl.landerToMothership.blocked } : {}) });
   if (fl.carrierToStation)
     for (const at of ["puente:nav", "anillo:navegacion"])
-      out.push({ from: at, to: at, kind: "vuelo", seconds: fl.carrierToStation.seconds, label: "La nodriza vuela y atraca en la estación", open: (j) => !j.mothershipAtStation && j.lander === "nodriza", shut: "La nodriza no sale sin el módulo de aterrizaje acoplado", then: (j) => ({ ...j, mothershipAtStation: true }), ...(fl.carrierToStation.blocked ? { blocked: fl.carrierToStation.blocked } : {}) });
+      out.push({ from: at, to: at, kind: "vuelo", seconds: fl.carrierToStation.seconds, label: "La nodriza vuela a la estación y entra en el dique seco", open: (j) => !j.mothershipAtStation, shut: "La nodriza ya está en el dique seco", then: (j) => ({ ...j, mothershipAtStation: true }), ...(fl.carrierToStation.blocked ? { blocked: fl.carrierToStation.blocked } : {}) });
   // From where she is now.
   out.push(...fromHere(f, sp, st.g));
   return out;

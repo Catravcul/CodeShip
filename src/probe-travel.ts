@@ -100,7 +100,7 @@ export class ProbeTravel {
     t.update(dtS, held);
     if (t.status === this.last) return;
     const say = (s: string) => this.d.probeMode.say(s, 8);
-    if (t.status === "flying") say(`Plan cargado: la sonda vuela sola hacia ${goal ? ProbeTrip.goalName(goal) : ""}. Puedes hacer otras cosas; «Ver» la enseña en directo`);
+    if (t.status === "flying") say(`Plan cargado: la sonda vuela sola hacia ${goal ? ProbeTrip.goalName(goal) : ""}. Puedes hacer otras cosas; «Ver trayecto» la enseña en directo sobre su ruta`);
     if (t.status === "arrived" && goal?.kind === "asteroid") say(`La sonda ha llegado a unos ${num(this.d.probe.flight.telemetry().distanceToSurface)} m de ${goal.body.data.name}: tienes los mandos, pósala a mano`);
     if (t.status === "arrived" && goal?.kind === "bay") say(`La sonda espera a ${num(this.d.probe.bayRange().distanceM)} m de la bahía: acércala a menos de 10 m para el brazo`);
     if (t.status === "manual" && this.last === "flying") say("Mando manual: el piloto automático de la sonda se ha desconectado");

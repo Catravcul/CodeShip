@@ -27,3 +27,11 @@ body.in-station-interior .vstick.sti-move span, body.in-station-interior .vstick
 @media (pointer: coarse) {
   .station-enter-btn { left: 8px; transform: none; bottom: calc(300px + env(safe-area-inset-bottom)); width: calc(56vw - 8px); padding: 8px 10px; font-size: 14px; }
 }
+/* The dry dock's cameras (docs/design/dique-seco.md): full screen over the station, its HUD hidden. */
+.dock-view { position: fixed; left: 0; right: 0; top: 0; z-index: 40; display: none; padding: calc(10px + env(safe-area-inset-top)) 12px 10px; background: linear-gradient(#020a10ee, #020a1000); color: #d8f6ff; pointer-events: none; }
+.dock-view.on { display: block; }
+.dock-view .dv-head { display: flex; align-items: center; gap: 10px; pointer-events: auto; }
+.dock-view .dv-title { flex: 1; font-size: 16px; }
+.dock-view .dv-close { min-width: 48px; min-height: 48px; border: 0; border-radius: 12px; font-size: 24px; color: #04121a; background: #7fdcff; }
+.dock-view .dv-status { margin: 6px 0 0; font-size: 13px; color: #9fe8c4; max-width: 520px; }
+body.in-dock-view .sti-ui, body.in-dock-view .sti-move, body.in-dock-view .sti-look, body.in-dock-view .zg-pad, body.in-dock-view .zg-controls { display: none !important; }

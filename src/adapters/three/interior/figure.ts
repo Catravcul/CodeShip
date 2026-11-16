@@ -1,4 +1,10 @@
 import * as THREE from "three";
+import { Quat } from "@core/math/quat";
+import { Vec3 } from "@core/math/vec3";
+import type { AsanaData, ReachEnd } from "@modules/body/domain/asana";
+import { AsanaPlayer } from "@modules/body/domain/asana-player";
+import { contactHeights } from "@modules/body/domain/body-solver";
+import { CUBE_FIGURE, JOINTS, type BodyPose, type JointId } from "@modules/body/domain/skeleton";
 
 /** Joint angles (radians) of the cube figure. Figure faces +Z; limbs hang along −Y from their pivot. */
 export interface PoseAngles {
@@ -59,25 +65,46 @@ function box(w: number, h: number, d: number, color: number, y: number): THREE.M
   return m;
 }
 
-/** A cube humanoid (same style as Cold Sanctuary) that eases between poses. */
+/**
+ * A cube humanoid (same style as Cold Sanctuary) that eases between poses. Its joints are Cold
+ * Sanctuary's (`CubeHumanoid`): pelvis → lumbar → chest → neck → head; chest → scapula → shoulder →
+ * elbow → wrist; pelvis → hip → knee → ankle. Gestures (`pose`, `poseAngles`, `walk`) move the
+ * original nine; `asana` hands the whole skeleton to the body module's `AsanaPlayer` (IK, grounding,
+ * breath; docs/design/esqueleto.md). The boxes and their sizes are the same as before.
+ */
 export class CubeFigure {
   readonly root = new THREE.Group();
+  /** The lumbar spine (Cold Sanctuary's `Back`): gestures bend the torso here. */
   protected readonly torso = new THREE.Group();
+  private readonly chest = new THREE.Group();
+  private readonly neck = new THREE.Group();
   protected readonly head = new THREE.Group();
+  private readonly scapulae: THREE.Group[] = [];
   private readonly shoulders: THREE.Group[] = [];
   private readonly elbows: THREE.Group[] = [];
+  private readonly wrists: THREE.Group[] = [];
   private readonly hips: THREE.Group[] = [];
   private readonly knees: THREE.Group[] = [];
+  private readonly ankles: THREE.Group[] = [];
   private current: PoseAngles = { ...STAND, shoulderX: [0, 0], shoulderZ: [...STAND.shoulderZ], elbow: [0, 0], hip: [0, 0], knee: [0, 0] };
   protected target: PoseAngles = STAND;
+  /** Only created when she does yoga (the other figures never pay for it). */
+  private player?: AsanaPlayer;
+  private asanaMode = false;
 
   /** `longHair` adds hair down to the shoulders (Doménica: long lavender hair, from her portrait). */
   constructor(skin = 0xe0b48c, suit = 0x3d6fa8, hair = 0x3a2a1e, longHair = false) {
     this.root.add(box(0.34, 0.16, 0.2, suit, 0)); // pelvis
     this.root.add(this.torso);
-    this.torso.add(box(0.38, 0.5, 0.22, suit, 0.3));
-    this.torso.add(this.head);
-    this.head.position.y = 0.58;
+    // The torso in two boxes (lumbar 0,24 + chest 0,26 m = the old 0,5 m box), so the spine can curve.
+    this.torso.add(box(0.38, 0.24, 0.22, suit, 0.17));
+    this.chest.position.y = 0.29;
+    this.chest.add(box(0.38, 0.26, 0.22, suit, 0.13));
+    this.torso.add(this.chest);
+    this.neck.position.y = 0.26;
+    this.chest.add(this.neck);
+    this.neck.add(this.head);
+    this.head.position.y = 0.03;
     this.head.add(box(0.22, 0.25, 0.22, skin, 0.13));
     for (const side of [1, -1]) this.head.add(box(0.035, 0.035, 0.01, 0x222222, 0.16).translateX(0.05 * side).translateZ(0.111));
     this.head.add(box(0.24, 0.07, 0.24, hair, 0.27)); // hair
@@ -86,38 +113,83 @@ export class CubeFigure {
       for (const side of [1, -1]) this.head.add(box(0.03, 0.3, 0.2, hair, 0.11).translateX(0.12 * side).translateZ(-0.01)); // framing the face
     }
     for (const side of [1, -1]) {
+      const scap = new THREE.Group();
+      scap.position.set(0.08 * side, 0.23, 0);
+      this.chest.add(scap);
       const sh = new THREE.Group();
-      sh.position.set(0.25 * side, 0.52, 0);
+      sh.position.set(0.17 * side, 0, 0);
       sh.add(box(0.11, 0.3, 0.11, suit, -0.15));
       const el = new THREE.Group();
       el.position.y = -0.3;
       el.add(box(0.1, 0.28, 0.1, skin, -0.14));
       sh.add(el);
-      this.torso.add(sh);
+      const wrist = new THREE.Group();
+      wrist.position.y = -0.28;
+      el.add(wrist);
+      scap.add(sh);
+      this.scapulae.push(scap);
       this.shoulders.push(sh);
       this.elbows.push(el);
+      this.wrists.push(wrist);
       const hip = new THREE.Group();
       hip.position.set(0.1 * side, -0.06, 0);
       hip.add(box(0.14, 0.44, 0.14, suit, -0.22));
       const knee = new THREE.Group();
       knee.position.y = -0.44;
       knee.add(box(0.12, 0.42, 0.12, suit, -0.21));
-      knee.add(box(0.12, 0.06, 0.22, 0x222222, -0.42).translateZ(0.05));
+      const ankle = new THREE.Group();
+      ankle.position.y = -0.42;
+      ankle.add(box(0.12, 0.06, 0.22, 0x222222, 0).translateZ(0.05));
+      knee.add(ankle);
       hip.add(knee);
       this.root.add(hip);
       this.hips.push(hip);
       this.knees.push(knee);
+      this.ankles.push(ankle);
     }
     this.apply();
   }
 
   pose(key: string): void {
+    this.leaveAsana();
     this.target = POSES[key] ?? STAND;
   }
 
   /** Ease toward explicit joint angles (procedural motions such as hand over hand). */
   poseAngles(a: PoseAngles): void {
+    this.leaveAsana();
     this.target = a;
+  }
+
+  /**
+   * Move into a yoga asana (Cold Sanctuary's data, src/modules/body): smooth transition, IK hands and
+   * feet, resting on the floor, breathing. `transitionS` is how long the move takes.
+   */
+  asana(a: AsanaData, transitionS = 3): void {
+    if (!this.player) this.player = new AsanaPlayer(CUBE_FIGURE, { transitionS });
+    if (!this.asanaMode) this.player.startFrom(this.readPose());
+    this.asanaMode = true;
+    this.player.play(a);
+  }
+
+  /** The asana she is in (undefined outside yoga). */
+  get currentAsana(): AsanaData | undefined {
+    return this.asanaMode ? this.player?.asana : undefined;
+  }
+
+  /** Inhale or exhale while in an asana. */
+  get breath(): "inhala" | "exhala" | undefined {
+    return this.asanaMode ? this.player?.phase : undefined;
+  }
+
+  /** In an asana and fully arrived in it. */
+  get asanaArrived(): boolean {
+    return this.asanaMode && !!this.player?.arrived;
+  }
+
+  /** How high hands (palms) and soles are over the floor she stands on, in metres (asanas only). */
+  contacts(): Record<ReachEnd, number> | undefined {
+    return this.asanaMode && this.player ? contactHeights(CUBE_FIGURE, this.player.body.world) : undefined;
   }
 
   /** World position of a hand (0 or 1), from the current joint angles; the caller updates world matrices. */
@@ -127,6 +199,7 @@ export class CubeFigure {
 
   /** Walking gait: `phase` advances with distance, `amount` 0 (standing) … 1 (full stride). */
   walk(phase: number, amount: number): void {
+    this.leaveAsana();
     const s = Math.sin(phase) * 0.55 * amount;
     const k = Math.max(0, Math.sin(phase + Math.PI / 2)) * 0.6 * amount;
     const k2 = Math.max(0, -Math.sin(phase + Math.PI / 2)) * 0.6 * amount;
@@ -135,6 +208,10 @@ export class CubeFigure {
 
   /** Ease toward the target pose; `k` = fraction per second. */
   update(dt: number, k = 3): void {
+    if (this.asanaMode && this.player) {
+      if (this.root.visible) this.write(this.player.update(dt).pose);
+      return;
+    }
     const a = 1 - Math.exp(-k * dt);
     const c = this.current;
     const t = this.target;
@@ -161,5 +238,59 @@ export class CubeFigure {
       this.hips[i]!.rotation.x = c.hip[i];
       this.knees[i]!.rotation.x = c.knee[i];
     }
+  }
+
+  // --- Asanas: the skeleton's joints on the figure's groups -------------------------------------
+
+  private joints(): Record<JointId, THREE.Group> {
+    const [l, r] = [0, 1] as const;
+    return {
+      Hips: this.root, Back: this.torso, Chest: this.chest, Neck: this.neck, Head: this.head,
+      ScapulaLeft: this.scapulae[l]!, ScapulaRight: this.scapulae[r]!, ShoulderLeft: this.shoulders[l]!, ShoulderRight: this.shoulders[r]!,
+      ForearmLeft: this.elbows[l]!, ForearmRight: this.elbows[r]!, HandLeft: this.wrists[l]!, HandRight: this.wrists[r]!,
+      ThighLeft: this.hips[l]!, ThighRight: this.hips[r]!, ShinLeft: this.knees[l]!, ShinRight: this.knees[r]!, FootLeft: this.ankles[l]!, FootRight: this.ankles[r]!,
+    };
+  }
+
+  private jointMap?: Record<JointId, THREE.Group>;
+
+  /** The figure as it stands now, as a skeleton pose (so the first asana starts from here). */
+  private readPose(): BodyPose {
+    const g = (this.jointMap ??= this.joints());
+    const rot = {} as Record<JointId, Quat>;
+    for (const j of JOINTS) {
+      const q = g[j].quaternion;
+      rot[j] = new Quat(q.w, q.x, q.y, q.z);
+    }
+    return { rot, pelvis: new Vec3(this.root.position.x, this.root.position.y, this.root.position.z), hipX: Math.abs(this.hips[0]!.position.x) };
+  }
+
+  private write(p: BodyPose): void {
+    const g = (this.jointMap ??= this.joints());
+    for (const j of JOINTS) {
+      const q = p.rot[j];
+      g[j].quaternion.set(q.x, q.y, q.z, q.w);
+    }
+    this.root.position.set(p.pelvis.x, p.pelvis.y, p.pelvis.z);
+    this.hips[0]!.position.x = p.hipX;
+    this.hips[1]!.position.x = -p.hipX;
+  }
+
+  /** Back to the gestures: the joints they do not drive go back to rest. */
+  private leaveAsana(): void {
+    if (!this.asanaMode) return;
+    this.asanaMode = false;
+    for (const g of [this.chest, this.neck, ...this.scapulae, ...this.wrists, ...this.ankles]) g.quaternion.identity();
+    this.root.position.set(0, this.root.position.y, 0);
+    this.hips[0]!.position.x = 0.1;
+    this.hips[1]!.position.x = -0.1;
+    this.root.rotation.set(0, 0, 0);
+    this.torso.rotation.set(0, 0, 0);
+    for (const i of [0, 1] as const) {
+      this.elbows[i]!.rotation.set(0, 0, 0);
+      this.hips[i]!.rotation.set(0, 0, 0);
+      this.knees[i]!.rotation.set(0, 0, 0);
+    }
+    this.apply();
   }
 }

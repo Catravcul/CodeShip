@@ -158,6 +158,10 @@ export class Navigator {
   /** Time-lapse of the leg flying now, and the real seconds kept for the lander's leg after the mothership's. */
   private clock: TravelClock | undefined;
   private landerBudgetS: number | undefined;
+  /** The trip flying now took the lander along docked to the mothership. */
+  private _carrying = false;
+  /** Where the trip flying now goes, as planned when it was engaged (for «Ver trayecto»). */
+  private _route: readonly Vec3[] = [];
 
   constructor(
     private readonly flight: FlightComputer,
@@ -186,13 +190,34 @@ export class Navigator {
   get carrierTrip(): CarrierTrip | undefined {
     return this._carrierTrip;
   }
+  /** The mothership's trip flying now carries the lander docked to her (false: she flies alone). */
+  get carrying(): boolean {
+    return this._carrying;
+  }
+  /** The planned way of the trip flying now, from where it started to where it ends (world). */
+  get route(): readonly Vec3[] {
+    return this._route;
+  }
+
+  /**
+   * Whether the mothership herself flies to a target (docs/design/dique-seco.md): to an asteroid only
+   * with the lander aboard (she parks and the lander lands), and to a station with a berth for her
+   * always, the lander aboard or not: the lander is for landing; the long trips are hers.
+   */
+  carrierFlies(t: NavTarget): boolean {
+    const c = this.ports.carrier;
+    if (!c) return false;
+    if (t.kind === "dock" && t.carrierPort && c.berthStandoff) return c.dockedTo?.() !== t.carrierPort.id;
+    return c.docked() && t.kind === "asteroid" && t.body.surfaceDistance(c.position, this.flight.simTimeS) > c.parkingM + this.approachM;
+  }
 
   /** Make a destination the target. Refused while landed, in a duel or fleeing. */
   select(id: string): { ok: boolean; reason?: string } {
     const t = this.ports.targets.find((x) => x.id === id);
     if (!t) return { ok: false, reason: "Destino desconocido" };
     if (t === this._target) return { ok: true };
-    if (this.flight.landed) return { ok: false, reason: "Despega antes de cambiar de destino" };
+    // The mothership flies to a station without the lander: it may stay landed.
+    if (this.flight.landed && !(t.kind === "dock" && this.carrierFlies(t))) return { ok: false, reason: "Despega antes de cambiar de destino" };
     if (!this.ports.retarget(t)) return { ok: false, reason: "Ahora no se puede cambiar de destino" };
     this.cancel();
     this._target = t;
@@ -208,11 +233,7 @@ export class Navigator {
 
   private trip_(t: NavTarget): Trip {
     const c = this.ports.carrier;
-    if (c && c.docked()) {
-      if (t.kind === "asteroid" && t.body.surfaceDistance(c.position, this.flight.simTimeS) > c.parkingM + this.approachM) return this.carrierTrip_(t, c);
-      // A station the mothership can dock at: it takes the probe all the way, unless already there.
-      if (t.kind === "dock" && t.carrierPort && c.berthStandoff && c.dockedTo?.() !== t.carrierPort.id) return this.carrierTrip_(t, c);
-    }
+    if (c && this.carrierFlies(t)) return this.carrierTrip_(t, c);
     return t.kind === "dock" ? this.probeDockTrip(t) : this.probeTrip(t);
   }
 
@@ -247,6 +268,13 @@ export class Navigator {
     };
     const probePlan = planTransfer({ distanceM: probeLegM, accelMS2: probe.plan.accelMS2, deltaVAvailableMS: this.flight.ship.mainDeltaV() });
     return { ...probe, plan: probePlan, waypoints: [], dock: undefined, carrier: { from, path, parking, plan, facts, ...(berthAt ? { berthAt } : {}) } };
+  }
+
+  /** Where the carrier's centre ends up latched at a port (the standoff, moved in onto the port). */
+  private berthedAt(port: DockingTarget): Vec3 | undefined {
+    const c = this.ports.carrier;
+    if (!c?.berthStandoff) return undefined;
+    return c.berthStandoff(port).position.sub(port.port.normal.scale(DOCK_TRIP.berthStandoffM));
   }
 
   private dockFacts(t: DockTarget, handoverM: number): DockFacts {
@@ -331,10 +359,10 @@ export class Navigator {
 
   /** Whether a trip to the current target can be programmed now, and why not. */
   canProgram(): { ok: boolean; reason?: string } {
-    if (this.flight.landed) return { ok: false, reason: "Despega antes de programar el viaje" };
+    if (this.flight.landed && !(this._target.kind === "dock" && this.carrierFlies(this._target))) return { ok: false, reason: "Despega antes de programar el viaje" };
     if (this._status === "autopilot" || this._status === "carrier" || this._status === "docking") return { ok: false, reason: "El piloto automático ya está volando" };
     const t = this._target;
-    if (t.kind === "dock" && this.ports.docking?.dockedTo === t.probePort) return { ok: false, reason: `Ya estás acoplada a ${t.name}` };
+    if (t.kind === "dock" && this.ports.docking?.dockedTo === t.probePort && !this.carrierFlies(t)) return { ok: false, reason: `Ya estás acoplada a ${t.name}` };
     const trip = this.trip();
     const busy = this.ports.busy?.(!!trip.carrier);
     if (busy) return { ok: false, reason: busy };
@@ -380,18 +408,21 @@ export class Navigator {
     return { ok: true };
   }
 
-  /** Whether the travel ship can carry the lander to a target now (no challenges), and why not. */
+  /** Whether the travel ship can fly to a target now (no challenges), with the lander aboard or alone to a station, and why not. */
   canCarry(t: NavTarget): { ok: boolean; reason?: string } {
     if (this._status === "autopilot" || this._status === "carrier" || this._status === "docking") return { ok: false, reason: "El piloto automático ya está volando" };
     const trip = this.trip(t);
-    if (!trip.carrier) return { ok: false, reason: "La nodriza solo vuela con el módulo de aterrizaje acoplado" };
+    if (!trip.carrier) {
+      const there = t.kind === "dock" && t.carrierPort && this.ports.carrier?.dockedTo?.() === t.carrierPort.id;
+      return { ok: false, reason: there ? `La nodriza ya está en el dique de ${t.name}` : "A un asteroide la nodriza solo vuela con el módulo de aterrizaje acoplado" };
+    }
     const busy = this.ports.busy?.(true);
     if (busy) return { ok: false, reason: busy };
     if (trip.carrier.plan.deltaVMS > this.ports.carrier!.deltaV()) return { ok: false, reason: "A la nodriza no le queda xenón para ese viaje" };
     return { ok: true };
   }
 
-  /** The travel ship carries the lander to a target, with no challenges (the task list's travel mode). */
+  /** The travel ship flies to a target, with no challenges (the task list's travel mode); the lander rides along if docked to her. */
   carry(id: string): { ok: boolean; reason?: string } {
     const t = this.ports.targets.find((x) => x.id === id);
     if (!t) return { ok: false, reason: "Destino desconocido" };
@@ -440,6 +471,9 @@ export class Navigator {
       // Leaving a station's port: keep the attitude (the rings must not swing into the station).
       const leaving = !!c.departure?.();
       c.release?.();
+      this._carrying = c.docked();
+      const end = now.carrier.berthAt ? c.berthStandoff!(now.carrier.berthAt).position : now.carrier.parking;
+      this._route = [now.carrier.from, ...now.carrier.path, ...(now.carrier.berthAt ? [this.berthedAt(now.carrier.berthAt) ?? end] : [])];
       const berth = now.carrier.berthAt;
       const q = berth ? c.berthStandoff!(berth).orientation : leaving ? c.orientation : facing(now.carrier.parking.sub(now.carrier.from));
       this._carrierTrip = new CarrierTrip(c, now.carrier.from, now.carrier.path, now.carrier.plan, q);
@@ -462,6 +496,12 @@ export class Navigator {
     }
     const now = target.kind === "dock" ? this.probeDockTrip(target) : this.probeTrip(target);
     const body = now.dock ? portFlightTarget(now.dock.port) : (target as AsteroidTarget).body;
+    const from = this.flight.state.position;
+    const last = now.waypoints[now.waypoints.length - 1] ?? from;
+    const end = now.dock ? now.dock.port.port.position : (target as AsteroidTarget).body.position.sub((target as AsteroidTarget).body.position.sub(last).normalize().scale((target as AsteroidTarget).body.meanRadiusM + this.approachM));
+    // After the mothership's leg the lander's own hop adds to the way she already drew.
+    this._route = this._status === "carrier" ? [...this._route, ...now.waypoints, end] : [from, ...now.waypoints, end];
+    this._carrying = false;
     this._autopilot = new TripAutopilot(this.flight.ship, body, now.waypoints, Math.max(1, now.plan.cruiseMS), now.dock?.handoverM ?? this.approachM);
     this.flight.engage(this._autopilot);
     this.startDistanceM = Math.max(1, now.plan.distanceM);
@@ -482,6 +522,7 @@ export class Navigator {
     this.clock?.cancel();
     this.clock = undefined;
     this.landerBudgetS = undefined;
+    this._route = [];
   }
 
   /**

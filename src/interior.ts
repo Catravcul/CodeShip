@@ -35,6 +35,8 @@ import type { SpinRing } from "@modules/gravity/domain/spin-gravity";
 import { GravityZones } from "./adapters/three/interior/zones";
 import { ICON } from "./ui/icons";
 import { settings } from "./ui/settings-store";
+import { FrameTimer } from "@core/frame-timer";
+import { asanaById } from "@modules/body/data/asanas";
 import { galleyFrame, kitchenLayout, StepShow, type KitchenLayout, type KitchenSpot, type StepFrame } from "./adapters/three/interior/step-show";
 import { auditStep, type StepAudit } from "./adapters/three/interior/step-audit";
 import { choreVisuals } from "@modules/chores/application/step-visuals";
@@ -48,6 +50,8 @@ import { aquariumEventText, aquariumStatus } from "./ui/aquarium-text";
 const CAT_COLORS = [0xd9822b, 0x2b2b2b, 0xe8e2d6, 0x8a8f99];
 const HEN_COLORS = [0xb5651d, 0xf2efe6, 0x2a2a2a, 0xc98a4a];
 const DOG_COLORS = [0xd9a066, 0x2a2420, 0xf0e2c8];
+/** Samasthitih: she stands on the mat, feet together, before the first posture. */
+const STANDING_ASANA = "samasthitih-de-pie";
 const CONTEXT = { recipes: RECIPES, yoga: YOGA_SEQUENCES, processes: PROCESSES, lessons: ANIMAL_LESSONS, workouts: WORKOUTS };
 /** What each solved step looks like (docs/design/vida-a-bordo.md, «Pasos visibles»). */
 const STEP_VISUALS = choreVisuals(CONTEXT);
@@ -169,12 +173,15 @@ export class Interior {
   private screensAt = 0;
   private cooking = false;
   private readonly radioBtn: HTMLButtonElement;
-  private readonly figure = new CubeFigure();
+  /** Doménica on the yoga mat, seen from the aisle while she practises (her skeleton: docs/design/esqueleto.md). */
+  readonly figure = new CubeFigure(0xe8b48f, 0x2f7f8f, DOMENICA_HAIR, true);
   /** Doménica, seen from behind in third person. */
   private readonly avatar = new CubeFigure(0xe8b48f, 0x2f7f8f, DOMENICA_HAIR, true);
   private readonly avatarRig = new THREE.Group();
   /** Solved steps acted out at the station: Doménica's gesture and a small prop. */
   readonly steps = new StepShow();
+  /** JS time of the pose updates per frame (the experience suite reads it: docs/design/esqueleto.md). */
+  readonly poseTime = { figura: new FrameTimer(), animales: new FrameTimer() };
   /** The ring aquarium on the farm deck (docs/design/santuario-espacial.md): its use cases and its 3D tank. */
   readonly aquarium: AquariumOps;
   readonly tank: AquariumModel;
@@ -432,39 +439,12 @@ export class Interior {
     this.syncStepTag();
 
     for (const p of this.plants) p.sync();
-    for (const c of this.habitat.cats) {
-      const m = this.cats.get(c.id);
-      if (m) {
-        m.stress = c.stress;
-        m.update(dt);
-      }
-    }
-    if (this.habitat.hensFree !== this.hensOut) {
-      this.hensOut = this.habitat.hensFree;
-      for (const m of this.hens.values()) {
-        m.root.position.set(COOP.gateX, 0, COOP.z);
-        m.setBounds(this.hensOut ? FARM_ROAM : COOP_BOUNDS);
-      }
-    }
-    for (const h of this.habitat.hens) {
-      const m = this.hens.get(h.id);
-      if (m) {
-        m.stress = h.stress;
-        m.update(dt);
-      }
-    }
-    for (const d of this.habitat.dogs) {
-      const m = this.dogs.get(d.id);
-      if (m) {
-        m.stress = d.stress;
-        m.update(dt);
-      }
-    }
+    this.poseTime.animales.time(() => this.updateAnimals(dt));
     this.syncFamilies();
     this.tank.update(dt, this.aquarium.tank, this.pos);
     for (const b of this.beds) b.sync();
     this.syncMachines();
-    this.figure.update(dt);
+    this.poseTime.figura.time(() => this.figure.update(dt));
     this.syncPanel();
     this.renderHud();
     const near = !busy && !this.walkTo && (this.zones?.zone ?? "anillo") === "anillo" ? this.nearStation() : undefined;
@@ -592,11 +572,56 @@ export class Interior {
     return this.currentChores().map((c) => ({ id: c.id, title: c.title, detail: `${STATIONS.find((s) => s.id === stationFor(c))?.label ?? ""} · ${c.exercises.length} retos`, category: CHORE_CATEGORY[c.kind], station: stationFor(c) }));
   }
 
+  /** The cats, hens and dogs move and react to their stress (timed for the experience suite). */
+  private updateAnimals(dt: number): void {
+    for (const c of this.habitat.cats) {
+      const m = this.cats.get(c.id);
+      if (m) {
+        m.stress = c.stress;
+        m.update(dt);
+      }
+    }
+    if (this.habitat.hensFree !== this.hensOut) {
+      this.hensOut = this.habitat.hensFree;
+      for (const m of this.hens.values()) {
+        m.root.position.set(COOP.gateX, 0, COOP.z);
+        m.setBounds(this.hensOut ? FARM_ROAM : COOP_BOUNDS);
+      }
+    }
+    for (const h of this.habitat.hens) {
+      const m = this.hens.get(h.id);
+      if (m) {
+        m.stress = h.stress;
+        m.update(dt);
+      }
+    }
+    for (const d of this.habitat.dogs) {
+      const m = this.dogs.get(d.id);
+      if (m) {
+        m.stress = d.stress;
+        m.update(dt);
+      }
+    }
+  }
+
   /** Walk to a chore's machine and start it (from the shared task list's «Ir»). */
   doChore(id: string): boolean {
     const chore = this.currentChores().find((c) => c.id === id);
     if (!chore) return false;
     this.goAndDo(chore);
+    return true;
+  }
+
+  /**
+   * Yoga on the mat: the camera stands in the aisle and sees her whole body in profile over the sheet,
+   * the way a teacher's side view shows a posture (docs/design/esqueleto.md).
+   */
+  private yogaCamera(): boolean {
+    const mat = this.figure.root.parent;
+    if (!this.figure.root.visible || !mat) return false;
+    // She faces along the mat (−Z here): look a little ahead of her pelvis, where the long postures reach.
+    this.camera.position.set(mat.position.x - 3.3, 1.05, mat.position.z - 0.6);
+    this.camera.lookAt(mat.position.x, 0.8, mat.position.z - 0.6);
     return true;
   }
 
@@ -610,6 +635,7 @@ export class Interior {
 
   private updateCamera(dt = 1 / 60): void {
     if (this.session && this.steps.frame(dt, this.camera, this.avatarRig, this.avatar)) return;
+    if (this.session && this.yogaCamera()) return;
     const third = this.thirdPerson && !this.session;
     this.avatarRig.visible = third;
     if (this.zones?.placeCamera(this.camera, this.avatarRig, this.avatar, this.yaw, this.pitch, third)) return;
@@ -753,7 +779,7 @@ export class Interior {
     const fullH = landscape ? h : 1.6 * h;
     this.camera.aspect = fullW / fullH;
     // With Doménica acting the steps out, a phone's strip above the sheet takes a wider view (the whole counter).
-    const half = !landscape && this.steps.framing ? 52 : 35;
+    const half = !landscape && (this.steps.framing || this.figure.root.visible) ? 52 : 35;
     this.camera.fov = (2 * Math.atan(Math.tan((half * Math.PI) / 180) * (fullH / h)) * 180) / Math.PI;
     this.camera.setViewOffset(fullW, fullH, fullW - w, fullH - h, w, h);
     this.camera.updateProjectionMatrix();
@@ -768,16 +794,15 @@ export class Interior {
       });
       for (const l of this.hiddenLabels) l.visible = false;
     }
+    // Yoga: Doménica on the mat, seen from the aisle (yogaCamera) in the wide strip over the sheet.
+    this.figure.root.visible = chore.kind === "yoga";
     this.frameForSheet(true);
     const session = isAquariumChore(chore) ? this.aquarium.start(chore) : this.habitat.start(chore, CONTEXT);
     this.cooking = chore.kind === "cocinar";
     this.session = session;
     const run = session.run;
     const visual = (this.visual = this.choreVisual(chore));
-    if (chore.kind === "yoga") {
-      this.figure.pose("stand");
-      this.figure.root.visible = true;
-    }
+    if (chore.kind === "yoga") this.figure.asana(asanaById(STANDING_ASANA)!);
     this.duel.show(
       {
         get current() {
@@ -904,7 +929,9 @@ export class Interior {
     if (e.type === "posture") {
       const seq = YOGA_SEQUENCES.find((s) => s.id === e.sequenceId);
       const p = seq?.postures.value[e.index];
-      if (p) this.figure.pose(p.pose);
+      const a = p && asanaById(p.asana);
+      if (a) this.figure.asana(a);
+      else if (p) this.figure.pose(p.pose);
     }
     const text = EVENT_TEXT(this.habitat, e);
     if (!text) return;

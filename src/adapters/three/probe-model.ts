@@ -2,9 +2,9 @@ import * as THREE from "three";
 import type { Vec3 } from "@core/math/vec3";
 
 /**
- * The uncrewed probe drawn to scale: a 6U-XL cubesat bus (Juventas-like) with the MPS-120 module
- * under it, two deployed solar wings, three short anchoring legs and a beacon light so it can be
- * found against the dark regolith.
+ * Juventas drawn to scale (ship/data/probe.ts): a 6U-XL cubesat bus with its cold-gas module under it,
+ * two deployed solar wings, the four 1,5 m tape antennas of the JuRa radar and a beacon light so it can
+ * be found against the dark regolith. No legs: it lands on its side and bounces until it settles.
  */
 export class ProbeModel {
   readonly root = new THREE.Group();
@@ -26,11 +26,14 @@ export class ProbeModel {
       wing.position.set(s * (hull.x / 2 + 0.18), hull.y * 0.45, 0);
       this.root.add(wing);
     }
-    const legMat = new THREE.MeshStandardMaterial({ color: 0xb0b6bc, roughness: 0.4, metalness: 0.7 });
-    for (const [x, z] of [[-0.09, -0.14], [0.09, -0.14], [0, 0.16]] as const) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.5, 6), legMat);
-      leg.position.set(x, -hull.y / 2 - 0.25, z);
-      this.root.add(leg);
+    // JuRa: four deployable 1,5 m tape antennas in a cross from the aft end (60 MHz dipoles).
+    const tape = new THREE.MeshStandardMaterial({ color: 0xd8dde2, roughness: 0.4, metalness: 0.7 });
+    for (let i = 0; i < 4; i++) {
+      const a = (i * Math.PI) / 2 + Math.PI / 4;
+      const boom = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.004, 0.012), tape);
+      boom.position.set((Math.cos(a) * 0.75), Math.sin(a) * 0.75, hull.z / 2);
+      boom.rotation.z = a;
+      this.root.add(boom);
     }
     // Camera lens on the nose (−z).
     const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.03, 12), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1, metalness: 0.9 }));

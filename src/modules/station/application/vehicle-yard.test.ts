@@ -45,8 +45,11 @@ describe("EST-29 vehicle yard", () => {
     const craft = y.build("juventas");
     expect(craft.site).toBe("bishop");
     expect(y.rows().find((r) => r.entry.id === "juventas")!.waiting.map((c) => c.id)).toEqual([craft.id]);
+    // The Cupola view draws it in the Bishop as Juventas until it is let go.
+    expect(y.parked()).toEqual([{ id: craft.id, name: "Juventas", site: "bishop", craft: "sonda", sizeM: j.specs.sizeM }]);
     const { steps } = y.release(craft.id);
     expect(steps[0]).toContain("Bishop");
+    expect(y.parked()).toEqual([]);
     expect(y.waiting("juventas")).toEqual([]);
     expect(() => y.release(craft.id)).toThrow();
   });

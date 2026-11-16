@@ -29,6 +29,15 @@ export interface YardRow {
   readonly waiting: readonly Craft[];
 }
 
+/** A built vehicle as the Cupola view draws it. */
+export interface YardShown {
+  readonly id: string;
+  readonly name: string;
+  readonly site: AssemblySite;
+  readonly craft: "modulo" | "sonda" | null;
+  readonly sizeM: readonly [number, number, number];
+}
+
 /** The real sequence of letting a vehicle go from each site (docs/design/modulo-lunar-juventas.md). */
 export const RELEASE_STEPS: Readonly<Record<AssemblySite, readonly string[]>> = {
   bishop: ["cargarla en la Bishop", "cerrar la escotilla CBM y vaciar el vestíbulo", "Canadarm2 saca la Bishop", "soltarla con el muelle del lanzador", "la Bishop vuelve a su puerto"],
@@ -90,6 +99,18 @@ export class VehicleYard {
     const entry = this.entries.find((e) => e.id === entryId);
     if (!entry) throw new Error(`Unknown vehicle ${entryId}`);
     return assemble(entry, this.station.hangar, this.inventory(), this.massOf, this.plan(entry).site);
+  }
+
+  /** What the Cupola view draws of a built vehicle: where it waits, and as what (the LM, Juventas, or a box of its size). */
+  shown(craft: Craft): YardShown | undefined {
+    if (!craft.site) return undefined;
+    const entry = this.entries.find((e) => craft.id === e.id || craft.id.startsWith(`${e.id}-`));
+    return { id: craft.id, name: craft.name.split(" (")[0]!, site: craft.site, craft: entry?.playerCraft ?? null, sizeM: entry?.specs.sizeM ?? [2, 2, 2] };
+  }
+
+  /** Every built vehicle still at its assembly site, as the Cupola view draws it. */
+  parked(): YardShown[] {
+    return this.station.hangar.crafts.filter((c) => c.site && !c.released).flatMap((c) => this.shown(c) ?? []);
   }
 
   /** Let a built vehicle go from its site («Botar» / «Desplegar»): the steps, in order. Throws if it is not waiting. */

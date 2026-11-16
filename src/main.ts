@@ -863,6 +863,7 @@ const stationOutside = new StationOutside(root, scene, stationModel.root, () => 
   landerPose,
   design: () => ship.design,
   berthed: landerOnCbm,
+  waiting: () => stationScreen.yard?.parked() ?? [],
 });
 const stationLife = new StationLife({
   crew: stationCrew,
@@ -957,6 +958,13 @@ stationScreen.onExit = () => {
 };
 // Vehicle catalogue in the station's Hangar tab (docs/design/naves-reales.md).
 stationScreen.yard = new VehicleYard(stationOps.station, stationOps.blueprints, VEHICLE_CATALOGUE, catalogueMassOf, ASSEMBLY_LIMITS);
+// «Botar» / «Desplegar»: the Cupola view plays it letting go from its site.
+stationScreen.onRelease = (c) => {
+  const shown = stationScreen.yard?.shown(c);
+  if (!shown || !screenFromInside) return;
+  stationScreen.exit();
+  stationOutside.open({ kind: "botar", craft: shown });
+};
 stationScreen.onBay = () => {
   if (duelView.visible || bay.active) return;
   screenToBay = true;

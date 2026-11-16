@@ -79,6 +79,8 @@ export class ShipModel {
     const dark = () => new THREE.MeshStandardMaterial({ color: 0x30343c, roughness: 0.6, metalness: 0.6 });
     const add = (id: PartId, ...objs: THREE.Object3D[]) => this.part(id).add(...objs);
 
+    if (design.look === "apollo-lm") return this.buildLunarModule(design, size, dark, add);
+
     // --- Hull, nose, canopy, landing legs ---
     const glass = new THREE.MeshStandardMaterial({ color: 0x1d4f6a, roughness: 0.1, metalness: 0.2, emissive: 0x0a2a3a });
     const hull = new THREE.Mesh(new THREE.BoxGeometry(size.x, size.y, size.z), hullMat());
@@ -250,6 +252,98 @@ export class ShipModel {
       }
     }
     g.userData.densityKgM3 = PROPELLANT_DENSITY[p].value;
+  }
+
+  /**
+   * The Apollo LM (ship/data/apollo-lm.ts): the gold-foiled octagonal descent stage on four legs splayed
+   * to 9,4 m, the DPS bell under it, the angular ascent stage on top with its two triangular windows,
+   * the forward hatch, the S-band dish and the APS tanks at its sides, the four RCS quads and the IDSS
+   * adapter on the overhead hatch (licence). Its tanks are inside the stages, so they are not drawn.
+   */
+  private buildLunarModule(design: ShipDesign, size: THREE.Vector3, dark: () => THREE.MeshStandardMaterial, add: (id: PartId, ...o: THREE.Object3D[]) => void): void {
+    const gold = new THREE.MeshStandardMaterial({ color: 0xc9a23a, roughness: 0.35, metalness: 0.85, emissive: 0x2a1c00 });
+    const grey = new THREE.MeshStandardMaterial({ color: 0xa9adb2, roughness: 0.55, metalness: 0.5 });
+    const black = new THREE.MeshStandardMaterial({ color: 0x1b1d20, roughness: 0.7, metalness: 0.3 });
+    const glass = new THREE.MeshStandardMaterial({ color: 0x0d1a24, roughness: 0.1, metalness: 0.3, emissive: 0x051018 });
+    const half = size.y / 2;
+    const ground = -half - 0.5;
+    // Descent stage: an octagon 4,22 m across, from 0,5 m over the box bottom to the middle.
+    const descentTop = 0.45;
+    const descentBottom = -half + 0.9;
+    const descent = new THREE.Mesh(new THREE.CylinderGeometry(size.x / 2 / Math.cos(Math.PI / 8), size.x / 2 / Math.cos(Math.PI / 8), descentTop - descentBottom, 8), gold);
+    descent.rotation.y = Math.PI / 8;
+    descent.position.y = (descentTop + descentBottom) / 2;
+    add("casco", descent);
+    // Four legs to the diagonals, pads at 9,4 m across.
+    const pad = 4.7 / Math.SQRT2;
+    for (const sx of [-1, 1])
+      for (const sz of [-1, 1]) {
+        const from = new THREE.Vector3(sx * 1.4, descentBottom + 1.2, sz * 1.4);
+        const to = new THREE.Vector3(sx * pad, ground + 0.1, sz * pad);
+        const len = from.distanceTo(to);
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, len, 8), grey);
+        leg.position.copy(from).add(to).multiplyScalar(0.5);
+        leg.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), to.clone().sub(from).normalize());
+        const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.47, 0.4, 0.12, 16), grey);
+        foot.position.set(to.x, ground + 0.06, to.z);
+        add("casco", leg, foot);
+      }
+    // Ascent stage: the cabin front (−z) with two triangular windows, the tanks at its sides, the dish.
+    const ascent = new THREE.Group();
+    const cabin = new THREE.Mesh(new THREE.CylinderGeometry(1.17, 1.17, 2.2, 10), grey);
+    cabin.rotation.x = Math.PI / 2;
+    cabin.position.set(0, 0, -0.4);
+    const front = new THREE.Mesh(new THREE.BoxGeometry(2.3, 1.9, 0.3), grey);
+    front.position.set(0, -0.1, -1.55);
+    const aftBox = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.6, 1.5), black);
+    aftBox.position.set(0, 0.1, 1.1);
+    ascent.add(cabin, front, aftBox);
+    for (const sx of [-1, 1]) {
+      const tri = new THREE.Shape();
+      tri.moveTo(0, 0);
+      tri.lineTo(sx * 0.55, 0);
+      tri.lineTo(0, 0.55);
+      tri.closePath();
+      const win = new THREE.Mesh(new THREE.ShapeGeometry(tri), glass);
+      win.position.set(sx * 0.15, 0.2, -1.71);
+      win.rotation.y = Math.PI;
+      const tank = new THREE.Mesh(new THREE.SphereGeometry(0.62, 16, 12), grey);
+      tank.position.set(sx * 1.55, -0.3, 0.2);
+      ascent.add(win, tank);
+    }
+    const hatch = new THREE.Mesh(new THREE.BoxGeometry(0.81, 0.81, 0.04), black);
+    hatch.position.set(0, -0.7, -1.72);
+    const dish = new THREE.Mesh(new THREE.SphereGeometry(0.33, 16, 8, 0, Math.PI * 2, 0, Math.PI / 3), grey);
+    dish.position.set(1.0, 1.2, 0.4);
+    dish.rotation.x = -0.6;
+    ascent.add(hatch, dish);
+    ascent.position.y = descentTop + 1.2;
+    add("casco", ascent);
+    // The IDSS adapter on the overhead hatch (licence: the LM docked with probe and drogue).
+    if (design.dockingPort) {
+      const port = v3(design.dockingPort);
+      const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, Math.max(0.2, port.y - (descentTop + 2.3)), 20), dark());
+      collar.position.set(port.x, (port.y + descentTop + 2.3) / 2, port.z);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.05, 8, 24), new THREE.MeshStandardMaterial({ color: 0xe8c547, roughness: 0.4, metalness: 0.5 }));
+      ring.rotation.x = Math.PI / 2;
+      ring.position.set(port.x, port.y, port.z);
+      add("casco", collar, ring);
+    }
+    // DPS: the bell under the descent stage, pointing down; its plume below.
+    const engine = design.mainEngines[0];
+    if (engine) {
+      const at = v3(engine.position);
+      const bell = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.75, 1.2, 20, 1, true), new THREE.MeshStandardMaterial({ color: 0x3a2f45, roughness: 0.45, metalness: 0.7, side: THREE.DoubleSide }));
+      bell.position.set(at.x, descentBottom - 0.5, at.z);
+      add("motor", bell);
+      this.mainFlame = new THREE.Mesh(new THREE.ConeGeometry(0.7, 3.5, 14, 1, true), new THREE.MeshBasicMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0.6, depthWrite: false }));
+      this.mainFlame.rotation.x = Math.PI;
+      this.mainFlame.position.set(at.x, descentBottom - 2.8, at.z);
+      this.mainFlame.visible = false;
+      this.root.add(this.mainFlame);
+    }
+    this.buildRcs(design.rcs, size, dark);
+    if (this.systemsVisible) this.buildBeacons(size);
   }
 
   private buildRcs(rcs: readonly RcsThruster[], size: THREE.Vector3, dark: () => THREE.MeshStandardMaterial): void {

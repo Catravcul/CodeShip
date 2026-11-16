@@ -30,7 +30,7 @@ export const ISS_SOURCES = {
   haven2: "Haven-2 (Vast): primer módulo 5 m más largo que Haven-1 y con casi el doble de volumen habitable, en órbita en 2028; brazo, esclusa de cargas y de EVA, laboratorio Haven-2 Lab: https://www.vastspace.com/updates/vast-announces-haven-2-its-proposed-space-station-designed-to-succeed-the-international-space-station-iss",
   axiom: "Axiom Station: PPTM en 2028 y Hab-1 en 2029, de 11 × 4,2 m: https://en.wikipedia.org/wiki/Axiom_Station",
   cubesat: "CubeSat: unidad (1U) de 10 × 10 × 10 cm y hasta 1,33 kg (norma original): https://en.wikipedia.org/wiki/CubeSat",
-  juventas: "Juventas (ESA, Hera): cubesat de 6U y unos 12 kg, 37 × 23 × 10 cm: https://www.heramission.space/hera-mission-juventas-cubesat",
+  juventas: "Juventas (ESA, Hera): cubesat de 6U-XL y 12 kg, 37 × 23 × 10 cm: https://www.heramission.space/hera-mission-juventas-cubesat",
   jemEfPort: "JEM-EF (eoPortal): 500 kg como máximo por puerto (2500 kg en el especial), carga estándar de 1,85 × 1,0 × 0,80 m, 3 kW a 120 V por puerto: https://www.eoportal.org/satellite-missions/iss-jemef",
 } as const;
 
@@ -119,7 +119,7 @@ export interface BishopPayload {
 
 /** Juventas and two cubesats, as kept in the station's stowage at the start (game value: what the station holds). */
 export const BISHOP_PAYLOADS: readonly BishopPayload[] = [
-  { id: "juventas", name: "Juventas", massKg: 12, volumeM3: 0.37 * 0.23 * 0.1, status: "real", basis: "Cubesat de 6U de la misión Hera: 37 × 23 × 10 cm, unos 12 kg", source: url(S.juventas) },
+  { id: "juventas", name: "Juventas", massKg: 12, volumeM3: 0.37 * 0.23 * 0.1, status: "real", basis: "Cubesat de 6U-XL de la misión Hera: 37 × 23 × 10 cm, 12 kg (ship/data/probe.ts)", source: url(S.juventas) },
   { id: "cubesat-3u", name: "Cubesat de 3U", massKg: 4, volumeM3: 0.1 * 0.1 * 0.34, status: "real", basis: "Tres unidades de 10 cm: 34 × 10 × 10 cm y hasta 4 kg (3 × 1,33 kg)", source: url(S.cubesat) },
   { id: "cubesat-1u", name: "Cubesat de 1U", massKg: 1.33, volumeM3: 0.001, status: "real", basis: "Una unidad: 10 × 10 × 10 cm y hasta 1,33 kg", source: url(S.cubesat) },
 ];

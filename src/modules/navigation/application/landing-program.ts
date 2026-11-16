@@ -332,6 +332,7 @@ export class LandingProgram {
       flareM: facts.flareM,
       touchdownMs: facts.touchdownMs,
       brakeMs2: facts.rcsAccelMs2 * LANDING_GUIDANCE.brakeShare,
+      anchors: this.ports.craft !== "sonda",
     });
   }
 

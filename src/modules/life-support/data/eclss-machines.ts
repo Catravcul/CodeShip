@@ -90,7 +90,7 @@ export const ECLSS_MACHINES: readonly EclssMachineSpec[] = [
         symptom: "La ppCO₂ sube: el polvo de zeolita tapona los lechos y la presión diferencial se dispara",
         capacity: 0.05,
         spare: { id: "lecho-zeolita", name: "Lecho de zeolita" },
-        steps: ["para el CDRA y su soplante", "cierra las válvulas de los lechos", "desmonta el lecho tapado", "limpia las rejillas de polvo", "monta el lecho de repuesto", "comprueba la presión diferencial"],
+        steps: ["para el CDRA y su soplante", "desmonta el lecho tapado", "limpia las rejillas de polvo", "monta el lecho de repuesto", "comprueba la presión diferencial"],
         check: { name: "medio ciclo de los lechos", value: 90, unit: "min", wrong: [9, 900] },
         meanDays: 300,
         source: S.eclsStatus2024,

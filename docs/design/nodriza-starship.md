@@ -57,12 +57,23 @@ escotilla de 1,27 m (la CBM de la ISS) en el centro. Con la cubierta de vuelo de
 
 | Cubierta | Qué hay | Base real |
 | --- | --- | --- |
-| 1 · cocina y trabajo | cocina (agua caliente y fría, calentador), dos puestos de trabajo (tareas y registro de misiones), la esterilla (yoga y ajustes), la escotilla del techo a la cubierta de vuelo, el túnel del morro a la estación; bastidores OGS e ITCS | cocina de la ISS; bastidores ISPR |
+| 1 · cocina y trabajo | cocina (agua caliente y fría, calentador), dos puestos de trabajo (tareas y registro de misiones), la esterilla (yoga y ajustes), la escotilla del techo a la cubierta de vuelo, el túnel del morro a la estación; bastidores OGS e ITCS y el puesto de incendios | cocina de la ISS; bastidores ISPR |
 | 2 · camarotes y aseo | cuatro camarotes de 2,1 m³ en fila (como los de Harmony), el aseo con flujo de aire (WHC), el refugio de agua contra tormentas solares; bastidor WRS | Harmony; WHC de Tranquility |
-| 3 · ejercicio y esclusa | cinta T2 en el suelo, ARED en una pared, bicicleta CEVIS en la otra, la esclusa (información: las salidas están pendientes), la escotilla del módulo de aterrizaje; bastidores AR e incendios, almacén | ejercicio de la ISS |
+| 3 · ejercicio y esclusa | cinta T2 en el suelo, ARED en una pared, bicicleta CEVIS en la otra, la esclusa (información: las salidas están pendientes), la escotilla del módulo de aterrizaje; bastidor AR, la consola de soporte vital, almacén | ejercicio de la ISS |
 
-Los bastidores de soporte vital son los de la rama `eclss-real` (`ECLSS_RACKS`, `eclssRackModel`), montados en
-su pared mirando al pasillo y animados cada fotograma.
+El **catálogo de especies** (rama `catalogo-especies`, [catalogo-especies.md](catalogo-especies.md)) tiene sus ranuras
+de rack en la Starship: el terminal, con el hábitat de roedores y el estante de las colonias, en la pared de popa de
+la cubierta 2, y el **hábitat acuático** (como el AQH de JAXA) en un hueco de bastidor de la pared de popa de la
+cubierta 3, que ofrece cuidar lo que se adopta. `StarshipInterior.rack` hace aquí lo que `RING_RACK_HOST` en el anillo.
+
+**Soporte vital propio** ([soporte-vital.md](soporte-vital.md)). Los bastidores se colocan con
+`eclssFixtures(cubierta, STARSHIP_ECLSS[n])` en las paredes de babor y estribor, como en la estación; el refugio
+de agua es el bastidor `sv-refugio` de la pared de popa de la cubierta 2 («Resguardarse»). La Starship tiene su
+propio `LifeSupportGame` con `STARSHIP_LIFE_SUPPORT` (`mothership/data/starship.ts`): Doménica sola, los 614 m³
+publicados como aire libre, y agua, comida, tanques y repuestos como la estación (valores de juego: el soporte
+vital de Starship no está publicado). Corre con el reloj de la estación; sus averías salen en la lista de tareas
+en el grupo «nave» («Starship · Soporte vital…») y «Ir» salta hasta el bastidor. La galería y el portátil de los
+puestos de trabajo usan los modelos `galeria` y `consola` del mismo kit.
 
 Se recorre con el mismo motor de 0 g que la estación ([ingravidez.md](ingravidez.md)): asideros, saltos y
 escotillas. Las tarjetas de las máquinas son las de siempre, con la clase `sts` para no mezclarse con las de la

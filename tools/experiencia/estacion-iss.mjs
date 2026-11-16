@@ -60,7 +60,7 @@ export async function estacionIss(j) {
   await look(j, "amf", /Additive Manufacturing|AMF/, "destiny", "Destiny: la impresora AMF de Redwire");
   await through(j, "puerta-escotilla-nodo1-destiny-destiny", "nodo-1", "Unity");
   await through(j, "puerta-escotilla-nodo1-nodo3-nodo-1", "nodo-3", "Tranquility");
-  await look(j, "eclss-wrs", /Recuperación de agua/, "tranquility", "Tranquility: los bastidores de agua (WRS)");
+  await look(j, "sv-wrs", /Recuperación de agua/, "tranquility", "Tranquility: los bastidores de agua (WRS)");
   await through(j, "puerta-escotilla-nodo2-columbus-nodo-2", "columbus", "Columbus");
   await look(j, "impresora", /[Ii]mpresora/, "columbus", "Columbus: el taller (la impresora de metal de la ESA)");
   await through(j, "puerta-escotilla-nodo2-kibo-nodo-2", "kibo", "Kibo");

@@ -46,7 +46,7 @@ describe("station outfit: what is built at the start", () => {
     const o = startingOutfit();
     const where = (m: string) => o.equipment.filter((e) => e.moduleId === m).map((e) => e.spec.id).sort();
     // Destiny: the glovebox, Redwire's AMF and its own life-support racks (eclss-real), as on the ISS.
-    expect(where("destiny")).toEqual(["amf", "eclss-ar-bastidor", "eclss-itcs-bastidor", "guantera"]);
+    expect(where("destiny")).toEqual(["amf", "guantera"]);
     expect(where("kibo")).toEqual(["refabricator"]);
     // Columbus is the workshop: the printer is real, the refinery, foundry and plant are licences.
     expect(where("columbus")).toEqual(["fundicion", "impresora", "planta", "refineria"]);

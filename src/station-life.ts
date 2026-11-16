@@ -42,6 +42,8 @@ export interface StationLifeDeps {
   say(text: string, seconds?: number): void;
   /** The view outside from the Cupola; `show` plays an arm move in it (berth, unberth, a Bishop trip). */
   lookOutside(show?: { kind: "atraque" | "desatraque" } | { kind: "bishop"; released: readonly AirlockItem[] }): void;
+  /** Another owner of station chores (the life support's repairs): true if it took the chore. */
+  otherChore?(id: string): boolean;
 }
 
 /**
@@ -162,6 +164,7 @@ export class StationLife {
 
   /** A chore of the station's areas, in the shared challenge sheet. */
   startChore(id: string): void {
+    if (this.d.otherChore?.(id)) return;
     const chore = this.d.crew.chore(id);
     const session = chore && this.d.crew.start(id);
     if (!chore || !session || this.d.duel.visible) return;

@@ -5,6 +5,7 @@ import { planMinSpacing, presentInteriorPlan, spreadInteriorPlan } from "@module
 import { HopGraph } from "@modules/gravity/domain/hops";
 import { RailGraph } from "@modules/gravity/domain/handrails";
 import { stationHandrails, stationPortals } from "@modules/station/data/handrails";
+import { STARSHIP_LIFE_SUPPORT } from "./starship";
 import { HULL_INNER_RADIUS_M, starshipDeckVolumeM3, starshipInteriorPlan } from "./starship-interior";
 
 describe("HAB-23 Starship's interior, «distribución nuestra», at true size", () => {
@@ -26,6 +27,14 @@ describe("HAB-23 Starship's interior, «distribución nuestra», at true size", 
     const each = (cq.size.x * cq.size.y * cq.size.z) / 4;
     expect(each).toBeGreaterThan(1.8);
     expect(each).toBeLessThan(2.4);
+  });
+
+  it("carries its own life-support racks, the same kit as the station's (eclssFixtures), and the water-lined shelter", () => {
+    const racks = plan.fixtures.filter((f) => f.action.kind === "soporte-vital").map((f) => (f.action as { rack: string }).rack).sort();
+    expect(racks).toEqual(["ar", "consola", "incendios", "itcs", "ogs", "refugio", "wrs"]);
+    for (const f of plan.fixtures.filter((x) => x.action.kind === "soporte-vital")) expect(f.id).toBe(`sv-${(f.action as { rack: string }).rack}`);
+    expect(STARSHIP_LIFE_SUPPORT.freeAirM3).toBe(614);
+    expect(STARSHIP_LIFE_SUPPORT.crew).toBe(1);
   });
 
   it("connects the decks through hatches and the docking hatches lead to the lander and the station", () => {

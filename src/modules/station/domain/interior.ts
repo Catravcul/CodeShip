@@ -1,6 +1,7 @@
 import { Vec3 } from "@core/math/vec3";
 import type { CraftSpec, MachineId } from "./blueprint";
 import type { PortUser } from "./structure";
+import type { RackKind } from "@modules/life-support/domain/eclss";
 
 /**
  * Local vertical inside the station, like the ISS: every module keeps the same «up» (the overhead,
@@ -70,7 +71,9 @@ export type FixtureAction =
   | { readonly kind: "bahia" }
   | { readonly kind: "esclusa" }
   /** A console or machine whose actions the wiring gives (Starship's way up to the flight deck, its workstations). */
-  | { readonly kind: "consola"; readonly id: string };
+  | { readonly kind: "consola"; readonly id: string }
+  /** A rack of the real life support (modules/life-support): its readout, its failures as repair tasks. */
+  | { readonly kind: "soporte-vital"; readonly rack: RackKind };
 
 /** Something mounted in a module: a machine, a rack, a hatch. */
 export interface Fixture {

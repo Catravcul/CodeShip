@@ -23,8 +23,26 @@ export interface StationRooms {
   readonly store: THREE.Group;
   /** Every label (the caller hides the ones too close to the camera). */
   readonly signs: THREE.Sprite[];
-  /** Life-support racks drawn with eclss-real's kit (tick them every frame). */
-  readonly racks: EclssRackModel[];
+  /** The life-support racks by fixture id (src/adapters/three/eclss-racks.ts). */
+  readonly racks: Map<string, EclssRackModel>;
+}
+
+/** A life-support rack from the kit, at the plan's drawing scale, on its wall, with its name above it. */
+function eclssRack(f: Fixture, k: number): { group: THREE.Group; model: EclssRackModel } {
+  if (f.action.kind !== "soporte-vital") throw new Error(`${f.id} is not a life-support rack`);
+  const n = v3(FACE_NORMAL[f.face]).negate();
+  const size = v3(f.size).divideScalar(k);
+  const d = Math.abs(size.dot(n));
+  const h = Math.abs(n.y) > 0.5 ? size.z : size.y;
+  const w = Math.abs(n.y) > 0.5 ? size.x : Math.abs(n.x) > 0.5 ? size.z : size.x;
+  const model = eclssRackModel(f.action.rack, { scale: k, size: { w, h, d }, fixtureId: f.id });
+  const g = new THREE.Group();
+  g.add(mountOnWall(model, v3(f.at), n));
+  const sign = textSign(f.label);
+  sign.scale.multiplyScalar(0.6 * Math.sqrt(k));
+  sign.position.copy(v3(f.at)).addScaledVector(n, 0.25).addScaledVector(V(0, 1, 0), Math.abs(n.y) > 0.5 ? -0.3 : Math.min((h * k) / 2 + 0.05, 0.75 * k));
+  g.add(sign);
+  return { group: g, model };
 }
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
@@ -503,15 +521,19 @@ export function buildStationRooms(plan: StationInteriorPlan): StationRooms {
     sign.position.set(lock.centre.x, lock.centre.y + lock.half.y + 0.7, lock.centre.z + lock.half.z);
     group.add(sign);
   }
-  const racks: EclssRackModel[] = [];
+  const racks = new Map<string, EclssRackModel>();
   for (const f of plan.fixtures) {
     if (f.volume === "hangar" && f.action.kind !== "bahia" && f.action.kind !== "puerta") continue;
-    if (f.rack) {
+    if (f.action.kind === "soporte-vital") {
+      const r = eclssRack(f, plan.scale ?? 1);
+      racks.set(f.id, r.model);
+      group.add(r.group);
+    } else if (f.rack) {
       // A life-support rack (eclss-real's kit): its front on the wall, facing the aisle, and its name.
       const k = plan.scale ?? 1;
       const m = eclssRackModel(f.rack as RackKind, { scale: k, fixtureId: f.id });
       group.add(mountOnWall(m, v3(f.at), v3(FACE_NORMAL[f.face]).negate()));
-      racks.push(m);
+      racks.set(f.id, m);
       const sign = textSign(f.label);
       sign.scale.multiplyScalar(0.6 * Math.sqrt(k));
       const up = f.face === "techo" || f.face === "suelo" ? 0 : Math.min(Math.abs(f.size.y) / 2 + 0.05, 0.75);

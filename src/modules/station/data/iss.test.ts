@@ -41,7 +41,7 @@ describe("EST-42 the station is the ISS's US segment, at its real size", () => {
     const vol = (id: string) => POLANA_INTERIOR.fixtures.find((f) => f.id === id)?.volume;
     expect(vol("cocina")).toBe("nodo-1");
     expect(vol("camarotes")).toBe("nodo-2");
-    for (const id of ["aseo", "ejercicio", "cupula", "bishop", "eclss-wrs", "eclss-ogs", "eclss-ar"]) expect(vol(id), id).toBe("nodo-3");
+    for (const id of ["aseo", "ejercicio", "cupula", "bishop", "sv-wrs", "sv-ogs", "sv-ar", "sv-incendios"]) expect(vol(id), id).toBe("nodo-3");
     expect(vol("trajes")).toBe("quest");
     // The species catalogue's rack slots: the Aquatic Habitat flew in Kibo, the catalogue laptop beside it.
     expect(vol("rack-acuatico")).toBe("kibo");

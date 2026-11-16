@@ -126,6 +126,14 @@ async function radioOnTheBridge(j) {
   await p.waitForTimeout(800);
   const unread = await p.locator(".fd .fd-panel.max .fd-msg.new").count();
   j.check("la radio avisa de cartas sin leer", unread > 0, String(unread));
+  // The comms page links to the mission log (before opening a letter, which fills the page).
+  await j.tap(".fd .fd-panel.max [data-missions]", "Registro de misiones");
+  await p.waitForTimeout(500);
+  const head = (await j.texts(".mission-log .ml-head span"))[0] ?? "";
+  j.check("el registro de misiones abre con 0 hechas", /^0\//.test(head), head);
+  await j.shot("registro");
+  await j.tap('.mission-log [data-act="close"]', "×");
+  await p.waitForTimeout(400);
   const letters = await j.texts(".fd .fd-panel.max .fd-msg");
   const mission = letters.findIndex((l) => /misión/.test(l));
   j.check("una carta trae una misión", mission >= 0, letters.join(" | ").slice(0, 160));
@@ -135,11 +143,4 @@ async function radioOnTheBridge(j) {
   j.check("la carta dice qué hay que hacer y dónde", /Bennu/.test(letter), letter.slice(0, 120));
   await j.shot("carta");
   await j.tap(".fd-panel.max .fd-back", "Volver al puente");
-  await p.waitForTimeout(500);
-  await j.useMachine("bridge", "comms", "misiones", "Registro de misiones");
-  await p.waitForTimeout(500);
-  const head = (await j.texts(".mission-log .ml-head span"))[0] ?? "";
-  j.check("el registro de misiones abre con 0 hechas", /^0\//.test(head), head);
-  await j.shot("registro");
-  await j.tap('.mission-log [data-act="close"]', "×");
 }

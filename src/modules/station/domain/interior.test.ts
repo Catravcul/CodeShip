@@ -173,7 +173,7 @@ describe("station interior as the station grows (generated from the outfit)", ()
 
   it("the base plan's machines come from the starting equipment, in Destiny's, Kibo's and Columbus's racks", () => {
     for (const id of ["refineria", "fundicion", "impresora", "planta"]) expect(interior.fixture(id)?.volume, id).toBe("columbus");
-    for (const id of ["guantera", "amf", "eclss-ar-bastidor", "eclss-itcs-bastidor"]) expect(interior.fixture(id)?.volume, id).toBe("destiny");
+    for (const id of ["guantera", "amf", "sv-itcs", "sv-consola"]) expect(interior.fixture(id)?.volume, id).toBe("destiny");
     expect(interior.fixture("refabricator")?.volume).toBe("kibo");
     expect(interior.fixture("puerto-nodo-3-popa")).toBeDefined();
   });

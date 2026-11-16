@@ -8,6 +8,7 @@ import { ISS_SOURCES } from "./iss";
 import { rackSpec } from "@modules/life-support/data/eclss-machines";
 import type { RackKind } from "@modules/life-support/domain/eclss";
 import { POLANA_LAYOUT, STRUCTURE_SOURCES } from "./structure";
+import { eclssFixtures, type RackPlacement } from "./eclss-placement";
 
 // --- Sources -------------------------------------------------------------------
 export const INTERIOR_SOURCES = {
@@ -198,11 +199,13 @@ export function stationInteriorPlan(layout: StationLayout = POLANA_LAYOUT, outfi
     return v.centre[k] - v.half[k] + f * 2 * v.half[k];
   };
   const n3x = (f: number) => xEnd(n3, 1) - f * 2 * n3.half.x; // from Unity (0) to the Bishop (1)
-  /** A life-support rack of eclss-real on one of Tranquility's rack walls (fore, aft or overhead), at its real size. */
-  const eclss = (kind: RackKind, face: "proa" | "popa" | "techo", f: number): Fixture => {
-    const r = rackSpec(kind);
-    if (face === "techo") return { id: `eclss-${kind}`, label: r.name, volume: "nodo-3", face, at: new Vec3(n3x(f), N.y, n3.centre.z), size: new Vec3(r.size.w, r.size.d, r.size.h), action: { kind: "info" }, info: r.info, source: r.source, rack: kind };
-    return { id: `eclss-${kind}`, label: r.name, volume: "nodo-3", face, at: new Vec3(n3x(f), 0, n3.centre.z + (face === "proa" ? -1 : 1) * n3.half.z), size: new Vec3(r.size.w, r.size.h, r.size.d), action: { kind: "info" }, info: r.info, source: r.source, rack: kind };
+  /**
+   * A life-support rack of eclss-real (docs/design/soporte-vital.md) where the ISS has it, at its real size: `f` runs
+   * along the module like `along` (Tranquility: from Unity to the Bishop), side 0 port/forward, 1 starboard/aft.
+   */
+  const eclss = (kind: RackKind, vol: InteriorVolume, side: RackPlacement["side"], at: number): Fixture => {
+    const k = vol.half.x > vol.half.z ? "x" : "z";
+    return eclssFixtures(vol, [{ rack: kind, side, along: at - vol.centre[k] }])[0]!;
   };
   const fixtures: Fixture[] = [
     // Harmony: the two IDAs and the four crew quarters (one fixture), like on the ISS.
@@ -215,18 +218,19 @@ export function stationInteriorPlan(layout: StationLayout = POLANA_LAYOUT, outfi
     { id: "consola-bahia", label: "Bahía de la nave (CBM de nadir)", volume: "nodo-1", face: "suelo", at: new Vec3(0, -N.y, 0), size: new Vec3(1.27, 0.1, 1.27), action: { kind: "bahia" }, info: "CBM de nadir de Unity, donde atracan los Cygnus: el brazo atraca aquí el módulo de aterrizaje y en la bahía se revisan y se cambian sus piezas y las de la nodriza", source: ISS_SOURCES.unity },
     { id: "esterilla", label: "Esterilla de yoga", volume: "nodo-1", face: "techo", at: new Vec3(0, N.y, along(u, 0.8)), size: new Vec3(0.9, 0.1, 1.4), action: { kind: "tripulacion", area: "esterilla" }, info: "Esterilla con cinchas para los pies: yoga y, sentada en loto, los ajustes generales", source: S.tranquility },
     { id: "pma1", label: "Escotilla de popa (PMA-1)", volume: "nodo-1", face: "popa", at: new Vec3(0, 0, zEnd(u, 1)), size: new Vec3(1.0, 1.0, 0.1), action: { kind: "info" }, info: "Por el PMA-1 se pasa al segmento ruso (Zarya y Zvezda), que no está en el juego", source: ISS_SOURCES.unity },
-    // Destiny: the window (the racks come from the outfit).
+    // Destiny: the window, the coolant pumps (ITCS, like the lab's) and the life-support laptop (the other racks come from the outfit).
+    eclss("itcs", lab, 0, along(lab, 0.3)),
+    eclss("consola", lab, "techo", along(lab, 0.15)),
     { id: "ventana-destiny", label: "Ventana de Destiny", volume: "destiny", face: "suelo", at: new Vec3(0, -AISLE.laboratorio.y, along(lab, 0.5)), size: new Vec3(0.6, 0.1, 0.6), action: { kind: "info" }, info: "Ventana de calidad óptica de 51 cm que mira a la Tierra", source: ISS_SOURCES.destiny },
     // Tranquility: hygiene, exercise, the life-support rack bays, the Cupola and the Bishop.
     { id: "aseo", label: "Aseo (WHC)", volume: "nodo-3", face: "proa", at: new Vec3(n3x(0.15), 0, n3.centre.z - n3.half.z), size: new Vec3(1.0, 1.9, 0.75), action: { kind: "tripulacion", area: "aseo" }, info: "El WHC de Tranquility, con el UWMS desde 2020: el aire arrastra lo que en la Tierra cae", source: ISS_SOURCES.tranquility },
     { id: "ejercicio", label: "Ejercicio (T2 y ARED)", volume: "nodo-3", face: "popa", at: new Vec3(n3x(0.2), 0, n3.centre.z + n3.half.z), size: new Vec3(1.6, 1.9, 0.6), action: { kind: "tripulacion", area: "ejercicio" }, info: "La cinta T2 con arneses y la máquina de pesas ARED (hasta 272 kg), en Tranquility como en la ISS: en ingravidez hay que hacer ejercicio cada día", source: S.exercise },
     { id: "cupula", label: "Cupola y brazo (RWS)", volume: "nodo-3", face: "suelo", at: new Vec3(n3x(0.5), -N.y, n3.centre.z), size: new Vec3(1.27, 0.1, 1.27), action: { kind: "brazo" }, info: "Siete ventanas y el puesto robótico de Canadarm2: desde aquí el brazo atraca el módulo en el CBM de Unity y se mira la estación por fuera", source: ISS_SOURCES.cupola },
-    // The life-support racks of Tranquility (ESA: ARS, OGS, WRS 1 and 2), with eclss-real's data and kit.
-    eclss("wrs", "proa", 0.82),
-    eclss("ogs", "popa", 0.77),
-    eclss("ar", "techo", 0.85),
-    { id: "eclss-incendios", label: rackSpec("incendios").name, volume: "nodo-3", face: "techo", at: new Vec3(n3x(0.3), N.y, n3.centre.z), size: new Vec3(rackSpec("incendios").size.w, rackSpec("incendios").size.d, rackSpec("incendios").size.h), action: { kind: "info" }, info: rackSpec("incendios").info, source: rackSpec("incendios").source, rack: "incendios" },
-    { id: "eclss-consola", label: rackSpec("consola").name, volume: "destiny", face: "techo", at: new Vec3(0, AISLE.laboratorio.y, along(lab, 0.15)), size: new Vec3(rackSpec("consola").size.w, rackSpec("consola").size.d, rackSpec("consola").size.h), action: { kind: "info" }, info: rackSpec("consola").info, source: rackSpec("consola").source, rack: "consola" },
+    // The life-support racks of Tranquility (ESA: ARS, OGS, WRS 1 and 2) and its fire post, with eclss-real's data and kit.
+    eclss("wrs", n3, 0, n3x(0.82)),
+    eclss("ogs", n3, 1, n3x(0.77)),
+    eclss("ar", n3, "techo", n3x(0.85)),
+    eclss("incendios", n3, "techo", n3x(0.3)),
     { id: "bishop", label: "Esclusa Bishop", volume: "nodo-3", face: "babor", at: new Vec3(xEnd(n3, -1), 0, n3.centre.z), size: new Vec3(0.1, 1.27, 1.27), action: { kind: "bishop" }, info: "Esclusa de carga Bishop (1059 kg, 3,99 m³) en el puerto de babor: Canadarm2 la saca, suelta la sonda o los cubesats y la vuelve a atracar", source: ISS_SOURCES.bishop },
     // Quest: the suits and the EVA hatch.
     { id: "trajes", label: "Trajes y esclusa", volume: "quest", face: "proa", at: new Vec3(along(quest, 0.35), 0, quest.centre.z - quest.half.z), size: new Vec3(1.2, 1.7, 0.4), action: { kind: "esclusa" }, info: "Esclusa de equipo de Quest: los trajes, sus baterías y el agua de sus mochilas", source: S.quest },

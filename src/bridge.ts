@@ -73,7 +73,7 @@ export class BridgeRoom extends WalkRoom<BridgeStationId> {
       const a = this.deps.mind().action;
       return [{ id: "mente", label: a.label, enabled: a.enabled, ...(a.why ? { why: a.why } : {}) }];
     }
-    return [{ id: "salir", label: "Volver a la espina", enabled: true }];
+    return [{ id: "salir", label: "Bajar de la cubierta de vuelo", enabled: true }];
   }
 
   protected act(id: BridgeStationId, action: string): void {

@@ -78,7 +78,7 @@ export async function habitaculo(j) {
   } else j.check("la lista ofrece «Aterriza el módulo» tras la fase de la sonda", false);
 
   // The bridge: one console per page; each opens only its own.
-  await j.setup("vuelve a acoplar en la nodriza y sube al puente por la espina", () => {
+  await j.setup("vuelve a acoplar en la nodriza y sube al puente", () => {
     const c = window.codeship;
     c.docking.dockNow(c.mothership);
     c.bridge.enter("salida");

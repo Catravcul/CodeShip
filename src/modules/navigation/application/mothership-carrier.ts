@@ -1,6 +1,6 @@
 import type { Quat } from "@core/math/quat";
 import type { Vec3 } from "@core/math/vec3";
-import { Mothership } from "@modules/mothership/domain/mothership";
+import { Mothership, chemicalCruiseMS } from "@modules/mothership/domain/mothership";
 import type { Docking } from "@modules/mothership/application/docking";
 import type { CraftPort, DockingLimits, DockingTarget } from "@modules/mothership/domain/docking";
 import { Berthing, berthStandoff, BERTH_STANDOFF_M } from "@modules/mothership/application/berthing";
@@ -34,7 +34,7 @@ export function mothershipCarrier(
     // Starship's vacuum Raptors burn to a cruise speed and coast; the ring ship's thrusters push all the way.
     engineName: m.spec.chemical ? `motores ${m.spec.chemical.engines.find((e) => e.cruise)?.name.replace(/\s*\(.*\)$/, "") ?? ""}` : "propulsores eléctricos",
     propellantName: m.propellantName,
-    ...(m.spec.chemical ? { cruiseMS: m.spec.chemical.cruiseMS.value } : {}),
+    ...(m.spec.chemical ? { cruiseFor: (d: number) => chemicalCruiseMS(m.spec.chemical!, d) } : {}),
     get massKg() {
       return m.massKg;
     },

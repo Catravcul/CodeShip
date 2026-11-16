@@ -22,13 +22,18 @@ caso y las anteriores quedan en sus run logs.
 
 Con `REAL_ONLY` (src/core/realism.ts, [pendientes.md](../pendientes.md)) la nodriza es una Starship sin
 anillos, huerto, animales ni acuario. Los recorridos que juegan esa nave de ficción (**PX-01, PX-02, PX-13,
-PX-14, PX-16, PX-20 y PX-23**) pasan al backlog: `npm run experiencia` los omite y `EXPERIENCIA_FICCION=1`
-los juega con `?ficcion`. Su estado de abajo es el de la última ejecución con la nave de anillos.
+PX-14, PX-16, PX-20, PX-23 y PX-25**) pasan al backlog: `npm run experiencia` los omite y `EXPERIENCIA_FICCION=1`
+los juega con `?ficcion`. Su estado de abajo es el de la última ejecución con la nave de anillos. El recorrido
+de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y auditan la Starship cuando no hay anillo.
 
 ## Estado por caso
 
 | ID | Estado | Fecha | Commit | Evidencia / run |
 |---|---|---|---|---|
+| 2026-11-16 19:44 | PX-28 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-1944-PX-28.md) |
+| 2026-11-16 19:39 | PX-28 | Experiencia (Playwright) | 0/1 recorridos bien | [run](runs/2026-11-16-1939-PX-28.md) |
+| 2026-11-16 19:32 | PX-28 | Experiencia (Playwright) | 0/1 recorridos bien | [run](runs/2026-11-16-1932-PX-28.md) |
+| 2026-11-16 19:25 | PX-28 | Experiencia (Playwright) | 0/1 recorridos bien | [run](runs/2026-11-16-1925-PX-28.md) |
 | VUE-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | VUE-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | VUE-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -45,6 +50,8 @@ los juega con `?ficcion`. Su estado de abajo es el de la última ejecución con 
 | NAV-05 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | NAV-06 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | NAV-07 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| NAV-08 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| NAV-09 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SON-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SON-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SON-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -82,6 +89,8 @@ los juega con `?ficcion`. Su estado de abajo es el de la última ejecución con 
 | REF-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | REF-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | REF-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| REF-04 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| REF-05 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | BIO-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | BIO-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | BIO-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -141,6 +150,9 @@ los juega con `?ficcion`. Su estado de abajo es el de la última ejecución con 
 | HAB-20 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); el recorrido PX-14 lo juega |
 | HAB-21 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); el recorrido PX-14 lo juega |
 | HAB-22 | Sin probar | | | Sin test: es un adaptador; el recorrido PX-14 lo juega |
+| HAB-23 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| HAB-24 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| HAB-25 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | CV-01 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK |
 | CV-02 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-01** cerrado |
 | CV-03 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK · **B-01** arreglado |
@@ -178,6 +190,7 @@ los juega con `?ficcion`. Su estado de abajo es el de la última ejecución con 
 | PX-24 | Probado (en vivo) | 2026-11-16 | `ef23e9a` | [run](runs/2026-11-16-1800-PX-24.md): 10 OK |
 | PX-20 | FAIL | 2026-11-16 | `c033d52` | [run](runs/2026-11-16-1702-PX-20.md): 256 OK, 7 FALLA |
 | PX-25 | Probado (en vivo) | 2026-11-16 | `be7ba22` | [run](runs/2026-11-16-1835-PX-14-PX-15-PX-25.md): 40 OK |
+| PX-28 | Probado (en vivo) | 2026-11-16 | `3873107` | [run](runs/2026-11-16-1944-PX-28.md): 28 OK |
 
 ## Última ejecución por run log
 

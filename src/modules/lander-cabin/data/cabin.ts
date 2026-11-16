@@ -49,6 +49,8 @@ export const LANDER_CABIN: CabinLayout = {
   ],
   reachM: 0.25,
   heightM: 1.7,
+  // In front of the seats and just behind them (the cabin runs on aft of them).
+  aisles: [-0.25, 0.85],
   // 2.4 × 1.7 × 3.9 m ≈ 16 m³ pressurised (game licence, CABIN_DEPARTURE); seats, console and bags leave about 12 m³ (estimate).
   habitableM3: 12,
 };

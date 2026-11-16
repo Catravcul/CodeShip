@@ -71,7 +71,8 @@ export async function habitaculo(j) {
   if (await p.locator(flightTask).count()) {
     await j.tap(flightTask, "Ir: Aterriza el módulo");
     // In travel mode (the default) she walks to the seat and sits down by herself.
-    await p.waitForFunction(() => !window.codeship.cabin.active && document.body.classList.contains("in-cockpit"), null, { timeout: 20000 }).catch(() => {});
+    // The cabin is longer now (habitaculo.md, «Tamaño»): the walk takes longer at the low frame rate of the desktop run.
+    await p.waitForFunction(() => !window.codeship.cabin.active && document.body.classList.contains("in-cockpit"), null, { timeout: 60000 }).catch(() => {});
     const seated = await p.evaluate(() => !window.codeship.cabin.active && document.body.classList.contains("in-cockpit"));
     j.check("«Ir» a una tarea de vuelo la sienta en el asiento del piloto", seated);
   } else j.check("la lista ofrece «Aterriza el módulo» tras la fase de la sonda", false);

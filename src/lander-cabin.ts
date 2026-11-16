@@ -104,11 +104,6 @@ export class LanderCabin extends WalkRoom<CabinStationId> {
     this.deps.act(action as CabinActionId);
   }
 
-  /** The aisles in front of the seats and just behind them (cabin.test.ts walks every pair along them). */
-  protected override aisles(): number[] {
-    return [-0.25, 0.85];
-  }
-
   protected openTasks(): void {
     this.deps.openTasks();
   }

@@ -45,6 +45,13 @@ export interface CabinLayout<Id extends string = CabinStationId> {
   readonly reachM: number;
   readonly heightM: number;
   readonly habitableM3: number;
+  /** Lanes across the room (z) that walking goes along round what is fixed; default `roomAisles`. */
+  readonly aisles?: readonly number[];
+}
+
+/** The lanes walking takes round the furniture: the layout's own, or one along each end of the floor. */
+export function roomAisles<Id extends string>(L: CabinLayout<Id>): number[] {
+  return L.aisles ? [...L.aisles] : [L.floor.minZ + 0.25, L.floor.maxZ - 0.07];
 }
 
 /** What the cabin's machines need to know about the craft. */

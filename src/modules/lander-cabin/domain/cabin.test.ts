@@ -89,3 +89,16 @@ describe("walking between the cabin's machines (HAB-01)", () => {
       }
   });
 });
+
+describe("HAB-01 the lengthened cabin: walking and the task list's travel take the same aisles", () => {
+  it("from the mat to the pilot seat she goes straight behind the seats, not round by the docking console at the back", async () => {
+    const { floorPath, roomAisles } = await import("./cabin");
+    const at = (id: string) => LANDER_CABIN.stations.find((s) => s.id === id)!.stand;
+    const len = (from: { x: number; z: number }, path: { x: number; z: number }[]) => path.reduce((m, p, i) => m + Math.hypot(p.x - (i ? path[i - 1]! : from).x, p.z - (i ? path[i - 1]! : from).z), 0);
+    expect(roomAisles(LANDER_CABIN)).toEqual([-0.25, 0.85]);
+    const direct = len(at("esterilla"), floorPath(LANDER_CABIN.floor, at("esterilla"), at("asiento"), roomAisles(LANDER_CABIN)));
+    const viaDock = Math.hypot(at("acople").x - at("esterilla").x, at("acople").z - at("esterilla").z) + len(at("acople"), floorPath(LANDER_CABIN.floor, at("acople"), at("asiento"), roomAisles(LANDER_CABIN)));
+    expect(direct).toBeLessThan(2.5);
+    expect(direct).toBeLessThan(viaDock);
+  });
+});

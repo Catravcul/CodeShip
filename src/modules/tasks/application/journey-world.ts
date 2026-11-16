@@ -10,7 +10,7 @@ import { RailGraph } from "@modules/gravity/domain/handrails";
 import { hopSeconds, HopGraph, type LandingPoint } from "@modules/gravity/domain/hops";
 import { carRideSeconds, spineFits, spineHandrails, spineLaunchers, spineLayout, type SpineLayout } from "@modules/gravity/data/spine";
 import { RING_ELEVATOR, RING_MODULE, RING_STATIONS } from "@modules/habitat/data/ring-module";
-import { floorPath, type CabinLayout, type FloorPoint } from "@modules/lander-cabin/domain/cabin";
+import { floorPath, roomAisles, type CabinLayout, type FloorPoint } from "@modules/lander-cabin/domain/cabin";
 import { LANDER_CABIN } from "@modules/lander-cabin/data/cabin";
 import { BRIDGE } from "@modules/flight-deck/data/bridge";
 import { stationHandrails, stationPortals } from "@modules/station/data/handrails";
@@ -115,8 +115,7 @@ function ringWalk(a: FloorPoint, b: FloorPoint): number {
 
 /** Walking in a small room (cabin, bridge) along its aisles. */
 function roomWalk(L: CabinLayout<string>, a: FloorPoint, b: FloorPoint, speedMs: number): number {
-  const f = L.floor;
-  const path = floorPath(f, a, b, [f.minZ + 0.25, f.maxZ - 0.07]);
+  const path = floorPath(L.floor, a, b, roomAisles(L));
   let m = 0;
   let at = a;
   for (const p of path) {

@@ -8,6 +8,8 @@ import type { Equipment } from "@modules/ship/domain/equipment";
 import { STATION_TUNING, type Blueprint, type CraftSpec, type MachineId } from "../domain/blueprint";
 import type { Amounts } from "../domain/materials";
 import { SRC } from "./sources";
+import type { CatalogueComponent } from "../domain/vehicle-catalogue";
+import { CATALOGUE_COMPONENTS } from "./catalogue-components";
 import { EQ_BIG_PRINTER, EQ_COMPOSITES, EQ_EBW, EQ_FOUNDRY, EQ_PRINTER, EQ_REFINERY, GROWTH_BLUEPRINTS, SMALL_PRINTER_MAX_KG } from "./outfit";
 
 /** RCS thrusters are swapped as the whole set the hull carries (`buildRcsLayout`). */
@@ -220,6 +222,31 @@ export function mothershipEquipmentBlueprint(e: MothershipEquipment): Blueprint 
   return { ...base, machine: material === "agua" ? "refineria" : "fundicion", inputs: feedstock(m, shares, 2), hours: Math.round(48 + m / 500), process, steps };
 }
 
+const CATALOGUE_STEPS: Readonly<Record<CatalogueComponent["kind"], readonly string[]>> = {
+  motor: ["carga el polvo de níquel y hierro", "imprime la cámara y la tobera", "monta las turbobombas o válvulas del kit", "prueba la estanqueidad con helio"],
+  habitat: ["corta la chapa importada", "suelda los anillos y los paneles", "monta las escotillas y ventanas del kit", "prueba la presión con aire"],
+  estructura: ["funde las vigas de acero", "monta la estructura", "monta la electrónica y los equipos del kit", "conecta los cables y las tuberías", "prueba el conjunto"],
+  energia: ["imprime el blindaje y las carcasas", "recibe el núcleo o las células del kit", "monta la conversión de potencia", "prueba la potencia"],
+  electronica: ["imprime el armazón", "monta la electrónica del kit", "carga el programa de vuelo", "prueba la radio"],
+};
+
+/**
+ * The blueprint for a component of the vehicle catalogue (catalogue-components.ts). Recipes, kits and
+ * hours are game values: the share of the mass that is rock (steel, nickel) and what must be imported
+ * (electronics, fuel, titanium). Hours grow with the square root of the mass so a 75 t hull takes
+ * weeks of station time, not years.
+ */
+export function catalogueComponentBlueprint(c: CatalogueComponent): Blueprint {
+  const m = c.massKg.value;
+  const hours = Math.round(8 + 12 * Math.sqrt(m / 100));
+  const base = { id: `plano-${c.id}`, name: c.name, product: { kind: "part" as const, partId: c.id }, massKg: m, hours, steps: CATALOGUE_STEPS[c.kind] };
+  if (c.kind === "motor") return { ...base, machine: "impresora", inputs: feedstock(m, RECIPES.bipropellant, 2 + Math.ceil(m / 500)), process: PRINT };
+  if (c.kind === "habitat") return { ...base, machine: "soldadora", inputs: merge({ kit: importKits(m * 0.3) }, feedstock(m * 0.7, RECIPES.acero, 0)), process: WELD };
+  if (c.kind === "estructura") return { ...base, machine: "fundicion", inputs: merge({ kit: importKits(m * 0.4) }, feedstock(m * 0.6, RECIPES.acero, 0)), process: ASSEMBLY };
+  if (c.kind === "energia") return { ...base, machine: "impresora", inputs: merge({ kit: importKits(m * 0.5) }, feedstock(m * 0.5, RECIPES.acero, 0)), process: ASSEMBLY };
+  return { ...base, machine: "impresora", inputs: merge({ kit: importKits(m * 0.8) }, feedstock(m * 0.2, RECIPES.probe, 0)), process: ASSEMBLY };
+}
+
 /** A small prospecting probe to send ahead to asteroids (game values). */
 export const PROBE: CraftSpec = {
   id: "sonda",
@@ -264,8 +291,11 @@ const withRequirement = (bp: Blueprint): Blueprint => {
 /** Ship and probe components: each part of the ship's catalog, the mothership's thrusters and equipment, and the probe. */
 export const COMPONENT_BLUEPRINTS: readonly Blueprint[] = [...ALL_PARTS.filter((p) => !isEmptyPart(p)).map(partBlueprint), ...ELECTRIC_THRUSTERS.map(driveBlueprint), ...MOTHERSHIP_EQUIPMENT.filter((e) => e.massKg > 0).map(mothershipEquipmentBlueprint), PROBE_BLUEPRINT].map(withRequirement);
 
+/** Components of the vehicle catalogue: real engines, hulls and bodies (docs/design/naves-reales.md). */
+export const CATALOGUE_BLUEPRINTS: readonly Blueprint[] = CATALOGUE_COMPONENTS.map(catalogueComponentBlueprint).map(withRequirement);
+
 /** Every blueprint the station knows: its modules and equipment, the station's components, and the ships' components. */
-export const BLUEPRINTS: readonly Blueprint[] = [...GROWTH_BLUEPRINTS, ...COMPONENT_BLUEPRINTS];
+export const BLUEPRINTS: readonly Blueprint[] = [...GROWTH_BLUEPRINTS, ...COMPONENT_BLUEPRINTS, ...CATALOGUE_BLUEPRINTS];
 
 export const blueprintById = (id: string): Blueprint | undefined => BLUEPRINTS.find((b) => b.id === id);
 export const blueprintForPart = (partId: string): Blueprint | undefined => BLUEPRINTS.find((b) => b.product.kind === "part" && b.product.partId === partId);

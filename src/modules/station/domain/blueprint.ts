@@ -26,8 +26,8 @@ export const MACHINE_NAME: Readonly<Record<MachineId, string>> = {
 export interface CraftSpec {
   readonly id: string;
   readonly name: string;
-  /** `remolcador` and `lanzador`: the station's own import sources (docs/design/importacion.md). */
-  readonly kind: "nave" | "sonda" | "remolcador" | "lanzador";
+  /** `remolcador` and `lanzador`: the station's own import sources (docs/design/importacion.md); `aterrizador` and `estacion`: from the vehicle catalogue. */
+  readonly kind: "nave" | "sonda" | "remolcador" | "lanzador" | "aterrizador" | "estacion";
   readonly massKg: number;
   readonly note?: string;
 }

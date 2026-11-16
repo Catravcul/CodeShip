@@ -13,6 +13,9 @@ import { MATERIALS, cargoMaterial, materialInfo, materialName } from "@modules/s
 import { fmtKg } from "@modules/station/application/challenges";
 import { partById } from "@modules/ship/data/parts";
 import { electricThrusterById } from "@modules/mothership/data/thrusters";
+import type { VehicleYard, YardRow } from "@modules/station/application/vehicle-yard";
+import { STATUS_NAME, VEHICLE_KIND_NAME } from "@modules/station/domain/vehicle-catalogue";
+import { catalogueComponentById } from "@modules/station/data/catalogue-components";
 import { StationScene } from "./adapters/three/station-model";
 import type { DuelView, SessionText } from "./ui/duel-view";
 import type { ImportOps } from "@modules/imports/application/import-ops";
@@ -98,6 +101,10 @@ export class StationScreen {
   onExit?: () => void;
   /** Open the ship bay (from the hangar tab); set by main. */
   onBay?: () => void;
+  /** The vehicle catalogue (Hangar tab): real craft as recipes of parts; set by main. */
+  yard?: VehicleYard;
+  /** The catalogue list is open (it is long: closed by default). */
+  catalogueOpen = false;
 
   constructor(
     root: HTMLElement,
@@ -422,7 +429,8 @@ export class StationScreen {
       .map((c) => {
         const at = this.craftPosition(c.id);
         const where = at ? (this.ops.station.isAlongside(at) ? "atracada en la estación" : `fuera, a ${km(this.ops.station.distanceTo(at))}`) : c.docked ? "en el hangar" : "fuera";
-        return `<div class="st-mat"><b>${esc(c.name)}</b><span>${c.kind === "nave" ? "nave nodriza" : c.kind === "remolcador" ? "remolcador" : c.kind === "lanzador" ? "lanzador de masas" : c.id === "explorador" ? "módulo de aterrizaje" : "sonda"}</span><small>${esc(where)}${c.massKg ? ` · ${fmtKg(c.massKg)} kg` : ""}</small></div>`;
+        const what = c.kind === "nave" ? (c.id === "nodriza" ? "nave nodriza" : "nave") : c.kind === "remolcador" ? "remolcador" : c.kind === "lanzador" ? "lanzador de masas" : c.kind === "aterrizador" || c.id === "explorador" ? "módulo de aterrizaje" : c.kind === "estacion" ? "módulo de estación" : "sonda";
+        return `<div class="st-mat"><b>${esc(c.name)}</b><span>${what}</span><small>${esc(where)}${c.massKg ? ` · ${fmtKg(c.massKg)} kg` : ""}</small></div>`;
       })
       .join("");
     const parts = h.partList();
@@ -431,12 +439,40 @@ export class StationScreen {
         const p = partById(id);
         const drive = electricThrusterById(id);
         const sc = stationComponentById(id);
-        return `<div class="st-mat"><b>${esc(p ? short(p.name) : drive ? `Propulsor ${drive.shortName}` : sc ? sc.name : id)}</b><span>× ${n}</span><small>${drive ? "Se monta en la bahía, pestaña Nodriza, con la nodriza atracada aquí" : sc ? "Se monta en la bahía, pestaña Estación" : "Se monta en la bahía de la nave"}</small></div>`;
+        const cc = catalogueComponentById(id);
+        return `<div class="st-mat"><b>${esc(p ? short(p.name) : drive ? `Propulsor ${drive.shortName}` : sc ? sc.name : cc ? cc.name : id)}</b><span>× ${n}</span><small>${drive ? "Se monta en la bahía, pestaña Nodriza, con la nodriza atracada aquí" : sc ? "Se monta en la bahía, pestaña Estación" : cc ? "Pieza del catálogo de naves" : "Se monta en la bahía de la nave"}</small></div>`;
       })
       .join("");
     const bay = this.onBay ? `<button class="st-btn" data-bay>Abrir la bahía de la nave</button>` : "";
     return `${bay}<div class="bay-sec">Naves y sondas</div>${crafts}
-      <div class="bay-sec">Piezas de repuesto</div>${partRows || `<p class="st-dim">No hay piezas. Fabrícalas en Planos; al cambiar una pieza en la bahía, la vieja vuelve aquí.</p>`}`;
+      <div class="bay-sec">Piezas de repuesto</div>${partRows || `<p class="st-dim">No hay piezas. Fabrícalas en Planos; al cambiar una pieza en la bahía, la vieja vuelve aquí.</p>`}${this.catalogue()}`;
+  }
+
+  /** Catálogo de naves: real craft as recipes of parts; «Construir» when every part is in the hangar. */
+  private catalogue(): string {
+    if (!this.yard) return "";
+    const rows = this.yard.rows();
+    const ready = rows.filter((r) => r.canBuild).length;
+    const head = `<div class="bay-sec">Catálogo de naves</div><button class="st-btn st-cat-toggle" data-catalogue aria-expanded="${this.catalogueOpen}">${this.catalogueOpen ? "Cerrar el catálogo" : `Ver el catálogo (${rows.length}${ready ? ` · ${ready} listas` : ""})`}</button>`;
+    if (!this.catalogueOpen) return head;
+    const card = (r: YardRow) => {
+      const e = r.entry;
+      const need = r.lines
+        .map((l) => {
+          const name = partById(l.line.partId)?.name ?? electricThrusterById(l.line.partId)?.shortName ?? catalogueComponentById(l.line.partId)?.name ?? l.line.partId;
+          const why = l.missing ? (l.blueprint === "sin-plano" ? " · sin plano" : l.blueprint === "bloqueado" ? ` · ${l.locked}` : " · fabrícalo en Planos") : "";
+          return `<span class="st-chip ${l.missing ? "miss" : "ok"}">${esc(short(name))} ${Math.min(l.have, l.line.count)}/${l.line.count}${esc(why)}</span>`;
+        })
+        .join("");
+      const btn = !e.lines.length
+        ? `<span class="st-dim">Sin desglose publicado: no se puede montar</span>`
+        : `<button class="st-btn" data-yard-build="${esc(e.id)}" ${r.canBuild ? "" : "disabled"}>${r.canBuild ? `Construir en ${r.site === "hangar" ? "el hangar" : "el dique"}` : "Faltan piezas"}</button>`;
+      return `<div class="st-card st-vehicle ${r.canBuild ? "" : "locked"}"><div class="st-row"><b>${esc(e.name)}</b><span class="st-status st-${e.status}">${STATUS_NAME[e.status]}</span></div>
+        <div class="st-io">${VEHICLE_KIND_NAME[e.kind]} · ${esc(e.launch)}${r.massKg ? ` · ${fmtKg(r.massKg)} kg` : ""}</div>
+        <small>${esc(e.statusNote)} · <a href="${esc(e.sources[0]!)}" target="_blank" rel="noopener">fuente</a></small>
+        ${need ? `<div class="st-chips">${need}</div>` : ""}<div class="st-row"><span></span>${btn}</div></div>`;
+    };
+    return `${head}<p class="st-dim">Naves, módulos, sondas y estaciones reales. Cada pieza se fabrica en Planos y espera aquí; con todas, se monta en el hangar o en el dique.</p>${rows.map(card).join("")}`;
   }
 
   private onClick(e: Event): void {
@@ -444,6 +480,18 @@ export class StationScreen {
     if (t.closest("a") || this.duel.visible) return;
     if (t.closest("[data-unload]")) return this.unload();
     if (t.closest("[data-bay]")) return this.onBay?.();
+    if (t.closest("[data-catalogue]")) {
+      this.catalogueOpen = !this.catalogueOpen;
+      this.key = "";
+      return this.render();
+    }
+    const y = t.closest<HTMLElement>("[data-yard-build]");
+    if (y && this.yard) {
+      const craft = this.yard.build(y.dataset.yardBuild!);
+      this.say(`${craft.name}: montada. Espera en el hangar`);
+      this.key = "";
+      return this.render();
+    }
     const r = t.closest<HTMLElement>("[data-refine]");
     if (r) return this.start(this.ops.startRefining(r.dataset.refine!), "refinar");
     const k = t.closest<HTMLElement>("[data-plan-kind]");

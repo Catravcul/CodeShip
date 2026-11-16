@@ -63,6 +63,9 @@ import { MaterialStock, STOCK_PRIORITY } from "@modules/station/domain/materials
 import { Hangar } from "@modules/station/domain/hangar";
 import { STATION_TUNING } from "@modules/station/domain/blueprint";
 import { StationOps } from "@modules/station/application/station-ops";
+import { VehicleYard } from "@modules/station/application/vehicle-yard";
+import { HANGAR_SIZE } from "@modules/station/data/hangar-craft";
+import { catalogueMassOf, VEHICLE_CATALOGUE } from "@modules/station/data/vehicle-catalogue";
 import { BLUEPRINTS } from "@modules/station/data/blueprints";
 import { REFINE_PROCESSES } from "@modules/station/data/processes";
 import { PROPELLANT_PROCESSES, PROPELLANT_RESERVE } from "@modules/station/data/propellant-processes";
@@ -890,6 +893,8 @@ stationScreen.onExit = () => {
   screenFromInside = false;
   stationInside.resume();
 };
+// Vehicle catalogue in the station's Hangar tab (docs/design/naves-reales.md).
+stationScreen.yard = new VehicleYard(stationOps.station, stationOps.blueprints, VEHICLE_CATALOGUE, catalogueMassOf, HANGAR_SIZE);
 stationScreen.onBay = () => {
   if (duelView.visible || bay.active) return;
   screenToBay = true;

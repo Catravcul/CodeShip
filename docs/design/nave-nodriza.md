@@ -1,5 +1,7 @@
 # La nave nodriza y el módulo de aterrizaje
 
+> **Estado (2026-11-16):** la nodriza es **inventada**: ningún vehículo real ni en desarrollo tiene gravedad artificial. El catálogo de naves reales y las opciones para sustituirla están en [naves-reales.md](naves-reales.md).
+
 Decisión de Berón (2026-11-12): un anillo de 56 m que gira encima de una nave de 3 × 2 × 5 m y ~680 kg no tiene sentido físico, porque un anillo así pesa cientos de toneladas ([gravedad.md](gravedad.md), «Licencia: la masa»). A partir de ahora hay dos naves:
 
 - **La nodriza** es grande. Lleva los dos anillos de 1 g que giran en sentidos contrarios, el módulo habitable, la cubierta de cultivo y los camarotes. Va de asteroide en asteroide con motores eléctricos y se queda aparcada a cierta distancia del objetivo.

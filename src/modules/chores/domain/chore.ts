@@ -45,7 +45,10 @@ export type ChoreKind =
   | "amistad-acuario"
   | "ayuda-acuario"
   /** Real life support (modules/life-support): repairing or servicing an ECLSS machine. */
-  | "soporte-vital";
+  | "soporte-vital"
+  /** A colony adopted from the species catalogue (modules/adoption): befriending it, asking it for help. */
+  | "amistad-especie"
+  | "ayuda-especie";
 
 /** Groups for filtering the task board. */
 export type ChoreCategory = "comida" | "plantas" | "animales" | "nave" | "salud" | "misiones";
@@ -91,6 +94,8 @@ export const CHORE_CATEGORY: Readonly<Record<ChoreKind, ChoreCategory>> = {
   "amistad-acuario": "animales",
   "ayuda-acuario": "animales",
   "soporte-vital": "nave",
+  "amistad-especie": "animales",
+  "ayuda-especie": "animales",
 };
 
 /** A task on board, done by solving code challenges in order. */

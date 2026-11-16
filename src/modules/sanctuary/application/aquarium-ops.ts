@@ -3,7 +3,7 @@ import { ChoreRun, type Chore, type ChoreKind } from "@modules/chores/domain/cho
 import { toCall } from "@modules/chores/application/catalog";
 import { ChoreSession } from "@modules/habitat/application/habitat";
 import { AQUARIUM_HELPERS, AQUARIUM_TUNING, RingAquarium, type AquariumEvent, type AquariumHelper } from "../domain/aquarium";
-import { BEFRIEND_SCHOOL, HELP_LESSONS } from "../data/aquarium-lessons";
+import { BEFRIEND_SCHOOL, BEFRIEND_SNAILS, HELP_LESSONS } from "../data/aquarium-lessons";
 
 /** The chore kinds the ring aquarium owns. */
 export const AQUARIUM_CHORE_KINDS: ReadonlySet<ChoreKind> = new Set<ChoreKind>(["cuidar-acuario", "amistad-acuario", "ayuda-acuario"]);
@@ -71,20 +71,30 @@ export class AquariumOps {
       out.push({
         id: "acuario-amistad",
         kind: "amistad-acuario",
-        targetId: "acuario",
-        title: "Hacer amistad con las medakas",
+        targetId: "banco",
+        title: `Hacer amistad con ${t.fishName}`,
         scenario: "Ya te conocen de cuidarlas: escribe en su mente que eres amiga",
         exercises: BEFRIEND_SCHOOL.exercises,
       });
-    if (t.friends)
-      for (const h of AQUARIUM_HELPERS)
+    if (t.canBefriendSnails)
+      out.push({
+        id: "acuario-amistad-caracoles",
+        kind: "amistad-acuario",
+        targetId: "caracoles",
+        title: "Hacer amistad con los caracoles",
+        scenario: "Raspan el cristal sin miedo a tu sombra: escribe en su mente que eres amiga",
+        exercises: BEFRIEND_SNAILS.exercises,
+      });
+    for (const h of AQUARIUM_HELPERS)
+      if (h === "caracoles-limpian" ? t.snailFriends : t.friends)
         if (!t.helping(h)) {
           const l = HELP_LESSONS[h];
+          const who = h === "medakas-avisan" ? t.fishName : l.who;
           out.push({
             id: `acuario-ayuda-${h}`,
             kind: "ayuda-acuario",
             targetId: h,
-            title: `Pedir ayuda a ${l.who}: ${l.task}`,
+            title: `Pedir ayuda a ${who}: ${l.task}`,
             scenario: `Son tus amigos: prográmalos para ${l.task}`,
             exercises: l.exercises,
           });
@@ -102,7 +112,7 @@ export class AquariumOps {
       else if (chore.id === "acuario-cristal") t.cleanGlass();
       else if (chore.id === "acuario-agua") t.changeWater(WATER_CHANGE);
       else if (chore.kind === "amistad-acuario") {
-        this.events.push(...t.befriend());
+        this.events.push(...t.befriend(chore.targetId === "caracoles" ? "caracoles" : "banco"));
         this.crew?.startle(-0.1);
       } else if (chore.kind === "ayuda-acuario") this.events.push(...t.ask(chore.targetId as AquariumHelper));
     };
@@ -117,14 +127,14 @@ export class AquariumOps {
       id: "acuario-comer",
       kind: "cuidar-acuario",
       targetId: "acuario",
-      title: "Dar de comer a las medakas",
+      title: `Dar de comer a ${t.fishName}`,
       scenario: "El banco ronda la superficie esperando su comida",
       exercises: [
         choice(
           "acuario-comer-racion",
           "predecir",
           "Somos pequeñas: poquito y dos veces al día",
-          `${t.fishCount} medakas de ${fmt(AQUARIUM_TUNING.fishMassG)} g: 3 % de su peso al día, en dos tomas. ¿Gramos por toma?`,
+          `${t.fishCount} ${t.fishBare} de ${fmt(AQUARIUM_TUNING.fishMassG)} g: 3 % de su peso al día, en dos tomas. ¿Gramos por toma?`,
           [block("a", `guardar ${t.fishCount} × ${fmt(AQUARIUM_TUNING.fishMassG)} × 0,03 en diario`, `const diario = ${t.fishCount} * ${AQUARIUM_TUNING.fishMassG} * 0.03;`), block("b", "guardar diario ÷ 2 en toma", "const toma = diario / 2;")],
           [`${fmt(meal * 2)} g`, `${String(meal).replace(".", ",")} g`, "20 g"],
           1,

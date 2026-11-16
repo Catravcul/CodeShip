@@ -14,6 +14,10 @@ const std = (color: number, extra: THREE.MeshStandardMaterialParameters = {}) =>
  * the domain tank: the glass greens with algae, the school comes to the front glass once they are friends (and
  * rises to warn), and the snails climb the glass when asked to clean it. Solved steps play on the tank (`react`).
  */
+/** Instances the tank can show: fish and snails beyond these still live in the simulation. */
+const MAX_FISH = 60;
+const MAX_SNAILS = 24;
+
 export class AquariumModel {
   readonly root = new THREE.Group();
   private readonly fish: THREE.InstancedMesh;
@@ -87,15 +91,18 @@ export class AquariumModel {
     // Drawn a little larger than a real 3,5 cm medaka so a phone can see the school.
     const body = new THREE.ConeGeometry(0.013, 0.055, 5);
     body.rotateX(Math.PI / 2);
-    this.fish = new THREE.InstancedMesh(body, std(0xffa040, { roughness: 0.4, emissive: 0x6a3000 }), 40);
-    for (let i = 0; i < 40; i++) {
+    // White material tinted per instance: each adopted kind keeps its own colour (setColors).
+    this.fish = new THREE.InstancedMesh(body, std(0xffffff, { roughness: 0.4, emissive: 0x2a1400 }), MAX_FISH);
+    this.fish.count = 0;
+    for (let i = 0; i < MAX_FISH; i++) {
       this.fishPhase.push({ a: i * 2.39, r: 0.05 + (i % 7) * 0.018, y: ((i * 37) % 11) / 11 - 0.5, s: 0.8 + (i % 5) * 0.1 });
       this.prev.push(new THREE.Vector3());
     }
     this.root.add(this.fish);
     // Snails on the gravel (instanced).
-    this.snails = new THREE.InstancedMesh(new THREE.TorusGeometry(0.018, 0.01, 6, 10), std(0x9a6a3a, { roughness: 0.5 }), 12);
-    for (let i = 0; i < 12; i++) this.snailAt.push(new THREE.Vector3(-w / 2 + 0.1 + ((i * 0.53) % (w - 0.2)), y0 + 0.07, -d / 2 + 0.1 + ((i * 0.31) % (d - 0.2))));
+    this.snails = new THREE.InstancedMesh(new THREE.TorusGeometry(0.018, 0.01, 6, 10), std(0xffffff, { roughness: 0.5 }), MAX_SNAILS);
+    this.snails.count = 0;
+    for (let i = 0; i < MAX_SNAILS; i++) this.snailAt.push(new THREE.Vector3(-w / 2 + 0.1 + ((i * 0.53) % (w - 0.2)), y0 + 0.07, -d / 2 + 0.1 + ((i * 0.31) % (d - 0.2))));
     this.root.add(this.snails);
     // Food flakes and the program glow (mind challenges): hidden until a step plays.
     const fg = new THREE.BufferGeometry();
@@ -110,6 +117,22 @@ export class AquariumModel {
     label.position.set(0, y0 + h + 0.9, 0);
     this.root.add(label);
     this.centre.set(0, y0 + h / 2, 0);
+    this.setColors("banco", []);
+    this.setColors("caracoles", []);
+  }
+
+  /**
+   * Colours of the fish and the snails by arrival order: one run per adopted kind (`[{ n, color }]`), from
+   * the species catalogue's icon colours.
+   */
+  setColors(group: "banco" | "caracoles", runs: readonly { readonly n: number; readonly color: string }[]): void {
+    const mesh = group === "banco" ? this.fish : this.snails;
+    const max = group === "banco" ? MAX_FISH : MAX_SNAILS;
+    const c = new THREE.Color();
+    let i = 0;
+    for (const r of runs) for (let k = 0; k < r.n && i < max; k++) mesh.setColorAt(i++, c.set(r.color));
+    while (i < max) mesh.setColorAt(i++, c.set(group === "banco" ? 0xffa040 : 0x9a6a3a));
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   }
 
   /** Solved steps acted out on the tank: flakes fall, the glass is wiped, a program glows over the school. */
@@ -146,8 +169,11 @@ export class AquariumModel {
           ? new THREE.Vector3(beside, y0 + h / 2, d / 2 - 0.12)
           : new THREE.Vector3(Math.sin(this.t * 0.31) * (w / 2 - 0.3), y0 + h / 2 + Math.sin(this.t * 0.53) * 0.12, Math.cos(this.t * 0.23) * (d / 2 - 0.25));
     this.centre.lerp(target, Math.min(1, dt * 0.8));
+    // Only the animals that live in the tank (a new game: none).
+    this.fish.count = Math.min(MAX_FISH, tank.fishCount);
+    this.snails.count = Math.min(MAX_SNAILS, tank.snailCount);
     const pos = new THREE.Vector3();
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < this.fish.count; i++) {
       const p = this.fishPhase[i]!;
       const a = p.a + this.t * p.s * 1.4;
       pos.set(this.centre.x + Math.cos(a) * p.r * 1.6, this.centre.y + p.y * 0.12 + Math.sin(a * 1.3) * 0.02, this.centre.z + Math.sin(a) * p.r);
@@ -166,6 +192,7 @@ export class AquariumModel {
     const up = tank.helping("caracoles-limpian");
     const turn = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), up ? 0 : Math.PI / 2);
     this.snailAt.forEach((at, i) => {
+      if (i >= this.snails.count) return;
       const gx = -w / 2 + 0.1 + ((i * 0.53) % (w - 0.2));
       const goal = up ? new THREE.Vector3(gx, y0 + 0.15 + ((i * 0.29) % 0.5) + Math.sin(this.t * 0.2 + i) * 0.03, d / 2 - 0.012) : new THREE.Vector3(gx, y0 + 0.07, -d / 2 + 0.1 + ((i * 0.31) % (d - 0.2)));
       at.lerp(goal, Math.min(1, dt * 0.3));

@@ -468,7 +468,9 @@ bordo duraba **40 s reales** y la saciedad baja un día de energía por día, as
 Y las comidas de verdad: en NHANES 2007–2008 (What We Eat in America, 5 420 adultos) el 59–64 % come desayuno,
 comida y cena cada día. El desayuno da ≈ 16 % de la energía, la comida ≈ 24 %, la cena ≈ 36 % y los
 tentempiés ≈ 24 % ([resumen del USDA ARS en MDedge](https://mdedge.com/content/three-meal-day-pattern-still-strong-among-us-adults)).
-Repartiendo los tentempiés, cada comida es un tercio del día.
+Repartiendo los tentempiés, cada comida sería un tercio del día. Berón (2026-11-16) lo decidió de otra forma:
+«Las comidas serán 2 al día». Dos comidas grandes, como en el patrón de comida y cena, y cada una es la mitad
+del día.
 
 ### Decisión: un día de a bordo dura 24 minutos reales
 
@@ -478,17 +480,18 @@ Cold Sanctuary (60 min). Es una sola constante, `BOARD_DAY_REAL_S` en `src/core/
 laboratorio bio, importación). Antes había tres `1 / 40` sueltos (`interior.ts`, `main.ts` y el plano de la
 estación).
 
-**El hambre, tres veces al día.** La saciedad sigue bajando un día de energía por día (`satietyPerDay`, 1) y
+**El hambre, dos veces al día.** La saciedad sigue bajando un día de energía por día (`satietyPerDay`, 1) y
 comer suma las kcal reales del plato entre las de su día (`eatKcal`). Lo nuevo:
 
-- **Una comida es un tercio del día** (`CREW_TUNING.mealShareOfDay`). Al cocinar, come las raciones del plato
-  que suman unos 760 kcal (un tercio de sus 2 277): una ración grande (carne con papas, 618 kcal) o dos pequeñas
-  (ensalada, 2 × 113). El resto va a la despensa, como antes. Antes comía siempre una ración, unos 360 kcal de
+- **Una comida es la mitad del día** (`CREW_TUNING.mealShareOfDay`, 1/2). Al cocinar, come las raciones del plato
+  que suman unos 1 140 kcal (la mitad de sus 2 277): dos raciones grandes (carne con papas, 2 × 618 kcal) o
+  varias pequeñas. El resto va a la despensa, como antes. Antes comía siempre una ración, unos 360 kcal de
   media, y le volvía el hambre a las pocas horas.
 - **Tiene hambre por debajo de 0,5** (`hungryBelow`). Al cruzarlo sale el aviso «Doménica tiene hambre: hora de
   cocinar».
-- Con comidas de un tercio del día le entra hambre **3 veces por día de a bordo**, una comida cada ~8 min
-  reales: unas 4 en una sesión de media hora. Lo prueba VID-20 (`crew-member.test.ts`). Con una comida ligera
+- Con comidas de medio día le entra hambre **2 veces por día de a bordo**, una comida cada ~12 min reales:
+  unas 2 o 3 en una sesión de media hora. Lo prueban VID-20 (`crew-member.test.ts`), CV-20 (`comidas.test.ts`,
+  con los relojes del viaje y del tiempo acelerado) y el recorrido PX-27. Con una comida ligera
   (huevos revueltos, 187 kcal) vuelve antes, como en la vida real.
 
 **Viajes y tiempo acelerado.** Los viajes comprimidos y el ×10/×50 a mano siguen mandando (`frameClocks`, casos
@@ -496,7 +499,7 @@ CV-01, CV-02 y CV-08):
 
 - La vida va a `max(su ritmo, el del viaje)`. Antes la nodriza (×600) no cambiaba nada porque la vida ya iba a
   ×2160; ahora la vida va a ×60, así que **un salto de la nodriza acelera la vida ×10**: un viaje de 75 s son
-  12,5 h a bordo, una o dos comidas. El módulo (×5) y la sonda (×10) no la cambian.
+  12,5 h a bordo, una comida. El módulo (×5) y la sonda (×10) no la cambian.
 - Con ×10 a mano un día dura 2,4 min; con ×50, 29 s.
 - La estación sigue siendo 24 h por día de a bordo.
 
@@ -507,7 +510,7 @@ día de 40 s. Se revisó uno por uno:
 
 | Proceso | Ritmo | Con el día de 24 min | Decisión |
 | --- | --- | --- | --- |
-| Hambre de Doménica | 1 día de energía por día | Una comida cada ~8 min | Es lo que se buscaba |
+| Hambre de Doménica | 1 día de energía por día | Dos comidas al día, una cada ~12 min | Berón: «Las comidas serán 2 al día» |
 | Gatos y perros (`companion.ts`) | Comen medio día de energía por comida (`catMeal`) | Dos comidas al día, cada ~12 min; juego y cariño bajan 0,8 y 0,5 por día | Igual que en la vida real, sin cambios |
 | Gallinas | Saciedad 1 por día, un huevo al día con luz | El comedero se vacía en un día (24 min); como mucho un huevo al día por gallina | Sin cambios (antes, un día de puesta cada 40 s) |
 | Huerto (`plant.ts`) | Agua 0,5 por día, seca bajo 0,15 | Regar cada ~1,7 días (~40 min) | Sin cambios |

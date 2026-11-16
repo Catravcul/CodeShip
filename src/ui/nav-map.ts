@@ -3,6 +3,8 @@ import type { Rock } from "@modules/celestial/domain/region";
 import type { DestinationInfo, Navigator } from "@modules/navigation/application/navigator";
 import { targetDistance, targetPosition, targetRadius, type NavTarget } from "@modules/navigation/domain/nav-target";
 import { duration, num } from "@modules/navigation/application/trip-chore";
+import type { SketchItem } from "@modules/navigation/application/plan-sketch";
+import { SKETCH_COLOUR } from "../adapters/three/plan-overlay";
 import { dockCardHtml } from "./nav-dock-card";
 import "./nav-map.css";
 
@@ -74,6 +76,8 @@ export class NavMap {
   private note = "";
   private drag: { id: number; x: number; y: number; moved: number } | null = null;
   private screen: { t: NavTarget; x: number; y: number }[] = [];
+  /** The plan's points as last drawn (canvas px), for the animation audit. */
+  private planPx: { x: number; y: number }[] = [];
   private chipsHtml = "";
   private readonly home: HTMLElement;
   /** Set by main: the mission mark of a target (Nevaeh's main missions and side missions). */
@@ -84,6 +88,11 @@ export class NavMap {
   levelMark?: (targetId: string) => MapLevelMark | undefined;
   /** Set by main: open the mission log. */
   onMissions?: () => void;
+  /**
+   * Set by main: the plan being programmed (plan-sketch.ts), as its solved steps have drawn it so far.
+   * While the map covers the scene, the map shows it, zoomed to fit the part the challenge sheet leaves open.
+   */
+  plan?: () => readonly SketchItem[];
 
   constructor(
     root: HTMLElement,
@@ -186,6 +195,33 @@ export class NavMap {
     this.draw();
   }
 
+  /** The plan changed (a step was solved, or the sheet closed): redraw now. */
+  planChanged(): void {
+    if (this.visible) this.draw();
+  }
+
+  /**
+   * The animation audit (tools/experiencia/animaciones.mjs): while the map shows a plan, how many of its
+   * points are on screen (viewport px) inside the map and above `sheetTop`; undefined when it shows none.
+   */
+  planAudit(sheetTop: number): { points: number; onScreen: number } | undefined {
+    if (!this.visible || !this.planPx.length) return undefined;
+    const r = this.canvas.getBoundingClientRect();
+    const bottom = Math.min(r.bottom, sheetTop);
+    const onScreen = this.planPx.filter((p) => r.left + p.x >= Math.max(0, r.left) && r.left + p.x <= Math.min(r.right, window.innerWidth) && r.top + p.y >= Math.max(0, r.top) && r.top + p.y <= bottom).length;
+    return { points: this.planPx.length, onScreen };
+  }
+
+  /** The part of the canvas (its px) that is not under the challenge sheet: below it in portrait, beside it in landscape. */
+  private openArea(w: number, h: number): { w: number; h: number } {
+    const sheet = [...document.querySelectorAll<HTMLElement>(".duel.sheet")].find((e) => !e.classList.contains("hidden"));
+    if (!sheet) return { w, h };
+    const r = this.canvas.getBoundingClientRect();
+    const s = sheet.getBoundingClientRect();
+    if (s.left > r.left + 40) return { w: Math.max(80, Math.min(w, s.left - r.left)), h };
+    return { w, h: Math.max(60, Math.min(h, s.top - r.top)) };
+  }
+
   private setZoom(z: number): void {
     this.zoom = Math.max(0.6, Math.min(12, z));
     this.draw();
@@ -286,6 +322,9 @@ export class NavMap {
   }
 
   private draw(): void {
+    // The plan first: showing it hides the map's header and card, which resizes the canvas.
+    const plan = this.plan?.() ?? [];
+    this.el.classList.toggle("planning", plan.length > 0);
     const c = this.canvas;
     const w = c.clientWidth, h = c.clientHeight;
     if (w === 0 || h === 0) return;
@@ -298,14 +337,24 @@ export class NavMap {
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.clearRect(0, 0, w, h);
     const R = this.deps.boundaryRadiusM;
-    const s = ((0.46 * Math.min(w, h)) / R) * this.zoom;
-    const cx = w / 2, cy = h / 2;
+    let s = ((0.46 * Math.min(w, h)) / R) * this.zoom;
+    let cx = w / 2, cy = h / 2;
     const cosY = Math.cos(this.yaw), sinY = Math.sin(this.yaw);
     const sinE = Math.sin(this.elevation), cosE = Math.cos(this.elevation);
     const ship = this.deps.shipPosition();
     // Centred on the region when zoomed out, on the ship when zoomed in.
     const k = Math.min(1, (this.zoom - 1) / 2);
-    const o = { x: ship.x * Math.max(0, k), y: ship.y * Math.max(0, k), z: ship.z * Math.max(0, k) };
+    let o = { x: ship.x * Math.max(0, k), y: ship.y * Math.max(0, k), z: ship.z * Math.max(0, k) };
+    // While a plan is being programmed, the view fits the plan (and the ship) in the part of the map the sheet leaves open.
+    const planPts = plan.flatMap(sketchPoints);
+    const open = planPts.length ? this.openArea(w, h) : { w, h };
+    if (planPts.length) {
+      const fit = this.fitPlan([ship, ...planPts], cosY, sinY, sinE, cosE, open);
+      s = fit.s;
+      cx = fit.cx;
+      cy = fit.cy;
+      o = { x: 0, y: 0, z: 0 };
+    }
     const P = (p: { x: number; y: number; z: number }): Projected => {
       const x = p.x - o.x, y = p.y - o.y, z = p.z - o.z;
       const xr = x * cosY - z * sinY;
@@ -468,17 +517,83 @@ export class NavMap {
     g.fillStyle = "#ffd23f";
     g.fillText("Nave", shipP.x + 10, shipP.y - 8);
 
+    // The plan, step by step as it is solved, over everything else.
+    this.planPx = [];
+    for (const it of plan) this.drawSketch(g, it, P);
+
     // Scale bar.
-    const bar = 1000 * s >= 30 ? 1000 : 5000;
+    const bar = 100 * s >= 30 ? 100 : 1000 * s >= 30 ? 1000 : 5000;
     g.strokeStyle = "#d8f6ff";
     g.lineWidth = 2;
     g.beginPath();
-    g.moveTo(14, h - 16);
-    g.lineTo(14 + bar * s, h - 16);
+    g.moveTo(14, open.h - 16);
+    g.lineTo(14 + bar * s, open.h - 16);
     g.stroke();
     g.fillStyle = "#d8f6ff";
-    g.fillText(km(bar), 14, h - 22);
+    g.fillText(km(bar), 14, open.h - 22);
   }
+
+  /** Scale and centre (canvas px) that fit `pts` in the open area `a`, with a margin, seen from the map's angle. */
+  private fitPlan(pts: readonly { x: number; y: number; z: number }[], cosY: number, sinY: number, sinE: number, cosE: number, a: { w: number; h: number }): { s: number; cx: number; cy: number } {
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const p of pts) {
+      const xr = p.x * cosY - p.z * sinY;
+      const yr = (p.x * sinY + p.z * cosY) * sinE - p.y * cosE;
+      x0 = Math.min(x0, xr);
+      x1 = Math.max(x1, xr);
+      y0 = Math.min(y0, yr);
+      y1 = Math.max(y1, yr);
+    }
+    const m = PLAN_MARGIN_PX;
+    const s = Math.min((a.w - 2 * m) / Math.max(1, x1 - x0), (a.h - 2 * m) / Math.max(1, y1 - y0));
+    return { s, cx: a.w / 2 - ((x0 + x1) / 2) * s, cy: a.h / 2 - ((y0 + y1) / 2) * s };
+  }
+
+  /** One plan item in its tone (solid: the route the autopilot will fly). */
+  private drawSketch(g: CanvasRenderingContext2D, it: SketchItem, P: (p: { x: number; y: number; z: number }) => Projected): void {
+    g.strokeStyle = `#${SKETCH_COLOUR[it.tone].toString(16).padStart(6, "0")}`;
+    g.lineWidth = 2.5;
+    g.setLineDash([]);
+    const path = (pts: readonly Projected[], close = false) => {
+      g.beginPath();
+      pts.forEach((p, i) => (i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y)));
+      if (close) g.closePath();
+      g.stroke();
+      for (const p of pts) this.planPx.push({ x: p.x, y: p.y });
+    };
+    if (it.kind === "line") return path(it.points.map(P));
+    if (it.kind === "ring") {
+      // A ring on the map is a mark, not to scale: a circle the eye finds at any zoom.
+      const c = P(it.centre);
+      const r = Math.max(7, Math.min(16, it.radiusM * 0.02));
+      const pts: Projected[] = [];
+      for (let i = 0; i < 24; i++) pts.push({ x: c.x + Math.cos((i / 24) * Math.PI * 2) * r, y: c.y + Math.sin((i / 24) * Math.PI * 2) * r, gy: c.gy });
+      return path(pts, true);
+    }
+    // An arrow: at least 28 px long on the map, its head drawn on screen.
+    const a = P(it.from);
+    let b = P(it.to);
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    if (len < 28) {
+      const k = len > 1e-6 ? 28 / len : 0;
+      b = { x: a.x + (b.x - a.x) * k + (k ? 0 : 28), y: a.y + (b.y - a.y) * k, gy: b.gy };
+    }
+    const ang = Math.atan2(b.y - a.y, b.x - a.x);
+    path([a, b]);
+    path([
+      { x: b.x - 9 * Math.cos(ang - 0.45), y: b.y - 9 * Math.sin(ang - 0.45), gy: b.gy },
+      b,
+      { x: b.x - 9 * Math.cos(ang + 0.45), y: b.y - 9 * Math.sin(ang + 0.45), gy: b.gy },
+    ]);
+  }
+}
+
+/** Margin (px) around a plan fitted to the open part of the map. */
+const PLAN_MARGIN_PX = 22;
+
+/** The points that place a sketch item (for fitting the view to the plan). */
+function sketchPoints(it: SketchItem): readonly { x: number; y: number; z: number }[] {
+  return it.kind === "line" ? it.points : it.kind === "arrow" ? [it.from, it.to] : [it.centre];
 }
 
 /** What the map shows of a subjugated (or angry, moving) asteroid. */

@@ -41,7 +41,7 @@ import { settings } from "./ui/settings-store";
 import { FrameTimer } from "@core/frame-timer";
 import { asanaById } from "@modules/body/data/asanas";
 import { galleyFrame, kitchenLayout, StepShow, type KitchenLayout, type KitchenSpot, type StepFrame } from "./adapters/three/interior/step-show";
-import { auditStep, type StepAudit } from "./adapters/three/interior/step-audit";
+import { auditStep, clearOfScene, type StepAudit } from "./adapters/three/interior/step-audit";
 import { choreVisuals } from "@modules/chores/application/step-visuals";
 import type { StepVisual } from "@modules/chores/domain/step-visual";
 import { AmbientNotices } from "./adapters/three/interior/ambient-notices";
@@ -302,6 +302,8 @@ export class Interior {
     this.avatarRig.add(this.avatar.root);
     this.scene.add(this.avatarRig);
     this.scene.add(this.steps.root);
+    // A prop set down on the floor (a feeding bowl) goes where nothing of the room or the animals is (PX-20).
+    this.steps.clearOf = clearOfScene(this.scene, [this.steps.root, this.avatarRig]);
     this.walker = new Walker(root);
     this.ui = document.createElement("div");
     this.ui.className = "interior-ui hidden";

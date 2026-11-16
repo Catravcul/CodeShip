@@ -12,6 +12,8 @@ import { TouchPilot, mergeCommands } from "./adapters/input/touch";
 const fmt = (v: number, d = 2) => v.toFixed(d).replace(".", ",");
 const dist = (m: number) => (m >= 1000 ? `${fmt(m / 1000, 2)} km` : `${fmt(m, m < 10 ? 2 : 0)} m`);
 const WARPS = [1, 10, 100] as const;
+/** The landing side view keeps the drop from the probe to its site this much smaller than the strip it shows in. */
+const LANDING_VIEW_MARGIN = 1.5;
 
 export interface ProbeModeDeps {
   readonly probe: ProbeOps;
@@ -55,6 +57,8 @@ export class ProbeMode {
   private warpIdx = 0;
   private cmd: ThrustCommand = { mainThrottle: 0, translation: Vec3.ZERO, rotation: Vec3.ZERO };
   private html = new Map<HTMLElement, string>();
+  /** A landing program is being written (`open`) or flies (`flying`): the camera frames the probe and its site. */
+  private plan: { state: "open" | "flying"; site: () => Vec3 | undefined } | undefined;
   active = false;
   onExit?: () => void;
 
@@ -125,7 +129,60 @@ export class ProbeMode {
 
   resize(): void {
     this.camera.aspect = window.innerWidth / window.innerHeight;
+    this.camera.clearViewOffset();
+    this.camera.fov = 68;
     this.camera.updateProjectionMatrix();
+  }
+
+  /**
+   * A landing program (docs/design/aterrizaje.md): each step draws on the ground below (site, drift,
+   * descent curve, anchors), which the chase camera along the nose does not see. While the sheet is open
+   * the camera looks from the side at the probe and its site, both in the strip above the sheet (PX-20,
+   * animation audit); while the program flies it keeps that side view (full screen once the sheet goes);
+   * closed without flying, or landed, back to the chase.
+   */
+  landingSheet(state: "open" | "flying" | "closed", site: () => Vec3 | undefined): void {
+    this.plan = state === "closed" ? undefined : { state, site };
+    if (state === "closed") this.resize();
+  }
+
+  /** The side view of a landing: the probe and its site, framed in the part of the screen the sheet leaves open. */
+  private frameLanding(pos: Vec3, up: Vec3): boolean {
+    const site = this.plan?.site();
+    if (!site) return false;
+    const drop = pos.sub(site);
+    const h = Math.max(5, drop.length());
+    // Local vertical from the site up to the probe; a side perpendicular to it.
+    const v = drop.length() > 1e-6 ? drop.normalize() : up;
+    const ref = Math.abs(v.x) < 0.9 ? Vec3.X : Vec3.Z;
+    const side = v.cross(ref).normalize();
+    const mid = site.add(v.scale(h * 0.5));
+    // With the sheet open, the look point sits in the middle of the strip above it (a taller frustum, its top
+    // shown); the camera stands back until the drop from the probe to its site fits that strip, with a margin.
+    const w = window.innerWidth;
+    const H = window.innerHeight;
+    const sheet = [...document.querySelectorAll<HTMLElement>(".duel.sheet")].find((e) => !e.classList.contains("hidden"));
+    const top = sheet ? sheet.getBoundingClientRect().top : H;
+    const strip = sheet && top < H * 0.9 && w < H;
+    const ys = strip ? Math.max(40, top / 2) : H / 2;
+    const tanHalf = Math.tan((68 * Math.PI) / 360) * (ys / (H / 2)) * Math.min(1, w / H);
+    const back = (h * 0.5 * LANDING_VIEW_MARGIN) / tanHalf;
+    const eye = mid.add(side.scale(back));
+    this.camera.position.set(eye.x, eye.y, eye.z);
+    this.camera.up.set(v.x, v.y, v.z);
+    this.camera.lookAt(mid.x, mid.y, mid.z);
+    if (strip) {
+      const full = 2 * (H - ys);
+      this.camera.aspect = w / full;
+      this.camera.fov = (2 * Math.atan(Math.tan((68 * Math.PI) / 360) * (full / H)) * 180) / Math.PI;
+      this.camera.setViewOffset(w, full, 0, full - H, w, H);
+    } else {
+      this.camera.aspect = w / H;
+      this.camera.fov = 68;
+      this.camera.clearViewOffset();
+    }
+    this.camera.updateProjectionMatrix();
+    return true;
   }
 
   say(text: string, seconds = 4): void {
@@ -193,6 +250,15 @@ export class ProbeMode {
     const firing = this.active && p.out && (this.cmd.mainThrottle > 0 || this.cmd.translation.length() > 0);
     this.model.update(dt, firing);
     if (!this.active) return;
+    if (this.plan?.state === "flying" && p.status !== "en-vuelo") {
+      this.plan = undefined;
+      this.resize();
+    }
+    if (this.plan && this.frameLanding(s.position, s.toWorld(Vec3.Y))) {
+      this.render(warp, warpNote);
+      if (performance.now() > this.msgUntil) this.msg.classList.remove("on");
+      return;
+    }
     // Chase camera a little behind and above it, looking along its nose.
     const behind = s.toWorld(new Vec3(0.35, 0.75, 2.4)).add(s.position);
     const ahead = s.toWorld(new Vec3(0, -0.1, -4)).add(s.position);

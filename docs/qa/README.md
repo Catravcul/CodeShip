@@ -58,6 +58,8 @@ la escena 3D que sus objetos estén a ≤ 0,8 m de las manos de Doménica (o sob
 vista sobre la hoja del reto, sin atravesar muebles, y que su gesto se note. Mira también las capturas: que algo
 pase la medida no quiere decir que se lea bien. Los objetos se anclan a los puestos de la sala (`GALLEY` en
 `room.ts`, el objetivo del reto), nunca a coordenadas fijas: la sala puede dibujarse a otra escala.
+Un objeto que se deja en el suelo (el cuenco de comida) nunca se mete en nada de la escena: `StepShow.clearOf`
+(`clearOfScene`, `step-audit.ts`) le busca un hueco libre al alcance de su mano.
 
 ## Dónde va cada cosa
 

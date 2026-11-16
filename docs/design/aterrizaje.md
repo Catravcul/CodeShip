@@ -23,6 +23,7 @@ Un recuadro pequeño, en monoespaciada y con mucho contraste, solo en la zona de
 - **Posición** X, Y respecto al sitio (el suelo bajo la nave al entrar en la zona); **velocidades** vx, vy, vz respecto al suelo, que gira (en Bennu el suelo se mueve unos 0,1–0,2 m/s); **inclinación** ∠ de la panza.
 - **Cruz de puntería** (como la del módulo lunar Apollo): el sitio en el centro con su radio a trazos, la nave como punto, su deriva como raya y el **punto de toque previsto** (×) si sigue bajando como va: t = Z / −vz, toque = (X + vx·t, Y + vy·t). Las distancias se comprimen hacia el borde para que lo lejano siga en el dial.
 - **Marca del sitio** en la escena: un anillo verde a trazos donde está el sitio (se ve en la cámara ventral).
+- **Cámara mientras se programa**: el módulo mira hacia abajo con su cámara ventral; la sonda, cuya cámara de persecución mira por la proa, pasa a una vista de lado que encuadra la sonda y su sitio en la franja sobre la hoja (y a pantalla completa mientras el programa vuela, hasta que se posa). Medido por la auditoría de animaciones (PX-20).
 - **Colores** contra los límites que ya aplica la física en `contact.ts` (los mismos para el módulo y para las anclas de rosca de la sonda):
   - toque: < 0,10 m/s de velocidad total relativa al suelo; choque con daño desde 1 m/s;
   - inclinación: ≤ 30°;

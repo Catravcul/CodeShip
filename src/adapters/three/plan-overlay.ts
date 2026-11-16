@@ -2,7 +2,8 @@ import * as THREE from "three";
 import type { SketchItem, SketchStep, SketchTone } from "@modules/navigation/application/plan-sketch";
 import type { StepVisual } from "@modules/chores/domain/step-visual";
 
-const COLOUR: Record<SketchTone, number> = { plan: 0x7fdcff, burn: 0xffb347, brake: 0xff7a5a, site: 0x7dffb0, ok: 0x7dffb0 };
+/** Colour of each tone of a plan (also the navigation map's, which shows the plan while it covers the scene). */
+export const SKETCH_COLOUR: Readonly<Record<SketchTone, number>> = { plan: 0x7fdcff, burn: 0xffb347, brake: 0xff7a5a, site: 0x7dffb0, ok: 0x7dffb0 };
 
 /**
  * Draws plan sketches (plan-sketch.ts) in the 3D scene as plain lines (no lights, one material per
@@ -13,6 +14,9 @@ export class PlanOverlay {
   private readonly materials = new Map<SketchTone, THREE.LineBasicMaterial>();
   private readonly caption: HTMLElement;
   private timer: ReturnType<typeof setTimeout> | undefined;
+  private readonly items: SketchItem[] = [];
+  /** Set by main: what is drawn changed (the navigation map redraws the plan it shows). */
+  onChange?: () => void;
 
   constructor(scene: THREE.Scene, host: HTMLElement) {
     this.root.name = "plan-overlay";
@@ -24,6 +28,11 @@ export class PlanOverlay {
     host.appendChild(this.caption);
   }
 
+  /** The plan's items drawn so far. */
+  get sketch(): readonly SketchItem[] {
+    return this.items;
+  }
+
   /** Lines drawn now (for checks). */
   get drawn(): number {
     return this.root.children.length;
@@ -32,7 +41,7 @@ export class PlanOverlay {
   private material(tone: SketchTone): THREE.LineBasicMaterial {
     let m = this.materials.get(tone);
     if (!m) {
-      m = new THREE.LineBasicMaterial({ color: COLOUR[tone], transparent: true, opacity: 0.9, depthTest: false });
+      m = new THREE.LineBasicMaterial({ color: SKETCH_COLOUR[tone], transparent: true, opacity: 0.9, depthTest: false });
       this.materials.set(tone, m);
     }
     return m;
@@ -77,10 +86,12 @@ export class PlanOverlay {
     if (this.timer) clearTimeout(this.timer);
     this.timer = undefined;
     for (const it of step.items) this.draw(it);
+    this.items.push(...step.items);
     this.caption.textContent = step.caption;
     this.caption.classList.remove("on");
     void this.caption.offsetWidth;
     this.caption.classList.add("on");
+    this.onChange?.();
   }
 
   clear(): void {
@@ -90,7 +101,9 @@ export class PlanOverlay {
       (c as THREE.Line).geometry.dispose();
       this.root.remove(c);
     }
+    this.items.length = 0;
     this.caption.classList.remove("on");
+    this.onChange?.();
   }
 
   /** Clear after `seconds`. */

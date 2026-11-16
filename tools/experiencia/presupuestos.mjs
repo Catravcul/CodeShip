@@ -20,7 +20,7 @@ export const JOURNEYS = [
   { id: "PX-15", name: "puente-real", title: "Puente real en un iPhone 13 y en 1ª persona: cada consola se reconoce por su cartel y se toca sin solapes, sentarse en el mando de la sonda y abrir la mesa de navegación", mobile: true, throttle: 1 },
   { id: "PX-16", name: "nodriza-estacion", title: "La nodriza viaja a la estación y entra en el dique seco: «Ir» desde el anillo en modo Viaje, «Ver trayecto» con la ruta dibujada y la cámara siguiéndola, atraque en el dique visible desde la estación y el interruptor Viaje/Teletransporte en la lista de tareas", mobile: true, throttle: 1 },
   { id: "PX-23", name: "yoga", title: "Yoga en el anillo con el esqueleto de Cold Sanctuary: «Ir» al Saludo al Sol, cada acierto lleva a Doménica a la siguiente asana con transición suave y respiración; captura por asana junto a su ficha; manos y pies en la esterilla (IK); tiempo de JS de las poses", mobile: true },
-  { id: "PX-20", name: "animaciones", title: "Auditoría de animaciones: cada receta, proceso y tarea del anillo, el viaje y el aterrizaje jugados con toques; tras cada paso, sus objetos al alcance de Doménica, a la vista sobre la hoja y sin atravesar muebles, y su gesto", throttle: 1 },
+  { id: "PX-20", name: "animaciones", title: "Auditoría de animaciones: cada receta, proceso y tarea del anillo, el viaje, los aterrizajes del módulo y de la sonda, la cocina y las máquinas de la estación y nano_net jugados con toques; tras cada paso, sus objetos al alcance de Doménica, a la vista sobre la hoja y sin atravesar muebles, y su gesto", throttle: 1 },
 ];
 
 /**

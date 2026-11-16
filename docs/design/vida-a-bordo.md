@@ -435,9 +435,21 @@ bloque bien se ve en cuanto se toca.
 - **Demás tareas** (`src/modules/chores/application/step-visuals.ts`): una tabla por tipo de tarea dice
   cómo actúa cada área (regar con regadera, servir la ración en el cuenco, mimar, programar con una
   pantalla holográfica, reparar con llave y chispas, curar con botiquín) y qué se ve cuando el paso es un
-  número o una línea de código. El yoga ya mostraba la postura en la esterilla y se queda así. Las tareas
-  de la estación (refinería, biorreactor, fabricación) tienen su acción en la tabla, pero se hacen desde
-  su pantalla y no tienen a Doménica delante.
+  número o una línea de código. El yoga ya mostraba la postura en la esterilla y se queda así.
+- **Estación** (`src/station-steps.ts`, `StationInteriorMode.stepVisual`): la cocina de la estación y las
+  máquinas (refinar, fabricar, repostar, importar, el laboratorio de biología) se actúan en el interior de la
+  estación, con Doménica sujeta por los estribos delante de su puesto (en 0 g «abajo» es la cubierta), la
+  cámara por encima de su hombro dentro del módulo. Las salas y máquinas están dibujadas a la escala de la
+  estación (1,5, `MACHINE_SCALE`) y ella a tamaño real; las alturas del paso (manos, cuenco) cuentan desde
+  sus pies. La cocina de la estación es compacta (horno, calentador y grifo en un mismo puesto, como en la
+  ISS): todos sus pasos ocurren en ese puesto. Si la pantalla se abre desde fuera (el módulo acoplado), no hay
+  nadie en la máquina y no se representa.
+- **nano_net** (`src/modules/nano-net/application/nano-sketch.ts`): Doménica está sentada en la cabina del
+  módulo posado sobre el núcleo; cada paso dibuja sobre él, con la misma capa que los planes de viaje: el
+  anillo del núcleo que crece paso a paso, los nodos que nacen a 40 m, su subida a la órbita de 600 m, el
+  área que cubre un nodo, el enlace con otra red. La cámara mira hacia abajo como en un aterrizaje.
+- **Nada atraviesa la escena**: el cuenco que se deja en el suelo busca un hueco libre al alcance de su mano
+  si el sitio de siempre está ocupado (la pata de un gato, un mueble): `StepShow.clearOf`.
 - **Un solo puerto** (`src/modules/chores/domain/step-visual.ts`): `StepVisual` es lo que llama toda hoja
   de retos: `stepDone(i)` al acertar el paso i, `partDone(i, bloque)` en «Paso a paso», `finish()` y
   `clear()`. El módulo lo implementa con Doménica y los utensilios (`adapters/three/interior/step-show.ts`);

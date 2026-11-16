@@ -52,6 +52,7 @@ import { REMOTE_NETS } from "@modules/nano-net/data/networks";
 import { faultLetter } from "@modules/story/data/nevaeh";
 import { NanoNetView } from "./adapters/three/nano-net-view";
 import { NanoNetPanel } from "./ui/nano-net-panel";
+import { nanoSketch } from "@modules/nano-net/application/nano-sketch";
 import { buildStartRegion } from "./content/start-region";
 import { AsteroidField } from "./adapters/three/asteroid-field";
 import { SkyBodies } from "./adapters/three/sky-bodies";
@@ -80,6 +81,7 @@ import { StationStructure } from "@modules/station/domain/structure";
 import { StationDock, dockNavTargets } from "./station-dock";
 import { StationInteriorMode } from "./station-interior";
 import { StationLife } from "./station-life";
+import { stationStepVisuals } from "./station-steps";
 import { STATION_AREA_NAME, StationCrew } from "@modules/station/application/station-crew";
 import { STATION_LARDER } from "@modules/station/data/galley";
 import { LanderBerth } from "@modules/station/domain/hangar-berth";
@@ -551,6 +553,14 @@ navMode.toggleOverride = () => deck.active && (deck.toggleNav(), true);
 navMode.onBlocked = () => view.enabled && flash("El mapa está en el puente de la nave de viaje: acopla el módulo y entra", 5);
 // nano_net: its status card opens from the deck; the core action stays in the lander, anchored on the core.
 const nanoPanel = new NanoNetPanel(root, duelView, deck.nanoBtn, nano, bennuSite);
+// Each solved step draws over the core (PX-20), seen from the lander's belly camera like a landing plan.
+nanoPanel.stepVisual = (chore) =>
+  planOverlay.visual(() => {
+    const at = flight.state.position;
+    const core = nano.net.core(bennuSite.id);
+    return nanoSketch(chore, { core: at, up: at.sub(bennu.position), ...(core ? { remote: nano.net.remoteInRange(core)?.position } : {}) });
+  });
+nanoPanel.frameSheet = (s) => view.landingSheet(s);
 let lastPhase = expedition.phase;
 // Subjugation in three stages: the uncrewed probe from the deck, the lander, the suit (docs/design/subyugacion.md).
 const subj = new SubjugationUi({
@@ -664,6 +674,9 @@ function navBusy(carrierTrip: boolean): string | undefined {
 // Each programming step answered right draws what it does (route, burn, arrival, braking point; site,
 // drift, descent curve, flare, anchors) before the autopilot flies it.
 const planOverlay = new PlanOverlay(scene, root);
+// Over the ring's navigation console the map covers the scene: the map shows the plan instead (fitted above the sheet).
+navMode.map.plan = () => planOverlay.sketch;
+planOverlay.onChange = () => navMode.map.planChanged();
 navMode.stepVisual = () =>
   planOverlay.visual(() => {
     const t = nav.trip();
@@ -708,6 +721,7 @@ const probeLandingUi = new LandingUi({
   say: (t) => subj.probeMode.say(t, 7),
   overlay: planOverlay,
   targetName: () => describeBody(subj.probe.flight.target)?.name ?? expedition.asteroid.data.name,
+  frameSheet: (s) => subj.probeMode.landingSheet(s, () => probeLanding.siteWorld()),
 });
 // The trip chip and the live preview, on screen wherever she is while a vehicle flies itself.
 const tripChip = new TripChip(root);
@@ -832,6 +846,7 @@ const stationLife = new StationLife({
   say: (t, sec) => stationInside.say(t, sec),
   changed: () => undefined,
   openDockView: () => dryDock.open("hangar"),
+  stepVisual: (chore, area) => stationSteps.crew(chore, area),
 });
 /** The station's interior as it is drawn and walked: MACHINE_SCALE times its real size. */
 const playInterior = () => new StationInterior(scaleInteriorPlan(stationInteriorPlan(stationOutfit.layout, stationOutfit), MACHINE_SCALE));
@@ -874,6 +889,9 @@ const stationInside = new StationInteriorMode(root, playInterior(), {
     else cabin.enter("acople");
   },
 });
+// Station chores acted out by Doménica at their fixture (the galley, the machines): PX-20.
+const stationSteps = stationStepVisuals(stationInside, () => screenFromInside || stationInside.active);
+stationScreen.stepVisual = (session, mode) => stationSteps.machine(session, mode);
 let stationGrownAt = stationOutfit.version;
 /** The station grew: new modules in the structure (keep-out), the model outside and the rooms inside. */
 const regrowStation = () => {
@@ -1255,7 +1273,12 @@ window.addEventListener("resize", () => {
 // --- Loop -------------------------------------------------------------------
 /** The view drawn last (the animation audit projects the trip and landing plans with it). */
 const shownView: { scene: THREE.Scene; camera: THREE.Camera } = { scene, camera };
-const planAudit = (sheetTop: number) => planOverlay.audit(shownView.scene, shownView.camera, sheetTop, { w: renderer.domElement.clientWidth, h: renderer.domElement.clientHeight });
+const planAudit = (sheetTop: number) => {
+  const a = planOverlay.audit(shownView.scene, shownView.camera, sheetTop, { w: renderer.domElement.clientWidth, h: renderer.domElement.clientHeight });
+  // The map, when it covers the scene, is where the plan shows.
+  const m = navMode.map.planAudit(sheetTop);
+  return m ? { ...a, inView: true, ...m, on: "mapa" } : a;
+};
 /** Draw the frame's view, then the live trip view over it («Ver trayecto»: the whole screen, so the room is not drawn). */
 function present(sc: THREE.Scene, cam: THREE.Camera): void {
   if (!(tripPreview.visible && tripPreview.full)) renderer.render(sc, cam);
@@ -1457,7 +1480,9 @@ renderer.setAnimationLoop((now) => {
   }
   if (stationScreen.active) {
     stationScreen.update(dt);
-    present(stationScreen.scene, stationScreen.camera);
+    // A machine's chore acted out at it: the station's interior shows above the sheet, not the hangar.
+    if (stationInside.stage(dt)) present(stationInside.scene, stationInside.camera);
+    else present(stationScreen.scene, stationScreen.camera);
     return;
   }
   // The suit walk works on any asteroid of the region: its own gravity, spin and surface. Samples only on Bennu.
@@ -1537,4 +1562,4 @@ for (const sel of [".nano-action", ".trip-chip", ".land-offer.lander", ".land-bo
   if (el) ctxDock.appendChild(el);
 }
 
-(window as unknown as { codeship: unknown }).codeship = { journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, landerBerth, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels, dryDock };
+(window as unknown as { codeship: unknown }).codeship = { journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, nanoPanel, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, landerBerth, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels, dryDock };

@@ -13,6 +13,9 @@ import { CubeFigure } from "./adapters/three/interior/figure";
 import { Walker } from "./adapters/input/walker";
 import { HopControl } from "./adapters/three/interior/hop-control";
 import { buildRails, FloatingBody, motionLabel } from "./adapters/three/interior/zero-g-body";
+import { StepShow, type StepFrame } from "./adapters/three/interior/step-show";
+import { auditStep, clearOfScene, type StepAudit } from "./adapters/three/interior/step-audit";
+import type { StepAct, StepVisual } from "@modules/chores/domain/step-visual";
 import { RootMenu } from "./ui/root-menu";
 import { ICON } from "./ui/icons";
 import { settings } from "./ui/settings-store";
@@ -39,6 +42,10 @@ const CABIN_KPA = 101.3;
 /** Game value: the cabin air drifts aft at 0,1 m/s (ventilation, within NASA-STD-3001 V2 6107's 0,08–0,61 m/s). */
 const AIR = new Vec3(0, 0, 0.1);
 const num = (x: number, d = 2) => x.toFixed(d).replace(".", ",");
+/** At a machine or the galley she holds herself by the foot loops this far below its front's centre (m): her hands at it… */
+const WORK_DROP = 1.0;
+/** …and this far out from its front (m, her feet). */
+const WORK_OFF = 0.75;
 
 export interface StationInteriorDeps {
   /** Machines working right now (their lamps glow). */
@@ -126,6 +133,12 @@ export class StationInteriorMode {
   /** Which port she came in by (the hatch that takes her back). */
   from: PortUser = "sonda";
   active = false;
+  /**
+   * Solved steps acted out at a fixture (the galley, a machine): Doménica in its foot loops, a small prop
+   * per step (step-show.ts), the camera over her shoulder in the strip above the sheet. Drawn at the
+   * station's own scale: the rooms and machines are MACHINE_SCALE (1,5) times real, she is real size.
+   */
+  readonly steps = new StepShow();
 
   constructor(
     root: HTMLElement,
@@ -141,6 +154,8 @@ export class StationInteriorMode {
     this.suit.pose("float");
     this.rig.add(this.avatar.root, this.suit.root);
     this.scene.add(this.rig);
+    this.scene.add(this.steps.root);
+    this.steps.clearOf = clearOfScene(this.scene, [this.steps.root, this.rig]);
     this.body = new FloatingBody(this.rig);
     this.walker = new Walker(root, { move: "sti-move", look: "sti-look", moveLabel: "Mover" });
     this.walker.arrowsLook = false;
@@ -373,12 +388,127 @@ export class StationInteriorMode {
   }
 
   resize(): void {
-    this.camera.aspect = window.innerWidth / window.innerHeight;
+    this.frameForSheet(this.steps.framing);
+  }
+
+  /**
+   * The step visual of a chore done at fixture `id` (the galley, a machine): she goes to its foot loops
+   * and each solved step plays there; `acts(i)` are step i's acts. Undefined when the fixture is not on a
+   * wall (nothing to stand at).
+   */
+  stepVisual(id: string, acts: (index: number) => readonly StepAct[]): StepVisual | undefined {
+    const f = this.interior.fixture(id);
+    const frame = f && this.stepFrame(f);
+    if (!frame) return undefined;
+    let picked = { index: -1, n: 0 };
+    this.steps.begin(frame);
+    this.frameForSheet(true);
+    // Labels would cover her and the props in the small strip above the sheet (as in the ring).
+    for (const sg of this.rooms.signs) sg.visible = false;
+    return {
+      stepDone: (index) => {
+        if (this.steps.framing) this.steps.play(acts(index).slice(picked.index === index ? picked.n : 0));
+        picked = { index: -1, n: 0 };
+      },
+      partDone: (index, part) => {
+        const v = acts(index)[part];
+        if (v && this.steps.framing) this.steps.play([v]);
+        picked = { index, n: part + 1 };
+      },
+      finish: () => {},
+      clear: () => {
+        this.steps.clear();
+        this.frameForSheet(false);
+        this.avatar.pose(this.lotus ? "lotus" : "float");
+        this.body.reset();
+      },
+    };
+  }
+
+  /**
+   * While a chore's steps play: place her and the camera (also with the interior suspended under the
+   * station screen, whose sheet is open over this scene). True when the step stage was drawn.
+   */
+  stage(dt: number): boolean {
+    if (!this.steps.framing) return false;
+    this.rig.visible = true;
+    this.avatar.root.visible = true;
+    this.suit.root.visible = false;
+    this.camera.up.set(0, 1, 0);
+    this.steps.frame(dt, this.camera, this.rig, this.avatar);
+    this.syncMachines();
+    for (const sg of this.rooms.signs) sg.visible = false;
+    return true;
+  }
+
+  /** The animation audit of the step on stage (tools/experiencia/animaciones.mjs; test hook). */
+  stepAudit(sheetTop: number): StepAudit | undefined {
+    const c = document.querySelector("canvas");
+    const r = c?.getBoundingClientRect();
+    return auditStep(this.steps, this.camera, this.scene, sheetTop, { w: r?.width ?? window.innerWidth, h: r?.height ?? window.innerHeight }, this.rig);
+  }
+
+  /**
+   * How a wall fixture is framed while its steps play: she floats in front of it with her feet in its
+   * foot loops (in 0 g «down» is the deck, as everywhere in the station), its front at her hands; the
+   * camera behind her right shoulder, inside the module (never through a wall).
+   */
+  private stepFrame(f: Fixture): StepFrame | undefined {
+    const n = FACE_NORMAL[f.face];
+    const vol = this.interior.volume(f.volume);
+    if (Math.abs(n.y) > 0.5 || !vol) return undefined;
+    const d = new THREE.Vector3(n.x, 0, n.z).normalize();
+    const right = new THREE.Vector3(-d.z, 0, d.x);
+    const target = new THREE.Vector3(f.at.x, f.at.y, f.at.z);
+    const floor = vol.centre.y - vol.half.y + 0.05;
+    // Out from the front, but not across a narrow aisle into the racks on the other side.
+    const across = Math.abs(d.x) > 0.5 ? vol.half.x : vol.half.z;
+    const off = Math.min(WORK_OFF, 2 * across - 0.3);
+    const stand = target.clone().addScaledVector(d, -off).setY(Math.max(floor, target.y - WORK_DROP));
+    const look = target.clone().addScaledVector(d, -0.15).setY(stand.y + 0.95);
+    // The camera along the aisle to her right, a little back from the wall: she does not hide her hands
+    // and what is in them, in an aisle too narrow to stand behind her.
+    const cam = new THREE.Vector3();
+    const fits = (v: THREE.Vector3) => this.interior.fits(new Vec3(v.x, v.y, v.z), 0.1, false);
+    let found = false;
+    for (const side of [1.5, 1.3, 1.1, 0.9, 0.7]) {
+      for (let back = Math.min(1.6, 2 * across - 0.15); back > 0.35 && !found; back -= 0.1) {
+        cam.copy(look).addScaledVector(d, -back).addScaledVector(right, side).setY(stand.y + 1.65);
+        found = fits(cam);
+      }
+      if (found) break;
+    }
+    if (!found) cam.copy(look).addScaledVector(d, -Math.max(0.4, off)).addScaledVector(right, 0.6).setY(stand.y + 1.6);
+    return { stand, yaw: Math.atan2(d.x, d.z), camera: cam, look, target };
+  }
+
+  /**
+   * While steps play under a sheet, render only part of a taller frustum so her and the fixture show in
+   * the strip above it (portrait) or beside it (landscape); the same lens as the ring's (interior.ts).
+   */
+  private frameForSheet(on: boolean): void {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    if (!on) {
+      this.camera.aspect = w / h;
+      this.camera.fov = 72;
+      this.camera.clearViewOffset();
+      this.camera.updateProjectionMatrix();
+      return;
+    }
+    const landscape = w > h;
+    const fullW = landscape ? 1.44 * w : w;
+    const fullH = landscape ? h : 1.6 * h;
+    this.camera.aspect = fullW / fullH;
+    const half = landscape ? 35 : 52;
+    this.camera.fov = (2 * Math.atan(Math.tan((half * Math.PI) / 180) * (fullH / h)) * 180) / Math.PI;
+    this.camera.setViewOffset(fullW, fullH, fullW - w, fullH - h, w, h);
     this.camera.updateProjectionMatrix();
   }
 
   update(dt: number): void {
     if (!this.active) return;
+    if (this.stage(dt)) return;
     const look = this.walker.look(dt);
     this.yaw += look.yaw;
     this.pitch = Math.max(-1.45, Math.min(1.45, this.pitch + look.pitch));

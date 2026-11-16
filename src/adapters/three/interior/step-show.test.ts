@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import * as THREE from "three";
 import { galleyFrame, gesture, kitchenLayout, poseDistance, StepShow, type KitchenSpot } from "./step-show";
-import { auditStep, REACH_M } from "./step-audit";
+import { auditStep, clearOfScene, REACH_M } from "./step-audit";
 import { CubeFigure, P } from "./figure";
 import { GALLEY, STATIONS } from "./room";
 import type { StepAct, StepAction } from "@modules/chores/domain/step-visual";
@@ -109,5 +109,49 @@ describe("Pasos visibles: la cocina anclada a sus muebles (PX-20, auditoría de 
     board.position.y = 0.5;
     scene.updateMatrixWorld(true);
     expect(auditStep(show, cam, scene, 664, { w: 390, h: 664 }, rig)!.props.find((p) => p.name === "board")!.inside).toBeTruthy();
+  });
+
+  it("regla: el cuenco del suelo nunca se mete en la escena (Luna, paso 2: el cuenco atravesaba una pata)", () => {
+    // Doménica crouched before a cat at (0, 0, 1); one of its legs where the bowl would go by default.
+    const show = new StepShow();
+    const scene = new THREE.Scene();
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.13, 6), new THREE.MeshBasicMaterial());
+    leg.position.set(0, 0.065, 0.5);
+    const rig = new THREE.Group();
+    const fig = new CubeFigure();
+    rig.add(fig.root);
+    scene.add(show.root, rig, leg);
+    scene.updateMatrixWorld(true);
+    show.clearOf = clearOfScene(scene, [show.root, rig]);
+    const target = new THREE.Vector3(0, 0.2, 1);
+    show.begin({ stand: new THREE.Vector3(0, 0, 0), yaw: 0, camera: new THREE.Vector3(-1, 1.6, -1), look: new THREE.Vector3(0, 0.4, 0.6), target });
+    show.play([{ action: "servir", place: "objetivo", tint: "comida" }]);
+    const cam = Object.assign(new THREE.PerspectiveCamera(70, 390 / 664, 0.03, 120), { planScale: 1 });
+    for (let t = 0; t < 1.2; t += 1 / 30) show.frame(1 / 30, cam, rig, fig);
+    scene.updateMatrixWorld(true);
+    const snap = show.snapshot()!;
+    const bowl = snap.props.find((p) => p.name === "bowl")!.object;
+    const box = new THREE.Box3().setFromObject(bowl);
+    expect(box.intersectsBox(new THREE.Box3().setFromObject(leg))).toBe(false);
+    for (const p of snap.props.filter((q) => q.name.startsWith("food"))) expect(new THREE.Box3().setFromObject(leg).containsPoint(p.object.getWorldPosition(new THREE.Vector3()))).toBe(false);
+    // Still within her reach.
+    expect(Math.min(...snap.hands.map((h) => h.distanceTo(bowl.getWorldPosition(new THREE.Vector3()))))).toBeLessThan(REACH_M);
+  });
+
+  it("sin nada delante, el cuenco va donde siempre: entre ella y su objetivo", () => {
+    const show = new StepShow();
+    const scene = new THREE.Scene();
+    const rig = new THREE.Group();
+    const fig = new CubeFigure();
+    rig.add(fig.root);
+    scene.add(show.root, rig);
+    show.clearOf = clearOfScene(scene, [show.root, rig]);
+    show.begin({ stand: new THREE.Vector3(0, 0, 0), yaw: 0, camera: new THREE.Vector3(-1, 1.6, -1), look: new THREE.Vector3(0, 0.4, 0.6), target: new THREE.Vector3(0, 0.2, 1) });
+    show.play([{ action: "servir", place: "objetivo" }]);
+    const cam = Object.assign(new THREE.PerspectiveCamera(70, 390 / 664, 0.03, 120), { planScale: 1 });
+    for (let t = 0; t < 1.2; t += 1 / 30) show.frame(1 / 30, cam, rig, fig);
+    const bowl = show.snapshot()!.props.find((p) => p.name === "bowl")!.object.position;
+    expect(Math.abs(bowl.x)).toBeLessThan(0.01);
+    expect(bowl.z).toBeGreaterThan(0.3);
   });
 });

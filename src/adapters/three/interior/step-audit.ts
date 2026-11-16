@@ -89,6 +89,42 @@ function insideMesh(m: THREE.Mesh, p: THREE.Vector3): boolean {
   }
 }
 
+/** Meshes bigger than this across x and z (m) are shells (the floor, the ceiling): a prop on the floor is not «in» them. */
+const SHELL_M = 4;
+
+/**
+ * The clearance rule for props set down in a room (step-show.ts, `clearOf`): a box (world centre and half
+ * size) is clear when it meets no shown, opaque mesh of `scene` but those under `skip` (the props, her
+ * figure) and the room's shells. Meshes are tested by their world bounding boxes (a little conservative).
+ */
+export function clearOfScene(scene: THREE.Object3D, skip: readonly THREE.Object3D[]): (centre: THREE.Vector3, half: THREE.Vector3) => boolean {
+  const box = new THREE.Box3();
+  const mesh = new THREE.Box3();
+  const size = new THREE.Vector3();
+  return (centre, half) => {
+    box.setFromCenterAndSize(centre, size.copy(half).multiplyScalar(2));
+    const own = new Set<THREE.Object3D>();
+    for (const s of skip) s.traverse((o) => own.add(o));
+    let hit = false;
+    scene.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (hit || !m.isMesh || own.has(m) || !shown(m) || !opaque(m.material)) return;
+      mesh.setFromObject(m);
+      mesh.getSize(size);
+      if (size.x > SHELL_M && size.z > SHELL_M) return;
+      if (mesh.intersectsBox(box)) hit = true;
+    });
+    return !hit;
+  };
+}
+
+/** A mesh by its name, or its first named ancestor, or its geometry and where it is (drawn metres). */
+function meshLabel(m: THREE.Mesh): string {
+  for (let o: THREE.Object3D | null = m; o; o = o.parent) if (o.name) return o.name;
+  const p = m.getWorldPosition(new THREE.Vector3());
+  return `${m.geometry.type} en (${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)})`;
+}
+
 /**
  * Audits the step on stage. `scene` holds what may hide or contain a prop (the room, the animals, her
  * figure, `body`); `sheetTop` is the y (CSS px) where the challenge sheet starts; `size` the canvas in CSS px.
@@ -152,7 +188,7 @@ export function auditStep(show: StepShow, camera: THREE.PerspectiveCamera, scene
       px: [Math.round(px[0]), Math.round(px[1])],
       seen: r3(seen / samples.length),
       ...(hiddenBy ? { hiddenBy } : {}),
-      ...(inMesh ? { inside: inMesh.name || inMesh.geometry.type } : {}),
+      ...(inMesh ? { inside: meshLabel(inMesh) } : {}),
       reach: hand <= REACH_M || (spot <= ON_SPOT_M && feetToSpot <= AT_SPOT_M),
     };
   });

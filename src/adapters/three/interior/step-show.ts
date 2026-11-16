@@ -76,12 +76,21 @@ const TARGET_MAX = 0.7;
 const HANDS_AHEAD = 0.35;
 /** Actions that work in a vessel (bowl, board, tablet): at a target they happen at her hands. */
 const USES_VESSEL: ReadonlySet<string> = new Set(["cascar", "batir", "remover", "calentar", "hervir", "hornear", "moler", "amasar", "cortar", "lavar", "reposar", "emplatar", "sazonar", "programar", "revisar", "tomar"]);
+/** The floor bowl with its contents as a box (centre height and half size, m) for the clearance rule… */
+const BOWL_BOX = new THREE.Vector3(0, 0.07, 0);
+const BOWL_HALF = new THREE.Vector3(0.11, 0.06, 0.11);
+/** …and where else it may go when the first spot is taken: distances from her feet and turns from her target (rad), her right hand first. */
+const BOWL_RINGS = [0.45, 0.38, 0.55];
+const BOWL_FAN = [0, -0.45, 0.45, -0.9, 0.9, -1.3, 1.3];
 /** At the fridge she stands this much farther back (m). */
 const FRIDGE_STEP_BACK = 0.25;
 
 /** How a station is framed while a chore shows its steps. */
 export interface StepFrame {
-  /** Doménica's feet and the direction she faces (yaw, figure +Z rotated). */
+  /**
+   * Doménica's feet and the direction she faces (yaw, figure +Z rotated). Heights (work surface, a low
+   * target, the floor bowl) count from her feet: 0 on the ring's floor, the foot loops' height in 0 g.
+   */
   readonly stand: THREE.Vector3;
   readonly yaw: number;
   readonly camera: THREE.Vector3;
@@ -271,6 +280,15 @@ export class StepShow {
   heat = 0;
   /** Steps acted out since the chore began (test hook). */
   played = 0;
+  /**
+   * Set by the room: whether a box (world centre and half size, real metres) is clear of the scene's solid
+   * geometry (furniture, walls, the animals). The rule (PX-20): a prop set down on the floor never goes
+   * into anything; without it the default spot is used.
+   */
+  clearOf?: (centre: THREE.Vector3, half: THREE.Vector3) => boolean;
+  /** Where this step's floor bowl was set down (drawn metres), once chosen clear of the scene. */
+  private readonly bowlSpot = new THREE.Vector3();
+  private hasBowlSpot = false;
 
   get current(): StepAct | undefined {
     return this.now ?? this.last;
@@ -318,7 +336,9 @@ export class StepShow {
 
   play(visuals: readonly StepAct[]): void {
     if (!this.frameDef) return;
-    for (const v of visuals) this.queue.push(v);
+    // Away from the ring's galley (the station's compact galley, a machine) a galley spot is the target itself.
+    const here = this.frameDef.kitchen ? undefined : "objetivo";
+    for (const v of visuals) this.queue.push(here && v.place !== here ? { ...v, place: here } : v);
     while (this.queue.length > MAX_QUEUE) this.queue.shift();
     if (!this.now) this.next();
   }
@@ -382,7 +402,7 @@ export class StepShow {
       this.feet[across] += (wantAcross - this.feet[across]) * ease6;
     }
     rig.visible = true;
-    rig.position.set(this.feet.x / k, 0, this.feet.z / k);
+    rig.position.set(this.feet.x / k, this.feet.y, this.feet.z / k);
     rig.rotation.set(0, f.yaw, 0);
     rig.quaternion.setFromEuler(rig.rotation);
     figure.poseAngles(this.now ? gesture(vis!, t, this.clock, this.low(vis!)) : idle(vis ? this.low(vis) : false));
@@ -396,7 +416,7 @@ export class StepShow {
       // Along the galley the camera keeps its offset from the step's spot (at work height), so the spot,
       // her hands and the props are in the strip above the sheet, seen past her right shoulder.
       const s = this.spotOf(vis, this.spot);
-      this.tmp.set(s.x, Math.max(0.75, Math.min(1.15, s.y)), s.z);
+      this.tmp.set(s.x, this.feet.y + Math.max(0.75, Math.min(1.15, s.y - this.feet.y)), s.z);
       this.focus.lerp(this.tmp, 1 - Math.exp(-4 * dt));
     }
     // In real metres for the PlanCamera, which draws them back at this place.
@@ -456,12 +476,13 @@ export class StepShow {
     this.now = this.queue.shift();
     this.t = 0;
     this.played++;
+    this.hasBowlSpot = false;
     this.hideAll();
   }
 
   /** Low targets (a cat bowl, a hen) are worked on crouching. */
   private low(v: StepAct): boolean {
-    return v.place === "objetivo" && (this.df?.target.y ?? 1) < 0.5;
+    return v.place === "objetivo" && (this.df?.target.y ?? 1) - this.feet.y < 0.5;
   }
 
   private spotOf(v: StepAct, out: THREE.Vector3): THREE.Vector3 {
@@ -481,10 +502,34 @@ export class StepShow {
     return out;
   }
 
-  /** A bowl on the floor between her and a low target, within her reach (crouched). */
+  /**
+   * A bowl on the floor between her and a low target, within her reach (crouched), and clear of the
+   * scene (`clearOf`): the first free spot of a fan in front of her, chosen once per step.
+   */
   private floorBowl(out: THREE.Vector3, s: THREE.Vector3): THREE.Vector3 {
+    if (this.hasBowlSpot) return out.copy(this.bowlSpot);
     const d = Math.hypot(s.x - this.feet.x, s.z - this.feet.z);
-    return out.copy(this.feet).lerp(s, d > 1e-3 ? Math.min(0.65, 0.5 / d) : 0).setY(0.02);
+    out.copy(this.feet).lerp(s, d > 1e-3 ? Math.min(0.65, 0.5 / d) : 0).setY(this.feet.y + 0.02);
+    const clear = this.clearOf;
+    if (clear) {
+      const k = this.ds;
+      const yaw = d > 1e-3 ? Math.atan2(s.x - this.feet.x, s.z - this.feet.z) : this.df!.yaw;
+      const free = (x: number, z: number) => clear(this.tmp.set(x / k, this.feet.y + BOWL_BOX.y, z / k), BOWL_HALF);
+      if (!free(out.x, out.z)) {
+        search: for (const r of BOWL_RINGS)
+          for (const a of BOWL_FAN) {
+            const x = this.feet.x + Math.sin(yaw + a) * r;
+            const z = this.feet.z + Math.cos(yaw + a) * r;
+            if (free(x, z)) {
+              out.set(x, this.feet.y + 0.02, z);
+              break search;
+            }
+          }
+      }
+    }
+    this.bowlSpot.copy(out);
+    this.hasBowlSpot = true;
+    return out;
   }
 
   /** Shows the floor bowl by a low target and returns where its contents sit (in `this.v`). */
@@ -499,7 +544,8 @@ export class StepShow {
     const f = this.df!;
     const fx = Math.sin(f.yaw);
     const fz = Math.cos(f.yaw);
-    return out.set(this.feet.x + fx * HANDS_AHEAD, Math.max(0.3, Math.min(1.15, y)), this.feet.z + fz * HANDS_AHEAD);
+    const floor = this.feet.y;
+    return out.set(this.feet.x + fx * HANDS_AHEAD, floor + Math.max(0.3, Math.min(1.15, y - floor)), this.feet.z + fz * HANDS_AHEAD);
   }
 
   private build(): void {
@@ -807,7 +853,7 @@ export class StepShow {
         sc.children[0]!.rotation.y = 0.4 * Math.abs(Math.sin(this.clock * 8));
         sc.children[1]!.rotation.y = -0.4 * Math.abs(Math.sin(this.clock * 8));
         // The basket at her other hand (on the floor by her for a low plant), clear of the racks.
-        const basket = this.low(v) ? this.atHands(this.v, 0.3).setY(0.05) : this.v.copy(this.otherHand).add(this.tmp.set(0, -0.1, 0));
+        const basket = this.low(v) ? this.atHands(this.v, this.feet.y + 0.3).setY(this.feet.y + 0.05) : this.v.copy(this.otherHand).add(this.tmp.set(0, -0.1, 0));
         this.show(p.basket, basket.x, basket.y, basket.z);
         const k = ease(clamp01((t - 0.3) / 0.5));
         this.show(food[0]!, THREE.MathUtils.lerp(s.x, basket.x, k), THREE.MathUtils.lerp(s.y + 0.08, basket.y + 0.05, k), THREE.MathUtils.lerp(s.z, basket.z, k));
@@ -834,7 +880,7 @@ export class StepShow {
         const k = clamp01((t - 0.25) / 0.6);
         const x = THREE.MathUtils.lerp(this.hand.x, s.x, k);
         const z = THREE.MathUtils.lerp(this.hand.z, s.z, k);
-        const y = THREE.MathUtils.lerp(this.hand.y, 0.04, k) + 0.5 * Math.sin(k * Math.PI) + 0.08 * Math.abs(Math.sin(k * 12)) * k;
+        const y = THREE.MathUtils.lerp(this.hand.y, this.feet.y + 0.04, k) + 0.5 * Math.sin(k * Math.PI) + 0.08 * Math.abs(Math.sin(k * 12)) * k;
         this.show(p.ball, x, y, z);
         break;
       }
@@ -862,7 +908,7 @@ export class StepShow {
         break;
       }
       case "entrenar":
-        this.emitAt(this.feet.x, 1.5, this.feet.z, "rise", 0x9fd8ff, 0.4);
+        this.emitAt(this.feet.x, this.feet.y + 1.5, this.feet.z, "rise", 0x9fd8ff, 0.4);
         break;
       default:
         break;

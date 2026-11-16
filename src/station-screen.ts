@@ -15,6 +15,7 @@ import { partById } from "@modules/ship/data/parts";
 import { electricThrusterById } from "@modules/mothership/data/thrusters";
 import { StationScene } from "./adapters/three/station-model";
 import type { DuelView, SessionText } from "./ui/duel-view";
+import type { StepVisual } from "@modules/chores/domain/step-visual";
 import type { ImportOps } from "@modules/imports/application/import-ops";
 import { IMPORT_GOODS } from "@modules/imports/data/goods";
 import { LAUNCHERS, TRANSFER_STAGE } from "@modules/imports/data/launchers";
@@ -50,7 +51,7 @@ const PLAN_KINDS: readonly [BlueprintKind, string][] = [
   ["componente", "Componentes"],
 ];
 const kw = (v: number) => `${(Math.round(v * 10) / 10).toLocaleString("es-ES")} kW`;
-type ChoreMode = "refinar" | "fabricar" | "repostar" | "importar" | "ajustar";
+export type ChoreMode = "refinar" | "fabricar" | "repostar" | "importar" | "ajustar";
 const kwh = (v: number) => `${fmtKg(v)} kWh`;
 const STAGE: Readonly<Record<string, string>> = { bruto: "Roca de la bodega (sin refinar)", refinado: "Refinados", importado: "Importados (no se pueden hacer aquí)", biologico: "Biológicos (cultivos y biorreactores)" };
 const BIO_STATE: Readonly<Record<string, string>> = { parado: "Parado", "en-marcha": "En marcha", desajustado: "Desajustado" };
@@ -98,6 +99,11 @@ export class StationScreen {
   onExit?: () => void;
   /** Open the ship bay (from the hangar tab); set by main. */
   onBay?: () => void;
+  /**
+   * Set by main: the chore's solved steps acted out by Doménica at the machine she opened this screen
+   * from (station-interior.ts); while it plays, that scene is drawn over the sheet instead of the hangar's.
+   */
+  stepVisual?: (session: StationSession, mode: ChoreMode) => StepVisual | undefined;
 
   constructor(
     root: HTMLElement,
@@ -693,9 +699,12 @@ export class StationScreen {
   start(session: StationSession, mode: ChoreMode): void {
     const run = session.run;
     this.session = session;
+    const visual = this.stepVisual?.(session, mode);
     const prevClose = this.duel.onClose;
     this.duel.onClose = () => {
       this.duel.onClose = prevClose;
+      this.duel.onRightPick = undefined;
+      visual?.clear();
       this.session = null;
       this.layout();
       if (run.status === "done") {
@@ -731,8 +740,17 @@ export class StationScreen {
         maxLives: run.maxMistakes,
       },
       text(session.chore.title, mode),
-      (a) => ({ ok: session.answer(a) }),
+      (a) => {
+        const index = run.step;
+        const ok = session.answer(a);
+        if (ok) visual?.stepDone(index);
+        return { ok };
+      },
     );
+    if (visual)
+      this.duel.onRightPick = (id, slot) => {
+        if (run.current?.id === id) visual.partDone?.(run.step, slot);
+      };
     this.layout();
   }
 

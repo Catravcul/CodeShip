@@ -1,4 +1,5 @@
 import type { Chore } from "@modules/chores/domain/chore";
+import type { StepVisual } from "@modules/chores/domain/step-visual";
 import type { ChoreSession } from "@modules/habitat/application/habitat";
 import { ITEMS } from "@modules/kitchen/data/items";
 import type { Larder } from "@modules/station/application/bio-ops";
@@ -39,6 +40,8 @@ export interface StationLifeDeps {
   changed(): void;
   /** The dry dock's cameras (docs/design/dique-seco.md). */
   openDockView?(): void;
+  /** The chore's solved steps acted out at its area's fixture (the galley), if it can be framed there. */
+  stepVisual?(chore: Chore, area: string): StepVisual | undefined;
 }
 
 /**
@@ -134,9 +137,12 @@ export class StationLife {
     if (!chore || !session || this.d.duel.visible) return;
     const run = session.run;
     this.session = session;
+    const visual = this.d.stepVisual?.(chore, this.d.crew.areaOf(chore));
     const prev = this.d.duel.onClose;
     this.d.duel.onClose = () => {
       this.d.duel.onClose = prev;
+      this.d.duel.onRightPick = undefined;
+      visual?.clear();
       this.session = null;
       if (run.status === "done") this.d.say(chore.kind === "cocinar" ? `${chore.title.replace(/^Cocinar /, "")}: hecho con la despensa de la estación` : "Hecho", 5);
     };
@@ -155,7 +161,17 @@ export class StationLife {
         maxLives: run.maxMistakes,
       },
       choreText(chore),
-      (ans) => ({ ok: session.answer(ans) }),
+      (ans) => {
+        const index = run.step;
+        const ok = session.answer(ans);
+        if (ok) visual?.stepDone(index);
+        return { ok };
+      },
     );
+    // «Paso a paso»: each right pick is acted out at once.
+    if (visual)
+      this.d.duel.onRightPick = (id, slot) => {
+        if (run.current?.id === id) visual.partDone?.(run.step, slot);
+      };
   }
 }

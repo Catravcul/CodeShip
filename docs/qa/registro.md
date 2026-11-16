@@ -180,7 +180,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | CV-20 | Solo test | | | `comidas.test.ts` (verde en la suite completa) |
 | PX-01 | Probado (en vivo) | 2026-11-16 | `1c1b689` | [run](runs/2026-11-16-1923-PX-01-PX-02-PX-13-PX-27.md): 54 OK |
 | PX-02 | FAIL | 2026-11-16 | `1c1b689` | [run](runs/2026-11-16-1923-PX-01-PX-02-PX-13-PX-27.md): 28 OK, 1 FALLA |
-| PX-03 | Probado (en vivo) | 2026-11-13 | `f59ae5a` | [run](runs/2026-11-13-1713-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09-PX-10-PX-11.md): 14 OK |
+| PX-03 | Probado (en vivo) | 2026-11-16 | `454aa6d` | [run](runs/2026-11-16-2005-PX-03.md): 17 OK |
 | PX-04 | Probado (en vivo) | 2026-11-16 | `75e2abc` | [run](runs/2026-11-16-1935-PX-04-PX-12-PX-29.md): 30 OK |
 | PX-05 | Probado (en vivo) | 2026-11-14 | `cb310e1` | [run](runs/2026-11-14-1626-PX-01-PX-02-PX-04-PX-05-PX-10-PX-11.md): 25 OK |
 | PX-06 | Probado (en vivo) | 2026-11-13 | `f59ae5a` | [run](runs/2026-11-13-1713-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09-PX-10-PX-11.md): 20 OK |
@@ -209,6 +209,7 @@ La más reciente arriba.
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
 | 2026-11-16 20:11 | PX-29 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-2011-PX-29.md) |
+| 2026-11-16 20:05 | PX-03 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-2005-PX-03.md) |
 | 2026-11-16 19:57 | PX-12, PX-29 | Experiencia (Playwright) | 1/2 recorridos bien | [run](runs/2026-11-16-1957-PX-12-PX-29.md) |
 | 2026-11-16 19:52 | PX-27 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-1952-PX-27.md) |
 | 2026-11-16 19:35 | PX-04, PX-12, PX-29 | Experiencia (Playwright) | 2/3 recorridos bien | [run](runs/2026-11-16-1935-PX-04-PX-12-PX-29.md) |

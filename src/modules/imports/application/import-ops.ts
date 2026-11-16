@@ -149,6 +149,24 @@ export class ImportOps {
     });
   }
 
+  /** The same quote by mass: living cargo of the species catalogue (animals, their tank and their food). */
+  quoteKg(kg: number, launcherId: string): ImportQuote {
+    return importQuote(kg, this.launcher(launcherId).usdPerKg.value, this.d.regionAU(), this.d.stage, this.d.gameHoursPerTransitDay);
+  }
+
+  /**
+   * An order of living cargo (modules/adoption): paid at once, it flies the same Hohmann transfer and lands
+   * through the same inbox; it brings nothing to the store (the animals go to their area when it lands).
+   */
+  orderKg(label: string, kg: number, launcherId: string): Delivery {
+    const q = this.quoteKg(kg, launcherId);
+    if (!this.wallet.canSpend(q.credits)) throw new Error(`Faltan ${Math.ceil(q.credits - this.wallet.balance).toLocaleString("es-ES")} créditos`);
+    this.wallet.spend(q.credits, `Pedido al Santuario: ${label}`);
+    const delivery = this.deliveries.send("santuario", label, {}, q.gameHours);
+    this.events.push({ type: "pedido", delivery, credits: q.credits });
+    return delivery;
+  }
+
   // --- Own sources -----------------------------------------------------------
 
   /** Bodies the tug and the mass driver can work on: every catalogued small body of the region. */

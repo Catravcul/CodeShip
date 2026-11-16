@@ -14,6 +14,12 @@ import { STARSHIP_SRC } from "./starship";
  * decks are stacked like a Starship standing on the Moon: up is the nose), x across, z across. The
  * lander's port is on the hull at deck 3 («popa» wall), the station's on the nose past the flight deck.
  */
+/** The sanctuary's rack hardware (modules/adoption/data/rack-habitats.ts). */
+const ADOPTION = {
+  aqh: "Aquatic Habitat (AQH) de JAXA en el Kibo: https://iss.jaxa.jp/en/kiboexp/pm/aqh",
+  rodent: "Rodent Habitat de la NASA en la ISS: https://spaceflight101.com/iss/?p=600",
+} as const;
+
 const ISS = {
   cbm: "Escotilla CBM de 1,27 m de lado, como entre los módulos de la ISS: https://en.wikipedia.org/wiki/Common_Berthing_Mechanism",
   crewQuarters: "Camarotes de la ISS (Harmony), unos 2,1 m³ cada uno, del tamaño de un bastidor: https://ntrs.nasa.gov/citations/20080013462",
@@ -122,7 +128,11 @@ export function starshipInteriorPlan(): StationInteriorPlan {
     // Deck 2: four crew quarters and the WHC.
     onWall("camarotes", "Camarotes (4)", 2, "babor", new Vec3(1.05, 2.0, 4.0), crew("camarotes"), "Cuatro camarotes de 2,1 m³ en fila, del tamaño de un bastidor, como los de Harmony: saco sujeto a la pared, luz, ventilador y portátil", ISS.crewQuarters),
     onWall("aseo", "Aseo (WHC)", 2, "estribor", rack().x, crew("aseo"), "Aseo con flujo de aire, como el WHC de la ISS: en 0 g el aire arrastra lo que en la Tierra cae", ISS.whc),
-    onWall("refugio", rackSpec("refugio").name, 2, "popa", rackSize("refugio", "popa"), { kind: "info" }, rackSpec("refugio").info, rackSpec("refugio").source),
+    onWall("refugio", rackSpec("refugio").name, 2, "popa", rackSize("refugio", "popa"), { kind: "info" }, rackSpec("refugio").info, rackSpec("refugio").source, -1.45),
+    // The species catalogue (docs/design/catalogo-especies.md, «Ranuras de rack»): its terminal, with the
+    // rodent habitat and the colonies' shelf beside it, and the aquatic habitat in a rack bay of deck 3.
+    onWall("catalogo", "Catálogo de especies", 2, "popa", new Vec3(0.5, 1.4, 0.3), { kind: "consola", id: "catalogo" }, "Terminal del catálogo de especies del Santuario: solo especies que han vivido en microgravedad, en hábitats que han volado", ADOPTION.rodent, 0.35),
+    onWall("habitat-acuatico", "Hábitat acuático", 3, "popa", new Vec3(1.0, 1.5, 0.5), { kind: "consola", id: "acuatico" }, "Como el Aquatic Habitat de JAXA en el Kibo: dos acuarios de 0,7 L en un circuito cerrado de 3,2 L, a 25–30 °C, con filtro de bacterias", ADOPTION.aqh, 1.45),
     // Deck 3: exercise (T2, ARED, CEVIS), the airlock and the lander's hatch.
     onWall("t2", "Cinta T2", 3, "suelo", new Vec3(1.0, 0.3, 1.9), crew("ejercicio"), "Cinta de correr con arnés de cintas elásticas que te sujetan contra ella", ISS.exercise),
     onWall("ared", "ARED (pesas)", 3, "babor", rack().x, crew("ejercicio"), "Pesas con cilindros de vacío: hasta 272 kg de carga sin gravedad", ISS.exercise),

@@ -19,9 +19,14 @@ const calm = () => {
 };
 
 describe("ring aquarium use cases (VID-11)", () => {
-  it("at first: feed the school and clean the glass; no friendship and no help yet", () => {
+  it("an empty tank (a new game, VID-30) asks for nothing but its glass and water", () => {
+    const ids = new AquariumOps(new RingAquarium({ fish: 0, snails: 0 })).chores().map((c) => c.id);
+    expect(ids).toEqual(["acuario-cristal"]);
+  });
+
+  it("at first: feed the school and clean the glass; befriending the snails is offered, no help yet", () => {
     const ids = new AquariumOps().chores().map((c) => c.id);
-    expect(ids).toEqual(["acuario-comer", "acuario-cristal"]);
+    expect(ids).toEqual(["acuario-comer", "acuario-cristal", "acuario-amistad-caracoles"]);
   });
 
   it("every challenge has its right answer among the options, and options are distinct", () => {
@@ -54,10 +59,12 @@ describe("ring aquarium use cases (VID-11)", () => {
     solve(ops, "acuario-comer");
     solve(ops, "acuario-amistad");
     expect(ops.tank.friends).toBe(true);
-    expect(ops.drainEvents()).toContainEqual({ type: "amigos" });
+    expect(ops.drainEvents()).toContainEqual({ type: "amigos", who: "banco" });
     expect(c.get()).toBeLessThan(0.5);
     const ids = ops.chores().map((x) => x.id);
-    expect(ids).toContain("acuario-ayuda-caracoles-limpian");
+    // The snails have their own friendship (another mind program) before they help.
+    expect(ids).not.toContain("acuario-ayuda-caracoles-limpian");
+    expect(ids).toContain("acuario-amistad-caracoles");
     expect(ids).toContain("acuario-ayuda-medakas-avisan");
     expect(ids).not.toContain("acuario-amistad");
     const before = c.get();
@@ -69,6 +76,8 @@ describe("ring aquarium use cases (VID-11)", () => {
     const ops = new AquariumOps();
     solve(ops, "acuario-comer");
     solve(ops, "acuario-amistad");
+    solve(ops, "acuario-amistad-caracoles");
+    expect(ops.drainEvents()).toContainEqual({ type: "amigos", who: "caracoles" });
     const algae = ops.tank.algae;
     solve(ops, "acuario-ayuda-caracoles-limpian");
     expect(ops.tank.algae).toBeLessThan(algae);

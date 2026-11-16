@@ -47,6 +47,7 @@ Juegan la nave de anillos; se omiten salvo con `EXPERIENCIA_FICCION=1`, que los 
 - PX-16: la nodriza al dique, desde el anillo.
 - PX-23: yoga en el anillo.
 - PX-25: foco del reto (abre los retos del anillo, el huerto y el acuario).
+- PX-27: catálogo de especies jugado en el anillo (en la Starship lo juega PX-28).
 - PX-20: animaciones de las tareas del anillo.
 
 El recorrido real que los sustituye en la nave es **PX-28** (`starship`), en

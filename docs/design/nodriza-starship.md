@@ -61,6 +61,11 @@ escotilla de 1,27 m (la CBM de la ISS) en el centro. Con la cubierta de vuelo de
 | 2 · camarotes y aseo | cuatro camarotes de 2,1 m³ en fila (como los de Harmony), el aseo con flujo de aire (WHC), el refugio de agua contra tormentas solares; bastidor WRS | Harmony; WHC de Tranquility |
 | 3 · ejercicio y esclusa | cinta T2 en el suelo, ARED en una pared, bicicleta CEVIS en la otra, la esclusa (información: las salidas están pendientes), la escotilla del módulo de aterrizaje; bastidores AR e incendios, almacén | ejercicio de la ISS |
 
+El **catálogo de especies** (rama `catalogo-especies`, [catalogo-especies.md](catalogo-especies.md)) tiene sus ranuras
+de rack en la Starship: el terminal, con el hábitat de roedores y el estante de las colonias, en la pared de popa de
+la cubierta 2, y el **hábitat acuático** (como el AQH de JAXA) en un hueco de bastidor de la pared de popa de la
+cubierta 3, que ofrece cuidar lo que se adopta. `StarshipInterior.rack` hace aquí lo que `RING_RACK_HOST` en el anillo.
+
 Los bastidores de soporte vital son los de la rama `eclss-real` (`ECLSS_RACKS`, `eclssRackModel`), montados en
 su pared mirando al pasillo y animados cada fotograma.
 

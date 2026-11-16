@@ -10,6 +10,13 @@ import { FACE_NORMAL, StationInterior, type CrewArea, type Fixture } from "@modu
 import { presentInteriorPlan } from "@modules/station/domain/presentation";
 import type { PortUser } from "@modules/station/domain/structure";
 import { WORKOUTS } from "@modules/wellness/data/exercise";
+import { AquariumOps, isAquariumChore } from "@modules/sanctuary/application/aquarium-ops";
+import { RingAquarium } from "@modules/sanctuary/domain/aquarium";
+import { AquariumModel } from "./adapters/three/interior/aquarium-model";
+import { CatalogCorner } from "./adapters/three/interior/catalog-corner";
+import type { RackSlotId } from "./adapters/three/interior/rack-slots";
+import type { SanctuaryChores } from "./interior";
+import { aquariumEventText } from "./ui/aquarium-text";
 import { YOGA_SEQUENCES } from "@modules/wellness/data/yoga";
 import { eclssRackModel, mountOnWall, type EclssRackModel } from "./adapters/three/eclss-racks";
 import { StationInteriorMode, type StationAction } from "./station-interior";
@@ -26,6 +33,10 @@ const AREA_NAME: Readonly<Record<CrewArea, string>> = {
   esterilla: "Esterilla (cubierta 1)",
 };
 const MAX_ON_CARD = 3;
+/** The fixtures that host the sanctuary's rack slots (data/starship-interior.ts). */
+const RACK_FIXTURE: Readonly<Record<RackSlotId, string>> = { "rack-catalogo": "catalogo", "rack-acuatico": "habitat-acuatico" };
+/** The aquatic habitat is a rack bay (JAXA AQH), not the ring's 1,6 m tank: its model drawn at this fraction. */
+const AQH_MODEL_SCALE = 0.6;
 
 const choreText = (c: Chore): SessionText => ({
   title: c.title,
@@ -74,6 +85,19 @@ export class StarshipInterior {
   openMissions?: () => void;
   openAllTasks?: () => void;
   private readonly racks: EclssRackModel[] = [];
+  /** The aquatic habitat (species catalogue): its use cases and its 3D tank, in a rack bay of deck 3. */
+  readonly aquarium: AquariumOps;
+  readonly tank: AquariumModel;
+  /** The catalogue terminal with the rodent habitat and the colonies' shelf, on deck 2. */
+  readonly catalogCorner: CatalogCorner;
+  /** Where the sanctuary's rack hardware goes here (the ring's `RING_RACK_HOST` counterpart). */
+  readonly rack: { slot(id: RackSlotId): THREE.Vector3; station(id: RackSlotId): string };
+  /** The colonies adopted from the catalogue: their chores (set by sanctuary-life.ts). */
+  sanctuary?: SanctuaryChores;
+  openCatalog?: () => void;
+  /** Colours of adopted animals (sanctuary-life.ts); no animal walks in 0 g here. */
+  readonly animalColor = new Map<string, number>();
+  private readonly viewer = new THREE.Vector3();
 
   constructor(
     root: HTMLElement,
@@ -120,6 +144,27 @@ export class StarshipInterior {
       this.mode.scene.add(mountOnWall(m, new THREE.Vector3(f.at.x, f.at.y, f.at.z), new THREE.Vector3(-n.x, -n.y, -n.z)));
       this.racks.push(m);
     }
+    // The species catalogue's rack slots: the hardware stands on the deck's floor against its wall, facing the aisle.
+    const scale = plan.scale ?? WORLD_SCALE;
+    const floorAt = (fixtureId: string) => {
+      const f = plan.fixtures.find((x) => x.id === fixtureId)!;
+      const v = plan.volumes.find((x) => x.id === f.volume)!;
+      const aisle = FACE_NORMAL[f.face];
+      return { f, point: new THREE.Vector3(f.at.x, v.centre.y - v.half.y, f.at.z), yaw: Math.atan2(-aisle.x, -aisle.z), aisle: new THREE.Vector3(-aisle.x, 0, -aisle.z) };
+    };
+    this.rack = { slot: (id) => floorAt(RACK_FIXTURE[id]).point, station: (id) => RACK_FIXTURE[id] };
+    this.aquarium = new AquariumOps(new RingAquarium({ fish: 0, snails: 0 }), d.habitat.crew);
+    const place = (root: THREE.Object3D, id: RackSlotId, k: number, standoff: number) => {
+      const at = floorAt(RACK_FIXTURE[id]);
+      root.position.copy(at.point).addScaledVector(at.aisle, standoff * scale);
+      root.rotation.y = at.yaw;
+      root.scale.setScalar(k * scale);
+      this.mode.scene.add(root);
+    };
+    this.tank = new AquariumModel(new THREE.Vector3());
+    place(this.tank.root, "rack-acuatico", AQH_MODEL_SCALE, 0.3);
+    this.catalogCorner = new CatalogCorner(new THREE.Vector3());
+    place(this.catalogCorner.root, "rack-catalogo", 1, 0.25);
   }
 
   get active(): boolean {
@@ -153,8 +198,9 @@ export class StarshipInterior {
     this.mode.sitLotus(false);
   }
   stopAuto(): void {}
-  say(text: string, seconds = 4): void {
-    this.mode.say(text, seconds);
+  /** A notice; sanctuary-life.ts passes the ring's level («alerta» / «jugador») instead of seconds. */
+  say(text: string, seconds: number | string = 4): void {
+    this.mode.say(text, typeof seconds === "number" ? seconds : seconds === "alerta" ? 6 : 4);
   }
   /** For the journey's ring legs (none here). */
   floorAt(): { x: number; z: number } {
@@ -169,29 +215,49 @@ export class StarshipInterior {
     const h = this.d.habitat;
     // Always weightless aboard: no rings (docs/pendientes.md).
     h.crewGravityG = 0;
-    if (!this.session) h.tick(days);
+    if (!this.session) {
+      h.tick(days);
+      this.aquarium.tick(days);
+    }
     h.drainEvents();
+    for (const e of this.aquarium.drainEvents()) if (this.active) this.say(aquariumEventText(e), e.type === "aviso" ? 6 : 4);
     for (const l of h.mailbox?.drainNew() ?? []) if (this.active) this.say(l.channel === "llamada" ? `Llamada de ${l.from}` : `Carta de ${l.from}: ${l.subject}`, 5);
     if (!this.active) return;
     this.mode.update(dt);
     for (const r of this.racks) r.tick(dt);
+    this.catalogCorner.update(dt);
+    this.viewer.copy(this.mode.camera.position);
+    this.tank.update(dt, this.aquarium.tank, this.viewer);
   }
 
   // --- Tasks ------------------------------------------------------------------
 
   /** The board's chores aboard, with the fixture where each is done. */
-  choreFacts(): { id: string; title: string; detail: string; category: "comida" | "salud"; station: string }[] {
-    return this.crew.chores().map((c) => {
+  choreFacts(): { id: string; title: string; detail: string; category: "comida" | "salud" | "animales"; station: string }[] {
+    const crew = this.crew.chores().map((c) => {
       const area = this.crew.areaOf(c);
-      return { id: c.id, title: c.title, detail: `${AREA_NAME[area]} · ${c.exercises.length} retos`, category: c.kind === "cocinar" ? "comida" : "salud", station: FIXTURE_OF[c.kind] ?? "cocina" };
+      return { id: c.id, title: c.title, detail: `${AREA_NAME[area]} · ${c.exercises.length} retos`, category: c.kind === "cocinar" ? ("comida" as const) : ("salud" as const), station: FIXTURE_OF[c.kind] ?? "cocina" };
     });
+    const animals = this.animalChores().map((c) => ({ id: c.id, title: c.title, detail: `${this.sanctuary?.owns(c) ? "Catálogo (cubierta 2)" : "Hábitat acuático (cubierta 3)"} · ${c.exercises.length} retos`, category: "animales" as const, station: this.animalFixture(c) }));
+    return [...crew, ...animals];
+  }
+
+  /** The aquatic habitat's chores and the adopted colonies'. */
+  private animalChores(): Chore[] {
+    return [...this.aquarium.chores(), ...(this.sanctuary?.chores() ?? [])];
+  }
+  private animalFixture(c: Chore): string {
+    return this.sanctuary?.owns(c) ? RACK_FIXTURE["rack-catalogo"] : RACK_FIXTURE["rack-acuatico"];
+  }
+  private findChore(id: string): Chore | undefined {
+    return this.crew.chore(id) ?? this.animalChores().find((c) => c.id === id);
   }
 
   /** «Ir» to a chore: hop to its machine and start it there. */
   doChore(id: string): boolean {
-    const c = this.crew.chore(id);
+    const c = this.findChore(id);
     if (!c) return false;
-    const at = FIXTURE_OF[c.kind] ?? "cocina";
+    const at = this.crew.chore(id) ? (FIXTURE_OF[c.kind] ?? "cocina") : this.animalFixture(c);
     if (!this.mode.goToFixture(at, () => this.startChore(id))) this.startChore(id);
     return true;
   }
@@ -203,6 +269,16 @@ export class StarshipInterior {
     if (a.kind === "consola") {
       if (a.id === "cubierta-vuelo") return [{ id: "subir", label: "Subir a la cubierta de vuelo", enabled: true }];
       if (a.id === "trabajo") return [{ id: "tareas", label: "Tareas", enabled: true }, { id: "misiones", label: "Registro de misiones", enabled: true }];
+      const animal = (pick: (c: Chore) => boolean) =>
+        this.animalChores()
+          .filter(pick)
+          .slice(0, MAX_ON_CARD)
+          .map((c) => ({ id: `chore:${c.id}`, label: c.title, enabled: true }));
+      if (a.id === "catalogo") return [{ id: "catalogo", label: "Abrir el catálogo de especies", enabled: !!this.openCatalog }, ...animal((c) => !!this.sanctuary?.owns(c))];
+      if (a.id === "acuatico") {
+        const care = animal((c) => isAquariumChore(c));
+        return care.length ? care : [{ id: "nada", label: "Cuidar el hábitat", enabled: false, why: "Está vacío: adopta medakas o caracoles en el catálogo de especies (cubierta 2)" }];
+      }
       return [];
     }
     if (a.kind !== "tripulacion") return [];
@@ -236,6 +312,8 @@ export class StarshipInterior {
         return this.d.openTasks();
       case "misiones":
         return this.openMissions?.();
+      case "catalogo":
+        return this.openCatalog?.();
       case "ajustes":
         this.mode.sitLotus(true);
         return this.openSettings?.();
@@ -248,8 +326,8 @@ export class StarshipInterior {
 
   /** A chore in the shared challenge sheet. */
   startChore(id: string): void {
-    const chore = this.crew.chore(id);
-    const session = chore && this.crew.start(id);
+    const chore = this.findChore(id);
+    const session = chore && (this.crew.chore(id) ? this.crew.start(id) : isAquariumChore(chore) ? this.aquarium.start(chore) : this.sanctuary?.owns(chore) ? this.sanctuary.start(chore) : undefined);
     if (!chore || !session || this.d.duel.visible) return;
     const run = session.run;
     this.session = session;

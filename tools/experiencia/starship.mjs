@@ -4,9 +4,10 @@
 // navigation table: the burn-coast-brake hop of the vacuum Raptors with methane and oxygen. Nowhere a ring,
 // a farm, an animal or xenon. iPhone 13; captures in docs/screenshots/starship-*-movil.png.
 import { mkdirSync } from "node:fs";
+import { adoptarUna, llegan } from "./catalogo.mjs";
 
 /** Words that belong to the fictional ring ship (docs/pendientes.md): none may be on screen. */
-const FICTION = /\banillo\b|\bradio del anillo\b|\bhuerto\b|\bgallin|\bgata\b|\bperr[oa]\b|\bacuario\b|\bxenón\b|\bespina\b/i;
+const FICTION = /\banillo\b|\bradio del anillo\b|\bhuerto\b|\bgallin|\bgata\b|\bperr[oa]\b|\bxenón\b|\bespina\b/i;
 
 async function capture(j, label, title) {
   await j.page.waitForTimeout(700);
@@ -20,7 +21,7 @@ async function capture(j, label, title) {
 
 async function noFiction(j, where) {
   const text = await j.page.evaluate(() => document.body.innerText);
-  const hit = text.match(/.{0,30}(?:anillo|huerto|gallin|gata|perr[oa]|acuario|xenón|espina).{0,30}/i);
+  const hit = text.match(/.{0,30}(?:anillo|huerto|gallin|gata|perr[oa]|xenón|espina).{0,30}/i);
   j.check(`${where}: nada de la nave de ficción en pantalla (anillo, huerto, animales, xenón)`, !FICTION.test(text), hit?.[0]);
 }
 
@@ -79,7 +80,27 @@ export async function starship(j) {
   await capture(j, "ejercicio", "Cinta T2 con el reto abierto");
   await close(j);
 
-  // 4. Up to the flight deck through the hatch in deck 1's ceiling.
+  // 4. The species catalogue's rack slots: its terminal on deck 2, the aquatic habitat in a rack bay of deck 3.
+  await j.setup("salta hasta el terminal del catálogo de la cubierta 2 (los saltos por los asideros se juegan arriba)", () => window.codeship.starship.mode.placeAt("catalogo"));
+  await p.waitForTimeout(1000);
+  await j.tap('.sts-card:not(.hidden) [data-act="catalogo"]', "Abrir el catálogo de especies");
+  await p.waitForTimeout(500);
+  j.check("el terminal de la cubierta 2 abre el catálogo de especies", await p.locator(".species-catalog:not(.hidden)").count() > 0);
+  await j.tap('.species-catalog [data-area="habitat-acuatico"]', "Hábitat: Hábitat acuático");
+  const st = await adoptarUna(j, "medaka", "peces");
+  j.check("adoptar medakas para el hábitat acuático: vienen de camino", /En camino/.test(st), st);
+  await capture(j, "catalogo", "Catálogo de especies desde la Starship");
+  await j.tap(".species-catalog [data-close]", "Cerrar el catálogo");
+  await llegan(j);
+  const fish = await p.evaluate(() => ({ fish: window.codeship.starship.aquarium.tank.fishCount, drawn: window.codeship.starship.tank.fish.count }));
+  j.check("llegan las medakas al hábitat acuático de la Starship y se ven en 3D", fish.fish > 0 && fish.drawn === fish.fish, JSON.stringify(fish));
+  await j.setup("salta hasta el hábitat acuático de la cubierta 3", () => window.codeship.starship.mode.placeAt("habitat-acuatico"));
+  await p.waitForTimeout(1000);
+  const care = await j.texts(".sts-card:not(.hidden) button");
+  j.check("el hábitat acuático ofrece cuidar las medakas", care.some((t) => /medakas/i.test(t)), care.join(" / "));
+  await capture(j, "habitat-acuatico", "Hábitat acuático de la cubierta 3");
+
+  // 5. Up to the flight deck through the hatch in deck 1's ceiling.
   await j.setup("sube a la cubierta 1, junto a la escotilla de la cubierta de vuelo (los saltos por los asideros se juegan en «movimiento»)", () => window.codeship.starship.mode.placeAt("subir-cubierta-vuelo"));
   await p.waitForTimeout(1200);
   await capture(j, "escotilla-vuelo", "Escotilla de la cubierta de vuelo");
@@ -87,7 +108,7 @@ export async function starship(j) {
   await p.waitForTimeout(1500);
   j.check("arriba está el puente con sus consolas", await p.evaluate(() => window.codeship.bridge.active && !window.codeship.starship.active));
 
-  // 5. The propulsion page: vacuum Raptors and methane and oxygen; the power page has no reactor.
+  // 6. The propulsion page: vacuum Raptors and methane and oxygen; the power page has no reactor.
   await j.useMachine("bridge", "prop", "abrir", "Usar la consola: Pilotaje y propulsión");
   await p.waitForTimeout(1200);
   const prop = (await j.texts(".fd .fd-panel.max")).join(" ");
@@ -96,7 +117,7 @@ export async function starship(j) {
   await j.tap(".fd-panel.max .fd-back", "Volver al puente");
   await p.waitForTimeout(600);
 
-  // 6. Plan a trip at the navigation table: the challenge is the burn-coast-brake hop.
+  // 7. Plan a trip at the navigation table: the challenge is the burn-coast-brake hop.
   await j.useMachine("bridge", "nav", "abrir", "Usar la consola: Mesa de navegación");
   await p.waitForTimeout(1200);
   const id = await p.evaluate(() => window.codeship.nav.targets.find((t) => t.kind === "asteroid" && t.id !== window.codeship.region.target.data.id)?.id);

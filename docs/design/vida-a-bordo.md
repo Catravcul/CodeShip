@@ -439,7 +439,9 @@ bloque bien se ve en cuanto se toca.
 - **Estación** (`src/station-steps.ts`, `StationInteriorMode.stepVisual`): la cocina de la estación y las
   máquinas (refinar, fabricar, repostar, importar, el laboratorio de biología) se actúan en el interior de la
   estación, con Doménica sujeta por los estribos delante de su puesto (en 0 g «abajo» es la cubierta), la
-  cámara por encima de su hombro dentro del módulo. Las salas y máquinas están dibujadas a la escala de la
+  cámara a su lado en el pasillo, dentro del módulo y con línea limpia a sus dos manos (nunca dentro de una
+  escotilla, cuyo borde taparía lo que sostiene); trabaja ante lo que está dibujado (el frente del rack). Una
+  máquina sin rack donde montarla (sin el módulo que la lleva) no se representa. Las salas y máquinas están dibujadas a la escala de la
   estación (1,5, `MACHINE_SCALE`) y ella a tamaño real; las alturas del paso (manos, cuenco) cuentan desde
   sus pies. La cocina de la estación es compacta (horno, calentador y grifo en un mismo puesto, como en la
   ISS): todos sus pasos ocurren en ese puesto. Si la pantalla se abre desde fuera (el módulo acoplado), no hay

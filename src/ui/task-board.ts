@@ -18,6 +18,8 @@ export class TaskBoard {
   private tasks: Task[] = [];
   /** Takes her to the task's place (set by main.ts). */
   onGo?: (t: Task) => void;
+  /** Opens the species catalogue (set by main.ts): adopting is not a task, but it starts from here too. */
+  onCatalog?: () => void;
 
   constructor(
     root: HTMLElement,
@@ -31,6 +33,10 @@ export class TaskBoard {
     this.el.addEventListener("click", (e) => {
       const t = e.target as HTMLElement;
       if (t.closest("[data-close]")) return this.close();
+      if (t.closest("[data-catalog]")) {
+        this.close();
+        return this.onCatalog?.();
+      }
       const mode = t.closest<HTMLElement>("[data-travel]");
       if (mode) {
         settings.set("taskTravel", mode.dataset.travel as TaskTravel);
@@ -87,6 +93,6 @@ export class TaskBoard {
     const LABEL: Record<TaskTravel, string> = { viaje: "Viaje", teletransporte: "Teletransporte" };
     const now = settings.value.taskTravel;
     const travel = `<div class="tb-travel" role="radiogroup" aria-label="Ir a una tarea">${TASK_TRAVELS.map((m) => `<button role="radio" data-travel="${m}" aria-checked="${m === now}" class="${m === now ? "on" : ""}">${LABEL[m]}</button>`).join("")}</div><small class="tb-travel-help">${now === "viaje" ? "«Ir» hace el camino real: andando, en ascensor, saltando y en la nodriza (con «Parar»)" : "«Ir» aparece allí al momento"}</small>`;
-    this.el.innerHTML = `<div class="board-head"><b>Tareas</b><button data-close aria-label="Cerrar tareas">✕</button>${travel}${chips}</div>${body || "<p>Nada pendiente</p>"}`;
+    this.el.innerHTML = `<div class="board-head"><b>Tareas</b><button data-close aria-label="Cerrar tareas">✕</button>${travel}${this.onCatalog ? `<button class="tb-catalog" data-catalog aria-label="Catálogo de especies">Catálogo de especies</button>` : ""}${chips}</div>${body || "<p>Nada pendiente</p>"}`;
   }
 }

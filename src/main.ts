@@ -21,7 +21,6 @@ import { buildStarfield } from "./adapters/three/starfield";
 import { KeyboardPilot } from "./adapters/input/keyboard";
 import { Hud } from "./ui/hud";
 import { Habitat } from "@modules/habitat/application/habitat";
-import { Cat } from "@modules/pets/domain/cat";
 import {
   CAT_GRASS,
   CHILE_ESPANOLA,
@@ -37,8 +36,6 @@ import {
 } from "@modules/garden/data/species";
 import { MACHINES } from "@modules/life-support/data/machines";
 import { LAUNCH_STOCK } from "@modules/kitchen/data/stores";
-import { Hen } from "@modules/poultry/domain/hen";
-import { Dog } from "@modules/pets/domain/dog";
 import { Mailbox } from "@modules/story/domain/mailbox";
 import { STORY } from "@modules/story/data/nevaeh";
 import type { Plant } from "@modules/garden/domain/plant";
@@ -149,6 +146,7 @@ import { collectTasks, routeTo, type Task, type TaskPlace, type Vehicle } from "
 import type { CabinActionId, CabinState } from "@modules/lander-cabin/domain/cabin";
 import { needingAttention } from "@modules/ship-bay/application/bay";
 import { G } from "@core/units";
+import { wireSanctuaryLife } from "./sanctuary-life";
 
 // --- Domain setup -----------------------------------------------------------
 const d = BENNU.dimensionsM.value;
@@ -299,14 +297,8 @@ const garden: [string, Parameters<Habitat["plant"]>[1], number][] = [
 for (const [id, sp, days] of garden) growFor(habitat.plant(id, sp), days);
 // Stores the ship left with: potatoes, peanuts, flour, eggs, meat, animal food and culture medium.
 habitat.stockAll(LAUNCH_STOCK);
-habitat.adopt(new Cat("luna", "Luna", 4));
-// Nube came aboard at the last stop: the two are still being introduced.
-habitat.adopt(new Cat("nube", "Nube", 3.2))[0]!.startAt("contacto-visual");
-// Yema is broody: she can adopt a puppy or a kitten if Doménica programs her to.
-for (const [id, name] of [["clara", "Clara"], ["yema", "Yema"], ["pinta", "Pinta"]] as const) habitat.addHen(new Hen(id, name, id === "yema"));
-// Two chihuahuas: Coco, an adult, and Pepa, a puppy a few weeks old.
-habitat.addDog(new Dog("coco", "Coco", 2.4));
-habitat.addDog(new Dog("pepa", "Pepa", 0.9, "cachorro"));
+// No animals at the start (Berón, 2026-11-16): Doménica is alone and adopts them from the species catalogue
+// (sanctuary-life.ts, docs/design/catalogo-especies.md). There are no saved games to keep them for (CV-16).
 // The farm deck: eleven 15 m² beds of artificial soil, planted in turns so harvests keep coming,
 // and four fig trees in planters.
 const farm: [string, Parameters<Habitat["bed"]>[1], number][] = [
@@ -1049,6 +1041,11 @@ function allTasks(): Task[] {
   });
 }
 const taskBoard = new TaskBoard(root, allTasks);
+// The species catalogue: adopting animals for the ring and the station (docs/design/catalogo-especies.md).
+const sanctuary = wireSanctuaryLife({ root, interior, habitat, importOps, wallet, taskBoard, goChore: (id) => {
+  const t = allTasks().find((x) => x.chore === id);
+  if (t) goToTask(t);
+} });
 taskBoard.onGo = (t) => goToTask(t);
 interior.openAllTasks = () => taskBoard.open();
 
@@ -1400,6 +1397,8 @@ renderer.setAnimationLoop((now) => {
   bioOps.tick(stationHours);
   importOps.tick(stationHours);
   for (const e of importOps.drainEvents()) {
+    // Animals from the Sanctuary: they go to their area and say so themselves.
+    if (e.type === "llegada" && sanctuary.delivered(e.delivery)) continue;
     const text =
       e.type === "llegada"
         ? `Llega a la estación: ${e.delivery.label}`
@@ -1419,6 +1418,7 @@ renderer.setAnimationLoop((now) => {
   // A module berthed or equipment installed: the structure, its model and the walkable interior follow.
   if (stationOutfit.version !== stationGrownAt) regrowStation();
   interior.update(dt, world.lifeDays);
+  sanctuary.update(world.lifeDays);
   journey.update(dt);
   view.enabled = !cabin.active && !bridge.active && !interior.active && !stationInside.active && !deck.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active && !navMode.mapOpen && !missionLog.visible;
   navMode.update(dt, world.held);
@@ -1561,4 +1561,4 @@ for (const sel of [".nano-action", ".trip-chip", ".land-offer.lander", ".land-bo
   if (el) ctxDock.appendChild(el);
 }
 
-(window as unknown as { codeship: unknown }).codeship = { journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, landerBerth, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels, dryDock };
+(window as unknown as { codeship: unknown }).codeship = { sanctuary, journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, landerBerth, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels, dryDock };

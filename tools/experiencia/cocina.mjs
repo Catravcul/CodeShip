@@ -149,15 +149,10 @@ export async function cocina(j) {
   await j.tap('.duel [data-act="close"]', "Cerrar");
   await p.waitForTimeout(400);
   await p.evaluate(() => localStorage.removeItem("codeship.retos-ordenar"));
-  await j.tap(".tasks-btn", "Tareas");
-  await p.waitForTimeout(400);
-  await j.tap('.task-board .tb-task:has-text("Programar la puerta del gallinero") .tb-go', "Ir: Programar la puerta del gallinero");
-  await j.waitDuel(120000);
-  await j.answer(() => window.codeship.interior.session?.run.current);
-  j.check("gallinero: el programa bien enviado se ve («programar», pantalla holográfica)", await seesStep(j, "programar"), await stepTag(j));
-  await j.shot("gallinero");
-  await j.tap('.duel [data-act="close"]', "Cerrar");
-  await p.waitForTimeout(400);
+  // A new game has no hens, and hens are «pendiente» in the species catalogue (adult hens never flew:
+  // docs/design/catalogo-especies.md), so there is no coop door to program.
+  const coop = await p.evaluate(() => window.codeship.interior.choreFacts().some((f) => f.title === "Programar la puerta del gallinero"));
+  j.check("sin gallinas a bordo no hay puerta del gallinero que programar", !coop);
 
   // HUD view, a recipe lost on purpose: three different wrong answers.
   await j.tap(".tasks-btn", "Tareas");

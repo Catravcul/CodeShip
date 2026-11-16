@@ -54,8 +54,11 @@ export const AQUARIUM_TUNING = {
 export type AquariumHelper = "caracoles-limpian" | "medakas-avisan";
 export const AQUARIUM_HELPERS: readonly AquariumHelper[] = ["caracoles-limpian", "medakas-avisan"];
 
+/** Who in the tank: the fish school or the snails (each has its own friendship). */
+export type AquariumGroup = "banco" | "caracoles";
+
 export type AquariumEvent =
-  | { readonly type: "amigos" }
+  | { readonly type: "amigos"; readonly who?: AquariumGroup }
   | { readonly type: "ayuda"; readonly helper: AquariumHelper }
   | { readonly type: "ayuda-terminada"; readonly helper: AquariumHelper }
   /** The medaka gather at the front glass and the surface: something in the water is off. */
@@ -74,14 +77,24 @@ export interface AquariumInit {
   readonly hunger?: number;
   readonly hornwortG?: number;
   readonly fishHealth?: number;
+  /**
+   * Fish and snails in the tank (default: the tuned school and dozen snails). A new game starts with an empty
+   * tank (Berón, 2026-11-16: «al principio es Doménica sola»): only hornwort and the cycled biofilter; the
+   * animals come through the species catalogue (modules/adoption).
+   */
+  readonly fish?: number;
+  readonly snails?: number;
 }
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
 export class RingAquarium {
   readonly volumeL = AQUARIUM_TUNING.volumeL;
-  readonly fishCount = AQUARIUM_TUNING.fishCount;
-  readonly snailCount = AQUARIUM_TUNING.snailCount;
+  private _fish: number;
+  private _snails: number;
+  /** What the player calls the school, with its article («las medakas», «los peces»): the first fish that came. */
+  private _fishName = "las medakas";
+  private _snailBond = 0;
   private _nitrate: number;
   private _ammonia: number;
   private _algae: number;
@@ -99,6 +112,50 @@ export class RingAquarium {
     this._hunger = init.hunger ?? 0.6;
     this._health = init.fishHealth ?? 1;
     this.hornwortG = init.hornwortG ?? AQUARIUM_TUNING.hornwortG;
+    this._fish = init.fish ?? AQUARIUM_TUNING.fishCount;
+    this._snails = init.snails ?? AQUARIUM_TUNING.snailCount;
+  }
+
+  get fishCount(): number {
+    return this._fish;
+  }
+  get snailCount(): number {
+    return this._snails;
+  }
+  /** «las medakas», «los peces cebra», or «los peces» when two kinds share the tank. */
+  get fishName(): string {
+    return this._fishName;
+  }
+  /** The school's name without its article («medakas»). */
+  get fishBare(): string {
+    return this._fishName.replace(/^(las|los) /, "");
+  }
+  /** Feminine plural (las medakas): «amigas» rather than «amigos». */
+  get fishFeminine(): boolean {
+    return this._fishName.startsWith("las ");
+  }
+
+  /**
+   * Animals arrive (adopted from the catalogue): `name` is the plural the player reads. Fish that arrive come
+   * hungry from the trip; the first ones name the school.
+   */
+  stock(group: AquariumGroup, n: number, name?: string): void {
+    if (n <= 0) return;
+    if (group === "banco") {
+      if (this._fish === 0) {
+        this._fishName = name ?? this._fishName;
+        this._hunger = Math.max(this._hunger, 0.6);
+      } else if (name && name !== this._fishName) this._fishName = "los peces";
+      this._fish += n;
+    } else this._snails += n;
+  }
+
+  /** Doménica ↔ the snails, 0..1: their own friendship (a mind program), apart from the school's. */
+  get snailFriends(): boolean {
+    return this._snailBond >= FAMILY_TUNING.familyAt;
+  }
+  get canBefriendSnails(): boolean {
+    return this._snails > 0 && !this.snailFriends;
   }
 
   get nitrateMgL(): number {
@@ -126,20 +183,20 @@ export class RingAquarium {
   }
   /** They have met her calmly at least once and are not friends yet. */
   get canBefriend(): boolean {
-    return this._bond > 0 && !this.friends;
+    return this._fish > 0 && this._bond > 0 && !this.friends;
   }
   helping(h: AquariumHelper): boolean {
     return (this._help.get(h) ?? 0) > 0;
   }
   get calmPerDay(): number {
-    return this.friends ? AQUARIUM_TUNING.friendsCalmPerDay : 0;
+    return this.friends || this.snailFriends ? AQUARIUM_TUNING.friendsCalmPerDay : 0;
   }
 
   get needs(): AquariumNeeds {
     const t = AQUARIUM_TUNING;
     const limit = this.helping("medakas-avisan") ? t.nitrateWarnMgL : t.nitrateChangeMgL;
     return {
-      feed: this._hunger >= 0.5,
+      feed: this._fish > 0 && this._hunger >= 0.5,
       cleanGlass: this._algae >= 0.4 && !this.helping("caracoles-limpian"),
       changeWater: this._nitrate >= limit || this._ammonia >= t.ammoniaHarmMgL,
     };
@@ -157,9 +214,10 @@ export class RingAquarium {
     const uptake = this._nitrate * t.hornwortUptakePerDayPer100G * (this.hornwortG / 100) * days;
     this._nitrate = Math.max(0, this._nitrate + nitrified * t.nitratePerAmmonia - uptake);
     // Algae under the LED day, faster with nitrate; snails graze, much more when asked.
-    const graze = t.snailGrazePerDay + (this.helping("caracoles-limpian") ? t.snailHelpGrazePerDay : 0);
+    // Grazing scales with the snails there are (the tuned dozen scrape `snailGrazePerDay`).
+    const graze = (t.snailGrazePerDay * Math.min(this._snails, t.snailCount)) / t.snailCount + (this.helping("caracoles-limpian") ? t.snailHelpGrazePerDay : 0);
     this._algae = clamp01(this._algae + (t.algaePerDay * (0.5 + this._nitrate / 40) - graze) * days);
-    this._hunger = clamp01(this._hunger + t.hungerPerDay * days);
+    if (this._fish > 0) this._hunger = clamp01(this._hunger + t.hungerPerDay * days);
     const stressed = this._hunger > 0.9 || this._nitrate > t.nitrateHarmMgL || this._ammonia > t.ammoniaHarmMgL;
     this._health = clamp01(this._health + (stressed ? -t.healthLossPerDay : t.healthGainPerDay) * days);
     for (const [h, left] of this._help) {
@@ -211,16 +269,22 @@ export class RingAquarium {
     if (f > 0) this.meet();
   }
 
-  /** The «make friends» program was written into the school's mind. */
-  befriend(): AquariumEvent[] {
+  /** The «make friends» program was written into the school's mind (or the snails'). */
+  befriend(who: AquariumGroup = "banco"): AquariumEvent[] {
+    if (who === "caracoles") {
+      if (this.snailFriends || this._snails === 0) return [];
+      this._snailBond = Math.max(FAMILY_TUNING.familyAt, clamp01(this._snailBond + 0.6));
+      return [{ type: "amigos", who }];
+    }
     if (this.friends) return [];
     this._bond = Math.max(FAMILY_TUNING.familyAt, clamp01(this._bond + 0.6));
-    return [{ type: "amigos" }];
+    return [{ type: "amigos", who }];
   }
 
   /** A help program was written: the snails or the fish do a task for a while. Only friends help. */
   ask(h: AquariumHelper): AquariumEvent[] {
-    if (!this.friends) throw new Error("Solo ayudan los amigos: primero haz amistad con ellos");
+    const friends = h === "caracoles-limpian" ? this.snailFriends : this.friends;
+    if (!friends) throw new Error("Solo ayudan los amigos: primero haz amistad con ellos");
     this._help.set(h, AQUARIUM_TUNING.helpDays);
     if (h === "caracoles-limpian") this._algae = Math.max(0, this._algae - AQUARIUM_TUNING.snailHelpStart);
     return [{ type: "ayuda", helper: h }, ...this.signals()];

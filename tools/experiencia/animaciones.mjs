@@ -11,6 +11,7 @@
 import { mkdirSync, writeFileSync, rmSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { placeAbove } from "./aterrizaje.mjs";
+import { adoptar, llegan } from "./catalogo.mjs";
 
 const SHOTS = join("docs", "screenshots", "anim");
 const DOC = join("docs", "qa", "animaciones.md");
@@ -376,7 +377,7 @@ const chooseChores = () => {
     }
   }
   // Station by station along the ring, so she walks little between chores.
-  const ORDER = ["cocina", "procesado", "huerto", "biorreactor", "enfermeria", "panel", "navegacion", "ejercicio", "camarote", "yoga", "gatos", "perros", "gallinero", "terreno", "acuario"];
+  const ORDER = ["cocina", "procesado", "huerto", "biorreactor", "enfermeria", "panel", "navegacion", "ejercicio", "camarote", "yoga", "gatos", "perros", "gallinero", "terreno", "acuario", "catalogo"];
   return out.sort((a, b) => ORDER.indexOf(a.station) - ORDER.indexOf(b.station));
 };
 
@@ -399,6 +400,10 @@ export async function animaciones(j) {
     c.settings.set("taskTravel", "teletransporte");
     localStorage.setItem("codeship.retos-ordenar", "pasos");
   });
+  // A new game has no animals (docs/design/catalogo-especies.md): every adoptable kind that has chores (the
+  // fish and snails of the aquatic habitat, the mice of the rodent habitat), from the catalogue.
+  await adoptar(j, [["medaka", "peces"], ["caracol", "caracoles"], ["raton", "mascotas"]]);
+  await llegan(j);
   // Every larder item of the data (src/modules/kitchen/data/items.ts), so every recipe and process can be made.
   const items = [...readFileSync(join("src", "modules", "kitchen", "data", "items.ts"), "utf8").matchAll(/id: "([a-z0-9-]+)"/g)].map((m) => m[1]);
   await j.setup("despensa llena para cada receta y proceso; una sacudida rompe máquinas, vuelca macetas, hiere y contamina; pasa medio día (hambre y sed)", (ids) => {

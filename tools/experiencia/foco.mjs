@@ -186,8 +186,13 @@ export async function foco(j) {
     await close(j);
   });
   await part(j, "mente por la sonda", async () => {
-    await j.setup("la sonda se posa sobre Bennu", placeAbove, ["sonda", 1, 0.2]);
-    await p.waitForFunction(() => !!window.codeship.probe.parkedOn, null, { timeout: 60000 });
+    // Landing the probe takes minutes with SwiftShader (PX-07 plays it): here it is set down on Bennu.
+    await j.setup("la sonda queda posada sobre Bennu", () => {
+      const pr = window.codeship.probe;
+      pr._status = "posada";
+      if (!pr.flight.target) pr.flight.setTarget(window.codeship.region.target);
+    });
+    await p.waitForFunction(() => !!window.codeship.probe.parkedOn, null, { timeout: 10000 });
     await j.tap(".pr-exit", "Volver al puente");
     await p.waitForTimeout(600);
     await j.useMachine("bridge", "mente", "mente", "Entrar en su mente por la sonda");

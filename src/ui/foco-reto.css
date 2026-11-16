@@ -3,6 +3,6 @@
    lista: toda interfaz cuelga de #app (o de body) y se oculta, salvo el lienzo de la escena, la hoja (.duel)
    y lo marcado con data-duel-keep. Una interfaz nueva queda oculta sin tocar esta regla; para dejar algo a
    la vista hay que marcarlo a propósito y justificarlo en el documento. La comprueba j.onlyChallengeVisible
-   (tools/experiencia/lib.mjs) cada vez que un recorrido abre un reto, y PX-24 en todos los sitios. */
+   (tools/experiencia/lib.mjs) cada vez que un recorrido abre un reto, y PX-25 en todos los sitios. */
 body.in-duel > :not(#app, script, style, [data-duel-keep]),
 body.in-duel #app > :not(canvas, .duel, [data-duel-keep]) { display: none !important; }

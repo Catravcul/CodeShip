@@ -164,7 +164,7 @@ Apuntados por la suite (`j.problem`) o vistos en sus capturas:
 
 ## 7. Foco del reto
 
-**Encargo** (Berón, 2026-11-16): «Habíamos quedado en que al entrar en un reto se ocultarían botones de otras interfaces y otros elementos (¿quizás interfaces enteras?), pero parece que no se está cumpliendo». La regla existía (H26) como una lista de selectores en `acciones.css` y en otras hojas; desde entonces llegaron muchas interfaces que no estaban en la lista. La auditoría de PX-24 (H47–H62 en [hallazgos.md](../qa/hallazgos.md)) encontró algo de más en pantalla en casi todos los sitios donde se abre un reto.
+**Encargo** (Berón, 2026-11-16): «Habíamos quedado en que al entrar en un reto se ocultarían botones de otras interfaces y otros elementos (¿quizás interfaces enteras?), pero parece que no se está cumpliendo». La regla existía (H26) como una lista de selectores en `acciones.css` y en otras hojas; desde entonces llegaron muchas interfaces que no estaban en la lista. La auditoría de PX-25 (H47–H56 en [hallazgos.md](../qa/hallazgos.md)) encontró interfaces de más en la mesa de navegación del puente (la consola entera), la cabina del módulo (retícula), las pantallas de la estación, la bahía de la nave, el aviso del teletransporte y los avisos de misión, y una docena de raíces que ninguna regla cubría. En el anillo, el acuario, el yoga, la cocina y las máquinas de la estación, el traje y la mente desde el habitáculo la lista vieja sí bastaba.
 
 **La regla.** Mientras hay un reto abierto (`body.in-duel`), en pantalla solo quedan:
 
@@ -190,4 +190,11 @@ No es una lista: una interfaz nueva queda oculta durante los retos sin que nadie
 - **Ver trayecto** se dibuja dentro del lienzo y a pantalla completa, así que la regla de capas no lo alcanza: mientras hay un reto se queda abierto pero sin dibujar (`TripPreview.held`), y vuelve al cerrarlo. El invariante lo comprueba aparte.
 - **Avisos que llegan durante un reto** (misión, radio, entorno): no se ven encima de la hoja. El aviso de misión, que antes bajaba al pie de la pantalla, espera debajo y cuenta sus 7 s cuando el reto se cierra (`mission-log.ts`), para no perderse.
 
-**Cómo se comprueba.** `j.onlyChallengeVisible()` (`tools/experiencia/lib.mjs`) recorre todos los elementos fuera de la hoja, la escena y lo marcado, y falla si alguno pinta algo en la pantalla (texto, fondo, borde, imagen o control) o si un toque en una rejilla de 12 px cae en él. `j.waitDuel()` lo llama cada vez que un recorrido abre un reto, así que lo cumplen todos los recorridos; PX-24 (`foco`) abre cada clase de reto en cada sitio, con toques, y guarda una captura de cada uno en `docs/screenshots/foco-<sitio>-movil.png`.
+**Antes y después** (PX-25, iPhone 13; hallazgos H47–H56):
+
+| | Mesa de navegación (viaje) | Importar (estación) | Bahía (cambiar pieza) | Aviso de misión durante una receta |
+| --- | --- | --- | --- | --- |
+| Antes | ![](../screenshots/foco-antes-puente-viaje-movil.png) | ![](../screenshots/foco-antes-estacion-importar-movil.png) | ![](../screenshots/foco-antes-hangar-pieza-movil.png) | ![](../screenshots/foco-antes-anillo-avisos-movil.png) |
+| Después | ![](../screenshots/foco-puente-viaje-movil.png) | ![](../screenshots/foco-estacion-importar-movil.png) | ![](../screenshots/foco-hangar-pieza-movil.png) | ![](../screenshots/foco-anillo-avisos-movil.png) |
+
+**Cómo se comprueba.** `j.onlyChallengeVisible()` (`tools/experiencia/lib.mjs`) recorre todos los elementos fuera de la hoja, la escena y lo marcado, y falla si alguno pinta algo en la pantalla (texto, fondo, borde, imagen o control) o si un toque en una rejilla de 12 px cae en él. `j.waitDuel()` lo llama cada vez que un recorrido abre un reto, así que lo cumplen todos los recorridos; PX-25 (`foco`) abre cada clase de reto en cada sitio, con toques, y guarda una captura de cada uno en `docs/screenshots/foco-<sitio>-movil.png`.

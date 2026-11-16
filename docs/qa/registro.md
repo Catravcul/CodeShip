@@ -166,6 +166,7 @@ caso y las anteriores quedan en sus run logs.
 | PX-16 | Probado (en vivo) | 2026-11-16 | `4968040` | [run](runs/2026-11-16-1519-PX-14-PX-16.md): 25 OK |
 | PX-23 | Probado (en vivo) | 2026-11-16 | `e3b90f0` | [run](runs/2026-11-16-1521-PX-01-PX-02-PX-23.md): 62 OK |
 | PX-20 | FAIL | 2026-11-16 | `c033d52` | [run](runs/2026-11-16-1702-PX-20.md): 256 OK, 7 FALLA |
+| PX-25 | Probado (en vivo) | 2026-11-16 | `cdbe43a` | [run](runs/2026-11-16-1821-PX-25.md): 40 OK |
 
 ## Última ejecución por run log
 
@@ -173,6 +174,7 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-16 18:21 | PX-25 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-1821-PX-25.md) |
 | 2026-11-16 17:02 | PX-20 | Experiencia (Playwright) | 0/1 recorridos bien | [run](runs/2026-11-16-1702-PX-20.md) |
 | 2026-11-16 15:36 | PX-02, PX-10, PX-14 | Experiencia (Playwright) | 3/3 recorridos bien | [run](runs/2026-11-16-1536-PX-02-PX-10-PX-14.md) |
 | 2026-11-16 15:21 | PX-01, PX-02, PX-23 | Experiencia (Playwright) | 2/3 recorridos bien | [run](runs/2026-11-16-1521-PX-01-PX-02-PX-23.md) |

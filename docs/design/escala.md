@@ -86,7 +86,9 @@ el encuadre de cada paso de una tarea y el ascensor del radio. En vez de reescri
   cuerpo. El techo y las paredes sí suben (2,6 → 3,9 m), igual que en el puente.
 - Lo que tiene que quedar a tamaño real (Doménica, los gatos, los perros, las gallinas, las plantas y la figura del
   yoga) lleva la escala inversa (1/1,5; 1; 1/1,5). Como solo giran sobre la vertical, se dibujan a tamaño real
-  donde están.
+  donde están. El esqueleto del yoga (19 articulaciones, IK de manos y pies) calcula en el espacio de la figura,
+  así que la escala inversa no lo toca: los apoyos en la esterilla y las palmas juntas salen igual. La cámara de
+  perfil de la esterilla se pone a 3,3 m dibujados (3,3/1,5 m reales) para ver el cuerpo entero como antes.
 - Las pantallas de las máquinas suben 1,5 en alto (en ancho ya las agranda la planta). Los carteles crecen 1,5,
   como los del puente. El alcance de las luces se multiplica por 1,5 (`scaleLights`).
 - Fuera del anillo (radio, cubo y espina) la cámara dibuja tal cual. Esas zonas están en las mismas coordenadas

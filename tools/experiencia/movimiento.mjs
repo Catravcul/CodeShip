@@ -216,6 +216,8 @@ export async function movimiento(j) {
       i.walkTo = null;
       i.pos.set(stand.x, 0, stand.z);
     }, id);
+    // Under load a frame can take a while: wait for the station's button (at most 5 s), then a beat for any other.
+    await p.waitForFunction(() => [...document.querySelectorAll(".interior-ui .station-btn")].some((b) => !b.classList.contains("hidden")), null, { timeout: 5000 }).catch(() => {});
     await p.waitForTimeout(500);
     const r = await p.evaluate(() => {
       const vis = [...document.querySelectorAll(".interior-ui .station-btn, .interior-ui .mat-btn")].filter((b) => !b.classList.contains("hidden"));

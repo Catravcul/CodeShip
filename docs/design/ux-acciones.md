@@ -181,7 +181,7 @@ body.in-duel > :not(#app, script, style, [data-duel-keep]),
 body.in-duel #app > :not(canvas, .duel, [data-duel-keep]) { display: none !important; }
 ```
 
-No es una lista: una interfaz nueva queda oculta durante los retos sin que nadie se acuerde de añadirla. Para dejar algo a la vista hay que marcar su raíz con `data-duel-keep` y justificarlo aquí. Hoy solo lo lleva la superposición del paso (`plan-overlay.ts`). Las reglas viejas de `body.in-duel …` de cada hoja se quedan (no estorban), pero ya no hacen falta.
+No es una lista: una interfaz nueva queda oculta durante los retos sin que nadie se acuerde de añadirla. Para dejar algo a la vista hay que marcar su raíz con `data-duel-keep` y justificarlo aquí. Hoy lo llevan la superposición del paso (`plan-overlay.ts`) y, solo mientras dibuja el plan de un viaje, la capa del puente con el mapa de navegación (`nav-map.ts`): en la consola de navegación del anillo el mapa tapa la escena, así que el plan solo se ve en él; del puente queda solo el mapa (sin barra de estado ni ventana). Las reglas viejas de `body.in-duel …` de cada hoja se quedan (no estorban), pero ya no hacen falta.
 
 **Excepciones decididas.**
 

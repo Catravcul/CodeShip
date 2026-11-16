@@ -325,6 +325,7 @@ export class NavMap {
     // The plan first: showing it hides the map's header and card, which resizes the canvas.
     const plan = this.plan?.() ?? [];
     this.el.classList.toggle("planning", plan.length > 0);
+    keepDuringChallenge(this.el, this.embedded && plan.length > 0);
     const c = this.canvas;
     const w = c.clientWidth, h = c.clientHeight;
     if (w === 0 || h === 0) return;
@@ -702,6 +703,17 @@ function drawMark(g: CanvasRenderingContext2D, x: number, y: number, rad: number
 function missionHtml(m: MissionMark): string {
   const head = m.kind === "principal" ? `<b>◆ Misión de Nevaeh</b> · ${MARK_TEXT[m.state]}` : `<b>Misión secundaria</b> · ${m.state === "hecha" ? "subyugado" : "sin subyugar"}`;
   return `<div class="card-mission ${m.kind} ${m.state}">${head}${m.why ? `<p>${esc(m.why)}</p>` : ""}${m.reward ? `<small>Recompensa: ${esc(m.reward)}</small>` : ""}</div>`;
+}
+
+/**
+ * The challenge focus (foco-reto.css) hides every interface but the sheet and the scene. Over the ring's
+ * navigation console the map covers the scene, so while it shows the plan its layer stays (docs/design/navegacion.md).
+ */
+function keepDuringChallenge(el: HTMLElement, keep: boolean): void {
+  let top: HTMLElement = el;
+  while (top.parentElement && top.parentElement !== document.body && top.parentElement.id !== "app") top = top.parentElement;
+  top.toggleAttribute("data-duel-keep", keep);
+  top.classList.toggle("keeps-plan", keep);
 }
 
 function carrierLine(i: DestinationInfo): string {

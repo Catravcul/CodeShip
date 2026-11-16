@@ -40,3 +40,24 @@ describe("planContinuousBurn", () => {
     expect(continuousBurnDistance(p, p.totalS)).toBe(9000);
   });
 });
+
+describe("NAV-09 a chemical mothership's hop: burn to the cruise speed, coast, brake", () => {
+  it("caps the speed at the cruise: Δv 2·v, time 2·v/a + (d − v²/a)/v, and the distance runs continuously to the end", () => {
+    const a = 4.7;
+    const v = 500;
+    const d = 10_000_000;
+    const p = planContinuousBurn(d, a, v);
+    expect(p.peakMS).toBe(v);
+    expect(p.deltaVMS).toBe(2 * v);
+    expect(p.coastS).toBeCloseTo((d - (v * v) / a) / v, 6);
+    expect(p.totalS).toBeCloseTo((2 * v) / a + p.coastS!, 6);
+    expect(continuousBurnDistance(p, v / a)).toBeCloseTo((v * v) / (2 * a), 3);
+    expect(continuousBurnDistance(p, p.totalS / 2)).toBeCloseTo(d / 2, 3);
+    expect(continuousBurnDistance(p, p.totalS)).toBe(d);
+  });
+
+  it("a short hop never reaches the cruise and pushes all the way, like the electric ship", () => {
+    expect(planContinuousBurn(1000, 4.7, 500)).toEqual(planContinuousBurn(1000, 4.7));
+    expect(planContinuousBurn(1000, 4.7, 500).coastS).toBeUndefined();
+  });
+});

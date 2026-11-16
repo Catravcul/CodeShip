@@ -17,6 +17,7 @@ import { StationSession } from "./station-ops";
 export const REFUEL_TUNING = {
   probeKgPerHour: { value: 60, source: SRC.tianzhouRefuel, note: "Valor de juego: los 438 kg del par en ~7 h. Tianzhou 1 tardó unos cinco días en su primer trasvase en órbita" },
   xenonKgPerHour: { value: 2500, source: SRC.tianzhouRefuel, note: "Valor de juego: 150 t de xenón en 60 h" },
+  methaloxKgPerHour: { value: 25000, source: SRC.starshipHls, note: "Valor de juego: las 1500 t de la Starship en 60 h. El trasvase en órbita entre Starships está anunciado, no hecho" },
 } as const;
 
 const FUEL_SHARE = 1 / (1 + MMH_NTO_MIXTURE_RATIO);
@@ -89,8 +90,49 @@ export function shipRefuelTarget(ship: Ship, id: string, docked: () => boolean):
   };
 }
 
-/** The mothership as a refuelling target: its xenon. */
+const METHALOX_STEPS: Sourced<readonly string[]> = {
+  value: [
+    "conecta las líneas de oxígeno y de metano a la Starship",
+    "enfría las líneas: el metano hierve a {-162|-183|20} °C",
+    "asienta el propelente en el fondo de los tanques con un empujón",
+    "trasvasa el oxígeno y el metano por líneas separadas",
+    "busca fugas con el detector",
+    "cierra las válvulas y desconecta",
+  ],
+  source: SRC.starshipHls,
+  note: "Trasvase de propelente criogénico con empuje de asentamiento como el anunciado para la Starship HLS; ebullición del metano −161,5 °C (Wikipedia)",
+};
+
+/** Starship's two tanks: liquid oxygen and liquid methane, filled in their ratio. */
+function methaloxRefuelTarget(m: Mothership, docked: () => boolean): RefuelTarget {
+  const c = m.spec.chemical!;
+  const oxShare = c.oxygenKg.value / (c.oxygenKg.value + c.methaneKg.value);
+  return {
+    id: m.id,
+    get name() {
+      return m.spec.name;
+    },
+    docked,
+    lines: (): PropellantLine[] => {
+      const t = m.tanks!;
+      return [
+        { id: "oxigeno", label: "oxígeno líquido", capacityKg: c.oxygenKg.value, onBoardKg: t.oxygenKg, perKg: { oxigeno: 1 } },
+        { id: "metano", label: "metano líquido", capacityKg: c.methaneKg.value, onBoardKg: t.methaneKg, perKg: { metano: 1 } },
+      ];
+    },
+    // What goes in is the lesser of each line over its share, so the tanks keep their ratio.
+    load: (loads) => {
+      const kg = Math.min((loads.oxigeno ?? 0) / oxShare, (loads.metano ?? 0) / (1 - oxShare));
+      if (kg > 0) m.refuel(kg);
+    },
+    kgPerHour: REFUEL_TUNING.methaloxKgPerHour.value,
+    steps: METHALOX_STEPS,
+  };
+}
+
+/** The mothership as a refuelling target: its xenon, or Starship's oxygen and methane. */
 export function mothershipRefuelTarget(m: Mothership, docked: () => boolean): RefuelTarget {
+  if (m.spec.chemical) return methaloxRefuelTarget(m, docked);
   return {
     id: m.id,
     get name() {

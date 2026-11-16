@@ -15,6 +15,7 @@ import { ANIMAL_LESSONS } from "@modules/pets/data/family-lessons";
 import { YOGA_SEQUENCES } from "@modules/wellness/data/yoga";
 import { ShipBayScene, type BayView } from "./adapters/three/ship-bay-scene";
 import { MothershipModel } from "./adapters/three/mothership-model";
+import { StarshipModel } from "./adapters/three/starship-model";
 import type { Mothership, MothershipSpec } from "@modules/mothership/domain/mothership";
 import { ELECTRIC_THRUSTERS } from "@modules/mothership/data/thrusters";
 import { applyDriveRefit, driveOptions, driveRefitChore, type DriveOption } from "@modules/mothership/application/drive-refit";
@@ -97,7 +98,7 @@ export class ShipBay {
   /** Whether the mothership is berthed at the station: work on its systems needs it here. */
   docked: () => boolean = () => true;
   private readonly tabs: HTMLElement;
-  private mothershipModel?: MothershipModel;
+  private mothershipModel?: MothershipModel | StarshipModel;
   /** The live mothership: its thruster mounts appear in the Nodriza tab and can be refitted while docked. */
   nodriza?: Mothership;
   /** Called after a thruster refit of the mothership (to update its model in the flight scene). */
@@ -117,8 +118,10 @@ export class ShipBay {
     private readonly parts?: PartStore,
   ) {
     this.view = new ShipBayScene(ship.design);
-    const systems = [...habitat.machines.map((m) => ({ id: `maquina:${m.id}` as PartId, label: m.spec.name })), { id: "cubierta-cultivo" as PartId, label: "Cubierta de cultivo" }, { id: "despensa" as PartId, label: "Bodega y despensa" }];
-    if (mothership) this.view.addMothership((this.mothershipModel = new MothershipModel(mothership, systems)));
+    const farm = habitat.plants.length > 0 ? [{ id: "cubierta-cultivo" as PartId, label: "Cubierta de cultivo" }] : [];
+    const systems = [...habitat.machines.map((m) => ({ id: `maquina:${m.id}` as PartId, label: m.spec.name })), ...farm, { id: "despensa" as PartId, label: "Bodega y despensa" }];
+    // The ring ship's model, or Starship's (no ring: docs/design/nodriza-starship.md).
+    if (mothership) this.view.addMothership((this.mothershipModel = mothership.ring ? new MothershipModel(mothership, systems) : new StarshipModel(mothership, systems)));
     // Without a mothership the systems stay as beacons on the probe, as before.
     else this.view.model.setSystems(systems, true);
     this.ui = document.createElement("div");

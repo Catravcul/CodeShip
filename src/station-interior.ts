@@ -73,7 +73,7 @@ const ICON_OF = (f: Fixture, locked: boolean): string => {
   if (a.kind === "bahia" || a.kind === "bishop") return ICON.hangar;
   if (a.kind === "brazo") return ICON.eye;
   if (a.kind === "esclusa") return ICON.suit;
-  if (a.kind === "panel") return ICON.machine;
+  if (a.kind === "panel" || a.kind === "consola") return ICON.machine;
   return ICON.info;
 };
 
@@ -132,7 +132,13 @@ export class StationInteriorMode {
     root: HTMLElement,
     public interior: StationInterior,
     private readonly deps: StationInteriorDeps,
+    /**
+     * Another 0 g interior on the same engine (Starship's decks): its own class prefix (so the station's
+     * selectors keep finding one card), the name on the HUD and the line said on coming in.
+     */
+    private readonly look: { readonly prefix?: string; readonly place?: string; readonly entered?: (from: PortUser) => string } = {},
   ) {
+    const P = look.prefix ?? "sti";
     this.scene.background = new THREE.Color(0x05070c);
     this.rooms = buildStationRooms(interior.plan);
     this.scene.add(this.rooms.group);
@@ -143,22 +149,22 @@ export class StationInteriorMode {
     this.rig.add(this.avatar.root, this.suit.root);
     this.scene.add(this.rig);
     this.body = new FloatingBody(this.rig);
-    this.walker = new Walker(root, { move: "sti-move", look: "sti-look", moveLabel: "Mover" });
+    this.walker = new Walker(root, { move: `${P}-move`, look: `${P}-look`, moveLabel: "Mover" });
     this.walker.arrowsLook = false;
     this.ui = document.createElement("div");
-    this.ui.className = "room-ui sti-ui hidden";
-    this.ui.innerHTML = `<div class="cab-where sti-hud"></div><div class="cab-machine sti-card hidden" role="region" aria-label="Lo que tienes delante"></div><div class="cab-toast sti-toast"></div>`;
+    this.ui.className = `room-ui ${P}-ui hidden`;
+    this.ui.innerHTML = `<div class="cab-where ${P}-hud"></div><div class="cab-machine ${P}-card hidden" role="region" aria-label="Lo que tienes delante"></div><div class="cab-toast ${P}-toast"></div>`;
     root.appendChild(this.ui);
-    this.hud = this.ui.querySelector(".sti-hud")!;
-    this.card = this.ui.querySelector(".sti-card")!;
-    this.toast = this.ui.querySelector(".sti-toast")!;
+    this.hud = this.ui.querySelector(`.${P}-hud`)!;
+    this.card = this.ui.querySelector(`.${P}-card`)!;
+    this.toast = this.ui.querySelector(`.${P}-toast`)!;
     // The same root icons as the lander's cabin and the bridge: view and tasks pinned.
-    this.menu = new RootMenu(this.ui, "cab-menu sti-menu", "Más", ICON.root);
-    this.viewBtn = this.menu.add({ className: "sti-view", icon: ICON.eye, label: "Vista: 1ª persona", key: "V", pinned: true }, () => {
+    this.menu = new RootMenu(this.ui, `cab-menu ${P}-menu`, "Más", ICON.root);
+    this.viewBtn = this.menu.add({ className: `${P}-view`, icon: ICON.eye, label: "Vista: 1ª persona", key: "V", pinned: true }, () => {
       this.thirdPerson = !this.thirdPerson;
       this.syncView();
     });
-    this.menu.add({ className: "sti-tasks", icon: ICON.tasks, label: "Tareas", key: "T", pinned: true }, () => this.deps.openTasks());
+    this.menu.add({ className: `${P}-tasks`, icon: ICON.tasks, label: "Tareas", key: "T", pinned: true }, () => this.deps.openTasks());
     this.syncView();
     this.card.addEventListener("click", (e) => {
       const b = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-act]");
@@ -352,6 +358,7 @@ export class StationInteriorMode {
     this.yaw = Math.atan2(-e.facing.x, -e.facing.z);
     this.pitch = from === "sonda" ? 0.05 : 0;
     this.resume();
+    if (this.look.entered) return this.say(this.look.entered(from));
     this.say(from === "sonda" ? "Entras desde el módulo de aterrizaje por el suelo del Nodo 2. Aquí no hay gravedad: el techo es «arriba» en toda la estación" : "Entras desde la nodriza por proa del Nodo 2. Aquí no hay gravedad: el techo es «arriba»");
   }
 
@@ -452,6 +459,7 @@ export class StationInteriorMode {
       case "tripulacion":
       case "brazo":
       case "bishop":
+      case "consola":
         return this.deps.actions(f);
       case "info":
         return [];
@@ -461,7 +469,7 @@ export class StationInteriorMode {
   /** Do one of a fixture's actions. */
   run(f: Fixture, id: string): void {
     const a = f.action;
-    if (a.kind === "tripulacion" || a.kind === "brazo" || a.kind === "bishop") return this.deps.act(f, id);
+    if (a.kind === "tripulacion" || a.kind === "brazo" || a.kind === "bishop" || a.kind === "consola") return this.deps.act(f, id);
     if (id === "ventana") return this.deps.lookOut?.();
     this.use(f, true);
   }
@@ -478,7 +486,8 @@ export class StationInteriorMode {
     const locked = acts.length > 0 && acts.every((x) => !x.enabled);
     const main = acts.findIndex((x) => x.enabled);
     const kbd = settings.value.keyboardHelp;
-    const html = `<div class="cm-head sti-head"><span class="sti-icon">${ICON_OF(f, locked)}</span><div><b>${esc(f.label)}</b><small>${esc(f.info)}</small></div></div>${
+    const P = this.look.prefix ?? "sti";
+    const html = `<div class="cm-head ${P}-head"><span class="${P}-icon">${ICON_OF(f, locked)}</span><div><b>${esc(f.label)}</b><small>${esc(f.info)}</small></div></div>${
       acts.length
         ? `<div class="cm-acts">${acts.map((x, i) => `<button data-act="${x.id}" ${x.enabled ? "" : "disabled"} class="${i === main ? "primary" : ""}">${esc(x.label)}${i === main && kbd ? " <kbd>Intro</kbd>" : ""}</button>`).join("")}</div>`
         : ""
@@ -499,7 +508,7 @@ export class StationInteriorMode {
     }
     if (a.kind === "info") return this.say(`${f.label} (${this.interior.locationCode(f)}): ${f.info}`, 6);
     if (a.kind === "bahia") return this.deps.openBay();
-    if (a.kind === "tripulacion" || a.kind === "brazo" || a.kind === "bishop") {
+    if (a.kind === "tripulacion" || a.kind === "brazo" || a.kind === "bishop" || a.kind === "consola") {
       const main = this.deps.actions(f).find((x) => x.enabled);
       return main ? this.deps.act(f, main.id) : this.say(f.info, 5);
     }
@@ -682,7 +691,8 @@ export class StationInteriorMode {
     const air = kpa > 1 ? `${Math.round(kpa)} kPa de aire` : "vacío";
     const suit = this.suited ? " · con traje" : "";
     const held = this.near && this.hop.holding(this.iva)?.poi === this.near.id ? { poi: this.near.label } : {};
-    const html = `<div class="sti-title">${v ? `${v.code} · ${esc(v.label)}` : "Estación"}</div><div class="sti-grav">0 g · ${air}${suit} · mirando a ${looking}</div><div class="sti-move-line">${esc(motionLabel(this.iva, held))}</div>`;
+    const P = this.look.prefix ?? "sti";
+    const html = `<div class="${P}-title">${v ? `${v.code} · ${esc(v.label)}` : (this.look.place ?? "Estación")}</div><div class="${P}-grav">0 g · ${air}${suit} · mirando a ${looking}</div><div class="${P}-move-line">${esc(motionLabel(this.iva, held))}</div>`;
     if (html !== this.hudKey) {
       this.hudKey = html;
       this.hud.innerHTML = html;

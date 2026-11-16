@@ -7,9 +7,13 @@ import { G0 } from "@core/units";
  * See docs/design/nave-nodriza.md, «Propulsores intercambiables».
  */
 
-export type ElectricPropellant = "xenon" | "kripton" | "argon";
+/**
+ * What the ship's main tanks hold. «metano-oxigeno» is Starship's chemical drive (domain/mothership.ts,
+ * `ChemicalDrive`): no electric thruster runs on it, so its mounts stay empty.
+ */
+export type ElectricPropellant = "xenon" | "kripton" | "argon" | "metano-oxigeno";
 
-export const PROPELLANT_NAME: Readonly<Record<ElectricPropellant, string>> = { xenon: "xenón", kripton: "kriptón", argon: "argón" };
+export const PROPELLANT_NAME: Readonly<Record<ElectricPropellant, string>> = { xenon: "xenón", kripton: "kriptón", argon: "argón", "metano-oxigeno": "metano y oxígeno" };
 
 export type ThrusterFamily = "hall" | "ionico" | "vasimr";
 

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { ChoreRun } from "@modules/chores/domain/chore";
 import type { Answer, Exercise } from "@modules/mind-duel/domain/exercise";
-import { planTransfer } from "../domain/transfer";
-import { duration, tripChore } from "./trip-chore";
+import { planContinuousBurn, planTransfer } from "../domain/transfer";
+import { carrierTripChore, duration, tripChore } from "./trip-chore";
 
 const plan = planTransfer({ distanceM: 9400, accelMS2: 490 / 681, deltaVAvailableMS: 930 });
 const chore = tripChore({ targetId: "242916", targetName: "242916 (2006 OS2)", plan, approachM: 300, thrustN: 490, massKg: 681, deltaVAvailableMS: 930, detours: 1 });
@@ -34,5 +34,38 @@ describe("tripChore", () => {
   it("formats durations in minutes and seconds", () => {
     expect(duration(38.4)).toBe("38 s");
     expect(duration(410)).toBe("6 min 50 s");
+  });
+});
+
+describe("NAV-09 Starship's trip chore: burn, coast and brake with the vacuum Raptors", () => {
+  const p = planContinuousBurn(2_000_000, 4.7, 500);
+  const c = carrierTripChore({
+    targetId: "bennu",
+    targetName: "Bennu",
+    carrierName: "Starship",
+    plan: p,
+    thrusterCount: 3,
+    engineName: "motores Raptor de vacío",
+    propellantName: "metano y oxígeno",
+    thrustN: 7_590_000,
+    massKg: 1_600_000,
+    deltaVAvailableMS: 10_000,
+    burnDays: 0.003,
+    propellantKg: 380_000,
+    parkingM: 2000,
+    approachM: 300,
+    detours: 0,
+  });
+
+  it("says what pushes it and what it burns, and the answers are the coasting ones", () => {
+    expect(c.scenario).toMatch(/3 motores Raptor de vacío/);
+    expect(c.scenario).toMatch(/metano y oxígeno/);
+    expect(c.scenario).not.toMatch(/xenón|eléctricos/);
+    const order = c.exercises[0]!;
+    expect(order.kind === "order" && order.blocks.find((b) => order.solution.includes(b.id) && /inercia/.test(b.pseudo))).toBeTruthy();
+    expect(answerText(c.exercises[2]!)).toBe(duration(p.totalS));
+    const run = new ChoreRun(c);
+    while (run.current) run.submit(right(run.current));
+    expect(run.status).toBe("done");
   });
 });

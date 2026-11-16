@@ -31,6 +31,10 @@ export function mothershipCarrier(
     get thrusterCount() {
       return m.thrusterCount;
     },
+    // Starship's vacuum Raptors burn to a cruise speed and coast; the ring ship's thrusters push all the way.
+    engineName: m.spec.chemical ? `motores ${m.spec.chemical.engines.find((e) => e.cruise)?.name.replace(/\s*\(.*\)$/, "") ?? ""}` : "propulsores eléctricos",
+    propellantName: m.propellantName,
+    ...(m.spec.chemical ? { cruiseMS: m.spec.chemical.cruiseMS.value } : {}),
     get massKg() {
       return m.massKg;
     },
@@ -45,7 +49,7 @@ export function mothershipCarrier(
     parkingPoint: (target, from) => Mothership.parkingPoint(m.spec, target, from),
     parkingM: m.spec.parkingDistanceM.value,
     // Rings and spine: the farthest part of the structure from its centre, plus a margin.
-    clearanceM: Math.max(m.spec.ring.floorRadiusM, l.lengthM / 2) + 20,
+    clearanceM: Math.max(m.spec.ring?.floorRadiusM ?? 0, l.lengthM / 2) + 20,
     // The probe rides the mothership only when it is latched to the mothership's own port.
     docked: () => docking.dockedTo === m,
     undock: () => docking.undock(),

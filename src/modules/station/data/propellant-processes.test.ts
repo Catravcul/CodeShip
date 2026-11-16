@@ -23,6 +23,14 @@ describe("propellant plant processes", () => {
     }
   });
 
+  it("REF-05 Sabatier makes Starship's methane from comet CO₂ and hydrogen: CO₂ + 4 H₂ → CH₄ + 2 H₂O at 95 %", () => {
+    const p = byId("metano-sabatier");
+    expect(p.inputs.hidrogeno! / p.inputs["hielo-co2"]!).toBeCloseTo(8 / 44, 6);
+    expect(p.outputs.metano! / p.inputs["hielo-co2"]!).toBeCloseTo((16 / 44) * 0.95, 6);
+    expect(p.outputs.agua! / p.inputs["hielo-co2"]!).toBeCloseTo((36 / 44) * 0.95, 6);
+    expect(materialInfo("metano")!.propellant).toBe(true);
+  });
+
   it("follow the balanced reactions (H 1, N 14, O 16 g/mol)", () => {
     // 2 H2O → 2 H2 + O2: water is 1/9 hydrogen.
     expect(byId("electrolisis-agua").outputs.hidrogeno! / byId("electrolisis-agua").inputs.agua!).toBeCloseTo(2 / 18, 6);

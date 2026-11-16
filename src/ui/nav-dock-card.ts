@@ -18,7 +18,7 @@ export function dockCardHtml(i: DockDestinationInfo, note: string): string {
   const lim = IDSS_CONTACT_LIMITS;
   const badges = `${i.selected ? `<span class="badge target">Destino actual</span>` : ""}${i.docked ? `<span class="badge ok">Acoplada</span>` : ""}${i.carrierDocked ? `<span class="badge ok">Nodriza atracada</span>` : ""}`;
   const travel = c
-    ? `nodriza ${km(c.plan.distanceM)} · Δv ${num(c.plan.deltaVMS, c.plan.deltaVMS < 10 ? 2 : 0)} m/s · ${num(c.facts.propellantKg)} kg de xenón · ${duration(c.plan.totalS)}<br><small>para a ${km(DOCK_TRIP.berthStandoffM)} en el eje del puerto y acopla sola a ${num(DOCK_TRIP.contactMs, 2)} m/s, con el módulo acoplado</small>`
+    ? `nodriza ${km(c.plan.distanceM)} · Δv ${num(c.plan.deltaVMS, c.plan.deltaVMS < 10 ? 2 : 0)} m/s · ${num(c.facts.propellantKg)} kg de ${c.facts.propellantName ?? "xenón"} · ${duration(c.plan.totalS)}<br><small>para a ${km(DOCK_TRIP.berthStandoffM)} en el eje del puerto y acopla sola a ${num(DOCK_TRIP.contactMs, 2)} m/s, con el módulo acoplado</small>`
     : p.feasible
       ? `módulo ${km(p.distanceM)}${trip.waypoints.length > 1 ? ` (${trip.waypoints.length - 1} desvío${trip.waypoints.length > 2 ? "s" : ""})` : ""} · crucero ${num(p.cruiseMS)} m/s · Δv ${num(p.deltaVMS)} m/s · ${duration(p.totalS)}<br><small>para a ${km(DOCK_TRIP.handoverM)} en el eje del puerto; el asistente de acople hace el resto</small>`
       : "sin combustible para el viaje";

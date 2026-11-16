@@ -136,3 +136,40 @@ describe("SV-04 failures", () => {
     expect(events.some((e) => e.kind === "alarma-co2")).toBe(true);
   });
 });
+
+describe("SV-12 only the crew aboard breathes, eats and drinks", () => {
+  it("an empty vehicle has no metabolic load: no O₂ breathed, no CO₂, food or water used", () => {
+    const ls = new LifeSupport(ECLSS_MACHINES, STATION);
+    ls.setCrewAboard(0);
+    expect(ls.crewAboard).toBe(0);
+    const before = ls.readout();
+    ls.advance(24 * 30);
+    const r = ls.readout();
+    expect(r.foodKg).toBe(before.foodKg);
+    // Only the OGA's water for the O₂ the hull leaks (well under a kilo a month); she would drink ~0,4 kg a day net.
+    expect(before.waterKg - r.waterKg).toBeLessThan(1);
+    expect(r.ppCO2MmHg).toBeLessThan(before.ppCO2MmHg);
+    expect(r.heatW).toBeCloseTo(r.powerW, 6);
+    for (const v of Object.values(r)) if (typeof v === "number") expect(Number.isFinite(v) || v === Infinity).toBe(true);
+  });
+
+  it("an empty vehicle still runs its machines and can still fail", () => {
+    let seed = 7;
+    const ls = new LifeSupport(ECLSS_MACHINES, STATION, { randomFailures: true, graceDays: 2, random: () => ((seed = (seed * 16807) % 2147483647) / 2147483647) });
+    ls.setCrewAboard(0);
+    ls.advance(24);
+    expect(ls.readout().powerW).toBeGreaterThan(0);
+    for (let i = 0; i < 400; i++) ls.advance(24);
+    expect(ls.active().length).toBeGreaterThan(0);
+  });
+
+  it("with her back aboard, the load comes back", () => {
+    const ls = new LifeSupport(ECLSS_MACHINES, STATION);
+    ls.setCrewAboard(0);
+    ls.advance(24);
+    ls.setCrewAboard(1);
+    const food = ls.readout().foodKg;
+    ls.advance(24);
+    expect(ls.readout().foodKg).toBeLessThan(food);
+  });
+});

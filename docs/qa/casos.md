@@ -175,7 +175,9 @@ Diseño: [design/soporte-vital.md](../design/soporte-vital.md). Fuentes: [resear
 | SV-08 | Cada avería es una tarea de retos (procedimiento en orden y un valor real); cada paso nombra una acción con su visual; las tareas abiertas son las averías activas | `eclss-chores.test.ts` | PX-30 |
 | SV-09 | Máquinas reales con ritmo, potencia, masa y fuente; cada avería con repuesto, procedimiento y fuente; cada máquina en un bastidor ISPR a tamaño real | `eclss-machines.test.ts` | Solo test |
 | SV-10 | Kit 3D: cada bastidor se dibuja a tamaño real por la escala que pide el anfitrión; tiene la pieza de cada avería; una luz por paso de la reparación | `eclss-racks.test.ts` | PX-30 |
-| SV-11 | En la estación, el Nodo 2 lleva los bastidores de aire, oxígeno, agua y refrigeración, la consola y el puesto de incendios, con asidero, alcanzables y a 2 m | `eclss-placement.test.ts`, `crew-areas.test.ts` | PX-30 |
+| SV-11 | En la estación (la ISS), Tranquility lleva los bastidores de agua, oxígeno y aire y el puesto de incendios; Destiny las bombas del ITCS y la consola; con asidero, alcanzables y a 2 m | `eclss-placement.test.ts`, `crew-areas.test.ts` | PX-30 |
+| SV-12 | Solo respira, come y bebe la tripulación que está a bordo: un vehículo vacío no gasta O₂, comida ni agua de tripulación ni sube su CO₂, pero sus máquinas siguen en marcha, el casco pierde aire y puede haber averías | `life-support.test.ts` | PX-30 |
+| SV-13 | La estación y la Starship van con el mismo reloj y cada una cuenta solo a quien está dentro: Doménica está en una sola (o en el módulo), gasta y tiene síntomas solo allí | `life-support-game.test.ts` | PX-28, PX-30 |
 
 ### Importación (IMP)
 

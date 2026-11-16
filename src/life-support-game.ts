@@ -40,6 +40,11 @@ export interface LifeSupportGameDeps {
   frame?(at: { x: number; y: number; z: number }): void;
   unframe?(): void;
   openTasks(): void;
+  /**
+   * How many of the crew are aboard this vehicle now (Doménica is in one vehicle at a time, or in the
+   * lander). Left out, the host's whole crew is always aboard.
+   */
+  crewAboard?(): number;
 }
 
 /**
@@ -66,12 +71,19 @@ export class LifeSupportGame {
   /** Board hours of the host's clock. */
   tick(hours: number): void {
     if (hours <= 0) return;
+    const aboard = this.d.crewAboard?.() ?? this.system.config.crew;
+    this.system.setCrewAboard(aboard);
     for (const e of this.system.advance(hours)) {
       if (e.kind === "alarma-co2") this.d.say(`Alarma de CO₂: ${num(e.mmHg)} mmHg (más de ${num(CO2_LIMITS.alarm.value)}). Revisa el CDRA en el bastidor de aire`, 8);
       if (e.kind === "co2-normal") this.d.say(`CO₂ normal otra vez: ${num(e.mmHg)} mmHg`, 5);
       if (e.kind === "averia") this.d.say(`Soporte vital: ${e.failure.symptom}`, 7);
       if (e.kind === "sin-agua") this.d.say("Se acabó el agua potable: Doménica empezará a deshidratarse", 7);
       if (e.kind === "sin-comida") this.d.say("Se acabó la comida envasada: hace falta un reabastecimiento", 7);
+    }
+    // Her body only feels the air and water of the vehicle she is in.
+    if (aboard <= 0) {
+      this.symptomKey = "";
+      return;
     }
     const r = this.system.readout();
     this.exposure.update(hours, { ...r });

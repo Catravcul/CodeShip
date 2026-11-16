@@ -20,7 +20,7 @@ en el origen. Los volúmenes **copiados** son los de la fuente; los **derivados*
 | Módulo | Código | Medidas | Masa | Volumen | Dónde | Qué hay dentro | Fuente |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Unity (Nodo 1) | NOD1 | 5,47 × 4,57 m | 11 612 kg | ≈ 89,7 m³ (derivado) | Origen | Cocina y mesa (bastidor «galería» de eclss-real), esterilla, CBM de nadir donde el brazo atraca el módulo, PMA-1 a popa (al segmento ruso, fuera del juego) | [Wikipedia](https://en.wikipedia.org/wiki/Unity_(ISS_module)) |
-| Destiny | LAB1 | 8,5 × 4,3 m | 14 515 kg | 106 m³ (copiado) | Proa de Unity | Guantera, AMF de Redwire, bastidores de aire (CDRA y TCCS) y de lazos térmicos, consola de soporte vital, ventana de 51 cm | [Wikipedia](https://en.wikipedia.org/wiki/Destiny_(ISS_module)) |
+| Destiny | LAB1 | 8,5 × 4,3 m | 14 515 kg | 106 m³ (copiado) | Proa de Unity | Guantera, AMF de Redwire, bombas de los lazos térmicos (ITCS), portátil de soporte vital, ventana de 51 cm | [Wikipedia](https://en.wikipedia.org/wiki/Destiny_(ISS_module)) |
 | Harmony (Nodo 2) | NOD2 | 6,7 × 4,4 m | 14 300 kg | 70 m³ (copiado) | Proa de Destiny | Los cuatro camarotes; IDA de cenit (módulo de aterrizaje) y de proa (nodriza); CBM de nadir de los cargueros | [Wikipedia](https://en.wikipedia.org/wiki/Harmony_(ISS_module)) |
 | Tranquility (Nodo 3) | NOD3 | 6,706 × 4,48 m | 19 000 kg | ≈ 105,7 m³ (derivado) | Babor de Unity | Aseo (WHC), T2 y ARED, bastidores WRS, OGS y AR, puesto de incendios; la Cupola al nadir y la Bishop a babor | [Wikipedia](https://en.wikipedia.org/wiki/Tranquility_(ISS_module)), [ESA](https://www.esa.int/Our_Activities/Human_Spaceflight/Node-3_Cupola/Node-3_systems_and_internal_racks) |
 | Cupola | CUP1 | 1,5 × 2,95 m | 1880 kg | ≈ 10,3 m³ (derivado) | Nadir de Tranquility | Siete ventanas y el puesto robótico de Canadarm2 | [Wikipedia](https://en.wikipedia.org/wiki/Cupola_(ISS_module)) |
@@ -90,9 +90,11 @@ licencias, dichas en su ficha. Los campos de cultivo son ficción (backlog).
 ## Tripulación y soporte vital
 
 Donde están en la ISS: la cocina en Unity, los cuatro camarotes en Harmony, el aseo y el ejercicio en
-Tranquility, los trajes en Quest. Los bastidores de soporte vital vienen de la rama eclss-real
-(`ECLSS_RACKS`, `eclssRackModel`): WRS y OGS en las paredes de Tranquility, el AR en su techo, el puesto de
-incendios, la galería en Unity, y el AR y el ITCS de Destiny como equipo en sus bastidores.
+Tranquility, los trajes en Quest. Los bastidores de soporte vital son los de eclss-real, que se juegan
+(fixtures `sv-*` con `eclssFixtures`, docs/design/soporte-vital.md): WRS y OGS en las paredes de Tranquility,
+el AR y el puesto de incendios en su techo, y en Destiny las bombas del ITCS y el portátil de soporte vital.
+La galería de Unity usa el bastidor «galería» del kit. Destiny tiene en la ISS un segundo AR; aquí no se
+pone, para que solo haya un bastidor de aire que reparar.
 
 ## Ranuras de rack del catálogo de especies
 

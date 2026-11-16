@@ -66,8 +66,9 @@ export async function movimiento(j) {
   const where = (id) =>
     p.evaluate((i) => {
       const s = window.codeship.interior.zones.screenPoint(i);
-      const hit = document.elementFromPoint(s.x, s.y);
-      return { ...s, free: !!hit && hit.tagName === "CANVAS" };
+      // Clear of the HUD by a finger's width: the HUD grows a line («días en ingravidez») after a minute and a bit.
+      const free = [0, -28, 28].every((dy) => document.elementFromPoint(s.x, s.y + dy)?.tagName === "CANVAS");
+      return { ...s, free };
     }, id);
   const tapThing = async (id, label) => {
     let pt = await where(id);

@@ -171,12 +171,13 @@ los juega con `?ficcion`. Su estado de abajo es el de la última ejecución con 
 | PX-11 | Probado (en vivo) | 2026-11-16 | `75bea64` | [run](runs/2026-11-16-1500-PX-02-PX-10-PX-11.md): 26 OK |
 | PX-12 | Probado (en vivo) | 2026-11-16 | `9b15623` | [run](runs/2026-11-16-1816-PX-12.md): 23 OK |
 | PX-13 | Probado (en vivo) | 2026-11-16 | `6711ef3` | [run](runs/2026-11-16-1410-PX-01-PX-02-PX-10-PX-11-PX-13.md): 29 OK |
-| PX-14 | Probado (en vivo) | 2026-11-16 | `24842ba` | [run](runs/2026-11-16-1536-PX-02-PX-10-PX-14.md): 33 OK |
-| PX-15 | Probado (en vivo) | 2026-11-14 | `652d629` | [run](runs/2026-11-14-1925-PX-02-PX-10-PX-12-PX-14-PX-15.md): 61 OK |
+| PX-14 | Probado (en vivo) | 2026-11-16 | `be7ba22` | [run](runs/2026-11-16-1835-PX-14-PX-15-PX-25.md): 34 OK |
+| PX-15 | Probado (en vivo) | 2026-11-16 | `be7ba22` | [run](runs/2026-11-16-1855-PX-15.md): 61 OK |
 | PX-16 | Probado (en vivo) | 2026-11-16 | `4968040` | [run](runs/2026-11-16-1519-PX-14-PX-16.md): 25 OK |
 | PX-23 | Probado (en vivo) | 2026-11-16 | `e3b90f0` | [run](runs/2026-11-16-1521-PX-01-PX-02-PX-23.md): 62 OK |
 | PX-24 | Probado (en vivo) | 2026-11-16 | `ef23e9a` | [run](runs/2026-11-16-1800-PX-24.md): 10 OK |
 | PX-20 | FAIL | 2026-11-16 | `c033d52` | [run](runs/2026-11-16-1702-PX-20.md): 256 OK, 7 FALLA |
+| PX-25 | Probado (en vivo) | 2026-11-16 | `be7ba22` | [run](runs/2026-11-16-1835-PX-14-PX-15-PX-25.md): 40 OK |
 
 ## Última ejecución por run log
 
@@ -184,6 +185,9 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-16 18:55 | PX-15 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-1855-PX-15.md) |
+| 2026-11-16 18:35 | PX-14, PX-15, PX-25 | Experiencia (Playwright) | 2/3 recorridos bien | [run](runs/2026-11-16-1835-PX-14-PX-15-PX-25.md) |
+| 2026-11-16 18:21 | PX-25 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-1821-PX-25.md) |
 | 2026-11-16 18:16 | PX-12 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-1816-PX-12.md) |
 | 2026-11-16 18:05 | PX-04, PX-12 | Experiencia (Playwright) | 1/2 recorridos bien | [run](runs/2026-11-16-1805-PX-04-PX-12.md) |
 | 2026-11-16 18:00 | PX-24 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-1800-PX-24.md) |

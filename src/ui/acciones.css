@@ -44,8 +44,7 @@ body.in-cockpit .ctx-dock > .rapport-chip, body.in-cockpit .ctx-dock > .trip-chi
 .help { right: auto; left: 18px; text-align: left; }
 /* The interior status (bars, larder, gravity) gets a dark plate: over bright signs and lights it could not be read. */
 .ihud { box-sizing: border-box; padding: 6px 8px; background: #05141cc4; border-radius: 10px; }
-/* A mission notice during a challenge drops to the bottom: on top it covered the result («Conseguido»). */
-body.in-duel .ml-toast { top: auto !important; bottom: calc(16px + env(safe-area-inset-bottom)); }
+/* A mission notice that arrives during a challenge waits under it (foco-reto.css, mission-log.ts). */
 /* Interior status on phones: portrait, the four bars and where she is; larder and self-sufficiency fold under a tap. */
 @media (pointer: coarse) {
   .ihud { pointer-events: auto; width: min(210px, 54vw); font-size: 11px; }
@@ -82,7 +81,5 @@ body:has(.interior-ui .board:not(.hidden)) .vstick { display: none !important; }
   body.in-cockpit.wrath-on .radio-toast { top: auto; bottom: 170px; }
 }
 
-/* While a challenge is open nothing else can be used: hide every vehicle control and context chip so the
-   camera stays as clear as possible (designer, 2026-11-13: the probe's controls kept showing in HUD mode). */
-body.in-duel .probe-ui, body.in-duel .bar-toggle, body.in-duel .region-tag, body.in-duel .ctx-dock,
-body.in-duel .trip-chip, body.in-duel .rapport-chip, body.in-duel .autopilot-tag, body.in-duel .eva-btn { display: none !important; }
+/* While a challenge is open nothing else shows (H26): no longer a list of selectors here, one rule for every
+   overlay root in foco-reto.css (docs/design/ux-acciones.md §7). */

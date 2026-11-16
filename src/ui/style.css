@@ -366,7 +366,7 @@ body.in-station .hud, body.in-station .help, body.in-station .reticle, body.in-s
 .st-chip.miss { background: #ff2a2a26; color: #ffa595; }
 .st-io { font-size: 12px; color: #d8f6ff; }
 .st-io.miss { color: #ffc27a; }
-.st-btn { align-self: flex-end; min-height: 40px; padding: 8px 14px; font: inherit; font-size: 13px; font-weight: 600; color: #001018; background: #7dffb0; border: 0; border-radius: 10px; }
+.st-btn { align-self: flex-end; min-height: 44px; padding: 8px 14px; font: inherit; font-size: 13px; font-weight: 600; color: #001018; background: #7dffb0; border: 0; border-radius: 10px; }
 .st-btn:disabled { color: #9fc3d8; background: #ffffff14; font-weight: normal; }
 .st-mat { display: grid; grid-template-columns: 1fr auto; column-gap: 8px; row-gap: 2px; padding: 8px 10px; background: #13243a; border: 1px solid #2c4a6a; border-radius: 10px; }
 .st-mat small { grid-column: 1 / -1; }

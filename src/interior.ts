@@ -49,6 +49,7 @@ import { NoticeQueue, type NoticeLevel } from "@modules/notices/domain/notices";
 import { AquariumOps, isAquariumChore } from "@modules/sanctuary/application/aquarium-ops";
 import { RingAquarium } from "@modules/sanctuary/domain/aquarium";
 import { CatalogCorner } from "./adapters/three/interior/catalog-corner";
+import { RING_RACK_HOST, type RackHost } from "./adapters/three/interior/rack-slots";
 import { AquariumModel } from "./adapters/three/interior/aquarium-model";
 import { aquariumEventText, aquariumStatus } from "./ui/aquarium-text";
 
@@ -205,6 +206,8 @@ export class Interior {
   readonly tank: AquariumModel;
   /** The species catalogue terminal and the terrarium shelf of the land colonies (docs/design/catalogo-especies.md). */
   readonly catalogCorner: CatalogCorner;
+  /** Where the sanctuary's rack hardware goes in this interior. */
+  readonly rack: RackHost = RING_RACK_HOST;
   /** The colonies adopted from the species catalogue: their chores (set by main.ts through sanctuary-life.ts). */
   sanctuary?: SanctuaryChores;
   /** Opens the species catalogue (set by main.ts): from its terminal on the farm deck. */
@@ -296,11 +299,10 @@ export class Interior {
 
     // A new game: an empty tank with its hornwort and cycled biofilter; fish and snails come from the catalogue.
     this.aquarium = new AquariumOps(new RingAquarium({ fish: 0, snails: 0 }), habitat.crew);
-    const at = STATIONS.find((s) => s.id === "acuario")!.look;
-    this.tank = new AquariumModel(new THREE.Vector3(at.x, 0, at.z));
+    // The tank and the catalogue terminal sit in generic rack slots (the ring hosts them for now).
+    this.tank = new AquariumModel(this.rack.slot("rack-acuatico"));
     this.scene.add(this.tank.root);
-    const cat = STATIONS.find((s) => s.id === "catalogo")!.look;
-    this.catalogCorner = new CatalogCorner(new THREE.Vector3(cat.x, 0, cat.z));
+    this.catalogCorner = new CatalogCorner(this.rack.slot("rack-catalogo"));
     this.scene.add(this.catalogCorner.root);
     this.avatarRig.add(this.avatar.root);
     this.scene.add(this.avatarRig);
@@ -334,7 +336,7 @@ export class Interior {
       const s = this.nearStation();
       if (s?.id === "navegacion" && this.openNavConsole) return this.openNavConsole();
       if (s?.id === "camarote") return this.openRadio();
-      if (s?.id === "catalogo" && this.openCatalog) return this.openCatalog();
+      if (s?.id === this.rack.station("rack-catalogo") && this.openCatalog) return this.openCatalog();
       if (s) this.openBoard(s.id);
     });
     this.board.addEventListener("click", (e) => {
@@ -480,7 +482,7 @@ export class Interior {
     this.matBtn.classList.toggle("hidden", near?.id !== "yoga" || !this.openSettings || this.lotus);
     if (near)
       this.stationBtn.textContent =
-        near.id === "navegacion" ? "Consola de navegación: mapa, viajes y misiones" : near.id === "catalogo" ? `Catálogo de especies${n ? `: ${n} ${n === 1 ? "tarea" : "tareas"}` : ""}` : near.id === "camarote" ? `Camarote: leer cartas${this.habitat.mailbox?.unread ? ` (${this.habitat.mailbox.unread})` : ""}` : `${near.label}: ${n} ${n === 1 ? "tarea" : "tareas"}`;
+        near.id === "navegacion" ? "Consola de navegación: mapa, viajes y misiones" : near.id === this.rack.station("rack-catalogo") ? `Catálogo de especies${n ? `: ${n} ${n === 1 ? "tarea" : "tareas"}` : ""}` : near.id === "camarote" ? `Camarote: leer cartas${this.habitat.mailbox?.unread ? ` (${this.habitat.mailbox.unread})` : ""}` : `${near.label}: ${n} ${n === 1 ? "tarea" : "tareas"}`;
     this.syncNotices();
   }
 

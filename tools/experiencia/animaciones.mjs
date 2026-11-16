@@ -292,8 +292,9 @@ export async function animaciones(j) {
     c.settings.set("taskTravel", "teletransporte");
     localStorage.setItem("codeship.retos-ordenar", "pasos");
   });
-  // A new game has no animals (docs/design/catalogo-especies.md): every kind that has chores, from the catalogue.
-  await adoptar(j, [["gato", "mascotas"], ["perro-mestizo", "mascotas"], ["gallina", "aves"], ["medaka", "peces"], ["nerita", "caracoles"], ["lombriz", "suelo"]]);
+  // A new game has no animals (docs/design/catalogo-especies.md): every adoptable kind that has chores (the
+  // fish and snails of the aquatic habitat, the mice of the rodent habitat), from the catalogue.
+  await adoptar(j, [["medaka", "peces"], ["caracol", "caracoles"], ["raton", "mascotas"]]);
   await llegan(j);
   // Every larder item of the data (src/modules/kitchen/data/items.ts), so every recipe and process can be made.
   const items = [...readFileSync(join("src", "modules", "kitchen", "data", "items.ts"), "utf8").matchAll(/id: "([a-z0-9-]+)"/g)].map((m) => m[1]);

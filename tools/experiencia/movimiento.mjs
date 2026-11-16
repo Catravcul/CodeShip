@@ -1,5 +1,4 @@
 // Moving around: the lander's thrusters in the cockpit, floating in 0 g at the spine, walking on the ring.
-import { adoptar, llegan } from "./catalogo.mjs";
 
 const differs = (a, b) => {
   if (a.length !== b.length) return true;
@@ -10,10 +9,6 @@ const differs = (a, b) => {
 
 export async function movimiento(j) {
   const p = j.page;
-  // A new game has no animals (docs/design/catalogo-especies.md): a cat and a dog from the catalogue, for the ring's life.
-  await adoptar(j, [["gato", "mascotas"], ["perro-mestizo", "mascotas"]]);
-  await llegan(j);
-  j.check("han llegado un gato y un perro", await p.evaluate(() => window.codeship.habitat.cats.length === 1 && window.codeship.habitat.dogs.length === 1));
   // Cockpit: undocked, fire the forward RCS with W and watch the speed readout.
   await j.setup("desacopla el módulo de la nodriza", () => window.codeship.docking.undock());
   const hud0 = (await j.texts(".hud"))[0] ?? "";
@@ -140,7 +135,7 @@ export async function movimiento(j) {
   await p.waitForTimeout(500);
   const toast = (await j.texts(".interior-ui .toast"))[0] ?? "";
   j.check("al elegir una tarea en el eje avisa de que baja al anillo", /Bajas al anillo/.test(toast), toast);
-  await j.setup("la vida a bordo habla justo después (un perro le ladra a un gato)", () => {
+  await j.setup("justo después llega una alerta (en una partida nueva no hay animales que hablen: docs/design/catalogo-especies.md)", () => {
     const i = window.codeship.interior;
     const h = window.codeship.habitat;
     if (h.dogs[0] && h.cats[0]) i.onEvent({ type: "animal-hostile", actorId: h.dogs[0].id, targetId: h.cats[0].id, action: "ladrar" });
@@ -179,7 +174,7 @@ export async function movimiento(j) {
   // On the ring, life on board shows where it happens, as a small HUD label, only when in view.
   // Deterministic (it passed about half the time when the dog wandered off): the dog stands still on the
   // open farm deck, and she looks at it from 2 m (3 m as drawn), with no other life aboard to cover it.
-  const seen = await j.setup("un perro, quieto en la cubierta de cultivo delante de ella, le ladra a un gato", () => {
+  const seen = await j.setup("si hay perro y gato a bordo (una partida nueva no tiene): el perro, quieto delante de ella, le ladra al gato", () => {
     const i = window.codeship.interior;
     const h = window.codeship.habitat;
     const dog = h.dogs[0] && i.dogs.get(h.dogs[0].id);

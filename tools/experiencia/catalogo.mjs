@@ -1,6 +1,7 @@
 // The species catalogue (docs/design/catalogo-especies.md, recorrido PX-27): a new game with Doménica alone and no
-// animals, the catalogue from the task list and from its terminal on the farm deck, the two snails side by side,
-// adopting medaka and nerites for the empty tank, seeing them arrive and befriending them; then two meals in a
+// animals, the catalogue from the task list and from its terminal (a rack slot; the ring hosts it for now), the
+// two snails side by side (only the one that lived in microgravity can be adopted), adopting medaka and
+// Biomphalaria for the empty aquatic habitat, seeing them arrive and befriending them; then two meals in a
 // board day (Berón, 2026-11-16). The helpers `abrirCatalogo`, `adoptar` and `llegan` are how every journey that
 // needs animals gets them: with the taps a player makes.
 // Captures go to docs/screenshots/catalogo-<paso>-movil.png.
@@ -116,33 +117,41 @@ export async function catalogo(j) {
   j.check("el filtro Caracoles muestra los dos caracoles: Biomphalaria y nerita", snails.includes("caracol") && snails.includes("nerita"), snails.join(", "));
   await capture(j, "caracoles");
 
-  // 3. The two snails side by side.
-  await j.tap('.species-catalog .sc-card[data-id="caracol"]', "ficha Biomphalaria");
-  const bio = (await j.texts(".species-catalog .sc-detail"))[0] ?? "";
-  j.check("Biomphalaria: ha volado (C.E.B.A.S.) y avisa del esquistosoma: solo líneas de laboratorio", /Ha volado/.test(bio) && /esquistosoma/.test(bio) && /laboratorio/.test(bio), bio.slice(0, 160));
-  j.check("Biomphalaria: cabe en el acuario del anillo (fit)", /Acuario del anillo: cabe/.test(bio));
-  await capture(j, "biomphalaria");
-  await j.tap(".species-catalog [data-back]", "‹ Catálogo");
+  // 3. The two snails side by side: only the one that really lived in microgravity can be adopted.
   await j.tap('.species-catalog .sc-card[data-id="nerita"]', "ficha nerita");
   const ner = (await j.texts(".species-catalog .sc-detail"))[0] ?? "";
   j.check("nerita: sin vuelo, el mejor limpiacristales y no cría en agua dulce", /Sin vuelo espacial/.test(ner) && /limpiacristales/.test(ner) && /no eclosionan en agua dulce/.test(ner), ner.slice(0, 160));
   j.check("nerita: aporta y precauciones van por separado, con la fuente del vuelo", /Aporta/i.test(ner) && /Precauciones/i.test(ner) && (await p.locator('.species-catalog .sc-detail a:has-text("Fuente")').count()) > 0);
-  await capture(j, "nerita");
-
-  // 4. Adopt nerites and medaka for the empty tank.
-  await j.tap(".species-catalog .sc-adopt", "Adoptar nerita");
   const nerSt = (await j.texts(".species-catalog .sc-status"))[0] ?? "";
-  j.check("al adoptar las neritas, vienen de camino con su tránsito real", /En camino · \d/.test(nerSt), nerSt);
+  j.check("nerita: «Pendiente: nunca ha vivido en ingravidez» y sin botón de adoptar", /Pendiente: nunca ha vivido en ingravidez/.test(nerSt) && (await p.locator(".species-catalog .sc-adopt").count()) === 0, nerSt);
+  await capture(j, "nerita");
   await j.tap(".species-catalog [data-back]", "‹ Catálogo");
-  await j.tap('.species-catalog [data-area="acuario-anillo"]', "Área: Acuario del anillo");
+  await j.tap('.species-catalog .sc-card[data-id="caracol"]', "ficha Biomphalaria");
+  const bio = (await j.texts(".species-catalog .sc-detail"))[0] ?? "";
+  j.check("Biomphalaria: ha volado (C.E.B.A.S.) y avisa del esquistosoma: solo líneas de laboratorio", /Ha volado/.test(bio) && /esquistosoma/.test(bio) && /laboratorio/.test(bio), bio.slice(0, 160));
+  j.check("Biomphalaria: cabe en el hábitat acuático (fit), tipo Aquatic Habitat de JAXA, con su fuente", /Hábitat acuático: cabe/.test(bio) && /Aquatic Habitat de JAXA/.test(bio));
+  await capture(j, "biomphalaria");
+
+  // 4. Adopt Biomphalaria and medaka for the empty aquatic habitat.
+  await j.tap(".species-catalog .sc-adopt", "Adoptar Biomphalaria");
+  const bioSt = (await j.texts(".species-catalog .sc-status"))[0] ?? "";
+  j.check("al adoptar los caracoles, vienen de camino con su tránsito real", /En camino · \d/.test(bioSt), bioSt);
+  await j.tap(".species-catalog [data-back]", "‹ Catálogo");
+  await j.tap('.species-catalog [data-area="habitat-acuatico"]', "Hábitat: Hábitat acuático");
   await j.tap('.species-catalog [data-group="peces"]', "Peces");
   const fish = await p.$$eval(".species-catalog .sc-card", (els) => els.map((e) => e.dataset.id));
-  j.check("filtrado por el acuario del anillo, salen las medakas y no el pez ciego (agua demasiado caliente)", fish.includes("medaka") && !fish.includes("pez-ciego"), fish.join(", "));
+  j.check("filtrado por el hábitat acuático, salen las medakas y el pez cebra (los del Aquatic Habitat), no la tilapia ni el pez ciego", fish.includes("medaka") && fish.includes("pez-cebra") && !fish.includes("tilapia") && !fish.includes("pez-ciego"), fish.join(", "));
   await j.tap('.species-catalog .sc-card[data-id="medaka"]', "ficha medaka");
   await j.tap(".species-catalog .sc-adopt", "Adoptar medaka");
   const medSt = (await j.texts(".species-catalog .sc-status"))[0] ?? "";
   j.check("las medakas también vienen de camino", /En camino/.test(medSt), medSt);
   await capture(j, "medaka-en-camino");
+  await j.tap(".species-catalog [data-back]", "‹ Catálogo");
+  await j.tap('.species-catalog [data-area=""]', "Cualquier hábitat");
+  await j.tap('.species-catalog [data-group="mascotas"]', "Mascotas");
+  const pets = Object.fromEntries(await p.$$eval(".species-catalog .sc-card", (els) => els.map((e) => [e.dataset.id, e.querySelector(".sc-badge")?.textContent ?? ""])));
+  j.check("mascotas: el ratón (hábitat de roedores) está disponible; gatos y perros, «Pendiente» (no hay hábitat real para ellos)", pets.raton === "Disponible" && pets.gato === "Pendiente" && pets.chihuahua === "Pendiente", JSON.stringify(pets));
+  await capture(j, "mascotas");
   await j.tap(".species-catalog [data-close]", "Cerrar el catálogo");
 
   // 5. They arrive and show up in the tank.
@@ -151,7 +160,7 @@ export async function catalogo(j) {
     const i = window.codeship.interior;
     return { fish: i.aquarium.tank.fishCount, snails: i.aquarium.tank.snailCount, drawnFish: i.tank.fish.count, drawnSnails: i.tank.snails.count };
   });
-  j.check("llegan 20 medakas y 6 neritas al tanque, y se ven en 3D", arrived.fish === 20 && arrived.snails === 6 && arrived.drawnFish === 20 && arrived.drawnSnails === 6, JSON.stringify(arrived));
+  j.check("llegan 8 medakas y 4 caracoles al tanque, y se ven en 3D", arrived.fish === 8 && arrived.snails === 4 && arrived.drawnFish === 8 && arrived.drawnSnails === 4, JSON.stringify(arrived));
 
   // 6. Befriend them: feed the school, then the mind programs, from the task list and the tank.
   await j.tap(".tasks-btn", "Tareas");
@@ -185,8 +194,8 @@ export async function catalogo(j) {
   j.check("junto al terminal sale «Catálogo de especies»", /^Catálogo de especies/.test(btn), btn);
   await j.tap(".station-btn", "Catálogo de especies (terminal)");
   await j.tap('.species-catalog [data-group="caracoles"]', "Caracoles");
-  const badge = await p.locator('.species-catalog .sc-card[data-id="nerita"] .sc-badge').textContent();
-  j.check("en el catálogo, las neritas salen «A bordo · 6»", /A bordo · 6/.test(badge ?? ""), badge);
+  const badge = await p.locator('.species-catalog .sc-card[data-id="caracol"] .sc-badge').textContent();
+  j.check("en el catálogo, los caracoles salen «A bordo · 4»", /A bordo · 4/.test(badge ?? ""), badge);
   await capture(j, "terminal");
   await j.tap(".species-catalog [data-close]", "Cerrar el catálogo");
 

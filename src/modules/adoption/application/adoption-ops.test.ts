@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { Answer, Exercise } from "@modules/mind-duel/domain/exercise";
 import { STEP_AREAS } from "@modules/chores/application/step-visuals";
 import { CHORE_CATEGORY } from "@modules/chores/domain/chore";
-import { SANCTUARY_AREAS } from "@modules/sanctuary/data/areas";
 import type { SanctuaryArea } from "@modules/sanctuary/domain/area";
 import { SPECIES_CATALOG } from "../data/catalog";
+import { RACK_HABITATS } from "../data/rack-habitats";
 import { ALL_SPECIES } from "../data/species-extra";
 import type { CatalogEntry } from "../domain/entry";
 import { AdoptionOps, type AdoptionPorts } from "./adoption-ops";
@@ -31,96 +31,83 @@ function world(credits = 1000) {
     },
     calm: (x) => (log.calm += x),
   };
-  return { ops: new AdoptionOps(SPECIES_CATALOG, ALL_SPECIES, SANCTUARY_AREAS, ports), log, ports };
+  return { ops: new AdoptionOps(SPECIES_CATALOG, ALL_SPECIES, RACK_HABITATS, ports), log, ports };
 }
 
 describe("VID-30 a new game: Doménica alone, the animals come from the catalogue", () => {
-  it("only the crops, the hornwort and the biofilter live aboard; no animal is aboard", () => {
+  it("no animal is aboard and no colony has chores", () => {
     const { ops } = world();
-    expect([...ops.residentsOf("jardin-anillo")]).toEqual(["cultivos"]);
-    expect([...ops.residentsOf("acuario-anillo")].sort()).toEqual(["ceratofilo", "nitrificantes"]);
+    for (const h of RACK_HABITATS) expect(ops.residentsOf(h.id)).toEqual([]);
     for (const e of SPECIES_CATALOG.filter((x) => x.lodging !== "bucle")) expect(ops.status(e.id).kind, e.id).toBe("disponible");
-    expect(ops.status("ceratofilo").kind).toBe("a-bordo");
     expect(ops.chores()).toEqual([]);
   });
 });
 
-describe("VID-32 adopt: it must fit the area and the loop, it pays the import and arrives after the transfer", () => {
-  it("medaka for the empty tank: they fit the ring aquarium and close its loop (hornwort produces, bacteria decompose)", () => {
+describe("VID-32 adopt: only real species, into a real habitat; it pays the import and arrives after the transfer", () => {
+  it("medaka for the aquatic habitat (JAXA AQH type): it fits and its filter and gas exchange close the loop", () => {
     const { ops, log } = world();
     const c = ops.check("medaka");
     expect(c.ok).toBe(true);
-    expect(c.placement.area?.id).toBe("acuario-anillo");
+    expect(c.placement.area?.id).toBe("habitat-acuatico");
     expect(c.cost.kind).toBe("importar");
-    if (c.cost.kind === "importar") expect(c.cost.kg).toBeCloseTo(0.01 + 12 + 0.0003 * 370, 1);
+    if (c.cost.kind === "importar") expect(c.cost.kg).toBeCloseTo(0.004 + 3 + 0.0003 * 370, 1);
     ops.adopt("medaka");
     expect(log.orders).toHaveLength(1);
     expect(ops.status("medaka").kind).toBe("en-camino");
     expect(ops.check("medaka").ok).toBe(false);
     expect(ops.drainEvents()).toContainEqual(expect.objectContaining({ type: "pedido" }));
-    // The import system lands the delivery: the medaka arrive in the tank.
     expect(ops.delivered(1)).toBe(true);
-    expect(log.arrived).toEqual([{ id: "medaka", n: 20, area: "acuario-anillo" }]);
-    expect(ops.status("medaka")).toMatchObject({ kind: "a-bordo", count: 20, areaId: "acuario-anillo" });
-    expect(ops.residentsOf("acuario-anillo")).toContain("medaka");
-    expect(ops.drainEvents()).toContainEqual(expect.objectContaining({ type: "llegada", count: 20 }));
+    expect(log.arrived).toEqual([{ id: "medaka", n: 8, area: "habitat-acuatico" }]);
+    expect(ops.status("medaka")).toMatchObject({ kind: "a-bordo", count: 8, areaId: "habitat-acuatico" });
+    expect(ops.drainEvents()).toContainEqual(expect.objectContaining({ type: "llegada", count: 8 }));
     expect(ops.delivered(99)).toBe(false);
   });
 
-  it("the nerite goes to the same tank; a cat to the farm deck (the crew eats its crops: consumer)", () => {
+  it("the Biomphalaria (flew in C.E.B.A.S.) shares the tank; mice go to the rodent habitat", () => {
     const { ops } = world();
-    expect(ops.check("nerita").placement.area?.id).toBe("acuario-anillo");
-    expect(ops.check("gato").placement.area?.id).toBe("jardin-anillo");
-    expect(ops.check("gallina").ok).toBe(true);
+    expect(ops.check("caracol").placement.area?.id).toBe("habitat-acuatico");
+    expect(ops.check("pez-cebra").ok).toBe(true);
+    expect(ops.check("raton").placement.area?.id).toBe("habitat-roedores");
   });
 
-  it("the rules can say no: salt water, a cold-water worm, a deep-sea fish, an area not built yet", () => {
+  it("«pendiente»: never lived in microgravity (nerite, hens), or no real habitat flown with it (cats, crickets)", () => {
     const { ops } = world();
-    expect(ops.check("artemia").why).toMatch(/aún no está construida|No cabe/);
-    const worm = ops.check("lombriz-comun");
-    expect(worm.ok).toBe(false);
-    expect(worm.placement.verdicts.find((v) => v.areaId === "jardin-anillo")!.fit.reasons).toContain("temperatura");
-    expect(ops.check("granadero").why).toBe("No cabe en ningún área de la nave");
-    const sphere = ops.check("medaka").placement.verdicts.find((v) => v.areaId === "esfera-de-agua")!;
-    expect(sphere.built).toBe(false);
-    expect(sphere.fit.ok).toBe(true);
+    for (const id of ["nerita", "gallina", "lombriz", "gamba-roja"]) {
+      const c = ops.check(id);
+      expect(c.ok, id).toBe(false);
+      expect(c.pendiente, id).toBe(true);
+    }
+    expect(ops.check("nerita").why).toBe("Pendiente: nunca ha vivido en ingravidez");
+    for (const id of ["gato", "chihuahua", "grillo", "gusano-seda", "tardigrado", "artemia"]) {
+      expect(SPECIES_CATALOG.find((e) => e.id === id)!.real, id).toBe(true);
+      expect(ops.check(id).why, id).toMatch(/hábitat real/);
+    }
+    expect(() => ops.adopt("nerita")).toThrow();
   });
 
-  it("the loop: a tank with no decomposers turns down a second consumer, but takes the decomposer it lacks", () => {
-    const areas = SANCTUARY_AREAS.map((a) => (a.id === "acuario-anillo" ? { ...a, residents: ["ceratofilo", "medaka"] } : a));
-    const ops = new AdoptionOps(
-      SPECIES_CATALOG.map((e) => (e.id === "medaka" ? { ...e, aboard: true } : e)),
-      ALL_SPECIES,
-      areas,
-      world().ports,
-    );
-    const zebra = ops.check("pez-cebra");
-    expect(zebra.ok).toBe(false);
-    expect(zebra.why).toMatch(/no se cierra: falta un descomponedor/);
-    expect(ops.check("gamba-roja").ok).toBe(true);
+  it("the habitat has room for so many: the AQH-type tank takes 16 animals", () => {
+    const { ops } = world();
+    ops.adopt("medaka");
+    ops.adopt("medaka-himedaka");
+    const c = ops.check("caracol");
+    expect(c.ok).toBe(false);
+    expect(c.why).toMatch(/lleno: caben 0 más/);
+  });
+
+  it("a tank with no filter (no loop machines) takes one consumer but turns down a second", () => {
+    const habitats = RACK_HABITATS.map((h) => (h.id === "habitat-acuatico" ? { ...h, area: { ...h.area, support: [] } } : h));
+    const ops = new AdoptionOps(SPECIES_CATALOG, ALL_SPECIES, habitats, world().ports);
+    ops.adopt("medaka");
+    expect(ops.check("pez-cebra").why).toMatch(/no se cierra: falta un productor y un descomponedor/);
   });
 
   it("without the credits nothing is ordered", () => {
-    const { ops, log } = world(1);
-    const c = ops.check("gallina");
+    const { ops, log } = world(0);
+    const c = ops.check("raton");
     expect(c.ok).toBe(false);
     expect(c.why).toMatch(/Faltan \d+ créditos/);
-    expect(() => ops.adopt("gallina")).toThrow();
+    expect(() => ops.adopt("raton")).toThrow();
     expect(log.orders).toHaveLength(0);
-  });
-
-  it("dormant eggs and cysts hatch aboard in board days, for free", () => {
-    const { ops, log } = world();
-    ops.adopt("grillo");
-    expect(log.orders).toHaveLength(0);
-    expect(ops.status("grillo")).toMatchObject({ kind: "eclosionando", daysLeft: 12 });
-    ops.tick(11.9);
-    expect(ops.status("grillo").kind).toBe("eclosionando");
-    ops.tick(0.2);
-    expect(ops.status("grillo").kind).toBe("a-bordo");
-    expect(log.arrived[0]).toMatchObject({ id: "grillo", area: "jardin-anillo" });
-    // Silkworms want 22–28 °C: the farm deck (20–26 °C) is too cool for them.
-    expect(ops.check("gusano-seda").ok).toBe(false);
   });
 });
 
@@ -133,47 +120,33 @@ describe("VID-32 a colony that arrives: the friendship program, then its help", 
     expect(s.run.status).toBe("done");
   };
 
-  it("befriend the crickets, then ask them for help; help lasts 10 days", () => {
+  it("befriend the mice, then ask them for help; help lasts 10 days", () => {
     const { ops, log } = world();
-    ops.adopt("grillo");
-    ops.tick(12);
-    expect(ops.chores().map((c) => c.id)).toEqual(["especie-amistad-grillo"]);
-    solve(ops, "especie-amistad-grillo");
-    expect(ops.friends("grillo")).toBe(true);
+    ops.adopt("raton");
+    ops.delivered(1);
+    expect(ops.areaOf("raton")).toBe("habitat-roedores");
+    expect(ops.chores().map((c) => c.id)).toEqual(["especie-amistad-raton"]);
+    solve(ops, "especie-amistad-raton");
+    expect(ops.friends("raton")).toBe(true);
     expect(log.calm).toBeGreaterThan(0);
     const help = ops.chores()[0]!;
-    expect(help.id).toBe("especie-ayuda-grillo");
-    expect(help.title).toBe("Pedir ayuda a los grillos");
+    expect(help.id).toBe("especie-ayuda-raton");
+    expect(help.title).toBe("Pedir ayuda a los ratones");
     solve(ops, help.id);
-    expect(ops.helping("grillo")).toBe(true);
+    expect(ops.helping("raton")).toBe(true);
     expect(ops.chores()).toEqual([]);
     ops.tick(10.1);
     expect(ops.drainEvents()).toContainEqual(expect.objectContaining({ type: "ayuda-terminada" }));
-    expect(ops.chores().map((c) => c.id)).toEqual(["especie-ayuda-grillo"]);
-  });
-
-  it("colony chores are animal care and mind programs; the colony lives in its area (the ring tank's shrimp, the farm deck's crickets)", () => {
+    expect(ops.chores().map((c) => c.id)).toEqual(["especie-ayuda-raton"]);
     expect(CHORE_CATEGORY["amistad-especie"]).toBe("animales");
     expect(STEP_AREAS["ayuda-especie"].only).toBe("programar");
-    const { ops } = world();
-    // A shrimp alone would not close the tank's loop (it lacks a consumer): the medaka first.
-    expect(ops.check("gamba-roja").why).toMatch(/falta un consumidor/);
-    ops.adopt("medaka");
-    ops.adopt("gamba-roja");
-    ops.delivered(1);
-    ops.delivered(2);
-    ops.adopt("grillo");
-    ops.tick(12);
-    const [shrimp, silk] = [ops.chores().find((c) => c.targetId === "gamba-roja")!, ops.chores().find((c) => c.targetId === "grillo")!];
-    expect(ops.areaOf(shrimp.targetId!)).toBe("acuario-anillo");
-    expect(ops.areaOf(silk.targetId!)).toBe("jardin-anillo");
     for (const c of ops.chores()) for (const ex of c.exercises) if (ex.kind === "choice") expect(new Set(ex.options).size).toBe(ex.options.length);
   });
 
-  it("cats, dogs, hens, the school and the snails have their own systems: no colony chores for them", () => {
+  it("the school and the snails have their own system: no colony chores for them", () => {
     const { ops } = world();
-    for (const id of ["gato", "chihuahua", "gallina", "medaka", "nerita"]) ops.adopt(id);
-    for (let d = 1; d <= 5; d++) ops.delivered(d);
+    for (const id of ["medaka", "caracol"]) ops.adopt(id);
+    for (let d = 1; d <= 2; d++) ops.delivered(d);
     expect(ops.chores()).toEqual([]);
   });
 });

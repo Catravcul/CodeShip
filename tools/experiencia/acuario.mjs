@@ -1,7 +1,7 @@
 // The ring aquarium on the farm deck (docs/design/santuario-espacial.md, «Acuario del anillo»): walk to the
 // tank with «Ir», feed the medaka (each right step shows on the tank), befriend the school with a mind
 // program, ask the snails to clean the glass and the medaka to watch the water, and see the effect.
-// A new game has an empty tank: the medaka and the nerites come from the species catalogue first
+// A new game has an empty tank: the medaka and the Biomphalaria snails come from the species catalogue first
 // (docs/design/catalogo-especies.md), and the snails are befriended before they help.
 // Captures go to docs/screenshots/acuario-<paso>-movil.png.
 import { mkdirSync } from "node:fs";
@@ -68,11 +68,11 @@ export async function acuario(j) {
   });
   await j.resetPerf();
 
-  // 0. The tank starts empty: medaka and nerites from the catalogue, with taps.
-  await adoptar(j, [["medaka", "peces"], ["nerita", "caracoles"]]);
+  // 0. The tank starts empty: medaka and Biomphalaria from the catalogue, with taps.
+  await adoptar(j, [["medaka", "peces"], ["caracol", "caracoles"]]);
   await llegan(j);
   const stocked = await p.evaluate(() => ({ fish: window.codeship.interior.aquarium.tank.fishCount, snails: window.codeship.interior.aquarium.tank.snailCount }));
-  j.check("han llegado las medakas y las neritas al tanque", stocked.fish > 0 && stocked.snails > 0, JSON.stringify(stocked));
+  j.check("han llegado las medakas y los caracoles al tanque", stocked.fish > 0 && stocked.snails > 0, JSON.stringify(stocked));
 
   // 1. Care chore from the task list: «Ir» walks her to the tank on the farm deck.
   await j.tap(".tasks-btn", "Tareas");

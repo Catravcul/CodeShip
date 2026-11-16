@@ -1,5 +1,11 @@
 /** Sources for the species catalogue that are not already in the sanctuary's (SANCTUARY_SRC). Checked 2026-11-16. */
 export const ADOPTION_SRC = {
+  /** JAXA, Aquatic Habitat (AQH) on Kibo: two aquariums of 150 × 70 × 70 mm (0.7 L each), 3.2 L in the closed loop, 25–30 °C, LEDs with a light/dark cycle within 24 h, up to 90 days; for medaka or zebrafish. */
+  aqh: "https://iss.jaxa.jp/en/kiboexp/pm/aqh",
+  /** ScienceDaily 2012 (NASA): the AQH flew to the ISS in 2012 with medaka for its first experiments; bacteria filter for ammonia. */
+  aqhMedaka: "https://www.sciencedaily.com/releases/2012/07/120725183634.htm",
+  /** Spaceflight101, Rodent Habitat (NASA Rodent Research): up to ten mice in two sides, food bars and water loaded for the whole study, lights on a timer, no active thermal control (ISS ambient), studies of one to three months. */
+  rodentHabitat: "https://spaceflight101.com/iss/?p=600",
   /** Félicette: a cat flown on a French Véronique sounding rocket (18 Oct. 1963), ~15 min with ~5 min of weightlessness; recovered alive. */
   felicette: "https://en.wikipedia.org/wiki/F%C3%A9licette",
   /** Belka and Strelka: dogs that spent a day in orbit on Korabl-Sputnik 2 (Aug. 1960) and came back alive; the Soviet space dogs were small strays. */

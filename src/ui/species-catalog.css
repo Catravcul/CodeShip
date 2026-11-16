@@ -24,6 +24,7 @@ body.in-catalog .vstick, body.in-catalog .zg-controls, body.in-catalog .cab-mach
 .sc-badge.aboard { color: #001018; background: #7fdcff; }
 .sc-badge.coming { color: #1a0f00; background: #ffd27f; }
 .sc-badge.no { color: #ffb3a8; }
+.sc-badge.pending { color: #cfc6ff; background: transparent; border: 1px dashed #b9a8ff66; }
 .sc-detail { display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.45; }
 .sc-detail header { display: flex; gap: 12px; align-items: center; }
 .sc-detail header .species-icon { flex: none; border-radius: 16px; box-shadow: 0 6px 18px #0008; }
@@ -45,6 +46,8 @@ body.in-catalog .vstick, body.in-catalog .zg-controls, body.in-catalog .cab-mach
 .sc-status { font-size: 13px; padding: 4px 10px; border-radius: 10px; background: #ffffff10; }
 .sc-status.aboard { color: #7fdcff; }
 .sc-status.coming { color: #ffd27f; }
+.sc-status.pending { color: #cfc6ff; border: 1px dashed #b9a8ff55; }
+.sc-areas small { opacity: 0.8; }
 .sc-src { font-size: 12px; margin-top: 4px !important; }
 .sc-detail .tb-task { margin-top: 6px; }
 .sc-action { position: sticky; bottom: -16px; margin: 0 -16px -16px; padding: 10px 16px 16px; display: flex; flex-direction: column; gap: 4px; background: #05060c; box-shadow: 0 -12px 16px -4px #05060c; }

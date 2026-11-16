@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { SANCTUARY_SPECIES } from "@modules/sanctuary/data/fauna";
-import { SANCTUARY_AREAS } from "@modules/sanctuary/data/areas";
 import { CATALOG_GROUPS, shipmentKg } from "../domain/entry";
 import { SPECIES_CATALOG, catalogEntry } from "./catalog";
+import { RACK_HABITATS } from "./rack-habitats";
 import { ALL_SPECIES, EXTRA_SPECIES } from "./species-extra";
 
 const url = /^https:\/\/\S+$/;
@@ -73,7 +73,20 @@ describe("VID-31 species catalogue: extensive, sourced and structured to grow", 
     expect(art.kind).toBe("eclosion");
   });
 
-  it("the areas it is judged against are the sanctuary's own (fit() and loopStatus())", () => {
-    expect(SANCTUARY_AREAS.some((a) => a.id === "acuario-anillo")).toBe(true);
+  it("«real» only if it flew or lived in microgravity; adult hens never did (only fertilised eggs)", () => {
+    for (const e of SPECIES_CATALOG) if (e.flight.status === "sin-vuelo") expect(e.real, e.id).toBe(false);
+    for (const id of ["medaka", "pez-cebra", "caracol", "grillo", "gusano-seda", "tardigrado", "artemia", "raton"]) expect(catalogEntry(id)!.real, id).toBe(true);
+    for (const id of ["nerita", "gallina", "gallina-sedosa", "lombriz"]) expect(catalogEntry(id)!.real, id).toBe(false);
+  });
+
+  it("real habitats for the rack slots: an AQH-type tank and a rodent habitat, sourced, at 0 g, taking only real species", () => {
+    expect(RACK_HABITATS.map((h) => h.id)).toEqual(["habitat-acuatico", "habitat-roedores"]);
+    for (const h of RACK_HABITATS) {
+      expect(h.source).toMatch(url);
+      expect(h.area.gravityG).toBe(0);
+      expect(h.capacity).toBeGreaterThan(0);
+      for (const id of h.accepts) expect(SPECIES_CATALOG.filter((e) => e.speciesId === id).every((e) => e.real), id).toBe(true);
+    }
+    expect(RACK_HABITATS[0]!.area.waterM3 * 1000).toBeCloseTo(3.2, 6);
   });
 });

@@ -135,6 +135,7 @@ export class SpeciesCatalog {
       case "eclosionando":
         return { text: `Eclosionando · ${num(Math.max(0.1, s.daysLeft), 1)} días`, cls: "coming" };
       default:
+        if (c.pendiente) return { text: "Pendiente", cls: "pending" };
         return c.ok ? { text: "Disponible", cls: "ok" } : { text: c.placement.area ? (c.why ?? "No ahora") : "No cabe ahora", cls: "no" };
     }
   }
@@ -142,13 +143,13 @@ export class SpeciesCatalog {
   private listHtml(): string {
     const all = this.ops.entries;
     const checks = new Map(all.map((e) => [e.id, this.ops.check(e.id)] as const));
-    const inArea = (e: CatalogEntry) => !this.area || !!checks.get(e.id)!.placement.verdicts.find((v) => v.areaId === this.area && v.fit.ok);
+    const inArea = (e: CatalogEntry) => !this.area || (this.ops.accepts(this.area, e.speciesId) && !!checks.get(e.id)!.placement.verdicts.find((v) => v.areaId === this.area && v.fit.ok));
     const shown = all.filter((e) => (!this.group || e.group === this.group) && inArea(e));
     const groupChip = (id: CatalogGroup | null, label: string, n: number) => `<button class="chip ${this.group === id ? "on" : ""}" data-group="${id ?? ""}" aria-pressed="${this.group === id}">${label} <small>${n}</small></button>`;
     const groups = `<div class="chips" aria-label="Grupo">${groupChip(null, "Todas", all.filter(inArea).length)}${CATALOG_GROUPS.map((g) => groupChip(g.id, g.label, all.filter((e) => e.group === g.id && inArea(e)).length)).join("")}</div>`;
     const areas = this.ops.areasNow();
     const areaChip = (id: string | null, label: string) => `<button class="chip area ${this.area === id ? "on" : ""}" data-area="${id ?? ""}" aria-pressed="${this.area === id}">${label}</button>`;
-    const areaRow = `<div class="chips" aria-label="Área">${areaChip(null, "Cualquier área")}${areas.map((a) => areaChip(a.area.id, `${esc(a.area.name)}${a.built ? "" : " ·  sin construir"}`)).join("")}</div>`;
+    const areaRow = `<div class="chips" aria-label="Área">${areaChip(null, "Cualquier hábitat")}${areas.map((a) => areaChip(a.area.id, `${esc(a.area.name)}${a.built ? "" : " · sin instalar"}`)).join("")}</div>`;
     const cards = shown
       .map((e) => {
         const st = this.statusText(this.ops.status(e.id), checks.get(e.id)!);
@@ -165,8 +166,11 @@ export class SpeciesCatalog {
     const st = this.statusText(s, c);
     const where = c.placement.verdicts
       .map((v) => {
-        const why = v.fit.ok ? (v.built ? (v.loopOk ? "cabe" : "cabe, pero el bucle no se cierra") : "cabe · aún sin construir") : v.fit.reasons.map((r) => FIT_REASON_TEXT[r]).join(", ");
-        return `<li class="${v.fit.ok && v.built && v.loopOk ? "yes" : v.fit.ok ? "maybe" : "no"}"><span aria-hidden="true">${v.fit.ok ? "✓" : "✗"}</span> <b>${esc(v.areaName)}</b>: ${esc(why)}</li>`;
+        const tried = this.ops.accepts(v.areaId, e.speciesId);
+        const ok = v.fit.ok && tried;
+        const why = !v.fit.ok ? v.fit.reasons.map((r) => FIT_REASON_TEXT[r]).join(", ") : !tried ? "nunca ha volado en uno así" : v.built ? (v.loopOk ? "cabe" : "cabe, pero el bucle no se cierra") : "cabe · aún sin instalar";
+        const hab = this.ops.habitats.find((h) => h.id === v.areaId);
+        return `<li class="${ok && v.built && v.loopOk ? "yes" : ok ? "maybe" : "no"}"><span aria-hidden="true">${ok ? "✓" : "✗"}</span> <b>${esc(v.areaName)}</b>: ${esc(why)}${ok && hab ? `<br><small>${esc(hab.summary)} <a href="${esc(hab.source)}" target="_blank" rel="noopener">Fuente</a></small>` : ""}</li>`;
       })
       .join("");
     const needs = sp
@@ -184,8 +188,9 @@ export class SpeciesCatalog {
         : `Eclosión a bordo: ${esc(e.acquire.what)} de ${c.cost.from === "quistes" ? "quistes" : c.cost.from === "huevos" ? "huevos" : "huevos y formas latentes"} del banco de la nave, en ${num(c.cost.days, 1)} días de a bordo. Sin coste.`;
     const role = sp ? ROLE_LABEL[sp.role] : "";
     const tasks = s.kind === "a-bordo" ? (this.tasksFor?.(e) ?? []) : [];
-    const lodged = s.kind === "a-bordo" ? `<p class="sc-status aboard">A bordo: ${num(s.count)} en ${esc(c.placement.verdicts.find((v) => v.areaId === s.areaId)?.areaName ?? s.areaId)}${s.names.length ? ` (${esc(s.names.join(", "))})` : ""}${e.lodging === "colonia" ? (this.ops.friends(e.id) ? " · amigos" : " · aún no os conocéis") : ""}</p>` : `<p class="sc-status ${st.cls}">${esc(st.text)}</p>`;
+    const lodged = s.kind === "a-bordo" ? `<p class="sc-status aboard">A bordo: ${num(s.count)} en ${esc(c.placement.verdicts.find((v) => v.areaId === s.areaId)?.areaName ?? s.areaId)}${s.names.length ? ` (${esc(s.names.join(", "))})` : ""}${e.lodging === "colonia" ? (this.ops.friends(e.id) ? " · amigos" : " · aún no os conocéis") : ""}</p>` : `<p class="sc-status ${st.cls}">${esc(c.pendiente && s.kind === "disponible" ? (c.why ?? st.text) : st.text)}</p>`;
     const canAdopt = c.ok && !e.aboard;
+    const offer = !e.aboard && !c.pendiente;
     const label = e.lodging === "bucle" ? "Pedir" : "Adoptar";
     return `<div class="sc-head detail"><button class="sc-back" data-back aria-label="Volver al catálogo">‹ Catálogo</button><button class="sc-x" data-close aria-label="Cerrar el catálogo">✕</button></div>
       <article class="sc-detail">
@@ -199,6 +204,6 @@ export class SpeciesCatalog {
         <section><h3>Cómo llega</h3><p>${e.aboard ? "Ya está a bordo desde el principio." : cost}</p><p class="sc-src"><a href="${esc(e.source)}" target="_blank" rel="noopener">Ficha de la especie</a></p></section>
         ${tasks.length ? `<section><h3>Tareas</h3>${tasks.map((t) => `<div class="tb-task"><div><b>${esc(t.title)}</b></div><button class="tb-go" data-task="${esc(t.id)}" aria-label="Ir: ${esc(t.title)}">Ir</button></div>`).join("")}</section>` : ""}
       </article>
-      ${e.aboard ? "" : `<div class="sc-action"><button class="sc-adopt" data-adopt="${e.id}" ${canAdopt ? "" : "disabled"} aria-label="${label}: ${esc(e.name)}">${label}${c.cost.kind === "importar" ? ` · ${num(c.cost.credits)} créditos` : " · eclosión"}</button>${canAdopt ? "" : `<small>${esc(c.why ?? "")}</small>`}</div>`}`;
+      ${!offer ? "" : `<div class="sc-action"><button class="sc-adopt" data-adopt="${e.id}" ${canAdopt ? "" : "disabled"} aria-label="${label}: ${esc(e.name)}">${label}${c.cost.kind === "importar" ? ` · ${num(c.cost.credits)} créditos` : " · eclosión"}</button>${canAdopt ? "" : `<small>${esc(c.why ?? "")}</small>`}</div>`}`;
   }
 }

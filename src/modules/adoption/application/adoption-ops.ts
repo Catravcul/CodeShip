@@ -2,10 +2,11 @@ import type { ChoiceExercise, CodeBlock, OrderExercise } from "@modules/mind-due
 import { ChoreRun, type Chore, type ChoreKind } from "@modules/chores/domain/chore";
 import { toCall } from "@modules/chores/application/catalog";
 import { ChoreSession } from "@modules/habitat/application/habitat";
-import { HUB_AREA_ID, type SanctuaryArea } from "@modules/sanctuary/domain/area";
+import type { SanctuaryArea } from "@modules/sanctuary/domain/area";
 import type { Species } from "@modules/sanctuary/domain/fauna";
 import { shipmentKg, type CatalogEntry } from "../domain/entry";
 import { placeFor, type AreaNow, type Placement, ROLE_SHORT } from "../domain/placement";
+import { habitatFor, type RackHabitat } from "../domain/rack";
 
 /** The import system and the world, as the catalogue sees them (wired in main.ts). */
 export interface AdoptionPorts {
@@ -33,6 +34,8 @@ export type AdoptionStatus =
 
 export interface AdoptionCheck {
   readonly ok: boolean;
+  /** Not adoptable at all for now: it never lived in microgravity, or no real habitat was flown with it. */
+  readonly pendiente?: boolean;
   /** Why not, in Spanish for the card. */
   readonly why?: string;
   readonly placement: Placement;
@@ -93,13 +96,13 @@ export class AdoptionOps {
   constructor(
     readonly entries: readonly CatalogEntry[],
     private readonly species: readonly Species[],
-    areas: readonly SanctuaryArea[],
+    /** The real habitats of the rack slots (`RACK_HABITATS`): the only places animals go. */
+    readonly habitats: readonly RackHabitat[],
     private readonly ports: AdoptionPorts,
-    /** Areas that exist now: the ring's farm deck and its aquarium (the station's come with its modules). */
-    built: readonly string[] = [HUB_AREA_ID, "acuario-anillo"],
+    /** Habitats installed now (all of them by default). */
+    built: readonly string[] = habitats.map((h) => h.id),
   ) {
-    // The crew eats the farm deck's crops: on the hub, Doménica is the loop's consumer until animals come.
-    this.areas = areas.map((a) => (a.hub ? { ...a, support: [...new Set([...a.support, "consumidor" as const])] } : a));
+    this.areas = habitats.map((h) => h.area);
     this.built = new Set(built);
     const aboard = new Set(entries.filter((e) => e.aboard).map((e) => e.speciesId));
     for (const a of this.areas) this.residents.set(a.id, a.residents.filter((id) => aboard.has(id)));
@@ -151,20 +154,44 @@ export class AdoptionOps {
     return a ? { kind: "a-bordo", count: a.count, areaId: a.areaId, names: a.names } : { kind: "disponible" };
   }
 
-  /** Whether it can be adopted now, where it would live, and what it costs. */
+  /** Whether a habitat (area id) was flown with this species. */
+  accepts(areaId: string, speciesId: string): boolean {
+    return this.habitats.some((h) => h.id === areaId && h.accepts.includes(speciesId));
+  }
+
+  /** Animals in a habitat now, those on their way included. */
+  private headcount(areaId: string): number {
+    const here = [...this.arrived.entries()].filter(([, a]) => a.areaId === areaId).reduce((n, [, a]) => n + a.count, 0);
+    return here + this.pending.filter((p) => p.areaId === areaId).reduce((n, p) => n + this.entry(p.entryId).acquire.count, 0);
+  }
+
+  /**
+   * Whether it can be adopted now, where it would live, and what it costs. Only a real species (it lived in
+   * microgravity) into a real habitat flown with it; there, `fit()`, the loop and the habitat's room decide.
+   */
   check(id: string): AdoptionCheck {
     const e = this.entry(id);
-    const placement = placeFor(this.speciesOf(e), this.areasNow(), this.species);
+    const sp = this.speciesOf(e);
+    const now = this.areasNow();
+    const homes = new Set(habitatFor(this.habitats, e.speciesId).map((h) => h.id));
+    const home = placeFor(sp, now.filter((a) => homes.has(a.area.id)), this.species).area;
+    const placement: Placement = { ...(home ? { area: home } : {}), verdicts: placeFor(sp, now, this.species).verdicts };
     const cost = this.cost(e);
-    const no = (why: string): AdoptionCheck => ({ ok: false, why, placement, cost });
+    const no = (why: string, pendiente = false): AdoptionCheck => ({ ok: false, ...(pendiente ? { pendiente } : {}), why, placement, cost });
+    if (!e.real) return no("Pendiente: nunca ha vivido en ingravidez", true);
+    if (!homes.size) return no("Pendiente: aún no hay a bordo un hábitat real probado con ella", true);
     if (this.pending.some((p) => p.entryId === id)) return no(e.acquire.kind === "eclosion" ? "Ya están eclosionando" : "Ya vienen de camino");
     if (!placement.area) {
-      const built = placement.verdicts.filter((v) => v.built);
+      const mine = placement.verdicts.filter((v) => homes.has(v.areaId));
+      const built = mine.filter((v) => v.built);
       const fits = built.filter((v) => v.fit.ok);
-      if (!fits.length) return no(placement.verdicts.some((v) => v.fit.ok) ? "Solo cabe en un área que aún no está construida" : "No cabe en ningún área de la nave");
+      if (!fits.length) return no(mine.some((v) => v.fit.ok) ? "Su hábitat aún no está instalado" : "No cabe en su hábitat");
       const missing = fits[0]!.loop.missing.map((r) => ROLE_SHORT[r]).join(" y ");
       return no(`El bucle de ${fits[0]!.areaName} no se cierra: falta ${missing}`);
     }
+    const hab = this.habitats.find((h) => h.id === placement.area!.id)!;
+    const left = hab.capacity - this.headcount(hab.id);
+    if (e.acquire.count > left) return no(`${hab.area.name} lleno: caben ${Math.max(0, left)} más`);
     if (cost.kind === "importar" && cost.credits > this.ports.credits()) return no(`Faltan ${Math.ceil(cost.credits - this.ports.credits()).toLocaleString("es-ES")} créditos`);
     return { ok: true, placement, cost };
   }

@@ -115,6 +115,12 @@ export interface CatalogEntry {
   readonly source: string;
   /** Already aboard when the game starts (plants and the biofilter's bacteria: not animals). */
   readonly aboard?: boolean;
+  /**
+   * It has really flown or lived in microgravity (medaka, zebrafish, the snails of C.E.B.A.S., crickets,
+   * silkworms, tardigrades, Artemia…). Only real species can be adopted, and only into a real habitat
+   * (`RackHabitat`); the rest stay in the catalogue as «pendiente».
+   */
+  readonly real: boolean;
   /** Names for the ones that arrive (cats, dogs, hens), in order. */
   readonly names?: readonly string[];
 }

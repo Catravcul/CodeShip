@@ -9,7 +9,7 @@ import type { Wallet } from "@modules/imports/domain/wallet";
 import { Cat } from "@modules/pets/domain/cat";
 import { Dog } from "@modules/pets/domain/dog";
 import { Hen } from "@modules/poultry/domain/hen";
-import { SANCTUARY_AREAS } from "@modules/sanctuary/data/areas";
+import { RACK_HABITATS } from "@modules/adoption/data/rack-habitats";
 import type { SanctuaryArea } from "@modules/sanctuary/domain/area";
 import type { Interior } from "./interior";
 import { SpeciesCatalog, type SpeciesTask } from "./ui/species-catalog";
@@ -86,8 +86,8 @@ export function wireSanctuaryLife(d: { root: HTMLElement; interior: Interior; ha
     arrive,
     calm: (x) => habitat.crew.startle(-x),
   };
-  const ops = new AdoptionOps(SPECIES_CATALOG, ALL_SPECIES, SANCTUARY_AREAS, ports);
-  interior.sanctuary = { chores: () => ops.chores(), owns: isColonyChore, station: () => "catalogo", start: (c) => ops.start(c) };
+  const ops = new AdoptionOps(SPECIES_CATALOG, ALL_SPECIES, RACK_HABITATS, ports);
+  interior.sanctuary = { chores: () => ops.chores(), owns: isColonyChore, station: () => interior.rack.station("rack-catalogo"), start: (c) => ops.start(c) };
 
   const catalog = new SpeciesCatalog(d.root, ops, anySpecies, () => wallet.balance);
   const AQUARIUM_TASKS: Readonly<Record<string, readonly string[]>> = {

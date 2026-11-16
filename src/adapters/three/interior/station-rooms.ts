@@ -5,6 +5,7 @@ import { FACE_NORMAL, fixtureBox, longAxis, type Box, type Face, type Fixture, t
 import { textSign } from "./sign";
 import { CubeFigure } from "./figure";
 import { buildStarfield } from "../starfield";
+import { eclssRackModel, mountOnWall, type EclssRackModel } from "../eclss-racks";
 
 /**
  * The station's interior in 3D, in the station's body frame (y = overhead, x = starboard, −z = forward):
@@ -21,6 +22,26 @@ export interface StationRooms {
   readonly store: THREE.Group;
   /** Every label (the caller hides the ones too close to the camera). */
   readonly signs: THREE.Sprite[];
+  /** The life-support racks by fixture id (src/adapters/three/eclss-racks.ts). */
+  readonly racks: Map<string, EclssRackModel>;
+}
+
+/** A life-support rack from the kit, at the plan's drawing scale, on its wall, with its name above it. */
+function eclssRack(f: Fixture, k: number): { group: THREE.Group; model: EclssRackModel } {
+  if (f.action.kind !== "soporte-vital") throw new Error(`${f.id} is not a life-support rack`);
+  const n = v3(FACE_NORMAL[f.face]).negate();
+  const size = v3(f.size).divideScalar(k);
+  const d = Math.abs(size.dot(n));
+  const h = Math.abs(n.y) > 0.5 ? size.z : size.y;
+  const w = Math.abs(n.y) > 0.5 ? size.x : Math.abs(n.x) > 0.5 ? size.z : size.x;
+  const model = eclssRackModel(f.action.rack, { scale: k, size: { w, h, d }, fixtureId: f.id });
+  const g = new THREE.Group();
+  g.add(mountOnWall(model, v3(f.at), n));
+  const sign = textSign(f.label);
+  sign.scale.multiplyScalar(0.6 * Math.sqrt(k));
+  sign.position.copy(v3(f.at)).addScaledVector(n, 0.25).addScaledVector(V(0, 1, 0), Math.abs(n.y) > 0.5 ? -0.3 : Math.min((h * k) / 2 + 0.05, 0.75 * k));
+  g.add(sign);
+  return { group: g, model };
 }
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
@@ -487,8 +508,15 @@ export function buildStationRooms(plan: StationInteriorPlan): StationRooms {
     sign.position.set(lock.centre.x, lock.centre.y + lock.half.y + 0.7, lock.centre.z + lock.half.z);
     group.add(sign);
   }
+  const racks = new Map<string, EclssRackModel>();
   for (const f of plan.fixtures) {
     if (f.volume === "hangar" && f.action.kind !== "hangar" && f.action.kind !== "bahia" && f.action.kind !== "puerta") continue;
+    if (f.action.kind === "soporte-vital") {
+      const r = eclssRack(f, plan.scale ?? 1);
+      racks.set(f.id, r.model);
+      group.add(r.group);
+      continue;
+    }
     const g = fixtureFront(f, lamps, plan.scale ?? 1);
     group.add(g);
   }
@@ -501,7 +529,7 @@ export function buildStationRooms(plan: StationInteriorPlan): StationRooms {
   group.add(store);
   group.add(new THREE.HemisphereLight(0xeef4ff, 0x3a404a, 1.4));
   group.add(new THREE.AmbientLight(0xffffff, 0.25));
-  return { group, pickables, lamps, store, signs };
+  return { group, pickables, lamps, store, signs, racks };
 }
 
 /**

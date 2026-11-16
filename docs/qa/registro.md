@@ -79,6 +79,17 @@ caso y las anteriores quedan en sus run logs.
 | BIO-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | BIO-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | BIO-04 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SV-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SV-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SV-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SV-04 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SV-05 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SV-06 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SV-07 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SV-08 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SV-09 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SV-10 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SV-11 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | IMP-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | IMP-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | IMP-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -171,6 +182,7 @@ caso y las anteriores quedan en sus run logs.
 | PX-24 | Probado (en vivo) | 2026-11-16 | `ef23e9a` | [run](runs/2026-11-16-1800-PX-24.md): 10 OK |
 | PX-20 | FAIL | 2026-11-16 | `c033d52` | [run](runs/2026-11-16-1702-PX-20.md): 256 OK, 7 FALLA |
 | PX-25 | Probado (en vivo) | 2026-11-16 | `be7ba22` | [run](runs/2026-11-16-1835-PX-14-PX-15-PX-25.md): 40 OK |
+| PX-30 | Pendiente | | | |
 
 ## Última ejecución por run log
 

@@ -27,7 +27,7 @@ trabajo, en [README.md](README.md).
 
 - **Áreas**: VUE vuelo, aterrizaje y acople · NAV navegación, mapa y viajes comprimidos · SON sonda ·
   SUB subyugación en tres fases y duelos · NIV niveles de subyugación · IRA poderes de la ira ·
-  EST estación, planos y montaje · REF refinería y propelente · BIO autosustento ·
+  EST estación, planos y montaje · REF refinería y propelente · BIO autosustento · SV soporte vital ·
   IMP importación · VID vida a bordo · EVA paseo espacial · ING ingravidez · NNT nano_net ·
   MIS misiones, radio y créditos · UI interfaz de retos · CV convivencia de procesos ·
   PX experiencia del jugador.
@@ -150,6 +150,24 @@ Columna QA: cómo se comprueba jugando, o «Solo test» si no tiene sentido hace
 | BIO-02 | Cada proceso va al ritmo de su entrada más escasa y dice cuál; el CO₂ de la tripulación entra antes | `bioreactor.test.ts` (estación) | Solo test |
 | BIO-03 | Indicador de autosustento honesto: nitrógeno importado salvo fuente local (amoníaco de cometas) | `bio-ops.test.ts`, `bioreactor.test.ts`, `bio.test.ts` | Jugar: indicador |
 | BIO-04 | La comida va a la despensa de la nodriza en unidades enteras | `bio-ops.test.ts` | Jugar |
+
+### Soporte vital real (SV)
+
+Diseño: [design/soporte-vital.md](../design/soporte-vital.md). Fuentes: [research/soporte-vital.md](../research/soporte-vital.md).
+
+| ID | Qué tiene que pasar | Test / fixture | QA |
+|---|---|---|---|
+| SV-01 | El balance diario por persona es el de `CREW_DAILY` y MetMan (0,89 kg O₂, 1,08 kg CO₂, 2,39 kg de comida, 2,5 L de agua de beber y comida + 1,3 L de aseo, 1,40 kg de orina, 2,53 kg de vapor, 12 778 kJ ≈ 148 W), con fuente | `crew-balance.test.ts` | Solo test |
+| SV-02 | Cabina a 101,3 kPa y 21,3 kPa de O₂; con el CDRA el CO₂ de una persona queda bajo 3 mmHg; con los lechos taponados pasa de 5,3 mmHg en una semana y vuelve al repararlo; sin repuesto no se repara; sin OGA tiran los tanques de O₂ | `life-support.test.ts` | PX-30 |
+| SV-03 | Agua: 98 % recuperada con el BPA y 93–94 % sin él; con el UPA parado la orina espera y el agua baja más deprisa; el lecho del WPA es mantenimiento; comida en días; energía y calor (sin refrigeración se paran las máquinas y sube la temperatura) | `life-support.test.ts` | PX-30 |
+| SV-04 | Las averías al azar salen de los modos de fallo reales y nunca en los primeros días; la alarma de CO₂ es un evento | `life-support.test.ts` | Solo test |
+| SV-05 | Doménica: dolor de cabeza desde 2,8 mmHg de CO₂, cansancio y náuseas desde 4,5, hipoxia bajo 16,3 kPa de O₂, deshidratación al perder el 2,5 % de su peso en agua; enferma, un intento menos en los retos | `crew-effects.test.ts` | PX-30 |
+| SV-06 | Reabastecimiento por persona y año: 872 kg de comida (3,5 t para cuatro), ~28 kg de agua perdida (1,4 t sin reciclar), ~4 kg de O₂ y ~15 kg de N₂ por fugas, y los repuestos | `resupply.test.ts` | Solo test |
+| SV-07 | Refugio de agua: ~10 g/cm² quitan la mitad de la dosis de una tormenta solar (RadWorks); un camarote forrado pide ~1 t de agua | `resupply.test.ts` | Solo test |
+| SV-08 | Cada avería es una tarea de retos (procedimiento en orden y un valor real); cada paso nombra una acción con su visual; las tareas abiertas son las averías activas | `eclss-chores.test.ts` | PX-30 |
+| SV-09 | Máquinas reales con ritmo, potencia, masa y fuente; cada avería con repuesto, procedimiento y fuente; cada máquina en un bastidor ISPR a tamaño real | `eclss-machines.test.ts` | Solo test |
+| SV-10 | Kit 3D: cada bastidor se dibuja a tamaño real por la escala que pide el anfitrión; tiene la pieza de cada avería; una luz por paso de la reparación | `eclss-racks.test.ts` | PX-30 |
+| SV-11 | En la estación, el Nodo 2 lleva los bastidores de aire, oxígeno, agua y refrigeración, la consola y el puesto de incendios, con asidero, alcanzables y a 2 m | `eclss-placement.test.ts`, `crew-areas.test.ts` | PX-30 |
 
 ### Importación (IMP)
 
@@ -323,6 +341,7 @@ fila del recorrido en [registro.md](registro.md).
 | PX-24 | `catalogo-naves` | En la estación, pestaña Hangar → «Ver el catálogo»: al menos 20 vehículos, con los cinco estados a la vista; DART pide el NEXT-C, las alas ROSA y su cuerpo y su botón está desactivado. Con sus piezas en el hangar dice «Construir en el hangar»; al tocarlo, DART queda montada y las piezas se gastan. Sin botones solapados. Capturas `docs/screenshots/catalogo-naves-*-movil.png`. | iPhone 13, CPU ×1 |
 | PX-20 | `animaciones` | Auditoría de animaciones ([animaciones.md](animaciones.md)): cada receta, cada proceso del molino y del procesador y una tarea de cada clase y puesto del anillo (huerto, animales, acuario, reparaciones, enfermería, laboratorio), un viaje desde la consola de navegación y un aterrizaje por programa, jugados con toques en las respuestas correctas («paso a paso» en los de ordenar). Tras cada paso, medido en la escena 3D: cada objeto a ≤ 0,8 m de una mano de Doménica o sobre el sitio del paso con ella delante; alguna parte a la vista en la franja sobre la hoja, sin muebles ni su cuerpo delante; su centro fuera de otras piezas; su gesto se aparta ≥ 0,3 rad de la espera y su mano se ve. En los planes, cada paso añade su parte con rótulo y sus puntos quedan en pantalla. Una captura webp por paso en `docs/screenshots/anim/` y una fila por paso en la hoja de contactos. | iPhone 13, CPU ×1 |
 | PX-25 | `foco` | Cada clase de reto en cada sitio, abierta con toques sobre controles visibles: receta del anillo (vista panel y vista HUD), tarea del huerto, acuario, yoga; en el puente el viaje de la mesa de navegación, el viaje de la sonda, su aterrizaje por programa y la mente por la sonda; el aterrizaje del módulo por programa, la mente desde el habitáculo, ponerse el traje y la nano_net; en la estación la cocina, una máquina, la pantalla (refinar), importar y cambiar una pieza en el hangar. Con la hoja abierta no hay en pantalla nada más que la hoja, la escena 3D y la línea del paso (`.plan-caption`): ningún otro elemento pinta en la pantalla ni recibe un toque en una rejilla de 12 px, y «Ver trayecto» no ocupa la escena. Al cerrar, vuelve la interfaz de antes. Captura por sitio: `docs/screenshots/foco-<sitio>-movil.png`. | iPhone 13, CPU ×1 |
+| PX-30 | `soporte-vital` | En la estación: lejos de las máquinas no hay lecturas; la consola de soporte vital da ppO₂, ppCO₂, agua, comida y energía (CO₂ < 3 mmHg). Con los lechos del CDRA taponados y una semana, el CO₂ pasa de 5,3 mmHg: el bastidor de aire muestra la alarma y los síntomas de Doménica. Tareas → «Ir» a la reparación del CDRA: al ordenar el procedimiento el bastidor enciende una luz por paso; al terminar se gasta el repuesto y en un día el CO₂ vuelve bajo 3 mmHg. Mantenimiento del lecho de multifiltración del WPA en el bastidor de agua. Sin botones solapados. Capturas `docs/screenshots/soporte-vital-*-movil.png`. | iPhone 13, CPU ×1 |
 
 ---
 

@@ -25,6 +25,8 @@ export interface EclssRackModel {
   repairVisual(part: string, steps: number): StepVisual;
   /** Fades the flashes; call every frame while it is on screen. */
   tick(dt: number): void;
+  /** Where a repair happens on the rack (the top of its part, where the step lamps are), in the scene: for the camera. */
+  focus(part: string): THREE.Vector3;
   /** Named parts (ORUs) of this rack: «lechos», «soplante», «bomba»… */
   readonly parts: ReadonlyMap<string, THREE.Mesh>;
 }
@@ -193,10 +195,18 @@ export function eclssRackModel(kind: RackKind, opts: { scale?: number; size?: { 
         steps.length = 0;
       };
       clearSteps();
-      const size = Math.min(0.07 * k, (H * 0.8) / Math.max(1, n) - 0.02 * k);
+      // A row of lamps just above the part being changed, so the two show together (centred on the rack without a part).
+      const size = 0.045 * k;
+      const gap = 0.025 * k;
+      const box3 = target ? new THREE.Box3().setFromObject(target) : undefined;
+      const local = (v: THREE.Vector3) => g.worldToLocal(v.clone());
+      const top = box3 ? local(box3.max).y : 0;
+      const cx = target ? target.position.x : 0;
+      const rowW = n * size + (n - 1) * gap;
+      const x0 = Math.max(-W / 2 + size, Math.min(W / 2 - size - rowW, cx - rowW / 2));
       for (let i = 0; i < n; i++) {
         const m = new THREE.Mesh(new THREE.BoxGeometry(size, size, 0.02 * k), basic(STATE_COLOR.apagado));
-        m.position.set(-W / 2 + 0.09 * k, H / 2 - 0.15 * k - i * (size + 0.03 * k), 0.035 * k);
+        m.position.set(x0 + size / 2 + i * (size + gap), Math.min(H / 2 - size, top + 0.05 * k), 0.12 * k);
         if (opts.fixtureId) m.userData.fixture = opts.fixtureId;
         g.add(m);
         steps.push(m);
@@ -223,6 +233,14 @@ export function eclssRackModel(kind: RackKind, opts: { scale?: number; size?: { 
           clearSteps();
         },
       };
+    },
+    focus(part) {
+      // The top of the part, where its step lamps light: the part shows just under them.
+      const m = parts.get(part);
+      if (!m) return g.localToWorld(new THREE.Vector3(0, 0, 0));
+      const b = new THREE.Box3().setFromObject(m);
+      const c = b.getCenter(new THREE.Vector3());
+      return c.setY(b.max.y);
     },
     tick(dt) {
       for (const [m, f] of flashes) {

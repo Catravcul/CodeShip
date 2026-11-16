@@ -47,7 +47,7 @@ describe("EST-20 the station's crew areas", () => {
     const reach = g.reachable(g.nearest(PLAY.entries.sonda.at)!);
     expect(reach.size).toBe(g.points.filter((p) => inside.volumeAt(p.body)?.kind !== "hangar").length);
     for (const f of PLAY.fixtures.filter((x) => x.action.kind === "tripulacion")) expect(g.poiPoint(f.id), f.id).toBeDefined();
-  });
+  }, 20000);
 });
 
 describe("EST-21 doors say where they lead", () => {

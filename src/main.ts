@@ -149,7 +149,7 @@ import type { CabinActionId, CabinState } from "@modules/lander-cabin/domain/cab
 import { needingAttention } from "@modules/ship-bay/application/bay";
 import { G } from "@core/units";
 import { REAL_ONLY, fiction } from "@core/realism";
-import { STARSHIP, STARSHIP_NOSE_PORT } from "@modules/mothership/data/starship";
+import { STARSHIP, STARSHIP_LIFE_SUPPORT, STARSHIP_NOSE_PORT } from "@modules/mothership/data/starship";
 import { StarshipModel } from "./adapters/three/starship-model";
 import { StarshipInterior } from "./starship-interior";
 import { wireSanctuaryLife } from "./sanctuary-life";
@@ -863,6 +863,8 @@ const stationLife = new StationLife({
 });
 // Real life support (docs/design/soporte-vital.md): the station hosts the racks for now; Doménica weighs 58 kg.
 const lifeSupport = new LifeSupportGame({ duel: duelView, say: (t, sec) => stationInside.say(t, sec), rack: (id) => stationInside.rack(id), frame: (at) => stationInside.frame(at), unframe: () => stationInside.unframe(), openTasks: () => taskBoard.open() }, STATION_LIFE_SUPPORT, 58);
+// The Starship's own racks and supplies (docs/design/nodriza-starship.md), on the same clock.
+if (starship) starship.lifeSupport = new LifeSupportGame({ duel: duelView, say: (t, sec) => starship.say(t, sec ?? 4), rack: (id) => starship.mode.rack(id), frame: (at) => starship.mode.frame(at), unframe: () => starship.mode.unframe(), openTasks: () => taskBoard.open() }, STARSHIP_LIFE_SUPPORT, 58);
 /** The station's interior as it is drawn and walked: MACHINE_SCALE times its real size. */
 const playInterior = () => new StationInterior(scaleInteriorPlan(stationInteriorPlan(stationOutfit.layout, stationOutfit), MACHINE_SCALE));
 // Inside the station (docs/design/interiores.md §5): zero-g modules and the hangar; its machines open the screen's tabs.
@@ -1422,6 +1424,7 @@ renderer.setAnimationLoop((now) => {
   bioOps.tick(stationHours);
   importOps.tick(stationHours);
   lifeSupport.tick(stationHours);
+  starship?.lifeSupport?.tick(stationHours);
   for (const e of importOps.drainEvents()) {
     // Animals from the Sanctuary: they go to their area and say so themselves.
     if (e.type === "llegada" && sanctuary.delivered(e.delivery)) continue;

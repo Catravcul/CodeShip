@@ -2,6 +2,7 @@ import { Vec3 } from "@core/math/vec3";
 import type { Face, Fixture, InteriorVolume, StationInteriorPlan } from "@modules/station/domain/interior";
 import { rackSpec } from "@modules/life-support/data/eclss-machines";
 import type { RackKind } from "@modules/life-support/domain/eclss";
+import { eclssFixtureId, eclssFixtures, type RackPlacement } from "@modules/station/data/eclss-placement";
 import { STARSHIP_SRC } from "./starship";
 
 /**
@@ -104,14 +105,26 @@ function rackSize(kind: RackKind, face: Face): Vec3 {
   return face === "proa" || face === "popa" ? new Vec3(r.w, r.h, r.d) : new Vec3(r.d, r.h, r.w);
 }
 
-/** An ECLSS rack as a fixture (id `eclss-<kind>`): the life-support wiring gives it actions (eclss-real). */
-function rackFixture(kind: RackKind, deck: 1 | 2 | 3, face: Face, along: number): Fixture {
-  const r = rackSpec(kind);
-  return onWall(`eclss-${kind}`, r.name, deck, face, rackSize(kind, face), { kind: "consola", id: `eclss-${kind}` }, r.info, r.source, along);
-}
+/**
+ * The life-support racks (docs/design/soporte-vital.md) on each deck's side walls, «distribución nuestra»:
+ * deck 1 oxygen and coolant beside the galley, the fire post beside the workstations; deck 2 water recovery
+ * beside the WHC (whose water it takes); deck 3 air beside the ARED and the life-support laptop beside the CEVIS.
+ */
+export const STARSHIP_ECLSS: Readonly<Record<1 | 2 | 3, readonly RackPlacement[]>> = {
+  1: [
+    { rack: "ogs", side: 0, along: -1.45 },
+    { rack: "itcs", side: 0, along: 1.45 },
+    { rack: "incendios", side: 1, along: 1.6 },
+  ],
+  2: [{ rack: "wrs", side: 1, along: -0.95 }],
+  3: [
+    { rack: "ar", side: 0, along: -1.45 },
+    { rack: "consola", side: 1, along: -1.45 },
+  ],
+};
 
-/** Which ECLSS model each fixture shows (the galley and the work laptop are ECLSS kit too). */
-export const ECLSS_MODEL_OF: Readonly<Record<string, RackKind>> = { cocina: "galeria", "puesto-trabajo": "consola", refugio: "refugio", "eclss-wrs": "wrs", "eclss-ogs": "ogs", "eclss-itcs": "itcs", "eclss-ar": "ar", "eclss-incendios": "incendios" };
+/** Which ECLSS model a crew fixture shows (the galley and the work laptop are ECLSS kit too). */
+export const ECLSS_MODEL_OF: Readonly<Record<string, RackKind>> = { cocina: "galeria", "puesto-trabajo": "consola" };
 const crew = (area: CrewAreaId): Fixture["action"] => ({ kind: "tripulacion", area });
 
 /** The plan at true size. */
@@ -127,8 +140,8 @@ export function starshipInteriorPlan(): StationInteriorPlan {
     onWall("salir-estacion", "Túnel de proa: a la estación", 1, "proa", new Vec3(0.8, 0.8, 0.1), { kind: "salir", to: "nodriza" }, "El puerto IDSS del morro, como el del HLS: con la nave atracada lleva a la estación", ISS.idss),
     // Deck 2: four crew quarters and the WHC.
     onWall("camarotes", "Camarotes (4)", 2, "babor", new Vec3(1.05, 2.0, 4.0), crew("camarotes"), "Cuatro camarotes de 2,1 m³ en fila, del tamaño de un bastidor, como los de Harmony: saco sujeto a la pared, luz, ventilador y portátil", ISS.crewQuarters),
-    onWall("aseo", "Aseo (WHC)", 2, "estribor", rack().x, crew("aseo"), "Aseo con flujo de aire, como el WHC de la ISS: en 0 g el aire arrastra lo que en la Tierra cae", ISS.whc),
-    onWall("refugio", rackSpec("refugio").name, 2, "popa", rackSize("refugio", "popa"), { kind: "info" }, rackSpec("refugio").info, rackSpec("refugio").source, -1.45),
+    onWall("aseo", "Aseo (WHC)", 2, "estribor", rack().x, crew("aseo"), "Aseo con flujo de aire, como el WHC de la ISS: en 0 g el aire arrastra lo que en la Tierra cae", ISS.whc, 1.45),
+    onWall(eclssFixtureId("refugio"), rackSpec("refugio").name, 2, "popa", rackSize("refugio", "popa"), { kind: "soporte-vital", rack: "refugio" }, rackSpec("refugio").info, rackSpec("refugio").source, -1.45),
     // The species catalogue (docs/design/catalogo-especies.md, «Ranuras de rack»): its terminal, with the
     // rodent habitat and the colonies' shelf beside it, and the aquatic habitat in a rack bay of deck 3.
     onWall("catalogo", "Catálogo de especies", 2, "popa", new Vec3(0.5, 1.4, 0.3), { kind: "consola", id: "catalogo" }, "Terminal del catálogo de especies del Santuario: solo especies que han vivido en microgravedad, en hábitats que han volado", ADOPTION.rodent, 0.35),
@@ -139,14 +152,9 @@ export function starshipInteriorPlan(): StationInteriorPlan {
     onWall("cevis", "Bicicleta CEVIS", 3, "estribor", new Vec3(0.86, 1.2, 1.0), crew("ejercicio"), "Bicicleta sin asiento: los pies van atados a los pedales (25–350 W)", ISS.exercise),
     onWall("esclusa", "Esclusa (paseo espacial)", 3, "proa", new Vec3(1.2, 2.0, 0.1), { kind: "info" }, "El HLS lleva dos esclusas; las salidas desde la nave están pendientes (docs/pendientes.md)", ISS.hls),
     onWall("salir-modulo", "Escotilla del módulo de aterrizaje", 3, "popa", new Vec3(0.8, 0.8, 0.1), { kind: "salir", to: "sonda" }, "Puerto IDSS del costado (nuestro): el módulo de aterrizaje se acopla aquí", ISS.idss),
-    // Life support (branch eclss-real, ECLSS_RACKS): ISPR racks beside the middle fixture of a wall.
-    rackFixture("wrs", 2, "proa", 0),
-    rackFixture("ogs", 1, "proa", 1.45),
-    rackFixture("itcs", 1, "proa", -1.45),
-    rackFixture("ar", 3, "proa", 1.45),
-    rackFixture("incendios", 3, "proa", -1.45),
     onWall("almacen", "Almacén", 3, "popa", new Vec3(1.05, 2.0, 0.86), { kind: "info" }, "Bolsas de carga y comida del mes, sujetas en los huecos curvos entre los bastidores y el casco", ISS.ispr, -1.45),
   ];
+  for (const d of STARSHIP_DECKS) fixtures.push(...eclssFixtures(volumes.find((v) => v.id === d.id)!, STARSHIP_ECLSS[d.deck]));
   // The hatches between decks, seen from each side: from below on the ceiling, from above on the floor.
   for (const [h, lower, upper] of [["escotilla-3-2", "cubierta-3", "cubierta-2"], ["escotilla-2-1", "cubierta-2", "cubierta-1"]] as const) {
     const v = volumes.find((x) => x.id === h)!;

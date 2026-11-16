@@ -2,6 +2,8 @@ import { Vec3 } from "@core/math/vec3";
 import type { Sourced } from "@core/units";
 import type { ChemicalDrive, MassItem, MothershipSpec } from "../domain/mothership";
 import { CAREER_LIMIT, FREE_SPACE_GCR } from "./equipment";
+import { STATION_LIFE_SUPPORT } from "@modules/life-support/data/hosts";
+import type { LifeSupportConfig } from "@modules/life-support/domain/life-support";
 
 /**
  * Starship as the mothership (docs/design/nodriza-starship.md). Real dimensions, engines and tanks
@@ -67,6 +69,28 @@ export const STARSHIP_DRIVE: ChemicalDrive = {
 
 /** Real crew: the HLS is announced for 2–4; we take 4, the largest published, like an ISS increment of four. */
 export const STARSHIP_CREW: Sourced<number> = { value: 4, source: S.hls, note: "El HLS se anuncia para 2–4 tripulantes; tomamos 4, el máximo publicado. Doménica es la que se juega" };
+
+/**
+ * The Starship's own life support (docs/design/soporte-vital.md, «Anfitriones»), stepped on the same clock as
+ * the station's: Doménica alone aboard (the HLS takes up to four), the 614 m³ of the published pressurised
+ * volume as free air (a little less in truth, between racks and stores), and water, food, tanks and spares as
+ * the station starts (game values: SpaceX has not published Starship's ECLSS).
+ */
+export const STARSHIP_LIFE_SUPPORT: LifeSupportConfig = {
+  crew: 1,
+  freeAirM3: 614,
+  waterKg: STATION_LIFE_SUPPORT.waterKg,
+  foodKg: STATION_LIFE_SUPPORT.foodKg,
+  o2TankKg: STATION_LIFE_SUPPORT.o2TankKg,
+  n2TankKg: STATION_LIFE_SUPPORT.n2TankKg,
+  spares: STATION_LIFE_SUPPORT.spares,
+};
+
+export const STARSHIP_LIFE_SUPPORT_SOURCES = {
+  freeAirM3: S.starship,
+  crew: S.hls,
+  waterFoodTanksAndSpares: "Valor de juego: los de la estación (src/modules/life-support/data/hosts.ts); el soporte vital de Starship no está publicado",
+} as const;
 
 const est = (id: string, label: string, kg: number, basis: string, sources: string[] = []): MassItem => ({ id, label, kg, basis, sources });
 

@@ -32,6 +32,7 @@ Hay además un **refugio de agua** contra las tormentas solares y la **cuenta de
 | Refugio | `domain/radiation-shelter.ts` | Puntos de RadWorks, agua necesaria y protección con el agua de a bordo |
 | Tareas | `application/eclss-chores.ts` | Cada avería activa es una tarea `soporte-vital` (procedimiento en orden y un valor real) |
 | Anfitrión estación | `data/hosts.ts` | Doménica sola, 388 m³, 1200 L, medio año de comida, un repuesto de cada |
+| Anfitrión Starship | `mothership/data/starship.ts` (`STARSHIP_LIFE_SUPPORT`) | Doménica sola, 614 m³; agua, comida, tanques y repuestos como la estación. Bastidores con `eclssFixtures` ([nodriza-starship.md](nodriza-starship.md)) |
 
 ### Modelo (lo esencial)
 

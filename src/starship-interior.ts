@@ -19,6 +19,7 @@ import type { SanctuaryChores } from "./interior";
 import { aquariumEventText } from "./ui/aquarium-text";
 import { YOGA_SEQUENCES } from "@modules/wellness/data/yoga";
 import { eclssRackModel, mountOnWall, type EclssRackModel } from "./adapters/three/eclss-racks";
+import type { LifeSupportGame } from "./life-support-game";
 import { StationInteriorMode, type StationAction } from "./station-interior";
 import type { DuelView, SessionText } from "./ui/duel-view";
 import "./ui/starship-interior.css";
@@ -95,6 +96,8 @@ export class StarshipInterior {
   /** The colonies adopted from the catalogue: their chores (set by sanctuary-life.ts). */
   sanctuary?: SanctuaryChores;
   openCatalog?: () => void;
+  /** The ship's own life support (set by main.ts): its racks' cards and its repairs as chores. */
+  lifeSupport?: LifeSupportGame;
   /** Colours of adopted animals (sanctuary-life.ts); no animal walks in 0 g here. */
   readonly animalColor = new Map<string, number>();
   private readonly viewer = new THREE.Vector3();
@@ -122,8 +125,10 @@ export class StarshipInterior {
         },
         cannotLeave: (to) => d.cannotLeave(to),
         openTasks: () => d.openTasks(),
-        actions: (f) => this.actions(f),
-        act: (f, a) => this.act(f, a),
+        actions: (f) => (f.action.kind === "soporte-vital" ? (this.lifeSupport?.actions(f) ?? []) : this.actions(f)),
+        act: (f, a) => (f.action.kind === "soporte-vital" ? this.lifeSupport?.act(f, a) : this.act(f, a)),
+        readout: (f) => this.lifeSupport?.readout(f),
+        rackState: (f) => this.lifeSupport?.rackState(f) ?? { state: "ok" },
         landerInHangar: () => false,
       },
       {
@@ -135,7 +140,7 @@ export class StarshipInterior {
             : "Entras por el túnel de proa a la cubierta 1 de la Starship. 0 g: la proa es «arriba»",
       },
     );
-    // The life-support racks (eclss-real), on their walls, facing the aisle.
+    // The galley's and the work laptop's ECLSS models (the life-support racks are the mode's own fixtures).
     for (const f of plan.fixtures) {
       const kind = ECLSS_MODEL_OF[f.id];
       if (!kind) continue;
@@ -233,13 +238,14 @@ export class StarshipInterior {
   // --- Tasks ------------------------------------------------------------------
 
   /** The board's chores aboard, with the fixture where each is done. */
-  choreFacts(): { id: string; title: string; detail: string; category: "comida" | "salud" | "animales"; station: string }[] {
+  choreFacts(): { id: string; title: string; detail: string; category: "comida" | "salud" | "animales" | "nave"; station: string }[] {
     const crew = this.crew.chores().map((c) => {
       const area = this.crew.areaOf(c);
       return { id: c.id, title: c.title, detail: `${AREA_NAME[area]} · ${c.exercises.length} retos`, category: c.kind === "cocinar" ? ("comida" as const) : ("salud" as const), station: FIXTURE_OF[c.kind] ?? "cocina" };
     });
     const animals = this.animalChores().map((c) => ({ id: c.id, title: c.title, detail: `${this.sanctuary?.owns(c) ? "Catálogo (cubierta 2)" : "Hábitat acuático (cubierta 3)"} · ${c.exercises.length} retos`, category: "animales" as const, station: this.animalFixture(c) }));
-    return [...crew, ...animals];
+    const eclss = (this.lifeSupport?.taskFacts() ?? []).map((t) => ({ id: t.id, title: t.title, detail: `Starship · ${t.detail}`, category: "nave" as const, station: t.area }));
+    return [...crew, ...animals, ...eclss];
   }
 
   /** The aquatic habitat's chores and the adopted colonies'. */
@@ -255,6 +261,11 @@ export class StarshipInterior {
 
   /** «Ir» to a chore: hop to its machine and start it there. */
   doChore(id: string): boolean {
+    const repair = this.lifeSupport?.taskFacts().find((t) => t.id === id);
+    if (repair) {
+      if (!this.mode.goToFixture(repair.area, () => this.lifeSupport!.startChore(id))) this.lifeSupport!.startChore(id);
+      return true;
+    }
     const c = this.findChore(id);
     if (!c) return false;
     const at = this.crew.chore(id) ? (FIXTURE_OF[c.kind] ?? "cocina") : this.animalFixture(c);
@@ -326,6 +337,7 @@ export class StarshipInterior {
 
   /** A chore in the shared challenge sheet. */
   startChore(id: string): void {
+    if (this.lifeSupport?.taskFacts().some((t) => t.id === id)) return void this.lifeSupport.startChore(id);
     const chore = this.findChore(id);
     const session = chore && (this.crew.chore(id) ? this.crew.start(id) : isAquariumChore(chore) ? this.aquarium.start(chore) : this.sanctuary?.owns(chore) ? this.sanctuary.start(chore) : undefined);
     if (!chore || !session || this.d.duel.visible) return;

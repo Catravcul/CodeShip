@@ -78,8 +78,20 @@ export class MissionLogPanel {
   notify(text: string, kind: string): void {
     this.toast.textContent = text;
     this.toast.className = `ml-toast on ${kind}`;
+    this.hideToastIn(7000);
+  }
+
+  /**
+   * The notice lasts `ms` on screen. A challenge hides it (docs/design/ux-acciones.md §7): it waits under
+   * the sheet and gets its full time again once the challenge closes.
+   */
+  private hideToastIn(ms: number, waited = false): void {
     clearTimeout(this.toastTimer);
-    this.toastTimer = window.setTimeout(() => this.toast.classList.remove("on"), 7000);
+    this.toastTimer = window.setTimeout(() => {
+      if (document.body.classList.contains("in-duel")) return this.hideToastIn(1000, true);
+      if (waited) return this.hideToastIn(7000);
+      this.toast.classList.remove("on");
+    }, ms);
   }
 
   /** Nevaeh's letters about missions not read yet (for the cockpit button). */

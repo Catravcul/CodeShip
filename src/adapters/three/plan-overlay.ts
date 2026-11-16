@@ -21,6 +21,8 @@ export class PlanOverlay {
     this.caption = document.createElement("div");
     this.caption.className = "plan-caption";
     this.caption.setAttribute("role", "status");
+    // The step overlay stays on screen with a challenge open (docs/design/ux-acciones.md §7).
+    this.caption.dataset.duelKeep = "paso";
     host.appendChild(this.caption);
   }
 

@@ -58,6 +58,26 @@ describe("asteroid wrath", () => {
     expect(w.threatened("aterrizador")).toBe(false);
   });
 
+  it("underAttack: only something flying at the craft (a projectile or a ram) is a critical alert, not the anger in reach (ux-acciones §7)", () => {
+    const w = new AsteroidWrath([bennu]);
+    const probe = target("sonda", "sonda", new Vec3(0, 260, 0));
+    const lander = target("aterrizador", "aterrizador", new Vec3(0, 0, 260), { crewed: true });
+    w.addTarget(probe.t);
+    w.addTarget(lander.t);
+    w.duelFailed(BENNU.id, 2);
+    // Angry and in reach: threatened, but nothing is flying yet.
+    expect(w.threatened("sonda")).toBe(true);
+    expect(w.underAttack("sonda")).toBe(false);
+    // Bennu throws only at the probe (tier 1): the probe comes under attack, the lander never does.
+    const seen = { sonda: false, aterrizador: false };
+    for (let i = 0; i < 300; i++) {
+      w.update(0.1);
+      seen.sonda ||= w.underAttack("sonda");
+      seen.aterrizador ||= w.underAttack("aterrizador");
+    }
+    expect(seen).toEqual({ sonda: true, aterrizador: false });
+  });
+
   it("a calm asteroid throws nothing and can be dueled; a failed duel makes it angry and blocks a retry", () => {
     const w = new AsteroidWrath([bennu]);
     const probe = target("sonda", "sonda", new Vec3(0, 300, 0));

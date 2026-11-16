@@ -67,6 +67,9 @@ caso y las anteriores quedan en sus run logs.
 | EST-24 | Probado (en vivo) | 2026-11-14 | `f1df8fc` | [run](runs/2026-11-14-1806-PX-04-PX-10-PX-12.md): PX-12 y la suite |
 | EST-25 | Probado (en vivo) | 2026-11-16 | `ee051ea` | [run](runs/2026-11-16-1500-PX-16.md): PX-16 y `dry-dock.test.ts` |
 | EST-26 | Solo test | | | `dry-dock.test.ts` (verde en la suite completa) |
+| EST-28 | Solo test | | | `vehicle-catalogue.test.ts` |
+| EST-29 | Solo test | | | `vehicle-yard.test.ts`; en vivo, PX-24 |
+| EST-30 | Solo test | | | `vehicle-catalogue.test.ts` |
 | EST-27 | Probado (en vivo) | 2026-11-16 | `ee051ea` | [run](runs/2026-11-16-1500-PX-16.md): PX-16, `dock-trip.test.ts` y `journey-world.test.ts` |
 | EST-05 | Parcial | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): suite OK; en vivo solo la tarjeta del almacén lleno (`hc-almacen-mobile.png`) |
 | REF-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -155,7 +158,7 @@ caso y las anteriores quedan en sus run logs.
 | PX-01 | Probado (en vivo) | 2026-11-16 | `7e299cd` | [run](runs/2026-11-16-1906-PX-01-PX-02.md): 50 OK |
 | PX-02 | FAIL | 2026-11-16 | `7e299cd` | [run](runs/2026-11-16-1906-PX-01-PX-02.md): 28 OK, 1 FALLA |
 | PX-03 | Probado (en vivo) | 2026-11-13 | `f59ae5a` | [run](runs/2026-11-13-1713-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09-PX-10-PX-11.md): 14 OK |
-| PX-04 | Probado (en vivo) | 2026-11-14 | `71ff3eb` | [run](runs/2026-11-14-1822-PX-02-PX-04-PX-10-PX-12-PX-15.md): 27 OK |
+| PX-04 | Probado (en vivo) | 2026-11-16 | `9b15623` | [run](runs/2026-11-16-1805-PX-04-PX-12.md): 27 OK |
 | PX-05 | Probado (en vivo) | 2026-11-14 | `cb310e1` | [run](runs/2026-11-14-1626-PX-01-PX-02-PX-04-PX-05-PX-10-PX-11.md): 25 OK |
 | PX-06 | Probado (en vivo) | 2026-11-13 | `f59ae5a` | [run](runs/2026-11-13-1713-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09-PX-10-PX-11.md): 20 OK |
 | PX-07 | Probado (en vivo) | 2026-11-13 | `f59ae5a` | [run](runs/2026-11-13-1713-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09-PX-10-PX-11.md): 13 OK |
@@ -163,13 +166,15 @@ caso y las anteriores quedan en sus run logs.
 | PX-09 | Probado (en vivo) | 2026-11-13 | `f59ae5a` | [run](runs/2026-11-13-1713-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09-PX-10-PX-11.md): 9 OK |
 | PX-10 | Probado (en vivo) | 2026-11-16 | `24842ba` | [run](runs/2026-11-16-1536-PX-02-PX-10-PX-14.md): 26 OK |
 | PX-11 | Probado (en vivo) | 2026-11-16 | `75bea64` | [run](runs/2026-11-16-1500-PX-02-PX-10-PX-11.md): 26 OK |
-| PX-12 | Probado (en vivo) | 2026-11-16 | `e6324ff` | [run](runs/2026-11-16-1457-PX-12.md): 23 OK |
+| PX-12 | Probado (en vivo) | 2026-11-16 | `9b15623` | [run](runs/2026-11-16-1816-PX-12.md): 23 OK |
 | PX-13 | Probado (en vivo) | 2026-11-16 | `7e299cd` | [run](runs/2026-11-16-1853-PX-13-PX-27.md): 36 OK |
-| PX-14 | Probado (en vivo) | 2026-11-16 | `24842ba` | [run](runs/2026-11-16-1536-PX-02-PX-10-PX-14.md): 33 OK |
-| PX-15 | Probado (en vivo) | 2026-11-14 | `652d629` | [run](runs/2026-11-14-1925-PX-02-PX-10-PX-12-PX-14-PX-15.md): 61 OK |
+| PX-14 | Probado (en vivo) | 2026-11-16 | `be7ba22` | [run](runs/2026-11-16-1835-PX-14-PX-15-PX-25.md): 34 OK |
+| PX-15 | Probado (en vivo) | 2026-11-16 | `be7ba22` | [run](runs/2026-11-16-1855-PX-15.md): 61 OK |
 | PX-16 | Probado (en vivo) | 2026-11-16 | `4968040` | [run](runs/2026-11-16-1519-PX-14-PX-16.md): 25 OK |
 | PX-23 | Probado (en vivo) | 2026-11-16 | `e3b90f0` | [run](runs/2026-11-16-1521-PX-01-PX-02-PX-23.md): 62 OK |
+| PX-24 | Probado (en vivo) | 2026-11-16 | `ef23e9a` | [run](runs/2026-11-16-1800-PX-24.md): 10 OK |
 | PX-20 | FAIL | 2026-11-16 | `c033d52` | [run](runs/2026-11-16-1702-PX-20.md): 256 OK, 7 FALLA |
+| PX-25 | Probado (en vivo) | 2026-11-16 | `be7ba22` | [run](runs/2026-11-16-1835-PX-14-PX-15-PX-25.md): 40 OK |
 | PX-27 | Probado (en vivo) | 2026-11-16 | `7e299cd` | [run](runs/2026-11-16-1853-PX-13-PX-27.md): 25 OK |
 
 ## Última ejecución por run log
@@ -179,10 +184,17 @@ La más reciente arriba.
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
 | 2026-11-16 19:06 | PX-01, PX-02 | Experiencia (Playwright) | 1/2 recorridos bien | [run](runs/2026-11-16-1906-PX-01-PX-02.md) |
+| 2026-11-16 18:55 | PX-15 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-1855-PX-15.md) |
 | 2026-11-16 18:53 | PX-13, PX-27 | Experiencia (Playwright) | 2/2 recorridos bien | [run](runs/2026-11-16-1853-PX-13-PX-27.md) |
 | 2026-11-16 18:38 | PX-13 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-1838-PX-13.md) |
+| 2026-11-16 18:35 | PX-14, PX-15, PX-25 | Experiencia (Playwright) | 2/3 recorridos bien | [run](runs/2026-11-16-1835-PX-14-PX-15-PX-25.md) |
 | 2026-11-16 18:26 | PX-13, PX-27 | Experiencia (Playwright) | 1/2 recorridos bien | [run](runs/2026-11-16-1826-PX-13-PX-27.md) |
+| 2026-11-16 18:21 | PX-25 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-1821-PX-25.md) |
+| 2026-11-16 18:16 | PX-12 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-1816-PX-12.md) |
 | 2026-11-16 18:08 | PX-27 | Experiencia (Playwright) | 0/1 recorridos bien | [run](runs/2026-11-16-1808-PX-27.md) |
+| 2026-11-16 18:05 | PX-04, PX-12 | Experiencia (Playwright) | 1/2 recorridos bien | [run](runs/2026-11-16-1805-PX-04-PX-12.md) |
+| 2026-11-16 18:00 | PX-24 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-1800-PX-24.md) |
+| 2026-11-16 17:59 | PX-24 | Experiencia (Playwright) | 0/1 recorridos bien | [run](runs/2026-11-16-1759-PX-24.md) |
 | 2026-11-16 17:02 | PX-20 | Experiencia (Playwright) | 0/1 recorridos bien | [run](runs/2026-11-16-1702-PX-20.md) |
 | 2026-11-16 15:36 | PX-02, PX-10, PX-14 | Experiencia (Playwright) | 3/3 recorridos bien | [run](runs/2026-11-16-1536-PX-02-PX-10-PX-14.md) |
 | 2026-11-16 15:21 | PX-01, PX-02, PX-23 | Experiencia (Playwright) | 2/3 recorridos bien | [run](runs/2026-11-16-1521-PX-01-PX-02-PX-23.md) |

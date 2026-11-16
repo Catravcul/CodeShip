@@ -45,6 +45,10 @@ export const SRC = {
   adn: "https://en.wikipedia.org/wiki/Ammonium_dinitramide",
   /** Sabatier reaction: CO2 + 4 H2 → CH4 + 2 H2O on nickel at 300–400 °C; the ISS uses it to recover water. */
   sabatier: "https://en.wikipedia.org/wiki/Sabatier_reaction",
+  /** Methane: boils at −161,5 °C at 1 atm (liquid oxygen at −183 °C); Starship's fuel with liquid oxygen. */
+  methane: "https://en.wikipedia.org/wiki/Methane",
+  /** Starship HLS: propellant transfer in orbit from tanker Starships to a depot and to the lander, with settling burns. */
+  starshipHls: "https://en.wikipedia.org/wiki/Starship_HLS",
   /** NASA Tech Briefs NPO-20679 (JPL): loading hydrazine through the service valve, then purging the flexline with pressurant. */
   hydrazineLoading: "https://www.techbriefs.com/component/content/article/6967-npo-20679",
   /** ESA Biomass before fuelling: each closed valve pressurised with helium on one side and vacuum on the other, helium detectors find leaks. */

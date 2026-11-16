@@ -83,6 +83,10 @@ export function turnTimeS(angleRad: number, alphaRadS2: number, maxRateRadS: num
 /**
  * A low-thrust hop with no coast (electric thrusters): accelerate half way, turn round, brake the
  * other half. Peak speed √(d·a), time 2·√(d/a), Δv 2·√(d·a).
+ *
+ * With a cruise speed (a chemical ship such as Starship, whose Δv would not last pushing all the
+ * way): accelerate to it, coast, turn round and brake. Burn time v/a at each end, coast
+ * (d − v²/a)/v, Δv 2·v.
  */
 export interface ContinuousBurnPlan {
   readonly distanceM: number;
@@ -90,12 +94,23 @@ export interface ContinuousBurnPlan {
   readonly peakMS: number;
   readonly totalS: number;
   readonly deltaVMS: number;
+  /** Seconds coasting at the peak speed between the two burns (0 or absent: no coast). */
+  readonly coastS?: number;
 }
 
-export function planContinuousBurn(distanceM: number, accelMS2: number): ContinuousBurnPlan {
+export function planContinuousBurn(distanceM: number, accelMS2: number, cruiseMS = Infinity): ContinuousBurnPlan {
   const d = Math.max(0, distanceM);
   if (accelMS2 <= 0) return { distanceM: d, accelMS2, peakMS: 0, totalS: Infinity, deltaVMS: Infinity };
-  return { distanceM: d, accelMS2, peakMS: Math.sqrt(d * accelMS2), totalS: 2 * Math.sqrt(d / accelMS2), deltaVMS: 2 * Math.sqrt(d * accelMS2) };
+  const peak = Math.sqrt(d * accelMS2);
+  if (peak <= cruiseMS) return { distanceM: d, accelMS2, peakMS: peak, totalS: 2 * Math.sqrt(d / accelMS2), deltaVMS: 2 * peak };
+  const v = cruiseMS;
+  const coastS = (d - (v * v) / accelMS2) / v;
+  return { distanceM: d, accelMS2, peakMS: v, totalS: (2 * v) / accelMS2 + coastS, deltaVMS: 2 * v, coastS };
+}
+
+/** Seconds of each of the two burns (accelerating, braking). */
+export function burnSeconds(p: ContinuousBurnPlan): number {
+  return (p.totalS - (p.coastS ?? 0)) / 2;
 }
 
 /** Distance covered after `t` seconds of a continuous-burn hop. */
@@ -103,5 +118,8 @@ export function continuousBurnDistance(p: ContinuousBurnPlan, t: number): number
   const T = p.totalS;
   if (t <= 0) return 0;
   if (t >= T) return p.distanceM;
-  return t <= T / 2 ? 0.5 * p.accelMS2 * t * t : p.distanceM - 0.5 * p.accelMS2 * (T - t) ** 2;
+  const tb = burnSeconds(p);
+  if (t <= tb) return 0.5 * p.accelMS2 * t * t;
+  if (t >= T - tb) return p.distanceM - 0.5 * p.accelMS2 * (T - t) ** 2;
+  return 0.5 * p.accelMS2 * tb * tb + p.peakMS * (t - tb);
 }

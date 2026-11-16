@@ -26,7 +26,7 @@ export function mothershipEquipmentStatus(m: Mothership): ComponentStatus[] {
       const d = m.drive;
       specs.push(
         { label: "Aporta aquí", value: `${num(m.auxiliaryKw)} kW a ${num(m.spec.sunDistanceAu.value, 2)} UA del Sol`, source: m.spec.sunDistanceAu.source },
-        { label: "Reactor", value: `${num(m.spec.power.electricKw.value)} kWe` },
+        { label: "Reactor", value: `${num(m.spec.power?.electricKw.value ?? 0)} kWe` },
         { label: "Libre para propulsión", value: `${num(d.availableKw)} kW · encienden ${d.firingUnits} de ${d.fittedUnits}` },
       );
     } else {

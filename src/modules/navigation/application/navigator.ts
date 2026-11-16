@@ -247,7 +247,7 @@ export class Navigator {
     const out = c.departure?.();
     const path = out ? [out, ...planRoute(out, parking, obstacles)] : planRoute(from, parking, obstacles);
     const distanceM = pathLength(from, path);
-    const plan = planContinuousBurn(distanceM, c.accelerationMs2);
+    const plan = planContinuousBurn(distanceM, c.accelerationMs2, c.cruiseMS);
     const probe = t.kind === "dock" ? this.probeDockTrip(t) : this.probeTrip(t);
     const probeLegM = berthAt ? 0 : Math.max(0, c.parkingM - this.approachM);
     const facts: CarrierTripFacts = {
@@ -256,6 +256,8 @@ export class Navigator {
       carrierName: c.name,
       plan,
       thrusterCount: c.thrusterCount,
+      engineName: c.engineName ?? "propulsores eléctricos",
+      propellantName: c.propellantName ?? "xenón",
       thrustN: c.thrustN,
       massKg: c.massKg,
       deltaVAvailableMS: c.deltaV(),
@@ -368,7 +370,7 @@ export class Navigator {
     if (busy) return { ok: false, reason: busy };
     if (t.kind === "asteroid" && trip.heightM <= this.approachM + 50) return { ok: false, reason: `Ya estás a menos de ${this.approachM + 50} m: aterriza a mano` };
     if (trip.carrier) {
-      if (trip.carrier.plan.deltaVMS > this.ports.carrier!.deltaV()) return { ok: false, reason: "A la nodriza no le queda xenón para ese viaje" };
+      if (trip.carrier.plan.deltaVMS > this.ports.carrier!.deltaV()) return { ok: false, reason: `A la nodriza no le queda ${this.ports.carrier!.propellantName ?? "xenón"} para ese viaje` };
       return { ok: true };
     }
     if (!trip.plan.feasible) return { ok: false, reason: "No queda combustible en el motor principal" };
@@ -418,7 +420,7 @@ export class Navigator {
     }
     const busy = this.ports.busy?.(true);
     if (busy) return { ok: false, reason: busy };
-    if (trip.carrier.plan.deltaVMS > this.ports.carrier!.deltaV()) return { ok: false, reason: "A la nodriza no le queda xenón para ese viaje" };
+    if (trip.carrier.plan.deltaVMS > this.ports.carrier!.deltaV()) return { ok: false, reason: `A la nodriza no le queda ${this.ports.carrier!.propellantName ?? "xenón"} para ese viaje` };
     return { ok: true };
   }
 

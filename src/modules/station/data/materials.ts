@@ -28,6 +28,7 @@ export const MATERIALS: readonly MaterialInfo[] = [
   { id: "niquel", name: "Níquel (carbonilo)", stage: "refinado", unit: "kg", note: "Níquel puro del tetracarbonilo", source: SRC.mond },
   { id: "oxigeno", name: "Oxígeno", stage: "refinado", unit: "kg", note: "Sale en el ánodo al electrolizar el regolito fundido", source: SRC.mre },
   { id: "ceramica", name: "Cerámica de escoria", stage: "refinado", unit: "kg", note: "Vidrio y escoria de la electrólisis, molidos para aislantes y soportes", source: SRC.oxygenFromMinerals },
+  { id: "metano", name: "Metano", stage: "refinado", unit: "kg", note: "Combustible de la Starship con oxígeno líquido: CO₂ de cometa e hidrógeno en el reactor de Sabatier", source: SRC.sabatier, propellant: true },
   { id: "hidrogeno", name: "Hidrógeno", stage: "refinado", unit: "kg", note: "Del cátodo del electrolizador de agua: 1 kg por cada 9 kg de agua", source: SRC.pemElectrolysis },
   { id: "amoniaco", name: "Amoníaco", stage: "refinado", unit: "kg", note: "Del nitrógeno de la roca y el hidrógeno; materia prima de la hidracina y del NTO", source: SRC.bennuNitrogen },
   { id: "hidracina", name: "Hidracina anhidra", stage: "refinado", unit: "kg", note: "Monopropelente de los propulsores de actitud; se hace aquí, pero el nitrógeno da para poca, y también llega importada", source: SRC.peroxideProcess, propellant: true },

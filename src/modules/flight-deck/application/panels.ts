@@ -37,6 +37,8 @@ export interface TripProgress {
 
 export interface PropulsionPanel {
   readonly thrusterName: string;
+  /** What the tanks hold («xenón», «metano y oxígeno»). */
+  readonly propellantName: string;
   readonly thrusterCount: number;
   /** How many are firing now (all of them during the burn and the braking of a hop, none otherwise). */
   readonly firing: number;
@@ -72,12 +74,15 @@ export function propulsionPanel(m: Mothership, trip?: TripProgress): PropulsionP
   // The fitted mix: per-unit figures are averages over the units the reactor can fire.
   const d = m.drive;
   const n = d.firingUnits;
-  const types = [...new Map(d.mounts.filter((x) => x.fitted > 0).map((x) => [x.thruster.id, x.thruster])).values()];
+  // Electric thrusters from the fitted mounts; Starship's chemical engines from its drive (cruise ones fire).
+  const chem = m.spec.chemical?.engines.filter((e) => e.cruise);
+  const types: readonly { name: string; sources: readonly string[]; note?: string }[] = chem ?? [...new Map(d.mounts.filter((x) => x.fitted > 0).map((x) => [x.thruster.id, x.thruster])).values()];
   const per = (v: number) => (n > 0 ? v / n : 0);
   const firing = thrustersFiring(trip) ? n : 0;
   const mdot = per(d.massFlowKgS); // kg/s per thruster
   return {
     thrusterName: types.map((t) => t.name).join(" + ") || "sin propulsores",
+    propellantName: m.propellantName,
     thrusterCount: n,
     firing,
     thrustPerThrusterN: per(d.thrustN),
@@ -117,10 +122,14 @@ export interface PowerPanel {
   readonly radiatorFluxKwM2: number;
   readonly specificMassKgPerKw: number;
   readonly sources: readonly string[];
+  /** The ship's power is not published (Starship's solar arrays): the page says so instead of numbers. */
+  readonly unpublished?: boolean;
 }
 
 export function powerPanel(m: Mothership, trip?: TripProgress): PowerPanel {
   const p = m.spec.power;
+  if (!p)
+    return { electricKw: 0, thermalKw: 0, efficiency: 0, thrusterLoadKw: 0, marginKw: 0, thrusterArrayKw: 0, wasteHeatKw: 0, radiatorAreaM2: 0, radiatorFluxKwM2: 0, specificMassKgPerKw: 0, sources: [], unpublished: true };
   const load = thrustersFiring(trip) ? m.thrusterPowerKw : 0;
   return {
     electricKw: p.electricKw.value,
@@ -149,6 +158,8 @@ export interface HabitatView {
 }
 
 export interface LifePanel {
+  /** Whether the ship has a ring at all (Starship has none: 0 g aboard). */
+  readonly hasRing: boolean;
   readonly ringRpm: number;
   readonly ringCruiseRpm: number;
   readonly ringRadiusM: number;
@@ -172,16 +183,17 @@ export interface LifePanel {
   readonly machinesTotal: number;
 }
 
-export function lifePanel(ring: SpinRing, h: HabitatView): LifePanel {
+export function lifePanel(ring: SpinRing | undefined, h: HabitatView): LifePanel {
   const alive = h.plants.filter((p) => p.alive);
   return {
-    ringRpm: ring.rpm,
-    ringCruiseRpm: ring.spec.rpm,
-    ringRadiusM: ring.spec.floorRadiusM,
-    floorG: ring.gravityG(ring.spec.floorRadiusM),
-    rimSpeedMs: ring.rimSpeedMs,
-    spinFraction: ring.spinFraction,
-    spinningUp: ring.spinningUp,
+    hasRing: !!ring,
+    ringRpm: ring?.rpm ?? 0,
+    ringCruiseRpm: ring?.spec.rpm ?? 0,
+    ringRadiusM: ring?.spec.floorRadiusM ?? 0,
+    floorG: ring ? ring.gravityG(ring.spec.floorRadiusM) : 0,
+    rimSpeedMs: ring?.rimSpeedMs ?? 0,
+    spinFraction: ring?.spinFraction ?? 0,
+    spinningUp: ring?.spinningUp ?? false,
     crewName: h.crew.name,
     wellbeing: h.crew.wellbeing,
     satiety: h.crew.satiety,

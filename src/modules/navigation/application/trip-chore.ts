@@ -1,6 +1,6 @@
 import type { ChoiceExercise, CodeBlock, Concept, OrderExercise } from "@modules/mind-duel/domain/exercise";
 import type { Chore } from "@modules/chores/domain/chore";
-import type { ContinuousBurnPlan, TransferPlan } from "../domain/transfer";
+import { burnSeconds, type ContinuousBurnPlan, type TransferPlan } from "../domain/transfer";
 
 /** The real numbers of one hop, as the challenges show them. */
 export interface TripFacts {
@@ -173,6 +173,10 @@ export interface CarrierTripFacts {
   readonly carrierName: string;
   readonly plan: ContinuousBurnPlan;
   readonly thrusterCount: number;
+  /** «propulsores eléctricos» or «motores Raptor de vacío». */
+  readonly engineName?: string;
+  /** «xenón» or «metano y oxígeno». */
+  readonly propellantName?: string;
   readonly thrustN: number;
   readonly massKg: number;
   /** Δv left in the mothership, m/s. */
@@ -197,6 +201,7 @@ const tonnes = (kg: number) => `${num(kg / 1000)} t`;
  * for the last leg. Same five kinds of challenge as the probe hop, with the mothership's numbers.
  */
 export function carrierTripChore(f: CarrierTripFacts): Chore {
+  if ((f.plan.coastS ?? 0) > 0) return coastingTripChore(f);
   const p = f.plan;
   const id = `viaje-nodriza-${f.targetId}`;
   const a = p.accelMS2;
@@ -210,7 +215,7 @@ export function carrierTripChore(f: CarrierTripFacts): Chore {
     idea: "Somos grandes y lentos: empujamos todo el camino",
     blocks: lines([
       [`orientar la nodriza hacia ${name}`, `nodriza.orientar("${f.targetId}");`],
-      [`encender los ${f.thrusterCount} propulsores eléctricos ${duration(half)}`, `propulsores.encender(${Math.round(half)});`],
+      [`encender los ${f.thrusterCount} ${f.engineName ?? "propulsores eléctricos"} ${duration(half)}`, `propulsores.encender(${Math.round(half)});`],
       [`dar la vuelta a mitad de camino (${km(p.distanceM / 2)})`, "nodriza.voltear();"],
       [`frenar ${duration(half)} hasta ${f.dock ? `parar a ${num(f.parkingM)} m del puerto` : `aparcar a ${num(f.parkingM)} m`}`, `propulsores.encender(${Math.round(half)});`],
       ...((f.dock
@@ -295,7 +300,121 @@ export function carrierTripChore(f: CarrierTripFacts): Chore {
     kind: "programar-viaje",
     targetId: f.targetId,
     title: `Programar el viaje de la nodriza a ${name}`,
-    scenario: `${km(p.distanceM)} con ${f.thrusterCount} propulsores eléctricos: Δv ${sig(p.deltaVMS)} m/s, ${num(f.propellantKg)} kg de xenón, ${duration(p.totalS)}${f.detours ? `, rodeando ${f.detours} ${f.detours === 1 ? "roca" : "rocas"}` : ""}`,
+    scenario: `${km(p.distanceM)} con ${f.thrusterCount} ${f.engineName ?? "propulsores eléctricos"}: Δv ${sig(p.deltaVMS)} m/s, ${num(f.propellantKg)} kg de ${f.propellantName ?? "xenón"}, ${duration(p.totalS)}${f.detours ? `, rodeando ${f.detours} ${f.detours === 1 ? "roca" : "rocas"}` : ""}`,
+    exercises: [sequence, deltaV, time, repair, spec],
+  };
+}
+
+/**
+ * Programming a hop of a chemical mothership (Starship's vacuum Raptors): burn to the cruise speed,
+ * coast, turn round and brake to a stop. Pushing all the way would empty the tanks in one hop, so
+ * the coast is the right answer here and «push all the way» is the distractor.
+ */
+function coastingTripChore(f: CarrierTripFacts): Chore {
+  const p = f.plan;
+  const id = `viaje-nodriza-${f.targetId}`;
+  const a = p.accelMS2;
+  const v = p.peakMS;
+  const name = f.targetName;
+  const tb = burnSeconds(p);
+  const coast = p.coastS ?? 0;
+  const brakeM = (v * v) / (2 * a);
+  const engines = f.engineName ?? "motores";
+
+  const sequence: OrderExercise = {
+    kind: "order",
+    id: `${id}-maniobra`,
+    concept: 1,
+    idea: "Acelerar, ir por inercia y frenar: el propelente solo se gasta en los dos encendidos",
+    blocks: lines([
+      [`orientar la nodriza hacia ${name}`, `nodriza.orientar("${f.targetId}");`],
+      [`encender los ${f.thrusterCount} ${engines} ${duration(tb)} hasta ${num(v)} m/s`, `motores.encender(${Math.round(tb)});`],
+      [`ir por inercia ${duration(coast)}`, `nodriza.inercia(${Math.round(coast)});`],
+      [`dar la vuelta antes de los últimos ${km(brakeM)}`, "nodriza.voltear();"],
+      [`frenar ${duration(tb)} hasta ${f.dock ? `parar a ${num(f.parkingM)} m del puerto` : `aparcar a ${num(f.parkingM)} m`}`, `motores.encender(${Math.round(tb)});`],
+      ...((f.dock
+        ? [
+            [`entrar en el dique seco por el eje del puerto a ${num(f.dock.contactMs, 2)} m/s`, `nodriza.acercar(${f.dock.contactMs});`],
+            ["cerrar los ganchos IDSS y los brazos del dique", "dique.sujetar();"],
+          ]
+        : [
+            ["desacoplar el módulo de aterrizaje", "modulo.desacoplar();"],
+            [`volar el módulo hasta ${f.approachM} m de la superficie`, `modulo.volarHasta(${f.approachM});`],
+          ]) as [string, string][]),
+      // Distractor: pushing all the way spends far more Δv than the tanks hold.
+      ["empujar todo el camino sin apagar los motores", "motores.encender(Infinity);"],
+    ]),
+    solution: ["a", "b", "c", "d", "e", "f", "g"],
+  };
+
+  const deltaV = choice(
+    `${id}-dv`,
+    4,
+    "completar",
+    "¿Cuánto empuje me cuesta?",
+    `Aceleramos hasta ${num(v)} m/s, vamos por inercia y frenamos hasta parar. ¿Qué número falta para el Δv?`,
+    lines([
+      [`variable crucero = ${num(v)} m/s`, `const crucero = ${Math.round(v)};`],
+      ["variable dv = ___ × crucero", "const dv = ___ * crucero;"],
+      [`// = ${sig(p.deltaVMS)} m/s de los ${num(f.deltaVAvailableMS)} m/s que quedan · ${num(f.propellantKg)} kg de ${f.propellantName ?? "propelente"}`, `// ${p.deltaVMS.toFixed(1)} m/s`],
+    ]),
+    "2",
+    ["1", "4", "0,5"],
+  );
+
+  const time = choice(
+    `${id}-tiempo`,
+    4,
+    "predecir",
+    "¿Cuánto dura el viaje?",
+    `Con ${sig(a, 2)} m/s² y un crucero de ${num(v)} m/s, ¿cuánto tarda la nodriza en recorrer ${km(p.distanceM)}?`,
+    lines([
+      [`variable distancia = ${num(p.distanceM)} m`, `const distancia = ${Math.round(p.distanceM)};`],
+      [`variable encendido = ${num(v)} / ${sig(a, 2)}   // s en cada extremo`, `const encendido = ${Math.round(v)} / ${a.toFixed(3)};`],
+      ["variable inercia = (distancia − crucero × encendido) / crucero", "const inercia = (distancia - crucero * encendido) / crucero;"],
+      ["variable t = 2 × encendido + inercia", "const t = 2 * encendido + inercia;"],
+    ]),
+    duration(p.totalS),
+    [duration(coast / 2), duration(p.totalS * 2), duration(2 * Math.sqrt(p.distanceM / a))],
+  );
+
+  const repair = choice(
+    `${id}-vuelta`,
+    5,
+    "reparar",
+    "No me da tiempo a frenar",
+    `La nodriza llega a ${name} todavía rápida y se pasa. ¿Cómo queda bien la línea 1?`,
+    lines([
+      ["si falta <= crucero² / a entonces", "if (falta <= crucero ** 2 / a) {"],
+      ["voltear()", "voltear();", 1],
+      ["frenar()", "frenar();", 1],
+      ["fin", "}"],
+    ]),
+    "si falta <= crucero² / (2 × a) entonces",
+    ["si falta <= crucero / (2 × a) entonces", "si falta <= distancia / 2 entonces"],
+  );
+
+  const spec = choice(
+    `${id}-ia`,
+    10,
+    "especificar",
+    "Dime exactamente qué quieres",
+    "¿Qué orden le das a la IA de la nodriza?",
+    [],
+    f.dock
+      ? `Lleva la nodriza a ${num(f.parkingM)} m del puerto de ${name} rodeando las rocas, a ${num(v)} m/s de crucero, alinéala con su eje, entra en el dique seco y acopla tocando a menos de ${num(f.dock.closingMaxMs, 2)} m/s`
+      : `Lleva la nodriza a ${num(f.parkingM)} m de ${name} rodeando las rocas, a ${num(v)} m/s de crucero, y para del todo; luego desacopla el módulo de aterrizaje, acércalo a ${f.approachM} m apuntando al asteroide y devuélveme los mandos`,
+    f.dock
+      ? [`Lleva la nodriza a ${name}`, `Acerca la nodriza a ${name} con los motores a tope todo el camino y frena al tocar`, `Desacopla el módulo y que vaya solo hasta ${name}`]
+      : [`Lleva la nodriza a ${name}`, `Acerca la nodriza a ${f.approachM} m de ${name} y aterriza con ella`, `Desacopla el módulo y que vaya solo hasta ${name}`],
+  );
+
+  return {
+    id,
+    kind: "programar-viaje",
+    targetId: f.targetId,
+    title: `Programar el viaje de la nodriza a ${name}`,
+    scenario: `${km(p.distanceM)} con ${f.thrusterCount} ${engines}: Δv ${sig(p.deltaVMS)} m/s, ${num(f.propellantKg)} kg de ${f.propellantName ?? "propelente"}, ${duration(p.totalS)}${f.detours ? `, rodeando ${f.detours} ${f.detours === 1 ? "roca" : "rocas"}` : ""}`,
     exercises: [sequence, deltaV, time, repair, spec],
   };
 }

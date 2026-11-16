@@ -118,10 +118,29 @@ export const PROPELLANT_PROCESSES: readonly RefineProcess[] = [
       source: SRC.ostwald,
     },
   },
+  {
+    id: "metano-sabatier",
+    name: "Metano por Sabatier",
+    machine: "planta",
+    requires: "planta",
+    // CO2 + 4 H2 → CH4 + 2 H2O (C 12, H 1, O 16): 44 + 8 kg → 16 kg of methane and 36 kg of water; 95 % (estimate).
+    inputs: { "hielo-co2": 44, hidrogeno: 8 },
+    outputs: { metano: 15.2, agua: 34.2 },
+    hours: 6,
+    process: {
+      value: "El CO₂ de cometa y el hidrógeno del electrolizador pasan sobre níquel a 300–400 °C y salen metano y agua; es la máquina que la ISS usa para recuperar agua, y aquí el metano se guarda para la Starship",
+      source: SRC.sabatier,
+      note: `Exotérmica: una vez en marcha no pide energía. El agua vuelve al electrolizador. Rendimiento del 95 %: estimación. ${GAME}`,
+    },
+    steps: {
+      value: ["sublima el hielo de CO₂", "mezcla 4 moles de hidrógeno por cada mol de CO₂", "pasa la mezcla sobre níquel a {350|35|1500} °C", "condensa el agua y devuélvela al electrolizador", "licúa el metano a {-162|-183|0} °C"],
+      source: SRC.sabatier,
+    },
+  },
 ];
 
 /** Plant products that are propellant (their feedstock is reserved for them). */
-const PROPELLANT_PRODUCTS = ["hidracina", "nto"];
+const PROPELLANT_PRODUCTS = ["hidracina", "nto", "metano"];
 
 /**
  * What the store keeps for propellant production (HC-04 in docs/qa): the ammonia of one batch of each

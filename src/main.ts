@@ -149,7 +149,10 @@ import { collectTasks, routeTo, type Task, type TaskPlace, type Vehicle } from "
 import type { CabinActionId, CabinState } from "@modules/lander-cabin/domain/cabin";
 import { needingAttention } from "@modules/ship-bay/application/bay";
 import { G } from "@core/units";
-import { REAL_ONLY } from "@core/realism";
+import { REAL_ONLY, fiction } from "@core/realism";
+import { STARSHIP, STARSHIP_NOSE_PORT } from "@modules/mothership/data/starship";
+import { StarshipModel } from "./adapters/three/starship-model";
+import { StarshipInterior } from "./starship-interior";
 
 // --- Domain setup -----------------------------------------------------------
 const d = BENNU.dimensionsM.value;
@@ -164,10 +167,10 @@ const region = buildStartRegion(bennu, startPos, [{ centre: POLANA_STATION.posit
 // Face the asteroid from the start position.
 const startAttitude = Quat.fromAxisAngle(Vec3.Y, Math.atan2(250, 1600)).multiply(Quat.fromAxisAngle(Vec3.X, -Math.atan2(120, 1620)));
 const start = RigidBodyState.at(startPos).withOrientation(startAttitude);
-// The mothership is parked near Bennu with the probe docked under its forward node
-// (docs/design/nave-nodriza.md). Its rings are already turning at cruise rate (gravedad.md).
-const mothership = Mothership.withProbeDockedAt(NODRIZA, startPos, startAttitude, ship.design.dockingPort!);
-const ring = new SpinRing(mothership.spec.ring);
+// The mothership is parked near Bennu with the probe docked under it: a Starship (docs/design/nodriza-starship.md),
+// or with ?ficcion the ring ship of docs/design/nave-nodriza.md, its rings turning at cruise rate (gravedad.md).
+const mothership = Mothership.withProbeDockedAt(REAL_ONLY ? STARSHIP : NODRIZA, startPos, startAttitude, ship.design.dockingPort!);
+const ring = fiction(() => new SpinRing(NODRIZA.ring));
 const flight = new FlightComputer(ship, start, { gravitySources: region.asteroids, target: bennu });
 // The station is a structure in space with two IDSS ports: the probe docks at one, the mothership at the other.
 // What it is built of grows (docs/design/estacion.md, «La estación crece»): modules, equipment, wings and radiators.
@@ -194,7 +197,7 @@ stationOps.station.stock.reserve("propelente", PROPELLANT_RESERVE, STOCK_PRIORIT
 
 // Navigation: any catalogued asteroid of the region can be the target (docs/design/navegacion.md),
 // and the station and the mothership, where the trip ends docked (docs/design/estacion.md).
-const carrier = mothershipCarrier(mothership, docking, { nosePort: NODRIZA_NOSE_PORT, limits: IDSS_CONTACT_LIMITS, ports: structure.ports });
+const carrier = mothershipCarrier(mothership, docking, { nosePort: REAL_ONLY ? STARSHIP_NOSE_PORT : NODRIZA_NOSE_PORT, limits: IDSS_CONTACT_LIMITS, ports: structure.ports });
 const navTargets: NavTarget[] = [...region.asteroids.map(asteroidTarget), ...dockNavTargets(structure, mothership, carrier.clearanceM)];
 // A getter: the station can move under its own engines (survival mode).
 const stationKeepOut = {
@@ -406,7 +409,7 @@ pilot.onToggleAssist = () => (flight.rotationAssist = !flight.rotationAssist);
 const touch = new TouchPilot(root);
 
 const duelView = new DuelView(root);
-const mothershipModel = new MothershipModel(mothership.spec);
+const mothershipModel = REAL_ONLY ? new StarshipModel(mothership.spec) : new MothershipModel(mothership.spec);
 mothershipModel.root.position.set(mothership.position.x, mothership.position.y, mothership.position.z);
 mothershipModel.root.quaternion.set(mothership.orientation.x, mothership.orientation.y, mothership.orientation.z, mothership.orientation.w);
 scene.add(mothershipModel.root);
@@ -476,7 +479,28 @@ const duelSession = () => {
     maxLives: d.profile.patience,
   };
 };
-const interior = new Interior(root, habitat, duelView, ring);
+// Starship's three 0 g decks (real-only), or the ring ship's spine and ring (?ficcion); the same calls drive both.
+const starship = REAL_ONLY
+  ? new StarshipInterior(root, {
+      habitat,
+      duel: duelView,
+      openTasks: () => taskBoard.open(),
+      openFlightDeck: () => {
+        starship?.exit();
+        bridge.enter("salida");
+      },
+      leave: (to) => (to === "sonda" ? cabin.enter("acople") : stationInside.enter("nodriza")),
+      cannotLeave: (to) =>
+        to === "sonda"
+          ? docking.dockedTo === mothership
+            ? undefined
+            : "Cerrada: el módulo de aterrizaje no está acoplado a la Starship"
+          : mothership.dockedTo
+            ? undefined
+            : "Cerrada: la Starship no está atracada en la estación",
+    })
+  : undefined;
+const interior = starship ? (starship as unknown as Interior) : new Interior(root, habitat, duelView, ring!);
 const nanoView = new NanoNetView(scene, nano.net);
 // Walks outside on Bennu (EVA): only with the lander anchored.
 const eva = new Eva(flight, bennu, (local) => surface(local), habitat.crew.body.massKg);
@@ -879,7 +903,7 @@ const stationInside = new StationInteriorMode(root, playInterior(), {
     if (to === "sonda" && !atStationPort()) return "El módulo de aterrizaje no está en este puerto";
     stationInside.suspend();
     // Through the mothership's port she comes aboard at its spine hatch; otherwise back to the lander's cockpit.
-    if (to === "nodriza") interior.enter("escotilla");
+    if (to === "nodriza") (starship ? starship.enterFromStation() : interior.enter("escotilla"));
     else cabin.enter("acople");
   },
 });
@@ -943,7 +967,7 @@ settingsPanel.addRow({
 });
 interior.openSettings = () => {
   settingsFrom = "nodriza";
-  settingsPanel.open("Doménica en loto en la esterilla del rincón de ejercicio (nodriza)");
+  settingsPanel.open(starship ? "Doménica en loto en la esterilla de la cubierta 1 (Starship)" : "Doménica en loto en la esterilla del rincón de ejercicio (nodriza)");
 };
 const fadeEl = document.createElement("div");
 fadeEl.className = "cab-fade seat-fade";
@@ -1144,7 +1168,7 @@ const journey = new JourneyDriver(root, {
   bridge,
   station: stationInside,
   nav,
-  ringRadiusM: ring.spec.floorRadiusM,
+  ringRadiusM: ring?.spec.floorRadiusM ?? 0,
   stationTarget: structure.site.id,
   mothershipTarget: mothership.id,
   joins: () => ({ lander: docking.dockedTo === mothership ? "nodriza" : atStationPort() ? "estacion" : null, mothershipAtStation: !!mothership.dockedTo }),
@@ -1172,9 +1196,11 @@ const journey = new JourneyDriver(root, {
 // How «Ir» gets there (viaje / teletransporte) is a switch at the top of the task list (TaskBoard), its only place.
 /** The task list's «Ir»: the real journey there, or (teleport, a setting) straight there through open hatches, or to what joins the vehicles, saying why. */
 function goToTask(t: Task): void {
-  if (settings.value.taskTravel === "viaje") return void journey.start(t);
+  // The journey planner knows the ring ship's spine and ring, not Starship's decks yet (docs/pendientes.md).
+  const shipless = starship && (t.place.vehicle === "nodriza" || crewIn() === "nodriza");
+  if (settings.value.taskTravel === "viaje" && !shipless) return void journey.start(t);
   fade();
-  journey.say("Teletransporte (elegido en Tareas)");
+  journey.say(shipless ? "Por las escotillas: el viaje por las cubiertas de la Starship aún no está" : "Teletransporte (elegido en Tareas)");
   const r = routeTo(t.place, { crew: crewIn(), links: vehicleLinks() });
   if (r.kind === "ir") return arriveAt(t.place, t);
   arriveAt(r.via);
@@ -1347,7 +1373,7 @@ renderer.setAnimationLoop((now) => {
   // A critical alert ends an open challenge instead of hiding under it (docs/design/ux-acciones.md §7).
   if (wrathMode.critical(subj.piloting)) duelView.interrupt();
   tripPreview.held = duelView.visible;
-  ring.tick(dt);
+  ring?.tick(dt);
   // Region rules: soft boundary push back and no flying through the other rocks or the mothership (game rules).
   if (!flight.landed && !flight.docked) {
     const st = flight.state;
@@ -1431,7 +1457,7 @@ renderer.setAnimationLoop((now) => {
   if (cabin.active && evaMode.active) cabin.exit();
   if (cabin.active) {
     cabin.update(dt);
-    mothershipModel.update(dt, ring.omegaRadS, now / 1000);
+    mothershipModel.update(dt, ring?.omegaRadS ?? 0, now / 1000);
     present(cabin.scene, cabin.camera);
     return;
   }
@@ -1439,7 +1465,7 @@ renderer.setAnimationLoop((now) => {
     stationInside.update(dt);
     // The dry dock's cameras: the space scene from beside the dock, over the station.
     if (dryDock.viewing) {
-      mothershipModel.update(dt, ring.omegaRadS, now / 1000);
+      mothershipModel.update(dt, ring?.omegaRadS ?? 0, now / 1000);
       stationModel.update(flight.simTimeS, skyBodies.sunDirection);
       present(scene, dryDock.view.camera);
     } else present(stationInside.scene, stationInside.camera);
@@ -1502,7 +1528,7 @@ renderer.setAnimationLoop((now) => {
     view.menu.sync();
   }
   view.warpAvailable = !docking.docked && !flight.landed && (far || view.warpRequested > 1);
-  mothershipModel.update(dt, ring.omegaRadS, now / 1000);
+  mothershipModel.update(dt, ring?.omegaRadS ?? 0, now / 1000);
 
   const s = flight.state;
   view.update(

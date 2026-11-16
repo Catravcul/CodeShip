@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_PRESENTATION, presentationFrom, SCALE_FACTOR } from "./presentation";
 
-describe("SET-10 presentation layer: true-size data, drawn scale and spacing as settings", () => {
+describe("HAB-25 presentation layer: true-size data, drawn scale and spacing as settings", () => {
   it("defaults to the measured comfortable scale and the 2 m spacing", () => {
     expect(presentationFrom(null)).toEqual(DEFAULT_PRESENTATION);
     expect(SCALE_FACTOR[DEFAULT_PRESENTATION.interiorScale]).toBe(1.5);

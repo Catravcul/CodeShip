@@ -66,7 +66,9 @@ export type FixtureAction =
   | { readonly kind: "salir"; readonly to: PortUser }
   /** The ship bay: configure the parts of the docked ships (docs/design/accesos.md). */
   | { readonly kind: "bahia" }
-  | { readonly kind: "esclusa" };
+  | { readonly kind: "esclusa" }
+  /** A console or machine whose actions the wiring gives (Starship's way up to the flight deck, its workstations). */
+  | { readonly kind: "consola"; readonly id: string };
 
 /** Something mounted in a module: a machine, a rack, a hatch. */
 export interface Fixture {

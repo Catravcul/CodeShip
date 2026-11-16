@@ -77,14 +77,6 @@ export class DryDockModel {
       this.cones.push(cone);
       this.root.add(g);
     }
-    // Two real lights so the ship's hull is lit inside the frame (the Sun may be behind the station).
-    for (const s of [1, -1]) {
-      const light = new THREE.PointLight(0xfff1c8, 0, 260, 1.2);
-      const mid = (d.fromM + d.toM) / 2;
-      light.position.set(s * d.halfWidthM * 0.8, d.halfWidthM * 0.8, -mid);
-      light.name = "foco";
-      this.root.add(light);
-    }
     this.setHold(0, 0);
   }
 
@@ -100,10 +92,8 @@ export class DryDockModel {
       a.g.getObjectByName("grip")!.position.y = L;
     }
     for (const u of this.umbilicals) u.visible = reach > 0.95;
+    // No real lights (each one recompiles every material of the scene): the cones and lamps glow.
     for (const c of this.cones) ((c.material as THREE.MeshBasicMaterial).opacity = 0.07 * glow);
-    this.root.traverse((o) => {
-      if (o instanceof THREE.PointLight) o.intensity = 4 * glow;
-    });
   }
 
   /** Arms out and umbilicals on (0..1, for checks). */

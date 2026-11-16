@@ -10,25 +10,8 @@ export async function mision(j) {
   await j.tap(".stand-btn", "Levantarse: habitáculo");
   await j.useMachine("cabin", "acople", "entrar-nodriza", "Entrar en la nave de viaje");
   await p.waitForTimeout(800);
-  const badge = (await j.texts(".radio-btn b"))[0] ?? "";
-  j.check("la Radio avisa de cartas sin leer", Number(badge) > 0, badge);
-  await j.tap(".radio-btn", "Radio");
-  await p.waitForTimeout(400);
-  const letters = await j.texts(".board .chore");
-  const mission = letters.findIndex((l) => /Misión/.test(l));
-  j.check("una carta trae una misión", mission >= 0, letters.join(" | ").slice(0, 160));
-  await j.tap(`.board .chore >> nth=${Math.max(0, mission)}`, "carta con misión");
-  await p.waitForTimeout(400);
-  const letter = (await j.texts(".board .letter"))[0] ?? "";
-  j.check("la carta dice qué hay que hacer y dónde", /Bennu/.test(letter), letter.slice(0, 120));
-  await j.shot("carta");
-  await j.tap(".board [data-radio]", "‹ Radio");
-  await j.tap(".board [data-missions]", "Registro de misiones");
-  await p.waitForTimeout(500);
-  const head = (await j.texts(".mission-log .ml-head span"))[0] ?? "";
-  j.check("el registro de misiones abre con 0 hechas", /^0\//.test(head), head);
-  await j.shot("registro");
-  await j.tap('.mission-log [data-act="close"]', "×");
+  if (await p.evaluate(() => !!window.codeship.starship)) await radioOnTheBridge(j);
+  else await radioOnTheRing(j);
 
   // Out to the lander and down on Bennu.
   await p.reload();
@@ -105,4 +88,57 @@ export async function mision(j) {
   await j.shot("mision-cumplida");
   await j.tapAt(p.locator(".duel button.end"));
   await p.waitForTimeout(600);
+}
+
+/** The ring ship (?ficcion): the ring's Radio button and its board. */
+async function radioOnTheRing(j) {
+  const p = j.page;
+  const badge = (await j.texts(".radio-btn b"))[0] ?? "";
+  j.check("la Radio avisa de cartas sin leer", Number(badge) > 0, badge);
+  await j.tap(".radio-btn", "Radio");
+  await p.waitForTimeout(400);
+  const letters = await j.texts(".board .chore");
+  const mission = letters.findIndex((l) => /Misión/.test(l));
+  j.check("una carta trae una misión", mission >= 0, letters.join(" | ").slice(0, 160));
+  await j.tap(`.board .chore >> nth=${Math.max(0, mission)}`, "carta con misión");
+  await p.waitForTimeout(400);
+  const letter = (await j.texts(".board .letter"))[0] ?? "";
+  j.check("la carta dice qué hay que hacer y dónde", /Bennu/.test(letter), letter.slice(0, 120));
+  await j.shot("carta");
+  await j.tap(".board [data-radio]", "‹ Radio");
+  await j.tap(".board [data-missions]", "Registro de misiones");
+  await p.waitForTimeout(500);
+  const head = (await j.texts(".mission-log .ml-head span"))[0] ?? "";
+  j.check("el registro de misiones abre con 0 hechas", /^0\//.test(head), head);
+  await j.shot("registro");
+  await j.tap('.mission-log [data-act="close"]', "×");
+}
+
+/** The Starship (real-only): the radio is the comms console of the flight deck (docs/design/nodriza-starship.md). */
+async function radioOnTheBridge(j) {
+  const p = j.page;
+  await j.setup("sube a la escotilla de la cubierta de vuelo (los saltos por los asideros se juegan en «starship»)", () => window.codeship.starship.mode.placeAt("subir-cubierta-vuelo"));
+  await p.waitForTimeout(800);
+  await j.tap('.sts-card:not(.hidden) [data-act="subir"]', "Subir a la cubierta de vuelo");
+  await p.waitForTimeout(1200);
+  await j.useMachine("bridge", "comms", "abrir", "Usar la consola de radio");
+  await p.waitForTimeout(800);
+  const unread = await p.locator(".fd .fd-panel.max .fd-msg.new").count();
+  j.check("la radio avisa de cartas sin leer", unread > 0, String(unread));
+  const letters = await j.texts(".fd .fd-panel.max .fd-msg");
+  const mission = letters.findIndex((l) => /misión/.test(l));
+  j.check("una carta trae una misión", mission >= 0, letters.join(" | ").slice(0, 160));
+  await j.tap(`.fd .fd-panel.max .fd-msg >> nth=${Math.max(0, mission)}`, "carta con misión");
+  await p.waitForTimeout(400);
+  const letter = (await j.texts(".fd .fd-panel.max .fd-letter"))[0] ?? "";
+  j.check("la carta dice qué hay que hacer y dónde", /Bennu/.test(letter), letter.slice(0, 120));
+  await j.shot("carta");
+  await j.tap(".fd-panel.max .fd-back", "Volver al puente");
+  await p.waitForTimeout(500);
+  await j.useMachine("bridge", "comms", "misiones", "Registro de misiones");
+  await p.waitForTimeout(500);
+  const head = (await j.texts(".mission-log .ml-head span"))[0] ?? "";
+  j.check("el registro de misiones abre con 0 hechas", /^0\//.test(head), head);
+  await j.shot("registro");
+  await j.tap('.mission-log [data-act="close"]', "×");
 }

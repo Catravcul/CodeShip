@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import { INTERACTABLE_SPACING } from "@core/spacing";
 import { StationInterior } from "@modules/station/domain/interior";
 import { planMinSpacing, presentInteriorPlan, spreadInteriorPlan } from "@modules/station/domain/presentation";
+import { HopGraph } from "@modules/gravity/domain/hops";
+import { RailGraph } from "@modules/gravity/domain/handrails";
+import { stationHandrails, stationPortals } from "@modules/station/data/handrails";
 import { HULL_INNER_RADIUS_M, starshipDeckVolumeM3, starshipInteriorPlan } from "./starship-interior";
 
 describe("HAB-23 Starship's interior, «distribución nuestra», at true size", () => {
@@ -37,17 +40,31 @@ describe("HAB-23 Starship's interior, «distribución nuestra», at true size", 
     expect(planMinSpacing(plan)).toBeGreaterThan(1);
     for (const scale of [1, 1.5]) {
       const shown = presentInteriorPlan(plan, { scale, spreadM: INTERACTABLE_SPACING.minM });
-      expect(planMinSpacing((shown))).toBeGreaterThanOrEqual(INTERACTABLE_SPACING.minM - 1e-9);
+      expect(planMinSpacing(shown)).toBeGreaterThanOrEqual(INTERACTABLE_SPACING.minM - 1e-9);
     }
   });
 
   it("the spacing spreads a crowded plan generically: rooms longer, machines their true size", () => {
     const crowded = { ...plan, fixtures: plan.fixtures.map((f) => (f.id === "esterilla" ? { ...f, at: f.at.add(f.at.sub(plan.fixtures.find((x) => x.id === "cocina")!.at).scale(-0.7)) } : f)) };
-    expect(planMinSpacing((crowded))).toBeLessThan(2);
+    expect(planMinSpacing(crowded)).toBeLessThan(2);
     const spread = spreadInteriorPlan(crowded, 2);
-    expect(planMinSpacing((spread))).toBeGreaterThanOrEqual(2 - 1e-9);
+    expect(planMinSpacing(spread)).toBeGreaterThanOrEqual(2 - 1e-9);
     const deck = (p: typeof plan) => p.volumes.find((v) => v.id === "cubierta-1")!.half.x;
     expect(deck(spread)).toBeGreaterThan(deck(crowded));
     expect(spread.fixtures.find((f) => f.id === "cocina")!.size).toEqual(crowded.fixtures.find((f) => f.id === "cocina")!.size);
+  });
+
+  it("every machine and hatch is reached by hops between the handholds, deck to deck through the floor hatches, at every presentation", () => {
+    for (const scale of [1, 1.5])
+      for (const spreadM of [0, INTERACTABLE_SPACING.minM]) {
+        const shown = presentInteriorPlan(plan, { scale, spreadM });
+        const room = new StationInterior(shown);
+        const g = new HopGraph(new RailGraph(stationHandrails(shown)), (q) => room.fits(q, 0.3, false), stationPortals(shown));
+        const from = g.poiPoint("salir-modulo")!;
+        const reach = g.reachable(from);
+        const missing = g.pois().filter((p) => !reach.has(p.id)).map((p) => p.poi);
+        expect(missing, `${scale}× ${spreadM} m`).toEqual([]);
+        expect(g.route(from, g.poiPoint("cocina")!.id)?.some((e) => e.hatch)).toBe(true);
+      }
   });
 });

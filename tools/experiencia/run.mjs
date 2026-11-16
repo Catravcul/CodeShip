@@ -24,9 +24,10 @@ import { catalogoNaves } from "./catalogo-naves.mjs";
 import { aterrizajePrograma, aterrizajeManual, aterrizajeEscritorio } from "./aterrizaje.mjs";
 import { animaciones } from "./animaciones.mjs";
 import { foco } from "./foco.mjs";
+import { starship } from "./starship.mjs";
 import { estacionIss } from "./estacion-iss.mjs";
 
-const PLAY = { cocina, movimiento, mision, "acciones-movil": acciones, "acciones-escritorio": acciones, ordenar, "aterrizaje-programa": aterrizajePrograma, "aterrizaje-manual": aterrizajeManual, "aterrizaje-escritorio": aterrizajeEscritorio, "habitaculo-movil": habitaculo, "habitaculo-escritorio": habitaculo, "estacion-movil": estacion, "puente-real": puente, acuario, viaje, yoga, "nodriza-estacion": nodrizaEstacion, animaciones, "catalogo-naves": catalogoNaves, foco, "estacion-iss": estacionIss };
+const PLAY = { cocina, movimiento, mision, "acciones-movil": acciones, "acciones-escritorio": acciones, ordenar, "aterrizaje-programa": aterrizajePrograma, "aterrizaje-manual": aterrizajeManual, "aterrizaje-escritorio": aterrizajeEscritorio, "habitaculo-movil": habitaculo, "habitaculo-escritorio": habitaculo, "estacion-movil": estacion, "puente-real": puente, acuario, viaje, yoga, "nodriza-estacion": nodrizaEstacion, animaciones, "catalogo-naves": catalogoNaves, foco, starship, "estacion-iss": estacionIss };
 
 const now = new Date();
 const stamp = now.toISOString().replace(/[:.]/g, "-").slice(0, 19);

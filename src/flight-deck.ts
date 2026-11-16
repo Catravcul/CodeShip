@@ -455,7 +455,7 @@ export class FlightDeck {
   }
 
   private lifeHtml(l: LifePanel, full: boolean): string {
-    const gravity = l.hasRing ? `<span>Anillo</span><b>${num(l.ringRpm, 2)} rpm · ${num(l.floorG, 2)} g</b>` : `<span>Gravedad</span><b>0 g · sin anillo</b>`;
+    const gravity = l.hasRing ? `<span>Anillo</span><b>${num(l.ringRpm, 2)} rpm · ${num(l.floorG, 2)} g</b>` : `<span>Gravedad</span><b>0 g · ingravidez</b>`;
     const head = `<div class="fd-kv">${gravity}<span>${esc(l.crewName)}</span><b>bienestar ${pct(l.wellbeing)}</b><span>Huerto</span><b>${l.plantsAlive} plantas · ${l.plantsReady} para cosechar</b><span>Máquinas</span><b>${l.machinesWorking} / ${l.machinesTotal} en marcha</b></div>`;
     if (!full) return head;
     return `${head}${bar(l.wellbeing, "life")}<div class="fd-kv">

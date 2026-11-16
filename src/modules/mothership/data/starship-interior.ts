@@ -71,7 +71,8 @@ const hatch = (id: string, label: string, y: number): InteriorVolume => ({
   label,
   kind: "escotilla",
   centre: new Vec3(0, y, 0),
-  half: new Vec3(CBM_HALF, FLOOR_M / 2 + 0.05, CBM_HALF),
+  // The hatchway runs through the floor and half a metre into each deck, so a floating body (0,3 m round) passes from one to the other.
+  half: new Vec3(CBM_HALF, FLOOR_M / 2 + 0.5, CBM_HALF),
   through: "y",
   pressurised: true,
   basis: "Escotilla de 1,27 m entre cubiertas (la de la ISS); en Starship su forma no está publicada",
@@ -146,7 +147,8 @@ export function starshipInteriorPlan(): StationInteriorPlan {
         label: `Escotilla · ${label(to)}`,
         volume: from,
         face: s < 0 ? "techo" : "suelo",
-        at: v.centre.add(new Vec3(0, s * v.half.y, 0)),
+        // On the floor plane between the decks (the hatchway's box reaches further in, for the hops).
+        at: v.centre.add(new Vec3(0, s * (FLOOR_M / 2), 0)),
         size: new Vec3(1.27, 0.1, 1.27),
         action: { kind: "puerta", to, hatch: h },
         info: `${v.label}: de ${label(from)} a ${label(to)}`,

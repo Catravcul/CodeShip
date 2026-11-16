@@ -60,8 +60,9 @@ export const STARSHIP_DRIVE: ChemicalDrive = {
   cruiseMS: {
     value: 500,
     source: S.starship,
-    note: "Valor de juego: cada salto acelera hasta 500 m/s, va por inercia y frena (Δv 1 km/s por salto, unas 9 por depósito lleno). Empujar todo el camino a 4–5 m/s² gastaría el depósito en un salto",
+    note: "Valor de juego: cada salto acelera hasta 500 m/s como mucho, va por inercia y frena (Δv 1 km/s por salto, unas 9 por depósito lleno). Empujar todo el camino a 4–5 m/s² gastaría el depósito en un salto",
   },
+  coastS: { value: 1800, source: S.starship, note: "Valor de juego: un salto corto va por inercia una media hora en vez de encender a fondo; 10 km cuestan unos 11 m/s de Δv" },
 };
 
 /** Real crew: the HLS is announced for 2–4; we take 4, the largest published, like an ISS increment of four. */

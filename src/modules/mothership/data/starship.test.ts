@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Quat } from "@core/math/quat";
 import { Vec3 } from "@core/math/vec3";
-import { Mothership } from "../domain/mothership";
+import { Mothership, chemicalCruiseMS } from "../domain/mothership";
 import { STARSHIP, STARSHIP_DRIVE } from "./starship";
 
 const G0 = 9.80665;
@@ -43,5 +43,10 @@ describe("NAV-08 Starship as the mothership: Raptor vacuum engines, methane and 
     const lines = ship.massBudget.map((l) => l.label).join(" · ");
     expect(lines).toMatch(/Motores/);
     expect(lines).not.toMatch(/[Aa]nillo|[Rr]eactor|[Rr]adiador/);
+  });
+
+  it("a hop coasts: a short one slowly (about half an hour), a long one at 500 m/s at most", () => {
+    expect(chemicalCruiseMS(STARSHIP_DRIVE, 10_000)).toBeCloseTo(10_000 / 1800, 6);
+    expect(chemicalCruiseMS(STARSHIP_DRIVE, 1e9)).toBe(500);
   });
 });

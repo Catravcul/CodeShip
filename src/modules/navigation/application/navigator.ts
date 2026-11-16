@@ -247,7 +247,7 @@ export class Navigator {
     const out = c.departure?.();
     const path = out ? [out, ...planRoute(out, parking, obstacles)] : planRoute(from, parking, obstacles);
     const distanceM = pathLength(from, path);
-    const plan = planContinuousBurn(distanceM, c.accelerationMs2, c.cruiseMS);
+    const plan = planContinuousBurn(distanceM, c.accelerationMs2, c.cruiseFor?.(distanceM));
     const probe = t.kind === "dock" ? this.probeDockTrip(t) : this.probeTrip(t);
     const probeLegM = berthAt ? 0 : Math.max(0, c.parkingM - this.approachM);
     const facts: CarrierTripFacts = {

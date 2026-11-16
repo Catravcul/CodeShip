@@ -30,7 +30,7 @@ function signOverlaps(signs) {
 
 export async function puente(j) {
   const p = j.page;
-  await j.setup("acopla en la nodriza y sube al puente por la espina", () => {
+  await j.setup("acopla en la nodriza y sube al puente", () => {
     const c = window.codeship;
     c.docking.dockNow(c.mothership);
     c.bridge.enter("salida");
@@ -70,7 +70,7 @@ export async function puente(j) {
     const card = (await j.texts(".room-ui:not(.hidden) .cab-machine b"))[0] ?? "";
     j.check(`un toque en «${label}» la lleva a ella y su ficha lo nombra`, card === label, card);
     if (id === "life") await capture(j, "consola", "Consola de sistemas de cerca");
-    if (id === "salida") await capture(j, "escotilla", "Escotilla a la espina");
+    if (id === "salida") await capture(j, "escotilla", "Escotilla de bajada");
   }
 
   // The probe's station: she sits (belted, eye lower) and takes its controls.

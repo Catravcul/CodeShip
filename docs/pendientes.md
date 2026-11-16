@@ -24,8 +24,8 @@ las de [santuario-espacial.md](design/santuario-espacial.md).
 | **Animales sin vuelo y sus familias** | Gatas (Luna, Nube), gallinas (Clara, Yema, Pinta), perros (Coco, Pepa), la gallina clueca que adopta | `pets/`, `poultry/`, `family/`, `adapters/three/interior/cat-model.ts`, `dog-model.ts`, `hen-model.ts`, `kitchen/data/stores.ts` (piensos) | Ninguno ha vivido en microgravedad de larga duración (las gallinas no comen ni beben sin gravedad). Vuelven con la gravedad (fase 4) como **ficción** o como **licencia** si hay datos de un anillo; antes, ninguno |
 | **Acuario y áreas del santuario** | El acuario del anillo con medakas y caracoles, sus lecciones y amistades; las áreas y biomas del santuario | `sanctuary/` (dominio, datos, `aquarium-ops.ts`), `adapters/three/interior/aquarium-model.ts`, `src/ui/aquarium-text.ts` | La medaka **ha volado** (Aquatic Habitat de Kibo): el acuario puede volver como **real** en la fase 2 (`vida-real`), en microgravedad y en su caja cerrada. Las demás áreas, en la fase 5 (`santuario-acuario`, `santuario-rio`, `santuario-biomas`), cada una con su etiqueta |
 | **Cocina con productos frescos** | Recetas de Cold Sanctuary con huevos, fresas, higos y tubérculos del huerto | `kitchen/data/recipes.ts`, `kitchen/data/stores.ts` | Ahora se cocina como en la ISS: rehidratar y calentar (`kitchen/data/iss-food.ts`). Las recetas frescas vuelven con el huerto real (Veggie da lechuga y mizuna) en la fase 2 |
-| **Interior de la nodriza de anillos** | Espina con esclusa, almacén y taller; puente; anillo con el módulo habitable | `src/interior.ts`, `src/adapters/three/interior/zones.ts`, `gravity/data/spine.ts` | Sustituido por el interior de la Starship (`mothership/data/starship-interior.ts`, «distribución nuestra»). La espina no vuelve: era parte de la nave inventada |
-| **Propulsión eléctrica nuclear de la nodriza** | 18 propulsores Hall X3 con un reactor de 2 MWe; propulsores intercambiables en la bahía | `mothership/domain/propulsion.ts`, `mothership/data/thrusters.ts`, `application/drive-refit.ts` | Sigue disponible con `?ficcion`. Vuelve como **licencia** si se elige la pila eléctrica (opción B de naves-reales.md) o como una etapa eléctrica que se acopla a la Starship |
+| **Interior de la nodriza de anillos** | Espina con esclusa, almacén y taller; puente; anillo con el módulo habitable | `src/interior.ts`, `src/adapters/three/interior/zones.ts`, `gravity/data/spine.ts` | Sustituido por las tres cubiertas de la Starship (`mothership/data/starship-interior.ts`, `src/starship-interior.ts`, «distribución nuestra», [nodriza-starship.md](design/nodriza-starship.md)). La espina no vuelve: era parte de la nave inventada |
+| **Propulsión eléctrica nuclear de la nodriza** | 18 propulsores Hall X3 con un reactor de 2 MWe; propulsores intercambiables en la bahía; repostar xenón | `mothership/domain/propulsion.ts`, `mothership/data/thrusters.ts`, `application/drive-refit.ts` | Sustituida por los 3 Raptor de vacío con metano y oxígeno (saltos con inercia, repostar oxígeno y metano, metano por Sabatier). Sigue disponible con `?ficcion`. Vuelve como **licencia** si se elige la pila eléctrica (opción B de naves-reales.md) o como una etapa eléctrica que se acopla a la Starship |
 
 ## La estación (rama estacion-real)
 
@@ -63,14 +63,19 @@ Juegan la nave de anillos; se omiten salvo con `EXPERIENCIA_FICCION=1`, que los 
 - PX-13: acuario.
 - PX-14: viaje del anillo a la estación.
 - PX-16: la nodriza al dique, desde el anillo.
-- PX-20: animaciones de las tareas del anillo.
 - PX-23: yoga en el anillo.
+- PX-25: foco del reto (abre los retos del anillo, el huerto y el acuario).
+- PX-20: animaciones de las tareas del anillo.
 
-El recorrido real que los sustituye en la nave es **PX-25** (`starship`).
+El recorrido real que los sustituye en la nave es **PX-28** (`starship`), en
+[nodriza-starship.md](design/nodriza-starship.md).
 
 ## Lo que falta en la nave real (siguiente trabajo)
 
-- **Soporte vital real** (rama `eclss-real`): OGA, CDRA, Sabatier, WRS y TCCS como máquinas de la Starship.
+- **Soporte vital real** (rama `eclss-real`): sus bastidores ya están en las paredes de las cubiertas; falta
+  que sus averías y su balance diario manden en la Starship como en la estación.
+- **La cubierta de vuelo** sigue siendo el puente de consolas que se recorre andando (rama `puente-real`).
+- **La esclusa** de la cubierta 3 está dibujada; las salidas desde la nave no están hechas.
 - **El viaje real de «Ir» dentro de la Starship.** De momento llega saltando por los asideros dentro de la
   nave y se teletransporta entre vehículos cuando la tarea está en la nodriza. El planificador de viajes
   (`journey.ts`) aún conoce el anillo y la espina, no las cubiertas.

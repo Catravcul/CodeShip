@@ -22,8 +22,8 @@ export interface CarrierPort {
   readonly engineName?: string;
   /** What its tanks hold («xenón», «metano y oxígeno»). Default xenon. */
   readonly propellantName?: string;
-  /** Top speed of a hop (a chemical ship coasts at it); none: it pushes all the way. */
-  readonly cruiseMS?: number;
+  /** Top speed of a hop of this length (a chemical ship coasts at it); none: it pushes all the way. */
+  cruiseFor?(distanceM: number): number;
   readonly massKg: number;
   readonly accelerationMs2: number;
   deltaV(): number;

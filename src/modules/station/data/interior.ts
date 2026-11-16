@@ -233,6 +233,10 @@ export function stationInteriorPlan(layout: StationLayout = POLANA_LAYOUT, outfi
     { id: "escotilla-eva", label: "Escotilla EVA", volume: "quest", face: "estribor", at: new Vec3(xEnd(quest, 1), 0, quest.centre.z), size: new Vec3(0.1, 1.0, 1.0), action: { kind: "info" }, info: "Escotilla EVA de Quest. Salir de paseo por fuera de la estación está en pendientes", source: S.quest },
     // Kibo: the airlock to the exposed platform, where the parts racks are.
     { id: "esclusa-kibo", label: "Esclusa de Kibo · plataforma expuesta", volume: "kibo", face: "babor", at: new Vec3(xEnd(kibo, -1), 0, kibo.centre.z), size: new Vec3(0.1, 0.9, 0.9), action: { kind: "panel", panel: "hangar" }, info: "La esclusa de Kibo saca las piezas a la plataforma expuesta (JEM-EF, 12 puertos) con su mesa deslizante y el brazo JEMRMS: aquí está el inventario", source: ISS_SOURCES.kibo },
+    // Rack slots for the species catalogue (adapters/three/interior/rack-slots.ts): the Aquatic Habitat flew in
+    // Kibo (JAXA, medaka, 2012) and the catalogue is a laptop on the rack beside it.
+    { id: "rack-acuatico", label: "Hábitat acuático (AQH)", volume: "kibo", face: "popa", at: new Vec3(along(kibo, 0.3), 0, kibo.centre.z + kibo.half.z), size: new Vec3(1.05, 2.0, 0.86), action: { kind: "info" }, info: "El Aquatic Habitat de JAXA, en Kibo como en la ISS: dos tanques de 0,7 L, pulmón artificial y biofiltro; aquí vivieron medakas hasta 90 días. Se llena con lo que se adopta en el catálogo", source: "https://iss.jaxa.jp/en/kiboexp/pm/aqh" },
+    { id: "rack-catalogo", label: "Catálogo de especies", volume: "kibo", face: "popa", at: new Vec3(along(kibo, 0.62), 0, kibo.centre.z + kibo.half.z), size: new Vec3(1.05, 2.0, 0.86), action: { kind: "consola", id: "catalogo" }, info: "Portátil del catálogo de especies junto al hábitat acuático: solo especies reales en hábitats reales", source: S.ispr },
   ];
 
   // --- Modules berthed as the station grows --------------------------------------------------

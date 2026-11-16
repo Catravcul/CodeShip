@@ -94,6 +94,14 @@ Tranquility, los trajes en Quest. Los bastidores de soporte vital vienen de la r
 (`ECLSS_RACKS`, `eclssRackModel`): WRS y OGS en las paredes de Tranquility, el AR en su techo, el puesto de
 incendios, la galería en Unity, y el AR y el ITCS de Destiny como equipo en sus bastidores.
 
+## Ranuras de rack del catálogo de especies
+
+Las dos ranuras de rack del catálogo (`rack-slots.ts`, rama catalogo-especies) tienen sitio en Kibo: el
+**hábitat acuático (AQH)** de JAXA, que voló en Kibo con medakas
+([JAXA](https://iss.jaxa.jp/en/kiboexp/pm/aqh)), y a su lado el **portátil del catálogo**, que abre la misma
+hoja que la lista de tareas. Por ahora el tanque animado y los animales adoptados siguen dibujándose en el
+anillo (con `?ficcion`); en la ISS la ranura acuática es la ficha del AQH.
+
 ## Escala y separación
 
 La ISS está a su tamaño real en los datos. La capa de presentación (rama base-nodriza-real,

@@ -1,5 +1,6 @@
 // The station as the ISS's US segment (docs/design/estacion-real.md), played with taps on an iPhone 13:
-// a tour through its hatches (Harmony, Destiny, Unity, Tranquility, Columbus, Kibo and Quest), the galley in
+// a tour through its hatches (Harmony, Destiny, Unity, Tranquility, Columbus, Kibo with the species catalogue's
+// rack slots, and Quest), the galley in
 // Unity, Juventas stowed in the Bishop and let go outside by Canadarm2, and the arm berthing the lander on
 // Unity's nadir CBM seen from the Cupola. Captures in docs/screenshots/iss-<pantalla>-movil.png.
 import { mkdirSync } from "node:fs";
@@ -64,6 +65,13 @@ export async function estacionIss(j) {
   await look(j, "impresora", /[Ii]mpresora/, "columbus", "Columbus: el taller (la impresora de metal de la ESA)");
   await through(j, "puerta-escotilla-nodo2-kibo-nodo-2", "kibo", "Kibo");
   await look(j, "esclusa-kibo", /Kibo/, "kibo", "Kibo: su esclusa a la plataforma JEM-EF");
+  // Kibo hosts the species catalogue's rack slots: the Aquatic Habitat (as on the ISS) and the catalogue laptop.
+  await look(j, "rack-acuatico", /Aquatic Habitat|AQH/, "kibo-aqh", "Kibo: el hábitat acuático (AQH)");
+  await placeAt(j, "rack-catalogo");
+  await j.tap('.sti-card [data-act="catalogo"]', "Abrir el catálogo de especies");
+  j.check("el portátil de Kibo abre el catálogo de especies", await p.evaluate(() => window.codeship.sanctuary.catalog.visible));
+  await capture(j, "catalogo", "Catálogo de especies desde Kibo");
+  await j.tap(".species-catalog .sc-x", "Cerrar el catálogo");
   await through(j, "puerta-escotilla-nodo1-quest-nodo-1", "quest", "Quest");
   await look(j, "trajes", /Trajes/, "quest", "Quest: los trajes de EVA");
 

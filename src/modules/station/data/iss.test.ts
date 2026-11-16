@@ -43,6 +43,9 @@ describe("EST-42 the station is the ISS's US segment, at its real size", () => {
     expect(vol("camarotes")).toBe("nodo-2");
     for (const id of ["aseo", "ejercicio", "cupula", "bishop", "eclss-wrs", "eclss-ogs", "eclss-ar"]) expect(vol(id), id).toBe("nodo-3");
     expect(vol("trajes")).toBe("quest");
+    // The species catalogue's rack slots: the Aquatic Habitat flew in Kibo, the catalogue laptop beside it.
+    expect(vol("rack-acuatico")).toBe("kibo");
+    expect(POLANA_INTERIOR.fixtures.find((f) => f.id === "rack-catalogo")).toMatchObject({ volume: "kibo", action: { kind: "consola", id: "catalogo" } });
     // Each eclss-real rack placed is one of its kit, and the galley is its galley.
     const kinds = new Set(ECLSS_RACKS.map((r) => r.kind));
     for (const f of POLANA_INTERIOR.fixtures.filter((x) => x.rack)) expect(kinds.has(f.rack as never), f.id).toBe(true);

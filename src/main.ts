@@ -881,6 +881,7 @@ const stationLife = new StationLife({
   },
   say: (t, sec) => stationInside.say(t, sec),
   lookOutside: (show) => stationOutside.open(show),
+  openCatalog: () => sanctuary.catalog.open(),
 });
 /** The station's interior as it is drawn and walked: its real size at the presentation layer's scale (and spread). */
 const playInterior = () => {

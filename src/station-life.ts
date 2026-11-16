@@ -37,6 +37,8 @@ export interface StationLifeDeps {
   openTasks(): void;
   openInventory(): void;
   openSettings(): void;
+  /** The species catalogue (sanctuary-life.ts), from its terminal in Kibo. */
+  openCatalog?(): void;
   say(text: string, seconds?: number): void;
   /** The view outside from the Cupola; `show` plays an arm move in it (berth, unberth, a Bishop trip). */
   lookOutside(show?: { kind: "atraque" | "desatraque" } | { kind: "bishop"; released: readonly AirlockItem[] }): void;
@@ -57,6 +59,7 @@ export class StationLife {
 
   actions(f: Fixture): StationAction[] {
     const a = f.action;
+    if (a.kind === "consola" && a.id === "catalogo") return [{ id: "catalogo", label: "Abrir el catálogo de especies", enabled: !!this.d.openCatalog }];
     if (a.kind === "brazo") {
       const atPort = this.d.atPort();
       const arm: StationAction = this.d.berth.onCbm
@@ -107,6 +110,8 @@ export class StationLife {
       return this.d.say(this.d.bishop.retrieve(it) ?? `Canadarm2 recoge ${this.d.bishop.item(it).name} y vuelve al almacén. Licencia: en la ISS nunca se ha recogido así un satélite suelto`, 6);
     }
     switch (id) {
+      case "catalogo":
+        return this.d.openCatalog?.();
       case "tareas":
         return this.d.openTasks();
       case "inventario":

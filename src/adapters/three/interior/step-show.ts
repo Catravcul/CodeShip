@@ -74,17 +74,16 @@ const TARGET_INSET = 0.12;
 const TARGET_MAX = 0.7;
 /** What she holds or works in at a target (a bowl, the tablet) is this far in front of her (m): at her hands. */
 const HANDS_AHEAD = 0.35;
-/**
- * Actions that work in a vessel or with a tool she holds (bowl, board, tablet, the wrench): at a target they
- * happen at her hands, on the near side of the machine (a round tank does not hide the wrench: PX-20).
- */
-const USES_VESSEL: ReadonlySet<string> = new Set(["cascar", "batir", "remover", "calentar", "hervir", "hornear", "moler", "amasar", "cortar", "lavar", "reposar", "emplatar", "sazonar", "programar", "revisar", "tomar", "reparar"]);
+/** Actions that work in a vessel (bowl, board, tablet): at a target they happen at her hands. */
+const USES_VESSEL: ReadonlySet<string> = new Set(["cascar", "batir", "remover", "calentar", "hervir", "hornear", "moler", "amasar", "cortar", "lavar", "reposar", "emplatar", "sazonar", "programar", "revisar", "tomar"]);
 /** The floor bowl with its contents as a box (centre height and half size, m) for the clearance rule… */
 const BOWL_BOX = new THREE.Vector3(0, 0.07, 0);
 const BOWL_HALF = new THREE.Vector3(0.11, 0.06, 0.11);
 /** …and where else it may go when the first spot is taken: distances from her feet and turns from her target (rad), her right hand first. */
 const BOWL_RINGS = [0.45, 0.38, 0.55];
 const BOWL_FAN = [0, -0.45, 0.45, -0.9, 0.9, -1.3, 1.3];
+/** Actions done at a target with something held in her right hand. */
+const IN_HAND: ReadonlySet<string> = new Set(["reparar", "reposar"]);
 /** At the fridge she stands this much farther back (m). */
 const FRIDGE_STEP_BACK = 0.25;
 
@@ -675,7 +674,10 @@ export class StepShow {
     this.foodMat!.color.setHex(TINT[v.tint ?? "generico"] ?? TINT.generico!);
     const target = this.spotOf(v, this.spot);
     // A vessel at a challenge's target (a lab flask, a feeder) is held at her hands, not set inside the machine.
-    const s = v.place === "objetivo" && USES_VESSEL.has(v.action) ? this.atHands(this.hands, target.y) : target;
+    // At a target, what she holds in one hand (the wrench, a resting compress) is at her right hand, the side
+    // the camera looks over: neither a round tank nor her own body hides it (PX-20).
+    const inHand = v.place === "objetivo" && IN_HAND.has(v.action);
+    const s = inHand ? this.hands.copy(this.hand).setY(this.hand.y + 0.06) : v.place === "objetivo" && USES_VESSEL.has(v.action) ? this.atHands(this.hands, target.y) : target;
     const food = p.food;
     const vessel = (): THREE.Vector3 => {
       // The vessel the step works in, at its spot; returns where food sits inside it.
@@ -796,8 +798,12 @@ export class StepShow {
         const at = vessel();
         const cut = v.action === "cortar";
         const pieces = cut ? 1 + Math.min(3, Math.floor(t * 4)) : 1;
+        // In a row across the board: along the counter's depth in the galley, otherwise across her front
+        // (to her sides), so no piece goes toward the machine or behind her.
+        const rx = this.df!.kitchen ? 1 : -Math.cos(this.df!.yaw);
+        const rz = this.df!.kitchen ? 0 : Math.sin(this.df!.yaw);
         for (let i = 0; i < pieces; i++) {
-          const f = this.show(food[i]!, at.x - 0.06 + i * 0.04, at.y + 0.02, at.z);
+          const f = this.show(food[i]!, at.x + (i * 0.04 - 0.06) * rx, at.y + 0.02, at.z + (i * 0.04 - 0.06) * rz);
           if (!cut) f.scale.set(0.06, 0.02 + 0.012 * Math.abs(Math.sin(this.clock * 7)), 0.05);
         }
         if (cut) {

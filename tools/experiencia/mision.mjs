@@ -94,15 +94,16 @@ export async function mision(j) {
   const phase = await p.evaluate(() => window.codeship.expedition.phase);
   j.check("con las tres fases, Bennu queda persuadido", phase === "persuaded", phase);
   await p.waitForTimeout(1500);
-  const toast = (await j.texts(".ml-toast"))[0] ?? "";
-  j.check("un aviso dice que la misión de Nevaeh está cumplida", /cumplida/i.test(toast), toast);
-  const covers = await p.evaluate(() => {
+  // With a challenge open only the sheet shows (ux-acciones.md §7): the mission notice waits under it.
+  const early = await p.evaluate(() => {
     const a = document.querySelector(".ml-toast.on")?.getBoundingClientRect();
-    const b = document.querySelector(".duel .result")?.getBoundingClientRect();
-    return !!a && !!b && a.bottom > b.top && a.top < b.bottom;
+    return !!a && a.width > 0 && a.height > 0;
   });
-  j.check("el aviso de la misión no tapa el resultado del duelo", !covers);
+  j.check("el aviso de la misión no tapa el resultado del duelo (espera a que se cierre)", !early);
   await j.shot("mision-cumplida");
   await j.tapAt(p.locator(".duel button.end"));
-  await p.waitForTimeout(600);
+  await p.waitForTimeout(1200);
+  const toast = (await j.texts(".ml-toast"))[0] ?? "";
+  j.check("al cerrar el duelo, un aviso dice que la misión de Nevaeh está cumplida", /cumplida/i.test(toast), toast);
+  await j.shot("mision-aviso");
 }

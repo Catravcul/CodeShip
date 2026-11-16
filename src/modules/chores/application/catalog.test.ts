@@ -102,6 +102,13 @@ describe("chore catalog", () => {
     }
   });
 
+  it("ship code: a craft with a single tank gets one tank line (no crash on the second)", () => {
+    const d = explorerDesign();
+    const one = { ...d, tanks: d.tanks.slice(0, 1) };
+    const lines = shipCode(one).map((b) => b.pseudo);
+    expect(lines.filter((l) => l.startsWith("tanque"))).toHaveLength(1);
+  });
+
   it("repair: exactly one line of the ship's code is corrupted, and it is the answer", () => {
     const original = shipCode(explorerDesign()).map((b) => b.pseudo);
     for (let seed = 0; seed < 5; seed++) {

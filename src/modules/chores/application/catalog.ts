@@ -428,12 +428,13 @@ const shortName = (n: string) => n.replace(/^Aerojet Rocketdyne /, "").replace(/
 export function shipCode(design: ShipDesign): CodeBlock[] {
   const main = { ...design.mainEngines[0]!.model, name: shortName(design.mainEngines[0]!.model.name) };
   const rcs = { ...design.rcs[0]!.model, name: shortName(design.rcs[0]!.model.name) };
+  // A craft may carry fewer than two tanks (Juventas, the Apollo LM's stages): one line per tank it has.
   const tank = (i: number) => design.tanks[i]!;
   const fixed = Math.round(equipmentMassKg(design.equipment.filter((e) => !isEquipmentSlot(e.kind))));
   return [
     block("motor", `motor = ${main.name}(empuje ${main.thrustN} N, Isp ${main.ispS} s)`, `this.motor = new Propulsor("${main.id}", { empujeN: ${main.thrustN}, ispS: ${main.ispS} });`),
     block("rcs", `rcs = ${design.rcs.length} × ${rcs.name}(empuje ${rcs.thrustN} N, Isp ${rcs.ispS} s)`, `this.rcs = repetir(${design.rcs.length}, () => new Propulsor("${rcs.id}", { empujeN: ${rcs.thrustN}, ispS: ${rcs.ispS} }));`),
-    ...[0, 1].map((i) =>
+    ...[0, 1].filter((i) => design.tanks[i]).map((i) =>
       block(`tanque${i}`, `tanque${i + 1} = Tanque(${tank(i).spec.propellant}, ${tank(i).spec.capacityKg} kg)`, `this.tanque${i + 1} = new Tanque("${tank(i).spec.propellant}", { capacidadKg: ${tank(i).spec.capacityKg} });`),
     ),
     ...EQUIPMENT_SLOTS.flatMap((slot) => {

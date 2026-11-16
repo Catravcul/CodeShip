@@ -69,7 +69,7 @@ los juega con `?ficcion`. Su estado de abajo es el de la última ejecución con 
 | EST-04 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | EST-20 | Probado (en vivo) | 2026-11-14 | `f1df8fc` | [run](runs/2026-11-14-1806-PX-04-PX-10-PX-12.md): PX-12 y la suite |
 | EST-21 | Probado (en vivo) | 2026-11-14 | `f1df8fc` | [run](runs/2026-11-14-1806-PX-04-PX-10-PX-12.md): PX-12 y la suite |
-| EST-22 | Probado (en vivo) | 2026-11-14 | `f1df8fc` | [run](runs/2026-11-14-1806-PX-04-PX-10-PX-12.md): PX-12 y la suite |
+| EST-22 | Retirado | 2026-11-16 | | La estación es la ISS, sin hangar ([estacion-real.md](../design/estacion-real.md)); lo sustituye EST-44 |
 | EST-23 | Probado (en vivo) | 2026-11-14 | `f1df8fc` | [run](runs/2026-11-14-1806-PX-04-PX-10-PX-12.md): PX-12 y la suite |
 | EST-24 | Probado (en vivo) | 2026-11-14 | `f1df8fc` | [run](runs/2026-11-14-1806-PX-04-PX-10-PX-12.md): PX-12 y la suite |
 | EST-25 | Probado (en vivo) | 2026-11-16 | `ee051ea` | [run](runs/2026-11-16-1500-PX-16.md): PX-16 y `dry-dock.test.ts` |
@@ -78,6 +78,10 @@ los juega con `?ficcion`. Su estado de abajo es el de la última ejecución con 
 | EST-29 | Solo test | | | `vehicle-yard.test.ts`; en vivo, PX-24 |
 | EST-30 | Solo test | | | `vehicle-catalogue.test.ts` |
 | EST-27 | Probado (en vivo) | 2026-11-16 | `ee051ea` | [run](runs/2026-11-16-1500-PX-16.md): PX-16, `dock-trip.test.ts` y `journey-world.test.ts` |
+| EST-41 | Solo test | | | `cargo-airlock.test.ts`; en vivo, PX-28 |
+| EST-42 | Solo test | | | `iss.test.ts`, `structure.test.ts`, `interior.test.ts`; en vivo, PX-28 |
+| EST-43 | Solo test | | | `outfit.test.ts` |
+| EST-44 | Solo test | | | `hangar-berth.test.ts`; en vivo, PX-12 y PX-28 |
 | EST-05 | Parcial | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): suite OK; en vivo solo la tarjeta del almacén lleno (`hc-almacen-mobile.png`) |
 | REF-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | REF-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -178,6 +182,7 @@ los juega con `?ficcion`. Su estado de abajo es el de la última ejecución con 
 | PX-24 | Probado (en vivo) | 2026-11-16 | `ef23e9a` | [run](runs/2026-11-16-1800-PX-24.md): 10 OK |
 | PX-20 | FAIL | 2026-11-16 | `c033d52` | [run](runs/2026-11-16-1702-PX-20.md): 256 OK, 7 FALLA |
 | PX-25 | Probado (en vivo) | 2026-11-16 | `be7ba22` | [run](runs/2026-11-16-1835-PX-14-PX-15-PX-25.md): 40 OK |
+| PX-28 | Sin probar | | | Recorrido nuevo (estacion-real) |
 
 ## Última ejecución por run log
 

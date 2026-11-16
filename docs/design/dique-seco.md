@@ -1,5 +1,7 @@
 # Dique seco: la nodriza en la estación
 
+> **Desde 2026-11-16 la estación es la ISS** ([estacion-real.md](estacion-real.md)): la nodriza atraca en el IDA de proa de Harmony, como el transbordador. El dique seco solo se dibuja con `?ficcion` y está en [pendientes.md](../pendientes.md).
+
 Petición de Berón (2026-11-16):
 
 1. «La nave nodriza debería poder entrar al hangar, ¿no? ¿Cómo funciona en la vida real?»

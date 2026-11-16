@@ -117,6 +117,12 @@ export async function acciones(j) {
   j.check("en la estación, Tareas abre la lista global con «Ir»", (await p.locator(".task-board:not(.hidden) .tb-go").count()) > 0);
   await audit(j, "estacion-tareas", "Lista de tareas en la estación");
   await j.tap(".task-board [data-close]", "Cerrar tareas");
+  // The view out of the Cupola (the ISS from outside, with Canadarm2): its own close button, nothing on top.
+  await j.setup("Doménica va hasta la Cupola", () => window.codeship.stationInside.placeAt("cupula"));
+  await j.tap('.sti-card [data-act="mirar"]', "Mirar por la Cupola");
+  j.check("la Cupola abre la vista de la estación por fuera", await p.evaluate(() => window.codeship.stationOutside.viewing));
+  await audit(j, "estacion-cupola", "Vista desde la Cupola");
+  await j.tap(".dock-view.on .dv-close", "Cerrar la vista de fuera");
   // The screen's tabs: from a machine's card (the refinery opens Materiales).
   await j.setup("Doménica va hasta la refinería", () => window.codeship.stationInside.placeAt("refineria"));
   await j.tap('.sti-card [data-act="abrir"]', "Abrir (refinería)");

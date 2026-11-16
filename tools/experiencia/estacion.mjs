@@ -1,8 +1,9 @@
-// The space station as a player meets it (docs/design/estacion-tripulacion.md): in through the lander's
-// hatch in first person, a door that names where it leads, the galley cooking from the station's
-// larder, a cabin, the yoga mat's settings, «Ir» of a station task, and the hangar with the lander
-// lifted in by the arm and its console's full task list. iPhone 13; captures in
-// docs/screenshots/estacion-<pantalla>-movil.png.
+// The space station as a player meets it (docs/design/estacion-real.md, estacion-tripulacion.md): the ISS's
+// US segment. In through the lander's hatch on Harmony's zenith IDA in first person, a door that names where
+// it leads (Destiny), the galley in Unity cooking from the station's larder, a cabin in Harmony, the yoga
+// mat's settings, «Ir» of a station task, and the Cupola: Canadarm2 berths the lander on Unity's nadir CBM
+// (seen from outside), its full task list, the lander's hatch says why it is shut, and the arm puts it back.
+// iPhone 13; captures in docs/screenshots/estacion-<pantalla>-movil.png.
 import { mkdirSync } from "node:fs";
 
 async function capture(j, label, title) {
@@ -33,21 +34,22 @@ export async function estacion(j) {
   j.check("la vista por defecto es en primera persona", /1ª/.test(view ?? ""), view);
   const old = await j.texts(".sti-ui button");
   j.check("sin los botones viejos «Tareas», «Vista 3ª» y «Salir» escritos: iconos de raíz", !old.some((t) => /^(Tareas|Vista 3ª|Vista 1ª|Salir)$/.test(t)) && (await p.locator(".sti-ui .root-menu").count()) === 1, old.join(" / "));
-  await capture(j, "entrada", "Entrada al Nodo 2");
+  j.check("entra en Harmony (Nodo 2), por su IDA de cenit", (await p.evaluate(() => window.codeship.stationInside.where())) === "nodo-2", await p.evaluate(() => window.codeship.stationInside.where()));
+  await capture(j, "entrada", "Entrada a Harmony");
 
   // A door: it names where it leads; «Entrar en…» takes her through.
-  await placeAt(j, "puerta-escotilla-hab-nodo2-nodo-2");
+  await placeAt(j, "puerta-escotilla-destiny-nodo2-nodo-2");
   const door = await card(j);
-  j.check("la puerta dice adónde lleva, con icono y «Entrar en Módulo habitable», nunca «?»", /Escotilla · Módulo habitable/.test(door) && /Entrar en Módulo habitable/.test(door) && !/\?/.test(door) && (await p.locator(".sti-card .sti-icon svg").count()) === 1, door.slice(0, 120));
-  await capture(j, "puerta", "Puerta al módulo habitable");
-  await j.tap('.sti-card [data-act="entrar"]', "Entrar en Módulo habitable");
-  const through = await p.waitForFunction(() => window.codeship.stationInside.where() === "habitat", null, { timeout: 90000 }).then(() => true, () => false);
+  j.check("la puerta dice adónde lleva, con icono y «Entrar en Destiny», nunca «?»", /Escotilla · Destiny/.test(door) && /Entrar en Destiny/.test(door) && !/\?/.test(door) && (await p.locator(".sti-card .sti-icon svg").count()) === 1, door.slice(0, 120));
+  await capture(j, "puerta", "Puerta a Destiny");
+  await j.tap('.sti-card [data-act="entrar"]', "Entrar en Destiny");
+  const through = await p.waitForFunction(() => window.codeship.stationInside.where() === "destiny", null, { timeout: 90000 }).then(() => true, () => false);
   j.check("«Entrar en…» la lleva al otro lado de la escotilla", through, await p.evaluate(() => window.codeship.stationInside.where()));
 
   // The galley: a dish from the station's larder, in the shared challenge sheet.
   await placeAt(j, "cocina");
   const galley = await card(j);
-  j.check("la cocina de la estación ofrece platos de su despensa", /Cocinar /.test(galley), galley.slice(0, 140));
+  j.check("la cocina de la estación, en Unity como en la ISS, ofrece platos de su despensa", /Cocinar /.test(galley) && (await p.evaluate(() => window.codeship.stationInside.where())) === "nodo-1", galley.slice(0, 140));
   await capture(j, "cocina", "Cocina de la estación");
   const before = await p.evaluate(() => JSON.stringify(window.codeship.stationCrew.larder()));
   await j.tap('.sti-card [data-act^="chore:cocinar"]', "Cocinar un plato");
@@ -84,26 +86,31 @@ export async function estacion(j) {
   j.check("«Ir» la lleva a la esterilla de la estación y empieza el yoga", yoga, await p.evaluate(() => window.codeship.stationInside.nearFixture()));
   if (yoga) await j.tap('.duel [data-act="close"]', "Cerrar el reto");
 
-  // The hangar: the arm lifts the lander in; the console has the whole task list.
-  await placeAt(j, "consola-hangar");
-  await j.tap('.sti-card [data-act="meter"]', "Meter el módulo en el hangar");
-  j.check("el brazo mete el módulo en el hangar", await p.evaluate(() => window.codeship.landerBerth.inHangar));
-  await j.setup("mira hacia el módulo, en tercera persona", () => {
-    const s = window.codeship.stationInside;
-    s.placeAt("consola-bahia");
-    s.yaw += Math.PI;
-    s.pitch = -0.25;
-  });
-  await j.tap(".sti-ui .sti-view", "Vista: 3ª persona");
-  await capture(j, "hangar", "Hangar con el módulo dentro");
-  await placeAt(j, "consola-hangar");
-  await j.tap('.sti-card [data-act="tareas"]', "Tareas (consola del hangar)");
+  // The Cupola: Canadarm2 berths the lander on Unity's nadir CBM, and it is seen from outside.
+  await placeAt(j, "cupula");
+  const cupola = await card(j);
+  j.check("en la Cupola, el puesto del brazo ofrece atracar el módulo en el CBM", /Atracar el módulo en el CBM/.test(cupola), cupola.slice(0, 160));
+  await j.tap('.sti-card [data-act="atracar"]', "Atracar el módulo en el CBM con el brazo");
+  j.check("Canadarm2 atraca el módulo en el CBM de Unity", await p.evaluate(() => window.codeship.landerBerth.onCbm));
+  j.check("se ve desde fuera: la vista de la Cupola se abre con el brazo moviéndose", await p.evaluate(() => window.codeship.stationOutside.viewing && window.codeship.stationOutside.busy));
+  await p.waitForTimeout(3500);
+  await capture(j, "brazo", "Canadarm2 lleva el módulo al CBM");
+  const done = await p.waitForFunction(() => !window.codeship.stationOutside.busy, null, { timeout: 60000 }).then(() => true, () => false);
+  j.check("el brazo termina y el módulo queda dibujado en el CBM", done && (await p.evaluate(() => window.codeship.stationOutside.holdsLander)));
+  await capture(j, "cbm", "Módulo atracado en el CBM de Unity");
+  await j.tap(".dock-view.on .dv-close", "Cerrar la vista de fuera");
+  await placeAt(j, "cupula");
+  await j.tap('.sti-card [data-act="tareas"]', "Tareas (Cupola)");
   const shown = await p.locator(".task-board .tb-go").count();
   const all = await p.evaluate(() => window.codeship.tasks().length);
-  j.check("la consola del hangar abre la lista global con «Ir», con todas las tareas", shown === all && shown > 0, `${shown} de ${all}`);
+  j.check("el puesto de la Cupola abre la lista global con «Ir», con todas las tareas", shown === all && shown > 0, `${shown} de ${all}`);
   await j.tap(".task-board [data-close]", "Cerrar tareas");
   await placeAt(j, "salir-sonda");
   const hatch = await card(j);
-  j.check("con el módulo en el hangar, su escotilla dice por qué está cerrada y qué la abre", /Cerrada: el módulo está en el hangar/.test(hatch) && /consola del hangar/.test(hatch), hatch.slice(0, 160));
+  j.check("con el módulo en el CBM, su escotilla dice por qué está cerrada y qué la abre", /Cerrada: el módulo está atracado en el CBM/.test(hatch) && /Cupola/.test(hatch), hatch.slice(0, 160));
   await capture(j, "escotilla-cerrada", "Escotilla del módulo cerrada");
+  await placeAt(j, "cupula");
+  await j.tap('.sti-card [data-act="desatracar"]', "Devolver el módulo a su IDA");
+  j.check("el brazo devuelve el módulo a su IDA", await p.evaluate(() => !window.codeship.landerBerth.onCbm));
+  await j.tap(".dock-view.on .dv-close", "Cerrar la vista de fuera");
 }

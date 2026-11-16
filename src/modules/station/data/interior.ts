@@ -198,9 +198,10 @@ export function stationInteriorPlan(layout: StationLayout = POLANA_LAYOUT, outfi
     return v.centre[k] - v.half[k] + f * 2 * v.half[k];
   };
   const n3x = (f: number) => xEnd(n3, 1) - f * 2 * n3.half.x; // from Unity (0) to the Bishop (1)
-  /** A life-support rack of eclss-real on Tranquility's fore or aft wall, at its real size. */
-  const eclss = (kind: RackKind, face: "proa" | "popa", f: number): Fixture => {
+  /** A life-support rack of eclss-real on one of Tranquility's rack walls (fore, aft or overhead), at its real size. */
+  const eclss = (kind: RackKind, face: "proa" | "popa" | "techo", f: number): Fixture => {
     const r = rackSpec(kind);
+    if (face === "techo") return { id: `eclss-${kind}`, label: r.name, volume: "nodo-3", face, at: new Vec3(n3x(f), N.y, n3.centre.z), size: new Vec3(r.size.w, r.size.d, r.size.h), action: { kind: "info" }, info: r.info, source: r.source, rack: kind };
     return { id: `eclss-${kind}`, label: r.name, volume: "nodo-3", face, at: new Vec3(n3x(f), 0, n3.centre.z + (face === "proa" ? -1 : 1) * n3.half.z), size: new Vec3(r.size.w, r.size.h, r.size.d), action: { kind: "info" }, info: r.info, source: r.source, rack: kind };
   };
   const fixtures: Fixture[] = [
@@ -222,8 +223,8 @@ export function stationInteriorPlan(layout: StationLayout = POLANA_LAYOUT, outfi
     { id: "cupula", label: "Cupola y brazo (RWS)", volume: "nodo-3", face: "suelo", at: new Vec3(n3x(0.5), -N.y, n3.centre.z), size: new Vec3(1.27, 0.1, 1.27), action: { kind: "brazo" }, info: "Siete ventanas y el puesto robótico de Canadarm2: desde aquí el brazo atraca el módulo en el CBM de Unity y se mira la estación por fuera", source: ISS_SOURCES.cupola },
     // The life-support racks of Tranquility (ESA: ARS, OGS, WRS 1 and 2), with eclss-real's data and kit.
     eclss("wrs", "proa", 0.82),
-    eclss("ogs", "popa", 0.7),
-    eclss("ar", "popa", 0.88),
+    eclss("ogs", "popa", 0.77),
+    eclss("ar", "techo", 0.85),
     { id: "eclss-incendios", label: rackSpec("incendios").name, volume: "nodo-3", face: "techo", at: new Vec3(n3x(0.3), N.y, n3.centre.z), size: new Vec3(rackSpec("incendios").size.w, rackSpec("incendios").size.d, rackSpec("incendios").size.h), action: { kind: "info" }, info: rackSpec("incendios").info, source: rackSpec("incendios").source, rack: "incendios" },
     { id: "eclss-consola", label: rackSpec("consola").name, volume: "destiny", face: "techo", at: new Vec3(0, AISLE.laboratorio.y, along(lab, 0.15)), size: new Vec3(rackSpec("consola").size.w, rackSpec("consola").size.d, rackSpec("consola").size.h), action: { kind: "info" }, info: rackSpec("consola").info, source: rackSpec("consola").source, rack: "consola" },
     { id: "bishop", label: "Esclusa Bishop", volume: "nodo-3", face: "babor", at: new Vec3(xEnd(n3, -1), 0, n3.centre.z), size: new Vec3(0.1, 1.27, 1.27), action: { kind: "bishop" }, info: "Esclusa de carga Bishop (1059 kg, 3,99 m³) en el puerto de babor: Canadarm2 la saca, suelta la sonda o los cubesats y la vuelve a atracar", source: ISS_SOURCES.bishop },

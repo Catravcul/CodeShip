@@ -20,7 +20,10 @@ import {
   MOD_FARM,
   MOD_HANGAR,
   MOD_PLANT,
+  MOD_AXIOM_HAB,
+  MOD_HAVEN2,
   RADIATORS_DOUBLE,
+  offeredBlueprints,
   STATION_COMPONENTS,
   WINGS_IROSA,
   startingOutfit,
@@ -39,11 +42,17 @@ const build = (st: Station, id: string) => {
 };
 
 describe("station outfit: what is built at the start", () => {
-  it("starts with the refinery, glovebox, foundry, small printer and plant in the fabrication module", () => {
+  it("EST-43 starts with the ISS's real machines in Destiny and Kibo, and the licensed workshop in Columbus", () => {
     const o = startingOutfit();
-    expect(o.equipment.map((e) => e.spec.id).sort()).toEqual(["fundicion", "guantera", "impresora", "planta", "refineria"]);
-    expect(o.equipment.every((e) => e.moduleId === "fabrica")).toBe(true);
-    expect(o.freeRacks("fabrica")).toBe(12 - 5);
+    const where = (m: string) => o.equipment.filter((e) => e.moduleId === m).map((e) => e.spec.id).sort();
+    // Destiny: the glovebox, Redwire's AMF and its own life-support racks (eclss-real), as on the ISS.
+    expect(where("destiny")).toEqual(["amf", "eclss-ar-bastidor", "eclss-itcs-bastidor", "guantera"]);
+    expect(where("kibo")).toEqual(["refabricator"]);
+    // Columbus is the workshop: the printer is real, the refinery, foundry and plant are licences.
+    expect(where("columbus")).toEqual(["fundicion", "impresora", "planta", "refineria"]);
+    expect(o.freeRacks("columbus")).toBe(10 - 4);
+    for (const e of o.equipment) expect(e.spec.status ?? "real", e.spec.id).toMatch(/^(real|licencia)$/);
+    expect(o.equipment.filter((e) => e.spec.status === "licencia").map((e) => e.spec.id).sort()).toEqual(["fundicion", "impresora", "planta", "refineria"]);
     expect(o.has(EQ_CARBONYL.id)).toBe(false);
   });
 
@@ -56,10 +65,15 @@ describe("station outfit: what is built at the start", () => {
     expect(o.massKg).toBeGreaterThan(100000);
   });
 
-  it("has node 1's two spare ports free, and each new module fits at one", () => {
+  it("has Tranquility's two free CBM ports (BEAM's and Leonardo's); a long module only fits aft, clear of Kibo", () => {
     const o = startingOutfit();
-    expect(o.berths.map((b) => b.id)).toEqual(["nodo-1-babor", "nodo-1-estribor"]);
-    for (const m of MODULES.filter((x) => x.kind !== "hangar")) expect(o.freeBerths(m).length, m.id).toBe(2);
+    expect(o.berths.map((b) => b.id)).toEqual(["nodo-3-popa", "nodo-3-proa"]);
+    for (const m of MODULES.filter((x) => x.kind !== "hangar")) expect(o.freeBerths(m).length, m.id).toBeGreaterThanOrEqual(1);
+    // Haven-2 (15,1 m) and Axiom's Hab-1 (11 m) forward of Tranquility would reach Kibo, on Harmony's port side.
+    expect(o.freeBerths(MOD_HAVEN2).map((b) => b.id)).toEqual(["nodo-3-popa"]);
+    expect(o.freeBerths(MOD_AXIOM_HAB).map((b) => b.id)).toEqual(["nodo-3-popa"]);
+    // A Leonardo-sized module (6,6 m) fits at either.
+    expect(o.freeBerths({ ...MOD_HAVEN2, lengthM: 6.6 }).length).toBe(2);
   });
 });
 
@@ -121,7 +135,7 @@ describe("building equipment", () => {
     const st = station();
     const o = st.outfit!;
     st.fabricate(bp(`plano-equipo-${EQ_CARBONYL.id}`));
-    expect(o.freeRacks("fabrica")).toBe(7 - 2);
+    expect(o.freeRacks("columbus")).toBe(6 - 2);
     expect(st.locked(bp(`plano-equipo-${EQ_CARBONYL.id}`))).toBe("En construcción");
     st.tick(1e5);
     const e = o.equipment.find((x) => x.spec.id === EQ_CARBONYL.id)!;
@@ -138,6 +152,7 @@ describe("building equipment", () => {
     build(st, `plano-equipo-${EQ_BIG_PRINTER.id}`);
     expect(o.equipment.some((e) => e.spec.id === "impresora")).toBe(false);
     const big = o.equipment.find((e) => e.spec.id === EQ_BIG_PRINTER.id)!;
+    expect(big.moduleId).toBe("columbus");
     expect(big.place.side).toBe(before.side);
     expect(big.place.first).toBe(before.first);
     expect(o.has("impresora")).toBe(true);
@@ -149,14 +164,20 @@ describe("building equipment", () => {
 
   it("equipment for another kind of module needs that module first", () => {
     const st = station();
+    const crops = bp(`plano-equipo-${EQ_CROPS.id}`);
     build(st, `plano-equipo-${EQ_EBW.id}`);
-    expect(st.locked(bp(`plano-equipo-${EQ_BIG_PLANT.id}`))).toMatch(/módulo de la planta/);
-    build(st, `plano-modulo-${MOD_PLANT.id}`);
-    expect(st.locked(bp(`plano-equipo-${EQ_BIG_PLANT.id}`))).toBeUndefined();
+    build(st, `plano-equipo-${EQ_COMPOSITES.id}`);
+    expect(st.locked(crops)).toMatch(/[Mm]ódulo agrícola/);
+    build(st, `plano-modulo-${MOD_FARM.id}`);
+    expect(st.locked(crops) ?? "").not.toMatch(/[Mm]ódulo agrícola/);
+  });
+
+  it("the big plant takes the small one's place in Columbus and works faster", () => {
+    const st = station();
+    build(st, `plano-equipo-${EQ_EBW.id}`);
     build(st, `plano-equipo-${EQ_BIG_PLANT.id}`);
     const e = st.outfit!.equipment.find((x) => x.spec.id === EQ_BIG_PLANT.id)!;
-    expect(e.moduleId).toBe(MOD_PLANT.id);
-    // The small plant's rack in the fabrication module is free again.
+    expect(e.moduleId).toBe("columbus");
     expect(st.outfit!.equipment.some((x) => x.spec.id === "planta")).toBe(false);
     expect(st.outfit!.rate("planta")).toBe(3);
   });
@@ -165,10 +186,11 @@ describe("building equipment", () => {
     const st = station();
     const o = st.outfit!;
     build(st, `plano-equipo-${EQ_EBW.id}`);
-    build(st, `plano-equipo-${EQ_CARBONYL.id}`);
     build(st, `plano-equipo-${EQ_COMPOSITES.id}`);
-    build(st, `plano-modulo-${MOD_FARM.id}`);
+    // Columbus has 10 bays (the old fabrication module had 12): the carbonyl reactor goes in the plant's module.
     build(st, `plano-modulo-${MOD_PLANT.id}`);
+    build(st, `plano-equipo-${EQ_CARBONYL.id}`);
+    build(st, `plano-modulo-${MOD_FARM.id}`);
     expect(o.capacityKw - o.drawKw).toBeLessThan(EQ_CROPS.powerKw);
     expect(st.locked(bp(`plano-equipo-${EQ_CROPS.id}`))).toMatch(/Falta energía/);
     // Bigger radiators alone: the wings (124 kW) now limit.
@@ -193,39 +215,40 @@ describe("building modules", () => {
     expect(o.massKg).toBeGreaterThan(mass + MOD_FAB2.massKg - 1);
     const m = o.layout.modules.find((x) => x.id === MOD_FAB2.id)!;
     expect(m.to.sub(m.from).length()).toBeCloseTo(8.53, 2);
-    expect(Math.abs(m.from.x)).toBeCloseTo(4.57 / 2, 2);
-    expect(o.module(MOD_FAB2.id)!.code).toBe("FAB2");
+    // On Tranquility's aft CBM: along z, from its hull (Tranquility is 4,48 m across).
+    expect(m.from.z).toBeCloseTo(4.48 / 2, 2);
+    expect(m.to.z).toBeGreaterThan(m.from.z);
+    // Columbus is COL1: the first module of the fabrication kind with its own code is FAB1.
+    expect(o.module(MOD_FAB2.id)!.code).toBe("FAB1");
     expect(o.berths.some((b) => b.id === `${MOD_FAB2.id}-extremo`)).toBe(true);
     expect(o.freeBerths(MOD_PLANT).length).toBe(2);
     expect(o.freeRacks(MOD_FAB2.id)).toBe(12);
   });
 
-  it("a module that would hit the solar wings does not fit at the end of a long arm", () => {
+  it("a module that would hit Kibo does not fit forward of Tranquility, nor past a module berthed there", () => {
     const st = station();
     build(st, `plano-equipo-${EQ_EBW.id}`);
-    build(st, `plano-equipo-${EQ_COMPOSITES.id}`);
-    build(st, `plano-modulo-${MOD_FAB2.id}`);
     build(st, `plano-modulo-${MOD_PLANT.id}`);
     const o = st.outfit!;
-    // Past the plant or the second fabrication module a 25 m module would reach the wings (x > 32 m).
-    const ends = o.berths.filter((b) => b.id.endsWith("-extremo"));
-    expect(ends.length).toBe(2);
-    const long = { ...MOD_FARM, id: "largo", lengthM: 25 };
-    for (const b of ends) expect(o.fitsAt(long, b), b.id).toBe(false);
-    expect(o.freeBerths(long)).toEqual([]);
-    // The farm module (16,9 m) still fits at the end of either arm.
-    expect(o.freeBerths(MOD_FARM).length).toBe(2);
+    expect(o.module(MOD_PLANT.id)).toBeDefined();
+    const long = { ...MOD_FARM, id: "largo", lengthM: 12 };
+    const fwd = o.berths.find((b) => b.id === "nodo-3-proa");
+    if (fwd) expect(o.fitsAt(long, fwd)).toBe(false);
+    for (const b of o.berths.filter((x) => x.id.endsWith("-extremo") && x.normal.z < 0)) expect(o.fitsAt(long, b), b.id).toBe(false);
   });
 
-  it("the hangar extension makes the hangar 10 m longer without a port", () => {
-    const st = station();
-    build(st, `plano-equipo-${EQ_CARBONYL.id}`);
-    build(st, `plano-equipo-${EQ_BIG_PRINTER.id}`);
-    const before = st.outfit!.layout.parts.find((p) => p.kind === "hangar")!;
-    build(st, `plano-modulo-${MOD_HANGAR.id}`);
-    const after = st.outfit!.layout.parts.find((p) => p.kind === "hangar")!;
-    expect(2 * after.half.z - 2 * before.half.z).toBeCloseTo(10);
-    expect(after.centre.z - after.half.z).toBeCloseTo(before.centre.z - before.half.z);
+  it("EST-43 the ring ship's modules and the hangar extension are backlog: not offered unless ?ficcion", () => {
+    const all = [...BLUEPRINTS, ...GROWTH_BLUEPRINTS];
+    const ids = (f: boolean) => new Set(offeredBlueprints(all, f).map((b) => b.id));
+    for (const m of [MOD_FAB2, MOD_PLANT, MOD_FARM, MOD_HANGAR]) {
+      expect(ids(false).has(`plano-modulo-${m.id}`), m.id).toBe(false);
+      expect(ids(true).has(`plano-modulo-${m.id}`), m.id).toBe(true);
+      expect(m.status).toBe("ficcion");
+    }
+    for (const m of [MOD_HAVEN2, MOD_AXIOM_HAB]) {
+      expect(ids(false).has(`plano-modulo-${m.id}`), m.id).toBe(true);
+      expect(m.status).toBe("en-desarrollo");
+    }
   });
 
   it("the structure in space takes the new layout and keeps its docking ports", () => {
@@ -263,9 +286,9 @@ describe("station components", () => {
     o.fitComponent(WINGS_IROSA);
     build(st, `plano-equipo-${EQ_EBW.id}`);
     build(st, `plano-equipo-${EQ_COMPOSITES.id}`);
+    build(st, `plano-modulo-${MOD_PLANT.id}`);
     build(st, `plano-equipo-${EQ_CARBONYL.id}`);
     build(st, `plano-modulo-${MOD_FARM.id}`);
-    build(st, `plano-modulo-${MOD_PLANT.id}`);
     build(st, `plano-equipo-${EQ_CROPS.id}`);
     expect(o.drawKw).toBeGreaterThan(70);
     expect(o.componentBlocker(eatcs)).toMatch(/radiadores/);
@@ -274,16 +297,17 @@ describe("station components", () => {
 });
 
 describe("store capacity by module (HC-02)", () => {
-  it("the starting station keeps 14 rack bays of stowage (9,8 t) and every new module adds its own", async () => {
+  it("the starting station keeps 25 rack bays of stowage (17,5 t) and every new module adds its own", async () => {
     const { STORE_STOWAGE } = await import("../data/store");
     const o = startingOutfit();
-    expect(storeCapacityKg(o.modules, STORE_STOWAGE)).toBe(14 * 700);
+    expect(storeCapacityKg(o.modules, STORE_STOWAGE)).toBe(25 * 700);
+    const before = storeCapacityKg(o.modules, STORE_STOWAGE);
     const st = new Station(POLANA_STATION, new MaterialStock(Object.fromEntries(MATERIALS.map((m) => [m.id, 1e6]))), new Hangar(), o);
     for (const id of [`plano-equipo-${EQ_EBW.id}`, `plano-equipo-${EQ_COMPOSITES.id}`, `plano-modulo-${MOD_FARM.id}`]) {
       st.fabricate(GROWTH_BLUEPRINTS.find((b) => b.id === id) ?? BLUEPRINTS.find((b) => b.id === id)!);
       st.tick(1e4);
     }
-    expect(storeCapacityKg(o.modules, STORE_STOWAGE)).toBe(18 * 700);
+    expect(storeCapacityKg(o.modules, STORE_STOWAGE)).toBe(before + 4 * 700);
     // The hangar keeps raw rock in bulk.
     expect(storeCapacityKg([{ kind: "hangar" }], STORE_STOWAGE)).toBe(20000);
   });
@@ -299,7 +323,7 @@ describe("what takes room in the store (HC-02)", () => {
     const { STARTING_STOCK } = await import("../data/station");
     const { STORE_STOWAGE } = await import("../data/store");
     const s = new MaterialStock(STARTING_STOCK, { capacityKg: () => storeCapacityKg(startingOutfit().modules, STORE_STOWAGE), kgOf: storeKgOf });
-    // The starting store is well under its 9,8 t.
+    // The starting store is well under its 17,5 t.
     expect(s.usedKg).toBeLessThan(1000);
     expect(s.full).toBe(false);
   });

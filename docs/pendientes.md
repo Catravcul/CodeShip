@@ -27,6 +27,22 @@ las de [santuario-espacial.md](design/santuario-espacial.md).
 | **Interior de la nodriza de anillos** | Espina con esclusa, almacén y taller; puente; anillo con el módulo habitable | `src/interior.ts`, `src/adapters/three/interior/zones.ts`, `gravity/data/spine.ts` | Sustituido por el interior de la Starship (`mothership/data/starship-interior.ts`, «distribución nuestra»). La espina no vuelve: era parte de la nave inventada |
 | **Propulsión eléctrica nuclear de la nodriza** | 18 propulsores Hall X3 con un reactor de 2 MWe; propulsores intercambiables en la bahía | `mothership/domain/propulsion.ts`, `mothership/data/thrusters.ts`, `application/drive-refit.ts` | Sigue disponible con `?ficcion`. Vuelve como **licencia** si se elige la pila eléctrica (opción B de naves-reales.md) o como una etapa eléctrica que se acopla a la Starship |
 
+## La estación (rama estacion-real)
+
+La estación es ahora el segmento estadounidense de la ISS ([estacion-real.md](design/estacion-real.md)).
+Lo que no es real queda en el código, sin cablear salvo con `?ficcion`:
+
+| Qué | Qué era | Código | Cómo podría volver |
+| --- | --- | --- | --- |
+| **Hangar sin presión** | Caja de 20 × 14 × 20 m con estantes, cunas y el brazo que metía el módulo | `station/data/interior.ts` (`OLD_HANGAR_HALF`, `hangarPressureCase`), `adapters/three/interior/station-rooms.ts` (estantes y cáscara de la esclusa, si vuelve un volumen `hangar`) | Lo sustituyen la Bishop, la JEM-EF y el CBM de Unity. Un hangar vuelve como **licencia** si un módulo inflable de carga (tipo B330) se usa como bodega |
+| **Dique seco** | Celosía de 128 × 128 × 143 m con brazos para la nodriza de anillos | `station/data/dry-dock.ts`, `src/dry-dock.ts`, `adapters/three/dry-dock-model.ts` | La Starship atraca en el IDA de proa de Harmony, como el transbordador. El dique vuelve con `?ficcion` |
+| **Ampliación del hangar** | 10 m más de hangar sin puerto | `station/data/outfit.ts` (`MOD_HANGAR`) | Con el hangar |
+| **Módulos de la nave de anillos** | Segundo módulo de fabricación, módulo de la planta, módulo agrícola de 16,9 m | `station/data/outfit.ts` (`MOD_FAB2`, `MOD_PLANT`, `MOD_FARM`, `BACKLOG_BLUEPRINT_IDS`) | Los módulos tipo Haven-2 y Axiom Hab-1 (en desarrollo) ocupan su sitio. El agrícola vuelve con el cultivo real de la fase 2 |
+| **Campos de cultivo y laboratorio bio** | Bancales de 60 m² en el módulo agrícola, biorreactores | `EQ_CROPS`, `BIO_BLUEPRINTS` | Fase 2 (`vida-real`): Veggie y APH |
+| **Paseo espacial desde Quest** | — | La escotilla EVA de Quest solo informa | Con el paseo espacial de la estación |
+| **Recoger un satélite suelto con el brazo** | — | `CargoAirlock.retrieve` | Ya está, como **licencia** dicha en la tarjeta: en la ISS nunca se ha hecho |
+| **`HANGAR_SIZE` en el catálogo** | El montaje del catálogo de naves pregunta si un vehículo cabe en el hangar | `station/data/hangar-craft.ts` | Debería preguntar si cabe en el CBM o si el brazo lo mueve |
+
 ## Lo que **no** está apagado (corrección de las 19:54)
 
 - El duelo de mente de los asteroides y sus tres fases.
@@ -34,6 +50,8 @@ las de [santuario-espacial.md](design/santuario-espacial.md).
 - Los asteroides que viajan solos, los niveles de subyugación y el nivel 4.
 - La nano_net.
 - Las importaciones (Santuario, remolcador, lanzador de masas) y lo demás que no es un interior.
+- La refinería, la fundición y la planta de propelente de la estación: están en Columbus como **licencia**
+  (no existen en órbita), porque el juego de los asteroides las necesita.
 
 ## Recorridos apagados
 

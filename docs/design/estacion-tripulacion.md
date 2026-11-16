@@ -1,5 +1,7 @@
 # Estación: tripulación, puertas, hangar y escala
 
+> **Desde 2026-11-16 la estación es la ISS** ([estacion-real.md](estacion-real.md)): la cocina está en Unity, los camarotes en Harmony, el aseo y el ejercicio en Tranquility; el hangar y su consola ya no existen (el brazo se maneja desde la Cupola). Las reglas de interfaz, puertas y escala de abajo siguen valiendo.
+
 Respuesta al informe de Berón tras jugar la estación en el móvil (2026-11-14): la alimentación y el
 descanso seguían en la nave; la interfaz era la vieja y las puertas solo mostraban «?»; el hangar
 estaba vacío; la lista de tareas del hangar era la vieja; los espacios eran pequeños. La auditoría

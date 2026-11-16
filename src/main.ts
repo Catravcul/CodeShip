@@ -95,6 +95,8 @@ import { STATION_LARDER } from "@modules/station/data/galley";
 import { LanderBerth } from "@modules/station/domain/hangar-berth";
 import { scaleInteriorPlan } from "@modules/station/domain/interior";
 import { MACHINE_SCALE } from "@core/machine-scale";
+import { SPREAD_ON } from "@core/spacing";
+import { stationPlayScale } from "@modules/station/data/presentation";
 import { RECIPES } from "@modules/kitchen/data/recipes";
 import { YOGA_SEQUENCES } from "@modules/wellness/data/yoga";
 import { WORKOUTS } from "@modules/wellness/data/exercise";
@@ -864,8 +866,11 @@ const stationLife = new StationLife({
   say: (t, sec) => stationInside.say(t, sec),
   lookOutside: (show) => stationOutside.open(show),
 });
-/** The station's interior as it is drawn and walked: MACHINE_SCALE times its real size. */
-const playInterior = () => new StationInterior(scaleInteriorPlan(stationInteriorPlan(stationOutfit.layout, stationOutfit), MACHINE_SCALE));
+/** The station's interior as it is drawn and walked: its real size at the presentation layer's scale (and spread). */
+const playInterior = () => {
+  const plan = stationInteriorPlan(stationOutfit.layout, stationOutfit);
+  return new StationInterior(scaleInteriorPlan(plan, stationPlayScale(plan, MACHINE_SCALE, SPREAD_ON)));
+};
 // Inside the station (docs/design/interiores.md §5): zero-g modules and the hangar; its machines open the screen's tabs.
 const stationInside = new StationInteriorMode(root, playInterior(), {
   busy: () => new Set(stationOps.station.queue().map((j) => j.machine)),

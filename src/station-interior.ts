@@ -385,7 +385,7 @@ export class StationInteriorMode {
     this.pitch = Math.max(-1.45, Math.min(1.45, this.pitch + look.pitch));
     if (this.cycling > 0) {
       this.cycling = Math.max(0, this.cycling - dt);
-      if (this.cycling === 0) this.say(this.suited ? "Esclusa vacía: abre la escotilla exterior y pasa al hangar" : "Esclusa a presión: ya puedes quitarte el casco y volver al módulo");
+      if (this.cycling === 0) this.say(this.suited ? "Quest vacía: la escotilla EVA da al vacío (el paseo por fuera de la estación está en pendientes)" : "Esclusa a presión: ya puedes quitarte el casco y volver al módulo");
     }
     this.moveAbout(dt);
     // Holding a thing's grab point shows its action; elsewhere, the nearest thing within reach.

@@ -92,7 +92,9 @@ El hangar mide 20 × 14 × 20 m (`HANGAR_SIZE`, de la estructura).
 
 **Decisión.**
 
-- La nodriza atraca **fuera**, en el adaptador de proa del Nodo 2, como hasta ahora.
+- La nodriza atraca **fuera**, en el adaptador de proa del Nodo 2, dentro de un **dique seco** abierto
+  hecho a su medida (128 × 128 × 143 m, al vacío, con brazos, focos y umbilicales). Ver
+  [dique-seco.md](dique-seco.md): en la vida real no hay hangares presurizados para naves grandes.
 - El módulo **entra**. Desde la consola del hangar, «Meter el módulo en el hangar» hace que el brazo de
   la estación lo saque de su puerto y lo deje en un bastidor a media altura del hangar, delante de las
   consolas. Es como Canadarm2 cuando lleva un Dragon o un HTV de su punto de captura a su puerto.

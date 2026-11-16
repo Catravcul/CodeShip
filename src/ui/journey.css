@@ -11,3 +11,8 @@
 body.in-journey .walk-stick, body.in-journey .vstick.room-move, body.in-journey .vstick.sti-move, body.in-journey .zg-pad, body.in-journey .updown,
 body.in-journey .touch, body.in-journey .zone-btn, body.in-journey .sti-act, body.in-journey .station-btn, body.in-journey .throw-btn, body.in-journey .mat-btn,
 body.in-journey .room-ui .cab-machine, body.in-journey .ap-take { display: none !important; }
+.journey-bar .jb-view { flex: none; width: 100%; min-height: 44px; padding: 0 14px; border: 1px solid #7fdcff; border-radius: 12px; font: inherit; font-size: 15px; font-weight: 700; color: #04121a; background: #7fdcff; }
+.journey-bar .jb-view[hidden] { display: none; }
+.journey-bar .jb-view[aria-pressed="true"] { background: transparent; color: #7fdcff; }
+/* During a journey its bar already says the flight and carries «Ver trayecto» and «Parar»: no second chip over it. */
+body.in-journey .trip-chip { display: none !important; }

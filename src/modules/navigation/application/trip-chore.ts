@@ -215,8 +215,8 @@ export function carrierTripChore(f: CarrierTripFacts): Chore {
       [`frenar ${duration(half)} hasta ${f.dock ? `parar a ${num(f.parkingM)} m del puerto` : `aparcar a ${num(f.parkingM)} m`}`, `propulsores.encender(${Math.round(half)});`],
       ...((f.dock
         ? [
-            [`acercarse por el eje del puerto a ${num(f.dock.contactMs, 2)} m/s`, `nodriza.acercar(${f.dock.contactMs});`],
-            ["cerrar los ganchos del puerto IDSS", "puerto.enganchar();"],
+            [`entrar en el dique seco por el eje del puerto a ${num(f.dock.contactMs, 2)} m/s`, `nodriza.acercar(${f.dock.contactMs});`],
+            ["cerrar los ganchos IDSS y los brazos del dique", "dique.sujetar();"],
           ]
         : [
             ["desacoplar el módulo de aterrizaje", "modulo.desacoplar();"],
@@ -283,7 +283,7 @@ export function carrierTripChore(f: CarrierTripFacts): Chore {
     "¿Qué orden le das a la IA de la nodriza?",
     [],
     f.dock
-      ? `Lleva la nodriza a ${num(f.parkingM)} m del puerto de ${name} rodeando las rocas, alinéala con su eje y acopla tocando a menos de ${num(f.dock.closingMaxMs, 2)} m/s`
+      ? `Lleva la nodriza a ${num(f.parkingM)} m del puerto de ${name} rodeando las rocas, alinéala con su eje, entra en el dique seco y acopla tocando a menos de ${num(f.dock.closingMaxMs, 2)} m/s`
       : `Lleva la nodriza a ${num(f.parkingM)} m de ${name} rodeando las rocas y para del todo; luego desacopla el módulo de aterrizaje, acércalo a ${f.approachM} m apuntando al asteroide y devuélveme los mandos`,
     f.dock
       ? [`Lleva la nodriza a ${name}`, `Acerca la nodriza a ${name} a toda potencia y frena al tocar`, `Desacopla el módulo y que vaya solo hasta ${name}`]

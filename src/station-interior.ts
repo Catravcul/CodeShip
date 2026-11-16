@@ -61,6 +61,8 @@ export interface StationInteriorDeps {
   act(f: Fixture, action: string): void;
   /** The lander is berthed in the hangar (drawn on its cradle). */
   landerInHangar(): boolean;
+  /** Look out at the dry dock through the window of the mothership's docking hatch (docs/design/dique-seco.md). */
+  lookOut?(): void;
 }
 
 /** Icon of each kind of fixture on its card. */
@@ -434,7 +436,9 @@ export class StationInteriorMode {
       }
       case "salir": {
         const why = this.suited ? "Con el traje no: vuelve a la esclusa y quítatelo" : this.deps.cannotLeave(a.to);
-        return [{ id: "salir", label: a.to === "sonda" ? "Volver al módulo de aterrizaje" : "Pasar a la nodriza", enabled: !why, ...(why ? { why } : {}) }];
+        const leave: StationAction = { id: "salir", label: a.to === "sonda" ? "Volver al módulo de aterrizaje" : "Pasar a la nodriza", enabled: !why, ...(why ? { why } : {}) };
+        // The hatch to the mothership looks out on the dry dock through its window (ISS hatches have one).
+        return a.to === "nodriza" && this.deps.lookOut ? [leave, { id: "ventana", label: "Mirar el dique por la ventanilla", enabled: true }] : [leave];
       }
       case "bahia":
         return [{ id: "bahia", label: "Abrir la bahía de la nave", enabled: true }];
@@ -455,6 +459,7 @@ export class StationInteriorMode {
   run(f: Fixture, id: string): void {
     const a = f.action;
     if (a.kind === "tripulacion" || a.kind === "hangar") return this.deps.act(f, id);
+    if (id === "ventana") return this.deps.lookOut?.();
     this.use(f, true);
   }
 

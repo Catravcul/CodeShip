@@ -25,7 +25,7 @@ describe("station handrails", () => {
   });
 
   it("a row of bars down an aisle can be followed hand over hand", () => {
-    const row = rails.filter((r) => r.id.startsWith("fabrica:ib"));
+    const row = rails.filter((r) => r.id.startsWith("kibo:ib"));
     expect(row.length).toBeGreaterThan(4);
     for (let i = 1; i < row.length; i++) expect(graph.neighbours(row[i - 1]!.id)).toContain(row[i]!.id);
   });
@@ -73,14 +73,17 @@ describe("ING-03 hopping with the arrows through the station", () => {
     // The hangar is behind the airlock's outer hatch: only suited.
     const inHangar = (p: { body: Vec3 }) => interior.volumeAt(p.body)?.kind === "hangar";
     expect(reach.size).toBe(g.points.filter((p) => !inHangar(p)).length);
-    // Through every CBM hatch: points in node 2, the habitat, node 1, fabrication and the airlock.
-    for (const id of ["nodo-2", "habitat", "nodo-1", "fabrica", "esclusa"]) expect([...reach].some((r) => r.startsWith(`${id}:`)), id).toBe(true);
+    // Through every hatch of the ISS's US segment, as on the real station.
+    for (const id of ["nodo-2", "destiny", "nodo-1", "nodo-3", "quest", "columbus", "kibo"]) expect([...reach].some((r) => r.startsWith(`${id}:`)), id).toBe(true);
   });
 
-  it("suited, the hangar is reachable from the airlock", () => {
+  it("suited, Quest is emptied and its hatch to Unity stays shut; there is no hangar any more (the Bishop and the arm replace it)", () => {
     const g = hopsFor(POLANA_INTERIOR, true);
-    const lock = g.points.find((p) => p.id.startsWith("esclusa:"))!;
-    expect([...g.reachable(lock)].some((r) => r.startsWith("hangar:"))).toBe(true);
+    const lock = g.points.find((p) => p.id.startsWith("quest:"))!;
+    const reach = [...g.reachable(lock)];
+    expect(reach.length).toBeGreaterThan(1);
+    expect(reach.some((r) => r.startsWith("nodo-1:"))).toBe(false);
+    expect(POLANA_INTERIOR.volumes.some((v) => v.kind === "hangar")).toBe(false);
   });
 
   it("modules added as the station grows are reachable too", () => {

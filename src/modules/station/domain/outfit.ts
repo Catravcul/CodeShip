@@ -64,6 +64,8 @@ export interface EquipmentSpec {
   readonly info: string;
   /** Real, in development, licence or fiction (unset: real). */
   readonly status?: Reality;
+  /** A life-support rack (eclss-real's `RackKind`): drawn with its kit and shown, not opened as a tab. */
+  readonly rack?: string;
   readonly basis: Sourced<string>;
 }
 

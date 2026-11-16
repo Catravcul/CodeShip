@@ -4,6 +4,8 @@ import { StationOutfit, type EquipmentSpec, type ModuleSpec, type OutfitBase, ty
 import { SRC } from "./sources";
 import { POLANA_BERTHS, POLANA_LAYOUT, STRUCTURE_SOURCES } from "./structure";
 import { GROWTH_OPTIONS, ISS_SOURCES, issModule } from "./iss";
+import { eclssMachine, rackSpec } from "@modules/life-support/data/eclss-machines";
+import type { RackKind } from "@modules/life-support/domain/eclss";
 import { BIO_EQUIPMENT, EQ_BIO_LAB, EQ_BIOMINING, EQ_LOOP, EQ_PHB, EQ_PROTEIN, EQ_SPIRULINA } from "./bio-equipment";
 
 /**
@@ -276,7 +278,29 @@ export const EQ_REFABRICATOR: EquipmentSpec = {
   basis: { value: "Refabricator de Tethers Unlimited, instalado en la ISS en febrero de 2019", source: src(ISS_SOURCES.printing), note: "Masa y potencia: valores de juego (la fuente no las da)" },
 };
 
-export const BASE_EQUIPMENT: readonly EquipmentSpec[] = [EQ_REFINERY, EQ_GLOVEBOX, EQ_FOUNDRY, EQ_PRINTER, EQ_PLANT, EQ_AMF, EQ_REFABRICATOR];
+/** A life-support rack of eclss-real as equipment (power and mass: the sum of its machines, with their sources). */
+const eclssRack = (kind: RackKind): EquipmentSpec => {
+  const r = rackSpec(kind);
+  const ms = r.machines.map(eclssMachine);
+  return {
+    id: `eclss-${kind}-bastidor`,
+    name: r.name,
+    fitsIn: ["laboratorio", "fabrica"],
+    racks: Math.max(1, r.bays),
+    massKg: Math.round(ms.reduce((a, m) => a + m.massKg.value, 0)),
+    powerKw: ms.reduce((a, m) => a + m.powerW.value, 0) / 1000,
+    panel: "materiales",
+    status: "real",
+    rack: kind,
+    info: r.info,
+    basis: { value: r.name, source: r.source.split(": ").pop()!, note: "Datos y kit 3D de la rama eclss-real (modules/life-support)" },
+  };
+};
+/** Destiny's own life-support racks on the ISS: air (CDRA) and the thermal loops. */
+export const EQ_ECLSS_AR = eclssRack("ar");
+export const EQ_ECLSS_ITCS = eclssRack("itcs");
+
+export const BASE_EQUIPMENT: readonly EquipmentSpec[] = [EQ_ECLSS_AR, EQ_ECLSS_ITCS, EQ_REFINERY, EQ_GLOVEBOX, EQ_FOUNDRY, EQ_PRINTER, EQ_PLANT, EQ_AMF, EQ_REFABRICATOR];
 export const EQUIPMENT: readonly EquipmentSpec[] = [...BASE_EQUIPMENT, EQ_CARBONYL, EQ_EBW, EQ_COMPOSITES, EQ_BIG_PRINTER, EQ_BIG_PLANT, EQ_CROPS, ...BIO_EQUIPMENT];
 export const equipmentById = (id: string): EquipmentSpec | undefined => EQUIPMENT.find((e) => e.id === id);
 
@@ -409,10 +433,12 @@ export const STARTING_OUTFIT: OutfitBase = {
     { spec: EQ_GLOVEBOX, moduleId: "destiny", place: { side: 0, first: 1, count: 1 } },
     { spec: EQ_AMF, moduleId: "destiny", place: { side: 1, first: 2, count: 1 } },
     { spec: EQ_REFABRICATOR, moduleId: "destiny", place: { side: 0, first: 4, count: 1 } },
+    { spec: EQ_ECLSS_AR, moduleId: "destiny", place: { side: 1, first: 5, count: 1 } },
+    { spec: EQ_ECLSS_ITCS, moduleId: "destiny", place: { side: 0, first: 5, count: 1 } },
     { spec: EQ_PRINTER, moduleId: "columbus", place: { side: 0, first: 0, count: 1 } },
-    { spec: EQ_REFINERY, moduleId: "columbus", place: { side: 1, first: 1, count: 1 } },
-    { spec: EQ_FOUNDRY, moduleId: "columbus", place: { side: 0, first: 2, count: 1 } },
-    { spec: EQ_PLANT, moduleId: "columbus", place: { side: 1, first: 3, count: 1 } },
+    { spec: EQ_REFINERY, moduleId: "columbus", place: { side: 0, first: 1, count: 1 } },
+    { spec: EQ_FOUNDRY, moduleId: "columbus", place: { side: 1, first: 0, count: 1 } },
+    { spec: EQ_PLANT, moduleId: "columbus", place: { side: 1, first: 1, count: 1 } },
   ],
   components: [WINGS_SAW, RADIATORS_EATCS, SHIELD_WHIPPLE],
   // Truss, wings' masts, PMAs and IDAs, the arm (game value; the ISS weighs 419 725 kg in all).

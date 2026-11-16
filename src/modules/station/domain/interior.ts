@@ -87,6 +87,8 @@ export interface Fixture {
   /** One line about it, shown on tapping. */
   readonly info: string;
   readonly source?: string;
+  /** A life-support rack drawn with eclss-real's kit (`RackKind` of modules/life-support). */
+  readonly rack?: string;
 }
 
 export interface StationInteriorPlan {

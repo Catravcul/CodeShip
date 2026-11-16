@@ -393,6 +393,7 @@ export class StationInteriorMode {
     this.near = this.cycling > 0 ? undefined : held ? this.interior.fixture(held) : this.interior.fixtureNear(this.p);
     this.renderCard();
     this.syncMachines();
+    for (const r of this.rooms.racks) r.tick(dt);
     this.syncStore();
     this.placeCamera();
     this.fadeSigns();

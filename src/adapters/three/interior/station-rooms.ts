@@ -5,6 +5,8 @@ import { FACE_NORMAL, fixtureBox, longAxis, type Box, type Face, type Fixture, t
 import { textSign } from "./sign";
 import { CubeFigure } from "./figure";
 import { buildStarfield } from "../starfield";
+import { eclssRackModel, mountOnWall, type EclssRackModel } from "../eclss-racks";
+import type { RackKind } from "@modules/life-support/domain/eclss";
 
 /**
  * The station's interior in 3D, in the station's body frame (y = overhead, x = starboard, −z = forward):
@@ -21,6 +23,8 @@ export interface StationRooms {
   readonly store: THREE.Group;
   /** Every label (the caller hides the ones too close to the camera). */
   readonly signs: THREE.Sprite[];
+  /** Life-support racks drawn with eclss-real's kit (tick them every frame). */
+  readonly racks: EclssRackModel[];
 }
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
@@ -499,8 +503,22 @@ export function buildStationRooms(plan: StationInteriorPlan): StationRooms {
     sign.position.set(lock.centre.x, lock.centre.y + lock.half.y + 0.7, lock.centre.z + lock.half.z);
     group.add(sign);
   }
+  const racks: EclssRackModel[] = [];
   for (const f of plan.fixtures) {
     if (f.volume === "hangar" && f.action.kind !== "bahia" && f.action.kind !== "puerta") continue;
+    if (f.rack) {
+      // A life-support rack (eclss-real's kit): its front on the wall, facing the aisle, and its name.
+      const k = plan.scale ?? 1;
+      const m = eclssRackModel(f.rack as RackKind, { scale: k, fixtureId: f.id });
+      group.add(mountOnWall(m, v3(f.at), v3(FACE_NORMAL[f.face]).negate()));
+      racks.push(m);
+      const sign = textSign(f.label);
+      sign.scale.multiplyScalar(0.6 * Math.sqrt(k));
+      const up = f.face === "techo" || f.face === "suelo" ? 0 : Math.min(Math.abs(f.size.y) / 2 + 0.05, 0.75);
+      sign.position.copy(v3(f.at)).addScaledVector(v3(FACE_NORMAL[f.face]).negate(), 0.25).add(V(0, up, 0));
+      group.add(sign);
+      continue;
+    }
     const g = fixtureFront(f, lamps, plan.scale ?? 1);
     group.add(g);
   }
@@ -513,7 +531,7 @@ export function buildStationRooms(plan: StationInteriorPlan): StationRooms {
   group.add(store);
   group.add(new THREE.HemisphereLight(0xeef4ff, 0x3a404a, 1.4));
   group.add(new THREE.AmbientLight(0xffffff, 0.25));
-  return { group, pickables, lamps, store, signs };
+  return { group, pickables, lamps, store, signs, racks };
 }
 
 /**

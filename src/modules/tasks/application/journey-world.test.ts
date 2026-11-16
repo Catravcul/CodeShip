@@ -14,7 +14,7 @@ const facts = (over: Partial<JourneyFacts> = {}): JourneyFacts => ({
   joins: docked,
   ringRadiusM: CODESHIP_RING.floorRadiusM,
   station,
-  flights: { landerToStation: { seconds: 60 }, landerToMothership: { seconds: 60 }, carrierToStation: { seconds: 120 } },
+  flights: { landerToMothership: { seconds: 60 }, carrierToStation: { seconds: 20 } },
   ...over,
 });
 const plan = (f: JourneyFacts, goal: string) => planJourney(journeyTransfers(f), { place: herePlace(f.here), joins: f.joins }, goal);
@@ -31,18 +31,19 @@ describe("HAB-21 The real journey to a task (travel mode)", () => {
     expect(carRideSeconds(51.05)).toBeCloseTo(4 + 4 + (51.05 - 8) / 2, 6);
   });
 
-  it("from the ring to a station task: elevator, spine hops, docking hatch, lander's seat, the flight, roof hatch, station hops", () => {
+  it("EST-27 from the ring to a station task: the ring's navigation console, the mothership flies into the dry dock, then the spoke, the spine, the docking hatch and the station's hops", () => {
     const p = plan(facts(), planos);
     expect(p.kind).toBe("ruta");
     if (p.kind !== "ruta") return;
-    expect(p.legs.map((l) => l.kind)).toEqual(["andar", "ascensor", "saltos", "escotilla", "andar", "vuelo", "andar", "escotilla", "saltos"]);
-    expect(p.legs.map((l) => l.to)).toEqual(["anillo:ascensor", "eje:ascensor", "eje:atraque", "modulo:acople", "modulo:asiento", "modulo:asiento", "modulo:acople", expect.stringMatching(/^estacion:/), planos]);
-    // Real durations: the 51 m ride, a chain of hops (the launcher shortens it), the 60 s flight.
-    expect(p.legs[1]!.seconds).toBeGreaterThan(25);
-    expect(p.legs[2]!.seconds).toBeGreaterThan(3);
-    expect(p.legs[2]!.seconds).toBeLessThan(40);
-    expect(p.seconds).toBeGreaterThan(100);
-    expect(p.seconds).toBeLessThan(220);
+    expect(p.legs.map((l) => l.kind)).toEqual(["andar", "vuelo", "andar", "ascensor", "saltos", "escotilla", "saltos"]);
+    expect(p.legs[1]).toMatchObject({ from: "anillo:navegacion", label: expect.stringMatching(/dique seco/) });
+    expect(p.legs[1]!.joins).toEqual({ lander: "nodriza", mothershipAtStation: true });
+    expect(p.legs.at(-2)!.to).toMatch(/^estacion:/);
+    // Real durations: the 51 m ride, a chain of hops (the launcher shortens it), the 20 s compressed flight.
+    expect(p.legs[1]!.seconds).toBe(20);
+    expect(p.legs[3]!.seconds).toBeGreaterThan(25);
+    expect(p.seconds).toBeGreaterThan(60);
+    expect(p.seconds).toBeLessThan(160);
   });
 
   it("with the travel ship already berthed, she goes straight across the spine's docking hatch", () => {
@@ -50,20 +51,27 @@ describe("HAB-21 The real journey to a task (travel mode)", () => {
     expect(p.kind === "ruta" && p.legs.map((l) => l.kind)).toEqual(["andar", "ascensor", "saltos", "escotilla", "saltos"]);
   });
 
-  it("a slow lander flight loses to the travel ship flown from the ring's navigation console", () => {
-    const p = plan(facts({ flights: { landerToStation: { seconds: 600 }, carrierToStation: { seconds: 60 } } }), planos);
-    expect(p.kind === "ruta" && p.legs[1]).toMatchObject({ kind: "vuelo", from: "anillo:navegacion" });
+  it("EST-27 the lander never flies to the station: from its seat she goes through the mothership, which flies", () => {
+    const p = plan(facts({ here: { room: "modulo", at: "asiento" } }), planos);
+    expect(p.kind).toBe("ruta");
+    if (p.kind !== "ruta") return;
+    const flights = p.legs.filter((l) => l.kind === "vuelo");
+    expect(flights).toHaveLength(1);
+    expect(flights[0]!.from).toMatch(/^(puente:nav|anillo:navegacion)$/);
+    expect(p.legs.some((l) => l.to === "modulo:acople" && l.kind === "escotilla")).toBe(false);
   });
 
-  it("the lander away and the travel ship not berthed: she cannot get there, and is told why", () => {
-    const p = plan(facts({ joins: { lander: null, mothershipAtStation: false } }), planos);
-    expect(p.kind).toBe("bloqueado");
-    if (p.kind === "bloqueado") expect(p.why).toMatch(/módulo de aterrizaje/);
+  it("EST-27 the lander away (landed, or left at the station) does not keep the mothership home: she flies alone", () => {
+    for (const lander of [null, "estacion"] as const) {
+      const p = plan(facts({ joins: { lander, mothershipAtStation: false } }), planos);
+      expect(p.kind).toBe("ruta");
+      if (p.kind === "ruta") expect(p.legs.find((l) => l.kind === "vuelo")!.joins).toEqual({ lander, mothershipAtStation: true });
+    }
   });
 
-  it("no fuel for the flight: blocked, with the flight's reason", () => {
-    const p = plan(facts({ flights: { landerToStation: { seconds: 60, blocked: "No queda combustible en el motor principal" }, carrierToStation: { seconds: 60, blocked: "A la nodriza no le queda xenón para ese viaje" } } }), planos);
-    expect(p.kind === "bloqueado" && p.why).toMatch(/combustible|xenón/);
+  it("no xenon for the flight: blocked, with the flight's reason", () => {
+    const p = plan(facts({ flights: { carrierToStation: { seconds: 20, blocked: "A la nodriza no le queda xenón para ese viaje" } } }), planos);
+    expect(p.kind === "bloqueado" && p.why).toMatch(/xenón/);
   });
 
   it("from the lander's seat, docked at the station: up, through the roof hatch and across", () => {

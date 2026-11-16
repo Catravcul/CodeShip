@@ -33,6 +33,10 @@ export interface JourneyDeps {
   settle(): void;
   /** At the task's machine: use it (open the console, the screen, sit at the controls, start the chore). */
   finish(place: TaskPlace, t: Task): void;
+  /** «Ver trayecto»: show or hide the flying vehicle on its drawn path (the same as the trip chip's). */
+  togglePath(): void;
+  /** The path view is open. */
+  viewingPath(): boolean;
 }
 
 /** What one leg does: start it, and whether it is done or has failed. */
@@ -60,6 +64,7 @@ export class JourneyDriver {
   private readonly bar: HTMLElement;
   private readonly text: HTMLElement;
   private readonly note: HTMLElement;
+  private readonly view: HTMLButtonElement;
   private legs: readonly Leg[] = [];
   private index = 0;
   private elapsed = 0;
@@ -76,9 +81,11 @@ export class JourneyDriver {
     this.bar = document.createElement("div");
     this.bar.className = "journey-bar hidden";
     this.bar.setAttribute("role", "status");
-    this.bar.innerHTML = `<span class="jb-text"></span><button class="jb-stop" aria-label="Parar el viaje">Parar</button>`;
+    this.bar.innerHTML = `<span class="jb-text"></span><button class="jb-view" hidden aria-pressed="false">Ver trayecto</button><button class="jb-stop" aria-label="Parar el viaje">Parar</button>`;
     root.appendChild(this.bar);
     this.text = this.bar.querySelector(".jb-text")!;
+    this.view = this.bar.querySelector(".jb-view")!;
+    this.view.addEventListener("click", () => this.d.togglePath());
     this.bar.querySelector(".jb-stop")!.addEventListener("click", () => this.stop("Parada aquí: los mandos son tuyos"));
     this.note = document.createElement("div");
     this.note.className = "journey-note";
@@ -208,6 +215,12 @@ export class JourneyDriver {
     this.text.innerHTML = `<b></b><small></small>`;
     this.text.querySelector("b")!.textContent = `Viaje · ${this.index + 1}/${this.legs.length}: ${leg.label}`;
     this.text.querySelector("small")!.textContent = `Llegada en ~${etaText(left)}`;
+    // While a flight leg flies: «Ver trayecto» shows the vehicle on its drawn path.
+    const flying = leg.kind === "vuelo" && this.started && !!this.d.nav.progress();
+    this.view.hidden = !flying;
+    const on = flying && this.d.viewingPath();
+    this.view.textContent = on ? "Ocultar trayecto" : "Ver trayecto";
+    this.view.setAttribute("aria-pressed", String(on));
   }
 
   /** Where she is now, as the journey sees it; undefined where there is no walking route (a suit, a duel). */
@@ -235,7 +248,7 @@ export class JourneyDriver {
   }
 
   /** What each flight would take now, in real seconds, or why it cannot go. */
-  private flights(j: CrewJoins): { landerToStation?: JourneyFlight; landerToMothership?: JourneyFlight; carrierToStation?: JourneyFlight } {
+  private flights(j: CrewJoins): { landerToMothership?: JourneyFlight; carrierToStation?: JourneyFlight } {
     const nav = this.d.nav;
     const dockS = dockingSeconds(DOCK_TRIP.handoverM, this.d.landerAccelMs2());
     const lander = (id: string): JourneyFlight | undefined => {
@@ -247,14 +260,14 @@ export class JourneyDriver {
     };
     const st = this.target(this.d.stationTarget);
     let carrier: JourneyFlight | undefined;
-    if (st && j.lander === "nodriza" && !j.mothershipAtStation) {
+    // The mothership flies to the station with the lander aboard or alone (docs/design/dique-seco.md).
+    if (st && !j.mothershipAtStation) {
       const trip = nav.trip(st);
       const can = nav.canCarry(st);
-      // The berthing at the end plays at the carrier's lapse: a few seconds.
+      // The berthing into the dry dock at the end plays at the carrier's lapse: a few seconds.
       carrier = { seconds: (trip.travel?.realS ?? 0) + 5, ...(can.ok ? {} : { blocked: can.reason! }) };
     }
     return {
-      ...(j.lander !== "estacion" ? { landerToStation: lander(this.d.stationTarget) } : {}),
       ...(j.lander !== "nodriza" ? { landerToMothership: lander(this.d.mothershipTarget) } : {}),
       ...(carrier ? { carrierToStation: carrier } : {}),
     };
@@ -320,7 +333,8 @@ export class JourneyDriver {
         return { begin: () => this.hatch(fromRoom!, leg.from, leg.to), done: () => this.elapsed > 0.8 };
       case "vuelo": {
         const carrier = fromRoom !== "modulo";
-        const to = carrier || leg.joins.lander === "estacion" ? this.d.stationTarget : this.d.mothershipTarget;
+        // The mothership flies to the station; the lander only home to the mothership.
+        const to = carrier ? this.d.stationTarget : this.d.mothershipTarget;
         const arrived = () => (carrier ? this.d.joins().mothershipAtStation : this.d.joins().lander === leg.joins.lander);
         return {
           begin: () => {

@@ -178,7 +178,8 @@ export class NavigationMode {
     if (nav.status !== this.lastStatus) {
       if (nav.status === "arrived") this.flash(`Llegada: a ${km(nav.approachM)} de ${nav.target.name}. Tienes los mandos: aterriza y entra en su mente`, "done", 10);
       if (nav.status === "autopilot" && this.lastStatus === "carrier") this.flash("La nodriza ha aparcado: el módulo de aterrizaje se desacopla y sigue solo", "done");
-      if (nav.status === "docked") this.flash(this.lastStatus === "carrier" ? `La nodriza ha atracado en ${nav.target.name} con el módulo de aterrizaje acoplado` : `Módulo acoplado a ${nav.target.name}`, "done", 10);
+      if (nav.status === "docked")
+        this.flash(this.lastStatus === "carrier" ? `La nodriza ha entrado en el dique seco de ${nav.target.name}${nav.carrying ? " con el módulo de aterrizaje acoplado" : ""}: los brazos la sujetan` : `Módulo acoplado a ${nav.target.name}`, "done", 10);
       if (nav.status === "manual" && this.lastStatus === "docking") this.flash("Acople cancelado: tienes los mandos", "bad");
       if (nav.status === "failed") this.flash("El plan no compila: vuela a mano o vuelve a programarlo desde el mapa de la nave de viaje", "bad");
       if (nav.status === "manual" && this.lastStatus === "autopilot") this.flash("Mando manual: el piloto automático se ha desconectado", "bad");

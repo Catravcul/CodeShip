@@ -18,6 +18,7 @@ export const JOURNEYS = [
   { id: "PX-13", name: "acuario", title: "Acuario del anillo en un iPhone 13: «Ir» hasta el tanque, dar de comer con pasos visibles, hacer amistad con las medakas, pedir ayuda a los caracoles y a las medakas y ver el efecto" },
   { id: "PX-14", name: "viaje", title: "«Ir a una tarea»: ajuste en la esterilla, teletransporte con aviso y viaje real del anillo a la estación (ascensor, espina, escotilla) con «Parar» a medio camino y la cámara libre", mobile: true, throttle: 1 },
   { id: "PX-15", name: "puente-real", title: "Puente real en un iPhone 13 y en 1ª persona: cada consola se reconoce por su cartel y se toca sin solapes, sentarse en el mando de la sonda y abrir la mesa de navegación", mobile: true, throttle: 1 },
+  { id: "PX-16", name: "nodriza-estacion", title: "La nodriza viaja a la estación y entra en el dique seco: «Ir» desde el anillo en modo Viaje, «Ver trayecto» con la ruta dibujada y la cámara siguiéndola, atraque en el dique visible desde la estación y el interruptor Viaje/Teletransporte en la lista de tareas", mobile: true, throttle: 1 },
   { id: "PX-23", name: "yoga", title: "Yoga en el anillo con el esqueleto de Cold Sanctuary: «Ir» al Saludo al Sol, cada acierto lleva a Doménica a la siguiente asana con transición suave y respiración; captura por asana junto a su ficha; manos y pies en la esterilla (IK); tiempo de JS de las poses", mobile: true },
 ];
 

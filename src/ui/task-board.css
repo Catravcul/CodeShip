@@ -9,3 +9,8 @@
 .task-board .board-head button[data-close] { min-width: 44px; min-height: 44px; }
 .task-board .chip { min-height: 44px; display: inline-flex; align-items: center; }
 body.in-tasks .vstick, body.in-tasks .zg-controls, body.in-tasks .cab-machine { display: none !important; }
+/* «Viaje / Teletransporte»: how «Ir» gets there, a two-way switch at the top of the list. */
+.tb-travel { display: flex; width: 100%; margin-top: 8px; padding: 3px; gap: 3px; background: #0b1726; border: 1px solid #2c4a6a; border-radius: 12px; }
+.task-board .tb-travel button { flex: 1; min-height: 44px; font: inherit; font-size: 15px; font-weight: 700; color: #a9cfdc; background: transparent; border: 0; border-radius: 9px; }
+.task-board .tb-travel button.on { color: #001018; background: #7fdcff; }
+.tb-travel-help { display: block; width: 100%; margin: 4px 0 2px; font-size: 12px; color: #9fe8c4; }

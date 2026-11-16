@@ -20,8 +20,8 @@ const clock = (s: number) => {
 
 /**
  * The trip chip (docs/design/viajes.md): on screen wherever the player is (cockpit, deck, interior,
- * station) while a vehicle flies itself in time-lapse. Real-time ETA, a progress bar, «Ver» for the
- * live preview and «Tomar el mando».
+ * station) while a vehicle flies itself in time-lapse. Real-time ETA, a progress bar, «Ver trayecto» for the
+ * live view of the vehicle on its drawn path and «Mando».
  */
 export class TripChip {
   private readonly el: HTMLElement;
@@ -37,7 +37,7 @@ export class TripChip {
   constructor(root: HTMLElement) {
     this.el = document.createElement("div");
     this.el.className = "trip-chip";
-    this.el.innerHTML = `<div class="tc-row"><b class="tc-title"></b><span class="tc-eta"></span><button class="tc-view" aria-pressed="false">Ver</button><button class="tc-take">Mando</button></div><div class="tc-detail"></div><div class="tc-bar"><i></i></div>`;
+    this.el.innerHTML = `<div class="tc-row"><b class="tc-title"></b><span class="tc-eta"></span><button class="tc-view" aria-pressed="false">Ver trayecto</button><button class="tc-take">Mando</button></div><div class="tc-detail"></div><div class="tc-bar"><i></i></div>`;
     root.appendChild(this.el);
     this.title = this.el.querySelector(".tc-title")!;
     this.eta = this.el.querySelector(".tc-eta")!;
@@ -62,7 +62,7 @@ export class TripChip {
       this.title.textContent = `${d.who} → ${d.goal}`;
       this.eta.textContent = `llega en ${clock(d.etaRealS)}`;
       this.detail.textContent = d.detail;
-      this.viewBtn.textContent = viewing ? "Ocultar" : "Ver";
+      this.viewBtn.textContent = viewing ? "Ocultar trayecto" : "Ver trayecto";
       this.viewBtn.setAttribute("aria-pressed", String(viewing));
     }
     this.bar.style.width = `${(Math.max(0, Math.min(1, d.fraction)) * 100).toFixed(1)}%`;

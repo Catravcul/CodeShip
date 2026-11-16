@@ -37,6 +37,8 @@ export interface StationLifeDeps {
   say(text: string, seconds?: number): void;
   /** The hangar changed (the lander came in or went out): redraw it. */
   changed(): void;
+  /** The dry dock's cameras (docs/design/dique-seco.md). */
+  openDockView?(): void;
 }
 
 /**
@@ -58,7 +60,7 @@ export class StationLife {
       const lander: StationAction = this.d.berth.inHangar
         ? { id: "sacar", label: "Sacar el módulo a su puerto", enabled: true }
         : { id: "meter", label: "Meter el módulo en el hangar", enabled: atPort, ...(atPort ? {} : { why: "El módulo no está acoplado a la estación: acóplalo en su puerto y el brazo lo meterá aquí" }) };
-      return [{ id: "tareas", label: "Tareas", enabled: true }, lander, { id: "inventario", label: "Inventario", enabled: true }];
+      return [{ id: "tareas", label: "Tareas", enabled: true }, lander, ...(this.d.openDockView ? [{ id: "dique", label: "Cámaras del dique seco", enabled: true }] : []), { id: "inventario", label: "Inventario", enabled: true }];
     }
     if (a.kind !== "tripulacion") return [];
     const chores = (area: Parameters<StationCrew["choresAt"]>[0]) => this.d.crew.choresAt(area).slice(0, MAX_CHORES_ON_CARD).map((c) => ({ id: `chore:${c.id}`, label: c.title, enabled: true }));
@@ -89,6 +91,8 @@ export class StationLife {
         return this.d.openTasks();
       case "inventario":
         return this.d.openInventory();
+      case "dique":
+        return this.d.openDockView?.();
       case "meter": {
         const why = this.d.berth.moveIn(this.d.atPort());
         this.d.changed();

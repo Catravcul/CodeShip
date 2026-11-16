@@ -194,7 +194,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-01 | Probado (en vivo) | 2026-11-16 | `1c1b689` | [run](runs/2026-11-16-1923-PX-01-PX-02-PX-13-PX-27.md): 54 OK |
 | PX-02 | FAIL | 2026-11-16 | `1c1b689` | [run](runs/2026-11-16-1923-PX-01-PX-02-PX-13-PX-27.md): 28 OK, 1 FALLA |
 | PX-03 | Probado (en vivo) | 2026-11-16 | `3a00b8d` | [run](runs/2026-11-16-2046-PX-03-PX-06-PX-28-PX-30.md): 17 OK |
-| PX-04 | Probado (en vivo) | 2026-11-16 | `744b027` | [run](runs/2026-11-16-2024-PX-03-PX-04-PX-06-PX-10-PX-12-PX-15.md): 27 OK |
+| PX-04 | Probado (en vivo) | 2026-11-16 | `6e1a694` | [run](runs/2026-11-16-2117-PX-04-PX-12-PX-28-PX-29-PX-30.md): 29 OK |
 | PX-05 | Probado (en vivo) | 2026-11-14 | `cb310e1` | [run](runs/2026-11-14-1626-PX-01-PX-02-PX-04-PX-05-PX-10-PX-11.md): 25 OK |
 | PX-06 | Probado (en vivo) | 2026-11-16 | `3a00b8d` | [run](runs/2026-11-16-2046-PX-03-PX-06-PX-28-PX-30.md): 22 OK |
 | PX-07 | Probado (en vivo) | 2026-11-13 | `f59ae5a` | [run](runs/2026-11-13-1713-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09-PX-10-PX-11.md): 13 OK |
@@ -202,7 +202,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-09 | Probado (en vivo) | 2026-11-13 | `f59ae5a` | [run](runs/2026-11-13-1713-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09-PX-10-PX-11.md): 9 OK |
 | PX-10 | Probado (en vivo) | 2026-11-16 | `3a00b8d` | [run](runs/2026-11-16-2034-PX-06-PX-10-PX-12-PX-15.md): 26 OK |
 | PX-11 | Probado (en vivo) | 2026-11-16 | `75bea64` | [run](runs/2026-11-16-1500-PX-02-PX-10-PX-11.md): 26 OK |
-| PX-12 | Probado (en vivo) | 2026-11-16 | `d54e114` | [run](runs/2026-11-16-1957-PX-12-PX-29.md): 30 OK |
+| PX-12 | Probado (en vivo) | 2026-11-16 | `6e1a694` | [run](runs/2026-11-16-2117-PX-04-PX-12-PX-28-PX-29-PX-30.md): 30 OK |
 | PX-13 | Probado (en vivo) | 2026-11-16 | `1c1b689` | [run](runs/2026-11-16-1923-PX-01-PX-02-PX-13-PX-27.md): 42 OK |
 | PX-14 | Probado (en vivo) | 2026-11-16 | `be7ba22` | [run](runs/2026-11-16-1835-PX-14-PX-15-PX-25.md): 34 OK |
 | PX-15 | Probado (en vivo) | 2026-11-16 | `3a00b8d` | [run](runs/2026-11-16-2034-PX-06-PX-10-PX-12-PX-15.md): 61 OK |
@@ -211,10 +211,10 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-24 | Probado (en vivo) | 2026-11-16 | `ef23e9a` | [run](runs/2026-11-16-1800-PX-24.md): 10 OK |
 | PX-20 | FAIL | 2026-11-16 | `c033d52` | [run](runs/2026-11-16-1702-PX-20.md): 256 OK, 7 FALLA |
 | PX-25 | Probado (en vivo) | 2026-11-16 | `9de20b8` | [run](runs/2026-11-16-2058-PX-25.md): 41 OK |
-| PX-30 | Probado (en vivo) | 2026-11-16 | `3a00b8d` | [run](runs/2026-11-16-2046-PX-03-PX-06-PX-28-PX-30.md): 30 OK |
+| PX-30 | Probado (en vivo) | 2026-11-16 | `6e1a694` | [run](runs/2026-11-16-2117-PX-04-PX-12-PX-28-PX-29-PX-30.md): 30 OK |
 | PX-27 | Probado (en vivo) | 2026-11-16 | `1c1b689` | [run](runs/2026-11-16-1952-PX-27.md): 28 OK |
-| PX-28 | Probado (en vivo) | 2026-11-16 | `3a00b8d` | [run](runs/2026-11-16-2046-PX-03-PX-06-PX-28-PX-30.md): 36 OK |
-| PX-29 | Probado (en vivo) | 2026-11-16 | `ba77230` | [run](runs/2026-11-16-2011-PX-29.md): 45 OK |
+| PX-28 | Probado (en vivo) | 2026-11-16 | `6e1a694` | [run](runs/2026-11-16-2117-PX-04-PX-12-PX-28-PX-29-PX-30.md): 36 OK |
+| PX-29 | Probado (en vivo) | 2026-11-16 | `6e1a694` | [run](runs/2026-11-16-2117-PX-04-PX-12-PX-28-PX-29-PX-30.md): 45 OK |
 
 ## Última ejecución por run log
 
@@ -222,6 +222,7 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-16 21:17 | PX-04, PX-12, PX-28, PX-29, PX-30 | Experiencia (Playwright) | 5/5 recorridos bien | [run](runs/2026-11-16-2117-PX-04-PX-12-PX-28-PX-29-PX-30.md) |
 | 2026-11-16 20:58 | PX-25 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-2058-PX-25.md) |
 | 2026-11-16 20:46 | PX-03, PX-06, PX-28, PX-30 | Experiencia (Playwright) | 4/4 recorridos bien | [run](runs/2026-11-16-2046-PX-03-PX-06-PX-28-PX-30.md) |
 | 2026-11-16 20:34 | PX-06, PX-10, PX-12, PX-15 | Experiencia (Playwright) | 4/4 recorridos bien | [run](runs/2026-11-16-2034-PX-06-PX-10-PX-12-PX-15.md) |

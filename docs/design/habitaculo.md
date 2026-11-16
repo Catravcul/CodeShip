@@ -7,8 +7,8 @@ pantalla queda lo mínimo para volar.
 
 ## Habitáculo del módulo
 
-Es la misma cápsula que el piloto ve desde el asiento (`adapters/three/cockpit.ts`) con el suelo a la altura
-de sus pies. Doménica camina por ella con cámara de casa de muñecas: la cámara queda fuera y por encima, y
+Es la cápsula que el piloto ve desde el asiento (`adapters/three/cockpit.ts`), alargada hacia popa (abajo) y
+con el suelo a la altura de sus pies. Doménica camina por ella con cámara de casa de muñecas: la cámara queda fuera y por encima, y
 se quitan las paredes que hay entre ella y la cámara, si se elige la 3ª persona. Por defecto se ve en 1ª
 persona (ajuste «Vista a pie»). Con el ojo (V) se cambia.
 
@@ -34,6 +34,31 @@ módulo lunar Apolo y Orion:
 Datos en `src/modules/lander-cabin/data/cabin.ts` (`CABIN_SOURCES`, `LANDER_CABIN`). Las reglas (suelo,
 máquina más cercana, camino que rodea los asientos, qué ofrece cada máquina) están en
 `src/modules/lander-cabin/domain/cabin.ts`.
+
+### Tamaño: más grande que una cápsula real
+
+La regla de 2 m entre interactuables ([escala.md](escala.md), `src/core/spacing.ts`) vale ahora en todas las
+zonas tal como se juegan, y el habitáculo se dibuja a 1,5 como el puente. En la cápsula real, sus cinco máquinas
+estaban a 0,55–1,1 m unas de otras. A 1,5 hacen falta 1,34 m reales entre cada par, así que **la cabina se alargó
+1,93 m hacia popa** (`CABIN_DEPARTURE` en `src/modules/lander-cabin/data/cabin.ts`):
+
+| | Cápsula real (la que se pilota) | Habitáculo del juego |
+| --- | --- | --- |
+| Suelo libre | 1,9 × 1,42 m | 1,9 × 3,35 m (2,85 × 5,0 m dibujados) |
+| Volumen presurizado | ≈ 8 m³ | ≈ 16 m³ |
+| Habitable | ≈ 5,5 m³ | ≈ 12 m³ |
+| Referencias | Apolo LM 4,5 m³ habitables, Orion 8,9 m³, Crew Dragon 9,3 m³ presurizados | Más que Dragon y Orion: es una licencia, como la ventana delantera |
+
+Las máquinas van en zigzag de proa a popa, cada una a 2 m o más de las demás tal como se juega:
+
+1. La consola de la mente, en el extremo de estribor de la consola.
+2. El asiento del piloto, a babor.
+3. La esterilla, detrás del asiento de la tripulación.
+4. La escotilla EVA, en la pared de babor.
+5. La consola de acople, bajo la escotilla del techo, ahora al fondo.
+
+El traje, el aseo, los filtros de CO₂ y las bolsas van con el mamparo de popa. Al pilotar, la cabina es la cápsula
+real (`FLIGHT_COCKPIT`).
 
 ## Ajustes generales (solo en una esterilla)
 

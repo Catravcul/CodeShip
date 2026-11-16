@@ -1,3 +1,4 @@
+import { MACHINE_SCALE } from "@core/machine-scale";
 import * as THREE from "three";
 import type { SpinRing } from "@modules/gravity/domain/spin-gravity";
 import { textSign } from "./sign";
@@ -136,24 +137,27 @@ export function buildSpoke(L: SpokeLayout, ring: SpinRing, roomHeight: number): 
   // Workshop (like a Destiny rack) on the far wall: a glovebox with two glove ports and a 3D printer.
   // Every thing one can use is 2 m from the next (HAB-08) and has its grab bar beside it (gravity/data/spine.ts).
   const wallZ = L.z - L.tubeR + 0.45;
-  const glovebox = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.7, 0.9), mat(0xb8c2cc, { metalness: 0.3 }));
+  // Machines are drawn MACHINE_SCALE bigger across the wall (docs/design/escala.md); their depth off the wall
+  // stays, so she floats in front of them where her grab bar is, and the glove ports keep the size of her hands.
+  const m = MACHINE_SCALE;
+  const glovebox = new THREE.Mesh(new THREE.BoxGeometry(1.4 * m, 0.7 * m, 0.9), mat(0xb8c2cc, { metalness: 0.3 }));
   glovebox.position.set(SPINE_X.guantera, L.axisY, wallZ);
-  const window = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.6, 0.02), glass);
+  const window = new THREE.Mesh(new THREE.BoxGeometry(1.2 * m, 0.6 * m, 0.02), glass);
   window.position.set(SPINE_X.guantera, L.axisY, wallZ + 0.46);
   g.add(glovebox, window);
   for (const dx of [-0.3, 0.3]) {
     const port = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.025, 6, 16), mat(0x30343c));
-    port.position.set(SPINE_X.guantera + dx, L.axisY - 0.15, wallZ + 0.47);
+    port.position.set(SPINE_X.guantera + dx * m, L.axisY - 0.15 * m, wallZ + 0.47);
     g.add(port);
   }
-  const printer = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.6, 0.6), mat(0x30343c));
+  const printer = new THREE.Mesh(new THREE.BoxGeometry(0.7 * m, 0.6 * m, 0.6), mat(0x30343c));
   printer.position.set(SPINE_X.impresora, L.axisY, wallZ - 0.1);
-  const printBed = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.02), new THREE.MeshStandardMaterial({ color: 0xff9a3c, emissive: 0xff6a10, emissiveIntensity: 0.6 }));
+  const printBed = new THREE.Mesh(new THREE.BoxGeometry(0.5 * m, 0.4 * m, 0.02), new THREE.MeshStandardMaterial({ color: 0xff9a3c, emissive: 0xff6a10, emissiveIntensity: 0.6 }));
   printBed.position.set(SPINE_X.impresora, L.axisY, wallZ + 0.21);
   g.add(printer, printBed);
   const shopSign = textSign("Taller · guantera e impresora 3D");
   shopSign.scale.multiplyScalar(0.7);
-  shopSign.position.set((SPINE_X.guantera + SPINE_X.impresora) / 2, L.axisY + 0.85, wallZ + 0.3);
+  shopSign.position.set((SPINE_X.guantera + SPINE_X.impresora) / 2, L.axisY + 0.35 + 0.5 * m, wallZ + 0.3);
   g.add(shopSign);
   // Stores: cargo transfer bags strapped to the spinward wall (like the ISS PMM).
   const bag = mat(0xf0ede4);

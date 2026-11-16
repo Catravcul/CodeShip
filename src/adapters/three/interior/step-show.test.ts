@@ -9,12 +9,14 @@ import type { StepAct, StepAction } from "@modules/chores/domain/step-visual";
 const ACTIONS: StepAction[] = ["tomar", "lavar", "cortar", "cascar", "batir", "remover", "verter", "calentar", "hervir", "hornear", "moler", "amasar", "sazonar", "reposar", "emplatar", "regar", "agitar", "cosechar", "servir", "mimar", "jugar", "programar", "revisar", "reparar", "curar", "entrenar"];
 
 /** Plays `act` in the galley frame for `seconds`, returning the show, the figure and the camera. */
-function play(act: StepAct, seconds: number, station: "cocina" | "procesado" = "cocina", k = kitchenLayout()) {
+function play(act: StepAct, seconds: number, station: "cocina" | "procesado" = "cocina", plan = 1, k = kitchenLayout()) {
   const show = new StepShow();
   show.begin(galleyFrame(k, STATIONS.find((s) => s.id === station)!.look));
   show.play([act]);
-  const cam = new THREE.PerspectiveCamera(70, 390 / 664, 0.03, 120);
+  // The ring's PlanCamera draws the floor plan `plan` times bigger; her figure is counter-scaled (interior.ts).
+  const cam = Object.assign(new THREE.PerspectiveCamera(70, 390 / 664, 0.03, 120), { planScale: plan });
   const rig = new THREE.Group();
+  rig.scale.set(1 / plan, 1, 1 / plan);
   const fig = new CubeFigure();
   rig.add(fig.root);
   for (let t = 0; t < seconds; t += 1 / 30) show.frame(1 / 30, cam, rig, fig);
@@ -58,16 +60,18 @@ describe("Pasos visibles: la cocina anclada a sus muebles (PX-20, auditoría de 
       { action: "moler", place: "molino", tint: "cacahuete" },
       { action: "emplatar", place: "encimera", tint: "cacahuete", vessel: "tarro" },
     ];
-    for (const act of steps) {
+    // At real size and with the ring drawn at 1,5 (escala-anillo): distances as drawn, where the player sees them.
+    for (const [act, plan] of steps.flatMap((a) => [[a, 1], [a, 1.5]] as const)) {
       // Played to its end: she has walked to the spot and the props rest there.
       // Peanut butter is a process: it starts at the mill and soy corner.
-      const { show } = play(act, 3, "procesado");
+      const { show } = play(act, 3, "procesado", plan);
       const snap = show.snapshot()!;
       expect(snap.props.length, act.action).toBeGreaterThan(0);
       for (const { name, object } of snap.props) {
-        const c = new THREE.Box3().setFromObject(object).getCenter(new THREE.Vector3());
+        object.updateWorldMatrix(true, true);
+        const c = new THREE.Box3().setFromObject(object).getCenter(new THREE.Vector3()).multiply(new THREE.Vector3(plan, 1, plan));
         const hand = Math.min(...snap.hands.map((h) => h.distanceTo(c)));
-        expect(hand, `${act.action} · ${name}`).toBeLessThanOrEqual(REACH_M);
+        expect(hand, `${act.action} · ${name} · ×${plan}`).toBeLessThanOrEqual(REACH_M);
       }
     }
   });
@@ -76,6 +80,10 @@ describe("Pasos visibles: la cocina anclada a sus muebles (PX-20, auditoría de 
     const { show } = play({ action: "tomar", place: "nevera", tint: "huevo" }, 3);
     const snap = show.snapshot()!;
     for (const { object } of snap.props) expect(Math.min(...snap.hands.map((h) => h.distanceTo(object.position)))).toBeLessThan(0.15);
+    // Drawn at 1,5: the props' root is counter-scaled, so their local positions are drawn ones, at her drawn hand.
+    const big = play({ action: "tomar", place: "nevera", tint: "huevo" }, 3, "cocina", 1.5).show.snapshot()!;
+    expect(big.planScale).toBe(1.5);
+    for (const { object } of big.props) expect(Math.min(...big.hands.map((h) => h.distanceTo(object.position)))).toBeLessThan(0.15);
   });
 
   it("cada acción tiene un gesto que se aparta de la espera", () => {

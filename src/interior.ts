@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { BOARD_DAYS_PER_REAL_S } from "@core/board-time";
 import type { Habitat, HabitatEvent, ChoreSession } from "@modules/habitat/application/habitat";
 import { CHORE_CATEGORY, type Chore, type ChoreCategory } from "@modules/chores/domain/chore";
 
@@ -33,6 +34,8 @@ import { Walker } from "./adapters/input/walker";
 import type { DuelView, SessionText } from "./ui/duel-view";
 import type { SpinRing } from "@modules/gravity/domain/spin-gravity";
 import { GravityZones } from "./adapters/three/interior/zones";
+import { PlanCamera, planCounterScale } from "./adapters/three/interior/plan-camera";
+import { scaleLights, worldScale } from "./adapters/three/interior/world-scale";
 import { ICON } from "./ui/icons";
 import { settings } from "./ui/settings-store";
 import { FrameTimer } from "@core/frame-timer";
@@ -57,8 +60,8 @@ const CONTEXT = { recipes: RECIPES, yoga: YOGA_SEQUENCES, processes: PROCESSES, 
 const STEP_VISUALS = choreVisuals(CONTEXT);
 /** The galley spot (step-show.ts) of each machine of the galley and the mill corner. */
 const MACHINE_SPOT: Readonly<Record<string, KitchenSpot>> = { cocina: "encimera", molino: "molino", "procesador-soja": "procesador" };
-/** Game days per real second while walking around (a day every ~40 s). Paused during a chore. */
-const DAYS_PER_SECOND = 1 / 40;
+/** Game days per real second while walking around (src/core/board-time.ts). Paused during a chore. */
+const DAYS_PER_SECOND = BOARD_DAYS_PER_REAL_S;
 
 const stationFor = (c: Chore): Station["id"] => {
   if (isAquariumChore(c)) return "acuario";
@@ -121,6 +124,8 @@ const EVENT_TEXT = (h: Habitat, e: HabitatEvent): string | undefined => {
       return "¡Sacudida! Revisa plantas, animales, máquinas y nave";
     case "chore-done":
       return "Tarea hecha";
+    case "crew-hungry":
+      return `${h.crew.name} tiene hambre: hora de cocinar`;
     case "hen-pecked-plant":
       return `${who(e.henId)} ha escarbado un plantón`;
     case "animal-hostile":
@@ -160,7 +165,10 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 export class Interior {
   readonly scene = new THREE.Scene();
   // Far enough to see up the spoke to the axis (56 m).
-  readonly camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.03, 120);
+  // Draws the ring module and the farm deck WORLD_SCALE times bigger on the floor plan (plan-camera.ts).
+  readonly camera = new PlanCamera(70, window.innerWidth / window.innerHeight, 0.03, 120);
+  /** Floor-plan drawing scale of the ring (src/core/scale.ts): the hub, spoke and spine are drawn as built. */
+  private readonly k = worldScale();
   private readonly walker: Walker;
   private readonly plants: PlantModel[] = [];
   private readonly cats = new Map<string, CatModel>();
@@ -236,33 +244,45 @@ export class Interior {
     private readonly duel: DuelView,
     ring?: SpinRing,
   ) {
-    this.room = buildRoom();
+    this.room = buildRoom(ROOM.height * this.k);
+    scaleLights(this.room.group, this.k);
     this.scene.add(this.room.group);
     this.scene.background = new THREE.Color(0x10141a);
     this.panel = this.room.panel;
-    this.scene.add(buildFarmDeck());
+    // Screens are machines: k bigger both ways (the plan already widens them; make them as tall).
+    for (const sc of [this.room.panel, this.room.reactorScreen, this.room.medScreen]) sc.scale.y *= this.k;
+    const farm = buildFarmDeck();
+    scaleLights(farm, this.k);
+    this.scene.add(farm);
+    // Signs grow with the room, as on the bridge (walk-room.ts: SIGN_SCALE × k).
+    for (const g of [this.room.group, farm]) g.traverse((o) => (o as THREE.Sprite).isSprite && o.scale.multiplyScalar(this.k));
     for (const m of farmModels(habitat.plants.filter((p) => p.isBed))) {
       this.beds.push(m);
+      this.realSize(m.root);
       this.scene.add(m.root);
     }
     this.pots.forEach((p, i) => {
       const m = new PlantModel(p);
       m.root.position.copy(POT_SLOTS[i % POT_SLOTS.length]!);
+      this.realSize(m.root);
       this.plants.push(m);
       this.scene.add(m.root);
     });
     habitat.cats.forEach((c, i) => {
       const m = new CatModel(c.id, CAT_COLORS[i % CAT_COLORS.length]!, CAT_BOUNDS);
+      this.realSize(m.root);
       this.cats.set(c.id, m);
       this.scene.add(m.root);
     });
     habitat.hens.forEach((h, i) => {
       const m = new HenModel(h.id, HEN_COLORS[i % HEN_COLORS.length]!, COOP_BOUNDS);
+      this.realSize(m.root);
       this.hens.set(h.id, m);
       this.scene.add(m.root);
     });
     habitat.dogs.forEach((d, i) => {
       const m = new DogModel(d.id, DOG_COLORS[i % DOG_COLORS.length]!, FARM_ROAM, d.young);
+      this.realSize(m.root);
       this.dogs.set(d.id, m);
       this.scene.add(m.root);
     });
@@ -270,6 +290,7 @@ export class Interior {
     mat.position.set(1.5, 0, 7.8);
     mat.rotation.y = Math.PI; // along the mat (it lies along the wall): her profile to the aisle, like a yoga teacher's side view
     mat.add(this.figure.root);
+    this.realSize(mat);
     // The demo figure only appears while a yoga session shows the postures.
     this.figure.root.visible = false;
     this.scene.add(mat);
@@ -298,7 +319,7 @@ export class Interior {
     this.matBtn = this.ui.querySelector(".mat-btn")!;
     this.matBtn.addEventListener("click", () => this.sitForSettings());
     this.radioBtn = this.ui.querySelector(".radio-btn")!;
-    if (ring) this.zones = new GravityZones(this.ui, this.scene, ring, ROOM.halfL, ROOM.height, (t) => this.say(t));
+    if (ring) this.zones = new GravityZones(this.ui, this.scene, ring, ROOM.halfL, ROOM.height * this.k, (t) => this.say(t));
     this.viewBtn = this.ui.querySelector(".view-btn")!;
     this.viewBtn.addEventListener("click", () => {
       this.thirdPerson = !this.thirdPerson;
@@ -620,8 +641,10 @@ export class Interior {
     const mat = this.figure.root.parent;
     if (!this.figure.root.visible || !mat) return false;
     // She faces along the mat (−Z here): look a little ahead of her pelvis, where the long postures reach.
-    this.camera.position.set(mat.position.x - 3.3, 1.05, mat.position.z - 0.6);
-    this.camera.lookAt(mat.position.x, 0.8, mat.position.z - 0.6);
+    // The figure is drawn at real size on the ring's plan (×k): the offsets are drawn metres, so 3,3 m away as seen.
+    const k = this.camera.planScale;
+    this.camera.position.set(mat.position.x - 3.3 / k, 1.05, mat.position.z - 0.6 / k);
+    this.camera.lookAt(mat.position.x, 0.8, mat.position.z - 0.6 / k);
     return true;
   }
 
@@ -633,7 +656,16 @@ export class Interior {
     return room || door || farm;
   }
 
+  /** Keep a character, an animal or a plant at real size under the drawn plan (plan-camera.ts). */
+  private realSize(o: THREE.Object3D): void {
+    o.scale.multiply(planCounterScale(this.k));
+  }
+
   private updateCamera(dt = 1 / 60): void {
+    // The ring is drawn k times bigger on the plan; the hub, spoke and spine as built.
+    const onRing = (this.zones?.zone ?? "anillo") === "anillo";
+    this.camera.planScale = onRing ? this.k : 1;
+    this.avatarRig.scale.copy(onRing ? planCounterScale(this.k) : new THREE.Vector3(1, 1, 1));
     if (this.session && this.steps.frame(dt, this.camera, this.avatarRig, this.avatar)) return;
     if (this.session && this.yogaCamera()) return;
     const third = this.thirdPerson && !this.session;
@@ -659,7 +691,7 @@ export class Interior {
     const cam = new THREE.Vector3();
     for (; d > 0.35; d -= 0.1) {
       cam.copy(head).addScaledVector(dir, -d).add(new THREE.Vector3(0, 0.35, 0));
-      const ceiling = cam.z > ROOM.halfL + 0.2 ? FARM.height - 0.3 : ROOM.height - 0.15;
+      const ceiling = cam.z > ROOM.halfL + 0.2 ? FARM.height - 0.3 : ROOM.height * this.k - 0.15;
       if (this.inside(cam.x, cam.z) && cam.y > 0.3 && cam.y < ceiling) break;
     }
     this.camera.position.copy(cam);
@@ -667,7 +699,10 @@ export class Interior {
   }
 
   private faceTowards(p: THREE.Vector3): void {
+    // As drawn (plan-camera.ts): k times further across the floor.
     const d = p.clone().sub(new THREE.Vector3(this.pos.x, 1.6, this.pos.z));
+    d.x *= this.k;
+    d.z *= this.k;
     this.yaw = Math.atan2(-d.x, -d.z);
     this.pitch = Math.atan2(d.y, Math.hypot(d.x, d.z));
   }
@@ -885,7 +920,7 @@ export class Interior {
     for (let back = 1.7; back > 0.4; back -= 0.1) {
       for (const k of [0.75, 0.4, 0]) {
         cam.set(look.x, 1.9, look.z).addScaledVector(dir, -back).addScaledVector(side, k * back);
-        const ceiling = cam.z > ROOM.halfL + 0.2 ? FARM.height - 0.3 : ROOM.height - 0.15;
+        const ceiling = cam.z > ROOM.halfL + 0.2 ? FARM.height - 0.3 : ROOM.height * this.k - 0.15;
         if (this.inside(cam.x, cam.z) && cam.y < ceiling) break;
       }
       if (this.inside(cam.x, cam.z)) break;

@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { clampToFloor, floorPath, nearestStation, type CabinLayout, type CabinStation, type FloorPoint } from "@modules/lander-cabin/domain/cabin";
+import { clampToFloor, floorPath, nearestStation, roomAisles, type CabinLayout, type CabinStation, type FloorPoint } from "@modules/lander-cabin/domain/cabin";
 import { CubeFigure } from "./adapters/three/interior/figure";
 import { textSign } from "./adapters/three/interior/sign";
 import { Walker } from "./adapters/input/walker";
@@ -361,8 +361,7 @@ export abstract class WalkRoom<Id extends string> {
 
   /** Front and rear aisles for walking around furniture. */
   protected aisles(): number[] {
-    const f = this.opts.layout.floor;
-    return [f.minZ + 0.25, f.maxZ - 0.07];
+    return roomAisles(this.opts.layout);
   }
 
   private station(id: Id | undefined): CabinStation<Id> | undefined {

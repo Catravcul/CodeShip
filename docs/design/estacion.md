@@ -63,7 +63,7 @@ En el móvil, arriba se ve el hangar en 3D y abajo hay un panel con cuatro pesta
 | **Fabricación** | La cola de cada máquina (refinería, fundición, impresora 3D de metal, planta de propelente, línea de repostaje y, cuando existen, soldadora, celda de compuestos y montaje exterior), con barra de progreso y las horas que quedan. Cada máquina hace un trabajo detrás de otro, y las tres trabajan a la vez. |
 | **Hangar** | Las naves y sondas: la **nodriza**, el **Explorer** y las sondas fabricadas, con dónde está cada una. Debajo, las piezas de repuesto. |
 
-Las horas de máquina corren con el mismo reloj que la vida a bordo, un día de juego cada 40 s (`STATION_TUNING.hoursPerSecond`).
+Las horas de máquina corren con el mismo reloj que la vida a bordo, un día de juego cada 24 min reales (`STATION_TUNING.hoursPerSecond`, de `src/core/board-time.ts`; ver [vida-a-bordo.md](vida-a-bordo.md#ritmo-de-los-días)).
 
 ## Materiales: de la roca de Bennu al almacén
 

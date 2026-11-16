@@ -94,10 +94,10 @@ El Santuario está en la Tierra (Doménica llegó a Cold Sanctuary desde la Tier
 
 ```
 créditos = ⌈ masa · multiplicador(Δv₁, Δv₂, Isp, tanques) · (US$/kg a LEO) / 1 000 ⌉
-retraso  = días de Hohmann × 1 h de estación por día
+retraso  = días de Hohmann × 4 min de estación por día
 ```
 
-1 crédito = 1 000 US$ (valor de juego). Un día real de transferencia es una hora del reloj de la estación (valor de juego). Con el reloj de la estación (un día cada 40 s), 372 h son unos 10 minutos reales sin acelerar el tiempo.
+1 crédito = 1 000 US$ (valor de juego). Un día real de transferencia son 4 minutos del reloj de la estación (`GAME_HOURS_PER_TRANSIT_DAY`, valor de juego). Con el reloj de la estación (un día cada 24 min reales, [vida-a-bordo.md](vida-a-bordo.md#ritmo-de-los-días)), una transferencia de 372 días llega en unas 25 h de estación: algo más de un día a bordo, unos 25 minutos reales sin acelerar el tiempo. Antes era una hora por día de tránsito, con el día de 40 s.
 
 | Un kit (25 kg) | Falcon 9 | Falcon Heavy | Starship (objetivo) |
 |---|---|---|---|

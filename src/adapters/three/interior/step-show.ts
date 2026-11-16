@@ -95,6 +95,39 @@ export interface StepFrame {
   readonly slide?: { readonly axis: "x" | "z"; readonly min: number; readonly max: number };
   /** The galley, for kitchen steps (spots, fridge, oven, mill). */
   readonly kitchen?: KitchenLayout;
+  /** The camera's offset from what it looks at, in drawn metres (it follows the step's spot): the galley. */
+  readonly orbit?: THREE.Vector3;
+}
+
+/**
+ * A frame given in real metres, as drawn with the floor plan `k` times bigger (x and z; heights kept): the
+ * ring is drawn at 1,5 by its `PlanCamera` (plan-camera.ts) while its logic stays in real metres.
+ */
+export function drawnFrame(f: StepFrame, k: number): StepFrame {
+  const D = (v: THREE.Vector3) => new THREE.Vector3(v.x * k, v.y, v.z * k);
+  const look = D(f.look);
+  const kitchen = f.kitchen;
+  return {
+    ...f,
+    stand: D(f.stand),
+    look,
+    camera: f.orbit ? look.clone().add(f.orbit) : D(f.camera),
+    target: D(f.target),
+    ...(f.slide ? { slide: { axis: f.slide.axis, min: f.slide.min * k, max: f.slide.max * k } } : {}),
+    ...(kitchen
+      ? {
+          kitchen: {
+            spots: Object.fromEntries(Object.entries(kitchen.spots).map(([id, v]) => [id, D(v)])) as Record<KitchenSpot, THREE.Vector3>,
+            counter: { front: kitchen.counter.front * k, top: kitchen.counter.top, z0: kitchen.counter.z0 * k, z1: kitchen.counter.z1 * k },
+            fridgeHinge: D(kitchen.fridgeHinge),
+            fridgeDoor: { h: kitchen.fridgeDoor.h, w: kitchen.fridgeDoor.w * k },
+            ovenDoor: D(kitchen.ovenDoor),
+            ovenInside: D(kitchen.ovenInside),
+            millOut: D(kitchen.millOut),
+          },
+        }
+      : {}),
+  };
 }
 
 /** Camera offset from the spot being worked at in the galley (m): back across the aisle, up, and to her right. */
@@ -116,6 +149,7 @@ export function galleyFrame(k: KitchenLayout, focus: THREE.Vector3): StepFrame {
     yaw: Math.PI / 2,
     camera: look.clone().add(GALLEY_CAMERA),
     look,
+    orbit: GALLEY_CAMERA,
     target: focus.clone(),
     slide: { axis: "z", min: Math.min(...zs) - 0.45, max: Math.max(...zs) + 0.2 },
     kitchen: k,
@@ -198,7 +232,15 @@ export class StepShow {
   private now: StepAct | undefined;
   private last: StepAct | undefined;
   private t = 1;
+  /** The frame as given (real metres)… */
   private frameDef: StepFrame | undefined;
+  /**
+   * …and as drawn (`drawnFrame`, plan scale `ds`): every position below (her feet, her hands, the spots,
+   * the props) is in drawn metres, so a prop sits at her hand on screen whatever the ring's scale. The
+   * props' root is counter-scaled, so its local space is the drawn one.
+   */
+  private df: StepFrame | undefined;
+  private ds = 1;
   private readonly feet = new THREE.Vector3();
   private readonly v = new THREE.Vector3();
   private readonly w = new THREE.Vector3();
@@ -239,24 +281,34 @@ export class StepShow {
   begin(frame: StepFrame): void {
     this.build();
     this.frameDef = frame;
-    this.feet.copy(frame.stand);
-    this.camOffset.copy(frame.camera).sub(frame.look);
-    this.focus.copy(frame.look);
+    this.drawWith(this.ds);
     // Her right hand (arm 1) is 0,25 m to her right: +z when she faces +x.
     this.reach = frame.slide?.axis === "x" ? -0.25 * Math.cos(frame.yaw) : 0.25 * Math.sin(frame.yaw);
     this.hasFrom = false;
-    const k = frame.kitchen ?? DEFAULT_KITCHEN;
-    const door = this.props!.fridgeDoor;
-    door.position.copy(k.fridgeHinge);
-    door.children[0]!.scale.set(0.04, k.fridgeDoor.h, k.fridgeDoor.w);
-    door.children[0]!.position.set(0, 0, -k.fridgeDoor.w / 2);
-    this.props!.fridgeInside.position.set(k.fridgeHinge.x + 0.015, k.fridgeHinge.y, k.fridgeHinge.z - k.fridgeDoor.w / 2);
-    this.props!.ovenGlow.position.copy(k.ovenDoor);
     this.played = 0;
     this.queue.length = 0;
     this.now = this.last = undefined;
     this.hideAll();
     this.root.visible = true;
+  }
+
+  /** Draws the frame at plan scale `k`: her feet, the camera and the galley's furniture-bound props. */
+  private drawWith(k: number): void {
+    const f = this.frameDef!;
+    const d = (this.df = drawnFrame(f, k));
+    this.ds = k;
+    this.root.scale.set(1 / k, 1, 1 / k);
+    this.feet.copy(d.stand);
+    this.camOffset.copy(d.camera).sub(d.look);
+    this.focus.copy(d.look);
+    const kd = d.kitchen ?? drawnFrame({ ...f, kitchen: DEFAULT_KITCHEN }, k).kitchen!;
+    const door = this.props!.fridgeDoor;
+    door.position.copy(kd.fridgeHinge);
+    door.children[0]!.scale.set(0.04, kd.fridgeDoor.h, kd.fridgeDoor.w);
+    door.children[0]!.position.set(0, 0, -kd.fridgeDoor.w / 2);
+    this.props!.fridgeInside.position.set(kd.fridgeHinge.x + 0.015, kd.fridgeHinge.y, kd.fridgeHinge.z - kd.fridgeDoor.w / 2);
+    this.props!.ovenGlow.position.copy(kd.ovenDoor);
+    this.props!.ovenGlow.scale.z = 0.44 * k;
   }
 
   play(visuals: readonly StepAct[]): void {
@@ -269,7 +321,7 @@ export class StepShow {
   clear(): void {
     this.queue.length = 0;
     this.now = this.last = undefined;
-    this.frameDef = undefined;
+    this.frameDef = this.df = undefined;
     this.heat = 0;
     this.mode = "off";
     this.root.visible = false;
@@ -292,9 +344,11 @@ export class StepShow {
    * While framing: places Doménica and the camera, poses her for the step and animates its props.
    * Returns false when not framing (the caller places the camera as usual).
    */
-  frame(dt: number, camera: THREE.PerspectiveCamera, rig: THREE.Object3D, figure: CubeFigure): boolean {
-    const f = this.frameDef;
-    if (!f || !this.props) return false;
+  frame(dt: number, camera: THREE.PerspectiveCamera & { planScale?: number }, rig: THREE.Object3D, figure: CubeFigure): boolean {
+    if (!this.frameDef || !this.props) return false;
+    const k = camera.planScale ?? 1;
+    if (k !== this.ds || !this.df) this.drawWith(k);
+    const f = this.df!;
     this.clock += dt;
     if (this.now) {
       const speed = 1 + 1.5 * this.queue.length;
@@ -312,25 +366,26 @@ export class StepShow {
     if (f.slide && vis) {
       const s = this.spotOf(vis, this.spot);
       const want = Math.max(f.slide.min, Math.min(f.slide.max, (f.slide.axis === "z" ? s.z : s.x) - this.reach));
-      const k = 1 - Math.exp(-6 * dt);
-      if (f.slide.axis === "z") this.feet.z += (want - this.feet.z) * k;
-      else this.feet.x += (want - this.feet.x) * k;
+      const ease6 = 1 - Math.exp(-6 * dt);
+      if (f.slide.axis === "z") this.feet.z += (want - this.feet.z) * ease6;
+      else this.feet.x += (want - this.feet.x) * ease6;
       // At the fridge she stands back the door's width, so her reach stops at the open door, not inside it.
       const back = vis.place === "nevera" ? FRIDGE_STEP_BACK : 0;
       const across = f.slide.axis === "z" ? "x" : "z";
       const toward = f.slide.axis === "z" ? Math.sin(f.yaw) : Math.cos(f.yaw);
       const wantAcross = f.stand[across] - back * toward;
-      this.feet[across] += (wantAcross - this.feet[across]) * k;
+      this.feet[across] += (wantAcross - this.feet[across]) * ease6;
     }
     rig.visible = true;
-    rig.position.copy(this.feet);
+    rig.position.set(this.feet.x / k, 0, this.feet.z / k);
     rig.rotation.set(0, f.yaw, 0);
     rig.quaternion.setFromEuler(rig.rotation);
     figure.poseAngles(this.now ? gesture(vis!, t, this.clock, this.low(vis!)) : idle(vis ? this.low(vis) : false));
     figure.update(dt, 9);
     rig.updateMatrixWorld(true);
-    figure.handWorld(1, this.hand);
-    figure.handWorld(0, this.otherHand);
+    // Her hands as drawn (her figure is counter-scaled: drawn at real size where she stands).
+    figure.handWorld(1, this.hand).multiply(this.tmp.set(k, 1, k));
+    figure.handWorld(0, this.otherHand).multiply(this.tmp.set(k, 1, k));
     // The camera keeps its place over her shoulder as she walks along the counter.
     if (f.slide && vis) {
       // Along the galley the camera keeps its offset from the step's spot (at work height), so the spot,
@@ -339,8 +394,9 @@ export class StepShow {
       this.tmp.set(s.x, Math.max(0.75, Math.min(1.15, s.y)), s.z);
       this.focus.lerp(this.tmp, 1 - Math.exp(-4 * dt));
     }
-    camera.position.copy(this.focus).add(this.camOffset);
-    camera.lookAt(this.focus);
+    // In real metres for the PlanCamera, which draws them back at this place.
+    camera.position.set((this.focus.x + this.camOffset.x) / k, this.focus.y + this.camOffset.y, (this.focus.z + this.camOffset.z) / k);
+    camera.lookAt(this.tmp.set(this.focus.x / k, this.focus.y, this.focus.z / k));
     this.lastFigure = figure;
     const heatOn = !!vis?.heat && (this.now !== undefined || this.last === vis);
     this.heat += ((heatOn ? 1 : 0) - this.heat) * (1 - Math.exp(-3 * dt));
@@ -355,7 +411,7 @@ export class StepShow {
    * how far her pose is from waiting (0 = no gesture).
    */
   snapshot(): StepSnapshot | undefined {
-    const f = this.frameDef;
+    const f = this.df;
     const vis = this.current;
     if (!f || !this.props || !vis) return undefined;
     const p = this.props;
@@ -381,6 +437,7 @@ export class StepShow {
       spot: this.spotOf(vis, new THREE.Vector3()),
       props,
       particles: this.props.dots.visible ? this.emit.clone() : undefined,
+      planScale: this.ds,
       gesture: this.now ? poseDistance(gesture(vis, this.t, this.clock, low), idle(low)) : 0,
     };
   }
@@ -389,8 +446,8 @@ export class StepShow {
 
   private next(): void {
     const prev = this.now ?? this.last;
-    this.hasFrom = !!prev && !!this.frameDef;
-    if (prev && this.frameDef) this.spotOf(prev, this.from);
+    this.hasFrom = !!prev && !!this.df;
+    if (prev && this.df) this.spotOf(prev, this.from);
     this.now = this.queue.shift();
     this.t = 0;
     this.played++;
@@ -399,11 +456,11 @@ export class StepShow {
 
   /** Low targets (a cat bowl, a hen) are worked on crouching. */
   private low(v: StepAct): boolean {
-    return v.place === "objetivo" && (this.frameDef?.target.y ?? 1) < 0.5;
+    return v.place === "objetivo" && (this.df?.target.y ?? 1) < 0.5;
   }
 
   private spotOf(v: StepAct, out: THREE.Vector3): THREE.Vector3 {
-    const f = this.frameDef!;
+    const f = this.df!;
     const s = (f.kitchen ?? DEFAULT_KITCHEN).spots[v.place as KitchenSpot];
     if (s) return out.copy(s);
     // The challenge's own target: its near face, a hand's width toward her (not inside the machine or the wall).
@@ -427,7 +484,7 @@ export class StepShow {
 
   /** In front of her at her hands (for a target's steps: what she holds or works in), height `y` clamped. */
   private atHands(out: THREE.Vector3, y: number): THREE.Vector3 {
-    const f = this.frameDef!;
+    const f = this.df!;
     const fx = Math.sin(f.yaw);
     const fz = Math.cos(f.yaw);
     return out.set(this.feet.x + fx * HANDS_AHEAD, Math.max(0.3, Math.min(1.15, y)), this.feet.z + fz * HANDS_AHEAD);
@@ -641,7 +698,7 @@ export class StepShow {
           break;
         }
         // The tray goes from the counter down into the oven, which glows while it roasts, and back up onto the counter.
-        const K = this.frameDef!.kitchen ?? DEFAULT_KITCHEN;
+        const K = this.df!.kitchen ?? DEFAULT_KITCHEN;
         const door = K.ovenDoor;
         const top = this.w.set(K.counter.front + 0.2, K.counter.top + 0.01, door.z);
         // Off the counter's edge first, then down to the door (and the other way round coming back).
@@ -662,7 +719,7 @@ export class StepShow {
         if (v.place === "molino" || v.place === "procesador") {
           // Grain into the hopper, flour or slurry into the bowl below.
           this.emitAt(s.x, s.y + 0.25, s.z, "fall", TINT[v.tint ?? "grano"] ?? 0xc9a85a);
-          const out = v.place === "molino" ? this.v.copy((this.frameDef!.kitchen ?? DEFAULT_KITCHEN).millOut) : this.v.set(s.x, s.y, s.z);
+          const out = v.place === "molino" ? this.v.copy((this.df!.kitchen ?? DEFAULT_KITCHEN).millOut) : this.v.set(s.x, s.y, s.z);
           this.show(p.bowl, out.x, out.y + 0.03, out.z);
           pile(this.v.set(out.x, out.y + 0.05, out.z), Math.round(1 + 2 * t), 0.02);
           break;
@@ -706,7 +763,7 @@ export class StepShow {
         // from beside the plate when that was elsewhere (the fridge, the mill).
         const from = this.hasFrom && this.from.distanceTo(at) < 0.9 ? this.tmp.copy(this.from) : this.tmp.set(at.x, at.y + 0.02, at.z - 0.22);
         // From the oven or a shelf: the food starts on the worktop by it (the tray came back up there).
-        const K = this.frameDef!.kitchen;
+        const K = this.df!.kitchen;
         if (K && v.place !== "objetivo") {
           from.x = Math.max(from.x, K.counter.front + 0.15);
           from.y = Math.max(from.y, K.counter.top + 0.02);
@@ -725,7 +782,7 @@ export class StepShow {
         const toHer = this.tmp.set(this.feet.x - s.x, 0, this.feet.z - s.z).normalize().multiplyScalar(0.12);
         const can = this.show(p.can, s.x + toHer.x, s.y + 0.35, s.z + toHer.z);
         can.rotation.z = -0.7 * bump(t, 0.05, 0.95);
-        can.rotation.y = this.frameDef!.yaw - Math.PI / 2;
+        can.rotation.y = this.df!.yaw - Math.PI / 2;
         if (t > 0.15 && t < 0.85) this.emitAt(s.x, s.y + 0.3, s.z, "fall", TINT.agua!);
         break;
       }
@@ -766,20 +823,20 @@ export class StepShow {
         // The holographic tablet floats at her hands, facing her; the glow marks the target it works on.
         const h = this.atHands(this.hands, 1.1);
         const tab = this.show(p.tablet, h.x, h.y + 0.02 * Math.sin(this.clock * 2), h.z);
-        tab.rotation.y = this.frameDef!.yaw;
+        tab.rotation.y = this.df!.yaw;
         this.emitAt(target.x, target.y + 0.1, target.z, v.action === "revisar" ? "orbit" : "rise", 0x5ff0ff);
         break;
       }
       case "reparar": {
         const w = this.show(p.wrench, s.x, s.y + 0.05, s.z);
         w.rotation.z = 0.8 * Math.sin(this.clock * 7);
-        w.rotation.y = this.frameDef!.yaw;
+        w.rotation.y = this.df!.yaw;
         this.emitAt(s.x, s.y + 0.05, s.z, "burst", TINT.chispas!);
         break;
       }
       case "curar": {
         const kit = this.show(p.kit, s.x, s.y + 0.08, s.z);
-        kit.rotation.y = this.frameDef!.yaw;
+        kit.rotation.y = this.df!.yaw;
         this.emitAt(s.x, s.y + 0.15, s.z, "drift", 0x7dffb0);
         break;
       }
@@ -865,6 +922,8 @@ export interface StepSnapshot {
   readonly props: readonly { readonly name: string; readonly object: THREE.Object3D }[];
   /** Where steam, drops or sparks come from, when they show. */
   readonly particles?: THREE.Vector3;
+  /** The floor plan's drawn scale: feet, hands and spot are in drawn metres (a prop's world position times (k, 1, k)). */
+  readonly planScale: number;
   /** Sum of joint-angle differences between the step's gesture and waiting (rad). */
   readonly gesture: number;
 }

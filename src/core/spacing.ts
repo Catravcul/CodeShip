@@ -62,3 +62,13 @@ export function minSpacing(items: readonly Interactable[]): number {
     for (let j = i + 1; j < items.length; j++) best = Math.min(best, dist(items[i]!.centre, items[j]!.centre), dist(items[i]!.anchor, items[j]!.anchor));
   return best;
 }
+
+/**
+ * Interactables as played: a room built from real data and drawn `k` times bigger on the floor plan
+ * (src/core/scale.ts) has its centres and anchors `k` times further apart across the floor (x, z); heights
+ * stay. The 2 m rule is checked on this (habitat/data/spacing.test.ts, every area).
+ */
+export function asPlayed(items: readonly Interactable[], k: number): Interactable[] {
+  const p = (q: Point3): Point3 => ({ x: q.x * k, y: q.y, z: q.z * k });
+  return items.map((i) => ({ id: i.id, centre: p(i.centre), anchor: p(i.anchor) }));
+}

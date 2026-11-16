@@ -1,3 +1,5 @@
+import { BOARD_DAYS_PER_REAL_S } from "@core/board-time";
+
 /**
  * Compressed travel (docs/design/viajes.md). Long trips of the travel ship and the probe are
  * programmed with code challenges and then fly themselves; their real duration (the physics of the
@@ -28,9 +30,9 @@ export const TRAVEL_TIME = {
 
 /**
  * Pace of life on board (crew, plants, animals, bioreactor, nano_net, station machines): one day every
- * 40 real seconds. Game value already used by the interior and the nano_net (docs/design/vida-a-bordo.md).
+ * 24 real minutes (src/core/board-time.ts, docs/design/vida-a-bordo.md «Ritmo de los días»).
  */
-export const BOARD_DAYS_PER_REAL_S = 1 / 40;
+export { BOARD_DAYS_PER_REAL_S } from "@core/board-time";
 
 /** Real seconds a trip of `gameS` takes at its base `lapse`, never more than `capS`. */
 export function realSeconds(gameS: number, lapse: number, capS: number = TRAVEL_TIME.capS): number {

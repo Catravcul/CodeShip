@@ -97,6 +97,8 @@ export function auditStep(show: StepShow, camera: THREE.PerspectiveCamera, scene
   const snap: StepSnapshot | undefined = show.snapshot();
   if (!snap) return undefined;
   camera.updateMatrixWorld();
+  // World positions are real metres; the ring is drawn with its floor plan k times bigger (plan-camera.ts).
+  const drawn = new THREE.Vector3(snap.planScale, 1, snap.planScale);
   const propSet = new Set<THREE.Object3D>();
   for (const p of snap.props) p.object.traverse((o) => propSet.add(o));
   show.root.traverse((o) => propSet.add(o));
@@ -136,13 +138,15 @@ export function auditStep(show: StepShow, camera: THREE.PerspectiveCamera, scene
     for (const s of samples) if (toPx(s)[2] && !blocker(s, own)) seen++;
     const hiddenBy = blocker(c, own);
     const inMesh = solids.find((m) => !own.has(m) && !bodySet.has(m) && insideMesh(m, c));
-    const hand = Math.min(...snap.hands.map((h) => h.distanceTo(c)));
-    const spot = snap.spot.distanceTo(c);
+    // Distances in drawn metres (what the player sees): the snapshot's feet, hands and spot are drawn.
+    const cd = c.clone().multiply(drawn);
+    const hand = Math.min(...snap.hands.map((h) => h.distanceTo(cd)));
+    const spot = snap.spot.distanceTo(cd);
     const feetToSpot = Math.hypot(snap.feet.x - snap.spot.x, snap.feet.z - snap.spot.z);
     const px = toPx(c);
     return {
       name,
-      pos: [r3(c.x), r3(c.y), r3(c.z)],
+      pos: [r3(cd.x), r3(cd.y), r3(cd.z)],
       hand: r3(hand),
       spot: r3(spot),
       px: [Math.round(px[0]), Math.round(px[1])],
@@ -152,8 +156,8 @@ export function auditStep(show: StepShow, camera: THREE.PerspectiveCamera, scene
       reach: hand <= REACH_M || (spot <= ON_SPOT_M && feetToSpot <= AT_SPOT_M),
     };
   });
-  const handPx = toPx(snap.hands[1]);
-  const spotPx = toPx(snap.spot);
+  const handPx = toPx(snap.hands[1].clone().divide(drawn));
+  const spotPx = toPx(snap.spot.clone().divide(drawn));
   return {
     action: snap.act.action,
     place: snap.act.place,

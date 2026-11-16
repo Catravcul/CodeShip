@@ -9,7 +9,7 @@ import type { Dog } from "@modules/pets/domain/dog";
 import { Introduction } from "@modules/pets/domain/introduction";
 import type { AnimalLesson, CatLesson } from "@modules/pets/data/rules";
 import { Bonds, companionship, FAMILY_TUNING, type Family, type Member } from "@modules/family/domain/family";
-import { CrewMember } from "@modules/crew/domain/crew-member";
+import { CrewMember, mealPortions } from "@modules/crew/domain/crew-member";
 import type { ShipDesign } from "@modules/ship/domain/ship";
 import { withPart, type PartSlot } from "@modules/ship/domain/refit";
 import { partById } from "@modules/ship/data/parts";
@@ -69,7 +69,9 @@ export type HabitatEvent =
   | { type: "hen-pecked-plant"; henId: string; plantId: string }
   | { type: "animal-hostile"; actorId: string; targetId: string; action: AnimalAction }
   | { type: "animal-warm"; actorId: string; targetId: string; action: AnimalAction }
-  | { type: "family-formed"; memberIds: readonly string[] };
+  | { type: "family-formed"; memberIds: readonly string[] }
+  /** Doménica just got hungry (about three times a day: CREW_TUNING). */
+  | { type: "crew-hungry" };
 
 /** The ship as the habitat sees it: its design (for its code) and its hull. */
 export interface RepairableShip {
@@ -317,7 +319,9 @@ export class Habitat {
 
   tick(dtDays: number): void {
     const t = HABITAT_TUNING;
+    const wasHungry = this.crew.hungry;
     this.crew.tick(dtDays, companionship(this.families), this.crewGravityG);
+    if (!wasHungry && this.crew.hungry) this._events.push({ type: "crew-hungry" });
     this.mailbox?.tick(dtDays);
     const lit = this.lightsOn && this.working("bastidores");
     for (const p of this._plants.values()) {
@@ -732,8 +736,9 @@ export class Habitat {
           if (!r || !this.canCook(r)) throw new Error(`Cannot cook ${chore.targetId}`);
           this.use(r.ingredients);
           this.meals += r.portions;
-          // Doménica eats one portion: its real energy fills her satiety.
-          this.crew.eatKcal(portionNutrients(r).kcal);
+          // Doménica eats a meal: as many portions as make about a third of her day (at least one, at most the
+          // dish's), and their real energy fills her satiety (docs/design/vida-a-bordo.md, «Ritmo de los días»).
+          this.crew.eatKcal(portionNutrients(r).kcal * mealPortions(portionNutrients(r).kcal, r.portions, this.crew.mealKcal));
           break;
         }
         case "reparar-nave":

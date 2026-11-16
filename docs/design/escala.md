@@ -62,15 +62,68 @@ Cada imagen pone en fila las cuatro escalas, de izquierda a derecha 1×, 1,25×,
 
 ## Dónde se aplica
 
-| Sitio | Escala |
-| --- | --- |
-| Puente | `WORLD_SCALE` (rama `puente-real`) |
-| Estación | `MACHINE_SCALE` (rama `estacion-hangar`, la misma constante) |
-| Habitáculo del módulo | 1×: es la cabina del piloto y se ve igual desde el asiento |
-| Anillo | 1×: pendiente |
+Berón (2026-11-16): «La regla de tamaño y de espacio vale para todas las zonas, así que hay que actualizar el anillo y
+el habitáculo». Ahora todo se dibuja a 1,5 y la regla de 2 m se comprueba tal como se juega, sin excepciones.
 
-Escalar el habitáculo alrededor del ojo del piloto no cambiaría lo que ve sentado.
+| Sitio | Escala | Cómo se dibuja |
+| --- | --- | --- |
+| Puente | `WORLD_SCALE` | El modelo se construye a escala (`buildBridge(k)`) y `WalkRoom` multiplica la planta |
+| Estación | `MACHINE_SCALE` (la misma constante) | `scaleInteriorPlan` escala el plano antes de dibujarlo y de moverse en él |
+| Anillo y cubierta de cultivo | `WORLD_SCALE` | Cámara de planta (`adapters/three/interior/plan-camera.ts`), abajo |
+| Habitáculo del módulo | `WORLD_SCALE` | `WalkRoom` con `scale`; la cápsula, en un grupo estirado (1,5; 1; 1,5), abajo |
+| Cubo, radio y espina | Tubos de 5,5 m (ya a tamaño de juego) | Las máquinas de la espina (guantera, impresora 3D) miden 1,5 veces más a lo largo de la pared |
+
+### El anillo: una cámara de planta
+
+El anillo tiene mucho código en metros reales: la caminata, los puestos, por dónde pasean gatos, perros y gallinas,
+el encuadre de cada paso de una tarea y el ascensor del radio. En vez de reescribirlo, la cámara dibuja la sala
+1,5 veces más grande en planta. Con el ojo en el punto real *p*, girado *R*, la vista es *R⁻¹ · S · T(−p)*, con
+*S* = (1,5; 1; 1,5). Es como si la sala se hubiera construido 1,5 veces más grande con el ojo en *S·p*.
+
+- La posición del mundo de la cámara sigue siendo la real. La vista, que usan el renderizador,
+  `Vector3.project` (los avisos de ambiente) y el recorte, es la dibujada.
+- Las alturas no cambian: el ojo va a 1,6 m y las encimeras, las camas y los asideros siguen a la altura del
+  cuerpo. El techo y las paredes sí suben (2,6 → 3,9 m), igual que en el puente.
+- Lo que tiene que quedar a tamaño real (Doménica, los gatos, los perros, las gallinas, las plantas y la figura del
+  yoga) lleva la escala inversa (1/1,5; 1; 1/1,5). Como solo giran sobre la vertical, se dibujan a tamaño real
+  donde están. El esqueleto del yoga (19 articulaciones, IK de manos y pies) calcula en el espacio de la figura,
+  así que la escala inversa no lo toca: los apoyos en la esterilla y las palmas juntas salen igual. La cámara de
+  perfil de la esterilla se pone a 3,3 m dibujados (3,3/1,5 m reales) para ver el cuerpo entero como antes.
+- Las pantallas de las máquinas suben 1,5 en alto (en ancho ya las agranda la planta). Los carteles crecen 1,5,
+  como los del puente. El alcance de las luces se multiplica por 1,5 (`scaleLights`).
+- Fuera del anillo (radio, cubo y espina) la cámara dibuja tal cual. Esas zonas están en las mismas coordenadas
+  reales que el anillo: el hueco del ascensor cae sobre su columna.
+- Andar va en metros reales, así que cruzar el módulo tarda lo mismo. La sala se ve de 6 × 27 m.
+
+### El habitáculo del módulo
+
+La cápsula de `cockpit.ts` va en un grupo estirado (1,5; 1; 1,5). Los asientos, los reposabrazos, las correas y
+los mandos de mano llevan `userData.body` y vuelven a su tamaño real. Los rótulos pequeños de la cápsula
+también se quedan a tamaño real: en una cabina tan estrecha, uno 1,5 veces mayor tapa la vista. El techo se
+queda a 1,7 m (a la altura del cuerpo) y la pantalla de la consola de la mente mide 1,5 veces más. A escala
+1,5, sus cinco máquinas no cabían a 2 m, así que **la cabina se alargó 1,93 m hacia popa**. Las cuentas están en
+[habitaculo.md](habitaculo.md#tamaño-más-grande-que-una-cápsula-real). El piloto sigue viendo la cápsula real
+desde el asiento al volar.
+
+### La regla de 2 m, tal como se juega
+
+`src/modules/habitat/data/spacing.test.ts` comprueba cada zona con los datos reales multiplicados por su escala de
+dibujo (`asPlayed` en `src/core/spacing.ts`): anillo, puente y habitáculo a 1,5, estación con su plano a 1,5, y cubo
+y espina a su tamaño de juego. No hay excepciones:
+
+- **El habitáculo** dejó de estar exento: se alargó.
+- **Los bastidores contiguos de la estación** ya no hacían falta como excepción: con el plano a 1,5, sus aparatos y
+  sus puntos de agarre quedan a 2 m o más.
+- **Las dos caras de una escotilla** son una sola puerta, que se usa desde cualquiera de los dos lados: cuentan como
+  un interactuable.
+
+Capturas (iPhone 13, a la izquierda 1× y a la derecha 1,5×): `docs/screenshots/escala-anillo.png` (el módulo
+desde el ascensor) y `docs/screenshots/escala-habitaculo.png` (el habitáculo en 3ª persona, junto a la escotilla EVA).
+
+Medido en un iPhone 13, en ninguna zona se solapan dos tarjetas de acción. Lo comprueban los recorridos PX-01,
+PX-02, PX-10, PX-11 y PX-13: una sola tarjeta junto a cada máquina, sin botones solapados.
 
 ## Preguntas abiertas
 
-- ¿Se escalan también el anillo y el habitáculo del módulo, o se quedan a tamaño real?
+- En el anillo, los utensilios de los pasos de cocina y los peces del acuario se ven 1,5 veces más anchos (son
+  piezas pequeñas dentro de una máquina). ¿Se dejan así o se pasan a tamaño real como los animales?

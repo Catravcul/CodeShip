@@ -177,7 +177,7 @@ caso y las anteriores quedan en sus run logs.
 | PX-09 | Probado (en vivo) | 2026-11-13 | `f59ae5a` | [run](runs/2026-11-13-1713-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09-PX-10-PX-11.md): 9 OK |
 | PX-10 | Probado (en vivo) | 2026-11-16 | `24842ba` | [run](runs/2026-11-16-1536-PX-02-PX-10-PX-14.md): 26 OK |
 | PX-11 | Probado (en vivo) | 2026-11-16 | `75bea64` | [run](runs/2026-11-16-1500-PX-02-PX-10-PX-11.md): 26 OK |
-| PX-12 | Probado (en vivo) | 2026-11-16 | `9b15623` | [run](runs/2026-11-16-1816-PX-12.md): 23 OK |
+| PX-12 | Probado (en vivo) | 2026-11-16 | `aa52928` | [run](runs/2026-11-16-2021-PX-12.md): 24 OK |
 | PX-13 | Probado (en vivo) | 2026-11-16 | `1c1b689` | [run](runs/2026-11-16-1923-PX-01-PX-02-PX-13-PX-27.md): 42 OK |
 | PX-14 | Probado (en vivo) | 2026-11-16 | `be7ba22` | [run](runs/2026-11-16-1835-PX-14-PX-15-PX-25.md): 34 OK |
 | PX-15 | Probado (en vivo) | 2026-11-16 | `be7ba22` | [run](runs/2026-11-16-1855-PX-15.md): 61 OK |
@@ -186,7 +186,7 @@ caso y las anteriores quedan en sus run logs.
 | PX-24 | Probado (en vivo) | 2026-11-16 | `ef23e9a` | [run](runs/2026-11-16-1800-PX-24.md): 10 OK |
 | PX-20 | FAIL | 2026-11-16 | `c033d52` | [run](runs/2026-11-16-1702-PX-20.md): 256 OK, 7 FALLA |
 | PX-25 | Probado (en vivo) | 2026-11-16 | `be7ba22` | [run](runs/2026-11-16-1835-PX-14-PX-15-PX-25.md): 40 OK |
-| PX-30 | Pendiente | | | |
+| PX-30 | Probado (en vivo) | 2026-11-16 | `aa52928` | [run](runs/2026-11-16-2019-PX-30.md): 30 OK |
 | PX-27 | Probado (en vivo) | 2026-11-16 | `1c1b689` | [run](runs/2026-11-16-1952-PX-27.md): 28 OK |
 
 ## Última ejecución por run log
@@ -195,6 +195,8 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-16 20:21 | PX-12 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-2021-PX-12.md) |
+| 2026-11-16 20:19 | PX-30 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-2019-PX-30.md) |
 | 2026-11-16 19:52 | PX-27 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-1952-PX-27.md) |
 | 2026-11-16 19:23 | PX-01, PX-02, PX-13, PX-27 | Experiencia (Playwright) | 2/4 recorridos bien | [run](runs/2026-11-16-1923-PX-01-PX-02-PX-13-PX-27.md) |
 | 2026-11-16 19:06 | PX-01, PX-02 | Experiencia (Playwright) | 1/2 recorridos bien | [run](runs/2026-11-16-1906-PX-01-PX-02.md) |

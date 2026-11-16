@@ -51,7 +51,8 @@ export interface Telemetry {
   readonly tiltDeg: number;
 }
 
-const STEP_S = 1 / 120;
+/** Physics step, s (120 Hz). A craft with tiny forces may integrate slower (`stepS` in the world options). */
+export const STEP_S = 1 / 120;
 /** Nose cone ahead of the hull box (matches the rendered ship). */
 const NOSE_M = 0.45;
 /** Landing assist: seconds to swing the belly to the ground, and its damping. */
@@ -64,6 +65,8 @@ const ASSIST_TIME_S = 0.6;
  * with a fixed timestep. Deterministic, so whole flights can be tested without rendering.
  */
 export class FlightComputer {
+  /** This craft's physics step, s. */
+  readonly stepS: number;
   rotationAssist = true;
   /** Turns the belly toward the ground (like a lander's attitude hold) while the pilot isn't rotating. */
   landingAssist = false;
@@ -87,9 +90,10 @@ export class FlightComputer {
   constructor(
     readonly ship: Ship,
     private _state: RigidBodyState,
-    private readonly world: { gravitySources: readonly GravitySource[]; target?: FlightTarget; startTimeS?: number },
+    private readonly world: { gravitySources: readonly GravitySource[]; target?: FlightTarget; startTimeS?: number; stepS?: number },
   ) {
     this._target = world.target;
+    this.stepS = world.stepS ?? STEP_S;
     // A craft that joins later (a new probe) shares the mission clock, so asteroids turn the same for both.
     this._simTimeS = world.startTimeS ?? 0;
   }
@@ -181,16 +185,16 @@ export class FlightComputer {
     if (this.berth) {
       // Docked: the latches hold the ship and every step would be the same, so skip them in one go
       // (a mothership trip in time-lapse passes thousands of steps a frame).
-      const n = Math.floor((this.accumulator + 1e-12) / STEP_S);
-      this.accumulator -= n * STEP_S;
-      this._simTimeS += n * STEP_S;
+      const n = Math.floor((this.accumulator + 1e-12) / this.stepS);
+      this.accumulator -= n * this.stepS;
+      this._simTimeS += n * this.stepS;
       this._state = this.berth();
       return;
     }
-    while (this.accumulator >= STEP_S - 1e-12) {
+    while (this.accumulator >= this.stepS - 1e-12) {
       this.step(input);
-      this.accumulator -= STEP_S;
-      this._simTimeS += STEP_S;
+      this.accumulator -= this.stepS;
+      this._simTimeS += this.stepS;
     }
   }
 
@@ -243,7 +247,7 @@ export class FlightComputer {
     if (this.anchor && target) {
       const thrusting = input.mainThrottle > 0 || input.translation.length() > 0;
       if (!thrusting) {
-        this.rideSurface(target, this._simTimeS + STEP_S);
+        this.rideSurface(target, this._simTimeS + this.stepS);
         return;
       }
       this.anchor = null;
@@ -254,7 +258,7 @@ export class FlightComputer {
     if (auto) input = auto;
     const idleRot = input.rotation.length() === 0;
     const cmd = idleRot && this.landingAssist && target ? { ...input, rotation: this.levelRotation() } : idleRot && this.rotationAssist ? { ...input, rotation: this.dampRotation() } : input;
-    const out = this.ship.fire(cmd, STEP_S);
+    const out = this.ship.fire(cmd, this.stepS);
     let gravity = Vec3.ZERO;
     for (const g of this.world.gravitySources) gravity = gravity.add(g.gravityAt(this._state.position));
     const massKg = this.ship.massKg;
@@ -266,9 +270,9 @@ export class FlightComputer {
         forceWorld: this._state.toWorld(out.forceBody).add(gravity.scale(massKg)),
         torqueBody: out.torqueBody,
       },
-      STEP_S,
+      this.stepS,
     );
-    if (target) this.checkContact(target, this._simTimeS + STEP_S);
+    if (target) this.checkContact(target, this._simTimeS + this.stepS);
     if (!this.anchor) this.afterStep?.(this._state);
   }
 

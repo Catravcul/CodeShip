@@ -37,6 +37,7 @@ export const PROPELLANT_MATERIALS: Readonly<Record<Propellant, Amounts>> = {
   "MMH/NTO": { mmh: FUEL_SHARE, nto: OX_SHARE, helio: HELIUM_PER_KG_PAIR },
   Hydrazine: { hidracina: 1 },
   "LMP-103S": { "lmp-103s": 1 },
+  Butano: { butano: 1 },
 };
 
 /** A craft the refuelling line can fill. */

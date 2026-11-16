@@ -2,7 +2,7 @@ import { Vec3 } from "@core/math/vec3";
 import type { HullSpec, MountedThruster, Propellant, TankSpec } from "./components";
 import { equipmentMassKg, type Equipment } from "./equipment";
 import { debrisDamageFactor } from "./mmod";
-import type { RcsThruster } from "./rcs-layout";
+import { rcsDuty, type RcsThruster } from "./rcs-layout";
 import { deltaV, massFlow } from "./rocket";
 
 export interface ShipDesign {
@@ -17,6 +17,13 @@ export interface ShipDesign {
    * mothership (docs/design/nave-nodriza.md).
    */
   readonly dockingPort?: Vec3;
+  /** How it is drawn outside: a real vehicle's own shape (the Apollo LM, Juventas) or the game's box hull. */
+  readonly look?: "apollo-lm" | "juventas";
+  /**
+   * Whether its legs anchor it when it touches down slowly enough (the lander's legs held by the game,
+   * Philae's screws). Juventas has none: it bounces and settles (docs/design/modulo-lunar-juventas.md).
+   */
+  readonly anchors?: boolean;
 }
 
 /** Pilot intent, already normalised: throttle 0..1, axes -1..1 in the body frame. */
@@ -185,12 +192,10 @@ export class Ship {
   private firings(cmd: ThrustCommand): { t: MountedThruster; duty: number }[] {
     const out: { t: MountedThruster; duty: number }[] = [];
     const throttle = clamp01(cmd.mainThrottle);
-    for (const t of this.design.mainEngines) if (throttle > 0) out.push({ t, duty: throttle });
+    // A throttleable engine cannot burn below its floor (the LM's DPS: 10 %): any command lights it at least there.
+    for (const t of this.design.mainEngines) if (throttle > 0) out.push({ t, duty: Math.max(t.model.minThrottle ?? 0, throttle) });
     for (const t of this.design.rcs) {
-      const duty =
-        t.role === "translation"
-          ? clamp01(t.direction.dot(cmd.translation))
-          : clamp01(t.position.cross(t.direction).normalize().dot(cmd.rotation));
+      const duty = rcsDuty(t, cmd.translation, cmd.rotation);
       if (duty > 0) out.push({ t, duty });
     }
     return out;

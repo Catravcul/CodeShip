@@ -25,16 +25,16 @@ export const PROBE_TRIP = {
   homeViaM: 400,
   /** …stopping within this of that point before the way down, m. */
   viaStopM: 20,
-  /** Share of the probe's small Δv (≈90 m/s) one hop may spend, so it can still come home and park. */
+  /** Share of Juventas's small Δv (≈5 m/s of butane) one hop may spend, so it can still come home and park. */
   maxDeltaVShare: 0.35,
 } as const;
 
 const PROBE_TUNING = { ...TRANSFER_TUNING, maxDeltaVShare: PROBE_TRIP.maxDeltaVShare };
 /**
- * The probe's engine gives ≈0,06 m/s² (a fifth of the lander's): a velocity error the lander's
- * guidance shrugs off costs it tens of metres of braking, so it corrects smaller errors (game values).
+ * Juventas's two aft thrusters give ≈0,00017 m/s² (2 mN on 12 kg): a velocity error the lander's
+ * guidance shrugs off costs it hundreds of metres of braking, so it corrects much smaller errors (game values).
  */
-const PROBE_GUIDANCE = { ...AUTOPILOT_TUNING, burnStartMS: 0.3, burnStopMS: 0.05 };
+const PROBE_GUIDANCE = { ...AUTOPILOT_TUNING, burnStartMS: 0.04, burnStopMS: 0.008, arriveSpeedMS: 0.05 };
 
 /** Where the probe goes: an asteroid (then it is parked by hand) or home to the mothership's bay. */
 export type ProbeGoal = { readonly kind: "asteroid"; readonly body: Asteroid } | { readonly kind: "bay" };
@@ -177,7 +177,7 @@ export class ProbeTrip {
     const from = stowed ? this.ports.bay().position : f.state.position;
     const d = this.body(g).surfaceDistance(from, f.simTimeS);
     if (d < PROBE_TRIP.minDistanceM) return { ok: false, reason: `A menos de ${(PROBE_TRIP.minDistanceM / 1000).toFixed(1).replace(".", ",")} km se vuela a mano` };
-    if (!this.hop(g).plan.feasible) return { ok: false, reason: "A la sonda no le queda hidracina para ese viaje" };
+    if (!this.hop(g).plan.feasible) return { ok: false, reason: "A Juventas no le queda gas frío para ese viaje" };
     return { ok: true };
   }
 
@@ -210,13 +210,14 @@ export class ProbeTrip {
       return;
     }
     const f = this.ports.flight();
-    const cruise = Math.max(0.5, h.plan.cruiseMS);
+    // Juventas cruises at tenths of a m/s: no floor above its plan (its Δv would not cover it).
+    const cruise = Math.max(0.05, h.plan.cruiseMS);
     if (g.kind === "bay") {
       // Stop above the bay first (its weak RCS can't turn a fast corner), then come straight down.
       const via = h.waypoints[h.waypoints.length - 1]!;
       this._autopilot = new TripAutopilot(f.ship, pointTarget(() => via), h.waypoints.slice(0, -1), cruise, PROBE_TRIP.viaStopM, PROBE_GUIDANCE);
       const down = Math.max(1, PROBE_TRIP.homeViaM - PROBE_TRIP.bayHandoverM);
-      this.nextLeg = () => new TripAutopilot(f.ship, this.body(g), [], Math.max(0.5, Math.min(cruise, Math.floor(Math.sqrt(h.plan.accelMS2 * down)))), this.handoverM(g), PROBE_GUIDANCE);
+      this.nextLeg = () => new TripAutopilot(f.ship, this.body(g), [], Math.max(0.02, Math.min(cruise, Math.floor(Math.sqrt(h.plan.accelMS2 * down) * 100) / 100)), this.handoverM(g), PROBE_GUIDANCE);
     } else {
       this._autopilot = new TripAutopilot(f.ship, this.body(g), h.waypoints, cruise, this.handoverM(g), PROBE_GUIDANCE);
       this.nextLeg = undefined;
@@ -224,7 +225,7 @@ export class ProbeTrip {
     f.engage(this._autopilot);
     this.flying = f;
     this.startDistanceM = Math.max(1, h.plan.distanceM);
-    this.clock = new TravelClock(h.plan.totalS, realSeconds(h.plan.totalS, TRAVEL_TIME.lapse.probe), { minLapse: 1, maxLapse: TRAVEL_TIME.maxPhysicsLapse });
+    this.clock = new TravelClock(h.plan.totalS, realSeconds(h.plan.totalS, TRAVEL_TIME.lapse.probe), { minLapse: TRAVEL_TIME.lapse.probe, maxLapse: TRAVEL_TIME.maxProbePhysicsLapse });
     this._status = "flying";
   }
 

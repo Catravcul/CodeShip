@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { ShipDesign, ThrustCommand } from "@modules/ship/domain/ship";
 import type { TankSpec, ThrusterModel } from "@modules/ship/domain/components";
-import type { RcsThruster } from "@modules/ship/domain/rcs-layout";
+import { rcsDuty, type RcsThruster } from "@modules/ship/domain/rcs-layout";
 import { explorerDesign } from "@modules/ship/data/explorer";
 import { MMH_DENSITY, MMH_NTO_MIXTURE_RATIO, NTO_DENSITY, PROPELLANT_DENSITY, tankVolumeM3 } from "@modules/ship/data/propellants";
 
@@ -309,12 +309,7 @@ export class ShipModel {
       this.mainFlame.scale.setScalar(0.9 + 0.15 * Math.sin(t * 40));
     }
     for (const { mesh, t: th } of this.puffs) {
-      const d = th.direction;
-      const duty =
-        th.role === "translation"
-          ? d.x * cmd.translation.x + d.y * cmd.translation.y + d.z * cmd.translation.z
-          : th.position.cross(d).normalize().dot(cmd.rotation);
-      mesh.visible = duty > 0;
+      mesh.visible = rcsDuty(th, cmd.translation, cmd.rotation) > 0;
     }
   }
 }

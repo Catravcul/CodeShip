@@ -81,12 +81,8 @@ describe("station ops", () => {
     expect(ops({ silicatos: 50 }).refining().find((r) => r.process.id === "mre")!.scale).toBeCloseTo(0.5);
   });
 
-  it("a probe goes to the hangar as a craft", () => {
-    const o = ops({ hierro: 100, carbono: 20, niquel: 10, ceramica: 10, kit: 5 });
-    const s = o.startFabrication("plano-sonda");
-    while (s.run.status === "doing") s.answer(right(s.run.current!));
-    o.station.tick(100);
-    expect(o.station.hangar.crafts.map((c) => c.kind)).toEqual(["sonda"]);
+  it("no blueprint makes a whole probe any more: Juventas is assembled from its parts in the catalogue", () => {
+    expect(() => ops({ hierro: 100, carbono: 20, niquel: 10, ceramica: 10, kit: 5 }).startFabrication("plano-sonda")).toThrow();
   });
 });
 

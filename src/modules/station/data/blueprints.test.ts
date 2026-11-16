@@ -5,7 +5,7 @@ import { MOTHERSHIP_EQUIPMENT } from "@modules/mothership/data/equipment";
 import { ELECTRIC_THRUSTERS, X3 } from "@modules/mothership/data/thrusters";
 import { BENNU } from "@modules/celestial/data/bennu";
 import { extractToCargo } from "@modules/celestial/domain/resources";
-import { BLUEPRINTS, PROBE_BLUEPRINT, RCS_SET_SIZE, blueprintForPart } from "./blueprints";
+import { BLUEPRINTS, RCS_SET_SIZE, blueprintForPart } from "./blueprints";
 import { REFINE_PROCESSES } from "./processes";
 import { MATERIALS, cargoMaterial } from "./materials";
 import { STARTING_STOCK } from "./station";
@@ -15,9 +15,10 @@ import { MaterialStock } from "../domain/materials";
 const metalKg = (inputs: Readonly<Record<string, number>>) => Object.entries(inputs).reduce((s, [id, n]) => s + (id === "kit" ? 0 : n), 0);
 
 describe("blueprints", () => {
-  it("every part of the ship's catalog has one, plus the probe", () => {
+  it("every part of the ship's catalog has one; the 30 kg prospecting probe is gone (Juventas is built from its parts)", () => {
     for (const p of ALL_PARTS.filter((x) => !isEmptyPart(x))) expect(blueprintForPart(p.id), p.id).toBeDefined();
-    expect(BLUEPRINTS).toContain(PROBE_BLUEPRINT);
+    expect(BLUEPRINTS.find((b) => b.id === "plano-sonda")).toBeUndefined();
+    for (const id of ["juventas-bus", "jura", "grass", "juventas-gas-frio", "bateria-juventas"]) expect(blueprintForPart(id), id).toBeDefined();
   });
 
   it("every thruster of the mothership has one: the head is printed, its power unit comes in kits", () => {

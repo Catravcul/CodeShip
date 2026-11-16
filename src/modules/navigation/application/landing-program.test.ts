@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { Quat } from "@core/math/quat";
 import { Vec3 } from "@core/math/vec3";
 import { Ship } from "@modules/ship/domain/ship";
-import { explorerDesign } from "@modules/ship/data/explorer";
-import { probeDesign } from "@modules/ship/data/probe";
+import { lunarModuleDesign } from "@modules/ship/data/apollo-lm";
+import { probeDesign, PROBE_STEP_S } from "@modules/ship/data/probe";
 import { Asteroid } from "@modules/celestial/domain/asteroid";
 import { BENNU } from "@modules/celestial/data/bennu";
 import { FlightComputer, NO_INPUT } from "@modules/flight/application/flight-computer";
@@ -25,7 +25,7 @@ const wrong = (ex: Exercise, n = 0): Answer =>
  */
 function make(craft: LandingCraft, heightM = 300, dir = new Vec3(0.3, 0.2, 1).normalize()) {
   const bennu = new Asteroid(BENNU, Vec3.ZERO);
-  const ship = Ship.create(craft === "sonda" ? probeDesign(1) : explorerDesign());
+  const ship = Ship.create(craft === "sonda" ? probeDesign(1) : lunarModuleDesign());
   let r = 300;
   while (bennu.surfaceDistance(dir.scale(r), 0) < heightM) r += 0.5;
   const pos = dir.scale(r);
@@ -34,7 +34,7 @@ function make(craft: LandingCraft, heightM = 300, dir = new Vec3(0.3, 0.2, 1).no
   const axis = new Vec3(0, 0, -1).cross(nose);
   const angle = Math.acos(Math.max(-1, Math.min(1, new Vec3(0, 0, -1).dot(nose))));
   const q = axis.length() < 1e-9 ? Quat.IDENTITY : Quat.fromAxisAngle(axis.normalize(), angle);
-  const fc = new FlightComputer(ship, RigidBodyState.at(pos).withOrientation(q).withVelocity(bennu.surfaceVelocity(pos)), { gravitySources: [bennu], target: bennu });
+  const fc = new FlightComputer(ship, RigidBodyState.at(pos).withOrientation(q).withVelocity(bennu.surfaceVelocity(pos)), { gravitySources: [bennu], target: bennu, ...(craft === "sonda" ? { stepS: PROBE_STEP_S } : {}) });
   const program = new LandingProgram({ craft, flight: () => fc, describe: (t) => (t === bennu ? { id: "101955", name: "Bennu" } : undefined) });
   program.update();
   return { bennu, fc, program, ship };
@@ -65,8 +65,10 @@ describe("landing challenges (VUE-08)", () => {
     // One trap block: coming down fast until it touches.
     expect(seq!.kind === "order" && seq!.blocks.length - seq!.solution.length).toBe(1);
     expect(drift!.kind === "choice" && drift!.question).toContain("Bennu gira");
-    expect(flare!.kind === "choice" && flare!.options[flare!.correct]).toContain("0,040");
-    expect(spec!.kind === "choice" && spec!.options[spec!.correct]).toContain("anclas de rosca");
+    // Juventas touches at 2 cm/s and has no anchors: the bounces die out and its accelerometers record them.
+    expect(flare!.kind === "choice" && flare!.options[flare!.correct]).toContain("0,020");
+    expect(spec!.kind === "choice" && spec!.options[spec!.correct]).toContain("acelerómetros");
+    expect(spec!.kind === "choice" && spec!.options[spec!.correct]).not.toContain("anclas");
   });
 
   it("VUE-08 each choice has a single right option and the chain can be solved", () => {
@@ -118,7 +120,7 @@ describe("landing by program (VUE-09, SON-05)", { timeout: 30000 }, () => {
     expect(real).toBeLessThan(60);
   });
 
-  it("SON-05 the probe lands by program on Bennu and anchors within its 1,5 m site", () => {
+  it("SON-05 the probe (Juventas) lands by program on Bennu at centimetres per second within its 1,5 m site", () => {
     const { fc, program } = make("sonda");
     program.engage(0);
     fly(fc, program, 150);

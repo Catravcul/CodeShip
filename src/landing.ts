@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { LandingProgram, LandingStatus } from "@modules/navigation/application/landing-program";
 import { LANDING_PROGRAM } from "@modules/navigation/application/landing-program";
+import { settle } from "@modules/flight/domain/settling";
 import type { LandingPhase } from "@modules/navigation/application/landing-guidance";
 import { num } from "@modules/navigation/application/trip-chore";
 import type { TripChipData } from "./ui/trip-chip";
@@ -45,6 +46,11 @@ export interface LandingUiDeps {
   say(text: string): void;
   /** Name of the body below. */
   targetName(): string;
+  /**
+   * Pull of the body at the craft, m/s²: given for a craft without anchors (Juventas), whose touchdown is
+   * told as bounces until it settles (its accelerometers' record).
+   */
+  gravityMs2?(): number;
   /** Draws each landing step as it is answered right (site, drift, curve, flare, anchors). */
   readonly overlay?: PlanOverlay;
   /** Frames the ground below while the sheet is open (the plan is drawn there), and after. */
@@ -183,8 +189,16 @@ export class LandingUi {
     const name = this.d.targetName();
     const say = this.d.say;
     if (s === "flying") say(`Programa cargado: baja sola al sitio en ${name}${p.mistakes ? ` (menos preciso: ${p.mistakes} ${p.mistakes === 1 ? "fallo" : "fallos"})` : ""}`);
-    if (s === "landed") say(`Posada por programa a ${metres(p.missM() ?? 0)} del centro del sitio`);
-    if (s === "bounced") say(`Rebote: el programa tocó a ${num(LANDING_PROGRAM.touchdownMs[p.mistakes] ?? 0, 2)} m/s (más de 0,10). Vuelve a programarlo o pósala a mano`);
+    if (s === "landed") {
+      const g = this.d.gravityMs2?.();
+      if (g === undefined) say(`Posada por programa a ${metres(p.missM() ?? 0)} del centro del sitio`);
+      else {
+        // No anchors (Juventas): it touches at centimetres per second and bounces until it stays still.
+        const st = settle(p.touchdownMs, g);
+        say(`Toca a ${num(p.touchdownMs * 100, 0)} cm/s, rebota ${st.bounces} ${st.bounces === 1 ? "vez" : "veces"} (salto mayor: ${metres(st.highestHopM)}) y queda quieta en ${num(st.seconds / 60, 0)} min, a ${metres(p.missM() ?? 0)} del centro. Los acelerómetros lo graban`);
+      }
+    }
+    if (s === "bounced") say(`Rebote: el programa tocó a ${num(p.touchdownMs, 2)} m/s (más de 0,10). Vuelve a programarlo o pósala a mano`);
     if (s === "manual" && prev === "flying") say("Mando manual: el programa de aterrizaje se ha desconectado");
     if (s === "failed" && prev === "programming") say("El programa no compila: pósala a mano o vuelve a programarlo");
   }

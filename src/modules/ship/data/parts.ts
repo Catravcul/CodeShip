@@ -13,7 +13,7 @@ export const MAIN_ENGINE_PARTS: readonly ThrusterPart[] = MAIN_ENGINES.map(thrus
 /** Attitude thrusters on the shelf (real models). */
 export const RCS_PARTS: readonly ThrusterPart[] = RCS_THRUSTERS.map(thruster);
 
-const NAME: Readonly<Record<TankSpec["propellant"], string>> = { "MMH/NTO": "Par MMH/NTO", Hydrazine: "Tanque de hidracina", "LMP-103S": "Tanque de LMP-103S" };
+const NAME: Readonly<Record<TankSpec["propellant"], string>> = { "MMH/NTO": "Par MMH/NTO", Hydrazine: "Tanque de hidracina", "LMP-103S": "Tanque de LMP-103S", Butano: "Depósito de butano" };
 function tank(id: string, spec: TankSpec): TankPart {
   const b = spec.build!;
   const what = b.count > 1 ? `${b.count} × ${b.tank.maker} ${b.tank.id}` : `${b.tank.maker} ${b.tank.id}`;

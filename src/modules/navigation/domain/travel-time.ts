@@ -17,15 +17,20 @@ export const TRAVEL_TIME = {
   /**
    * Base lapse of each vehicle, game seconds per real second. Short trips play at this pace, so they
    * scale in proportion; long ones are squeezed into the cap (game values).
-   * Mothership: a 9 km hop (≈5 h) plays in ≈30 s. Lander: a 1 km leg (≈80 s) in ≈16 s. Probe: a 9 km hop
-   * (≈14 min) in the cap.
+   * Mothership: a 9 km hop (≈5 h) plays in ≈30 s. Lander: a 1 km leg (≈80 s) in ≈16 s. Probe: Juventas
+   * crawls on 1 mN thrusters (≈2 h for a few km), so a hop plays in the cap.
    */
-  lapse: { carrier: 600, lander: 5, probe: 10 } as Readonly<Record<TravelVehicle, number>>,
+  lapse: { carrier: 600, lander: 5, probe: 100 } as Readonly<Record<TravelVehicle, number>>,
   /**
    * Top lapse for legs flown by the physics (the 120 Hz flight computer and its guidance): beyond it a
    * frame would need too many steps. Game value.
    */
   maxPhysicsLapse: 60,
+  /**
+   * Juventas's legs (12 kg, two 1 mN thrusters: hours of game time) may lapse faster: a frame of the
+   * probe alone costs a few hundred steps, like a lander frame at 60×. Game value.
+   */
+  maxProbePhysicsLapse: 400,
 } as const;
 
 /**

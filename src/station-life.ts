@@ -5,6 +5,7 @@ import type { Larder } from "@modules/station/application/bio-ops";
 import { STATION_AREA_NAME, type StationCrew } from "@modules/station/application/station-crew";
 import { TRIP_STORES_SHARE } from "@modules/station/data/galley";
 import type { LanderBerth } from "@modules/station/domain/hangar-berth";
+import { ISS_OUTSIDE } from "@modules/station/data/iss";
 import { DEPLOY_STEPS, type AirlockItem, type CargoAirlock } from "@modules/station/domain/cargo-airlock";
 import type { Fixture } from "@modules/station/domain/interior";
 import type { DuelView, SessionText } from "./ui/duel-view";
@@ -32,6 +33,8 @@ export interface StationLifeDeps {
   readonly duel: DuelView;
   /** The lander is on the station's port now. */
   atPort(): boolean;
+  /** The lander's mass now (the arm moves up to 116 t), kg. */
+  landerMassKg?(): number;
   /** The mothership's larder, while she is berthed here. */
   mothershipLarder(): Larder | undefined;
   openTasks(): void;
@@ -121,10 +124,10 @@ export class StationLife {
       case "mirar":
         return this.d.lookOutside();
       case "atracar": {
-        const why = this.d.berth.berth(this.d.atPort());
+        const why = this.d.berth.berth(this.d.atPort(), this.d.landerMassKg ? { massKg: this.d.landerMassKg(), maxKg: ISS_OUTSIDE.canadarm2.maxPayloadKg } : undefined);
         if (why) return this.d.say(why, 6);
         this.d.lookOutside({ kind: "atraque" });
-        return this.d.say("Canadarm2 agarra el módulo, lo saca de su IDA y lo atraca en el CBM de nadir de Unity, como un Cygnus: 16 pernos", 6);
+        return this.d.say(`Canadarm2 agarra el módulo lunar (${Math.round((this.d.landerMassKg?.() ?? 0) / 100) / 10} t de 116), lo saca de su IDA y lo atraca en el CBM de nadir de Unity, como un Cygnus: 16 pernos`.replace(".", ","), 6);
       }
       case "desatracar": {
         const why = this.d.berth.unberth();

@@ -3,6 +3,8 @@ import type { CraftSpec } from "./blueprint";
 /** A ship or probe the station keeps track of, docked or out flying. */
 export interface Craft extends CraftSpec {
   docked: boolean;
+  /** A catalogue vehicle let go from its assembly site («Botar» / «Desplegar»). */
+  released?: boolean;
 }
 
 /** The station's hangar: the player's ships and probes, and spare parts by id. */

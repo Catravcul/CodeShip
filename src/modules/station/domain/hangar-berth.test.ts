@@ -25,3 +25,13 @@ describe("EST-22 what would go in the old hangar (backlog)", () => {
     expect(b.place).toBe("puerto");
   });
 });
+
+describe("CAT-05 Canadarm2 berths the Apollo LM on the CBM", () => {
+  it("takes the LM's 15 t, never more than its 116 t", () => {
+    const b = new LanderBerth();
+    expect(b.berth(true, { massKg: 300000, maxKg: 116000 })).toMatch(/116 t/);
+    expect(b.onCbm).toBe(false);
+    expect(b.berth(true, { massKg: 15460, maxKg: 116000 })).toBeUndefined();
+    expect(b.onCbm).toBe(true);
+  });
+});

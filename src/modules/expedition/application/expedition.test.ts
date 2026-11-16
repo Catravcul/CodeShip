@@ -7,7 +7,7 @@ import { RigidBodyState } from "@modules/flight/domain/rigid-body";
 import { EXERCISES } from "@modules/mind-duel/data/exercises";
 import type { Answer, Exercise } from "@modules/mind-duel/domain/exercise";
 import { Ship } from "@modules/ship/domain/ship";
-import { explorerDesign } from "@modules/ship/data/explorer";
+import { lunarModuleDesign } from "@modules/ship/data/apollo-lm";
 import { POLANA_MEMBERS } from "@modules/celestial/data/nueva-polana";
 import { duelProfileFor } from "@modules/mind-duel/domain/difficulty";
 import { resourceRichness } from "@modules/celestial/domain/resources";
@@ -17,7 +17,7 @@ import { Expedition } from "./expedition";
 const r = BENNU.meanRadiusM.value;
 const make = (probeDone = true) => {
   const bennu = new Asteroid(BENNU, Vec3.ZERO);
-  const flight = new FlightComputer(Ship.create(explorerDesign()), RigidBodyState.at(new Vec3(0, r + 1.5, 0)).withVelocity(new Vec3(0, -0.05, 0)), {
+  const flight = new FlightComputer(Ship.create(lunarModuleDesign()), RigidBodyState.at(new Vec3(0, r + 1.5, 0)).withVelocity(new Vec3(0, -0.05, 0)), {
     gravitySources: [bennu],
     target: bennu,
   });
@@ -214,7 +214,7 @@ describe("Expedition", () => {
     const data = POLANA_MEMBERS[0]!;
     const member = new Asteroid(data, new Vec3(-4200, 900, -9000));
     const above = member.position.add(new Vec3(0, data.meanRadiusM.value + 1.5, 0));
-    const flight = new FlightComputer(Ship.create(explorerDesign()), RigidBodyState.at(above).withVelocity(member.surfaceVelocity(above).add(new Vec3(0, -0.05, 0))), {
+    const flight = new FlightComputer(Ship.create(lunarModuleDesign()), RigidBodyState.at(above).withVelocity(member.surfaceVelocity(above).add(new Vec3(0, -0.05, 0))), {
       gravitySources: [bennu, member],
       target: bennu,
     });

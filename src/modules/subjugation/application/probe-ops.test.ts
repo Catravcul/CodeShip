@@ -5,7 +5,7 @@ import { BENNU } from "@modules/celestial/data/bennu";
 import { FlightComputer, NO_INPUT } from "@modules/flight/application/flight-computer";
 import { RigidBodyState } from "@modules/flight/domain/rigid-body";
 import { Ship } from "@modules/ship/domain/ship";
-import { PROBE_BATTERY_WH, PROBE_LOAD_W, PROBES_ON_BOARD, probeDesign } from "@modules/ship/data/probe";
+import { PROBE_BATTERY_WH, PROBE_LOAD_W, PROBES_ON_BOARD, probeDesign, PROBE_STEP_S } from "@modules/ship/data/probe";
 import { ProbeOps } from "./probe-ops";
 
 const r = BENNU.meanRadiusM.value;
@@ -18,7 +18,7 @@ const setup = (heightM = 1.5, s = spec) => {
   let bayPos = new Vec3(0, r + heightM, 0);
   const bay = () => RigidBodyState.at(bayPos);
   const ops = new ProbeOps(
-    (serial, timeS) => new FlightComputer(Ship.create(probeDesign(serial)), bay(), { gravitySources: [bennu], target: bennu, startTimeS: timeS }),
+    (serial, timeS) => new FlightComputer(Ship.create(probeDesign(serial)), bay(), { stepS: PROBE_STEP_S, gravitySources: [bennu], target: bennu, startTimeS: timeS }),
     bay,
     s,
   );
@@ -29,15 +29,18 @@ const fly = (ops: ProbeOps, seconds: number, threat?: Parameters<ProbeOps["updat
 };
 
 describe("ProbeOps", () => {
-  it("the probe is a real small craft: about 17 kg, tens of m/s of Δv, gentle thrust", () => {
+  it("the probe is Juventas: 12 kg, a few m/s of cold gas, 1 mN thrusters", () => {
     const ship = Ship.create(probeDesign());
-    expect(ship.massKg).toBeGreaterThan(15);
-    expect(ship.massKg).toBeLessThan(18);
-    expect(ship.mainDeltaV()).toBeGreaterThan(60);
-    expect(ship.mainDeltaV()).toBeLessThan(120);
+    expect(ship.massKg).toBeCloseTo(12, 6);
+    expect(ship.mainDeltaV()).toBeGreaterThan(4);
+    expect(ship.mainDeltaV()).toBeLessThan(6);
     const a = ship.preview({ mainThrottle: 1, translation: Vec3.ZERO, rotation: Vec3.ZERO }).forceBody.length() / ship.massKg;
-    expect(a).toBeGreaterThan(0.03);
-    expect(a).toBeLessThan(0.1);
+    expect(a).toBeCloseTo(0.002 / 12, 8);
+    // It turns on its reaction wheels: rotating spends no butane.
+    const before = ship.propellantKg("Butano");
+    ship.fire({ mainThrottle: 0, translation: Vec3.ZERO, rotation: Vec3.X }, 10);
+    expect(ship.propellantKg("Butano")).toBe(before);
+    expect(ship.design.anchors).toBe(false);
   });
 
   it("starts stowed in the bay and rides it while the travel ship moves", () => {

@@ -7,7 +7,7 @@ import { RigidBodyState } from "@modules/flight/domain/rigid-body";
 import type { Mothership } from "@modules/mothership/domain/mothership";
 import type { Answer } from "@modules/mind-duel/domain/exercise";
 import { Ship, type ThrustCommand } from "@modules/ship/domain/ship";
-import { PROBE_BATTERY_WH, PROBE_HULL, PROBE_LOAD_W, PROBES_ON_BOARD, probeDesign } from "@modules/ship/data/probe";
+import { PROBE_BATTERY_WH, PROBE_HULL, PROBE_LOAD_W, PROBES_ON_BOARD, probeDesign, PROBE_STEP_S } from "@modules/ship/data/probe";
 import { ProbeOps } from "@modules/subjugation/application/probe-ops";
 import { stageIndex, type Stage } from "@modules/subjugation/domain/rapport";
 import { LEVEL_NAME, type Level } from "@modules/subjugation/domain/levels";
@@ -106,7 +106,7 @@ export class SubjugationUi {
     const { expedition: ex, mothership, region } = d;
     const bay = () => this.bayPose();
     this.probe = new ProbeOps(
-      (serial, timeS) => new FlightComputer(Ship.create(probeDesign(serial)), bay(), { gravitySources: region.asteroids, target: ex.asteroid, startTimeS: timeS }),
+      (serial, timeS) => new FlightComputer(Ship.create(probeDesign(serial)), bay(), { stepS: PROBE_STEP_S, gravitySources: region.asteroids, target: ex.asteroid, startTimeS: timeS }),
       bay,
       { probes: PROBES_ON_BOARD, batteryWh: PROBE_BATTERY_WH, loadW: PROBE_LOAD_W },
     );

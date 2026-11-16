@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Hangar } from "./hangar";
-import { assemble, assemblySite, canBuild, componentMass, lineStatus, missingParts, type CatalogueInventory, type VehicleEntry } from "./vehicle-catalogue";
+import { assemble, assemblyPlan, canBuild, componentMass, lineStatus, missingParts, type CatalogueInventory, type VehicleEntry } from "./vehicle-catalogue";
 
 const entry: VehicleEntry = {
   id: "prueba",
@@ -65,12 +65,21 @@ describe("EST-28 vehicle catalogue", () => {
     expect(partial.unknown).toEqual(["x"]);
   });
 
-  it("is assembled in the hangar when it fits, otherwise in the dry dock", () => {
-    const hangar = { x: 20, y: 14, z: 20 };
-    expect(assemblySite([2, 2, 3], hangar)).toBe("hangar");
-    expect(assemblySite([9.4, 7.04, 9.4], hangar)).toBe("hangar"); // any orientation
-    expect(assemblySite([52.1, 9, 9], hangar)).toBe("dique");
-    expect(assemblySite(undefined, hangar)).toBe("dique");
+  it("CAT-01 is put together where the ISS really would: Bishop, JEM-EF, the arm on a CBM, or the dry dock (licence)", () => {
+    // The ISS's numbers (data/iss.ts): Bishop 3,99 m³ in a 2,014 × 1,8 m bell; a JEM-EF port 500 kg in 1,85 × 1 × 0,8 m; Canadarm2 116 t and 17,6 m.
+    const limits = { bishop: { volumeM3: 3.99, diameterM: 2.014, heightM: 1.8 }, jemEf: { massKg: 500, envelopeM: [1.85, 1, 0.8] as const }, arm: { maxPayloadKg: 116000, lengthM: 17.6 } };
+    const cubesat = { ...entry, specs: { ...entry.specs, sizeM: [0.37, 0.23, 0.1] as const } };
+    expect(assemblyPlan(cubesat, 12, limits)).toMatchObject({ site: "bishop", reality: "real" });
+    const rack = { ...entry, kind: "aterrizador" as const, specs: { ...entry.specs, sizeM: [1, 1, 0.8] as const } };
+    expect(assemblyPlan(rack, 100, limits).site).toBe("jem-ef");
+    expect(assemblyPlan(rack, 501, limits).site).toBe("brazo-cbm");
+    const lm = { ...entry, kind: "aterrizador" as const, specs: { ...entry.specs, sizeM: [7.04, 9.4, 9.4] as const } };
+    expect(assemblyPlan(lm, 4620, limits)).toMatchObject({ site: "brazo-cbm", reality: "real" });
+    expect(assemblyPlan(lm, 120000, limits).site).toBe("dique");
+    const starship = { ...entry, kind: "nave" as const, specs: { ...entry.specs, sizeM: [52.1, 9, 9] as const } };
+    expect(assemblyPlan(starship, 85000, limits)).toMatchObject({ site: "dique", reality: "licencia" });
+    expect(assemblyPlan(starship, 85000, limits).why).toContain("más largo que el brazo");
+    expect(assemblyPlan({ ...entry, specs: { ...entry.specs, sizeM: undefined } }, 500, limits).site).toBe("dique");
   });
 
   it("assembling takes the parts from the hangar and leaves the craft there", () => {

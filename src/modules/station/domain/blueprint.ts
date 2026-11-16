@@ -30,6 +30,8 @@ export interface CraftSpec {
   readonly kind: "nave" | "sonda" | "remolcador" | "lanzador" | "aterrizador" | "estacion";
   readonly massKg: number;
   readonly note?: string;
+  /** Where a catalogue vehicle was put together (vehicle-catalogue.ts `AssemblySite`). */
+  readonly site?: "bishop" | "jem-ef" | "brazo-cbm" | "dique";
 }
 
 /**

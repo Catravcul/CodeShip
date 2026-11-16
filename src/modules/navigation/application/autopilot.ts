@@ -30,6 +30,15 @@ export const AUTOPILOT_TUNING = {
 } as const;
 
 const NOSE_BODY = new Vec3(0, 0, -1);
+
+/**
+ * The way the main engines push, body frame: the nose (−z) for the game's craft, up through the belly
+ * (+y) for the Apollo LM, whose descent engine fires down. Burns turn this axis onto the wanted direction.
+ */
+export function thrustAxis(ship: Ship): Vec3 {
+  const sum = ship.mainEngines.reduce((a, e) => a.add(e.direction), Vec3.ZERO);
+  return sum.length() < 1e-9 ? NOSE_BODY : sum.normalize();
+}
 const clamp = (v: number, lo = -1, hi = 1) => Math.max(lo, Math.min(hi, v));
 const angleBetween = (a: Vec3, b: Vec3) => Math.atan2(a.cross(b).length(), a.dot(b));
 
@@ -86,12 +95,15 @@ export class TripAutopilot implements Guidance {
     return new Vec3(Math.abs(t(Vec3.X).x), Math.abs(t(Vec3.Y).y), Math.abs(t(Vec3.Z).z));
   }
 
-  /** Rotation command that turns the nose toward `dirWorld` (bang-bang with a rate cap, roll held at zero). */
-  private pointNose(state: RigidBodyState, dirWorld: Vec3): Vec3 {
+  /**
+   * Rotation command that turns a body axis (the nose by default) toward `dirWorld` (bang-bang with a rate
+   * cap; the turn about that axis itself is only damped).
+   */
+  private pointNose(state: RigidBodyState, dirWorld: Vec3, along: Vec3 = NOSE_BODY): Vec3 {
     const d = state.toBody(dirWorld.normalize());
-    let axis = NOSE_BODY.cross(d);
-    const angle = Math.atan2(axis.length(), NOSE_BODY.dot(d));
-    if (axis.length() < 1e-9) axis = angle > 1 ? Vec3.Y : Vec3.ZERO;
+    let axis = along.cross(d);
+    const angle = Math.atan2(axis.length(), along.dot(d));
+    if (axis.length() < 1e-9) axis = angle > 1 ? (Math.abs(along.y) > 0.5 ? Vec3.X : Vec3.Y) : Vec3.ZERO;
     const err = axis.length() === 0 ? Vec3.ZERO : axis.normalize().scale(angle);
     const I = this.ship.inertiaKgM2;
     const m = this.torqueMax();
@@ -103,14 +115,15 @@ export class TripAutopilot implements Guidance {
       const want = Math.sign(e) * Math.min(T.maxRateRadS, Math.sqrt(2 * alpha * Math.abs(e)));
       return clamp(((want - wi) * Ii) / (mi * 0.25));
     };
-    return new Vec3(axisCmd(err.x, w.x, I.x, m.x), axisCmd(err.y, w.y, I.y, m.y), axisCmd(0, w.z, I.z, m.z));
+    return new Vec3(axisCmd(err.x, w.x, I.x, m.x), axisCmd(err.y, w.y, I.y, m.y), axisCmd(err.z, w.z, I.z, m.z));
   }
 
-  /** Seconds to turn the ship half round with the planning limits. */
+  /** Seconds to turn the ship half round with the planning limits (about the axes across its thrust). */
   private flipTimeS(): number {
     const I = this.ship.inertiaKgM2;
     const m = this.torqueMax();
-    const alpha = Math.min(m.x / I.x, m.y / I.y) * this.tuning.turnShare;
+    const up = Math.abs(thrustAxis(this.ship).y) > 0.5;
+    const alpha = (up ? Math.min(m.x / I.x, m.z / I.z) : Math.min(m.x / I.x, m.y / I.y)) * this.tuning.turnShare;
     return turnTimeS(Math.PI, alpha, this.tuning.maxRateRadS);
   }
 
@@ -123,6 +136,8 @@ export class TripAutopilot implements Guidance {
     const toCentre = this.target.position.sub(pos);
     const surfaceR = toCentre.length() - height;
     const nose = state.toWorld(NOSE_BODY);
+    const axis = thrustAxis(this.ship);
+    const thrust = state.toWorld(axis);
 
     // Safety: never let the guidance take the ship near the ground.
     if (height < this.approachM * T.safetyShare) return this.finish(state, "arrived");
@@ -152,7 +167,7 @@ export class TripAutopilot implements Guidance {
     const aBrake = a * TRANSFER_TUNING.brakeShare;
     const retro = speed > 0.05 ? vel.scale(-1 / speed) : u.scale(-1);
     // Time the flip will still take before braking can start, as distance lost at this speed.
-    const lead = speed * this.flipTimeS() * (angleBetween(nose, retro) / Math.PI);
+    const lead = speed * this.flipTimeS() * (angleBetween(thrust, retro) / Math.PI);
     const vWant = remaining <= 0 ? 0 : Math.min(this.cruiseMS, Math.sqrt(2 * aBrake * Math.max(0, remaining - lead)));
     const err = u.scale(vWant).sub(vel);
     const e = err.length();
@@ -167,7 +182,7 @@ export class TripAutopilot implements Guidance {
     let translation = Vec3.ZERO;
     if (this.burning) {
       dir = err;
-      const aligned = angleBetween(nose, err) < T.alignRad;
+      const aligned = angleBetween(thrust, err) < T.alignRad;
       throttle = aligned ? clamp(e / (a * 0.5), 0.05, 1) : 0;
       phase = aligned ? (braking ? "brake" : "burn") : braking ? "flip" : "orient";
     } else {
@@ -176,9 +191,9 @@ export class TripAutopilot implements Guidance {
       const flipSoon = speed > 0.5 && remaining - stopDist < speed * this.flipTimeS() * 1.5 + 50;
       dir = flipSoon ? retro : speed > 0.5 ? vel : u;
       translation = this.rcsTrim(state, err);
-      phase = flipSoon && angleBetween(nose, retro) > T.alignRad ? "flip" : "coast";
+      phase = flipSoon && angleBetween(thrust, retro) > T.alignRad ? "flip" : "coast";
     }
-    const rotation = this.pointNose(state, dir);
+    const rotation = this.pointNose(state, dir, axis);
     const eta = speed > 0.5 ? Math.max(0, remaining) / Math.max(0.5, Math.min(speed, this.cruiseMS)) + speed / (2 * aBrake) : Math.max(0, remaining) / Math.max(1, this.cruiseMS) + this.cruiseMS / a;
     this._status = { phase, remainingM: Math.max(0, remaining), speedMS: speed, etaS: eta };
     return { mainThrottle: throttle, translation, rotation };

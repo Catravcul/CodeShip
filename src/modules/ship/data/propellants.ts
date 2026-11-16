@@ -31,6 +31,7 @@ export const PROPELLANT_DENSITY: Readonly<Record<Propellant, Sourced<number>>> =
     note: "MMH 0.875 g/cm³ (Wikipedia, Monomethylhydrazine); NTO 1.44246 g/cm³ (Wikipedia, Dinitrogen tetroxide); O/F 1.65 from the L3Harris sheet",
   },
   "LMP-103S": { value: 1240, source: PROP_SRC.marshallSoa, note: "1.24 g/cm³ (NASA MSFC state of the art 2020); ADN, methanol, ammonia and water" },
+  Butano: { value: 122 / 0.24, source: "https://gomspace.com/UserFiles/Subsystems/flyer/Flyer_NanoProp_6DOF.pdf", note: "Derivado: 122 g de butano en 240 ml (NanoProp de GomSpace), unos 508 kg/m³ con su hueco de gas" },
 };
 
 /** Tank volume in m³ for a capacity in kg. */
@@ -58,4 +59,4 @@ export const FILL = {
 } as const;
 
 /** Spanish name of each propellant, for in-game text. */
-export const PROPELLANT_NAME: Readonly<Record<Propellant, string>> = { "MMH/NTO": "MMH/NTO", Hydrazine: "hidracina", "LMP-103S": "LMP-103S" };
+export const PROPELLANT_NAME: Readonly<Record<Propellant, string>> = { "MMH/NTO": "MMH/NTO", Hydrazine: "hidracina", "LMP-103S": "LMP-103S", Butano: "butano (gas frío)" };

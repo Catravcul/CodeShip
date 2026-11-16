@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { Vec3 } from "@core/math/vec3";
 import { Quat } from "@core/math/quat";
 import { Ship } from "@modules/ship/domain/ship";
-import { explorerDesign } from "@modules/ship/data/explorer";
+import { lunarModuleDesign } from "@modules/ship/data/apollo-lm";
 import { PROPELLANT_NAME } from "@modules/ship/data/propellants";
 import type { Propellant } from "@modules/ship/domain/components";
 import { Asteroid } from "@modules/celestial/domain/asteroid";
@@ -62,7 +62,6 @@ import { Hangar } from "@modules/station/domain/hangar";
 import { STATION_TUNING } from "@modules/station/domain/blueprint";
 import { StationOps } from "@modules/station/application/station-ops";
 import { VehicleYard } from "@modules/station/application/vehicle-yard";
-import { HANGAR_SIZE } from "@modules/station/data/hangar-craft";
 import { catalogueMassOf, VEHICLE_CATALOGUE } from "@modules/station/data/vehicle-catalogue";
 import { BLUEPRINTS } from "@modules/station/data/blueprints";
 import { REFINE_PROCESSES } from "@modules/station/data/processes";
@@ -82,7 +81,7 @@ import { StationDock, dockNavTargets } from "./station-dock";
 import { StationInteriorMode } from "./station-interior";
 import { StationOutside } from "./station-outside";
 import { CargoAirlock } from "@modules/station/domain/cargo-airlock";
-import { BISHOP, BISHOP_PAYLOADS } from "@modules/station/data/iss";
+import { ASSEMBLY_LIMITS, BISHOP, BISHOP_PAYLOADS } from "@modules/station/data/iss";
 import { LANDER_CBM } from "@modules/station/data/structure";
 import { offeredBlueprints } from "@modules/station/data/outfit";
 import { facing } from "@modules/navigation/domain/attitude";
@@ -168,7 +167,7 @@ const d = BENNU.dimensionsM.value;
 const shapeParams = { seed: 101955, size: { x: d.x, y: d.y, z: d.z }, detail: 6, ridge: 0.09, roughness: 0.06, craters: 60 };
 const surface = asteroidSurfaceFn(shapeParams);
 const bennu = new Asteroid(BENNU, Vec3.ZERO, (local) => surface(local));
-const ship = Ship.create(explorerDesign());
+const ship = Ship.create(lunarModuleDesign());
 const startPos = new Vec3(250, 120, 1600);
 // The starting region: Bennu among real New Polana–family asteroids, inside a soft boundary.
 const region = buildStartRegion(bennu, startPos, [{ centre: POLANA_STATION.position, radiusM: POLANA_STATION.radiusM * 3 }]);
@@ -745,6 +744,7 @@ const probeLandingUi = new LandingUi({
   say: (t) => subj.probeMode.say(t, 7),
   overlay: planOverlay,
   targetName: () => describeBody(subj.probe.flight.target)?.name ?? expedition.asteroid.data.name,
+  gravityMs2: () => region.asteroids.reduce((g, a) => g.add(a.gravityAt(subj.probe.flight.state.position)), Vec3.ZERO).length(),
 });
 // The trip chip and the live preview, on screen wherever she is while a vehicle flies itself.
 const tripChip = new TripChip(root);
@@ -869,6 +869,7 @@ const stationLife = new StationLife({
   bishop: bishopAirlock,
   duel: duelView,
   atPort: atStationPort,
+  landerMassKg: () => ship.massKg,
   mothershipLarder: () => (mothership.dockedTo ? habitat : undefined),
   openTasks: () => taskBoard.open(),
   openInventory: () => {
@@ -954,7 +955,7 @@ stationScreen.onExit = () => {
   stationInside.resume();
 };
 // Vehicle catalogue in the station's Hangar tab (docs/design/naves-reales.md).
-stationScreen.yard = new VehicleYard(stationOps.station, stationOps.blueprints, VEHICLE_CATALOGUE, catalogueMassOf, HANGAR_SIZE);
+stationScreen.yard = new VehicleYard(stationOps.station, stationOps.blueprints, VEHICLE_CATALOGUE, catalogueMassOf, ASSEMBLY_LIMITS);
 stationScreen.onBay = () => {
   if (duelView.visible || bay.active) return;
   screenToBay = true;

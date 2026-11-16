@@ -1,4 +1,5 @@
 import type { Reality } from "@core/reality";
+import type { AssemblyLimits } from "../domain/vehicle-catalogue";
 
 /**
  * The station rebuilt as the ISS's US segment (docs/design/estacion-real.md, Berón 2026-11-16: «la
@@ -30,6 +31,7 @@ export const ISS_SOURCES = {
   axiom: "Axiom Station: PPTM en 2028 y Hab-1 en 2029, de 11 × 4,2 m: https://en.wikipedia.org/wiki/Axiom_Station",
   cubesat: "CubeSat: unidad (1U) de 10 × 10 × 10 cm y hasta 1,33 kg (norma original): https://en.wikipedia.org/wiki/CubeSat",
   juventas: "Juventas (ESA, Hera): cubesat de 6U y unos 12 kg, 37 × 23 × 10 cm: https://www.heramission.space/hera-mission-juventas-cubesat",
+  jemEfPort: "JEM-EF (eoPortal): 500 kg como máximo por puerto (2500 kg en el especial), carga estándar de 1,85 × 1,0 × 0,80 m, 3 kW a 120 V por puerto: https://www.eoportal.org/satellite-missions/iss-jemef",
 } as const;
 
 const S = ISS_SOURCES;
@@ -97,6 +99,9 @@ export const ISS_OUTSIDE = {
 /** The Kibo Exposed Facility: the parts racks outside (12 EFU ports). */
 export const EXPOSED_FACILITY = { lengthM: 4, widthM: 5.6, heightM: 5, massKg: 4000, ports: 12, status: "real" as Reality, source: url(S.kibo) };
 
+/** A standard JEM-EF payload site (EFU): what one port takes. */
+export const JEM_EF_PORT = { massKg: 500, envelopeM: [1.85, 1.0, 0.8] as const, specialPortKg: 2500, powerKw: 3, status: "real" as Reality, source: url(S.jemEfPort) };
+
 /** The Bishop airlock (it has no hatches: the station's CBM hatch closes it). */
 export const BISHOP = { massKg: 1059, heightM: 1.8, diameterM: 2.014, volumeM3: 3.99, status: "real" as Reality, source: url(S.bishop) };
 
@@ -142,3 +147,13 @@ export const GROWTH_OPTIONS = {
   haven2: { lengthM: 10.1 + 5, diameterM: 4.4, livableM3: 2 * 45, firstModule: 2028, status: "en-desarrollo" as Reality, source: url(S.haven2), note: "Largo: Haven-1 (10,1 m) + 5 m, copiado de Vast; diámetro: el de Haven-1 (estimación, Vast no lo da); volumen: «casi el doble» de los 45 m³ de Haven-1 (derivado)" },
   axiomHab1: { lengthM: 11, diameterM: 4.2, year: 2029, status: "en-desarrollo" as Reality, source: url(S.axiom) },
 } as const;
+
+/**
+ * Where the catalogue's vehicles can be put together (docs/design/modulo-lunar-juventas.md, «Montaje»):
+ * the Bishop's volume, a JEM-EF port's payload and what Canadarm2 can hold. All real numbers.
+ */
+export const ASSEMBLY_LIMITS: AssemblyLimits = {
+  bishop: { volumeM3: BISHOP.volumeM3, diameterM: BISHOP.diameterM, heightM: BISHOP.heightM },
+  jemEf: { massKg: JEM_EF_PORT.massKg, envelopeM: JEM_EF_PORT.envelopeM },
+  arm: { maxPayloadKg: ISS_OUTSIDE.canadarm2.maxPayloadKg, lengthM: ISS_OUTSIDE.canadarm2.lengthM },
+};

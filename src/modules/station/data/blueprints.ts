@@ -247,27 +247,10 @@ export function catalogueComponentBlueprint(c: CatalogueComponent): Blueprint {
   return { ...base, machine: "impresora", inputs: merge({ kit: importKits(m * 0.8) }, feedstock(m * 0.2, RECIPES.probe, 0)), process: ASSEMBLY };
 }
 
-/** A small prospecting probe to send ahead to asteroids (game values). */
-export const PROBE: CraftSpec = {
-  id: "sonda",
-  name: "Sonda de prospección",
-  kind: "sonda",
-  massKg: 30,
-  note: "Valor de juego: una sonda pequeña que se adelanta a los asteroides",
-};
-
-export const PROBE_BLUEPRINT: Blueprint = {
-  id: "plano-sonda",
-  name: PROBE.name,
-  product: { kind: "craft", craft: PROBE },
-  machine: "impresora",
-  massKg: PROBE.massKg,
-  inputs: feedstock(PROBE.massKg, RECIPES.probe, 3),
-  hours: 36,
-  process: PRINT,
-  steps: ["imprime el armazón", "pega los paneles de carbono", "monta la electrónica del kit", "carga el programa de vuelo", "prueba la radio"],
-  requires: EQ_PRINTER.id,
-};
+/*
+ * The 30 kg «Sonda de prospección» blueprint is gone (Berón, 2026-11-16): the probe is Juventas, and it is
+ * built from its real parts through the vehicle catalogue (docs/design/modulo-lunar-juventas.md).
+ */
 
 /**
  * The equipment a component needs, from the machine that makes it: the basic printer only prints
@@ -289,7 +272,7 @@ const withRequirement = (bp: Blueprint): Blueprint => {
 };
 
 /** Ship and probe components: each part of the ship's catalog, the mothership's thrusters and equipment, and the probe. */
-export const COMPONENT_BLUEPRINTS: readonly Blueprint[] = [...ALL_PARTS.filter((p) => !isEmptyPart(p)).map(partBlueprint), ...ELECTRIC_THRUSTERS.map(driveBlueprint), ...MOTHERSHIP_EQUIPMENT.filter((e) => e.massKg > 0).map(mothershipEquipmentBlueprint), PROBE_BLUEPRINT].map(withRequirement);
+export const COMPONENT_BLUEPRINTS: readonly Blueprint[] = [...ALL_PARTS.filter((p) => !isEmptyPart(p)).map(partBlueprint), ...ELECTRIC_THRUSTERS.map(driveBlueprint), ...MOTHERSHIP_EQUIPMENT.filter((e) => e.massKg > 0).map(mothershipEquipmentBlueprint)].map(withRequirement);
 
 /** Components of the vehicle catalogue: real engines, hulls and bodies (docs/design/naves-reales.md). */
 export const CATALOGUE_BLUEPRINTS: readonly Blueprint[] = CATALOGUE_COMPONENTS.map(catalogueComponentBlueprint).map(withRequirement);

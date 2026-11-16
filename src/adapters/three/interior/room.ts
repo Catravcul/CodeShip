@@ -74,6 +74,28 @@ function cylAt(rt: number, rb: number, h: number, m: THREE.Material, x: number, 
   return c;
 }
 
+/**
+ * The galley and the mill corner, in one place (room coordinates, m): drawn here and used by the step
+ * visuals (step-show.ts) to put each prop on the furniture it belongs to. Along the right wall (+x),
+ * the counter runs from the hob end (−z) to the fridge; the mill and the soy processor stand past the fridge.
+ * Work heights are Doménica's (not scaled with the room, src/core/scale.ts).
+ */
+export const GALLEY = {
+  /** Counter: front edge x, worktop height, ends along z, and the wall side x. */
+  counter: { front: 1.38, back: 1.98, top: 0.94, z0: -5.6, z1: -3.4 },
+  hob: V(1.68, 0.952, -5.0),
+  /** Oven built into the counter: centre and the x of its door (flush with the counter's front). */
+  oven: { centre: V(1.7, 0.6, -4.0), door: 1.37, w: 0.5, h: 0.45, d: 0.5 },
+  /** Wall cupboard over the counter (the larder's dry stores): bottom height and its front x. */
+  cupboard: { front: 1.58, bottom: 1.6, top: 2.1, z0: -5.6, z1: -3.4 },
+  /** Fridge / cold room: centre (floor to 1,9 m), its door on the aisle side (x), hinge at the far edge (z). */
+  fridge: { centre: V(1.68, 0.95, -3.0), w: 0.6, h: 1.9, d: 0.7 },
+  /** Mill: base box, hopper top and the spout where flour comes out. */
+  mill: { centre: V(1.7, 0.4, -2.0), w: 0.5, h: 0.8, d: 0.5, hopper: V(1.7, 0.95, -2.0) },
+  /** Soy processor, between the fridge and the mill (0,38 m deep so it does not cut into either). */
+  processor: { centre: V(1.7, 0.35, -2.45), w: 0.5, h: 0.7, d: 0.38, drum: V(1.7, 0.88, -2.45) },
+} as const;
+
 /** Pots on the two-tier growing racks (hydroponic, LED-lit), in order. */
 export const POT_SLOTS: readonly THREE.Vector3[] = [0.42, 1.12].flatMap((y) => [-5.4, -4.85, -4.3, -3.75, -3.2, -2.65, -2.1, -1.55, -1.0].map((z) => V(-1.72, y, z)));
 
@@ -163,26 +185,37 @@ export function buildRoom(): RoomHandles {
   lamp(lamps, g, "bastidores", -1.5, 1.85, -0.75);
 
   // --- Galley ---------------------------------------------------------------------------------------
-  g.add(boxAt(0.6, 0.9, 2.2, mat(0x8a96a6), 1.68, 0.45, -4.5));
-  g.add(boxAt(0.62, 0.04, 2.22, mat(0xeeeeee), 1.68, 0.92, -4.5));
-  g.add(boxAt(0.4, 0.01, 0.4, new THREE.MeshStandardMaterial({ color: 0x111111 }), 1.68, 0.945, -5.0));
-  const hob = boxAt(0.3, 0.004, 0.3, new THREE.MeshStandardMaterial({ color: 0x441111, emissive: 0x991a0a, emissiveIntensity: 0.15 }), 1.68, 0.952, -5.0);
+  const G = GALLEY;
+  const cMid = (G.counter.z0 + G.counter.z1) / 2;
+  const cLen = G.counter.z1 - G.counter.z0;
+  const cW = G.counter.back - G.counter.front;
+  const cX = (G.counter.back + G.counter.front) / 2;
+  g.add(boxAt(cW, G.counter.top - 0.04, cLen, mat(0x8a96a6), cX, (G.counter.top - 0.04) / 2, cMid));
+  g.add(boxAt(cW + 0.02, 0.04, cLen + 0.02, mat(0xeeeeee), cX, G.counter.top - 0.02, cMid));
+  g.add(boxAt(0.4, 0.01, 0.4, new THREE.MeshStandardMaterial({ color: 0x111111 }), G.hob.x, G.hob.y - 0.007, G.hob.z));
+  const hob = boxAt(0.3, 0.004, 0.3, new THREE.MeshStandardMaterial({ color: 0x441111, emissive: 0x991a0a, emissiveIntensity: 0.15 }), G.hob.x, G.hob.y, G.hob.z);
   g.add(hob);
-  g.add(cylAt(0.12, 0.12, 0.05, mat(0x30343c, { metalness: 0.7 }), 1.68, 0.98, -5.0)); // pan
-  g.add(boxAt(0.4, 0.5, 2.2, mat(0x9aa6b6), 1.78, 1.85, -4.5));
-  g.add(boxAt(0.5, 0.45, 0.5, mat(0x30343c), 1.7, 0.6, -4.0)); // oven
-  g.add(boxAt(0.45, 0.25, 0.02, glow(0xff9a3c, 0.5), 1.44, 0.62, -4.0));
-  g.add(boxAt(0.6, 1.9, 0.7, mat(0xe8ecf0, { metalness: 0.2 }), 1.68, 0.95, -3.0)); // fridge / cold room
-  g.add(boxAt(0.02, 0.6, 0.03, mat(0x9aa6b6), 1.37, 1.1, -2.75));
+  g.add(cylAt(0.12, 0.12, 0.05, mat(0x30343c, { metalness: 0.7 }), G.hob.x, G.hob.y + 0.028, G.hob.z)); // pan
+  const cbH = G.cupboard.top - G.cupboard.bottom;
+  g.add(boxAt(G.counter.back - G.cupboard.front, cbH, cLen, mat(0x9aa6b6), (G.counter.back + G.cupboard.front) / 2, G.cupboard.bottom + cbH / 2, cMid));
+  const ov = G.oven;
+  // Oven: its door on the counter's front, with a window that glows (it used to sit inside the cabinet, unseen).
+  g.add(boxAt(0.02, ov.h, ov.d, mat(0x30343c), ov.door, ov.centre.y, ov.centre.z));
+  g.add(boxAt(0.01, 0.25, ov.d - 0.1, glow(0xff9a3c, 0.5), ov.door - 0.012, ov.centre.y + 0.02, ov.centre.z));
+  const fr = G.fridge;
+  g.add(boxAt(fr.w, fr.h, fr.d, mat(0xe8ecf0, { metalness: 0.2 }), fr.centre.x, fr.centre.y, fr.centre.z)); // fridge / cold room
+  g.add(boxAt(0.02, 0.6, 0.03, mat(0x9aa6b6), fr.centre.x - fr.w / 2 - 0.01, 1.1, fr.centre.z + fr.d / 2 - 0.1));
   lamp(lamps, g, "cocina", 1.4, 1.5, -5.4);
 
   // --- Mill and soy processor ----------------------------------------------------------------------
-  g.add(boxAt(0.5, 0.8, 0.5, mat(0x7a6a52), 1.7, 0.4, -2.0));
-  g.add(cylAt(0.18, 0.06, 0.3, mat(0xb9a27a), 1.7, 0.95, -2.0, 12)); // hopper
-  g.add(boxAt(0.5, 0.7, 0.45, mat(0xdfe6ea, { metalness: 0.3 }), 1.7, 0.35, -2.55));
-  g.add(cylAt(0.15, 0.15, 0.35, mat(0xf4f7f8, { metalness: 0.5 }), 1.7, 0.88, -2.55));
+  const ml = G.mill;
+  g.add(boxAt(ml.w, ml.h, ml.d, mat(0x7a6a52), ml.centre.x, ml.centre.y, ml.centre.z));
+  g.add(cylAt(0.18, 0.06, 0.3, mat(0xb9a27a), ml.hopper.x, ml.hopper.y, ml.hopper.z, 12)); // hopper
+  const pr = G.processor;
+  g.add(boxAt(pr.w, pr.h, pr.d, mat(0xdfe6ea, { metalness: 0.3 }), pr.centre.x, pr.centre.y, pr.centre.z));
+  g.add(cylAt(0.15, 0.15, 0.35, mat(0xf4f7f8, { metalness: 0.5 }), pr.drum.x, pr.drum.y, pr.drum.z));
   lamp(lamps, g, "molino", 1.43, 0.75, -1.85);
-  lamp(lamps, g, "procesador-soja", 1.43, 0.65, -2.4);
+  lamp(lamps, g, "procesador-soja", 1.43, 0.65, pr.centre.z + 0.12);
 
   // --- Cultured-meat lab: stirred tank, LN2 dewar, laminar hood and console --------------------------
   const glass = new THREE.MeshStandardMaterial({ color: 0xdff4ff, transparent: true, opacity: 0.22, roughness: 0.05, depthWrite: false });

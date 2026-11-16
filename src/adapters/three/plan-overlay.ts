@@ -99,6 +99,31 @@ export class PlanOverlay {
     this.timer = setTimeout(() => this.clear(), seconds * 1000);
   }
 
+  /**
+   * The animation audit (tools/experiencia/animaciones.mjs): of the plan's points, how many show on screen
+   * above the challenge sheet, with the view being drawn now (`scene`, `camera`). A plan drawn in a
+   * scene that is not on screen shows nothing.
+   */
+  audit(scene: THREE.Object3D, camera: THREE.Camera, sheetTop: number, size: { readonly w: number; readonly h: number }): { drawn: number; inView: boolean; points: number; onScreen: number; caption: string } {
+    let inView = false;
+    for (let o: THREE.Object3D | null = this.root; o; o = o.parent) if (o === scene) inView = true;
+    let points = 0;
+    let onScreen = 0;
+    const v = new THREE.Vector3();
+    camera.updateMatrixWorld();
+    for (const c of this.root.children) {
+      const pos = (c as THREE.Line).geometry.getAttribute("position");
+      for (let i = 0; i < pos.count; i++) {
+        points++;
+        v.fromBufferAttribute(pos, i).applyMatrix4(c.matrixWorld).project(camera);
+        const x = ((v.x + 1) / 2) * size.w;
+        const y = ((1 - v.y) / 2) * size.h;
+        if (inView && v.z > -1 && v.z < 1 && x >= 0 && x <= size.w && y >= 0 && y <= sheetTop) onScreen++;
+      }
+    }
+    return { drawn: this.drawn, inView, points, onScreen, caption: this.caption.classList.contains("on") ? (this.caption.textContent ?? "") : "" };
+  }
+
   /** A step visual over a chain whose sketches are computed when the chain opens. */
   visual(steps: () => readonly SketchStep[]): StepVisual {
     this.clear();

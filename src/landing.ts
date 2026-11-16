@@ -47,6 +47,8 @@ export interface LandingUiDeps {
   targetName(): string;
   /** Draws each landing step as it is answered right (site, drift, curve, flare, anchors). */
   readonly overlay?: PlanOverlay;
+  /** Frames the ground below while the sheet is open (the plan is drawn there), and after. */
+  frameSheet?(state: "open" | "flying" | "closed"): void;
 }
 
 const metres = (m: number) => `${num(m, m < 10 ? 1 : 0)} m`;
@@ -92,6 +94,9 @@ export class LandingUi {
       return;
     }
     const run = p.startProgramming();
+    const plan = this.d.overlay?.visual(() => p.sketch());
+    const frame = this.d.frameSheet;
+    if (plan) frame?.("open");
     openTripSheet(
       this.d.duel,
       run,
@@ -101,7 +106,17 @@ export class LandingUi {
         if (p.status === "programming") p.cancel();
       },
       LANDING_TEXT,
-      this.d.overlay?.visual(() => p.sketch()),
+      plan && {
+        stepDone: (i) => plan.stepDone(i),
+        finish: () => {
+          plan.finish();
+          frame?.("flying");
+        },
+        clear: () => {
+          plan.clear();
+          frame?.(p.status === "flying" ? "flying" : "closed");
+        },
+      },
     );
   }
 

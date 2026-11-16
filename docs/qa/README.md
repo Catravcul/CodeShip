@@ -12,6 +12,7 @@ sin tiendas ni webhooks, con relojes, cámara rápida y perfiles de dispositivo.
 | [registro.md](registro.md) | Estado por caso, con fecha, commit y run log |
 | [runs/](runs/) | Un run log por ejecución ([PLANTILLA.md](runs/PLANTILLA.md)) |
 | [hallazgos.md](hallazgos.md) | Lo que se vio en una ejecución (`Hn`) y en qué acabó |
+| [animaciones.md](animaciones.md) | Hoja de contactos de la auditoría de animaciones (PX-20): una fila por paso de cada reto, con captura y resultado |
 | `src/qa/convivencia/` | Tests de los casos CV (Vitest, capa de aplicación, sin DOM ni Three.js) |
 | `scripts/qa-check.mjs` | `npm run qa:check`: que catálogo, registro y tests cuadren |
 | [../conocimiento/](../conocimiento/README.md) | Lo aprendido que volverá a morder (Three.js, Chromium, simulación, ramas) |
@@ -46,6 +47,17 @@ sin tiendas ni webhooks, con relojes, cámara rápida y perfiles de dispositivo.
 Los recorridos jugados (Playwright, perfil iPhone 13 con CPU ×4, capturas y rendimiento) llegan con la
 rama `jugabilidad-ux` como casos `PX-nn`; sus run logs usan la misma [plantilla](runs/PLANTILLA.md) con
 los números de rendimiento.
+
+## Animaciones de los retos
+
+**Todo reto nuevo, y todo visual de paso nuevo o cambiado** (`step-visual.ts`, `kitchen-visuals.ts`,
+`step-visuals.ts`, `step-show.ts`, `plan-overlay.ts`, el acuario), **debe pasar la auditoría de animaciones**
+antes de fusionarse: `npm run experiencia -- PX-20` (o `ANIM_SOLO=<id de la tarea>` para iterar) y la hoja de
+contactos [animaciones.md](animaciones.md) sin filas ✗ nuevas. La auditoría juega cada paso con toques y mide en
+la escena 3D que sus objetos estén a ≤ 0,8 m de las manos de Doménica (o sobre el puesto que tiene delante), a la
+vista sobre la hoja del reto, sin atravesar muebles, y que su gesto se note. Mira también las capturas: que algo
+pase la medida no quiere decir que se lea bien. Los objetos se anclan a los puestos de la sala (`GALLEY` en
+`room.ts`, el objetivo del reto), nunca a coordenadas fijas: la sala puede dibujarse a otra escala.
 
 ## Dónde va cada cosa
 

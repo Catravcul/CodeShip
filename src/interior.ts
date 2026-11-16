@@ -35,7 +35,8 @@ import type { SpinRing } from "@modules/gravity/domain/spin-gravity";
 import { GravityZones } from "./adapters/three/interior/zones";
 import { ICON } from "./ui/icons";
 import { settings } from "./ui/settings-store";
-import { KITCHEN_FRAMES, StepShow, type StepFrame } from "./adapters/three/interior/step-show";
+import { galleyFrame, kitchenLayout, StepShow, type KitchenLayout, type StepFrame } from "./adapters/three/interior/step-show";
+import { auditStep, type StepAudit } from "./adapters/three/interior/step-audit";
 import { choreVisuals } from "@modules/chores/application/step-visuals";
 import type { StepVisual } from "@modules/chores/domain/step-visual";
 import { AmbientNotices } from "./adapters/three/interior/ambient-notices";
@@ -829,13 +830,14 @@ export class Interior {
 
   /**
    * How a chore's station is framed while its steps play: Doménica at the counter for the galley and the
-   * mill (KITCHEN_FRAMES), otherwise beside her target with the camera over her shoulder. Yoga keeps its
+   * mill (`galleyFrame`), otherwise beside her target with the camera over her shoulder. Yoga keeps its
    * demo figure on the mat (the posture is the step's visual), so it is not framed here.
    */
   private stepFrame(chore: Chore, stand: THREE.Vector3, look: THREE.Vector3): StepFrame | undefined {
     if (chore.kind === "yoga") return undefined;
     const st = stationFor(chore);
-    if (st === "cocina" || st === "procesado") return { ...KITCHEN_FRAMES[st], target: look.clone() };
+    // The galley's spots from the room's own layout, through its transform (it may be drawn bigger: src/core/scale.ts).
+    if (st === "cocina" || st === "procesado") return galleyFrame((this.galley ??= kitchenLayout((v) => this.room.group.localToWorld(v))), look);
     const dir = new THREE.Vector3(look.x - stand.x, 0, look.z - stand.z);
     const d = dir.length();
     if (d < 1e-3) return undefined;
@@ -858,6 +860,15 @@ export class Interior {
     }
     const focus = new THREE.Vector3(look.x, look.y, look.z).lerp(new THREE.Vector3(feet.x, 0.9, feet.z), 0.3);
     return { stand: feet, yaw: Math.atan2(dir.x, dir.z), camera: cam, look: focus, target: look.clone() };
+  }
+
+  private galley: KitchenLayout | undefined;
+
+  /** The animation audit of the step on stage (tools/experiencia/animaciones.mjs; test hook). */
+  stepAudit(sheetTop: number): StepAudit | undefined {
+    const c = document.querySelector("canvas");
+    const r = c?.getBoundingClientRect();
+    return auditStep(this.steps, this.camera, this.scene, sheetTop, { w: r?.width ?? window.innerWidth, h: r?.height ?? window.innerHeight }, this.avatarRig);
   }
 
   /** The step showing, on the UI root (`data-paso`, `data-pasos`): read by the experience suite. */

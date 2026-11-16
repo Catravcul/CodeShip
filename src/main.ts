@@ -688,6 +688,7 @@ const landerLandingUi = new LandingUi({
   say: (t) => flash(t, 7),
   targetName: () => expedition.asteroid.data.name,
   overlay: planOverlay,
+  frameSheet: (s) => view.landingSheet(s),
 });
 const probeLandingUi = new LandingUi({
   program: probeLanding,
@@ -1230,9 +1231,14 @@ window.addEventListener("resize", () => {
 });
 
 // --- Loop -------------------------------------------------------------------
+/** The view drawn last (the animation audit projects the trip and landing plans with it). */
+const shownView: { scene: THREE.Scene; camera: THREE.Camera } = { scene, camera };
+const planAudit = (sheetTop: number) => planOverlay.audit(shownView.scene, shownView.camera, sheetTop, { w: renderer.domElement.clientWidth, h: renderer.domElement.clientHeight });
 /** Draw the frame's view, then the live trip preview over a corner of it. */
 function present(sc: THREE.Scene, cam: THREE.Camera): void {
   renderer.render(sc, cam);
+  shownView.scene = sc;
+  shownView.camera = cam;
   if (!tripPreview.visible) return;
   // The lander's model only follows the flight in the cockpit view: place it for the preview too.
   const st = flight.state;
@@ -1502,4 +1508,4 @@ for (const sel of [".nano-action", ".trip-chip", ".land-offer.lander", ".land-bo
   if (el) ctxDock.appendChild(el);
 }
 
-(window as unknown as { codeship: unknown }).codeship = { journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, landerBerth, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, tripPreview, tripChip, duelView, levels };
+(window as unknown as { codeship: unknown }).codeship = { journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, landerBerth, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels };

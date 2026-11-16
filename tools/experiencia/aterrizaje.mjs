@@ -2,7 +2,7 @@
 // what it does (a trip step too), and the manual landing readout appears and turns red when too fast.
 
 /** Craft `h` m above Bennu, moving with the ground under it, as a compressed trip hands it over. */
-const placeAbove = ([which, h, vDown]) => {
+export const placeAbove = ([which, h, vDown]) => {
   const c = window.codeship;
   const P = c.flight.state.position.constructor;
   let f;

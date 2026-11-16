@@ -7,6 +7,11 @@ import { RootMenu, type RootItem } from "../../ui/root-menu";
 import { ICON } from "../../ui/icons";
 
 export type CameraMode = "cabina" | "ventral" | "trasera" | "exterior" | "acople" | "nodriza";
+/**
+ * Tilt (rad) of the landing camera while the landing sheet is open: the point right under the craft shows
+ * about a sixth of the way down the screen, in the strip above the sheet (30 % of a phone's height).
+ */
+const LANDING_SHEET_PITCH = -0.45;
 const MODES: readonly CameraMode[] = ["cabina", "ventral", "trasera", "exterior", "acople", "nodriza"];
 const LABEL: Record<CameraMode, string> = { cabina: "Cabina", ventral: "Ventral", trasera: "Trasera", exterior: "Exterior", acople: "Acople", nodriza: "Nodriza" };
 /** First or third person, for the eye icon's name. */
@@ -108,6 +113,31 @@ export class FlightView {
       if (e.code === "KeyV" && !e.repeat) this.center();
       if (e.code === "KeyX" && !e.repeat) this.warpBtn.click();
     });
+  }
+
+  /** The camera before a landing program's sheet opened (put back if it closes without flying). */
+  private beforeSheet: { mode: CameraMode; yaw: number; pitch: number } | undefined;
+
+  /**
+   * A landing program is being written (docs/design/aterrizaje.md): each step draws on the ground below
+   * (site, drift, descent curve), which the forward cabin view cannot see. While the sheet is open the
+   * landing camera looks down past the legs, tilted so the ground below shows in the strip above the sheet
+   * (PX-20, animation audit); once the program flies it keeps looking straight down; closed without flying,
+   * the camera goes back to what it was.
+   */
+  landingSheet(state: "open" | "flying" | "closed"): void {
+    if (state === "open") {
+      this.beforeSheet ??= { mode: this.mode, yaw: this.yaw, pitch: this.pitch };
+      this.mode = "ventral";
+      this.yaw = 0;
+      this.pitch = LANDING_SHEET_PITCH;
+    } else if (state === "flying") {
+      this.beforeSheet = undefined;
+      this.center();
+    } else if (this.beforeSheet) {
+      ({ mode: this.mode, yaw: this.yaw, pitch: this.pitch } = this.beforeSheet);
+      this.beforeSheet = undefined;
+    }
   }
 
   get cameraMode(): CameraMode {

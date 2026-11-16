@@ -158,6 +158,7 @@ caso y las anteriores quedan en sus run logs.
 | PX-13 | Probado (en vivo) | 2026-11-14 | `603b891` | [run](runs/2026-11-14-1819-PX-04-PX-13.md): 25 OK |
 | PX-14 | Probado (en vivo) | 2026-11-14 | `652d629` | [run](runs/2026-11-14-1925-PX-02-PX-10-PX-12-PX-14-PX-15.md): 32 OK |
 | PX-15 | Probado (en vivo) | 2026-11-14 | `652d629` | [run](runs/2026-11-14-1925-PX-02-PX-10-PX-12-PX-14-PX-15.md): 61 OK |
+| PX-20 | Sin probar | | | Recorrido nuevo: auditoría de animaciones |
 
 ## Última ejecución por run log
 

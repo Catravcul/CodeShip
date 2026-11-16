@@ -65,9 +65,9 @@ caso y las anteriores quedan en sus run logs.
 | EST-22 | Probado (en vivo) | 2026-11-14 | `f1df8fc` | [run](runs/2026-11-14-1806-PX-04-PX-10-PX-12.md): PX-12 y la suite |
 | EST-23 | Probado (en vivo) | 2026-11-14 | `f1df8fc` | [run](runs/2026-11-14-1806-PX-04-PX-10-PX-12.md): PX-12 y la suite |
 | EST-24 | Probado (en vivo) | 2026-11-14 | `f1df8fc` | [run](runs/2026-11-14-1806-PX-04-PX-10-PX-12.md): PX-12 y la suite |
-| EST-25 | Probado (en vivo) | 2026-11-16 | `pendiente` | PX-16 y `dry-dock.test.ts` |
+| EST-25 | Probado (en vivo) | 2026-11-16 | `ee051ea` | [run](runs/2026-11-16-1500-PX-16.md): PX-16 y `dry-dock.test.ts` |
 | EST-26 | Solo test | | | `dry-dock.test.ts` (verde en la suite completa) |
-| EST-27 | Probado (en vivo) | 2026-11-16 | `pendiente` | PX-16, `dock-trip.test.ts` y `journey-world.test.ts` |
+| EST-27 | Probado (en vivo) | 2026-11-16 | `ee051ea` | [run](runs/2026-11-16-1500-PX-16.md): PX-16, `dock-trip.test.ts` y `journey-world.test.ts` |
 | EST-05 | Parcial | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): suite OK; en vivo solo la tarjeta del almacén lleno (`hc-almacen-mobile.png`) |
 | REF-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | REF-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -93,6 +93,7 @@ caso y las anteriores quedan en sus run logs.
 | VID-11 | Solo test | | | `aquarium.test.ts`, `aquarium-ops.test.ts`; jugado en PX-13 |
 | VID-12 | Solo test | | | `aquarium.test.ts`, `aquarium-ops.test.ts`; jugado en PX-13 |
 | VID-13 | Solo test | | | `aquarium.test.ts`, `aquarium-ops.test.ts`; jugado en PX-13 |
+| VID-24 | Solo test | | | `body-solver.test.ts`, `asana-player.test.ts`, `figure.test.ts`; jugado en PX-23 |
 | EVA-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | EVA-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | EVA-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -146,7 +147,7 @@ caso y las anteriores quedan en sus run logs.
 | CV-15 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-05** cerrado; botón bloqueado en `hc-pedido-sin-creditos-mobile.png` |
 | CV-16 | No aplica | | | No hay partidas guardadas (**HC-06**) |
 | CV-17 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-03** cerrado: el aviso dura 5 s reales en el tramo ×60 |
-| PX-01 | Probado (en vivo) | 2026-11-14 | `cb310e1` | [run](runs/2026-11-14-1626-PX-01-PX-02-PX-04-PX-05-PX-10-PX-11.md): 49 OK |
+| PX-01 | Probado (en vivo) | 2026-11-16 | `535f54c` | [run](runs/2026-11-16-1447-PX-01-PX-23.md): 49 OK |
 | PX-02 | FAIL | 2026-11-14 | `652d629` | [run](runs/2026-11-14-1925-PX-02-PX-10-PX-12-PX-14-PX-15.md): 28 OK, 1 FALLA |
 | PX-03 | Probado (en vivo) | 2026-11-13 | `f59ae5a` | [run](runs/2026-11-13-1713-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09-PX-10-PX-11.md): 14 OK |
 | PX-04 | Probado (en vivo) | 2026-11-14 | `71ff3eb` | [run](runs/2026-11-14-1822-PX-02-PX-04-PX-10-PX-12-PX-15.md): 27 OK |
@@ -162,6 +163,7 @@ caso y las anteriores quedan en sus run logs.
 | PX-14 | Probado (en vivo) | 2026-11-16 | `e6324ff` | [run](runs/2026-11-16-1430-PX-12-PX-14-PX-16.md): 33 OK |
 | PX-15 | Probado (en vivo) | 2026-11-14 | `652d629` | [run](runs/2026-11-14-1925-PX-02-PX-10-PX-12-PX-14-PX-15.md): 61 OK |
 | PX-16 | Probado (en vivo) | 2026-11-16 | `ee051ea` | [run](runs/2026-11-16-1500-PX-16.md): 25 OK |
+| PX-23 | Probado (en vivo) | 2026-11-16 | `535f54c` | [run](runs/2026-11-16-1447-PX-01-PX-23.md): 62 OK |
 
 ## Última ejecución por run log
 
@@ -172,6 +174,7 @@ La más reciente arriba.
 | 2026-11-16 15:00 | PX-16 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-1500-PX-16.md) |
 | 2026-11-16 14:57 | PX-12 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-1457-PX-12.md) |
 | 2026-11-16 14:49 | PX-12 | Experiencia (Playwright) | 0/1 recorridos bien | [run](runs/2026-11-16-1449-PX-12.md) |
+| 2026-11-16 14:47 | PX-01, PX-23 | Experiencia (Playwright) | 2/2 recorridos bien | [run](runs/2026-11-16-1447-PX-01-PX-23.md) |
 | 2026-11-16 14:30 | PX-12, PX-14, PX-16 | Experiencia (Playwright) | 2/3 recorridos bien | [run](runs/2026-11-16-1430-PX-12-PX-14-PX-16.md) |
 | 2026-11-16 14:20 | PX-16 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-1420-PX-16.md) |
 | 2026-11-14 19:25 | PX-02, PX-10, PX-12, PX-14, PX-15 | Experiencia (Playwright) | 4/5 recorridos bien | [run](runs/2026-11-14-1925-PX-02-PX-10-PX-12-PX-14-PX-15.md) |
@@ -193,8 +196,8 @@ La más reciente arriba.
 | 2026-11-13 14:55 | PX-01, PX-02, PX-03, PX-04, PX-05 | Experiencia (Playwright) | 4/5 recorridos bien | [run](runs/2026-11-13-1455-PX-01-PX-02-PX-03-PX-04-PX-05.md) |
 | 2026-11-13 14:15 | PX-01, PX-03 | Experiencia (Playwright) | 2/2 recorridos bien | [run](runs/2026-11-13-1415-PX-01-PX-03.md) |
 | 2026-11-13 14:06 | PX-01 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-13-1406-PX-01.md) |
+| 2026-11-13 12:00 | CV-01 a CV-17, EST-05 (decisiones HC-01 a HC-05 y B-02) | Vitest (`npx vitest run src/qa`) y Playwright iPhone 13 | 32 OK · 0 `.fails`; en vivo 3 capturas sin errores de página | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md) |
 | 2026-11-13 11:11 | PX-01 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-13-1111-PX-01.md) |
 | 2026-11-13 11:00 | PX-01, PX-02, PX-03, PX-04, PX-05 | Experiencia (Playwright) | 5/5 recorridos bien | [run](runs/2026-11-13-1100-PX-01-PX-02-PX-03-PX-04-PX-05.md) |
-| 2026-11-13 12:00 | CV-01 a CV-17, EST-05 (decisiones HC-01 a HC-05 y B-02) | Vitest (`npx vitest run src/qa`) y Playwright iPhone 13 | 32 OK · 0 `.fails`; en vivo 3 capturas sin errores de página | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md) |
 | 2026-11-13 10:41 | PX-01, PX-02, PX-03, PX-04, PX-05 | Experiencia (Playwright) | 3/5 recorridos bien | [run](runs/2026-11-13-1041-PX-01-PX-02-PX-03-PX-04-PX-05.md) |
 | 2026-11-13 10:18 | CV-01 a CV-15 | Vitest (`npx vitest run src/qa`) | 24 OK · 1 `.fails` esperado (CV-07, B-02) | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md) |

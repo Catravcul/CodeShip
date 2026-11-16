@@ -1,3 +1,4 @@
+import "./foco-reto.css";
 import type { Answer, CodeBlock, Exercise } from "@modules/mind-duel/domain/exercise";
 import { Attempts, sessionOutcome } from "@modules/mind-duel/domain/attempts";
 import { keepRight, pickStep, slotMarks, wrongPicks } from "@modules/mind-duel/domain/order-steps";
@@ -156,6 +157,16 @@ export class DuelView {
   hide(): void {
     this.el.classList.add("hidden");
     document.body.classList.remove("in-duel");
+  }
+
+  /**
+   * A critical alert (something flying at the craft she controls) ends the challenge as «×» would: the
+   * opener cancels it and nothing is spent. It never goes over the sheet (docs/design/ux-acciones.md §7).
+   */
+  interrupt(): void {
+    if (!this.visible) return;
+    this.hide();
+    this.onClose?.();
   }
 
   private clearOrder(): void {

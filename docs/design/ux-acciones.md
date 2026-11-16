@@ -160,3 +160,34 @@ Apuntados por la suite (`j.problem`) o vistos en sus capturas:
 3. Ningún elemento fijo nuevo sin pasar `npm run experiencia -- acciones-movil acciones-escritorio`: 0 solapes en 390×664 y 1280×800.
 4. Botones ≥ 44 px de alto en móvil; texto sobre la escena con placa o halo hasta 4,5:1.
 5. El feedback de un acierto o un fallo lleva forma (✓/✗) además de color, y un número que solo sube.
+6. Una interfaz nueva monta su raíz en `#app` y con eso ya respeta los retos (sección 7): no se añade a ninguna lista. Si algo tiene que seguir a la vista con un reto abierto, se marca con `data-duel-keep` y se justifica en la sección 7.
+
+## 7. Foco del reto
+
+**Encargo** (Berón, 2026-11-16): «Habíamos quedado en que al entrar en un reto se ocultarían botones de otras interfaces y otros elementos (¿quizás interfaces enteras?), pero parece que no se está cumpliendo». La regla existía (H26) como una lista de selectores en `acciones.css` y en otras hojas; desde entonces llegaron muchas interfaces que no estaban en la lista. La auditoría de PX-24 (H47–H62 en [hallazgos.md](../qa/hallazgos.md)) encontró algo de más en pantalla en casi todos los sitios donde se abre un reto.
+
+**La regla.** Mientras hay un reto abierto (`body.in-duel`), en pantalla solo quedan:
+
+1. **la hoja del reto** (`.duel`, en cualquiera de sus dos vistas, panel o HUD; la vista panel no cambia),
+2. **la escena 3D** (el lienzo del juego, con el encuadre que pone el reto y los pasos visibles dibujados en ella),
+3. **la superposición del paso** (`.plan-caption`, la línea que dice qué parte del plan acaba de dibujarse).
+
+Nada más: ni iconos de la raíz, ni barra del viaje a una tarea con «Parar», ni ficha del viaje con «Ver trayecto», ni indicadores del aterrizaje, ni fichas de estación, estado del interior (`.ihud`) y líneas de estado, ni cruceta, palancas de mirar y caminar, ni avisos del entorno, avisos de misión, estado del acuario, cámaras del dique, carteles de las consolas del puente, tarjetas de las máquinas del habitáculo, ajustes, fichas del mapa, mandos de la sonda o el HUD de cualquier modo (vuelo, interior, estación, habitáculo del módulo, puente, paseo espacial).
+
+**Un solo mecanismo** (`src/ui/foco-reto.css`, importado por `duel-view.ts`). Toda la interfaz del juego cuelga de una capa, `#app`: cada pantalla monta allí su raíz, y la hoja del reto se monta a su lado. Una sola regla oculta todas las raíces que no son la escena, la hoja o algo marcado a propósito:
+
+```css
+body.in-duel > :not(#app, script, style, [data-duel-keep]),
+body.in-duel #app > :not(canvas, .duel, [data-duel-keep]) { display: none !important; }
+```
+
+No es una lista: una interfaz nueva queda oculta durante los retos sin que nadie se acuerde de añadirla. Para dejar algo a la vista hay que marcar su raíz con `data-duel-keep` y justificarlo aquí. Hoy solo lo lleva la superposición del paso (`plan-overlay.ts`). Las reglas viejas de `body.in-duel …` de cada hoja se quedan (no estorban), pero ya no hacen falta.
+
+**Excepciones decididas.**
+
+- **Mirar la escena**: no queda ningún botón de cámara (ni el ojo ni las palancas de mirar). El reto ya encuadra la escena para que se vea el paso, y un botón de cámara sería otra interfaz encima. El lienzo no se oculta, así que el arrastre sobre la escena sigue funcionando en los modos que lo tienen.
+- **Alertas críticas** (un ataque de un asteroide enfadado: un proyectil o una embestida que vuela hacia la nave o la estación en la que está Doménica, o hacia la sonda mientras la pilota; `AsteroidWrath.underAttack`, `WrathMode.critical`): **terminan el reto**, como «×», en lugar de taparlo o quedar tapadas. El que lo abrió lo cancela como siempre, no se gasta nada y se puede repetir después; al cerrarse vuelven el aviso, la ficha de la ira y los mandos para esquivar (`DuelView.interrupt`, llamado desde el bucle de `main.ts`). Un asteroide enfadado que solo la tiene a su alcance no es todavía un ataque (eso es `threatened`, que frena el tiempo): así un reto perdido enseña su resultado antes de que lleguen las rocas. No se pausa: los retos los abren nueve sitios distintos, cada uno con su estado, y una pausa obligaría a guardarlo en todos; terminarlo sin coste es igual de justo y más simple.
+- **Ver trayecto** se dibuja dentro del lienzo y a pantalla completa, así que la regla de capas no lo alcanza: mientras hay un reto se queda abierto pero sin dibujar (`TripPreview.held`), y vuelve al cerrarlo. El invariante lo comprueba aparte.
+- **Avisos que llegan durante un reto** (misión, radio, entorno): no se ven encima de la hoja. El aviso de misión, que antes bajaba al pie de la pantalla, espera debajo y cuenta sus 7 s cuando el reto se cierra (`mission-log.ts`), para no perderse.
+
+**Cómo se comprueba.** `j.onlyChallengeVisible()` (`tools/experiencia/lib.mjs`) recorre todos los elementos fuera de la hoja, la escena y lo marcado, y falla si alguno pinta algo en la pantalla (texto, fondo, borde, imagen o control) o si un toque en una rejilla de 12 px cae en él. `j.waitDuel()` lo llama cada vez que un recorrido abre un reto, así que lo cumplen todos los recorridos; PX-24 (`foco`) abre cada clase de reto en cada sitio, con toques, y guarda una captura de cada uno en `docs/screenshots/foco-<sitio>-movil.png`.

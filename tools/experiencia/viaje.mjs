@@ -76,6 +76,7 @@ export async function viaje(j) {
   j.check("teletransporte: llega al anillo al momento, sin «Parar»", (await p.evaluate(() => window.codeship.interior.active && !window.codeship.journey.active)) && !(await visible(p, ".journey-bar .jb-stop")));
   await capture(j, "teletransporte", "Teletransporte con aviso");
   await p.waitForFunction(() => [...document.querySelectorAll(".duel")].some((e) => !e.classList.contains("hidden")), null, { timeout: 20000 }).catch(() => {});
+  await j.onlyChallengeVisible();
   if ((await j.texts(".duel .x")).length) await j.tap(".duel .x", "Cerrar el reto");
 
   // Travel: from the ring to a station task, back to «Viaje» in the list itself.

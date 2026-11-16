@@ -40,6 +40,7 @@ export async function nodrizaEstacion(j) {
   await go(j, await taskTitle(p, "anillo"));
   await p.waitForTimeout(400);
   await p.waitForFunction(() => [...document.querySelectorAll(".duel")].some((e) => !e.classList.contains("hidden")), null, { timeout: 20000 }).catch(() => {});
+  await j.onlyChallengeVisible();
   if ((await j.texts(".duel .x")).length) await j.tap(".duel .x", "Cerrar el reto");
   j.check("en el anillo", await p.evaluate(() => window.codeship.interior.active));
   const start = await p.evaluate(() => ({ lander: window.codeship.docking.dockedTo === window.codeship.mothership, berthed: !!window.codeship.mothership.dockedTo }));

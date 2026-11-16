@@ -250,7 +250,8 @@ const chooseChores = () => {
   const i = window.codeship.interior;
   const seen = new Set();
   const out = [];
-  for (const c of i.currentChores()) {
+  // Yoga is acted out by her figure on the mat, posture by posture (its own journey, PX-23).
+  for (const c of i.currentChores().filter((x) => x.kind !== "yoga")) {
     const facts = i.choreFacts().find((f) => f.id === c.id);
     const key = `${c.kind}|${facts?.station}`;
     if (c.kind === "cocinar" || c.kind === "procesar" || !seen.has(key)) {

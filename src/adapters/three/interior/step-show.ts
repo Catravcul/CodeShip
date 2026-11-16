@@ -107,12 +107,16 @@ export function drawnFrame(f: StepFrame, k: number): StepFrame {
   const D = (v: THREE.Vector3) => new THREE.Vector3(v.x * k, v.y, v.z * k);
   const look = D(f.look);
   const kitchen = f.kitchen;
+  const target = D(f.target);
+  // She is drawn at real size: at the galley she stands as far from the counter's (drawn) edge as at 1×.
+  // Elsewhere the frame already keeps her clear of the (drawn bigger) machine, so her spot scales with it.
+  const stand = kitchen ? D(f.stand).setX(kitchen.counter.front * k - (kitchen.counter.front - f.stand.x)) : D(f.stand);
   return {
     ...f,
-    stand: D(f.stand),
+    stand,
     look,
     camera: f.orbit ? look.clone().add(f.orbit) : D(f.camera),
-    target: D(f.target),
+    target,
     ...(f.slide ? { slide: { axis: f.slide.axis, min: f.slide.min * k, max: f.slide.max * k } } : {}),
     ...(kitchen
       ? {
@@ -794,13 +798,21 @@ export class StepShow {
         const sc = this.show(p.scissors, s.x, s.y + 0.1, s.z);
         sc.children[0]!.rotation.y = 0.4 * Math.abs(Math.sin(this.clock * 8));
         sc.children[1]!.rotation.y = -0.4 * Math.abs(Math.sin(this.clock * 8));
-        const basket = this.v.copy(this.feet).lerp(s, 0.5).setY(this.low(v) ? 0.05 : Math.max(0.05, s.y - 0.25));
+        // The basket at her other hand (on the floor by her for a low plant), clear of the racks.
+        const basket = this.low(v) ? this.atHands(this.v, 0.3).setY(0.05) : this.v.copy(this.otherHand).add(this.tmp.set(0, -0.1, 0));
         this.show(p.basket, basket.x, basket.y, basket.z);
         const k = ease(clamp01((t - 0.3) / 0.5));
         this.show(food[0]!, THREE.MathUtils.lerp(s.x, basket.x, k), THREE.MathUtils.lerp(s.y + 0.08, basket.y + 0.05, k), THREE.MathUtils.lerp(s.z, basket.z, k));
         break;
       }
       case "servir": {
+        if (!this.low(v)) {
+          // A high target (the aquarium): she sprinkles from a jar in her hand over it.
+          const jar = this.show(p.jar, this.hand.x, this.hand.y + 0.05, this.hand.z);
+          jar.rotation.z = 1.6 * bump(t, 0.1, 0.9);
+          if (t < 0.85) this.emitAt(s.x, s.y + 0.15, s.z, "fall", TINT[v.tint ?? "comida"] ?? 0x9a5a3a);
+          break;
+        }
         const bowl = this.floorBowl(this.v, s);
         this.show(p.bowl, bowl.x, bowl.y + 0.02, bowl.z).scale.set(0.08, 0.04, 0.08);
         pile(this.v.set(bowl.x, bowl.y + 0.04, bowl.z), Math.round(1 + 3 * clamp01(t / 0.7)), 0.025);
@@ -822,8 +834,9 @@ export class StepShow {
       case "programar":
       case "revisar": {
         // The holographic tablet floats at her hands, facing her; the glow marks the target it works on.
-        const h = this.atHands(this.hands, 1.1);
-        const tab = this.show(p.tablet, h.x, h.y + 0.02 * Math.sin(this.clock * 2), h.z);
+        // Over her right hand, so her body does not hide it from the camera behind her.
+        const h = this.hands.copy(this.hand);
+        const tab = this.show(p.tablet, h.x, h.y + 0.14 + 0.02 * Math.sin(this.clock * 2), h.z);
         tab.rotation.y = this.df!.yaw;
         this.emitAt(target.x, target.y + 0.1, target.z, v.action === "revisar" ? "orbit" : "rise", 0x5ff0ff);
         break;
@@ -973,6 +986,8 @@ export function gesture(v: StepAct, t: number, clock: number, low: boolean): Pos
     case "sazonar":
       return base({ shoulderX: [-0.4, -1.4], elbow: [-0.6, -0.3 + 0.25 * Math.sin(clock * 30)] });
     case "hornear":
+      // Crouched at the oven door; elsewhere (warming a vial at a lab bench) standing like stirring.
+      if (v.place !== "horno") return base({ shoulderX: [-0.6, -0.95 + 0.12 * s], shoulderZ: [0.1, -0.2 + 0.15 * c], elbow: [-1.0, -0.8] });
       return CROUCH({ shoulderX: [-1.0, -1.0], elbow: [-0.3, -0.3], headX: 0.1 });
     case "moler":
       return base({ shoulderX: [-0.5, -1.0 + 0.3 * s], shoulderZ: [0.08, -0.3 + 0.3 * c], elbow: [-0.9, -0.9] });
@@ -989,6 +1004,8 @@ export function gesture(v: StepAct, t: number, clock: number, low: boolean): Pos
     case "cosechar":
       return base({ shoulderX: [-1.0, -1.3], elbow: [-0.6, -0.5 + 0.2 * Math.abs(Math.sin(clock * 8))] });
     case "servir":
+      // Crouched by a bowl on the floor; at a high target (the aquarium) she stands and sprinkles.
+      if (!low) return base({ shoulderX: [-0.4, -1.2], elbow: [-0.5, -0.4 - 0.2 * bump(t, 0.1, 0.7)] });
       return CROUCH({ shoulderX: [-1.0, -1.0], elbow: [-0.4, -0.4 - 0.2 * bump(t, 0.1, 0.7)] });
     case "mimar":
       return CROUCH({ shoulderX: [-0.3, -1.1 + 0.15 * Math.sin(clock * 3)], elbow: [-0.3, -0.2] });

@@ -12,16 +12,23 @@ const cyl = (r: number, h: number, m: THREE.Material, seg = 24) => new THREE.Mes
 
 /**
  * The space station seen from outside, in the region (metres), built from its layout
- * (docs/design/estacion.md): pressurised modules like the ISS's nodes and the Gateway's HALO, a
- * truss with four solar wings that turn on their long axis to follow the Sun, radiators, the
- * fabrication module with the furnace glow, the hangar with its lit door and two IDSS ports with
- * approach lights and a docking cross. The station holds its attitude.
+ * (docs/design/estacion-real.md): the ISS's US segment (Unity, Destiny, Harmony, Tranquility with the
+ * Cupola and the Bishop, Quest, Columbus and Kibo), the integrated truss with eight solar wings that
+ * turn on their long axis to follow the Sun, the radiators, Kibo's exposed platform with the parts racks
+ * on its 12 ports, and two IDSS ports with approach lights and a docking cross. Canadarm2 is drawn by
+ * the Cupola's view (station-outside.ts). The station holds its attitude.
  */
 export class StationModel {
   readonly root = new THREE.Group();
   private beacons: THREE.Mesh[] = [];
   private portLights: THREE.Mesh[] = [];
   private wings: THREE.Object3D[] = [];
+  /** Module groups by id (the Cupola's view moves the Bishop out and back). */
+  readonly modules = new Map<string, THREE.Object3D>();
+  /** Kibo's exposed platform: its 12 ports, and the crates on them. */
+  private platformPorts: THREE.Vector3[] = [];
+  private readonly crates = new THREE.Group();
+  private crateKey = "";
   /** The station's swappable components as groups (the bay's «Estación» tab tints and picks them). */
   readonly slots = new Map<string, THREE.Group>();
 
@@ -40,6 +47,9 @@ export class StationModel {
     this.portLights = [];
     this.wings = [];
     this.slots.clear();
+    this.modules.clear();
+    this.platformPorts = [];
+    this.crateKey = "";
     this.build(layout);
   }
 
@@ -64,7 +74,9 @@ export class StationModel {
       const len = a.distanceTo(b);
       const g = new THREE.Group();
       // Inflatable modules (the farm, like a B330) and the habitat wear white blankets.
-      const body = cyl(m.radiusM, len, m.kind === "habitat" || m.kind === "agricola" ? mli : m.kind === "adaptador" ? dark : hull, 28);
+      const body = cyl(m.radiusM, len, m.kind === "habitat" || m.kind === "agricola" || m.kind === "carga" ? mli : m.kind === "adaptador" ? dark : hull, 28);
+      g.userData.moduleId = m.id;
+      this.modules.set(m.id, g);
       g.add(body);
       // Ribs every metre or so, like the ISS modules' panels.
       if (m.kind !== "adaptador")
@@ -83,6 +95,20 @@ export class StationModel {
           const win = box(0.9, 0.2, 0.5, new THREE.MeshBasicMaterial({ color: 0xe070ff }));
           win.position.copy(g.position).add(new THREE.Vector3(((a.x < b.x ? 1 : -1) * k * len) / 6, m.radiusM, 0));
           this.root.add(win);
+        }
+      }
+      if (m.kind === "cupula") {
+        // Seven windows: the big one at the end and six round the side.
+        const glass = new THREE.MeshStandardMaterial({ color: 0x7fb8ff, emissive: 0x1a2a4a, metalness: 0.9, roughness: 0.1 });
+        const top = cyl(0.42, 0.06, glass);
+        top.position.y = len / 2 + 0.02;
+        g.add(top);
+        for (let k = 0; k < 6; k++) {
+          const w = box(0.7, len * 0.7, 0.05, glass);
+          const a = (k * Math.PI) / 3;
+          w.position.set(Math.sin(a) * (m.radiusM + 0.01), 0, Math.cos(a) * (m.radiusM + 0.01));
+          w.rotation.y = a;
+          g.add(w);
         }
       }
       if (m.kind === "fabrica") {
@@ -120,6 +146,22 @@ export class StationModel {
         const core = box(p.half.x * 2, p.half.y * 0.6, p.half.z * 0.6, dark);
         core.position.copy(c);
         this.root.add(t, core);
+      } else if (p.kind === "plataforma") {
+        // An open frame at Kibo's end: a deck with 12 payload ports (JEM-EF), three rows of four.
+        const deck = box(p.half.x * 2, 0.3, p.half.z * 2, mat(0xc9ced6, { metalness: 0.5 }));
+        deck.position.copy(c).add(new THREE.Vector3(0, -p.half.y + 0.15, 0));
+        const frame = box(p.half.x * 2, p.half.y * 2, p.half.z * 2, new THREE.MeshStandardMaterial({ color: 0x9aa3ad, wireframe: true }));
+        frame.position.copy(c);
+        this.root.add(deck, frame);
+        for (let i = 0; i < 3; i++)
+          for (let k = 0; k < 4; k++) {
+            const at = c.clone().add(new THREE.Vector3(-p.half.x + ((i + 0.5) * 2 * p.half.x) / 3, -p.half.y + 0.35, -p.half.z + ((k + 0.5) * 2 * p.half.z) / 4));
+            const pad = box(0.9, 0.08, 0.9, dark);
+            pad.position.copy(at);
+            this.root.add(pad);
+            this.platformPorts.push(at);
+          }
+        this.root.add(this.crates);
       } else {
         const hgr = box(p.half.x * 2, p.half.y * 2, p.half.z * 2, hull.clone());
         hgr.position.copy(c);
@@ -154,6 +196,29 @@ export class StationModel {
       this.root.add(g);
     }
     this.root.traverse((o) => (o.userData.station = true));
+  }
+
+  /**
+   * The spare parts on Kibo's exposed platform: one crate per kind of part on each of its 12 ports
+   * (a real limit: the JEM-EF has 12 payload ports).
+   */
+  setPlatform(parts: readonly [string, number][]): void {
+    const key = JSON.stringify(parts);
+    if (key === this.crateKey) return;
+    this.crateKey = key;
+    this.crates.clear();
+    const m = mat(0xd9a441);
+    parts.slice(0, this.platformPorts.length).forEach(([, n], i) => {
+      const h = Math.min(1.6, 0.5 + 0.15 * n);
+      const crate = box(0.8, h, 0.8, m);
+      crate.position.copy(this.platformPorts[i]!).add(new THREE.Vector3(0, h / 2 + 0.05, 0));
+      this.crates.add(crate);
+    });
+  }
+
+  /** How many crates are on the platform (tests, the journey). */
+  get platformCrates(): number {
+    return this.crates.children.length;
   }
 
   update(timeS: number, sun?: THREE.Vector3): void {

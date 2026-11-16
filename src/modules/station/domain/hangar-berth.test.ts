@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { HANGAR_SIZE, LANDER_ENVELOPE, MOTHERSHIP_ENVELOPE } from "../data/hangar-craft";
 import { LanderBerth, fitsInHangar, overHangar } from "./hangar-berth";
 
-describe("EST-22 what goes in the hangar", () => {
+describe("EST-22 what would go in the old hangar (backlog)", () => {
   it("the hangar is 20 × 14 × 20 m", () => {
     expect(HANGAR_SIZE).toEqual({ x: 20, y: 14, z: 20 });
   });
@@ -14,14 +14,14 @@ describe("EST-22 what goes in the hangar", () => {
     expect(MOTHERSHIP_ENVELOPE.massKg / LANDER_ENVELOPE.massKg).toBeGreaterThan(1000);
   });
 
-  it("the arm takes the lander in only from its port, and back out", () => {
+  it("EST-44 Canadarm2 berths the lander on the CBM only from its port, and back", () => {
     const b = new LanderBerth();
-    expect(b.moveIn(false)).toMatch(/acóplalo/);
-    expect(b.inHangar).toBe(false);
-    expect(b.moveIn(true)).toBeUndefined();
-    expect(b.inHangar).toBe(true);
-    expect(b.moveIn(true)).toMatch(/ya está/);
-    expect(b.moveOut()).toBeUndefined();
+    expect(b.berth(false)).toMatch(/acóplalo/);
+    expect(b.onCbm).toBe(false);
+    expect(b.berth(true)).toBeUndefined();
+    expect(b.onCbm).toBe(true);
+    expect(b.berth(true)).toMatch(/ya está/);
+    expect(b.unberth()).toBeUndefined();
     expect(b.place).toBe("puerto");
   });
 });

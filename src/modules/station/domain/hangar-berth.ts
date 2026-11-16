@@ -1,7 +1,6 @@
 /**
- * What goes inside the hangar and what docks outside (docs/design/estacion-tripulacion.md, «Hangar»).
- * The station's arm can lift the lander from its docking port into the hangar, as Canadarm2 lifts a
- * Dragon or an HTV from its capture point to its berth; there the ship bay works on it.
+ * What would fit in the old hangar (backlog) and where the lander berths now: on a CBM, with
+ * Canadarm2 (docs/design/estacion-real.md).
  */
 
 /** The box a craft takes, m (its longest reach, rings and legs included), and its mass, kg. */
@@ -35,33 +34,38 @@ export function fitsInHangar(c: CraftEnvelope, h: HangarSize, marginM = 1): bool
 /** How many times the hangar's longest side the craft is. */
 export const overHangar = (c: CraftEnvelope, h: HangarSize): number => Math.max(c.lengthM, c.widthM, c.heightM) / Math.max(h.x, h.y, h.z);
 
-export type LanderPlace = "puerto" | "hangar";
+/** Where the lander is at the station: docked on its IDA, or berthed by Canadarm2 on Unity's nadir CBM. */
+export type LanderPlace = "puerto" | "cbm";
 
-/** Where the lander is while it is at the station: on its docking port, or berthed in the hangar. */
+/**
+ * The lander at the station (docs/design/estacion-real.md, «Atraque con el brazo»): Canadarm2 can take
+ * it from its docking port (IDA) and berth it on a CBM, as it berths Cygnus on Unity's nadir and as it
+ * moved PMA-3 and the cargo ships between ports. There the ship bay works on it; its IDA hatch stays shut.
+ */
 export class LanderBerth {
   place: LanderPlace = "puerto";
 
-  /** The arm takes it into the hangar; why not, if it cannot. */
-  moveIn(atPort: boolean): string | undefined {
-    if (this.place === "hangar") return "El módulo ya está en el hangar";
-    if (!atPort) return "El módulo no está acoplado a la estación: acóplalo en su puerto y el brazo lo meterá aquí";
-    this.place = "hangar";
+  /** The arm berths it on the CBM; why not, if it cannot. */
+  berth(atPort: boolean): string | undefined {
+    if (this.place === "cbm") return "El módulo ya está atracado en el CBM";
+    if (!atPort) return "El módulo no está acoplado a la estación: acóplalo en su IDA y el brazo lo atracará en el CBM";
+    this.place = "cbm";
     return undefined;
   }
 
-  /** The arm puts it back on its port (to fly, or to go back in through its hatch). */
-  moveOut(): string | undefined {
+  /** The arm puts it back on its docking port (to fly, or to go back in through its hatch). */
+  unberth(): string | undefined {
     if (this.place === "puerto") return "El módulo ya está en su puerto";
     this.place = "puerto";
     return undefined;
   }
 
-  /** It left the station (undocked): nothing in the hangar any more. */
+  /** It left the station (undocked). */
   reset(): void {
     this.place = "puerto";
   }
 
-  get inHangar(): boolean {
-    return this.place === "hangar";
+  get onCbm(): boolean {
+    return this.place === "cbm";
   }
 }

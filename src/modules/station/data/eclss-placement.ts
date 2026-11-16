@@ -14,22 +14,6 @@ export interface RackPlacement {
   readonly along: number;
 }
 
-/**
- * Interim placement in the current station's node 2, the way Tranquility (node 3) carries the ISS's ECLSS racks
- * («distribución nuestra»; estacion-real moves them to its node 3 and Destiny with `eclssFixtures`):
- * port: air (CDRA, TCCS), water (UPA, WPA, BPA, two bays) and the coolant pumps; starboard: oxygen
- * (OGA, Sabatier) and the life-support laptop; overhead, the fire post with its smoke detector. Spaced so
- * every grab bar keeps the 2 m drawn from the docking hatches and the doors (src/core/spacing.ts).
- */
-export const NODE2_ECLSS: readonly RackPlacement[] = [
-  { rack: "ar", side: 0, along: -1.6 },
-  { rack: "wrs", side: 0, along: 0 },
-  { rack: "itcs", side: 0, along: 1.6 },
-  { rack: "ogs", side: 1, along: -0.9 },
-  { rack: "consola", side: 1, along: 0.7 },
-  { rack: "incendios", side: "techo", along: -1.4 },
-];
-
 /** Fixture id of a rack: the same in every host. */
 export const eclssFixtureId = (rack: RackKind): string => `sv-${rack}`;
 

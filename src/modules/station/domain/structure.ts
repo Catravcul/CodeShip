@@ -10,7 +10,7 @@ import type { StationSite } from "./station";
 export interface PressurisedModule {
   readonly id: string;
   readonly label: string;
-  readonly kind: "nodo" | "habitat" | "fabrica" | "adaptador" | "agricola" | "planta";
+  readonly kind: "nodo" | "habitat" | "fabrica" | "adaptador" | "agricola" | "planta" | "laboratorio" | "esclusa" | "cupula" | "carga";
   readonly from: Vec3;
   readonly to: Vec3;
   readonly radiusM: number;
@@ -19,11 +19,11 @@ export interface PressurisedModule {
   readonly source?: string;
 }
 
-/** A flat or boxy part outside the pressure hull: truss, solar wings, radiators, the hangar. */
+/** A flat or boxy part outside the pressure hull: truss, solar wings, radiators, the exposed platform (the old hangar is backlog). */
 export interface StructurePart {
   readonly id: string;
   readonly label: string;
-  readonly kind: "celosia" | "solar" | "radiador" | "hangar";
+  readonly kind: "celosia" | "solar" | "radiador" | "plataforma" | "hangar";
   readonly centre: Vec3;
   readonly half: Vec3;
   readonly basis: string;

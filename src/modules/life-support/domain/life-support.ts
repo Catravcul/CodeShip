@@ -156,12 +156,15 @@ export class LifeSupport {
   private readonly failed = new Map<EclssMachineId, FailureMode[]>();
   private readonly stock = new Map<string, number>();
   private ogaRate = 0;
+  /** Crew aboard now; `config.crew` is the crew it is built for. */
+  private aboard: number;
 
   constructor(
     readonly specs: readonly EclssMachineSpec[],
     readonly config: LifeSupportConfig,
     private readonly opts: LifeSupportOptions = { randomFailures: false },
   ) {
+    this.aboard = config.crew;
     const v = config.freeAirM3;
     this.o2 = massFor(O2_LIMITS.setKPa.value * 1000, M.o2, v);
     this.n2 = massFor(101325 - O2_LIMITS.setKPa.value * 1000 - 0.7 * PA_PER_MMHG, M.n2, v);
@@ -175,6 +178,19 @@ export class LifeSupport {
     this.n2Tank = config.n2TankKg;
     for (const [k, n] of Object.entries(config.spares)) this.stock.set(k, n);
     this.lastPowerW = this.power();
+  }
+
+  /** How many people are aboard now: only they breathe, eat, drink and give off heat. */
+  get crewAboard(): number {
+    return this.aboard;
+  }
+
+  /**
+   * Who is aboard now (Doménica is in one vehicle at a time, or in the lander). An empty vehicle still runs
+   * its machines, leaks and fails; it just has no crew metabolic load.
+   */
+  setCrewAboard(n: number): void {
+    this.aboard = Math.max(0, n);
   }
 
   spec(id: EclssMachineId): EclssMachineSpec | undefined {
@@ -255,7 +271,7 @@ export class LifeSupport {
     const d = h / 24;
     const m = ECLSS_MODEL;
     const crew = this.config.crew;
-    const day = dailyBalance(crew);
+    const day = dailyBalance(this.aboard);
     const v = this.config.freeAirM3;
     const before = co2Level(this.ppCo2MmHg());
     const co2Before = this.ppCo2MmHg();
@@ -268,7 +284,7 @@ export class LifeSupport {
         for (const f of s.failures) if (rnd() < d / f.meanDays && this.fail(f.id)) out.push({ kind: "averia", failure: f });
     }
 
-    // Crew: breathe, eat, drink and wash.
+    // Crew aboard: breathe, eat, drink and wash.
     this.o2 = Math.max(0, this.o2 - day.o2Kg * d);
     this.co2 += day.co2Kg * d;
     const hadWater = this.water > 0;
@@ -276,13 +292,13 @@ export class LifeSupport {
     const used = Math.min(this.water, day.waterUseKg * d);
     this.water -= used;
     this.food = Math.max(0, this.food - day.foodKg * d);
-    const urineShare = day.urineKg / day.waterUseKg;
+    const urineShare = day.waterUseKg > 0 ? day.urineKg / day.waterUseKg : 0;
     this.urineTank += used * urineShare;
     this.wasteTank += used * (1 - urineShare);
     if (hadWater && this.water <= 0) out.push({ kind: "sin-agua" });
     if (hadFood && this.food <= 0) out.push({ kind: "sin-comida" });
 
-    // Leaks: air out, at the cabin's mix.
+    // Leaks: air out, at the cabin's mix (the hull leaks with or without anyone aboard; rated per crew it is built for).
     const leak = m.airLeakKgPerCrewDay.value * crew * d;
     const air = this.o2 + this.n2 + this.co2;
     if (air > 0) {
@@ -374,7 +390,7 @@ export class LifeSupport {
       o2TankKg: this.o2Tank,
       n2TankKg: this.n2Tank,
       powerW: this.lastPowerW,
-      heatW: crewHeatW(this.config.crew) + this.lastPowerW,
+      heatW: crewHeatW(this.aboard) + this.lastPowerW,
       cabinC: this.tempC,
       contaminants: this.contam,
       machines: this.specs.map((s) => {

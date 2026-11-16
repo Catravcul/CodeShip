@@ -1,13 +1,14 @@
 import { CODESHIP_RING } from "@modules/gravity/data/ring";
 import { NODRIZA } from "@modules/mothership/data/mothership";
 import type { CraftEnvelope, HangarSize } from "../domain/hangar-berth";
-import { POLANA_LAYOUT } from "./structure";
+import { OLD_HANGAR_HALF } from "./interior";
 
-/** The hangar's box, from the structure (20 × 14 × 20 m). */
-export const HANGAR_SIZE: HangarSize = (() => {
-  const h = POLANA_LAYOUT.parts.find((p) => p.kind === "hangar")!.half;
-  return { x: 2 * h.x, y: 2 * h.y, z: 2 * h.z };
-})();
+/**
+ * The old hangar's box (20 × 14 × 20 m). The hangar is backlog (docs/pendientes.md): the ISS has no
+ * hangar. The catalogue's assembly site still reads it until `catalogo-montaje` moves assembly to the
+ * arm and the exposed platform.
+ */
+export const HANGAR_SIZE: HangarSize = { x: 2 * OLD_HANGAR_HALF.x, y: 2 * OLD_HANGAR_HALF.y, z: 2 * OLD_HANGAR_HALF.z };
 
 /** The lander: hull 3 × 2 × 5 m (ship/data/explorer.ts) on legs about 1 m long (game value), ≈ 680 kg. */
 export const LANDER_ENVELOPE: CraftEnvelope = { id: "explorador", name: "Módulo de aterrizaje", lengthM: 5, widthM: 3, heightM: 3, massKg: 680, basis: "Casco de 3 × 2 × 5 m (ship/data/explorer.ts) y patas de ~1 m; ~680 kg (docs/design/gravedad.md)" };

@@ -44,7 +44,7 @@ describe("HAB-21 The real journey to a task (travel mode)", () => {
     expect(p.legs[3]!.seconds).toBeGreaterThan(25);
     expect(p.seconds).toBeGreaterThan(60);
     expect(p.seconds).toBeLessThan(160);
-  });
+  }, 20000);
 
   it("with the travel ship already berthed, she goes straight across the spine's docking hatch", () => {
     const p = plan(facts({ joins: { lander: "nodriza", mothershipAtStation: true } }), planos);

@@ -1,5 +1,7 @@
 # Estación espacial: materiales, planos, fabricación y hangar
 
+> **Desde 2026-11-16 la estación es la ISS** ([estacion-real.md](estacion-real.md)): Unity, Destiny, Harmony, Tranquility con la Cupola y la Bishop, Quest, Columbus y Kibo a tamaño real. No hay hangar: la Bishop saca la sonda y los cubesats, las piezas viven en la plataforma JEM-EF y Canadarm2 atraca el módulo en el CBM de Unity. Lo que sigue describe la estación anterior donde no coincide; las máquinas de fabricación que no existen en órbita son licencias.
+
 Petición de Berón (2026-11-12): «Las piezas nuevas se fabrican con los recursos obtenidos. Tenemos planos y, cuando tenemos los recursos necesarios, podemos construirlas. Podría haber una estación espacial con la maquinaria para crear componentes, y allí se guardarían también todas nuestras sondas y naves».
 
 ## Cómo se juega

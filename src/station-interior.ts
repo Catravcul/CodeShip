@@ -84,7 +84,8 @@ const ICON_OF = (f: Fixture, locked: boolean): string => {
   const a = f.action;
   if (a.kind === "puerta" || a.kind === "salir") return locked ? ICON.locked : ICON.door;
   if (a.kind === "tripulacion") return { cocina: ICON.food, camarotes: ICON.bed, aseo: ICON.wash, ejercicio: ICON.exercise, esterilla: ICON.mat }[a.area];
-  if (a.kind === "hangar" || a.kind === "bahia") return ICON.hangar;
+  if (a.kind === "bahia" || a.kind === "bishop") return ICON.hangar;
+  if (a.kind === "brazo") return ICON.eye;
   if (a.kind === "esclusa") return ICON.suit;
   if (a.kind === "panel" || a.kind === "consola") return ICON.machine;
   if (a.kind === "soporte-vital") return a.rack === "incendios" ? ICON.info : ICON.machine;
@@ -92,9 +93,9 @@ const ICON_OF = (f: Fixture, locked: boolean): string => {
 };
 
 /**
- * Inside the station: Doménica floats (the station does not spin) through node 2, the habitat,
- * node 1, the fabrication module and, suited, the hangar. Same handrail movement as the mothership's
- * spine; machines open their tab of the station screen (docs/design/interiores.md §5).
+ * Inside the station: Doménica floats (the station does not spin) through the ISS's US segment: Harmony,
+ * Destiny, Unity, Tranquility, Quest, Columbus and Kibo (docs/design/estacion-real.md). Same handrail
+ * movement as the mothership's spine; machines open their tab of the station screen.
  */
 export class StationInteriorMode {
   readonly scene = new THREE.Scene();
@@ -531,7 +532,7 @@ export class StationInteriorMode {
     this.pitch = Math.max(-1.45, Math.min(1.45, this.pitch + look.pitch));
     if (this.cycling > 0) {
       this.cycling = Math.max(0, this.cycling - dt);
-      if (this.cycling === 0) this.say(this.suited ? "Esclusa vacía: abre la escotilla exterior y pasa al hangar" : "Esclusa a presión: ya puedes quitarte el casco y volver al módulo");
+      if (this.cycling === 0) this.say(this.suited ? "Quest vacía: la escotilla EVA da al vacío (el paseo por fuera de la estación está en pendientes)" : "Esclusa a presión: ya puedes quitarte el casco y volver al módulo");
     }
     this.moveAbout(dt);
     // Holding a thing's grab point shows its action; elsewhere, the nearest thing within reach.
@@ -595,7 +596,8 @@ export class StationInteriorMode {
         return [{ id: "traje", label: this.suited ? "Llenar la esclusa y quitarse el traje" : "Ponerse el traje y vaciar la esclusa", enabled: !why, ...(why ? { why } : {}) }];
       }
       case "tripulacion":
-      case "hangar":
+      case "brazo":
+      case "bishop":
       case "consola":
       case "soporte-vital":
         return this.deps.actions(f);
@@ -607,7 +609,7 @@ export class StationInteriorMode {
   /** Do one of a fixture's actions. */
   run(f: Fixture, id: string): void {
     const a = f.action;
-    if (a.kind === "tripulacion" || a.kind === "hangar" || a.kind === "consola" || a.kind === "soporte-vital") return this.deps.act(f, id);
+    if (a.kind === "tripulacion" || a.kind === "brazo" || a.kind === "bishop" || a.kind === "consola" || a.kind === "soporte-vital") return this.deps.act(f, id);
     if (id === "ventana") return this.deps.lookOut?.();
     this.use(f, true);
   }
@@ -654,7 +656,7 @@ export class StationInteriorMode {
     }
     if (a.kind === "info") return this.say(`${f.label} (${this.interior.locationCode(f)}): ${f.info}`, 6);
     if (a.kind === "bahia") return this.deps.openBay();
-    if (a.kind === "tripulacion" || a.kind === "hangar" || a.kind === "consola" || a.kind === "soporte-vital") {
+    if (a.kind === "tripulacion" || a.kind === "brazo" || a.kind === "bishop" || a.kind === "consola" || a.kind === "soporte-vital") {
       const main = this.deps.actions(f).find((x) => x.enabled);
       return main ? this.deps.act(f, main.id) : this.say(f.info, 5);
     }

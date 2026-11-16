@@ -7,7 +7,7 @@ import { BRIDGE } from "@modules/flight-deck/data/bridge";
 import { LANDER_CABIN } from "@modules/lander-cabin/data/cabin";
 import type { CabinLayout } from "@modules/lander-cabin/domain/cabin";
 import { POLANA_INTERIOR } from "@modules/station/data/interior";
-import { stationHandrails } from "@modules/station/data/handrails";
+import { stationInteractables } from "@modules/station/data/presentation";
 import { spineInteractables, spineLayout } from "@modules/gravity/data/spine";
 import { CODESHIP_RING } from "@modules/gravity/data/ring";
 import { RING_MODULE, RING_REACH_M, RING_STATIONS, ringInteractables } from "./ring-module";
@@ -15,22 +15,8 @@ import { RING_MODULE, RING_REACH_M, RING_STATIONS, ringInteractables } from "./r
 const X = INTERACTABLE_SPACING.minM;
 const roomItems = <Id extends string>(l: CabinLayout<Id>): Interactable[] => l.stations.map((s) => ({ id: s.id, centre: s.look, anchor: { x: s.stand.x, y: 0, z: s.stand.z } }));
 
-/**
- * The station as played: its plan drawn at MACHINE_SCALE (main.ts). The two sides of one hatch are one
- * thing (a door, used from either side): one interactable at the middle of its two sides.
- */
-function stationItems(): Interactable[] {
-  const plan = scaleInteriorPlan(POLANA_INTERIOR, MACHINE_SCALE);
-  const rails = stationHandrails(plan);
-  const out = new Map<string, Interactable[]>();
-  for (const f of plan.fixtures) {
-    const r = rails.find((x) => x.poi === f.id);
-    const key = f.action?.kind === "puerta" ? `escotilla:${f.action.hatch}` : f.id;
-    out.set(key, [...(out.get(key) ?? []), { id: key, centre: f.at, anchor: r ? r.a.add(r.b).scale(0.5) : f.at }]);
-  }
-  const mid = (ps: { x: number; y: number; z: number }[]) => ({ x: ps.reduce((s, p) => s + p.x, 0) / ps.length, y: ps.reduce((s, p) => s + p.y, 0) / ps.length, z: ps.reduce((s, p) => s + p.z, 0) / ps.length });
-  return [...out.entries()].map(([id, sides]) => ({ id, centre: mid(sides.map((s) => s.centre)), anchor: mid(sides.map((s) => s.anchor)) }));
-}
+/** The station as played: its plan drawn at MACHINE_SCALE (main.ts), each door one interactable (data/presentation.ts). */
+const stationItems = (): Interactable[] => stationInteractables(scaleInteriorPlan(POLANA_INTERIOR, MACHINE_SCALE));
 
 /** Every area she walks or floats in, as played (data at real size × its drawing scale), with no exemptions. */
 const AREAS: readonly { readonly area: string; readonly scale: number; readonly items: () => Interactable[] }[] = [

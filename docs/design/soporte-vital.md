@@ -79,12 +79,13 @@ Hay además un **refugio de agua** contra las tormentas solares y la **cuenta de
 - Dar al juego `actions`/`act`/`readout`/`rackState` (en la estación, `StationInteriorDeps`).
 - Pasar `frame`/`unframe` para que la reparación se vea encima de la hoja.
 
-**Provisional en esta rama.** La estación actual lleva los bastidores en el **Nodo 2**, como Tranquility los lleva en el Nodo 3:
-- babor: aire, agua y refrigeración;
-- estribor: oxígeno y la consola;
-- techo: incendios.
+**En la estación (la ISS de `estacion-real`).** Los bastidores van donde los tiene la ISS:
+- Tranquility (Nodo 3): agua en la pared de proa, oxígeno en la de popa, aire en el techo y el puesto de incendios en el techo.
+- Destiny: las bombas de los lazos de refrigeración (ITCS) en la pared de babor y el portátil de soporte vital en el techo.
 
-`estacion-real` los moverá a su Nodo 3 y a Destiny con `eclssFixtures`. `base-nodriza-real` los pondrá en su distribución de Starship con su propio `LifeSupportConfig` (614 m³).
+En la Starship, `base-nodriza-real` los pone en su distribución con su propio `LifeSupportConfig` (614 m³).
+
+**Quién está a bordo.** La estación y la Starship van con el mismo reloj. Cada una cuenta solo la tripulación que lleva dentro: Doménica está en una sola, o en el módulo (`crewIn` en `main.ts`). Un vehículo vacío sigue con sus máquinas en marcha, pierde aire por el casco y puede tener averías, pero nadie respira, come ni bebe en él. Los síntomas solo salen del aire y el agua del vehículo donde está ella (SV-12, SV-13).
 
 ## En el juego
 

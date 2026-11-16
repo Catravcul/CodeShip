@@ -40,6 +40,23 @@ export function stationHandrails(plan: StationInteriorPlan): Handrail[] {
     const fitsBar = (r: Handrail) => interior.fits(r.a.add(r.b).scale(0.5).add(r.normal.scale(IVA.holdM)), 0.3, false);
     for (const end of [-1, 1] as const) rails.push(...doorRails(plan, hatchRails(box, along, side, end, hatchHalf).filter(fitsBar), v.id, along, end));
   }
+  // Doors on a node's side wall (Unity to Tranquility and Quest, Harmony to Kibo and Columbus, as on the
+  // ISS): two upright bars beside the hatchway on that wall; the one further from the other things is its grab point.
+  for (const d of plan.fixtures.filter((f) => f.action.kind === "puerta" && !rails.some((r) => r.poi === f.id))) {
+    const n = FACE_NORMAL[d.face].scale(-1);
+    if (Math.abs(n.y) > 0.5) continue;
+    const across = Math.abs(n.x) > 0.5 ? new Vec3(0, 0, 1) : new Vec3(1, 0, 0);
+    const off = hatchHalf + 0.2;
+    const h = new Vec3(0, RAIL_LAYOUT.lengthM / 2, 0);
+    const bars = [-1, 1].map((s) => {
+      const c = d.at.add(n.scale(RAIL_LAYOUT.standoffM)).add(across.scale(s * off));
+      return { id: `${d.volume}:puerta-${d.id}-${s < 0 ? "i" : "d"}`, a: c.sub(h), b: c.add(h), normal: n };
+    });
+    const others = plan.fixtures.filter((f) => f.id !== d.id && f.volume === d.volume);
+    const clearance = (r: Handrail) => Math.min(Infinity, ...others.map((f) => r.a.add(r.b).scale(0.5).sub(f.at).length()));
+    const best = bars.reduce((a, b) => (clearance(b) > clearance(a) ? b : a));
+    rails.push(...bars.map((r) => (r === best ? { ...r, poi: d.id } : r)));
+  }
   // Two bars beside each docking hatch, on its wall.
   for (const f of plan.fixtures.filter((x) => x.action.kind === "salir")) {
     const n = FACE_NORMAL[f.face].scale(-1);
@@ -49,8 +66,8 @@ export function stationHandrails(plan: StationInteriorPlan): Handrail[] {
     for (const s of [-1, 1]) {
       const c = f.at.add(n.scale(RAIL_LAYOUT.standoffM)).add(across.scale(s * off));
       const h = runs.scale(RAIL_LAYOUT.lengthM / 2);
-      // The second bar (away from the bay console) is the hatch's grab point (its action shows while she holds it).
-      rails.push({ id: `${f.id}:${s < 0 ? "i" : "d"}`, a: c.sub(h), b: c.add(h), normal: n, ...(s > 0 ? { poi: f.id } : {}) });
+      // The first bar is the hatch's grab point (its action shows while she holds it): coming in, she takes it.
+      rails.push({ id: `${f.id}:${s < 0 ? "i" : "d"}`, a: c.sub(h), b: c.add(h), normal: n, ...(s < 0 ? { poi: f.id } : {}) });
     }
   }
   // A bar at each thing one can use (machines, consoles, the airlock's suits, the galley, the cabins…),
@@ -62,7 +79,7 @@ export function stationHandrails(plan: StationInteriorPlan): Handrail[] {
     if (k === "salir") continue;
     // Doors take a bar beside their hatch (above); in the hangar only the consoles have their own bar.
     if (k === "puerta") continue;
-    if (plan.volumes.find((v) => v.id === f.volume)?.kind === "hangar" && k !== "hangar" && k !== "bahia") continue;
+    if (plan.volumes.find((v) => v.id === f.volume)?.kind === "hangar" && k !== "bahia") continue;
     const n = FACE_NORMAL[f.face].scale(-1);
     const wall = Math.abs(n.y) < 0.5;
     const runs = wall ? (Math.abs(n.x) > 0.5 ? new Vec3(0, 0, 1) : new Vec3(1, 0, 0)) : new Vec3(0, 0, 1);

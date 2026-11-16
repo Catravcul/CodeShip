@@ -444,6 +444,15 @@ export class AsteroidWrath {
     return false;
   }
 
+  /**
+   * A critical alert for a craft: something is flying at it now (a projectile or a ram aimed at it).
+   * Unlike `threatened`, an angry asteroid that only has it in reach is not an attack. An open
+   * challenge ends on it (docs/design/ux-acciones.md §7).
+   */
+  underAttack(targetId: string): boolean {
+    return this.threats(targetId).length > 0 || !!this.ramAt(targetId);
+  }
+
   drainEvents(): WrathEvent[] {
     const e = this.events;
     this.events = [];

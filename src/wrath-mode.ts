@@ -161,6 +161,14 @@ export class WrathMode {
     return !this.wrath.threatened("aterrizador") && !this.wrath.ramAt("sonda");
   }
 
+  /**
+   * A critical alert (docs/design/ux-acciones.md §7): a projectile or a ram coming at the craft or ship
+   * Doménica is aboard, or at the probe while she flies it. An open challenge ends on it.
+   */
+  critical(flyingProbe: boolean): boolean {
+    return this.wrath.underAttack(this.crewIn()) || (flyingProbe && this.wrath.underAttack("sonda"));
+  }
+
   /** The ram coming at a craft Doménica controls (the lander, or the probe), the soonest. */
   private ramOnYou(): RamView | undefined {
     const a = this.wrath.ramAt("aterrizador");

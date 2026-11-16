@@ -79,8 +79,14 @@ export class TripPreview {
     }
   }
 
+  /**
+   * Set by the wiring while a challenge is open (docs/design/ux-acciones.md §7): the preview stays open but
+   * is not drawn, so the scene behind the sheet is the challenge's, not the trip's.
+   */
+  held = false;
+
   get visible(): boolean {
-    return this.open && !!this.subject;
+    return this.open && !!this.subject && !this.held;
   }
 
   /** Points of the path drawn now (for checks): 0 when nothing is drawn. */

@@ -25,7 +25,7 @@ body.in-probe .fd, body.in-probe #app > .touch, body.in-probe .banner, body.in-p
 .pr-top b { color: #ffd27f; }
 .pr-top .pr-cam { font-size: 11px; color: #7f93a3; }
 @media (max-width: 600px) { .pr-top .pr-cam { display: none; } }
-.pr-top .pr-exit { margin-left: auto; padding: 8px 14px; min-height: 36px; color: #001018; background: #9fe8c4; border: 0; border-radius: 8px; }
+.pr-top .pr-exit { margin-left: auto; padding: 8px 14px; min-height: 44px; color: #001018; background: #9fe8c4; border: 0; border-radius: 8px; }
 .pr-tele { display: flex; flex-wrap: wrap; gap: 2px 12px; padding: 6px 12px; font-variant-numeric: tabular-nums; text-shadow: 0 0 4px #000; }
 .pr-tele .warn { color: #ffb347; }
 .pr-tele .bad { color: #ff6b5a; }
@@ -35,7 +35,7 @@ body.in-probe .fd, body.in-probe #app > .touch, body.in-probe .banner, body.in-p
 .pr-msg { margin: 6px 12px 0; width: min(360px, calc(100vw - 24px)); box-sizing: border-box; padding: 6px 10px; font-size: 13px; color: #fff; background: #000a; border-radius: 10px; opacity: 0; transition: opacity 0.3s; }
 .pr-msg.on { opacity: 1; }
 .pr-actions { position: fixed; right: 12px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: stretch; gap: 6px; width: 190px; }
-.pr-actions button { padding: 9px 12px; min-height: 40px; color: #d8f6ff; background: #0b2a36e6; border: 1px solid #7fdcff66; border-radius: 10px; }
+.pr-actions button { padding: 9px 12px; min-height: 44px; color: #d8f6ff; background: #0b2a36e6; border: 1px solid #7fdcff66; border-radius: 10px; }
 .pr-actions button.primary { color: #001018; background: #ffd27f; border-color: #ffd27f; }
 .pr-actions button.danger { color: #ffd0c8; border-color: #ff6b5a; background: #3a0d08e6; }
 .pr-actions button.on { color: #001018; background: #7dffb0; }
@@ -43,7 +43,7 @@ body.in-probe .fd, body.in-probe #app > .touch, body.in-probe .banner, body.in-p
 .probe-ui .touch { z-index: 10; }
 @media (pointer: coarse), (max-width: 760px) {
   .pr-actions { top: auto; transform: none; bottom: 268px; right: 10px; width: 160px; }
-  .pr-actions button { min-height: 36px; padding: 6px 10px; font-size: 12px; }
+  .pr-actions button { min-height: 44px; padding: 6px 10px; font-size: 12px; }
   .pr-tele { font-size: 11px; }
 }
 .fd-probe { background: #ffd27f !important; }

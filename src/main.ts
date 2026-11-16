@@ -1352,6 +1352,9 @@ renderer.setAnimationLoop((now) => {
   landerLandingUi.update();
   probeLandingUi.update();
   wrathMode.update(dt * warp, dt, subj.piloting ? subj.probeMode.camera : camera, view.enabled || deck.active || subj.piloting);
+  // A critical alert ends an open challenge instead of hiding under it (docs/design/ux-acciones.md §7).
+  if (wrathMode.critical(subj.piloting)) duelView.interrupt();
+  tripPreview.held = duelView.visible;
   ring.tick(dt);
   // Region rules: soft boundary push back and no flying through the other rocks or the mothership (game rules).
   if (!flight.landed && !flight.docked) {

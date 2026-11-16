@@ -202,10 +202,79 @@ export class Journey {
     return this.tap(`.room-ui:not(.hidden) .cab-machine [data-act="${act}"]`, what);
   }
 
-  /** Waits until the challenge screen is up. */
+  /** Waits until the challenge screen is up, then checks that it is the only interface on screen. */
   async waitDuel(timeout = 30000) {
     await this.page.waitForFunction(() => [...document.querySelectorAll(".duel")].some((e) => !e.classList.contains("hidden")), null, { timeout });
     await this.page.waitForTimeout(400);
+    await this.onlyChallengeVisible();
+  }
+
+  /**
+   * What is on screen besides the challenge (docs/design/ux-acciones.md §Foco del reto): every element
+   * outside the sheet (`.duel`), the 3D scene (the game's canvas) and what is marked `data-duel-keep`
+   * (the step overlay) that paints something in the viewport, grouped by its overlay root (a child of
+   * #app or of body); and the points of a 12 px grid where a tap would land on one of them.
+   */
+  async outsideChallenge() {
+    return this.page.evaluate(() => {
+      const keep = (el) => !!el.closest("#app > canvas, .duel, [data-duel-keep]");
+      const root = (el) => {
+        let r = el;
+        while (r.parentElement && r.parentElement !== document.body && r.parentElement.id !== "app") r = r.parentElement;
+        return r;
+      };
+      const label = (el) => `${el.tagName.toLowerCase()}${el.classList.length ? "." + [...el.classList].filter((c) => c !== "hidden").join(".") : ""}`;
+      const paints = (el, s) => {
+        if (/^(IMG|SVG|VIDEO|CANVAS|INPUT|BUTTON|SELECT|TEXTAREA|svg)$/.test(el.tagName)) return true;
+        if ([...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) return true;
+        const clear = (c) => !c || c === "transparent" || /rgba\(.*,\s*0\)$/.test(c);
+        if (!clear(s.backgroundColor) || s.backgroundImage !== "none") return true;
+        return parseFloat(s.borderTopWidth) > 0 && !clear(s.borderTopColor);
+      };
+      const W = innerWidth;
+      const H = innerHeight;
+      const seen = new Map();
+      for (const el of document.body.querySelectorAll("*")) {
+        if (keep(el) || el.tagName === "SCRIPT" || el.tagName === "STYLE") continue;
+        if (!el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue;
+        const r = el.getBoundingClientRect();
+        if (r.width < 2 || r.height < 2 || r.right <= 0 || r.bottom <= 0 || r.left >= W || r.top >= H) continue;
+        const s = getComputedStyle(el);
+        if (!paints(el, s)) continue;
+        const k = label(root(el));
+        const e = seen.get(k) ?? { root: k, texts: new Set(), hit: 0 };
+        const t = (el.getAttribute("aria-label") || [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join(" ")).trim().replace(/\s+/g, " ").slice(0, 40);
+        if (t && e.texts.size < 4) e.texts.add(t);
+        seen.set(k, e);
+      }
+      for (let y = 6; y < H; y += 12)
+        for (let x = 6; x < W; x += 12) {
+          const hit = document.elementFromPoint(x, y);
+          if (!hit || keep(hit) || hit === document.documentElement || hit === document.body || hit.id === "app") continue;
+          const k = label(root(hit));
+          const e = seen.get(k) ?? { root: k, texts: new Set(), hit: 0 };
+          e.hit++;
+          seen.set(k, e);
+        }
+      return [...seen.values()].map((e) => ({ root: e.root, texts: [...e.texts], hitPoints: e.hit }));
+    });
+  }
+
+  /**
+   * Invariant while a challenge is open (designer, 2026-11-16): only the sheet, the scene and the step
+   * overlay are on screen; no other interface paints or takes a tap. Also «Ver trayecto» (drawn into
+   * the canvas) must not replace the scene. Returns the elements found.
+   */
+  async onlyChallengeVisible(where) {
+    const open = await this.page.evaluate(() => [...document.querySelectorAll(".duel")].some((e) => !e.classList.contains("hidden")));
+    if (!open) return [];
+    const out = await this.outsideChallenge();
+    const pip = await this.page.evaluate(() => !!window.codeship?.tripPreview?.visible);
+    const title = where ?? ((await this.texts(".duel .duel-title"))[0] ?? "").slice(0, 50);
+    const desc = out.map((o) => `${o.root}${o.hitPoints ? ` (${o.hitPoints} puntos de toque)` : ""}${o.texts.length ? ` «${o.texts.join("» «")}»` : ""}`);
+    if (pip) desc.push("«Ver trayecto» ocupa la escena");
+    this.check(`con el reto abierto solo se ven la hoja, la escena y el paso${title ? ` («${title}»)` : ""}`, desc.length === 0, desc.slice(0, 6).join("; "));
+    return out;
   }
 
   async key(code, ms = 0) {

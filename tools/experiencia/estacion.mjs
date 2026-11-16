@@ -17,7 +17,12 @@ async function capture(j, label, title) {
 
 const card = (j) => j.page.evaluate(() => document.querySelector(".sti-card:not(.hidden)")?.innerText.replace(/\s+/g, " ") ?? "");
 /** Teleport to a thing's grab point (crossing the station hop by hop takes minutes with SwiftShader). */
-const placeAt = (j, id) => j.setup(`Doménica va hasta «${id}»`, (f) => window.codeship.stationInside.placeAt(f), id);
+async function placeAt(j, id) {
+  await j.setup(`Doménica va hasta «${id}»`, (f) => window.codeship.stationInside.placeAt(f), id);
+  // The card follows on the next frames (SwiftShader draws a few per second).
+  await j.page.waitForFunction((f) => window.codeship.stationInside.nearFixture() === f, id, { timeout: 15000 }).catch(() => undefined);
+  await j.page.waitForTimeout(600);
+}
 
 export async function estacion(j) {
   const p = j.page;

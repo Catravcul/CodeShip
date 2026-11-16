@@ -1,7 +1,7 @@
 // The station as the ISS's US segment (docs/design/estacion-real.md), played with taps on an iPhone 13:
-// a tour through its hatches (Harmony, Destiny, Unity, Tranquility, Columbus, Kibo and Quest), Juventas
-// stowed in the Bishop and let go outside by Canadarm2, the arm berthing the lander on Unity's nadir CBM
-// seen from the Cupola, and the galley in Unity. Captures in docs/screenshots/iss-<pantalla>-movil.png.
+// a tour through its hatches (Harmony, Destiny, Unity, Tranquility, Columbus, Kibo and Quest), the galley in
+// Unity, Juventas stowed in the Bishop and let go outside by Canadarm2, and the arm berthing the lander on
+// Unity's nadir CBM seen from the Cupola. Captures in docs/screenshots/iss-<pantalla>-movil.png.
 import { mkdirSync } from "node:fs";
 
 async function capture(j, label, title) {
@@ -16,7 +16,12 @@ async function capture(j, label, title) {
 const card = (j) => j.page.evaluate(() => document.querySelector(".sti-card:not(.hidden)")?.innerText.replace(/\s+/g, " ") ?? "");
 const where = (j) => j.page.evaluate(() => window.codeship.stationInside.where());
 /** Teleport to a thing's grab point (crossing the station hop by hop takes minutes with SwiftShader). */
-const placeAt = (j, id) => j.setup(`Doménica va hasta «${id}»`, (f) => window.codeship.stationInside.placeAt(f), id);
+async function placeAt(j, id) {
+  await j.setup(`Doménica va hasta «${id}»`, (f) => window.codeship.stationInside.placeAt(f), id);
+  // The card follows on the next frames (SwiftShader draws a few per second).
+  await j.page.waitForFunction((f) => window.codeship.stationInside.nearFixture() === f, id, { timeout: 15000 }).catch(() => undefined);
+  await j.page.waitForTimeout(600);
+}
 
 /** Through a hatch with its door's card: «Entrar en <módulo>». */
 async function through(j, door, to, name) {
@@ -62,6 +67,20 @@ export async function estacionIss(j) {
   await through(j, "puerta-escotilla-nodo1-quest-nodo-1", "quest", "Quest");
   await look(j, "trajes", /Trajes/, "quest", "Quest: los trajes de EVA");
 
+  // The galley in Unity: a dish from the station's larder.
+  await placeAt(j, "cocina");
+  const galley = await card(j);
+  j.check("la cocina está en Unity y ofrece platos", /Cocinar /.test(galley) && (await where(j)) === "nodo-1", galley.slice(0, 140));
+  const before = await p.evaluate(() => JSON.stringify(window.codeship.stationCrew.larder()));
+  await j.tap('.sti-card [data-act^="chore:cocinar"]', "Cocinar un plato");
+  await j.waitDuel();
+  for (let i = 0; i < 12 && (await p.evaluate(() => !!window.codeship.stationLife.session?.run.current)); i++) await j.answer(() => window.codeship.stationLife.session?.run.current);
+  await p.waitForTimeout(1000);
+  await capture(j, "cocina", "Cocina de Unity: plato hecho");
+  await j.tap(".duel button.end", "Continuar");
+  const after = await p.evaluate(() => JSON.stringify(window.codeship.stationCrew.larder()));
+  j.check("cocinar gasta la despensa de la estación", before !== after, `${before} → ${after}`);
+
   // The Bishop: Juventas in, the hatch shut, Canadarm2 takes it out and lets it go.
   await placeAt(j, "bishop");
   const b = await card(j);
@@ -93,17 +112,4 @@ export async function estacionIss(j) {
   j.check("el brazo lo devuelve a su IDA", await p.evaluate(() => !window.codeship.landerBerth.onCbm));
   await j.tap(".dock-view.on .dv-close", "Cerrar la vista de fuera");
 
-  // The galley in Unity: a dish from the station's larder.
-  await placeAt(j, "cocina");
-  const galley = await card(j);
-  j.check("la cocina está en Unity y ofrece platos", /Cocinar /.test(galley) && (await where(j)) === "nodo-1", galley.slice(0, 140));
-  const before = await p.evaluate(() => JSON.stringify(window.codeship.stationCrew.larder()));
-  await j.tap('.sti-card [data-act^="chore:cocinar"]', "Cocinar un plato");
-  await j.waitDuel();
-  for (let i = 0; i < 12 && (await p.evaluate(() => !!window.codeship.stationLife.session?.run.current)); i++) await j.answer(() => window.codeship.stationLife.session?.run.current);
-  await p.waitForTimeout(1000);
-  await capture(j, "cocina", "Cocina de Unity: plato hecho");
-  await j.tap(".duel button.end", "Continuar");
-  const after = await p.evaluate(() => JSON.stringify(window.codeship.stationCrew.larder()));
-  j.check("cocinar gasta la despensa de la estación", before !== after, `${before} → ${after}`);
 }

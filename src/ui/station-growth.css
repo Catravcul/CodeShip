@@ -11,3 +11,13 @@
 .st-card.built { opacity: 0.75; }
 .st-card.built .st-have { color: #9dffc8; }
 .st-card, .st-lock, .bay-sec { flex-shrink: 0; }
+
+/* Vehicle catalogue (Hangar tab): status of each real craft. */
+.st-status { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #1d2b3a; color: #cfe3ff; white-space: nowrap; }
+.st-status.st-volado { background: #1f4a2c; color: #bff5cc; }
+.st-status.st-en-desarrollo { background: #4a3d16; color: #ffe7a8; }
+.st-status.st-pausado { background: #4a2b16; color: #ffd0a8; }
+.st-status.st-concepto { background: #2e2a4a; color: #d8d0ff; }
+.st-status.st-inventado { background: #4a1f2a; color: #ffc4d0; }
+.st-cat-toggle { width: 100%; min-height: 44px; }
+.st-vehicle [data-yard-build] { min-height: 44px; }

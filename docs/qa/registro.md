@@ -67,6 +67,9 @@ caso y las anteriores quedan en sus run logs.
 | EST-24 | Probado (en vivo) | 2026-11-14 | `f1df8fc` | [run](runs/2026-11-14-1806-PX-04-PX-10-PX-12.md): PX-12 y la suite |
 | EST-25 | Probado (en vivo) | 2026-11-16 | `ee051ea` | [run](runs/2026-11-16-1500-PX-16.md): PX-16 y `dry-dock.test.ts` |
 | EST-26 | Solo test | | | `dry-dock.test.ts` (verde en la suite completa) |
+| EST-28 | Solo test | | | `vehicle-catalogue.test.ts` |
+| EST-29 | Solo test | | | `vehicle-yard.test.ts`; en vivo, PX-24 |
+| EST-30 | Solo test | | | `vehicle-catalogue.test.ts` |
 | EST-27 | Probado (en vivo) | 2026-11-16 | `ee051ea` | [run](runs/2026-11-16-1500-PX-16.md): PX-16, `dock-trip.test.ts` y `journey-world.test.ts` |
 | EST-05 | Parcial | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): suite OK; en vivo solo la tarjeta del almacén lleno (`hc-almacen-mobile.png`) |
 | REF-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -165,6 +168,7 @@ caso y las anteriores quedan en sus run logs.
 | PX-15 | Probado (en vivo) | 2026-11-14 | `652d629` | [run](runs/2026-11-14-1925-PX-02-PX-10-PX-12-PX-14-PX-15.md): 61 OK |
 | PX-16 | Probado (en vivo) | 2026-11-16 | `4968040` | [run](runs/2026-11-16-1519-PX-14-PX-16.md): 25 OK |
 | PX-23 | Probado (en vivo) | 2026-11-16 | `e3b90f0` | [run](runs/2026-11-16-1521-PX-01-PX-02-PX-23.md): 62 OK |
+| PX-24 | Probado (en vivo) | 2026-11-16 | `ef23e9a` | [run](runs/2026-11-16-1800-PX-24.md): 10 OK |
 | PX-20 | FAIL | 2026-11-16 | `c033d52` | [run](runs/2026-11-16-1702-PX-20.md): 256 OK, 7 FALLA |
 
 ## Última ejecución por run log
@@ -173,6 +177,8 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-16 18:00 | PX-24 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-1800-PX-24.md) |
+| 2026-11-16 17:59 | PX-24 | Experiencia (Playwright) | 0/1 recorridos bien | [run](runs/2026-11-16-1759-PX-24.md) |
 | 2026-11-16 17:02 | PX-20 | Experiencia (Playwright) | 0/1 recorridos bien | [run](runs/2026-11-16-1702-PX-20.md) |
 | 2026-11-16 15:36 | PX-02, PX-10, PX-14 | Experiencia (Playwright) | 3/3 recorridos bien | [run](runs/2026-11-16-1536-PX-02-PX-10-PX-14.md) |
 | 2026-11-16 15:21 | PX-01, PX-02, PX-23 | Experiencia (Playwright) | 2/3 recorridos bien | [run](runs/2026-11-16-1521-PX-01-PX-02-PX-23.md) |

@@ -132,3 +132,25 @@ describe("the station's own sources", () => {
     expect(ops.drainEvents().filter((e) => e.type === "paquete").length).toBe(3);
   });
 });
+
+describe("living cargo for the species catalogue (VID-32)", () => {
+  it("an order by mass pays the same formula, flies the same transfer and lands through the inbox with nothing for the store", () => {
+    const { ops, station } = setup({ credits: 100 });
+    const q = ops.quoteKg(12, "starship");
+    expect(q.credits).toBeGreaterThan(0);
+    expect(q.gameHours).toBeCloseTo(q.transitDays * GAME_HOURS_PER_TRANSIT_DAY, 9);
+    const d = ops.orderKg("20 medakas adultas (Medaka)", 12, "starship");
+    expect(ops.wallet.balance).toBe(100 - q.credits);
+    expect(d.goods).toEqual({});
+    ops.tick(q.gameHours + 0.01);
+    expect(ops.drainEvents()).toContainEqual(expect.objectContaining({ type: "llegada", delivery: expect.objectContaining({ id: d.id }) }));
+    expect(station.stock.amount("xenon")).toBe(50);
+    expect(ops.deliveries.pending).toHaveLength(0);
+  });
+
+  it("without the credits it is not ordered", () => {
+    const { ops } = setup({ credits: 0 });
+    expect(() => ops.orderKg("un gato", 30, "starship")).toThrow(/Faltan/);
+    expect(ops.deliveries.pending).toHaveLength(0);
+  });
+});

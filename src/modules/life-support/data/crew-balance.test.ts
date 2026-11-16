@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CREW_DAILY } from "@modules/station/data/vehicle-catalogue";
+import { CREW_TUNING } from "@modules/crew/domain/crew-member";
+import { CREW_ENERGY } from "@modules/life-support/domain/sustainability";
 import { CREW_BALANCE, crewHeatW, dailyBalance } from "./crew-balance";
 
 describe("SV-01 the daily balance of one crew member", () => {
@@ -29,5 +31,21 @@ describe("SV-01 the daily balance of one crew member", () => {
 
   it("metabolic heat is 12 778 kJ a day: about 148 W per person", () => {
     expect(crewHeatW(1)).toBeCloseTo(147.9, 0);
+  });
+});
+
+describe("SV-01 the food balance and the two-meal hunger model", () => {
+  it("2,39 kg a day is two meals of 1,195 kg (CREW_TUNING: half a day's energy a meal)", () => {
+    const perMeal = CREW_BALANCE.foodPackagedKg.value * CREW_TUNING.mealShareOfDay;
+    expect(1 / CREW_TUNING.mealShareOfDay).toBe(2);
+    expect(perMeal).toBeCloseTo(1.195, 3);
+  });
+
+  it("the ISS ration covers Doménica's energy with margin: MetMan's 82 kg astronaut burns more than her EER", () => {
+    const metmanKcal = CREW_BALANCE.metabolicKj.value / 4.184;
+    const domenicaKcal = CREW_ENERGY.value(30, 58, 1.6);
+    expect(metmanKcal).toBeCloseTo(3054, 0);
+    expect(domenicaKcal).toBeGreaterThan(2200);
+    expect(domenicaKcal).toBeLessThan(metmanKcal);
   });
 });

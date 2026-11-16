@@ -38,6 +38,7 @@ Hay además un **refugio de agua** contra las tormentas solares y la **cuenta de
 - **CO₂.** Lo que quita el CDRA crece con la ppCO₂: 1,6 kg/día por mmHg, medido. Con una persona en 388 m³ el CO₂ se queda en **0,7 mmHg**. Si los lechos de zeolita quedan al 5 %, pasa de **5,3 mmHg en una semana** de a bordo (una semana son 2,8 h reales). Reparado, vuelve bajo 3 mmHg en un día.
 - **O₂.** El OGA devuelve el O₂ a 21,3 kPa con su ritmo máximo y el agua que haya. Si no puede, el control de presión tira de los tanques. El N₂ repone las fugas.
 - **Agua.** Lo usado va un 37 % a orina y el resto a agua sucia. El UPA destila el 87 % y el BPA sube la orina al 98 %. El WPA trata lo demás. El Sabatier devuelve agua con el H₂ del OGA.
+- **Comida.** 2,39 kg envasados al día son **dos comidas de 1,195 kg**, como el modelo de hambre (dos comidas al día, `CREW_TUNING.mealShareOfDay`). La ración de la ISS es para el astronauta de 82 kg de MetMan (≈ 3050 kcal). Doménica necesita ≈ 2280 kcal (JSC-67378), así que la cuenta va con margen. La despensa del hábitat y la comida envasada del soporte vital son reservas distintas (decisión 4).
 - **Refrigeración.** Sin los lazos de refrigeración (ITCS), las máquinas refrigeradas se paran y la cabina se calienta 0,5 °C por hora (valor de juego).
 - **Averías al azar.** Salen de los modos reales con un tiempo medio de juego y nunca en los dos primeros días: así no aparecen en medio de otros recorridos.
 

@@ -70,8 +70,20 @@ describe("friendship: the fish are friends, never food", () => {
     const ev = a.befriend();
     expect(a.friends).toBe(true);
     expect(a.bond).toBeGreaterThanOrEqual(FAMILY_TUNING.familyAt);
-    expect(ev).toEqual([{ type: "amigos" }]);
+    expect(ev).toEqual([{ type: "amigos", who: "banco" }]);
     expect(a.canBefriend).toBe(false);
+  });
+
+  it("the snails have their own friendship: befriending the school does not befriend them, nor lets them be asked", () => {
+    const a = new RingAquarium();
+    a.feed();
+    a.befriend();
+    expect(a.snailFriends).toBe(false);
+    expect(a.canBefriendSnails).toBe(true);
+    expect(() => a.ask("caracoles-limpian")).toThrow(/amig/);
+    expect(a.befriend("caracoles")).toEqual([{ type: "amigos", who: "caracoles" }]);
+    expect(a.snailFriends).toBe(true);
+    expect(a.canBefriendSnails).toBe(false);
   });
 
   it("help can only be asked of friends", () => {
@@ -80,11 +92,41 @@ describe("friendship: the fish are friends, never food", () => {
   });
 });
 
+describe("VID-30 an empty tank: Doménica starts alone, and the animals come from the catalogue", () => {
+  it("with no fish and no snails nothing asks to be fed or befriended; algae grow with nobody to graze", () => {
+    const a = new RingAquarium({ fish: 0, snails: 0, algae: 0.1 });
+    run(a, 2);
+    expect(a.fishCount).toBe(0);
+    expect(a.ammoniaMgL).toBe(0);
+    expect(a.needs.feed).toBe(false);
+    expect(a.hunger).toBe(0.6);
+    expect(a.canBefriend).toBe(false);
+    expect(a.canBefriendSnails).toBe(false);
+    expect(a.algae).toBeGreaterThan(0.1);
+  });
+
+  it("adopted medaka and nerites arrive: the school is named after them, comes hungry, and the snails graze", () => {
+    const a = new RingAquarium({ fish: 0, snails: 0, hunger: 0 });
+    a.stock("banco", 20, "las medakas");
+    a.stock("caracoles", 6, "los caracoles nerita");
+    expect(a.fishCount).toBe(20);
+    expect(a.snailCount).toBe(6);
+    expect(a.fishName).toBe("las medakas");
+    expect(a.fishBare).toBe("medakas");
+    expect(a.needs.feed).toBe(true);
+    expect(a.canBefriendSnails).toBe(true);
+    a.stock("banco", 5, "los peces cebra");
+    expect(a.fishName).toBe("los peces");
+    expect(a.fishFeminine).toBe(false);
+  });
+});
+
 describe("asking for help (a mind program for the snails or the fish)", () => {
   const friends = () => {
     const a = new RingAquarium();
     a.feed();
     a.befriend();
+    a.befriend("caracoles");
     return a;
   };
 

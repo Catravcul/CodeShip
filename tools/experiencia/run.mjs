@@ -25,8 +25,9 @@ import { aterrizajePrograma, aterrizajeManual, aterrizajeEscritorio } from "./at
 import { animaciones } from "./animaciones.mjs";
 import { soporteVital } from "./soporte-vital.mjs";
 import { foco } from "./foco.mjs";
+import { catalogo } from "./catalogo.mjs";
 
-const PLAY = { cocina, movimiento, mision, "acciones-movil": acciones, "acciones-escritorio": acciones, ordenar, "aterrizaje-programa": aterrizajePrograma, "aterrizaje-manual": aterrizajeManual, "aterrizaje-escritorio": aterrizajeEscritorio, "habitaculo-movil": habitaculo, "habitaculo-escritorio": habitaculo, "estacion-movil": estacion, "puente-real": puente, acuario, viaje, yoga, "nodriza-estacion": nodrizaEstacion, animaciones, "catalogo-naves": catalogoNaves, "soporte-vital": soporteVital, foco };
+const PLAY = { cocina, movimiento, mision, "acciones-movil": acciones, "acciones-escritorio": acciones, ordenar, "aterrizaje-programa": aterrizajePrograma, "aterrizaje-manual": aterrizajeManual, "aterrizaje-escritorio": aterrizajeEscritorio, "habitaculo-movil": habitaculo, "habitaculo-escritorio": habitaculo, "estacion-movil": estacion, "puente-real": puente, acuario, viaje, yoga, "nodriza-estacion": nodrizaEstacion, animaciones, "catalogo-naves": catalogoNaves, "soporte-vital": soporteVital, foco, catalogo };
 
 const now = new Date();
 const stamp = now.toISOString().replace(/[:.]/g, "-").slice(0, 19);

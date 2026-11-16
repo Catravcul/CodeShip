@@ -9,7 +9,7 @@ import { ACTION_REACH_M, type Interactable } from "@core/spacing";
  */
 export const RING_MODULE = { halfW: 2, halfL: 9, height: 2.6 } as const;
 
-export type RingStationId = "huerto" | "cocina" | "procesado" | "biorreactor" | "enfermeria" | "panel" | "yoga" | "ejercicio" | "camarote" | "gatos" | "gallinero" | "terreno" | "perros" | "navegacion" | "acuario";
+export type RingStationId = "huerto" | "cocina" | "procesado" | "biorreactor" | "enfermeria" | "panel" | "yoga" | "ejercicio" | "camarote" | "gatos" | "gallinero" | "terreno" | "perros" | "navegacion" | "acuario" | "catalogo";
 
 /** A station of the ring: where she stands to use it (floor, m) and what she looks at (the thing). */
 export interface RingStationData {
@@ -48,6 +48,9 @@ export const RING_STATIONS: readonly RingStationData[] = [
   { id: "terreno", label: "Cubierta de cultivo", stand: { x: 0, z: D + 2.6 }, look: { x: -2, y: 0.5, z: D + 5 } },
   // The ring aquarium (1 m³, docs/design/santuario-espacial.md) against the doorway wall, left of the hygiene stall.
   { id: "acuario", label: "Acuario del anillo", stand: { x: -4.0, z: D + 1.6 }, look: { x: -4.0, y: 1.1, z: D + 0.5 } },
+  // The species catalogue terminal (docs/design/catalogo-especies.md) on the doorway wall, past the aquarium,
+  // beside the terrarium shelf where the land colonies live.
+  { id: "catalogo", label: "Catálogo de especies", stand: { x: -6.6, z: D + 1.6 }, look: { x: -6.6, y: 1.3, z: D + 0.25 } },
 ];
 
 /** The elevator up the spoke, at the near end wall: its column (the thing) and where its button shows. */

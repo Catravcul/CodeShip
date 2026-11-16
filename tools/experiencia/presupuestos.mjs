@@ -3,7 +3,7 @@
 
 /** Stable journey IDs: never renumbered or reused; a journey that no longer applies becomes «Retirado». */
 export const JOURNEYS = [
-  { id: "PX-01", name: "cocina", title: "Cocinar paso a paso: huevos revueltos con cada paso visible en 3D, crema de cacahuete con un fallo repetido, receta perdida en vista HUD, pasos visibles al cosechar y en el gallinero" },
+  { id: "PX-01", name: "cocina", title: "Cocinar paso a paso: huevos revueltos con cada paso visible en 3D, crema de cacahuete con un fallo repetido, receta perdida en vista HUD, pasos visibles al cosechar; sin gallinas no hay puerta del gallinero" },
   { id: "PX-02", name: "movimiento", title: "Moverse: propulsores de la cabina, flechas en ingravidez, cruzar la espina (lanzador y escalera), caminar por el anillo" },
   { id: "PX-03", name: "mision", title: "Misión 1 de Nevaeh: carta, registro, las tres fases en Bennu y duelo con un fallo" },
   { id: "PX-04", name: "acciones-movil", title: "Botones de cada pantalla de un iPhone 13 (390×664 visibles de 390×844): capturas, solapes y objetivos de toque", mobile: true, throttle: 1 },
@@ -15,7 +15,7 @@ export const JOURNEYS = [
   { id: "PX-10", name: "habitaculo-movil", title: "Habitáculo del módulo en un iPhone 13: levantarse, desacoplar en la consola, ajustes en la esterilla, «Ir» de una tarea de vuelo y consolas del puente", mobile: true, throttle: 1 },
   { id: "PX-11", name: "habitaculo-escritorio", title: "Habitáculo del módulo y consolas del puente a 1280×800", mobile: false, throttle: 1 },
   { id: "PX-12", name: "estacion-movil", title: "Estación en un iPhone 13: primera persona, puertas con nombre, cocina con su despensa, camarote, ajustes en la esterilla, «Ir» de una tarea de la estación y el hangar con el módulo dentro", mobile: true, throttle: 1 },
-  { id: "PX-13", name: "acuario", title: "Acuario del anillo en un iPhone 13: «Ir» hasta el tanque, dar de comer con pasos visibles, hacer amistad con las medakas, pedir ayuda a los caracoles y a las medakas y ver el efecto" },
+  { id: "PX-13", name: "acuario", title: "Acuario del anillo en un iPhone 13: adoptar medakas y caracoles Biomphalaria para el tanque vacío, «Ir» hasta el tanque, dar de comer con pasos visibles, hacer amistad con las medakas y los caracoles, pedir ayuda a los caracoles y a las medakas y ver el efecto" },
   { id: "PX-14", name: "viaje", title: "«Ir a una tarea»: ajuste en la esterilla, teletransporte con aviso y viaje real del anillo a la estación (ascensor, espina, escotilla) con «Parar» a medio camino y la cámara libre", mobile: true, throttle: 1 },
   { id: "PX-15", name: "puente-real", title: "Puente real en un iPhone 13 y en 1ª persona: cada consola se reconoce por su cartel y se toca sin solapes, sentarse en el mando de la sonda y abrir la mesa de navegación", mobile: true, throttle: 1 },
   { id: "PX-16", name: "nodriza-estacion", title: "La nodriza viaja a la estación y entra en el dique seco: «Ir» desde el anillo en modo Viaje, «Ver trayecto» con la ruta dibujada y la cámara siguiéndola, atraque en el dique visible desde la estación y el interruptor Viaje/Teletransporte en la lista de tareas", mobile: true, throttle: 1 },
@@ -23,6 +23,7 @@ export const JOURNEYS = [
   { id: "PX-23", name: "yoga", title: "Yoga en el anillo con el esqueleto de Cold Sanctuary: «Ir» al Saludo al Sol, cada acierto lleva a Doménica a la siguiente asana con transición suave y respiración; captura por asana junto a su ficha; manos y pies en la esterilla (IK); tiempo de JS de las poses", mobile: true },
   { id: "PX-25", name: "foco", title: "Foco del reto: cada clase de reto en cada sitio (cocina, tarea, acuario y yoga del anillo; viaje, sonda, aterrizajes y mente en el puente y el módulo; traje, nano_net; cocina, máquina, pantallas, importar y hangar de la estación), abierto con toques; con la hoja abierta solo se ven la hoja, la escena y el paso", mobile: true, throttle: 1 },
   { id: "PX-30", name: "soporte-vital", title: "Soporte vital real en la estación con un iPhone 13: lecturas solo en los bastidores y la consola; el CDRA se tapona, el CO₂ pasa la alarma de 5,3 mmHg y a Doménica le duele la cabeza; «Ir» a la reparación, pasos encendidos en el bastidor y el CO₂ vuelve; mantenimiento del lecho del WPA", mobile: true, throttle: 1 },
+  { id: "PX-27", name: "catalogo", title: "Catálogo de especies en un iPhone 13: partida nueva con Doménica sola, el catálogo desde la lista de tareas, comparar los dos caracoles (la nerita, «pendiente»), adoptar medakas y Biomphalaria para el hábitat acuático, verlas llegar, ratones «disponibles» y gallinas «pendientes», hacerse amigos y dos comidas en un día de a bordo", mobile: true },
   { id: "PX-20", name: "animaciones", title: "Auditoría de animaciones: cada receta, proceso y tarea del anillo, el viaje y el aterrizaje jugados con toques; tras cada paso, sus objetos al alcance de Doménica, a la vista sobre la hoja y sin atravesar muebles, y su gesto", throttle: 1 },
 ];
 

@@ -47,6 +47,9 @@ import type { StepVisual } from "@modules/chores/domain/step-visual";
 import { AmbientNotices } from "./adapters/three/interior/ambient-notices";
 import { NoticeQueue, type NoticeLevel } from "@modules/notices/domain/notices";
 import { AquariumOps, isAquariumChore } from "@modules/sanctuary/application/aquarium-ops";
+import { RingAquarium } from "@modules/sanctuary/domain/aquarium";
+import { CatalogCorner } from "./adapters/three/interior/catalog-corner";
+import { RING_RACK_HOST, type RackHost } from "./adapters/three/interior/rack-slots";
 import { AquariumModel } from "./adapters/three/interior/aquarium-model";
 import { aquariumEventText, aquariumStatus } from "./ui/aquarium-text";
 
@@ -159,6 +162,14 @@ const AMBIENT_WHO = (e: HabitatEvent): string | undefined => {
   }
 };
 
+/** The species catalogue's colonies, as the ring sees them (modules/adoption, wired in sanctuary-life.ts). */
+export interface SanctuaryChores {
+  chores(): Chore[];
+  owns(c: Chore): boolean;
+  station(c: Chore): Station["id"];
+  start(c: Chore): ChoreSession;
+}
+
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
 /** The walkable habitat module: 3D scene, walking, stations and chores as code challenges. */
@@ -193,6 +204,14 @@ export class Interior {
   /** The ring aquarium on the farm deck (docs/design/santuario-espacial.md): its use cases and its 3D tank. */
   readonly aquarium: AquariumOps;
   readonly tank: AquariumModel;
+  /** The species catalogue terminal and the terrarium shelf of the land colonies (docs/design/catalogo-especies.md). */
+  readonly catalogCorner: CatalogCorner;
+  /** Where the sanctuary's rack hardware goes in this interior. */
+  readonly rack: RackHost = RING_RACK_HOST;
+  /** The colonies adopted from the species catalogue: their chores (set by main.ts through sanctuary-life.ts). */
+  sanctuary?: SanctuaryChores;
+  /** Opens the species catalogue (set by main.ts): from its terminal on the farm deck. */
+  openCatalog?: () => void;
   private stepTag = "";
   /** Floating labels hidden while a chore is framed (they are for finding your way, not for watching a step). */
   private hiddenLabels: THREE.Object3D[] = [];
@@ -268,24 +287,7 @@ export class Interior {
       this.plants.push(m);
       this.scene.add(m.root);
     });
-    habitat.cats.forEach((c, i) => {
-      const m = new CatModel(c.id, CAT_COLORS[i % CAT_COLORS.length]!, CAT_BOUNDS);
-      this.realSize(m.root);
-      this.cats.set(c.id, m);
-      this.scene.add(m.root);
-    });
-    habitat.hens.forEach((h, i) => {
-      const m = new HenModel(h.id, HEN_COLORS[i % HEN_COLORS.length]!, COOP_BOUNDS);
-      this.realSize(m.root);
-      this.hens.set(h.id, m);
-      this.scene.add(m.root);
-    });
-    habitat.dogs.forEach((d, i) => {
-      const m = new DogModel(d.id, DOG_COLORS[i % DOG_COLORS.length]!, FARM_ROAM, d.young);
-      this.realSize(m.root);
-      this.dogs.set(d.id, m);
-      this.scene.add(m.root);
-    });
+    // The animals' models come with them (syncAnimalModels): a new game has none.
     const mat = new THREE.Group();
     mat.position.set(1.5, 0, 7.8);
     mat.rotation.y = Math.PI; // along the mat (it lies along the wall): her profile to the aisle, like a yoga teacher's side view
@@ -295,10 +297,13 @@ export class Interior {
     this.figure.root.visible = false;
     this.scene.add(mat);
 
-    this.aquarium = new AquariumOps(undefined, habitat.crew);
-    const at = STATIONS.find((s) => s.id === "acuario")!.look;
-    this.tank = new AquariumModel(new THREE.Vector3(at.x, 0, at.z));
+    // A new game: an empty tank with its hornwort and cycled biofilter; fish and snails come from the catalogue.
+    this.aquarium = new AquariumOps(new RingAquarium({ fish: 0, snails: 0 }), habitat.crew);
+    // The tank and the catalogue terminal sit in generic rack slots (the ring hosts them for now).
+    this.tank = new AquariumModel(this.rack.slot("rack-acuatico"));
     this.scene.add(this.tank.root);
+    this.catalogCorner = new CatalogCorner(this.rack.slot("rack-catalogo"));
+    this.scene.add(this.catalogCorner.root);
     this.avatarRig.add(this.avatar.root);
     this.scene.add(this.avatarRig);
     this.scene.add(this.steps.root);
@@ -331,6 +336,7 @@ export class Interior {
       const s = this.nearStation();
       if (s?.id === "navegacion" && this.openNavConsole) return this.openNavConsole();
       if (s?.id === "camarote") return this.openRadio();
+      if (s?.id === this.rack.station("rack-catalogo") && this.openCatalog) return this.openCatalog();
       if (s) this.openBoard(s.id);
     });
     this.board.addEventListener("click", (e) => {
@@ -460,7 +466,9 @@ export class Interior {
     this.syncStepTag();
 
     for (const p of this.plants) p.sync();
+    this.syncAnimalModels();
     this.poseTime.animales.time(() => this.updateAnimals(dt));
+    this.catalogCorner.update(dt);
     this.syncFamilies();
     this.tank.update(dt, this.aquarium.tank, this.pos);
     for (const b of this.beds) b.sync();
@@ -469,12 +477,12 @@ export class Interior {
     this.syncPanel();
     this.renderHud();
     const near = !busy && !this.walkTo && (this.zones?.zone ?? "anillo") === "anillo" ? this.nearStation() : undefined;
-    const n = near ? this.currentChores().filter((c) => stationFor(c) === near.id).length : 0;
+    const n = near ? this.currentChores().filter((c) => this.stationOf(c) === near.id).length : 0;
     this.stationBtn.classList.toggle("hidden", !near);
     this.matBtn.classList.toggle("hidden", near?.id !== "yoga" || !this.openSettings || this.lotus);
     if (near)
       this.stationBtn.textContent =
-        near.id === "navegacion" ? "Consola de navegación: mapa, viajes y misiones" : near.id === "camarote" ? `Camarote: leer cartas${this.habitat.mailbox?.unread ? ` (${this.habitat.mailbox.unread})` : ""}` : `${near.label}: ${n} ${n === 1 ? "tarea" : "tareas"}`;
+        near.id === "navegacion" ? "Consola de navegación: mapa, viajes y misiones" : near.id === this.rack.station("rack-catalogo") ? `Catálogo de especies${n ? `: ${n} ${n === 1 ? "tarea" : "tareas"}` : ""}` : near.id === "camarote" ? `Camarote: leer cartas${this.habitat.mailbox?.unread ? ` (${this.habitat.mailbox.unread})` : ""}` : `${near.label}: ${n} ${n === 1 ? "tarea" : "tareas"}`;
     this.syncNotices();
   }
 
@@ -590,8 +598,41 @@ export class Interior {
 
   /** The board's chores as plain facts for the shared task list (title, where, category). */
   choreFacts(): { id: string; title: string; detail: string; category: ChoreCategory; station: string }[] {
-    return this.currentChores().map((c) => ({ id: c.id, title: c.title, detail: `${STATIONS.find((s) => s.id === stationFor(c))?.label ?? ""} · ${c.exercises.length} retos`, category: CHORE_CATEGORY[c.kind], station: stationFor(c) }));
+    return this.currentChores().map((c) => ({ id: c.id, title: c.title, detail: `${STATIONS.find((s) => s.id === this.stationOf(c))?.label ?? ""} · ${c.exercises.length} retos`, category: CHORE_CATEGORY[c.kind], station: this.stationOf(c) }));
   }
+
+  /**
+   * Animals adopted from the catalogue get their model when they arrive (a new game has none: Doménica starts
+   * alone). Cats in their corner, dogs on the lawn, hens in the coop.
+   */
+  private syncAnimalModels(): void {
+    const h = this.habitat;
+    if (h.cats.length === this.cats.size && h.dogs.length === this.dogs.size && h.hens.length === this.hens.size) return;
+    h.cats.forEach((c, i) => {
+      if (this.cats.has(c.id)) return;
+      const m = new CatModel(c.id, this.animalColor.get(c.id) ?? CAT_COLORS[i % CAT_COLORS.length]!, CAT_BOUNDS);
+      this.realSize(m.root);
+      this.cats.set(c.id, m);
+      this.scene.add(m.root);
+    });
+    h.hens.forEach((hen, i) => {
+      if (this.hens.has(hen.id)) return;
+      const m = new HenModel(hen.id, this.animalColor.get(hen.id) ?? HEN_COLORS[i % HEN_COLORS.length]!, h.hensFree ? FARM_ROAM : COOP_BOUNDS);
+      this.realSize(m.root);
+      this.hens.set(hen.id, m);
+      this.scene.add(m.root);
+    });
+    h.dogs.forEach((d, i) => {
+      if (this.dogs.has(d.id)) return;
+      const m = new DogModel(d.id, this.animalColor.get(d.id) ?? DOG_COLORS[i % DOG_COLORS.length]!, FARM_ROAM, d.young);
+      this.realSize(m.root);
+      this.dogs.set(d.id, m);
+      this.scene.add(m.root);
+    });
+  }
+
+  /** Coat colours of the animals that came from the catalogue (its breed's), by animal id. */
+  readonly animalColor = new Map<string, number>();
 
   /** The cats, hens and dogs move and react to their stress (timed for the experience suite). */
   private updateAnimals(dt: number): void {
@@ -716,7 +757,12 @@ export class Interior {
   }
 
   private currentChores(): Chore[] {
-    return [...this.habitat.chores(RECIPES, YOGA_SEQUENCES, CONTEXT), ...this.aquarium.chores()];
+    return [...this.habitat.chores(RECIPES, YOGA_SEQUENCES, CONTEXT), ...this.aquarium.chores(), ...(this.sanctuary?.chores() ?? [])];
+  }
+
+  /** The ring station where a chore is done (the catalogue's colonies say theirs). */
+  private stationOf(c: Chore): Station["id"] {
+    return this.sanctuary?.owns(c) ? this.sanctuary.station(c) : stationFor(c);
   }
 
   private boardFilter: Station["id"] | undefined;
@@ -724,7 +770,7 @@ export class Interior {
   private category: ChoreCategory | null = null;
 
   private openBoard(filter?: Station["id"]): void {
-    const all = this.currentChores().filter((c) => !filter || stationFor(c) === filter);
+    const all = this.currentChores().filter((c) => !filter || this.stationOf(c) === filter);
     const counts = new Map<ChoreCategory, number>();
     for (const c of all) counts.set(CHORE_CATEGORY[c.kind], (counts.get(CHORE_CATEGORY[c.kind]) ?? 0) + 1);
     if (this.category && !counts.has(this.category)) this.category = null;
@@ -752,7 +798,7 @@ export class Interior {
     this.board.classList.add("hidden");
     // Picked from the hub or the spine: she has to go down the spoke first; say so, or the tap looks ignored.
     if ((this.zones?.zone ?? "anillo") !== "anillo") this.say(`Bajas al anillo para «${chore.title}»: el ascensor del radio tarda medio minuto`);
-    const st = STATIONS.find((s) => s.id === stationFor(chore))!;
+    const st = STATIONS.find((s) => s.id === this.stationOf(chore))!;
     let look = st.look.clone();
     let stand = st.stand.clone();
     if (chore.kind === "yoga") {
@@ -832,7 +878,7 @@ export class Interior {
     // Yoga: Doménica on the mat, seen from the aisle (yogaCamera) in the wide strip over the sheet.
     this.figure.root.visible = chore.kind === "yoga";
     this.frameForSheet(true);
-    const session = isAquariumChore(chore) ? this.aquarium.start(chore) : this.habitat.start(chore, CONTEXT);
+    const session = isAquariumChore(chore) ? this.aquarium.start(chore) : this.sanctuary?.owns(chore) ? this.sanctuary.start(chore) : this.habitat.start(chore, CONTEXT);
     this.cooking = chore.kind === "cocinar";
     this.session = session;
     const run = session.run;
@@ -897,7 +943,7 @@ export class Interior {
    */
   private stepFrame(chore: Chore, stand: THREE.Vector3, look: THREE.Vector3): StepFrame | undefined {
     if (chore.kind === "yoga") return undefined;
-    const st = stationFor(chore);
+    const st = this.stationOf(chore);
     // The galley's spots from the room's own layout, through its transform (it may be drawn bigger: src/core/scale.ts).
     if (st === "cocina" || st === "procesado") {
       const k = (this.galley ??= kitchenLayout((v) => this.room.group.localToWorld(v)));

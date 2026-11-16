@@ -70,7 +70,7 @@ export type HabitatEvent =
   | { type: "animal-hostile"; actorId: string; targetId: string; action: AnimalAction }
   | { type: "animal-warm"; actorId: string; targetId: string; action: AnimalAction }
   | { type: "family-formed"; memberIds: readonly string[] }
-  /** Doménica just got hungry (about three times a day: CREW_TUNING). */
+  /** Doménica just got hungry (about twice a day: CREW_TUNING). */
   | { type: "crew-hungry" };
 
 /** The ship as the habitat sees it: its design (for its code) and its hull. */

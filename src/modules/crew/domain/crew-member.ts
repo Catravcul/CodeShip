@@ -6,20 +6,21 @@ const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 /** Game tuning (not measured): how fast hunger, fitness and calm fade during a long leg. Time in days. */
 export const CREW_TUNING = {
   /**
-   * Satiety drains a day's energy a day (1 = her daily requirement), so a meal of a third of it lasts a third
-   * of a day: hungry about three times a day, as with breakfast, lunch and dinner (docs/design/vida-a-bordo.md,
-   * «Ritmo de los días»). With the board day of src/core/board-time.ts that is a meal every ~8 real minutes.
+   * Satiety drains a day's energy a day (1 = her daily requirement), so a meal of half of it lasts half a day:
+   * hungry about twice a day (Berón, 2026-11-16: «las comidas serán 2 al día»; docs/design/vida-a-bordo.md,
+   * «Ritmo de los días»). With the board day of src/core/board-time.ts that is a meal every ~12 real minutes.
    */
   satietyPerDay: 1,
   /** Below this she is hungry (the HUD says so and a notice asks her to cook). */
   hungryBelow: 0.5,
   /**
-   * Share of the day's energy in one meal: a third. NHANES 2007–2008 (What We Eat in America, 5 420 adults):
-   * 59–64 % eat breakfast, lunch and dinner every day; breakfast ≈ 16 %, lunch ≈ 24 %, dinner ≈ 36 % of the
-   * energy and snacks ≈ 24 % (https://mdedge.com/content/three-meal-day-pattern-still-strong-among-us-adults).
-   * Snacks folded into the meals, each is about a third.
+   * Share of the day's energy in one meal: a half (Berón, 2026-11-16: two meals a day). Real two-meal days
+   * exist (time-restricted eating, many traditional schedules); NHANES 2007–2008 (What We Eat in America,
+   * 5 420 adults) has dinner ≈ 36 % and lunch ≈ 24 % of the energy, snacks ≈ 24 % and breakfast ≈ 16 %
+   * (https://mdedge.com/content/three-meal-day-pattern-still-strong-among-us-adults): folding breakfast and
+   * snacks into the two, each is about a half.
    */
-  mealShareOfDay: 1 / 3,
+  mealShareOfDay: 1 / 2,
   fitnessDecayPerDay: 0.15,
   mealSatiety: 0.45,
   yogaFitness: 0.25,
@@ -78,7 +79,7 @@ export class CrewMember implements Patient {
   get hungry(): boolean {
     return this._satiety < CREW_TUNING.hungryBelow;
   }
-  /** Energy of one meal for her, kcal: a third of her day. */
+  /** Energy of one meal for her, kcal: half of her day. */
   get mealKcal(): number {
     return this.dailyKcal * CREW_TUNING.mealShareOfDay;
   }

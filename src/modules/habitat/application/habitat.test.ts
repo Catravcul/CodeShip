@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { mealPortions } from "@modules/crew/domain/crew-member";
 import { failingAnswer } from "@modules/chores/domain/testing";
 import { seededRandom } from "../../../content/random";
 import { LETTUCE_OUTREDGEOUS } from "@modules/garden/data/species";
@@ -490,7 +491,9 @@ describe("Habitat chores (everything is a code challenge)", () => {
       const before = h.crew.satiety;
       doKind(h, "cocinar", (id) => id === "cocinar-llapingachos");
       const r = RECIPES.find((x) => x.id === "llapingachos")!;
-      expect(h.crew.satiety - before).toBeCloseTo(portionNutrients(r).kcal / h.crew.dailyKcal, 2);
+      // A meal is half her day (two a day): the portions of the dish that come closest to it.
+      const kcal = portionNutrients(r).kcal;
+      expect(h.crew.satiety - before).toBeCloseTo((kcal * mealPortions(kcal, r.portions, h.crew.mealKcal)) / h.crew.dailyKcal, 2);
       expect(h.larder("cacahuete-georgia-red")).toBe(LAUNCH_STOCK["cacahuete-georgia-red"]! - 1);
     });
 

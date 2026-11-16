@@ -74,7 +74,7 @@ body.in-deck .nano-card { z-index: 9; top: 64px; }
 .fd-mission small, .fd-mission span { color: #9fb4c4; font-size: 11px; }
 .fd-mission b { color: #ffe3a3; font-weight: 500; }
 .fd-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
-.fd-actions button { font: inherit; font-size: 12px; min-height: 34px; padding: 4px 10px; color: #e6eef3; background: #141c23; border: 1px solid #2f6f8a; border-radius: 6px; }
+.fd-actions button { font: inherit; font-size: 12px; min-height: 44px; padding: 4px 10px; color: #e6eef3; background: #141c23; border: 1px solid #2f6f8a; border-radius: 6px; }
 .fd-link { align-self: flex-start; font: inherit; font-size: 12px; padding: 4px 8px; color: #9fe3ff; background: none; border: 1px solid #2f6f8a; border-radius: 6px; }
 .fd-letter p { margin: 0 0 6px; line-height: 1.45; }
 .fd-letter pre { white-space: pre-wrap; font-size: 12px; padding: 6px 8px; background: #0b1116; border-radius: 6px; }

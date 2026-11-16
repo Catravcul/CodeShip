@@ -1,3 +1,5 @@
+import { PRESENTATION } from "./presentation";
+
 /**
  * Space between interactables (docs/design/interiores.md, «Espacio entre interactuables»).
  *
@@ -17,6 +19,21 @@ export const INTERACTABLE_SPACING = {
 
 /** The button of a walked-to thing shows within this distance of its anchor, m: half the spacing, so two never show at once. */
 export const ACTION_REACH_M = INTERACTABLE_SPACING.minM / 2 - 0.1;
+
+/**
+ * The presentation layer's spacing (src/core/presentation.ts): with «Amplia» (the default) rooms built
+ * from true-size data are spread until interactables are `minM` apart; with «Real» they stay as the data put them.
+ */
+export const SPREAD_ON: boolean = PRESENTATION.spacing === "amplia";
+
+/**
+ * How much the positions of `items` must be spread (about the origin) for no two of them to be closer
+ * than `minM`: 1 when they already are. Sizes are not spread, only where things are.
+ */
+export function spreadFactor(items: readonly Interactable[], minM: number = INTERACTABLE_SPACING.minM): number {
+  const now = minSpacing(items);
+  return Number.isFinite(now) && now > 1e-9 ? Math.max(1, minM / now) : 1;
+}
 
 export interface Point3 {
   readonly x: number;

@@ -3,6 +3,7 @@
  * where Doménica sits in lotus. Pure rules: defaults, the first-input guess for keyboard help,
  * and a tolerant parser for what was stored.
  */
+import { DEFAULT_PRESENTATION, INTERIOR_SCALES, INTERIOR_SPACINGS, type InteriorScale, type InteriorSpacing } from "@core/presentation";
 
 /** Challenge screens as a full panel or floating over the scene like the cockpit HUD. */
 export type ChallengeView = "panel" | "hud";
@@ -32,6 +33,10 @@ export interface GameSettings {
   readonly sound: boolean;
   /** «Ir a una tarea»: travel the real route (default) or teleport. */
   readonly taskTravel: TaskTravel;
+  /** Presentation layer (src/core/presentation.ts): interiors drawn 1:1 or 1,5×. Applies on the next load. */
+  readonly interiorScale: InteriorScale;
+  /** Presentation layer: interactables where the data put them, or spread to 2 m. Applies on the next load. */
+  readonly spacing: InteriorSpacing;
 }
 
 export const CHALLENGE_VIEWS: readonly ChallengeView[] = ["panel", "hud"];
@@ -49,6 +54,8 @@ export const DEFAULT_SETTINGS: GameSettings = {
   walkView: "primera",
   sound: true,
   taskTravel: "viaje",
+  interiorScale: DEFAULT_PRESENTATION.interiorScale,
+  spacing: DEFAULT_PRESENTATION.spacing,
 };
 
 /**
@@ -104,5 +111,7 @@ export function parseSettings(raw: string | null, env: { touchCapable: boolean; 
     walkView: oneOf(o?.walkView, WALK_VIEWS, DEFAULT_SETTINGS.walkView),
     sound: bool(o?.sound, DEFAULT_SETTINGS.sound),
     taskTravel: oneOf(o?.taskTravel, TASK_TRAVELS, DEFAULT_SETTINGS.taskTravel),
+    interiorScale: oneOf(o?.interiorScale, INTERIOR_SCALES, DEFAULT_SETTINGS.interiorScale),
+    spacing: oneOf(o?.spacing, INTERIOR_SPACINGS, DEFAULT_SETTINGS.spacing),
   };
 }

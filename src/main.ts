@@ -37,6 +37,7 @@ import {
 } from "@modules/garden/data/species";
 import { MACHINES } from "@modules/life-support/data/machines";
 import { LAUNCH_STOCK } from "@modules/kitchen/data/stores";
+import { ISS_LAUNCH_STOCK } from "@modules/kitchen/data/iss-food";
 import { Hen } from "@modules/poultry/domain/hen";
 import { Dog } from "@modules/pets/domain/dog";
 import { Mailbox } from "@modules/story/domain/mailbox";
@@ -148,6 +149,7 @@ import { collectTasks, routeTo, type Task, type TaskPlace, type Vehicle } from "
 import type { CabinActionId, CabinState } from "@modules/lander-cabin/domain/cabin";
 import { needingAttention } from "@modules/ship-bay/application/bay";
 import { G } from "@core/units";
+import { REAL_ONLY } from "@core/realism";
 
 // --- Domain setup -----------------------------------------------------------
 const d = BENNU.dimensionsM.value;
@@ -218,7 +220,8 @@ const nav = new Navigator(
 );
 
 // Life on board: a long leg is already under way, so the garden has some days behind it.
-const habitat = new Habitat(seededRandom(2026), 3, ship, "Doménica", MACHINES);
+// Real only (src/core/realism.ts): no farm machines, plants, animals or farm deck aboard (docs/pendientes.md).
+const habitat = new Habitat(seededRandom(2026), 3, ship, "Doménica", REAL_ONLY ? [] : MACHINES);
 // Nevaeh writes to Doménica through the ship's radio (story rescued from the 2023 draft).
 habitat.mailbox = new Mailbox(STORY);
 // The nano_net: a persuaded Bennu can become a core (docs/design/nano-net.md).
@@ -295,34 +298,37 @@ const garden: [string, Parameters<Habitat["plant"]>[1], number][] = [
   ["w3", WHEAT_APOGEE, 35],
   ["g1", CAT_GRASS, 12],
 ];
-for (const [id, sp, days] of garden) growFor(habitat.plant(id, sp), days);
-// Stores the ship left with: potatoes, peanuts, flour, eggs, meat, animal food and culture medium.
-habitat.stockAll(LAUNCH_STOCK);
-habitat.adopt(new Cat("luna", "Luna", 4));
-// Nube came aboard at the last stop: the two are still being introduced.
-habitat.adopt(new Cat("nube", "Nube", 3.2))[0]!.startAt("contacto-visual");
-// Yema is broody: she can adopt a puppy or a kitten if Doménica programs her to.
-for (const [id, name] of [["clara", "Clara"], ["yema", "Yema"], ["pinta", "Pinta"]] as const) habitat.addHen(new Hen(id, name, id === "yema"));
-// Two chihuahuas: Coco, an adult, and Pepa, a puppy a few weeks old.
-habitat.addDog(new Dog("coco", "Coco", 2.4));
-habitat.addDog(new Dog("pepa", "Pepa", 0.9, "cachorro"));
-// The farm deck: eleven 15 m² beds of artificial soil, planted in turns so harvests keep coming,
-// and four fig trees in planters.
-const farm: [string, Parameters<Habitat["bed"]>[1], number][] = [
-  ["bancal-trigo-1", WHEAT_APOGEE, 60],
-  ["bancal-trigo-2", WHEAT_APOGEE, 20],
-  ["bancal-papa-1", POTATO_NORLAND, 70],
-  ["bancal-papa-2", POTATO_NORLAND, 25],
-  ["bancal-soja", SOYBEAN_HOYT, 50],
-  ["bancal-tomate", TOMATO_RED_ROBIN, 75],
-  ["bancal-lechuga", LETTUCE_OUTREDGEOUS, 20],
-  ["bancal-rabano", RADISH_CHERRY_BELLE, 2],
-  ["bancal-cacahuete-1", PEANUT_GEORGIA_RED, 105],
-  ["bancal-cacahuete-2", PEANUT_GEORGIA_RED, 40],
-  ["bancal-fresa", STRAWBERRY_SEASCAPE, 40],
-];
-for (const [id, sp, days] of farm) growFor(habitat.bed(id, sp, 15), days);
-for (const [i, days] of [120, 120, 90, 60].entries()) growFor(habitat.tree(`higuera-${i + 1}`, FIG_TREE), days);
+if (!REAL_ONLY) for (const [id, sp, days] of garden) growFor(habitat.plant(id, sp), days);
+// Stores the ship left with: potatoes, peanuts, flour, eggs, meat, animal food and culture medium;
+// real only, ISS-type packaged food (kitchen/data/iss-food.ts).
+habitat.stockAll(REAL_ONLY ? ISS_LAUNCH_STOCK : LAUNCH_STOCK);
+if (!REAL_ONLY) {
+  habitat.adopt(new Cat("luna", "Luna", 4));
+  // Nube came aboard at the last stop: the two are still being introduced.
+  habitat.adopt(new Cat("nube", "Nube", 3.2))[0]!.startAt("contacto-visual");
+  // Yema is broody: she can adopt a puppy or a kitten if Doménica programs her to.
+  for (const [id, name] of [["clara", "Clara"], ["yema", "Yema"], ["pinta", "Pinta"]] as const) habitat.addHen(new Hen(id, name, id === "yema"));
+  // Two chihuahuas: Coco, an adult, and Pepa, a puppy a few weeks old.
+  habitat.addDog(new Dog("coco", "Coco", 2.4));
+  habitat.addDog(new Dog("pepa", "Pepa", 0.9, "cachorro"));
+  // The farm deck: eleven 15 m² beds of artificial soil, planted in turns so harvests keep coming,
+  // and four fig trees in planters.
+  const farm: [string, Parameters<Habitat["bed"]>[1], number][] = [
+    ["bancal-trigo-1", WHEAT_APOGEE, 60],
+    ["bancal-trigo-2", WHEAT_APOGEE, 20],
+    ["bancal-papa-1", POTATO_NORLAND, 70],
+    ["bancal-papa-2", POTATO_NORLAND, 25],
+    ["bancal-soja", SOYBEAN_HOYT, 50],
+    ["bancal-tomate", TOMATO_RED_ROBIN, 75],
+    ["bancal-lechuga", LETTUCE_OUTREDGEOUS, 20],
+    ["bancal-rabano", RADISH_CHERRY_BELLE, 2],
+    ["bancal-cacahuete-1", PEANUT_GEORGIA_RED, 105],
+    ["bancal-cacahuete-2", PEANUT_GEORGIA_RED, 40],
+    ["bancal-fresa", STRAWBERRY_SEASCAPE, 40],
+  ];
+  for (const [id, sp, days] of farm) growFor(habitat.bed(id, sp, 15), days);
+  for (const [i, days] of [120, 120, 90, 60].entries()) growFor(habitat.tree(`higuera-${i + 1}`, FIG_TREE), days);
+}
 
 // --- Rendering adapter ------------------------------------------------------
 const root = document.getElementById("app")!;

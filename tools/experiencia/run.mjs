@@ -37,7 +37,13 @@ if (unknown.length) {
   console.error(`Recorridos desconocidos: ${unknown.join(", ")}. Catálogo: ${JOURNEYS.map((j) => `${j.id} ${j.name}`).join(", ")}`);
   process.exit(2);
 }
-const expected = JOURNEYS.filter((j) => !pick.length || pick.includes(j.id) || pick.includes(j.name));
+// Journeys marked `fiction` play the ring ship (rings, farm, animals, aquarium), off with the real-only switch
+// (src/core/realism.ts, docs/pendientes.md): skipped unless EXPERIENCIA_FICCION=1, which plays them with «?ficcion».
+const withFiction = !!process.env.EXPERIENCIA_FICCION;
+const chosen = JOURNEYS.filter((j) => !pick.length || pick.includes(j.id) || pick.includes(j.name));
+const skipped = chosen.filter((j) => j.fiction && !withFiction);
+for (const j of skipped) console.log(`↷ ${j.id} omitido: juega la nave de ficción (docs/pendientes.md); EXPERIENCIA_FICCION=1 lo juega con ?ficcion`);
+const expected = chosen.filter((j) => !skipped.includes(j));
 
 let server;
 let url = process.env.EXPERIENCIA_URL;
@@ -64,7 +70,7 @@ for (const spec of expected) {
   console.log(`\n▶ ${spec.id} · ${spec.title}`);
   const j = new Journey(spec.name, spec.title, { outDir, prefix: process.env.EXPERIENCIA_PREFIJO ?? "despues", ...spec });
   try {
-    await j.open(base());
+    await j.open(base() + (spec.fiction ? "&ficcion" : ""));
     await PLAY[spec.name](j);
   } catch (e) {
     j.check("el recorrido llega al final", false, e.message.split("\n")[0]);

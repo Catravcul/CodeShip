@@ -18,6 +18,13 @@ Estados:
 Mantenerlo por debajo de 40 KB: si crece, la columna de evidencia guarda solo la última ejecución por
 caso y las anteriores quedan en sus run logs.
 
+## Interruptor «solo real» (2026-11-16)
+
+Con `REAL_ONLY` (src/core/realism.ts, [pendientes.md](../pendientes.md)) la nodriza es una Starship sin
+anillos, huerto, animales ni acuario. Los recorridos que juegan esa nave de ficción (**PX-01, PX-02, PX-13,
+PX-14, PX-16, PX-20 y PX-23**) pasan al backlog: `npm run experiencia` los omite y `EXPERIENCIA_FICCION=1`
+los juega con `?ficcion`. Su estado de abajo es el de la última ejecución con la nave de anillos.
+
 ## Estado por caso
 
 | ID | Estado | Fecha | Commit | Evidencia / run |

@@ -393,10 +393,15 @@ export async function animaciones(j) {
   await j.tap(".stand-btn", "Levantarse: habitáculo");
   await j.useMachine("cabin", "acople", "entrar-nodriza", "Entrar en la nave de viaje");
   await p.waitForTimeout(800);
-  await j.setup("la llevamos al anillo; «Ir» con teletransporte (ajuste de la esterilla); «paso a paso» en los retos de ordenar", () => {
+  // The ring exists only with the fiction switch on (src/core/realism.ts, REAL_ONLY): without it its chores
+  // and its navigation console are skipped, not failed.
+  const ring = await p.evaluate(() => !!window.codeship.interior?.zones);
+  await j.setup("la llevamos al anillo (si lo hay); «Ir» con teletransporte (ajuste de la esterilla); «paso a paso» en los retos de ordenar", () => {
     const c = window.codeship;
-    c.interior.zones.zone = "anillo";
-    c.interior.zones.autoDown = false;
+    if (c.interior?.zones) {
+      c.interior.zones.zone = "anillo";
+      c.interior.zones.autoDown = false;
+    }
     c.settings.set("taskTravel", "teletransporte");
     localStorage.setItem("codeship.retos-ordenar", "pasos");
   });
@@ -413,12 +418,13 @@ export async function animaciones(j) {
     h.tick(0.5);
   }, items);
   await j.resetPerf();
-  const chores = (await p.evaluate(chooseChores)).filter((c) => want(c.id));
+  const chores = ring ? (await p.evaluate(chooseChores)).filter((c) => want(c.id)) : [];
+  if (!ring) extra.push("Sin anillo (REAL_ONLY, src/core/realism.ts): sus tareas y su consola de navegación no se juegan.");
   extra.push(`Tareas del anillo jugadas: ${chores.length} (${[...new Set(chores.map((c) => c.kind))].length} clases).`);
   for (const c of chores) await playChore(j, c, rows);
 
   // A trip from the ring's navigation console: each step draws its part of the route.
-  if (want("viaje")) {
+  if (want("viaje") && ring && (await p.evaluate(() => typeof window.codeship.interior.openNavConsole === "function"))) {
     await p.evaluate(() => window.codeship.interior.openNavConsole());
     await p.waitForTimeout(1200);
     const id = await p.evaluate(() => window.codeship.nav.targets.find((t) => t.kind === "asteroid" && t.id !== window.codeship.region.target.data.id)?.id);

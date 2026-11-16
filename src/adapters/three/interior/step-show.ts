@@ -74,8 +74,11 @@ const TARGET_INSET = 0.12;
 const TARGET_MAX = 0.7;
 /** What she holds or works in at a target (a bowl, the tablet) is this far in front of her (m): at her hands. */
 const HANDS_AHEAD = 0.35;
-/** Actions that work in a vessel (bowl, board, tablet): at a target they happen at her hands. */
-const USES_VESSEL: ReadonlySet<string> = new Set(["cascar", "batir", "remover", "calentar", "hervir", "hornear", "moler", "amasar", "cortar", "lavar", "reposar", "emplatar", "sazonar", "programar", "revisar", "tomar"]);
+/**
+ * Actions that work in a vessel or with a tool she holds (bowl, board, tablet, the wrench): at a target they
+ * happen at her hands, on the near side of the machine (a round tank does not hide the wrench: PX-20).
+ */
+const USES_VESSEL: ReadonlySet<string> = new Set(["cascar", "batir", "remover", "calentar", "hervir", "hornear", "moler", "amasar", "cortar", "lavar", "reposar", "emplatar", "sazonar", "programar", "revisar", "tomar", "reparar"]);
 /** The floor bowl with its contents as a box (centre height and half size, m) for the clearance rule… */
 const BOWL_BOX = new THREE.Vector3(0, 0.07, 0);
 const BOWL_HALF = new THREE.Vector3(0.11, 0.06, 0.11);

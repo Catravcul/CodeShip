@@ -85,10 +85,10 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | EST-29 | Solo test | | | `vehicle-yard.test.ts`; en vivo, PX-24 |
 | EST-30 | Solo test | | | `vehicle-catalogue.test.ts` |
 | EST-27 | Probado (en vivo) | 2026-11-16 | `ee051ea` | [run](runs/2026-11-16-1500-PX-16.md): PX-16, `dock-trip.test.ts` y `journey-world.test.ts` |
-| EST-41 | Solo test | | | `cargo-airlock.test.ts`; en vivo, PX-29 |
-| EST-42 | Solo test | | | `iss.test.ts`, `structure.test.ts`, `interior.test.ts`; en vivo, PX-29 |
+| EST-41 | Probado (en vivo) | 2026-11-16 | `ba77230` | [run](runs/2026-11-16-2011-PX-29.md): `cargo-airlock.test.ts` y PX-29 |
+| EST-42 | Probado (en vivo) | 2026-11-16 | `ba77230` | [run](runs/2026-11-16-2011-PX-29.md): `iss.test.ts`, `structure.test.ts`, `interior.test.ts` y PX-29 |
 | EST-43 | Solo test | | | `outfit.test.ts` |
-| EST-44 | Solo test | | | `hangar-berth.test.ts`; en vivo, PX-12 y PX-29 |
+| EST-44 | Probado (en vivo) | 2026-11-16 | `ba77230` | [run](runs/2026-11-16-2011-PX-29.md): `hangar-berth.test.ts`, PX-12 y PX-29 |
 | EST-05 | Parcial | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): suite OK; en vivo solo la tarjeta del almacén lleno (`hc-almacen-mobile.png`) |
 | REF-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | REF-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -200,7 +200,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-25 | Probado (en vivo) | 2026-11-16 | `be7ba22` | [run](runs/2026-11-16-1835-PX-14-PX-15-PX-25.md): 40 OK |
 | PX-27 | Probado (en vivo) | 2026-11-16 | `1c1b689` | [run](runs/2026-11-16-1952-PX-27.md): 28 OK |
 | PX-28 | Probado (en vivo) | 2026-11-16 | `3873107` | [run](runs/2026-11-16-1944-PX-28.md): 28 OK |
-| PX-29 | FAIL | 2026-11-16 | `d54e114` | [run](runs/2026-11-16-1957-PX-12-PX-29.md): 25 OK, 2 FALLA |
+| PX-29 | Probado (en vivo) | 2026-11-16 | `ba77230` | [run](runs/2026-11-16-2011-PX-29.md): 45 OK |
 
 ## Última ejecución por run log
 
@@ -208,6 +208,7 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-16 20:11 | PX-29 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-2011-PX-29.md) |
 | 2026-11-16 19:57 | PX-12, PX-29 | Experiencia (Playwright) | 1/2 recorridos bien | [run](runs/2026-11-16-1957-PX-12-PX-29.md) |
 | 2026-11-16 19:52 | PX-27 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-16-1952-PX-27.md) |
 | 2026-11-16 19:35 | PX-04, PX-12, PX-29 | Experiencia (Playwright) | 2/3 recorridos bien | [run](runs/2026-11-16-1935-PX-04-PX-12-PX-29.md) |

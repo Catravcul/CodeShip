@@ -65,7 +65,7 @@ describe("EST-28 vehicle catalogue", () => {
     expect(partial.unknown).toEqual(["x"]);
   });
 
-  it("CAT-01 is put together where the ISS really would: Bishop, JEM-EF, the arm on a CBM, or the dry dock (licence)", () => {
+  it("EST-45 is put together where the ISS really would: Bishop, JEM-EF, the arm on a CBM, or the dry dock (licence)", () => {
     // The ISS's numbers (data/iss.ts): Bishop 3,99 m³ in a 2,014 × 1,8 m bell; a JEM-EF port 500 kg in 1,85 × 1 × 0,8 m; Canadarm2 116 t and 17,6 m.
     const limits = { bishop: { volumeM3: 3.99, diameterM: 2.014, heightM: 1.8 }, jemEf: { massKg: 500, envelopeM: [1.85, 1, 0.8] as const }, arm: { maxPayloadKg: 116000, lengthM: 17.6 } };
     const cubesat = { ...entry, specs: { ...entry.specs, sizeM: [0.37, 0.23, 0.1] as const } };

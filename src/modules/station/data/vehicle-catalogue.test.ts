@@ -57,7 +57,7 @@ describe("EST-28 vehicle catalogue data", () => {
     expect(componentMass(vehicleById("codeship-nodriza")!, catalogueMassOf).kg).toBeCloseTo(new Mothership(NODRIZA, Vec3.ZERO, Quat.IDENTITY).dryMassKg, 0);
   });
 
-  it("CAT-04 the player's lander is the Apollo LM and the probe is Juventas: their recipes weigh what they fly with", () => {
+  it("EST-08 the player's lander is the Apollo LM and the probe is Juventas: their recipes weigh what they fly with", () => {
     expect(vehicleById("codeship-sonda")).toBeUndefined();
     const lm = vehicleById("apollo-lm")!;
     expect(lm.playerCraft).toBe("modulo");

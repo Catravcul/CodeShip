@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { LM_CARTRIDGES, LM_ECS, LM_LIFE_SUPPORT, LM_LOAD_W, LM_SUBLIMATOR_KG_PER_H } from "../data/lm-ecs";
 import { LIOH_CO2_ALARM_MMHG, OpenLoopEcs } from "./open-loop";
 
-describe("LM-03 the Apollo LM's own life support (open loop)", () => {
+describe("SV-14 the Apollo LM's own life support (open loop)", () => {
   it("carries the real stocks: O₂ tanks, water, LiOH cartridges and the Apollo 15–17 batteries", () => {
     expect(LM_ECS.descentO2Kg.value).toBeCloseTo(21.8, 1);
     expect(LM_ECS.descentWaterKg.value + LM_ECS.ascentWaterKg.value).toBeCloseTo(188.7, 0);

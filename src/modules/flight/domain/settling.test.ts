@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { settle } from "./settling";
 
-describe("settling without anchors (Juventas)", () => {
+describe("SON-07 settling without anchors (Juventas)", () => {
   it("bounces a few times at centimetres per second and comes to rest", () => {
     // Bennu's surface gravity is about 8·10⁻⁵ m/s² (GM / r²).
     const s = settle(0.02, 8e-5);

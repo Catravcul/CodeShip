@@ -11,7 +11,7 @@ describe("lander crew cabin (docs/design/habitaculo.md)", () => {
     expect(st.map((s) => s.id).sort()).toEqual(["acople", "asiento", "ecs", "escotilla", "esterilla", "mente"]);
     for (const s of st) expect(clampToFloor(LANDER_CABIN.floor, s.stand)).toEqual(s.stand);
     for (const a of st) for (const b of st) if (a !== b) expect(Math.hypot(a.stand.x - b.stand.x, a.stand.z - b.stand.z)).toBeGreaterThan(2 * LANDER_CABIN.reachM);
-    // LM-03: the data is the LM's cabin at true size (4,5 m³ habitable, 2,34 m tall, 6,7 m³ pressurised);
+    // HAB-26: the data is the LM's cabin at true size (4,5 m³ habitable, 2,34 m tall, 6,7 m³ pressurised);
     // the presentation layer spreads its floor plan by one factor, never by hand per machine.
     expect(LANDER_CABIN_REAL.habitableM3).toBe(4.5);
     expect(LANDER_CABIN_REAL.heightM).toBeCloseTo(2.34, 6);
@@ -104,7 +104,7 @@ describe("HAB-01 the LM cabin: walking and the task list's travel take the same 
   });
 });
 
-describe("LM-03 the LM's ECS panel (life-support/domain/open-loop.ts)", () => {
+describe("SV-14 the LM's ECS panel (life-support/domain/open-loop.ts)", () => {
   const ecs = { cartridgeLeft: 1, cartridges: 2, canReplenish: false };
   it("changes the LiOH cartridge only when it is nearly spent, and says why not", () => {
     const fresh = cabinActions("ecs", { ...base, ecs })[0]!;

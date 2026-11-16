@@ -29,7 +29,7 @@ const fly = (ops: ProbeOps, seconds: number, threat?: Parameters<ProbeOps["updat
 };
 
 describe("ProbeOps", () => {
-  it("the probe is Juventas: 12 kg, a few m/s of cold gas, 1 mN thrusters", () => {
+  it("SON-06 the probe is Juventas: 12 kg, a few m/s of cold gas, 1 mN thrusters", () => {
     const ship = Ship.create(probeDesign());
     expect(ship.massKg).toBeCloseTo(12, 6);
     expect(ship.mainDeltaV()).toBeGreaterThan(4);

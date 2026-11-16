@@ -28,11 +28,11 @@ export async function habitaculo(j) {
   await p.waitForTimeout(900);
   j.check("al levantarse, Doménica está en el habitáculo", await p.evaluate(() => window.codeship.cabin.active));
   await capture(j, "habitaculo", "Habitáculo del módulo");
-  // Scale and spacing (docs/design/escala.md): drawn at 1,5 like the bridge and lengthened aft so its five
-  // machines are 2 m apart as played; at each one a single card shows, its own, and nothing covers it.
+  // Scale and spacing (docs/design/escala.md): the Apollo LM's cabin drawn at 1,5 and spread by the presentation
+  // layer so its six machines are 2 m apart as played; at each one a single card shows, its own, and nothing covers it.
   const k = await p.evaluate(() => window.codeship.cabin.k);
   j.check("el habitáculo se dibuja a escala 1,5, como el puente", k === 1.5, String(k));
-  for (const id of ["mente", "esterilla", "escotilla", "acople"]) {
+  for (const id of ["mente", "ecs", "esterilla", "escotilla", "acople"]) {
     await j.useMachine("cabin", id, null);
     const r = await p.evaluate(() => ({ near: window.codeship.cabin.near(), cards: document.querySelectorAll(".room-ui:not(.hidden) .cab-machine:not(.hidden)").length }));
     const over = await j.overlaps();

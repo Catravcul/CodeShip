@@ -92,7 +92,7 @@ Cada fase es **una rama** con sus tests, su recorrido PX y sus capturas. La fase
    - **El hangar se sustituye por lo que existe**: una esclusa de carga tipo **Bishop** para las sondas, una **plataforma expuesta** tipo JEM-EF para los estantes de piezas y el **atraque con brazo en un CBM** para el módulo de aterrizaje.
    - El dique seco se queda como celosía abierta, con la etiqueta de licencia: estructura de montaje que nadie ha construido a esa escala.
    - Para que la estación crezca, los módulos de Haven-2 son la opción en desarrollo.
-4. **`catalogo-montaje`**: montar los vehículos del catálogo en el dique o con el brazo, con su maqueta 3D a partir de `look` y su ficha. La sonda pasa a ser una **Juventas** real (12 kg) y el plano de 30 kg desaparece. El módulo de aterrizaje se elige entre el **módulo lunar Apolo** (real) y la Explorer marcada como inventada.
+4. **`catalogo-montaje`** (hecho, [modulo-lunar-juventas.md](modulo-lunar-juventas.md)): montar los vehículos del catálogo en el dique o con el brazo, con su maqueta 3D a partir de `look` y su ficha. La sonda pasa a ser una **Juventas** real (12 kg) y el plano de 30 kg desaparece. El módulo de aterrizaje se elige entre el **módulo lunar Apolo** (real) y la Explorer marcada como inventada.
 
 ### Fase 2 · Vida real a bordo
 

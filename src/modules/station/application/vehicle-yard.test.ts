@@ -30,7 +30,7 @@ describe("EST-29 vehicle yard", () => {
     expect(raptor.locked).toMatch(/impresora/i);
   });
 
-  it("CAT-02 the LM is berthed by the arm, Juventas goes through the Bishop, Starship needs the dry dock (licence)", () => {
+  it("EST-06 the LM is berthed by the arm, Juventas goes through the Bishop, Starship needs the dry dock (licence)", () => {
     const rows = yard().rows();
     const site = (id: string) => rows.find((r) => r.entry.id === id)!.plan;
     expect(site("apollo-lm")).toMatchObject({ site: "brazo-cbm", reality: "real" });
@@ -39,7 +39,7 @@ describe("EST-29 vehicle yard", () => {
     expect(site("philae").site).toBe("jem-ef");
   });
 
-  it("CAT-03 a built Juventas waits in the Bishop until it is deployed; then it is free", () => {
+  it("EST-07 a built Juventas waits in the Bishop until it is deployed; then it is free", () => {
     const j = vehicleById("juventas")!;
     const y = yard(Object.fromEntries(j.lines.map((l) => [l.partId, l.count])));
     const craft = y.build("juventas");

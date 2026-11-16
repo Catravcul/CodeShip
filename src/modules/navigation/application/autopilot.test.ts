@@ -57,7 +57,7 @@ describe("TripAutopilot", () => {
     expect(h).toBeLessThan(400);
   }, 30_000);
 
-  it("LM-02 flies the Apollo LM on its descent engine: it turns its belly (thrust up through it) to the burn, then faces Bennu", () => {
+  it("VUE-11 flies the Apollo LM on its descent engine: it turns its belly (thrust up through it) to the burn, then faces Bennu", () => {
     expect(thrustAxis(Ship.create(lunarModuleDesign()))).toEqual(Vec3.Y);
     expect(thrustAxis(Ship.create(explorerDesign()))).toEqual(new Vec3(0, 0, -1));
     const bennu = new Asteroid(BENNU, Vec3.ZERO);

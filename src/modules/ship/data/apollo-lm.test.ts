@@ -6,7 +6,7 @@ import { LM, LM_ADAPTATIONS, LM_PROPELLANT_KG, lunarModuleDesign } from "./apoll
 const lm = () => Ship.create(lunarModuleDesign());
 const force = (s: Ship, translation: Vec3, rotation = Vec3.ZERO) => s.preview({ mainThrottle: 0, translation, rotation });
 
-describe("LM-01 the player's lander is the Apollo Lunar Module", () => {
+describe("VUE-10 the player's lander is the Apollo Lunar Module", () => {
   it("weighs the real 4280 kg dry plus our IDSS adapter, and carries the descent, ascent and RCS propellant", () => {
     const s = lm();
     expect(s.dryMassKg).toBeCloseTo(LM.dryKg.value + 340, 6);

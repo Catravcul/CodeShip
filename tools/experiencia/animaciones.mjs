@@ -146,6 +146,9 @@ async function playChore(j, chore, rows) {
     await j.tap(".task-board [data-close]", "Cerrar tareas");
     return;
   }
+  // A player scrolls the list until the task is in the middle (not under the board's sticky header).
+  await p.locator(`.task-board [data-go="${chore.id}"]`).evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await p.waitForTimeout(200);
   if (!(await j.tap(`.task-board [data-go="${chore.id}"]`, `Ir: ${chore.title}`))) return;
   try {
     await j.waitDuel(240000);
@@ -192,7 +195,9 @@ async function playPlan(j, rows, label, oracle, id) {
     const before = await p.evaluate(() => window.codeship.planOverlay.drawn);
     const pick = await pickRight(j, oracle);
     if (!pick) break;
-    await p.waitForTimeout(700);
+    // The step's part of the plan and its caption (they may take a frame or two under load).
+    await p.waitForFunction((b) => window.codeship.planOverlay.drawn > b && !!document.querySelector(".plan-caption.on")?.textContent, before, { timeout: 4000 }).catch(() => {});
+    await p.waitForTimeout(400);
     n++;
     const a = await p.evaluate(() => {
       const el = [...document.querySelectorAll(".duel.sheet, .duel")].find((e) => !e.classList.contains("hidden"));

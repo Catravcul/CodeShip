@@ -68,8 +68,16 @@ export function kitchenLayout(at: (v: THREE.Vector3) => THREE.Vector3 = (v) => v
 const DEFAULT_KITCHEN = kitchenLayout();
 export const KITCHEN_SPOTS: Readonly<Record<KitchenSpot, THREE.Vector3>> = DEFAULT_KITCHEN.spots;
 
-/** A prop on the challenge's target sits this much toward her from its centre (its near face). */
+/** A prop on the challenge's target sits this much toward her from its centre (its near face)… */
 const TARGET_INSET = 0.12;
+/** …and never farther than this from her feet (m, on the floor), so it is within her reach. */
+const TARGET_MAX = 0.7;
+/** What she holds or works in at a target (a bowl, the tablet) is this far in front of her (m): at her hands. */
+const HANDS_AHEAD = 0.35;
+/** Actions that work in a vessel (bowl, board, tablet): at a target they happen at her hands. */
+const USES_VESSEL: ReadonlySet<string> = new Set(["cascar", "batir", "remover", "calentar", "hervir", "hornear", "moler", "amasar", "cortar", "lavar", "reposar", "emplatar", "sazonar", "programar", "revisar", "tomar"]);
+/** At the fridge she stands this much farther back (m). */
+const FRIDGE_STEP_BACK = 0.25;
 
 /** How a station is framed while a chore shows its steps. */
 export interface StepFrame {
@@ -196,6 +204,7 @@ export class StepShow {
   private readonly w = new THREE.Vector3();
   private readonly hand = new THREE.Vector3();
   private readonly otherHand = new THREE.Vector3();
+  private readonly hands = new THREE.Vector3();
   private lastFigure: CubeFigure | undefined;
   private readonly spot = new THREE.Vector3();
   /** Where the previous step happened (food is plated from there). */
@@ -306,6 +315,12 @@ export class StepShow {
       const k = 1 - Math.exp(-6 * dt);
       if (f.slide.axis === "z") this.feet.z += (want - this.feet.z) * k;
       else this.feet.x += (want - this.feet.x) * k;
+      // At the fridge she stands back the door's width, so her reach stops at the open door, not inside it.
+      const back = vis.place === "nevera" ? FRIDGE_STEP_BACK : 0;
+      const across = f.slide.axis === "z" ? "x" : "z";
+      const toward = f.slide.axis === "z" ? Math.sin(f.yaw) : Math.cos(f.yaw);
+      const wantAcross = f.stand[across] - back * toward;
+      this.feet[across] += (wantAcross - this.feet[across]) * k;
     }
     rig.visible = true;
     rig.position.copy(this.feet);
@@ -397,11 +412,25 @@ export class StepShow {
     const dz = this.feet.z - out.z;
     const d = Math.hypot(dx, dz);
     if (d > 1e-3) {
-      const k = Math.min(TARGET_INSET, d) / d;
+      const k = Math.min(d, Math.max(TARGET_INSET, d - TARGET_MAX)) / d;
       out.x += dx * k;
       out.z += dz * k;
     }
     return out;
+  }
+
+  /** A bowl on the floor between her and a low target, within her reach (crouched). */
+  private floorBowl(out: THREE.Vector3, s: THREE.Vector3): THREE.Vector3 {
+    const d = Math.hypot(s.x - this.feet.x, s.z - this.feet.z);
+    return out.copy(this.feet).lerp(s, d > 1e-3 ? Math.min(0.65, 0.5 / d) : 0).setY(0.02);
+  }
+
+  /** In front of her at her hands (for a target's steps: what she holds or works in), height `y` clamped. */
+  private atHands(out: THREE.Vector3, y: number): THREE.Vector3 {
+    const f = this.frameDef!;
+    const fx = Math.sin(f.yaw);
+    const fz = Math.cos(f.yaw);
+    return out.set(this.feet.x + fx * HANDS_AHEAD, Math.max(0.3, Math.min(1.15, y)), this.feet.z + fz * HANDS_AHEAD);
   }
 
   private build(): void {
@@ -526,7 +555,9 @@ export class StepShow {
     for (const f of p.food) f.scale.setScalar(0.04);
     for (const sh of p.shells) sh.scale.set(0.024, 0.031, 0.024);
     this.foodMat!.color.setHex(TINT[v.tint ?? "generico"] ?? TINT.generico!);
-    const s = this.spotOf(v, this.spot);
+    const target = this.spotOf(v, this.spot);
+    // A vessel at a challenge's target (a lab flask, a feeder) is held at her hands, not set inside the machine.
+    const s = v.place === "objetivo" && USES_VESSEL.has(v.action) ? this.atHands(this.hands, target.y) : target;
     const food = p.food;
     const vessel = (): THREE.Vector3 => {
       // The vessel the step works in, at its spot; returns where food sits inside it.
@@ -587,7 +618,7 @@ export class StepShow {
       }
       case "verter":
       case "sazonar": {
-        const at = v.place === "objetivo" ? this.v.copy(s) : vessel();
+        const at = v.place === "objetivo" ? (this.low(v) ? this.floorBowl(this.v, s) : this.v.copy(s)) : vessel();
         const tool = v.action === "sazonar" ? p.shaker : p.jar;
         const tip = this.show(tool, at.x, at.y + 0.2 + 0.02 * Math.sin(this.clock * (v.action === "sazonar" ? 30 : 3)), at.z);
         tip.rotation.z = v.action === "sazonar" ? Math.PI : 2.0 * bump(t, 0.1, 0.95);
@@ -673,13 +704,19 @@ export class StepShow {
         const at = vessel();
         // From where the last step happened (the pan, the board) onto the plate, one piece after another;
         // from beside the plate when that was elsewhere (the fridge, the mill).
-        const from = this.hasFrom && this.from.distanceTo(at) < 0.9 ? this.from : this.tmp.set(at.x, at.y + 0.02, at.z - 0.22);
+        const from = this.hasFrom && this.from.distanceTo(at) < 0.9 ? this.tmp.copy(this.from) : this.tmp.set(at.x, at.y + 0.02, at.z - 0.22);
+        // From the oven or a shelf: the food starts on the worktop by it (the tray came back up there).
+        const K = this.frameDef!.kitchen;
+        if (K && v.place !== "objetivo") {
+          from.x = Math.max(from.x, K.counter.front + 0.15);
+          from.y = Math.max(from.y, K.counter.top + 0.02);
+        }
         for (let i = 0; i < 3; i++) {
           const k = ease(clamp01((t - 0.15 - i * 0.15) / 0.35));
           const x = THREE.MathUtils.lerp(from.x, at.x + (i - 1) * 0.04, k);
           const z = THREE.MathUtils.lerp(from.z, at.z, k);
           const y = THREE.MathUtils.lerp(from.y + 0.03, at.y, k) + 0.12 * Math.sin(k * Math.PI);
-          this.show(food[i]!, x, y, z);
+          this.show(food[i]!, x, y, z).visible = k > 0;
         }
         break;
       }
@@ -706,7 +743,7 @@ export class StepShow {
         break;
       }
       case "servir": {
-        const bowl = this.v.copy(this.feet).lerp(s, 0.65).setY(0.02);
+        const bowl = this.floorBowl(this.v, s);
         this.show(p.bowl, bowl.x, bowl.y + 0.02, bowl.z).scale.set(0.08, 0.04, 0.08);
         pile(this.v.set(bowl.x, bowl.y + 0.04, bowl.z), Math.round(1 + 3 * clamp01(t / 0.7)), 0.025);
         if (t < 0.7) this.emitAt(bowl.x, bowl.y + 0.35, bowl.z, "fall", TINT[v.tint ?? "comida"] ?? 0x9a5a3a);
@@ -726,9 +763,11 @@ export class StepShow {
       }
       case "programar":
       case "revisar": {
-        const tab = this.show(p.tablet, s.x, s.y + 0.3 + 0.02 * Math.sin(this.clock * 2), s.z);
-        tab.rotation.y = this.frameDef!.yaw - Math.PI / 2;
-        this.emitAt(s.x, s.y + 0.1, s.z, v.action === "revisar" ? "orbit" : "rise", 0x5ff0ff);
+        // The holographic tablet floats at her hands, facing her; the glow marks the target it works on.
+        const h = this.atHands(this.hands, 1.1);
+        const tab = this.show(p.tablet, h.x, h.y + 0.02 * Math.sin(this.clock * 2), h.z);
+        tab.rotation.y = this.frameDef!.yaw;
+        this.emitAt(target.x, target.y + 0.1, target.z, v.action === "revisar" ? "orbit" : "rise", 0x5ff0ff);
         break;
       }
       case "reparar": {

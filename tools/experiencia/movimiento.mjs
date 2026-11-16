@@ -163,28 +163,40 @@ export async function movimiento(j) {
   const ring0 = await p.screenshot();
   const sticks = await j.texts(".walk-stick, .look-stick");
   j.check("en el anillo hay dos mandos: Caminar y Mirar", sticks.length >= 2, sticks.join(" / "));
+  // Scale (docs/design/escala.md): the ring is drawn 1,5 times bigger on the plan; she stays at real size.
+  const plan = await p.evaluate(() => ({ k: window.codeship.interior.camera.planScale, rig: window.codeship.interior.avatarRig.scale.x }));
+  j.check("el anillo se dibuja a escala 1,5 en planta y Doménica a tamaño real", plan.k === 1.5 && Math.abs(plan.rig * plan.k - 1) < 1e-6, JSON.stringify(plan));
   await j.stick(".walk-stick", 0, -50, 2500);
   j.check("al arrastrar Caminar hacia arriba la vista avanza", differs(ring0, await p.screenshot()));
   await j.stick(".look-stick", 60, 0, 1200);
   await j.shot("anillo");
   // On the ring, life on board shows where it happens, as a small HUD label, only when in view.
-  const seen = await j.setup("un perro le ladra a un gato delante de ella", () => {
+  // Deterministic (it passed about half the time when the dog wandered off): the dog stands still on the
+  // open farm deck, and she looks at it from 2 m (3 m as drawn), with no other life aboard to cover it.
+  const seen = await j.setup("un perro, quieto en la cubierta de cultivo delante de ella, le ladra a un gato", () => {
     const i = window.codeship.interior;
     const h = window.codeship.habitat;
     const dog = h.dogs[0] && i.dogs.get(h.dogs[0].id);
     if (!dog || !h.cats[0]) return false;
-    // Two metres from the dog, looking at it through her own eyes.
-    const d = dog.root.getWorldPosition(dog.root.position.clone());
-    i.pos.set(d.x + (d.x > 0 ? -2 : 2), 0, d.z);
+    const spot = { x: 1.5, z: 9 + 4.5 };
+    dog.follow = null;
+    dog.setBounds({ minX: spot.x, maxX: spot.x, minZ: spot.z, maxZ: spot.z });
+    dog.root.position.set(spot.x, 0, spot.z);
+    i.walkTo = null;
+    i.pos.set(spot.x, 0, spot.z - 2);
     i.thirdPerson = false;
-    i.yaw = Math.atan2(-(d.x - i.pos.x), -(d.z - i.pos.z));
-    i.pitch = -0.25;
-    i.onEvent({ type: "animal-hostile", actorId: h.dogs[0].id, targetId: h.cats[0].id, action: "ladrar" });
+    i.yaw = Math.PI;
+    i.pitch = -0.3;
+    i.ambient.clear?.();
     return true;
   });
   if (seen) {
+    await p.waitForTimeout(500);
+    await j.setup("ladra", () => {
+      const h = window.codeship.habitat;
+      window.codeship.interior.onEvent({ type: "animal-hostile", actorId: h.dogs[0].id, targetId: h.cats[0].id, action: "ladrar" });
+    });
     await p.waitForTimeout(800);
-    // Other life aboard may be in view too (a cat stalking the hens): any of the labels on screen.
     const label = (await j.texts(".amb-note.on")).join(" · ");
     const toastNow = (await j.texts(".interior-ui .toast.on"))[0] ?? "";
     j.check("mirando hacia donde sucede, el aviso de ambiente flota allí con estilo HUD (no en el aviso del jugador)", /ladra/.test(label) && !/ladra/.test(toastNow), label);

@@ -228,7 +228,7 @@ riqueza (`resourceRichness`) sale de la composición medida de Bennu (0,59). Ben
 Los paquetes llevan su composición real (`extractToCargo`) y vuelan de verdad a 100 m/s: llegan
 cuando cubren la distancia. Los de la estación entran por el buzón de importación con esas horas de
 vuelo; los de la nodriza caen en su bodega (20 t, valor de juego), que se descarga en el almacén de la
-estación en cuanto la nodriza atraca. Un día de juego son 40 s, como la vida a bordo.
+estación en cuanto la nodriza atraca. Un día de juego son 24 min reales, como la vida a bordo ([vida-a-bordo.md](vida-a-bordo.md#ritmo-de-los-días)).
 
 ### Se mueven solos: motor gravitatorio (ficción de juego)
 

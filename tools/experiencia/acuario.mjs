@@ -45,6 +45,8 @@ async function stationChore(j, id, what) {
   await j.page.waitForTimeout(500);
   const label = (await j.texts(".station-btn"))[0] ?? "";
   j.check(`junto al tanque sale un solo botón, el del acuario («${label}»)`, /^Acuario del anillo: \d+ tareas?$/.test(label), label);
+  const over = await j.overlaps();
+  j.check("con el anillo a escala 1,5, junto al tanque ningún botón se solapa", over.length === 0, over.slice(0, 3).join("; "));
   await j.tap(".station-btn", "Acuario del anillo");
   await j.page.waitForTimeout(400);
   await j.tap(`.board [data-chore="${id}"]`, what);

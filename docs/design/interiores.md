@@ -126,10 +126,13 @@ En el anillo hay 1 g, así que las máquinas son las de la Tierra: la cinta no n
 
 Capturas (iPhone 13, recorrido PX-02 y PX-10): `docs/screenshots/separacion-{1-ejercicio,2-camarote,3-esterilla,4-puente}-movil.png`: junto a cada puesto, un solo botón, el suyo.
 
-**Excepciones (abiertas):**
+**Sin excepciones (2026-11-16).** La regla se comprueba en cada zona tal como se juega, con los datos multiplicados por
+su escala de dibujo ([escala.md](escala.md#la-regla-de-2-m-tal-como-se-juega)):
 
-- **La cabina del módulo de aterrizaje** es de tamaño real (una cápsula): no caben 2 m. Allí solo se garantiza que dos puestos están a más de dos alcances del botón, así que nunca salen dos a la vez.
-- **Aparatos en bastidores contiguos de la estación** (paso de 1,41 m, como los ISPR de la ISS): en ingravidez cada uno muestra su acción solo mientras ella sujeta su propia barra, así que tampoco se pisan.
+- **La cabina del módulo de aterrizaje** se alargó 1,93 m hacia popa para que sus cinco máquinas queden a 2 m
+  dibujadas a 1,5 ([habitaculo.md](habitaculo.md#tamaño-más-grande-que-una-cápsula-real)).
+- **Los aparatos en bastidores contiguos de la estación**: con el plano a 1,5, sus puntos de agarre ya quedan a 2 m.
+  Las dos caras de una escotilla cuentan como una sola puerta.
 
 ### El ejercicio (dominio)
 

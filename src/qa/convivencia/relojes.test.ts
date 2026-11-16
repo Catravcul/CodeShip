@@ -12,9 +12,11 @@ describe("CV · relojes del mundo", () => {
     const c = clocks(1 / 60, 600);
     expect(c.warp).toBe(600);
     expect(c.missionS).toBeCloseTo(10, 9);
-    // ×600 compresses less than life on board (a day every 40 s, ×2160): life keeps its own pace.
-    expect(c.lifeDays).toBeCloseTo(1 / 60 / DAY_REAL_S, 12);
+    // ×600 compresses more than life on board (a day every 24 min, ×60): life follows the trip.
+    expect(c.lifeDays).toBeCloseTo(10 / 86400, 12);
     expect(c.stationHours).toBeCloseTo(c.lifeDays * 24, 12);
+    // The lander's ×5 compresses less: life keeps its own pace.
+    expect(clocks(1 / 60, 5).lifeDays).toBeCloseTo(1 / 60 / DAY_REAL_S, 12);
   });
 
   it("CV-01 un viaje que comprime más que la vida a bordo arrastra la vida y la estación con él", () => {
@@ -34,7 +36,7 @@ describe("CV · relojes del mundo", () => {
     });
     expect(station).toBeCloseTo(life * 24, 6);
     expect(mission).toBeCloseTo(TRAVEL_TIME.capS * 600, 3);
-    expect(life).toBeCloseTo(TRAVEL_TIME.capS / DAY_REAL_S, 6);
+    expect(life).toBeCloseTo((TRAVEL_TIME.capS * 600) / 86400, 6);
   });
 
   it("CV-02 tiempo acelerado a mano (×50, sin viaje): la vida a bordo corre ×50 igual que la estación (HC-01)", () => {
@@ -47,7 +49,7 @@ describe("CV · relojes del mundo", () => {
     expect(c.stationHours).toBeCloseTo(c.lifeDays * 24, 12);
   });
 
-  it("CV-02 con ×10 a mano un día de a bordo dura 4 s reales, y la estación no se separa de la vida a lo largo de un minuto", () => {
+  it("CV-02 con ×10 a mano un día de a bordo dura 2,4 min reales, y la estación no se separa de la vida a lo largo de un minuto", () => {
     let life = 0;
     let station = 0;
     frames(60, 1 / 30, 1, (c) => {

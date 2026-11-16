@@ -60,6 +60,13 @@ export async function cocina(j) {
   await j.tap('.task-board .tb-task:has-text("Cocinar Huevos revueltos") .tb-go', "Ir: Cocinar Huevos revueltos");
   await j.waitDuel(120000);
   j.check("al abrir la receta, Doménica está en la cocina (la escena se ve sobre la hoja del reto)", await p.evaluate(() => window.codeship.interior.steps.framing && window.codeship.interior.avatarRig.visible));
+  // At 1,5 (docs/design/escala.md) the galley's framing still has her in view, at real size.
+  const framed = await p.evaluate(() => {
+    const i = window.codeship.interior;
+    const v = i.avatarRig.getWorldPosition(i.camera.position.clone()).setY(1.1).project(i.camera);
+    return { k: i.camera.planScale, x: +v.x.toFixed(2), y: +v.y.toFixed(2), in: Math.abs(v.x) < 1 && Math.abs(v.y) < 1 && v.z < 1 };
+  });
+  j.check("con el anillo a escala 1,5 la cámara del reto encuadra a Doménica junto a la encimera", framed.k === 1.5 && framed.in, JSON.stringify(framed));
   for (const [i, step] of HUEVOS.entries()) {
     await choose(j, answerFor(step));
     const seen = await seesStep(j, SE_VE[i]);

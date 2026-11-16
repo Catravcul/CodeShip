@@ -100,9 +100,10 @@ describe("worldStep (one clock for everyone during a compressed trip)", () => {
   });
 
   it("life on board never runs slower than the trip: max(its own pace, the trip's game time)", () => {
-    // Life on board already runs a day every 40 real s (2160×): a ×600 trip changes nothing…
-    expect(worldStep(1, 600).lifeDays).toBeCloseTo(BOARD_DAYS_PER_REAL_S, 12);
-    // …a trip compressed beyond that pace drags it along.
+    // Life on board runs a day every 24 real minutes (×60): the lander's ×5 changes nothing…
+    expect(worldStep(1, 5).lifeDays).toBeCloseTo(BOARD_DAYS_PER_REAL_S, 12);
+    // …the mothership's ×600 drags it along (ten times its own pace), and so does any faster trip.
+    expect(worldStep(1, 600).lifeDays).toBeCloseTo(600 / 86400, 12);
     expect(worldStep(1, 86400).lifeDays).toBeCloseTo(1, 12);
   });
 });

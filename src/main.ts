@@ -101,6 +101,7 @@ import { Navigator } from "@modules/navigation/application/navigator";
 import { asteroidTarget, targetPosition, targetRadius, type NavTarget } from "@modules/navigation/domain/nav-target";
 import { NavigationMode, PHASE } from "./navigation";
 import { TRAVEL_TIME, frameClocks } from "@modules/navigation/domain/travel-time";
+import { BOARD_DAYS_PER_REAL_S } from "@core/board-time";
 import { duration, num } from "@modules/navigation/application/trip-chore";
 import { ProbeTravel } from "./probe-travel";
 import { LandingProgram } from "@modules/navigation/application/landing-program";
@@ -264,8 +265,8 @@ const importOps = new ImportOps(stationOps.station, wallet, {
 });
 const nano = new NanoNetOps(new NanoNet(REMOTE_NETS), seededRandom(4242));
 const bennuSite: NanoSite = { id: BENNU.id, name: BENNU.name, position: bennu.position, radiusM: bennu.meanRadiusM, massKg: bennu.massKg, muM3S2: bennu.mu };
-/** The nano_net wears on the same clock as life on board (a game day every ~40 s). */
-const NANO_DAYS_PER_SECOND = 1 / 40;
+/** The nano_net wears on the same clock as life on board (src/core/board-time.ts). */
+const NANO_DAYS_PER_SECOND = BOARD_DAYS_PER_REAL_S;
 let faultLetters = 0;
 const growFor = (p: Plant, days: number) => {
   for (let t = 0; t < days; t += 0.25) {
@@ -1322,7 +1323,7 @@ renderer.setAnimationLoop((now) => {
   // The nano_net core site is Bennu for now (docs/design/nano-net.md).
   // Only a subjugated asteroid (all three stages) can become a core (docs/design/subyugacion.md).
   // Level 1 of the subjugation makes it eligible as a core: wired in `levels` (subjugation-levels.ts).
-  // Life on board keeps its pace (one day every 40 s), or the trip's if that is faster.
+  // Life on board keeps its pace (one day every 24 real minutes), or the trip's if that is faster.
   // Life on board (and the nano_net's wear) runs with the manual warp too (HC-01).
   if (!nanoPanel.busy) nano.tick(world.lifeDays);
   nano.powerShip(ship, fx, dt * warp);

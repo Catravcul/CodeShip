@@ -115,10 +115,13 @@ function lamp(lamps: Map<MachineId, THREE.Mesh>, g: THREE.Group, id: MachineId, 
  * sickbay, ship-mind panel, exercise corner with the yoga mat, Doménica's cabin and the cats'
  * things; plus the hygiene stall and the chicken coop, which stand on the farm deck.
  */
-export function buildRoom(): RoomHandles {
+export function buildRoom(ceilingM: number = ROOM.height): RoomHandles {
   const g = new THREE.Group();
   const lamps = new Map<MachineId, THREE.Mesh>();
-  const { halfW, halfL, height } = ROOM;
+  const { halfW, halfL } = ROOM;
+  // The shell's height: the drawn ceiling (ROOM.height × the plan scale, interior.ts); the handrails, the
+  // doorway and the furniture keep body height.
+  const height = ceilingM;
   const wall = mat(0xc9ced6);
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(halfW * 2, halfL * 2), mat(0x5d6672));
   floor.rotation.x = -Math.PI / 2;

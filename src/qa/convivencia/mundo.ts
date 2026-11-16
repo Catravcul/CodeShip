@@ -20,11 +20,14 @@ import { POLANA_STATION } from "@modules/station/data/station";
 import { STATION_TUNING } from "@modules/station/domain/blueprint";
 import { BOARD_DAYS_PER_REAL_S, frameClocks, type FrameClocks } from "@modules/navigation/domain/travel-time";
 
-/** Real seconds in a game day of life on board (main: NANO_DAYS_PER_SECOND = 1/40). */
+/** Real seconds in a game day of life on board (src/core/board-time.ts: 24 real minutes). */
 export const DAY_REAL_S = 1 / BOARD_DAYS_PER_REAL_S;
 
 /** The clocks of one frame, as main computes them. */
 export const clocks = (dt: number, tripLapse = 1, manualWarp = 1, threat = false): FrameClocks => frameClocks(dt, tripLapse, manualWarp, STATION_TUNING.hoursPerSecond, threat);
+
+/** Days on board that `realS` real seconds of a trip at `tripLapse` bring: its own pace, or the trip's if faster. */
+export const lifeDaysOf = (realS: number, tripLapse = 1): number => realS * Math.max(BOARD_DAYS_PER_REAL_S, tripLapse / 86400);
 
 /** Run `realS` seconds of frames of `dt`, calling `frame` with each frame's clocks. */
 export function frames(realS: number, dt: number, tripLapse: number, frame: (c: FrameClocks) => void, manualWarp = 1, threat: () => boolean = () => false): void {

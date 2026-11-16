@@ -27,7 +27,7 @@ Fuentes en Cold Sanctuary: `docs/world-topology-and-planes.md`, `plano-edificios
 | 8 | **Primero el bioma real, luego las mutaciones** | **Primero la fauna que ya ha volado.** En 0 g solo entra lo que tiene registro de vuelo; lo demás espera a un anillo. La ficción va marcada | `fit`: `sin-datos-en-ingravidez` |
 | 9 | La conducta es **datos + componentes**, no un guion por especie; diurno y nocturno (`SleepCycle`) | Cada especie es una ficha con su respuesta a 0 g, luz, temperatura, agua y presión | `Species` |
 | 10 | **Escala:** pocos animales completos y bancos como un solo organismo (`Swarm`) | Los peces pequeños (medaka, pez cebra) van como banco con un solo estado | Para la fase 3D |
-| 11 | **Dos velocidades:** la obra es lenta y consume material cada día | Igual que la estación: horas de máquina con el reloj de la estación (un día cada 40 s) | Ya existe en `Station` |
+| 11 | **Dos velocidades:** la obra es lenta y consume material cada día | Igual que la estación: horas de máquina con el reloj de la estación (un día cada 24 min reales) | Ya existe en `Station` |
 
 **Presupuesto de soporte vital.** Cada área gasta energía y da o quita oxígeno y CO₂. Se suma a la pestaña Vida ([autosustento.md](autosustento.md)) y al balance de la estación: energía libre = min(alas, radiadores) − gasto.
 

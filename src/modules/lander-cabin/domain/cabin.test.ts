@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { cabinActions, clampToFloor, nearestStation, type CabinState } from "./cabin";
-import { LANDER_CABIN } from "../data/cabin";
+import { CABIN_DEPARTURE, LANDER_CABIN } from "../data/cabin";
 
 const base: CabinState = { dockedTo: null, dockInRange: false, dockAssist: false, landed: false, canLeaveEva: false, mind: null };
 const ids = (s: Parameters<typeof cabinActions>[0], st: CabinState) => cabinActions(s, st).map((a) => a.id);
@@ -11,9 +11,11 @@ describe("lander crew cabin (docs/design/habitaculo.md)", () => {
     expect(st.map((s) => s.id).sort()).toEqual(["acople", "asiento", "escotilla", "esterilla", "mente"]);
     for (const s of st) expect(clampToFloor(LANDER_CABIN.floor, s.stand)).toEqual(s.stand);
     for (const a of st) for (const b of st) if (a !== b) expect(Math.hypot(a.stand.x - b.stand.x, a.stand.z - b.stand.z)).toBeGreaterThan(2 * LANDER_CABIN.reachM);
-    // Small and real: about the Apollo LM ascent stage's habitable volume up to Orion's.
-    expect(LANDER_CABIN.habitableM3).toBeGreaterThanOrEqual(4.5);
-    expect(LANDER_CABIN.habitableM3).toBeLessThanOrEqual(9);
+    // Lengthened past a real capsule to keep 2 m between machines as played (CABIN_DEPARTURE): still small,
+    // under 16 m³ pressurised, above Orion's 8,9 m³ habitable.
+    expect(LANDER_CABIN.habitableM3).toBeGreaterThan(8.9);
+    expect(LANDER_CABIN.habitableM3).toBeLessThan(CABIN_DEPARTURE.gamePressurisedM3);
+    expect(LANDER_CABIN.floor.maxZ - LANDER_CABIN.floor.minZ).toBeCloseTo(CABIN_DEPARTURE.gameFloorM.d, 6);
   });
 
   it("HAB-01 she reaches a machine only standing next to it, and the nearest one wins", () => {

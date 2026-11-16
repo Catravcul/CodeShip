@@ -1,7 +1,8 @@
 /**
  * Coexistence of the subjugation levels' services with compressed travel and the station's store
  * (docs/qa/casos.md, área CV). The services move asteroids on the mission clock, but what they make
- * (packages, trust, extraction) runs on the station clock: a game day every 40 real seconds.
+ * (packages, trust, extraction) runs on the station clock: the days on board (24 real minutes each, or the
+ * trip's pace when it compresses more).
  */
 import { describe, expect, it } from "vitest";
 import { POLANA_MEMBERS } from "@modules/celestial/data/nueva-polana";
@@ -10,7 +11,7 @@ import { extractionRateKgPerHour } from "@modules/subjugation/domain/yields";
 import { storeCapacityKg } from "@modules/station/domain/outfit";
 import { startingOutfit } from "@modules/station/data/outfit";
 import { STORE_STOWAGE } from "@modules/station/data/store";
-import { DAY_REAL_S, frames, servicesWorld } from "./mundo";
+import { DAY_REAL_S, frames, lifeDaysOf, servicesWorld } from "./mundo";
 
 const MEMBER = POLANA_MEMBERS[0]!;
 /** A mothership hop as main plays it: 60 fps at the trip's lapse (docs/design/viajes.md, ×600). */
@@ -18,14 +19,14 @@ const TRIP_LAPSE = 600;
 const DT = 1 / 60;
 
 describe("CV · niveles de subyugación y viaje comprimido", () => {
-  it("CV-03 un viaje comprimido no multiplica los paquetes de nivel 3: salen uno por día de la estación (40 s reales)", () => {
+  it("CV-03 un viaje comprimido no multiplica los paquetes de nivel 3: salen uno por día de la estación", () => {
     const w = servicesWorld();
     w.book.of(MEMBER.id).setLevel(3);
-    // 30 s of trip at ×600 are 5 h of mission clock but under a day on board: no package yet.
+    // 30 s of trip at ×600 are 5 h of mission clock, and 5 h on board (the trip drags life along): no package yet.
     frames(30, DT, TRIP_LAPSE, w.frame);
     expect(w.inbox.pending.length + w.storedKg()).toBe(0);
-    // Back to plain time: at 40 s on board a day has passed and one package is on its way.
-    frames(DAY_REAL_S - 30 + 1, DT, 1, w.frame);
+    // Back to plain time: once a whole day on board has passed, one package is on its way.
+    frames((1 - lifeDaysOf(30, TRIP_LAPSE)) * DAY_REAL_S + 1, DT, 1, w.frame);
     expect(w.services.drainEvents().filter((e) => e.type === "paquete-estacion")).toHaveLength(1);
   });
 
@@ -43,8 +44,8 @@ describe("CV · niveles de subyugación y viaje comprimido", () => {
     r.fail();
     const before = r.trust;
     frames(30, DT, TRIP_LAPSE, w.frame);
-    // +2 % a day: 0,75 days → +1,5 %, never the +100 % that 450 «days» of mission clock would give.
-    expect(r.trust - before).toBeCloseTo(0.02 * (30 / DAY_REAL_S), 3);
+    // +2 % a day over the days on board of the trip (5 h: the trip drags life along), never what 450 «days» of a ×600 per-second clock would give.
+    expect(r.trust - before).toBeCloseTo(0.02 * lifeDaysOf(30, TRIP_LAPSE), 3);
   });
 
   it("CV-04 la extracción de nivel 4 durante un viaje comprimido va al ritmo de las horas de la estación", () => {
@@ -56,8 +57,8 @@ describe("CV · niveles de subyugación y viaje comprimido", () => {
     const x = w.services.extraction(BENNU.id)!;
     const before = x.takenKg;
     frames(30, DT, TRIP_LAPSE, w.frame);
-    // 30 real seconds on board are 18 station hours.
-    const hours = 30 * (24 / DAY_REAL_S);
+    // 30 real seconds of a ×600 trip are 5 station hours: the station follows the days on board.
+    const hours = 24 * lifeDaysOf(30, TRIP_LAPSE);
     // Handed over in lots of 1 t: within one lot of the rate × station hours (×600 would be 1000 times more).
     expect(Math.abs(x.takenKg - before - extractionRateKgPerHour(BENNU) * hours)).toBeLessThanOrEqual(x.lotKg);
   });

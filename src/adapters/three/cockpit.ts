@@ -10,9 +10,29 @@ import { textSign } from "./interior/sign";
  * suit, the hygiene bay behind a curtain (Dragon, Orion), CO₂ scrubber cartridges, water, oxygen
  * masks, extinguisher, medical kit and stowage. No galley, no beds: sorties last hours.
  * Licence: the forward window is much larger than a real capsule's so the pilot can land by eye.
+ *
+ * `walk` lengthens the cabin aft for the walkable crew cabin (docs/design/habitaculo.md, «Tamaño»): the
+ * hull, the floor and the roof run `aftM` further back, and the docking hatch, the EVA hatch, the suit,
+ * the hygiene bay and the stowage move back with it so every machine stands 2 m from the next as played.
+ * Seats, armrests, straps and hand controllers carry `userData.body` (her body touches them: the walkable
+ * cabin draws them at real size when it stretches the floor plan).
  */
-export function buildCockpit(): THREE.Group {
+export interface CockpitShape {
+  /** How much longer the cabin is behind the seats, m (0: the capsule the pilot flies). */
+  readonly aftM: number;
+  /** Centre of the overhead docking hatch along the cabin, m (pilot's eye frame: −z forward). */
+  readonly dockHatchZ: number;
+  /** Centre of the EVA hatch on the left wall, m. */
+  readonly evaHatchZ: number;
+}
+
+export const FLIGHT_COCKPIT: CockpitShape = { aftM: 0, dockHatchZ: 0.6, evaHatchZ: 0.78 };
+
+export function buildCockpit(shape: CockpitShape = FLIGHT_COCKPIT): THREE.Group {
   const g = new THREE.Group();
+  const A = shape.aftM;
+  const H = shape.dockHatchZ;
+  const E = shape.evaHatchZ;
   const frame = new THREE.MeshStandardMaterial({ color: 0x2a2f36, roughness: 0.6, metalness: 0.5 });
   const panel = new THREE.MeshStandardMaterial({ color: 0x15181c, roughness: 0.8, metalness: 0.2 });
   const wall = new THREE.MeshStandardMaterial({ color: 0x3a414b, roughness: 0.7, metalness: 0.3 });
@@ -32,10 +52,10 @@ export function buildCockpit(): THREE.Group {
     parent.add(m);
     return m;
   };
-  const cyl = (r: number, h: number, mat: THREE.Material, x: number, y: number, z: number, seg = 14) => {
+  const cyl = (r: number, h: number, mat: THREE.Material, x: number, y: number, z: number, seg = 14, parent: THREE.Object3D = g) => {
     const c = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, seg), mat);
     c.position.set(x, y, z);
-    g.add(c);
+    parent.add(c);
     return c;
   };
   const label = (text: string, x: number, y: number, z: number, s = 0.22) => {
@@ -80,26 +100,26 @@ export function buildCockpit(): THREE.Group {
   box(0.07, 1.6, 0.07, frame, 0.98, 0.05, -0.85, 0, -0.2);
   box(2.4, 0.09, 0.09, frame, 0, 0.62, -0.85);
   for (const sx of [-1, 1]) {
-    box(0.08, 0.5, 2.0, wall, 1.2 * sx, -0.55, 0.1); // sill
+    box(0.08, 0.5, 2.0 + A, wall, 1.2 * sx, -0.55, 0.1 + A / 2); // sill
     box(0.08, 0.08, 1.3, frame, 1.2 * sx, 0.62, -0.25); // top rail
-    box(0.08, 0.25, 2.0, wall, 1.2 * sx, 0.78, 0.1);
+    box(0.08, 0.25, 2.0 + A, wall, 1.2 * sx, 0.78, 0.1 + A / 2);
     box(0.08, 1.25, 0.08, frame, 1.2 * sx, 0.0, -0.2); // middle pillar
-    box(0.08, 1.25, 0.7, liner, 1.2 * sx, 0.0, 0.75); // solid wall behind the seats
+    box(0.08, 1.25, 0.7 + A, liner, 1.2 * sx, 0.0, 0.75 + A / 2); // solid wall behind the seats
   }
   // Floor, roof and rear bulkhead.
-  box(2.4, 0.04, 2.0, wall, 0, -0.8, 0.1);
-  box(2.4, 0.04, 2.0, liner, 0, 0.9, 0.1);
-  box(2.4, 1.7, 0.05, liner, 0, 0.05, 1.1);
+  box(2.4, 0.04, 2.0 + A, wall, 0, -0.8, 0.1 + A / 2);
+  box(2.4, 0.04, 2.0 + A, liner, 0, 0.9, 0.1 + A / 2);
+  box(2.4, 1.7, 0.05, liner, 0, 0.05, 1.1 + A);
 
   // --- Overhead docking hatch (IDSS) over the seats, with its tunnel ring and window ---
   const hatchRing = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.04, 8, 28), frame);
   hatchRing.rotation.x = Math.PI / 2;
-  hatchRing.position.set(0, 0.87, 0.6);
+  hatchRing.position.set(0, 0.87, H);
   g.add(hatchRing);
-  cyl(0.32, 0.02, new THREE.MeshStandardMaterial({ color: 0x7c8796, metalness: 0.5 }), 0, 0.88, 0.6, 24);
-  cyl(0.08, 0.025, new THREE.MeshStandardMaterial({ color: 0x050812, emissive: 0x0a1630 }), 0.15, 0.86, 0.6, 16); // docking window
-  box(0.2, 0.03, 0.03, amber, -0.15, 0.85, 0.6); // hatch handle
-  label("Escotilla de acople", 0, 0.7, 0.6);
+  cyl(0.32, 0.02, new THREE.MeshStandardMaterial({ color: 0x7c8796, metalness: 0.5 }), 0, 0.88, H, 24);
+  cyl(0.08, 0.025, new THREE.MeshStandardMaterial({ color: 0x050812, emissive: 0x0a1630 }), 0.15, 0.86, H, 16); // docking window
+  box(0.2, 0.03, 0.03, amber, -0.15, 0.85, H); // hatch handle
+  label("Escotilla de acople", 0, 0.7, H);
 
   // --- Seats: pilot (under the camera) and crew seat, reclined, with five-point harness. The
   // pilot's own back and headrest are left out: they would fill the view when she looks back.
@@ -107,38 +127,45 @@ export function buildCockpit(): THREE.Group {
     [0, 0.5, true],
     [0.74, 0.46, false],
   ] as const) {
-    box(w, 0.1, 0.55, seatMat, x, -0.62, 0.35, 0.12);
+    const seat = new THREE.Group();
+    seat.userData.body = true;
+    seat.position.set(x, 0, 0.35);
+    g.add(seat);
+    // Built round the seat's own centre (x, z = 0.35), so it can be drawn at real size where it stands.
+    box(w, 0.1, 0.55, seatMat, 0, -0.62, 0, 0.12, 0, seat);
     if (!own) {
-      box(w, 0.8, 0.1, seatMat, x, -0.2, 0.68, -0.25);
-      box(w * 0.7, 0.22, 0.1, seatMat, x, 0.3, 0.8, -0.25); // headrest
-      for (const sx of [-1, 1]) box(0.05, 0.62, 0.012, strap, x + (sx * w) / 4, -0.25, 0.6, -0.25);
+      box(w, 0.8, 0.1, seatMat, 0, -0.2, 0.33, -0.25, 0, seat);
+      box(w * 0.7, 0.22, 0.1, seatMat, 0, 0.3, 0.45, -0.25, 0, seat); // headrest
+      for (const sx of [-1, 1]) box(0.05, 0.62, 0.012, strap, (sx * w) / 4, -0.25, 0.25, -0.25, 0, seat);
     }
-    for (const sx of [-1, 1]) box(0.08, 0.06, 0.4, seatMat, x + (sx * w) / 2, -0.45, 0.3); // armrests
-    box(0.05, 0.3, 0.012, strap, x, -0.5, 0.42, 1.2); // crotch strap
+    for (const sx of [-1, 1]) box(0.08, 0.06, 0.4, seatMat, (sx * w) / 2, -0.45, -0.05, 0, 0, seat); // armrests
+    box(0.05, 0.3, 0.012, strap, 0, -0.5, 0.07, 1.2, 0, seat); // crotch strap
+    // Hand controllers on the pilot's armrests: rotation on the right, translation on the left.
+    if (own) {
+      cyl(0.025, 0.14, frame, 0.25, -0.36, -0.17, 14, seat);
+      cyl(0.035, 0.05, red, 0.25, -0.27, -0.17, 14, seat);
+      box(0.07, 0.06, 0.07, frame, -0.25, -0.39, -0.17, 0, 0, seat);
+      box(0.035, 0.04, 0.035, yellow, -0.25, -0.34, -0.17, 0, 0, seat);
+    }
   }
-  // Hand controllers on the pilot's armrests: rotation on the right, translation on the left.
-  cyl(0.025, 0.14, frame, 0.25, -0.36, 0.18);
-  cyl(0.035, 0.05, red, 0.25, -0.27, 0.18);
-  box(0.07, 0.06, 0.07, frame, -0.25, -0.39, 0.18);
-  box(0.035, 0.04, 0.035, yellow, -0.25, -0.34, 0.18);
 
   // --- Left side, behind the seats: EVA hatch and the suit, like the LM (the cabin depressurises) ---
-  box(0.04, 1.0, 0.6, new THREE.MeshStandardMaterial({ color: 0x7c8796, metalness: 0.5 }), -1.15, -0.15, 0.78);
-  box(0.03, 0.04, 0.4, amber, -1.13, 0.37, 0.78);
-  cyl(0.04, 0.03, red, -1.12, -0.1, 0.55).rotateZ(Math.PI / 2); // cabin depress valve
-  label("Escotilla EVA", -1.05, 0.25, 0.78);
+  box(0.04, 1.0, 0.6, new THREE.MeshStandardMaterial({ color: 0x7c8796, metalness: 0.5 }), -1.15, -0.15, E);
+  box(0.03, 0.04, 0.4, amber, -1.13, 0.37, E);
+  cyl(0.04, 0.03, red, -1.12, -0.1, E - 0.23).rotateZ(Math.PI / 2); // cabin depress valve
+  label("Escotilla EVA", -1.05, 0.25, E);
   const suit = new THREE.MeshStandardMaterial({ color: 0xf4f4f0, roughness: 0.8 });
-  box(0.42, 0.55, 0.25, suit, -0.6, 0.15, 0.97); // torso hung on the bulkhead
-  box(0.4, 0.5, 0.15, suit, -0.6, 0.15, 1.05); // life-support backpack
+  box(0.42, 0.55, 0.25, suit, -0.6, 0.15, 0.97 + A); // torso hung on the bulkhead
+  box(0.4, 0.5, 0.15, suit, -0.6, 0.15, 1.05 + A); // life-support backpack
   const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.14, 14, 10), new THREE.MeshStandardMaterial({ color: 0xc8a040, metalness: 0.8, roughness: 0.2 }));
-  helmet.position.set(-0.6, 0.55, 0.95);
+  helmet.position.set(-0.6, 0.55, 0.95 + A);
   g.add(helmet);
-  label("Traje EVA", -0.6, 0.35, 0.85);
+  label("Traje EVA", -0.6, 0.35, 0.85 + A);
 
-  // --- Right side, behind the crew seat: hygiene bay behind a curtain ---
-  box(0.02, 1.4, 0.45, new THREE.MeshStandardMaterial({ color: 0x6f8fb0, roughness: 0.9 }), 0.98, -0.05, 0.86);
-  box(0.25, 0.04, 0.45, frame, 1.08, 0.66, 0.86);
-  label("Aseo", 0.95, 0.3, 0.86);
+  // --- Right side, at the back: hygiene bay behind a curtain ---
+  box(0.02, 1.4, 0.45, new THREE.MeshStandardMaterial({ color: 0x6f8fb0, roughness: 0.9 }), 0.98, -0.05, 0.86 + A);
+  box(0.25, 0.04, 0.45, frame, 1.08, 0.66, 0.86 + A);
+  label("Aseo", 0.95, 0.3, 0.86 + A);
 
   // --- Rear bulkhead: stowage bags, CO₂ scrubber cartridges, medical kit ---
   const bag = new THREE.MeshStandardMaterial({ color: 0xf0ede4, roughness: 0.95 });
@@ -147,18 +174,18 @@ export function buildCockpit(): THREE.Group {
     [0.35, -0.45],
     [0.05, -0.1],
   ] as const)
-    box(0.26, 0.3, 0.12, bag, x, y, 1.03);
-  for (let i = 0; i < 3; i++) cyl(0.05, 0.22, new THREE.MeshStandardMaterial({ color: 0x5a7fa8, roughness: 0.6 }), 0.2 + i * 0.12, 0.3, 1.04); // scrubber cartridges
-  label("Filtros de CO₂", 0.32, 0.12, 1.0);
-  box(0.2, 0.14, 0.06, white, 0.55, -0.1, 1.06); // medical kit
-  box(0.06, 0.06, 0.006, red, 0.55, -0.1, 1.03);
+    box(0.26, 0.3, 0.12, bag, x, y, 1.03 + A);
+  for (let i = 0; i < 3; i++) cyl(0.05, 0.22, new THREE.MeshStandardMaterial({ color: 0x5a7fa8, roughness: 0.6 }), 0.2 + i * 0.12, 0.3, 1.04 + A); // scrubber cartridges
+  label("Filtros de CO₂", 0.32, 0.12, 1.0 + A);
+  box(0.2, 0.14, 0.06, white, 0.55, -0.1, 1.06 + A); // medical kit
+  box(0.06, 0.06, 0.006, red, 0.55, -0.1, 1.03 + A);
 
   // Crew services: oxygen masks in the roof, extinguisher, water dispenser and handrails.
   box(0.3, 0.08, 0.12, yellow, 0, 0.84, 0.15);
   cyl(0.05, 0.32, red, -1.12, -0.5, 0.25);
   box(0.12, 0.2, 0.1, white, 1.12, -0.35, 0.3); // water dispenser
   box(0.04, 0.02, 0.04, glow, 1.07, -0.3, 0.3);
-  for (const x of [-0.6, 0.6]) box(0.03, 0.03, 0.9, yellow, x, 0.82, 0.2); // roof handrails
+  for (const x of [-0.6, 0.6]) box(0.03, 0.03, 0.9 + A, yellow, x, 0.82, 0.2 + A / 2); // roof handrails
   return g;
 }
 

@@ -448,3 +448,83 @@ bloque bien se ve en cuanto se toca.
   compartidos) y se reutilizan; 32 partículas en un solo `Points` hacen vapor, gotas, polvo y chispas;
   sin luces ni sombras nuevas; todo se libera al salir del módulo. Medido con la suite de experiencia
   (docs/testing.md).
+
+## Ritmo de los días
+
+Berón (2026-11-16): «Los días parecen ir demasiado rápido, ¿por eso el hambre parece constante?». Sí: un día de a
+bordo duraba **40 s reales** y la saciedad baja un día de energía por día, así que Doménica tenía hambre cada
+13 s y la barra de Saciedad se vaciaba entera en 40 s.
+
+### Qué hacen otros juegos
+
+| Juego | Un día dura | Hambre | Fuente |
+| --- | --- | --- | --- |
+| The Sims | 24 min reales: 1 minuto de juego por segundo real a velocidad normal | Comen unas tres veces al día de juego, una cada ~8 min reales | [The Sims Wiki, Live mode](https://www.thesimswiki.com/wiki/Live_mode) |
+| Stardew Valley | 14 min 20 s (6:00 a 2:00, 10 min de juego cada 7,2 s) | Sin hambre: energía que se repone durmiendo | [Stardew Valley Wiki, Time](https://stardewvalleywiki.com/Time) |
+| Don't Starve | 8 min (16 segmentos de 30 s) | Hambre máxima 150 (Wilson); sin comer se muere de hambre «en un par de días» | [Don't Starve Wiki, Day-Night Cycle](https://dontstarve.wiki.gg/wiki/Day-Night_Cycle), [guía de Reign of Giants](https://dontstarve.wiki.gg/wiki/Guides/Don%27t_Starve_in_Reign_of_Giants) |
+| Animal Crossing: New Horizons | El día real: el juego sigue el reloj de la consola | Sin hambre | [Shacknews](https://shacknews.com/article/117080/how-does-time-work-in-animal-crossing-new-horizons) |
+| Cold Sanctuary (nuestro otro juego) | 60 min reales por defecto (`Clock.realMinutesPerDay`, un minuto de juego cada 2,5 s); el año de vida se comprime a 28 días | El hambre sube de 0 a 1 en 7 h de juego despierta (`BodyMetabolism.hoursToHungry`), unos 17 min reales | `Assets/Scripts/Time/Clock.cs`, `Assets/Scripts/Time/Time.cs`, `Assets/Scripts/Body/BodyMetabolism.cs` |
+
+Y las comidas de verdad: en NHANES 2007–2008 (What We Eat in America, 5 420 adultos) el 59–64 % come desayuno,
+comida y cena cada día. El desayuno da ≈ 16 % de la energía, la comida ≈ 24 %, la cena ≈ 36 % y los
+tentempiés ≈ 24 % ([resumen del USDA ARS en MDedge](https://mdedge.com/content/three-meal-day-pattern-still-strong-among-us-adults)).
+Repartiendo los tentempiés, cada comida es un tercio del día.
+
+### Decisión: un día de a bordo dura 24 minutos reales
+
+Es la proporción de The Sims (un minuto de a bordo por segundo real) y queda entre Stardew Valley (14 min) y
+Cold Sanctuary (60 min). Es una sola constante, `BOARD_DAY_REAL_S` en `src/core/board-time.ts`, de la que salen
+`BOARD_DAYS_PER_REAL_S` (vida a bordo, nano_net, niveles) y `STATION_TUNING.hoursPerSecond` (estación,
+laboratorio bio, importación). Antes había tres `1 / 40` sueltos (`interior.ts`, `main.ts` y el plano de la
+estación).
+
+**El hambre, tres veces al día.** La saciedad sigue bajando un día de energía por día (`satietyPerDay`, 1) y
+comer suma las kcal reales del plato entre las de su día (`eatKcal`). Lo nuevo:
+
+- **Una comida es un tercio del día** (`CREW_TUNING.mealShareOfDay`). Al cocinar, come las raciones del plato
+  que suman unos 760 kcal (un tercio de sus 2 277): una ración grande (carne con papas, 618 kcal) o dos pequeñas
+  (ensalada, 2 × 113). El resto va a la despensa, como antes. Antes comía siempre una ración, unos 360 kcal de
+  media, y le volvía el hambre a las pocas horas.
+- **Tiene hambre por debajo de 0,5** (`hungryBelow`). Al cruzarlo sale el aviso «Doménica tiene hambre: hora de
+  cocinar».
+- Con comidas de un tercio del día le entra hambre **3 veces por día de a bordo**, una comida cada ~8 min
+  reales: unas 4 en una sesión de media hora. Lo prueba VID-20 (`crew-member.test.ts`). Con una comida ligera
+  (huevos revueltos, 187 kcal) vuelve antes, como en la vida real.
+
+**Viajes y tiempo acelerado.** Los viajes comprimidos y el ×10/×50 a mano siguen mandando (`frameClocks`, casos
+CV-01, CV-02 y CV-08):
+
+- La vida va a `max(su ritmo, el del viaje)`. Antes la nodriza (×600) no cambiaba nada porque la vida ya iba a
+  ×2160; ahora la vida va a ×60, así que **un salto de la nodriza acelera la vida ×10**: un viaje de 75 s son
+  12,5 h a bordo, una o dos comidas. El módulo (×5) y la sonda (×10) no la cambian.
+- Con ×10 a mano un día dura 2,4 min; con ×50, 29 s.
+- La estación sigue siendo 24 h por día de a bordo.
+
+### Qué más corre con el día
+
+Todo lo que dice «por día» o «por hora» lee el mismo reloj, así que todo va 36 veces más despacio que con el
+día de 40 s. Se revisó uno por uno:
+
+| Proceso | Ritmo | Con el día de 24 min | Decisión |
+| --- | --- | --- | --- |
+| Hambre de Doménica | 1 día de energía por día | Una comida cada ~8 min | Es lo que se buscaba |
+| Gatos y perros (`companion.ts`) | Comen medio día de energía por comida (`catMeal`) | Dos comidas al día, cada ~12 min; juego y cariño bajan 0,8 y 0,5 por día | Igual que en la vida real, sin cambios |
+| Gallinas | Saciedad 1 por día, un huevo al día con luz | El comedero se vacía en un día (24 min); como mucho un huevo al día por gallina | Sin cambios (antes, un día de puesta cada 40 s) |
+| Huerto (`plant.ts`) | Agua 0,5 por día, seca bajo 0,15 | Regar cada ~1,7 días (~40 min) | Sin cambios |
+| Crecimiento de cultivos | Días reales de las fuentes (lechuga 33, rábano 27, cacahuete 110, higuera 120) | Lechuga 13 h, rábano 11 h, cacahuete 44 h a ×1; se acortan viajando (×10) o con ×10/×50 | **Pregunta abierta** (abajo) |
+| Carne cultivada (`bioreactor.ts`) | Glucosa 0,35 y pH −0,12 por día | La glucosa baja 0,35 al día: el cultivo pide medio cada pocos días | Sin cambios |
+| nano_net (`core.ts`) | Desgaste 0,02 por día, averías 0,03 por día | Golpes y averías al 0,02–0,03 por día y núcleo: una cada ~33 días por núcleo (13 h a ×1) | Sin cambios: así no estorba a cada rato |
+| Química del acuario | Por día (amonio, nitrato, algas) | Amonio, nitrato y algas avanzan por día de a bordo | Sin cambios |
+| Estación: máquinas, refinería, obras | Horas de la estación (24 por día) | Un plano de 240 h son 10 días: 4 h reales a ×1, 24 min a ×10 | Sin cambios: valores de juego; pregunta abierta |
+| Importación (`GAME_HOURS_PER_TRANSIT_DAY`) | 1 h de estación por día de tránsito | Una transferencia de 372 días habría tardado 6 h reales | **Ajustado a 4 min por día de tránsito**: unas 25 h de estación, ~25 min reales |
+| Paquetes de nivel 2 y 3, confianza del servicio | Uno por día de la estación, +2 % al día | Un paquete cada 24 min | Sin cambios: un ritmo diario |
+| Buzón de cartas | Por día | Más espaciadas | Sin cambios |
+
+### Preguntas abiertas para Berón
+
+- **¿Los cultivos crecen con el mismo reloj?** Con datos reales, la lechuga tarda 33 días: 13 h de juego a ×1.
+  Opciones: dejarlo así (se ve crecer en varias sesiones y se acelera viajando o con ×10/×50), o un
+  «calendario de cultivo» que corra más deprisa que las comidas, como Cold Sanctuary comprime el año de vida a
+  28 días. Eso separa el reloj del cuerpo del de la biología.
+- **¿Las obras de la estación (240 h) son demasiado largas?** Son valores de juego y se pueden acortar sin tocar
+  datos reales.

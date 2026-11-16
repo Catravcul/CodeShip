@@ -34,6 +34,8 @@ export const TRANSFER_STAGE = {
 
 /**
  * Game time a shipment takes: each real day of the Hohmann transfer is this many game hours on the
- * station clock (game value; the real trip is about a year).
+ * station clock (game value; the real trip is about a year). Four station minutes a day: a 372-day
+ * transfer lands in about a day on board (≈ 25 real minutes at ×1 with the 24-minute day of
+ * src/core/board-time.ts). With the old 40 s day it was one hour a day, about 10 real minutes.
  */
-export const GAME_HOURS_PER_TRANSIT_DAY = 1;
+export const GAME_HOURS_PER_TRANSIT_DAY = 4 / 60;

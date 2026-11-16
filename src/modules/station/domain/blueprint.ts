@@ -1,3 +1,4 @@
+import { BOARD_HOURS_PER_REAL_S } from "@core/board-time";
 import type { Sourced } from "@core/units";
 import { scaleAmounts, type Amounts, type MaterialStock } from "./materials";
 import type { EquipmentSpec, ModuleSpec } from "./outfit";
@@ -92,8 +93,8 @@ export const STATION_TUNING = {
   fabricationYield: 0.8,
   /** Smallest share of a batch worth running in the refinery. */
   minBatch: 0.1,
-  /** Game hours per real second: the same clock as life on board (a day every 40 s). */
-  hoursPerSecond: 24 / 40,
+  /** Game hours per real second: the same clock as life on board (src/core/board-time.ts). */
+  hoursPerSecond: BOARD_HOURS_PER_REAL_S,
 } as const;
 
 /** Share of a full batch the stock allows, 0..1 (limited by the scarcest input). */

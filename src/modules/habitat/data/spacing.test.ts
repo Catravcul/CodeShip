@@ -1,18 +1,48 @@
 import { MACHINE_SCALE } from "@core/machine-scale";
+import { WORLD_SCALE } from "@core/scale";
 import { scaleInteriorPlan } from "@modules/station/domain/interior";
 import { describe, expect, it } from "vitest";
-import { ACTION_REACH_M, INTERACTABLE_SPACING, minSpacing, spacingViolations, type Interactable } from "@core/spacing";
+import { ACTION_REACH_M, asPlayed, INTERACTABLE_SPACING, minSpacing, spacingViolations, type Interactable } from "@core/spacing";
 import { BRIDGE } from "@modules/flight-deck/data/bridge";
 import { LANDER_CABIN } from "@modules/lander-cabin/data/cabin";
 import type { CabinLayout } from "@modules/lander-cabin/domain/cabin";
 import { POLANA_INTERIOR } from "@modules/station/data/interior";
 import { stationHandrails } from "@modules/station/data/handrails";
+import { spineInteractables, spineLayout } from "@modules/gravity/data/spine";
+import { CODESHIP_RING } from "@modules/gravity/data/ring";
 import { RING_MODULE, RING_REACH_M, RING_STATIONS, ringInteractables } from "./ring-module";
 
 const X = INTERACTABLE_SPACING.minM;
 const roomItems = <Id extends string>(l: CabinLayout<Id>): Interactable[] => l.stations.map((s) => ({ id: s.id, centre: s.look, anchor: { x: s.stand.x, y: 0, z: s.stand.z } }));
 
-describe("HAB-08 room between interactables (the rule from Cold Sanctuary)", () => {
+/**
+ * The station as played: its plan drawn at MACHINE_SCALE (main.ts). The two sides of one hatch are one
+ * thing (a door, used from either side): one interactable at the middle of its two sides.
+ */
+function stationItems(): Interactable[] {
+  const plan = scaleInteriorPlan(POLANA_INTERIOR, MACHINE_SCALE);
+  const rails = stationHandrails(plan);
+  const out = new Map<string, Interactable[]>();
+  for (const f of plan.fixtures) {
+    const r = rails.find((x) => x.poi === f.id);
+    const key = f.action?.kind === "puerta" ? `escotilla:${f.action.hatch}` : f.id;
+    out.set(key, [...(out.get(key) ?? []), { id: key, centre: f.at, anchor: r ? r.a.add(r.b).scale(0.5) : f.at }]);
+  }
+  const mid = (ps: { x: number; y: number; z: number }[]) => ({ x: ps.reduce((s, p) => s + p.x, 0) / ps.length, y: ps.reduce((s, p) => s + p.y, 0) / ps.length, z: ps.reduce((s, p) => s + p.z, 0) / ps.length });
+  return [...out.entries()].map(([id, sides]) => ({ id, centre: mid(sides.map((s) => s.centre)), anchor: mid(sides.map((s) => s.anchor)) }));
+}
+
+/** Every area she walks or floats in, as played (data at real size × its drawing scale), with no exemptions. */
+const AREAS: readonly { readonly area: string; readonly scale: number; readonly items: () => Interactable[] }[] = [
+  { area: "anillo y cubierta de cultivo", scale: WORLD_SCALE, items: () => asPlayed(ringInteractables(), WORLD_SCALE) },
+  { area: "puente", scale: WORLD_SCALE, items: () => asPlayed(roomItems(BRIDGE), WORLD_SCALE) },
+  { area: "habitáculo del módulo", scale: WORLD_SCALE, items: () => asPlayed(roomItems(LANDER_CABIN), WORLD_SCALE) },
+  { area: "estación", scale: MACHINE_SCALE, items: stationItems },
+  // The hub and the spine are game values already (tubes 5,5 m across): drawn as laid out.
+  { area: "cubo y espina", scale: 1, items: () => spineInteractables(spineLayout(CODESHIP_RING.floorRadiusM, RING_MODULE.halfL)) },
+];
+
+describe("HAB-08 room between interactables (the rule from Cold Sanctuary), in every area as played", () => {
   it("the rule is 2 m, and a button shows within under half of it, so two never show at once", () => {
     expect(X).toBe(2.0);
     expect(ACTION_REACH_M).toBeLessThan(X / 2);
@@ -20,50 +50,31 @@ describe("HAB-08 room between interactables (the rule from Cold Sanctuary)", () 
     expect(INTERACTABLE_SPACING.source).toMatch(/Cold Sanctuary/);
   });
 
-  it("ring module and farm deck: every station, the elevator, the yoga mat, the exercise corner and the bunk 2 m apart", () => {
-    expect(spacingViolations(ringInteractables())).toEqual([]);
-    // The three Berón named, now well apart.
+  for (const a of AREAS)
+    it(`${a.area} (×${String(a.scale).replace(".", ",")}): every interactable and its action anchor ${X} m from the next, no exemptions`, () => {
+      expect(spacingViolations(a.items())).toEqual([]);
+    });
+
+  it("every area is drawn at the one scale of src/core/scale.ts, except the hub and spine (game-size tubes)", () => {
+    expect(AREAS.filter((a) => a.scale !== WORLD_SCALE).map((a) => a.area)).toEqual(["cubo y espina"]);
+    expect(MACHINE_SCALE).toBe(WORLD_SCALE);
+  });
+
+  it("ring module: the yoga mat, the exercise corner and the bunk Berón named, well apart; inside the module or past the doorway", () => {
     const at = (id: string) => RING_STATIONS.find((s) => s.id === id)!.stand;
-    const d = (a: string, b: string) => Math.hypot(at(a).x - at(b).x, at(a).z - at(b).z);
+    const d = (a: string, b: string) => Math.hypot(at(a).x - at(b).x, at(a).z - at(b).z) * WORLD_SCALE;
     expect(d("yoga", "ejercicio")).toBeGreaterThanOrEqual(X);
     expect(d("yoga", "camarote")).toBeGreaterThanOrEqual(X);
     expect(d("ejercicio", "camarote")).toBeGreaterThanOrEqual(X);
-    // Inside the module (or on the farm deck past the doorway).
     for (const s of RING_STATIONS) expect(Math.abs(s.stand.x) < RING_MODULE.halfW || s.stand.z > RING_MODULE.halfL).toBe(true);
   });
 
   it("galley machines: the galley and the mill and soy processor are two stations 2 m apart", () => {
-    const k = ringInteractables().filter((i) => i.id === "cocina" || i.id === "procesado");
+    const k = asPlayed(ringInteractables(), WORLD_SCALE).filter((i) => i.id === "cocina" || i.id === "procesado");
     expect(minSpacing(k)).toBeGreaterThanOrEqual(X);
   });
 
-  it("bridge: its ten consoles and the hatch 2 m apart (the deck was enlarged to 6,4 × 8 m)", () => {
-    expect(spacingViolations(roomItems(BRIDGE))).toEqual([]);
-    expect(BRIDGE.floor.maxX - BRIDGE.floor.minX).toBeGreaterThan(5);
-  });
-
-  it("station: every fixture and its grab point 2 m apart as drawn (MACHINE_SCALE), except machines side by side in a module's rack bays (ISS pitch) and the two sides of one hatch", () => {
-    const plan = scaleInteriorPlan(POLANA_INTERIOR, MACHINE_SCALE);
-    const rails = stationHandrails(plan);
-    const rackDepth = 0.86 * MACHINE_SCALE;
-    const hatch = (id: string) => {
-      const a = plan.fixtures.find((f) => f.id === id)?.action;
-      return a?.kind === "puerta" ? a.hatch : undefined;
-    };
-    const items: (Interactable & { rack: string | undefined })[] = plan.fixtures.map((f) => {
-      const r = rails.find((x) => x.poi === f.id);
-      return { id: f.id, centre: f.at, anchor: r ? r.a.add(r.b).scale(0.5) : f.at, rack: Math.abs(f.size.x - rackDepth) < 1e-6 || Math.abs(f.size.z - rackDepth) < 1e-6 ? f.volume : undefined };
-    });
-    const bad = spacingViolations(items).filter((v) => {
-      const a = items.find((i) => i.id === v.a)!;
-      const b = items.find((i) => i.id === v.b)!;
-      return !(a.rack && a.rack === b.rack) && !(hatch(v.a) && hatch(v.a) === hatch(v.b));
-    });
-    expect(bad).toEqual([]);
-  });
-
-  it("lander cabin: the one exception (a real-size capsule); there no two machines share a button's reach", () => {
-    const items = roomItems(LANDER_CABIN);
-    expect(minSpacing(items.map((i) => ({ ...i, centre: i.anchor })))).toBeGreaterThanOrEqual(2 * LANDER_CABIN.reachM);
+  it("lander cabin: no longer exempt; lengthened aft so its five machines are 2 m apart as played", () => {
+    expect(minSpacing(asPlayed(roomItems(LANDER_CABIN), WORLD_SCALE))).toBeGreaterThanOrEqual(X);
   });
 });

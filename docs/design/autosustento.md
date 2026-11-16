@@ -14,7 +14,7 @@ La biología se queda a nivel de juego: entradas y salidas por hora, potencia, m
   3. a qué sistema va su salida (oxígeno → aire, cosecha → despensa, paja → bucle, resina → celda de compuestos…);
   4. la ronda de mantenimiento en orden (*revisa → ajusta el caudal → recoge…*).
 - Un ajuste dura **240 h de juego**; después la máquina rinde al **50 %** hasta que se vuelve a ajustar. Los **campos de cultivo** arrancan solos al montarse (se siembran al construirlos) y también se desajustan.
-- Cada máquina va a la velocidad que le permita su entrada más escasa. Funcionan con el reloj de la estación (un día cada 40 s).
+- Cada máquina va a la velocidad que le permita su entrada más escasa. Funcionan con el reloj de la estación (un día cada 24 min reales, [vida-a-bordo.md](vida-a-bordo.md#ritmo-de-los-días)).
 - **Despensa**: con la nodriza atracada, «Enviar a la despensa» pasa la cosecha como harina (120 g por porción: dos chapatis de 60 g), la espirulina como pienso de gallinas (330 g = un día de tres gallinas a 110 g, NRC 1994) y la proteína como pienso de gatos (en gramos).
 - **Resina PHB**: la fibra de carbono de la celda de compuestos lleva ahora un 40 % de resina en masa (`RECIPES.fibra`, la CFRP tiene un 50–65 % de fibra en volumen). La estación empieza con 120 kg importados y 4 kg de N en fertilizante.
 

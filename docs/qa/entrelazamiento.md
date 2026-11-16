@@ -18,8 +18,8 @@ vez por fotograma y prueban los casos CV-01, CV-02 y CV-08.
 | Reloj | Cuánto avanza por fotograma | Quién lo lee |
 |---|---|---|
 | **Misión** (s de juego) | `dt × warp`. `warp` = 1 si la ira amenaza a la nave que viaja (`AsteroidWrath.threatened`: el viaje queda retenido, `held`, HC-03); si no, la cámara rápida del viaje (`Navigator.lapse` o `ProbeTrip.lapse`) si hay viaje; si no, el ×10/×50 manual (tecla X) cuando `WrathMode.allowsWarp` y la expedición lo permiten, por el `warpFactor` de la nano_net | `Expedition.update` (vuelo a 120 Hz), `AsteroidWrath.update` (ira, proyectiles), `AsteroidServices` (motor gravitatorio, persecución, vuelo de paquetes), `ProbeOps.update` (batería), `NanoNetOps.powerShip` |
-| **Vida a bordo** (días) | En viaje: `max(dt / 40, misión / 86 400)`: un día cada 40 s reales, o el viaje si comprime más que ×2160. Fuera de viaje: `dt × warp / 40` (corre con el ×N manual, HC-01) | `Habitat.tick` (tripulación, huerto, animales, gallinas, carne cultivada, buzón), `NanoNetOps.tick` (averías) |
-| **Estación** (horas) | Siempre `24 × días de a bordo` (fuera de viaje, `dt × warp × 0,6`, lo mismo) | `Station.tick` (máquinas), `BioOps.tick`, `ImportOps.tick` (buzón y lanzadores), `AsteroidServices` (paquetes de nivel 2 y 3, confianza, extracción de nivel 4; antes del arreglo de B-01 usaban el de misión) |
+| **Vida a bordo** (días) | En viaje: `max(dt / 1440, misión / 86 400)`: un día cada 24 min reales (`BOARD_DAY_REAL_S`, `src/core/board-time.ts`), o el viaje si comprime más que ×60, como el de la nodriza (×600). Fuera de viaje: `dt × warp / 1440` (corre con el ×N manual, HC-01) | `Habitat.tick` (tripulación, huerto, animales, gallinas, carne cultivada, buzón), `NanoNetOps.tick` (averías) |
+| **Estación** (horas) | Siempre `24 × días de a bordo` (fuera de viaje, `dt × warp / 60`, lo mismo) | `Station.tick` (máquinas), `BioOps.tick`, `ImportOps.tick` (buzón y lanzadores), `AsteroidServices` (paquetes de nivel 2 y 3, confianza, extracción de nivel 4; antes del arreglo de B-01 usaban el de misión) |
 
 Topes de tiempo por llamada que hay que conocer al cruzar relojes:
 

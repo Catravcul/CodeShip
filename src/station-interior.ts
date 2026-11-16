@@ -14,7 +14,7 @@ import { Walker } from "./adapters/input/walker";
 import { HopControl } from "./adapters/three/interior/hop-control";
 import { buildRails, FloatingBody, motionLabel } from "./adapters/three/interior/zero-g-body";
 import { StepShow, type StepFrame } from "./adapters/three/interior/step-show";
-import { auditStep, clearOfScene, type StepAudit } from "./adapters/three/interior/step-audit";
+import { auditStep, clearOfScene, hitOfScene, sightOfScene, type StepAudit } from "./adapters/three/interior/step-audit";
 import type { StepAct, StepVisual } from "@modules/chores/domain/step-visual";
 import type { EclssRackModel, RackState } from "./adapters/three/eclss-racks";
 import { RootMenu } from "./ui/root-menu";
@@ -479,17 +479,26 @@ export class StationInteriorMode {
     const right = new THREE.Vector3(-d.z, 0, d.x);
     const target = new THREE.Vector3(f.at.x, f.at.y, f.at.z);
     const floor = vol.centre.y - vol.half.y + 0.05;
+    // What she works at is what is drawn: a wall or panel standing proud of the fixture's plane is its front.
+    const from = target.clone().addScaledVector(d, -1.4).setY(Math.max(floor, target.y - WORK_DROP) + 1.0);
+    const front = hitOfScene(this.scene, [this.steps.root, this.rig])(from, d, 1.4);
+    if (front !== undefined && front < 1.38) target.addScaledVector(d, front - 1.4);
     // Out from the front, but not across a narrow aisle into the racks on the other side.
     const across = Math.abs(d.x) > 0.5 ? vol.half.x : vol.half.z;
     const off = Math.min(WORK_OFF, 2 * across - 0.3);
     const stand = target.clone().addScaledVector(d, -off).setY(Math.max(floor, target.y - WORK_DROP));
     const look = target.clone().addScaledVector(d, -0.15).setY(stand.y + 0.95);
     // The camera along the aisle to her right, a little back from the wall: she does not hide her hands
-    // and what is in them, in an aisle too narrow to stand behind her.
+    // and what is in them, in an aisle too narrow to stand behind her. Always inside the module.
     const cam = new THREE.Vector3();
-    const fits = (v: THREE.Vector3) => this.interior.fits(new Vec3(v.x, v.y, v.z), 0.1, false);
+    // Room for the camera, and a clear line from it to her hands and what is in them (no hatch rim in between).
+    const sight = sightOfScene(this.scene, [this.steps.root, this.rig]);
+    const hands = target.clone().addScaledVector(d, -Math.max(0.3, off - 0.4)).setY(stand.y + 1.0);
+    const reach = [hands, hands.clone().addScaledVector(right, 0.5), hands.clone().addScaledVector(right, -0.3)];
+    const fits = (v: THREE.Vector3) => this.interior.fits(new Vec3(v.x, v.y, v.z), 0.1, false) && reach.every((h) => sight(v, h));
     let found = false;
-    for (const side of [1.5, 1.3, 1.1, 0.9, 0.7]) {
+    // Her left only when the right is a module's end wall (a machine next to a hatch).
+    for (const side of [1.5, 1.3, 1.1, 0.9, 0.7, -0.7, -0.9, -1.1, -1.3, -1.5, 0]) {
       for (let back = Math.min(1.6, 2 * across - 0.15); back > 0.35 && !found; back -= 0.1) {
         cam.copy(look).addScaledVector(d, -back).addScaledVector(right, side).setY(stand.y + 1.65);
         found = fits(cam);

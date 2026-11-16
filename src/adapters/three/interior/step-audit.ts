@@ -97,6 +97,47 @@ const SHELL_M = 4;
  * size) is clear when it meets no shown, opaque mesh of `scene` but those under `skip` (the props, her
  * figure) and the room's shells. Meshes are tested by their world bounding boxes (a little conservative).
  */
+/** How far along `dir` from `from` the first solid of `scene` (but what is in `skip`) is, within `far`; undefined when none. */
+export function hitOfScene(scene: THREE.Object3D, skip: readonly THREE.Object3D[]): (from: THREE.Vector3, dir: THREE.Vector3, far: number) => number | undefined {
+  const ray = new THREE.Raycaster();
+  return (from, dir, far) => {
+    const own = new Set<THREE.Object3D>();
+    for (const s of skip) s.traverse((o) => own.add(o));
+    const solids: THREE.Object3D[] = [];
+    scene.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (m.isMesh && !own.has(m) && shown(m) && opaque(m.material)) solids.push(m);
+    });
+    ray.set(from, dir.clone().normalize());
+    ray.near = 0;
+    ray.far = far;
+    return ray.intersectObjects(solids, false)[0]?.distance;
+  };
+}
+
+/**
+ * Whether the straight line between two points crosses nothing solid in `scene` (but what is in `skip`):
+ * where the camera may go to see her and her hands while the steps play.
+ */
+export function sightOfScene(scene: THREE.Object3D, skip: readonly THREE.Object3D[]): (from: THREE.Vector3, to: THREE.Vector3) => boolean {
+  const ray = new THREE.Raycaster();
+  const dir = new THREE.Vector3();
+  return (from, to) => {
+    const own = new Set<THREE.Object3D>();
+    for (const s of skip) s.traverse((o) => own.add(o));
+    const solids: THREE.Object3D[] = [];
+    scene.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (m.isMesh && !own.has(m) && shown(m) && opaque(m.material)) solids.push(m);
+    });
+    const d = from.distanceTo(to);
+    ray.set(from, dir.copy(to).sub(from).normalize());
+    ray.near = 0;
+    ray.far = Math.max(0, d - 0.05);
+    return ray.intersectObjects(solids, false).length === 0;
+  };
+}
+
 export function clearOfScene(scene: THREE.Object3D, skip: readonly THREE.Object3D[]): (centre: THREE.Vector3, half: THREE.Vector3) => boolean {
   const box = new THREE.Box3();
   const mesh = new THREE.Box3();

@@ -251,7 +251,7 @@ async function freshGame(j) {
  * The station (docs/design/estacion-tripulacion.md): the galley's dish and one chore of each machine
  * (refine, fabricate, the biology lab, import), each acted out by Doménica at its fixture.
  */
-async function playStation(j, rows) {
+async function playStation(j, rows, skipped = []) {
   const p = j.page;
   await j.setup("acopla el módulo en su puerto de la estación", () => {
     const c = window.codeship;
@@ -301,7 +301,11 @@ async function playStation(j, rows) {
     { fixture: "laboratorio-bio", tab: "vida", start: '.st-body [data-tune]:not([disabled])', id: "estacion-biologia", title: "Estación: ajustar un biorreactor" },
   ];
   for (const m of MACHINES) {
-    await placeAt(m.fixture);
+    // A machine with no rack to stand at (no module to mount it in) is skipped, not failed.
+    if (!(await placeAt(m.fixture))) {
+      skipped.push(m.fixture);
+      continue;
+    }
     if (!(await j.tap('.sti-card [data-act="abrir"]', `Abrir el panel de «${m.fixture}»`))) continue;
     await p.waitForTimeout(500);
     if (!(await p.locator(m.start).count())) {
@@ -480,7 +484,9 @@ export async function animaciones(j) {
   // The station: the galley and its machines, acted out by Doménica at each fixture (at the station's 1,5 scale).
   if (want("estacion")) {
     p = await freshGame(j);
-    await playStation(j, rows);
+    const skipped = [];
+    await playStation(j, rows, skipped);
+    if (skipped.length) extra.push(`Estación: sin sitio a bordo para ${skipped.map((x) => `«${x}»`).join(", ")}: no hay módulo con rack donde montarlo, no se juega.`);
   }
 
   extra.push(

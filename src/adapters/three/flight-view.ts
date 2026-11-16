@@ -122,7 +122,7 @@ export class FlightView {
    * A landing program is being written (docs/design/aterrizaje.md): each step draws on the ground below
    * (site, drift, descent curve), which the forward cabin view cannot see. While the sheet is open the
    * landing camera looks down past the legs, tilted so the ground below shows in the strip above the sheet
-   * (PX-20, animation audit); once the program flies it keeps looking straight down; closed without flying,
+   * (PX-20, animation audit); once the program flies it keeps that view; closed without flying,
    * the camera goes back to what it was.
    */
   landingSheet(state: "open" | "flying" | "closed"): void {
@@ -132,8 +132,8 @@ export class FlightView {
       this.yaw = 0;
       this.pitch = LANDING_SHEET_PITCH;
     } else if (state === "flying") {
+      // Still tilted: the descent and the site stay on screen while the sheet goes away, and after.
       this.beforeSheet = undefined;
-      this.center();
     } else if (this.beforeSheet) {
       ({ mode: this.mode, yaw: this.yaw, pitch: this.pitch } = this.beforeSheet);
       this.beforeSheet = undefined;

@@ -108,13 +108,20 @@ export function judge(r) {
 }
 
 /** The right pick for the challenge on screen (in «paso a paso» each block is one pick). */
-async function pickRight(j, oracle) {
+async function pickRight(j, oracle, whole = false) {
   const p = j.page;
   const ex = await p.evaluate(oracle);
   if (!ex) return undefined;
   if (ex.kind === "choice") {
     await j.tapAt(p.locator(".duel .option").nth(ex.correct));
     return { text: ex.options[ex.correct], part: false };
+  }
+  const stepwise = await p.evaluate(() => localStorage.getItem("codeship.retos-ordenar") === "pasos");
+  if (!stepwise || whole) {
+    // The whole order as one step (a trip or landing plan draws each exercise, not each block).
+    if (!stepwise) await j.answer(oracle, true);
+    else for (const id of ex.solution) if (await p.locator(`.duel .tray [data-id="${id}"]`).count()) await j.tapAt(p.locator(`.duel .tray [data-id="${id}"]`));
+    return { text: ex.blocks.find((b) => b.id === ex.solution[0])?.pseudo ?? "", part: false };
   }
   for (const id of ex.solution) {
     const loc = p.locator(`.duel .tray [data-id="${id}"]`);
@@ -193,7 +200,7 @@ async function playPlan(j, rows, label, oracle, id) {
     if ((await j.texts(".duel .result")).length) break;
     if (!(await p.evaluate(oracle))) break;
     const before = await p.evaluate(() => window.codeship.planOverlay.drawn);
-    const pick = await pickRight(j, oracle);
+    const pick = await pickRight(j, oracle, true);
     if (!pick) break;
     // The step's part of the plan and its caption (they may take a frame or two under load).
     await p.waitForFunction((b) => window.codeship.planOverlay.drawn > b && !!document.querySelector(".plan-caption.on")?.textContent, before, { timeout: 4000 }).catch(() => {});
@@ -208,6 +215,7 @@ async function playPlan(j, rows, label, oracle, id) {
     if (a.drawn <= before && !pick.part) why.push("el paso no añade nada al plan");
     if (!a.inView) why.push("el plan se dibuja en una escena que no está en pantalla");
     else if (a.points && a.onScreen === 0) why.push(`ninguno de sus ${a.points} puntos queda en pantalla sobre la hoja`);
+    if (process.env.ANIM_DEBUG) console.log(JSON.stringify(a));
     if (!a.caption) why.push("sin rótulo del paso");
     const ok = why.length === 0;
     rows.push({ chore: { id, title: label }, step: pick.text, act: a.caption || "—", shot, ok, why });
@@ -306,8 +314,10 @@ export async function animaciones(j) {
     if (await j.tap('.nav-map [data-act="program"]', "Programar viaje")) {
       await j.waitDuel(30000);
       await playPlan(j, rows, "Programar un viaje (consola de navegación del anillo)", () => window.codeship.nav.programming?.current ?? null, "viaje");
-      if (await p.locator(".duel button.end").count()) await j.tap(".duel button.end", "Continuar");
-      else await j.tap('.duel [data-act="close"]', "×");
+      // A plan that flies closes its sheet by itself.
+      await p.waitForTimeout(1500);
+      if (await p.locator(".duel:not(.hidden) button.end").count()) await j.tap(".duel:not(.hidden) button.end", "Continuar");
+      else if (await p.locator('.duel:not(.hidden) [data-act="close"]').count()) await j.tap('.duel:not(.hidden) [data-act="close"]', "×");
     }
   }
 
@@ -330,6 +340,9 @@ export async function animaciones(j) {
     }
   }
 
+  extra.push(
+    "Abierto: el plan de un viaje programado desde la consola de navegación del anillo se dibuja en la escena de vuelo, pero el mapa de navegación ocupa la franja sobre la hoja y la ruta (km) no cabe en su cámara (UA): sus filas salen ✗ hasta que el mapa enseñe el plan.",
+  );
   extra.push(
     "Sin visual de pasos (no se pueden auditar hasta que lo tengan; abiertos): la cocina de la estación (`station-life.ts` abre la hoja sin `StepVisual`), las tareas de nano_net en un núcleo y las de las máquinas de la estación (fabricar, refinar, importar).",
   );

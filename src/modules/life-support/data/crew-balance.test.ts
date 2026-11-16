@@ -1,0 +1,33 @@
+import { describe, expect, it } from "vitest";
+import { CREW_DAILY } from "@modules/station/data/vehicle-catalogue";
+import { CREW_BALANCE, crewHeatW, dailyBalance } from "./crew-balance";
+
+describe("SV-01 the daily balance of one crew member", () => {
+  it("uses the catalogue's CREW_DAILY: 0,89 kg O₂, 1,08 kg CO₂, 2,39 kg of packaged food", () => {
+    expect(CREW_BALANCE.o2Kg.value).toBe(CREW_DAILY.oxygenKg!.value);
+    expect(CREW_BALANCE.co2Kg.value).toBe(CREW_DAILY.co2Kg!.value);
+    expect(CREW_BALANCE.foodPackagedKg.value).toBe(CREW_DAILY.foodPackagedKg!.value);
+  });
+
+  it("every value carries a source", () => {
+    for (const [k, v] of Object.entries(CREW_BALANCE)) expect(v.source, k).toMatch(/^https:\/\//);
+  });
+
+  it("drinking and food water reach NASA's 2,5 L minimum and, with hygiene, the ISS's gallon (3,8 L)", () => {
+    const b = dailyBalance(1);
+    expect(CREW_BALANCE.drinkFoodWaterKg.value).toBeGreaterThanOrEqual(2.5);
+    expect(b.waterUseKg).toBeCloseTo(3.8, 1);
+  });
+
+  it("the outputs: urine 1,40 kg, condensate (vapour) 2,53 kg, CO₂ 1,08 kg; scales with the crew", () => {
+    const four = dailyBalance(4);
+    expect(four.urineKg).toBeCloseTo(5.6);
+    expect(four.condensateKg).toBeCloseTo(10.12);
+    expect(four.co2Kg).toBeCloseTo(4.32);
+    expect(four.o2Kg).toBeCloseTo(3.56);
+  });
+
+  it("metabolic heat is 12 778 kJ a day: about 148 W per person", () => {
+    expect(crewHeatW(1)).toBeCloseTo(147.9, 0);
+  });
+});

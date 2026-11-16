@@ -1,0 +1,23 @@
+/* Starship's decks (src/starship-interior.ts): the same 0 g engine as the station, prefix «sts». */
+body.in-station-interior .sts-look { display: block; }
+.sts-move { display: none !important; }
+.sts-look { right: 22px; }
+body.in-duel .sts-ui, body.in-duel .sts-move, body.in-duel .sts-look, body.in-station .sts-move, body.in-station .sts-look { display: none !important; }
+.sts-ui.hidden, .sts-ui .hidden { display: none !important; }
+.sts-hud { max-width: min(250px, calc(100vw - 90px)); line-height: 1.35; z-index: 4; }
+.sts-hud .sts-title { font-weight: 700; color: #7fdcff; }
+.sts-hud .sts-grav, .sts-hud .sts-move-line { font-size: 11px; color: #a9c8d8; }
+.sts-head { flex-direction: row; align-items: flex-start; gap: 10px; }
+.sts-head > div { display: flex; flex-direction: column; gap: 2px; }
+.sts-icon { flex: 0 0 auto; display: inline-flex; width: 32px; height: 32px; align-items: center; justify-content: center; color: #ffd27f; background: #0b2a36; border: 1px solid #7fdcff55; border-radius: 50%; }
+.sts-card.sts-card { bottom: calc(190px + env(safe-area-inset-bottom)); }
+.sts-card small { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+body.in-tasks .sts-card, body.in-settings .sts-card, body.in-settings .sts-menu { display: none !important; }
+.sts-toast.cab-toast { top: calc(110px + env(safe-area-inset-top)); z-index: 7; }
+body.in-station-interior .vstick.sts-move span, body.in-station-interior .vstick.sts-look span { color: #9fe8c4; }
+body.in-dock-view .sts-ui, body.in-dock-view .sts-move, body.in-dock-view .sts-look, body.in-dock-view .zg-pad, body.in-dock-view .zg-controls { display: none !important; }
+.sts-hud .sts-move-line { color: #d8f6ff; }
+.sts-hud .sts-title { color: #ffd9a8; }
+@media (pointer: coarse) {
+  .sts-ui button { min-height: 44px !important; min-width: 44px !important; box-sizing: border-box; }
+}

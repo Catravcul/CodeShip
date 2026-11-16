@@ -21,6 +21,10 @@ export const ITEMS: readonly Item[] = [
   { id: "tofu", name: "tofu", unit: "porción" },
   { id: "huevo", name: "huevos", unit: "huevo" },
   { id: "carne-cultivada", name: "carne cultivada", unit: "g" },
+  // ISS-type packaged food (iss-food.ts): what a real crewed ship carries.
+  { id: "envase-rehidratable", name: "envases rehidratables", unit: "porción" },
+  { id: "bolsa-termoestabilizada", name: "bolsas termoestabilizadas", unit: "porción" },
+  { id: "tortilla-iss", name: "tortillas envasadas", unit: "porción" },
   { id: "pienso-gallinas", name: "pienso de gallinas", unit: "día" },
   { id: "pienso-gatos", name: "pienso de gatos", unit: "g" },
   { id: "medio-cultivo", name: "medio de cultivo", unit: "lote" },

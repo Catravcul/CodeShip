@@ -39,18 +39,25 @@ export async function acciones(j) {
   // Interior: 0 g at the spine hatch, then the ring.
   await j.tap(".stand-btn", "Levantarse: habitáculo");
   await j.useMachine("cabin", "acople", "entrar-nodriza", "Entrar en la nave de viaje");
-  await audit(j, "ingravidez", "Interior en ingravidez (escotilla de la espina)");
-  await j.setup("la llevamos al anillo", () => {
-    const z = window.codeship.interior.zones;
-    z.zone = "anillo";
-    z.autoDown = false;
-  });
-  await audit(j, "anillo", "Interior en el anillo");
-  await j.tap(".tasks-btn", "Tareas");
+  // The real-only mothership is a Starship: three 0 g decks, no ring (docs/design/nodriza-starship.md).
+  const starship = await p.evaluate(() => !!window.codeship.starship);
+  if (starship) {
+    await audit(j, "ingravidez", "Starship en ingravidez (cubierta 3)");
+    await j.tap(".sts-ui .sts-tasks", "Tareas");
+  } else {
+    await audit(j, "ingravidez", "Interior en ingravidez (escotilla de la espina)");
+    await j.setup("la llevamos al anillo", () => {
+      const z = window.codeship.interior.zones;
+      z.zone = "anillo";
+      z.autoDown = false;
+    });
+    await audit(j, "anillo", "Interior en el anillo");
+    await j.tap(".tasks-btn", "Tareas");
+  }
   await audit(j, "tareas", "Tablero de tareas");
   await j.tap(".task-board [data-close]", "Cerrar tareas");
   // The bridge: a room of consoles, each opening only its own page (docs/design/habitaculo.md §Puente).
-  await j.setup("la llevamos a la escotilla del puente (en la espina)", () => {
+  await j.setup("la llevamos a la escotilla del puente", () => {
     const c = window.codeship;
     c.interior.exit();
     c.bridge.enter("salida");

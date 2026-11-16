@@ -36,6 +36,7 @@ import {
 } from "@modules/garden/data/species";
 import { MACHINES } from "@modules/life-support/data/machines";
 import { LAUNCH_STOCK } from "@modules/kitchen/data/stores";
+import { ISS_LAUNCH_STOCK } from "@modules/kitchen/data/iss-food";
 import { Mailbox } from "@modules/story/domain/mailbox";
 import { STORY } from "@modules/story/data/nevaeh";
 import type { Plant } from "@modules/garden/domain/plant";
@@ -81,6 +82,8 @@ import { StationDock, dockNavTargets } from "./station-dock";
 import { StationInteriorMode } from "./station-interior";
 import { StationLife } from "./station-life";
 import { stationStepVisuals } from "./station-steps";
+import { LifeSupportGame } from "./life-support-game";
+import { STATION_LIFE_SUPPORT } from "@modules/life-support/data/hosts";
 import { STATION_AREA_NAME, StationCrew } from "@modules/station/application/station-crew";
 import { STATION_LARDER } from "@modules/station/data/galley";
 import { LanderBerth } from "@modules/station/domain/hangar-berth";
@@ -146,6 +149,10 @@ import { collectTasks, routeTo, type Task, type TaskPlace, type Vehicle } from "
 import type { CabinActionId, CabinState } from "@modules/lander-cabin/domain/cabin";
 import { needingAttention } from "@modules/ship-bay/application/bay";
 import { G } from "@core/units";
+import { REAL_ONLY, fiction } from "@core/realism";
+import { STARSHIP, STARSHIP_LIFE_SUPPORT, STARSHIP_NOSE_PORT } from "@modules/mothership/data/starship";
+import { StarshipModel } from "./adapters/three/starship-model";
+import { StarshipInterior } from "./starship-interior";
 import { wireSanctuaryLife } from "./sanctuary-life";
 
 // --- Domain setup -----------------------------------------------------------
@@ -161,10 +168,10 @@ const region = buildStartRegion(bennu, startPos, [{ centre: POLANA_STATION.posit
 // Face the asteroid from the start position.
 const startAttitude = Quat.fromAxisAngle(Vec3.Y, Math.atan2(250, 1600)).multiply(Quat.fromAxisAngle(Vec3.X, -Math.atan2(120, 1620)));
 const start = RigidBodyState.at(startPos).withOrientation(startAttitude);
-// The mothership is parked near Bennu with the probe docked under its forward node
-// (docs/design/nave-nodriza.md). Its rings are already turning at cruise rate (gravedad.md).
-const mothership = Mothership.withProbeDockedAt(NODRIZA, startPos, startAttitude, ship.design.dockingPort!);
-const ring = new SpinRing(mothership.spec.ring);
+// The mothership is parked near Bennu with the probe docked under it: a Starship (docs/design/nodriza-starship.md),
+// or with ?ficcion the ring ship of docs/design/nave-nodriza.md, its rings turning at cruise rate (gravedad.md).
+const mothership = Mothership.withProbeDockedAt(REAL_ONLY ? STARSHIP : NODRIZA, startPos, startAttitude, ship.design.dockingPort!);
+const ring = fiction(() => new SpinRing(NODRIZA.ring));
 const flight = new FlightComputer(ship, start, { gravitySources: region.asteroids, target: bennu });
 // The station is a structure in space with two IDSS ports: the probe docks at one, the mothership at the other.
 // What it is built of grows (docs/design/estacion.md, «La estación crece»): modules, equipment, wings and radiators.
@@ -191,7 +198,7 @@ stationOps.station.stock.reserve("propelente", PROPELLANT_RESERVE, STOCK_PRIORIT
 
 // Navigation: any catalogued asteroid of the region can be the target (docs/design/navegacion.md),
 // and the station and the mothership, where the trip ends docked (docs/design/estacion.md).
-const carrier = mothershipCarrier(mothership, docking, { nosePort: NODRIZA_NOSE_PORT, limits: IDSS_CONTACT_LIMITS, ports: structure.ports });
+const carrier = mothershipCarrier(mothership, docking, { nosePort: REAL_ONLY ? STARSHIP_NOSE_PORT : NODRIZA_NOSE_PORT, limits: IDSS_CONTACT_LIMITS, ports: structure.ports });
 const navTargets: NavTarget[] = [...region.asteroids.map(asteroidTarget), ...dockNavTargets(structure, mothership, carrier.clearanceM)];
 // A getter: the station can move under its own engines (survival mode).
 const stationKeepOut = {
@@ -217,7 +224,8 @@ const nav = new Navigator(
 );
 
 // Life on board: a long leg is already under way, so the garden has some days behind it.
-const habitat = new Habitat(seededRandom(2026), 3, ship, "Doménica", MACHINES);
+// Real only (src/core/realism.ts): no farm machines, plants, animals or farm deck aboard (docs/pendientes.md).
+const habitat = new Habitat(seededRandom(2026), 3, ship, "Doménica", REAL_ONLY ? [] : MACHINES);
 // Nevaeh writes to Doménica through the ship's radio (story rescued from the 2023 draft).
 habitat.mailbox = new Mailbox(STORY);
 // The nano_net: a persuaded Bennu can become a core (docs/design/nano-net.md).
@@ -294,28 +302,31 @@ const garden: [string, Parameters<Habitat["plant"]>[1], number][] = [
   ["w3", WHEAT_APOGEE, 35],
   ["g1", CAT_GRASS, 12],
 ];
-for (const [id, sp, days] of garden) growFor(habitat.plant(id, sp), days);
-// Stores the ship left with: potatoes, peanuts, flour, eggs, meat, animal food and culture medium.
-habitat.stockAll(LAUNCH_STOCK);
+if (!REAL_ONLY) for (const [id, sp, days] of garden) growFor(habitat.plant(id, sp), days);
+// Stores the ship left with: potatoes, peanuts, flour, eggs, meat, animal food and culture medium;
+// real only, ISS-type packaged food (kitchen/data/iss-food.ts).
+habitat.stockAll(REAL_ONLY ? ISS_LAUNCH_STOCK : LAUNCH_STOCK);
 // No animals at the start (Berón, 2026-11-16): Doménica is alone and adopts them from the species catalogue
 // (sanctuary-life.ts, docs/design/catalogo-especies.md). There are no saved games to keep them for (CV-16).
-// The farm deck: eleven 15 m² beds of artificial soil, planted in turns so harvests keep coming,
-// and four fig trees in planters.
-const farm: [string, Parameters<Habitat["bed"]>[1], number][] = [
-  ["bancal-trigo-1", WHEAT_APOGEE, 60],
-  ["bancal-trigo-2", WHEAT_APOGEE, 20],
-  ["bancal-papa-1", POTATO_NORLAND, 70],
-  ["bancal-papa-2", POTATO_NORLAND, 25],
-  ["bancal-soja", SOYBEAN_HOYT, 50],
-  ["bancal-tomate", TOMATO_RED_ROBIN, 75],
-  ["bancal-lechuga", LETTUCE_OUTREDGEOUS, 20],
-  ["bancal-rabano", RADISH_CHERRY_BELLE, 2],
-  ["bancal-cacahuete-1", PEANUT_GEORGIA_RED, 105],
-  ["bancal-cacahuete-2", PEANUT_GEORGIA_RED, 40],
-  ["bancal-fresa", STRAWBERRY_SEASCAPE, 40],
-];
-for (const [id, sp, days] of farm) growFor(habitat.bed(id, sp, 15), days);
-for (const [i, days] of [120, 120, 90, 60].entries()) growFor(habitat.tree(`higuera-${i + 1}`, FIG_TREE), days);
+if (!REAL_ONLY) {
+  // The farm deck: eleven 15 m² beds of artificial soil, planted in turns so harvests keep coming,
+  // and four fig trees in planters.
+  const farm: [string, Parameters<Habitat["bed"]>[1], number][] = [
+    ["bancal-trigo-1", WHEAT_APOGEE, 60],
+    ["bancal-trigo-2", WHEAT_APOGEE, 20],
+    ["bancal-papa-1", POTATO_NORLAND, 70],
+    ["bancal-papa-2", POTATO_NORLAND, 25],
+    ["bancal-soja", SOYBEAN_HOYT, 50],
+    ["bancal-tomate", TOMATO_RED_ROBIN, 75],
+    ["bancal-lechuga", LETTUCE_OUTREDGEOUS, 20],
+    ["bancal-rabano", RADISH_CHERRY_BELLE, 2],
+    ["bancal-cacahuete-1", PEANUT_GEORGIA_RED, 105],
+    ["bancal-cacahuete-2", PEANUT_GEORGIA_RED, 40],
+    ["bancal-fresa", STRAWBERRY_SEASCAPE, 40],
+  ];
+  for (const [id, sp, days] of farm) growFor(habitat.bed(id, sp, 15), days);
+  for (const [i, days] of [120, 120, 90, 60].entries()) growFor(habitat.tree(`higuera-${i + 1}`, FIG_TREE), days);
+}
 
 // --- Rendering adapter ------------------------------------------------------
 const root = document.getElementById("app")!;
@@ -393,7 +404,7 @@ pilot.onToggleAssist = () => (flight.rotationAssist = !flight.rotationAssist);
 const touch = new TouchPilot(root);
 
 const duelView = new DuelView(root);
-const mothershipModel = new MothershipModel(mothership.spec);
+const mothershipModel = REAL_ONLY ? new StarshipModel(mothership.spec) : new MothershipModel(mothership.spec);
 mothershipModel.root.position.set(mothership.position.x, mothership.position.y, mothership.position.z);
 mothershipModel.root.quaternion.set(mothership.orientation.x, mothership.orientation.y, mothership.orientation.z, mothership.orientation.w);
 scene.add(mothershipModel.root);
@@ -463,7 +474,28 @@ const duelSession = () => {
     maxLives: d.profile.patience,
   };
 };
-const interior = new Interior(root, habitat, duelView, ring);
+// Starship's three 0 g decks (real-only), or the ring ship's spine and ring (?ficcion); the same calls drive both.
+const starship = REAL_ONLY
+  ? new StarshipInterior(root, {
+      habitat,
+      duel: duelView,
+      openTasks: () => taskBoard.open(),
+      openFlightDeck: () => {
+        starship?.exit();
+        bridge.enter("salida");
+      },
+      leave: (to) => (to === "sonda" ? cabin.enter("acople") : stationInside.enter("nodriza")),
+      cannotLeave: (to) =>
+        to === "sonda"
+          ? docking.dockedTo === mothership
+            ? undefined
+            : "Cerrada: el módulo de aterrizaje no está acoplado a la Starship"
+          : mothership.dockedTo
+            ? undefined
+            : "Cerrada: la Starship no está atracada en la estación",
+    })
+  : undefined;
+const interior = starship ? (starship as unknown as Interior) : new Interior(root, habitat, duelView, ring!);
 const nanoView = new NanoNetView(scene, nano.net);
 // Walks outside on Bennu (EVA): only with the lander anchored.
 const eva = new Eva(flight, bennu, (local) => surface(local), habitat.crew.body.massKg);
@@ -833,7 +865,12 @@ const stationLife = new StationLife({
   changed: () => undefined,
   openDockView: () => dryDock.open("hangar"),
   stepVisual: (chore, area) => stationSteps.crew(chore, area),
+  otherChore: (id) => lifeSupport.startChore(id),
 });
+// Real life support (docs/design/soporte-vital.md): the station hosts the racks for now; Doménica weighs 58 kg.
+const lifeSupport = new LifeSupportGame({ duel: duelView, say: (t, sec) => stationInside.say(t, sec), rack: (id) => stationInside.rack(id), frame: (at) => stationInside.frame(at), unframe: () => stationInside.unframe(), openTasks: () => taskBoard.open() }, STATION_LIFE_SUPPORT, 58);
+// The Starship's own racks and supplies (docs/design/nodriza-starship.md), on the same clock.
+if (starship) starship.lifeSupport = new LifeSupportGame({ duel: duelView, say: (t, sec) => starship.say(t, sec ?? 4), rack: (id) => starship.mode.rack(id), frame: (at) => starship.mode.frame(at), unframe: () => starship.mode.unframe(), openTasks: () => taskBoard.open() }, STARSHIP_LIFE_SUPPORT, 58);
 /** The station's interior as it is drawn and walked: MACHINE_SCALE times its real size. */
 const playInterior = () => new StationInterior(scaleInteriorPlan(stationInteriorPlan(stationOutfit.layout, stationOutfit), MACHINE_SCALE));
 // Inside the station (docs/design/interiores.md §5): zero-g modules and the hangar; its machines open the screen's tabs.
@@ -862,8 +899,10 @@ const stationInside = new StationInteriorMode(root, playInterior(), {
           ? "Cerrada: el módulo está en el hangar. Sácalo a su puerto en la consola del hangar"
           : undefined,
   openTasks: () => taskBoard.open(),
-  actions: (f) => stationLife.actions(f),
-  act: (f, a) => stationLife.act(f, a),
+  actions: (f) => (f.action.kind === "soporte-vital" ? lifeSupport.actions(f) : stationLife.actions(f)),
+  act: (f, a) => (f.action.kind === "soporte-vital" ? lifeSupport.act(f, a) : stationLife.act(f, a)),
+  readout: (f) => lifeSupport.readout(f),
+  rackState: (f) => lifeSupport.rackState(f),
   landerInHangar,
   lookOut: () => dryDock.open("ventanilla"),
   leave: (to) => {
@@ -871,7 +910,7 @@ const stationInside = new StationInteriorMode(root, playInterior(), {
     if (to === "sonda" && !atStationPort()) return "El módulo de aterrizaje no está en este puerto";
     stationInside.suspend();
     // Through the mothership's port she comes aboard at its spine hatch; otherwise back to the lander's cockpit.
-    if (to === "nodriza") interior.enter("escotilla");
+    if (to === "nodriza") (starship ? starship.enterFromStation() : interior.enter("escotilla"));
     else cabin.enter("acople");
   },
 });
@@ -938,7 +977,7 @@ settingsPanel.addRow({
 });
 interior.openSettings = () => {
   settingsFrom = "nodriza";
-  settingsPanel.open("Doménica en loto en la esterilla del rincón de ejercicio (nodriza)");
+  settingsPanel.open(starship ? "Doménica en loto en la esterilla de la cubierta 1 (Starship)" : "Doménica en loto en la esterilla del rincón de ejercicio (nodriza)");
 };
 const fadeEl = document.createElement("div");
 fadeEl.className = "cab-fade seat-fade";
@@ -1037,7 +1076,7 @@ function allTasks(): Task[] {
     credits: wallet.balance,
     refuel: ship.propellants.some((p) => ship.propellantKg(p) < 0.5 * ship.propellantCapacityKg(p)),
     repairs: needingAttention(bay.status()).map((c) => ({ id: c.id, name: c.name, critical: c.attention === "critico" })),
-    stationChores: stationLife.taskFacts(),
+    stationChores: [...stationLife.taskFacts(), ...lifeSupport.taskFacts()],
   });
 }
 const taskBoard = new TaskBoard(root, allTasks);
@@ -1144,7 +1183,7 @@ const journey = new JourneyDriver(root, {
   bridge,
   station: stationInside,
   nav,
-  ringRadiusM: ring.spec.floorRadiusM,
+  ringRadiusM: ring?.spec.floorRadiusM ?? 0,
   stationTarget: structure.site.id,
   mothershipTarget: mothership.id,
   joins: () => ({ lander: docking.dockedTo === mothership ? "nodriza" : atStationPort() ? "estacion" : null, mothershipAtStation: !!mothership.dockedTo }),
@@ -1172,9 +1211,11 @@ const journey = new JourneyDriver(root, {
 // How «Ir» gets there (viaje / teletransporte) is a switch at the top of the task list (TaskBoard), its only place.
 /** The task list's «Ir»: the real journey there, or (teleport, a setting) straight there through open hatches, or to what joins the vehicles, saying why. */
 function goToTask(t: Task): void {
-  if (settings.value.taskTravel === "viaje") return void journey.start(t);
+  // The journey planner knows the ring ship's spine and ring, not Starship's decks yet (docs/pendientes.md).
+  const shipless = starship && (t.place.vehicle === "nodriza" || crewIn() === "nodriza");
+  if (settings.value.taskTravel === "viaje" && !shipless) return void journey.start(t);
   fade();
-  journey.say("Teletransporte (elegido en Tareas)");
+  journey.say(shipless ? "Por las escotillas: el viaje por las cubiertas de la Starship aún no está" : "Teletransporte (elegido en Tareas)");
   const r = routeTo(t.place, { crew: crewIn(), links: vehicleLinks() });
   if (r.kind === "ir") return arriveAt(t.place, t);
   arriveAt(r.via);
@@ -1352,7 +1393,7 @@ renderer.setAnimationLoop((now) => {
   // A critical alert ends an open challenge instead of hiding under it (docs/design/ux-acciones.md §7).
   if (wrathMode.critical(subj.piloting)) duelView.interrupt();
   tripPreview.held = duelView.visible;
-  ring.tick(dt);
+  ring?.tick(dt);
   // Region rules: soft boundary push back and no flying through the other rocks or the mothership (game rules).
   if (!flight.landed && !flight.docked) {
     const st = flight.state;
@@ -1396,6 +1437,8 @@ renderer.setAnimationLoop((now) => {
   stationOps.station.tick(stationHours);
   bioOps.tick(stationHours);
   importOps.tick(stationHours);
+  lifeSupport.tick(stationHours);
+  starship?.lifeSupport?.tick(stationHours);
   for (const e of importOps.drainEvents()) {
     // Animals from the Sanctuary: they go to their area and say so themselves.
     if (e.type === "llegada" && sanctuary.delivered(e.delivery)) continue;
@@ -1439,7 +1482,7 @@ renderer.setAnimationLoop((now) => {
   if (cabin.active && evaMode.active) cabin.exit();
   if (cabin.active) {
     cabin.update(dt);
-    mothershipModel.update(dt, ring.omegaRadS, now / 1000);
+    mothershipModel.update(dt, ring?.omegaRadS ?? 0, now / 1000);
     present(cabin.scene, cabin.camera);
     return;
   }
@@ -1447,7 +1490,7 @@ renderer.setAnimationLoop((now) => {
     stationInside.update(dt);
     // The dry dock's cameras: the space scene from beside the dock, over the station.
     if (dryDock.viewing) {
-      mothershipModel.update(dt, ring.omegaRadS, now / 1000);
+      mothershipModel.update(dt, ring?.omegaRadS ?? 0, now / 1000);
       stationModel.update(flight.simTimeS, skyBodies.sunDirection);
       present(scene, dryDock.view.camera);
     } else present(stationInside.scene, stationInside.camera);
@@ -1512,7 +1555,7 @@ renderer.setAnimationLoop((now) => {
     view.menu.sync();
   }
   view.warpAvailable = !docking.docked && !flight.landed && (far || view.warpRequested > 1);
-  mothershipModel.update(dt, ring.omegaRadS, now / 1000);
+  mothershipModel.update(dt, ring?.omegaRadS ?? 0, now / 1000);
 
   const s = flight.state;
   view.update(
@@ -1561,4 +1604,4 @@ for (const sel of [".nano-action", ".trip-chip", ".land-offer.lander", ".land-bo
   if (el) ctxDock.appendChild(el);
 }
 
-(window as unknown as { codeship: unknown }).codeship = { sanctuary, journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, landerBerth, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels, dryDock };
+(window as unknown as { codeship: unknown }).codeship = { sanctuary, journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, starship, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, lifeSupport, stationCrew, landerBerth, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels, dryDock };

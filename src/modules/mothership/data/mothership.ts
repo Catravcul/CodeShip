@@ -2,7 +2,7 @@ import { Vec3 } from "@core/math/vec3";
 import type { Sourced } from "@core/units";
 import { CODESHIP_RING } from "@modules/gravity/data/ring";
 import type { CraftPort, DockingLimits } from "../domain/docking";
-import type { MassItem, MothershipSpec } from "../domain/mothership";
+import type { MassItem, RingShipSpec } from "../domain/mothership";
 import type { ThrusterMount } from "../domain/propulsion";
 import { forwardSpanFor } from "../domain/thermal";
 import { X3 } from "./thrusters";
@@ -63,7 +63,7 @@ const OTHER: MassItem[] = [
   est("tripulacion", "Doménica y los animales", 58 + 30, "58 kg de Doménica; gatos, perros y gallinas, unos 30 kg"),
 ];
 
-export const NODRIZA: MothershipSpec = {
+export const NODRIZA: RingShipSpec = {
   name: "Codeship Nodriza",
   ring: CODESHIP_RING,
   power: {

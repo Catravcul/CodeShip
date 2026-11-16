@@ -23,10 +23,12 @@ import { nodrizaEstacion } from "./nodriza-estacion.mjs";
 import { catalogoNaves } from "./catalogo-naves.mjs";
 import { aterrizajePrograma, aterrizajeManual, aterrizajeEscritorio } from "./aterrizaje.mjs";
 import { animaciones } from "./animaciones.mjs";
+import { soporteVital } from "./soporte-vital.mjs";
 import { foco } from "./foco.mjs";
+import { starship } from "./starship.mjs";
 import { catalogo } from "./catalogo.mjs";
 
-const PLAY = { cocina, movimiento, mision, "acciones-movil": acciones, "acciones-escritorio": acciones, ordenar, "aterrizaje-programa": aterrizajePrograma, "aterrizaje-manual": aterrizajeManual, "aterrizaje-escritorio": aterrizajeEscritorio, "habitaculo-movil": habitaculo, "habitaculo-escritorio": habitaculo, "estacion-movil": estacion, "puente-real": puente, acuario, viaje, yoga, "nodriza-estacion": nodrizaEstacion, animaciones, "catalogo-naves": catalogoNaves, foco, catalogo };
+const PLAY = { cocina, movimiento, mision, "acciones-movil": acciones, "acciones-escritorio": acciones, ordenar, "aterrizaje-programa": aterrizajePrograma, "aterrizaje-manual": aterrizajeManual, "aterrizaje-escritorio": aterrizajeEscritorio, "habitaculo-movil": habitaculo, "habitaculo-escritorio": habitaculo, "estacion-movil": estacion, "puente-real": puente, acuario, viaje, yoga, "nodriza-estacion": nodrizaEstacion, animaciones, "catalogo-naves": catalogoNaves, "soporte-vital": soporteVital, foco, catalogo, starship };
 
 const now = new Date();
 const stamp = now.toISOString().replace(/[:.]/g, "-").slice(0, 19);
@@ -39,7 +41,13 @@ if (unknown.length) {
   console.error(`Recorridos desconocidos: ${unknown.join(", ")}. Catálogo: ${JOURNEYS.map((j) => `${j.id} ${j.name}`).join(", ")}`);
   process.exit(2);
 }
-const expected = JOURNEYS.filter((j) => !pick.length || pick.includes(j.id) || pick.includes(j.name));
+// Journeys marked `fiction` play the ring ship (rings, farm, animals, aquarium), off with the real-only switch
+// (src/core/realism.ts, docs/pendientes.md): skipped unless EXPERIENCIA_FICCION=1, which plays them with «?ficcion».
+const withFiction = !!process.env.EXPERIENCIA_FICCION;
+const chosen = JOURNEYS.filter((j) => !pick.length || pick.includes(j.id) || pick.includes(j.name));
+const skipped = chosen.filter((j) => j.fiction && !withFiction);
+for (const j of skipped) console.log(`↷ ${j.id} omitido: juega la nave de ficción (docs/pendientes.md); EXPERIENCIA_FICCION=1 lo juega con ?ficcion`);
+const expected = chosen.filter((j) => !skipped.includes(j));
 
 let server;
 let url = process.env.EXPERIENCIA_URL;
@@ -66,7 +74,8 @@ for (const spec of expected) {
   console.log(`\n▶ ${spec.id} · ${spec.title}`);
   const j = new Journey(spec.name, spec.title, { outDir, prefix: process.env.EXPERIENCIA_PREFIJO ?? "despues", ...spec });
   try {
-    await j.open(base());
+    // `fictionToo`: a journey of the real game that, with EXPERIENCIA_FICCION=1, also plays the fiction (PX-20: the ring's chores).
+    await j.open(base() + (spec.fiction || (spec.fictionToo && withFiction) ? "&ficcion" : ""));
     await PLAY[spec.name](j);
   } catch (e) {
     j.check("el recorrido llega al final", false, e.message.split("\n")[0]);

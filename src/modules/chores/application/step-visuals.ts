@@ -64,6 +64,7 @@ export const STEP_AREAS: Readonly<Record<ChoreKind, Area>> = {
   "cuidar-acuario": { fallback: "revisar", tint: "agua", remap: { verter: "servir", emplatar: "servir", cortar: "lavar", tomar: "revisar" } },
   "amistad-acuario": { fallback: "programar", only: "programar" },
   "ayuda-acuario": { fallback: "programar", only: "programar" },
+  "soporte-vital": FIX,
   // A colony of the species catalogue: both are mind programs.
   "amistad-especie": { fallback: "programar", only: "programar" },
   "ayuda-especie": { fallback: "programar", only: "programar" },

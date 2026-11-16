@@ -7,7 +7,7 @@ import { clearanceTo, keepOutDelta, type Obstacle } from "@modules/flight/domain
 import type { DockingTarget } from "./docking";
 import { radiatorTemperatureK, shadowRadiusAt, wingPlanformM2, type RadiatorWing, type ShadowCone } from "./thermal";
 import { auxPowerKw, relativeDose, type MothershipEquipment, type MothershipSlot } from "./equipment";
-import { drivePlan, fitProblem, unitMassKg, type DrivePlan, type ElectricPropellant, type ElectricThruster, type MountFit, type ThrusterMount } from "./propulsion";
+import { drivePlan, fitProblem, PROPELLANT_NAME, unitMassKg, type DrivePlan, type ElectricPropellant, type ElectricThruster, type MountFit, type ThrusterMount } from "./propulsion";
 
 export type { Obstacle } from "@modules/flight/domain/keep-out";
 
@@ -33,6 +33,7 @@ export type { ElectricThruster } from "./propulsion";
 
 /** The mothership's electric propulsion: the propellant on board, the mounts and what is fitted. */
 export interface PropulsionSpec {
+  /** Electric propellant, or methane and oxygen for a chemical drive (then the mounts stay empty). */
   readonly propellant: ElectricPropellant;
   readonly mounts: readonly ThrusterMount[];
   /** What is fitted when the game starts. */
@@ -48,15 +49,17 @@ export interface MothershipLayout {
   readonly nodeZ: number;
   readonly nodeRadiusM: number;
   readonly spine: { readonly fromZ: number; readonly toZ: number; readonly radiusM: number };
-  /** Centre of the habitat ring and of its counter-rotating twin along the spine. */
-  readonly habRingZ: number;
-  readonly twinRingZ: number;
-  /** Each of the two radiator wings (mirrored in x), in the plane y = 0. */
-  readonly radiator: RadiatorWing;
-  readonly reactorZ: number;
+  /** Centre of the habitat ring and of its counter-rotating twin along the spine (ring ship only, fiction). */
+  readonly habRingZ?: number;
+  readonly twinRingZ?: number;
+  /** Each of the two radiator wings (mirrored in x), in the plane y = 0 (nuclear-electric ring ship only). */
+  readonly radiator?: RadiatorWing;
+  readonly reactorZ?: number;
   /** Shadow shield between the reactor and the rest: the cone it casts and where the shield sits. */
-  readonly shield: { readonly halfAngleDeg: number; readonly nearZ: number; readonly farZ: number };
+  readonly shield?: { readonly halfAngleDeg: number; readonly nearZ: number; readonly farZ: number };
   readonly thrusterZ: number;
+  /** Flaps along the hull (Starship): two forward and two aft, mirrored in x, how far out they reach. */
+  readonly flaps?: readonly { readonly fromZ: number; readonly toZ: number; readonly spanM: number }[];
   /** Pressurised modules on the non-rotating spine, forward of the rings (see docs/design/interiores.md). */
   readonly spineModules: readonly SpineModule[];
 }
@@ -72,11 +75,54 @@ export interface SpineModule {
   readonly reference: string;
 }
 
+/**
+ * Chemical propulsion (Starship): engines that burn methane and oxygen. In cruise only the vacuum engines
+ * fire (the sea-level ones are for landing); the trip planner and the Δv use them.
+ */
+export interface ChemicalEngine {
+  readonly id: string;
+  readonly name: string;
+  readonly shortName: string;
+  readonly count: number;
+  /** Thrust of one engine in vacuum, N. */
+  readonly thrustN: number;
+  /** Specific impulse in vacuum, s. */
+  readonly ispS: number;
+  readonly massKg: number;
+  /** Fires in the cruise burns between asteroids. */
+  readonly cruise: boolean;
+  readonly sources: readonly string[];
+  readonly note?: string;
+}
+
+export interface ChemicalDrive {
+  readonly engines: readonly ChemicalEngine[];
+  /** Oxidiser to fuel mass ratio the engines burn (O/F). */
+  readonly mixtureRatio: Sourced<number>;
+  /** Tank capacities, kg: what refuelling fills. */
+  readonly oxygenKg: Sourced<number>;
+  readonly methaneKg: Sourced<number>;
+  /** Top speed of a hop between asteroids: burn to it, coast, brake (a game value). */
+  readonly cruiseMS: Sourced<number>;
+  /** A short hop coasts at least about this long instead of burning hard (a game value), s. */
+  readonly coastS: Sourced<number>;
+}
+
+/** Cruise speed of a chemical hop of `distanceM`: slow enough to coast about `coastS`, never above `cruiseMS`. */
+export function chemicalCruiseMS(c: ChemicalDrive, distanceM: number): number {
+  return Math.min(c.cruiseMS.value, Math.max(0.01, distanceM / c.coastS.value));
+}
+
 export interface MothershipSpec {
   readonly name: string;
-  /** Each of the two counter-rotating rings (same radius and spin). */
-  readonly ring: RingSpec;
-  readonly power: {
+  /** What the ship is (shown on the bay and the deck): real («real»), in development, or fiction. */
+  readonly label?: "real" | "en-desarrollo" | "licencia" | "ficción";
+  /** Each of the two counter-rotating rings (same radius and spin). Fiction: absent on a real ship. */
+  readonly ring?: RingSpec;
+  /** Methane-oxygen engines (Starship). When set, they drive the ship instead of the electric mounts. */
+  readonly chemical?: ChemicalDrive;
+  /** The reactor and its radiators (nuclear-electric ring ship only). */
+  readonly power?: {
     readonly electricKw: Sourced<number>;
     readonly specificMassKgPerKw: Sourced<number>;
     readonly conversionEfficiency: Sourced<number>;
@@ -108,6 +154,13 @@ export interface MothershipSpec {
   /** How far from the target's surface it parks (game value; see the doc for the real precedent). */
   readonly parkingDistanceM: Sourced<number>;
 }
+
+/** The ring ship (fiction, docs/pendientes.md): rings, reactor, radiators and shield all present. */
+export type RingShipSpec = MothershipSpec & {
+  readonly ring: RingSpec;
+  readonly power: NonNullable<MothershipSpec["power"]>;
+  readonly layout: MothershipLayout & Required<Pick<MothershipLayout, "habRingZ" | "twinRingZ" | "radiator" | "reactorZ" | "shield">>;
+};
 
 /** A piece of equipment as a line of the mass budget. */
 const equipmentItem = (e: MothershipEquipment): MassItem => ({ id: e.slot, label: e.name, kg: e.massKg, basis: e.basis, sources: e.sources });
@@ -188,18 +241,25 @@ export class Mothership implements DockingTarget {
   /** Every dry line of the budget, the twin ring included. */
   get massBudget(): MassItem[] {
     const aux = this.equipment("energia-auxiliar");
+    const drive = this.drive;
     return [
-      ...this.habRingLines,
-      {
+      ...(this.spec.ring ? this.habRingLines : []),
+      ...(this.spec.ring ? [{
         id: "anillo-gemelo",
         label: "Anillo gemelo (camarotes, almacenes, agua)",
         kg: this.twinRingMassKg,
         basis: "Gira al revés con el mismo radio: necesita el mismo momento de inercia, así que pesa lo mismo que el anillo habitable",
         sources: [],
-      },
+      }] : []),
       ...this.spec.otherItems,
       ...(aux && aux.massKg ? [equipmentItem(aux)] : []),
-      {
+      this.spec.chemical ? {
+        id: "propulsores",
+        label: `Motores (${this.spec.chemical.engines.map((e) => `${e.count} ${e.shortName}`).join(" + ")})`,
+        kg: drive.massKg,
+        basis: this.spec.chemical.engines.map((e) => `${e.count} × ${e.massKg} kg`).join(" + "),
+        sources: [...new Set(this.spec.chemical.engines.flatMap((e) => e.sources))],
+      } : {
         id: "propulsores",
         label: `Propulsores (${this.fits.filter((f) => f.count).map((f) => `${f.count} ${f.thruster.shortName}`).join(" + ") || "ninguno"}) con sus fuentes de potencia`,
         kg: this.drive.massKg,
@@ -223,6 +283,7 @@ export class Mothership implements DockingTarget {
 
   /** Net spin angular momentum of the two rings (kg·m²/s): zero when they balance. */
   get ringAngularMomentum(): number {
+    if (!this.spec.ring) return 0;
     const R = this.spec.ring.floorRadiusM;
     const w = (this.spec.ring.rpm * 2 * Math.PI) / 60;
     return this.habRingMassKg * R * R * w - this.twinRingMassKg * R * R * w;
@@ -243,7 +304,7 @@ export class Mothership implements DockingTarget {
   /** Power the reactor and the auxiliary source give the thrusters: their output less what the rest of the ship uses, kW. */
   get availableThrusterKw(): number {
     const p = this.spec.propulsion;
-    return Math.max(0, this.spec.power.electricKw.value + this.auxiliaryKw - p.hotelLoadKw.value);
+    return Math.max(0, (this.spec.power?.electricKw.value ?? 0) + this.auxiliaryKw - p.hotelLoadKw.value);
   }
 
   // --- Equipment (auxiliary power, radiation shield) ---------------------------------
@@ -284,7 +345,20 @@ export class Mothership implements DockingTarget {
   }
   /** What the fitted thrusters can do with the power on hand. */
   get drive(): DrivePlan {
-    return drivePlan(this.fits, this.availableThrusterKw, this.spec.propulsion.propellant);
+    const c = this.spec.chemical;
+    const p = this.spec.propulsion.propellant;
+    return c || p === "metano-oxigeno" ? chemicalPlan(c ?? { engines: [], mixtureRatio: { value: 0, source: "" }, oxygenKg: { value: 0, source: "" }, methaneKg: { value: 0, source: "" }, cruiseMS: { value: 0, source: "" }, coastS: { value: 1, source: "" } }) : drivePlan(this.fits, this.availableThrusterKw, p);
+  }
+  /** «metano y oxígeno» or the electric propellant's name: what the tanks hold. */
+  get propellantName(): string {
+    return PROPELLANT_NAME[this.spec.propulsion.propellant];
+  }
+  /** Oxygen and methane on board, split as the tanks are (chemical drive only). */
+  get tanks(): { oxygenKg: number; methaneKg: number } | undefined {
+    const c = this.spec.chemical;
+    if (!c) return undefined;
+    const ox = c.oxygenKg.value / (c.oxygenKg.value + c.methaneKg.value);
+    return { oxygenKg: this.propellant * ox, methaneKg: this.propellant * (1 - ox) };
   }
   /**
    * Fit `count` units of `thruster` on a mount (0 empties it). Returns what was there before.
@@ -357,24 +431,25 @@ export class Mothership implements DockingTarget {
   /** Waste heat the radiators must reject, kW. */
   get wasteHeatKw(): number {
     const p = this.spec.power;
-    return p.electricKw.value * (1 / p.conversionEfficiency.value - 1);
+    return p ? p.electricKw.value * (1 / p.conversionEfficiency.value - 1) : 0;
   }
 
   /** Planform of the two wings: the panels radiate from both faces, so half the radiating area, m². */
   get radiatorPlanformM2(): number {
-    return 2 * wingPlanformM2(this.spec.layout.radiator);
+    return this.spec.layout.radiator ? 2 * wingPlanformM2(this.spec.layout.radiator) : 0;
   }
 
   /** Mean radiator temperature that rejects the waste heat over the radiating area (Stefan–Boltzmann), K. */
   get radiatorTemperatureK(): number {
     const p = this.spec.power;
+    if (!p) return 0;
     return radiatorTemperatureK(this.wasteHeatKw * 1000, p.radiatorAreaM2.value, p.radiatorEmissivity.value, p.sinkK.value);
   }
 
   /** The shield's shadow cone (apex at the reactor). */
   get shadow(): ShadowCone {
     const l = this.spec.layout;
-    return { reactorZ: l.reactorZ, halfAngleDeg: l.shield.halfAngleDeg };
+    return { reactorZ: l.reactorZ ?? 0, halfAngleDeg: l.shield?.halfAngleDeg ?? 0 };
   }
 
   /** Radius the shield must have at body z to cast that cone, m. */
@@ -407,20 +482,20 @@ export class Mothership implements DockingTarget {
   get obstacles(): Obstacle[] {
     const l = this.spec.layout;
     const r = this.spec.ring;
-    const tube = Math.hypot(r.widthM / 2, (r.deckHeightM + 1) / 2);
-    const radR = r.floorRadiusM - (r.deckHeightM + 1) / 2;
-    return [
-      { kind: "capsule", a: new Vec3(0, 0, l.spine.fromZ), b: new Vec3(0, 0, l.spine.toZ), radiusM: Math.max(l.spine.radiusM, l.nodeRadiusM) },
-      { kind: "ring", centreZ: l.habRingZ, radiusM: radR, tubeM: tube },
-      { kind: "ring", centreZ: l.twinRingZ, radiusM: radR, tubeM: tube },
-      ...[-1, 1].map(
-        (s): Obstacle => ({
-          kind: "box",
-          centre: new Vec3(s * (l.radiator.innerX + l.radiator.spanM / 2), 0, (l.radiator.fromZ + l.radiator.toZ) / 2),
-          half: new Vec3(l.radiator.spanM / 2, 0.5, (l.radiator.toZ - l.radiator.fromZ) / 2),
-        }),
-      ),
-    ];
+    const out: Obstacle[] = [{ kind: "capsule", a: new Vec3(0, 0, l.spine.fromZ), b: new Vec3(0, 0, l.spine.toZ), radiusM: Math.max(l.spine.radiusM, l.nodeRadiusM) }];
+    if (r && l.habRingZ !== undefined && l.twinRingZ !== undefined) {
+      const tube = Math.hypot(r.widthM / 2, (r.deckHeightM + 1) / 2);
+      const radR = r.floorRadiusM - (r.deckHeightM + 1) / 2;
+      out.push({ kind: "ring", centreZ: l.habRingZ, radiusM: radR, tubeM: tube }, { kind: "ring", centreZ: l.twinRingZ, radiusM: radR, tubeM: tube });
+    }
+    const w = l.radiator;
+    if (w)
+      for (const s of [-1, 1])
+        out.push({ kind: "box", centre: new Vec3(s * (w.innerX + w.spanM / 2), 0, (w.fromZ + w.toZ) / 2), half: new Vec3(w.spanM / 2, 0.5, (w.toZ - w.fromZ) / 2) });
+    // Starship's flaps: thin plates out to each side, in the plane y = 0.
+    for (const f of l.flaps ?? [])
+      for (const s of [-1, 1]) out.push({ kind: "box", centre: new Vec3(s * (l.spine.radiusM + f.spanM / 2), 0, (f.fromZ + f.toZ) / 2), half: new Vec3(f.spanM / 2, 0.3, (f.toZ - f.fromZ) / 2) });
+    return out;
   }
 
   /** Shortest gap between a world point and the structure, m (negative inside). */
@@ -440,4 +515,23 @@ export class Mothership implements DockingTarget {
   private get keepOutBody() {
     return { position: this.position, orientation: this.orientation, obstacles: this.obstacles, freePorts: [this.port.position] };
   }
+}
+
+/** What the cruise engines of a chemical drive do together (no power drawn; no mounts). */
+export function chemicalPlan(c: ChemicalDrive): DrivePlan {
+  const cruise = c.engines.filter((e) => e.cruise);
+  const thrustN = cruise.reduce((s, e) => s + e.count * e.thrustN, 0);
+  const massFlowKgS = cruise.reduce((s, e) => s + (e.count * e.thrustN) / (e.ispS * G0), 0);
+  const units = cruise.reduce((s, e) => s + e.count, 0);
+  return {
+    mounts: [],
+    fittedUnits: c.engines.reduce((s, e) => s + e.count, 0),
+    firingUnits: units,
+    thrustN,
+    powerKw: 0,
+    availableKw: 0,
+    massFlowKgS,
+    ispS: massFlowKgS > 0 ? thrustN / (G0 * massFlowKgS) : 0,
+    massKg: c.engines.reduce((s, e) => s + e.count * e.massKg, 0),
+  };
 }

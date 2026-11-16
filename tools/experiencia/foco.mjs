@@ -5,6 +5,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { placeAbove } from "./aterrizaje.mjs";
+import { adoptar, llegan } from "./catalogo.mjs";
 
 /** What is open now: the outsiders, a capture, then «×» (or «Continuar»/«Cerrar» once it ended). */
 async function focus(j, id, title, recheck = false) {
@@ -128,6 +129,12 @@ export async function foco(j) {
     await close(j);
   });
   await part(j, "acuario", async () => {
+    // A new game starts with no animals (docs/design/catalogo-especies.md): adopt medakas first, with taps,
+    // and let the Sanctuary's transfer pass. With the real-only switch they go to the Starship's aquatic habitat.
+    if (!(await p.evaluate(() => window.codeship.interior.aquarium?.tank.fishCount ?? 0))) {
+      await adoptar(j, [["medaka", "peces"]]);
+      await llegan(j);
+    }
     await fromTasks(j, ["Dar de comer a las medakas"], "acuario", "Acuario del anillo");
     await close(j);
   });

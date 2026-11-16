@@ -4,6 +4,7 @@ import type { Attention } from "@modules/ship-bay/domain/attention";
 import { ShipModel, type PartId } from "./ship-model";
 import { buildStarfield } from "./starfield";
 import type { MothershipModel } from "./mothership-model";
+import type { StarshipModel } from "./starship-model";
 
 /** Which ship the bay shows: the probe, the mothership (scaled down to fit the same camera) or the station. */
 export type BayView = "sonda" | "nodriza" | "estacion";
@@ -46,7 +47,7 @@ export class ShipBayScene {
   private turnTo: { yaw: number; pitch: number } | null = null;
   private inset: Inset = { right: 0, bottom: 0 };
   private _view: BayView = "sonda";
-  private mothership?: MothershipModel;
+  private mothership?: MothershipModel | StarshipModel;
   private station?: { readonly root: THREE.Object3D; readonly parts: Map<PartId, THREE.Group> };
   private stationModel?: BayStationModel;
 
@@ -64,11 +65,11 @@ export class ShipBayScene {
   }
 
   /** Put the mothership in the bay (its systems are its parts). */
-  addMothership(m: MothershipModel): void {
+  addMothership(m: MothershipModel | StarshipModel): void {
     this.mothership = m;
     m.root.scale.setScalar(MOTHERSHIP_SCALE);
     // Centre it on its rings.
-    m.root.position.set(0, 0, -((m.spec.layout.habRingZ + m.spec.layout.twinRingZ) / 2) * MOTHERSHIP_SCALE);
+    m.root.position.set(0, 0, -(((m.spec.layout.habRingZ ?? 0) + (m.spec.layout.twinRingZ ?? 0)) / 2) * MOTHERSHIP_SCALE);
     m.root.visible = false;
     this.scene.add(m.root);
   }

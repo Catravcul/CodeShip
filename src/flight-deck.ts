@@ -32,6 +32,7 @@ import type { NavMap } from "./ui/nav-map";
 import "./ui/flight-deck.css";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const pct = (f: number) => `${num(f * 100)} %`;
 const km = (m: number) => (m >= 1000 ? `${num(m / 1000, 1)} km` : `${num(m)} m`);
 const bar = (f: number, cls = "") => `<div class="fd-bar ${cls}"><i style="width:${(Math.max(0, Math.min(1, f)) * 100).toFixed(1)}%"></i></div>`;
@@ -63,7 +64,8 @@ export type DeckOrigin = "puente" | "interior" | "cabina";
 
 export interface FlightDeckDeps {
   readonly mothership: Mothership;
-  readonly ring: SpinRing;
+  /** The ring ship's spinning ring (none on Starship). */
+  readonly ring?: SpinRing;
   readonly habitat: HabitatView & { readonly mailbox?: Mailbox };
   readonly docking: DockingView;
   readonly nav: Navigator;
@@ -423,12 +425,14 @@ export class FlightDeck {
     const dots = Array.from({ length: p.thrusterCount }, (_, i) => `<i class="${i < p.firing ? "on" : ""}"></i>`);
     const half = Math.ceil(p.thrusterCount / 2);
     const array = `<div class="fd-thrusters" aria-label="${p.firing} de ${p.thrusterCount} propulsores encendidos"><div>${dots.slice(0, half).join("")}</div><div>${dots.slice(half).join("")}</div></div>`;
-    const head = `${array}<div class="fd-kv"><span>Encendidos</span><b>${p.firing} / ${p.thrusterCount}</b><span>Empuje</span><b>${num(p.thrustNowN, 1)} N <small>de ${num(p.totalThrustN, 1)}</small></b><span>Δv restante</span><b>${num(p.deltaVMs)} m/s</b><span>Xenón</span><b>${num(p.xenonKg / 1000, 1)} t <small>${pct(p.xenonFraction)}</small></b></div>${bar(p.xenonFraction, "xe")}`;
+    const head = `${array}<div class="fd-kv"><span>Encendidos</span><b>${p.firing} / ${p.thrusterCount}</b><span>Empuje</span><b>${num(p.thrustNowN, 1)} N <small>de ${num(p.totalThrustN, 1)}</small></b><span>Δv restante</span><b>${num(p.deltaVMs)} m/s</b><span>${esc(cap(p.propellantName))}</span><b>${num(p.xenonKg / 1000, 1)} t <small>${pct(p.xenonFraction)}</small></b></div>${bar(p.xenonFraction, "xe")}`;
+    const electric = p.powerPerThrusterKw > 0;
+    const flow = p.flowPerThrusterMgS > 1e6 ? `${num(p.flowPerThrusterMgS / 1e6)} kg/s` : `${num(p.flowPerThrusterMgS)} mg/s`;
     if (!full) return head;
     return `${head}<div class="fd-kv">
       <span>Propulsor</span><b>${esc(p.thrusterName)}</b>
-      <span>Cada uno</span><b>${num(p.thrustPerThrusterN, 1)} N · ${num(p.powerPerThrusterKw)} kW · Isp ${num(p.ispS)} s</b>
-      <span>Caudal de xenón</span><b>${num(p.flowPerThrusterMgS)} mg/s por propulsor</b>
+      <span>Cada uno</span><b>${num(p.thrustPerThrusterN, 1)} N${electric ? ` · ${num(p.powerPerThrusterKw)} kW` : ""} · Isp ${num(p.ispS)} s</b>
+      <span>Caudal de ${esc(p.propellantName)}</span><b>${flow} por ${electric ? "propulsor" : "motor"}</b>
       <span>Masa</span><b>${num(p.massT)} t <small>en seco ${num(p.dryMassT)} t</small></b>
       <span>Aceleración</span><b>${num(p.accelMmS2, 3)} mm/s²</b>
       <span>Autonomía</span><b>${num(p.burnDaysLeft)} días de empuje continuo</b></div>
@@ -436,6 +440,8 @@ export class FlightDeck {
   }
 
   private powerHtml(p: PowerPanel, full: boolean): string {
+    if (p.unpublished)
+      return `<div class="fd-kv"><span>Energía</span><b>Paneles solares en el casco</b><span>Potencia</span><b>Sin publicar</b></div>${full ? `<p class="fd-note">La Starship HLS lleva células solares en una franja del casco; SpaceX no ha publicado su potencia. Los motores son químicos: no gastan electricidad.</p>` : ""}`;
     const load = p.thrusterLoadKw / p.electricKw;
     const split = `<div class="fd-split"><i class="thr" style="width:${(load * 100).toFixed(1)}%"></i><i class="rest" style="width:${((1 - load) * 100).toFixed(1)}%"></i></div>
       <div class="fd-legend"><span class="thr">Propulsores ${num(p.thrusterLoadKw)} kW</span><span class="rest">Resto de la nave ${num(p.marginKw)} kW</span></div>`;
@@ -449,11 +455,12 @@ export class FlightDeck {
   }
 
   private lifeHtml(l: LifePanel, full: boolean): string {
-    const head = `<div class="fd-kv"><span>Anillo</span><b>${num(l.ringRpm, 2)} rpm · ${num(l.floorG, 2)} g</b><span>${esc(l.crewName)}</span><b>bienestar ${pct(l.wellbeing)}</b><span>Huerto</span><b>${l.plantsAlive} plantas · ${l.plantsReady} para cosechar</b><span>Máquinas</span><b>${l.machinesWorking} / ${l.machinesTotal} en marcha</b></div>`;
+    const gravity = l.hasRing ? `<span>Anillo</span><b>${num(l.ringRpm, 2)} rpm · ${num(l.floorG, 2)} g</b>` : `<span>Gravedad</span><b>0 g · ingravidez</b>`;
+    const head = `<div class="fd-kv">${gravity}<span>${esc(l.crewName)}</span><b>bienestar ${pct(l.wellbeing)}</b><span>Huerto</span><b>${l.plantsAlive} plantas · ${l.plantsReady} para cosechar</b><span>Máquinas</span><b>${l.machinesWorking} / ${l.machinesTotal} en marcha</b></div>`;
     if (!full) return head;
     return `${head}${bar(l.wellbeing, "life")}<div class="fd-kv">
-      <span>Giro</span><b>${pct(l.spinFraction)} de ${num(l.ringCruiseRpm)} rpm${l.spinningUp ? " · acelerando" : ""}</b>
-      <span>Radio del suelo</span><b>${num(l.ringRadiusM)} m · llanta a ${num(l.rimSpeedMs, 1)} m/s</b>
+      ${l.hasRing ? `<span>Giro</span><b>${pct(l.spinFraction)} de ${num(l.ringCruiseRpm)} rpm${l.spinningUp ? " · acelerando" : ""}</b>
+      <span>Radio del suelo</span><b>${num(l.ringRadiusM)} m · llanta a ${num(l.rimSpeedMs, 1)} m/s</b>` : ""}
       <span>Saciedad</span><b>${pct(Math.min(1, l.satiety))}</b>
       <span>Forma física</span><b>${pct(l.fitness)}</b>
       <span>Días sin gravedad</span><b>${num(l.microgravityDays, 1)}</b>

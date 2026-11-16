@@ -30,8 +30,9 @@ export class MothershipModel {
     readonly spec: MothershipSpec,
     systems: readonly { id: PartId; label: string }[] = [],
   ) {
-    const l = spec.layout;
-    const r = spec.ring;
+    // The ring ship (fiction, `?ficcion`): every ring and reactor field is there (data/mothership.ts, NODRIZA).
+    const l = spec.layout as Required<MothershipSpec["layout"]>;
+    const r = spec.ring!;
     const shell = new THREE.MeshStandardMaterial({ color: 0xd2d7de, roughness: 0.55, metalness: 0.3 });
     const dark = new THREE.MeshStandardMaterial({ color: 0x3a3f48, roughness: 0.6, metalness: 0.6 });
     const truss = new THREE.MeshStandardMaterial({ color: 0x8a919b, roughness: 0.5, metalness: 0.7 });
@@ -255,7 +256,7 @@ export class MothershipModel {
     farmGlow: THREE.Material,
     systems: readonly { id: PartId; label: string }[],
   ): void {
-    const r = this.spec.ring;
+    const r = this.spec.ring!;
     const R = r.floorRadiusM;
     const w = r.widthM;
     g.position.z = z;

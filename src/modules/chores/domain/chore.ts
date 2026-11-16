@@ -44,6 +44,8 @@ export type ChoreKind =
   | "cuidar-acuario"
   | "amistad-acuario"
   | "ayuda-acuario"
+  /** Real life support (modules/life-support): repairing or servicing an ECLSS machine. */
+  | "soporte-vital"
   /** A colony adopted from the species catalogue (modules/adoption): befriending it, asking it for help. */
   | "amistad-especie"
   | "ayuda-especie";
@@ -91,6 +93,7 @@ export const CHORE_CATEGORY: Readonly<Record<ChoreKind, ChoreCategory>> = {
   "cuidar-acuario": "animales",
   "amistad-acuario": "animales",
   "ayuda-acuario": "animales",
+  "soporte-vital": "nave",
   "amistad-especie": "animales",
   "ayuda-especie": "animales",
 };

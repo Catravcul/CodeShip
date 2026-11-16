@@ -301,19 +301,21 @@ export function bayStatus(input: BayInput): ComponentStatus[] {
     if (!b.alive) deckIssues.push({ attention: "aviso", text: `${b.species.name} (${b.id}) se ha perdido` });
     else if (b.health < ATTENTION_TUNING.bedHealthWarnBelow) deckIssues.push({ attention: "aviso", text: `${b.species.name} (${b.id}) al ${pct(b.health)}` });
   }
-  out.push(
-    status({
-      id: "cubierta-cultivo",
-      kind: "cubierta",
-      name: "Cubierta de cultivo",
-      issues: deckIssues,
-      specs: [
-        { label: "Bancales", value: String(input.beds.length) },
-        { label: "Área", value: `${num(input.beds.reduce((s, b) => s + b.areaM2, 0))} m²` },
-        ...(sus ? [{ label: "Autosuficiencia", value: `${pct(sus.ratio)} (${num(sus.areaM2)} de ${num(sus.neededM2)} m²)` }] : []),
-      ],
-    }),
-  );
+  // A ship with no farm deck (Starship: no beds in 0 g, docs/pendientes.md) does not list one.
+  if (input.beds.length > 0)
+    out.push(
+      status({
+        id: "cubierta-cultivo",
+        kind: "cubierta",
+        name: "Cubierta de cultivo",
+        issues: deckIssues,
+        specs: [
+          { label: "Bancales", value: String(input.beds.length) },
+          { label: "Área", value: `${num(input.beds.reduce((s, b) => s + b.areaM2, 0))} m²` },
+          ...(sus ? [{ label: "Autosuficiencia", value: `${pct(sus.ratio)} (${num(sus.areaM2)} de ${num(sus.neededM2)} m²)` }] : []),
+        ],
+      }),
+    );
   out.push(
     status({
       id: "despensa",

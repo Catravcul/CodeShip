@@ -46,7 +46,7 @@ export interface TaskFacts {
   /** The board's chores on the travel ship, with the machine of the ring where each is done. */
   readonly chores: readonly { id: string; title: string; detail: string; category: "comida" | "plantas" | "animales" | "salud" | "nave" | "misiones"; station: string }[];
   /** Chores of the station's crew areas (its own larder), with the area where each is done. */
-  readonly stationChores?: readonly { id: string; title: string; detail: string; category: "comida" | "salud"; area: string }[];
+  readonly stationChores?: readonly { id: string; title: string; detail: string; category: "comida" | "salud" | "estacion"; area: string }[];
   /** Every catalogued asteroid with its rapport. */
   readonly asteroids: readonly { id: string; name: string; persuaded: boolean; next: Stage | undefined; subjugated: boolean; level: number; nextLevel: number | undefined }[];
   /** The asteroid the lander and the probe work on now. */

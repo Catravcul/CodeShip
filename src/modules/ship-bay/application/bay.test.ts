@@ -43,6 +43,12 @@ describe("ship bay status", () => {
     expect(needingAttention(list)).toEqual([]);
   });
 
+  it("HAB-24 a ship without beds (Starship, 0 g) lists no farm deck", () => {
+    const list = bayStatus({ ...input(), beds: [] });
+    expect(list.map((c) => c.id)).not.toContain("cubierta-cultivo");
+    expect(list.map((c) => c.id)).toContain("despensa");
+  });
+
   it("shows real specs with their sources", () => {
     const motor = byId(bayStatus(input()), "motor");
     expect(motor.slot).toBe("motor");

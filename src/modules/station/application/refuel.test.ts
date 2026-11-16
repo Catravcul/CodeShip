@@ -7,6 +7,7 @@ import { explorerDesign } from "@modules/ship/data/explorer";
 import { HELIUM_KG_M3, MMH_NTO_MIXTURE_RATIO, PROPELLANT_DENSITY } from "@modules/ship/data/propellants";
 import { Mothership } from "@modules/mothership/domain/mothership";
 import { NODRIZA } from "@modules/mothership/data/mothership";
+import { STARSHIP } from "@modules/mothership/data/starship";
 import { MaterialStock } from "../domain/materials";
 import { Hangar } from "../domain/hangar";
 import { Station } from "../domain/station";
@@ -87,6 +88,26 @@ describe("refuelling a docked craft", () => {
     station.tick(5000 / REFUEL_TUNING.xenonKgPerHour.value);
     expect(mother.propellantKg).toBe(NODRIZA.propellantCapacityKg);
     expect(station.stock.amount("xenon")).toBe(15000);
+  });
+
+  it("REF-04 fills Starship's liquid oxygen and methane from the store in its tanks' ratio, and only when docked", () => {
+    const station = new Station(POLANA_STATION, new MaterialStock({ oxigeno: 50_000, metano: 50_000 }), new Hangar());
+    const ship = new Mothership(STARSHIP, Vec3.ZERO, Quat.IDENTITY, STARSHIP.propellantCapacityKg - 10_000);
+    const docked = { now: false };
+    const ops = new RefuelOps(station, [mothershipRefuelTarget(ship, () => docked.now)]);
+    const lines = ops.status("nodriza").plan;
+    expect(lines.map((l) => l.line.id)).toEqual(["oxigeno", "metano"]);
+    // 1170 t of oxygen and 330 t of methane: 78 % of what is missing is oxygen.
+    expect(lines[0]!.loadKg).toBeCloseTo(7800, 0);
+    expect(lines[1]!.loadKg).toBeCloseTo(2200, 0);
+    expect(ops.status("nodriza").canStart).toBe(false);
+    docked.now = true;
+    const s = ops.startRefuel("nodriza");
+    for (const e of s.chore.exercises) s.answer(right(e));
+    station.tick(10_000 / REFUEL_TUNING.methaloxKgPerHour.value + 1e-6);
+    expect(ship.propellantKg).toBeCloseTo(STARSHIP.propellantCapacityKg, 0);
+    expect(station.stock.amount("oxigeno")).toBeCloseTo(42_200, 0);
+    expect(station.stock.amount("metano")).toBeCloseTo(47_800, 0);
   });
 
   it("with no propellant in store there is nothing to start", () => {

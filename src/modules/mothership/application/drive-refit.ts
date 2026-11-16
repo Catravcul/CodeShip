@@ -156,7 +156,7 @@ export function driveRefitChore(m: Mothership, o: Pick<DriveOption, "mountId" | 
   );
 
   const d = next.drive;
-  const reactor = m.spec.power.electricKw.value;
+  const reactor = (m.spec.power?.electricKw.value ?? 0);
   const hotel = m.spec.propulsion.hotelLoadKw.value;
   const mounts = next.fitted.filter((f) => f.count);
   const powerEx = choice(

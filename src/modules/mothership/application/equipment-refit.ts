@@ -101,7 +101,7 @@ export function equipmentRefitChore(m: Mothership, e: MothershipEquipment): Chor
   );
   let effectEx: ChoiceExercise;
   if (e.slot === "energia-auxiliar") {
-    const reactor = m.spec.power.electricKw.value;
+    const reactor = (m.spec.power?.electricKw.value ?? 0);
     const hotel = m.spec.propulsion.hotelLoadKw.value;
     const aux = Math.round(next.auxiliaryKw);
     const d = next.drive;

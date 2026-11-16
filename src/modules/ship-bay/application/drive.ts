@@ -38,7 +38,7 @@ export function driveStatus(m: Mothership): ComponentStatus[] {
       : [];
     const all: Spec[] = [
       { label: "Toda la nodriza", value: `${d.firingUnits} de ${d.fittedUnits} encendidos${idle ? ` (${idle} parados)` : ""}` },
-      { label: "Reactor", value: `${num(d.powerKw)} de ${num(d.availableKw)} kW libres para propulsión (${num(m.spec.power.electricKw.value)} kWe menos ${num(m.spec.propulsion.hotelLoadKw.value)} kW del resto, valor de juego)` },
+      { label: "Reactor", value: `${num(d.powerKw)} de ${num(d.availableKw)} kW libres para propulsión (${num(m.spec.power?.electricKw.value ?? 0)} kWe menos ${num(m.spec.propulsion.hotelLoadKw.value)} kW del resto, valor de juego)` },
       { label: "Empuje total", value: `${num(d.thrustN, 1)} N` },
       { label: "Aceleración", value: `${num(m.accelerationMs2 * 1000, 3)} mm/s²` },
       { label: "Δv que queda", value: `${num(m.deltaV())} m/s` },

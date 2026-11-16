@@ -45,10 +45,11 @@ describe("Berthing the mothership at a station", () => {
     berthing.advance(1e5);
     // Sample the rim of both rings and the radiator tips.
     const l = m.spec.layout;
-    const R = m.spec.ring.floorRadiusM;
+    const R = m.spec.ring!.floorRadiusM;
     const pts: Vec3[] = [];
-    for (const z of [l.habRingZ, l.twinRingZ]) for (let k = 0; k < 16; k++) pts.push(new Vec3(R * Math.cos((k * Math.PI) / 8), R * Math.sin((k * Math.PI) / 8), z));
-    pts.push(new Vec3(l.radiator.innerX + l.radiator.spanM, 0, l.radiator.fromZ), new Vec3(-(l.radiator.innerX + l.radiator.spanM), 0, l.radiator.fromZ));
+    for (const z of [l.habRingZ!, l.twinRingZ!]) for (let k = 0; k < 16; k++) pts.push(new Vec3(R * Math.cos((k * Math.PI) / 8), R * Math.sin((k * Math.PI) / 8), z));
+    const w = l.radiator!;
+    pts.push(new Vec3(w.innerX + w.spanM, 0, w.fromZ), new Vec3(-(w.innerX + w.spanM), 0, w.fromZ));
     for (const p of pts) expect(station.clearance(m.toWorld(p))).toBeGreaterThan(10);
   });
 

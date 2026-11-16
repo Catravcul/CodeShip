@@ -1,7 +1,7 @@
 import type { Quat } from "@core/math/quat";
 import type { Vec3 } from "@core/math/vec3";
 import type { DockingTarget } from "@modules/mothership/domain/docking";
-import { continuousBurnDistance, type ContinuousBurnPlan } from "../domain/transfer";
+import { burnSeconds, continuousBurnDistance, type ContinuousBurnPlan } from "../domain/transfer";
 
 /** The mothership closing on a station's port at the end of a trip (the berthing use case). */
 export interface BerthRun {
@@ -18,6 +18,12 @@ export interface CarrierPort {
   readonly orientation: Quat;
   readonly thrustN: number;
   readonly thrusterCount: number;
+  /** What pushes it, for the trip's texts («propulsores eléctricos», «motores Raptor de vacío»). Default electric. */
+  readonly engineName?: string;
+  /** What its tanks hold («xenón», «metano y oxígeno»). Default xenon. */
+  readonly propellantName?: string;
+  /** Top speed of a hop of this length (a chemical ship coasts at it); none: it pushes all the way. */
+  cruiseFor?(distanceM: number): number;
   readonly massKg: number;
   readonly accelerationMs2: number;
   deltaV(): number;
@@ -50,7 +56,7 @@ export interface CarrierPort {
 /** Game value: the mothership's hours-long hops play in time-lapse, this many game seconds per real second (before time warp). */
 export const CARRIER_TIMELAPSE = 1000;
 
-export type CarrierPhase = "burn" | "flip" | "brake";
+export type CarrierPhase = "burn" | "flip" | "brake" | "coast";
 
 /**
  * The mothership flying a continuous-burn hop along a route (waypoints round the rocks), in
@@ -92,9 +98,17 @@ export class CarrierTrip {
   }
   get speedMS(): number {
     const T = this.plan.totalS;
-    return this.plan.accelMS2 * Math.min(this.t, Math.max(0, T - this.t));
+    return Math.min(this.plan.peakMS, this.plan.accelMS2 * Math.min(this.t, Math.max(0, T - this.t)));
   }
   get phase(): CarrierPhase {
+    const coast = this.plan.coastS ?? 0;
+    if (coast > 0) {
+      // Burn, coast (turning round at its end), brake.
+      const tb = burnSeconds(this.plan);
+      if (this.t < tb) return "burn";
+      if (this.t > this.plan.totalS - tb) return "brake";
+      return this.plan.totalS - tb - this.t < 0.02 * this.plan.totalS ? "flip" : "coast";
+    }
     const f = this.fraction;
     return Math.abs(f - 0.5) < 0.02 ? "flip" : f < 0.5 ? "burn" : "brake";
   }

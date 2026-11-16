@@ -16,6 +16,7 @@ import { buildRails, FloatingBody, motionLabel } from "./adapters/three/interior
 import { StepShow, type StepFrame } from "./adapters/three/interior/step-show";
 import { auditStep, clearOfScene, type StepAudit } from "./adapters/three/interior/step-audit";
 import type { StepAct, StepVisual } from "@modules/chores/domain/step-visual";
+import type { EclssRackModel, RackState } from "./adapters/three/eclss-racks";
 import { RootMenu } from "./ui/root-menu";
 import { ICON } from "./ui/icons";
 import { settings } from "./ui/settings-store";
@@ -70,6 +71,12 @@ export interface StationInteriorDeps {
   landerInHangar(): boolean;
   /** Look out at the dry dock through the window of the mothership's docking hatch (docs/design/dique-seco.md). */
   lookOut?(): void;
+  /**
+   * Life support (docs/design/soporte-vital.md): the readout shown on a rack's card while she looks at it
+   * (HTML, HUD style) and each rack's lamp. Its actions come through `actions`/`act` like the crew areas'.
+   */
+  readout?(f: Fixture): string | undefined;
+  rackState?(f: Fixture): { state: RackState; broken?: string };
 }
 
 /** Icon of each kind of fixture on its card. */
@@ -79,7 +86,8 @@ const ICON_OF = (f: Fixture, locked: boolean): string => {
   if (a.kind === "tripulacion") return { cocina: ICON.food, camarotes: ICON.bed, aseo: ICON.wash, ejercicio: ICON.exercise, esterilla: ICON.mat }[a.area];
   if (a.kind === "hangar" || a.kind === "bahia") return ICON.hangar;
   if (a.kind === "esclusa") return ICON.suit;
-  if (a.kind === "panel") return ICON.machine;
+  if (a.kind === "panel" || a.kind === "consola") return ICON.machine;
+  if (a.kind === "soporte-vital") return a.rack === "incendios" ? ICON.info : ICON.machine;
   return ICON.info;
 };
 
@@ -103,6 +111,8 @@ export class StationInteriorMode {
   private readonly viewBtn: HTMLButtonElement;
   private readonly toast: HTMLElement;
   private cardKey = "";
+  private readoutKey = "";
+  private framing: { eye: THREE.Vector3; target: THREE.Vector3; above: number } | null = null;
   /** A hop to a fixture asked by the task list or a door, and what to do on arrival. */
   private arrival: { poi?: string; point?: string; then?: () => void } | null = null;
   /** Sitting in lotus on the mat (the settings are open). */
@@ -144,7 +154,13 @@ export class StationInteriorMode {
     root: HTMLElement,
     public interior: StationInterior,
     private readonly deps: StationInteriorDeps,
+    /**
+     * Another 0 g interior on the same engine (Starship's decks): its own class prefix (so the station's
+     * selectors keep finding one card), the name on the HUD and the line said on coming in.
+     */
+    private readonly look: { readonly prefix?: string; readonly place?: string; readonly entered?: (from: PortUser) => string } = {},
   ) {
+    const P = look.prefix ?? "sti";
     this.scene.background = new THREE.Color(0x05070c);
     this.rooms = buildStationRooms(interior.plan);
     this.scene.add(this.rooms.group);
@@ -157,22 +173,22 @@ export class StationInteriorMode {
     this.scene.add(this.steps.root);
     this.steps.clearOf = clearOfScene(this.scene, [this.steps.root, this.rig]);
     this.body = new FloatingBody(this.rig);
-    this.walker = new Walker(root, { move: "sti-move", look: "sti-look", moveLabel: "Mover" });
+    this.walker = new Walker(root, { move: `${P}-move`, look: `${P}-look`, moveLabel: "Mover" });
     this.walker.arrowsLook = false;
     this.ui = document.createElement("div");
-    this.ui.className = "room-ui sti-ui hidden";
-    this.ui.innerHTML = `<div class="cab-where sti-hud"></div><div class="cab-machine sti-card hidden" role="region" aria-label="Lo que tienes delante"></div><div class="cab-toast sti-toast"></div>`;
+    this.ui.className = `room-ui ${P}-ui hidden`;
+    this.ui.innerHTML = `<div class="cab-where ${P}-hud"></div><div class="cab-machine ${P}-card hidden" role="region" aria-label="Lo que tienes delante"></div><div class="cab-toast ${P}-toast"></div>`;
     root.appendChild(this.ui);
-    this.hud = this.ui.querySelector(".sti-hud")!;
-    this.card = this.ui.querySelector(".sti-card")!;
-    this.toast = this.ui.querySelector(".sti-toast")!;
+    this.hud = this.ui.querySelector(`.${P}-hud`)!;
+    this.card = this.ui.querySelector(`.${P}-card`)!;
+    this.toast = this.ui.querySelector(`.${P}-toast`)!;
     // The same root icons as the lander's cabin and the bridge: view and tasks pinned.
-    this.menu = new RootMenu(this.ui, "cab-menu sti-menu", "Más", ICON.root);
-    this.viewBtn = this.menu.add({ className: "sti-view", icon: ICON.eye, label: "Vista: 1ª persona", key: "V", pinned: true }, () => {
+    this.menu = new RootMenu(this.ui, `cab-menu ${P}-menu`, "Más", ICON.root);
+    this.viewBtn = this.menu.add({ className: `${P}-view`, icon: ICON.eye, label: "Vista: 1ª persona", key: "V", pinned: true }, () => {
       this.thirdPerson = !this.thirdPerson;
       this.syncView();
     });
-    this.menu.add({ className: "sti-tasks", icon: ICON.tasks, label: "Tareas", key: "T", pinned: true }, () => this.deps.openTasks());
+    this.menu.add({ className: `${P}-tasks`, icon: ICON.tasks, label: "Tareas", key: "T", pinned: true }, () => this.deps.openTasks());
     this.syncView();
     this.card.addEventListener("click", (e) => {
       const b = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-act]");
@@ -366,6 +382,7 @@ export class StationInteriorMode {
     this.yaw = Math.atan2(-e.facing.x, -e.facing.z);
     this.pitch = from === "sonda" ? 0.05 : 0;
     this.resume();
+    if (this.look.entered) return this.say(this.look.entered(from));
     this.say(from === "sonda" ? "Entras desde el módulo de aterrizaje por el suelo del Nodo 2. Aquí no hay gravedad: el techo es «arriba» en toda la estación" : "Entras desde la nodriza por proa del Nodo 2. Aquí no hay gravedad: el techo es «arriba»");
   }
 
@@ -436,7 +453,7 @@ export class StationInteriorMode {
     this.suit.root.visible = false;
     this.camera.up.set(0, 1, 0);
     this.steps.frame(dt, this.camera, this.rig, this.avatar);
-    this.syncMachines();
+    this.syncMachines(dt);
     for (const sg of this.rooms.signs) sg.visible = false;
     return true;
   }
@@ -521,7 +538,7 @@ export class StationInteriorMode {
     const held = this.hop.holding(this.iva)?.poi;
     this.near = this.cycling > 0 ? undefined : held ? this.interior.fixture(held) : this.interior.fixtureNear(this.p);
     this.renderCard();
-    this.syncMachines();
+    this.syncMachines(dt);
     this.syncStore();
     this.placeCamera();
     this.fadeSigns();
@@ -579,6 +596,8 @@ export class StationInteriorMode {
       }
       case "tripulacion":
       case "hangar":
+      case "consola":
+      case "soporte-vital":
         return this.deps.actions(f);
       case "info":
         return [];
@@ -588,7 +607,7 @@ export class StationInteriorMode {
   /** Do one of a fixture's actions. */
   run(f: Fixture, id: string): void {
     const a = f.action;
-    if (a.kind === "tripulacion" || a.kind === "hangar") return this.deps.act(f, id);
+    if (a.kind === "tripulacion" || a.kind === "hangar" || a.kind === "consola" || a.kind === "soporte-vital") return this.deps.act(f, id);
     if (id === "ventana") return this.deps.lookOut?.();
     this.use(f, true);
   }
@@ -605,7 +624,9 @@ export class StationInteriorMode {
     const locked = acts.length > 0 && acts.every((x) => !x.enabled);
     const main = acts.findIndex((x) => x.enabled);
     const kbd = settings.value.keyboardHelp;
-    const html = `<div class="cm-head sti-head"><span class="sti-icon">${ICON_OF(f, locked)}</span><div><b>${esc(f.label)}</b><small>${esc(f.info)}</small></div></div>${
+    const P = this.look.prefix ?? "sti";
+    const readout = this.deps.readout?.(f);
+    const html = `<div class="cm-head ${P}-head"><span class="${P}-icon">${ICON_OF(f, locked)}</span><div><b>${esc(f.label)}</b><small>${esc(f.info)}</small></div></div>${readout !== undefined ? `<div class="sv-readout"></div>` : ""}${
       acts.length
         ? `<div class="cm-acts">${acts.map((x, i) => `<button data-act="${x.id}" ${x.enabled ? "" : "disabled"} class="${i === main ? "primary" : ""}">${esc(x.label)}${i === main && kbd ? " <kbd>Intro</kbd>" : ""}</button>`).join("")}</div>`
         : ""
@@ -614,6 +635,13 @@ export class StationInteriorMode {
     if (html !== this.cardKey) {
       this.card.innerHTML = html;
       this.cardKey = html;
+      this.readoutKey = "";
+    }
+    // The readout changes on its own, without rebuilding the card's buttons under her finger.
+    if (readout !== undefined && readout !== this.readoutKey) {
+      const el = this.card.querySelector<HTMLElement>(".sv-readout");
+      if (el) el.innerHTML = readout;
+      this.readoutKey = readout;
     }
   }
 
@@ -626,7 +654,7 @@ export class StationInteriorMode {
     }
     if (a.kind === "info") return this.say(`${f.label} (${this.interior.locationCode(f)}): ${f.info}`, 6);
     if (a.kind === "bahia") return this.deps.openBay();
-    if (a.kind === "tripulacion" || a.kind === "hangar") {
+    if (a.kind === "tripulacion" || a.kind === "hangar" || a.kind === "consola" || a.kind === "soporte-vital") {
       const main = this.deps.actions(f).find((x) => x.enabled);
       return main ? this.deps.act(f, main.id) : this.say(f.info, 5);
     }
@@ -663,7 +691,46 @@ export class StationInteriorMode {
     if (hit.distance <= 12) this.use(f, false);
   }
 
-  private syncMachines(): void {
+  /**
+   * While a repair is open (docs/design/soporte-vital.md, «Pasos visibles»): the camera stands back in the
+   * aisle, `back` m from the point toward where she is, and frames it `above` rad over the screen's centre,
+   * so the part and its step lamps show above the challenge sheet. `unframe` gives her view back.
+   */
+  frame(t: { x: number; y: number; z: number }, back = 3, above = 0.45): void {
+    const target = new THREE.Vector3(t.x, t.y, t.z);
+    const dir = new THREE.Vector3(this.p.x - t.x, 0, this.p.z - t.z);
+    if (dir.lengthSq() < 1e-6) dir.set(0, 0, 1);
+    dir.normalize();
+    let eye = target.clone().addScaledVector(dir, back);
+    for (let d = back; d > 0.4; d -= 0.1) {
+      eye = target.clone().addScaledVector(dir, d);
+      if (this.interior.fits(new Vec3(eye.x, eye.y, eye.z), 0.15, this.suited)) break;
+    }
+    this.framing = { eye, target, above };
+  }
+
+  unframe(): void {
+    this.framing = null;
+  }
+
+  /** A life-support rack's 3D model (for its repair's step visual). */
+  rack(fixtureId: string): EclssRackModel | undefined {
+    return this.rooms.racks.get(fixtureId);
+  }
+
+  private syncMachines(dt: number): void {
+    if (this.deps.rackState)
+      for (const [id, model] of this.rooms.racks) {
+        const f = this.interior.fixture(id);
+        if (!f) continue;
+        const st = this.deps.rackState(f);
+        const key = `${st.state}:${st.broken ?? ""}`;
+        if (model.group.userData.stateKey !== key) {
+          model.setState(st.state, st.broken);
+          model.group.userData.stateKey = key;
+        }
+      }
+    for (const model of this.rooms.racks.values()) model.tick(dt);
     const busy = this.deps.busy();
     const t = performance.now() / 1000;
     for (const [id, lamp] of this.rooms.lamps) {
@@ -734,6 +801,13 @@ export class StationInteriorMode {
   }
 
   private placeCamera(): void {
+    if (this.framing) {
+      this.camera.up.set(0, 1, 0);
+      this.camera.position.copy(this.framing.eye);
+      this.camera.lookAt(this.framing.target);
+      this.camera.rotateX(-this.framing.above);
+      return;
+    }
     const dir = this.lookDir();
     const p = new THREE.Vector3(this.p.x, this.p.y, this.p.z);
     const third = this.thirdPerson;
@@ -809,7 +883,8 @@ export class StationInteriorMode {
     const air = kpa > 1 ? `${Math.round(kpa)} kPa de aire` : "vacío";
     const suit = this.suited ? " · con traje" : "";
     const held = this.near && this.hop.holding(this.iva)?.poi === this.near.id ? { poi: this.near.label } : {};
-    const html = `<div class="sti-title">${v ? `${v.code} · ${esc(v.label)}` : "Estación"}</div><div class="sti-grav">0 g · ${air}${suit} · mirando a ${looking}</div><div class="sti-move-line">${esc(motionLabel(this.iva, held))}</div>`;
+    const P = this.look.prefix ?? "sti";
+    const html = `<div class="${P}-title">${v ? `${v.code} · ${esc(v.label)}` : (this.look.place ?? "Estación")}</div><div class="${P}-grav">0 g · ${air}${suit} · mirando a ${looking}</div><div class="${P}-move-line">${esc(motionLabel(this.iva, held))}</div>`;
     if (html !== this.hudKey) {
       this.hudKey = html;
       this.hud.innerHTML = html;

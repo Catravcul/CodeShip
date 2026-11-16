@@ -26,7 +26,8 @@ export const STEP_AREAS: Readonly<Record<ChoreKind, Area>> = {
   regar: { fallback: "regar", tint: "agua", remap: { verter: "regar" } },
   agitar: { fallback: "agitar", tint: "polen", remap: { tomar: "agitar" } },
   cosechar: { fallback: "cosechar", tint: "hojas", remap: { emplatar: "cosechar", tomar: "cosechar" } },
-  "curar-planta": { fallback: "revisar", tint: "hojas", remap: { verter: "regar", curar: "revisar" } },
+  // Cutting damaged leaves is pruning: the scissors at the plant, the leaf into the basket.
+  "curar-planta": { fallback: "revisar", tint: "hojas", remap: { verter: "regar", curar: "revisar", cortar: "cosechar" } },
   "alimentar-gato": FEED,
   "alimentar-perro": FEED,
   "alimentar-gallinas": { ...FEED, tint: "grano" },
@@ -65,18 +66,15 @@ export const STEP_AREAS: Readonly<Record<ChoreKind, Area>> = {
   "ayuda-acuario": { fallback: "programar", only: "programar" },
 };
 
-/** At most this many visuals for one solved exercise (an ordered list of steps acts out its first ones). */
-const MAX_PER_STEP = 4;
-
 /** Any chore: the verbs of its solved exercise's texts, through its area's table. */
 export const areaVisuals: StepActSource<Chore> = {
   acts(chore, index) {
     const ex = chore.exercises[index];
     if (!ex) return undefined;
     const area = STEP_AREAS[chore.kind];
-    const out = exerciseTexts(ex)
-      .slice(0, MAX_PER_STEP)
-      .map((text): StepAct => {
+    // One visual per block: «paso a paso» plays each as it is placed; a whole order sent at once queues
+    // them and the player (StepShow) keeps the last few, sped up.
+    const out = exerciseTexts(ex).map((text): StepAct => {
         const verb = classifyStep(text);
         const action = area.only ?? (verb ? (area.remap?.[verb] ?? verb) : area.fallback);
         return { action, place: "objetivo", ...(area.tint ? { tint: area.tint } : {}) };

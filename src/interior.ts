@@ -35,7 +35,7 @@ import type { SpinRing } from "@modules/gravity/domain/spin-gravity";
 import { GravityZones } from "./adapters/three/interior/zones";
 import { ICON } from "./ui/icons";
 import { settings } from "./ui/settings-store";
-import { galleyFrame, kitchenLayout, StepShow, type KitchenLayout, type StepFrame } from "./adapters/three/interior/step-show";
+import { galleyFrame, kitchenLayout, StepShow, type KitchenLayout, type KitchenSpot, type StepFrame } from "./adapters/three/interior/step-show";
 import { auditStep, type StepAudit } from "./adapters/three/interior/step-audit";
 import { choreVisuals } from "@modules/chores/application/step-visuals";
 import type { StepVisual } from "@modules/chores/domain/step-visual";
@@ -51,6 +51,8 @@ const DOG_COLORS = [0xd9a066, 0x2a2420, 0xf0e2c8];
 const CONTEXT = { recipes: RECIPES, yoga: YOGA_SEQUENCES, processes: PROCESSES, lessons: ANIMAL_LESSONS, workouts: WORKOUTS };
 /** What each solved step looks like (docs/design/vida-a-bordo.md, «Pasos visibles»). */
 const STEP_VISUALS = choreVisuals(CONTEXT);
+/** The galley spot (step-show.ts) of each machine of the galley and the mill corner. */
+const MACHINE_SPOT: Readonly<Record<string, KitchenSpot>> = { cocina: "encimera", molino: "molino", "procesador-soja": "procesador" };
 /** Game days per real second while walking around (a day every ~40 s). Paused during a chore. */
 const DAYS_PER_SECOND = 1 / 40;
 
@@ -837,7 +839,12 @@ export class Interior {
     if (chore.kind === "yoga") return undefined;
     const st = stationFor(chore);
     // The galley's spots from the room's own layout, through its transform (it may be drawn bigger: src/core/scale.ts).
-    if (st === "cocina" || st === "procesado") return galleyFrame((this.galley ??= kitchenLayout((v) => this.room.group.localToWorld(v))), look);
+    if (st === "cocina" || st === "procesado") {
+      const k = (this.galley ??= kitchenLayout((v) => this.room.group.localToWorld(v)));
+      // A machine's own chore (a repair) happens at that machine's front, not at the station's look point between two.
+      const spot = chore.machine ? k.spots[MACHINE_SPOT[chore.machine] ?? "encimera"] : undefined;
+      return galleyFrame(k, spot ?? look);
+    }
     const dir = new THREE.Vector3(look.x - stand.x, 0, look.z - stand.z);
     const d = dir.length();
     if (d < 1e-3) return undefined;

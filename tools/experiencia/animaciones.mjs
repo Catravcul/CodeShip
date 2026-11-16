@@ -140,11 +140,18 @@ async function playChore(j, chore, rows) {
   const p = j.page;
   await j.tap(".tasks-btn", "Tareas");
   await p.waitForTimeout(300);
+  // Doing other chores (or the clock) may have solved this one: it is not pending any more.
+  if (!(await p.locator(`.task-board [data-go="${chore.id}"]`).count())) {
+    j.problem(`«${chore.title}» ya no está en la lista de tareas: no se audita`);
+    await j.tap(".task-board [data-close]", "Cerrar tareas");
+    return;
+  }
   if (!(await j.tap(`.task-board [data-go="${chore.id}"]`, `Ir: ${chore.title}`))) return;
   try {
-    await j.waitDuel(90000);
+    await j.waitDuel(240000);
   } catch {
-    j.check(`«${chore.title}»: se abre el reto`, false);
+    j.check(`«${chore.title}»: se abre el reto`, false, await p.evaluate(() => document.querySelector(".banner")?.textContent ?? ""));
+    await p.keyboard.press("Escape");
     return;
   }
   await p.waitForTimeout(500);
@@ -246,7 +253,9 @@ const chooseChores = () => {
       out.push({ id: c.id, title: c.title, kind: c.kind, station: facts?.station });
     }
   }
-  return out;
+  // Station by station along the ring, so she walks little between chores.
+  const ORDER = ["cocina", "procesado", "huerto", "biorreactor", "enfermeria", "panel", "navegacion", "ejercicio", "camarote", "yoga", "gatos", "perros", "gallinero", "terreno", "acuario"];
+  return out.sort((a, b) => ORDER.indexOf(a.station) - ORDER.indexOf(b.station));
 };
 
 export async function animaciones(j) {

@@ -112,10 +112,10 @@ export async function aterrizajePrograma(j) {
   await j.shot("sonda-bajando");
   await p.waitForFunction(() => window.codeship.probeLanding.status !== "flying", null, { timeout: 300000 });
   const end = await p.evaluate(() => [window.codeship.probeLanding.status, window.codeship.probe.status]);
-  j.check("la sonda se posa sola y las anclas sujetan", end[0] === "landed" && end[1] === "posada", end.join(" / "));
+  j.check("Juventas se posa sola (sin anclas: rebota y se asienta)", end[0] === "landed" && end[1] === "posada", end.join(" / "));
   await p.waitForTimeout(600);
   const msg = (await j.texts(".pr-msg.on"))[0] ?? "";
-  j.check("la consola dice a cuánto del sitio se posó", /Posada por programa|anclas sujetan/.test(msg), msg);
+  j.check("la consola dice a cuánto del sitio se posó y cuántas veces rebotó", /Posada por programa|rebota/.test(msg), msg);
   await j.shot("sonda-posada");
 }
 

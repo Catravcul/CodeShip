@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Vec3 } from "@core/math/vec3";
 import { Quat } from "@core/math/quat";
 import { Ship } from "@modules/ship/domain/ship";
-import { explorerDesign } from "@modules/ship/data/explorer";
+import { lunarModuleDesign } from "@modules/ship/data/apollo-lm";
 import { FlightComputer, NO_INPUT } from "@modules/flight/application/flight-computer";
 import { RigidBodyState } from "@modules/flight/domain/rigid-body";
 import { IDSS_CONTACT_LIMITS, NODRIZA, UNDOCK_PUSH_MS } from "../data/mothership";
@@ -10,7 +10,7 @@ import { Mothership } from "../domain/mothership";
 import { Docking, type DockingEvent } from "./docking";
 
 const setup = (offsetFromPort: Vec3, q = Quat.IDENTITY, v = Vec3.ZERO) => {
-  const design = explorerDesign();
+  const design = lunarModuleDesign();
   const mothership = Mothership.withProbeDockedAt(NODRIZA, new Vec3(0, 0, 5000), Quat.IDENTITY, design.dockingPort!);
   const docked = mothership.dockedPose(design.dockingPort!);
   const flight = new FlightComputer(Ship.create(design), new RigidBodyState(docked.position.add(offsetFromPort), v, q, Vec3.ZERO), { gravitySources: [] });

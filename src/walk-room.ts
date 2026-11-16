@@ -271,6 +271,8 @@ export abstract class WalkRoom<Id extends string> {
   screenPoint(id: Id): { x: number; y: number } {
     const h = this.hits.find((x) => x.userData.station === id)!;
     const v = h.position.clone().project(this.camera);
+    // Behind the camera the projection wraps round onto the screen: report it off screen.
+    if (v.z > 1) return { x: -1, y: -1 };
     return { x: ((v.x + 1) / 2) * window.innerWidth, y: ((1 - v.y) / 2) * window.innerHeight };
   }
 

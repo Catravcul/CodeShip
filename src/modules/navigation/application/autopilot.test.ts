@@ -2,18 +2,20 @@ import { describe, expect, it } from "vitest";
 import { Vec3 } from "@core/math/vec3";
 import { Ship } from "@modules/ship/domain/ship";
 import { explorerDesign } from "@modules/ship/data/explorer";
+import { lunarModuleDesign } from "@modules/ship/data/apollo-lm";
+import type { ShipDesign } from "@modules/ship/domain/ship";
 import { Asteroid } from "@modules/celestial/domain/asteroid";
 import { BENNU } from "@modules/celestial/data/bennu";
 import { POLANA_MEMBERS } from "@modules/celestial/data/nueva-polana";
 import { FlightComputer, NO_INPUT } from "@modules/flight/application/flight-computer";
 import { RigidBodyState } from "@modules/flight/domain/rigid-body";
 import { planTransfer } from "../domain/transfer";
-import { TripAutopilot, type AutopilotPhase } from "./autopilot";
+import { thrustAxis, TripAutopilot, type AutopilotPhase } from "./autopilot";
 
-const fly = (target: Asteroid, from: Vec3, waypoints: Vec3[] = [], maxS = 3000) => {
-  const ship = Ship.create(explorerDesign());
+const fly = (target: Asteroid, from: Vec3, waypoints: Vec3[] = [], maxS = 3000, design: ShipDesign = explorerDesign()) => {
+  const ship = Ship.create(design);
   const fc = new FlightComputer(ship, RigidBodyState.at(from), { gravitySources: [target], target });
-  const accel = 490 / ship.massKg;
+  const accel = ship.preview({ mainThrottle: 1, translation: Vec3.ZERO, rotation: Vec3.ZERO }).forceBody.length() / ship.massKg;
   const plan = planTransfer({ distanceM: target.position.sub(from).length() - target.meanRadiusM - 300, accelMS2: accel, deltaVAvailableMS: ship.mainDeltaV() });
   const ap = new TripAutopilot(ship, target, waypoints, plan.cruiseMS);
   fc.engage(ap);
@@ -53,6 +55,21 @@ describe("TripAutopilot", () => {
     const h = fc.telemetry().distanceToSurface;
     expect(h).toBeGreaterThan(200);
     expect(h).toBeLessThan(400);
+  }, 30_000);
+
+  it("VUE-11 flies the Apollo LM on its descent engine: it turns its belly (thrust up through it) to the burn, then faces Bennu", () => {
+    expect(thrustAxis(Ship.create(lunarModuleDesign()))).toEqual(Vec3.Y);
+    expect(thrustAxis(Ship.create(explorerDesign()))).toEqual(new Vec3(0, 0, -1));
+    const bennu = new Asteroid(BENNU, Vec3.ZERO);
+    const { fc, ap, phases, ship } = fly(bennu, new Vec3(1500, 800, 6000), [], 3000, lunarModuleDesign());
+    expect(ap.arrived).toBe(true);
+    expect(phases.has("burn")).toBe(true);
+    const h = fc.telemetry().distanceToSurface;
+    expect(h).toBeGreaterThan(150);
+    expect(h).toBeLessThan(400);
+    expect(fc.state.velocity.length()).toBeLessThan(0.3);
+    // A few km cost the LM a few m/s of its ≈2,5 km/s.
+    expect(ship.mainDeltaV()).toBeGreaterThan(2000);
   }, 30_000);
 
   it("gives the controls back as soon as the pilot touches them", () => {

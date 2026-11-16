@@ -45,10 +45,14 @@ export type LanderPlace = "puerto" | "cbm";
 export class LanderBerth {
   place: LanderPlace = "puerto";
 
-  /** The arm berths it on the CBM; why not, if it cannot. */
-  berth(atPort: boolean): string | undefined {
+  /**
+   * The arm berths it on the CBM; why not, if it cannot. `arm`: the craft's mass now and what Canadarm2
+   * can move (116 t): the Apollo LM with its propellant is about 15 t.
+   */
+  berth(atPort: boolean, arm?: { readonly massKg: number; readonly maxKg: number }): string | undefined {
     if (this.place === "cbm") return "El módulo ya está atracado en el CBM";
     if (!atPort) return "El módulo no está acoplado a la estación: acóplalo en su IDA y el brazo lo atracará en el CBM";
+    if (arm && arm.massKg > arm.maxKg) return `Pesa ${Math.round(arm.massKg / 1000)} t: Canadarm2 mueve como mucho ${Math.round(arm.maxKg / 1000)} t`;
     this.place = "cbm";
     return undefined;
   }

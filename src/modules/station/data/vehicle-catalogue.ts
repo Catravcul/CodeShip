@@ -2,6 +2,8 @@ import type { Sourced } from "@core/units";
 import type { VehicleEntry, VehicleLook } from "../domain/vehicle-catalogue";
 import { blueprintForPart } from "./blueprints";
 import { NODRIZA_COUNTS, VEHICLE_SRC as S } from "./catalogue-components";
+import { LM_ADAPTATIONS } from "@modules/ship/data/apollo-lm";
+import { PROBE_SRC } from "@modules/ship/data/probe";
 
 /**
  * The vehicle catalogue (docs/design/naves-reales.md, research in docs/research/naves-reales.md):
@@ -180,26 +182,29 @@ const ENTRIES: readonly VehicleEntry[] = [
     name: "Módulo lunar Apolo",
     kind: "aterrizador",
     status: "volado",
-    statusNote: "Seis alunizajes, de 1969 a 1972",
+    statusNote: "Seis alunizajes, de 1969 a 1972. Es el módulo de aterrizaje del juego",
     programme: "Apolo (NASA)",
     launch: "1969",
     specs: {
       massKg: { value: 4280, source: S.lm, note: "En seco, versión estándar (15 200 kg al lanzar)" },
       sizeM: [7.04, 9.4, 9.4],
-      crew: "2; cabina presurizada de 6,7 m³",
+      crew: "2 de pie; cabina presurizada de 6,7 m³ (4,5 habitables)",
       gravity: "Ninguna (1/6 g en la Luna)",
-      propulsion: "Motor de descenso regulable de 45 kN y de ascenso de 16 kN (311 s); 16 RCS de 440 N",
+      propulsion: "Motor de descenso regulable de 45 kN (10–60 %, 311 s) y de ascenso de 16 kN (311 s); 16 RCS de 440 N (290 s) en cuatro grupos",
     },
     lines: [
       { partId: "plata-zinc-lm", count: 1, role: "baterías de la etapa de ascenso" },
       { partId: "lm-cuerpo", count: 1, role: "etapas de ascenso y descenso" },
+      { partId: "adaptador-idss-lm", count: 1, role: "acople IDSS en el techo (licencia)" },
     ],
-    sources: [S.lm],
+    sources: [S.lm, "https://ntrs.nasa.gov/api/citations/19720013195/downloads/19720013195.pdf"],
     gameplay: {
-      gains: "El módulo tripulado real más pequeño que se ha posado: cabina de verdad para dos",
-      losses: "Pesa 3,7 veces lo que la Explorer en seco (4280 frente a 1166 kg): los RCS empujan menos y cada salida gasta más",
+      gains: "El módulo tripulado real más pequeño que se ha posado: cabina de verdad para dos, motor de descenso que basta para volver de un asteroide sin separar etapas",
+      losses: "Pesa 3,7 veces lo que la Explorer en seco (4280 frente a 1166 kg) y 15 t llenas: los RCS empujan menos; su soporte vital dura unas 75 h",
     },
     replaces: "modulo",
+    playerCraft: "modulo",
+    adaptations: LM_ADAPTATIONS,
   },
   {
     id: "blue-moon-mk1",
@@ -269,7 +274,7 @@ const ENTRIES: readonly VehicleEntry[] = [
       { partId: "modulo-sistemas-fijos", count: 1, role: "estructura, acople, patas, aviónica y soporte vital" },
     ],
     sources: ["https://en.wikipedia.org/wiki/R-4D", S.lm],
-    gameplay: { gains: "Es la que hay: ligera y ágil", losses: "No cumple la regla «real o en desarrollo»: 1166 kg en seco, la mitad que la etapa de ascenso del módulo lunar" },
+    gameplay: { gains: "Era la del juego hasta 2026-11-16: ligera y ágil", losses: "No cumple la regla «real o en desarrollo»: 1166 kg en seco, la mitad que la etapa de ascenso del módulo lunar. El módulo lunar la sustituye" },
     replaces: "modulo",
   },
   // --- Probes -----------------------------------------------------------------------------------
@@ -278,14 +283,36 @@ const ENTRIES: readonly VehicleEntry[] = [
     name: "Juventas (cubesat de Hera, ESA)",
     kind: "sonda",
     status: "volado",
-    statusNote: "En vuelo dentro de Hera (lanzada el 7-10-2024); Hera frenó ante Didymos en octubre de 2026 y suelta los cubesats en noviembre. Intentará posarse en Dimorfo al final",
+    statusNote: "En vuelo dentro de Hera (lanzada el 7-10-2024); Hera frenó ante Didymos en octubre de 2026 y suelta los cubesats en noviembre. Intentará posarse en Dimorfo al final. Es la sonda del juego",
     programme: "Hera (ESA)",
     launch: "2024",
-    specs: { massKg: { value: 12, source: S.juventas, note: "Con su propelente" }, sizeM: [0.37, 0.23, 0.1], crew: "Sin tripulación", gravity: "Ninguna", propulsion: "Gas frío" },
-    lines: [{ partId: "juventas", count: 1, role: "cubesat completo" }],
-    sources: [S.juventas, S.hera],
-    gameplay: { gains: "La sonda del juego ya se inspira en ella: cambiarla no cuesta nada", losses: "Nada: su gas frío da aún menos Δv que la sonda de ahora" },
+    specs: {
+      massKg: { value: 12, source: S.juventas, note: "Con su propelente (10,95 kg en SpaceOps 2025)" },
+      sizeM: [0.37, 0.23, 0.1],
+      crew: "Sin tripulación",
+      gravity: "Ninguna",
+      propulsion: "Gas frío: 8 propulsores de 1 mN (50 s); 4 ruedas de reacción",
+    },
+    lines: [
+      { partId: "juventas-bus", count: 1, role: "bus 6U-XL" },
+      { partId: "jura", count: 1, role: "radar JuRa" },
+      { partId: "grass", count: 1, role: "gravímetro GRASS" },
+      { partId: "juventas-gas-frio", count: 1, role: "propulsión de gas frío" },
+      { partId: "bateria-juventas", count: 1, role: "batería" },
+    ],
+    sources: [S.juventas, S.hera, PROBE_SRC.spaceOps, PROBE_SRC.landing],
+    gameplay: {
+      gains: "La sonda real que se posará en un asteroide sin anclas: radar, gravímetro y acelerómetros que graban sus rebotes",
+      losses: "Su gas frío da unos 5 m/s de Δv con 1 mN: los viajes son de horas y se posa a centímetros por segundo",
+    },
     replaces: "sonda",
+    playerCraft: "sonda",
+    adaptations: [
+      { what: "Sin anclas: rebota y se asienta", reality: "real", why: "Juventas no lleva anclas; toca a centímetros por segundo y sus acelerómetros graban los rebotes. El juego calcula los rebotes en vez de volarlos" },
+      { what: "Butano: 122 g", reality: "licencia", why: "La ESA no publica la carga de Juventas: se toma la de un módulo NanoProp de GomSpace" },
+      { what: "Batería de 200 Wh", reality: "licencia", why: "No publicada: la de MASCOT (200 Wh en unas 16 h)" },
+      { what: "Dos por nodriza y salen por la Bishop", reality: "real", why: "Hera lleva dos cubesats (Juventas y Milani); en la estación salen por la esclusa Bishop como los cubesats de la ISS" },
+    ],
   },
   {
     id: "dart",
@@ -351,25 +378,6 @@ const ENTRIES: readonly VehicleEntry[] = [
     lines: [{ partId: "psyche-cuerpo", count: 1, role: "sonda completa" }],
     sources: [S.psyche],
     gameplay: { gains: "La primera Hall en el espacio profundo: el mismo tipo de motor que la nodriza", losses: "Grande para una sonda de bolsillo" },
-    replaces: "sonda",
-  },
-  {
-    id: "codeship-sonda",
-    name: "Sonda de Codeship (la del juego)",
-    kind: "sonda",
-    status: "inventado",
-    statusNote: "Bus tipo Juventas con el módulo MPS-120XW (en producción, sin vuelo), la batería de MASCOT y anclas como las de Philae",
-    programme: "Ninguno",
-    launch: "No existe",
-    specs: { sizeM: [0.23, 0.21, 0.37], crew: "Sin tripulación", gravity: "Ninguna", propulsion: "MPS-120XW: 4 propulsores de hidracina" },
-    lines: [
-      { partId: "bus-6u-xl", count: 1, role: "bus" },
-      { partId: "mps-120xw", count: 1, role: "propulsión" },
-      { partId: "bateria-200wh", count: 1, role: "batería" },
-      { partId: "anclas", count: 1, role: "anclas" },
-    ],
-    sources: [S.juventas],
-    gameplay: { gains: "La que hay", losses: "Combina piezas: no es un vehículo real" },
     replaces: "sonda",
   },
   // --- Stations ---------------------------------------------------------------------------------
@@ -544,10 +552,16 @@ const LOOKS: Readonly<Record<string, VehicleLook>> = {
     images: [S.bishop],
   },
   "apollo-lm": {
-    exterior: "Etapa de descenso octogonal dorada con cuatro patas (9,4 m de envergadura) y etapa de ascenso angulosa con dos ventanas triangulares, escotilla delantera y de techo, y cuatro grupos de RCS",
-    interior: "Cabina de 6,7 m³ (4,5 habitables) para dos de pie, sin asientos; hamacas para dormir en la Luna",
-    lifeSupport: "Abierto: O₂ en tanques, CO₂ con cartuchos de hidróxido de litio, calor por un sublimador de agua; baterías de plata-zinc",
+    exterior: "Etapa de descenso octogonal dorada (4,22 m, 3,23 m de alto) con cuatro patas (9,4 m de envergadura) y la tobera del motor de descenso abajo; etapa de ascenso angulosa (4,29 × 4,04 × 2,83 m) con dos ventanas triangulares, escotilla delantera y de techo, y cuatro grupos de RCS a 45°",
+    interior: "Cabina de 6,7 m³ (4,5 habitables) para dos de pie, sin asientos: el comandante a la izquierda y el piloto a la derecha, sujetos con cables; paneles 1 y 2 delante, el 3 en medio, el ordenador (DSKY) abajo; disyuntores a los lados; el ECS y los cartuchos de LiOH detrás, a la derecha; la tapa del motor de ascenso en el suelo de atrás; escotilla de techo para acoplar; hamacas para dormir",
+    lifeSupport: "Abierto: O₂ en un tanque de descenso de 48 lb (21,8 kg) y dos de ascenso; CO₂ con cartuchos de hidróxido de litio; agua: 151 kg en descenso y 2 × 19,3 kg en ascenso (beber y el sublimador que enfría); baterías de plata-zinc. Unas 75 h en Apolo 15–17",
     images: [S.lm],
+  },
+  juventas: {
+    exterior: "Caja de 37 × 23 × 10 cm con paneles solares plegados, cuatro antenas de radar de 1,5 m en cruz y toberas de gas frío; sin patas ni anclas",
+    interior: "No tiene: es un cubesat",
+    lifeSupport: "Ninguno",
+    images: [S.juventas],
   },
   "codeship-explorer": {
     exterior: "Casco de 3 × 2 × 5 m con cúpula, cuatro patas, motor HiPAT en la popa y 24 RCS en las esquinas; puerto de acople en el techo",

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Quat } from "@core/math/quat";
 import { Vec3 } from "@core/math/vec3";
 import { Ship } from "@modules/ship/domain/ship";
-import { explorerDesign } from "@modules/ship/data/explorer";
+import { lunarModuleDesign } from "@modules/ship/data/apollo-lm";
 import { Asteroid } from "@modules/celestial/domain/asteroid";
 import { BENNU } from "@modules/celestial/data/bennu";
 import { NUEVA_POLANA, POLANA_MEMBERS } from "@modules/celestial/data/nueva-polana";
@@ -28,7 +28,7 @@ const make = (opts: { undocked?: Vec3 } = {}) => {
   const bennu = new Asteroid(BENNU, Vec3.ZERO);
   const member = new Asteroid(POLANA_MEMBERS[2]!, new Vec3(-9000, -2500, 3000));
   const region = new Region(NUEVA_POLANA, [bennu, member], []);
-  const ship = Ship.create(explorerDesign());
+  const ship = Ship.create(lunarModuleDesign());
   const attitude = Quat.fromAxisAngle(Vec3.Y, 0.2);
   const flight = new FlightComputer(ship, RigidBodyState.at(opts.undocked ?? start).withOrientation(attitude), { gravitySources: region.asteroids, target: bennu });
   const mothership = Mothership.withProbeDockedAt(NODRIZA, start, attitude, ship.design.dockingPort!);

@@ -7,7 +7,7 @@ import { Quat } from "@core/math/quat";
 import { Vec3 } from "@core/math/vec3";
 import { Ship } from "@modules/ship/domain/ship";
 import { explorerDesign } from "@modules/ship/data/explorer";
-import { PROBE_BATTERY_WH, PROBE_LOAD_W, PROBES_ON_BOARD, probeDesign } from "@modules/ship/data/probe";
+import { PROBE_BATTERY_WH, PROBE_LOAD_W, PROBES_ON_BOARD, probeDesign, PROBE_STEP_S } from "@modules/ship/data/probe";
 import { Asteroid } from "@modules/celestial/domain/asteroid";
 import { BENNU } from "@modules/celestial/data/bennu";
 import { NUEVA_POLANA, POLANA_MEMBERS } from "@modules/celestial/data/nueva-polana";
@@ -33,7 +33,7 @@ function probeWorld() {
   const mothership = Mothership.withProbeDockedAt(NODRIZA, start, Quat.IDENTITY, lander.design.dockingPort!);
   const bay = () => RigidBodyState.at(mothership.position.add(mothership.orientation.rotate(BAY_BODY))).withOrientation(mothership.orientation);
   const probe = new ProbeOps(
-    (serial, timeS) => new FlightComputer(Ship.create(probeDesign(serial)), bay(), { gravitySources: region.asteroids, target: member, startTimeS: timeS }),
+    (serial, timeS) => new FlightComputer(Ship.create(probeDesign(serial)), bay(), { stepS: PROBE_STEP_S, gravitySources: region.asteroids, target: member, startTimeS: timeS }),
     bay,
     { probes: PROBES_ON_BOARD, batteryWh: PROBE_BATTERY_WH, loadW: PROBE_LOAD_W },
   );

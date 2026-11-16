@@ -77,6 +77,8 @@ export interface DescentSketch {
   readonly touchdownMs: number;
   /** Braking acceleration of the curve (RCS × share), m/s². */
   readonly brakeMs2: number;
+  /** It has anchors (the LM's legs); without them (Juventas) it bounces and settles. Default true. */
+  readonly anchors?: boolean;
 }
 
 /** Five sketches for the five landing challenges: site, drift, descent curve, final braking, anchors. */
@@ -115,6 +117,8 @@ export function landingSketch(d: DescentSketch): SketchStep[] {
     },
     { caption: `✓ Perfil de descenso: hasta ${num(d.maxDescentMs, 1)} m/s, frenando con el RCS`, items: [{ kind: "line", points: curve, tone: "plan" }] },
     { caption: `✓ Frenado final a ${num(d.flareM)} m: ${num(d.touchdownMs, 2)} m/s`, items: [{ kind: "ring", centre: flare, normal: d.up, radiusM: d.siteRadiusM * 0.6, tone: "brake" }] },
-    { caption: "✓ Anclas listas: al tocar, se clavan", items: [{ kind: "ring", centre: d.site, normal: d.up, radiusM: d.siteRadiusM, tone: "ok" }, ...anchors] },
+    d.anchors === false
+      ? { caption: "✓ Sin anclas: al tocar rebota y se asienta; los acelerómetros lo graban", items: [{ kind: "ring", centre: d.site, normal: d.up, radiusM: d.siteRadiusM, tone: "ok" }] }
+      : { caption: "✓ Anclas listas: al tocar, se clavan", items: [{ kind: "ring", centre: d.site, normal: d.up, radiusM: d.siteRadiusM, tone: "ok" }, ...anchors] },
   ];
 }

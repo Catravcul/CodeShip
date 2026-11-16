@@ -85,7 +85,7 @@ Hay además un **refugio de agua** contra las tormentas solares y la **cuenta de
 
 En la Starship, `base-nodriza-real` los pone en su distribución con su propio `LifeSupportConfig` (614 m³).
 
-**Quién está a bordo.** La estación y la Starship van con el mismo reloj. Cada una cuenta solo la tripulación que lleva dentro: Doménica está en una sola, o en el módulo (`crewIn` en `main.ts`). Un vehículo vacío sigue con sus máquinas en marcha, pierde aire por el casco y puede tener averías, pero nadie respira, come ni bebe en él. Los síntomas solo salen del aire y el agua del vehículo donde está ella (SV-12, SV-13).
+**Quién está a bordo.** La estación y la Starship van con el mismo reloj. Cada una cuenta solo la tripulación que lleva dentro: Doménica está en una sola, o en el módulo (`crewIn` en `main.ts`). Un vehículo vacío sigue con sus máquinas en marcha, pierde aire por el casco y puede tener averías, pero nadie respira, come ni bebe en él. Los síntomas solo salen del aire y el agua del vehículo donde está ella (SV-12, SV-13). El módulo tiene su propio soporte vital, el ECS de circuito abierto del LM: O₂, agua del sublimador, cartuchos de LiOH que se cambian a mano y baterías (SV-14, [modulo-lunar-juventas.md](modulo-lunar-juventas.md)).
 
 ## En el juego
 

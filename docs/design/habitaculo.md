@@ -35,30 +35,29 @@ Datos en `src/modules/lander-cabin/data/cabin.ts` (`CABIN_SOURCES`, `LANDER_CABI
 máquina más cercana, camino que rodea los asientos, qué ofrece cada máquina) están en
 `src/modules/lander-cabin/domain/cabin.ts`.
 
-### Tamaño: más grande que una cápsula real
+### Tamaño: la cabina real del LM y la capa de presentación
 
-La regla de 2 m entre interactuables ([escala.md](escala.md), `src/core/spacing.ts`) vale ahora en todas las
-zonas tal como se juegan, y el habitáculo se dibuja a 1,5 como el puente. En la cápsula real, sus cinco máquinas
-estaban a 0,55–1,1 m unas de otras. A 1,5 hacen falta 1,34 m reales entre cada par, así que **la cabina se alargó
-1,93 m hacia popa** (`CABIN_DEPARTURE` en `src/modules/lander-cabin/data/cabin.ts`):
+Desde la rama `catalogo-montaje` el habitáculo es la cabina del **módulo lunar Apolo** a tamaño real
+(`LANDER_CABIN_REAL` en `src/modules/lander-cabin/data/cabin.ts`, [modulo-lunar-juventas.md](modulo-lunar-juventas.md)):
+6,7 m³ presurizados, 4,5 m³ habitables y 2,34 m de alto. Ya no hay licencia de tamaño (`CABIN_DEPARTURE` desapareció).
 
-| | Cápsula real (la que se pilota) | Habitáculo del juego |
-| --- | --- | --- |
-| Suelo libre | 1,9 × 1,42 m | 1,9 × 3,35 m (2,85 × 5,0 m dibujados) |
-| Volumen presurizado | ≈ 8 m³ | ≈ 16 m³ |
-| Habitable | ≈ 5,5 m³ | ≈ 12 m³ |
-| Referencias | Apolo LM 4,5 m³ habitables, Orion 8,9 m³, Crew Dragon 9,3 m³ presurizados | Más que Dragon y Orion: es una licencia, como la ventana delantera |
+| Máquina | Dónde está en el LM |
+| --- | --- |
+| Puesto del comandante (pilotar) | De pie, a babor, bajo su ventana triangular, con arneses y apoyabrazos |
+| Mente del asteroide (ficción) | En el puesto del piloto del LM, a estribor |
+| Escotilla delantera (EVA) | Baja, entre los dos puestos (0,81 × 0,81 m) |
+| Escotilla de acople | En el techo de la sección media, sobre la cubierta del motor de ascenso (adaptador IDSS, licencia) |
+| Panel del ECS | A babor de la sección media: O₂, agua, cartuchos de LiOH y CO₂ |
+| Esterilla | A estribor de la sección media |
 
-Las máquinas van en zigzag de proa a popa, cada una a 2 m o más de las demás tal como se juega:
+La regla de 2 m la cumple la **capa de presentación** (`src/core/presentation.ts`), no un retoque a mano:
 
-1. La consola de la mente, en el extremo de estribor de la consola.
-2. El asiento del piloto, a babor.
-3. La esterilla, detrás del asiento de la tripulación.
-4. La escotilla EVA, en la pared de babor.
-5. La consola de acople, bajo la escotilla del techo, ahora al fondo.
+- con «Separación: Amplia», `spreadLayout` abre el plano entero (suelo, cubierta del motor, máquinas y pasillos)
+  por un mismo factor (`CABIN_SPREAD`, unos 2,3 a escala 1,5) hasta que ningún par queda a menos de 2 m;
+- con «Separación: Real», la cabina queda como la del LM.
 
-El traje, el aseo, los filtros de CO₂ y las bolsas van con el mamparo de popa. Al pilotar, la cabina es la cápsula
-real (`FLIGHT_COCKPIT`).
+Las alturas y el tamaño de los apoyabrazos y de la esterilla no cambian. Al pilotar, la vista es aún la
+cápsula genérica (`FLIGHT_COCKPIT`, pendiente).
 
 ## Ajustes generales (solo en una esterilla)
 

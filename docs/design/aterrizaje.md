@@ -47,7 +47,7 @@ Un recuadro pequeño, en monoespaciada y con mucho contraste, solo en la zona de
 2. *Completar* la deriva: el asteroide gira y el suelo bajo la nave pasa a g m/s; la velocidad lateral correcta es la del suelo.
 3. *Predecir* la velocidad máxima de bajada: vMax = √(2·a·0,5·h) con la aceleración real del RCS.
 4. *Reparar* el frenado final: «velocidad = 0,5» rebota; la buena es 0,04 m/s (< 0,10, las patas aguantan).
-5. *Especificar* la orden del toque: «al tocar a menos de 0,10 m/s con la panza a menos de 30°, dispara las anclas de rosca (sonda) / ancla las patas (módulo), apaga los propulsores; si rebota, para y avísame».
+5. *Especificar* la orden del toque: «al tocar a menos de 0,10 m/s con la panza a menos de 30°, deja que los rebotes se apaguen y graba los acelerómetros (sonda: Juventas no tiene anclas) / ancla las patas (módulo), apaga los propulsores; si rebota, para y avísame».
 
 **Los fallos hacen un programa menos preciso, no un choque** (valores de juego en `LANDING_PROGRAM`):
 
@@ -58,9 +58,9 @@ Un recuadro pequeño, en monoespaciada y con mucho contraste, solo en la zona de
 | 2 | 0,16 m/s | 1,6 radios al lado | **rebota** sin daño (0,10–1 m/s); «vuelve a programarlo o pósala a mano» |
 | 3 | — | — | el programa no carga: mandos manuales |
 
-**Guía de descenso** (`navigation/application/landing-guidance.ts`): solo RCS (con la panza al suelo el motor principal empuja de lado). El asistente de aterrizaje del ordenador de vuelo nivela la panza; la guía sigue una velocidad deseada: sobre el sitio a min(0,5 m/s, √(2·a·d), d/6 s), y hacia abajo solo con la panza a menos de 12° y dentro de un cono sobre el sitio, por la curva min(vMax, toque + √(2·a·0,5·(h − 3 m))), con los últimos 3 m a la velocidad de toque (una «puerta baja» como la de Apollo, a escala). Devuelve los mandos al anclar o tras un rebote. Módulo: vMax 1,5 m/s; sonda: 0,6 m/s (su RCS da unos 0,03 m/s²).
+**Guía de descenso** (`navigation/application/landing-guidance.ts`): solo RCS (con la panza al suelo el motor principal empuja de lado). El asistente de aterrizaje del ordenador de vuelo nivela la panza; la guía sigue una velocidad deseada: sobre el sitio a min(0,5 m/s, √(2·a·d), d/6 s), y hacia abajo solo con la panza a menos de 12° y dentro de un cono sobre el sitio, por la curva min(vMax, toque + √(2·a·0,5·(h − 3 m))), con los últimos 3 m a la velocidad de toque (una «puerta baja» como la de Apollo, a escala). Devuelve los mandos al anclar o tras un rebote. Módulo (el LM, [modulo-lunar-juventas.md](modulo-lunar-juventas.md)): vMax 1,5 m/s y toque a 0,04 m/s con su RCS de 16 × 440 N (el DPS al 10 % ya empujaría 0,3 m/s²). Sonda (Juventas): vMax 0,08 m/s y toque a 0,02 m/s («centímetros por segundo»), con 2 mN de gas frío; sin anclas rebota y se asienta, y la pantalla cuenta los rebotes (`flight/domain/settling.ts`).
 
-**Vista previa**: mientras baja, la ficha de viaje dice «Módulo/Sonda → aterrizaje en …» con fase, altura, velocidad y la cámara rápida; «Ver» abre la vista en directo y «Mando» toma el control. El descenso dura unos 30 s reales (cámara rápida fija, como mucho ×20: el módulo ≈×9, la sonda ≈×19).
+**Vista previa**: mientras baja, la ficha de viaje dice «Módulo/Sonda → aterrizaje en …» con fase, altura, velocidad y la cámara rápida; «Ver» abre la vista en directo y «Mando» toma el control. El descenso del módulo dura unos 30 s reales (cámara rápida de hasta ×20); el de Juventas, de hasta ×400, porque baja a centímetros por segundo.
 
 ## Cada paso se ve
 

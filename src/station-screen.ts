@@ -14,6 +14,9 @@ import { fmtKg } from "@modules/station/application/challenges";
 import { partById } from "@modules/ship/data/parts";
 import { electricThrusterById } from "@modules/mothership/data/thrusters";
 import type { VehicleYard, YardRow } from "@modules/station/application/vehicle-yard";
+import { ASSEMBLY_SITE_NAME, RELEASE_VERB } from "@modules/station/domain/vehicle-catalogue";
+import type { Craft } from "@modules/station/domain/hangar";
+import { REALITY_NAME } from "@core/reality";
 import { STATUS_NAME, VEHICLE_KIND_NAME } from "@modules/station/domain/vehicle-catalogue";
 import { catalogueComponentById } from "@modules/station/data/catalogue-components";
 import { StationScene } from "./adapters/three/station-model";
@@ -111,6 +114,10 @@ export class StationScreen {
   yard?: VehicleYard;
   /** The catalogue list is open (it is long: closed by default). */
   catalogueOpen = false;
+  /** A catalogue vehicle was put together at its site (main shows its model there). */
+  onBuilt?: (craft: Craft) => void;
+  /** A built vehicle is let go («Botar» / «Desplegar»): main plays it from the Cupola and puts it in play. */
+  onRelease?: (craft: Craft) => void;
 
   constructor(
     root: HTMLElement,
@@ -472,13 +479,18 @@ export class StationScreen {
         .join("");
       const btn = !e.lines.length
         ? `<span class="st-dim">Sin desglose publicado: no se puede montar</span>`
-        : `<button class="st-btn" data-yard-build="${esc(e.id)}" ${r.canBuild ? "" : "disabled"}>${r.canBuild ? `Construir en ${r.site === "hangar" ? "el hangar" : "el dique"}` : "Faltan piezas"}</button>`;
-      return `<div class="st-card st-vehicle ${r.canBuild ? "" : "locked"}"><div class="st-row"><b>${esc(e.name)}</b><span class="st-status st-${e.status}">${STATUS_NAME[e.status]}</span></div>
-        <div class="st-io">${VEHICLE_KIND_NAME[e.kind]} · ${esc(e.launch)}${r.massKg ? ` · ${fmtKg(r.massKg)} kg` : ""}</div>
+        : `<button class="st-btn" data-yard-build="${esc(e.id)}" ${r.canBuild ? "" : "disabled"}>${r.canBuild ? `Montar en ${ASSEMBLY_SITE_NAME[r.site]}` : "Faltan piezas"}</button>`;
+      // Built and waiting at its site: let it go from there (the Cupola view plays the arm or the Bishop).
+      const release = r.waiting.map((c) => `<button class="st-btn primary" data-yard-release="${esc(c.id)}">${RELEASE_VERB[r.site]} ${esc(c.name.split(" (")[0]!)}</button>`).join("");
+      const mine = e.playerCraft ? `<span class="st-chip ok">${e.playerCraft === "modulo" ? "Tu módulo de aterrizaje" : "Tu sonda"}</span>` : "";
+      const adapt = e.adaptations?.length ? `<ul class="st-adapt">${e.adaptations.map((a) => `<li><b>${esc(a.what)}</b> · ${esc(REALITY_NAME[a.reality])}: ${esc(a.why)}</li>`).join("")}</ul>` : "";
+      return `<div class="st-card st-vehicle ${r.canBuild || r.waiting.length ? "" : "locked"}" data-vehicle="${esc(e.id)}"><div class="st-row"><b>${esc(e.name)}</b><span class="st-status st-${e.status}">${STATUS_NAME[e.status]}</span></div>
+        <div class="st-io">${VEHICLE_KIND_NAME[e.kind]} · ${esc(e.launch)}${r.massKg ? ` · ${fmtKg(r.massKg)} kg` : ""}</div>${mine}
         <small>${esc(e.statusNote)} · <a href="${esc(e.sources[0]!)}" target="_blank" rel="noopener">fuente</a></small>
-        ${need ? `<div class="st-chips">${need}</div>` : ""}<div class="st-row"><span></span>${btn}</div></div>`;
+        <small class="st-site">Montaje: ${esc(ASSEMBLY_SITE_NAME[r.site])} · ${esc(REALITY_NAME[r.plan.reality])}. ${esc(r.plan.why)}</small>${adapt}
+        ${need ? `<div class="st-chips">${need}</div>` : ""}<div class="st-row"><span></span>${btn}</div>${release ? `<div class="st-row"><span></span>${release}</div>` : ""}</div>`;
     };
-    return `${head}<p class="st-dim">Naves, módulos, sondas y estaciones reales. Cada pieza se fabrica en Planos y espera aquí; con todas, se monta en el hangar o en el dique.</p>${rows.map(card).join("")}`;
+    return `${head}<p class="st-dim">Naves, módulos, sondas y estaciones reales. Cada pieza se fabrica en Planos y espera aquí; con todas, se monta donde lo haría la ISS: dentro de la Bishop, en la plataforma expuesta, sujeta por el brazo en un CBM o, si no cabe, en el dique (licencia).</p>${rows.map(card).join("")}`;
   }
 
   private onClick(e: Event): void {
@@ -494,7 +506,16 @@ export class StationScreen {
     const y = t.closest<HTMLElement>("[data-yard-build]");
     if (y && this.yard) {
       const craft = this.yard.build(y.dataset.yardBuild!);
-      this.say(`${craft.name}: montada. Espera en el hangar`);
+      this.say(`${craft.name}: montada. Espera en ${ASSEMBLY_SITE_NAME[craft.site ?? "dique"]}`);
+      this.onBuilt?.(craft);
+      this.key = "";
+      return this.render();
+    }
+    const rel = t.closest<HTMLElement>("[data-yard-release]");
+    if (rel && this.yard) {
+      const { craft, steps } = this.yard.release(rel.dataset.yardRelease!);
+      this.say(`${craft.name}: ${steps.join(", ")}`);
+      this.onRelease?.(craft);
       this.key = "";
       return this.render();
     }

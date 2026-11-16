@@ -3,7 +3,11 @@ import type { Quat } from "@core/math/quat";
 import type { Vec3 } from "@core/math/vec3";
 import type { ShipDesign } from "@modules/ship/domain/ship";
 import type { AirlockItem } from "@modules/station/domain/cargo-airlock";
-import { ARM_BASE, BISHOP_BERTH } from "@modules/station/data/structure";
+import { ARM_BASE, BISHOP_BERTH, LANDER_CBM, POLANA_LAYOUT } from "@modules/station/data/structure";
+import type { AssemblySite } from "@modules/station/domain/vehicle-catalogue";
+import { lunarModuleDesign } from "@modules/ship/data/apollo-lm";
+import { PROBE_HULL } from "@modules/ship/data/probe";
+import { ProbeModel } from "./adapters/three/probe-model";
 import { BISHOP, ISS_OUTSIDE } from "@modules/station/data/iss";
 import { CanadarmModel } from "./adapters/three/canadarm-model";
 import { DockView } from "./adapters/three/dock-view";
@@ -22,9 +26,45 @@ export interface StationOutsideDeps {
   design(): ShipDesign;
   /** Canadarm2 holds it on the CBM now. */
   berthed(): boolean;
+  /** Catalogue vehicles built and still at their assembly site (vehicle-yard.ts). */
+  waiting?(): readonly YardCraft[];
 }
 
-type Show = { kind: "atraque" | "desatraque" } | { kind: "bishop"; released: readonly AirlockItem[] };
+/** A catalogue vehicle at its assembly site, as the view draws it. */
+export interface YardCraft {
+  readonly id: string;
+  readonly name: string;
+  readonly site: AssemblySite;
+  /** The player's craft it is (drawn as the LM or Juventas), or a box of its size. */
+  readonly craft: "modulo" | "sonda" | null;
+  readonly sizeM: readonly [number, number, number];
+}
+
+type Show = { kind: "atraque" | "desatraque" } | { kind: "bishop"; released: readonly AirlockItem[] } | { kind: "botar"; craft: YardCraft };
+
+/** Where each assembly site holds what it put together (station frame): Bishop, JEM-EF, Unity's nadir CBM, the dry dock. */
+function siteHome(site: AssemblySite, sizeM: readonly [number, number, number]): THREE.Vector3 {
+  const r = Math.max(...sizeM) / 2;
+  if (site === "bishop") return v3(BISHOP_BERTH.position).addScaledVector(v3(BISHOP_BERTH.normal), BISHOP.heightM / 2);
+  if (site === "jem-ef") {
+    const ef = POLANA_LAYOUT.parts.find((p) => p.id === "jem-ef");
+    return ef ? v3(ef.centre).add(new THREE.Vector3(0, ef.half.y + r, 0)) : new THREE.Vector3(20, 3, 0);
+  }
+  if (site === "brazo-cbm") return v3(LANDER_CBM.position).addScaledVector(v3(LANDER_CBM.normal), r + 0.5);
+  // The dry dock (licence): an open truss off the station's end.
+  return new THREE.Vector3(-40, -12, 14 + r);
+}
+
+/** A built vehicle's model: the LM, Juventas, or a gold box of its size (small ones drawn 1,2 m across to be seen). */
+function yardModel(c: YardCraft): THREE.Object3D {
+  if (c.craft === "modulo") return new ShipModel(lunarModuleDesign()).root;
+  const g = new THREE.Group();
+  if (c.craft === "sonda") g.add(new ProbeModel(PROBE_HULL).root);
+  else g.add(new THREE.Mesh(new THREE.BoxGeometry(c.sizeM[0], c.sizeM[1], c.sizeM[2]), new THREE.MeshStandardMaterial({ color: 0xd9b24a, roughness: 0.4, metalness: 0.7, emissive: 0x2a1c00 })));
+  const big = Math.max(...c.sizeM);
+  if (big < 1.2) g.scale.setScalar(1.2 / big);
+  return g;
+}
 
 /** Game value: seconds an arm move takes on screen (on the ISS a berthing takes hours). */
 const MOVE_S = 9;
@@ -55,7 +95,8 @@ export class StationOutside {
   private readonly lander: ShipModel;
   private readonly bishop: THREE.Mesh;
   private readonly drifting: { mesh: THREE.Mesh; v: THREE.Vector3; age: number }[] = [];
-  private play: { show: Show; t: number; path: THREE.Vector3[]; from?: THREE.Quaternion; to?: THREE.Quaternion; released?: boolean } | null = null;
+  private play: { show: Show; t: number; path: THREE.Vector3[]; from?: THREE.Quaternion; to?: THREE.Quaternion; released?: boolean; model?: THREE.Object3D } | null = null;
+  private readonly parked = new Map<string, THREE.Object3D>();
   private line = "";
 
   constructor(
@@ -79,7 +120,7 @@ export class StationOutside {
 
   /** Open the view, and play an arm move in it if asked. */
   open(show?: Show): void {
-    this.view.show(show?.kind === "bishop" ? "Bishop · Canadarm2 la saca y suelta la carga" : show ? "Canadarm2 · atraque en el CBM" : "Vista desde la Cupola");
+    this.view.show(show?.kind === "bishop" ? "Bishop · Canadarm2 la saca y suelta la carga" : show?.kind === "botar" ? `${show.craft.name} · se suelta` : show ? "Canadarm2 · atraque en el CBM" : "Vista desde la Cupola");
     if (show) this.start(show);
   }
 
@@ -103,6 +144,19 @@ export class StationOutside {
   }
 
   private start(show: Show): void {
+    if (show.kind === "botar") {
+      const c = show.craft;
+      const home = siteHome(c.site, c.sizeM);
+      const model = this.parked.get(c.id) ?? yardModel(c);
+      this.parked.delete(c.id);
+      model.position.copy(home);
+      this.root.add(model);
+      // The real way out of each site (vehicle-yard.ts RELEASE_STEPS): the arm takes it away (Bishop,
+      // JEM-EF, CBM: to 10 m below the station) and opens; from the dry dock it pushes off on its RCS.
+      const away = c.site === "dique" ? home.clone().add(new THREE.Vector3(-6, -4, 6)) : c.site === "bishop" ? new THREE.Vector3(home.x - 4, -5, 6) : home.clone().add(new THREE.Vector3(0, -10, 0));
+      this.play = { show, t: 0, path: [home, home.clone().lerp(away, 0.5), away], model };
+      return;
+    }
     if (show.kind === "bishop") {
       const home = v3(BISHOP_BERTH.position).addScaledVector(v3(BISHOP_BERTH.normal), BISHOP.heightM / 2);
       const out = home.clone().addScaledVector(v3(BISHOP_BERTH.normal), 3);
@@ -117,6 +171,23 @@ export class StationOutside {
     const way = [ida.pos, new THREE.Vector3(ida.pos.x, high, ida.pos.z), new THREE.Vector3(0, high, 7), new THREE.Vector3(0, cbm.pos.y - 2, 7), new THREE.Vector3(cbm.pos.x, cbm.pos.y - 2, cbm.pos.z), cbm.pos];
     const fwd = show.kind === "atraque";
     this.play = { show, t: 0, path: fwd ? way : [...way].reverse(), from: fwd ? ida.quat : cbm.quat, to: fwd ? cbm.quat : ida.quat };
+  }
+
+  /** Built vehicles still at their assembly sites, each where it was put together. */
+  private drawParked(): void {
+    const now = this.deps.waiting?.() ?? [];
+    for (const [id, m] of this.parked)
+      if (!now.some((c) => c.id === id)) {
+        this.root.remove(m);
+        this.parked.delete(id);
+      }
+    for (const c of now)
+      if (!this.parked.has(c.id)) {
+        const m = yardModel(c);
+        m.position.copy(siteHome(c.site, c.sizeM));
+        this.root.add(m);
+        this.parked.set(c.id, m);
+      }
   }
 
   /** Arm at rest: folded over the truss near Destiny. */
@@ -143,7 +214,14 @@ export class StationOutside {
       p.t = Math.min(1, p.t + dt / MOVE_S);
       const at = along(p.path, p.t);
       this.reachTo(at);
-      if (p.show.kind === "bishop") {
+      if (p.show.kind === "botar") {
+        const c = p.show.craft;
+        if (c.site !== "dique") this.reachTo(at);
+        else this.rest();
+        p.model!.position.copy(at);
+        if (p.t >= 1) this.drifting.push({ mesh: p.model as THREE.Mesh, v: new THREE.Vector3(-0.3, -0.25, 0.3), age: 0 });
+        this.line = p.t < 1 ? (c.site === "dique" ? `${c.name} sale del dique con su RCS (licencia: el dique no existe en la ISS)` : `Canadarm2 lleva ${c.name} lejos de la estación y abre el efector`) : `${c.name} queda libre y se aleja`;
+      } else if (p.show.kind === "bishop") {
         this.bishop.visible = true;
         this.bishop.position.copy(at);
         if (bishopModule) bishopModule.visible = false;
@@ -172,6 +250,7 @@ export class StationOutside {
       }
     }
     if (!this.play) {
+      this.drawParked();
       // At rest: the lander is drawn here only while berthed on the CBM.
       const held = this.deps.berthed();
       this.lander.root.visible = held;

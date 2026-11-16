@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { Vec3 } from "@core/math/vec3";
 import { Quat } from "@core/math/quat";
 import { Ship } from "@modules/ship/domain/ship";
-import { explorerDesign } from "@modules/ship/data/explorer";
+import { lunarModuleDesign } from "@modules/ship/data/apollo-lm";
 import { PROPELLANT_NAME } from "@modules/ship/data/propellants";
 import type { Propellant } from "@modules/ship/domain/components";
 import { Asteroid } from "@modules/celestial/domain/asteroid";
@@ -62,7 +62,6 @@ import { Hangar } from "@modules/station/domain/hangar";
 import { STATION_TUNING } from "@modules/station/domain/blueprint";
 import { StationOps } from "@modules/station/application/station-ops";
 import { VehicleYard } from "@modules/station/application/vehicle-yard";
-import { HANGAR_SIZE } from "@modules/station/data/hangar-craft";
 import { catalogueMassOf, VEHICLE_CATALOGUE } from "@modules/station/data/vehicle-catalogue";
 import { BLUEPRINTS } from "@modules/station/data/blueprints";
 import { REFINE_PROCESSES } from "@modules/station/data/processes";
@@ -82,7 +81,7 @@ import { StationDock, dockNavTargets } from "./station-dock";
 import { StationInteriorMode } from "./station-interior";
 import { StationOutside } from "./station-outside";
 import { CargoAirlock } from "@modules/station/domain/cargo-airlock";
-import { BISHOP, BISHOP_PAYLOADS } from "@modules/station/data/iss";
+import { ASSEMBLY_LIMITS, BISHOP, BISHOP_PAYLOADS } from "@modules/station/data/iss";
 import { LANDER_CBM } from "@modules/station/data/structure";
 import { offeredBlueprints } from "@modules/station/data/outfit";
 import { facing } from "@modules/navigation/domain/attitude";
@@ -144,6 +143,7 @@ import { importGood } from "@modules/imports/data/goods";
 import { orderLetter } from "@modules/imports/data/letters";
 import { cargoMaterial } from "@modules/station/data/materials";
 import "./ui/acciones.css";
+import { LanderEcs } from "./lander-ecs";
 import { LanderCabin } from "./lander-cabin";
 import { BridgeRoom } from "./bridge";
 import { settings } from "./ui/settings-store";
@@ -169,7 +169,7 @@ const d = BENNU.dimensionsM.value;
 const shapeParams = { seed: 101955, size: { x: d.x, y: d.y, z: d.z }, detail: 6, ridge: 0.09, roughness: 0.06, craters: 60 };
 const surface = asteroidSurfaceFn(shapeParams);
 const bennu = new Asteroid(BENNU, Vec3.ZERO, (local) => surface(local));
-const ship = Ship.create(explorerDesign());
+const ship = Ship.create(lunarModuleDesign());
 const startPos = new Vec3(250, 120, 1600);
 // The starting region: Bennu among real New Polana–family asteroids, inside a soft boundary.
 const region = buildStartRegion(bennu, startPos, [{ centre: POLANA_STATION.position, radiusM: POLANA_STATION.radiusM * 3 }]);
@@ -750,6 +750,7 @@ const probeLandingUi = new LandingUi({
   overlay: planOverlay,
   targetName: () => describeBody(subj.probe.flight.target)?.name ?? expedition.asteroid.data.name,
   frameSheet: (s) => subj.probeMode.landingSheet(s, () => probeLanding.siteWorld()),
+  gravityMs2: () => region.asteroids.reduce((g, a) => g.add(a.gravityAt(subj.probe.flight.state.position)), Vec3.ZERO).length(),
 });
 // The trip chip and the live preview, on screen wherever she is while a vehicle flies itself.
 const tripChip = new TripChip(root);
@@ -867,6 +868,7 @@ const stationOutside = new StationOutside(root, scene, stationModel.root, () => 
   landerPose,
   design: () => ship.design,
   berthed: landerOnCbm,
+  waiting: () => stationScreen.yard?.parked() ?? [],
 });
 const stationLife = new StationLife({
   crew: stationCrew,
@@ -874,6 +876,7 @@ const stationLife = new StationLife({
   bishop: bishopAirlock,
   duel: duelView,
   atPort: atStationPort,
+  landerMassKg: () => ship.massKg,
   mothershipLarder: () => (mothership.dockedTo ? habitat : undefined),
   openTasks: () => taskBoard.open(),
   openInventory: () => {
@@ -963,7 +966,14 @@ stationScreen.onExit = () => {
   stationInside.resume();
 };
 // Vehicle catalogue in the station's Hangar tab (docs/design/naves-reales.md).
-stationScreen.yard = new VehicleYard(stationOps.station, stationOps.blueprints, VEHICLE_CATALOGUE, catalogueMassOf, HANGAR_SIZE);
+stationScreen.yard = new VehicleYard(stationOps.station, stationOps.blueprints, VEHICLE_CATALOGUE, catalogueMassOf, ASSEMBLY_LIMITS);
+// «Botar» / «Desplegar»: the Cupola view plays it letting go from its site.
+stationScreen.onRelease = (c) => {
+  const shown = stationScreen.yard?.shown(c);
+  if (!shown || !screenFromInside) return;
+  stationScreen.exit();
+  stationOutside.open({ kind: "botar", craft: shown });
+};
 stationScreen.onBay = () => {
   if (duelView.visible || bay.active) return;
   screenToBay = true;
@@ -1034,6 +1044,8 @@ const mindNow = (): { label: string; enabled: boolean; why?: string } | null => 
   const label = expedition.bond.subjugated && expedition.bond.nextLevel ? `Convencer · nivel ${expedition.bond.nextLevel}` : "Entrar en su mente";
   return can ? { label, enabled: true } : { label, enabled: false, why: subj.landedText() };
 };
+// The LM's own life support, counting only the crew in the lander (docs/design/modulo-lunar-juventas.md).
+const landerEcs = new LanderEcs({ crewAboard: () => (crewIn() === "modulo" ? 1 : 0), docked: () => docking.docked, say: (t, sec) => (cabin.active ? cabin.say(t, sec) : undefined) });
 const cabinState = (): CabinState => ({
   dockedTo: docking.dockedTo === mothership ? "nodriza" : atStationPort() ? "estacion" : null,
   dockInRange: !docking.docked && docking.inRange(),
@@ -1041,6 +1053,7 @@ const cabinState = (): CabinState => ({
   landed: flight.landed,
   canLeaveEva: eva.canLeave && expedition.phase === "landed",
   mind: mindNow(),
+  ecs: landerEcs.state(),
 });
 const cabin = new LanderCabin(root, {
   state: cabinState,
@@ -1059,7 +1072,13 @@ const cabin = new LanderCabin(root, {
         return throughHatch();
       case "salir-eva":
         // The suit-up challenge shows over the cabin; out on the surface, the cabin closes (loop).
+        // The whole cabin is emptied, as in the LM: filling it again costs O₂.
+        landerEcs.repressurise();
         return evaMode.startSuitUp();
+      case "cambiar-lioh":
+        return cabin.say(landerEcs.changeCartridge(), 5);
+      case "reponer-ecs":
+        return cabin.say(landerEcs.replenish(), 5);
       case "mente":
         return enterMind();
       case "ajustes":
@@ -1074,6 +1093,7 @@ const cabin = new LanderCabin(root, {
     const angry = expedition.phase === "aggressive";
     return { html: mindConsoleHtml(a.data.name, r, angry, levels.activity(a.data.id)), screen: mindScreenLines(a.data.name, r, angry) };
   },
+  ecs: () => ({ html: landerEcs.html(), screen: landerEcs.screen() }),
   openTasks: () => taskBoard.open(),
 });
 
@@ -1106,6 +1126,7 @@ function allTasks(): Task[] {
     refuel: ship.propellants.some((p) => ship.propellantKg(p) < 0.5 * ship.propellantCapacityKg(p)),
     repairs: needingAttention(bay.status()).map((c) => ({ id: c.id, name: c.name, critical: c.attention === "critico" })),
     stationChores: [...stationLife.taskFacts(), ...lifeSupport.taskFacts()],
+    landerEcs: landerEcs.facts(),
   });
 }
 const taskBoard = new TaskBoard(root, allTasks);
@@ -1467,6 +1488,7 @@ renderer.setAnimationLoop((now) => {
   bioOps.tick(stationHours);
   importOps.tick(stationHours);
   lifeSupport.tick(stationHours);
+  landerEcs.tick(stationHours);
   starship?.lifeSupport?.tick(stationHours);
   for (const e of importOps.drainEvents()) {
     // Animals from the Sanctuary: they go to their area and say so themselves.

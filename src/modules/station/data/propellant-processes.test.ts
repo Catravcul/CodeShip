@@ -51,7 +51,7 @@ describe("propellant plant processes", () => {
   it("the rock's nitrogen reaches the store, and what cannot be made here is imported", () => {
     expect(cargoMaterial("Nitrogen (in ammonium salts and organics)")).toBe("nitrogeno-roca");
     const imported = MATERIALS.filter((m) => m.propellant && m.stage === "importado").map((m) => m.id);
-    expect(imported.sort()).toEqual(["helio", "lmp-103s", "mmh", "xenon"]);
+    expect(imported.sort()).toEqual(["butano", "helio", "lmp-103s", "mmh", "xenon"]);
     expect(materialInfo("hidracina")!.stage).toBe("refinado");
     expect(materialInfo("nto")!.stage).toBe("refinado");
     // One full fill of the probe's pair at O/F 1,65 is in store at the start: 438 kg → 165,3 MMH + 272,7 NTO.

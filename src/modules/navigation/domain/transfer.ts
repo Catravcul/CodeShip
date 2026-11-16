@@ -57,7 +57,8 @@ export function planTransfer(input: TransferInput, tuning: TransferTuning = TRAN
   const byBudget = (input.deltaVAvailableMS * tuning.maxDeltaVShare) / 2;
   const byDistance = Math.sqrt(a * d);
   const raw = Math.min(tuning.maxCruiseMS, byBudget, byDistance);
-  const cruise = raw >= 1 ? Math.floor(raw) : Math.round(raw * 10) / 10;
+  // Rounded down, never past the Δv budget (Juventas's whole budget is a few m/s).
+  const cruise = raw >= 1 ? Math.floor(raw) : raw >= 0.1 ? Math.floor(raw * 10) / 10 : Math.floor(raw * 100) / 100;
   const feasible = a > 0 && cruise > 0;
   if (!feasible || d === 0) {
     return { distanceM: d, accelMS2: a, cruiseMS: feasible ? cruise : 0, burnS: 0, burnDistanceM: 0, coastDistanceM: d, coastS: 0, totalS: 0, deltaVMS: 0, feasible: feasible && d >= 0 };

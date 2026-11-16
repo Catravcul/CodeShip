@@ -7,7 +7,7 @@ import { LANDING_GUIDANCE, LandingGuidance, type LandingPhase } from "./landing-
 import { landingChore, type LandingFacts } from "./landing-chore";
 import { landingSketch, type SketchStep } from "./plan-sketch";
 
-/** Who lands: the uncrewed probe (screw anchors) or the crewed lander (its legs). */
+/** Who lands: the uncrewed probe (Juventas: no anchors, it bounces and settles) or the crewed lander (the LM on its legs). */
 export type LandingCraft = "sonda" | "modulo";
 
 /** Game values of landing by program (docs/design/aterrizaje.md). */
@@ -18,23 +18,25 @@ export const LANDING_PROGRAM = {
   minM: 0.3,
   /** Wrong answers the chain takes before the program does not load (one more than a trip: each one costs precision). */
   maxMistakes: 3,
-  /**
-   * Touchdown speed of the program by wrong answers (0, 1, 2), m/s: the last one is over the 0,10 m/s
-   * limit of the legs, so it bounces off (below the 1 m/s that breaks them: no damage). Game values.
-   */
-  touchdownMs: [0.04, 0.07, 0.16] as readonly number[],
   /** How far off the site it aims, as a share of the site's radius, by wrong answers. Game values. */
   missShare: [0, 0.8, 1.6] as readonly number[],
-  /** The descent plays in about this many real seconds (game time-lapse, like a short trip)… */
+  /** The descent plays in about this many real seconds (game time-lapse, like a short trip). */
   realS: 30,
-  /** …never faster than this lapse (120 Hz physics steps per frame). */
-  maxLapse: 20,
   craft: {
-    /** Lander: 5 m site (about its leg span plus margin); RCS ≈0,07 m/s², so 1,5 m/s descents. */
-    modulo: { siteRadiusM: 5, maxDescentMs: 1.5 },
-    /** Probe: a 1,5 m site; its weak RCS (≈0,03 m/s²) comes down at 0,6 m/s at most. */
-    sonda: { siteRadiusM: 1.5, maxDescentMs: 0.6 },
-  } as Readonly<Record<LandingCraft, { readonly siteRadiusM: number; readonly maxDescentMs: number }>>,
+    /**
+     * Apollo LM (≈15 t with its propellant): it lands on its RCS, not on its descent engine, whose 10 %
+     * floor (4,5 kN) is 50 000 times Bennu's pull. RCS ≈0,06 m/s² across and ≈0,12 m/s² up (4 jets of
+     * 440 N): 1,5 m/s descents. A 5 m site (its 9,4 m leg span is inside the box drawn). Touchdown by
+     * wrong answers (0, 1, 2): the last one is over the 0,10 m/s the legs take, so it bounces. Game values.
+     */
+    modulo: { siteRadiusM: 5, maxDescentMs: 1.5, touchdownMs: [0.04, 0.07, 0.16], maxLapse: 20 },
+    /**
+     * Juventas (12 kg, 1 mN cold gas: ≈0,00017 m/s²): it comes down at centimetres per second like the
+     * real one on Dimorphos (touchdown 2 cm/s), so the descent is hours long and plays faster
+     * (it integrates at 12 Hz). The last wrong-answer speed is over 0,10 m/s: it bounces off. Game values.
+     */
+    sonda: { siteRadiusM: 1.5, maxDescentMs: 0.08, touchdownMs: [0.02, 0.04, 0.12], maxLapse: 400 },
+  } as Readonly<Record<LandingCraft, { readonly siteRadiusM: number; readonly maxDescentMs: number; readonly touchdownMs: readonly number[]; readonly maxLapse: number }>>,
 } as const;
 
 export type LandingStatus = "idle" | "programming" | "flying" | "landed" | "bounced" | "manual" | "failed";
@@ -96,6 +98,11 @@ export class LandingProgram {
   }
   get mistakes(): number {
     return this._mistakes;
+  }
+  /** Touchdown speed of the program loaded now (by its wrong answers), m/s. */
+  get touchdownMs(): number {
+    const t = LANDING_PROGRAM.craft[this.ports.craft].touchdownMs;
+    return t[Math.min(t.length - 1, this._mistakes)]!;
   }
   get siteRadiusM(): number {
     return LANDING_PROGRAM.craft[this.ports.craft].siteRadiusM;
@@ -186,7 +193,7 @@ export class LandingProgram {
     const groundSpeed = ground.sub(up.scale(ground.dot(up))).length();
     const c = Math.max(0, f.telemetry().clearance);
     const cfg = LANDING_PROGRAM.craft[this.ports.craft];
-    const td = LANDING_PROGRAM.touchdownMs[0]!;
+    const td = cfg.touchdownMs[0]!;
     const flare = LANDING_GUIDANCE.flareM;
     return {
       craft: this.ports.craft,
@@ -231,8 +238,8 @@ export class LandingProgram {
     if (!b) return;
     this.trackSite();
     if (!this._site) this._site = { local: b.target.toLocal(this.subPoint(f, b.target), f.simTimeS), body: b.target };
-    const m = Math.max(0, Math.min(LANDING_PROGRAM.touchdownMs.length - 1, mistakes));
     const cfg = LANDING_PROGRAM.craft[this.ports.craft];
+    const m = Math.max(0, Math.min(cfg.touchdownMs.length - 1, mistakes));
     // A less precise program aims beside the site, on a side that does not depend on the craft.
     const site = this.siteWorld()!;
     const up = site.sub(b.target.position).normalize();
@@ -240,12 +247,12 @@ export class LandingProgram {
     const aim = site.add(side.scale(LANDING_PROGRAM.missShare[m]! * cfg.siteRadiusM));
     const aimLocal = b.target.toLocal(aim, f.simTimeS);
     this._mistakes = m;
-    this._guidance = new LandingGuidance(f.ship, b.target, { siteLocal: aimLocal, touchdownMs: LANDING_PROGRAM.touchdownMs[m]!, maxDescentMs: cfg.maxDescentMs }, () => f.landed);
+    this._guidance = new LandingGuidance(f.ship, b.target, { siteLocal: aimLocal, touchdownMs: cfg.touchdownMs[m]!, maxDescentMs: cfg.maxDescentMs }, () => f.landed);
     // The belly must face the ground: the flight computer's landing assist levels it.
     f.landingAssist = true;
     f.engage(this._guidance);
     this.flying = f;
-    this._lapse = Math.max(1, Math.min(LANDING_PROGRAM.maxLapse, this.facts().descentS / LANDING_PROGRAM.realS));
+    this._lapse = Math.max(1, Math.min(cfg.maxLapse, this.facts().descentS / LANDING_PROGRAM.realS));
     this._status = "flying";
     this.run = undefined;
   }
@@ -325,6 +332,7 @@ export class LandingProgram {
       flareM: facts.flareM,
       touchdownMs: facts.touchdownMs,
       brakeMs2: facts.rcsAccelMs2 * LANDING_GUIDANCE.brakeShare,
+      anchors: this.ports.craft !== "sonda",
     });
   }
 

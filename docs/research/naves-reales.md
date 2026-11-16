@@ -32,7 +32,7 @@ Clases: **(a)** real y ha volado (o vuela ahora); **(b)** real y en desarrollo, 
 | Anillos de 1 g que giran en sentidos contrarios | **(d)** | No hay ningún anillo así en desarrollo. Nautilus-X (c) y la estación de Vast (c) son lo más parecido | [Nautilus-X](https://en.wikipedia.org/wiki/Nautilus-X), [Vast](https://vastspace.com/roadmap) |
 | **Explorer** (módulo de aterrizaje) | **(d)** | Hecha de piezas (a). Pesa **1166 kg en seco** según `Ship.create`, no los ~680 kg que todavía dicen `hangar-craft.ts` y gravedad.md | [componentes.md](../design/componentes.md) |
 | **Sonda** (`ship/data/probe.ts`) | **(d)** | Bus de Juventas (a), MPS-120XW (b: en producción, sin vuelo), batería de MASCOT (a) y anclas (c). Pesa 16 kg en seco | [probe.ts](../../src/modules/ship/data/probe.ts) |
-| **Sonda de prospección** (plano de 30 kg) | **(d)** | Valor de juego. No cuadra con los 16 kg de la sonda de `probe.ts` | `station/data/blueprints.ts` |
+| ~~**Sonda de prospección** (plano de 30 kg)~~ | — | Quitado: la sonda es Juventas (12 kg, real), [modulo-lunar-juventas.md](../design/modulo-lunar-juventas.md) | `ship/data/probe.ts` |
 | **Estación** (Nueva Polana) | **(d)** | Conjunto del juego hecho de módulos (a) | [estacion.md](../design/estacion.md) |
 | Nodo 1 y Nodo 2 | (a) | Nodo Unity de la ISS | [Unity](https://en.wikipedia.org/wiki/Unity_(ISS_module)) |
 | Módulo habitable | (b′) | HALO del Gateway: construido y en pausa desde marzo de 2026 | [NSF](https://www.nasaspaceflight.com/2026/03/nasa-moon-base-pivots-gateway/) |

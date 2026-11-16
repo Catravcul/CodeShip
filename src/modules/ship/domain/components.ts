@@ -2,9 +2,10 @@ import type { Vec3 } from "@core/math/vec3";
 
 /**
  * What a tank holds. A bipropellant pair (MMH/NTO) is one pool: a fuel tank and an oxidizer tank of
- * equal volume, emptied together at the engine's mixture ratio. Hydrazine and LMP-103S are monopropellants.
+ * equal volume, emptied together at the engine's mixture ratio. Hydrazine and LMP-103S are monopropellants;
+ * butane is the cold gas of a cubesat's thrusters (Juventas: GomSpace, 1 mN, 50 s).
  */
-export type Propellant = "MMH/NTO" | "Hydrazine" | "LMP-103S";
+export type Propellant = "MMH/NTO" | "Hydrazine" | "LMP-103S" | "Butano";
 
 /**
  * How propellant reaches the thrusters. A bipropellant pair is pushed by a regulated helium bottle;
@@ -46,6 +47,8 @@ export interface ThrusterModel {
   readonly propellant: Propellant;
   readonly sources: readonly string[];
   readonly sheet?: ThrusterSheet;
+  /** Lowest throttle it can run at, 0..1 (a throttleable engine: the LM's DPS, 10 %). Pulsed thrusters have none. */
+  readonly minThrottle?: number;
 }
 
 /** A thruster bolted to the ship: where it sits and which way it pushes (body frame, metres). */

@@ -88,12 +88,12 @@ const sumKg = (list: readonly Equipment[]) => list.reduce((m, e) => m + e.massKg
 /** The lander's fixed systems (structure, docking system, legs, avionics, radio, life support, thermal) as one kit. */
 const FIXED_KG = sumKg(FIXED_SYSTEMS);
 
-/** The probe's parts, as they are in probe.ts (a Juventas-type bus, the MPS-120XW, MASCOT's battery, anchors). */
-const PROBE_STATUS: Readonly<Record<string, VehicleStatus>> = { "bus-6u-xl": "volado", "mps-120xw": "en-desarrollo", "bateria-200wh": "volado", anclas: "concepto" };
+/** Juventas's parts, as they are in ship/data/probe.ts (all flying in Hera; the propulsion module and battery are estimates of real hardware). */
+const PROBE_STATUS: Readonly<Record<string, VehicleStatus>> = { "juventas-bus": "volado", jura: "volado", grass: "volado", "juventas-gas-frio": "volado", "bateria-juventas": "volado" };
 const PROBE_COMPONENTS: CatalogueComponent[] = PROBE_EQUIPMENT.map((e) => ({
   id: e.id,
   name: e.name,
-  kind: e.kind === "bateria" ? "energia" : e.kind === "avionica" ? "motor" : "estructura",
+  kind: e.kind === "bateria" ? "energia" : e.id === "juventas-gas-frio" ? "motor" : e.kind === "avionica" ? "electronica" : "estructura",
   status: PROBE_STATUS[e.id] ?? "inventado",
   massKg: { value: e.massKg, source: e.sources[0] ?? S.juventas, note: e.basis },
   sources: [...e.sources],
@@ -113,10 +113,10 @@ export const CATALOGUE_COMPONENTS: readonly CatalogueComponent[] = [
   c("dst-sep", "Etapa eléctrica solar del Deep Space Transport, con su xenón", "energia", "concepto", 24000, S.dst, "Copiado: unos 24 t con el xenón"),
   // Landers
   c("lm-cuerpo", "Módulo lunar Apolo sin sus baterías de ascenso (etapas de ascenso y descenso en seco)", "estructura", "volado", LM_DRY_KG - LM_BATTERIES_KG, S.lm, "Derivado: 4280 kg en seco (versión estándar) − las dos baterías de plata-zinc de 57 kg que ya están en el catálogo"),
+  c("adaptador-idss-lm", "Adaptador de acople IDSS para la escotilla del techo del LM (licencia: el LM usaba sonda y cono)", "estructura", "volado", 340, "https://ntrs.nasa.gov/api/citations/20110011626/downloads/20110011626.pdf", "Copiado: el NDS (norma IDSS) pesa unos 340 kg; vuela en Starliner. Montarlo en un LM es nuestra adaptación"),
   c("philae", "Philae (aterrizador de Rosetta)", "estructura", "volado", 100, S.philae, "Copiado: unos 100 kg al lanzar"),
   c("modulo-sistemas-fijos", "Sistemas fijos del módulo de aterrizaje (estructura, NDS, patas, aviónica, radio, soporte vital, térmico)", "estructura", "inventado", FIXED_KG, "https://en.wikipedia.org/wiki/Apollo_Lunar_Module", "Suma de FIXED_SYSTEMS (ship/data/equipment.ts), cada uno con su fuente"),
   // Probes
-  c("juventas", "Juventas (cubesat 6U-XL de Hera)", "electronica", "volado", 12, S.juventas, "Copiado: unos 12 kg con su propelente", [S.hera]),
   c("dart-cuerpo", "Cuerpo de DART (estructura, 12 propulsores de hidracina, cámara DRACO, antena RLSA)", "estructura", "volado", DART_DRY_KG - headKg("ionico-next-c") - 2 * ROSA_WING_KG, S.dart, "Derivado: 610 kg al lanzar − 60 kg de xenón − 50 kg de hidracina = 500 kg en seco; menos el cabezal del NEXT-C (14 kg) y dos alas ROSA (36 kg cada una)"),
   c("osiris-rex-cuerpo", "OSIRIS-REx en seco (con el brazo TAGSAM y la cápsula de retorno)", "estructura", "volado", 880, S.osirisRex, "Copiado: 880 kg en seco"),
   c("hayabusa2-cuerpo", "Hayabusa2 en seco (4 motores iónicos μ10, cuerno de muestras, MASCOT y MINERVA-II)", "estructura", "volado", 490, S.hayabusa2, "Copiado: 490 kg en seco"),

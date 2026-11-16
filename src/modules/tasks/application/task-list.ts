@@ -12,7 +12,7 @@ export type Vehicle = "modulo" | "nodriza" | "estacion";
 export type TaskPlace =
   | { readonly vehicle: "nodriza"; readonly spot: "anillo"; readonly station: string }
   | { readonly vehicle: "nodriza"; readonly spot: "puente"; readonly page: "nav" | "sonda" | "mente" | "misiones"; readonly target?: string }
-  | { readonly vehicle: "modulo"; readonly spot: "asiento" | "acople" | "mente" | "escotilla" | "esterilla" }
+  | { readonly vehicle: "modulo"; readonly spot: "asiento" | "acople" | "mente" | "escotilla" | "ecs" | "esterilla" }
   | { readonly vehicle: "estacion"; readonly spot: "pantalla"; readonly tab: "materiales" | "planos" | "fabricacion" | "hangar" | "importar" | "vida" }
   | { readonly vehicle: "estacion"; readonly spot: "bahia" }
   /** The station's own crew areas (galley, mat, exercise): its chores (docs/design/estacion-tripulacion.md). */
@@ -47,6 +47,8 @@ export interface TaskFacts {
   readonly chores: readonly { id: string; title: string; detail: string; category: "comida" | "plantas" | "animales" | "salud" | "nave" | "misiones"; station: string }[];
   /** Chores of the station's crew areas (its own larder), with the area where each is done. */
   readonly stationChores?: readonly { id: string; title: string; detail: string; category: "comida" | "salud" | "estacion"; area: string }[];
+  /** The LM's own life support: its LiOH cartridge is nearly spent (life-support/domain/open-loop.ts). */
+  readonly landerEcs?: { readonly cartridgeLow: boolean; readonly enduranceH: number; readonly limit: string } | null;
   /** Every catalogued asteroid with its rapport. */
   readonly asteroids: readonly { id: string; name: string; persuaded: boolean; next: Stage | undefined; subjugated: boolean; level: number; nextLevel: number | undefined }[];
   /** The asteroid the lander and the probe work on now. */
@@ -127,6 +129,7 @@ export function collectTasks(f: TaskFacts): Task[] {
   if (f.refuel) out.push({ id: "repostar", group: "nave", title: "Repostar", detail: "Estación, pestaña Materiales (con el módulo o la nodriza en su puerto)", place: { vehicle: "estacion", spot: "pantalla", tab: "materiales" } });
   for (const x of f.repairs) out.push({ id: `reparar-${x.id}`, group: "nave", title: `Revisar ${x.name}${x.critical ? " (crítico)" : ""}`, detail: "Bahía de la nave, en la estación", place: { vehicle: "estacion", spot: "bahia" } });
   for (const c of f.chores) out.push({ id: c.id, group: c.category, title: c.title, detail: c.detail, place: { vehicle: "nodriza", spot: "anillo", station: c.station }, chore: c.id });
+  if (f.landerEcs?.cartridgeLow) out.push({ id: "lm-lioh", group: "salud", title: "Cambiar el cartucho de LiOH del módulo", detail: `Panel del ECS, en el habitáculo del módulo · ${Math.round(f.landerEcs.enduranceH)} h de ${f.landerEcs.limit}`, place: { vehicle: "modulo", spot: "ecs" } });
   for (const c of f.stationChores ?? []) out.push({ id: `est-${c.id}`, group: c.category, title: c.title, detail: c.detail, place: { vehicle: "estacion", spot: "tripulacion", area: c.area }, chore: c.id });
   return out;
 }

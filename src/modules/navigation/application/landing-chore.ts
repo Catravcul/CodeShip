@@ -51,7 +51,8 @@ const ms = (v: number) => num(v, v < 0.1 ? 3 : v < 1 ? 2 : 1);
 export function landingChore(f: LandingFacts): Chore {
   const id = `aterrizaje-${f.craft}-${f.targetId}`;
   const who = f.craft === "sonda" ? "la sonda" : "el módulo";
-  const anchors = f.craft === "sonda" ? "disparar las anclas de rosca de las patas" : "anclar las patas";
+  // Juventas has no anchors (real): it lets the bounces die out, with its accelerometers recording them.
+  const anchors = f.craft === "sonda" ? "dejar que los rebotes se apaguen con las ruedas quietas y grabar los acelerómetros" : "anclar las patas";
   const name = f.targetName;
   const lim = LANDING_LIMITS;
   const h = Math.round(f.clearanceM);
@@ -68,7 +69,7 @@ export function landingChore(f: LandingFacts): Chore {
       [`ir a la velocidad del suelo (${ms(g)} m/s): sin deriva lateral`, `rcs.igualarSuelo(${g.toFixed(3)});`],
       [`bajar como mucho a ${ms(f.maxDescentMs)} m/s frenando con el RCS`, `descenso.perfil(${f.maxDescentMs});`],
       [`a ${num(f.flareM)} m del suelo, bajar a ${ms(f.touchdownMs)} m/s`, `descenso.final(${f.flareM}, ${f.touchdownMs});`],
-      [`al tocar, ${anchors} y apagar los propulsores`, "anclas.disparar(); rcs.apagar();"],
+      [`al tocar, ${anchors} y apagar los propulsores`, f.craft === "sonda" ? "acelerometros.grabar(); rcs.apagar();" : "anclas.disparar(); rcs.apagar();"],
       // Distractor: coming down fast all the way bounces off (or breaks the legs).
       [`bajar a ${ms(f.maxDescentMs)} m/s hasta tocar el suelo`, `descenso.hastaTocar(${f.maxDescentMs});`],
     ]),
@@ -111,13 +112,13 @@ export function landingChore(f: LandingFacts): Chore {
     5,
     "reparar",
     "Toco el suelo y reboto",
-    `${who === "la sonda" ? "La sonda" : "El módulo"} toca el suelo a 0,5 m/s y rebota: las patas aguantan menos de ${ms(lim.touchdownMs)} m/s. ¿Cómo queda bien la línea 2?`,
+    `${who === "la sonda" ? "La sonda" : "El módulo"} toca el suelo a 0,5 m/s y rebota: ${who === "la sonda" ? "sin anclas, solo se asienta" : "las patas aguantan"} por debajo de ${ms(lim.touchdownMs)} m/s. ¿Cómo queda bien la línea 2?`,
     lines([
       [`si altura < ${num(f.flareM)} m entonces`, `if (altura < ${f.flareM}) {`],
       ["velocidad = 0,5   // m/s hacia abajo", "velocidad = 0.5; // m/s", 1],
       ["fin", "}"],
     ]),
-    `velocidad = ${ms(f.touchdownMs)}   // menos de ${ms(lim.touchdownMs)}: las patas aguantan`,
+    `velocidad = ${ms(f.touchdownMs)}   // menos de ${ms(lim.touchdownMs)}: ${f.craft === "sonda" ? "se asienta tras unos rebotes" : "las patas aguantan"}`,
     [`velocidad = ${ms(lim.crashMs)}   // más rápido, menos combustible`, `velocidad = ${ms(lim.touchdownMs * 2)}   // el doble del límite`, "velocidad = 0   // así nunca toca"],
   );
 
@@ -132,7 +133,7 @@ export function landingChore(f: LandingFacts): Chore {
     [
       `Aterriza en ${name}`,
       `Al tocar ${name}, empuja hacia el suelo para que se quede pegada`,
-      `${f.craft === "sonda" ? "Dispara las anclas" : "Ancla las patas"} a 10 m del suelo para no rebotar`,
+      f.craft === "sonda" ? "Enciende el gas frío hacia el suelo al tocar para no rebotar" : "Ancla las patas a 10 m del suelo para no rebotar",
     ],
   );
 

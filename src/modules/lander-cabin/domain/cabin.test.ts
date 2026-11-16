@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { cabinActions, clampToFloor, nearestStation, type CabinState } from "./cabin";
-import { CABIN_DEPARTURE, LANDER_CABIN } from "../data/cabin";
+import { CABIN_SPREAD, LANDER_CABIN, LANDER_CABIN_REAL } from "../data/cabin";
 
 const base: CabinState = { dockedTo: null, dockInRange: false, dockAssist: false, landed: false, canLeaveEva: false, mind: null };
 const ids = (s: Parameters<typeof cabinActions>[0], st: CabinState) => cabinActions(s, st).map((a) => a.id);
@@ -8,14 +8,21 @@ const ids = (s: Parameters<typeof cabinActions>[0], st: CabinState) => cabinActi
 describe("lander crew cabin (docs/design/habitaculo.md)", () => {
   it("HAB-01 every machine of the cabin stands on the walkable floor and is far enough from the next to tell them apart", () => {
     const st = LANDER_CABIN.stations;
-    expect(st.map((s) => s.id).sort()).toEqual(["acople", "asiento", "escotilla", "esterilla", "mente"]);
+    expect(st.map((s) => s.id).sort()).toEqual(["acople", "asiento", "ecs", "escotilla", "esterilla", "mente"]);
     for (const s of st) expect(clampToFloor(LANDER_CABIN.floor, s.stand)).toEqual(s.stand);
     for (const a of st) for (const b of st) if (a !== b) expect(Math.hypot(a.stand.x - b.stand.x, a.stand.z - b.stand.z)).toBeGreaterThan(2 * LANDER_CABIN.reachM);
-    // Lengthened past a real capsule to keep 2 m between machines as played (CABIN_DEPARTURE): still small,
-    // under 16 m³ pressurised, above Orion's 8,9 m³ habitable.
-    expect(LANDER_CABIN.habitableM3).toBeGreaterThan(8.9);
-    expect(LANDER_CABIN.habitableM3).toBeLessThan(CABIN_DEPARTURE.gamePressurisedM3);
-    expect(LANDER_CABIN.floor.maxZ - LANDER_CABIN.floor.minZ).toBeCloseTo(CABIN_DEPARTURE.gameFloorM.d, 6);
+    // HAB-26: the data is the LM's cabin at true size (4,5 m³ habitable, 2,34 m tall, 6,7 m³ pressurised);
+    // the presentation layer spreads its floor plan by one factor, never by hand per machine.
+    expect(LANDER_CABIN_REAL.habitableM3).toBe(4.5);
+    expect(LANDER_CABIN_REAL.heightM).toBeCloseTo(2.34, 6);
+    const f = LANDER_CABIN_REAL.floor;
+    expect((f.maxX - f.minX) * (f.maxZ - f.minZ) * LANDER_CABIN_REAL.heightM).toBeCloseTo(6.7, 1);
+    expect(CABIN_SPREAD).toBeGreaterThanOrEqual(1);
+    for (const s of LANDER_CABIN.stations) {
+      const r = LANDER_CABIN_REAL.stations.find((q) => q.id === s.id)!;
+      expect(s.stand.x).toBeCloseTo(r.stand.x * CABIN_SPREAD, 9);
+      expect(s.look.y).toBe(r.look.y);
+    }
   });
 
   it("HAB-01 she reaches a machine only standing next to it, and the nearest one wins", () => {
@@ -90,15 +97,24 @@ describe("walking between the cabin's machines (HAB-01)", () => {
   });
 });
 
-describe("HAB-01 the lengthened cabin: walking and the task list's travel take the same aisles", () => {
-  it("from the mat to the pilot seat she goes straight behind the seats, not round by the docking console at the back", async () => {
-    const { floorPath, roomAisles } = await import("./cabin");
-    const at = (id: string) => LANDER_CABIN.stations.find((s) => s.id === id)!.stand;
-    const len = (from: { x: number; z: number }, path: { x: number; z: number }[]) => path.reduce((m, p, i) => m + Math.hypot(p.x - (i ? path[i - 1]! : from).x, p.z - (i ? path[i - 1]! : from).z), 0);
-    expect(roomAisles(LANDER_CABIN)).toEqual([-0.25, 0.85]);
-    const direct = len(at("esterilla"), floorPath(LANDER_CABIN.floor, at("esterilla"), at("asiento"), roomAisles(LANDER_CABIN)));
-    const viaDock = Math.hypot(at("acople").x - at("esterilla").x, at("acople").z - at("esterilla").z) + len(at("acople"), floorPath(LANDER_CABIN.floor, at("acople"), at("asiento"), roomAisles(LANDER_CABIN)));
-    expect(direct).toBeLessThan(2.5);
-    expect(direct).toBeLessThan(viaDock);
+describe("HAB-01 the LM cabin: walking and the task list's travel take the same aisles", () => {
+  it("the aisles are the real cabin's, spread with its floor plan", async () => {
+    const { roomAisles } = await import("./cabin");
+    expect(roomAisles(LANDER_CABIN)).toEqual(LANDER_CABIN_REAL.aisles!.map((z) => z * CABIN_SPREAD));
+  });
+});
+
+describe("SV-14 the LM's ECS panel (life-support/domain/open-loop.ts)", () => {
+  const ecs = { cartridgeLeft: 1, cartridges: 2, canReplenish: false };
+  it("changes the LiOH cartridge only when it is nearly spent, and says why not", () => {
+    const fresh = cabinActions("ecs", { ...base, ecs })[0]!;
+    expect(fresh).toMatchObject({ id: "cambiar-lioh", enabled: false });
+    expect(fresh.why).toMatch(/100 %/);
+    expect(cabinActions("ecs", { ...base, ecs: { ...ecs, cartridgeLeft: 0.1 } })[0]!.enabled).toBe(true);
+    expect(cabinActions("ecs", { ...base, ecs: { ...ecs, cartridgeLeft: 0, cartridges: 0 } })[0]!.why).toMatch(/repuesto/);
+  });
+  it("replenishes O₂, water and cartridges only docked", () => {
+    expect(cabinActions("ecs", { ...base, ecs })[1]).toMatchObject({ id: "reponer-ecs", enabled: false });
+    expect(cabinActions("ecs", { ...base, dockedTo: "nodriza", ecs: { ...ecs, canReplenish: true } })[1]).toMatchObject({ id: "reponer-ecs", enabled: true });
   });
 });

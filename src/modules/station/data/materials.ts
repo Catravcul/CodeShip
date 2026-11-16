@@ -43,6 +43,7 @@ export const MATERIALS: readonly MaterialInfo[] = [
   },
   { id: "mmh", name: "Monometilhidracina (MMH)", stage: "importado", unit: "kg", note: "Combustible del par MMH/NTO: se hace con cloramina y metilamina, y aquí no hay cloro para eso", source: SRC.mmhProcess, propellant: true },
   { id: "lmp-103s", name: "LMP-103S", stage: "importado", unit: "kg", note: "Monopropelente de dinitramida de amonio: su síntesis pide ácidos nítrico y sulfúrico concentrados", source: SRC.adn, propellant: true },
+  { id: "butano", name: "Butano", stage: "importado", unit: "kg", note: "Gas frío de los propulsores de Juventas (GomSpace): llega de la Tierra con la sonda", source: "https://gomspace.com/UserFiles/Subsystems/flyer/Flyer_NanoProp_6DOF.pdf", propellant: true },
   { id: "helio", name: "Helio", stage: "importado", unit: "kg", note: "Presurizante del par: la roca solo guarda trazas, 9,17 ng/g", source: SRC.ciAbundances, propellant: true },
   { id: "xenon", name: "Xenón", stage: "importado", unit: "kg", note: "Propelente de la nodriza: la roca guarda 0,17 ng/g, nada que se pueda sacar", source: SRC.ciAbundances, propellant: true },
   // Grown by the crop fields and the bioreactors (docs/design/autosustento.md).

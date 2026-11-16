@@ -181,7 +181,7 @@ Al resolverla, el propelente sale del almacén y el trasvase entra en la **líne
 
 ## Planos
 
-Hay un plano para **cada pieza del catálogo** (`ALL_PARTS`). Desde el 13 de noviembre, los tanques son tanques reales de titanio, con el casco importado en kits ([componentes.md](componentes.md), §1.8). También hay uno para la **sonda de prospección** (30 kg, valor de juego), que se guarda en el hangar.
+Hay un plano para **cada pieza del catálogo** (`ALL_PARTS`). Desde el 13 de noviembre, los tanques son tanques reales de titanio, con el casco importado en kits ([componentes.md](componentes.md), §1.8). El plano de la sonda de prospección de 30 kg ya no existe: la sonda es Juventas, que se monta pieza a pieza en la Bishop desde el catálogo ([modulo-lunar-juventas.md](modulo-lunar-juventas.md)).
 
 - **Material** = masa de la pieza ÷ rendimiento (0,8, valor de juego: viruta, soportes y descartes), repartido según la receta del tipo de pieza. Más los kits.
 - **Motores bipropelentes** (R-4D): 50 % de níquel, 40 % de hierro, 10 % de cerámica y 2 kits. Se hacen en la **impresora 3D de metal**, por láser y capa a capa, como la [impresora de metal de la ESA en la ISS](https://www.tomshardware.com/3d-printing/scientists-print-3d-metal-parts-in-space-for-the-first-time-a-key-ability-for-long-distance-long-duration-missions) (primera pieza de acero inoxidable en agosto de 2024).

@@ -1,6 +1,7 @@
 // The vehicle catalogue (docs/design/naves-reales.md) as a player meets it: in the station, the
 // Hangar tab lists real ships, landers, probes and stations with their status and the parts each
-// one needs; with DART's parts in the hangar, «Construir» assembles it. iPhone 13; captures in
+// one needs; with DART's parts at the station, «Montar en el CBM, con el brazo» puts it together where the
+// ISS would (docs/design/modulo-lunar-juventas.md, «Montaje»). iPhone 13; captures in
 // docs/screenshots/catalogo-naves-<pantalla>-movil.png.
 import { mkdirSync } from "node:fs";
 
@@ -49,11 +50,13 @@ export async function catalogoNaves(j) {
   await p.waitForTimeout(700);
   const btn = p.locator('[data-yard-build="dart"]');
   await btn.scrollIntoViewIfNeeded();
-  j.check("con las piezas, DART dice «Construir en el hangar»", /Construir en el hangar/.test(await btn.innerText()) && !(await btn.isDisabled()));
+  j.check("con las piezas, DART dice dónde se monta: «Montar en el CBM, con el brazo»", /Montar en el CBM, con el brazo/.test(await btn.innerText()) && !(await btn.isDisabled()));
   await capture(j, "lista-dart", "DART listo para montar");
   await j.tap('[data-yard-build="dart"]', "Construir DART");
   await p.waitForTimeout(600);
   const built = await p.evaluate(() => window.codeship.stationOps.station.hangar.crafts.some((c) => c.id === "dart"));
-  j.check("DART queda montada en el hangar y sus piezas se gastan", built && (await p.evaluate(() => window.codeship.stationOps.station.hangar.count("rosa-diamond"))) === 0);
+  j.check("DART queda montada en el CBM y sus piezas se gastan", built && (await p.evaluate(() => window.codeship.stationOps.station.hangar.count("rosa-diamond"))) === 0);
+  const bota = (await j.texts('[data-yard-release="dart"]'))[0] ?? "";
+  j.check("la ficha ofrece «Botar DART»", /Botar DART/.test(bota), bota);
   await capture(j, "dart-montada", "DART montada");
 }

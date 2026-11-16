@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { failingAnswer } from "@modules/chores/domain/testing";
 import { Vec3 } from "@core/math/vec3";
 import { Ship } from "@modules/ship/domain/ship";
-import { explorerDesign } from "@modules/ship/data/explorer";
+import { lunarModuleDesign } from "@modules/ship/data/apollo-lm";
 import { Asteroid } from "@modules/celestial/domain/asteroid";
 import { BENNU } from "@modules/celestial/data/bennu";
 import { NUEVA_POLANA, POLANA_MEMBERS } from "@modules/celestial/data/nueva-polana";
@@ -25,7 +25,7 @@ const make = (start = new Vec3(250, 120, 1600)) => {
   // A rock right on the line from the start to the member.
   const mid = start.add(member.position.sub(start).scale(0.5));
   const region = new Region(NUEVA_POLANA, [bennu, member], [{ position: mid, radiusM: 120, spectralType: "C", albedo: 0.05, seed: 1 }]);
-  const flight = new FlightComputer(Ship.create(explorerDesign()), RigidBodyState.at(start), { gravitySources: region.asteroids, target: bennu });
+  const flight = new FlightComputer(Ship.create(lunarModuleDesign()), RigidBodyState.at(start), { gravitySources: region.asteroids, target: bennu });
   const expedition = new Expedition(flight, bennu, EXERCISES, 500);
   const targets = region.asteroids.map(asteroidTarget);
   const nav = new Navigator(

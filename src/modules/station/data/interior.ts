@@ -1,8 +1,10 @@
 import { Vec3 } from "@core/math/vec3";
-import type { Box, Face, Fixture, InteriorVolume, StationInteriorPlan } from "../domain/interior";
+import type { Face, Fixture, InteriorVolume, StationInteriorPlan } from "../domain/interior";
 import type { InstalledEquipment, StationOutfit } from "../domain/outfit";
 import type { PressurisedModule, StationLayout } from "../domain/structure";
 import { GROWTH_SOURCES, startingOutfit } from "./outfit";
+import { REALITY_NAME } from "@core/fiction";
+import { ISS_SOURCES } from "./iss";
 import { POLANA_LAYOUT, STRUCTURE_SOURCES } from "./structure";
 
 // --- Sources -------------------------------------------------------------------
@@ -12,12 +14,13 @@ export const INTERIOR_SOURCES = {
   destiny: "Destiny: 8,5 × 4,3 m, 24 bastidores, seis en cada cara: https://en.wikipedia.org/wiki/Destiny_(ISS_module)",
   ispr: "Bastidor ISPR: unos 2 m de alto, 1,05 m de ancho y 0,86 m de fondo: https://en.wikipedia.org/wiki/International_Standard_Payload_Rack",
   cbm: "Mecanismo de atraque común (CBM): paso cuadrado de 50 pulgadas (1,27 m): https://en.wikipedia.org/wiki/Common_Berthing_Mechanism",
-  quest: "Esclusa Quest de la ISS: 5,5 × 4 m, 34 m³; esclusa de tripulación con dos trajes y esclusa de equipo: https://en.wikipedia.org/wiki/Quest_Joint_Airlock",
-  bishop: "Esclusa Bishop de la ISS (2020): campana de 4 m³ que saca cargas al vacío: https://en.wikipedia.org/wiki/Bishop_Airlock_Module",
+  quest: ISS_SOURCES.quest,
+  bishop: ISS_SOURCES.bishop,
   msg: "Guantera MSG de Destiny: 255 L de volumen de trabajo, puertos de guantes de 40 cm: https://en.wikipedia.org/wiki/Microgravity_Science_Glovebox",
   crewQuarters: "Camarotes de la ISS (Node 2), unos 2 m³ cada uno: https://ntrs.nasa.gov/citations/20080013462",
   uwms: "Aseo UWMS (Universal Waste Management System), en la ISS desde 2020: https://en.wikipedia.org/wiki/Space_toilet",
   exercise: "Ejercicio en la ISS: CEVIS de 25–350 W, ARED hasta 272 kg: https://pmc.ncbi.nlm.nih.gov/articles/PMC7434884",
+  destinyIss: ISS_SOURCES.destiny,
   orion: "Orion: volante de inercia para el ejercicio en una cápsula pequeña: https://en.wikipedia.org/wiki/Orion_(spacecraft)",
   iss: "ISS: 916 m³ presurizados en total: https://en.wikipedia.org/wiki/International_Space_Station",
   shuttleBay: "Bodega del transbordador: 18,3 × 4,6 m, sin presurizar, con las puertas abiertas en órbita: https://en.wikipedia.org/wiki/Space_Shuttle_orbiter",
@@ -31,21 +34,20 @@ export const INTERIOR_SOURCES = {
 const S = INTERIOR_SOURCES;
 
 /**
- * Free aisle of each kind of module, half-widths (across x, up y), m. Game values: what is left of the
- * module's diameter once the racks (or the habitat's outfitting) line the four walls.
+ * Free aisle of each kind of module, half-widths (across, up), m: what is left of the module's diameter
+ * once the racks line the four walls. The labs' 2 × 2 m is the real aisle between ISPR racks 0,86 m
+ * deep; the nodes' 2,4 m passage and the airlock's are game values.
  */
 const AISLE = {
-  /** Unity is 4,57 m across: a 2,4 m square passage between stowage racks. */
-  nodo: { x: 1.2, y: 1.2, basis: "Valor de juego: pasillo de 2,4 × 2,4 m dentro de un nodo de 4,57 m como Unity", source: STRUCTURE_SOURCES.unity },
-  /** HALO is 3 m across: a 1,6 × 1,9 m passage, ~0,55–0,7 m of outfitting round it (widened so the third-person camera fits, docs/design/ingravidez.md). */
-  habitat: { x: 0.8, y: 0.95, basis: "Valor de juego: pasillo de 1,6 × 1,9 m dentro de los 3 m de diámetro del HALO (ensanchado para la cámara en tercera persona)", source: STRUCTURE_SOURCES.halo },
-  /** Destiny-sized: a 2 × 2 m passage between ISPR racks 0,86 m deep on the four faces. */
-  fabrica: { x: 1.0, y: 1.0, basis: "Valor de juego: pasillo de 2 × 2 m entre bastidores ISPR de 0,86 m de fondo, como en Destiny", source: S.destiny },
-  /** Columbus is 4,48 m across: the same 2 × 2 m passage between its ISPR racks. */
+  nodo: { x: 1.2, y: 1.2, basis: "Pasillo de 2,4 × 2,4 m dentro de un nodo de 4,4–4,57 m (valor de juego)", source: STRUCTURE_SOURCES.unity },
+  laboratorio: { x: 1.0, y: 1.0, basis: "Pasillo de 2 × 2 m entre bastidores ISPR de 0,86 m de fondo, como en Destiny y Kibo", source: S.destiny },
+  fabrica: { x: 1.0, y: 1.0, basis: "Pasillo de 2 × 2 m entre bastidores ISPR, como en Columbus", source: GROWTH_SOURCES.columbus },
+  esclusa: { x: 0.95, y: 0.95, basis: "Esclusa de equipo y de tripulación de Quest como un solo pasillo de 1,9 m (valor de juego)", source: S.quest },
+  habitat: { x: 1.0, y: 1.0, basis: "Pasillo de 2 × 2 m entre los camarotes (valor de juego)", source: S.axiomHab },
   planta: { x: 1.0, y: 1.0, basis: "Valor de juego: pasillo de 2 × 2 m entre bastidores ISPR, como en Columbus", source: GROWTH_SOURCES.columbus },
-  /** B330 is 6,7 m across: a 4,4 m square hall between the crop walls. */
   agricola: { x: 2.2, y: 2.2, basis: "Valor de juego: nave de 4,4 × 4,4 m entre las paredes de cultivo, dentro de los 6,7 m de diámetro del B330", source: GROWTH_SOURCES.b330 },
 } as const;
+type AisleKind = keyof typeof AISLE;
 
 /** Depth of an ISPR rack, m. */
 const RACK_DEPTH = 0.86;
@@ -56,28 +58,28 @@ const RACK_WIDTH = 1.05;
 const CBM_HALF = 1.27 / 2;
 /** IDSS passage, 800 mm across. */
 const IDSS_HALF = 0.4;
-/** Airlock crew lock (game value, the crew half of a Quest-like airlock) and its outer EVA hatch. */
-const LOCK = { len: 2.1, x: 0.85, y: 0.95, hatchHalf: 0.5 };
 
-const span = (m: PressurisedModule) => ({ min: Math.min(m.from.z, m.to.z), max: Math.max(m.from.z, m.to.z) });
+type Axis = "x" | "y" | "z";
+const unit = (k: Axis, s = 1) => new Vec3(k === "x" ? s : 0, k === "y" ? s : 0, k === "z" ? s : 0);
+const axisOf = (v: Vec3): Axis => (Math.abs(v.x) >= Math.abs(v.y) && Math.abs(v.x) >= Math.abs(v.z) ? "x" : Math.abs(v.y) >= Math.abs(v.z) ? "y" : "z");
 
 /**
  * Where a piece of equipment stands: its rack bays on one long wall of its module. Along z the walls
- * are port and starboard; along x (modules on node 1's side ports) forward and aft. Bays count from
- * the end nearest node 1.
+ * are port and starboard; along x forward and aft. Bays count from the end nearest the node it hangs on.
  */
-function rackFixture(e: InstalledEquipment, vol: InteriorVolume, racksPerSide: number): Fixture {
+function rackFixture(e: InstalledEquipment, vol: InteriorVolume, racksPerSide: number, from: number): Fixture {
   const k = vol.half.x > vol.half.z ? "x" : "z";
   const len = 2 * vol.half[k];
   const pitch = len / racksPerSide;
-  const sign = Math.sign(vol.centre[k] || 1);
+  const sign = Math.sign(vol.centre[k] - from) || 1;
   const start = vol.centre[k] - sign * vol.half[k];
   const along = start + sign * (e.place.first + e.place.count / 2) * pitch;
   const width = pitch * e.place.count - (pitch - RACK_WIDTH);
   const h = 2 * vol.half.y - 0.1;
   const face: Face = k === "z" ? (e.place.side === 0 ? "babor" : "estribor") : e.place.side === 0 ? "proa" : "popa";
-  const at = k === "z" ? new Vec3(e.place.side === 0 ? -vol.half.x : vol.half.x, vol.centre.y, along) : new Vec3(along, vol.centre.y, e.place.side === 0 ? vol.centre.z - vol.half.z : vol.centre.z + vol.half.z);
+  const at = k === "z" ? new Vec3(vol.centre.x + (e.place.side === 0 ? -vol.half.x : vol.half.x), vol.centre.y, along) : new Vec3(along, vol.centre.y, e.place.side === 0 ? vol.centre.z - vol.half.z : vol.centre.z + vol.half.z);
   const size = k === "z" ? new Vec3(RACK_DEPTH, h, width) : new Vec3(width, h, RACK_DEPTH);
+  const label = e.spec.status && e.spec.status !== "real" ? ` · ${REALITY_NAME[e.spec.status]}` : "";
   return {
     id: e.spec.id,
     label: e.spec.name,
@@ -87,16 +89,42 @@ function rackFixture(e: InstalledEquipment, vol: InteriorVolume, racksPerSide: n
     size,
     action: { kind: "panel", panel: e.spec.panel },
     ...(e.spec.machine ? { machine: e.spec.machine } : {}),
-    info: e.spec.info,
+    info: `${e.spec.info}${label ? ` (${label.slice(3)})` : ""}`,
     source: e.spec.basis.source,
   };
 }
 
+/** A module's free aisle between two points on its axis. */
+function aisleOf(m: PressurisedModule, code: string, kind: AisleKind, volKind: InteriorVolume["kind"] = kind): InteriorVolume {
+  const k = axisOf(m.to.sub(m.from));
+  const a = AISLE[kind];
+  const centre = m.from.add(m.to).scale(0.5);
+  const len = Math.abs(m.to[k] - m.from[k]) / 2;
+  const half = k === "z" ? new Vec3(a.x, a.y, len) : k === "x" ? new Vec3(len, a.y, a.x) : new Vec3(a.x, len, a.y);
+  return { id: m.id, code, label: m.label, kind: volKind, centre, half, pressurised: true, basis: a.basis, source: a.source ?? m.source };
+}
+
 /**
- * Builds the interior from the station's structure and outfit: the pressurised stack along z (node 2
- * with the docking adapters, the habitat, node 1, the fabrication module), the modules berthed on
- * node 1's side ports (along x), an airlock and the hangar. The machines stand in the rack bays the
- * outfit gives them.
+ * The hatch between a module and the one it hangs on: a CBM passage along `k` from just inside the
+ * parent's aisle (`inner`, measured on that axis) to just inside the child (`outer`).
+ */
+function cbmHatch(id: string, label: string, centreOn: Vec3, k: Axis, inner: number, outer: number, needs?: "presion" | "traje"): InteriorVolume {
+  const lo = Math.min(inner, outer);
+  const hi = Math.max(inner, outer);
+  const c = new Vec3(k === "x" ? (lo + hi) / 2 : centreOn.x, k === "y" ? (lo + hi) / 2 : centreOn.y, k === "z" ? (lo + hi) / 2 : centreOn.z);
+  const half = new Vec3(k === "x" ? (hi - lo) / 2 : CBM_HALF, k === "y" ? (hi - lo) / 2 : CBM_HALF, k === "z" ? (hi - lo) / 2 : CBM_HALF);
+  return { id, code: "ESC", label, kind: "escotilla", centre: c, half, through: k, pressurised: true, ...(needs ? { needs } : {}), basis: "Escotilla CBM de 1,27 m de lado, como entre los módulos de la ISS", source: S.cbm };
+}
+
+/** Parent of a berth: the module it is on (`nodo-3-popa` → `nodo-3`, `x-extremo` → `x`). */
+const berthParent = (id: string) => id.slice(0, id.lastIndexOf("-"));
+
+/**
+ * Builds the interior of the ISS's US segment from the structure and the outfit (docs/design/estacion-real.md):
+ * Unity, Destiny and Harmony along z; Tranquility and Quest on Unity's sides and Kibo and Columbus on
+ * Harmony's, along x; then whatever the station grew. Crew areas where they are on the ISS: the galley
+ * in Unity, the cabins in Harmony, hygiene and exercise in Tranquility. All at real size; the
+ * presentation layer draws it bigger.
  */
 export function stationInteriorPlan(layout: StationLayout = POLANA_LAYOUT, outfit: StationOutfit = startingOutfit()): StationInteriorPlan {
   const mod = (id: string) => {
@@ -104,212 +132,142 @@ export function stationInteriorPlan(layout: StationLayout = POLANA_LAYOUT, outfi
     if (!m) throw new Error(`No module ${id}`);
     return m;
   };
-  const hangarPart = layout.parts.find((p) => p.kind === "hangar")!;
-  const n1 = span(mod("nodo-1"));
-  const hab = span(mod("habitat"));
-  const n2 = span(mod("nodo-2"));
-  const fab = span(mod("fabrica"));
+  const code = (id: string) => outfit.module(id)?.code ?? id.toUpperCase();
+  const u = aisleOf(mod("nodo-1"), code("nodo-1"), "nodo");
+  const lab = aisleOf(mod("destiny"), code("destiny"), "laboratorio");
+  const h2 = aisleOf(mod("nodo-2"), code("nodo-2"), "nodo");
+  const n3 = aisleOf(mod("nodo-3"), code("nodo-3"), "nodo");
+  const quest = aisleOf(mod("quest"), code("quest"), "esclusa");
+  const col = aisleOf(mod("columbus"), code("columbus"), "fabrica");
+  const kibo = aisleOf(mod("kibo"), code("kibo"), "laboratorio");
   const idaSonda = mod("ida-sonda");
   const idaNodriza = mod("ida-nodriza");
-  const n2Mid = (n2.min + n2.max) / 2;
-  const lock = { min: fab.max, max: fab.max + LOCK.len };
-  const hangar = { min: hangarPart.centre.z - hangarPart.half.z, max: hangarPart.centre.z + hangarPart.half.z };
-
-  const aisle = (id: string, code: string, label: string, kind: keyof typeof AISLE, z: { min: number; max: number }): InteriorVolume => ({
-    id,
-    code,
-    label,
-    kind,
-    centre: new Vec3(0, 0, (z.min + z.max) / 2),
-    half: new Vec3(AISLE[kind].x, AISLE[kind].y, (z.max - z.min) / 2),
-    pressurised: true,
-    basis: AISLE[kind].basis,
-    source: AISLE[kind].source,
-  });
-  const hatch = (id: string, label: string, z: number, half: number, needs?: "presion" | "traje"): InteriorVolume => ({
-    id,
-    code: "ESC",
-    label,
-    kind: "escotilla",
-    centre: new Vec3(0, 0, z),
-    half: new Vec3(half, half, 0.5),
-    through: "z",
-    pressurised: needs !== "traje",
-    ...(needs ? { needs } : {}),
-    basis: half === CBM_HALF ? "Escotilla CBM de 1,27 m de lado, como entre los módulos de la ISS" : "Valor de juego: escotilla EVA de 1 m",
-    source: half === CBM_HALF ? S.cbm : S.quest,
-  });
+  const N = AISLE.nodo;
+  const zEnd = (v: InteriorVolume, s: 1 | -1) => v.centre.z + s * v.half.z;
+  const xEnd = (v: InteriorVolume, s: 1 | -1) => v.centre.x + s * v.half.x;
+  const h2Mid = h2.centre.z;
 
   const volumes: InteriorVolume[] = [
-    aisle("nodo-2", "NOD2", "Nodo 2 (atraque)", "nodo", n2),
-    aisle("habitat", "HAB1", "Módulo habitable", "habitat", hab),
-    aisle("nodo-1", "NOD1", "Nodo 1", "nodo", n1),
-    aisle("fabrica", outfit.module("fabrica")?.code ?? "FAB1", "Módulo de fabricación", "fabrica", fab),
-    {
-      id: "esclusa",
-      code: "ESC1",
-      label: "Esclusa",
-      kind: "esclusa",
-      centre: new Vec3(0, 0, (lock.min + lock.max) / 2),
-      half: new Vec3(LOCK.x, LOCK.y, LOCK.len / 2),
-      pressurised: true,
-      basis: "Valor de juego: la esclusa de tripulación de una esclusa como Quest, de 2,1 m",
-      source: S.quest,
-    },
-    {
-      id: "hangar",
-      code: "HNG1",
-      label: "Hangar (sin presión)",
-      kind: "hangar",
-      centre: hangarPart.centre,
-      half: hangarPart.half.sub(new Vec3(0.2, 0.2, 0.2)),
-      pressurised: false,
-      basis: "Hangar abierto al vacío, como la bodega del transbordador: presurizar 20 × 14 × 20 m costaría 6,7 t de aire y empujaría 28 MN cada pared de 20 × 14 m (41 MN el suelo de 20 × 20 m)",
-      source: S.shuttleBay,
-    },
-    hatch("escotilla-hab-nodo2", "Escotilla Nodo 2 – Módulo habitable", n2.max, CBM_HALF),
-    hatch("escotilla-nodo1-hab", "Escotilla Módulo habitable – Nodo 1", n1.min, CBM_HALF),
-    hatch("escotilla-nodo1-fab", "Escotilla Nodo 1 – Fabricación", n1.max, CBM_HALF),
-    hatch("escotilla-fab-esclusa", "Escotilla interior de la esclusa", lock.min, CBM_HALF, "presion"),
-    hatch("escotilla-esclusa-hangar", "Escotilla exterior de la esclusa", lock.max, LOCK.hatchHalf, "traje"),
+    u,
+    lab,
+    h2,
+    n3,
+    quest,
+    col,
+    kibo,
+    // Along the stack: Unity – Destiny – Harmony.
+    { ...cbmHatch("escotilla-nodo1-destiny", "Escotilla Unity – Destiny", u.centre, "z", zEnd(u, -1) + 0.5, zEnd(u, -1) - 0.5) },
+    { ...cbmHatch("escotilla-destiny-nodo2", "Escotilla Destiny – Harmony", lab.centre, "z", zEnd(lab, -1) + 0.5, zEnd(lab, -1) - 0.5) },
+    // Off the nodes' sides: from just inside the node's aisle to just inside the module.
+    cbmHatch("escotilla-nodo1-nodo3", "Escotilla Unity – Tranquility", u.centre, "x", -(N.x - 0.3), xEnd(n3, 1) - 0.5),
+    cbmHatch("escotilla-nodo1-quest", "Escotilla Unity – Quest", u.centre, "x", N.x - 0.3, xEnd(quest, -1) + 0.5, "presion"),
+    cbmHatch("escotilla-nodo2-columbus", "Escotilla Harmony – Columbus", h2.centre, "x", N.x - 0.3, xEnd(col, -1) + 0.5),
+    cbmHatch("escotilla-nodo2-kibo", "Escotilla Harmony – Kibo", h2.centre, "x", -(N.x - 0.3), xEnd(kibo, 1) - 0.5),
     {
       id: "tunel-sonda",
-      code: "IDA1",
-      label: "Adaptador de atraque del módulo de aterrizaje",
+      code: "IDA3",
+      label: "IDA de cenit del módulo de aterrizaje",
       kind: "escotilla",
-      centre: new Vec3(0, (idaSonda.to.y - AISLE.nodo.y + 0.2) / 2, n2Mid),
-      half: new Vec3(IDSS_HALF, (-AISLE.nodo.y + 0.2 - idaSonda.to.y) / 2, IDSS_HALF),
+      centre: new Vec3(0, (N.y - 0.2 + idaSonda.to.y) / 2, h2Mid),
+      half: new Vec3(IDSS_HALF, (idaSonda.to.y - (N.y - 0.2)) / 2, IDSS_HALF),
       through: "y",
       pressurised: true,
-      basis: "Paso IDSS de 800 mm, por el suelo del Nodo 2",
+      basis: "Paso IDSS de 800 mm, por el techo de Harmony",
       source: STRUCTURE_SOURCES.nds,
     },
     {
       id: "tunel-nodriza",
       code: "IDA2",
-      label: "Adaptador de atraque de la nodriza",
+      label: "IDA de proa de la nave nodriza",
       kind: "escotilla",
-      centre: new Vec3(0, 0, (idaNodriza.to.z + n2.min + 0.4) / 2),
-      half: new Vec3(IDSS_HALF, IDSS_HALF, (n2.min + 0.4 - idaNodriza.to.z) / 2),
+      centre: new Vec3(0, 0, (idaNodriza.to.z + zEnd(h2, -1) + 0.4) / 2),
+      half: new Vec3(IDSS_HALF, IDSS_HALF, (zEnd(h2, -1) + 0.4 - idaNodriza.to.z) / 2),
       through: "z",
       pressurised: true,
-      basis: "Paso IDSS de 800 mm, por proa del Nodo 2",
+      basis: "Paso IDSS de 800 mm, por proa de Harmony",
       source: STRUCTURE_SOURCES.nds,
     },
   ];
 
-  const hz = hangarPart.half;
-  const hc = hangarPart.centre;
-  // The airlock sticks into the hangar from its fore wall; racks line the port and starboard walls.
-  const rackDepth = 1.2;
-  const rackZ = { min: lock.max + 1.5, max: hangar.max - 2.5 };
-  const solids: (Box & { volume: string })[] = [
-    { volume: "hangar", centre: new Vec3(0, 0, (lock.min + lock.max) / 2), half: new Vec3(LOCK.x + 0.2, LOCK.y + 0.2, LOCK.len / 2) },
-    ...[-1, 1].map((side) => ({
-      volume: "hangar",
-      centre: new Vec3(side * (hz.x - rackDepth / 2), hc.y - hz.y / 2, (rackZ.min + rackZ.max) / 2),
-      half: new Vec3(rackDepth / 2, hz.y / 2, (rackZ.max - rackZ.min) / 2),
-    })),
-  ];
-
-  const rackSlots: Vec3[] = [];
-  const perRow = 6;
-  // Fill the middle shelf (in reach) first, port then starboard, then the bottom and top ones.
-  for (const shelf of [1, 0, 2])
-    for (const side of [-1, 1])
-      for (let i = 0; i < perRow; i++)
-        rackSlots.push(new Vec3(side * (hz.x - rackDepth / 2), hc.y - hz.y + 1 + shelf * 2.1, rackZ.min + 1 + (i * (rackZ.max - rackZ.min - 2)) / (perRow - 1)));
-  const cradles: Vec3[] = [];
-  for (const z of [hc.z - 2, hc.z + 4]) for (const x of [-4.5, 0, 4.5]) cradles.push(new Vec3(x, hc.y - hz.y + 1.2, z));
-
   // --- Fixtures --------------------------------------------------------------
-  const N = AISLE.nodo;
-  const H = AISLE.habitat;
-  const F = AISLE.fabrica;
-  const habZ = (f: number) => hab.max - f * (hab.max - hab.min); // f from the node 1 end (0) to node 2 (1)
-  const fabZ = (f: number) => fab.min + f * (fab.max - fab.min);
-  const fx = (f: Fixture): Fixture => f;
+  const along = (v: InteriorVolume, f: number) => {
+    const k = v.half.x > v.half.z ? "x" : "z";
+    return v.centre[k] - v.half[k] + f * 2 * v.half[k];
+  };
+  const n3x = (f: number) => xEnd(n3, 1) - f * 2 * n3.half.x; // from Unity (0) to the Bishop (1)
   const fixtures: Fixture[] = [
-    // Node 2: the two docking hatches.
-    fx({ id: "salir-sonda", label: "Escotilla del módulo", volume: "nodo-2", face: "suelo", at: new Vec3(0, -N.y, n2Mid), size: new Vec3(0.8, 0.1, 0.8), action: { kind: "salir", to: "sonda" }, info: "Escotilla IDSS: por aquí vuelves a la cabina del módulo de aterrizaje", source: STRUCTURE_SOURCES.nds }),
-    fx({ id: "salir-nodriza", label: "Escotilla de la nodriza", volume: "nodo-2", face: "proa", at: new Vec3(0, 0, n2.min), size: new Vec3(0.8, 0.8, 0.1), action: { kind: "salir", to: "nodriza" }, info: "Escotilla IDSS: por aquí se pasa a la nodriza atracada", source: STRUCTURE_SOURCES.nds }),
-    fx({ id: "carga-nodo2", label: "Bolsas de carga", volume: "nodo-2", face: "techo", at: new Vec3(0, N.y, n2Mid + 1.2), size: new Vec3(1.6, 0.6, 1.2), action: { kind: "info" }, info: "Bolsas de carga atadas al techo, como en los nodos de la ISS" }),
-    // The station's own crew areas (docs/design/estacion-tripulacion.md): hygiene, galley and cabins in
-    // the habitat, zigzagging from wall to wall 2 m apart once drawn; exercise and the yoga mat in node 1, like Tranquility.
-    fx({ id: "aseo", label: "Aseo", volume: "habitat", face: "babor", at: new Vec3(-H.x, 0, habZ(0.28)), size: new Vec3(0.7, 1.6, 1.0), action: { kind: "tripulacion", area: "aseo" }, info: "Aseo cerrado con un UWMS, el de la ISS desde 2020: el aire arrastra lo que en la Tierra cae", source: S.uwms }),
-    fx({ id: "cocina", label: "Cocina y mesa", volume: "habitat", face: "estribor", at: new Vec3(H.x, 0.2, habZ(0.5)), size: new Vec3(0.6, 1.2, 1.3), action: { kind: "tripulacion", area: "cocina" }, info: "Cocina de la estación: horno cerrado, calentador y grifo de agua caliente y fría como en la ISS, y una mesa con cinchas y velcro como la del nodo Unity. Cocina con la despensa de la estación", source: STRUCTURE_SOURCES.unity }),
-    fx({ id: "camarotes", label: "Camarotes", volume: "habitat", face: "babor", at: new Vec3(-H.x, 0, habZ(0.72)), size: new Vec3(0.75, 1.7, 1.4), action: { kind: "tripulacion", area: "camarotes" }, info: "Cuatro camarotes como los de Harmony o los de Axiom Hab One, de unos 2 m³ cada uno: saco de dormir sujeto a la pared, luz, ventilación y portátil; con el botiquín (la enfermería está en la nodriza)", source: S.crewQuarters }),
-    fx({ id: "ejercicio", label: "Ejercicio", volume: "nodo-1", face: "suelo", at: new Vec3(0, -N.y, -1.33), size: new Vec3(1.2, 0.3, 1.4), action: { kind: "tripulacion", area: "ejercicio" }, info: "Bicicleta sin sillín como la CEVIS (25–350 W) y un volante de inercia como el de Orion, en un nodo como en Tranquility: en ingravidez hay que hacer ejercicio cada día", source: S.exercise }),
-    fx({ id: "esterilla", label: "Esterilla de yoga", volume: "nodo-1", face: "suelo", at: new Vec3(0, -N.y, 1.33), size: new Vec3(0.9, 0.1, 1.4), action: { kind: "tripulacion", area: "esterilla" }, info: "Esterilla con cinchas para los pies: yoga y, sentada en loto, los ajustes generales", source: S.tranquility }),
-    fx({ id: "esclusa-carga", label: "Esclusa de carga", volume: "fabrica", face: "techo", at: new Vec3(0, F.y, fabZ(0.8)), size: new Vec3(1.0, 0.5, 1.0), action: { kind: "panel", panel: "hangar" }, info: "Esclusa de carga como la Bishop de la ISS: pasa las piezas fabricadas al hangar sin vaciar el módulo", source: S.bishop }),
-    // Airlock and hangar.
-    fx({ id: "trajes", label: "Trajes y esclusa", volume: "esclusa", face: "estribor", at: new Vec3(LOCK.x, 0, (lock.min + lock.max) / 2), size: new Vec3(0.4, 1.7, 1.2), action: { kind: "esclusa" }, info: "Dos trajes, como en la esclusa Quest. El hangar está al vacío: hay que vaciar la esclusa para pasar", source: S.quest }),
-    fx({ id: "consola-hangar", label: "Consola del hangar", volume: "hangar", face: "proa", at: new Vec3(-2.2, 0.6, lock.max + 0.1), size: new Vec3(0.7, 0.5, 0.1), action: { kind: "hangar" }, info: "Tareas de la estación, el brazo que mete el módulo en el hangar y el inventario de naves, sondas y piezas" }),
-    // The ship bay: next to where the lander rests (docs/design/estacion-tripulacion.md, «Hangar»).
-    fx({ id: "consola-bahia", label: "Bahía de la nave", volume: "hangar", face: "proa", at: new Vec3(2.2, 0.6, lock.max + 0.1), size: new Vec3(0.7, 0.5, 0.1), action: { kind: "bahia" }, info: "Bahía de la nave: aquí se revisan y se cambian las piezas del módulo (en el hangar) y de la nodriza (atracada fuera)" }),
-    fx({ id: "estante-babor", label: "Piezas de repuesto", volume: "hangar", face: "babor", at: new Vec3(-(hz.x - rackDepth), hc.y - hz.y / 2, (rackZ.min + rackZ.max) / 2), size: new Vec3(rackDepth, hz.y, rackZ.max - rackZ.min), action: { kind: "panel", panel: "hangar" }, info: "Estantes de piezas de repuesto: se montan en la bahía de la nave" }),
-    fx({ id: "estante-estribor", label: "Piezas de repuesto", volume: "hangar", face: "estribor", at: new Vec3(hz.x - rackDepth, hc.y - hz.y / 2, (rackZ.min + rackZ.max) / 2), size: new Vec3(rackDepth, hz.y, rackZ.max - rackZ.min), action: { kind: "panel", panel: "hangar" }, info: "Estantes de piezas de repuesto: se montan en la bahía de la nave" }),
-    fx({ id: "cunas", label: "Sondas fabricadas", volume: "hangar", face: "suelo", at: new Vec3(0, hc.y - hz.y + 2.4, hc.z + 1), size: new Vec3(12, 2.4, 9), action: { kind: "panel", panel: "hangar" }, info: "Cunas de las sondas construidas en la estación" }),
-    fx({ id: "puerta-hangar", label: "Puerta del hangar", volume: "hangar", face: "popa", at: new Vec3(0, 0, hangar.max - 0.2), size: new Vec3(16, 11, 0.1), action: { kind: "info" }, info: "La puerta mira a popa y está abierta: el hangar no tiene aire, como la bodega del transbordador", source: S.shuttleBay }),
+    // Harmony: the two IDAs and the four crew quarters (one fixture), like on the ISS.
+    { id: "salir-sonda", label: "Escotilla del módulo (IDA de cenit)", volume: "nodo-2", face: "techo", at: new Vec3(0, N.y, h2Mid), size: new Vec3(0.8, 0.1, 0.8), action: { kind: "salir", to: "sonda" }, info: "Escotilla IDSS en el cenit de Harmony, como el IDA-3: por aquí vuelves a la cabina del módulo de aterrizaje", source: STRUCTURE_SOURCES.nds },
+    { id: "salir-nodriza", label: "Escotilla de la nodriza (IDA de proa)", volume: "nodo-2", face: "proa", at: new Vec3(0, 0, zEnd(h2, -1)), size: new Vec3(0.8, 0.8, 0.1), action: { kind: "salir", to: "nodriza" }, info: "Escotilla IDSS en la proa de Harmony, como el IDA-2 donde atracaba el transbordador: por aquí se pasa a la nodriza atracada", source: STRUCTURE_SOURCES.nds },
+    { id: "camarotes", label: "Camarotes (4)", volume: "nodo-2", face: "estribor", at: new Vec3(N.x, 0, along(h2, 0.85)), size: new Vec3(0.75, 1.9, 0.9), action: { kind: "tripulacion", area: "camarotes" }, info: "Los cuatro camarotes de Harmony, como en la ISS: unos 2 m³ cada uno, saco de dormir sujeto a la pared, luz, ventilación y portátil", source: S.crewQuarters },
+    { id: "cbm-nadir-nodo2", label: "CBM de nadir de Harmony", volume: "nodo-2", face: "suelo", at: new Vec3(0, -N.y, h2Mid), size: new Vec3(1.27, 0.1, 1.27), action: { kind: "info" }, info: "Puerto CBM de los cargueros (Dragon de carga, Cygnus, HTV), como en la ISS: aquí llegan los kits importados", source: ISS_SOURCES.harmony },
+    // Unity: the galley and the table, the lander's CBM (the ship bay) and the yoga mat.
+    { id: "cocina", label: "Cocina y mesa", volume: "nodo-1", face: "estribor", at: new Vec3(N.x, 0.1, along(u, 0.15)), size: new Vec3(0.6, 1.2, 1.2), action: { kind: "tripulacion", area: "cocina" }, info: "La cocina de la ISS está en Unity: calentador de comida, grifo de agua caliente y fría y la mesa con cinchas y velcro. Cocina con la despensa de la estación", source: STRUCTURE_SOURCES.unity },
+    { id: "consola-bahia", label: "Bahía de la nave (CBM de nadir)", volume: "nodo-1", face: "suelo", at: new Vec3(0, -N.y, 0), size: new Vec3(1.27, 0.1, 1.27), action: { kind: "bahia" }, info: "CBM de nadir de Unity, donde atracan los Cygnus: el brazo atraca aquí el módulo de aterrizaje y en la bahía se revisan y se cambian sus piezas y las de la nodriza", source: ISS_SOURCES.unity },
+    { id: "esterilla", label: "Esterilla de yoga", volume: "nodo-1", face: "techo", at: new Vec3(0, N.y, along(u, 0.8)), size: new Vec3(0.9, 0.1, 1.4), action: { kind: "tripulacion", area: "esterilla" }, info: "Esterilla con cinchas para los pies: yoga y, sentada en loto, los ajustes generales", source: S.tranquility },
+    { id: "pma1", label: "Escotilla de popa (PMA-1)", volume: "nodo-1", face: "popa", at: new Vec3(0, 0, zEnd(u, 1)), size: new Vec3(1.0, 1.0, 0.1), action: { kind: "info" }, info: "Por el PMA-1 se pasa al segmento ruso (Zarya y Zvezda), que no está en el juego", source: ISS_SOURCES.unity },
+    // Destiny: the window (the racks come from the outfit).
+    { id: "ventana-destiny", label: "Ventana de Destiny", volume: "destiny", face: "suelo", at: new Vec3(0, -AISLE.laboratorio.y, along(lab, 0.5)), size: new Vec3(0.6, 0.1, 0.6), action: { kind: "info" }, info: "Ventana de calidad óptica de 51 cm que mira a la Tierra", source: ISS_SOURCES.destiny },
+    // Tranquility: hygiene, exercise, the life-support rack bays, the Cupola and the Bishop.
+    { id: "aseo", label: "Aseo (WHC)", volume: "nodo-3", face: "proa", at: new Vec3(n3x(0.2), 0, n3.centre.z - n3.half.z), size: new Vec3(1.0, 1.9, 0.75), action: { kind: "tripulacion", area: "aseo" }, info: "El WHC de Tranquility, con el UWMS desde 2020: el aire arrastra lo que en la Tierra cae", source: ISS_SOURCES.tranquility },
+    { id: "ejercicio", label: "Ejercicio (T2 y ARED)", volume: "nodo-3", face: "popa", at: new Vec3(n3x(0.3), 0, n3.centre.z + n3.half.z), size: new Vec3(1.6, 1.9, 0.6), action: { kind: "tripulacion", area: "ejercicio" }, info: "La cinta T2 con arneses y la máquina de pesas ARED (hasta 272 kg), en Tranquility como en la ISS: en ingravidez hay que hacer ejercicio cada día", source: S.exercise },
+    { id: "cupula", label: "Cupola y brazo (RWS)", volume: "nodo-3", face: "suelo", at: new Vec3(n3x(0.5), -N.y, n3.centre.z), size: new Vec3(1.27, 0.1, 1.27), action: { kind: "brazo" }, info: "Siete ventanas y el puesto robótico de Canadarm2: desde aquí el brazo atraca el módulo en el CBM de Unity y se mira la estación por fuera", source: ISS_SOURCES.cupola },
+    { id: "bastidor-wrs", label: "Bastidores WRS", volume: "nodo-3", face: "proa", at: new Vec3(n3x(0.72), 0, n3.centre.z - n3.half.z), size: new Vec3(1.05, 1.9, 0.86), action: { kind: "info" }, info: "Huecos de los bastidores WRS 1 y 2 (agua: UPA, WPA y BPA). Las máquinas llegan con el soporte vital real (rama eclss-real)", source: ISS_SOURCES.node3Racks },
+    { id: "bastidor-ogs", label: "Bastidor OGS", volume: "nodo-3", face: "popa", at: new Vec3(n3x(0.78), 0, n3.centre.z + n3.half.z), size: new Vec3(1.05, 1.9, 0.86), action: { kind: "info" }, info: "Hueco del bastidor OGS (oxígeno por electrólisis) y del ARS (CO₂). Las máquinas llegan con el soporte vital real (rama eclss-real)", source: ISS_SOURCES.node3Racks },
+    { id: "bishop", label: "Esclusa Bishop", volume: "nodo-3", face: "babor", at: new Vec3(xEnd(n3, -1), 0, n3.centre.z), size: new Vec3(0.1, 1.27, 1.27), action: { kind: "bishop" }, info: "Esclusa de carga Bishop (1059 kg, 3,99 m³) en el puerto de babor: Canadarm2 la saca, suelta la sonda o los cubesats y la vuelve a atracar", source: ISS_SOURCES.bishop },
+    // Quest: the suits and the EVA hatch.
+    { id: "trajes", label: "Trajes y esclusa", volume: "quest", face: "proa", at: new Vec3(along(quest, 0.35), 0, quest.centre.z - quest.half.z), size: new Vec3(1.2, 1.7, 0.4), action: { kind: "esclusa" }, info: "Esclusa de equipo de Quest: los trajes, sus baterías y el agua de sus mochilas", source: S.quest },
+    { id: "escotilla-eva", label: "Escotilla EVA", volume: "quest", face: "estribor", at: new Vec3(xEnd(quest, 1), 0, quest.centre.z), size: new Vec3(0.1, 1.0, 1.0), action: { kind: "info" }, info: "Escotilla EVA de Quest. Salir de paseo por fuera de la estación está en pendientes", source: S.quest },
+    // Kibo: the airlock to the exposed platform, where the parts racks are.
+    { id: "esclusa-kibo", label: "Esclusa de Kibo · plataforma expuesta", volume: "kibo", face: "babor", at: new Vec3(xEnd(kibo, -1), 0, kibo.centre.z), size: new Vec3(0.1, 0.9, 0.9), action: { kind: "panel", panel: "hangar" }, info: "La esclusa de Kibo saca las piezas a la plataforma expuesta (JEM-EF, 12 puertos) con su mesa deslizante y el brazo JEMRMS: aquí está el inventario", source: ISS_SOURCES.kibo },
   ];
 
-  // In free fall the berth is a frame mid-hangar, straight ahead of the two consoles (game value).
-  const landerBerth = new Vec3(0, hc.y - 2, hc.z - 3);
-
-  // --- Modules berthed on the side ports (along x) ---------------------------------------
+  // --- Modules berthed as the station grows --------------------------------------------------
   const used = outfit.usedBerths();
-  const CAP = new Vec3(0.1, 1.27, 1.27);
   for (const m of outfit.modules) {
     if (!m.spec || m.spec.kind === "hangar" || !m.berth) continue;
     const pm = layout.modules.find((x) => x.id === m.id);
     const berth = outfit.berths.find((b) => b.id === m.berth);
     if (!pm || !berth) continue;
-    const kind = m.spec.kind;
-    const a = AISLE[kind];
-    const s = Math.sign(berth.normal.x) || 1;
-    const x0 = pm.from.x;
-    const x1 = pm.to.x;
-    volumes.push({ id: m.id, code: m.code, label: m.label, kind, centre: new Vec3((x0 + x1) / 2, 0, 0), half: new Vec3(Math.abs(x1 - x0) / 2, a.y, a.x), pressurised: true, basis: a.basis, source: a.source });
-    // The hatch: from node 1's aisle through the CBM to the module, or across the joint between two modules.
-    const fromNode = berth.id.startsWith("nodo-1");
-    const inner = fromNode ? N.x - 0.3 : Math.abs(x0) - 0.5;
-    const outer = Math.abs(x0) + 0.5;
-    volumes.push({
-      id: `escotilla-${m.id}`,
-      code: "ESC",
-      label: `Escotilla ${berth.label.replace(/, puerto de \w+$/, "")} – ${m.label}`,
-      kind: "escotilla",
-      centre: new Vec3((s * (inner + outer)) / 2, 0, 0),
-      half: new Vec3((outer - inner) / 2, CBM_HALF, CBM_HALF),
-      through: "x",
-      pressurised: true,
-      basis: "Escotilla CBM de 1,27 m de lado, como entre los módulos de la ISS",
-      source: S.cbm,
-    });
-    if (m.spec.endPort && !used.has(`${m.id}-extremo`))
-      fixtures.push({ id: `puerto-${m.id}`, label: "Puerto libre", volume: m.id, face: s > 0 ? "estribor" : "babor", at: new Vec3(x1, 0, 0), size: CAP, action: { kind: "info" }, info: "Puerto CBM cerrado en el extremo: aquí se puede atracar otro módulo", source: S.cbm });
+    const k = axisOf(berth.normal);
+    if (k === "y") continue;
+    const kind: AisleKind = m.spec.kind;
+    const v = aisleOf(pm, m.code, kind);
+    volumes.push({ ...v, label: m.label });
+    const parent = volumes.find((x) => x.id === berthParent(berth.id));
+    const s = Math.sign(berth.normal[k]);
+    // From just inside the parent's aisle (across it if it hangs on its side) to just inside the module.
+    const inner = parent ? parent.centre[k] + s * (parent.half[k] - (axisOf(parent.half) === k || parent.half[k] > 2 ? 0.5 : 0.3)) : berth.position[k] - s * 0.5;
+    const outer = berth.position[k] + s * 0.5;
+    volumes.push(cbmHatch(`escotilla-${m.id}`, `Escotilla ${berth.label.replace(/, puerto de \w+$/, "")} – ${m.label}`, berth.position, k, inner, outer));
+    if (m.spec.endPort && !used.has(`${m.id}-extremo`)) {
+      const end = pm.to;
+      fixtures.push({ id: `puerto-${m.id}`, label: "Puerto libre", volume: m.id, face: k === "z" ? (s > 0 ? "popa" : "proa") : s > 0 ? "estribor" : "babor", at: new Vec3(k === "x" ? end.x : v.centre.x, 0, k === "z" ? end.z : v.centre.z), size: k === "x" ? new Vec3(0.1, 1.27, 1.27) : new Vec3(1.27, 1.27, 0.1), action: { kind: "info" }, info: "Puerto CBM cerrado en el extremo: aquí se puede atracar otro módulo", source: S.cbm });
+    }
   }
-  // Node 1's capped radial ports, while nothing is berthed there.
-  if (!used.has("nodo-1-babor")) fixtures.push({ id: "puerto-babor", label: "Puerto radial libre", volume: "nodo-1", face: "babor", at: new Vec3(-N.x, 0, 0), size: CAP, action: { kind: "info" }, info: "Puerto CBM cerrado: como Unity, este nodo tiene seis puertos; aquí se atraca un módulo nuevo (Planos → Módulos)", source: STRUCTURE_SOURCES.unity });
-  if (!used.has("nodo-1-estribor")) fixtures.push({ id: "puerto-estribor", label: "Puerto radial libre", volume: "nodo-1", face: "estribor", at: new Vec3(N.x, 0, 0), size: CAP, action: { kind: "info" }, info: "Puerto CBM cerrado, con su tapa: aquí se atraca un módulo nuevo (Planos → Módulos)", source: S.cbm });
+  // Tranquility's capped ports, while nothing is berthed there (Leonardo and BEAM are not modelled).
+  for (const b of outfit.berths.filter((x) => x.id.startsWith("nodo-3-") && !used.has(x.id))) {
+    const fore = b.normal.z < 0;
+    fixtures.push({ id: `puerto-${b.id}`, label: "Puerto CBM libre", volume: "nodo-3", face: fore ? "proa" : "popa", at: new Vec3(b.position.x, 0, n3.centre.z + (fore ? -1 : 1) * n3.half.z), size: new Vec3(1.27, 1.27, 0.1), action: { kind: "info" }, info: `Puerto CBM cerrado (${fore ? "el de Leonardo en la ISS" : "el de BEAM en la ISS"}): aquí se atraca un módulo nuevo (Planos → Módulos)`, source: ISS_SOURCES.tranquility });
+  }
   // Equipment in every module's rack bays.
   for (const e of outfit.equipment) {
     const vol = volumes.find((v) => v.id === e.moduleId);
     const om = outfit.module(e.moduleId);
-    if (vol && om) fixtures.push(rackFixture(e, vol, om.racksPerSide));
+    const pm = layout.modules.find((x) => x.id === e.moduleId);
+    if (vol && om && pm) fixtures.push(rackFixture(e, vol, om.racksPerSide, pm.from[vol.half.x > vol.half.z ? "x" : "z"]));
   }
 
   fixtures.push(...doorFixtures(volumes));
   return {
     volumes,
     fixtures,
-    solids,
-    landerBerth,
+    solids: [],
     entries: {
-      sonda: { at: new Vec3(0, -N.y + 0.6, n2Mid), facing: new Vec3(0, 0, 1) },
-      nodriza: { at: new Vec3(0, 0, n2.min + 0.9), facing: new Vec3(0, 0, 1) },
+      sonda: { at: new Vec3(0, N.y - 0.6, h2Mid), facing: new Vec3(0, 0, 1) },
+      nodriza: { at: new Vec3(0, 0, zEnd(h2, -1) + 0.9), facing: new Vec3(0, 0, 1) },
     },
-    storage: { rackSlots, cradles, crate: new Vec3(0.9, 0.9, 0.9) },
+    storage: { rackSlots: [], cradles: [], crate: new Vec3(0.9, 0.9, 0.9) },
   };
 }
 
@@ -353,9 +311,12 @@ function doorFixtures(volumes: readonly InteriorVolume[]): Fixture[] {
   return out;
 }
 
-/** Numbers behind the hangar decision (docs/design/interiores.md §5): air mass and load on a wall. */
-export function hangarPressureCase(layout: StationLayout = POLANA_LAYOUT, cabinKPa = 101.3, airKgM3 = 1.19): { volumeM3: number; airKg: number; wallLoadMN: number } {
-  const h = layout.parts.find((p) => p.kind === "hangar")!.half;
+/** The old game hangar (20 × 14 × 20 m), now in the backlog (docs/pendientes.md). */
+export const OLD_HANGAR_HALF = new Vec3(10, 7, 10);
+
+/** Numbers behind dropping the hangar (docs/design/interiores.md §5): air mass and load on a wall. */
+export function hangarPressureCase(half: Vec3 = OLD_HANGAR_HALF, cabinKPa = 101.3, airKgM3 = 1.19): { volumeM3: number; airKg: number; wallLoadMN: number } {
+  const h = half;
   const volumeM3 = 8 * h.x * h.y * h.z;
   // Biggest wall: the fore/aft or side wall (both 20 × 14 m here).
   const wallM2 = 4 * Math.max(h.x * h.y, h.z * h.y, h.x * h.z);

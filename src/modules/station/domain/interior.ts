@@ -37,7 +37,7 @@ export interface InteriorVolume extends Box {
   /** Short location code (NOD2, HAB1, FAB1...). */
   readonly code: string;
   readonly label: string;
-  readonly kind: "nodo" | "habitat" | "fabrica" | "agricola" | "planta" | "esclusa" | "hangar" | "escotilla";
+  readonly kind: "nodo" | "habitat" | "fabrica" | "laboratorio" | "agricola" | "planta" | "esclusa" | "hangar" | "escotilla";
   readonly pressurised: boolean;
   /**
    * Hatches only: the axis she goes through (not shrunk by the body margin, so she can pass) and
@@ -60,8 +60,10 @@ export type FixtureAction =
   | { readonly kind: "puerta"; readonly to: string; readonly hatch: string }
   /** A crew area: galley, cabins, hygiene, exercise, the yoga mat. */
   | { readonly kind: "tripulacion"; readonly area: CrewArea }
-  /** The hangar's console: the station's task list, the lander's berth and the inventory. */
-  | { readonly kind: "hangar" }
+  /** The Cupola's robotic workstation: Canadarm2 berths the lander on a CBM, and the view outside. */
+  | { readonly kind: "brazo" }
+  /** The Bishop cargo airlock: stow, deploy and retrieve Juventas and the cubesats. */
+  | { readonly kind: "bishop" }
   | { readonly kind: "info" }
   | { readonly kind: "salir"; readonly to: PortUser }
   /** The ship bay: configure the parts of the docked ships (docs/design/accesos.md). */
@@ -94,9 +96,9 @@ export interface StationInteriorPlan {
   readonly solids: readonly (Box & { readonly volume: string })[];
   /** Where she comes in from each docking port, and the direction she faces. */
   readonly entries: Readonly<Record<PortUser, { readonly at: Vec3; readonly facing: Vec3 }>>;
-  /** Hangar storage: racks for spare parts and cradles for probes. */
+  /** Storage drawn inside (the old hangar's racks and cradles; empty on the ISS: the parts are outside on the JEM-EF). */
   readonly storage: HangarStorage;
-  /** Where the lander rests in the hangar once the station's arm has berthed it there (deck centre of its hull). */
+  /** Where the lander would be drawn inside (the old hangar; unset on the ISS: it berths outside on a CBM). */
   readonly landerBerth?: Vec3;
   /** How much bigger than real it is drawn (`scaleInteriorPlan`); 1 or absent: real size. */
   readonly scale?: number;

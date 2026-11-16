@@ -5,13 +5,14 @@ import { BIO_STARTING_STOCK } from "./bio-materials";
 
 /**
  * The station of the starting region, parked about 1,2 km from Bennu on the side the ship starts on.
- * Game values: position and docking range. The size is that of the structure (`POLANA_LAYOUT`).
+ * Game values: position and docking range. The size is that of the structure (`POLANA_LAYOUT`): the
+ * ISS's 109 m span and its wings fit in a sphere of 80 m.
  */
 export const POLANA_STATION: StationSite = {
   id: "estacion-polana",
   name: "Estación Nueva Polana",
   position: new Vec3(-450, 150, 1100),
-  radiusM: 66,
+  radiusM: 80,
   dockingRangeM: 400,
 };
 

@@ -14,7 +14,7 @@ import type { StoreStowage } from "../domain/outfit";
 export const STORE_STOWAGE: StoreStowage = {
   rackKg: 700,
   rackM3: 1.571,
-  racksByKind: { nodo: 4, habitat: 2, fabrica: 4, planta: 4, agricola: 4, hangar: 0 },
+  racksByKind: { nodo: 4, habitat: 2, fabrica: 4, laboratorio: 4, esclusa: 1, planta: 4, agricola: 4, hangar: 0 },
   bulkKgByKind: { hangar: 20000 },
   source: "https://en.wikipedia.org/wiki/International_Standard_Payload_Rack",
   note: "1,571 m³ y 700 kg por bastidor ISPR (reales); Unity tiene 4 ISPR (real, https://en.wikipedia.org/wiki/Unity_(ISS_module)); bastidores de almacén por módulo y bodega a granel del hangar: valores de juego",

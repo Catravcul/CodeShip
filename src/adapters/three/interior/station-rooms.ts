@@ -8,8 +8,8 @@ import { buildStarfield } from "../starfield";
 
 /**
  * The station's interior in 3D, in the station's body frame (y = overhead, x = starboard, −z = forward):
- * the aisles of the nodes, the habitat and the fabrication module lined with rack fronts, the hatches,
- * the airlock and the open hangar with its racks and probe cradles (docs/design/interiores.md §5).
+ * the aisles of the ISS's US segment lined with rack fronts, the hatches and Quest (docs/design/estacion-real.md).
+ * The old hangar's dressing stays for the backlog.
  */
 export interface StationRooms {
   readonly group: THREE.Group;
@@ -163,7 +163,18 @@ const STYLE: Readonly<Record<string, { panel: number; accent: number; glow?: num
   "reactor-proteina": { panel: 0x3d4552, accent: 0xffd27f, glow: 0xe8d9a0 },
   trajes: { panel: 0x7f8a99, accent: 0xf2f2f2 },
   "consola-hangar": { panel: 0x0b1c2a, accent: 0x7fdcff, glow: 0x7fdcff },
-  "consola-bahia": { panel: 0x0b1c2a, accent: 0xffb347, glow: 0x7fdcff },
+  "consola-bahia": { panel: 0xcfd6de, accent: 0xffb347, glow: 0x7fdcff },
+  cupula: { panel: 0x0b1c2a, accent: 0xdfe6ee, glow: 0x7fb8ff },
+  bishop: { panel: 0xcfd6de, accent: 0xffc84a },
+  "esclusa-kibo": { panel: 0xcfd6de, accent: 0xff6a6a },
+  "escotilla-eva": { panel: 0xcfd6de, accent: 0xffc84a },
+  "bastidor-wrs": { panel: 0x6f7a88, accent: 0x9fd8ff },
+  "bastidor-ogs": { panel: 0x6f7a88, accent: 0x9fd8ff },
+  "ventana-destiny": { panel: 0x0b1c2a, accent: 0xdfe6ee, glow: 0x7fb8ff },
+  amf: { panel: 0x3d4552, accent: 0xf2f2f2, glow: 0x9fd8ff },
+  refabricator: { panel: 0x3d4552, accent: 0x9ad48a, glow: 0x9ad48a },
+  "cbm-nadir-nodo2": { panel: 0x9aa6b6, accent: 0x5a6270 },
+  pma1: { panel: 0x9aa6b6, accent: 0x5a6270 },
 };
 
 /** Bioreactor fronts: how many vertical vessels show through the window (the lab shows its glovebox). */
@@ -243,7 +254,7 @@ function fixtureFront(f: Fixture, lamps: Map<MachineId, THREE.Mesh>, scale = 1):
       plate(w * 0.8, 0.3, 0, -h * 0.05, 0.05, st.glow!, true, 0.02);
       for (const sgn of [-1, 1]) plate(0.26, 0.26, sgn * w * 0.2, -h * 0.3, 0.06, 0x111111);
     }
-  } else if (f.id.startsWith("salir") || f.id.startsWith("puerto") || f.id === "esclusa-carga") {
+  } else if (f.id.startsWith("salir") || f.id.startsWith("puerto") || ["esclusa-carga", "bishop", "esclusa-kibo", "escotilla-eva", "consola-bahia", "cbm-nadir-nodo2", "pma1"].includes(f.id)) {
     // Hatch: frame and a handle.
     for (const s of [-1, 1]) {
       plate(0.08, h, (s * (w - 0.08)) / 2, 0, 0.05, st.accent);
@@ -472,7 +483,8 @@ export function buildStationRooms(plan: StationInteriorPlan): StationRooms {
   // The airlock's shell seen from the hangar, with the outer hatch in its aft face.
   const lock = plan.volumes.find((v) => v.kind === "esclusa");
   const outer = plan.volumes.find((v) => v.needs === "traje");
-  if (lock) {
+  // (Only with the old hangar behind it; Quest opens to space, which is not drawn.)
+  if (lock && outer) {
     const shell: Box = { centre: lock.centre, half: lock.half.add(new Vec3(0.2, 0.2, 0)) };
     const hull = mat(0xdfe3e8);
     for (const f of FACES) {
@@ -488,7 +500,7 @@ export function buildStationRooms(plan: StationInteriorPlan): StationRooms {
     group.add(sign);
   }
   for (const f of plan.fixtures) {
-    if (f.volume === "hangar" && f.action.kind !== "hangar" && f.action.kind !== "bahia" && f.action.kind !== "puerta") continue;
+    if (f.volume === "hangar" && f.action.kind !== "bahia" && f.action.kind !== "puerta") continue;
     const g = fixtureFront(f, lamps, plan.scale ?? 1);
     group.add(g);
   }

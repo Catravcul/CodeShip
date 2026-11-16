@@ -1,5 +1,6 @@
 import { Vec3 } from "@core/math/vec3";
 import type { Sourced } from "@core/units";
+import type { Reality } from "@core/fiction";
 import type { MachineId } from "./blueprint";
 import type { StationPanel } from "./interior";
 import type { PressurisedModule, StationLayout, StructurePart } from "./structure";
@@ -13,7 +14,7 @@ import type { PressurisedModule, StationLayout, StructurePart } from "./structur
  */
 
 /** Kinds of module a blueprint can add. The hangar extension is not pressurised and has no port. */
-export type ModuleKind = "fabrica" | "agricola" | "planta" | "hangar";
+export type ModuleKind = "fabrica" | "agricola" | "planta" | "hangar" | "laboratorio" | "habitat";
 
 /** A module the station can build and berth. */
 export interface ModuleSpec {
@@ -34,6 +35,8 @@ export interface ModuleSpec {
   readonly endPort: boolean;
   /** Hangar extension only: metres added aft. */
   readonly hangarExtraM?: number;
+  /** Real, in development, licence or fiction (unset: real). */
+  readonly status?: Reality;
   readonly basis: Sourced<string>;
 }
 
@@ -59,6 +62,8 @@ export interface EquipmentSpec {
   readonly cropAreaM2?: number;
   /** One line shown when tapped inside the station. */
   readonly info: string;
+  /** Real, in development, licence or fiction (unset: real). */
+  readonly status?: Reality;
   readonly basis: Sourced<string>;
 }
 
@@ -95,7 +100,7 @@ export interface OutfitModule {
   readonly id: string;
   readonly code: string;
   readonly label: string;
-  readonly kind: ModuleKind | "nodo" | "habitat";
+  readonly kind: ModuleKind | "nodo" | "esclusa" | "cupula" | "carga";
   readonly racksPerSide: number;
   readonly massKg: number;
   readonly powerKw: number;
@@ -475,6 +480,6 @@ export class StationOutfit {
   }
 }
 
-export const MODULE_KIND_NAME: Readonly<Record<ModuleKind, string>> = { fabrica: "módulo de fabricación", agricola: "módulo agrícola", planta: "módulo de la planta", hangar: "hangar" };
+export const MODULE_KIND_NAME: Readonly<Record<ModuleKind, string>> = { fabrica: "módulo de fabricación", agricola: "módulo agrícola", planta: "módulo de la planta", hangar: "hangar", laboratorio: "laboratorio", habitat: "módulo habitable" };
 
 const num = (v: number) => (Math.round(v * 10) / 10).toLocaleString("es-ES", { maximumFractionDigits: 1 });

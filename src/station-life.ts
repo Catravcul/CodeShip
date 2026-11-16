@@ -5,6 +5,7 @@ import type { Larder } from "@modules/station/application/bio-ops";
 import { STATION_AREA_NAME, type StationCrew } from "@modules/station/application/station-crew";
 import { TRIP_STORES_SHARE } from "@modules/station/data/galley";
 import type { LanderBerth } from "@modules/station/domain/hangar-berth";
+import { DEPLOY_STEPS, type AirlockItem, type CargoAirlock } from "@modules/station/domain/cargo-airlock";
 import type { Fixture } from "@modules/station/domain/interior";
 import type { DuelView, SessionText } from "./ui/duel-view";
 import type { StationAction } from "./station-interior";
@@ -26,6 +27,8 @@ const choreText = (c: Chore): SessionText => ({
 export interface StationLifeDeps {
   readonly crew: StationCrew;
   readonly berth: LanderBerth;
+  /** The Bishop cargo airlock on Tranquility. */
+  readonly bishop: CargoAirlock;
   readonly duel: DuelView;
   /** The lander is on the station's port now. */
   atPort(): boolean;
@@ -35,17 +38,16 @@ export interface StationLifeDeps {
   openInventory(): void;
   openSettings(): void;
   say(text: string, seconds?: number): void;
-  /** The hangar changed (the lander came in or went out): redraw it. */
-  changed(): void;
-  /** The dry dock's cameras (docs/design/dique-seco.md). */
-  openDockView?(): void;
+  /** The view outside from the Cupola; `show` plays an arm move in it (berth, unberth, a Bishop trip). */
+  lookOutside(show?: { kind: "atraque" | "desatraque" } | { kind: "bishop"; released: readonly AirlockItem[] }): void;
 }
 
 /**
- * The station's crew areas and the hangar console on their machines' cards (docs/design/estacion-tripulacion.md):
- * the galley cooks from the station's larder with the shared chores engine, the mat opens the
- * settings and yoga, node 1 has the workouts, a cabin lets her sleep; the hangar console holds the
- * whole task list, the arm that berths the lander and the inventory.
+ * The station's crew areas, the Cupola's arm and the Bishop on their cards (docs/design/estacion-real.md):
+ * the galley in Unity cooks from the station's larder with the shared chores engine, the mat opens
+ * the settings and yoga, Tranquility has the workouts and the toilet, Harmony's cabins let her sleep;
+ * the Cupola's robotic workstation berths the lander with Canadarm2 and looks out; the Bishop stows,
+ * releases and (as a licence) retrieves Juventas and the cubesats.
  */
 export class StationLife {
   /** The chore open in the sheet (for the experience suite's answer key). */
@@ -55,12 +57,22 @@ export class StationLife {
 
   actions(f: Fixture): StationAction[] {
     const a = f.action;
-    if (a.kind === "hangar") {
+    if (a.kind === "brazo") {
       const atPort = this.d.atPort();
-      const lander: StationAction = this.d.berth.inHangar
-        ? { id: "sacar", label: "Sacar el módulo a su puerto", enabled: true }
-        : { id: "meter", label: "Meter el módulo en el hangar", enabled: atPort, ...(atPort ? {} : { why: "El módulo no está acoplado a la estación: acóplalo en su puerto y el brazo lo meterá aquí" }) };
-      return [{ id: "tareas", label: "Tareas", enabled: true }, lander, ...(this.d.openDockView ? [{ id: "dique", label: "Cámaras del dique seco", enabled: true }] : []), { id: "inventario", label: "Inventario", enabled: true }];
+      const arm: StationAction = this.d.berth.onCbm
+        ? { id: "desatracar", label: "Devolver el módulo a su IDA", enabled: true }
+        : { id: "atracar", label: "Atracar el módulo en el CBM con el brazo", enabled: atPort, ...(atPort ? {} : { why: "El módulo no está acoplado a la estación: acóplalo en su IDA de cenit y Canadarm2 lo atracará en el CBM de Unity" }) };
+      return [arm, { id: "mirar", label: "Mirar por la Cupola", enabled: true }, { id: "tareas", label: "Tareas", enabled: true }];
+    }
+    if (a.kind === "bishop") {
+      const b = this.d.bishop;
+      const stow = b.at("almacen").slice(0, 2).map((i) => ({ id: `guardar:${i.id}`, label: `Guardar ${i.name} en la Bishop`, enabled: true }));
+      const loaded = b.at("bishop");
+      const out = b.at("fuera").slice(0, 1).map((i) => ({ id: `recoger:${i.id}`, label: `Recoger ${i.name} (licencia)`, enabled: true }));
+      const deploy: StationAction = loaded.length
+        ? { id: "soltar", label: `Soltar ${loaded.map((i) => i.name).join(" y ")}`, enabled: true }
+        : { id: "soltar", label: "Soltar la carga", enabled: false, why: "La Bishop está vacía: guarda antes la sonda o un cubesat" };
+      return [deploy, ...stow, ...out];
     }
     if (a.kind !== "tripulacion") return [];
     const chores = (area: Parameters<StationCrew["choresAt"]>[0]) => this.d.crew.choresAt(area).slice(0, MAX_CHORES_ON_CARD).map((c) => ({ id: `chore:${c.id}`, label: c.title, enabled: true }));
@@ -86,22 +98,38 @@ export class StationLife {
 
   act(f: Fixture, id: string): void {
     if (id.startsWith("chore:")) return this.startChore(id.slice(6));
+    if (id.startsWith("guardar:")) {
+      const it = id.slice(8);
+      return this.d.say(this.d.bishop.stow(it) ?? `${this.d.bishop.item(it).name} va a la Bishop: cabe en sus 3,99 m³`, 5);
+    }
+    if (id.startsWith("recoger:")) {
+      const it = id.slice(8);
+      return this.d.say(this.d.bishop.retrieve(it) ?? `Canadarm2 recoge ${this.d.bishop.item(it).name} y vuelve al almacén. Licencia: en la ISS nunca se ha recogido así un satélite suelto`, 6);
+    }
     switch (id) {
       case "tareas":
         return this.d.openTasks();
       case "inventario":
         return this.d.openInventory();
-      case "dique":
-        return this.d.openDockView?.();
-      case "meter": {
-        const why = this.d.berth.moveIn(this.d.atPort());
-        this.d.changed();
-        return this.d.say(why ?? "El brazo de la estación saca el módulo de su puerto y lo posa en la cuna del hangar, como Canadarm2 atraca un Dragon", 6);
+      case "mirar":
+        return this.d.lookOutside();
+      case "atracar": {
+        const why = this.d.berth.berth(this.d.atPort());
+        if (why) return this.d.say(why, 6);
+        this.d.lookOutside({ kind: "atraque" });
+        return this.d.say("Canadarm2 agarra el módulo, lo saca de su IDA y lo atraca en el CBM de nadir de Unity, como un Cygnus: 16 pernos", 6);
       }
-      case "sacar": {
-        const why = this.d.berth.moveOut();
-        this.d.changed();
-        return this.d.say(why ?? "El brazo devuelve el módulo a su puerto: ya puedes volver a su cabina", 6);
+      case "desatracar": {
+        const why = this.d.berth.unberth();
+        if (why) return this.d.say(why, 6);
+        this.d.lookOutside({ kind: "desatraque" });
+        return this.d.say("Canadarm2 suelta los pernos del CBM y devuelve el módulo a su IDA: ya puedes volver a su cabina", 6);
+      }
+      case "soltar": {
+        const r = this.d.bishop.deploy();
+        if ("why" in r) return this.d.say(r.why, 6);
+        this.d.lookOutside({ kind: "bishop", released: r.released });
+        return this.d.say(`Bishop: ${DEPLOY_STEPS.join(", ")}. ${r.released.map((i) => i.name).join(" y ")} ya vuela${r.released.length > 1 ? "n" : ""} sola${r.released.length > 1 ? "s" : ""}`, 8);
       }
       case "ajustes":
         return this.d.openSettings();

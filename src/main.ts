@@ -82,6 +82,13 @@ import { StationScreen } from "./station-screen";
 import { StationStructure } from "@modules/station/domain/structure";
 import { StationDock, dockNavTargets } from "./station-dock";
 import { StationInteriorMode } from "./station-interior";
+import { StationOutside } from "./station-outside";
+import { FICTION, readFictionSwitch } from "@core/fiction";
+import { CargoAirlock } from "@modules/station/domain/cargo-airlock";
+import { BISHOP, BISHOP_PAYLOADS } from "@modules/station/data/iss";
+import { LANDER_CBM } from "@modules/station/data/structure";
+import { offeredBlueprints } from "@modules/station/data/outfit";
+import { facing } from "@modules/navigation/domain/attitude";
 import { StationLife } from "./station-life";
 import { STATION_AREA_NAME, StationCrew } from "@modules/station/application/station-crew";
 import { STATION_LARDER } from "@modules/station/data/galley";
@@ -169,6 +176,8 @@ const ring = new SpinRing(mothership.spec.ring);
 const flight = new FlightComputer(ship, start, { gravitySources: region.asteroids, target: bennu });
 // The station is a structure in space with two IDSS ports: the probe docks at one, the mothership at the other.
 // What it is built of grows (docs/design/estacion.md, «La estación crece»): modules, equipment, wings and radiators.
+// What is not real stays in the code, off unless `?ficcion` (src/core/fiction.ts, docs/pendientes.md).
+readFictionSwitch(location.search);
 const stationOutfit = startingOutfit();
 const structure = new StationStructure(POLANA_STATION, stationOutfit.layout);
 const docking = new Docking(flight, [mothership, ...structure.ports], IDSS_CONTACT_LIMITS, UNDOCK_PUSH_MS.value);
@@ -183,7 +192,7 @@ const stationOps = new StationOps(
     { ...EXPLORER_CRAFT, name: ship.name, massKg: ship.massKg },
   ]), stationOutfit),
   // The station's own import sources (tug, mass driver) sit in the same blueprint tree.
-  [...BLUEPRINTS, ...IMPORT_BLUEPRINTS],
+  offeredBlueprints([...BLUEPRINTS, ...IMPORT_BLUEPRINTS], FICTION.on),
   [...REFINE_PROCESSES, ...COMET_PROCESSES, ...PROPELLANT_PROCESSES],
   materialName,
 );
@@ -357,6 +366,8 @@ const dryDock = new DryDockStage(root, scene, stationModel.root, POLANA_DRY_DOCK
   berthed: () => !!mothership.dockedTo,
   approaching: () => nav.status === "carrier" && nav.target.id === structure.site.id,
 });
+// The dry dock is backlog: the ISS's real precedent is the Shuttle docking straight to the forward IDA (docs/pendientes.md).
+dryDock.model.root.visible = FICTION.on;
 
 // The asteroids' wrath after a failed duel (docs/design/poderes-ira.md): attacks, survival mode, anger card.
 const wrathMode = new WrathMode({
@@ -809,15 +820,30 @@ const stationScreen = new StationScreen(
 const stationHabitat = new Habitat(seededRandom(2027), 0, undefined, habitat.crew.name, [], habitat.crew);
 stationHabitat.stockAll(STATION_LARDER);
 const stationCrew = new StationCrew(stationHabitat, { recipes: RECIPES, yoga: YOGA_SEQUENCES, workouts: WORKOUTS });
-/** The lander on its port or lifted into the hangar by the station's arm. */
+/** The lander on its IDA or berthed by Canadarm2 on Unity's nadir CBM (docs/design/estacion-real.md). */
 const landerBerth = new LanderBerth();
-const landerInHangar = () => {
+const landerOnCbm = () => {
   if (!atStationPort()) landerBerth.reset();
-  return landerBerth.inHangar;
+  return landerBerth.onCbm;
 };
+/** The Bishop cargo airlock on Tranquility, with Juventas and two cubesats in the stowage. */
+const bishopAirlock = new CargoAirlock(BISHOP_PAYLOADS, BISHOP.volumeM3);
+/** The lander's pose on its IDA or on the CBM, in the station's frame (same rule as a docked craft). */
+const landerPose = (at: "ida" | "cbm") => {
+  const spec = at === "ida" ? structure.portFor("sonda")!.spec : { ...LANDER_CBM, forward: new Vec3(0, 0, -1) };
+  const o = facing(spec.forward, spec.normal.scale(-1));
+  return { position: spec.position.sub(o.rotate(ship.design.dockingPort ?? Vec3.ZERO)), orientation: o };
+};
+// The view out of the Cupola: the station, Canadarm2 and its moves in 3D.
+const stationOutside = new StationOutside(root, scene, stationModel.root, () => stationModel.modules, {
+  landerPose,
+  design: () => ship.design,
+  berthed: landerOnCbm,
+});
 const stationLife = new StationLife({
   crew: stationCrew,
   berth: landerBerth,
+  bishop: bishopAirlock,
   duel: duelView,
   atPort: atStationPort,
   mothershipLarder: () => (mothership.dockedTo ? habitat : undefined),
@@ -833,8 +859,7 @@ const stationLife = new StationLife({
     settingsPanel.open("Doménica en loto en la esterilla del Nodo 1 (estación)");
   },
   say: (t, sec) => stationInside.say(t, sec),
-  changed: () => undefined,
-  openDockView: () => dryDock.open("hangar"),
+  lookOutside: (show) => stationOutside.open(show),
 });
 /** The station's interior as it is drawn and walked: MACHINE_SCALE times its real size. */
 const playInterior = () => new StationInterior(scaleInteriorPlan(stationInteriorPlan(stationOutfit.layout, stationOutfit), MACHINE_SCALE));
@@ -860,14 +885,14 @@ const stationInside = new StationInteriorMode(root, playInterior(), {
         : "Cerrada: la nodriza no está atracada en este puerto"
       : !atStationPort()
         ? "Cerrada: el módulo de aterrizaje no está en este puerto"
-        : landerInHangar()
-          ? "Cerrada: el módulo está en el hangar. Sácalo a su puerto en la consola del hangar"
+        : landerOnCbm()
+          ? "Cerrada: el módulo está atracado en el CBM de Unity. Devuélvelo a su IDA desde la Cupola"
           : undefined,
   openTasks: () => taskBoard.open(),
   actions: (f) => stationLife.actions(f),
   act: (f, a) => stationLife.act(f, a),
-  landerInHangar,
-  lookOut: () => dryDock.open("ventanilla"),
+  landerInHangar: () => false,
+  lookOut: () => (FICTION.on ? dryDock.open("ventanilla") : stationOutside.open()),
   leave: (to) => {
     if (to === "nodriza" && !mothership.dockedTo) return "La nodriza no está atracada en este puerto";
     if (to === "sonda" && !atStationPort()) return "El módulo de aterrizaje no está en este puerto";
@@ -1067,9 +1092,9 @@ function leaveEverything(): void {
 function arriveAt(place: TaskPlace, t?: Task): void {
   const wasInStation = stationInside.active || stationScreen.active || bay.active;
   // To the lander from the station: the arm puts it back on its port first.
-  if (place.vehicle === "modulo" && landerBerth.inHangar) {
-    landerBerth.moveOut();
-    flash("El brazo devuelve el módulo del hangar a su puerto", 6);
+  if (place.vehicle === "modulo" && landerBerth.onCbm) {
+    landerBerth.unberth();
+    flash("Canadarm2 devuelve el módulo del CBM a su IDA", 6);
   }
   // Already on the travel ship's ring or spine: she walks to the machine from where she is.
   if (place.vehicle === "nodriza" && place.spot === "anillo" && interior.active) {
@@ -1413,6 +1438,11 @@ renderer.setAnimationLoop((now) => {
   mothershipModel.root.quaternion.set(mothership.orientation.x, mothership.orientation.y, mothership.orientation.z, mothership.orientation.w);
   dryDock.update(dt);
   if (dryDock.viewing && !stationInside.active) dryDock.view.close();
+  stationOutside.update(dt);
+  if (stationOutside.viewing && !stationInside.active) stationOutside.view.close();
+  // Berthed on the CBM (or on the arm), the lander is drawn by the Cupola's view, not on its IDA.
+  view.rig.visible = !(landerOnCbm() || stationOutside.busy);
+  stationModel.setPlatform(stationOps.station.hangar.partList());
   document.body.classList.toggle("in-cockpit", view.enabled);
   if (interior.active) {
     present(interior.scene, interior.camera);
@@ -1429,10 +1459,10 @@ renderer.setAnimationLoop((now) => {
   if (stationInside.active) {
     stationInside.update(dt);
     // The dry dock's cameras: the space scene from beside the dock, over the station.
-    if (dryDock.viewing) {
+    if (dryDock.viewing || stationOutside.viewing) {
       mothershipModel.update(dt, ring.omegaRadS, now / 1000);
       stationModel.update(flight.simTimeS, skyBodies.sunDirection);
-      present(scene, dryDock.view.camera);
+      present(scene, stationOutside.viewing ? stationOutside.view.camera : dryDock.view.camera);
     } else present(stationInside.scene, stationInside.camera);
     return;
   }
@@ -1542,4 +1572,4 @@ for (const sel of [".nano-action", ".trip-chip", ".land-offer.lander", ".land-bo
   if (el) ctxDock.appendChild(el);
 }
 
-(window as unknown as { codeship: unknown }).codeship = { journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, landerBerth, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels, dryDock };
+(window as unknown as { codeship: unknown }).codeship = { journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, landerBerth, bishop: bishopAirlock, stationOutside, stationModel, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels, dryDock };

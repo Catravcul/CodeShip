@@ -62,7 +62,7 @@ export function stationHandrails(plan: StationInteriorPlan): Handrail[] {
     if (k === "salir") continue;
     // Doors take a bar beside their hatch (above); in the hangar only the consoles have their own bar.
     if (k === "puerta") continue;
-    if (plan.volumes.find((v) => v.id === f.volume)?.kind === "hangar" && k !== "hangar" && k !== "bahia") continue;
+    if (plan.volumes.find((v) => v.id === f.volume)?.kind === "hangar" && k !== "bahia") continue;
     const n = FACE_NORMAL[f.face].scale(-1);
     const wall = Math.abs(n.y) < 0.5;
     const runs = wall ? (Math.abs(n.x) > 0.5 ? new Vec3(0, 0, 1) : new Vec3(1, 0, 0)) : new Vec3(0, 0, 1);

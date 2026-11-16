@@ -24,12 +24,13 @@ export class DockView {
     /** Centre of the dock (station frame) and how far out the camera sits, m. */
     private readonly centre: THREE.Vector3,
     private readonly distanceM: number,
+    label = "Cámaras del dique seco",
   ) {
     this.frame = document.createElement("div");
     this.frame.className = "dock-view";
     this.frame.setAttribute("role", "dialog");
-    this.frame.setAttribute("aria-label", "Cámaras del dique seco");
-    this.frame.innerHTML = `<div class="dv-head"><b class="dv-title"></b><button class="dv-close" aria-label="Cerrar las cámaras del dique">×</button></div><p class="dv-status"></p>`;
+    this.frame.setAttribute("aria-label", label);
+    this.frame.innerHTML = `<div class="dv-head"><b class="dv-title"></b><button class="dv-close" aria-label="Cerrar la vista de fuera">×</button></div><p class="dv-status"></p>`;
     root.appendChild(this.frame);
     this.title = this.frame.querySelector(".dv-title")!;
     this.status = this.frame.querySelector(".dv-status")!;

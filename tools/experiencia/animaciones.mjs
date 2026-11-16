@@ -385,7 +385,7 @@ export async function animaciones(j) {
   let p = j.page;
   const solo = (process.env.ANIM_SOLO ?? "").split(",").filter(Boolean);
   const want = (id) => !solo.length || solo.some((s) => id.includes(s));
-  if (!solo.length && existsSync(SHOTS)) for (const f of readdirSync(SHOTS)) rmSync(join(SHOTS, f));
+  if (!solo.length && !process.env.ANIM_SIN_DOC && existsSync(SHOTS)) for (const f of readdirSync(SHOTS)) rmSync(join(SHOTS, f));
   mkdirSync(SHOTS, { recursive: true });
   const rows = [];
   const extra = [];

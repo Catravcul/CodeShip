@@ -22,7 +22,7 @@ export interface CabinFloor extends FloorRect {
   readonly blocked: readonly FloorRect[];
 }
 
-export type CabinStationId = "asiento" | "acople" | "mente" | "escotilla" | "esterilla";
+export type CabinStationId = "asiento" | "acople" | "mente" | "escotilla" | "ecs" | "esterilla";
 
 /** A machine of a walkable room (the lander's cabin, the travel ship's bridge). */
 export interface CabinStation<Id extends string = CabinStationId> {
@@ -66,9 +66,11 @@ export interface CabinState {
   readonly canLeaveEva: boolean;
   /** The asteroid's mind: the duel the stage allows here, if any (label and whether it can start). */
   readonly mind: { readonly label: string; readonly enabled: boolean; readonly why?: string } | null;
+  /** The LM's own life support (life-support/domain/open-loop.ts): what its panel offers. */
+  readonly ecs?: { readonly cartridgeLeft: number; readonly cartridges: number; readonly canReplenish: boolean };
 }
 
-export type CabinActionId = "pilotar" | "desacoplar" | "asistente-acople" | "entrar-nodriza" | "entrar-estacion" | "salir-eva" | "mente" | "ajustes";
+export type CabinActionId = "pilotar" | "desacoplar" | "asistente-acople" | "entrar-nodriza" | "entrar-estacion" | "salir-eva" | "mente" | "ajustes" | "cambiar-lioh" | "reponer-ecs";
 
 export interface CabinAction {
   readonly id: CabinActionId;
@@ -140,6 +142,20 @@ export function cabinActions(id: CabinStationId, s: CabinState): CabinAction[] {
     case "mente":
       if (!s.mind) return [{ id: "mente", label: "Entrar en su mente", enabled: false, why: s.landed ? "Este asteroide no tiene nada que hablar ahora" : "Posa el módulo sobre el asteroide para conectar con su mente" }];
       return [{ id: "mente", label: s.mind.label, enabled: s.mind.enabled, ...(s.mind.why ? { why: s.mind.why } : {}) }];
+    case "ecs": {
+      const e = s.ecs;
+      if (!e) return [{ id: "cambiar-lioh", label: "Cambiar el cartucho de LiOH", enabled: false, why: "El panel del ECS no responde" }];
+      const change: CabinAction =
+        e.cartridges <= 0
+          ? { id: "cambiar-lioh", label: "Cambiar el cartucho de LiOH", enabled: false, why: "No quedan cartuchos de repuesto" }
+          : e.cartridgeLeft > 0.25
+            ? { id: "cambiar-lioh", label: "Cambiar el cartucho de LiOH", enabled: false, why: `Al cartucho le queda el ${Math.round(e.cartridgeLeft * 100)} %` }
+            : { id: "cambiar-lioh", label: "Cambiar el cartucho de LiOH", enabled: true };
+      const refill: CabinAction = e.canReplenish
+        ? { id: "reponer-ecs", label: "Reponer O₂, agua y cartuchos", enabled: true }
+        : { id: "reponer-ecs", label: "Reponer O₂, agua y cartuchos", enabled: false, why: "Solo acoplado a la nodriza o a la estación" };
+      return [change, refill];
+    }
     case "acople":
       if (s.dockedTo === "nodriza") return [{ id: "entrar-nodriza", label: "Entrar en la nave de viaje", enabled: true }, { id: "desacoplar", label: "Desacoplar", enabled: true }];
       if (s.dockedTo === "estacion") return [{ id: "entrar-estacion", label: "Entrar en la estación", enabled: true }, { id: "desacoplar", label: "Desacoplar", enabled: true }];
@@ -181,4 +197,44 @@ export function floorPath(f: CabinFloor, from: FloorPoint, to: FloorPoint, aisle
     if (legs.every((p, i) => i === 0 || clearPath(f, legs[i - 1]!, p))) return legs.slice(1);
   }
   return [to];
+}
+
+/**
+ * The presentation layer's spacing (src/core/presentation.ts, «Separación: Amplia») for a walkable room
+ * stored at true size: when two machines would be closer than `minM` as played at drawing scale `k`
+ * (src/core/spacing.ts, `asPlayed`), every position on the floor plan (floor, furniture, machines, aisles)
+ * is spread by one factor about the origin until none is. Heights and the machines' sizes stay; nothing is
+ * tuned by hand per room. Returns the factor and the spread layout (the same one when it already complies).
+ */
+export function spreadLayout<Id extends string>(L: CabinLayout<Id>, k: number, minM: number, factorOf: (items: readonly RoomInteractable[]) => number): { factor: number; layout: CabinLayout<Id> } {
+  let s = 1;
+  let out = L;
+  for (let i = 0; i < 30; i++) {
+    const f = factorOf(roomInteractables(out, k));
+    if (f <= 1 + 1e-9) return { factor: s, layout: out };
+    s *= f * 1.001;
+    out = spreadBy(L, s);
+  }
+  return { factor: s, layout: out };
+}
+
+/** A machine as the 2 m rule sees it (src/core/spacing.ts `Interactable`): what she looks at and where she stands, as played at scale `k`. */
+export interface RoomInteractable {
+  readonly id: string;
+  readonly centre: { readonly x: number; readonly y: number; readonly z: number };
+  readonly anchor: { readonly x: number; readonly y: number; readonly z: number };
+}
+
+export function roomInteractables<Id extends string>(L: CabinLayout<Id>, k = 1): RoomInteractable[] {
+  return L.stations.map((s) => ({ id: s.id, centre: { x: s.look.x * k, y: s.look.y, z: s.look.z * k }, anchor: { x: s.stand.x * k, y: 0, z: s.stand.z * k } }));
+}
+
+function spreadBy<Id extends string>(L: CabinLayout<Id>, s: number): CabinLayout<Id> {
+  const r = (b: FloorRect): FloorRect => ({ minX: b.minX * s, maxX: b.maxX * s, minZ: b.minZ * s, maxZ: b.maxZ * s });
+  return {
+    ...L,
+    floor: { ...r(L.floor), blocked: L.floor.blocked.map(r) },
+    stations: L.stations.map((st) => ({ ...st, stand: { x: st.stand.x * s, z: st.stand.z * s }, look: { x: st.look.x * s, y: st.look.y, z: st.look.z * s } })),
+    ...(L.aisles ? { aisles: L.aisles.map((z) => z * s) } : {}),
+  };
 }

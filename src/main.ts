@@ -142,6 +142,7 @@ import { importGood } from "@modules/imports/data/goods";
 import { orderLetter } from "@modules/imports/data/letters";
 import { cargoMaterial } from "@modules/station/data/materials";
 import "./ui/acciones.css";
+import { LanderEcs } from "./lander-ecs";
 import { LanderCabin } from "./lander-cabin";
 import { BridgeRoom } from "./bridge";
 import { settings } from "./ui/settings-store";
@@ -1026,6 +1027,8 @@ const mindNow = (): { label: string; enabled: boolean; why?: string } | null => 
   const label = expedition.bond.subjugated && expedition.bond.nextLevel ? `Convencer · nivel ${expedition.bond.nextLevel}` : "Entrar en su mente";
   return can ? { label, enabled: true } : { label, enabled: false, why: subj.landedText() };
 };
+// The LM's own life support, counting only the crew in the lander (docs/design/modulo-lunar-juventas.md).
+const landerEcs = new LanderEcs({ crewAboard: () => (crewIn() === "modulo" ? 1 : 0), docked: () => docking.docked, say: (t, sec) => (cabin.active ? cabin.say(t, sec) : undefined) });
 const cabinState = (): CabinState => ({
   dockedTo: docking.dockedTo === mothership ? "nodriza" : atStationPort() ? "estacion" : null,
   dockInRange: !docking.docked && docking.inRange(),
@@ -1033,6 +1036,7 @@ const cabinState = (): CabinState => ({
   landed: flight.landed,
   canLeaveEva: eva.canLeave && expedition.phase === "landed",
   mind: mindNow(),
+  ecs: landerEcs.state(),
 });
 const cabin = new LanderCabin(root, {
   state: cabinState,
@@ -1051,7 +1055,13 @@ const cabin = new LanderCabin(root, {
         return throughHatch();
       case "salir-eva":
         // The suit-up challenge shows over the cabin; out on the surface, the cabin closes (loop).
+        // The whole cabin is emptied, as in the LM: filling it again costs O₂.
+        landerEcs.repressurise();
         return evaMode.startSuitUp();
+      case "cambiar-lioh":
+        return cabin.say(landerEcs.changeCartridge(), 5);
+      case "reponer-ecs":
+        return cabin.say(landerEcs.replenish(), 5);
       case "mente":
         return enterMind();
       case "ajustes":
@@ -1066,6 +1076,7 @@ const cabin = new LanderCabin(root, {
     const angry = expedition.phase === "aggressive";
     return { html: mindConsoleHtml(a.data.name, r, angry, levels.activity(a.data.id)), screen: mindScreenLines(a.data.name, r, angry) };
   },
+  ecs: () => ({ html: landerEcs.html(), screen: landerEcs.screen() }),
   openTasks: () => taskBoard.open(),
 });
 
@@ -1098,6 +1109,7 @@ function allTasks(): Task[] {
     refuel: ship.propellants.some((p) => ship.propellantKg(p) < 0.5 * ship.propellantCapacityKg(p)),
     repairs: needingAttention(bay.status()).map((c) => ({ id: c.id, name: c.name, critical: c.attention === "critico" })),
     stationChores: [...stationLife.taskFacts(), ...lifeSupport.taskFacts()],
+    landerEcs: landerEcs.facts(),
   });
 }
 const taskBoard = new TaskBoard(root, allTasks);
@@ -1454,6 +1466,7 @@ renderer.setAnimationLoop((now) => {
   bioOps.tick(stationHours);
   importOps.tick(stationHours);
   lifeSupport.tick(stationHours);
+  landerEcs.tick(stationHours);
   starship?.lifeSupport?.tick(stationHours);
   for (const e of importOps.drainEvents()) {
     // Animals from the Sanctuary: they go to their area and say so themselves.

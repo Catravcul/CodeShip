@@ -26,7 +26,7 @@ export interface KitchenLayout {
   readonly spots: Readonly<Record<KitchenSpot, THREE.Vector3>>;
   /** Counter front edge (x), worktop height (y) and its ends (z). */
   readonly counter: { readonly front: number; readonly top: number; readonly z0: number; readonly z1: number };
-  /** Fridge door hinge (its +z edge on the aisle face), door height and width. */
+  /** Fridge door hinge (its −z edge, the counter side, on the aisle face: it opens away from the camera), door height and width. */
   readonly fridgeHinge: THREE.Vector3;
   readonly fridgeDoor: { readonly h: number; readonly w: number };
   /** Oven door centre (the glow) and the oven's inside centre. */
@@ -56,7 +56,7 @@ export function kitchenLayout(at: (v: THREE.Vector3) => THREE.Vector3 = (v) => v
       procesador: W(G.processor.centre.x - G.processor.w / 2 + 0.01, G.processor.centre.y + G.processor.h / 2 + 0.02, G.processor.centre.z),
     },
     counter: { front: c0.x, top: c0.y, z0: Math.min(c0.z, c1.z), z1: Math.max(c0.z, c1.z) },
-    fridgeHinge: W(frFront - 0.02, fr.centre.y, fr.centre.z + fr.d / 2),
+    fridgeHinge: W(frFront - 0.02, fr.centre.y, fr.centre.z - fr.d / 2),
     fridgeDoor: { h: fr.h - 0.04, w: fr.d - 0.02 },
     ovenDoor: W(G.oven.door - 0.02, G.oven.centre.y + 0.02, G.oven.centre.z),
     ovenInside: W(G.oven.centre.x, G.oven.centre.y, G.oven.centre.z),
@@ -305,8 +305,9 @@ export class StepShow {
     const door = this.props!.fridgeDoor;
     door.position.copy(kd.fridgeHinge);
     door.children[0]!.scale.set(0.04, kd.fridgeDoor.h, kd.fridgeDoor.w);
-    door.children[0]!.position.set(0, 0, -kd.fridgeDoor.w / 2);
-    this.props!.fridgeInside.position.set(kd.fridgeHinge.x + 0.015, kd.fridgeHinge.y, kd.fridgeHinge.z - kd.fridgeDoor.w / 2);
+    door.children[0]!.position.set(0, 0, kd.fridgeDoor.w / 2);
+    this.props!.fridgeInside.position.set(kd.fridgeHinge.x + 0.015, kd.fridgeHinge.y, kd.fridgeHinge.z + kd.fridgeDoor.w / 2);
+    this.props!.fridgeInside.scale.z = kd.fridgeDoor.w - 0.08;
     this.props!.ovenGlow.position.copy(kd.ovenDoor);
     this.props!.ovenGlow.scale.z = 0.44 * k;
   }
@@ -639,7 +640,7 @@ export class StepShow {
         if (fromFridge) {
           p.fridgeDoor.visible = true;
           p.fridgeInside.visible = true;
-          p.fridgeDoor.rotation.y = 1.5 * Math.min(ease(clamp01(t / 0.25)), ease(clamp01((1 - t) / 0.25)));
+          p.fridgeDoor.rotation.y = -1.5 * Math.min(ease(clamp01(t / 0.25)), ease(clamp01((1 - t) / 0.25)));
         }
         // From the shelf (at the open door, or the cupboard's edge) into her hand, where it stays for the next step.
         for (let i = 0; i < 2; i++) {

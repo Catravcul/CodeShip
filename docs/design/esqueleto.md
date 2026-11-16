@@ -132,7 +132,10 @@ redondea `performance.now()` a 0,1 ms.
 | JS de la pose de Doménica, media (con pausas ajenas) | 0,13 / 0,80 ms | 1,14 / 1,20 ms | — |
 | JS de 4 gatos, 4 gallinas y 2 perros, mediana / media | 0 / 0,18 ms | 0–0,1 / 0,21–0,27 ms | — |
 
-(Dos pasadas de cada uno. Las llamadas y los triángulos cambian según lo que se vea en cada pasada.) En Node,
+(Dos pasadas de cada uno. Las llamadas y los triángulos cambian según lo que se vea en cada pasada.) El
+recorrido PX-23, que espera a que llegue cada asana y la sostiene mientras hace la captura, midió en 924
+fotogramas una mediana de 0,3 ms y una media de 0,84 ms para Doménica, y una media de 0,21 ms para los diez
+animales ([run](../qa/runs/2026-11-16-1447-PX-01-PX-23.md)). En Node,
 sin limitar la CPU, una resolución del esqueleto cuesta 35 µs de pie, 60 µs en el rezo (IK de dos manos) y
 110 µs en Uttanasana (IK al suelo, dos pasadas y apoyo). Con ×4 son unos 0,15–0,45 ms, lo que coincide con la
 mediana medida. Todo queda muy por debajo del presupuesto: un fotograma de 33 ms se lleva menos del 2 %.

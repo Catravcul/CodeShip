@@ -144,7 +144,7 @@ caso y las anteriores quedan en sus run logs.
 | CV-15 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-05** cerrado; botón bloqueado en `hc-pedido-sin-creditos-mobile.png` |
 | CV-16 | No aplica | | | No hay partidas guardadas (**HC-06**) |
 | CV-17 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-03** cerrado: el aviso dura 5 s reales en el tramo ×60 |
-| PX-01 | Probado (en vivo) | 2026-11-14 | `cb310e1` | [run](runs/2026-11-14-1626-PX-01-PX-02-PX-04-PX-05-PX-10-PX-11.md): 49 OK |
+| PX-01 | Probado (en vivo) | 2026-11-16 | `535f54c` | [run](runs/2026-11-16-1447-PX-01-PX-23.md): 49 OK |
 | PX-02 | FAIL | 2026-11-14 | `652d629` | [run](runs/2026-11-14-1925-PX-02-PX-10-PX-12-PX-14-PX-15.md): 28 OK, 1 FALLA |
 | PX-03 | Probado (en vivo) | 2026-11-13 | `f59ae5a` | [run](runs/2026-11-13-1713-PX-01-PX-02-PX-03-PX-04-PX-05-PX-06-PX-07-PX-08-PX-09-PX-10-PX-11.md): 14 OK |
 | PX-04 | Probado (en vivo) | 2026-11-14 | `71ff3eb` | [run](runs/2026-11-14-1822-PX-02-PX-04-PX-10-PX-12-PX-15.md): 27 OK |
@@ -159,7 +159,7 @@ caso y las anteriores quedan en sus run logs.
 | PX-13 | Probado (en vivo) | 2026-11-14 | `603b891` | [run](runs/2026-11-14-1819-PX-04-PX-13.md): 25 OK |
 | PX-14 | Probado (en vivo) | 2026-11-14 | `652d629` | [run](runs/2026-11-14-1925-PX-02-PX-10-PX-12-PX-14-PX-15.md): 32 OK |
 | PX-15 | Probado (en vivo) | 2026-11-14 | `652d629` | [run](runs/2026-11-14-1925-PX-02-PX-10-PX-12-PX-14-PX-15.md): 61 OK |
-| PX-23 | Sin probar | | | sin run log |
+| PX-23 | Probado (en vivo) | 2026-11-16 | `535f54c` | [run](runs/2026-11-16-1447-PX-01-PX-23.md): 62 OK |
 
 ## Última ejecución por run log
 
@@ -167,6 +167,7 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-16 14:47 | PX-01, PX-23 | Experiencia (Playwright) | 2/2 recorridos bien | [run](runs/2026-11-16-1447-PX-01-PX-23.md) |
 | 2026-11-14 19:25 | PX-02, PX-10, PX-12, PX-14, PX-15 | Experiencia (Playwright) | 4/5 recorridos bien | [run](runs/2026-11-14-1925-PX-02-PX-10-PX-12-PX-14-PX-15.md) |
 | 2026-11-14 18:38 | PX-02, PX-10, PX-15 | Experiencia (Playwright) | 2/3 recorridos bien | [run](runs/2026-11-14-1838-PX-02-PX-10-PX-15.md) |
 | 2026-11-14 18:22 | PX-02, PX-04, PX-10, PX-12, PX-15 | Experiencia (Playwright) | 3/5 recorridos bien | [run](runs/2026-11-14-1822-PX-02-PX-04-PX-10-PX-12-PX-15.md) |

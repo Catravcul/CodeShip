@@ -530,7 +530,7 @@ export const GROWTH_BLUEPRINTS: readonly Blueprint[] = [...MODULE_BLUEPRINTS, ..
 
 /**
  * What is not real goes to the backlog (docs/pendientes.md): kept in the code and the tests, but not
- * offered in the game unless the development switch is on (`FICTION`, src/core/fiction.ts). The
+ * offered in the game unless the development switch is on (`?ficcion`, src/core/realism.ts). The
  * modules copied and built from rock, the hangar extension, the crop fields and the biology lab.
  */
 export const BACKLOG_BLUEPRINT_IDS: ReadonlySet<string> = new Set([

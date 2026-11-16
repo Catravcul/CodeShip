@@ -1,3 +1,5 @@
+import { PRESENTATION, SCALE_FACTOR } from "./presentation";
+
 /**
  * How much bigger than real the game draws interior spaces and machinery (docs/design/escala.md).
  *
@@ -13,8 +15,11 @@
  * (docs/design/escala.md, screenshots docs/screenshots/escala-*.png): 1,5× is the smallest scale at which a
  * console's toggle switch is 44 px across (Apple's minimum touch target) and its screen text ≈ 16 px seen
  * from where she stands, while the screen stays within MSIS's 0,71 m reach; at 2× it is 0,87 m away.
+ *
+ * Since 2026-11-16 it is a setting of the presentation layer (src/core/presentation.ts): «Cómoda» is that
+ * 1,5× (the default) and «Real» draws 1:1. The data stay at true size either way.
  */
-export const WORLD_SCALE = 1.5;
+export const WORLD_SCALE = SCALE_FACTOR[PRESENTATION.interiorScale];
 
 /** Machinery (consoles, racks, controls) uses the same factor as the spaces, so it fits where it stands. */
 export const MACHINE_SCALE = WORLD_SCALE;

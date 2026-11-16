@@ -1,6 +1,6 @@
 import { Vec3 } from "@core/math/vec3";
 import type { Sourced } from "@core/units";
-import type { Reality } from "@core/fiction";
+import type { Reality } from "@core/reality";
 import type { MachineId } from "./blueprint";
 import type { StationPanel } from "./interior";
 import type { PressurisedModule, StationLayout, StructurePart } from "./structure";

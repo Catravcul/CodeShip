@@ -37,6 +37,7 @@ import {
 } from "@modules/garden/data/species";
 import { MACHINES } from "@modules/life-support/data/machines";
 import { LAUNCH_STOCK } from "@modules/kitchen/data/stores";
+import { ISS_LAUNCH_STOCK } from "@modules/kitchen/data/iss-food";
 import { Hen } from "@modules/poultry/domain/hen";
 import { Dog } from "@modules/pets/domain/dog";
 import { Mailbox } from "@modules/story/domain/mailbox";
@@ -83,7 +84,6 @@ import { StationStructure } from "@modules/station/domain/structure";
 import { StationDock, dockNavTargets } from "./station-dock";
 import { StationInteriorMode } from "./station-interior";
 import { StationOutside } from "./station-outside";
-import { FICTION, readFictionSwitch } from "@core/fiction";
 import { CargoAirlock } from "@modules/station/domain/cargo-airlock";
 import { BISHOP, BISHOP_PAYLOADS } from "@modules/station/data/iss";
 import { LANDER_CBM } from "@modules/station/data/structure";
@@ -155,6 +155,7 @@ import { collectTasks, routeTo, type Task, type TaskPlace, type Vehicle } from "
 import type { CabinActionId, CabinState } from "@modules/lander-cabin/domain/cabin";
 import { needingAttention } from "@modules/ship-bay/application/bay";
 import { G } from "@core/units";
+import { FICTION, REAL_ONLY } from "@core/realism";
 
 // --- Domain setup -----------------------------------------------------------
 const d = BENNU.dimensionsM.value;
@@ -176,8 +177,6 @@ const ring = new SpinRing(mothership.spec.ring);
 const flight = new FlightComputer(ship, start, { gravitySources: region.asteroids, target: bennu });
 // The station is a structure in space with two IDSS ports: the probe docks at one, the mothership at the other.
 // What it is built of grows (docs/design/estacion.md, «La estación crece»): modules, equipment, wings and radiators.
-// What is not real stays in the code, off unless `?ficcion` (src/core/fiction.ts, docs/pendientes.md).
-readFictionSwitch(location.search);
 const stationOutfit = startingOutfit();
 const structure = new StationStructure(POLANA_STATION, stationOutfit.layout);
 const docking = new Docking(flight, [mothership, ...structure.ports], IDSS_CONTACT_LIMITS, UNDOCK_PUSH_MS.value);
@@ -192,7 +191,7 @@ const stationOps = new StationOps(
     { ...EXPLORER_CRAFT, name: ship.name, massKg: ship.massKg },
   ]), stationOutfit),
   // The station's own import sources (tug, mass driver) sit in the same blueprint tree.
-  offeredBlueprints([...BLUEPRINTS, ...IMPORT_BLUEPRINTS], FICTION.on),
+  offeredBlueprints([...BLUEPRINTS, ...IMPORT_BLUEPRINTS], FICTION),
   [...REFINE_PROCESSES, ...COMET_PROCESSES, ...PROPELLANT_PROCESSES],
   materialName,
 );
@@ -227,7 +226,8 @@ const nav = new Navigator(
 );
 
 // Life on board: a long leg is already under way, so the garden has some days behind it.
-const habitat = new Habitat(seededRandom(2026), 3, ship, "Doménica", MACHINES);
+// Real only (src/core/realism.ts): no farm machines, plants, animals or farm deck aboard (docs/pendientes.md).
+const habitat = new Habitat(seededRandom(2026), 3, ship, "Doménica", REAL_ONLY ? [] : MACHINES);
 // Nevaeh writes to Doménica through the ship's radio (story rescued from the 2023 draft).
 habitat.mailbox = new Mailbox(STORY);
 // The nano_net: a persuaded Bennu can become a core (docs/design/nano-net.md).
@@ -304,34 +304,37 @@ const garden: [string, Parameters<Habitat["plant"]>[1], number][] = [
   ["w3", WHEAT_APOGEE, 35],
   ["g1", CAT_GRASS, 12],
 ];
-for (const [id, sp, days] of garden) growFor(habitat.plant(id, sp), days);
-// Stores the ship left with: potatoes, peanuts, flour, eggs, meat, animal food and culture medium.
-habitat.stockAll(LAUNCH_STOCK);
-habitat.adopt(new Cat("luna", "Luna", 4));
-// Nube came aboard at the last stop: the two are still being introduced.
-habitat.adopt(new Cat("nube", "Nube", 3.2))[0]!.startAt("contacto-visual");
-// Yema is broody: she can adopt a puppy or a kitten if Doménica programs her to.
-for (const [id, name] of [["clara", "Clara"], ["yema", "Yema"], ["pinta", "Pinta"]] as const) habitat.addHen(new Hen(id, name, id === "yema"));
-// Two chihuahuas: Coco, an adult, and Pepa, a puppy a few weeks old.
-habitat.addDog(new Dog("coco", "Coco", 2.4));
-habitat.addDog(new Dog("pepa", "Pepa", 0.9, "cachorro"));
-// The farm deck: eleven 15 m² beds of artificial soil, planted in turns so harvests keep coming,
-// and four fig trees in planters.
-const farm: [string, Parameters<Habitat["bed"]>[1], number][] = [
-  ["bancal-trigo-1", WHEAT_APOGEE, 60],
-  ["bancal-trigo-2", WHEAT_APOGEE, 20],
-  ["bancal-papa-1", POTATO_NORLAND, 70],
-  ["bancal-papa-2", POTATO_NORLAND, 25],
-  ["bancal-soja", SOYBEAN_HOYT, 50],
-  ["bancal-tomate", TOMATO_RED_ROBIN, 75],
-  ["bancal-lechuga", LETTUCE_OUTREDGEOUS, 20],
-  ["bancal-rabano", RADISH_CHERRY_BELLE, 2],
-  ["bancal-cacahuete-1", PEANUT_GEORGIA_RED, 105],
-  ["bancal-cacahuete-2", PEANUT_GEORGIA_RED, 40],
-  ["bancal-fresa", STRAWBERRY_SEASCAPE, 40],
-];
-for (const [id, sp, days] of farm) growFor(habitat.bed(id, sp, 15), days);
-for (const [i, days] of [120, 120, 90, 60].entries()) growFor(habitat.tree(`higuera-${i + 1}`, FIG_TREE), days);
+if (!REAL_ONLY) for (const [id, sp, days] of garden) growFor(habitat.plant(id, sp), days);
+// Stores the ship left with: potatoes, peanuts, flour, eggs, meat, animal food and culture medium;
+// real only, ISS-type packaged food (kitchen/data/iss-food.ts).
+habitat.stockAll(REAL_ONLY ? ISS_LAUNCH_STOCK : LAUNCH_STOCK);
+if (!REAL_ONLY) {
+  habitat.adopt(new Cat("luna", "Luna", 4));
+  // Nube came aboard at the last stop: the two are still being introduced.
+  habitat.adopt(new Cat("nube", "Nube", 3.2))[0]!.startAt("contacto-visual");
+  // Yema is broody: she can adopt a puppy or a kitten if Doménica programs her to.
+  for (const [id, name] of [["clara", "Clara"], ["yema", "Yema"], ["pinta", "Pinta"]] as const) habitat.addHen(new Hen(id, name, id === "yema"));
+  // Two chihuahuas: Coco, an adult, and Pepa, a puppy a few weeks old.
+  habitat.addDog(new Dog("coco", "Coco", 2.4));
+  habitat.addDog(new Dog("pepa", "Pepa", 0.9, "cachorro"));
+  // The farm deck: eleven 15 m² beds of artificial soil, planted in turns so harvests keep coming,
+  // and four fig trees in planters.
+  const farm: [string, Parameters<Habitat["bed"]>[1], number][] = [
+    ["bancal-trigo-1", WHEAT_APOGEE, 60],
+    ["bancal-trigo-2", WHEAT_APOGEE, 20],
+    ["bancal-papa-1", POTATO_NORLAND, 70],
+    ["bancal-papa-2", POTATO_NORLAND, 25],
+    ["bancal-soja", SOYBEAN_HOYT, 50],
+    ["bancal-tomate", TOMATO_RED_ROBIN, 75],
+    ["bancal-lechuga", LETTUCE_OUTREDGEOUS, 20],
+    ["bancal-rabano", RADISH_CHERRY_BELLE, 2],
+    ["bancal-cacahuete-1", PEANUT_GEORGIA_RED, 105],
+    ["bancal-cacahuete-2", PEANUT_GEORGIA_RED, 40],
+    ["bancal-fresa", STRAWBERRY_SEASCAPE, 40],
+  ];
+  for (const [id, sp, days] of farm) growFor(habitat.bed(id, sp, 15), days);
+  for (const [i, days] of [120, 120, 90, 60].entries()) growFor(habitat.tree(`higuera-${i + 1}`, FIG_TREE), days);
+}
 
 // --- Rendering adapter ------------------------------------------------------
 const root = document.getElementById("app")!;
@@ -367,7 +370,7 @@ const dryDock = new DryDockStage(root, scene, stationModel.root, POLANA_DRY_DOCK
   approaching: () => nav.status === "carrier" && nav.target.id === structure.site.id,
 });
 // The dry dock is backlog: the ISS's real precedent is the Shuttle docking straight to the forward IDA (docs/pendientes.md).
-dryDock.model.root.visible = FICTION.on;
+dryDock.model.root.visible = FICTION;
 
 // The asteroids' wrath after a failed duel (docs/design/poderes-ira.md): attacks, survival mode, anger card.
 const wrathMode = new WrathMode({
@@ -892,7 +895,7 @@ const stationInside = new StationInteriorMode(root, playInterior(), {
   actions: (f) => stationLife.actions(f),
   act: (f, a) => stationLife.act(f, a),
   landerInHangar: () => false,
-  lookOut: () => (FICTION.on ? dryDock.open("ventanilla") : stationOutside.open()),
+  lookOut: () => (FICTION ? dryDock.open("ventanilla") : stationOutside.open()),
   leave: (to) => {
     if (to === "nodriza" && !mothership.dockedTo) return "La nodriza no está atracada en este puerto";
     if (to === "sonda" && !atStationPort()) return "El módulo de aterrizaje no está en este puerto";

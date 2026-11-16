@@ -3,7 +3,7 @@ import type { Face, Fixture, InteriorVolume, StationInteriorPlan } from "../doma
 import type { InstalledEquipment, StationOutfit } from "../domain/outfit";
 import type { PressurisedModule, StationLayout } from "../domain/structure";
 import { GROWTH_SOURCES, startingOutfit } from "./outfit";
-import { REALITY_NAME } from "@core/fiction";
+import { REALITY_NAME } from "@core/reality";
 import { ISS_SOURCES } from "./iss";
 import { rackSpec } from "@modules/life-support/data/eclss-machines";
 import type { RackKind } from "@modules/life-support/domain/eclss";

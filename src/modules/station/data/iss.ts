@@ -1,4 +1,4 @@
-import type { Reality } from "@core/fiction";
+import type { Reality } from "@core/reality";
 
 /**
  * The station rebuilt as the ISS's US segment (docs/design/estacion-real.md, Berón 2026-11-16: «la

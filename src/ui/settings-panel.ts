@@ -1,3 +1,4 @@
+import { REAL_ONLY } from "@core/realism";
 import type { GameSettings, StartCamera } from "@modules/settings/domain/settings";
 import { START_CAMERAS } from "@modules/settings/domain/settings";
 import { settings } from "./settings-store";
@@ -34,7 +35,21 @@ const ROWS: readonly Row[] = [
   { key: "keyboardHelp", label: "Ayuda de teclado", help: "Las teclas de cada acción («K desacopla») y la tarjeta de controles", value: (s) => yes(s.keyboardHelp), next: (s) => !s.keyboardHelp },
   { key: "challengeView", label: "Vista de retos", help: "Retos en panel o flotando sobre la escena (HUD)", value: (s) => (s.challengeView === "hud" ? "HUD" : "Panel"), next: (s) => (s.challengeView === "hud" ? "panel" : "hud") },
   { key: "camera", label: "Cámara al pilotar", help: "La cámara con la que empieza el vuelo al sentarse", value: (s) => CAMERA_LABEL[s.camera], next: (s) => START_CAMERAS[(START_CAMERAS.indexOf(s.camera) + 1) % START_CAMERAS.length]! },
-  { key: "walkView", label: "Vista a pie", help: "Cómo se ve al caminar por el puente, el habitáculo, el anillo y la estación (el ojo la cambia en cada visita)", value: (s) => (s.walkView === "tercera" ? "3ª persona" : "1ª persona"), next: (s) => (s.walkView === "tercera" ? "primera" : "tercera") },
+  { key: "walkView", label: "Vista a pie", help: `Cómo se ve al moverte por el puente, el habitáculo, ${REAL_ONLY ? "las cubiertas de la nave" : "el anillo"} y la estación (el ojo la cambia en cada visita)`, value: (s) => (s.walkView === "tercera" ? "3ª persona" : "1ª persona"), next: (s) => (s.walkView === "tercera" ? "primera" : "tercera") },
+  {
+    key: "interiorScale",
+    label: "Escala de interiores",
+    help: "Real (1×): naves y módulos a su tamaño de verdad · Cómoda (1,5×): salas y máquinas más grandes para verlas en el móvil. Se aplica al volver a cargar el juego",
+    value: (s) => (s.interiorScale === "real" ? "Real (1×)" : "Cómoda (1,5×)"),
+    next: (s) => (s.interiorScale === "real" ? "comoda" : "real"),
+  },
+  {
+    key: "spacing",
+    label: "Separación",
+    help: "Real: cada cosa donde la ponen los datos · Amplia (2 m): las salas se alargan hasta que entre dos cosas que se usan haya 2 m. Se aplica al volver a cargar el juego",
+    value: (s) => (s.spacing === "real" ? "Real" : "Amplia (2 m)"),
+    next: (s) => (s.spacing === "real" ? "amplia" : "real"),
+  },
   { key: "sound", label: "Sonido", help: "Alarmas de embestida e impactos", value: (s) => yes(s.sound), next: (s) => !s.sound },
 ];
 

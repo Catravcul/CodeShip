@@ -10,11 +10,11 @@ import { facing } from "../domain/attitude";
 import { portFlightTarget, targetDistance, type AsteroidTarget, type DockTarget, type NavTarget } from "../domain/nav-target";
 import type { DockingTarget } from "@modules/mothership/domain/docking";
 import { remainingEstimateS, TripAutopilot, type AutopilotPhase } from "./autopilot";
-import { CarrierTrip, ManualCarrierRun, type BerthRun, type CarrierPort } from "./carrier-trip";
+import { CarrierTrip, ManualCarrierRun, carrierTurnSeconds, type BerthRun, type CarrierPort } from "./carrier-trip";
 import { legBudgets, TRAVEL_TIME, TravelClock } from "../domain/travel-time";
 import { carrierTripChore, tripChore, type CarrierTripFacts, type DockFacts, type TripFacts } from "./trip-chore";
 import { DOCK_TRIP } from "./dock-trip";
-import { berthSeconds } from "@modules/mothership/application/berthing";
+import { berthSeconds, MANUAL_BERTH, type ManualBerthing, type Unberthing } from "@modules/mothership/application/berthing";
 import { planHop } from "./hop";
 
 /**
@@ -22,6 +22,9 @@ import { planHop } from "./hop";
  * `autopilot`: the probe's last leg; `docking`: the docking assist is closing on the port;
  * `docked`: a dock trip ended latched to the port.
  */
+/** How near Waypoint 1 of a free port the mothership counts as holding there, m (game value: twice Waypoint 1). */
+export const HOLD_RANGE_M = 300;
+
 export type TripStatus = "idle" | "programming" | "carrier" | "autopilot" | "docking" | "docked" | "arrived" | "manual" | "failed";
 
 /** The mothership's share of a trip: from where it is to its parking point, round the rocks. */
@@ -33,6 +36,8 @@ export interface CarrierLeg {
   readonly facts: CarrierTripFacts;
   /** Set when the mothership docks at the end (a station's port). */
   readonly berthAt?: DockingTarget;
+  /** Game seconds it spends only turning (onto the route, and at a port to the standoff attitude). */
+  readonly turnS?: number;
 }
 
 /** How a dock trip ends: the probe's port, where the autopilot hands over, and the way in. */
@@ -74,12 +79,21 @@ export interface TripTime {
 export function tripTime(t: Pick<Trip, "carrier" | "plan">): TripTime {
   const berthS = t.carrier?.berthAt ? berthSeconds() : 0;
   const legs = [
-    ...(t.carrier ? [{ gameS: t.carrier.plan.totalS, lapse: TRAVEL_TIME.lapse.carrier }, { gameS: berthS, lapse: TRAVEL_TIME.lapse.carrier }] : []),
+    ...(t.carrier ? [{ gameS: t.carrier.plan.totalS + (t.carrier.turnS ?? 0), lapse: TRAVEL_TIME.lapse.carrier }, { gameS: berthS, lapse: TRAVEL_TIME.lapse.carrier }] : []),
     { gameS: t.plan.totalS, lapse: TRAVEL_TIME.lapse.lander },
   ];
   const b = legBudgets(legs);
   const legsRealS = t.carrier ? [b[0]! + b[1]!, b[2]!] : b;
   return { gameS: legs.reduce((s, l) => s + l.gameS, 0), realS: b.reduce((s, x) => s + x, 0), legsRealS, berthRealS: t.carrier ? b[1]! : 0 };
+}
+
+/**
+ * The time-lapse clock of a mothership hop: its turns (onto the route and, at the end, to its final attitude)
+ * play at the board's pace on top of the burn's budget.
+ */
+function turnsClock(trip: CarrierTrip, budgetRealS: number): TravelClock {
+  const turnsS = Math.max(0, trip.remainingS - trip.plan.totalS);
+  return new TravelClock(trip.remainingS, budgetRealS + turnsS / TRAVEL_TIME.lapse.carrier);
 }
 
 /** What the map card shows about a destination. */
@@ -177,6 +191,14 @@ export class Navigator {
   private _carrying = false;
   /** Where the trip flying now goes, as planned when it was engaged (for «Ver trayecto»). */
   private _route: readonly Vec3[] = [];
+  /** The last approach to a station's port flown by hand, from the docking station (docs/design/puente.md §Acople). */
+  private _manualBerth: ManualBerthing | undefined;
+  /** Backing out of a station's port to Waypoint 1 (the docking station's «Desacoplar»). */
+  private _unberth: Unberthing | undefined;
+  /** A hand-flown trip to a station stops at Waypoint 1: docking is the docking station's job. */
+  private holdAtWaypoint = false;
+  /** Why the last hand approach did not latch (IDSS limits), until the next one. */
+  lastBerthFailure: readonly string[] = [];
 
   constructor(
     private readonly flight: FlightComputer,
@@ -284,11 +306,11 @@ export class Navigator {
       ...(berthAt ? { dock: this.dockFacts(t as DockTarget, DOCK_TRIP.berthStandoffM) } : {}),
     };
     const probePlan = planTransfer({ distanceM: probeLegM, accelMS2: probe.plan.accelMS2, deltaVAvailableMS: this.flight.ship.mainDeltaV() });
-    return { ...probe, plan: probePlan, waypoints: [], dock: undefined, carrier: { from, path, parking, plan, facts, ...(berthAt ? { berthAt } : {}) } };
+    return { ...probe, plan: probePlan, waypoints: [], dock: undefined, carrier: { from, path, parking, plan, facts, turnS: carrierTurnSeconds(c.orientation, from, path, berthAt ? c.berthStandoff!(berthAt).orientation : undefined, !!out), ...(berthAt ? { berthAt } : {}) } };
   }
 
   /** Where the carrier's centre ends up latched at a port (the standoff, moved in onto the port). */
-  private berthedAt(port: DockingTarget): Vec3 | undefined {
+  private berthedAt_(port: DockingTarget): Vec3 | undefined {
     const c = this.ports.carrier;
     if (!c?.berthStandoff) return undefined;
     return c.berthStandoff(port).position.sub(port.port.normal.scale(DOCK_TRIP.berthStandoffM));
@@ -482,6 +504,87 @@ export class Navigator {
     return this._manualCarrier;
   }
 
+  /**
+   * The station port the mothership is holding at (Waypoint 1 or near it, not latched and not flying), if any:
+   * from there the docking station docks it, by hand or by program (docs/design/puente.md §Acople).
+   */
+  holdingAt(): DockTarget | undefined {
+    const c = this.ports.carrier;
+    if (!c?.berthStandoff || c.dockedTo?.() || this._status === "carrier" || this._status === "programming") return undefined;
+    let best: { t: DockTarget; d: number } | undefined;
+    for (const t of this.ports.targets) {
+      if (t.kind !== "dock" || !t.carrierPort) continue;
+      const d = c.berthStandoff(t.carrierPort).position.sub(c.position).length();
+      if (d <= HOLD_RANGE_M && (!best || d < best.d)) best = { t, d };
+    }
+    return best?.t;
+  }
+
+  /** The station target whose port the mothership is latched to, if any. */
+  berthedAt(): DockTarget | undefined {
+    const id = this.ports.carrier?.dockedTo?.();
+    return id ? (this.ports.targets.find((t) => t.kind === "dock" && t.carrierPort?.id === id) as DockTarget | undefined) : undefined;
+  }
+
+  private aimAt(t: DockTarget): void {
+    if (this._target === t) return;
+    this.ports.retarget(t);
+    this._target = t;
+  }
+
+  /** Dock by program from Waypoint 1 (the docking challenge solved): the flight computer flies Demo-1's approach. */
+  berthAuto(): { ok: boolean; reason?: string } {
+    const t = this.holdingAt();
+    const c = this.ports.carrier;
+    if (!t || !c?.berth || !c.berthStandoff) return { ok: false, reason: "La Starship no está en el punto de espera de un puerto" };
+    this.cancel();
+    this.aimAt(t);
+    const sb = c.berthStandoff(t.carrierPort!);
+    this._route = [c.position, this.berthedAt_(t.carrierPort!) ?? sb.position];
+    this.berthLapse = TRAVEL_TIME.lapse.carrier;
+    if (sb.position.sub(c.position).length() > 1) {
+      // First back onto the axis at Waypoint 1, then the approach.
+      const plan = planContinuousBurn(sb.position.sub(c.position).length(), c.accelerationMs2, c.cruiseFor?.(1));
+      this._carrierTrip = new CarrierTrip(c, c.position, [sb.position], plan, sb.orientation);
+      this.clock = turnsClock(this._carrierTrip, plan.totalS / TRAVEL_TIME.lapse.carrier);
+    } else this._berthing = c.berth(t.carrierPort!);
+    this._status = "carrier";
+    return { ok: true };
+  }
+
+  /** Dock by hand from Waypoint 1: the crew commands closing speed and drift with the docking camera. */
+  berthByHand(): { ok: boolean; reason?: string } {
+    const t = this.holdingAt();
+    const c = this.ports.carrier;
+    if (!t || !c?.manualBerth) return { ok: false, reason: "La Starship no está en el punto de espera de un puerto" };
+    this.cancel();
+    this.aimAt(t);
+    this.lastBerthFailure = [];
+    this._manualBerth = c.manualBerth(t.carrierPort!);
+    this._route = [c.position, this.berthedAt_(t.carrierPort!) ?? c.position];
+    this._status = "carrier";
+    return { ok: true };
+  }
+
+  /** The hand approach flying now (its rate commands and the docking camera's numbers). */
+  get manualBerth(): ManualBerthing | undefined {
+    return this._manualBerth;
+  }
+
+  /** Undock from the station's port and back out to Waypoint 1. */
+  undockCarrier(): { ok: boolean; reason?: string } {
+    const t = this.berthedAt();
+    const c = this.ports.carrier;
+    if (!t || !c?.unberth) return { ok: false, reason: "La Starship no está atracada" };
+    if (this.ports.docking?.assist || this._status === "carrier") return { ok: false, reason: "Espera a que termine la maniobra" };
+    this.cancel();
+    this.aimAt(t);
+    this._unberth = c.unberth(t.carrierPort!);
+    this._route = [c.position, c.berthStandoff!(t.carrierPort!).position];
+    this._status = "carrier";
+    return { ok: true };
+  }
+
   /** The trip being programmed is the lander's own (its seat's «Automático»), never carried by the mothership. */
   private landerOnly = false;
 
@@ -548,13 +651,14 @@ export class Navigator {
       c.release?.();
       this._carrying = c.docked();
       const end = now.carrier.berthAt ? c.berthStandoff!(now.carrier.berthAt).position : now.carrier.parking;
-      this._route = [now.carrier.from, ...now.carrier.path, ...(now.carrier.berthAt ? [this.berthedAt(now.carrier.berthAt) ?? end] : [])];
+      this._route = [now.carrier.from, ...now.carrier.path, ...(now.carrier.berthAt ? [this.berthedAt_(now.carrier.berthAt) ?? end] : [])];
       const berth = now.carrier.berthAt;
-      const q = berth ? c.berthStandoff!(berth).orientation : leaving ? c.orientation : facing(now.carrier.parking.sub(now.carrier.from));
-      this._carrierTrip = new CarrierTrip(c, now.carrier.from, now.carrier.path, now.carrier.plan, q);
+      const q = berth ? c.berthStandoff!(berth).orientation : undefined;
+      this._carrierTrip = new CarrierTrip(c, now.carrier.from, now.carrier.path, now.carrier.plan, q, leaving);
       const tt = tripTime(now);
       const budget = tt.legsRealS;
-      this.clock = new TravelClock(now.carrier.plan.totalS, (budget[0] ?? 0) - tt.berthRealS);
+      // The budget already counts its turns (tripTime).
+      this.clock = new TravelClock(this._carrierTrip.remainingS, (budget[0] ?? 0) - tt.berthRealS);
       this.landerBudgetS = budget[1];
       this.berthLapse = tt.berthRealS > 0 ? berthSeconds() / tt.berthRealS : TRAVEL_TIME.lapse.carrier;
       this.startDistanceM = Math.max(1, now.carrier.plan.distanceM);
@@ -596,6 +700,9 @@ export class Navigator {
     this._carrierTrip = undefined;
     this._manualCarrier = undefined;
     this._berthing = undefined;
+    this._manualBerth = undefined;
+    this._unberth = undefined;
+    this.holdAtWaypoint = false;
     this.run = undefined;
     this.clock?.cancel();
     this.clock = undefined;
@@ -609,6 +716,8 @@ export class Navigator {
    * mission clock (physics, wrath, station) at this pace.
    */
   get lapse(): number {
+    if (this._status === "carrier" && this._manualBerth) return MANUAL_BERTH.lapse;
+    if (this._status === "carrier" && this._unberth) return TRAVEL_TIME.lapse.carrier;
     if (this._status === "carrier" && this._berthing) return this.berthLapse;
     // By hand: the board's own pace (one clock, docs/design/viajes.md).
     if (this._status === "carrier" && this._manualCarrier) return TRAVEL_TIME.lapse.carrier;
@@ -620,6 +729,9 @@ export class Navigator {
   /** Real seconds left for the leg flying now (the lander's leg after the mothership's included). */
   private etaRealS(): number {
     const c = this.clock;
+    const mb = this._manualBerth;
+    if (this._status === "carrier" && mb) return mb.rates.closing > 1e-6 ? Math.max(0, mb.alignment().axialM) / mb.rates.closing / MANUAL_BERTH.lapse : 0;
+    if (this._status === "carrier" && this._unberth) return this._unberth.remainingS / TRAVEL_TIME.lapse.carrier;
     if (this._status === "carrier" && this._berthing) return this._berthing.remainingS / this.berthLapse;
     const m = this._manualCarrier;
     if (this._status === "carrier" && m) return Math.abs(m.speedMs) > 1e-6 ? Math.abs(m.remainingM / m.speedMs) / TRAVEL_TIME.lapse.carrier : 0;
@@ -636,6 +748,27 @@ export class Navigator {
    * trip at ×1 this frame (main's `frameClocks`, HC-03): the time-lapse clock does not count it.
    */
   update(realDtS = 0, held = false): void {
+    const mb = this._manualBerth;
+    if (this._status === "carrier" && mb) {
+      mb.advance(realDtS * (held ? 1 : MANUAL_BERTH.lapse));
+      if (mb.status !== "approach") {
+        this._manualBerth = undefined;
+        this.lastBerthFailure = mb.failures;
+        this._status = mb.status === "docked" ? "docked" : "manual";
+        this.parkedByHand = mb.status !== "docked";
+      }
+      return;
+    }
+    const ub = this._unberth;
+    if (this._status === "carrier" && ub) {
+      ub.advance(realDtS * (held ? 1 : TRAVEL_TIME.lapse.carrier));
+      if (ub.done) {
+        this._unberth = undefined;
+        this._status = "manual";
+        this.parkedByHand = true;
+      }
+      return;
+    }
     if (this._status === "carrier" && this._berthing) {
       this._berthing.advance(realDtS * (held ? 1 : this.berthLapse));
       if (this._berthing.status !== "approach") {
@@ -654,10 +787,12 @@ export class Navigator {
         // berthing; at an asteroid she flies the lander from its seat (by hand or by program).
         const c = this.ports.carrier;
         if (berth && c?.berth && c.berthStandoff) {
+          // By hand, the computer only takes it to Waypoint 1 and holds; the docking station docks it.
+          this.holdAtWaypoint = true;
           const sb = c.berthStandoff(berth);
           const plan = planContinuousBurn(sb.position.sub(c.position).length(), c.accelerationMs2, c.cruiseFor?.(1));
           this._carrierTrip = new CarrierTrip(c, c.position, [sb.position], plan, sb.orientation);
-          this.clock = new TravelClock(plan.totalS, plan.totalS / TRAVEL_TIME.lapse.carrier);
+          this.clock = turnsClock(this._carrierTrip, plan.totalS / TRAVEL_TIME.lapse.carrier);
         } else {
           this._status = "manual";
           this.parkedByHand = true;
@@ -672,8 +807,13 @@ export class Navigator {
         this.clock?.arrive();
         const berth = this._target.kind === "dock" ? this._target.carrierPort : undefined;
         this._carrierTrip = undefined;
-        // At a station the mothership docks itself; at an asteroid the probe flies the last leg.
-        if (berth && this.ports.carrier?.berth) this._berthing = this.ports.carrier.berth(berth);
+        // At a station the mothership docks itself (by hand: it holds at Waypoint 1); at an asteroid the probe flies the last leg.
+        if (berth && this.holdAtWaypoint) {
+          this.holdAtWaypoint = false;
+          this.clock = undefined;
+          this._status = "manual";
+          this.parkedByHand = true;
+        } else if (berth && this.ports.carrier?.berth) this._berthing = this.ports.carrier.berth(berth);
         else this.engageProbe(this._target);
       }
       return;
@@ -715,6 +855,16 @@ export class Navigator {
   }
 
   private progress_(): Omit<TripProgress, "etaRealS" | "lapse"> | undefined {
+    const mb = this._manualBerth;
+    if (this._status === "carrier" && mb) {
+      const r = Math.max(0, mb.alignment().axialM);
+      const v = mb.rates.closing;
+      return { vehicle: "carrier", phase: "dock", remainingM: r, etaS: v > 1e-6 ? r / v : 0, speedMS: v, fraction: 1 - Math.min(1, r / DOCK_TRIP.berthStandoffM), manual: true };
+    }
+    const ub = this._unberth;
+    if (this._status === "carrier" && ub) {
+      return { vehicle: "carrier", phase: "undock", remainingM: ub.remainingM, etaS: ub.remainingS, speedMS: ub.speedMs, fraction: 1 - ub.remainingM / DOCK_TRIP.berthStandoffM };
+    }
     const b = this._berthing;
     if (this._status === "carrier" && b) {
       const r = b.remainingM;

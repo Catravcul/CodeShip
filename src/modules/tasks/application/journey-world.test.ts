@@ -61,7 +61,7 @@ describe("HAB-21 The real journey to a task (travel mode)", () => {
     if (p.kind !== "ruta") return;
     const flights = p.legs.filter((l) => l.kind === "vuelo");
     expect(flights).toHaveLength(1);
-    expect(flights[0]!.from).toMatch(/^(puente:nav|anillo:navegacion)$/);
+    expect(flights[0]!.from).toMatch(/^(puente:nav|puente:prop|anillo:navegacion)$/);
     expect(p.legs.some((l) => l.to === "modulo:acople" && l.kind === "escotilla")).toBe(false);
   });
 
@@ -135,12 +135,12 @@ describe("HAB-36 Starship: every way walked, hatches opened (docs/design/reglas.
     expect(p.kind === "ruta" && p.legs.map((l) => l.kind)).toEqual(["andar", "escotilla", "saltos"]);
   });
 
-  it("TRY-04 to a station task from Starship's deck 3: up to the navigation console, Starship flies and berths, then through the nose tunnel", () => {
+  it("TRY-04 to a station task from Starship's deck 3: up to the pilot seat (where she flies), Starship flies and berths, then through the nose tunnel", () => {
     const p = plan(shipFacts(), planos);
     expect(p.kind).toBe("ruta");
     if (p.kind !== "ruta") return;
     expect(p.legs.map((l) => l.kind)).toEqual(["saltos", "escotilla", "andar", "vuelo", "andar", "escotilla", "saltos", "escotilla", "saltos"]);
-    expect(p.legs[3]).toMatchObject({ from: "puente:nav" });
+    expect(p.legs[3]).toMatchObject({ from: "puente:prop" });
     expect(p.legs[7]!.label).toMatch(/túnel de proa/);
   });
 

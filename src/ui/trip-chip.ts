@@ -13,6 +13,24 @@ export interface TripChipData {
   readonly fraction: number;
 }
 
+/**
+ * The trip flying now as plain data (reglas.md §5.8–5.9): what the HUD menu's status-only «Trayecto» window shows,
+ * wherever she is. No actions here: «Ver trayecto» and taking the controls live only at that vehicle's console.
+ */
+export interface TripStatus {
+  /** «Starship», «Nodriza», «Módulo», «Sonda». */
+  readonly vehicle: string;
+  readonly destination: string;
+  /** Metres left, when the leg measures it. */
+  readonly distanceM?: number;
+  /** Real seconds left at the time-lapse. */
+  readonly etaRealS: number;
+  /** Phase, in Spanish («Frenando», «Acoplando por el eje del puerto»…). */
+  readonly phase: string;
+  /** 0..1. */
+  readonly fraction: number;
+}
+
 const clock = (s: number) => {
   const t = Math.max(0, Math.ceil(s));
   return t < 60 ? `${t} s` : `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;

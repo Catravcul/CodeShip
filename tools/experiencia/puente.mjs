@@ -4,6 +4,7 @@
 // docs/screenshots/puente-<pantalla>.png.
 import { mkdirSync } from "node:fs";
 
+/** The old bridge's consoles (the ring ship, `?ficcion`); Starship's deck has its own (docs/design/puente.md). */
 const ORDER = ["prop", "sonda", "dock", "life", "power", "mente", "nano", "comms", "salida"];
 
 async function capture(j, label, title) {
@@ -38,14 +39,19 @@ export async function puente(j) {
   await p.waitForTimeout(900);
   const view = await p.evaluate(() => ({ third: window.codeship.bridge.thirdPerson, label: document.querySelector(".room-ui:not(.hidden) .cab-view")?.getAttribute("aria-label") }));
   j.check("al entrar, la vista es en 1ª persona (ajuste «Vista a pie» por defecto)", view.third === false && /1ª/.test(view.label ?? ""), JSON.stringify(view));
-  await j.setup("mira hacia proa desde la escotilla", () => window.codeship.bridge.face({ x: 0, y: 1.0, z: -4 }));
+  await j.setup("mira hacia proa desde la escotilla", () => window.codeship.bridge.face({ x: 0, y: 1.3, z: -4 }));
   await capture(j, "entrada", "Puente desde la escotilla, 1ª persona");
   const first = await p.evaluate(() => window.codeship.bridge.measure());
   const o0 = signOverlaps(first.signs);
   j.check("desde la escotilla, ningún cartel tapa a otro", o0.length === 0, o0.join(", "));
 
-  // Every console: seen from the plot table in the middle, its sign readable and alone, its tap box big enough, and a tap walks her there.
-  for (const id of ORDER) {
+  // Starship's flight deck (real-only): its own stations, no reading-only consoles.
+  const order = await p.evaluate((o) => {
+    const ids = window.codeship.bridge.opts.layout.stations.map((s) => s.id);
+    return window.codeship.bridge.shape === "starship" ? ids.filter((id) => id !== "nav") : o;
+  }, ORDER);
+  // Every console: seen from the plot table, its sign readable and alone, its tap box big enough, and a tap walks her there.
+  for (const id of order) {
     await j.setup(`desde la mesa, gira la vista hacia «${id}»`, (m) => {
       const b = window.codeship.bridge;
       b.enter("nav");
@@ -69,7 +75,7 @@ export async function puente(j) {
     await j.useMachine("bridge", id, null);
     const card = (await j.texts(".room-ui:not(.hidden) .cab-machine b"))[0] ?? "";
     j.check(`un toque en «${label}» la lleva a ella y su ficha lo nombra`, card === label, card);
-    if (id === "life") await capture(j, "consola", "Consola de sistemas de cerca");
+    if (id === "life" || id === "comms") await capture(j, "consola", "Consola de cerca");
     if (id === "salida") await capture(j, "escotilla", "Escotilla de bajada");
   }
 

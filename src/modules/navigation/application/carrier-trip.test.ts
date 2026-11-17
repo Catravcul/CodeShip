@@ -95,7 +95,8 @@ describe("Trip with the mothership", () => {
     nav.select(member.data.id);
     const t = nav.trip();
     const tt = t.travel!;
-    expect(tt.gameS).toBeCloseTo(t.carrier!.plan.totalS + t.plan.totalS, 6);
+    // The burn, the turns onto the route and the lander's leg.
+    expect(tt.gameS).toBeCloseTo(t.carrier!.plan.totalS + (t.carrier!.turnS ?? 0) + t.plan.totalS, 6);
     expect(tt.legsRealS).toHaveLength(2);
     expect(tt.realS).toBeGreaterThan(10);
     expect(tt.realS).toBeLessThanOrEqual(TRAVEL_TIME.capS);

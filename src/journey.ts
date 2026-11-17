@@ -410,5 +410,6 @@ export class JourneyDriver {
 export function travelFirstText(task: string, flight: Leg): string {
   if (flight.from.startsWith("modulo:"))
     return `Para «${task}» primero hay que volver con el módulo a la nave: pilótalo desde el puesto del comandante, a mano o con un programa`;
+  if (flight.from === "puente:prop") return `Para «${task}» primero hay que viajar a la estación: en el puesto de pilotaje, «Manual» o «Automático (retos)»`;
   return `Para «${task}» primero hay que viajar a la estación: en la mesa de navegación, «Programar viaje» (retos) o «Pilotar a mano»`;
 }

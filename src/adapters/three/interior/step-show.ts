@@ -821,7 +821,8 @@ export class StepShow {
       case "cortar": {
         const at = vessel();
         const cut = v.action === "cortar";
-        const pieces = cut ? 1 + Math.min(3, Math.floor(t * 4)) : 1;
+        // Opening a package cuts no pieces: the scissors at its top are the step.
+        const pieces = cut && v.vessel === "bolsa" ? 0 : cut ? 1 + Math.min(3, Math.floor(t * 4)) : 1;
         const kitchen = !!this.df!.kitchen;
         // In the ring's galley the row runs along the counter's depth. Elsewhere (a machine, a 0 g galley) the
         // pieces float up from the work, which she holds clear of her body, and the tool is just over it: her
@@ -1089,7 +1090,8 @@ export function gesture(v: StepAct, t: number, clock: number, low: boolean): Pos
     case "lavar":
       return base({ shoulderX: [-0.8 + 0.1 * s, -0.8 - 0.1 * s], elbow: [-0.9, -0.9] });
     case "reposar":
-      return base({ shoulderX: [0, 0], elbow: [-0.2, -0.2], headX: 0.45 });
+      // Holding what rests (the snails' dish, the package) out in front of her, where her body does not hide it.
+      return base({ shoulderX: [-0.6, -0.6], elbow: [-0.6, -0.6], headX: 0.45 });
     case "emplatar":
       return base({ shoulderX: [-0.9, -0.9 - 0.3 * bump(t, 0.1, 0.8)], elbow: [-0.7, -0.5] });
     case "regar":

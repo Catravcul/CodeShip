@@ -1,3 +1,4 @@
+import type { GearKind } from "@modules/wellness/data/gear";
 import { Vec3 } from "@core/math/vec3";
 import type { CraftSpec, MachineId } from "./blueprint";
 import type { PortUser } from "./structure";
@@ -96,6 +97,8 @@ export interface Fixture {
   readonly source?: string;
   /** A life-support rack drawn with eclss-real's kit (`RackKind` of modules/life-support). */
   readonly rack?: string;
+  /** The real equipment it is (modules/wellness/data/gear.ts), drawn as its own model with its own animation. */
+  readonly gear?: GearKind;
 }
 
 export interface StationInteriorPlan {

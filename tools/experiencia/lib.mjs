@@ -240,6 +240,24 @@ export class Journey {
     await p.waitForFunction((i) => (document.querySelector(i)?.getBoundingClientRect().width ?? 0) >= 44, item, { timeout: 5000 }).catch(() => {});
   }
 
+  /**
+   * A tap on an icon that sprouts from a root menu: opens the menu and taps it. The shoots fold back 5 s after
+   * the root was touched, which a slow, shared machine can pass between the two taps: then it opens it again.
+   */
+  async tapInMenu(bar, item, what) {
+    for (let n = 0; n < 2; n++) {
+      await this.openMenu(bar, item);
+      try {
+        await this.page.locator(item).first().tap({ timeout: 4000 });
+        return true;
+      } catch {
+        // Folded back before the tap landed: open it again.
+      }
+    }
+    await this.openMenu(bar, item);
+    return this.tap(item, what);
+  }
+
   /** Waits until the challenge screen is up, then checks that it is the only interface on screen. */
   async waitDuel(timeout = 30000) {
     await this.page.waitForFunction(() => [...document.querySelectorAll(".duel")].some((e) => !e.classList.contains("hidden")), null, { timeout });

@@ -42,8 +42,7 @@ export async function habitaculo(j) {
   // The commander's station: Manual and Automático; undocking is the dock switch of the flight view (PX-41).
   await j.useMachine("cabin", "asiento", "pilotar", "Manual");
   await p.waitForTimeout(900);
-  await j.openMenu(".flight-bar", ".dock-btn");
-  await j.tap(".dock-btn", "Desacoplar (interruptor de acople)");
+  await j.tapInMenu(".flight-bar", ".dock-btn", "Desacoplar (interruptor de acople)");
   await p.waitForTimeout(600);
   j.check("el interruptor de acople de la vista de vuelo desacopla el módulo", await p.evaluate(() => !window.codeship.docking.docked));
   await capture(j, "acople", "Interruptor de acople");

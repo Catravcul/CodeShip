@@ -43,7 +43,8 @@ export async function mandos(j) {
   const seat = await p.evaluate(seatButtons);
   j.check("el puesto del comandante ofrece «Manual» y «Automático» (sin «Desacoplar»: es el interruptor del vuelo)", seat.map((b) => b.label).join("|") === "Manual|Automático", JSON.stringify(seat));
   await j.tap('.room-ui:not(.hidden) .cab-machine [data-act="automatico"]', "Automático");
-  await p.waitForTimeout(500);
+  await p.waitForFunction(() => !!document.querySelector('.room-ui:not(.hidden) .cab-machine [data-act^="auto:"]'), null, { timeout: 10000 }).catch(() => {});
+  await p.waitForTimeout(300);
   const list = await p.evaluate(seatButtons);
   const near = await p.evaluate(() => {
     const c = window.codeship;
@@ -78,14 +79,12 @@ export async function mandos(j) {
   j.check("libre dentro de la esfera de 200 m del puerto, el interruptor dice «Acoplar»", !!sw2 && sw2.label === "Acoplar", JSON.stringify(free));
   await j.openMenu(".flight-bar", ".dock-btn");
   await capture(j, "acoplar", "Interruptor «Acoplar» cerca del puerto");
-  await j.openMenu(".flight-bar", ".dock-btn");
-  await j.tap(".dock-btn", "Acoplar");
+  await j.tapInMenu(".flight-bar", ".dock-btn", "Acoplar");
   await p.waitForTimeout(600);
   j.check("al tocarlo, el asistente lleva el LM al puerto («Acoplando: tocar para parar»)", await p.evaluate(() => window.codeship.docking.assist && /Acoplando/.test(document.querySelector(".dock-btn")?.getAttribute("aria-label") ?? "")));
   await j.setup("el asistente llega al contacto (minutos de juego)", () => window.codeship.docking.dockNow(window.codeship.mothership));
   await p.waitForTimeout(800);
-  await j.openMenu(".flight-bar", ".dock-btn");
-  await j.tap(".dock-btn", "Desacoplar");
+  await j.tapInMenu(".flight-bar", ".dock-btn", "Desacoplar");
   await p.waitForTimeout(600);
   j.check("y vuelve a desacoplar con el mismo interruptor", await p.evaluate(() => !window.codeship.docking.docked));
   await j.setup("vuelve a acoplar en la Starship", () => window.codeship.docking.dockNow(window.codeship.mothership));
@@ -127,7 +126,8 @@ export async function mandos(j) {
   const ps = await p.evaluate(seatButtons);
   j.check("el mando de la sonda ofrece «Manual» y «Automático»", ps.map((b) => b.label).join("|") === "Manual|Automático", JSON.stringify(ps));
   await j.tap('.room-ui:not(.hidden) .cab-machine [data-act="automatico"]', "Automático");
-  await p.waitForTimeout(500);
+  await p.waitForFunction(() => !!document.querySelector('.room-ui:not(.hidden) .cab-machine [data-act^="auto:"]'), null, { timeout: 10000 }).catch(() => {});
+  await p.waitForTimeout(300);
   const pl = (await p.evaluate(seatButtons)).filter((b) => b.id?.startsWith("auto:")).map((b) => b.id.slice(5));
   j.check("solo asteroides cercanos a la nodriza (Juventas no hace viajes largos)", pl.length > 0 && pl.every((id) => near.find((t) => t.id === id && !t.far)), pl.join(", "));
   await capture(j, "sonda-destinos", "Destinos cercanos del «Automático» de la sonda");

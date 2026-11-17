@@ -523,9 +523,12 @@ function throughHatch(): void {
   if (duelView.visible || evaMode.active || interior.active || stationInside.active || deck.active || bay.active || bridge.active) return;
   const to = hatchInto();
   if (!to) return;
-  cabin.exit();
-  if (to === "nave") interior.enter("escotilla");
-  else stationInside.enter("sonda");
+  // She opens the roof hatch and goes up through it (docs/design/reglas.md §3.1).
+  cabin.passHatch("acople", () => {
+    cabin.exit();
+    if (to === "nave") interior.enter("escotilla");
+    else stationInside.enter("sonda");
+  });
 }
 // The docking hatches at the end of the spine: down to the lander, or across to the station.
 if (interior.zones)

@@ -97,10 +97,8 @@ export function buildLmCabin(L: CabinLayout<CabinStationId>, k: number): LmCabin
   const ring = new THREE.Mesh(new THREE.TorusGeometry(0.42 * k, 0.05, 8, 28), metal);
   ring.rotation.x = Math.PI / 2;
   ring.position.set(dock.x * k, H - 0.05, dock.z * k);
-  const lid = new THREE.Mesh(new THREE.CircleGeometry(0.4 * k, 28), panel);
-  lid.rotation.x = Math.PI / 2;
-  lid.position.set(dock.x * k, H - 0.06, dock.z * k);
-  g.add(ring, lid);
+  // Its lid is the hatch leaf the room opens (walk-room.ts, LM_DOCKING_HATCH).
+  g.add(ring);
 
   // ECS panel on the left of the midsection: readout, two LiOH cartridges, the O₂ bottle.
   const e = at("ecs").look;
@@ -139,4 +137,10 @@ export function buildLmCabin(L: CabinLayout<CabinStationId>, k: number): LmCabin
   aft.position.set(0, H - 0.3, (f.maxZ - 0.5) * k);
   g.add(lamp, aft, new THREE.AmbientLight(0xb8c8d8, 1.1));
   return { group: g, mindScreen, ecsScreen };
+}
+
+/** The overhead docking hatch's leaf: where it is (drawn m), the way it opens and its size (0,84 m round, apolloLm). */
+export function lmDockingHatch(L: CabinLayout<CabinStationId>, k: number): { at: THREE.Vector3; into: THREE.Vector3; sizeM: number; round: boolean } {
+  const dock = L.stations.find((s) => s.id === "acople")!.look;
+  return { at: new THREE.Vector3(dock.x * k, L.heightM - 0.09, dock.z * k), into: new THREE.Vector3(0, -1, 0), sizeM: 0.8 * k, round: true };
 }

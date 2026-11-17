@@ -153,8 +153,7 @@ export function buildBridge(k: number): BridgeModel {
   for (let x = -W / 2 + 1.6 * k; x < W / 2 - 0.1; x += 1.6 * k) bowKit.box(0.09 * k, winH, 0.14 * k, COL.rib, at(I, x, sill + winH / 2, -L / 2 + 0.05 * k));
   // Aft: the hatch to the spine (ring, door, wheel) on the aft wall, hidden with it.
   aftKit.add(new THREE.TorusGeometry(0.42 * k, 0.05 * k, 8, 28), 0x2a2f36, at(I, 0, 1.1 * k, L / 2 - 0.03));
-  aftKit.cyl(0.38 * k, 0.04 * k, 0x9aa3ad, at(I, 0, 1.1 * k, L / 2 - 0.02, Math.PI / 2), 24);
-  aftKit.add(new THREE.TorusGeometry(0.12 * k, 0.012 * k, 6, 16), COL.yellow, at(I, 0, 1.1 * k, L / 2 - 0.07 * k));
+  // Its leaf is the hatch the room opens (walk-room.ts, bridgeHatch).
   // Hatch panel with its pressure screen, starboard of the hatch.
   const hatchM = at(I, 0.75 * k, 1.25, L / 2 - 0.04 * k, 0, Math.PI);
   aftKit.box(0.4 * k, 0.3 * k, 0.04 * k, COL.bezel, at(hatchM, 0, 0, -0.02 * k));
@@ -410,4 +409,9 @@ export function buildBridge(k: number): BridgeModel {
   for (const sc of screens) paintScreen(atlas.ctx, sc.rect, sc.kind, sc.title, []);
   atlas.refresh();
   return { group: g, atlas, screens, lamps, lampIndex, aim, top, controls, ends: { bow, aft } };
+}
+
+/** The aft hatch's leaf (down to the decks): where it is (drawn m), the way it opens and its size. */
+export function bridgeHatch(k: number): { at: THREE.Vector3; into: THREE.Vector3; sizeM: number; round: boolean } {
+  return { at: new THREE.Vector3(0, 1.1 * k, 4.0 * k - 0.05), into: new THREE.Vector3(0, 0, -1), sizeM: 0.76 * k, round: true };
 }

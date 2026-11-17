@@ -14,6 +14,7 @@ import { Walker } from "./adapters/input/walker";
 import { HopControl } from "./adapters/three/interior/hop-control";
 import { buildRails, FloatingBody, motionLabel } from "./adapters/three/interior/zero-g-body";
 import { StepShow, type StepFrame } from "./adapters/three/interior/step-show";
+import { HatchLeaf } from "./adapters/three/interior/hatch-leaf";
 import { auditStep, clearOfScene, hitOfScene, sightOfScene, type StepAudit } from "./adapters/three/interior/step-audit";
 import type { StepAct, StepVisual } from "@modules/chores/domain/step-visual";
 import type { EclssRackModel, RackState } from "./adapters/three/eclss-racks";
@@ -39,6 +40,8 @@ const FACE_LABEL = { suelo: "el suelo", techo: "el techo", babor: "babor", estri
 const BODY = 0.3;
 /** Game value: seconds to empty or fill the airlock (on the ISS it takes hours with the prebreathe). */
 const CYCLE_S = 2.5;
+/** Floating through a hatch's opening, s (game value: about a metre at a gentle push). */
+const FLOAT_THROUGH_S = 0.9;
 const CABIN_KPA = 101.3;
 /** Game value: the cabin air drifts aft at 0,1 m/s (ventilation, within NASA-STD-3001 V2 6107's 0,08–0,61 m/s). */
 const AIR = new Vec3(0, 0, 0.1);
@@ -118,6 +121,13 @@ export class StationInteriorMode {
   private arrival: { poi?: string; point?: string; then?: () => void } | null = null;
   /** Sitting in lotus on the mat (the settings are open). */
   lotus = false;
+  /** The leaves of the hatches she opens to leave (docking hatches, Starship's hatch to the flight deck). */
+  private readonly leaves = new Map<string, HatchLeaf>();
+  /**
+   * Going through a hatch (docs/design/reglas.md §3.1): the leaf swings open, she floats through the
+   * opening, then `then` (out: the next room), or (in) she floats in from it and it shuts behind her.
+   */
+  private passing: { id: string; out: boolean; t: number; from: Vec3; to: Vec3; then?: () => void } | null = null;
   private readonly keys = new Set<string>();
   private p = Vec3.ZERO;
   /** How she moves about: holding rails, pushing off, gliding (docs/design/ingravidez.md). */
@@ -159,7 +169,13 @@ export class StationInteriorMode {
      * Another 0 g interior on the same engine (Starship's decks): its own class prefix (so the station's
      * selectors keep finding one card), the name on the HUD and the line said on coming in.
      */
-    private readonly look: { readonly prefix?: string; readonly place?: string; readonly entered?: (from: PortUser) => string } = {},
+    private readonly look: {
+      readonly prefix?: string;
+      readonly place?: string;
+      readonly entered?: (from: PortUser) => string;
+      /** Fixtures besides the docking hatches («salir») that are hatches she opens to go through (Starship's to the flight deck). */
+      readonly hatches?: readonly string[];
+    } = {},
   ) {
     const P = look.prefix ?? "sti";
     this.scene.background = new THREE.Color(0x05070c);
@@ -167,6 +183,7 @@ export class StationInteriorMode {
     this.scene.add(this.rooms.group);
     this.hop = new HopControl(root, this.scene);
     this.buildRails();
+    this.buildLeaves();
     this.avatar.pose("float");
     this.suit.pose("float");
     this.rig.add(this.avatar.root, this.suit.root);
@@ -234,6 +251,7 @@ export class StationInteriorMode {
     this.storeKey = "";
     this.near = undefined;
     this.buildRails();
+    this.buildLeaves();
     // Hold on to the nearest landing point of the new layout.
     this.iva = this.holdNearest(this.iva.position);
     this.p = this.iva.position;
@@ -284,6 +302,91 @@ export class StationInteriorMode {
     }
     this.arrival = { poi: id, ...(then ? { then } : {}) };
     return this.hop.goTo(at.id);
+  }
+
+  /** A leaf for every hatch she opens to leave (the docking hatches and `look.hatches`). */
+  private buildLeaves(): void {
+    for (const l of this.leaves.values()) this.scene.remove(l.root);
+    this.leaves.clear();
+    for (const f of this.interior.plan.fixtures) {
+      if (f.action.kind !== "salir" && !this.look.hatches?.includes(f.id)) continue;
+      const n = FACE_NORMAL[f.face];
+      const dims = [f.size.x, f.size.y, f.size.z].sort((a, b) => b - a);
+      const leaf = new HatchLeaf(new THREE.Vector3(f.at.x, f.at.y, f.at.z), new THREE.Vector3(-n.x, -n.y, -n.z), Math.max(0.6, Math.min(1.6, dims[1]!)));
+      this.leaves.set(f.id, leaf);
+      this.scene.add(leaf.root);
+    }
+  }
+
+  /** Whether a fixture is a hatch with a leaf (for the journey and checks). */
+  hasLeaf(id: string): boolean {
+    return this.leaves.has(id);
+  }
+
+  /** How open a hatch's leaf is, 0–1 (for checks). */
+  leafOpen(id: string): number {
+    return this.leaves.get(id)?.open ?? 0;
+  }
+
+  /** Going through a hatch now. */
+  get throughHatch(): boolean {
+    return this.passing !== null;
+  }
+
+  /**
+   * Out through a hatch: she gets to its grab point if she is not there, opens the leaf, floats through
+   * the opening and then `then` (the next room comes in). A fixture with no leaf: `then` at once.
+   */
+  passHatch(id: string, then: () => void): void {
+    const f = this.interior.fixture(id);
+    const leaf = this.leaves.get(id);
+    if (!f || !leaf) return then();
+    if (this.heldFixture() !== id && this.hops.poiPoint(id) && this.goToFixture(id, () => this.passHatch(id, then))) return;
+    const n = FACE_NORMAL[f.face];
+    this.hop.cancel();
+    leaf.target = 1;
+    this.passing = { id, out: true, t: 0, from: this.p, to: new Vec3(f.at.x, f.at.y, f.at.z).add(n.scale(0.5)), then };
+    this.say(`Abres la escotilla: ${f.label}`);
+  }
+
+  /** In through a hatch: the leaf open behind her, she floats in from the opening, and it shuts. */
+  arriveThrough(id: string): void {
+    const f = this.interior.fixture(id);
+    const leaf = this.leaves.get(id);
+    if (!f || !leaf) return;
+    for (const l of this.leaves.values()) l.set(0);
+    leaf.set(1);
+    const n = FACE_NORMAL[f.face];
+    const to = this.iva.position;
+    this.passing = { id, out: false, t: 0, from: new Vec3(f.at.x, f.at.y, f.at.z).add(n.scale(0.4)), to };
+    this.p = this.passing.from;
+  }
+
+  /** One frame of going through a hatch; true while it lasts (input and hops wait). */
+  private stepHatch(dt: number): boolean {
+    for (const l of this.leaves.values()) l.update(dt);
+    const g = this.passing;
+    if (!g) return false;
+    const leaf = this.leaves.get(g.id);
+    // Out: first the leaf opens, then she floats through. In: she floats in, then it shuts.
+    if (g.out && leaf && leaf.open < 0.98) {
+      this.placeCamera();
+      return true;
+    }
+    g.t += dt;
+    const k = Math.min(1, g.t / FLOAT_THROUGH_S);
+    const e = k * k * (3 - 2 * k);
+    this.p = g.from.add(g.to.sub(g.from).scale(e));
+    this.iva = { ...this.iva, position: g.out || k < 1 ? this.p : this.iva.position };
+    this.placeCamera();
+    if (k < 1) return true;
+    this.passing = null;
+    if (g.out) {
+      // Shut behind her once she is through (the room is hidden by then; it is shut when she comes back).
+      leaf?.set(0);
+      g.then?.();
+    } else if (leaf) leaf.target = 0;
+    return false;
   }
 
   /**
@@ -383,6 +486,9 @@ export class StationInteriorMode {
     this.yaw = Math.atan2(-e.facing.x, -e.facing.z);
     this.pitch = from === "sonda" ? 0.05 : 0;
     this.resume();
+    // In through the docking hatch of that side: open behind her, it shuts once she is in.
+    const hatch = this.interior.plan.fixtures.find((f) => f.action.kind === "salir" && f.action.to === from);
+    if (hatch) this.arriveThrough(hatch.id);
     if (this.look.entered) return this.say(this.look.entered(from));
     this.say(from === "sonda" ? "Entras desde el módulo de aterrizaje por el suelo del Nodo 2. Aquí no hay gravedad: el techo es «arriba» en toda la estación" : "Entras desde la nodriza por proa del Nodo 2. Aquí no hay gravedad: el techo es «arriba»");
   }
@@ -536,6 +642,11 @@ export class StationInteriorMode {
   update(dt: number): void {
     if (!this.active) return;
     if (this.stage(dt)) return;
+    if (this.stepHatch(dt)) {
+      this.fadeSigns();
+      this.renderHud();
+      return;
+    }
     const look = this.walker.look(dt);
     this.yaw += look.yaw;
     this.pitch = Math.max(-1.45, Math.min(1.45, this.pitch + look.pitch));
@@ -677,8 +788,10 @@ export class StationInteriorMode {
     if (a.kind === "salir") {
       const why = this.actions(f)[0]?.why;
       if (why) return this.say(why, 6);
-      const no = this.deps.leave(a.to);
-      return void (no && this.say(no));
+      return this.passHatch(f.id, () => {
+        const no = this.deps.leave(a.to);
+        if (no) this.say(no);
+      });
     }
     // Airlock: only from inside it.
     if (this.interior.volumeAt(this.p)?.kind !== "esclusa") return this.say("Entra en la esclusa para cambiarte");

@@ -34,6 +34,8 @@ const AREA_NAME: Readonly<Record<CrewArea, string>> = {
   esterilla: "Esterilla (cubierta 1)",
 };
 const MAX_ON_CARD = 3;
+/** The hatch in deck 1's ceiling up to the flight deck (data/starship-interior.ts). */
+export const FLIGHT_DECK_HATCH = "subir-cubierta-vuelo";
 /** The fixtures that host the sanctuary's rack slots (data/starship-interior.ts). */
 const RACK_FIXTURE: Readonly<Record<RackSlotId, string>> = { "rack-catalogo": "catalogo", "rack-acuatico": "habitat-acuatico" };
 /** The aquatic habitat is a rack bay (JAXA AQH), not the ring's 1,6 m tank: its model drawn at this fraction. */
@@ -135,6 +137,7 @@ export class StarshipInterior {
       {
         prefix: "sts",
         place: "Starship",
+        hatches: [FLIGHT_DECK_HATCH],
         entered: (from) =>
           from === "sonda"
             ? "Entras desde el módulo de aterrizaje a la cubierta 3 de la Starship. 0 g: la proa es «arriba» en las tres cubiertas"
@@ -187,7 +190,8 @@ export class StarshipInterior {
   enter(at?: "escotilla"): void {
     if (at === "escotilla") return this.mode.enter("sonda");
     this.mode.enter("nodriza");
-    this.mode.placeAt("subir-cubierta-vuelo");
+    this.mode.placeAt(FLIGHT_DECK_HATCH);
+    this.mode.arriveThrough(FLIGHT_DECK_HATCH);
   }
   /** Through the nose tunnel, from the station. */
   enterFromStation(): void {
@@ -319,7 +323,7 @@ export class StarshipInterior {
     if (id.startsWith("chore:")) return this.startChore(id.slice(6));
     switch (id) {
       case "subir":
-        return this.d.openFlightDeck();
+        return this.mode.passHatch(FLIGHT_DECK_HATCH, () => this.d.openFlightDeck());
       case "tareas":
         return this.d.openTasks();
       case "misiones":

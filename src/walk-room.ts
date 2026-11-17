@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { clampToFloor, floorPath, nearestStation, roomAisles, type CabinLayout, type CabinStation, type FloorPoint } from "@modules/lander-cabin/domain/cabin";
 import { CubeFigure } from "./adapters/three/interior/figure";
 import { textSign } from "./adapters/three/interior/sign";
+import { HatchLeaf } from "./adapters/three/interior/hatch-leaf";
 import { Walker } from "./adapters/input/walker";
 import { DOMENICA_HAIR } from "./ui/portraits";
 import { RootMenu } from "./ui/root-menu";
@@ -42,6 +43,11 @@ export interface WalkRoomOptions<Id extends string> {
   readonly scale?: number;
   /** Height of a machine's sign, drawn m (default: a little over what she looks at). */
   signY?(s: CabinStation<Id>): number;
+  /**
+   * Hatches she opens to leave the room from a machine (docs/design/reglas.md §3.1): where the leaf is
+   * (drawn m), the way it opens into the room and its size.
+   */
+  readonly hatches?: readonly { readonly station: Id; readonly at: THREE.Vector3; readonly into: THREE.Vector3; readonly sizeM: number; readonly round?: boolean }[];
 }
 
 /** Eye heights of the first-person camera, m: standing, and belted to a seat (data/bridge.ts BRIDGE_ERGONOMICS). */
@@ -96,6 +102,9 @@ export abstract class WalkRoom<Id extends string> {
   private walkTo: { id: Id; path: FloorPoint[]; then?: () => void } | null = null;
   private machineKey = "";
   private toastUntil = 0;
+  private readonly leaves = new Map<Id, HatchLeaf>();
+  /** Opening a hatch to go through it: once the leaf is open, `then` (the next room comes in). */
+  private passing: { id: Id; then: () => void } | null = null;
 
   constructor(
     root: HTMLElement,
@@ -106,6 +115,12 @@ export abstract class WalkRoom<Id extends string> {
     this.pos = { ...L.stations[0]!.stand };
     this.scene.background = new THREE.Color(opts.background ?? 0x05070a);
     this.scene.add(opts.geometry);
+    for (const h of opts.hatches ?? []) {
+      // Round hatches sit in the room's own ring: no extra frame.
+      const leaf = new HatchLeaf(h.at, h.into, h.sizeM, h.round ? { round: true, frame: false } : {});
+      this.leaves.set(h.station, leaf);
+      this.scene.add(leaf.root);
+    }
     opts.geometry.traverse((o) => {
       if ((o as THREE.Mesh).isMesh) this.walls.push(o);
     });
@@ -210,8 +225,38 @@ export abstract class WalkRoom<Id extends string> {
     this.walkTo = null;
     this.seated = false;
     this.camAtRear = this.pos.z < this.midZ;
+    this.passing = null;
+    for (const l of this.leaves.values()) l.set(0);
+    // Came in through this machine's hatch: it is open behind her and shuts.
+    const leaf = this.leaves.get(at);
+    if (leaf) {
+      leaf.set(1);
+      leaf.target = 0;
+    }
     this.resume();
     this.fade();
+  }
+
+  /** Out through a machine's hatch: walk to it, open the leaf, then `then`. No hatch there: walk and `then`. */
+  passHatch(id: Id, then: () => void): void {
+    const leaf = this.leaves.get(id);
+    this.goTo(id, () => {
+      if (!leaf) return then();
+      this.passing = { id, then };
+      leaf.target = 1;
+      this.face(this.opts.layout.stations.find((x) => x.id === id)!.look);
+      this.say("Abres la escotilla");
+    });
+  }
+
+  /** Going through a hatch now. */
+  get throughHatch(): boolean {
+    return this.passing !== null;
+  }
+
+  /** How open a machine's hatch is, 0–1 (for checks). */
+  leafOpen(id: Id): number {
+    return this.leaves.get(id)?.open ?? 0;
   }
 
   /** Show it again after a console's screen (same place). */
@@ -293,6 +338,13 @@ export abstract class WalkRoom<Id extends string> {
 
   update(dt: number): void {
     if (!this.active) return;
+    for (const l of this.leaves.values()) l.update(dt);
+    const g = this.passing;
+    if (g && (this.leaves.get(g.id)?.open ?? 1) >= 0.98) {
+      this.passing = null;
+      g.then();
+      if (!this.active) return;
+    }
     const busy = this.busy();
     const look = this.walker.look(dt);
     if (!busy && !this.seated && !this.thirdPerson) {

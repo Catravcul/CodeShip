@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { BRIDGE, type BridgeStationId } from "@modules/flight-deck/data/bridge";
 import type { Alert, PanelId } from "@modules/flight-deck/application/panels";
-import { buildBridge, type BridgeModel } from "./adapters/three/interior/bridge-model";
+import { bridgeHatch, buildBridge, type BridgeModel } from "./adapters/three/interior/bridge-model";
 import { paintScreen, SCREEN_FONT_PX } from "./adapters/three/interior/console-screens";
 import { worldScale } from "./adapters/three/interior/world-scale";
 import type { CabinStation } from "@modules/lander-cabin/domain/cabin";
@@ -53,6 +53,7 @@ export class BridgeRoom extends WalkRoom<BridgeStationId> {
       signs: ["nav", "prop", "power", "life", "dock", "sonda", "mente", "comms", "nano", "salida"],
       cameraBackM: 1.6 * k,
       scale: k,
+      hatches: [{ station: "salida", ...bridgeHatch(k) }],
       // Each sign over its machine's top.
       signY: (s) => (model.top.get(s.id) ?? s.look.y) + 0.22 * k,
     });
@@ -83,7 +84,8 @@ export class BridgeRoom extends WalkRoom<BridgeStationId> {
     if (id === "nano") return this.deps.openNano();
     if (id === "sonda") return this.deps.openProbe();
     if (id === "mente") return this.deps.startMind();
-    this.deps.leave();
+    // Down through the aft hatch: it opens, then the decks below come in.
+    this.passHatch("salida", () => this.deps.leave());
   }
 
   protected openTasks(): void {

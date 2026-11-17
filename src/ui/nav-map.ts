@@ -42,6 +42,8 @@ export interface NavMapDeps {
   carrierPosition?(): Vec3;
   /** Program the trip to the selected target (closes the map and opens the challenges). */
   onProgram(): void;
+  /** The mothership's trip flown by hand has started (the map has closed). */
+  onHand?(): void;
 }
 
 /** How a target stands in Nevaeh's missions (modules/missions), for the marks on the map. */
@@ -237,6 +239,18 @@ export class NavMap {
         this.picked = nav.targets.find((x) => x.id === t.dataset.id);
         this.note = "";
         return this.refresh();
+      // By hand (reglas.md §3.6): the mothership sets off at rest and she commands its speed from the deck.
+      case "hand": {
+        if (!this.picked) return;
+        const r = nav.flyByHand(this.picked.id);
+        if (!r.ok) {
+          this.note = r.reason ?? "";
+          return this.refresh();
+        }
+        if (!this.embedded) this.close();
+        this.deps.onHand?.();
+        return;
+      }
       // «Programar viaje» fixes the destination and programs the trip: no separate «Fijar destino» (Berón,
       // 2026-11-17: «¿para qué sirve?»; it only set the target the next trip would use, docs/design/viajes.md).
       case "program": {
@@ -289,6 +303,11 @@ export class NavMap {
       return;
     }
     this.card.innerHTML = t.kind === "dock" ? dockCardHtml(this.deps.nav.dockDestination(t), this.note) : cardHtml(this.deps.nav.destination(t), this.note, this.missionMark?.(t.id), this.rapportMark?.(t.id));
+    // Every flight has two modes (reglas.md §3.6): the mothership's trip by challenges or by hand.
+    const actions = this.card.querySelector(".card-actions");
+    const program = actions?.querySelector<HTMLButtonElement>('[data-act="program"]');
+    if (actions && this.deps.onHand && this.deps.nav.carrierFlies(t) && !!this.deps.nav.trip(t).carrier && !program?.disabled)
+      actions.insertAdjacentHTML("beforeend", `<button data-act="hand">Pilotar a mano</button>`);
   }
 
   private pickAt(cx: number, cy: number): void {

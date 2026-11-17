@@ -1,5 +1,6 @@
 import type { Vec3 } from "@core/math/vec3";
 import { REAL_ONLY } from "@core/realism";
+import { MANUAL_CARRIER } from "@modules/navigation/application/carrier-trip";
 import type { Rock } from "@modules/celestial/domain/region";
 import type { Navigator } from "@modules/navigation/application/navigator";
 import type { AutopilotPhase } from "@modules/navigation/application/autopilot";
@@ -33,6 +34,7 @@ export const PHASE: Record<AutopilotPhase, string> = {
   arrived: "Llegada",
 };
 const km = (m: number) => (m >= 1000 ? `${num(m / 1000, 1)} km` : `${num(m)} m`);
+const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" })[c]!);
 
 /**
  * Opens a trip's chain of challenges in the shared challenge sheet (also used by the probe's trips).
@@ -113,7 +115,22 @@ export class NavigationMode {
     private readonly duel: DuelView,
     opts: { title: string; boundaryRadiusM: number; rocks: readonly Rock[]; shipPosition(): Vec3; shipNose(): Vec3; carrierPosition?(): Vec3 },
   ) {
-    this.map = new NavMap(root, { nav, ...opts, onProgram: () => this.program() });
+    this.map = new NavMap(root, { nav, ...opts, onProgram: () => this.program(), onHand: () => this.flash(`Pilotaje manual de la Starship hacia ${nav.target.name}: da el empuje con +0,1 m/s`, "done") });
+    // Hand flying the mothership (reglas.md §3.6): her speed commands, in short translation burns.
+    this.hand = document.createElement("div");
+    this.hand.className = "carrier-hand hidden";
+    this.hand.setAttribute("role", "group");
+    this.hand.setAttribute("aria-label", "Pilotaje manual de la nave");
+    this.hand.innerHTML = `<div class="ch-read"></div><div class="ch-btns"><button data-dv="-0.1" aria-label="Frenar 0,1 m/s">−0,1 m/s</button><button data-dv="stop" aria-label="Parar la nave">Parar</button><button data-dv="0.1" aria-label="Acelerar 0,1 m/s">+0,1 m/s</button></div><div class="ch-note">Mandos de la Starship: en desarrollo (SpaceX no los ha publicado). Encendidos cortos, como en las operaciones de proximidad</div>`;
+    root.appendChild(this.hand);
+    this.handRead = this.hand.querySelector(".ch-read")!;
+    this.hand.addEventListener("click", (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLButtonElement>("button[data-dv]");
+      const m = nav.manualCarrier;
+      if (!b || !m) return;
+      const ok = b.dataset.dv === "stop" ? m.hold() : m.command(Number(b.dataset.dv));
+      if (!ok) this.flash(m.refused ?? "No enciende", "bad");
+    });
     this.tag = document.createElement("div");
     this.tag.className = "autopilot-tag";
     this.tag.innerHTML = `<div class="ap-row"><span class="ap-text"></span><button class="ap-take">Tomar el mando</button></div><div class="ap-bar"><i></i></div>`;
@@ -128,6 +145,11 @@ export class NavigationMode {
       if (e.code === "Escape" && this.map.visible && !this.map.embedded) this.map.close();
     });
   }
+
+  /** Set by main: she is at the mothership's controls (the flight deck), where the hand-flying panel shows. */
+  atControls?: () => boolean;
+  private readonly hand: HTMLElement;
+  private readonly handRead: HTMLElement;
 
   get mapOpen(): boolean {
     return this.map.visible;
@@ -183,10 +205,11 @@ export class NavigationMode {
     nav.update(dtS, held);
     const now = performance.now();
     if (nav.status !== this.lastStatus) {
-      if (nav.status === "arrived") this.flash(`Llegada: a ${km(nav.approachM)} de ${nav.target.name}. Tienes los mandos: aterriza y entra en su mente`, "done", 10);
+      if (nav.status === "arrived") this.flash(`Llegada: a ${km(nav.approachM)} de ${nav.target.name}. Aterriza a mano con los indicadores o con «Aterrizar con un programa» (retos)`, "done", 10);
       if (nav.status === "autopilot" && this.lastStatus === "carrier") this.flash("La nodriza ha aparcado: el módulo de aterrizaje se desacopla y sigue solo", "done");
       if (nav.status === "docked")
         this.flash(this.lastStatus === "carrier" ? this.berthedText(nav.target.name, nav.carrying) : `Módulo acoplado a ${nav.target.name}`, "done", 10);
+      if (nav.status === "manual" && this.lastStatus === "carrier" && nav.parkedByHand) this.flash(`La Starship ha aparcado junto a ${nav.target.name}: baja en el módulo desde el puesto del comandante, a mano o con un programa`, "done", 10);
       if (nav.status === "manual" && this.lastStatus === "docking") this.flash("Acople cancelado: tienes los mandos", "bad");
       if (nav.status === "failed") this.flash("El plan no compila: vuela a mano o vuelve a programarlo desde el mapa de la nave de viaje", "bad");
       if (nav.status === "manual" && this.lastStatus === "autopilot") this.flash("Mando manual: el piloto automático se ha desconectado", "bad");
@@ -200,7 +223,7 @@ export class NavigationMode {
     let text = "";
     let cls = "";
     if (p) {
-      const who = p.vehicle === "carrier" ? "Nodriza en viaje" : "Piloto automático";
+      const who = p.manual ? "Pilotaje manual" : p.vehicle === "carrier" ? "Nodriza en viaje" : "Piloto automático";
       const lapse = p.lapse > 1 ? ` · cámara rápida ×${num(p.lapse)}` : "";
       text = `${who} → ${nav.target.name}\n${PHASE[p.phase]} · ${num(p.speedMS, p.speedMS < 1 ? 2 : 1)} m/s · faltan ${km(p.remainingM)} · ${duration(p.etaS)} de vuelo, llega en ${duration(p.etaRealS)}${lapse}`;
       (this.bar.firstElementChild as HTMLElement).style.width = `${(p.fraction * 100).toFixed(1)}%`;
@@ -213,5 +236,32 @@ export class NavigationMode {
     if (this.text.textContent !== text) this.text.textContent = text;
     this.take.hidden = !p;
     this.bar.hidden = !p;
+    const takeLabel = p?.manual ? "Dejar de pilotar" : "Tomar el mando";
+    if (this.take.textContent !== takeLabel) this.take.textContent = takeLabel;
+    this.updateHand();
+  }
+
+  /** The hand-flying panel: range to the parking point, speed and what to do next. */
+  private updateHand(): void {
+    // Only at the controls (the flight deck); away from them the ship coasts at the speed she gave it.
+    const m = this.nav.manualCarrier && (this.atControls?.() ?? true) ? this.nav.manualCarrier : undefined;
+    this.hand.classList.toggle("hidden", !m);
+    document.body.classList.toggle("in-carrier-hand", !!m);
+    if (!m) return;
+    const r = m.remainingM;
+    const v = m.speedMs;
+    const window_ = MANUAL_CARRIER.arriveM;
+    const hint =
+      Math.abs(r) <= window_
+        ? Math.abs(v) <= MANUAL_CARRIER.holdMs
+          ? "En el punto de espera"
+          : "¡Estás en el punto: Parar!"
+        : r < 0
+          ? "Te has pasado: da empuje hacia atrás (−)"
+          : v <= 0
+            ? "Da empuje (+): 0,4 m/s como Hayabusa2"
+            : `Para en ${km(Math.max(0, r - window_))}: llegas en ${duration(r / v)} de vuelo`;
+    const html = `<b>Starship a mano → ${esc(this.nav.target.name)}</b><span>${r >= 0 ? "faltan" : "pasada"} ${km(Math.abs(r))} · ${num(v, 2)} m/s · Δv gastado ${num(m.spentMs, 1)} m/s</span><span class="ch-hint">${hint}</span>`;
+    if (this.handRead.innerHTML !== html) this.handRead.innerHTML = html;
   }
 }

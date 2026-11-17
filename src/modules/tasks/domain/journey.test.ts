@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { etaText, legSecondsLeft, planJourney, type CrewJoins, type Transfer } from "./journey";
+import { etaText, legSecondsLeft, planJourney, upToFlight, type CrewJoins, type Transfer } from "./journey";
 
 const docked: CrewJoins = { lander: "nodriza", mothershipAtStation: false };
 
@@ -69,5 +69,23 @@ describe("HAB-21 Journey planning (travel mode of the task list's «Ir»)", () =
     expect(etaText(8.2)).toBe("9 s");
     expect(etaText(95)).toBe("1 min 35 s");
     expect(etaText(120)).toBe("2 min");
+  });
+});
+
+describe("TRY-07 A task in another vehicle never flies a ship by itself (reglas.md §3.5)", () => {
+  it("the walk stops at the seat the flight is flown from, and names the flight she must make", () => {
+    const p = planJourney(world, { place: "anillo:aqui", joins: docked }, "estacion:planos");
+    if (p.kind !== "ruta") throw new Error(p.why);
+    const cut = upToFlight(p.legs);
+    expect(cut.legs.map((l) => l.kind)).toEqual(["andar", "ascensor", "saltos", "escotilla", "andar"]);
+    expect(cut.legs.at(-1)!.to).toBe("modulo:asiento");
+    expect(cut.flight?.label).toBe("Volar a la estación");
+  });
+
+  it("with the ships already joined there is no flight: the whole way is walked", () => {
+    const p = planJourney(world, { place: "anillo:aqui", joins: { lander: "nodriza", mothershipAtStation: true } }, "estacion:planos");
+    if (p.kind !== "ruta") throw new Error(p.why);
+    expect(upToFlight(p.legs).flight).toBeUndefined();
+    expect(upToFlight(p.legs).legs).toHaveLength(p.legs.length);
   });
 });

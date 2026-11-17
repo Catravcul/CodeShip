@@ -447,6 +447,7 @@ const navMode = new NavigationMode(root, nav, duelView, {
   shipNose: () => flight.state.toWorld(new Vec3(0, 0, -1)),
   carrierPosition: () => mothership.position,
 });
+navMode.atControls = () => bridge.active || deck.active;
 // The map only lives on the deck's navigation page: no overlay anywhere else.
 navMode.canOpen = () => false;
 // The mission log, on the travel ship: deck COMM page, the map and the radio. The map marks Nevaeh's targets.

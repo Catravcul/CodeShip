@@ -32,6 +32,7 @@ export const PHASE: Record<AutopilotPhase, string> = {
   aim: "Apuntando al destino",
   dock: "Acoplando por el eje del puerto",
   arrived: "Llegada",
+  hold: "Parada (a mano)",
 };
 const km = (m: number) => (m >= 1000 ? `${num(m / 1000, 1)} km` : `${num(m)} m`);
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" })[c]!);

@@ -704,7 +704,7 @@ export class Navigator {
     const mc = this._manualCarrier;
     if (this._status === "carrier" && mc) {
       const v = mc.speedMs;
-      return { vehicle: "carrier", phase: Math.abs(v) > 1e-6 ? "coast" : "flip", remainingM: Math.abs(mc.remainingM), etaS: Math.abs(v) > 1e-6 ? Math.abs(mc.remainingM / v) : 0, speedMS: v, fraction: mc.fraction, manual: true };
+      return { vehicle: "carrier", phase: Math.abs(v) > 1e-6 ? "coast" : "hold", remainingM: Math.abs(mc.remainingM), etaS: Math.abs(v) > 1e-6 ? Math.abs(mc.remainingM / v) : 0, speedMS: v, fraction: mc.fraction, manual: true };
     }
     const ct = this._carrierTrip;
     if (this._status === "carrier" && ct) {

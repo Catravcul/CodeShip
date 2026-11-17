@@ -1256,6 +1256,7 @@ const journey = new JourneyDriver(root, {
   cabin,
   bridge,
   station: stationInside,
+  ...(starship ? { ship: starship.mode } : {}),
   nav,
   ringRadiusM: ring?.spec.floorRadiusM ?? 0,
   stationTarget: structure.site.id,
@@ -1285,11 +1286,10 @@ const journey = new JourneyDriver(root, {
 // How «Ir» gets there (viaje / teletransporte) is a switch at the top of the task list (TaskBoard), its only place.
 /** The task list's «Ir»: the real journey there, or (teleport, a setting) straight there through open hatches, or to what joins the vehicles, saying why. */
 function goToTask(t: Task): void {
-  // The journey planner knows the ring ship's spine and ring, not Starship's decks yet (docs/pendientes.md).
-  const shipless = starship && (t.place.vehicle === "nodriza" || crewIn() === "nodriza");
-  if (settings.value.taskTravel === "viaje" && !shipless) return void journey.start(t);
+  // Travel (the default) walks the whole real way, Starship's decks and hatches included (docs/design/reglas.md §3).
+  if (settings.value.taskTravel === "viaje") return void journey.start(t);
   fade();
-  journey.say(shipless ? "Por las escotillas: el viaje por las cubiertas de la Starship aún no está" : "Teletransporte (elegido en Tareas)");
+  journey.say("Teletransporte (elegido en Tareas)");
   const r = routeTo(t.place, { crew: crewIn(), links: vehicleLinks() });
   if (r.kind === "ir") return arriveAt(t.place, t);
   arriveAt(r.via);

@@ -43,7 +43,9 @@ export type JourneyHere =
   | { readonly room: "eje"; readonly point: string }
   | { readonly room: "puente"; readonly at: FloorPoint }
   | { readonly room: "modulo"; readonly at: FloorPoint | "asiento" }
-  | { readonly room: "estacion"; readonly point: string };
+  | { readonly room: "estacion"; readonly point: string }
+  /** On Starship's 0 g decks (the real-only mothership): the landing point she holds. */
+  | { readonly room: "nave"; readonly point: string };
 
 /** A flight the journey can take now: its real seconds (compressed trip and docking) or why not. */
 export interface JourneyFlight {
@@ -57,6 +59,11 @@ export interface JourneyFacts {
   /** The ring's floor radius, m (the spoke's height and the spine's layout come from it). */
   readonly ringRadiusM: number;
   readonly station: StationInterior;
+  /**
+   * Starship's decks (the real-only mothership, src/core/realism.ts), drawn as walked: with them the
+   * mothership is the decks, the flight deck above them and its hatches; no ring, spoke or spine.
+   */
+  readonly ship?: StationInterior;
   readonly flights: {
     /** The lander back to the travel ship's port (from a body, or from wherever it was left). */
     readonly landerToMothership?: JourneyFlight;
@@ -80,10 +87,12 @@ export function dockingSeconds(fromM: number, accelMs2: number): number {
 const BRIDGE_CONSOLE: Readonly<Record<"nav" | "sonda" | "mente" | "misiones", string>> = { nav: "nav", sonda: "sonda", mente: "mente", misiones: "comms" };
 
 /** Where a task is done, as a place of the journey graph (undefined: the station has no such machine). */
-export function taskGoal(place: TaskPlace, station: StationInterior): string | undefined {
+export function taskGoal(place: TaskPlace, station: StationInterior, ship?: StationInterior): string | undefined {
   switch (place.vehicle) {
     case "nodriza":
-      return place.spot === "anillo" ? `anillo:${place.station}` : `puente:${BRIDGE_CONSOLE[place.page]}`;
+      // On Starship a chore's «station» is the fixture of its deck where it is done.
+      if (place.spot === "anillo") return ship ? (ship.fixture(place.station) ? `nave:${place.station}` : undefined) : `anillo:${place.station}`;
+      return `puente:${BRIDGE_CONSOLE[place.page]}`;
     case "modulo":
       return `modulo:${place.spot}`;
     case "estacion": {
@@ -150,15 +159,21 @@ function spine(radiusM: number): Spine {
 }
 
 /** The station's fixtures a journey can end at or leave by: machines, the bay, the crew areas, the docking hatches. */
-const GOAL_KINDS: ReadonlySet<string> = new Set(["panel", "bahia", "salir", "tripulacion", "hangar", "soporte-vital"]);
+const GOAL_KINDS: ReadonlySet<string> = new Set(["panel", "bahia", "salir", "tripulacion", "hangar", "soporte-vital", "consola"]);
+
+/** Starship's hatch in deck 1's ceiling up to the flight deck (data/starship-interior.ts). */
+export const SHIP_FLIGHT_DECK_HATCH = "subir-cubierta-vuelo";
 
 const stationGraphs = new WeakMap<StationInterior, { g: HopGraph; legs: Transfer[] }>();
-/** The station's hop graph and its hops between hatches and machines (worked out once per layout). */
-function stationGraph(st: StationInterior): { g: HopGraph; legs: Transfer[] } {
+/**
+ * A 0 g interior's hop graph and its hops between hatches and machines (worked out once per layout):
+ * the station («estacion») or Starship's decks («nave»), the same engine.
+ */
+function stationGraph(st: StationInterior, room: "estacion" | "nave" = "estacion"): { g: HopGraph; legs: Transfer[] } {
   const hit = stationGraphs.get(st);
   if (hit) return hit;
   const g = new HopGraph(new RailGraph(stationHandrails(st.plan)), (q) => st.fits(q, JOURNEY_PACE.stationBodyM, false), stationPortals(st.plan));
-  const exits = st.plan.fixtures.filter((f) => f.action.kind === "salir");
+  const exits = st.plan.fixtures.filter((f) => f.action.kind === "salir" || f.id === SHIP_FLIGHT_DECK_HATCH);
   const goals = st.plan.fixtures.filter((f) => GOAL_KINDS.has(f.action.kind));
   const legs: Transfer[] = [];
   for (const a of exits)
@@ -169,8 +184,8 @@ function stationGraph(st: StationInterior): { g: HopGraph; legs: Transfer[] } {
       if (!pa || !pb) continue;
       const there = hopChainSeconds(g, pa, pb.id);
       const back = hopChainSeconds(g, pb, pa.id);
-      if (there !== undefined) legs.push({ from: `estacion:${a.id}`, to: `estacion:${b.id}`, kind: "saltos", seconds: there, label: `Saltos hasta: ${b.label}` });
-      if (back !== undefined && b.action.kind !== "salir") legs.push({ from: `estacion:${b.id}`, to: `estacion:${a.id}`, kind: "saltos", seconds: back, label: `Saltos hasta: ${a.label}` });
+      if (there !== undefined) legs.push({ from: `${room}:${a.id}`, to: `${room}:${b.id}`, kind: "saltos", seconds: there, label: `Saltos hasta: ${b.label}` });
+      if (back !== undefined && b.action.kind !== "salir" && b.id !== SHIP_FLIGHT_DECK_HATCH) legs.push({ from: `${room}:${b.id}`, to: `${room}:${a.id}`, kind: "saltos", seconds: back, label: `Saltos hasta: ${a.label}` });
     }
   const out = { g, legs };
   stationGraphs.set(st, out);
@@ -187,25 +202,28 @@ export function journeyTransfers(f: JourneyFacts): Transfer[] {
     out.push({ from: a, to: b, kind, seconds, label: there, ...extra });
     out.push({ from: b, to: a, kind, seconds, label: back, ...extra });
   };
-  // The ring: the elevator's door and every machine.
-  const lift = RING_ELEVATOR.anchor;
-  for (const s of RING_STATIONS) both("anillo:ascensor", `anillo:${s.id}`, "andar", ringWalk(lift, s.stand), `Andar hasta: ${s.label}`, "Andar hasta el ascensor del radio");
-  // The spoke.
-  const sp = spine(f.ringRadiusM);
-  out.push({ from: "anillo:ascensor", to: "eje:ascensor", kind: "ascensor", seconds: carRideSeconds(sp.L.topY), label: "Subir al eje por el radio" });
-  out.push({ from: "eje:ascensor", to: "anillo:ascensor", kind: "ascensor", seconds: carRideSeconds(sp.L.topY), label: "Bajar al anillo por el radio" });
-  // The hub and spine: hops between the elevator, the bridge's hatch and the docking hatch.
-  const POI_LABEL: Readonly<Record<string, string>> = { ascensor: "el ascensor", atraque: "la escotilla de atraque", puente: "la escotilla del puente" };
-  const pois = ["ascensor", "atraque", "puente"];
-  for (const a of pois)
-    for (const b of pois) {
-      if (a === b) continue;
-      const s = hopChainSeconds(sp.g, sp.g.poiPoint(a)!, sp.g.poiPoint(b)!.id);
-      if (s !== undefined) out.push({ from: `eje:${a}`, to: `eje:${b}`, kind: "saltos", seconds: s, label: `Saltos por la espina hasta ${POI_LABEL[b]}` });
-    }
-  // The bridge.
   const exit = BRIDGE.stations.find((s) => s.id === "salida")!;
-  both("eje:puente", "puente:salida", "escotilla", JOURNEY_PACE.hatchS, "Por la escotilla al puente", "Por la escotilla a la espina");
+  const sp = f.ship ? undefined : spine(f.ringRadiusM);
+  if (sp) {
+    // The ring: the elevator's door and every machine.
+    const lift = RING_ELEVATOR.anchor;
+    for (const s of RING_STATIONS) both("anillo:ascensor", `anillo:${s.id}`, "andar", ringWalk(lift, s.stand), `Andar hasta: ${s.label}`, "Andar hasta el ascensor del radio");
+    // The spoke.
+    out.push({ from: "anillo:ascensor", to: "eje:ascensor", kind: "ascensor", seconds: carRideSeconds(sp.L.topY), label: "Subir al eje por el radio" });
+    out.push({ from: "eje:ascensor", to: "anillo:ascensor", kind: "ascensor", seconds: carRideSeconds(sp.L.topY), label: "Bajar al anillo por el radio" });
+    // The hub and spine: hops between the elevator, the bridge's hatch and the docking hatch.
+    const POI_LABEL: Readonly<Record<string, string>> = { ascensor: "el ascensor", atraque: "la escotilla de atraque", puente: "la escotilla del puente" };
+    const pois = ["ascensor", "atraque", "puente"];
+    for (const a of pois)
+      for (const b of pois) {
+        if (a === b) continue;
+        const s = hopChainSeconds(sp.g, sp.g.poiPoint(a)!, sp.g.poiPoint(b)!.id);
+        if (s !== undefined) out.push({ from: `eje:${a}`, to: `eje:${b}`, kind: "saltos", seconds: s, label: `Saltos por la espina hasta ${POI_LABEL[b]}` });
+      }
+    // The bridge's hatch from the spine.
+    both("eje:puente", "puente:salida", "escotilla", JOURNEY_PACE.hatchS, "Por la escotilla al puente", "Por la escotilla a la espina");
+  }
+  // The bridge (on Starship, the flight deck above deck 1).
   for (const s of BRIDGE.stations) if (s.id !== "salida") both("puente:salida", `puente:${s.id}`, "andar", roomWalk(BRIDGE, exit.stand, s.stand, JOURNEY_PACE.bridgeMs), `Andar hasta la consola: ${s.label}`, "Andar hasta la escotilla del puente");
   // The lander's cabin: everything from its docking console under the roof hatch.
   const acople = LANDER_CABIN.stations.find((s) => s.id === "acople")!;
@@ -220,16 +238,31 @@ export function journeyTransfers(f: JourneyFacts): Transfer[] {
   const shipHere = (j: CrewJoins) => j.mothershipAtStation;
   const landerAboard = (j: CrewJoins) => j.lander === "nodriza";
   if (sonda) both("modulo:acople", `estacion:${sonda.id}`, "escotilla", JOURNEY_PACE.hatchS, "Por la escotilla del techo a la estación", "Por la escotilla al módulo de aterrizaje", { open: landerHere, shut: "El módulo de aterrizaje no está acoplado a la estación" });
-  if (nodriza) both("eje:atraque", `estacion:${nodriza.id}`, "escotilla", JOURNEY_PACE.hatchS, "Por la escotilla de atraque a la estación", "Por la escotilla a la espina de la nodriza", { open: shipHere, shut: "La nodriza no está atracada en la estación" });
-  both("eje:atraque", "modulo:acople", "escotilla", JOURNEY_PACE.hatchS, "Por la escotilla de atraque al módulo", "Por la escotilla del techo a la nodriza", { open: landerAboard, shut: "El módulo de aterrizaje no está acoplado a la nodriza" });
+  const shipShut = "La nodriza no está atracada en la estación";
+  const landerShut = "El módulo de aterrizaje no está acoplado a la nodriza";
+  if (sp) {
+    if (nodriza) both("eje:atraque", `estacion:${nodriza.id}`, "escotilla", JOURNEY_PACE.hatchS, "Por la escotilla de atraque a la estación", "Por la escotilla a la espina de la nodriza", { open: shipHere, shut: shipShut });
+    both("eje:atraque", "modulo:acople", "escotilla", JOURNEY_PACE.hatchS, "Por la escotilla de atraque al módulo", "Por la escotilla del techo a la nodriza", { open: landerAboard, shut: landerShut });
+  }
+  // Starship's decks: hops between their hatches and machines, the hatch up to the flight deck and its two docking hatches.
+  const sh = f.ship ? stationGraph(f.ship, "nave") : undefined;
+  if (f.ship && sh) {
+    out.push(...sh.legs);
+    const shipExit = (to: "sonda" | "nodriza") => f.ship!.plan.fixtures.find((x) => x.action.kind === "salir" && x.action.to === to);
+    const toLander = shipExit("sonda");
+    const toStation = shipExit("nodriza");
+    if (f.ship.fixture(SHIP_FLIGHT_DECK_HATCH)) both(`nave:${SHIP_FLIGHT_DECK_HATCH}`, "puente:salida", "escotilla", JOURNEY_PACE.hatchS, "Por la escotilla del techo a la cubierta de vuelo", "Por la escotilla a la cubierta 1");
+    if (toLander) both(`nave:${toLander.id}`, "modulo:acople", "escotilla", JOURNEY_PACE.hatchS, "Por la escotilla de la cubierta 3 al módulo", "Por la escotilla del techo a la Starship", { open: landerAboard, shut: landerShut });
+    if (toStation && nodriza) both(`nave:${toStation.id}`, `estacion:${nodriza.id}`, "escotilla", JOURNEY_PACE.hatchS, "Por el túnel de proa a la estación", "Por la escotilla a la Starship", { open: shipHere, shut: shipShut });
+  }
   // The flights: the lander home to the travel ship from its pilot seat; the travel ship to the station from a navigation console.
   const fl = f.flights;
   if (fl.landerToMothership) out.push({ from: "modulo:asiento", to: "modulo:asiento", kind: "vuelo", seconds: fl.landerToMothership.seconds, label: "Volar y acoplar en la nodriza", open: (j) => j.lander !== "nodriza", then: (j) => ({ ...j, lander: "nodriza" }), ...(fl.landerToMothership.blocked ? { blocked: fl.landerToMothership.blocked } : {}) });
   if (fl.carrierToStation)
-    for (const at of ["puente:nav", "anillo:navegacion"])
+    for (const at of f.ship ? ["puente:nav"] : ["puente:nav", "anillo:navegacion"])
       out.push({ from: at, to: at, kind: "vuelo", seconds: fl.carrierToStation.seconds, label: "La nodriza vuela a la estación y entra en el dique seco", open: (j) => !j.mothershipAtStation, shut: "La nodriza ya está en el dique seco", then: (j) => ({ ...j, mothershipAtStation: true }), ...(fl.carrierToStation.blocked ? { blocked: fl.carrierToStation.blocked } : {}) });
   // From where she is now.
-  out.push(...fromHere(f, sp, st.g));
+  out.push(...fromHere(f, sp, st.g, sh?.g));
   return out;
 }
 
@@ -240,14 +273,14 @@ export function herePlace(h: JourneyHere): string {
   return `${h.room}:aqui`;
 }
 
-function fromHere(f: JourneyFacts, sp: Spine, stG: HopGraph): Transfer[] {
+function fromHere(f: JourneyFacts, sp: Spine | undefined, stG: HopGraph, shipG?: HopGraph): Transfer[] {
   const h = f.here;
   const out: Transfer[] = [];
   const from = herePlace(h);
   if (h.room === "anillo") {
     out.push({ from, to: "anillo:ascensor", kind: "andar", seconds: ringWalk(h.at, RING_ELEVATOR.anchor), label: "Andar hasta el ascensor del radio" });
     for (const s of RING_STATIONS) out.push({ from, to: `anillo:${s.id}`, kind: "andar", seconds: ringWalk(h.at, s.stand), label: `Andar hasta: ${s.label}` });
-  } else if (h.room === "eje") {
+  } else if (h.room === "eje" && sp) {
     const p = sp.g.points.find((q) => q.id === h.point);
     for (const poi of ["ascensor", "atraque", "puente"]) {
       const s = p && hopChainSeconds(sp.g, p, sp.g.poiPoint(poi)!.id);
@@ -258,13 +291,15 @@ function fromHere(f: JourneyFacts, sp: Spine, stG: HopGraph): Transfer[] {
   } else if (h.room === "modulo" && h.at !== "asiento") {
     const at = h.at;
     for (const s of LANDER_CABIN.stations) out.push({ from, to: `modulo:${s.id}`, kind: "andar", seconds: roomWalk(LANDER_CABIN, at, s.stand, JOURNEY_PACE.cabinMs) + (s.id === "asiento" ? JOURNEY_PACE.seatS : 0), label: `Andar hasta: ${CABIN_LABEL[s.id]}` });
-  } else if (h.room === "estacion") {
-    const p = stG.points.find((q) => q.id === h.point);
-    for (const fx of f.station.plan.fixtures) {
-      if (!GOAL_KINDS.has(fx.action.kind)) continue;
-      const to = stG.poiPoint(fx.id);
-      const s = p && to && hopChainSeconds(stG, p, to.id);
-      if (s !== undefined) out.push({ from, to: `estacion:${fx.id}`, kind: "saltos", seconds: s, label: `Saltos hasta: ${fx.label}` });
+  } else if (h.room === "estacion" || (h.room === "nave" && f.ship && shipG)) {
+    const g = h.room === "nave" ? shipG! : stG;
+    const plan = h.room === "nave" ? f.ship!.plan : f.station.plan;
+    const p = g.points.find((q) => q.id === h.point);
+    for (const fx of plan.fixtures) {
+      if (!GOAL_KINDS.has(fx.action.kind) && fx.id !== SHIP_FLIGHT_DECK_HATCH) continue;
+      const to = g.poiPoint(fx.id);
+      const s = p && to && (to.id === p.id ? 0 : hopChainSeconds(g, p, to.id));
+      if (s !== undefined) out.push({ from, to: `${h.room}:${fx.id}`, kind: "saltos", seconds: s, label: `Saltos hasta: ${fx.label}` });
     }
   }
   return out;
@@ -283,4 +318,9 @@ export function stationPointOf(st: StationInterior, fixtureId: string): string |
 /** The landing point of the station nearest to a position (where she starts when she is mid-hop). */
 export function stationPointNear(st: StationInterior, p: Vec3): string | undefined {
   return stationGraph(st).g.nearest(p)?.id;
+}
+
+/** The landing point of a fixture of Starship's decks (its grab point), for starting a journey there. */
+export function shipPointOf(ship: StationInterior, fixtureId: string): string | undefined {
+  return stationGraph(ship, "nave").g.poiPoint(fixtureId)?.id;
 }

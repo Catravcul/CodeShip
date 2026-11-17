@@ -5,7 +5,9 @@ import { stationInteriorPlan } from "@modules/station/data/interior";
 import { scaleInteriorPlan, StationInterior } from "@modules/station/domain/interior";
 import { MACHINE_SCALE } from "@core/machine-scale";
 import { planJourney, type CrewJoins } from "../domain/journey";
-import { dockingSeconds, journeyTransfers, herePlace, stationPointOf, taskGoal, type JourneyFacts } from "./journey-world";
+import { dockingSeconds, journeyTransfers, herePlace, shipPointOf, stationPointOf, taskGoal, type JourneyFacts } from "./journey-world";
+import { starshipInteriorPlan } from "@modules/mothership/data/starship-interior";
+import { presentInteriorPlan } from "@modules/station/domain/presentation";
 
 const station = new StationInterior(stationInteriorPlan());
 const docked: CrewJoins = { lander: "nodriza", mothershipAtStation: false };
@@ -103,5 +105,51 @@ describe("HAB-21 The real journey to a task (travel mode)", () => {
     // A hangar task goes to a machine she can reach without the suit.
     const hangar = taskGoal({ vehicle: "estacion", spot: "pantalla", tab: "hangar" }, big)!;
     expect(big.volume(big.fixture(hangar.split(":")[1]!)!.volume)?.pressurised).toBe(true);
+  });
+});
+
+describe("TRY Starship: every way walked, hatches opened (docs/design/reglas.md §3)", () => {
+  const ship = new StationInterior(presentInteriorPlan(starshipInteriorPlan(), { scale: 1.5, spreadM: 2 }));
+  const shipFacts = (over: Partial<JourneyFacts> = {}): JourneyFacts => facts({ ship, ringRadiusM: 0, here: { room: "nave", point: shipPointOf(ship, "salir-modulo")! }, ...over });
+  const galley = taskGoal({ vehicle: "nodriza", spot: "anillo", station: "cocina" }, station, ship)!;
+
+  it("TRY-01 a chore of Starship's decks is a place on them; no ring, spoke or spine in the graph", () => {
+    expect(galley).toBe("nave:cocina");
+    const legs = journeyTransfers(shipFacts());
+    expect(legs.some((l) => /^(anillo|eje):/.test(l.from) || /^(anillo|eje):/.test(l.to))).toBe(false);
+  });
+
+  it("TRY-02 from deck 3 to the flight deck's navigation console: hops up the decks, the ceiling hatch, then the walk", () => {
+    const p = plan(shipFacts(), "puente:nav");
+    expect(p.kind).toBe("ruta");
+    if (p.kind !== "ruta") return;
+    expect(p.legs.map((l) => l.kind)).toEqual(["saltos", "escotilla", "andar"]);
+    expect(p.legs[0]!.to).toBe("nave:subir-cubierta-vuelo");
+    expect(p.legs[1]!.label).toMatch(/cubierta de vuelo/);
+  });
+
+  it("TRY-03 from the flight deck to the galley: through the hatch down into deck 1 and hops", () => {
+    const p = plan(shipFacts({ here: { room: "puente", at: { x: 0, z: 0 } } }), galley);
+    expect(p.kind === "ruta" && p.legs.map((l) => l.kind)).toEqual(["andar", "escotilla", "saltos"]);
+  });
+
+  it("TRY-04 to a station task from Starship's deck 3: up to the navigation console, Starship flies and berths, then through the nose tunnel", () => {
+    const p = plan(shipFacts(), planos);
+    expect(p.kind).toBe("ruta");
+    if (p.kind !== "ruta") return;
+    expect(p.legs.map((l) => l.kind)).toEqual(["saltos", "escotilla", "andar", "vuelo", "andar", "escotilla", "saltos", "escotilla", "saltos"]);
+    expect(p.legs[3]).toMatchObject({ from: "puente:nav" });
+    expect(p.legs[7]!.label).toMatch(/túnel de proa/);
+  });
+
+  it("TRY-05 from the lander's seat to the galley: the roof hatch into deck 3, no teleport", () => {
+    const p = plan(shipFacts({ here: { room: "modulo", at: "asiento" } }), galley);
+    expect(p.kind === "ruta" && p.legs.map((l) => l.kind)).toEqual(["andar", "escotilla", "saltos"]);
+  });
+
+  it("TRY-06 the lander away: Starship's deck-3 hatch stays shut, and she is told why", () => {
+    const p = plan(shipFacts({ joins: { lander: null, mothershipAtStation: false }, flights: { carrierToStation: { seconds: 20 } } }), "modulo:ecs");
+    expect(p.kind).toBe("bloqueado");
+    if (p.kind === "bloqueado") expect(p.why).toMatch(/módulo de aterrizaje no está acoplado/);
   });
 });

@@ -17,6 +17,8 @@ export interface JourneyDeps {
   readonly cabin: LanderCabin;
   readonly bridge: BridgeRoom;
   readonly station: StationInteriorMode;
+  /** Starship's 0 g decks (the real-only mothership); `interior` is then its wrapper. Absent on the ring ship. */
+  readonly ship?: StationInteriorMode;
   readonly nav: Navigator;
   readonly ringRadiusM: number;
   /** Navigation targets of the station and the travel ship. */
@@ -121,14 +123,15 @@ export class JourneyDriver {
       this.say("Desde aquí no hay camino a pie: termina lo que estás haciendo");
       return false;
     }
-    const goal = taskGoal(t.place, this.d.station.interior);
+    const ship = this.d.ship;
+    const goal = taskGoal(t.place, this.d.station.interior, ship?.interior);
     if (!goal) {
       this.say("Esa tarea no tiene una máquina a la que ir");
       return false;
     }
     const joins = this.d.joins();
     const interior = this.d.interior;
-    const plan = planJourney(journeyTransfers({ here, joins, ringRadiusM: this.d.ringRadiusM, station: this.d.station.interior, flights: this.flights(joins) }), { place: herePlace(here), joins }, goal);
+    const plan = planJourney(journeyTransfers({ here, joins, ringRadiusM: this.d.ringRadiusM, station: this.d.station.interior, ...(ship ? { ship: ship.interior } : {}), flights: this.flights(joins) }), { place: herePlace(here), joins }, goal);
     if (plan.kind === "bloqueado") {
       this.say(`No puedes llegar: ${plan.why}`, 7);
       return false;
@@ -158,6 +161,7 @@ export class JourneyDriver {
     this.d.cabin.stopWalk();
     this.d.bridge.stopWalk();
     this.d.station.stopHops();
+    this.d.ship?.stopHops();
     if (leg?.kind === "vuelo" && this.started) this.d.nav.cancel();
     this.end();
     if (why) this.say(why, 6);
@@ -225,7 +229,11 @@ export class JourneyDriver {
 
   /** Where she is now, as the journey sees it; undefined where there is no walking route (a suit, a duel). */
   private here(): JourneyHere | undefined {
-    const { interior, cabin, bridge, station } = this.d;
+    const { interior, cabin, bridge, station, ship } = this.d;
+    if (ship?.active) {
+      const p = ship.pointNow();
+      return p ? { room: "nave", point: p } : undefined;
+    }
     if (interior.active && interior.zones) {
       const z = interior.zones;
       if (z.zone === "anillo") return { room: "anillo", at: interior.floorAt() };
@@ -322,15 +330,23 @@ export class JourneyDriver {
             failed: () => (this.elapsed > 0.6 && !zones?.routing && zones?.heldPoi()?.id !== poi ? "Saltos interrumpidos" : undefined),
           };
         }
+        // The station or Starship's decks: the same 0 g engine.
+        const zg = toRoom === "nave" && this.d.ship ? this.d.ship : station;
         return {
-          ready: () => station.active,
-          begin: () => (station.goToFixture(toSpot) ? undefined : "No encuentro el asidero de esa máquina"),
-          done: () => station.heldFixture() === toSpot,
-          failed: () => (this.elapsed > 0.6 && !station.routing && station.heldFixture() !== toSpot ? "Saltos interrumpidos" : undefined),
+          ready: () => zg.active,
+          begin: () => (zg.goToFixture(toSpot) ? undefined : "No encuentro el asidero de esa máquina"),
+          done: () => zg.heldFixture() === toSpot,
+          failed: () => (this.elapsed > 0.6 && !zg.routing && zg.heldFixture() !== toSpot ? "Saltos interrumpidos" : undefined),
         };
       }
-      case "escotilla":
-        return { begin: () => this.hatch(fromRoom!, leg.from, leg.to), done: () => this.elapsed > 0.8 };
+      case "escotilla": {
+        // She opens the hatch and goes through (its leaf swings open), then the next room comes in.
+        let through = false;
+        return {
+          begin: () => this.hatch(fromRoom!, leg.from, leg.to, () => (through = true)),
+          done: () => through && this.elapsed > 0.3,
+        };
+      }
       case "vuelo": {
         const carrier = fromRoom !== "modulo";
         // The mothership flies to the station; the lander only home to the mothership.
@@ -356,24 +372,46 @@ export class JourneyDriver {
     }
   }
 
-  /** Through a hatch: out of one room and into the next, as the hatch's own button does. */
-  private hatch(fromRoom: string, from: string, to: string): string | void {
-    const { interior, cabin, bridge, station } = this.d;
+  /** Through a hatch: out of one room and into the next, as the hatch's own button does (it opens, she goes through). */
+  private hatch(fromRoom: string, from: string, to: string, through: () => void): string | void {
+    const { interior, cabin, bridge, station, ship } = this.d;
+    const spot = from.split(":")[1]!;
+    if (fromRoom === "nave" && ship) {
+      return ship.passHatch(spot, () => {
+        interior.exit();
+        if (to.startsWith("puente:")) bridge.enter("salida");
+        else if (to === "modulo:acople") cabin.enter("acople");
+        else station.enter("nodriza");
+        through();
+      });
+    }
     if (fromRoom === "eje") {
       interior.exit();
+      through();
       if (to === "modulo:acople") return cabin.enter("acople");
       if (to.startsWith("puente:")) return bridge.enter("salida");
       return station.enter("nodriza");
     }
     if (fromRoom === "modulo") {
-      cabin.exit();
-      if (to === "eje:atraque") return interior.enter("escotilla");
-      return station.enter("sonda");
+      return cabin.passHatch("acople", () => {
+        cabin.exit();
+        if (to === "eje:atraque" || to.startsWith("nave:")) interior.enter("escotilla");
+        else station.enter("sonda");
+        through();
+      });
     }
     if (fromRoom === "puente") {
-      bridge.exit();
-      return interior.enter();
+      return bridge.passHatch("salida", () => {
+        bridge.exit();
+        // On Starship, down through the hatch into deck 1's ceiling; on the ring ship, into the spine.
+        interior.enter();
+        through();
+      });
     }
-    if (fromRoom === "estacion") return station.exitBy((from.endsWith("nodriza") ? "nodriza" : "sonda") as PortUser) ?? undefined;
+    if (fromRoom === "estacion") {
+      if (station.suited) return "Primero vuelve a la esclusa y quítate el traje";
+      const why = station.exitBy((from.endsWith("nodriza") ? "nodriza" : "sonda") as PortUser, through);
+      return why ?? undefined;
+    }
   }
 }

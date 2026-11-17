@@ -346,7 +346,20 @@ export class StationInteriorMode {
     this.hop.cancel();
     leaf.target = 1;
     this.passing = { id, out: true, t: 0, from: this.p, to: new Vec3(f.at.x, f.at.y, f.at.z).add(n.scale(0.5)), then };
+    // Look at the hatch she opens (a roof hatch is overhead).
+    this.lookAt(new Vec3(f.at.x, f.at.y, f.at.z));
+    this.card.classList.add("hidden");
+    this.cardKey = "";
     this.say(`Abres la escotilla: ${f.label}`);
+  }
+
+  /** Turn the view towards a point. */
+  private lookAt(q: Vec3): void {
+    const d = q.sub(this.p);
+    const len = d.length();
+    if (len < 1e-6) return;
+    if (Math.hypot(d.x, d.z) > 0.05 * len) this.yaw = Math.atan2(-d.x, -d.z);
+    this.pitch = Math.max(-1.45, Math.min(1.45, Math.asin(d.y / len)));
   }
 
   /** In through a hatch: the leaf open behind her, she floats in from the opening, and it shuts. */
@@ -459,10 +472,22 @@ export class StationInteriorMode {
     return (this.hop.holding(this.iva) ?? this.hops.nearest(this.iva.position))?.id;
   }
 
-  /** Out through a docking hatch (the task list's travel); returns why not, if she cannot. */
-  exitBy(to: PortUser): string | void {
+  /**
+   * Out through a docking hatch (the task list's travel): she opens it and goes through, then the next
+   * vehicle comes in and `through`; returns why not, if she cannot.
+   */
+  exitBy(to: PortUser, through?: () => void): string | void {
     if (this.suited) return "Primero vuelve a la esclusa y quítate el traje";
-    return this.deps.leave(to);
+    const why = this.deps.cannotLeave(to);
+    if (why) return why;
+    const f = this.interior.plan.fixtures.find((x) => x.action.kind === "salir" && x.action.to === to);
+    const go = () => {
+      const no = this.deps.leave(to);
+      if (no) this.say(no);
+      else through?.();
+    };
+    if (f) this.passHatch(f.id, go);
+    else go();
   }
 
   /** Holding the landing point nearest to p. */

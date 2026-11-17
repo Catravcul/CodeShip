@@ -14,6 +14,7 @@ import { POLANA_LAYOUT } from "@modules/station/data/structure";
 import type { Fixture } from "@modules/station/domain/interior";
 import { P } from "./adapters/three/interior/figure";
 import { SuitFigure } from "./adapters/three/eva/suit-figure";
+import { along, detour } from "./adapters/three/arm-show";
 import { oruBox, sceneLabel } from "./adapters/three/robotics-models";
 import type { StationAction, StationInteriorMode } from "./station-interior";
 import type { StationOutside } from "./station-outside";
@@ -124,7 +125,7 @@ export class StationEva {
   private drag: { x: number; y: number } | null = null;
   private crawlPhase = 0;
   private jobDone = false;
-  private working: { move: WorkMove; t: number; dur: number; from: THREE.Vector3; to: THREE.Vector3 } | null = null;
+  private working: { move: WorkMove; t: number; dur: number; path: THREE.Vector3[] } | null = null;
   private lastMove: WorkMove | "" = "";
   private readonly posNow = new THREE.Vector3();
   private readonly eyeNow = new THREE.Vector3();
@@ -147,6 +148,12 @@ export class StationEva {
     this.pgt.name = "Llave PGT";
     this.part.visible = false;
     this.root.add(this.figure.root, this.rails, this.tether, this.apfr, this.pgt, this.part, this.label);
+    // The EMU's helmet lights (EHIP): in the station's shadow she still sees the handrails, and so do we.
+    const lamp = new THREE.PointLight(0xfff4e0, 6, 9, 1.5);
+    lamp.position.set(0, 1.9, 0.3);
+    this.figure.root.add(lamp);
+    const fill = new THREE.HemisphereLight(0xbfd8ff, 0x202830, 0.35);
+    this.root.add(fill);
     this.hud = document.createElement("div");
     this.hud.className = "eva-st hidden";
     this.hud.setAttribute("aria-label", "Paseo espacial");
@@ -512,7 +519,8 @@ export class StationEva {
       const to = move === "brazo" ? front.clone().addScaledVector(this.toWork(), 0.4).addScaledVector(n, 0.3) : front;
       this.part.visible = true;
       if (move === "brazo") this.part.position.copy(from);
-      this.working = { move, t: 0, dur: move === "brazo" ? 3.6 : 2.4, from, to };
+      // Canadarm2 carries it round the station, never through it.
+      this.working = { move, t: 0, dur: move === "brazo" ? 4.4 : 2.4, path: move === "brazo" ? detour([from, to]) : [from, to] };
       this.lastMove = move;
     }
     const a = this.working;
@@ -520,7 +528,7 @@ export class StationEva {
     a.t = Math.min(a.dur, a.t + dt);
     const k = a.t / a.dur;
     const e = k * k * (3 - 2 * k);
-    this.part.position.lerpVectors(a.from, a.to, e);
+    this.part.position.copy(along(a.path, e));
     if (a.move === "brazo") this.d.outside.armShow.reachTo(this.part.position.clone().add(new THREE.Vector3(0, 0.6, 0)));
     const wob = Math.sin(a.t * 10) * 0.25;
     const pose = {
@@ -545,7 +553,14 @@ export class StationEva {
     const back = head.clone().negate();
     const side = new THREE.Vector3().crossVectors(n, back).normalize();
     const rot = new THREE.Quaternion().setFromAxisAngle(n, this.yaw);
-    const off = back.multiplyScalar(Math.cos(this.pitch)).addScaledVector(n, Math.sin(this.pitch) + 0.2).addScaledVector(side, 0.35).applyQuaternion(rot).normalize().multiplyScalar(this.d.duel.visible ? 3.6 : 4.5);
+    // Far enough for her and the part (about 3 m) to fit in the strip above the sheet, or the screen.
+    const canvasR = document.querySelector("canvas")?.getBoundingClientRect();
+    const sheetR = [...document.querySelectorAll<HTMLElement>(".duel.sheet")].find((x) => !x.classList.contains("hidden"))?.getBoundingClientRect();
+    const fullH = canvasR?.height ?? innerHeight;
+    const strip = sheetR && sheetR.top > 60 ? sheetR.top / fullH : 1;
+    const tanStrip = Math.tan((this.camera.fov * Math.PI) / 360) * strip;
+    const dist = Math.min(16, Math.max(4.5, 1.7 / tanStrip));
+    const off = back.multiplyScalar(Math.cos(this.pitch)).addScaledVector(n, Math.sin(this.pitch) + 0.2).addScaledVector(side, 0.35).applyQuaternion(rot).normalize().multiplyScalar(dist);
     let eye = at.clone().add(off);
     // Never inside the station: pull in along the line until it is clear.
     // Never inside the station nor behind it: other sides first, then closer in, until the line to her is clear.

@@ -333,6 +333,8 @@ export class ArmShow {
     t.onStart?.();
     // The path starts where the tip is now.
     if (t.path.length) t.path[0] = this.tip.clone();
+    // A leg that would take the LEE (or what it holds) through the station goes round it.
+    if (t.path.length >= 2) t.path.splice(0, t.path.length, ...detour(t.path));
     t.start = this.tip.clone();
     t.subjectStart = this.centreOf(t.subject());
     this.line = t.caption;
@@ -660,7 +662,7 @@ export class ArmShow {
   private pose(): void {
     this.arm.setMbs(this.mbsPoint());
     const b = this.base === "lab" ? this.pdgf("lab") : this.pdgf("mbs-1");
-    this.arm.reach(b.at, this.tip, b.at.clone().add(this.hint.clone().multiplyScalar(8)), b.out);
+    this.reachClear(b);
     if (this.held) this.held.obj.position.copy(this.arm.tip).add(this.held.off);
     if (this.dextreOnArm) {
       const d = this.arm.tipDir.clone();
@@ -674,8 +676,41 @@ export class ArmShow {
     }
     for (const s of this.labels) s.position.copy((s.userData.at as () => THREE.Vector3)());
     const lbl = (name: string) => this.labels.find((s) => s.name.includes(name));
+    // Only what the procedure is about is named (labels never pile up on each other).
     const cyg = lbl("Cygnus");
-    if (cyg) cyg.visible = this.cygnus.root.visible;
+    if (cyg) cyg.visible = this.cygnus.root.visible && (this.proc === "captura" || !this.proc);
+    const dex = lbl("Dextre");
+    if (dex) dex.visible = this.proc === "dextre-camara";
+    const mbs = lbl("MBS");
+    if (mbs) mbs.visible = this.proc === "dextre-camara" || this.proc === "atraque-modulo";
+  }
+
+  /**
+   * The arm to the tip, its elbow where the booms stay out of the station: the real arm's seven joints leave the
+   * elbow free, and its operators pick the pose that clears the structure. The current side first (no flips).
+   */
+  private reachClear(b: { at: THREE.Vector3; out: THREE.Vector3 }): void {
+    const tries = [this.hint.clone(), ...ELBOW_HINTS];
+    let best = { h: tries[0]!, n: Infinity };
+    let last = tries[0]!;
+    for (const h of tries) {
+      this.arm.reach(b.at, this.tip, b.at.clone().add(h.clone().normalize().multiplyScalar(8)), b.out);
+      last = h;
+      const n = this.boomHits();
+      if (n < best.n) best = { h, n };
+      if (n === 0) break;
+    }
+    this.hint.copy(best.h);
+    if (last !== best.h) this.arm.reach(b.at, this.tip, b.at.clone().add(this.hint.clone().normalize().multiplyScalar(8)), b.out);
+  }
+
+  /** Points of the two booms inside the station now. */
+  private boomHits(): number {
+    const j = this.arm.joints;
+    let n = 0;
+    for (const [a, c] of [[j.shoulder, j.elbow], [j.elbow, j.wrist]] as const)
+      for (let i = 1; i < 10; i++) if (insideStation(V(a.clone().lerp(c, i / 10)), POLANA_LAYOUT, 0.15)) n++;
+    return n;
   }
 
   private parkDextreAt(): void {
@@ -823,8 +858,61 @@ function nameOf(o: THREE.Object3D): string {
   return (o as THREE.Mesh).geometry?.type ?? "algo";
 }
 
+const DETOURS = [new THREE.Vector3(0, -1, 0), new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1), new THREE.Vector3(1, 0, 0), new THREE.Vector3(-1, 0, 0), new THREE.Vector3(0, 1, 0)];
+const blockedLeg = (a: THREE.Vector3, b: THREE.Vector3) => !!segmentClear(V(a), V(b), POLANA_LAYOUT, 0.4, 0.2);
+/** The path with a waypoint added beside each leg that crosses the station (the first side that clears it). */
+export function detour(path: readonly THREE.Vector3[], depth = 0): THREE.Vector3[] {
+  const out: THREE.Vector3[] = [path[0]!.clone()];
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1]!;
+    const b = path[i]!;
+    if (!blockedLeg(a, b) || depth > 1) {
+      out.push(b.clone());
+      continue;
+    }
+    const mid = a.clone().add(b).multiplyScalar(0.5);
+    let via: THREE.Vector3 | undefined;
+    for (const k of [3, 6, 9, 12]) {
+      for (const d of DETOURS) {
+        const m = mid.clone().addScaledVector(d, k);
+        if (!insideStation(V(m), POLANA_LAYOUT, -0.3) && !blockedLeg(a, m) && !blockedLeg(m, b)) {
+          via = m;
+          break;
+        }
+      }
+      if (via) break;
+    }
+    if (!via && depth < 2) {
+      for (const d of DETOURS) {
+        const m = mid.clone().addScaledVector(d, 6);
+        if (!insideStation(V(m), POLANA_LAYOUT, -0.3)) {
+          via = m;
+          break;
+        }
+      }
+    }
+    if (via) out.push(...detour([a, via, b], depth + 1).slice(1));
+    else out.push(b.clone());
+  }
+  return out;
+}
+
+const ELBOW_HINTS = [
+  new THREE.Vector3(0, -1, 1),
+  new THREE.Vector3(0, -1, -1),
+  new THREE.Vector3(1, -1, 0),
+  new THREE.Vector3(-1, -1, 0),
+  new THREE.Vector3(0, 0, 1),
+  new THREE.Vector3(1, 0, 1),
+  new THREE.Vector3(-1, 0, 1),
+  new THREE.Vector3(0, 1, 1),
+  new THREE.Vector3(1, 0, 0),
+  new THREE.Vector3(-1, 0, 0),
+  new THREE.Vector3(0, 1, 0.3),
+];
+
 /** Position along a polyline of waypoints, t from 0 to 1 (by length). */
-function along(points: readonly THREE.Vector3[], t: number): THREE.Vector3 {
+export function along(points: readonly THREE.Vector3[], t: number): THREE.Vector3 {
   const lens = points.slice(1).map((p, i) => p.distanceTo(points[i]!));
   const total = lens.reduce((a, b) => a + b, 0);
   if (total < 1e-9) return points[points.length - 1]!.clone();

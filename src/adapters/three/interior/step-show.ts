@@ -826,20 +826,21 @@ export class StepShow {
         // (to her sides), so no piece goes toward the machine or behind her.
         const kitchen = !!this.df!.kitchen;
         // In the ring's galley the row runs along the counter's depth. At a machine or a 0 g galley it runs from
-        // the work toward her right hand, the side the camera looks over: neither her body nor the machine
-        // hides a piece or the tool (PX-20: the printed part's supports and the package's scissors were hidden).
-        const toHand = this.tmp.set(this.hand.x - at.x, 0, this.hand.z - at.z);
-        const len = Math.max(1e-3, toHand.length());
-        const rx = kitchen ? 1 : toHand.x / len;
-        const rz = kitchen ? 0 : toHand.z / len;
-        const step = kitchen ? 0.04 : Math.min(0.05, len / 4);
-        const start = kitchen ? -0.06 : 0;
+        // the work toward the camera, with the tool at its end: neither her body nor the machine hides a piece
+        // or the tool (PX-20: the printed part's supports and the package's scissors were hidden).
+        const toCam = this.tmp.set(this.df!.camera.x - at.x, 0, this.df!.camera.z - at.z);
+        const len = Math.max(1e-3, toCam.length());
+        const rx = kitchen ? 1 : toCam.x / len;
+        const rz = kitchen ? 0 : toCam.z / len;
+        const step = 0.04;
+        const start = kitchen ? -0.06 : 0.03;
         for (let i = 0; i < pieces; i++) {
           const f = this.show(food[i]!, at.x + (start + i * step) * rx, at.y + 0.02, at.z + (start + i * step) * rz);
           if (!cut) f.scale.set(0.06, 0.02 + 0.012 * Math.abs(Math.sin(this.clock * 7)), 0.05);
         }
-        // The tool is in her right hand.
-        const tool = kitchen ? this.w.set(at.x + 0.02, at.y + 0.03, at.z + 0.06) : this.w.copy(this.hand).setY(this.hand.y + 0.03);
+        // The tool: by the board in the ring's galley; elsewhere past the last piece, toward the camera.
+        const reach = start + pieces * step + 0.03;
+        const tool = kitchen ? this.w.set(at.x + 0.02, at.y + 0.03, at.z + 0.06) : this.w.set(at.x + reach * rx, at.y + 0.05, at.z + reach * rz);
         if (cut && v.vessel === "bolsa") {
           const sc = this.show(p.scissors, tool.x, tool.y, tool.z);
           sc.rotation.y = this.df!.yaw + 0.3 * Math.sin(this.clock * 12);

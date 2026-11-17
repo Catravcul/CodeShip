@@ -182,6 +182,9 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | VID-46 | Probado (en vivo) | 2026-11-17 | `438bb9d` | [run](runs/2026-11-17-1154-PX-28-PX-35-PX-38-PX-20-PX-30.md): PX-38 |
 | VID-47 | Probado (en vivo) | 2026-11-17 | `438bb9d` | [run](runs/2026-11-17-1154-PX-28-PX-35-PX-38-PX-20-PX-30.md): PX-38 |
 | VID-48 | Probado (en vivo) | 2026-11-17 | `438bb9d` | [run](runs/2026-11-17-1154-PX-28-PX-35-PX-38-PX-20-PX-30.md): PX-38 |
+| VID-49 | Solo test | | | `species-catalog.test.ts` verde; lo juega PX-43 |
+| VID-50 | Solo test | | | `aqh-model.test.ts` verde; lo juega PX-43 |
+| VID-51 | Sin probar | | | Adaptador; lo juega PX-43 |
 | EVA-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | EVA-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | EVA-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -208,6 +211,8 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | UI-04 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | UI-05 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | UI-06 | Probado (en vivo) | 2026-11-17 | `1e45fe6` | [run](runs/2026-11-17-0459-PX-28-PX-31-PX-35-PX-37-PX-20.md): PX-37 OK |
+| UI-07 | Solo test | | | `camera-stick.test.ts` verde; lo juega PX-43 |
+| UI-08 | Solo test | | | `camera-stick.test.ts` verde; lo juega PX-43 |
 | HAB-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | HAB-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | HAB-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -288,6 +293,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-41 | Sin probar | | | |
 | PX-38 | Probado (en vivo) | 2026-11-17 | `5c98cd4` | [run](runs/2026-11-17-1352-PX-28-PX-38-PX-39.md): 77 OK |
 | PX-41 | Probado (en vivo) | 2026-11-17 | `59fb110` | [run](runs/2026-11-17-1805-PX-41.md): 29 OK |
+| PX-43 | Probado (en vivo) | 2026-11-17 | `62a6af6` | [run](runs/2026-11-17-1935-PX-43.md): 28 OK |
 
 ## Última ejecución por run log
 
@@ -295,6 +301,7 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-17 19:35 | PX-43 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-17-1935-PX-43.md) |
 | 2026-11-17 18:05 | PX-41 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-17-1805-PX-41.md) |
 | 2026-11-17 17:21 | PX-20 | Experiencia (Playwright) | 0/1 recorridos bien | [run](runs/2026-11-17-1721-PX-20.md) |
 | 2026-11-17 13:52 | PX-28, PX-38, PX-39 | Experiencia (Playwright) | 3/3 recorridos bien | [run](runs/2026-11-17-1352-PX-28-PX-38-PX-39.md) |

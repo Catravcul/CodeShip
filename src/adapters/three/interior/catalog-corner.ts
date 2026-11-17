@@ -28,7 +28,11 @@ export class CatalogCorner {
   private t = 0;
   private readonly m = new THREE.Matrix4();
 
-  constructor(at: THREE.Vector3) {
+  /**
+   * `console: false` leaves only the shelf (on Starship the catalogue is the laptop on the animal rack,
+   * catalog-laptop.ts), at `shelfX` m beside the slot.
+   */
+  constructor(at: THREE.Vector3, opts: { console?: boolean; shelfX?: number } = {}) {
     this.root.position.copy(at);
     // The console: a column with a slanted screen, facing the deck (+z).
     const column = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.1, 0.3), std(0x2a3540, { metalness: 0.3 }));
@@ -46,9 +50,9 @@ export class CatalogCorner {
     }
     const sign = textSign("Catálogo de especies");
     sign.position.set(0, 1.85, 0);
-    this.root.add(column, screen, sign);
+    if (opts.console !== false) this.root.add(column, screen, sign);
     // The terrarium shelf to its left, against the wall (the aquarium is on its right).
-    this.shelf.position.set(-0.95, 0, 0);
+    this.shelf.position.set(opts.shelfX ?? -0.95, 0, 0);
     const frame = std(0x6b5a44);
     for (const y of [0.35, 0.8]) {
       const board = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.03, 0.36), frame);

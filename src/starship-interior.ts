@@ -182,7 +182,9 @@ export class StarshipInterior {
     };
     // The AQH is drawn by the rooms as the fixture's own model (aqh-model.ts); the tank's animals live in it.
     this.tank = this.mode.gearOf(RACK_FIXTURE["rack-acuatico"]) as AqhModel;
-    this.catalogCorner = new CatalogCorner(new THREE.Vector3());
+    // The catalogue itself is the laptop on the animal rack (the fixture's gear, catalog-laptop.ts); the colonies'
+    // terrarium shelf stands beside that rack, clear of it.
+    this.catalogCorner = new CatalogCorner(new THREE.Vector3(), { console: false, shelfX: -1.25 });
     place(this.catalogCorner.root, "rack-catalogo", 1, 0.25);
   }
 

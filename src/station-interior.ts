@@ -2,6 +2,7 @@ import type { ExerciseMotionData } from "@modules/body/domain/exercise-motion";
 import type { RingAquarium } from "@modules/sanctuary/domain/aquarium";
 import type { CrewGear } from "./adapters/three/interior/crew-gear";
 import { AqhModel } from "./adapters/three/interior/aqh-model";
+import { CatalogLaptopModel } from "./adapters/three/interior/catalog-laptop";
 import { DOMENICA_HAIR } from "./ui/portraits";
 import * as THREE from "three";
 import { Vec3 } from "@core/math/vec3";
@@ -58,6 +59,8 @@ const AIR = new Vec3(0, 0, 0.1);
 const num = (x: number, d = 2) => x.toFixed(d).replace(".", ",");
 /** At a machine or the galley she holds herself by the foot loops this far below its front's centre (m): her hands at it… */
 const WORK_DROP = 1.0;
+/** How far under a machine's screen or chambers she looks when she gets there, so it shows above its card, rad. */
+const FACE_UNDER_RAD = 0.35;
 /** …and this far out from its front (m, her feet). */
 const WORK_OFF = 0.75;
 
@@ -307,6 +310,7 @@ export class StationInteriorMode {
     this.hop.setGraph(this.hops);
     this.hop.onArrive = (id) => {
       const f = this.hops.points.find((p) => p.id === id)?.poi;
+      if (f) this.faceGear(f);
       const a = this.arrival;
       if (a && (a.point === id || (a.poi && a.poi === f))) {
         this.arrival = null;
@@ -410,6 +414,17 @@ export class StationInteriorMode {
     return new Vec3(f.at.x, f.at.y, f.at.z);
   }
 
+  /** At an AQH or the catalogue's laptop, her eyes go to its chambers or its screen (not the wall above them). */
+  private faceGear(id: string): void {
+    const g = this.rooms.gear.get(id);
+    if (!(g instanceof AqhModel || g instanceof CatalogLaptopModel)) return;
+    g.root.updateWorldMatrix(true, false);
+    const w = g.root.localToWorld(g.focus.clone());
+    this.lookAt(new Vec3(w.x, w.y, w.z));
+    // Its card covers the middle of a phone: she looks a little under it, so it shows in the strip above the card.
+    this.pitch -= FACE_UNDER_RAD;
+  }
+
   /** Turn the view towards a point. */
   private lookAt(q: Vec3): void {
     const d = q.sub(this.p);
@@ -502,6 +517,7 @@ export class StationInteriorMode {
       const n = FACE_NORMAL[f.face];
       this.yaw = Math.abs(n.y) > 0.5 ? this.yaw : Math.atan2(-n.x, -n.z);
       this.pitch = n.y < -0.5 ? -0.9 : n.y > 0.5 ? 0.9 : -0.15;
+      this.faceGear(id);
     }
     return true;
   }

@@ -83,6 +83,21 @@ Los datos están en `src/modules/wellness/data/procedures.ts`: cada paso real es
 - **Tormenta solar en la Starship** (en desarrollo): el refugio de paredes de agua de RadWorks.
 - **Chequeo médico** y **desfibrilador** (real): el CHeCS de la ISS, con un oficial médico de la tripulación formado unas 40 h.
 
+
+## AQH: tamaño real (Berón, 2026-11-17)
+
+Berón: «se mete en la pared de la nave y es muy pequeño para que naden». Comprobado con fuentes, el tamaño es el real:
+
+- **Cámaras**: el AQH de JAXA tiene dos cámaras de unos **15 × 7 × 7 cm**, con unos **700 cm³** de agua cada una ([ScienceDaily, 2012](https://www.sciencedaily.com/releases/2012/07/120725183634.htm); [Universe Today](https://www.universetoday.com/96475/fish-in-space-space-station-gets-an-aquarium/)). 15 × 7 × 7 cm son 735 cm³.
+- **Peces**: la medaka mide hasta unos **3,6 cm** ([Japanese rice fish](https://en.wikipedia.org/wiki/Japanese_rice_fish)); el pez cebra, de 4 a 5 cm, y en libertad de 1,8 a 3,7 cm ([Zebrafish](https://en.wikipedia.org/wiki/Zebrafish)).
+- Así que una medaka ocupa menos de un cuarto del largo de su cámara: el AQH es pequeño porque sus peces lo son. Se dibuja a tamaño real y la «Escala de interiores» lo amplía todo igual (cámaras, peces y caracoles; con «Cómoda», cámaras de 22,5 cm y medakas de 5,3 cm).
+
+Lo que se arregló:
+
+- **Ya no se mete en la pared**: el frente del bastidor estaba en el mismo plano que la pared y parpadeaba dentro de ella; ahora sale 3 cm y toda la unidad queda en el pasillo (en la Starship y en Kibo, que usan el mismo modelo).
+- **Los peces nadan dentro**: cada medaka da vueltas por su cámara a una distancia del cristal de medio cuerpo más 3 mm, sea cual sea su rumbo, y mira hacia donde nada (`fishPose`, VID-50). Antes la malla de los peces se quedaba sin dibujar: se calculaba su esfera de recorte con el tanque vacío.
+- **Se ve al llegar**: la unidad está a la altura de sus ojos y ella mira las cámaras un poco por debajo, para que se vean encima de su tarjeta; el filtro está al lado de la unidad, no delante de las cámaras. Con «−» junto a «Mirar» se ve entera.
+
 ## Una colonia en cada vehículo
 
 Los animales viven donde están (`AquariumOps`, uno por vehículo). Lo que se adopta desde la estación llega al AQH de Kibo; desde cualquier otro sitio, al de la Starship. Con la Starship atracada, la tarjeta del AQH ofrece «Trasladar … a la estación» (o «a la Starship»). Es un reto por paso: bolsa con agua de su propio tanque, red sin sacarlos del agua, caja acolchada, el túnel, igualar la temperatura flotando la bolsa 15 minutos y soltarlos. Las medakas de JAXA llegaron a la ISS en un recipiente de transporte con agua y allí se pasaron al AQH ([AQH](https://www.universetoday.com/96475/fish-in-space-space-station-gets-an-aquarium/)); igualar la temperatura flotando la bolsa es la práctica de cualquier acuario. Licencia: el tiempo en la bolsa no se simula.

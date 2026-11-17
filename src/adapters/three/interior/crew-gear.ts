@@ -451,7 +451,7 @@ export function placeGear(g: CrewGear, at: THREE.Vector3, up: THREE.Vector3, for
 }
 
 /** The model of a fixture's gear (the AQH is built by aqh-model.ts). */
-export function gearModel(kind: Exclude<GearKind, "aqh">, k: number, size: { w: number; h: number; d: number }): CrewGear {
+export function gearModel(kind: Exclude<GearKind, "aqh" | "catalogo">, k: number, size: { w: number; h: number; d: number }): CrewGear {
   switch (kind) {
     case "t2":
       return t2Model(k);

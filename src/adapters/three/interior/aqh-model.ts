@@ -135,16 +135,16 @@ export class AqhModel implements CrewGear {
       this.unit.add(w, g, edges, led, cam, base, film);
       this.chambers.push({ centre, half: new THREE.Vector3(cw / 2 - 0.002, ch / 2 - 0.002, cd / 2 - 0.002), film });
     }
-    // The filter (bacteria) between the chambers, against the body, the loop's pipes, and the feeder on top.
+    // The filter (bacteria) at the unit's end, clear of the chambers' fronts, the loop's pipes, and the feeder on top.
     const filter = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, ch + 0.08, 14), std(0xc8b98a));
-    filter.position.set(0, 0.02, bodyD + 0.03);
+    filter.position.set(unitW / 2 + 0.035, 0.02, bodyD / 2);
     const feeder = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.04, 0.05), std(0xffd27f));
     feeder.position.set(0, ch / 2 + 0.06, bodyD + 0.03);
     this.unit.add(filter, feeder);
     for (const sx of [-1, 1]) {
       const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.06, 8), std(0x9fd8ff));
       pipe.rotation.z = Math.PI / 2;
-      pipe.position.set(sx * 0.06, -ch / 2 + 0.01, bodyD + 0.03);
+      pipe.position.set(sx * 0.06, -ch / 2 + 0.01, bodyD - 0.01);
       this.unit.add(pipe);
     }
     // The wiper (a sponge on a stick) that cleans the front glass.
@@ -162,13 +162,15 @@ export class AqhModel implements CrewGear {
     // Real-size animals at the drawing scale: a medaka is a slim body with a tail fin; a snail a flat coil.
     this.fishLength = FISH_M * k;
     this.snailR = SNAIL_M * k;
-    const fishG = new THREE.ConeGeometry(this.fishLength * 0.16, this.fishLength, 6);
+    const fishG = new THREE.ConeGeometry(this.fishLength * 0.2, this.fishLength, 6);
     fishG.rotateX(Math.PI / 2);
     this.fish = new THREE.InstancedMesh(fishG, std(0xffffff, { roughness: 0.4, emissive: 0x3a1c00 }), MAX_FISH);
     this.fish.count = 0;
-    this.fish.renderOrder = 1;
+    // Their instances move: a bounds sphere taken while the tank was empty would cull them for good.
+    this.fish.frustumCulled = false;
     this.snails = new THREE.InstancedMesh(new THREE.TorusGeometry(this.snailR, this.snailR * 0.6, 6, 10), std(0xffffff, { roughness: 0.5 }), MAX_SNAILS);
     this.snails.count = 0;
+    this.snails.frustumCulled = false;
     this.unit.add(this.fish, this.snails);
     this.setColors("banco", []);
     this.setColors("caracoles", []);

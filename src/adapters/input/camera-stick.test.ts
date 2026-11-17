@@ -5,7 +5,7 @@ import { AREA_MOTION, moveJoystick, type AreaId } from "@core/realism";
 /** Every TypeScript source of the game, as text (tests left out). */
 const SOURCES = import.meta.glob<string>(["/src/**/*.ts", "!/src/**/*.test.ts"], { query: "?raw", import: "default", eager: true });
 
-describe("camera only by joystick (reglas.md §5.7)", () => {
+describe("UI-07 camera only by joystick (reglas.md §5.7)", () => {
   const files = Object.entries(SOURCES).map(([f, text]) => ({ f: f.slice(1), text }));
 
   it("reads the game's sources", () => {
@@ -39,7 +39,7 @@ describe("camera only by joystick (reglas.md §5.7)", () => {
   });
 });
 
-describe("no gravity areas for now: the joystick moves the camera, never her (Berón, 2026-11-17 18:54)", () => {
+describe("UI-08 no gravity areas for now: the joystick moves the camera, never her (Berón, 2026-11-17 18:54)", () => {
   const src = (f: string) => SOURCES[`/${f}`]!;
 
   it("no area is flagged with gravity or water, the LM on an asteroid and the asteroid outside included", () => {

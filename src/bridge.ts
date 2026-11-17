@@ -168,7 +168,7 @@ export class BridgeRoom extends WalkRoom<BridgeStationId> {
     if (id === "nav" && this.shape === "starship") return [{ id: "abrir", label: "Usar la mesa: mapa y trayectos", enabled: true }];
     if (page === "comms") return [{ id: "abrir", label: "Usar la consola de radio", enabled: true }, { id: "misiones", label: "Registro de misiones", enabled: true }];
     if (page) return [{ id: "abrir", label: `Usar la consola: ${label}`, enabled: true }];
-    if (id === "nano") return [{ id: "abrir", label: "Estado de la nano_net", enabled: true }];
+    if (id === "nano") return [{ id: "abrir", label: this.shape === "starship" ? "Ver el estado de la red" : "Estado de la nano_net", enabled: true }];
     if (id === "sonda") return [{ id: "abrir", label: "Tomar el mando de la sonda", enabled: true }];
     if (id === "mente") {
       const a = this.deps.mind().action;

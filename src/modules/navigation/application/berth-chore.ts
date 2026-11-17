@@ -46,14 +46,14 @@ export function berthChore(f: BerthFacts): Chore {
     concept: 1,
     idea: "Como la Crew Dragon: por puntos de espera",
     blocks: lines([
-      [`esperar en el punto 1, a ${num(f.waypoint1M)} m del puerto`, `nave.esperar(${f.waypoint1M});`],
-      ["alinear la proa con el eje del puerto", "nave.alinearConEje(puerto);"],
-      [`acercarse por el eje a ${num(f.closingMs, 2)} m/s hasta el punto 2 (${num(f.waypoint2M)} m)`, `nave.acercar(${f.closingMs}, ${f.waypoint2M});`],
-      [`esperar el «adelante» en el punto 2 (${duration(f.holdS)})`, `nave.esperarAdelante();`],
-      [`seguir a ${num(f.closingMs, 2)} m/s hasta el contacto`, `nave.acercar(${f.closingMs}, 0);`],
-      ["captura suave y cerrar los ganchos (captura dura)", "puerto.cerrarGanchos();"],
+      [`esperar en el punto 1 (${num(f.waypoint1M)} m)`, `nave.esperar(${f.waypoint1M});`],
+      ["alinear con el eje del puerto", "nave.alinearConEje(puerto);"],
+      [`acercarse a ${num(f.closingMs, 2)} m/s al punto 2 (${num(f.waypoint2M)} m)`, `nave.acercar(${f.closingMs}, ${f.waypoint2M});`],
+      [`esperar el «adelante» (${duration(f.holdS)})`, `nave.esperarAdelante();`],
+      [`seguir a ${num(f.closingMs, 2)} m/s hasta tocar`, `nave.acercar(${f.closingMs}, 0);`],
+      ["cerrar los ganchos", "puerto.cerrarGanchos();"],
       // Distractor: rushing in.
-      ["ir directa al puerto a 1 m/s para ahorrar tiempo", "nave.acercar(1, 0);"],
+      ["ir directa a 1 m/s", "nave.acercar(1, 0);"],
     ]),
     solution: ["a", "b", "c", "d", "e", "f"],
   };

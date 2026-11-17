@@ -125,10 +125,9 @@ export class Journey {
     if (this.opts.mobile === false) await gear.click({ timeout: 15000 });
     else await gear.tap({ timeout: 15000 });
     await this.page.evaluate(() => document.querySelectorAll(".root-menu[data-sprout]").forEach((m) => delete m.dataset.sprout));
-    // The icons grow out of the gear (a 0,18 s transition, slow at the suite's few frames per second): measure
-    // and tap them once they are full size.
+    // The icons fade in (0,18 s, slow at the suite's few frames per second): tap them once they are visible.
     await this.page
-      .waitForFunction((sel) => [...document.querySelectorAll(sel)].some((e) => e.closest(".root-menu.open") && e.getAnimations().length === 0 && getComputedStyle(e).transform === "none"), selector, { timeout: 12000, polling: 100 })
+      .waitForFunction((sel) => [...document.querySelectorAll(sel)].some((e) => e.closest(".root-menu.open") && getComputedStyle(e).visibility === "visible"), selector, { timeout: 12000, polling: 100 })
       .catch(() => {});
   }
 

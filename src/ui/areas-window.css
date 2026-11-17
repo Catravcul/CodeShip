@@ -9,3 +9,4 @@
 .areas-window .ar-node.here { border: 2px solid #9fe8c4; }
 .areas-window .ar-node:focus-visible { outline: 2px solid #7fdcff; }
 .tb-vehicles.three button.auto { grid-column: 1 / -1; }
+body.in-duel .areas-window, body.in-duel .task-board { display: none !important; }

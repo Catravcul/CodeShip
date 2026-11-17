@@ -13,9 +13,10 @@
 .rm-glyph { display: inline-flex; }
 /* An icon whose window is open: an X to close it. */
 .root-menu .rm-shoots > button.rm-open { color: #001018; background: #ffd27f; border-color: #ffd27f; }
-/* Folded: the shoots shrink into the root. Out: they grow one after another. */
-.rm-shoots > button { transform: scale(0.2) translateY(-30px); opacity: 0; visibility: hidden; transition: transform 0.18s ease-out, opacity 0.18s, visibility 0s 0.18s; }
-.root-menu.open .rm-shoots > button { transform: none; opacity: 1; visibility: visible; transition: transform 0.18s ease-out, opacity 0.18s; }
+/* Folded: the shoots fade into the root. Out: they fade in one after another (opacity only: each keeps its
+   44 px box from the first frame, so it is the same target while it appears). */
+.rm-shoots > button { opacity: 0; visibility: hidden; transition: opacity 0.18s, visibility 0s 0.18s; }
+.root-menu.open .rm-shoots > button { opacity: 1; visibility: visible; transition: opacity 0.18s; }
 .root-menu.open .rm-shoots > button:nth-child(2) { transition-delay: 0.03s; }
 .root-menu.open .rm-shoots > button:nth-child(3) { transition-delay: 0.06s; }
 .root-menu.open .rm-shoots > button:nth-child(4) { transition-delay: 0.09s; }

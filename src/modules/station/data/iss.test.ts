@@ -40,8 +40,12 @@ describe("EST-42 the station is the ISS's US segment, at its real size", () => {
   it("crew areas and life support are where they are on the ISS: galley in Unity, cabins in Harmony, hygiene, exercise and the racks in Tranquility", () => {
     const vol = (id: string) => POLANA_INTERIOR.fixtures.find((f) => f.id === id)?.volume;
     expect(vol("cocina")).toBe("nodo-1");
-    expect(vol("camarotes")).toBe("nodo-2");
-    for (const id of ["aseo", "ejercicio", "cupula", "bishop", "sv-wrs", "sv-ogs", "sv-ar", "sv-incendios"]) expect(vol(id), id).toBe("nodo-3");
+    // Four crew quarters one floats into, off Harmony's four faces; the Cupola's RWS and the Bishop's plate inside them.
+    for (const i of [1, 2, 3, 4]) expect(vol(`saco-${i}`)).toBe(`camarote-${i}`);
+    expect(POLANA_INTERIOR.volumes.filter((v) => v.id.startsWith("paso-camarote")).every((v) => Math.abs(v.centre.z - POLANA_INTERIOR.volumes.find((x) => x.id === "nodo-2")!.centre.z) < 3.35)).toBe(true);
+    expect(vol("cupula")).toBe("cupola");
+    expect(vol("bishop")).toBe("bishop");
+    for (const id of ["aseo", "ejercicio", "sv-wrs", "sv-ogs", "sv-ar", "sv-incendios"]) expect(vol(id), id).toBe("nodo-3");
     expect(vol("trajes")).toBe("quest");
     // The species catalogue's rack slots: the Aquatic Habitat flew in Kibo, the catalogue laptop beside it.
     expect(vol("rack-acuatico")).toBe("kibo");

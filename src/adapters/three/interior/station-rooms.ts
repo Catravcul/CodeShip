@@ -185,9 +185,11 @@ const STYLE: Readonly<Record<string, { panel: number; accent: number; glow?: num
   "reactor-proteina": { panel: 0x3d4552, accent: 0xffd27f, glow: 0xe8d9a0 },
   trajes: { panel: 0x7f8a99, accent: 0xf2f2f2 },
   "consola-hangar": { panel: 0x0b1c2a, accent: 0x7fdcff, glow: 0x7fdcff },
-  "consola-bahia": { panel: 0xcfd6de, accent: 0xffb347, glow: 0x7fdcff },
-  cupula: { panel: 0x0b1c2a, accent: 0xdfe6ee, glow: 0x7fb8ff },
-  bishop: { panel: 0xcfd6de, accent: 0xffc84a },
+  "consola-bahia": { panel: 0x2b2f36, accent: 0xffb347, glow: 0x7fdcff },
+  "consola-jemrms": { panel: 0x2b2f36, accent: 0xff6a6a, glow: 0x7fdcff },
+  "cbm-nadir-nodo1": { panel: 0x9aa6b6, accent: 0x5a6270 },
+  cupula: { panel: 0x1b2430, accent: 0xdfe6ee, glow: 0x7fb8ff },
+  bishop: { panel: 0x8a929e, accent: 0x3d4552 },
   "esclusa-kibo": { panel: 0xcfd6de, accent: 0xff6a6a },
   "escotilla-eva": { panel: 0xcfd6de, accent: 0xffc84a },
   "bastidor-wrs": { panel: 0x6f7a88, accent: 0x9fd8ff },
@@ -248,9 +250,28 @@ function fixtureFront(f: Fixture, lamps: Map<MachineId, THREE.Mesh>, scale = 1):
     g.add(sign);
     return g;
   }
+  if (f.id.startsWith("saco-")) {
+    // A sleeping bag strapped to the back wall of a crew quarter: padded, a zip down its front and a pillow strap.
+    const bag = plate(w * 0.9, h * 0.92, 0, -h * 0.02, 0.07, 0x2f5d9a, false, 0.12);
+    bag.userData.fixture = f.id;
+    plate(0.03, h * 0.7, w * 0.18, -h * 0.08, 0.14, 0xdfe6ee, true, 0.01);
+    plate(w * 0.7, 0.14, 0, h * 0.4, 0.14, 0xe9ecef, false, 0.05);
+    for (const dv of [-0.25, 0.15]) plate(w, 0.05, 0, h * dv, 0.15, 0x3d4552, false, 0.02);
+    const sign = textSign(f.label);
+    sign.scale.multiplyScalar(0.5 * Math.sqrt(scale));
+    sign.position.copy(at).addScaledVector(n, 0.45).addScaledVector(v, h / 2 + 0.05);
+    g.add(sign);
+    return g;
+  }
   const body = plate(w, h, 0, 0, 0.02, st.panel);
   body.userData.fixture = f.id;
-  if (f.id === "esterilla") {
+  if (f.id === "consola-bahia" || f.id === "consola-jemrms" || f.id === "cupula") {
+    // A laptop (or the RWS's screens and its two hand controllers): screens that glow over a keyboard shelf.
+    const screens = f.id === "cupula" ? 3 : 1;
+    for (let i = 0; i < screens; i++) plate(Math.min(0.42, (w * 0.8) / screens), 0.28, (i - (screens - 1) / 2) * (w / screens), h * 0.12, 0.05, st.glow!, true, 0.02);
+    plate(w * 0.8, 0.04, 0, -h * 0.12, 0.12, 0x5a6270, false, 0.18);
+    if (f.id === "cupula") for (const s of [-1, 1]) plate(0.08, 0.16, s * w * 0.35, -h * 0.05, 0.2, 0x111111, false, 0.08);
+  } else if (f.id === "esterilla") {
     // A rolled-out mat with foot straps.
     for (const s of [-1, 1]) plate(w * 0.8, 0.06, 0, s * h * 0.3, 0.04, st.accent);
   } else if (f.id === "campos-cultivo") {
@@ -276,7 +297,7 @@ function fixtureFront(f: Fixture, lamps: Map<MachineId, THREE.Mesh>, scale = 1):
       plate(w * 0.8, 0.3, 0, -h * 0.05, 0.05, st.glow!, true, 0.02);
       for (const sgn of [-1, 1]) plate(0.26, 0.26, sgn * w * 0.2, -h * 0.3, 0.06, 0x111111);
     }
-  } else if (f.id.startsWith("salir") || f.id.startsWith("puerto") || ["esclusa-carga", "bishop", "esclusa-kibo", "escotilla-eva", "consola-bahia", "cbm-nadir-nodo2", "pma1"].includes(f.id)) {
+  } else if (f.id.startsWith("salir") || f.id.startsWith("puerto") || ["esclusa-carga", "esclusa-kibo", "escotilla-eva", "cbm-nadir-nodo1", "cbm-nadir-nodo2", "pma1"].includes(f.id)) {
     // Hatch: frame and a handle.
     for (const s of [-1, 1]) {
       plate(0.08, h, (s * (w - 0.08)) / 2, 0, 0.05, st.accent);
@@ -384,6 +405,69 @@ function hangarDressing(h: InteriorVolume, plan: StationInteriorPlan, g: THREE.G
   }
 }
 
+/**
+ * Inside a compartment (docs/design/compartimentos.md): a crew quarter's laptop and dimmable light on its side
+ * walls; the Cupola's window under her; a soft lamp (no point light: the station already has one per module).
+ */
+function compartmentDressing(vol: InteriorVolume, plan: StationInteriorPlan, g: THREE.Group): void {
+  const door = plan.volumes.find((x) => x.id === `paso-${vol.id}`);
+  if (!door?.through) return;
+  const out = door.through;
+  const back = Math.sign(vol.centre[out] - door.centre[out]) || 1;
+  const others = (["x", "y", "z"] as const).filter((k) => k !== out);
+  // The height runs along the longer of the other two axes (a crew quarter's 2 m); width along the shorter.
+  const [tall, wide] = vol.half[others[0]!] >= vol.half[others[1]!] ? [others[0]!, others[1]!] : [others[1]!, others[0]!];
+  const unit = (k: "x" | "y" | "z", s = 1) => V(k === "x" ? s : 0, k === "y" ? s : 0, k === "z" ? s : 0);
+  const box = (sz: Record<"x" | "y" | "z", number>, at: THREE.Vector3, m: THREE.Material) => {
+    const o = new THREE.Mesh(new THREE.BoxGeometry(sz.x, sz.y, sz.z), m);
+    o.position.copy(at);
+    g.add(o);
+    return o;
+  };
+  const c = v3(vol.centre);
+  const h = vol.half;
+  if (vol.id.startsWith("camarote-")) {
+    // Laptop on one side wall, by her head; the dimmable light on the other, high up.
+    const laptop = c.clone().addScaledVector(unit(wide), -h[wide] + 0.03).addScaledVector(unit(tall), h[tall] * 0.25).addScaledVector(unit(out), back * h[out] * 0.1);
+    const sz = { x: 0, y: 0, z: 0 };
+    sz[wide] = 0.03;
+    sz[tall] = 0.24;
+    sz[out] = 0.34;
+    box(sz, laptop, new THREE.MeshBasicMaterial({ color: 0x7fdcff }));
+    const lamp = c.clone().addScaledVector(unit(wide), h[wide] - 0.02).addScaledVector(unit(tall), h[tall] * 0.7);
+    const lz = { x: 0, y: 0, z: 0 };
+    lz[wide] = 0.02;
+    lz[tall] = 0.1;
+    lz[out] = 0.5;
+    box(lz, lamp, new THREE.MeshBasicMaterial({ color: 0xffe6a8 }));
+    // Its label on the doorway's frame, so the four read from the aisle.
+    const sign = textSign(vol.label);
+    sign.scale.multiplyScalar(0.5);
+    sign.position.copy(v3(door.centre)).addScaledVector(unit(tall), h[tall] + 0.15).addScaledVector(unit(out), -back * 0.35);
+    g.add(sign);
+  } else if (vol.id === "cupola") {
+    // The central window (80 cm on the ISS) and a ring of six around it, looking out past her feet at the Earth.
+    const floor = c.clone().addScaledVector(unit(out), back * (h[out] - 0.01));
+    const glass = new THREE.Mesh(new THREE.CircleGeometry(Math.min(h[wide], h[tall]) * 0.9, 32), new THREE.MeshBasicMaterial({ color: 0x1d4f8a }));
+    glass.position.copy(floor);
+    glass.lookAt(c);
+    g.add(glass);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.35, 0.42, 6), new THREE.MeshBasicMaterial({ color: 0xdfe6ee, side: THREE.DoubleSide }));
+    ring.position.copy(floor).addScaledVector(unit(out), -back * 0.01);
+    ring.lookAt(c);
+    g.add(ring);
+    const sign = textSign("Cupola · siete ventanas");
+    sign.scale.multiplyScalar(0.6);
+    sign.position.copy(c).addScaledVector(unit(out), back * h[out] * 0.4).addScaledVector(unit(wide), -h[wide] * 0.5);
+    g.add(sign);
+  } else {
+    const sign = textSign(vol.label);
+    sign.scale.multiplyScalar(0.6);
+    sign.position.copy(c).addScaledVector(unit(tall), h[tall] * 0.6);
+    g.add(sign);
+  }
+}
+
 export function buildStationRooms(plan: StationInteriorPlan): StationRooms {
   const group = new THREE.Group();
   const lamps = new Map<MachineId, THREE.Mesh>();
@@ -437,6 +521,10 @@ export function buildStationRooms(plan: StationInteriorPlan): StationRooms {
       grid.position.set(vol.centre.x, vol.centre.y - vol.half.y + 0.02, vol.centre.z);
       group.add(grid);
       hangarDressing(vol, plan, group);
+      continue;
+    }
+    if (vol.kind === "compartimento") {
+      compartmentDressing(vol, plan, group);
       continue;
     }
     // Seams between rack bays (ISPR racks are 1,05 m wide) on the four long faces, along the module.

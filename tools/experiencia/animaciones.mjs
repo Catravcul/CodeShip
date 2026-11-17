@@ -306,6 +306,13 @@ async function playStation(j, rows, skipped = []) {
   await crewAt(j, rows, { placeAt, card: ".sti-card", fixture: "ejercicio", act: "chore:ejercicio", id: "estacion-ejercicio", title: "Estación: ejercicio en la T2 y el ARED", oracle: () => window.codeship.stationLife.session?.run.current ?? null, who: "stationInside" });
   await j.setup("se taponan los lechos de zeolita del CDRA", () => window.codeship.lifeSupport.system.fail("cdra-lechos"));
   await crewAt(j, rows, { placeAt, card: ".sti-card", fixture: "sv-ar", act: "chore:sv-cdra-lechos", id: "estacion-cdra", title: "Estación: cambiar los lechos del CDRA (bastidor de aire)", oracle: () => window.codeship.lifeSupport.session?.run.current ?? null, who: "stationInside" });
+  // Going to sleep in her crew quarter (docs/design/compartimentos.md): each step in the quarter, by the bag.
+  await placeAt("saco-1");
+  if (await j.tap('.sti-card [data-act="chore:dormir"]', "Dormir en tu camarote")) {
+    await j.waitDuel();
+    await p.waitForTimeout(500);
+    await auditSheet(j, rows, { id: "estacion-dormir", title: "Estación: dormir en tu camarote" }, () => window.codeship.stationLife.session?.run.current ?? null, "stationInside");
+  }
 
   // The machines: open their tab from the fixture's card, start a chore there.
   const MACHINES = [
@@ -435,7 +442,7 @@ function writeDoc(rows, extra) {
     "Generado por `tools/experiencia/animaciones.mjs` (recorrido PX-20, `npm run experiencia -- PX-20`), en un iPhone 13 (390 × 664 visibles, 1×).",
     "Cada reto se juega con toques en las respuestas correctas, en «paso a paso» (cada bloque bien colocado es un paso). Tras cada paso se mide en la escena 3D (`src/adapters/three/interior/step-audit.ts`):",
     "",
-    `- **Alcance**: cada objeto a ≤ ${RULES.reach} m de una de sus manos, o sobre el sitio del paso (≤ 0,45 m) con ella de pie delante (≤ 0,9 m).`,
+    `- **Alcance**: cada objeto a ≤ ${RULES.reach} m de una de sus manos (a su punto más cercano), o sobre el sitio del paso (≤ 0,45 m) con ella de pie delante (≤ 0,9 m).`,
     "- **A la vista**: alguna parte del objeto en la franja de escena sobre la hoja del reto y sin muebles ni su cuerpo delante.",
     "- **Sin atravesar**: el centro del objeto no está dentro de otra pieza (encimera, pared, máquina).",
     `- **Gesto**: su pose se aparta de la de espera al menos ${RULES.gesture} rad, y su mano se ve. En el yoga, el gesto es la asana del paso (está en ella) y cuenta su cuerpo entero, no la mano.`,
@@ -618,7 +625,7 @@ export async function animaciones(j) {
     "El viaje desde la consola de navegación: el mapa se oculta con el reto como toda interfaz (foco del reto, sin excepciones) y el plan se dibuja en la escena del reto, que lo encuadra en la franja sobre la hoja cuando la vista de la consola no lo ve (PlanOverlay.view).",
   );
   extra.push(
-    "Estación (escala 1,5): la cocina, la esterilla de Destiny, la T2 y el ARED, el bastidor de aire y las máquinas (refinar, fabricar, laboratorio de biología, importar) con Doménica en cada una. Starship: la cocina, la esterilla, la T2, el CEVIS, el ARED, el hábitat acuático y el bastidor de aire. Sin visual de pasos, aplazados con nano_net (sistema ficticio, al backlog): los retos de nano_net.",
+    "Estación (escala 1,5): la cocina, su camarote de Harmony (dormir: junto al saco, mirando fuera del camarote), la esterilla de Destiny, la T2 y el ARED, el bastidor de aire y las máquinas (refinar, fabricar, laboratorio de biología, importar) con Doménica en cada una. Starship: la cocina, la esterilla, la T2, el CEVIS, el ARED, el hábitat acuático y el bastidor de aire. Sin visual de pasos, aplazados con nano_net (sistema ficticio, al backlog): los retos de nano_net.",
   );
   const bad = rows.filter((r) => !r.ok).length;
   j.check(`auditoría: ${rows.length - bad} de ${rows.length} pasos se ven bien`, bad === 0, rows.filter((r) => !r.ok).slice(0, 4).map((r) => `${r.chore.title} / ${r.step}: ${r.why[0]}`).join(" | "));

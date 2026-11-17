@@ -48,7 +48,9 @@ export type ChoreKind =
   | "soporte-vital"
   /** A colony adopted from the species catalogue (modules/adoption): befriending it, asking it for help. */
   | "amistad-especie"
-  | "ayuda-especie";
+  | "ayuda-especie"
+  /** Going to sleep in one's crew quarter (modules/wellness/data/sleep.ts). */
+  | "dormir";
 
 /** Groups for filtering the task board. */
 export type ChoreCategory = "comida" | "plantas" | "animales" | "nave" | "salud" | "misiones";
@@ -96,6 +98,7 @@ export const CHORE_CATEGORY: Readonly<Record<ChoreKind, ChoreCategory>> = {
   "soporte-vital": "nave",
   "amistad-especie": "animales",
   "ayuda-especie": "animales",
+  dormir: "salud",
 };
 
 /** A task on board, done by solving code challenges in order. */

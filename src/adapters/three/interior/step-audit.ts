@@ -4,7 +4,7 @@ import type { StepShow, StepSnapshot } from "./step-show";
 /**
  * The animation audit (docs/qa/animaciones.md, tools/experiencia/animaciones.mjs): measures, in the 3D
  * scene, whether what a solved step shows can be seen and makes sense where it is. A prop must be
- * - within reach: 0,8 m from one of Doménica's hands, or on the spot she is working at (the station she faces);
+ * - within reach: 0,8 m from one of Doménica's hands to its nearest point, or on the spot she is working at (the station she faces);
  * - on screen, in the strip above the challenge sheet, and not hidden behind the furniture or her body;
  * - not inside other geometry (a counter, a wall, a machine).
  * And her gesture must play (her pose leaves the waiting pose).
@@ -217,7 +217,8 @@ export function auditStep(show: StepShow, camera: THREE.PerspectiveCamera, scene
     const inMesh = solids.find((m) => !own.has(m) && !bodySet.has(m) && insideMesh(m, c));
     // Distances in drawn metres (what the player sees): the snapshot's feet, hands and spot are drawn.
     const cd = c.clone().multiply(drawn);
-    const hand = Math.min(...snap.hands.map((h) => h.distanceTo(cd)));
+    // To its nearest point (a bag round her is held by its edge, not its middle).
+    const hand = Math.min(...snap.hands.map((h) => box.clampPoint(h.clone().divide(drawn), new THREE.Vector3()).multiply(drawn).distanceTo(h)));
     const spot = snap.spot.distanceTo(cd);
     const feetToSpot = Math.hypot(snap.feet.x - snap.spot.x, snap.feet.z - snap.spot.z);
     const px = toPx(c);

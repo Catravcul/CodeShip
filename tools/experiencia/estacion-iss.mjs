@@ -55,7 +55,9 @@ export async function estacionIss(j) {
   j.check("entra en Harmony por el IDA de cenit", (await where(j)) === "nodo-2", await where(j));
 
   // The tour, as on the ISS: Harmony's crew quarters, then down the stack and out to the side modules.
-  await look(j, "camarotes", /Camarotes/, "harmony", "Harmony: los cuatro camarotes");
+  // Harmony's four crew quarters are rooms one floats into (docs/design/compartimentos.md): hers is the first.
+  await look(j, "saco-1", /Tu saco de dormir/, "harmony", "Harmony: dentro de su camarote");
+  j.check("su camarote es un cuarto de Harmony en el que está dentro", (await where(j)) === "camarote-1", await where(j));
   await through(j, "puerta-escotilla-destiny-nodo2-nodo-2", "destiny", "Destiny");
   await look(j, "amf", /Additive Manufacturing|AMF/, "destiny", "Destiny: la impresora AMF de Redwire");
   await through(j, "puerta-escotilla-nodo1-destiny-destiny", "nodo-1", "Unity");
@@ -64,7 +66,10 @@ export async function estacionIss(j) {
   await through(j, "puerta-escotilla-nodo2-columbus-nodo-2", "columbus", "Columbus");
   await look(j, "impresora", /[Ii]mpresora/, "columbus", "Columbus: el taller (la impresora de metal de la ESA)");
   await through(j, "puerta-escotilla-nodo2-kibo-nodo-2", "kibo", "Kibo");
-  await look(j, "esclusa-kibo", /Kibo/, "kibo", "Kibo: su esclusa a la plataforma JEM-EF");
+  // Kibo's airlock is a hatch for cargo: tapping it only says what it is; the inventory is at the JEMRMS console.
+  await placeAt(j, "esclusa-kibo");
+  j.check("la esclusa de Kibo no abre ningún menú (solo dice qué es)", (await p.locator(".sti-card:not(.hidden) [data-act]:not([disabled])").count()) === 0, (await card(j)).slice(0, 140));
+  await look(j, "consola-jemrms", /JEMRMS/, "kibo", "Kibo: la consola del JEMRMS junto a su esclusa");
   // Kibo hosts the species catalogue's rack slots: the Aquatic Habitat (as on the ISS) and the catalogue laptop.
   await look(j, "rack-acuatico", /Aquatic Habitat|AQH/, "kibo-aqh", "Kibo: el hábitat acuático (AQH)");
   await placeAt(j, "rack-catalogo");
@@ -90,13 +95,16 @@ export async function estacionIss(j) {
   j.check("cocinar gasta la despensa de la estación", before !== after, `${before} → ${after}`);
 
   // The Bishop: Juventas in, the hatch shut, Canadarm2 takes it out and lets it go.
+  // Inside the Bishop (a room off Tranquility's port end), Juventas onto its plate; released from the Cupola's RWS.
   await placeAt(j, "bishop");
   const b = await card(j);
-  j.check("la Bishop ofrece guardar Juventas", /Guardar Juventas/.test(b), b.slice(0, 160));
-  await j.tap('.sti-card [data-act="guardar:juventas"]', "Guardar Juventas en la Bishop");
+  j.check("dentro de la Bishop, su placa ofrece sujetar Juventas", /Sujetar Juventas/.test(b) && (await where(j)) === "bishop", b.slice(0, 160));
+  await capture(j, "bishop-dentro", "Dentro de la Bishop");
+  await j.tap('.sti-card [data-act="guardar:juventas"]', "Sujetar Juventas a la placa");
   j.check("Juventas está en la Bishop", (await p.evaluate(() => window.codeship.bishop.place("juventas"))) === "bishop");
-  await placeAt(j, "bishop");
-  await j.tap('.sti-card [data-act="soltar"]', "Soltar Juventas");
+  await placeAt(j, "cupula");
+  j.check("el puesto robótico de la Cupola está dentro de la Cupola", (await where(j)) === "cupola", await where(j));
+  await j.tap('.sti-card [data-act="soltar"]', "Soltar Juventas con la Bishop (puesto robótico)");
   j.check("Juventas queda fuera, volando sola", (await p.evaluate(() => window.codeship.bishop.place("juventas"))) === "fuera");
   j.check("se ve: el brazo saca la Bishop", await p.evaluate(() => window.codeship.stationOutside.viewing && window.codeship.stationOutside.busy));
   await p.waitForTimeout(5500);

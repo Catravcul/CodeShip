@@ -504,10 +504,13 @@ export class StationInteriorMode {
     const reach = [hands, hands.clone().addScaledVector(right, 0.5), hands.clone().addScaledVector(right, -0.3)];
     const fits = (v: THREE.Vector3) => this.interior.fits(new Vec3(v.x, v.y, v.z), 0.1, false) && reach.every((h) => sight(v, h));
     let found = false;
+    // In a small room (a crew quarter) the camera looks in from its doorway, far enough to see all of her.
+    const room = vol.kind === "compartimento";
+    const sides = room ? [0, 0.25, -0.25, 0.5, -0.5] : [1.5, 1.3, 1.1, 0.9, 0.7, -0.7, -0.9, -1.1, -1.3, -1.5, 0];
     // Her left only when the right is a module's end wall (a machine next to a hatch).
-    for (const side of [1.5, 1.3, 1.1, 0.9, 0.7, -0.7, -0.9, -1.1, -1.3, -1.5, 0]) {
-      for (let back = Math.min(1.6, 2 * across - 0.15); back > 0.35 && !found; back -= 0.1) {
-        cam.copy(look).addScaledVector(d, -back).addScaledVector(right, side).setY(stand.y + 1.65);
+    for (const side of sides) {
+      for (let back = room ? 2 * across + 1.4 : Math.min(1.6, 2 * across - 0.15); back > 0.35 && !found; back -= 0.1) {
+        cam.copy(look).addScaledVector(d, -back).addScaledVector(right, side).setY(stand.y + (room ? 1.35 : 1.65));
         found = fits(cam);
       }
       if (found) break;

@@ -38,7 +38,7 @@ export interface InteriorVolume extends Box {
   /** Short location code (NOD2, HAB1, FAB1...). */
   readonly code: string;
   readonly label: string;
-  readonly kind: "nodo" | "habitat" | "fabrica" | "laboratorio" | "agricola" | "planta" | "esclusa" | "hangar" | "escotilla";
+  readonly kind: "nodo" | "habitat" | "fabrica" | "laboratorio" | "agricola" | "planta" | "esclusa" | "hangar" | "escotilla" | "compartimento";
   readonly pressurised: boolean;
   /**
    * Hatches only: the axis she goes through (not shrunk by the body margin, so she can pass) and

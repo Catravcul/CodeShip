@@ -55,7 +55,7 @@ export async function soporteVital(j) {
   j.check("por la escotilla entra en la estación", await p.evaluate(() => window.codeship.stationInside.active));
 
   // The readout is not on the HUD: only on the racks and the life-support laptop.
-  await placeAt(j, "camarotes");
+  await placeAt(j, "saco-1");
   j.check("lejos de las máquinas no hay lecturas de soporte vital", (await p.locator(".sv-readout").count()) === 0);
   await placeAt(j, "sv-consola");
   const desk = await card(j);
@@ -150,7 +150,8 @@ export async function soporteVital(j) {
   await capture(j, "despensa", "Despensa en la cocina de Unity");
   const food0 = await p.evaluate(() => window.codeship.lifeSupport.system.readout().foodKg);
   await j.tap('.sti-card [data-act="carguero:dragon"]', "Pedir Dragon");
-  await p.waitForTimeout(600);
+  // The card refreshes on its own tick: wait for it (slow under SwiftShader) rather than a fixed pause.
+  await p.waitForFunction(() => /en camino/.test(document.querySelector(".sti-card:not(.hidden)")?.textContent ?? ""), null, { timeout: 8000 }).catch(() => undefined);
   j.check("el Dragon de carga va en camino y llega en 18 h", /Dragon de carga en camino: llega en 1[78] h/.test(await card(j)), (await card(j)).slice(0, 300));
   await j.setup("pasan las 18 h del tránsito del Dragon (CRS-28)", () => window.codeship.lifeSupport.advance(18));
   const food1 = await p.evaluate(() => window.codeship.lifeSupport.system.readout().foodKg);

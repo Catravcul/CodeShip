@@ -231,8 +231,19 @@ interface Props {
   readonly tablet: THREE.Mesh;
   readonly wrench: THREE.Group;
   readonly kit: THREE.Group;
+  /** Going to sleep in a crew quarter: the bag round her, its zip pull and the quarter's light switch panel. */
+  readonly bag: THREE.Mesh;
+  readonly zip: THREE.Mesh;
+  readonly lamp: THREE.Mesh;
   readonly dots: THREE.Points;
 }
+
+/** Acts done in a crew quarter's bag: she turns her back to the wall it is strapped to (modules/wellness/data/sleep.ts). */
+const IN_BAG: ReadonlySet<string> = new Set(["saco", "luz", "dormir"]);
+/** A crew quarter's act: she floats by the bag on its wall, facing out of the quarter (and the camera). */
+const inQuarter = (v: StepAct) => IN_BAG.has(v.action) || v.vessel === "saco";
+/** Her feet off the wall the bag hangs on, drawn metres, while she is in it. */
+const BAG_OFF_WALL = 0.35;
 
 const ease = (t: number) => t * t * (3 - 2 * t);
 const clamp01 = (t: number) => Math.max(0, Math.min(1, t));
@@ -411,9 +422,15 @@ export class StepShow {
       const wantAcross = f.stand[across] - back * toward;
       this.feet[across] += (wantAcross - this.feet[across]) * ease6;
     }
+    // In a crew quarter's bag she floats with her back to the wall it is strapped to, facing the camera.
+    const inBag = !!vis && inQuarter(vis);
+    if (!f.slide) {
+      const want = inBag ? this.tmp.copy(f.stand).sub(f.target).setY(0).normalize().multiplyScalar(BAG_OFF_WALL).add(f.target).setY(f.stand.y) : this.tmp.copy(f.stand);
+      this.feet.lerp(want, 1 - Math.exp(-6 * dt));
+    }
     rig.visible = true;
     rig.position.set(this.feet.x / k, this.feet.y, this.feet.z / k);
-    rig.rotation.set(0, f.yaw, 0);
+    rig.rotation.set(0, inBag ? f.yaw + Math.PI : f.yaw, 0);
     rig.quaternion.setFromEuler(rig.rotation);
     if (!this.holdPose) figure.poseAngles(this.now ? gesture(vis!, t, this.clock, this.low(vis!)) : idle(vis ? this.low(vis) : false));
     figure.update(dt, 9);
@@ -467,7 +484,7 @@ export class StepShow {
       t: this.now ? this.t : 1,
       played: this.played,
       feet: this.feet.clone(),
-      yaw: f.yaw,
+      yaw: inQuarter(vis) ? f.yaw + Math.PI : f.yaw,
       hands: [this.otherHand.clone(), this.hand.clone()],
       spot: this.spotOf(vis, new THREE.Vector3()),
       props,
@@ -649,6 +666,9 @@ export class StepShow {
       tablet: mesh(BOX, holo, 0.22, 0.14, 0.008),
       wrench: group(wrenchBar, wrenchHead),
       kit: group(kitBox, kitCross, kitCross2),
+      bag: mesh(BOX, std(0x2f5d9a, { roughness: 0.9 }), 0.5, 1, 0.5),
+      zip: mesh(BOX, std(0xdfe6ee, { metalness: 0.5 }), 0.03, 0.05, 0.02),
+      lamp: mesh(BOX, basic(0xffe6a8, 0.95), 0.16, 0.1, 0.02),
       dots,
     };
     for (const p of Object.values(this.props)) for (const o of Array.isArray(p) ? p : [p]) this.root.add(o as THREE.Object3D);
@@ -675,7 +695,7 @@ export class StepShow {
   /** Puts the step's props where they go at time `t` (0…1) of the step. */
   private animate(v: StepAct, t: number): void {
     const p = this.props!;
-    for (const o of [p.bowl, p.pot, p.plate, p.jar, p.tray, p.board, p.knife, p.spoon, p.shaker, ...p.food, ...p.shells, p.can, p.scissors, p.basket, p.ball, p.tablet, p.wrench, p.kit, p.pouch]) o.visible = false;
+    for (const o of [p.bowl, p.pot, p.plate, p.jar, p.tray, p.board, p.knife, p.spoon, p.shaker, ...p.food, ...p.shells, p.can, p.scissors, p.basket, p.ball, p.tablet, p.wrench, p.kit, p.bag, p.zip, p.lamp, p.pouch]) o.visible = false;
     p.pouch.scale.set(0.13, 0.03, 0.17);
     p.fridgeInside.visible = p.fridgeDoor.visible = p.ovenGlow.visible = false;
     p.bowl.scale.set(0.085, 0.06, 0.085);
@@ -957,6 +977,29 @@ export class StepShow {
       case "entrenar":
         this.emitAt(this.feet.x, this.feet.y + 1.5, this.feet.z, "rise", 0x9fd8ff, 0.4);
         break;
+      // --- Going to sleep in a crew quarter ----------------------------------------------------
+      case "saco":
+      case "luz":
+      case "dormir": {
+        // The bag round her, against the wall: she gets in (up to the waist), zips it to her chest, and it stays.
+        const k = this.ds;
+        const zip = v.action === "saco" && v.vessel === "cremallera";
+        const h = v.action !== "saco" ? 1.25 : zip ? THREE.MathUtils.lerp(0.95, 1.25, ease(clamp01(t / 0.8))) : THREE.MathUtils.lerp(0.6, 0.95, ease(clamp01(t / 0.7)));
+        const back = this.tmp.copy(this.df!.target).sub(this.feet).setY(0);
+        if (back.lengthSq() > 1e-6) back.normalize().multiplyScalar(0.06);
+        const bag = this.show(p.bag, this.feet.x + back.x, this.feet.y + h / 2, this.feet.z + back.z);
+        bag.scale.set(0.46 * k, h, 0.46 * k);
+        if (zip) this.show(p.zip, this.hand.x, Math.min(this.hand.y, this.feet.y + h), this.hand.z).scale.set(0.03 * k, 0.05, 0.03 * k);
+        if (v.action === "luz") {
+          // The quarter's light panel at her raised hand: it goes from warm to off.
+          const lamp = this.show(p.lamp, this.hand.x, this.hand.y + 0.08, this.hand.z);
+          lamp.scale.set(0.16 * k, 0.1, 0.16 * k);
+          lamp.rotation.y = this.df!.yaw;
+          (p.lamp.material as THREE.MeshBasicMaterial).color.setHex(t < 0.55 ? 0xffe6a8 : 0x3d4552);
+        }
+        if (v.action === "dormir") this.emitAt(this.feet.x, this.feet.y + 1.75, this.feet.z, "drift", 0xdfe6ff, 0.35);
+        break;
+      }
       default:
         break;
     }
@@ -1124,6 +1167,15 @@ export function gesture(v: StepAct, t: number, clock: number, low: boolean): Pos
       return base({ torso: 0.35, shoulderX: [-1.0 + 0.1 * s, -1.0 - 0.1 * s], elbow: [-0.6, -0.6] });
     case "entrenar":
       return P({ shoulderX: [0.6 * s, -0.6 * s], elbow: [-1.4, -1.4], hip: [-0.5 * s, 0.5 * s], knee: [0.6 + 0.4 * c, 0.6 - 0.4 * c] });
+    case "saco":
+      // Into the bag: knees up and hands pulling its edges; the zip: her right hand runs up her front.
+      if (v.vessel === "cremallera") return P({ headX: 0.45, shoulderX: [-0.5, THREE.MathUtils.lerp(-0.4, -1.3, ease(clamp01(t / 0.8)))], shoulderZ: [0.1, 0.25], elbow: [-0.9, -1.4] });
+      return P({ headX: 0.5, shoulderX: [-0.35, -0.35], shoulderZ: [0.45, -0.45], elbow: [-0.6, -0.6], hip: [-0.9 * bump(t, 0, 0.8), -0.9 * bump(t, 0.1, 0.9)], knee: [1.2 * bump(t, 0, 0.8), 1.2 * bump(t, 0.1, 0.9)] });
+    case "luz":
+      return P({ headX: -0.2, headY: -0.3, shoulderX: [-0.5, -2.0 * bump(t, 0, 1) - 0.4], shoulderZ: [0.1, -0.5], elbow: [-1.0, -0.3] });
+    case "dormir":
+      // Asleep in 0 g: arms crossed on her chest, head tipped, a slow breath.
+      return P({ headX: 0.55, headZ: 0.25, torso: 0.05 * Math.sin(clock * 1.2), shoulderX: [-0.75, -0.75], shoulderZ: [-0.35, 0.35], elbow: [-1.9, -1.9] });
     default:
       return base({ shoulderX: [-0.8, -0.8], elbow: [-0.8, -0.8] });
   }

@@ -58,7 +58,7 @@ escotilla de 1,27 m (la CBM de la ISS) en el centro. Con la cubierta de vuelo de
 | Cubierta | Qué hay | Base real |
 | --- | --- | --- |
 | 1 · cocina y trabajo | cocina (agua caliente y fría, calentador), dos puestos de trabajo (tareas y registro de misiones), la esterilla (yoga y ajustes), la escotilla del techo a la cubierta de vuelo, el túnel del morro a la estación; bastidores OGS e ITCS y el puesto de incendios | cocina de la ISS; bastidores ISPR |
-| 2 · camarotes y aseo | cuatro camarotes de 2,1 m³ en fila (como los de Harmony), el aseo con flujo de aire (WHC), el refugio de agua contra tormentas solares; bastidor WRS | Harmony; WHC de Tranquility |
+| 2 · camarotes y aseo | cuatro camarotes de 2,1 m³, cuartos en los que se entra (dos a babor y dos a proa; como los de Harmony, distribución nuestra), el aseo con flujo de aire (WHC), el refugio de agua contra tormentas solares; bastidor WRS | Harmony; WHC de Tranquility |
 | 3 · ejercicio y esclusa | cinta T2 en el suelo, ARED en una pared, bicicleta CEVIS en la otra, la esclusa (información: las salidas están pendientes), la escotilla del módulo de aterrizaje; bastidor AR, la consola de soporte vital, almacén | ejercicio de la ISS |
 
 El **catálogo de especies** (rama `catalogo-especies`, [catalogo-especies.md](catalogo-especies.md)) tiene sus ranuras
@@ -86,7 +86,7 @@ estación. Al entrar desde el módulo de aterrizaje se aparece en la cubierta 3;
   ([`kitchen/data/iss-food.ts`](../../src/modules/kitchen/data/iss-food.ts)); se cocina rehidratando y calentando.
   No hay productos frescos: el huerto real (Veggie, APH) es de la fase 2.
 - **Ejercicio**: los intervalos y la fuerza de siempre, en la T2, el ARED y la CEVIS.
-- **Dormir y asearse**: en los camarotes y en el WHC.
+- **Dormir y asearse**: en los camarotes y en el WHC. Dormir es el reto de seis pasos de su camarote ([compartimentos.md](compartimentos.md)).
 - **Siempre 0 g**: no hay anillos ([pendientes.md](../pendientes.md)).
 
 ## Capa de presentación: escala y separación como ajustes

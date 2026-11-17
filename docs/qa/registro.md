@@ -274,7 +274,6 @@ La más reciente arriba.
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
 | 2026-11-17 09:31 | PX-28, PX-35, PX-37, PX-38, PX-20, PX-30 | Experiencia (Playwright) | 5/6 recorridos bien | [run](runs/2026-11-17-0931-PX-28-PX-35-PX-37-PX-38-PX-20-PX-30.md) |
-| 2026-11-17 09:03 | PX-28, PX-35, PX-37, PX-38, PX-20, PX-30 | Experiencia (Playwright) | 5/6 recorridos bien | [run](runs/2026-11-17-0903-PX-28-PX-35-PX-37-PX-38-PX-20-PX-30.md) |
 | 2026-11-17 09:10 | PX-16 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-17-0910-PX-16.md) |
 | 2026-11-17 08:50 | PX-36 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-17-0850-PX-36.md) |
 | 2026-11-17 07:40 | PX-03, PX-04, PX-06, PX-07, PX-10, PX-12, PX-28, PX-31, PX-32, PX-36 | Experiencia (Playwright) | 9/10 recorridos bien | [run](runs/2026-11-17-0740-PX-03-PX-04-PX-06-PX-07-PX-10-PX-12-PX-28-PX-31-PX-32-PX-36.md) |

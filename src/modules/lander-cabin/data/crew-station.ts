@@ -64,12 +64,18 @@ export interface LmPanel {
   readonly hM: number;
   /** Turned toward its station about the vertical, rad (front panels only). */
   readonly yawRad?: number;
+  /** What it holds and where: real (the sources); its size and exact place: estimated from the photographs. */
+  readonly reality: Reality;
+  readonly source: string;
+  readonly note: string;
 }
 
 const HALF = CREW_STATION.stationsApartM.value / 2;
 
 /** The LM's panels, real sizes estimated from the photographs (the sources give what each holds and where, not their size). */
-export const LM_PANELS: readonly LmPanel[] = [
+const PANEL_BASIS = { reality: "real", source: CREW_STATION_SOURCES.panels, note: "Qué lleva y dónde va: real (fuentes). Tamaño y sitio exacto: estimación de las fotos" } as const;
+
+export const LM_PANELS: readonly LmPanel[] = (<Omit<LmPanel, "reality" | "source" | "note">[]>[
   { id: "1", name: "Panel 1 (comandante)", holds: "FDAI, X-pointer, cintas ALT/ALT RATE, temporizadores de misión y de eventos, empuje, T/W, propelente del motor principal y avisos rojos", wall: "front", at: { x: -0.3, y: 1.36, z: 0 }, wM: 0.36, hM: 0.44, yawRad: 0.3 },
   { id: "2", name: "Panel 2 (piloto)", holds: "FDAI, X-pointer, RCS (temperatura, presión y cantidad), ECS y avisos ámbar", wall: "front", at: { x: 0.3, y: 1.36, z: 0 }, wM: 0.36, hM: 0.44, yawRad: -0.3 },
   { id: "3", name: "Panel 3", holds: "Radar de encuentro, estabilización y control, temporizador de eventos", wall: "front", at: { x: 0, y: 1.12, z: 0 }, wM: 0.36, hM: 0.14 },
@@ -81,7 +87,7 @@ export const LM_PANELS: readonly LmPanel[] = [
   { id: "12", name: "Panel 12", holds: "Comunicaciones", wall: "right", at: { x: 0, y: 0.75, z: 0.15 }, wM: 0.4, hM: 0.24 },
   { id: "14", name: "Panel 14", holds: "Potencia eléctrica (EPS)", wall: "right", at: { x: 0, y: 1.15, z: 0.15 }, wM: 0.4, hM: 0.3 },
   { id: "16", name: "Panel 16 (disyuntores)", holds: "Cuatro filas de disyuntores", wall: "right", at: { x: 0, y: 1.75, z: 0.15 }, wM: 0.4, hM: 0.36 },
-];
+]).map((p) => ({ ...p, ...PANEL_BASIS }));
 
 /**
  * Where her body meets the station (relative to where she stands, real size: they are not scaled): the
@@ -95,5 +101,7 @@ export const STATION_BODY = {
   controllerForwardM: 0.24,
   controllerSideM: 0.26,
   restraintY: 0.95,
+  reality: "real" as Reality,
+  note: "Estimación: alturas y distancias sacadas de las fotos",
   source: "Estimación a partir de las fotos del puesto (reposabrazos a la cadera, ACA a la derecha, TTCA a la izquierda): " + SRC,
 } as const;

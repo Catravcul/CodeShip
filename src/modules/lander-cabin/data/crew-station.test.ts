@@ -43,3 +43,15 @@ describe("the LM's crew station (docs/design/cabina-lm.md)", () => {
     expect(STATION_BODY.controllerSideM).toBeLessThan(CREW_STATION.stationsApartM.value / 2);
   });
 });
+
+describe("reglas.md §1.1: every number of the crew station carries its source and label", () => {
+  it("HAB-27 panels and body positions are sourced and labelled", () => {
+    for (const p of LM_PANELS) {
+      expect(p.source).toMatch(/https:/);
+      expect(p.reality).toBe("real");
+      expect(p.note).toMatch(/estimación/i);
+    }
+    for (const f of Object.values(CREW_STATION)) expect(f.source).toMatch(/https:/);
+    expect(STATION_BODY.source).toMatch(/https:/);
+  });
+});

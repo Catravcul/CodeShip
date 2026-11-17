@@ -887,6 +887,7 @@ const stationLife = new StationLife({
   landerMassKg: () => ship.massKg,
   mothershipLarder: () => (mothership.dockedTo ? habitat : undefined),
   openTasks: () => taskBoard.open(),
+  sleepIn: (f, then) => stationInside.sleep(f, undefined, then),
   openInventory: () => {
     stationInside.suspend();
     screenFromInside = true;
@@ -999,13 +1000,7 @@ stationScreen.onRelease = (c) => {
   stationScreen.exit();
   stationOutside.open({ kind: "botar", craft: shown });
 };
-stationScreen.onBay = () => {
-  if (duelView.visible || bay.active) return;
-  screenToBay = true;
-  stationScreen.exit();
-  screenToBay = false;
-  bay.enter("pantalla");
-};
+// The bay opens only from its laptop in Unity (docs/design/reglas.md §2.3): the Hangar window has no way there.
 const bayBack = (from: "pantalla" | "estacion") => (from === "pantalla" ? stationScreen.enter("hangar") : stationInside.resume());
 bay.onExit = bayBack;
 // The bay's chores acted out at the station, by the lander on its cradle at Unity's CBM (reglas.md §4.2).
@@ -1229,15 +1224,15 @@ function arriveAt(place: TaskPlace, t?: Task): void {
         if (stationInside.placeAt(place.area)) start();
         return;
       }
-      // The ship bay and the machines of a tab: hop to their console, then open it; a tab with no machine opens at once.
-      const fixture = place.spot === "bahia" ? "consola-bahia" : stationInside.interior.fixturesFor(place.tab === "importar" ? "materiales" : place.tab)[0]?.id;
+      // The ship bay and each window: hop to its console, then open it (no window opens without one).
+      const fixture = place.spot === "bahia" ? "consola-bahia" : stationInside.interior.fixturesFor(place.tab)[0]?.id;
       const open = () => {
         stationInside.suspend();
         if (place.spot === "bahia") return bay.enter("estacion");
         screenFromInside = true;
         stationScreen.enter(place.tab);
       };
-      if (place.spot !== "bahia" && fixture && place.tab !== "importar") {
+      if (fixture) {
         if (!wasInStation && stationInside.placeAt(fixture)) return open();
         if (stationInside.goToFixture(fixture, open)) return;
       }

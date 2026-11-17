@@ -34,7 +34,11 @@ export interface StationAction {
   readonly why?: string;
 }
 
-const PANEL_NAME: Readonly<Record<StationPanel, string>> = { materiales: "Materiales", planos: "Planos", fabricacion: "Fabricación", hangar: "Hangar", propelente: "Planta de propelente", vida: "Vida" };
+/** How long her sleep is shown with the quarter's door shut (s): the night itself is not played out. */
+const SLEEP_SHOWN_S = 8;
+/** A folding door takes this long to shut or fold open (s). */
+const DOOR_MOVE_S = 1.2;
+const PANEL_NAME: Readonly<Record<StationPanel, string>> = { materiales: "Materiales", planos: "Planos", fabricacion: "Fabricación", hangar: "Hangar", importar: "Importar", propelente: "Planta de propelente", vida: "Vida" };
 const FACE_LABEL = { suelo: "el suelo", techo: "el techo", babor: "babor", estribor: "estribor", proa: "proa", popa: "popa" } as const;
 /** Body margin from the walls while floating, m. */
 const BODY = 0.3;
@@ -119,6 +123,10 @@ export class StationInteriorMode {
   private arrival: { poi?: string; point?: string; then?: () => void } | null = null;
   /** Sitting in lotus on the mat (the settings are open). */
   lotus = false;
+  /** Crew quarters' folding doors: how shut each is (0 open … 1 shut) and where it is going, by volume id. */
+  private readonly doorShut = new Map<string, { at: number; to: number }>();
+  /** The crew quarter she is asleep in (its door shut), when she wakes (performance.now, ms) and what then. */
+  private sleeping: { volume: string; until: number; then?: () => void } | null = null;
   private readonly keys = new Set<string>();
   private p = Vec3.ZERO;
   /** How she moves about: holding rails, pushing off, gliding (docs/design/ingravidez.md). */
@@ -277,6 +285,7 @@ export class StationInteriorMode {
 
   /** Hop by herself to a fixture's grab point, then `then` (the task list's «Ir», the experience suite). */
   goToFixture(id: string, then?: () => void): boolean {
+    if (this.sleeping) this.wake();
     const at = this.hops.poiPoint(id);
     if (!at) return false;
     if (this.hop.holding(this.iva)?.id === at.id) {
@@ -292,6 +301,7 @@ export class StationInteriorMode {
    * as the cabin's `enter(spot)`; the experience suite's setup). In the hangar she arrives suited.
    */
   placeAt(id: string): boolean {
+    if (this.sleeping) this.wake();
     const q = this.hops.poiPoint(id);
     if (!q) return false;
     const suited = this.interior.volumeAt(q.body)?.kind === "hangar";
@@ -402,6 +412,7 @@ export class StationInteriorMode {
 
   /** Hide it (to open the station screen, or to leave). */
   suspend(): void {
+    if (this.sleeping) this.wake();
     this.active = false;
     this.walker.enabled = false;
     this.ui.classList.add("hidden");
@@ -660,6 +671,8 @@ export class StationInteriorMode {
 
   update(dt: number): void {
     if (!this.active) return;
+    this.syncDoors(dt);
+    if (this.sleeping && performance.now() >= this.sleeping.until) this.wake();
     if (this.stage(dt)) return;
     const look = this.walker.look(dt);
     this.yaw += look.yaw;
@@ -686,7 +699,7 @@ export class StationInteriorMode {
     if (this.hopsSuited !== this.suited) this.buildHops();
     const fwd = this.lookDir();
     const right = new Vec3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
-    const intent = this.hop.update(this.iva, { forward: fwd, right }, this.active && this.cycling === 0, dt, this.camera.position);
+    const intent = this.hop.update(this.iva, { forward: fwd, right }, this.active && this.cycling === 0 && !this.sleeping, dt, this.camera.position);
     const r = ivaStep(this.iva, intent, this.world, dt);
     this.iva = r.state;
     this.p = r.state.position;
@@ -723,7 +736,7 @@ export class StationInteriorMode {
         return a.to === "nodriza" && this.deps.lookOut ? [leave, { id: "ventana", label: "Mirar el dique por la ventanilla", enabled: true }] : [leave];
       }
       case "bahia":
-        return [{ id: "bahia", label: "Abrir la bahía de la nave", enabled: true }];
+        return [{ id: "bahia", label: "Abrir la bahía de la nave", enabled: true }, ...(a.panels ?? []).map((p) => ({ id: `abrir:${p}`, label: `Abrir ${PANEL_NAME[p]}`, enabled: true }))];
       case "esclusa": {
         const inLock = this.interior.volumeAt(this.p)?.kind === "esclusa";
         const why = this.cycling > 0 ? "La esclusa está cambiando de presión" : !inLock ? "Entra en la esclusa para cambiarte" : undefined;
@@ -745,13 +758,17 @@ export class StationInteriorMode {
     const a = f.action;
     if (a.kind === "tripulacion" || a.kind === "brazo" || a.kind === "bishop" || a.kind === "consola" || a.kind === "soporte-vital") return this.deps.act(f, id);
     if (id === "ventana") return this.deps.lookOut?.();
+    if (id.startsWith("abrir:")) {
+      this.say(`${f.label} · ${this.interior.locationCode(f)}`);
+      return this.deps.openPanel(id.slice("abrir:".length) as StationPanel);
+    }
     this.use(f, true);
   }
 
   /** The card of the thing in front of her: icon, name, one line, its actions (they replace HUD buttons). */
   private renderCard(): void {
     const f = this.near;
-    if (!f || this.lotus) {
+    if (!f || this.lotus || this.sleeping) {
       this.card.classList.add("hidden");
       this.cardKey = "";
       return;
@@ -919,6 +936,58 @@ export class StationInteriorMode {
 
   private syncView(): void {
     this.menu.relabel(this.viewBtn, `Vista: ${this.thirdPerson ? "3ª" : "1ª"} persona`, "V");
+  }
+
+  /** True while she sleeps in a crew quarter with its door shut. */
+  get asleep(): boolean {
+    return this.sleeping !== null;
+  }
+
+  /**
+   * She sleeps in the crew quarter of `fixtureId` (her bag): its folding door shuts, she stays put, and when
+   * she wakes after `seconds` the door folds open again (docs/design/compartimentos.md).
+   */
+  sleep(fixtureId: string, seconds = SLEEP_SHOWN_S, then?: () => void): void {
+    const f = this.interior.fixture(fixtureId);
+    if (!f || this.interior.volume(f.volume)?.kind !== "compartimento") return;
+    this.sleeping = { volume: f.volume, until: performance.now() + seconds * 1000, ...(then ? { then } : {}) };
+    this.shutDoor(f.volume, true);
+    // From her bag she looks out at the doorway: the door shutting, then folding open when she wakes.
+    const door = this.interior.volume(`paso-${f.volume}`);
+    if (door) {
+      const d = door.centre.sub(this.p);
+      this.yaw = Math.atan2(-d.x, -d.z);
+      this.pitch = Math.max(-1.2, Math.min(1.2, Math.atan2(d.y, Math.hypot(d.x, d.z))));
+    }
+  }
+
+  /** She wakes: the quarter's door folds open. */
+  wake(): void {
+    const s = this.sleeping;
+    if (!s) return;
+    this.sleeping = null;
+    this.shutDoor(s.volume, false);
+    s.then?.();
+  }
+
+  /** Shut or open a crew quarter's folding door (it moves over DOOR_MOVE_S). */
+  shutDoor(volume: string, shut: boolean): void {
+    const d = this.doorShut.get(volume) ?? { at: 0, to: 0 };
+    d.to = shut ? 1 : 0;
+    this.doorShut.set(volume, d);
+  }
+
+  /** How shut a crew quarter's door is now (0 open … 1 shut), for the experience suite. */
+  doorAmount(volume: string): number {
+    return this.doorShut.get(volume)?.at ?? 0;
+  }
+
+  private syncDoors(dt: number): void {
+    for (const [id, d] of this.doorShut) {
+      const step = dt / DOOR_MOVE_S;
+      d.at = d.at < d.to ? Math.min(d.to, d.at + step) : Math.max(d.to, d.at - step);
+      this.rooms.doors.get(id)?.shut(d.at);
+    }
   }
 
   /** Sit in lotus on the mat (the settings open) or float up again. */

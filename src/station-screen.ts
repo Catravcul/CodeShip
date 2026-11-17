@@ -86,9 +86,10 @@ const text = (title: string, mode: ChoreMode): SessionText => ({
 
 /**
  * The space station screen: the hangar in 3D (the ship parked, the machines lit while they work, the
- * spare parts and probes) and a panel with four tabs: materials and refinery, blueprints, the
- * fabrication queues and the hangar. Refining and fabricating open their code challenges in the
- * shared challenge sheet.
+ * spare parts and probes) and a panel with one window: the one of the console that opened it (materials and
+ * refinery, blueprints, the fabrication queues, the hangar, imports or the living machines). There is no tab
+ * bar: each window opens only from its consoles (docs/design/reglas.md §2.3). Refining and fabricating open
+ * their code challenges in the shared challenge sheet.
  */
 export class StationScreen {
   readonly view: StationScene;
@@ -107,8 +108,6 @@ export class StationScreen {
   private toastUntil = 0;
   private drag: { id: number; x: number; moved: boolean } | null = null;
   onExit?: () => void;
-  /** Open the ship bay (from the hangar tab); set by main. */
-  onBay?: () => void;
   /**
    * Set by main: the chore's solved steps acted out by Doménica at the machine she opened this screen
    * from (station-interior.ts); while it plays, that scene is drawn over the sheet instead of the hangar's.
@@ -150,16 +149,12 @@ export class StationScreen {
     this.ui = document.createElement("div");
     this.ui.className = "st-ui hidden";
     this.ui.innerHTML = `<div class="st-head"><b>${esc(ops.station.site.name)}</b><span class="st-sub"></span></div><button class="bay-back st-back">Volver</button>
-      <div class="st-panel"><div class="st-tabs${bio ? " six" : ""}" role="tablist">${TABS.filter(([id]) => id !== "vida" || bio).map(([id, label]) => `<button role="tab" data-tab="${id}">${label}</button>`).join("")}</div><div class="st-body"></div></div><div class="bay-toast st-toast"></div>`;
+      <div class="st-panel"><div class="st-title" role="heading" aria-level="2"></div><div class="st-body"></div></div><div class="bay-toast st-toast"></div>`;
     root.appendChild(this.ui);
     this.panel = this.ui.querySelector(".st-body")!;
     this.sub = this.ui.querySelector(".st-sub")!;
     this.toast = this.ui.querySelector(".st-toast")!;
     this.ui.querySelector(".st-back")!.addEventListener("click", () => this.exit());
-    this.ui.querySelector(".st-tabs")!.addEventListener("click", (e) => {
-      const t = (e.target as HTMLElement).closest<HTMLElement>("[data-tab]");
-      if (t) this.show(t.dataset.tab as StationTab);
-    });
     this.panel.addEventListener("click", (e) => this.onClick(e));
     root.addEventListener("pointerdown", (e) => {
       if (!this.active || this.duel.visible || (e.target as HTMLElement).closest("button, .st-panel, .duel")) return;
@@ -214,7 +209,8 @@ export class StationScreen {
 
   show(tab: StationTab): void {
     this.tab = tab;
-    for (const b of this.ui.querySelectorAll<HTMLElement>("[data-tab]")) b.classList.toggle("on", b.dataset.tab === tab);
+    // One window per console, no tab bar (docs/design/reglas.md §2.3): its name says which one this is.
+    this.ui.querySelector<HTMLElement>(".st-title")!.textContent = TABS.find(([id]) => id === tab)?.[1] ?? tab;
     this.key = "";
     this.render();
     this.panel.scrollTop = 0;
@@ -403,7 +399,7 @@ export class StationScreen {
         extra.push(`${e.racks} ${e.racks === 1 ? "bastidor" : "bastidores"} en un ${e.fitsIn.map((k) => MODULE_KIND_NAME[k]).join(" o ")}`, kw(e.powerKw));
         if (e.upgrades) extra.push(`sustituye a ${esc(equipmentById(e.upgrades)?.name ?? e.upgrades)}`);
         if (e.rate && e.rate > 1) extra.push(`${e.rate} veces más rápida`);
-      } else if (pr.kind === "part" && stationComponentById(pr.partId)) extra.push("para la estación: se monta en la bahía, pestaña Estación");
+      } else if (pr.kind === "part" && stationComponentById(pr.partId)) extra.push("para la estación: se monta en la bahía (portátil de carga de Unity), apartado Estación");
       const need =
         (bp.requires ? `<span class="st-chip ${o && !o.has(bp.requires) ? "miss" : "ok"}">Necesita ${esc(o?.name(bp.requires) ?? bp.requires)}</span>` : "") +
         (bp.requiresModule ? `<span class="st-chip ${o && !o.hasModule(bp.requiresModule) ? "miss" : "ok"}">Necesita el módulo agrícola</span>` : "");
@@ -467,8 +463,7 @@ export class StationScreen {
         return `<div class="st-mat"><b>${esc(p ? short(p.name) : drive ? `Propulsor ${drive.shortName}` : sc ? sc.name : cc ? cc.name : si ? si.name : id === "pieza-impresa" ? "Pieza pequeña impresa" : id)}</b><span>× ${n}</span><small>${drive ? "Se monta en la bahía, pestaña Nodriza, con la nodriza atracada aquí" : sc ? "Se monta en la bahía, pestaña Estación" : cc ? "Pieza del catálogo de naves" : "Se monta en la bahía de la nave"}</small></div>`;
       })
       .join("");
-    const bay = this.onBay ? `<button class="st-btn" data-bay>Abrir la bahía de la nave</button>` : "";
-    return `${bay}<div class="bay-sec">Naves y sondas</div>${crafts}
+    return `<div class="bay-sec">Naves y sondas</div>${crafts}
       <div class="bay-sec">Piezas de repuesto</div>${partRows || `<p class="st-dim">No hay piezas. ${REAL_ONLY ? "Impórtalas desde «Componentes»" : "Fabrícalas en Planos"}; al cambiar una pieza en la bahía, la vieja vuelve aquí.</p>`}${this.components()}${this.catalogue()}`;
   }
 
@@ -494,7 +489,7 @@ export class StationScreen {
       const info = SUPPLY_CATEGORIES.find((c) => c.id === i.category)!;
       const state = i.deSerie ? `<span class="st-chip ok">De serie en ${esc(i.deSerie)}</span>` : "";
       const stock = have || coming ? `<span class="st-have">${have ? `${have} en el hangar` : ""}${have && coming ? " · " : ""}${coming ? `${coming} en camino` : ""}</span>` : "";
-      const swap = have && partById(partId) && this.onBay ? `<button class="st-btn" data-bay>Cambiar en la bahía</button>` : "";
+      const swap = have && partById(partId) ? `<small class="st-dim">Se cambia en la bahía: el portátil de carga de Unity</small>` : "";
       const o = i.deSerie ? undefined : sup.offer(partId);
       const lock = o && !o.unlocked ? " locked" : "";
       return `<div class="st-card st-comp${lock}" data-comp="${esc(partId)}"><div class="st-row"><b>${esc(i.name)}</b><span class="st-tier">Nivel ${i.tier}</span></div>
@@ -546,7 +541,6 @@ export class StationScreen {
     const t = e.target as HTMLElement;
     if (t.closest("a") || this.duel.visible) return;
     if (t.closest("[data-unload]")) return this.unload();
-    if (t.closest("[data-bay]")) return this.onBay?.();
     if (t.closest("[data-catalogue]")) {
       this.catalogueOpen = !this.catalogueOpen;
       this.key = "";
@@ -839,19 +833,11 @@ export class StationScreen {
       this.session = null;
       this.layout();
       if (run.status === "done") {
-        if (mode === "ajustar") {
-          this.say("Ajustado: rinde al 100 % durante 240 h");
-          this.show("vida");
-        } else if (session.refused) {
-          this.say(session.refused);
-          this.show(mode === "importar" ? "importar" : "fabricacion");
-        } else if (mode === "importar") {
-          this.say("Hecho: mira «En camino»");
-          this.show("importar");
-        } else {
-          this.say(mode === "refinar" ? "Lote en marcha: mira Fabricación" : mode === "repostar" ? "Trasvasando propelente: mira Fabricación" : "En marcha: mira Fabricación");
-          this.show("fabricacion");
-        }
+        // She stays at the console she is using: the queue is at the fabrication console (no tab bar).
+        if (mode === "ajustar") this.say("Ajustado: rinde al 100 % durante 240 h");
+        else if (session.refused) this.say(session.refused);
+        else if (mode === "importar") this.say("Hecho: mira «En camino»");
+        else this.say(mode === "refinar" ? "Lote en marcha: la cola está en la consola de fabricación" : mode === "repostar" ? "Trasvasando propelente: la cola está en la consola de fabricación" : "En marcha: la cola está en la consola de fabricación");
       } else if (run.status === "failed") this.say(mode === "ajustar" ? "No salió: sigue como estaba" : mode === "importar" ? "No salió: inténtalo otra vez" : mode === "repostar" ? "No salió: el propelente sigue en el almacén" : "No salió: los materiales siguen en el almacén");
       this.key = "";
       this.render();

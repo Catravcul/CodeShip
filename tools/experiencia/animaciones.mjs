@@ -342,10 +342,9 @@ async function playStation(j, rows, skipped = []) {
     await j.tap(".st-back", "Volver");
     await p.waitForTimeout(500);
   }
-  // Importing: from the glovebox's screen, its «Importar» tab, an order of xenon.
-  await placeAt("guantera");
-  if (await j.tap('.sti-card [data-act="abrir"]', "Abrir Materiales")) {
-    await j.tap('.st-tabs [data-tab="importar"]', "Importar");
+  // Importing: from Unity's cargo laptop, its «Importar» window (no tab bar), an order of xenon.
+  await placeAt("consola-bahia");
+  if (await j.tap('.sti-card [data-act="abrir:importar"]', "Abrir Importar")) {
     await j.tap('.st-body [data-good-plus="xenon"]', "+ xenón");
     if (await j.tap(".st-body [data-order]:not([disabled])", "Pedir")) {
       await j.waitDuel();

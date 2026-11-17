@@ -22,9 +22,11 @@ export const FACE_NORMAL: Readonly<Record<Face, Vec3>> = {
 /** One letter per face for location codes, like the ISS's LAB1S2 (Destiny, starboard, bay 2). */
 export const FACE_LETTER: Readonly<Record<Face, string>> = { suelo: "D", techo: "O", babor: "P", estribor: "S", proa: "F", popa: "A" };
 
-/** Tabs of the station's task screen a machine can open. */
-/** A tab of the station screen, or the propellant plant inside Materiales. */
-export type StationPanel = "materiales" | "planos" | "fabricacion" | "hangar" | "propelente" | "vida";
+/**
+ * A window of the station's screen, or the propellant plant inside Materiales. Each opens only from its own
+ * consoles, in the compartment where that is done (docs/design/reglas.md §2.3): the screen has no tab bar.
+ */
+export type StationPanel = "materiales" | "planos" | "fabricacion" | "hangar" | "importar" | "propelente" | "vida";
 
 /** An axis-aligned box in the station's body frame. */
 export interface Box {
@@ -67,8 +69,8 @@ export type FixtureAction =
   | { readonly kind: "bishop" }
   | { readonly kind: "info" }
   | { readonly kind: "salir"; readonly to: PortUser }
-  /** The ship bay: configure the parts of the docked ships (docs/design/accesos.md). */
-  | { readonly kind: "bahia" }
+  /** The ship bay: configure the parts of the docked ships (docs/design/accesos.md); its laptop may open other windows too. */
+  | { readonly kind: "bahia"; readonly panels?: readonly StationPanel[] }
   | { readonly kind: "esclusa" }
   /** A console or machine whose actions the wiring gives (Starship's way up to the flight deck, its workstations). */
   | { readonly kind: "consola"; readonly id: string }
@@ -234,9 +236,9 @@ export class StationInterior {
     return this.plan.fixtures.find((f) => f.id === id);
   }
 
-  /** Fixtures that open a given tab of the station's screen. */
+  /** Fixtures that open a given window of the station's screen (its only ways in). */
   fixturesFor(panel: StationPanel): Fixture[] {
-    return this.plan.fixtures.filter((f) => f.action.kind === "panel" && f.action.panel === panel);
+    return this.plan.fixtures.filter((f) => (f.action.kind === "panel" && f.action.panel === panel) || (f.action.kind === "bahia" && !!f.action.panels?.includes(panel)));
   }
 
   /** Location code of a fixture, like the ISS's: module code + face letter + bay (FAB1S2), counted along the module. */

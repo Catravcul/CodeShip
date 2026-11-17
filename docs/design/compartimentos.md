@@ -19,11 +19,11 @@ Un compartimento real es un cuarto en el que se entra flotando. Su abertura es u
 | Puerta o escotilla | Antes | Ahora |
 |---|---|---|
 | `camarotes` (pared de Harmony) | Puerta con «Dormir» y la lista de tareas | Se quita. Cuatro camarotes de verdad (`camarote-1…4`), uno en cada cara de un hueco de bastidor de Harmony, de 1,05 × 2 × 1 m (2,1 m³). Cada uno tiene su saco (`saco-1…4`), portátil y luz. El suyo es el 1, el de estribor; los demás dicen «Camarote libre: el tuyo es el 1» |
-| `consola-bahia` (CBM de nadir de Unity) | Una escotilla del suelo abría la bahía de las naves | Es el **portátil de la bahía**, en la pared de babor de Unity. El CBM de nadir (`cbm-nadir-nodo1`) es una escotilla con su aviso |
+| `consola-bahia` (CBM de nadir de Unity) | Una escotilla del suelo abría la bahía de las naves | Es el **portátil de carga de Unity**, en su pared de babor: abre la bahía y la ventana Importar. El CBM de nadir (`cbm-nadir-nodo1`) es una escotilla con su aviso |
 | `cupula` (escotilla del suelo de Tranquility) | Una escotilla abría el menú del brazo | La Cupola es un cuarto (el cuadrado inscrito en sus 2,95 m: 2,08 m de lado, 1,5 m de alto). Dentro, el **puesto robótico (RWS)**: atracar o soltar con Canadarm2, «Cámaras de fuera y ventanas», «Catálogo y montaje», soltar desde la Bishop |
 | `bishop` (puerto de babor de Tranquility) | Una escotilla abría guardar o desplegar | La Bishop es un cuarto (1,4 × 1,4 × 1,6 m) con su **placa de cargas**: «Sujetar X a la placa», «Recoger X». Soltar se hace desde el RWS, como en la ISS |
 | `esclusa-kibo` | Abría el Hangar con el catálogo de vehículos | Escotilla con su aviso: la esclusa de Kibo es solo de carga. El inventario está en la **consola del JEMRMS** (`consola-jemrms`), en la pared de proa de Kibo |
-| Catálogo de especies, planos e importaciones | El Hangar (vehículos y componentes que se importan) se abría desde la esclusa de Kibo | Consolas: el catálogo de especies es el portátil `rack-catalogo`, junto al hábitat acuático de Kibo; Planos y Fabricación están en sus máquinas; importar está en la consola del JEMRMS (Hangar) y en el RWS |
+| Catálogo de especies, planos e importaciones | El Hangar (vehículos y componentes que se importan) se abría desde la esclusa de Kibo | Consolas: el catálogo de especies es el portátil `rack-catalogo`, junto al hábitat acuático de Kibo; Planos y Fabricación están en sus máquinas; los componentes y vehículos se importan desde el Hangar (consola del JEMRMS y RWS), y los pedidos de materiales desde la ventana Importar del portátil de carga de Unity |
 | Escotillas entre módulos | Paso | Paso (sin cambios) |
 | IDA de cenit y de proa de Harmony | Salir a lo acoplado | Igual |
 | `pma1`, `escotilla-eva`, `cbm-nadir-nodo2`, puertos libres | Aviso | Aviso: el segmento ruso queda fuera, la EVA está pendiente, el puerto está libre |
@@ -58,7 +58,7 @@ Dormir es una tarea de retos en su camarote (`sleepChore`, `modules/wellness/dat
 5. apaga la luz del camarote
 6. cierra los ojos y duerme
 
-Los pasos falsos son errores reales: apagar el ventilador, dejar el saco suelto, encender la luz al máximo. Al terminar, `crew.rest()` la calma. En la Starship es el mismo reto, en su camarote de la cubierta 2. La auditoría de animaciones (PX-20, [animaciones.md](../qa/animaciones.md)) comprueba cada paso en vivo.
+Los pasos falsos son errores reales: apagar el ventilador, dejar el saco suelto, encender la luz al máximo. Al terminar, `crew.rest()` la calma, y la puerta plegable de su camarote se cierra mientras duerme; al despertar se abre. En la Starship es el mismo reto, en su camarote de la cubierta 2. La auditoría de animaciones (PX-20, [animaciones.md](../qa/animaciones.md)) comprueba cada paso en vivo.
 
 ## Fuentes
 
@@ -70,7 +70,18 @@ Los pasos falsos son errores reales: apagar el ventilador, dejar el saco suelto,
 
 En el código: `COMPARTMENT_SOURCES` (`src/modules/station/data/compartments.ts`) y `SLEEP_SOURCES`.
 
-## Preguntas abiertas
+## Decidido (2026-11-17, por reglas.md)
 
-- **Las pestañas de la pantalla de la estación**: desde cualquier máquina se llega a cualquier pestaña. Por ejemplo, Hangar o Planos se abren desde la refinería, y PX-33 lo sigue haciendo así. ¿Se deja cada pestaña solo en su consola (Planos en el portátil de fabricación, Hangar en el JEMRMS y en el RWS)?
-- **Las «puertas» de los camarotes**: en la ISS, cada camarote tiene una puerta plegable. Aquí está abierta, sin puerta que tocar. ¿Se dibuja cerrada al dormir?
+- **Cada ventana de la pantalla de la estación se abre solo desde su consola**, en el compartimento donde se hace eso (§2.3). La pantalla ya no tiene barra de pestañas: muestra el nombre de la ventana que abrió su consola, y al terminar un reto se queda en ella. Las consolas:
+
+  | Ventana | Consola |
+  |---|---|
+  | Materiales (refinería, repostar) | La refinería; la planta de propelente abre en su apartado |
+  | Planos | Sus máquinas de fabricación |
+  | Fabricación (la cola) | Su consola |
+  | Hangar (catálogo, componentes) | La consola del JEMRMS en Kibo; «Catálogo y montaje» en el RWS de la Cupola |
+  | Importar (pedidos) | El **portátil de carga de Unity**, junto al CBM donde atracan los cargueros; el mismo portátil abre la bahía |
+  | Vida | Sus máquinas vivas |
+
+  El Hangar ya no salta a la bahía: dice «Se cambia en la bahía: el portátil de carga de Unity». Las tareas («Ir») llevan a la consola de su ventana.
+- **La puerta plegable de cada camarote se dibuja** (un acordeón de seis lamas, plegado a un lado del marco cuando está abierta). **Se cierra mientras duerme**: al terminar el reto de dormir, la puerta se cierra, ella se queda quieta unos segundos y, al despertar (las 06:00 GMT), la puerta se pliega otra vez. Igual en los camarotes de la Starship. Si una tarea la lleva a otro sitio, se despierta antes de ir.

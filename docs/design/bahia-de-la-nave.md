@@ -6,8 +6,7 @@ Berón preguntó dónde se personaliza la nave. La respuesta es una **segunda es
 
 Desde la fase 1 de accesos ([accesos.md](accesos.md)) la bahía está **solo en la estación**:
 
-- **Consola de la bahía** en el Nodo 2 (pared de babor, junto a las escotillas de atraque), o la tecla **B** dentro de la estación.
-- **Pantalla de la estación**, pestaña **Hangar**: botón **Abrir la bahía de la nave**.
+- **Portátil de carga de Unity** (pared de babor, junto al CBM de nadir donde atracan los cargueros), o la tecla **B** dentro de la estación. Es su único acceso: el Hangar ya no tiene botón a la bahía ([compartimentos.md](compartimentos.md), reglas.md §2.3).
 - Ya no hay botón en la cabina del módulo de aterrizaje ni escotilla en el módulo habitable de la nodriza (allí hay ahora una consola de navegación). Las piezas de la nodriza solo se cambian con la nodriza atracada en la estación.
 - **Volver** (o Esc) devuelve a donde estabas. Mientras estás en la bahía, la nave sigue a la deriva sin órdenes, igual que con el interior abierto.
 

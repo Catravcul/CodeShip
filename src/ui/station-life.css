@@ -1,11 +1,4 @@
 /* «Vida» tab of the station screen: the self-sufficiency gauge and the living machines (docs/design/autosustento.md). */
-.st-tabs.six { grid-template-columns: repeat(6, 1fr); }
-.st-tabs.six button { font-size: 11.5px; padding: 6px 1px; }
-/* Phones: six tabs in two rows of three, so «Fabricación» still fits. */
-@media (max-width: 560px) {
-  .st-tabs.six { grid-template-columns: repeat(3, 1fr); }
-  .st-tabs.six button { min-height: 34px; font-size: 12px; }
-}
 .lf-head { flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 10px; background: #2f9e6c22; border: 1px solid #2f9e6c66; }
 .lf-head small { color: #a9c7d8; font-size: 12px; }
 .lf-big { display: flex; flex-direction: column; align-items: center; min-width: 84px; }

@@ -49,7 +49,7 @@ Tests: EST-28 a EST-30.
 
 ### En el juego (mínimo)
 
-En la estación, pestaña **Hangar** → **Ver el catálogo**. Cada vehículo sale con su estado en color y una línea por pieza: cuántas hay en el hangar, cuántas pide y, si falta, por qué (sin plano, bloqueada hasta tener una máquina, o «fabrícalo en Planos»). **Construir** solo se activa con todas las piezas. Las gasta y deja la nave en el hangar, o en el dique si no cabe en el hangar en ninguna orientación. Recorrido PX-24 con capturas `docs/screenshots/catalogo-naves-*-movil.png`.
+En la estación, el **Hangar** (consola del JEMRMS en Kibo, o «Catálogo y montaje» en el puesto robótico de la Cupola) → **Ver el catálogo**. Cada vehículo sale con su estado en color y una línea por pieza: cuántas hay en el hangar, cuántas pide y, si falta, por qué (sin plano, bloqueada hasta tener una máquina, o «fabrícalo en Planos»). **Construir** solo se activa con todas las piezas. Las gasta y deja la nave en el hangar, o en el dique si no cabe en el hangar en ninguna orientación. Recorrido PX-24 con capturas `docs/screenshots/catalogo-naves-*-movil.png`.
 
 Las naves montadas se quedan en la lista del hangar. Todavía no vuelan: eso llega cuando Berón elija las bases (§3).
 

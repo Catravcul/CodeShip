@@ -361,7 +361,10 @@ export class StarshipInterior {
       this.d.duel.onRightPick = undefined;
       visual?.clear();
       this.session = null;
-      if (run.status === "done" && chore.kind === "dormir") this.say("Duermes en tu camarote: el ventilador sopla y la luz está apagada", 5);
+      if (run.status === "done" && chore.kind === "dormir") {
+        this.say("Duermes en tu camarote, con la puerta plegable cerrada: el ventilador sopla y la luz está apagada", 5);
+        this.mode.sleep(OWN_BUNK, undefined, () => this.say("Despiertas a las 06:00 GMT, más tranquila: la puerta se abre", 5));
+      }
       else if (run.status === "done") this.say(chore.kind === "cocinar" ? `${chore.title.replace(/^Cocinar /, "")}: listo, como en la ISS` : "Hecho", 5);
     };
     this.d.duel.show(

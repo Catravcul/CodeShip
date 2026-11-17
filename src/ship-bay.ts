@@ -480,11 +480,18 @@ export class ShipBay {
   }
 
   /** Swap one of the station's own components (wings, radiators, shield) with one from the hangar. */
+  /**
+   * The station's own outside parts are not changed here (docs/design/brazo-robotico.md, «Qué se cambia dónde»):
+   * set by main.ts, it plans the spacewalk from Quest and says so.
+   */
+  planExterior?: (o: StationComponentOption) => string;
+
   private runStation(o: StationComponentOption): void {
     const out = this.outfit;
     const store = this.parts;
     if (!out || !store) return;
     if (o.locked) return this.say(o.locked);
+    if (this.planExterior) return this.say(this.planExterior(o));
     this.openChore(stationRefitChore(out, o.component), (status) => {
       if (status === "failed") return this.say("No salió: la estación sigue como estaba");
       if (status !== "done") return;

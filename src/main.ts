@@ -147,6 +147,7 @@ import { importGood } from "@modules/imports/data/goods";
 import { orderLetter } from "@modules/imports/data/letters";
 import { cargoMaterial } from "@modules/station/data/materials";
 import "./ui/acciones.css";
+import { wireRobotics } from "./robotics-wiring";
 import { LanderEcs } from "./lander-ecs";
 import { LanderCabin } from "./lander-cabin";
 import { BridgeRoom } from "./bridge";
@@ -910,7 +911,7 @@ const stationLife = new StationLife({
   lookOutside: (show) => stationOutside.open(show),
   openCatalog: () => sanctuary.catalog.open(),
   stepVisual: (chore, area) => stationSteps.crew(chore, area),
-  otherChore: (id) => lifeSupport.startChore(id),
+  otherChore: (id) => lifeSupport.startChore(id) || arm.startChore(id),
   ...(REAL_ONLY
     ? {
         cargoActions: () => lifeSupport.cargoActions(),
@@ -962,8 +963,10 @@ const stationInside = new StationInteriorMode(root, playInterior(), {
           ? "Cerrada: el módulo está atracado en el CBM de Unity. Devuélvelo a su IDA desde la Cupola"
           : undefined,
   openTasks: () => taskBoard.open(),
-  actions: (f) => (f.action.kind === "soporte-vital" ? lifeSupport.actions(f) : stationLife.actions(f)),
-  act: (f, a) => (f.action.kind === "soporte-vital" ? lifeSupport.act(f, a) : stationLife.act(f, a)),
+  actions: (f) => (f.action.kind === "soporte-vital" ? lifeSupport.actions(f) : [...arm.robotics.actions(f), ...stationLife.actions(f)]),
+  act: (f, a) => (f.action.kind === "soporte-vital" ? lifeSupport.act(f, a) : arm.robotics.act(f, a) || stationLife.act(f, a)),
+  // Quest's suits and EVA hatch: the real spacewalk (station-eva.ts).
+  airlock: { actions: (f) => arm.stationEva.actions(f), act: (f, a) => arm.stationEva.act(f, a) },
   readout: (f) => (REAL_ONLY || f.id !== "cocina" ? lifeSupport.readout(f) : undefined),
   rackState: (f) => lifeSupport.rackState(f),
   landerInHangar: () => false,
@@ -979,6 +982,9 @@ const stationInside = new StationInteriorMode(root, playInterior(), {
 });
 // Station chores acted out by Doménica at their fixture (the galley, the machines): PX-20.
 const stationSteps = stationStepVisuals(stationInside, () => screenFromInside || stationInside.active);
+// Canadarm2 and Dextre from the Cupola, and spacewalks from Quest (docs/design/brazo-robotico.md, paseo-espacial.md).
+const arm = wireRobotics({ root, scene, stationRoot: stationModel.root, duel: duelView, inside: stationInside, outside: stationOutside, cargo: lifeSupport.cargo, berth: landerBerth, bishop: bishopAirlock, atPort: atStationPort, landerMassKg: () => ship.massKg, outfit: stationOutfit, hangar: stationOps.station.hangar, say: (t, sec) => (arm.stationEva.active ? flash(t, sec ?? 5) : stationInside.say(t, sec)) });
+bay.planExterior = (o) => arm.planExterior(o);
 stationScreen.stepVisual = (session, mode) => stationSteps.machine(session, mode);
 let stationGrownAt = stationOutfit.version;
 /** The station grew: new modules in the structure (keep-out), the model outside and the rooms inside. */
@@ -1130,7 +1136,7 @@ const cabin = new LanderCabin(root, {
 });
 
 /** Which vehicle she is in now, and which hatches are open between them. */
-const crewIn = (): Vehicle => (interior.active || bridge.active || deck.active || subj.piloting ? "nodriza" : stationInside.active || stationScreen.active || bay.active ? "estacion" : "modulo");
+const crewIn = (): Vehicle => (interior.active || bridge.active || deck.active || subj.piloting ? "nodriza" : stationInside.active || stationScreen.active || bay.active || arm.stationEva.active ? "estacion" : "modulo");
 const vehicleLinks = () => ({ moduloNodriza: docking.dockedTo === mothership, moduloEstacion: atStationPort(), nodrizaEstacion: !!mothership.dockedTo });
 /** Every task of the game, from every module (docs/design/habitaculo.md §Tareas). */
 function allTasks(): Task[] {
@@ -1157,7 +1163,7 @@ function allTasks(): Task[] {
     credits: wallet.balance,
     refuel: ship.propellants.some((p) => ship.propellantKg(p) < 0.5 * ship.propellantCapacityKg(p)),
     repairs: needingAttention(bay.status()).map((c) => ({ id: c.id, name: c.name, critical: c.attention === "critico" })),
-    stationChores: [...stationLife.taskFacts(), ...lifeSupport.taskFacts()],
+    stationChores: [...stationLife.taskFacts(), ...lifeSupport.taskFacts(), ...arm.taskFacts()],
     landerEcs: landerEcs.facts(),
   });
 }
@@ -1527,6 +1533,7 @@ renderer.setAnimationLoop((now) => {
     stationScreen.notice(`Llega al hangar: ${e.label}`);
   }
   lifeSupport.tick(stationHours);
+  arm.tick(stationHours);
   landerEcs.tick(stationHours);
   starship?.lifeSupport?.tick(stationHours);
   for (const e of importOps.drainEvents()) {
@@ -1581,8 +1588,21 @@ renderer.setAnimationLoop((now) => {
     present(cabin.scene, cabin.camera);
     return;
   }
+  arm.robotics.update(dt);
+  // On a spacewalk from Quest: the station from outside, behind her.
+  if (arm.stationEva.active) {
+    arm.stationEva.update(dt);
+    stationModel.update(flight.simTimeS, skyBodies.sunDirection);
+    present(scene, arm.stationEva.camera);
+    return;
+  }
   if (stationInside.active) {
     stationInside.update(dt);
+    // An arm challenge: her hands on the RWS's controllers first, then the arm outside.
+    if (arm.robotics.showingHands && stationInside.stage(dt)) {
+      present(stationInside.scene, stationInside.camera);
+      return;
+    }
     // The dry dock's cameras: the space scene from beside the dock, over the station.
     if (dryDock.viewing || stationOutside.viewing) {
       mothershipModel.update(dt, ring?.omegaRadS ?? 0, now / 1000);
@@ -1704,4 +1724,4 @@ for (const sel of [".nano-action", ".trip-chip", ".land-offer.lander", ".land-bo
   if (el) ctxDock.appendChild(el);
 }
 
-(window as unknown as { codeship: unknown }).codeship = { sanctuary, journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, starship, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, landerBerth, lifeSupport, bishop: bishopAirlock, stationOutside, stationModel, stationOps, refuelOps, importOps, componentImports, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels, dryDock };
+(window as unknown as { codeship: unknown }).codeship = { sanctuary, journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, starship, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, landerBerth, lifeSupport, bishop: bishopAirlock, stationOutside, stationModel, stationOps, refuelOps, importOps, componentImports, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels, dryDock, robotics: arm.robotics, stationEva: arm.stationEva, exteriorWork: arm.work };

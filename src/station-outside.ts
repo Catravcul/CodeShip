@@ -174,6 +174,9 @@ export class StationOutside {
     return this.armShow.audit(this.view.camera, this.root.parent ?? this.root, sheetTop, { w: c?.width ?? innerWidth, h: c?.height ?? innerHeight });
   }
 
+  /** The Cygnus as robotics-game.ts has it (set by main.ts after both exist). */
+  cygnusOf?: () => "fuera" | "punto" | "atracado";
+
   /** Capturing by hand (robotics-game.ts): the camera follows the LEE from the Cupola's window. */
   manualOn = false;
 
@@ -283,7 +286,7 @@ export class StationOutside {
       if (this.view.open) this.frameProcedure();
       return;
     }
-    this.armShow.setCygnus(this.deps.cygnus?.() ?? "fuera");
+    this.armShow.setCygnus(this.cygnusOf?.() ?? this.deps.cygnus?.() ?? "fuera");
     this.armShow.update(dt);
     const p = this.play;
     if (p) {

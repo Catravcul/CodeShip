@@ -4,11 +4,12 @@ import type { InstalledEquipment, StationOutfit } from "../domain/outfit";
 import type { PressurisedModule, StationLayout } from "../domain/structure";
 import { GROWTH_SOURCES, startingOutfit } from "./outfit";
 import { REALITY_NAME } from "@core/reality";
-import { ISS_SOURCES } from "./iss";
+import { ISS_SOURCES, issModule } from "./iss";
 import { rackSpec } from "@modules/life-support/data/eclss-machines";
 import type { RackKind } from "@modules/life-support/domain/eclss";
 import { POLANA_LAYOUT, STRUCTURE_SOURCES } from "./structure";
 import { eclssFixtures, type RackPlacement } from "./eclss-placement";
+import { backWallFixture, COMPARTMENT_SOURCES, CREW_QUARTER, OWN_BUNK, wallCompartment } from "./compartments";
 
 // --- Sources -------------------------------------------------------------------
 export const INTERIOR_SOURCES = {
@@ -193,6 +194,54 @@ export function stationInteriorPlan(layout: StationLayout = POLANA_LAYOUT, outfi
     },
   ];
 
+  // --- Compartments one floats into (docs/design/compartimentos.md) ---------------------------
+  // Harmony's four crew quarters, one on each face of one rack bay, like the ISS's; the bay by Destiny is ours.
+  const CQ = CREW_QUARTER;
+  const C = COMPARTMENT_SOURCES;
+  const cqZ = h2.centre.z - h2.half.z + 0.82 * 2 * h2.half.z;
+  const quarters = (["estribor", "babor", "techo", "suelo"] as const).map((face, i) =>
+    wallCompartment({
+      id: `camarote-${i + 1}`,
+      code: `CQ${i + 1}`,
+      label: `Camarote ${i + 1}`,
+      aisle: h2,
+      face,
+      along: cqZ,
+      size: { w: CQ.widthM, h: CQ.heightM, d: CQ.depthM },
+      door: { w: CQ.doorWidthM, h: CQ.doorHeightM },
+      basis: "Camarote de la ISS: 2,1 m³ dentro (NASA); 1,05 × 2 m de un hueco de bastidor y 1 m de fondo (derivado). La puerta plegable (0,8 × 1,8 m) es valor de juego",
+      source: C.crewQuarters,
+    }),
+  );
+  // The Cupola under Tranquility: 2,95 m across and 1,5 m tall; the room is the square inscribed in its circle (derived).
+  const cupolaSide = Math.round((issModule("cupula").diameterM / Math.SQRT2) * 100) / 100;
+  const cupola = wallCompartment({
+    id: "cupola",
+    code: "CUP1",
+    label: "Cupola",
+    aisle: n3,
+    face: "suelo",
+    along: xEnd(n3, 1) - 0.5 * 2 * n3.half.x,
+    size: { w: cupolaSide, h: cupolaSide, d: issModule("cupula").lengthM },
+    door: { w: 1.27, h: 1.27 },
+    basis: `Cupola: 2,95 m de diámetro y 1,5 m de alto (real); dentro, el cuadrado inscrito de ${cupolaSide.toLocaleString("es-ES")} m de lado (derivado). El vestíbulo CBM queda dentro del hueco de bastidores (distribución nuestra)`,
+    source: ISS_SOURCES.cupola,
+  });
+  // The Bishop on Tranquility's port end: a bell 2,014 m across and 1,8 m tall, 3,99 m³; the room is the box inside it (derived).
+  const bishop = wallCompartment({
+    id: "bishop",
+    code: "BSH1",
+    label: "Bishop",
+    aisle: n3,
+    face: "babor",
+    along: n3.centre.z,
+    size: { w: 1.4, h: 1.4, d: 1.6 },
+    door: { w: 1.27, h: 1.27 },
+    basis: "Bishop: 2,014 m de diámetro, 1,8 m de alto y 3,99 m³ (real); dentro, una caja de 1,4 × 1,4 × 1,6 m (3,1 m³, derivado). Se pasa por la escotilla CBM de Tranquility",
+    source: ISS_SOURCES.bishop,
+  });
+  for (const c of [...quarters, cupola, bishop]) volumes.push(c.room, c.doorway);
+
   // --- Fixtures --------------------------------------------------------------
   const along = (v: InteriorVolume, f: number) => {
     const k = v.half.x > v.half.z ? "x" : "z";
@@ -211,11 +260,22 @@ export function stationInteriorPlan(layout: StationLayout = POLANA_LAYOUT, outfi
     // Harmony: the two IDAs and the four crew quarters (one fixture), like on the ISS.
     { id: "salir-sonda", label: "Escotilla del módulo (IDA de cenit)", volume: "nodo-2", face: "techo", at: new Vec3(0, N.y, h2Mid), size: new Vec3(0.8, 0.1, 0.8), action: { kind: "salir", to: "sonda" }, info: "Escotilla IDSS en el cenit de Harmony, como el IDA-3: por aquí vuelves a la cabina del módulo de aterrizaje", source: STRUCTURE_SOURCES.nds },
     { id: "salir-nodriza", label: "Escotilla de la nodriza (IDA de proa)", volume: "nodo-2", face: "proa", at: new Vec3(0, 0, zEnd(h2, -1)), size: new Vec3(0.8, 0.8, 0.1), action: { kind: "salir", to: "nodriza" }, info: "Escotilla IDSS en la proa de Harmony, como el IDA-2 donde atracaba el transbordador: por aquí se pasa a la nodriza atracada", source: STRUCTURE_SOURCES.nds },
-    { id: "camarotes", label: "Camarotes (4)", volume: "nodo-2", face: "estribor", at: new Vec3(N.x, 0, along(h2, 0.85)), size: new Vec3(0.75, 1.9, 0.9), action: { kind: "tripulacion", area: "camarotes" }, info: "Los cuatro camarotes de Harmony, como en la ISS: unos 2 m³ cada uno, saco de dormir sujeto a la pared, luz, ventilación y portátil", source: S.crewQuarters },
+    // Inside each crew quarter, its sleeping bag on the back wall (the laptop and the light are drawn beside it).
+    ...quarters.map(({ room }, i) =>
+      backWallFixture(room, (["estribor", "babor", "techo", "suelo"] as const)[i]!, {
+        id: `saco-${i + 1}`,
+        label: `saco-${i + 1}` === OWN_BUNK ? "Tu saco de dormir" : `Saco de dormir · camarote ${i + 1}`,
+        size: { w: 0.7, h: 1.8, d: 0.12 },
+        action: { kind: "tripulacion", area: "camarotes" },
+        info: "Camarote de Harmony: 2,1 m³, saco de dormir sujeto a la pared, luz regulable, portátil y su propio ventilador",
+        source: C.crewQuarters,
+      }),
+    ),
     { id: "cbm-nadir-nodo2", label: "CBM de nadir de Harmony", volume: "nodo-2", face: "suelo", at: new Vec3(0, -N.y, h2Mid), size: new Vec3(1.27, 0.1, 1.27), action: { kind: "info" }, info: "Puerto CBM de los cargueros (Dragon de carga, Cygnus, HTV), como en la ISS: aquí llegan los kits importados", source: ISS_SOURCES.harmony },
     // Unity: the galley and the table, the lander's CBM (the ship bay) and the yoga mat.
     { id: "cocina", label: "Cocina y mesa", volume: "nodo-1", face: "estribor", at: new Vec3(N.x, 0.1, along(u, 0.15)), size: new Vec3(rackSpec("galeria").size.d, rackSpec("galeria").size.h, rackSpec("galeria").size.w), action: { kind: "tripulacion", area: "cocina" }, info: "La cocina de la ISS está en Unity: calentador de comida, grifo de agua caliente y fría y la mesa con cinchas y velcro. Cocina con la despensa de la estación", source: STRUCTURE_SOURCES.unity, rack: "galeria" },
-    { id: "consola-bahia", label: "Bahía de la nave (CBM de nadir)", volume: "nodo-1", face: "suelo", at: new Vec3(0, -N.y, 0), size: new Vec3(1.27, 0.1, 1.27), action: { kind: "bahia" }, info: "CBM de nadir de Unity, donde atracan los Cygnus: el brazo atraca aquí el módulo de aterrizaje y en la bahía se revisan y se cambian sus piezas y las de la nodriza", source: ISS_SOURCES.unity },
+    { id: "cbm-nadir-nodo1", label: "CBM de nadir de Unity", volume: "nodo-1", face: "suelo", at: new Vec3(0, -N.y, 0), size: new Vec3(1.27, 0.1, 1.27), action: { kind: "info" }, info: "Puerto CBM de nadir de Unity, donde atracan los Cygnus: Canadarm2 atraca aquí el módulo de aterrizaje (licencia: el LM no lleva CBM). La escotilla está cerrada: el módulo se usa desde su IDA", source: ISS_SOURCES.unity },
+    { id: "consola-bahia", label: "Portátil de la bahía", volume: "nodo-1", face: "babor", at: new Vec3(-N.x, 0, along(u, 0.8)), size: new Vec3(0.3, 0.5, 0.6), action: { kind: "bahia" }, info: "Portátil de Unity junto al CBM de nadir: revisa y cambia las piezas del módulo de aterrizaje y de la nodriza atracados (las piezas llegan importadas)", source: C.referenceGuide },
     { id: "esterilla", label: "Esterilla de yoga", volume: "nodo-1", face: "techo", at: new Vec3(0, N.y, along(u, 0.8)), size: new Vec3(0.9, 0.1, 1.4), action: { kind: "tripulacion", area: "esterilla" }, info: "Esterilla con cinchas para los pies: yoga y, sentada en loto, los ajustes generales", source: S.tranquility },
     { id: "pma1", label: "Escotilla de popa (PMA-1)", volume: "nodo-1", face: "popa", at: new Vec3(0, 0, zEnd(u, 1)), size: new Vec3(1.0, 1.0, 0.1), action: { kind: "info" }, info: "Por el PMA-1 se pasa al segmento ruso (Zarya y Zvezda), que no está en el juego", source: ISS_SOURCES.unity },
     // Destiny: the window, the coolant pumps (ITCS, like the lab's) and the life-support laptop (the other racks come from the outfit).
@@ -225,18 +285,21 @@ export function stationInteriorPlan(layout: StationLayout = POLANA_LAYOUT, outfi
     // Tranquility: hygiene, exercise, the life-support rack bays, the Cupola and the Bishop.
     { id: "aseo", label: "Aseo (WHC)", volume: "nodo-3", face: "proa", at: new Vec3(n3x(0.15), 0, n3.centre.z - n3.half.z), size: new Vec3(1.0, 1.9, 0.75), action: { kind: "tripulacion", area: "aseo" }, info: "El WHC de Tranquility, con el UWMS desde 2020: el aire arrastra lo que en la Tierra cae", source: ISS_SOURCES.tranquility },
     { id: "ejercicio", label: "Ejercicio (T2 y ARED)", volume: "nodo-3", face: "popa", at: new Vec3(n3x(0.2), 0, n3.centre.z + n3.half.z), size: new Vec3(1.6, 1.9, 0.6), action: { kind: "tripulacion", area: "ejercicio" }, info: "La cinta T2 con arneses y la máquina de pesas ARED (hasta 272 kg), en Tranquility como en la ISS: en ingravidez hay que hacer ejercicio cada día", source: S.exercise },
-    { id: "cupula", label: "Cupola y brazo (RWS)", volume: "nodo-3", face: "suelo", at: new Vec3(n3x(0.5), -N.y, n3.centre.z), size: new Vec3(1.27, 0.1, 1.27), action: { kind: "brazo" }, info: "Siete ventanas y el puesto robótico de Canadarm2: desde aquí el brazo atraca el módulo en el CBM de Unity y se mira la estación por fuera", source: ISS_SOURCES.cupola },
+    // The Cupola's robotic workstation (RWS), on its aft wall: the arm, the outside cameras, the catalogue and assembly, the Bishop.
+    { id: "cupula", label: "Puesto robótico (RWS)", volume: "cupola", face: "popa", at: new Vec3(cupola.room.centre.x, cupola.room.centre.y, cupola.room.centre.z + cupola.room.half.z), size: new Vec3(1.2, 0.9, 0.35), action: { kind: "brazo" }, info: "Puesto robótico de la Cupola: los dos mandos de Canadarm2, portátiles y las cámaras de fuera bajo siete ventanas. Desde aquí se atraca el módulo, se monta lo del catálogo y se suelta la Bishop", source: C.rws },
     // The life-support racks of Tranquility (ESA: ARS, OGS, WRS 1 and 2) and its fire post, with eclss-real's data and kit.
     eclss("wrs", n3, 0, n3x(0.82)),
     eclss("ogs", n3, 1, n3x(0.77)),
     eclss("ar", n3, "techo", n3x(0.85)),
     eclss("incendios", n3, "techo", n3x(0.3)),
-    { id: "bishop", label: "Esclusa Bishop", volume: "nodo-3", face: "babor", at: new Vec3(xEnd(n3, -1), 0, n3.centre.z), size: new Vec3(0.1, 1.27, 1.27), action: { kind: "bishop" }, info: "Esclusa de carga Bishop (1059 kg, 3,99 m³) en el puerto de babor: Canadarm2 la saca, suelta la sonda o los cubesats y la vuelve a atracar", source: ISS_SOURCES.bishop },
+    // Inside the Bishop: the plate the payloads are fixed to before Canadarm2 takes it out (released from the Cupola).
+    backWallFixture(bishop.room, "babor", { id: "bishop", label: "Placa de cargas de la Bishop", size: { w: 1.0, h: 1.0, d: 0.1 }, action: { kind: "bishop" }, info: "Dentro de la Bishop (1059 kg, 3,99 m³): aquí se sujetan la sonda o los cubesats; luego Canadarm2 la saca desde el puesto robótico de la Cupola, los suelta y la vuelve a atracar", source: ISS_SOURCES.bishop }),
     // Quest: the suits and the EVA hatch.
     { id: "trajes", label: "Trajes y esclusa", volume: "quest", face: "proa", at: new Vec3(along(quest, 0.35), 0, quest.centre.z - quest.half.z), size: new Vec3(1.2, 1.7, 0.4), action: { kind: "esclusa" }, info: "Esclusa de equipo de Quest: los trajes, sus baterías y el agua de sus mochilas", source: S.quest },
     { id: "escotilla-eva", label: "Escotilla EVA", volume: "quest", face: "estribor", at: new Vec3(xEnd(quest, 1), 0, quest.centre.z), size: new Vec3(0.1, 1.0, 1.0), action: { kind: "info" }, info: "Escotilla EVA de Quest. Salir de paseo por fuera de la estación está en pendientes", source: S.quest },
     // Kibo: the airlock to the exposed platform, where the parts racks are.
-    { id: "esclusa-kibo", label: "Esclusa de Kibo · plataforma expuesta", volume: "kibo", face: "babor", at: new Vec3(xEnd(kibo, -1), 0, kibo.centre.z), size: new Vec3(0.1, 0.9, 0.9), action: { kind: "panel", panel: "hangar" }, info: "La esclusa de Kibo saca las piezas a la plataforma expuesta (JEM-EF, 12 puertos) con su mesa deslizante y el brazo JEMRMS: aquí está el inventario", source: ISS_SOURCES.kibo },
+    { id: "esclusa-kibo", label: "Esclusa de Kibo · plataforma expuesta", volume: "kibo", face: "babor", at: new Vec3(xEnd(kibo, -1), 0, kibo.centre.z), size: new Vec3(0.1, 0.9, 0.9), action: { kind: "info" }, info: "Esclusa de experimentos de Kibo: solo para cargas, una persona no cabe. La carga sale en su mesa deslizante y el brazo JEMRMS la lleva a la plataforma expuesta (JEM-EF, 12 puertos); se maneja desde la consola del JEMRMS", source: ISS_SOURCES.kibo },
+    { id: "consola-jemrms", label: "Consola del JEMRMS", volume: "kibo", face: "proa", at: new Vec3(along(kibo, 0.12), 0, kibo.centre.z - kibo.half.z), size: new Vec3(1.05, 1.2, 0.5), action: { kind: "panel", panel: "hangar" }, info: "Consola del brazo de Kibo (JEMRMS) junto a su esclusa: el inventario de la plataforma expuesta, el catálogo de vehículos y su montaje", source: ISS_SOURCES.kibo },
     // Rack slots for the species catalogue (adapters/three/interior/rack-slots.ts): the Aquatic Habitat flew in
     // Kibo (JAXA, medaka, 2012) and the catalogue is a laptop on the rack beside it.
     { id: "rack-acuatico", label: "Hábitat acuático (AQH)", volume: "kibo", face: "popa", at: new Vec3(along(kibo, 0.3), 0, kibo.centre.z + kibo.half.z), size: new Vec3(1.05, 2.0, 0.86), action: { kind: "info" }, info: "El Aquatic Habitat de JAXA, en Kibo como en la ISS: dos tanques de 0,7 L, pulmón artificial y biofiltro; aquí vivieron medakas hasta 90 días. Se llena con lo que se adopta en el catálogo", source: "https://iss.jaxa.jp/en/kiboexp/pm/aqh" },
@@ -300,7 +363,7 @@ export function stationInteriorPlan(layout: StationLayout = POLANA_LAYOUT, outfi
 function doorFixtures(volumes: readonly InteriorVolume[]): Fixture[] {
   const out: Fixture[] = [];
   for (const h of volumes) {
-    if (h.kind !== "escotilla" || !h.through || h.id.startsWith("tunel")) continue;
+    if (h.kind !== "escotilla" || !h.through || h.id.startsWith("tunel") || h.id.startsWith("paso-")) continue;
     const k = h.through;
     const axis = new Vec3(k === "x" ? 1 : 0, 0, k === "z" ? 1 : 0);
     const sideOf = (s: number) => {
@@ -309,7 +372,8 @@ function doorFixtures(volumes: readonly InteriorVolume[]): Fixture[] {
     };
     const a = sideOf(-1);
     const b = sideOf(1);
-    if (!a || !b) continue;
+    // A compartment's opening has no door to tap: she floats in (docs/design/compartimentos.md).
+    if (!a || !b || a.kind === "compartimento" || b.kind === "compartimento") continue;
     for (const [from, to, s] of [[a, b, -1], [b, a, 1]] as const) {
       // Seen from `from`, the hatch is on its wall toward `to`.
       const face: Face = k === "z" ? (s < 0 ? "popa" : "proa") : s < 0 ? "estribor" : "babor";

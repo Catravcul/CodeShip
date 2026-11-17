@@ -89,8 +89,9 @@ describe("station interior (sized from the structure)", () => {
     expect(panel("refineria")).toBe("propelente");
     expect(panel("fundicion")).toBe("fabricacion");
     expect(panel("impresora")).toBe("planos");
-    // Kibo's airlock keeps the parts list (they are outside on the JEM-EF, as on the ISS).
-    expect(panel("esclusa-kibo")).toBe("hangar");
+    // The parts outside on the JEM-EF are listed at the JEMRMS console by Kibo's airlock; the airlock itself is a hatch (no menu).
+    expect(panel("consola-jemrms")).toBe("hangar");
+    expect(interior.fixture("esclusa-kibo")!.action.kind).toBe("info");
     for (const p of ["materiales", "planos", "fabricacion", "hangar"] as const) expect(interior.fixturesFor(p).length).toBeGreaterThan(0);
     expect(interior.fixture("refineria")!.machine).toBe("refineria");
   });
@@ -216,7 +217,7 @@ describe("station interior as the station grows (generated from the outfit)", ()
         // Toward the aisle's axis, keeping the position along the module (or along the axis for an end port).
         const endCap = f.face === "babor" || f.face === "estribor" ? v.half.x > v.half.z : f.face === "proa" || f.face === "popa" ? v.half.z > v.half.x : false;
         const along = v.half.x > v.half.z ? "x" : "z";
-        const q = endCap ? p : new Vec3(along === "x" ? f.at.x : p.x, p.y, along === "z" ? f.at.z : p.z);
+        const q = endCap || v.kind === "compartimento" ? p : new Vec3(along === "x" ? f.at.x : p.x, p.y, along === "z" ? f.at.z : p.z);
         ok = inside.fits(q, BODY, false) && distanceToBox(fixtureBox(f), q) <= 1.0;
       }
       expect(ok, f.id).toBe(true);

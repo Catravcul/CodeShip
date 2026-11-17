@@ -113,7 +113,7 @@ export class FlightView {
       this.center();
     });
     this.warpBtn = this.menu.add({ className: "warp-btn", icon: ICON.warp, label: "Tiempo ×1", key: "X" }, () => this.warpAvailable && (this.warpIdx = (this.warpIdx + 1) % WARPS.length));
-    this.menu.add({ className: "center-btn", icon: ICON.center, label: "Centrar la vista", key: "V" }, () => this.center());
+    // Centring the view is a double tap on «Mirar» (or V): no icon of its own (Berón, 2026-11-17: an icon nobody understood).
     this.tag = document.createElement("div");
     this.tag.className = "cam-tag";
     root.appendChild(this.tag);

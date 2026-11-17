@@ -39,10 +39,15 @@ export async function habitaculo(j) {
     j.check(`junto a «${id}» sale una sola tarjeta, la suya, y ningún botón se solapa`, r.near === id && r.cards === 1 && over.length === 0, `${r.near} · ${r.cards} tarjeta(s)${over.length ? " · " + over.slice(0, 2).join("; ") : ""}`);
   }
   await j.shot("habitaculo-maquinas");
-  await j.useMachine("cabin", "asiento", "desacoplar", "Desacoplar desde el puesto del comandante");
+  // The commander's station: Manual and Automático; undocking is the dock switch of the flight view (PX-41).
+  await j.useMachine("cabin", "asiento", "pilotar", "Manual");
+  await p.waitForTimeout(900);
+  await j.tap(".dock-btn", "Desacoplar (interruptor de acople)");
   await p.waitForTimeout(600);
-  j.check("el puesto del comandante desacopla el módulo", await p.evaluate(() => !window.codeship.docking.docked));
-  await capture(j, "acople", "Consola de acople");
+  j.check("el interruptor de acople de la vista de vuelo desacopla el módulo", await p.evaluate(() => !window.codeship.docking.docked));
+  await capture(j, "acople", "Interruptor de acople");
+  await j.tap(".stand-btn", "Dejar el puesto: habitáculo");
+  await p.waitForTimeout(900);
 
   // The yoga mat: sit in lotus, the settings open; keyboard help on and off, kept in the browser.
   await j.useMachine("cabin", "esterilla", "ajustes", "Sentarse en loto: ajustes");

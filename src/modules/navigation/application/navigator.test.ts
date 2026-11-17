@@ -153,4 +153,15 @@ describe("Navigator", () => {
     expect(flight.target).toBe(bennu);
     expect(nav.canProgram().ok).toBe(false);
   }, 30_000);
+
+  it("NAV-31 «Automático» at the lander's seat: the trip challenge for its own hop, then its autopilot flies it", () => {
+    const { nav, flight, bennu } = make(new Vec3(250, 120, 2600));
+    const run = nav.startLanderProgramming(bennu.data.id);
+    expect(nav.status).toBe("programming");
+    expect(run.chore.title).toContain(bennu.data.name);
+    while (run.current) nav.answer(right(run.current));
+    expect(nav.status).toBe("autopilot");
+    expect(flight.guidance).not.toBeNull();
+    expect(nav.carrierTrip).toBeUndefined();
+  }, 30_000);
 });

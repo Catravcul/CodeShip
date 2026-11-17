@@ -6,7 +6,7 @@ import { FlightComputer, NO_INPUT } from "@modules/flight/application/flight-com
 import { RigidBodyState } from "@modules/flight/domain/rigid-body";
 import { Ship } from "@modules/ship/domain/ship";
 import { PROBE_BATTERY_WH, PROBE_LOAD_W, PROBES_ON_BOARD, probeDesign, PROBE_STEP_S } from "@modules/ship/data/probe";
-import { ProbeOps } from "./probe-ops";
+import { DEPLOYER, PROBE_TUNING, ProbeOps } from "./probe-ops";
 
 const r = BENNU.meanRadiusM.value;
 const bennu = new Asteroid(BENNU, Vec3.ZERO);
@@ -26,6 +26,15 @@ const setup = (heightM = 1.5, s = spec) => {
 };
 const fly = (ops: ProbeOps, seconds: number, threat?: Parameters<ProbeOps["update"]>[2]) => {
   for (let t = 0; t < seconds; t += 1 / 30) ops.update(1 / 30, NO_INPUT, threat);
+};
+
+/** The deployer's whole sequence (door, slide out, springs), s. */
+const DEPLOY_S = DEPLOYER.doorS + DEPLOYER.pushS + 0.1;
+/** Start the release and run the deployer's sequence until the probe is free. */
+const release = (ops: ProbeOps, away: Vec3) => {
+  const ok = ops.launch(away);
+  if (ok) fly(ops, DEPLOY_S);
+  return ok;
 };
 
 describe("ProbeOps", () => {
@@ -56,17 +65,59 @@ describe("ProbeOps", () => {
     const { ops } = setup();
     expect(ops.launch(DOWN)).toBe(true);
     expect(ops.launch(DOWN)).toBe(false);
+    // The deployer's door opens and the probe slides out, still held: not flying yet.
+    fly(ops, DEPLOYER.doorS + 1);
+    expect(ops.status).toBe("estibada");
+    expect(ops.deploying).toBe(true);
+    expect(ops.doorOpen(ops.slot)).toBe(1);
+    fly(ops, DEPLOYER.pushS);
     expect(ops.status).toBe("en-vuelo");
-    fly(ops, 20);
+    expect(ops.doorOpen(0)).toBe(1);
+    fly(ops, 90);
     expect(ops.status).toBe("posada");
     expect(ops.parkedOn).toBe(BENNU.id);
-    expect(ops.drainEvents().map((e) => e.type)).toEqual(["lanzada", "posada"]);
+    expect(ops.drainEvents().map((e) => e.type)).toEqual(["desplegando", "lanzada", "posada"]);
+  });
+
+  it("SON-08 the deployer releases it at 3 cm/s from the carrier's hull, after its door opens and it slides out", () => {
+    const { ops } = setup(400);
+    const start = ops.flight.state.position;
+    expect(PROBE_TUNING.releaseMs).toBe(0.03);
+    release(ops, new Vec3(0, 1, 0));
+    const s = ops.flight.state;
+    // Free at the deployer's edge, moving away at the springs' 3 cm/s.
+    expect(s.position.sub(start).length()).toBeCloseTo(DEPLOYER.extensionM + 0.03 * 0.1, 1);
+    expect(s.velocity.y).toBeGreaterThan(0.025);
+    expect(s.velocity.y).toBeLessThan(0.035);
+    expect(ops.drainEvents().map((e) => e.type)).toEqual(["desplegando", "lanzada"]);
+  });
+
+  it("SON-09 a parked probe's mission ends there (it never comes back); the next deployer takes over, and an empty one is refilled only by loading a new one", () => {
+    const { ops } = setup();
+    release(ops, DOWN);
+    fly(ops, 90);
+    expect(ops.status).toBe("posada");
+    expect(ops.endMission()).toBe(true);
+    expect(ops.ended).toEqual([{ serial: 1, asteroidId: BENNU.id }]);
+    expect(ops.status).toBe("estibada");
+    expect(ops.slot).toBe(1);
+    expect(ops.inDeployers).toBe(1);
+    release(ops, DOWN);
+    fly(ops, 90);
+    ops.endMission();
+    expect(ops.status).toBe("sin-sonda");
+    expect(ops.emptyDeployer).toBe(0);
+    expect(ops.load()).toBe(true);
+    expect(ops.status).toBe("estibada");
+    expect(ops.doorOpen(0)).toBe(0);
+    expect(ops.load()).toBe(true);
+    expect(ops.load()).toBe(false);
   });
 
   it("an angry asteroid shakes the parked probe off and its debris wears it down until it is lost", () => {
     const { ops } = setup();
-    ops.launch(DOWN);
-    fly(ops, 20);
+    release(ops, DOWN);
+    fly(ops, 90);
     ops.drainEvents();
     const threat = { angry: true, safeDistanceM: 500, danger: 1 };
     fly(ops, 1, threat);
@@ -86,7 +137,7 @@ describe("ProbeOps", () => {
   it("trust tempers the debris", () => {
     const hurt = (danger: number) => {
       const { ops } = setup(100);
-      ops.launch(DOWN);
+      release(ops, DOWN);
       fly(ops, 2, { angry: true, safeDistanceM: 500, danger });
       return 1 - ops.flight.ship.hullIntegrity;
     };
@@ -95,11 +146,11 @@ describe("ProbeOps", () => {
 
   it("the arm only grabs it slow and close to the bay; it comes back charged", () => {
     const { ops } = setup(400);
-    ops.launch(new Vec3(0, 1, 0));
+    release(ops, new Vec3(0, 1, 0));
     fly(ops, 10);
     expect(ops.canRecover).toBe(true);
-    fly(ops, 100);
-    // Drifted 8 m: still inside the capture box.
+    fly(ops, 200);
+    // Drifted 6 m: still inside the capture box.
     expect(ops.bayRange().distanceM).toBeGreaterThan(5);
     expect(ops.batteryWh).toBeLessThan(PROBE_BATTERY_WH);
     expect(ops.recover()).toBe(true);
@@ -109,19 +160,19 @@ describe("ProbeOps", () => {
 
   it("not when it is far or fast", () => {
     const { ops } = setup(400);
-    ops.launch(new Vec3(0, 1, 0));
-    fly(ops, 200);
+    release(ops, new Vec3(0, 1, 0));
+    fly(ops, 500);
     expect(ops.bayRange().distanceM).toBeGreaterThan(10);
     expect(ops.recover()).toBe(false);
   });
 
   it("abandoning probes empties the rack; the station restocks it", () => {
     const { ops } = setup(400);
-    ops.launch(new Vec3(0, 1, 0));
+    release(ops, new Vec3(0, 1, 0));
     expect(ops.abandon()).toBe(true);
     expect(ops.onBoard).toBe(1);
     expect(ops.abandon()).toBe(false);
-    ops.launch(new Vec3(0, 1, 0));
+    release(ops, new Vec3(0, 1, 0));
     ops.abandon();
     expect(ops.status).toBe("sin-sonda");
     expect(ops.canLaunch).toBe(false);
@@ -135,14 +186,14 @@ describe("ProbeOps", () => {
     expect(PROBE_BATTERY_WH / PROBE_LOAD_W).toBeLessThan(17);
     // A nearly flat battery (1 min of work) to keep the test short.
     const { ops } = setup(400, { ...spec, batteryWh: PROBE_LOAD_W / 60 });
-    ops.launch(new Vec3(0, 1, 0));
+    release(ops, new Vec3(0, 1, 0));
     fly(ops, 61);
     expect(ops.drainEvents()).toContainEqual({ type: "perdida", why: "sin-bateria" });
   });
 
   it("radiation past its electronics' tolerance loses it", () => {
     const { ops } = setup(400);
-    ops.launch(new Vec3(0, 1, 0));
+    release(ops, new Vec3(0, 1, 0));
     ops.irradiate(30_000, 50_000);
     expect(ops.serial).toBe(1);
     ops.irradiate(30_000, 50_000);

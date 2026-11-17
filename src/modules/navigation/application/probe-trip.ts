@@ -13,8 +13,12 @@ import { tripChore, type TripFacts } from "./trip-chore";
 
 /** Game values of the probe's automatic trips (docs/design/viajes.md). */
 export const PROBE_TRIP = {
-  /** Closer than this to the target (surface or bay) it is flown by hand: no trip to program, m. */
-  minDistanceM: 1500,
+  /**
+   * Closer than this to the target (surface or bay) it is flown by hand: no trip to program, m. Twice the
+   * hand-over height: from its deployer by the asteroid the mothership is parked at (1,35 km) it can still go
+   * automatically (Berón, 2026-11-17: «Automático» at the probe's station, nearby destinations only).
+   */
+  minDistanceM: 2 * TRANSFER_TUNING.approachM,
   /** The autopilot hands the probe back this high above the asteroid: parking stays manual, m. */
   approachM: TRANSFER_TUNING.approachM,
   /** …or this far from the bay on the way home (its weak RCS needs room to stop): the last metres to the arm are manual, m. */
@@ -49,6 +53,8 @@ export interface ProbeTripPorts {
   stowed(): boolean;
   /** Release a stowed probe from the bay; false if it can't. */
   launch(): boolean;
+  /** The deployer's sequence is running (door, slide out): the trip waits at ×1 so the release is seen. */
+  deploying?(): boolean;
   /** Bay position and the "up" out of it (world). */
   bay(): { readonly position: Vec3; readonly up: Vec3 };
   /** Keep-out spheres on the way (all bodies but the goal, and the mothership itself). */
@@ -247,6 +253,7 @@ export class ProbeTrip {
 
   /** Game seconds per real second while the probe flies itself (1 otherwise). */
   get lapse(): number {
+    if (this.ports.deploying?.()) return 1;
     return this._status === "flying" && this.clock && this._autopilot ? this.clock.lapse(remainingEstimateS(this._autopilot.status)) : 1;
   }
 

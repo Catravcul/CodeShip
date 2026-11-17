@@ -11,10 +11,11 @@ import { presentInteriorPlan } from "@modules/station/domain/presentation";
 import type { PortUser } from "@modules/station/domain/structure";
 import { WORKOUTS } from "@modules/wellness/data/exercise";
 import { SLEEP_ACTS } from "@modules/wellness/data/sleep";
+import { SHELTER_SHIP } from "@modules/wellness/data/procedures";
 import { OWN_BUNK } from "@modules/station/data/compartments";
-import { AquariumOps, isAquariumChore } from "@modules/sanctuary/application/aquarium-ops";
+import { AquariumOps, isAquariumChore, withTransfer } from "@modules/sanctuary/application/aquarium-ops";
 import { RingAquarium } from "@modules/sanctuary/domain/aquarium";
-import { AquariumModel } from "./adapters/three/interior/aquarium-model";
+import type { AqhModel } from "./adapters/three/interior/aqh-model";
 import { CatalogCorner } from "./adapters/three/interior/catalog-corner";
 import type { RackSlotId } from "./adapters/three/interior/rack-slots";
 import type { SanctuaryChores } from "./interior";
@@ -24,27 +25,24 @@ import { eclssRackModel, mountOnWall, type EclssRackModel } from "./adapters/thr
 import type { LifeSupportGame } from "./life-support-game";
 import { StationInteriorMode, type StationAction } from "./station-interior";
 import type { DuelView, SessionText } from "./ui/duel-view";
-import { crewStepVisual } from "./station-steps";
+import { crewStepVisual, exerciseFixture } from "./station-steps";
 import "./ui/starship-interior.css";
 
 /** Where each kind of chore is done on Starship's decks (fixture ids of data/starship-interior.ts). */
-const FIXTURE_OF: Readonly<Partial<Record<Chore["kind"], string>>> = { cocinar: "cocina", yoga: "esterilla", ejercicio: "t2", dormir: OWN_BUNK };
+const FIXTURE_OF: Readonly<Partial<Record<Chore["kind"], string>>> = { cocinar: "cocina", yoga: "esterilla", ejercicio: "t2", dormir: OWN_BUNK, asearse: "aseo", refugio: "sv-refugio", medico: "botiquin" };
 const AREA_NAME: Readonly<Record<CrewArea, string>> = {
   cocina: "Cocina (cubierta 1)",
   camarotes: "Tu camarote (cubierta 2)",
   aseo: "Aseo (cubierta 2)",
   ejercicio: "Ejercicio (cubierta 3)",
+  medico: "Sistema médico (cubierta 2)",
   esterilla: "Esterilla (cubierta 1)",
 };
 const MAX_ON_CARD = 3;
 /** The hatch in deck 1's ceiling up to the flight deck (data/starship-interior.ts). */
 export const FLIGHT_DECK_HATCH = "subir-cubierta-vuelo";
-/** The machine of each workout's device (data/exercise.ts): the T2, the CEVIS and the ARED of deck 3. */
-const DEVICE_FIXTURE: Readonly<Record<string, string>> = { cinta: "t2", bicicleta: "cevis", fuerza: "ared" };
 /** The fixtures that host the sanctuary's rack slots (data/starship-interior.ts). */
 const RACK_FIXTURE: Readonly<Record<RackSlotId, string>> = { "rack-catalogo": "catalogo", "rack-acuatico": "habitat-acuatico" };
-/** The aquatic habitat is a rack bay (JAXA AQH), not the ring's 1,6 m tank: its model drawn at this fraction. */
-const AQH_MODEL_SCALE = 0.6;
 
 const choreText = (c: Chore): SessionText => ({
   title: c.title,
@@ -95,7 +93,7 @@ export class StarshipInterior {
   private readonly racks: EclssRackModel[] = [];
   /** The aquatic habitat (species catalogue): its use cases and its 3D tank, in a rack bay of deck 3. */
   readonly aquarium: AquariumOps;
-  readonly tank: AquariumModel;
+  readonly tank: AqhModel;
   /** The catalogue terminal with the rodent habitat and the colonies' shelf, on deck 2. */
   readonly catalogCorner: CatalogCorner;
   /** Where the sanctuary's rack hardware goes here (the ring's `RING_RACK_HOST` counterpart). */
@@ -116,7 +114,7 @@ export class StarshipInterior {
     private readonly d: StarshipInteriorDeps,
   ) {
     // The galley cooks from the ship's pantry, its life support's packaged food (docs/design/soporte-vital.md, «Despensa»).
-    this.crew = new StationCrew(d.habitat, { recipes: ISS_FOOD, yoga: YOGA_SEQUENCES, workouts: WORKOUTS, pantry: () => this.lifeSupport?.pantry });
+    this.crew = new StationCrew(d.habitat, { recipes: ISS_FOOD, yoga: YOGA_SEQUENCES, workouts: WORKOUTS, pantry: () => this.lifeSupport?.pantry, shelter: "nodriza" });
     const plan = presentInteriorPlan(starshipInteriorPlan(), { scale: WORLD_SCALE, spreadM: SPREAD_ON ? INTERACTABLE_SPACING.minM : 0 });
     this.mode = new StationInteriorMode(
       root,
@@ -136,7 +134,11 @@ export class StarshipInterior {
         cannotLeave: (to) => d.cannotLeave(to),
         openTasks: () => d.openTasks(),
         actions: (f) => (f.action.kind === "soporte-vital" ? (this.lifeSupport?.actions(f) ?? []) : this.actions(f)),
-        act: (f, a) => (f.action.kind === "soporte-vital" ? this.lifeSupport?.act(f, a) : this.act(f, a)),
+        act: (f, a) => {
+          // The storm shelter: its drill, a code challenge played inside it (its dose cut is told by life support).
+          if (a === "refugio") this.startChore(SHELTER_SHIP.id);
+          return f.action.kind === "soporte-vital" ? this.lifeSupport?.act(f, a) : this.act(f, a);
+        },
         readout: (f) => this.lifeSupport?.readout(f),
         rackState: (f) => this.lifeSupport?.rackState(f) ?? { state: "ok" },
         landerInHangar: () => false,
@@ -178,8 +180,8 @@ export class StarshipInterior {
       root.scale.setScalar(k * scale);
       this.mode.scene.add(root);
     };
-    this.tank = new AquariumModel(new THREE.Vector3());
-    place(this.tank.root, "rack-acuatico", AQH_MODEL_SCALE, 0.3);
+    // The AQH is drawn by the rooms as the fixture's own model (aqh-model.ts); the tank's animals live in it.
+    this.tank = this.mode.gearOf(RACK_FIXTURE["rack-acuatico"]) as AqhModel;
     this.catalogCorner = new CatalogCorner(new THREE.Vector3());
     place(this.catalogCorner.root, "rack-catalogo", 1, 0.25);
   }
@@ -300,21 +302,20 @@ export class StarshipInterior {
       if (a.id === "cubierta-vuelo") return [{ id: "subir", label: "Subir a la cubierta de vuelo", enabled: true }];
       if (a.id === "trabajo") return [{ id: "tareas", label: "Tareas", enabled: true }, { id: "misiones", label: "Registro de misiones", enabled: true }];
       const animal = (pick: (c: Chore) => boolean) =>
-        this.animalChores()
-          .filter(pick)
-          .slice(0, MAX_ON_CARD)
+        withTransfer(this.animalChores().filter(pick), MAX_ON_CARD)
           .map((c) => ({ id: `chore:${c.id}`, label: c.title, enabled: true }));
       if (a.id === "catalogo") return [{ id: "catalogo", label: "Abrir el catálogo de especies", enabled: !!this.openCatalog }, ...animal((c) => !!this.sanctuary?.owns(c))];
       if (a.id === "acuatico") {
         const care = animal((c) => isAquariumChore(c));
-        return care.length ? care : [{ id: "nada", label: "Cuidar el hábitat", enabled: false, why: "Está vacío: adopta medakas o caracoles en el catálogo de especies (cubierta 2)" }];
+        return care.length ? care : [{ id: "nada", label: "Cuidar el hábitat", enabled: false, why: "Está vacío: adopta medakas o caracoles en el catálogo de especies (cubierta 2) y llegarán a este tanque, o tráelos de la estación con la nave atracada" }];
       }
       return [];
     }
     if (a.kind !== "tripulacion") return [];
-    const chores = (area: CrewArea) =>
+    const chores = (area: CrewArea, keep: (c: Chore) => boolean = () => true) =>
       this.crew
         .choresAt(area)
+        .filter(keep)
         .slice(0, MAX_ON_CARD)
         .map((c) => ({ id: `chore:${c.id}`, label: c.title, enabled: true }));
     switch (a.area) {
@@ -332,13 +333,16 @@ export class StarshipInterior {
           .slice(0, MAX_ON_CARD)
           .map((c) => ({ id: `chore:${c.id}`, label: c.title, enabled: true }));
       case "camarotes":
-        return f.id === OWN_BUNK ? chores("camarotes") : [{ id: "nada", label: "Dormir aquí", enabled: false, why: "Camarote libre: el tuyo es el 1" }];
+        // The storm drill is done in the water-wall shelter here, not in the quarter.
+        return f.id === OWN_BUNK ? chores("camarotes", (c) => c.kind !== "refugio") : [{ id: "nada", label: "Dormir aquí", enabled: false, why: "Camarote libre: el tuyo es el 1" }];
       case "aseo":
-        return [{ id: "asearse", label: "Asearse", enabled: true }];
+        return chores("aseo");
+      case "medico":
+        return chores("medico");
     }
   }
 
-  private act(_f: Fixture, id: string): void {
+  private act(f: Fixture, id: string): void {
     if (id.startsWith("chore:")) return this.startChore(id.slice(6));
     switch (id) {
       case "subir":
@@ -352,8 +356,6 @@ export class StarshipInterior {
       case "ajustes":
         this.mode.sitLotus(true);
         return this.openSettings?.();
-      case "asearse":
-        return this.say("Aseo con toallitas, champú sin aclarado y el WHC: en 0 g el aire arrastra lo que en la Tierra cae", 5);
     }
   }
 
@@ -367,6 +369,7 @@ export class StarshipInterior {
     this.session = session;
     // Each right step acted out where it is done (reglas.md §4.2): the galley, the mat, the machine, the rack;
     // going to sleep, in her crew quarter (the bag, the zip, the light).
+    // At the AQH each solved step also plays on the habitat itself (station-steps.ts).
     const visual = chore.kind === "dormir" ? this.mode.stepVisual(OWN_BUNK, (i) => SLEEP_ACTS[i] ?? []) : crewStepVisual(this.mode, chore, this.fixtureOf(chore));
     const prev = this.d.duel.onClose;
     this.d.duel.onClose = () => {
@@ -412,10 +415,7 @@ export class StarshipInterior {
   /** Where a chore is done aboard: its crew area's fixture (a workout at its own machine) or its rack. */
   private fixtureOf(c: Chore): string {
     if (!this.crew.chore(c.id)) return this.animalFixture(c);
-    if (c.kind === "ejercicio") {
-      const device = WORKOUTS.find((w) => w.id === c.targetId)?.device;
-      return (device && DEVICE_FIXTURE[device]) ?? "t2";
-    }
+    if (c.kind === "ejercicio") return exerciseFixture(c);
     return FIXTURE_OF[c.kind] ?? "cocina";
   }
 

@@ -40,6 +40,11 @@ export interface Reach {
   readonly end: ReachEnd;
   readonly onFloor: boolean;
   readonly point: Vec3;
+  /**
+   * The point is fixed in the body frame (a pedal, a handlebar, a bar on a machine), neither on the floor nor
+   * following the chest: exercise motions (exercise-motion.ts). Absent for the asanas.
+   */
+  readonly inBody?: boolean;
 }
 
 export function reachesOf(a: AsanaData): Reach[] {

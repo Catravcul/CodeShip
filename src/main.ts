@@ -168,6 +168,9 @@ import { berthedPose } from "@modules/mothership/application/berthing";
 import { StarshipModel } from "./adapters/three/starship-model";
 import { StarshipInterior } from "./starship-interior";
 import { wireSanctuaryLife } from "./sanctuary-life";
+import { AquariumOps } from "@modules/sanctuary/application/aquarium-ops";
+import { RingAquarium } from "@modules/sanctuary/domain/aquarium";
+import { aquariumEventText } from "./ui/aquarium-text";
 
 // --- Domain setup -----------------------------------------------------------
 const d = BENNU.dimensionsM.value;
@@ -880,6 +883,8 @@ const stationHabitat = new Habitat(seededRandom(2027), 0, undefined, habitat.cre
 stationHabitat.stockAll(STATION_LARDER);
 // Real ships: the galley cooks the ISS's packaged food from the life support's pantry (docs/design/soporte-vital.md, «Despensa»).
 let stationPantry: Pantry | undefined;
+/** The station's own AQH colony in Kibo (docs/design/equipos.md): animals live where they are; moving them is a transfer chore. */
+const stationAquarium = new AquariumOps(new RingAquarium({ fish: 0, snails: 0 }), habitat.crew);
 const stationCrew = new StationCrew(stationHabitat, { recipes: REAL_ONLY ? ISS_FOOD : RECIPES, yoga: YOGA_SEQUENCES, workouts: WORKOUTS, pantry: () => stationPantry });
 /** The lander on its IDA or berthed by Canadarm2 on Unity's nadir CBM (docs/design/estacion-real.md). */
 const landerBerth = new LanderBerth();
@@ -925,6 +930,7 @@ const stationLife = new StationLife({
   say: (t, sec) => stationInside.say(t, sec),
   lookOutside: (show) => stationOutside.open(show),
   openCatalog: () => sanctuary.catalog.open(),
+  aquarium: stationAquarium,
   stepVisual: (chore, area) => stationSteps.crew(chore, area),
   otherChore: (id) => lifeSupport.startChore(id) || arm.startChore(id),
   ...(REAL_ONLY
@@ -984,6 +990,7 @@ const stationInside = new StationInteriorMode(root, playInterior(), {
   airlock: { actions: (f) => arm.stationEva.actions(f), act: (f, a) => arm.stationEva.act(f, a) },
   readout: (f) => (REAL_ONLY || f.id !== "cocina" ? lifeSupport.readout(f) : undefined),
   rackState: (f) => lifeSupport.rackState(f),
+  aquarium: () => stationAquarium.tank,
   landerInHangar: () => false,
   lookOut: () => (FICTION ? dryDock.open("ventanilla") : stationOutside.open()),
   leave: (to) => {
@@ -1191,7 +1198,10 @@ function allTasks(): Task[] {
 }
 const taskBoard = new TaskBoard(root, allTasks);
 // The species catalogue: adopting animals for the ring and the station (docs/design/catalogo-especies.md).
-const sanctuary = wireSanctuaryLife({ root, interior, habitat, importOps, wallet, taskBoard, goChore: (id) => {
+// Docked, either colony can be carried through the tunnel to the other vehicle's tank.
+interior.aquarium.partner = () => (mothership.dockedTo ? { ops: stationAquarium, where: "a la estación" } : undefined);
+stationAquarium.partner = () => (mothership.dockedTo ? { ops: interior.aquarium, where: "a la Starship" } : undefined);
+const sanctuary = wireSanctuaryLife({ root, interior, habitat, importOps, wallet, taskBoard, aquariumHere: () => (crewIn() === "estacion" ? stationAquarium : undefined), goChore: (id) => {
   const t = allTasks().find((x) => x.chore === id);
   if (t) goToTask(t);
 } });
@@ -1582,6 +1592,8 @@ renderer.setAnimationLoop((now) => {
   // A module berthed or equipment installed: the structure, its model and the walkable interior follow.
   if (stationOutfit.version !== stationGrownAt) regrowStation();
   interior.update(dt, world.lifeDays);
+  stationAquarium.tick(world.lifeDays);
+  for (const e of stationAquarium.drainEvents()) stationInside.say(aquariumEventText(e), e.type === "aviso" ? 5 : 3.5);
   sanctuary.update(world.lifeDays);
   journey.update(dt);
   view.enabled = !cabin.active && !bridge.active && !interior.active && !stationInside.active && !deck.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active && !navMode.mapOpen && !missionLog.visible;
@@ -1751,7 +1763,7 @@ for (const sel of [".nano-action", ".trip-chip", ".land-offer.lander", ".land-bo
   if (el) ctxDock.appendChild(el);
 }
 
-(window as unknown as { codeship: unknown }).codeship = { sanctuary, journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, starship, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, landerBerth, lifeSupport, bishop: bishopAirlock, stationOutside, stationModel, stationOps, refuelOps, importOps, componentImports, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels, dryDock, robotics: arm.robotics, stationEva: arm.stationEva, starshipEva: arm.starshipEva, exteriorWork: arm.work,
+(window as unknown as { codeship: unknown }).codeship = { sanctuary, journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, starship, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, stationAquarium, landerBerth, lifeSupport, bishop: bishopAirlock, stationOutside, stationModel, stationOps, refuelOps, importOps, componentImports, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels, dryDock, robotics: arm.robotics, stationEva: arm.stationEva, starshipEva: arm.starshipEva, exteriorWork: arm.work,
   /** The experience suite's setup: the mothership latched on the station's forward IDA (the trip is PX-36's). */
   berthMothershipNow: () => {
     const t = structure.portFor("nodriza")!;

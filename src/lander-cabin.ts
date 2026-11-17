@@ -104,9 +104,12 @@ export class LanderCabin extends WalkRoom<CabinStationId> {
     // Facing the console, so the camera at the front sees her.
     this.yaw = 0;
     this.seated = true;
+    // Seen sitting on the mat over the settings sheet (Berón: «en el habitáculo la esterilla sigue sin mostrar nada»).
+    this.seatedOn("esterilla");
   }
 
   standUp(): void {
+    this.seatedOn(undefined);
     this.seated = false;
   }
 }

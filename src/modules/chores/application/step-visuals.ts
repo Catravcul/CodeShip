@@ -2,6 +2,7 @@ import type { Recipe } from "@modules/kitchen/data/recipes";
 import type { Process } from "@modules/kitchen/data/processes";
 import { kitchenVisuals } from "@modules/kitchen/domain/kitchen-visuals";
 import { spaceGalleyVisuals } from "@modules/kitchen/domain/space-galley-visuals";
+import { procedureById } from "@modules/wellness/data/procedures";
 import { SLEEP_ACTS } from "@modules/wellness/data/sleep";
 import type { Chore, ChoreKind } from "../domain/chore";
 import { classifyStep, exerciseTexts, firstSource, type StepAction, type StepAct, type StepActSource } from "../domain/step-visual";
@@ -72,6 +73,10 @@ export const STEP_AREAS: Readonly<Record<ChoreKind, Area>> = {
   "ayuda-especie": { fallback: "programar", only: "programar" },
   // Going to sleep: its own acts in the crew quarter (sleepSource).
   dormir: { fallback: "saco" },
+  // The crew's procedures: their own acts (procedureSource).
+  asearse: { fallback: "lavar", tint: "agua" },
+  refugio: { fallback: "revisar" },
+  medico: { fallback: "curar" },
   // The arm's moves play outside (station-outside.ts); at the RWS her hands are on the hand controllers.
   "brazo-robotico": { fallback: "programar", only: "programar" },
   "paseo-espacial": { fallback: "revisar" },
@@ -81,6 +86,13 @@ export const STEP_AREAS: Readonly<Record<ChoreKind, Area>> = {
 export const sleepSource: StepActSource<Chore> = {
   acts(c, i) {
     return c.kind === "dormir" ? SLEEP_ACTS[i] : undefined;
+  },
+};
+
+/** The crew's procedures (washing, the storm shelter, the medical kit): each step's own acts (wellness/data/procedures.ts). */
+export const procedureSource: StepActSource<Chore> = {
+  acts(c, i) {
+    return c.kind === "asearse" || c.kind === "refugio" || c.kind === "medico" ? procedureById(c.targetId ?? "")?.acts[i] : undefined;
   },
 };
 
@@ -139,4 +151,4 @@ export function kitchenSource(ctx: KitchenCtx): StepActSource<Chore> {
 }
 
 /** Every chore on board: the kitchen's detailed visuals first, then the area tables. */
-export const choreVisuals = (ctx: KitchenCtx): StepActSource<Chore> => firstSource(sleepSource, kitchenSource(ctx), areaVisuals);
+export const choreVisuals = (ctx: KitchenCtx): StepActSource<Chore> => firstSource(sleepSource, procedureSource, kitchenSource(ctx), areaVisuals);

@@ -5,14 +5,20 @@ import type { Workout } from "@modules/wellness/data/exercise";
 import type { YogaSequence } from "@modules/wellness/data/yoga";
 import type { CrewArea } from "../domain/interior";
 import type { Larder } from "./bio-ops";
-import { sleepChore } from "@modules/chores/application/catalog";
+import { procedureChore, sleepChore } from "@modules/chores/application/catalog";
+import { AED_DRILL, CHECKUP, HYGIENE, SHELTER_ISS, SHELTER_SHIP } from "@modules/wellness/data/procedures";
 import { SLEEP_STEPS, SLEEP_WRONG } from "@modules/wellness/data/sleep";
 
 /** Where each kind of chore is done at the station. */
-const AREA: Readonly<Partial<Record<Chore["kind"], CrewArea>>> = { cocinar: "cocina", yoga: "esterilla", ejercicio: "ejercicio", dormir: "camarotes" };
+const AREA: Readonly<Partial<Record<Chore["kind"], CrewArea>>> = { cocinar: "cocina", yoga: "esterilla", ejercicio: "ejercicio", dormir: "camarotes", asearse: "aseo", refugio: "camarotes", medico: "medico" };
 
 /** Going to sleep in her crew quarter: always there to do, one challenge per step. */
 const SLEEP = sleepChore(SLEEP_STEPS, SLEEP_WRONG);
+/** Washing at the WHC and the medical kit's check-up and training: always there to do (wellness/data/procedures.ts). */
+const HYGIENE_CHORE = procedureChore(HYGIENE, "asearse");
+const MEDICAL = [procedureChore(CHECKUP, "medico"), procedureChore(AED_DRILL, "medico")];
+/** The solar-storm drill: in her shielded crew quarter at the station, in the water-wall shelter aboard Starship. */
+const SHELTER = { estacion: procedureChore(SHELTER_ISS, "refugio"), nodriza: procedureChore(SHELTER_SHIP, "refugio") } as const;
 
 export const STATION_AREA_NAME: Readonly<Record<CrewArea, string>> = {
   cocina: "Cocina de la estación",
@@ -20,6 +26,7 @@ export const STATION_AREA_NAME: Readonly<Record<CrewArea, string>> = {
   aseo: "Aseo de la estación",
   ejercicio: "T2 y ARED de la estación (Tranquility)",
   esterilla: "Esterilla de yoga de la estación (Destiny)",
+  medico: "Sistema médico CHeCS de la estación (Columbus)",
 };
 
 /**
@@ -44,6 +51,8 @@ export interface StationCrewContext {
    * needs a meal in it and takes it out. Left out, the galley cooks from the habitat's own larder.
    */
   readonly pantry?: () => Pantry | undefined;
+  /** Where the solar-storm drill is done: the station's shielded crew quarter (default) or Starship's water-wall shelter. */
+  readonly shelter?: "estacion" | "nodriza";
 }
 
 /**
@@ -73,7 +82,7 @@ export class StationCrew {
   /** What can be done at the station now: dishes the larder allows, yoga, workouts. */
   chores(): Chore[] {
     this.syncPantry();
-    return [...this.habitat.chores(this.ctx.recipes, this.ctx.yoga, { workouts: this.ctx.workouts }).filter((c) => AREA[c.kind]), SLEEP];
+    return [...this.habitat.chores(this.ctx.recipes, this.ctx.yoga, { workouts: this.ctx.workouts }).filter((c) => AREA[c.kind]), SLEEP, HYGIENE_CHORE, SHELTER[this.ctx.shelter ?? "estacion"], ...MEDICAL];
   }
 
   choresAt(area: CrewArea): Chore[] {

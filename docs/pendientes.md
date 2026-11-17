@@ -84,5 +84,9 @@ El recorrido real que los sustituye en la nave es **PX-28** (`starship`), en
   - un LM montado en el catálogo solo se suelta; no sustituye al módulo de la jugadora;
   - la masa del O₂ de ascenso del LM (2 × 2,4 lb) sale de un escaneo ilegible;
   - la Explorer (`explorerDesign`) queda en el código para los tests de vuelo y la bahía, sin usarse como módulo.
+- **Equipos de la tripulación** (rama `nodriza-equipos`, [equipos.md](design/equipos.md)): hechas la T2, la CEVIS y el ARED
+  con su animación, el AQH con una colonia en cada vehículo y su traslado, el refugio de agua, el WHC con
+  «Asearse» como reto y el CHeCS en la Starship y en la estación. Queda: la Enfermería del anillo
+  ([interiores.md](design/interiores.md)) sigue solo en la nodriza de ficción.
 - **El dique seco** dibuja la nodriza de anillos con `?ficcion`. Con la Starship su cuna es la misma celosía,
   sin medidas propias todavía.

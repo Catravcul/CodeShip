@@ -1,3 +1,7 @@
+import type { ExerciseMotionData } from "@modules/body/domain/exercise-motion";
+import type { RingAquarium } from "@modules/sanctuary/domain/aquarium";
+import type { CrewGear } from "./adapters/three/interior/crew-gear";
+import { AqhModel } from "./adapters/three/interior/aqh-model";
 import { DOMENICA_HAIR } from "./ui/portraits";
 import * as THREE from "three";
 import { Vec3 } from "@core/math/vec3";
@@ -85,6 +89,8 @@ export interface StationInteriorDeps {
    */
   readout?(f: Fixture): string | undefined;
   rackState?(f: Fixture): { state: RackState; broken?: string };
+  /** The animals of the AQH (one colony, the adopted one: docs/design/equipos.md), drawn in its chambers. */
+  aquarium?(): RingAquarium | undefined;
   /**
    * Quest's suits and EVA hatch run by the real spacewalk (station-eva.ts, docs/design/paseo-espacial.md): its
    * actions replace the quick suit toggle of the airlocks.
@@ -96,7 +102,7 @@ export interface StationInteriorDeps {
 const ICON_OF = (f: Fixture, locked: boolean): string => {
   const a = f.action;
   if (a.kind === "puerta" || a.kind === "salir") return locked ? ICON.locked : ICON.door;
-  if (a.kind === "tripulacion") return { cocina: ICON.food, camarotes: ICON.bed, aseo: ICON.wash, ejercicio: ICON.exercise, esterilla: ICON.mat }[a.area];
+  if (a.kind === "tripulacion") return { cocina: ICON.food, camarotes: ICON.bed, aseo: ICON.wash, ejercicio: ICON.exercise, esterilla: ICON.mat, medico: ICON.medical }[a.area];
   if (a.kind === "bahia" || a.kind === "bishop") return ICON.hangar;
   if (a.kind === "brazo") return ICON.eye;
   if (a.kind === "esclusa") return ICON.suit;
@@ -619,7 +625,8 @@ export class StationInteriorMode {
    */
   stepVisual(id: string, acts: (index: number) => readonly StepAct[]): StepVisual | undefined {
     const f = this.interior.fixture(id);
-    const frame = f && this.stepFrame(f);
+    // Inside the storm shelter for its drill (among the water bags); at the AQH close to its chambers.
+    const frame = f && (this.aqhFrame(f) ?? (this.rooms.gear.get(f.id)?.kind === "refugio" ? this.gearFrame(f) : undefined) ?? this.stepFrame(f));
     if (!frame) return undefined;
     let picked = { index: -1, n: 0 };
     this.steps.begin(frame);
@@ -638,6 +645,7 @@ export class StationInteriorMode {
       },
       finish: () => {},
       clear: () => {
+        this.onGear = undefined;
         this.steps.clear();
         this.frameForSheet(false);
         this.avatar.pose(this.lotus ? "lotus" : "float");
@@ -659,6 +667,8 @@ export class StationInteriorMode {
     this.steps.frame(dt, this.camera, this.rig, this.avatar);
     this.syncMachines(dt);
     for (const sg of this.rooms.signs) sg.visible = false;
+    // No hops while she is at a machine (the shelter and the toilet have no sheet over the pad).
+    this.hop.hide();
     return true;
   }
 
@@ -809,7 +819,7 @@ export class StationInteriorMode {
    */
   yogaVisual(id: string, asanaOf: (index: number) => AsanaData | undefined): StepVisual | undefined {
     const f = this.interior.fixture(id);
-    const frame = f && this.wholeBodyFrame(f);
+    const frame = f && (this.gearFrame(f) ?? this.wholeBodyFrame(f));
     if (!frame) return undefined;
     this.steps.begin(frame);
     this.steps.holdPose = true;
@@ -825,6 +835,111 @@ export class StationInteriorMode {
       },
       finish: () => {},
       clear: () => {
+        this.onGear = undefined;
+        this.steps.clear();
+        this.frameForSheet(false);
+        this.avatar.pose(this.lotus ? "lotus" : "float");
+        this.body.reset();
+      },
+    };
+  }
+
+  /** The equipment model of a fixture (crew-gear.ts, aqh-model.ts), if it has one. */
+  gearOf(id: string): CrewGear | undefined {
+    return this.rooms.gear.get(id);
+  }
+
+  /** The machine she is using now (its parts move with her). */
+  private onGear: string | undefined;
+
+  /**
+   * On a piece of equipment (reglas.md §4.5): her feet where the machine puts them (the T2's belt, floating at the
+   * CEVIS's pedals, the ARED's platform, the foot loops of a mat on its wall), turned as it is, «up» out of what she
+   * stands on; the camera off to her side in the module, with that «up» (a wall mat reads as the floor on screen).
+   */
+  private gearFrame(f: Fixture): StepFrame | undefined {
+    const g = this.rooms.gear.get(f.id);
+    if (!g) return undefined;
+    this.onGear = f.id;
+    g.root.updateWorldMatrix(true, false);
+    const stand = g.root.localToWorld(g.feet.clone());
+    const orient = g.root.getWorldQuaternion(new THREE.Quaternion());
+    // At the toilet she faces it (its funnel and its seat), her back to the aisle.
+    if (g.kind === "whc") orient.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(orient);
+    const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(orient);
+    const side = new THREE.Vector3().crossVectors(up, fwd).normalize();
+    // Lying on a mat the body runs along it: aim at its middle, a little out from it.
+    const flat = g.kind === "esterilla";
+    const body = stand.clone().addScaledVector(up, flat ? 0.65 : g.kind === "cevis" ? 0.75 : 0.7);
+    const sight = sightOfScene(this.scene, [this.steps.root, this.rig, g.root]);
+    const cam = new THREE.Vector3();
+    const q = (a: THREE.Vector3, b: THREE.Vector3, k: number) => a.clone().multiplyScalar(1 - k).addScaledVector(b, k).normalize();
+    const back = fwd.clone().negate();
+    const nside = side.clone().negate();
+    // Side on for the treadmill, the cycle and the mat (the stride, the cranks, the body along it); three quarters
+    // from the front for the ARED (the bar on her shoulders, not hidden by its arm).
+    const dirs = g.kind === "refugio" ? [fwd, q(fwd, side, 0.25), q(fwd, nside, 0.25)] : g.kind === "ared" ? [q(side, fwd, 0.6), q(nside, fwd, 0.6), q(side, fwd, 0.3), q(nside, fwd, 0.3), fwd, side, nside] : [side, nside, q(side, fwd, 0.35), q(nside, fwd, 0.35), q(side, back, 0.35), q(nside, back, 0.35), fwd];
+    for (const dist of [3.2, 2.8, 2.4, 2.0, 1.7, 1.4, 1.1])
+      for (const d of dirs) {
+        cam.copy(body).addScaledVector(d, dist).addScaledVector(up, flat ? 0.5 : 0.35);
+        if (this.interior.fits(new Vec3(cam.x, cam.y, cam.z), 0.1, false) && sight(cam, body))
+          return { stand, yaw: Math.atan2(fwd.x, fwd.z), orient, cameraUp: up, camera: cam.clone(), look: body, target: body.clone() };
+      }
+    cam.copy(body).addScaledVector(side, 1.2).addScaledVector(up, 0.4);
+    return { stand, yaw: Math.atan2(fwd.x, fwd.z), orient, cameraUp: up, camera: cam, look: body, target: body.clone() };
+  }
+
+  /**
+   * At the AQH (docs/design/equipos.md): she floats at its tray, her hands at the two chambers; the camera close in
+   * over her shoulder, so the medaka and the snails (real size, 3–4 cm and 1 cm) and the wiper on the glass show.
+   */
+  private aqhFrame(f: Fixture): StepFrame | undefined {
+    const g = this.rooms.gear.get(f.id);
+    if (!(g instanceof AqhModel)) return undefined;
+    g.root.updateWorldMatrix(true, false);
+    const q = g.root.getWorldQuaternion(new THREE.Quaternion());
+    const out = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
+    const side = new THREE.Vector3(1, 0, 0).applyQuaternion(q);
+    const stand = g.root.localToWorld(g.feet.clone().setX(-0.35));
+    const focus = g.root.localToWorld(g.focus.clone());
+    const cam = focus.clone().addScaledVector(out, 0.7).addScaledVector(side, 0.35).add(new THREE.Vector3(0, 0.22, 0));
+    const face = out.clone().negate();
+    // The step's props (food, a sponge) a hand in front of the glass, never inside the chambers or the rack.
+    const target = focus.clone().addScaledVector(out, 0.15).add(new THREE.Vector3(0, 0.15, 0));
+    return { stand, yaw: Math.atan2(face.x, face.z), camera: cam, look: focus, target };
+  }
+
+  /**
+   * A workout at its machine (reglas.md §4.5): she gets on it and moves as it asks, round and round on the skeleton
+   * (running in the T2's harness, pedalling the CEVIS, squatting under the ARED's bar), the machine moving with her;
+   * each right step pushes the pace for a moment, like an interval.
+   */
+  exerciseVisual(id: string, motion: ExerciseMotionData): StepVisual | undefined {
+    const f = this.interior.fixture(id);
+    const frame = f && this.gearFrame(f);
+    if (!frame) return undefined;
+    this.steps.begin(frame);
+    this.steps.holdPose = true;
+    this.avatar.exercise(motion);
+    this.frameForSheet(true);
+    for (const sg of this.rooms.signs) sg.visible = false;
+    let push: ReturnType<typeof setTimeout> | undefined;
+    return {
+      stepDone: () => {
+        const ex = this.avatar.exercising;
+        if (ex) ex.pace = 1.7;
+        clearTimeout(push);
+        push = setTimeout(() => {
+          const e = this.avatar.exercising;
+          if (e) e.pace = 1;
+        }, 2500);
+        if (this.steps.framing) this.steps.play([{ action: "entrenar", place: "objetivo", vessel: motion.device }]);
+      },
+      finish: () => {},
+      clear: () => {
+        clearTimeout(push);
+        this.onGear = undefined;
         this.steps.clear();
         this.frameForSheet(false);
         this.avatar.pose(this.lotus ? "lotus" : "float");
@@ -1086,6 +1201,10 @@ export class StationInteriorMode {
         }
       }
     for (const model of this.rooms.racks.values()) model.tick(dt);
+    // The equipment moves with her while she uses it (the belt, the cranks, the bar, the harness).
+    for (const [id, g] of this.rooms.gear) g.tick(dt, this.onGear === id && this.steps.framing ? this.avatar : undefined);
+    const tank = this.deps.aquarium?.();
+    if (tank) for (const g of this.rooms.gear.values()) if (g instanceof AqhModel) g.update(dt, tank);
     const busy = this.deps.busy();
     const t = performance.now() / 1000;
     for (const [id, lamp] of this.rooms.lamps) {
@@ -1197,13 +1316,14 @@ export class StationInteriorMode {
     this.lotus = on;
     // On the mat, seen from the aisle over the settings sheet (in first person she would see nothing of it).
     const mat = this.interior.plan.fixtures.find((f) => f.action.kind === "tripulacion" && f.action.area === "esterilla");
-    const frame = on && mat ? this.wholeBodyFrame(mat) : undefined;
+    const frame = on && mat ? (this.gearFrame(mat) ?? this.wholeBodyFrame(mat)) : undefined;
     if (frame) {
       this.steps.begin(frame);
       this.steps.holdPose = true;
       this.frameForSheet(true);
       for (const sg of this.rooms.signs) sg.visible = false;
     } else if (!on && this.steps.framing && this.steps.holdPose) {
+      this.onGear = undefined;
       this.steps.clear();
       this.frameForSheet(false);
       this.body.reset();

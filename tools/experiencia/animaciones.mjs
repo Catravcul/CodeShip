@@ -301,9 +301,11 @@ async function playStation(j, rows, skipped = []) {
   }
 
   // The crew areas and a repair (Berón, 2026-11-17: «hay acciones sin animación»): yoga on the mat (Destiny), a workout
-  // at the T2/ARED (Tranquility) and the CDRA's clogged beds at the air rack, each one played from its card.
+  // at each machine (T2, ARED, CEVIS) and the CDRA's clogged beds at the air rack, each one played from its card.
   await crewAt(j, rows, { placeAt, card: ".sti-card", fixture: "esterilla", act: "chore:yoga", id: "estacion-yoga", title: "Estación: yoga en la esterilla", oracle: () => window.codeship.stationLife.session?.run.current ?? null, who: "stationInside" });
-  await crewAt(j, rows, { placeAt, card: ".sti-card", fixture: "ejercicio", act: "chore:ejercicio", id: "estacion-ejercicio", title: "Estación: ejercicio en la T2 y el ARED", oracle: () => window.codeship.stationLife.session?.run.current ?? null, who: "stationInside" });
+  // Each ISS machine its own movement (docs/design/equipos.md): the T2 and the ARED in Tranquility, the CEVIS in Destiny.
+  for (const [fixture, name] of [["t2", "la T2"], ["ared", "el ARED"], ["cevis", "la CEVIS"]])
+    await crewAt(j, rows, { placeAt, card: ".sti-card", fixture, act: "chore:ejercicio", id: `estacion-ejercicio-${fixture}`, title: `Estación: ejercicio en ${name}`, oracle: () => window.codeship.stationLife.session?.run.current ?? null, who: "stationInside" });
   await j.setup("se taponan los lechos de zeolita del CDRA", () => window.codeship.lifeSupport.system.fail("cdra-lechos"));
   await crewAt(j, rows, { placeAt, card: ".sti-card", fixture: "sv-ar", act: "chore:sv-cdra-lechos", id: "estacion-cdra", title: "Estación: cambiar los lechos del CDRA (bastidor de aire)", oracle: () => window.codeship.lifeSupport.session?.run.current ?? null, who: "stationInside" });
   // Going to sleep in her crew quarter (docs/design/compartimentos.md): each step in the quarter, by the bag.

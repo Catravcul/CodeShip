@@ -22,7 +22,7 @@ describe("HAB-23 Starship's interior, «distribución nuestra», at true size", 
 
   it("has what a long crewed flight needs: galley, four ~2 m³ quarters, hygiene, T2, ARED, CEVIS, work, stowage, airlock", () => {
     const ids = plan.fixtures.map((f) => f.id);
-    for (const id of ["cocina", "saco-1", "saco-2", "saco-3", "saco-4", "aseo", "t2", "ared", "cevis", "puesto-trabajo", "almacen", "esclusa", "esterilla"]) expect(ids).toContain(id);
+    for (const id of ["cocina", "saco-1", "saco-2", "saco-3", "saco-4", "aseo", "t2", "ared", "cevis", "puesto-trabajo", "almacen", "esclusa", "esterilla", "botiquin"]) expect(ids).toContain(id);
     // Four crew quarters one floats into (docs/design/compartimentos.md), ~2,1 m³ each, inside the round hull.
     const cqs = plan.volumes.filter((v) => v.kind === "compartimento");
     expect(cqs.map((v) => v.id)).toEqual(["camarote-1", "camarote-2", "camarote-3", "camarote-4"]);

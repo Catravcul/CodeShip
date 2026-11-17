@@ -1,11 +1,14 @@
 import type { Chore } from "@modules/chores/domain/chore";
-import type { StepVisual } from "@modules/chores/domain/step-visual";
+import type { StepAct, StepVisual } from "@modules/chores/domain/step-visual";
+import { AqhModel } from "./adapters/three/interior/aqh-model";
 import { choreVisuals } from "@modules/chores/application/step-visuals";
 import { RECIPES } from "@modules/kitchen/data/recipes";
 import { PROCESSES } from "@modules/kitchen/data/processes";
 import { ISS_FOOD } from "@modules/kitchen/data/iss-food";
 import { YOGA_SEQUENCES } from "@modules/wellness/data/yoga";
 import { asanaById } from "@modules/body/data/asanas";
+import { motionOf } from "@modules/body/data/exercise-motions";
+import { WORKOUTS } from "@modules/wellness/data/exercise";
 import type { StationPanel } from "@modules/station/domain/interior";
 import type { StationSession } from "@modules/station/application/station-ops";
 import type { StationInteriorMode } from "./station-interior";
@@ -13,6 +16,15 @@ import type { ChoreMode } from "./station-screen";
 
 /** What each solved step of a station chore looks like: the same sources as the ring's (step-visuals.ts). */
 const STEP_VISUALS = choreVisuals({ recipes: RECIPES, processes: PROCESSES, spaceFood: ISS_FOOD });
+
+/** The machine of each workout's device (data/exercise.ts): the T2, the CEVIS and the ARED, on Starship and on the station. */
+export const DEVICE_FIXTURE: Readonly<Record<string, string>> = { cinta: "t2", bicicleta: "cevis", fuerza: "ared" };
+
+/** Where a workout is done: at its own machine (the same fixture ids in both vehicles, reglas.md §6.0). */
+export function exerciseFixture(chore: Chore): string {
+  const device = WORKOUTS.find((w) => w.id === chore.targetId)?.device;
+  return (device && DEVICE_FIXTURE[device]) ?? "t2";
+}
 
 /** Yoga starts standing, as on the ring (interior.ts). */
 const STANDING_ASANA = "samasthitih-de-pie";
@@ -27,7 +39,33 @@ export function crewStepVisual(mode: StationInteriorMode, chore: Chore, fixtureI
     const seq = YOGA_SEQUENCES.find((s) => s.id === chore.targetId);
     return mode.yogaVisual(fixtureId, (i) => asanaById(i < 0 ? STANDING_ASANA : (seq?.postures.value[i]?.asana ?? STANDING_ASANA)));
   }
-  return mode.stepVisual(fixtureId, (i) => STEP_VISUALS.acts(chore, i) ?? []);
+  if (chore.kind === "ejercicio") {
+    // Each machine its own movement (reglas.md §4.5): run in the T2's harness, pedal the CEVIS, squat at the ARED.
+    const device = WORKOUTS.find((w) => w.id === chore.targetId)?.device ?? "cinta";
+    const v = mode.exerciseVisual(fixtureId, motionOf(device));
+    if (v) return v;
+  }
+  const acts = (i: number) => STEP_VISUALS.acts(chore, i) ?? [];
+  const v = mode.stepVisual(fixtureId, acts);
+  // At an AQH each solved step also plays on the habitat itself: the wiper on the glass, the feeder, a program's glow.
+  const tank = mode.gearOf(fixtureId);
+  return v && tank instanceof AqhModel ? withTank(v, acts, tank) : v;
+}
+
+/** A step visual that also acts the steps out on the AQH (the same in Starship and in Kibo). */
+function withTank(v: StepVisual, acts: (i: number) => readonly StepAct[], tank: AqhModel): StepVisual {
+  return {
+    ...v,
+    stepDone: (i) => {
+      tank.react(acts(i));
+      v.stepDone(i);
+    },
+    partDone: (i, p) => {
+      const a = acts(i)[p];
+      if (a) tank.react([a]);
+      v.partDone?.(i, p);
+    },
+  };
 }
 
 /** The tab whose machines do each kind of station chore (when she did not open it from one). */

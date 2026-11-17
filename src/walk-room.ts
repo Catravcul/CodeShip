@@ -384,6 +384,37 @@ export abstract class WalkRoom<Id extends string> {
     };
   }
 
+  /**
+   * Sitting in lotus on a mat (the general settings open over her, reglas.md §5.2): she sits on it, seen whole from
+   * beside it in the strip above the sheet, in either view of the settings; `seatedOn(undefined)` stands her up.
+   */
+  seatedOn(id: Id | undefined): void {
+    if (id === undefined) {
+      if (this.steps.framing && this.steps.holdPose) {
+        this.steps.clear();
+        this.sheetLens(false);
+        this.cutaway(true);
+      }
+      return;
+    }
+    const s = this.station(id);
+    if (!s) return;
+    if (!this.steps.root.parent) this.scene.add(this.steps.root);
+    const k = this.k;
+    this.pos = { ...s.stand };
+    const stand = new THREE.Vector3(s.look.x * k, 0, s.look.z * k);
+    // She faces the room's long way; the camera off to her side and a little ahead, low, so she shows whole.
+    const d = new THREE.Vector3(0, 0, -1);
+    const right = new THREE.Vector3(1, 0, 0);
+    const look = stand.clone().setY(0.45);
+    const camera = look.clone().addScaledVector(d, 1.3).addScaledVector(right, stand.x > 0 ? -1.2 : 1.2).setY(1.35);
+    this.steps.begin({ stand, yaw: Math.atan2(d.x, d.z), camera, look, target: look.clone() });
+    this.steps.holdPose = true;
+    this.avatar.pose("lotus");
+    this.sheetLens(true);
+    for (const sign of this.signs.values()) sign.visible = false;
+  }
+
   /** Under a sheet: a taller frustum whose top shows, so she and the machine are in the strip above it. */
   private sheetLens(on: boolean): void {
     const w = window.innerWidth;

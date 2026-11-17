@@ -5,6 +5,7 @@ import type { RackKind } from "@modules/life-support/domain/eclss";
 import { eclssFixtureId, eclssFixtures, type RackPlacement } from "@modules/station/data/eclss-placement";
 import { backWallFixture, CREW_QUARTER, OWN_BUNK, wallCompartment } from "@modules/station/data/compartments";
 import { STARSHIP_SRC } from "./starship";
+import { GEAR_SRC } from "@modules/wellness/data/gear";
 
 /**
  * Starship's crewed interior, **distribución nuestra** (docs/design/nodriza-starship.md): SpaceX has not
@@ -88,7 +89,7 @@ const hatch = (id: string, label: string, y: number): InteriorVolume => ({
   source: ISS.cbm,
 });
 
-type CrewAreaId = "cocina" | "camarotes" | "aseo" | "ejercicio" | "esterilla";
+type CrewAreaId = "cocina" | "camarotes" | "aseo" | "ejercicio" | "esterilla" | "medico";
 
 const fx = (f: Omit<Fixture, "action"> & { action: Fixture["action"] }): Fixture => f;
 /** A rack-sized machine on a side wall of a deck (its front on the aisle's wall). */
@@ -137,24 +138,25 @@ export function starshipInteriorPlan(): StationInteriorPlan {
     // Deck 1: galley, workstations, the mat; up to the flight deck; the nose tunnel to the station.
     onWall("cocina", "Cocina (agua caliente y calentador)", 1, "babor", rack().x, crew("cocina"), "Dispensador de agua caliente y fría para rehidratar y un calentador para las bolsas termoestabilizadas, como la cocina de la ISS", ISS.galley),
     onWall("puesto-trabajo", "Puestos de trabajo", 1, "estribor", new Vec3(0.86, 2.0, 2.1), { kind: "consola", id: "trabajo" }, "Dos portátiles con la lista de tareas y el registro de misiones", ISS.ispr),
-    onWall("esterilla", "Esterilla", 1, "popa", new Vec3(1.8, 1.0, 0.05), crew("esterilla"), "Esterilla sujeta a la pared con cintas: estiramientos, yoga y los ajustes", ISS.exercise),
+    { ...onWall("esterilla", "Esterilla", 1, "popa", new Vec3(0.6, 1.8, 0.05), crew("esterilla"), "Esterilla sujeta a la pared con cintas y lazos para los pies: yoga sobre ella y, sentada en loto, los ajustes", ISS.exercise), gear: "esterilla" },
+    // The medical kit: the ISS's CHeCS rack (licencia: equivalente de la ISS), on deck 2 by the WHC (wellness/data/procedures.ts).
+    { ...onWall("botiquin", "Sistema médico (CHeCS)", 2, "babor", rack().x, crew("medico"), "El sistema médico de la ISS (licencia: equivalente de la ISS): bolsa médica ambulatoria, bolsa de soporte vital avanzado, desfibrilador, ecógrafo y la tabla para sujetar al paciente", GEAR_SRC.checs, -1.45), gear: "checs" },
     onWall("subir-cubierta-vuelo", "Escotilla a la cubierta de vuelo", 1, "techo", new Vec3(1.27, 0.1, 1.27), { kind: "consola", id: "cubierta-vuelo" }, "Por aquí se sube a la cubierta de vuelo, bajo los depósitos de cabecera de la proa", ISS.cbm),
     onWall("salir-estacion", "Túnel de proa: a la estación", 1, "proa", new Vec3(0.8, 0.8, 0.1), { kind: "salir", to: "nodriza" }, "El puerto IDSS del morro, como el del HLS: con la nave atracada lleva a la estación", ISS.idss),
     // Deck 2: four crew quarters and the WHC.
-    onWall("aseo", "Aseo (WHC)", 2, "estribor", rack().x, crew("aseo"), "Aseo con flujo de aire, como el WHC de la ISS: en 0 g el aire arrastra lo que en la Tierra cae", ISS.whc, 1.45),
-    onWall(eclssFixtureId("refugio"), rackSpec("refugio").name, 2, "popa", rackSize("refugio", "popa"), { kind: "soporte-vital", rack: "refugio" }, rackSpec("refugio").info, rackSpec("refugio").source, -1.45),
+    { ...onWall("aseo", "Aseo (WHC)", 2, "estribor", rack().x, crew("aseo"), "Aseo con flujo de aire, como el WHC de la ISS (licencia: equivalente de la ISS): embudo y manguera, asiento con barras para los muslos y cortina", ISS.whc, 1.45), gear: "whc" },
+    { ...onWall(eclssFixtureId("refugio"), rackSpec("refugio").name, 2, "popa", rackSize("refugio", "popa"), { kind: "soporte-vital", rack: "refugio" }, "En desarrollo: un hueco del tamaño de un bastidor forrado de bolsas de agua (10 g/cm², la mitad de la dosis de una tormenta solar, estudio RadWorks de la NASA); Orion se hace el suyo con la estiba", GEAR_SRC.shelter, -1.45), gear: "refugio" },
     // The species catalogue (docs/design/catalogo-especies.md, «Ranuras de rack»): its terminal, with the
     // rodent habitat and the colonies' shelf beside it, and the aquatic habitat in a rack bay of deck 3.
     onWall("catalogo", "Catálogo de especies", 2, "popa", new Vec3(0.5, 1.4, 0.3), { kind: "consola", id: "catalogo" }, "Terminal del catálogo de especies del Santuario: solo especies que han vivido en microgravedad, en hábitats que han volado", ADOPTION.rodent, 0.35),
-    onWall("habitat-acuatico", "Hábitat acuático", 3, "popa", new Vec3(1.0, 1.5, 0.5), { kind: "consola", id: "acuatico" }, "Como el Aquatic Habitat de JAXA en el Kibo: dos acuarios de 0,7 L en un circuito cerrado de 3,2 L, a 25–30 °C, con filtro de bacterias", ADOPTION.aqh, 1.45),
+    { ...onWall("habitat-acuatico", "Hábitat acuático (AQH)", 3, "popa", new Vec3(1.05, 2.0, 0.86), { kind: "consola", id: "acuatico" }, "El Aquatic Habitat de JAXA (licencia: equivalente de la ISS): dos cámaras de unos 15 × 7 × 7 cm con luz LED, cámaras de vídeo, filtro de bacterias y comedero", ADOPTION.aqh, 1.45), gear: "aqh" },
     // Deck 3: exercise (T2, ARED, CEVIS), the airlock and the lander's hatch.
-    onWall("t2", "Cinta T2", 3, "suelo", new Vec3(1.0, 0.3, 1.9), crew("ejercicio"), "Cinta de correr con arnés de cintas elásticas que te sujetan contra ella", ISS.exercise),
-    onWall("ared", "ARED (pesas)", 3, "babor", rack().x, crew("ejercicio"), "Pesas con cilindros de vacío: hasta 272 kg de carga sin gravedad", ISS.exercise),
-    onWall("cevis", "Bicicleta CEVIS", 3, "estribor", new Vec3(0.86, 1.2, 1.0), crew("ejercicio"), "Bicicleta sin asiento: los pies van atados a los pedales (25–350 W)", ISS.exercise),
-    // The crew airlock (HLS, en desarrollo: Axiom 2024 tested its suits by a mock-up of it): suits and outer hatch in one.
+    { ...onWall("t2", "Cinta T2", 3, "suelo", new Vec3(1.9, 0.3, 0.8), crew("ejercicio"), "La T2 de la ISS (licencia: equivalente de la ISS): cinta con arnés de hombros y cintura y dos gomas a cada lado que te tiran contra la banda", GEAR_SRC.t2), gear: "t2" },
+    { ...onWall("ared", "ARED (pesas)", 3, "babor", rack().x, crew("ejercicio"), "El ARED de la ISS (licencia: equivalente de la ISS): barra en un brazo con bisagra y dos cilindros de vacío, hasta 272 kg de carga sin gravedad", GEAR_SRC.ared), gear: "ared" },
+    { ...onWall("cevis", "Bicicleta CEVIS", 3, "estribor", new Vec3(0.86, 1.2, 1.0), crew("ejercicio"), "La CEVIS de la ISS (licencia: equivalente de la ISS): sin sillín, las zapatillas enganchadas a los pedales y las manos en el manillar (25–350 W)", GEAR_SRC.cevis), gear: "cevis" },
     onWall("esclusa", "Esclusa (trajes y escotilla)", 3, "proa", new Vec3(1.2, 2.0, 0.1), { kind: "esclusa" }, "Esclusa de tripulación del HLS (en desarrollo): aquí se viste el traje, se prerrespira y se sale al casco. El juego usa el EMU de la ISS y su protocolo ISLE: los del HLS no están publicados", ISS.hlsAirlock),
     onWall("salir-modulo", "Escotilla del módulo de aterrizaje", 3, "popa", new Vec3(0.8, 0.8, 0.1), { kind: "salir", to: "sonda" }, "Puerto IDSS del costado (nuestro): el módulo de aterrizaje se acopla aquí", ISS.idss),
-    onWall("almacen", "Almacén", 3, "popa", new Vec3(1.05, 2.0, 0.86), { kind: "info" }, "Bolsas de carga y comida del mes, sujetas en los huecos curvos entre los bastidores y el casco", ISS.ispr, -1.45),
+    { ...onWall("almacen", "Almacén", 3, "popa", new Vec3(1.05, 2.0, 0.86), { kind: "info" }, "Bolsas de carga (CTB, como las de la ISS) y comida del mes, sujetas con cintas en los huecos entre los bastidores y el casco", GEAR_SRC.ctb, -1.45), gear: "estiba" },
   ];
   // Deck 2: four crew quarters one floats into, ISS-type (2,1 m³), two off the port wall and two off the forward one.
   const deck2 = volumes.find((v) => v.id === "cubierta-2")!;

@@ -83,7 +83,7 @@ export async function estacion(j) {
   await j.tap(".settings-sheet [data-close]", "Levantarse y cerrar los ajustes");
 
   // «Ir» of a station task from the global list: she hops to the mat and the yoga starts.
-  await placeAt(j, "ejercicio");
+  await placeAt(j, "t2");
   await j.tap(".sti-ui .sti-tasks", "Tareas");
   const stationTask = '.task-board [data-go^="est-yoga"]';
   j.check("la lista global incluye las tareas de la estación (yoga en su esterilla)", (await p.locator(stationTask).count()) > 0);

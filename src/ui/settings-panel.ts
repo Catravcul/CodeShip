@@ -29,6 +29,10 @@ export interface ExtraRow {
   on?(): boolean;
 }
 
+/** Set by vite.config.ts at build time (short commit · date): which version this is, shown under the settings. */
+declare const __BUILD_LABEL__: string | undefined;
+export const BUILD_LABEL = typeof __BUILD_LABEL__ === "string" ? __BUILD_LABEL__ : "desarrollo";
+
 const yes = (b: boolean) => (b ? "Sí" : "No");
 const ROWS: readonly Row[] = [
   { key: "names", label: "Nombres", help: "Nombres del Sol, los planetas y los asteroides sobre la vista de vuelo", value: (s) => yes(s.names), next: (s) => !s.names },
@@ -128,6 +132,7 @@ export class SettingsPanel {
           return `<button class="set-row" data-extra="${r.id}" ${on ? `role="switch" aria-checked="${on}"` : ""} aria-label="${r.label}: ${r.value()}"><span><b>${r.label}</b><small>${r.help}</small></span><em>${r.value()}</em></button>`;
         })
         .join("")}
-      <p class="set-note">Los ajustes se guardan en este navegador. Solo se cambian sentada en una esterilla: la del habitáculo del módulo o la del rincón de ejercicio de la nodriza.</p>`;
+      <p class="set-note">Los ajustes se guardan en este navegador. Solo se cambian sentada en una esterilla: la del habitáculo del módulo, la de la Starship o la de Destiny en la estación.</p>
+      <p class="set-build" data-build>Versión ${BUILD_LABEL}</p>`;
   }
 }

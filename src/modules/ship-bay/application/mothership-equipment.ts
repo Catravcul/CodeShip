@@ -24,11 +24,13 @@ export function mothershipEquipmentStatus(m: Mothership): ComponentStatus[] {
     const specs: Spec[] = [];
     if (slot === "energia-auxiliar") {
       const d = m.drive;
-      specs.push(
-        { label: "Aporta aquí", value: `${num(m.auxiliaryKw)} kW a ${num(m.spec.sunDistanceAu.value, 2)} UA del Sol`, source: m.spec.sunDistanceAu.source },
-        { label: "Reactor", value: `${num(m.spec.power?.electricKw.value ?? 0)} kWe` },
-        { label: "Libre para propulsión", value: `${num(d.availableKw)} kW · encienden ${d.firingUnits} de ${d.fittedUnits}` },
-      );
+      specs.push({ label: "Aporta aquí", value: `${num(m.auxiliaryKw)} kW a ${num(m.spec.sunDistanceAu.value, 2)} UA del Sol`, source: m.spec.sunDistanceAu.source });
+      // Only a ship with a reactor and electric thrusters (the ring ship, fiction): Starship has neither.
+      if (m.spec.power)
+        specs.push(
+          { label: "Reactor", value: `${num(m.spec.power.electricKw.value)} kWe` },
+          { label: "Libre para propulsión", value: `${num(d.availableKw)} kW · encienden ${d.firingUnits} de ${d.fittedUnits}` },
+        );
     } else {
       const years = m.yearsToCareerLimit;
       if (years < DOSE_TUNING.warnYears) issues.push({ attention: "aviso", text: `Límite de carrera en ${num(years, 1)} años a bordo` });
@@ -41,7 +43,7 @@ export function mothershipEquipmentStatus(m: Mothership): ComponentStatus[] {
     if (e)
       specs.push(
         { label: "Pieza", value: e.name, ...(e.sources[0] ? { source: e.sources[0] } : {}) },
-        { label: "Masa", value: `${num(e.massKg / 1000, 1)} t${slot === "blindaje" ? " (y otro tanto en el anillo gemelo, que debe pesar igual)" : ""}` },
+        { label: "Masa", value: `${num(e.massKg / 1000, 1)} t${slot === "blindaje" && m.spec.ring ? " (y otro tanto en el anillo gemelo, que debe pesar igual)" : ""}` },
         { label: "Materiales", value: e.materials, more: true },
         { label: "Ha volado", value: e.flight, more: true },
         { label: "Cómo se calcula", value: e.basis, more: true },

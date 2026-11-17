@@ -66,7 +66,10 @@ export async function mision(j) {
   await j.useMachine("cabin", "escotilla", "salir-eva", "Ponerse el traje y salir");
   await j.waitDuel(30000);
   for (let n = 0; n < 8 && (await p.evaluate(() => window.codeship.eva.phase)) === "preparando"; n++) await j.answer(() => window.codeship.eva._run?.current ?? null);
-  // Won, she steps out on her own after 0.6 s and the card closes itself (eva-mode.ts).
+  // Won, the card closes itself after 0.6 s and she opens the forward hatch and crawls out (eva-mode.ts).
+  const leaf = await p.waitForFunction(() => window.codeship.cabin.leafOpen("escotilla") > 0.3 || document.body.classList.contains("in-eva"), null, { timeout: 30000 }).then(() => p.evaluate(() => window.codeship.cabin.leafOpen("escotilla"))).catch(() => 0);
+  j.check("abre la escotilla delantera del LM (la hoja gira) antes de salir", leaf > 0.3, `hoja ${leaf.toFixed(2)}`);
+  await j.shot("escotilla-delantera");
   await p.waitForFunction(() => document.body.classList.contains("in-eva"), null, { timeout: 30000 }).catch(() => {});
   await p.waitForTimeout(1500);
   j.check("con el traje puesto, sale al exterior", await p.evaluate(() => window.codeship.eva.outside), await p.evaluate(() => window.codeship.eva.phase));

@@ -225,9 +225,8 @@ export function buildLmCabin(L: CabinLayout<CabinStationId>, k: number, spread =
     parts.push(ttca, box(0.022, 0.07, 0.022, metal, x - B.controllerSideM, B.controllerY + 0.03, z - B.controllerForwardM));
     for (const m of parts) m.userData.body = true;
   }
-  // Forward hatch (0,81 × 0,81 m), low between the stations, under panel 4.
-  const hatch = box(C.forwardHatchM.value * k, C.forwardHatchM.value, 0.05, metal, 0, C.forwardHatchM.value / 2, front + 0.03);
-  hatch.userData.hatch = "delantera";
+  // Forward hatch (0,81 × 0,81 m), low between the stations, under panel 4: its leaf swings in when she
+  // goes out (lmForwardHatch, src/walk-room.ts).
   label("Escotilla delantera", 0, 0.7, front + 0.15 * k);
 
   // Midsection: the ascent engine cover on the floor, the overhead docking hatch above it.
@@ -318,6 +317,12 @@ function coasTexture(): THREE.CanvasTexture {
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
+}
+
+/** The forward hatch's leaf: low in the front wall between the stations, square (32 in, crew-station.ts), opening into the cabin. */
+export function lmForwardHatch(L: CabinLayout<CabinStationId>, k: number): { at: THREE.Vector3; into: THREE.Vector3; sizeM: number; round: boolean } {
+  const s = CREW_STATION.forwardHatchM.value;
+  return { at: new THREE.Vector3(0, s / 2, L.floor.minZ * k + 0.03), into: new THREE.Vector3(0, 0, 1), sizeM: s * k, round: false };
 }
 
 /** The overhead docking hatch's leaf: where it is (drawn m), the way it opens and its size (0,84 m round, apolloLm). */

@@ -10,7 +10,7 @@ import { facing } from "../domain/attitude";
 import { portFlightTarget, targetDistance, type AsteroidTarget, type DockTarget, type NavTarget } from "../domain/nav-target";
 import type { DockingTarget } from "@modules/mothership/domain/docking";
 import { remainingEstimateS, TripAutopilot, type AutopilotPhase } from "./autopilot";
-import { CarrierTrip, type BerthRun, type CarrierPort } from "./carrier-trip";
+import { CarrierTrip, ManualCarrierRun, type BerthRun, type CarrierPort } from "./carrier-trip";
 import { legBudgets, TRAVEL_TIME, TravelClock } from "../domain/travel-time";
 import { carrierTripChore, tripChore, type CarrierTripFacts, type DockFacts, type TripFacts } from "./trip-chore";
 import { DOCK_TRIP } from "./dock-trip";
@@ -147,6 +147,8 @@ export interface TripProgress {
   readonly etaRealS: number;
   /** Game seconds per real second now. */
   readonly lapse: number;
+  /** Flown by hand (the crew commands the speed), not by a programmed plan. */
+  readonly manual?: boolean;
 }
 
 /**
@@ -161,6 +163,9 @@ export class Navigator {
   private programmed: Trip | undefined;
   private _autopilot: TripAutopilot | undefined;
   private _carrierTrip: CarrierTrip | undefined;
+  private _manualCarrier: ManualCarrierRun | undefined;
+  /** The hand-flown mothership parked at its asteroid (until the next trip). */
+  parkedByHand = false;
   private _berthing: BerthRun | undefined;
   private startDistanceM = 0;
   /** Time-lapse of the leg flying now, and the real seconds kept for the lander's leg after the mothership's. */
@@ -446,6 +451,37 @@ export class Navigator {
     return this._status === "carrier" ? { ok: true } : { ok: false, reason: "La nodriza no ha podido encender los motores" };
   }
 
+  /**
+   * Hand flying (docs/design/reglas.md §3.6): the mothership sets off along the planned route at rest and
+   * the crew commands its speed (`manualCarrier`); parked at the end, a station berthing goes on by itself
+   * (as Dragon's does), and at an asteroid the lander is flown from its seat, by hand or by program.
+   */
+  flyByHand(id: string = this._target.id): { ok: boolean; reason?: string } {
+    const t = this.ports.targets.find((x) => x.id === id);
+    if (!t) return { ok: false, reason: "Destino desconocido" };
+    const can = this.canCarry(t);
+    if (!can.ok) return can;
+    const sel = this.select(id);
+    if (!sel.ok) return sel;
+    const now = this.trip(t);
+    const c = this.ports.carrier!;
+    const leaving = !!c.departure?.();
+    c.release?.();
+    this._carrying = c.docked();
+    this._route = [now.carrier!.from, ...now.carrier!.path];
+    const berth = now.carrier!.berthAt;
+    const q = berth ? c.berthStandoff!(berth).orientation : leaving ? c.orientation : facing(now.carrier!.parking.sub(now.carrier!.from));
+    this._manualCarrier = new ManualCarrierRun(c, now.carrier!.from, now.carrier!.path, q);
+    this.parkedByHand = false;
+    this._status = "carrier";
+    return { ok: true };
+  }
+
+  /** The hand-flown mothership, while it flies (its speed commands). */
+  get manualCarrier(): ManualCarrierRun | undefined {
+    return this._manualCarrier;
+  }
+
   /** Start the chain of challenges that programs the hop. */
   startProgramming(): ChoreRun {
     const can = this.canProgram();
@@ -531,6 +567,7 @@ export class Navigator {
     if (this._status === "programming" || this._status === "autopilot" || this._status === "carrier" || this._status === "docking") this._status = "manual";
     this._autopilot = undefined;
     this._carrierTrip = undefined;
+    this._manualCarrier = undefined;
     this._berthing = undefined;
     this.run = undefined;
     this.clock?.cancel();
@@ -546,6 +583,8 @@ export class Navigator {
    */
   get lapse(): number {
     if (this._status === "carrier" && this._berthing) return this.berthLapse;
+    // By hand: the board's own pace (one clock, docs/design/viajes.md).
+    if (this._status === "carrier" && this._manualCarrier) return TRAVEL_TIME.lapse.carrier;
     if (this._status === "carrier" && this._carrierTrip && this.clock) return this.clock.lapse(this._carrierTrip.remainingS);
     if (this._status === "autopilot" && this._autopilot && this.clock) return this.clock.lapse(remainingEstimateS(this._autopilot.status));
     return 1;
@@ -555,6 +594,8 @@ export class Navigator {
   private etaRealS(): number {
     const c = this.clock;
     if (this._status === "carrier" && this._berthing) return this._berthing.remainingS / this.berthLapse;
+    const m = this._manualCarrier;
+    if (this._status === "carrier" && m) return Math.abs(m.speedMs) > 1e-6 ? Math.abs(m.remainingM / m.speedMs) / TRAVEL_TIME.lapse.carrier : 0;
     if (!c) return 0;
     const berth = this._target.kind === "dock" && this._target.carrierPort ? berthSeconds() / this.berthLapse : 0;
     if (this._status === "carrier" && this._carrierTrip) return c.etaRealS(this._carrierTrip.remainingS) + berth + (this.landerBudgetS ?? 0);
@@ -573,6 +614,27 @@ export class Navigator {
       if (this._berthing.status !== "approach") {
         this._status = this._berthing.status === "docked" ? "docked" : "failed";
         this._berthing = undefined;
+      }
+      return;
+    }
+    const m = this._manualCarrier;
+    if (this._status === "carrier" && m) {
+      m.advance(realDtS * (held ? 1 : TRAVEL_TIME.lapse.carrier));
+      if (m.arrived) {
+        this._manualCarrier = undefined;
+        const berth = this._target.kind === "dock" ? this._target.carrierPort : undefined;
+        // At a station the computer takes over, as Dragon's does: the last metres to Waypoint 1 and the
+        // berthing; at an asteroid she flies the lander from its seat (by hand or by program).
+        const c = this.ports.carrier;
+        if (berth && c?.berth && c.berthStandoff) {
+          const sb = c.berthStandoff(berth);
+          const plan = planContinuousBurn(sb.position.sub(c.position).length(), c.accelerationMs2, c.cruiseFor?.(1));
+          this._carrierTrip = new CarrierTrip(c, c.position, [sb.position], plan, sb.orientation);
+          this.clock = new TravelClock(plan.totalS, plan.totalS / TRAVEL_TIME.lapse.carrier);
+        } else {
+          this._status = "manual";
+          this.parkedByHand = true;
+        }
       }
       return;
     }
@@ -638,6 +700,11 @@ export class Navigator {
       // Straight-line gap to the port (off the axis it first backs out and centres).
       const r = Math.hypot(Math.max(0, a.axialM), a.lateralM);
       return { vehicle: "probe", phase: "dock", remainingM: r, etaS: r / Math.max(0.05, a.closingMs), speedMS: Math.abs(a.closingMs), fraction: 1 - Math.min(1, r / DOCK_TRIP.handoverM) };
+    }
+    const mc = this._manualCarrier;
+    if (this._status === "carrier" && mc) {
+      const v = mc.speedMs;
+      return { vehicle: "carrier", phase: Math.abs(v) > 1e-6 ? "coast" : "hold", remainingM: Math.abs(mc.remainingM), etaS: Math.abs(v) > 1e-6 ? Math.abs(mc.remainingM / v) : 0, speedMS: v, fraction: mc.fraction, manual: true };
     }
     const ct = this._carrierTrip;
     if (this._status === "carrier" && ct) {

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { cabinActions, type CabinActionId, type CabinState, type CabinStationId } from "@modules/lander-cabin/domain/cabin";
 import { CABIN_SPREAD, LANDER_CABIN } from "@modules/lander-cabin/data/cabin";
-import { buildLmCabin, lmDockingHatch } from "./adapters/three/lm-cabin";
+import { buildLmCabin, lmDockingHatch, lmForwardHatch } from "./adapters/three/lm-cabin";
 import { drawScreen } from "./adapters/three/interior/room";
 import { WalkRoom, type RoomAction } from "./walk-room";
 import { scaleLights, worldScale } from "./adapters/three/interior/world-scale";
@@ -43,7 +43,10 @@ export class LanderCabin extends WalkRoom<CabinStationId> {
       geometry: g.group,
       speedMs: 0.55,
       signs: ["asiento", "mente", "ecs", "esterilla", "acople"],
-      hatches: [{ station: "acople", ...lmDockingHatch(LANDER_CABIN, k) }],
+      hatches: [
+        { station: "acople", ...lmDockingHatch(LANDER_CABIN, k) },
+        { station: "escotilla", ...lmForwardHatch(LANDER_CABIN, k) },
+      ],
       scale: k,
       // Under the roof (2,34 m).
       signY: (s) => Math.min(LANDER_CABIN.heightM - 0.12, s.look.y + 0.28),

@@ -33,6 +33,8 @@ Un recuadro pequeño, en monoespaciada y con mucho contraste, solo en la zona de
 
 ## Aterrizar por programa
 
+**Dice adónde va** (reglas.md §3.9, 2026-11-17). Berón usó «Aterrizaje: auto» en la consola de la sonda: «veo que se mueve sola pero no sé adónde». Ese botón no aterrizaba: solo giraba la sonda para poner la panza hacia el suelo (el asistente de actitud del ordenador de vuelo). Ahora se llama **Nivelar sola: sí/no** (también en el menú de la cabina, tecla G) y al encenderlo lo dice: «no va a ningún sitio ni aterriza; para que aterrice sola, «Aterrizar con un programa» a menos de 450 m del suelo». El aterrizaje que sí va solo, el programado, dice al cargar «baja sola al sitio marcado (el anillo) en X, a N m y unos T… Para posar…», y la ficha de viaje lleva «sitio de aterrizaje en X», la distancia al sitio por el suelo, la altura y el tiempo que falta. La vista lateral del descenso se gira con el palo y arrastrando (antes quedaba fija). La sonda se pilota a distancia: se puede dejar su consola, el programa sigue, y al volver la consola dice si se ha posado (reglas.md §3.8).
+
 **Cuándo**: en la zona de aproximación, libre (no acoplada ni posada), a más de 0,3 m del suelo, y sin otro viaje o aterrizaje comprimido en marcha (la cámara rápida es una sola para todo el mundo). La oferta es un botón «Aterrizar con un programa» (columna de contexto en la cabina; bajo los indicadores en la consola de la sonda).
 
 **Ajuste** «Aterrizaje: preguntar / manual / por programa» (`landingMode()` y `setLandingMode()` en `src/ui/landing-readout.ts`, para el modal de ajustes generales; por defecto «preguntar»):

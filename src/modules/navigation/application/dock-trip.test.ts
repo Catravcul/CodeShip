@@ -229,3 +229,43 @@ describe("Trips that end docked", () => {
     expect(spec.kind === "choice" && spec.options[spec.correct]).toMatch(/0,10 m\/s/);
   }, 30_000);
 });
+
+describe("NAV-16 The mothership flown by hand (reglas.md §3.6): she commands the speed, it parks and berths", () => {
+  it("at rest until she burns; at 0,4 m/s it closes in at the board's pace; stopped in the window it berths by itself", () => {
+    const { nav, mothership, station } = make({ undocked: new Vec3(-200, -300, 1300) });
+    expect(nav.flyByHand(station.id).ok).toBe(true);
+    const m = nav.manualCarrier!;
+    expect(nav.status).toBe("carrier");
+    expect(nav.progress()).toMatchObject({ vehicle: "carrier", manual: true, speedMS: 0, lapse: 60 });
+    const start = mothership.position;
+    nav.update(1);
+    expect(mothership.position.sub(start).length()).toBeLessThan(1e-6);
+    // Four steps of 0,1 m/s: Hayabusa2's 40 cm/s. Δv is spent from the tanks.
+    const dv0 = mothership.deltaV();
+    for (let i = 0; i < 4; i++) expect(m.command(0.1)).toBe(true);
+    expect(m.speedMs).toBeCloseTo(0.4, 6);
+    expect(dv0 - mothership.deltaV()).toBeGreaterThan(0.3);
+    // One real second is a game minute: 24 m.
+    nav.update(1);
+    expect(mothership.position.sub(start).length()).toBeCloseTo(24, 0);
+    // Fly on until inside the arrival window, then stop dead.
+    for (let i = 0; i < 2000 && m.remainingM > 50; i++) nav.update(0.1);
+    expect(m.hold()).toBe(true);
+    nav.update(0.1);
+    expect(nav.manualCarrier).toBeUndefined();
+    for (let i = 0; i < 4000 && nav.status === "carrier"; i++) nav.update(0.5);
+    expect(nav.status).toBe("docked");
+    expect(mothership.dockedTo).toBe(station.carrierPort!.id);
+  }, 60_000);
+
+  it("past the end and still moving, it does not park: she has to turn back", () => {
+    const { nav, station } = make({ undocked: new Vec3(-200, -300, 1300) });
+    expect(nav.flyByHand(station.id).ok).toBe(true);
+    const m = nav.manualCarrier!;
+    m.command(1);
+    for (let i = 0; i < 4000 && m.remainingM > -300; i++) nav.update(0.1);
+    expect(nav.manualCarrier).toBe(m);
+    m.command(-2);
+    expect(m.speedMs).toBe(-1);
+  }, 30_000);
+});

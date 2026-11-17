@@ -7,7 +7,7 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 const km = (m: number) => (Math.abs(m) >= 1000 ? `${num(m / 1000, 1)} km` : `${num(m)} m`);
 
 /** What the «program» button says for a structure. */
-export const dockActionLabel = (i: DockDestinationInfo): string => (i.target.carrierPort ? `Ir a la ${i.target.what.toLowerCase()}` : "Volver a la nodriza");
+export const dockActionLabel = (i: DockDestinationInfo): string => (i.target.carrierPort ? `Programar viaje a la ${i.target.what.toLowerCase()}` : "Programar vuelta a la nodriza");
 
 /** Map card of a station or the mothership: distance to its port, the IDSS port and how the trip ends. */
 export function dockCardHtml(i: DockDestinationInfo, note: string): string {

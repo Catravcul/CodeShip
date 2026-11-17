@@ -249,11 +249,14 @@ export class ShipBay {
     this.layout();
   }
 
+  /** The stores the ship carries (the ring ship's feed by default; main.ts gives Starship's real food). */
+  stores: readonly { readonly id: string; readonly capacity: number }[] = SHIP_STORES;
+
   /** Statuses of every part, recomputed from the live ship, machines, beds and stores. */
   status(): ComponentStatus[] {
-    const stores: BayStore[] = SHIP_STORES.map((s) => {
+    const stores: BayStore[] = this.stores.map((s) => {
       const item = ITEMS.find((i) => i.id === s.id);
-      return { id: s.id, name: item?.name ?? s.id, amount: this.habitat.larder(s.id), capacity: s.capacity, unit: item?.unit === "día" ? "días" : item?.unit === "lote" ? "lotes" : (item?.unit ?? "") };
+      return { id: s.id, name: item?.name ?? s.id, amount: this.habitat.larder(s.id), capacity: s.capacity, unit: item?.unit === "día" ? "días" : item?.unit === "lote" ? "lotes" : item?.unit === "porción" ? "porciones" : (item?.unit ?? "") };
     });
     const list = bayStatus({ ship: this.ship, machines: this.habitat.machines, beds: this.habitat.plants.filter((p) => p.isBed), sustainability: this.habitat.sustainability, stores });
     const all = this.nodriza && this.mothership ? [...list, ...driveStatus(this.nodriza), ...mothershipEquipmentStatus(this.nodriza)] : list;

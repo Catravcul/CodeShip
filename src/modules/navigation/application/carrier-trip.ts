@@ -131,3 +131,87 @@ export class CarrierTrip {
     }
   }
 }
+
+/**
+ * Hand flying (docs/design/reglas.md §3.6): the crew commands the speed along the planned route in short
+ * translation burns, as on a proximity approach (Hayabusa2 descended at a commanded 40 cm/s). Game values
+ * (Starship's crew controls are not published: in development): steps of 0,1 m/s, a top of 1 m/s, and the
+ * ship counts as parked within `arriveM` of the end at no more than `holdMs`.
+ */
+export const MANUAL_CARRIER = { stepMs: 0.1, maxMs: 1, arriveM: 100, holdMs: 0.05 } as const;
+
+export class ManualCarrierRun {
+  private s = 0;
+  private v = 0;
+  private readonly legs: { from: Vec3; to: Vec3; len: number }[] = [];
+  /** Δv spent so far, m/s. */
+  spentMs = 0;
+  /** Why the last command could not be done (no propellant), if so. */
+  refused: string | undefined;
+
+  constructor(
+    private readonly carrier: CarrierPort,
+    from: Vec3,
+    path: readonly Vec3[],
+    private readonly orientation: Quat,
+  ) {
+    let p = from;
+    for (const w of path) {
+      this.legs.push({ from: p, to: w, len: w.sub(p).length() });
+      p = w;
+    }
+    carrier.moveTo(from, orientation);
+  }
+
+  get lengthM(): number {
+    return this.legs.reduce((a, l) => a + l.len, 0);
+  }
+  /** Distance left to the end of the route, m (negative: past it). */
+  get remainingM(): number {
+    return this.lengthM - this.s;
+  }
+  get speedMs(): number {
+    return this.v;
+  }
+  /** Parked: close enough to the end and nearly still. */
+  get arrived(): boolean {
+    return Math.abs(this.remainingM) <= MANUAL_CARRIER.arriveM && Math.abs(this.v) <= MANUAL_CARRIER.holdMs + 1e-9;
+  }
+  get fraction(): number {
+    return Math.max(0, Math.min(1, this.s / Math.max(1, this.lengthM)));
+  }
+
+  /** One translation burn: change the speed along the route by `dvMs` (spends propellant). */
+  command(dvMs: number): boolean {
+    const next = Math.max(-MANUAL_CARRIER.maxMs, Math.min(MANUAL_CARRIER.maxMs, Math.round((this.v + dvMs) * 100) / 100));
+    const dv = Math.abs(next - this.v);
+    if (dv < 1e-9) return true;
+    if (!this.carrier.burn(dv)) {
+      this.refused = "Sin propelente para encender";
+      return false;
+    }
+    this.refused = undefined;
+    this.spentMs += dv;
+    this.v = next;
+    return true;
+  }
+
+  /** Stop dead (a burn of the speed it has). */
+  hold(): boolean {
+    return this.command(-this.v);
+  }
+
+  /** Let `gameS` pass at the commanded speed and move the ship along the route (past its end: straight on). */
+  advance(gameS: number): void {
+    this.s = Math.max(0, this.s + this.v * Math.max(0, gameS));
+    let s = this.s;
+    for (const l of this.legs) {
+      if (s <= l.len || l === this.legs[this.legs.length - 1]) {
+        const k = l.len > 0 ? s / l.len : 1;
+        this.carrier.moveTo(l.from.add(l.to.sub(l.from).scale(k)), this.orientation);
+        return;
+      }
+      s -= l.len;
+    }
+  }
+}

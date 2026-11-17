@@ -1,5 +1,5 @@
 import { RING_ELEVATOR, RING_STATIONS } from "@modules/habitat/data/ring-module";
-import { etaText, legSecondsLeft, planJourney, type CrewJoins, type Leg } from "@modules/tasks/domain/journey";
+import { etaText, legSecondsLeft, planJourney, upToFlight, type CrewJoins, type Leg } from "@modules/tasks/domain/journey";
 import { dockingSeconds, herePlace, journeyTransfers, taskGoal, type JourneyFlight, type JourneyHere } from "@modules/tasks/application/journey-world";
 import type { Task, TaskPlace } from "@modules/tasks/application/task-list";
 import type { Navigator } from "@modules/navigation/application/navigator";
@@ -98,6 +98,9 @@ export class JourneyDriver {
     return this.legs.length > 0;
   }
 
+  /** What she must fly herself before the task can be reached (said when the walk ends), if anything. */
+  private travelFirst: string | undefined;
+
   /** The legs of the journey under way (for the HUD and the experience suite). */
   get plan(): readonly Leg[] {
     return this.legs;
@@ -136,15 +139,19 @@ export class JourneyDriver {
       this.say(`No puedes llegar: ${plan.why}`, 7);
       return false;
     }
-    if (!plan.legs.length) {
-      this.d.finish(t.place, t);
+    // A task never flies a ship by itself (reglas.md §3.5): she walks to where the flight is flown and is told to travel first.
+    const cut = upToFlight(plan.legs);
+    this.travelFirst = cut.flight ? travelFirstText(t.title, cut.flight) : undefined;
+    if (!cut.legs.length) {
+      if (this.travelFirst) this.say(this.travelFirst, 10);
+      else this.d.finish(t.place, t);
       return true;
     }
     // From the hub or the spine down to a ring chore: the spoke takes half a minute; say so, or the tap looks ignored.
     if (interior.active && interior.zones?.zone !== "anillo" && plan.legs.some((l) => l.kind === "ascensor" && l.to.startsWith("anillo:")))
       interior.say(`Bajas al anillo para «${t.title}»: el ascensor del radio tarda medio minuto`);
     this.task = t;
-    this.legs = plan.legs;
+    this.legs = cut.legs;
     this.index = 0;
     this.begin();
     document.body.classList.add("in-journey");
@@ -185,8 +192,10 @@ export class JourneyDriver {
       this.index++;
       if (this.index >= this.legs.length) {
         const t = this.task!;
+        const first = this.travelFirst;
         this.end();
-        this.d.finish(t.place, t);
+        if (first) this.say(first, 10);
+        else this.d.finish(t.place, t);
         return;
       }
       this.begin();
@@ -347,28 +356,9 @@ export class JourneyDriver {
           done: () => through && this.elapsed > 0.3,
         };
       }
-      case "vuelo": {
-        const carrier = fromRoom !== "modulo";
-        // The mothership flies to the station; the lander only home to the mothership.
-        const to = carrier ? this.d.stationTarget : this.d.mothershipTarget;
-        const arrived = () => (carrier ? this.d.joins().mothershipAtStation : this.d.joins().lander === leg.joins.lander);
-        return {
-          begin: () => {
-            if (!carrier && !this.d.seated()) this.d.sitDown();
-            const r = carrier ? nav.carry(to) : nav.flyLander(to);
-            return r.ok ? undefined : r.reason;
-          },
-          done: arrived,
-          failed: () => (!arrived() && (nav.status === "manual" || nav.status === "failed") ? "El vuelo automático se ha interrumpido" : undefined),
-          left: () => {
-            const p = nav.progress();
-            if (!p) return undefined;
-            // The docking assist flies at ×1: its own gap over closing speed; before it, the leg's time-lapse and then the docking.
-            if (nav.status === "docking") return p.etaS;
-            return p.etaRealS + (carrier ? 0 : dockingSeconds(DOCK_TRIP.handoverM, this.d.landerAccelMs2()));
-          },
-        };
-      }
+      case "vuelo":
+        // Never planned to run (upToFlight cuts the walk before it): a task does not fly a ship (reglas.md §3.5).
+        return { begin: () => "Una tarea no hace volar una nave: primero hay que viajar", done: () => false };
     }
   }
 
@@ -414,4 +404,11 @@ export class JourneyDriver {
       return why ?? undefined;
     }
   }
+}
+
+/** The notice at the end of a walk that stops where a flight has to be made (reglas.md §3.5, §3.6). */
+export function travelFirstText(task: string, flight: Leg): string {
+  if (flight.from.startsWith("modulo:"))
+    return `Para «${task}» primero hay que volver con el módulo a la nave: pilótalo desde el puesto del comandante, a mano o con un programa`;
+  return `Para «${task}» primero hay que viajar a la estación: en la mesa de navegación, «Programar viaje» (retos) o «Pilotar a mano»`;
 }

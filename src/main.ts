@@ -430,7 +430,7 @@ const view = new FlightView(scene, camera, root, () => ship.design, { position: 
 // Icons that sprout from the cockpit's root (docs/design/ux-acciones.md §Iconos). Undocking, the hatches,
 // the suit and the asteroid's mind moved to machines in the lander's cabin (docs/design/habitaculo.md);
 // the sky names to the general settings.
-const landBtn = view.addButton("land-btn", () => (flight.landingAssist = !flight.landingAssist), { icon: ICON.land, label: "Aterrizaje: manual", key: "G" });
+const landBtn = view.addButton("land-btn", () => (flight.landingAssist = !flight.landingAssist), { icon: ICON.land, label: "Nivelar sola: no", key: "G" });
 // Free near a port: the docking assist (like the landing assist). Docked, K still undocks on a keyboard.
 const dockBtn = view.addButton("dock-btn", () => (docking.docked ? docking.undock() : docking.toggleAssist()), { icon: ICON.dock, label: "Acople: manual", key: "K" });
 // Stand up from the pilot seat into the cabin.
@@ -447,6 +447,7 @@ const navMode = new NavigationMode(root, nav, duelView, {
   shipNose: () => flight.state.toWorld(new Vec3(0, 0, -1)),
   carrierPosition: () => mothership.position,
 });
+navMode.atControls = (v) => (v === "carrier" ? bridge.active || deck.active : view.enabled || cabin.active);
 // The map only lives on the deck's navigation page: no overlay anywhere else.
 navMode.canOpen = () => false;
 // The mission log, on the travel ship: deck COMM page, the map and the radio. The map marks Nevaeh's targets.
@@ -521,6 +522,8 @@ const eva = new Eva(flight, bennu, (local) => surface(local), habitat.crew.body.
 const evaMode = new EvaMode(root, scene, camera, eva, duelView);
 // Back from the walk, she comes in through the EVA hatch of the cabin.
 evaMode.onExit = () => cabin.enter("escotilla");
+// Suited up, she opens the forward hatch and crawls out through it (the cabin closes once she is outside).
+evaMode.throughHatch = (then) => (cabin.active ? cabin.passHatch("escotilla", then) : then());
 
 // The lander's hatch: docked, it leads into the vehicle it is docked to, and only there.
 const atStationPort = () => structure.ports.some((p) => p === docking.dockedTo);
@@ -568,6 +571,7 @@ const deck = new FlightDeck(root, {
   mothership,
   ring,
   habitat,
+  farm: FICTION,
   docking,
   nav,
   map: navMode.map,
@@ -750,6 +754,7 @@ const landerLandingUi = new LandingUi({
   camera: () => camera,
   say: (t) => flash(t, 7),
   targetName: () => expedition.asteroid.data.name,
+  purpose: () => "posar el módulo y salir de paseo por la escotilla delantera",
   overlay: planOverlay,
   frameSheet: (s) => view.landingSheet(s),
 });
@@ -763,6 +768,7 @@ const probeLandingUi = new LandingUi({
   say: (t) => subj.probeMode.say(t, 7),
   overlay: planOverlay,
   targetName: () => describeBody(subj.probe.flight.target)?.name ?? expedition.asteroid.data.name,
+  purpose: () => "posar la sonda: posada, la mente del asteroide la escucha (fase de la sonda)",
   frameSheet: (s) => subj.probeMode.landingSheet(s, () => probeLanding.siteWorld()),
   gravityMs2: () => region.asteroids.reduce((g, a) => g.add(a.gravityAt(subj.probe.flight.state.position)), Vec3.ZERO).length(),
 });
@@ -784,6 +790,12 @@ const keptRoute = (key: string, plan: () => readonly Vec3[]) => () => {
   return routeOf.points;
 };
 /** What the chip shows and what the preview follows, for the trip flying now. */
+/** At the console of the vehicle that travels: the probe's, the flight deck (the mothership), the LM's cockpit or cabin. */
+function atTripConsole(): boolean {
+  if (probeTravel.trip.active || probeLanding.active) return subj.piloting;
+  if (landerLanding.active) return view.enabled;
+  return nav.progress()?.vehicle === "carrier" ? bridge.active || deck.active : view.enabled || cabin.active;
+}
 function tripNow(): { chip: TripChipData; subject: PreviewSubject } | undefined {
   const pp = probeTravel.trip.progress();
   if (pp) {
@@ -821,6 +833,8 @@ function tripNow(): { chip: TripChipData; subject: PreviewSubject } | undefined 
 const bay = new ShipBay(root, ship, habitat, duelView, mothership.spec, stationOps.station.hangar);
 // The mothership's systems are worked on while it is berthed at the station.
 bay.docked = () => !!mothership.dockedTo;
+// Only what is aboard (docs/design/reglas.md §1.3): with REAL_ONLY, the ISS food it was stocked with, not the fiction's feed.
+if (REAL_ONLY) bay.stores = Object.entries(ISS_LAUNCH_STOCK).map(([id, capacity]) => ({ id, capacity }));
 // The mothership's thruster mounts are refitted in the bay's Nodriza tab (docs/design/nave-nodriza.md).
 bay.nodriza = mothership;
 bay.onDriveRefit = () => mothershipModel.setThrusters(mothership.fitted);
@@ -1407,11 +1421,13 @@ function present(viewScene: THREE.Scene, viewCam: THREE.Camera): void {
   if (!(tripPreview.visible && tripPreview.full)) renderer.render(sc, cam);
   shownView.scene = sc;
   shownView.camera = cam;
-  if (!tripPreview.visible) return;
-  // The lander's model only follows the flight in the cockpit view: place it for the preview too.
-  const st = flight.state;
-  view.rig.position.set(st.position.x, st.position.y, st.position.z);
-  view.rig.quaternion.set(st.orientation.x, st.orientation.y, st.orientation.z, st.orientation.w);
+  if (tripPreview.visible) {
+    // The lander's model only follows the flight in the cockpit view: place it for the preview too.
+    const st = flight.state;
+    view.rig.position.set(st.position.x, st.position.y, st.position.z);
+    view.rig.quaternion.set(st.orientation.x, st.orientation.y, st.orientation.z, st.orientation.w);
+  }
+  // Always: closing «Ver trayecto» takes its frame and the full-screen class away (reglas.md §3.8: never trapped).
   tripPreview.render(renderer, scene);
 }
 let last = performance.now();
@@ -1559,7 +1575,8 @@ renderer.setAnimationLoop((now) => {
   journey.update(dt);
   view.enabled = !cabin.active && !bridge.active && !interior.active && !stationInside.active && !deck.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active && !navMode.mapOpen && !missionLog.visible;
   navMode.update(dt, world.held);
-  const trip = tripNow();
+  // Trips run on their own; she sees them only at that vehicle's console (reglas.md §3.8).
+  const trip = atTripConsole() ? tripNow() : undefined;
   tripChip.update(trip?.chip, tripPreview.visible);
   tripPreview.follow(trip?.subject);
   // The mothership moves on trips: keep its model where the domain has it.
@@ -1643,7 +1660,8 @@ renderer.setAnimationLoop((now) => {
   renderPhase();
   nanoPanel.update(flight.landed && expedition.asteroid === bennu, fx, { action: !duelView.visible, card: false });
   nanoView.update(flight.simTimeS);
-  view.menu.relabel(landBtn, `Aterrizaje: ${flight.landingAssist ? "auto" : "manual"}`, "G");
+  // It only levels the belly to the ground (attitude hold); landing by itself is «Aterrizar con un programa».
+  view.menu.relabel(landBtn, `Nivelar sola: ${flight.landingAssist ? "sí" : "no"}`, "G");
   landBtn.classList.toggle("on", flight.landingAssist);
   view.menu.relabel(dockBtn, `Acople: ${docking.assist ? "auto" : "manual"}`, "K");
   dockBtn.classList.toggle("on", docking.assist && !docking.docked);

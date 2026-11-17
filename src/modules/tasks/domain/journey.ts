@@ -110,6 +110,16 @@ export function planJourney(transfers: readonly Transfer[], from: { place: strin
   return { kind: "ruta", legs, seconds: legs.reduce((s, l) => s + l.seconds, 0) };
 }
 
+/**
+ * A task never flies a ship by itself (docs/design/reglas.md §3.5): the walk stops where the first flight
+ * would be flown (the Starship's navigation table, the lander's seat) and she is told to travel first.
+ * Returns the legs up to there and the flight she has to make herself, if any.
+ */
+export function upToFlight(legs: readonly Leg[]): { readonly legs: readonly Leg[]; readonly flight?: Leg } {
+  const i = legs.findIndex((l) => l.kind === "vuelo");
+  return i < 0 ? { legs } : { legs: legs.slice(0, i), flight: legs[i]! };
+}
+
 /** Seconds left: what is left of leg `index` after `elapsed` seconds in it (never below zero), plus the legs after it. */
 export function legSecondsLeft(legs: readonly Leg[], index: number, elapsed: number): number {
   let s = Math.max(0, (legs[index]?.seconds ?? 0) - elapsed);

@@ -863,10 +863,12 @@ export class StepShow {
         // arm, her body or the machine do not hide them (PX-20: the printed part's supports and the package's
         // scissors were hidden behind her hand).
         const toCam = this.tmp.set(this.df!.camera.x - at.x, this.df!.camera.y - at.y, this.df!.camera.z - at.z).normalize();
+        // How far toward the camera the row floats: clear of the galley's or the machine's face and of her hands.
+        const near = 0.12;
         for (let i = 0; i < pieces; i++) {
           const f = kitchen
             ? this.show(food[i]!, at.x - 0.06 + i * 0.04, at.y + 0.02, at.z)
-            : this.show(food[i]!, at.x + toCam.x * 0.05 + (i - (pieces - 1) / 2) * 0.035 * toCam.z, at.y + 0.07, at.z + toCam.z * 0.05 - (i - (pieces - 1) / 2) * 0.035 * toCam.x);
+            : this.show(food[i]!, at.x + toCam.x * near + (i - (pieces - 1) / 2) * 0.035 * toCam.z, at.y + 0.07, at.z + toCam.z * near - (i - (pieces - 1) / 2) * 0.035 * toCam.x);
           if (!cut) f.scale.set(0.06, 0.02 + 0.012 * Math.abs(Math.sin(this.clock * 7)), 0.05);
         }
         // The tool: by the board in the ring's galley; elsewhere toward the camera from the work (whatever lets the

@@ -36,15 +36,15 @@ export const DONNING_STEPS: readonly string[] = [
   "comprobar fugas en el módulo de control del pecho",
 ];
 
-/** Putting on the suit and the ISLE prebreathe (Quest's equipment lock). */
-export function donningChore(): Chore {
+/** Putting on the suit and the ISLE prebreathe (Quest's equipment lock, or the Starship's airlock: `where`). */
+export function donningChore(where = "En Quest"): Chore {
   const mask = QUEST_EVA.maskMin.value;
   const suit = QUEST_EVA.inSuitMin.value;
   return {
     id: "eva:traje",
     kind: "paseo-espacial",
     title: "Ponerse el EMU y prerrespirar (ISLE)",
-    scenario: `En Quest: el EMU va a ${num(EMU.pressureKPa.value)} kPa de oxígeno puro; antes hay que sacar el nitrógeno de la sangre`,
+    scenario: `${where}: el EMU va a ${num(EMU.pressureKPa.value)} kPa de oxígeno puro; antes hay que sacar el nitrógeno de la sangre`,
     exercises: [
       order("eva-traje-pasos", "El traje se pone de dentro afuera y no se sale sin comprobar fugas", DONNING_STEPS, "abrir la escotilla sin comprobar fugas"),
       choice(

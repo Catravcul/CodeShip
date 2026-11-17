@@ -30,4 +30,16 @@ describe("Work outside, routed as on the ISS", () => {
     w.tick(CAMERA_ORU.lifeH.value - 1);
     expect(w.list()).toHaveLength(0);
   });
+
+  it("EST-57 a vehicle's outside part is a spacewalk too: planned at the bay, swapped when the job ends", () => {
+    const w = new ExteriorWork();
+    let fitted = 0;
+    const j = w.planVehicle("modulo", "R-4D-11", () => `montado ${++fitted}`);
+    expect(typeof j).toBe("object");
+    expect(w.evaJob?.site).toBe("modulo");
+    expect(w.planVehicle("nodriza-energia", "paneles", () => "")).toMatch(/Ya hay un paseo/);
+    expect(fitted).toBe(0);
+    expect(w.complete("eva:modulo")?.apply?.()).toBe("montado 1");
+    expect(w.planVehicle("nodriza-motores", "Raptor", () => "")).toMatchObject({ site: "nodriza-motores", kind: "eva" });
+  });
 });

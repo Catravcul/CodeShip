@@ -997,8 +997,15 @@ const stationInside = new StationInteriorMode(root, playInterior(), {
 // Station chores acted out by Doménica at their fixture (the galley, the machines): PX-20.
 const stationSteps = stationStepVisuals(stationInside, () => screenFromInside || stationInside.active);
 // Canadarm2 and Dextre from the Cupola, and spacewalks from Quest (docs/design/brazo-robotico.md, paseo-espacial.md).
-const arm = wireRobotics({ root, scene, stationRoot: stationModel.root, duel: duelView, inside: stationInside, outside: stationOutside, cargo: lifeSupport.cargo, berth: landerBerth, bishop: bishopAirlock, atPort: atStationPort, landerMassKg: () => ship.massKg, outfit: stationOutfit, hangar: stationOps.station.hangar, say: (t, sec) => stationInside.say(t, sec) });
+const arm = wireRobotics({ root, scene, stationRoot: stationModel.root, duel: duelView, inside: stationInside, outside: stationOutside, cargo: lifeSupport.cargo, berth: landerBerth, bishop: bishopAirlock, atPort: atStationPort, landerMassKg: () => ship.massKg, outfit: stationOutfit, hangar: stationOps.station.hangar, say: (t, sec) => stationInside.say(t, sec),
+  landerAt: () => (atStationPort() ? (landerOnCbm() ? "cbm" : "ida") : undefined),
+  ...(starship ? { starship: starship.mode } : {}),
+  starshipNose: () => (starship && mothership.dockedTo ? structure.portFor("nodriza")?.spec.position : undefined),
+});
+// The Starship's crew airlock and suits on deck 3 (HLS, en desarrollo): its own spacewalks (station-eva.ts).
+if (starship && arm.starshipEva) starship.eva = arm.starshipEva;
 bay.planExterior = (o) => arm.planExterior(o);
+bay.planVehicleExterior = (site, name, apply) => arm.planVehicle(site, name, apply);
 stationScreen.stepVisual = (session, mode) => stationSteps.machine(session, mode);
 let stationGrownAt = stationOutfit.version;
 /** The station grew: new modules in the structure (keep-out), the model outside and the rooms inside. */
@@ -1150,7 +1157,7 @@ const cabin = new LanderCabin(root, {
 });
 
 /** Which vehicle she is in now, and which hatches are open between them. */
-const crewIn = (): Vehicle => (interior.active || bridge.active || deck.active || subj.piloting ? "nodriza" : stationInside.active || stationScreen.active || bay.active || arm.stationEva.active ? "estacion" : "modulo");
+const crewIn = (): Vehicle => (interior.active || bridge.active || deck.active || subj.piloting || arm.starshipEva?.active ? "nodriza" : stationInside.active || stationScreen.active || bay.active || arm.stationEva.active ? "estacion" : "modulo");
 const vehicleLinks = () => ({ moduloNodriza: docking.dockedTo === mothership, moduloEstacion: atStationPort(), nodrizaEstacion: !!mothership.dockedTo });
 /** Every task of the game, from every module (docs/design/habitaculo.md §Tareas). */
 function allTasks(): Task[] {
@@ -1606,11 +1613,12 @@ renderer.setAnimationLoop((now) => {
     return;
   }
   arm.robotics.update(dt);
-  // On a spacewalk from Quest: the station from outside, behind her.
-  if (arm.stationEva.active) {
-    arm.stationEva.update(dt);
+  // On a spacewalk from Quest or the Starship's airlock: the station from outside, behind her.
+  const evaOut = arm.evaOut;
+  if (evaOut) {
+    evaOut.update(dt);
     stationModel.update(flight.simTimeS, skyBodies.sunDirection);
-    present(scene, arm.stationEva.camera);
+    present(scene, evaOut.camera);
     return;
   }
   if (stationInside.active) {

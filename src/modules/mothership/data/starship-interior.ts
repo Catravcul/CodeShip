@@ -32,6 +32,7 @@ const ISS = {
   ispr: STARSHIP_SRC.ispr,
   hls: STARSHIP_SRC.hls,
   idss: STARSHIP_SRC.idss,
+  hlsAirlock: "Axiom Space, 4 de junio de 2024: los trajes AxEMU se probaron en maquetas del HLS de SpaceX, atados a un sistema justo fuera de su esclusa (en desarrollo): https://axiomspace.com/news/first-artemis-iii-integrated-test-complete",
 } as const;
 
 /** Inner radius of the hull, m: 9 m outside less ~0,3 m of steel, insulation and lining (estimate). */
@@ -150,7 +151,8 @@ export function starshipInteriorPlan(): StationInteriorPlan {
     onWall("t2", "Cinta T2", 3, "suelo", new Vec3(1.0, 0.3, 1.9), crew("ejercicio"), "Cinta de correr con arnés de cintas elásticas que te sujetan contra ella", ISS.exercise),
     onWall("ared", "ARED (pesas)", 3, "babor", rack().x, crew("ejercicio"), "Pesas con cilindros de vacío: hasta 272 kg de carga sin gravedad", ISS.exercise),
     onWall("cevis", "Bicicleta CEVIS", 3, "estribor", new Vec3(0.86, 1.2, 1.0), crew("ejercicio"), "Bicicleta sin asiento: los pies van atados a los pedales (25–350 W)", ISS.exercise),
-    onWall("esclusa", "Esclusa (paseo espacial)", 3, "proa", new Vec3(1.2, 2.0, 0.1), { kind: "info" }, "El HLS lleva dos esclusas; las salidas desde la nave están pendientes (docs/pendientes.md)", ISS.hls),
+    // The crew airlock (HLS, en desarrollo: Axiom 2024 tested its suits by a mock-up of it): suits and outer hatch in one.
+    onWall("esclusa", "Esclusa (trajes y escotilla)", 3, "proa", new Vec3(1.2, 2.0, 0.1), { kind: "esclusa" }, "Esclusa de tripulación del HLS (en desarrollo): aquí se viste el traje, se prerrespira y se sale al casco. El juego usa el EMU de la ISS y su protocolo ISLE: los del HLS no están publicados", ISS.hlsAirlock),
     onWall("salir-modulo", "Escotilla del módulo de aterrizaje", 3, "popa", new Vec3(0.8, 0.8, 0.1), { kind: "salir", to: "sonda" }, "Puerto IDSS del costado (nuestro): el módulo de aterrizaje se acopla aquí", ISS.idss),
     onWall("almacen", "Almacén", 3, "popa", new Vec3(1.05, 2.0, 0.86), { kind: "info" }, "Bolsas de carga y comida del mes, sujetas en los huecos curvos entre los bastidores y el casco", ISS.ispr, -1.45),
   ];

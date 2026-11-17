@@ -429,18 +429,33 @@ export class ShipBay {
       if (part && a.slot) chore = swapChore(this.ship.design, a.slot, part);
     }
     if (!chore) return;
-    this.openChore(chore, (status) => {
-      if (status === "done" && chore.kind === "cambiar-pieza" && a.partId && this.parts) {
+    const swap = (): string => {
+      if (a.partId && this.parts) {
         const part = partById(a.partId);
         // «Nothing» (no shield, no source) is not a part: only the old one goes to the hangar.
         if (part && isEmptyPart(part)) {
           if (removed) this.parts.put(removed);
         } else this.parts.swap(a.partId, removed);
       }
-      if (status === "done") this.say(chore.kind === "cambiar-pieza" ? `Pieza montada: la nave ha cambiado${this.parts && removed ? " · la vieja va al hangar" : ""}` : "Tarea hecha");
+      return `Pieza montada: la nave ha cambiado${this.parts && removed ? " · la vieja va al hangar" : ""}`;
+    };
+    // The lander's outside parts (engines, tanks, power, battery, shield) are swapped outside: a spacewalk from Quest.
+    if (chore.kind === "cambiar-pieza" && a.slot && a.slot !== "cabina") {
+      const said = this.planVehicleExterior?.("modulo", (a.partId ? partById(a.partId)?.name : undefined) ?? "la pieza", swap);
+      if (said) return this.say(said);
+    }
+    this.openChore(chore, (status) => {
+      if (status === "done") this.say(chore.kind === "cambiar-pieza" ? swap() : "Tarea hecha");
       else if (status === "failed") this.say("No salió: la pieza sigue como estaba");
     });
   }
+
+  /**
+   * A vehicle's outside part is not swapped at the bay (docs/design/paseo-espacial.md, «Piezas de fuera de las
+   * naves»): set by main.ts, it plans the spacewalk (from Quest to the lander, or from the Starship's airlock) that
+   * does `apply` when the job is done, and says so; undefined where there is no airlock (the ring ship): the bay does it.
+   */
+  planVehicleExterior?: (site: "modulo" | "nodriza-motores" | "nodriza-energia", name: string, apply: () => string) => string | undefined;
 
   /** Refit one of the mothership's thruster mounts: only docked, only with parts in the hangar. */
   private runDrive(o: DriveOption): void {
@@ -448,18 +463,22 @@ export class ShipBay {
     if (!m) return;
     if (o.locked) return this.say(o.locked);
     if (!this.docked()) return this.say("Atraca la nodriza en la estación para trabajar en ella");
-    const chore = driveRefitChore(m, o);
-    this.openChore(chore, (status) => {
-      if (status === "failed") return this.say("No salió: los propulsores siguen como estaban");
-      if (status !== "done") return;
+    const apply = (): string => {
       try {
         applyDriveRefit(m, o, this.parts);
       } catch {
-        return this.say("Faltan piezas en el hangar: no se ha cambiado nada");
+        return "Faltan piezas en el hangar: no se ha cambiado nada";
       }
       this.mothershipModel?.setThrusters(m.fitted);
       this.onDriveRefit?.();
-      this.say(`Propulsores cambiados: ${m.thrustN.toLocaleString("es-ES", { maximumFractionDigits: 1 })} N en total${this.parts ? " · los viejos van al hangar" : ""}`);
+      return `Propulsores cambiados: ${m.thrustN.toLocaleString("es-ES", { maximumFractionDigits: 1 })} N en total${this.parts ? " · los viejos van al hangar" : ""}`;
+    };
+    // On the hull's aft skirt: a spacewalk from the Starship's airlock.
+    const said = this.planVehicleExterior?.("nodriza-motores", o.thruster.name, apply);
+    if (said) return this.say(said);
+    this.openChore(driveRefitChore(m, o), (status) => {
+      if (status === "failed") return this.say("No salió: los propulsores siguen como estaban");
+      if (status === "done") this.say(apply());
     });
   }
 
@@ -469,16 +488,21 @@ export class ShipBay {
     if (!m) return;
     if (o.locked) return this.say(o.locked);
     if (!this.docked()) return this.say("Atraca la nodriza en la estación para trabajar en ella");
-    this.openChore(equipmentRefitChore(m, o.equipment), (status) => {
-      if (status === "failed") return this.say("No salió: la nodriza sigue como estaba");
-      if (status !== "done") return;
+    const apply = (): string => {
       try {
         applyEquipmentRefit(m, o.equipment, this.parts);
       } catch {
-        return this.say("Falta la pieza en el hangar: no se ha cambiado nada");
+        return "Falta la pieza en el hangar: no se ha cambiado nada";
       }
       this.onDriveRefit?.();
-      this.say(`Montado: ${o.equipment.name}${this.parts ? " · lo viejo va al hangar" : ""}`);
+      return `Montado: ${o.equipment.name}${this.parts ? " · lo viejo va al hangar" : ""}`;
+    };
+    // The auxiliary power is on the hull: a spacewalk from the Starship's airlock (the shield is inside).
+    const said = o.equipment.slot === "energia-auxiliar" ? this.planVehicleExterior?.("nodriza-energia", o.equipment.name, apply) : undefined;
+    if (said) return this.say(said);
+    this.openChore(equipmentRefitChore(m, o.equipment), (status) => {
+      if (status === "failed") return this.say("No salió: la nodriza sigue como estaba");
+      if (status === "done") this.say(apply());
     });
   }
 

@@ -105,6 +105,8 @@ export class StarshipInterior {
   openCatalog?: () => void;
   /** The ship's own life support (set by main.ts): its racks' cards and its repairs as chores. */
   lifeSupport?: LifeSupportGame;
+  /** The crew airlock's suits and outer hatch on deck 3 (HLS, en desarrollo): its spacewalks (station-eva.ts, set by main.ts). */
+  eva?: { actions(f: Fixture): StationAction[]; act(f: Fixture, id: string): void; startChore(id: string): boolean; taskFacts(): { id: string; title: string; detail: string; area: string }[] };
   /** Colours of adopted animals (sanctuary-life.ts); no animal walks in 0 g here. */
   readonly animalColor = new Map<string, number>();
   private readonly viewer = new THREE.Vector3();
@@ -138,6 +140,7 @@ export class StarshipInterior {
         readout: (f) => this.lifeSupport?.readout(f),
         rackState: (f) => this.lifeSupport?.rackState(f) ?? { state: "ok" },
         landerInHangar: () => false,
+        airlock: { actions: (f) => this.eva?.actions(f) ?? [], act: (f, a) => this.eva?.act(f, a) },
       },
       {
         prefix: "sts",
@@ -255,7 +258,8 @@ export class StarshipInterior {
     });
     const animals = this.animalChores().map((c) => ({ id: c.id, title: c.title, detail: `${this.sanctuary?.owns(c) ? "Catálogo (cubierta 2)" : "Hábitat acuático (cubierta 3)"} · ${c.exercises.length} retos`, category: "animales" as const, station: this.animalFixture(c) }));
     const eclss = (this.lifeSupport?.taskFacts() ?? []).map((t) => ({ id: t.id, title: t.title, detail: `Starship · ${t.detail}`, category: "nave" as const, station: t.area }));
-    return [...crew, ...animals, ...eclss];
+    const eva = (this.eva?.taskFacts() ?? []).map((t) => ({ id: t.id, title: t.title, detail: t.detail, category: "nave" as const, station: t.area }));
+    return [...crew, ...animals, ...eclss, ...eva];
   }
 
   /** The aquatic habitat's chores and the adopted colonies'. */
@@ -271,6 +275,11 @@ export class StarshipInterior {
 
   /** «Ir» to a chore: hop to its machine and start it there. */
   doChore(id: string): boolean {
+    const walk = this.eva?.taskFacts().find((t) => t.id === id);
+    if (walk) {
+      if (!this.mode.goToFixture(walk.area, () => this.eva!.startChore(id))) this.eva!.startChore(id);
+      return true;
+    }
     const repair = this.lifeSupport?.taskFacts().find((t) => t.id === id);
     if (repair) {
       if (!this.mode.goToFixture(repair.area, () => this.lifeSupport!.startChore(id))) this.lifeSupport!.startChore(id);

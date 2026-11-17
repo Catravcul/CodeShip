@@ -4,7 +4,7 @@ import { ChoreRun, type Chore } from "@modules/chores/domain/chore";
 import type { StepAct } from "@modules/chores/domain/step-visual";
 import type { Answer } from "@modules/mind-duel/domain/exercise";
 import { donningChore, jobChore } from "@modules/eva/application/station-eva-chores";
-import { EVA_JOBS, EVA_ROUTES, PREBREATHE_MIN, QUEST_EVA, type EvaSite } from "@modules/eva/data/station-eva";
+import { EVA_JOBS, PREBREATHE_MIN, QUEST_EVA, type Box, type EvaSite, type RailPoint } from "@modules/eva/data/station-eva";
 import { EMU, SAFETY_TETHER_M } from "@modules/eva/data/suit";
 import { QuestEva } from "@modules/eva/domain/quest-eva";
 import type { ExteriorWork } from "@modules/robotics/application/exterior-work";
@@ -35,13 +35,33 @@ const TEXT: SessionText = { title: "", progress: "Pasos", lives: "Intentos", ord
 const v3 = (p: { x: number; y: number; z: number }) => new THREE.Vector3(p.x, p.y, p.z);
 const V = (p: THREE.Vector3) => new Vec3(p.x, p.y, p.z);
 const hm = (min: number) => `${Math.floor(min / 60)} h ${String(Math.floor(min % 60)).padStart(2, "0")} min`;
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const pct = (k: number) => `${Math.round(k * 100)} %`;
 
-/** Outward from the station's nearest surface at `p` (station frame): her «up» on the handrails. */
-function outward(p: THREE.Vector3): THREE.Vector3 {
+/** What else is outside the station where she works (station frame): the lander, the Starship. */
+export interface Hulls {
+  readonly cylinders: readonly { from: Vec3; to: Vec3; radiusM: number }[];
+  readonly boxes: readonly Box[];
+}
+const NO_HULLS: Hulls = { cylinders: [], boxes: [] };
+
+/** Inside one of the extra hulls (by `margin` m)? */
+function insideHull(p: THREE.Vector3, h: Hulls, margin: number): string | undefined {
+  for (const c of h.cylinders) {
+    const a = v3(c.from);
+    const ab = v3(c.to).sub(a);
+    const t = p.clone().sub(a).dot(ab) / ab.lengthSq();
+    if (t >= 0 && t <= 1 && p.distanceTo(a.clone().addScaledVector(ab, t)) < c.radiusM + margin) return "nave";
+  }
+  for (const b of h.boxes) if (Math.abs(p.x - b.centre.x) < b.half.x + margin && Math.abs(p.y - b.centre.y) < b.half.y + margin && Math.abs(p.z - b.centre.z) < b.half.z + margin) return "módulo";
+  return undefined;
+}
+
+/** Outward from the nearest surface at `p` (station frame, the station and the extra hulls): her «up» on the handrails. */
+function outward(p: THREE.Vector3, hulls: Hulls = NO_HULLS): THREE.Vector3 {
   let best = Infinity;
   const n = new THREE.Vector3(0, 1, 0);
-  for (const m of POLANA_LAYOUT.modules) {
+  for (const m of [...POLANA_LAYOUT.modules, ...hulls.cylinders]) {
     const a = v3(m.from);
     const ab = v3(m.to).sub(a);
     const t = Math.max(0, Math.min(1, p.clone().sub(a).dot(ab) / ab.lengthSq()));
@@ -52,7 +72,7 @@ function outward(p: THREE.Vector3): THREE.Vector3 {
       n.copy(p).sub(c).normalize();
     }
   }
-  for (const part of POLANA_LAYOUT.parts) {
+  for (const part of [...POLANA_LAYOUT.parts, ...hulls.boxes]) {
     const c = v3(part.centre);
     const h = v3(part.half);
     const q = new THREE.Vector3(Math.max(c.x - h.x, Math.min(c.x + h.x, p.x)), Math.max(c.y - h.y, Math.min(c.y + h.y, p.y)), Math.max(c.z - h.z, Math.min(c.z + h.z, p.z)));
@@ -84,9 +104,28 @@ export interface StationEvaDeps {
   readonly inside: StationInteriorMode;
   readonly outside: StationOutside;
   readonly work: ExteriorWork;
+  /** Where she goes out from: Quest, or the Starship's own airlock. */
+  readonly base: EvaBase;
   /** Fit the planned station component (from the hangar); what to say. */
   fitComponent(componentId: string): string;
   say(text: string, seconds?: number): void;
+}
+
+/**
+ * The airlock she goes out from (docs/design/paseo-espacial.md): Quest on the station, or the Starship's crew
+ * airlock (HLS, en desarrollo). Each has its suits, its hatch and the jobs it serves.
+ */
+export interface EvaBase {
+  /** «Quest», «la Starship». */
+  readonly name: string;
+  /** Fixture ids of its suits and of its outer hatch (the same one where they share a wall). */
+  readonly suits: string;
+  readonly hatch: string;
+  serves(site: EvaSite): boolean;
+  /** The handrail route to the job now (a vehicle's follows where the vehicle is), or why she cannot go. */
+  route(site: EvaSite): readonly RailPoint[] | string;
+  /** The lander and the Starship as they are outside now. */
+  hulls(): Hulls;
 }
 
 export interface EvaAudit {
@@ -129,6 +168,10 @@ export class StationEva {
   private lastMove: WorkMove | "" = "";
   private readonly posNow = new THREE.Vector3();
   private readonly eyeNow = new THREE.Vector3();
+  private hulls: Hulls = NO_HULLS;
+  private out(p: THREE.Vector3): THREE.Vector3 {
+    return outward(p, this.hulls);
+  }
 
   constructor(private readonly d: StationEvaDeps) {
     this.root.visible = false;
@@ -189,22 +232,29 @@ export class StationEva {
 
   /** The planned spacewalk's site. */
   private planned(): { site: EvaSite; id: string } | undefined {
-    const j = this.d.work.evaJob;
+    const j = this.job();
     return j?.site ? { site: j.site, id: j.id } : undefined;
   }
+  /** The spacewalk planned from this airlock. */
+  private job() {
+    const j = this.d.work.evaJob;
+    return j?.site && this.d.base.serves(j.site) ? j : undefined;
+  }
 
-  /** Quest's suits and EVA hatch (station-interior.ts `airlock`). */
+  /** The airlock's suits and outer hatch (station-interior.ts `airlock`). */
   actions(f: Fixture): StationAction[] {
     const e = this.eva;
     const job = this.planned();
-    if (f.id === "escotilla-eva") {
+    // One fixture for both (the Starship's small airlock): its hatch while the lock is not at cabin pressure.
+    const lockCycling = e.phase === "fuera" || e.phase === "despresurizando" || e.phase === "represurizando";
+    if (f.id === this.d.base.hatch && (this.d.base.hatch !== this.d.base.suits || lockCycling)) {
       if (e.phase === "fuera") return [{ id: "salir", label: "Salir por la escotilla EVA", enabled: !!job, ...(job ? {} : { why: "No hay trabajo planeado fuera" }) }];
       const why = e.phase === "despresurizando" ? `La esclusa se vacía: quedan ${Math.ceil(e.minutesLeft)} min` : e.phase === "represurizando" ? `La esclusa se llena: quedan ${Math.ceil(e.minutesLeft)} min` : "Cerrada: la esclusa de tripulación tiene aire (se abre con la esclusa vacía)";
       return [{ id: "salir", label: "Salir por la escotilla EVA", enabled: false, why }];
     }
     switch (e.phase) {
       case "dentro":
-        return [{ id: "eva:traje", label: "Ponerse el EMU y prerrespirar (ISLE)", enabled: !!job, ...(job ? {} : { why: "No hay ningún paseo planeado: un cambio de pieza de fuera (alas, radiadores, escudos) se planea en el portátil de carga de Unity" }) }];
+        return [{ id: "eva:traje", label: "Ponerse el EMU y prerrespirar (ISLE)", enabled: !!job, ...(job ? {} : { why: `No hay ningún paseo planeado desde ${this.d.base.name}: un cambio de pieza de fuera se planea en el portátil de carga de Unity` }) }];
       case "traje":
       case "prerrespirando":
         return [{ id: "nada", label: "Prerrespirando (ISLE)", enabled: false, why: `Ejercicio suave dentro del traje: quedan ${Math.ceil(e.minutesLeft)} min de reloj de a bordo` }];
@@ -236,15 +286,15 @@ export class StationEva {
     void f;
   }
 
-  /** The task list's spacewalk (at Quest's suits). */
+  /** The task list's spacewalk (at this airlock's suits). */
   taskFacts(): { id: string; title: string; detail: string; category: "estacion"; area: string }[] {
-    const j = this.d.work.evaJob;
-    return j ? [{ id: j.id, title: j.title, detail: `Quest · ${EVA_JOBS[j.site!].how}`, category: "estacion", area: "trajes" }] : [];
+    const j = this.job();
+    return j ? [{ id: j.id, title: j.title, detail: `${cap(this.d.base.name)} · ${EVA_JOBS[j.site!].how}`, category: "estacion", area: this.d.base.suits }] : [];
   }
 
   /** «Ir» to the spacewalk: at the suits, the donning starts. */
   startChore(id: string): boolean {
-    if (!id.startsWith("eva:")) return false;
+    if (!id.startsWith("eva:") || !this.job()) return false;
     if (this.eva.phase === "dentro") this.startDonning();
     else this.d.say(`Paseo en marcha: ${this.eva.phase === "prerrespirando" ? `prerrespirando, quedan ${Math.ceil(this.eva.minutesLeft)} min` : this.eva.phase}`, 5);
     return true;
@@ -253,12 +303,12 @@ export class StationEva {
   /** The EMU on, at the suits: each step acted out there; then the ISLE starts on the board clock. */
   private startDonning(): void {
     if (this.d.duel.visible || !this.planned()) return;
-    const chore = donningChore();
+    const chore = donningChore(`En ${this.d.base.name}`);
     const acts: StepAct[][] = [
       [{ action: "revisar", place: "objetivo" }, { action: "gesto", place: "objetivo" }, { action: "gesto", place: "objetivo" }, { action: "revisar", place: "objetivo" }, { action: "programar", place: "objetivo" }],
       [{ action: "entrenar", place: "objetivo" }],
     ];
-    const visual = this.d.inside.stepVisual("trajes", (i) => acts[i] ?? []);
+    const visual = this.d.inside.stepVisual(this.d.base.suits, (i) => acts[i] ?? []);
     this.openSheet(chore, visual, (ok) => {
       if (!ok) return this.d.say("No salió: sigues sin traje", 5);
       this.eva.suitUp();
@@ -311,8 +361,11 @@ export class StationEva {
   private goOut(): void {
     const job = this.planned();
     if (!job) return;
-    const why = this.eva.egress(EVA_ROUTES[job.site]);
+    const route = this.d.base.route(job.site);
+    if (typeof route === "string") return this.d.say(route, 6);
+    const why = this.eva.egress(route);
     if (why) return this.d.say(why, 5);
+    this.hulls = this.d.base.hulls();
     this.site = job.site;
     this.jobDone = false;
     this.buildRoute();
@@ -325,7 +378,7 @@ export class StationEva {
     this.d.say("Fuera. El cable de seguridad de 85 pies va enganchado a la escotilla; el de cintura, al asidero. Avanza mano sobre mano", 7);
   }
 
-  /** Back in: the hatch closes, the crew lock fills, she is in Quest. */
+  /** Back in: the hatch closes, the crew lock fills, she is in the airlock. */
   private goIn(): void {
     const why = this.eva.ingress();
     if (why) return this.d.say(why, 4);
@@ -334,9 +387,9 @@ export class StationEva {
     this.hud.classList.add("hidden");
     document.body.classList.remove("in-station-eva");
     this.d.inside.resume();
-    this.d.inside.placeAt("escotilla-eva");
+    this.d.inside.placeAt(this.d.base.hatch);
     this.d.inside.suited = true;
-    this.d.say(`Dentro de Quest: escotilla cerrada, la esclusa se llena (${QUEST_EVA.repressMin.value} min). Fuera: ${hm(this.eva.outsideMin)}`, 7);
+    this.d.say(`Dentro de ${this.d.base.name}: escotilla cerrada, la esclusa se llena (${QUEST_EVA.repressMin.value} min). Fuera: ${hm(this.eva.outsideMin)}`, 7);
   }
 
   /** The yellow handrails along the route and the anchors. */
@@ -347,8 +400,8 @@ export class StationEva {
     for (let i = 1; i < r.length; i++) {
       const a = v3(r[i - 1]!.at);
       const b = v3(r[i]!.at);
-      const na = outward(a);
-      const nb = outward(b);
+      const na = this.out(a);
+      const nb = this.out(b);
       const pa = a.clone().addScaledVector(na, -0.3);
       const pb = b.clone().addScaledVector(nb, -0.3);
       const m = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, pa.distanceTo(pb), 6), yellow);
@@ -360,15 +413,15 @@ export class StationEva {
     r.forEach((p, i) => {
       if (!p.anchor) return;
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.03, 6, 12), new THREE.MeshStandardMaterial({ color: 0xff7a3a, emissive: 0x331100 }));
-      ring.position.copy(v3(p.at)).addScaledVector(outward(v3(p.at)), -0.25);
+      ring.position.copy(v3(p.at)).addScaledVector(this.out(v3(p.at)), -0.25);
       ring.name = i === 0 ? "Anclaje de la escotilla" : `Anclaje · ${p.label}`;
       this.rails.add(ring);
       const s = sceneLabel(i === 0 ? "Anclaje · escotilla EVA" : `Anclaje · ${p.label}`, 0.032);
-      s.position.copy(ring.position).addScaledVector(outward(v3(p.at)), 0.6);
+      s.position.copy(ring.position).addScaledVector(this.out(v3(p.at)), 0.6);
       this.rails.add(s);
     });
     const end = v3(r[r.length - 1]!.at);
-    const n = outward(end);
+    const n = this.out(end);
     this.apfr.position.copy(end).addScaledVector(n, -0.2);
     this.apfr.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
     const site = sceneLabel(`Sitio de trabajo · ${r[r.length - 1]!.label}`, 0.032);
@@ -389,7 +442,7 @@ export class StationEva {
   private startJob(): void {
     if (!this.site || this.d.duel.visible) return;
     if (!this.eva.feetIn) return this.d.say("Primero los pies en el APFR", 4);
-    if (this.jobDone) return this.d.say("Trabajo hecho: vuelve a Quest", 4);
+    if (this.jobDone) return this.d.say(`Trabajo hecho: vuelve a ${this.d.base.name}`, 4);
     const chore = jobChore(this.site, { o2H: this.eva.suit.timeLeftS / 3600 });
     const job = EVA_JOBS[this.site];
     const moves = (i: number): WorkMove[] => {
@@ -423,8 +476,8 @@ export class StationEva {
         this.jobDone = true;
         const j = this.d.work.job(`eva:${this.site}`);
         this.d.work.complete(`eva:${this.site}`);
-        const said = j?.componentId ? this.d.fitComponent(j.componentId) : job.title;
-        this.d.say(`${said}. Recoge las herramientas y vuelve a Quest`, 7);
+        const said = j?.apply ? j.apply() : j?.componentId ? this.d.fitComponent(j.componentId) : job.title;
+        this.d.say(`${said}. Recoge las herramientas y vuelve a ${this.d.base.name}`, 7);
       },
     );
   }
@@ -441,7 +494,7 @@ export class StationEva {
       if (now === "en-esclusa") this.d.say("Esclusa a presión: quítate el EMU en los trajes", 6);
     }
     this.d.inside.suited = this.suited;
-    if (this.active && this.eva.suit.status === "volver") this.line = "⚠ Queda poco margen de oxígeno: vuelve a Quest";
+    if (this.active && this.eva.suit.status === "volver") this.line = `⚠ Queda poco margen de oxígeno: vuelve a ${this.d.base.name}`;
   }
   private line = "";
   private note = { text: "", until: 0 };
@@ -462,13 +515,13 @@ export class StationEva {
       this.crawlPhase += dt * 4;
     }
     const p = v3(e.position());
-    const n = outward(p);
+    const n = this.out(p);
     const head = v3(e.heading());
     this.posNow.lerp(p, this.posNow.lengthSq() === 0 ? 1 : 0.3);
     this.placeFigure(n, head, dt);
     this.playWork(dt);
     // The safety tether from its anchor to her waist.
-    const anchor = v3(e.route[e.anchor]!.at).addScaledVector(outward(v3(e.route[e.anchor]!.at)), -0.25);
+    const anchor = v3(e.route[e.anchor]!.at).addScaledVector(this.out(v3(e.route[e.anchor]!.at)), -0.25);
     const g = this.tether.geometry as THREE.BufferGeometry;
     g.setFromPoints([anchor, this.figure.root.position.clone().addScaledVector(n, 0.2)]);
     this.label.position.copy(this.figure.root.position).addScaledVector(n, 2.2);
@@ -512,7 +565,7 @@ export class StationEva {
     const f = this.figure;
     if (!this.working && this.playQueue.length) {
       const move = this.playQueue.shift()!;
-      const n = outward(this.apfr.position);
+      const n = this.out(this.apfr.position);
       const front = this.apfr.position.clone().addScaledVector(n, 1.0).add(this.toWork().multiplyScalar(0.7));
       const ef = v3(GRAPPLE_FIXTURES.find((g) => g.id === "jem-ef")!.at);
       // Before Canadarm2 has brought the part, it is not here yet: a step before that starts it at her hands.
@@ -545,7 +598,7 @@ export class StationEva {
 
   /** From her APFR toward the work (along the route's last leg). */
   private toWork(): THREE.Vector3 {
-    return v3(this.eva.heading()).projectOnPlane(outward(this.apfr.position)).normalize();
+    return v3(this.eva.heading()).projectOnPlane(this.out(this.apfr.position)).normalize();
   }
 
   /** Behind and above her, turned by dragging; in a challenge, framed in the strip above the sheet. */
@@ -565,7 +618,8 @@ export class StationEva {
     let eye = at.clone().add(off);
     // Never inside the station: pull in along the line until it is clear.
     // Never inside the station nor behind it: other sides first, then closer in, until the line to her is clear.
-    const blocked = (e: THREE.Vector3) => !!insideStation(V(e), POLANA_LAYOUT, -0.3) || !!segmentClear(V(e), V(at), POLANA_LAYOUT, 0.25, 0.0);
+    const hullOnLine = (e: THREE.Vector3) => [0.2, 0.4, 0.6, 0.8, 1].some((k) => !!insideHull(e.clone().lerp(at, k * 0.9), this.hulls, 0));
+    const blocked = (e: THREE.Vector3) => !!insideStation(V(e), POLANA_LAYOUT, -0.3) || !!segmentClear(V(e), V(at), POLANA_LAYOUT, 0.25, 0.0) || hullOnLine(e);
     if (blocked(eye)) {
       const tries: THREE.Vector3[] = [];
       for (const k of [1, 0.75, 0.55, 0.4]) for (const a of [0, 0.6, -0.6, 1.2, -1.2, Math.PI]) tries.push(at.clone().addScaledVector(off.clone().applyAxisAngle(n, a), k));
@@ -611,7 +665,7 @@ export class StationEva {
       canHook ? b("enganchar", "Enganchar el cable aquí", true, true) : "",
       e.atWorksite ? b("pies", e.feetIn ? "Sacar los pies del APFR" : "Pies en el APFR", true, !e.feetIn && !this.jobDone) : "",
       e.feetIn && !this.jobDone ? b("trabajar", `Trabajar: ${EVA_JOBS[this.site!].title.toLowerCase()}`, true, true) : "",
-      e.atHatch ? b("entrar", "Entrar en Quest", true, this.jobDone) : "",
+      e.atHatch ? b("entrar", `Entrar en ${this.d.base.name}`, true, this.jobDone) : "",
     ].join("");
     const where = at !== undefined ? e.route[at]!.label : `${e.s.toLocaleString("es-ES", { maximumFractionDigits: 0 })} de ${e.length.toLocaleString("es-ES", { maximumFractionDigits: 0 })} m de asideros`;
     const line = this.line || (performance.now() < this.note.until ? this.note.text : "") || where;
@@ -666,10 +720,10 @@ export class StationEva {
     const handToProp = this.part.visible ? Math.min(...hands.map((h) => partBox.distanceToPoint(h))) : 0;
     const through: string[] = [];
     const check = (what: string, p: THREE.Vector3) => {
-      const w = insideStation(V(p), POLANA_LAYOUT, 0.1);
+      const w = insideStation(V(p), POLANA_LAYOUT, 0.1) ?? insideHull(p, this.hulls, -0.1);
       if (w) through.push(`${what} · ${w}`);
     };
-    check("Doménica", this.figure.root.position.clone().addScaledVector(outward(this.figure.root.position), 0.3));
+    check("Doménica", this.figure.root.position.clone().addScaledVector(this.out(this.figure.root.position), 0.3));
     for (const h of hands) check("mano", h);
     if (this.part.visible) check("pieza", partBox.getCenter(new THREE.Vector3()));
     return {

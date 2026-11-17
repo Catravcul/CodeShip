@@ -240,6 +240,27 @@ export class StationOutside {
     this.view.say(`${this.armShow.viewpoint === "cupola" ? "Ventana de la Cupola" : "Cámara exterior"} · ${this.armShow.line}`);
   }
 
+  /** The lander's box on its IDA or the CBM, in the station's frame (where a spacewalk goes to its parts). */
+  landerBox(at: "ida" | "cbm"): { centre: Vec3; half: Vec3 } {
+    const p = this.landerAt(at);
+    this.lander.setDesign(this.deps.design());
+    const m = new THREE.Matrix4().compose(p.pos, p.quat, new THREE.Vector3(1, 1, 1));
+    const inv = new THREE.Matrix4().copy(this.lander.root.matrixWorld).invert();
+    // Its meshes in its own frame, then posed on the port.
+    const box = new THREE.Box3();
+    this.lander.root.updateMatrixWorld(true);
+    this.lander.root.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh || !mesh.geometry) return;
+      mesh.geometry.computeBoundingBox();
+      const b = mesh.geometry.boundingBox!.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, mesh.matrixWorld)).applyMatrix4(m);
+      box.union(b);
+    });
+    const c = box.getCenter(new THREE.Vector3());
+    const h = box.getSize(new THREE.Vector3()).multiplyScalar(0.5);
+    return { centre: new Vec3(c.x, c.y, c.z), half: new Vec3(h.x, h.y, h.z) };
+  }
+
   private landerAt(at: "ida" | "cbm") {
     const p = this.deps.landerPose(at);
     return { pos: v3(p.position), quat: q4(p.orientation) };

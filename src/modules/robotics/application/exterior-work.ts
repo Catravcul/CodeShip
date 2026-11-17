@@ -1,5 +1,5 @@
 import type { StationSlot } from "@modules/station/domain/outfit";
-import { EVA_JOBS, type EvaSite } from "@modules/eva/data/station-eva";
+import { EVA_JOBS, type EvaSite, type VehicleSite } from "@modules/eva/data/station-eva";
 import { CAMERA_ORU } from "../data/robotics";
 
 /**
@@ -20,6 +20,8 @@ export interface ExteriorJob {
   readonly componentId?: string;
   /** Why it is needed, said on the task. */
   readonly why: string;
+  /** A vehicle's part: the swap itself, done when the spacewalk ends (what to say). */
+  readonly apply?: () => string;
 }
 
 /** How each of the station's own outside components is changed on the ISS. */
@@ -58,6 +60,18 @@ export class ExteriorWork {
     const planned = this.evaJob;
     if (planned) return `Ya hay un paseo planeado: ${planned.title}`;
     const job: ExteriorJob = { id: `eva:${r.site}`, kind: r.kind, title: `Paseo espacial: montar ${name}`, site: r.site, componentId, why: r.how };
+    this.jobs.set(job.id, job);
+    return job;
+  }
+
+  /**
+   * Plan the swap of a vehicle's outside part (the lander's engines, tanks, panels…; the Starship's engines and
+   * power): a spacewalk too, never at the bay (docs/design/paseo-espacial.md, «Piezas de fuera de las naves»).
+   */
+  planVehicle(site: VehicleSite, name: string, apply: () => string): ExteriorJob | string {
+    const planned = this.evaJob;
+    if (planned) return `Ya hay un paseo planeado: ${planned.title}`;
+    const job: ExteriorJob = { id: `eva:${site}`, kind: "eva", title: `Paseo espacial: montar ${name}`, site, why: EVA_JOBS[site].how, apply };
     this.jobs.set(job.id, job);
     return job;
   }

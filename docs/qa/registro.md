@@ -58,6 +58,8 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | NAV-11 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | NAV-12 | Sin probar | | | Adaptador; lo juega PX-36 |
 | NAV-13 | Sin probar | | | Adaptador; lo juegan PX-36 y PX-28 |
+| NAV-14 | Solo test | | | `starship.test.ts` (verde en la suite completa); lo juega PX-28 |
+| NAV-15 | Solo test | | | `panels.test.ts`, `mothership-equipment.test.ts` (verdes en la suite completa); lo juegan PX-28 y PX-36 |
 | SON-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SON-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SON-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |

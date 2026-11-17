@@ -199,10 +199,25 @@ export class EvaMode {
         const index = run.step;
         const ok = this.eva.answer(a);
         if (ok) visual?.stepDone(index);
-        if (this.eva.outside) setTimeout(() => this.enter(), 600);
+        if (this.eva.outside) setTimeout(() => this.goOut(), 600);
         return { ok };
       },
     );
+  }
+
+  /**
+   * Out through the hatch she suited up at (docs/design/reglas.md §3.1): set by main.ts to open the LM's
+   * forward hatch and crawl through it; then `then` (outside). Unset: outside at once.
+   */
+  throughHatch?: (then: () => void) => void;
+
+  /** Suited: the sheet goes, she opens the hatch and goes through, then the surface. */
+  private goOut(): void {
+    this.visual?.clear();
+    this.visual = undefined;
+    this.duel.hide();
+    if (this.throughHatch) this.throughHatch(() => this.enter());
+    else this.enter();
   }
 
   /** Debug and tests: outside straight away. */

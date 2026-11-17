@@ -35,7 +35,7 @@ Con la nodriza real ([nodriza-starship.md](nodriza-starship.md)) el grafo no tie
 | Desde → hasta | Camino | Plan |
 |---|---|---|
 | Asiento del LM → cocina (cubierta 1) | andar a la escotilla del techo, escotilla, saltos por las cubiertas 3, 2 y 1 | 42 s |
-| Asiento del LM → Planos (estación) | escotilla, saltos hasta la escotilla de la cubierta de vuelo, escotilla, andar a la mesa NAV, la Starship vuela y atraca (1 h 21 min de juego = 1 min 21 s), andar, escotilla, saltos al túnel de proa, escotilla, saltos en la estación | 2 min 41 s |
+| Asiento del LM → Planos (estación) | escotilla, saltos hasta la escotilla de la cubierta de vuelo, escotilla, andar a la mesa NAV, la Starship vuela y atraca (1 h 32 min de juego = 1 min 32 s), andar, escotilla, saltos al túnel de proa, escotilla, saltos en la estación | 2 min 52 s |
 
 ## Durante el viaje
 

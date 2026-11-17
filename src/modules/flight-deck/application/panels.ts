@@ -176,6 +176,8 @@ export interface LifePanel {
   readonly plantsAlive: number;
   readonly plantsReady: number;
   readonly growingAreaM2: number;
+  /** Whether the ship grows food at all (the ring ship's farm; Starship has none: real food comes in stores). */
+  readonly hasFarm: boolean;
   /** Share of everyone's food the growing area covers (1 = self-sufficient). */
   readonly foodRatio: number;
   readonly animals: number;
@@ -183,7 +185,7 @@ export interface LifePanel {
   readonly machinesTotal: number;
 }
 
-export function lifePanel(ring: SpinRing | undefined, h: HabitatView): LifePanel {
+export function lifePanel(ring: SpinRing | undefined, h: HabitatView, farm = true): LifePanel {
   const alive = h.plants.filter((p) => p.alive);
   return {
     hasRing: !!ring,
@@ -202,6 +204,7 @@ export function lifePanel(ring: SpinRing | undefined, h: HabitatView): LifePanel
     plantsAlive: alive.length,
     plantsReady: alive.filter((p) => p.readyToHarvest).length,
     growingAreaM2: alive.reduce((s, p) => s + p.areaM2, 0),
+    hasFarm: farm,
     foodRatio: h.sustainability.ratio,
     animals: h.animals.length,
     machinesWorking: h.machines.filter((m) => m.working).length,
@@ -352,13 +355,16 @@ export const DECK_THRESHOLDS = {
 export function alerts(p: { prop: PropulsionPanel; life: LifePanel; dock: DockingPanel; comms: CommsPanel; nav: NavPanel }): Alert[] {
   const out: Alert[] = [];
   const T = DECK_THRESHOLDS;
-  if (p.prop.xenonFraction < T.xenonWarning) out.push({ level: "warning", panel: "prop", text: "Xenón casi agotado" });
-  else if (p.prop.xenonFraction < T.xenonCaution) out.push({ level: "caution", panel: "prop", text: "Xenón bajo" });
+  // Named after what the tanks hold (xenon on the ring ship, methane and oxygen on Starship).
+  const tanks = p.prop.propellantName.charAt(0).toUpperCase() + p.prop.propellantName.slice(1);
+  if (p.prop.xenonFraction < T.xenonWarning) out.push({ level: "warning", panel: "prop", text: `${tanks}: casi agotado` });
+  else if (p.prop.xenonFraction < T.xenonCaution) out.push({ level: "caution", panel: "prop", text: `${tanks}: bajo` });
   const broken = p.life.machinesTotal - p.life.machinesWorking;
   if (broken > 0) out.push({ level: "caution", panel: "life", text: `${broken} máquina${broken > 1 ? "s" : ""} averiada${broken > 1 ? "s" : ""}` });
   if (p.life.wellbeing < T.wellbeingCaution) out.push({ level: "caution", panel: "life", text: `${p.life.crewName}: bienestar bajo` });
-  if (p.life.foodRatio < T.foodCaution) out.push({ level: "advisory", panel: "life", text: "El huerto no cubre la comida" });
-  if (p.life.spinFraction < 0.999) out.push({ level: "advisory", panel: "life", text: p.life.spinningUp ? "Anillos acelerando" : "Anillos frenando" });
+  // Only what the ship has: no farm or ring alerts on Starship (docs/design/reglas.md §1.3).
+  if (p.life.hasFarm && p.life.foodRatio < T.foodCaution) out.push({ level: "advisory", panel: "life", text: "El huerto no cubre la comida" });
+  if (p.life.hasRing && p.life.spinFraction < 0.999) out.push({ level: "advisory", panel: "life", text: p.life.spinningUp ? "Anillos acelerando" : "Anillos frenando" });
   if (!p.dock.docked) out.push({ level: "advisory", panel: "dock", text: "Módulo fuera" });
   if (p.dock.probe && p.dock.probe.hullIntegrity < 0.5) out.push({ level: "caution", panel: "dock", text: "Casco del módulo dañado" });
   if (p.nav.status === "failed") out.push({ level: "caution", panel: "nav", text: "Plan de viaje rechazado" });

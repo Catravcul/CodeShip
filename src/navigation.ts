@@ -1,4 +1,5 @@
 import type { Vec3 } from "@core/math/vec3";
+import { REAL_ONLY } from "@core/realism";
 import type { Rock } from "@modules/celestial/domain/region";
 import type { Navigator } from "@modules/navigation/application/navigator";
 import type { AutopilotPhase } from "@modules/navigation/application/autopilot";
@@ -100,6 +101,12 @@ export class NavigationMode {
   /** Set by main: M was pressed where the map cannot open. */
   onBlocked?: () => void;
 
+  /** The mothership's arrival at a station: Starship latches by its nose port (IDSS); the ring ship enters the dry dock (fiction). */
+  private berthedText(where: string, carrying: boolean): string {
+    const lm = carrying ? " con el módulo de aterrizaje acoplado" : "";
+    return REAL_ONLY ? `La Starship ha atracado en ${where} por su puerto de proa${lm}: ganchos cerrados` : `La nodriza ha entrado en el dique seco de ${where}${lm}: los brazos la sujetan`;
+  }
+
   constructor(
     root: HTMLElement,
     private readonly nav: Navigator,
@@ -179,7 +186,7 @@ export class NavigationMode {
       if (nav.status === "arrived") this.flash(`Llegada: a ${km(nav.approachM)} de ${nav.target.name}. Tienes los mandos: aterriza y entra en su mente`, "done", 10);
       if (nav.status === "autopilot" && this.lastStatus === "carrier") this.flash("La nodriza ha aparcado: el módulo de aterrizaje se desacopla y sigue solo", "done");
       if (nav.status === "docked")
-        this.flash(this.lastStatus === "carrier" ? `La nodriza ha entrado en el dique seco de ${nav.target.name}${nav.carrying ? " con el módulo de aterrizaje acoplado" : ""}: los brazos la sujetan` : `Módulo acoplado a ${nav.target.name}`, "done", 10);
+        this.flash(this.lastStatus === "carrier" ? this.berthedText(nav.target.name, nav.carrying) : `Módulo acoplado a ${nav.target.name}`, "done", 10);
       if (nav.status === "manual" && this.lastStatus === "docking") this.flash("Acople cancelado: tienes los mandos", "bad");
       if (nav.status === "failed") this.flash("El plan no compila: vuela a mano o vuelve a programarlo desde el mapa de la nave de viaje", "bad");
       if (nav.status === "manual" && this.lastStatus === "autopilot") this.flash("Mando manual: el piloto automático se ha desconectado", "bad");

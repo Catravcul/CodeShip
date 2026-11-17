@@ -57,6 +57,8 @@ const TRIP: Record<string, string> = {
   failed: "El plan no compila",
 };
 const PHASE: Record<string, string> = { burn: "acelerando", flip: "dando la vuelta", brake: "frenando", coast: "crucero", orient: "orientando", aim: "apuntando", arrived: "llegada" };
+/** Short label of what the tanks hold, for the status strip. */
+const TANK_SYMBOL: Readonly<Record<string, string>> = { xenón: "Xe", kriptón: "Kr", argón: "Ar" };
 const LEVEL: Record<string, string> = { warning: "Aviso", caution: "Precaución", advisory: "Nota" };
 
 /** Where she was when she opened a console: the bridge room, the ring (navigation console) or, at a trip's handover, the lander. */
@@ -67,6 +69,8 @@ export interface FlightDeckDeps {
   /** The ring ship's spinning ring (none on Starship). */
   readonly ring?: SpinRing;
   readonly habitat: HabitatView & { readonly mailbox?: Mailbox };
+  /** Whether the ship grows food (the ring ship's farm, fiction; Starship carries its food). */
+  readonly farm?: boolean;
   readonly docking: DockingView;
   readonly nav: Navigator;
   readonly map: NavMap;
@@ -343,7 +347,7 @@ export class FlightDeck {
     const trip = d.nav.progress();
     const prop = propulsionPanel(d.mothership, trip);
     const power = powerPanel(d.mothership, trip);
-    const life = lifePanel(d.ring, d.habitat);
+    const life = lifePanel(d.ring, d.habitat, d.farm ?? true);
     const dock = dockingPanel(d.docking, d.probeRangeM(), d.probe());
     const comms = commsPanel(d.habitat.mailbox?.received ?? [], d.missions ? missionsSummary(d.missions) : undefined);
     const nav = navPanel(d.nav.target.name, d.nav.status, trip);
@@ -368,10 +372,11 @@ export class FlightDeck {
       "items",
       [
         ["Δv", `${num(v.prop.deltaVMs / 1000, 2)} km/s`],
-        ["Xe", pct(v.prop.xenonFraction)],
+        [TANK_SYMBOL[v.prop.propellantName] ?? "CH₄ + O₂", pct(v.prop.xenonFraction)],
         ["Empuje", `${num(v.prop.thrustNowN, 1)} N`],
-        ["Red", `${num(v.power.electricKw / 1000, 1)} MWe`],
-        ["Anillo", `${num(v.life.floorG, 2)} g`],
+        // Only what the ship has (docs/design/reglas.md §1.3): Starship has no reactor grid and no ring.
+        ...(v.power.unpublished ? [] : [["Red", `${num(v.power.electricKw / 1000, 1)} MWe`]]),
+        v.life.hasRing ? ["Anillo", `${num(v.life.floorG, 2)} g`] : ["Gravedad", "0 g"],
         ["Módulo", v.dock.docked ? "acoplado" : "fuera"],
       ]
         .map(([k, x]) => `<span><small>${k}</small>${x}</span>`)
@@ -435,7 +440,7 @@ export class FlightDeck {
       <span>Caudal de ${esc(p.propellantName)}</span><b>${flow} por ${electric ? "propulsor" : "motor"}</b>
       <span>Masa</span><b>${num(p.massT)} t <small>en seco ${num(p.dryMassT)} t</small></b>
       <span>Aceleración</span><b>${num(p.accelMmS2, 3)} mm/s²</b>
-      <span>Autonomía</span><b>${num(p.burnDaysLeft)} días de empuje continuo</b></div>
+      ${electric ? `<span>Autonomía</span><b>${num(p.burnDaysLeft)} días de empuje continuo</b>` : ""}</div>
       ${p.note ? `<p class="fd-note">${esc(p.note)}</p>` : ""}${this.sources(p.sources)}`;
   }
 
@@ -456,7 +461,7 @@ export class FlightDeck {
 
   private lifeHtml(l: LifePanel, full: boolean): string {
     const gravity = l.hasRing ? `<span>Anillo</span><b>${num(l.ringRpm, 2)} rpm · ${num(l.floorG, 2)} g</b>` : `<span>Gravedad</span><b>0 g · ingravidez</b>`;
-    const head = `<div class="fd-kv">${gravity}<span>${esc(l.crewName)}</span><b>bienestar ${pct(l.wellbeing)}</b><span>Huerto</span><b>${l.plantsAlive} plantas · ${l.plantsReady} para cosechar</b><span>Máquinas</span><b>${l.machinesWorking} / ${l.machinesTotal} en marcha</b></div>`;
+    const head = `<div class="fd-kv">${gravity}<span>${esc(l.crewName)}</span><b>bienestar ${pct(l.wellbeing)}</b>${l.hasFarm ? `<span>Huerto</span><b>${l.plantsAlive} plantas · ${l.plantsReady} para cosechar</b>` : ""}${l.machinesTotal > 0 ? `<span>Máquinas</span><b>${l.machinesWorking} / ${l.machinesTotal} en marcha</b>` : ""}</div>`;
     if (!full) return head;
     return `${head}${bar(l.wellbeing, "life")}<div class="fd-kv">
       ${l.hasRing ? `<span>Giro</span><b>${pct(l.spinFraction)} de ${num(l.ringCruiseRpm)} rpm${l.spinningUp ? " · acelerando" : ""}</b>
@@ -464,7 +469,7 @@ export class FlightDeck {
       <span>Saciedad</span><b>${pct(Math.min(1, l.satiety))}</b>
       <span>Forma física</span><b>${pct(l.fitness)}</b>
       <span>Días sin gravedad</span><b>${num(l.microgravityDays, 1)}</b>
-      <span>Superficie de cultivo</span><b>${num(l.growingAreaM2)} m² · cubre ${pct(l.foodRatio)} de la comida</b>
+      ${l.hasFarm ? `<span>Superficie de cultivo</span><b>${num(l.growingAreaM2)} m² · cubre ${pct(l.foodRatio)} de la comida</b>` : ""}
       <span>Animales</span><b>${l.animals}</b></div>`;
   }
 

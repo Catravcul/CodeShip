@@ -27,7 +27,7 @@ Berón: «El viaje a la estación parece hacerse en segundos y no se ve el camin
 
 La física es la de siempre, con los datos de cada vehículo:
 
-- **Starship**: 6 Raptor (3 de vacío de 2530 kN), unos 1600 t; acelera hasta su crucero, va por inercia media hora (valor de juego `coastS`) y frena (`chemicalCruiseMS`, [nodriza-starship.md](nodriza-starship.md)).
+- **Starship**: 6 Raptor (3 de vacío de 2530 kN), unos 1600 t; entre los puntos de espera junto a los asteroides vuela a la **velocidad real de las operaciones de proximidad**: **40 cm/s**, como Hayabusa2 al bajar desde su *home position* de 20 km ([JAXA, 2018-09-20](https://www.hayabusa2.jaxa.jp/en/topics/20180920e)); enciende un instante, va por inercia y frena (Δv 0,8 m/s por salto, `chemicalCruiseMS`, [nodriza-starship.md](nodriza-starship.md)). OSIRIS-REx llegó a Bennu a 4 cm/s ([The Planetary Society](https://www.planetary.org/blogs/jason-davis/osiris-rex-arrival.html)). Los 10 cm/s de Hayabusa2 por debajo de 5 km son su bajada a la superficie: aquí, el tramo del módulo. Real (antes: 30 min de inercia, valor de juego).
 - **Atraque real en la estación** (nuevo): para en el **Waypoint 1, a 150 m** del puerto, se acerca a **0,07 m/s** (velocidad de contacto, dentro del rango IDSS de 0,05–0,10 m/s), **espera en el Waypoint 2, a 20 m** (el «go/no-go») y acopla. Del Waypoint 1 a la captura tarda **51 min**, como la Crew Dragon en la misión Demo-1 de 2019 ([The Planetary Society](https://planetary.org/articles/crew-dragon-docks)). Real. La espera a 20 m (≈15 min) es lo que deja Demo-1 tras recorrer los 150 m: derivado.
 - **Módulo lunar** y **Juventas**: quemado, crucero y frenado con su motor y su masa ([modulo-lunar-juventas.md](modulo-lunar-juventas.md)).
 
@@ -37,17 +37,17 @@ Medido en la partida nueva (nodriza junto a Bennu), con `codeship.nav.trip()` y 
 
 | Viaje | Distancia | Tiempo de juego (física) | Compresión | Minutos reales |
 | --- | --- | --- | --- | --- |
-| Starship a la estación: vuelo + atraque | 1,0 km | 30 min + 51 min = 1 h 21 min | ×60 | **1 min 21 s** |
-| Starship a otro asteroide + último tramo del LM | 7–14 km + 1 km | 30 min + 51 s ≈ 31 min | ×60 | **31 s** |
+| Starship a la estación: vuelo + atraque | 1,0 km | 41 min (a 40 cm/s) + 51 min = 1 h 32 min | ×60 | **1 min 32 s** |
+| Starship a otro asteroide (a 40 cm/s) + último tramo del LM | 7–14 km + 1 km | 5 h 2 min – 9 h 38 min | ×60 | **5–9,6 min** |
 | Módulo lunar solo (Bennu, 1 km) | 1,1 km | 51 s | ×60 | 1 s |
 | Módulo de vuelta a la Starship | 0,6 km | 31 s (+ acople a ×1, 1–3 min) | ×60 | 1 s + el acople |
 | Juventas a Bennu | 1–2 km | 1 h 27 min | ×60 | **1 min 27 s** |
 | Juventas a otro asteroide | 7–14 km | 4 h 17 min – 6 h 27 min | ×60 | **4–6,5 min** |
 | Cualquier viaje de más de 10 h de juego | — | > 10 h | > ×60 | 10 min (tope) |
 
-Durante esos minutos, a bordo pasan las mismas horas: con el viaje a la estación (1 h 21 min de juego) la tripulación vive 1 h 21 min: ni una comida (hay dos al día, [vida-a-bordo.md](vida-a-bordo.md)). Con 6 h de Juventas, un cuarto de día.
+Durante esos minutos, a bordo pasan las mismas horas: con el viaje a la estación (1 h 32 min de juego) la tripulación vive 1 h 32 min: ni una comida (hay dos al día, [vida-a-bordo.md](vida-a-bordo.md)). Con un salto de la Starship de 6 a 10 h, un cuarto o casi la mitad del día: puede tocar una comida a bordo durante el salto. Ningún salto de la región pasa del tope de 10 min: todos van a ×60.
 
-**Abierta para el diseñador:** el salto de la Starship entre asteroides va por inercia 30 min (valor de juego) y dura 31 s reales. Con la velocidad real de las operaciones de proximidad de Hayabusa2 (decenas de cm/s) 9 km serían 6–25 h de juego, es decir 6–25 min reales. ¿Lo pasamos a esa velocidad?
+**Decidido (2026-11-17):** el salto de la Starship entre asteroides va a la velocidad real de Hayabusa2 (40 cm/s), no a la media hora de inercia de antes. Con la región comprimida (la Starship aparca a 1,35 km; Hayabusa2 esperaba a 20 km), 7–14 km son 5–9,6 min reales. **Abierta:** el módulo lunar baja todavía con su propio plan de empuje (1 km en 51 s de juego); con los 10 cm/s reales de Hayabusa2 serían casi 3 h de juego, 3 min reales.
 
 ## Un reloj para todo el mundo
 

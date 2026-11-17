@@ -521,6 +521,8 @@ const eva = new Eva(flight, bennu, (local) => surface(local), habitat.crew.body.
 const evaMode = new EvaMode(root, scene, camera, eva, duelView);
 // Back from the walk, she comes in through the EVA hatch of the cabin.
 evaMode.onExit = () => cabin.enter("escotilla");
+// Suited up, she opens the forward hatch and crawls out through it (the cabin closes once she is outside).
+evaMode.throughHatch = (then) => (cabin.active ? cabin.passHatch("escotilla", then) : then());
 
 // The lander's hatch: docked, it leads into the vehicle it is docked to, and only there.
 const atStationPort = () => structure.ports.some((p) => p === docking.dockedTo);
@@ -568,6 +570,7 @@ const deck = new FlightDeck(root, {
   mothership,
   ring,
   habitat,
+  farm: FICTION,
   docking,
   nav,
   map: navMode.map,
@@ -821,6 +824,8 @@ function tripNow(): { chip: TripChipData; subject: PreviewSubject } | undefined 
 const bay = new ShipBay(root, ship, habitat, duelView, mothership.spec, stationOps.station.hangar);
 // The mothership's systems are worked on while it is berthed at the station.
 bay.docked = () => !!mothership.dockedTo;
+// Only what is aboard (docs/design/reglas.md §1.3): with REAL_ONLY, the ISS food it was stocked with, not the fiction's feed.
+if (REAL_ONLY) bay.stores = Object.entries(ISS_LAUNCH_STOCK).map(([id, capacity]) => ({ id, capacity }));
 // The mothership's thruster mounts are refitted in the bay's Nodriza tab (docs/design/nave-nodriza.md).
 bay.nodriza = mothership;
 bay.onDriveRefit = () => mothershipModel.setThrusters(mothership.fitted);

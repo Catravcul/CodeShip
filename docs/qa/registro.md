@@ -269,7 +269,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-36 | Probado (en vivo) | 2026-11-17 | `b731a63` | [run](runs/2026-11-17-0850-PX-36.md): 34 OK |
 | PX-35 | Probado (en vivo) | 2026-11-17 | `e3da60c` | [run](runs/2026-11-17-1142-PX-12-PX-28-PX-29-PX-31-PX-33-PX-35-PX-30-PX-39.md): 44 OK |
 | PX-37 | Probado (en vivo) | 2026-11-17 | `e563a15` | [run](runs/2026-11-17-0635-PX-10-PX-12-PX-28-PX-29-PX-32-PX-35-PX-37-PX-36.md): 26 OK |
-| PX-39 | FAIL | 2026-11-17 | `e3da60c` | [run](runs/2026-11-17-1142-PX-12-PX-28-PX-29-PX-31-PX-33-PX-35-PX-30-PX-39.md): 127 OK, 1 FALLA |
+| PX-39 | Probado (en vivo) | 2026-11-17 | `1dc3a56` | [run](runs/2026-11-17-1320-PX-39.md): 128 OK |
 
 ## Última ejecución por run log
 
@@ -277,6 +277,10 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-17 13:20 | PX-39 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-17-1320-PX-39.md) |
+| 2026-11-17 13:06 | PX-39 | Experiencia (Playwright) | 0/1 recorridos bien | [run](runs/2026-11-17-1306-PX-39.md) |
+| 2026-11-17 12:49 | PX-39 | Experiencia (Playwright) | 0/1 recorridos bien | [run](runs/2026-11-17-1249-PX-39.md) |
+| 2026-11-17 12:31 | PX-39 | Experiencia (Playwright) | 0/1 recorridos bien | [run](runs/2026-11-17-1231-PX-39.md) |
 | 2026-11-17 11:42 | PX-12, PX-28, PX-29, PX-31, PX-33, PX-35, PX-30, PX-39 | Experiencia (Playwright) | 7/8 recorridos bien | [run](runs/2026-11-17-1142-PX-12-PX-28-PX-29-PX-31-PX-33-PX-35-PX-30-PX-39.md) |
 | 2026-11-17 11:25 | PX-39 | Experiencia (Playwright) | 0/1 recorridos bien | [run](runs/2026-11-17-1125-PX-39.md) |
 | 2026-11-17 11:00 | PX-39 | Experiencia (Playwright) | 0/1 recorridos bien | [run](runs/2026-11-17-1100-PX-39.md) |

@@ -210,7 +210,7 @@ export class StationOutside {
     const H = canvas?.height ?? innerHeight;
     const top = sheet && sheet.top > 60 ? sheet.top : H;
     const cam = this.view.camera;
-    const e = this.armShow.eye(cam.fov, top / H, W / H);
+    const e = this.armShow.eye(cam.fov, top / H, W / H, this.root.parent ?? this.root);
     this.armShow.viewpoint = e.viewpoint;
     const first = this.eyeNow.lengthSq() === 0;
     // The player's turn, round what is framed: yaw about the station's up, pitch about the view's side.
@@ -227,6 +227,8 @@ export class StationOutside {
       }
     }
     this.eyeNow.lerp(e.eye, first ? 1 : 0.08);
+    // Gliding to a new camera must not pass through the station or look through it: cut to it instead.
+    if (!this.armShow.sees(this.eyeNow, this.root.parent ?? this.root)) this.eyeNow.copy(e.eye);
     this.atNow.lerp(e.at, first ? 1 : 0.15);
     this.root.updateMatrixWorld(true);
     cam.position.copy(this.root.localToWorld(this.eyeNow.clone()));

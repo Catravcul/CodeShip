@@ -223,6 +223,7 @@ export class ArmShow {
    * the arm before a capture), and the scene is set.
    */
   begin(proc: ArmProcedureId): void {
+    this.eyePick = 0;
     this.queue.length = 0;
     this.current = null;
     this.last = null;
@@ -778,8 +779,10 @@ export class ArmShow {
    * The camera for the challenge: the Cupola's windows when they see the focus (nothing of the station in
    * between and within 30 m), otherwise the nearest outside camera with a clear line. Station frame.
    */
-  eye(fovDeg = 55, strip = 1, aspect = 1): { eye: THREE.Vector3; at: THREE.Vector3; viewpoint: ArmViewpoint } {
+  eye(fovDeg = 55, strip = 1, aspect = 1, scene?: THREE.Object3D): { eye: THREE.Vector3; at: THREE.Vector3; viewpoint: ArmViewpoint } {
     const at = this.focus.clone();
+    // Besides the modules, the truss, the arrays and the vehicles drawn in the scene must not stand in between.
+    const hidden = (e: THREE.Vector3) => !!scene && this.meshBetween(scene, e, at);
     // How far the camera stands for the subject to fill about two thirds of the strip above the sheet.
     const tanV = Math.tan((fovDeg * Math.PI) / 360) * strip;
     const tan = Math.min(tanV, Math.tan((fovDeg * Math.PI) / 360) * aspect);
@@ -787,13 +790,51 @@ export class ArmShow {
     const cup = POLANA_LAYOUT.modules.find((m) => m.id === "cupula")!;
     const window = v(cup.to).add(new THREE.Vector3(0, -0.6, 0));
     const fromWindow = at.distanceTo(window);
-    if (fromWindow > need * 0.8 && fromWindow < Math.max(30, need * 1.6) && !segmentClear(V(window), V(at), POLANA_LAYOUT, 0.5, 0.0)) return { eye: window, at, viewpoint: "cupola" };
-    const dirs = [new THREE.Vector3(0.5, -0.5, 0.7), new THREE.Vector3(-0.6, -0.4, 0.7), new THREE.Vector3(0.6, 0.5, 0.6), new THREE.Vector3(-0.5, 0.6, 0.6), new THREE.Vector3(0.2, -0.8, -0.5), new THREE.Vector3(0, -0.9, 0.4), new THREE.Vector3(0, 0.3, 1)];
-    for (const d of dirs) {
-      const e = at.clone().addScaledVector(d.normalize(), need);
-      if (!insideStation(V(e), POLANA_LAYOUT, -0.6) && !segmentClear(V(e), V(at), POLANA_LAYOUT, 0.5, 0.0)) return { eye: e, at, viewpoint: "camara" };
+    if (fromWindow > need * 0.8 && fromWindow < Math.max(30, need * 1.6) && !segmentClear(V(window), V(at), POLANA_LAYOUT, 0.5, 0.0) && !hidden(window)) return { eye: window, at, viewpoint: "cupola" };
+    // Outside cameras round the focus, from as far as the framing wants to closer in (nearer is likelier clear);
+    // the one that worked last frame is tried first so the view does not hop.
+    const clear = (e: THREE.Vector3) => !insideStation(V(e), POLANA_LAYOUT, -0.6) && !segmentClear(V(e), V(at), POLANA_LAYOUT, 0.5, 0.0) && !hidden(e);
+    const n = EYE_DIRS.length * EYE_SCALES.length;
+    const cand = (i: number) => at.clone().addScaledVector(EYE_DIRS[i % EYE_DIRS.length]!, Math.max(4, need * EYE_SCALES[Math.floor(i / EYE_DIRS.length)]!));
+    for (let k = 0; k < n; k++) {
+      const i = (this.eyePick + k) % n;
+      const e = cand(i);
+      if (clear(e)) {
+        this.eyePick = i;
+        return { eye: e, at, viewpoint: "camara" };
+      }
     }
     return { eye: at.clone().add(new THREE.Vector3(0.5, -0.5, 0.7).normalize().multiplyScalar(need)), at, viewpoint: "camara" };
+  }
+
+  /** Whether a station-frame eye sees the focus: outside the station, with no module nor solid in between. */
+  sees(e: THREE.Vector3, scene: THREE.Object3D): boolean {
+    return !insideStation(V(e), POLANA_LAYOUT, -0.6) && !segmentClear(V(e), V(this.focus), POLANA_LAYOUT, 0.5, 0.0) && !this.meshBetween(scene, e, this.focus);
+  }
+
+  private eyePick = 0;
+  private solids: THREE.Object3D[] = [];
+  private solidsAge = 0;
+  private solidsHeld: THREE.Object3D | undefined;
+  /** A solid of the scene (not the arm's act) between a station-frame eye and point. */
+  private meshBetween(scene: THREE.Object3D, e: THREE.Vector3, at: THREE.Vector3): boolean {
+    if (this.solidsAge-- <= 0 || this.solidsHeld !== this.held?.obj) {
+      this.solidsAge = 60;
+      this.solidsHeld = this.held?.obj;
+      // The act itself (the arm, Dextre, the cameras and what is held) is what is framed, not what hides it.
+      const own = new Set<THREE.Object3D>();
+      for (const o of [this.arm.root, this.dextre.root, this.newCam, this.oldCam, this.marks, this.held?.obj]) o?.traverse((x) => own.add(x));
+      this.solids = [];
+      scene.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (m.isMesh && !own.has(m) && visible(m) && !(m.material as THREE.Material).transparent) this.solids.push(m);
+      });
+    }
+    const a = this.root.localToWorld(e.clone());
+    const b = this.root.localToWorld(at.clone());
+    const d = a.distanceTo(b);
+    const ray = new THREE.Raycaster(a, b.clone().sub(a).normalize(), 0, Math.max(0, d - 1));
+    return ray.intersectObjects(this.solids, false).length > 0;
   }
 
   /** Points of the booms, the LEE and what it holds (station frame), for the through-check. */
@@ -906,6 +947,10 @@ const MBS_HOME_X = 7;
 /** Where the MBS waits with Dextre for the camera swap: to port, between the P1 camera and the JEM-EF's shelf (game value). */
 const DEXTRE_MBS_X = -12;
 const DETOURS = [new THREE.Vector3(0, -1, 0), new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1), new THREE.Vector3(1, 0, 0), new THREE.Vector3(-1, 0, 0), new THREE.Vector3(0, 1, 0)];
+/** Where the outside cameras may stand round the focus, and how far in from the framing's distance. */
+const EYE_DIRS = [[0.5, -0.5, 0.7], [-0.6, -0.4, 0.7], [0.6, 0.5, 0.6], [-0.5, 0.6, 0.6], [0.2, -0.8, -0.5], [0, -0.9, 0.4], [0, 0.3, 1], [-0.7, -0.5, -0.4], [0.7, -0.5, -0.4], [0, -1, 0]].map(([x, y, z]) => new THREE.Vector3(x, y, z).normalize());
+const EYE_SCALES = [1, 0.7, 0.5, 0.35];
+
 const blockedLeg = (a: THREE.Vector3, b: THREE.Vector3) => !!segmentClear(V(a), V(b), POLANA_LAYOUT, 0.4, 0.2);
 /** The path with a waypoint added beside each leg that crosses the station (the first side that clears it). */
 export function detour(path: readonly THREE.Vector3[], depth = 0): THREE.Vector3[] {

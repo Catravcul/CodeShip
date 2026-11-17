@@ -464,6 +464,12 @@ export class StationInteriorMode {
     }
     this.hop.cancel();
     this.arrival = null;
+    // Placed straight there (teleport, chosen by the player): a hatch she was coming in through shuts behind her.
+    if (this.passing && !this.passing.out) {
+      this.leaves.get(this.passing.id)?.set(0);
+      this.passing = null;
+      this.hatchView = null;
+    }
     this.iva = { position: q.body, velocity: Vec3.ZERO, motion: { kind: "sujeta", rail: q.rail, t: q.t, hands: 0 } };
     this.p = q.body;
     this.body.reset();

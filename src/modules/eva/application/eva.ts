@@ -5,7 +5,7 @@ import { ChoreRun } from "@modules/chores/domain/chore";
 import type { FlightComputer } from "@modules/flight/application/flight-computer";
 import type { Answer } from "@modules/mind-duel/domain/exercise";
 import { BENNU_SAMPLES, SAMPLE_SCOOP_G, type RegolithSample } from "../data/samples";
-import { APOLLO_A7LB, SAFER, SAFETY_TETHER_M, type JetpackSpec, type SuitSpec } from "../data/suit";
+import { APOLLO_A7LB, SAFETY_TETHER_M, type JetpackSpec, type SuitSpec } from "../data/suit";
 import { SUIT_UP } from "../data/suit-up";
 import { Suit, WORKLOAD } from "../domain/suit";
 import { EvaBody, NO_EVA_INPUT, effectiveGravity, groundUnder, type EvaInput, type EvaWorld } from "../domain/surface-motion";
@@ -108,15 +108,16 @@ export class Eva {
     surface: (local: Vec3) => number,
     crewMassKg = 58,
     readonly suitSpec: SuitSpec = APOLLO_A7LB,
-    readonly jetpack: JetpackSpec = SAFER,
+    /** Apollo had no jetpack (SAFER is from 1994): none by default, only the tether and its winch. */
+    readonly jetpack: JetpackSpec | null = null,
     samples: readonly RegolithSample[] = BENNU_SAMPLES,
   ) {
     this._asteroid = asteroid;
     this._samples = samples;
     this.suit = new Suit(suitSpec);
     this._world = { mu: asteroid.mu, spinRadS: asteroid.spinRadS, surface, meanRadiusM: asteroid.meanRadiusM };
-    this.massKg = crewMassKg + suitSpec.massKg.value + jetpack.massKg.value;
-    this.jetAccelMs2 = (jetpack.thrustPerThrusterN.value * jetpack.thrustersPerAxis.value) / this.massKg;
+    this.massKg = crewMassKg + suitSpec.massKg.value + (jetpack?.massKg.value ?? 0);
+    this.jetAccelMs2 = jetpack ? (jetpack.thrustPerThrusterN.value * jetpack.thrustersPerAxis.value) / this.massKg : 0;
   }
 
   get asteroid(): Asteroid {
@@ -266,7 +267,7 @@ export class Eva {
     this._hatch = local.add(q.rotate(HATCH_BODY));
     this._world = { ...this._world, keepOut: shipKeepOut(local, this._shipRight, this._shipForward) };
     const start = groundUnder(this.world, this._hatch.add(this._shipRight.scale(0.8 * Math.sign(HATCH_BODY.x))));
-    this._body = new EvaBody(this.world, start, { anchor: this._hatch, lengthM: SAFETY_TETHER_M.value }, { accelMs2: this.jetAccelMs2, deltaVMs: this.jetpack.deltaVMs.value });
+    this._body = new EvaBody(this.world, start, { anchor: this._hatch, lengthM: SAFETY_TETHER_M.value }, { accelMs2: this.jetAccelMs2, deltaVMs: this.jetpack?.deltaVMs.value ?? 0 });
     this._spots = this._samples.map((sample, i) => {
       const [r, f] = SAMPLE_SPOTS[i % SAMPLE_SPOTS.length]!;
       return { sample, position: groundUnder(this.world, local.add(this._shipRight.scale(r)).add(this._shipForward.scale(f))), collected: false };

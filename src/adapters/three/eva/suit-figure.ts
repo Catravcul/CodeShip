@@ -19,7 +19,8 @@ export class SuitFigure extends CubeFigure {
   /** Helmet lamp, so the dark regolith shows around her. */
   readonly lamp = new THREE.SpotLight(0xfff6e0, 6, 9, 0.7, 0.5, 1);
 
-  constructor() {
+  /** `jetpack`: the SAFER under the PLSS (the EMU at the ISS has it; Apollo's A7LB did not). */
+  constructor(readonly jetpack = true) {
     super(GLOVE, SUIT);
     const white = new THREE.MeshStandardMaterial({ color: SUIT, roughness: 0.6 });
     const grey = new THREE.MeshStandardMaterial({ color: 0x8c9096, roughness: 0.5, metalness: 0.3 });
@@ -30,7 +31,7 @@ export class SuitFigure extends CubeFigure {
     this.head.add(mesh(new THREE.BoxGeometry(0.05, 0.05, 0.05), grey, 0.14, 0.27, 0.08));
     // PLSS backpack and SAFER under it, with four little nitrogen plumes.
     this.torso.add(mesh(new THREE.BoxGeometry(0.44, 0.5, 0.2), white, 0, 0.32, -0.21));
-    this.torso.add(mesh(new THREE.BoxGeometry(0.46, 0.14, 0.24), grey, 0, 0.03, -0.21));
+    if (jetpack) this.torso.add(mesh(new THREE.BoxGeometry(0.46, 0.14, 0.24), grey, 0, 0.03, -0.21));
     this.torso.add(mesh(new THREE.BoxGeometry(0.2, 0.12, 0.05), grey, 0, 0.36, 0.13)); // chest controls
     const plume = new THREE.MeshBasicMaterial({ color: 0xdff4ff, transparent: true, opacity: 0.6, depthWrite: false });
     for (const [x, y] of [[-0.2, 0.0], [0.2, 0.0], [-0.2, 0.6], [0.2, 0.6]] as const) {

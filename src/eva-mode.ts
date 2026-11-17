@@ -40,7 +40,8 @@ const fmt = (v: number, d = 2) => v.toFixed(d).replace(".", ",");
  */
 export class EvaMode {
   private readonly walker: Walker;
-  private readonly figure = new SuitFigure();
+  // Apollo's suit: PLSS, no SAFER.
+  private readonly figure = new SuitFigure(false);
   private readonly rig = new THREE.Group();
   private readonly ship = new ShipModel();
   private readonly tether: THREE.Line;
@@ -281,7 +282,7 @@ export class EvaMode {
   private onEvent(e: EvaEvent): void {
     switch (e.type) {
       case "a-la-deriva":
-        return this.say("¡A la deriva! Vas más rápido que la velocidad de escape. El cable te sujeta: recoge cable o frena con el SAFER", 5000);
+        return this.say("¡A la deriva! Vas más rápido que la velocidad de escape. El cable te sujeta: recoge cable con el torno", 5000);
       case "agarrada":
         return this.say("Agarrada al regolito");
       case "cable-tenso":
@@ -473,7 +474,7 @@ export class EvaMode {
       ${bar(`O₂ ${s.onSecondary ? `reserva ${Math.round(s.secondaryOxygen * 100)} %` : hms(s.oxygen * e.suitSpec.primaryOxygenS.value)}`, s.onSecondary ? s.secondaryOxygen : s.oxygen, s.status !== "nominal")}
       ${bar(`Filtro CO₂ ${Math.round(s.co2Scrubber * 100)} %`, s.co2Scrubber)}
       ${bar(`Batería ${Math.round(s.battery * 100)} %`, s.battery)}
-      ${bar(`SAFER Δv ${fmt(b.jetDeltaVLeft)} m/s`, b.jetDeltaVLeft / e.jetpack.deltaVMs.value, b.jetDeltaVLeft < 0.5)}
+      ${e.jetpack ? bar(`SAFER Δv ${fmt(b.jetDeltaVLeft)} m/s`, b.jetDeltaVLeft / e.jetpack.deltaVMs.value, b.jetDeltaVLeft < 0.5) : ""}
       <div class="${b.tetherTaut ? "warn" : ""}">Nave a ${fmt(e.distanceToHatch, 1)} m · cable ${fmt(SAFETY_TETHER_M.value, 1)} m</div>
       ${status}${total}
       <div class="small">g ${Math.round(e.localGravity * 1e6)} µm/s² · escape ${fmt(b.escapeSpeedMs)} m/s</div>
@@ -483,8 +484,10 @@ export class EvaMode {
     const near = e.nearSample;
     this.sampleBtn.classList.toggle("hidden", !near);
     if (near) this.sampleBtn.textContent = `Tomar muestra: ${near.sample.name}`;
+    // Floating without a jetpack (Apollo), only the tether's winch brings her back.
     this.jumpBtn.textContent = floating ? "Subir" : "Impulso";
-    this.downBtn.classList.toggle("hidden", !floating);
+    this.jumpBtn.classList.toggle("hidden", floating && !e.jetpack);
+    this.downBtn.classList.toggle("hidden", !floating || !e.jetpack);
     (this.ui.querySelector(".eva-back") as HTMLButtonElement).textContent = e.canBoard ? "Entrar en la nave" : "Volver a la nave";
   }
 }

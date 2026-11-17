@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { Quat } from "@core/math/quat";
-import type { Vec3 } from "@core/math/vec3";
+import { Vec3 } from "@core/math/vec3";
+import { insideStation } from "@modules/robotics/domain/clearance";
 import type { ShipDesign } from "@modules/ship/domain/ship";
 import type { AirlockItem } from "@modules/station/domain/cargo-airlock";
 import { BISHOP_BERTH, LANDER_CBM, POLANA_LAYOUT } from "@modules/station/data/structure";
@@ -127,7 +128,23 @@ export class StationOutside {
     this.view = new DockView(root, station, new THREE.Vector3(-3, -2, -6), 62, "Vista desde la Cupola");
     this.view.onClose = () => undefined;
     this.rest();
+    // During an arm challenge the camera frames the step by itself, and a drag on the scene turns it round
+    // what it frames (reglas.md §5.3: the camera is always controllable).
+    window.addEventListener("pointerdown", (e) => {
+      if ((this.framing || this.manualOn) && (e.target as HTMLElement).tagName === "CANVAS") this.orbitDrag = { x: e.clientX, y: e.clientY };
+    });
+    window.addEventListener("pointermove", (e) => {
+      if (!this.orbitDrag) return;
+      this.orbitYaw -= (e.clientX - this.orbitDrag.x) * 0.006;
+      this.orbitPitch = Math.max(-1.1, Math.min(1.1, this.orbitPitch + (e.clientY - this.orbitDrag.y) * 0.004));
+      this.orbitDrag = { x: e.clientX, y: e.clientY };
+    });
+    window.addEventListener("pointerup", () => (this.orbitDrag = null));
   }
+  private orbitDrag: { x: number; y: number } | null = null;
+  /** The player's turn of the framed view (radians), back to 0 at each procedure. */
+  orbitYaw = 0;
+  orbitPitch = 0;
 
   /** Open the view, and play an arm move in it if asked. */
   open(show?: Show): void {
@@ -153,6 +170,8 @@ export class StationOutside {
   beginProcedure(proc: ArmProcedureId): void {
     this.play = null;
     this.armShow.begin(proc);
+    this.orbitYaw = 0;
+    this.orbitPitch = 0;
     this.view.show("Canadarm2 · puesto robótico de la Cupola");
     this.framing = true;
   }
@@ -194,6 +213,19 @@ export class StationOutside {
     const e = this.armShow.eye(cam.fov, top / H, W / H);
     this.armShow.viewpoint = e.viewpoint;
     const first = this.eyeNow.lengthSq() === 0;
+    // The player's turn, round what is framed: yaw about the station's up, pitch about the view's side.
+    if (this.orbitYaw || this.orbitPitch) {
+      const off = e.eye.clone().sub(e.at);
+      off.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.orbitYaw);
+      const side = new THREE.Vector3().crossVectors(off, new THREE.Vector3(0, 1, 0));
+      if (side.lengthSq() > 1e-6) off.applyAxisAngle(side.normalize(), this.orbitPitch);
+      const turned = e.at.clone().add(off);
+      if (!insideStation(new Vec3(turned.x, turned.y, turned.z), POLANA_LAYOUT, -0.3)) {
+        e.eye.copy(turned);
+        // Turned away from the window: it is an outside camera's view now.
+        this.armShow.viewpoint = "camara";
+      }
+    }
     this.eyeNow.lerp(e.eye, first ? 1 : 0.08);
     this.atNow.lerp(e.at, first ? 1 : 0.15);
     this.root.updateMatrixWorld(true);
@@ -205,7 +237,7 @@ export class StationOutside {
     if (top < H) cam.setViewOffset(W, H, 0, (H - top) / 2, W, H);
     else cam.clearViewOffset();
     cam.updateProjectionMatrix();
-    this.view.say(`${e.viewpoint === "cupola" ? "Ventana de la Cupola" : "Cámara exterior"} · ${this.armShow.line}`);
+    this.view.say(`${this.armShow.viewpoint === "cupola" ? "Ventana de la Cupola" : "Cámara exterior"} · ${this.armShow.line}`);
   }
 
   private landerAt(at: "ida" | "cbm") {

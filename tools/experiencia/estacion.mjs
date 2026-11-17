@@ -98,14 +98,9 @@ export async function estacion(j) {
   const cupola = await card(j);
   j.check("dentro de la Cupola, su puesto robótico ofrece atracar el módulo en el CBM", /Atracar el módulo en el CBM/.test(cupola) && (await p.evaluate(() => window.codeship.stationInside.where())) === "cupola", cupola.slice(0, 160));
   await j.tap('.sti-card [data-act="atracar"]', "Atracar el módulo en el CBM con el brazo");
+  // Every arm job is a challenge from the RWS, each block seen outside (docs/design/brazo-robotico.md).
+  await armChallenge(j, "brazo", "Canadarm2 lleva el módulo al CBM");
   j.check("Canadarm2 atraca el módulo en el CBM de Unity", await p.evaluate(() => window.codeship.landerBerth.onCbm));
-  j.check("se ve desde fuera: la vista de la Cupola se abre con el brazo moviéndose", await p.evaluate(() => window.codeship.stationOutside.viewing && window.codeship.stationOutside.busy));
-  await p.waitForTimeout(3500);
-  await capture(j, "brazo", "Canadarm2 lleva el módulo al CBM");
-  const done = await p.waitForFunction(() => !window.codeship.stationOutside.busy, null, { timeout: 60000 }).then(() => true, () => false);
-  j.check("el brazo termina y el módulo queda dibujado en el CBM", done && (await p.evaluate(() => window.codeship.stationOutside.holdsLander)));
-  await capture(j, "cbm", "Módulo atracado en el CBM de Unity");
-  await j.tap(".dock-view.on .dv-close", "Cerrar la vista de fuera");
   await j.tap(".sti-ui .sti-tasks", "Tareas");
   const shown = await p.locator(".task-board .tb-go").count();
   const all = await p.evaluate(() => window.codeship.tasks().length);
@@ -117,6 +112,19 @@ export async function estacion(j) {
   await capture(j, "escotilla-cerrada", "Escotilla del módulo cerrada");
   await placeAt(j, "cupula");
   await j.tap('.sti-card [data-act="desatracar"]', "Devolver el módulo a su IDA");
+  await armChallenge(j, "ida", "El módulo de vuelta en su IDA");
   j.check("el brazo devuelve el módulo a su IDA", await p.evaluate(() => !window.codeship.landerBerth.onCbm));
-  await j.tap(".dock-view.on .dv-close", "Cerrar la vista de fuera");
+}
+
+/** An arm job from the Cupola's RWS: its challenge answered right, the strip above the sheet captured, closed. */
+async function armChallenge(j, label, title) {
+  const p = j.page;
+  await j.waitDuel();
+  for (let i = 0; i < 24 && (await p.evaluate(() => !!window.codeship.robotics.session?.run.current)); i++) await j.answer(() => window.codeship.robotics.session?.run.current ?? null);
+  await p.waitForTimeout(2500);
+  await capture(j, label, title);
+  j.check(`${title}: el brazo se ve fuera mientras se juega`, await p.evaluate(() => !!window.codeship.robotics.audit(innerHeight).arm));
+  await j.tap(".duel button.end", "Continuar");
+  await p.waitForTimeout(600);
+  if (await p.locator(".dock-view.on .dv-close").count()) await j.tap(".dock-view.on .dv-close", "Cerrar la vista de fuera");
 }

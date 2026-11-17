@@ -42,6 +42,23 @@ async function look(j, fixture, re, label, title) {
   await capture(j, label, title);
 }
 
+/**
+ * An arm job from the Cupola's RWS is a challenge (docs/design/brazo-robotico.md): answered right, the arm's last
+ * move captured in the strip above the sheet before closing it. Says whether the arm moved outside.
+ */
+async function armChallenge(j, label, title) {
+  const p = j.page;
+  await j.waitDuel();
+  for (let i = 0; i < 24 && (await p.evaluate(() => !!window.codeship.robotics.session?.run.current)); i++) await j.answer(() => window.codeship.robotics.session?.run.current ?? null);
+  await p.waitForTimeout(2500);
+  await capture(j, label, title);
+  const moved = await p.evaluate(() => (window.codeship.robotics.audit(innerHeight).arm?.moved ?? 0) > 0 || !!window.codeship.robotics.audit(innerHeight).arm);
+  await j.tap(".duel button.end", "Continuar");
+  await p.waitForTimeout(600);
+  if (await p.locator(".dock-view.on .dv-close").count()) await j.tap(".dock-view.on .dv-close", "Cerrar la vista de fuera");
+  return moved;
+}
+
 export async function estacionIss(j) {
   const p = j.page;
   await j.setup("acopla el módulo en su IDA de cenit de Harmony", () => {
@@ -105,27 +122,19 @@ export async function estacionIss(j) {
   await placeAt(j, "cupula");
   j.check("el puesto robótico de la Cupola está dentro de la Cupola", (await where(j)) === "cupola", await where(j));
   await j.tap('.sti-card [data-act="soltar"]', "Soltar Juventas con la Bishop (puesto robótico)");
+  const bishopShown = await armChallenge(j, "bishop-suelta", "Canadarm2 saca la Bishop y suelta Juventas");
+  j.check("se ve: el brazo saca la Bishop paso a paso", bishopShown);
   j.check("Juventas queda fuera, volando sola", (await p.evaluate(() => window.codeship.bishop.place("juventas"))) === "fuera");
-  j.check("se ve: el brazo saca la Bishop", await p.evaluate(() => window.codeship.stationOutside.viewing && window.codeship.stationOutside.busy));
-  await p.waitForTimeout(5500);
-  await capture(j, "bishop-suelta", "Canadarm2 saca la Bishop y suelta Juventas");
   const back = await p.waitForFunction(() => !window.codeship.stationOutside.busy, null, { timeout: 60000 }).then(() => true, () => false);
   j.check("la Bishop vuelve a su puerto de Tranquility", back);
-  await j.tap(".dock-view.on .dv-close", "Cerrar la vista de fuera");
 
   // Canadarm2 berths the lander on Unity's nadir CBM, seen from the Cupola.
   await placeAt(j, "cupula");
   await j.tap('.sti-card [data-act="atracar"]', "Atracar el módulo en el CBM con el brazo");
+  j.check("se ve: el brazo lleva el módulo por encima de la celosía", await armChallenge(j, "brazo-cbm", "Módulo atracado en el CBM de Unity"));
   j.check("el módulo está atracado en el CBM", await p.evaluate(() => window.codeship.landerBerth.onCbm));
-  await p.waitForTimeout(3500);
-  await capture(j, "brazo-camino", "Canadarm2 lleva el módulo por encima de la celosía");
-  const done = await p.waitForFunction(() => !window.codeship.stationOutside.busy, null, { timeout: 60000 }).then(() => true, () => false);
-  j.check("el brazo termina y el módulo se ve en el CBM de nadir de Unity", done && (await p.evaluate(() => window.codeship.stationOutside.holdsLander)));
-  await capture(j, "brazo-cbm", "Módulo atracado en el CBM de Unity");
-  await j.tap(".dock-view.on .dv-close", "Cerrar la vista de fuera");
   await placeAt(j, "cupula");
   await j.tap('.sti-card [data-act="desatracar"]', "Devolver el módulo a su IDA");
+  await armChallenge(j, "brazo-ida", "El módulo de vuelta en su IDA");
   j.check("el brazo lo devuelve a su IDA", await p.evaluate(() => !window.codeship.landerBerth.onCbm));
-  await j.tap(".dock-view.on .dv-close", "Cerrar la vista de fuera");
-
 }

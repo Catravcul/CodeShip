@@ -9,12 +9,15 @@ import type { Answer } from "@modules/mind-duel/domain/exercise";
 import { Ship, type ThrustCommand } from "@modules/ship/domain/ship";
 import { PROBE_BATTERY_WH, PROBE_HULL, PROBE_LOAD_W, PROBES_ON_BOARD, probeDesign, PROBE_STEP_S } from "@modules/ship/data/probe";
 import { ProbeOps } from "@modules/subjugation/application/probe-ops";
+import { deployerBody } from "@modules/subjugation/data/deployer";
+import { REAL_ONLY } from "@core/realism";
 import { stageIndex, type Stage } from "@modules/subjugation/domain/rapport";
 import { LEVEL_NAME, type Level } from "@modules/subjugation/domain/levels";
 import type { Eva } from "@modules/eva/application/eva";
 import type { EvaMode } from "./eva-mode";
 import type { FlightDeck } from "./flight-deck";
 import { ProbeMode } from "./probe-mode";
+import { DeployerModel } from "./adapters/three/deployer-model";
 import { asteroidText, type DuelView, type SessionText } from "./ui/duel-view";
 import type { NavMap } from "./ui/nav-map";
 import { rapportCardHtml } from "./ui/rapport-view";
@@ -61,8 +64,17 @@ export function stageResultText(e: Expedition): string {
   }
 }
 
-/** Mothership body frame: the probe's bay on top of the forward node, opposite the lander's port. Game value. */
+/** The fictional ring ship's frame: the probe's bay on top of the forward node, opposite the lander's port. Game value. */
 export const PROBE_BAY_BODY = new Vec3(0, 2.2 + PROBE_HULL.y / 2 + 0.55, -70);
+
+/**
+ * Where probe deployer `slot` is on the carrier (body frame): on the real ship, a Deep Space Deployer under the
+ * hull's skin over the lander's port (data/deployer.ts); on the fictional ring ship, its old bay.
+ */
+export function probeBayBody(m: Mothership, slot: number): Vec3 {
+  if (!REAL_ONLY) return PROBE_BAY_BODY.add(new Vec3((slot - (PROBES_ON_BOARD - 1) / 2) * 0.6, 0, 0));
+  return deployerBody(m.spec.layout, slot, PROBES_ON_BOARD, PROBE_HULL.y / 2);
+}
 
 export interface SubjugationDeps {
   readonly root: HTMLElement;
@@ -76,10 +88,17 @@ export interface SubjugationDeps {
   readonly evaMode: EvaMode;
   readonly map: NavMap;
   keyboard(): ThrustCommand;
-  /** Docked at the station (directly or through the mothership): spare probes are restocked. */
+  /** At the station where probes are restocked: the fictional ship refills its rack; the real one loads built ones. */
   atStation(): boolean;
+  /**
+   * Real ship: take one Juventas built from the station's catalogue aboard (true if there was one waiting).
+   * Called only while the carrier is at the station and a deployer is empty.
+   */
+  takeBuiltProbe?(): boolean;
   /** The asteroids' wrath (docs/design/poderes-ira.md): the probe and Doménica in her suit join its targets. */
   readonly wrath?: { addTarget(t: WrathTarget): void };
+  /** The carrier's 3D model (body frame): the probes' deployers are drawn on its hull. */
+  readonly carrierRoot?: THREE.Object3D;
   /** Doménica plus her suit, kg (a comet's jet pushes her by momentum / mass). */
   readonly crewMassKg?: number;
 }
@@ -100,16 +119,25 @@ const SUIT_RETREAT_AT = 0.3;
 export class SubjugationUi {
   readonly probe: ProbeOps;
   readonly probeMode: ProbeMode;
+  /** The deployers on the carrier's hull, their doors following the probes (real ship only). */
+  readonly deployers: DeployerModel | undefined;
   private duelStage: Stage | undefined;
 
   constructor(private readonly d: SubjugationDeps) {
     const { expedition: ex, mothership, region } = d;
-    const bay = () => this.bayPose();
+    const bay = (slot: number) => this.bayPose(slot);
     this.probe = new ProbeOps(
-      (serial, timeS) => new FlightComputer(Ship.create(probeDesign(serial)), bay(), { stepS: PROBE_STEP_S, gravitySources: region.asteroids, target: ex.asteroid, startTimeS: timeS }),
+      (serial, timeS) => new FlightComputer(Ship.create(probeDesign(serial)), bay(0), { stepS: PROBE_STEP_S, gravitySources: region.asteroids, target: ex.asteroid, startTimeS: timeS }),
       bay,
       { probes: PROBES_ON_BOARD, batteryWh: PROBE_BATTERY_WH, loadW: PROBE_LOAD_W },
     );
+    if (REAL_ONLY && d.carrierRoot) {
+      this.deployers = new DeployerModel(
+        Array.from({ length: PROBES_ON_BOARD }, (_, i) => probeBayBody(mothership, i)),
+        mothership.spec.layout.spine.radiusM,
+      );
+      d.carrierRoot.add(this.deployers.root);
+    }
     ex.contacts = { probeParkedOn: () => this.probe.parkedOn, suitLying: () => d.eva.lying, suitOutside: () => d.eva.outside };
 
     this.probeMode = new ProbeMode(d.root, d.scene, {
@@ -272,10 +300,10 @@ export class SubjugationUi {
   /** Where the duel's result is said when neither the probe nor the suit is on screen (the bridge's mind console). */
   onSay?: (text: string) => void;
 
-  /** Pose of the probe's bay on the travel ship now (debug and checks). */
-  bayPose(): RigidBodyState {
+  /** Pose of a probe deployer on the travel ship now (the current probe's by default): +y is out of the hull. */
+  bayPose(slot = this.probe?.slot ?? 0): RigidBodyState {
     const m = this.d.mothership;
-    return RigidBodyState.at(m.position.add(m.orientation.rotate(PROBE_BAY_BODY))).withOrientation(m.orientation);
+    return RigidBodyState.at(m.position.add(m.orientation.rotate(probeBayBody(m, slot)))).withOrientation(m.orientation);
   }
 
   /** The probe is flown (pads/keys go to it, not to the lander). */
@@ -297,7 +325,10 @@ export class SubjugationUi {
     const p = this.probe;
     const f = p.flight;
     if (!f.landed && f.target !== ex.asteroid) f.setTarget(ex.asteroid);
-    if (this.d.atStation()) p.restock();
+    if (this.d.atStation()) {
+      if (!REAL_ONLY) p.restock();
+      else if (p.emptyDeployer !== undefined && this.d.takeBuiltProbe?.() && p.load()) this.say("Una Juventas montada en la estación entra en un dispensador de la nodriza: su puerta se cierra");
+    }
     p.update(dt * warp, this.probeMode.command(), {
       angry: ex.phase === "aggressive" && f.target === ex.asteroid,
       safeDistanceM: ex.safeDistanceM ?? 0,
@@ -309,6 +340,7 @@ export class SubjugationUi {
       const nearBay = p.bayRange().distanceM < 20;
       f.applyImpulse(region.boundaryPush(s.position, s.velocity, dt * warp).add(region.avoidObstacles(s.position, s.velocity, ex.asteroid)).add(nearBay ? Vec3.ZERO : mothership.keepOut(s.position, s.velocity)));
     }
+    for (let i = 0; i < p.deployers; i++) this.deployers?.setDoor(i, p.doorOpen(i));
     for (const e of p.drainEvents()) this.probeMode.onEvent(e);
     this.probeMode.update(dt, warp, warpNote);
     if (!this.d.eva.outside) this.suitDamage = 0;

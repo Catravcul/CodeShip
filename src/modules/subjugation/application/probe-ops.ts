@@ -1,6 +1,7 @@
 import { Vec3 } from "@core/math/vec3";
 import type { FlightComputer } from "@modules/flight/application/flight-computer";
 import { RigidBodyState } from "@modules/flight/domain/rigid-body";
+import { DEEP_SPACE_DEPLOYER } from "../data/deployer";
 import type { ThrustCommand } from "@modules/ship/domain/ship";
 
 export type ProbeStatus = "estibada" | "en-vuelo" | "posada" | "sin-sonda";
@@ -22,7 +23,7 @@ export const PROBE_TUNING = {
    * a LEO deployer pushes at about 1 m/s, the ISS's J-SSOD at 0,77–1,7 m/s):
    * https://isispace.nl/isispace-deep-space-deployer-supports-esas-hera-mission-to-observe-dart-impact-and-beyond/
    */
-  releaseMs: 0.03,
+  releaseMs: DEEP_SPACE_DEPLOYER.releaseMs.value,
   /**
    * Capture box of the travel ship's arm: within this distance of the bay and slower than
    * `captureSpeedMs` the arm grabs it. Canadarm2 grapples visiting vehicles held about 10 m away.

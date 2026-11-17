@@ -10,6 +10,10 @@ import { PROBE_HULL } from "@modules/ship/data/probe";
 import { ProbeModel } from "./adapters/three/probe-model";
 import { TouchPilot, mergeCommands } from "./adapters/input/touch";
 import { VirtualStick, curve } from "./adapters/input/stick";
+import { REAL_ONLY } from "@core/realism";
+
+/** What the console says when no probe is left (real: Juventas never comes back; a new one comes from the catalogue). */
+export const EMPTY_DEPLOYERS = "Los dispensadores están vacíos: Juventas no vuelve. Monta otra en el catálogo de la estación (Cupola) y atraca la nodriza allí para cargarla";
 
 const fmt = (v: number, d = 2) => v.toFixed(d).replace(".", ",");
 const dist = (m: number) => (m >= 1000 ? `${fmt(m / 1000, 2)} km` : `${fmt(m, m < 10 ? 2 : 0)} m`);
@@ -87,7 +91,7 @@ export class ProbeMode {
       <div class="pr-actions">
         <button data-act="trip" class="primary">Programar viaje</button>
         <button data-act="home">Programar vuelta</button>
-        <button data-act="launch" class="primary">Lanzar sonda</button>
+        <button data-act="launch" class="primary">Soltar del dispensador</button>
         <button data-act="assist">Nivelar sola: no</button>
         <button data-act="recover">Recuperar con el brazo</button>
         <button data-act="warp">Tiempo ×1</button>
@@ -245,7 +249,7 @@ export class ProbeMode {
     const p = this.deps.probe;
     switch (t.dataset.act) {
       case "launch":
-        if (p.launch(this.deps.launchDirection())) this.say("Muelles sueltos: la sonda se separa a 0,08 m/s");
+        p.launch(this.deps.launchDirection());
         break;
       case "assist":
         p.flight.landingAssist = !p.flight.landingAssist;
@@ -265,7 +269,7 @@ export class ProbeMode {
         this.warpIdx = (this.warpIdx + 1) % WARPS.length;
         break;
       case "abandon":
-        p.abandon();
+        if (!p.endMission()) p.abandon();
         break;
     }
   }
@@ -273,6 +277,7 @@ export class ProbeMode {
   /** Messages for what happened to the probe (also shown when the console is closed, on the next open). */
   onEvent(e: ProbeEvent): void {
     const name = this.deps.targetName();
+    const p = this.deps.probe;
     switch (e.type) {
       case "posada":
         return this.say(`Sonda posada en ${name}: las anclas sujetan. Ya puedes entrar en su mente`, 6);
@@ -283,9 +288,13 @@ export class ProbeMode {
       case "sacudida":
         return this.say(`¡${name} sacude la sonda! Aléjala o abandónala`, 6);
       case "perdida":
-        return this.say(e.why === "abandonada" ? "Sonda abandonada" : e.why === "destruida" ? "Sonda destruida por los escombros" : "Sonda sin batería: perdida", 6);
+        if (e.why === "fin-de-mision")
+          return this.say(`Misión terminada: la sonda se queda posada en ${name}, como Juventas en Dimorphos. ${p.status === "sin-sonda" ? EMPTY_DEPLOYERS : "La siguiente espera en su dispensador"}`, 9);
+        return this.say(`${e.why === "abandonada" ? "Sonda abandonada" : e.why === "destruida" ? "Sonda destruida por los escombros" : "Sonda sin batería: perdida"}${p.status === "sin-sonda" ? `. ${EMPTY_DEPLOYERS}` : ""}`, 7);
+      case "desplegando":
+        return this.say(`Se abre la puerta del dispensador: la sonda sale hasta el borde y los muelles la sueltan a ${fmt(PROBE_TUNING.releaseMs * 100, 0)} cm/s`, 8);
       case "lanzada":
-        return;
+        return this.say(`Suelta: se separa de la nodriza a ${fmt(PROBE_TUNING.releaseMs * 100, 0)} cm/s`, 5);
     }
   }
 
@@ -342,8 +351,13 @@ export class ProbeMode {
     const fuel = ship.propellantKg("Hydrazine");
     const bat = p.batteryWh / p.spec.batteryWh;
     const bay = p.bayRange();
-    this.set(this.title, `${ship.name} · a distancia · ${p.status === "sin-sonda" ? "sin sondas a bordo" : `${p.onBoard} a bordo`}`);
-    const status = { estibada: "En su bahía de la nodriza", "en-vuelo": "En vuelo", posada: `Posada en ${d.targetName()}`, "sin-sonda": "No quedan sondas: repón en la estación" }[p.status];
+    this.set(this.title, `${ship.name} · a distancia · ${p.status === "sin-sonda" ? "dispensadores vacíos" : `${p.inDeployers} de ${p.deployers} en sus dispensadores`}`);
+    const status = {
+      estibada: p.deploying ? "Saliendo del dispensador" : "En su dispensador, en el casco de la nodriza",
+      "en-vuelo": "En vuelo",
+      posada: `Posada en ${d.targetName()}`,
+      "sin-sonda": REAL_ONLY ? EMPTY_DEPLOYERS : "No quedan sondas: repón en la estación",
+    }[p.status];
     const near = p.status === "en-vuelo" && t.clearance < 60;
     this.set(
       this.tele,
@@ -362,21 +376,24 @@ export class ProbeMode {
     // Only what flying it needs (designer, 2026-11-13): the asteroid's phase, trust and mind are on the
     // bridge's mind console. Parked and with a duel on offer, one line says where to go.
     this.rapport.classList.toggle("angry", angry);
-    this.set(this.rapport, p.status === "posada" && !angry && d.canStartDuel() ? `Sonda posada en ${esc(d.targetName())}: su mente está en la consola de la mente del asteroide, junto a esta` : p.status === "posada" && r.next !== "sonda" ? "Fase de la sonda hecha: recupérala con el brazo" : "");
+    this.set(this.rapport, p.status === "posada" && !angry && d.canStartDuel() ? `Sonda posada en ${esc(d.targetName())}: su mente está en la consola de la mente del asteroide, junto a esta` : p.status === "posada" && r.next !== "sonda" ? (REAL_ONLY ? "Fase de la sonda hecha: su misión acaba aquí. «Terminar su misión» la deja posada y prepara la siguiente" : "Fase de la sonda hecha: recupérala con el brazo") : "");
     this.rapport.classList.toggle("hidden", this.rapport.innerHTML === "");
     const show = (b: HTMLButtonElement, on: boolean) => b.classList.toggle("hidden", !on);
     show(this.btn.launch, p.canLaunch);
     show(this.btn.assist, p.out);
     this.btn.assist.textContent = `Nivelar sola: ${f.landingAssist ? "sí" : "no"}`;
     this.btn.assist.classList.toggle("on", f.landingAssist);
-    show(this.btn.recover, p.status === "en-vuelo");
+    // Real Juventas never comes back (docs/design/modulo-lunar-juventas.md): no arm catch on the real ship.
+    show(this.btn.recover, !REAL_ONLY && p.status === "en-vuelo");
     this.btn.recover.classList.toggle("primary", p.canRecover);
     this.btn.recover.textContent = p.canRecover ? "Recuperar con el brazo" : `Recuperar: acércala (${dist(bay.distanceM)})`;
     show(this.btn.abandon, p.out);
+    this.btn.abandon.textContent = p.status === "posada" ? "Terminar su misión (se queda posada)" : "Abandonar la sonda";
     const offer = d.tripOffer?.() ?? {};
-    show(this.btn.trip, !!offer.to);
+    // The automatic trips are chosen at the probe's station (Manual / Automático), not here.
+    show(this.btn.trip, !REAL_ONLY && !!offer.to);
     this.btn.trip.textContent = `Programar viaje a ${offer.to ?? ""}`;
-    show(this.btn.home, !!offer.home);
+    show(this.btn.home, !REAL_ONLY && !!offer.home);
     this.btn.home.textContent = "Programar vuelta a la nodriza";
     // On an automatic trip the time-lapse is the trip's.
     show(this.btn.warp, p.status === "en-vuelo" && !offer.flying);

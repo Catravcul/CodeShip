@@ -13,8 +13,12 @@ import { tripChore, type TripFacts } from "./trip-chore";
 
 /** Game values of the probe's automatic trips (docs/design/viajes.md). */
 export const PROBE_TRIP = {
-  /** Closer than this to the target (surface or bay) it is flown by hand: no trip to program, m. */
-  minDistanceM: 1500,
+  /**
+   * Closer than this to the target (surface or bay) it is flown by hand: no trip to program, m. Twice the
+   * hand-over height: from its deployer by the asteroid the mothership is parked at (1,35 km) it can still go
+   * automatically (Berón, 2026-11-17: «Automático» at the probe's station, nearby destinations only).
+   */
+  minDistanceM: 2 * TRANSFER_TUNING.approachM,
   /** The autopilot hands the probe back this high above the asteroid: parking stays manual, m. */
   approachM: TRANSFER_TUNING.approachM,
   /** …or this far from the bay on the way home (its weak RCS needs room to stop): the last metres to the arm are manual, m. */

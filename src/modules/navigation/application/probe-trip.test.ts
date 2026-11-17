@@ -71,7 +71,8 @@ describe("ProbeTrip (the probe's long trips)", () => {
   });
 
   it("a near asteroid is flown by hand: no trip", () => {
-    const { trip, bennu } = make();
+    const { trip, bennu, mothership } = make();
+    mothership.moveTo(new Vec3(0, BENNU.meanRadiusM.value + PROBE_TRIP.minDistanceM - 100, 0));
     expect(trip.canProgram({ kind: "asteroid", body: bennu }).ok).toBe(false);
   });
 

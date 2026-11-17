@@ -624,7 +624,10 @@ const subj = new SubjugationUi({
   evaMode,
   map: navMode.map,
   keyboard: () => pilot.command(),
-  atStation: () => atStationPort() || (docking.dockedTo === mothership && !!mothership.dockedTo),
+  atStation: () => (REAL_ONLY ? !!mothership.dockedTo : atStationPort() || (docking.dockedTo === mothership && !!mothership.dockedTo)),
+  // Juventas never comes back (docs/design/modulo-lunar-juventas.md): a new one is built from the catalogue and rides aboard.
+  takeBuiltProbe: () => !!stationScreen.yard?.takeAboard("juventas"),
+  carrierRoot: mothershipModel.root,
   wrath: wrathMode.wrath,
   // The EMU suit is about 145 kg (NASA); her body mass comes from the crew model.
   crewMassKg: habitat.crew.body.massKg + 145,

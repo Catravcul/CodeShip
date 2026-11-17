@@ -30,6 +30,9 @@ Detalle y fuentes: [ux-acciones.md](ux-acciones.md), [escala.md](escala.md), [na
 6. **Todo vuelo tiene dos modos: manual y por reto (automático).** Esto vale para la nodriza, los viajes y los aterrizajes de la sonda y del módulo.
 7. **El brazo robótico y los paseos espaciales siguen los procedimientos reales.**
 
+8. **Los viajes y las operaciones a distancia siguen solos.** Una vez programados, ella puede dejar los mandos y hacer tareas en el interior. «Ver trayecto», «Parar», el tiempo que falta y la llegada solo aparecen en la consola de ese vehículo. Nunca se quedan atrapados la cámara ni los botones. Lo mismo vale para la sonda, la nodriza y el módulo.
+9. **El aterrizaje automático muestra adónde va**: el sitio, la distancia y el tiempo que falta.
+
 ## 4. Acciones, retos y animaciones
 
 1. **Todo se hace con retos de código**: cocinar, cuidar, reparar, mantener, cambiar piezas, yoga, dormir…
@@ -49,6 +52,8 @@ Detalle y fuentes: [ux-acciones.md](ux-acciones.md), [escala.md](escala.md), [na
 
 ## 6. Vida a bordo
 
+0. **Las instalaciones funcionan en todos los vehículos que las tienen.** Si la cocina, la esterilla, el ejercicio, el sueño o las reparaciones funcionan en la estación, también funcionan en la nodriza, y al revés.
+
 1. **Hay 2 comidas al día. Un día dura 24 minutos reales.** La comida sale de la despensa, que se llena con cargueros.
 2. **Doménica empieza sola.** Los animales llegan después, desde el catálogo de especies; cada especie tiene descripción, aportes y precauciones. Los animales son amigos, nunca comida.
 
@@ -63,6 +68,7 @@ Detalle y fuentes: [ux-acciones.md](ux-acciones.md), [escala.md](escala.md), [na
 - [ ] ¿Alguna ventana de gestión que no se abra desde una máquina o consola de su compartimento?
 - [ ] ¿Alguna tarea que haga volar una nave sola? ¿Algún vuelo sin modo manual y modo por reto?
 - [ ] ¿Algún equipo que sea solo un asidero o que comparta animación con otro?
+- [ ] ¿Alguna instalación que funcione en un vehículo y no en otro? ¿Algún viaje que bloquee la cámara o que no deje hacer tareas mientras sigue?
 - [ ] ¿Algún trayecto que se teletransporte sin que el jugador lo haya elegido?
 - [ ] ¿Algún paso de reto sin animación en su entorno, o sin revisar en vivo?
 - [ ] ¿Se ve algo más que la hoja y la escena mientras hay un reto abierto?

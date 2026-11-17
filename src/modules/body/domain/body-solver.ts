@@ -46,7 +46,7 @@ function reach(spec: SkeletonSpec, pose: BodyPose, world: BodyWorld, r: Reach, w
   const [root, mid, end] = CHAIN[r.end];
   const arm = r.end === "HandLeft" || r.end === "HandRight";
   const lift = r.onFloor ? dipBelow(spec, world, arm ? mid : end, world[end].p.y) : 0;
-  const target = r.onFloor ? withinReach(spec, world, root, mid, end, new Vec3(r.point.x, Math.max(lift, 0.004), r.point.z)) : world.Chest.p.add(world.Chest.q.rotate(r.point));
+  const target = r.onFloor ? withinReach(spec, world, root, mid, end, new Vec3(r.point.x, Math.max(lift, 0.004), r.point.z)) : r.inBody ? r.point : world.Chest.p.add(world.Chest.q.rotate(r.point));
   // Elbows out and down (in the prayer they went into the torso otherwise); knees forward.
   const b = world[mid].p;
   const wanted = arm ? new Vec3(Math.sign(world[root].p.sub(world.Chest.p).x || 1) * 0.35, -0.2, 0) : new Vec3(0, 0, 0.3);
@@ -80,8 +80,17 @@ const ground = (spec: SkeletonSpec, pose: BodyPose, world: BodyWorld, skip?: Rea
  * pose holds the body up and the feet float), and the floor reaches run twice because tilting a forearm
  * changes how far its box dips. A last grounding keeps everything above the floor.
  */
-export function settleBody(spec: SkeletonSpec, pose: BodyPose, reaches: readonly Reach[], weight: number): { pose: BodyPose; world: BodyWorld } {
+export function settleBody(spec: SkeletonSpec, pose: BodyPose, reaches: readonly Reach[], weight: number, opts: { grounded?: boolean } = {}): { pose: BodyPose; world: BodyWorld } {
   let p = pose;
+  // Not grounded (pedalling a cycle with no seat in 0 g): the pelvis stays where the pose puts it and the limbs reach.
+  if (opts.grounded === false) {
+    let w = forwardKinematics(spec, p);
+    for (const r of reaches) {
+      p = reach(spec, p, w, r, weight);
+      w = forwardKinematics(spec, p);
+    }
+    return { pose: p, world: w };
+  }
   let w = forwardKinematics(spec, p);
   const floor = reaches.filter((r) => r.onFloor);
   for (const r of reaches) {

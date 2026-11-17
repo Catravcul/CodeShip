@@ -3,6 +3,7 @@ import { Quat } from "@core/math/quat";
 import { Vec3 } from "@core/math/vec3";
 import type { AsanaData, ReachEnd } from "@modules/body/domain/asana";
 import { AsanaPlayer } from "@modules/body/domain/asana-player";
+import { MotionPlayer, type ExerciseMotionData } from "@modules/body/domain/exercise-motion";
 import { contactHeights } from "@modules/body/domain/body-solver";
 import { CUBE_FIGURE, JOINTS, type BodyPose, type JointId } from "@modules/body/domain/skeleton";
 
@@ -91,6 +92,8 @@ export class CubeFigure {
   /** Only created when she does yoga (the other figures never pay for it). */
   private player?: AsanaPlayer;
   private asanaMode = false;
+  /** An exercise on a machine, played round and round on the skeleton (body/domain/exercise-motion.ts). */
+  private mover?: MotionPlayer;
 
   /** `longHair` adds hair down to the shoulders (Doménica: long lavender hair, from her portrait). */
   constructor(skin = 0xe0b48c, suit = 0x3d6fa8, hair = 0x3a2a1e, longHair = false) {
@@ -152,12 +155,14 @@ export class CubeFigure {
 
   pose(key: string): void {
     this.leaveAsana();
+    this.leaveMotion();
     this.target = POSES[key] ?? STAND;
   }
 
   /** Ease toward explicit joint angles (procedural motions such as hand over hand). */
   poseAngles(a: PoseAngles): void {
     this.leaveAsana();
+    this.leaveMotion();
     this.target = a;
   }
 
@@ -168,8 +173,25 @@ export class CubeFigure {
   asana(a: AsanaData, transitionS = 3): void {
     if (!this.player) this.player = new AsanaPlayer(CUBE_FIGURE, { transitionS });
     if (!this.asanaMode) this.player.startFrom(this.readPose());
+    this.mover = undefined;
     this.asanaMode = true;
     this.player.play(a);
+  }
+
+  /**
+   * Exercise on a machine (the T2's stride, the CEVIS's pedalling, the ARED's squat): the skeleton plays the
+   * motion's cycle until another gesture or asana; `pace` speeds it (a hard interval).
+   */
+  exercise(m: ExerciseMotionData): void {
+    if (this.mover?.motion === m) return;
+    const from = this.readPose();
+    this.leaveAsana();
+    this.mover = new MotionPlayer(CUBE_FIGURE, m, from);
+  }
+
+  /** The exercise being played and where in its cycle (the machine's moving parts follow it). */
+  get exercising(): { readonly motion: ExerciseMotionData; readonly phase: number; pace: number } | undefined {
+    return this.mover;
   }
 
   /** The asana she is in (undefined outside yoga). */
@@ -200,6 +222,7 @@ export class CubeFigure {
   /** Walking gait: `phase` advances with distance, `amount` 0 (standing) … 1 (full stride). */
   walk(phase: number, amount: number): void {
     this.leaveAsana();
+    this.leaveMotion();
     const s = Math.sin(phase) * 0.55 * amount;
     const k = Math.max(0, Math.sin(phase + Math.PI / 2)) * 0.6 * amount;
     const k2 = Math.max(0, -Math.sin(phase + Math.PI / 2)) * 0.6 * amount;
@@ -208,6 +231,10 @@ export class CubeFigure {
 
   /** Ease toward the target pose; `k` = fraction per second. */
   update(dt: number, k = 3): void {
+    if (this.mover) {
+      if (this.root.visible) this.write(this.mover.update(dt).pose);
+      return;
+    }
     if (this.asanaMode && this.player) {
       if (this.root.visible) this.write(this.player.update(dt).pose);
       return;
@@ -274,6 +301,13 @@ export class CubeFigure {
     this.root.position.set(p.pelvis.x, p.pelvis.y, p.pelvis.z);
     this.hips[0]!.position.x = p.hipX;
     this.hips[1]!.position.x = -p.hipX;
+  }
+
+  private leaveMotion(): void {
+    if (!this.mover) return;
+    this.mover = undefined;
+    this.asanaMode = true;
+    this.leaveAsana();
   }
 
   /** Back to the gestures: the joints they do not drive go back to rest. */

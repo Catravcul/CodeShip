@@ -10,7 +10,7 @@ import { facing } from "../domain/attitude";
 import { portFlightTarget, targetDistance, type AsteroidTarget, type DockTarget, type NavTarget } from "../domain/nav-target";
 import type { DockingTarget } from "@modules/mothership/domain/docking";
 import { remainingEstimateS, TripAutopilot, type AutopilotPhase } from "./autopilot";
-import { CarrierTrip, ManualCarrierRun, type BerthRun, type CarrierPort } from "./carrier-trip";
+import { CarrierTrip, ManualCarrierRun, carrierTurnSeconds, type BerthRun, type CarrierPort } from "./carrier-trip";
 import { legBudgets, TRAVEL_TIME, TravelClock } from "../domain/travel-time";
 import { carrierTripChore, tripChore, type CarrierTripFacts, type DockFacts, type TripFacts } from "./trip-chore";
 import { DOCK_TRIP } from "./dock-trip";
@@ -36,6 +36,8 @@ export interface CarrierLeg {
   readonly facts: CarrierTripFacts;
   /** Set when the mothership docks at the end (a station's port). */
   readonly berthAt?: DockingTarget;
+  /** Game seconds it spends only turning (onto the route, and at a port to the standoff attitude). */
+  readonly turnS?: number;
 }
 
 /** How a dock trip ends: the probe's port, where the autopilot hands over, and the way in. */
@@ -77,12 +79,21 @@ export interface TripTime {
 export function tripTime(t: Pick<Trip, "carrier" | "plan">): TripTime {
   const berthS = t.carrier?.berthAt ? berthSeconds() : 0;
   const legs = [
-    ...(t.carrier ? [{ gameS: t.carrier.plan.totalS, lapse: TRAVEL_TIME.lapse.carrier }, { gameS: berthS, lapse: TRAVEL_TIME.lapse.carrier }] : []),
+    ...(t.carrier ? [{ gameS: t.carrier.plan.totalS + (t.carrier.turnS ?? 0), lapse: TRAVEL_TIME.lapse.carrier }, { gameS: berthS, lapse: TRAVEL_TIME.lapse.carrier }] : []),
     { gameS: t.plan.totalS, lapse: TRAVEL_TIME.lapse.lander },
   ];
   const b = legBudgets(legs);
   const legsRealS = t.carrier ? [b[0]! + b[1]!, b[2]!] : b;
   return { gameS: legs.reduce((s, l) => s + l.gameS, 0), realS: b.reduce((s, x) => s + x, 0), legsRealS, berthRealS: t.carrier ? b[1]! : 0 };
+}
+
+/**
+ * The time-lapse clock of a mothership hop: its turns (onto the route and, at the end, to its final attitude)
+ * play at the board's pace on top of the burn's budget.
+ */
+function turnsClock(trip: CarrierTrip, budgetRealS: number): TravelClock {
+  const turnsS = Math.max(0, trip.remainingS - trip.plan.totalS);
+  return new TravelClock(trip.remainingS, budgetRealS + turnsS / TRAVEL_TIME.lapse.carrier);
 }
 
 /** What the map card shows about a destination. */
@@ -295,7 +306,7 @@ export class Navigator {
       ...(berthAt ? { dock: this.dockFacts(t as DockTarget, DOCK_TRIP.berthStandoffM) } : {}),
     };
     const probePlan = planTransfer({ distanceM: probeLegM, accelMS2: probe.plan.accelMS2, deltaVAvailableMS: this.flight.ship.mainDeltaV() });
-    return { ...probe, plan: probePlan, waypoints: [], dock: undefined, carrier: { from, path, parking, plan, facts, ...(berthAt ? { berthAt } : {}) } };
+    return { ...probe, plan: probePlan, waypoints: [], dock: undefined, carrier: { from, path, parking, plan, facts, turnS: carrierTurnSeconds(c.orientation, from, path, berthAt ? c.berthStandoff!(berthAt).orientation : undefined, !!out), ...(berthAt ? { berthAt } : {}) } };
   }
 
   /** Where the carrier's centre ends up latched at a port (the standoff, moved in onto the port). */
@@ -535,7 +546,7 @@ export class Navigator {
       // First back onto the axis at Waypoint 1, then the approach.
       const plan = planContinuousBurn(sb.position.sub(c.position).length(), c.accelerationMs2, c.cruiseFor?.(1));
       this._carrierTrip = new CarrierTrip(c, c.position, [sb.position], plan, sb.orientation);
-      this.clock = new TravelClock(plan.totalS, plan.totalS / TRAVEL_TIME.lapse.carrier);
+      this.clock = turnsClock(this._carrierTrip, plan.totalS / TRAVEL_TIME.lapse.carrier);
     } else this._berthing = c.berth(t.carrierPort!);
     this._status = "carrier";
     return { ok: true };
@@ -615,11 +626,12 @@ export class Navigator {
       const end = now.carrier.berthAt ? c.berthStandoff!(now.carrier.berthAt).position : now.carrier.parking;
       this._route = [now.carrier.from, ...now.carrier.path, ...(now.carrier.berthAt ? [this.berthedAt_(now.carrier.berthAt) ?? end] : [])];
       const berth = now.carrier.berthAt;
-      const q = berth ? c.berthStandoff!(berth).orientation : leaving ? c.orientation : facing(now.carrier.parking.sub(now.carrier.from));
-      this._carrierTrip = new CarrierTrip(c, now.carrier.from, now.carrier.path, now.carrier.plan, q);
+      const q = berth ? c.berthStandoff!(berth).orientation : undefined;
+      this._carrierTrip = new CarrierTrip(c, now.carrier.from, now.carrier.path, now.carrier.plan, q, leaving);
       const tt = tripTime(now);
       const budget = tt.legsRealS;
-      this.clock = new TravelClock(now.carrier.plan.totalS, (budget[0] ?? 0) - tt.berthRealS);
+      // The budget already counts its turns (tripTime).
+      this.clock = new TravelClock(this._carrierTrip.remainingS, (budget[0] ?? 0) - tt.berthRealS);
       this.landerBudgetS = budget[1];
       this.berthLapse = tt.berthRealS > 0 ? berthSeconds() / tt.berthRealS : TRAVEL_TIME.lapse.carrier;
       this.startDistanceM = Math.max(1, now.carrier.plan.distanceM);
@@ -753,7 +765,7 @@ export class Navigator {
           const sb = c.berthStandoff(berth);
           const plan = planContinuousBurn(sb.position.sub(c.position).length(), c.accelerationMs2, c.cruiseFor?.(1));
           this._carrierTrip = new CarrierTrip(c, c.position, [sb.position], plan, sb.orientation);
-          this.clock = new TravelClock(plan.totalS, plan.totalS / TRAVEL_TIME.lapse.carrier);
+          this.clock = turnsClock(this._carrierTrip, plan.totalS / TRAVEL_TIME.lapse.carrier);
         } else {
           this._status = "manual";
           this.parkedByHand = true;

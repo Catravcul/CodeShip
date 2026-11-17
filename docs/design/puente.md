@@ -62,6 +62,21 @@ puesto de acople solo lo menciona en una línea de texto.
 - **Automático (retos)**: fija el destino y abre la cadena de retos del viaje (`NavigationMode.program`); por
   programa, si está atracada, desatraca y sale sola como la Crew Dragon.
 - A una **estación**, a mano, el ordenador la lleva al punto de espera 1 y **se queda allí** (antes atracaba solo).
+- **Vuela, no se arrastra** (`CarrierTrip`, `carrier-trip.ts`): primero gira la proa (cuerpo −z, los Raptor detrás)
+  hacia la ruta, enciende, va por inercia, da la vuelta de 180° antes de frenar (frena con los motores por delante)
+  y al final gira a la actitud del punto 1, con la proa al puerto. Gira a 1°/s (`CARRIER_SLEW_DEG_S`, valor de
+  juego, en desarrollo: no se publican los ritmos de la Starship): la vuelta tarda 3 min de juego, 3 s a ×60. Los
+  giros cuentan en el tiempo del viaje (`carrierTurnSeconds`). Lejos de una estación se ven los chorros de los
+  Raptor de vacío; en los giros y cerca de una estación, los soplos del RCS (nunca los Raptor junto a la ISS).
+  Al salir de un puerto retrocede por el eje sin girar y gira después.
+- **El estado del viaje solo en el puesto de pilotaje** (reglas §3.8 y §5.9): el tiempo que falta, «Ver trayecto»,
+  «Parar» y «Tomar el mando» salen sentada en el puesto de pilotaje (o en sus pantallas de sistemas). En el resto de
+  la cubierta y en el interior la vista queda libre. Para la ventana «Trayecto» del menú del HUD (de solo estado)
+  hay un modelo de lectura, `tripStatus()` (`TripStatus` en `trip-chip.ts`: vehículo, destino, distancia, tiempo
+  real que falta, fase y fracción), sin botones.
+- **Cámara solo con joystick** (reglas §5.7): «Ver trayecto» a pantalla completa gira con su joystick «Cámara» (el
+  pellizco y la rueda solo acercan); el mapa de la mesa de navegación gira con su joystick «Girar» y un toque elige
+  destino.
 
 ### Acople
 
@@ -77,9 +92,11 @@ puesto de acople solo lo menciona en una línea de texto.
   1 m/s»), cuánto se tarda del punto 1 al 2 a 0,07 m/s y qué condición falta para que cojan los ganchos. Resuelto,
   `Navigator.berthAuto` vuela la aproximación real (51 min de juego).
 - **Desacoplar**: `Unberthing`: retrocede por el eje a 0,07 m/s hasta el punto 1 (150 m), a ×60.
+- La aproximación automática se vuela con el RCS: acelera hasta los 0,07 m/s y frena antes de la espera del punto 2
+  a 0,01 m/s² (`BERTH_RCS_MS2`, valor de juego), con la actitud en el eje del puerto, como la Dragon.
 
 Las tres maniobras van por el `Navigator` como los viajes: un solo reloj, el chip del viaje con «Ver trayecto» y
-«Mando», y solo se ven en la cubierta de vuelo.
+«Mando», y solo se ven sentada en el puesto de pilotaje (o en el de acople, su cámara).
 
 ### Preguntas abiertas para Berón
 

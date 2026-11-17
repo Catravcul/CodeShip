@@ -28,3 +28,24 @@ export function facing(forward: Vec3, up: Vec3 = Vec3.Y): Quat {
   const s = Math.sqrt(1 + m22 - m00 - m11) * 2;
   return new Quat((m10 - m01) / s, (m02 + m20) / s, (m12 + m21) / s, 0.25 * s).normalize();
 }
+
+/** Angle between two orientations, rad. */
+export function angleBetween(a: Quat, b: Quat): number {
+  const d = Math.abs(a.w * b.w + a.x * b.x + a.y * b.y + a.z * b.z);
+  return 2 * Math.acos(Math.min(1, d));
+}
+
+/** Turn `from` toward `to` by at most `maxRad` (the shorter way): an attitude slew at a capped rate. */
+export function turnToward(from: Quat, to: Quat, maxRad: number): Quat {
+  const angle = angleBetween(from, to);
+  if (angle <= Math.max(0, maxRad) || angle < 1e-9) return to;
+  const k = maxRad / angle;
+  let dot = from.w * to.w + from.x * to.x + from.y * to.y + from.z * to.z;
+  const s = dot < 0 ? -1 : 1;
+  dot *= s;
+  const theta = Math.acos(Math.min(1, dot));
+  const sin = Math.sin(theta);
+  const a = Math.sin((1 - k) * theta) / sin;
+  const b = (s * Math.sin(k * theta)) / sin;
+  return new Quat(a * from.w + b * to.w, a * from.x + b * to.x, a * from.y + b * to.y, a * from.z + b * to.z).normalize();
+}

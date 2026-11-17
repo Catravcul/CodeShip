@@ -51,7 +51,7 @@ body.on-trip .autopilot-tag { display: none !important; }
 /* Inside the station (zero-g pad, 168 px) the chip goes above the pad, clear of its arrows. */
 body.in-station-interior .trip-chip { bottom: calc(200px + env(safe-area-inset-bottom)); }
 /* «Ver trayecto» full screen: the vehicle on its path; the room's HUD hides, the trip's controls stay. */
-.trip-pip.full { z-index: 8; border: 0; border-radius: 0; box-shadow: none; pointer-events: auto; cursor: grab; }
+.trip-pip.full { z-index: 8; border: 0; border-radius: 0; box-shadow: none; pointer-events: auto; }
 .trip-pip.full .tp-label { left: 12px; top: calc(12px + env(safe-area-inset-top)); padding: 6px 10px; font-size: 14px; font-weight: 600; border: 1px solid #7fdcff66; border-radius: 10px; }
 .trip-pip.full .tp-close { right: 12px; top: calc(8px + env(safe-area-inset-top)); width: 48px; height: 48px; font-size: 24px; color: #04121a; background: #7fdcff; border-radius: 12px; }
 body.in-trip-view #app > :not(canvas):not(.trip-pip):not(.trip-chip):not(.journey-bar):not(.journey-note):not(.ctx-dock) { visibility: hidden !important; }
@@ -63,3 +63,6 @@ body.in-trip-view #app > :not(canvas):not(.trip-pip):not(.trip-chip):not(.journe
   body.in-probe .trip-chip button { flex: 1; padding: 0 6px; }
   body.in-probe .trip-chip .tc-detail { white-space: normal; }
 }
+/* «Ver trayecto» at full screen: the camera turns only with its joystick (reglas.md §5.7). */
+.trip-pip .tp-stick { position: absolute; right: 18px; bottom: calc(22px + env(safe-area-inset-bottom)); left: auto; }
+.trip-pip.full .tp-stick { display: block; pointer-events: auto; }

@@ -64,6 +64,12 @@ export function berthStandoff(target: DockingTarget, p: CraftPort, standoffM = B
 export type BerthingStatus = "approach" | "docked" | "failed";
 
 /**
+ * The RCS's push on the last approach, m/s²: a game value (Starship's RCS is not published), of the order of
+ * Crew Dragon's Draco translation on its ~13 t (it reaches the 0,07 m/s closing speed in under 10 s).
+ */
+export const BERTH_RCS_MS2 = 0.01;
+
+/**
  * Use case: the mothership docks to a station's port. It is too big for the probe's 120 Hz loop, so
  * it is moved along the port axis with the same braking profile as the probe's docking assist and
  * the contact is judged with the same IDSS limits. Starts wherever the craft is (normally the
@@ -132,10 +138,13 @@ export class Berthing {
         this.speed = 0;
         continue;
       }
-      this.speed = PROXIMITY.closingMs;
-      const v = n.scale(-this.speed);
       // Never past Waypoint 2 in one step while the hold is still ahead.
       const stopAt = this.hold > 0 && a0.axialM > PROXIMITY.waypoint2M ? PROXIMITY.waypoint2M : 0;
+      // Flown on the RCS: it speeds up to the closing speed and, before the hold, brakes to it, at BERTH_RCS_MS2.
+      const brakeCap = stopAt > 0 ? Math.sqrt(2 * BERTH_RCS_MS2 * Math.max(0, a0.axialM - stopAt)) : Infinity;
+      const want = Math.min(PROXIMITY.closingMs, Math.max(brakeCap, 0.005));
+      this.speed = want > this.speed ? Math.min(want, this.speed + BERTH_RCS_MS2 * dt) : want;
+      const v = n.scale(-this.speed);
       const step = Math.min(this.speed * dt, Math.max(0, a0.axialM - stopAt));
       this.craft.moveTo(this.craft.position.add(n.scale(-step)));
       if (a0.axialM - step > 1e-6) continue;

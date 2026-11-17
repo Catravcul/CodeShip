@@ -73,6 +73,9 @@ export async function cubiertaVuelo(j) {
   await p.waitForFunction(() => window.codeship.bridge.near() === "nav" && !window.codeship.bridge.walking, null, { timeout: 30000 }).catch(() => {});
   await p.waitForTimeout(500);
   j.check("lejos del puesto de pilotaje los mandos no salen (la nave sigue a la velocidad dada)", await p.evaluate(() => !!document.querySelector(".carrier-hand.hidden") && (window.codeship.nav.manualCarrier?.speedMs ?? 0) > 0));
+  const free = await p.evaluate(() => ({ chip: !!document.querySelector(".trip-chip.on"), tag: !!document.querySelector(".autopilot-tag.on"), status: window.codeship.tripStatus() }));
+  j.check("lejos del puesto la vista queda libre: ni el chip del viaje ni su franja (reglas §5.9)", !free.chip && !free.tag, JSON.stringify({ chip: free.chip, tag: free.tag }));
+  j.check("el estado del viaje sigue como dato para la ventana «Trayecto» del menú (destino, distancia, tiempo, fase)", !!free.status && free.status.vehicle === "Starship" && free.status.distanceM > 0 && !!free.status.phase, JSON.stringify(free.status));
   await j.useMachine("bridge", "prop", null);
   await p.waitForTimeout(600);
   await j.tap('.carrier-hand [data-dv="stop"]', "Parar");
@@ -125,7 +128,8 @@ export async function cubiertaVuelo(j) {
   await p.waitForTimeout(800);
   const und = await p.evaluate(() => ({ phase: window.codeship.nav.progress()?.phase, docked: !!window.codeship.mothership.dockedTo }));
   j.check("«Desacoplar» abre los ganchos y retrocede por el eje", und.phase === "undock" && !und.docked, JSON.stringify(und));
-  const back = await p.waitForFunction(() => window.codeship.nav.holdingAt()?.id === "estacion-polana", null, { timeout: 120000 }).then(() => true).catch(() => false);
+  await j.setup("deja pasar el retroceso (130 m a 0,07 m/s: 31 s reales a ×60)", () => window.codeship.nav.update(35));
+  const back = await p.waitForFunction(() => window.codeship.nav.holdingAt()?.id === "estacion-polana", null, { timeout: 60000 }).then(() => true).catch(() => false);
   j.check("desacoplada, espera en el punto de espera 1", back);
 
   // 8. Docking by challenges: the Demo-1 approach as a code challenge, then the computer flies it.

@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { RigidBodyState } from "@modules/flight/domain/rigid-body";
 import { Vec3 } from "@core/math/vec3";
+import { VirtualStick, curve } from "../input/stick";
 
 /** What the preview follows: the vehicle's pose, its size (for the camera distance) and a label. */
 export interface PreviewSubject {
@@ -33,7 +34,12 @@ export class TripPreview {
   private readonly endMat = new THREE.LineBasicMaterial({ color: 0x7dffb0, transparent: true, opacity: 0.95, depthTest: false });
   open = false;
   onClose?: () => void;
-  /** The player's own look around the vehicle (drag) and distance (wheel, pinch): «la cámara siempre se puede mover». */
+  /**
+   * The player's own look around the vehicle and distance: «la cámara siempre se puede mover». It turns only with
+   * its joystick (reglas.md §5.7: never by dragging the picture); wheel and pinch set the distance.
+   */
+  private readonly stick: VirtualStick;
+  private lastRenderMs = 0;
   private orbitYaw = 0;
   private orbitPitch = 0;
   private zoomK = 1;
@@ -53,30 +59,27 @@ export class TripPreview {
       this.open = false;
       this.onClose?.();
     });
-    // Full screen, the frame takes the gestures: drag turns round the vehicle, wheel and pinch zoom.
+    // Full screen: the camera joystick turns round the vehicle; wheel and two-finger pinch set the distance.
+    this.stick = new VirtualStick(this.frame, "tp-stick", "Cámara");
     const gap = () => {
       const [a, b] = [...this.touches.values()];
       return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
     };
     this.frame.addEventListener("pointerdown", (e) => {
-      if ((e.target as HTMLElement).closest("button")) return;
+      if ((e.target as HTMLElement).closest("button, .vstick")) return;
       this.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
       this.pinchGap = gap();
     });
     window.addEventListener("pointermove", (e) => {
       const t = this.touches.get(e.pointerId);
       if (!t) return;
-      if (this.touches.size >= 2) {
-        t.x = e.clientX;
-        t.y = e.clientY;
-        const g = gap();
-        if (this.pinchGap > 0 && g > 0) this.zoom(this.pinchGap / g);
-        this.pinchGap = g;
-        return;
-      }
-      this.orbit(-(e.clientX - t.x) * 0.006, (e.clientY - t.y) * 0.006);
       t.x = e.clientX;
       t.y = e.clientY;
+      // One finger does nothing (no drag-to-look); two pinch.
+      if (this.touches.size < 2) return;
+      const g = gap();
+      if (this.pinchGap > 0 && g > 0) this.zoom(this.pinchGap / g);
+      this.pinchGap = g;
     });
     const lift = (e: PointerEvent) => {
       this.touches.delete(e.pointerId);
@@ -191,7 +194,13 @@ export class TripPreview {
     this.frame.classList.toggle("on", on);
     this.frame.classList.toggle("full", on && this.full);
     document.body.classList.toggle("in-trip-view", on && this.full);
+    const nowMs = performance.now();
+    const dt = Math.min(0.1, Math.max(0, (nowMs - (this.lastRenderMs || nowMs)) / 1000));
+    this.lastRenderMs = nowMs;
     if (!on) return;
+    // The camera joystick: up to 1,6 rad/s round the vehicle.
+    const v = this.stick.value;
+    if (v.x || v.y) this.orbit(-curve(v.x) * 1.6 * dt, curve(v.y) * 1.6 * dt);
     const s = this.subject!;
     if (this.path.parent !== scene) scene.add(this.path);
     this.drawPath(s.route?.() ?? [], s.sizeM * 0.6);

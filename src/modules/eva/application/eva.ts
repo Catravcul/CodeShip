@@ -5,7 +5,7 @@ import { ChoreRun } from "@modules/chores/domain/chore";
 import type { FlightComputer } from "@modules/flight/application/flight-computer";
 import type { Answer } from "@modules/mind-duel/domain/exercise";
 import { BENNU_SAMPLES, SAMPLE_SCOOP_G, type RegolithSample } from "../data/samples";
-import { EMU, SAFER, SAFETY_TETHER_M, type JetpackSpec, type SuitSpec } from "../data/suit";
+import { APOLLO_A7LB, SAFER, SAFETY_TETHER_M, type JetpackSpec, type SuitSpec } from "../data/suit";
 import { SUIT_UP } from "../data/suit-up";
 import { Suit, WORKLOAD } from "../domain/suit";
 import { EvaBody, NO_EVA_INPUT, effectiveGravity, groundUnder, type EvaInput, type EvaWorld } from "../domain/surface-motion";
@@ -30,7 +30,7 @@ export const HATCH_BODY = new Vec3(-1.5, -0.3, 1.9);
 /** Close enough to the hatch to climb back in, metres. Game value. */
 export const HATCH_REACH_M = 2.2;
 /**
- * Outside the ship time runs faster: an EMU's 8 h of oxygen would be 8 h of play. Each real second
+ * Outside the ship time runs faster: the suit's hours of oxygen would be hours of play. Each real second
  * outside counts as this many mission seconds for the suit's consumables and the mission clock;
  * her motion stays real-time so the microgravity physics still feels right. Game value.
  */
@@ -107,7 +107,7 @@ export class Eva {
     asteroid: Asteroid,
     surface: (local: Vec3) => number,
     crewMassKg = 58,
-    readonly suitSpec: SuitSpec = EMU,
+    readonly suitSpec: SuitSpec = APOLLO_A7LB,
     readonly jetpack: JetpackSpec = SAFER,
     samples: readonly RegolithSample[] = BENNU_SAMPLES,
   ) {

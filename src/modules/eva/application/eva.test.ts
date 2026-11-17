@@ -7,7 +7,7 @@ import { RigidBodyState } from "@modules/flight/domain/rigid-body";
 import type { Answer, Exercise } from "@modules/mind-duel/domain/exercise";
 import { Ship } from "@modules/ship/domain/ship";
 import { explorerDesign } from "@modules/ship/data/explorer";
-import { SAFER } from "../data/suit";
+import { APOLLO_A7LB, SAFER } from "../data/suit";
 import { SUIT_UP } from "../data/suit-up";
 import { NO_EVA_INPUT } from "../domain/surface-motion";
 import { EVA_TIME_SCALE, Eva, HATCH_REACH_M, shipKeepOut } from "./eva";
@@ -59,7 +59,7 @@ describe("Eva", () => {
 
   it("the jetpack pushes with SAFER's 4 × 3.56 N on her, suit and pack", () => {
     const { eva } = make();
-    expect(eva.massKg).toBeCloseTo(58 + 144.7 + 37.7, 6);
+    expect(eva.massKg).toBeCloseTo(58 + APOLLO_A7LB.massKg.value + 37.7, 6);
     expect(eva.jetAccelMs2).toBeCloseTo((4 * SAFER.thrustPerThrusterN.value) / eva.massKg, 9);
   });
 

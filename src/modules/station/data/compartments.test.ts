@@ -59,7 +59,7 @@ describe("EST-51 every real compartment of the station is a room she floats into
     expect(at("bishop")).toMatchObject({ volume: "bishop", action: { kind: "bishop" } });
   });
 
-  it("every window of the station's screen has its own console (the screen has no tab bar): imports at Unity's cargo laptop", () => {
+  it("EST-52 every window of the station's screen has its own console (the screen has no tab bar): imports at Unity's cargo laptop", () => {
     const inside = new StationInterior(plan);
     for (const w of ["materiales", "planos", "fabricacion", "hangar", "importar", "propelente"] as const) expect(inside.fixturesFor(w).length, w).toBeGreaterThan(0);
     expect(inside.fixturesFor("importar").map((f) => f.id)).toEqual(["consola-bahia"]);

@@ -24,6 +24,8 @@ describe("HAB-21 The real journey to a task (travel mode)", () => {
   it("every station tab and the bay have a machine to go to", () => {
     for (const tab of ["materiales", "planos", "fabricacion", "hangar", "importar", "vida"] as const) expect(taskGoal({ vehicle: "estacion", spot: "pantalla", tab }, station), tab).toMatch(/^estacion:/);
     expect(taskGoal({ vehicle: "estacion", spot: "bahia" }, station)).toMatch(/^estacion:/);
+    // EST-52: imports go to their own console, Unity's cargo laptop (the screen has no tab bar).
+    expect(taskGoal({ vehicle: "estacion", spot: "pantalla", tab: "importar" }, station)).toBe("estacion:consola-bahia");
     expect(taskGoal({ vehicle: "nodriza", spot: "puente", page: "misiones" }, station)).toBe("puente:comms");
   });
 

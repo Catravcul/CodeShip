@@ -830,6 +830,13 @@ export class StationInteriorMode {
     if (!f || this.interior.volume(f.volume)?.kind !== "compartimento") return;
     this.sleeping = { volume: f.volume, until: performance.now() + seconds * 1000, ...(then ? { then } : {}) };
     this.shutDoor(f.volume, true);
+    // From her bag she looks out at the doorway: the door shutting, then folding open when she wakes.
+    const door = this.interior.volume(`paso-${f.volume}`);
+    if (door) {
+      const d = door.centre.sub(this.p);
+      this.yaw = Math.atan2(-d.x, -d.z);
+      this.pitch = Math.max(-1.2, Math.min(1.2, Math.atan2(d.y, Math.hypot(d.x, d.z))));
+    }
   }
 
   /** She wakes: the quarter's door folds open. */

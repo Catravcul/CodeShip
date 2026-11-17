@@ -42,6 +42,7 @@ async function doorWhileAsleep(j, mode, label, where) {
   await capture(j, label, `${where}: duerme con la puerta cerrada`);
   const woke = await p.waitForFunction((m) => { const s = m === "starship" ? window.codeship.starship.mode : window.codeship.stationInside; return !s.asleep && s.doorAmount("camarote-1") === 0; }, mode, { timeout: 30000 }).then(() => true, () => false);
   j.check(`${where}: al despertar, la puerta se abre otra vez`, woke);
+  await capture(j, `${label}-despierta`, `${where}: despierta, la puerta abierta`);
 }
 
 const buttons = (j) => j.page.locator(".sti-card:not(.hidden) [data-act]:not([disabled])").count();

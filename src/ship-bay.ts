@@ -91,6 +91,9 @@ export class ShipBay {
   /** The chore open in the sheet, if any (exposed for automated checks). */
   session: ChoreSession | null = null;
   private drag: { id: number; x: number; y: number; moved: boolean } | null = null;
+  /** Fingers on the screen (pinch to zoom on the phone): where each is now. */
+  private readonly touches = new Map<number, { x: number; y: number }>();
+  private pinchGap = 0;
   active = false;
   from: BayOrigin = "estacion";
   /** Called after leaving, with where the player came from. */
@@ -140,12 +143,34 @@ export class ShipBay {
     });
     this.stick = new VirtualStick(root, "bay-look", "Orbitar");
 
-    // Drag the empty screen to orbit, tap a part to select it, wheel to zoom.
+    // Drag the empty screen to orbit, tap a part to select it, wheel or pinch to zoom.
+    const gap = () => {
+      const [a, b] = [...this.touches.values()];
+      return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
+    };
     root.addEventListener("pointerdown", (e) => {
       if (!this.active || this.duel.visible || (e.target as HTMLElement).closest("button, .bay-panel, .vstick, .duel")) return;
+      this.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (this.touches.size === 2) {
+        // A second finger: pinch, not orbit or tap.
+        this.drag = null;
+        this.pinchGap = gap();
+        return;
+      }
       this.drag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
     });
     window.addEventListener("pointermove", (e) => {
+      const t = this.touches.get(e.pointerId);
+      if (t) {
+        t.x = e.clientX;
+        t.y = e.clientY;
+      }
+      if (this.touches.size >= 2) {
+        const g = gap();
+        if (this.pinchGap > 0 && g > 0) this.view.zoom(this.pinchGap / g);
+        this.pinchGap = g;
+        return;
+      }
       const d = this.drag;
       if (!d || e.pointerId !== d.id) return;
       const dx = e.clientX - d.x;
@@ -156,13 +181,19 @@ export class ShipBay {
       d.x = e.clientX;
       d.y = e.clientY;
     });
+    const lift = (e: PointerEvent) => {
+      this.touches.delete(e.pointerId);
+      if (this.touches.size < 2) this.pinchGap = 0;
+      if (e.type === "pointercancel" && this.drag?.id === e.pointerId) this.drag = null;
+    };
     window.addEventListener("pointerup", (e) => {
+      lift(e);
       const d = this.drag;
       if (!d || e.pointerId !== d.id) return;
       this.drag = null;
       if (!d.moved) this.select(this.view.pick(e.clientX, e.clientY));
     });
-    window.addEventListener("pointercancel", () => (this.drag = null));
+    window.addEventListener("pointercancel", (e) => lift(e));
     root.addEventListener("wheel", (e) => this.active && !this.duel.visible && this.view.zoom(e.deltaY > 0 ? 1.1 : 0.9), { passive: true });
     window.addEventListener("keydown", (e) => {
       if (!this.active || this.duel.visible) return;

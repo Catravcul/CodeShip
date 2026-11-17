@@ -8,10 +8,18 @@ import type { StarshipModel } from "./starship-model";
 
 /** Which ship the bay shows: the probe, the mothership (scaled down to fit the same camera) or the station. */
 export type BayView = "sonda" | "nodriza" | "estacion";
-/** The mothership is shown at 1:10 so the bay's orbit camera and zoom work for both. */
-const MOTHERSHIP_SCALE = 0.1;
-/** The station (about 90 m across its wings) at 1:4. */
-const STATION_SCALE = 0.25;
+/**
+ * The mothership and the station at true scale (Berón, 2026-11-17: «en la bahía la nodriza se ve muy
+ * pequeña»): the camera frames each view by its size instead (`fit`), and zooms in proportion.
+ */
+const MOTHERSHIP_SCALE = 1;
+const STATION_SCALE = 1;
+/** The lander's home distance, m (its bay view as it was). */
+const LANDER_FIT_M = 17;
+/** Zoom range, as shares of a view's home distance: from a close look at a part to the whole thing small. */
+export const BAY_ZOOM = { minShare: 0.12, maxShare: 2.5 } as const;
+/** Half the bay camera's vertical field of view before the inset widens it, rad. */
+const HALF_FOV = (25 * Math.PI) / 180;
 
 /** A model the bay can show as the station: its root and its swappable parts by slot. */
 export interface BayStationModel {
@@ -42,8 +50,10 @@ export class ShipBayScene {
   private readonly focus = new THREE.Vector3();
   private yaw = 2.35;
   private pitch = -0.38;
-  private dist = 17;
-  private distGoal = 17;
+  private dist = LANDER_FIT_M;
+  private distGoal = LANDER_FIT_M;
+  /** Home distance of the view shown: the whole ship fits the visible area. */
+  private fit = LANDER_FIT_M;
   private turnTo: { yaw: number; pitch: number } | null = null;
   private inset: Inset = { right: 0, bottom: 0 };
   private _view: BayView = "sonda";
@@ -107,7 +117,29 @@ export class ShipBayScene {
     if (this.mothership) this.mothership.root.visible = v === "nodriza";
     if (this.station) this.station.root.visible = v === "estacion";
     this.yaw = v === "sonda" ? 2.35 : 2.6;
+    this.fit = v === "sonda" ? LANDER_FIT_M : this.fitOf(this.root);
+    this.dist = this.fit;
     this.select(null);
+  }
+
+  /** The distance at which a model's bounding sphere fills the view's height, with a margin. */
+  private fitOf(o: THREE.Object3D): number {
+    const vis = o.visible;
+    o.visible = true;
+    o.updateMatrixWorld(true);
+    const r = new THREE.Box3().setFromObject(o).getBoundingSphere(new THREE.Sphere()).radius;
+    o.visible = vis;
+    return Math.max(LANDER_FIT_M, (r / Math.tan(HALF_FOV)) * 1.05);
+  }
+
+  /** Home distance of the view shown, m (for checks). */
+  get homeDistanceM(): number {
+    return this.fit;
+  }
+
+  /** Camera distance now, m (for checks). */
+  get distanceM(): number {
+    return this.distGoal;
   }
 
   private get parts(): Map<PartId, THREE.Group> {
@@ -127,7 +159,7 @@ export class ShipBayScene {
   }
 
   zoom(factor: number): void {
-    this.distGoal = Math.max(5, Math.min(this._view === "sonda" ? 40 : 60, this.distGoal * factor));
+    this.distGoal = Math.max(this.fit * BAY_ZOOM.minShare, Math.min(this.fit * BAY_ZOOM.maxShare, this.distGoal * factor));
   }
 
   /** Ease the camera towards a part (or the whole ship) and outline it. */
@@ -135,14 +167,15 @@ export class ShipBayScene {
     const g = id ? this.parts.get(id) : undefined;
     if (!g) {
       this.target.set(0, 0, 0);
-      this.distGoal = this._view === "sonda" ? 17 : 34;
+      this.distGoal = this.fit;
       this.box.visible = false;
       return;
     }
     const b = new THREE.Box3().setFromObject(g);
     b.getCenter(this.target);
     const r = b.getSize(new THREE.Vector3()).length();
-    this.distGoal = Math.max(6, Math.min(this._view === "sonda" ? 18 : 24, r * 2.2 + 4));
+    const k = this.fit / LANDER_FIT_M;
+    this.distGoal = Math.max(this.fit * 0.35, Math.min(this.fit * 1.05, r * 2.2 + 4 * k));
     // Swing round to a three-quarter view of the part's side, so the hull does not hide it.
     const c = this.target;
     if (c.length() > 0.5) {

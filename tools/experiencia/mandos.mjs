@@ -58,10 +58,23 @@ export async function mandos(j) {
   await j.tap(`.room-ui:not(.hidden) .cab-machine [data-act="auto:${bennu}"]`, "Automático a Bennu");
   await j.waitDuel(30000);
   await capture(j, "automatico-reto", "Reto del viaje automático del LM");
+  const shipBefore = await p.evaluate(() => {
+    const m = window.codeship.mothership.position;
+    return [m.x, m.y, m.z];
+  });
   for (let n = 0; n < 9 && (await p.evaluate(() => window.codeship.nav.status)) === "programming"; n++) await j.answer(tripStep, true);
   await p.waitForTimeout(1500);
-  const flying = await p.evaluate(() => ({ status: window.codeship.nav.status, docked: window.codeship.docking.docked, carrier: !!window.codeship.nav.carrierTrip }));
-  j.check("resuelto el reto, el LM se desacopla y su piloto automático lo lleva (la nodriza no se mueve)", flying.status === "autopilot" && !flying.docked && !flying.carrier, JSON.stringify(flying));
+  // A slow machine (CI) may find it already there: «arrived» is the same proof, if it undocked and Starship stayed.
+  const flying = await p.evaluate((b) => {
+    const c = window.codeship;
+    const m = c.mothership.position;
+    return { status: c.nav.status, docked: c.docking.docked, carrier: !!c.nav.carrierTrip, shipMovedM: Math.hypot(m.x - b[0], m.y - b[1], m.z - b[2]) };
+  }, shipBefore);
+  j.check(
+    "resuelto el reto, el LM se desacopla y su piloto automático lo lleva (la nodriza no se mueve)",
+    (flying.status === "autopilot" || flying.status === "arrived") && !flying.docked && !flying.carrier && flying.shipMovedM < 0.01,
+    JSON.stringify(flying),
+  );
 
   // 3. Free near the Starship's port: the switch shows «Acoplar» and the assist flies in.
   await j.setup("se para el viaje y el LM queda a 60 m del puerto de la Starship, en su eje", () => {

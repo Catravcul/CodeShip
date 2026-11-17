@@ -167,8 +167,19 @@ export async function nodrizaEstacion(j) {
   // The probe's «Ver trayecto»: the same view, on its own path.
   await j.setup("la sonda tiene un plan cargado hacia el asteroide", () => window.codeship.probeTravel.trip.engage({ kind: "asteroid", body: window.codeship.expedition.asteroid }));
   await p.waitForTimeout(800);
+  // The probe's trip shows only at its console (reglas §3.8).
+  j.check("fuera de la consola de la sonda no sale su viaje", !(await p.evaluate(() => !!document.querySelector(".trip-chip.on"))));
+  await j.setup("vuelve al puente de la nodriza (el camino se juega arriba)", () => {
+    const c = window.codeship;
+    if (c.station.active) c.station.exit();
+    if (c.stationInside.active) c.stationInside.suspend();
+    c.bridge.enter("salida");
+  });
+  await p.waitForTimeout(800);
+  await j.useMachine("bridge", "sonda", "abrir", "Usar la consola de la sonda");
+  await p.waitForTimeout(800);
   const probeOn = await visible(p, ".trip-chip.on .tc-view");
-  j.check("con la sonda volando sola, la ficha de viaje ofrece «Ver trayecto»", probeOn && (await j.texts(".trip-chip.on .tc-view"))[0] === "Ver trayecto");
+  j.check("en la consola de la sonda, con la sonda volando sola, la ficha de viaje ofrece «Ver trayecto»", probeOn && (await j.texts(".trip-chip.on .tc-view"))[0] === "Ver trayecto");
   if (probeOn) {
     await j.tap(".trip-chip.on .tc-view", "Ver trayecto (sonda)");
     await p.waitForFunction(() => /Sonda/.test(document.querySelector(".trip-pip .tp-label")?.textContent ?? ""), null, { timeout: 20000 }).catch(() => {});

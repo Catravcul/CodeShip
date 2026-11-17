@@ -43,65 +43,53 @@ export function berthChore(f: BerthFacts): Chore {
   const id = `acople-${f.portName}`;
   const closeM = f.waypoint1M - f.waypoint2M;
   // Each decision is a choice (four options fit a phone's sheet; an order of six blocks did not, 390×664).
+  // Compact: a short idea, one line of code, a one-line question and three options, so the options fit under the
+  // console's scene on a phone (390×664) with the «Correcto» banner of the step before.
   const first = choice(
     `${id}-primero`,
     1,
     "completar",
-    "Como la Crew Dragon: por puntos de espera",
-    `En el punto 1 (${num(f.waypoint1M)} m), ¿qué haces primero?`,
-    lines([
-      [`nave.esperar(${num(f.waypoint1M)})   // punto 1`, `nave.esperar(${f.waypoint1M});`],
-      ["___", "___"],
-      [`nave.acercar(${num(f.closingMs, 2)}, ${num(f.waypoint2M)})   // al punto 2`, `nave.acercar(${f.closingMs}, ${f.waypoint2M});`],
-    ]),
-    "alinear con el eje del puerto",
-    ["ir directa a 1 m/s", "cerrar los ganchos", "apagar los motores"],
-  );
-  const hold = choice(
-    `${id}-espera`,
-    2,
-    "completar",
-    "Punto 2: parar y esperar",
-    `En el punto 2 (${num(f.waypoint2M)} m), ¿qué espera para seguir?`,
-    lines([
-      ["___", "___"],
-      [`nave.acercar(${num(f.closingMs, 2)}, 0)   // hasta tocar`, `nave.acercar(${f.closingMs}, 0);`],
-    ]),
-    `el «adelante» (${duration(f.holdS)})`,
-    ["nada: sigue a 1 m/s", "los ganchos", "más propelente"],
+    "Por puntos de espera",
+    "En el punto 1, ¿qué va primero?",
+    lines([[`___; nave.acercar(${num(f.closingMs, 2)}, ${num(f.waypoint2M)})`, `___; nave.acercar(${f.closingMs}, ${f.waypoint2M});`]]),
+    "alinear con el eje",
+    ["ir directa a 1 m/s", "cerrar los ganchos"],
   );
   const time = choice(
     `${id}-tiempo`,
     4,
     "predecir",
     "Despacio se llega",
-    `¿Cuánto tarda en ir del punto 1 al punto 2 a ${num(f.closingMs, 2)} m/s?`,
-    lines([
-      [`variable tramo = ${num(f.waypoint1M)} − ${num(f.waypoint2M)}   // m`, `const tramo = ${f.waypoint1M} - ${f.waypoint2M};`],
-      [`variable t = tramo / ${num(f.closingMs, 2)}`, `const t = tramo / ${f.closingMs};`],
-    ]),
+    `¿Del punto 1 al 2 a ${num(f.closingMs, 2)} m/s?`,
+    lines([[`t = (${num(f.waypoint1M)} − ${num(f.waypoint2M)}) / ${num(f.closingMs, 2)}`, `const t = (${f.waypoint1M} - ${f.waypoint2M}) / ${f.closingMs};`]]),
     duration(closeM / f.closingMs),
-    [duration(f.waypoint1M / f.closingMs), duration(closeM * f.closingMs), duration(closeM / 1)],
+    [duration(f.waypoint1M / f.closingMs), duration(closeM / 1)],
+  );
+  const hold = choice(
+    `${id}-espera`,
+    2,
+    "completar",
+    "Parar y esperar",
+    `En el punto 2 (${num(f.waypoint2M)} m), ¿qué espera?`,
+    lines([[`___; nave.acercar(${num(f.closingMs, 2)}, 0)`, `___; nave.acercar(${f.closingMs}, 0);`]]),
+    `el «adelante» (${duration(f.holdS)})`,
+    ["nada: sigue a 1 m/s", "los ganchos"],
   );
   const contact = choice(
     `${id}-contacto`,
     5,
     "completar",
-    "Los ganchos solo cogen si llegas suave",
-    `Los ganchos IDSS cogen entre ${num(f.closingMinMs, 2)} y ${num(f.closingMaxMs, 2)} m/s y a menos de ${num(f.lateralMaxM, 2)} m del eje. ¿Qué condición falta?`,
-    lines([
-      ["si (cierre ≥ mín y ___ y desvío ≤ máx)", "if (cierre >= min && ___ && desvio <= max)"],
-      ["    puerto.cerrarGanchos()", "  puerto.cerrarGanchos();"],
-      ["si no: retroceder y repetir", "else nave.retroceder();"],
-    ]),
+    `Ganchos: ${num(f.closingMinMs, 2)}–${num(f.closingMaxMs, 2)} m/s`,
+    "¿Qué condición falta?",
+    lines([["si (cierre ≥ mín y ___) cerrarGanchos()", "if (cierre >= min && ___) cerrarGanchos();"]]),
     "cierre ≤ máx",
-    ["cierre ≥ 1", "desvío ≥ máx", "cierre = 0"],
+    ["cierre ≥ 1", "cierre = 0"],
   );
   return {
     id,
     kind: "programar-viaje",
     targetId: f.portName,
-    title: `Programar el acople en ${f.stationName}`,
+    title: "Acople por retos",
     scenario: `De ${num(f.waypoint1M)} m al puerto ${f.portName} a ${num(f.closingMs, 2)} m/s, con espera en ${num(f.waypoint2M)} m: como la Crew Dragon en la ISS`,
     exercises: [first, time, hold, contact],
   };

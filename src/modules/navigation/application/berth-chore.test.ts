@@ -6,13 +6,13 @@ import type { Exercise } from "@modules/mind-duel/domain/exercise";
 const FACTS = { stationName: "la estación", portName: "IDA-2", waypoint1M: 150, waypoint2M: 20, closingMs: 0.07, closingMinMs: 0.05, closingMaxMs: 0.1, lateralMaxM: 0.1, holdS: 1157 };
 
 describe("NAV-26 docking by program: the real approach as a challenge", () => {
-  it("the Demo-1 approach decision by decision, four options each (fits 390×664), with the real numbers", () => {
+  it("the Demo-1 approach decision by decision, three short options each (fits 390×664), with the real numbers", () => {
     const c = berthChore(FACTS);
     expect(c.exercises).toHaveLength(4);
     const [first, time, hold, contact] = c.exercises as [Exercise, Exercise, Exercise, Exercise];
-    for (const e of c.exercises) expect(e.kind === "choice" && e.options.length).toBe(4);
+    for (const e of c.exercises) expect(e.kind === "choice" && e.options.length).toBe(3);
     if (first.kind !== "choice" || time.kind !== "choice" || hold.kind !== "choice" || contact.kind !== "choice") throw new Error("choice");
-    expect(first.options[first.correct]).toBe("alinear con el eje del puerto");
+    expect(first.options[first.correct]).toBe("alinear con el eje");
     expect(first.options).toContain("ir directa a 1 m/s");
     // 130 m at 0,07 m/s: 30 min 57 s.
     expect(time.options[time.correct]).toBe("30 min 57 s");

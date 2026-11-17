@@ -116,7 +116,7 @@ export function flightDeckSeats(w: SeatsWiring): { pilot: PilotDeps; dock: DockD
         },
         () => nav.status === "carrier",
         () => {},
-        { ...TRIP_TEXT, submit: "Cargar el acople en el ordenador de vuelo" },
+        { ...TRIP_TEXT, submit: "Cargar el acople en el ordenador de vuelo", ok: "Correcto: cargado" },
         visual,
       );
 

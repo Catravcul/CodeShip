@@ -98,8 +98,10 @@ puesto de acople solo lo menciona en una línea de texto.
 - **Automático (retos)**: `berthChore` (`berth-chore.ts`): la aproximación de la Demo-1 decisión a decisión desde el
   punto 1, donde ya espera: qué se hace primero (alinear con el eje; el distractor es «ir directa a 1 m/s»), cuánto
   se tarda del punto 1 al 2 a 0,07 m/s, qué se espera en el punto 2 (el «adelante» de la estación) y qué condición
-  falta para que cojan los ganchos. Son cuatro elecciones de cuatro opciones: una ordenación de seis bloques no
-  cabía en 390×664 sin desplazar (la «Vista panel» de los retos no se cambia). Resuelto, `Navigator.berthAuto`
+  falta para que cojan los ganchos. Son cuatro elecciones cortas de tres opciones, con una línea de código, y el
+  reto se llama «Acople por retos»: así caben bajo la escena de la consola en 390×664 sin desplazar, también con
+  el «Correcto: cargado» del paso anterior (una ordenación de seis bloques no cabía, y la «Vista panel» de los
+  retos no se cambia). Resuelto, `Navigator.berthAuto`
   vuela la aproximación real (51 min de juego).
   **Cada paso se ve en el puesto de acople** (reglas §4.2, `Bridge.dockStepVisual`): ella flota en los anclajes de
   pie delante de la consola (no atraviesa el asiento), vista por encima del hombro derecho; para cada orden pone

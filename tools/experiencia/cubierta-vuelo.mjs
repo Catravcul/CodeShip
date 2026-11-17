@@ -167,7 +167,7 @@ export async function cubiertaVuelo(j) {
   await j.tap('.room-ui:not(.hidden) .cab-machine [data-act="acoplar-auto"]', "Acoplar automático (retos)");
   await j.waitDuel(30000);
   const title = await p.evaluate(() => window.codeship.bridge.dockChore?.chore.title ?? "");
-  j.check("«Acoplar automático (retos)» abre el reto del acople", /acople/.test(title), title);
+  j.check("«Acoplar automático (retos)» abre el reto del acople", /acople/i.test(title), title);
   const framed = await p.evaluate(() => ({ framing: window.codeship.bridge.steps.framing, screen: window.codeship.bridge.dockScreen }));
   j.check("el reto se ve en el puesto de acople: ella ante la consola y su pantalla «Cámara de acople» en el punto 1", framed.framing && framed.screen?.stage === 0, JSON.stringify(framed));
   await capture(j, "8-reto-acople", "Reto del acople");

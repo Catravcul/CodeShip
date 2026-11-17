@@ -1,4 +1,5 @@
 import type { ExerciseMotionData } from "@modules/body/domain/exercise-motion";
+import type { RingAquarium } from "@modules/sanctuary/domain/aquarium";
 import type { CrewGear } from "./adapters/three/interior/crew-gear";
 import { AqhModel } from "./adapters/three/interior/aqh-model";
 import { DOMENICA_HAIR } from "./ui/portraits";
@@ -88,6 +89,8 @@ export interface StationInteriorDeps {
    */
   readout?(f: Fixture): string | undefined;
   rackState?(f: Fixture): { state: RackState; broken?: string };
+  /** The animals of the AQH (one colony, the adopted one: docs/design/equipos.md), drawn in its chambers. */
+  aquarium?(): RingAquarium | undefined;
 }
 
 /** Icon of each kind of fixture on its card. */
@@ -657,6 +660,8 @@ export class StationInteriorMode {
     this.steps.frame(dt, this.camera, this.rig, this.avatar);
     this.syncMachines(dt);
     for (const sg of this.rooms.signs) sg.visible = false;
+    // No hops while she is at a machine (the shelter and the toilet have no sheet over the pad).
+    this.hop.hide();
     return true;
   }
 
@@ -852,6 +857,8 @@ export class StationInteriorMode {
     g.root.updateWorldMatrix(true, false);
     const stand = g.root.localToWorld(g.feet.clone());
     const orient = g.root.getWorldQuaternion(new THREE.Quaternion());
+    // At the toilet she faces it (its funnel and its seat), her back to the aisle.
+    if (g.kind === "whc") orient.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
     const up = new THREE.Vector3(0, 1, 0).applyQuaternion(orient);
     const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(orient);
     const side = new THREE.Vector3().crossVectors(up, fwd).normalize();
@@ -899,15 +906,28 @@ export class StationInteriorMode {
    * holding its strap, for `seconds`; then she comes out to the aisle again.
    */
   shelterIn(id: string, seconds = 6): boolean {
+    return this.showAtGear(id, seconds, ["float"]);
+  }
+
+  /** Washing at the WHC (reglas.md §4.2): towel to the face and the arms, then the hair, in its cubicle. */
+  washAt(id: string, seconds = 6): boolean {
+    return this.showAtGear(id, seconds, ["prayer", "neck-down", "arms-up", "neck-tilt", "prayer"]);
+  }
+
+  /** She at a fixture's own model for a while, through the poses in turn (no sheet: the HUD hides meanwhile). */
+  private showAtGear(id: string, seconds: number, poses: readonly string[]): boolean {
     const f = this.interior.fixture(id);
     const frame = f && this.gearFrame(f);
     if (!frame) return false;
     this.steps.begin(frame);
     this.steps.holdPose = true;
-    this.avatar.pose("float");
+    this.avatar.pose(poses[0]!);
     this.ui.classList.add("hidden");
     for (const sg of this.rooms.signs) sg.visible = false;
+    const each = (seconds * 1000) / poses.length;
+    const turns = poses.slice(1).map((p, i) => setTimeout(() => this.onGear === id && this.avatar.pose(p), each * (i + 1)));
     const done = () => {
+      turns.forEach(clearTimeout);
       if (!this.steps.framing || this.onGear !== id) return;
       this.onGear = undefined;
       this.steps.clear();
@@ -1205,6 +1225,8 @@ export class StationInteriorMode {
     for (const model of this.rooms.racks.values()) model.tick(dt);
     // The equipment moves with her while she uses it (the belt, the cranks, the bar, the harness).
     for (const [id, g] of this.rooms.gear) g.tick(dt, this.onGear === id && this.steps.framing ? this.avatar : undefined);
+    const tank = this.deps.aquarium?.();
+    if (tank) for (const g of this.rooms.gear.values()) if (g instanceof AqhModel) g.update(dt, tank);
     const busy = this.deps.busy();
     const t = performance.now() / 1000;
     for (const [id, lamp] of this.rooms.lamps) {

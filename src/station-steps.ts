@@ -1,5 +1,6 @@
 import type { Chore } from "@modules/chores/domain/chore";
-import type { StepVisual } from "@modules/chores/domain/step-visual";
+import type { StepAct, StepVisual } from "@modules/chores/domain/step-visual";
+import { AqhModel } from "./adapters/three/interior/aqh-model";
 import { choreVisuals } from "@modules/chores/application/step-visuals";
 import { RECIPES } from "@modules/kitchen/data/recipes";
 import { PROCESSES } from "@modules/kitchen/data/processes";
@@ -44,7 +45,27 @@ export function crewStepVisual(mode: StationInteriorMode, chore: Chore, fixtureI
     const v = mode.exerciseVisual(fixtureId, motionOf(device));
     if (v) return v;
   }
-  return mode.stepVisual(fixtureId, (i) => STEP_VISUALS.acts(chore, i) ?? []);
+  const acts = (i: number) => STEP_VISUALS.acts(chore, i) ?? [];
+  const v = mode.stepVisual(fixtureId, acts);
+  // At an AQH each solved step also plays on the habitat itself: the wiper on the glass, the feeder, a program's glow.
+  const tank = mode.gearOf(fixtureId);
+  return v && tank instanceof AqhModel ? withTank(v, acts, tank) : v;
+}
+
+/** A step visual that also acts the steps out on the AQH (the same in Starship and in Kibo). */
+function withTank(v: StepVisual, acts: (i: number) => readonly StepAct[], tank: AqhModel): StepVisual {
+  return {
+    ...v,
+    stepDone: (i) => {
+      tank.react(acts(i));
+      v.stepDone(i);
+    },
+    partDone: (i, p) => {
+      const a = acts(i)[p];
+      if (a) tank.react([a]);
+      v.partDone?.(i, p);
+    },
+  };
 }
 
 /** The tab whose machines do each kind of station chore (when she did not open it from one). */

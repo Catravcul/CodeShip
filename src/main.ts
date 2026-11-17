@@ -896,6 +896,7 @@ const stationLife = new StationLife({
   mothershipLarder: () => (mothership.dockedTo ? habitat : undefined),
   openTasks: () => taskBoard.open(),
   sleepIn: (f, then) => stationInside.sleep(f, undefined, then),
+  washAt: (f) => void stationInside.washAt(f),
   openInventory: () => {
     stationInside.suspend();
     screenFromInside = true;
@@ -909,6 +910,8 @@ const stationLife = new StationLife({
   say: (t, sec) => stationInside.say(t, sec),
   lookOutside: (show) => stationOutside.open(show),
   openCatalog: () => sanctuary.catalog.open(),
+  // One AQH colony, cared for in Kibo as aboard Starship (docs/design/equipos.md, «Paridad»).
+  aquarium: interior.aquarium,
   stepVisual: (chore, area) => stationSteps.crew(chore, area),
   otherChore: (id) => lifeSupport.startChore(id),
   ...(REAL_ONLY
@@ -966,6 +969,7 @@ const stationInside = new StationInteriorMode(root, playInterior(), {
   act: (f, a) => (f.action.kind === "soporte-vital" ? lifeSupport.act(f, a) : stationLife.act(f, a)),
   readout: (f) => (REAL_ONLY || f.id !== "cocina" ? lifeSupport.readout(f) : undefined),
   rackState: (f) => lifeSupport.rackState(f),
+  aquarium: () => interior.aquarium.tank,
   landerInHangar: () => false,
   lookOut: () => (FICTION ? dryDock.open("ventanilla") : stationOutside.open()),
   leave: (to) => {

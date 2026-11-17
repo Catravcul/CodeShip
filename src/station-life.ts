@@ -16,6 +16,8 @@ import { exerciseFixture } from "./station-steps";
 
 const itemName = (id: string) => ITEMS.find((i) => i.id === id)?.name ?? id;
 const MAX_CHORES_ON_CARD = 3;
+/** The AQH's rack in Kibo (data/interior.ts). */
+const AQH = "rack-acuatico";
 const MAX_DISHES_WITH_CARGO = 2;
 
 const choreText = (c: Chore): SessionText => ({
@@ -46,6 +48,13 @@ export interface StationLifeDeps {
   openTasks(): void;
   openInventory(): void;
   openSettings(): void;
+  /**
+   * The AQH's animals (docs/design/equipos.md): one colony, the one adopted in the catalogue, cared for at the AQH
+   * of Kibo as at Starship's. Its chores and how one starts; undefined when there is no colony to care for.
+   */
+  aquarium?: { chores(): readonly Chore[]; start(c: Chore): ChoreSession | undefined };
+  /** She washes at the WHC of this fixture (station-interior.ts). */
+  washAt?(fixture: string): void;
   /** The species catalogue (sanctuary-life.ts), from its terminal in Kibo. */
   openCatalog?(): void;
   say(text: string, seconds?: number): void;
@@ -84,6 +93,10 @@ export class StationLife {
   actions(f: Fixture): StationAction[] {
     const a = f.action;
     if (a.kind === "consola" && a.id === "catalogo") return [{ id: "catalogo", label: "Abrir el catálogo de especies", enabled: !!this.d.openCatalog }];
+    if (a.kind === "consola" && a.id === "acuatico") {
+      const care = (this.d.aquarium?.chores() ?? []).slice(0, MAX_CHORES_ON_CARD).map((c) => ({ id: `chore:${c.id}`, label: c.title, enabled: true }));
+      return care.length ? care : [{ id: "nada", label: "Cuidar el hábitat", enabled: false, why: "Está vacío: adopta medakas o caracoles en el catálogo de especies (el puesto de al lado)" }];
+    }
     if (a.kind === "brazo") {
       const atPort = this.d.atPort();
       const arm: StationAction = this.d.berth.onCbm
@@ -177,6 +190,7 @@ export class StationLife {
       case "ajustes":
         return this.d.openSettings();
       case "asearse":
+        this.d.washAt?.(f.id);
         return this.d.say("Aseo con toallitas, champú sin aclarado y el UWMS: en 0 g el aire arrastra lo que en la Tierra cae", 5);
       case "viaje": {
         const larder = this.d.mothershipLarder();
@@ -194,6 +208,7 @@ export class StationLife {
 
   /** The fixture a crew chore is done at: her own bag for the night, a workout at its machine, else its area's. */
   private fixtureOf(c: Chore): string {
+    if (!this.d.crew.chore(c.id)) return AQH;
     const area = this.d.crew.areaOf(c);
     return area === "camarotes" ? OWN_BUNK : area === "ejercicio" ? exerciseFixture(c) : area;
   }
@@ -210,13 +225,12 @@ export class StationLife {
   /** A chore of the station's areas, in the shared challenge sheet. */
   startChore(id: string): void {
     if (this.d.otherChore?.(id)) return;
-    const chore = this.d.crew.chore(id);
-    const session = chore && this.d.crew.start(id);
+    const animal = this.d.aquarium?.chores().find((c) => c.id === id);
+    const chore = this.d.crew.chore(id) ?? animal;
+    const session = chore && (animal ? this.d.aquarium!.start(animal) : this.d.crew.start(id));
     if (!chore || !session || this.d.duel.visible) return;
     const run = session.run;
     this.session = session;
-    const area = this.d.crew.areaOf(chore);
-    void area;
     const visual = this.d.stepVisual?.(chore, this.fixtureOf(chore));
     const prev = this.d.duel.onClose;
     this.d.duel.onClose = () => {

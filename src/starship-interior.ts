@@ -2,8 +2,6 @@ import * as THREE from "three";
 import { WORLD_SCALE } from "@core/scale";
 import { INTERACTABLE_SPACING, SPREAD_ON } from "@core/spacing";
 import type { Chore } from "@modules/chores/domain/chore";
-import type { StepAct, StepVisual } from "@modules/chores/domain/step-visual";
-import { choreVisuals } from "@modules/chores/application/step-visuals";
 import type { ChoreSession, Habitat } from "@modules/habitat/application/habitat";
 import { ISS_FOOD } from "@modules/kitchen/data/iss-food";
 import { ECLSS_MODEL_OF, starshipInteriorPlan, STARSHIP_DECKS } from "@modules/mothership/data/starship-interior";
@@ -43,25 +41,6 @@ const MAX_ON_CARD = 3;
 export const FLIGHT_DECK_HATCH = "subir-cubierta-vuelo";
 /** The fixtures that host the sanctuary's rack slots (data/starship-interior.ts). */
 const RACK_FIXTURE: Readonly<Record<RackSlotId, string>> = { "rack-catalogo": "catalogo", "rack-acuatico": "habitat-acuatico" };
-
-/** What each solved step of an aquarium chore does (the area tables of step-visuals.ts). */
-const AQUARIUM_ACTS = choreVisuals({ recipes: [] });
-
-/** A step visual that also acts the steps out on the AQH. */
-function withTank(v: StepVisual, acts: (i: number) => readonly StepAct[], tank: AqhModel): StepVisual {
-  return {
-    ...v,
-    stepDone: (i) => {
-      tank.react(acts(i));
-      v.stepDone(i);
-    },
-    partDone: (i, p) => {
-      const a = acts(i)[p];
-      if (a) tank.react([a]);
-      v.partDone?.(i, p);
-    },
-  };
-}
 
 const choreText = (c: Chore): SessionText => ({
   title: c.title,
@@ -350,7 +329,7 @@ export class StarshipInterior {
     }
   }
 
-  private act(_f: Fixture, id: string): void {
+  private act(f: Fixture, id: string): void {
     if (id.startsWith("chore:")) return this.startChore(id.slice(6));
     switch (id) {
       case "subir":
@@ -365,6 +344,7 @@ export class StarshipInterior {
         this.mode.sitLotus(true);
         return this.openSettings?.();
       case "asearse":
+        this.mode.washAt(f.id);
         return this.say("Aseo con toallitas, champú sin aclarado y el WHC: en 0 g el aire arrastra lo que en la Tierra cae", 5);
     }
   }
@@ -379,9 +359,8 @@ export class StarshipInterior {
     this.session = session;
     // Each right step acted out where it is done (reglas.md §4.2): the galley, the mat, the machine, the rack;
     // going to sleep, in her crew quarter (the bag, the zip, the light).
-    const base = chore.kind === "dormir" ? this.mode.stepVisual(OWN_BUNK, (i) => SLEEP_ACTS[i] ?? []) : crewStepVisual(this.mode, chore, this.fixtureOf(chore));
-    // At the AQH each solved step also plays on the habitat itself: the wiper on the glass, the feeder, a program's glow.
-    const visual = base && isAquariumChore(chore) ? withTank(base, (i) => AQUARIUM_ACTS.acts(chore, i) ?? [], this.tank) : base;
+    // At the AQH each solved step also plays on the habitat itself (station-steps.ts).
+    const visual = chore.kind === "dormir" ? this.mode.stepVisual(OWN_BUNK, (i) => SLEEP_ACTS[i] ?? []) : crewStepVisual(this.mode, chore, this.fixtureOf(chore));
     const prev = this.d.duel.onClose;
     this.d.duel.onClose = () => {
       this.d.duel.onClose = prev;

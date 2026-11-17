@@ -693,11 +693,19 @@ function carryPath(from: THREE.Vector3, to: THREE.Vector3): THREE.Vector3[] {
   const tz = truss?.centre.z ?? 0;
   const ty = truss?.centre.y ?? 0;
   const th = truss?.half.y ?? 2;
-  const clear = (pts: THREE.Vector3[]) => pts.every((p, i) => i === 0 || !segmentClear(V(pts[i - 1]!), V(p), POLANA_LAYOUT, 0.4, 0.2));
+  // The last metre is her hands at the worksite, against the structure: only the way there is checked.
+  const clear = (pts: THREE.Vector3[]) =>
+    pts.every((p, i) => {
+      if (i === 0) return true;
+      const a = pts[i - 1]!;
+      const b = i === pts.length - 1 ? p.clone().addScaledVector(a.clone().sub(p).normalize(), Math.min(1, a.distanceTo(p))) : p;
+      return !segmentClear(V(a), V(b), POLANA_LAYOUT, 0.4, 0.2);
+    });
   for (const y of [ty + th + 3, ty + th + 6, ty - th - 4, ty - th - 8])
     for (const z of [tz, tz + 8, tz - 8, tz + 14]) {
-      const pts = [from.clone(), new THREE.Vector3(from.x, y, z), new THREE.Vector3(to.x, y, z), to.clone()];
-      if (clear(pts)) return pts;
+      const lane = [from.clone(), new THREE.Vector3(from.x, y, from.z), new THREE.Vector3(from.x, y, z), new THREE.Vector3(to.x, y, z)];
+      // Straight down to her, or down beside the structure and in level with her.
+      for (const pts of [[...lane, to.clone()], [...lane, new THREE.Vector3(to.x, to.y, z), to.clone()]]) if (clear(pts)) return pts;
     }
   return detour([from, to]);
 }

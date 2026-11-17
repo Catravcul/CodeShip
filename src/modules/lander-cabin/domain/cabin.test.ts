@@ -45,16 +45,30 @@ describe("lander crew cabin (docs/design/habitaculo.md)", () => {
     }
   });
 
-  it("HAB-02 the docking hatch only gives passage; undocking and the docking assist are on the commander's station", () => {
+  it("HAB-02 the docking hatch only gives passage; docking is a switch of the flight view, not of the seat", () => {
     expect(ids("acople", { ...base, dockedTo: "nodriza" })).toEqual(["entrar-nodriza"]);
     expect(ids("acople", { ...base, dockedTo: "estacion" })).toEqual(["entrar-estacion"]);
     expect(cabinActions("acople", base)[0]!.enabled).toBe(false);
-    expect(ids("asiento", { ...base, dockedTo: "nodriza" })).toEqual(["pilotar", "desacoplar"]);
-    const free = cabinActions("asiento", { ...base, dockInRange: true });
-    expect(free.map((a) => a.id)).toEqual(["pilotar", "asistente-acople"]);
-    expect(free[1]!.enabled).toBe(true);
-    expect(ids("asiento", base)).toEqual(["pilotar"]);
-    expect(cabinActions("asiento", { ...base, dockInRange: true, dockAssist: true })[1]!.label).toMatch(/Apagar/);
+    expect(ids("asiento", { ...base, dockedTo: "nodriza" })).toEqual(["pilotar"]);
+    expect(ids("asiento", { ...base, dockInRange: true })).toEqual(["pilotar"]);
+  });
+
+  it("HAB-50 the commander's station offers Manual and Automático; Automático lists only the nearby destinations", () => {
+    const destinations = [
+      { id: "101955-bennu", label: "101955 Bennu", enabled: true },
+      { id: "estacion", label: "Estación", enabled: false, why: "Ya estás acoplada a Estación" },
+    ];
+    const seat = cabinActions("asiento", { ...base, auto: { picking: false, destinations } });
+    expect(seat.map((a) => [a.id, a.label])).toEqual([
+      ["pilotar", "Manual"],
+      ["automatico", "Automático"],
+    ]);
+    const pick = cabinActions("asiento", { ...base, auto: { picking: true, destinations } });
+    expect(pick.map((a) => a.id)).toEqual(["auto:101955-bennu", "auto:estacion", "volver"]);
+    expect(pick[1]).toMatchObject({ enabled: false, why: "Ya estás acoplada a Estación" });
+    const none = cabinActions("asiento", { ...base, auto: { picking: false, destinations: [] } })[1]!;
+    expect(none.enabled).toBe(false);
+    expect(none.why).toMatch(/nodriza/);
   });
 
   it("HAB-02 the EVA hatch opens only anchored, and says why not", () => {

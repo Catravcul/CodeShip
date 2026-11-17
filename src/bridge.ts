@@ -15,6 +15,9 @@ export interface BridgeDeps {
   openMissions(): void;
   openNano(): void;
   openProbe(): void;
+  /** The probe's station: «Manual» (its console, id «abrir») and «Automático» (nearby destinations), when wired. */
+  probeSeat?(): RoomAction[];
+  probeSeatAct?(action: string): void;
   /** The asteroid's mind through the parked probe: its card, its screen lines and the duel. */
   mind(): { html: string; screen: readonly string[]; action: { label: string; enabled: boolean; why?: string } };
   startMind(): void;
@@ -169,7 +172,7 @@ export class BridgeRoom extends WalkRoom<BridgeStationId> {
     if (page === "comms") return [{ id: "abrir", label: "Usar la consola de radio", enabled: true }, { id: "misiones", label: "Registro de misiones", enabled: true }];
     if (page) return [{ id: "abrir", label: `Usar la consola: ${label}`, enabled: true }];
     if (id === "nano") return [{ id: "abrir", label: this.shape === "starship" ? "Ver el estado de la red" : "Estado de la nano_net", enabled: true }];
-    if (id === "sonda") return [{ id: "abrir", label: "Tomar el mando de la sonda", enabled: true }];
+    if (id === "sonda") return this.deps.probeSeat?.() ?? [{ id: "abrir", label: "Tomar el mando de la sonda", enabled: true }];
     if (id === "mente") {
       const a = this.deps.mind().action;
       return [{ id: "mente", label: a.label, enabled: a.enabled, ...(a.why ? { why: a.why } : {}) }];
@@ -203,7 +206,7 @@ export class BridgeRoom extends WalkRoom<BridgeStationId> {
     if (action === "misiones") return this.deps.openMissions();
     if (page) return this.deps.openPanel(page);
     if (id === "nano") return this.deps.openNano();
-    if (id === "sonda") return this.deps.openProbe();
+    if (id === "sonda") return action === "abrir" || !this.deps.probeSeatAct ? this.deps.openProbe() : this.deps.probeSeatAct(action);
     if (id === "mente") return this.deps.startMind();
     // Down through the aft hatch: it opens, then the decks below come in.
     this.passHatch("salida", () => this.deps.leave());

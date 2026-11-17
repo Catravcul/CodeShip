@@ -10,8 +10,10 @@ export const ICON = {
   standUp: svg('<circle cx="12" cy="4.5" r="2"/><path d="M12 7v7M8 10h8M9 21l3-7 3 7"/><path d="M19 9l2-2-2-2" />'),
   /** Landing assist: a craft over the ground. */
   land: svg('<path d="M12 3v9M8 8l4 4 4-4"/><path d="M3 20h18"/><path d="M7 16h10"/>'),
-  /** Docking assist: two rings meeting. */
+  /** Dock: two rings meeting. */
   dock: svg('<circle cx="8" cy="12" r="4"/><circle cx="16" cy="12" r="4"/>'),
+  /** Undock: two rings apart, pushed away from each other. */
+  undock: svg('<circle cx="5.5" cy="12" r="3.5"/><circle cx="18.5" cy="12" r="3.5"/><path d="M10 12h4M10.5 9.5L9 12l1.5 2.5M13.5 9.5L15 12l-1.5 2.5"/>'),
   /** Time warp. */
   warp: svg('<path d="M4 6l7 6-7 6zM13 6l7 6-7 6z"/>'),
   /** Centre the view. */

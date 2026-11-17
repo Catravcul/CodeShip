@@ -6,6 +6,7 @@ import { ProbeTrip, type ProbeGoal } from "@modules/navigation/application/probe
 import { num } from "@modules/navigation/application/trip-chore";
 import type { ProbeOps } from "@modules/subjugation/application/probe-ops";
 import type { Region } from "@modules/celestial/domain/region";
+import type { Asteroid } from "@modules/celestial/domain/asteroid";
 import type { RigidBodyState } from "@modules/flight/domain/rigid-body";
 import type { DuelView } from "./ui/duel-view";
 import type { ProbeMode } from "./probe-mode";
@@ -42,6 +43,7 @@ export class ProbeTravel {
       flight: () => probe.flight,
       stowed: () => probe.status === "estibada",
       launch: () => probe.launch(mothership.orientation.rotate(Vec3.Y)),
+      deploying: () => probe.deploying,
       bay: () => ({ position: d.bayPose().position, up: mothership.orientation.rotate(Vec3.Y) }),
       obstaclesFor: (g) => this.obstacles(g),
       busy: () => d.busy(),
@@ -72,7 +74,21 @@ export class ProbeTravel {
   }
 
   program(home: boolean): void {
-    const g = this.goal(home);
+    this.programGoal(this.goal(home));
+  }
+
+  /** Whether an automatic trip to this asteroid can be programmed now, and why not. */
+  canProgramTo(body: Asteroid): { ok: boolean; reason?: string } {
+    if (this.d.probe.status === "sin-sonda") return { ok: false, reason: "Dispensadores vacíos" };
+    return this.trip.canProgram({ kind: "asteroid", body });
+  }
+
+  /** «Automático» at the probe's station: the trip challenge to a nearby asteroid. */
+  programTo(body: Asteroid): void {
+    this.programGoal({ kind: "asteroid", body });
+  }
+
+  private programGoal(g: ProbeGoal): void {
     const can = this.trip.canProgram(g);
     if (!can.ok) {
       this.d.probeMode.say(can.reason ?? "");
@@ -100,7 +116,7 @@ export class ProbeTravel {
     t.update(dtS, held);
     if (t.status === this.last) return;
     const say = (s: string) => this.d.probeMode.say(s, 8);
-    if (t.status === "flying") say(`Plan cargado: la sonda vuela sola hacia ${goal ? ProbeTrip.goalName(goal) : ""}. Puedes dejar la consola y hacer tareas: sigue sola. Aquí, «Ver trayecto» la enseña en directo y al volver verás si ha llegado`);
+    if (t.status === "flying") say(`Plan cargado: ${this.d.probe.deploying ? "se abre la puerta del dispensador, la sonda sale hasta el borde y los muelles la sueltan; luego " : ""}la sonda vuela sola hacia ${goal ? ProbeTrip.goalName(goal) : ""}. Puedes dejar la consola y hacer tareas: sigue sola. Aquí, «Ver trayecto» la enseña en directo y al volver verás si ha llegado`);
     if (t.status === "arrived" && goal?.kind === "asteroid") say(`La sonda ha llegado a unos ${num(this.d.probe.flight.telemetry().distanceToSurface)} m de ${goal.body.data.name}: tienes los mandos, pósala a mano`);
     if (t.status === "arrived" && goal?.kind === "bay") say(`La sonda espera a ${num(this.d.probe.bayRange().distanceM)} m de la bahía: acércala a menos de 10 m para el brazo`);
     if (t.status === "manual" && this.last === "flying") say("Mando manual: el piloto automático de la sonda se ha desconectado");

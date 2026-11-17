@@ -35,11 +35,15 @@ export async function moduloLunar(j) {
   await capture(j, "ecs", "Panel del ECS del LM");
 
   // Undock from Starship, and down on Bennu by program.
-  await j.useMachine("cabin", "asiento", "desacoplar", "Desacoplar desde el puesto del comandante");
+  await j.useMachine("cabin", "asiento", "pilotar", "Manual");
+  await p.waitForTimeout(900);
+  await j.tap(".dock-btn", "Desacoplar (interruptor de acople)");
   await p.waitForTimeout(600);
-  j.check("la escotilla de acople desacopla el LM de la Starship", await p.evaluate(() => !window.codeship.docking.docked));
+  j.check("el interruptor de acople bajo el ojo desacopla el LM de la Starship", await p.evaluate(() => !window.codeship.docking.docked));
+  await j.tap(".stand-btn", "Dejar el puesto: habitáculo");
+  await p.waitForTimeout(900);
   await j.setup("el LM llega a 300 m de Bennu (lo que deja el viaje comprimido)", placeAbove, ["modulo", 300, 0]);
-  await j.useMachine("cabin", "asiento", "pilotar", "Ponerse en el puesto del comandante");
+  await j.useMachine("cabin", "asiento", "pilotar", "Manual");
   await p.waitForTimeout(1200);
   await capture(j, "zona", "El LM en la zona de aterrizaje");
   await j.tap(".ctx-dock > .land-offer", "Aterrizar con un programa");

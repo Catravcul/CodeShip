@@ -113,6 +113,18 @@ export class VehicleYard {
     return this.station.hangar.crafts.filter((c) => c.site && !c.released).flatMap((c) => this.shown(c) ?? []);
   }
 
+  /**
+   * A built vehicle of this entry leaves its site to ride another vehicle (a Juventas into the Starship's
+   * deployer while she is berthed): it is no longer waiting here. Undefined when none is built.
+   */
+  takeAboard(entryId: string): Craft | undefined {
+    const craft = this.waiting(entryId)[0];
+    if (!craft) return undefined;
+    craft.released = true;
+    craft.docked = false;
+    return craft;
+  }
+
   /** Let a built vehicle go from its site («Botar» / «Desplegar»): the steps, in order. Throws if it is not waiting. */
   release(craftId: string): { craft: Craft; steps: readonly string[] } {
     const craft = this.station.hangar.crafts.find((c) => c.id === craftId);

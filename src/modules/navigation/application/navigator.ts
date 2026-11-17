@@ -585,10 +585,33 @@ export class Navigator {
     return { ok: true };
   }
 
+  /** The trip being programmed is the lander's own (its seat's «Automático»), never carried by the mothership. */
+  private landerOnly = false;
+
+  /**
+   * «Automático» at the lander's seat (Berón, 2026-11-17): the trip challenge for the lander's own hop to a
+   * nearby destination (the caller filters them, navigation/domain/nearby.ts); solved, the lander undocks if
+   * needed and its autopilot flies it, ending docked at a port or above an asteroid for the landing.
+   */
+  startLanderProgramming(id: string): ChoreRun {
+    const t = this.ports.targets.find((x) => x.id === id);
+    if (!t) throw new Error("Destino desconocido");
+    const can = this.canFlyLander(t);
+    if (!can.ok) throw new Error(can.reason);
+    const sel = this.select(id);
+    if (!sel.ok) throw new Error(sel.reason);
+    this.programmed = this.landerTrip(t);
+    this.run = new ChoreRun(tripChore(this.programmed.facts));
+    this.landerOnly = true;
+    this._status = "programming";
+    return this.run;
+  }
+
   /** Start the chain of challenges that programs the hop. */
   startProgramming(): ChoreRun {
     const can = this.canProgram();
     if (!can.ok) throw new Error(can.reason);
+    this.landerOnly = false;
     this.programmed = this.trip();
     const t = this.programmed;
     this.run = new ChoreRun(t.carrier ? carrierTripChore(t.carrier.facts) : tripChore(t.facts));
@@ -604,7 +627,11 @@ export class Navigator {
   answer(a: Answer): boolean {
     if (this._status !== "programming" || !this.run) return false;
     const ok = this.run.submit(a);
-    if (this.run.status === "done") this.engage(this.programmed);
+    if (this.run.status === "done" && this.landerOnly) {
+      this.landerOnly = false;
+      this.landerBudgetS = undefined;
+      this.engageProbe(this.programmed!.target);
+    } else if (this.run.status === "done") this.engage(this.programmed);
     else if (this.run.status === "failed") this._status = "failed";
     return ok;
   }

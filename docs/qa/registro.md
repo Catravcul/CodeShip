@@ -184,6 +184,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | HAB-24 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | HAB-25 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | HAB-26 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| HAB-27 | Solo test | | | `crew-station.test.ts` verde; recorrido PX-32 pendiente de run log |
 | CV-01 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK |
 | CV-02 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-01** cerrado |
 | CV-03 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK · **B-01** arreglado |
@@ -223,6 +224,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-20 | Probado (en vivo) | 2026-11-17 | `ea56f65` | [run](runs/2026-11-17-PX-20-solo-real.md) solo real: 39/39 pasos bien (sin anillo: sus tareas, el viaje y las máquinas sin rack se saltan con nota); con `EXPERIENCIA_FICCION=1`: [146/146 pasos bien](runs/2026-11-17-PX-20-ficcion.md), hoja de contactos en [animaciones.md](animaciones.md) |
 | PX-25 | Probado (en vivo) | 2026-11-16 | `9de20b8` | [run](runs/2026-11-16-2058-PX-25.md): 41 OK |
 | PX-30 | Probado (en vivo) | 2026-11-16 | `6e1a694` | [run](runs/2026-11-16-2117-PX-04-PX-12-PX-28-PX-29-PX-30.md): 30 OK |
+| PX-32 | Sin probar | | | Recorrido nuevo (`cabina-lm`) |
 | PX-31 | Probado (en vivo) | 2026-11-16 | `acdee18` | [run](runs/2026-11-16-2305-PX-31.md): 22 OK |
 | PX-27 | Probado (en vivo) | 2026-11-16 | `1c1b689` | [run](runs/2026-11-16-1952-PX-27.md): 28 OK |
 | PX-28 | Probado (en vivo) | 2026-11-16 | `4b04c23` | [run](runs/2026-11-16-2239-PX-03-PX-07-PX-09-PX-10-PX-12-PX-24-PX-28-PX-29-PX-31.md): 36 OK |

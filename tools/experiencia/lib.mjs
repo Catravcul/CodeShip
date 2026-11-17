@@ -211,13 +211,13 @@ export class Journey {
 
   /**
    * What is on screen besides the challenge (docs/design/ux-acciones.md §Foco del reto): every element
-   * outside the sheet (`.duel`), the 3D scene (the game's canvas) and what is marked `data-duel-keep`
-   * (the step overlay) that paints something in the viewport, grouped by its overlay root (a child of
+   * outside the sheet (`.duel`), the 3D scene (the game's canvas) and the step line (`.plan-caption`), the
+   * rule's three things with no exceptions, that paints something in the viewport, grouped by its overlay root (a child of
    * #app or of body); and the points of a 12 px grid where a tap would land on one of them.
    */
   async outsideChallenge() {
     return this.page.evaluate(() => {
-      const keep = (el) => !!el.closest("#app > canvas, .duel, [data-duel-keep]");
+      const keep = (el) => !!el.closest("#app > canvas, .duel, #app > .plan-caption");
       const root = (el) => {
         let r = el;
         while (r.parentElement && r.parentElement !== document.body && r.parentElement.id !== "app") r = r.parentElement;

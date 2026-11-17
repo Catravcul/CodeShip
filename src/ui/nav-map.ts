@@ -76,8 +76,6 @@ export class NavMap {
   private note = "";
   private drag: { id: number; x: number; y: number; moved: number } | null = null;
   private screen: { t: NavTarget; x: number; y: number }[] = [];
-  /** The plan's points as last drawn (canvas px), for the animation audit. */
-  private planPx: { x: number; y: number }[] = [];
   private chipsHtml = "";
   private readonly home: HTMLElement;
   /** Set by main: the mission mark of a target (Nevaeh's main missions and side missions). */
@@ -89,8 +87,9 @@ export class NavMap {
   /** Set by main: open the mission log. */
   onMissions?: () => void;
   /**
-   * Set by main: the plan being programmed (plan-sketch.ts), as its solved steps have drawn it so far.
-   * While the map covers the scene, the map shows it, zoomed to fit the part the challenge sheet leaves open.
+   * Set by main: the plan being programmed (plan-sketch.ts), as its solved steps have drawn it so far. With a
+   * challenge open the map is hidden like every interface (foco-reto.css) and the plan shows in the scene; once
+   * it closes, the map shows the plan for a few seconds, zoomed to fit it.
    */
   plan?: () => readonly SketchItem[];
 
@@ -198,18 +197,6 @@ export class NavMap {
   /** The plan changed (a step was solved, or the sheet closed): redraw now. */
   planChanged(): void {
     if (this.visible) this.draw();
-  }
-
-  /**
-   * The animation audit (tools/experiencia/animaciones.mjs): while the map shows a plan, how many of its
-   * points are on screen (viewport px) inside the map and above `sheetTop`; undefined when it shows none.
-   */
-  planAudit(sheetTop: number): { points: number; onScreen: number } | undefined {
-    if (!this.visible || !this.planPx.length) return undefined;
-    const r = this.canvas.getBoundingClientRect();
-    const bottom = Math.min(r.bottom, sheetTop);
-    const onScreen = this.planPx.filter((p) => r.left + p.x >= Math.max(0, r.left) && r.left + p.x <= Math.min(r.right, window.innerWidth) && r.top + p.y >= Math.max(0, r.top) && r.top + p.y <= bottom).length;
-    return { points: this.planPx.length, onScreen };
   }
 
   /** The part of the canvas (its px) that is not under the challenge sheet: below it in portrait, beside it in landscape. */
@@ -322,10 +309,8 @@ export class NavMap {
   }
 
   private draw(): void {
-    // The plan first: showing it hides the map's header and card, which resizes the canvas.
+    // The plan of a trip just programmed (its challenge's own scene drew it step by step: ux-acciones.md §7).
     const plan = this.plan?.() ?? [];
-    this.el.classList.toggle("planning", plan.length > 0);
-    keepDuringChallenge(this.el, this.embedded && plan.length > 0);
     const c = this.canvas;
     const w = c.clientWidth, h = c.clientHeight;
     if (w === 0 || h === 0) return;
@@ -519,7 +504,6 @@ export class NavMap {
     g.fillText("Nave", shipP.x + 10, shipP.y - 8);
 
     // The plan, step by step as it is solved, over everything else.
-    this.planPx = [];
     for (const it of plan) this.drawSketch(g, it, P);
 
     // Scale bar.
@@ -560,7 +544,6 @@ export class NavMap {
       pts.forEach((p, i) => (i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y)));
       if (close) g.closePath();
       g.stroke();
-      for (const p of pts) this.planPx.push({ x: p.x, y: p.y });
     };
     if (it.kind === "line") return path(it.points.map(P));
     if (it.kind === "ring") {
@@ -703,17 +686,6 @@ function drawMark(g: CanvasRenderingContext2D, x: number, y: number, rad: number
 function missionHtml(m: MissionMark): string {
   const head = m.kind === "principal" ? `<b>◆ Misión de Nevaeh</b> · ${MARK_TEXT[m.state]}` : `<b>Misión secundaria</b> · ${m.state === "hecha" ? "subyugado" : "sin subyugar"}`;
   return `<div class="card-mission ${m.kind} ${m.state}">${head}${m.why ? `<p>${esc(m.why)}</p>` : ""}${m.reward ? `<small>Recompensa: ${esc(m.reward)}</small>` : ""}</div>`;
-}
-
-/**
- * The challenge focus (foco-reto.css) hides every interface but the sheet and the scene. Over the ring's
- * navigation console the map covers the scene, so while it shows the plan its layer stays (docs/design/navegacion.md).
- */
-function keepDuringChallenge(el: HTMLElement, keep: boolean): void {
-  let top: HTMLElement = el;
-  while (top.parentElement && top.parentElement !== document.body && top.parentElement.id !== "app") top = top.parentElement;
-  top.toggleAttribute("data-duel-keep", keep);
-  top.classList.toggle("keeps-plan", keep);
 }
 
 function carrierLine(i: DestinationInfo): string {

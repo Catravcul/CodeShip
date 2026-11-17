@@ -39,7 +39,7 @@ Petición de diseño (2026-11-12): «¿Podemos recrear el interior real del mód
 
 Nuestra cabina mide unos 2,4 × 1,7 × 1,95 m (≈ 8 m³), como Orion o Dragon. Es una nave de **salidas de horas**: no lleva cocina, camas ni enfermería. Doménica vuelve a la nodriza para comer y dormir.
 
-### Cómo es ahora (`src/adapters/three/cockpit.ts`)
+### Cómo era (la cápsula de `cockpit.ts`, sustituida por la cabina real del LM: [cabina-lm.md](cabina-lm.md))
 
 Vista desde el asiento del piloto, mirando a proa:
 

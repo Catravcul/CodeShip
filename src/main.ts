@@ -17,6 +17,7 @@ import { DuelView, setStepByStep, stepByStep } from "./ui/duel-view";
 import { LANDING_MODE_LABEL, landingMode, setLandingMode, type LandingMode } from "./ui/landing-readout";
 import { buildAsteroidMesh } from "./adapters/three/asteroid-mesh";
 import { FlightView, WARP_MIN_DISTANCE_M, thrustText } from "./adapters/three/flight-view";
+import { lmReading } from "./adapters/three/lm-instruments";
 import { buildStarfield } from "./adapters/three/starfield";
 import { KeyboardPilot } from "./adapters/input/keyboard";
 import { Hud } from "./ui/hud";
@@ -430,7 +431,7 @@ const landBtn = view.addButton("land-btn", () => (flight.landingAssist = !flight
 // Free near a port: the docking assist (like the landing assist). Docked, K still undocks on a keyboard.
 const dockBtn = view.addButton("dock-btn", () => (docking.docked ? docking.undock() : docking.toggleAssist()), { icon: ICON.dock, label: "Acople: manual", key: "K" });
 // Stand up from the pilot seat into the cabin.
-const standBtn = view.addButton("stand-btn", () => standUp(), { icon: ICON.standUp, label: "Levantarse: habitáculo", key: "H", pinned: true });
+const standBtn = view.addButton("stand-btn", () => standUp(), { icon: ICON.standUp, label: "Dejar el puesto: habitáculo", key: "H", pinned: true });
 settings.onChange((s) => {
   skyBodies.labelsOn = s.names;
   setSound(s.sound);
@@ -1063,7 +1064,7 @@ const cabin = new LanderCabin(root, {
         return sitDown();
       case "desacoplar":
         docking.undock();
-        return cabin.say("Desacoplada: los muelles te separan. Siéntate a pilotar en el asiento", 6);
+        return cabin.say("Desacoplada: los muelles te separan. Ponte a pilotar en el puesto del comandante", 6);
       case "asistente-acople":
         docking.toggleAssist();
         return cabin.say(docking.assist ? "Asistente de acople: el módulo se acerca solo al puerto" : "Asistente de acople apagado", 5);
@@ -1304,7 +1305,7 @@ function dockingText(): string {
   // During a mothership trip the autopilot strip says where it is going.
   if (nav.status === "carrier") return "";
   const on = docking.dockedTo;
-  if (on) return `${on === mothership && mothership.dockedTo ? "Nodriza atracada en la estación" : `Módulo acoplado a ${on === mothership ? "la nodriza" : "la estación"}`} · levántate a la consola de acople${settings.key(" (H) · K desacopla")}`;
+  if (on) return `${on === mothership && mothership.dockedTo ? "Nodriza atracada en la estación" : `Módulo acoplado a ${on === mothership ? "la nodriza" : "la estación"}`} · deja el puesto y ve a la escotilla de acople${settings.key(" (H) · K desacopla")}`;
   // While the trip autopilot flies away from the port, the docking read-out is noise.
   // The autopilot strip already shows the automatic docking's progress.
   if (nav.status === "autopilot" || nav.status === "docking") return "";
@@ -1326,7 +1327,7 @@ function renderPhase(): void {
     banner.textContent = wrathMode.bannerText() || `${expedition.asteroid.data.name} se calma`;
   } else if (p === "landed") {
     // The duel is at the mind console in the cabin (docs/design/habitaculo.md).
-    banner.textContent = `${subj.landedText()}${expedition.canStartDuel || expedition.canStartLevel("nave") ? ` · levántate${settings.key(" (H)")} a la consola de la mente` : eva.canLeave && expedition.bond.next === "traje" ? ` · escotilla EVA del habitáculo` : ""}`;
+    banner.textContent = `${subj.landedText()}${expedition.canStartDuel || expedition.canStartLevel("nave") ? ` · deja el puesto${settings.key(" (H)")} y ve a la consola de la mente` : eva.canLeave && expedition.bond.next === "traje" ? ` · escotilla EVA del habitáculo` : ""}`;
   } else if (dockingText()) {
     banner.textContent = dockingText();
   } else {
@@ -1357,14 +1358,17 @@ window.addEventListener("resize", () => {
 // --- Loop -------------------------------------------------------------------
 /** The view drawn last (the animation audit projects the trip and landing plans with it). */
 const shownView: { scene: THREE.Scene; camera: THREE.Camera } = { scene, camera };
-const planAudit = (sheetTop: number) => {
-  const a = planOverlay.audit(shownView.scene, shownView.camera, sheetTop, { w: renderer.domElement.clientWidth, h: renderer.domElement.clientHeight });
-  // The map, when it covers the scene, is where the plan shows.
-  const m = navMode.map.planAudit(sheetTop);
-  return m ? { ...a, inView: true, ...m, on: "mapa" } : a;
-};
-/** Draw the frame's view, then the live trip view over it («Ver trayecto»: the whole screen, so the room is not drawn). */
-function present(sc: THREE.Scene, cam: THREE.Camera): void {
+const planAudit = (sheetTop: number) => planOverlay.audit(shownView.scene, shownView.camera, sheetTop, { w: renderer.domElement.clientWidth, h: renderer.domElement.clientHeight });
+const duelSheet = root.querySelector<HTMLElement>(".duel");
+/**
+ * Draw the frame's view, then the live trip view over it («Ver trayecto»: the whole screen, so the room is not drawn).
+ * With a challenge that draws a plan open, the plan shows in the scene behind the sheet (PlanOverlay.view).
+ */
+function present(viewScene: THREE.Scene, viewCam: THREE.Camera): void {
+  const size = { w: renderer.domElement.clientWidth, h: renderer.domElement.clientHeight };
+  const sheet = duelView.visible && duelSheet ? duelSheet.getBoundingClientRect() : undefined;
+  const open = sheet ? (sheet.left > 40 ? { w: sheet.left, h: size.h } : { w: size.w, h: Math.max(60, sheet.top) }) : size;
+  const { scene: sc, camera: cam } = planOverlay.view(duelView.visible, viewScene, viewCam, open, size);
   if (!(tripPreview.visible && tripPreview.full)) renderer.render(sc, cam);
   shownView.scene = sc;
   shownView.camera = cam;
@@ -1614,6 +1618,9 @@ renderer.setAnimationLoop((now) => {
   mothershipModel.update(dt, ring?.omegaRadS ?? 0, now / 1000);
 
   const s = flight.state;
+  const tel = flight.telemetry();
+  const fuel = ship.propellants.reduce((a, p) => a + ship.propellantKg(p), 0) / Math.max(1, ship.propellants.reduce((a, p) => a + ship.propellantCapacityKg(p), 0));
+  view.instruments(lmReading(tel, { propellant: fuel, thrust: cmd.mainThrottle, missionS: flight.simTimeS, landingProgram: landerLanding.status === "flying" }));
   view.update(
     dt,
     new THREE.Vector3(s.position.x, s.position.y, s.position.z),
@@ -1641,7 +1648,7 @@ renderer.setAnimationLoop((now) => {
     regionTag.className = `region-tag ${edge.zone}${tagText ? " on" : ""}`;
   }
 
-  hud.render(flight.telemetry(), flight.rotationAssist, ship.propellants.map((p) => ship.propellantKg(p)), thrustText(cmd), missionLog.unread);
+  hud.render(tel, flight.rotationAssist, ship.propellants.map((p) => ship.propellantKg(p)), thrustText(cmd), missionLog.unread);
   present(scene, camera);
 });
 
@@ -1650,12 +1657,12 @@ renderer.setAnimationLoop((now) => {
 // One place for what the moment asks for: the context column. In the cockpit it sits over the right
 // thumb (above the MOVER pad on phones, bottom-right on desktop); from the bottom up it holds the
 // primary action (enter, go outside, convince…), the message that explains it, the asteroid's trust
-// chip, the trip chip and where you are. Secondary flight toggles live in the Mandos menu.
+// chip, the trip chip, where you are and which camera is on (B-03). Secondary flight toggles live in the Mandos menu.
 const ctxDock = document.createElement("div");
 ctxDock.className = "ctx-dock";
 root.appendChild(ctxDock);
 ctxDock.append(banner, regionTag);
-for (const sel of [".nano-action", ".trip-chip", ".land-offer.lander", ".land-box.probe"]) {
+for (const sel of [".nano-action", ".trip-chip", ".land-offer.lander", ".land-box.probe", ".cam-tag"]) {
   const el = root.querySelector(sel);
   if (el) ctxDock.appendChild(el);
 }

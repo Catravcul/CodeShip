@@ -5,7 +5,7 @@
 /* The context column. Outside the cockpit it only shows the trip chip, bottom-centre as before. */
 .ctx-dock { position: fixed; z-index: 9; left: 50%; bottom: calc(8px + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(380px, calc(100vw - 16px)); display: flex; flex-direction: column-reverse; align-items: stretch; gap: 6px; pointer-events: none; }
 .ctx-dock > * { position: static !important; inset: auto !important; transform: none !important; margin: 0 !important; max-width: none !important; width: auto !important; pointer-events: auto; box-sizing: border-box; }
-.ctx-dock > .banner, .ctx-dock > .rapport-chip, .ctx-dock > .region-tag { pointer-events: none; }
+.ctx-dock > .banner, .ctx-dock > .rapport-chip, .ctx-dock > .region-tag, .ctx-dock > .cam-tag { pointer-events: none; }
 /* Bottom up: primary action, its message, trust chip, trip chip, where you are. */
 .ctx-dock > .action, .ctx-dock > .nano-action { order: 1; }
 .ctx-dock > .mode-btn { order: 2; }
@@ -14,6 +14,8 @@
 .ctx-dock > .rapport-chip { order: 5; }
 .ctx-dock > .trip-chip { order: 6; }
 .ctx-dock > .region-tag { order: 7; }
+/* The camera tag goes in the column too (B-03): it used to float under the screen's centre, over the trip chip, the MIRAR stick and the asteroid's notice. */
+.ctx-dock > .cam-tag { order: 8; pointer-events: none; text-align: right; }
 /* Out of the cockpit the moved buttons and tags keep their own hiding rules; the EVA button only shows in it. */
 .ctx-dock > .eva-btn { display: none; }
 body.in-cockpit .ctx-dock > .eva-btn:not(.hidden) { display: block; }

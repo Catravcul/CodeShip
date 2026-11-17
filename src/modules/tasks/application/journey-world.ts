@@ -5,6 +5,7 @@
  * (walking), the station (hops) and the flights that join the vehicles. Pure: main.ts gives where she
  * is, how the vehicles are joined and what each flight would take now.
  */
+import { roomHops, roomHopsSeconds } from "@modules/gravity/domain/room-hops";
 import { Vec3 } from "@core/math/vec3";
 import { RailGraph } from "@modules/gravity/domain/handrails";
 import { hopSeconds, HopGraph, type LandingPoint } from "@modules/gravity/domain/hops";
@@ -26,6 +27,7 @@ export const JOURNEY_PACE = {
   ringMs: 2.2,
   /** In the lander's cabin and on the bridge, m/s (lander-cabin.ts, bridge.ts). */
   cabinMs: 0.55,
+  /** Unused since the flight deck is crossed in hops (room-hops.ts); kept for the old bridge's numbers. */
   bridgeMs: 0.9,
   /** Body margin from the walls while floating in the spine and in the station, m (zones.ts, station-interior.ts). */
   spineBodyM: 0.45,
@@ -137,6 +139,11 @@ function roomWalk(L: CabinLayout<string>, a: FloorPoint, b: FloorPoint, speedMs:
   return m / speedMs;
 }
 
+/** Hopping across the flight deck in 0 g (no area has gravity): hop by hop along its aisles, as WalkRoom plays it. */
+function roomHopsTime(L: CabinLayout<string>, a: FloorPoint, b: FloorPoint): number {
+  return roomHopsSeconds(roomHops(a, floorPath(L.floor, a, b, roomAisles(L))));
+}
+
 /** Seconds of the quickest chain of hops between two landing points (the aim pause only on the first). */
 export function hopChainSeconds(g: HopGraph, from: LandingPoint, toId: string): number | undefined {
   const r = g.route(from, toId);
@@ -227,7 +234,7 @@ export function journeyTransfers(f: JourneyFacts): Transfer[] {
     both("eje:puente", "puente:salida", "escotilla", JOURNEY_PACE.hatchS, "Por la escotilla al puente", "Por la escotilla a la espina");
   }
   // The bridge (on Starship, the flight deck above deck 1).
-  for (const s of DECK.stations) if (s.id !== "salida") both("puente:salida", `puente:${s.id}`, "andar", roomWalk(DECK, exit.stand, s.stand, JOURNEY_PACE.bridgeMs), `Andar hasta la consola: ${s.label}`, "Andar hasta la escotilla del puente");
+  for (const s of DECK.stations) if (s.id !== "salida") both("puente:salida", `puente:${s.id}`, "saltos", roomHopsTime(DECK, exit.stand, s.stand), `Saltos hasta la consola: ${s.label}`, "Saltos hasta la escotilla del puente");
   // The lander's cabin: everything from its docking console under the roof hatch.
   const acople = LANDER_CABIN.stations.find((s) => s.id === "acople")!;
   for (const s of LANDER_CABIN.stations) if (s.id !== "acople") both("modulo:acople", `modulo:${s.id}`, "andar", roomWalk(LANDER_CABIN, acople.stand, s.stand, JOURNEY_PACE.cabinMs) + (s.id === "asiento" ? JOURNEY_PACE.seatS : 0), `Andar hasta: ${CABIN_LABEL[s.id]}`, `Andar hasta: ${CABIN_LABEL.acople}`);
@@ -292,7 +299,7 @@ function fromHere(f: JourneyFacts, sp: Spine | undefined, stG: HopGraph, shipG?:
     }
   } else if (h.room === "puente") {
     const DECK = deckOf(f);
-    for (const s of DECK.stations) out.push({ from, to: `puente:${s.id}`, kind: "andar", seconds: roomWalk(DECK, h.at, s.stand, JOURNEY_PACE.bridgeMs), label: `Andar hasta: ${s.label}` });
+    for (const s of DECK.stations) out.push({ from, to: `puente:${s.id}`, kind: "saltos", seconds: roomHopsTime(DECK, h.at, s.stand), label: `Saltos hasta: ${s.label}` });
   } else if (h.room === "modulo" && h.at !== "asiento") {
     const at = h.at;
     for (const s of LANDER_CABIN.stations) out.push({ from, to: `modulo:${s.id}`, kind: "andar", seconds: roomWalk(LANDER_CABIN, at, s.stand, JOURNEY_PACE.cabinMs) + (s.id === "asiento" ? JOURNEY_PACE.seatS : 0), label: `Andar hasta: ${CABIN_LABEL[s.id]}` });

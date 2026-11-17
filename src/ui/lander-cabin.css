@@ -47,3 +47,5 @@ body.in-settings .cab-menu { display: none; }
 .br-alert.advisory { border-left-color: #7fdcff; }
 /* The nano_net console's card shows over the bridge. */
 body.in-room.in-puente .nano-card:not(.hidden) { display: block !important; z-index: 9; }
+/* 0 g rooms (Starship flight deck): she moves only in hops to a tapped machine; no stick moves her. */
+body.in-zero-g-room .vstick.room-move { display: none !important; }

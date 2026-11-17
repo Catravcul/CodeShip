@@ -38,6 +38,14 @@ pared se inclina hacia dentro y arriba hay una tapa blanca acolchada, como la Ca
 corro junto a la pared, cada 45° (radio 2,7 m donde ella se pone, 3,3 m la máquina): así quedan a más de 2 m
 unos de otros a tamaño real, y el centro queda libre para moverse.
 
+**Sin gravedad** (Berón, 2026-11-17: ninguna zona tiene gravedad). En la cubierta no se anda y no hay joystick para
+moverse: un toque en un puesto (o «Ir» de una tarea) la manda allí **a saltos de asidero en asidero**
+(`room-hops.ts`, `WalkRoom` con `zeroG`): cada tramo se parte en saltos iguales de 2,5 m como mucho, y cada salto
+es un impulso, un planeo con el cuerpo tendido y un agarre, a la velocidad de los saltos de la estación
+(`hopSpeed`, NASA-STD-3000 §8.9.2). En los puestos se sujeta con los pies (o el cinturón en los asientos). El
+tiempo que «Ir» calcula por la cubierta es el de esos saltos (`journey-world.ts`, legs `saltos`). El joystick que
+queda es el de la cámara.
+
 | Puesto | Dónde | Qué hace (como su equivalente real) |
 | --- | --- | --- |
 | **Puesto de pilotaje** | Proa, bajo las tres ventanas, sentada | Tres pantallas táctiles (vuelo, trayectoria, sistemas) con botones físicos debajo, como Dragon. Se elige el **destino** (cualquiera: la estación o un asteroide, con su distancia) y se vuela en **Manual** (los encendidos cortos de ±0,1 m/s, «Parar», lo que falta y el Δv gastado, de trayectos-reales) o en **Automático (retos)** (la cadena de retos del viaje). «Pantallas de sistemas» pasa por propulsión, energía y vida en pestañas, como las páginas de Dragon |
@@ -90,8 +98,21 @@ puesto de acople solo lo menciona en una línea de texto.
 - **Automático (retos)**: `berthChore` (`berth-chore.ts`): ordenar la aproximación de la Demo-1 (punto 1, eje,
   punto 2, esperar el «adelante», seguir hasta el contacto, captura suave y ganchos; el distractor es «ir directa a
   1 m/s»), cuánto se tarda del punto 1 al 2 a 0,07 m/s y qué condición falta para que cojan los ganchos. Resuelto,
-  `Navigator.berthAuto` vuela la aproximación real (51 min de juego).
+  `Navigator.berthAuto` vuela la aproximación real (51 min de juego). Empieza en el punto 1, donde ya espera:
+  seis bloques (cinco y el distractor), que caben en 390×664 sin desplazar.
+  **Cada paso se ve en el puesto de acople** (reglas §4.2, `Bridge.dockStepVisual`): ella flota en los anclajes de
+  pie delante de la consola (no atraviesa el asiento), vista por encima del hombro derecho; para cada orden pone
+  las manos en la pantalla (`programar`) y para cada comprobación mira la cámara (`revisar`) (`BERTH_STEP_ACTS`).
+  La pantalla «Cámara de acople» de la consola enseña lo que hace cada bloque (`berthStage`): en el punto 1,
+  alineada, acercándose al punto 2 (el puerto crece de 150 a 20 m), la espera del «adelante», hasta el contacto y
+  los ganchos cerrados (en verde). Cada etapa dura 2,2 s; enviada la orden entera, se ven todas seguidas.
 - **Desacoplar**: `Unberthing`: retrocede por el eje a 0,07 m/s hasta el punto 1 (150 m), a ×60.
+- **La cámara se controla** (reglas §5.3 y §5.7): la de la Dragon es fija en el eje; las cámaras de fuera de la
+  ISS van en cabezas de giro. La nuestra (`DOCK_CAM_HEAD`, nuestra) gira ±20° a los lados y ±15° arriba y abajo a
+  15°/s con su joystick «Cámara», en la esquina del vídeo; la imagen y la retícula se desplazan con ella.
+  «Vista: eje ⇄ lado» pasa a una vista de lado, a escala: el módulo y su puerto, el eje y la proa de la Starship
+  (9 m) a su distancia; ahí el joystick gira la vista alrededor del eje (el desvío visto desde ese lado) y acerca.
+  Mientras se acopla a mano, el chip del viaje se aparta: la página ya da la distancia, el contacto y «Parar».
 - La aproximación automática se vuela con el RCS: acelera hasta los 0,07 m/s y frena antes de la espera del punto 2
   a 0,01 m/s² (`BERTH_RCS_MS2`, valor de juego), con la actitud en el eje del puerto, como la Dragon.
 
@@ -100,9 +121,8 @@ Las tres maniobras van por el `Navigator` como los viajes: un solo reloj, el chi
 
 ### Preguntas abiertas para Berón
 
-- La sala sigue recorriéndose a pie (como el puente de antes), aunque la Starship va en 0 g. ¿Pasamos la cubierta
-  de vuelo al motor de asideros y saltos de las cubiertas?
-- El acople a mano va a ×10 en vez del ×60 de a bordo, para poder alinear a ojo. ¿Vale ese segundo ritmo?
+- Resuelto (2026-11-17): sin gravedad, a saltos; ×10 en el acople a mano, 1°/s de giro, el estado en el puesto de
+  acople y la consola de la red (ficción) se quedan como están.
 - La mesa de navegación es nuestra: en una nave real el mapa es una página de las pantallas. ¿La dejamos como mesa
   o la pasamos a una pantalla del puesto de pilotaje?
 

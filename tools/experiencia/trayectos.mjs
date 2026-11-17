@@ -79,12 +79,12 @@ export async function trayectos(j) {
   await capture(j, "1-escotilla-lm", "Abre la escotilla del techo del LM", false);
 
   // 2. Hops through the decks; the flight deck hatch opens; she stops at the navigation table and is told to travel.
-  const s2 = await until(p, (s) => (s.kind === "escotilla" && s.shipLeaf > 0.3) || (s.kind === "andar" && s.leg > 3), 150000);
+  const s2 = await until(p, (s) => (s.kind === "escotilla" && s.shipLeaf > 0.3) || (s.kind === "saltos" && s.leg > 3), 150000);
   j.check("en la cubierta 1 abre la escotilla del techo a la cubierta de vuelo", s2.shipLeaf > 0.3, JSON.stringify(s2));
   await capture(j, "2-escotilla-cubierta-vuelo", "Abre la escotilla a la cubierta de vuelo", false);
   const s3 = await until(p, (s) => !s.active, 120000);
   const atDeck = await p.evaluate(() => ({ bridge: window.codeship.bridge.active, status: window.codeship.nav.status, berthed: !!window.codeship.mothership.dockedTo }));
-  j.check("anda hasta el puesto de pilotaje de la cubierta de vuelo y la Starship no despega sola", !s3.active && atDeck.bridge && atDeck.status !== "carrier" && !atDeck.berthed, JSON.stringify(atDeck));
+  j.check("va a saltos hasta el puesto de pilotaje de la cubierta de vuelo y la Starship no despega sola", !s3.active && atDeck.bridge && atDeck.status !== "carrier" && !atDeck.berthed, JSON.stringify(atDeck));
   j.check("un aviso dice que primero hay que viajar a la estación, con los dos modos", /primero hay que viajar a la estación/.test(s3.note) && /Manual/.test(s3.note) && /Automático \(retos\)/.test(s3.note), s3.note);
   await capture(j, "3-aviso-viajar", "Aviso: primero hay que viajar", false);
 

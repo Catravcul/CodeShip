@@ -8,6 +8,8 @@ import { worldScale } from "./adapters/three/interior/world-scale";
 import type { CabinStation } from "@modules/lander-cabin/domain/cabin";
 import type { ChoreRun } from "@modules/chores/domain/chore";
 import { WalkRoom, type RoomAction } from "./walk-room";
+import type { StepVisual } from "@modules/chores/domain/step-visual";
+import { BERTH_STEP_ACTS, berthStage, type BerthFacts } from "@modules/navigation/application/berth-chore";
 
 export interface BridgeDeps {
   /** Open one console's page of the deck. */
@@ -84,6 +86,10 @@ export class BridgeRoom extends WalkRoom<BridgeStationId> {
   private readonly alertBox: HTMLElement;
   private mindKey = "";
   private alertKey = "";
+  /** The docking challenge acted out (reglas.md §4.2): the docking camera screen's approach, stage by stage. */
+  private dockShow: { facts: Pick<BerthFacts, "waypoint1M" | "waypoint2M" | "closingMs">; stage: number; t: number; queue: number[] } | undefined;
+  /** Seconds each stage of the docking camera's approach takes to play. */
+  private static readonly DOCK_STAGE_S = 2.2;
 
   /** Which deck this is: Starship's nose (real) or the ring ship's forward node (fiction). */
   readonly shape: DeckShape;
@@ -105,6 +111,8 @@ export class BridgeRoom extends WalkRoom<BridgeStationId> {
       title: shape === "starship" ? `Cubierta de vuelo · ${shipName}` : `Puente · ${shipName}`,
       geometry: model.group,
       speedMs: 0.9,
+      // In 0 g (no area has gravity, reglas): hops from handhold to handhold to a tapped machine, never walking.
+      zeroG: true,
       signs: layout.stations.map((s) => s.id),
       cameraBackM: 1.6 * k,
       scale: k,
@@ -236,6 +244,112 @@ export class BridgeRoom extends WalkRoom<BridgeStationId> {
   }
 
   /** The docking challenge open now, if any (Starship's docking seat). */
+  /**
+   * The docking challenge at the docking seat (reglas.md §4.2): she is at the console seen from beside and behind,
+   * her hands on its touchscreen for each command and her eyes on the camera for each check (BERTH_STEP_ACTS), and
+   * the console's «Cámara de acople» screen plays what each block does: aligned, closing to Waypoint 2, the hold,
+   * contact and the hooks (berthStage).
+   */
+  dockStepVisual(facts: Pick<BerthFacts, "waypoint1M" | "waypoint2M" | "closingMs">): StepVisual | undefined {
+    const base = this.stepVisual("dock", (i) => BERTH_STEP_ACTS[i] ?? [], { towardM: 0.35 * this.k });
+    if (!base) return undefined;
+    this.dockShow = { facts, stage: 0, t: 0, queue: [] };
+    let queued = 0;
+    // Stages play one after another, each for DOCK_STAGE_S (a whole order sent at once plays them all in turn).
+    const upTo = (n: number) => {
+      for (; queued < n; ) this.dockShow?.queue.push(++queued);
+    };
+    let cleared = false;
+    const clear = () => {
+      if (cleared) return;
+      cleared = true;
+      base.clear();
+      this.dockShow = undefined;
+      this.mindKey = "";
+    };
+    return {
+      stepDone: (i) => {
+        base.stepDone(i);
+        // The order: every stage it has not shown yet; the time: the closing to Waypoint 2 again; the hooks: the capture.
+        if (i === 0) upTo(5);
+        else this.dockShow?.queue.push(i === 1 ? 2 : 5);
+      },
+      partDone: (i, part) => {
+        base.partDone?.(i, part);
+        if (i === 0) upTo(part + 1);
+      },
+      // Solved: the hooks close on the screen, then she is back at the seat (the sheet closes by itself).
+      finish: () => {
+        base.finish();
+        upTo(5);
+        const left = ((this.dockShow?.queue.length ?? 0) + 1) * BridgeRoom.DOCK_STAGE_S;
+        setTimeout(clear, left * 1000 + 800);
+      },
+      clear,
+    };
+  }
+
+  /** The docking camera screen's stage now (for checks): 0 at Waypoint 1 … 5 latched; the range shown, m. */
+  get dockScreen(): { stage: number; rangeM: number; caption: string } | undefined {
+    const d = this.dockShow;
+    if (!d) return undefined;
+    const st = berthStage(d.facts, d.stage);
+    const k = Math.min(1, d.t / BridgeRoom.DOCK_STAGE_S);
+    return { stage: d.stage, rangeM: st.fromM + (st.toM - st.fromM) * k, caption: st.caption };
+  }
+
+  /** Paint the docking camera screen: the station's port seen along the axis at the stage's range, and its caption. */
+  private paintDockShow(dt: number): void {
+    const d = this.dockShow;
+    const sc = this.model.screens.find((x) => x.station === "dock" && x.kind === "dock");
+    if (!d || !sc) return;
+    d.t += dt;
+    if (d.t >= BridgeRoom.DOCK_STAGE_S && d.queue.length) {
+      d.stage = d.queue.shift()!;
+      d.t = 0;
+    }
+    const now = this.dockScreen!;
+    const ctx = this.model.atlas.ctx;
+    paintScreen(ctx, sc.rect, sc.kind, sc.title, [now.caption]);
+    const r = sc.rect;
+    const b = { x: r.x + 12, y: r.y + 52, w: r.w - 24, h: r.h - 52 - 44 };
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(b.x, b.y, b.w, b.h);
+    ctx.clip();
+    ctx.fillStyle = "#04080c";
+    ctx.fillRect(b.x, b.y, b.w, b.h);
+    // A 30° centreline camera: the node (4,4 m), the port's plate (1,6 m) and its cross grow as the range closes.
+    const f = b.w / 2 / Math.tan((15 * Math.PI) / 180);
+    const px = f / Math.max(0.6, now.rangeM + 1);
+    const cx = b.x + b.w / 2;
+    const cy = b.y + b.h / 2;
+    const disc = (rM: number, color: string) => {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(cx, cy, Math.min(2000, rM * px), 0, Math.PI * 2);
+      ctx.fill();
+    };
+    disc(2.2, "#c9ccc6");
+    disc(0.8, now.stage >= 5 ? "#2f6b45" : "#3a414b");
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 3;
+    const cr = Math.min(400, Math.max(10, 0.25 * px));
+    ctx.beginPath();
+    ctx.moveTo(cx - cr, cy);
+    ctx.lineTo(cx + cr, cy);
+    ctx.moveTo(cx, cy - cr);
+    ctx.lineTo(cx, cy + cr);
+    ctx.stroke();
+    ctx.strokeStyle = "#37e07a";
+    ctx.strokeRect(cx - 18, cy - 18, 36, 36);
+    ctx.font = "bold 30px monospace";
+    ctx.fillStyle = "#7fdcff";
+    ctx.fillText(`${now.rangeM < 10 ? now.rangeM.toFixed(1).replace(".", ",") : Math.round(now.rangeM)} m`, b.x + 10, b.y + 36);
+    ctx.restore();
+    this.model.atlas.refresh();
+  }
+
   get dockChore(): ChoreRun | undefined {
     return this.deps.dock?.chore();
   }
@@ -300,7 +414,8 @@ export class BridgeRoom extends WalkRoom<BridgeStationId> {
     return p ? [p] : [];
   }
 
-  protected override tick(): void {
+  protected override tick(dt = 0): void {
+    this.paintDockShow(dt);
     // The dollhouse camera looks over an end wall it is outside of: that wall goes, as a whole.
     // In first person (the camera inside, under the ceiling) both stay.
     const z = this.camera.position.z;

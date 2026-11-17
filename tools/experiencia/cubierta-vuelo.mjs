@@ -48,6 +48,20 @@ export async function cubiertaVuelo(j) {
     j.check(`«${id}»: su ficha ofrece lo que hace su puesto real`, a.length > 0 && !a.some((x) => /^Usar la consola: (Pilotaje|Acople|Vida|Energía)/.test(x.text)), a.map((x) => x.text).join(" | "));
   }
 
+  // 2b. No gravity (reglas, Berón 2026-11-17): no stick moves her; a tap sends her in hops (push, glide, catch).
+  const stick = await p.evaluate(() => [...document.querySelectorAll(".vstick.room-move")].some((e) => getComputedStyle(e).display !== "none"));
+  j.check("en 0 g no hay joystick para andar: solo se va a saltos a un puesto tocado", !stick);
+  await j.setup("salta hasta el puesto de pilotaje", () => window.codeship.bridge.goTo("prop"));
+  const seen = await p.evaluate(async () => {
+    const out = new Set();
+    for (let i = 0; i < 120 && window.codeship.bridge.walking; i++) {
+      if (window.codeship.bridge.hopPhase) out.add(window.codeship.bridge.hopPhase);
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    return [...out];
+  });
+  j.check("cruza la cubierta a saltos de asidero en asidero: se impulsa, planea y se agarra", seen.includes("push") && seen.includes("catch"), seen.join(", "));
+
   // 3. The pilot seat: destination, «Manual» and «Automático (retos)»; seated.
   await j.useMachine("bridge", "prop", null);
   await p.waitForTimeout(800);
@@ -113,6 +127,22 @@ export async function cubiertaVuelo(j) {
   for (let i = 0; i < 6; i++) await j.tap('.dock-cam [data-ax="closing"][data-n="1"]', "+0,05 m/s");
   await p.waitForTimeout(1500);
   await capture(j, "5-camara-acople", "Cámara de acople");
+  // The camera can be moved (reglas §5.3, §5.7): its joystick turns the head within ±20°/±15°; «Vista» goes to «Lado».
+  const sb = await p.locator(".dock-cam .dc-stick").boundingBox();
+  if (sb) {
+    await p.mouse.move(sb.x + sb.width / 2, sb.y + sb.height / 2);
+    await p.mouse.down();
+    await p.mouse.move(sb.x + sb.width, sb.y + sb.height / 2, { steps: 4 });
+    await p.waitForTimeout(3000);
+    await p.mouse.up();
+  }
+  const ptu = await p.evaluate(() => ({ pan: (window.codeship.dockCamera.pan * 180) / Math.PI, tilt: (window.codeship.dockCamera.tilt * 180) / Math.PI }));
+  j.check("el joystick «Cámara» gira la cámara de acople, sin pasar de ±20° (cabeza de giro)", ptu.pan > 3 && ptu.pan <= 20 + 1e-6, JSON.stringify(ptu));
+  await j.tap(".dock-cam .dc-view", "Vista: eje → lado");
+  await p.waitForTimeout(500);
+  j.check("«Vista» cambia a la vista de lado del eje", (await p.evaluate(() => window.codeship.dockCamera.view)) === "lado");
+  await capture(j, "5b-camara-lado", "Cámara de acople: vista de lado");
+  await j.tap(".dock-cam .dc-view", "Vista: lado → eje");
   const near = await p.waitForFunction(() => (window.codeship.nav.manualBerth?.alignment().axialM ?? 0) < 14, null, { timeout: 150000 }).then(() => true).catch(() => false);
   if (near) for (let i = 0; i < 4; i++) await j.tap('.dock-cam [data-ax="closing"][data-n="-1"]', "−0,05 m/s");
   await capture(j, "6-camara-cerca", "Cámara de acople, cerca del puerto");
@@ -138,7 +168,14 @@ export async function cubiertaVuelo(j) {
   await j.waitDuel(30000);
   const title = await p.evaluate(() => window.codeship.bridge.dockChore?.chore.title ?? "");
   j.check("«Acoplar automático (retos)» abre el reto del acople", /acople/.test(title), title);
+  const framed = await p.evaluate(() => ({ framing: window.codeship.bridge.steps.framing, screen: window.codeship.bridge.dockScreen }));
+  j.check("el reto se ve en el puesto de acople: ella ante la consola y su pantalla «Cámara de acople» en el punto 1", framed.framing && framed.screen?.stage === 0, JSON.stringify(framed));
   await capture(j, "8-reto-acople", "Reto del acople");
+  await j.answer(() => window.codeship.bridge.dockChore?.current ?? null, true);
+  await p.waitForTimeout(4000);
+  const mid = await p.evaluate(() => ({ screen: window.codeship.bridge.dockScreen, act: window.codeship.bridge.steps.current?.action, played: window.codeship.bridge.steps.played }));
+  j.check("cada paso se hace en la consola (manos en la pantalla) y la pantalla enseña la maniobra (alinear, al punto 2…)", (mid.screen?.stage ?? 0) >= 1 && mid.played > 0 && ["programar", "revisar"].includes(mid.act), JSON.stringify(mid));
+  await capture(j, "8b-reto-pasos", "Reto del acople: el paso en la consola");
   for (let n = 0; n < 6 && (await p.evaluate(() => !!window.codeship.bridge.dockChore)); n++) await j.answer(() => window.codeship.bridge.dockChore?.current ?? null, true);
   const auto = await p.waitForFunction(() => window.codeship.nav.progress()?.phase === "dock" || !!window.codeship.mothership.dockedTo, null, { timeout: 30000 }).then(() => true).catch(() => false);
   j.check("resuelto, el ordenador vuela la aproximación como la Crew Dragon (fase de atraque)", auto);

@@ -7,6 +7,7 @@ import { PROXIMITY, WAYPOINT2_HOLD_S, BERTH_STANDOFF_M } from "@modules/mothersh
 import { IDSS_CONTACT_LIMITS } from "@modules/mothership/data/mothership";
 import type { Mothership } from "@modules/mothership/domain/mothership";
 import type { DuelView } from "./ui/duel-view";
+import type { StepVisual } from "@modules/chores/domain/step-visual";
 import { openTripSheet, TRIP_TEXT, type NavigationMode } from "./navigation";
 import type { DockDeps, PilotDeps, PilotDestination } from "./bridge";
 
@@ -22,6 +23,8 @@ export interface SeatsWiring {
   /** Open the pilot's systems pages (the deck's propulsion, power and life pages, as tabs). */
   openSystems(): void;
   say(text: string): void;
+  /** The docking challenge acted out at the docking seat (reglas.md §4.2). */
+  dockVisual?(facts: { waypoint1M: number; waypoint2M: number; closingMs: number }): StepVisual | undefined;
 }
 
 /**
@@ -100,7 +103,9 @@ export function flightDeckSeats(w: SeatsWiring): { pilot: PilotDeps; dock: DockD
       const h = nav.holdingAt();
       if (!h?.carrierPort) return { ok: false, reason: "La Starship no está en el punto de espera de un puerto" };
       const L = IDSS_CONTACT_LIMITS;
-      const run = (chore = new ChoreRun(berthChore({ stationName: h.name, portName: h.carrierPort.name, waypoint1M: BERTH_STANDOFF_M, waypoint2M: PROXIMITY.waypoint2M, closingMs: PROXIMITY.closingMs, closingMinMs: L.closingMinMs, closingMaxMs: L.closingMaxMs, lateralMaxM: L.lateralMisalignM, holdS: WAYPOINT2_HOLD_S })));
+      const facts = { stationName: h.name, portName: h.carrierPort.name, waypoint1M: BERTH_STANDOFF_M, waypoint2M: PROXIMITY.waypoint2M, closingMs: PROXIMITY.closingMs, closingMinMs: L.closingMinMs, closingMaxMs: L.closingMaxMs, lateralMaxM: L.lateralMisalignM, holdS: WAYPOINT2_HOLD_S };
+      const run = (chore = new ChoreRun(berthChore(facts)));
+      const visual = w.dockVisual?.(facts);
       openTripSheet(
         w.duel,
         run,
@@ -112,7 +117,13 @@ export function flightDeckSeats(w: SeatsWiring): { pilot: PilotDeps; dock: DockD
         () => nav.status === "carrier",
         () => {},
         { ...TRIP_TEXT, submit: "Cargar el acople en el ordenador de vuelo" },
+        visual,
       );
+      // Each block placed right plays at the console as it is placed (the order's «paso a paso»).
+      if (visual?.partDone)
+        w.duel.onRightPick = (id, slot) => {
+          if (run.current?.id === id) visual.partDone?.(run.step, slot);
+        };
       return { ok: true };
     },
     stop: () => nav.cancel(),

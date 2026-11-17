@@ -121,25 +121,25 @@ describe("HAB-36 Starship: every way walked, hatches opened (docs/design/reglas.
     expect(legs.some((l) => /^(anillo|eje):/.test(l.from) || /^(anillo|eje):/.test(l.to))).toBe(false);
   });
 
-  it("TRY-02 from deck 3 to the flight deck's navigation console: hops up the decks, the ceiling hatch, then the walk", () => {
+  it("TRY-02 from deck 3 to the flight deck's navigation console: hops up the decks, the ceiling hatch, then hops across the deck (0 g)", () => {
     const p = plan(shipFacts(), "puente:nav");
     expect(p.kind).toBe("ruta");
     if (p.kind !== "ruta") return;
-    expect(p.legs.map((l) => l.kind)).toEqual(["saltos", "escotilla", "andar"]);
+    expect(p.legs.map((l) => l.kind)).toEqual(["saltos", "escotilla", "saltos"]);
     expect(p.legs[0]!.to).toBe("nave:subir-cubierta-vuelo");
     expect(p.legs[1]!.label).toMatch(/cubierta de vuelo/);
   });
 
   it("TRY-03 from the flight deck to the galley: through the hatch down into deck 1 and hops", () => {
     const p = plan(shipFacts({ here: { room: "puente", at: { x: 0, z: 0 } } }), galley);
-    expect(p.kind === "ruta" && p.legs.map((l) => l.kind)).toEqual(["andar", "escotilla", "saltos"]);
+    expect(p.kind === "ruta" && p.legs.map((l) => l.kind)).toEqual(["saltos", "escotilla", "saltos"]);
   });
 
   it("TRY-04 to a station task from Starship's deck 3: up to the pilot seat (where she flies), Starship flies and berths, then through the nose tunnel", () => {
     const p = plan(shipFacts(), planos);
     expect(p.kind).toBe("ruta");
     if (p.kind !== "ruta") return;
-    expect(p.legs.map((l) => l.kind)).toEqual(["saltos", "escotilla", "andar", "vuelo", "andar", "escotilla", "saltos", "escotilla", "saltos"]);
+    expect(p.legs.map((l) => l.kind)).toEqual(["saltos", "escotilla", "saltos", "vuelo", "saltos", "escotilla", "saltos", "escotilla", "saltos"]);
     expect(p.legs[3]).toMatchObject({ from: "puente:prop" });
     expect(p.legs[7]!.label).toMatch(/túnel de proa/);
   });

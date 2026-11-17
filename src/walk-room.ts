@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { clampToFloor, floorPath, nearestStation, roomAisles, type CabinLayout, type CabinStation, type FloorPoint } from "@modules/lander-cabin/domain/cabin";
-import { CubeFigure } from "./adapters/three/interior/figure";
+import { CubeFigure, POSES } from "./adapters/three/interior/figure";
+import { roomHopAt, roomHops, type RoomHop } from "@modules/gravity/domain/room-hops";
 import { StepShow } from "./adapters/three/interior/step-show";
 import type { StepAct, StepVisual } from "@modules/chores/domain/step-visual";
 import { textSign } from "./adapters/three/interior/sign";
@@ -50,6 +51,11 @@ export interface WalkRoomOptions<Id extends string> {
    * (drawn m), the way it opens into the room and its size.
    */
   readonly hatches?: readonly { readonly station: Id; readonly at: THREE.Vector3; readonly into: THREE.Vector3; readonly sizeM: number; readonly round?: boolean }[];
+  /**
+   * In 0 g (reglas: no area has gravity): she never walks. A tap on a machine sends her there in hops from
+   * handhold to handhold (push, glide, catch; gravity/domain/room-hops.ts), and there is no stick to move her.
+   */
+  readonly zeroG?: boolean;
 }
 
 /** Eye heights of the first-person camera, m: standing, and belted to a seat (data/bridge.ts BRIDGE_ERGONOMICS). */
@@ -101,7 +107,9 @@ export abstract class WalkRoom<Id extends string> {
   private readonly walls: THREE.Object3D[] = [];
   private readonly hidden: THREE.Object3D[] = [];
   private readonly ray = new THREE.Raycaster();
-  private walkTo: { id: Id; path: FloorPoint[]; then?: () => void } | null = null;
+  private walkTo: { id: Id; path: FloorPoint[]; then?: () => void; hops?: RoomHop[]; hop?: number; t?: number } | null = null;
+  /** What her body does in the hop under way (0 g), for the pose and for checks. */
+  hopPhase: "aim" | "push" | "glide" | "catch" | undefined;
   private machineKey = "";
   private toastUntil = 0;
   private readonly leaves = new Map<Id, HatchLeaf>();
@@ -267,6 +275,7 @@ export abstract class WalkRoom<Id extends string> {
     this.walker.enabled = true;
     this.ui.classList.remove("hidden");
     document.body.classList.add("in-room", `in-${this.opts.cls}`);
+    document.body.classList.toggle("in-zero-g-room", !!this.opts.zeroG);
     this.resize();
   }
 
@@ -278,7 +287,7 @@ export abstract class WalkRoom<Id extends string> {
     this.ui.classList.add("hidden");
     this.machine.classList.add("hidden");
     this.machineKey = "";
-    document.body.classList.remove("in-room", `in-${this.opts.cls}`);
+    document.body.classList.remove("in-room", `in-${this.opts.cls}`, "in-zero-g-room");
   }
 
   resize(): void {
@@ -290,7 +299,8 @@ export abstract class WalkRoom<Id extends string> {
   goTo(id: Id, then?: () => void): void {
     this.seated = false;
     const s = this.opts.layout.stations.find((x) => x.id === id)!;
-    this.walkTo = { id, path: floorPath(this.opts.layout.floor, this.pos, s.stand, this.aisles()), ...(then ? { then } : {}) };
+    const path = floorPath(this.opts.layout.floor, this.pos, s.stand, this.aisles());
+    this.walkTo = { id, path, ...(then ? { then } : {}), ...(this.opts.zeroG ? { hops: roomHops(this.pos, path), hop: 0, t: 0 } : {}) };
   }
 
   /** Whether she is walking by herself to a machine. */
@@ -345,21 +355,25 @@ export abstract class WalkRoom<Id extends string> {
    * The step visual of a challenge done at station `id` (reglas.md §4.2): she stands at it, each right step plays
    * there, seen from beside and behind her (the walls in the way hidden), in the strip above the sheet.
    */
-  stepVisual(id: Id, acts: (index: number) => readonly StepAct[]): StepVisual | undefined {
+  stepVisual(id: Id, acts: (index: number) => readonly StepAct[], close?: { readonly towardM: number }): StepVisual | undefined {
     const s = this.station(id);
     if (!s) return undefined;
     if (!this.steps.root.parent) this.scene.add(this.steps.root);
     const k = this.k;
     this.pos = { ...s.stand };
-    const stand = new THREE.Vector3(s.stand.x * k, 0, s.stand.z * k);
     const target = new THREE.Vector3(s.look.x * k, s.look.y, s.look.z * k);
-    const d = new THREE.Vector3(target.x - stand.x, 0, target.z - stand.z);
+    const at = new THREE.Vector3(s.stand.x * k, 0, s.stand.z * k);
+    const d = new THREE.Vector3(target.x - at.x, 0, target.z - at.z);
     if (d.lengthSq() < 1e-6) d.set(0, 0, -1);
     d.normalize();
     const right = new THREE.Vector3(-d.z, 0, d.x);
+    // `close`: in 0 g she floats in the console's foot loops this far in front of its seat (not through it), a little
+    // to the left of its middle screen, and the camera comes in past her right shoulder onto the screens, so her
+    // hands and what they do show.
+    const stand = close ? at.clone().addScaledVector(d, close.towardM).addScaledVector(right, -0.3 * k) : at;
     // Far and high enough that her head stays in the strip above the sheet (the walls are cut away).
-    const look = stand.clone().addScaledVector(d, 0.3).setY(0.95);
-    const camera = look.clone().addScaledVector(d, -2.0).addScaledVector(right, 1.2).setY(1.85);
+    const look = close ? target.clone().addScaledVector(d, -0.25) : stand.clone().addScaledVector(d, 0.3).setY(0.95);
+    const camera = close ? look.clone().addScaledVector(d, -1.1).addScaledVector(right, 1.0).setY(target.y + 0.4) : look.clone().addScaledVector(d, -2.0).addScaledVector(right, 1.2).setY(1.85);
     this.steps.begin({ stand, yaw: Math.atan2(d.x, d.z), camera, look, target });
     this.sheetLens(true);
     // Signs would cover her in that strip (as in the station); they come back with the walk.
@@ -457,7 +471,33 @@ export abstract class WalkRoom<Id extends string> {
     }
     let moving = false;
     const speed = this.opts.speedMs;
-    if (this.walkTo && !busy) {
+    this.hopPhase = undefined;
+    const w = this.walkTo;
+    if (w?.hops && !busy) {
+      // 0 g: hop by hop to the machine (push off a handhold, glide, catch the next).
+      const s = this.opts.layout.stations.find((x) => x.id === w.id)!;
+      const h = w.hops[w.hop!];
+      if (!h) {
+        this.walkTo = null;
+        this.walkLook = 0;
+        this.pos = { ...s.stand };
+        this.face(s.look);
+        w.then?.();
+      } else {
+        w.t! += dt;
+        const at = roomHopAt(h, w.t!, w.hop === 0);
+        this.pos = at.at;
+        this.hopPhase = at.phase;
+        this.yaw = Math.atan2(-(h.to.x - h.from.x), -(h.to.z - h.from.z)) + this.walkLook;
+        // Her eyes on where she flies (not on the console she left).
+        this.pitch += (-0.08 - this.pitch) * Math.min(1, dt * 3);
+        moving = true;
+        if (at.done) {
+          w.hop! += 1;
+          w.t = 0;
+        }
+      }
+    } else if (this.walkTo && !busy) {
       const s = this.opts.layout.stations.find((x) => x.id === this.walkTo!.id)!;
       const aim = this.walkTo.path[0] ?? s.stand;
       const dx = aim.x - this.pos.x;
@@ -477,7 +517,7 @@ export abstract class WalkRoom<Id extends string> {
         this.stride += step * 5;
         moving = true;
       }
-    } else if (!busy && !this.seated) {
+    } else if (!busy && !this.seated && !this.opts.zeroG) {
       const m = this.walker.move();
       if (m.forward || m.right) {
         // Third person: «up» on the stick goes away from the camera (it looks forward or aft, see place()).
@@ -501,6 +541,9 @@ export abstract class WalkRoom<Id extends string> {
     this.eye += (eye - this.eye) * Math.min(1, dt * 6);
     if (this.seated) this.avatar.pose("lotus");
     else if (this.chair) this.avatar.poseAngles(POSE_SEAT);
+    else if (this.hopPhase === "glide") this.avatar.poseAngles({ ...POSES.glide!, rootY: 1.05, rootX: 1.35 });
+    else if (this.hopPhase === "push") this.avatar.poseAngles({ ...POSES.push!, rootY: 1.0, rootX: 0.7 });
+    else if (this.hopPhase === "catch" || this.hopPhase === "aim") this.avatar.poseAngles({ ...POSES.hold!, rootY: 1.0, rootX: 0.35 });
     else if (moving) this.avatar.poseAngles({ ...POSE_HOLD, hip: [Math.sin(this.stride) * 0.25 - 0.3, -Math.sin(this.stride) * 0.25 - 0.3] });
     else this.avatar.pose("stand");
     this.avatar.update(dt, 8);

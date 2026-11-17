@@ -339,6 +339,15 @@ export class JourneyDriver {
             failed: () => (this.elapsed > 0.6 && !zones?.routing && zones?.heldPoi()?.id !== poi ? "Saltos interrumpidos" : undefined),
           };
         }
+        // The flight deck: hops across it to a console (WalkRoom in 0 g).
+        if (toRoom === "puente") {
+          let arrived = false;
+          return {
+            begin: () => bridge.goTo(toSpot as never, () => (arrived = true)),
+            done: () => arrived,
+            failed: () => (!arrived && !bridge.walking ? "Saltos interrumpidos" : undefined),
+          };
+        }
         // The station or Starship's decks: the same 0 g engine.
         const zg = toRoom === "nave" && this.d.ship ? this.d.ship : station;
         return {

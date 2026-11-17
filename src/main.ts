@@ -744,7 +744,7 @@ const bridge = new BridgeRoom(
     openTasks: () => taskBoard.open(),
     // Starship's pilot and docking seats fly and dock (docs/design/puente.md); the ring ship's consoles open pages.
     ...(REAL_ONLY
-      ? flightDeckSeats({ nav, navMode, mothership, duel: duelView, landerAboard: () => docking.dockedTo === mothership, openSystems: () => deck.enter("puente", "prop", ["prop", "power", "life"]), say: (t) => bridge.say(t, 6) })
+      ? flightDeckSeats({ nav, navMode, mothership, duel: duelView, landerAboard: () => docking.dockedTo === mothership, openSystems: () => deck.enter("puente", "prop", ["prop", "power", "life"]), say: (t) => bridge.say(t, 6), dockVisual: (f) => bridge.dockStepVisual(f) })
       : {}),
   },
   mothership.name,
@@ -1900,7 +1900,7 @@ for (const sel of [".nano-action", ".trip-chip", ".land-offer.lander", ".land-bo
   if (el) ctxDock.appendChild(el);
 }
 
-(window as unknown as { codeship: unknown }).codeship = { tripStatus, mothershipModel, sanctuary, journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, starship, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, stationAquarium, landerBerth, lifeSupport, bishop: bishopAirlock, stationOutside, stationModel, stationOps, refuelOps, importOps, componentImports, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels, dryDock, robotics: arm.robotics, stationEva: arm.stationEva, starshipEva: arm.starshipEva, exteriorWork: arm.work,
+(window as unknown as { codeship: unknown }).codeship = { tripStatus, mothershipModel, dockCamera, sanctuary, journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, starship, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, stationAquarium, landerBerth, lifeSupport, bishop: bishopAirlock, stationOutside, stationModel, stationOps, refuelOps, importOps, componentImports, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels, dryDock, robotics: arm.robotics, stationEva: arm.stationEva, starshipEva: arm.starshipEva, exteriorWork: arm.work,
   /** The experience suite's setup: the mothership latched on the station's forward IDA (the trip is PX-36's). */
   berthMothershipNow: () => {
     const t = structure.portFor("nodriza")!;

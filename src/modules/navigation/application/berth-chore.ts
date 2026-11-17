@@ -1,5 +1,6 @@
 import type { ChoiceExercise, CodeBlock, Concept, OrderExercise } from "@modules/mind-duel/domain/exercise";
 import type { Chore } from "@modules/chores/domain/chore";
+import type { StepAct } from "@modules/chores/domain/step-visual";
 import { duration, num } from "./trip-chore";
 
 /** The real numbers of a last approach to a station's port (docs/design/puente.md §Acople). */
@@ -45,17 +46,18 @@ export function berthChore(f: BerthFacts): Chore {
     id: `${id}-secuencia`,
     concept: 1,
     idea: "Como la Crew Dragon: por puntos de espera",
+    // From Waypoint 1, where the docking seat takes over (it is already holding there). Six blocks fit a phone
+    // (390×664) without scrolling to the first one.
     blocks: lines([
-      [`esperar en el punto 1 (${num(f.waypoint1M)} m)`, `nave.esperar(${f.waypoint1M});`],
       ["alinear con el eje del puerto", "nave.alinearConEje(puerto);"],
-      [`acercarse a ${num(f.closingMs, 2)} m/s al punto 2 (${num(f.waypoint2M)} m)`, `nave.acercar(${f.closingMs}, ${f.waypoint2M});`],
+      [`a ${num(f.closingMs, 2)} m/s al punto 2 (${num(f.waypoint2M)} m)`, `nave.acercar(${f.closingMs}, ${f.waypoint2M});`],
       [`esperar el «adelante» (${duration(f.holdS)})`, `nave.esperarAdelante();`],
-      [`seguir a ${num(f.closingMs, 2)} m/s hasta tocar`, `nave.acercar(${f.closingMs}, 0);`],
+      [`a ${num(f.closingMs, 2)} m/s hasta tocar`, `nave.acercar(${f.closingMs}, 0);`],
       ["cerrar los ganchos", "puerto.cerrarGanchos();"],
       // Distractor: rushing in.
       ["ir directa a 1 m/s", "nave.acercar(1, 0);"],
     ]),
-    solution: ["a", "b", "c", "d", "e", "f"],
+    solution: ["a", "b", "c", "d", "e"],
   };
   const time = choice(
     `${id}-tiempo`,
@@ -92,4 +94,40 @@ export function berthChore(f: BerthFacts): Chore {
     scenario: `De ${num(f.waypoint1M)} m al puerto ${f.portName} a ${num(f.closingMs, 2)} m/s, con espera en ${num(f.waypoint2M)} m: como la Crew Dragon en la ISS`,
     exercises: [sequence, time, contact],
   };
+}
+
+/**
+ * What each solved step of the docking challenge does at the docking seat (reglas.md §4.2): her hands on the
+ * touchscreen for each command, her eyes on the docking camera for each check. Step 0's acts go one per block of
+ * the order (alinear, a P2, esperar, hasta tocar, ganchos); step 1 checks the time; step 2 the hooks' condition.
+ */
+export const BERTH_STEP_ACTS: readonly (readonly StepAct[])[] = [
+  [
+    { action: "programar", place: "objetivo" },
+    { action: "programar", place: "objetivo" },
+    { action: "revisar", place: "objetivo" },
+    { action: "programar", place: "objetivo" },
+    { action: "programar", place: "objetivo" },
+  ],
+  [{ action: "revisar", place: "objetivo" }],
+  [{ action: "revisar", place: "objetivo" }],
+];
+
+/** The approach the docking camera shows as each block is placed: the range to the port and what happens, per stage 0–5. */
+export function berthStage(f: Pick<BerthFacts, "waypoint1M" | "waypoint2M" | "closingMs">, stage: number): { fromM: number; toM: number; caption: string } {
+  const w1 = f.waypoint1M, w2 = f.waypoint2M;
+  switch (stage) {
+    case 0:
+      return { fromM: w1, toM: w1, caption: `Punto 1: ${num(w1)} m, esperando` };
+    case 1:
+      return { fromM: w1, toM: w1, caption: "Alineada con el eje del puerto" };
+    case 2:
+      return { fromM: w1, toM: w2, caption: `A ${num(f.closingMs, 2)} m/s hacia el punto 2` };
+    case 3:
+      return { fromM: w2, toM: w2, caption: `Punto 2: ${num(w2)} m, esperando el «adelante»` };
+    case 4:
+      return { fromM: w2, toM: 0, caption: `A ${num(f.closingMs, 2)} m/s hasta el contacto` };
+    default:
+      return { fromM: 0, toM: 0, caption: "+Captura suave: ganchos cerrados" };
+  }
 }

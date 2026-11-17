@@ -26,6 +26,9 @@ Detalle y fuentes: [ux-acciones.md](ux-acciones.md), [escala.md](escala.md), [na
 2. **El teletransporte es una opción del jugador**, en el modal de la tarea, nunca el comportamiento por defecto.
 3. **Durante un viaje automático** se ocultan los controles de movimiento, aparece «Parar» y la cámara siempre se puede mover.
 4. **Los viajes espaciales siguen la trayectoria real**, con su física y en el sitio real. «Ver trayecto» muestra ese viaje real, no un esquema. Pueden durar minutos reales, porque durante ese tiempo se hacen las tareas de a bordo.
+5. **Una tarea en otro vehículo nunca hace volar una nave sola.** Ella va andando hasta la sala de viajes (el puente) y un aviso le dice que primero tiene que viajar allí.
+6. **Todo vuelo tiene dos modos: manual y por reto (automático).** Esto vale para la nodriza, los viajes y los aterrizajes de la sonda y del módulo.
+7. **El brazo robótico y los paseos espaciales siguen los procedimientos reales.**
 
 ## 4. Acciones, retos y animaciones
 
@@ -33,6 +36,7 @@ Detalle y fuentes: [ux-acciones.md](ux-acciones.md), [escala.md](escala.md), [na
 2. **Cada paso de un reto tiene animación en su entorno real.** Ella está ante la máquina y se le ven las manos y el objeto, y nada atraviesa nada. Toda animación se revisa en vivo con capturas, no solo con tests.
 3. **Mientras hay un reto abierto solo se ven la hoja del reto y la escena.** Lo que el reto necesite mostrar, como el plan de un viaje, va dentro de la hoja o de la escena.
 4. **La «Vista panel» de los retos no se cambia.** Los cambios que pida el diseñador para el HUD van solo a la vista HUD, que debe estar disponible en todos los retos, incluidos los planos.
+5. **Cada equipo se ve como el real** (cinta, bicicleta, pesas, acuario con sus animales, refugio), y cada uno tiene su propia animación. Un asidero solo no representa una máquina.
 
 ## 5. Interfaz
 
@@ -57,6 +61,8 @@ Detalle y fuentes: [ux-acciones.md](ux-acciones.md), [escala.md](escala.md), [na
 - [ ] ¿Algún dato nuevo sin fuente o sin etiqueta (real, en desarrollo, licencia o ficción)?
 - [ ] ¿Alguna puerta que abre algo que no sea un paso? ¿Algún compartimento real que no se pueda recorrer?
 - [ ] ¿Alguna ventana de gestión que no se abra desde una máquina o consola de su compartimento?
+- [ ] ¿Alguna tarea que haga volar una nave sola? ¿Algún vuelo sin modo manual y modo por reto?
+- [ ] ¿Algún equipo que sea solo un asidero o que comparta animación con otro?
 - [ ] ¿Algún trayecto que se teletransporte sin que el jugador lo haya elegido?
 - [ ] ¿Algún paso de reto sin animación en su entorno, o sin revisar en vivo?
 - [ ] ¿Se ve algo más que la hoja y la escena mientras hay un reto abierto?

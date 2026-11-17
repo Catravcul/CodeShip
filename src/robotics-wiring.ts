@@ -52,6 +52,8 @@ export function wireRobotics(d: RoboticsWiringDeps) {
   const say = (text: string, seconds?: number) => (stationEva.active ? stationEva.say(text, seconds) : d.say(text, seconds));
   const stationEva: StationEva = new StationEva({ root: d.root, scene: d.scene, station: d.stationRoot, duel: d.duel, inside: d.inside, outside: d.outside, work, fitComponent, say });
   d.outside.cygnusOf = () => robotics.cygnusState();
+  // A Cygnus berthed on its CBM until its stay ends: the next one flies once it is released.
+  d.cargo.portBlocker = (id) => (id === "cygnus" ? robotics.cygnusOrderBlocker() : undefined);
   return {
     work,
     robotics,

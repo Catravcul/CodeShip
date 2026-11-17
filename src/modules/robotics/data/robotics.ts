@@ -14,6 +14,7 @@ export const ROBOTICS_SOURCES = {
   dextre: "Dextre (SPDM, Wikipedia): 1662 kg, dos brazos de 3,5 m con siete articulaciones cada uno; en cada mano un OTCM con mandíbulas, llave retráctil, cámara y luces; lo mueve Canadarm2 por el accesorio de agarre de su cabeza; primera tarea el 4 de febrero de 2011; ha cambiado RPCM y una cámara exterior: https://en.wikipedia.org/wiki/Dextre",
   capturePoint: "NASA, 7 de mayo de 2019: «The SpaceX Dragon cargo craft reaches its capture point 10 meters from the International Space Station»: https://www.nasa.gov/image-article/spacex-dragon-reaches-capture-point",
   cygnusXl: "NASA, 13 de abril de 2026: Canadarm2 captura el Cygnus XL en su punto de captura; desde tierra el brazo lo lleva al puerto de nadir de Unity: https://www.nasa.gov/blogs/spacestation/2026/04/13/canadarm2-reaches-out-and-captures-cygnus-xl-cargo-craft/",
+  ng19Out: "NASA, 22 de diciembre de 2023: desde tierra, los ingenieros manejan Canadarm2, sueltan el Cygnus del puerto de Unity (instalado desde el 4 de agosto) y lo liberan; la tripulación lo vigila; vuela solo hasta reentrar en enero: https://www.nasa.gov/blogs/spacestation/2023/12/22/two-spaceships-depart-crew-will-spend-holidays-in-space",
   ng19: "Spaceflight Now, NG-19 (4 de agosto de 2023): Canadarm2 agarra el accesorio de la base del Cygnus a las 09:52 UTC; lo atraca en el puerto de nadir de Unity y los pernos motorizados lo fijan dos horas y media después de la captura: https://spaceflightnow.com/2023/08/04/cygnus-cargo-ship-berthed-at-space-station/",
   cbm: "Mecanismo de atraque común (CBM, Wikipedia): el brazo acerca el vehículo, cuatro pestillos de captura lo arriman (primera etapa) y 16 pernos motorizados lo cierran (segunda etapa): https://en.wikipedia.org/wiki/Common_Berthing_Mechanism",
   bishop: "Bishop (Nanoracks, 2020): Canadarm2 la saca del puerto de babor de Tranquility, suelta la carga y la vuelve a atracar: https://en.wikipedia.org/wiki/Nanoracks_Bishop_Airlock",
@@ -63,6 +64,8 @@ export const CAPTURE = {
   /** What is left of the vehicle's drift once in free drift, m/s (game value). */
   freeDriftMs: { value: 0.01, source: url(S.capturePoint), note: "Valor de juego: en deriva libre el vehículo apenas se mueve" },
   /** First-stage capture latches and second-stage bolts of the CBM. */
+  /** NG-19's stay, berthed on Unity: 4 August to 22 December 2023, board days. */
+  stayDays: { value: 140, source: url(S.ng19Out), note: "Del 4 de agosto al 22 de diciembre de 2023" },
   latches: { value: 4, source: url(S.cbm) },
   bolts: { value: 16, source: url(S.cbm) },
 } as const satisfies Record<string, Sourced<number>>;

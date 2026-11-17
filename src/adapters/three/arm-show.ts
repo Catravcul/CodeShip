@@ -234,6 +234,12 @@ export class ArmShow {
       const cap = this.capturePoint();
       this.tip.copy(cap).add(new THREE.Vector3(this.cygnus.radiusM + 3.5, 3, 0));
       this.hint.set(1, -0.3, 0.5);
+    } else if (proc === "suelta-cygnus") {
+      // Berthed on its CBM; the arm waits beside it, based on Destiny's PDGF.
+      this.base = "lab";
+      this.setCygnus("atracado");
+      this.tip.copy(this.berthPoint()).add(new THREE.Vector3(this.cygnus.radiusM + 3, -1, 1));
+      this.hint.set(1, -0.3, 0.5);
     } else if (proc === "dextre-camara") {
       // The camera on S1 is the worn one; a spare waits on the shelf (whatever was swapped before).
       this.inHand = [null, null];
@@ -417,7 +423,8 @@ export class ArmShow {
       case "primera-etapa":
       case "segunda-etapa": {
         const first = move === "primera-etapa";
-        return T(first ? "Primera etapa: los 4 pestillos del CBM lo arriman" : "Segunda etapa: los 16 pernos motorizados", "CBM", () => this.held?.obj ?? this.marks, () => {
+        const out = this.proc === "suelta-cygnus" || this.proc === "desatraque-modulo";
+        return T(out ? (first ? "Se abren los 4 pestillos del CBM" : "Se sueltan los 16 pernos del CBM") : first ? "Primera etapa: los 4 pestillos del CBM lo arriman" : "Segunda etapa: los 16 pernos motorizados", "CBM", () => this.held?.obj ?? this.marks, () => {
           const h = this.held;
           const ring = this.cbmMarks(first ? CAPTURE.latches.value : CAPTURE.bolts.value, first ? 0xffb347 : 0x7fdcff);
           if (!h) return { ...stay(), onEnd: () => this.clearMarks() };
@@ -438,6 +445,32 @@ export class ArmShow {
           this.arm.snare(0);
           if (h?.obj === this.cygnus.root) this.cygnusAt = "atracado";
           return { path: this.path(this.tip.clone().add(new THREE.Vector3(2.5, -2, 1.5))) };
+        });
+      case "agarrar-cygnus":
+        return T("El LEE agarra el Cygnus atracado por su accesorio", "LEE", arm, () => ({
+          path: this.path(grapple(), grapple().add(new THREE.Vector3(2, 0.5, 0))),
+          onTick: (k) => this.arm.snare(k > 0.7 ? (k - 0.7) / 0.3 : 0),
+          onEnd: () => hold(this.cygnus.root),
+        }));
+      case "llevar-suelta":
+        return T("El brazo lleva el Cygnus al punto de suelta, 10 m por debajo", "Cygnus", cyg, () => {
+          const h = this.held;
+          if (!h) return stay();
+          return { path: this.path(this.capturePoint().sub(h.off)), dur: MOVE_S * 1.4 };
+        });
+      case "soltar-cygnus":
+        return T("Se abren los cables del LEE: el Cygnus se aleja solo, a reentrar semanas después", "Cygnus", cyg, () => {
+          this.held = null;
+          this.arm.snare(0);
+          const p0 = this.cygnus.root.position.clone();
+          return {
+            path: this.path(this.tip.clone().add(new THREE.Vector3(2.5, 2, 1.5))),
+            onTick: (k) => this.cygnus.root.position.copy(p0).add(new THREE.Vector3(0, -4 * k, 1.5 * k)),
+            onEnd: () => {
+              this.cygnus.root.visible = false;
+              this.cygnusAt = "fuera";
+            },
+          };
         });
       case "apartar":
         return T("El brazo se aparta", "LEE", arm, () => ({ path: this.path(this.tip.clone().add(new THREE.Vector3(2, -2, 2))) }));

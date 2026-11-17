@@ -63,4 +63,11 @@ describe("A Cygnus waits for the arm", () => {
     expect(cargo.drainEvents().map((e) => e.kind)).toEqual(["llegada"]);
     expect(cargo.unload()).toBe(false);
   });
+
+  it("EST-56 the game can hold a vehicle on the ground while its port is taken", () => {
+    const c = new CargoResupply(station(), ECLSS_MACHINES);
+    c.portBlocker = (id) => (id === "cygnus" ? "El Cygnus sigue atracado" : undefined);
+    expect(c.order("cygnus")).toBe("El Cygnus sigue atracado");
+    expect(typeof c.order("dragon")).toBe("object");
+  });
 });

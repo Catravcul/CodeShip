@@ -245,7 +245,10 @@ export class LifeSupportGame {
   cargoActions(): StationAction[] {
     // One at a time: while one flies, the readout says when it arrives.
     if (this.cargo.inFlight) return [];
-    return CARGO_VEHICLES.map((v) => ({ id: `carguero:${v.id}`, label: `Pedir ${v.name.replace(" de carga", "")} (${num(v.pressurizedKg.value, 0)} kg, ${num(v.transitH.value, 0)} h)`, enabled: true }));
+    return CARGO_VEHICLES.map((v) => {
+      const why = this.cargo.portBlocker?.(v.id);
+      return { id: `carguero:${v.id}`, label: `Pedir ${v.name.replace(" de carga", "")} (${num(v.pressurizedKg.value, 0)} kg, ${num(v.transitH.value, 0)} h)`, enabled: !why, ...(why ? { why } : {}) };
+    });
   }
 
   /** Order a cargo vehicle (true if `id` was a cargo action). */

@@ -94,8 +94,11 @@ export class CargoResupply {
     return cargoManifest(vehicleId, this.ls.config.crew, this.machines);
   }
 
+  /** Set by the game: why a vehicle cannot fly now because its port is taken (a Cygnus still berthed). */
+  portBlocker?: (vehicleId: CargoVehicleId) => string | undefined;
+
   order(vehicleId: CargoVehicleId): CargoManifest | string {
-    const why = this.blocker();
+    const why = this.blocker() ?? this.portBlocker?.(vehicleId);
     if (why) return why;
     const m = this.manifest(vehicleId);
     const goods: Record<string, number> = { [FOOD]: m.foodKg, [WATER]: m.waterKg, [O2]: m.o2Kg, [N2]: m.n2Kg };

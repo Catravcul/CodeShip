@@ -86,6 +86,17 @@ export class RoboticsGame {
     });
   }
 
+  /** The Cygnus berthed on its CBM now, if any. */
+  get berthedCygnus(): VisitingVehicle | null {
+    return this.visitor?.phase === "atracado" ? this.visitor : null;
+  }
+
+  /** Why no other Cygnus can be ordered now (its CBM is taken until this one is released). */
+  cygnusOrderBlocker(): string | undefined {
+    const b = this.berthedCygnus;
+    return b ? `El ${b.name} sigue atracado en el CBM: el próximo despega cuando se suelte (estancia real de ${CAPTURE.stayDays.value} días)` : undefined;
+  }
+
   /** The Cygnus as drawn outside. */
   cygnusState(): "fuera" | "punto" | "atracado" {
     const v = this.visitor;
@@ -99,6 +110,11 @@ export class RoboticsGame {
     const out: StationAction[] = [];
     if (this.d.cargo.awaitingCapture)
       out.push({ id: "brazo:captura", label: "Capturar el Cygnus (por reto)", enabled: true }, { id: "brazo:mano", label: "Capturar el Cygnus a mano (RHC/THC)", enabled: true });
+    const berthed = this.berthedCygnus;
+    if (berthed) {
+      const why = berthed.releaseBlocker(STAY_H);
+      out.push({ id: "brazo:suelta-cygnus", label: `Desatracar y soltar el ${berthed.name}`, enabled: !why, ...(why ? { why } : {}) });
+    }
     const dextre = this.d.work.job("brazo:dextre-camara");
     if (dextre) out.push({ id: "brazo:dextre-camara", label: "Dextre: cambiar la cámara de S1", enabled: true });
     return out;
@@ -120,6 +136,8 @@ export class RoboticsGame {
     const out: { id: string; title: string; detail: string; category: "estacion"; area: string }[] = [];
     const c = this.d.cargo.awaitingCapture;
     if (c) out.push({ id: "brazo:captura", title: `Capturar el ${c.vehicle.name} con Canadarm2`, detail: "Cupola · puesto robótico · espera a 10 m", category: "estacion", area: "cupula" });
+    const b = this.berthedCygnus;
+    if (b && !b.releaseBlocker(STAY_H)) out.push({ id: "brazo:suelta-cygnus", title: `Desatracar y soltar el ${b.name}`, detail: "Cupola · puesto robótico · terminó su estancia", category: "estacion", area: "cupula" });
     if (this.d.work.job("brazo:dextre-camara")) out.push({ id: "brazo:dextre-camara", title: "Dextre: cambiar la cámara de S1", detail: "Cupola · puesto robótico · la radiación quemó píxeles", category: "estacion", area: "cupula" });
     return out;
   }
@@ -136,6 +154,7 @@ export class RoboticsGame {
     if (p === "desatraque-modulo" && !this.d.berth.onCbm) return "El módulo ya está en su IDA";
     if (p === "bishop" && !this.d.bishop.at("bishop").length) return "La Bishop está vacía: entra en ella y sujeta la sonda o un cubesat a su placa";
     if (p === "dextre-camara" && !this.d.work.job("brazo:dextre-camara")) return "La cámara de S1 funciona bien";
+    if (p === "suelta-cygnus") return this.berthedCygnus ? this.berthedCygnus.releaseBlocker(STAY_H) : "No hay ningún Cygnus atracado";
     return undefined;
   }
 
@@ -228,6 +247,13 @@ export class RoboticsGame {
       case "bishop": {
         const r = this.d.bishop.deploy();
         return s("why" in r ? r.why : `Bishop: ${DEPLOY_STEPS.length} pasos hechos. ${r.released.map((i) => i.name).join(" y ")} ya vuela${r.released.length > 1 ? "n" : ""} sola${r.released.length > 1 ? "s" : ""}`, 8);
+      }
+      case "suelta-cygnus": {
+        const v = this.berthedCygnus;
+        const why = v?.release(STAY_H);
+        if (!v || why) return s(why ?? "No hay ningún Cygnus atracado");
+        this.visitor = null;
+        return s(`${v.name} suelto: se aleja solo y reentrará sobre el Pacífico. El CBM queda libre para el próximo`, 8);
       }
       case "dextre-camara":
         this.d.work.complete("brazo:dextre-camara");
@@ -351,8 +377,16 @@ export class RoboticsGame {
   /** Board hours pass (main.ts). */
   tick(hours: number): void {
     this.d.work.tick(hours);
+    const b = this.berthedCygnus;
+    if (b) {
+      const before = b.releaseBlocker(STAY_H);
+      b.tick(hours);
+      if (before && !b.releaseBlocker(STAY_H)) this.d.say(`${b.name}: terminó su estancia (${CAPTURE.stayDays.value} días, como el NG-19). Desatrácalo y suéltalo desde la Cupola`, 7);
+    }
     for (const e of this.d.work.drainEvents()) if (e.kind === "averia-camara") this.d.say(`Cámara de S1 con píxeles quemados por la radiación: Dextre puede cambiarla desde la Cupola`, 7);
   }
 }
 
+/** A Cygnus's stay berthed, board hours (NG-19). */
+const STAY_H = CAPTURE.stayDays.value * 24;
 const fmt = (x: number) => (Math.round(x * 100) / 100).toLocaleString("es-ES");

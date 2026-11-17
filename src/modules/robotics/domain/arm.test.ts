@@ -63,6 +63,24 @@ describe("Capturing and berthing a cargo vehicle", () => {
     expect(v.cbm).toBe("unity-nadir");
   });
 
+  it("EST-56 stays berthed its real 140 days (NG-19), then is unberthed and released: the CBM is free", () => {
+    const v = new VisitingVehicle("cygnus", "Cygnus", 7000);
+    v.arrive();
+    v.freeDrift();
+    v.capture();
+    v.firstStage("unity-nadir", true);
+    v.secondStage();
+    const stayH = CAPTURE.stayDays.value * 24;
+    expect(CAPTURE.stayDays.value).toBe(140);
+    v.tick(stayH - 24);
+    expect(v.release(stayH)).toMatch(/quedan 1 días/);
+    v.tick(24);
+    expect(v.release(stayH)).toBeUndefined();
+    expect(v.phase).toBe("suelto");
+    expect(v.cbm).toBeUndefined();
+    expect(v.release(stayH)).toMatch(/No está atracado/);
+  });
+
   it("holds at the 10 m capture point and closes with 4 latches and 16 bolts", () => {
     expect(CAPTURE.pointM.value).toBe(10);
     expect(CAPTURE.latches.value).toBe(4);

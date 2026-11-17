@@ -49,6 +49,11 @@ function question(p: ArmProcedure, ctx: ArmContext): ChoiceExercise {
       const right = hhmm(at + CAPTURE.captureToBoltsH.value);
       return choice(id, { concept: 4, skill: "predecir", idea: "Del agarre a los pernos pasan horas: el brazo va despacio con 7 t colgando", question: "¿A qué hora (UTC) queda atracado?", code: [block("a", "captura = 09:52", "const captura = 9 + 52 / 60;"), block("b", `atracado = captura + ${num(CAPTURE.captureToBoltsH.value)} h`, `const atracado = captura + ${CAPTURE.captureToBoltsH.value};`)] }, right, [hhmm(at + 0.5), hhmm(at + 1.5), hhmm(at + 4)]);
     }
+    case "suelta-cygnus": {
+      // NG-19: berthed on 4 August, released on 22 December 2023.
+      const right = `${CAPTURE.stayDays.value} días`;
+      return choice(id, { concept: 4, skill: "predecir", idea: "Un Cygnus se queda meses: la tripulación lo vacía y lo llena de basura", question: "¿Cuántos días estuvo atracado el NG-19?", code: [block("a", "atracado = 4 de agosto (día 216)", "const atracado = 216;"), block("b", "suelto = 22 de diciembre (día 356)", "const suelto = 356;"), block("c", "días = suelto - atracado", "const dias = suelto - atracado;")] }, right, ["120 días", "150 días", "572 días"]);
+    }
     case "atraque-modulo": {
       const t = (ctx.landerKg ?? 15000) / 1000;
       const max = SSRMS.maxPayloadKg.value / 1000;

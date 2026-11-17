@@ -33,6 +33,9 @@ export type ArmMove =
   | "sacar-bishop"
   | "soltar-carga"
   | "atracar-bishop"
+  | "agarrar-cygnus"
+  | "llevar-suelta"
+  | "soltar-cygnus"
   | "comprobar";
 
 export interface ArmStep {
@@ -41,7 +44,7 @@ export interface ArmStep {
   readonly move: ArmMove;
 }
 
-export type ArmProcedureId = "captura" | "atraque-modulo" | "desatraque-modulo" | "bishop" | "dextre-camara";
+export type ArmProcedureId = "captura" | "suelta-cygnus" | "atraque-modulo" | "desatraque-modulo" | "bishop" | "dextre-camara";
 
 export interface ArmProcedure {
   readonly id: ArmProcedureId;
@@ -64,18 +67,34 @@ export const ARM_PROCEDURES: Readonly<Record<ArmProcedureId, ArmProcedure>> = {
     title: "Capturar el Cygnus y atracarlo",
     idea: "El carguero espera a 10 m; con sus propulsores apagados el brazo lo agarra y lo lleva al CBM",
     steps: [
-      { id: "a", pseudo: "esperar a que el Cygnus se pare en el punto de captura (10 m)", move: "punto-captura" },
-      { id: "b", pseudo: "ordenar la deriva libre: el Cygnus apaga sus propulsores", move: "deriva-libre" },
-      { id: "c", pseudo: "acercar el LEE al accesorio de agarre del Cygnus", move: "acercar" },
-      { id: "d", pseudo: "disparar: los tres cables del LEE atrapan el vástago", move: "capturar" },
-      { id: "e", pseudo: "llevar el Cygnus hasta el CBM de nadir", move: "llevar-cbm" },
-      { id: "f", pseudo: "primera etapa: los 4 pestillos del CBM lo arriman", move: "primera-etapa" },
-      { id: "g", pseudo: "segunda etapa: los 16 pernos se aprietan", move: "segunda-etapa" },
+      { id: "a", pseudo: "esperar al Cygnus a 10 m (punto de captura)", move: "punto-captura" },
+      { id: "b", pseudo: "deriva libre: el Cygnus apaga propulsores", move: "deriva-libre" },
+      { id: "c", pseudo: "acercar el LEE al accesorio de agarre", move: "acercar" },
+      { id: "d", pseudo: "disparar: los cables atrapan el vástago", move: "capturar" },
+      { id: "e", pseudo: "llevar el Cygnus al CBM de nadir", move: "llevar-cbm" },
+      { id: "f", pseudo: "1.ª etapa: 4 pestillos lo arriman", move: "primera-etapa" },
+      { id: "g", pseudo: "2.ª etapa: se aprietan 16 pernos", move: "segunda-etapa" },
       { id: "h", pseudo: "soltar el Cygnus y apartar el brazo", move: "soltar" },
     ],
-    trap: { pseudo: "capturar con los propulsores del Cygnus encendidos" },
+    trap: { pseudo: "capturar con propulsores encendidos" },
     reality: "real",
     source: url(S.ng19),
+  },
+  "suelta-cygnus": {
+    id: "suelta-cygnus",
+    title: "Desatracar y soltar el Cygnus",
+    idea: "Tras su estancia, lleno de basura: el brazo lo desatraca y lo suelta, y se va solo a reentrar",
+    steps: [
+      { id: "a", pseudo: "cerrar escotillas y vaciar el vestíbulo", move: "comprobar" },
+      { id: "b", pseudo: "agarrar el Cygnus por su accesorio", move: "agarrar-cygnus" },
+      { id: "c", pseudo: "soltar los 16 pernos del CBM", move: "segunda-etapa" },
+      { id: "d", pseudo: "abrir los 4 pestillos", move: "primera-etapa" },
+      { id: "e", pseudo: "llevarlo al punto de suelta", move: "llevar-suelta" },
+      { id: "f", pseudo: "abrir el LEE: se aleja solo", move: "soltar-cygnus" },
+    ],
+    trap: { pseudo: "abrir los pestillos con los pernos puestos" },
+    reality: "real",
+    source: url(S.ng19Out),
   },
   "atraque-modulo": {
     id: "atraque-modulo",

@@ -230,6 +230,16 @@ export class Journey {
     return this.tap(`.room-ui:not(.hidden) .cab-machine [data-act="${act}"]`, what);
   }
 
+  /**
+   * Opens a root icon menu (reglas.md §5.8) if it is folded, with a tap on its root, and waits until `item`
+   * has sprouted to full size (the shoots grow from 20 % in 0,18 s).
+   */
+  async openMenu(bar, item, what = "Mandos de vuelo") {
+    const p = this.page;
+    if (!(await p.evaluate((b) => document.querySelector(b)?.classList.contains("open"), bar))) await this.tap(`${bar} .rm-root`, what);
+    await p.waitForFunction((i) => (document.querySelector(i)?.getBoundingClientRect().width ?? 0) >= 44, item, { timeout: 5000 }).catch(() => {});
+  }
+
   /** Waits until the challenge screen is up, then checks that it is the only interface on screen. */
   async waitDuel(timeout = 30000) {
     await this.page.waitForFunction(() => [...document.querySelectorAll(".duel")].some((e) => !e.classList.contains("hidden")), null, { timeout });

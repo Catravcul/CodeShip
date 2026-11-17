@@ -123,9 +123,11 @@ Berón: «Veo el mensaje de que está acoplado y no puede volar; está el botón
 para qué es. Si no sirve, pon un botón de icono de acoplar o desacoplar como interruptor, que se muestre al estar
 en la posición y el sitio correctos y que muestre el icono contrario al estado actual».
 
-- El botón que no se entendía era la **raíz** de iconos: acoplado, solo plegaba «Centrar la vista». Se quita ese
-  icono (centrar es un doble toque en «Mirar», o V) y la raíz ya no sale cuando no queda nada dentro.
-- Bajo el ojo va el **interruptor de acople**, siempre con el icono de lo contrario del estado:
+- El botón que no se entendía era la **raíz** de iconos: acoplado, solo plegaba «Centrar la vista». Se quita
+  «Centrar la vista» (centrar es un doble toque en «Mirar», o V).
+- En su lugar, de la raíz brota el **interruptor de acople**, siempre con el icono de lo contrario del estado. Va
+  dentro del menú árbol y no suelto bajo el ojo, porque la regla 5.8 de [reglas.md](reglas.md) (llegada el mismo
+  día) pide que los botones que aplican en ese momento broten de la raíz. Sus estados:
   - acoplado: «Desacoplar», dos anillos separándose; los muelles la separan a 0,08 m/s;
   - libre dentro de la esfera de 200 m de un puerto: «Acoplar», dos anillos juntos. El asistente lo lleva al
     contacto («Acoplando: tocar para parar»). Los 200 m son la esfera de exclusión de la ISS, donde solo entra un
@@ -148,6 +150,9 @@ cámara (`probe-mode.ts`). Nunca ha usado la cápsula. Su consola lo dice:
 - la línea de la cámara: «sin cabina: mando a distancia desde la consola de la nodriza».
 
 ## Qué queda abierto
+
+- ¿El interruptor de acople debe ir suelto bajo el ojo, como pidió Berón, o dentro del menú árbol (regla 5.8)?
+  Las dos cosas chocan; hoy brota de la raíz. El ojo y «Dejar el puesto» siguen sueltos, como estaban.
 
 - La pared delantera es plana. En el LM las ventanas estaban inclinadas hacia abajo y hacia fuera, y eso daba
   más vista del suelo.

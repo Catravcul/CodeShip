@@ -53,7 +53,8 @@ export async function cabinaLm(j) {
   for (let n = 0; n < 6 && (await p.evaluate(() => window.codeship.view.cameraMode)) !== "cabina"; n++) await j.tap(".cam-btn", "Cámara");
 
   // 3. Undock, and down on Bennu by program: the DSKY shows P64, the camera tag stays in the column (B-03).
-  // Undocking is the switch under the eye (PX-41); the commander's station offers Manual and Automático.
+  // Undocking is the dock switch in the flight controls' tree (PX-41); the commander's station offers Manual and Automático.
+  await j.openMenu(".flight-bar", ".dock-btn");
   await j.tap(".dock-btn", "Desacoplar (interruptor de acople)");
   await p.waitForTimeout(600);
   await j.tap(".stand-btn", "Dejar el puesto: habitáculo");

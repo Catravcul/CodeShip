@@ -439,10 +439,11 @@ const view = new FlightView(scene, camera, root, () => ship.design, { position: 
 // the suit and the asteroid's mind moved to machines in the lander's cabin (docs/design/habitaculo.md);
 // the sky names to the general settings.
 const landBtn = view.addButton("land-btn", () => (flight.landingAssist = !flight.landingAssist), { icon: ICON.land, label: "Nivelar sola: no", key: "G" });
-// Dock / undock as one switch (Berón, 2026-11-17), pinned under the eye and only where it makes sense: docked
-// (it undocks) or free inside a port's keep-out sphere (it docks: the assist flies the last metres to contact).
-// It shows the opposite of the state now. K does the same on a keyboard.
-const dockBtn = view.addButton("dock-btn", () => (docking.docked ? docking.undock() : docking.toggleAssist()), { icon: ICON.dock, label: "Acoplar", key: "K", pinned: true });
+// Dock / undock as one switch (Berón, 2026-11-17), only where it makes sense: docked (it undocks) or free inside
+// a port's keep-out sphere (it docks: the assist flies the last metres to contact). It shows the opposite of the
+// state now. It sprouts from the root with the other buttons that apply now (reglas.md §5.8, menú árbol).
+// K does the same on a keyboard.
+const dockBtn = view.addButton("dock-btn", () => (docking.docked ? docking.undock() : docking.toggleAssist()), { icon: ICON.dock, label: "Acoplar", key: "K" });
 // Stand up from the pilot seat into the cabin.
 const standBtn = view.addButton("stand-btn", () => standUp(), { icon: ICON.standUp, label: "Dejar el puesto: habitáculo", key: "H", pinned: true });
 settings.onChange((s) => {
@@ -1471,7 +1472,7 @@ function dockingText(): string {
   // During a mothership trip the autopilot strip says where it is going.
   if (nav.status === "carrier") return "";
   const on = docking.dockedTo;
-  if (on) return `${on === mothership && mothership.dockedTo ? "Nodriza atracada en la estación" : `Módulo acoplado a ${on === mothership ? "la nodriza" : "la estación"}`} · el interruptor de acople (bajo el ojo) desacopla${settings.key(" (K)")}; la escotilla está detrás del puesto`;
+  if (on) return `${on === mothership && mothership.dockedTo ? "Nodriza atracada en la estación" : `Módulo acoplado a ${on === mothership ? "la nodriza" : "la estación"}`} · el interruptor de acople (en los mandos de vuelo) desacopla${settings.key(" (K)")}; la escotilla está detrás del puesto`;
   // While the trip autopilot flies away from the port, the docking read-out is noise.
   // The autopilot strip already shows the automatic docking's progress.
   if (nav.status === "autopilot" || nav.status === "docking") return "";

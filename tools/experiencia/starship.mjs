@@ -113,11 +113,20 @@ export async function starship(j) {
   j.check("arriba está el puente con sus consolas", await p.evaluate(() => window.codeship.bridge.active && !window.codeship.starship.active));
 
   // 6. The propulsion page: vacuum Raptors and methane and oxygen; the power page has no reactor.
-  await j.useMachine("bridge", "prop", "abrir", "Usar la consola: Pilotaje y propulsión");
-  await p.waitForTimeout(1200);
+  // The pilot seat flies (docs/design/puente.md): «Manual» and «Automático (retos)»; its systems pages, in tabs.
+  await j.useMachine("bridge", "prop", null);
+  await p.waitForTimeout(600);
+  const modes = await j.texts(".room-ui:not(.hidden) .cab-machine [data-act]");
+  j.check("el puesto de pilotaje ofrece «Manual» y «Automático (retos)»", modes.includes("Manual") && modes.some((t) => /Automático \(retos\)/.test(t)), modes.join(" | "));
+  await j.tap('.room-ui:not(.hidden) .cab-machine [data-act="sistemas"]', "Pantallas de sistemas");
+  await p.waitForTimeout(1000);
   const prop = (await j.texts(".fd .fd-panel.max")).join(" ");
   j.check("la página de propulsión habla de los Raptor de vacío y de metano y oxígeno", /Raptor de vacío/.test(prop) && /Metano y oxígeno/.test(prop), prop.slice(0, 160));
   await capture(j, "propulsion", "Página de propulsión de la Starship");
+  await j.tap('.fd-panel.max .fd-tabs [data-tab="power"]', "Pestaña Energía y calor");
+  await p.waitForTimeout(500);
+  const power = (await j.texts(".fd .fd-panel.max")).join(" ");
+  j.check("la pestaña de energía es la de la Starship (sin reactor)", !/reactor/i.test(power), power.slice(0, 120));
   await j.tap(".fd-panel.max .fd-back", "Volver al puente");
   await p.waitForTimeout(600);
 

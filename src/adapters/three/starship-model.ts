@@ -15,6 +15,10 @@ export class StarshipModel {
   readonly root = new THREE.Group();
   readonly parts = new Map<PartId, THREE.Group>();
   private readonly lights: THREE.Mesh[] = [];
+  /** The vacuum Raptors' plumes and the RCS puffs, shown while they fire (setThrust). */
+  private readonly plumes = new THREE.Group();
+  private readonly puffs = new THREE.Group();
+  private rcsOn = false;
 
   constructor(
     readonly spec: MothershipSpec,
@@ -116,6 +120,29 @@ export class StarshipModel {
     };
     port(new THREE.Vector3(l.port.position.x, l.port.position.y + 0.1, l.port.position.z), new THREE.Vector3(l.port.normal.x, l.port.normal.y, l.port.normal.z));
     port(new THREE.Vector3(0, 0, tipZ - 0.1), new THREE.Vector3(0, 0, -1));
+    // Plumes: faint blue cones behind the vacuum bells; RCS puffs (cold-gas jets: at the nose and the skirt).
+    const plumeMat = new THREE.MeshBasicMaterial({ color: 0x8fb8ff, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending });
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI * 2 + Math.PI / 3;
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(1.1, 14, 16, 1, true), plumeMat);
+      cone.rotation.x = -Math.PI / 2;
+      cone.position.set(Math.sin(a) * 3.0, Math.cos(a) * 3.0, aft + 1.0 + 8.5);
+      this.plumes.add(cone);
+    }
+    this.plumes.visible = false;
+    this.root.add(this.plumes);
+    const puffMat = new THREE.MeshBasicMaterial({ color: 0xf2f6ff, transparent: true, opacity: 0.55, depthWrite: false });
+    for (const z of [tipZ + 6, aft - 1.5])
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * Math.PI * 2;
+        const dir = new THREE.Vector3(Math.sin(a), Math.cos(a), 0);
+        const puff = new THREE.Mesh(new THREE.ConeGeometry(0.35, 2.2, 8, 1, true), puffMat);
+        puff.position.copy(dir.clone().multiplyScalar(R + 1.1)).setZ(z);
+        puff.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), dir.clone().negate());
+        this.puffs.add(puff);
+      }
+    this.puffs.visible = false;
+    this.root.add(this.puffs);
     // Systems for the ship bay: beacons along the payload section.
     systems.forEach((s, i) => {
       const g = new THREE.Group();
@@ -129,8 +156,16 @@ export class StarshipModel {
   /** Starship has no electric thruster mounts: nothing to redraw. */
   setThrusters(_fits: readonly MountFit[]): void {}
 
-  /** Blink the docking lights (no rings to turn). */
+  /** Main engines (a burn far from a station) and RCS (turns, flips, proximity) firing now. */
+  setThrust(main: boolean, rcs: boolean): void {
+    this.plumes.visible = main;
+    this.rcsOn = rcs;
+    if (!rcs) this.puffs.visible = false;
+  }
+
+  /** Blink the docking lights (no rings to turn); the RCS fires in short pulses. */
   update(_dt: number, _omegaRadS: number, timeS: number): void {
+    if (this.rcsOn) this.puffs.visible = Math.floor(timeS * 4) % 3 === 0;
     const on = Math.floor(timeS * 1.5) % 2 === 0;
     for (const l of this.lights) (l.material as THREE.MeshStandardMaterial).emissiveIntensity = on ? 2.4 : 0.6;
   }

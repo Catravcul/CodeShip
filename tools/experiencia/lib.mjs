@@ -131,13 +131,6 @@ export class Journey {
       .catch(() => {});
   }
 
-  /** Opens the tree menu of the mode on screen (a visible tap on its gear), if it is folded. */
-  async openMenu() {
-    const gear = this.page.locator(".root-menu:not(.open) > .rm-root:visible").first();
-    if (!(await gear.count())) return true;
-    return this.tap(".root-menu:not(.open) > .rm-root:visible", "⚙︎ Menú");
-  }
-
   /**
    * With the task list open, change its settings with visible taps (docs/design/viaje-a-una-tarea.md
    * §Ajustes de tareas): the gear next to ✕, then each `[data-…="…"]` choice (e.g. `vehicle: "todos"`,
@@ -282,6 +275,34 @@ export class Journey {
     await this.page.waitForTimeout(500);
     if (!act) return true;
     return this.tap(`.room-ui:not(.hidden) .cab-machine [data-act="${act}"]`, what);
+  }
+
+  /**
+   * Opens a root icon menu (reglas.md §5.8) if it is folded, with a tap on its root, and waits until `item`
+   * has sprouted (the shoots fade in in 0,18 s, each a full 44 px box).
+   */
+  async openMenu(bar, item, what = "Mandos de vuelo") {
+    const p = this.page;
+    if (!(await p.evaluate((b) => document.querySelector(b)?.classList.contains("open"), bar))) await this.tap(`${bar} .rm-root`, what);
+    await p.waitForFunction((i) => (document.querySelector(i)?.getBoundingClientRect().width ?? 0) >= 44, item, { timeout: 5000 }).catch(() => {});
+  }
+
+  /**
+   * A tap on an icon that sprouts from a root menu: opens the menu and taps it. The shoots fold back 5 s after
+   * the root was touched, which a slow, shared machine can pass between the two taps: then it opens it again.
+   */
+  async tapInMenu(bar, item, what) {
+    for (let n = 0; n < 2; n++) {
+      await this.openMenu(bar, item);
+      try {
+        await this.page.locator(item).first().tap({ timeout: 4000 });
+        return true;
+      } catch {
+        // Folded back before the tap landed: open it again.
+      }
+    }
+    await this.openMenu(bar, item);
+    return this.tap(item, what);
   }
 
   /** Waits until the challenge screen is up, then checks that it is the only interface on screen. */

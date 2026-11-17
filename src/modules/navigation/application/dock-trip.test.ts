@@ -230,8 +230,8 @@ describe("Trips that end docked", () => {
   }, 30_000);
 });
 
-describe("NAV-16 The mothership flown by hand (reglas.md §3.6): she commands the speed, it parks and berths", () => {
-  it("at rest until she burns; at 0,4 m/s it closes in at the board's pace; stopped in the window it berths by itself", () => {
+describe("NAV-16 The mothership flown by hand (reglas.md §3.6): she commands the speed, it parks at Waypoint 1 and the docking station docks it", () => {
+  it("at rest until she burns; at 0,4 m/s it closes in at the board's pace; stopped in the window it holds at Waypoint 1 and docks by program", () => {
     const { nav, mothership, station } = make({ undocked: new Vec3(-200, -300, 1300) });
     expect(nav.flyByHand(station.id).ok).toBe(true);
     const m = nav.manualCarrier!;
@@ -253,9 +253,45 @@ describe("NAV-16 The mothership flown by hand (reglas.md §3.6): she commands th
     expect(m.hold()).toBe(true);
     nav.update(0.1);
     expect(nav.manualCarrier).toBeUndefined();
+    // The computer only takes it onto the axis at Waypoint 1 and holds: docking is the docking station's.
+    for (let i = 0; i < 4000 && nav.status === "carrier"; i++) nav.update(0.5);
+    expect(nav.status).toBe("manual");
+    expect(mothership.dockedTo).toBeUndefined();
+    expect(nav.holdingAt()?.id).toBe(station.id);
+    // Docked by program from there: Demo-1's approach.
+    expect(nav.berthAuto().ok).toBe(true);
+    expect(nav.status).toBe("carrier");
     for (let i = 0; i < 4000 && nav.status === "carrier"; i++) nav.update(0.5);
     expect(nav.status).toBe("docked");
     expect(mothership.dockedTo).toBe(station.carrierPort!.id);
+    expect(nav.holdingAt()).toBeUndefined();
+    expect(nav.berthedAt()?.id).toBe(station.id);
+  }, 60_000);
+
+  it("NAV-25 undocked from the docking station it backs out to Waypoint 1; NAV-24 then docked by hand with the docking camera's rates", () => {
+    const { nav, mothership, station } = make({ undocked: new Vec3(-200, -300, 1300) });
+    nav.select(station.id);
+    nav.engage();
+    for (let i = 0; i < 20000 && nav.status === "carrier"; i++) nav.update(0.5);
+    expect(mothership.dockedTo).toBe(station.carrierPort!.id);
+    expect(nav.undockCarrier().ok).toBe(true);
+    expect(mothership.dockedTo).toBeUndefined();
+    expect(nav.progress()).toMatchObject({ vehicle: "carrier", phase: "undock", lapse: 60 });
+    for (let i = 0; i < 4000 && nav.status === "carrier"; i++) nav.update(0.5);
+    expect(nav.status).toBe("manual");
+    expect(nav.holdingAt()?.id).toBe(station.id);
+    // By hand: 0,30 m/s, then 0,10 near the port, at the hand approach's ×10.
+    expect(nav.berthByHand().ok).toBe(true);
+    const run = nav.manualBerth!;
+    expect(nav.lapse).toBe(10);
+    run.nudge("closing", 6);
+    for (let i = 0; i < 4000 && nav.status === "carrier"; i++) {
+      if (run.alignment().axialM < 8 && run.rates.closing > 0.1) run.nudge("closing", -4);
+      nav.update(0.5);
+    }
+    expect(nav.status).toBe("docked");
+    expect(mothership.dockedTo).toBe(station.carrierPort!.id);
+    expect(nav.lastBerthFailure).toEqual([]);
   }, 60_000);
 
   it("past the end and still moving, it does not park: she has to turn back", () => {

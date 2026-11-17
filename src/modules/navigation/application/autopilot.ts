@@ -5,7 +5,7 @@ import type { Ship, ThrustCommand } from "@modules/ship/domain/ship";
 import { TRANSFER_TUNING, turnTimeS } from "../domain/transfer";
 
 /** What the autopilot is doing, for the HUD. */
-export type AutopilotPhase = "orient" | "burn" | "coast" | "flip" | "brake" | "aim" | "dock" | "arrived" | "hold";
+export type AutopilotPhase = "orient" | "burn" | "coast" | "flip" | "brake" | "aim" | "dock" | "undock" | "arrived" | "hold";
 
 /** Guidance gains and limits (game values tuned on the Explorer; docs/design/navegacion.md). */
 export const AUTOPILOT_TUNING = {

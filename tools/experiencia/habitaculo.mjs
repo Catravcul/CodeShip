@@ -42,7 +42,7 @@ export async function habitaculo(j) {
   // The commander's station: Manual and Automático; undocking is the dock switch of the flight view (PX-41).
   await j.useMachine("cabin", "asiento", "pilotar", "Manual");
   await p.waitForTimeout(900);
-  await j.tap(".dock-btn", "Desacoplar (interruptor de acople)");
+  await j.tapInMenu(".flight-bar", ".dock-btn", "Desacoplar (interruptor de acople)");
   await p.waitForTimeout(600);
   j.check("el interruptor de acople de la vista de vuelo desacopla el módulo", await p.evaluate(() => !window.codeship.docking.docked));
   await capture(j, "acople", "Interruptor de acople");
@@ -95,10 +95,13 @@ export async function habitaculo(j) {
     c.bridge.enter("salida");
   });
   await capture(j, "puente", "Puente: sala de consolas");
-  await j.useMachine("bridge", "prop", "abrir", "Usar la consola: Pilotaje y propulsión");
+  // Starship's pilot seat flies («Manual», «Automático (retos)»); its systems pages are on its screens (docs/design/puente.md).
+  const starshipDeck = await p.evaluate(() => window.codeship.bridge.shape === "starship");
+  if (starshipDeck) await j.useMachine("bridge", "prop", "sistemas", "Pantallas de sistemas");
+  else await j.useMachine("bridge", "prop", "abrir", "Usar la consola: Pilotaje y propulsión");
   await p.waitForTimeout(800);
   const shown = await p.$$eval(".fd .fd-panel", (els) => els.filter((e) => getComputedStyle(e).display !== "none").length);
-  j.check("la consola de propulsión abre solo su página", shown === 1, `${shown} páginas a la vista`);
+  j.check("el puesto de pilotaje abre solo una página a la vez", shown === 1, `${shown} páginas a la vista`);
   await capture(j, "consola-prop", "Consola de propulsión");
   await j.tap(".fd-panel.max .fd-back", "Volver al puente");
   j.check("«Volver» deja a Doménica en el puente, junto a la consola", await p.evaluate(() => window.codeship.bridge.active && window.codeship.bridge.near() === "prop"));

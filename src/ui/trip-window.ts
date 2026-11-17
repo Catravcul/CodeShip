@@ -1,4 +1,4 @@
-import type { TripChipData } from "./trip-chip";
+import type { TripStatus } from "./trip-chip";
 import { onCloseRequest, windowState } from "./hud-windows";
 import "./trip-window.css";
 
@@ -6,6 +6,7 @@ const clock = (s: number) => {
   const t = Math.max(0, Math.ceil(s));
   return t < 60 ? `${t} s` : `${Math.floor(t / 60)} min ${String(t % 60).padStart(2, "0")} s`;
 };
+const dist = (m: number) => (m >= 10000 ? `${Math.round(m / 1000).toLocaleString("es-ES")} km` : m >= 1000 ? `${(m / 1000).toLocaleString("es-ES", { maximumFractionDigits: 1 })} km` : `${Math.round(m).toLocaleString("es-ES")} m`);
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
 /**
@@ -50,19 +51,15 @@ export class TripWindow {
     windowState("trayecto", false);
   }
 
-  /** Each frame with the trip running now anywhere (undefined: none, and the window closes). */
-  update(d: TripChipData | undefined): void {
+  /** Each frame with the trip running now anywhere (main.ts `tripStatus`; undefined: none, and the window closes). */
+  update(d: TripStatus | undefined): void {
     if (!d) return this.close();
     if (!this.visible) return;
-    const parts = d.detail.split(" · ");
-    const dist = parts.find((p) => /^faltan /.test(p));
-    const rest = parts.slice(1).filter((p) => p !== dist);
     const rows: [string, string][] = [
-      ["Destino", `${d.who} → ${d.goal}`],
-      ["Fase", parts[0] ?? ""],
-      ...(dist ? [["Distancia", dist.replace(/^faltan /, "")] as [string, string]] : []),
+      ["Destino", `${d.vehicle} → ${d.destination}`],
+      ["Fase", d.phase],
+      ...(d.distanceM !== undefined ? [["Distancia", dist(d.distanceM)] as [string, string]] : []),
       ["Llega en", `${clock(d.etaRealS)} reales`],
-      ...(rest.length ? [["Datos", rest.join(" · ")] as [string, string]] : []),
     ];
     const html = rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("");
     if (html !== this.last) {

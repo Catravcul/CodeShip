@@ -114,3 +114,8 @@ body.in-deck .nano-card { z-index: 9; top: 64px; }
 /* One console, one page (docs/design/habitaculo.md §Puente): the bridge is a room; each console shows only its page. */
 .fd.single .fd-panel:not(.max), .fd.single [data-max], .fd.single .fd-nano, .fd.single .fd-probe, .fd.single .fd-window, .fd.single .fd-alerts { display: none !important; }
 .fd.single .fd-exit, .fd.single .fd-panel.max .fd-back { min-height: 44px; min-width: 44px; }
+/* Starship's pilot seat: its touchscreens page through propulsion, power and life (src/flight-deck.ts setTabs). */
+.fd-tabs { display: none; gap: 6px; padding: 0 8px 6px; pointer-events: auto; }
+.fd-panel.max .fd-tabs { display: flex; }
+.fd-tabs button { flex: 1; min-height: 44px; font: inherit; font-weight: 700; color: #d8f6ff; background: #0b2a36; border: 1px solid #7fdcff66; border-radius: 10px; }
+.fd-tabs button[aria-selected="true"] { color: #001018; background: #9fe8c4; border-color: #9fe8c4; }

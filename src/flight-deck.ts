@@ -180,8 +180,9 @@ export class FlightDeck {
    * Open one console's page (docs/design/habitaculo.md §Puente): the bridge is a room of consoles and each
    * shows only its own page, full screen, with «Volver» back to where she stood.
    */
-  enter(from: DeckOrigin, panel: PanelId = "nav"): void {
+  enter(from: DeckOrigin, panel: PanelId = "nav", tabs: readonly PanelId[] = []): void {
     this.ui.classList.remove("single");
+    this.setTabs(tabs);
     this.restore();
     this.from = from;
     this.active = true;
@@ -196,8 +197,26 @@ export class FlightDeck {
     this.ui.querySelector(".fd-title")!.textContent = `${PANELS.find(([id]) => id === panel)![1]} · ${this.deps.mothership.name}`;
   }
 
+  /**
+   * Pages of one console's touchscreens (Starship's pilot seat: propulsion, power and life, as Crew Dragon's
+   * displays page through the systems): a row of tabs in each page's header.
+   */
+  private setTabs(tabs: readonly PanelId[]): void {
+    for (const sec of this.sections.values()) sec.querySelector(".fd-tabs")?.remove();
+    if (tabs.length < 2) return;
+    for (const id of tabs) {
+      const head = this.sections.get(id)!.querySelector("header")!;
+      const row = document.createElement("div");
+      row.className = "fd-tabs";
+      row.setAttribute("role", "tablist");
+      row.innerHTML = tabs.map((t) => `<button role="tab" data-tab="${t}" aria-selected="${t === id}">${PANELS.find(([x]) => x === t)![1]}</button>`).join("");
+      head.after(row);
+    }
+  }
+
   exit(): void {
     if (!this.active) return;
+    this.setTabs([]);
     this.active = false;
     this.ui.classList.remove("single");
     this.restore();
@@ -283,6 +302,13 @@ export class FlightDeck {
     const section = el.closest<HTMLElement>(".fd-panel");
     const id = section?.dataset.panel as PanelId | undefined;
     if (el.closest("[data-back]")) return this.letter ? this.closeLetter() : this.restore();
+    const tab = el.closest<HTMLElement>("[data-tab]");
+    if (tab) {
+      const to = tab.dataset.tab as PanelId;
+      this.maximize(to);
+      this.ui.querySelector(".fd-title")!.textContent = `${PANELS.find(([x]) => x === to)![1]} · ${this.deps.mothership.name}`;
+      return;
+    }
     if (el.closest("[data-max]") && id) return this.maxed === id ? this.restore() : this.maximize(id);
     if (el.closest("[data-missions]")) return this.deps.openMissions?.();
     const onMap = el.closest<HTMLElement>("[data-showmap]");

@@ -1,0 +1,25 @@
+/* The docking seat's camera page (src/ui/dock-camera.ts): video on top, the IDSS numbers beside it, taps under. */
+.dock-cam { position: fixed; left: 50%; bottom: calc(10px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 12; width: min(420px, 96vw); box-sizing: border-box; padding: 8px; display: flex; flex-direction: column; gap: 6px; color: #d8f6ff; background: #05141cee; border: 1px solid #7fdcff88; border-radius: 12px; font-size: 12px; }
+.dock-cam.hidden { display: none; }
+.dock-cam .dc-top { display: flex; gap: 8px; align-items: stretch; }
+.dock-cam canvas { width: 52%; aspect-ratio: 4 / 3; border-radius: 8px; border: 1px solid #7fdcff44; }
+.dock-cam .dc-read { flex: 1; display: flex; flex-direction: column; gap: 2px; line-height: 1.25; }
+.dock-cam .dc-read b { color: #ffd27f; font-size: 13px; }
+.dock-cam .dc-read em { font-style: normal; font-weight: 700; }
+.dock-cam .dc-read .ok { color: #37e07a; font-style: normal; }
+.dock-cam .dc-read .bad { color: #ff6b5f; font-style: normal; }
+.dock-cam .dc-hint { color: #ffe08a; font-weight: 600; }
+.dock-cam .dc-btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.dock-cam .dc-btns button { min-height: 44px; font: inherit; font-size: 14px; font-weight: 700; color: #06202b; background: #7fdcff; border: 0; border-radius: 10px; }
+.dock-cam .dc-btns button[data-ax="closing"] { background: #9fe8c4; }
+.dock-cam .dc-btns button[data-ax="stop"] { background: #ffd27f; grid-column: span 2; }
+.dock-cam .dc-note { font-size: 10px; color: #9fc6d6; }
+body.in-duel .dock-cam { display: none; }
+/* At the controls of a flight (hand panel or docking camera), the seat's card gives way to them and the trip chip goes above. */
+body.in-dock-cam .room-ui .cab-machine, body.in-carrier-hand .puente-ui .cab-machine { display: none !important; }
+body.in-dock-cam .ctx-dock { bottom: calc(330px + env(safe-area-inset-bottom)); }
+/* Starship's flight deck cards (src/bridge.ts): what the seat is based on and the docking state, as plain text. */
+.room-ui .cm-basis { margin: 0; font-size: 11px; color: #9fc6d6; }
+.room-ui .cm-state { margin: 0; font-size: 12px; color: #d8f6ff; }
+.room-ui .cm-dest { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #a9c8d8; }
+.room-ui .cm-dest select { flex: 1; min-width: 0; min-height: 44px; padding: 0 10px; font: inherit; font-size: 14px; font-weight: 700; color: #ffd27f; background: #0b2a36; border: 1px solid #7fdcff99; border-radius: 12px; }

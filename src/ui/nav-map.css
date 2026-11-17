@@ -89,3 +89,5 @@ body.in-cockpit .autopilot-tag.on { display: block; }
 .carrier-hand .ch-btns button[data-dv="stop"] { background: #ffd27f; }
 .carrier-hand .ch-note { font-size: 10px; color: #9fc6d6; }
 body.in-duel .carrier-hand { display: none; }
+/* Flying by hand: the trip chip goes above the hand panel, not over its buttons. */
+body.in-carrier-hand .ctx-dock { bottom: calc(150px + env(safe-area-inset-bottom)); }

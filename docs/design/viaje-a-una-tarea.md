@@ -24,18 +24,22 @@ Un grafo de lugares y traslados con su duración real (`modules/tasks/domain/jou
 | Vuelo del módulo | solo de vuelta a la nodriza: viaje comprimido (`travel.realS`) + acople con el asistente (su perfil de frenado desde 40 m) + 5 s de desacople | `Navigator.landerTrip`, `dockingSeconds` |
 | Vuelo de la nodriza | a la estación, con el módulo a bordo o sin él: viaje comprimido (empuje continuo de sus propulsores, tope de 75 s) + unos 5 s de entrada en el dique seco, desde la consola de navegación del puente o del anillo | `Navigator.trip`, `Navigator.carrierFlies` |
 
+Los dos tramos de vuelo siguen en el grafo para encontrar el camino y decir cuánto falta, pero «Ir» no los vuela: el camino se corta en el primero y ella para en el puesto de pilotaje con el aviso (reglas.md §3.5, `upToFlight`).
+
 **La nodriza viaja; el módulo aterriza** (2026-11-16, [dique-seco.md](dique-seco.md)). El módulo ya no vuela a la estación: para ir allí siempre vuela la nodriza, que entra en el dique seco. Si el módulo está posado o se quedó en la estación, la nodriza va sola.
 
 Los vuelos cambian cómo están unidos los vehículos (dónde está acoplado el módulo, si la nodriza está atracada). Si no hay camino, se dice por qué: primero el motivo de un vuelo que no puede salir (sin combustible, sin xenón, posada, la sonda fuera), después el de una escotilla cerrada.
 
 ## Con la Starship (2026-11-17)
 
-Con la nodriza real ([nodriza-starship.md](nodriza-starship.md)) el grafo no tiene anillo, radio ni espina: tiene la sala `nave` (las tres cubiertas en 0 g, con su propio grafo de saltos, el mismo motor que la estación), la escotilla del techo de la cubierta 1 a la cubierta de vuelo, la escotilla de la cubierta 3 al módulo y el túnel de proa a la estación. El vuelo sale de la mesa de navegación del puente. En cada escotilla ella **la abre** (la hoja gira, 1,2 s), pasa flotando o andando y la escotilla se cierra detrás ([viajes.md](viajes.md#trayectos-por-dentro-escotillas-que-se-abren)). Medido en vivo (PX-36):
+Con la nodriza real ([nodriza-starship.md](nodriza-starship.md)) el grafo no tiene anillo, radio ni espina: tiene la sala `nave` (las tres cubiertas en 0 g, con su propio grafo de saltos, el mismo motor que la estación), la escotilla del techo de la cubierta 1 a la cubierta de vuelo, la escotilla de la cubierta 3 al módulo y el túnel de proa a la estación. El vuelo se hace en la mesa de navegación del puente, y no lo hace la tarea (reglas.md §3.5): «Ir» la lleva hasta la mesa y le dice que primero hay que viajar ([viajes.md](viajes.md#una-tarea-no-vuela-una-nave-reglasmd-35-2026-11-17)). En cada escotilla ella **la abre** (la hoja gira, 1,2 s), pasa flotando o andando y la escotilla se cierra detrás ([viajes.md](viajes.md#trayectos-por-dentro-escotillas-que-se-abren)). Medido en vivo (PX-36):
 
 | Desde → hasta | Camino | Plan |
 |---|---|---|
 | Asiento del LM → cocina (cubierta 1) | andar a la escotilla del techo, escotilla, saltos por las cubiertas 3, 2 y 1 | 42 s |
-| Asiento del LM → Planos (estación) | escotilla, saltos hasta la escotilla de la cubierta de vuelo, escotilla, andar a la mesa NAV, la Starship vuela y atraca (1 h 32 min de juego = 1 min 32 s), andar, escotilla, saltos al túnel de proa, escotilla, saltos en la estación | 2 min 52 s |
+| Asiento del LM → Planos (estación), sin atracar | escotilla, saltos hasta la escotilla de la cubierta de vuelo, escotilla, andar a la mesa NAV; allí para con el aviso de viajar primero | ≈ 1 min |
+| (ella vuela: «Programar viaje» o «Pilotar a mano») | la Starship vuela y atraca (programado: 1 h 32 min de juego = 1 min 32 s) | — |
+| Cubierta de vuelo o cubiertas → Planos, atracada | escotilla, saltos al túnel de proa, escotilla, saltos en la estación | ≈ 1 min |
 
 ## Durante el viaje
 
@@ -43,7 +47,7 @@ Con la nodriza real ([nodriza-starship.md](nodriza-starship.md)) el grafo no tie
 - Se ocultan los mandos de movimiento (palanca de andar, flechas, ▲▼ del ascensor, mandos de traslación de la cabina, botones de máquina). Sale **Parar**: la deja donde está (en el aire, termina el salto y se agarra; en vuelo, el piloto automático suelta los mandos) y devuelve los controles. «Ir» otra vez sigue desde allí.
 - La cámara sigue libre: arrastrar mira alrededor (mientras anda sola, gira la vista respecto a hacia dónde anda), el ojo cambia de 1ª a 3ª persona y, sentada, el ciclo de cámaras.
 - Una línea abajo a la izquierda: tramo actual («Viaje · 4/7: Subir al eje por el radio») y «Llegada en ~1 min 5 s». En vuelo, la hora sale del propio piloto automático.
-- En un tramo de vuelo, la barra lleva **Ver trayecto**: la nave que vuela, a pantalla completa, sobre su ruta dibujada y con la cámara siguiéndola ([dique-seco.md](dique-seco.md#verlo)). La ficha de viaje se oculta durante el viaje porque la barra ya dice lo mismo.
+- Un camino ya no tiene tramos de vuelo (reglas.md §3.5): acaba en el puesto desde el que se vuela, con el aviso. «Ver trayecto» está en la ficha de viaje de esa consola.
 - Al llegar se usa la máquina: empieza la tarea del anillo, se abre la consola del puente, se sienta a pilotar o se abre la pestaña de la estación.
 - Si un tramo falla (el vuelo se interrumpe, un salto no llega), se para y lo dice.
 

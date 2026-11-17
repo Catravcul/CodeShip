@@ -72,7 +72,7 @@ describe("HAB-21 Journey planning (travel mode of the task list's «Ir»)", () =
   });
 });
 
-describe("TRY-07 A task in another vehicle never flies a ship by itself (reglas.md §3.5)", () => {
+describe("HAB-39 A task in another vehicle never flies a ship by itself (reglas.md §3.5)", () => {
   it("the walk stops at the seat the flight is flown from, and names the flight she must make", () => {
     const p = planJourney(world, { place: "anillo:aqui", joins: docked }, "estacion:planos");
     if (p.kind !== "ruta") throw new Error(p.why);

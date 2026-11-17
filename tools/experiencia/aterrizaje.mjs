@@ -103,9 +103,9 @@ export async function aterrizajePrograma(j) {
   for (let n = 0; n < 8 && (await p.evaluate(() => window.codeship.probeLanding.status)) === "programming"; n++) await j.answer(() => window.codeship.probeLanding.programming?.current ?? null, true);
   const st = await p.evaluate(() => window.codeship.probeLanding.status);
   j.check("con la cadena resuelta (un fallo), el ordenador vuela el programa", st === "flying", st);
-  const said = (await j.texts(".pr-msg.on"))[0] ?? "";
-  j.check("al cargar el programa dice adónde baja y para qué (reglas §3.9)", /sitio marcado/.test(said) && /Para posar la sonda/.test(said), said);
   await p.waitForFunction(() => [...document.querySelectorAll(".duel")].every((e) => e.classList.contains("hidden")), null, { timeout: 15000 }).catch(() => {});
+  const said = await p.evaluate(() => document.querySelector(".pr-msg")?.textContent ?? "");
+  j.check("al cargar el programa dice adónde baja y para qué (reglas §3.9)", /sitio marcado/.test(said) && /Para posar la sonda/.test(said), said);
   await p.waitForTimeout(2500);
   const fly = await readout(j, ".land-box.probe .landing-readout");
   j.check("mientras baja, los indicadores dicen la fase del programa", !!fly && /Programa/i.test(fly.text), fly?.text);

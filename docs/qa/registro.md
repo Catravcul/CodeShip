@@ -60,6 +60,9 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | NAV-13 | Sin probar | | | Adaptador; lo juegan PX-36 y PX-28 |
 | NAV-14 | Solo test | | | `starship.test.ts` (verde en la suite completa); lo juega PX-28 |
 | NAV-15 | Solo test | | | `panels.test.ts`, `mothership-equipment.test.ts` (verdes en la suite completa); lo juegan PX-28 y PX-36 |
+| NAV-16 | Solo test | | | `dock-trip.test.ts` (verde en la suite completa); lo juega PX-36 |
+| NAV-17 | Sin probar | | | Adaptador; lo juegan PX-07, PX-16 y PX-36 |
+| NAV-18 | Sin probar | | | Adaptador; lo juega PX-07 |
 | SON-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SON-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SON-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -205,6 +208,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | HAB-36 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | HAB-37 | Sin probar | | | Adaptador; lo juega PX-36 |
 | HAB-38 | Sin probar | | | Adaptador; lo juega PX-36 |
+| HAB-39 | Solo test | | | `journey.test.ts` (verde en la suite completa); lo juegan PX-16 y PX-36 |
 | HAB-28 | Solo test | | | `compartments.test.ts`, `starship-interior.test.ts`; jugado en PX-35 |
 | HAB-30 | Probado (en vivo) | 2026-11-17 | `1e45fe6` | [run](runs/2026-11-17-0459-PX-28-PX-31-PX-35-PX-37-PX-20.md): PX-37 OK; `crew-areas.test.ts` |
 | HAB-31 | Probado (en vivo) | 2026-11-17 | `1e45fe6` | [run](runs/2026-11-17-0459-PX-28-PX-31-PX-35-PX-37-PX-20.md): PX-37 OK |

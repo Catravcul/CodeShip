@@ -835,8 +835,12 @@ export class StepShow {
             : this.show(food[i]!, at.x + toCam.x * 0.05 + (i - 1) * 0.035 * toCam.z, at.y + 0.07 + 0.035 * i, at.z + toCam.z * 0.05 - (i - 1) * 0.035 * toCam.x);
           if (!cut) f.scale.set(0.06, 0.02 + 0.012 * Math.abs(Math.sin(this.clock * 7)), 0.05);
         }
-        // The tool: by the board in the ring's galley; elsewhere over the work, a little toward the camera.
-        const tool = kitchen ? this.w.set(at.x + 0.02, at.y + 0.03, at.z + 0.06) : this.w.set(at.x + toCam.x * 0.08, at.y + 0.05 + toCam.y * 0.08, at.z + toCam.z * 0.08);
+        // The tool: by the board in the ring's galley; elsewhere just over the work, on its far side from her
+        // (her arm comes in from her side, the camera looks over her shoulder).
+        const ax = at.x - this.feet.x;
+        const az = at.z - this.feet.z;
+        const al = Math.max(1e-3, Math.hypot(ax, az));
+        const tool = kitchen ? this.w.set(at.x + 0.02, at.y + 0.03, at.z + 0.06) : this.w.set(at.x + (ax / al) * 0.05, at.y + 0.1, at.z + (az / al) * 0.05);
         if (cut && v.vessel === "bolsa") {
           const sc = this.show(p.scissors, tool.x, tool.y, tool.z);
           sc.rotation.y = this.df!.yaw + 0.3 * Math.sin(this.clock * 12);

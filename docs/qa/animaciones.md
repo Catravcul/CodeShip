@@ -3,7 +3,7 @@
 Generado por `tools/experiencia/animaciones.mjs` (recorrido PX-20, `npm run experiencia -- PX-20`), en un iPhone 13 (390 × 664 visibles, 1×).
 Cada reto se juega con toques en las respuestas correctas, en «paso a paso» (cada bloque bien colocado es un paso). Tras cada paso se mide en la escena 3D (`src/adapters/three/interior/step-audit.ts`):
 
-- **Alcance**: cada objeto a ≤ 0.8 m de una de sus manos, o sobre el sitio del paso (≤ 0,45 m) con ella de pie delante (≤ 0,9 m).
+- **Alcance**: cada objeto a ≤ 0.8 m de una de sus manos (a su punto más cercano), o sobre el sitio del paso (≤ 0,45 m) con ella de pie delante (≤ 0,9 m).
 - **A la vista**: alguna parte del objeto en la franja de escena sobre la hoja del reto y sin muebles ni su cuerpo delante.
 - **Sin atravesar**: el centro del objeto no está dentro de otra pieza (encimera, pared, máquina).
 - **Gesto**: su pose se aparta de la de espera al menos 0.3 rad, y su mano se ve.

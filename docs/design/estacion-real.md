@@ -42,16 +42,16 @@ IDA, para no alargar (distribución nuestra).
 El hangar de 20 × 14 × 20 m no existe en la ISS. Lo que hacía lo hacen tres cosas reales:
 
 - **Esclusa Bishop** (Nanoracks, 2020), en el puerto de babor de Tranquility. Se guardan dentro Juventas
-  (cubesat de 6U de la misión Hera, 12 kg) y cubesats de 1U y 3U, hasta sus 3,99 m³. «Soltar» sigue la
+  (cubesat de 6U de la misión Hera, 12 kg) y cubesats de 1U y 3U, hasta sus 3,99 m³. Es un cuarto en el que se entra flotando: su placa de cargas ofrece «Sujetar» y «Recoger». «Soltar», desde el puesto robótico de la Cupola, sigue la
   secuencia real: cerrar la escotilla CBM, bombear el aire del vestíbulo, soltar los pernos, Canadarm2 la
   lleva a la posición de suelta, la carga se aleja sola, el brazo la vuelve a atracar. En 3D se ve desde la
   Cupola. **Recoger** algo suelto con el brazo es **licencia**: en la ISS nunca se ha hecho (el brazo solo
   agarra vehículos con su accesorio de agarre); la tarjeta lo dice.
 - **Plataforma expuesta de Kibo (JEM-EF)**: las piezas de repuesto viven fuera, en cajas sobre sus 12
-  puertos (se ven por fuera). La lista está en la esclusa de Kibo («Inventario», la pestaña Hangar).
+  puertos (se ven por fuera). La lista está en la consola del JEMRMS, junto a la esclusa de Kibo («Abrir Hangar»); la esclusa solo es una escotilla de carga ([compartimentos.md](compartimentos.md)).
 - **Canadarm2 y el CBM de nadir de Unity**: desde el puesto robótico de la Cupola, «Atracar el módulo en el
   CBM» lo saca de su IDA de cenit y lo atraca donde atracan los Cygnus. En 3D: sube del IDA, pasa por encima
-  de la celosía y baja por detrás de Unity. La bahía de la nave (cambiar piezas) está junto a ese CBM.
+  de la celosía y baja por detrás de Unity. La bahía de la nave (cambiar piezas) se abre desde el portátil de la bahía, en la pared de babor de Unity; el CBM es solo una escotilla.
   Atracado, la escotilla del módulo se cierra y dice que hay que devolverlo desde la Cupola.
 
 ## El dique seco
@@ -89,7 +89,7 @@ licencias, dichas en su ficha. Los campos de cultivo son ficción (backlog).
 
 ## Tripulación y soporte vital
 
-Donde están en la ISS: la cocina en Unity, los cuatro camarotes en Harmony, el aseo y el ejercicio en
+Donde están en la ISS: la cocina en Unity, los cuatro camarotes en Harmony (cuartos de 2,1 m³, uno en cada cara de un hueco de bastidor: [compartimentos.md](compartimentos.md)), el aseo y el ejercicio en
 Tranquility, los trajes en Quest. Los bastidores de soporte vital son los de eclss-real, que se juegan
 (fixtures `sv-*` con `eclssFixtures`, docs/design/soporte-vital.md): WRS y OGS en las paredes de Tranquility,
 el AR y el puesto de incendios en su techo, y en Destiny las bombas del ITCS y el portátil de soporte vital.

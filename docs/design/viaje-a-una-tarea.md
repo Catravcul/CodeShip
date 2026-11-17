@@ -4,10 +4,26 @@ Petición de Berón (2026-11-14): «Desde la nave elegí la estación en las tar
 
 ## El ajuste
 
-Arriba de la lista de tareas, un interruptor **Viaje** (por defecto) / **Teletransporte** (2026-11-16, Berón: «sería ideal en el modal de tareas en vez de en la esterilla»). Se guarda con los demás ajustes en `codeship.ajustes` (`taskTravel`) y ya no está en la esterilla: tiene un solo sitio.
+En los ajustes de la lista de tareas (el ⚙︎ junto a ✕, [más abajo](#ajustes-de-tareas)), un interruptor **Viaje** (por defecto) / **Teletransporte** (2026-11-16, Berón: «sería ideal en el modal de tareas en vez de en la esterilla»; desde el 2026-11-17, tras el engranaje). Se guarda con los demás ajustes en `codeship.ajustes` (`taskTravel`) y no está en la esterilla: tiene un solo sitio.
 
 - **Viaje**: «Ir» calcula el camino real y Doménica lo hace sola.
 - **Teletransporte**: lo de antes (aparece en la máquina, por las escotillas abiertas), con un fundido corto y el aviso «Teletransporte (elegido en Tareas)», para que se vea que es una elección y no un fallo.
+
+## Ajustes de tareas
+
+Petición de Berón (2026-11-17): un engranaje junto al botón de cerrar que oculta las tareas y enseña el viaje/teletransporte y los filtros, con un filtro nuevo de vehículo que por defecto sigue a Doménica; el engranaje se convierte en un icono de lista que vuelve a las tareas, como el menú en árbol ([ux-acciones.md](ux-acciones.md#lista-de-tareas-lista-y-ajustes-2026-11-17)).
+
+| Vista | Cabecera | Qué tiene |
+|---|---|---|
+| Lista | «Tareas» · [⚙︎ Ajustes de tareas] [✕ Cerrar tareas] | La línea de qué enseña («En el módulo (automático) · 0 de 55», «En la estación · Estación · 5 de 55»), el catálogo de especies si está, y las tareas por grupos, cada una con «Ir». Si el filtro deja tareas fuera: «Hay N tareas más fuera de este filtro: ⚙︎ Ajustes de tareas › Todos.» |
+| Ajustes | «Ajustes de tareas» · [☰ Volver a la lista de tareas] [✕] | **Ir a una tarea**: Viaje / Teletransporte. **Vehículo**: Automático: donde está ella (dice dónde: Nave (Starship), Estación o Módulo) · Nave (Starship) · Estación · Módulo · Todos, cada uno con su número de tareas. **Grupo**: Todas, Vuelo y asteroides, Viajes… (los que tienen tareas en ese vehículo). |
+
+- El vehículo es el ajuste `taskVehicle` de `codeship.ajustes` («auto» por defecto; `nodriza`, `estacion`, `modulo`, `todos`). «Automático» usa el vehículo en el que está ella al abrir la lista (`crewIn` de main.ts): el habitáculo y la cabina del LM son el módulo; las cubiertas, el puente y su paseo, la nave; la estación, su pantalla, la bahía y su paseo, la estación. Cada tarea es de un vehículo por su sitio (`place.vehicle`).
+- El grupo no se guarda: la lista abre siempre en «Todas», como antes.
+- Cerrar (✕ o Escape) cierra la lista desde cualquiera de las dos vistas; al abrirla, sale siempre la lista.
+- Código: `src/ui/task-board.ts`, `shownVehicle` y `tasksIn` en `modules/tasks/application/task-list.ts`. Recorrido: PX-42.
+
+**Para decidir (Berón).** Al empezar una partida ella está en el LM, que no tiene tareas propias: con «Automático» la lista dice «Nada pendiente en el módulo» y que hay 55 fuera del filtro. ¿Lo dejamos así, o «Automático» debería enseñar también los vehículos unidos por una escotilla abierta (el LM acoplado a la Starship)? Y la regla 5.4 dice que la lista tiene todas las tareas: con el filtro siguen todas a un toque (⚙︎ › Todos), pero no a la vista.
 
 ## El camino real
 

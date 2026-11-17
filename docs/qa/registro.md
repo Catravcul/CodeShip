@@ -227,6 +227,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | HAB-38 | Sin probar | | | Adaptador; lo juega PX-36 |
 | HAB-39 | Solo test | | | `journey.test.ts` (verde en la suite completa); lo juegan PX-16 y PX-36 |
 | HAB-40 | Sin probar | | | Lo juega PX-38 |
+| HAB-41 | Solo test | | | `settings.test.ts`, `task-list.test.ts`; lo juega PX-42 |
 | HAB-28 | Solo test | | | `compartments.test.ts`, `starship-interior.test.ts`; jugado en PX-35 |
 | HAB-30 | Probado (en vivo) | 2026-11-17 | `1e45fe6` | [run](runs/2026-11-17-0459-PX-28-PX-31-PX-35-PX-37-PX-20.md): PX-37 OK; `crew-areas.test.ts` |
 | HAB-31 | Probado (en vivo) | 2026-11-17 | `1e45fe6` | [run](runs/2026-11-17-0459-PX-28-PX-31-PX-35-PX-37-PX-20.md): PX-37 OK |
@@ -280,6 +281,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-37 | Probado (en vivo) | 2026-11-17 | `30dd266` | [run](runs/2026-11-17-0931-PX-28-PX-35-PX-37-PX-38-PX-20-PX-30.md): 26 OK |
 | PX-39 | Probado (en vivo) | 2026-11-17 | `5c98cd4` | [run](runs/2026-11-17-1352-PX-28-PX-38-PX-39.md): 128 OK |
 | PX-38 | Probado (en vivo) | 2026-11-17 | `5c98cd4` | [run](runs/2026-11-17-1352-PX-28-PX-38-PX-39.md): 77 OK |
+| PX-42 | Sin probar | | | |
 
 ## Última ejecución por run log
 

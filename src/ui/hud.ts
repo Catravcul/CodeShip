@@ -3,7 +3,11 @@ import type { Telemetry } from "@modules/flight/application/flight-computer";
 const fmt = (v: number, d = 1) => v.toFixed(d);
 const dist = (m: number) => (Math.abs(m) >= 1000 ? `${fmt(m / 1000, 2)} km` : `${fmt(m, 0)} m`);
 
-/** Plain DOM HUD. Reads telemetry; never touches the simulation. */
+/**
+ * Plain DOM HUD. Reads telemetry; never touches the simulation. Each line carries the name of the LM
+ * instrument that shows the same number in the cabin (docs/design/cabina-lm.md, «Instrumentos»): ALT and
+ * ALT RATE tapes, FDAI, X-POINTER, T/W, PRPLNT QTY and THRUST.
+ */
 export class Hud {
   private readonly el: HTMLElement;
   constructor(root: HTMLElement, private readonly info: { ship: string; target: string; propellants: { label: string; capacity: number }[] }) {
@@ -12,7 +16,7 @@ export class Hud {
     root.appendChild(this.el);
     const help = document.createElement("div");
     help.className = "help";
-    help.innerHTML = `<b>Controles</b><br>W/S avanzar/retroceder · A/D lateral · R/F subir/bajar<br>Flechas cabeceo/guiñada · Q/E alabeo<br>Espacio motor principal · T asistente de rotación · G asistente de aterrizaje · K acople<br>C cambia cámara · V centra la vista · X acelera el tiempo · H levantarse al habitáculo<br><i>Para aterrizar, la panza (el tren) debe mirar al suelo; la cámara ventral ayuda.</i><br><i>Los RCS empujan poco (unas centésimas de m/s²): fíjate en el polvo y en la velocidad. El motor principal empuja unas diez veces más; las cifras de cada pieza están en la bahía de la estación.</i><br><i>El mapa, los viajes y las misiones están en el puente de la nave de viaje; la bahía, en la estación. Se pasa de uno a otro acoplando el módulo.</i>`;
+    help.innerHTML = `<b>Controles</b><br>W/S avanzar/retroceder · A/D lateral · R/F subir/bajar<br>Flechas cabeceo/guiñada · Q/E alabeo<br>Espacio motor principal · T asistente de rotación · G asistente de aterrizaje · K acople<br>C cambia cámara · V centra la vista · X acelera el tiempo · H dejar el puesto (habitáculo)<br><i>Para aterrizar, la panza (el tren) debe mirar al suelo; la cámara ventral ayuda.</i><br><i>Los RCS empujan poco (unas centésimas de m/s²): fíjate en el polvo y en la velocidad. El motor principal empuja unas diez veces más; las cifras de cada pieza están en la bahía de la estación.</i><br><i>El mapa, los viajes y las misiones están en el puente de la nave de viaje; la bahía, en la estación. Se pasa de uno a otro acoplando el módulo.</i>`;
     root.appendChild(help);
   }
 
@@ -23,18 +27,18 @@ export class Hud {
     const closing = t.closingSpeed;
     this.el.innerHTML = `
       <div class="row title">${this.info.ship} → ${this.info.target}</div>
-      <div class="row big">${dist(Math.max(0, t.clearance))} <span class="lbl">a la superficie</span></div>
-      ${t.clearance < 200 && !t.landed ? `<div class="row ${t.tiltDeg > 30 ? "warn" : "ok"}">Panza ${fmt(t.tiltDeg, 0)}° del suelo <span class="lbl">(máx. 30° para posarse)</span></div>` : ""}
-      <div class="row ${closing > 1 ? "warn" : ""}">${fmt(closing, 2)} m/s <span class="lbl">${Math.abs(closing) < 0.01 ? "en reposo relativo" : closing > 0 ? "acercándose" : "alejándose"}</span></div>
-      <div class="row small">vel. nave x ${fmt(v.x, 2)} · y ${fmt(v.y, 2)} · z ${fmt(-v.z, 2)} m/s</div>
+      <div class="row big">${dist(Math.max(0, t.clearance))} <span class="lbl">a la superficie</span> <span class="ins">ALT</span></div>
+      ${t.clearance < 200 && !t.landed ? `<div class="row ${t.tiltDeg > 30 ? "warn" : "ok"}">Panza ${fmt(t.tiltDeg, 0)}° del suelo <span class="lbl">(máx. 30° para posarse)</span> <span class="ins">FDAI</span></div>` : ""}
+      <div class="row ${closing > 1 ? "warn" : ""}">${fmt(closing, 2)} m/s <span class="lbl">${Math.abs(closing) < 0.01 ? "en reposo relativo" : closing > 0 ? "acercándose" : "alejándose"}</span> <span class="ins">ALT RATE</span></div>
+      <div class="row small">vel. nave x ${fmt(v.x, 2)} · y ${fmt(v.y, 2)} · z ${fmt(-v.z, 2)} m/s <span class="ins">X-POINTER</span></div>
       <div class="row small">giro ${fmt((w.length() * 180) / Math.PI, 2)} °/s</div>
-      <div class="row">Δv ${fmt(t.deltaV, 0)} m/s · masa ${fmt(t.massKg, 0)} kg</div>
+      <div class="row">Δv ${fmt(t.deltaV, 0)} m/s · masa ${fmt(t.massKg, 0)} kg <span class="ins">T/W</span></div>
       ${this.info.propellants
-        .map((p, i) => `<div class="row small">${p.label} ${fmt(((propellantKg[i] ?? 0) / p.capacity) * 100, 0)}%</div>`)
+        .map((p, i) => `<div class="row small">${p.label} ${fmt(((propellantKg[i] ?? 0) / p.capacity) * 100, 0)}% <span class="ins">PRPLNT QTY</span></div>`)
         .join("")}
       <div class="row ${t.hullIntegrity < 0.5 ? "warn" : ""}">Casco ${fmt(t.hullIntegrity * 100, 0)}%${t.landed ? " · anclada" : ""}</div>
       <div class="row ${assist ? "ok" : "warn"}">Asistente de rotación ${assist ? "ON" : "OFF"}</div>
-      <div class="row thrust ${thrust ? "on" : ""}">${thrust ? `▶ ${thrust}` : "propulsores en reposo"}</div>
+      <div class="row thrust ${thrust ? "on" : ""}">${thrust ? `▶ ${thrust}` : "propulsores en reposo"} <span class="ins">THRUST</span></div>
       ${unreadMissions ? `<div class="row small mail">● ${unreadMissions === 1 ? "Novedad" : `${unreadMissions} novedades`} en Misiones · en la nave de viaje</div>` : ""}`;
   }
 }

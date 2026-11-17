@@ -49,6 +49,8 @@ export interface Telemetry {
   readonly clearance: number;
   /** Angle between the belly (body −Y) and the local vertical, degrees. */
   readonly tiltDeg: number;
+  /** Local up (away from the target's centre) in the ship's frame: what the attitude ball (FDAI) shows. */
+  readonly upBody: Vec3;
 }
 
 /** Physics step, s (120 Hz). A craft with tiny forces may integrate slower (`stepS` in the world options). */
@@ -218,7 +220,7 @@ export class FlightComputer {
   }
 
   /** Local down at the ship, how far the ship reaches toward it and how tilted the belly is. */
-  private groundGeometry(): { clearance: number; tiltDeg: number; reach: number; normal: Vec3; tiltRad: number } {
+  private groundGeometry(): { clearance: number; tiltDeg: number; reach: number; normal: Vec3; tiltRad: number; upBody: Vec3 } {
     const s = this._state;
     const target = this._target;
     const normal = target ? s.position.sub(target.position).normalize() : Vec3.Y;
@@ -227,7 +229,7 @@ export class FlightComputer {
     const reach = reachToward(half, downBody, NOSE_M);
     const tiltRad = Math.acos(Math.max(-1, Math.min(1, -downBody.y)));
     const height = target ? target.surfaceDistance(s.position, this._simTimeS) : Infinity;
-    return { clearance: height - reach, tiltDeg: (tiltRad * 180) / Math.PI, reach, normal, tiltRad };
+    return { clearance: height - reach, tiltDeg: (tiltRad * 180) / Math.PI, reach, normal, tiltRad, upBody: downBody.scale(-1) };
   }
 
   private step(pilotInput: ThrustCommand): void {

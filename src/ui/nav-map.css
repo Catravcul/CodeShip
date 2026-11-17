@@ -78,10 +78,3 @@ body.in-cockpit .autopilot-tag.on { display: block; }
   .nav-title { flex-basis: 100%; }
   .nav-tools { margin-left: auto; }
 }
-
-/* Programming a trip with the map on screen (the ring's navigation console): the sheet covers the map's
-   lower part, so the map keeps only its canvas, with the plan fitted to what the sheet leaves open (PX-20). */
-.nav-map.planning .nav-head, .nav-map.planning .nav-side, .nav-map.planning .nav-hint { display: none; }
-.fd-map:has(.nav-map.planning) .fd-strip { display: none; }
-/* Kept during a challenge only to show the plan (foco-reto.css): only the map, nothing else of its layer. */
-body.in-duel .keeps-plan :is(.fd-status, .fd-window) { display: none !important; }

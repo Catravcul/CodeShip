@@ -124,6 +124,8 @@ export async function aterrizajeManual(j) {
   const p = j.page;
   await j.setup("el módulo llega a 250 m de Bennu, bajando a 0,5 m/s con la panza al suelo", placeAbove, ["modulo", 250, 0.5]);
   await p.waitForTimeout(1500);
+  // The readout and the offer come up within a few frames (slower under a throttled CPU): wait for them.
+  await p.waitForFunction(() => [...document.querySelectorAll(".ctx-dock > .land-offer, .land-box.lander .landing-readout")].filter((e) => e.getBoundingClientRect().width > 0 && getComputedStyle(e).display !== "none").length >= 2, null, { timeout: 15000 }).catch(() => {});
   const r = await readout(j, ".land-box.lander .landing-readout");
   j.check("en la cabina aparecen los indicadores X, Y, Z, vx, vy, vz e inclinación", !!r && /X /.test(r.text) && /Y /.test(r.text) && /Z 2\d\d m/.test(r.text) && /∠/.test(r.text), r?.text);
   j.check("bajando a 0,5 m/s a 250 m, la velocidad vertical está en verde", !!r && r.spans.some((s) => /vz/.test(s.t) && s.c === "ok"), r?.spans.map((s) => `${s.t}:${s.c}`).join(" "));
@@ -134,8 +136,7 @@ export async function aterrizajeManual(j) {
   await j.shot("modulo-indicadores");
   // The eye icon, pinned (no «☰ Mandos» to open first).
   await j.tap(".cam-btn", "Cámara");
-  await p.waitForTimeout(400);
-  await p.waitForTimeout(800);
+  await p.waitForFunction(() => !!document.querySelector(".land-mark.on span"), null, { timeout: 10000 }).catch(() => {});
   j.check("con la cámara ventral se ve el sitio marcado en el suelo", (await j.texts(".land-mark.on span")).length > 0);
   await j.shot("modulo-ventral");
   await j.setup("el módulo cae a 4 m/s a 40 m del suelo", placeAbove, ["modulo", 40, 4]);

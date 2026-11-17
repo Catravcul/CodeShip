@@ -339,6 +339,40 @@ export function whcModel(k: number, size: { w: number; h: number; d: number }): 
   return { kind: "whc", root, feet: new THREE.Vector3(0, -H / 2, 0.6), tick() {} };
 }
 
+/**
+ * The medical kit, a CHeCS rack (GEAR.checs): the ambulatory medical pack (blue) and the advanced life support pack
+ * (red) strapped on its front, the defibrillator (yellow), the ultrasound's laptop and probe, and the crew medical
+ * restraint board folded at its side.
+ */
+export function checsModel(k: number, size: { w: number; h: number; d: number }): CrewGear {
+  const root = new THREE.Group();
+  root.name = "gear-checs";
+  const { box, cyl } = kit(root);
+  const W = size.w * k;
+  const H = size.h * k;
+  box(W, H, 0.04, 0, 0, -0.02, std(0xdfe3e8));
+  box(W * 0.94, 0.05, 0.05, 0, H / 2 - 0.1, 0.02, std(0x2f5d9a));
+  // A red cross on its top panel.
+  box(0.16, 0.05, 0.01, 0, H / 2 - 0.28, 0.03, std(0xd03030));
+  box(0.05, 0.16, 0.01, 0, H / 2 - 0.28, 0.03, std(0xd03030));
+  // The two packs, strapped on.
+  box(0.42, 0.3, 0.2, -W / 4, 0.3, 0.1, std(0x2f5d9a));
+  box(0.42, 0.3, 0.2, W / 4, 0.3, 0.1, std(0xc23b3b));
+  for (const sx of [-1, 1]) box(0.44, 0.03, 0.21, (sx * W) / 4, 0.3, 0.105, std(0x1b1f24));
+  // The defibrillator and its pads' pouch.
+  box(0.26, 0.2, 0.1, -W / 4, -0.12, 0.06, std(0xf2c230));
+  box(0.08, 0.05, 0.11, -W / 4, -0.08, 0.065, std(0x2b2f36));
+  // The ultrasound: a laptop on a small shelf, its probe on a cable.
+  box(0.36, 0.02, 0.26, W / 4, -0.2, 0.14, std(0x5a6270));
+  box(0.34, 0.22, 0.015, W / 4, -0.08, 0.03, std(0x1d2128));
+  box(0.3, 0.17, 0.005, W / 4, -0.08, 0.04, new THREE.MeshBasicMaterial({ color: 0x7fb8ff }));
+  cyl(0.02, 0.1, W / 4 + 0.16, -0.17, 0.22, std(0xeeeeee), "y");
+  // The restraint board, folded against the side.
+  box(0.04, H * 0.7, 0.5, W / 2 - 0.04, -0.1, 0.25, std(0x4c5560));
+  for (const dy of [-0.4, 0, 0.4]) box(0.05, 0.05, 0.52, W / 2 - 0.04, dy, 0.25, std(0xffc84a));
+  return { kind: "checs", root, feet: new THREE.Vector3(0, -H / 2, 0.6), tick() {} };
+}
+
 /** The stowage: white cargo transfer bags packed in the bay and held with straps. */
 export function stowageModel(k: number, size: { w: number; h: number; d: number }): CrewGear {
   const root = new THREE.Group();
@@ -433,5 +467,7 @@ export function gearModel(kind: Exclude<GearKind, "aqh">, k: number, size: { w: 
       return whcModel(k, size);
     case "estiba":
       return stowageModel(k, size);
+    case "checs":
+      return checsModel(k, size);
   }
 }

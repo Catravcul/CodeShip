@@ -88,7 +88,7 @@ const hatch = (id: string, label: string, y: number): InteriorVolume => ({
   source: ISS.cbm,
 });
 
-type CrewAreaId = "cocina" | "camarotes" | "aseo" | "ejercicio" | "esterilla";
+type CrewAreaId = "cocina" | "camarotes" | "aseo" | "ejercicio" | "esterilla" | "medico";
 
 const fx = (f: Omit<Fixture, "action"> & { action: Fixture["action"] }): Fixture => f;
 /** A rack-sized machine on a side wall of a deck (its front on the aisle's wall). */
@@ -138,6 +138,8 @@ export function starshipInteriorPlan(): StationInteriorPlan {
     onWall("cocina", "Cocina (agua caliente y calentador)", 1, "babor", rack().x, crew("cocina"), "Dispensador de agua caliente y fría para rehidratar y un calentador para las bolsas termoestabilizadas, como la cocina de la ISS", ISS.galley),
     onWall("puesto-trabajo", "Puestos de trabajo", 1, "estribor", new Vec3(0.86, 2.0, 2.1), { kind: "consola", id: "trabajo" }, "Dos portátiles con la lista de tareas y el registro de misiones", ISS.ispr),
     { ...onWall("esterilla", "Esterilla", 1, "popa", new Vec3(0.6, 1.8, 0.05), crew("esterilla"), "Esterilla sujeta a la pared con cintas y lazos para los pies: yoga sobre ella y, sentada en loto, los ajustes", ISS.exercise), gear: "esterilla" },
+    // The medical kit: the ISS's CHeCS rack (licencia: equivalente de la ISS), on deck 2 by the WHC (wellness/data/procedures.ts).
+    { ...onWall("botiquin", "Sistema médico (CHeCS)", 2, "babor", rack().x, crew("medico"), "El sistema médico de la ISS (licencia: equivalente de la ISS): bolsa médica ambulatoria, bolsa de soporte vital avanzado, desfibrilador, ecógrafo y la tabla para sujetar al paciente", GEAR_SRC.checs, -1.45), gear: "checs" },
     onWall("subir-cubierta-vuelo", "Escotilla a la cubierta de vuelo", 1, "techo", new Vec3(1.27, 0.1, 1.27), { kind: "consola", id: "cubierta-vuelo" }, "Por aquí se sube a la cubierta de vuelo, bajo los depósitos de cabecera de la proa", ISS.cbm),
     onWall("salir-estacion", "Túnel de proa: a la estación", 1, "proa", new Vec3(0.8, 0.8, 0.1), { kind: "salir", to: "nodriza" }, "El puerto IDSS del morro, como el del HLS: con la nave atracada lleva a la estación", ISS.idss),
     // Deck 2: four crew quarters and the WHC.

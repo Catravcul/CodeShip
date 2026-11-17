@@ -150,6 +150,17 @@ export class RingAquarium {
     } else this._snails += n;
   }
 
+  /**
+   * Animals leave for another tank (a transfer between vehicles): all of a group, or `n`. Returns how many went.
+   * The school's name goes with them when the last fish leaves.
+   */
+  release(group: AquariumGroup, n = Infinity): number {
+    const k = Math.max(0, Math.min(n, group === "banco" ? this._fish : this._snails));
+    if (group === "banco") this._fish -= k;
+    else this._snails -= k;
+    return k;
+  }
+
   /** Doménica ↔ the snails, 0..1: their own friendship (a mind program), apart from the school's. */
   get snailFriends(): boolean {
     return this._snailBond >= FAMILY_TUNING.familyAt;

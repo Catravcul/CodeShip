@@ -11,8 +11,9 @@ import { presentInteriorPlan } from "@modules/station/domain/presentation";
 import type { PortUser } from "@modules/station/domain/structure";
 import { WORKOUTS } from "@modules/wellness/data/exercise";
 import { SLEEP_ACTS } from "@modules/wellness/data/sleep";
+import { SHELTER_SHIP } from "@modules/wellness/data/procedures";
 import { OWN_BUNK } from "@modules/station/data/compartments";
-import { AquariumOps, isAquariumChore } from "@modules/sanctuary/application/aquarium-ops";
+import { AquariumOps, isAquariumChore, withTransfer } from "@modules/sanctuary/application/aquarium-ops";
 import { RingAquarium } from "@modules/sanctuary/domain/aquarium";
 import type { AqhModel } from "./adapters/three/interior/aqh-model";
 import { CatalogCorner } from "./adapters/three/interior/catalog-corner";
@@ -28,12 +29,13 @@ import { crewStepVisual, exerciseFixture } from "./station-steps";
 import "./ui/starship-interior.css";
 
 /** Where each kind of chore is done on Starship's decks (fixture ids of data/starship-interior.ts). */
-const FIXTURE_OF: Readonly<Partial<Record<Chore["kind"], string>>> = { cocinar: "cocina", yoga: "esterilla", ejercicio: "t2", dormir: OWN_BUNK };
+const FIXTURE_OF: Readonly<Partial<Record<Chore["kind"], string>>> = { cocinar: "cocina", yoga: "esterilla", ejercicio: "t2", dormir: OWN_BUNK, asearse: "aseo", refugio: "sv-refugio", medico: "botiquin" };
 const AREA_NAME: Readonly<Record<CrewArea, string>> = {
   cocina: "Cocina (cubierta 1)",
   camarotes: "Tu camarote (cubierta 2)",
   aseo: "Aseo (cubierta 2)",
   ejercicio: "Ejercicio (cubierta 3)",
+  medico: "Sistema médico (cubierta 2)",
   esterilla: "Esterilla (cubierta 1)",
 };
 const MAX_ON_CARD = 3;
@@ -110,7 +112,7 @@ export class StarshipInterior {
     private readonly d: StarshipInteriorDeps,
   ) {
     // The galley cooks from the ship's pantry, its life support's packaged food (docs/design/soporte-vital.md, «Despensa»).
-    this.crew = new StationCrew(d.habitat, { recipes: ISS_FOOD, yoga: YOGA_SEQUENCES, workouts: WORKOUTS, pantry: () => this.lifeSupport?.pantry });
+    this.crew = new StationCrew(d.habitat, { recipes: ISS_FOOD, yoga: YOGA_SEQUENCES, workouts: WORKOUTS, pantry: () => this.lifeSupport?.pantry, shelter: "nodriza" });
     const plan = presentInteriorPlan(starshipInteriorPlan(), { scale: WORLD_SCALE, spreadM: SPREAD_ON ? INTERACTABLE_SPACING.minM : 0 });
     this.mode = new StationInteriorMode(
       root,
@@ -131,8 +133,8 @@ export class StarshipInterior {
         openTasks: () => d.openTasks(),
         actions: (f) => (f.action.kind === "soporte-vital" ? (this.lifeSupport?.actions(f) ?? []) : this.actions(f)),
         act: (f, a) => {
-          // The storm shelter: she gets in, among its water bags (its dose cut is told by life support).
-          if (a === "refugio") this.mode.shelterIn(f.id);
+          // The storm shelter: its drill, a code challenge played inside it (its dose cut is told by life support).
+          if (a === "refugio") this.startChore(SHELTER_SHIP.id);
           return f.action.kind === "soporte-vital" ? this.lifeSupport?.act(f, a) : this.act(f, a);
         },
         readout: (f) => this.lifeSupport?.readout(f),
@@ -291,21 +293,20 @@ export class StarshipInterior {
       if (a.id === "cubierta-vuelo") return [{ id: "subir", label: "Subir a la cubierta de vuelo", enabled: true }];
       if (a.id === "trabajo") return [{ id: "tareas", label: "Tareas", enabled: true }, { id: "misiones", label: "Registro de misiones", enabled: true }];
       const animal = (pick: (c: Chore) => boolean) =>
-        this.animalChores()
-          .filter(pick)
-          .slice(0, MAX_ON_CARD)
+        withTransfer(this.animalChores().filter(pick), MAX_ON_CARD)
           .map((c) => ({ id: `chore:${c.id}`, label: c.title, enabled: true }));
       if (a.id === "catalogo") return [{ id: "catalogo", label: "Abrir el catálogo de especies", enabled: !!this.openCatalog }, ...animal((c) => !!this.sanctuary?.owns(c))];
       if (a.id === "acuatico") {
         const care = animal((c) => isAquariumChore(c));
-        return care.length ? care : [{ id: "nada", label: "Cuidar el hábitat", enabled: false, why: "Está vacío: adopta medakas o caracoles en el catálogo de especies (cubierta 2)" }];
+        return care.length ? care : [{ id: "nada", label: "Cuidar el hábitat", enabled: false, why: "Está vacío: adopta medakas o caracoles en el catálogo de especies (cubierta 2) y llegarán a este tanque, o tráelos de la estación con la nave atracada" }];
       }
       return [];
     }
     if (a.kind !== "tripulacion") return [];
-    const chores = (area: CrewArea) =>
+    const chores = (area: CrewArea, keep: (c: Chore) => boolean = () => true) =>
       this.crew
         .choresAt(area)
+        .filter(keep)
         .slice(0, MAX_ON_CARD)
         .map((c) => ({ id: `chore:${c.id}`, label: c.title, enabled: true }));
     switch (a.area) {
@@ -323,9 +324,12 @@ export class StarshipInterior {
           .slice(0, MAX_ON_CARD)
           .map((c) => ({ id: `chore:${c.id}`, label: c.title, enabled: true }));
       case "camarotes":
-        return f.id === OWN_BUNK ? chores("camarotes") : [{ id: "nada", label: "Dormir aquí", enabled: false, why: "Camarote libre: el tuyo es el 1" }];
+        // The storm drill is done in the water-wall shelter here, not in the quarter.
+        return f.id === OWN_BUNK ? chores("camarotes", (c) => c.kind !== "refugio") : [{ id: "nada", label: "Dormir aquí", enabled: false, why: "Camarote libre: el tuyo es el 1" }];
       case "aseo":
-        return [{ id: "asearse", label: "Asearse", enabled: true }];
+        return chores("aseo");
+      case "medico":
+        return chores("medico");
     }
   }
 
@@ -343,9 +347,6 @@ export class StarshipInterior {
       case "ajustes":
         this.mode.sitLotus(true);
         return this.openSettings?.();
-      case "asearse":
-        this.mode.washAt(f.id);
-        return this.say("Aseo con toallitas, champú sin aclarado y el WHC: en 0 g el aire arrastra lo que en la Tierra cae", 5);
     }
   }
 

@@ -51,6 +51,10 @@ export type ChoreKind =
   | "ayuda-especie"
   /** Going to sleep in one's crew quarter (modules/wellness/data/sleep.ts). */
   | "dormir"
+  /** The crew's procedures (modules/wellness/data/procedures.ts): washing, sheltering from a solar storm, the medical kit. */
+  | "asearse"
+  | "refugio"
+  | "medico"
   /** Canadarm2 and Dextre from the Cupola's RWS (modules/robotics). */
   | "brazo-robotico"
   /** A spacewalk from Quest: suit-up and prebreathe, and the work outside (modules/eva, station-eva). */
@@ -103,6 +107,9 @@ export const CHORE_CATEGORY: Readonly<Record<ChoreKind, ChoreCategory>> = {
   "amistad-especie": "animales",
   "ayuda-especie": "animales",
   dormir: "salud",
+  asearse: "salud",
+  refugio: "salud",
+  medico: "salud",
   "brazo-robotico": "nave",
   "paseo-espacial": "nave",
 };

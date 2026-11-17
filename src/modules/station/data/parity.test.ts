@@ -6,7 +6,7 @@ import { POLANA_INTERIOR } from "./interior";
 /**
  * Starship and the station have the same facilities, and each works in both (reglas.md §6.0; docs/design/equipos.md,
  * «Paridad»): the galley, the mat (settings and yoga), the three exercise machines, the crew quarters, the toilet,
- * the life-support racks, the AQH and the species catalogue. Same fixture ids where the code routes by id (the
+ * the life-support racks, the AQH, the species catalogue and the CHeCS medical kit. Same fixture ids where the code routes by id (the
  * machines), same action and the same real equipment model.
  */
 const ship = starshipInteriorPlan();
@@ -18,8 +18,8 @@ const consoles = (p: StationInteriorPlan) => new Set(p.fixtures.flatMap((f) => (
 const byGear = (p: StationInteriorPlan, gear: Fixture["gear"]) => p.fixtures.filter((f) => f.gear === gear);
 
 describe("Parity of the facilities: Starship and the station (reglas.md §6.0)", () => {
-  it("the same crew areas in both: galley, mat, exercise, quarters, toilet", () => {
-    expect([...crewAreas(ship)].sort()).toEqual(["aseo", "camarotes", "cocina", "ejercicio", "esterilla"]);
+  it("the same crew areas in both: galley, mat, exercise, quarters, toilet, medical kit", () => {
+    expect([...crewAreas(ship)].sort()).toEqual(["aseo", "camarotes", "cocina", "ejercicio", "esterilla", "medico"]);
     expect([...crewAreas(iss)].sort()).toEqual([...crewAreas(ship)].sort());
   });
 
@@ -32,12 +32,16 @@ describe("Parity of the facilities: Starship and the station (reglas.md §6.0)",
       }
   });
 
-  it("the same real models for the mat, the toilet and the AQH", () => {
-    for (const gear of ["esterilla", "whc", "aqh"] as const) {
+  it("the same real models for the mat, the toilet, the AQH and the CHeCS", () => {
+    for (const gear of ["esterilla", "whc", "aqh", "checs"] as const) {
       expect(byGear(ship, gear).length, gear).toBe(1);
       expect(byGear(iss, gear).length, gear).toBe(1);
       expect(byGear(iss, gear)[0]!.action.kind, gear).toBe(byGear(ship, gear)[0]!.action.kind);
     }
+  });
+
+  it("the CHeCS is the medical area, under the same id, in both", () => {
+    for (const p of [ship, iss]) expect(p.fixtures.find((f) => f.id === "botiquin")?.action).toEqual({ kind: "tripulacion", area: "medico" });
   });
 
   it("the AQH and the catalogue work in both (none is a mere sign)", () => {

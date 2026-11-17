@@ -1,3 +1,4 @@
+import { withTransfer } from "@modules/sanctuary/application/aquarium-ops";
 import type { Chore } from "@modules/chores/domain/chore";
 import type { StepVisual } from "@modules/chores/domain/step-visual";
 import type { ChoreSession } from "@modules/habitat/application/habitat";
@@ -16,6 +17,8 @@ import { exerciseFixture } from "./station-steps";
 
 const itemName = (id: string) => ITEMS.find((i) => i.id === id)?.name ?? id;
 const MAX_CHORES_ON_CARD = 3;
+/** The CHeCS medical kit's rack (data/interior.ts). */
+const MEDICAL_KIT = "botiquin";
 /** The AQH's rack in Kibo (data/interior.ts). */
 const AQH = "rack-acuatico";
 const MAX_DISHES_WITH_CARGO = 2;
@@ -53,8 +56,6 @@ export interface StationLifeDeps {
    * of Kibo as at Starship's. Its chores and how one starts; undefined when there is no colony to care for.
    */
   aquarium?: { chores(): readonly Chore[]; start(c: Chore): ChoreSession | undefined };
-  /** She washes at the WHC of this fixture (station-interior.ts). */
-  washAt?(fixture: string): void;
   /** The species catalogue (sanctuary-life.ts), from its terminal in Kibo. */
   openCatalog?(): void;
   say(text: string, seconds?: number): void;
@@ -94,8 +95,8 @@ export class StationLife {
     const a = f.action;
     if (a.kind === "consola" && a.id === "catalogo") return [{ id: "catalogo", label: "Abrir el catálogo de especies", enabled: !!this.d.openCatalog }];
     if (a.kind === "consola" && a.id === "acuatico") {
-      const care = (this.d.aquarium?.chores() ?? []).slice(0, MAX_CHORES_ON_CARD).map((c) => ({ id: `chore:${c.id}`, label: c.title, enabled: true }));
-      return care.length ? care : [{ id: "nada", label: "Cuidar el hábitat", enabled: false, why: "Está vacío: adopta medakas o caracoles en el catálogo de especies (el puesto de al lado)" }];
+      const care = withTransfer(this.d.aquarium?.chores() ?? [], MAX_CHORES_ON_CARD).map((c) => ({ id: `chore:${c.id}`, label: c.title, enabled: true }));
+      return care.length ? care : [{ id: "nada", label: "Cuidar el hábitat", enabled: false, why: "Está vacío: adopta medakas o caracoles en el catálogo de especies (el puesto de al lado) y llegarán a este tanque, o tráelos de la Starship atracada" }];
     }
     if (a.kind === "brazo") {
       const atPort = this.d.atPort();
@@ -145,7 +146,9 @@ export class StationLife {
         // Each astronaut has a crew quarter of her own; Doménica is alone, so the other three are free.
         return f.id === OWN_BUNK ? chores("camarotes") : [{ id: "nada", label: "Dormir aquí", enabled: false, why: "Camarote libre: el tuyo es el 1, el de estribor" }];
       case "aseo":
-        return [{ id: "asearse", label: "Asearse", enabled: true }];
+        return chores("aseo");
+      case "medico":
+        return chores("medico");
     }
   }
 
@@ -189,9 +192,6 @@ export class StationLife {
       }
       case "ajustes":
         return this.d.openSettings();
-      case "asearse":
-        this.d.washAt?.(f.id);
-        return this.d.say("Aseo con toallitas, champú sin aclarado y el UWMS: en 0 g el aire arrastra lo que en la Tierra cae", 5);
       case "viaje": {
         const larder = this.d.mothershipLarder();
         if (!larder) return;
@@ -210,7 +210,7 @@ export class StationLife {
   private fixtureOf(c: Chore): string {
     if (!this.d.crew.chore(c.id)) return AQH;
     const area = this.d.crew.areaOf(c);
-    return area === "camarotes" ? OWN_BUNK : area === "ejercicio" ? exerciseFixture(c) : area;
+    return area === "camarotes" ? OWN_BUNK : area === "ejercicio" ? exerciseFixture(c) : area === "medico" ? MEDICAL_KIT : area;
   }
 
   /** The task list's chores for the station's areas. */

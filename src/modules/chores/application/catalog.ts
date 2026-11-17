@@ -334,6 +334,18 @@ export function sleepChore(steps: readonly string[], wrong: readonly string[]): 
   };
 }
 
+/** A crew procedure (washing, the storm shelter, the medical kit): each real step one challenge (modules/wellness/data/procedures.ts). */
+export function procedureChore(p: { readonly id: string; readonly title: string; readonly scenario: string; readonly steps: readonly string[]; readonly wrong: readonly string[] }, kind: "asearse" | "refugio" | "medico"): Chore {
+  return {
+    id: p.id,
+    kind,
+    targetId: p.id,
+    title: p.title,
+    scenario: p.scenario,
+    exercises: stepChain(p.id, 1, (i) => `${p.title}: paso ${i + 1}`, p.steps, p.wrong),
+  };
+}
+
 /** A machine turns a harvest into an ingredient; each step is one challenge. */
 export function processChore(p: Process, pool: readonly string[] = []): Chore {
   return {

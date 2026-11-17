@@ -1,6 +1,6 @@
 import type { ChoiceExercise, CodeBlock, OrderExercise } from "@modules/mind-duel/domain/exercise";
 import { ChoreRun, type Chore, type ChoreKind } from "@modules/chores/domain/chore";
-import { toCall } from "@modules/chores/application/catalog";
+import { stepChain, toCall } from "@modules/chores/application/catalog";
 import { ChoreSession } from "@modules/habitat/application/habitat";
 import { AQUARIUM_HELPERS, AQUARIUM_TUNING, RingAquarium, type AquariumEvent, type AquariumHelper } from "../domain/aquarium";
 import { BEFRIEND_SCHOOL, BEFRIEND_SNAILS, HELP_LESSONS } from "../data/aquarium-lessons";
@@ -13,6 +13,25 @@ export const isAquariumChore = (c: Chore): boolean => AQUARIUM_CHORE_KINDS.has(c
 export interface CalmPort {
   startle(amount: number): void;
 }
+
+/**
+ * Moving the colony between docked vehicles (docs/design/equipos.md): JAXA's medaka reached the ISS in a
+ * water-filled carrier and were moved into the AQH there; the bag holds water from their own tank and floats
+ * in the new one until the temperatures match, as any aquarium does.
+ */
+export const TRANSFER_ID = "acuario-traslado";
+export const TRANSFER_STEPS: readonly string[] = [
+  "llena la bolsa de transporte con agua de su propio tanque",
+  "pasa los animales a la bolsa con la red, sin sacarlos del agua",
+  "cierra la bolsa sin burbujas y métela en su caja acolchada",
+  "llévala por el túnel hasta el otro vehículo",
+  "deja la bolsa flotando en el tanque nuevo {15|0|120} minutos para igualar la temperatura",
+  "suelta los animales en el tanque nuevo",
+];
+export const TRANSFER_WRONG: readonly string[] = ["llévalos en la mano por el túnel", "échalos en agua del grifo", "suéltalos sin igualar la temperatura"];
+
+/** The first `max` care chores for a card, plus the transfer when it is offered (it never falls off the card). */
+export const withTransfer = (chores: readonly Chore[], max: number): Chore[] => [...chores.filter((c) => c.id !== TRANSFER_ID).slice(0, max), ...chores.filter((c) => c.id === TRANSFER_ID)];
 
 /** Share of the water replaced in a water change. */
 export const WATER_CHANGE = 0.2;
@@ -43,10 +62,28 @@ const choice = (id: string, skill: ChoiceExercise["skill"], idea: string, questi
 export class AquariumOps {
   private events: AquariumEvent[] = [];
 
+  /**
+   * The other vehicle's aquarium while the two are docked (docs/design/equipos.md): each vehicle keeps its own
+   * colony, where the animals physically are; moving them there is a transfer chore. `where`: «a la estación».
+   */
+  partner?: () => { readonly ops: AquariumOps; readonly where: string } | undefined;
+
   constructor(
     readonly tank: RingAquarium = new RingAquarium(),
     private readonly crew?: CalmPort,
   ) {}
+
+  /** Moving every animal to the partner's tank: each real step one challenge (data: TRANSFER_STEPS). */
+  private transferChore(where: string): Chore {
+    return {
+      id: TRANSFER_ID,
+      kind: "cuidar-acuario",
+      targetId: "traslado",
+      title: `Trasladar ${this.tank.fishCount ? this.tank.fishName : "los caracoles"} ${where}`,
+      scenario: "Viajan en una bolsa con el agua de su propio tanque, dentro de una caja acolchada, por el túnel entre los dos vehículos",
+      exercises: stepChain(TRANSFER_ID, 1, (i) => `Traslado: paso ${i + 1}`, TRANSFER_STEPS, TRANSFER_WRONG),
+    };
+  }
 
   tick(days: number): void {
     this.events.push(...this.tank.tick(days));
@@ -99,6 +136,9 @@ export class AquariumOps {
             exercises: l.exercises,
           });
         }
+    // Last, so the care chores come first; the cards always show it (`withTransfer`).
+    const to = this.partner?.();
+    if (to && t.fishCount + t.snailCount > 0) out.push(this.transferChore(to.where));
     return out;
   }
 
@@ -108,7 +148,14 @@ export class AquariumOps {
     const run = new ChoreRun(chore, Math.max(2, Math.ceil(chore.exercises.length / 3)));
     const done = () => {
       const t = this.tank;
-      if (chore.id === "acuario-comer") t.feed();
+      if (chore.id === TRANSFER_ID) {
+        const to = this.partner?.()?.ops.tank;
+        if (to) {
+          const name = t.fishName;
+          to.stock("banco", t.release("banco"), name);
+          to.stock("caracoles", t.release("caracoles"));
+        }
+      } else if (chore.id === "acuario-comer") t.feed();
       else if (chore.id === "acuario-cristal") t.cleanGlass();
       else if (chore.id === "acuario-agua") t.changeWater(WATER_CHANGE);
       else if (chore.kind === "amistad-acuario") {

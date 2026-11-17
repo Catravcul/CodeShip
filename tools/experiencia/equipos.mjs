@@ -2,7 +2,9 @@
 // the ISS's T2, CEVIS and ARED on Starship («licencia: equivalente de la ISS») and on the station, each with its
 // own movement on the skeleton and the machine moving with her; the mat's settings in both views at the LM, on
 // Starship and on the station, with her sitting ON the mat, and the build label; JAXA's AQH with its medaka and
-// snails and the cleaning acted out at it; the water-wall storm shelter; and the parity of the facilities (reglas.md
+// snails and the cleaning acted out at it, each vehicle with its own colony and the transfer between them as a
+// chore; the storm shelter drill (Starship's water wall, the station's Harmony crew quarter), washing at the WHC
+// and the CHeCS medical kit as code challenges acted out step by step; and the parity of the facilities (reglas.md
 // §6.0): every one in both vehicles works in both, with its animation. Captures: docs/screenshots/equipos-*-movil.png.
 import { mkdirSync } from "node:fs";
 
@@ -84,6 +86,37 @@ async function machines(j, vehicle, mode, card, place) {
   }
 }
 
+const SHIP_RUN = () => window.codeship.starship.session?.run.current ?? null;
+const ISS_RUN = () => window.codeship.stationLife.session?.run.current ?? null;
+
+/**
+ * A procedure as code challenges at its fixture: tap its chore on the card, solve `steps` of them (all with
+ * Infinity) and check that each solved step is acted out there (framed, and on its own model with `gear`).
+ */
+async function procedure(j, { card, act, what, oracle, mode, gear, steps = 1, label, title }) {
+  const p = j.page;
+  if (!(await j.tap(`${card}:not(.hidden) [data-act="${act}"]`, what))) {
+    j.check(`${what}: está en su tarjeta`, false);
+    return;
+  }
+  await j.waitDuel();
+  let framed = true;
+  for (let i = 0; i < steps; i++) {
+    if (!(await j.answer(oracle, true))) break;
+    await p.waitForTimeout(900);
+    const seen = await p.evaluate(([m, g]) => {
+      const x = m.split(".").reduce((o, k) => o[k], window.codeship);
+      return x.steps.framing && (!g || x.onGear === g);
+    }, [mode, gear ?? null]);
+    framed &&= seen;
+    if (i === 0) await capture(j, label, title);
+    await p.waitForTimeout(600);
+  }
+  j.check(`${what}: cada paso resuelto se ve donde se hace${gear ? ` (en su ${gear})` : ""}`, framed);
+  await close(j);
+  await p.waitForFunction((m) => !m.split(".").reduce((o, k) => o[k], window.codeship).steps.framing, mode, { timeout: 15000 }).catch(() => {});
+}
+
 export async function equipos(j) {
   const p = j.page;
   const onMat = (m) => {
@@ -142,19 +175,24 @@ export async function equipos(j) {
     await capture(j, "starship-aqh", "Cuidado del AQH en la Starship");
     await close(j);
   }
+  // Each vehicle keeps its own colony: the station's AQH is empty until they are carried there.
+  j.check("cada vehículo tiene su colonia: el AQH de la estación sigue vacío", await p.evaluate(() => window.codeship.stationAquarium.tank.fishCount + window.codeship.stationAquarium.tank.snailCount === 0));
+  await j.setup("la Starship está atracada en la estación (el viaje y el atraque se juegan en PX-36)", () => {
+    const c = window.codeship;
+    c.mothership.dockedTo ??= c.structure.portFor("nodriza")?.port?.id ?? "nodriza";
+  });
+  await placeShip("habitat-acuatico");
+  await procedure(j, { card: ".sts-card", act: "chore:acuario-traslado", what: "Trasladar el banco y los caracoles a la estación", oracle: SHIP_RUN, mode: "starship.mode", steps: Infinity, label: "starship-traslado", title: "Traslado del AQH a la estación" });
+  const moved = await p.evaluate(() => ({ ship: window.codeship.starship.aquarium.tank.fishCount, station: window.codeship.stationAquarium.tank.fishCount, snails: window.codeship.stationAquarium.tank.snailCount }));
+  j.check("el traslado (un reto por paso) lleva las 6 medakas y los 4 caracoles al AQH de la estación", moved.ship === 0 && moved.station === 6 && moved.snails === 4, JSON.stringify(moved));
 
-  // 5. The storm shelter (en desarrollo: RadWorks' water walls), and washing at the WHC.
+  // 5. The storm shelter drill (en desarrollo: RadWorks' water walls), washing at the WHC and the CHeCS: code challenges, acted out.
   await placeShip("sv-refugio");
-  await j.tap('.sts-card:not(.hidden) [data-act="refugio"]', "Resguardarse");
-  await p.waitForTimeout(1200);
-  j.check("Starship: se mete en el refugio de bolsas de agua", await p.evaluate(() => window.codeship.starship.mode.onGear === "sv-refugio" && window.codeship.starship.mode.steps.framing));
-  await capture(j, "starship-refugio", "Refugio de tormenta solar");
-  await p.waitForFunction(() => !window.codeship.starship.mode.steps.framing, null, { timeout: 15000 }).catch(() => {});
+  await procedure(j, { card: ".sts-card", act: "refugio", what: "Simulacro de tormenta solar en el refugio de agua (Starship)", oracle: SHIP_RUN, mode: "starship.mode", gear: "sv-refugio", label: "starship-refugio", title: "Refugio de tormenta solar" });
   await placeShip("aseo");
-  await j.tap('.sts-card:not(.hidden) [data-act="asearse"]', "Asearse (Starship)");
-  await p.waitForTimeout(800);
-  j.check("Starship: se asea en el WHC (animado)", await p.evaluate(() => window.codeship.starship.mode.onGear === "aseo" && window.codeship.starship.mode.steps.framing));
-  await p.waitForFunction(() => !window.codeship.starship.mode.steps.framing, null, { timeout: 15000 }).catch(() => {});
+  await procedure(j, { card: ".sts-card", act: "chore:asearse", what: "Asearse en el WHC (Starship)", oracle: SHIP_RUN, mode: "starship.mode", steps: 2, label: "starship-aseo", title: "Aseo en el WHC de la Starship" });
+  await placeShip("botiquin");
+  await procedure(j, { card: ".sts-card", act: "chore:medico-chequeo", what: "Chequeo médico con el CHeCS (Starship)", oracle: SHIP_RUN, mode: "starship.mode", steps: 2, label: "starship-checs", title: "Chequeo con el CHeCS de la Starship" });
 
   // 6. The station: the same machines and facilities, working the same.
   await j.setup("vuelve al LM y lo acopla en su puerto de la estación", () => {
@@ -177,7 +215,7 @@ export async function equipos(j) {
     const g = window.codeship.stationInside.gearOf("rack-acuatico");
     return { fish: g.fish.count, snails: g.snails.count, card: [...document.querySelectorAll(".sti-card:not(.hidden) button")].map((b) => b.textContent.trim()) };
   });
-  j.check("estación: el AQH de Kibo cuida la misma colonia (sus medakas y caracoles, sus tareas)", issTank.fish === 6 && issTank.snails === 4 && issTank.card.some((t) => /medakas|cristal|caracoles/i.test(t)), JSON.stringify(issTank));
+  j.check("estación: el AQH de Kibo muestra la colonia trasladada (sus medakas y caracoles, sus tareas)", issTank.fish === 6 && issTank.snails === 4 && issTank.card.some((t) => /medakas|cristal|caracoles/i.test(t)), JSON.stringify(issTank));
   if (await j.tap('.sti-card:not(.hidden) [data-act^="chore:"]', "Cuidar el AQH de Kibo")) {
     await j.waitDuel();
     await j.answer(() => window.codeship.stationLife.session?.run.current ?? null, true);
@@ -187,16 +225,17 @@ export async function equipos(j) {
     await close(j);
   }
   await placeIss("aseo");
-  await j.tap('.sti-card:not(.hidden) [data-act="asearse"]', "Asearse (estación)");
-  await p.waitForTimeout(800);
-  j.check("estación: se asea en el WHC de Tranquility (animado)", await p.evaluate(() => window.codeship.stationInside.onGear === "aseo" && window.codeship.stationInside.steps.framing));
-  await capture(j, "estacion-aseo", "Aseo en el WHC de Tranquility");
-  await p.waitForFunction(() => !window.codeship.stationInside.steps.framing, null, { timeout: 15000 }).catch(() => {});
+  await procedure(j, { card: ".sti-card", act: "chore:asearse", what: "Asearse en el WHC de Tranquility", oracle: ISS_RUN, mode: "stationInside", steps: 2, label: "estacion-aseo", title: "Aseo en el WHC de Tranquility" });
+  // The station's real procedure: into the most shielded spot, her Harmony crew quarter (radiation reduction material).
+  await placeIss("saco-1");
+  await procedure(j, { card: ".sti-card", act: "chore:refugio-estacion", what: "Simulacro de tormenta solar en el camarote de Harmony", oracle: ISS_RUN, mode: "stationInside", steps: 3, label: "estacion-refugio", title: "Resguardarse en el camarote de Harmony" });
+  await placeIss("botiquin");
+  await procedure(j, { card: ".sti-card", act: "chore:medico-desfibrilador", what: "Formación con el desfibrilador del CHeCS (Columbus)", oracle: ISS_RUN, mode: "stationInside", steps: 2, label: "estacion-checs", title: "El desfibrilador del CHeCS en Columbus" });
 
   // 7. Parity (reglas.md §6.0): every facility of both vehicles has its real model and an action on its card in both.
-  const SHARED = ["cocina", "esterilla", "t2", "cevis", "ared", "aseo", "saco-1", "rack-acuatico", "sv-consola"];
+  const SHARED = ["cocina", "esterilla", "t2", "cevis", "ared", "aseo", "saco-1", "rack-acuatico", "sv-consola", "botiquin"];
   const RACKS = ["sv-ar", "sv-wrs", "sv-ogs", "sv-itcs", "sv-incendios", "sv-consola"];
-  const SHARED_GEAR = { esterilla: "esterilla", t2: "t2", cevis: "cevis", ared: "ared", aseo: "aseo" };
+  const SHARED_GEAR = { esterilla: "esterilla", t2: "t2", cevis: "cevis", ared: "ared", aseo: "aseo", botiquin: "botiquin" };
   const gaps = [];
   for (const [vehicle, mode, card] of [["estación", "stationInside", ".sti-card"]]) {
     for (const id of SHARED) {
@@ -214,5 +253,5 @@ export async function equipos(j) {
     const m = window.codeship.starship.mode;
     return ids.filter((id) => !m.gearOf(id));
   }, Object.values(SHARED_GEAR));
-  j.check("paridad: la Starship tiene los mismos modelos reales (esterilla, T2, CEVIS, ARED, WHC, AQH)", shipGear.length === 0 && (await p.evaluate(() => !!window.codeship.starship.mode.gearOf("habitat-acuatico"))), shipGear.join(", "));
+  j.check("paridad: la Starship tiene los mismos modelos reales (esterilla, T2, CEVIS, ARED, WHC, AQH, CHeCS)", shipGear.length === 0 && (await p.evaluate(() => !!window.codeship.starship.mode.gearOf("habitat-acuatico"))), shipGear.join(", "));
 }

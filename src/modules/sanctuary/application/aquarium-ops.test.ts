@@ -107,3 +107,26 @@ describe("ring aquarium use cases (VID-11)", () => {
     expect(v.acts(glass, 1)?.map((a) => a.action)).toContain("lavar");
   });
 });
+
+describe("each vehicle keeps its own colony (VID-45)", () => {
+  it("two tanks are separate; docked, a transfer chore carries every animal to the other one", () => {
+    const ship = new AquariumOps(new RingAquarium({ fish: 6, snails: 4 }));
+    const station = new AquariumOps(new RingAquarium({ fish: 0, snails: 0 }));
+    expect(station.tank.fishCount).toBe(0);
+    expect(ship.chores().map((c) => c.id)).not.toContain("acuario-traslado");
+    let docked = true;
+    ship.partner = () => (docked ? { ops: station, where: "a la estación" } : undefined);
+    const t = ship.chores().find((c) => c.id === "acuario-traslado")!;
+    expect(t.title).toBe("Trasladar las medakas a la estación");
+    expect(t.exercises.length).toBe(6);
+    solve(ship, "acuario-traslado");
+    expect([ship.tank.fishCount, ship.tank.snailCount]).toEqual([0, 0]);
+    expect([station.tank.fishCount, station.tank.snailCount]).toEqual([6, 4]);
+    expect(station.tank.fishName).toBe("las medakas");
+    // Nothing left to carry, and undocked there is no transfer.
+    expect(ship.chores().map((c) => c.id)).not.toContain("acuario-traslado");
+    docked = false;
+    station.partner = () => (docked ? { ops: ship, where: "a la Starship" } : undefined);
+    expect(station.chores().map((c) => c.id)).not.toContain("acuario-traslado");
+  });
+});

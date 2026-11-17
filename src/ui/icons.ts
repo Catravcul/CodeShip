@@ -31,6 +31,8 @@ export const ICON = {
   /** Exercise: a dumbbell. */
   exercise: svg('<path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12"/>'),
   /** Yoga mat: a rolled mat. */
+  /** The medical kit: a cross in a case. */
+  medical: svg('<rect x="3" y="6" width="18" height="14" rx="2"/><path d="M9 6V4h6v2M12 10v6M9 13h6"/>'),
   mat: svg('<rect x="3" y="9" width="14" height="6" rx="1"/><circle cx="19" cy="12" r="3"/>'),
   /** Hangar and ship bay: a craft under a roof. */
   hangar: svg('<path d="M2 10l10-6 10 6"/><path d="M4 9v11h16V9"/><path d="M8 17l4-6 4 6z"/>'),

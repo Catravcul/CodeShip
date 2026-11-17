@@ -55,7 +55,7 @@ export interface InteriorVolume extends Box {
 }
 
 /** The station's own crew areas (docs/design/estacion-tripulacion.md). */
-export type CrewArea = "cocina" | "camarotes" | "aseo" | "ejercicio" | "esterilla";
+export type CrewArea = "cocina" | "camarotes" | "aseo" | "ejercicio" | "esterilla" | "medico";
 
 /** What a fixture does when she reaches it or taps it. */
 export type FixtureAction =

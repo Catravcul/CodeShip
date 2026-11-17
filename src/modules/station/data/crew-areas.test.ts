@@ -12,9 +12,9 @@ import { stationInteractables, stationPlayScale } from "./presentation";
 const PLAY = scaleInteriorPlan(POLANA_INTERIOR, MACHINE_SCALE);
 
 describe("EST-20 the station's crew areas", () => {
-  it("has its own galley, cabins, hygiene, exercise and yoga mat", () => {
+  it("has its own galley, cabins, hygiene, exercise, yoga mat and medical kit", () => {
     const areas = POLANA_INTERIOR.fixtures.flatMap((f) => (f.action.kind === "tripulacion" ? [f.action.area] : []));
-    expect(new Set(areas)).toEqual(new Set(["cocina", "camarotes", "aseo", "ejercicio", "esterilla"]));
+    expect(new Set(areas)).toEqual(new Set(["cocina", "camarotes", "aseo", "ejercicio", "esterilla", "medico"]));
     for (const f of POLANA_INTERIOR.fixtures.filter((x) => x.action.kind === "tripulacion")) expect(f.source, f.id).toBeTruthy();
   });
 

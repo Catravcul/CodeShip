@@ -102,7 +102,7 @@ export interface StationInteriorDeps {
 const ICON_OF = (f: Fixture, locked: boolean): string => {
   const a = f.action;
   if (a.kind === "puerta" || a.kind === "salir") return locked ? ICON.locked : ICON.door;
-  if (a.kind === "tripulacion") return { cocina: ICON.food, camarotes: ICON.bed, aseo: ICON.wash, ejercicio: ICON.exercise, esterilla: ICON.mat }[a.area];
+  if (a.kind === "tripulacion") return { cocina: ICON.food, camarotes: ICON.bed, aseo: ICON.wash, ejercicio: ICON.exercise, esterilla: ICON.mat, medico: ICON.medical }[a.area];
   if (a.kind === "bahia" || a.kind === "bishop") return ICON.hangar;
   if (a.kind === "brazo") return ICON.eye;
   if (a.kind === "esclusa") return ICON.suit;
@@ -625,7 +625,8 @@ export class StationInteriorMode {
    */
   stepVisual(id: string, acts: (index: number) => readonly StepAct[]): StepVisual | undefined {
     const f = this.interior.fixture(id);
-    const frame = f && (this.aqhFrame(f) ?? this.stepFrame(f));
+    // Inside the storm shelter for its drill (among the water bags); at the AQH close to its chambers.
+    const frame = f && (this.aqhFrame(f) ?? (this.rooms.gear.get(f.id)?.kind === "refugio" ? this.gearFrame(f) : undefined) ?? this.stepFrame(f));
     if (!frame) return undefined;
     let picked = { index: -1, n: 0 };
     this.steps.begin(frame);
@@ -644,6 +645,7 @@ export class StationInteriorMode {
       },
       finish: () => {},
       clear: () => {
+        this.onGear = undefined;
         this.steps.clear();
         this.frameForSheet(false);
         this.avatar.pose(this.lotus ? "lotus" : "float");
@@ -906,43 +908,6 @@ export class StationInteriorMode {
     // The step's props (food, a sponge) a hand in front of the glass, never inside the chambers or the rack.
     const target = focus.clone().addScaledVector(out, 0.15).add(new THREE.Vector3(0, 0.15, 0));
     return { stand, yaw: Math.atan2(face.x, face.z), camera: cam, look: focus, target };
-  }
-
-  /**
-   * Into the storm shelter (docs/design/equipos.md): she floats into the recess lined with water bags, curled up
-   * holding its strap, for `seconds`; then she comes out to the aisle again.
-   */
-  shelterIn(id: string, seconds = 6): boolean {
-    return this.showAtGear(id, seconds, ["float"]);
-  }
-
-  /** Washing at the WHC (reglas.md §4.2): towel to the face and the arms, then the hair, in its cubicle. */
-  washAt(id: string, seconds = 6): boolean {
-    return this.showAtGear(id, seconds, ["prayer", "neck-down", "arms-up", "neck-tilt", "prayer"]);
-  }
-
-  /** She at a fixture's own model for a while, through the poses in turn (no sheet: the HUD hides meanwhile). */
-  private showAtGear(id: string, seconds: number, poses: readonly string[]): boolean {
-    const f = this.interior.fixture(id);
-    const frame = f && this.gearFrame(f);
-    if (!frame) return false;
-    this.steps.begin(frame);
-    this.steps.holdPose = true;
-    this.avatar.pose(poses[0]!);
-    this.ui.classList.add("hidden");
-    for (const sg of this.rooms.signs) sg.visible = false;
-    const each = (seconds * 1000) / poses.length;
-    const turns = poses.slice(1).map((p, i) => setTimeout(() => this.onGear === id && this.avatar.pose(p), each * (i + 1)));
-    const done = () => {
-      turns.forEach(clearTimeout);
-      if (!this.steps.framing || this.onGear !== id) return;
-      this.onGear = undefined;
-      this.steps.clear();
-      this.body.reset();
-      if (this.active) this.ui.classList.remove("hidden");
-    };
-    setTimeout(done, seconds * 1000);
-    return true;
   }
 
   /**

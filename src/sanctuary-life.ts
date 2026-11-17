@@ -1,3 +1,4 @@
+import type { AquariumOps } from "@modules/sanctuary/application/aquarium-ops";
 import { AdoptionOps, isColonyChore, type AdoptionEvent, type AdoptionPorts } from "@modules/adoption/application/adoption-ops";
 import { SPECIES_CATALOG } from "@modules/adoption/data/catalog";
 import { ALL_SPECIES, anySpecies } from "@modules/adoption/data/species-extra";
@@ -38,7 +39,7 @@ export interface SanctuaryLife {
  * snails) and the terrarium shelf (colonies), the colonies' chores on the ring, and the catalogue sheet opened
  * from its terminal and from the task list. A new game has no animals: Doménica starts alone (Berón, 2026-11-16).
  */
-export function wireSanctuaryLife(d: { root: HTMLElement; interior: Interior; habitat: Habitat; importOps: ImportOps; wallet: Wallet; taskBoard: TaskBoard; goChore: (choreId: string) => void }): SanctuaryLife {
+export function wireSanctuaryLife(d: { root: HTMLElement; interior: Interior; habitat: Habitat; importOps: ImportOps; wallet: Wallet; taskBoard: TaskBoard; goChore: (choreId: string) => void; aquariumHere?: () => AquariumOps | undefined }): SanctuaryLife {
   const { interior, habitat, importOps, wallet } = d;
   const runs = { banco: [] as { n: number; color: string }[], caracoles: [] as { n: number; color: string }[] };
   let serial = 0;
@@ -62,9 +63,13 @@ export function wireSanctuaryLife(d: { root: HTMLElement; interior: Interior; ha
       else habitat.addHen(new Hen(id, name, e.id === "gallina-sedosa" ? i === 0 : e.id === "gallina" && i === 1));
     }
     if (e.lodging === "banco" || e.lodging === "caracoles") {
-      interior.aquarium.tank.stock(e.lodging, n, e.plural);
-      runs[e.lodging].push({ n, color: e.icon.body });
-      interior.tank.setColors(e.lodging, runs[e.lodging]);
+      // Into the tank of the vehicle she adopts from (each keeps its own colony: docs/design/equipos.md).
+      const here = d.aquariumHere?.();
+      (here ?? interior.aquarium).tank.stock(e.lodging, n, e.plural);
+      if (!here) {
+        runs[e.lodging].push({ n, color: e.icon.body });
+        interior.tank.setColors(e.lodging, runs[e.lodging]);
+      }
     }
     if (e.lodging === "colonia") interior.catalogCorner.addColony(e.id, e.icon.body, e.icon.accent, n);
     return names;

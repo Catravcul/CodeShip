@@ -92,7 +92,7 @@ export class TaskBoard {
       .join("");
     const LABEL: Record<TaskTravel, string> = { viaje: "Viaje", teletransporte: "Teletransporte" };
     const now = settings.value.taskTravel;
-    const travel = `<div class="tb-travel" role="radiogroup" aria-label="Ir a una tarea">${TASK_TRAVELS.map((m) => `<button role="radio" data-travel="${m}" aria-checked="${m === now}" class="${m === now ? "on" : ""}">${LABEL[m]}</button>`).join("")}</div><small class="tb-travel-help">${now === "viaje" ? "«Ir» hace el camino real: andando, en ascensor, saltando y en la nodriza (con «Parar»)" : "«Ir» aparece allí al momento"}</small>`;
+    const travel = `<div class="tb-travel" role="radiogroup" aria-label="Ir a una tarea">${TASK_TRAVELS.map((m) => `<button role="radio" data-travel="${m}" aria-checked="${m === now}" class="${m === now ? "on" : ""}">${LABEL[m]}</button>`).join("")}</div><small class="tb-travel-help">${now === "viaje" ? "«Ir» hace el camino real: andando, saltando, abriendo escotillas y volando en la nave (con «Parar»)" : "«Ir» aparece allí al momento"}</small>`;
     this.el.innerHTML = `<div class="board-head"><b>Tareas</b><button data-close aria-label="Cerrar tareas">✕</button>${travel}${this.onCatalog ? `<button class="tb-catalog" data-catalog aria-label="Catálogo de especies">Catálogo de especies</button>` : ""}${chips}</div>${body || "<p>Nada pendiente</p>"}`;
   }
 }

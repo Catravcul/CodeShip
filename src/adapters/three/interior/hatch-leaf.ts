@@ -32,7 +32,7 @@ export class HatchLeaf {
     const s = sizeM;
     // The frame stays in the wall; the leaf turns on its hinge at the left edge.
     const frameMat = new THREE.MeshStandardMaterial({ color: 0xffc84a, roughness: 0.6, metalness: 0.2 });
-    const t = 0.06 * s;
+    const t = 0.09 * s;
     const frames = opts.frame === false ? [] : opts.round ? [] : ([
       [s + 2 * t, t, 0, s / 2 + t / 2],
       [s + 2 * t, t, 0, -s / 2 - t / 2],
@@ -41,13 +41,14 @@ export class HatchLeaf {
     ] as const);
     if (opts.round && opts.frame !== false) this.root.add(new THREE.Mesh(new THREE.TorusGeometry(s / 2 + t / 2, t / 2, 8, 32), frameMat));
     for (const [w, h, x, y] of frames) {
-      const bar = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.03), frameMat);
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.06), frameMat);
       bar.position.set(x, y, 0);
       this.root.add(bar);
     }
     this.hinge.position.set(-s / 2, 0, 0);
     this.root.add(this.hinge);
-    const plateMat = new THREE.MeshStandardMaterial({ color: 0xcfd6de, roughness: 0.5, metalness: 0.35 });
+    // Darker than the white panels round it, so its swing reads.
+    const plateMat = new THREE.MeshStandardMaterial({ color: 0x7d8a97, roughness: 0.45, metalness: 0.45 });
     const plate = opts.round ? new THREE.Mesh(new THREE.CylinderGeometry(s / 2, s / 2, 0.05, 32), plateMat) : new THREE.Mesh(new THREE.BoxGeometry(s, s, 0.05), plateMat);
     if (opts.round) plate.rotation.x = Math.PI / 2;
     plate.position.set(s / 2, 0, 0.025);

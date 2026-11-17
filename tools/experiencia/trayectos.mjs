@@ -57,7 +57,7 @@ export async function trayectos(j) {
   await j.tap(".stand-btn", "Levantarse: habitáculo");
   await p.waitForTimeout(800);
   await j.tap(".room-ui:not(.hidden) .cab-tasks", "Tareas");
-  j.check("«Viaje» está elegido por defecto en la lista de tareas", (await j.texts('.task-board .tb-travel [aria-pressed="true"]')).join() === "Viaje", (await j.texts('.task-board .tb-travel [aria-pressed="true"]')).join());
+  j.check("«Viaje» está elegido por defecto en la lista de tareas", (await j.texts('.task-board .tb-travel [aria-checked="true"]')).join() === "Viaje", (await j.texts('.task-board .tb-travel [aria-checked="true"]')).join());
   await j.tap(`.task-board .tb-go[aria-label="Ir: ${task.replace(/"/g, '\\"')}"]`, `Ir: ${task}`);
   await p.waitForTimeout(500);
   const plan = await p.evaluate(() => window.codeship.journey.plan.map((l) => ({ kind: l.kind, from: l.from, to: l.to, label: l.label, s: Math.round(l.seconds) })));

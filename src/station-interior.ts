@@ -117,6 +117,8 @@ export class StationInteriorMode {
   private cardKey = "";
   private readoutKey = "";
   private framing: { eye: THREE.Vector3; target: THREE.Vector3; above: number } | null = null;
+  /** While she goes through a hatch: a camera a little off, that sees her and the leaf swing. */
+  private hatchView: { eye: THREE.Vector3; target: THREE.Vector3 } | null = null;
   /** A hop to a fixture asked by the task list or a door, and what to do on arrival. */
   private arrival: { poi?: string; point?: string; then?: () => void } | null = null;
   /** Sitting in lotus on the mat (the settings are open). */
@@ -127,7 +129,7 @@ export class StationInteriorMode {
    * Going through a hatch (docs/design/reglas.md §3.1): the leaf swings open, she floats through the
    * opening, then `then` (out: the next room), or (in) she floats in from it and it shuts behind her.
    */
-  private passing: { id: string; out: boolean; t: number; from: Vec3; to: Vec3; then?: () => void } | null = null;
+  private passing: { id: string; out: boolean; t: number; from: Vec3; stand?: Vec3; opening?: number; to: Vec3; then?: () => void } | null = null;
   private readonly keys = new Set<string>();
   private p = Vec3.ZERO;
   /** How she moves about: holding rails, pushing off, gliding (docs/design/ingravidez.md). */
@@ -345,12 +347,44 @@ export class StationInteriorMode {
     const n = FACE_NORMAL[f.face];
     this.hop.cancel();
     leaf.target = 1;
-    this.passing = { id, out: true, t: 0, from: this.p, to: new Vec3(f.at.x, f.at.y, f.at.z).add(n.scale(0.5)), then };
+    // Back off a little from the hatch so its leaf is seen swinging (it fills the view from the grab point).
+    const at = new Vec3(f.at.x, f.at.y, f.at.z);
+    const stand = [1.4, 1.1, 0.8].map((d) => at.sub(n.scale(d))).find((q) => this.interior.fits(q, 0.2, this.suited)) ?? this.p;
+    this.passing = { id, out: true, t: 0, from: this.p, stand, to: at.sub(n.scale(0.12)), then };
+    this.hatchView = this.viewOfHatch(at, n);
     // Look at the hatch she opens (a roof hatch is overhead).
     this.lookAt(new Vec3(f.at.x, f.at.y, f.at.z));
     this.card.classList.add("hidden");
     this.cardKey = "";
     this.say(`Abres la escotilla: ${f.label}`);
+  }
+
+  /**
+   * Where to watch a hatch from while she goes through: back from it into the room and to one side, the
+   * first spot that is inside the room (never through a wall).
+   */
+  private viewOfHatch(at: Vec3, n: Vec3): { eye: THREE.Vector3; target: THREE.Vector3 } {
+    const a = Math.abs(n.y) > 0.7 ? new Vec3(1, 0, 0) : new Vec3(0, 1, 0);
+    const b = n.cross(a).normalize();
+    const tries: Vec3[] = [];
+    for (const d of [2.6, 2.0, 1.5])
+      for (const [u, v] of [
+        [0.9, 0.6],
+        [-0.9, 0.6],
+        [0.9, -0.6],
+        [-0.9, -0.6],
+        [0, 0],
+      ] as const)
+        tries.push(at.sub(n.scale(d)).add(a.scale(u)).add(b.scale(v)));
+    const eye = tries.find((q) => this.interior.fits(q, 0.15, this.suited)) ?? at.sub(n.scale(1));
+    const target = at.sub(n.scale(0.3));
+    return { eye: new THREE.Vector3(eye.x, eye.y, eye.z), target: new THREE.Vector3(target.x, target.y, target.z) };
+  }
+
+  /** The middle of a hatch fixture. */
+  private leafCentre(id: string): Vec3 {
+    const f = this.interior.fixture(id)!;
+    return new Vec3(f.at.x, f.at.y, f.at.z);
   }
 
   /** Turn the view towards a point. */
@@ -371,7 +405,8 @@ export class StationInteriorMode {
     leaf.set(1);
     const n = FACE_NORMAL[f.face];
     const to = this.iva.position;
-    this.passing = { id, out: false, t: 0, from: new Vec3(f.at.x, f.at.y, f.at.z).add(n.scale(0.4)), to };
+    this.passing = { id, out: false, t: 0, from: new Vec3(f.at.x, f.at.y, f.at.z).sub(n.scale(0.12)), to };
+    this.hatchView = this.viewOfHatch(new Vec3(f.at.x, f.at.y, f.at.z), n);
     this.p = this.passing.from;
   }
 
@@ -380,12 +415,22 @@ export class StationInteriorMode {
     for (const l of this.leaves.values()) l.update(dt);
     const g = this.passing;
     if (!g) return false;
+    this.card.classList.add("hidden");
     const leaf = this.leaves.get(g.id);
     // Out: first the leaf opens, then she floats through. In: she floats in, then it shuts.
     if (g.out && leaf && leaf.open < 0.98) {
+      // While it swings, she eases back to where it is seen whole.
+      g.opening = (g.opening ?? 0) + dt;
+      if (g.stand) {
+        const k = Math.min(1, g.opening / 0.6);
+        this.p = g.from.add(g.stand.sub(g.from).scale(k * k * (3 - 2 * k)));
+        this.iva = { ...this.iva, position: this.p };
+        this.lookAt(this.leafCentre(g.id));
+      }
       this.placeCamera();
       return true;
     }
+    if (g.out && g.stand && g.t === 0) g.from = this.p;
     g.t += dt;
     const k = Math.min(1, g.t / FLOAT_THROUGH_S);
     const e = k * k * (3 - 2 * k);
@@ -394,6 +439,7 @@ export class StationInteriorMode {
     this.placeCamera();
     if (k < 1) return true;
     this.passing = null;
+    this.hatchView = null;
     if (g.out) {
       // Shut behind her once she is through (the room is hidden by then; it is shut when she comes back).
       leaf?.set(0);
@@ -668,7 +714,8 @@ export class StationInteriorMode {
     if (!this.active) return;
     if (this.stage(dt)) return;
     if (this.stepHatch(dt)) {
-      this.fadeSigns();
+      // Going through a hatch: no signs in the way of the leaf.
+      for (const sg of this.rooms.signs) sg.visible = false;
       this.renderHud();
       return;
     }
@@ -950,6 +997,17 @@ export class StationInteriorMode {
   }
 
   private placeCamera(): void {
+    if (this.hatchView) {
+      this.rig.visible = true;
+      this.avatar.root.visible = !this.suited;
+      this.suit.root.visible = this.suited;
+      const dir = this.lookDir();
+      this.body.update(this.suited ? this.suit : this.avatar, this.iva, this.graph, new THREE.Vector3(dir.x, dir.y, dir.z), 1 / 60);
+      this.camera.up.set(0, 1, 0);
+      this.camera.position.copy(this.hatchView.eye);
+      this.camera.lookAt(this.hatchView.target);
+      return;
+    }
     if (this.framing) {
       this.camera.up.set(0, 1, 0);
       this.camera.position.copy(this.framing.eye);

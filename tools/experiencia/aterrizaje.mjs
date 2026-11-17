@@ -103,6 +103,8 @@ export async function aterrizajePrograma(j) {
   for (let n = 0; n < 8 && (await p.evaluate(() => window.codeship.probeLanding.status)) === "programming"; n++) await j.answer(() => window.codeship.probeLanding.programming?.current ?? null, true);
   const st = await p.evaluate(() => window.codeship.probeLanding.status);
   j.check("con la cadena resuelta (un fallo), el ordenador vuela el programa", st === "flying", st);
+  const said = (await j.texts(".pr-msg.on"))[0] ?? "";
+  j.check("al cargar el programa dice adónde baja y para qué (reglas §3.9)", /sitio marcado/.test(said) && /Para posar la sonda/.test(said), said);
   await p.waitForFunction(() => [...document.querySelectorAll(".duel")].every((e) => e.classList.contains("hidden")), null, { timeout: 15000 }).catch(() => {});
   await p.waitForTimeout(2500);
   const fly = await readout(j, ".land-box.probe .landing-readout");
@@ -110,6 +112,30 @@ export async function aterrizajePrograma(j) {
   const chip = (await j.texts(".trip-chip.on .tc-detail"))[0] ?? "";
   j.check("la ficha de viaje sigue el descenso (con «Ver» y «Mando»)", /del suelo/.test(chip) && (await j.texts(".trip-chip.on .tc-take")).length > 0, chip);
   await j.shot("sonda-bajando");
+  const where = (await j.texts(".trip-chip.on")).join(" ");
+  j.check("la ficha dice el sitio, la distancia al sitio y el tiempo que falta", /sitio de aterrizaje en/.test(where) && /al sitio \d/.test(where) && /llega en/.test(where), where);
+  // «Ver trayecto» never traps her (reglas §3.8): the camera turns, and closing it gives the console back.
+  await j.tap(".trip-chip .tc-view", "Ver trayecto");
+  await p.waitForTimeout(1200);
+  const cam0 = await p.evaluate(() => window.codeship.tripPreview.camera.position.toArray());
+  await p.mouse.move(195, 300);
+  await p.mouse.down();
+  await p.mouse.move(280, 330, { steps: 6 });
+  await p.mouse.up();
+  await p.waitForTimeout(400);
+  const cam1 = await p.evaluate(() => window.codeship.tripPreview.camera.position.toArray());
+  j.check("en «Ver trayecto» arrastrar gira la cámara", Math.hypot(...cam1.map((v, i) => v - cam0[i])) > 0.1);
+  await j.tap(".trip-chip .tc-view", "Ocultar trayecto");
+  await p.waitForTimeout(600);
+  const back = await p.evaluate(() => ({ full: document.body.classList.contains("in-trip-view"), exit: getComputedStyle(document.querySelector(".pr-exit")).visibility }));
+  j.check("al ocultar el trayecto vuelven la consola y sus botones", !back.full && back.exit === "visible", JSON.stringify(back));
+  // The probe is flown from afar: she can leave the console and the program goes on (reglas §3.8).
+  await j.tap(".pr-exit", "Volver al puente");
+  await p.waitForTimeout(800);
+  const away = await p.evaluate(() => ({ bridge: window.codeship.bridge.active, chip: !!document.querySelector(".trip-chip.on"), st: window.codeship.probeLanding.status }));
+  j.check("deja la consola: en el puente no sale el aterrizaje y la sonda sigue bajando sola", away.bridge && !away.chip && (away.st === "flying" || away.st === "landed"), JSON.stringify(away));
+  await j.useMachine("bridge", "sonda", "abrir", "Volver a la consola de la sonda");
+  await p.waitForTimeout(800);
   await p.waitForFunction(() => window.codeship.probeLanding.status !== "flying", null, { timeout: 300000 });
   const end = await p.evaluate(() => [window.codeship.probeLanding.status, window.codeship.probe.status]);
   j.check("Juventas se posa sola (sin anclas: rebota y se asienta)", end[0] === "landed" && end[1] === "posada", end.join(" / "));

@@ -95,7 +95,8 @@ export class NavigationMode {
   private readonly text: HTMLElement;
   private readonly take: HTMLButtonElement;
   private readonly bar: HTMLElement;
-  private message: { text: string; cls: string; until: number } | null = null;
+  /** A trip's notice; `until` is set when it is first shown at that vehicle's controls (it waits there until she comes back). */
+  private message: { text: string; cls: string; seconds: number; vehicle: "carrier" | "lander" | "aqui"; until?: number } | null = null;
   private lastStatus: string;
   private refreshAt = 0;
   /** Set by main: whether the map may open here as an overlay (it may not in the lander's cockpit). */
@@ -146,8 +147,11 @@ export class NavigationMode {
     });
   }
 
-  /** Set by main: she is at the mothership's controls (the flight deck), where the hand-flying panel shows. */
-  atControls?: () => boolean;
+  /**
+   * Set by main: she is at that vehicle's controls (the flight deck for the mothership, the LM's cockpit for the
+   * lander). Trips and their notices show only there (reglas.md §3.8); elsewhere they go on by themselves.
+   */
+  atControls?: (vehicle: "carrier" | "lander") => boolean;
   private readonly hand: HTMLElement;
   private readonly handRead: HTMLElement;
 
@@ -195,8 +199,8 @@ export class NavigationMode {
     );
   }
 
-  private flash(text: string, cls: string, seconds = 6): void {
-    this.message = { text, cls, until: performance.now() + seconds * 1000 };
+  private flash(text: string, cls: string, seconds = 6, vehicle: "carrier" | "lander" | "aqui" = "aqui"): void {
+    this.message = { text, cls, seconds, vehicle };
   }
 
   /** Each frame, with the real frame time (the trip's time-lapse is the navigator's own). */
@@ -205,21 +209,25 @@ export class NavigationMode {
     nav.update(dtS, held);
     const now = performance.now();
     if (nav.status !== this.lastStatus) {
-      if (nav.status === "arrived") this.flash(`Llegada: a ${km(nav.approachM)} de ${nav.target.name}. Aterriza a mano con los indicadores o con «Aterrizar con un programa» (retos)`, "done", 10);
-      if (nav.status === "autopilot" && this.lastStatus === "carrier") this.flash("La nodriza ha aparcado: el módulo de aterrizaje se desacopla y sigue solo", "done");
+      if (nav.status === "arrived") this.flash(`Llegada: a ${km(nav.approachM)} de ${nav.target.name}. Aterriza a mano con los indicadores o con «Aterrizar con un programa» (retos)`, "done", 10, "lander");
+      if (nav.status === "autopilot" && this.lastStatus === "carrier") this.flash("La nodriza ha aparcado: el módulo de aterrizaje se desacopla y sigue solo", "done", 6, "carrier");
       if (nav.status === "docked")
-        this.flash(this.lastStatus === "carrier" ? this.berthedText(nav.target.name, nav.carrying) : `Módulo acoplado a ${nav.target.name}`, "done", 10);
-      if (nav.status === "manual" && this.lastStatus === "carrier" && nav.parkedByHand) this.flash(`La ${REAL_ONLY ? "Starship" : "nodriza"} ha aparcado junto a ${nav.target.name}: baja en el módulo desde el puesto del comandante, a mano o con un programa`, "done", 10);
-      if (nav.status === "manual" && this.lastStatus === "docking") this.flash("Acople cancelado: tienes los mandos", "bad");
+        this.flash(this.lastStatus === "carrier" ? this.berthedText(nav.target.name, nav.carrying) : `Módulo acoplado a ${nav.target.name}`, "done", 10, this.lastStatus === "carrier" ? "carrier" : "lander");
+      if (nav.status === "manual" && this.lastStatus === "carrier" && nav.parkedByHand) this.flash(`La ${REAL_ONLY ? "Starship" : "nodriza"} ha aparcado junto a ${nav.target.name}: baja en el módulo desde el puesto del comandante, a mano o con un programa`, "done", 10, "carrier");
+      if (nav.status === "manual" && this.lastStatus === "docking") this.flash("Acople cancelado: tienes los mandos", "bad", 6, "lander");
       if (nav.status === "failed") this.flash("El plan no compila: vuela a mano o vuelve a programarlo desde el mapa de la nave de viaje", "bad");
-      if (nav.status === "manual" && this.lastStatus === "autopilot") this.flash("Mando manual: el piloto automático se ha desconectado", "bad");
+      if (nav.status === "manual" && this.lastStatus === "autopilot") this.flash("Mando manual: el piloto automático se ha desconectado", "bad", 6, "lander");
       this.lastStatus = nav.status;
     }
     if (this.map.visible && now > this.refreshAt) {
       this.refreshAt = now + 700;
       this.map.tick();
     }
-    const p = nav.progress();
+    const here = (v: "carrier" | "lander" | "aqui") => v === "aqui" || (this.atControls?.(v) ?? true);
+    const flying = nav.progress();
+    const p = flying && here(flying.vehicle === "carrier" ? "carrier" : "lander") ? flying : undefined;
+    const msg = this.message;
+    if (msg && msg.until === undefined && here(msg.vehicle)) msg.until = now + msg.seconds * 1000;
     let text = "";
     let cls = "";
     if (p) {
@@ -227,9 +235,9 @@ export class NavigationMode {
       const lapse = p.lapse > 1 ? ` · cámara rápida ×${num(p.lapse)}` : "";
       text = `${who} → ${nav.target.name}\n${PHASE[p.phase]} · ${num(p.speedMS, p.speedMS < 1 ? 2 : 1)} m/s · faltan ${km(p.remainingM)} · ${duration(p.etaS)} de vuelo, llega en ${duration(p.etaRealS)}${lapse}`;
       (this.bar.firstElementChild as HTMLElement).style.width = `${(p.fraction * 100).toFixed(1)}%`;
-    } else if (this.message && now < this.message.until) {
-      text = this.message.text;
-      cls = this.message.cls;
+    } else if (msg?.until !== undefined && now < msg.until) {
+      text = msg.text;
+      cls = msg.cls;
     }
     const className = `autopilot-tag ${cls} ${text ? "on" : ""}`;
     if (this.tag.className !== className) this.tag.className = className;
@@ -244,7 +252,7 @@ export class NavigationMode {
   /** The hand-flying panel: range to the parking point, speed and what to do next. */
   private updateHand(): void {
     // Only at the controls (the flight deck); away from them the ship coasts at the speed she gave it.
-    const m = this.nav.manualCarrier && (this.atControls?.() ?? true) ? this.nav.manualCarrier : undefined;
+    const m = this.nav.manualCarrier && (this.atControls?.("carrier") ?? true) ? this.nav.manualCarrier : undefined;
     this.hand.classList.toggle("hidden", !m);
     document.body.classList.toggle("in-carrier-hand", !!m);
     if (!m) return;

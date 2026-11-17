@@ -54,4 +54,12 @@ body.in-station-interior .trip-chip { bottom: calc(200px + env(safe-area-inset-b
 .trip-pip.full { z-index: 8; border: 0; border-radius: 0; box-shadow: none; pointer-events: auto; cursor: grab; }
 .trip-pip.full .tp-label { left: 12px; top: calc(12px + env(safe-area-inset-top)); padding: 6px 10px; font-size: 14px; font-weight: 600; border: 1px solid #7fdcff66; border-radius: 10px; }
 .trip-pip.full .tp-close { right: 12px; top: calc(8px + env(safe-area-inset-top)); width: 48px; height: 48px; font-size: 24px; color: #04121a; background: #7fdcff; border-radius: 12px; }
-body.in-trip-view #app > :not(canvas):not(.trip-pip):not(.journey-bar):not(.journey-note):not(.ctx-dock) { visibility: hidden !important; }
+body.in-trip-view #app > :not(canvas):not(.trip-pip):not(.trip-chip):not(.journey-bar):not(.journey-note):not(.ctx-dock) { visibility: hidden !important; }
+/* Probe console on a phone: the context column is half the width, so the chip stacks (title, time, buttons) instead of cutting its title. */
+@media (pointer: coarse) {
+  body.in-probe .trip-chip .tc-row { flex-wrap: wrap; row-gap: 4px; }
+  body.in-probe .trip-chip .tc-title { flex-basis: 100%; white-space: normal; }
+  body.in-probe .trip-chip .tc-eta { flex-basis: 100%; }
+  body.in-probe .trip-chip button { flex: 1; padding: 0 6px; }
+  body.in-probe .trip-chip .tc-detail { white-space: normal; }
+}

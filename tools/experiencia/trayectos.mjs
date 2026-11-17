@@ -144,20 +144,41 @@ export async function trayectos(j) {
   const docking = await p.waitForFunction(() => window.codeship.nav.progress()?.phase === "dock" || !!window.codeship.mothership.dockedTo, null, { timeout: 300000 }).then(() => true).catch(() => false);
   j.check("parada en el punto, se acerca al puerto despacio, como la Crew Dragon (fase de atraque)", docking);
   if (docking) await capture(j, "6-atraque", "Atraque: la Starship se acerca a la estación");
-  const berthed = await p.waitForFunction(() => !!window.codeship.mothership.dockedTo, null, { timeout: 300000 }).then(() => true).catch(() => false);
-  j.check("la Starship atraca en la estación", berthed);
 
-  // 4. «Ir» again: down the hatch, the nose tunnel and the station's hops; the machine opens.
+  // Trips run on their own (reglas §3.8): while Starship berths she goes down to cook; the trip shows only at the flight deck.
+  const meal = await p.evaluate(() => window.codeship.tasks().find((t) => t.place.vehicle === "nodriza" && /^Cocinar/.test(t.title))?.title);
   if (await p.evaluate(() => window.codeship.deck.active)) {
     if (await p.locator(".fd-panel.max .fd-back").count()) await j.tap(".fd-panel.max .fd-back", "Volver al puente");
     await j.tap(".fd-status .fd-exit:not([class*=' '])", "Volver");
   }
   await p.waitForTimeout(600);
+  j.check("en el puente se ve el viaje (chip con el tiempo que falta)", await p.evaluate(() => !!document.querySelector(".trip-chip.on")));
+  if (meal) {
+    await j.setup("abre la lista de tareas", () => window.codeship.taskBoard.open());
+    await goTask(meal);
+    await p.waitForFunction(() => !window.codeship.bridge.active, null, { timeout: 120000 }).catch(() => {});
+    await p.waitForTimeout(800);
+    const away = await p.evaluate(() => ({ chip: !!document.querySelector(".trip-chip.on"), status: window.codeship.nav.status, berthed: !!window.codeship.mothership.dockedTo }));
+    j.check("fuera del puente no sale el viaje, y la Starship sigue atracando sola", !away.chip && (away.status === "carrier" || away.berthed), JSON.stringify(away));
+    await p.waitForFunction(() => !window.codeship.journey.active, null, { timeout: 200000 }).catch(() => {});
+    await p.waitForTimeout(800);
+    if (await p.evaluate(() => [...document.querySelectorAll(".duel")].some((e) => !e.classList.contains("hidden")))) {
+      await j.shot("cocina-durante-el-atraque");
+      if (await p.locator('.duel:not(.hidden) .duel-tools [data-act="close"]').count()) await j.tap('.duel:not(.hidden) .duel-tools [data-act="close"]', "× del reto");
+      else if (await p.locator(".duel:not(.hidden) .x").count()) await j.tap(".duel:not(.hidden) .x", "Cerrar el reto");
+    }
+    j.check("mientras atraca, ella llega a la cocina de la cubierta 1", await p.evaluate(() => !!window.codeship.starship?.active), meal);
+  }
+  const berthed = await p.waitForFunction(() => !!window.codeship.mothership.dockedTo, null, { timeout: 300000 }).then(() => true).catch(() => false);
+  j.check("la Starship atraca en la estación", berthed);
+
+  // 4. «Ir» again, from where she is: the nose tunnel and the station's hops; the machine opens.
+  await p.waitForTimeout(600);
   await j.setup("abre la lista de tareas", () => window.codeship.taskBoard.open());
   await goTask(task);
   await p.waitForTimeout(500);
   const plan2 = await p.evaluate(() => window.codeship.journey.plan.map((l) => `${l.kind} ${l.to}`).join(" → "));
-  j.check("ahora el camino baja de la cubierta de vuelo y pasa por el túnel de proa a la estación", /estacion:/.test(plan2) && !/vuelo /.test(plan2), plan2);
+  j.check("ahora el camino pasa por el túnel de proa a la estación", /estacion:/.test(plan2) && !/vuelo /.test(plan2), plan2);
   const s5 = await until(p, (s) => s.kind === "escotilla" && s.label.includes("túnel") && s.shipLeaf > 0.3, 400000);
   j.check("abre la escotilla del túnel de proa para pasar a la estación", s5.shipLeaf > 0.3, JSON.stringify(s5));
   await capture(j, "7-tunel-proa", "Abre el túnel de proa", false);

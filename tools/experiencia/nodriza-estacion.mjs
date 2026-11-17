@@ -80,7 +80,7 @@ export async function nodrizaEstacion(j) {
   j.check("con el último reto la nodriza despega; el vuelo dura minutos reales al ritmo de a bordo (entre 1 y 11 min)", fly >= 60 && fly <= 660, `${Math.round(fly)} s`);
   const flying = await p.evaluate(() => window.codeship.nav.status === "carrier");
   j.check("la nodriza vuela con el piloto automático", flying);
-  if (await p.evaluate(() => window.codeship.deck.active)) await j.setup("sale del puente al anillo", () => window.codeship.deck.exit());
+  if (await p.locator(".fd-panel.max .fd-back").count()) await j.tap(".fd-panel.max .fd-back", "Volver al puente");
   await p.waitForTimeout(600);
   await p.waitForFunction(() => !!document.querySelector(".trip-chip .tc-view") && getComputedStyle(document.querySelector(".trip-chip")).display !== "none", null, { timeout: 8000 }).catch(() => {});
   j.check("en el chip del viaje se ve «Ver trayecto» mientras vuela", await visible(p, ".trip-chip .tc-view"));
@@ -105,6 +105,14 @@ export async function nodrizaEstacion(j) {
     return (v.x * f[0] + v.y * f[1] + v.z * f[2]) / n > 0.9;
   }));
 
+  // Trips run on their own (reglas §3.8): away from the console the trip does not show, and she flies on.
+  if (await p.evaluate(() => window.codeship.tripPreview.visible)) await j.tap(".trip-chip .tc-view", "Ocultar trayecto");
+  await j.tap(".fd-status .fd-exit:not([class*=' '])", "Volver");
+  await p.waitForTimeout(800);
+  const away = await p.evaluate(() => ({ deck: window.codeship.deck.active, chip: !!document.querySelector(".trip-chip.on"), status: window.codeship.nav.status }));
+  j.check("lejos de la consola no sale el viaje y la nodriza sigue volando sola", !away.deck && !away.chip && away.status === "carrier", JSON.stringify(away));
+  j.check("y se puede mover la cámara y tocar botones (nada atrapado)", await p.evaluate(() => !document.body.classList.contains("in-trip-view")));
+
   // She berths in the dry dock; the arms close.
   const berthed = await p.waitForFunction(() => !!window.codeship.mothership.dockedTo, null, { timeout: 600000 }).then(() => true).catch(() => false);
   j.check("la nodriza atraca en la estación", berthed);
@@ -122,7 +130,6 @@ export async function nodrizaEstacion(j) {
   j.check("los brazos del dique se cierran y los focos se encienden", await p.evaluate(() => window.codeship.dryDock.model.holding > 0.95 && window.codeship.dryDock.model.lit > 0.9));
 
   // «Ir» again: along the spine and through the docking hatch into the station; then its window shows her.
-  if (await p.evaluate(() => window.codeship.tripPreview.visible)) await j.tap(".trip-chip .tc-view", "Ocultar trayecto");
   await j.setup("abre la lista de tareas", () => window.codeship.taskBoard.open());
   await go(j, task);
   const inside = await p.waitForFunction(() => window.codeship.stationInside.active || window.codeship.station.active || !window.codeship.journey.active, null, { timeout: 300000 }).then(() => true).catch(() => false);

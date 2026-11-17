@@ -71,8 +71,13 @@ async function machines(j, vehicle, mode, card, place) {
       const e = x.avatar.exercising;
       return e ? { device: e.motion.device, phase: e.phase } : null;
     }, mode);
-    await p.waitForTimeout(400);
-    const b = await p.evaluate((m) => m.split(".").reduce((o, k) => o[k], window.codeship).avatar.exercising?.phase ?? null, mode);
+    // It keeps moving: the phase changes within a few frames (slow CI frames included).
+    const b = await p
+      .waitForFunction(([m, ph]) => {
+        const e = m.split(".").reduce((o, k) => o[k], window.codeship).avatar.exercising;
+        return e && e.phase !== ph ? e.phase : false;
+      }, [mode, a?.phase ?? -1], { timeout: 8000, polling: 100 })
+      .then((h) => h.jsonValue(), () => null);
     j.check(`${vehicle}: ${verb} (su propia animación, en marcha)`, a?.device === device && b !== null && b !== a.phase, JSON.stringify({ a, b }));
     await capture(j, `${vehicle.toLowerCase()}-${id}`, `${vehicle}: ${id.toUpperCase()}`);
     await close(j);

@@ -304,7 +304,7 @@ export class StepShow {
   played = 0;
   /**
    * Her pose is set by the caller (a yoga asana, the lotus of the settings): the stage only places her and the
-   * camera, and the audit reads the asana she is in as the step's gesture.
+   * camera, and the audit reads the asana or the exercise motion she is in as the step's gesture.
    */
   holdPose = false;
   /**
@@ -501,7 +501,7 @@ export class StepShow {
       props,
       particles: this.props.dots.visible ? this.emit.clone() : undefined,
       planScale: this.ds,
-      gesture: this.holdPose ? (this.lastFigure?.currentAsana ? 1 : 0) : this.now ? poseDistance(gesture(vis, this.t, this.clock, low), idle(low)) : 0,
+      gesture: this.holdPose ? (this.lastFigure?.currentAsana || this.lastFigure?.exercising ? 1 : 0) : this.now ? poseDistance(gesture(vis, this.t, this.clock, low), idle(low)) : 0,
     };
   }
 
@@ -866,15 +866,21 @@ export class StepShow {
             : this.show(food[i]!, at.x + toCam.x * 0.05 + (i - 1) * 0.035 * toCam.z, at.y + 0.07 + 0.035 * i, at.z + toCam.z * 0.05 - (i - 1) * 0.035 * toCam.x);
           if (!cut) f.scale.set(0.06, 0.02 + 0.012 * Math.abs(Math.sin(this.clock * 7)), 0.05);
         }
-        // The tool: by the board in the ring's galley; elsewhere on the line from the work to the camera, a hand's
-        // breadth in front of it: whatever lets the camera see the work lets it see the tool.
-        const tool = kitchen ? this.w.set(at.x + 0.02, at.y + 0.03, at.z + 0.06) : this.w.copy(at).addScaledVector(toCam, 0.12);
+        // The tool: by the board in the ring's galley; elsewhere toward the camera from the work (whatever lets the
+        // camera see the work lets it see the tool) but off to the side of the row of pieces and below it, its
+        // blade pointing away from them: never between the camera and a piece (PX-20 in CI: the printed part's
+        // supports were hidden behind the knife when it sat on the line to the camera).
+        // (`at` may be `this.v`: the side is kept in plain numbers.)
+        const sl = Math.hypot(toCam.z, toCam.x);
+        const side = sl < 1e-3 ? { x: 1, z: 0 } : { x: toCam.z / sl, z: -toCam.x / sl };
+        const tool = kitchen ? this.w.set(at.x + 0.02, at.y + 0.03, at.z + 0.06) : this.w.set(at.x + toCam.x * 0.1 - side.x * 0.1, at.y + 0.02, at.z + toCam.z * 0.1 - side.z * 0.1);
         if (cut && v.vessel === "bolsa") {
           const sc = this.show(p.scissors, tool.x, tool.y, tool.z);
           sc.rotation.y = this.df!.yaw + 0.3 * Math.sin(this.clock * 12);
         } else if (cut) {
           const knife = this.show(p.knife, tool.x, tool.y + (kitchen ? 0.05 : 0.01) * Math.abs(Math.sin(this.clock * 10)), tool.z);
-          knife.rotation.y = Math.PI / 2;
+          // Its blade (local +x) along the side away from the pieces.
+          knife.rotation.y = kitchen ? Math.PI / 2 : Math.atan2(side.z, -side.x);
         }
         break;
       }

@@ -531,7 +531,10 @@ export class ArmShow {
         const ef = move === "llevar-dextre-ef";
         return T(ef ? "La MBS rueda y el brazo lleva a Dextre al estante de repuestos de la JEM-EF" : "El brazo lleva a Dextre hasta la cámara de S1, bajo la celosía", "Dextre", () => this.dextre.root, () => {
           const at = ef ? this.stowage.position.clone().add(new THREE.Vector3(2.4, 3.2, 2.6)) : v(CAMERA_ORU.at).add(new THREE.Vector3(-0.5, -3.2, 2.8));
-          return { path: this.path(at, this.tip.clone().add(new THREE.Vector3(0, -2, 3)), at.clone().add(new THREE.Vector3(0, -2, 2))), mbs: ride(at.x), dur: MOVE_S * 1.5 };
+          // Under the station, not across the truss: down where it is, along below Destiny, up to the work.
+          const low = Math.min(this.tip.y, at.y) - 3;
+          const via = ef ? [this.tip.clone().add(new THREE.Vector3(0, -2, 3)), at.clone().add(new THREE.Vector3(0, -2, 2))] : [new THREE.Vector3(this.tip.x, low, this.tip.z), new THREE.Vector3(at.x, low, at.z)];
+          return { path: this.path(at, ...via), mbs: ride(at.x), dur: MOVE_S * 1.5 };
         });
       }
       case "tomar-oru":

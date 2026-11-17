@@ -515,7 +515,8 @@ export class StationEva {
       const n = outward(this.apfr.position);
       const front = this.apfr.position.clone().addScaledVector(n, 1.0).add(this.toWork().multiplyScalar(0.7));
       const ef = v3(GRAPPLE_FIXTURES.find((g) => g.id === "jem-ef")!.at);
-      const from = move === "brazo" ? ef.clone().add(new THREE.Vector3(0, 1.5, 0)) : this.part.position.clone();
+      // Before Canadarm2 has brought the part, it is not here yet: a step before that starts it at her hands.
+      const from = move === "brazo" ? ef.clone().add(new THREE.Vector3(0, 1.5, 0)) : this.part.visible ? this.part.position.clone() : front.clone();
       const to = move === "brazo" ? front.clone().addScaledVector(this.toWork(), 0.4).addScaledVector(n, 0.3) : front;
       this.part.visible = true;
       if (move === "brazo") this.part.position.copy(from);

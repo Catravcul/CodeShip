@@ -28,10 +28,10 @@ Escrito por `tools/experiencia/brazo-eva.mjs` (no a mano). Cada bloque bien colo
 | Paseo: cambiar las alas | desenrollar el ala y comprobar la corriente | comprobar · alas | [brazo-eva-07.png](../screenshots/brazo-eva-07.png) | Bien |
 | Dextre cambia la cámara de S1 | andar el brazo hasta un PDGF de la MBS | andar-mbs · cupola | [brazo-dextre-01.png](../screenshots/brazo-dextre-01.png) | Bien |
 | Dextre cambia la cámara de S1 | agarrar a Dextre por el accesorio de su cabeza | agarrar-dextre · camara | [brazo-dextre-02.png](../screenshots/brazo-dextre-02.png) | Bien |
-| Dextre cambia la cámara de S1 | llevar a Dextre al estante de repuestos de la JEM-EF | llevar-dextre-ef · cupola | [brazo-dextre-03.png](../screenshots/brazo-dextre-03.png) | Bien |
+| Dextre cambia la cámara de S1 | llevar a Dextre al estante de repuestos de la JEM-EF | llevar-dextre-ef · camara | [brazo-dextre-03.png](../screenshots/brazo-dextre-03.png) | Bien |
 | Dextre cambia la cámara de S1 | Dextre toma la cámara nueva con su OTCM | tomar-oru · camara | [brazo-dextre-04.png](../screenshots/brazo-dextre-04.png) | Bien |
 | Dextre cambia la cámara de S1 | 6 min | comprobar · camara | [brazo-dextre-05.png](../screenshots/brazo-dextre-05.png) | Bien |
-| Dextre cambia la cámara de S1 | llevar a Dextre hasta la cámara de S1 | llevar-dextre-camara · camara | [brazo-dextre-06.png](../screenshots/brazo-dextre-06.png) | Mal: atraviesa: LEE · Celosía integrada |
+| Dextre cambia la cámara de S1 | llevar a Dextre hasta la cámara de S1 | llevar-dextre-camara · camara | [brazo-dextre-06.png](../screenshots/brazo-dextre-06.png) | Mal: atraviesa: brazo · Celosía integrada, LEE · Celosía integrada |
 | Dextre cambia la cámara de S1 | Dextre desenrosca la cámara vieja y la sujeta con su otra mano | sacar-oru · camara | [brazo-dextre-07.png](../screenshots/brazo-dextre-07.png) | Bien |
 | Dextre cambia la cámara de S1 | Dextre monta la cámara nueva y aprieta el perno | montar-oru · camara | [brazo-dextre-08.png](../screenshots/brazo-dextre-08.png) | Bien |
-| Dextre cambia la cámara de S1 | devolver a Dextre a la MBS con la cámara vieja | devolver-dextre · camara | [brazo-dextre-09.png](../screenshots/brazo-dextre-09.png) | Mal: atraviesa: brazo · Destiny (laboratorio) |
+| Dextre cambia la cámara de S1 | devolver a Dextre a la MBS con la cámara vieja | devolver-dextre · camara | [brazo-dextre-09.png](../screenshots/brazo-dextre-09.png) | Bien |

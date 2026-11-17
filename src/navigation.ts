@@ -118,7 +118,13 @@ export class NavigationMode {
     private readonly duel: DuelView,
     opts: { title: string; boundaryRadiusM: number; rocks: readonly Rock[]; shipPosition(): Vec3; shipNose(): Vec3; carrierPosition?(): Vec3 },
   ) {
-    this.map = new NavMap(root, { nav, ...opts, onProgram: () => this.program(), onHand: () => this.flash(`Pilotaje manual de la ${REAL_ONLY ? "Starship" : "nodriza"} hacia ${nav.target.name}: da el empuje con +0,1 m/s`, "done") });
+    // On Starship she flies by hand from the pilot seat, not from the map (docs/design/puente.md): the card says where.
+    this.map = new NavMap(root, {
+      nav,
+      ...opts,
+      onProgram: () => this.program(),
+      ...(REAL_ONLY ? { handHint: "Pilotar a mano: en el puesto de pilotaje («Manual»)" } : { onHand: () => this.flash(`Pilotaje manual de la nodriza hacia ${nav.target.name}: da el empuje con +0,1 m/s`, "done") }),
+    });
     // Hand flying the mothership (reglas.md §3.6): her speed commands, in short translation burns.
     this.hand = document.createElement("div");
     this.hand.className = "carrier-hand hidden";
@@ -154,6 +160,8 @@ export class NavigationMode {
    * lander). Trips and their notices show only there (reglas.md §3.8); elsewhere they go on by themselves.
    */
   atControls?: (vehicle: "carrier" | "lander") => boolean;
+  /** Set by main: she is at the seat the mothership is flown from by hand (Starship's pilot seat); default the flight deck. */
+  handAt?: () => boolean;
   private readonly hand: HTMLElement;
   private readonly handRead: HTMLElement;
 
@@ -215,7 +223,9 @@ export class NavigationMode {
       if (nav.status === "autopilot" && this.lastStatus === "carrier") this.flash("La nodriza ha aparcado: el módulo de aterrizaje se desacopla y sigue solo", "done", 6, "carrier");
       if (nav.status === "docked")
         this.flash(this.lastStatus === "carrier" ? this.berthedText(nav.target.name, nav.carrying) : `Módulo acoplado a ${nav.target.name}`, "done", 10, this.lastStatus === "carrier" ? "carrier" : "lander");
-      if (nav.status === "manual" && this.lastStatus === "carrier" && nav.parkedByHand) this.flash(`La ${REAL_ONLY ? "Starship" : "nodriza"} ha aparcado junto a ${nav.target.name}: baja en el módulo desde el puesto del comandante, a mano o con un programa`, "done", 10, "carrier");
+      if (nav.status === "manual" && this.lastStatus === "carrier" && nav.parkedByHand && nav.target.kind === "dock")
+        this.flash(nav.lastBerthFailure.length ? `Sin captura: ${nav.lastBerthFailure.join("; ")}. Retrocede y vuelve a intentarlo desde el puesto de acople` : `La Starship espera en el punto de espera de ${nav.target.name} (150 m): el puesto de acople la atraca, a mano o por retos; el de pilotaje la lleva a otro destino`, nav.lastBerthFailure.length ? "bad" : "done", 10, "carrier");
+      else if (nav.status === "manual" && this.lastStatus === "carrier" && nav.parkedByHand) this.flash(`La ${REAL_ONLY ? "Starship" : "nodriza"} ha aparcado junto a ${nav.target.name}: baja en el módulo desde el puesto del comandante, a mano o con un programa`, "done", 10, "carrier");
       if (nav.status === "manual" && this.lastStatus === "docking") this.flash("Acople cancelado: tienes los mandos", "bad", 6, "lander");
       if (nav.status === "failed") this.flash("El plan no compila: vuela a mano o vuelve a programarlo desde el mapa de la nave de viaje", "bad");
       if (nav.status === "manual" && this.lastStatus === "autopilot") this.flash("Mando manual: el piloto automático se ha desconectado", "bad", 6, "lander");
@@ -254,7 +264,7 @@ export class NavigationMode {
   /** The hand-flying panel: range to the parking point, speed and what to do next. */
   private updateHand(): void {
     // Only at the controls (the flight deck); away from them the ship coasts at the speed she gave it.
-    const m = this.nav.manualCarrier && (this.atControls?.("carrier") ?? true) ? this.nav.manualCarrier : undefined;
+    const m = this.nav.manualCarrier && (this.handAt?.() ?? this.atControls?.("carrier") ?? true) ? this.nav.manualCarrier : undefined;
     this.hand.classList.toggle("hidden", !m);
     document.body.classList.toggle("in-carrier-hand", !!m);
     if (!m) return;

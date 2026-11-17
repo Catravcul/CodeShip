@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { BRIDGE, BRIDGE_ERGONOMICS as E, PLOT_TABLE, type BridgeStationId } from "@modules/flight-deck/data/bridge";
-import type { CabinStation } from "@modules/lander-cabin/domain/cabin";
+import { STARSHIP_DECK, STARSHIP_DECK_SHAPE as SD } from "@modules/flight-deck/data/starship-deck";
+import type { CabinLayout, CabinStation } from "@modules/lander-cabin/domain/cabin";
 import { PartKit, ScreenAtlas, at } from "./console-kit";
 import { paintScreen, type Rect, type ScreenKind } from "./console-screens";
 
@@ -88,7 +89,32 @@ const SCREENS: Readonly<Record<BridgeStationId, readonly [ScreenKind, string][]>
   salida: [["hatch", "Escotilla"]],
 };
 
-export function buildBridge(k: number): BridgeModel {
+/**
+ * Starship's seats carry Crew Dragon's three touchscreens (docs/design/puente.md): the pilot's show flight,
+ * trajectory and the systems; the docking seat's the nose port's camera, the ports and attitude.
+ */
+const STARSHIP_SCREENS: Partial<Record<BridgeStationId, readonly [ScreenKind, string][]>> = {
+  prop: [
+    ["attitude", "Vuelo"],
+    ["plot", "Trayectoria"],
+    ["systems", "Sistemas"],
+  ],
+  dock: [
+    ["attitude", "Actitud"],
+    ["dock", "Cámara de acople"],
+    ["dock", "Puertos IDSS"],
+  ],
+};
+
+/** Which room the consoles go in: the ring ship's forward node (fiction) or Starship's nose (real). */
+export type DeckShape = "nodo" | "starship";
+
+/** The layout drawn for each shape. */
+export const DECK_LAYOUT: Readonly<Record<DeckShape, CabinLayout<BridgeStationId>>> = { nodo: BRIDGE, starship: STARSHIP_DECK };
+
+export function buildBridge(k: number, shape: DeckShape = "nodo"): BridgeModel {
+  const layout = DECK_LAYOUT[shape];
+  const screensOf = (id: BridgeStationId) => (shape === "starship" ? STARSHIP_SCREENS[id] : undefined) ?? SCREENS[id];
   const g = new THREE.Group();
   const main = new PartKit();
   const bowKit = new PartKit();
@@ -107,78 +133,170 @@ export function buildBridge(k: number): BridgeModel {
   // The plot table's display takes a 2 × 2 block at the bottom of the atlas.
   const plotBlock = atlas.cell(0, 4, 2, 2);
 
-  const W = 6.4 * k;
-  const L = 8.0 * k;
-  const H = BRIDGE.heightM * k;
+  let bow: THREE.Object3D;
+  let aft: THREE.Object3D;
+  const H = layout.heightM * k;
   const I = new THREE.Matrix4();
+  if (shape === "nodo") {
+    const W = 6.4 * k;
+    const L = 8.0 * k;
 
-  // --- The shell: separate meshes, so the dollhouse camera can hide the wall in its way. -----------------
-  const wallMat = new THREE.MeshStandardMaterial({ color: 0xd9dcd6, roughness: 0.9 });
-  const floorMat = new THREE.MeshStandardMaterial({ color: 0x3a414b, roughness: 0.75 });
-  const shell = (w: number, h: number, d: number, m: THREE.Material, x: number, y: number, z: number, parent: THREE.Object3D = g) => {
-    const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
-    b.position.set(x, y, z);
-    parent.add(b);
-    return b;
-  };
-  shell(W, 0.05, L, floorMat, 0, -0.025, 0);
-  shell(W, 0.05, L, wallMat, 0, H, 0);
-  for (const sx of [-1, 1]) shell(0.05, H, L, wallMat, (sx * W) / 2, H / 2, 0);
-  const aft = shell(W, H, 0.05, wallMat, 0, H / 2, L / 2 + 0.05);
-  // Bow: a wide window onto the stars between two wall strips; it goes as a whole under the cutaway.
-  const bow = new THREE.Group();
-  g.add(bow);
-  const sill = 0.75 * k;
-  const head = 0.45 * k;
-  const sky = new THREE.Mesh(new THREE.PlaneGeometry(W, H - sill - head), new THREE.MeshBasicMaterial({ color: 0x02040a, side: THREE.DoubleSide }));
-  sky.position.set(0, sill + (H - sill - head) / 2, -L / 2 - 0.05);
-  sky.userData.cutWith = bow;
-  bow.add(sky);
-  for (const [h, y] of [
-    [sill, sill / 2],
-    [head, H - head / 2],
-  ] as const) {
-    const strip = shell(W, h, 0.05, wallMat, 0, y, -L / 2, bow);
-    strip.userData.cutWith = bow;
-  }
-  const stars = new THREE.BufferGeometry();
-  const pts: number[] = [];
-  for (let i = 0; i < 220; i++) pts.push((Math.random() - 0.5) * (W - 0.2), (Math.random() - 0.5) * (H - sill - head - 0.1), 0.01);
-  stars.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
-  sky.add(new THREE.Points(stars, new THREE.PointsMaterial({ color: 0xffffff, size: 0.015 * k })));
-  // Window frame: sill, head and mullions every 1,6 m (real), like the Cupola's framed panes.
-  const winH = H - sill - head;
-  bowKit.box(W, 0.08 * k, 0.16 * k, COL.rib, at(I, 0, sill, -L / 2 + 0.06 * k));
-  bowKit.box(W, 0.08 * k, 0.16 * k, COL.rib, at(I, 0, H - head, -L / 2 + 0.06 * k));
-  for (let x = -W / 2 + 1.6 * k; x < W / 2 - 0.1; x += 1.6 * k) bowKit.box(0.09 * k, winH, 0.14 * k, COL.rib, at(I, x, sill + winH / 2, -L / 2 + 0.05 * k));
-  // Aft: the hatch to the spine (ring, door, wheel) on the aft wall, hidden with it.
-  aftKit.add(new THREE.TorusGeometry(0.42 * k, 0.05 * k, 8, 28), 0x2a2f36, at(I, 0, 1.1 * k, L / 2 - 0.03));
-  // Its leaf is the hatch the room opens (walk-room.ts, bridgeHatch).
-  // Hatch panel with its pressure screen, starboard of the hatch.
-  const hatchM = at(I, 0.75 * k, 1.25, L / 2 - 0.04 * k, 0, Math.PI);
-  aftKit.box(0.4 * k, 0.3 * k, 0.04 * k, COL.bezel, at(hatchM, 0, 0, -0.02 * k));
-  const hatchCell = nextCell();
-  atlas.quad(hatchCell, 0.34 * k, 0.21 * k, at(hatchM, 0, 0, 0.002), "aft");
-  screens.push({ station: "salida", kind: "hatch", title: "Escotilla", rect: hatchCell, w: 0.34 * k, h: 0.21 * k, matrix: at(hatchM, 0, 0, 0.002), pxTall: 320, main: true });
-  aim.set("salida", new THREE.Vector3(0, 1.1 * k, L / 2));
-  top.set("salida", 1.1 * k + 0.6 * k);
-  lampAt.set("salida", new THREE.Vector3(0.75 * k, 1.25 + 0.2 * k, L / 2 - 0.06 * k));
+    // --- The shell: separate meshes, so the dollhouse camera can hide the wall in its way. -----------------
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0xd9dcd6, roughness: 0.9 });
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x3a414b, roughness: 0.75 });
+    const shell = (w: number, h: number, d: number, m: THREE.Material, x: number, y: number, z: number, parent: THREE.Object3D = g) => {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+      b.position.set(x, y, z);
+      parent.add(b);
+      return b;
+    };
+    shell(W, 0.05, L, floorMat, 0, -0.025, 0);
+    shell(W, 0.05, L, wallMat, 0, H, 0);
+    for (const sx of [-1, 1]) shell(0.05, H, L, wallMat, (sx * W) / 2, H / 2, 0);
+    aft = shell(W, H, 0.05, wallMat, 0, H / 2, L / 2 + 0.05);
+    // Bow: a wide window onto the stars between two wall strips; it goes as a whole under the cutaway.
+    bow = new THREE.Group();
+    g.add(bow);
+    const sill = 0.75 * k;
+    const head = 0.45 * k;
+    const sky = new THREE.Mesh(new THREE.PlaneGeometry(W, H - sill - head), new THREE.MeshBasicMaterial({ color: 0x02040a, side: THREE.DoubleSide }));
+    sky.position.set(0, sill + (H - sill - head) / 2, -L / 2 - 0.05);
+    sky.userData.cutWith = bow;
+    bow.add(sky);
+    for (const [h, y] of [
+      [sill, sill / 2],
+      [head, H - head / 2],
+    ] as const) {
+      const strip = shell(W, h, 0.05, wallMat, 0, y, -L / 2, bow);
+      strip.userData.cutWith = bow;
+    }
+    const stars = new THREE.BufferGeometry();
+    const pts: number[] = [];
+    for (let i = 0; i < 220; i++) pts.push((Math.random() - 0.5) * (W - 0.2), (Math.random() - 0.5) * (H - sill - head - 0.1), 0.01);
+    stars.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+    sky.add(new THREE.Points(stars, new THREE.PointsMaterial({ color: 0xffffff, size: 0.015 * k })));
+    // Window frame: sill, head and mullions every 1,6 m (real), like the Cupola's framed panes.
+    const winH = H - sill - head;
+    bowKit.box(W, 0.08 * k, 0.16 * k, COL.rib, at(I, 0, sill, -L / 2 + 0.06 * k));
+    bowKit.box(W, 0.08 * k, 0.16 * k, COL.rib, at(I, 0, H - head, -L / 2 + 0.06 * k));
+    for (let x = -W / 2 + 1.6 * k; x < W / 2 - 0.1; x += 1.6 * k) bowKit.box(0.09 * k, winH, 0.14 * k, COL.rib, at(I, x, sill + winH / 2, -L / 2 + 0.05 * k));
+    // Aft: the hatch to the spine (ring, door, wheel) on the aft wall, hidden with it.
+    aftKit.add(new THREE.TorusGeometry(0.42 * k, 0.05 * k, 8, 28), 0x2a2f36, at(I, 0, 1.1 * k, L / 2 - 0.03));
+    // Its leaf is the hatch the room opens (walk-room.ts, bridgeHatch).
+    // Hatch panel with its pressure screen, starboard of the hatch.
+    const hatchM = at(I, 0.75 * k, 1.25, L / 2 - 0.04 * k, 0, Math.PI);
+    aftKit.box(0.4 * k, 0.3 * k, 0.04 * k, COL.bezel, at(hatchM, 0, 0, -0.02 * k));
+    const hatchCell = nextCell();
+    atlas.quad(hatchCell, 0.34 * k, 0.21 * k, at(hatchM, 0, 0, 0.002), "aft");
+    screens.push({ station: "salida", kind: "hatch", title: "Escotilla", rect: hatchCell, w: 0.34 * k, h: 0.21 * k, matrix: at(hatchM, 0, 0, 0.002), pxTall: 320, main: true });
+    aim.set("salida", new THREE.Vector3(0, 1.1 * k, L / 2));
+    top.set("salida", 1.1 * k + 0.6 * k);
+    lampAt.set("salida", new THREE.Vector3(0.75 * k, 1.25 + 0.2 * k, L / 2 - 0.06 * k));
 
-  // Wall ribs, the handrail on each side wall (body height), overhead light panels and cable trays.
-  for (const sx of [-1, 1]) {
-    for (let z = -L / 2 + 1.6 * k; z < L / 2 - 0.1; z += 1.6 * k) main.box(0.12 * k, H, 0.1 * k, COL.rib, at(I, sx * (W / 2 - 0.06 * k), H / 2, z));
-    main.bar(new THREE.Vector3(sx * (W / 2 - 0.09 * k), 1.2, -L / 2 + 0.6 * k), new THREE.Vector3(sx * (W / 2 - 0.09 * k), 1.2, L / 2 - 0.6 * k), 0.017, COL.yellow);
-    // Cable tray: a U channel with three bundles in it, along the ceiling.
-    const tx = sx * (W / 2 - 0.7 * k);
-    const ty = H - 0.12 * k;
-    main.box(0.32 * k, 0.015 * k, L - 0.3 * k, COL.tray, at(I, tx, ty - 0.05 * k, 0));
-    for (const e of [-1, 1]) main.box(0.015 * k, 0.1 * k, L - 0.3 * k, COL.tray, at(I, tx + e * 0.16 * k, ty, 0));
-    [0xd8752a, 0x2f7fc1, 0x8a8f98].forEach((c, i) => main.cyl(0.025 * k, L - 0.4 * k, c, at(I, tx + (i - 1) * 0.08 * k, ty - 0.015 * k, 0, Math.PI / 2), 8));
+    // Wall ribs, the handrail on each side wall (body height), overhead light panels and cable trays.
+    for (const sx of [-1, 1]) {
+      for (let z = -L / 2 + 1.6 * k; z < L / 2 - 0.1; z += 1.6 * k) main.box(0.12 * k, H, 0.1 * k, COL.rib, at(I, sx * (W / 2 - 0.06 * k), H / 2, z));
+      main.bar(new THREE.Vector3(sx * (W / 2 - 0.09 * k), 1.2, -L / 2 + 0.6 * k), new THREE.Vector3(sx * (W / 2 - 0.09 * k), 1.2, L / 2 - 0.6 * k), 0.017, COL.yellow);
+      // Cable tray: a U channel with three bundles in it, along the ceiling.
+      const tx = sx * (W / 2 - 0.7 * k);
+      const ty = H - 0.12 * k;
+      main.box(0.32 * k, 0.015 * k, L - 0.3 * k, COL.tray, at(I, tx, ty - 0.05 * k, 0));
+      for (const e of [-1, 1]) main.box(0.015 * k, 0.1 * k, L - 0.3 * k, COL.tray, at(I, tx + e * 0.16 * k, ty, 0));
+      [0xd8752a, 0x2f7fc1, 0x8a8f98].forEach((c, i) => main.cyl(0.025 * k, L - 0.4 * k, c, at(I, tx + (i - 1) * 0.08 * k, ty - 0.015 * k, 0, Math.PI / 2), 8));
+    }
+    for (const z of [-2.4, -0.8, 0.8, 2.4]) main.box(1.4 * k, 0.03, 0.3 * k, GLOW.panel, at(I, 0, H - 0.03, z * k), true);
+    // Floor: walkway lines between the stations (lighter strips on the deck).
+    for (const z of [-2.0, 2.3]) main.box(W - 0.4 * k, 0.004, 0.05 * k, COL.floorLine, at(I, 0, 0.002, z * k));
+    for (const x of [-1.4, 1.4]) main.box(0.05 * k, 0.004, L - 0.6 * k, COL.floorLine, at(I, x * k, 0.002, 0));
+
+
+  } else {
+    // Starship's nose (docs/design/puente.md): a cone frustum from the hull's 4,2 m to 2,5 m under the header
+    // tanks, its wall split in a forward and an aft half for the dollhouse camera; three windows forward.
+    const R0 = SD.floorRadiusM * k;
+    const R1 = SD.ceilingRadiusM * k;
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0xe9ebe6, roughness: 0.92, side: THREE.DoubleSide });
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x3a414b, roughness: 0.75 });
+    const floor = new THREE.Mesh(new THREE.CircleGeometry(R0, 48), floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    g.add(floor);
+    // The header tanks' dome over the deck (a flat lid here, padded white like the HLS's Cabin 1).
+    const lid = new THREE.Mesh(new THREE.CircleGeometry(R1, 40), wallMat);
+    lid.rotation.x = Math.PI / 2;
+    lid.position.y = H;
+    g.add(lid);
+    const half = (from: number) => {
+      // CylinderGeometry: x = r·sin θ, z = r·cos θ. Forward (−z) is θ from π/2 to 3π/2.
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(R1, R0, H, 36, 1, true, from, Math.PI), wallMat);
+      m.position.y = H / 2;
+      const grp = new THREE.Group();
+      grp.add(m);
+      m.userData.cutWith = grp;
+      g.add(grp);
+      return grp;
+    };
+    bow = half(Math.PI / 2);
+    aft = half(-Math.PI / 2);
+    // Where the wall is at a height y, m from the axis.
+    const wallR = (y: number) => R0 - ((R0 - R1) * y) / H;
+    const lean = Math.atan2(R0 - R1, H);
+    // The three windows: a dark pane with stars, a frame round it, set in the leaning wall.
+    for (const deg of SD.windowsDeg) {
+      const a = (deg * Math.PI) / 180;
+      const y = SD.windowY * k;
+      const r = wallR(y) - 0.03 * k;
+      const ww = SD.windowM.w * k;
+      const wh = SD.windowM.h * k;
+      const m = at(I, Math.sin(a) * r, y, -Math.cos(a) * r, 0, -a);
+      const tilt = at(m, 0, 0, 0, -lean);
+      const pane = new THREE.Mesh(new THREE.PlaneGeometry(ww, wh), new THREE.MeshBasicMaterial({ color: 0x02040a }));
+      pane.applyMatrix4(at(tilt, 0, 0, 0.005));
+      pane.userData.cutWith = bow;
+      bow.add(pane);
+      const stars = new THREE.BufferGeometry();
+      const pts: number[] = [];
+      for (let i = 0; i < 40; i++) pts.push((Math.random() - 0.5) * (ww - 0.04), (Math.random() - 0.5) * (wh - 0.04), 0.01);
+      stars.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+      pane.add(new THREE.Points(stars, new THREE.PointsMaterial({ color: 0xffffff, size: 0.012 * k })));
+      for (const [w, h, x, yy] of [
+        [ww + 0.12 * k, 0.06 * k, 0, wh / 2 + 0.03 * k],
+        [ww + 0.12 * k, 0.06 * k, 0, -wh / 2 - 0.03 * k],
+        [0.06 * k, wh, ww / 2 + 0.03 * k, 0],
+        [0.06 * k, wh, -ww / 2 - 0.03 * k, 0],
+      ] as const)
+        bowKit.box(w, h, 0.08 * k, COL.rib, at(tilt, x, yy, 0.02 * k));
+    }
+    // Ribs up the wall every 30°, a handrail ring at body height, light panels on the lid.
+    // Between the stations (45° apart), not across the windows.
+    for (let d = 67.5; d < 300; d += 45) {
+      const a = (d * Math.PI) / 180;
+      const kit = Math.cos(a) > 0 ? bowKit : aftKit;
+      const r = (R0 + R1) / 2 - 0.05 * k;
+      kit.box(0.1 * k, Math.hypot(H, R0 - R1), 0.08 * k, COL.rib, at(at(I, Math.sin(a) * r, H / 2, -Math.cos(a) * r, 0, -a), 0, 0, 0, -lean));
+    }
+    for (let d = 0; d < 360; d += 15) {
+      const a0 = (d * Math.PI) / 180;
+      const a1 = ((d + 15) * Math.PI) / 180;
+      const r = wallR(1.2) - 0.1;
+      const kit = Math.cos((a0 + a1) / 2) > 0 ? bowKit : aftKit;
+      // Not across the windows.
+      if (Math.cos((a0 + a1) / 2) > 0.9) continue;
+      kit.bar(new THREE.Vector3(Math.sin(a0) * r, 1.2, -Math.cos(a0) * r), new THREE.Vector3(Math.sin(a1) * r, 1.2, -Math.cos(a1) * r), 0.017, COL.yellow);
+    }
+    for (const a of [0, (2 * Math.PI) / 3, (4 * Math.PI) / 3]) main.box(0.9 * k, 0.03, 0.3 * k, GLOW.panel, at(I, Math.sin(a) * R1 * 0.5, H - 0.03, Math.cos(a) * R1 * 0.5, 0, a), true);
+    // The floor hatch down to deck 1: its ring in the deck (the leaf is the room's, starshipHatch), and its pressure screen on a post.
+    main.add(new THREE.TorusGeometry(0.5 * k, 0.05 * k, 8, 28), 0x2a2f36, at(I, 0, 0.02, SD.hatchZ * k, -Math.PI / 2));
+    const post = at(I, 0.85 * k, 0, SD.hatchZ * k, 0, Math.PI);
+    main.box(0.08 * k, 1.0, 0.08 * k, COL.body, at(post, 0, 0.5, 0));
+    const hatchM = at(post, 0, 1.1, 0, -0.5);
+    main.box(0.4 * k, 0.3 * k, 0.04 * k, COL.bezel, at(hatchM, 0, 0, -0.02 * k));
+    const hatchCell = nextCell();
+    atlas.quad(hatchCell, 0.34 * k, 0.21 * k, at(hatchM, 0, 0, 0.002));
+    screens.push({ station: "salida", kind: "hatch", title: "Escotilla", rect: hatchCell, w: 0.34 * k, h: 0.21 * k, matrix: at(hatchM, 0, 0, 0.002), pxTall: 320, main: true });
+    aim.set("salida", new THREE.Vector3(0, 0.3, SD.hatchZ * k));
+    top.set("salida", 1.1 + 0.3 * k);
+    lampAt.set("salida", new THREE.Vector3(0.85 * k, 1.35 + 0.1 * k, SD.hatchZ * k));
   }
-  for (const z of [-2.4, -0.8, 0.8, 2.4]) main.box(1.4 * k, 0.03, 0.3 * k, GLOW.panel, at(I, 0, H - 0.03, z * k), true);
-  // Floor: walkway lines between the stations (lighter strips on the deck).
-  for (const z of [-2.0, 2.3]) main.box(W - 0.4 * k, 0.004, 0.05 * k, COL.floorLine, at(I, 0, 0.002, z * k));
-  for (const x of [-1.4, 1.4]) main.box(0.05 * k, 0.004, L - 0.6 * k, COL.floorLine, at(I, x * k, 0.002, 0));
 
   // --- The machines. -------------------------------------------------------------------------------------
   /** A frame on the floor at the console's front edge, local +Z pointing back at where she stands. */
@@ -236,12 +354,14 @@ export function buildBridge(k: number): BridgeModel {
     }
   };
 
-  for (const s of BRIDGE.stations) {
+  for (const s of layout.stations) {
     if (s.id === "salida") continue;
     if (s.id === "nav") {
       // The plot table: a slanted glass like a drafting table (the near edge at her work height), so it is
       // under 30° off her line of sight (MSIS); a handrail rim round it, a pedestal under it.
-      const t = at(I, PLOT_TABLE.x * k, 0, PLOT_TABLE.z * k, 0, Math.atan2(s.stand.x - PLOT_TABLE.x, s.stand.z - PLOT_TABLE.z));
+      // On the old bridge it stands in the middle; on Starship's deck, against the wall where she looks.
+      const T = shape === "starship" ? { x: s.look.x * 0.97, z: s.look.z * 0.97 } : PLOT_TABLE;
+      const t = at(I, T.x * k, 0, T.z * k, 0, Math.atan2(s.stand.x - T.x, s.stand.z - T.z));
       const tw = E.plotTableM.w * k;
       const td = E.plotTableM.d * k;
       const tilt = 0.45;
@@ -280,7 +400,7 @@ export function buildBridge(k: number): BridgeModel {
       controls.push({ station: "nav", what: "borde de la mesa", at: p(0, -hy, r), size: 0.028 });
       continue;
     }
-    const list = SCREENS[s.id];
+    const list = screensOf(s.id);
     if (s.seated) {
       // Seated station (pilot, probe): restraint seat at her place, three screens in a row, switch panel below.
       // Close enough for MSIS (screens 0,33–0,71 m from her eye): her knees go under the screens.
@@ -381,9 +501,12 @@ export function buildBridge(k: number): BridgeModel {
     mesh.userData.cutWith = aft;
     aftGroup.add(mesh);
   }
-  const aftScreens = atlas.build("aft");
-  aftScreens.userData.cutWith = aft;
-  aftGroup.add(aftScreens);
+  // Starship's deck has no screen on its aft wall (the hatch's panel stands on a post).
+  if (shape === "nodo") {
+    const aftScreens = atlas.build("aft");
+    aftScreens.userData.cutWith = aft;
+    aftGroup.add(aftScreens);
+  }
   g.add(atlas.build("main"));
 
   // Status lamps: one instanced mesh, coloured per console.
@@ -401,7 +524,7 @@ export function buildBridge(k: number): BridgeModel {
   // Light: the same two ceiling lamps and ambient as before, reach scaled with the room (no shadows).
   for (const z of [-2, 2]) {
     const light = new THREE.PointLight(0xdfefff, 10 * k, 8 * k, 1);
-    light.position.set(0, H - 0.3, z * k);
+    light.position.set(0, H - 0.3, (shape === "starship" ? z * 0.6 : z) * k);
     g.add(light);
   }
   g.add(new THREE.AmbientLight(0xb8c8d8, 1.0));
@@ -414,4 +537,9 @@ export function buildBridge(k: number): BridgeModel {
 /** The aft hatch's leaf (down to the decks): where it is (drawn m), the way it opens and its size. */
 export function bridgeHatch(k: number): { at: THREE.Vector3; into: THREE.Vector3; sizeM: number; round: boolean } {
   return { at: new THREE.Vector3(0, 1.1 * k, 4.0 * k - 0.05), into: new THREE.Vector3(0, 0, -1), sizeM: 0.76 * k, round: true };
+}
+
+/** Starship's floor hatch down to deck 1: in the deck, aft, opening up into the room. */
+export function starshipHatch(k: number): { at: THREE.Vector3; into: THREE.Vector3; sizeM: number; round: boolean } {
+  return { at: new THREE.Vector3(0, 0.0, SD.hatchZ * k), into: new THREE.Vector3(0, 1, 0), sizeM: 0.9 * k, round: true };
 }

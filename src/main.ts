@@ -151,6 +151,8 @@ import { wireRobotics } from "./robotics-wiring";
 import { LanderEcs } from "./lander-ecs";
 import { LanderCabin } from "./lander-cabin";
 import { BridgeRoom } from "./bridge";
+import { flightDeckSeats } from "./flight-deck-seats";
+import { DockCamera } from "./ui/dock-camera";
 import { settings } from "./ui/settings-store";
 import { SettingsPanel } from "./ui/settings-panel";
 import { TaskBoard } from "./ui/task-board";
@@ -684,9 +686,18 @@ const bridge = new BridgeRoom(
     },
     alerts: () => deck.alertsNow(),
     openTasks: () => taskBoard.open(),
+    // Starship's pilot and docking seats fly and dock (docs/design/puente.md); the ring ship's consoles open pages.
+    ...(REAL_ONLY
+      ? flightDeckSeats({ nav, navMode, mothership, duel: duelView, landerAboard: () => docking.dockedTo === mothership, openSystems: () => deck.enter("puente", "prop", ["prop", "power", "life"]), say: (t) => bridge.say(t, 6) })
+      : {}),
   },
   mothership.name,
+  REAL_ONLY ? "starship" : "nodo",
 );
+// The docking seat's camera, while she docks by hand (docs/design/puente.md §Acople).
+const dockCamera = new DockCamera(root, { run: () => nav.manualBerth, portName: () => `${nav.target.name} · ${nav.manualBerth?.target.name ?? ""}` });
+// Flying by hand happens at the pilot seat: its controls show there (on the ring ship, anywhere on the bridge).
+if (REAL_ONLY) navMode.handAt = () => bridge.active && bridge.near() === "prop" && !bridge.walking;
 subj.onSay = (text) => (bridge.active ? bridge.say(text, 7) : flash(text, 7));
 
 // Long trips of the probe: programmed with challenges, flown in time-lapse, parked by hand (docs/design/viajes.md).
@@ -826,7 +837,7 @@ function tripNow(): { chip: TripChipData; subject: PreviewSubject } | undefined 
   if (!p) return undefined;
   const carrierLeg = p.vehicle === "carrier";
   return {
-    chip: { who: carrierLeg ? "Nodriza" : "Módulo", goal: nav.target.name, etaRealS: p.etaRealS, fraction: p.fraction, detail: `${PHASE[p.phase]} · ${num(p.speedMS, p.speedMS < 1 ? 2 : 1)} m/s · faltan ${km(p.remainingM)} · ${duration(p.etaS)} de vuelo${lapseText(p.lapse)}` },
+    chip: { who: carrierLeg ? (REAL_ONLY ? "Starship" : "Nodriza") : "Módulo", goal: nav.target.name, etaRealS: p.etaRealS, fraction: p.fraction, detail: `${PHASE[p.phase]} · ${num(p.speedMS, p.speedMS < 1 ? 2 : 1)} m/s · faltan ${km(p.remainingM)} · ${duration(p.etaS)} de vuelo${lapseText(p.lapse)}` },
     subject: carrierLeg
       ? { label: "Nodriza · trayecto", sizeM: mothership.spec.layout.lengthM, pose: () => ({ position: mothership.position, orientation: mothership.orientation }), goal: () => targetPosition(nav.target), route: () => nav.route }
       : { label: "Módulo · trayecto", sizeM: 14, pose: () => flight.state, goal: () => targetPosition(nav.target), route: () => nav.route },
@@ -1669,6 +1680,7 @@ renderer.setAnimationLoop((now) => {
     present(scene, deck.camera);
     return;
   }
+  dockCamera.update(bridge.active && bridge.near() === "dock" && !bridge.walking);
   if (bridge.active) {
     bridge.update(dt);
     nanoPanel.update(flight.landed && expedition.asteroid === bennu, fx, { action: false, card: !duelView.visible });

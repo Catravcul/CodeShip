@@ -260,7 +260,7 @@ export function journeyTransfers(f: JourneyFacts): Transfer[] {
   if (fl.landerToMothership) out.push({ from: "modulo:asiento", to: "modulo:asiento", kind: "vuelo", seconds: fl.landerToMothership.seconds, label: "Volar y acoplar en la nodriza", open: (j) => j.lander !== "nodriza", then: (j) => ({ ...j, lander: "nodriza" }), ...(fl.landerToMothership.blocked ? { blocked: fl.landerToMothership.blocked } : {}) });
   if (fl.carrierToStation)
     for (const at of f.ship ? ["puente:nav"] : ["puente:nav", "anillo:navegacion"])
-      out.push({ from: at, to: at, kind: "vuelo", seconds: fl.carrierToStation.seconds, label: "La nodriza vuela a la estación y entra en el dique seco", open: (j) => !j.mothershipAtStation, shut: "La nodriza ya está en el dique seco", then: (j) => ({ ...j, mothershipAtStation: true }), ...(fl.carrierToStation.blocked ? { blocked: fl.carrierToStation.blocked } : {}) });
+      out.push({ from: at, to: at, kind: "vuelo", seconds: fl.carrierToStation.seconds, label: f.ship ? "La Starship vuela a la estación y atraca" : "La nodriza vuela a la estación y entra en el dique seco", open: (j) => !j.mothershipAtStation, shut: "La nodriza ya está en el dique seco", then: (j) => ({ ...j, mothershipAtStation: true }), ...(fl.carrierToStation.blocked ? { blocked: fl.carrierToStation.blocked } : {}) });
   // From where she is now.
   out.push(...fromHere(f, sp, st.g, sh?.g));
   return out;

@@ -53,7 +53,7 @@ describe("lander crew cabin (docs/design/habitaculo.md)", () => {
     expect(ids("asiento", { ...base, dockInRange: true })).toEqual(["pilotar"]);
   });
 
-  it("HAB-32 the commander's station offers Manual and Automático; Automático lists only the nearby destinations", () => {
+  it("HAB-50 the commander's station offers Manual and Automático; Automático lists only the nearby destinations", () => {
     const destinations = [
       { id: "101955-bennu", label: "101955 Bennu", enabled: true },
       { id: "estacion", label: "Estación", enabled: false, why: "Ya estás acoplada a Estación" },

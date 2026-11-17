@@ -18,6 +18,8 @@ export const EMPTY_DEPLOYERS = "Los dispensadores están vacíos: Juventas no vu
 const fmt = (v: number, d = 2) => v.toFixed(d).replace(".", ",");
 const dist = (m: number) => (m >= 1000 ? `${fmt(m / 1000, 2)} km` : `${fmt(m, m < 10 ? 2 : 0)} m`);
 const WARPS = [1, 10, 100] as const;
+/** Closer than this to its deployer the console's camera looks at the deployer on the hull, m. */
+const DEPLOYER_VIEW_M = 3;
 /** The landing side view keeps the drop from the probe to its site this much smaller than the strip it shows in. */
 const LANDING_VIEW_MARGIN = 1.5;
 
@@ -317,6 +319,21 @@ export class ProbeMode {
     const st = this.lookStick.value;
     this.turn(-curve(st.x) * 2.0 * dt, -curve(st.y) * 1.4 * dt);
     if (this.plan && this.frameLanding(s.position, s.toWorld(Vec3.Y))) {
+      this.render(warp, warpNote);
+      if (performance.now() > this.msgUntil) this.msg.classList.remove("on");
+      return;
+    }
+    // In its deployer and just out of it: a camera over the deployer on the carrier's hull, so the door, the
+    // slide out and the release are seen (Berón: «nunca las veo salir de la nodriza»). The look still orbits it.
+    if (p.status === "estibada" || (p.status === "en-vuelo" && p.bayRange().distanceM < DEPLOYER_VIEW_M)) {
+      const dep = p.deployerPose();
+      const up = dep.toWorld(Vec3.Y);
+      const off = new THREE.Vector3(0.9, 1.6, 1.5).applyEuler(new THREE.Euler(-this.orbit.pitch * 0.5, this.orbit.yaw, 0, "YXZ"));
+      const eye = dep.position.add(dep.toWorld(new Vec3(off.x, off.y, off.z)));
+      const at = dep.position.add(up.scale(0.35));
+      this.camera.position.set(eye.x, eye.y, eye.z);
+      this.camera.up.set(up.x, up.y, up.z);
+      this.camera.lookAt(at.x, at.y, at.z);
       this.render(warp, warpNote);
       if (performance.now() > this.msgUntil) this.msg.classList.remove("on");
       return;

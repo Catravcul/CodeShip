@@ -78,6 +78,14 @@ Regla del diseñador: cada reto debe mostrar el paso correcto ocurriendo. Al ace
 
 Cerrar los retos lo borra; resuelto, el plan sigue 8 s mientras el piloto automático arranca.
 
+## Llegar a la zona: Manual o Automático
+
+Cada vuelo tiene dos modos (reglas.md §3.6). El puesto del comandante del LM y el mando de la sonda ofrecen
+**Manual** y **Automático**; Automático lista solo los destinos cercanos a la nodriza y abre el reto del viaje
+([cabina-lm.md](cabina-lm.md), «Mandos»; [modulo-lunar-juventas.md](modulo-lunar-juventas.md), «Destinos cercanos»).
+El viaje acaba a 300 m sobre el asteroide, en la zona de aterrizaje, y desde ahí sigue lo de esta página. Juventas
+sale antes de su dispensador en el casco de la Starship: la puerta, la salida y los muelles a 3 cm/s.
+
 ## Fuentes
 
 - Módulo lunar Apollo: el indicador de cruz (*cross-pointer*) daba la velocidad hacia delante y lateral en los ejes del propio módulo, y el piloto leía altura y velocidad de bajada por separado; Armstrong posó el Apollo 11 a mano buscando un sitio libre. [Apollo Lunar Surface Journal, aterrizaje del Apollo 11](https://www.hq.nasa.gov/alsj/a11/a11.landing.html), [índice del ALSJ](https://www.hq.nasa.gov/alsj/).

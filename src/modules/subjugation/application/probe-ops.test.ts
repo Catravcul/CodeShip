@@ -79,7 +79,7 @@ describe("ProbeOps", () => {
     expect(ops.drainEvents().map((e) => e.type)).toEqual(["desplegando", "lanzada", "posada"]);
   });
 
-  it("JUV-01 the deployer releases it at 3 cm/s from the carrier's hull, after its door opens and it slides out", () => {
+  it("SON-08 the deployer releases it at 3 cm/s from the carrier's hull, after its door opens and it slides out", () => {
     const { ops } = setup(400);
     const start = ops.flight.state.position;
     expect(PROBE_TUNING.releaseMs).toBe(0.03);
@@ -92,7 +92,7 @@ describe("ProbeOps", () => {
     expect(ops.drainEvents().map((e) => e.type)).toEqual(["desplegando", "lanzada"]);
   });
 
-  it("JUV-02 a parked probe's mission ends there (it never comes back); the next deployer takes over, and an empty one is refilled only by loading a new one", () => {
+  it("SON-09 a parked probe's mission ends there (it never comes back); the next deployer takes over, and an empty one is refilled only by loading a new one", () => {
     const { ops } = setup();
     release(ops, DOWN);
     fly(ops, 90);

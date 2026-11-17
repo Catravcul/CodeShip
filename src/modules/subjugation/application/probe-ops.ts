@@ -161,6 +161,11 @@ export class ProbeOps {
     if (this._status !== "posada") return undefined;
     return (this._flight.target as { data?: { id: string } } | undefined)?.data?.id;
   }
+  /** Pose of the current probe's deployer on the carrier now (+y out of the hull). */
+  deployerPose(): RigidBodyState {
+    return this.bay(this.cur);
+  }
+
   /** Distance and relative speed to the bay. */
   bayRange(): { distanceM: number; speedMs: number } {
     const b = this.bay(this.cur);

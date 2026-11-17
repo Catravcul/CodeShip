@@ -117,6 +117,29 @@ y llena ~30°: la vista es más pequeña, como cualquier otra máquina con la se
 - La etiqueta de la cámara va en la columna de contexto. Antes flotaba bajo el centro y tapaba la ficha del viaje,
   la palanca «Mirar» y los avisos (B-03).
 
+## Mandos: el interruptor de acople y Manual / Automático (Berón, 2026-11-17)
+
+Berón: «Veo el mensaje de que está acoplado y no puede volar; está el botón de vista y abajo un botón que no sé
+para qué es. Si no sirve, pon un botón de icono de acoplar o desacoplar como interruptor, que se muestre al estar
+en la posición y el sitio correctos y que muestre el icono contrario al estado actual».
+
+- El botón que no se entendía era la **raíz** de iconos: acoplado, solo plegaba «Centrar la vista». Se quita ese
+  icono (centrar es un doble toque en «Mirar», o V) y la raíz ya no sale cuando no queda nada dentro.
+- Bajo el ojo va el **interruptor de acople**, siempre con el icono de lo contrario del estado:
+  - acoplado: «Desacoplar», dos anillos separándose; los muelles la separan a 0,08 m/s;
+  - libre dentro de la esfera de 200 m de un puerto: «Acoplar», dos anillos juntos. El asistente lo lleva al
+    contacto («Acoplando: tocar para parar»). Los 200 m son la esfera de exclusión de la ISS, donde solo entra un
+    vehículo en su aproximación final ([NASA, SSC24-P3-06](https://ntrs.nasa.gov/api/citations/20240009200/downloads/SSC24-P3-06.pdf));
+  - en otro sitio no sale. K hace lo mismo con teclado.
+- El aviso de acoplado dice dónde está el interruptor y que la escotilla está detrás del puesto.
+- El **puesto del comandante** ofrece **Manual** (pilotar de pie) y **Automático**. Automático lista los destinos
+  cercanos a la nodriza ([modulo-lunar-juventas.md](modulo-lunar-juventas.md), «Destinos cercanos»): la estación,
+  si está al lado, y el asteroide junto al que está aparcada. El puerto donde ya está acoplado no sale; uno que
+  ahora no se puede sale apagado, con su porqué. Al elegir uno se abre el reto del viaje del propio LM (nunca lo
+  lleva la nodriza); resuelto, se desacopla si hace falta y su piloto automático lo lleva. A un puerto acaba con
+  el asistente de acople; a un asteroide, a 300 m sobre él, para posarlo a mano o por programa.
+- Desacoplar y el asistente ya no están en el puesto: son el interruptor de la vista de vuelo.
+
 ## Juventas no tiene cabina
 
 Juventas es un CubeSat de 12 kg y se pilota a distancia desde su consola en el puente de la nave, con su propia

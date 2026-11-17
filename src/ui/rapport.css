@@ -62,3 +62,7 @@ body.in-probe .fd, body.in-probe #app > .touch, body.in-probe .banner, body.in-p
 .radio-toast { top: 210px; }
 @media (max-width: 600px) { .radio-toast { top: auto; bottom: 330px; font-size: 11px; } }
 body.in-duel .radio-toast, body.in-interior .radio-toast { display: none; }
+/* The probe's own look stick (probe-mode.ts): only with its console; the flight view's stays hidden there. */
+.vstick.probe-look { display: none; left: 14px; bottom: calc(222px + env(safe-area-inset-bottom)); }
+body.in-probe .vstick.probe-look { display: block; }
+body.in-probe .pilot-look, body.in-probe .hud, body.in-probe .region-tag, body.in-duel .vstick.probe-look { display: none !important; }

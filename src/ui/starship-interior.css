@@ -1,5 +1,5 @@
 /* Starship's decks (src/starship-interior.ts): the same 0 g engine as the station, prefix «sts». */
-body.in-station-interior .sts-look { display: block; }
+body.in-sts-interior .sts-look { display: block; }
 .sts-move { display: none !important; }
 .sts-look { right: 22px; }
 body.in-duel .sts-ui, body.in-duel .sts-move, body.in-duel .sts-look, body.in-station .sts-move, body.in-station .sts-look { display: none !important; }

@@ -393,6 +393,9 @@ export class StationInteriorMode {
     this.walker.enabled = true;
     this.ui.classList.remove("hidden");
     document.body.classList.add("in-station-interior");
+    // Its own class too: the station and Starship share the engine, and each look stick shows only with its own
+    // interior (the station's, later in the page, sat on top of Starship's and took its drags).
+    document.body.classList.add(`in-${this.look.prefix ?? "sti"}-interior`);
     this.resize();
   }
 
@@ -402,7 +405,7 @@ export class StationInteriorMode {
     this.walker.enabled = false;
     this.ui.classList.add("hidden");
     this.hop.hide();
-    document.body.classList.remove("in-station-interior");
+    document.body.classList.remove("in-station-interior", `in-${this.look.prefix ?? "sti"}-interior`);
   }
 
   resize(): void {

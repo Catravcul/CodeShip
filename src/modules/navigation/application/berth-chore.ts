@@ -1,4 +1,4 @@
-import type { ChoiceExercise, CodeBlock, Concept, OrderExercise } from "@modules/mind-duel/domain/exercise";
+import type { ChoiceExercise, CodeBlock, Concept } from "@modules/mind-duel/domain/exercise";
 import type { Chore } from "@modules/chores/domain/chore";
 import type { StepAct } from "@modules/chores/domain/step-visual";
 import { duration, num } from "./trip-chore";
@@ -33,32 +33,44 @@ function choice(id: string, concept: Concept, skill: ChoiceExercise["skill"], id
 }
 
 /**
- * Docking by program (the «Automático (retos)» of the docking station): order the real approach of a visiting
- * vehicle (Crew Dragon Demo-1: Waypoint 1, the axis, Waypoint 2 and its go/no-go, closing at contact speed, soft
- * then hard capture), work out how long the closing takes, and pick the contact speed the hooks accept.
+ * Docking by program (the «Automático (retos)» of the docking station): the real approach of a visiting vehicle
+ * (Crew Dragon Demo-1) decision by decision from Waypoint 1: align with the axis first (not rush in at 1 m/s), how
+ * long the closing to Waypoint 2 takes, what it waits for there (the station's «go»), and the contact speed the
+ * hooks accept.
  * Solving it hands the approach to the flight computer.
  */
 export function berthChore(f: BerthFacts): Chore {
   const id = `acople-${f.portName}`;
   const closeM = f.waypoint1M - f.waypoint2M;
-  const sequence: OrderExercise = {
-    kind: "order",
-    id: `${id}-secuencia`,
-    concept: 1,
-    idea: "Como la Crew Dragon: por puntos de espera",
-    // From Waypoint 1, where the docking seat takes over (it is already holding there). Six blocks fit a phone
-    // (390×664) without scrolling to the first one.
-    blocks: lines([
-      ["alinear con el eje del puerto", "nave.alinearConEje(puerto);"],
-      [`a ${num(f.closingMs, 2)} m/s al punto 2 (${num(f.waypoint2M)} m)`, `nave.acercar(${f.closingMs}, ${f.waypoint2M});`],
-      [`esperar el «adelante» (${duration(f.holdS)})`, `nave.esperarAdelante();`],
-      [`a ${num(f.closingMs, 2)} m/s hasta tocar`, `nave.acercar(${f.closingMs}, 0);`],
-      ["cerrar los ganchos", "puerto.cerrarGanchos();"],
-      // Distractor: rushing in.
-      ["ir directa a 1 m/s", "nave.acercar(1, 0);"],
+  // Each decision is a choice (four options fit a phone's sheet; an order of six blocks did not, 390×664).
+  const first = choice(
+    `${id}-primero`,
+    1,
+    "completar",
+    "Como la Crew Dragon: por puntos de espera",
+    `En el punto 1 (${num(f.waypoint1M)} m), ¿qué haces primero?`,
+    lines([
+      [`nave.esperar(${num(f.waypoint1M)})   // punto 1`, `nave.esperar(${f.waypoint1M});`],
+      ["___", "___"],
+      [`nave.acercar(${num(f.closingMs, 2)}, ${num(f.waypoint2M)})   // al punto 2`, `nave.acercar(${f.closingMs}, ${f.waypoint2M});`],
     ]),
-    solution: ["a", "b", "c", "d", "e"],
-  };
+    "alinear con el eje del puerto",
+    ["ir directa a 1 m/s", "cerrar los ganchos", "apagar los motores"],
+  );
+  const hold = choice(
+    `${id}-espera`,
+    2,
+    "completar",
+    "En el punto 2 se para y espera",
+    `En el punto 2 (${num(f.waypoint2M)} m), ¿qué espera antes de seguir hasta tocar?`,
+    lines([
+      [`nave.acercar(${num(f.closingMs, 2)}, ${num(f.waypoint2M)})`, `nave.acercar(${f.closingMs}, ${f.waypoint2M});`],
+      ["___", "___"],
+      [`nave.acercar(${num(f.closingMs, 2)}, 0)   // hasta tocar`, `nave.acercar(${f.closingMs}, 0);`],
+    ]),
+    `el «adelante» de la estación (${duration(f.holdS)})`,
+    ["nada: sigue a 1 m/s", "que se cierren los ganchos", "a quedarse sin propelente"],
+  );
   const time = choice(
     `${id}-tiempo`,
     4,
@@ -92,26 +104,24 @@ export function berthChore(f: BerthFacts): Chore {
     targetId: f.portName,
     title: `Programar el acople en ${f.stationName}`,
     scenario: `De ${num(f.waypoint1M)} m al puerto ${f.portName} a ${num(f.closingMs, 2)} m/s, con espera en ${num(f.waypoint2M)} m: como la Crew Dragon en la ISS`,
-    exercises: [sequence, time, contact],
+    exercises: [first, time, hold, contact],
   };
 }
 
 /**
  * What each solved step of the docking challenge does at the docking seat (reglas.md §4.2): her hands on the
- * touchscreen for each command, her eyes on the docking camera for each check. Step 0's acts go one per block of
- * the order (alinear, a P2, esperar, hasta tocar, ganchos); step 1 checks the time; step 2 the hooks' condition.
+ * touchscreen for each command, her eyes on the docking camera for each check. In chain order: align (command),
+ * the time to Waypoint 2 (check), the hold for the «go» (check), the hooks (command).
  */
 export const BERTH_STEP_ACTS: readonly (readonly StepAct[])[] = [
-  [
-    { action: "programar", place: "objetivo" },
-    { action: "programar", place: "objetivo" },
-    { action: "revisar", place: "objetivo" },
-    { action: "programar", place: "objetivo" },
-    { action: "programar", place: "objetivo" },
-  ],
+  [{ action: "programar", place: "objetivo" }],
   [{ action: "revisar", place: "objetivo" }],
   [{ action: "revisar", place: "objetivo" }],
+  [{ action: "programar", place: "objetivo" }],
 ];
+
+/** The stages of the docking camera's approach each solved step plays, in chain order (see berthStage). */
+export const BERTH_STEP_STAGES: readonly (readonly number[])[] = [[1], [2], [3, 4], [5]];
 
 /** The approach the docking camera shows as each block is placed: the range to the port and what happens, per stage 0–5. */
 export function berthStage(f: Pick<BerthFacts, "waypoint1M" | "waypoint2M" | "closingMs">, stage: number): { fromM: number; toM: number; caption: string } {

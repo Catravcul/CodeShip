@@ -9,7 +9,7 @@ import type { CabinStation } from "@modules/lander-cabin/domain/cabin";
 import type { ChoreRun } from "@modules/chores/domain/chore";
 import { WalkRoom, type RoomAction } from "./walk-room";
 import type { StepVisual } from "@modules/chores/domain/step-visual";
-import { BERTH_STEP_ACTS, berthStage, type BerthFacts } from "@modules/navigation/application/berth-chore";
+import { BERTH_STEP_ACTS, BERTH_STEP_STAGES, berthStage, type BerthFacts } from "@modules/navigation/application/berth-chore";
 
 export interface BridgeDeps {
   /** Open one console's page of the deck. */
@@ -255,7 +255,7 @@ export class BridgeRoom extends WalkRoom<BridgeStationId> {
     if (!base) return undefined;
     this.dockShow = { facts, stage: 0, t: 0, queue: [] };
     let queued = 0;
-    // Stages play one after another, each for DOCK_STAGE_S (a whole order sent at once plays them all in turn).
+    // Stages play one after another, each for DOCK_STAGE_S.
     const upTo = (n: number) => {
       for (; queued < n; ) this.dockShow?.queue.push(++queued);
     };
@@ -270,13 +270,7 @@ export class BridgeRoom extends WalkRoom<BridgeStationId> {
     return {
       stepDone: (i) => {
         base.stepDone(i);
-        // The order: every stage it has not shown yet; the time: the closing to Waypoint 2 again; the hooks: the capture.
-        if (i === 0) upTo(5);
-        else this.dockShow?.queue.push(i === 1 ? 2 : 5);
-      },
-      partDone: (i, part) => {
-        base.partDone?.(i, part);
-        if (i === 0) upTo(part + 1);
+        upTo(Math.max(...(BERTH_STEP_STAGES[i] ?? [0])));
       },
       // Solved: the hooks close on the screen, then she is back at the seat (the sheet closes by itself).
       finish: () => {

@@ -95,17 +95,18 @@ puesto de acople solo lo menciona en una línea de texto.
   cada uno con ✓ o ✗. Al tocar, los límites IDSS lo juzgan (0,05–0,10 m/s, menos de 0,10 m del eje, menos de 0,04
   m/s de deriva): si no cogen, dice por qué y retrocede 5 m. Va a ×10 (a ×60 no se puede alinear a ojo; valor de
   juego).
-- **Automático (retos)**: `berthChore` (`berth-chore.ts`): ordenar la aproximación de la Demo-1 (punto 1, eje,
-  punto 2, esperar el «adelante», seguir hasta el contacto, captura suave y ganchos; el distractor es «ir directa a
-  1 m/s»), cuánto se tarda del punto 1 al 2 a 0,07 m/s y qué condición falta para que cojan los ganchos. Resuelto,
-  `Navigator.berthAuto` vuela la aproximación real (51 min de juego). Empieza en el punto 1, donde ya espera:
-  seis bloques (cinco y el distractor), que caben en 390×664 sin desplazar.
+- **Automático (retos)**: `berthChore` (`berth-chore.ts`): la aproximación de la Demo-1 decisión a decisión desde el
+  punto 1, donde ya espera: qué se hace primero (alinear con el eje; el distractor es «ir directa a 1 m/s»), cuánto
+  se tarda del punto 1 al 2 a 0,07 m/s, qué se espera en el punto 2 (el «adelante» de la estación) y qué condición
+  falta para que cojan los ganchos. Son cuatro elecciones de cuatro opciones: una ordenación de seis bloques no
+  cabía en 390×664 sin desplazar (la «Vista panel» de los retos no se cambia). Resuelto, `Navigator.berthAuto`
+  vuela la aproximación real (51 min de juego).
   **Cada paso se ve en el puesto de acople** (reglas §4.2, `Bridge.dockStepVisual`): ella flota en los anclajes de
   pie delante de la consola (no atraviesa el asiento), vista por encima del hombro derecho; para cada orden pone
   las manos en la pantalla (`programar`) y para cada comprobación mira la cámara (`revisar`) (`BERTH_STEP_ACTS`).
   La pantalla «Cámara de acople» de la consola enseña lo que hace cada bloque (`berthStage`): en el punto 1,
   alineada, acercándose al punto 2 (el puerto crece de 150 a 20 m), la espera del «adelante», hasta el contacto y
-  los ganchos cerrados (en verde). Cada etapa dura 2,2 s; enviada la orden entera, se ven todas seguidas.
+  los ganchos cerrados (en verde); cada paso resuelto enseña las suyas (`BERTH_STEP_STAGES`), 2,2 s cada una.
 - **Desacoplar**: `Unberthing`: retrocede por el eje a 0,07 m/s hasta el punto 1 (150 m), a ×60.
 - **La cámara se controla** (reglas §5.3 y §5.7): la de la Dragon es fija en el eje; las cámaras de fuera de la
   ISS van en cabezas de giro. La nuestra (`DOCK_CAM_HEAD`, nuestra) gira ±20° a los lados y ±15° arriba y abajo a

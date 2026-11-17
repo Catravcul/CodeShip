@@ -119,11 +119,7 @@ export function flightDeckSeats(w: SeatsWiring): { pilot: PilotDeps; dock: DockD
         { ...TRIP_TEXT, submit: "Cargar el acople en el ordenador de vuelo" },
         visual,
       );
-      // Each block placed right plays at the console as it is placed (the order's «paso a paso»).
-      if (visual?.partDone)
-        w.duel.onRightPick = (id, slot) => {
-          if (run.current?.id === id) visual.partDone?.(run.step, slot);
-        };
+
       return { ok: true };
     },
     stop: () => nav.cancel(),

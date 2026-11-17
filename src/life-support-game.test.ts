@@ -72,8 +72,11 @@ describe("SV-15/SV-17 in play: causes on the rack, preventive tasks, the galley'
     const v = twoVehicles();
     v.tick(1);
     const html = v.station.readout(rack("ar"))!;
-    expect(html).toMatch(/desgaste: lechos de zeolita degradados \d+ %/);
-    expect(html).toMatch(/Causa de «lechos de zeolita degradados»: .*zeolita/);
+    expect(html).toMatch(/CDRA · en marcha · <span class="sv-wear">7\d % gastado<\/span>/);
+    expect(html).toMatch(/Lechos de zeolita degradados: .*zeolita.*de 4800 medios ciclos/);
+    v.station.system.setWear("cdra-lechos", 0.85);
+    v.tick(1);
+    expect(v.station.readout(rack("ar"))).toMatch(/85 % gastado, falla en \d+ días/);
   });
 
   it("a worn mode past 80 % is a «Preventivo» task of the global list and a button on its rack; done, its wear drops", () => {
@@ -88,10 +91,10 @@ describe("SV-15/SV-17 in play: causes on the rack, preventive tasks, the galley'
   it("the galley shows the pantry and its days; a Dragon ordered there arrives in 18 h and fills it", () => {
     const v = twoVehicles();
     expect(v.station.readout(galley)).toMatch(/Despensa.*kg.*Quedan.*60 días/s);
-    expect(v.station.cargoActions().map((a) => a.label)).toEqual(["Pedir Dragon de carga (2507 kg, 18 h)", "Pedir Cygnus (3749 kg, 60 h)"]);
+    expect(v.station.cargoActions().map((a) => a.label)).toEqual(["Pedir Dragon (2507 kg, 18 h)", "Pedir Cygnus (3749 kg, 60 h)"]);
     const before = v.station.system.readout().foodKg;
     expect(v.station.cargoAct("carguero:dragon")).toBe(true);
-    expect(v.station.cargoActions().every((a) => !a.enabled)).toBe(true);
+    expect(v.station.cargoActions()).toEqual([]);
     expect(v.station.readout(galley)).toMatch(/Dragon de carga en camino: llega en 18 h/);
     v.tick(18);
     expect(v.station.system.readout().foodKg).toBeGreaterThan(before + 400);

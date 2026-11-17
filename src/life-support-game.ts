@@ -23,11 +23,14 @@ const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 const num = (v: number, d = 1) => v.toLocaleString("es-ES", { minimumFractionDigits: d, maximumFractionDigits: d });
 
 /** One meal: the day's packaged food in two meals (docs/design/soporte-vital.md, «Comida»). */
+/** From this share of its life, the rack's card tells the cause of its most worn mode (game value). */
+const CAUSE_FROM = 0.5;
+
 export const MEAL_KG = CREW_BALANCE.foodPackagedKg.value / 2;
 
 const days = (d: number) => (d === Infinity ? "—" : d < 1 ? "menos de 1 día" : `${num(d, 0)} día${Math.round(d) === 1 ? "" : "s"}`);
 /** «lechos 76 % · polvo de zeolita… · en 12 días» for a rack's machine line. */
-const wearText = (w: WearStatus) => `${esc(w.failure.name.toLowerCase())} ${num(w.share * 100, 0)} %${w.daysLeft !== Infinity ? ` · falla en ${days(w.daysLeft)}` : ""}`;
+const wearText = (w: WearStatus) => `${num(w.share * 100, 0)} % gastado${w.due && w.daysLeft !== Infinity ? `, falla en ${days(w.daysLeft)}` : ""}`;
 
 const rackOf = (m: EclssMachineId): RackKind => ECLSS_RACKS.find((r) => r.machines.includes(m))!.kind;
 const fixtureOf = (m: EclssMachineId) => `sv-${rackOf(m)}`;
@@ -207,11 +210,15 @@ export class LifeSupportGame {
     // The console: every machine as a short chip, and a line only for those that are not well.
     const chips = kind === "consola" ? `<ul class="sv-chips">${r.machines.map((m) => `<li class="${level(m)}">${esc(m.short)}</li>`).join("")}</ul>` : "";
     const lines = (kind === "consola" ? r.machines.filter((m) => level(m) !== "ok" || m.wear?.due) : r.machines.filter((m) => machines.includes(m.id))).map(
-      (m) => `<li class="${m.working ? (m.capacity < 1 || m.wear?.due ? "aviso" : "ok") : "alarma"}" data-sv-machine="${m.id}">${esc(m.short)} · ${m.working ? (m.capacity < 1 ? `al ${num(m.capacity * 100, 0)} %` : "en marcha") : "parado"}${m.why ? ` · ${esc(m.why)}` : ""}${m.wear ? ` · <span class="sv-wear">desgaste: ${wearText(m.wear)}</span>` : ""}</li>`,
+      (m) => `<li class="${m.working ? (m.capacity < 1 || m.wear?.due ? "aviso" : "ok") : "alarma"}" data-sv-machine="${m.id}">${esc(m.short)} · ${m.working ? (m.capacity < 1 ? `al ${num(m.capacity * 100, 0)} %` : "en marcha") : "parado"}${m.why ? ` · ${esc(m.why)}` : ""}${m.wear && m.working ? ` · <span class="sv-wear">${wearText(m.wear)}</span>` : ""}</li>`,
     );
     // On a rack, the cause of what is closest to failing, so she can see it coming.
-    const worst = kind === "consola" ? undefined : r.machines.filter((m) => machines.includes(m.id) && m.wear).sort((a, b) => b.wear!.share - a.wear!.share)[0]?.wear;
-    const cause = worst ? `<p class="sv-cause" data-sv="causa">Causa de «${esc(worst.failure.name.toLowerCase())}»: ${esc(worst.failure.wear.cause)} (${num(worst.count, 0)} de ${num(worst.failure.wear.life, 0)} ${esc(worst.failure.wear.unit)})</p>` : "";
+    // Only once it is past half its life, and not while an alarm already fills the card.
+    const worst = kind === "consola" ? undefined : r.machines.filter((m) => machines.includes(m.id) && m.wear && m.working).sort((a, b) => b.wear!.share - a.wear!.share)[0]?.wear;
+    const cause =
+      worst && worst.share >= CAUSE_FROM && r.co2State !== "alarma"
+        ? `<p class="sv-cause" data-sv="causa">${esc(worst.failure.name)}: ${esc(worst.failure.wear.cause)} (${num(worst.count, 0)} de ${num(worst.failure.wear.life, 0)} ${esc(worst.failure.wear.unit)})</p>`
+        : "";
     const extra = kind === "consola" ? this.consoleLines(r) : [];
     const sym = this.exposure.symptoms(r);
     const health = sym.length ? `<p class="sv-health" data-sv="salud">Doménica: ${sym.map((s) => `${esc(s.name.toLowerCase())} (${esc(s.why)})`).join(", ")}</p>` : "";
@@ -224,14 +231,15 @@ export class LifeSupportGame {
     const r = this.system.readout();
     const level = r.foodDays < 14 ? "alarma" : r.foodDays < 45 ? "aviso" : "ok";
     const f = this.cargo.inFlight;
-    const cargo = f ? `<li class="ok" data-sv="carguero">${esc(f.manifest.vehicle.name)} en camino: llega en ${num(Math.max(1, Math.ceil(f.hoursLeft)), 0)} h con ${num(f.manifest.foodKg, 0)} kg de comida</li>` : `<li class="${level}">Sin carguero en camino</li>`;
-    return `<div class="sv-grid"><div class="sv-cell ${level}" data-sv="despensa"><span>Despensa</span><b>${num(r.foodKg, 0)} kg</b></div><div class="sv-cell ${level}" data-sv="dias"><span>Quedan</span><b>${days(r.foodDays)}</b></div></div><ul class="sv-machines"><li class="ok">Comida envasada de la ISS: ${num(MEAL_KG)} kg por comida, dos al día</li>${cargo}</ul>`;
+    const cargo = f ? `<ul class="sv-machines"><li class="ok" data-sv="carguero">${esc(f.manifest.vehicle.name)} en camino: llega en ${num(Math.max(1, Math.ceil(f.hoursLeft)), 0)} h con ${num(f.manifest.foodKg, 0)} kg de comida</li></ul>` : "";
+    return `<div class="sv-grid"><div class="sv-cell ${level}" data-sv="despensa"><span>Despensa</span><b>${num(r.foodKg, 0)} kg</b></div><div class="sv-cell ${level}" data-sv="dias"><span>Quedan</span><b>${days(r.foodDays)}</b></div></div>${cargo}`;
   }
 
   /** The galley's buttons to order a cargo vehicle (on the station, where they dock). */
   cargoActions(): StationAction[] {
-    const why = this.cargo.blocker();
-    return CARGO_VEHICLES.map((v) => ({ id: `carguero:${v.id}`, label: `Pedir ${v.name} (${num(v.pressurizedKg.value, 0)} kg, ${num(v.transitH.value, 0)} h)`, enabled: !why, ...(why ? { why } : {}) }));
+    // One at a time: while one flies, the readout says when it arrives.
+    if (this.cargo.inFlight) return [];
+    return CARGO_VEHICLES.map((v) => ({ id: `carguero:${v.id}`, label: `Pedir ${v.name.replace(" de carga", "")} (${num(v.pressurizedKg.value, 0)} kg, ${num(v.transitH.value, 0)} h)`, enabled: true }));
   }
 
   /** Order a cargo vehicle (true if `id` was a cargo action). */

@@ -14,6 +14,7 @@ import type { StationAction } from "./station-interior";
 
 const itemName = (id: string) => ITEMS.find((i) => i.id === id)?.name ?? id;
 const MAX_CHORES_ON_CARD = 3;
+const MAX_DISHES_WITH_CARGO = 2;
 
 const choreText = (c: Chore): SessionText => ({
   title: c.title,
@@ -102,10 +103,13 @@ export class StationLife {
       case "cocina": {
         const dishes = chores("cocina");
         const larder = this.d.mothershipLarder();
+        const cargo = this.d.cargoActions?.();
+        // Real ships: the galley also orders the cargo vehicles, so it shows fewer dishes (all are in the task list)
+        // and the trip stores only while the Starship is berthed.
         return [
-          ...(dishes.length ? dishes : [{ id: "nada", label: "Cocinar", enabled: false, why: this.d.cargoActions ? "La despensa está vacía: pide un carguero aquí (Dragon o Cygnus)" : "La despensa de la estación no da para ningún plato: sus cultivos (Vida) la llenan" }]),
-          ...(this.d.cargoActions?.() ?? []),
-          { id: "viaje", label: "Víveres para la nodriza", enabled: !!larder, ...(larder ? {} : { why: "La nodriza no está atracada: los víveres para el viaje se cargan con ella aquí" }) },
+          ...(dishes.length ? dishes.slice(0, cargo ? MAX_DISHES_WITH_CARGO : MAX_CHORES_ON_CARD) : [{ id: "nada", label: "Cocinar", enabled: false, why: cargo ? "La despensa está vacía: pide un carguero aquí (Dragon o Cygnus)" : "La despensa de la estación no da para ningún plato: sus cultivos (Vida) la llenan" }]),
+          ...(cargo ?? []),
+          ...(cargo && !larder ? [] : [{ id: "viaje", label: "Víveres para la nodriza", enabled: !!larder, ...(larder ? {} : { why: "La nodriza no está atracada: los víveres para el viaje se cargan con ella aquí" }) }]),
         ];
       }
       case "esterilla":

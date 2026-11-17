@@ -2,7 +2,10 @@
 // only on the racks and the life-support laptop; the CDRA's zeolite beds clog and the CO₂ climbs past the
 // 5,3 mmHg alarm with Doménica's headache; «Ir» from the global task list to the air rack, the repair as code
 // challenges with its steps lit on the rack; the CO₂ comes back; then the water processor's multifiltration bed
-// is changed at the water rack. iPhone 13; captures in docs/screenshots/soporte-vital-<pantalla>-movil.png.
+// is changed at the water rack. Failures have causes (SV-15): the air rack shows the beds' wear, its cause and the
+// days left, and the preventive cleaning is done there; the galley's pantry (SV-16, SV-17): its kg and days, a
+// Dragon ordered at the galley docks 18 h later and fills it, and a dish takes a meal out of it.
+// iPhone 13; captures in docs/screenshots/soporte-vital-<pantalla>-movil.png.
 import { mkdirSync } from "node:fs";
 
 async function capture(j, label, title) {
@@ -120,4 +123,45 @@ export async function soporteVital(j) {
   await p.waitForTimeout(1000);
   await j.tap(".duel button.end", "Continuar");
   j.check("el WPA vuelve al 100 %", await p.evaluate(() => window.codeship.lifeSupport.system.capacity("wpa") === 1));
+
+  // Failures have causes (SV-15): the beds wear with every half-cycle; from 80 % the preventive cleaning is due.
+  await j.setup("pasan unos días: los lechos del CDRA llegan al 80 % de su vida", () => {
+    const ls = window.codeship.lifeSupport;
+    ls.system.setWear("cdra-lechos", 0.795);
+    ls.advance(48);
+  });
+  await placeAt(j, "sv-ar");
+  const worn = await card(j);
+  j.check("el bastidor de aire enseña el desgaste de los lechos, los días que quedan y su causa", /CDRA · en marcha · 80 % gastado, falla en \d+ días/.test(worn) && /Lechos de zeolita degradados: .*zeolita/.test(worn), worn.slice(0, 400));
+  const pm = '.sti-card [data-act="chore:sv-pm-cdra-lechos"]';
+  j.check("el bastidor ofrece el preventivo «Preventivo CDRA: limpiar los lechos»", (await p.locator(pm).count()) === 1);
+  await capture(j, "desgaste", "Desgaste y causa en el bastidor de aire");
+  await j.tap(pm, "Preventivo: limpiar los lechos del CDRA");
+  await solve(j);
+  await p.waitForTimeout(1000);
+  await j.tap(".duel button.end", "Continuar");
+  const after = await p.evaluate(() => window.codeship.lifeSupport.system.wearShare("cdra-lechos"));
+  j.check("limpiar los lechos los deja al 30 % sin gastar repuesto y sin parar el CDRA", Math.abs(after - 0.3) < 0.01 && (await p.evaluate(() => window.codeship.lifeSupport.system.capacity("cdra") === 1)), String(after));
+
+  // The galley's pantry (SV-16, SV-17): imports fill it until real food systems exist.
+  await placeAt(j, "cocina");
+  const galley = await card(j);
+  j.check("la cocina da la despensa en kg y los días que quedan", /Despensa \d+ kg/i.test(galley) && /Quedan \d+ días/i.test(galley), galley.slice(0, 260));
+  await capture(j, "despensa", "Despensa en la cocina de Unity");
+  const food0 = await p.evaluate(() => window.codeship.lifeSupport.system.readout().foodKg);
+  await j.tap('.sti-card [data-act="carguero:dragon"]', "Pedir Dragon");
+  await p.waitForTimeout(600);
+  j.check("el Dragon de carga va en camino y llega en 18 h", /Dragon de carga en camino: llega en 1[78] h/.test(await card(j)), (await card(j)).slice(0, 300));
+  await j.setup("pasan las 18 h del tránsito del Dragon (CRS-28)", () => window.codeship.lifeSupport.advance(18));
+  const food1 = await p.evaluate(() => window.codeship.lifeSupport.system.readout().foodKg);
+  j.check("el Dragon se acopla y descarga unos 430 kg de comida en la despensa", food1 - food0 > 400, `${food0.toFixed(1)} → ${food1.toFixed(1)}`);
+  await p.waitForTimeout(600);
+  await capture(j, "carguero", "Despensa llena tras el Dragon");
+  await j.tap('.sti-card [data-act^="chore:cocinar"]', "Cocinar un plato de la ISS");
+  await j.waitDuel();
+  for (let i = 0; i < 12 && (await p.evaluate(() => !!window.codeship.stationLife.session?.run.current)); i++) await j.answer(() => window.codeship.stationLife.session?.run.current);
+  await p.waitForTimeout(1000);
+  await j.tap(".duel button.end", "Continuar");
+  const food2 = await p.evaluate(() => window.codeship.lifeSupport.system.readout().foodKg);
+  j.check("el plato saca una comida (1,2 kg) de la despensa", food1 - food2 > 1.1, `${food1.toFixed(2)} → ${food2.toFixed(2)}`);
 }

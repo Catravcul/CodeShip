@@ -3,13 +3,32 @@ import type { StepVisual } from "@modules/chores/domain/step-visual";
 import { choreVisuals } from "@modules/chores/application/step-visuals";
 import { RECIPES } from "@modules/kitchen/data/recipes";
 import { PROCESSES } from "@modules/kitchen/data/processes";
+import { ISS_FOOD } from "@modules/kitchen/data/iss-food";
+import { YOGA_SEQUENCES } from "@modules/wellness/data/yoga";
+import { asanaById } from "@modules/body/data/asanas";
 import type { StationPanel } from "@modules/station/domain/interior";
 import type { StationSession } from "@modules/station/application/station-ops";
 import type { StationInteriorMode } from "./station-interior";
 import type { ChoreMode } from "./station-screen";
 
 /** What each solved step of a station chore looks like: the same sources as the ring's (step-visuals.ts). */
-const STEP_VISUALS = choreVisuals({ recipes: RECIPES, processes: PROCESSES });
+const STEP_VISUALS = choreVisuals({ recipes: RECIPES, processes: PROCESSES, spaceFood: ISS_FOOD });
+
+/** Yoga starts standing, as on the ring (interior.ts). */
+const STANDING_ASANA = "samasthitih-de-pie";
+
+/**
+ * A crew chore of a 0 g interior (the station or Starship) acted out at fixture `fixtureId`: a meal at the galley
+ * with its package, a workout at its machine, yoga on the mat posture by posture, the aquatic habitat or the
+ * catalogue at their rack (reglas.md §4.2).
+ */
+export function crewStepVisual(mode: StationInteriorMode, chore: Chore, fixtureId: string): StepVisual | undefined {
+  if (chore.kind === "yoga") {
+    const seq = YOGA_SEQUENCES.find((s) => s.id === chore.targetId);
+    return mode.yogaVisual(fixtureId, (i) => asanaById(i < 0 ? STANDING_ASANA : (seq?.postures.value[i]?.asana ?? STANDING_ASANA)));
+  }
+  return mode.stepVisual(fixtureId, (i) => STEP_VISUALS.acts(chore, i) ?? []);
+}
 
 /** The tab whose machines do each kind of station chore (when she did not open it from one). */
 const PANEL_OF: Readonly<Record<ChoreMode, StationPanel>> = { refinar: "materiales", fabricar: "fabricacion", repostar: "propelente", importar: "materiales", ajustar: "vida" };
@@ -26,7 +45,7 @@ export function stationStepVisuals(station: StationInteriorMode, inside: () => b
   return {
     /** A crew area's chore (the galley): at its fixture, which has the area's id. */
     crew(chore: Chore, area: string): StepVisual | undefined {
-      return station.stepVisual(area, acts(chore));
+      return crewStepVisual(station, chore, area);
     },
     /** A machine's chore from the station screen: at the machine she opened it from, or the first of its tab. */
     machine(session: StationSession, mode: ChoreMode): StepVisual | undefined {

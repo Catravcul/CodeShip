@@ -18,8 +18,8 @@ export const STATION_AREA_NAME: Readonly<Record<CrewArea, string>> = {
   cocina: "Cocina de la estación",
   camarotes: "Tu camarote (Harmony)",
   aseo: "Aseo de la estación",
-  ejercicio: "Rincón de ejercicio de la estación (Nodo 1)",
-  esterilla: "Esterilla de yoga de la estación (Nodo 1)",
+  ejercicio: "T2 y ARED de la estación (Tranquility)",
+  esterilla: "Esterilla de yoga de la estación (Destiny)",
 };
 
 /**

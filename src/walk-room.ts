@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import { clampToFloor, floorPath, nearestStation, roomAisles, type CabinLayout, type CabinStation, type FloorPoint } from "@modules/lander-cabin/domain/cabin";
 import { CubeFigure } from "./adapters/three/interior/figure";
+import { StepShow } from "./adapters/three/interior/step-show";
+import type { StepAct, StepVisual } from "@modules/chores/domain/step-visual";
 import { textSign } from "./adapters/three/interior/sign";
 import { HatchLeaf } from "./adapters/three/interior/hatch-leaf";
 import { Walker } from "./adapters/input/walker";
@@ -336,6 +338,68 @@ export abstract class WalkRoom<Id extends string> {
     f.classList.add("go");
   }
 
+  /** Steps acted out at a machine of the room (the suit-up at the LM's forward hatch): StepShow, as in the 0 g modules. */
+  readonly steps = new StepShow();
+
+  /**
+   * The step visual of a challenge done at station `id` (reglas.md §4.2): she stands at it, each right step plays
+   * there, seen from beside and behind her (the walls in the way hidden), in the strip above the sheet.
+   */
+  stepVisual(id: Id, acts: (index: number) => readonly StepAct[]): StepVisual | undefined {
+    const s = this.station(id);
+    if (!s) return undefined;
+    if (!this.steps.root.parent) this.scene.add(this.steps.root);
+    const k = this.k;
+    this.pos = { ...s.stand };
+    const stand = new THREE.Vector3(s.stand.x * k, 0, s.stand.z * k);
+    const target = new THREE.Vector3(s.look.x * k, s.look.y, s.look.z * k);
+    const d = new THREE.Vector3(target.x - stand.x, 0, target.z - stand.z);
+    if (d.lengthSq() < 1e-6) d.set(0, 0, -1);
+    d.normalize();
+    const right = new THREE.Vector3(-d.z, 0, d.x);
+    // Far and high enough that her head stays in the strip above the sheet (the walls are cut away).
+    const look = stand.clone().addScaledVector(d, 0.3).setY(0.95);
+    const camera = look.clone().addScaledVector(d, -2.0).addScaledVector(right, 1.2).setY(1.85);
+    this.steps.begin({ stand, yaw: Math.atan2(d.x, d.z), camera, look, target });
+    this.sheetLens(true);
+    // Signs would cover her in that strip (as in the station); they come back with the walk.
+    for (const sign of this.signs.values()) sign.visible = false;
+    let picked = { index: -1, n: 0 };
+    return {
+      stepDone: (index) => {
+        if (this.steps.framing) this.steps.play(acts(index).slice(picked.index === index ? picked.n : 0));
+        picked = { index: -1, n: 0 };
+      },
+      partDone: (index, part) => {
+        const v = acts(index)[part];
+        if (v && this.steps.framing) this.steps.play([v]);
+        picked = { index, n: part + 1 };
+      },
+      finish: () => {},
+      clear: () => {
+        this.steps.clear();
+        this.sheetLens(false);
+        this.cutaway(true);
+      },
+    };
+  }
+
+  /** Under a sheet: a taller frustum whose top shows, so she and the machine are in the strip above it. */
+  private sheetLens(on: boolean): void {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    this.camera.clearViewOffset();
+    if (on && h > w) {
+      this.camera.aspect = w / (1.6 * h);
+      this.camera.fov = (2 * Math.atan(Math.tan((52 * Math.PI) / 180) * 1.6) * 180) / Math.PI;
+      this.camera.setViewOffset(w, 1.6 * h, 0, 0.6 * h, w, h);
+    } else {
+      this.camera.aspect = w / h;
+      this.camera.fov = 72;
+    }
+    this.camera.updateProjectionMatrix();
+  }
+
   update(dt: number): void {
     if (!this.active) return;
     for (const l of this.leaves.values()) l.update(dt);
@@ -344,6 +408,13 @@ export abstract class WalkRoom<Id extends string> {
       this.passing = null;
       g.then();
       if (!this.active) return;
+    }
+    if (this.steps.framing) {
+      this.steps.frame(dt, this.camera, this.rig, this.avatar);
+      this.rig.visible = true;
+      this.cutaway();
+      this.tick(dt);
+      return;
     }
     const busy = this.busy();
     const look = this.walker.look(dt);

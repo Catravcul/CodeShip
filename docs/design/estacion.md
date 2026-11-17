@@ -56,7 +56,7 @@ La estructura completa cabe en una esfera de 66 m (`radiusM` de la estación). L
 
 ## La pantalla
 
-En el móvil, arriba se ve el hangar en 3D y abajo hay un panel con cuatro pestañas. En horizontal, el panel va a la derecha. El hangar muestra el módulo (si está acoplado), las tres máquinas, que se encienden mientras trabajan, el estante de piezas de repuesto y las sondas fabricadas. Se gira arrastrando.
+En el móvil, arriba se ve el hangar en 3D y abajo hay un panel con **una sola ventana**: la de la consola desde la que se abrió (Materiales, Planos, Fabricación, Hangar, Importar o Vida). No hay barra de pestañas: cada ventana se abre solo desde sus consolas ([compartimentos.md](compartimentos.md)). En horizontal, el panel va a la derecha. El hangar muestra el módulo (si está acoplado), las tres máquinas, que se encienden mientras trabajan, el estante de piezas de repuesto y las sondas fabricadas. Se gira arrastrando.
 
 | Pestaña | Qué hay |
 | --- | --- |

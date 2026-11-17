@@ -1,3 +1,4 @@
+import type { StepVisual } from "@modules/chores/domain/step-visual";
 import type { Ship } from "@modules/ship/domain/ship";
 import type { ChoreSession, Habitat } from "@modules/habitat/application/habitat";
 import type { Chore } from "@modules/chores/domain/chore";
@@ -496,14 +497,23 @@ export class ShipBay {
     });
   }
 
+  /**
+   * Doménica doing the bay's work where the vehicle is (reglas.md §4.2): set by main.ts (at the station, the lander on
+   * its cradle by Unity's CBM). While it plays, the loop draws that scene above the sheet instead of the bay's view.
+   */
+  stepVisual?: (chore: Chore) => StepVisual | undefined;
+
   /** Open a chore in the challenge sheet; `done` gets how it ended. */
   private openChore(chore: Chore, done: (status: "done" | "failed" | "doing") => void): void {
     const session = this.habitat.start(chore, CONTEXT);
     const run = session.run;
     this.session = session;
+    const visual = this.stepVisual?.(chore);
     const prevClose = this.duel.onClose;
     this.working = true;
     this.duel.onClose = () => {
+      this.duel.onRightPick = undefined;
+      visual?.clear();
       this.duel.onClose = prevClose;
       this.working = false;
       this.session = null;
@@ -527,8 +537,17 @@ export class ShipBay {
         maxLives: run.maxMistakes,
       },
       text(chore),
-      (ans) => ({ ok: session.answer(ans) }),
+      (ans) => {
+        const index = run.step;
+        const ok = session.answer(ans);
+        if (ok) visual?.stepDone(index);
+        return { ok };
+      },
     );
+    if (visual)
+      this.duel.onRightPick = (id, slot) => {
+        if (run.current?.id === id) visual.partDone?.(run.step, slot);
+      };
     this.layout();
   }
 

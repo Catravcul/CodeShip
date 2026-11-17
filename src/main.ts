@@ -90,6 +90,7 @@ import { offeredBlueprints } from "@modules/station/data/outfit";
 import { facing } from "@modules/navigation/domain/attitude";
 import { StationLife } from "./station-life";
 import { stationStepVisuals } from "./station-steps";
+import { areaVisuals as SUIT_UP_VISUALS } from "@modules/chores/application/step-visuals";
 import { LifeSupportGame } from "./life-support-game";
 import { STATION_LIFE_SUPPORT } from "@modules/life-support/data/hosts";
 import { STATION_AREA_NAME, StationCrew, type Pantry } from "@modules/station/application/station-crew";
@@ -894,6 +895,7 @@ const stationLife = new StationLife({
   landerMassKg: () => ship.massKg,
   mothershipLarder: () => (mothership.dockedTo ? habitat : undefined),
   openTasks: () => taskBoard.open(),
+  sleepIn: (f, then) => stationInside.sleep(f, undefined, then),
   openInventory: () => {
     stationInside.suspend();
     screenFromInside = true;
@@ -902,7 +904,7 @@ const stationLife = new StationLife({
   openSettings: () => {
     settingsFrom = "estacion";
     stationInside.sitLotus(true);
-    settingsPanel.open("Doménica en loto en la esterilla del Nodo 1 (estación)");
+    settingsPanel.open("Doménica en loto en la esterilla de Destiny (estación)");
   },
   say: (t, sec) => stationInside.say(t, sec),
   lookOutside: (show) => stationOutside.open(show),
@@ -924,11 +926,11 @@ const stationLife = new StationLife({
     : {}),
 });
 // Real life support (docs/design/soporte-vital.md): the station hosts the racks for now; Doménica weighs 58 kg.
-const lifeSupport = new LifeSupportGame({ duel: duelView, say: (t, sec) => stationInside.say(t, sec), rack: (id) => stationInside.rack(id), frame: (at) => stationInside.frame(at), unframe: () => stationInside.unframe(), openTasks: () => taskBoard.open(), crewAboard: () => (crewIn() === "estacion" ? 1 : 0) }, STATION_LIFE_SUPPORT, 58);
+const lifeSupport = new LifeSupportGame({ duel: duelView, say: (t, sec) => stationInside.say(t, sec), rack: (id) => stationInside.rack(id), frame: (at) => stationInside.frame(at), unframe: () => stationInside.unframe(), act: (id, acts) => stationInside.stepVisual(id, acts), openTasks: () => taskBoard.open(), crewAboard: () => (crewIn() === "estacion" ? 1 : 0) }, STATION_LIFE_SUPPORT, 58);
 if (REAL_ONLY) stationPantry = lifeSupport.pantry;
 // The Starship's own racks and supplies (docs/design/nodriza-starship.md), on the same clock. Each vehicle
 // counts only the crew aboard it: Doménica is in one of them at a time, or in the lander (crewIn).
-if (starship) starship.lifeSupport = new LifeSupportGame({ duel: duelView, say: (t, sec) => starship.say(t, sec ?? 4), rack: (id) => starship.mode.rack(id), frame: (at) => starship.mode.frame(at), unframe: () => starship.mode.unframe(), openTasks: () => taskBoard.open(), crewAboard: () => (crewIn() === "nodriza" ? 1 : 0) }, STARSHIP_LIFE_SUPPORT, 58);
+if (starship) starship.lifeSupport = new LifeSupportGame({ duel: duelView, say: (t, sec) => starship.say(t, sec ?? 4), rack: (id) => starship.mode.rack(id), frame: (at) => starship.mode.frame(at), unframe: () => starship.mode.unframe(), act: (id, acts) => starship.mode.stepVisual(id, acts), openTasks: () => taskBoard.open(), crewAboard: () => (crewIn() === "nodriza" ? 1 : 0) }, STARSHIP_LIFE_SUPPORT, 58);
 /** The station's interior as it is drawn and walked: its real size at the presentation layer's scale (and spread). */
 const playInterior = () => {
   const plan = stationInteriorPlan(stationOutfit.layout, stationOutfit);
@@ -1006,15 +1008,11 @@ stationScreen.onRelease = (c) => {
   stationScreen.exit();
   stationOutside.open({ kind: "botar", craft: shown });
 };
-stationScreen.onBay = () => {
-  if (duelView.visible || bay.active) return;
-  screenToBay = true;
-  stationScreen.exit();
-  screenToBay = false;
-  bay.enter("pantalla");
-};
+// The bay opens only from its laptop in Unity (docs/design/reglas.md §2.3): the Hangar window has no way there.
 const bayBack = (from: "pantalla" | "estacion") => (from === "pantalla" ? stationScreen.enter("hangar") : stationInside.resume());
 bay.onExit = bayBack;
+// The bay's chores acted out at the station, by the lander on its cradle at Unity's CBM (reglas.md §4.2).
+bay.stepVisual = (chore) => (atStationPort() ? stationSteps.crew(chore, "consola-bahia") : undefined);
 const stationDock = new StationDock((c, f) => view.addButton(c, f), {
   open: () => !duelView.visible && !bay.active && !interior.active && !evaMode.active && stationScreen.enter(),
   distanceM: () => stationOps.station.distanceTo(flight.state.position),
@@ -1046,6 +1044,8 @@ settingsPanel.addRow({
   value: () => LANDING_MODE_LABEL[landingMode()],
   next: () => setLandingMode(LANDING_MODES[(LANDING_MODES.indexOf(landingMode()) + 1) % LANDING_MODES.length]!),
 });
+// The suit-up acted out at the LM's forward hatch, where it is done (reglas.md §4.2; docs/qa/animaciones.md).
+evaMode.suitUpVisual = (chore) => (cabin.active ? cabin.stepVisual("escotilla", (i) => SUIT_UP_VISUALS.acts(chore, i) ?? []) : undefined);
 interior.openSettings = () => {
   settingsFrom = "nodriza";
   settingsPanel.open(starship ? "Doménica en loto en la esterilla de la cubierta 1 (Starship)" : "Doménica en loto en la esterilla del rincón de ejercicio (nodriza)");
@@ -1232,15 +1232,15 @@ function arriveAt(place: TaskPlace, t?: Task): void {
         if (stationInside.placeAt(place.area)) start();
         return;
       }
-      // The ship bay and the machines of a tab: hop to their console, then open it; a tab with no machine opens at once.
-      const fixture = place.spot === "bahia" ? "consola-bahia" : stationInside.interior.fixturesFor(place.tab === "importar" ? "materiales" : place.tab)[0]?.id;
+      // The ship bay and each window: hop to its console, then open it (no window opens without one).
+      const fixture = place.spot === "bahia" ? "consola-bahia" : stationInside.interior.fixturesFor(place.tab)[0]?.id;
       const open = () => {
         stationInside.suspend();
         if (place.spot === "bahia") return bay.enter("estacion");
         screenFromInside = true;
         stationScreen.enter(place.tab);
       };
-      if (place.spot !== "bahia" && fixture && place.tab !== "importar") {
+      if (fixture) {
         if (!wasInStation && stationInside.placeAt(fixture)) return open();
         if (stationInside.goToFixture(fixture, open)) return;
       }
@@ -1593,7 +1593,9 @@ renderer.setAnimationLoop((now) => {
   }
   if (bay.active) {
     bay.update(dt);
-    present(bay.scene, bay.camera);
+    // A part changed at the station: Doménica at the lander on its cradle shows above the sheet, not the bay's view.
+    if (stationInside.stage(dt)) present(stationInside.scene, stationInside.camera);
+    else present(bay.scene, bay.camera);
     return;
   }
   if (subj.piloting) {

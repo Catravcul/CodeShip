@@ -106,10 +106,10 @@ export function taskGoal(place: TaskPlace, station: StationInterior, ship?: Stat
         const f = fx.find((x) => (x.action.kind === "tripulacion" && (x.id === place.area || x.action.area === place.area)) || (x.action.kind === "soporte-vital" && x.id === place.area));
         return f && `estacion:${f.id}`;
       }
-      // Imports, and the life tab before any bioreactor is installed, open from the store's glovebox.
+      // Each window from its own console (imports: the cargo laptop in Unity); the life window before any bioreactor is installed, from the store's glovebox.
       // Machines in the pressurised modules first: the hangar is at vacuum (a suit and the airlock).
       const inAir = (list: readonly { volume: string }[]) => [...list].sort((a, b) => Number(!station.volume(a.volume)?.pressurised) - Number(!station.volume(b.volume)?.pressurised));
-      const f = inAir(station.fixturesFor(place.tab === "importar" ? "materiales" : place.tab))[0] ?? station.fixturesFor("materiales")[0];
+      const f = inAir(station.fixturesFor(place.tab))[0] ?? station.fixturesFor("materiales")[0];
       return f && `estacion:${(f as { id: string }).id}`;
     }
   }

@@ -29,9 +29,8 @@ export async function catalogoNaves(j) {
   await p.waitForFunction(() => window.codeship.stationInside.nearFixture() === "cupula", null, { timeout: 15000 }).catch(() => undefined);
   await j.tap('.sti-card [data-act="inventario"]', "Catálogo y montaje (puesto robótico de la Cupola)");
   await p.waitForTimeout(600);
-  await j.tap('.st-tabs [data-tab="hangar"]', "Pestaña Hangar");
-  await p.waitForTimeout(500);
-  j.check("la pestaña Hangar ofrece el catálogo de naves", (await p.locator("[data-catalogue]").count()) === 1);
+  j.check("la pantalla abre en su Hangar, sin barra de pestañas", (await p.locator(".st-tabs").count()) === 0 && /Hangar/.test((await j.texts(".st-title"))[0] ?? ""));
+  j.check("el Hangar ofrece el catálogo de naves", (await p.locator("[data-catalogue]").count()) === 1);
   await j.tap("[data-catalogue]", "Ver el catálogo");
   await p.waitForTimeout(500);
   const cards = await p.locator(".st-vehicle").count();

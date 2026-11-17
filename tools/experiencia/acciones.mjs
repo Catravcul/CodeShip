@@ -130,14 +130,20 @@ export async function acciones(j) {
   j.check("la Cupola abre la vista de la estación por fuera", await p.evaluate(() => window.codeship.stationOutside.viewing));
   await audit(j, "estacion-cupola", "Vista desde la Cupola");
   await j.tap(".dock-view.on .dv-close", "Cerrar la vista de fuera");
-  // The screen's tabs: from a machine's card (the refinery opens Materiales).
-  await j.setup("Doménica va hasta la refinería", () => window.codeship.stationInside.placeAt("refineria"));
-  await j.tap('.sti-card [data-act="abrir"]', "Abrir (refinería)");
-  await p.waitForTimeout(600);
-  const tabs = await p.$$eval(".st-tabs [data-tab]", (els) => els.map((e) => e.dataset.tab));
-  j.check("la pantalla de la estación tiene sus pestañas", tabs.length >= 5, tabs.join(", "));
-  for (const t of tabs) {
-    await j.tap(`.st-tabs [data-tab="${t}"]`, `pestaña ${t}`);
-    await audit(j, `estacion-${t}`, `Estación, pestaña ${t}`);
+  // The screen's windows, each from its own console (docs/design/reglas.md §2.3): no tab bar to jump between them.
+  const windows = await p.evaluate(() => {
+    const s = window.codeship.stationInside.interior;
+    return ["materiales", "planos", "fabricacion", "hangar", "importar"].map((w) => [w, s.fixturesFor(w)[0]?.id]).filter(([, f]) => f);
+  });
+  j.check("cada ventana de la pantalla tiene su consola", windows.length === 5, windows.map((w) => w.join("→")).join(", "));
+  for (const [w, f] of windows) {
+    await j.setup(`Doménica va hasta «${f}»`, (id) => window.codeship.stationInside.placeAt(id), f);
+    await p.waitForTimeout(500);
+    await j.tap(`.sti-card [data-act="${f === "consola-bahia" ? `abrir:${w}` : "abrir"}"]`, `Abrir ${w} (${f})`);
+    await p.waitForTimeout(600);
+    j.check(`${w}: abre solo su ventana, sin pestañas`, (await p.locator(".st-tabs").count()) === 0, (await j.texts(".st-title"))[0] ?? "");
+    await audit(j, `estacion-${w}`, `Estación, ventana ${w}`);
+    await j.tap(".st-back", "Volver");
+    await p.waitForTimeout(400);
   }
 }

@@ -217,6 +217,8 @@ interface Props {
   readonly knife: THREE.Group;
   readonly spoon: THREE.Mesh;
   readonly shaker: THREE.Mesh;
+  /** A space-food package (an ISS-type rehydratable or retort pouch): space-galley-visuals.ts. */
+  readonly pouch: THREE.Mesh;
   readonly food: readonly THREE.Mesh[];
   readonly shells: readonly THREE.Mesh[];
   readonly fridgeDoor: THREE.Group;
@@ -294,6 +296,11 @@ export class StepShow {
   /** Steps acted out since the chore began (test hook). */
   played = 0;
   /**
+   * Her pose is set by the caller (a yoga asana, the lotus of the settings): the stage only places her and the
+   * camera, and the audit reads the asana she is in as the step's gesture.
+   */
+  holdPose = false;
+  /**
    * Set by the room: whether a box (world centre and half size, real metres) is clear of the scene's solid
    * geometry (furniture, walls, the animals). The rule (PX-20): a prop set down on the floor never goes
    * into anything; without it the default spot is used.
@@ -357,6 +364,7 @@ export class StepShow {
   }
 
   clear(): void {
+    this.holdPose = false;
     this.queue.length = 0;
     this.now = this.last = undefined;
     this.frameDef = this.df = undefined;
@@ -424,7 +432,7 @@ export class StepShow {
     rig.position.set(this.feet.x / k, this.feet.y, this.feet.z / k);
     rig.rotation.set(0, inBag ? f.yaw + Math.PI : f.yaw, 0);
     rig.quaternion.setFromEuler(rig.rotation);
-    figure.poseAngles(this.now ? gesture(vis!, t, this.clock, this.low(vis!)) : idle(vis ? this.low(vis) : false));
+    if (!this.holdPose) figure.poseAngles(this.now ? gesture(vis!, t, this.clock, this.low(vis!)) : idle(vis ? this.low(vis) : false));
     figure.update(dt, 9);
     rig.updateMatrixWorld(true);
     // Her hands as drawn (her figure is counter-scaled: drawn at real size where she stands).
@@ -482,7 +490,7 @@ export class StepShow {
       props,
       particles: this.props.dots.visible ? this.emit.clone() : undefined,
       planScale: this.ds,
-      gesture: this.now ? poseDistance(gesture(vis, this.t, this.clock, low), idle(low)) : 0,
+      gesture: this.holdPose ? (this.lastFigure?.currentAsana ? 1 : 0) : this.now ? poseDistance(gesture(vis, this.t, this.clock, low), idle(low)) : 0,
     };
   }
 
@@ -645,6 +653,7 @@ export class StepShow {
       knife: group(knifeBlade, knifeHandle),
       spoon: mesh(ROD, metal, 0.006, 0.22, 0.006),
       shaker: mesh(CYL, white, 0.018, 0.06, 0.018),
+      pouch: mesh(BOX, std(0xc9ced6, { metalness: 0.6, roughness: 0.35 }), 0.13, 0.03, 0.17),
       food: [0, 1, 2, 3].map(() => mesh(BALL, this.foodMat!, 0.03, 0.03, 0.03)),
       shells: [0, 1].map(() => mesh(BALL, white, 0.024, 0.031, 0.024)),
       fridgeDoor,
@@ -686,7 +695,8 @@ export class StepShow {
   /** Puts the step's props where they go at time `t` (0…1) of the step. */
   private animate(v: StepAct, t: number): void {
     const p = this.props!;
-    for (const o of [p.bowl, p.pot, p.plate, p.jar, p.tray, p.board, p.knife, p.spoon, p.shaker, ...p.food, ...p.shells, p.can, p.scissors, p.basket, p.ball, p.tablet, p.wrench, p.kit, p.bag, p.zip, p.lamp]) o.visible = false;
+    for (const o of [p.bowl, p.pot, p.plate, p.jar, p.tray, p.board, p.knife, p.spoon, p.shaker, ...p.food, ...p.shells, p.can, p.scissors, p.basket, p.ball, p.tablet, p.wrench, p.kit, p.bag, p.zip, p.lamp, p.pouch]) o.visible = false;
+    p.pouch.scale.set(0.13, 0.03, 0.17);
     p.fridgeInside.visible = p.fridgeDoor.visible = p.ovenGlow.visible = false;
     p.bowl.scale.set(0.085, 0.06, 0.085);
     for (const f of p.food) f.scale.setScalar(0.04);
@@ -707,6 +717,12 @@ export class StepShow {
       else if (v.vessel === "plato") this.show(p.plate, s.x, s.y + 0.01, s.z);
       else if (v.vessel === "tarro") this.show(p.jar, s.x, s.y + 0.045, s.z);
       else if (v.vessel === "tabla") this.show(p.board, s.x, s.y + 0.012, s.z);
+      else if (v.vessel === "bolsa") {
+        // The package floats at the galley, held by her hands (0 g: nothing rests on a counter).
+        const at = this.v.copy(s).lerp(this.hand, 0.5);
+        this.show(p.pouch, at.x, at.y, at.z).rotation.y = this.df!.yaw;
+        return at.setY(at.y + 0.03);
+      }
       else this.show(p.bowl, s.x, s.y + 0.03, s.z);
       return this.v.set(s.x, s.y + (v.vessel === "olla" ? 0.1 : 0.04), s.z);
     };
@@ -725,8 +741,8 @@ export class StepShow {
           p.fridgeDoor.rotation.y = -1.5 * Math.min(ease(clamp01(t / 0.25)), ease(clamp01((1 - t) / 0.25)));
         }
         // From the shelf (at the open door, or the cupboard's edge) into her hand, where it stays for the next step.
-        for (let i = 0; i < 2; i++) {
-          const item = v.tint === "huevo" ? p.shells[i]! : food[i]!;
+        for (let i = 0; i < (v.vessel === "bolsa" ? 1 : 2); i++) {
+          const item = v.vessel === "bolsa" ? p.pouch : v.tint === "huevo" ? p.shells[i]! : food[i]!;
           const k1 = ease(clamp01((t - 0.2) / 0.35));
           const from = this.v.set(s.x - (fromFridge ? 0.06 : 0.02), s.y + i * 0.05, s.z + (i - 0.5) * 0.06);
           const pos = from.lerp(this.w.copy(this.hand).add(this.tmp.set(0, 0.03 + i * 0.03, (i - 0.5) * 0.04)), k1);
@@ -758,6 +774,14 @@ export class StepShow {
       }
       case "verter":
       case "sazonar": {
+        if (v.vessel === "bolsa") {
+          // The dispenser's needle in the package's valve: water goes in, the package swells a little.
+          const at = vessel();
+          p.pouch.scale.y = 0.03 * (1 + 0.8 * clamp01(t));
+          this.show(p.spoon, at.x, at.y + 0.12, at.z);
+          this.emitAt(at.x, at.y + 0.1, at.z, "fall", TINT.agua!);
+          break;
+        }
         const at = v.place === "objetivo" ? (this.low(v) ? this.bowlAt(s) : this.v.copy(s)) : vessel();
         const tool = v.action === "sazonar" ? p.shaker : p.jar;
         const tip = this.show(tool, at.x, at.y + 0.2 + 0.02 * Math.sin(this.clock * (v.action === "sazonar" ? 30 : 3)), at.z);
@@ -817,17 +841,28 @@ export class StepShow {
       case "cortar": {
         const at = vessel();
         const cut = v.action === "cortar";
-        const pieces = cut ? 1 + Math.min(3, Math.floor(t * 4)) : 1;
-        // In a row across the board: along the counter's depth in the galley, otherwise across her front
-        // (to her sides), so no piece goes toward the machine or behind her.
-        const rx = this.df!.kitchen ? 1 : -Math.cos(this.df!.yaw);
-        const rz = this.df!.kitchen ? 0 : Math.sin(this.df!.yaw);
+        // Opening a package cuts no pieces: the scissors at its top are the step.
+        const pieces = cut && v.vessel === "bolsa" ? 0 : cut ? 1 + Math.min(3, Math.floor(t * 4)) : 1;
+        const kitchen = !!this.df!.kitchen;
+        // In the ring's galley the row runs along the counter's depth. Elsewhere (a machine, a 0 g galley) the
+        // pieces float up from the work, which she holds clear of her body, and the tool is just over it: her
+        // arm, her body or the machine do not hide them (PX-20: the printed part's supports and the package's
+        // scissors were hidden behind her hand).
+        const toCam = this.tmp.set(this.df!.camera.x - at.x, this.df!.camera.y - at.y, this.df!.camera.z - at.z).normalize();
         for (let i = 0; i < pieces; i++) {
-          const f = this.show(food[i]!, at.x + (i * 0.04 - 0.06) * rx, at.y + 0.02, at.z + (i * 0.04 - 0.06) * rz);
+          const f = kitchen
+            ? this.show(food[i]!, at.x - 0.06 + i * 0.04, at.y + 0.02, at.z)
+            : this.show(food[i]!, at.x + toCam.x * 0.05 + (i - 1) * 0.035 * toCam.z, at.y + 0.07 + 0.035 * i, at.z + toCam.z * 0.05 - (i - 1) * 0.035 * toCam.x);
           if (!cut) f.scale.set(0.06, 0.02 + 0.012 * Math.abs(Math.sin(this.clock * 7)), 0.05);
         }
-        if (cut) {
-          const knife = this.show(p.knife, at.x + 0.02, at.y + 0.03 + 0.05 * Math.abs(Math.sin(this.clock * 10)), at.z + 0.06);
+        // The tool: by the board in the ring's galley; elsewhere on the line from the work to the camera, a hand's
+        // breadth in front of it: whatever lets the camera see the work lets it see the tool.
+        const tool = kitchen ? this.w.set(at.x + 0.02, at.y + 0.03, at.z + 0.06) : this.w.copy(at).addScaledVector(toCam, 0.12);
+        if (cut && v.vessel === "bolsa") {
+          const sc = this.show(p.scissors, tool.x, tool.y, tool.z);
+          sc.rotation.y = this.df!.yaw + 0.3 * Math.sin(this.clock * 12);
+        } else if (cut) {
+          const knife = this.show(p.knife, tool.x, tool.y + (kitchen ? 0.05 : 0.01) * Math.abs(Math.sin(this.clock * 10)), tool.z);
           knife.rotation.y = Math.PI / 2;
         }
         break;
@@ -1099,7 +1134,8 @@ export function gesture(v: StepAct, t: number, clock: number, low: boolean): Pos
     case "lavar":
       return base({ shoulderX: [-0.8 + 0.1 * s, -0.8 - 0.1 * s], elbow: [-0.9, -0.9] });
     case "reposar":
-      return base({ shoulderX: [0, 0], elbow: [-0.2, -0.2], headX: 0.45 });
+      // Holding what rests (the snails' dish, the package) out in front of her, where her body does not hide it.
+      return base({ shoulderX: [-0.6, -0.6], elbow: [-0.6, -0.6], headX: 0.45 });
     case "emplatar":
       return base({ shoulderX: [-0.9, -0.9 - 0.3 * bump(t, 0.1, 0.8)], elbow: [-0.7, -0.5] });
     case "regar":

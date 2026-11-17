@@ -24,6 +24,7 @@ import { eclssRackModel, mountOnWall, type EclssRackModel } from "./adapters/thr
 import type { LifeSupportGame } from "./life-support-game";
 import { StationInteriorMode, type StationAction } from "./station-interior";
 import type { DuelView, SessionText } from "./ui/duel-view";
+import { crewStepVisual } from "./station-steps";
 import "./ui/starship-interior.css";
 
 /** Where each kind of chore is done on Starship's decks (fixture ids of data/starship-interior.ts). */
@@ -38,6 +39,8 @@ const AREA_NAME: Readonly<Record<CrewArea, string>> = {
 const MAX_ON_CARD = 3;
 /** The hatch in deck 1's ceiling up to the flight deck (data/starship-interior.ts). */
 export const FLIGHT_DECK_HATCH = "subir-cubierta-vuelo";
+/** The machine of each workout's device (data/exercise.ts): the T2, the CEVIS and the ARED of deck 3. */
+const DEVICE_FIXTURE: Readonly<Record<string, string>> = { cinta: "t2", bicicleta: "cevis", fuerza: "ared" };
 /** The fixtures that host the sanctuary's rack slots (data/starship-interior.ts). */
 const RACK_FIXTURE: Readonly<Record<RackSlotId, string>> = { "rack-catalogo": "catalogo", "rack-acuatico": "habitat-acuatico" };
 /** The aquatic habitat is a rack bay (JAXA AQH), not the ring's 1,6 m tank: its model drawn at this fraction. */
@@ -248,7 +251,7 @@ export class StarshipInterior {
   choreFacts(): { id: string; title: string; detail: string; category: "comida" | "salud" | "animales" | "nave"; station: string }[] {
     const crew = this.crew.chores().map((c) => {
       const area = this.crew.areaOf(c);
-      return { id: c.id, title: c.title, detail: `${AREA_NAME[area]} · ${c.exercises.length} retos`, category: c.kind === "cocinar" ? ("comida" as const) : ("salud" as const), station: FIXTURE_OF[c.kind] ?? "cocina" };
+      return { id: c.id, title: c.title, detail: `${AREA_NAME[area]} · ${c.exercises.length} retos`, category: c.kind === "cocinar" ? ("comida" as const) : ("salud" as const), station: this.fixtureOf(c) };
     });
     const animals = this.animalChores().map((c) => ({ id: c.id, title: c.title, detail: `${this.sanctuary?.owns(c) ? "Catálogo (cubierta 2)" : "Hábitat acuático (cubierta 3)"} · ${c.exercises.length} retos`, category: "animales" as const, station: this.animalFixture(c) }));
     const eclss = (this.lifeSupport?.taskFacts() ?? []).map((t) => ({ id: t.id, title: t.title, detail: `Starship · ${t.detail}`, category: "nave" as const, station: t.area }));
@@ -275,7 +278,7 @@ export class StarshipInterior {
     }
     const c = this.findChore(id);
     if (!c) return false;
-    const at = this.crew.chore(id) ? (FIXTURE_OF[c.kind] ?? "cocina") : this.animalFixture(c);
+    const at = this.fixtureOf(c);
     if (!this.mode.goToFixture(at, () => this.startChore(id))) this.startChore(id);
     return true;
   }
@@ -313,7 +316,12 @@ export class StarshipInterior {
       case "esterilla":
         return [{ id: "ajustes", label: "Sentarse en loto: ajustes", enabled: true }, ...chores("esterilla")];
       case "ejercicio":
-        return chores("ejercicio");
+        // Each machine its own workouts (the T2 runs, the CEVIS pedals, the ARED lifts).
+        return this.crew
+          .choresAt("ejercicio")
+          .filter((c) => this.fixtureOf(c) === f.id)
+          .slice(0, MAX_ON_CARD)
+          .map((c) => ({ id: `chore:${c.id}`, label: c.title, enabled: true }));
       case "camarotes":
         return f.id === OWN_BUNK ? chores("camarotes") : [{ id: "nada", label: "Dormir aquí", enabled: false, why: "Camarote libre: el tuyo es el 1" }];
       case "aseo":
@@ -348,15 +356,19 @@ export class StarshipInterior {
     if (!chore || !session || this.d.duel.visible) return;
     const run = session.run;
     this.session = session;
-    // Going to sleep plays each step in her crew quarter (the bag, the zip, the light).
-    const visual = chore.kind === "dormir" ? this.mode.stepVisual(OWN_BUNK, (i) => SLEEP_ACTS[i] ?? []) : undefined;
+    // Each right step acted out where it is done (reglas.md §4.2): the galley, the mat, the machine, the rack;
+    // going to sleep, in her crew quarter (the bag, the zip, the light).
+    const visual = chore.kind === "dormir" ? this.mode.stepVisual(OWN_BUNK, (i) => SLEEP_ACTS[i] ?? []) : crewStepVisual(this.mode, chore, this.fixtureOf(chore));
     const prev = this.d.duel.onClose;
     this.d.duel.onClose = () => {
       this.d.duel.onClose = prev;
       this.d.duel.onRightPick = undefined;
       visual?.clear();
       this.session = null;
-      if (run.status === "done" && chore.kind === "dormir") this.say("Duermes en tu camarote: el ventilador sopla y la luz está apagada", 5);
+      if (run.status === "done" && chore.kind === "dormir") {
+        this.say("Duermes en tu camarote, con la puerta plegable cerrada: el ventilador sopla y la luz está apagada", 5);
+        this.mode.sleep(OWN_BUNK, undefined, () => this.say("Despiertas a las 06:00 GMT, más tranquila: la puerta se abre", 5));
+      }
       else if (run.status === "done") this.say(chore.kind === "cocinar" ? `${chore.title.replace(/^Cocinar /, "")}: listo, como en la ISS` : "Hecho", 5);
     };
     this.d.duel.show(
@@ -381,10 +393,21 @@ export class StarshipInterior {
         return { ok };
       },
     );
+    // «Paso a paso»: each right pick is acted out at once.
     if (visual)
-      this.d.duel.onRightPick = (id, slot) => {
-        if (run.current?.id === id) visual.partDone?.(run.step, slot);
+      this.d.duel.onRightPick = (pick, slot) => {
+        if (run.current?.id === pick) visual.partDone?.(run.step, slot);
       };
+  }
+
+  /** Where a chore is done aboard: its crew area's fixture (a workout at its own machine) or its rack. */
+  private fixtureOf(c: Chore): string {
+    if (!this.crew.chore(c.id)) return this.animalFixture(c);
+    if (c.kind === "ejercicio") {
+      const device = WORKOUTS.find((w) => w.id === c.targetId)?.device;
+      return (device && DEVICE_FIXTURE[device]) ?? "t2";
+    }
+    return FIXTURE_OF[c.kind] ?? "cocina";
   }
 
   /** Which deck she is on (for checks). */

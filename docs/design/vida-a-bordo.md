@@ -435,7 +435,7 @@ bloque bien se ve en cuanto se toca.
 - **Demás tareas** (`src/modules/chores/application/step-visuals.ts`): una tabla por tipo de tarea dice
   cómo actúa cada área (regar con regadera, servir la ración en el cuenco, mimar, programar con una
   pantalla holográfica, reparar con llave y chispas, curar con botiquín) y qué se ve cuando el paso es un
-  número o una línea de código. El yoga ya mostraba la postura en la esterilla y se queda así.
+  número o una línea de código. El yoga muestra la postura en la esterilla (en el anillo y en las naves reales).
 - **Estación** (`src/station-steps.ts`, `StationInteriorMode.stepVisual`): la cocina de la estación y las
   máquinas (refinar, fabricar, repostar, importar, el laboratorio de biología) se actúan en el interior de la
   estación, con Doménica sujeta por los estribos delante de su puesto (en 0 g «abajo» es la cubierta), la
@@ -446,6 +446,23 @@ bloque bien se ve en cuanto se toca.
   sus pies. La cocina de la estación es compacta (horno, calentador y grifo en un mismo puesto, como en la
   ISS): todos sus pasos ocurren en ese puesto. Si la pantalla se abre desde fuera (el módulo acoplado), no hay
   nadie en la máquina y no se representa.
+- **Naves reales** (Berón, 2026-11-17: «no hay animación para el acuario ni la cocina en la nave»; [reglas.md](reglas.md) §4.2).
+  En la Starship, la ISS y el LM cada reto se actúa donde se hace de verdad (`crewStepVisual`, `src/station-steps.ts`):
+  - **Comida de la ISS** (`src/modules/kitchen/domain/space-galley-visuals.ts`): sin sartén, fogón ni nevera. Se hace con el
+    envase en la cocina, como en la ISS ([NASA, Food in Space](https://www.nasa.gov/humans-in-space/food-in-space/)): sacarlo
+    del cajón del día, agua por la aguja del dispensador, amasarlo, esperar a que se rehidrate o meterlo en el calentador,
+    abrirlo con las tijeras y comer con la cuchara. El envase es un utensilio nuevo de `StepShow` (`pouch`).
+  - **Yoga**: postura a postura, con la asana de cada paso (el esqueleto de Cold Sanctuary) en la esterilla; la cámara se
+    aparta por el pasillo para verla de cuerpo entero. Al sentarse en loto para los ajustes también se la ve en la esterilla.
+  - **Ejercicio**: cada entrenamiento en su máquina: la cinta en la T2 (en el suelo, ella de pie sobre ella), la bicicleta en
+    el CEVIS, la fuerza en el ARED.
+  - **Hábitat acuático y catálogo**: en el rack AQH (JAXA, voló en Kibo) y en el terminal del catálogo.
+  - **Soporte vital**: además de las luces del procedimiento en el bastidor, ella está delante con la llave; los bastidores del
+    techo (el de aire de Tranquility) los trabaja flotando debajo.
+  - **Traje**: en la escotilla delantera del LM, ella revisa el traje paso a paso (`WalkRoom.stepVisual`).
+  - **Bahía**: cambiar una pieza del LM atracado en la estación se actúa en el CBM de Unity, junto a la cuna.
+  - La esterilla de la estación pasa del techo de Unity (donde no se la veía) a la pared de estribor de Destiny, junto al
+    sitio del CEVIS, que es donde la ISS tuvo su bicicleta; la T2 y el ARED siguen en Tranquility.
 - **Nada atraviesa la escena**: el cuenco que se deja en el suelo busca un hueco libre al alcance de su mano
   si el sitio de siempre está ocupado (la pata de un gato, un mueble): `StepShow.clearOf`.
 - **Un solo puerto** (`src/modules/chores/domain/step-visual.ts`): `StepVisual` es lo que llama toda hoja

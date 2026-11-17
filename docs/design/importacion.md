@@ -132,7 +132,7 @@ Código: `imports/application/component-imports.ts` (`ComponentImports`), que us
 
 ## En el juego
 
-- **Estación → pestaña «Importar»**:
+- **Estación → ventana «Importar»**, en el portátil de carga de Unity (su única consola):
   - créditos y últimos movimientos;
   - pedido al Santuario: lanzador, artículos con −/+ y el desglose completo (Δv, multiplicador, lanzamiento, coste, viaje) con sus fuentes;
   - «En camino»;

@@ -1,10 +1,12 @@
 // PX-35. Real compartments (docs/design/compartimentos.md): every compartment of the ISS's US segment is a room
 // she floats into, and the doors only give passage. On an iPhone 13 with taps: «Ir» to «Dormir en tu camarote»
 // takes her hop by hop through Harmony into her own crew quarter, where going to sleep is a challenge whose steps
-// play in the quarter (fan, alarm, into the bag, zip, light, asleep); the free quarters say whose they are; the
+// play in the quarter (fan, alarm, into the bag, zip, light, asleep); its folding door shuts while she sleeps and
+// folds open when she wakes; the free quarters say whose they are; the
 // Cupola's robotic workstation holds the arm, the outside cameras and the catalogue; Unity's laptop opens the ship
-// bay; Kibo's airlock is a hatch that opens no menu and its JEMRMS console has the inventory; and in the Starship,
-// her crew quarter on deck 2. Captures in docs/screenshots/compartimentos-<pantalla>-movil.png.
+// bay and the imports (each window from its own console: the screen has no tab bar); Kibo's airlock is a hatch
+// that opens no menu and its JEMRMS console has the inventory; and in the Starship, her crew quarter on deck 2,
+// with the same challenge and door. Captures in docs/screenshots/compartimentos-<pantalla>-movil.png.
 import { mkdirSync } from "node:fs";
 
 async function capture(j, label, title) {
@@ -18,6 +20,31 @@ async function capture(j, label, title) {
 
 const card = (j) => j.page.evaluate(() => document.querySelector(".sti-card:not(.hidden), .sts-card:not(.hidden)")?.innerText.replace(/\s+/g, " ") ?? "");
 const where = (j) => j.page.evaluate(() => window.codeship.stationInside.where());
+/** Plays the open sleep challenge with the right answers, a capture per step, and closes the sheet. */
+async function playSleep(j, label) {
+  const p = j.page;
+  for (let i = 0; i < 12 && (await p.evaluate(() => !!(window.codeship.stationLife.session ?? window.codeship.starship?.session)?.run.current)); i++) {
+    await j.answer(() => (window.codeship.stationLife.session ?? window.codeship.starship?.session)?.run.current);
+    await p.waitForTimeout(1600);
+    if (label) await capture(j, `${label}-${String(i + 1).padStart(2, "0")}`, `Dormir, paso ${i + 1}`);
+  }
+  await p.waitForTimeout(1000);
+  const res = (await j.texts(".duel .result"))[0] ?? "";
+  await j.tap(".duel button.end", "Continuar");
+  return res;
+}
+
+/** While she sleeps her quarter's folding door shuts, and it folds open when she wakes (docs/design/compartimentos.md). */
+async function doorWhileAsleep(j, mode, label, where) {
+  const p = j.page;
+  const shut = await p.waitForFunction((m) => { const s = m === "starship" ? window.codeship.starship.mode : window.codeship.stationInside; return s.asleep && s.doorAmount("camarote-1") >= 1; }, mode, { timeout: 10000 }).then(() => true, () => false);
+  j.check(`${where}: mientras duerme, la puerta plegable de su camarote se cierra`, shut);
+  await capture(j, label, `${where}: duerme con la puerta cerrada`);
+  const woke = await p.waitForFunction((m) => { const s = m === "starship" ? window.codeship.starship.mode : window.codeship.stationInside; return !s.asleep && s.doorAmount("camarote-1") === 0; }, mode, { timeout: 30000 }).then(() => true, () => false);
+  j.check(`${where}: al despertar, la puerta se abre otra vez`, woke);
+  await capture(j, `${label}-despierta`, `${where}: despierta, la puerta abierta`);
+}
+
 const buttons = (j) => j.page.locator(".sti-card:not(.hidden) [data-act]:not([disabled])").count();
 /** Teleport to a thing's grab point (crossing the station hop by hop takes minutes with SwiftShader). */
 async function placeAt(j, id) {
@@ -50,17 +77,10 @@ export async function compartimentos(j) {
     await j.waitDuel();
     const stress = await p.evaluate(() => window.codeship.habitat.crew.stress);
     j.check("los pasos se representan en el camarote", await p.evaluate(() => window.codeship.stationInside.steps.framing));
-    for (let i = 0; i < 12 && (await p.evaluate(() => !!window.codeship.stationLife.session?.run.current)); i++) {
-      await j.answer(() => window.codeship.stationLife.session?.run.current);
-      await p.waitForTimeout(1600);
-      const act = await p.evaluate(() => window.codeship.stationInside.steps.current?.action ?? "");
-      await capture(j, `dormir-${String(i + 1).padStart(2, "0")}`, `Dormir, paso ${i + 1} (${act})`);
-    }
-    await p.waitForTimeout(1000);
-    const res = (await j.texts(".duel .result"))[0] ?? "";
+    const res = await playSleep(j, "dormir");
     j.check("el reto de dormir termina bien", /Conseguido|Bien hecho|Hecho/.test(res), res);
-    await j.tap(".duel button.end", "Continuar");
     j.check("dormir la calma", await p.evaluate((s) => window.codeship.habitat.crew.stress <= s, stress));
+    await doorWhileAsleep(j, "estacion", "dormida", "En Harmony");
   }
 
   // The free quarters: rooms too, each with its bag, laptop and light; they say whose they are.
@@ -89,6 +109,13 @@ export async function compartimentos(j) {
   j.check("el portátil abre la bahía de las naves", await p.evaluate(() => window.codeship.bay.active));
   await capture(j, "bahia", "La bahía desde el portátil de Unity");
   await j.tap(".bay-ui .bay-back", "Volver a la estación");
+  await p.waitForTimeout(600);
+  await placeAt(j, "consola-bahia");
+  await j.tap('.sti-card [data-act="abrir:importar"]', "Abrir Importar (portátil de carga de Unity)");
+  await p.waitForTimeout(600);
+  j.check("el mismo portátil abre la ventana Importar, sin barra de pestañas", (await p.locator(".st-tabs").count()) === 0 && /Importar/.test((await j.texts(".st-title"))[0] ?? ""), (await j.texts(".st-title"))[0]);
+  await capture(j, "importar", "Importar desde el portátil de carga de Unity");
+  await j.tap(".st-back", "Volver a la estación");
   await p.waitForTimeout(600);
   await placeAt(j, "cbm-nadir-nodo1");
   j.check("el CBM de nadir de Unity es una escotilla: no abre ningún menú", (await buttons(j)) === 0, (await card(j)).slice(0, 140));
@@ -120,4 +147,10 @@ export async function compartimentos(j) {
   j.check("en la Starship, su camarote de la cubierta 2 es un cuarto en el que está dentro", deck === "camarote-1", deck);
   j.check("y ofrece el mismo reto de dormir", /Dormir en tu camarote/.test(await card(j)), (await card(j)).slice(0, 140));
   await capture(j, "starship-camarote", "Su camarote en la Starship");
+  if (await j.tap('.sts-card [data-act="chore:dormir"], .sti-card [data-act="chore:dormir"]', "Dormir en tu camarote (Starship)")) {
+    await j.waitDuel();
+    const res = await playSleep(j);
+    j.check("en la Starship, el reto de dormir termina bien", /Conseguido|Bien hecho|Hecho/.test(res), res);
+    await doorWhileAsleep(j, "starship", "starship-dormida", "En la Starship");
+  }
 }

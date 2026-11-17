@@ -8,6 +8,7 @@ import type { Rapport } from "@modules/subjugation/domain/rapport";
 import { PROBE_HULL } from "@modules/ship/data/probe";
 import { ProbeModel } from "./adapters/three/probe-model";
 import { TouchPilot, mergeCommands } from "./adapters/input/touch";
+import { VirtualStick, curve } from "./adapters/input/stick";
 
 const fmt = (v: number, d = 2) => v.toFixed(d).replace(".", ",");
 const dist = (m: number) => (m >= 1000 ? `${fmt(m / 1000, 2)} km` : `${fmt(m, m < 10 ? 2 : 0)} m`);
@@ -61,6 +62,13 @@ export class ProbeMode {
   private plan: { state: "open" | "flying"; site: () => Vec3 | undefined } | undefined;
   active = false;
   onExit?: () => void;
+  /**
+   * The player's look around the probe (reglas.md §5.3: the camera is controlled in every vehicle and mode):
+   * its own stick and a drag on the scene orbit the chase camera, yaw and pitch from behind the nose.
+   */
+  private readonly lookStick: VirtualStick;
+  readonly orbit = { yaw: 0, pitch: 0 };
+  private drag: { id: number; x: number; y: number } | null = null;
 
   constructor(
     root: HTMLElement,
@@ -92,6 +100,22 @@ export class ProbeMode {
     const b = (k: string) => this.ui.querySelector<HTMLButtonElement>(`[data-act="${k}"]`)!;
     this.btn = { launch: b("launch"), assist: b("assist"), recover: b("recover"), abandon: b("abandon"), warp: b("warp"), trip: b("trip"), home: b("home") };
     this.touch = new TouchPilot(this.ui);
+    this.lookStick = new VirtualStick(root, "probe-look", "Mirar");
+    this.lookStick.el.addEventListener("dblclick", () => Object.assign(this.orbit, { yaw: 0, pitch: 0 }));
+    root.addEventListener("pointerdown", (e) => {
+      if (!this.active || this.plan || (e.target as HTMLElement).closest("button, .duel, .vstick, .touch, .pr-actions")) return;
+      this.drag = { id: e.pointerId, x: e.clientX, y: e.clientY };
+    });
+    window.addEventListener("pointermove", (e) => {
+      const d = this.drag;
+      if (!d || e.pointerId !== d.id) return;
+      this.turn(-(e.clientX - d.x) * 0.006, -(e.clientY - d.y) * 0.006);
+      d.x = e.clientX;
+      d.y = e.clientY;
+    });
+    const end = (e: PointerEvent) => e.pointerId === this.drag?.id && (this.drag = null);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
     this.ui.querySelector(".pr-exit")!.addEventListener("click", () => this.exit());
     this.ui.addEventListener("click", (e) => this.onClick(e));
     window.addEventListener("keydown", (e) => {
@@ -111,8 +135,14 @@ export class ProbeMode {
     return this.active ? this.cmd : { mainThrottle: 0, translation: Vec3.ZERO, rotation: Vec3.ZERO };
   }
 
+  private turn(yaw: number, pitch: number): void {
+    this.orbit.yaw += yaw;
+    this.orbit.pitch = Math.max(-1.2, Math.min(1.2, this.orbit.pitch + pitch));
+  }
+
   enter(): void {
     this.active = true;
+    Object.assign(this.orbit, { yaw: 0, pitch: 0 });
     this.ui.classList.remove("hidden");
     document.body.classList.add("in-probe");
     this.resize();
@@ -259,9 +289,15 @@ export class ProbeMode {
       if (performance.now() > this.msgUntil) this.msg.classList.remove("on");
       return;
     }
-    // Chase camera a little behind and above it, looking along its nose.
-    const behind = s.toWorld(new Vec3(0.35, 0.75, 2.4)).add(s.position);
-    const ahead = s.toWorld(new Vec3(0, -0.1, -4)).add(s.position);
+    // Chase camera a little behind and above it, looking along its nose; the player's look orbits it about the probe.
+    const st = this.lookStick.value;
+    this.turn(-curve(st.x) * 2.0 * dt, -curve(st.y) * 1.4 * dt);
+    const turned = (v: Vec3) => {
+      const t = new THREE.Vector3(v.x, v.y, v.z).applyEuler(new THREE.Euler(this.orbit.pitch, this.orbit.yaw, 0, "YXZ"));
+      return new Vec3(t.x, t.y, t.z);
+    };
+    const behind = s.toWorld(turned(new Vec3(0.35, 0.75, 2.4))).add(s.position);
+    const ahead = s.toWorld(turned(new Vec3(0, -0.1, -4))).add(s.position);
     const up = s.toWorld(Vec3.Y);
     this.camera.position.set(behind.x, behind.y, behind.z);
     this.camera.up.set(up.x, up.y, up.z);

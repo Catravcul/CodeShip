@@ -1,6 +1,7 @@
 import type { Recipe } from "@modules/kitchen/data/recipes";
 import type { Process } from "@modules/kitchen/data/processes";
 import { kitchenVisuals } from "@modules/kitchen/domain/kitchen-visuals";
+import { spaceGalleyVisuals } from "@modules/kitchen/domain/space-galley-visuals";
 import { SLEEP_ACTS } from "@modules/wellness/data/sleep";
 import type { Chore, ChoreKind } from "../domain/chore";
 import { classifyStep, exerciseTexts, firstSource, type StepAction, type StepAct, type StepActSource } from "../domain/step-visual";
@@ -97,14 +98,26 @@ export const areaVisuals: StepActSource<Chore> = {
   },
 };
 
+/**
+ * The dishes and processes a galley knows. `spaceFood`: real-ship meals (ISS-type packages, data/iss-food.ts),
+ * acted out with the package at the galley (space-galley-visuals.ts) instead of pans and a hob.
+ */
+export interface KitchenCtx {
+  readonly recipes: readonly Recipe[];
+  readonly processes?: readonly Process[];
+  readonly spaceFood?: readonly Recipe[];
+}
+
 /** Recipes and processes: each step with its galley spot, vessel, food and heat (kitchen-visuals.ts). */
-export function kitchenSource(ctx: { readonly recipes: readonly Recipe[]; readonly processes?: readonly Process[] }): StepActSource<Chore> {
+export function kitchenSource(ctx: KitchenCtx): StepActSource<Chore> {
   const cache = new Map<string, readonly StepAct[]>();
   const all = (c: Chore): readonly StepAct[] | undefined => {
     const hit = cache.get(c.id);
     if (hit) return hit;
     let v: StepAct[] | undefined;
-    if (c.kind === "cocinar") {
+    const space = c.kind === "cocinar" ? ctx.spaceFood?.find((x) => x.id === c.targetId) : undefined;
+    if (space) v = spaceGalleyVisuals(space.steps.value, Object.keys(space.ingredients));
+    else if (c.kind === "cocinar") {
       const r = ctx.recipes.find((x) => x.id === c.targetId);
       if (r) v = kitchenVisuals(r.steps.value, { ingredients: Object.keys(r.ingredients) });
     } else if (c.kind === "procesar") {
@@ -123,4 +136,4 @@ export function kitchenSource(ctx: { readonly recipes: readonly Recipe[]; readon
 }
 
 /** Every chore on board: the kitchen's detailed visuals first, then the area tables. */
-export const choreVisuals = (ctx: { readonly recipes: readonly Recipe[]; readonly processes?: readonly Process[] }): StepActSource<Chore> => firstSource(sleepSource, kitchenSource(ctx), areaVisuals);
+export const choreVisuals = (ctx: KitchenCtx): StepActSource<Chore> => firstSource(sleepSource, kitchenSource(ctx), areaVisuals);

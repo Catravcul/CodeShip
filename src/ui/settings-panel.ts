@@ -114,7 +114,8 @@ export class SettingsPanel {
 
   private render(): void {
     const s = settings.value;
-    this.el.classList.toggle("hud", s.challengeView === "hud");
+    // Not «hud»: that class is the flight readout, hidden in every room (body.in-room .hud…), and would hide the sheet.
+    this.el.classList.toggle("set-hud", s.challengeView === "hud");
     this.el.innerHTML = `<div class="set-top"><div class="set-title">Ajustes generales</div><div class="set-where">${this.where}</div>
       <div class="set-tools"><button data-key="challengeView">${s.challengeView === "hud" ? "Vista panel" : "Vista HUD"}</button><button class="x" data-close aria-label="Levantarse y cerrar los ajustes">×</button></div></div>
       ${ROWS.map((r) => {

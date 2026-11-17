@@ -2,6 +2,7 @@
 .settings-sheet { position: fixed; left: 0; right: 0; bottom: 0; top: 38vh; z-index: 12; overflow-y: auto; box-sizing: border-box; padding: 16px; padding-inline: max(16px, calc((100vw - 560px) / 2)); padding-bottom: calc(16px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 8px; color: #e8e4ff; background-color: #05060cf2; border-radius: 18px 18px 0 0; font-size: 14px; }
 .settings-sheet.hidden { display: none; }
 @media (min-aspect-ratio: 1/1) { .settings-sheet { top: 0; left: auto; width: min(480px, 46vw); padding-inline: 16px; border-radius: 18px 0 0 18px; } }
+.settings-sheet > * { flex-shrink: 0; }
 .set-top { position: relative; display: flex; flex-direction: column; gap: 2px; padding-right: 150px; min-height: 44px; }
 .set-title { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #b9a8ff; }
 .set-where { font-size: 12px; color: #bfefff; }
@@ -15,7 +16,9 @@
 .set-row em.off { color: #ffb347; }
 .set-note { margin: 4px 0 0; font-size: 11px; color: #8a96a8; }
 /* HUD: floating over the scene, on a dark plate per row so it reads over any background (ux-acciones.md §4). */
-.settings-sheet.hud { top: auto; max-height: 64vh; background: none; color: #d8f6ff; text-shadow: 0 0 3px #000, 0 0 10px #000c; }
-.settings-sheet.hud .set-row { background: #020a12d9; border-color: #7fdcff55; }
-.settings-sheet.hud .set-top { padding: 6px 150px 6px 10px; background: #020a12d9; border-radius: 10px; }
+.settings-sheet.set-hud { top: auto; max-height: 64vh; background: none; color: #d8f6ff; text-shadow: 0 0 3px #000, 0 0 10px #000c; }
+.settings-sheet.set-hud .set-row { background: #020a12d9; border-color: #7fdcff55; }
+.settings-sheet.set-hud .set-top { padding: 6px 150px 6px 10px; background: #020a12d9; border-radius: 10px; }
 body.in-settings .vstick, body.in-settings .zone-btn, body.in-settings .station-btn, body.in-settings .room-ui .cab-machine { display: none !important; }
+/* Sitting on the mat: her strip above the sheet shows her, not the room's labels and notices. */
+body.in-settings .room-ui .cab-where, body.in-settings .room-ui .cab-toast, body.in-settings .sti-ui .cab-where, body.in-settings .sti-ui .cab-toast, body.in-settings .sts-ui .cab-where, body.in-settings .sts-ui .cab-toast { display: none !important; }

@@ -17,6 +17,7 @@ import { StepShow, type StepFrame } from "./adapters/three/interior/step-show";
 import { HatchLeaf } from "./adapters/three/interior/hatch-leaf";
 import { auditStep, clearOfScene, hitOfScene, sightOfScene, type StepAudit } from "./adapters/three/interior/step-audit";
 import type { StepAct, StepVisual } from "@modules/chores/domain/step-visual";
+import type { AsanaData } from "@modules/body/domain/asana";
 import type { EclssRackModel, RackState } from "./adapters/three/eclss-racks";
 import { RootMenu } from "./ui/root-menu";
 import { ICON } from "./ui/icons";
@@ -34,7 +35,11 @@ export interface StationAction {
   readonly why?: string;
 }
 
-const PANEL_NAME: Readonly<Record<StationPanel, string>> = { materiales: "Materiales", planos: "Planos", fabricacion: "Fabricación", hangar: "Hangar", propelente: "Planta de propelente", vida: "Vida" };
+/** How long her sleep is shown with the quarter's door shut (s): the night itself is not played out. */
+const SLEEP_SHOWN_S = 8;
+/** A folding door takes this long to shut or fold open (s). */
+const DOOR_MOVE_S = 1.2;
+const PANEL_NAME: Readonly<Record<StationPanel, string>> = { materiales: "Materiales", planos: "Planos", fabricacion: "Fabricación", hangar: "Hangar", importar: "Importar", propelente: "Planta de propelente", vida: "Vida" };
 const FACE_LABEL = { suelo: "el suelo", techo: "el techo", babor: "babor", estribor: "estribor", proa: "proa", popa: "popa" } as const;
 /** Body margin from the walls while floating, m. */
 const BODY = 0.3;
@@ -130,6 +135,10 @@ export class StationInteriorMode {
    * opening, then `then` (out: the next room), or (in) she floats in from it and it shuts behind her.
    */
   private passing: { id: string; out: boolean; t: number; from: Vec3; stand?: Vec3; opening?: number; to: Vec3; then?: () => void } | null = null;
+  /** Crew quarters' folding doors: how shut each is (0 open … 1 shut) and where it is going, by volume id. */
+  private readonly doorShut = new Map<string, { at: number; to: number }>();
+  /** The crew quarter she is asleep in (its door shut), when she wakes (performance.now, ms) and what then. */
+  private sleeping: { volume: string; until: number; then?: () => void } | null = null;
   private readonly keys = new Set<string>();
   private p = Vec3.ZERO;
   /** How she moves about: holding rails, pushing off, gliding (docs/design/ingravidez.md). */
@@ -296,6 +305,7 @@ export class StationInteriorMode {
 
   /** Hop by herself to a fixture's grab point, then `then` (the task list's «Ir», the experience suite). */
   goToFixture(id: string, then?: () => void): boolean {
+    if (this.sleeping) this.wake();
     const at = this.hops.poiPoint(id);
     if (!at) return false;
     if (this.hop.holding(this.iva)?.id === at.id) {
@@ -453,6 +463,7 @@ export class StationInteriorMode {
    * as the cabin's `enter(spot)`; the experience suite's setup). In the hangar she arrives suited.
    */
   placeAt(id: string): boolean {
+    if (this.sleeping) this.wake();
     const q = this.hops.poiPoint(id);
     if (!q) return false;
     const suited = this.interior.volumeAt(q.body)?.kind === "hangar";
@@ -576,16 +587,20 @@ export class StationInteriorMode {
     this.walker.enabled = true;
     this.ui.classList.remove("hidden");
     document.body.classList.add("in-station-interior");
+    // Its own class too: the station and Starship share the engine, and each look stick shows only with its own
+    // interior (the station's, later in the page, sat on top of Starship's and took its drags).
+    document.body.classList.add(`in-${this.look.prefix ?? "sti"}-interior`);
     this.resize();
   }
 
   /** Hide it (to open the station screen, or to leave). */
   suspend(): void {
+    if (this.sleeping) this.wake();
     this.active = false;
     this.walker.enabled = false;
     this.ui.classList.add("hidden");
     this.hop.hide();
-    document.body.classList.remove("in-station-interior");
+    document.body.classList.remove("in-station-interior", `in-${this.look.prefix ?? "sti"}-interior`);
   }
 
   resize(): void {
@@ -657,7 +672,10 @@ export class StationInteriorMode {
   private stepFrame(f: Fixture): StepFrame | undefined {
     const n = FACE_NORMAL[f.face];
     const vol = this.interior.volume(f.volume);
-    if (Math.abs(n.y) > 0.5 || !vol) return undefined;
+    if (!vol) return undefined;
+    if (f.face === "suelo") return this.floorFrame(f, vol);
+    if (f.face === "techo") return this.ceilingFrame(f, vol);
+    if (Math.abs(n.y) > 0.5) return undefined;
     const d = new THREE.Vector3(n.x, 0, n.z).normalize();
     const right = new THREE.Vector3(-d.z, 0, d.x);
     const target = new THREE.Vector3(f.at.x, f.at.y, f.at.z);
@@ -696,6 +714,121 @@ export class StationInteriorMode {
   }
 
   /**
+   * A machine on the deck (the T2 treadmill): she stands on it, feet in its harness, facing along the module;
+   * the camera beside it in the aisle, at chest height, looking at her (never through a wall).
+   */
+  private floorFrame(f: Fixture, vol: { centre: Vec3; half: Vec3 }): StepFrame {
+    const floor = vol.centre.y - vol.half.y + 0.05;
+    const alongX = vol.half.x >= vol.half.z;
+    const d = alongX ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 0, 1);
+    const side = alongX ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(1, 0, 0);
+    const stand = new THREE.Vector3(f.at.x, Math.max(floor, f.at.y + f.size.y / 2), f.at.z);
+    const look = stand.clone().setY(stand.y + 0.95);
+    const target = stand.clone().addScaledVector(d, 0.4).setY(stand.y + 0.9);
+    const sight = sightOfScene(this.scene, [this.steps.root, this.rig]);
+    const cam = new THREE.Vector3();
+    let found = false;
+    // Side on first; in a small node (Unity's CBM) from along the module too, so her head stays in the shot.
+    for (const back of [2.2, 1.9, 1.6, 1.3, 1.0, 0.8])
+      for (const [a, b] of [[side, d], [d, side]] as const)
+        for (const s of [1, -1]) {
+          if (found) break;
+          cam.copy(look).addScaledVector(a, s * back).addScaledVector(b, 0.6).setY(stand.y + 1.45);
+          found = this.interior.fits(new Vec3(cam.x, cam.y, cam.z), 0.1, false) && sight(cam, look);
+        }
+    // Nothing in clear sight (a handrail across every line in a small node): back along the module, inside it.
+    for (const back of [1.6, 1.3, 1.0])
+      for (const s of [1, -1]) {
+        if (found) break;
+        cam.copy(look).addScaledVector(d, s * back).addScaledVector(side, 0.4).setY(stand.y + 1.45);
+        found = this.interior.fits(new Vec3(cam.x, cam.y, cam.z), 0.1, false);
+      }
+    if (!found) cam.copy(look).addScaledVector(side, 0.8).setY(stand.y + 1.4);
+    return { stand, yaw: Math.atan2(d.x, d.z), camera: cam, look, target };
+  }
+
+  /**
+   * A rack in the overhead (Tranquility's ARS, the fire post): in 0 g she floats up under it, head below the
+   * ceiling and hands at its front, beside it along the module so she does not go into it; the camera from the side.
+   */
+  private ceilingFrame(f: Fixture, vol: { centre: Vec3; half: Vec3 }): StepFrame {
+    const floor = vol.centre.y - vol.half.y + 0.05;
+    const ceiling = vol.centre.y + vol.half.y;
+    const alongX = vol.half.x >= vol.half.z;
+    const d = alongX ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 0, 1);
+    const side = alongX ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(1, 0, 0);
+    // Its underside (a rack hangs a metre and more from the overhead): her hands at it, her head below it.
+    const bottom = Math.min(ceiling - 0.05, f.at.y - f.size.y / 2);
+    const target = new THREE.Vector3(f.at.x, bottom, f.at.z);
+    // Faced along the module, a short step back from under its middle (its front is at her hands).
+    const stand = target.clone().addScaledVector(d, -0.45).setY(Math.max(floor, bottom - 1.75));
+    const look = target.clone().setY(target.y - 0.45);
+    const sight = sightOfScene(this.scene, [this.steps.root, this.rig]);
+    const cam = new THREE.Vector3();
+    let found = false;
+    for (const back of [2.0, 1.7, 1.4, 1.1, 0.9])
+      for (const s of [1, -1]) {
+        if (found) break;
+        cam.copy(look).addScaledVector(side, s * Math.min(back, 2 * (alongX ? vol.half.z : vol.half.x) - 0.3)).addScaledVector(d, -back).setY(stand.y + 0.9);
+        found = this.interior.fits(new Vec3(cam.x, cam.y, cam.z), 0.1, false) && sight(cam, look);
+      }
+    if (!found) cam.copy(look).addScaledVector(d, -1.2).setY(stand.y + 0.9);
+    return { stand, yaw: Math.atan2(d.x, d.z), camera: cam, look, target };
+  }
+
+  /**
+   * A fixture's frame with the camera stood back along the wall, low, so her whole body shows (yoga, the lotus of
+   * the settings): a teacher's side view, as on the ring (interior.ts, yogaCamera).
+   */
+  private wholeBodyFrame(f: Fixture): StepFrame | undefined {
+    const base = this.stepFrame(f);
+    if (!base) return undefined;
+    const n = FACE_NORMAL[f.face];
+    const d = new THREE.Vector3(n.x, 0, n.z).normalize();
+    const right = new THREE.Vector3(-d.z, 0, d.x);
+    const body = base.stand.clone().setY(base.stand.y + 0.6);
+    const sight = sightOfScene(this.scene, [this.steps.root, this.rig]);
+    const cam = new THREE.Vector3();
+    for (const side of [2.0, -2.0, 2.4, -2.4, 1.6, -1.6, 2.8, -2.8])
+      for (const back of [0.9, 0.6, 0.3]) {
+        cam.copy(body).addScaledVector(right, side).addScaledVector(d, -back).setY(base.stand.y + 1.05);
+        if (this.interior.fits(new Vec3(cam.x, cam.y, cam.z), 0.1, false) && sight(cam, body)) return { ...base, camera: cam.clone(), look: body };
+      }
+    return base;
+  }
+
+  /**
+   * Yoga on a mat (reglas.md §4.2): she floats in front of it, feet in its straps, and each right answer takes
+   * her into its posture (the asanas of the body module, as on the ring); seen from the aisle. `asanaOf(i)` is
+   * step i's asana.
+   */
+  yogaVisual(id: string, asanaOf: (index: number) => AsanaData | undefined): StepVisual | undefined {
+    const f = this.interior.fixture(id);
+    const frame = f && this.wholeBodyFrame(f);
+    if (!frame) return undefined;
+    this.steps.begin(frame);
+    this.steps.holdPose = true;
+    const first = asanaOf(-1);
+    if (first) this.avatar.asana(first);
+    this.frameForSheet(true);
+    for (const sg of this.rooms.signs) sg.visible = false;
+    return {
+      stepDone: (index) => {
+        const a = asanaOf(index);
+        if (a) this.avatar.asana(a);
+        if (this.steps.framing) this.steps.play([{ action: "postura", place: "objetivo" }]);
+      },
+      finish: () => {},
+      clear: () => {
+        this.steps.clear();
+        this.frameForSheet(false);
+        this.avatar.pose(this.lotus ? "lotus" : "float");
+        this.body.reset();
+      },
+    };
+  }
+
+  /**
    * While steps play under a sheet, render only part of a taller frustum so her and the fixture show in
    * the strip above it (portrait) or beside it (landscape); the same lens as the ring's (interior.ts).
    */
@@ -721,6 +854,8 @@ export class StationInteriorMode {
 
   update(dt: number): void {
     if (!this.active) return;
+    this.syncDoors(dt);
+    if (this.sleeping && performance.now() >= this.sleeping.until) this.wake();
     if (this.stage(dt)) return;
     if (this.stepHatch(dt)) {
       // Going through a hatch: no signs in the way of the leaf.
@@ -753,7 +888,7 @@ export class StationInteriorMode {
     if (this.hopsSuited !== this.suited) this.buildHops();
     const fwd = this.lookDir();
     const right = new Vec3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
-    const intent = this.hop.update(this.iva, { forward: fwd, right }, this.active && this.cycling === 0, dt, this.camera.position);
+    const intent = this.hop.update(this.iva, { forward: fwd, right }, this.active && this.cycling === 0 && !this.sleeping, dt, this.camera.position);
     const r = ivaStep(this.iva, intent, this.world, dt);
     this.iva = r.state;
     this.p = r.state.position;
@@ -790,7 +925,7 @@ export class StationInteriorMode {
         return a.to === "nodriza" && this.deps.lookOut ? [leave, { id: "ventana", label: "Mirar el dique por la ventanilla", enabled: true }] : [leave];
       }
       case "bahia":
-        return [{ id: "bahia", label: "Abrir la bahía de la nave", enabled: true }];
+        return [{ id: "bahia", label: "Abrir la bahía de la nave", enabled: true }, ...(a.panels ?? []).map((p) => ({ id: `abrir:${p}`, label: `Abrir ${PANEL_NAME[p]}`, enabled: true }))];
       case "esclusa": {
         const inLock = this.interior.volumeAt(this.p)?.kind === "esclusa";
         const why = this.cycling > 0 ? "La esclusa está cambiando de presión" : !inLock ? "Entra en la esclusa para cambiarte" : undefined;
@@ -812,13 +947,17 @@ export class StationInteriorMode {
     const a = f.action;
     if (a.kind === "tripulacion" || a.kind === "brazo" || a.kind === "bishop" || a.kind === "consola" || a.kind === "soporte-vital") return this.deps.act(f, id);
     if (id === "ventana") return this.deps.lookOut?.();
+    if (id.startsWith("abrir:")) {
+      this.say(`${f.label} · ${this.interior.locationCode(f)}`);
+      return this.deps.openPanel(id.slice("abrir:".length) as StationPanel);
+    }
     this.use(f, true);
   }
 
   /** The card of the thing in front of her: icon, name, one line, its actions (they replace HUD buttons). */
   private renderCard(): void {
     const f = this.near;
-    if (!f || this.lotus) {
+    if (!f || this.lotus || this.sleeping) {
       this.card.classList.add("hidden");
       this.cardKey = "";
       return;
@@ -990,9 +1129,74 @@ export class StationInteriorMode {
     this.menu.relabel(this.viewBtn, `Vista: ${this.thirdPerson ? "3ª" : "1ª"} persona`, "V");
   }
 
+  /** True while she sleeps in a crew quarter with its door shut. */
+  get asleep(): boolean {
+    return this.sleeping !== null;
+  }
+
+  /**
+   * She sleeps in the crew quarter of `fixtureId` (her bag): its folding door shuts, she stays put, and when
+   * she wakes after `seconds` the door folds open again (docs/design/compartimentos.md).
+   */
+  sleep(fixtureId: string, seconds = SLEEP_SHOWN_S, then?: () => void): void {
+    const f = this.interior.fixture(fixtureId);
+    if (!f || this.interior.volume(f.volume)?.kind !== "compartimento") return;
+    this.sleeping = { volume: f.volume, until: performance.now() + seconds * 1000, ...(then ? { then } : {}) };
+    this.shutDoor(f.volume, true);
+    // From her bag she looks out at the doorway: the door shutting, then folding open when she wakes.
+    const door = this.interior.volume(`paso-${f.volume}`);
+    if (door) {
+      const d = door.centre.sub(this.p);
+      this.yaw = Math.atan2(-d.x, -d.z);
+      this.pitch = Math.max(-1.2, Math.min(1.2, Math.atan2(d.y, Math.hypot(d.x, d.z))));
+    }
+  }
+
+  /** She wakes: the quarter's door folds open. */
+  wake(): void {
+    const s = this.sleeping;
+    if (!s) return;
+    this.sleeping = null;
+    this.shutDoor(s.volume, false);
+    s.then?.();
+  }
+
+  /** Shut or open a crew quarter's folding door (it moves over DOOR_MOVE_S). */
+  shutDoor(volume: string, shut: boolean): void {
+    const d = this.doorShut.get(volume) ?? { at: 0, to: 0 };
+    d.to = shut ? 1 : 0;
+    this.doorShut.set(volume, d);
+  }
+
+  /** How shut a crew quarter's door is now (0 open … 1 shut), for the experience suite. */
+  doorAmount(volume: string): number {
+    return this.doorShut.get(volume)?.at ?? 0;
+  }
+
+  private syncDoors(dt: number): void {
+    for (const [id, d] of this.doorShut) {
+      const step = dt / DOOR_MOVE_S;
+      d.at = d.at < d.to ? Math.min(d.to, d.at + step) : Math.max(d.to, d.at - step);
+      this.rooms.doors.get(id)?.shut(d.at);
+    }
+  }
+
   /** Sit in lotus on the mat (the settings open) or float up again. */
   sitLotus(on: boolean): void {
     this.lotus = on;
+    // On the mat, seen from the aisle over the settings sheet (in first person she would see nothing of it).
+    const mat = this.interior.plan.fixtures.find((f) => f.action.kind === "tripulacion" && f.action.area === "esterilla");
+    const frame = on && mat ? this.wholeBodyFrame(mat) : undefined;
+    if (frame) {
+      this.steps.begin(frame);
+      this.steps.holdPose = true;
+      this.frameForSheet(true);
+      for (const sg of this.rooms.signs) sg.visible = false;
+    } else if (!on && this.steps.framing && this.steps.holdPose) {
+      this.steps.clear();
+      this.frameForSheet(false);
+      this.body.reset();
+    }
     this.avatar.pose(on ? "lotus" : "float");
   }
 

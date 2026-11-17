@@ -29,6 +29,8 @@ const choreText = (c: Chore): SessionText => ({
 });
 
 export interface StationLifeDeps {
+  /** She sleeps in the quarter of this fixture (her bag): its folding door shuts, and opens when she wakes (then). */
+  sleepIn?: (fixture: string, then: () => void) => void;
   readonly crew: StationCrew;
   readonly berth: LanderBerth;
   /** The Bishop cargo airlock on Tranquility. */
@@ -209,7 +211,10 @@ export class StationLife {
       this.d.duel.onRightPick = undefined;
       visual?.clear();
       this.session = null;
-      if (run.status === "done" && chore.kind === "dormir") this.d.say("Duermes en tu camarote: el ventilador sopla y la luz está apagada. Despiertas más tranquila", 6);
+      if (run.status === "done" && chore.kind === "dormir") {
+        this.d.say("Duermes en tu camarote, con la puerta plegable cerrada: el ventilador sopla y la luz está apagada", 6);
+        this.d.sleepIn?.(OWN_BUNK, () => this.d.say("Despiertas a las 06:00 GMT, más tranquila: la puerta se abre", 5));
+      }
       else if (run.status === "done") this.d.say(chore.kind === "cocinar" ? `${chore.title.replace(/^Cocinar /, "")}: hecho con la despensa de la estación` : "Hecho", 5);
     };
     this.d.duel.show(

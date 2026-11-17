@@ -6,6 +6,7 @@ import type { StepAct, StepVisual } from "@modules/chores/domain/step-visual";
 import { textSign } from "./adapters/three/interior/sign";
 import { HatchLeaf } from "./adapters/three/interior/hatch-leaf";
 import { Walker } from "./adapters/input/walker";
+import { moveJoystick, type AreaId } from "@core/realism";
 import { DOMENICA_HAIR } from "./ui/portraits";
 import { RootMenu } from "./ui/root-menu";
 import { ICON } from "./ui/icons";
@@ -26,6 +27,8 @@ export interface WalkRoomOptions<Id extends string> {
   readonly layout: CabinLayout<Id>;
   /** CSS class of the room's overlay and prefix of its sticks. */
   readonly cls: string;
+  /** Which area it is (core/realism.ts AREA_MOTION): only one with gravity or water gets the stick that moves her. */
+  readonly area?: AreaId;
   /** Shown at the top left. */
   readonly title: string;
   /** The room's meshes: walls the dollhouse camera hides when they stand in the way. */
@@ -155,7 +158,8 @@ export abstract class WalkRoom<Id extends string> {
     this.avatar.root.scale.setScalar(0.92);
     this.rig.add(this.avatar.root);
     this.scene.add(this.rig);
-    this.walker = new Walker(root, { move: `${opts.cls}-move room-move`, look: `${opts.cls}-look room-look`, moveLabel: "Moverse" });
+    this.walker = new Walker(root, { move: `${opts.cls}-move room-move`, look: `${opts.cls}-look room-look`, moveLabel: "Moverse" }, moveJoystick(opts.area ?? "cabina-lm"));
+    this.walker.camera = this.camera;
 
     this.ui = document.createElement("div");
     this.ui.className = `room-ui ${opts.cls}-ui hidden`;

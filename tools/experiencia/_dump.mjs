@@ -1,0 +1,21 @@
+import { Journey } from "./lib.mjs";
+const j = new Journey("x", "x", { outDir: "/tmp/claude-0/-home-user/3289300d-eb5e-57eb-a178-3e67b8e5531b/scratchpad/shots", throttle: 1 });
+const p = await j.open("http://localhost:5209/?prueba");
+await j.tap(".stand-btn", "Levantarse");
+await p.waitForTimeout(500);
+await j.useMachine("cabin", "acople", "entrar-nodriza", "Entrar");
+await p.waitForFunction(() => window.codeship.starship.active, null, { timeout: 30000 }).catch(() => {});
+await p.evaluate(() => window.codeship.starship.mode.placeAt("habitat-acuatico"));
+await p.waitForTimeout(2000);
+console.log(JSON.stringify(await p.evaluate(() => {
+  const m = window.codeship.starship.mode;
+  const plan = m.plan ?? m.interior ?? m.deps?.plan;
+  const keys = Object.keys(m);
+  const g = m.gearOf("habitat-acuatico");
+  g.root.updateMatrixWorld(true);
+  const box = (o) => { const b = new (g.root.position.constructor)(); const mn = [1e9,1e9,1e9], mx = [-1e9,-1e9,-1e9]; o.traverse((x) => { if (!x.geometry) return; x.geometry.computeBoundingBox(); const bb = x.geometry.boundingBox; for (const cx of [bb.min.x, bb.max.x]) for (const cy of [bb.min.y, bb.max.y]) for (const cz of [bb.min.z, bb.max.z]) { const v = b.set(cx, cy, cz).applyMatrix4(x.matrixWorld); mn[0]=Math.min(mn[0],v.x);mn[1]=Math.min(mn[1],v.y);mn[2]=Math.min(mn[2],v.z);mx[0]=Math.max(mx[0],v.x);mx[1]=Math.max(mx[1],v.y);mx[2]=Math.max(mx[2],v.z);} }); return { mn: mn.map(v=>+v.toFixed(2)), mx: mx.map(v=>+v.toFixed(2)) }; };
+  const pl = m.interior.plan;
+  const yawp = [m.yaw, m.pitch, m.thirdPerson, m.p];
+  return { cam: m.camera.position.toArray().map(v=>+v.toFixed(2)), dir: m.camera.getWorldDirection(m.camera.position.clone()).toArray().map(v=>+v.toFixed(2)), keys: yawp, aqh: box(g.root), pos: g.root.position.toArray(), scale: pl?.scale, vol: pl?.volumes.find((v) => v.id === "cubierta-3"), fx: pl?.fixtures.filter((f) => f.volume === "cubierta-3").map((f) => [f.id, f.face, f.at, f.size]) };
+}), null, 0));
+await j.browser.close();

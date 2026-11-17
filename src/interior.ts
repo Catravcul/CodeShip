@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { moveJoystick } from "@core/realism";
 import { BOARD_DAYS_PER_REAL_S } from "@core/board-time";
 import type { Habitat, HabitatEvent, ChoreSession } from "@modules/habitat/application/habitat";
 import { CHORE_CATEGORY, type Chore, type ChoreCategory } from "@modules/chores/domain/chore";
@@ -309,7 +310,8 @@ export class Interior {
     this.scene.add(this.steps.root);
     // A prop set down on the floor (a feeding bowl) goes where nothing of the room or the animals is (PX-20).
     this.steps.clearOf = clearOfScene(this.scene, [this.steps.root, this.avatarRig]);
-    this.walker = new Walker(root);
+    this.walker = new Walker(root, undefined, moveJoystick("anillo"));
+    this.walker.camera = this.camera;
     this.ui = document.createElement("div");
     this.ui.className = "interior-ui hidden";
     this.ui.innerHTML = `<div class="ihud"></div><button class="tasks-btn">Tareas</button><button class="radio-btn">Radio<b></b></button><button class="view-btn">${ICON.eye}</button><div class="board hidden"></div><button class="station-btn hidden"></button><button class="mat-btn hidden">Sentarse en loto: ajustes</button><div class="toast"></div>`;

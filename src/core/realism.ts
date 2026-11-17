@@ -27,3 +27,31 @@ export const FICTION = !REAL_ONLY;
 export function fiction<T>(make: () => T): T | undefined {
   return REAL_ONLY ? undefined : make();
 }
+
+/** How an area moves her: floating (zero g), walking with gravity, or swimming. */
+export type AreaMotion = "ingravidez" | "gravedad" | "agua";
+
+/**
+ * Every area she can be in, and how it moves her (Berón, 2026-11-17 18:54; reglas.md §2): for now there are no
+ * gravity or water areas. Every Starship, ISS and LM area is zero g, the LM landed on an asteroid included
+ * (microgravity), and outside on the asteroid too: she moves by herself along routes (arrows, «Ir», taps, the
+ * spacewalk's buttons) and the on-screen joystick only moves the camera. The joystick that moves her
+ * (adapters/input/walker.ts) stays in the code for a gravity or water area that may come later.
+ */
+export const AREA_MOTION = {
+  "cabina-lm": "ingravidez",
+  puente: "ingravidez",
+  starship: "ingravidez",
+  estacion: "ingravidez",
+  "paseo-estacion": "ingravidez",
+  "paseo-asteroide": "ingravidez",
+  // The ring ship's 1 g decks are fiction and unwired (REAL_ONLY): if they come back, they say «gravedad» here.
+  anillo: "ingravidez",
+} as const satisfies Readonly<Record<string, AreaMotion>>;
+
+export type AreaId = keyof typeof AREA_MOTION;
+
+/** Whether an area has a joystick that moves her (walking with gravity or swimming); none does for now. */
+export function moveJoystick(area: AreaId): boolean {
+  return AREA_MOTION[area] !== "ingravidez";
+}

@@ -27,6 +27,7 @@ import { RootMenu } from "./ui/root-menu";
 import { ICON } from "./ui/icons";
 import { settings } from "./ui/settings-store";
 import "./ui/lander-cabin.css";
+import { moveJoystick } from "@core/realism";
 import "./ui/station-interior.css";
 
 const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
@@ -213,7 +214,8 @@ export class StationInteriorMode {
     this.scene.add(this.steps.root);
     this.steps.clearOf = clearOfScene(this.scene, [this.steps.root, this.rig]);
     this.body = new FloatingBody(this.rig);
-    this.walker = new Walker(root, { move: `${P}-move`, look: `${P}-look`, moveLabel: "Mover" });
+    this.walker = new Walker(root, { move: `${P}-move`, look: `${P}-look`, moveLabel: "Mover" }, moveJoystick(P === "sts" ? "starship" : "estacion"));
+    this.walker.camera = this.camera;
     this.walker.arrowsLook = false;
     this.ui = document.createElement("div");
     this.ui.className = `room-ui ${P}-ui hidden`;

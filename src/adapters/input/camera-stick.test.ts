@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CAMERA_RATES, cameraStep } from "./camera-stick";
+import { AREA_MOTION, moveJoystick, type AreaId } from "@core/realism";
 
 /** Every TypeScript source of the game, as text (tests left out). */
 const SOURCES = import.meta.glob<string>(["/src/**/*.ts", "!/src/**/*.test.ts"], { query: "?raw", import: "default", eager: true });
@@ -35,6 +36,31 @@ describe("camera only by joystick (reglas.md §5.7)", () => {
     const views = ["src/ship-bay.ts", "src/station-screen.ts", "src/station-eva.ts", "src/ui/nav-map.ts", "src/adapters/three/dock-view.ts", "src/adapters/three/trip-preview.ts"];
     for (const v of views) expect(files.find(({ f }) => f === v)?.text, v).toMatch(/new CameraStick\(/);
     for (const v of ["src/adapters/input/walker.ts", "src/adapters/three/flight-view.ts", "src/probe-mode.ts"]) expect(files.find(({ f }) => f === v)?.text, v).toMatch(/new VirtualStick\(/);
+  });
+});
+
+describe("no gravity areas for now: the joystick moves the camera, never her (Berón, 2026-11-17 18:54)", () => {
+  const src = (f: string) => SOURCES[`/${f}`]!;
+
+  it("no area is flagged with gravity or water, the LM on an asteroid and the asteroid outside included", () => {
+    for (const [area, motion] of Object.entries(AREA_MOTION)) {
+      expect(motion, area).toBe("ingravidez");
+      expect(moveJoystick(area as AreaId), area).toBe(false);
+    }
+    expect(Object.keys(AREA_MOTION)).toEqual(expect.arrayContaining(["cabina-lm", "puente", "starship", "estacion", "paseo-estacion", "paseo-asteroide"]));
+  });
+
+  it("every area's controls ask core/realism.ts whether a stick may move her", () => {
+    const calls = Object.entries(SOURCES).flatMap(([f, text]) => (text.match(/new Walker\([^;]*;/g) ?? []).map((c) => [f, c] as const));
+    expect(calls.length).toBeGreaterThanOrEqual(4);
+    for (const [f, c] of calls) expect(c, f).toMatch(/moveJoystick\(/);
+  });
+
+  it("the walker builds the stick that moves her only in a gravity or water area, and its look stick zooms the camera", () => {
+    const w = src("src/adapters/input/walker.ts");
+    expect(w).toMatch(/this\.moveStick = moves \? new VirtualStick\(/);
+    expect(w).toMatch(/if \(!this\.moves \|\| !this\.moveStick\) return \{ forward: 0, right: 0 \}/);
+    expect(w).toMatch(/addZoomButtons\(this\.lookStick\.el/);
   });
 });
 

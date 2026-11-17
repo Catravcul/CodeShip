@@ -401,3 +401,5 @@ body .cam-stick.on > .vstick { display: block !important; position: relative; bo
 .cam-zoom button { width: 48px; height: 48px; border: 1px solid #7fdcff66; border-radius: 12px; font: inherit; font-size: 24px; line-height: 1; color: #d8f6ff; background: #0b2a36cc; touch-action: none; }
 .cam-stick.st-look { left: 12px; right: auto; bottom: calc(58vh + 14px); opacity: 0.8; }
 @media (min-aspect-ratio: 1/1) { .cam-stick.st-look { bottom: 22px; } }
+/* «+» and «−» beside a look stick (adapters/input/walker.ts): the camera zooms, nothing else moves. */
+.vstick > .cam-zoom { position: absolute; left: -58px; top: 50%; transform: translateY(-50%); }

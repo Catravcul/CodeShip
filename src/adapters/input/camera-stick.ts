@@ -17,6 +17,26 @@ export function cameraStep(knob: { x: number; y: number }, zoomDir: -1 | 0 | 1, 
 }
 
 /**
+ * «+» and «−» buttons in `host` (a camera stick or its box): `onHold` gets +1 (closer) or −1 (further) while one is
+ * held, and 0 when it is let go.
+ */
+export function addZoomButtons(host: HTMLElement, onHold: (dir: -1 | 0 | 1) => void): HTMLElement {
+  const zoom = document.createElement("div");
+  zoom.className = "cam-zoom";
+  zoom.innerHTML = `<button data-z="1" aria-label="Acercar la cámara">+</button><button data-z="-1" aria-label="Alejar la cámara">−</button>`;
+  host.appendChild(zoom);
+  for (const b of zoom.querySelectorAll<HTMLButtonElement>("button")) {
+    b.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onHold(Number(b.dataset.z) as 1 | -1);
+    });
+    for (const ev of ["pointerup", "pointercancel", "pointerleave"]) b.addEventListener(ev, () => onHold(0));
+  }
+  return zoom;
+}
+
+/**
  * The camera joystick (reglas.md §5.7: the camera moves only by joystick, never by dragging the screen):
  * a round stick and, if the view can zoom, «+» and «−» buttons beside it. While the stick or a button is
  * held it calls `onMove` every animation frame with that frame's yaw, pitch and zoom (cameraStep), so the
@@ -39,21 +59,11 @@ export class CameraStick {
     host.appendChild(this.el);
     this.stick = new VirtualStick(this.el, "cam-knob", opts.label ?? "Cámara");
     this.stick.el.addEventListener("pointerdown", () => this.loop());
-    if (opts.zoom) {
-      const zoom = document.createElement("div");
-      zoom.className = "cam-zoom";
-      zoom.innerHTML = `<button data-z="1" aria-label="Acercar la cámara">+</button><button data-z="-1" aria-label="Alejar la cámara">−</button>`;
-      this.el.appendChild(zoom);
-      for (const b of zoom.querySelectorAll<HTMLButtonElement>("button")) {
-        b.addEventListener("pointerdown", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          this.zoomDir = Number(b.dataset.z) as 1 | -1;
-          this.loop();
-        });
-        for (const ev of ["pointerup", "pointercancel", "pointerleave"]) b.addEventListener(ev, () => (this.zoomDir = 0));
-      }
-    }
+    if (opts.zoom)
+      addZoomButtons(this.el, (dir) => {
+        this.zoomDir = dir;
+        if (dir) this.loop();
+      });
   }
 
   get visible(): boolean {

@@ -155,14 +155,14 @@ export async function movimiento(j) {
   });
   await p.waitForTimeout(800);
   const ring0 = await p.screenshot();
+  // No gravity areas for now (core/realism.ts AREA_MOTION, reglas.md §2.6): the ring's only stick moves the camera.
   const sticks = await j.texts(".walk-stick, .look-stick");
-  j.check("en el anillo hay dos mandos: Caminar y Mirar", sticks.length >= 2, sticks.join(" / "));
+  j.check("en el anillo solo hay el mando Mirar (sin gravedad, el joystick mueve la cámara)", sticks.length === 1, sticks.join(" / "));
   // Scale (docs/design/escala.md): the ring is drawn 1,5 times bigger on the plan; she stays at real size.
   const plan = await p.evaluate(() => ({ k: window.codeship.interior.camera.planScale, rig: window.codeship.interior.avatarRig.scale.x }));
   j.check("el anillo se dibuja a escala 1,5 en planta y Doménica a tamaño real", plan.k === 1.5 && Math.abs(plan.rig * plan.k - 1) < 1e-6, JSON.stringify(plan));
-  await j.stick(".walk-stick", 0, -50, 2500);
-  j.check("al arrastrar Caminar hacia arriba la vista avanza", differs(ring0, await p.screenshot()));
   await j.stick(".look-stick", 60, 0, 1200);
+  j.check("al mover Mirar la vista gira", differs(ring0, await p.screenshot()));
   await j.shot("anillo");
   // On the ring, life on board shows where it happens, as a small HUD label, only when in view.
   // Deterministic (it passed about half the time when the dog wandered off): the dog stands still on the

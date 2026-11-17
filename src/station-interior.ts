@@ -1,5 +1,6 @@
 import type { ExerciseMotionData } from "@modules/body/domain/exercise-motion";
 import type { CrewGear } from "./adapters/three/interior/crew-gear";
+import { AqhModel } from "./adapters/three/interior/aqh-model";
 import { DOMENICA_HAIR } from "./ui/portraits";
 import * as THREE from "three";
 import { Vec3 } from "@core/math/vec3";
@@ -616,7 +617,7 @@ export class StationInteriorMode {
    */
   stepVisual(id: string, acts: (index: number) => readonly StepAct[]): StepVisual | undefined {
     const f = this.interior.fixture(id);
-    const frame = f && this.stepFrame(f);
+    const frame = f && (this.aqhFrame(f) ?? this.stepFrame(f));
     if (!frame) return undefined;
     let picked = { index: -1, n: 0 };
     this.steps.begin(frame);
@@ -864,7 +865,7 @@ export class StationInteriorMode {
     const nside = side.clone().negate();
     // Side on for the treadmill, the cycle and the mat (the stride, the cranks, the body along it); three quarters
     // from the front for the ARED (the bar on her shoulders, not hidden by its arm).
-    const dirs = g.kind === "ared" ? [q(side, fwd, 0.6), q(nside, fwd, 0.6), q(side, fwd, 0.3), q(nside, fwd, 0.3), fwd, side, nside] : [side, nside, q(side, fwd, 0.35), q(nside, fwd, 0.35), q(side, back, 0.35), q(nside, back, 0.35), fwd];
+    const dirs = g.kind === "refugio" ? [fwd, q(fwd, side, 0.25), q(fwd, nside, 0.25)] : g.kind === "ared" ? [q(side, fwd, 0.6), q(nside, fwd, 0.6), q(side, fwd, 0.3), q(nside, fwd, 0.3), fwd, side, nside] : [side, nside, q(side, fwd, 0.35), q(nside, fwd, 0.35), q(side, back, 0.35), q(nside, back, 0.35), fwd];
     for (const dist of [3.2, 2.8, 2.4, 2.0, 1.7, 1.4, 1.1])
       for (const d of dirs) {
         cam.copy(body).addScaledVector(d, dist).addScaledVector(up, flat ? 0.5 : 0.35);
@@ -873,6 +874,48 @@ export class StationInteriorMode {
       }
     cam.copy(body).addScaledVector(side, 1.2).addScaledVector(up, 0.4);
     return { stand, yaw: Math.atan2(fwd.x, fwd.z), orient, cameraUp: up, camera: cam, look: body, target: body.clone() };
+  }
+
+  /**
+   * At the AQH (docs/design/equipos.md): she floats at its tray, her hands at the two chambers; the camera close in
+   * over her shoulder, so the medaka and the snails (real size, 3–4 cm and 1 cm) and the wiper on the glass show.
+   */
+  private aqhFrame(f: Fixture): StepFrame | undefined {
+    const g = this.rooms.gear.get(f.id);
+    if (!(g instanceof AqhModel)) return undefined;
+    g.root.updateWorldMatrix(true, false);
+    const q = g.root.getWorldQuaternion(new THREE.Quaternion());
+    const out = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
+    const side = new THREE.Vector3(1, 0, 0).applyQuaternion(q);
+    const stand = g.root.localToWorld(g.feet.clone().setX(-0.35));
+    const focus = g.root.localToWorld(g.focus.clone());
+    const cam = focus.clone().addScaledVector(out, 0.7).addScaledVector(side, 0.35).add(new THREE.Vector3(0, 0.22, 0));
+    const face = out.clone().negate();
+    return { stand, yaw: Math.atan2(face.x, face.z), camera: cam, look: focus, target: focus.clone() };
+  }
+
+  /**
+   * Into the storm shelter (docs/design/equipos.md): she floats into the recess lined with water bags, curled up
+   * holding its strap, for `seconds`; then she comes out to the aisle again.
+   */
+  shelterIn(id: string, seconds = 6): boolean {
+    const f = this.interior.fixture(id);
+    const frame = f && this.gearFrame(f);
+    if (!frame) return false;
+    this.steps.begin(frame);
+    this.steps.holdPose = true;
+    this.avatar.pose("float");
+    this.ui.classList.add("hidden");
+    for (const sg of this.rooms.signs) sg.visible = false;
+    const done = () => {
+      if (!this.steps.framing || this.onGear !== id) return;
+      this.onGear = undefined;
+      this.steps.clear();
+      this.body.reset();
+      if (this.active) this.ui.classList.remove("hidden");
+    };
+    setTimeout(done, seconds * 1000);
+    return true;
   }
 
   /**

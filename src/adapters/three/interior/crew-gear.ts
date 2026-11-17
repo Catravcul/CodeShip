@@ -279,12 +279,13 @@ export function shelterModel(k: number, size: { w: number; h: number; d: number 
   const { box } = kit(root);
   const W = size.w * k;
   const H = size.h * k;
+  // It stands out of its wall into the aisle (a rack's depth): the walls of the module would hide a recess.
   const D = size.d * k;
   const wall = std(0xb9c1ca);
-  box(W, H, 0.03, 0, 0, -D, wall);
-  for (const sx of [-1, 1]) box(0.03, H, D, (sx * W) / 2, 0, -D / 2, wall);
-  for (const sy of [-1, 1]) box(W, 0.03, D, 0, (sy * H) / 2, -D / 2, wall);
-  // Water bags: on the back, the sides, the top and the bottom.
+  box(W, H, 0.03, 0, 0, 0.015, wall);
+  for (const sx of [-1, 1]) box(0.03, H, D, (sx * W) / 2, 0, D / 2, wall);
+  for (const sy of [-1, 1]) box(W, 0.03, D, 0, (sy * H) / 2, D / 2, wall);
+  // Water bags: on the back, the sides, the top and the bottom (blue pillows, 10 g/cm² of water).
   const bag = std(0x3d7fd1, { roughness: 0.35, metalness: 0 });
   const bagG = new THREE.BoxGeometry(1, 1, 1);
   const put = (w: number, h: number, d: number, x: number, y: number, z: number) => {
@@ -293,22 +294,23 @@ export function shelterModel(k: number, size: { w: number; h: number; d: number 
     m.position.set(x, y, z);
     root.add(m);
   };
+  const T = 0.1 * k;
   const cols = 3;
   const rows = 6;
-  for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) put(W / cols - 0.03, H / rows - 0.03, 0.1 * k, -W / 2 + (i + 0.5) * (W / cols), -H / 2 + (j + 0.5) * (H / rows), -D + 0.07 * k);
-  for (const sx of [-1, 1]) for (let i = 0; i < 2; i++) for (let j = 0; j < rows; j++) put(0.1 * k, H / rows - 0.03, D / 2 - 0.03, sx * (W / 2 - 0.07 * k), -H / 2 + (j + 0.5) * (H / rows), -D + (i + 0.5) * (D / 2));
-  for (const sy of [-1, 1]) for (let i = 0; i < cols; i++) put(W / cols - 0.03, 0.1 * k, D - 0.05, -W / 2 + (i + 0.5) * (W / cols), sy * (H / 2 - 0.07 * k), -D / 2);
-  // The door: fabric rolled up over the opening, with its two ties; a frame round the opening.
+  for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) put(W / cols - 0.03, H / rows - 0.03, T, -W / 2 + (i + 0.5) * (W / cols), -H / 2 + (j + 0.5) * (H / rows), 0.03 + T / 2);
+  for (const sx of [-1, 1]) for (let i = 0; i < 2; i++) for (let j = 0; j < rows; j++) put(T, H / rows - 0.03, D / 2 - 0.03, sx * (W / 2 - T / 2 - 0.02), -H / 2 + (j + 0.5) * (H / rows), (i + 0.5) * (D / 2));
+  for (const sy of [-1, 1]) for (let i = 0; i < cols; i++) put(W / cols - 0.03, T, D - 0.05, -W / 2 + (i + 0.5) * (W / cols), sy * (H / 2 - T / 2 - 0.02), D / 2);
+  // The door: fabric rolled up over the opening, a yellow frame round it.
   const roll = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, W - 0.1, 12), std(0x5a6270, { roughness: 1 }));
   roll.rotation.z = Math.PI / 2;
-  roll.position.set(0, H / 2 - 0.12, 0.05);
+  roll.position.set(0, H / 2 - 0.12, D + 0.05);
   root.add(roll);
-  for (const sx of [-1, 1]) box(0.06, H, 0.06, (sx * (W + 0.06)) / 2, 0, 0.02, std(0xffc84a));
-  // The dosimeter (an ISS-type crew passive dosimeter reader) on the side and a strap across the back.
-  box(0.16, 0.1, 0.04, W / 2 - 0.2, 0.2, -0.06, std(0x0b1c2a));
-  box(0.12, 0.06, 0.01, W / 2 - 0.2, 0.2, -0.035, new THREE.MeshBasicMaterial({ color: 0x9ad48a }));
-  box(W * 0.7, 0.05, 0.02, 0, 0.1, -D + 0.14 * k, std(0x2b2f36));
-  return { kind: "refugio", root, feet: new THREE.Vector3(0, -H / 2 + 0.12 * k + 0.05, -D / 2), tick() {} };
+  for (const sx of [-1, 1]) box(0.06, H, 0.06, (sx * (W + 0.06)) / 2, 0, D, std(0xffc84a));
+  // A dosimeter reader on the inside wall and a strap across the back to hold on to.
+  box(0.04, 0.1, 0.16, W / 2 - T - 0.04, 0.25, D * 0.6, std(0x0b1c2a));
+  box(0.01, 0.06, 0.12, W / 2 - T - 0.065, 0.25, D * 0.6, new THREE.MeshBasicMaterial({ color: 0x9ad48a }));
+  box(W * 0.6, 0.05, 0.02, 0, 0.15, T + 0.05, std(0x2b2f36));
+  return { kind: "refugio", root, feet: new THREE.Vector3(0, -H / 2 + T + 0.3, D * 0.45), tick() {} };
 }
 
 /** The WHC: a rack-sized cubicle with its curtain, the urine funnel on its hose, the small seat with thigh bars. */

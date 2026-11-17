@@ -151,7 +151,11 @@ export class StarshipInterior {
         cannotLeave: (to) => d.cannotLeave(to),
         openTasks: () => d.openTasks(),
         actions: (f) => (f.action.kind === "soporte-vital" ? (this.lifeSupport?.actions(f) ?? []) : this.actions(f)),
-        act: (f, a) => (f.action.kind === "soporte-vital" ? this.lifeSupport?.act(f, a) : this.act(f, a)),
+        act: (f, a) => {
+          // The storm shelter: she gets in, among its water bags (its dose cut is told by life support).
+          if (a === "refugio") this.mode.shelterIn(f.id);
+          return f.action.kind === "soporte-vital" ? this.lifeSupport?.act(f, a) : this.act(f, a);
+        },
         readout: (f) => this.lifeSupport?.readout(f),
         rackState: (f) => this.lifeSupport?.rackState(f) ?? { state: "ok" },
         landerInHangar: () => false,

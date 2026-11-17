@@ -1,6 +1,7 @@
 import type { Quat } from "@core/math/quat";
 import type { Vec3 } from "@core/math/vec3";
 import type { DockingTarget } from "@modules/mothership/domain/docking";
+import type { ManualBerthing, Unberthing } from "@modules/mothership/application/berthing";
 import { burnSeconds, continuousBurnDistance, type ContinuousBurnPlan } from "../domain/transfer";
 
 /** The mothership closing on a station's port at the end of a trip (the berthing use case). */
@@ -53,6 +54,10 @@ export interface CarrierPort {
   berthStandoff?(port: DockingTarget): { position: Vec3; orientation: Quat };
   /** Start the last approach and docking at `port` from where it is. */
   berth?(port: DockingTarget): BerthRun;
+  /** The last approach to `port` flown by hand (the docking station). */
+  manualBerth?(port: DockingTarget): ManualBerthing;
+  /** Undock from `port` and back out to Waypoint 1. */
+  unberth?(port: DockingTarget): Unberthing;
 }
 
 /** Game value: the mothership's hours-long hops play in time-lapse, this many game seconds per real second (before time warp). */

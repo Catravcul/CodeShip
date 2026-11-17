@@ -31,6 +31,7 @@ export const PHASE: Record<AutopilotPhase, string> = {
   brake: "Frenando",
   aim: "Apuntando al destino",
   dock: "Acoplando por el eje del puerto",
+  undock: "Desacoplando: atrás por el eje del puerto",
   arrived: "Llegada",
   hold: "Parada (a mano)",
 };

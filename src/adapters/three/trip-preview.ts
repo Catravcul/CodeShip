@@ -40,6 +40,8 @@ export class TripPreview {
    */
   private readonly stick: VirtualStick;
   private lastRenderMs = 0;
+  private labels: THREE.Object3D[] = [];
+  private labelsAt = 0;
   private orbitYaw = 0;
   private orbitPitch = 0;
   private zoomK = 1;
@@ -210,26 +212,49 @@ export class TripPreview {
     const p = s.pose();
     const q = p.orientation;
     // Behind, above and to one side of the vehicle, looking at it with its goal in the background.
-    const back = s.goal ? p.position.sub(s.goal()).normalize() : q.rotate(new Vec3(0, 0, 1));
+    const goal = s.goal?.();
+    const back = goal ? p.position.sub(goal).normalize() : q.rotate(new Vec3(0, 0, 1));
     const up = q.rotate(Vec3.Y);
     const side = back.cross(up).length() > 1e-6 ? back.cross(up).normalize() : Vec3.X;
     const base = back.scale(2.2).add(up.scale(0.7)).add(side.scale(0.9));
+    // Close to its goal (a station's port), the camera swings side-on and frames both at the same distance, so
+    // each shows at its true size (from behind, the vehicle near the camera would look bigger than the station).
+    const gapM = goal ? goal.sub(p.position).length() : Infinity;
+    const k = Math.max(0, Math.min(1, (8 * s.sizeM - gapM) / (4 * s.sizeM)));
+    const centre = goal && k > 0 ? p.position.add(goal.sub(p.position).scale(0.5 * k)) : p.position;
+    const dir = base.scale(1 - k).add(side.scale(2.2).add(up.scale(0.8)).scale(k));
+    // Far enough that the gap and both ends fit across the frame (portrait: its narrow side).
+    const sideDir = side.scale(2.2).add(up.scale(0.8)).length();
+    const halfAcross = Math.atan(Math.tan((this.camera.fov * Math.PI) / 360) * Math.min(1, r.w / r.h));
+    const fitM = (0.5 * (Number.isFinite(gapM) ? gapM : 0) + 1.2 * s.sizeM) / Math.tan(halfAcross);
+    const reach = s.sizeM * (1 - k) + (fitM / sideDir) * k;
     // The player's own turn: yaw about the vehicle's up, pitch about the side.
-    const turned = rotateAbout(rotateAbout(base, up, this.orbitYaw), side, this.orbitPitch);
-    const eye = p.position.add(turned.scale(s.sizeM * this.zoomK));
+    const turned = rotateAbout(rotateAbout(dir, up, this.orbitYaw), side, this.orbitPitch);
+    const eye = centre.add(turned.scale(reach * this.zoomK));
     this.camera.position.set(eye.x, eye.y, eye.z);
-    this.lastAt.set(p.position.x, p.position.y, p.position.z);
+    this.lastAt.set(centre.x, centre.y, centre.z);
     this.camera.up.set(up.x, up.y, up.z);
-    this.camera.lookAt(p.position.x, p.position.y, p.position.z);
+    this.camera.lookAt(centre.x, centre.y, centre.z);
     this.camera.aspect = r.w / r.h;
     this.camera.updateProjectionMatrix();
     const H = window.innerHeight;
     renderer.setScissorTest(true);
     renderer.setViewport(r.x, H - r.y - r.h, r.w, r.h);
     renderer.setScissor(r.x, H - r.y - r.h, r.w, r.h);
-    // The path shows only in this view: the main view stays as it was.
+    // The path shows only in this view: the main view stays as it was. Other views' screen labels (the arm's
+    // «Canadarm2 · CSA»…) stay out of it: at this distance they would cover the vehicle.
     this.path.visible = true;
+    if (nowMs > this.labelsAt) {
+      this.labelsAt = nowMs + 1000;
+      this.labels = [];
+      scene.traverse((o) => {
+        if (o.name.startsWith("etiqueta:")) this.labels.push(o);
+      });
+    }
+    const shown = this.labels.filter((o) => o.visible);
+    for (const o of shown) o.visible = false;
     renderer.render(scene, this.camera);
+    for (const o of shown) o.visible = true;
     this.path.visible = false;
     renderer.setScissorTest(false);
     renderer.setViewport(0, 0, window.innerWidth, H);

@@ -156,10 +156,14 @@ export async function pendientes(j) {
     await j.tapAt(build);
     await j.waitDuel();
     await p.waitForTimeout(600);
-    for (const view of ["panel", "HUD"]) {
+    for (const view of ["antes", "después"]) {
       const t = await p.evaluate(() => document.querySelector(".duel:not(.hidden) .ui-toggle[data-act=ui]")?.textContent ?? "");
       j.check(`Planos (${view}): el reto ofrece cambiar de vista`, /Vista (HUD|panel)/.test(t), t);
-      if (view === "panel") await j.tap('.duel:not(.hidden) .ui-toggle[data-act="ui"]', "Vista HUD (reto)");
+      if (view === "antes") await j.tap('.duel:not(.hidden) .ui-toggle[data-act="ui"]', "Cambiar de vista (reto)");
+      await p.waitForTimeout(600);
+    }
+    if (/Vista HUD/.test(await p.evaluate(() => document.querySelector(".duel:not(.hidden) .ui-toggle[data-act=ui]")?.textContent ?? ""))) {
+      await j.tap('.duel:not(.hidden) .ui-toggle[data-act="ui"]', "Vista HUD (reto)");
       await p.waitForTimeout(600);
     }
     await capture(j, "planos-hud", "Reto de Planos en vista HUD");
@@ -193,11 +197,18 @@ export async function pendientes(j) {
   await j.useMachine("cabin", "mente", "mente", "Entrar en su mente");
   await j.waitDuel(30000);
   await p.waitForTimeout(600);
-  const t = await p.evaluate(() => document.querySelector(".duel:not(.hidden) .ui-toggle[data-act=ui]")?.textContent ?? "");
-  j.check("duelo de la mente: ofrece «Vista HUD»", /Vista HUD/.test(t), t);
-  await j.tap('.duel:not(.hidden) .ui-toggle[data-act="ui"]', "Vista HUD (duelo)");
+  // The view is a persisted setting (the mat's settings above may have left it in HUD): toggle and see it flip.
+  const label = () => p.evaluate(() => document.querySelector(".duel:not(.hidden) .ui-toggle[data-act=ui]")?.textContent ?? "");
+  const t0 = await label();
+  j.check("duelo de la mente: ofrece cambiar de vista", /Vista (HUD|panel)/.test(t0), t0);
+  await j.tap('.duel:not(.hidden) .ui-toggle[data-act="ui"]', "Cambiar de vista (duelo)");
   await p.waitForTimeout(600);
-  j.check("duelo de la mente: en HUD ofrece volver a «Vista panel»", /Vista panel/.test(await p.evaluate(() => document.querySelector(".duel:not(.hidden) .ui-toggle[data-act=ui]")?.textContent ?? "")));
+  const t1 = await label();
+  j.check("duelo de la mente: el botón cambia de vista", /Vista (HUD|panel)/.test(t1) && t1 !== t0, `${t0} → ${t1}`);
+  if (/Vista HUD/.test(t1)) {
+    await j.tap('.duel:not(.hidden) .ui-toggle[data-act="ui"]', "Vista HUD (duelo)");
+    await p.waitForTimeout(600);
+  }
   await capture(j, "duelo-hud", "Duelo de la mente en vista HUD");
   await j.tap('.duel:not(.hidden) .ui-toggle[data-act="ui"]', "Vista panel (duelo)");
 }

@@ -531,12 +531,14 @@ export class StationInteriorMode {
     const sight = sightOfScene(this.scene, [this.steps.root, this.rig]);
     const cam = new THREE.Vector3();
     let found = false;
+    // Side on first; in a small node (Unity's CBM) from along the module too, so her head stays in the shot.
     for (const back of [2.2, 1.9, 1.6, 1.3, 1.0, 0.8])
-      for (const s of [1, -1]) {
-        if (found) break;
-        cam.copy(look).addScaledVector(side, s * back).addScaledVector(d, 0.6).setY(stand.y + 1.45);
-        found = this.interior.fits(new Vec3(cam.x, cam.y, cam.z), 0.1, false) && sight(cam, look);
-      }
+      for (const [a, b] of [[side, d], [d, side]] as const)
+        for (const s of [1, -1]) {
+          if (found) break;
+          cam.copy(look).addScaledVector(a, s * back).addScaledVector(b, 0.6).setY(stand.y + 1.45);
+          found = this.interior.fits(new Vec3(cam.x, cam.y, cam.z), 0.1, false) && sight(cam, look);
+        }
     if (!found) cam.copy(look).addScaledVector(side, 0.8).setY(stand.y + 1.4);
     return { stand, yaw: Math.atan2(d.x, d.z), camera: cam, look, target };
   }

@@ -204,9 +204,9 @@ export function aredModel(k: number): CrewGear {
     cyl(0.12, 0.04, sx * (W / 2 - 0.18), P + 1.0, back, std(DARK));
   }
   const wheels = [-1, 1].map((sx) => cyl(0.16, 0.05, sx * 0.3, P + 0.2, back, std(0x2f7f8f), "x"));
-  const steel = std(DARK);
+  const steel = std(0x8a929e);
   const rails = [-1, 1].map(() => {
-    const b = beam(0.06, steel);
+    const b = beam(0.04, steel);
     root.add(b.mesh);
     return b;
   });

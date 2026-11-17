@@ -12,6 +12,7 @@ import type { Fixture } from "@modules/station/domain/interior";
 import { OWN_BUNK } from "@modules/station/data/compartments";
 import type { DuelView, SessionText } from "./ui/duel-view";
 import type { StationAction } from "./station-interior";
+import { exerciseFixture } from "./station-steps";
 
 const itemName = (id: string) => ITEMS.find((i) => i.id === id)?.name ?? id;
 const MAX_CHORES_ON_CARD = 3;
@@ -121,7 +122,12 @@ export class StationLife {
       case "esterilla":
         return [{ id: "ajustes", label: "Sentarse en loto: ajustes", enabled: true }, ...chores("esterilla")];
       case "ejercicio":
-        return chores("ejercicio");
+        // Each machine its own workouts (the T2 runs, the CEVIS pedals, the ARED lifts).
+        return this.d.crew
+          .choresAt("ejercicio")
+          .filter((c) => exerciseFixture(c) === f.id)
+          .slice(0, MAX_CHORES_ON_CARD)
+          .map((c) => ({ id: `chore:${c.id}`, label: c.title, enabled: true }));
       case "camarotes":
         // Each astronaut has a crew quarter of her own; Doménica is alone, so the other three are free.
         return f.id === OWN_BUNK ? chores("camarotes") : [{ id: "nada", label: "Dormir aquí", enabled: false, why: "Camarote libre: el tuyo es el 1, el de estribor" }];
@@ -186,12 +192,18 @@ export class StationLife {
     void f;
   }
 
+  /** The fixture a crew chore is done at: her own bag for the night, a workout at its machine, else its area's. */
+  private fixtureOf(c: Chore): string {
+    const area = this.d.crew.areaOf(c);
+    return area === "camarotes" ? OWN_BUNK : area === "ejercicio" ? exerciseFixture(c) : area;
+  }
+
   /** The task list's chores for the station's areas. */
   taskFacts(): { id: string; title: string; detail: string; category: "comida" | "salud"; area: string }[] {
     return this.d.crew.chores().map((c) => {
       const area = this.d.crew.areaOf(c);
       // The task takes her to the fixture where it is done: her own sleeping bag for the night.
-      return { id: c.id, title: c.title, detail: `${STATION_AREA_NAME[area]} · ${c.exercises.length} retos`, category: c.kind === "cocinar" ? "comida" : "salud", area: area === "camarotes" ? OWN_BUNK : area };
+      return { id: c.id, title: c.title, detail: `${STATION_AREA_NAME[area]} · ${c.exercises.length} retos`, category: c.kind === "cocinar" ? "comida" : "salud", area: this.fixtureOf(c) };
     });
   }
 
@@ -204,7 +216,8 @@ export class StationLife {
     const run = session.run;
     this.session = session;
     const area = this.d.crew.areaOf(chore);
-    const visual = this.d.stepVisual?.(chore, area === "camarotes" ? OWN_BUNK : area);
+    void area;
+    const visual = this.d.stepVisual?.(chore, this.fixtureOf(chore));
     const prev = this.d.duel.onClose;
     this.d.duel.onClose = () => {
       this.d.duel.onClose = prev;

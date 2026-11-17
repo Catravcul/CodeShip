@@ -5,6 +5,8 @@ import { FACE_NORMAL, fixtureBox, longAxis, type Box, type Face, type Fixture, t
 import { textSign } from "./sign";
 import { CubeFigure } from "./figure";
 import { buildStarfield } from "../starfield";
+import { AqhModel } from "./aqh-model";
+import { gearModel, gearPose, placeGear, type CrewGear } from "./crew-gear";
 import { eclssRackModel, mountOnWall, type EclssRackModel } from "../eclss-racks";
 import type { RackKind } from "@modules/life-support/domain/eclss";
 
@@ -25,6 +27,8 @@ export interface StationRooms {
   readonly signs: THREE.Sprite[];
   /** The life-support racks by fixture id (src/adapters/three/eclss-racks.ts). */
   readonly racks: Map<string, EclssRackModel>;
+  /** The real equipment by fixture id (crew-gear.ts, aqh-model.ts): the T2, the CEVIS, the ARED, the mat, the AQH… */
+  readonly gear: Map<string, CrewGear>;
   /** Each crew quarter's folding door by volume id: `shut(0)` folded open against its frame, `shut(1)` closed. */
   readonly doors: Map<string, { shut(amount: number): void }>;
 }
@@ -45,6 +49,17 @@ function eclssRack(f: Fixture, k: number): { group: THREE.Group; model: EclssRac
   sign.position.copy(v3(f.at)).addScaledVector(n, 0.25).addScaledVector(V(0, 1, 0), Math.abs(n.y) > 0.5 ? -0.3 : Math.min((h * k) / 2 + 0.05, 0.75 * k));
   g.add(sign);
   return { group: g, model };
+}
+
+/** A fixture's gear model at drawing scale `k`; rack-sized ones take its real width and height on its wall. */
+function buildGear(f: Fixture, k: number): CrewGear {
+  const n = FACE_NORMAL[f.face];
+  const s = { x: Math.abs(f.size.x) / k, y: Math.abs(f.size.y) / k, z: Math.abs(f.size.z) / k };
+  const w = Math.abs(n.x) > 0.5 ? s.z : s.x;
+  const h = Math.abs(n.y) > 0.5 ? s.z : s.y;
+  const d = Math.abs(n.x) > 0.5 ? s.x : Math.abs(n.y) > 0.5 ? s.y : s.z;
+  if (f.gear === "aqh") return new AqhModel(k, { w, h });
+  return gearModel(f.gear!, k, { w, h, d });
 }
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
@@ -660,8 +675,27 @@ export function buildStationRooms(plan: StationInteriorPlan): StationRooms {
     group.add(sign);
   }
   const racks = new Map<string, EclssRackModel>();
+  const gear = new Map<string, CrewGear>();
   for (const f of plan.fixtures) {
     if (f.volume === "hangar" && f.action.kind !== "bahia" && f.action.kind !== "puerta") continue;
+    const vol = plan.volumes.find((v) => v.id === f.volume);
+    if (f.gear && vol) {
+      // Real equipment (reglas.md §4.5): its own model, not a panel with a handhold.
+      const k = plan.scale ?? 1;
+      const g = buildGear(f, k);
+      const pose = gearPose(f, vol, f.gear);
+      placeGear(g, pose.at, pose.up, pose.forward);
+      g.root.traverse((o) => (o.userData.fixture = f.id));
+      group.add(g.root);
+      gear.set(f.id, g);
+      const sign = textSign(f.label);
+      sign.scale.multiplyScalar(0.6 * Math.sqrt(k));
+      const n = v3(FACE_NORMAL[f.face]).negate();
+      const up = f.face === "techo" || f.face === "suelo" ? 0.9 : Math.min(Math.abs(f.size.y) / 2 + 0.05, 0.85);
+      sign.position.copy(v3(f.at)).addScaledVector(n, 0.3).add(V(0, up, 0));
+      group.add(sign);
+      continue;
+    }
     if (f.action.kind === "soporte-vital") {
       const r = eclssRack(f, plan.scale ?? 1);
       racks.set(f.id, r.model);
@@ -691,7 +725,7 @@ export function buildStationRooms(plan: StationInteriorPlan): StationRooms {
   group.add(store);
   group.add(new THREE.HemisphereLight(0xeef4ff, 0x3a404a, 1.4));
   group.add(new THREE.AmbientLight(0xffffff, 0.25));
-  return { group, pickables, lamps, store, signs, racks, doors };
+  return { group, pickables, lamps, store, signs, racks, doors, gear };
 }
 
 /**

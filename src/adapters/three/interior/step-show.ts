@@ -108,6 +108,13 @@ export interface StepFrame {
   readonly kitchen?: KitchenLayout;
   /** The camera's offset from what it looks at, in drawn metres (it follows the step's spot): the galley. */
   readonly orbit?: THREE.Vector3;
+  /**
+   * Her whole orientation when «down» is not the deck (0 g: on a mat strapped to a wall her feet are on the wall):
+   * replaces `yaw`. Only in frames drawn 1:1 (the 0 g modules).
+   */
+  readonly orient?: THREE.Quaternion;
+  /** The camera's «up» (on a wall mat, out of the wall: the mat reads as the floor on screen). */
+  readonly cameraUp?: THREE.Vector3;
 }
 
 /**
@@ -430,8 +437,11 @@ export class StepShow {
     }
     rig.visible = true;
     rig.position.set(this.feet.x / k, this.feet.y, this.feet.z / k);
-    rig.rotation.set(0, inBag ? f.yaw + Math.PI : f.yaw, 0);
-    rig.quaternion.setFromEuler(rig.rotation);
+    if (f.orient) rig.quaternion.copy(f.orient);
+    else {
+      rig.rotation.set(0, inBag ? f.yaw + Math.PI : f.yaw, 0);
+      rig.quaternion.setFromEuler(rig.rotation);
+    }
     if (!this.holdPose) figure.poseAngles(this.now ? gesture(vis!, t, this.clock, this.low(vis!)) : idle(vis ? this.low(vis) : false));
     figure.update(dt, 9);
     rig.updateMatrixWorld(true);
@@ -448,6 +458,7 @@ export class StepShow {
     }
     // In real metres for the PlanCamera, which draws them back at this place.
     camera.position.set((this.focus.x + this.camOffset.x) / k, this.focus.y + this.camOffset.y, (this.focus.z + this.camOffset.z) / k);
+    if (f.cameraUp) camera.up.copy(f.cameraUp);
     camera.lookAt(this.tmp.set(this.focus.x / k, this.focus.y, this.focus.z / k));
     this.lastFigure = figure;
     const heatOn = !!vis?.heat && (this.now !== undefined || this.last === vis);

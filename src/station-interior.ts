@@ -1,3 +1,5 @@
+import type { ExerciseMotionData } from "@modules/body/domain/exercise-motion";
+import type { CrewGear } from "./adapters/three/interior/crew-gear";
 import { DOMENICA_HAIR } from "./ui/portraits";
 import * as THREE from "three";
 import { Vec3 } from "@core/math/vec3";
@@ -804,7 +806,7 @@ export class StationInteriorMode {
    */
   yogaVisual(id: string, asanaOf: (index: number) => AsanaData | undefined): StepVisual | undefined {
     const f = this.interior.fixture(id);
-    const frame = f && this.wholeBodyFrame(f);
+    const frame = f && (this.gearFrame(f) ?? this.wholeBodyFrame(f));
     if (!frame) return undefined;
     this.steps.begin(frame);
     this.steps.holdPose = true;
@@ -820,6 +822,89 @@ export class StationInteriorMode {
       },
       finish: () => {},
       clear: () => {
+        this.onGear = undefined;
+        this.steps.clear();
+        this.frameForSheet(false);
+        this.avatar.pose(this.lotus ? "lotus" : "float");
+        this.body.reset();
+      },
+    };
+  }
+
+  /** The equipment model of a fixture (crew-gear.ts, aqh-model.ts), if it has one. */
+  gearOf(id: string): CrewGear | undefined {
+    return this.rooms.gear.get(id);
+  }
+
+  /** The machine she is using now (its parts move with her). */
+  private onGear: string | undefined;
+
+  /**
+   * On a piece of equipment (reglas.md §4.5): her feet where the machine puts them (the T2's belt, floating at the
+   * CEVIS's pedals, the ARED's platform, the foot loops of a mat on its wall), turned as it is, «up» out of what she
+   * stands on; the camera off to her side in the module, with that «up» (a wall mat reads as the floor on screen).
+   */
+  private gearFrame(f: Fixture): StepFrame | undefined {
+    const g = this.rooms.gear.get(f.id);
+    if (!g) return undefined;
+    this.onGear = f.id;
+    g.root.updateWorldMatrix(true, false);
+    const stand = g.root.localToWorld(g.feet.clone());
+    const orient = g.root.getWorldQuaternion(new THREE.Quaternion());
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(orient);
+    const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(orient);
+    const side = new THREE.Vector3().crossVectors(up, fwd).normalize();
+    // Lying on a mat the body runs along it: aim at its middle, a little out from it.
+    const flat = g.kind === "esterilla";
+    const body = stand.clone().addScaledVector(up, flat ? 0.5 : g.kind === "cevis" ? 0.75 : 0.7);
+    const sight = sightOfScene(this.scene, [this.steps.root, this.rig, g.root]);
+    const cam = new THREE.Vector3();
+    const q = (a: THREE.Vector3, b: THREE.Vector3, k: number) => a.clone().multiplyScalar(1 - k).addScaledVector(b, k).normalize();
+    const back = fwd.clone().negate();
+    const nside = side.clone().negate();
+    // Side on for the treadmill, the cycle and the mat (the stride, the cranks, the body along it); three quarters
+    // from the front for the ARED (the bar on her shoulders, not hidden by its arm).
+    const dirs = g.kind === "ared" ? [q(side, fwd, 0.6), q(nside, fwd, 0.6), q(side, fwd, 0.3), q(nside, fwd, 0.3), fwd, side, nside] : [side, nside, q(side, fwd, 0.35), q(nside, fwd, 0.35), q(side, back, 0.35), q(nside, back, 0.35), fwd];
+    for (const dist of [3.2, 2.8, 2.4, 2.0, 1.7, 1.4, 1.1])
+      for (const d of dirs) {
+        cam.copy(body).addScaledVector(d, dist).addScaledVector(up, flat ? 0.5 : 0.35);
+        if (this.interior.fits(new Vec3(cam.x, cam.y, cam.z), 0.1, false) && sight(cam, body))
+          return { stand, yaw: Math.atan2(fwd.x, fwd.z), orient, cameraUp: up, camera: cam.clone(), look: body, target: body.clone() };
+      }
+    cam.copy(body).addScaledVector(side, 1.2).addScaledVector(up, 0.4);
+    return { stand, yaw: Math.atan2(fwd.x, fwd.z), orient, cameraUp: up, camera: cam, look: body, target: body.clone() };
+  }
+
+  /**
+   * A workout at its machine (reglas.md §4.5): she gets on it and moves as it asks, round and round on the skeleton
+   * (running in the T2's harness, pedalling the CEVIS, squatting under the ARED's bar), the machine moving with her;
+   * each right step pushes the pace for a moment, like an interval.
+   */
+  exerciseVisual(id: string, motion: ExerciseMotionData): StepVisual | undefined {
+    const f = this.interior.fixture(id);
+    const frame = f && this.gearFrame(f);
+    if (!frame) return undefined;
+    this.steps.begin(frame);
+    this.steps.holdPose = true;
+    this.avatar.exercise(motion);
+    this.frameForSheet(true);
+    for (const sg of this.rooms.signs) sg.visible = false;
+    let push: ReturnType<typeof setTimeout> | undefined;
+    return {
+      stepDone: () => {
+        const ex = this.avatar.exercising;
+        if (ex) ex.pace = 1.7;
+        clearTimeout(push);
+        push = setTimeout(() => {
+          const e = this.avatar.exercising;
+          if (e) e.pace = 1;
+        }, 2500);
+        if (this.steps.framing) this.steps.play([{ action: "entrenar", place: "objetivo", vessel: motion.device }]);
+      },
+      finish: () => {},
+      clear: () => {
+        clearTimeout(push);
+        this.onGear = undefined;
         this.steps.clear();
         this.frameForSheet(false);
         this.avatar.pose(this.lotus ? "lotus" : "float");
@@ -1075,6 +1160,8 @@ export class StationInteriorMode {
         }
       }
     for (const model of this.rooms.racks.values()) model.tick(dt);
+    // The equipment moves with her while she uses it (the belt, the cranks, the bar, the harness).
+    for (const [id, g] of this.rooms.gear) g.tick(dt, this.onGear === id && this.steps.framing ? this.avatar : undefined);
     const busy = this.deps.busy();
     const t = performance.now() / 1000;
     for (const [id, lamp] of this.rooms.lamps) {
@@ -1186,13 +1273,14 @@ export class StationInteriorMode {
     this.lotus = on;
     // On the mat, seen from the aisle over the settings sheet (in first person she would see nothing of it).
     const mat = this.interior.plan.fixtures.find((f) => f.action.kind === "tripulacion" && f.action.area === "esterilla");
-    const frame = on && mat ? this.wholeBodyFrame(mat) : undefined;
+    const frame = on && mat ? (this.gearFrame(mat) ?? this.wholeBodyFrame(mat)) : undefined;
     if (frame) {
       this.steps.begin(frame);
       this.steps.holdPose = true;
       this.frameForSheet(true);
       for (const sg of this.rooms.signs) sg.visible = false;
     } else if (!on && this.steps.framing && this.steps.holdPose) {
+      this.onGear = undefined;
       this.steps.clear();
       this.frameForSheet(false);
       this.body.reset();

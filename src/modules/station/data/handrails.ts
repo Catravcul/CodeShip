@@ -34,6 +34,8 @@ export function stationHandrails(plan: StationInteriorPlan): Handrail[] {
       }
       continue;
     }
+    // A compartment (crew quarter, Cupola, Bishop) is a room one floats into: only the bar at its machine (below).
+    if (v.kind === "compartimento") continue;
     // The aisle runs along the module's long axis: z on the main stack, x in the radial modules.
     const [along, side] = v.half.x > v.half.z ? (["x", "z"] as const) : (["z", "x"] as const);
     rails.push(...aisleRails(box, along, side));

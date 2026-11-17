@@ -9,6 +9,7 @@ import type { LanderBerth } from "@modules/station/domain/hangar-berth";
 import { ISS_OUTSIDE } from "@modules/station/data/iss";
 import { DEPLOY_STEPS, type AirlockItem, type CargoAirlock } from "@modules/station/domain/cargo-airlock";
 import type { Fixture } from "@modules/station/domain/interior";
+import { OWN_BUNK } from "@modules/station/data/compartments";
 import type { DuelView, SessionText } from "./ui/duel-view";
 import type { StationAction } from "./station-interior";
 
@@ -85,17 +86,20 @@ export class StationLife {
       const arm: StationAction = this.d.berth.onCbm
         ? { id: "desatracar", label: "Devolver el módulo a su IDA", enabled: true }
         : { id: "atracar", label: "Atracar el módulo en el CBM con el brazo", enabled: atPort, ...(atPort ? {} : { why: "El módulo no está acoplado a la estación: acóplalo en su IDA de cenit y Canadarm2 lo atracará en el CBM de Unity" }) };
-      return [arm, { id: "mirar", label: "Mirar por la Cupola", enabled: true }, { id: "tareas", label: "Tareas", enabled: true }];
+      // The Cupola's robotic workstation: the arm, the outside cameras, the catalogue and its assembly, and the Bishop's release.
+      const loaded = this.d.bishop.at("bishop");
+      const deploy: StationAction = loaded.length
+        ? { id: "soltar", label: `Soltar ${loaded.map((i) => i.name).join(" y ")} con la Bishop`, enabled: true }
+        : { id: "soltar", label: "Soltar la carga de la Bishop", enabled: false, why: "La Bishop está vacía: entra en ella (puerto de babor de Tranquility) y sujeta la sonda o un cubesat a su placa" };
+      return [arm, { id: "mirar", label: "Cámaras de fuera y ventanas", enabled: true }, { id: "inventario", label: "Catálogo y montaje", enabled: true }, deploy];
     }
     if (a.kind === "bishop") {
+      // Inside the Bishop, at its payload plate: what goes on it and what comes back (Canadarm2 releases it from the Cupola).
       const b = this.d.bishop;
-      const stow = b.at("almacen").slice(0, 2).map((i) => ({ id: `guardar:${i.id}`, label: `Guardar ${i.name} en la Bishop`, enabled: true }));
-      const loaded = b.at("bishop");
+      const stow = b.at("almacen").slice(0, 2).map((i) => ({ id: `guardar:${i.id}`, label: `Sujetar ${i.name} a la placa`, enabled: true }));
       const out = b.at("fuera").slice(0, 1).map((i) => ({ id: `recoger:${i.id}`, label: `Recoger ${i.name} (licencia)`, enabled: true }));
-      const deploy: StationAction = loaded.length
-        ? { id: "soltar", label: `Soltar ${loaded.map((i) => i.name).join(" y ")}`, enabled: true }
-        : { id: "soltar", label: "Soltar la carga", enabled: false, why: "La Bishop está vacía: guarda antes la sonda o un cubesat" };
-      return [deploy, ...stow, ...out];
+      const loaded = b.at("bishop");
+      return stow.length || out.length ? [...stow, ...out] : [{ id: "nada", label: "Sujetar una carga", enabled: false, why: loaded.length ? `Ya está sujeta: ${loaded.map((i) => i.name).join(" y ")}. Suéltala desde el puesto robótico de la Cupola` : "No queda nada en el almacén para sacar" }];
     }
     if (a.kind !== "tripulacion") return [];
     const chores = (area: Parameters<StationCrew["choresAt"]>[0]) => this.d.crew.choresAt(area).slice(0, MAX_CHORES_ON_CARD).map((c) => ({ id: `chore:${c.id}`, label: c.title, enabled: true }));
@@ -117,7 +121,8 @@ export class StationLife {
       case "ejercicio":
         return chores("ejercicio");
       case "camarotes":
-        return [{ id: "dormir", label: "Dormir en un camarote", enabled: true }];
+        // Each astronaut has a crew quarter of her own; Doménica is alone, so the other three are free.
+        return f.id === OWN_BUNK ? chores("camarotes") : [{ id: "nada", label: "Dormir aquí", enabled: false, why: "Camarote libre: el tuyo es el 1, el de estribor" }];
       case "aseo":
         return [{ id: "asearse", label: "Asearse", enabled: true }];
     }
@@ -163,8 +168,6 @@ export class StationLife {
       }
       case "ajustes":
         return this.d.openSettings();
-      case "dormir":
-        return this.d.say(this.d.crew.rest(), 6);
       case "asearse":
         return this.d.say("Aseo con toallitas, champú sin aclarado y el UWMS: en 0 g el aire arrastra lo que en la Tierra cae", 5);
       case "viaje": {
@@ -185,7 +188,8 @@ export class StationLife {
   taskFacts(): { id: string; title: string; detail: string; category: "comida" | "salud"; area: string }[] {
     return this.d.crew.chores().map((c) => {
       const area = this.d.crew.areaOf(c);
-      return { id: c.id, title: c.title, detail: `${STATION_AREA_NAME[area]} · ${c.exercises.length} retos`, category: c.kind === "cocinar" ? "comida" : "salud", area };
+      // The task takes her to the fixture where it is done: her own sleeping bag for the night.
+      return { id: c.id, title: c.title, detail: `${STATION_AREA_NAME[area]} · ${c.exercises.length} retos`, category: c.kind === "cocinar" ? "comida" : "salud", area: area === "camarotes" ? OWN_BUNK : area };
     });
   }
 
@@ -197,14 +201,16 @@ export class StationLife {
     if (!chore || !session || this.d.duel.visible) return;
     const run = session.run;
     this.session = session;
-    const visual = this.d.stepVisual?.(chore, this.d.crew.areaOf(chore));
+    const area = this.d.crew.areaOf(chore);
+    const visual = this.d.stepVisual?.(chore, area === "camarotes" ? OWN_BUNK : area);
     const prev = this.d.duel.onClose;
     this.d.duel.onClose = () => {
       this.d.duel.onClose = prev;
       this.d.duel.onRightPick = undefined;
       visual?.clear();
       this.session = null;
-      if (run.status === "done") this.d.say(chore.kind === "cocinar" ? `${chore.title.replace(/^Cocinar /, "")}: hecho con la despensa de la estación` : "Hecho", 5);
+      if (run.status === "done" && chore.kind === "dormir") this.d.say("Duermes en tu camarote: el ventilador sopla y la luz está apagada. Despiertas más tranquila", 6);
+      else if (run.status === "done") this.d.say(chore.kind === "cocinar" ? `${chore.title.replace(/^Cocinar /, "")}: hecho con la despensa de la estación` : "Hecho", 5);
     };
     this.d.duel.show(
       {

@@ -22,11 +22,17 @@ describe("HAB-23 Starship's interior, «distribución nuestra», at true size", 
 
   it("has what a long crewed flight needs: galley, four ~2 m³ quarters, hygiene, T2, ARED, CEVIS, work, stowage, airlock", () => {
     const ids = plan.fixtures.map((f) => f.id);
-    for (const id of ["cocina", "camarotes", "aseo", "t2", "ared", "cevis", "puesto-trabajo", "almacen", "esclusa", "esterilla"]) expect(ids).toContain(id);
-    const cq = plan.fixtures.find((f) => f.id === "camarotes")!;
-    const each = (cq.size.x * cq.size.y * cq.size.z) / 4;
-    expect(each).toBeGreaterThan(1.8);
-    expect(each).toBeLessThan(2.4);
+    for (const id of ["cocina", "saco-1", "saco-2", "saco-3", "saco-4", "aseo", "t2", "ared", "cevis", "puesto-trabajo", "almacen", "esclusa", "esterilla"]) expect(ids).toContain(id);
+    // Four crew quarters one floats into (docs/design/compartimentos.md), ~2,1 m³ each, inside the round hull.
+    const cqs = plan.volumes.filter((v) => v.kind === "compartimento");
+    expect(cqs.map((v) => v.id)).toEqual(["camarote-1", "camarote-2", "camarote-3", "camarote-4"]);
+    for (const v of cqs) {
+      const m3 = 8 * v.half.x * v.half.y * v.half.z;
+      expect(m3).toBeGreaterThan(1.8);
+      expect(m3).toBeLessThan(2.4);
+      expect(Math.hypot(Math.abs(v.centre.x) + v.half.x, Math.abs(v.centre.z) + v.half.z)).toBeLessThanOrEqual(HULL_INNER_RADIUS_M);
+      expect(plan.fixtures.filter((f) => f.volume === v.id).map((f) => f.action.kind)).toEqual(["tripulacion"]);
+    }
   });
 
   it("carries its own life-support racks, the same kit as the station's (eclssFixtures), and the water-lined shelter", () => {

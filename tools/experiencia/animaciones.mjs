@@ -415,14 +415,14 @@ const INVENTORY = [
   "| Catálogo de especies (amistad y ayuda de colonias) | Terminal del catálogo, cubierta 2 | Ella en el terminal (programas en la mente) | Mismo motor que el AQH |",
   "| Reparaciones y preventivos del soporte vital | Bastidores de la Starship y de la ISS | Ella en el bastidor con la llave; las luces del procedimiento en el bastidor; los del techo, flotando bajo él | Sí (CDRA en la Starship y en la estación) |",
   "| Refinar, fabricar (pieza impresa), importar, ajustar un biorreactor | Máquinas de la estación | Ella en los estribos de cada máquina | Sí (el biorreactor solo con su módulo montado) |",
-  "| Ponerse el traje (EVA) | Escotilla delantera del LM | Ella en la escotilla revisando el traje paso a paso | Lo comprueba PX-31 al salir; la captura en PX-37 |",
+  "| Ponerse el traje (EVA) | Escotilla delantera del LM | Ella en la escotilla revisando el traje paso a paso | Lo comprueba PX-31 al salir (comprobado con capturas) |",
   "| Programar un viaje | Mesa de navegación de la cubierta de vuelo | El plan se dibuja en el mapa paso a paso | Sí |",
   "| Aterrizar el módulo o la sonda con un programa | Asiento del LM; mando de la sonda | El plan se dibuja sobre el suelo paso a paso | Sí |",
-  "| Cambiar o montar una pieza en la bahía | Bahía de la nave (pantalla de la estación) | **Pendiente**: la bahía es la vista del vehículo, sin ella; ver «Abierto» | No |",
+  "| Cambiar o montar una pieza en la bahía | Bahía de la nave (pantalla de la estación) | Ella en el CBM de nadir de Unity, donde el brazo atraca el módulo, con la llave paso a paso; ver «Abierto» | No (comprobado con capturas) |",
   "| Duelo de la mente, nano_net | Consola de la mente | Ficción que se queda (reglas §1.2): su escena es la mente, sin figura | No |",
   "| Dormir | Camarotes | Lo hace la rama `compartimentos-reales` | No |",
   "",
-  "**Abierto:** el reto de cambiar una pieza en la bahía no tiene aún a Doménica: en la ISS esos cambios los hace el brazo o un paseo espacial. Pregunta al diseñador: ¿se anima con Canadarm2 en la vista de la Cupola, o con ella en un paseo? El duelo de la mente y nano_net son la ficción que se queda y se juegan en su propia escena.",
+  "**Abierto:** el cambio de una pieza en la bahía se hace con Doménica en el CBM de Unity; en la ISS muchos de esos cambios los hace el brazo o un paseo espacial. Pregunta al diseñador: ¿se anima además con Canadarm2 en la vista de la Cupola, o con ella en un paseo? El duelo de la mente y nano_net son la ficción que se queda y se juegan en su propia escena.",
 ];
 
 /** Contact sheet (docs/qa/animaciones.md): one row per step. */

@@ -312,10 +312,13 @@ export abstract class WalkRoom<Id extends string> {
     if (d.lengthSq() < 1e-6) d.set(0, 0, -1);
     d.normalize();
     const right = new THREE.Vector3(-d.z, 0, d.x);
-    const look = stand.clone().addScaledVector(d, 0.3).setY(0.8);
-    const camera = look.clone().addScaledVector(d, -1.6).addScaledVector(right, 1.1).setY(1.65);
+    // Far and high enough that her head stays in the strip above the sheet (the walls are cut away).
+    const look = stand.clone().addScaledVector(d, 0.3).setY(0.95);
+    const camera = look.clone().addScaledVector(d, -2.0).addScaledVector(right, 1.2).setY(1.85);
     this.steps.begin({ stand, yaw: Math.atan2(d.x, d.z), camera, look, target });
     this.sheetLens(true);
+    // Signs would cover her in that strip (as in the station); they come back with the walk.
+    for (const sign of this.signs.values()) sign.visible = false;
     let picked = { index: -1, n: 0 };
     return {
       stepDone: (index) => {

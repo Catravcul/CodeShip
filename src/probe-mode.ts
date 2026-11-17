@@ -348,7 +348,8 @@ export class ProbeMode {
     const f = p.flight;
     const t = f.telemetry();
     const ship = f.ship;
-    const fuel = ship.propellantKg("Hydrazine");
+    // Juventas's butane (its cold-gas module); whatever the probe design carries.
+    const fuel = ship.propellants.reduce((a, k) => a + ship.propellantKg(k), 0);
     const bat = p.batteryWh / p.spec.batteryWh;
     const bay = p.bayRange();
     this.set(this.title, `${ship.name} · a distancia · ${p.status === "sin-sonda" ? "dispensadores vacíos" : `${p.inDeployers} de ${p.deployers} en sus dispensadores`}`);
@@ -359,15 +360,17 @@ export class ProbeMode {
       "sin-sonda": REAL_ONLY ? EMPTY_DEPLOYERS : "No quedan sondas: repón en la estación",
     }[p.status];
     const near = p.status === "en-vuelo" && t.clearance < 60;
-    this.set(
-      this.tele,
+    if (p.status === "sin-sonda") this.set(this.tele, `<span><b>${status}</b></span>`);
+    else
+      this.set(
+        this.tele,
       `<span><b>${status}</b></span>
        <span>${esc(d.targetName())} a ${dist(Math.max(0, t.distanceToSurface))}</span>
        <span>cierre ${fmt(t.closingSpeed)} m/s</span>
-       <span>Δv ${fmt(t.deltaV, 0)} m/s · ${fmt(fuel, 2)} kg de hidracina</span>
+       <span>Δv ${fmt(t.deltaV, 0)} m/s · ${fmt(fuel * 1000, 0)} g de ${REAL_ONLY ? "butano" : "propelente"}</span>
        <span class="${bat < 0.2 ? "warn" : ""}">batería ${Math.round(bat * 100)} %</span>
        <span class="${t.hullIntegrity < 0.5 ? "bad" : ""}">casco ${Math.round(t.hullIntegrity * 100)} %</span>
-       <span>bahía a ${dist(bay.distanceM)}</span>
+       <span>${REAL_ONLY ? "nodriza" : "bahía"} a ${dist(bay.distanceM)}</span>
        ${warp > 1 || warpNote ? `<span>${warpNote || `tiempo ×${warp}`}</span>` : ""}
        ${near ? `<span class="warn">${t.tiltDeg > 30 ? `Gira la panza al suelo (${fmt(t.tiltDeg, 0)}°): asistente${settings.key(" con G")}` : "Posa las patas a menos de 0,10 m/s"}</span>` : ""}`,
     );

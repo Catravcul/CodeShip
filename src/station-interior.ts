@@ -16,6 +16,7 @@ import { buildRails, FloatingBody, motionLabel } from "./adapters/three/interior
 import { StepShow, type StepFrame } from "./adapters/three/interior/step-show";
 import { auditStep, clearOfScene, hitOfScene, sightOfScene, type StepAudit } from "./adapters/three/interior/step-audit";
 import type { StepAct, StepVisual } from "@modules/chores/domain/step-visual";
+import type { AsanaData } from "@modules/body/domain/asana";
 import type { EclssRackModel, RackState } from "./adapters/three/eclss-racks";
 import { RootMenu } from "./ui/root-menu";
 import { ICON } from "./ui/icons";
@@ -477,7 +478,9 @@ export class StationInteriorMode {
   private stepFrame(f: Fixture): StepFrame | undefined {
     const n = FACE_NORMAL[f.face];
     const vol = this.interior.volume(f.volume);
-    if (Math.abs(n.y) > 0.5 || !vol) return undefined;
+    if (!vol) return undefined;
+    if (f.face === "suelo") return this.floorFrame(f, vol);
+    if (Math.abs(n.y) > 0.5) return undefined;
     const d = new THREE.Vector3(n.x, 0, n.z).normalize();
     const right = new THREE.Vector3(-d.z, 0, d.x);
     const target = new THREE.Vector3(f.at.x, f.at.y, f.at.z);
@@ -510,6 +513,62 @@ export class StationInteriorMode {
     }
     if (!found) cam.copy(look).addScaledVector(d, -Math.max(0.4, off)).addScaledVector(right, 0.6).setY(stand.y + 1.6);
     return { stand, yaw: Math.atan2(d.x, d.z), camera: cam, look, target };
+  }
+
+  /**
+   * A machine on the deck (the T2 treadmill): she stands on it, feet in its harness, facing along the module;
+   * the camera beside it in the aisle, at chest height, looking at her (never through a wall).
+   */
+  private floorFrame(f: Fixture, vol: { centre: Vec3; half: Vec3 }): StepFrame {
+    const floor = vol.centre.y - vol.half.y + 0.05;
+    const alongX = vol.half.x >= vol.half.z;
+    const d = alongX ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 0, 1);
+    const side = alongX ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(1, 0, 0);
+    const stand = new THREE.Vector3(f.at.x, Math.max(floor, f.at.y + f.size.y / 2), f.at.z);
+    const look = stand.clone().setY(stand.y + 0.95);
+    const target = stand.clone().addScaledVector(d, 0.4).setY(stand.y + 0.9);
+    const sight = sightOfScene(this.scene, [this.steps.root, this.rig]);
+    const cam = new THREE.Vector3();
+    let found = false;
+    for (const back of [2.2, 1.9, 1.6, 1.3, 1.0, 0.8])
+      for (const s of [1, -1]) {
+        if (found) break;
+        cam.copy(look).addScaledVector(side, s * back).addScaledVector(d, 0.6).setY(stand.y + 1.45);
+        found = this.interior.fits(new Vec3(cam.x, cam.y, cam.z), 0.1, false) && sight(cam, look);
+      }
+    if (!found) cam.copy(look).addScaledVector(side, 0.8).setY(stand.y + 1.4);
+    return { stand, yaw: Math.atan2(d.x, d.z), camera: cam, look, target };
+  }
+
+  /**
+   * Yoga on a mat (reglas.md §4.2): she floats in front of it, feet in its straps, and each right answer takes
+   * her into its posture (the asanas of the body module, as on the ring); seen from the aisle. `asanaOf(i)` is
+   * step i's asana.
+   */
+  yogaVisual(id: string, asanaOf: (index: number) => AsanaData | undefined): StepVisual | undefined {
+    const f = this.interior.fixture(id);
+    const frame = f && this.stepFrame(f);
+    if (!frame) return undefined;
+    this.steps.begin(frame);
+    this.steps.holdPose = true;
+    const first = asanaOf(-1);
+    if (first) this.avatar.asana(first);
+    this.frameForSheet(true);
+    for (const sg of this.rooms.signs) sg.visible = false;
+    return {
+      stepDone: (index) => {
+        const a = asanaOf(index);
+        if (a) this.avatar.asana(a);
+        if (this.steps.framing) this.steps.play([{ action: "postura", place: "objetivo" }]);
+      },
+      finish: () => {},
+      clear: () => {
+        this.steps.clear();
+        this.frameForSheet(false);
+        this.avatar.pose(this.lotus ? "lotus" : "float");
+        this.body.reset();
+      },
+    };
   }
 
   /**
@@ -802,6 +861,19 @@ export class StationInteriorMode {
   /** Sit in lotus on the mat (the settings open) or float up again. */
   sitLotus(on: boolean): void {
     this.lotus = on;
+    // On the mat, seen from the aisle over the settings sheet (in first person she would see nothing of it).
+    const mat = this.interior.plan.fixtures.find((f) => f.action.kind === "tripulacion" && f.action.area === "esterilla");
+    const frame = on && mat ? this.stepFrame(mat) : undefined;
+    if (frame) {
+      this.steps.begin(frame);
+      this.steps.holdPose = true;
+      this.frameForSheet(true);
+      for (const sg of this.rooms.signs) sg.visible = false;
+    } else if (!on && this.steps.framing && this.steps.holdPose) {
+      this.steps.clear();
+      this.frameForSheet(false);
+      this.body.reset();
+    }
     this.avatar.pose(on ? "lotus" : "float");
   }
 

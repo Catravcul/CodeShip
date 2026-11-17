@@ -28,7 +28,8 @@ const FOODS: readonly (readonly [FoodTint, RegExp])[] = [
   ["verdura", /lechuga|tomate|rabano|vegetal|zanahoria|cebolla/],
 ];
 
-const foodOf = (text: string): FoodTint | undefined => FOODS.find(([, r]) => r.test(text))?.[0];
+/** The food tint a text names (first match wins), or undefined. */
+export const foodTintOf = (text: string): FoodTint | undefined => FOODS.find(([, r]) => r.test(text))?.[0];
 
 /** Fresh food lives in the fridge; dry stores in the cupboard. */
 const FRESH: ReadonlySet<FoodTint> = new Set(["huevo", "carne", "verdura", "fresa", "higo", "fruta", "tofu", "chile", "papa"]);
@@ -52,7 +53,7 @@ export interface KitchenContext {
  * Every step of the data resolves to an action (tests); an unknown verb falls back to a gesture at the counter.
  */
 export function kitchenVisuals(steps: readonly string[], ctx: KitchenContext = {}): StepAct[] {
-  const base = (ctx.ingredients ?? []).map((id) => foodOf(normalizeStep(id.replace(/-/g, " ")))).find((f) => f) ?? "generico";
+  const base = (ctx.ingredients ?? []).map((id) => foodTintOf(normalizeStep(id.replace(/-/g, " ")))).find((f) => f) ?? "generico";
   const mill = ctx.machine === "molino";
   const soy = ctx.machine === "procesador-soja";
   let hot: "sarten" | "olla" | "bandeja" | undefined;
@@ -62,7 +63,7 @@ export function kitchenVisuals(steps: readonly string[], ctx: KitchenContext = {
   function visual(raw: string): StepAct {
     const s = normalizeStep(raw);
     const action: StepAction = OVERRIDES[s] ?? classifyStep(raw) ?? "gesto";
-    food = foodOf(s) ?? food;
+    food = foodTintOf(s) ?? food;
     const v = (place: KitchenPlace, vessel?: string, heat?: boolean): StepAct => ({ action, place, tint: food, ...(vessel ? { vessel } : {}), ...(heat ? { heat } : {}) });
     const panWord = /sarten|plancha/.test(s);
     switch (action) {

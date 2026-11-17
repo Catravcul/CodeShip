@@ -891,7 +891,7 @@ const stationLife = new StationLife({
   openSettings: () => {
     settingsFrom = "estacion";
     stationInside.sitLotus(true);
-    settingsPanel.open("Doménica en loto en la esterilla del Nodo 1 (estación)");
+    settingsPanel.open("Doménica en loto en la esterilla de Destiny (estación)");
   },
   say: (t, sec) => stationInside.say(t, sec),
   lookOutside: (show) => stationOutside.open(show),
@@ -913,11 +913,11 @@ const stationLife = new StationLife({
     : {}),
 });
 // Real life support (docs/design/soporte-vital.md): the station hosts the racks for now; Doménica weighs 58 kg.
-const lifeSupport = new LifeSupportGame({ duel: duelView, say: (t, sec) => stationInside.say(t, sec), rack: (id) => stationInside.rack(id), frame: (at) => stationInside.frame(at), unframe: () => stationInside.unframe(), openTasks: () => taskBoard.open(), crewAboard: () => (crewIn() === "estacion" ? 1 : 0) }, STATION_LIFE_SUPPORT, 58);
+const lifeSupport = new LifeSupportGame({ duel: duelView, say: (t, sec) => stationInside.say(t, sec), rack: (id) => stationInside.rack(id), frame: (at) => stationInside.frame(at), unframe: () => stationInside.unframe(), act: (id, acts) => stationInside.stepVisual(id, acts), openTasks: () => taskBoard.open(), crewAboard: () => (crewIn() === "estacion" ? 1 : 0) }, STATION_LIFE_SUPPORT, 58);
 if (REAL_ONLY) stationPantry = lifeSupport.pantry;
 // The Starship's own racks and supplies (docs/design/nodriza-starship.md), on the same clock. Each vehicle
 // counts only the crew aboard it: Doménica is in one of them at a time, or in the lander (crewIn).
-if (starship) starship.lifeSupport = new LifeSupportGame({ duel: duelView, say: (t, sec) => starship.say(t, sec ?? 4), rack: (id) => starship.mode.rack(id), frame: (at) => starship.mode.frame(at), unframe: () => starship.mode.unframe(), openTasks: () => taskBoard.open(), crewAboard: () => (crewIn() === "nodriza" ? 1 : 0) }, STARSHIP_LIFE_SUPPORT, 58);
+if (starship) starship.lifeSupport = new LifeSupportGame({ duel: duelView, say: (t, sec) => starship.say(t, sec ?? 4), rack: (id) => starship.mode.rack(id), frame: (at) => starship.mode.frame(at), unframe: () => starship.mode.unframe(), act: (id, acts) => starship.mode.stepVisual(id, acts), openTasks: () => taskBoard.open(), crewAboard: () => (crewIn() === "nodriza" ? 1 : 0) }, STARSHIP_LIFE_SUPPORT, 58);
 /** The station's interior as it is drawn and walked: its real size at the presentation layer's scale (and spread). */
 const playInterior = () => {
   const plan = stationInteriorPlan(stationOutfit.layout, stationOutfit);

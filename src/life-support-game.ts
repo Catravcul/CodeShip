@@ -1,5 +1,5 @@
 import { ChoreRun, type Chore } from "@modules/chores/domain/chore";
-import type { StepVisual } from "@modules/chores/domain/step-visual";
+import type { StepAct, StepVisual } from "@modules/chores/domain/step-visual";
 import { ECLSS_MACHINES, ECLSS_RACKS, failureMode } from "@modules/life-support/data/eclss-machines";
 import { eclssChore, eclssChores, failureOfChore, serviceChore, serviceOfChore } from "@modules/life-support/application/eclss-chores";
 import { CargoResupply } from "@modules/life-support/application/cargo-resupply";
@@ -54,6 +54,11 @@ export interface LifeSupportGameDeps {
   /** Frame a point of the scene above the challenge sheet while the repair is open, and stop. */
   frame?(at: { x: number; y: number; z: number }): void;
   unframe?(): void;
+  /**
+   * Doménica at the rack doing the procedure (reglas.md §4.2): a figure visual at fixture `fixtureId` whose step
+   * `i` has `acts(i)`. When there is one, the camera follows her instead of `frame`.
+   */
+  act?(fixtureId: string, acts: (index: number) => readonly StepAct[]): StepVisual | undefined;
   openTasks(): void;
   /**
    * How many of the crew are aboard this vehicle now (Doménica is in one vehicle at a time, or in the
@@ -280,9 +285,21 @@ export class LifeSupportGame {
     // Ill (CO₂, hypoxia, thirst, heat) she has one try less (game value; NASA links CO₂ and dehydration to worse concentration).
     const run = new ChoreRun(chore, Math.max(1, 2 - this.exposure.mistakePenalty(air)));
     this.session = { chore, run };
-    const visual = this.visual(f.id, fixtureOf(f.machine), f.steps.length);
+    const blocks = f.steps.length;
+    const lamps = this.visual(f.id, fixtureOf(f.machine), blocks);
+    // Her hands at the rack: the procedure's blocks with the wrench, then the check of the value on its panel.
+    const fix: StepAct = { action: "reparar", place: "objetivo", tint: "chispas" };
+    const figure = this.d.act?.(fixtureOf(f.machine), (i) => (i === 0 ? Array.from({ length: blocks }, () => fix) : [{ action: "revisar", place: "objetivo" }]));
+    const visual: StepVisual = figure
+      ? {
+          stepDone: (i) => (lamps.stepDone(i), figure.stepDone(i)),
+          partDone: (i, part) => (lamps.partDone?.(i, part), figure.partDone?.(i, part)),
+          finish: () => (lamps.finish(), figure.clear()),
+          clear: () => (lamps.clear(), figure.clear()),
+        }
+      : lamps;
     const model = this.d.rack(fixtureOf(f.machine));
-    if (model) this.d.frame?.(model.focus(PART_OF_FAILURE[f.id] ?? ""));
+    if (model && !figure) this.d.frame?.(model.focus(PART_OF_FAILURE[f.id] ?? ""));
     const prev = this.d.duel.onClose;
     const prevPick = this.d.duel.onRightPick;
     this.d.duel.onRightPick = (exId, slot) => {

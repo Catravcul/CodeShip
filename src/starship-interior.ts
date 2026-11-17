@@ -22,6 +22,7 @@ import { eclssRackModel, mountOnWall, type EclssRackModel } from "./adapters/thr
 import type { LifeSupportGame } from "./life-support-game";
 import { StationInteriorMode, type StationAction } from "./station-interior";
 import type { DuelView, SessionText } from "./ui/duel-view";
+import { crewStepVisual } from "./station-steps";
 import "./ui/starship-interior.css";
 
 /** Where each kind of chore is done on Starship's decks (fixture ids of data/starship-interior.ts). */
@@ -34,6 +35,8 @@ const AREA_NAME: Readonly<Record<CrewArea, string>> = {
   esterilla: "Esterilla (cubierta 1)",
 };
 const MAX_ON_CARD = 3;
+/** The machine of each workout's device (data/exercise.ts): the T2, the CEVIS and the ARED of deck 3. */
+const DEVICE_FIXTURE: Readonly<Record<string, string>> = { cinta: "t2", bicicleta: "cevis", fuerza: "ared" };
 /** The fixtures that host the sanctuary's rack slots (data/starship-interior.ts). */
 const RACK_FIXTURE: Readonly<Record<RackSlotId, string>> = { "rack-catalogo": "catalogo", "rack-acuatico": "habitat-acuatico" };
 /** The aquatic habitat is a rack bay (JAXA AQH), not the ring's 1,6 m tank: its model drawn at this fraction. */
@@ -269,7 +272,7 @@ export class StarshipInterior {
     }
     const c = this.findChore(id);
     if (!c) return false;
-    const at = this.crew.chore(id) ? (FIXTURE_OF[c.kind] ?? "cocina") : this.animalFixture(c);
+    const at = this.fixtureOf(c);
     if (!this.mode.goToFixture(at, () => this.startChore(id))) this.startChore(id);
     return true;
   }
@@ -344,9 +347,13 @@ export class StarshipInterior {
     if (!chore || !session || this.d.duel.visible) return;
     const run = session.run;
     this.session = session;
+    // Each right step acted out where it is done (reglas.md §4.2): the galley, the mat, the machine, the rack.
+    const visual = crewStepVisual(this.mode, chore, this.fixtureOf(chore));
     const prev = this.d.duel.onClose;
     this.d.duel.onClose = () => {
       this.d.duel.onClose = prev;
+      this.d.duel.onRightPick = undefined;
+      visual?.clear();
       this.session = null;
       if (run.status === "done") this.say(chore.kind === "cocinar" ? `${chore.title.replace(/^Cocinar /, "")}: listo, como en la ISS` : "Hecho", 5);
     };
@@ -365,8 +372,28 @@ export class StarshipInterior {
         maxLives: run.maxMistakes,
       },
       choreText(chore),
-      (ans) => ({ ok: session.answer(ans) }),
+      (ans) => {
+        const index = run.step;
+        const ok = session.answer(ans);
+        if (ok) visual?.stepDone(index);
+        return { ok };
+      },
     );
+    // «Paso a paso»: each right pick is acted out at once.
+    if (visual)
+      this.d.duel.onRightPick = (pick, slot) => {
+        if (run.current?.id === pick) visual.partDone?.(run.step, slot);
+      };
+  }
+
+  /** Where a chore is done aboard: its crew area's fixture (a workout at its own machine) or its rack. */
+  private fixtureOf(c: Chore): string {
+    if (!this.crew.chore(c.id)) return this.animalFixture(c);
+    if (c.kind === "ejercicio") {
+      const device = WORKOUTS.find((w) => w.id === c.targetId)?.device;
+      return (device && DEVICE_FIXTURE[device]) ?? "t2";
+    }
+    return FIXTURE_OF[c.kind] ?? "cocina";
   }
 
   /** Which deck she is on (for checks). */

@@ -20,3 +20,5 @@
 .settings-sheet.set-hud .set-row { background: #020a12d9; border-color: #7fdcff55; }
 .settings-sheet.set-hud .set-top { padding: 6px 150px 6px 10px; background: #020a12d9; border-radius: 10px; }
 body.in-settings .vstick, body.in-settings .zone-btn, body.in-settings .station-btn, body.in-settings .room-ui .cab-machine { display: none !important; }
+/* Sitting on the mat: her strip above the sheet shows her, not the room's labels and notices. */
+body.in-settings .room-ui .cab-where, body.in-settings .room-ui .cab-toast, body.in-settings .sti-ui .cab-where, body.in-settings .sti-ui .cab-toast, body.in-settings .sts-ui .cab-where, body.in-settings .sts-ui .cab-toast { display: none !important; }

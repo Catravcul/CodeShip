@@ -581,7 +581,7 @@ export class StationInteriorMode {
     const body = base.stand.clone().setY(base.stand.y + 0.6);
     const sight = sightOfScene(this.scene, [this.steps.root, this.rig]);
     const cam = new THREE.Vector3();
-    for (const side of [2.8, -2.8, 2.4, -2.4, 2.0, -2.0, 1.6, -1.6])
+    for (const side of [2.0, -2.0, 2.4, -2.4, 1.6, -1.6, 2.8, -2.8])
       for (const back of [0.9, 0.6, 0.3]) {
         cam.copy(body).addScaledVector(right, side).addScaledVector(d, -back).setY(base.stand.y + 1.05);
         if (this.interior.fits(new Vec3(cam.x, cam.y, cam.z), 0.1, false) && sight(cam, body)) return { ...base, camera: cam.clone(), look: body };

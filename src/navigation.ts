@@ -115,13 +115,13 @@ export class NavigationMode {
     private readonly duel: DuelView,
     opts: { title: string; boundaryRadiusM: number; rocks: readonly Rock[]; shipPosition(): Vec3; shipNose(): Vec3; carrierPosition?(): Vec3 },
   ) {
-    this.map = new NavMap(root, { nav, ...opts, onProgram: () => this.program(), onHand: () => this.flash(`Pilotaje manual de la Starship hacia ${nav.target.name}: da el empuje con +0,1 m/s`, "done") });
+    this.map = new NavMap(root, { nav, ...opts, onProgram: () => this.program(), onHand: () => this.flash(`Pilotaje manual de la ${REAL_ONLY ? "Starship" : "nodriza"} hacia ${nav.target.name}: da el empuje con +0,1 m/s`, "done") });
     // Hand flying the mothership (reglas.md §3.6): her speed commands, in short translation burns.
     this.hand = document.createElement("div");
     this.hand.className = "carrier-hand hidden";
     this.hand.setAttribute("role", "group");
     this.hand.setAttribute("aria-label", "Pilotaje manual de la nave");
-    this.hand.innerHTML = `<div class="ch-read"></div><div class="ch-btns"><button data-dv="-0.1" aria-label="Frenar 0,1 m/s">−0,1 m/s</button><button data-dv="stop" aria-label="Parar la nave">Parar</button><button data-dv="0.1" aria-label="Acelerar 0,1 m/s">+0,1 m/s</button></div><div class="ch-note">Mandos de la Starship: en desarrollo (SpaceX no los ha publicado). Encendidos cortos, como en las operaciones de proximidad</div>`;
+    this.hand.innerHTML = `<div class="ch-read"></div><div class="ch-btns"><button data-dv="-0.1" aria-label="Frenar 0,1 m/s">−0,1 m/s</button><button data-dv="stop" aria-label="Parar la nave">Parar</button><button data-dv="0.1" aria-label="Acelerar 0,1 m/s">+0,1 m/s</button></div><div class="ch-note">${REAL_ONLY ? "Mandos de la Starship: en desarrollo (SpaceX no los ha publicado). " : "Mandos de la nodriza: en desarrollo. "}Encendidos cortos, como en las operaciones de proximidad</div>`;
     root.appendChild(this.hand);
     this.handRead = this.hand.querySelector(".ch-read")!;
     this.hand.addEventListener("click", (e) => {
@@ -209,7 +209,7 @@ export class NavigationMode {
       if (nav.status === "autopilot" && this.lastStatus === "carrier") this.flash("La nodriza ha aparcado: el módulo de aterrizaje se desacopla y sigue solo", "done");
       if (nav.status === "docked")
         this.flash(this.lastStatus === "carrier" ? this.berthedText(nav.target.name, nav.carrying) : `Módulo acoplado a ${nav.target.name}`, "done", 10);
-      if (nav.status === "manual" && this.lastStatus === "carrier" && nav.parkedByHand) this.flash(`La Starship ha aparcado junto a ${nav.target.name}: baja en el módulo desde el puesto del comandante, a mano o con un programa`, "done", 10);
+      if (nav.status === "manual" && this.lastStatus === "carrier" && nav.parkedByHand) this.flash(`La ${REAL_ONLY ? "Starship" : "nodriza"} ha aparcado junto a ${nav.target.name}: baja en el módulo desde el puesto del comandante, a mano o con un programa`, "done", 10);
       if (nav.status === "manual" && this.lastStatus === "docking") this.flash("Acople cancelado: tienes los mandos", "bad");
       if (nav.status === "failed") this.flash("El plan no compila: vuela a mano o vuelve a programarlo desde el mapa de la nave de viaje", "bad");
       if (nav.status === "manual" && this.lastStatus === "autopilot") this.flash("Mando manual: el piloto automático se ha desconectado", "bad");
@@ -259,9 +259,9 @@ export class NavigationMode {
         : r < 0
           ? "Te has pasado: da empuje hacia atrás (−)"
           : v <= 0
-            ? "Da empuje (+): 0,4 m/s como Hayabusa2"
+            ? REAL_ONLY ? "Da empuje (+): 0,4 m/s como Hayabusa2" : "Da empuje (+)"
             : `Para en ${km(Math.max(0, r - window_))}: llegas en ${duration(r / v)} de vuelo`;
-    const html = `<b>Starship a mano → ${esc(this.nav.target.name)}</b><span>${r >= 0 ? "faltan" : "pasada"} ${km(Math.abs(r))} · ${num(v, 2)} m/s · Δv gastado ${num(m.spentMs, 1)} m/s</span><span class="ch-hint">${hint}</span>`;
+    const html = `<b>${REAL_ONLY ? "Starship" : "Nodriza"} a mano → ${esc(this.nav.target.name)}</b><span>${r >= 0 ? "faltan" : "pasada"} ${km(Math.abs(r))} · ${num(v, 2)} m/s · Δv gastado ${num(m.spentMs, 1)} m/s</span><span class="ch-hint">${hint}</span>`;
     if (this.handRead.innerHTML !== html) this.handRead.innerHTML = html;
   }
 }

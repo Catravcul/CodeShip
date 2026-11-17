@@ -162,7 +162,7 @@ export async function catalogo(j) {
   // 4. Adopt Biomphalaria and medaka for the empty aquatic habitat.
   await j.tap(".species-catalog .sc-adopt", "Adoptar Biomphalaria");
   const bioSt = (await j.texts(".species-catalog .sc-status"))[0] ?? "";
-  j.check("al adoptar los caracoles, vienen de camino con su tránsito real", /En camino · \d/.test(bioSt), bioSt);
+  j.check("al adoptar los caracoles, vienen de camino con su tránsito real", /En camino: llega en [\d,]+ h de a bordo \(\d+:\d\d reales\)/.test(bioSt), bioSt);
   await j.tap(".species-catalog [data-back]", "‹ Catálogo");
   await j.tap('.species-catalog [data-area="habitat-acuatico"]', "Hábitat: Hábitat acuático");
   await j.tap('.species-catalog [data-group="peces"]', "Peces");

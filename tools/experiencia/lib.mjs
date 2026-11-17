@@ -86,10 +86,38 @@ export class Journey {
       // A finger on a phone, the mouse on a desktop.
       if (this.opts.mobile === false) await loc.click({ timeout: 15000 });
       else await loc.tap({ timeout: 15000 });
+      // A hatch's action (in, out, up, down) starts a passage once she is at it.
+      if (/data-act="(entrar|salir|subir|bajar)/.test(selector)) await this.throughHatches();
       return true;
     } catch (e) {
       this.check(`se puede tocar «${what}»`, false, e.message.split("\n")[0]);
       return false;
+    }
+  }
+
+  /**
+   * Going through a hatch takes its time (the leaf swings open, she floats through, docs/design/viajes.md
+   * «Trayectos por dentro»): after a tap on a hatch's action, wait until she is through on the other side.
+   * Not during «Ir», whose journey is checked step by step.
+   */
+  async throughHatches() {
+    const passing = () =>
+      this.page.evaluate(() => {
+        const c = window.codeship;
+        if (!c || c.journey?.active) return false;
+        return [c.cabin, c.bridge, c.starship?.active ? c.starship.mode : null, c.stationInside?.active ? c.stationInside : null].some((r) => !!r?.throughHatch);
+      });
+    // She may first walk to the hatch: give the passage a moment to start.
+    const t0 = Date.now();
+    while (!(await passing().catch(() => false))) {
+      if (Date.now() - t0 > 4000) return;
+      await this.page.waitForTimeout(100);
+    }
+    // Two quiet looks in a row: one room hands her to the next, which shows her coming through its own hatch.
+    let quiet = 0;
+    while (quiet < 2 && Date.now() - t0 < 20000) {
+      await this.page.waitForTimeout(150);
+      quiet = (await passing().catch(() => false)) ? 0 : quiet + 1;
     }
   }
 

@@ -342,7 +342,7 @@ body.in-zero-g .walk-stick { display: none !important; }
 /* Mothership docking (docs/design/nave-nodriza.md) */
 .banner.docking { color: #ffe7a8; text-shadow: 0 0 6px #ffb34788; }
 .bay-tabs { position: fixed; top: 52px; left: 12px; z-index: 7; display: flex; gap: 6px; }
-.bay-tabs button { padding: 7px 12px; font: inherit; font-size: 13px; color: #bfefff; background: #0b2a36cc; border: 1px solid #7fdcff66; border-radius: 10px; }
+.bay-tabs button { min-height: 44px; padding: 7px 12px; font: inherit; font-size: 13px; color: #bfefff; background: #0b2a36cc; border: 1px solid #7fdcff66; border-radius: 10px; }
 .bay-tabs button.on { background: #7fdcff; color: #06202b; border-color: #7fdcff; }
 body.in-duel .bay-tabs { display: none !important; }
 

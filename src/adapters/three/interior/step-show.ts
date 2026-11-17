@@ -822,25 +822,20 @@ export class StepShow {
         const at = vessel();
         const cut = v.action === "cortar";
         const pieces = cut ? 1 + Math.min(3, Math.floor(t * 4)) : 1;
-        // In a row across the board: along the counter's depth in the galley, otherwise across her front
-        // (to her sides), so no piece goes toward the machine or behind her.
         const kitchen = !!this.df!.kitchen;
-        // In the ring's galley the row runs along the counter's depth. At a machine or a 0 g galley it runs from
-        // the work toward the camera, with the tool at its end: neither her body nor the machine hides a piece
-        // or the tool (PX-20: the printed part's supports and the package's scissors were hidden).
-        const toCam = this.tmp.set(this.df!.camera.x - at.x, 0, this.df!.camera.z - at.z);
-        const len = Math.max(1e-3, toCam.length());
-        const rx = kitchen ? 1 : toCam.x / len;
-        const rz = kitchen ? 0 : toCam.z / len;
-        const step = 0.04;
-        const start = kitchen ? -0.06 : 0.03;
+        // In the ring's galley the row runs along the counter's depth. Elsewhere (a machine, a 0 g galley) the
+        // pieces float up from the work, which she holds clear of her body, and the tool is just over it: her
+        // arm, her body or the machine do not hide them (PX-20: the printed part's supports and the package's
+        // scissors were hidden behind her hand).
+        const toCam = this.tmp.set(this.df!.camera.x - at.x, this.df!.camera.y - at.y, this.df!.camera.z - at.z).normalize();
         for (let i = 0; i < pieces; i++) {
-          const f = this.show(food[i]!, at.x + (start + i * step) * rx, at.y + 0.02, at.z + (start + i * step) * rz);
+          const f = kitchen
+            ? this.show(food[i]!, at.x - 0.06 + i * 0.04, at.y + 0.02, at.z)
+            : this.show(food[i]!, at.x + toCam.x * 0.05 + (i - 1) * 0.035 * toCam.z, at.y + 0.07 + 0.035 * i, at.z + toCam.z * 0.05 - (i - 1) * 0.035 * toCam.x);
           if (!cut) f.scale.set(0.06, 0.02 + 0.012 * Math.abs(Math.sin(this.clock * 7)), 0.05);
         }
-        // The tool: by the board in the ring's galley; elsewhere past the last piece, toward the camera.
-        const reach = start + pieces * step + 0.03;
-        const tool = kitchen ? this.w.set(at.x + 0.02, at.y + 0.03, at.z + 0.06) : this.w.set(at.x + reach * rx, at.y + 0.05, at.z + reach * rz);
+        // The tool: by the board in the ring's galley; elsewhere over the work, a little toward the camera.
+        const tool = kitchen ? this.w.set(at.x + 0.02, at.y + 0.03, at.z + 0.06) : this.w.set(at.x + toCam.x * 0.08, at.y + 0.05 + toCam.y * 0.08, at.z + toCam.z * 0.08);
         if (cut && v.vessel === "bolsa") {
           const sc = this.show(p.scissors, tool.x, tool.y, tool.z);
           sc.rotation.y = this.df!.yaw + 0.3 * Math.sin(this.clock * 12);

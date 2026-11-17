@@ -560,9 +560,11 @@ export class StationInteriorMode {
     const alongX = vol.half.x >= vol.half.z;
     const d = alongX ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 0, 1);
     const side = alongX ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(1, 0, 0);
-    const target = new THREE.Vector3(f.at.x, ceiling - 0.05, f.at.z);
+    // Its underside (a rack hangs a metre and more from the overhead): her hands at it, her head below it.
+    const bottom = Math.min(ceiling - 0.05, f.at.y - f.size.y / 2);
+    const target = new THREE.Vector3(f.at.x, bottom, f.at.z);
     // Faced along the module, a short step back from under its middle (its front is at her hands).
-    const stand = target.clone().addScaledVector(d, -0.45).setY(Math.max(floor, ceiling - 1.75));
+    const stand = target.clone().addScaledVector(d, -0.45).setY(Math.max(floor, bottom - 1.75));
     const look = target.clone().setY(target.y - 0.45);
     const sight = sightOfScene(this.scene, [this.steps.root, this.rig]);
     const cam = new THREE.Vector3();

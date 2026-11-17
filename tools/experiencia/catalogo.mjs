@@ -18,7 +18,8 @@ async function capture(j, label) {
 
 /** «Tareas» → «Catálogo de especies» (the task list's way in). */
 export async function abrirCatalogo(j) {
-  await j.tap(".tasks-btn", "Tareas");
+  // The flight view's button, or the pinned one of the Starship's or the station's interior.
+  await j.tap(".tasks-btn:visible, .sts-tasks:visible, .sti-tasks:visible", "Tareas");
   await j.page.waitForTimeout(400);
   await j.tap(".task-board .tb-catalog", "Catálogo de especies");
   await j.page.waitForTimeout(400);
@@ -99,7 +100,8 @@ export async function catalogo(j) {
   j.check("partida nueva: ni gatos, ni perros, ni gallinas, ni peces ni caracoles", Object.values(world).every((n) => n === 0), JSON.stringify(world));
   const empty = await hudStatus(j);
   j.check("el estado del acuario dice que no hay peces y dónde adoptarlos", /sin peces \(adóptalos en el catálogo\)/.test(empty), empty);
-  await j.tap(".tasks-btn", "Tareas");
+  // The flight view's button, or the pinned one of the Starship's or the station's interior.
+  await j.tap(".tasks-btn:visible, .sts-tasks:visible, .sti-tasks:visible", "Tareas");
   await p.waitForTimeout(400);
   const animalTasks = await p.evaluate(() => window.codeship.interior.choreFacts().filter((f) => f.category === "animales").map((f) => f.title));
   j.check("la lista de tareas no tiene ninguna de cuidar animales (solo el cristal del acuario: tiene algas aunque esté vacío)", animalTasks.every((t) => t === "Limpiar el cristal del acuario"), animalTasks.join(" | "));
@@ -163,7 +165,8 @@ export async function catalogo(j) {
   j.check("llegan 8 medakas y 4 caracoles al tanque, y se ven en 3D", arrived.fish === 8 && arrived.snails === 4 && arrived.drawnFish === 8 && arrived.drawnSnails === 4, JSON.stringify(arrived));
 
   // 6. Befriend them: feed the school, then the mind programs, from the task list and the tank.
-  await j.tap(".tasks-btn", "Tareas");
+  // The flight view's button, or the pinned one of the Starship's or the station's interior.
+  await j.tap(".tasks-btn:visible, .sts-tasks:visible, .sti-tasks:visible", "Tareas");
   await p.waitForTimeout(400);
   await j.tap('.task-board .tb-task:has-text("Dar de comer a las medakas") .tb-go', "Ir: Dar de comer a las medakas");
   await j.waitDuel(120000);

@@ -93,6 +93,7 @@ body.in-duel .carrier-hand { display: none; }
 body.in-carrier-hand .ctx-dock { bottom: calc(150px + env(safe-area-inset-bottom)); }
 /* Flying by hand from the deck's navigation page: the destination card gives way to the hand panel. */
 body.in-carrier-hand .nav-map .nav-card { display: none; }
+.nav-map .nav-hand-hint { margin: 4px 0 0; font-size: 12px; color: #9fc6d6; }
 /* The map's camera joystick (reglas.md §5.7), in the canvas's corner: the map turns only with it. */
 .nav-canvas .cam-stick.nav-look { position: absolute; left: 8px; right: auto; bottom: 8px; z-index: 2; }
 .nav-canvas .cam-stick.nav-look > .vstick { width: 88px; height: 88px; }

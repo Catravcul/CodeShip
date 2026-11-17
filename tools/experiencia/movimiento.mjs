@@ -123,7 +123,7 @@ export async function movimiento(j) {
   await j.tap(".tasks-btn", "Tareas");
   await p.waitForTimeout(400);
   // The task list has every task: the ring's chores are under Comida, Plantas, Animales, Salud, Nave.
-  await j.tap('.task-board [data-group="comida"]', "Comida");
+  await j.taskSettings({ group: "comida" });
   await j.tap(".task-board .tb-go", "Ir: primera tarea de comida");
   await p.waitForTimeout(500);
   const toast = (await j.texts(".interior-ui .toast"))[0] ?? "";

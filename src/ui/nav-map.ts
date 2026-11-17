@@ -45,6 +45,8 @@ export interface NavMapDeps {
   onProgram(): void;
   /** The mothership's trip flown by hand has started (the map has closed). */
   onHand?(): void;
+  /** Where the mothership is flown by hand instead, when not from the map (Starship's pilot seat). */
+  readonly handHint?: string;
 }
 
 /** How a target stands in Nevaeh's missions (modules/missions), for the marks on the map. */
@@ -304,6 +306,7 @@ export class NavMap {
     const program = actions?.querySelector<HTMLButtonElement>('[data-act="program"]');
     if (actions && this.deps.onHand && this.deps.nav.carrierFlies(t) && !!this.deps.nav.trip(t).carrier && !program?.disabled)
       actions.insertAdjacentHTML("beforeend", `<button data-act="hand">Pilotar a mano</button>`);
+    else if (actions && this.deps.handHint && this.deps.nav.carrierFlies(t) && !!this.deps.nav.trip(t).carrier) actions.insertAdjacentHTML("afterend", `<p class="nav-hand-hint">${esc(this.deps.handHint)}</p>`);
   }
 
   private pickAt(cx: number, cy: number): void {

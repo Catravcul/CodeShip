@@ -168,7 +168,7 @@ export async function aterrizajeManual(j) {
   const over = await j.overlaps();
   j.check("los indicadores no tapan ningún botón", over.length === 0, over.slice(0, 3).join("; "));
   await j.shot("modulo-indicadores");
-  // The eye icon, pinned (no «☰ Mandos» to open first).
+  // The camera icon, under the gear of the tree menu (reglas.md §5.8; j.tap opens the gear first).
   await j.tap(".cam-btn", "Cámara");
   await p.waitForFunction(() => !!document.querySelector(".land-mark.on span"), null, { timeout: 10000 }).catch(() => {});
   j.check("con la cámara ventral se ve el sitio marcado en el suelo", (await j.texts(".land-mark.on span")).length > 0);

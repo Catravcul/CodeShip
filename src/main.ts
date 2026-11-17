@@ -128,7 +128,13 @@ import { LandingUi } from "./landing";
 import { PlanOverlay } from "./adapters/three/plan-overlay";
 import { tripSketch } from "@modules/navigation/application/plan-sketch";
 import { PROBE_TRIP, ProbeTrip } from "@modules/navigation/application/probe-trip";
-import { TripChip, type TripChipData } from "./ui/trip-chip";
+import { TripChip, type TripChipData, type TripStatus } from "./ui/trip-chip";
+import { RootMenu } from "./ui/root-menu";
+import { TripWindow } from "./ui/trip-window";
+import { AreasWindow } from "./ui/areas-window";
+import { interiorAreas, landerAreas, starshipAreas, type AreaMap, type AreaNode } from "@modules/tasks/application/areas";
+import { shipPointOf, stationPointOf } from "@modules/tasks/application/journey-world";
+import { LANDER_CABIN } from "@modules/lander-cabin/data/cabin";
 import { TripPreview, type PreviewSubject } from "./adapters/three/trip-preview";
 import { mothershipCarrier } from "@modules/navigation/application/mothership-carrier";
 import { FlightDeck } from "./flight-deck";
@@ -153,6 +159,8 @@ import { wireRobotics } from "./robotics-wiring";
 import { LanderEcs } from "./lander-ecs";
 import { LanderCabin } from "./lander-cabin";
 import { BridgeRoom } from "./bridge";
+import { flightDeckSeats } from "./flight-deck-seats";
+import { DockCamera } from "./ui/dock-camera";
 import { settings } from "./ui/settings-store";
 import { SettingsPanel } from "./ui/settings-panel";
 import { TaskBoard } from "./ui/task-board";
@@ -439,12 +447,13 @@ const view = new FlightView(scene, camera, root, () => ship.design, { position: 
 // the suit and the asteroid's mind moved to machines in the lander's cabin (docs/design/habitaculo.md);
 // the sky names to the general settings.
 const landBtn = view.addButton("land-btn", () => (flight.landingAssist = !flight.landingAssist), { icon: ICON.land, label: "Nivelar sola: no", key: "G" });
-// Dock / undock as one switch (Berón, 2026-11-17), pinned under the eye and only where it makes sense: docked
-// (it undocks) or free inside a port's keep-out sphere (it docks: the assist flies the last metres to contact).
-// It shows the opposite of the state now. K does the same on a keyboard.
-const dockBtn = view.addButton("dock-btn", () => (docking.docked ? docking.undock() : docking.toggleAssist()), { icon: ICON.dock, label: "Acoplar", key: "K", pinned: true });
+// Dock / undock as one switch (Berón, 2026-11-17), only where it makes sense: docked (it undocks) or free inside
+// a port's keep-out sphere (it docks: the assist flies the last metres to contact). It shows the opposite of the
+// state now. It sprouts from the root with the other buttons that apply now (reglas.md §5.8, menú árbol).
+// K does the same on a keyboard.
+const dockBtn = view.addButton("dock-btn", () => (docking.docked ? docking.undock() : docking.toggleAssist()), { icon: ICON.dock, label: "Acoplar", key: "K" });
 // Stand up from the pilot seat into the cabin.
-const standBtn = view.addButton("stand-btn", () => standUp(), { icon: ICON.standUp, label: "Dejar el puesto: habitáculo", key: "H", pinned: true });
+const standBtn = view.addButton("stand-btn", () => standUp(), { icon: ICON.standUp, label: "Dejar el puesto: habitáculo", key: "H" });
 settings.onChange((s) => {
   skyBodies.labelsOn = s.names;
   setSound(s.sound);
@@ -457,7 +466,17 @@ const navMode = new NavigationMode(root, nav, duelView, {
   shipNose: () => flight.state.toWorld(new Vec3(0, 0, -1)),
   carrierPosition: () => mothership.position,
 });
-navMode.atControls = (v) => (v === "carrier" ? bridge.active || deck.active : view.enabled || cabin.active);
+/** The Starship's pilot seat (or its systems screens opened from it): the only place its trip status shows (reglas.md §3.8, §5.9). */
+const atPilotSeat = () => {
+  if (!REAL_ONLY) return bridge.active || deck.active;
+  if (deck.active) return true;
+  if (!bridge.active || bridge.walking) return false;
+  const at = bridge.near();
+  // The docking seat flies the berthing and the undocking: those show there too.
+  const ph = nav.progress()?.phase;
+  return at === "prop" || (at === "dock" && (ph === "dock" || ph === "undock"));
+};
+navMode.atControls = (v) => (v === "carrier" ? atPilotSeat() : view.enabled || cabin.active);
 // The map only lives on the deck's navigation page: no overlay anywhere else.
 navMode.canOpen = () => false;
 // The mission log, on the travel ship: deck COMM page, the map and the radio. The map marks Nevaeh's targets.
@@ -730,9 +749,18 @@ const bridge = new BridgeRoom(
     },
     alerts: () => deck.alertsNow(),
     openTasks: () => taskBoard.open(),
+    // Starship's pilot and docking seats fly and dock (docs/design/puente.md); the ring ship's consoles open pages.
+    ...(REAL_ONLY
+      ? flightDeckSeats({ nav, navMode, mothership, duel: duelView, landerAboard: () => docking.dockedTo === mothership, openSystems: () => deck.enter("puente", "prop", ["prop", "power", "life"]), say: (t) => bridge.say(t, 6) })
+      : {}),
   },
   mothership.name,
+  REAL_ONLY ? "starship" : "nodo",
 );
+// The docking seat's camera, while she docks by hand (docs/design/puente.md §Acople).
+const dockCamera = new DockCamera(root, { run: () => nav.manualBerth, portName: () => `${nav.target.name} · ${nav.manualBerth?.target.name ?? ""}` });
+// Flying by hand happens at the pilot seat: its controls show there (on the ring ship, anywhere on the bridge).
+if (REAL_ONLY) navMode.handAt = () => bridge.active && bridge.near() === "prop" && !bridge.walking;
 subj.onSay = (text) => (bridge.active ? bridge.say(text, 7) : flash(text, 7));
 
 // Long trips of the probe: programmed with challenges, flown in time-lapse, parked by hand (docs/design/viajes.md).
@@ -825,6 +853,9 @@ const probeLandingUi = new LandingUi({
 });
 // The trip chip and the live preview, on screen wherever she is while a vehicle flies itself.
 const tripChip = new TripChip(root);
+// «Trayecto» in the tree menu while a trip or a remote operation runs: a status window, wherever she is (reglas.md §5.8–5.9).
+const tripWindow = new TripWindow(root);
+const tripMenu = RootMenu.global({ className: "trip-btn", icon: ICON.route, label: "Trayecto", window: "trayecto", order: 20 }, () => tripWindow.open());
 const tripPreview = new TripPreview(root);
 /** «Ver trayecto» (trip chip and journey bar): the flying vehicle on its drawn path, the camera following it. */
 const togglePath = () => (tripPreview.open = !tripPreview.open);
@@ -845,9 +876,9 @@ const keptRoute = (key: string, plan: () => readonly Vec3[]) => () => {
 function atTripConsole(): boolean {
   if (probeTravel.trip.active || probeLanding.active) return subj.piloting;
   if (landerLanding.active) return view.enabled;
-  return nav.progress()?.vehicle === "carrier" ? bridge.active || deck.active : view.enabled || cabin.active;
+  return nav.progress()?.vehicle === "carrier" ? atPilotSeat() : view.enabled || cabin.active;
 }
-function tripNow(): { chip: TripChipData; subject: PreviewSubject } | undefined {
+function tripNow(): { chip: TripChipData; subject: PreviewSubject; status: TripStatus } | undefined {
   const pp = probeTravel.trip.progress();
   if (pp) {
     const f = () => subj.probe.flight;
@@ -862,22 +893,27 @@ function tripNow(): { chip: TripChipData; subject: PreviewSubject } | undefined 
     return {
       chip: { who: "Sonda", goal: pp.goalName, etaRealS: pp.etaRealS, fraction: pp.fraction, detail: `${PHASE[pp.phase]} · ${num(pp.speedMS, 1)} m/s · faltan ${km(pp.remainingM)} · ${duration(pp.etaS)} de vuelo${lapseText(pp.lapse)}` },
       subject: { label: "Sonda · trayecto", sizeM: 1.2, pose: () => f().state, goal, route },
+      status: { vehicle: "Sonda", destination: pp.goalName, distanceM: pp.remainingM, etaRealS: pp.etaRealS, phase: PHASE[pp.phase], fraction: pp.fraction },
     };
   }
   const probeChip = probeLandingUi.chip("Sonda");
-  if (probeChip) return { chip: probeChip, subject: { label: "Sonda · aterrizando", sizeM: 1.2, pose: () => subj.probe.flight.state, goal: () => probeLanding.siteWorld() ?? subj.probe.flight.state.position, route: keptRoute("sonda:aterrizaje", () => [subj.probe.flight.state.position, probeLanding.siteWorld() ?? subj.probe.flight.state.position]) } };
+  const landingStatus = (c: TripChipData): TripStatus => ({ vehicle: c.who, destination: c.goal, etaRealS: c.etaRealS, phase: c.detail.split(" · ")[0] ?? "", fraction: c.fraction });
+  if (probeChip) return { chip: probeChip, status: landingStatus(probeChip), subject: { label: "Sonda · aterrizando", sizeM: 1.2, pose: () => subj.probe.flight.state, goal: () => probeLanding.siteWorld() ?? subj.probe.flight.state.position, route: keptRoute("sonda:aterrizaje", () => [subj.probe.flight.state.position, probeLanding.siteWorld() ?? subj.probe.flight.state.position]) } };
   const landerChip = landerLandingUi.chip("Módulo");
-  if (landerChip) return { chip: landerChip, subject: { label: "Módulo · aterrizando", sizeM: 14, pose: () => flight.state, goal: () => landerLanding.siteWorld() ?? flight.state.position, route: keptRoute("modulo:aterrizaje", () => [flight.state.position, landerLanding.siteWorld() ?? flight.state.position]) } };
+  if (landerChip) return { chip: landerChip, status: landingStatus(landerChip), subject: { label: "Módulo · aterrizando", sizeM: 14, pose: () => flight.state, goal: () => landerLanding.siteWorld() ?? flight.state.position, route: keptRoute("modulo:aterrizaje", () => [flight.state.position, landerLanding.siteWorld() ?? flight.state.position]) } };
   const p = nav.progress();
   if (!p) return undefined;
   const carrierLeg = p.vehicle === "carrier";
   return {
-    chip: { who: carrierLeg ? "Nodriza" : "Módulo", goal: nav.target.name, etaRealS: p.etaRealS, fraction: p.fraction, detail: `${PHASE[p.phase]} · ${num(p.speedMS, p.speedMS < 1 ? 2 : 1)} m/s · faltan ${km(p.remainingM)} · ${duration(p.etaS)} de vuelo${lapseText(p.lapse)}` },
+    chip: { who: carrierLeg ? (REAL_ONLY ? "Starship" : "Nodriza") : "Módulo", goal: nav.target.name, etaRealS: p.etaRealS, fraction: p.fraction, detail: `${PHASE[p.phase]} · ${num(p.speedMS, p.speedMS < 1 ? 2 : 1)} m/s · faltan ${km(p.remainingM)} · ${duration(p.etaS)} de vuelo${lapseText(p.lapse)}` },
     subject: carrierLeg
-      ? { label: "Nodriza · trayecto", sizeM: mothership.spec.layout.lengthM, pose: () => ({ position: mothership.position, orientation: mothership.orientation }), goal: () => targetPosition(nav.target), route: () => nav.route }
+      ? { label: `${REAL_ONLY ? "Starship" : "Nodriza"} · trayecto`, sizeM: mothership.spec.layout.lengthM, pose: () => ({ position: mothership.position, orientation: mothership.orientation }), goal: () => targetPosition(nav.target), route: () => nav.route }
       : { label: "Módulo · trayecto", sizeM: 14, pose: () => flight.state, goal: () => targetPosition(nav.target), route: () => nav.route },
+    status: { vehicle: carrierLeg ? (REAL_ONLY ? "Starship" : "Nodriza") : "Módulo", destination: nav.target.name, distanceM: p.remainingM, etaRealS: p.etaRealS, phase: PHASE[p.phase], fraction: p.fraction },
   };
 }
+/** Read model for the HUD menu's «Trayecto» window (status only, wherever she is; reglas.md §5.9). */
+const tripStatus = (): TripStatus | undefined => tripNow()?.status;
 
 // Ship bay: only at the station (docs/design/accesos.md): its console in node 2, B inside, or the
 // hangar tab of the station screen. Part swaps take the part from the station's hangar; the old one goes back there.
@@ -1288,16 +1324,17 @@ function allTasks(): Task[] {
     landerEcs: landerEcs.facts(),
   });
 }
-const taskBoard = new TaskBoard(root, allTasks);
+const taskBoard = new TaskBoard(root, allTasks, crewIn, () => vehicleLinks());
 // The species catalogue: adopting animals for the ring and the station (docs/design/catalogo-especies.md).
 // Docked, either colony can be carried through the tunnel to the other vehicle's tank.
 interior.aquarium.partner = () => (mothership.dockedTo ? { ops: stationAquarium, where: "a la estación" } : undefined);
 stationAquarium.partner = () => (mothership.dockedTo ? { ops: interior.aquarium, where: "a la Starship" } : undefined);
-const sanctuary = wireSanctuaryLife({ root, interior, habitat, importOps, wallet, taskBoard, aquariumHere: () => (crewIn() === "estacion" ? stationAquarium : undefined), goChore: (id) => {
+const sanctuary = wireSanctuaryLife({ root, interior, habitat, importOps, wallet, aquariumHere: () => (crewIn() === "estacion" ? stationAquarium : undefined), goChore: (id) => {
   const t = allTasks().find((x) => x.chore === id);
   if (t) goToTask(t);
 } });
 taskBoard.onGo = (t) => goToTask(t);
+view.onTasks = () => taskBoard.open();
 interior.openAllTasks = () => taskBoard.open();
 
 /** Leave whatever screen she is on (without the modes' own way back), to arrive somewhere else. */
@@ -1421,7 +1458,52 @@ const journey = new JourneyDriver(root, {
     stationScreen.enter(place.tab);
   },
 });
-// How «Ir» gets there (viaje / teletransporte) is a switch at the top of the task list (TaskBoard), its only place.
+// How «Ir» gets there (viaje / teletransporte) is a switch in the task list's settings (the gear of TaskBoard), its only place.
+// «Áreas» in the tree menu: the schematic of the vehicle she is in; a node takes her there (docs/design/areas.md).
+const areaMaps = new Map<string, { of: unknown; map: AreaMap }>();
+function areaMap(v: Vehicle): AreaMap | undefined {
+  const st = v === "estacion" ? stationInside.interior : v === "nodriza" ? starship?.mode.interior : undefined;
+  const key = v;
+  const hit = areaMaps.get(key);
+  if (hit && hit.of === (st ?? LANDER_CABIN)) return hit.map;
+  const map =
+    v === "estacion" ? interiorAreas("estacion", stationInside.interior, "estacion", (id) => !!stationPointOf(stationInside.interior, id)) : v === "nodriza" ? starship && starshipAreas(starship.mode.interior, (id) => !!shipPointOf(starship.mode.interior, id)) : landerAreas(LANDER_CABIN.stations);
+  if (map) areaMaps.set(key, { of: st ?? LANDER_CABIN, map });
+  return map;
+}
+/** The place an area is, for the teleport and the route check (the same as a task's there). */
+function areaPlace(n: AreaNode, v: Vehicle): TaskPlace {
+  if (v === "estacion") return { vehicle: "estacion", spot: "tripulacion", area: n.fixture };
+  if (v === "modulo") return { vehicle: "modulo", spot: n.fixture as "asiento" };
+  if (n.goal.startsWith("puente:")) return { vehicle: "nodriza", spot: "puente", page: "nav" };
+  return { vehicle: "nodriza", spot: "anillo", station: n.fixture };
+}
+function goToArea(n: AreaNode, map: AreaMap): void {
+  const say = (t: string) => (cabin.active ? cabin.say(t, 4) : bridge.active ? bridge.say(t, 4) : stationInside.active ? stationInside.say(t, 4) : starship?.active ? starship.say(t, 4) : flash(t, 4));
+  if (settings.value.taskTravel === "viaje") return void journey.goTo(n.goal, n.label, () => say(`En: ${n.label}`));
+  const place = areaPlace(n, map.vehicle);
+  fade();
+  journey.say("Teletransporte (elegido en Áreas)");
+  const r = routeTo(place, { crew: crewIn(), links: vehicleLinks() });
+  if (r.kind !== "ir") {
+    arriveAt(r.via);
+    return say(r.why);
+  }
+  if (place.vehicle === "nodriza" && place.spot === "puente") {
+    leaveEverything();
+    return bridge.enter("salida");
+  }
+  arriveAt(place);
+  if (place.vehicle === "nodriza") starship?.mode.placeAt(n.fixture);
+}
+const areasWindow = new AreasWindow(root, {
+  here: crewIn,
+  map: areaMap,
+  at: () => (stationInside.active ? stationInside.where() : starship?.active ? starship.mode.where() : undefined),
+  go: goToArea,
+});
+RootMenu.global({ className: "areas-btn", icon: ICON.areas, label: "Áreas", window: "areas", order: 2 }, () => areasWindow.open()).show(true);
+
 /** The task list's «Ir»: the real journey there, or (teleport, a setting) straight there through open hatches, or to what joins the vehicles, saying why. */
 function goToTask(t: Task): void {
   // Travel (the default) walks the whole real way, Starship's decks and hatches included (docs/design/reglas.md §3).
@@ -1471,7 +1553,7 @@ function dockingText(): string {
   // During a mothership trip the autopilot strip says where it is going.
   if (nav.status === "carrier") return "";
   const on = docking.dockedTo;
-  if (on) return `${on === mothership && mothership.dockedTo ? "Nodriza atracada en la estación" : `Módulo acoplado a ${on === mothership ? "la nodriza" : "la estación"}`} · el interruptor de acople (bajo el ojo) desacopla${settings.key(" (K)")}; la escotilla está detrás del puesto`;
+  if (on) return `${on === mothership && mothership.dockedTo ? "Nodriza atracada en la estación" : `Módulo acoplado a ${on === mothership ? "la nodriza" : "la estación"}`} · el interruptor de acople (en el menú ⚙︎) desacopla${settings.key(" (K)")}; la escotilla está detrás del puesto`;
   // While the trip autopilot flies away from the port, the docking read-out is noise.
   // The autopilot strip already shows the automatic docking's progress.
   if (nav.status === "autopilot" || nav.status === "docking") return "";
@@ -1696,12 +1778,23 @@ renderer.setAnimationLoop((now) => {
   view.enabled = !cabin.active && !bridge.active && !interior.active && !stationInside.active && !deck.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active && !navMode.mapOpen && !missionLog.visible;
   navMode.update(dt, world.held);
   // Trips run on their own; she sees them only at that vehicle's console (reglas.md §3.8).
-  const trip = atTripConsole() ? tripNow() : undefined;
+  const running = tripNow();
+  tripMenu.show(!!running);
+  tripWindow.update(running?.status);
+  const trip = atTripConsole() ? running : undefined;
   tripChip.update(trip?.chip, tripPreview.visible);
   tripPreview.follow(trip?.subject);
   // The mothership moves on trips: keep its model where the domain has it.
   mothershipModel.root.position.set(mothership.position.x, mothership.position.y, mothership.position.z);
   mothershipModel.root.quaternion.set(mothership.orientation.x, mothership.orientation.y, mothership.orientation.z, mothership.orientation.w);
+  // Flown, not slid: the Raptors light for burns away from a station; turns, flips and proximity work fire the RCS.
+  if (mothershipModel instanceof StarshipModel) {
+    const cp = nav.progress();
+    const ph = cp?.vehicle === "carrier" ? cp.phase : undefined;
+    const pushing = ph === "burn" || ph === "brake";
+    const proximity = nav.target.kind === "dock";
+    mothershipModel.setThrust(pushing && !proximity, ph === "aim" || ph === "flip" || ph === "dock" || ph === "undock" || (pushing && proximity) || nav.manualCarrier?.turning === true);
+  }
   dryDock.update(dt);
   if (dryDock.viewing && !stationInside.active) dryDock.view.close();
   stationOutside.update(dt);
@@ -1766,6 +1859,7 @@ renderer.setAnimationLoop((now) => {
     present(scene, deck.camera);
     return;
   }
+  dockCamera.update(bridge.active && bridge.near() === "dock" && !bridge.walking);
   if (bridge.active) {
     bridge.update(dt);
     nanoPanel.update(flight.landed && expedition.asteroid === bennu, fx, { action: false, card: !duelView.visible });
@@ -1865,7 +1959,7 @@ for (const sel of [".nano-action", ".trip-chip", ".land-offer.lander", ".land-bo
   if (el) ctxDock.appendChild(el);
 }
 
-(window as unknown as { codeship: unknown }).codeship = { renderer, sanctuary, journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, starship, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, stationAquarium, landerBerth, lifeSupport, bishop: bishopAirlock, stationOutside, stationModel, stationOps, refuelOps, importOps, componentImports, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels, dryDock, robotics: arm.robotics, stationEva: arm.stationEva, starshipEva: arm.starshipEva, exteriorWork: arm.work,
+(window as unknown as { codeship: unknown }).codeship = { renderer, tripStatus, mothershipModel, sanctuary, journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, starship, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, stationAquarium, landerBerth, lifeSupport, bishop: bishopAirlock, stationOutside, stationModel, stationOps, refuelOps, importOps, componentImports, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, tripWindow, areasWindow, duelView, levels, dryDock, robotics: arm.robotics, stationEva: arm.stationEva, starshipEva: arm.starshipEva, exteriorWork: arm.work,
   /** The experience suite's setup: the mothership latched on the station's forward IDA (the trip is PX-36's). */
   berthMothershipNow: () => {
     const t = structure.portFor("nodriza")!;

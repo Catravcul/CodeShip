@@ -56,8 +56,10 @@ export class FlightView {
   private readonly camBtn: HTMLButtonElement;
   private readonly warpBtn: HTMLButtonElement;
   private readonly tag: HTMLElement;
-  /** The cockpit's icons: the eye (camera) pinned, the flight toggles folded into the root. */
+  /** The cockpit's tree menu: the camera, Tareas and the flight toggles sprout from the gear (reglas.md §5.8). */
   readonly menu: RootMenu;
+  /** Opens the task list (set by main.ts). */
+  onTasks?: () => void;
   private mode: CameraMode = "cabina";
   private yaw = 0;
   private pitch = 0;
@@ -104,12 +106,14 @@ export class FlightView {
 
     this.stick = new VirtualStick(root, "pilot-look", "Mirar");
     this.stick.el.addEventListener("dblclick", () => this.center());
-    // Icons that sprout from a root (docs/design/ux-acciones.md §Iconos): only the eye is always out.
-    this.menu = new RootMenu(root, "flight-bar", "Mandos de vuelo", ICON.root);
-    this.camBtn = this.menu.add({ className: "cam-btn", icon: ICON.eye, label: "Cámara", key: "C", pinned: true }, () => {
+    // The general tree menu (reglas.md §5.8): the camera, Tareas and the flight toggles sprout from the gear.
+    this.menu = new RootMenu(root, "flight-bar", "Menú");
+    this.camBtn = this.menu.add({ className: "cam-btn", icon: ICON.eye, label: "Cámara", key: "C", order: 0 }, () => {
       this.mode = MODES[(MODES.indexOf(this.mode) + 1) % MODES.length]!;
       this.center();
     });
+    // Tareas, second under the gear as in every mode (reglas.md §5.8); main.ts says what it opens.
+    this.menu.add({ className: "fv-tasks", icon: ICON.tasks, label: "Tareas", window: "tareas", order: 1 }, () => this.onTasks?.());
     this.warpBtn = this.menu.add({ className: "warp-btn", icon: ICON.warp, label: "Tiempo ×1", key: "X" }, () => this.warpAvailable && (this.warpIdx = (this.warpIdx + 1) % WARPS.length));
     // Centring the view is a double tap on «Mirar» (or V): no icon of its own (Berón, 2026-11-17: an icon nobody understood).
     this.tag = document.createElement("div");
@@ -210,7 +214,7 @@ export class FlightView {
 
   /** Adds an icon to the cockpit's root menu (flight-computer toggles). */
   addButton(className: string, onClick: () => void, item: Partial<RootItem> = {}): HTMLButtonElement {
-    return this.menu.add({ className, icon: item.icon ?? ICON.root, label: item.label ?? className, ...(item.key ? { key: item.key } : {}), ...(item.pinned ? { pinned: true } : {}) }, onClick);
+    return this.menu.add({ className, icon: item.icon ?? ICON.root, label: item.label ?? className, ...(item.key ? { key: item.key } : {}), ...(item.window ? { window: item.window } : {}) }, onClick);
   }
 
   /** Place ship, camera and dust. `pos`/`q` are the ship pose; `warp` is the warp in effect. */

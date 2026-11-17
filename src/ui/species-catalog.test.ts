@@ -6,6 +6,7 @@ import { ALL_SPECIES } from "@modules/adoption/data/species-extra";
 import { BOARD_HOURS_PER_REAL_S } from "@core/board-time";
 import { comingText, realCountdown, statusText } from "./species-catalog";
 import wiring from "../sanctuary-life.ts?raw";
+import board from "./task-board.ts?raw";
 
 /** The import system as a fake: 25 board hours of transfer, plenty of credits. */
 function ops(): AdoptionOps {
@@ -52,5 +53,16 @@ describe("VID-49 the adopted animals' arrival time counts down live in the open 
   it("the wiring redraws the open catalogue every frame, after board time passes", () => {
     const update = wiring.slice(wiring.indexOf("update: (lifeDays)"));
     expect(update.indexOf("catalog.tick()")).toBeGreaterThan(update.indexOf("ops.tickHours("));
+  });
+});
+
+describe("VID-51 the species catalogue opens only from its machine in its compartment (reglas.md §2.3)", () => {
+  it("the task list has no way into it", () => {
+    expect(board).not.toMatch(/onCatalog|data-catalog\b|Catálogo de especies/);
+    expect(wiring).not.toMatch(/taskBoard/);
+  });
+
+  it("the ring's terminal, the Starship's laptop and the station's laptop open it", () => {
+    expect(wiring).toMatch(/interior\.openCatalog = \(\) => catalog\.open\(\)/);
   });
 });

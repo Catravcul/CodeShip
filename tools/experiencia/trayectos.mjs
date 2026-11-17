@@ -1,12 +1,12 @@
 // PX-36 Real journeys (docs/design/viajes.md, «Trayectos por dentro» and «Un solo reloj»; docs/design/reglas.md §3,
 // §3.5, §3.6): from the lander's seat, «Ir» to a station task in «Viaje» mode walks to the travel room and stops
 // there: the LM's roof hatch opens, hops through Starship's three decks, the ceiling hatch up to the flight deck
-// opens, the walk to the navigation table, and a notice says she has to travel first (a task never flies a ship).
-// At the table the station's card offers both modes, «Programar viaje» (challenges) and «Pilotar a mano»; she
-// flies by hand with short burns (0,1 m/s) at the board's ×60, stops at the parking point and Starship berths
-// like Crew Dragon Demo-1; «Ver trayecto» shows the real ship in the real scene with a camera that turns. Then
+// opens, the walk to the pilot seat, and a notice says she has to travel first (a task never flies a ship).
+// The pilot seat offers both modes, «Manual» and «Automático (retos)» (docs/design/puente.md); she flies by hand
+// with short burns (0,1 m/s) at the board's ×60, stops at Waypoint 1 and, from the docking seat, docks by
+// challenges: Starship berths like Crew Dragon Demo-1; «Ver trayecto» shows the real ship in the real scene with a camera that turns. Then
 // «Ir» again: down, through the nose tunnel and the station's hops to the machine. Then the bay: the Starship at
-// true scale, pinch to zoom. iPhone 13; captures in docs/screenshots/trayectos-*-movil.png.
+// true scale, «+» to zoom. iPhone 13; captures in docs/screenshots/trayectos-*-movil.png.
 import { mkdirSync } from "node:fs";
 
 async function capture(j, label, title, overlaps = true) {
@@ -63,12 +63,16 @@ export async function trayectos(j) {
   await j.tap(".stand-btn", "Levantarse: habitáculo");
   await p.waitForTimeout(800);
   await j.tap(".room-ui:not(.hidden) .cab-tasks", "Tareas");
-  j.check("«Viaje» está elegido por defecto en la lista de tareas", (await j.texts('.task-board .tb-travel [aria-checked="true"]')).join() === "Viaje", (await j.texts('.task-board .tb-travel [aria-checked="true"]')).join());
+  // The list's settings (the gear): «Viaje» is the default; the vehicle goes to «Todos» to see the station's tasks from the LM.
+  await j.tap('.task-board .board-head [data-view][aria-label="Ajustes de tareas"]', "⚙︎ Ajustes de tareas");
+  j.check("«Viaje» está elegido por defecto en los ajustes de la lista de tareas", (await j.texts('.task-board .tb-travel [aria-checked="true"]')).join() === "Viaje", (await j.texts('.task-board .tb-travel [aria-checked="true"]')).join());
+  await j.tap('.task-board .tb-settings [data-vehicle="todos"]', "Vehículo: Todos");
+  await j.tap('.task-board .board-head [data-view][aria-label="Volver a la lista de tareas"]', "Lista de tareas");
   await goTask(task);
   await p.waitForTimeout(500);
   const plan = await p.evaluate(() => window.codeship.journey.plan.map((l) => ({ kind: l.kind, from: l.from, to: l.to, label: l.label, s: Math.round(l.seconds) })));
   const route = plan.map((l) => `${l.kind} ${l.to}`).join(" → ");
-  j.check("el camino va por el LM y las cubiertas de la Starship hasta la mesa de navegación y para allí: una tarea no hace volar la nave (reglas §3.5)", plan.some((l) => l.to.startsWith("nave:")) && plan.at(-1)?.to === "puente:nav" && !plan.some((l) => l.kind === "vuelo"), route);
+  j.check("el camino va por el LM y las cubiertas de la Starship hasta el puesto de pilotaje y para allí: una tarea no hace volar la nave (reglas §3.5)", plan.some((l) => l.to.startsWith("nave:")) && plan.at(-1)?.to === "puente:prop" && !plan.some((l) => l.kind === "vuelo"), route);
   j.check("dos escotillas a pie: techo del LM y cubierta de vuelo", plan.filter((l) => l.kind === "escotilla").length === 2, route);
   const s0 = await state(p);
   j.check("no sale el aviso de teletransporte", !/Teletransporte|aún no está/.test(s0.note), s0.note);
@@ -84,19 +88,19 @@ export async function trayectos(j) {
   await capture(j, "2-escotilla-cubierta-vuelo", "Abre la escotilla a la cubierta de vuelo", false);
   const s3 = await until(p, (s) => !s.active, 120000);
   const atDeck = await p.evaluate(() => ({ bridge: window.codeship.bridge.active, status: window.codeship.nav.status, berthed: !!window.codeship.mothership.dockedTo }));
-  j.check("anda hasta la mesa de navegación del puente y la Starship no despega sola", !s3.active && atDeck.bridge && atDeck.status !== "carrier" && !atDeck.berthed, JSON.stringify(atDeck));
-  j.check("un aviso dice que primero hay que viajar a la estación, con los dos modos", /primero hay que viajar a la estación/.test(s3.note) && /Programar viaje/.test(s3.note) && /Pilotar a mano/.test(s3.note), s3.note);
+  j.check("anda hasta el puesto de pilotaje de la cubierta de vuelo y la Starship no despega sola", !s3.active && atDeck.bridge && atDeck.status !== "carrier" && !atDeck.berthed, JSON.stringify(atDeck));
+  j.check("un aviso dice que primero hay que viajar a la estación, con los dos modos", /primero hay que viajar a la estación/.test(s3.note) && /Manual/.test(s3.note) && /Automático \(retos\)/.test(s3.note), s3.note);
   await capture(j, "3-aviso-viajar", "Aviso: primero hay que viajar", false);
 
-  // 3. At the table: the station's card offers both modes (reglas §3.6); she flies by hand.
-  await j.useMachine("bridge", "nav", "abrir", "Usar la consola: Mesa de navegación");
-  await p.waitForTimeout(1200);
-  const dock = await p.evaluate(() => window.codeship.nav.targets.find((t) => t.kind === "dock")?.id);
-  await j.tap(`.nav-map .nav-chip[data-id="${dock}"]`, "estación en el mapa");
-  await p.waitForTimeout(400);
-  const modes = await j.texts('.nav-map [data-act="program"], .nav-map [data-act="hand"]');
-  j.check("la tarjeta de la estación ofrece «Programar viaje» (retos) y «Pilotar a mano»", modes.some((t) => /Programar viaje/.test(t)) && modes.some((t) => /Pilotar a mano/.test(t)), modes.join(" | "));
-  await j.tap('.nav-map [data-act="hand"]', "Pilotar a mano");
+  // 3. At the pilot seat: both modes (reglas §3.6) and the station as destination; she flies by hand.
+  await j.useMachine("bridge", "prop", null);
+  await p.waitForTimeout(800);
+  const dock = await p.evaluate(() => window.codeship.nav.targets.find((t) => t.kind === "dock" && t.carrierPort)?.id);
+  await p.selectOption(".cm-dest select", dock);
+  await p.waitForTimeout(300);
+  const modes = await j.texts(".room-ui:not(.hidden) .cab-machine [data-act]");
+  j.check("el puesto de pilotaje ofrece «Manual» y «Automático (retos)» hacia la estación", modes.includes("Manual") && modes.some((t) => /Automático \(retos\)/.test(t)), modes.join(" | "));
+  await j.tap('.room-ui:not(.hidden) .cab-machine [data-act="manual"]', "Manual");
   await p.waitForTimeout(800);
   const hand = (await j.texts(".carrier-hand:not(.hidden)")).join(" ");
   j.check("sale el panel de pilotaje a mano, marcado en desarrollo", /Starship a mano/.test(hand) && /en desarrollo/.test(hand), hand.slice(0, 200));
@@ -144,9 +148,16 @@ export async function trayectos(j) {
   }
   j.check("llega cerca del punto de espera volando a mano", near);
   await j.tap('.carrier-hand [data-dv="stop"]', "Parar");
-  // At the parking point the autopilot takes the last approach to the port, like Demo-1.
+  // At the parking point the computer only takes it onto the axis at Waypoint 1 and holds.
+  const held = await p.waitForFunction(() => !!window.codeship.nav.holdingAt(), null, { timeout: 300000 }).then(() => true).catch(() => false);
+  j.check("parada en el punto, espera en el punto de espera 1 sin atracar sola", held && (await p.evaluate(() => !window.codeship.mothership.dockedTo)));
+  // The docking seat docks it by challenges: the computer flies the last approach, like Demo-1.
+  await j.useMachine("bridge", "dock", "acoplar-auto", "Acoplar automático (retos)");
+  await j.waitDuel(30000);
+  for (let n = 0; n < 6 && (await p.evaluate(() => !!window.codeship.bridge.dockChore)); n++) await j.answer(() => window.codeship.bridge.dockChore?.current ?? null, true);
   const docking = await p.waitForFunction(() => window.codeship.nav.progress()?.phase === "dock" || !!window.codeship.mothership.dockedTo, null, { timeout: 300000 }).then(() => true).catch(() => false);
-  j.check("parada en el punto, se acerca al puerto despacio, como la Crew Dragon (fase de atraque)", docking);
+  j.check("con el reto del acople resuelto, se acerca al puerto despacio, como la Crew Dragon (fase de atraque)", docking);
+  await p.waitForFunction(() => [...document.querySelectorAll(".duel")].every((e) => e.classList.contains("hidden")), null, { timeout: 15000 }).catch(() => {});
   if (docking) await capture(j, "6-atraque", "Atraque: la Starship se acerca a la estación");
 
   // Trips run on their own (reglas §3.8): while Starship berths she goes down to cook; the trip shows only at the flight deck.
@@ -156,7 +167,7 @@ export async function trayectos(j) {
     await j.tap(".fd-panel.max .fd-back", "‹ Dejar la mesa de navegación");
   }
   await p.waitForTimeout(600);
-  j.check("en el puente se ve el viaje (chip con el tiempo que falta)", await p.evaluate(() => window.codeship.bridge.active && !!document.querySelector(".trip-chip.on")));
+  j.check("en el puesto de acople se ve el atraque (chip con el tiempo que falta)", await p.evaluate(() => window.codeship.bridge.active && !!document.querySelector(".trip-chip.on")));
   if (meal) {
     await j.setup("abre la lista de tareas", () => window.codeship.taskBoard.open());
     await goTask(meal);
@@ -191,7 +202,7 @@ export async function trayectos(j) {
   j.check("llega a la máquina de la estación y se abre su pestaña, con la Starship atracada", !end.active && arrived.screen && arrived.berthed, JSON.stringify(arrived));
   await capture(j, "8-llegada", "Llegada a la pestaña de planos");
 
-  // 5. The bay: Starship at true scale, framed by its size; pinch zooms.
+  // 5. The bay: Starship at true scale, framed by its size; «+» zooms.
   await p.evaluate(() => window.codeship.station.active && window.codeship.station.exit());
   await p.waitForTimeout(600);
   const bayTask = await p.evaluate(() => window.codeship.tasks().find((t) => t.place.vehicle === "estacion" && t.place.spot === "bahia")?.title);
@@ -207,13 +218,10 @@ export async function trayectos(j) {
   const home = await p.evaluate(() => window.codeship.bay.view.homeDistanceM);
   j.check("la bahía encuadra la Starship a escala real por su tamaño (52 m)", home > 40 && home < 200, `${Math.round(home)} m`);
   await capture(j, "9-bahia-nodriza", "Bahía con la Starship a escala real");
-  const cdp = await p.context().newCDPSession(p);
-  const touch = (type, pts) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: pts.map(([x, y], id) => ({ x, y, id })) });
-  await touch("touchStart", [[170, 250], [220, 250]]);
-  for (let i = 1; i <= 8; i++) await touch("touchMove", [[170 - i * 12, 250], [220 + i * 12, 250]]);
-  await touch("touchEnd", []);
-  await p.waitForTimeout(1500);
+  // The camera zooms with its «+» beside the joystick (reglas.md §5.7: never a pinch on the screen).
+  await j.hold(".cam-stick.bay-look .cam-zoom button[data-z='1']", 1200);
+  await p.waitForTimeout(400);
   const zoomed = await p.evaluate(() => window.codeship.bay.view.distanceM);
-  j.check("pellizcar acerca la cámara de la bahía", zoomed < home * 0.8, `${Math.round(home)} → ${Math.round(zoomed)} m`);
-  await capture(j, "10-bahia-zoom", "Bahía con zoom de pellizco");
+  j.check("«+» acerca la cámara de la bahía", zoomed < home * 0.8, `${Math.round(home)} → ${Math.round(zoomed)} m`);
+  await capture(j, "10-bahia-zoom", "Bahía con «+»");
 }

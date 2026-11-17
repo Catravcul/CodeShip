@@ -1,0 +1,11 @@
+/* «Trayecto» from the tree menu (reglas.md §5.8–5.9): status only, top left, leaving the menu's column free. */
+.trip-window { position: fixed; z-index: 10; top: calc(10px + env(safe-area-inset-top)); left: 10px; width: min(360px, calc(100% - 74px)); box-sizing: border-box; padding: 8px 10px 10px; color: #d8f6ff; font-size: 13px; background: #08202b; border: 1px solid #58d6ffaa; border-radius: 12px; box-shadow: 0 4px 18px #0008; }
+.trip-window.hidden { display: none; }
+.tw-head { display: flex; align-items: center; justify-content: space-between; font-size: 15px; }
+.tw-head button { min-width: 44px; min-height: 44px; font: inherit; font-size: 18px; color: #e6f6ff; background: none; border: 0; }
+.tw-body { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 2px 0 8px; }
+.tw-body dt { color: #7fdcff; font-size: 12px; }
+.tw-body dd { margin: 0; }
+.tw-bar { height: 6px; background: #ffffff1a; border-radius: 3px; overflow: hidden; }
+.tw-bar i { display: block; height: 100%; width: 0; background: #58d6ff; }
+body.in-duel .trip-window { display: none !important; }

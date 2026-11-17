@@ -125,8 +125,19 @@ OSIRIS-REx llegó a Bennu a 4 cm/s. Un salto de 9 km dura unas 6 h 15 min de jue
 El reto de **programar el viaje** de la nodriza tiene su versión química (`trip-chore.ts`): ordenar orientar,
 encender los Raptor de vacío, ir por inercia, dar la vuelta antes de los últimos metros y frenar (el distractor es
 «empujar todo el camino»); el Δv es 2 × crucero; el tiempo, 2·v/a más la inercia; el punto de frenar, v²/(2a).
-Las páginas del puente (propulsión, energía y vida) y las tarjetas del mapa dicen «metano y oxígeno» y «Raptor
+Las páginas de las pantallas del puesto de pilotaje (propulsión, energía y vida) y las tarjetas del mapa dicen «metano y oxígeno» y «Raptor
 de vacío» en vez de «xenón» y «propulsores eléctricos».
+
+**Vuela como el reto**, no se arrastra (Berón, 2026-11-17): la nave gira la proa hacia la ruta, enciende, va por
+inercia, da la vuelta antes de frenar y frena con los motores por delante; al final gira a la actitud del punto de
+espera, con la proa al puerto (giros a 1°/s, valor de juego; NAV-27, detalle en [puente.md](puente.md)). Junto a una
+estación no se encienden los Raptor: el salto se ve con los soplos del RCS.
+
+**Escala comprobada en la escena** (2026-11-17, cajas de los modelos): la Starship mide 52 m de largo, 9 m de
+diámetro y 17 m con los alerones (SpaceX: unos 50 m y 9 m); la estación, 102,7 × 74,5 × 37,4 m (la ISS: 109 m de
+punta a punta, 73 m de alas). Las dos están a escala 1:1 en la misma escena. Lo que la hacía parecer enorme era la
+cámara de «Ver trayecto», que la seguía desde 115 m por detrás con la estación al fondo; ahora, a menos de unos
+400 m de su destino, la cámara se pone de lado y encuadra las dos a la misma distancia.
 
 ## Repostar: oxígeno y metano
 
@@ -147,8 +158,10 @@ estación por el morro, el túnel de la cubierta 1 lleva a ella.
 ## Lo que falta o queda abierto
 
 - ~~**«Ir» por las cubiertas**~~: hecho (2026-11-17, [viajes.md](viajes.md#trayectos-por-dentro-escotillas-que-se-abren)): el planificador conoce las cubiertas, la escotilla de la cubierta de vuelo y las de atraque, y ella abre cada escotilla.
-- **La cubierta de vuelo** sigue siendo el puente de consolas que se recorre andando (rama `puente-real`). En una
-  Starship es un espacio en 0 g bajo los depósitos de cabecera.
+- ~~**La cubierta de vuelo**~~: rehecha (2026-11-17, [puente.md](puente.md#la-cubierta-de-vuelo-de-la-starship)): una
+  sala redonda en el morro, bajo los depósitos de cabecera y junto a las tres ventanas, con el puesto de pilotaje
+  (pilotar a mano o por retos a cualquier destino), el de acople (acoplar a mano con la cámara del puerto, por retos,
+  y desacoplar) y el de la sonda. El puente de consolas de antes queda solo para la nave de anillos (`?ficcion`).
 - **Una sola tripulante jugable** en una nave para cuatro.
 - **El dique seco** de la estación tiene la celosía medida para la nave de anillos.
 - **La esclusa**: los paseos salen de ella con la nave atracada en la estación; con la nave lejos de la estación aún no hay paseo.

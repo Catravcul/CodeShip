@@ -96,13 +96,13 @@ export async function foco(j) {
     await j.tap(".stand-btn", "Levantarse: habitáculo");
     await p.waitForTimeout(800);
     await j.tap(".room-ui:not(.hidden) .cab-tasks", "Tareas");
-    await j.tap('.task-board .tb-travel [data-travel="teletransporte"]', "Teletransporte");
+    await j.taskSettings({ travel: "teletransporte", vehicle: "todos" });
     await j.tap('.task-board .tb-task:has-text("Cosechar Rábano") .tb-go', "Ir: Cosechar Rábano");
     await j.waitDuel(60000);
     await focus(j, "teletransporte", "Tarea del anillo con «Ir» en teletransporte");
     await close(j);
     await j.tap(".tasks-btn", "Tareas");
-    await j.tap('.task-board .tb-travel [data-travel="viaje"]', "Viaje");
+    await j.taskSettings({ travel: "viaje" });
     await j.tap(".task-board [data-close]", "Cerrar tareas");
   });
   await reload(j);

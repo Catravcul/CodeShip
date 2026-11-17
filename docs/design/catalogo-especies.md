@@ -26,7 +26,7 @@ No hay partidas guardadas (CV-16): recargar empieza de cero, así que no hace fa
 Todo funciona con cero animales: familias, bienestar (la Compañía no sube hasta que haya familia), tareas y
 acuario (sin peces no hay hambre ni «Dar de comer», y el estado dice «sin peces (adóptalos en el catálogo)»).
 Lo prueba VID-30. Los recorridos que necesitan animales (PX-13 y PX-20) los adoptan antes con toques de
-jugador: «Tareas» → «Catálogo de especies» → ficha → «Adoptar» (`tools/experiencia/catalogo.mjs`). PX-01 ya no
+jugador en el portátil o el terminal del catálogo → ficha → «Adoptar» (`tools/experiencia/catalogo.mjs`). PX-01 ya no
 programa la puerta del gallinero (las gallinas están pendientes) y PX-02 no oye ladrar a un perro.
 
 ## Dónde se abre
@@ -44,7 +44,8 @@ programa la puerta del gallinero (las gallinas están pendientes) y PX-02 no oye
     del centro del bastidor para no cruzarse con los asideros de la pared.
   - Al llegar a él, ella mira la pantalla un poco por debajo, para que se vea encima de su tarjeta.
   Su botón dice «Abrir el catálogo de especies» y, si hay tareas de las colonias, «Catálogo de especies: N tareas».
-- **Lista de tareas**: un botón «Catálogo de especies» bajo su cabecera.
+- **Lista de tareas**: no tiene botón del catálogo (Berón, 2026-11-17; reglas.md §2.3): adoptar no es una
+  tarea y el catálogo solo se abre en su máquina. Lo prueba VID-51.
 
 No es un reto: usa el aspecto de la hoja de retos (fondo oscuro, morado, chips), pero no tiene pasos ni
 duelo, y se cierra con ✕.

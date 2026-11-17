@@ -1,5 +1,5 @@
 // The species catalogue (docs/design/catalogo-especies.md, recorrido PX-27): a new game with Doménica alone and no
-// animals, the catalogue from the task list and from its terminal (a rack slot; the ring hosts it for now), the
+// animals, the catalogue from its terminal (a rack slot; the ring hosts it for now; never from the task list), the
 // two snails side by side (only the one that lived in microgravity can be adopted), adopting medaka and
 // Biomphalaria for the empty aquatic habitat, seeing them arrive and befriending them; then two meals in a
 // board day (Berón, 2026-11-16). The helpers `abrirCatalogo`, `adoptar` and `llegan` are how every journey that
@@ -16,13 +16,37 @@ async function capture(j, label) {
   await j.shot(label);
 }
 
-/** «Tareas» → «Catálogo de especies» (the task list's way in). */
+/**
+ * The catalogue from its machine in her compartment (reglas.md §2.3: never from the task list): the laptop on
+ * the animal rack of the Starship's deck 2 or of Kibo, or the ring's terminal beside the aquarium. Getting there
+ * is set up (the walks and hops are played in PX-28, PX-29 and «movimiento»); opening it is a tap on its card.
+ */
 export async function abrirCatalogo(j) {
-  // The flight view's button, or the pinned one of the Starship's or the station's interior.
-  await j.tap(".tasks-btn:visible, .sts-tasks:visible, .sti-tasks:visible", "Tareas");
-  await j.page.waitForTimeout(400);
-  await j.tap(".task-board .tb-catalog", "Catálogo de especies");
-  await j.page.waitForTimeout(400);
+  const p = j.page;
+  const where = await p.evaluate(() => {
+    const c = window.codeship;
+    if (c.stationInside?.active) return "estacion";
+    if (c.starship?.active) return "starship";
+    return "anillo";
+  });
+  if (where === "starship") {
+    await j.setup("salta hasta el portátil del catálogo, cubierta 2 (los saltos se juegan en PX-28)", () => window.codeship.starship.mode.placeAt("catalogo"));
+    await p.waitForTimeout(900);
+    await j.tap('.sts-card:not(.hidden) [data-act="catalogo"]', "Abrir el catálogo de especies (portátil)");
+  } else if (where === "estacion") {
+    await j.setup("va hasta el portátil del catálogo en Kibo (el recorrido por la estación se juega en PX-29)", () => window.codeship.stationInside.placeAt("rack-catalogo"));
+    await p.waitForTimeout(900);
+    await j.tap('.sti-card [data-act="catalogo"]', "Abrir el catálogo de especies (portátil)");
+  } else {
+    await j.setup("camina hasta el terminal del catálogo, al lado del acuario (andar se juega en «movimiento»)", () => {
+      const i = window.codeship.interior;
+      i.pos.set(-6.6, 0, 10.6);
+      i.yaw = 0;
+    });
+    await p.waitForTimeout(600);
+    await j.tap(".station-btn", "Catálogo de especies (terminal)");
+  }
+  await p.waitForTimeout(400);
 }
 
 /** In the open catalogue: its group chip, its card, «Adoptar», back to the list. Returns the status line. */
@@ -39,7 +63,7 @@ export async function adoptarUna(j, id, group) {
   return status;
 }
 
-/** Adopts each `[id, group]` with taps from the task list, then closes the catalogue. */
+/** Adopts each `[id, group]` with taps at the catalogue's machine, then closes the catalogue. */
 export async function adoptar(j, list) {
   await abrirCatalogo(j);
   for (const [id, group] of list) {
@@ -107,7 +131,8 @@ export async function catalogo(j) {
   j.check("la lista de tareas no tiene ninguna de cuidar animales (solo el cristal del acuario: tiene algas aunque esté vacío)", animalTasks.every((t) => t === "Limpiar el cristal del acuario"), animalTasks.join(" | "));
   await j.tap(".task-board [data-close]", "Cerrar tareas");
 
-  // 2. The catalogue from the task list: extensive, filterable.
+  j.check("la lista de tareas no tiene botón del catálogo: se abre en su terminal (reglas §2.3)", (await p.locator(".task-board .tb-catalog, .task-board [data-catalog]").count()) === 0);
+  // 2. The catalogue from its terminal: extensive, filterable.
   await abrirCatalogo(j);
   const head = (await j.texts(".species-catalog .sc-title span"))[0] ?? "";
   const n = Number(/^(\d+)/.exec(head)?.[1] ?? 0);

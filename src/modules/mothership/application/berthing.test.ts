@@ -43,7 +43,8 @@ describe("Berthing the mothership at a station", () => {
       if (berthing.holding) held += 1;
     }
     expect(berthing.status).toBe("docked");
-    expect(Math.abs(t - 51 * 60)).toBeLessThan(5);
+    // The RCS speeding up and braking for the hold add a few seconds to the 51 min.
+    expect(Math.abs(t - 51 * 60)).toBeLessThan(20);
     // It held at Waypoint 2 for the go/no-go (about a quarter of an hour).
     expect(held).toBeGreaterThan(10 * 60);
     expect(berthing.speedMs).toBeCloseTo(PROXIMITY.closingMs, 9);

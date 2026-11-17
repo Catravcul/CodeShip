@@ -105,14 +105,7 @@ export async function camaraAcuario(j) {
   j.check("Starship: el AQH no se mete en la pared (todo él queda en el pasillo)", behind > -1e-3, `${behind.toFixed(3)} m`);
   await capture(j, "starship-aqh", "El AQH de la Starship");
   // Further, with «−»: the whole unit, both chambers with their medaka.
-  const plus = p.locator(".vstick.sts-look .cam-zoom button[data-z='-1']");
-  const b = await plus.boundingBox();
-  if (b) {
-    await p.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
-    await p.mouse.down();
-    await p.waitForTimeout(500);
-    await p.mouse.up();
-  }
+  await j.hold(".vstick.sts-look .cam-zoom button[data-z='-1']", 1200);
   const zoom = await p.evaluate(() => window.codeship.starship.mode.camera.zoom);
   j.check("«−» abre la cámara (sin mover a Doménica)", zoom < 0.8, zoom.toFixed(2));
   await capture(j, "starship-aqh-entero", "El AQH entero con «−»");

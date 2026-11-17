@@ -3,7 +3,7 @@ import type { Vec3 } from "@core/math/vec3";
 import { Mothership, chemicalCruiseMS } from "@modules/mothership/domain/mothership";
 import type { Docking } from "@modules/mothership/application/docking";
 import type { CraftPort, DockingLimits, DockingTarget } from "@modules/mothership/domain/docking";
-import { Berthing, berthStandoff, BERTH_STANDOFF_M } from "@modules/mothership/application/berthing";
+import { Berthing, berthStandoff, BERTH_STANDOFF_M, ManualBerthing, Unberthing } from "@modules/mothership/application/berthing";
 import type { CarrierPort } from "./carrier-trip";
 
 /**
@@ -65,6 +65,8 @@ export function mothershipCarrier(
           },
           berthStandoff: (port: DockingTarget) => berthStandoff(port, berthing.nosePort),
           berth: (port: DockingTarget) => new Berthing(m, port, berthing.nosePort, berthing.limits),
+          manualBerth: (port: DockingTarget) => new ManualBerthing(m, port, berthing.nosePort, berthing.limits),
+          unberth: (port: DockingTarget) => new Unberthing(m, port, berthing.nosePort),
         }
       : {}),
   };

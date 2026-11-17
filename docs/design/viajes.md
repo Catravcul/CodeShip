@@ -5,7 +5,8 @@ Regla del diseñador (2026-11-17, sustituye el tope de segundos: «no hay proble
 ## Cómo se juega
 
 1. **Programar o pilotar a mano** (reglas.md §3.6). El viaje largo se programa con la cadena de cinco retos de siempre (ordenar, completar, predecir, reparar, especificar), con los números reales de ese viaje ([navegacion.md](navegacion.md)), o se vuela a mano:
-   - nodriza o módulo: desde el mapa del puente (NAV) → **Programar viaje**, o **Pilotar a mano** (abajo);
+   - Starship: sentada en el **puesto de pilotaje** de la cubierta de vuelo → destino, **Manual** o **Automático (retos)** ([puente.md](puente.md)); la mesa de navegación sigue planificando (**Programar viaje**) y con «Ver trayecto»;
+   - módulo: desde el puesto del comandante del LM, a mano o con un programa;
    - sonda: desde su consola en el puente → **Programar viaje a …** (asteroide lejano) o **Programar vuelta a la nodriza**.
 2. **Vuela solo.** Al resolver la cadena, el vehículo vuela solo con su física real (la Starship con sus Raptor: quemado, inercia y frenado; el módulo y la sonda con quemado, crucero, vuelta y frenado). El tiempo del juego pasa al **ritmo de a bordo, ×60** (una hora de juego por minuto real) y el viaje dura los minutos que salen (tope de 10 min).
 3. **Mientras tanto** (reglas.md §3.8). El viaje sigue solo y se puede dejar la consola para hacer cualquier otra cosa: tareas, cocina, ejercicio, estación, radio. La **ficha de viaje** sale **solo en la consola de ese vehículo** (la cubierta de vuelo para la nodriza, la consola de la sonda para la sonda, la cabina del LM para el módulo); fuera de ella no sale, y el aviso de llegada espera allí a que vuelva. Dice quién viaja y adónde, **cuándo llega en segundos reales**, la fase, la velocidad, lo que falta, la duración real del vuelo y la cámara rápida (×N). Tiene dos botones:
@@ -15,7 +16,7 @@ Regla del diseñador (2026-11-17, sustituye el tope de segundos: «no hay proble
    - módulo: a unos 300 m de la superficie; se aterriza **a mano con los indicadores X/Y/Z** o **por programa** (otra cadena de retos), ver [aterrizaje.md](aterrizaje.md);
    - sonda: a unos 300 m del asteroide; posarla (fase 1 de la subyugación, [subyugacion.md](subyugacion.md)) también es a mano o por programa ([aterrizaje.md](aterrizaje.md));
    - sonda de vuelta: a unos 60 m de la bahía; acercarla a 10 m para que la agarre el brazo es manual;
-   - nodriza a una estación: atraca sola, como antes (es un atraque, no un aterrizaje).
+   - Starship a una estación: por programa atraca sola, como la Crew Dragon; a mano se para en el punto de espera 1 (150 m) y la atraca el **puesto de acople**, a mano con la cámara o por retos ([puente.md](puente.md#acople)).
 
 Solo hay un viaje comprimido a la vez: con la sonda de viaje no se programa la nave, y al revés. La nodriza no se va con la sonda fuera («recógela antes de mover la nodriza»).
 
@@ -61,11 +62,11 @@ Durante un viaje automático el bucle principal usa la compresión del viaje com
 
 ## Una tarea no vuela una nave (reglas.md §3.5, 2026-11-17)
 
-Berón tocó «Ir» en la tarea de dormir estando en la Starship: la Starship voló sola a la estación, la vio un momento y apareció dentro de la estación con «Parar» y «46 s»; tras «Parar», la escotilla de vuelta decía que no estaba acoplada. Ahora «Ir» **nunca hace volar una nave**: el plan se corta en el primer tramo de vuelo (`upToFlight`), ella anda hasta donde se pilota ese vuelo (la mesa de navegación del puente, o el puesto del comandante del LM) y un aviso dice: «Para «X» primero hay que viajar a la estación: en la mesa de navegación, «Programar viaje» (retos) o «Pilotar a mano»». Si ya está allí, solo sale el aviso. Como «Ir» no vuela, ya no puede dejarla en la estación con la Starship sin atracar (el estado incoherente tras «Parar»). Cuando la nave ha atracado, «Ir» otra vez la lleva andando, por el túnel de proa, hasta la tarea.
+Berón tocó «Ir» en la tarea de dormir estando en la Starship: la Starship voló sola a la estación, la vio un momento y apareció dentro de la estación con «Parar» y «46 s»; tras «Parar», la escotilla de vuelta decía que no estaba acoplada. Ahora «Ir» **nunca hace volar una nave**: el plan se corta en el primer tramo de vuelo (`upToFlight`), ella anda hasta donde se pilota ese vuelo (la mesa de navegación del puente, o el puesto del comandante del LM) y un aviso dice: «Para «X» primero hay que viajar a la estación: en el puesto de pilotaje, «Manual» o «Automático (retos)»» (en la Starship se para en el puesto de pilotaje; en la nave de anillos, en la mesa de navegación). Si ya está allí, solo sale el aviso. Como «Ir» no vuela, ya no puede dejarla en la estación con la Starship sin atracar (el estado incoherente tras «Parar»). Cuando la nave ha atracado, «Ir» otra vez la lleva andando, por el túnel de proa, hasta la tarea.
 
 ## Pilotar a mano la nodriza (reglas.md §3.6, en desarrollo)
 
-En la tarjeta de un destino de la nodriza, junto a «Programar viaje», sale **Pilotar a mano**. Desde la cubierta de vuelo se da el empuje con encendidos cortos, como en las operaciones de proximidad: **−0,1 m/s**, **Parar** y **+0,1 m/s** (hasta 1 m/s), a ×60. El panel dice lo que falta hasta el punto de espera, la velocidad y el Δv gastado, y qué hacer («Da empuje (+): 0,4 m/s como Hayabusa2», «Para en …», «¡Estás en el punto: Parar!»). Parada a menos de 100 m del punto de espera de una estación, el ordenador hace el atraque como la Demo-1 (51 min de juego); lejos de una estación queda aparcada y se baja en el módulo. SpaceX no ha publicado cómo se pilota la Starship: el panel lo dice («Mandos de la Starship: en desarrollo»). Código: `ManualCarrierRun` en `carrier-trip.ts`, `Navigator.flyByHand`, el panel `.carrier-hand` de `src/navigation.ts`.
+**Cambio del 2026-11-17 (Berón: «¿dónde está el control manual de la nodriza?»):** en la Starship el vuelo a mano ya no sale de la tarjeta del mapa, sino del **puesto de pilotaje** ([puente.md](puente.md)): sentada, elige el destino (cualquiera: la estación o un asteroide) y toca **Manual**. La tarjeta del mapa solo dice dónde se pilota. En la nave de anillos (`?ficcion`) sigue en la tarjeta. Sentada en el puesto se da el empuje con encendidos cortos, como en las operaciones de proximidad: **−0,1 m/s**, **Parar** y **+0,1 m/s** (hasta 1 m/s), a ×60. El panel dice lo que falta hasta el punto de espera, la velocidad y el Δv gastado, y qué hacer («Da empuje (+): 0,4 m/s como Hayabusa2», «Para en …», «¡Estás en el punto: Parar!»). Parada a menos de 100 m del punto de espera de una estación, el ordenador la lleva al punto de espera 1 (150 m, en el eje del puerto) y **se queda allí**: el atraque es del puesto de acople, a mano o por retos (antes lo hacía solo); lejos de una estación queda aparcada y se baja en el módulo. SpaceX no ha publicado cómo se pilota la Starship: el panel lo dice («Mandos de la Starship: en desarrollo»). Código: `ManualCarrierRun` en `carrier-trip.ts`, `Navigator.flyByHand`, el panel `.carrier-hand` de `src/navigation.ts`.
 
 ## Ver trayecto: el vuelo real
 
@@ -75,6 +76,10 @@ En la tarjeta de un destino de la nodriza, junto a «Programar viaje», sale **P
 - **La cámara se mueve** (regla 3.3): el joystick de cámara gira alrededor del vehículo y sus botones «+» y «−» (o la rueda) acercan y alejan (de 0,35× a 12×). Nunca se arrastra ni se pellizca la pantalla (reglas.md §5.7).
 - La ficha de viaje baja al borde inferior para no tapar el vehículo, con botones de 44 px.
 - **Nunca atrapa** (reglas.md §3.8). Berón abrió «Ver trayecto» en la consola de la sonda y se quedó sin cámara ni botones: al cerrarlo, la clase de pantalla entera no se quitaba (solo se quitaba al dibujar la vista, y cerrada ya no se dibujaba). Ahora se quita siempre; PX-07 y PX-16 comprueban que la cámara se gira, que se cierra y que vuelven los botones de la consola.
+
+## Trayecto en el menú (reglas.md §5.8–5.9, 2026-11-17)
+
+Mientras un viaje o una operación a distancia está en marcha (la nodriza, el módulo o la sonda viajando o aterrizando), del engranaje del menú brota **Trayecto**, esté donde esté ella. Abre una ventana de solo estado: quién va adónde, la fase, la distancia que falta, cuánto falta en tiempo real y una barra de avance. No tiene «Ver trayecto» ni «Mando», que siguen solo en los mandos de pilotaje del vehículo (§3.8). Al acabar el viaje se cierra sola y el icono deja de brotar ([ux-acciones.md](ux-acciones.md), «Menú árbol general»).
 
 ## «Fijar destino»: fuera
 
@@ -105,7 +110,7 @@ Archivos: `src/adapters/three/interior/hatch-leaf.ts` (la hoja), `StationInterio
 
 ## La bahía: zoom
 
-Berón: «en la bahía la nodriza se ve muy pequeña, ¿quizá falta un control de zoom?». La bahía dibujaba la nodriza a 1:10 y la estación a 1:4 con la misma cámara. Ahora las dos van **a escala real** y la cámara encuadra cada vista por su tamaño (esfera que la envuelve); el zoom va del 12 % al 250 % de esa distancia, con **rueda** y **pellizco** (dos dedos), y al elegir una pieza la cámara se acerca en proporción. El módulo se ve como antes.
+Berón: «en la bahía la nodriza se ve muy pequeña, ¿quizá falta un control de zoom?». La bahía dibujaba la nodriza a 1:10 y la estación a 1:4 con la misma cámara. Ahora las dos van **a escala real** y la cámara encuadra cada vista por su tamaño (esfera que la envuelve); el zoom va del 12 % al 250 % de esa distancia, con la **rueda** y los botones **«+» y «−»** junto al joystick «Orbitar» (nunca un pellizco: reglas.md §5.7), y al elegir una pieza la cámara se acerca en proporción. El módulo se ve como antes.
 
 ## Archivos
 

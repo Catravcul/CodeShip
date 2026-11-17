@@ -4,6 +4,7 @@ import { scaleInteriorPlan } from "@modules/station/domain/interior";
 import { describe, expect, it } from "vitest";
 import { ACTION_REACH_M, asPlayed, INTERACTABLE_SPACING, minSpacing, spacingViolations, type Interactable } from "@core/spacing";
 import { BRIDGE } from "@modules/flight-deck/data/bridge";
+import { STARSHIP_DECK } from "@modules/flight-deck/data/starship-deck";
 import { LANDER_CABIN } from "@modules/lander-cabin/data/cabin";
 import type { CabinLayout } from "@modules/lander-cabin/domain/cabin";
 import { POLANA_INTERIOR } from "@modules/station/data/interior";
@@ -22,6 +23,7 @@ const stationItems = (): Interactable[] => stationInteractables(scaleInteriorPla
 const AREAS: readonly { readonly area: string; readonly scale: number; readonly items: () => Interactable[] }[] = [
   { area: "anillo y cubierta de cultivo", scale: WORLD_SCALE, items: () => asPlayed(ringInteractables(), WORLD_SCALE) },
   { area: "puente", scale: WORLD_SCALE, items: () => asPlayed(roomItems(BRIDGE), WORLD_SCALE) },
+  { area: "cubierta de vuelo de la Starship", scale: WORLD_SCALE, items: () => asPlayed(roomItems(STARSHIP_DECK), WORLD_SCALE) },
   { area: "habitáculo del módulo", scale: WORLD_SCALE, items: () => asPlayed(roomItems(LANDER_CABIN), WORLD_SCALE) },
   { area: "estación", scale: MACHINE_SCALE, items: stationItems },
   // The hub and the spine are game values already (tubes 5,5 m across): drawn as laid out.

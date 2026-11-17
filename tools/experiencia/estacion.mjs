@@ -102,9 +102,15 @@ export async function estacion(j) {
   await armChallenge(j, "brazo", "Canadarm2 lleva el módulo al CBM");
   j.check("Canadarm2 atraca el módulo en el CBM de Unity", await p.evaluate(() => window.codeship.landerBerth.onCbm));
   await j.tap(".sti-ui .sti-tasks", "Tareas");
+  // «Automático» (by default) shows the station's; «Todos» in the list's settings, every task (viaje-a-una-tarea.md §Ajustes de tareas).
+  const here = await p.locator(".task-board .tb-go").count();
+  const inStation = await p.evaluate(() => window.codeship.tasks().filter((t) => t.place.vehicle === "estacion").length);
+  j.check("en la estación, «Automático» enseña sus tareas con «Ir»", here === inStation && here > 0, `${here} de ${inStation}`);
+  await j.taskSettings({ vehicle: "todos" });
   const shown = await p.locator(".task-board .tb-go").count();
   const all = await p.evaluate(() => window.codeship.tasks().length);
-  j.check("la lista global tiene todas las tareas con «Ir»", shown === all && shown > 0, `${shown} de ${all}`);
+  j.check("con «Todos», la lista global tiene todas las tareas con «Ir»", shown === all && shown > 0, `${shown} de ${all}`);
+  await j.taskSettings({ vehicle: "auto" });
   await j.tap(".task-board [data-close]", "Cerrar tareas");
   await placeAt(j, "salir-sonda");
   const hatch = await card(j);

@@ -1,14 +1,117 @@
-# Puente real de la nodriza
+# Cubierta de vuelo de la Starship (y el puente de la nave de anillos)
 
-Berón entró en la sala de control y la vio poco realista. Preguntó si se había investigado cómo son las consolas,
-la sala y el mapa, si la sonda se pilota de pie y si los mandos tienen modelo 3D. Este documento recoge la
-investigación, la disposición que sale de ella y cómo se dibuja. La escala está en [escala.md](escala.md).
+> **2026-11-17 · Berón:** «¿Dónde está el control manual de la nodriza? Solo veo el viaje por reto desde la mesa de
+> navegación. La zona de pilotaje y propulsión no ofrece pilotar, parece solo informativa, y lo mismo la de acople.
+> ¿La sala de navegación de la nodriza es realista? Pedí recrear la nodriza desde cero y esta sala parece la misma».
+>
+> Tenía razón: la Starship usaba el puente de consolas de la nave de anillos (abajo, «El puente de la nave de
+> anillos»), y sus puestos de pilotaje y acople solo abrían páginas de lectura. Ahora la Starship tiene su propia
+> cubierta de vuelo, hecha con lo publicado, y cada puesto hace lo que hace su equivalente real.
 
-Datos en `src/modules/flight-deck/data/bridge.ts` (`BRIDGE`, `BRIDGE_ERGONOMICS`, `BRIDGE_SOURCES`). Modelo en
-`src/adapters/three/interior/bridge-model.ts`, sobre el kit `console-kit.ts` y las pantallas de
-`console-screens.ts`. Sala en `src/bridge.ts`, sobre `src/walk-room.ts`.
+## La cubierta de vuelo de la Starship
 
-## Investigación
+Datos en `src/modules/flight-deck/data/starship-deck.ts` (`STARSHIP_DECK`, `STARSHIP_DECK_SHAPE`,
+`STARSHIP_DECK_SOURCES`, `STARSHIP_DECK_BASIS`). Modelo: `buildBridge(k, "starship")` en
+`src/adapters/three/interior/bridge-model.ts`. Sala: `BridgeRoom` en `src/bridge.ts` con forma `"starship"`; los
+puestos se cablean en `src/flight-deck-seats.ts`; la cámara de acople es `src/ui/dock-camera.ts`.
+
+### Qué está publicado (y qué no)
+
+| Qué | Lo publicado | Etiqueta | Fuente |
+| --- | --- | --- | --- |
+| Ventanas | El HLS lleva ventanas en el casco; SpaceX ensaya paneles de ventana contra micrometeoritos; los renders de 2025 enseñan a la tripulación sentada junto a una fila de ventanas. El modelo exterior tiene tres en el morro | real (en desarrollo) | [Futurism, 2025-11](https://futurism.com/space/spacex-renders-inside-lunar-lander-starship), [Teslarati, hitos 2025-10-30](https://www.teslarati.com/spacex-checks-off-49-lunar-lander-milestones-in-push-toward-artemis-iii/) |
+| Zona de mando | «Unos 600 m³ con camas, suministros y una zona de mando y control» | en desarrollo | [NASASpaceflight, 2025-11](https://www.nasaspaceflight.com/2025/11/starship-block-3-path-moon/) |
+| Pantallas y mandos | La NASA dice que las pantallas de la tripulación se están decidiendo con SpaceX; no hay planos ni fotos del puesto | sin publicar | [AmericaSpace, 2023-12](https://www.americaspace.com/2023/12/01/spacexs-new-design-for-lunar-starship-unveiled/) |
+| Cabina 1 | Primeras fotos de la NASA (2026-10): paredes acolchadas blancas, aberturas de ventana en el acero | real (en construcción) | [TeslaNorth, 2026-10-23](https://teslanorth.com/2026/10/23/starship-moon-lander-cabin-nasa/) |
+| Base real elegida: Crew Dragon | Tres pantallas táctiles con grupos de botones físicos debajo, casi todos tapados | real | [Engadget](https://www.engadget.com/2018-08-14-spacex-dragon-spacecraft-astronauts.html) |
+| Pilotar a mano en Dragon | Modo manual para acoplar, aterrizar o abortar desde la pantalla táctil; en la Demo-2 (2020-05-30/31) Hurley lo voló cerca de la ISS con el vídeo del objetivo de acople en la misma pantalla | real | [Space.com](https://www.space.com/spacex-crew-dragon-touchscreen-astronaut-thoughts.html), [Spaceflight Now](https://spaceflightnow.com/2020/05/30/dragon-astronauts-name-their-spacecraft-endeavour-complete-first-manual-flight-test/) |
+| Atraque | Waypoint 1 a 150 m, Waypoint 2 a 20 m con espera, 51 min hasta la captura (Demo-1); ganchos IDSS | real | [berthing.ts](../../src/modules/mothership/application/berthing.ts), [IDSS](https://ntrs.nasa.gov/citations/20220011643) |
+
+Como SpaceX no ha publicado el puesto de mando, la **disposición es nuestra** y la cubierta lo dice en cada ficha
+(«En desarrollo: pantallas táctiles y botones como los de la Crew Dragon», «Distribución nuestra: …», «Ficción: …»).
+
+### La sala
+
+Un tronco de cono de 2,5 m de alto en el morro, bajo los depósitos de cabecera: del radio interior del casco
+(4,2 m) a 2,5 m arriba (el mismo que cuenta `starshipDeckVolumeM3` entre los 614 m³). El suelo es redondo, la
+pared se inclina hacia dentro y arriba hay una tapa blanca acolchada, como la Cabina 1. Los puestos van en
+corro junto a la pared, cada 45° (radio 2,7 m donde ella se pone, 3,3 m la máquina): así quedan a más de 2 m
+unos de otros a tamaño real, y el centro queda libre para moverse.
+
+| Puesto | Dónde | Qué hace (como su equivalente real) |
+| --- | --- | --- |
+| **Puesto de pilotaje** | Proa, bajo las tres ventanas, sentada | Tres pantallas táctiles (vuelo, trayectoria, sistemas) con botones físicos debajo, como Dragon. Se elige el **destino** (cualquiera: la estación o un asteroide, con su distancia) y se vuela en **Manual** (los encendidos cortos de ±0,1 m/s, «Parar», lo que falta y el Δv gastado, de trayectos-reales) o en **Automático (retos)** (la cadena de retos del viaje). «Pantallas de sistemas» pasa por propulsión, energía y vida en pestañas, como las páginas de Dragon |
+| **Puesto de acople** | Proa, estribor, sentada | La cámara del puerto de proa. Atracada: **Desacoplar** (los ganchos se abren y retrocede por el eje hasta el punto de espera 1). En el punto de espera de una estación: **Acoplar a mano (cámara)** o **Acoplar automático (retos)**. Lejos: dice que primero hay que llegar al punto de espera. Durante una maniobra: pararla |
+| Mando de la sonda | Proa, babor, sentada | Como antes (lo lleva la rama de los mandos de la sonda) |
+| Mesa de navegación | Popa, estribor | El mapa: planificar (**Programar viaje**) y «Ver trayecto». Ya no vuela a mano: la tarjeta dice que eso es del puesto de pilotaje |
+| Radio y misiones | Popa, babor | Cartas, llamadas y el registro de misiones |
+| Mente del asteroide · nano_net | Babor y estribor | Ficción (el único comportamiento ficticio): el duelo por la sonda y el estado de la red |
+| Escotilla de bajada | Popa, en el suelo | Baja a la cubierta 1 (es la escotilla del techo de la cubierta 1); la hoja se abre hacia arriba |
+
+**Fuera las consolas que solo informan.** «Vida y hábitat» y «Energía y calor» eran consolas de pie que solo
+abrían una página de lectura: en la Starship ya no están; sus páginas viven en las pantallas del puesto de
+pilotaje (sus avisos se ven en su pantalla de sistemas y en su luz). El «Acople» de antes solo leía el puerto del
+módulo: ahora acopla y desacopla la Starship. El módulo lunar se suelta y se acopla desde su propia cabina; el
+puesto de acople solo lo menciona en una línea de texto.
+
+### Pilotar
+
+- **Manual**: `Navigator.flyByHand` (sin cambios de física). El panel de mandos sale **solo sentada en el puesto
+  de pilotaje** (`navMode.handAt`); mientras vuela a mano la ficha del puesto se aparta para no tapar los mandos.
+  Atracada en la estación, «Manual» no se puede: primero se desacopla en el puesto de acople.
+- **Automático (retos)**: fija el destino y abre la cadena de retos del viaje (`NavigationMode.program`); por
+  programa, si está atracada, desatraca y sale sola como la Crew Dragon.
+- A una **estación**, a mano, el ordenador la lleva al punto de espera 1 y **se queda allí** (antes atracaba solo).
+- **Vuela, no se arrastra** (`CarrierTrip`, `carrier-trip.ts`): primero gira la proa (cuerpo −z, los Raptor detrás)
+  hacia la ruta, enciende, va por inercia, da la vuelta de 180° antes de frenar (frena con los motores por delante)
+  y al final gira a la actitud del punto 1, con la proa al puerto. Gira a 1°/s (`CARRIER_SLEW_DEG_S`, valor de
+  juego, en desarrollo: no se publican los ritmos de la Starship): la vuelta tarda 3 min de juego, 3 s a ×60. Los
+  giros cuentan en el tiempo del viaje (`carrierTurnSeconds`). Lejos de una estación se ven los chorros de los
+  Raptor de vacío; en los giros y cerca de una estación, los soplos del RCS (nunca los Raptor junto a la ISS).
+  Al salir de un puerto retrocede por el eje sin girar y gira después.
+- **El estado del viaje solo en el puesto de pilotaje** (reglas §3.8 y §5.9): el tiempo que falta, «Ver trayecto»,
+  «Parar» y «Tomar el mando» salen sentada en el puesto de pilotaje (o en sus pantallas de sistemas). En el resto de
+  la cubierta y en el interior la vista queda libre. Para la ventana «Trayecto» del menú del HUD (de solo estado)
+  hay un modelo de lectura, `tripStatus()` (`TripStatus` en `trip-chip.ts`: vehículo, destino, distancia, tiempo
+  real que falta, fase y fracción), sin botones.
+- **Cámara solo con joystick** (reglas §5.7): «Ver trayecto» a pantalla completa gira con su joystick de cámara (sus
+  «+» y «−» y la rueda acercan; nunca un pellizco); el mapa de la mesa de navegación gira con su joystick «Girar» y un toque elige
+  destino.
+
+### Acople
+
+- **A mano**: `ManualBerthing` (`berthing.ts`). La actitud se mantiene en el eje (Dragon la sostiene en modo de
+  traslación); ella manda la velocidad de cierre (pasos de 0,05 m/s, hasta 0,5) y la deriva a los lados (pasos de
+  0,01 m/s, hasta 0,1) con ◀ ▲ ▼ ▶, y «Parar» lo anula todo. La cámara (un objetivo estrecho de 30° por el eje)
+  enseña el módulo de la estación, el puerto y su cruz, y al lado la distancia, el cierre, el desvío y la deriva,
+  cada uno con ✓ o ✗. Al tocar, los límites IDSS lo juzgan (0,05–0,10 m/s, menos de 0,10 m del eje, menos de 0,04
+  m/s de deriva): si no cogen, dice por qué y retrocede 5 m. Va a ×10 (a ×60 no se puede alinear a ojo; valor de
+  juego).
+- **Automático (retos)**: `berthChore` (`berth-chore.ts`): ordenar la aproximación de la Demo-1 (punto 1, eje,
+  punto 2, esperar el «adelante», seguir hasta el contacto, captura suave y ganchos; el distractor es «ir directa a
+  1 m/s»), cuánto se tarda del punto 1 al 2 a 0,07 m/s y qué condición falta para que cojan los ganchos. Resuelto,
+  `Navigator.berthAuto` vuela la aproximación real (51 min de juego).
+- **Desacoplar**: `Unberthing`: retrocede por el eje a 0,07 m/s hasta el punto 1 (150 m), a ×60.
+- La aproximación automática se vuela con el RCS: acelera hasta los 0,07 m/s y frena antes de la espera del punto 2
+  a 0,01 m/s² (`BERTH_RCS_MS2`, valor de juego), con la actitud en el eje del puerto, como la Dragon.
+
+Las tres maniobras van por el `Navigator` como los viajes: un solo reloj, el chip del viaje con «Ver trayecto» y
+«Mando», y solo se ven sentada en el puesto de pilotaje (y en el de acople mientras atraca o desacopla).
+
+### Preguntas abiertas para Berón
+
+- La sala sigue recorriéndose a pie (como el puente de antes), aunque la Starship va en 0 g. ¿Pasamos la cubierta
+  de vuelo al motor de asideros y saltos de las cubiertas?
+- El acople a mano va a ×10 en vez del ×60 de a bordo, para poder alinear a ojo. ¿Vale ese segundo ritmo?
+- La mesa de navegación es nuestra: en una nave real el mapa es una página de las pantallas. ¿La dejamos como mesa
+  o la pasamos a una pantalla del puesto de pilotaje?
+
+## El puente de la nave de anillos (ficción, `?ficcion`)
+
+Lo que sigue es el puente de consolas que se hizo para la nave de anillos y que la Starship usaba hasta ahora. Se
+queda tal cual tras el interruptor de ficción.
+
+### Investigación
 
 | Referencia | Qué se toma | Fuente |
 | --- | --- | --- |
@@ -17,7 +120,7 @@ Datos en `src/modules/flight-deck/data/bridge.ts` (`BRIDGE`, `BRIDGE_ERGONOMICS`
 | Segmento ruso, TORU y Sokol | Acoplar una Progress a mano desde la estación, con dos mandos (traslación y rotación) y el vídeo de la cámara delantera. Sokol es el traje de lanzamiento, que se ajusta sentado en el asiento. | [TORU](https://en.wikipedia.org/wiki/TORU), [Sokol](https://en.wikipedia.org/wiki/Sokol_space_suit) |
 | Crew Dragon | Tres pantallas, la del centro táctil. Debajo hay grupos de botones físicos, casi todos tapados (Commands, Pyros, Displays, Power). | [Engadget](https://www.engadget.com/2018-08-14-spacex-dragon-spacecraft-astronauts.html), [Space.com](https://www.space.com/spacex-crew-dragon-touchscreen-astronaut-thoughts.html) |
 | Orion | Cabina de cristal con tres pantallas y un dispositivo de cursor. Tiene un panel de interruptores al lado, un RHC por asiento en la mano derecha y el THC junto a las pantallas. De los ~2 000 interruptores del transbordador quedan 56. | [NASA](https://www.nasa.gov/missions/artemis/orion/how-to-fly-nasas-orion-spacecraft/), [Design News](https://www.designnews.com/aerospace/exclusive-closer-look-nasas-orion-glass-cockpit) |
-| Starship HLS | Solo se ha publicado el exterior, las ventanas, una cubierta amplia y el ascensor. No hay planos públicos del puesto de mando, así que no se usa para la disposición. | [Space.com](https://www.space.com/space-exploration/artemis/spacex-and-nasa-show-off-how-starship-will-help-astronauts-land-on-the-moon-images) |
+| Starship HLS | Solo se ha publicado el exterior, las ventanas, una cubierta amplia y el ascensor. No hay planos públicos del puesto de mando, así que no se usa para la disposición (la de la Starship, arriba). | [Space.com](https://www.space.com/space-exploration/artemis/spacex-and-nasa-show-off-how-starship-will-help-astronauts-land-on-the-moon-images) |
 | Control de Houston (MOCR, FCR) | Filas de consolas, cada una de un sistema, frente a una pantalla grande con el mapa y la traza en seno de la órbita. Desde 2006 la FCR 1 tiene las filas al mismo nivel. El FDO lleva la trayectoria. | [MCC](https://en.wikipedia.org/wiki/Christopher_C._Kraft_Jr._Mission_Control_Center), [Flight controller](https://en.wikipedia.org/wiki/Flight_controller), [FDO](https://balettie.com/?p=1457) |
 | Sala de control de un submarino | En el centro están los periscopios y las mesas de trazado. Delante, el puesto de gobierno: timonel y planista sentados con mandos de avión. Las consolas de sistemas van a un lado. | [NOVA](https://www.pbs.org/wgbh/nova/subsecrets/spriconhiright.html) |
 | Puente integrado (barcos) | Radar, carta electrónica (ECDIS) y piloto automático en un solo entorno. El navegante pasa a supervisar. | [IBS](https://en.wikipedia.org/wiki/Integrated_bridge_system) |
@@ -27,7 +130,7 @@ Datos en `src/modules/flight-deck/data/bridge.ts` (`BRIDGE`, `BRIDGE_ERGONOMICS`
 | Postura neutra (Skylab, STS-57) | Flexión de cuello 24°, cadera 50° y rodilla 50°: el ojo baja y la pantalla va algo por debajo. Cambia mucho entre tripulantes. | [NASA TM-2003-104805](https://ntrs.nasa.gov/api/citations/20040200967/downloads/20040200967.pdf) |
 | Altura de trabajo de pie | Para tareas ligeras, 5–10 cm por debajo del codo. | [MSD Prevention](https://www.msdprevention.com/resource-library/standing-workstation-height-manual-tasks) |
 
-### ¿La sonda se pilota de pie?
+#### ¿La sonda se pilota de pie?
 
 **No.** Sentada y sujeta, con un mando en cada mano:
 
@@ -39,7 +142,7 @@ En ingravidez, «sentada» quiere decir un asiento de sujeción: cinturón y arn
 cuerpo en postura neutra. El RHC va en el reposabrazos derecho y el THC en el izquierdo, como en Orion. La
 cámara de primera persona baja a 1,2 m.
 
-### ¿Hay modelos 3D de los mandos?
+#### ¿Hay modelos 3D de los mandos?
 
 Sí, procedurales:
 
@@ -51,7 +154,7 @@ Sí, procedurales:
 - Pantallas en marco inclinado con visera.
 - Asideros, barras de pies, bandejas de cables con tres mazos y paneles de luz.
 
-## Disposición
+### Disposición
 
 | Puesto | Dónde | Cómo | Abre |
 | --- | --- | --- | --- |
@@ -79,7 +182,7 @@ En primera persona, la cámara mira un poco por debajo de la pantalla, unos 9° 
 queda en la mitad de arriba del móvil y la ficha no la tapa. Los carteles crecen hasta 28 px de alto. Si dos se
 taparían en pantalla, solo se ve el más cercano.
 
-## Rendimiento
+### Rendimiento
 
 Todo se dibuja así:
 
@@ -100,7 +203,7 @@ Medido en el iPhone 13 emulado, a 1,5×:
 
 El presupuesto es de 600 llamadas y 2 000 k triángulos.
 
-## Preguntas abiertas
+### Preguntas abiertas
 
 - La ventana de proa sigue mostrando un cielo genérico.
 - La mesa se ve a unos 45° de su normal desde donde ella está, más que los 30° del MSIS para pantallas. Así se

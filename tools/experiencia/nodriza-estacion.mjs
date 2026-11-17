@@ -36,8 +36,11 @@ export async function nodrizaEstacion(j) {
   await j.tap(".stand-btn", "Levantarse: habitáculo");
   await p.waitForTimeout(800);
   await j.tap(".room-ui:not(.hidden) .cab-tasks", "Tareas");
-  j.check("la lista de tareas lleva arriba el interruptor «Viaje / Teletransporte»", (await j.texts(".task-board .tb-travel button")).join("/") === "Viaje/Teletransporte");
+  await j.tap('.task-board .board-head [data-view][aria-label="Ajustes de tareas"]', "⚙︎ Ajustes de tareas");
+  j.check("los ajustes de la lista de tareas llevan el interruptor «Viaje / Teletransporte»", (await j.texts(".task-board .tb-travel button")).join("/") === "Viaje/Teletransporte");
   await j.tap('.task-board .tb-travel [data-travel="teletransporte"]', "Teletransporte");
+  await j.tap('.task-board .tb-settings [data-vehicle="todos"]', "Vehículo: Todos");
+  await j.tap('.task-board .board-head [data-view][aria-label="Volver a la lista de tareas"]', "Lista de tareas");
   await go(j, await taskTitle(p, "anillo"));
   await p.waitForTimeout(400);
   await p.waitForFunction(() => [...document.querySelectorAll(".duel")].some((e) => !e.classList.contains("hidden")), null, { timeout: 20000 }).catch(() => {});
@@ -51,8 +54,8 @@ export async function nodrizaEstacion(j) {
   const task = await taskTitle(p, "estacion");
   if (!task) return j.check("hay una tarea de la estación en la lista", false);
   await j.tap(".tasks-btn", "Tareas");
-  await j.tap('.task-board .tb-travel [data-travel="viaje"]', "Viaje");
-  await capture(j, "tareas", "Lista de tareas con el interruptor en «Viaje»");
+  await j.taskSettings({ travel: "viaje" });
+  await capture(j, "tareas", "Lista de tareas con «Viaje» elegido en sus ajustes");
   await go(j, task);
   await p.waitForTimeout(600);
   const plan = await p.evaluate(() => window.codeship.journey.plan.map((l) => ({ kind: l.kind, from: l.from, to: l.to, label: l.label, s: Math.round(l.seconds) })));
@@ -158,6 +161,7 @@ export async function nodrizaEstacion(j) {
 
   // The switch to «Teletransporte» in the task list, from the station.
   await j.tap(".sti-ui .sti-tasks", "Tareas");
+  await j.tap('.task-board .board-head [data-view][aria-label="Ajustes de tareas"]', "⚙︎ Ajustes de tareas");
   await j.tap('.task-board .tb-travel [data-travel="teletransporte"]', "Teletransporte");
   const tele = await p.evaluate(() => ({ s: window.codeship.settings.value.taskTravel, saved: JSON.parse(localStorage.getItem("codeship.ajustes") ?? "{}").taskTravel, on: document.querySelector(".task-board .tb-travel .on")?.textContent }));
   j.check("«Teletransporte» en la lista de tareas se guarda en codeship.ajustes (un solo ajuste)", tele.s === "teletransporte" && tele.saved === "teletransporte" && tele.on === "Teletransporte", JSON.stringify(tele));

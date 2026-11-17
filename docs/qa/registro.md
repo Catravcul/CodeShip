@@ -287,7 +287,6 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-39 | Probado (en vivo) | 2026-11-17 | `5c98cd4` | [run](runs/2026-11-17-1352-PX-28-PX-38-PX-39.md): 128 OK |
 | PX-41 | Probado (en vivo) | 2026-11-17 | `eda96d4` | [run](runs/2026-11-17-1813-PX-07-PX-10-PX-15-PX-31-PX-32-PX-41.md): 29 OK |
 | PX-38 | Probado (en vivo) | 2026-11-17 | `5c98cd4` | [run](runs/2026-11-17-1352-PX-28-PX-38-PX-39.md): 77 OK |
-| PX-41 | Probado (en vivo) | 2026-11-17 | `59fb110` | [run](runs/2026-11-17-1805-PX-41.md): 29 OK |
 
 ## Última ejecución por run log
 

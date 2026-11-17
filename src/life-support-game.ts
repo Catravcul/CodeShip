@@ -104,7 +104,8 @@ export class LifeSupportGame {
     this.cargo.tick(hours);
     for (const e of this.cargo.drainEvents()) {
       const m = e.manifest;
-      if (e.kind === "lanzado") this.d.say(`${m.vehicle.name} lanzada: ${num(m.massKg, 0)} kg, ${num(m.foodKg, 0)} kg de comida para ${m.days} días. Llega en ${num(m.vehicle.transitH.value, 0)} h`, 7);
+      if (e.kind === "punto-captura") this.d.say(`${m.vehicle.name} espera a 10 m, en el punto de captura: atrápalo con Canadarm2 desde el puesto robótico de la Cupola`, 8);
+      else if (e.kind === "lanzado") this.d.say(`${m.vehicle.name} lanzada: ${num(m.massKg, 0)} kg, ${num(m.foodKg, 0)} kg de comida para ${m.days} días. Llega en ${num(m.vehicle.transitH.value, 0)} h`, 7);
       else this.d.say(`${m.vehicle.name} ${m.vehicle.port}: ${num(m.foodKg, 0)} kg de comida a la despensa, ${num(m.waterKg, 0)} kg de agua, gas y repuestos`, 8);
     }
     for (const e of this.system.advance(hours)) {

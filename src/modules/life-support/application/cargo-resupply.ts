@@ -37,7 +37,8 @@ export function cargoManifest(vehicleId: CargoVehicleId, crew: number, machines:
   return { vehicle, days: d, ...mass(d) };
 }
 
-export type CargoEvent = { readonly kind: "lanzado" | "llegada"; readonly manifest: CargoManifest };
+/** `punto-captura`: a vehicle the arm catches (Cygnus) holds 10 m away until it is berthed (`unload`). */
+export type CargoEvent = { readonly kind: "lanzado" | "llegada" | "punto-captura"; readonly manifest: CargoManifest };
 
 /**
  * The cargo line of one vehicle's life support (docs/design/soporte-vital.md, «Despensa»): a Dragon or a Cygnus
@@ -48,6 +49,8 @@ export class CargoResupply {
   private readonly line = new DeliveryLine();
   private readonly manifests = new Map<number, CargoManifest>();
   private events: CargoEvent[] = [];
+  /** Arrived and waiting at the capture point for Canadarm2, with its goods. */
+  private holding: { readonly manifest: CargoManifest; readonly goods: Readonly<Record<string, number>> } | undefined;
 
   constructor(
     private readonly ls: LifeSupport,
@@ -60,10 +63,31 @@ export class CargoResupply {
     return d ? { manifest: this.manifests.get(d.id)!, hoursLeft: d.hoursLeft } : undefined;
   }
 
+  /** A vehicle at the capture point, waiting for the arm. */
+  get awaitingCapture(): CargoManifest | undefined {
+    return this.holding?.manifest;
+  }
+
   /** Why a cargo cannot be ordered now. */
   blocker(): string | undefined {
     const f = this.inFlight;
+    if (this.holding) return `${this.holding.manifest.vehicle.name} espera en el punto de captura: atrápalo con el brazo desde la Cupola`;
     return f ? `Ya viene ${f.manifest.vehicle.name}: llega en ${Math.ceil(f.hoursLeft)} h` : undefined;
+  }
+
+  /** Berthed by the arm: its goods go into the life support. False if nothing was waiting. */
+  unload(): boolean {
+    const h = this.holding;
+    if (!h) return false;
+    this.holding = undefined;
+    this.restock(h.goods);
+    this.events.push({ kind: "llegada", manifest: h.manifest });
+    return true;
+  }
+
+  private restock(g: Readonly<Record<string, number>>): void {
+    const spares = Object.fromEntries(Object.entries(g).filter(([k]) => k.startsWith(SPARE)).map(([k, n]) => [k.slice(SPARE.length), n]));
+    this.ls.restock({ foodKg: g[FOOD], waterKg: g[WATER], o2Kg: g[O2], n2Kg: g[N2], spares });
   }
 
   manifest(vehicleId: CargoVehicleId): CargoManifest {
@@ -85,11 +109,15 @@ export class CargoResupply {
   /** Board hours pass: an arrived cargo unloads into the life support. */
   tick(hours: number): void {
     for (const d of this.line.tick(hours)) {
-      const g = d.goods;
-      const spares = Object.fromEntries(Object.entries(g).filter(([k]) => k.startsWith(SPARE)).map(([k, n]) => [k.slice(SPARE.length), n]));
-      this.ls.restock({ foodKg: g[FOOD], waterKg: g[WATER], o2Kg: g[O2], n2Kg: g[N2], spares });
-      this.events.push({ kind: "llegada", manifest: this.manifests.get(d.id)! });
+      const manifest = this.manifests.get(d.id)!;
       this.manifests.delete(d.id);
+      if (manifest.vehicle.captured) {
+        this.holding = { manifest, goods: d.goods };
+        this.events.push({ kind: "punto-captura", manifest });
+        continue;
+      }
+      this.restock(d.goods);
+      this.events.push({ kind: "llegada", manifest });
     }
   }
 

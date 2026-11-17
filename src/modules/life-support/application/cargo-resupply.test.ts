@@ -46,3 +46,21 @@ describe("SV-17 cargo vehicles fill the pantry", () => {
     expect(cargo.drainEvents().map((e) => e.kind)).toEqual(["lanzado", "llegada"]);
   });
 });
+
+describe("A Cygnus waits for the arm", () => {
+  it("holds at the 10 m capture point and fills the pantry only once berthed; no other order meanwhile", () => {
+    const ls = station();
+    const cargo = new CargoResupply(ls, ECLSS_MACHINES);
+    cargo.order("cygnus");
+    cargo.drainEvents();
+    cargo.tick(60);
+    expect(cargo.drainEvents().map((e) => e.kind)).toEqual(["punto-captura"]);
+    expect(ls.readout().foodKg).toBe(50);
+    expect(cargo.awaitingCapture?.vehicle.id).toBe("cygnus");
+    expect(cargo.order("dragon")).toMatch(/punto de captura/);
+    expect(cargo.unload()).toBe(true);
+    expect(ls.readout().foodKg).toBeGreaterThan(50);
+    expect(cargo.drainEvents().map((e) => e.kind)).toEqual(["llegada"]);
+    expect(cargo.unload()).toBe(false);
+  });
+});

@@ -1526,7 +1526,7 @@ function dockingText(): string {
   // During a mothership trip the autopilot strip says where it is going.
   if (nav.status === "carrier") return "";
   const on = docking.dockedTo;
-  if (on) return `${on === mothership && mothership.dockedTo ? "Nodriza atracada en la estación" : `Módulo acoplado a ${on === mothership ? "la nodriza" : "la estación"}`} · el interruptor de acople (bajo el ojo) desacopla${settings.key(" (K)")}; la escotilla está detrás del puesto`;
+  if (on) return `${on === mothership && mothership.dockedTo ? "Nodriza atracada en la estación" : `Módulo acoplado a ${on === mothership ? "la nodriza" : "la estación"}`} · el interruptor de acople (en el menú ⚙︎) desacopla${settings.key(" (K)")}; la escotilla está detrás del puesto`;
   // While the trip autopilot flies away from the port, the docking read-out is noise.
   // The autopilot strip already shows the automatic docking's progress.
   if (nav.status === "autopilot" || nav.status === "docking") return "";

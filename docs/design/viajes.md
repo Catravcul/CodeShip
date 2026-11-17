@@ -76,6 +76,10 @@ En la tarjeta de un destino de la nodriza, junto a «Programar viaje», sale **P
 - La ficha de viaje baja al borde inferior para no tapar el vehículo, con botones de 44 px.
 - **Nunca atrapa** (reglas.md §3.8). Berón abrió «Ver trayecto» en la consola de la sonda y se quedó sin cámara ni botones: al cerrarlo, la clase de pantalla entera no se quitaba (solo se quitaba al dibujar la vista, y cerrada ya no se dibujaba). Ahora se quita siempre; PX-07 y PX-16 comprueban que la cámara se gira, que se cierra y que vuelven los botones de la consola.
 
+## Trayecto en el menú (reglas.md §5.8–5.9, 2026-11-17)
+
+Mientras un viaje o una operación a distancia está en marcha (la nodriza, el módulo o la sonda viajando o aterrizando), del engranaje del menú brota **Trayecto**, esté donde esté ella. Abre una ventana de solo estado: quién va adónde, la fase, la distancia que falta, cuánto falta en tiempo real y una barra de avance. No tiene «Ver trayecto» ni «Mando», que siguen solo en los mandos de pilotaje del vehículo (§3.8). Al acabar el viaje se cierra sola y el icono deja de brotar ([ux-acciones.md](ux-acciones.md), «Menú árbol general»).
+
 ## «Fijar destino»: fuera
 
 Berón: «¿Para qué es "Fijar destino"?». Solo cambiaba el destino (el asteroide del puesto de pilotaje) sin programar el viaje. «Programar viaje» ya lo fija antes de abrir los retos, y si no se puede programar (está cerca, falta propelente) el destino queda fijado igual y la ficha dice por qué y que se puede volar a mano. Por la regla de botones mínimos, se quita: cada ficha del mapa tiene un solo botón de acción.

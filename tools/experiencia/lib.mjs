@@ -96,6 +96,17 @@ export class Journey {
   }
 
   /**
+   * With the task list open, change its settings with visible taps (docs/design/viaje-a-una-tarea.md
+   * §Ajustes de tareas): the gear next to ✕, then each `[data-…="…"]` choice (e.g. `vehicle: "todos"`,
+   * `travel: "teletransporte"`, `group: "comida"`), then the list icon back to the list.
+   */
+  async taskSettings(choices) {
+    let ok = await this.tap('.task-board .board-head [data-view][aria-label="Ajustes de tareas"]', "⚙︎ Ajustes de tareas");
+    for (const [k, v] of Object.entries(choices)) ok = (await this.tap(`.task-board .tb-settings [data-${k}="${v}"]`, `${k}: ${v}`)) && ok;
+    return (await this.tap('.task-board .board-head [data-view][aria-label="Volver a la lista de tareas"]', "Lista de tareas")) && ok;
+  }
+
+  /**
    * Going through a hatch takes its time (the leaf swings open, she floats through, docs/design/viajes.md
    * «Trayectos por dentro»): after a tap on a hatch's action, wait until she is through on the other side.
    * Not during «Ir», whose journey is checked step by step.

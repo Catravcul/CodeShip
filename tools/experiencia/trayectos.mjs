@@ -63,7 +63,11 @@ export async function trayectos(j) {
   await j.tap(".stand-btn", "Levantarse: habitáculo");
   await p.waitForTimeout(800);
   await j.tap(".room-ui:not(.hidden) .cab-tasks", "Tareas");
-  j.check("«Viaje» está elegido por defecto en la lista de tareas", (await j.texts('.task-board .tb-travel [aria-checked="true"]')).join() === "Viaje", (await j.texts('.task-board .tb-travel [aria-checked="true"]')).join());
+  // The list's settings (the gear): «Viaje» is the default; the vehicle goes to «Todos» to see the station's tasks from the LM.
+  await j.tap('.task-board .board-head [data-view][aria-label="Ajustes de tareas"]', "⚙︎ Ajustes de tareas");
+  j.check("«Viaje» está elegido por defecto en los ajustes de la lista de tareas", (await j.texts('.task-board .tb-travel [aria-checked="true"]')).join() === "Viaje", (await j.texts('.task-board .tb-travel [aria-checked="true"]')).join());
+  await j.tap('.task-board .tb-settings [data-vehicle="todos"]', "Vehículo: Todos");
+  await j.tap('.task-board .board-head [data-view][aria-label="Volver a la lista de tareas"]', "Lista de tareas");
   await goTask(task);
   await p.waitForTimeout(500);
   const plan = await p.evaluate(() => window.codeship.journey.plan.map((l) => ({ kind: l.kind, from: l.from, to: l.to, label: l.label, s: Math.round(l.seconds) })));

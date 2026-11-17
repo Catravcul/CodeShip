@@ -9,6 +9,7 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 const TRAVEL: Record<TaskTravel, string> = { viaje: "Viaje", teletransporte: "Teletransporte" };
 const VEHICLE: Record<Vehicle, string> = { nodriza: "Nave (Starship)", estacion: "Estación", modulo: "Módulo" };
 const IN: Record<Vehicle, string> = { nodriza: "En la nave", estacion: "En la estación", modulo: "En el módulo" };
+const NOTHING: Record<Vehicle, string> = { nodriza: "Nada pendiente en la nave", estacion: "Nada pendiente en la estación", modulo: "Nada pendiente en el módulo" };
 
 /**
  * The task board with every task of the game (docs/design/habitaculo.md §Tareas), grouped (flight first),
@@ -133,7 +134,7 @@ export class TaskBoard {
       )
       .join("");
     const catalog = this.onCatalog ? `<button class="tb-catalog" data-catalog aria-label="Catálogo de especies">Catálogo de especies</button>` : "";
-    this.el.innerHTML = `${head}${scope}${catalog}</div>${body || "<p>Nada pendiente aquí</p>"}${hint}`;
+    this.el.innerHTML = `${head}${scope}${catalog}</div>${body || `<p class="tb-empty">${vehicle && !groupLabel ? NOTHING[vehicle] : "Nada pendiente"}</p>`}${hint}`;
   }
 
   /** The settings view: how «Ir» gets there, which vehicle, which group. */

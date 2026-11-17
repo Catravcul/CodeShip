@@ -25,7 +25,7 @@ body.in-tasks .vstick, body.in-tasks .zg-controls, body.in-tasks .cab-machine { 
 .task-board .tb-vehicles button small { font-weight: 400; opacity: 0.8; }
 .task-board .tb-vehicles button.on { color: #001018; background: #7fdcff; border-color: #7fdcff; }
 .tb-settings .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.tb-settings .chip { flex: none; font: inherit; font-size: 13px; color: #cfe8f5; background: #13243a; border: 1px solid #2c4a6a; border-radius: 999px; padding: 0 12px; }
+.tb-settings .chip { flex: none; gap: 4px; font: inherit; font-size: 13px; color: #cfe8f5; background: #13243a; border: 1px solid #2c4a6a; border-radius: 999px; padding: 0 12px; }
 .tb-settings .chip small { opacity: 0.7; }
 .tb-settings .chip.on { background: #7fdcff; color: #06202b; border-color: #7fdcff; }
 /* «Viaje / Teletransporte»: how «Ir» gets there, a two-way switch in the list's settings. */

@@ -82,7 +82,7 @@ export const BRIDGE: CabinLayout<BridgeStationId> = {
   stations: [
     { id: "salida", label: "Escotilla de bajada", stand: { x: 0, z: 3.35 }, look: { x: 0, y: 1.1, z: 4.0 }, what: "Bajar de la cubierta de vuelo al resto de la nodriza" },
     { id: "prop", label: "Pilotaje y propulsión", stand: { x: 0, z: -2.95 }, look: { x: 0, y: 1.05, z: -3.55 }, what: "Encendidos, actitud, Δv y propelente de la nodriza (PROP)", seated: true },
-    { id: "sonda", label: "Mando de la sonda", stand: { x: -2.2, z: -2.95 }, look: { x: -2.2, y: 1.05, z: -3.55 }, what: "Lanzar, pilotar, posar y recuperar la sonda; sus viajes", seated: true },
+    { id: "sonda", label: "Mando de la sonda", stand: { x: -2.2, z: -2.95 }, look: { x: -2.2, y: 1.05, z: -3.55 }, what: "Soltar Juventas de su dispensador y llevarla a mano o en automático a un asteroide cercano", seated: true },
     { id: "dock", label: "Acople", stand: { x: 2.2, z: -2.95 }, look: { x: 2.2, y: 1.1, z: -3.5 }, what: "Puertos, el módulo de aterrizaje y la estación (DOCK)" },
     { id: "nav", label: "Mesa de navegación", stand: { x: 0, z: 0.1 }, look: { x: PLOT_TABLE.x, y: 0.95, z: PLOT_TABLE.z }, what: "Mapa de trayectorias, destinos y programar viajes (NAV)" },
     { id: "life", label: "Vida y hábitat", stand: { x: -2.5, z: -0.75 }, look: { x: -3.0, y: 1.2, z: -0.75 }, what: "Aire, agua, gravedad y despensa (ECLSS)" },

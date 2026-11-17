@@ -96,7 +96,7 @@ puesto de acople solo lo menciona en una línea de texto.
   a 0,01 m/s² (`BERTH_RCS_MS2`, valor de juego), con la actitud en el eje del puerto, como la Dragon.
 
 Las tres maniobras van por el `Navigator` como los viajes: un solo reloj, el chip del viaje con «Ver trayecto» y
-«Mando», y solo se ven sentada en el puesto de pilotaje (o en el de acople, su cámara).
+«Mando», y solo se ven sentada en el puesto de pilotaje (y en el de acople mientras atraca o desacopla).
 
 ### Preguntas abiertas para Berón
 

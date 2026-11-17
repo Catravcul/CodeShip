@@ -460,7 +460,15 @@ const navMode = new NavigationMode(root, nav, duelView, {
   carrierPosition: () => mothership.position,
 });
 /** The Starship's pilot seat (or its systems screens opened from it): the only place its trip status shows (reglas.md §3.8, §5.9). */
-const atPilotSeat = () => (REAL_ONLY ? (bridge.active && bridge.near() === "prop" && !bridge.walking) || deck.active : bridge.active || deck.active);
+const atPilotSeat = () => {
+  if (!REAL_ONLY) return bridge.active || deck.active;
+  if (deck.active) return true;
+  if (!bridge.active || bridge.walking) return false;
+  const at = bridge.near();
+  // The docking seat flies the berthing and the undocking: those show there too.
+  const ph = nav.progress()?.phase;
+  return at === "prop" || (at === "dock" && (ph === "dock" || ph === "undock"));
+};
 navMode.atControls = (v) => (v === "carrier" ? atPilotSeat() : view.enabled || cabin.active);
 // The map only lives on the deck's navigation page: no overlay anywhere else.
 navMode.canOpen = () => false;

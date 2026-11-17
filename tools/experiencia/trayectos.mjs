@@ -165,7 +165,7 @@ export async function trayectos(j) {
     await j.tap(".fd-panel.max .fd-back", "‹ Dejar la mesa de navegación");
   }
   await p.waitForTimeout(600);
-  j.check("en el puente se ve el viaje (chip con el tiempo que falta)", await p.evaluate(() => window.codeship.bridge.active && !!document.querySelector(".trip-chip.on")));
+  j.check("en el puesto de acople se ve el atraque (chip con el tiempo que falta)", await p.evaluate(() => window.codeship.bridge.active && !!document.querySelector(".trip-chip.on")));
   if (meal) {
     await j.setup("abre la lista de tareas", () => window.codeship.taskBoard.open());
     await goTask(meal);

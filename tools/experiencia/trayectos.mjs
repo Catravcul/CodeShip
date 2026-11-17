@@ -128,16 +128,22 @@ export async function trayectos(j) {
   const moved = Math.hypot(...after.map((v, i) => v - before[i]));
   j.check("arrastrar gira la cámara alrededor de la nave", moved > 1, `${moved.toFixed(1)} m`);
   if (await p.evaluate(() => window.codeship.tripPreview.visible)) await j.tap(".trip-chip .tc-view", "Ocultar trayecto");
-  const near = await (async () => {
+  // As on a real approach: slow down before the point (0,2 m/s), then stop inside its 100 m.
+  const closeTo = async (m) => {
     const t0 = Date.now();
     while (Date.now() - t0 < 180000) {
       const r = await p.evaluate(() => window.codeship.nav.manualCarrier?.remainingM ?? null);
       if (r === null) return false;
-      if (r < 140) return true;
-      await p.waitForTimeout(150);
+      if (r < m) return true;
+      await p.waitForTimeout(100);
     }
     return false;
-  })();
+  };
+  let near = await closeTo(450);
+  if (near) {
+    for (let i = 0; i < 8; i++) await j.tap('.carrier-hand [data-dv="-0.1"]', "−0,1 m/s");
+    near = await closeTo(80);
+  }
   j.check("llega cerca del punto de espera volando a mano", near);
   await j.tap('.carrier-hand [data-dv="stop"]', "Parar");
   // At the parking point the autopilot takes the last approach to the port, like Demo-1.
@@ -148,11 +154,11 @@ export async function trayectos(j) {
   // Trips run on their own (reglas §3.8): while Starship berths she goes down to cook; the trip shows only at the flight deck.
   const meal = await p.evaluate(() => window.codeship.tasks().find((t) => t.place.vehicle === "nodriza" && /^Cocinar/.test(t.title))?.title);
   if (await p.evaluate(() => window.codeship.deck.active)) {
-    if (await p.locator(".fd-panel.max .fd-back").count()) await j.tap(".fd-panel.max .fd-back", "Volver al puente");
-    await j.tap(".fd-status .fd-exit:not([class*=' '])", "Volver");
+    // One console, one page: «‹» leaves the console, back to the bridge.
+    await j.tap(".fd-panel.max .fd-back", "‹ Dejar la mesa de navegación");
   }
   await p.waitForTimeout(600);
-  j.check("en el puente se ve el viaje (chip con el tiempo que falta)", await p.evaluate(() => !!document.querySelector(".trip-chip.on")));
+  j.check("en el puente se ve el viaje (chip con el tiempo que falta)", await p.evaluate(() => window.codeship.bridge.active && !!document.querySelector(".trip-chip.on")));
   if (meal) {
     await j.setup("abre la lista de tareas", () => window.codeship.taskBoard.open());
     await goTask(meal);

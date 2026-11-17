@@ -80,7 +80,6 @@ export async function nodrizaEstacion(j) {
   j.check("con el último reto la nodriza despega; el vuelo dura minutos reales al ritmo de a bordo (entre 1 y 11 min)", fly >= 60 && fly <= 660, `${Math.round(fly)} s`);
   const flying = await p.evaluate(() => window.codeship.nav.status === "carrier");
   j.check("la nodriza vuela con el piloto automático", flying);
-  if (await p.locator(".fd-panel.max .fd-back").count()) await j.tap(".fd-panel.max .fd-back", "Volver al puente");
   await p.waitForTimeout(600);
   await p.waitForFunction(() => !!document.querySelector(".trip-chip .tc-view") && getComputedStyle(document.querySelector(".trip-chip")).display !== "none", null, { timeout: 8000 }).catch(() => {});
   j.check("en el chip del viaje se ve «Ver trayecto» mientras vuela", await visible(p, ".trip-chip .tc-view"));
@@ -107,7 +106,7 @@ export async function nodrizaEstacion(j) {
 
   // Trips run on their own (reglas §3.8): away from the console the trip does not show, and she flies on.
   if (await p.evaluate(() => window.codeship.tripPreview.visible)) await j.tap(".trip-chip .tc-view", "Ocultar trayecto");
-  await j.tap(".fd-status .fd-exit:not([class*=' '])", "Volver");
+  await j.tap(".fd-panel.max .fd-back", "‹ Dejar la consola");
   await p.waitForTimeout(800);
   const away = await p.evaluate(() => ({ deck: window.codeship.deck.active, chip: !!document.querySelector(".trip-chip.on"), status: window.codeship.nav.status }));
   j.check("lejos de la consola no sale el viaje y la nodriza sigue volando sola", !away.deck && !away.chip && away.status === "carrier", JSON.stringify(away));

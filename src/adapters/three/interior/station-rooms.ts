@@ -25,6 +25,8 @@ export interface StationRooms {
   readonly signs: THREE.Sprite[];
   /** The life-support racks by fixture id (src/adapters/three/eclss-racks.ts). */
   readonly racks: Map<string, EclssRackModel>;
+  /** Each crew quarter's folding door by volume id: `shut(0)` folded open against its frame, `shut(1)` closed. */
+  readonly doors: Map<string, { shut(amount: number): void }>;
 }
 
 /** A life-support rack from the kit, at the plan's drawing scale, on its wall, with its name above it. */
@@ -405,11 +407,57 @@ function hangarDressing(h: InteriorVolume, plan: StationInteriorPlan, g: THREE.G
   }
 }
 
+/** Panels of a crew quarter's folding door (an accordion of fabric-covered slats, as on the ISS). */
+const DOOR_PANELS = 6;
+/** How far the slats turn when the door is folded open (rad): they stack against the hinge side. */
+const DOOR_FOLD = 1.45;
+
+/**
+ * A crew quarter's folding door in its doorway, just inside the room (docs/design/compartimentos.md): an
+ * accordion that folds against one side of the frame when open and spreads across the opening when shut.
+ * Built in a local frame (x across the doorway, y up it, z into the room) and turned into place.
+ */
+function foldingDoor(door: InteriorVolume, out: "x" | "y" | "z", back: number, tall: "x" | "y" | "z", wide: "x" | "y" | "z", g: THREE.Group): { shut(amount: number): void } {
+  const W = 2 * door.half[wide];
+  const H = 2 * door.half[tall];
+  const pw = W / DOOR_PANELS;
+  const axis = (k: "x" | "y" | "z", s = 1) => V(k === "x" ? s : 0, k === "y" ? s : 0, k === "z" ? s : 0);
+  let x = axis(wide);
+  const y = axis(tall);
+  const z = axis(out, back);
+  if (x.clone().cross(y).dot(z) < 0) x = x.negate(); // a right-handed frame: the hinge side just changes
+  const frame = new THREE.Group();
+  frame.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z));
+  frame.position.copy(v3(door.centre)).addScaledVector(z, 0.04);
+  const cloth = new THREE.MeshStandardMaterial({ color: 0xcfd6de, roughness: 0.95 });
+  const slats = Array.from({ length: DOOR_PANELS }, () => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(pw, H * 0.98, 0.025), cloth);
+    m.name = "Puerta plegable del camarote";
+    frame.add(m);
+    return m;
+  });
+  g.add(frame);
+  const shut = (amount: number) => {
+    const a = (1 - Math.max(0, Math.min(1, amount))) * DOOR_FOLD;
+    // Joints zigzag into the room: joint j at (−W/2 + j·pw·cos a, (j odd) · pw·sin a).
+    const dx = pw * Math.cos(a);
+    const dz = pw * Math.sin(a);
+    slats.forEach((m, i) => {
+      const z0 = i % 2 === 0 ? 0 : dz;
+      const z1 = i % 2 === 0 ? dz : 0;
+      m.position.set(-W / 2 + (i + 0.5) * dx, 0, (z0 + z1) / 2);
+      m.rotation.y = Math.atan2(-(z1 - z0), dx);
+    });
+  };
+  shut(0);
+  return { shut };
+}
+
 /**
  * Inside a compartment (docs/design/compartimentos.md): a crew quarter's laptop and dimmable light on its side
  * walls; the Cupola's window under her; a soft lamp (no point light: the station already has one per module).
  */
-function compartmentDressing(vol: InteriorVolume, plan: StationInteriorPlan, g: THREE.Group): void {
+function compartmentDressing(vol: InteriorVolume, plan: StationInteriorPlan, g: THREE.Group, doors: Map<string, { shut(amount: number): void }>): void {
   const door = plan.volumes.find((x) => x.id === `paso-${vol.id}`);
   if (!door?.through) return;
   const out = door.through;
@@ -440,6 +488,7 @@ function compartmentDressing(vol: InteriorVolume, plan: StationInteriorPlan, g: 
     lz[tall] = 0.1;
     lz[out] = 0.5;
     box(lz, lamp, new THREE.MeshBasicMaterial({ color: 0xffe6a8 }));
+    doors.set(vol.id, foldingDoor(door, out, back, tall, wide, g));
     // Its label on the doorway's frame, so the four read from the aisle.
     const sign = textSign(vol.label);
     sign.scale.multiplyScalar(0.5);
@@ -471,6 +520,7 @@ function compartmentDressing(vol: InteriorVolume, plan: StationInteriorPlan, g: 
 export function buildStationRooms(plan: StationInteriorPlan): StationRooms {
   const group = new THREE.Group();
   const lamps = new Map<MachineId, THREE.Mesh>();
+  const doors = new Map<string, { shut(amount: number): void }>();
   const pickables: THREE.Object3D[] = [];
   const faceMat: Readonly<Record<Face, THREE.Material>> = {
     suelo: mat(0x58626f),
@@ -524,7 +574,7 @@ export function buildStationRooms(plan: StationInteriorPlan): StationRooms {
       continue;
     }
     if (vol.kind === "compartimento") {
-      compartmentDressing(vol, plan, group);
+      compartmentDressing(vol, plan, group, doors);
       continue;
     }
     // Seams between rack bays (ISPR racks are 1,05 m wide) on the four long faces, along the module.
@@ -641,7 +691,7 @@ export function buildStationRooms(plan: StationInteriorPlan): StationRooms {
   group.add(store);
   group.add(new THREE.HemisphereLight(0xeef4ff, 0x3a404a, 1.4));
   group.add(new THREE.AmbientLight(0xffffff, 0.25));
-  return { group, pickables, lamps, store, signs, racks };
+  return { group, pickables, lamps, store, signs, racks, doors };
 }
 
 /**

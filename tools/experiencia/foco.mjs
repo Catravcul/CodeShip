@@ -291,7 +291,10 @@ export async function foco(j) {
     await close(j);
   });
   await part(j, "importar", async () => {
-    await j.tap('.st-tabs [data-tab="importar"]', "pestaña Importar");
+    // Each window from its own console (no tab bar): imports at Unity's cargo laptop.
+    if (await p.locator(".st-ui:not(.hidden) .st-back").count()) await j.tap(".st-back", "Volver a la estación");
+    await placeAt(j, "consola-bahia");
+    await j.tap('.sti-card [data-act="abrir:importar"]', "Abrir Importar (portátil de carga de Unity)");
     await p.waitForTimeout(400);
     await j.tap(".st-ui [data-good-plus]", "+ un material");
     await j.tap(".st-ui [data-order]", "Pedir");
@@ -300,9 +303,9 @@ export async function foco(j) {
     await close(j);
   });
   await part(j, "hangar: cambiar una pieza", async () => {
-    await j.tap('.st-tabs [data-tab="hangar"]', "pestaña Hangar");
-    await p.waitForTimeout(400);
-    await j.tap(".st-ui [data-bay]", "Abrir la bahía de la nave");
+    if (await p.locator(".st-ui:not(.hidden) .st-back").count()) await j.tap(".st-back", "Volver a la estación");
+    await placeAt(j, "consola-bahia");
+    await j.tap('.sti-card [data-act="bahia"]', "Abrir la bahía de la nave");
     await p.waitForTimeout(800);
     await j.tap('.bay-ui [data-part="alas-solares"]', "Energía del módulo");
     await p.waitForTimeout(400);

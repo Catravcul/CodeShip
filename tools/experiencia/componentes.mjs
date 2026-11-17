@@ -1,5 +1,5 @@
 // Components by tier, imported from Earth (docs/design/componentes.md §7, importacion.md §5), as a player
-// meets them on an iPhone 13: in the station's Hangar tab each real component shows its tier, source,
+// meets them on an iPhone 13: in the station's Hangar (the JEMRMS console in Kibo) each real component shows its tier, source,
 // mass, cost and trip; what the LM carries is «de serie»; a better engine is imported (its order chain),
 // lands in the hangar after the real transfer and is fitted in the bay with the part-change chain; then
 // what Juventas lacks is imported whole and it can be put together in the Bishop. Captures in
@@ -30,6 +30,16 @@ async function solveChain(j, oracle) {
 
 const stationOracle = () => window.codeship.station.session?.run.current ?? null;
 
+/** Each window opens only from its own console (docs/design/reglas.md §2.3): go there and open it from its card. */
+async function openAt(j, fixture, act, label) {
+  const p = j.page;
+  if (await p.locator(".st-ui:not(.hidden) .st-back").count()) await j.tap(".st-back", "Volver a la estación");
+  await j.setup(`Doménica va hasta «${fixture}»`, (f) => window.codeship.stationInside.placeAt(f), fixture);
+  await p.waitForFunction((f) => window.codeship.stationInside.nearFixture() === f, fixture, { timeout: 15000 }).catch(() => undefined);
+  await j.tap(`.sti-card [data-act="${act}"]`, label);
+  await p.waitForTimeout(600);
+}
+
 export async function componentes(j) {
   const p = j.page;
   await j.setup("acopla el módulo en su puerto de la estación", () => {
@@ -40,17 +50,13 @@ export async function componentes(j) {
   await j.tap(".stand-btn", "Levantarse: habitáculo");
   await j.useMachine("cabin", "acople", "entrar-estacion", "Entrar en la estación");
   await p.waitForTimeout(800);
-  await j.setup("Doménica va hasta la refinería", () => window.codeship.stationInside.placeAt("refineria"));
-  await p.waitForFunction(() => window.codeship.stationInside.nearFixture() === "refineria", null, { timeout: 15000 }).catch(() => undefined);
-  await j.tap('.sti-card [data-act="abrir"]', "Abrir (refinería)");
-  await p.waitForTimeout(600);
-  await j.tap('.st-tabs [data-tab="planos"]', "Pestaña Planos");
-  await p.waitForTimeout(400);
+  const planner = await p.evaluate(() => window.codeship.stationInside.interior.fixturesFor("planos")[0]?.id);
+  await openAt(j, planner, "abrir", "Abrir Planos (su máquina)");
+  j.check("la pantalla abre solo la ventana de su consola, sin pestañas", (await p.locator(".st-tabs").count()) === 0 && /Planos/.test((await j.texts(".st-title"))[0] ?? ""), (await j.texts(".st-title"))[0]);
   const plans = await p.evaluate(() => document.querySelector(".st-body")?.textContent ?? "");
   j.check("Planos ya no fabrica motores: dice que se importan y ofrece la pieza pequeña impresa", /se importan/.test(plans) && /Pieza pequeña de metal impresa/.test(plans) && !/HiPAT/.test(plans), plans.slice(0, 200));
 
-  await j.tap('.st-tabs [data-tab="hangar"]', "Pestaña Hangar");
-  await p.waitForTimeout(400);
+  await openAt(j, "consola-jemrms", "abrir", "Abrir Hangar (consola del JEMRMS)");
   await j.tap("[data-components]", "Ver los componentes");
   await p.waitForTimeout(500);
   const cats = await p.locator(".st-comp-cat").count();
@@ -78,8 +84,8 @@ export async function componentes(j) {
     c.importOps.tick(60);
     c.componentImports.tick();
   });
-  await j.tap('.st-tabs [data-tab="hangar"]', "Pestaña Hangar");
-  await p.waitForTimeout(600);
+  await openAt(j, "consola-jemrms", "abrir", "Abrir Hangar otra vez");
+  if (!(await p.locator('[data-comp="aerojet-r-4d"]').count())) await j.tap("[data-components]", "Ver los componentes");
   const landed = p.locator('[data-comp="aerojet-r-4d"]');
   await landed.scrollIntoViewIfNeeded();
   j.check("el R-4D-11 llega al hangar", /1 en el hangar/.test(await landed.innerText()));
@@ -87,9 +93,11 @@ export async function componentes(j) {
   j.check("con un motor del nivel 2, el HiPAT se desbloquea", /Desbloqueado/.test(hipat2), hipat2.replace(/\s+/g, " ").slice(0, 200));
   await capture(j, "llegada", "Llega al hangar");
 
-  // Fitting it reuses the bay's part-change chain.
-  await j.tap('[data-comp="aerojet-r-4d"] [data-bay]', "Cambiar en la bahía");
-  await p.waitForTimeout(900);
+  j.check("el Hangar dice que se cambia en la bahía, sin botón que salte allí", /portátil de carga de Unity/.test(await landed.innerText()) && (await p.locator("[data-bay]").count()) === 0);
+
+  // Fitting it reuses the bay's part-change chain, at the bay's laptop in Unity.
+  await openAt(j, "consola-bahia", "bahia", "Abrir la bahía (portátil de carga de Unity)");
+  await p.waitForTimeout(300);
   await j.tap('.bay-ui [data-part="motor"]', "Motor principal del módulo");
   await p.waitForTimeout(500);
   const act = p.locator(".bay-ui .bay-act:not(.locked)", { hasText: "R-4D-11" });
@@ -106,7 +114,7 @@ export async function componentes(j) {
   // A whole vehicle: what Juventas lacks, in one shipment, then put together in the Bishop.
   await j.tap(".bay-ui .bay-back", "Volver a la estación");
   await p.waitForTimeout(800);
-  await j.tap('.st-tabs [data-tab="hangar"]', "Pestaña Hangar");
+  await openAt(j, "consola-jemrms", "abrir", "Abrir Hangar (consola del JEMRMS)");
   if (!(await p.locator(".st-vehicle").count())) await j.tap("[data-catalogue]", "Ver el catálogo");
   await p.waitForTimeout(500);
   const buy = p.locator('[data-yard-import="juventas"]');
@@ -122,8 +130,8 @@ export async function componentes(j) {
     c.importOps.tick(60);
     c.componentImports.tick();
   });
-  await j.tap('.st-tabs [data-tab="hangar"]', "Pestaña Hangar");
-  await p.waitForTimeout(600);
+  await openAt(j, "consola-jemrms", "abrir", "Abrir Hangar otra vez");
+  if (!(await p.locator('[data-yard-build="juventas"]').count())) await j.tap("[data-catalogue]", "Ver el catálogo");
   const build = p.locator('[data-yard-build="juventas"]');
   await build.scrollIntoViewIfNeeded();
   j.check("con sus piezas importadas, Juventas se monta en la Bishop", /Montar en la esclusa Bishop/.test(await build.innerText()) && !(await build.isDisabled()), await build.innerText());

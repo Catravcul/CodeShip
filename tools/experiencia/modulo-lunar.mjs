@@ -99,7 +99,6 @@ export async function moduloLunar(j) {
   await p.waitForFunction(() => window.codeship.stationInside.nearFixture() === "cupula", null, { timeout: 15000 }).catch(() => undefined);
   await j.tap('.sti-card [data-act="inventario"]', "Catálogo y montaje (puesto robótico de la Cupola)");
   await p.waitForTimeout(600);
-  await j.tap('.st-tabs [data-tab="hangar"]', "Pestaña Hangar");
   await j.tap("[data-catalogue]", "Ver el catálogo");
   await p.waitForTimeout(500);
   const btn = p.locator('[data-yard-build="juventas"]');

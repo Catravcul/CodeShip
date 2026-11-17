@@ -19,6 +19,8 @@ export const STARSHIP_SRC = {
   hls: "Starship HLS: paneles solares en el casco, propulsores a media altura para el alunizaje, dos esclusas y ascensor; 2–4 tripulantes: https://en.wikipedia.org/wiki/Starship_HLS",
   idss: "International Docking System Standard (IDSS), puerto de acople andrógino de 800 mm de paso: https://ntrs.nasa.gov/citations/20220011643",
   ispr: "Bastidor ISPR de la ISS (unos 2 m × 1,05 m × 0,86 m): https://en.wikipedia.org/wiki/International_Standard_Payload_Rack",
+  hayabusa2Descent: "JAXA, «Hayabusa2: descent operation» (2018-09-20): baja desde la home position (20 km) a casi velocidad constante de 40 cm/s, y por debajo de unos 5 km a 10 cm/s: https://www.hayabusa2.jaxa.jp/en/topics/20180920e",
+  osirisRexArrival: "The Planetary Society (2018-12-03), «OSIRIS-REx is officially at asteroid Bennu»: cuatro maniobras bajaron la velocidad respecto a Bennu de unos 491 m/s a 0,04 m/s antes de llegar a 20 km: https://www.planetary.org/blogs/jason-davis/osiris-rex-arrival.html",
   hayabusa2: "Hayabusa2 esperó en su «home position», a unos 20 km de Ryugu, y bajaba desde allí: https://en.wikipedia.org/wiki/Hayabusa2",
 } as const;
 
@@ -60,11 +62,10 @@ export const STARSHIP_DRIVE: ChemicalDrive = {
   oxygenKg: { value: 1_170_000, source: S.starship, note: "Del total de 1500 t" },
   methaneKg: { value: 330_000, source: S.starship, note: "Del total de 1500 t" },
   cruiseMS: {
-    value: 500,
-    source: S.starship,
-    note: "Valor de juego: cada salto acelera hasta 500 m/s como mucho, va por inercia y frena (Δv 1 km/s por salto, unas 9 por depósito lleno). Empujar todo el camino a 4–5 m/s² gastaría el depósito en un salto",
+    value: 0.4,
+    source: S.hayabusa2Descent,
+    note: "Real: entre dos puntos de espera junto a los asteroides vuela como Hayabusa2 desde su home position, a 40 cm/s casi constantes (enciende, va por inercia y frena; Δv 0,8 m/s por salto). OSIRIS-REx llegó a Bennu a 4 cm/s. Los 10 cm/s de Hayabusa2 por debajo de 5 km son la bajada a la superficie: el tramo del módulo",
   },
-  coastS: { value: 1800, source: S.starship, note: "Valor de juego: un salto corto va por inercia una media hora en vez de encender a fondo; 10 km cuestan unos 11 m/s de Δv" },
 };
 
 /** Real crew: the HLS is announced for 2–4; we take 4, the largest published, like an ISS increment of four. */

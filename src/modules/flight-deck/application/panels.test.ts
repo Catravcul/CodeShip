@@ -3,6 +3,7 @@ import { Vec3 } from "@core/math/vec3";
 import { Quat } from "@core/math/quat";
 import { Mothership } from "@modules/mothership/domain/mothership";
 import { IDSS_CONTACT_LIMITS, NODRIZA } from "@modules/mothership/data/mothership";
+import { STARSHIP } from "@modules/mothership/data/starship";
 import { SpinRing } from "@modules/gravity/domain/spin-gravity";
 import { CODESHIP_RING } from "@modules/gravity/data/ring";
 import { Habitat } from "@modules/habitat/application/habitat";
@@ -168,5 +169,24 @@ describe("flight deck panels", () => {
     expect(list.some((a) => a.panel === "life" && a.level === "caution")).toBe(true);
     expect(panelLevel(list, "dock")).toBe("advisory");
     expect(panelLevel(list, "comms")).toBe("nominal");
+  });
+});
+
+describe("NAV-15 The Starship's bridge says only what the Starship has (REAL_ONLY, reglas.md §1.3)", () => {
+  const dockedView = { docked: true, assist: false, lastFailures: [], limits: IDSS_CONTACT_LIMITS, alignment: () => aligned() };
+
+  it("no farm and no ring: neither «El huerto no cubre la comida» nor «Anillos frenando»", () => {
+    const real = new Habitat(seededRandom(1), 3, undefined, "Doménica", []);
+    const life = lifePanel(undefined, real, false);
+    const list = alerts({ prop: propulsionPanel(new Mothership(STARSHIP, Vec3.ZERO, Quat.IDENTITY)), life, dock: dockingPanel(dockedView, 0), comms: commsPanel([]), nav: navPanel("Bennu", "idle") });
+    expect(life.hasFarm).toBe(false);
+    expect(list.map((a) => a.text).join(" · ")).not.toMatch(/huerto|[Aa]nillo|[Xx]en[oó]n/);
+  });
+
+  it("low tanks are named after what they hold: methane and oxygen", () => {
+    const m = new Mothership(STARSHIP, Vec3.ZERO, Quat.IDENTITY);
+    m.burn(m.deltaV() - 5);
+    const list = alerts({ prop: propulsionPanel(m), life: lifePanel(undefined, habitat(), false), dock: dockingPanel(dockedView, 0), comms: commsPanel([]), nav: navPanel("Bennu", "idle") });
+    expect(list[0]).toMatchObject({ level: "warning", panel: "prop", text: "Metano y oxígeno: casi agotado" });
   });
 });

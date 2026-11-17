@@ -1,8 +1,9 @@
 // The mothership travels to the station and goes into its dry dock (docs/design/dique-seco.md): from the
-// ring, «Ir» to a station task in «Viaje» mode walks to the ring's navigation console and flies the
-// mothership (not the lander); «Ver trayecto» shows her moving on her drawn path with the camera following;
-// she berths in the open cradle, whose arms close on her spine, and is seen through the window of the
-// docking hatch. Then the task list's switch goes to «Teletransporte», and the probe's «Ver trayecto»
+// ring, «Ir» to a station task in «Viaje» mode walks to the ring's navigation console and stops there with a
+// notice to travel first (a task never flies a ship, docs/design/reglas.md §3.5); at the console «Programar
+// viaje» and its challenges fly the mothership (not the lander); «Ver trayecto» shows her moving on her drawn
+// path with the camera following; she berths in the open cradle, whose arms close on her spine; «Ir» again
+// takes her into the station, and she is seen through the window of the docking hatch. Then the task list's switch goes to «Teletransporte», and the probe's «Ver trayecto»
 // works the same. iPhone 13; captures in docs/screenshots/nodriza-*-movil.png.
 import { mkdirSync } from "node:fs";
 
@@ -55,17 +56,35 @@ export async function nodrizaEstacion(j) {
   await go(j, task);
   await p.waitForTimeout(600);
   const plan = await p.evaluate(() => window.codeship.journey.plan.map((l) => ({ kind: l.kind, from: l.from, to: l.to, label: l.label, s: Math.round(l.seconds) })));
-  const fly = plan.find((l) => l.kind === "vuelo");
-  j.check("el camino vuela la nodriza desde la consola de navegación (no el módulo)", !!fly && !fly.from.startsWith("modulo") && /dique seco/.test(fly.label), plan.map((l) => `${l.kind} ${l.to} ${l.s}s`).join(" → "));
-  // At the board's pace, ×60 (docs/design/viajes.md «Un solo reloj»): minutes, capped at 10 plus the berthing.
-  j.check("el vuelo dura minutos reales al ritmo de a bordo (entre 1 y 11 min)", !!fly && fly.s >= 60 && fly.s <= 660, fly && `${fly.s} s`);
+  j.check("el camino lleva a la consola de navegación y para allí: una tarea no vuela la nave (reglas §3.5)", plan.length > 0 && !plan.some((l) => l.kind === "vuelo"), plan.map((l) => `${l.kind} ${l.to} ${l.s}s`).join(" → "));
+  await p.waitForFunction(() => !window.codeship.journey.active, null, { timeout: 180000 }).catch(() => {});
+  const told = await p.evaluate(() => ({ note: document.querySelector(".journey-note.on")?.textContent ?? "", status: window.codeship.nav.status }));
+  j.check("al llegar a la consola, un aviso dice que primero hay que viajar y la nodriza no despega sola", /primero hay que viajar/.test(told.note) && told.status !== "carrier", JSON.stringify(told));
 
-  const flying = await p.waitForFunction(() => window.codeship.nav.status === "carrier" && window.codeship.journey.plan[window.codeship.journey.legIndex]?.kind === "vuelo", null, { timeout: 120000 }).then(() => true).catch(() => false);
-  j.check("al llegar a la consola, la nodriza despega con el piloto automático", flying);
-  await p.waitForFunction(() => !document.querySelector(".journey-bar .jb-view")?.hidden, null, { timeout: 8000 }).catch(() => {});
-  j.check("en la barra del viaje se ve «Ver trayecto» mientras vuela", await visible(p, ".journey-bar .jb-view"));
+  // At the console: «Programar viaje» and its challenges fly her (reglas §3.6: also «Pilotar a mano»).
+  await j.setup("usa la consola de navegación del anillo (la del final del camino)", () => window.codeship.deck.enter("interior", "nav"));
+  await p.waitForTimeout(1200);
+  const dock = await p.evaluate(() => window.codeship.nav.targets.find((t) => t.kind === "dock")?.id);
+  await j.tap(`.nav-map .nav-chip[data-id="${dock}"]`, "estación en el mapa");
+  await p.waitForTimeout(400);
+  const modes = await j.texts('.nav-map [data-act="program"], .nav-map [data-act="hand"]');
+  j.check("la tarjeta de la estación ofrece «Programar viaje» y «Pilotar a mano»", modes.some((t) => /Programar viaje/.test(t)) && modes.some((t) => /Pilotar a mano/.test(t)), modes.join(" | "));
+  await j.tap('.nav-map [data-act="program"]', "Programar viaje");
+  await j.waitDuel(30000);
+  for (let n = 0; n < 12 && (await p.evaluate(() => window.codeship.nav.status)) === "programming"; n++) {
+    await j.answer(() => window.codeship.nav.programming?.current ?? null);
+    await p.waitForTimeout(900);
+  }
+  const fly = await p.evaluate(() => window.codeship.nav.progress()?.etaRealS ?? 0);
+  // At the board's pace, ×60 (docs/design/viajes.md «Un solo reloj»): minutes, capped at 10 plus the berthing.
+  j.check("con el último reto la nodriza despega; el vuelo dura minutos reales al ritmo de a bordo (entre 1 y 11 min)", fly >= 60 && fly <= 660, `${Math.round(fly)} s`);
+  const flying = await p.evaluate(() => window.codeship.nav.status === "carrier");
+  j.check("la nodriza vuela con el piloto automático", flying);
+  await p.waitForTimeout(600);
+  await p.waitForFunction(() => !!document.querySelector(".trip-chip .tc-view") && getComputedStyle(document.querySelector(".trip-chip")).display !== "none", null, { timeout: 8000 }).catch(() => {});
+  j.check("en el chip del viaje se ve «Ver trayecto» mientras vuela", await visible(p, ".trip-chip .tc-view"));
   const before = await p.evaluate(() => { const m = window.codeship.mothership.position; return [m.x, m.y, m.z]; });
-  await j.tap(".journey-bar .jb-view", "Ver trayecto");
+  await j.tap(".trip-chip .tc-view", "Ver trayecto");
   // A frame or two (SwiftShader draws a few per second).
   await p.waitForFunction(() => window.codeship.tripPreview.pathPoints >= 2, null, { timeout: 20000 }).catch(() => {});
   const pip = await p.evaluate(() => ({ on: window.codeship.tripPreview.visible, points: window.codeship.tripPreview.pathPoints, label: document.querySelector(".trip-pip .tp-label")?.textContent, route: window.codeship.nav.route.length }));
@@ -85,6 +104,14 @@ export async function nodrizaEstacion(j) {
     return (v.x * f[0] + v.y * f[1] + v.z * f[2]) / n > 0.9;
   }));
 
+  // Trips run on their own (reglas §3.8): away from the console the trip does not show, and she flies on.
+  if (await p.evaluate(() => window.codeship.tripPreview.visible)) await j.tap(".trip-chip .tc-view", "Ocultar trayecto");
+  await j.tap(".fd-panel.max .fd-back", "‹ Dejar la consola");
+  await p.waitForTimeout(800);
+  const away = await p.evaluate(() => ({ deck: window.codeship.deck.active, chip: !!document.querySelector(".trip-chip.on"), status: window.codeship.nav.status }));
+  j.check("lejos de la consola no sale el viaje y la nodriza sigue volando sola", !away.deck && !away.chip && away.status === "carrier", JSON.stringify(away));
+  j.check("y se puede mover la cámara y tocar botones (nada atrapado)", await p.evaluate(() => !document.body.classList.contains("in-trip-view")));
+
   // She berths in the dry dock; the arms close.
   const berthed = await p.waitForFunction(() => !!window.codeship.mothership.dockedTo, null, { timeout: 600000 }).then(() => true).catch(() => false);
   j.check("la nodriza atraca en la estación", berthed);
@@ -101,7 +128,9 @@ export async function nodrizaEstacion(j) {
   await p.waitForFunction(() => window.codeship.dryDock.model.holding > 0.95, null, { timeout: 30000 }).catch(() => {});
   j.check("los brazos del dique se cierran y los focos se encienden", await p.evaluate(() => window.codeship.dryDock.model.holding > 0.95 && window.codeship.dryDock.model.lit > 0.9));
 
-  // The journey goes on into the station; then the window of the docking hatch shows her.
+  // «Ir» again: along the spine and through the docking hatch into the station; then its window shows her.
+  await j.setup("abre la lista de tareas", () => window.codeship.taskBoard.open());
+  await go(j, task);
   const inside = await p.waitForFunction(() => window.codeship.stationInside.active || window.codeship.station.active || !window.codeship.journey.active, null, { timeout: 300000 }).then(() => true).catch(() => false);
   j.check("el viaje sigue por la espina y la escotilla de atraque hasta la estación", inside);
   await p.waitForFunction(() => !window.codeship.journey.active, null, { timeout: 300000 }).catch(() => {});
@@ -138,8 +167,19 @@ export async function nodrizaEstacion(j) {
   // The probe's «Ver trayecto»: the same view, on its own path.
   await j.setup("la sonda tiene un plan cargado hacia el asteroide", () => window.codeship.probeTravel.trip.engage({ kind: "asteroid", body: window.codeship.expedition.asteroid }));
   await p.waitForTimeout(800);
+  // The probe's trip shows only at its console (reglas §3.8).
+  j.check("fuera de la consola de la sonda no sale su viaje", !(await p.evaluate(() => !!document.querySelector(".trip-chip.on"))));
+  await j.setup("vuelve al puente de la nodriza (el camino se juega arriba)", () => {
+    const c = window.codeship;
+    if (c.station.active) c.station.exit();
+    if (c.stationInside.active) c.stationInside.suspend();
+    c.bridge.enter("salida");
+  });
+  await p.waitForTimeout(800);
+  await j.useMachine("bridge", "sonda", "abrir", "Usar la consola de la sonda");
+  await p.waitForTimeout(800);
   const probeOn = await visible(p, ".trip-chip.on .tc-view");
-  j.check("con la sonda volando sola, la ficha de viaje ofrece «Ver trayecto»", probeOn && (await j.texts(".trip-chip.on .tc-view"))[0] === "Ver trayecto");
+  j.check("en la consola de la sonda, con la sonda volando sola, la ficha de viaje ofrece «Ver trayecto»", probeOn && (await j.texts(".trip-chip.on .tc-view"))[0] === "Ver trayecto");
   if (probeOn) {
     await j.tap(".trip-chip.on .tc-view", "Ver trayecto (sonda)");
     await p.waitForFunction(() => /Sonda/.test(document.querySelector(".trip-pip .tp-label")?.textContent ?? ""), null, { timeout: 20000 }).catch(() => {});

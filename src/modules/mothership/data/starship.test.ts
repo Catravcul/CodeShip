@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { Quat } from "@core/math/quat";
 import { Vec3 } from "@core/math/vec3";
 import { Mothership, chemicalCruiseMS } from "../domain/mothership";
+import { planContinuousBurn } from "@modules/navigation/domain/transfer";
+import { realSeconds, TRAVEL_TIME } from "@modules/navigation/domain/travel-time";
 import { STARSHIP, STARSHIP_DRIVE } from "./starship";
 
 const G0 = 9.80665;
@@ -44,9 +46,28 @@ describe("NAV-08 Starship as the mothership: Raptor vacuum engines, methane and 
     expect(lines).toMatch(/Motores/);
     expect(lines).not.toMatch(/[Aa]nillo|[Rr]eactor|[Rr]adiador/);
   });
+});
 
-  it("a hop coasts: a short one slowly (about half an hour), a long one at 500 m/s at most", () => {
-    expect(chemicalCruiseMS(STARSHIP_DRIVE, 10_000)).toBeCloseTo(10_000 / 1800, 6);
-    expect(chemicalCruiseMS(STARSHIP_DRIVE, 1e9)).toBe(500);
+describe("NAV-14 Starship hops between asteroids at real approach speeds (Hayabusa2: 40 cm/s)", () => {
+  const ship = new Mothership(STARSHIP, Vec3.ZERO, Quat.IDENTITY);
+
+  it("cruises at 0,4 m/s whatever the hop, sourced to JAXA", () => {
+    expect(chemicalCruiseMS(STARSHIP_DRIVE, 9_000)).toBe(0.4);
+    expect(chemicalCruiseMS(STARSHIP_DRIVE, 1e9)).toBe(0.4);
+    expect(STARSHIP_DRIVE.cruiseMS.source).toMatch(/jaxa/i);
+  });
+
+  it("a 9 km hop takes about 6 h 15 min of game time, about 6 real minutes at the board's ×60", () => {
+    const p = planContinuousBurn(9_000, ship.accelerationMs2, chemicalCruiseMS(STARSHIP_DRIVE, 9_000));
+    expect(p.peakMS).toBe(0.4);
+    expect(p.totalS).toBeGreaterThan(22_400);
+    expect(p.totalS).toBeLessThan(22_600);
+    expect(p.deltaVMS).toBeCloseTo(0.8, 6);
+    expect(realSeconds(p.totalS, TRAVEL_TIME.lapse.carrier)).toBeCloseTo(p.totalS / 60, 3);
+  });
+
+  it("the longest hop of the region (about 14 km) still plays at ×60, under the 10-minute cap", () => {
+    const p = planContinuousBurn(14_000, ship.accelerationMs2, 0.4);
+    expect(p.totalS / TRAVEL_TIME.lapse.carrier).toBeLessThan(TRAVEL_TIME.capS);
   });
 });

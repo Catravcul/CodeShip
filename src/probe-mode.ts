@@ -1,4 +1,5 @@
 import { settings } from "./ui/settings-store";
+import { LANDING_PROGRAM } from "@modules/navigation/application/landing-program";
 import * as THREE from "three";
 import { Vec3 } from "@core/math/vec3";
 import type { ThrustCommand } from "@modules/ship/domain/ship";
@@ -87,7 +88,7 @@ export class ProbeMode {
         <button data-act="trip" class="primary">Programar viaje</button>
         <button data-act="home">Programar vuelta</button>
         <button data-act="launch" class="primary">Lanzar sonda</button>
-        <button data-act="assist">Aterrizaje: manual</button>
+        <button data-act="assist">Nivelar sola: no</button>
         <button data-act="recover">Recuperar con el brazo</button>
         <button data-act="warp">Tiempo ×1</button>
         <button data-act="abandon" class="danger">Abandonar la sonda</button>
@@ -146,6 +147,9 @@ export class ProbeMode {
     this.ui.classList.remove("hidden");
     document.body.classList.add("in-probe");
     this.resize();
+    const p = this.pending;
+    this.pending = undefined;
+    if (p) this.say(p.text, Math.max(p.seconds, 8));
   }
 
   exit(): void {
@@ -172,6 +176,8 @@ export class ProbeMode {
    * closed without flying, or landed, back to the chase.
    */
   landingSheet(state: "open" | "flying" | "closed", site: () => Vec3 | undefined): void {
+    // The side view starts square to the site, and the chase view behind the nose again after it.
+    if (state !== "flying") Object.assign(this.orbit, { yaw: 0, pitch: 0 });
     this.plan = state === "closed" ? undefined : { state, site };
     if (state === "closed") this.resize();
   }
@@ -185,7 +191,12 @@ export class ProbeMode {
     // Local vertical from the site up to the probe; a side perpendicular to it.
     const v = drop.length() > 1e-6 ? drop.normalize() : up;
     const ref = Math.abs(v.x) < 0.9 ? Vec3.X : Vec3.Z;
-    const side = v.cross(ref).normalize();
+    const side0 = v.cross(ref).normalize();
+    // The look stick and a drag still turn it (reglas.md §3.8): yaw about the vertical, pitch up over the site.
+    const across = v.cross(side0);
+    const yawed = side0.scale(Math.cos(this.orbit.yaw)).add(across.scale(Math.sin(this.orbit.yaw)));
+    const pitch = Math.max(-0.9, Math.min(0.9, this.orbit.pitch));
+    const side = yawed.scale(Math.cos(pitch)).add(v.scale(Math.sin(pitch))).normalize();
     const mid = site.add(v.scale(h * 0.5));
     // With the sheet open, the look point sits in the middle of the strip above it (a taller frustum, its top
     // shown); the camera stands back until the drop from the probe to its site fits that strip, with a margin.
@@ -215,7 +226,14 @@ export class ProbeMode {
     return true;
   }
 
+  /** What the probe said while she was away from its console: shown when she comes back (reglas.md §3.8). */
+  private pending: { text: string; seconds: number } | undefined;
+
   say(text: string, seconds = 4): void {
+    if (!this.active) {
+      this.pending = { text, seconds };
+      return;
+    }
     this.msg.textContent = text;
     this.msg.classList.add("on");
     this.msgUntil = performance.now() + seconds * 1000;
@@ -231,6 +249,8 @@ export class ProbeMode {
         break;
       case "assist":
         p.flight.landingAssist = !p.flight.landingAssist;
+        // It does not land and goes nowhere: it only turns the probe belly to the ground (attitude hold).
+        if (p.flight.landingAssist) this.say(`Nivelar sola: la sonda gira sola hasta poner la panza hacia el suelo; no va a ningún sitio ni aterriza. Para que aterrice sola, «Aterrizar con un programa» a menos de ${LANDING_PROGRAM.zoneM} m del suelo`, 9);
         break;
       case "recover":
         if (!p.recover()) this.say(`El brazo agarra a menos de ${PROBE_TUNING.captureRangeM} m de la bahía y a menos de ${fmt(PROBE_TUNING.captureSpeedMs)} m/s`);
@@ -284,14 +304,15 @@ export class ProbeMode {
       this.plan = undefined;
       this.resize();
     }
+    // The look stick turns the camera in every view, the landing's side view too (reglas.md §3.8).
+    const st = this.lookStick.value;
+    this.turn(-curve(st.x) * 2.0 * dt, -curve(st.y) * 1.4 * dt);
     if (this.plan && this.frameLanding(s.position, s.toWorld(Vec3.Y))) {
       this.render(warp, warpNote);
       if (performance.now() > this.msgUntil) this.msg.classList.remove("on");
       return;
     }
     // Chase camera a little behind and above it, looking along its nose; the player's look orbits it about the probe.
-    const st = this.lookStick.value;
-    this.turn(-curve(st.x) * 2.0 * dt, -curve(st.y) * 1.4 * dt);
     const turned = (v: Vec3) => {
       const t = new THREE.Vector3(v.x, v.y, v.z).applyEuler(new THREE.Euler(this.orbit.pitch, this.orbit.yaw, 0, "YXZ"));
       return new Vec3(t.x, t.y, t.z);
@@ -346,7 +367,7 @@ export class ProbeMode {
     const show = (b: HTMLButtonElement, on: boolean) => b.classList.toggle("hidden", !on);
     show(this.btn.launch, p.canLaunch);
     show(this.btn.assist, p.out);
-    this.btn.assist.textContent = `Aterrizaje: ${f.landingAssist ? "auto" : "manual"}`;
+    this.btn.assist.textContent = `Nivelar sola: ${f.landingAssist ? "sí" : "no"}`;
     this.btn.assist.classList.toggle("on", f.landingAssist);
     show(this.btn.recover, p.status === "en-vuelo");
     this.btn.recover.classList.toggle("primary", p.canRecover);

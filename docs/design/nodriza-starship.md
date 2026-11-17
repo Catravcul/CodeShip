@@ -116,9 +116,11 @@ unos **10,5 km/s** sin carga (SpaceX da unos 6,9 km/s con 100 t de carga).
 Una nave eléctrica empuja todo el camino. La Starship acelera a 4–5 m/s² y gastaría los tanques en un salto,
 así que **acelera, va por inercia y frena**
 ([`navigation/domain/transfer.ts`](../../src/modules/navigation/domain/transfer.ts), `planContinuousBurn` con
-velocidad de crucero). La velocidad de crucero es un valor de juego: la que da una media hora de inercia en un
-salto corto, con un máximo de 500 m/s en los largos (Δv de 1 km/s como mucho por salto). Un salto de 9 km cuesta
-unos 10 m/s y 4,3 t de propelente.
+velocidad de crucero). La velocidad de crucero es la **real de las operaciones de proximidad**: **40 cm/s**, la de
+Hayabusa2 al bajar desde su *home position* ([JAXA, 2018-09-20](https://www.hayabusa2.jaxa.jp/en/topics/20180920e));
+OSIRIS-REx llegó a Bennu a 4 cm/s. Un salto de 9 km dura unas 6 h 15 min de juego (6 min reales a ×60) y gasta
+0,8 m/s de Δv, unos 340 kg de propelente: los depósitos dan para miles de saltos. Antes era un valor de juego
+(media hora de inercia, hasta 500 m/s).
 
 El reto de **programar el viaje** de la nodriza tiene su versión química (`trip-chore.ts`): ordenar orientar,
 encender los Raptor de vacío, ir por inercia, dar la vuelta antes de los últimos metros y frenar (el distractor es

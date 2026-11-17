@@ -102,15 +102,13 @@ export interface ChemicalDrive {
   /** Tank capacities, kg: what refuelling fills. */
   readonly oxygenKg: Sourced<number>;
   readonly methaneKg: Sourced<number>;
-  /** Top speed of a hop between asteroids: burn to it, coast, brake (a game value). */
+  /** Speed of a hop between asteroids' station-keeping points: burn to it, coast, brake (real proximity operations). */
   readonly cruiseMS: Sourced<number>;
-  /** A short hop coasts at least about this long instead of burning hard (a game value), s. */
-  readonly coastS: Sourced<number>;
 }
 
-/** Cruise speed of a chemical hop of `distanceM`: slow enough to coast about `coastS`, never above `cruiseMS`. */
-export function chemicalCruiseMS(c: ChemicalDrive, distanceM: number): number {
-  return Math.min(c.cruiseMS.value, Math.max(0.01, distanceM / c.coastS.value));
+/** Cruise speed of a chemical hop of `distanceM` (a hop too short to reach it never gets there: the burn plan caps it). */
+export function chemicalCruiseMS(c: ChemicalDrive, _distanceM: number): number {
+  return c.cruiseMS.value;
 }
 
 export interface MothershipSpec {
@@ -347,7 +345,7 @@ export class Mothership implements DockingTarget {
   get drive(): DrivePlan {
     const c = this.spec.chemical;
     const p = this.spec.propulsion.propellant;
-    return c || p === "metano-oxigeno" ? chemicalPlan(c ?? { engines: [], mixtureRatio: { value: 0, source: "" }, oxygenKg: { value: 0, source: "" }, methaneKg: { value: 0, source: "" }, cruiseMS: { value: 0, source: "" }, coastS: { value: 1, source: "" } }) : drivePlan(this.fits, this.availableThrusterKw, p);
+    return c || p === "metano-oxigeno" ? chemicalPlan(c ?? { engines: [], mixtureRatio: { value: 0, source: "" }, oxygenKg: { value: 0, source: "" }, methaneKg: { value: 0, source: "" }, cruiseMS: { value: 0, source: "" } }) : drivePlan(this.fits, this.availableThrusterKw, p);
   }
   /** «metano y oxígeno» or the electric propellant's name: what the tanks hold. */
   get propellantName(): string {

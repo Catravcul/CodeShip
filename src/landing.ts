@@ -3,7 +3,7 @@ import type { LandingProgram, LandingStatus } from "@modules/navigation/applicat
 import { LANDING_PROGRAM } from "@modules/navigation/application/landing-program";
 import { settle } from "@modules/flight/domain/settling";
 import type { LandingPhase } from "@modules/navigation/application/landing-guidance";
-import { num } from "@modules/navigation/application/trip-chore";
+import { duration, num } from "@modules/navigation/application/trip-chore";
 import type { TripChipData } from "./ui/trip-chip";
 import type { DuelView, SessionText } from "./ui/duel-view";
 import { LandingReadoutView, landingMode } from "./ui/landing-readout";
@@ -46,6 +46,8 @@ export interface LandingUiDeps {
   say(text: string): void;
   /** Name of the body below. */
   targetName(): string;
+  /** What the landing is for, in a few words (reglas.md §3.9: the automatic landing says where it goes and why). */
+  purpose?(): string;
   /**
    * Pull of the body at the craft, m/s²: given for a craft without anchors (Juventas), whose touchdown is
    * told as bounces until it settles (its accelerometers' record).
@@ -131,12 +133,15 @@ export class LandingUi {
     const pr = this.d.program.progress();
     if (!pr) return undefined;
     const total = pr.etaS;
+    // Where it goes (reglas.md §3.9): the site on the body, how far from it across the ground and how high.
+    const r = this.d.program.readout();
+    const across = r ? Math.hypot(r.x, r.y) : undefined;
     return {
       who,
-      goal: `aterrizaje en ${this.d.targetName()}`,
+      goal: `sitio de aterrizaje en ${this.d.targetName()}`,
       etaRealS: total / Math.max(1, pr.lapse),
       fraction: Math.max(0, Math.min(1, 1 - pr.clearanceM / LANDING_PROGRAM.zoneM)),
-      detail: `${LANDING_PHASE[pr.phase]} · ${metres(pr.clearanceM)} del suelo · ${num(pr.speedMs, 2)} m/s${pr.lapse > 1 ? ` · ×${num(pr.lapse)}` : ""}`,
+      detail: `${LANDING_PHASE[pr.phase]} · ${across === undefined ? "" : `al sitio ${metres(across)} · `}${metres(pr.clearanceM)} del suelo · ${num(pr.speedMs, 2)} m/s${pr.lapse > 1 ? ` · ×${num(pr.lapse)}` : ""}`,
     };
   }
 
@@ -188,7 +193,11 @@ export class LandingUi {
     this.last = s;
     const name = this.d.targetName();
     const say = this.d.say;
-    if (s === "flying") say(`Programa cargado: baja sola al sitio en ${name}${p.mistakes ? ` (menos preciso: ${p.mistakes} ${p.mistakes === 1 ? "fallo" : "fallos"})` : ""}`);
+    if (s === "flying") {
+      const pr = p.progress();
+      const why = this.d.purpose?.();
+      say(`Programa cargado: baja sola al sitio marcado (el anillo) en ${name}, ${pr ? `a ${metres(pr.clearanceM)} y unos ${duration(pr.etaS)}` : ""}${p.mistakes ? ` (menos preciso: ${p.mistakes} ${p.mistakes === 1 ? "fallo" : "fallos"})` : ""}${why ? `. Para ${why}` : ""}`);
+    }
     if (s === "landed") {
       const g = this.d.gravityMs2?.();
       if (g === undefined) say(`Posada por programa a ${metres(p.missM() ?? 0)} del centro del sitio`);

@@ -4,11 +4,11 @@ Regla del diseñador (2026-11-17, sustituye el tope de segundos: «no hay proble
 
 ## Cómo se juega
 
-1. **Programar.** El viaje largo se programa con la cadena de cinco retos de siempre (ordenar, completar, predecir, reparar, especificar), con los números reales de ese viaje ([navegacion.md](navegacion.md)):
-   - nodriza o módulo: desde el mapa del puente (NAV) → **Programar viaje**;
+1. **Programar o pilotar a mano** (reglas.md §3.6). El viaje largo se programa con la cadena de cinco retos de siempre (ordenar, completar, predecir, reparar, especificar), con los números reales de ese viaje ([navegacion.md](navegacion.md)), o se vuela a mano:
+   - nodriza o módulo: desde el mapa del puente (NAV) → **Programar viaje**, o **Pilotar a mano** (abajo);
    - sonda: desde su consola en el puente → **Programar viaje a …** (asteroide lejano) o **Programar vuelta a la nodriza**.
 2. **Vuela solo.** Al resolver la cadena, el vehículo vuela solo con su física real (la Starship con sus Raptor: quemado, inercia y frenado; el módulo y la sonda con quemado, crucero, vuelta y frenado). El tiempo del juego pasa al **ritmo de a bordo, ×60** (una hora de juego por minuto real) y el viaje dura los minutos que salen (tope de 10 min).
-3. **Mientras tanto.** Se puede hacer cualquier otra cosa: caminar por el anillo, tareas, huerto, estación, radio. La **ficha de viaje** (abajo, en cualquier pantalla) dice quién viaja y adónde, **cuándo llega en segundos reales**, la fase, la velocidad, lo que falta, la duración real del vuelo y la cámara rápida (×N). Tiene dos botones:
+3. **Mientras tanto** (reglas.md §3.8). El viaje sigue solo y se puede dejar la consola para hacer cualquier otra cosa: tareas, cocina, ejercicio, estación, radio. La **ficha de viaje** sale **solo en la consola de ese vehículo** (la cubierta de vuelo para la nodriza, la consola de la sonda para la sonda, la cabina del LM para el módulo); fuera de ella no sale, y el aviso de llegada espera allí a que vuelva. Dice quién viaja y adónde, **cuándo llega en segundos reales**, la fase, la velocidad, lo que falta, la duración real del vuelo y la cámara rápida (×N). Tiene dos botones:
    - **Ver**: abre la **vista en directo** (una segunda cámara sobre la escena del espacio, en una esquina; arriba en el móvil). Sigue a la nodriza, al módulo o a la sonda con su destino al fondo. «×» o **Ocultar** la cierran.
    - **Mando**: toma el mando (el piloto automático se desconecta; tocar los mandos del vehículo hace lo mismo).
 4. **Llegada.** El vehículo llega cerca y devuelve los mandos parado:
@@ -27,7 +27,7 @@ Berón: «El viaje a la estación parece hacerse en segundos y no se ve el camin
 
 La física es la de siempre, con los datos de cada vehículo:
 
-- **Starship**: 6 Raptor (3 de vacío de 2530 kN), unos 1600 t; acelera hasta su crucero, va por inercia media hora (valor de juego `coastS`) y frena (`chemicalCruiseMS`, [nodriza-starship.md](nodriza-starship.md)).
+- **Starship**: 6 Raptor (3 de vacío de 2530 kN), unos 1600 t; entre los puntos de espera junto a los asteroides vuela a la **velocidad real de las operaciones de proximidad**: **40 cm/s**, como Hayabusa2 al bajar desde su *home position* de 20 km ([JAXA, 2018-09-20](https://www.hayabusa2.jaxa.jp/en/topics/20180920e)); enciende un instante, va por inercia y frena (Δv 0,8 m/s por salto, `chemicalCruiseMS`, [nodriza-starship.md](nodriza-starship.md)). OSIRIS-REx llegó a Bennu a 4 cm/s ([The Planetary Society](https://www.planetary.org/blogs/jason-davis/osiris-rex-arrival.html)). Los 10 cm/s de Hayabusa2 por debajo de 5 km son su bajada a la superficie: aquí, el tramo del módulo. Real (antes: 30 min de inercia, valor de juego).
 - **Atraque real en la estación** (nuevo): para en el **Waypoint 1, a 150 m** del puerto, se acerca a **0,07 m/s** (velocidad de contacto, dentro del rango IDSS de 0,05–0,10 m/s), **espera en el Waypoint 2, a 20 m** (el «go/no-go») y acopla. Del Waypoint 1 a la captura tarda **51 min**, como la Crew Dragon en la misión Demo-1 de 2019 ([The Planetary Society](https://planetary.org/articles/crew-dragon-docks)). Real. La espera a 20 m (≈15 min) es lo que deja Demo-1 tras recorrer los 150 m: derivado.
 - **Módulo lunar** y **Juventas**: quemado, crucero y frenado con su motor y su masa ([modulo-lunar-juventas.md](modulo-lunar-juventas.md)).
 
@@ -37,17 +37,17 @@ Medido en la partida nueva (nodriza junto a Bennu), con `codeship.nav.trip()` y 
 
 | Viaje | Distancia | Tiempo de juego (física) | Compresión | Minutos reales |
 | --- | --- | --- | --- | --- |
-| Starship a la estación: vuelo + atraque | 1,0 km | 30 min + 51 min = 1 h 21 min | ×60 | **1 min 21 s** |
-| Starship a otro asteroide + último tramo del LM | 7–14 km + 1 km | 30 min + 51 s ≈ 31 min | ×60 | **31 s** |
+| Starship a la estación: vuelo + atraque | 1,0 km | 41 min (a 40 cm/s) + 51 min = 1 h 32 min | ×60 | **1 min 32 s** |
+| Starship a otro asteroide (a 40 cm/s) + último tramo del LM | 7–14 km + 1 km | 5 h 2 min – 9 h 38 min | ×60 | **5–9,6 min** |
 | Módulo lunar solo (Bennu, 1 km) | 1,1 km | 51 s | ×60 | 1 s |
 | Módulo de vuelta a la Starship | 0,6 km | 31 s (+ acople a ×1, 1–3 min) | ×60 | 1 s + el acople |
 | Juventas a Bennu | 1–2 km | 1 h 27 min | ×60 | **1 min 27 s** |
 | Juventas a otro asteroide | 7–14 km | 4 h 17 min – 6 h 27 min | ×60 | **4–6,5 min** |
 | Cualquier viaje de más de 10 h de juego | — | > 10 h | > ×60 | 10 min (tope) |
 
-Durante esos minutos, a bordo pasan las mismas horas: con el viaje a la estación (1 h 21 min de juego) la tripulación vive 1 h 21 min: ni una comida (hay dos al día, [vida-a-bordo.md](vida-a-bordo.md)). Con 6 h de Juventas, un cuarto de día.
+Durante esos minutos, a bordo pasan las mismas horas: con el viaje a la estación (1 h 32 min de juego) la tripulación vive 1 h 32 min: ni una comida (hay dos al día, [vida-a-bordo.md](vida-a-bordo.md)). Con un salto de la Starship de 6 a 10 h, un cuarto o casi la mitad del día: puede tocar una comida a bordo durante el salto. Ningún salto de la región pasa del tope de 10 min: todos van a ×60.
 
-**Abierta para el diseñador:** el salto de la Starship entre asteroides va por inercia 30 min (valor de juego) y dura 31 s reales. Con la velocidad real de las operaciones de proximidad de Hayabusa2 (decenas de cm/s) 9 km serían 6–25 h de juego, es decir 6–25 min reales. ¿Lo pasamos a esa velocidad?
+**Decidido (2026-11-17):** el salto de la Starship entre asteroides va a la velocidad real de Hayabusa2 (40 cm/s), no a la media hora de inercia de antes. Con la región comprimida (la Starship aparca a 1,35 km; Hayabusa2 esperaba a 20 km), 7–14 km son 5–9,6 min reales. **Abierta:** el módulo lunar baja todavía con su propio plan de empuje (1 km en 51 s de juego); con los 10 cm/s reales de Hayabusa2 serían casi 3 h de juego, 3 min reales.
 
 ## Un reloj para todo el mundo
 
@@ -59,6 +59,14 @@ Durante un viaje automático el bucle principal usa la compresión del viaje com
 - **Amenaza durante un viaje** (decisión HC-03): si la ira va a por la nave que viaja, el viaje baja a **×1** con el aviso «⚠ Amenaza: viaje a ×1 hasta que pase», y el reloj del viaje no cuenta esos segundos.
 - Solo hay un viaje comprimido a la vez.
 
+## Una tarea no vuela una nave (reglas.md §3.5, 2026-11-17)
+
+Berón tocó «Ir» en la tarea de dormir estando en la Starship: la Starship voló sola a la estación, la vio un momento y apareció dentro de la estación con «Parar» y «46 s»; tras «Parar», la escotilla de vuelta decía que no estaba acoplada. Ahora «Ir» **nunca hace volar una nave**: el plan se corta en el primer tramo de vuelo (`upToFlight`), ella anda hasta donde se pilota ese vuelo (la mesa de navegación del puente, o el puesto del comandante del LM) y un aviso dice: «Para «X» primero hay que viajar a la estación: en la mesa de navegación, «Programar viaje» (retos) o «Pilotar a mano»». Si ya está allí, solo sale el aviso. Como «Ir» no vuela, ya no puede dejarla en la estación con la Starship sin atracar (el estado incoherente tras «Parar»). Cuando la nave ha atracado, «Ir» otra vez la lleva andando, por el túnel de proa, hasta la tarea.
+
+## Pilotar a mano la nodriza (reglas.md §3.6, en desarrollo)
+
+En la tarjeta de un destino de la nodriza, junto a «Programar viaje», sale **Pilotar a mano**. Desde la cubierta de vuelo se da el empuje con encendidos cortos, como en las operaciones de proximidad: **−0,1 m/s**, **Parar** y **+0,1 m/s** (hasta 1 m/s), a ×60. El panel dice lo que falta hasta el punto de espera, la velocidad y el Δv gastado, y qué hacer («Da empuje (+): 0,4 m/s como Hayabusa2», «Para en …», «¡Estás en el punto: Parar!»). Parada a menos de 100 m del punto de espera de una estación, el ordenador hace el atraque como la Demo-1 (51 min de juego); lejos de una estación queda aparcada y se baja en el módulo. SpaceX no ha publicado cómo se pilota la Starship: el panel lo dice («Mandos de la Starship: en desarrollo»). Código: `ManualCarrierRun` en `carrier-trip.ts`, `Navigator.flyByHand`, el panel `.carrier-hand` de `src/navigation.ts`.
+
 ## Ver trayecto: el vuelo real
 
 «Ver trayecto» (barra del viaje y ficha) es una segunda cámara **sobre la misma escena del espacio**: la Starship (su modelo, a su tamaño real de 52 m), la estación, los asteroides y el Sol en su sitio, con la ruta que vuela dibujada en cian y un anillo donde acaba. No es un esquema: es lo que pasa, a ×60.
@@ -66,6 +74,7 @@ Durante un viaje automático el bucle principal usa la compresión del viaje com
 - La cámara sigue al vehículo desde detrás con el destino al fondo, a unas 2,2 esloras (antes 170 m por eslora: la Starship se veía diminuta).
 - **La cámara se mueve** (regla 3.3): arrastrar gira alrededor del vehículo; rueda o pellizco acercan y alejan (de 0,35× a 12×).
 - La ficha de viaje baja al borde inferior para no tapar el vehículo, con botones de 44 px.
+- **Nunca atrapa** (reglas.md §3.8). Berón abrió «Ver trayecto» en la consola de la sonda y se quedó sin cámara ni botones: al cerrarlo, la clase de pantalla entera no se quitaba (solo se quitaba al dibujar la vista, y cerrada ya no se dibujaba). Ahora se quita siempre; PX-07 y PX-16 comprueban que la cámara se gira, que se cierra y que vuelven los botones de la consola.
 
 ## «Fijar destino»: fuera
 
@@ -90,7 +99,7 @@ Regla 3.1: ningún trayecto se teletransporta por defecto. Revisión de todos lo
 
 Mientras cruza una escotilla en 0 g la cámara se aparta un poco, a un lado dentro del compartimento, para verla a ella con la mano en la escotilla y la hoja girando; los carteles se ocultan. Después vuelve la vista que tenía.
 
-Capturas de PX-36 (`docs/screenshots/trayectos-*-movil.png`): 1 escotilla del techo del LM, 2 escotilla a la cubierta de vuelo, 3–4 «Ver trayecto» (y girado a mano), 5 atraque, 6 túnel de proa, 7 llegada a Planos, 8–9 bahía con la Starship a escala real y con zoom.
+Capturas de PX-36 (`docs/screenshots/trayectos-*-movil.png`): 1 escotilla del techo del LM, 2 escotilla a la cubierta de vuelo, 3 aviso de viajar primero, 4 pilotar a mano, 5 «Ver trayecto», 6 atraque, 7 túnel de proa, 8 llegada a Planos, 9–10 bahía con la Starship a escala real y con zoom.
 
 Archivos: `src/adapters/three/interior/hatch-leaf.ts` (la hoja), `StationInteriorMode.passHatch` / `arriveThrough` (0 g), `WalkRoom.passHatch` (puente y LM), el grafo `journey-world.ts` (sala `nave`) y `src/journey.ts`.
 

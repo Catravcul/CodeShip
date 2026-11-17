@@ -9,16 +9,16 @@ import { ShipModel } from "./ship-model";
 import { RootMenu, type RootItem } from "../../ui/root-menu";
 import { ICON } from "../../ui/icons";
 
-export type CameraMode = "cabina" | "ventral" | "trasera" | "exterior" | "acople" | "nodriza";
+export type CameraMode = "cabina" | "ventana" | "ventral" | "trasera" | "exterior" | "acople" | "nodriza";
 /**
  * Tilt (rad) of the landing camera while the landing sheet is open: the point right under the craft shows
  * about a sixth of the way down the screen, in the strip above the sheet (30 % of a phone's height).
  */
 const LANDING_SHEET_PITCH = -0.45;
-const MODES: readonly CameraMode[] = ["cabina", "ventral", "trasera", "exterior", "acople", "nodriza"];
-const LABEL: Record<CameraMode, string> = { cabina: "Cabina", ventral: "Ventral", trasera: "Trasera", exterior: "Exterior", acople: "Acople", nodriza: "Nodriza" };
+const MODES: readonly CameraMode[] = ["cabina", "ventral", "trasera", "exterior", "acople", "nodriza", "ventana"];
+const LABEL: Record<CameraMode, string> = { cabina: "Cabina", ventana: "Ventana (LPD)", ventral: "Ventral", trasera: "Trasera", exterior: "Exterior", acople: "Acople", nodriza: "Nodriza" };
 /** First or third person, for the eye icon's name. */
-const PERSON: Record<CameraMode, string> = { cabina: "1ª persona", ventral: "1ª persona", trasera: "1ª persona", acople: "1ª persona", exterior: "3ª persona", nodriza: "3ª persona" };
+const PERSON: Record<CameraMode, string> = { cabina: "1ª persona", ventana: "1ª persona", ventral: "1ª persona", trasera: "1ª persona", acople: "1ª persona", exterior: "3ª persona", nodriza: "3ª persona" };
 
 /** Where the mothership is (its centre and attitude), so the view can frame it with the probe. */
 export interface MothershipPose {
@@ -44,6 +44,8 @@ export class FlightView {
   private readonly lm: LmCabinGeometry = buildLmCabin(LANDER_CABIN, worldScale(), CABIN_SPREAD);
   /** The cabin, placed so that the commander's eye is at the ship's origin (the camera's place). */
   private readonly cockpit = new THREE.Group();
+  /** From the commander's eye to the middle of the LPD scale on his window, in the ship's frame. */
+  private readonly toLpd: THREE.Vector3;
   /** From the commander's eye to the overhead docking window, in the ship's frame. */
   private readonly toDockWindow: THREE.Vector3;
   private reading: LmReading | undefined;
@@ -87,6 +89,10 @@ export class FlightView {
     this.cockpit.name = "cabina-lm";
     this.cockpit.add(this.lm.group);
     this.toDockWindow = this.lm.dockingWindow.clone().sub(this.lm.commanderEye).normalize();
+    // The LPD scale on the commander's window (lm-cabin.ts), from his eye: P64's sight line.
+    const lpd = this.lm.group.getObjectByName("lpd") as THREE.LineSegments | undefined;
+    lpd?.geometry.computeBoundingBox();
+    this.toLpd = lpd?.geometry.boundingBox ? lpd.geometry.boundingBox.getCenter(new THREE.Vector3()).sub(this.lm.commanderEye) : new THREE.Vector3(0, -0.3, -0.6);
 
     // Dust: points in a 160 m box around the ship, wrapped as it moves.
     const n = 700;
@@ -196,7 +202,7 @@ export class FlightView {
   private turn(dYaw: number, dPitch: number): void {
     this.yaw += dYaw;
     this.pitch += dPitch;
-    if (this.mode === "cabina" || this.mode === "ventral" || this.mode === "acople") {
+    if (this.mode === "cabina" || this.mode === "ventana" || this.mode === "ventral" || this.mode === "acople") {
       this.yaw = Math.max(-2.6, Math.min(2.6, this.yaw));
       this.pitch = Math.max(-1.2, Math.min(1.2, this.pitch));
     } else this.pitch = Math.max(-1.4, Math.min(1.4, this.pitch));
@@ -214,7 +220,7 @@ export class FlightView {
 
   /** Whether the camera is inside the LM's cabin (the commander's window or the docking window). */
   get inCabin(): boolean {
-    return this.mode === "cabina" || this.mode === "acople";
+    return this.mode === "cabina" || this.mode === "ventana" || this.mode === "acople";
   }
 
   /** Adds an icon to the cockpit's root menu (flight-computer toggles). */
@@ -238,6 +244,12 @@ export class FlightView {
     if (this.mode === "cabina") {
       this.camera.position.copy(pos);
       this.camera.quaternion.copy(q).multiply(head);
+    } else if (this.mode === "ventana") {
+      // P64 (Apollo): the commander's head at the window, his eye lining up the LPD scale's two etched lines
+      // (inner and outer pane) to read where guidance aims; the window fills the view on a phone.
+      this.camera.position.copy(pos).add(this.toLpd.clone().multiplyScalar(0.55).applyQuaternion(q));
+      const look = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), this.toLpd.clone().normalize());
+      this.camera.quaternion.copy(q).multiply(look).multiply(head);
     } else if (this.mode === "ventral") {
       // Landing camera under the belly, looking straight down past the legs.
       this.camera.position.copy(pos).add(new THREE.Vector3(0, -1.05, -0.8).applyQuaternion(q));
@@ -284,7 +296,7 @@ export class FlightView {
     this.menu.relabel(this.camBtn, `Cámara: ${LABEL[this.mode]} · ${PERSON[this.mode]}`, "C");
     this.menu.relabel(this.warpBtn, `Tiempo ×${this.warpRequested}`, "X");
     this.warpBtn.classList.toggle("limited", warp < this.warpRequested);
-    this.tag.textContent = this.mode === "cabina" ? warpNote : `Cámara ${LABEL[this.mode].toLowerCase()}${warpNote ? ` · ${warpNote}` : ""}`;
+    this.tag.textContent = this.mode === "cabina" ? warpNote : this.mode === "ventana" ? `Ventana del comandante: la escala LPD marca adónde baja el programa (P64)${warpNote ? ` · ${warpNote}` : ""}` : `Cámara ${LABEL[this.mode].toLowerCase()}${warpNote ? ` · ${warpNote}` : ""}`;
     this.tag.classList.toggle("on", this.tag.textContent !== "");
   }
 }

@@ -104,6 +104,15 @@ y llena ~30°: la vista es más pequeña, como cualquier otra máquina con la se
 - **Cabina**: el ojo del comandante, mirando por su ventana. Se gira la cabeza para ver los paneles.
 - **Acople**: la misma cabeza, echada hacia atrás para mirar por la ventana del techo con el COAS delante. Arriba
   de la pantalla queda la parte de atrás de la cabina, como la veía él. Antes era una cámara junto al puerto.
+- **Ventana (LPD)** (2026-11-17, Berón: «¿en la vida real se pilota mirando por esas ventanas triangulares? Son tan
+  pequeñas que no sé pilotar»). Sí: en el Apollo el comandante hacía la aproximación final de pie, con el ojo pegado
+  a su ventana triangular. En P64 el ordenador decía un número y él lo leía en la escala LPD (Landing Point
+  Designator) grabada en el cristal: ese era el punto adonde bajaba el programa, y con la palanca lo movía. En P66
+  volaba a mano mirando fuera, con el indicador de cruz (velocidad horizontal) y las cintas de altura y velocidad
+  de bajada, mientras el LMP le cantaba los números. La cámara pone el ojo en la escala LPD, de modo que la ventana
+  llena la pantalla del móvil; los indicadores X/Y/Z, el de cruz y la oferta «Aterrizar con un programa» siguen
+  encima. Es la última del ciclo de cámaras, para no cambiar el orden de las demás. Fuentes: [Apollo Lunar
+  Surface Journal, aterrizaje del Apollo 11](https://www.hq.nasa.gov/alsj/a11/a11.landing.html) (P64, LPD, P66).
 - Ventral, trasera, exterior y nodriza no cambian: son las cámaras exteriores que las ventanas no sustituyen.
 - La etiqueta de la cámara va en la columna de contexto. Antes flotaba bajo el centro y tapaba la ficha del viaje,
   la palanca «Mirar» y los avisos (B-03).

@@ -1005,6 +1005,8 @@ stationScreen.onBay = () => {
 };
 const bayBack = (from: "pantalla" | "estacion") => (from === "pantalla" ? stationScreen.enter("hangar") : stationInside.resume());
 bay.onExit = bayBack;
+// The bay's chores acted out at the station, by the lander on its cradle at Unity's CBM (reglas.md §4.2).
+bay.stepVisual = (chore) => (atStationPort() ? stationSteps.crew(chore, "consola-bahia") : undefined);
 const stationDock = new StationDock((c, f) => view.addButton(c, f), {
   open: () => !duelView.visible && !bay.active && !interior.active && !evaMode.active && stationScreen.enter(),
   distanceM: () => stationOps.station.distanceTo(flight.state.position),
@@ -1582,7 +1584,9 @@ renderer.setAnimationLoop((now) => {
   }
   if (bay.active) {
     bay.update(dt);
-    present(bay.scene, bay.camera);
+    // A part changed at the station: Doménica at the lander on its cradle shows above the sheet, not the bay's view.
+    if (stationInside.stage(dt)) present(stationInside.scene, stationInside.camera);
+    else present(bay.scene, bay.camera);
     return;
   }
   if (subj.piloting) {

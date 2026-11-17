@@ -399,6 +399,32 @@ async function adoptarStarship(j) {
   return j.page.evaluate(() => window.codeship.starship.choreFacts().some((f) => f.station === "habitat-acuatico"));
 }
 
+/**
+ * Every challenge a player reaches in the real game (REAL_ONLY, src/core/realism.ts) and where its steps are acted
+ * out (Berón, 2026-11-17: «hay acciones sin animación»). Kept by hand next to the audit that plays them.
+ */
+const INVENTORY = [
+  "## Inventario: retos del juego real (REAL_ONLY) y su animación",
+  "",
+  "| Reto | Dónde se juega | Entorno real de la animación | En la auditoría |",
+  "|---|---|---|---|",
+  "| Comida de la ISS (avena, frijoles, sopa) | Cocina de la Starship (cubierta 1) y de Unity | Ella en la cocina con el envase: sacarlo, agua por la aguja del dispensador, amasar, esperar, calentador, tijeras, cuchara | Sí (Starship y estación) |",
+  "| Yoga (upa-yoga, saludo al sol) | Esterilla de la Starship (cubierta 1) y de Destiny | Ella en la esterilla, postura a postura con su asana, vista de cuerpo entero | Sí |",
+  "| Ejercicio (intervalos, continuo, fuerza) | T2, CEVIS y ARED de la cubierta 3; T2 y ARED de Tranquility | Cada entrenamiento en su máquina (la T2 en el suelo) | Sí |",
+  "| Hábitat acuático (medakas) | Rack AQH de la cubierta 3 (JAXA, voló en Kibo) | Ella en el rack | Sí |",
+  "| Catálogo de especies (amistad y ayuda de colonias) | Terminal del catálogo, cubierta 2 | Ella en el terminal (programas en la mente) | Mismo motor que el AQH |",
+  "| Reparaciones y preventivos del soporte vital | Bastidores de la Starship y de la ISS | Ella en el bastidor con la llave; las luces del procedimiento en el bastidor; los del techo, flotando bajo él | Sí (CDRA en la Starship y en la estación) |",
+  "| Refinar, fabricar (pieza impresa), importar, ajustar un biorreactor | Máquinas de la estación | Ella en los estribos de cada máquina | Sí (el biorreactor solo con su módulo montado) |",
+  "| Ponerse el traje (EVA) | Escotilla delantera del LM | Ella en la escotilla revisando el traje paso a paso | Lo comprueba PX-31 al salir; la captura en PX-37 |",
+  "| Programar un viaje | Mesa de navegación de la cubierta de vuelo | El plan se dibuja en el mapa paso a paso | Sí |",
+  "| Aterrizar el módulo o la sonda con un programa | Asiento del LM; mando de la sonda | El plan se dibuja sobre el suelo paso a paso | Sí |",
+  "| Cambiar o montar una pieza en la bahía | Bahía de la nave (pantalla de la estación) | **Pendiente**: la bahía es la vista del vehículo, sin ella; ver «Abierto» | No |",
+  "| Duelo de la mente, nano_net | Consola de la mente | Ficción que se queda (reglas §1.2): su escena es la mente, sin figura | No |",
+  "| Dormir | Camarotes | Lo hace la rama `compartimentos-reales` | No |",
+  "",
+  "**Abierto:** el reto de cambiar una pieza en la bahía no tiene aún a Doménica: en la ISS esos cambios los hace el brazo o un paseo espacial. Pregunta al diseñador: ¿se anima con Canadarm2 en la vista de la Cupola, o con ella en un paseo? El duelo de la mente y nano_net son la ficción que se queda y se juegan en su propia escena.",
+];
+
 /** Contact sheet (docs/qa/animaciones.md): one row per step. */
 function writeDoc(rows, extra) {
   const ok = rows.filter((r) => r.ok).length;
@@ -412,10 +438,14 @@ function writeDoc(rows, extra) {
     `- **Alcance**: cada objeto a ≤ ${RULES.reach} m de una de sus manos, o sobre el sitio del paso (≤ 0,45 m) con ella de pie delante (≤ 0,9 m).`,
     "- **A la vista**: alguna parte del objeto en la franja de escena sobre la hoja del reto y sin muebles ni su cuerpo delante.",
     "- **Sin atravesar**: el centro del objeto no está dentro de otra pieza (encimera, pared, máquina).",
-    `- **Gesto**: su pose se aparta de la de espera al menos ${RULES.gesture} rad, y su mano se ve.`,
+    `- **Gesto**: su pose se aparta de la de espera al menos ${RULES.gesture} rad, y su mano se ve. En el yoga, el gesto es la asana del paso (está en ella) y cuenta su cuerpo entero, no la mano.`,
     "- **Planes de viaje y aterrizaje**: cada paso añade su parte del plan, con rótulo, y sus puntos quedan en pantalla sobre la hoja.",
     "",
     "Regla (docs/qa/README.md): todo reto o visual de paso nuevo debe pasar esta auditoría.",
+    "",
+    ...INVENTORY,
+    "",
+    "## Hoja de contactos",
     "",
     `**${ok} de ${rows.length} pasos bien.**`,
     "",
@@ -588,7 +618,7 @@ export async function animaciones(j) {
     "El viaje desde la mesa de navegación (la del anillo con ?ficcion; la de la cubierta de vuelo de la Starship en el juego real): el mapa cubre la escena, así que el plan se dibuja en el mapa, encuadrado en la franja sobre la hoja (sus puntos se miden en el mapa).",
   );
   extra.push(
-    "Estación (escala 1,5): la cocina y las máquinas (refinar, fabricar, laboratorio de biología, importar) con Doménica en los estribos de cada una. Sin visual de pasos, aplazados con nano_net (sistema ficticio, al backlog): los retos de nano_net.",
+    "Estación (escala 1,5): la cocina, la esterilla de Destiny, la T2 y el ARED, el bastidor de aire y las máquinas (refinar, fabricar, laboratorio de biología, importar) con Doménica en cada una. Starship: la cocina, la esterilla, la T2, el CEVIS, el ARED, el hábitat acuático y el bastidor de aire. Sin visual de pasos, aplazados con nano_net (sistema ficticio, al backlog): los retos de nano_net.",
   );
   const bad = rows.filter((r) => !r.ok).length;
   j.check(`auditoría: ${rows.length - bad} de ${rows.length} pasos se ven bien`, bad === 0, rows.filter((r) => !r.ok).slice(0, 4).map((r) => `${r.chore.title} / ${r.step}: ${r.why[0]}`).join(" | "));

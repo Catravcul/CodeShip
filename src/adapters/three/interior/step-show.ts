@@ -852,8 +852,10 @@ export class StepShow {
       case "cortar": {
         const at = vessel();
         const cut = v.action === "cortar";
+        // At a machine the row has at most three pieces, centred on the work (a fourth reached the machine's side: PX-20 in CI).
+        const kitchenRow = !!this.df!.kitchen;
         // Opening a package cuts no pieces: the scissors at its top are the step.
-        const pieces = cut && v.vessel === "bolsa" ? 0 : cut ? 1 + Math.min(3, Math.floor(t * 4)) : 1;
+        const pieces = cut && v.vessel === "bolsa" ? 0 : cut ? 1 + Math.min(kitchenRow ? 3 : 2, Math.floor(t * 4)) : 1;
         const kitchen = !!this.df!.kitchen;
         // In the ring's galley the row runs along the counter's depth. Elsewhere (a machine, a 0 g galley) the
         // pieces float in one row just over the work (not stacked upward, where a shelf or the machine's top can
@@ -864,7 +866,7 @@ export class StepShow {
         for (let i = 0; i < pieces; i++) {
           const f = kitchen
             ? this.show(food[i]!, at.x - 0.06 + i * 0.04, at.y + 0.02, at.z)
-            : this.show(food[i]!, at.x + toCam.x * 0.05 + (i - 1.5) * 0.035 * toCam.z, at.y + 0.07, at.z + toCam.z * 0.05 - (i - 1.5) * 0.035 * toCam.x);
+            : this.show(food[i]!, at.x + toCam.x * 0.05 + (i - 1) * 0.035 * toCam.z, at.y + 0.07, at.z + toCam.z * 0.05 - (i - 1) * 0.035 * toCam.x);
           if (!cut) f.scale.set(0.06, 0.02 + 0.012 * Math.abs(Math.sin(this.clock * 7)), 0.05);
         }
         // The tool: by the board in the ring's galley; elsewhere toward the camera from the work (whatever lets the

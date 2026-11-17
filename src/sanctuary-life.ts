@@ -158,6 +158,7 @@ export function wireSanctuaryLife(d: { root: HTMLElement; interior: Interior; ha
       ops.tick(lifeDays);
       ops.tickHours(lifeDays * 24);
       drain();
+      catalog.tick();
     },
   };
 }

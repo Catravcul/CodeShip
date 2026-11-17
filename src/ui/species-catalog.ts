@@ -9,6 +9,41 @@ import "./species-catalog.css";
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 const num = (v: number, d = 0) => v.toLocaleString("es-ES", { maximumFractionDigits: d, minimumFractionDigits: 0 });
 
+/** Real time left, «m:ss» (or «h:mm:ss»), for board hours still to go. */
+export function realCountdown(boardHours: number): string {
+  const t = Math.max(0, Math.ceil(boardHours / BOARD_HOURS_PER_REAL_S));
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
+  const sec = String(t % 60).padStart(2, "0");
+  return h ? `${h}:${String(m).padStart(2, "0")}:${sec}` : `${m}:${sec}`;
+}
+
+/**
+ * What the catalogue says of an adoption that is still coming (on its way or hatching), short for the list's
+ * badge and long for the species' page; undefined once it is aboard or not asked for. It changes as board time
+ * passes, so the open catalogue redraws it every moment (SpeciesCatalog.tick).
+ */
+export function comingText(s: AdoptionStatus, long = false): string | undefined {
+  if (s.kind === "en-camino") {
+    const h = num(Math.max(0.1, s.hoursLeft), 1);
+    return long ? `En camino: llega en ${h} h de a bordo (${realCountdown(s.hoursLeft)} reales)` : `En camino · ${h} h`;
+  }
+  if (s.kind === "eclosionando") {
+    const d = num(Math.max(0.1, s.daysLeft), 1);
+    return long ? `Eclosionando: ${d} días de a bordo (${realCountdown(s.daysLeft * 24)} reales)` : `Eclosionando · ${d} días`;
+  }
+  return undefined;
+}
+
+/** The badge of a species: aboard, coming (live), pending, available or why not. */
+export function statusText(s: AdoptionStatus, c: AdoptionCheck): { text: string; cls: string } {
+  if (s.kind === "a-bordo") return { text: `A bordo · ${num(s.count)}`, cls: "aboard" };
+  const coming = comingText(s);
+  if (coming) return { text: coming, cls: "coming" };
+  if (c.pendiente) return { text: "Pendiente", cls: "pending" };
+  return c.ok ? { text: "Disponible", cls: "ok" } : { text: c.placement.area ? (c.why ?? "No ahora") : "No cabe ahora", cls: "no" };
+}
+
 /** A task of the world that belongs to an adopted species (feed, befriend, ask for help), with «Ir». */
 export interface SpeciesTask {
   readonly id: string;
@@ -94,6 +129,20 @@ export class SpeciesCatalog {
     this.onClose?.();
   }
 
+  /**
+   * Every frame while open: the arrival times of what is on its way count down live (Berón, 2026-11-17: they only
+   * changed when the catalogue was opened again). Only those texts change, so taps and scrolling are not disturbed;
+   * if one has arrived meanwhile, the page is drawn again.
+   */
+  tick(): void {
+    if (!this.visible) return;
+    for (const el of this.el.querySelectorAll<HTMLElement>("[data-live]")) {
+      const text = comingText(this.ops.status(el.dataset.live!), el.hasAttribute("data-long"));
+      if (text === undefined) return this.render();
+      if (el.textContent !== text) el.textContent = text;
+    }
+  }
+
   /** Re-render if open (a delivery landed, credits changed). */
   refresh(): void {
     if (this.visible) this.render();
@@ -126,20 +175,6 @@ export class SpeciesCatalog {
     this.el.innerHTML = this.detail ? this.detailHtml(this.ops.entry(this.detail)) : this.listHtml();
   }
 
-  private statusText(s: AdoptionStatus, c: AdoptionCheck): { text: string; cls: string } {
-    switch (s.kind) {
-      case "a-bordo":
-        return { text: `A bordo · ${num(s.count)}`, cls: "aboard" };
-      case "en-camino":
-        return { text: `En camino · ${num(Math.max(0.1, s.hoursLeft), 1)} h`, cls: "coming" };
-      case "eclosionando":
-        return { text: `Eclosionando · ${num(Math.max(0.1, s.daysLeft), 1)} días`, cls: "coming" };
-      default:
-        if (c.pendiente) return { text: "Pendiente", cls: "pending" };
-        return c.ok ? { text: "Disponible", cls: "ok" } : { text: c.placement.area ? (c.why ?? "No ahora") : "No cabe ahora", cls: "no" };
-    }
-  }
-
   private listHtml(): string {
     const all = this.ops.entries;
     const checks = new Map(all.map((e) => [e.id, this.ops.check(e.id)] as const));
@@ -152,8 +187,8 @@ export class SpeciesCatalog {
     const areaRow = `<div class="chips" aria-label="Área">${areaChip(null, "Cualquier hábitat")}${areas.map((a) => areaChip(a.area.id, `${esc(a.area.name)}${a.built ? "" : " · sin instalar"}`)).join("")}</div>`;
     const cards = shown
       .map((e) => {
-        const st = this.statusText(this.ops.status(e.id), checks.get(e.id)!);
-        return `<button class="sc-card" data-id="${e.id}" aria-label="${esc(e.name)}${e.variant ? ` (${esc(e.variant)})` : ""}">${speciesIcon(e.icon, 52)}<span class="sc-txt"><b>${esc(e.name)}</b>${e.scientific ? `<i>${esc(e.scientific)}</i>` : ""}<small>${esc(e.description.split(/(?<=\.)\s/)[0]!)}</small></span><em class="sc-badge ${st.cls}">${esc(st.text)}</em></button>`;
+        const st = statusText(this.ops.status(e.id), checks.get(e.id)!);
+        return `<button class="sc-card" data-id="${e.id}" aria-label="${esc(e.name)}${e.variant ? ` (${esc(e.variant)})` : ""}">${speciesIcon(e.icon, 52)}<span class="sc-txt"><b>${esc(e.name)}</b>${e.scientific ? `<i>${esc(e.scientific)}</i>` : ""}<small>${esc(e.description.split(/(?<=\.)\s/)[0]!)}</small></span><em class="sc-badge ${st.cls}"${st.cls === "coming" ? ` data-live="${e.id}"` : ""}>${esc(st.text)}</em></button>`;
       })
       .join("");
     return `<div class="sc-head"><div class="sc-title"><b>Catálogo de especies</b><span>${num(all.length)} especies y variantes · ${num(this.credits())} créditos</span></div><button class="sc-x" data-close aria-label="Cerrar el catálogo">✕</button>${groups}${areaRow}</div><div class="sc-list">${cards || "<p>Ninguna especie con ese filtro</p>"}</div>`;
@@ -163,7 +198,7 @@ export class SpeciesCatalog {
     const sp = this.species(e.speciesId);
     const c = this.ops.check(e.id);
     const s = this.ops.status(e.id);
-    const st = this.statusText(s, c);
+    const st = statusText(s, c);
     const where = c.placement.verdicts
       .map((v) => {
         const tried = this.ops.accepts(v.areaId, e.speciesId);
@@ -188,7 +223,7 @@ export class SpeciesCatalog {
         : `Eclosión a bordo: ${esc(e.acquire.what)} de ${c.cost.from === "quistes" ? "quistes" : c.cost.from === "huevos" ? "huevos" : "huevos y formas latentes"} del banco de la nave, en ${num(c.cost.days, 1)} días de a bordo. Sin coste.`;
     const role = sp ? ROLE_LABEL[sp.role] : "";
     const tasks = s.kind === "a-bordo" ? (this.tasksFor?.(e) ?? []) : [];
-    const lodged = s.kind === "a-bordo" ? `<p class="sc-status aboard">A bordo: ${num(s.count)} en ${esc(c.placement.verdicts.find((v) => v.areaId === s.areaId)?.areaName ?? s.areaId)}${s.names.length ? ` (${esc(s.names.join(", "))})` : ""}${e.lodging === "colonia" ? (this.ops.friends(e.id) ? " · amigos" : " · aún no os conocéis") : ""}</p>` : `<p class="sc-status ${st.cls}">${esc(c.pendiente && s.kind === "disponible" ? (c.why ?? st.text) : st.text)}</p>`;
+    const lodged = s.kind === "a-bordo" ? `<p class="sc-status aboard">A bordo: ${num(s.count)} en ${esc(c.placement.verdicts.find((v) => v.areaId === s.areaId)?.areaName ?? s.areaId)}${s.names.length ? ` (${esc(s.names.join(", "))})` : ""}${e.lodging === "colonia" ? (this.ops.friends(e.id) ? " · amigos" : " · aún no os conocéis") : ""}</p>` : `<p class="sc-status ${st.cls}"${st.cls === "coming" ? ` data-live="${e.id}" data-long` : ""}>${esc(c.pendiente && s.kind === "disponible" ? (c.why ?? st.text) : (comingText(s, true) ?? st.text))}</p>`;
     const canAdopt = c.ok && !e.aboard;
     const offer = !e.aboard && !c.pendiente;
     const label = e.lodging === "bucle" ? "Pedir" : "Adoptar";

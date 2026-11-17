@@ -54,6 +54,10 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | NAV-07 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | NAV-08 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | NAV-09 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| NAV-10 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| NAV-11 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| NAV-12 | Sin probar | | | Adaptador; lo juega PX-36 |
+| NAV-13 | Sin probar | | | Adaptador; lo juegan PX-36 y PX-28 |
 | SON-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SON-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SON-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -190,6 +194,9 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | HAB-24 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | HAB-25 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | HAB-26 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| HAB-36 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| HAB-37 | Sin probar | | | Adaptador; lo juega PX-36 |
+| HAB-38 | Sin probar | | | Adaptador; lo juega PX-36 |
 | CV-01 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK |
 | CV-02 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-01** cerrado |
 | CV-03 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK · **B-01** arreglado |
@@ -234,6 +241,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-28 | Probado (en vivo) | 2026-11-17 | `359c776` | [run](runs/2026-11-17-0124-PX-12-PX-28-PX-29-PX-30.md): 36 OK |
 | PX-29 | Probado (en vivo) | 2026-11-17 | `359c776` | [run](runs/2026-11-17-0124-PX-12-PX-28-PX-29-PX-30.md): 45 OK |
 | PX-33 | Probado (en vivo) | 2026-11-17 | `0e41378` | [run](runs/2026-11-17-0140-PX-33-PX-30.md): 23 OK |
+| PX-36 | Sin probar | | | Recorrido nuevo (`trayectos`) |
 
 ## Última ejecución por run log
 

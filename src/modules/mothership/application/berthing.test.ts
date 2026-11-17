@@ -30,7 +30,7 @@ describe("Berthing the mothership at a station", () => {
     expect(m.orientation.rotate(Vec3.Y).y).toBeCloseTo(1, 6);
   });
 
-  it("flies the real last approach: Waypoint 1 at 150 m, a hold at 20 m and 51 min to capture, as Crew Dragon Demo-1", () => {
+  it("NAV-11 flies the real last approach: Waypoint 1 at 150 m, a hold at 20 m and 51 min to capture, as Crew Dragon Demo-1", () => {
     expect(BERTH_STANDOFF_M).toBe(150);
     expect(berthSeconds()).toBeCloseTo(51 * 60, 6);
     const { berthing } = setup();

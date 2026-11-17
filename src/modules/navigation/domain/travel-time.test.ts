@@ -23,7 +23,7 @@ describe("realSeconds (time compression with a cap)", () => {
     expect(TRAVEL_TIME.capS).toBeLessThanOrEqual(900);
   });
 
-  it("every vehicle flies at the board's pace: a game hour per real minute, so life on board and the trip share one clock", () => {
+  it("NAV-10 every vehicle flies at the board's pace: a game hour per real minute, so life on board and the trip share one clock", () => {
     expect(BOARD_DAY_REAL_S).toBe(24 * 60);
     for (const v of ["carrier", "lander", "probe"] as const) expect(TRAVEL_TIME.lapse[v]).toBe(86400 / BOARD_DAY_REAL_S);
     // During a trip the crew lives exactly the trip's game time: no more, no less.

@@ -108,7 +108,7 @@ describe("HAB-21 The real journey to a task (travel mode)", () => {
   });
 });
 
-describe("TRY Starship: every way walked, hatches opened (docs/design/reglas.md §3)", () => {
+describe("HAB-36 Starship: every way walked, hatches opened (docs/design/reglas.md §3)", () => {
   const ship = new StationInterior(presentInteriorPlan(starshipInteriorPlan(), { scale: 1.5, spreadM: 2 }));
   const shipFacts = (over: Partial<JourneyFacts> = {}): JourneyFacts => facts({ ship, ringRadiusM: 0, here: { room: "nave", point: shipPointOf(ship, "salir-modulo")! }, ...over });
   const galley = taskGoal({ vehicle: "nodriza", spot: "anillo", station: "cocina" }, station, ship)!;

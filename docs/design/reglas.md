@@ -49,6 +49,9 @@ Detalle y fuentes: [ux-acciones.md](ux-acciones.md), [escala.md](escala.md), [na
 4. **La lista de tareas tiene todas las tareas**, cada una con «Ir».
 5. **Es para móvil primero**: iPhone 13, 390×664 visibles. Los objetivos de toque miden al menos 44 px y nada se solapa.
 6. **Los fallos se marcan con forma y color**, nunca solo con color.
+7. **La cámara se mueve solo con joystick.** Nunca se arrastra la pantalla para mover la cámara; donde haya cámara movible hay un joystick de cámara.
+8. **Menú árbol general.** Un icono raíz (engranaje) que al pulsarlo se vuelve una X. Debajo brotan Vista, Tareas y los botones que apliquen en ese momento (por ejemplo Trayecto). Cada botón que abre una ventana se vuelve X para cerrarla. Dentro de un panel, el engranaje cambia la lista por sus ajustes y pasa a icono de lista para volver.
+9. **La vista queda libre.** No se queda ninguna ventana fija en pantalla al cerrar un reto o una vista. La ventana de Trayecto del menú solo muestra el estado; «Ver trayecto» y tomar el mando solo están en los mandos de pilotaje.
 
 ## 6. Vida a bordo
 
@@ -74,4 +77,5 @@ Detalle y fuentes: [ux-acciones.md](ux-acciones.md), [escala.md](escala.md), [na
 - [ ] ¿Se ve algo más que la hoja y la escena mientras hay un reto abierto?
 - [ ] ¿Se cumplen la escala, la separación y los toques de 44 px en todas las áreas nuevas?
 - [ ] ¿Funcionan los ajustes en la esterilla, el control de cámara y la vista HUD en lo nuevo?
+- [ ] ¿Alguna cámara que se mueva arrastrando la pantalla o sin joystick? ¿Algún botón suelto fuera del menú árbol? ¿Alguna ventana fija que tape la vista?
 - [ ] ¿Algún dato a escala que no sea real? ¿Alguna excepción a estas reglas? Si la hay, no se mete en el código: se le pregunta al diseñador.

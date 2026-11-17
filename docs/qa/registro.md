@@ -262,7 +262,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-16 | Probado (en vivo) | 2026-11-17 | `8ee6cc7` | [run](runs/2026-11-17-0910-PX-16.md): 32 OK |
 | PX-23 | Probado (en vivo) | 2026-11-16 | `e3b90f0` | [run](runs/2026-11-16-1521-PX-01-PX-02-PX-23.md): 62 OK |
 | PX-24 | Probado (en vivo) | 2026-11-17 | `81f7379` | [run](runs/2026-11-17-0435-PX-04-PX-12-PX-24-PX-28-PX-29-PX-31-PX-33-PX-35-PX-20.md): 12 OK |
-| PX-20 | Probado (en vivo) | 2026-11-17 | `e464225` | [run](runs/2026-11-17-1154-PX-28-PX-35-PX-38-PX-20-PX-30.md): 190 OK |
+| PX-20 | Probado (en vivo) | 2026-11-17 | `87acf43` | [run](runs/2026-11-17-1346-PX-20.md): 190 OK |
 | PX-25 | Probado (en vivo) | 2026-11-16 | `9de20b8` | [run](runs/2026-11-16-2058-PX-25.md): 41 OK |
 | PX-30 | Probado (en vivo) | 2026-11-17 | `e464225` | [run](runs/2026-11-17-1154-PX-28-PX-35-PX-38-PX-20-PX-30.md): 45 OK |
 | PX-32 | Probado (en vivo) | 2026-11-17 | `55edab9` | [run](runs/2026-11-17-0740-PX-03-PX-04-PX-06-PX-07-PX-10-PX-12-PX-28-PX-31-PX-32-PX-36.md): 21 OK |
@@ -283,6 +283,7 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-17 13:46 | PX-20 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-17-1346-PX-20.md) |
 | 2026-11-17 11:54 | PX-28, PX-35, PX-38, PX-20, PX-30 | Experiencia (Playwright) | 5/5 recorridos bien | [run](runs/2026-11-17-1154-PX-28-PX-35-PX-38-PX-20-PX-30.md) |
 | 2026-11-17 10:48 | PX-38, PX-20, PX-39 | Experiencia (Playwright) | 3/3 recorridos bien | [run](runs/2026-11-17-1048-PX-38-PX-20-PX-39.md) |
 | 2026-11-17 10:22 | PX-38, PX-20 | Experiencia (Playwright) | 2/2 recorridos bien | [run](runs/2026-11-17-1022-PX-38-PX-20.md) |

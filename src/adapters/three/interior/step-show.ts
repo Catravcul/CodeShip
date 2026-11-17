@@ -856,14 +856,15 @@ export class StepShow {
         const pieces = cut && v.vessel === "bolsa" ? 0 : cut ? 1 + Math.min(3, Math.floor(t * 4)) : 1;
         const kitchen = !!this.df!.kitchen;
         // In the ring's galley the row runs along the counter's depth. Elsewhere (a machine, a 0 g galley) the
-        // pieces float up from the work, which she holds clear of her body, and the tool is just over it: her
+        // pieces float in one row just over the work (not stacked upward, where a shelf or the machine's top can
+        // hide the last one: PX-20 in CI, food3 under a box), which she holds clear of her body; the tool is just over it: her
         // arm, her body or the machine do not hide them (PX-20: the printed part's supports and the package's
         // scissors were hidden behind her hand).
         const toCam = this.tmp.set(this.df!.camera.x - at.x, this.df!.camera.y - at.y, this.df!.camera.z - at.z).normalize();
         for (let i = 0; i < pieces; i++) {
           const f = kitchen
             ? this.show(food[i]!, at.x - 0.06 + i * 0.04, at.y + 0.02, at.z)
-            : this.show(food[i]!, at.x + toCam.x * 0.05 + (i - 1) * 0.035 * toCam.z, at.y + 0.07 + 0.035 * i, at.z + toCam.z * 0.05 - (i - 1) * 0.035 * toCam.x);
+            : this.show(food[i]!, at.x + toCam.x * 0.05 + (i - 1.5) * 0.035 * toCam.z, at.y + 0.07, at.z + toCam.z * 0.05 - (i - 1.5) * 0.035 * toCam.x);
           if (!cut) f.scale.set(0.06, 0.02 + 0.012 * Math.abs(Math.sin(this.clock * 7)), 0.05);
         }
         // The tool: by the board in the ring's galley; elsewhere toward the camera from the work (whatever lets the

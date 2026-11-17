@@ -856,7 +856,7 @@ export class StationInteriorMode {
     const side = new THREE.Vector3().crossVectors(up, fwd).normalize();
     // Lying on a mat the body runs along it: aim at its middle, a little out from it.
     const flat = g.kind === "esterilla";
-    const body = stand.clone().addScaledVector(up, flat ? 0.5 : g.kind === "cevis" ? 0.75 : 0.7);
+    const body = stand.clone().addScaledVector(up, flat ? 0.65 : g.kind === "cevis" ? 0.75 : 0.7);
     const sight = sightOfScene(this.scene, [this.steps.root, this.rig, g.root]);
     const cam = new THREE.Vector3();
     const q = (a: THREE.Vector3, b: THREE.Vector3, k: number) => a.clone().multiplyScalar(1 - k).addScaledVector(b, k).normalize();

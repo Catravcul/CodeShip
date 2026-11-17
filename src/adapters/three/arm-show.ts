@@ -95,7 +95,8 @@ export class ArmShow {
   private last: Tween | null = null;
   /** Base of the arm: an MBS PDGF or Destiny's. */
   private base: "mbs-1" | "lab" = "mbs-1";
-  private mbsX = 0;
+  /** Where the MBS waits on its rails: clear of Destiny below, so Dextre can hang from it (distribución nuestra). */
+  private mbsX = MBS_HOME_X;
   private readonly tip = new THREE.Vector3();
   private hint = new THREE.Vector3(0, -1, 1);
   /** What the LEE holds, kept at its offset from the tip. */
@@ -575,7 +576,7 @@ export class ArmShow {
           const head = this.pdgf("mbs-3").at.add(new THREE.Vector3(0, -4.2, 0));
           return {
             path: this.path(head, this.tip.clone().add(new THREE.Vector3(0, -2, 3))),
-            mbs: ride(0),
+            mbs: ride(MBS_HOME_X),
             dur: MOVE_S * 1.4,
             onEnd: () => {
               this.parkDextre();
@@ -704,11 +705,11 @@ export class ArmShow {
     if (last !== best.h) this.arm.reach(b.at, this.tip, b.at.clone().add(this.hint.clone().normalize().multiplyScalar(8)), b.out);
   }
 
-  /** Points of the two booms inside the station now. */
+  /** Points of the two booms and the LEE inside the station now. */
   private boomHits(): number {
     const j = this.arm.joints;
     let n = 0;
-    for (const [a, c] of [[j.shoulder, j.elbow], [j.elbow, j.wrist]] as const)
+    for (const [a, c] of [[j.shoulder, j.elbow], [j.elbow, j.wrist], [j.wrist, this.arm.tip]] as const)
       for (let i = 1; i < 10; i++) if (insideStation(V(a.clone().lerp(c, i / 10)), POLANA_LAYOUT, 0.15)) n++;
     return n;
   }
@@ -858,6 +859,7 @@ function nameOf(o: THREE.Object3D): string {
   return (o as THREE.Mesh).geometry?.type ?? "algo";
 }
 
+const MBS_HOME_X = 7;
 const DETOURS = [new THREE.Vector3(0, -1, 0), new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1), new THREE.Vector3(1, 0, 0), new THREE.Vector3(-1, 0, 0), new THREE.Vector3(0, 1, 0)];
 const blockedLeg = (a: THREE.Vector3, b: THREE.Vector3) => !!segmentClear(V(a), V(b), POLANA_LAYOUT, 0.4, 0.2);
 /** The path with a waypoint added beside each leg that crosses the station (the first side that clears it). */

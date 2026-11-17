@@ -520,7 +520,7 @@ export class StationEva {
       this.part.visible = true;
       if (move === "brazo") this.part.position.copy(from);
       // Canadarm2 carries it round the station, never through it.
-      this.working = { move, t: 0, dur: move === "brazo" ? 4.4 : 2.4, path: move === "brazo" ? detour([from, to]) : [from, to] };
+      this.working = { move, t: 0, dur: move === "brazo" ? 4.4 : 2.4, path: move === "brazo" ? carryPath(from, to) : [from, to] };
       this.lastMove = move;
     }
     const a = this.working;
@@ -682,4 +682,22 @@ export class StationEva {
       gesture: true,
     };
   }
+}
+
+/**
+ * Canadarm2's way with a part over a long stretch: up from the shelf to a lane clear of the station (above or below
+ * the truss, in front of or behind it), along it, and down to her. The first lane whose legs all stay outside.
+ */
+function carryPath(from: THREE.Vector3, to: THREE.Vector3): THREE.Vector3[] {
+  const truss = POLANA_LAYOUT.parts.find((p) => p.id === "celosia");
+  const tz = truss?.centre.z ?? 0;
+  const ty = truss?.centre.y ?? 0;
+  const th = truss?.half.y ?? 2;
+  const clear = (pts: THREE.Vector3[]) => pts.every((p, i) => i === 0 || !segmentClear(V(pts[i - 1]!), V(p), POLANA_LAYOUT, 0.4, 0.2));
+  for (const y of [ty + th + 3, ty + th + 6, ty - th - 4, ty - th - 8])
+    for (const z of [tz, tz + 8, tz - 8, tz + 14]) {
+      const pts = [from.clone(), new THREE.Vector3(from.x, y, z), new THREE.Vector3(to.x, y, z), to.clone()];
+      if (clear(pts)) return pts;
+    }
+  return detour([from, to]);
 }

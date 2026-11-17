@@ -116,7 +116,7 @@ export class RoboticsGame {
       out.push({ id: "brazo:suelta-cygnus", label: `Desatracar y soltar el ${berthed.name}`, enabled: !why, ...(why ? { why } : {}) });
     }
     const dextre = this.d.work.job("brazo:dextre-camara");
-    if (dextre) out.push({ id: "brazo:dextre-camara", label: "Dextre: cambiar la cámara de S1", enabled: true });
+    if (dextre) out.push({ id: "brazo:dextre-camara", label: "Dextre: cambiar la cámara de P1", enabled: true });
     return out;
   }
 
@@ -138,7 +138,7 @@ export class RoboticsGame {
     if (c) out.push({ id: "brazo:captura", title: `Capturar el ${c.vehicle.name} con Canadarm2`, detail: "Cupola · puesto robótico · espera a 10 m", category: "estacion", area: "cupula" });
     const b = this.berthedCygnus;
     if (b && !b.releaseBlocker(STAY_H)) out.push({ id: "brazo:suelta-cygnus", title: `Desatracar y soltar el ${b.name}`, detail: "Cupola · puesto robótico · terminó su estancia", category: "estacion", area: "cupula" });
-    if (this.d.work.job("brazo:dextre-camara")) out.push({ id: "brazo:dextre-camara", title: "Dextre: cambiar la cámara de S1", detail: "Cupola · puesto robótico · la radiación quemó píxeles", category: "estacion", area: "cupula" });
+    if (this.d.work.job("brazo:dextre-camara")) out.push({ id: "brazo:dextre-camara", title: "Dextre: cambiar la cámara de P1", detail: "Cupola · puesto robótico · la radiación quemó píxeles", category: "estacion", area: "cupula" });
     return out;
   }
 
@@ -153,7 +153,7 @@ export class RoboticsGame {
     }
     if (p === "desatraque-modulo" && !this.d.berth.onCbm) return "El módulo ya está en su IDA";
     if (p === "bishop" && !this.d.bishop.at("bishop").length) return "La Bishop está vacía: entra en ella y sujeta la sonda o un cubesat a su placa";
-    if (p === "dextre-camara" && !this.d.work.job("brazo:dextre-camara")) return "La cámara de S1 funciona bien";
+    if (p === "dextre-camara" && !this.d.work.job("brazo:dextre-camara")) return "La cámara de P1 funciona bien";
     if (p === "suelta-cygnus") return this.berthedCygnus ? this.berthedCygnus.releaseBlocker(STAY_H) : "No hay ningún Cygnus atracado";
     return undefined;
   }
@@ -257,7 +257,7 @@ export class RoboticsGame {
       }
       case "dextre-camara":
         this.d.work.complete("brazo:dextre-camara");
-        return s("Dextre ha cambiado la cámara de S1: imagen limpia otra vez. La vieja vuelve en el próximo carguero", 7);
+        return s("Dextre ha cambiado la cámara de P1: imagen limpia otra vez. La vieja vuelve en el próximo carguero", 7);
     }
   }
 
@@ -383,7 +383,7 @@ export class RoboticsGame {
       b.tick(hours);
       if (before && !b.releaseBlocker(STAY_H)) this.d.say(`${b.name}: terminó su estancia (${CAPTURE.stayDays.value} días, como el NG-19). Desatrácalo y suéltalo desde la Cupola`, 7);
     }
-    for (const e of this.d.work.drainEvents()) if (e.kind === "averia-camara") this.d.say(`Cámara de S1 con píxeles quemados por la radiación: Dextre puede cambiarla desde la Cupola`, 7);
+    for (const e of this.d.work.drainEvents()) if (e.kind === "averia-camara") this.d.say(`Cámara de P1 con píxeles quemados por la radiación: Dextre puede cambiarla desde la Cupola`, 7);
   }
 }
 

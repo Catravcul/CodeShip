@@ -86,7 +86,7 @@ export class ArmShow {
   readonly dextre = new DextreModel();
   readonly cygnus = new CygnusModel();
   private readonly newCam = oruBox(0.6, 0xd9b24a, "Cámara nueva");
-  private readonly oldCam = oruBox(0.6, 0x7d858f, "Cámara vieja de S1");
+  private readonly oldCam = oruBox(0.6, 0x7d858f, "Cámara vieja de P1");
   private readonly stowage = oruBox(1.4, 0x9aa3ad, "Estante de repuestos (JEM-EF)");
   private readonly marks = new THREE.Group();
   private readonly labels: THREE.Sprite[] = [];
@@ -243,10 +243,13 @@ export class ArmShow {
       this.tip.copy(this.berthPoint()).add(new THREE.Vector3(this.cygnus.radiusM + 3, -1, 1));
       this.hint.set(1, -0.3, 0.5);
     } else if (proc === "dextre-camara") {
-      // The camera on S1 is the worn one; a spare waits on the shelf (whatever was swapped before).
+      // The camera on P1 is the worn one; a spare waits on the shelf (whatever was swapped before).
       this.inHand = [null, null];
       this.oldCam.position.copy(v(CAMERA_ORU.at)).add(new THREE.Vector3(0, -0.35, 0));
       this.newCam.position.copy(this.stowage.position).add(new THREE.Vector3(0, 1.0, 0));
+      // Mission Control has rolled the MBS to port, by the JEM-EF, with Dextre on it (never over Destiny).
+      this.mbsX = DEXTRE_MBS_X;
+      this.parkDextre();
       this.base = "lab";
       this.tip.copy(this.pdgf("lab").at).add(new THREE.Vector3(3, -5, 4));
       this.hint.set(1, -1, 0);
@@ -564,12 +567,12 @@ export class ArmShow {
       case "llevar-dextre-ef":
       case "llevar-dextre-camara": {
         const ef = move === "llevar-dextre-ef";
-        return T(ef ? "La MBS rueda y el brazo lleva a Dextre al estante de repuestos de la JEM-EF" : "El brazo lleva a Dextre hasta la cámara de S1, bajo la celosía", "Dextre", () => this.dextre.root, () => {
+        return T(ef ? "La MBS rueda y el brazo lleva a Dextre al estante de repuestos de la JEM-EF" : "El brazo lleva a Dextre hasta la cámara de P1, bajo la celosía", "Dextre", () => this.dextre.root, () => {
           const at = ef ? this.stowage.position.clone().add(new THREE.Vector3(2.4, 3.2, 2.6)) : v(CAMERA_ORU.at).add(new THREE.Vector3(-0.5, -3.2, 2.8));
           // Under the station, not across the truss: down where it is, along below Destiny, up to the work.
-          // Below the modules' undersides (Unity, Destiny, Quest: about 2,3 m under the axis) wherever the MBS left Dextre.
-          const low = Math.min(this.tip.y - 3, at.y - 3, -4.5);
-          const via = [new THREE.Vector3(this.tip.x, low, this.tip.z), new THREE.Vector3(at.x, low, at.z)];
+          const low = Math.min(this.tip.y, at.y) - 3;
+          // Under the truss and round the modules: down, across beneath the work, up to it.
+          const via = ef ? [new THREE.Vector3(this.tip.x, this.tip.y - 1, this.tip.z), new THREE.Vector3(at.x, this.tip.y - 1, at.z)] : [new THREE.Vector3(this.tip.x, low, this.tip.z), new THREE.Vector3(at.x, low, at.z)];
           return { path: this.path(at, ...via), mbs: ride(at.x), dur: MOVE_S * 1.5 };
         });
       }
@@ -585,7 +588,7 @@ export class ArmShow {
           };
         });
       case "sacar-oru":
-        return T("Dextre desenrosca la cámara vieja y la sujeta con la otra mano", "Cámara vieja de S1", () => this.oldCam, () => {
+        return T("Dextre desenrosca la cámara vieja y la sujeta con la otra mano", "Cámara vieja de P1", () => this.oldCam, () => {
           const p0 = this.oldCam.position.clone();
           return {
             ...stay(),
@@ -615,7 +618,8 @@ export class ArmShow {
           const head = this.pdgf("mbs-3").at.add(new THREE.Vector3(0, -4.2, 0));
           return {
             path: this.path(head, this.tip.clone().add(new THREE.Vector3(0, -2, 3))),
-            mbs: ride(MBS_HOME_X),
+            // The MBS stays to port: rolling over Destiny with Dextre hanging below would take it through the lab.
+            mbs: ride(this.mbsX),
             dur: MOVE_S * 1.4,
             onEnd: () => {
               this.parkDextre();
@@ -899,6 +903,8 @@ function nameOf(o: THREE.Object3D): string {
 }
 
 const MBS_HOME_X = 7;
+/** Where the MBS waits with Dextre for the camera swap: to port, between the P1 camera and the JEM-EF's shelf (game value). */
+const DEXTRE_MBS_X = -12;
 const DETOURS = [new THREE.Vector3(0, -1, 0), new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1), new THREE.Vector3(1, 0, 0), new THREE.Vector3(-1, 0, 0), new THREE.Vector3(0, 1, 0)];
 const blockedLeg = (a: THREE.Vector3, b: THREE.Vector3) => !!segmentClear(V(a), V(b), POLANA_LAYOUT, 0.4, 0.2);
 /** The path with a waypoint added beside each leg that crosses the station (the first side that clears it). */

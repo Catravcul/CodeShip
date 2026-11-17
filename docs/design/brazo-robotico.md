@@ -23,9 +23,9 @@ Todos están en `src/modules/robotics/data/robotics.ts` como `Sourced`.
 | Velocidad de la punta | 0,3 m/s | valor de juego | la fuente no da velocidades |
 | Margen del LEE / velocidad de cierre | 0,2 m / 0,05 m/s | valor de juego | no publicados |
 | Deriva libre | 0,01 m/s | valor de juego | — |
-| Cámara de S1: vida ante la radiación, masa | 288 h de a bordo, 20 kg | valor de juego | el desgaste tiene causa, nunca azar |
+| Cámara de P1: vida ante la radiación, masa | 288 h de a bordo, 20 kg | valor de juego | el desgaste tiene causa, nunca azar |
 
-La colocación de los PDGF de Destiny y Harmony, del estante de la JEM-EF y de la cámara de S1 es nuestra: la fuente dice que existen, no dónde están exactamente.
+La colocación de los PDGF de Destiny y Harmony, del estante de la JEM-EF y de la cámara de P1 es nuestra: la fuente dice que existen, no dónde están exactamente.
 
 ## Qué se hace desde el puesto robótico
 
@@ -37,7 +37,7 @@ La tarjeta del RWS de la Cupola ofrece solo lo que toca ahora:
 | **Capturar el Cygnus a mano (RHC/THC)** | igual | mandos: seis direcciones del THC y «Disparar». El LEE atrapa a menos de 0,2 m y 0,05 m/s. Después, como en la ISS, el atraque lo hace el control de misión desde tierra | real; margen, valor de juego |
 | **Atracar el módulo / Devolverlo a su IDA** | con el módulo en su IDA o en el CBM | ordenar los pasos y la pregunta de la masa frente a los 116 t | **licencia**: el LM no tiene accesorio de agarre ni anillo CBM |
 | **Soltar con la Bishop** | con algo sujeto en su placa | ordenar los 6 pasos y encontrar el fallo en el orden | real |
-| **Dextre: cambiar la cámara de S1** | cuando la radiación ha quemado sus píxeles | ordenar 8 pasos (andar a la MBS, agarrar a Dextre, la JEM-EF, tomar la cámara, llevarla, sacar la vieja, montar, devolver) y la pregunta de los minutos de la MBS (distancia ÷ 1,5 m/min) | real (Dextre ya cambió una cámara exterior) |
+| **Dextre: cambiar la cámara de P1** | cuando la radiación ha quemado sus píxeles | ordenar 8 pasos (andar a la MBS, agarrar a Dextre, la JEM-EF, tomar la cámara, llevarla, sacar la vieja, montar, devolver) y la pregunta de los minutos de la MBS (distancia ÷ 1,5 m/min) | real (Dextre ya cambió una cámara exterior) |
 
 | **Desatracar y soltar el Cygnus** | cuando acaba su estancia: 140 días de a bordo, los del NG-19 | ordenar 6 pasos (cerrar escotillas, agarrarlo, soltar los 16 pernos, abrir los 4 pestillos, llevarlo al punto de suelta, abrir el LEE) con la trampa «abrir los pestillos con los pernos puestos», y la pregunta de los días (216 → 356) | real ([NASA, 22-12-2023](https://www.nasa.gov/blogs/spacestation/2023/12/22/two-spaceships-depart-crew-will-spend-holidays-in-space)) |
 

@@ -5,7 +5,7 @@
 // spacewalk: the EMU and the ISLE prebreathe at Quest's suits, the airlock depressed, out along the handrails
 // with the tether hooked at each anchor, feet in the APFR, the job's challenge audited, back in and the suit off;
 // after its 140 days the Cygnus unberthed and released (the camera turned with a drag); the lander's engine swapped
-// on a spacewalk from Quest and the Starship's power from its own airlock; and Dextre swapping the S1 camera burnt by radiation. Rows in docs/qa/animaciones-brazo.md, captures in
+// on a spacewalk from Quest and the Starship's power from its own airlock; and Dextre swapping the P1 camera burnt by radiation. Rows in docs/qa/animaciones-brazo.md, captures in
 // docs/screenshots/brazo-<pantalla>-movil.png.
 import { mkdirSync, writeFileSync } from "node:fs";
 
@@ -401,12 +401,12 @@ export async function brazoEva(j) {
     c.stationInside.enter("nodriza");
   });
 
-  // Dextre: the S1 camera burnt by radiation, swapped from the RWS.
-  await j.setup("pasan las horas: la radiación quema la cámara de S1", () => window.codeship.exteriorWork.tick(8));
+  // Dextre: the P1 camera burnt by radiation, swapped from the RWS.
+  await j.setup("pasan las horas: la radiación quema la cámara de P1", () => window.codeship.exteriorWork.tick(8));
   await placeAt(j, "cupula");
-  await j.tap('.sti-card [data-act="brazo:dextre-camara"]', "Dextre: cambiar la cámara de S1");
+  await j.tap('.sti-card [data-act="brazo:dextre-camara"]', "Dextre: cambiar la cámara de P1");
   await j.waitDuel();
-  await auditedSheet(j, rows, "Dextre cambia la cámara de S1", () => window.codeship.robotics.session?.run.current ?? null, armAudit, judgeArm, "brazo-dextre");
+  await auditedSheet(j, rows, "Dextre cambia la cámara de P1", () => window.codeship.robotics.session?.run.current ?? null, armAudit, judgeArm, "brazo-dextre");
   j.check("la cámara nueva queda puesta", await p.evaluate(() => !window.codeship.exteriorWork.job("brazo:dextre-camara")));
   if (await p.locator(".dock-view.on .dv-close").count()) await j.tap(".dock-view.on .dv-close", "Cerrar la vista de fuera");
 

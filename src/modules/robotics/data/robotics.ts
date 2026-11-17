@@ -121,11 +121,11 @@ export const CARGO_CBM = {
   harmony: { id: "harmony-nadir", label: "CBM de nadir de Harmony", position: mid("nodo-2").add(new Vec3(0, -module("nodo-2").radiusM, 0)), normal: new Vec3(0, -1, 0), source: url(S.cbm) },
 } as const;
 
-/** The external camera Dextre swaps (an ORU on the truss, by the S0 segment: distribución nuestra). */
+/** The external camera Dextre swaps (an ORU under the truss's P1 segment, by the JEM-EF: distribución nuestra). */
 export const CAMERA_ORU = {
-  id: "camara-s0",
-  label: "Cámara exterior de S1",
-  at: truss.centre.add(new Vec3(9, -truss.half.y, truss.half.z)),
+  id: "camara-p1",
+  label: "Cámara exterior de P1",
+  at: truss.centre.add(new Vec3(-9, -truss.half.y, truss.half.z)),
   /** Board hours until radiation leaves it with dead pixels (game value: wear has a cause, never chance). */
   lifeH: { value: 24 * 12, source: url(S.dextre), note: "Valor de juego: la radiación del cinturón va quemando píxeles" },
   massKg: { value: 20, source: url(S.dextre), note: "Valor de juego: la masa de la cámara no está publicada" },

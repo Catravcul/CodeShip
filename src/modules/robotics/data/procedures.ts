@@ -147,14 +147,14 @@ export const ARM_PROCEDURES: Readonly<Record<ArmProcedureId, ArmProcedure>> = {
   },
   "dextre-camara": {
     id: "dextre-camara",
-    title: "Cambiar la cámara de S1 con Dextre",
+    title: "Cambiar la cámara de P1 con Dextre",
     idea: "Canadarm2 lleva a Dextre, y Dextre, con sus manos pequeñas, cambia la pieza",
     steps: [
       { id: "a", pseudo: "andar el brazo hasta un PDGF de la MBS", move: "andar-mbs" },
       { id: "b", pseudo: "agarrar a Dextre por el accesorio de su cabeza", move: "agarrar-dextre" },
       { id: "c", pseudo: "llevar a Dextre al estante de repuestos de la JEM-EF", move: "llevar-dextre-ef" },
       { id: "d", pseudo: "Dextre toma la cámara nueva con su OTCM", move: "tomar-oru" },
-      { id: "e", pseudo: "llevar a Dextre hasta la cámara de S1", move: "llevar-dextre-camara" },
+      { id: "e", pseudo: "llevar a Dextre hasta la cámara de P1", move: "llevar-dextre-camara" },
       { id: "f", pseudo: "Dextre desenrosca la cámara vieja y la sujeta con su otra mano", move: "sacar-oru" },
       { id: "g", pseudo: "Dextre monta la cámara nueva y aprieta el perno", move: "montar-oru" },
       { id: "h", pseudo: "devolver a Dextre a la MBS con la cámara vieja", move: "devolver-dextre" },

@@ -90,7 +90,7 @@ export class ExteriorWork {
     this.cameraHours += hours;
     const id = "brazo:dextre-camara";
     if (this.cameraHours >= CAMERA_ORU.lifeH.value && !this.jobs.has(id)) {
-      const job: ExteriorJob = { id, kind: "dextre", title: "Dextre: cambiar la cámara de S1", why: "La radiación ha quemado píxeles de la cámara exterior de S1: se ve con puntos blancos" };
+      const job: ExteriorJob = { id, kind: "dextre", title: "Dextre: cambiar la cámara de P1", why: "La radiación ha quemado píxeles de la cámara exterior de S1: se ve con puntos blancos" };
       this.jobs.set(id, job);
       this.events.push({ kind: "averia-camara", job });
     }

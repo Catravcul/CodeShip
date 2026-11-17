@@ -226,6 +226,10 @@ export class ArmShow {
       this.tip.copy(cap).add(new THREE.Vector3(this.cygnus.radiusM + 3.5, 3, 0));
       this.hint.set(1, -0.3, 0.5);
     } else if (proc === "dextre-camara") {
+      // The camera on S1 is the worn one; a spare waits on the shelf (whatever was swapped before).
+      this.inHand = [null, null];
+      this.oldCam.position.copy(v(CAMERA_ORU.at)).add(new THREE.Vector3(0, -0.35, 0));
+      this.newCam.position.copy(this.stowage.position).add(new THREE.Vector3(0, 1.0, 0));
       this.base = "lab";
       this.tip.copy(this.pdgf("lab").at).add(new THREE.Vector3(3, -5, 4));
       this.hint.set(1, -1, 0);
@@ -242,11 +246,64 @@ export class ArmShow {
     for (const m of moves) this.queue.push(this.tween(m));
   }
 
-  /** Stop and leave the scene as the domain says (closed or failed challenge). */
-  end(): void {
-    while (this.current || this.queue.length) this.finishCurrent();
-    this.proc = "";
+  /**
+   * The challenge closed. Done: the scene stays as it ended and the arm lets go. Not done: what it moved goes
+   * back where it was (the domain did not change).
+   */
+  end(ok: boolean): void {
+    this.queue.length = 0;
+    if (ok) while (this.current) this.finishCurrent();
+    this.current = null;
     this.last = null;
+    this.held = null;
+    this.arm.snare(0);
+    this.clearMarks();
+    if (!ok) {
+      this.deps.bishop.visible = false;
+      const m = this.deps.bishopModule();
+      if (m) m.visible = true;
+      (this.vestibule.material as THREE.MeshBasicMaterial).color.setHex(0x5fd38a);
+      this.inHand = [null, null];
+      if (this.proc === "dextre-camara") {
+        this.oldCam.position.copy(v(CAMERA_ORU.at)).add(new THREE.Vector3(0, -0.35, 0));
+        this.newCam.position.copy(this.stowage.position).add(new THREE.Vector3(0, 1.0, 0));
+      }
+    } else if (this.proc === "dextre-camara") {
+      // The swap is done: a new spare waits on the shelf for next time, the old one is Dextre's to stow.
+      this.inHand = [null, null];
+      this.oldCam.position.copy(this.stowage.position).add(new THREE.Vector3(0.6, 0.9, 0.4));
+    }
+    if ((this.proc === "bishop") && ok) (this.vestibule.material as THREE.MeshBasicMaterial).color.setHex(0x5fd38a);
+    this.dextreOnArm = false;
+    this.parkDextre();
+    this.proc = "";
+    this.rest();
+  }
+
+  /** Manual capture: the base on Destiny's PDGF and the tip where the hand controller puts it. */
+  manual(tip: THREE.Vector3, cygnusAt: THREE.Vector3 | null): void {
+    this.proc = "";
+    this.base = "lab";
+    this.hint.set(1, -0.3, 0.5);
+    this.tip.copy(tip);
+    if (cygnusAt) {
+      this.cygnus.root.visible = true;
+      this.cygnus.thrusting = false;
+      this.cygnus.root.position.copy(cygnusAt);
+    }
+    this.pose();
+  }
+  /** The Cygnus's grapple fixture relative to its centre (station frame). */
+  get grappleOffset(): THREE.Vector3 {
+    return this.cygnus.grapple.clone();
+  }
+  /** Where the Cygnus waits now (its centre at the capture point). */
+  get capturePointNow(): THREE.Vector3 {
+    return this.capturePoint();
+  }
+  /** Destiny's PDGF (the base for captures). */
+  get labBase(): THREE.Vector3 {
+    return this.pdgf("lab").at;
   }
 
   private finishCurrent(): void {

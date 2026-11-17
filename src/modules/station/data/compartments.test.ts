@@ -44,7 +44,8 @@ describe("EST-51 every real compartment of the station is a room she floats into
   });
 
   it("no door, hatch or port opens anything but a way through (or says why it is shut)", () => {
-    for (const f of plan.fixtures.filter((x) => isDoor(x.id, x.action.kind))) expect(["puerta", "salir", "info"], f.id).toContain(f.action.kind);
+    // The EVA hatch's only action is going out through it, once the crew lock is empty (station-eva.ts).
+    for (const f of plan.fixtures.filter((x) => isDoor(x.id, x.action.kind))) expect(f.id === "escotilla-eva" ? ["esclusa"] : ["puerta", "salir", "info"], f.id).toContain(f.action.kind);
     // The old door-modals are gone: the crew quarters, the bay, the Bishop, the Cupola and the JEM-EF list.
     expect(plan.fixtures.find((f) => f.id === "camarotes")).toBeUndefined();
     expect(plan.fixtures.find((f) => f.id === "esclusa-kibo")!.action.kind).toBe("info");
@@ -92,6 +93,7 @@ describe("HAB-28 Starship's crew quarters are rooms too («distribución nuestra
       const { g, reach } = reachable(shown, "salir-modulo");
       for (const i of [1, 2, 3, 4]) expect(reach.has(g.poiPoint(`saco-${i}`)!.id), `saco-${i} ${spreadM}`).toBe(true);
     }
-    for (const f of plan.fixtures.filter((x) => isDoor(x.id, x.action.kind))) expect(["puerta", "salir", "info"], f.id).toContain(f.action.kind);
+    // The EVA hatch's only action is going out through it, once the crew lock is empty (station-eva.ts).
+    for (const f of plan.fixtures.filter((x) => isDoor(x.id, x.action.kind))) expect(f.id === "escotilla-eva" ? ["esclusa"] : ["puerta", "salir", "info"], f.id).toContain(f.action.kind);
   }, 20000);
 });

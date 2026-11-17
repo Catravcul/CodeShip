@@ -161,8 +161,8 @@ export class StationOutside {
     this.armShow.play(moves);
   }
   /** The challenge closed: the scene stays as it ended, the view goes back to the windows. */
-  endProcedure(): void {
-    this.armShow.end();
+  endProcedure(ok: boolean): void {
+    this.armShow.end(ok);
     this.framing = false;
     this.view.camera.clearViewOffset();
     this.view.close();
@@ -173,6 +173,9 @@ export class StationOutside {
     const c = document.querySelector("canvas")?.getBoundingClientRect();
     return this.armShow.audit(this.view.camera, this.root.parent ?? this.root, sheetTop, { w: c?.width ?? innerWidth, h: c?.height ?? innerHeight });
   }
+
+  /** Capturing by hand (robotics-game.ts): the camera follows the LEE from the Cupola's window. */
+  manualOn = false;
 
   /** While an arm challenge plays: the camera from the Cupola or an outside camera, in the strip above the sheet. */
   private framing = false;
@@ -271,6 +274,11 @@ export class StationOutside {
     this.lander.setDesign(this.deps.design());
     const bishopModule = this.modules().get("bishop");
     if (this.armShow.procedure) {
+      this.armShow.update(dt);
+      if (this.view.open) this.frameProcedure();
+      return;
+    }
+    if (this.manualOn) {
       this.armShow.update(dt);
       if (this.view.open) this.frameProcedure();
       return;

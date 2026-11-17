@@ -153,9 +153,39 @@ export function shownVehicle(filter: TaskVehicleFilter, here: Vehicle): Vehicle 
   return filter === "todos" ? null : filter === "auto" ? here : filter;
 }
 
-/** The tasks done in that vehicle (all of them for null), in their order. */
-export function tasksIn(tasks: readonly Task[], vehicle: Vehicle | null): Task[] {
-  return vehicle ? tasks.filter((t) => t.place.vehicle === vehicle) : [...tasks];
+/**
+ * The vehicles whose tasks the list shows, or null for every vehicle. «Automático» is where she is plus
+ * every vehicle joined to it by open hatches, since she can float there (e.g. the lander docked to the Starship).
+ */
+export function shownVehicles(filter: TaskVehicleFilter, here: Vehicle, links?: VehicleLinks): Vehicle[] | null {
+  if (filter !== "auto") {
+    const v = shownVehicle(filter, here);
+    return v ? [v] : null;
+  }
+  return links ? reachable(here, links) : [here];
+}
+
+/** Where she is first, then every vehicle reachable through open hatches. */
+export function reachable(here: Vehicle, links: VehicleLinks): Vehicle[] {
+  const edges: [Vehicle, Vehicle, boolean][] = [
+    ["modulo", "nodriza", links.moduloNodriza],
+    ["modulo", "estacion", links.moduloEstacion],
+    ["nodriza", "estacion", links.nodrizaEstacion],
+  ];
+  const out: Vehicle[] = [here];
+  for (let i = 0; i < out.length; i++)
+    for (const [a, b, open] of edges) {
+      const n = !open ? null : a === out[i] ? b : b === out[i] ? a : null;
+      if (n && !out.includes(n)) out.push(n);
+    }
+  return out;
+}
+
+/** The tasks done in that vehicle or those vehicles (all of them for null), in their order. */
+export function tasksIn(tasks: readonly Task[], vehicle: Vehicle | readonly Vehicle[] | null): Task[] {
+  if (!vehicle) return [...tasks];
+  const set: readonly Vehicle[] = typeof vehicle === "string" ? [vehicle] : vehicle;
+  return tasks.filter((t) => set.includes(t.place.vehicle));
 }
 
 /** Which hatches are open now: the lander docked to the travel ship or the station, the travel ship berthed at the station. */

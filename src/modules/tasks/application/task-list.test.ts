@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { collectTasks, groupTasks, routeTo, shownVehicle, tasksIn, TASK_GROUPS, type TaskFacts } from "./task-list";
+import { collectTasks, groupTasks, reachable, routeTo, shownVehicle, shownVehicles, tasksIn, TASK_GROUPS, type TaskFacts } from "./task-list";
 
 const facts = (o: Partial<TaskFacts> = {}): TaskFacts => ({
   chores: [],
@@ -136,5 +136,14 @@ describe("task list: vehicle filter (HAB-41)", () => {
     expect(tasksIn(all, null)).toEqual(all);
     expect(tasksIn(all, "estacion").length).toBeGreaterThan(0);
     expect(tasksIn(all, "nodriza").length).toBeGreaterThan(0);
+  });
+  it("HAB-41 «Automático» shows her vehicle plus the ones joined by open hatches (the lander docked to the Starship)", () => {
+    const none = { moduloNodriza: false, moduloEstacion: false, nodrizaEstacion: false };
+    expect(shownVehicles("auto", "modulo", none)).toEqual(["modulo"]);
+    expect(shownVehicles("auto", "modulo", { ...none, moduloNodriza: true })).toEqual(["modulo", "nodriza"]);
+    expect(reachable("modulo", { ...none, moduloNodriza: true, nodrizaEstacion: true })).toEqual(["modulo", "nodriza", "estacion"]);
+    expect(shownVehicles("estacion", "modulo", { ...none, moduloNodriza: true })).toEqual(["estacion"]);
+    expect(shownVehicles("todos", "modulo", none)).toBeNull();
+    expect(tasksIn(all, ["modulo", "nodriza"]).length).toBe(tasksIn(all, "modulo").length + tasksIn(all, "nodriza").length);
   });
 });

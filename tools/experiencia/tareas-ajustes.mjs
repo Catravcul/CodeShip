@@ -128,9 +128,9 @@ export async function tareasAjustes(j) {
   j.check("la lista abre con [⚙︎ Ajustes de tareas][✕ Cerrar tareas]", l1?.title === "Tareas" && l1.toggle === "Ajustes de tareas" && l1.close === "Cerrar tareas", JSON.stringify(l1));
   await headerButtons(j, "Lista");
   j.check("en la lista ya no están el interruptor ni los filtros (están en los ajustes)", l1?.travel === 0 && l1.chips === 0 && l1.vehicleChoices === 0, JSON.stringify(l1));
-  // At the start the LM has no task of its own: the list says so and where the others are.
+  // At the start the LM is docked to the Starship: «Automático» shows the LM and the vehicle joined to it by the open hatch.
   const empty = (await j.texts(".task-board .tb-empty, .task-board .tb-hint")).join(" ");
-  j.check("«Automático» por defecto: en el LM solo salen las tareas del módulo (ninguna al empezar), y lo dice", l1?.vehicles.every((v) => v === "modulo") && /En el módulo \(automático\)/.test(l1.scope) && l1.n < l1.total && (l1.n > 0 || (/Nada pendiente en el módulo/.test(empty) && /tareas más fuera de este filtro: ⚙︎ Ajustes de tareas › Todos/.test(empty))), `${JSON.stringify(l1)} · ${empty}`);
+  j.check("«Automático» por defecto: en el LM acoplado salen las tareas del módulo y de la nave acoplada, y lo dice", l1?.vehicles.every((v) => v === "modulo" || v === "nodriza") && /En el módulo( y la nave acoplada)? \(automático\)/.test(l1.scope) && l1.n < l1.total && (l1.n > 0 || /Nada pendiente en el módulo/.test(empty)), `${JSON.stringify(l1)} · ${empty}`);
   await capture(j, "lista-modulo", "Lista en el LM");
 
   // 2. The gear: the settings replace the list, and the gear turns into a list icon.
@@ -185,7 +185,7 @@ export async function tareasAjustes(j) {
   await p.waitForTimeout(500);
   await j.tap(".sts-ui .sts-tasks", "Tareas");
   const l4 = await board(p);
-  j.check("«Automático» en la Starship: solo sus tareas, y lo dice", l4?.vehicles.join() === "nodriza" && /En la nave \(automático\)/.test(l4.scope), JSON.stringify(l4));
+  j.check("«Automático» en la Starship: sus tareas y las del vehículo acoplado, y lo dice", l4?.vehicles.includes("nodriza") && l4.vehicles.every((v) => v === "nodriza" || v === "modulo") && /En la nave( y el módulo acoplado)? \(automático\)/.test(l4.scope), JSON.stringify(l4));
   await capture(j, "lista-nave", "Lista en la Starship");
   await j.taskSettings({ vehicle: "todos" });
   const l5 = await board(p);

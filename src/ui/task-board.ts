@@ -1,4 +1,4 @@
-import { groupTasks, shownVehicle, tasksIn, type Task, type TaskGroupId, type Vehicle } from "@modules/tasks/application/task-list";
+import { groupTasks, shownVehicles, tasksIn, type Task, type TaskGroupId, type Vehicle, type VehicleLinks } from "@modules/tasks/application/task-list";
 import { settings } from "./settings-store";
 import { settingsClick, travelHtml, vehicleHtml } from "./task-settings";
 import { ICON } from "./icons";
@@ -8,6 +8,7 @@ import "./task-board.css";
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
 const IN: Record<Vehicle, string> = { nodriza: "En la nave", estacion: "En la estación", modulo: "En el módulo" };
+const JOINED: Record<Vehicle, string> = { nodriza: "la nave acoplada", estacion: "la estación acoplada", modulo: "el módulo acoplado" };
 const NOTHING: Record<Vehicle, string> = { nodriza: "Nada pendiente en la nave", estacion: "Nada pendiente en la estación", modulo: "Nada pendiente en el módulo" };
 
 /**
@@ -36,6 +37,8 @@ export class TaskBoard {
     private readonly source: () => Task[],
     /** The vehicle she is in now: what «Automático» shows. */
     private readonly here: () => Vehicle = () => "nodriza",
+    /** Which hatches are open now: «Automático» also shows the vehicles joined to hers. */
+    private readonly links?: () => VehicleLinks,
   ) {
     this.el = document.createElement("div");
     this.el.className = "board task-board hidden";
@@ -98,8 +101,9 @@ export class TaskBoard {
     const all = this.source();
     const here = this.here();
     const filter = settings.value.taskVehicle;
-    const vehicle = shownVehicle(filter, here);
-    const inVehicle = tasksIn(all, vehicle);
+    const vehicles = shownVehicles(filter, here, this.links?.());
+    const vehicle = vehicles ? vehicles[0]! : null;
+    const inVehicle = tasksIn(all, vehicles);
     const groups = groupTasks(inVehicle);
     if (this.group && !groups.some((g) => g.id === this.group)) this.group = null;
     this.tasks = inVehicle;
@@ -116,7 +120,8 @@ export class TaskBoard {
     const groupLabel = this.group ? groups.find((g) => g.id === this.group)?.label : undefined;
     const shown = groups.filter((g) => !this.group || g.id === this.group);
     const count = shown.reduce((n, g) => n + g.tasks.length, 0);
-    const where = vehicle ? `${IN[vehicle]}${filter === "auto" ? " (automático)" : ""}` : "Todos los vehículos";
+    const joined = vehicles && vehicles.length > 1 ? ` y ${vehicles.slice(1).map((v) => JOINED[v]).join(" y ")}` : "";
+    const where = vehicle ? `${IN[vehicle]}${joined}${filter === "auto" ? " (automático)" : ""}` : "Todos los vehículos";
     const scope = `<p class="tb-scope">${where}${groupLabel ? ` · ${groupLabel}` : ""} · ${count} de ${all.length}</p>`;
     const elsewhere = all.length - count;
     const hint = elsewhere > 0 ? `<p class="tb-hint">${elsewhere === 1 ? "Hay 1 tarea más" : `Hay ${elsewhere} tareas más`} fuera de este filtro: ⚙︎ Ajustes de tareas › Todos.</p>` : "";

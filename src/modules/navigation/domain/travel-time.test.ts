@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { BOARD_DAY_REAL_S } from "@core/board-time";
 import { BOARD_DAYS_PER_REAL_S, legBudgets, realSeconds, TRAVEL_TIME, TravelClock, worldStep } from "./travel-time";
 
 describe("realSeconds (time compression with a cap)", () => {
@@ -8,8 +9,8 @@ describe("realSeconds (time compression with a cap)", () => {
   });
 
   it("long trips never take more than the cap of real seconds", () => {
-    // A 9 km mothership hop: about 5 h of continuous Hall burn.
-    expect(realSeconds(5 * 3600, TRAVEL_TIME.lapse.carrier)).toBeLessThanOrEqual(TRAVEL_TIME.capS);
+    // A 5 h hop plays in 5 real minutes at the board's pace.
+    expect(realSeconds(5 * 3600, TRAVEL_TIME.lapse.carrier)).toBeCloseTo(300, 6);
     expect(realSeconds(30 * 86400, TRAVEL_TIME.lapse.carrier)).toBe(TRAVEL_TIME.capS);
   });
 
@@ -17,9 +18,17 @@ describe("realSeconds (time compression with a cap)", () => {
     expect(realSeconds(0, 10)).toBe(0);
   });
 
-  it("the cap is a sensible game value: about a minute", () => {
-    expect(TRAVEL_TIME.capS).toBeGreaterThanOrEqual(60);
-    expect(TRAVEL_TIME.capS).toBeLessThanOrEqual(90);
+  it("the cap is a sensible game value: minutes, time for the chores on board (Berón, 2026-11-17)", () => {
+    expect(TRAVEL_TIME.capS).toBeGreaterThanOrEqual(300);
+    expect(TRAVEL_TIME.capS).toBeLessThanOrEqual(900);
+  });
+
+  it("every vehicle flies at the board's pace: a game hour per real minute, so life on board and the trip share one clock", () => {
+    expect(BOARD_DAY_REAL_S).toBe(24 * 60);
+    for (const v of ["carrier", "lander", "probe"] as const) expect(TRAVEL_TIME.lapse[v]).toBe(86400 / BOARD_DAY_REAL_S);
+    // During a trip the crew lives exactly the trip's game time: no more, no less.
+    const w = worldStep(1, TRAVEL_TIME.lapse.carrier);
+    expect(w.lifeDays * 86400).toBeCloseTo(w.missionS, 6);
   });
 });
 

@@ -6,7 +6,7 @@ import { POLANA_LAYOUT } from "@modules/station/data/structure";
 import { StationStructure } from "@modules/station/domain/structure";
 import { IDSS_CONTACT_LIMITS, NODRIZA, NODRIZA_NOSE_PORT } from "../data/mothership";
 import { Mothership } from "../domain/mothership";
-import { BERTH_STANDOFF_M, Berthing, berthedPose, berthStandoff } from "./berthing";
+import { BERTH_STANDOFF_M, Berthing, berthedPose, berthSeconds, berthStandoff, PROXIMITY } from "./berthing";
 
 const setup = (offset = Vec3.ZERO) => {
   const station = new StationStructure(POLANA_STATION, POLANA_LAYOUT);
@@ -28,6 +28,25 @@ describe("Berthing the mothership at a station", () => {
     // Its nose looks at the station; the probe port stays underneath.
     expect(m.orientation.rotate(new Vec3(0, 0, -1)).dot(port.port.normal)).toBeCloseTo(-1, 6);
     expect(m.orientation.rotate(Vec3.Y).y).toBeCloseTo(1, 6);
+  });
+
+  it("flies the real last approach: Waypoint 1 at 150 m, a hold at 20 m and 51 min to capture, as Crew Dragon Demo-1", () => {
+    expect(BERTH_STANDOFF_M).toBe(150);
+    expect(berthSeconds()).toBeCloseTo(51 * 60, 6);
+    const { berthing } = setup();
+    expect(berthing.remainingS).toBeCloseTo(51 * 60, 6);
+    let t = 0;
+    let held = 0;
+    while (berthing.status === "approach" && t < 2 * 3600) {
+      berthing.advance(1);
+      t += 1;
+      if (berthing.holding) held += 1;
+    }
+    expect(berthing.status).toBe("docked");
+    expect(Math.abs(t - 51 * 60)).toBeLessThan(5);
+    // It held at Waypoint 2 for the go/no-go (about a quarter of an hour).
+    expect(held).toBeGreaterThan(10 * 60);
+    expect(berthing.speedMs).toBeCloseTo(PROXIMITY.closingMs, 9);
   });
 
   it("closes at contact speed and latches within the IDSS limits", () => {

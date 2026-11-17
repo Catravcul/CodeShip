@@ -2,7 +2,7 @@ import type { Quat } from "@core/math/quat";
 import { Vec3 } from "@core/math/vec3";
 import { RigidBodyState } from "@modules/flight/domain/rigid-body";
 import { facing } from "@modules/navigation/domain/attitude";
-import { alignment, approachSpeed, judgeContact, type Alignment, type CraftPort, type DockingLimits, type DockingTarget } from "../domain/docking";
+import { alignment, DOCKING_ASSIST, judgeContact, type Alignment, type CraftPort, type DockingLimits, type DockingTarget } from "../domain/docking";
 
 /** A big craft moved as a whole between poses (the mothership on its trips), not flown by the 120 Hz loop. */
 export interface KinematicCraft {
@@ -14,8 +14,34 @@ export interface KinematicCraft {
   dockedTo: string | undefined;
 }
 
-/** Game value: where the mothership stops on the port axis before the last approach, m. */
-export const BERTH_STANDOFF_M = 80;
+/**
+ * The last approach of a big crewed ship to a station's port, as the ISS's visiting vehicles fly it
+ * (docs/design/viajes.md, «Atraque real»). Crew Dragon Demo-1 (2019): Waypoint 1 150 m out from the
+ * Node 2 port, Waypoint 2 at 20 m with a go/no-go hold, and 51 min from Waypoint 1 to soft capture
+ * (https://planetary.org/articles/crew-dragon-docks). Real.
+ */
+export const PROXIMITY = {
+  /** Waypoint 1: where the ship stops on the port axis before the last approach, m (Demo-1). */
+  waypoint1M: 150,
+  /** Waypoint 2: the go/no-go hold, m (Demo-1). */
+  waypoint2M: 20,
+  /** Waypoint 1 to soft capture, s (Demo-1: 51 min). */
+  waypoint1ToCaptureS: 51 * 60,
+  /** Closing speed along the axis, m/s: the contact speed the docking assist aims at, inside IDSS's 0,05–0,10. */
+  closingMs: DOCKING_ASSIST.contactSpeedMs,
+} as const;
+
+/** The hold at Waypoint 2, s: what Demo-1's 51 min leave after closing 150 m at the closing speed (derived, ≈15 min). */
+export const WAYPOINT2_HOLD_S = PROXIMITY.waypoint1ToCaptureS - PROXIMITY.waypoint1M / PROXIMITY.closingMs;
+
+/** Where the mothership stops on the port axis before the last approach, m: Waypoint 1. */
+export const BERTH_STANDOFF_M = PROXIMITY.waypoint1M;
+
+/** Game seconds of the last approach from `fromM` out on the axis: closing at a steady speed, with the hold at Waypoint 2 if it is ahead. */
+export function berthSeconds(fromM: number = BERTH_STANDOFF_M): number {
+  const d = Math.max(0, fromM);
+  return d / PROXIMITY.closingMs + (d > PROXIMITY.waypoint2M ? WAYPOINT2_HOLD_S : 0);
+}
 /** Time step of the approach, game seconds. */
 const STEP_S = 1;
 
@@ -47,6 +73,8 @@ export class Berthing {
   private _status: BerthingStatus = "approach";
   private _failures: readonly string[] = [];
   private speed = 0;
+  /** Game seconds still to wait at Waypoint 2 (the go/no-go hold), once it gets there. */
+  private hold = WAYPOINT2_HOLD_S;
 
   constructor(
     private readonly craft: KinematicCraft,
@@ -74,6 +102,17 @@ export class Berthing {
     return alignment(state, f.conjugate().rotate(this.craftPort.position), this.target.port);
   }
 
+  /** Game seconds left of the approach (the hold included). */
+  get remainingS(): number {
+    const r = this.remainingM;
+    return r / PROXIMITY.closingMs + (this.hold > 0 ? this.hold : 0);
+  }
+
+  /** Holding at Waypoint 2. */
+  get holding(): boolean {
+    return this.hold > 0 && this.remainingM <= PROXIMITY.waypoint2M + 1e-6;
+  }
+
   /** Axial gap left to the port, m. */
   get remainingM(): number {
     return Math.max(0, this.alignment().axialM);
@@ -87,9 +126,17 @@ export class Berthing {
       t -= dt;
       const a0 = this.alignment();
       const n = this.target.port.normal;
-      this.speed = approachSpeed(a0.axialM, this.craft.accelerationMs2);
+      // At Waypoint 2 it holds still for the go/no-go, then closes at the contact speed.
+      if (a0.axialM <= PROXIMITY.waypoint2M + 1e-6 && this.hold > 0) {
+        this.hold = Math.max(0, this.hold - dt);
+        this.speed = 0;
+        continue;
+      }
+      this.speed = PROXIMITY.closingMs;
       const v = n.scale(-this.speed);
-      const step = Math.min(this.speed * dt, Math.max(0, a0.axialM));
+      // Never past Waypoint 2 in one step while the hold is still ahead.
+      const stopAt = this.hold > 0 && a0.axialM > PROXIMITY.waypoint2M ? PROXIMITY.waypoint2M : 0;
+      const step = Math.min(this.speed * dt, Math.max(0, a0.axialM - stopAt));
       this.craft.moveTo(this.craft.position.add(n.scale(-step)));
       if (a0.axialM - step > 1e-6) continue;
       const j = judgeContact(this.alignment(v), this.limits);

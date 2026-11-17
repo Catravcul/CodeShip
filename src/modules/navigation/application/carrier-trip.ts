@@ -8,6 +8,8 @@ export interface BerthRun {
   readonly status: "approach" | "docked" | "failed";
   readonly remainingM: number;
   readonly speedMs: number;
+  /** Game seconds left of the approach (holds included). */
+  readonly remainingS: number;
   advance(gameS: number): void;
 }
 

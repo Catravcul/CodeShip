@@ -14,6 +14,7 @@ import { CarrierTrip, type BerthRun, type CarrierPort } from "./carrier-trip";
 import { legBudgets, TRAVEL_TIME, TravelClock } from "../domain/travel-time";
 import { carrierTripChore, tripChore, type CarrierTripFacts, type DockFacts, type TripFacts } from "./trip-chore";
 import { DOCK_TRIP } from "./dock-trip";
+import { berthSeconds } from "@modules/mothership/application/berthing";
 import { planHop } from "./hop";
 
 /**
@@ -63,15 +64,22 @@ export interface Trip {
 export interface TripTime {
   readonly gameS: number;
   readonly realS: number;
-  /** Real seconds of each leg: [mothership, lander] or [lander]. */
+  /** Real seconds of each leg: [mothership, lander] or [lander]. The mothership's includes its berthing. */
   readonly legsRealS: readonly number[];
+  /** Real seconds of the mothership's last approach to a station's port (0 elsewhere): part of legsRealS[0]. */
+  readonly berthRealS: number;
 }
 
 /** Game and real seconds of a trip's legs. */
 export function tripTime(t: Pick<Trip, "carrier" | "plan">): TripTime {
-  const legs = [...(t.carrier ? [{ gameS: t.carrier.plan.totalS, lapse: TRAVEL_TIME.lapse.carrier }] : []), { gameS: t.plan.totalS, lapse: TRAVEL_TIME.lapse.lander }];
-  const legsRealS = legBudgets(legs);
-  return { gameS: legs.reduce((s, l) => s + l.gameS, 0), realS: legsRealS.reduce((s, x) => s + x, 0), legsRealS };
+  const berthS = t.carrier?.berthAt ? berthSeconds() : 0;
+  const legs = [
+    ...(t.carrier ? [{ gameS: t.carrier.plan.totalS, lapse: TRAVEL_TIME.lapse.carrier }, { gameS: berthS, lapse: TRAVEL_TIME.lapse.carrier }] : []),
+    { gameS: t.plan.totalS, lapse: TRAVEL_TIME.lapse.lander },
+  ];
+  const b = legBudgets(legs);
+  const legsRealS = t.carrier ? [b[0]! + b[1]!, b[2]!] : b;
+  return { gameS: legs.reduce((s, l) => s + l.gameS, 0), realS: b.reduce((s, x) => s + x, 0), legsRealS, berthRealS: t.carrier ? b[1]! : 0 };
 }
 
 /** What the map card shows about a destination. */
@@ -158,6 +166,8 @@ export class Navigator {
   /** Time-lapse of the leg flying now, and the real seconds kept for the lander's leg after the mothership's. */
   private clock: TravelClock | undefined;
   private landerBudgetS: number | undefined;
+  /** Game seconds per real second of the mothership's last approach (the board's pace, unless the trip was squeezed into the cap). */
+  private berthLapse: number = TRAVEL_TIME.lapse.carrier;
   /** The trip flying now took the lander along docked to the mothership. */
   private _carrying = false;
   /** Where the trip flying now goes, as planned when it was engaged (for «Ver trayecto»). */
@@ -479,9 +489,11 @@ export class Navigator {
       const berth = now.carrier.berthAt;
       const q = berth ? c.berthStandoff!(berth).orientation : leaving ? c.orientation : facing(now.carrier.parking.sub(now.carrier.from));
       this._carrierTrip = new CarrierTrip(c, now.carrier.from, now.carrier.path, now.carrier.plan, q);
-      const budget = tripTime(now).legsRealS;
-      this.clock = new TravelClock(now.carrier.plan.totalS, budget[0] ?? 0);
+      const tt = tripTime(now);
+      const budget = tt.legsRealS;
+      this.clock = new TravelClock(now.carrier.plan.totalS, (budget[0] ?? 0) - tt.berthRealS);
       this.landerBudgetS = budget[1];
+      this.berthLapse = tt.berthRealS > 0 ? berthSeconds() / tt.berthRealS : TRAVEL_TIME.lapse.carrier;
       this.startDistanceM = Math.max(1, now.carrier.plan.distanceM);
       this._status = "carrier";
       return;
@@ -533,7 +545,7 @@ export class Navigator {
    * mission clock (physics, wrath, station) at this pace.
    */
   get lapse(): number {
-    if (this._status === "carrier" && this._berthing) return TRAVEL_TIME.lapse.carrier;
+    if (this._status === "carrier" && this._berthing) return this.berthLapse;
     if (this._status === "carrier" && this._carrierTrip && this.clock) return this.clock.lapse(this._carrierTrip.remainingS);
     if (this._status === "autopilot" && this._autopilot && this.clock) return this.clock.lapse(remainingEstimateS(this._autopilot.status));
     return 1;
@@ -542,8 +554,10 @@ export class Navigator {
   /** Real seconds left for the leg flying now (the lander's leg after the mothership's included). */
   private etaRealS(): number {
     const c = this.clock;
+    if (this._status === "carrier" && this._berthing) return this._berthing.remainingS / this.berthLapse;
     if (!c) return 0;
-    if (this._status === "carrier" && this._carrierTrip) return c.etaRealS(this._carrierTrip.remainingS) + (this.landerBudgetS ?? 0);
+    const berth = this._target.kind === "dock" && this._target.carrierPort ? berthSeconds() / this.berthLapse : 0;
+    if (this._status === "carrier" && this._carrierTrip) return c.etaRealS(this._carrierTrip.remainingS) + berth + (this.landerBudgetS ?? 0);
     if (this._status === "autopilot" && this._autopilot) return c.etaRealS(remainingEstimateS(this._autopilot.status));
     return 0;
   }
@@ -555,7 +569,7 @@ export class Navigator {
    */
   update(realDtS = 0, held = false): void {
     if (this._status === "carrier" && this._berthing) {
-      this._berthing.advance(realDtS * (held ? 1 : TRAVEL_TIME.lapse.carrier));
+      this._berthing.advance(realDtS * (held ? 1 : this.berthLapse));
       if (this._berthing.status !== "approach") {
         this._status = this._berthing.status === "docked" ? "docked" : "failed";
         this._berthing = undefined;
@@ -616,7 +630,7 @@ export class Navigator {
     if (this._status === "carrier" && b) {
       const r = b.remainingM;
       const v = Math.max(1e-3, b.speedMs);
-      return { vehicle: "carrier", phase: "dock", remainingM: r, etaS: r / v, speedMS: b.speedMs, fraction: 1 - r / Math.max(1, DOCK_TRIP.berthStandoffM) };
+      return { vehicle: "carrier", phase: "dock", remainingM: r, etaS: b.remainingS || r / v, speedMS: b.speedMs, fraction: 1 - r / Math.max(1, DOCK_TRIP.berthStandoffM) };
     }
     const t = this._target;
     if (this._status === "docking" && t.kind === "dock" && this.ports.docking) {

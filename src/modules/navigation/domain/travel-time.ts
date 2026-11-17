@@ -1,4 +1,4 @@
-import { BOARD_DAYS_PER_REAL_S } from "@core/board-time";
+import { BOARD_DAYS_PER_REAL_S, BOARD_TIME_LAPSE } from "@core/board-time";
 
 /**
  * Compressed travel (docs/design/viajes.md). Long trips of the travel ship and the probe are
@@ -12,15 +12,18 @@ export type TravelVehicle = "carrier" | "lander" | "probe";
 
 /** Game values for compressed travel. */
 export const TRAVEL_TIME = {
-  /** No trip takes longer than this, real seconds (game value: a minute and a bit, time to do a chore). */
-  capS: 75,
   /**
-   * Base lapse of each vehicle, game seconds per real second. Short trips play at this pace, so they
-   * scale in proportion; long ones are squeezed into the cap (game values).
-   * Mothership: a 9 km hop (≈5 h) plays in ≈30 s. Lander: a 1 km leg (≈80 s) in ≈16 s. Probe: Juventas
-   * crawls on 1 mN thrusters (≈2 h for a few km), so a hop plays in the cap.
+   * Safety cap of a trip, real seconds (game value): 10 minutes. Berón (2026-11-17): «no hay problema si
+   * tarda minutos, ya que en esos minutos se pueden hacer las tareas internas». Below it every trip plays
+   * at the board's pace; only a trip of more than 10 game hours is squeezed into it.
    */
-  lapse: { carrier: 600, lander: 5, probe: 100 } as Readonly<Record<TravelVehicle, number>>,
+  capS: 600,
+  /**
+   * Lapse of each vehicle, game seconds per real second: the board's own pace, ×60 (a game hour per real
+   * minute, src/core/board-time.ts). One clock for the whole game during a trip: the flight, the crew's
+   * hunger, the life support and the station all advance the same game time (docs/design/viajes.md).
+   */
+  lapse: { carrier: BOARD_TIME_LAPSE, lander: BOARD_TIME_LAPSE, probe: BOARD_TIME_LAPSE } as Readonly<Record<TravelVehicle, number>>,
   /**
    * Top lapse for legs flown by the physics (the 120 Hz flight computer and its guidance): beyond it a
    * frame would need too many steps. Game value.

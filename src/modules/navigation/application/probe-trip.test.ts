@@ -89,7 +89,7 @@ describe("ProbeTrip (the probe's long trips)", () => {
     // Speeding up, the lapse stays near the plan's (not the autopilot's pessimistic early estimate).
     fly(probe, trip, 3);
     expect(trip.lapse).toBeLessThan(p.lapse * 1.5);
-    const real = 3 + fly(probe, trip, 200);
+    const real = 3 + fly(probe, trip, TRAVEL_TIME.capS + 60);
     expect(trip.status).toBe("arrived");
     expect(real).toBeLessThanOrEqual(TRAVEL_TIME.capS + 10);
     const h = probe.flight.telemetry().distanceToSurface;
@@ -104,12 +104,12 @@ describe("ProbeTrip (the probe's long trips)", () => {
   it("the way home ends a few metres from the bay for the arm (manual catch)", () => {
     const { trip, member, probe, mothership } = make();
     trip.engage({ kind: "asteroid", body: member });
-    fly(probe, trip, 200);
+    fly(probe, trip, TRAVEL_TIME.capS + 60);
     expect(trip.status).toBe("arrived");
     const home: ProbeGoal = { kind: "bay" };
     expect(trip.canProgram(home).ok).toBe(true);
     trip.engage(home);
-    fly(probe, trip, 200);
+    fly(probe, trip, TRAVEL_TIME.capS + 60);
     expect(trip.status).toBe("arrived");
     const d = probe.bayRange().distanceM;
     // It came down on the bay from above, not through the hull.

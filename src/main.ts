@@ -1196,7 +1196,7 @@ function allTasks(): Task[] {
     landerEcs: landerEcs.facts(),
   });
 }
-const taskBoard = new TaskBoard(root, allTasks);
+const taskBoard = new TaskBoard(root, allTasks, crewIn);
 // The species catalogue: adopting animals for the ring and the station (docs/design/catalogo-especies.md).
 // Docked, either colony can be carried through the tunnel to the other vehicle's tank.
 interior.aquarium.partner = () => (mothership.dockedTo ? { ops: stationAquarium, where: "a la estación" } : undefined);
@@ -1329,7 +1329,7 @@ const journey = new JourneyDriver(root, {
     stationScreen.enter(place.tab);
   },
 });
-// How «Ir» gets there (viaje / teletransporte) is a switch at the top of the task list (TaskBoard), its only place.
+// How «Ir» gets there (viaje / teletransporte) is a switch in the task list's settings (the gear of TaskBoard), its only place.
 /** The task list's «Ir»: the real journey there, or (teleport, a setting) straight there through open hatches, or to what joins the vehicles, saying why. */
 function goToTask(t: Task): void {
   // Travel (the default) walks the whole real way, Starship's decks and hatches included (docs/design/reglas.md §3).

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { collectTasks, groupTasks, routeTo, TASK_GROUPS, type TaskFacts } from "./task-list";
+import { collectTasks, groupTasks, routeTo, shownVehicle, tasksIn, TASK_GROUPS, type TaskFacts } from "./task-list";
 
 const facts = (o: Partial<TaskFacts> = {}): TaskFacts => ({
   chores: [],
@@ -117,5 +117,24 @@ describe("task «ir»: how she gets to the place (HAB-06)", () => {
     if (r.kind === "bloqueado") expect(r.why).toMatch(/Acopla/);
     const s = routeTo({ vehicle: "estacion", spot: "bahia" }, { crew: "nodriza", links: none });
     expect(s).toMatchObject({ kind: "bloqueado", via: { vehicle: "nodriza", spot: "puente", page: "nav" } });
+  });
+});
+
+describe("task list: vehicle filter (HAB-41)", () => {
+  const all = collectTasks(facts({ asteroids: [bennu], fabricable: [{ id: "panel", name: "Panel" }], refuel: true, landerEcs: { cartridgeLow: true, enduranceH: 10, limit: "48 h" } }));
+  it("HAB-41 «auto» shows the vehicle she is in, a chosen vehicle shows that one, «todos» every task", () => {
+    expect(shownVehicle("auto", "estacion")).toBe("estacion");
+    expect(shownVehicle("auto", "modulo")).toBe("modulo");
+    expect(shownVehicle("nodriza", "estacion")).toBe("nodriza");
+    expect(shownVehicle("todos", "modulo")).toBeNull();
+  });
+  it("HAB-41 each vehicle shows only the tasks done there; together they are every task, in order", () => {
+    const parts = (["nodriza", "estacion", "modulo"] as const).map((v) => tasksIn(all, v));
+    for (const [i, v] of (["nodriza", "estacion", "modulo"] as const).entries()) expect(parts[i]!.every((t) => t.place.vehicle === v)).toBe(true);
+    expect(parts.reduce((n, p) => n + p.length, 0)).toBe(all.length);
+    expect(tasksIn(all, "estacion").map((t) => t.id)).toEqual(all.filter((t) => t.place.vehicle === "estacion").map((t) => t.id));
+    expect(tasksIn(all, null)).toEqual(all);
+    expect(tasksIn(all, "estacion").length).toBeGreaterThan(0);
+    expect(tasksIn(all, "nodriza").length).toBeGreaterThan(0);
   });
 });

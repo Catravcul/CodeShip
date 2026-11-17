@@ -11,6 +11,11 @@ export type ChallengeView = "panel" | "hud";
 export type StartCamera = "cabina" | "exterior" | "ventral" | "trasera";
 /** How the task list's «Ir» takes her there: the whole real way, or straight there (docs/design/viaje-a-una-tarea.md). */
 export type TaskTravel = "viaje" | "teletransporte";
+/**
+ * Which vehicle's tasks the list shows (Berón, 2026-11-17): «auto» follows where she is; or the
+ * Starship (nodriza), the station, the lander (módulo) or every task (docs/design/viaje-a-una-tarea.md §Ajustes de tareas).
+ */
+export type TaskVehicle = "auto" | "nodriza" | "estacion" | "modulo" | "todos";
 /** How she is seen walking about rooms and modules: through her eyes or from behind/outside. */
 export type WalkView = "primera" | "tercera";
 /** What the first input of a session was. */
@@ -33,6 +38,8 @@ export interface GameSettings {
   readonly sound: boolean;
   /** «Ir a una tarea»: travel the real route (default) or teleport. */
   readonly taskTravel: TaskTravel;
+  /** Task list's vehicle filter, in the list's own settings (the gear). «auto» by default: where she is. */
+  readonly taskVehicle: TaskVehicle;
   /** Presentation layer (src/core/presentation.ts): interiors drawn 1:1 or 1,5×. Applies on the next load. */
   readonly interiorScale: InteriorScale;
   /** Presentation layer: interactables where the data put them, or spread to 2 m. Applies on the next load. */
@@ -42,6 +49,7 @@ export interface GameSettings {
 export const CHALLENGE_VIEWS: readonly ChallengeView[] = ["panel", "hud"];
 export const START_CAMERAS: readonly StartCamera[] = ["cabina", "exterior", "ventral", "trasera"];
 export const TASK_TRAVELS: readonly TaskTravel[] = ["viaje", "teletransporte"];
+export const TASK_VEHICLES: readonly TaskVehicle[] = ["auto", "nodriza", "estacion", "modulo", "todos"];
 export const WALK_VIEWS: readonly WalkView[] = ["primera", "tercera"];
 
 export const DEFAULT_SETTINGS: GameSettings = {
@@ -54,6 +62,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   walkView: "primera",
   sound: true,
   taskTravel: "viaje",
+  taskVehicle: "auto",
   interiorScale: DEFAULT_PRESENTATION.interiorScale,
   spacing: DEFAULT_PRESENTATION.spacing,
 };
@@ -111,6 +120,7 @@ export function parseSettings(raw: string | null, env: { touchCapable: boolean; 
     walkView: oneOf(o?.walkView, WALK_VIEWS, DEFAULT_SETTINGS.walkView),
     sound: bool(o?.sound, DEFAULT_SETTINGS.sound),
     taskTravel: oneOf(o?.taskTravel, TASK_TRAVELS, DEFAULT_SETTINGS.taskTravel),
+    taskVehicle: oneOf(o?.taskVehicle, TASK_VEHICLES, DEFAULT_SETTINGS.taskVehicle),
     interiorScale: oneOf(o?.interiorScale, INTERIOR_SCALES, DEFAULT_SETTINGS.interiorScale),
     spacing: oneOf(o?.spacing, INTERIOR_SPACINGS, DEFAULT_SETTINGS.spacing),
   };

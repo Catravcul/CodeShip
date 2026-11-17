@@ -145,6 +145,19 @@ export function groupTasks(tasks: readonly Task[]): TaskGroupView[] {
   return TASK_GROUPS.map((g) => ({ ...g, tasks: tasks.filter((t) => t.group === g.id) })).filter((g) => g.tasks.length > 0);
 }
 
+/** The list's vehicle filter (the setting `taskVehicle`): «auto» is where she is now, «todos» every vehicle. */
+export type TaskVehicleFilter = Vehicle | "auto" | "todos";
+
+/** The vehicle whose tasks the list shows, or null for every vehicle. */
+export function shownVehicle(filter: TaskVehicleFilter, here: Vehicle): Vehicle | null {
+  return filter === "todos" ? null : filter === "auto" ? here : filter;
+}
+
+/** The tasks done in that vehicle (all of them for null), in their order. */
+export function tasksIn(tasks: readonly Task[], vehicle: Vehicle | null): Task[] {
+  return vehicle ? tasks.filter((t) => t.place.vehicle === vehicle) : [...tasks];
+}
+
 /** Which hatches are open now: the lander docked to the travel ship or the station, the travel ship berthed at the station. */
 export interface VehicleLinks {
   readonly moduloNodriza: boolean;

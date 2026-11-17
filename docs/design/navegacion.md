@@ -20,7 +20,7 @@ El diseño original ([bucle-de-juego.md](bucle-de-juego.md)) ya decía que los v
    - el duelo que espera: dificultad, ideas para persuadirlo, paciencia y el concepto más alto del índice de estudio, todo con `duelProfileFor` igual que en el duelo;
    - el viaje, con la distancia, el Δv y la duración;
    - un enlace a la fuente.
-5. **Fijar destino** lo convierte en el objetivo para volar a mano. **Programar viaje** lo fija y abre la cadena de retos.
+5. **Programar viaje** lo fija como destino y abre la cadena de retos. Si no se puede programar (está cerca, falta combustible), queda fijado como destino para volar a mano y la ficha dice por qué. Ya no hay botón «Fijar destino» (2026-11-17, Berón: «¿para qué sirve?»): solo cambiaba el destino sin programar, y «Programar viaje» ya lo hace; regla de botones mínimos ([viajes.md](viajes.md#fijar-destino)).
 6. Si se resuelve la cadena (se permiten dos fallos), el piloto automático hace el viaje. Si se falla, no hay piloto automático, pero se puede volar a mano o volver a programar.
 7. El piloto automático devuelve los mandos a unos **300 m de la superficie**, con la nave parada y apuntando al asteroide. A partir de ahí se aterriza a mano, igual que en Bennu, y con la nave anclada aparece **Entrar en su mente**.
 

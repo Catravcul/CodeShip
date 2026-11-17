@@ -36,7 +36,6 @@ export function dockCardHtml(i: DockDestinationInfo, note: string): string {
     <a class="card-src" href="https://ntrs.nasa.gov/citations/20220011643" target="_blank" rel="noopener">Norma IDSS (NASA)</a>
     ${note ? `<div class="card-note">${esc(note)}</div>` : ""}
     <div class="card-actions">
-      ${i.selected ? "" : `<button data-act="select">Fijar destino</button>`}
       <button class="primary" data-act="program"${can ? "" : " disabled"}>${esc(dockActionLabel(i))}</button>
     </div>`;
 }

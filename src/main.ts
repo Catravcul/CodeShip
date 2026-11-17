@@ -453,6 +453,11 @@ navMode.map.missionMark = (id) => missionLog.mark(id);
 navMode.map.onMissions = () => missionLog.open();
 missionLog.canOpen = () => deck.active || interior.active || bridge.active;
 missionLog.onShowOnMap = (id) => {
+  // From Starship's decks (the work laptops): up to the flight deck's navigation table the real way (docs/design/reglas.md §3).
+  if (starship?.active) {
+    missionLog.close();
+    return goToTask({ id: `mapa:${id}`, group: "misiones", title: "Ver en el mapa", detail: "", place: { vehicle: "nodriza", spot: "puente", page: "nav", target: id } });
+  }
   // From the radio on the ring or the bridge's radio console: to the bridge's navigation console.
   if (!deck.active && (interior.active || bridge.active)) {
     if (interior.active) interior.exit();

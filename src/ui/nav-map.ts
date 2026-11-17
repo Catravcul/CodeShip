@@ -250,7 +250,8 @@ export class NavMap {
         this.picked = nav.targets.find((x) => x.id === t.dataset.id);
         this.note = "";
         return this.refresh();
-      case "select":
+      // «Programar viaje» fixes the destination and programs the trip: no separate «Fijar destino» (Berón,
+      // 2026-11-17: «¿para qué sirve?»; it only set the target the next trip would use, docs/design/viajes.md).
       case "program": {
         if (!this.picked) return;
         const r = nav.select(this.picked.id);
@@ -258,13 +259,10 @@ export class NavMap {
           this.note = r.reason ?? "";
           return this.refresh();
         }
-        if (t.dataset.act === "select") {
-          this.note = "Destino fijado: vuela a mano o programa el viaje";
-          return this.refresh();
-        }
         const can = nav.canProgram();
         if (!can.ok) {
-          this.note = can.reason ?? "";
+          // It stays the destination (the cockpit's, to fly by hand), as «Fijar destino» did.
+          this.note = `${can.reason ?? "No se puede programar"}. Queda como destino para volar a mano`;
           return this.refresh();
         }
         // Embedded in a deck panel the map stays put under the challenge sheet.
@@ -753,7 +751,6 @@ function cardHtml(i: DestinationInfo, note: string, mission?: MissionMark, rappo
     <a class="card-src" href="${esc(d.meanRadiusM.source)}" target="_blank" rel="noopener">Fuente de los datos</a>
     ${note ? `<div class="card-note">${esc(note)}</div>` : ""}
     <div class="card-actions">
-      ${i.selected ? "" : `<button data-act="select">Fijar destino</button>`}
       <button class="primary" data-act="program">Programar viaje</button>
     </div>`;
 }

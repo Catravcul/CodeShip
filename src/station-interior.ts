@@ -222,13 +222,13 @@ export class StationInteriorMode {
     this.hud = this.ui.querySelector(`.${P}-hud`)!;
     this.card = this.ui.querySelector(`.${P}-card`)!;
     this.toast = this.ui.querySelector(`.${P}-toast`)!;
-    // The same root icons as the lander's cabin and the bridge: view and tasks pinned.
-    this.menu = new RootMenu(this.ui, `cab-menu ${P}-menu`, "Más", ICON.root);
-    this.viewBtn = this.menu.add({ className: `${P}-view`, icon: ICON.eye, label: "Vista: 1ª persona", key: "V", pinned: true }, () => {
+    // The same tree menu as the lander's cabin and the bridge: Vista and Tareas sprout from the gear (reglas.md §5.8).
+    this.menu = new RootMenu(this.ui, `cab-menu ${P}-menu`, "Menú");
+    this.viewBtn = this.menu.add({ className: `${P}-view`, icon: ICON.eye, label: "Vista: 1ª persona", key: "V", order: 0 }, () => {
       this.thirdPerson = !this.thirdPerson;
       this.syncView();
     });
-    this.menu.add({ className: `${P}-tasks`, icon: ICON.tasks, label: "Tareas", key: "T", pinned: true }, () => this.deps.openTasks());
+    this.menu.add({ className: `${P}-tasks`, icon: ICON.tasks, label: "Tareas", key: "T", window: "tareas", order: 1 }, () => this.deps.openTasks());
     this.syncView();
     this.card.addEventListener("click", (e) => {
       const b = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-act]");

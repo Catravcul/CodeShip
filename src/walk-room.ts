@@ -163,12 +163,12 @@ export abstract class WalkRoom<Id extends string> {
     root.appendChild(this.ui);
     this.machine = this.ui.querySelector(".cab-machine")!;
     this.toast = this.ui.querySelector(".cab-toast")!;
-    this.menu = new RootMenu(this.ui, "cab-menu", "Más", ICON.root);
-    this.viewBtn = this.menu.add({ className: "cab-view", icon: ICON.eye, label: `Vista: ${this.thirdPerson ? "3ª" : "1ª"} persona`, key: "V", pinned: true }, () => {
+    this.menu = new RootMenu(this.ui, "cab-menu", "Menú");
+    this.viewBtn = this.menu.add({ className: "cab-view", icon: ICON.eye, label: `Vista: ${this.thirdPerson ? "3ª" : "1ª"} persona`, key: "V", order: 0 }, () => {
       this.thirdPerson = !this.thirdPerson;
       this.syncView();
     });
-    this.menu.add({ className: "cab-tasks", icon: ICON.tasks, label: "Tareas", key: "T", pinned: true }, () => this.openTasks());
+    this.menu.add({ className: "cab-tasks", icon: ICON.tasks, label: "Tareas", key: "T", window: "tareas", order: 1 }, () => this.openTasks());
     this.machine.addEventListener("click", (e) => {
       const b = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-act]");
       const id = this.near();

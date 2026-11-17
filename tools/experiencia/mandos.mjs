@@ -21,8 +21,9 @@ async function capture(j, label, title) {
 const tripStep = () => window.codeship.nav.programming?.current ?? null;
 const probeStep = () => window.codeship.probeTravel.trip.programming?.current ?? null;
 const seatButtons = () => [...document.querySelectorAll(".room-ui:not(.hidden) .cab-machine .cm-acts button")].map((b) => ({ id: b.dataset.act, label: b.textContent.trim(), on: !b.disabled }));
+// The flight view's icons under the gear of the tree menu (reglas.md §5.8; open it first with j.openMenu()).
 const pinned = () =>
-  [...document.querySelectorAll(".flight-bar .rm-pinned button, .flight-bar > .rm-root")]
+  [...document.querySelectorAll(".flight-bar .rm-shoots button, .flight-bar > .rm-root")]
     .filter((b) => b.checkVisibility())
     .map((b) => ({ cls: b.className, label: b.getAttribute("aria-label"), y: Math.round(b.getBoundingClientRect().top) }));
 
@@ -30,11 +31,12 @@ export async function mandos(j) {
   const p = j.page;
 
   // 1. Docked: under the eye, the undock switch (its icon the opposite of «docked»); no other icon.
+  await j.openMenu();
   const docked = await p.evaluate(pinned);
   const eye = docked.find((b) => /cam-btn/.test(b.cls));
   const sw = docked.find((b) => /dock-btn/.test(b.cls));
   j.check("acoplado, bajo el ojo está el interruptor «Desacoplar» (el icono de lo contrario del estado)", !!eye && !!sw && sw.y > eye.y && /^Desacoplar/.test(sw.label ?? ""), JSON.stringify(docked));
-  j.check("ningún icono sin explicar: la raíz no sale (no queda nada plegado dentro) y no hay «Centrar la vista»", !docked.some((b) => /rm-root/.test(b.cls)) && !(await p.locator(".center-btn").count()), JSON.stringify(docked));
+  j.check("ningún icono sin explicar: la raíz es el engranaje del menú árbol (abierto, una X) y no hay «Centrar la vista»", docked.some((b) => /rm-root/.test(b.cls) && b.label === "Cerrar menú") && !(await p.locator(".center-btn").count()), JSON.stringify(docked));
   await capture(j, "acoplado", "Vista de vuelo acoplada con el interruptor de acople");
 
   // 2. The commander's station: Manual and Automático; Automático lists only the nearby destinations.
@@ -73,6 +75,7 @@ export async function mandos(j) {
   });
   await j.useMachine("cabin", "asiento", "pilotar", "Manual");
   await p.waitForTimeout(1200);
+  await j.openMenu();
   const free = await p.evaluate(pinned);
   const sw2 = free.find((b) => /dock-btn/.test(b.cls));
   j.check("libre dentro de la esfera de 200 m del puerto, el interruptor dice «Acoplar»", !!sw2 && sw2.label === "Acoplar", JSON.stringify(free));

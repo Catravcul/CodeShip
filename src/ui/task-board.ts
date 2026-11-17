@@ -1,13 +1,12 @@
 import { groupTasks, shownVehicle, tasksIn, type Task, type TaskGroupId, type Vehicle } from "@modules/tasks/application/task-list";
-import { TASK_TRAVELS, TASK_VEHICLES, type TaskTravel, type TaskVehicle } from "@modules/settings/domain/settings";
 import { settings } from "./settings-store";
+import { settingsClick, travelHtml, vehicleHtml } from "./task-settings";
 import { ICON } from "./icons";
+import { onCloseRequest, windowState } from "./hud-windows";
 import "./task-board.css";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
-const TRAVEL: Record<TaskTravel, string> = { viaje: "Viaje", teletransporte: "Teletransporte" };
-const VEHICLE: Record<Vehicle, string> = { nodriza: "Nave (Starship)", estacion: "Estación", modulo: "Módulo" };
 const IN: Record<Vehicle, string> = { nodriza: "En la nave", estacion: "En la estación", modulo: "En el módulo" };
 const NOTHING: Record<Vehicle, string> = { nodriza: "Nada pendiente en la nave", estacion: "Nada pendiente en la estación", modulo: "Nada pendiente en el módulo" };
 
@@ -56,16 +55,7 @@ export class TaskBoard {
         this.close();
         return this.onCatalog?.();
       }
-      const mode = t.closest<HTMLElement>("[data-travel]");
-      if (mode) {
-        settings.set("taskTravel", mode.dataset.travel as TaskTravel);
-        return this.render();
-      }
-      const vehicle = t.closest<HTMLElement>("[data-vehicle]");
-      if (vehicle) {
-        settings.set("taskVehicle", vehicle.dataset.vehicle as TaskVehicle);
-        return this.render();
-      }
+      if (settingsClick(t)) return this.render();
       const chip = t.closest<HTMLElement>("[data-group]");
       if (chip) {
         this.group = (chip.dataset.group || null) as TaskGroupId | null;
@@ -79,6 +69,8 @@ export class TaskBoard {
       }
     });
     window.addEventListener("keydown", (e) => this.visible && e.code === "Escape" && this.close());
+    // The menu's «Tareas» icon is an X while the list is open (reglas.md §5.8).
+    onCloseRequest("tareas", () => this.close());
   }
 
   get visible(): boolean {
@@ -92,11 +84,14 @@ export class TaskBoard {
     this.el.classList.remove("hidden");
     this.el.scrollTop = 0;
     document.body.classList.add("in-tasks");
+    windowState("tareas", true);
   }
 
   close(): void {
+    if (!this.visible) return;
     this.el.classList.add("hidden");
     document.body.classList.remove("in-tasks");
+    windowState("tareas", false);
   }
 
   private render(): void {
@@ -115,7 +110,7 @@ export class TaskBoard {
     const head = `<div class="board-head"><b>${settingsView ? "Ajustes de tareas" : "Tareas"}</b><span class="tb-head-btns">${toggle}<button data-close aria-label="Cerrar tareas">✕</button></span>`;
     this.el.setAttribute("aria-label", settingsView ? "Ajustes de tareas" : "Tareas");
     if (settingsView) {
-      this.el.innerHTML = `${head}</div>${this.settingsBody(all, here, filter, groups, inVehicle.length)}`;
+      this.el.innerHTML = `${head}</div>${this.settingsBody(all, here, groups, inVehicle.length)}`;
       return;
     }
     const groupLabel = this.group ? groups.find((g) => g.id === this.group)?.label : undefined;
@@ -138,12 +133,9 @@ export class TaskBoard {
   }
 
   /** The settings view: how «Ir» gets there, which vehicle, which group. */
-  private settingsBody(all: Task[], here: Vehicle, filter: TaskVehicle, groups: ReturnType<typeof groupTasks>, nShown: number): string {
-    const now = settings.value.taskTravel;
-    const travel = `<h3 class="tb-group" id="tb-s-travel">Ir a una tarea</h3><div class="tb-travel" role="radiogroup" aria-labelledby="tb-s-travel">${TASK_TRAVELS.map((m) => `<button role="radio" data-travel="${m}" aria-checked="${m === now}" class="${m === now ? "on" : ""}">${TRAVEL[m]}</button>`).join("")}</div><small class="tb-travel-help">${now === "viaje" ? "«Ir» hace el camino real: andando, saltando y abriendo escotillas" : "«Ir» aparece allí al momento"}</small>`;
-    const n = (v: Vehicle | null) => tasksIn(all, v).length;
-    const label = (v: TaskVehicle) => (v === "auto" ? `Automático: donde está ella <small>${VEHICLE[here]} · ${n(here)}</small>` : v === "todos" ? `Todos <small>${all.length}</small>` : `${VEHICLE[v]} <small>${n(v)}</small>`);
-    const vehicles = `<h3 class="tb-group" id="tb-s-vehicle">Vehículo</h3><div class="tb-vehicles" role="radiogroup" aria-labelledby="tb-s-vehicle">${TASK_VEHICLES.map((v) => `<button role="radio" data-vehicle="${v}" aria-checked="${v === filter}" class="${v === filter ? "on" : ""}${v === "auto" ? " auto" : ""}">${label(v)}</button>`).join("")}</div>`;
+  private settingsBody(all: Task[], here: Vehicle, groups: ReturnType<typeof groupTasks>, nShown: number): string {
+    const travel = travelHtml("tb-s-travel");
+    const vehicles = vehicleHtml("tb-s-vehicle", here, (v) => tasksIn(all, v).length);
     const chip = (id: TaskGroupId | null, text: string, k: number) => `<button class="chip ${this.group === id ? "on" : ""}" data-group="${id ?? ""}" aria-pressed="${this.group === id}">${text} <small>${k}</small></button>`;
     const chips = `<h3 class="tb-group">Grupo</h3><div class="chips tb-chips">${chip(null, "Todas", nShown)}${groups.map((g) => chip(g.id, g.label, g.tasks.length)).join("")}</div>`;
     return `<div class="tb-settings">${travel}${vehicles}${chips}</div>`;

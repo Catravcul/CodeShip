@@ -106,7 +106,8 @@ export class StarshipInterior {
     root: HTMLElement,
     private readonly d: StarshipInteriorDeps,
   ) {
-    this.crew = new StationCrew(d.habitat, { recipes: ISS_FOOD, yoga: YOGA_SEQUENCES, workouts: WORKOUTS });
+    // The galley cooks from the ship's pantry, its life support's packaged food (docs/design/soporte-vital.md, «Despensa»).
+    this.crew = new StationCrew(d.habitat, { recipes: ISS_FOOD, yoga: YOGA_SEQUENCES, workouts: WORKOUTS, pantry: () => this.lifeSupport?.pantry });
     const plan = presentInteriorPlan(starshipInteriorPlan(), { scale: WORLD_SCALE, spreadM: SPREAD_ON ? INTERACTABLE_SPACING.minM : 0 });
     this.mode = new StationInteriorMode(
       root,
@@ -301,7 +302,7 @@ export class StarshipInterior {
     switch (a.area) {
       case "cocina": {
         const dishes = chores("cocina");
-        return dishes.length ? dishes : [{ id: "nada", label: "Preparar comida", enabled: false, why: "No quedan envases: llegan con el reabastecimiento en la estación" }];
+        return dishes.length ? dishes : [{ id: "nada", label: "Preparar comida", enabled: false, why: "La despensa está vacía: cárgala en la estación (cocina de Unity, «Víveres para la nodriza»), adonde llegan los cargueros" }];
       }
       case "esterilla":
         return [{ id: "ajustes", label: "Sentarse en loto: ajustes", enabled: true }, ...chores("esterilla")];

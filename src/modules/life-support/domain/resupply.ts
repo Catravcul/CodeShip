@@ -1,6 +1,6 @@
 import { CREW_BALANCE, dailyBalance } from "../data/crew-balance";
 import type { EclssMachineSpec } from "./eclss";
-import { ECLSS_MODEL, nominalWaterRecovery } from "./life-support";
+import { ECLSS_MODEL, nominalDriverPerDay, nominalWaterRecovery } from "./life-support";
 
 export interface Resupply {
   readonly days: number;
@@ -15,7 +15,7 @@ export interface Resupply {
   readonly waterForO2Kg: number;
   readonly o2LeakKg: number;
   readonly n2LeakKg: number;
-  /** Expected spares (ORUs and beds) in the time, from the game's failure rates; at least one of each. */
+  /** Expected spares (ORUs and beds) in the time, from each mode's life and what this crew wears it by; at least one of each. */
   readonly spares: readonly { readonly id: string; readonly name: string; readonly count: number }[];
 }
 
@@ -40,6 +40,6 @@ export function resupply(crew: number, days: number, machines: readonly EclssMac
     waterForO2Kg: Math.max(0, o2 * m.waterPerO2.value - sabatier) * days,
     o2LeakKg: leakAir * 0.21 * days,
     n2LeakKg: leakAir * 0.79 * days,
-    spares: machines.flatMap((s) => s.failures.map((f) => ({ id: f.spare.id, name: f.spare.name, count: Math.max(1, Math.ceil(days / f.meanDays)) }))),
+    spares: machines.flatMap((s) => s.failures.map((f) => ({ id: f.spare.id, name: f.spare.name, count: Math.max(1, Math.ceil((days * nominalDriverPerDay(f.wear, crew)) / f.wear.life)) }))),
   };
 }

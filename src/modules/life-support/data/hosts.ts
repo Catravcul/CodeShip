@@ -11,13 +11,14 @@ const ONE_OF_EACH = Object.fromEntries(resupply(1, 1, ECLSS_MACHINES).spares.map
  * - Crew: Doménica alone.
  * - Free air: the ISS's 388 m³ habitable volume (issFacts).
  * - Water: the 1200 L the ISS keeps stored (its floor is 818 L; ICES-2022-098).
- * - Food: half a year of packaged food for one (2,39 kg a day). Tanks and spares: game values.
+ * - Food (the galley's pantry): two months of packaged food for one (2,39 kg a day), what the last cargo left;
+ *   the next ones are ordered at the galley (Dragon or Cygnus, cargo-vehicles.ts). Tanks and spares: game values.
  */
 export const STATION_LIFE_SUPPORT: LifeSupportConfig = {
   crew: 1,
   freeAirM3: 388,
   waterKg: 1200,
-  foodKg: 2.39 * 182,
+  foodKg: 2.39 * 60,
   o2TankKg: 100,
   n2TankKg: 100,
   spares: ONE_OF_EACH,
@@ -26,6 +27,6 @@ export const STATION_LIFE_SUPPORT: LifeSupportConfig = {
 export const STATION_LIFE_SUPPORT_SOURCES = {
   freeAirM3: S.issFacts,
   waterKg: S.water2022,
-  food: S.metman,
+  food: `${S.metman} (2,39 kg/día); 60 días: ${GAME_VALUE}`,
   tanksAndSpares: GAME_VALUE,
 } as const;

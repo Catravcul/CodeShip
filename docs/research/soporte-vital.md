@@ -105,4 +105,19 @@ No hemos encontrado publicadas estas potencias y masas. En los datos llevan la n
 
 Tampoco encontramos la masa del rack del OGA (dato: 676 kg, estimación). La tabla de hardware del BVAD (NASA/TP-2015-218570) debería tenerlas; el PDF no se pudo leer entero desde aquí. Queda como tarea: sustituir estas cifras por las del BVAD o las de Bagdigian et al. (ICES-2015-094).
 
-Las averías al azar usan un tiempo medio entre fallos de juego (200–700 días de a bordo por modo). No hay MTBF publicados de cada ORU en las fuentes leídas.
+Las averías ya no van al azar: cada modo tiene una causa y una vida (tabla en [design/soporte-vital.md](../design/soporte-vital.md), «Averías con causa»). Solo dos vidas son reales: la PCPA (≈ 2300 h, ICES-2022-098) y el lecho de multifiltración (≈ 9000 lb hasta la primera ruptura iónica). Las demás son estimaciones nuestras: no hay MTBF publicados de cada ORU en las fuentes leídas.
+
+## 7. Causas de las averías (lo que dicen las fuentes)
+
+- **OGA** ([ICES-2024-141](https://ntrs.nasa.gov/api/citations/20240007995/downloads/ICES2024141%20ISS%20ECLS%20Presentaton%20RevA.pdf)): las bombas SN 3 y 5 se bloquearon por fosfato de níquel, que viene de la degradación del niquelado químico de los conectores mojados. El regulador del domo de H₂ SN 3 tenía el vástago corroído por un pasivado pobre. La pila de celdas pierde voltaje en espera por adelgazamiento de la membrana (fin de vida). El AOGA está pensado para 5 años y su lecho de resinas para 3.
+- **CDRA** ([NTRS 20050210002](https://ntrs.nasa.gov/api/citations/20050210002/downloads/20050210002.pdf)): un sello del lecho desecante y adsorbente falló y dejó salir finos de zeolita, que estropearon la bomba de ahorro de aire, la válvula de retención y las válvulas selectoras. Se pusieron filtros en línea y se rediseñó la retención. Las válvulas selectoras llevaban años atascándose; en 2013 no quedaban repuestos nuevos ([NSF 2013](https://www.nasaspaceflight.com/2013/10/iss-hardware-providing-lessons-learned-deep-space-missions/)). En 2023 subió la presión diferencial de los dos CDRA y hubo que limpiar los lechos (ICES-2024-141). Los ciclos de vacío y calor rompen la zeolita en polvo ([ICES-2017-117](https://ntrs.nasa.gov/api/citations/20170009817/downloads/20170009817.pdf)).
+- **Sabatier** (NSF 2013): se paró por la humedad en el acumulador de CO₂, que tapaba el paso.
+- **UPA** ([ICES-2022-098](https://ntrs.nasa.gov/api/citations/20220006163/downloads/ICES%202022-098%20Status%20of%20ISS%20Water%20Management%20and%20Recovery_Final%20Manuscript.pdf)): el conjunto de destilación SN2 (2010) falló por sulfato de calcio precipitado con el pretratado de ácido sulfúrico; el SN004, por el sensor de vacío, cuyo diafragma degrada la orina pretratada. La PCPA falló por su engranaje planetario a algo más de 2300 h. La bomba de fluidos, probablemente por un tubo peristáltico roto.
+- **WPA** (ICES-2022-098): el lecho de multifiltración dura hasta la ruptura iónica (≈ 9000, 16 000 y 25 000–30 000 lb) o hasta que sale DMSD (desde ≈ 7000 lb). El reactor catalítico pierde agua por sus juntas tóricas (≈ 2 años). El separador de gas y líquido dejó pasar agua al aire en 2021, sin causa raíz encontrada.
+- **Filtros HEPA de cabina** (ICES-2024-141): vida de 5 años en todos los módulos, por inspección y por la presión diferencial de los ventiladores. No están en el juego como máquina.
+
+## 8. Cargueros
+
+- **Dragon de carga** ([Dragon 2](https://en.wikipedia.org/wiki/SpaceX_Dragon_2)): hasta 2507 kg presurizados y 800 kg en el maletero; 9,3 m³ presurizados. [CRS-28](https://en.wikipedia.org/wiki/SpaceX_CRS-28): lanzada el 5 de junio de 2023 a las 15:47 UTC y acoplada el 6 a las 09:54 (18 h); 3304 kg, de ellos 1098 kg de suministros de tripulación.
+- **Cygnus** ([NG-19](https://en.wikipedia.org/wiki/Cygnus_NG-19)): 3749 kg presurizados; lanzada el 2 de agosto de 2023 a las 00:31 UTC y atracada en el CBM de nadir de Unity el 4 a las 12:28 (60 h); 1590 kg de suministros de tripulación.
+- Masa de cada repuesto (ORU o lecho): no publicada; 20 kg es estimación nuestra.

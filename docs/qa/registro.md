@@ -122,6 +122,9 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | SV-12 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SV-13 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SV-14 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SV-15 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SV-16 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SV-17 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | IMP-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | IMP-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | IMP-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |

@@ -63,10 +63,14 @@ export async function cabinaLm(j) {
   await j.waitDuel(30000);
   for (let n = 0; n < 9 && (await p.evaluate(() => window.codeship.landerLanding.status)) === "programming"; n++) await j.answer(landing, true);
   await p.waitForTimeout(3000);
+  await p.waitForFunction(() => window.codeship.view.instrumentReading?.program === 64, null, { timeout: 10000 }).catch(() => {});
   const desc = await p.evaluate(() => ({ prog: window.codeship.view.instrumentReading?.program, status: window.codeship.landerLanding.status, mode: window.codeship.view.cameraMode }));
   j.check("bajando por programa, el DSKY del panel 4 dice PROG 64", desc.prog === 64, JSON.stringify(desc));
   await capture(j, "bajando", "Bajando por programa (cámara ventral)");
   await p.waitForFunction(() => window.codeship.landerLanding.status !== "flying", null, { timeout: 300000 });
+  // The panels are redrawn at 5 Hz from the telemetry and the legs anchor a moment after the program ends: on a
+  // slow machine the light comes on a few frames after «landed», so wait for it (CI, integracion fe8fc9b).
+  await p.waitForFunction(() => window.codeship.view.instrumentReading?.contact === true, null, { timeout: 15000 }).catch(() => {});
   const end = await p.evaluate(() => [window.codeship.landerLanding.status, window.codeship.view.instrumentReading?.contact]);
   j.check("posado, se enciende LUNAR CONTACT", end[0] === "landed" && end[1] === true, end.join(" / "));
   await j.tap(".cam-btn", "Cámara");

@@ -249,6 +249,7 @@ La más reciente arriba.
 |---|---|---|---|---|
 | 2026-11-17 03:59 | PX-30 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-17-0359-PX-30.md) |
 | 2026-11-17 03:52 | PX-30 | Experiencia (Playwright) | 0/1 recorridos bien | [run](runs/2026-11-17-0352-PX-30.md) |
+| 2026-11-17 03:37 | PX-32 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-17-0337-PX-32.md) |
 | 2026-11-17 03:00 | PX-10, PX-12, PX-24, PX-28, PX-29, PX-31, PX-32, PX-33, PX-35, PX-20, PX-30 | Experiencia (Playwright) | 9/11 recorridos bien | [run](runs/2026-11-17-0300-PX-10-PX-12-PX-24-PX-28-PX-29-PX-31-PX-32-PX-33-PX-35-PX-20-PX-30.md) |
 | 2026-11-17 02:44 | PX-08, PX-09 | Experiencia (Playwright) | 2/2 recorridos bien | [run](runs/2026-11-17-0244-PX-08-PX-09.md) |
 | 2026-11-17 02:39 | PX-09 | Experiencia (Playwright) | 0/1 recorridos bien | [run](runs/2026-11-17-0239-PX-09.md) |

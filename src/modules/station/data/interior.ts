@@ -214,7 +214,7 @@ export function stationInteriorPlan(layout: StationLayout = POLANA_LAYOUT, outfi
     }),
   );
   // The Cupola under Tranquility: 2,95 m across and 1,5 m tall; the room is the square inscribed in its circle (derived).
-  const cupolaSide = Math.round((issModule("cupula").diameterM / Math.SQRT2) * 100) / 100;
+  const cupolaSide = Math.floor((issModule("cupula").diameterM / Math.SQRT2) * 100) / 100;
   const cupola = wallCompartment({
     id: "cupola",
     code: "CUP1",

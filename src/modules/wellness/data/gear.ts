@@ -7,7 +7,7 @@ import type { Sourced } from "@core/units";
  *
  * Sizes: the ones published are cited; the rest are read from NASA/JAXA photos («medida nuestra» in `note`).
  */
-export type GearKind = "t2" | "cevis" | "ared" | "aqh" | "refugio" | "whc" | "estiba" | "esterilla" | "checs";
+export type GearKind = "t2" | "cevis" | "ared" | "aqh" | "refugio" | "whc" | "estiba" | "esterilla" | "checs" | "catalogo";
 
 export interface GearSpec {
   readonly kind: GearKind;
@@ -30,6 +30,7 @@ export const GEAR_SRC = {
   whc: "Waste and Hygiene Compartment de la ISS en Tranquility (UWMS desde 2020): embudo con aire, asiento con sujeción de muslos y cortinas: https://en.wikipedia.org/wiki/Tranquility_(ISS_module)",
   ctb: "Bolsas de transferencia de carga (CTB) de la ISS, la unidad de estiba; una sencilla mide unos 0,5 × 0,43 × 0,25 m (NASA, «Logistics Reduction»): https://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/20160002631.pdf",
   checs: "Sistema médico de la ISS (bastidor CHeCS): bolsa médica ambulatoria, bolsa de soporte vital avanzado, desfibrilador LifePak 1000 y ecógrafo: https://newspaceeconomy.ca/2025/09/20/life-above-earth-emergency-procedures-and-medical-capabilities-on-the-international-space-station",
+  laptop: "Portátiles de la ISS: HP ZBook 15 (pantalla de 15,6″), los de a bordo desde 2016, sujetos a los bastidores: https://www.hp.com/us-en/shop/tech-takes/hp-zbooks-at-zero-gs",
   mat: "Ejercicio en la ISS (sujeciones de pies y cintas para el ejercicio sin gravedad): https://pmc.ncbi.nlm.nih.gov/articles/PMC7434884",
 } as const;
 
@@ -42,5 +43,6 @@ export const GEAR: Readonly<Record<GearKind, GearSpec>> = {
   whc: { kind: "whc", name: "Aseo (WHC)", size: { value: { w: 1.0, h: 1.9, d: 0.75 }, source: GEAR_SRC.whc, note: "El tamaño de un bastidor (medida nuestra)" }, label: "real", what: "Embudo y manguera con aire, asiento pequeño con barras para los muslos y una cortina" },
   estiba: { kind: "estiba", name: "Estiba (bolsas CTB)", size: { value: { w: 0.5, h: 0.25, d: 0.43 }, source: GEAR_SRC.ctb, note: "Una bolsa CTB sencilla" }, label: "real", what: "Bolsas de carga blancas sujetas con cintas" },
   checs: { kind: "checs", name: "Sistema médico (CHeCS)", size: { value: { w: 1.05, h: 2.0, d: 0.86 }, source: GEAR_SRC.checs, note: "El tamaño de un bastidor ISPR (medida nuestra del bastidor; sus bolsas, de las fotos)" }, label: "real", what: "Bastidor con la bolsa médica ambulatoria (azul), la de soporte vital avanzado (roja), el desfibrilador, el ecógrafo y la tabla de inmovilización" },
+  catalogo: { kind: "catalogo", name: "Portátil del catálogo de especies", size: { value: { w: 0.38, h: 0.026, d: 0.26 }, source: GEAR_SRC.laptop, note: "Un HP ZBook 15 cerrado (medida nuestra de su ficha: unos 38 × 26 × 2,6 cm), en el brazo de un bastidor ISPR junto al hábitat de animales" }, label: "real", what: "Portátil en su brazo, en el bastidor de los animales, con el catálogo de especies en pantalla; debajo, las taquillas de comida y material de los hábitats" },
   esterilla: { kind: "esterilla", name: "Esterilla", size: { value: { w: 0.6, h: 0.006, d: 1.8 }, source: GEAR_SRC.mat, note: "Esterilla de yoga corriente; las sujeciones de pies son como las de la ISS" }, label: "licencia", what: "Esterilla sujeta a la pared con cintas, con lazos para los pies" },
 };

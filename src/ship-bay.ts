@@ -30,7 +30,7 @@ import type { StationOutfit } from "@modules/station/domain/outfit";
 import { STATION_COMPONENTS } from "@modules/station/data/outfit";
 import { applyStationRefit, stationOptions, stationRefitChore, type StationComponentOption } from "@modules/station/application/station-refit";
 import { stationEquipmentStatus, stationSlotOf } from "@modules/ship-bay/application/station-equipment";
-import { VirtualStick, curve } from "./adapters/input/stick";
+import { CameraStick } from "./adapters/input/camera-stick";
 import type { DuelView, SessionText } from "./ui/duel-view";
 
 const CONTEXT = { recipes: RECIPES, yoga: YOGA_SEQUENCES, processes: PROCESSES, lessons: ANIMAL_LESSONS };
@@ -80,7 +80,7 @@ export class ShipBay {
   private readonly panel: HTMLElement;
   private readonly sum: HTMLElement;
   private readonly toast: HTMLElement;
-  private readonly stick: VirtualStick;
+  private readonly stick: CameraStick;
   private selected: PartId | null = null;
   private list: ComponentStatus[] = [];
   private actions: Action[] = [];
@@ -91,10 +91,7 @@ export class ShipBay {
   private working = false;
   /** The chore open in the sheet, if any (exposed for automated checks). */
   session: ChoreSession | null = null;
-  private drag: { id: number; x: number; y: number; moved: boolean } | null = null;
-  /** Fingers on the screen (pinch to zoom on the phone): where each is now. */
-  private readonly touches = new Map<number, { x: number; y: number }>();
-  private pinchGap = 0;
+  private tap: { id: number; x: number; y: number } | null = null;
   active = false;
   from: BayOrigin = "estacion";
   /** Called after leaving, with where the player came from. */
@@ -142,59 +139,27 @@ export class ShipBay {
       const b = (e.target as HTMLElement).closest<HTMLElement>("[data-view]");
       if (b) this.setView(b.dataset.view as BayView);
     });
-    this.stick = new VirtualStick(root, "bay-look", "Orbitar");
-
-    // Drag the empty screen to orbit, tap a part to select it, wheel or pinch to zoom.
-    const gap = () => {
-      const [a, b] = [...this.touches.values()];
-      return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
-    };
+    // The camera joystick orbits and zooms (reglas.md §5.7: never a drag or a pinch on the screen); a tap on a part selects it.
+    this.stick = new CameraStick(
+      root,
+      "bay-look",
+      (yaw, pitch, zoom) => {
+        this.view.orbit(yaw, pitch);
+        if (zoom !== 1) this.view.zoom(zoom);
+      },
+      { label: "Orbitar", zoom: true },
+    );
     root.addEventListener("pointerdown", (e) => {
-      if (!this.active || this.duel.visible || (e.target as HTMLElement).closest("button, .bay-panel, .vstick, .duel")) return;
-      this.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (this.touches.size === 2) {
-        // A second finger: pinch, not orbit or tap.
-        this.drag = null;
-        this.pinchGap = gap();
-        return;
-      }
-      this.drag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
+      if (!this.active || this.duel.visible || (e.target as HTMLElement).closest("button, .bay-panel, .vstick, .cam-stick, .duel")) return;
+      this.tap = { id: e.pointerId, x: e.clientX, y: e.clientY };
     });
-    window.addEventListener("pointermove", (e) => {
-      const t = this.touches.get(e.pointerId);
-      if (t) {
-        t.x = e.clientX;
-        t.y = e.clientY;
-      }
-      if (this.touches.size >= 2) {
-        const g = gap();
-        if (this.pinchGap > 0 && g > 0) this.view.zoom(this.pinchGap / g);
-        this.pinchGap = g;
-        return;
-      }
-      const d = this.drag;
-      if (!d || e.pointerId !== d.id) return;
-      const dx = e.clientX - d.x;
-      const dy = e.clientY - d.y;
-      if (!d.moved && Math.hypot(dx, dy) < 6) return;
-      d.moved = true;
-      this.view.orbit(-dx * 0.006, -dy * 0.006);
-      d.x = e.clientX;
-      d.y = e.clientY;
-    });
-    const lift = (e: PointerEvent) => {
-      this.touches.delete(e.pointerId);
-      if (this.touches.size < 2) this.pinchGap = 0;
-      if (e.type === "pointercancel" && this.drag?.id === e.pointerId) this.drag = null;
-    };
     window.addEventListener("pointerup", (e) => {
-      lift(e);
-      const d = this.drag;
-      if (!d || e.pointerId !== d.id) return;
-      this.drag = null;
-      if (!d.moved) this.select(this.view.pick(e.clientX, e.clientY));
+      const t = this.tap;
+      this.tap = null;
+      if (!t || e.pointerId !== t.id || !this.active) return;
+      if (Math.hypot(e.clientX - t.x, e.clientY - t.y) < 10) this.select(this.view.pick(e.clientX, e.clientY));
     });
-    window.addEventListener("pointercancel", (e) => lift(e));
+    window.addEventListener("pointercancel", () => (this.tap = null));
     root.addEventListener("wheel", (e) => this.active && !this.duel.visible && this.view.zoom(e.deltaY > 0 ? 1.1 : 0.9), { passive: true });
     window.addEventListener("keydown", (e) => {
       if (!this.active || this.duel.visible) return;
@@ -225,6 +190,7 @@ export class ShipBay {
     this.active = true;
     this.ui.classList.remove("hidden");
     document.body.classList.add("in-bay");
+    this.stick.show(true);
     this.panelKey = "";
     this.refresh();
     this.layout();
@@ -235,6 +201,7 @@ export class ShipBay {
     this.active = false;
     this.ui.classList.add("hidden");
     document.body.classList.remove("in-bay");
+    this.stick.show(false);
     this.onExit?.(this.from);
   }
 
@@ -292,8 +259,6 @@ export class ShipBay {
 
   update(dt: number): void {
     if (!this.active) return;
-    const s = this.stick.value;
-    this.view.orbit(-curve(s.x) * 2 * dt, -curve(s.y) * 1.5 * dt);
     if (performance.now() > this.refreshAt) this.refresh();
     this.view.update(dt, this.ship.design, this.attention, this.selected);
     if (performance.now() > this.toastUntil) this.toast.classList.remove("on");

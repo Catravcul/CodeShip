@@ -1,4 +1,5 @@
 import type { Chore } from "@modules/chores/domain/chore";
+import { moveJoystick } from "@core/realism";
 import type { StepVisual } from "@modules/chores/domain/step-visual";
 import * as THREE from "three";
 import { Quat } from "@core/math/quat";
@@ -62,7 +63,7 @@ export class EvaMode {
   private elevation = 0.35;
   private stride = 0;
   private puffClock = 0;
-  private held = { up: false, down: false, reel: false };
+  private held = { up: false, down: false, reel: false, go: 0 };
   private keys = new Set<string>();
   private pushPending = false;
   private clock = 0;
@@ -86,7 +87,10 @@ export class EvaMode {
     private readonly eva: Eva,
     private readonly duel: DuelView,
   ) {
-    this.walker = new Walker(root, { move: "eva-move", look: "eva-look", moveLabel: "Moverse" });
+    // On the asteroid (microgravity) the stick moves only the camera; she crawls forward or back with the buttons
+    // (core/realism.ts AREA_MOTION: no gravity areas for now).
+    this.walker = new Walker(root, { move: "eva-move", look: "eva-look", moveLabel: "Moverse" }, moveJoystick("paseo-asteroide"));
+    this.walker.camera = camera;
     this.rig.add(this.figure.root);
     // Airlock hatch on the ship's flank, where the tether is clipped.
     const hatch = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.9, 0.7), new THREE.MeshStandardMaterial({ color: 0x9aa3ad, roughness: 0.4, metalness: 0.5, emissive: 0x0a1a10 }));
@@ -112,7 +116,7 @@ export class EvaMode {
     this.ui = document.createElement("div");
     this.ui.className = "eva-ui hidden";
     this.ui.innerHTML = `<div class="eva-hud"></div><button class="eva-back">Volver a la nave</button>
-      <div class="eva-actions"><button class="eva-lie hidden">Tumbarse sobre el asteroide</button><button class="eva-sample hidden">Tomar muestra</button><button class="eva-reel">Recoger cable</button><button class="eva-down">Bajar</button><button class="eva-jump">Impulso</button></div>
+      <div class="eva-actions"><button class="eva-lie hidden">Tumbarse sobre el asteroide</button><button class="eva-sample hidden">Tomar muestra</button><button class="eva-reel">Recoger cable</button><button class="eva-down">Bajar</button><button class="eva-jump">Impulso</button><button class="eva-back-step" aria-label="Retroceder agarrada a las rocas">Atrás</button><button class="eva-forward" aria-label="Avanzar agarrada a las rocas">Avanzar</button></div>
       <div class="eva-toast"></div>`;
     root.appendChild(this.ui);
     this.hud = this.ui.querySelector(".eva-hud")!;
@@ -134,6 +138,8 @@ export class EvaMode {
     hold(this.jumpBtn, () => this.pressUp(), () => (this.held.up = false));
     hold(this.downBtn, () => (this.held.down = true), () => (this.held.down = false));
     hold(this.ui.querySelector(".eva-reel")!, () => (this.held.reel = true), () => (this.held.reel = false));
+    hold(this.ui.querySelector(".eva-forward")!, () => (this.held.go = 1), () => (this.held.go = 0));
+    hold(this.ui.querySelector(".eva-back-step")!, () => (this.held.go = -1), () => (this.held.go = 0));
     window.addEventListener("keydown", (e) => {
       if (!this.active || e.repeat) return;
       this.keys.add(e.code);
@@ -262,6 +268,9 @@ export class EvaMode {
   private leave(): void {
     this.active = false;
     this.walker.enabled = false;
+    this.held.go = 0;
+    this.camera.zoom = 1;
+    this.camera.updateProjectionMatrix();
     this.ui.classList.add("hidden");
     document.body.classList.remove("in-eva");
     this.scene.remove(this.rig, this.ship.root, this.tether, this.puffs, ...this.markers);
@@ -317,7 +326,9 @@ export class EvaMode {
       this.elevation = Math.max(-0.15, Math.min(1.35, this.elevation - look.pitch));
       const right = this.camFwd.cross(this.up);
       const m = this.walker.move();
-      const dir = this.camFwd.scale(m.forward).add(right.scale(m.right));
+      // Forward and back along the view (buttons or W/S), as the stick did in a gravity area.
+      const go = this.held.go + (this.keys.has("KeyW") ? 1 : 0) - (this.keys.has("KeyS") ? 1 : 0);
+      const dir = this.camFwd.scale(Math.max(-1, Math.min(1, m.forward + go))).add(right.scale(m.right));
       const k = (c: string) => (this.keys.has(c) ? 1 : 0);
       const vert = (this.held.up || k("Space") ? 1 : 0) - (this.held.down || k("KeyF") ? 1 : 0);
       const floating = body.mode === "flotando";

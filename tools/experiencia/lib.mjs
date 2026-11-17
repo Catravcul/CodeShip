@@ -400,6 +400,16 @@ export class Journey {
     await this.page.mouse.up();
   }
 
+  /** Holds a button down with a finger for `ms` (the camera's «+» and «−»). */
+  async hold(selector, ms) {
+    const b = await this.page.locator(selector).first().boundingBox();
+    if (!b) return this.check(`hay un botón «${selector}» en pantalla`, false);
+    await this.page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+    await this.page.mouse.down();
+    await this.page.waitForTimeout(ms);
+    await this.page.mouse.up();
+  }
+
   /** Setup that a player cannot do in a test's time (teleport, as Cold Sanctuary's WorkdayDirector.Teleport). Logged. */
   async setup(why, fn, arg) {
     this.checks.push({ ok: true, name: `(preparación) ${why}`, setup: true });

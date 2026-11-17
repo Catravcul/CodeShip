@@ -108,6 +108,7 @@ export class BridgeRoom extends WalkRoom<BridgeStationId> {
     super(root, {
       layout,
       cls: "puente",
+      area: "puente",
       title: shape === "starship" ? `Cubierta de vuelo · ${shipName}` : `Puente · ${shipName}`,
       geometry: model.group,
       speedMs: 0.9,

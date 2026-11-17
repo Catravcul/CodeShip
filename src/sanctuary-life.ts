@@ -14,7 +14,6 @@ import { RACK_HABITATS } from "@modules/adoption/data/rack-habitats";
 import type { SanctuaryArea } from "@modules/sanctuary/domain/area";
 import type { Interior } from "./interior";
 import { SpeciesCatalog, type SpeciesTask } from "./ui/species-catalog";
-import type { TaskBoard } from "./ui/task-board";
 
 /** The Sanctuary's launcher for living cargo: the cheapest ride (a target price: docs/design/catalogo-especies.md). */
 const LIVE_LAUNCHER = "starship";
@@ -37,9 +36,9 @@ export interface SanctuaryLife {
  * The species catalogue wired to the game (docs/design/catalogo-especies.md): the adoption use cases on the
  * import system and the wallet, the arrivals into the habitat (cats, dogs, hens), the ring aquarium (school and
  * snails) and the terrarium shelf (colonies), the colonies' chores on the ring, and the catalogue sheet opened
- * from its terminal and from the task list. A new game has no animals: Doménica starts alone (Berón, 2026-11-16).
+ * only from its machine in its compartment (reglas.md §2.3), never from the task list. A new game has no animals: Doménica starts alone (Berón, 2026-11-16).
  */
-export function wireSanctuaryLife(d: { root: HTMLElement; interior: Interior; habitat: Habitat; importOps: ImportOps; wallet: Wallet; taskBoard: TaskBoard; goChore: (choreId: string) => void; aquariumHere?: () => AquariumOps | undefined }): SanctuaryLife {
+export function wireSanctuaryLife(d: { root: HTMLElement; interior: Interior; habitat: Habitat; importOps: ImportOps; wallet: Wallet; goChore: (choreId: string) => void; aquariumHere?: () => AquariumOps | undefined }): SanctuaryLife {
   const { interior, habitat, importOps, wallet } = d;
   const runs = { banco: [] as { n: number; color: string }[], caracoles: [] as { n: number; color: string }[] };
   let serial = 0;
@@ -118,7 +117,6 @@ export function wireSanctuaryLife(d: { root: HTMLElement; interior: Interior; ha
     else if (s.kind === "eclosionando") interior.say(`${cap(e.acquire.what)} a la incubadora: ${String(Math.round(s.daysLeft * 10) / 10).replace(".", ",")} días`);
   };
   interior.openCatalog = () => catalog.open();
-  d.taskBoard.onCatalog = () => catalog.open();
 
   const text = (e: AdoptionEvent): string | undefined => {
     switch (e.type) {
@@ -158,6 +156,7 @@ export function wireSanctuaryLife(d: { root: HTMLElement; interior: Interior; ha
       ops.tick(lifeDays);
       ops.tickHours(lifeDays * 24);
       drain();
+      catalog.tick();
     },
   };
 }

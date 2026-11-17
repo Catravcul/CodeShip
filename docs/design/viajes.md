@@ -73,7 +73,7 @@ Berón tocó «Ir» en la tarea de dormir estando en la Starship: la Starship vo
 «Ver trayecto» (barra del viaje y ficha) es una segunda cámara **sobre la misma escena del espacio**: la Starship (su modelo, a su tamaño real de 52 m), la estación, los asteroides y el Sol en su sitio, con la ruta que vuela dibujada en cian y un anillo donde acaba. No es un esquema: es lo que pasa, a ×60.
 
 - La cámara sigue al vehículo desde detrás con el destino al fondo, a unas 2,2 esloras (antes 170 m por eslora: la Starship se veía diminuta).
-- **La cámara se mueve** (regla 3.3): arrastrar gira alrededor del vehículo; rueda o pellizco acercan y alejan (de 0,35× a 12×).
+- **La cámara se mueve** (regla 3.3): el joystick de cámara gira alrededor del vehículo y sus botones «+» y «−» (o la rueda) acercan y alejan (de 0,35× a 12×). Nunca se arrastra ni se pellizca la pantalla (reglas.md §5.7).
 - La ficha de viaje baja al borde inferior para no tapar el vehículo, con botones de 44 px.
 - **Nunca atrapa** (reglas.md §3.8). Berón abrió «Ver trayecto» en la consola de la sonda y se quedó sin cámara ni botones: al cerrarlo, la clase de pantalla entera no se quitaba (solo se quitaba al dibujar la vista, y cerrada ya no se dibujaba). Ahora se quita siempre; PX-07 y PX-16 comprueban que la cámara se gira, que se cierra y que vuelven los botones de la consola.
 
@@ -110,7 +110,7 @@ Archivos: `src/adapters/three/interior/hatch-leaf.ts` (la hoja), `StationInterio
 
 ## La bahía: zoom
 
-Berón: «en la bahía la nodriza se ve muy pequeña, ¿quizá falta un control de zoom?». La bahía dibujaba la nodriza a 1:10 y la estación a 1:4 con la misma cámara. Ahora las dos van **a escala real** y la cámara encuadra cada vista por su tamaño (esfera que la envuelve); el zoom va del 12 % al 250 % de esa distancia, con **rueda** y **pellizco** (dos dedos), y al elegir una pieza la cámara se acerca en proporción. El módulo se ve como antes.
+Berón: «en la bahía la nodriza se ve muy pequeña, ¿quizá falta un control de zoom?». La bahía dibujaba la nodriza a 1:10 y la estación a 1:4 con la misma cámara. Ahora las dos van **a escala real** y la cámara encuadra cada vista por su tamaño (esfera que la envuelve); el zoom va del 12 % al 250 % de esa distancia, con la **rueda** y los botones **«+» y «−»** junto al joystick «Orbitar» (nunca un pellizco: reglas.md §5.7), y al elegir una pieza la cámara se acerca en proporción. El módulo se ve como antes.
 
 ## Archivos
 

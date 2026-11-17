@@ -19,6 +19,7 @@ import { oruBox, sceneLabel } from "./adapters/three/robotics-models";
 import type { StationAction, StationInteriorMode } from "./station-interior";
 import type { StationOutside } from "./station-outside";
 import type { DuelView, SessionText } from "./ui/duel-view";
+import { CameraStick } from "./adapters/input/camera-stick";
 import "./ui/robotics.css";
 
 /**
@@ -163,7 +164,7 @@ export class StationEva {
   private dir = 0;
   private yaw = 0;
   private pitch = 0.35;
-  private drag: { x: number; y: number } | null = null;
+  private readonly camStick: CameraStick;
   private crawlPhase = 0;
   private jobDone = false;
   private working: { move: WorkMove; t: number; dur: number; path: THREE.Vector3[] } | null = null;
@@ -216,16 +217,12 @@ export class StationEva {
       const b = (e.target as HTMLElement).closest<HTMLElement>("[data-es]")?.dataset.es;
       if (b) this.button(b);
     });
-    window.addEventListener("pointerdown", (e) => {
-      if (this.active && !(e.target as HTMLElement).closest?.(".es-ctl, .duel")) this.drag = { x: e.clientX, y: e.clientY };
+    // The camera joystick turns the view round her (reglas.md §5.7: never a drag on the screen); in a challenge only
+    // the sheet and the scene show (§4.3) and the framing is automatic.
+    this.camStick = new CameraStick(d.root, "eva-cam", (yaw, pitch) => {
+      this.yaw += yaw;
+      this.pitch = Math.max(-1.2, Math.min(1.3, this.pitch - pitch));
     });
-    window.addEventListener("pointermove", (e) => {
-      if (!this.drag || !this.active) return;
-      this.yaw -= (e.clientX - this.drag.x) * 0.006;
-      this.pitch = Math.max(-1.2, Math.min(1.3, this.pitch + (e.clientY - this.drag.y) * 0.004));
-      this.drag = { x: e.clientX, y: e.clientY };
-    });
-    window.addEventListener("pointerup", () => (this.drag = null));
   }
 
   /** In the suit (from donning to taking it off). */
@@ -376,6 +373,7 @@ export class StationEva {
     this.active = true;
     this.root.visible = true;
     this.hud.classList.remove("hidden");
+    this.camStick.show(true);
     document.body.classList.add("in-station-eva");
     this.eyeNow.set(0, 0, 0);
     this.d.say("Fuera. El cable de seguridad de 85 pies va enganchado a la escotilla; el de cintura, al asidero. Avanza mano sobre mano", 7);
@@ -388,6 +386,7 @@ export class StationEva {
     this.active = false;
     this.root.visible = false;
     this.hud.classList.add("hidden");
+    this.camStick.show(false);
     document.body.classList.remove("in-station-eva");
     this.d.inside.resume();
     this.d.inside.placeAt(this.d.base.hatch);
@@ -611,7 +610,7 @@ export class StationEva {
     return v3(this.eva.heading()).projectOnPlane(this.out(this.apfr.position)).normalize();
   }
 
-  /** Behind and above her, turned by dragging; in a challenge, framed in the strip above the sheet. */
+  /** Behind and above her, turned with the camera joystick; in a challenge, framed in the strip above the sheet. */
   private frameCamera(n: THREE.Vector3, head: THREE.Vector3): void {
     const at = this.eva.feetIn ? this.apfr.position.clone().addScaledVector(n, 1.0).addScaledVector(this.toWork(), 0.5) : this.pelvis().addScaledVector(n, 0.3);
     const back = head.clone().negate();

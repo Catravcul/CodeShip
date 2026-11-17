@@ -4,7 +4,7 @@
 // live), and another one by hand with the THC; a solar-wing swap planned at Unity's cargo laptop becomes a
 // spacewalk: the EMU and the ISLE prebreathe at Quest's suits, the airlock depressed, out along the handrails
 // with the tether hooked at each anchor, feet in the APFR, the job's challenge audited, back in and the suit off;
-// after its 140 days the Cygnus unberthed and released (the camera turned with a drag); the lander's engine swapped
+// after its 140 days the Cygnus unberthed and released (the camera turned with its joystick); the lander's engine swapped
 // on a spacewalk from Quest and the Starship's power from its own airlock; and Dextre swapping the P1 camera burnt by radiation. Rows in docs/qa/animaciones-brazo.md, captures in
 // docs/screenshots/brazo-<pantalla>-movil.png.
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -253,18 +253,16 @@ export async function brazoEva(j) {
   await j.tap('.sti-card [data-act="brazo:suelta-cygnus"]', "Desatracar y soltar el Cygnus");
   await j.waitDuel();
   await p.waitForTimeout(800);
-  // The camera turns with a drag on the scene above the sheet, and the automatic framing stays the default.
-  const strip = await p.evaluate(() => {
-    const el = [...document.querySelectorAll(".duel.sheet")].find((e) => !e.classList.contains("hidden"));
-    return el ? el.getBoundingClientRect().top : innerHeight;
-  });
-  await p.mouse.move(120, strip / 2);
+  // During the challenge only the sheet and the scene show (reglas.md §4.3): the camera frames each step by itself,
+  // nothing turns it by dragging (§5.7), and its joystick waits outside the challenge (open question to Berón).
+  const yaw0 = await p.evaluate(() => window.codeship.stationOutside.orbitYaw);
+  await p.mouse.move(120, 120);
   await p.mouse.down();
-  await p.mouse.move(200, strip / 2 + 10, { steps: 6 });
+  await p.mouse.move(220, 140, { steps: 6 });
   await p.mouse.up();
   await p.waitForTimeout(400);
-  j.check("en un reto del brazo la cámara se gira arrastrando sobre la escena", await p.evaluate(() => window.codeship.stationOutside.orbitYaw !== 0));
-  await capture(j, "suelta-giro", "Cámara girada durante el reto del brazo");
+  j.check("en un reto del brazo, arrastrar la escena no gira la cámara (encuadre automático)", (await p.evaluate(() => window.codeship.stationOutside.orbitYaw)) === yaw0);
+  await capture(j, "suelta-giro", "Reto del brazo con el encuadre automático");
   await auditedSheet(j, rows, "Desatracar y soltar el Cygnus", () => window.codeship.robotics.session?.run.current ?? null, armAudit, judgeArm, "brazo-suelta");
   await p.waitForTimeout(1500);
   j.check("el Cygnus se suelta y se aleja: el CBM queda libre", await p.evaluate(() => window.codeship.robotics.cygnusState() !== "atracado"));

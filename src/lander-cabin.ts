@@ -39,6 +39,7 @@ export class LanderCabin extends WalkRoom<CabinStationId> {
     super(root, {
       layout: LANDER_CABIN,
       cls: "cab",
+      area: "cabina-lm",
       title: "Habitáculo del módulo",
       geometry: g.group,
       speedMs: 0.55,

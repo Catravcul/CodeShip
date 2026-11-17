@@ -170,9 +170,9 @@ export class GravityZones {
       tag.renderOrder = 4;
       scene.add(tag);
     }
-    // A short tap on the canvas, on a thing in the hub or spine: she hops there by herself (dragging looks around).
+    // A short tap on the canvas, on a thing in the hub or spine: she hops there by herself (the look stick turns the camera).
     window.addEventListener("pointerdown", (e) => {
-      // While the task list's travel moves her, a tap does not send her elsewhere (dragging still looks).
+      // While the task list's travel moves her, a tap does not send her elsewhere (the look stick still looks).
       if (!this.enabled || this.zone !== "eje" || (e.target as HTMLElement).tagName !== "CANVAS" || document.body.classList.contains("in-journey")) return;
       this.tap = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() };
     });

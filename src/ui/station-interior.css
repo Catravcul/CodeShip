@@ -35,3 +35,7 @@ body.in-station-interior .vstick.sti-move span, body.in-station-interior .vstick
 .dock-view .dv-close { min-width: 48px; min-height: 48px; border: 0; border-radius: 12px; font-size: 24px; color: #04121a; background: #7fdcff; }
 .dock-view .dv-status { margin: 6px 0 0; font-size: 13px; color: #9fe8c4; max-width: 520px; }
 body.in-dock-view .sti-ui, body.in-dock-view .sti-move, body.in-dock-view .sti-look, body.in-dock-view .zg-pad, body.in-dock-view .zg-controls { display: none !important; }
+/* The outside view's camera joystick (reglas.md §5.7): under its title, so the arm's sheet and THC stay clear. */
+.cam-stick.dock-look { top: calc(112px + env(safe-area-inset-top)); bottom: auto; right: 12px; z-index: 42; }
+.cam-stick.dock-look > .vstick { width: 92px; height: 92px; }
+.cam-stick.dock-look > .vstick .knob { left: 22px; top: 22px; width: 46px; height: 46px; }

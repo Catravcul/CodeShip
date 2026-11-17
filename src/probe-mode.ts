@@ -71,11 +71,10 @@ export class ProbeMode {
   onExit?: () => void;
   /**
    * The player's look around the probe (reglas.md §5.3: the camera is controlled in every vehicle and mode):
-   * its own stick and a drag on the scene orbit the chase camera, yaw and pitch from behind the nose.
+   * its own stick orbits the chase camera (reglas.md §5.7: never a drag), yaw and pitch from behind the nose.
    */
   private readonly lookStick: VirtualStick;
   readonly orbit = { yaw: 0, pitch: 0 };
-  private drag: { id: number; x: number; y: number } | null = null;
 
   constructor(
     root: HTMLElement,
@@ -109,20 +108,7 @@ export class ProbeMode {
     this.touch = new TouchPilot(this.ui);
     this.lookStick = new VirtualStick(root, "probe-look", "Mirar");
     this.lookStick.el.addEventListener("dblclick", () => Object.assign(this.orbit, { yaw: 0, pitch: 0 }));
-    root.addEventListener("pointerdown", (e) => {
-      if (!this.active || this.plan || (e.target as HTMLElement).closest("button, .duel, .vstick, .touch, .pr-actions")) return;
-      this.drag = { id: e.pointerId, x: e.clientX, y: e.clientY };
-    });
-    window.addEventListener("pointermove", (e) => {
-      const d = this.drag;
-      if (!d || e.pointerId !== d.id) return;
-      this.turn(-(e.clientX - d.x) * 0.006, -(e.clientY - d.y) * 0.006);
-      d.x = e.clientX;
-      d.y = e.clientY;
-    });
-    const end = (e: PointerEvent) => e.pointerId === this.drag?.id && (this.drag = null);
-    window.addEventListener("pointerup", end);
-    window.addEventListener("pointercancel", end);
+    // The camera turns only with «Mirar» (reglas.md §5.7): no drag on the screen.
     this.ui.querySelector(".pr-exit")!.addEventListener("click", () => this.exit());
     this.ui.addEventListener("click", (e) => this.onClick(e));
     window.addEventListener("keydown", (e) => {
@@ -198,7 +184,7 @@ export class ProbeMode {
     const v = drop.length() > 1e-6 ? drop.normalize() : up;
     const ref = Math.abs(v.x) < 0.9 ? Vec3.X : Vec3.Z;
     const side0 = v.cross(ref).normalize();
-    // The look stick and a drag still turn it (reglas.md §3.8): yaw about the vertical, pitch up over the site.
+    // The look stick still turns it (reglas.md §3.8): yaw about the vertical, pitch up over the site.
     const across = v.cross(side0);
     const yawed = side0.scale(Math.cos(this.orbit.yaw)).add(across.scale(Math.sin(this.orbit.yaw)));
     const pitch = Math.max(-0.9, Math.min(0.9, this.orbit.pitch));

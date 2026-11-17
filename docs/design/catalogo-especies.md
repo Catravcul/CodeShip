@@ -26,17 +26,35 @@ No hay partidas guardadas (CV-16): recargar empieza de cero, así que no hace fa
 Todo funciona con cero animales: familias, bienestar (la Compañía no sube hasta que haya familia), tareas y
 acuario (sin peces no hay hambre ni «Dar de comer», y el estado dice «sin peces (adóptalos en el catálogo)»).
 Lo prueba VID-30. Los recorridos que necesitan animales (PX-13 y PX-20) los adoptan antes con toques de
-jugador: «Tareas» → «Catálogo de especies» → ficha → «Adoptar» (`tools/experiencia/catalogo.mjs`). PX-01 ya no
+jugador en el portátil o el terminal del catálogo → ficha → «Adoptar» (`tools/experiencia/catalogo.mjs`). PX-01 ya no
 programa la puerta del gallinero (las gallinas están pendientes) y PX-02 no oye ladrar a un perro.
 
 ## Dónde se abre
 
-- **Terminal del catálogo**, en la ranura de rack `rack-catalogo`, con su estantería de hábitats pequeños.
-  Su botón dice «Catálogo de especies» y, si hay tareas de las colonias, «Catálogo de especies: N tareas».
-- **Lista de tareas**: un botón «Catálogo de especies» bajo su cabecera.
+- **El portátil del bastidor de los animales** (reglas.md §2.3: una ventana de gestión se abre desde una
+  máquina del compartimento donde se hace eso). Berón, 2026-11-17: el catálogo «es solo una pared». Ahora es
+  un bastidor ISPR con un portátil en su brazo, a la altura del pecho, con el catálogo en pantalla (cabecera
+  verde y la lista de especies con el color de su icono), y debajo las taquillas de comida y material de los
+  hábitats (`catalog-laptop.ts`, equipo `catalogo` de `gear.ts`). Es un HP ZBook 15, el portátil de a bordo
+  de la ISS ([HP](https://www.hp.com/us-en/shop/tech-takes/hp-zbooks-at-zero-gs)); unos 38 × 26 × 2,6 cm
+  cerrado (medida nuestra de su ficha). Etiqueta: real en Kibo; licencia en la Starship.
+  - **Estación**: en Kibo, en el bastidor de al lado del AQH (los animales de JAXA vivieron en Kibo).
+  - **Starship** (paridad, reglas.md §6.0): en la pared de popa de la cubierta 2, con la estantería de las
+    colonias al lado (sin la consola de pie que tiene el anillo de ficción). El portátil queda a la izquierda
+    del centro del bastidor para no cruzarse con los asideros de la pared.
+  - Al llegar a él, ella mira la pantalla un poco por debajo, para que se vea encima de su tarjeta.
+  Su botón dice «Abrir el catálogo de especies» y, si hay tareas de las colonias, «Catálogo de especies: N tareas».
+- **Lista de tareas**: no tiene botón del catálogo (Berón, 2026-11-17; reglas.md §2.3): adoptar no es una
+  tarea y el catálogo solo se abre en su máquina. Lo prueba VID-51.
 
 No es un reto: usa el aspecto de la hoja de retos (fondo oscuro, morado, chips), pero no tiene pasos ni
 duelo, y se cierra con ✕.
+
+**La llegada cuenta en vivo** (Berón, 2026-11-17: no cambiaba hasta volver a abrirlo). Con el catálogo
+abierto, cada fotograma redibuja solo los textos de lo que viene: el distintivo de la lista («En camino · N h»)
+y la ficha («En camino: llega en N h de a bordo (m:ss reales)»; un día de a bordo son 24 minutos reales, así
+que una hora de a bordo es un minuto real). No se rehace la hoja, así que los toques y el desplazamiento no se
+pierden; al llegar, la hoja se vuelve a dibujar (`SpeciesCatalog.tick`, VID-49).
 
 ## Ranuras de rack
 

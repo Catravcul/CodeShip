@@ -29,7 +29,7 @@ async function go(j, title) {
   return j.tap(`.task-board .tb-go[aria-label="Ir: ${title.replace(/"/g, '\\"')}"]`, `Ir: ${title}`);
 }
 
-/** A drag on the canvas, as a thumb looks around; returns how far the view turned (rad). */
+/** The look stick pushed sideways, as a thumb looks around (reglas.md §5.7); returns how far the view turned (rad). */
 async function dragLook(p, room) {
   const dir = () => p.evaluate((r) => {
     const c = window.codeship[r].camera;
@@ -38,11 +38,14 @@ async function dragLook(p, room) {
     return [-e[8], -e[9], -e[10]];
   }, room);
   const a = await dir();
-  const vp = p.viewportSize();
-  await p.mouse.move(vp.width / 2, vp.height * 0.4);
-  await p.mouse.down();
-  await p.mouse.move(vp.width / 2 + 140, vp.height * 0.4, { steps: 8 });
-  await p.mouse.up();
+  const b0 = await p.locator(".look-stick:visible, .vstick.room-look:visible, .vstick.sti-look:visible, .vstick.sts-look:visible").first().boundingBox();
+  if (b0) {
+    await p.mouse.move(b0.x + b0.width / 2, b0.y + b0.height / 2);
+    await p.mouse.down();
+    await p.mouse.move(b0.x + b0.width / 2 + 50, b0.y + b0.height / 2, { steps: 4 });
+    await p.waitForTimeout(500);
+    await p.mouse.up();
+  }
   await p.waitForTimeout(400);
   const b = await dir();
   return Math.acos(Math.max(-1, Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2])));
@@ -99,7 +102,7 @@ export async function viaje(j) {
   j.check("una línea dice el siguiente tramo y la hora de llegada", /Viaje · 1\/\d+: .+/.test(hud) && /Llegada en ~\d/.test(hud), hud);
   j.check("el ojo de la vista sigue a mano", await visible(p, ".interior-ui .view-btn"));
   await capture(j, "anillo", "Viaje: andando por el anillo (1ª persona)");
-  j.check("arrastrar gira la cámara mientras anda sola (1ª persona)", (await dragLook(p, "interior")) > 0.2);
+  j.check("el joystick «Mirar» gira la cámara mientras anda sola (1ª persona)", (await dragLook(p, "interior")) > 0.2);
   // Third person: the eye switches the view and she keeps walking by herself.
   await j.tap(".interior-ui .view-btn", "Vista: 3ª persona");
   const leg0 = await p.evaluate(() => window.codeship.journey.legIndex);

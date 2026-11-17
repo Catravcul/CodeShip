@@ -1,9 +1,10 @@
 import * as THREE from "three";
+import { CameraStick } from "../input/camera-stick";
 
 /**
  * The dry dock's cameras (docs/design/dique-seco.md): from the hangar console or the window of the
  * mothership's docking hatch, the outside of the station seen full screen: the open truss cradle and,
- * when she is in, the mothership held by its arms. Drag turns the view round the dock. A DOM frame
+ * when she is in, the mothership held by its arms. The camera joystick turns the view round the dock. A DOM frame
  * carries the title, a line of status and «×».
  */
 export class DockView {
@@ -13,7 +14,9 @@ export class DockView {
   private readonly status: HTMLElement;
   private yaw = 0.75;
   private pitch = 0.32;
-  private drag: { x: number; y: number } | null = null;
+  private readonly camStick: CameraStick;
+  /** Takes the joystick's turn first (true: taken), e.g. to turn round what an arm challenge frames. */
+  steer?: (yaw: number, pitch: number) => boolean;
   open = false;
   onClose?: () => void;
 
@@ -35,23 +38,20 @@ export class DockView {
     this.title = this.frame.querySelector(".dv-title")!;
     this.status = this.frame.querySelector(".dv-status")!;
     this.frame.querySelector(".dv-close")!.addEventListener("click", () => this.close());
-    // Drag anywhere outside the frame's bar turns the view (pointer events on the canvas go through).
-    window.addEventListener("pointerdown", (e) => {
-      if (this.open && !(e.target as HTMLElement).closest?.(".dv-head")) this.drag = { x: e.clientX, y: e.clientY };
+    // Its camera joystick turns the view (reglas.md §5.7: never a drag on the screen). During an arm challenge only
+    // the sheet and the scene show (§4.3, foco-reto.css), so it hides and the framing is automatic; `steer` takes
+    // the turn while the hand capture (THC) frames the view (station-outside.ts).
+    this.camStick = new CameraStick(root, "dock-look", (yaw, pitch) => {
+      if (this.steer?.(yaw, pitch)) return;
+      this.turn(yaw, pitch);
     });
-    window.addEventListener("pointermove", (e) => {
-      if (!this.drag || !this.open) return;
-      this.yaw -= (e.clientX - this.drag.x) * 0.006;
-      this.pitch = Math.max(-1.2, Math.min(1.2, this.pitch + (e.clientY - this.drag.y) * 0.004));
-      this.drag = { x: e.clientX, y: e.clientY };
-    });
-    window.addEventListener("pointerup", () => (this.drag = null));
   }
 
   show(title: string): void {
     this.title.textContent = title;
     this.open = true;
     this.frame.classList.add("on");
+    this.camStick.show(true);
     document.body.classList.add("in-dock-view");
   }
 
@@ -59,8 +59,15 @@ export class DockView {
     if (!this.open) return;
     this.open = false;
     this.frame.classList.remove("on");
+    this.camStick.show(false);
     document.body.classList.remove("in-dock-view");
     this.onClose?.();
+  }
+
+  /** Turn the view round the dock (radians; + yaw turns left, + pitch looks from higher). */
+  turn(dYaw: number, dPitch: number): void {
+    this.yaw += dYaw;
+    this.pitch = Math.max(-1.2, Math.min(1.2, this.pitch - dPitch));
   }
 
   /** The line under the title (who is in the dock, what holds her). */

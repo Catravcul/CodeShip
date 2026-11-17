@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { moveJoystick } from "@core/realism";
 import { BOARD_DAYS_PER_REAL_S } from "@core/board-time";
 import type { Habitat, HabitatEvent, ChoreSession } from "@modules/habitat/application/habitat";
 import { CHORE_CATEGORY, type Chore, type ChoreCategory } from "@modules/chores/domain/chore";
@@ -309,7 +310,8 @@ export class Interior {
     this.scene.add(this.steps.root);
     // A prop set down on the floor (a feeding bowl) goes where nothing of the room or the animals is (PX-20).
     this.steps.clearOf = clearOfScene(this.scene, [this.steps.root, this.avatarRig]);
-    this.walker = new Walker(root);
+    this.walker = new Walker(root, undefined, moveJoystick("anillo"));
+    this.walker.camera = this.camera;
     this.ui = document.createElement("div");
     this.ui.className = "interior-ui hidden";
     this.ui.innerHTML = `<div class="ihud"></div><button class="tasks-btn">Tareas</button><button class="radio-btn">Radio<b></b></button><button class="view-btn">${ICON.eye}</button><div class="board hidden"></div><button class="station-btn hidden"></button><button class="mat-btn hidden">Sentarse en loto: ajustes</button><div class="toast"></div>`;
@@ -443,7 +445,7 @@ export class Interior {
       } else if (d > 1e-6) {
         const step = Math.min(d, 2.2 * dt);
         this.pos.addScaledVector(to.normalize(), step);
-        // The view stays free while she walks by herself: a drag turns it from the way she walks.
+        // the view stays free while she walks by herself: the look stick turns it from the way she walks.
         const look = this.walker.look(dt);
         this.walkLook += look.yaw;
         this.pitch = Math.max(-1.2, Math.min(1.2, this.pitch + look.pitch));

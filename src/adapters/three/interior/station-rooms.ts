@@ -6,6 +6,7 @@ import { textSign } from "./sign";
 import { CubeFigure } from "./figure";
 import { buildStarfield } from "../starfield";
 import { AqhModel } from "./aqh-model";
+import { CatalogLaptopModel } from "./catalog-laptop";
 import { gearModel, gearPose, placeGear, type CrewGear } from "./crew-gear";
 import { eclssRackModel, mountOnWall, type EclssRackModel } from "../eclss-racks";
 import type { RackKind } from "@modules/life-support/domain/eclss";
@@ -59,6 +60,7 @@ function buildGear(f: Fixture, k: number): CrewGear {
   const h = Math.abs(n.y) > 0.5 ? s.z : s.y;
   const d = Math.abs(n.x) > 0.5 ? s.x : Math.abs(n.y) > 0.5 ? s.y : s.z;
   if (f.gear === "aqh") return new AqhModel(k, { w, h });
+  if (f.gear === "catalogo") return new CatalogLaptopModel(k, { w, h });
   return gearModel(f.gear!, k, { w, h, d });
 }
 

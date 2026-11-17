@@ -1,46 +1,41 @@
 import { VirtualStick, curve } from "./stick";
+import { addZoomButtons, cameraStep } from "./camera-stick";
 
 /**
- * Walking inside the habitat: WASD + arrows, or two on-screen sticks (left walks, right looks),
- * and dragging anywhere else also looks around. Sticks show on every device.
+ * The on-screen controls of a first- or third-person area. The look stick («Mirar») moves only the camera, with
+ * «+» and «−» beside it to zoom (reglas.md §5.7: never a drag on the screen). Only an area with gravity or water
+ * (core/realism.ts `moveJoystick`, none for now) also gets the stick that moves her (left) and WASD; in zero g she
+ * moves by herself (arrows, routes, «Ir», taps). Arrow keys and Q/E look around.
  */
 export class Walker {
   private readonly keys = new Set<string>();
-  private lookDelta = { x: 0, y: 0 };
-  private lookId: number | null = null;
-  private last = { x: 0, y: 0 };
-  private readonly moveStick: VirtualStick;
+  private readonly moveStick: VirtualStick | undefined;
+  private zoomDir: -1 | 0 | 1 = 0;
+  /** The camera the zoom buttons act on (its `zoom`, 1 = the area's own view). */
+  camera?: { zoom: number; updateProjectionMatrix(): void };
   private readonly lookStick: VirtualStick;
   enabled = false;
   /** Whether the arrow keys look around (off in zero g, where they hop: arrow-pad.ts). */
   arrowsLook = true;
 
   /** Stick classes and label can change so another mode (the EVA) gets its own pair. */
-  constructor(root: HTMLElement, sticks = { move: "walk-stick", look: "look-stick", moveLabel: "Caminar" }) {
+  constructor(
+    root: HTMLElement,
+    sticks = { move: "walk-stick", look: "look-stick", moveLabel: "Caminar" },
+    /** An area with gravity or water (core/realism.ts `moveJoystick`): only then a stick moves her. */
+    private readonly moves = false,
+  ) {
     window.addEventListener("keydown", (e) => this.enabled && this.keys.add(e.code));
     window.addEventListener("keyup", (e) => this.keys.delete(e.code));
     window.addEventListener("blur", () => this.keys.clear());
-    this.moveStick = new VirtualStick(root, sticks.move, sticks.moveLabel);
+    this.moveStick = moves ? new VirtualStick(root, sticks.move, sticks.moveLabel) : undefined;
     this.lookStick = new VirtualStick(root, sticks.look, "Mirar");
-    root.addEventListener("pointerdown", (e) => {
-      if (!this.enabled || (e.target as HTMLElement).closest("button, .duel, .board, .vstick")) return;
-      if (this.lookId !== null) return;
-      this.lookId = e.pointerId;
-      this.last = { x: e.clientX, y: e.clientY };
-    });
-    window.addEventListener("pointermove", (e) => {
-      if (e.pointerId !== this.lookId) return;
-      this.lookDelta.x += e.clientX - this.last.x;
-      this.lookDelta.y += e.clientY - this.last.y;
-      this.last = { x: e.clientX, y: e.clientY };
-    });
-    const end = (e: PointerEvent) => e.pointerId === this.lookId && (this.lookId = null);
-    window.addEventListener("pointerup", end);
-    window.addEventListener("pointercancel", end);
+    addZoomButtons(this.lookStick.el, (dir) => (this.zoomDir = dir));
   }
 
   /** Movement intent: forward (+) / right (+), each −1..1. */
   move(): { forward: number; right: number } {
+    if (!this.moves || !this.moveStick) return { forward: 0, right: 0 };
     const k = (c: string) => (this.keys.has(c) ? 1 : 0);
     const s = this.moveStick.value;
     return {
@@ -54,11 +49,14 @@ export class Walker {
     const k = (c: string) => (this.keys.has(c) ? 1 : 0);
     const s = this.lookStick.value;
     const ar = (c: string) => (this.arrowsLook ? k(c) : 0);
-    const out = {
-      yaw: -this.lookDelta.x * 0.006 + (ar("ArrowLeft") - ar("ArrowRight") + k("KeyQ") - k("KeyE") - curve(s.x)) * 2.0 * dt,
-      pitch: -this.lookDelta.y * 0.006 + (ar("ArrowUp") - ar("ArrowDown") - curve(s.y)) * 1.4 * dt,
+    const cam = this.camera;
+    if (cam && this.zoomDir) {
+      cam.zoom = Math.max(0.6, Math.min(3, cam.zoom * cameraStep({ x: 0, y: 0 }, this.zoomDir, dt).zoom ** -1));
+      cam.updateProjectionMatrix();
+    }
+    return {
+      yaw: (ar("ArrowLeft") - ar("ArrowRight") + k("KeyQ") - k("KeyE") - curve(s.x)) * 2.0 * dt,
+      pitch: (ar("ArrowUp") - ar("ArrowDown") - curve(s.y)) * 1.4 * dt,
     };
-    this.lookDelta = { x: 0, y: 0 };
-    return out;
   }
 }

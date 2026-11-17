@@ -128,20 +128,15 @@ export class StationOutside {
     this.view = new DockView(root, station, new THREE.Vector3(-3, -2, -6), 62, "Vista desde la Cupola");
     this.view.onClose = () => undefined;
     this.rest();
-    // During an arm challenge the camera frames the step by itself, and a drag on the scene turns it round
-    // what it frames (reglas.md §5.3: the camera is always controllable).
-    window.addEventListener("pointerdown", (e) => {
-      if ((this.framing || this.manualOn) && (e.target as HTMLElement).tagName === "CANVAS") this.orbitDrag = { x: e.clientX, y: e.clientY };
-    });
-    window.addEventListener("pointermove", (e) => {
-      if (!this.orbitDrag) return;
-      this.orbitYaw -= (e.clientX - this.orbitDrag.x) * 0.006;
-      this.orbitPitch = Math.max(-1.1, Math.min(1.1, this.orbitPitch + (e.clientY - this.orbitDrag.y) * 0.004));
-      this.orbitDrag = { x: e.clientX, y: e.clientY };
-    });
-    window.addEventListener("pointerup", () => (this.orbitDrag = null));
+    // During an arm challenge the camera frames the step by itself, and the view's camera joystick turns it round
+    // what it frames (reglas.md §5.3 and §5.7: the camera is always controllable, never by dragging the screen).
+    this.view.steer = (yaw, pitch) => {
+      if (!this.framing && !this.manualOn) return false;
+      this.orbitYaw += yaw;
+      this.orbitPitch = Math.max(-1.1, Math.min(1.1, this.orbitPitch - pitch));
+      return true;
+    };
   }
-  private orbitDrag: { x: number; y: number } | null = null;
   /** The player's turn of the framed view (radians), back to 0 at each procedure. */
   orbitYaw = 0;
   orbitPitch = 0;
@@ -393,7 +388,7 @@ export class StationOutside {
         this.lander.root.position.copy(cbm.pos);
         this.lander.root.quaternion.copy(cbm.quat);
       }
-      this.line = held ? "El módulo está atracado en el CBM de nadir de Unity, como un Cygnus" : "Canadarm2 en reposo sobre la celosía. Arrastra para mirar alrededor";
+      this.line = held ? "El módulo está atracado en el CBM de nadir de Unity, como un Cygnus" : "Canadarm2 en reposo sobre la celosía. Mueve el joystick de cámara para mirar alrededor";
     }
     for (const d of this.drifting) {
       d.age += dt;

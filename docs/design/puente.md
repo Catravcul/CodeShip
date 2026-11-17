@@ -82,8 +82,8 @@ puesto de acople solo lo menciona en una línea de texto.
   la cubierta y en el interior la vista queda libre. Para la ventana «Trayecto» del menú del HUD (de solo estado)
   hay un modelo de lectura, `tripStatus()` (`TripStatus` en `trip-chip.ts`: vehículo, destino, distancia, tiempo
   real que falta, fase y fracción), sin botones.
-- **Cámara solo con joystick** (reglas §5.7): «Ver trayecto» a pantalla completa gira con su joystick «Cámara» (el
-  pellizco y la rueda solo acercan); el mapa de la mesa de navegación gira con su joystick «Girar» y un toque elige
+- **Cámara solo con joystick** (reglas §5.7): «Ver trayecto» a pantalla completa gira con su joystick de cámara (sus
+  «+» y «−» y la rueda acercan; nunca un pellizco); el mapa de la mesa de navegación gira con su joystick «Girar» y un toque elige
   destino.
 
 ### Acople

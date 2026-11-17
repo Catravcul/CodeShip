@@ -29,8 +29,6 @@ export class TaskBoard {
   private tasks: Task[] = [];
   /** Takes her to the task's place (set by main.ts). */
   onGo?: (t: Task) => void;
-  /** Opens the species catalogue (set by main.ts): adopting is not a task, but it starts from here too. */
-  onCatalog?: () => void;
 
   constructor(
     root: HTMLElement,
@@ -53,10 +51,6 @@ export class TaskBoard {
         this.render();
         this.el.scrollTop = 0;
         return this.el.querySelector<HTMLElement>("[data-view]")?.focus();
-      }
-      if (t.closest("[data-catalog]")) {
-        this.close();
-        return this.onCatalog?.();
       }
       if (settingsClick(t)) return this.render();
       const chip = t.closest<HTMLElement>("[data-group]");
@@ -133,8 +127,7 @@ export class TaskBoard {
             .join("")}`,
       )
       .join("");
-    const catalog = this.onCatalog ? `<button class="tb-catalog" data-catalog aria-label="Catálogo de especies">Catálogo de especies</button>` : "";
-    this.el.innerHTML = `${head}${scope}${catalog}</div>${body || `<p class="tb-empty">${vehicle && !groupLabel ? NOTHING[vehicle] : "Nada pendiente"}</p>`}${hint}`;
+    this.el.innerHTML = `${head}${scope}</div>${body || `<p class="tb-empty">${vehicle && !groupLabel ? NOTHING[vehicle] : "Nada pendiente"}</p>`}${hint}`;
   }
 
   /** The settings view: how «Ir» gets there, which vehicle, which group. */

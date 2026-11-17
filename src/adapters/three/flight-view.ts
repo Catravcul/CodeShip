@@ -63,8 +63,6 @@ export class FlightView {
   private mode: CameraMode = "cabina";
   private yaw = 0;
   private pitch = 0;
-  private dragId: number | null = null;
-  private last = { x: 0, y: 0 };
   private warpIdx = 0;
   enabled = true;
 
@@ -122,20 +120,7 @@ export class FlightView {
     this.tag.className = "cam-tag";
     root.appendChild(this.tag);
 
-    // Drag on empty screen to look around (mouse or finger).
-    root.addEventListener("pointerdown", (e) => {
-      if (!this.enabled || (e.target as HTMLElement).closest("button, .duel, .board, .vstick, .touch, .hud")) return;
-      this.dragId = e.pointerId;
-      this.last = { x: e.clientX, y: e.clientY };
-    });
-    window.addEventListener("pointermove", (e) => {
-      if (e.pointerId !== this.dragId) return;
-      this.turn(-(e.clientX - this.last.x) * 0.005, -(e.clientY - this.last.y) * 0.005);
-      this.last = { x: e.clientX, y: e.clientY };
-    });
-    const end = (e: PointerEvent) => e.pointerId === this.dragId && (this.dragId = null);
-    window.addEventListener("pointerup", end);
-    window.addEventListener("pointercancel", end);
+    // The camera turns only with «Mirar» (reglas.md §5.7): no drag on the screen.
     window.addEventListener("keydown", (e) => {
       if (!this.enabled) return;
       if (e.code === "KeyC" && !e.repeat) this.camBtn.click();

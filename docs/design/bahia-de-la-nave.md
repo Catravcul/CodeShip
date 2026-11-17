@@ -12,7 +12,7 @@ Desde la fase 1 de accesos ([accesos.md](accesos.md)) la bahía está **solo en 
 
 ## Qué se ve
 
-- **La nave por fuera** con una cámara que orbita. Se mueve arrastrando la pantalla, con el mando **Orbitar** o con las flechas, y la rueda acerca o aleja. Al tocar una pieza, la cámara gira hasta verla de tres cuartos y la recuadra en cian.
+- **La nave por fuera** con una cámara que orbita. Se mueve con el joystick **Orbitar** (reglas.md §5.7: nunca arrastrando la pantalla) o con las flechas; sus botones «+» y «−», o la rueda, acercan o alejan. Al tocar una pieza, la cámara gira hasta verla de tres cuartos y la recuadra en cian.
 - **Las piezas que piden atención laten en 3D**: naranja si es un aviso, rojo si es crítico. Las máquinas del soporte vital, la cubierta de cultivo y la bodega están dentro del casco. Por eso salen como **balizas** en el lomo de la nave, una por sistema.
 - **El panel** va a la derecha en horizontal y abajo en vertical. Arriba están las piezas que **necesitan revisión**, de más a menos urgente, y debajo el resto. Cada fila lleva un punto de color, su barra de estado o de nivel y el primer problema.
 - **La ficha de una pieza** reúne su estado, sus problemas, sus datos reales con enlace a la fuente y las **acciones**. Cada acción es una cadena de retos de código que se abre en la hoja de retos (`DuelView`), con la nave visible encima.

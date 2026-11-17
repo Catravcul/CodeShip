@@ -63,6 +63,5 @@ body.in-trip-view #app > :not(canvas):not(.trip-pip):not(.trip-chip):not(.journe
   body.in-probe .trip-chip button { flex: 1; padding: 0 6px; }
   body.in-probe .trip-chip .tc-detail { white-space: normal; }
 }
-/* «Ver trayecto» at full screen: the camera turns only with its joystick (reglas.md §5.7). */
-.trip-pip .tp-stick { position: absolute; right: 18px; bottom: calc(120px + env(safe-area-inset-bottom)); left: auto; }
-.trip-pip.full .tp-stick { display: block; pointer-events: auto; }
+/* «Ver trayecto»'s camera joystick and zoom (reglas.md §5.7), under «×»: the trip chip moves with the vehicle's console. */
+.cam-stick.trip-look { right: 12px; top: calc(72px + env(safe-area-inset-top)); bottom: auto; }

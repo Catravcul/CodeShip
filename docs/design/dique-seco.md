@@ -136,7 +136,7 @@ para el vacío y el trabajo de fuera ya se hace con brazos, robots y trajes. Los
   - La escotilla de la nodriza tiene «Mirar el dique por la ventanilla». Las escotillas de la ISS tienen
     una.
   - La consola del hangar tiene «Cámaras del dique seco».
-  - Las dos abren la vista de fuera a pantalla completa (arrastrar la gira). Una línea dice qué hay:
+  - Las dos abren la vista de fuera a pantalla completa (su joystick de cámara la gira, reglas.md §5.7). Una línea dice qué hay:
     «brazos cerrados en la espina, umbilicales de energía, datos y xenón conectados» o «Dique vacío».
 
 ## Viaje o teletransporte: en la lista de tareas

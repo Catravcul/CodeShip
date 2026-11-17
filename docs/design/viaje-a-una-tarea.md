@@ -62,7 +62,7 @@ Con la nodriza real ([nodriza-starship.md](nodriza-starship.md)) el grafo no tie
 
 - Doménica anda, sube en el coche, salta, cruza escotillas, se sienta y vuela con los mismos controladores que usa la jugadora (no hay otro código de movimiento): `src/journey.ts` los conduce tramo a tramo.
 - Se ocultan los mandos de movimiento (palanca de andar, flechas, ▲▼ del ascensor, mandos de traslación de la cabina, botones de máquina). Sale **Parar**: la deja donde está (en el aire, termina el salto y se agarra; en vuelo, el piloto automático suelta los mandos) y devuelve los controles. «Ir» otra vez sigue desde allí.
-- La cámara sigue libre: arrastrar mira alrededor (mientras anda sola, gira la vista respecto a hacia dónde anda), el ojo cambia de 1ª a 3ª persona y, sentada, el ciclo de cámaras.
+- La cámara sigue libre: el joystick «Mirar» mira alrededor (mientras anda sola, gira la vista respecto a hacia dónde anda), el ojo cambia de 1ª a 3ª persona y, sentada, el ciclo de cámaras.
 - Una línea abajo a la izquierda: tramo actual («Viaje · 4/7: Subir al eje por el radio») y «Llegada en ~1 min 5 s». En vuelo, la hora sale del propio piloto automático.
 - Un camino ya no tiene tramos de vuelo (reglas.md §3.5): acaba en el puesto desde el que se vuela, con el aviso. «Ver trayecto» está en la ficha de viaje de esa consola.
 - Al llegar se usa la máquina: empieza la tarea del anillo, se abre la consola del puente, se sienta a pilotar o se abre la pestaña de la estación.

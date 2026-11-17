@@ -314,7 +314,7 @@ export function stationInteriorPlan(layout: StationLayout = POLANA_LAYOUT, outfi
     // Rack slots for the species catalogue (adapters/three/interior/rack-slots.ts): the Aquatic Habitat flew in
     // Kibo (JAXA, medaka, 2012) and the catalogue is a laptop on the rack beside it.
     { id: "rack-acuatico", label: "Hábitat acuático (AQH)", volume: "kibo", face: "popa", at: new Vec3(along(kibo, 0.3), 0, kibo.centre.z + kibo.half.z), size: new Vec3(1.05, 2.0, 0.86), action: { kind: "consola", id: "acuatico" }, info: "El Aquatic Habitat de JAXA, en Kibo como en la ISS: dos tanques de 0,7 L, pulmón artificial y biofiltro; aquí vivieron medakas hasta 90 días. Se llena con lo que se adopta en el catálogo", source: "https://iss.jaxa.jp/en/kiboexp/pm/aqh", gear: "aqh" },
-    { id: "rack-catalogo", label: "Catálogo de especies", volume: "kibo", face: "popa", at: new Vec3(along(kibo, 0.62), 0, kibo.centre.z + kibo.half.z), size: new Vec3(1.05, 2.0, 0.86), action: { kind: "consola", id: "catalogo" }, info: "Portátil del catálogo de especies junto al hábitat acuático: solo especies reales en hábitats reales", source: S.ispr },
+    { id: "rack-catalogo", label: "Catálogo de especies", volume: "kibo", face: "popa", at: new Vec3(along(kibo, 0.62), 0, kibo.centre.z + kibo.half.z), size: new Vec3(1.05, 2.0, 0.86), action: { kind: "consola", id: "catalogo" }, info: "Bastidor de los animales en Kibo, junto al hábitat acuático: el portátil del catálogo de especies en su brazo (como los portátiles de la ISS) y las taquillas de comida y material de los hábitats. Solo especies reales en hábitats reales", source: GEAR_SRC.laptop, gear: "catalogo" },
   ];
 
   // --- Modules berthed as the station grows --------------------------------------------------

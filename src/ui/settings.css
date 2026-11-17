@@ -22,3 +22,4 @@
 body.in-settings .vstick, body.in-settings .zone-btn, body.in-settings .station-btn, body.in-settings .room-ui .cab-machine { display: none !important; }
 /* Sitting on the mat: her strip above the sheet shows her, not the room's labels and notices. */
 body.in-settings .room-ui .cab-where, body.in-settings .room-ui .cab-toast, body.in-settings .sti-ui .cab-where, body.in-settings .sti-ui .cab-toast, body.in-settings .sts-ui .cab-where, body.in-settings .sts-ui .cab-toast { display: none !important; }
+.set-build { font-size: 11px; color: #8fb3c4; margin: 4px 2px 10px; font-family: ui-monospace, monospace; }

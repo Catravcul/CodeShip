@@ -13,3 +13,8 @@
 .im-line.total { font-size: 15px; color: #ffd27f; border-top: 1px solid #ffffff22; margin-top: 4px; padding-top: 6px; }
 .st-chip.im-pick { border: 1px solid #2c4a6a; color: #bfefff; font: inherit; font-size: 12px; min-height: 34px; padding: 4px 10px; }
 .st-chip.im-pick.on { background: #ffd27f; color: #001018; border-color: #ffd27f; font-weight: 600; }
+
+/* Components by tier (Hangar tab, docs/design/componentes.md §7). */
+.st-tier { font-size: 0.8em; padding: 1px 6px; border-radius: 8px; background: rgba(120, 170, 255, 0.18); white-space: nowrap; }
+.st-comp-cat { margin-top: 14px; }
+.st-ship { margin-top: 6px; }

@@ -62,6 +62,8 @@ import { Hangar } from "@modules/station/domain/hangar";
 import { STATION_TUNING } from "@modules/station/domain/blueprint";
 import { StationOps } from "@modules/station/application/station-ops";
 import { VehicleYard } from "@modules/station/application/vehicle-yard";
+import { ComponentImports } from "@modules/imports/application/component-imports";
+import { CARRIERS, SUPPLY_ITEMS, supplyItem } from "@modules/station/data/component-supply";
 import { catalogueMassOf, VEHICLE_CATALOGUE } from "@modules/station/data/vehicle-catalogue";
 import { BLUEPRINTS } from "@modules/station/data/blueprints";
 import { REFINE_PROCESSES } from "@modules/station/data/processes";
@@ -967,6 +969,9 @@ stationScreen.onExit = () => {
 };
 // Vehicle catalogue in the station's Hangar tab (docs/design/naves-reales.md).
 stationScreen.yard = new VehicleYard(stationOps.station, stationOps.blueprints, VEHICLE_CATALOGUE, catalogueMassOf, ASSEMBLY_LIMITS);
+// Components by tier, imported from Earth (docs/design/componentes.md §7): the yard's parts arrive this way.
+const componentImports = new ComponentImports(importOps, SUPPLY_ITEMS, CARRIERS, LAUNCHERS, ASSEMBLY_LIMITS.arm.maxPayloadKg, (id) => supplyItem(id)?.massKg.value ?? catalogueMassOf(id));
+stationScreen.supply = componentImports;
 // «Botar» / «Desplegar»: the Cupola view plays it letting go from its site.
 stationScreen.onRelease = (c) => {
   const shown = stationScreen.yard?.shown(c);
@@ -1487,6 +1492,10 @@ renderer.setAnimationLoop((now) => {
   stationOps.station.tick(stationHours);
   bioOps.tick(stationHours);
   importOps.tick(stationHours);
+  componentImports.tick();
+  for (const e of componentImports.drainEvents()) {
+    stationScreen.notice(`Llega al hangar: ${e.label}`);
+  }
   lifeSupport.tick(stationHours);
   landerEcs.tick(stationHours);
   starship?.lifeSupport?.tick(stationHours);
@@ -1660,4 +1669,4 @@ for (const sel of [".nano-action", ".trip-chip", ".land-offer.lander", ".land-bo
   if (el) ctxDock.appendChild(el);
 }
 
-(window as unknown as { codeship: unknown }).codeship = { sanctuary, journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, starship, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, landerBerth, lifeSupport, bishop: bishopAirlock, stationOutside, stationModel, stationOps, refuelOps, importOps, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels, dryDock };
+(window as unknown as { codeship: unknown }).codeship = { sanctuary, journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, starship, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, landerBerth, lifeSupport, bishop: bishopAirlock, stationOutside, stationModel, stationOps, refuelOps, importOps, componentImports, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels, dryDock };

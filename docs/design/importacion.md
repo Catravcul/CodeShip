@@ -105,6 +105,31 @@ retraso  = días de Hohmann × 4 min de estación por día
 
 **Créditos.** Se empieza con 1 000 (el primer pago de Nevaeh). Cada misión principal paga 1 500 o 2 500 además de sus kits, y cada misión secundaria (un cuerpo subyugado fuera de la cadena) paga 400. Todo son valores de juego. Con el pedido aceptado, Nevaeh contesta por radio con una carta que repite el desglose.
 
+## 5. Componentes y naves completas
+
+Berón (2026-11-17): los componentes mejores y las naves completas llegan **importados de la Tierra**; en el espacio no se fabrican (solo piezas pequeñas impresas). Escalas de componentes en [componentes.md §7](componentes.md#7-componentes-por-nivel-e-importación-2026-11-17).
+
+| Dato | Valor | Fuente |
+|---|---|---|
+| Falcon 9 a LEO | 22 800 kg (desechable) | [Wikipedia](https://en.wikipedia.org/wiki/Falcon_Heavy) |
+| Falcon Heavy a LEO | 63 800 kg (desechable) | [Wikipedia](https://en.wikipedia.org/wiki/Falcon_Heavy) |
+| Starship a LEO | 100 t (objetivo) | [New Space Economy](https://newspaceeconomy.ca/2026/06/21/how-accurate-were-elon-musks-falcon-9-and-starship-kg-claims/) |
+| Cygnus mejorada | 3500 kg, 27 m³ presurizados; Canadarm2 la atrapa y la atraca en un CBM | [Wikipedia](https://en.wikipedia.org/wiki/Cygnus_(spacecraft)) |
+| Dragon de carga | 3307 kg; 9,3 m³ presurizados y 37 m³ sin presión en el maletero | [Wikipedia](https://en.wikipedia.org/wiki/Dragon_2) |
+| CRS-21 (2020) | 2972 kg, de ellos 1090 kg sin presión: la esclusa Bishop en el maletero | [NASA](https://www.nasa.gov/wp-content/uploads/2020/12/spacex_crs-21_mision_overview_high_res_0.pdf) |
+
+**Regla del envío** (`planShipment`, `station/domain/component-supply.ts`):
+
+1. Vehículo de carga: la Cygnus si va dentro, la Dragon si va fuera (en el maletero, y el brazo lo saca). Si pesa más que los dos, vuela solo y el brazo lo atrapa (hasta 116 t).
+2. Lanzador: el más barato por kilo cuya carga a LEO alcanza para la masa × el multiplicador de las dos etapas (≈ 16 kg en LEO por kg entregado a 2,2 UA). Starship, que solo tiene precio objetivo, se usa únicamente si ninguno de los que vuelan puede.
+3. Precio y viaje: los de cualquier pedido (`importQuote`), con el mismo reto y el mismo buzón. Solo se cobra la masa de la carga, no la de la Cygnus o la Dragon (simplificación, igual que en los kits).
+
+Ejemplos con la región a 2,21 UA: un R-4D-11 (4,31 kg) va en Falcon Heavy por **99 créditos** y llega en 372 días (25 h de estación); un Raptor 3 (1525 kg) en el maletero de una Dragon, en Falcon Heavy; el módulo lunar entero (unos 4,2 t) necesita unas 68 t en LEO, más de lo que sube un Falcon Heavy: solo con Starship (objetivo). Haven-1 (14 t) y el casco de Starship no caben en ningún lanzador.
+
+**Naves completas.** En cada vehículo del catálogo, «Importar lo que falta» pide en un solo envío las piezas que le faltan (una nave se compra entera: sus piezas no suben niveles). Las smallsats viajan presurizadas, como los cubesats que suelta la Bishop. Al llegar, el vehículo se monta en su sitio real.
+
+Código: `imports/application/component-imports.ts` (`ComponentImports`), que usa `ImportOps.quoteKg` y `orderKg` sin cambiarlos; `imports/data/launchers.ts` gana la carga a LEO (`leoPayloadKg`).
+
 ## En el juego
 
 - **Estación → pestaña «Importar»**:

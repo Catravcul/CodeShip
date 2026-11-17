@@ -385,7 +385,7 @@ export function bayActions(c: ComponentStatus, chores: readonly Chore[], design:
         if (isEmptyPart(p)) return { kind: "cambiar", label: c.slot === "energia" ? "Quitar la fuente: solo batería" : "Quitar el escudo", detail: supply ? "La pieza que sale va al hangar" : "Deja el hueco vacío", slot: c.slot!, partId: p.id };
         const n = supply ? supply.count(p.id) : 1;
         if (n > 0) return { kind: "cambiar", label: `Montar ${short(p.name)}`, detail: supply ? `${what} · ${n} en el hangar` : what, slot: c.slot!, partId: p.id };
-        return { kind: "cambiar", locked: true, label: `Montar ${short(p.name)}`, detail: `${what} · no hay en el hangar: fabrícala en la estación`, slot: c.slot!, partId: p.id };
+        return { kind: "cambiar", locked: true, label: `Montar ${short(p.name)}`, detail: `${what} · no hay en el hangar: impórtala (Hangar → Componentes)`, slot: c.slot!, partId: p.id };
       })
     : [];
   // Parts in the hangar first, the ones still to build after.

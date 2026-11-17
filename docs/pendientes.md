@@ -41,6 +41,7 @@ Lo que no es real queda en el código, sin cablear salvo con `?ficcion`:
 | **Campos de cultivo y laboratorio bio** | Bancales de 60 m² en el módulo agrícola, biorreactores | `EQ_CROPS`, `BIO_BLUEPRINTS` | Fase 2 (`vida-real`): Veggie y APH |
 | **Paseo espacial desde Quest** | — | La escotilla EVA de Quest solo informa | Con el paseo espacial de la estación |
 | **Recoger un satélite suelto con el brazo** | — | `CargoAirlock.retrieve` | Ya está, como **licencia** dicha en la tarjeta: en la ISS nunca se ha hecho |
+| **Fabricar piezas de vehículo** | Planos de motores, RCS, tanques, cabinas, alas, baterías, escudos, propulsores eléctricos y cuerpos del catálogo, hechos con la roca y kits | `station/data/blueprints.ts` (`importOnly`, `IMPORT_ONLY_PART_IDS`), filtrados en `offeredBlueprints` | En la realidad no se fabrican en el espacio: se importan ([componentes.md §7](design/componentes.md#7-componentes-por-nivel-e-importación-2026-11-17)). Volverían como **licencia** con una fábrica orbital de verdad; queda la pieza pequeña impresa |
 | **`HANGAR_SIZE` en el catálogo** | El montaje del catálogo de naves pregunta si un vehículo cabe en el hangar | `station/data/hangar-craft.ts` | Debería preguntar si cabe en el CBM o si el brazo lo mueve |
 
 ## Lo que **no** está apagado (corrección de las 19:54)

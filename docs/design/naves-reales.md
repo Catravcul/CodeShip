@@ -45,6 +45,8 @@ Tests: EST-28 a EST-30.
 - **Cada componente nuevo tiene plano** en Planos → Componentes. La máquina depende del tipo: los motores en la impresora (la grande si pasan de 40 kg), las estructuras en la fundición, los hábitats en la soldadora y la energía y la electrónica en la impresora con kits importados. Recetas, kits y horas son valores de juego, y las horas crecen con la raíz de la masa: el casco de Starship tarda 337 h.
 - **Los que no tienen desglose publicado** (Vast, Nautilus-X, MMSEV, Blue Moon MK1, ISS, Tiangong, Haven-2) se listan, pero no se pueden montar.
 
+> **2026-11-17 · Piezas por importación.** Las piezas de los vehículos ya no se fabrican en Planos (con el interruptor «solo real»): llegan importadas de la Tierra, una a una por niveles o todas las que le faltan a un vehículo en un envío («Importar lo que falta»), y se montan en su sitio real. Ver [componentes.md §7](componentes.md#7-componentes-por-nivel-e-importación-2026-11-17) e [importacion.md §5](importacion.md#5-componentes-y-naves-completas).
+
 ### En el juego (mínimo)
 
 En la estación, pestaña **Hangar** → **Ver el catálogo**. Cada vehículo sale con su estado en color y una línea por pieza: cuántas hay en el hangar, cuántas pide y, si falta, por qué (sin plano, bloqueada hasta tener una máquina, o «fabrícalo en Planos»). **Construir** solo se activa con todas las piezas. Las gasta y deja la nave en el hangar, o en el dique si no cabe en el hangar en ninguna orientación. Recorrido PX-24 con capturas `docs/screenshots/catalogo-naves-*-movil.png`.

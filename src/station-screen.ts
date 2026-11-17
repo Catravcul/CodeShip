@@ -19,6 +19,10 @@ import type { Craft } from "@modules/station/domain/hangar";
 import { REALITY_NAME } from "@core/reality";
 import { STATUS_NAME, VEHICLE_KIND_NAME } from "@modules/station/domain/vehicle-catalogue";
 import { catalogueComponentById } from "@modules/station/data/catalogue-components";
+import type { ComponentImports, ComponentOffer } from "@modules/imports/application/component-imports";
+import { ladder } from "@modules/station/domain/component-supply";
+import { SUPPLY_CATEGORIES, supplyItem } from "@modules/station/data/component-supply";
+import { REAL_ONLY } from "@core/realism";
 import { StationScene } from "./adapters/three/station-model";
 import type { DuelView, SessionText } from "./ui/duel-view";
 import type { StepVisual } from "@modules/chores/domain/step-visual";
@@ -114,6 +118,10 @@ export class StationScreen {
   yard?: VehicleYard;
   /** The catalogue list is open (it is long: closed by default). */
   catalogueOpen = false;
+  /** Components by tier, imported from Earth (Hangar tab, docs/design/componentes.md §7); set by main. */
+  supply?: ComponentImports;
+  /** The component ladders are open (closed by default). */
+  componentsOpen = false;
   /** A catalogue vehicle was put together at its site (main shows its model there). */
   onBuilt?: (craft: Craft) => void;
   /** A built vehicle is let go («Botar» / «Desplegar»): main plays it from the Cupola and puts it in play. */
@@ -379,7 +387,9 @@ export class StationScreen {
     const intro: Readonly<Record<BlueprintKind, string>> = {
       modulo: "Módulos nuevos: se atracan en un puerto libre y la estación crece.",
       equipo: "Máquinas para los bastidores de los módulos: cada una desbloquea componentes nuevos. Las mejoras sustituyen a la máquina que mejoran.",
-      componente: "Piezas para el módulo de aterrizaje, la nodriza y la estación. Cada una necesita su máquina.",
+      componente: REAL_ONLY
+        ? "Piezas pequeñas, lo que una impresora de verdad hace en el espacio, y componentes de la estación. Los motores, tanques, cabinas y alas no se fabrican aquí: se importan (Hangar → Componentes)."
+        : "Piezas para el módulo de aterrizaje, la nodriza y la estación. Cada una necesita su máquina.",
     };
     const card = (p: (typeof plans)[number]) => {
       const bp = p.blueprint;
@@ -453,12 +463,48 @@ export class StationScreen {
         const drive = electricThrusterById(id);
         const sc = stationComponentById(id);
         const cc = catalogueComponentById(id);
-        return `<div class="st-mat"><b>${esc(p ? short(p.name) : drive ? `Propulsor ${drive.shortName}` : sc ? sc.name : cc ? cc.name : id)}</b><span>× ${n}</span><small>${drive ? "Se monta en la bahía, pestaña Nodriza, con la nodriza atracada aquí" : sc ? "Se monta en la bahía, pestaña Estación" : cc ? "Pieza del catálogo de naves" : "Se monta en la bahía de la nave"}</small></div>`;
+        const si = supplyItem(id);
+        return `<div class="st-mat"><b>${esc(p ? short(p.name) : drive ? `Propulsor ${drive.shortName}` : sc ? sc.name : cc ? cc.name : si ? si.name : id === "pieza-impresa" ? "Pieza pequeña impresa" : id)}</b><span>× ${n}</span><small>${drive ? "Se monta en la bahía, pestaña Nodriza, con la nodriza atracada aquí" : sc ? "Se monta en la bahía, pestaña Estación" : cc ? "Pieza del catálogo de naves" : "Se monta en la bahía de la nave"}</small></div>`;
       })
       .join("");
     const bay = this.onBay ? `<button class="st-btn" data-bay>Abrir la bahía de la nave</button>` : "";
     return `${bay}<div class="bay-sec">Naves y sondas</div>${crafts}
-      <div class="bay-sec">Piezas de repuesto</div>${partRows || `<p class="st-dim">No hay piezas. Fabrícalas en Planos; al cambiar una pieza en la bahía, la vieja vuelve aquí.</p>`}${this.catalogue()}`;
+      <div class="bay-sec">Piezas de repuesto</div>${partRows || `<p class="st-dim">No hay piezas. ${REAL_ONLY ? "Impórtalas desde «Componentes»" : "Fabrícalas en Planos"}; al cambiar una pieza en la bahía, la vieja vuelve aquí.</p>`}${this.components()}${this.catalogue()}`;
+  }
+
+  /** The import line of a component or a vehicle: vehicle, launcher, price and trip, and «Importar» (or why not). */
+  private importButton(o: ComponentOffer, attr: string, verb = "Importar"): string {
+    const es = (v: number) => Math.round(v).toLocaleString("es-ES");
+    const sh = o.shipment;
+    const how = sh.carrier === "libre" ? "vuelo propio, lo atrapa el brazo" : `${sh.carrier.name}: ${sh.carrier.arrival.charAt(0).toLowerCase()}${sh.carrier.arrival.slice(1)}`;
+    const line = `${fmtKg(o.kg)} kg · ${sh.launcher ? `${esc(sh.launcher.name)} · ` : ""}${es(o.quote.credits)} créditos · ${es(o.quote.transitDays)} días (${hrs(o.quote.gameHours)} de estación)`;
+    return `<div class="st-io st-ship">${line}</div><small>${esc(how)}</small><div class="st-row"><span></span><button class="st-btn" ${attr} ${o.blocker ? "disabled" : ""}>${esc(o.blocker ?? verb)}</button></div>`;
+  }
+
+  /** Componentes: the real parts by capability tier, from the lowest; better ones are imported from Earth. */
+  private components(): string {
+    const sup = this.supply;
+    if (!sup) return "";
+    const head = `<div class="bay-sec">Componentes por nivel</div><button class="st-btn st-cat-toggle" data-components aria-expanded="${this.componentsOpen}">${this.componentsOpen ? "Cerrar los componentes" : `Ver los componentes (${sup.items.length})`}</button>`;
+    if (!this.componentsOpen) return head;
+    const card = (partId: string) => {
+      const i = supplyItem(partId)!;
+      const have = this.ops.station.hangar.count(partId);
+      const coming = sup.inTransit(partId);
+      const info = SUPPLY_CATEGORIES.find((c) => c.id === i.category)!;
+      const state = i.deSerie ? `<span class="st-chip ok">De serie en ${esc(i.deSerie)}</span>` : "";
+      const stock = have || coming ? `<span class="st-have">${have ? `${have} en el hangar` : ""}${have && coming ? " · " : ""}${coming ? `${coming} en camino` : ""}</span>` : "";
+      const swap = have && partById(partId) && this.onBay ? `<button class="st-btn" data-bay>Cambiar en la bahía</button>` : "";
+      const o = i.deSerie ? undefined : sup.offer(partId);
+      const lock = o && !o.unlocked ? " locked" : "";
+      return `<div class="st-card st-comp${lock}" data-comp="${esc(partId)}"><div class="st-row"><b>${esc(i.name)}</b><span class="st-tier">Nivel ${i.tier}</span></div>
+        <div class="st-io">${esc(info.metric.label)} ${esc(i.capacity.value.toLocaleString("es-ES"))} ${esc(info.metric.unit)} · ${i.massKg.value > 0 ? `${fmtKg(i.massKg.value)} kg` : i.deSerie ? "masa dentro de su vehículo" : "0 kg"} · ${esc(REALITY_NAME[i.reality])}</div>
+        <small>${esc(i.capacity.note ?? "")} · <a href="${esc(i.capacity.source)}" target="_blank" rel="noopener">fuente</a></small>
+        <div class="st-chips">${state}${o ? `<span class="st-chip ${o.unlocked ? "ok" : "miss"}">${o.unlocked ? "Desbloqueado" : "Bloqueado"}</span>` : ""}</div>
+        ${o ? this.importButton(o, `data-supply-import="${esc(partId)}"`) : ""}${stock || swap ? `<div class="st-row">${stock || "<span></span>"}${swap}</div>` : ""}</div>`;
+    };
+    const cats = SUPPLY_CATEGORIES.map((c) => `<div class="bay-sec st-comp-cat">${esc(c.name)}</div><small class="st-dim">Por ${esc(c.metric.label.toLowerCase())}: ${esc(c.metric.why)}</small>${ladder(sup.items, c.id).map((i) => card(i.partId)).join("")}`).join("");
+    return `${head}<p class="st-dim">Se empieza con lo de menor capacidad: lo que llevan el módulo lunar, Juventas y la Starship. Lo mejor llega de la Tierra por importación, un nivel cada vez, pagado en créditos al precio real del lanzamiento por kilo, y tarda la transferencia real hasta la estación. En el espacio solo se imprimen piezas pequeñas.</p>${cats}`;
   }
 
   /** Catálogo de naves: real craft as recipes of parts; «Construir» when every part is in the hangar. */
@@ -473,7 +519,8 @@ export class StationScreen {
       const need = r.lines
         .map((l) => {
           const name = partById(l.line.partId)?.name ?? electricThrusterById(l.line.partId)?.shortName ?? catalogueComponentById(l.line.partId)?.name ?? l.line.partId;
-          const why = l.missing ? (l.blueprint === "sin-plano" ? " · sin plano" : l.blueprint === "bloqueado" ? ` · ${l.locked}` : " · fabrícalo en Planos") : "";
+          const coming = this.supply?.inTransit(l.line.partId) ?? 0;
+          const why = l.missing ? (coming ? " · en camino" : this.supply && REAL_ONLY ? " · se importa" : l.blueprint === "sin-plano" ? " · sin plano" : l.blueprint === "bloqueado" ? ` · ${l.locked}` : " · fabrícalo en Planos") : "";
           return `<span class="st-chip ${l.missing ? "miss" : "ok"}">${esc(short(name))} ${Math.min(l.have, l.line.count)}/${l.line.count}${esc(why)}</span>`;
         })
         .join("");
@@ -482,15 +529,17 @@ export class StationScreen {
         : `<button class="st-btn" data-yard-build="${esc(e.id)}" ${r.canBuild ? "" : "disabled"}>${r.canBuild ? `Montar en ${ASSEMBLY_SITE_NAME[r.site]}` : "Faltan piezas"}</button>`;
       // Built and waiting at its site: let it go from there (the Cupola view plays the arm or the Bishop).
       const release = r.waiting.map((c) => `<button class="st-btn primary" data-yard-release="${esc(c.id)}">${RELEASE_VERB[r.site]} ${esc(c.name.split(" (")[0]!)}</button>`).join("");
+      const missing = Object.fromEntries(r.missing.map((l) => [l.line.partId, l.missing - (this.supply?.inTransit(l.line.partId) ?? 0)]).filter(([, n]) => (n as number) > 0));
+      const buy = this.supply && e.lines.length && Object.keys(missing).length ? this.importButton(this.supply.offerVehicle(e.name.split(" (")[0]!, missing, e.kind === "sonda" ? "presurizada" : "exterior"), `data-yard-import="${esc(e.id)}"`, "Importar lo que falta") : "";
       const mine = e.playerCraft ? `<span class="st-chip ok">${e.playerCraft === "modulo" ? "Tu módulo de aterrizaje" : "Tu sonda"}</span>` : "";
       const adapt = e.adaptations?.length ? `<ul class="st-adapt">${e.adaptations.map((a) => `<li><b>${esc(a.what)}</b> · ${esc(REALITY_NAME[a.reality])}: ${esc(a.why)}</li>`).join("")}</ul>` : "";
       return `<div class="st-card st-vehicle ${r.canBuild || r.waiting.length ? "" : "locked"}" data-vehicle="${esc(e.id)}"><div class="st-row"><b>${esc(e.name)}</b><span class="st-status st-${e.status}">${STATUS_NAME[e.status]}</span></div>
         <div class="st-io">${VEHICLE_KIND_NAME[e.kind]} · ${esc(e.launch)}${r.massKg ? ` · ${fmtKg(r.massKg)} kg` : ""}</div>${mine}
         <small>${esc(e.statusNote)} · <a href="${esc(e.sources[0]!)}" target="_blank" rel="noopener">fuente</a></small>
         <small class="st-site">Montaje: ${esc(ASSEMBLY_SITE_NAME[r.site])} · ${esc(REALITY_NAME[r.plan.reality])}. ${esc(r.plan.why)}</small>${adapt}
-        ${need ? `<div class="st-chips">${need}</div>` : ""}<div class="st-row"><span></span>${btn}</div>${release ? `<div class="st-row"><span></span>${release}</div>` : ""}</div>`;
+        ${need ? `<div class="st-chips">${need}</div>` : ""}${buy}<div class="st-row"><span></span>${btn}</div>${release ? `<div class="st-row"><span></span>${release}</div>` : ""}</div>`;
     };
-    return `${head}<p class="st-dim">Naves, módulos, sondas y estaciones reales. Cada pieza se fabrica en Planos y espera aquí; con todas, se monta donde lo haría la ISS: dentro de la Bishop, en la plataforma expuesta, sujeta por el brazo en un CBM o, si no cabe, en el dique (licencia).</p>${rows.map(card).join("")}`;
+    return `${head}<p class="st-dim">Naves, módulos, sondas y estaciones reales. ${REAL_ONLY ? "Cada pieza llega importada de la Tierra (en el espacio no se fabrican motores ni cascos) y espera aquí" : "Cada pieza se fabrica en Planos y espera aquí"}; con todas, se monta donde lo haría la ISS: dentro de la Bishop, en la plataforma expuesta, sujeta por el brazo en un CBM o, si no cabe, en el dique (licencia).</p>${rows.map(card).join("")}`;
   }
 
   private onClick(e: Event): void {
@@ -502,6 +551,19 @@ export class StationScreen {
       this.catalogueOpen = !this.catalogueOpen;
       this.key = "";
       return this.render();
+    }
+    if (t.closest("[data-components]")) {
+      this.componentsOpen = !this.componentsOpen;
+      this.key = "";
+      return this.render();
+    }
+    const si = t.closest<HTMLElement>("[data-supply-import]");
+    if (si && this.supply) return this.start(this.supply.start(this.supply.offer(si.dataset.supplyImport!)), "importar");
+    const yi = t.closest<HTMLElement>("[data-yard-import]");
+    if (yi && this.supply && this.yard) {
+      const r = this.yard.rows().find((x) => x.entry.id === yi.dataset.yardImport)!;
+      const missing = Object.fromEntries(r.missing.map((l) => [l.line.partId, l.missing - this.supply!.inTransit(l.line.partId)]).filter(([, n]) => (n as number) > 0));
+      return this.start(this.supply.start(this.supply.offerVehicle(r.entry.name.split(" (")[0]!, missing, r.entry.kind === "sonda" ? "presurizada" : "exterior")), "importar");
     }
     const y = t.closest<HTMLElement>("[data-yard-build]");
     if (y && this.yard) {

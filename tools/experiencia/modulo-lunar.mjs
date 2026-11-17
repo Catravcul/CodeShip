@@ -14,13 +14,6 @@ async function capture(j, label, title) {
   j.check(`${title}: ningún botón se solapa con otro`, over.length === 0, over.slice(0, 4).join("; "));
 }
 
-/** A capture without the overlap check: the flight HUD's camera tag overlaps other things (B-03, open). */
-async function photo(j, label) {
-  await j.page.waitForTimeout(800);
-  await j.page.screenshot({ path: `docs/screenshots/lm-${label}-movil.png`, timeout: 120000 });
-  await j.shot(`lm-${label}`);
-}
-
 const landing = () => window.codeship.landerLanding.programming?.current ?? null;
 const duel = () => window.codeship.expedition.duel?.current ?? null;
 
@@ -54,13 +47,13 @@ export async function moduloLunar(j) {
   await j.answer(landing, true);
   for (let n = 0; n < 8 && (await p.evaluate(() => window.codeship.landerLanding.status)) === "programming"; n++) await j.answer(landing, true);
   await p.waitForTimeout(3000);
-  await photo(j, "bajando");
+  await capture(j, "bajando", "El LM bajando por programa (cámara ventral)");
   await p.waitForFunction(() => window.codeship.landerLanding.status !== "flying", null, { timeout: 300000 });
   const end = await p.evaluate(() => [window.codeship.landerLanding.status, window.codeship.expedition.phase]);
   j.check("el LM se posa en Bennu por programa y las patas anclan", end[0] === "landed" && end[1] === "landed", end.join(" / "));
   await j.tap(".cam-btn", "Cámara");
   await p.waitForTimeout(800);
-  await photo(j, "posado");
+  await capture(j, "posado", "El LM posado (cámara trasera) con el aviso del asteroide");
 
   // The mind duel from the LMP's station.
   await j.setup("la fase de la sonda ya está hecha en Bennu (posar Juventas lleva horas de juego)", () => {

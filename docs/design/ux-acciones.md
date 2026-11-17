@@ -160,28 +160,29 @@ Apuntados por la suite (`j.problem`) o vistos en sus capturas:
 3. Ningún elemento fijo nuevo sin pasar `npm run experiencia -- acciones-movil acciones-escritorio`: 0 solapes en 390×664 y 1280×800.
 4. Botones ≥ 44 px de alto en móvil; texto sobre la escena con placa o halo hasta 4,5:1.
 5. El feedback de un acierto o un fallo lleva forma (✓/✗) además de color, y un número que solo sube.
-6. Una interfaz nueva monta su raíz en `#app` y con eso ya respeta los retos (sección 7): no se añade a ninguna lista. Si algo tiene que seguir a la vista con un reto abierto, se marca con `data-duel-keep` y se justifica en la sección 7.
+6. Una interfaz nueva monta su raíz en `#app` y con eso ya respeta los retos (sección 7): no se añade a ninguna lista. Nada puede quedarse a la vista con un reto abierto (no hay excepciones ni marca para pedirlas): lo que el reto tenga que enseñar se dibuja en su escena o en su hoja.
 
 ## 7. Foco del reto
 
 **Encargo** (Berón, 2026-11-16): «Habíamos quedado en que al entrar en un reto se ocultarían botones de otras interfaces y otros elementos (¿quizás interfaces enteras?), pero parece que no se está cumpliendo». La regla existía (H26) como una lista de selectores en `acciones.css` y en otras hojas; desde entonces llegaron muchas interfaces que no estaban en la lista. La auditoría de PX-25 (H47–H56 en [hallazgos.md](../qa/hallazgos.md)) encontró interfaces de más en la mesa de navegación del puente (la consola entera), la cabina del módulo (retícula), las pantallas de la estación, la bahía de la nave, el aviso del teletransporte y los avisos de misión, y una docena de raíces que ninguna regla cubría. En el anillo, el acuario, el yoga, la cocina y las máquinas de la estación, el traje y la mente desde el habitáculo la lista vieja sí bastaba.
 
-**La regla.** Mientras hay un reto abierto (`body.in-duel`), en pantalla solo quedan:
+**La regla** ([reglas.md](reglas.md) §4.3). Mientras hay un reto abierto (`body.in-duel`), en pantalla solo quedan:
 
-1. **la hoja del reto** (`.duel`, en cualquiera de sus dos vistas, panel o HUD; la vista panel no cambia),
-2. **la escena 3D** (el lienzo del juego, con el encuadre que pone el reto y los pasos visibles dibujados en ella),
-3. **la superposición del paso** (`.plan-caption`, la línea que dice qué parte del plan acaba de dibujarse).
+1. **la hoja del reto** (`.duel`, en cualquiera de sus dos vistas, panel o HUD; la vista panel no cambia). Dentro de ella va la línea del paso (`.plan-caption`, la que dice qué parte del plan acaba de dibujarse): la hoja la guarda entre dibujos (`DuelView.hold`) y se sigue viendo arriba a la izquierda, como antes;
+2. **la escena 3D** (el lienzo del juego, con el encuadre que pone el reto y los pasos visibles dibujados en ella).
 
-Nada más: ni iconos de la raíz, ni barra del viaje a una tarea con «Parar», ni ficha del viaje con «Ver trayecto», ni indicadores del aterrizaje, ni fichas de estación, estado del interior (`.ihud`) y líneas de estado, ni cruceta, palancas de mirar y caminar, ni avisos del entorno, avisos de misión, estado del acuario, cámaras del dique, carteles de las consolas del puente, tarjetas de las máquinas del habitáculo, ajustes, fichas del mapa, mandos de la sonda o el HUD de cualquier modo (vuelo, interior, estación, habitáculo del módulo, puente, paseo espacial).
+Nada más, **sin excepciones** (Berón, 2026-11-17: reglas generales sin excepciones): ni iconos de la raíz, ni barra del viaje a una tarea con «Parar», ni ficha del viaje con «Ver trayecto», ni indicadores del aterrizaje, ni fichas de estación, estado del interior (`.ihud`) y líneas de estado, ni cruceta, palancas de mirar y caminar, ni avisos del entorno, avisos de misión, estado del acuario, cámaras del dique, carteles de las consolas del puente, tarjetas de las máquinas del habitáculo, ajustes, fichas del mapa, mandos de la sonda o el HUD de cualquier modo (vuelo, interior, estación, habitáculo del módulo, puente, paseo espacial).
 
 **Un solo mecanismo** (`src/ui/foco-reto.css`, importado por `duel-view.ts`). Toda la interfaz del juego cuelga de una capa, `#app`: cada pantalla monta allí su raíz, y la hoja del reto se monta a su lado. Una sola regla oculta todas las raíces que no son la escena, la hoja o algo marcado a propósito:
 
 ```css
-body.in-duel > :not(#app, script, style, [data-duel-keep]),
-body.in-duel #app > :not(canvas, .duel, [data-duel-keep]) { display: none !important; }
+body.in-duel > :not(#app, script, style),
+body.in-duel #app > :not(canvas, .duel) { display: none !important; }
 ```
 
-No es una lista: una interfaz nueva queda oculta durante los retos sin que nadie se acuerde de añadirla. Para dejar algo a la vista hay que marcar su raíz con `data-duel-keep` y justificarlo aquí. Hoy lo llevan la superposición del paso (`plan-overlay.ts`) y, solo mientras dibuja el plan de un viaje, la capa del puente con el mapa de navegación (`nav-map.ts`): en la consola de navegación del anillo el mapa tapa la escena, así que el plan solo se ve en él; del puente queda solo el mapa (sin barra de estado ni ventana). Las reglas viejas de `body.in-duel …` de cada hoja se quedan (no estorban), pero ya no hacen falta.
+No es una lista: una interfaz nueva queda oculta durante los retos sin que nadie se acuerde de añadirla. Tampoco hay una marca para dejar algo a la vista: la regla nombra sus dos cosas y nada más (hasta 2026-11-17 la línea del paso era una tercera, fuera de la hoja; ahora va dentro). Las reglas viejas de `body.in-duel …` de cada hoja se quedan (no estorban), pero ya no hacen falta.
+
+**El plan se dibuja en la escena del reto** (antes, una excepción: `data-duel-keep` dejaba a la vista la capa del puente con el mapa de navegación mientras dibujaba el plan de un viaje; quitada en la rama `cabina-lm`). Los pasos de un reto que programa un viaje o un aterrizaje dibujan el plan en la escena 3D (`PlanOverlay`). Una sola regla para todos los sitios (`PlanOverlay.view`, llamada en `present()` de `main.ts`): si la vista que hay en pantalla enseña al menos la mitad de los puntos del plan sobre la hoja (la cabina del módulo, la consola de la sonda, la cámara ventral del aterrizaje), se queda; si no (la mesa de navegación del puente, cuya cámara mira por la ventana, o una sala que no es la escena del espacio), el lienzo pasa a la escena del plan con una cámara que lo encuadra entero en la franja que deja la hoja (arriba en vertical, a la izquierda en horizontal). Se decide una vez por plan, sin parpadeos, y vuelve al cerrar el reto. El mapa se oculta con el reto como cualquier interfaz y, al cerrarlo, enseña el plan unos segundos.
 
 **Excepciones decididas.**
 

@@ -498,7 +498,7 @@ export async function animaciones(j) {
   }
 
   extra.push(
-    "El viaje desde la consola de navegación del anillo: el mapa cubre la escena, así que el plan se dibuja en el mapa, encuadrado en la franja sobre la hoja (sus puntos se miden en el mapa).",
+    "El viaje desde la consola de navegación: el mapa se oculta con el reto como toda interfaz (foco del reto, sin excepciones) y el plan se dibuja en la escena del reto, que lo encuadra en la franja sobre la hoja cuando la vista de la consola no lo ve (PlanOverlay.view).",
   );
   extra.push(
     "Estación (escala 1,5): la cocina, su camarote de Harmony (dormir: junto al saco, mirando fuera del camarote) y las máquinas (refinar, fabricar, laboratorio de biología, importar) con Doménica en los estribos de cada una. Sin visual de pasos, aplazados con nano_net (sistema ficticio, al backlog): los retos de nano_net.",

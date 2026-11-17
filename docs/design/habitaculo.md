@@ -7,15 +7,15 @@ pantalla queda lo mínimo para volar.
 
 ## Habitáculo del módulo
 
-Es la cápsula que el piloto ve desde el asiento (`adapters/three/cockpit.ts`), alargada hacia popa (abajo) y
+Era la cápsula que el piloto veía desde el asiento (`cockpit.ts`, ya sustituida por la cabina real del LM: [cabina-lm.md](cabina-lm.md)), alargada hacia popa (abajo) y
 con el suelo a la altura de sus pies. Doménica camina por ella con cámara de casa de muñecas: la cámara queda fuera y por encima, y
 se quitan las paredes que hay entre ella y la cámara, si se elige la 3ª persona. Por defecto se ve en 1ª
 persona (ajuste «Vista a pie»). Con el ojo (V) se cambia.
 
 | Máquina | Qué hace | Sustituye |
 | --- | --- | --- |
-| Asiento del piloto | Sentarse a pilotar (con la cámara de los ajustes). Una transición corta tapa el corte en el móvil. | — |
-| Consola de acople, bajo la escotilla del techo | Desacoplar; el asistente de acople (a menos de 3 km de un puerto); **Entrar en la nave de viaje** o **Entrar en la estación**, según dónde esté acoplado | «Entrar en…», el conmutador Acople |
+| Puesto del comandante | Pilotar de pie (con la cámara de los ajustes). Una transición corta tapa el corte en el móvil. **Desacoplar** y el asistente de acople (a menos de 3 km de un puerto), como los mandos del LM real | El conmutador Acople |
+| Escotilla de acople, en el techo | Solo da paso: **Entrar en la nave de viaje** o **Entrar en la estación**, según dónde esté acoplado; sin nada acoplado, «Abrir la escotilla» desactivado ([compartimentos.md](compartimentos.md)) | «Entrar en…» |
 | Escotilla EVA | Ponerse el traje y salir (solo anclada en un asteroide; si no, dice por qué) | «Salir de la nave» |
 | Consola de la mente del asteroide | Fase N de 3, siguiente paso, confianza y niveles, y **Entrar en su mente** / Convencer · nivel N cuando la fase lo permite | La ficha de confianza y el botón del duelo del HUD de vuelo |
 | Esterilla de yoga | Sentarse en loto: abre los ajustes generales | «Nombres» y los demás ajustes |

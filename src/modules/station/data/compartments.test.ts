@@ -74,7 +74,7 @@ describe("EST-51 every real compartment of the station is a room she floats into
   }, 20000);
 });
 
-describe("HAB-27 Starship's crew quarters are rooms too («distribución nuestra»)", () => {
+describe("HAB-28 Starship's crew quarters are rooms too («distribución nuestra»)", () => {
   it("four 2,1 m³ quarters on deck 2, each with its bag, reached by hops at every presentation", () => {
     const plan = starshipInteriorPlan();
     const rooms = plan.volumes.filter((v) => v.kind === "compartimento");

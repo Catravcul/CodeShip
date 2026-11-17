@@ -71,7 +71,7 @@ versión estándar es la de Apolo 9–14, salvo donde se indica.
     unos 2,3 a escala 1,5) hasta que las máquinas quedan a 2 m;
   - con «Real», queda como el LM.
 - Nada se coloca a mano por máquina.
-- La vista de pilotaje sentada sigue siendo la cápsula genérica (`cockpit.ts`; pendiente).
+- La vista de pilotaje es esta misma cabina, de pie en el puesto del comandante: ventana triangular, ventana de acople con el COAS y los paneles 1–16 ([cabina-lm.md](cabina-lm.md)).
 
 ### Soporte vital propio (ECS de circuito abierto)
 
@@ -144,8 +144,8 @@ ISS:
 
 ## Decisiones abiertas
 
-- ¿La vista de pilotaje del LM debe ser su cabina real (ventanas triangulares de pie) en vez de la
-  cápsula genérica con ventana grande (licencia para aterrizar a ojo)?
+- ~~¿La vista de pilotaje del LM debe ser su cabina real?~~ Sí (Berón, 2026-11-17: «si la cabina realista es
+  con ventanas triangulares y tal se debe hacer así»): [cabina-lm.md](cabina-lm.md).
 - ¿Un LM montado en el catálogo debe sustituir al módulo de la jugadora (uno de repuesto) o solo
   soltarse?
 - La masa del O₂ de ascenso (2 × 2,4 lb) sale de un escaneo ilegible: falta confirmarla.

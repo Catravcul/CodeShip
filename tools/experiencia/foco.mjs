@@ -239,7 +239,7 @@ export async function foco(j) {
   });
   await part(j, "nano_net", async () => {
     await j.setup("Bennu persuadido (las tres fases se juegan en «mision»)", () => window.codeship.nano.subjugate(window.codeship.region.target.data.id));
-    await j.useMachine("cabin", "asiento", "pilotar", "Sentarse a pilotar");
+    await j.useMachine("cabin", "asiento", "pilotar", "Pilotar de pie");
     await p.waitForTimeout(800);
     await j.tap(".nano-action", "nano_net: acción del núcleo");
     await j.waitDuel(30000);

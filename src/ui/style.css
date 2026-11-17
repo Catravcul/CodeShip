@@ -394,7 +394,6 @@ body:not(.kbd-help) .help { display: none !important; }
    first person; «+» and «−» beside it where the view zooms. Each owner places it with its own class. */
 .cam-stick { display: none; position: fixed; right: 14px; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 41; align-items: center; gap: 8px; pointer-events: none; }
 .cam-stick.on { display: flex; }
-body.in-duel .cam-stick:not(.duel-ok) { display: none !important; }
 body .cam-stick.on > .vstick { display: block !important; position: relative; bottom: auto; left: auto; right: auto; width: 104px; height: 104px; pointer-events: auto; }
 .cam-stick > .vstick .knob { left: 28px; top: 28px; width: 48px; height: 48px; }
 .cam-zoom { display: flex; flex-direction: column; gap: 8px; pointer-events: auto; }

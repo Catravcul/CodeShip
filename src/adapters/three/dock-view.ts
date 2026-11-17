@@ -38,12 +38,13 @@ export class DockView {
     this.title = this.frame.querySelector(".dv-title")!;
     this.status = this.frame.querySelector(".dv-status")!;
     this.frame.querySelector(".dv-close")!.addEventListener("click", () => this.close());
-    // Its camera joystick turns the view (reglas.md §5.7: never a drag on the screen); it stays during an arm
-    // challenge, in the scene above the sheet, where `steer` may take the turn (station-outside.ts).
+    // Its camera joystick turns the view (reglas.md §5.7: never a drag on the screen). During an arm challenge only
+    // the sheet and the scene show (§4.3, foco-reto.css), so it hides and the framing is automatic; `steer` takes
+    // the turn while the hand capture (THC) frames the view (station-outside.ts).
     this.camStick = new CameraStick(root, "dock-look", (yaw, pitch) => {
       if (this.steer?.(yaw, pitch)) return;
       this.turn(yaw, pitch);
-    }, { duringChallenge: true });
+    });
   }
 
   show(title: string): void {

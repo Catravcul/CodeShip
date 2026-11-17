@@ -253,12 +253,16 @@ export async function brazoEva(j) {
   await j.tap('.sti-card [data-act="brazo:suelta-cygnus"]', "Desatracar y soltar el Cygnus");
   await j.waitDuel();
   await p.waitForTimeout(800);
-  // The camera turns with its joystick over the scene above the sheet (reglas.md §5.7: never a drag), and the
-  // automatic framing stays the default.
-  await j.stick(".cam-stick.dock-look .vstick", 45, 5, 600);
+  // During the challenge only the sheet and the scene show (reglas.md §4.3): the camera frames each step by itself,
+  // nothing turns it by dragging (§5.7), and its joystick waits outside the challenge (open question to Berón).
+  const yaw0 = await p.evaluate(() => window.codeship.stationOutside.orbitYaw);
+  await p.mouse.move(120, 120);
+  await p.mouse.down();
+  await p.mouse.move(220, 140, { steps: 6 });
+  await p.mouse.up();
   await p.waitForTimeout(400);
-  j.check("en un reto del brazo la cámara se gira con el joystick de cámara", await p.evaluate(() => window.codeship.stationOutside.orbitYaw !== 0));
-  await capture(j, "suelta-giro", "Cámara girada durante el reto del brazo");
+  j.check("en un reto del brazo, arrastrar la escena no gira la cámara (encuadre automático)", (await p.evaluate(() => window.codeship.stationOutside.orbitYaw)) === yaw0);
+  await capture(j, "suelta-giro", "Reto del brazo con el encuadre automático");
   await auditedSheet(j, rows, "Desatracar y soltar el Cygnus", () => window.codeship.robotics.session?.run.current ?? null, armAudit, judgeArm, "brazo-suelta");
   await p.waitForTimeout(1500);
   j.check("el Cygnus se suelta y se aleja: el CBM queda libre", await p.evaluate(() => window.codeship.robotics.cygnusState() !== "atracado"));

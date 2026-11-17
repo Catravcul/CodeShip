@@ -52,10 +52,10 @@ export class CameraStick {
     host: HTMLElement,
     className: string,
     private readonly onMove: (yaw: number, pitch: number, zoom: number) => void,
-    opts: { label?: string; zoom?: boolean; duringChallenge?: boolean } = {},
+    opts: { label?: string; zoom?: boolean } = {},
   ) {
     this.el = document.createElement("div");
-    this.el.className = `cam-stick ${className}${opts.duringChallenge ? " duel-ok" : ""}`;
+    this.el.className = `cam-stick ${className}`;
     host.appendChild(this.el);
     this.stick = new VirtualStick(this.el, "cam-knob", opts.label ?? "Cámara");
     this.stick.el.addEventListener("pointerdown", () => this.loop());

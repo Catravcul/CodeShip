@@ -52,7 +52,7 @@ Al llegar, el Cygnus **no descarga solo**: espera en el punto de captura (`Cargo
 1. Primero se ven **sus manos en los mandos del RWS**, en la Cupola (el escenario del interior, `stepVisual` con el gesto «programar»).
 2. Después se ve **el brazo fuera**, a escala real en el marco de la estación (`src/adapters/three/arm-show.ts`). Cada bloque bien colocado mueve su parte: la MBS rueda, el brazo anda de PDGF en PDGF, el LEE cierra sus cables, los pestillos y pernos del CBM se encienden uno a uno y Dextre usa sus dos manos.
 3. La cámara usa la **ventana de la Cupola** si desde ella se ve el sujeto sin nada de la estación en medio y a una distancia en la que cabe en la franja sobre la hoja. Si no, usa la **cámara exterior** con línea limpia más cercana. El rótulo de la vista dice cuál es.
-4. **La cámara se gira**: el joystick de cámara, en la escena encima de la hoja, la gira alrededor de lo que enfoca (reglas.md §5.7: nunca arrastrar) (el encuadre automático sigue siendo el de partida y se vuelve a él en cada reto). El rótulo dice entonces «cámara». Los mandos del THC siguen en pantalla en la captura a mano, como el controlador real.
+4. **La cámara encuadra sola durante el reto**: antes se giraba arrastrando sobre la escena; arrastrar ya no mueve ninguna cámara (reglas.md §5.7) y durante un reto solo se ven la hoja y la escena (§4.3), así que el joystick de cámara de la vista de fuera se oculta. Pregunta abierta a Berón: ¿se admite el joystick de cámara durante un reto? (el código ya lo sabe girar alrededor de lo que enfoca, `DockView.steer`) (el encuadre automático sigue siendo el de partida y se vuelve a él en cada reto). El rótulo dice entonces «cámara». Los mandos del THC siguen en pantalla en la captura a mano, como el controlador real.
 5. Rótulos en la escena: Canadarm2, la MBS, Dextre, el Cygnus, el CBM y la pieza. Son sprites que no tapa la geometría.
 
 La **auditoría en vivo** (`ArmShow.audit`, `RoboticsGame.audit`) mide tras cada bloque:
@@ -99,7 +99,7 @@ La pieza nueva sale del hangar al terminar el trabajo de fuera y la vieja vuelve
 2. **Las piezas de fuera del LM y de la Starship** se cambian en un paseo o con el brazo, como en la realidad, nunca en la bahía.
 3. **Si un reto falla**, cuesta el tiempo de a bordo que se ha gastado (el reloj corre durante el reto) y nada cambia.
 4. **El Cygnus atracado** se desatraca y se suelta con el brazo tras su estancia real (140 días del NG-19).
-5. **La cámara** se gira durante los retos del brazo (joystick de cámara); el encuadre automático es el de partida.
+5. **La cámara** encuadra sola durante los retos del brazo (pregunta abierta: joystick de cámara durante un reto); el encuadre automático es el de partida.
 
 ## Preguntas abiertas
 

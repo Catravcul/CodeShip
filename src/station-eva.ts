@@ -217,11 +217,12 @@ export class StationEva {
       const b = (e.target as HTMLElement).closest<HTMLElement>("[data-es]")?.dataset.es;
       if (b) this.button(b);
     });
-    // The camera joystick turns the view round her (reglas.md §5.7: never a drag on the screen), also in a challenge.
+    // The camera joystick turns the view round her (reglas.md §5.7: never a drag on the screen); in a challenge only
+    // the sheet and the scene show (§4.3) and the framing is automatic.
     this.camStick = new CameraStick(d.root, "eva-cam", (yaw, pitch) => {
       this.yaw += yaw;
       this.pitch = Math.max(-1.2, Math.min(1.3, this.pitch - pitch));
-    }, { duringChallenge: true });
+    });
   }
 
   /** In the suit (from donning to taking it off). */

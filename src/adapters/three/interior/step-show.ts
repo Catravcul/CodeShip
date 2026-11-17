@@ -824,17 +824,27 @@ export class StepShow {
         const pieces = cut ? 1 + Math.min(3, Math.floor(t * 4)) : 1;
         // In a row across the board: along the counter's depth in the galley, otherwise across her front
         // (to her sides), so no piece goes toward the machine or behind her.
-        const rx = this.df!.kitchen ? 1 : -Math.cos(this.df!.yaw);
-        const rz = this.df!.kitchen ? 0 : Math.sin(this.df!.yaw);
+        const kitchen = !!this.df!.kitchen;
+        // In the ring's galley the row runs along the counter's depth. At a machine or a 0 g galley it runs from
+        // the work toward her right hand, the side the camera looks over: neither her body nor the machine
+        // hides a piece or the tool (PX-20: the printed part's supports and the package's scissors were hidden).
+        const toHand = this.tmp.set(this.hand.x - at.x, 0, this.hand.z - at.z);
+        const len = Math.max(1e-3, toHand.length());
+        const rx = kitchen ? 1 : toHand.x / len;
+        const rz = kitchen ? 0 : toHand.z / len;
+        const step = kitchen ? 0.04 : Math.min(0.05, len / 4);
+        const start = kitchen ? -0.06 : 0;
         for (let i = 0; i < pieces; i++) {
-          const f = this.show(food[i]!, at.x + (i * 0.04 - 0.06) * rx, at.y + 0.02, at.z + (i * 0.04 - 0.06) * rz);
+          const f = this.show(food[i]!, at.x + (start + i * step) * rx, at.y + 0.02, at.z + (start + i * step) * rz);
           if (!cut) f.scale.set(0.06, 0.02 + 0.012 * Math.abs(Math.sin(this.clock * 7)), 0.05);
         }
+        // The tool is in her right hand.
+        const tool = kitchen ? this.w.set(at.x + 0.02, at.y + 0.03, at.z + 0.06) : this.w.copy(this.hand).setY(this.hand.y + 0.03);
         if (cut && v.vessel === "bolsa") {
-          const sc = this.show(p.scissors, at.x + 0.05, at.y + 0.02, at.z + 0.06);
+          const sc = this.show(p.scissors, tool.x, tool.y, tool.z);
           sc.rotation.y = this.df!.yaw + 0.3 * Math.sin(this.clock * 12);
         } else if (cut) {
-          const knife = this.show(p.knife, at.x + 0.02, at.y + 0.03 + 0.05 * Math.abs(Math.sin(this.clock * 10)), at.z + 0.06);
+          const knife = this.show(p.knife, tool.x, tool.y + 0.05 * Math.abs(Math.sin(this.clock * 10)), tool.z);
           knife.rotation.y = Math.PI / 2;
         }
         break;

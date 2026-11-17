@@ -57,6 +57,16 @@ describe("A spacewalk from Quest (real order, board clock)", () => {
     expect(e.atWorksite).toBe(true);
   });
 
+  it("hooked a little short of an anchor, going on keeps the tether on it (she is at the ring)", () => {
+    const e = out("alas");
+    const i = EVA_ROUTES.alas.findIndex((p, k) => k > 0 && p.anchor);
+    while (e.atPoint !== i) e.move(0.2);
+    expect(e.swapTether()).toBeUndefined();
+    expect(e.tetherOut).toBeCloseTo(0, 5);
+    e.move(0.1);
+    expect(e.anchor).toBe(i);
+  });
+
   it("feet in the APFR only at the worksite, and no moving with them in", () => {
     const e = out("radiadores");
     expect(e.setFeet(true)).toMatch(/sitio de trabajo/);

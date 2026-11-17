@@ -185,22 +185,22 @@ export class StationOutside {
   private readonly eyeNow = new THREE.Vector3();
   private readonly atNow = new THREE.Vector3();
   private frameProcedure(): void {
-    const e = this.armShow.eye();
-    this.armShow.viewpoint = e.viewpoint;
-    const first = this.eyeNow.lengthSq() === 0;
-    this.eyeNow.lerp(e.eye, first ? 1 : 0.08);
-    this.atNow.lerp(e.at, first ? 1 : 0.15);
-    this.root.updateMatrixWorld(true);
-    const cam = this.view.camera;
-    cam.position.copy(this.root.localToWorld(this.eyeNow.clone()));
-    cam.up.set(0, 1, 0).applyQuaternion(this.root.quaternion);
-    cam.lookAt(this.root.localToWorld(this.atNow.clone()));
-    // The strip above the sheet: the view's centre moves up to its middle.
     const canvas = document.querySelector("canvas")?.getBoundingClientRect();
     const sheet = [...document.querySelectorAll<HTMLElement>(".duel.sheet")].find((x) => !x.classList.contains("hidden"))?.getBoundingClientRect();
     const W = canvas?.width ?? innerWidth;
     const H = canvas?.height ?? innerHeight;
     const top = sheet && sheet.top > 60 ? sheet.top : H;
+    const cam = this.view.camera;
+    const e = this.armShow.eye(cam.fov, top / H, W / H);
+    this.armShow.viewpoint = e.viewpoint;
+    const first = this.eyeNow.lengthSq() === 0;
+    this.eyeNow.lerp(e.eye, first ? 1 : 0.08);
+    this.atNow.lerp(e.at, first ? 1 : 0.15);
+    this.root.updateMatrixWorld(true);
+    cam.position.copy(this.root.localToWorld(this.eyeNow.clone()));
+    cam.up.set(0, 1, 0).applyQuaternion(this.root.quaternion);
+    cam.lookAt(this.root.localToWorld(this.atNow.clone()));
+    // The strip above the sheet: the view's centre moves up to its middle.
     cam.aspect = W / H;
     if (top < H) cam.setViewOffset(W, H, 0, (H - top) / 2, W, H);
     else cam.clearViewOffset();

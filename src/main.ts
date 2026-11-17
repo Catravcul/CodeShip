@@ -983,7 +983,7 @@ const stationInside = new StationInteriorMode(root, playInterior(), {
 // Station chores acted out by Doménica at their fixture (the galley, the machines): PX-20.
 const stationSteps = stationStepVisuals(stationInside, () => screenFromInside || stationInside.active);
 // Canadarm2 and Dextre from the Cupola, and spacewalks from Quest (docs/design/brazo-robotico.md, paseo-espacial.md).
-const arm = wireRobotics({ root, scene, stationRoot: stationModel.root, duel: duelView, inside: stationInside, outside: stationOutside, cargo: lifeSupport.cargo, berth: landerBerth, bishop: bishopAirlock, atPort: atStationPort, landerMassKg: () => ship.massKg, outfit: stationOutfit, hangar: stationOps.station.hangar, say: (t, sec) => (arm.stationEva.active ? flash(t, sec ?? 5) : stationInside.say(t, sec)) });
+const arm = wireRobotics({ root, scene, stationRoot: stationModel.root, duel: duelView, inside: stationInside, outside: stationOutside, cargo: lifeSupport.cargo, berth: landerBerth, bishop: bishopAirlock, atPort: atStationPort, landerMassKg: () => ship.massKg, outfit: stationOutfit, hangar: stationOps.station.hangar, say: (t, sec) => stationInside.say(t, sec) });
 bay.planExterior = (o) => arm.planExterior(o);
 stationScreen.stepVisual = (session, mode) => stationSteps.machine(session, mode);
 let stationGrownAt = stationOutfit.version;

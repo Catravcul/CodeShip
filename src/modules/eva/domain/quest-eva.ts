@@ -155,7 +155,7 @@ export class QuestEva {
       why = `El cable de seguridad no da más (${fmt(this.tetherM)} m): cámbialo de anclaje en un punto de anclaje`;
     }
     // Back behind the anchor, the reel winds in: she unhooks it as she passes (it goes back with her).
-    if (to < anchorAt) {
+    if (to < anchorAt - 0.25) {
       let back = 0;
       for (let i = 0; i < this._anchor; i++) if (this._route[i]?.anchor && this.cumul[i]! <= to + 1e-9) back = i;
       this._anchor = back;
@@ -170,6 +170,8 @@ export class QuestEva {
     if (this._phase !== "fuera" || i === undefined || !this._route[i]?.anchor) return "Aquí no hay punto de anclaje";
     if (i === this._anchor) return "El cable ya está enganchado aquí";
     this._anchor = i;
+    // She reaches the anchor's ring to hook it: she is at it.
+    this._s = this.cumul[i]!;
     return undefined;
   }
 

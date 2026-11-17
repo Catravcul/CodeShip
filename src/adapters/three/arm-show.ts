@@ -42,6 +42,10 @@ interface Tween {
   readonly onTick?: (k: number) => void;
   readonly onEnd?: () => void;
   start?: THREE.Vector3;
+  /** Where the subject's centre was when it started (station frame). */
+  subjectStart?: THREE.Vector3;
+  /** A change that shows without moving much (thrusters going out): the audit counts it as the step's act. */
+  readonly shows?: string;
 }
 
 export interface ArmShowDeps {
@@ -70,6 +74,8 @@ export interface ArmAudit {
   readonly through: readonly string[];
   /** How far the tip or the subject moved in this block, m (0: nothing played). */
   readonly moved: number;
+  /** What changed without moving (thrusters out), if the block's act is that. */
+  readonly shows?: string;
 }
 
 const fixture = (id: string) => GRAPPLE_FIXTURES.find((f) => f.id === id)!;
@@ -104,6 +110,8 @@ export class ArmShow {
   private readonly vestibule: THREE.Mesh;
   /** Where the camera looks while a procedure plays (station frame). */
   readonly focus = new THREE.Vector3();
+  /** Radius of what the camera frames (the subject's bounding sphere), m. */
+  focusR = 2;
   viewpoint: ArmViewpoint = "camara";
   line = "";
 
@@ -326,7 +334,16 @@ export class ArmShow {
     // The path starts where the tip is now.
     if (t.path.length) t.path[0] = this.tip.clone();
     t.start = this.tip.clone();
+    t.subjectStart = this.centreOf(t.subject());
     this.line = t.caption;
+  }
+
+  /** The centre of an object's box, station frame (the tip for the arm itself). */
+  private centreOf(o: THREE.Object3D): THREE.Vector3 {
+    if (o === this.arm.root) return this.arm.tip.clone();
+    this.root.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(o);
+    return box.isEmpty() ? this.arm.tip.clone() : this.local(box.getCenter(new THREE.Vector3()));
   }
 
   /** The tip's path from here to `to` (through `via`). */
@@ -359,7 +376,7 @@ export class ArmShow {
         return T("Deriva libre: el Cygnus apaga sus propulsores y espera quieto", "Cygnus", cyg, () => {
           this.cygnus.thrusting = false;
           const p0 = this.cygnus.root.position.clone();
-          return { ...stay(), onTick: (k) => this.cygnus.root.position.copy(p0).add(new THREE.Vector3(CAPTURE.freeDriftMs.value * k * MOVE_S, 0, 0)) };
+          return { ...stay(), shows: "propulsores apagados", onTick: (k) => this.cygnus.root.position.copy(p0).add(new THREE.Vector3(CAPTURE.freeDriftMs.value * k * MOVE_S, 0, 0)) };
         });
       case "acercar":
         return T("El LEE se acerca al accesorio de agarre del Cygnus", "LEE", arm, () => {
@@ -397,7 +414,7 @@ export class ArmShow {
       case "primera-etapa":
       case "segunda-etapa": {
         const first = move === "primera-etapa";
-        return T(first ? "Primera etapa: los 4 pestillos del CBM lo arriman" : "Segunda etapa: los 16 pernos motorizados", "CBM", () => this.marks, () => {
+        return T(first ? "Primera etapa: los 4 pestillos del CBM lo arriman" : "Segunda etapa: los 16 pernos motorizados", "CBM", () => this.held?.obj ?? this.marks, () => {
           const h = this.held;
           const ring = this.cbmMarks(first ? CAPTURE.latches.value : CAPTURE.bolts.value, first ? 0xffb347 : 0x7fdcff);
           if (!h) return { ...stay(), onEnd: () => this.clearMarks() };
@@ -673,23 +690,31 @@ export class ArmShow {
     const p = subj === this.arm.root || subj === this.marks ? this.arm.tip.clone() : subj.position.clone();
     if (subj === this.marks && this.held) p.copy(this.held.obj.position);
     this.focus.lerp(p, this.focus.lengthSq() === 0 ? 1 : 0.15);
+    const box = subj === this.arm.root || subj === this.marks ? null : new THREE.Box3().setFromObject(subj);
+    const r = box && !box.isEmpty() ? box.getSize(new THREE.Vector3()).length() / 2 : 1.2;
+    this.focusR += (Math.min(12, r) - this.focusR) * 0.15;
   }
 
   /**
    * The camera for the challenge: the Cupola's windows when they see the focus (nothing of the station in
    * between and within 30 m), otherwise the nearest outside camera with a clear line. Station frame.
    */
-  eye(): { eye: THREE.Vector3; at: THREE.Vector3; viewpoint: ArmViewpoint } {
+  eye(fovDeg = 55, strip = 1, aspect = 1): { eye: THREE.Vector3; at: THREE.Vector3; viewpoint: ArmViewpoint } {
     const at = this.focus.clone();
+    // How far the camera stands for the subject to fill about two thirds of the strip above the sheet.
+    const tanV = Math.tan((fovDeg * Math.PI) / 360) * strip;
+    const tan = Math.min(tanV, Math.tan((fovDeg * Math.PI) / 360) * aspect);
+    const need = Math.max(6, (this.focusR * 1.5) / tan);
     const cup = POLANA_LAYOUT.modules.find((m) => m.id === "cupula")!;
     const window = v(cup.to).add(new THREE.Vector3(0, -0.6, 0));
-    if (at.distanceTo(window) < 30 && !segmentClear(V(window), V(at), POLANA_LAYOUT, 0.5, 0.0)) return { eye: window, at, viewpoint: "cupola" };
-    const dirs = [new THREE.Vector3(0.5, -0.5, 0.7), new THREE.Vector3(-0.6, -0.4, 0.7), new THREE.Vector3(0.6, 0.5, 0.6), new THREE.Vector3(-0.5, 0.6, 0.6), new THREE.Vector3(0.2, -0.8, -0.5), new THREE.Vector3(0, 0.3, 1)];
+    const fromWindow = at.distanceTo(window);
+    if (fromWindow > need * 0.8 && fromWindow < Math.max(30, need * 1.6) && !segmentClear(V(window), V(at), POLANA_LAYOUT, 0.5, 0.0)) return { eye: window, at, viewpoint: "cupola" };
+    const dirs = [new THREE.Vector3(0.5, -0.5, 0.7), new THREE.Vector3(-0.6, -0.4, 0.7), new THREE.Vector3(0.6, 0.5, 0.6), new THREE.Vector3(-0.5, 0.6, 0.6), new THREE.Vector3(0.2, -0.8, -0.5), new THREE.Vector3(0, -0.9, 0.4), new THREE.Vector3(0, 0.3, 1)];
     for (const d of dirs) {
-      const e = at.clone().addScaledVector(d.normalize(), 13);
+      const e = at.clone().addScaledVector(d.normalize(), need);
       if (!insideStation(V(e), POLANA_LAYOUT, -0.6) && !segmentClear(V(e), V(at), POLANA_LAYOUT, 0.5, 0.0)) return { eye: e, at, viewpoint: "camara" };
     }
-    return { eye: at.clone().add(new THREE.Vector3(6, -6, 10)), at, viewpoint: "camara" };
+    return { eye: at.clone().add(new THREE.Vector3(0.5, -0.5, 0.7).normalize().multiplyScalar(need)), at, viewpoint: "camara" };
   }
 
   /** Points of the booms, the LEE and what it holds (station frame), for the through-check. */
@@ -733,7 +758,8 @@ export class ArmShow {
     const ray = new THREE.Raycaster();
     const own = new Set<THREE.Object3D>();
     subj.traverse((o) => own.add(o));
-    if (subj === this.arm.root) this.tipObject().traverse((o) => own.add(o));
+    // The arm, Dextre and what they hold are the act itself, not what hides it.
+    for (const o of [this.arm.root, this.dextre.root, this.held?.obj]) o?.traverse((x) => own.add(x));
     for (const s of this.labels) own.add(s);
     const solids: THREE.Object3D[] = [];
     scene.traverse((o) => {
@@ -766,7 +792,7 @@ export class ArmShow {
       })
       .filter((s) => s);
     const [sx, sy] = px(pts[0]!);
-    const moved = Math.max(c.start ? c.start.distanceTo(this.tip) : 0, subj === this.arm.root ? 0 : 0.0001);
+    const moved = Math.max(c.start ? c.start.distanceTo(this.tip) : 0, c.subjectStart ? c.subjectStart.distanceTo(this.centreOf(subj)) : 0);
     return {
       procedure: this.proc,
       move: c.move,
@@ -779,6 +805,7 @@ export class ArmShow {
       ...(hiddenBy ? { hiddenBy } : {}),
       through: [...new Set(through)],
       moved: Math.round(moved * 100) / 100,
+      ...(c.shows ? { shows: c.shows } : {}),
     };
   }
 

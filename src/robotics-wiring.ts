@@ -48,7 +48,9 @@ export function wireRobotics(d: RoboticsWiringDeps) {
     }
     return `Montado: ${c.name} · lo viejo va al hangar · la estación puede usar ${d.outfit.capacityKw.toLocaleString("es-ES")} kW`;
   };
-  const stationEva = new StationEva({ root: d.root, scene: d.scene, station: d.stationRoot, duel: d.duel, inside: d.inside, outside: d.outside, work, fitComponent, say: d.say });
+  // Outside, what is said goes on her own line (the rest of the screen is hidden while she is out).
+  const say = (text: string, seconds?: number) => (stationEva.active ? stationEva.say(text, seconds) : d.say(text, seconds));
+  const stationEva: StationEva = new StationEva({ root: d.root, scene: d.scene, station: d.stationRoot, duel: d.duel, inside: d.inside, outside: d.outside, work, fitComponent, say });
   d.outside.cygnusOf = () => robotics.cygnusState();
   return {
     work,

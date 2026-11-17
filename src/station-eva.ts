@@ -9,7 +9,7 @@ import { EMU, SAFETY_TETHER_M } from "@modules/eva/data/suit";
 import { QuestEva } from "@modules/eva/domain/quest-eva";
 import type { ExteriorWork } from "@modules/robotics/application/exterior-work";
 import { GRAPPLE_FIXTURES } from "@modules/robotics/data/robotics";
-import { insideStation } from "@modules/robotics/domain/clearance";
+import { insideStation, segmentClear } from "@modules/robotics/domain/clearance";
 import { POLANA_LAYOUT } from "@modules/station/data/structure";
 import type { Fixture } from "@modules/station/domain/interior";
 import { P } from "./adapters/three/interior/figure";
@@ -437,6 +437,11 @@ export class StationEva {
     if (this.active && this.eva.suit.status === "volver") this.line = "⚠ Queda poco margen de oxígeno: vuelve a Quest";
   }
   private line = "";
+  private note = { text: "", until: 0 };
+  /** What the game says while she is outside: on her line, above the controls (the rest of the screen is hidden). */
+  say(text: string, seconds = 5): void {
+    this.note = { text, until: performance.now() + seconds * 1000 };
+  }
 
   /** Each frame while outside. */
   update(dt: number): void {
@@ -543,7 +548,14 @@ export class StationEva {
     const off = back.multiplyScalar(Math.cos(this.pitch)).addScaledVector(n, Math.sin(this.pitch) + 0.2).addScaledVector(side, 0.35).applyQuaternion(rot).normalize().multiplyScalar(this.d.duel.visible ? 3.6 : 4.5);
     let eye = at.clone().add(off);
     // Never inside the station: pull in along the line until it is clear.
-    for (let i = 0; i < 8 && insideStation(V(eye), POLANA_LAYOUT, -0.3); i++) eye = at.clone().addScaledVector(off, 1 - (i + 1) * 0.11);
+    // Never inside the station nor behind it: other sides first, then closer in, until the line to her is clear.
+    const blocked = (e: THREE.Vector3) => !!insideStation(V(e), POLANA_LAYOUT, -0.3) || !!segmentClear(V(e), V(at), POLANA_LAYOUT, 0.25, 0.0);
+    if (blocked(eye)) {
+      const tries: THREE.Vector3[] = [];
+      for (const k of [1, 0.75, 0.55, 0.4]) for (const a of [0, 0.6, -0.6, 1.2, -1.2, Math.PI]) tries.push(at.clone().addScaledVector(off.clone().applyAxisAngle(n, a), k));
+      tries.push(at.clone().addScaledVector(n, 3));
+      eye = tries.find((e) => !blocked(e)) ?? at.clone().addScaledVector(n, 3);
+    }
     this.eyeNow.lerp(eye, this.eyeNow.lengthSq() === 0 ? 1 : 0.15);
     this.root.updateMatrixWorld(true);
     const c = this.camera;
@@ -586,7 +598,7 @@ export class StationEva {
       e.atHatch ? b("entrar", "Entrar en Quest", true, this.jobDone) : "",
     ].join("");
     const where = at !== undefined ? e.route[at]!.label : `${e.s.toLocaleString("es-ES", { maximumFractionDigits: 0 })} de ${e.length.toLocaleString("es-ES", { maximumFractionDigits: 0 })} m de asideros`;
-    const line = this.line || where;
+    const line = this.line || (performance.now() < this.note.until ? this.note.text : "") || where;
     const key = cells + ctl + line;
     if (key === this.hudKey) return;
     this.hudKey = key;

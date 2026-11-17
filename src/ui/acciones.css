@@ -30,7 +30,7 @@ body.in-cockpit .ctx-dock { left: auto; right: 16px; transform: none; bottom: 24
 body.in-cockpit .ctx-dock > .rapport-chip, body.in-cockpit .ctx-dock > .trip-chip, body.in-cockpit .ctx-dock > .region-tag { align-self: stretch; }
 @media (pointer: coarse) {
   /* Above the MOVER pad (4 rows) and right of the MIRAR stick. */
-  body.in-cockpit .ctx-dock { right: 10px; bottom: calc(266px + env(safe-area-inset-bottom)); width: calc(100vw - 150px); }
+  body.in-cockpit .ctx-dock { right: 62px; /* clear of the root menu column (§5.5) */ bottom: calc(266px + env(safe-area-inset-bottom)); width: calc(100vw - 202px); }
   body.in-cockpit .ctx-dock > .region-tag { font-size: 11px; text-align: left; }
   /* Left thumb: turning (GIRAR) and looking (MIRAR) together. */
   body.in-cockpit .pilot-look { left: 14px; right: auto; margin-left: 0; bottom: calc(222px + env(safe-area-inset-bottom)); }

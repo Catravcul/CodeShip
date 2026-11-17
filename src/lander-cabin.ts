@@ -43,6 +43,8 @@ export class LanderCabin extends WalkRoom<CabinStationId> {
       title: "Habitáculo del módulo",
       geometry: g.group,
       speedMs: 0.55,
+      // In 0 g, also landed on an asteroid (no area has gravity, reglas §2): hops between handholds, never walking.
+      zeroG: true,
       signs: ["asiento", "mente", "ecs", "esterilla", "acople"],
       hatches: [
         { station: "acople", ...lmDockingHatch(LANDER_CABIN, k) },

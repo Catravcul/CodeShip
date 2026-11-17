@@ -33,6 +33,12 @@ export class TripPreview {
   private readonly endMat = new THREE.LineBasicMaterial({ color: 0x7dffb0, transparent: true, opacity: 0.95, depthTest: false });
   open = false;
   onClose?: () => void;
+  /** The player's own look around the vehicle (drag) and distance (wheel, pinch): «la cámara siempre se puede mover». */
+  private orbitYaw = 0;
+  private orbitPitch = 0;
+  private zoomK = 1;
+  private readonly touches = new Map<number, { x: number; y: number }>();
+  private pinchGap = 0;
 
   constructor(root: HTMLElement) {
     this.frame = document.createElement("div");
@@ -47,7 +53,56 @@ export class TripPreview {
       this.open = false;
       this.onClose?.();
     });
+    // Full screen, the frame takes the gestures: drag turns round the vehicle, wheel and pinch zoom.
+    const gap = () => {
+      const [a, b] = [...this.touches.values()];
+      return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
+    };
+    this.frame.addEventListener("pointerdown", (e) => {
+      if ((e.target as HTMLElement).closest("button")) return;
+      this.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      this.pinchGap = gap();
+    });
+    window.addEventListener("pointermove", (e) => {
+      const t = this.touches.get(e.pointerId);
+      if (!t) return;
+      if (this.touches.size >= 2) {
+        t.x = e.clientX;
+        t.y = e.clientY;
+        const g = gap();
+        if (this.pinchGap > 0 && g > 0) this.zoom(this.pinchGap / g);
+        this.pinchGap = g;
+        return;
+      }
+      this.orbit(-(e.clientX - t.x) * 0.006, (e.clientY - t.y) * 0.006);
+      t.x = e.clientX;
+      t.y = e.clientY;
+    });
+    const lift = (e: PointerEvent) => {
+      this.touches.delete(e.pointerId);
+      this.pinchGap = gap();
+    };
+    window.addEventListener("pointerup", lift);
+    window.addEventListener("pointercancel", lift);
+    this.frame.addEventListener("wheel", (e) => this.zoom(e.deltaY > 0 ? 1.1 : 0.9), { passive: true });
   }
+
+  /** Turn the view round the vehicle (radians). */
+  orbit(dYaw: number, dPitch: number): void {
+    this.orbitYaw += dYaw;
+    this.orbitPitch = Math.max(-1.3, Math.min(1.3, this.orbitPitch + dPitch));
+  }
+
+  /** Closer (<1) or further (>1), between a close look and the whole route around it. */
+  zoom(factor: number): void {
+    this.zoomK = Math.max(0.35, Math.min(12, this.zoomK * factor));
+  }
+
+  /** Camera distance from the vehicle now, m (for checks). */
+  get distanceM(): number {
+    return this.camera.position.distanceTo(this.lastAt);
+  }
+  private readonly lastAt = new THREE.Vector3();
 
   /**
    * The rectangle in CSS pixels. «Ver trayecto» takes the whole screen (the room's HUD hides, the trip's
@@ -72,6 +127,11 @@ export class TripPreview {
     this.subject = s;
     // The trip is over: close it (the next trip starts with it closed) and hide the frame now,
     // since no render will run to do it.
+    if (s?.label !== this.subject?.label) {
+      this.orbitYaw = 0;
+      this.orbitPitch = 0;
+      this.zoomK = 1;
+    }
     if (!s) {
       this.open = false;
       this.frame.classList.remove("on");
@@ -144,8 +204,12 @@ export class TripPreview {
     const back = s.goal ? p.position.sub(s.goal()).normalize() : q.rotate(new Vec3(0, 0, 1));
     const up = q.rotate(Vec3.Y);
     const side = back.cross(up).length() > 1e-6 ? back.cross(up).normalize() : Vec3.X;
-    const eye = p.position.add(back.scale(s.sizeM * 2.2)).add(up.scale(s.sizeM * 0.7)).add(side.scale(s.sizeM * 0.9));
+    const base = back.scale(2.2).add(up.scale(0.7)).add(side.scale(0.9));
+    // The player's own turn: yaw about the vehicle's up, pitch about the side.
+    const turned = rotateAbout(rotateAbout(base, up, this.orbitYaw), side, this.orbitPitch);
+    const eye = p.position.add(turned.scale(s.sizeM * this.zoomK));
     this.camera.position.set(eye.x, eye.y, eye.z);
+    this.lastAt.set(p.position.x, p.position.y, p.position.z);
     this.camera.up.set(up.x, up.y, up.z);
     this.camera.lookAt(p.position.x, p.position.y, p.position.z);
     this.camera.aspect = r.w / r.h;
@@ -161,4 +225,12 @@ export class TripPreview {
     renderer.setScissorTest(false);
     renderer.setViewport(0, 0, window.innerWidth, H);
   }
+}
+
+/** v turned by `a` radians about the unit axis k (Rodrigues). */
+function rotateAbout(v: Vec3, k: Vec3, a: number): Vec3 {
+  if (!a) return v;
+  const c = Math.cos(a);
+  const sn = Math.sin(a);
+  return v.scale(c).add(k.cross(v).scale(sn)).add(k.scale(k.dot(v) * (1 - c)));
 }

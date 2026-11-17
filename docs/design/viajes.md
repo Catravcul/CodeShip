@@ -88,6 +88,10 @@ Regla 3.1: ningún trayecto se teletransporta por defecto. Revisión de todos lo
 | Salida EVA del LM | reto del traje y luego la superficie | sin cambiar (pendiente: hoja de la escotilla delantera) |
 | Teletransporte elegido en Tareas | corte con aviso | igual: es la opción del jugador |
 
+Mientras cruza una escotilla en 0 g la cámara se aparta un poco, a un lado dentro del compartimento, para verla a ella con la mano en la escotilla y la hoja girando; los carteles se ocultan. Después vuelve la vista que tenía.
+
+Capturas de PX-36 (`docs/screenshots/trayectos-*-movil.png`): 1 escotilla del techo del LM, 2 escotilla a la cubierta de vuelo, 3–4 «Ver trayecto» (y girado a mano), 5 atraque, 6 túnel de proa, 7 llegada a Planos, 8–9 bahía con la Starship a escala real y con zoom.
+
 Archivos: `src/adapters/three/interior/hatch-leaf.ts` (la hoja), `StationInteriorMode.passHatch` / `arriveThrough` (0 g), `WalkRoom.passHatch` (puente y LM), el grafo `journey-world.ts` (sala `nave`) y `src/journey.ts`.
 
 ## La bahía: zoom

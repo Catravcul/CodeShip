@@ -52,7 +52,9 @@ export async function starship(j) {
   // 1. From the lander's cabin, through the docking hatch into deck 3.
   await j.tap(".stand-btn", "Levantarse: habitáculo");
   await j.useMachine("cabin", "acople", "entrar-nodriza", "Entrar en la nave de viaje");
-  await p.waitForTimeout(1500);
+  // She walks to the roof hatch, opens it and floats through (docs/design/viajes.md, «Trayectos por dentro»).
+  await p.waitForFunction(() => window.codeship.starship.active && !window.codeship.starship.mode.throughHatch, null, { timeout: 30000 }).catch(() => {});
+  await p.waitForTimeout(500);
   const in3 = await p.evaluate(() => ({ active: window.codeship.starship.active, deck: window.codeship.starship.where() }));
   j.check("entra por la escotilla del módulo a la cubierta 3 de la Starship", in3.active && in3.deck === "cubierta-3", JSON.stringify(in3));
   const hud = (await j.texts(".sts-ui .sts-hud")).join(" ");
@@ -105,7 +107,9 @@ export async function starship(j) {
   await p.waitForTimeout(1200);
   await capture(j, "escotilla-vuelo", "Escotilla de la cubierta de vuelo");
   await j.tap('.sts-card:not(.hidden) [data-act="subir"]', "Subir a la cubierta de vuelo");
-  await p.waitForTimeout(1500);
+  // The ceiling hatch opens and she goes up through it.
+  await p.waitForFunction(() => window.codeship.bridge.active, null, { timeout: 20000 }).catch(() => {});
+  await p.waitForTimeout(500);
   j.check("arriba está el puente con sus consolas", await p.evaluate(() => window.codeship.bridge.active && !window.codeship.starship.active));
 
   // 6. The propulsion page: vacuum Raptors and methane and oxygen; the power page has no reactor.

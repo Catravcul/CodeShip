@@ -3,7 +3,7 @@
 Generado por `tools/experiencia/animaciones.mjs` (recorrido PX-20, `npm run experiencia -- PX-20`), en un iPhone 13 (390 × 664 visibles, 1×).
 Cada reto se juega con toques en las respuestas correctas, en «paso a paso» (cada bloque bien colocado es un paso). Tras cada paso se mide en la escena 3D (`src/adapters/three/interior/step-audit.ts`):
 
-- **Alcance**: cada objeto a ≤ 0.8 m de una de sus manos, o sobre el sitio del paso (≤ 0,45 m) con ella de pie delante (≤ 0,9 m).
+- **Alcance**: cada objeto a ≤ 0.8 m de una de sus manos (a su punto más cercano), o sobre el sitio del paso (≤ 0,45 m) con ella de pie delante (≤ 0,9 m).
 - **A la vista**: alguna parte del objeto en la franja de escena sobre la hoja del reto y sin muebles ni su cuerpo delante.
 - **Sin atravesar**: el centro del objeto no está dentro de otra pieza (encimera, pared, máquina).
 - **Gesto**: su pose se aparta de la de espera al menos 0.3 rad, y su mano se ve.
@@ -11,13 +11,13 @@ Cada reto se juega con toques en las respuestas correctas, en «paso a paso» (c
 
 Regla (docs/qa/README.md): todo reto o visual de paso nuevo debe pasar esta auditoría.
 
-**38 de 38 pasos bien.**
+**43 de 44 pasos bien.**
 
 Sin anillo (REAL_ONLY, src/core/realism.ts): sus tareas y su consola de navegación no se juegan.
 Tareas del anillo jugadas: 0 (0 clases).
 Estación: sin sitio a bordo para «laboratorio-bio»: no hay módulo con rack donde montarlo, no se juega.
 El viaje desde la consola de navegación: el mapa se oculta con el reto como toda interfaz (foco del reto, sin excepciones) y el plan se dibuja en la escena del reto, que lo encuadra en la franja sobre la hoja cuando la vista de la consola no lo ve (PlanOverlay.view).
-Estación (escala 1,5): la cocina y las máquinas (refinar, fabricar, laboratorio de biología, importar) con Doménica en los estribos de cada una. Sin visual de pasos, aplazados con nano_net (sistema ficticio, al backlog): los retos de nano_net.
+Estación (escala 1,5): la cocina, su camarote de Harmony (dormir: junto al saco, mirando fuera del camarote) y las máquinas (refinar, fabricar, laboratorio de biología, importar) con Doménica en los estribos de cada una. Sin visual de pasos, aplazados con nano_net (sistema ficticio, al backlog): los retos de nano_net.
 
 | Tarea | Paso | Se ve | Captura | Resultado |
 |---|---|---|---|---|
@@ -35,9 +35,15 @@ Estación (escala 1,5): la cocina y las máquinas (refinar, fabricar, laboratori
 | Estación: Cocinar Avena rehidratada con crema de cacahuete | conecta la aguja del dispensador al tapón del envase | reparar · objetivo | <img src="../screenshots/anim/estacion-cocina-02.webp" width="180" alt="Estación: Cocinar Avena rehidratada con crema de cacahuete: conecta la aguja del dispensador al tapón del envase"> | ✓ bien |
 | Estación: Cocinar Avena rehidratada con crema de cacahuete | caliente | calentar · objetivo | <img src="../screenshots/anim/estacion-cocina-03.webp" width="180" alt="Estación: Cocinar Avena rehidratada con crema de cacahuete: caliente"> | ✓ bien |
 | Estación: Cocinar Avena rehidratada con crema de cacahuete | amasa el envase para que el agua llegue a todo | amasar · objetivo | <img src="../screenshots/anim/estacion-cocina-04.webp" width="180" alt="Estación: Cocinar Avena rehidratada con crema de cacahuete: amasa el envase para que el agua llegue a todo"> | ✓ bien |
-| Estación: Cocinar Avena rehidratada con crema de cacahuete | espera a que se rehidrate | reposar · objetivo | <img src="../screenshots/anim/estacion-cocina-05.webp" width="180" alt="Estación: Cocinar Avena rehidratada con crema de cacahuete: espera a que se rehidrate"> | ✓ bien |
+| Estación: Cocinar Avena rehidratada con crema de cacahuete | espera a que se rehidrate | reposar · objetivo | <img src="../screenshots/anim/estacion-cocina-05.webp" width="180" alt="Estación: Cocinar Avena rehidratada con crema de cacahuete: espera a que se rehidrate"> | ✗ food1 no se ve (tapado por BoxGeometry) |
 | Estación: Cocinar Avena rehidratada con crema de cacahuete | corta la boca del envase con las tijeras | cortar · objetivo | <img src="../screenshots/anim/estacion-cocina-06.webp" width="180" alt="Estación: Cocinar Avena rehidratada con crema de cacahuete: corta la boca del envase con las tijeras"> | ✓ bien |
 | Estación: Cocinar Avena rehidratada con crema de cacahuete | come con la cuchara: la avena húmeda se queda pegada a ella | gesto · objetivo | <img src="../screenshots/anim/estacion-cocina-07.webp" width="180" alt="Estación: Cocinar Avena rehidratada con crema de cacahuete: come con la cuchara: la avena húmeda se queda pegada a ella"> | ✓ bien |
+| Estación: dormir en tu camarote | comprueba que el ventilador del camarote sopla | revisar · objetivo | <img src="../screenshots/anim/estacion-dormir-01.webp" width="180" alt="Estación: dormir en tu camarote: comprueba que el ventilador del camarote sopla"> | ✓ bien |
+| Estación: dormir en tu camarote | 06:00 GMT | programar · objetivo | <img src="../screenshots/anim/estacion-dormir-02.webp" width="180" alt="Estación: dormir en tu camarote: 06:00 GMT"> | ✓ bien |
+| Estación: dormir en tu camarote | métete en el saco de dormir sujeto a la pared | saco · objetivo | <img src="../screenshots/anim/estacion-dormir-03.webp" width="180" alt="Estación: dormir en tu camarote: métete en el saco de dormir sujeto a la pared"> | ✓ bien |
+| Estación: dormir en tu camarote | sube la cremallera del saco hasta el pecho | saco · objetivo | <img src="../screenshots/anim/estacion-dormir-04.webp" width="180" alt="Estación: dormir en tu camarote: sube la cremallera del saco hasta el pecho"> | ✓ bien |
+| Estación: dormir en tu camarote | apaga la luz del camarote | luz · objetivo | <img src="../screenshots/anim/estacion-dormir-05.webp" width="180" alt="Estación: dormir en tu camarote: apaga la luz del camarote"> | ✓ bien |
+| Estación: dormir en tu camarote | cierra los ojos y duerme | dormir · objetivo | <img src="../screenshots/anim/estacion-dormir-06.webp" width="180" alt="Estación: dormir en tu camarote: cierra los ojos y duerme"> | ✓ bien |
 | Estación: refinar (Extracción térmica del agua) | 18 kg | programar · objetivo | <img src="../screenshots/anim/estacion-refinar-01.webp" width="180" alt="Estación: refinar (Extracción térmica del agua): 18 kg"> | ✓ bien |
 | Estación: refinar (Extracción térmica del agua) | tritura la roca | moler · objetivo | <img src="../screenshots/anim/estacion-refinar-02.webp" width="180" alt="Estación: refinar (Extracción térmica del agua): tritura la roca"> | ✓ bien |
 | Estación: refinar (Extracción térmica del agua) | cierra el horno | reparar · objetivo | <img src="../screenshots/anim/estacion-refinar-03.webp" width="180" alt="Estación: refinar (Extracción térmica del agua): cierra el horno"> | ✓ bien |

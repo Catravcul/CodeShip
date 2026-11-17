@@ -5,13 +5,18 @@ import type { Workout } from "@modules/wellness/data/exercise";
 import type { YogaSequence } from "@modules/wellness/data/yoga";
 import type { CrewArea } from "../domain/interior";
 import type { Larder } from "./bio-ops";
+import { sleepChore } from "@modules/chores/application/catalog";
+import { SLEEP_STEPS, SLEEP_WRONG } from "@modules/wellness/data/sleep";
 
 /** Where each kind of chore is done at the station. */
-const AREA: Readonly<Partial<Record<Chore["kind"], CrewArea>>> = { cocinar: "cocina", yoga: "esterilla", ejercicio: "ejercicio" };
+const AREA: Readonly<Partial<Record<Chore["kind"], CrewArea>>> = { cocinar: "cocina", yoga: "esterilla", ejercicio: "ejercicio", dormir: "camarotes" };
+
+/** Going to sleep in her crew quarter: always there to do, one challenge per step. */
+const SLEEP = sleepChore(SLEEP_STEPS, SLEEP_WRONG);
 
 export const STATION_AREA_NAME: Readonly<Record<CrewArea, string>> = {
   cocina: "Cocina de la estación",
-  camarotes: "Camarotes de la estación",
+  camarotes: "Tu camarote (Harmony)",
   aseo: "Aseo de la estación",
   ejercicio: "Rincón de ejercicio de la estación (Nodo 1)",
   esterilla: "Esterilla de yoga de la estación (Nodo 1)",
@@ -68,7 +73,7 @@ export class StationCrew {
   /** What can be done at the station now: dishes the larder allows, yoga, workouts. */
   chores(): Chore[] {
     this.syncPantry();
-    return this.habitat.chores(this.ctx.recipes, this.ctx.yoga, { workouts: this.ctx.workouts }).filter((c) => AREA[c.kind]);
+    return [...this.habitat.chores(this.ctx.recipes, this.ctx.yoga, { workouts: this.ctx.workouts }).filter((c) => AREA[c.kind]), SLEEP];
   }
 
   choresAt(area: CrewArea): Chore[] {
@@ -83,6 +88,17 @@ export class StationCrew {
     const c = this.chores().find((x) => x.id === id);
     const context: ChoreContext = { recipes: this.ctx.recipes };
     const s = c && this.habitat.start(c, context);
+    if (s && c.kind === "dormir") {
+      // Asleep: the night does her good (CrewMember.rest), once the last step is solved.
+      const answer = s.answer.bind(s);
+      s.answer = (a) => {
+        const was = s.run.status;
+        const ok = answer(a);
+        if (was !== "done" && s.run.status === "done") this.habitat.crew.rest();
+        return ok;
+      };
+      return s;
+    }
     const pantry = this.ctx.pantry?.();
     if (!s || !pantry || c.kind !== "cocinar") return s;
     // The dish is served: its meal leaves the pantry.

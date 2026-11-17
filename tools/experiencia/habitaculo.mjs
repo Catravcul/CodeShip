@@ -39,9 +39,9 @@ export async function habitaculo(j) {
     j.check(`junto a «${id}» sale una sola tarjeta, la suya, y ningún botón se solapa`, r.near === id && r.cards === 1 && over.length === 0, `${r.near} · ${r.cards} tarjeta(s)${over.length ? " · " + over.slice(0, 2).join("; ") : ""}`);
   }
   await j.shot("habitaculo-maquinas");
-  await j.useMachine("cabin", "acople", "desacoplar", "Desacoplar");
+  await j.useMachine("cabin", "asiento", "desacoplar", "Desacoplar desde el puesto del comandante");
   await p.waitForTimeout(600);
-  j.check("la consola de acople desacopla el módulo", await p.evaluate(() => !window.codeship.docking.docked));
+  j.check("el puesto del comandante desacopla el módulo", await p.evaluate(() => !window.codeship.docking.docked));
   await capture(j, "acople", "Consola de acople");
 
   // The yoga mat: sit in lotus, the settings open; keyboard help on and off, kept in the browser.

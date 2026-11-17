@@ -323,6 +323,17 @@ export function cookingChore(r: Recipe, pool: readonly string[] = []): Chore {
   };
 }
 
+/** Going to sleep in one's crew quarter: each step one challenge (modules/wellness/data/sleep.ts). */
+export function sleepChore(steps: readonly string[], wrong: readonly string[]): Chore {
+  return {
+    id: "dormir",
+    kind: "dormir",
+    title: "Dormir en tu camarote",
+    scenario: "Un día de a bordo termina: al saco, con el ventilador del camarote en marcha",
+    exercises: stepChain("dormir", 1, (i) => `Dormir: paso ${i + 1}`, steps, wrong),
+  };
+}
+
 /** A machine turns a harvest into an ingredient; each step is one challenge. */
 export function processChore(p: Process, pool: readonly string[] = []): Chore {
   return {

@@ -24,8 +24,10 @@ export async function catalogoNaves(j) {
   await j.tap(".stand-btn", "Levantarse: habitáculo");
   await j.useMachine("cabin", "acople", "entrar-estacion", "Entrar en la estación");
   await p.waitForTimeout(800);
-  await j.setup("Doménica va hasta la refinería", () => window.codeship.stationInside.placeAt("refineria"));
-  await j.tap('.sti-card [data-act="abrir"]', "Abrir (refinería)");
+  // The vehicle catalogue and its assembly open at the Cupola's robotic workstation (docs/design/compartimentos.md).
+  await j.setup("Doménica va hasta el puesto robótico de la Cupola", () => window.codeship.stationInside.placeAt("cupula"));
+  await p.waitForFunction(() => window.codeship.stationInside.nearFixture() === "cupula", null, { timeout: 15000 }).catch(() => undefined);
+  await j.tap('.sti-card [data-act="inventario"]', "Catálogo y montaje (puesto robótico de la Cupola)");
   await p.waitForTimeout(600);
   await j.tap('.st-tabs [data-tab="hangar"]', "Pestaña Hangar");
   await p.waitForTimeout(500);

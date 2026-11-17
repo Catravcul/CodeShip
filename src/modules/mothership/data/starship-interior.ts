@@ -3,6 +3,7 @@ import type { Face, Fixture, InteriorVolume, StationInteriorPlan } from "@module
 import { rackSpec } from "@modules/life-support/data/eclss-machines";
 import type { RackKind } from "@modules/life-support/domain/eclss";
 import { eclssFixtureId, eclssFixtures, type RackPlacement } from "@modules/station/data/eclss-placement";
+import { backWallFixture, CREW_QUARTER, OWN_BUNK, wallCompartment } from "@modules/station/data/compartments";
 import { STARSHIP_SRC } from "./starship";
 
 /**
@@ -139,7 +140,6 @@ export function starshipInteriorPlan(): StationInteriorPlan {
     onWall("subir-cubierta-vuelo", "Escotilla a la cubierta de vuelo", 1, "techo", new Vec3(1.27, 0.1, 1.27), { kind: "consola", id: "cubierta-vuelo" }, "Por aquí se sube a la cubierta de vuelo, bajo los depósitos de cabecera de la proa", ISS.cbm),
     onWall("salir-estacion", "Túnel de proa: a la estación", 1, "proa", new Vec3(0.8, 0.8, 0.1), { kind: "salir", to: "nodriza" }, "El puerto IDSS del morro, como el del HLS: con la nave atracada lleva a la estación", ISS.idss),
     // Deck 2: four crew quarters and the WHC.
-    onWall("camarotes", "Camarotes (4)", 2, "babor", new Vec3(1.05, 2.0, 4.0), crew("camarotes"), "Cuatro camarotes de 2,1 m³ en fila, del tamaño de un bastidor, como los de Harmony: saco sujeto a la pared, luz, ventilador y portátil", ISS.crewQuarters),
     onWall("aseo", "Aseo (WHC)", 2, "estribor", rack().x, crew("aseo"), "Aseo con flujo de aire, como el WHC de la ISS: en 0 g el aire arrastra lo que en la Tierra cae", ISS.whc, 1.45),
     onWall(eclssFixtureId("refugio"), rackSpec("refugio").name, 2, "popa", rackSize("refugio", "popa"), { kind: "soporte-vital", rack: "refugio" }, rackSpec("refugio").info, rackSpec("refugio").source, -1.45),
     // The species catalogue (docs/design/catalogo-especies.md, «Ranuras de rack»): its terminal, with the
@@ -154,6 +154,34 @@ export function starshipInteriorPlan(): StationInteriorPlan {
     onWall("salir-modulo", "Escotilla del módulo de aterrizaje", 3, "popa", new Vec3(0.8, 0.8, 0.1), { kind: "salir", to: "sonda" }, "Puerto IDSS del costado (nuestro): el módulo de aterrizaje se acopla aquí", ISS.idss),
     onWall("almacen", "Almacén", 3, "popa", new Vec3(1.05, 2.0, 0.86), { kind: "info" }, "Bolsas de carga y comida del mes, sujetas en los huecos curvos entre los bastidores y el casco", ISS.ispr, -1.45),
   ];
+  // Deck 2: four crew quarters one floats into, ISS-type (2,1 m³), two off the port wall and two off the forward one.
+  const deck2 = volumes.find((v) => v.id === "cubierta-2")!;
+  const CQ_WALLS = [["babor", -1.2], ["babor", 1.2], ["proa", -1.2], ["proa", 1.2]] as const;
+  CQ_WALLS.forEach(([face, along], i) => {
+    const { room, doorway } = wallCompartment({
+      id: `camarote-${i + 1}`,
+      code: `CQ${i + 1}`,
+      label: `Camarote ${i + 1}`,
+      aisle: deck2,
+      face,
+      along,
+      size: { w: CREW_QUARTER.widthM, h: CREW_QUARTER.heightM, d: CREW_QUARTER.depthM },
+      door: { w: CREW_QUARTER.doorWidthM, h: CREW_QUARTER.doorHeightM },
+      basis: "Distribución nuestra: SpaceX no ha publicado los camarotes de la Starship; aquí son como los de Harmony (2,1 m³ cada uno)",
+      source: ISS.crewQuarters,
+    });
+    volumes.push(room, doorway);
+    fixtures.push(
+      backWallFixture(room, face, {
+        id: `saco-${i + 1}`,
+        label: `saco-${i + 1}` === OWN_BUNK ? "Tu saco de dormir" : `Saco de dormir · camarote ${i + 1}`,
+        size: { w: 0.7, h: 1.8, d: 0.12 },
+        action: crew("camarotes"),
+        info: "Camarote de 2,1 m³ como los de Harmony (distribución nuestra): saco sujeto a la pared, luz regulable, portátil y ventilador propio",
+        source: ISS.crewQuarters,
+      }),
+    );
+  });
   for (const d of STARSHIP_DECKS) fixtures.push(...eclssFixtures(volumes.find((v) => v.id === d.id)!, STARSHIP_ECLSS[d.deck]));
   // The hatches between decks, seen from each side: from below on the ceiling, from above on the floor.
   for (const [h, lower, upper] of [["escotilla-3-2", "cubierta-3", "cubierta-2"], ["escotilla-2-1", "cubierta-2", "cubierta-1"]] as const) {

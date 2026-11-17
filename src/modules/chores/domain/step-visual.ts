@@ -42,7 +42,10 @@ export type KitchenAction =
   | "emplatar";
 
 /** Care verbs: plants, animals, sickbay, lab, machines. */
-export type CareAction = "regar" | "agitar" | "cosechar" | "servir" | "mimar" | "jugar" | "programar" | "revisar" | "reparar" | "curar" | "postura" | "entrenar";
+export type CareAction = "regar" | "agitar" | "cosechar" | "servir" | "mimar" | "jugar" | "programar" | "revisar" | "reparar" | "curar" | "postura" | "entrenar" | SleepAction;
+
+/** Going to sleep in a crew quarter (modules/wellness/data/sleep.ts): into the bag and zip it, the light, asleep. */
+export type SleepAction = "saco" | "luz" | "dormir";
 
 /**
  * The shared vocabulary. `gesto` is the fallback: a hands-on gesture with no prop.

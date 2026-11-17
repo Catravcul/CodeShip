@@ -14,7 +14,11 @@ const graph = new RailGraph(rails);
 
 describe("station handrails", () => {
   it("every module and the hangar has rails", () => {
-    for (const v of POLANA_INTERIOR.volumes.filter((x) => x.kind !== "escotilla")) expect(rails.some((r) => r.id.startsWith(`${v.id}:`)), v.id).toBe(true);
+    for (const v of POLANA_INTERIOR.volumes.filter((x) => x.kind !== "escotilla")) {
+      // A compartment (crew quarter, Cupola, Bishop) has the bar of its machine (the sleeping bag, the RWS, the payload plate).
+      const own = v.kind === "compartimento" ? POLANA_INTERIOR.fixtures.filter((f) => f.volume === v.id).map((f) => `${f.id}:`) : [`${v.id}:`];
+      expect(rails.some((r) => own.some((p) => r.id.startsWith(p))), v.id).toBe(true);
+    }
   });
 
   it("she fits wherever she holds a rail", () => {
@@ -49,8 +53,9 @@ describe("station handrails", () => {
     }
     const plan = stationInteriorPlan(o.layout, o);
     const grown = stationHandrails(plan);
-    const corridors = plan.volumes.filter((v) => v.kind !== "escotilla" && v.kind !== "hangar");
-    expect(corridors.length).toBeGreaterThan(POLANA_INTERIOR.volumes.filter((v) => v.kind !== "escotilla" && v.kind !== "hangar").length);
+    const corridor = (v: { kind: string }) => v.kind !== "escotilla" && v.kind !== "hangar" && v.kind !== "compartimento";
+    const corridors = plan.volumes.filter(corridor);
+    expect(corridors.length).toBeGreaterThan(POLANA_INTERIOR.volumes.filter(corridor).length);
     for (const v of corridors) expect(grown.filter((r) => r.id.startsWith(`${v.id}:`)).length, v.id).toBeGreaterThanOrEqual(4);
   });
 

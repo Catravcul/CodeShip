@@ -55,7 +55,8 @@ describe("EST-21 doors say where they lead", () => {
   const doors = POLANA_INTERIOR.fixtures.filter((f) => f.action.kind === "puerta");
 
   it("every hatch between two areas is a door on each side, named after the other side", () => {
-    const hatches = POLANA_INTERIOR.volumes.filter((v) => v.kind === "escotilla" && !v.id.startsWith("tunel"));
+    // The compartments' openings (crew quarters, Cupola, Bishop) have no door: she floats in.
+    const hatches = POLANA_INTERIOR.volumes.filter((v) => v.kind === "escotilla" && !v.id.startsWith("tunel") && !v.id.startsWith("paso-"));
     expect(doors.length).toBe(2 * hatches.length);
     for (const d of doors) {
       const to = d.action.kind === "puerta" ? interior.volume(d.action.to)! : undefined;

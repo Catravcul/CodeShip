@@ -1,6 +1,7 @@
 import type { Recipe } from "@modules/kitchen/data/recipes";
 import type { Process } from "@modules/kitchen/data/processes";
 import { kitchenVisuals } from "@modules/kitchen/domain/kitchen-visuals";
+import { SLEEP_ACTS } from "@modules/wellness/data/sleep";
 import type { Chore, ChoreKind } from "../domain/chore";
 import { classifyStep, exerciseTexts, firstSource, type StepAction, type StepAct, type StepActSource } from "../domain/step-visual";
 
@@ -68,6 +69,15 @@ export const STEP_AREAS: Readonly<Record<ChoreKind, Area>> = {
   // A colony of the species catalogue: both are mind programs.
   "amistad-especie": { fallback: "programar", only: "programar" },
   "ayuda-especie": { fallback: "programar", only: "programar" },
+  // Going to sleep: its own acts in the crew quarter (sleepSource).
+  dormir: { fallback: "saco" },
+};
+
+/** Going to sleep in a crew quarter: fan, alarm, into the bag, zip, light, asleep (modules/wellness/data/sleep.ts). */
+export const sleepSource: StepActSource<Chore> = {
+  acts(c, i) {
+    return c.kind === "dormir" ? SLEEP_ACTS[i] : undefined;
+  },
 };
 
 /** Any chore: the verbs of its solved exercise's texts, through its area's table. */
@@ -113,4 +123,4 @@ export function kitchenSource(ctx: { readonly recipes: readonly Recipe[]; readon
 }
 
 /** Every chore on board: the kitchen's detailed visuals first, then the area tables. */
-export const choreVisuals = (ctx: { readonly recipes: readonly Recipe[]; readonly processes?: readonly Process[] }): StepActSource<Chore> => firstSource(kitchenSource(ctx), areaVisuals);
+export const choreVisuals = (ctx: { readonly recipes: readonly Recipe[]; readonly processes?: readonly Process[] }): StepActSource<Chore> => firstSource(sleepSource, kitchenSource(ctx), areaVisuals);

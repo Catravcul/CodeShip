@@ -10,6 +10,8 @@ import { FACE_NORMAL, StationInterior, type CrewArea, type Fixture } from "@modu
 import { presentInteriorPlan } from "@modules/station/domain/presentation";
 import type { PortUser } from "@modules/station/domain/structure";
 import { WORKOUTS } from "@modules/wellness/data/exercise";
+import { SLEEP_ACTS } from "@modules/wellness/data/sleep";
+import { OWN_BUNK } from "@modules/station/data/compartments";
 import { AquariumOps, isAquariumChore } from "@modules/sanctuary/application/aquarium-ops";
 import { RingAquarium } from "@modules/sanctuary/domain/aquarium";
 import { AquariumModel } from "./adapters/three/interior/aquarium-model";
@@ -25,10 +27,10 @@ import type { DuelView, SessionText } from "./ui/duel-view";
 import "./ui/starship-interior.css";
 
 /** Where each kind of chore is done on Starship's decks (fixture ids of data/starship-interior.ts). */
-const FIXTURE_OF: Readonly<Partial<Record<Chore["kind"], string>>> = { cocinar: "cocina", yoga: "esterilla", ejercicio: "t2" };
+const FIXTURE_OF: Readonly<Partial<Record<Chore["kind"], string>>> = { cocinar: "cocina", yoga: "esterilla", ejercicio: "t2", dormir: OWN_BUNK };
 const AREA_NAME: Readonly<Record<CrewArea, string>> = {
   cocina: "Cocina (cubierta 1)",
-  camarotes: "Camarotes (cubierta 2)",
+  camarotes: "Tu camarote (cubierta 2)",
   aseo: "Aseo (cubierta 2)",
   ejercicio: "Ejercicio (cubierta 3)",
   esterilla: "Esterilla (cubierta 1)",
@@ -313,7 +315,7 @@ export class StarshipInterior {
       case "ejercicio":
         return chores("ejercicio");
       case "camarotes":
-        return [{ id: "dormir", label: "Dormir en un camarote", enabled: true }];
+        return f.id === OWN_BUNK ? chores("camarotes") : [{ id: "nada", label: "Dormir aquí", enabled: false, why: "Camarote libre: el tuyo es el 1" }];
       case "aseo":
         return [{ id: "asearse", label: "Asearse", enabled: true }];
     }
@@ -333,8 +335,6 @@ export class StarshipInterior {
       case "ajustes":
         this.mode.sitLotus(true);
         return this.openSettings?.();
-      case "dormir":
-        return this.say(this.crew.rest(), 6);
       case "asearse":
         return this.say("Aseo con toallitas, champú sin aclarado y el WHC: en 0 g el aire arrastra lo que en la Tierra cae", 5);
     }
@@ -348,11 +348,16 @@ export class StarshipInterior {
     if (!chore || !session || this.d.duel.visible) return;
     const run = session.run;
     this.session = session;
+    // Going to sleep plays each step in her crew quarter (the bag, the zip, the light).
+    const visual = chore.kind === "dormir" ? this.mode.stepVisual(OWN_BUNK, (i) => SLEEP_ACTS[i] ?? []) : undefined;
     const prev = this.d.duel.onClose;
     this.d.duel.onClose = () => {
       this.d.duel.onClose = prev;
+      this.d.duel.onRightPick = undefined;
+      visual?.clear();
       this.session = null;
-      if (run.status === "done") this.say(chore.kind === "cocinar" ? `${chore.title.replace(/^Cocinar /, "")}: listo, como en la ISS` : "Hecho", 5);
+      if (run.status === "done" && chore.kind === "dormir") this.say("Duermes en tu camarote: el ventilador sopla y la luz está apagada", 5);
+      else if (run.status === "done") this.say(chore.kind === "cocinar" ? `${chore.title.replace(/^Cocinar /, "")}: listo, como en la ISS` : "Hecho", 5);
     };
     this.d.duel.show(
       {
@@ -369,8 +374,17 @@ export class StarshipInterior {
         maxLives: run.maxMistakes,
       },
       choreText(chore),
-      (ans) => ({ ok: session.answer(ans) }),
+      (ans) => {
+        const index = run.step;
+        const ok = session.answer(ans);
+        if (ok) visual?.stepDone(index);
+        return { ok };
+      },
     );
+    if (visual)
+      this.d.duel.onRightPick = (id, slot) => {
+        if (run.current?.id === id) visual.partDone?.(run.step, slot);
+      };
   }
 
   /** Which deck she is on (for checks). */

@@ -899,7 +899,7 @@ export class StationInteriorMode {
     const cam = focus.clone().addScaledVector(out, 0.7).addScaledVector(side, 0.35).add(new THREE.Vector3(0, 0.22, 0));
     const face = out.clone().negate();
     // The step's props (food, a sponge) a hand in front of the glass, never inside the chambers or the rack.
-    const target = focus.clone().addScaledVector(out, 0.15);
+    const target = focus.clone().addScaledVector(out, 0.15).add(new THREE.Vector3(0, 0.15, 0));
     return { stand, yaw: Math.atan2(face.x, face.z), camera: cam, look: focus, target };
   }
 

@@ -116,7 +116,7 @@ export class AqhModel implements CrewGear {
     this.setColors("caracoles", []);
     this.focus = new THREE.Vector3(0, 0, 0.18 + cd / 2);
     // She floats in front of the tray, her chest at the chambers.
-    this.feet = new THREE.Vector3(0, -1.25, 0.75);
+    this.feet = new THREE.Vector3(0, -1.1, 0.75);
   }
 
   setColors(group: "banco" | "caracoles", runs: readonly { readonly n: number; readonly color: string }[]): void {

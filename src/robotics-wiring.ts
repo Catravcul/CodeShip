@@ -58,11 +58,16 @@ export function wireRobotics(d: RoboticsWiringDeps) {
   };
   // Outside, what is said goes on her own line (the rest of the screen is hidden while she is out).
   const say = (text: string, seconds?: number) => (stationEva.active ? stationEva.say(text, seconds) : starshipEva?.active ? starshipEva.say(text, seconds) : d.say(text, seconds));
+  // The lander's body, inside the span of its legs (the box of the whole model reaches the footpads).
+  const landerBody = (at: "ida" | "cbm") => {
+    const b = d.outside.landerBox(at);
+    return { centre: b.centre, half: new Vec3(b.half.x * 0.55, b.half.y, b.half.z * 0.55) };
+  };
   // What is outside besides the station: the lander on its port, the Starship berthed nose-on.
   const hulls = (): Hulls => {
     const at = d.landerAt();
     const nose = d.starshipNose();
-    return { cylinders: nose ? starshipHull(nose) : [], boxes: at ? [d.outside.landerBox(at)] : [] };
+    return { cylinders: nose ? starshipHull(nose) : [], boxes: at ? [landerBody(at)] : [] };
   };
   const onStarship = (s: EvaSite) => STARSHIP_SITES.includes(s);
   const quest: EvaBase = {
@@ -73,7 +78,7 @@ export function wireRobotics(d: RoboticsWiringDeps) {
     route: (s) => {
       if (s !== "modulo") return EVA_ROUTES[s as StationSite];
       const at = d.landerAt();
-      return at ? landerRoute(at, d.outside.landerBox(at)) : "El módulo no está en la estación: el paseo se hace con él en su puerto";
+      return at ? landerRoute(at, landerBody(at)) : "El módulo no está en la estación: el paseo se hace con él en su puerto";
     },
     hulls,
   };

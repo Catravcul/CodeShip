@@ -4,7 +4,7 @@ import type { ChoreSession, Habitat } from "@modules/habitat/application/habitat
 import type { Chore } from "@modules/chores/domain/chore";
 import { swapChore } from "@modules/chores/application/catalog";
 import { TANK_PARTS, partById } from "@modules/ship/data/parts";
-import { installedId, isEmptyPart } from "@modules/ship/domain/refit";
+import { installedId, isEmptyPart, withPart } from "@modules/ship/domain/refit";
 import { bayActions, bayStatus, needingAttention, type BayAction, type BayStore, type PartSupply } from "@modules/ship-bay/application/bay";
 import type { ComponentStatus } from "@modules/ship-bay/domain/component";
 import type { Attention } from "@modules/ship-bay/domain/attention";
@@ -429,7 +429,10 @@ export class ShipBay {
       if (part && a.slot) chore = swapChore(this.ship.design, a.slot, part);
     }
     if (!chore) return;
-    const swap = (): string => {
+    /** The hangar's side of the swap; `fit`: bolt it on the lander too (the bay's chore does that itself on done). */
+    const swap = (fit = false): string => {
+      const fitting = a.partId ? partById(a.partId) : undefined;
+      if (fit && fitting && a.slot) this.ship.refit(withPart(this.ship.design, a.slot, fitting));
       if (a.partId && this.parts) {
         const part = partById(a.partId);
         // «Nothing» (no shield, no source) is not a part: only the old one goes to the hangar.
@@ -441,7 +444,7 @@ export class ShipBay {
     };
     // The lander's outside parts (engines, tanks, power, battery, shield) are swapped outside: a spacewalk from Quest.
     if (chore.kind === "cambiar-pieza" && a.slot && a.slot !== "cabina") {
-      const said = this.planVehicleExterior?.("modulo", (a.partId ? partById(a.partId)?.name : undefined) ?? "la pieza", swap);
+      const said = this.planVehicleExterior?.("modulo", (a.partId ? partById(a.partId)?.name : undefined) ?? "la pieza", () => swap(true));
       if (said) return this.say(said);
     }
     this.openChore(chore, (status) => {

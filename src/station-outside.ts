@@ -245,10 +245,10 @@ export class StationOutside {
     const p = this.landerAt(at);
     this.lander.setDesign(this.deps.design());
     const m = new THREE.Matrix4().compose(p.pos, p.quat, new THREE.Vector3(1, 1, 1));
-    const inv = new THREE.Matrix4().copy(this.lander.root.matrixWorld).invert();
-    // Its meshes in its own frame, then posed on the port.
-    const box = new THREE.Box3();
+    // Its meshes in its own frame (matrices fresh: the model may just have been rebuilt), then posed on the port.
     this.lander.root.updateMatrixWorld(true);
+    const inv = new THREE.Matrix4().copy(this.lander.root.matrixWorld).invert();
+    const box = new THREE.Box3();
     this.lander.root.traverse((o) => {
       const mesh = o as THREE.Mesh;
       if (!mesh.isMesh || !mesh.geometry) return;

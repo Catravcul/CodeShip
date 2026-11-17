@@ -57,7 +57,7 @@ export class HatchLeaf {
     const handle = new THREE.Mesh(new THREE.BoxGeometry(0.34 * s, 0.05 * s, 0.05 * s), new THREE.MeshStandardMaterial({ color: 0x2b2f36 }));
     handle.position.set(s / 2, -0.12 * s, 0.075);
     this.hinge.add(plate, window_, handle);
-    this.root.name = "escotilla-hoja";
+    this.root.name = this.hinge.name = "escotilla-hoja";
   }
 
   /** Ease the leaf towards its target. */

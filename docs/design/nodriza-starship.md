@@ -125,7 +125,7 @@ OSIRIS-REx llegó a Bennu a 4 cm/s. Un salto de 9 km dura unas 6 h 15 min de jue
 El reto de **programar el viaje** de la nodriza tiene su versión química (`trip-chore.ts`): ordenar orientar,
 encender los Raptor de vacío, ir por inercia, dar la vuelta antes de los últimos metros y frenar (el distractor es
 «empujar todo el camino»); el Δv es 2 × crucero; el tiempo, 2·v/a más la inercia; el punto de frenar, v²/(2a).
-Las páginas del puente (propulsión, energía y vida) y las tarjetas del mapa dicen «metano y oxígeno» y «Raptor
+Las páginas de las pantallas del puesto de pilotaje (propulsión, energía y vida) y las tarjetas del mapa dicen «metano y oxígeno» y «Raptor
 de vacío» en vez de «xenón» y «propulsores eléctricos».
 
 ## Repostar: oxígeno y metano
@@ -147,8 +147,10 @@ estación por el morro, el túnel de la cubierta 1 lleva a ella.
 ## Lo que falta o queda abierto
 
 - ~~**«Ir» por las cubiertas**~~: hecho (2026-11-17, [viajes.md](viajes.md#trayectos-por-dentro-escotillas-que-se-abren)): el planificador conoce las cubiertas, la escotilla de la cubierta de vuelo y las de atraque, y ella abre cada escotilla.
-- **La cubierta de vuelo** sigue siendo el puente de consolas que se recorre andando (rama `puente-real`). En una
-  Starship es un espacio en 0 g bajo los depósitos de cabecera.
+- ~~**La cubierta de vuelo**~~: rehecha (2026-11-17, [puente.md](puente.md#la-cubierta-de-vuelo-de-la-starship)): una
+  sala redonda en el morro, bajo los depósitos de cabecera y junto a las tres ventanas, con el puesto de pilotaje
+  (pilotar a mano o por retos a cualquier destino), el de acople (acoplar a mano con la cámara del puerto, por retos,
+  y desacoplar) y el de la sonda. El puente de consolas de antes queda solo para la nave de anillos (`?ficcion`).
 - **Una sola tripulante jugable** en una nave para cuatro.
 - **El dique seco** de la estación tiene la celosía medida para la nave de anillos.
 - **La esclusa**: los paseos salen de ella con la nave atracada en la estación; con la nave lejos de la estación aún no hay paseo.

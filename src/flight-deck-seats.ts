@@ -32,6 +32,7 @@ export interface SeatsWiring {
 export function flightDeckSeats(w: SeatsWiring): { pilot: PilotDeps; dock: DockDeps } {
   const { nav, mothership } = w;
   let cache: { at: number; list: PilotDestination[] } | undefined;
+  let chore: ChoreRun | undefined;
   const destinations = (): PilotDestination[] => {
     const now = performance.now();
     if (cache && now - cache.at < 600) return cache.list;
@@ -99,7 +100,7 @@ export function flightDeckSeats(w: SeatsWiring): { pilot: PilotDeps; dock: DockD
       const h = nav.holdingAt();
       if (!h?.carrierPort) return { ok: false, reason: "La Starship no está en el punto de espera de un puerto" };
       const L = IDSS_CONTACT_LIMITS;
-      const run = new ChoreRun(berthChore({ stationName: h.name, portName: h.carrierPort.name, waypoint1M: BERTH_STANDOFF_M, waypoint2M: PROXIMITY.waypoint2M, closingMs: PROXIMITY.closingMs, closingMinMs: L.closingMinMs, closingMaxMs: L.closingMaxMs, lateralMaxM: L.lateralMisalignM, holdS: WAYPOINT2_HOLD_S }));
+      const run = (chore = new ChoreRun(berthChore({ stationName: h.name, portName: h.carrierPort.name, waypoint1M: BERTH_STANDOFF_M, waypoint2M: PROXIMITY.waypoint2M, closingMs: PROXIMITY.closingMs, closingMinMs: L.closingMinMs, closingMaxMs: L.closingMaxMs, lateralMaxM: L.lateralMisalignM, holdS: WAYPOINT2_HOLD_S })));
       openTripSheet(
         w.duel,
         run,
@@ -115,6 +116,7 @@ export function flightDeckSeats(w: SeatsWiring): { pilot: PilotDeps; dock: DockD
       return { ok: true };
     },
     stop: () => nav.cancel(),
+    chore: () => (chore?.status === "doing" ? chore : undefined),
   };
   return { pilot, dock };
 }

@@ -6,7 +6,7 @@ import { STARSHIP_DECK, STARSHIP_DECK_BASIS, STARSHIP_DECK_SHAPE, STARSHIP_DECK_
 
 const at = (id: string) => STARSHIP_DECK.stations.find((s) => s.id === id)!;
 
-describe("HAB-26 Starship's flight deck rebuilt from what is public (docs/design/puente.md)", () => {
+describe("HAB-45 Starship's flight deck rebuilt from what is public (docs/design/puente.md)", () => {
   it("a round deck in the nose cone: its floor and stations inside the 4,2 m hull and under the leaning wall", () => {
     const S = STARSHIP_DECK_SHAPE;
     for (const s of STARSHIP_DECK.stations) {

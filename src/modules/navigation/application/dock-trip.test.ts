@@ -268,7 +268,7 @@ describe("NAV-16 The mothership flown by hand (reglas.md §3.6): she commands th
     expect(nav.berthedAt()?.id).toBe(station.id);
   }, 60_000);
 
-  it("NAV-19 undocked from the docking station it backs out to Waypoint 1; NAV-18 then docked by hand with the docking camera's rates", () => {
+  it("NAV-25 undocked from the docking station it backs out to Waypoint 1; NAV-24 then docked by hand with the docking camera's rates", () => {
     const { nav, mothership, station } = make({ undocked: new Vec3(-200, -300, 1300) });
     nav.select(station.id);
     nav.engage();

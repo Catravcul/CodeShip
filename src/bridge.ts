@@ -6,6 +6,7 @@ import { STARSHIP_DECK_BASIS } from "@modules/flight-deck/data/starship-deck";
 import { paintScreen, SCREEN_FONT_PX } from "./adapters/three/interior/console-screens";
 import { worldScale } from "./adapters/three/interior/world-scale";
 import type { CabinStation } from "@modules/lander-cabin/domain/cabin";
+import type { ChoreRun } from "@modules/chores/domain/chore";
 import { WalkRoom, type RoomAction } from "./walk-room";
 
 export interface BridgeDeps {
@@ -62,6 +63,8 @@ export interface DockDeps {
   dockManual(): { ok: boolean; reason?: string };
   dockAuto(): { ok: boolean; reason?: string };
   stop(): void;
+  /** The docking challenge open now (for the QA journeys' answer key). */
+  chore(): ChoreRun | undefined;
 }
 
 const LEVEL_COLOR: Readonly<Record<string, number>> = { warning: 0xff3b30, caution: 0xffb347, advisory: 0x7fdcff, nominal: 0x37e07a };
@@ -227,6 +230,11 @@ export class BridgeRoom extends WalkRoom<BridgeStationId> {
       return `<p class="cm-state">${line}</p><p class="cm-state">${this.deps.dock.lander()}</p>${tag}`;
     }
     return tag;
+  }
+
+  /** The docking challenge open now, if any (Starship's docking seat). */
+  get dockChore(): ChoreRun | undefined {
+    return this.deps.dock?.chore();
   }
 
   /** Walk to a console and use it (the task list's «Ir»). */

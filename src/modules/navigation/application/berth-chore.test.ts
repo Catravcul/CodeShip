@@ -5,7 +5,7 @@ import type { Exercise } from "@modules/mind-duel/domain/exercise";
 
 const FACTS = { stationName: "la estación", portName: "IDA-2", waypoint1M: 150, waypoint2M: 20, closingMs: 0.07, closingMinMs: 0.05, closingMaxMs: 0.1, lateralMaxM: 0.1, holdS: 1157 };
 
-describe("NAV-20 docking by program: the real approach as a challenge", () => {
+describe("NAV-26 docking by program: the real approach as a challenge", () => {
   it("orders the Demo-1 waypoints with a rushing distractor, and its numbers are the real ones", () => {
     const c = berthChore(FACTS);
     const [seq, time, contact] = c.exercises as [Exercise, Exercise, Exercise];

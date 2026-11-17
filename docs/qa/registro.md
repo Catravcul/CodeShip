@@ -63,6 +63,9 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | NAV-16 | Solo test | | | `dock-trip.test.ts` (verde en la suite completa); lo juega PX-36 |
 | NAV-17 | Sin probar | | | Adaptador; lo juegan PX-07, PX-16 y PX-36 |
 | NAV-18 | Sin probar | | | Adaptador; lo juega PX-07 |
+| NAV-24 | Solo test | | | `manual-berthing.test.ts`, `dock-trip.test.ts`; lo juega PX-40 |
+| NAV-25 | Solo test | | | `manual-berthing.test.ts`, `dock-trip.test.ts`; lo juega PX-40 |
+| NAV-26 | Solo test | | | `berth-chore.test.ts`; lo juega PX-40 |
 | SON-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SON-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SON-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -227,6 +230,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | HAB-38 | Sin probar | | | Adaptador; lo juega PX-36 |
 | HAB-39 | Solo test | | | `journey.test.ts` (verde en la suite completa); lo juegan PX-16 y PX-36 |
 | HAB-40 | Sin probar | | | Lo juega PX-38 |
+| HAB-45 | Solo test | | | `starship-deck.test.ts`, `spacing.test.ts`; lo juegan PX-15 y PX-40 |
 | HAB-28 | Solo test | | | `compartments.test.ts`, `starship-interior.test.ts`; jugado en PX-35 |
 | HAB-30 | Probado (en vivo) | 2026-11-17 | `1e45fe6` | [run](runs/2026-11-17-0459-PX-28-PX-31-PX-35-PX-37-PX-20.md): PX-37 OK; `crew-areas.test.ts` |
 | HAB-31 | Probado (en vivo) | 2026-11-17 | `1e45fe6` | [run](runs/2026-11-17-0459-PX-28-PX-31-PX-35-PX-37-PX-20.md): PX-37 OK |
@@ -279,6 +283,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-35 | Probado (en vivo) | 2026-11-17 | `a515faf` | [run](runs/2026-11-17-1334-PX-12-PX-29-PX-31-PX-33-PX-35-PX-30.md): 44 OK |
 | PX-37 | Probado (en vivo) | 2026-11-17 | `30dd266` | [run](runs/2026-11-17-0931-PX-28-PX-35-PX-37-PX-38-PX-20-PX-30.md): 26 OK |
 | PX-39 | Probado (en vivo) | 2026-11-17 | `5c98cd4` | [run](runs/2026-11-17-1352-PX-28-PX-38-PX-39.md): 128 OK |
+| PX-40 | Sin probar | | | |
 | PX-38 | Probado (en vivo) | 2026-11-17 | `5c98cd4` | [run](runs/2026-11-17-1352-PX-28-PX-38-PX-39.md): 77 OK |
 
 ## Última ejecución por run log

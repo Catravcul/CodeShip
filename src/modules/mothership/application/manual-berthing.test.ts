@@ -27,7 +27,7 @@ function fly(run: ManualBerthing, fast: number, contact: number, slowAtM = 10): 
   }
 }
 
-describe("NAV-18 Starship docks at the station by hand (Crew Dragon's manual mode)", () => {
+describe("NAV-24 Starship docks at the station by hand (Crew Dragon's manual mode)", () => {
   it("from Waypoint 1 on the axis, closing fast and slowing to 0,10 m/s at the end, the IDSS hooks catch", () => {
     const { port, m, run } = setup();
     expect(run.alignment().axialM).toBeCloseTo(BERTH_STANDOFF_M, 3);
@@ -83,7 +83,7 @@ describe("NAV-18 Starship docks at the station by hand (Crew Dragon's manual mod
   });
 });
 
-describe("NAV-19 Starship undocks: hooks open and it backs out to Waypoint 1", () => {
+describe("NAV-25 Starship undocks: hooks open and it backs out to Waypoint 1", () => {
   it("from the port it backs 150 m out along the axis at the contact speed and holds there", () => {
     const { port, m } = setup();
     const d = berthedPose(port, STARSHIP_NOSE_PORT);

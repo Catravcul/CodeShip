@@ -14,7 +14,7 @@ export const SLEEP_SOURCES = {
 /** The steps, in order; `{right|wrong|wrong}` asks for a value (the wake-up time, GMT, as on the ISS). */
 export const SLEEP_STEPS: readonly string[] = [
   "comprueba que el ventilador del camarote sopla",
-  "pon el despertador del portátil a las {06:00|03:00|13:00} GMT",
+  "pon el despertador a las {06:00|03:00|13:00} GMT",
   "métete en el saco de dormir sujeto a la pared",
   "sube la cremallera del saco hasta el pecho",
   "apaga la luz del camarote",
@@ -24,10 +24,10 @@ export const SLEEP_STEPS: readonly string[] = [
 /** Plausible wrong steps (one is the real danger: switching the fan off to sleep in silence). */
 export const SLEEP_WRONG: readonly string[] = ["apaga el ventilador para no oír ruido", "deja el saco suelto flotando por el camarote", "enciende la luz al máximo"];
 
-/** What each solved step shows in the crew quarter (step-show.ts plays these verbs). */
+/** What each solved step shows in the crew quarter (step-show.ts plays these verbs; `vessel: "saco"`: by the bag, facing out). */
 export const SLEEP_ACTS: readonly (readonly StepAct[])[] = [
-  [{ action: "revisar", place: "objetivo" }],
-  [{ action: "programar", place: "objetivo" }],
+  [{ action: "revisar", place: "objetivo", vessel: "saco" }],
+  [{ action: "programar", place: "objetivo", vessel: "saco" }],
   [{ action: "saco", place: "objetivo" }],
   [{ action: "saco", place: "objetivo", vessel: "cremallera" }],
   [{ action: "luz", place: "objetivo", vessel: "saco" }],

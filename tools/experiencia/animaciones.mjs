@@ -294,6 +294,14 @@ async function playStation(j, rows, skipped = []) {
     await auditSheet(j, rows, { id: "estacion-cocina", title: `Estación: ${dish}` }, () => window.codeship.stationLife.session?.run.current ?? null, "stationInside");
   }
 
+  // Going to sleep in her crew quarter (docs/design/compartimentos.md): each step in the quarter, by the bag.
+  await placeAt("saco-1");
+  if (await j.tap('.sti-card [data-act="chore:dormir"]', "Dormir en tu camarote")) {
+    await j.waitDuel();
+    await p.waitForTimeout(500);
+    await auditSheet(j, rows, { id: "estacion-dormir", title: "Estación: dormir en tu camarote" }, () => window.codeship.stationLife.session?.run.current ?? null, "stationInside");
+  }
+
   // The machines: open their tab from the fixture's card, start a chore there.
   const MACHINES = [
     { fixture: "guantera", tab: "materiales", start: '.st-body [data-refine]:not([disabled])', id: "estacion-refinar", title: "Estación: refinar" },
@@ -493,7 +501,7 @@ export async function animaciones(j) {
     "El viaje desde la consola de navegación del anillo: el mapa cubre la escena, así que el plan se dibuja en el mapa, encuadrado en la franja sobre la hoja (sus puntos se miden en el mapa).",
   );
   extra.push(
-    "Estación (escala 1,5): la cocina y las máquinas (refinar, fabricar, laboratorio de biología, importar) con Doménica en los estribos de cada una. Sin visual de pasos, aplazados con nano_net (sistema ficticio, al backlog): los retos de nano_net.",
+    "Estación (escala 1,5): la cocina, su camarote de Harmony (dormir: junto al saco, mirando fuera del camarote) y las máquinas (refinar, fabricar, laboratorio de biología, importar) con Doménica en los estribos de cada una. Sin visual de pasos, aplazados con nano_net (sistema ficticio, al backlog): los retos de nano_net.",
   );
   const bad = rows.filter((r) => !r.ok).length;
   j.check(`auditoría: ${rows.length - bad} de ${rows.length} pasos se ven bien`, bad === 0, rows.filter((r) => !r.ok).slice(0, 4).map((r) => `${r.chore.title} / ${r.step}: ${r.why[0]}`).join(" | "));

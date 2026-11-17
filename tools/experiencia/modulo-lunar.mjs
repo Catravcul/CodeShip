@@ -42,7 +42,7 @@ export async function moduloLunar(j) {
   await capture(j, "ecs", "Panel del ECS del LM");
 
   // Undock from Starship, and down on Bennu by program.
-  await j.useMachine("cabin", "acople", "desacoplar", "Desacoplar");
+  await j.useMachine("cabin", "asiento", "desacoplar", "Desacoplar desde el puesto del comandante");
   await p.waitForTimeout(600);
   j.check("la escotilla de acople desacopla el LM de la Starship", await p.evaluate(() => !window.codeship.docking.docked));
   await j.setup("el LM llega a 300 m de Bennu (lo que deja el viaje comprimido)", placeAbove, ["modulo", 300, 0]);
@@ -101,9 +101,10 @@ export async function moduloLunar(j) {
   });
   await j.useMachine("cabin", "acople", "entrar-estacion", "Entrar en la estación");
   await p.waitForTimeout(900);
-  await j.setup("Doménica va hasta la refinería", () => window.codeship.stationInside.placeAt("refineria"));
-  await p.waitForFunction(() => window.codeship.stationInside.nearFixture() === "refineria", null, { timeout: 15000 }).catch(() => undefined);
-  await j.tap('.sti-card [data-act="abrir"]', "Abrir (refinería)");
+  // The vehicle catalogue and its assembly open at the Cupola's robotic workstation (docs/design/compartimentos.md).
+  await j.setup("Doménica va hasta el puesto robótico de la Cupola", () => window.codeship.stationInside.placeAt("cupula"));
+  await p.waitForFunction(() => window.codeship.stationInside.nearFixture() === "cupula", null, { timeout: 15000 }).catch(() => undefined);
+  await j.tap('.sti-card [data-act="inventario"]', "Catálogo y montaje (puesto robótico de la Cupola)");
   await p.waitForTimeout(600);
   await j.tap('.st-tabs [data-tab="hangar"]', "Pestaña Hangar");
   await j.tap("[data-catalogue]", "Ver el catálogo");

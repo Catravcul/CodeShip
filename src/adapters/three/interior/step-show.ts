@@ -238,6 +238,8 @@ interface Props {
 
 /** Acts done in a crew quarter's bag: she turns her back to the wall it is strapped to (modules/wellness/data/sleep.ts). */
 const IN_BAG: ReadonlySet<string> = new Set(["saco", "luz", "dormir"]);
+/** A crew quarter's act: she floats by the bag on its wall, facing out of the quarter (and the camera). */
+const inQuarter = (v: StepAct) => IN_BAG.has(v.action) || v.vessel === "saco";
 /** Her feet off the wall the bag hangs on, drawn metres, while she is in it. */
 const BAG_OFF_WALL = 0.35;
 
@@ -413,7 +415,7 @@ export class StepShow {
       this.feet[across] += (wantAcross - this.feet[across]) * ease6;
     }
     // In a crew quarter's bag she floats with her back to the wall it is strapped to, facing the camera.
-    const inBag = !!vis && IN_BAG.has(vis.action);
+    const inBag = !!vis && inQuarter(vis);
     if (!f.slide) {
       const want = inBag ? this.tmp.copy(f.stand).sub(f.target).setY(0).normalize().multiplyScalar(BAG_OFF_WALL).add(f.target).setY(f.stand.y) : this.tmp.copy(f.stand);
       this.feet.lerp(want, 1 - Math.exp(-6 * dt));
@@ -474,7 +476,7 @@ export class StepShow {
       t: this.now ? this.t : 1,
       played: this.played,
       feet: this.feet.clone(),
-      yaw: IN_BAG.has(vis.action) ? f.yaw + Math.PI : f.yaw,
+      yaw: inQuarter(vis) ? f.yaw + Math.PI : f.yaw,
       hands: [this.otherHand.clone(), this.hand.clone()],
       spot: this.spotOf(vis, new THREE.Vector3()),
       props,

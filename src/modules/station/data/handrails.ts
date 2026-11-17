@@ -84,6 +84,18 @@ export function stationHandrails(plan: StationInteriorPlan): Handrail[] {
     if (plan.volumes.find((v) => v.id === f.volume)?.kind === "hangar" && k !== "bahia") continue;
     const n = FACE_NORMAL[f.face].scale(-1);
     const wall = Math.abs(n.y) < 0.5;
+    const room = plan.volumes.find((v) => v.id === f.volume);
+    if (wall && room?.kind === "compartimento") {
+      // In a small room the bar is on a side wall, well back from the thing: she floats in the middle of the
+      // room facing it (a crew quarter's bag, the RWS), not with her nose on it.
+      const across = Math.abs(n.x) > 0.5 ? "z" : "x";
+      const depth = Math.abs(n.x) > 0.5 ? 2 * room.half.x : 2 * room.half.z;
+      const side = new Vec3(across === "x" ? 1 : 0, 0, across === "z" ? 1 : 0);
+      const c = f.at.add(n.scale(Math.min(0.6 * depth, depth - 0.35))).add(side.scale(-(room.half[across] - RAIL_LAYOUT.standoffM))).add(new Vec3(0, -0.35, 0));
+      const h = new Vec3(0, RAIL_LAYOUT.lengthM / 2, 0);
+      rails.push({ id: `${f.id}:puesto`, a: c.sub(h), b: c.add(h), normal: side, poi: f.id });
+      continue;
+    }
     const runs = wall ? (Math.abs(n.x) > 0.5 ? new Vec3(0, 0, 1) : new Vec3(1, 0, 0)) : new Vec3(0, 0, 1);
     const c = f.at.add(n.scale(RAIL_LAYOUT.standoffM)).add(wall ? new Vec3(0, -0.35, 0) : Vec3.ZERO);
     const h = runs.scale(RAIL_LAYOUT.lengthM / 2);

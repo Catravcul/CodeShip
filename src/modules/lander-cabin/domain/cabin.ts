@@ -126,8 +126,23 @@ export function nearestStation<Id extends string>(layout: CabinLayout<Id>, p: Fl
   return best;
 }
 
-/** What a machine offers now. The first action is the main one. */
+/**
+ * What a machine offers now. The first action is the main one. The docking hatch only gives passage
+ * (docs/design/reglas.md §2.2): undocking and the docking assist are controls of the commander's station.
+ */
 export function cabinActions(id: CabinStationId, s: CabinState): CabinAction[] {
+  if (id === "asiento") return [...stationActions(id, s), ...dockControls(s)];
+  return stationActions(id, s);
+}
+
+/** Undock, or the docking assist near a port: on the commander's station, where the LM was flown from. */
+function dockControls(s: CabinState): CabinAction[] {
+  if (s.dockedTo) return [{ id: "desacoplar", label: "Desacoplar", enabled: true }];
+  if (s.dockInRange) return [{ id: "asistente-acople", label: s.dockAssist ? "Apagar el asistente de acople" : "Asistente de acople", enabled: true }];
+  return [];
+}
+
+function stationActions(id: CabinStationId, s: CabinState): CabinAction[] {
   switch (id) {
     case "asiento":
       return [{ id: "pilotar", label: "Sentarse a pilotar", enabled: true }];
@@ -157,10 +172,10 @@ export function cabinActions(id: CabinStationId, s: CabinState): CabinAction[] {
       return [change, refill];
     }
     case "acople":
-      if (s.dockedTo === "nodriza") return [{ id: "entrar-nodriza", label: "Entrar en la nave de viaje", enabled: true }, { id: "desacoplar", label: "Desacoplar", enabled: true }];
-      if (s.dockedTo === "estacion") return [{ id: "entrar-estacion", label: "Entrar en la estación", enabled: true }, { id: "desacoplar", label: "Desacoplar", enabled: true }];
-      if (s.dockInRange) return [{ id: "asistente-acople", label: s.dockAssist ? "Apagar el asistente de acople" : "Asistente de acople", enabled: true }];
-      return [{ id: "asistente-acople", label: "Asistente de acople", enabled: false, why: "Acércate a menos de 3 km de un puerto (nodriza o estación)" }];
+      // A hatch only gives passage: through it into the vehicle the LM is docked to.
+      if (s.dockedTo === "nodriza") return [{ id: "entrar-nodriza", label: "Entrar en la nave de viaje", enabled: true }];
+      if (s.dockedTo === "estacion") return [{ id: "entrar-estacion", label: "Entrar en la estación", enabled: true }];
+      return [{ id: "entrar-estacion", label: "Abrir la escotilla", enabled: false, why: "No hay nada acoplado: se abre acoplada a la nodriza o a la estación (acople desde el puesto del comandante)" }];
   }
 }
 

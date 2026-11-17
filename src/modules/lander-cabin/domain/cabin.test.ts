@@ -45,16 +45,16 @@ describe("lander crew cabin (docs/design/habitaculo.md)", () => {
     }
   });
 
-  it("HAB-02 the docking console undocks, enters the vehicle it is docked to, or arms the docking assist", () => {
-    expect(ids("acople", { ...base, dockedTo: "nodriza" })).toEqual(["entrar-nodriza", "desacoplar"]);
-    expect(ids("acople", { ...base, dockedTo: "estacion" })).toEqual(["entrar-estacion", "desacoplar"]);
-    const free = cabinActions("acople", { ...base, dockInRange: true });
-    expect(free.map((a) => a.id)).toEqual(["asistente-acople"]);
-    expect(free[0]!.enabled).toBe(true);
-    const far = cabinActions("acople", base);
-    expect(far[0]!.enabled).toBe(false);
-    expect(far[0]!.why).toMatch(/puerto/);
-    expect(cabinActions("acople", { ...base, dockInRange: true, dockAssist: true })[0]!.label).toMatch(/Apagar/);
+  it("HAB-02 the docking hatch only gives passage; undocking and the docking assist are on the commander's station", () => {
+    expect(ids("acople", { ...base, dockedTo: "nodriza" })).toEqual(["entrar-nodriza"]);
+    expect(ids("acople", { ...base, dockedTo: "estacion" })).toEqual(["entrar-estacion"]);
+    expect(cabinActions("acople", base)[0]!.enabled).toBe(false);
+    expect(ids("asiento", { ...base, dockedTo: "nodriza" })).toEqual(["pilotar", "desacoplar"]);
+    const free = cabinActions("asiento", { ...base, dockInRange: true });
+    expect(free.map((a) => a.id)).toEqual(["pilotar", "asistente-acople"]);
+    expect(free[1]!.enabled).toBe(true);
+    expect(ids("asiento", base)).toEqual(["pilotar"]);
+    expect(cabinActions("asiento", { ...base, dockInRange: true, dockAssist: true })[1]!.label).toMatch(/Apagar/);
   });
 
   it("HAB-02 the EVA hatch opens only anchored, and says why not", () => {

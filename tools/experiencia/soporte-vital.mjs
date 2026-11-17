@@ -55,7 +55,7 @@ export async function soporteVital(j) {
   j.check("por la escotilla entra en la estación", await p.evaluate(() => window.codeship.stationInside.active));
 
   // The readout is not on the HUD: only on the racks and the life-support laptop.
-  await placeAt(j, "camarotes");
+  await placeAt(j, "saco-1");
   j.check("lejos de las máquinas no hay lecturas de soporte vital", (await p.locator(".sv-readout").count()) === 0);
   await placeAt(j, "sv-consola");
   const desk = await card(j);

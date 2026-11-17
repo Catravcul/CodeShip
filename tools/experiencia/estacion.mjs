@@ -1,6 +1,6 @@
 // The space station as a player meets it (docs/design/estacion-real.md, estacion-tripulacion.md): the ISS's
 // US segment. In through the lander's hatch on Harmony's zenith IDA in first person, a door that names where
-// it leads (Destiny), the galley in Unity cooking from the station's larder, a cabin in Harmony, the yoga
+// it leads (Destiny), the galley in Unity cooking from the station's larder, her crew quarter in Harmony, the yoga
 // mat's settings, «Ir» of a station task, and the Cupola: Canadarm2 berths the lander on Unity's nadir CBM
 // (seen from outside), its full task list, the lander's hatch says why it is shut, and the arm puts it back.
 // iPhone 13; captures in docs/screenshots/estacion-<pantalla>-movil.png.
@@ -66,12 +66,14 @@ export async function estacion(j) {
   const after = await p.evaluate(() => JSON.stringify(window.codeship.stationCrew.larder()));
   j.check("cocinar gasta la despensa de la estación (no la de la nodriza)", before !== after, `${before} → ${after}`);
 
-  // A cabin: sleep calms her.
-  await placeAt(j, "camarotes");
-  const stress = await p.evaluate(() => window.codeship.habitat.crew.stress);
-  await j.tap('.sti-card [data-act="dormir"]', "Dormir en un camarote");
-  j.check("dormir en un camarote la calma", await p.evaluate((s) => window.codeship.habitat.crew.stress <= s, stress));
-  await capture(j, "camarotes", "Camarotes de la estación");
+  // Her crew quarter: a real room off Harmony she floats into (docs/design/compartimentos.md); sleeping is a
+  // challenge there, played in PX-35. Here: the free quarters say whose they are.
+  await placeAt(j, "saco-2");
+  j.check("el camarote 2 es un cuarto en el que se entra (no una puerta)", (await p.evaluate(() => window.codeship.stationInside.where())) === "camarote-2");
+  j.check("un camarote libre dice cuál es el suyo", /el tuyo es el 1/.test(await card(j)), (await card(j)).slice(0, 140));
+  await placeAt(j, "saco-1");
+  j.check("su camarote ofrece el reto de dormir", /Dormir en tu camarote/.test(await card(j)), (await card(j)).slice(0, 140));
+  await capture(j, "camarotes", "Su camarote en Harmony");
 
   // The yoga mat: the settings.
   await placeAt(j, "esterilla");
@@ -94,7 +96,7 @@ export async function estacion(j) {
   // The Cupola: Canadarm2 berths the lander on Unity's nadir CBM, and it is seen from outside.
   await placeAt(j, "cupula");
   const cupola = await card(j);
-  j.check("en la Cupola, el puesto del brazo ofrece atracar el módulo en el CBM", /Atracar el módulo en el CBM/.test(cupola), cupola.slice(0, 160));
+  j.check("dentro de la Cupola, su puesto robótico ofrece atracar el módulo en el CBM", /Atracar el módulo en el CBM/.test(cupola) && (await p.evaluate(() => window.codeship.stationInside.where())) === "cupola", cupola.slice(0, 160));
   await j.tap('.sti-card [data-act="atracar"]', "Atracar el módulo en el CBM con el brazo");
   j.check("Canadarm2 atraca el módulo en el CBM de Unity", await p.evaluate(() => window.codeship.landerBerth.onCbm));
   j.check("se ve desde fuera: la vista de la Cupola se abre con el brazo moviéndose", await p.evaluate(() => window.codeship.stationOutside.viewing && window.codeship.stationOutside.busy));
@@ -104,11 +106,10 @@ export async function estacion(j) {
   j.check("el brazo termina y el módulo queda dibujado en el CBM", done && (await p.evaluate(() => window.codeship.stationOutside.holdsLander)));
   await capture(j, "cbm", "Módulo atracado en el CBM de Unity");
   await j.tap(".dock-view.on .dv-close", "Cerrar la vista de fuera");
-  await placeAt(j, "cupula");
-  await j.tap('.sti-card [data-act="tareas"]', "Tareas (Cupola)");
+  await j.tap(".sti-ui .sti-tasks", "Tareas");
   const shown = await p.locator(".task-board .tb-go").count();
   const all = await p.evaluate(() => window.codeship.tasks().length);
-  j.check("el puesto de la Cupola abre la lista global con «Ir», con todas las tareas", shown === all && shown > 0, `${shown} de ${all}`);
+  j.check("la lista global tiene todas las tareas con «Ir»", shown === all && shown > 0, `${shown} de ${all}`);
   await j.tap(".task-board [data-close]", "Cerrar tareas");
   await placeAt(j, "salir-sonda");
   const hatch = await card(j);

@@ -314,7 +314,7 @@ function fixtureFront(f: Fixture, lamps: Map<MachineId, THREE.Mesh>, scale = 1):
       plate(w * 0.8, 0.3, 0, -h * 0.05, 0.05, st.glow!, true, 0.02);
       for (const sgn of [-1, 1]) plate(0.26, 0.26, sgn * w * 0.2, -h * 0.3, 0.06, 0x111111);
     }
-  } else if (f.id.startsWith("salir") || f.id.startsWith("puerto") || ["esclusa-carga", "esclusa-kibo", "escotilla-eva", "cbm-nadir-nodo1", "cbm-nadir-nodo2", "pma1"].includes(f.id)) {
+  } else if (f.id.startsWith("salir") || f.id.startsWith("puerto") || ["esclusa", "esclusa-carga", "esclusa-kibo", "escotilla-eva", "cbm-nadir-nodo1", "cbm-nadir-nodo2", "pma1"].includes(f.id)) {
     // Hatch: frame and a handle.
     for (const s of [-1, 1]) {
       plate(0.08, h, (s * (w - 0.08)) / 2, 0, 0.05, st.accent);

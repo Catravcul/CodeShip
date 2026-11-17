@@ -6,7 +6,11 @@
 // §6.0): every one in both vehicles works in both, with its animation. Captures: docs/screenshots/equipos-*-movil.png.
 import { mkdirSync } from "node:fs";
 
+/** File names in plain ASCII («estación» → «estacion»). */
+const slug = (s) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-");
+
 async function capture(j, label, title) {
+  label = slug(label);
   await j.page.waitForTimeout(800);
   mkdirSync("docs/screenshots", { recursive: true });
   await j.page.screenshot({ path: `docs/screenshots/equipos-${label}-movil.png`, timeout: 120000 });
@@ -25,7 +29,7 @@ async function close(j) {
 }
 
 /** The settings at a mat, in the panel view and in the HUD view, with the build label. */
-async function matSettings(j, where, tapIt, seated) {
+async function matSettings(j, where, tapIt, seated, arg = null) {
   const p = j.page;
   await tapIt();
   await p.waitForTimeout(800);
@@ -39,8 +43,8 @@ async function matSettings(j, where, tapIt, seated) {
       return !!s && !s.classList.contains("hidden") && getComputedStyle(s).display !== "none" && (r?.height ?? 0) > 100;
     });
     j.check(`${where}, vista ${view}: los ajustes de la esterilla se ven`, shown);
-    j.check(`${where}, vista ${view}: ella está sentada en loto sobre la esterilla`, await p.evaluate(seated));
-    await capture(j, `ajustes-${where.toLowerCase().replace(/[^a-z]+/g, "-")}-${view.toLowerCase()}`, `Ajustes en la esterilla (${where}, vista ${view})`);
+    j.check(`${where}, vista ${view}: ella está sentada en loto sobre la esterilla`, await p.evaluate(seated, arg));
+    await capture(j, `ajustes-${where}-${view}`, `Ajustes en la esterilla (${where}, vista ${view})`);
   }
   const build = await p.evaluate(() => document.querySelector(".settings-sheet [data-build]")?.textContent ?? "");
   j.check(`${where}: los ajustes dicen la versión (hash corto y fecha)`, /Versión ([0-9a-f]{7,}|desarrollo|sin-git)( · \d{4}-\d\d-\d\d)?/.test(build), build);
@@ -77,7 +81,7 @@ async function machines(j, vehicle, mode, card, place) {
 
 export async function equipos(j) {
   const p = j.page;
-  const onMat = (m) => () => {
+  const onMat = (m) => {
     const x = m.split(".").reduce((o, k) => o[k], window.codeship);
     return x.steps.framing && x.steps.holdPose && x.onGear === "esterilla";
   };
@@ -95,7 +99,7 @@ export async function equipos(j) {
 
   // 3. Starship's mat: settings in both views, and yoga ON the mat (turned to its wall, feet in its loops).
   await placeShip("esterilla");
-  await matSettings(j, "Starship", () => j.tap('.sts-card:not(.hidden) [data-act="ajustes"]', "Sentarse en loto: ajustes (Starship)"), onMat("starship.mode"));
+  await matSettings(j, "Starship", () => j.tap('.sts-card:not(.hidden) [data-act="ajustes"]', "Sentarse en loto: ajustes (Starship)"), onMat, "starship.mode");
   await placeShip("esterilla");
   if (await j.tap('.sts-card:not(.hidden) [data-act^="chore:yoga"]', "Yoga en la esterilla de la Starship")) {
     await j.waitDuel();
@@ -161,7 +165,7 @@ export async function equipos(j) {
   const placeIss = (id) => j.setup(`Doménica va hasta «${id}» de la estación (cruzar la estación salto a salto lleva minutos)`, (f) => window.codeship.stationInside.placeAt(f), id);
   await machines(j, "Estación", "stationInside", ".sti-card", placeIss);
   await placeIss("esterilla");
-  await matSettings(j, "Estación", () => j.tap('.sti-card:not(.hidden) [data-act="ajustes"]', "Sentarse en loto: ajustes (estación)"), onMat("stationInside"));
+  await matSettings(j, "Estación", () => j.tap('.sti-card:not(.hidden) [data-act="ajustes"]', "Sentarse en loto: ajustes (estación)"), onMat, "stationInside");
   await placeIss("rack-acuatico");
   await p.waitForTimeout(800);
   const issTank = await p.evaluate(() => {

@@ -122,6 +122,6 @@ bastidores lejos de las escotillas.
 - **El PMA bajo cada IDA** no se dibuja (los IDA quedan más cerca de Harmony que en la ISS).
 - **Recoger con el brazo** algo soltado por la Bishop es licencia. ¿Se quita, o se deja con su aviso?
 - **Paseo espacial desde Quest**: hecho ([paseo-espacial.md](paseo-espacial.md)). Las alas, los radiadores y los escudos se cambian fuera en un paseo; la cámara de S1 la cambia Dextre ([brazo-robotico.md](brazo-robotico.md)).
-- **Brazo**: Canadarm2, la MBS y Dextre con sus datos reales, la captura del Cygnus a 10 m y su atraque en el CBM de nadir de Unity ([brazo-robotico.md](brazo-robotico.md)).
+- **Brazo**: Canadarm2, la MBS y Dextre con sus datos reales, la captura del Cygnus a 10 m, su atraque en el CBM de nadir de Unity y, tras sus 140 días, el desatraque y la suelta ([brazo-robotico.md](brazo-robotico.md)). Las piezas de fuera de la estación, del módulo y de la Starship se cambian en paseos espaciales ([paseo-espacial.md](paseo-espacial.md)).
 - **`HANGAR_SIZE`** (20 × 14 × 20 m) sigue en el código para el montaje del catálogo de naves («cabe en el
   hangar»); con la ISS ese criterio debería ser el CBM o el brazo.

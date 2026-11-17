@@ -108,6 +108,9 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | EST-53 | Solo test | | | `arm.test.ts`, `arm-chores.test.ts`; lo juega PX-39 |
 | EST-54 | Solo test | | | `arm.test.ts`, `cargo-resupply.test.ts`; lo juega PX-39 |
 | EST-55 | Solo test | | | `exterior-work.test.ts`; lo juega PX-39 |
+| EST-56 | Solo test | | | `arm.test.ts`, `cargo-resupply.test.ts`; lo juega PX-39 |
+| EST-57 | Solo test | | | `exterior-work.test.ts`; lo juegan PX-39 y PX-33 |
+| EST-58 | Sin probar | | | lo juega PX-39 |
 | EST-27 | Probado (en vivo) | 2026-11-16 | `ee051ea` | [run](runs/2026-11-16-1500-PX-16.md): PX-16, `dock-trip.test.ts` y `journey-world.test.ts` |
 | EST-41 | Probado (en vivo) | 2026-11-16 | `ba77230` | [run](runs/2026-11-16-2011-PX-29.md): `cargo-airlock.test.ts` y PX-29 |
 | EST-42 | Probado (en vivo) | 2026-11-16 | `ba77230` | [run](runs/2026-11-16-2011-PX-29.md): `iss.test.ts`, `structure.test.ts`, `interior.test.ts` y PX-29 |
@@ -171,6 +174,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | EVA-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | EVA-04 | Solo test | | | `quest-eva.test.ts`; lo juega PX-39 |
 | EVA-05 | Solo test | | | `eva.test.ts` (verde en la suite completa) |
+| EVA-06 | Solo test | | | `station-eva.test.ts`; lo juega PX-39 |
 | ING-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | ING-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | ING-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); el recorrido PX-02 lo juega |

@@ -164,6 +164,7 @@ import { needingAttention } from "@modules/ship-bay/application/bay";
 import { G } from "@core/units";
 import { FICTION, REAL_ONLY, fiction } from "@core/realism";
 import { STARSHIP, STARSHIP_LIFE_SUPPORT, STARSHIP_NOSE_PORT } from "@modules/mothership/data/starship";
+import { berthedPose } from "@modules/mothership/application/berthing";
 import { StarshipModel } from "./adapters/three/starship-model";
 import { StarshipInterior } from "./starship-interior";
 import { wireSanctuaryLife } from "./sanctuary-life";
@@ -1750,4 +1751,12 @@ for (const sel of [".nano-action", ".trip-chip", ".land-offer.lander", ".land-bo
   if (el) ctxDock.appendChild(el);
 }
 
-(window as unknown as { codeship: unknown }).codeship = { sanctuary, journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, starship, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, landerBerth, lifeSupport, bishop: bishopAirlock, stationOutside, stationModel, stationOps, refuelOps, importOps, componentImports, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels, dryDock, robotics: arm.robotics, stationEva: arm.stationEva, exteriorWork: arm.work };
+(window as unknown as { codeship: unknown }).codeship = { sanctuary, journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, starship, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, landerBerth, lifeSupport, bishop: bishopAirlock, stationOutside, stationModel, stationOps, refuelOps, importOps, componentImports, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, duelView, levels, dryDock, robotics: arm.robotics, stationEva: arm.stationEva, starshipEva: arm.starshipEva, exteriorWork: arm.work,
+  /** The experience suite's setup: the mothership latched on the station's forward IDA (the trip is PX-36's). */
+  berthMothershipNow: () => {
+    const t = structure.portFor("nodriza")!;
+    const pose = berthedPose(t, REAL_ONLY ? STARSHIP_NOSE_PORT : NODRIZA_NOSE_PORT);
+    mothership.moveTo(pose.position, pose.orientation);
+    mothership.dockedTo = t.id;
+  },
+};

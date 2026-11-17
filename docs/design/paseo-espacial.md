@@ -56,6 +56,23 @@ El oxígeno del EMU se gasta con el reloj de a bordo: un paseo típico de 6 h 27
 - `src/station-eva.ts` monta la escena fuera: asideros, anclajes, APFR, la figura con el EMU, el cable, la cámara (nunca dentro de la estación ni detrás de ella), el HUD y la auditoría en vivo (`StationEva.audit`).
 - La tarjeta de la escotilla EVA y la de los trajes vienen de `StationEva.actions`. La acción «esclusa» de `station-interior.ts` delega en ella.
 
+### Piezas de fuera de las naves
+
+Como en la ISS, una pieza de fuera no se cambia en la bahía: se cambia fuera, en un paseo (o con el brazo). El portátil de carga de Unity la **planea** (`ExteriorWork.planVehicle`) y el cambio se hace al terminar el trabajo del paseo; la pieza sale del hangar entonces y la vieja vuelve a él.
+
+| Pieza | Desde | Sitio de trabajo | Real |
+| --- | --- | --- | --- |
+| Del módulo lunar: motor, RCS, tanques, energía, batería, escudo | Quest; Canadarm2 trae la pieza desde la JEM-EF | junto al módulo, en su IDA de cenit (por el costado de Destiny y sobre Harmony) o en el CBM de Unity (por debajo de Quest) | **licencia**: nadie ha cambiado piezas de un módulo de aterrizaje en órbita; se hace como los ORU de la ISS ([ORU](https://en.wikipedia.org/wiki/Orbital_replacement_unit)) |
+| Motores de la Starship | la esclusa de la Starship, con la nave atracada | faldón de popa, a 50 m de la escotilla con dos cambios de anclaje | **licencia**: ninguna nave ha cambiado un motor en órbita |
+| Energía auxiliar de la Starship (alas ROSA) | la esclusa de la Starship | paneles del casco, junto a la esclusa | como las iROSA de la ISS; la esclusa del HLS está **en desarrollo** |
+| Cabina del módulo, blindaje de la Starship | la bahía | dentro | por dentro |
+
+### Desde la esclusa de la Starship
+
+La Starship lleva su **esclusa de tripulación** en la cubierta 3, como el HLS (**en desarrollo**: Axiom probó sus trajes AxEMU en maquetas del HLS en 2024, atados a un sistema junto a su esclusa; [Axiom Space](https://axiomspace.com/news/first-artemis-iii-integrated-test-complete)). Es un solo puesto, «Esclusa (trajes y escotilla)»: ahí se viste, prerrespira, despresuriza y sale al casco. Los trajes y el protocolo del HLS no están publicados, así que el juego usa el **EMU y el ISLE de la ISS** (dicho en la ficha del puesto).
+
+El paseo desde la Starship se hace **con ella atracada** en el IDA de proa: la escena es la de la estación, con la Starship en su puerto. Todo lo demás es el paseo de Quest (`StationEva` con otra base, `EvaBase`): cable de 25,9 m con anclajes en el casco, APFR, el reto del trabajo y la vuelta.
+
 ## Desde el módulo lunar (Bennu)
 
 Petición de Berón: «Añade la posibilidad de salir de la nave y caminar por el asteroide». Dentro de la nave Doménica va sin traje porque la cabina está presurizada. Para salir necesita un traje espacial: es una actividad extravehicular (EVA).
@@ -68,15 +85,15 @@ Petición de Berón: «Añade la posibilidad de salir de la nave y caminar por e
    - Completar el bucle que infla el traje hasta su presión de trabajo: 25,5 kPa, la del A7LB.
    - reparar el fallo de `saltar(1.5)`, que supera la velocidad de escape.
    Con dos fallos la preparación se cancela y Doménica sigue dentro.
-3. Fuera, la cámara va en tercera persona detrás de Doménica, con el traje blanco, el visor dorado, la mochila de soporte vital y el SAFER. Se ven la nave posada, el cable de seguridad desde la escotilla, nubecillas de polvo al avanzar y una lámpara en el casco.
+3. Fuera, la cámara va en tercera persona detrás de Doménica, con el traje blanco, el visor dorado y la mochila de soporte vital (sin SAFER: Apolo no lo llevaba). Se ven la nave posada, el cable de seguridad desde la escotilla, nubecillas de polvo al avanzar y una lámpara en el casco.
 4. **Controles**:
-   - el mando **Moverse** o WASD sirven para avanzar agarrada al regolito o, si va flotando, para disparar el SAFER en horizontal;
+   - el mando **Moverse** o WASD sirven para avanzar agarrada al regolito;
    - el mando **Mirar**, las flechas, Q/E o arrastrar mueven la cámara;
-   - **Impulso** o Espacio sirven para soltarse con un empujón suave; flotando, **Subir** (Espacio) y **Bajar** (F) disparan el SAFER;
+   - **Impulso** o Espacio sirven para soltarse con un empujón suave; flotando no hay propulsores: vuelve con el cable;
    - **Recoger cable** (R) activa el torno de la escotilla, que la trae de vuelta;
    - **Tomar muestra** (Intro) aparece junto a una muestra;
    - **Volver a la nave** (B) la mete dentro si está junto a la escotilla. Si está lejos, vuelve sola recogiendo cable y entra al llegar.
-5. **HUD**: oxígeno primario (tiempo restante), filtro de CO₂, batería, Δv del SAFER, distancia a la nave y longitud del cable, estado (agarrada, flotando o **a la deriva**), gravedad local, velocidad de escape y muestras recogidas.
+5. **HUD**: oxígeno primario (tiempo restante), filtro de CO₂, batería, distancia a la nave y longitud del cable, estado (agarrada, flotando o **a la deriva**), gravedad local, velocidad de escape y muestras recogidas.
 
 Hay cuatro muestras alrededor de la nave, dentro del alcance del cable. Cada una enseña un hallazgo real de la muestra de OSIRIS-REx.
 
@@ -93,9 +110,9 @@ Los valores salen de la masa y la forma reales de Bennu, con el mismo modelo de 
 | Giro | 4,296 h, ω = 4,06·10⁻⁴ rad/s | Wikipedia |
 
 - **Un paso normal (≈1,4 m/s) es siete veces la velocidad de escape.** Por eso Doménica no camina: avanza a gatas, **agarrada** a las rocas, a 0,15 m/s (valor de juego). Mientras se agarra, la superficie la sujeta y su posición sigue la forma real del terreno. Nunca puede quedar por debajo del suelo.
-- **Soltarse** (Impulso) la empuja a 0,04 m/s (valor de juego: el traje limita el empujón). Con 80 µm/s² sube unos 10 m y tarda unos 16 minutos en volver a caer. Es física real, y por eso conviene bajar con el SAFER.
+- **Soltarse** (Impulso) la empuja a 0,04 m/s (valor de juego: el traje limita el empujón). Con 80 µm/s² sube unos 10 m y tarda unos 16 minutos en volver a caer. Es física real, y por eso conviene no soltarse lejos del cable.
 - La simulación usa el **marco giratorio** del asteroide, con gravedad, aceleración centrífuga y de Coriolis. En el ecuador el giro ya la lleva a 0,11 m/s: un empujón de 0,15 m/s hacia donde gira el asteroide basta para escapar, y hay un test que lo comprueba. En los polos, donde aterriza la nave, es mucho más seguro.
-- **A la deriva**: si su energía en el marco inercial es positiva (½v² − μ/r > 0), el HUD avisa en rojo. El **cable** de 25,9 m frena su velocidad hacia fuera al tensarse. Con el **torno** o con el **SAFER** vuelve al suelo.
+- **A la deriva**: si su energía en el marco inercial es positiva (½v² − μ/r > 0), el HUD avisa en rojo. El **cable** de 25,9 m frena su velocidad hacia fuera al tensarse. Con el **torno** vuelve al suelo.
 - Si vuelve al suelo a menos de 0,3 m/s se agarra. Si llega más rápido rebota poco: el regolito suelto, casi sin cohesión, absorbe el golpe (valores de juego: restitución 0,2 y conserva el 50 % de la velocidad tangencial).
 - La nave posada es un obstáculo: Doménica no la atraviesa al moverse y la cámara evita el casco y las alas.
 
@@ -123,10 +140,10 @@ Los datos del EMU siguen aquí porque son los del paseo desde Quest:
 | Filtro de CO₂ | cartucho METOX | NASA 2014 (sin horas: dimensionado a 8,5 h, **supuesto**) |
 | Batería | Li-ion | NASA 2014 (sin capacidad: 8,5 h, **supuesto**) |
 | Cable de seguridad | 85 ft = 25,9 m (también hay de 55 ft) | NASA 2014 |
-| SAFER | 24 propulsores de N₂, 3,56 N cada uno, Δv 3,05 m/s, 37,7 kg | [Wikipedia, SAFER](https://en.wikipedia.org/wiki/Simplified_Aid_For_EVA_Rescue); [nota de la NASA (STS-64)](https://mailman.amsat.org/hyperkitty/list/sarex@amsat.org/thread/G5ZE64VCGDIWIY5TPJHNYJPU35RAO2NH/) |
+| SAFER (del EMU, no del A7LB) | 24 propulsores de N₂, 3,56 N cada uno, Δv 3,05 m/s, 37,7 kg | [Wikipedia, SAFER](https://en.wikipedia.org/wiki/Simplified_Aid_For_EVA_Rescue); [nota de la NASA (STS-64)](https://mailman.amsat.org/hyperkitty/list/sarex@amsat.org/thread/G5ZE64VCGDIWIY5TPJHNYJPU35RAO2NH/) |
 
-- Masa total sobre Bennu: Doménica (58 kg, `CrewMember`) + A7LB (96,2 kg) + SAFER (37,7 kg) = 191,9 kg. El **SAFER con el traje de Apolo es licencia**: el SAFER es de 1994 y Apolo no lo llevaba. Con 4 propulsores por eje (**supuesto**: 24 propulsores para 6 sentidos), el empuje es 4 × 3,56 N = 14,2 N y da **0,059 m/s²**. En unos 3 s supera la velocidad de escape, así que hay que pulsar con cuidado.
-- **Consumo**: el oxígeno y el filtro de CO₂ se gastan según el esfuerzo, como múltiplo del metabolismo de diseño: 0,6 en reposo, 1,3 a gatas y 0,9 con el SAFER (valores de juego dentro de 290–580 W). La batería se gasta a ritmo constante. Con menos de 30 min de margen el traje pide volver. Al agotar el primario pasa a la reserva y vuelve sola.
+- Masa total sobre Bennu: Doménica (58 kg, `CrewMember`) + A7LB (96,2 kg) = 154,2 kg. **Sin SAFER**: es de 1994 y el traje de Apolo no lo llevaba (docs/design/reglas.md: solo procesos reales). Flotando no tiene propulsores: el cable y el torno la traen de vuelta.
+- **Consumo**: el oxígeno y el filtro de CO₂ se gastan según el esfuerzo, como múltiplo del metabolismo de diseño: 0,6 en reposo y 1,3 a gatas (valores de juego dentro de 290–580 W). La batería se gasta a ritmo constante. Con menos de 30 min de margen el traje pide volver. Al agotar el primario pasa a la reserva y vuelve sola.
 - El tiempo pasa en tiempo real: 8 h de traje dan para todo un paseo.
 
 ## Muestras de regolito
@@ -150,7 +167,7 @@ Cada muestra son 30 g (valor de juego; OSIRIS-REx trajo 121,6 g en total). Los h
 
 1. **Prerrespiración**: resuelta. Desde Quest se hace el ISLE real (160 min de a bordo). Desde el módulo lunar no hace falta, como en Apolo.
 2. **Tiempo**: desde Quest, el traje se gasta con el reloj de a bordo. Sobre Bennu sigue en tiempo real: ¿lo pasamos también al reloj de a bordo?
-6. **El SAFER con el A7LB** es licencia (ver arriba). ¿Se quita sobre Bennu y se deja solo el cable?
+6. **El SAFER con el A7LB**: resuelto, quitado (Apolo no lo llevaba).
 7. **Valores de juego desde Quest**: los 15 min de despresurizar y represurizar, y el avance de 0,5 m/s por los asideros.
 3. **Muestras**: ahora solo se cuentan. ¿Van a la bodega (`expedition.cargo`), al laboratorio de a bordo o a una misión de Nevaeh?
 4. ¿Prefieres que se mueva así, a gatas y con impulsos, o con botas o anclas (por ejemplo, clavar estacas en el regolito, aunque casi no tiene cohesión)?

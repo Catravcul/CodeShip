@@ -102,13 +102,15 @@ export async function componentes(j) {
   await p.waitForTimeout(500);
   const act = p.locator(".bay-ui .bay-act:not(.locked)", { hasText: "R-4D-11" });
   j.check("la bahía ofrece montar el R-4D-11 que llegó", (await act.count()) > 0);
-  if (await act.count()) {
-    await j.tapAt(act.first());
-    await j.waitDuel();
-    await solveChain(j, () => window.codeship.bay.session?.run.current ?? null);
-  }
+  if (await act.count()) await j.tapAt(act.first());
+  // The engine is outside the lander: a spacewalk from Quest is planned (played in PX-39), not a swap at the bay.
+  j.check("montarlo planea un paseo espacial desde Quest", await p.evaluate(() => !!window.codeship.exteriorWork.job("eva:modulo")));
+  await j.setup("el paseo desde Quest lo monta (se juega entero en PX-39)", () => {
+    const c = window.codeship;
+    c.exteriorWork.complete("eva:modulo")?.apply?.();
+  });
   const fitted = await p.evaluate(() => window.codeship.ship.design.mainEngines[0]?.model.id);
-  j.check("el módulo lunar lleva ahora el R-4D-11 y el motor de descenso vuelve al hangar", fitted === "aerojet-r-4d", fitted);
+  j.check("tras el paseo el módulo lunar lleva el R-4D-11 y el motor de descenso vuelve al hangar", fitted === "aerojet-r-4d", fitted);
   await capture(j, "bahia", "Pieza montada en la bahía");
 
   // A whole vehicle: what Juventas lacks, in one shipment, then put together in the Bishop.

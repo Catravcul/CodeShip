@@ -109,7 +109,7 @@ const judgeHands = (samples) => {
   if (Math.max(...samples.map((s) => s.gesture)) < 0.3) why.push("sin gesto");
   return why;
 };
-const evaAudit = (top) => window.codeship.stationEva.audit(top) ?? null;
+const evaAudit = (top) => (window.codeship.stationEva.active ? window.codeship.stationEva : window.codeship.starshipEva)?.audit(top) ?? null;
 const judgeEva = (samples, pick) => {
   const why = [];
   if (!samples.length) return ["sin escena fuera"];
@@ -125,7 +125,7 @@ const judgeEva = (samples, pick) => {
  * Holds «Avanzar» or «Atrás» (a finger kept on it) until she stops: at an anchor she has not hooked yet (then
  * «Enganchar el cable aquí»), at the end of the tether, or at `done`.
  */
-async function crawl(j, dir, what, done) {
+async function crawl(j, dir, what, done, key = "stationEva") {
   const p = j.page;
   let hooks = 0;
   for (let guard = 0; guard < 12; guard++) {
@@ -141,16 +141,16 @@ async function crawl(j, dir, what, done) {
     if (!b) break;
     await p.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
     await p.mouse.down();
-    const s0 = await p.evaluate(() => window.codeship.stationEva.eva.anchor);
+    const s0 = await p.evaluate((k) => window.codeship[k].eva.anchor, key);
     await p
       .waitForFunction(
-        ([fn, a0, forward]) => {
-          const e = window.codeship.stationEva.eva;
+        ([fn, a0, forward, k]) => {
+          const e = window.codeship[k].eva;
           const at = e.atPoint;
           const hookable = forward && at !== undefined && e.route[at]?.anchor && at !== e.anchor;
           return new Function(`return (${fn})()`)() || hookable || (forward && e.tetherOut >= 25.8);
         },
-        [done.toString(), s0, dir === "avanzar"],
+        [done.toString(), s0, dir === "avanzar", key],
         { timeout: 120000, polling: 200 },
       )
       .catch(() => undefined);
@@ -158,6 +158,45 @@ async function crawl(j, dir, what, done) {
     await p.waitForTimeout(400);
   }
   j.check(`${what}: llega (${hooks} cambios de anclaje del cable)`, await p.evaluate(done));
+}
+
+async function placeOnStarship(j, id) {
+  await j.setup(`Doménica va hasta «${id}» (Starship)`, (f) => window.codeship.starship.mode.placeAt(f), id);
+  await j.page.waitForFunction((f) => window.codeship.starship.mode.nearFixture() === f, id, { timeout: 15000 }).catch(() => undefined);
+  await j.page.waitForTimeout(600);
+}
+
+/** A whole spacewalk from an airlock (`o.key`: the station's Quest or the Starship's): suit, ISLE, out, the job audited, back, suit off. */
+async function spacewalk(j, rows, o) {
+  const p = j.page;
+  const ev = (fn) => p.evaluate(fn, o.key);
+  await o.at(j, o.suits);
+  await j.tap(`${o.card} [data-act="eva:traje"]`, "Ponerse el EMU y prerrespirar (ISLE)");
+  await j.waitDuel();
+  await auditedSheet(j, [], "Ponerse el EMU", () => (window.codeship.stationEva.session ?? window.codeship.starshipEva?.session)?.run.current ?? null, () => null, () => [], `${o.shot}-traje`);
+  await j.setup("pasan los 160 min del ISLE (reloj de a bordo)", (k) => window.codeship[k].tick(161 / 60), o.key);
+  await o.at(j, o.suits);
+  await j.tap(`${o.card} [data-act="despresurizar"]`, "Despresurizar la esclusa");
+  await j.setup("pasan los minutos de despresurizar", (k) => window.codeship[k].tick(16 / 60), o.key);
+  await o.at(j, o.hatch);
+  await j.tap(`${o.card} [data-act="salir"]`, "Salir por la escotilla");
+  await p.waitForTimeout(1200);
+  j.check(`${o.title}: fuera, con el HUD del EMU`, await p.locator(".eva-st:not(.hidden) .es-hud").isVisible());
+  await capture(j, `${o.shot}-fuera`, `${o.title}: fuera`);
+  await crawl(j, "avanzar", `${o.title}: por los asideros`, new Function(`return window.codeship.${o.key}.eva.atWorksite`), o.key);
+  await j.tap('.eva-st:not(.hidden) [data-es="pies"]', "Pies en el APFR");
+  await capture(j, `${o.shot}-apfr`, `${o.title}: en el APFR`);
+  await j.tap('.eva-st:not(.hidden) [data-es="trabajar"]', "Trabajar");
+  await j.waitDuel();
+  await auditedSheet(j, rows, o.title, () => (window.codeship.stationEva.session ?? window.codeship.starshipEva?.session)?.run.current ?? null, evaAudit, judgeEva, o.shot);
+  await j.tap('.eva-st:not(.hidden) [data-es="pies"]', "Sacar los pies del APFR");
+  await crawl(j, "atras", `${o.title}: vuelta`, new Function(`return window.codeship.${o.key}.eva.atHatch`), o.key);
+  await j.tap('.eva-st:not(.hidden) [data-es="entrar"]', o.enter);
+  j.check(`${o.title}: de vuelta en la esclusa`, await ev((k) => !window.codeship[k].active && window.codeship[k].eva.phase === "represurizando"));
+  await j.setup("pasan los minutos de represurizar", (k) => window.codeship[k].tick(16 / 60), o.key);
+  await o.at(j, o.suits);
+  await j.tap(`${o.card} [data-act="quitar"]`, "Quitarse el EMU");
+  j.check(`${o.title}: sin traje`, await ev((k) => window.codeship[k].eva.phase === "dentro"));
 }
 
 export async function brazoEva(j) {
@@ -188,6 +227,12 @@ export async function brazoEva(j) {
   await j.tap('.sti-card [data-act="brazo:captura"]', "Capturar el Cygnus (por reto)");
   await j.waitDuel();
   await p.waitForTimeout(500);
+  const scroll = await p.evaluate(() => {
+    const el = [...document.querySelectorAll(".duel.sheet")].find((e) => !e.classList.contains("hidden"));
+    const inner = el ? [el, ...el.querySelectorAll("*")].filter((e) => e.scrollHeight > e.clientHeight + 2 && /auto|scroll/.test(getComputedStyle(e).overflowY)) : [];
+    return inner.map((e) => `${e.className}: ${e.scrollHeight - e.clientHeight} px`);
+  });
+  j.check("los bloques de la captura caben en la hoja sin desplazarla (390 × 664)", scroll.length === 0, scroll.join("; "));
   j.check("al empezar se ven sus manos en los mandos del puesto robótico", await p.evaluate(() => window.codeship.robotics.showingHands || !!window.codeship.robotics.audit(innerHeight).hands));
   await auditedSheet(j, rows, "Capturar el Cygnus y atracarlo en su CBM", () => window.codeship.robotics.session?.run.current ?? null, armAudit, judgeArm, "brazo-captura");
   await p.waitForTimeout(1500);
@@ -195,6 +240,31 @@ export async function brazoEva(j) {
   j.check("el Cygnus queda atracado y descarga", await p.evaluate(() => window.codeship.robotics.cygnusState() === "atracado"));
   const food1 = await p.evaluate(() => window.codeship.lifeSupport.system.readout().foodKg);
   j.check("la despensa se llena con su carga", food1 > food0, `${food0} → ${food1}`);
+  if (await p.locator(".dock-view.on .dv-close").count()) await j.tap(".dock-view.on .dv-close", "Cerrar la vista de fuera");
+
+  // The next one flies only when the port is free: after NG-19's 140 days the arm unberths and releases it.
+  await placeAt(j, "cocina");
+  j.check("con un Cygnus atracado, la cocina no pide otro y dice por qué", /quedan/.test(await card(j)) || !(await p.locator('.sti-card [data-act="carguero:cygnus"]:not([disabled])').count()));
+  await j.setup("pasan los 140 días de a bordo del NG-19", () => window.codeship.robotics.tick(140 * 24 + 1));
+  await placeAt(j, "cupula");
+  await j.tap('.sti-card [data-act="brazo:suelta-cygnus"]', "Desatracar y soltar el Cygnus");
+  await j.waitDuel();
+  await p.waitForTimeout(800);
+  // The camera turns with a drag on the scene above the sheet, and the automatic framing stays the default.
+  const strip = await p.evaluate(() => {
+    const el = [...document.querySelectorAll(".duel.sheet")].find((e) => !e.classList.contains("hidden"));
+    return el ? el.getBoundingClientRect().top : innerHeight;
+  });
+  await p.mouse.move(120, strip / 2);
+  await p.mouse.down();
+  await p.mouse.move(200, strip / 2 + 10, { steps: 6 });
+  await p.mouse.up();
+  await p.waitForTimeout(400);
+  j.check("en un reto del brazo la cámara se gira arrastrando sobre la escena", await p.evaluate(() => window.codeship.stationOutside.orbitYaw !== 0));
+  await capture(j, "suelta-giro", "Cámara girada durante el reto del brazo");
+  await auditedSheet(j, rows, "Desatracar y soltar el Cygnus", () => window.codeship.robotics.session?.run.current ?? null, armAudit, judgeArm, "brazo-suelta");
+  await p.waitForTimeout(1500);
+  j.check("el Cygnus se suelta y se aleja: el CBM queda libre", await p.evaluate(() => window.codeship.robotics.cygnusState() !== "atracado"));
   if (await p.locator(".dock-view.on .dv-close").count()) await j.tap(".dock-view.on .dv-close", "Cerrar la vista de fuera");
 
   // Another Cygnus captured by hand: the THC moves the tip, the trigger fires when it is close and slow.
@@ -284,6 +354,49 @@ export async function brazoEva(j) {
   await placeAt(j, "trajes");
   await j.tap('.sti-card [data-act="quitar"]', "Quitarse el EMU");
   j.check("sin traje y con el traje recargado", await p.evaluate(() => window.codeship.stationEva.eva.phase === "dentro"));
+
+  // The lander's engine is outside too: planned at the bay, swapped on a spacewalk from Quest (Canadarm2 brings it).
+  await j.setup("hay un R-4D-11 en el hangar", () => window.codeship.stationOps.station.hangar.put("aerojet-r-4d"));
+  await placeAt(j, "consola-bahia");
+  await j.tap('.sti-card [data-act="bahia"]', "Abrir la bahía");
+  await j.tap('.bay-ui [data-view="sonda"]', "Módulo");
+  await j.tap('.bay-ui [data-part="motor"]', "Motor principal del módulo");
+  const r4d = p.locator(".bay-ui .bay-act:not(.locked)", { hasText: "R-4D-11" });
+  if (await r4d.count()) await j.tapAt(r4d.first());
+  j.check("el motor del módulo no se cambia en la bahía: se planea un paseo desde Quest", await p.evaluate(() => !!window.codeship.exteriorWork.job("eva:modulo") && !window.codeship.duelView.visible));
+  await j.tap(".bay-ui .bay-back", "Volver a la estación");
+  await spacewalk(j, rows, { key: "stationEva", at: placeAt, card: ".sti-card", suits: "trajes", hatch: "escotilla-eva", title: "Paseo: cambiar el motor del módulo", shot: "eva-modulo", enter: "Entrar en Quest" });
+  const engine = await p.evaluate(() => window.codeship.ship.design.mainEngines[0]?.model.id);
+  j.check("el módulo lleva el R-4D-11 al terminar el paseo", engine === "aerojet-r-4d", engine);
+
+  // The Starship has its own crew airlock (HLS, en desarrollo): its power is changed from there.
+  await j.setup("la Starship está atracada en el IDA de proa (el viaje es PX-36) y hay alas ROSA en el hangar", () => {
+    const c = window.codeship;
+    c.berthMothershipNow();
+    c.stationOps.station.hangar.put("rosa-sunstone-x4");
+  });
+  await placeAt(j, "consola-bahia");
+  await j.tap('.sti-card [data-act="bahia"]', "Abrir la bahía");
+  await j.tap('.bay-ui [data-view="nodriza"]', "Nodriza");
+  await j.tap('.bay-ui [data-part="nodriza-equipo:energia-auxiliar"]', "Energía auxiliar de la Starship");
+  const rosa = p.locator(".bay-ui .bay-act:not(.locked)", { hasText: "SunStone" });
+  if (await rosa.count()) await j.tapAt(rosa.first());
+  j.check("la energía de la Starship se planea como paseo desde su propia esclusa", await p.evaluate(() => !!window.codeship.exteriorWork.job("eva:nodriza-energia")));
+  await j.tap(".bay-ui .bay-back", "Volver a la estación");
+  await j.setup("pasa a la Starship por su túnel de proa", () => {
+    const c = window.codeship;
+    c.stationInside.suspend();
+    c.starship.enterFromStation();
+  });
+  await p.waitForTimeout(1200);
+  await spacewalk(j, rows, { key: "starshipEva", at: placeOnStarship, card: ".sts-card", suits: "esclusa", hatch: "esclusa", title: "Paseo: cambiar la energía de la Starship", shot: "eva-starship", enter: "Entrar en la Starship" });
+  const aux = await p.evaluate(() => window.codeship.mothership.equipment("energia-auxiliar")?.id ?? "");
+  j.check("la Starship lleva las alas SunStone al terminar el paseo", aux === "rosa-sunstone-x4", aux);
+  await j.setup("vuelve a la estación", () => {
+    const c = window.codeship;
+    c.starship.mode.suspend();
+    c.stationInside.enter("nodriza");
+  });
 
   // Dextre: the S1 camera burnt by radiation, swapped from the RWS.
   await j.setup("pasan las horas: la radiación quema la cámara de S1", () => window.codeship.exteriorWork.tick(8));

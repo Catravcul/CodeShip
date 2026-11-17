@@ -59,7 +59,7 @@ escotilla de 1,27 m (la CBM de la ISS) en el centro. Con la cubierta de vuelo de
 | --- | --- | --- |
 | 1 · cocina y trabajo | cocina (agua caliente y fría, calentador), dos puestos de trabajo (tareas y registro de misiones), la esterilla (yoga y ajustes), la escotilla del techo a la cubierta de vuelo, el túnel del morro a la estación; bastidores OGS e ITCS y el puesto de incendios | cocina de la ISS; bastidores ISPR |
 | 2 · camarotes y aseo | cuatro camarotes de 2,1 m³, cuartos en los que se entra (dos a babor y dos a proa; como los de Harmony, distribución nuestra), el aseo con flujo de aire (WHC), el refugio de agua contra tormentas solares; bastidor WRS | Harmony; WHC de Tranquility |
-| 3 · ejercicio y esclusa | cinta T2 en el suelo, ARED en una pared, bicicleta CEVIS en la otra, la esclusa (información: las salidas están pendientes), la escotilla del módulo de aterrizaje; bastidor AR, la consola de soporte vital, almacén | ejercicio de la ISS |
+| 3 · ejercicio y esclusa | cinta T2 en el suelo, ARED en una pared, bicicleta CEVIS en la otra, la esclusa de tripulación (trajes y escotilla en un puesto, en desarrollo como la del HLS: los paseos salen de aquí con la nave atracada, [paseo-espacial.md](paseo-espacial.md)), la escotilla del módulo de aterrizaje; bastidor AR, la consola de soporte vital, almacén | ejercicio de la ISS |
 
 El **catálogo de especies** (rama `catalogo-especies`, [catalogo-especies.md](catalogo-especies.md)) tiene sus ranuras
 de rack en la Starship: el terminal, con el hábitat de roedores y el estante de las colonias, en la pared de popa de
@@ -151,7 +151,7 @@ estación por el morro, el túnel de la cubierta 1 lleva a ella.
   Starship es un espacio en 0 g bajo los depósitos de cabecera.
 - **Una sola tripulante jugable** en una nave para cuatro.
 - **El dique seco** de la estación tiene la celosía medida para la nave de anillos.
-- **La esclusa** está dibujada, pero las salidas desde la nave no están hechas.
+- **La esclusa**: los paseos salen de ella con la nave atracada en la estación; con la nave lejos de la estación aún no hay paseo.
 
 ## Código y QA
 

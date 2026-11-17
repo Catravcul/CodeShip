@@ -39,6 +39,10 @@ La tarjeta del RWS de la Cupola ofrece solo lo que toca ahora:
 | **Soltar con la Bishop** | con algo sujeto en su placa | ordenar los 6 pasos y encontrar el fallo en el orden | real |
 | **Dextre: cambiar la cámara de S1** | cuando la radiación ha quemado sus píxeles | ordenar 8 pasos (andar a la MBS, agarrar a Dextre, la JEM-EF, tomar la cámara, llevarla, sacar la vieja, montar, devolver) y la pregunta de los minutos de la MBS (distancia ÷ 1,5 m/min) | real (Dextre ya cambió una cámara exterior) |
 
+| **Desatracar y soltar el Cygnus** | cuando acaba su estancia: 140 días de a bordo, los del NG-19 | ordenar 6 pasos (cerrar escotillas, agarrarlo, soltar los 16 pernos, abrir los 4 pestillos, llevarlo al punto de suelta, abrir el LEE) con la trampa «abrir los pestillos con los pernos puestos», y la pregunta de los días (216 → 356) | real ([NASA, 22-12-2023](https://www.nasa.gov/blogs/spacestation/2023/12/22/two-spaceships-depart-crew-will-spend-holidays-in-space)) |
+
+Mientras un Cygnus está atracado, la cocina no pide otro y dice cuántos días le quedan: el siguiente vuela cuando el puerto queda libre.
+
 El Cygnus se atraca en el **CBM de nadir de Unity**, como en la ISS. Si el módulo lunar ocupa ese puerto, va al de nadir de Harmony. Mientras un Cygnus ocupa Unity, el módulo no puede atracar ahí.
 
 Al llegar, el Cygnus **no descarga solo**: espera en el punto de captura (`CargoResupply`, evento `punto-captura`) hasta que el brazo lo atraca. El Dragon de carga sigue acoplándose solo, porque en la ISS se acopla por su cuenta en un IDA.
@@ -48,7 +52,8 @@ Al llegar, el Cygnus **no descarga solo**: espera en el punto de captura (`Cargo
 1. Primero se ven **sus manos en los mandos del RWS**, en la Cupola (el escenario del interior, `stepVisual` con el gesto «programar»).
 2. Después se ve **el brazo fuera**, a escala real en el marco de la estación (`src/adapters/three/arm-show.ts`). Cada bloque bien colocado mueve su parte: la MBS rueda, el brazo anda de PDGF en PDGF, el LEE cierra sus cables, los pestillos y pernos del CBM se encienden uno a uno y Dextre usa sus dos manos.
 3. La cámara usa la **ventana de la Cupola** si desde ella se ve el sujeto sin nada de la estación en medio y a una distancia en la que cabe en la franja sobre la hoja. Si no, usa la **cámara exterior** con línea limpia más cercana. El rótulo de la vista dice cuál es.
-4. Rótulos en la escena: Canadarm2, la MBS, Dextre, el Cygnus, el CBM y la pieza. Son sprites que no tapa la geometría.
+4. **La cámara se gira**: arrastrar sobre la escena encima de la hoja la gira alrededor de lo que enfoca (el encuadre automático sigue siendo el de partida y se vuelve a él en cada reto). El rótulo dice entonces «cámara». Los mandos del THC siguen en pantalla en la captura a mano, como el controlador real.
+5. Rótulos en la escena: Canadarm2, la MBS, Dextre, el Cygnus, el CBM y la pieza. Son sprites que no tapa la geometría.
 
 La **auditoría en vivo** (`ArmShow.audit`, `RoboticsGame.audit`) mide tras cada bloque:
 
@@ -65,7 +70,8 @@ El recorrido PX-39 (`tools/experiencia/brazo-eva.mjs`) escribe las filas en [doc
 | Lo de dentro (bastidores, máquinas del ECLSS, impresoras) | portátil de carga de Unity (bahía) o su bastidor | la tripulación por dentro |
 | Alas, radiadores y escudos de la estación | el portátil **planea un paseo espacial** desde Quest (`ExteriorWork.planComponent`) | paseos espaciales: iROSA, bomba del EATCS, escudos MMOD |
 | Cámara exterior (una ORU pequeña) | Dextre, desde el RWS | Dextre |
-| Lo de fuera del módulo lunar y de la Starship | la bahía, como antes | — (pregunta abierta) |
+| Lo de fuera del módulo lunar | el portátil **planea un paseo desde Quest**; Canadarm2 trae la pieza (`ExteriorWork.planVehicle`) | como un ORU (licencia: nunca se ha hecho con un módulo de aterrizaje) |
+| Lo de fuera de la Starship (motores, energía auxiliar) | el portátil **planea un paseo desde la esclusa de la Starship** | licencia o en desarrollo ([paseo-espacial.md](paseo-espacial.md), «Piezas de fuera de las naves») |
 
 La pieza nueva sale del hangar al terminar el trabajo de fuera y la vieja vuelve al hangar (`applyStationRefit`). Si el trabajo falla, nada cambia.
 
@@ -87,10 +93,14 @@ La pieza nueva sale del hangar al terminar el trabajo de fuera y la vieja vuelve
 - `src/robotics-wiring.ts` lo une todo, y `main.ts` solo lo llama.
 - Tests: `arm.test.ts`, `arm-chores.test.ts` y `exterior-work.test.ts`. El Cygnus que espera está en `cargo-resupply.test.ts`.
 
-## Decisiones abiertas para Berón
+## Decisiones de Berón (resueltas)
 
-1. **El módulo lunar en el CBM** es licencia: el LM Apolo no tiene accesorio de agarre ni anillo CBM. ¿Se mantiene con su aviso?
-2. **Las piezas de fuera del LM y de la Starship** se siguen cambiando en la bahía. ¿Deben pasar también por un paseo o por el brazo?
-3. **Si un reto del brazo falla**, el brazo vuelve a su sitio y no cambia nada. En la ISS se repetiría otro día. ¿Debe costar tiempo de a bordo?
-4. **El Cygnus atracado** se queda en su CBM hasta que llega el siguiente, que lo sustituye. En la ISS se desatraca y se suelta tras unos meses. ¿Lo jugamos (desatracar y soltar con el brazo)?
-5. **Valores de juego**: la velocidad de la punta, el margen del LEE y la vida de la cámara ante la radiación (empieza a 6 h del final para que se vea en una partida).
+1. **El módulo lunar en el CBM** se mantiene como licencia, con su aviso.
+2. **Las piezas de fuera del LM y de la Starship** se cambian en un paseo o con el brazo, como en la realidad, nunca en la bahía.
+3. **Si un reto falla**, cuesta el tiempo de a bordo que se ha gastado (el reloj corre durante el reto) y nada cambia.
+4. **El Cygnus atracado** se desatraca y se suelta con el brazo tras su estancia real (140 días del NG-19).
+5. **La cámara** se gira durante los retos del brazo (arrastrar); el encuadre automático es el de partida.
+
+## Preguntas abiertas
+
+1. **Valores de juego**: la velocidad de la punta, el margen del LEE y la vida de la cámara ante la radiación (empieza a 6 h del final para que se vea en una partida).

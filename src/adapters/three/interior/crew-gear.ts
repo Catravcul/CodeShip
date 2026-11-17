@@ -380,7 +380,8 @@ export function gearPose(f: Fixture, vol: InteriorVolume, kind: GearKind): { at:
     const fw = matForward(f.face, vol);
     return { at, up: aisle, forward: fw };
   }
-  if (kind === "t2") return { at: at.setY(floor), up, forward: long };
+  // The T2 runs along the longer side of its footprint (the plan says which way it lies).
+  if (kind === "t2") return { at: at.setY(floor), up, forward: Math.abs(f.size.x) > Math.abs(f.size.z) ? new THREE.Vector3(1, 0, 0) : Math.abs(f.size.z) > Math.abs(f.size.x) ? new THREE.Vector3(0, 0, 1) : long };
   if (kind === "cevis" || kind === "ared") {
     const wallFloor = isWall(f.face) ? at.clone().setY(floor) : at.clone();
     if (kind === "ared") return { at: wallFloor.addScaledVector(aisle, 0.75), up, forward: aisle };

@@ -75,9 +75,10 @@ body.in-cockpit .ctx-dock > .rapport-chip, body.in-cockpit .ctx-dock > .trip-chi
 body:has(.interior-ui .board:not(.hidden)) .vstick { display: none !important; }
 
 /* An angry asteroid's card (wrath.css) sits where the radio toast of the levels would land: the toast moves
-   beside it on a phone and above the look stick on a desktop, so both stay readable (docs/design/ux-acciones.md). */
+   beside it on a phone (clear of the flight controls' column of icons on the right, PX-04) and above the look
+   stick on a desktop, so both stay readable (docs/design/ux-acciones.md). */
 @media (max-width: 899px) {
-  body.in-cockpit.wrath-on .radio-toast { top: 190px; bottom: auto; left: calc(min(180px, 46vw) + 16px); right: 8px; width: auto; transform: none; }
+  body.in-cockpit.wrath-on .radio-toast { top: 190px; bottom: auto; left: calc(min(180px, 46vw) + 16px); right: 62px; width: auto; transform: none; }
 }
 @media (min-width: 900px) {
   body.in-cockpit.wrath-on .radio-toast { top: auto; bottom: 170px; }

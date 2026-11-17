@@ -52,7 +52,7 @@ const MOVE = ".walk-stick, .vstick.room-move, .vstick.sti-move, .zg-pad, .updown
 
 export async function viaje(j) {
   const p = j.page;
-  // The switch: at the top of the task list, «Viaje» unless she chose otherwise; no row at the mat any more.
+  // The switch: in the task list's settings (the gear next to ✕), «Viaje» unless she chose otherwise; no row at the mat any more.
   await j.tap(".stand-btn", "Levantarse: habitáculo");
   await p.waitForTimeout(800);
   await j.useMachine("cabin", "esterilla", "ajustes", "Sentarse en loto: ajustes");
@@ -61,10 +61,13 @@ export async function viaje(j) {
   await j.tap(".settings-sheet [data-close]", "Levantarse y cerrar los ajustes");
   const chore = await taskTitle(p, "anillo");
   await j.tap(".room-ui:not(.hidden) .cab-tasks", "Tareas");
+  await j.tap('.task-board .board-head [data-view][aria-label="Ajustes de tareas"]', "⚙︎ Ajustes de tareas");
   const on = (await j.texts(".task-board .tb-travel .on"))[0] ?? "";
-  j.check("en la lista de tareas, el interruptor dice «Viaje» por defecto", on === "Viaje", on);
-  await capture(j, "ajuste", "Interruptor Viaje / Teletransporte en Tareas");
+  j.check("en los ajustes de la lista de tareas, el interruptor dice «Viaje» por defecto", on === "Viaje", on);
+  await capture(j, "ajuste", "Interruptor Viaje / Teletransporte en los ajustes de Tareas");
   await j.tap('.task-board .tb-travel [data-travel="teletransporte"]', "Teletransporte");
+  await j.tap('.task-board .tb-settings [data-vehicle="todos"]', "Vehículo: Todos");
+  await j.tap('.task-board .board-head [data-view][aria-label="Volver a la lista de tareas"]', "Lista de tareas");
   const saved = await p.evaluate(() => JSON.parse(localStorage.getItem("codeship.ajustes") ?? "{}").taskTravel);
   j.check("cambiar a «Teletransporte» se guarda en codeship.ajustes", saved === "teletransporte", String(saved));
 
@@ -84,8 +87,8 @@ export async function viaje(j) {
   if (!task) return j.check("hay una tarea de la estación en la lista", false);
   j.check("empieza en primera persona", await p.evaluate(() => !window.codeship.interior.thirdPerson));
   await j.tap(".tasks-btn", "Tareas");
-  await j.tap('.task-board .tb-travel [data-travel="viaje"]', "Viaje");
-  j.check("en la lista de tareas vuelve a «Viaje»", await p.evaluate(() => window.codeship.settings.value.taskTravel === "viaje"));
+  await j.taskSettings({ travel: "viaje" });
+  j.check("en los ajustes de la lista de tareas vuelve a «Viaje»", await p.evaluate(() => window.codeship.settings.value.taskTravel === "viaje"));
   await go(j, task);
   await p.waitForTimeout(600);
   const plan = await p.evaluate(() => window.codeship.journey.plan.map((l) => ({ kind: l.kind, from: l.from, to: l.to, s: Math.round(l.seconds) })));

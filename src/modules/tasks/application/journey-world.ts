@@ -167,7 +167,7 @@ function spine(radiusM: number): Spine {
 }
 
 /** The station's fixtures a journey can end at or leave by: machines, the bay, the crew areas, the docking hatches. */
-const GOAL_KINDS: ReadonlySet<string> = new Set(["panel", "bahia", "salir", "tripulacion", "hangar", "soporte-vital", "consola"]);
+export const GOAL_KINDS: ReadonlySet<string> = new Set(["panel", "bahia", "salir", "tripulacion", "hangar", "soporte-vital", "consola"]);
 
 /** Starship's hatch in deck 1's ceiling up to the flight deck (data/starship-interior.ts). */
 export const SHIP_FLIGHT_DECK_HATCH = "subir-cubierta-vuelo";

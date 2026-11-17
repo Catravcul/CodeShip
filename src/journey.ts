@@ -72,7 +72,8 @@ export class JourneyDriver {
   private elapsed = 0;
   private runner: Runner | null = null;
   private started = false;
-  private task: Task | null = null;
+  /** What to do on arrival: use the task's machine, or nothing (an area of the Áreas window). */
+  private arrive: (() => void) | null = null;
   private noteUntil = 0;
   private textAt = 0;
 
@@ -119,6 +120,19 @@ export class JourneyDriver {
 
   /** Plan the way to a task and set off; says why not if she cannot get there. */
   start(t: Task): boolean {
+    const goal = taskGoal(t.place, this.d.station.interior, this.d.ship?.interior);
+    if (!goal) {
+      this.say("Esa tarea no tiene una máquina a la que ir");
+      return false;
+    }
+    return this.goTo(goal, t.title, () => this.d.finish(t.place, t));
+  }
+
+  /**
+   * Plan the way to a place of the journey graph («nave:cocina», «estacion:harmony», «modulo:acople») and set
+   * off; `arrive` runs when she is there (the Áreas window passes nothing: she just stands there).
+   */
+  goTo(goal: string, title: string, arrive: () => void = () => {}): boolean {
     if (this.active) this.stop();
     this.d.settle();
     const here = this.here();
@@ -127,11 +141,6 @@ export class JourneyDriver {
       return false;
     }
     const ship = this.d.ship;
-    const goal = taskGoal(t.place, this.d.station.interior, ship?.interior);
-    if (!goal) {
-      this.say("Esa tarea no tiene una máquina a la que ir");
-      return false;
-    }
     const joins = this.d.joins();
     const interior = this.d.interior;
     const plan = planJourney(journeyTransfers({ here, joins, ringRadiusM: this.d.ringRadiusM, station: this.d.station.interior, ...(ship ? { ship: ship.interior } : {}), flights: this.flights(joins) }), { place: herePlace(here), joins }, goal);
@@ -141,16 +150,16 @@ export class JourneyDriver {
     }
     // A task never flies a ship by itself (reglas.md §3.5): she walks to where the flight is flown and is told to travel first.
     const cut = upToFlight(plan.legs);
-    this.travelFirst = cut.flight ? travelFirstText(t.title, cut.flight) : undefined;
+    this.travelFirst = cut.flight ? travelFirstText(title, cut.flight) : undefined;
     if (!cut.legs.length) {
       if (this.travelFirst) this.say(this.travelFirst, 10);
-      else this.d.finish(t.place, t);
+      else arrive();
       return true;
     }
     // From the hub or the spine down to a ring chore: the spoke takes half a minute; say so, or the tap looks ignored.
     if (interior.active && interior.zones?.zone !== "anillo" && plan.legs.some((l) => l.kind === "ascensor" && l.to.startsWith("anillo:")))
-      interior.say(`Bajas al anillo para «${t.title}»: el ascensor del radio tarda medio minuto`);
-    this.task = t;
+      interior.say(`Bajas al anillo para «${title}»: el ascensor del radio tarda medio minuto`);
+    this.arrive = arrive;
     this.legs = cut.legs;
     this.index = 0;
     this.begin();
@@ -191,11 +200,11 @@ export class JourneyDriver {
     if (this.runner.done()) {
       this.index++;
       if (this.index >= this.legs.length) {
-        const t = this.task!;
+        const arrive = this.arrive;
         const first = this.travelFirst;
         this.end();
         if (first) this.say(first, 10);
-        else this.d.finish(t.place, t);
+        else arrive?.();
         return;
       }
       this.begin();
@@ -212,7 +221,7 @@ export class JourneyDriver {
   private end(): void {
     this.legs = [];
     this.runner = null;
-    this.task = null;
+    this.arrive = null;
     document.body.classList.remove("in-journey");
     this.bar.classList.add("hidden");
   }

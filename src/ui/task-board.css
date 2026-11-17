@@ -1,6 +1,8 @@
 /* Every task of the game, grouped, with «Ir» (docs/design/habitaculo.md §Tareas). */
 .task-board { z-index: 11; top: 10px; transform: translateX(-50%); max-height: calc(100% - 20px); }
 .task-board.hidden { display: none; }
+/* On a phone the list leaves the tree menu's column free (its «Tareas» is the X that closes it, reglas.md §5.8). */
+@media (max-width: 640px) { .task-board, .interior-ui .board.task-board { left: 10px; transform: none; width: calc(100% - 74px); } }
 .tb-group { margin: 6px 0 0; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: #7fdcff; }
 .tb-task { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: #13243a; border: 1px solid #2c4a6a; border-radius: 10px; }
 .tb-task > div { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -9,8 +11,27 @@
 .task-board .board-head button[data-close] { min-width: 44px; min-height: 44px; }
 .task-board .chip { min-height: 44px; display: inline-flex; align-items: center; }
 body.in-tasks .vstick, body.in-tasks .zg-controls, body.in-tasks .cab-machine { display: none !important; }
-/* «Viaje / Teletransporte»: how «Ir» gets there, a two-way switch at the top of the list. */
-.tb-travel { display: flex; width: 100%; margin-top: 8px; padding: 3px; gap: 3px; background: #0b1726; border: 1px solid #2c4a6a; border-radius: 12px; }
+/* Header: [⚙︎ / list] [✕] on the right; the gear swaps the list for its settings (viaje-a-una-tarea.md §Ajustes de tareas). */
+.tb-head-btns { display: flex; gap: 4px; margin-left: auto; }
+.task-board .board-head .tb-view { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; color: #7fdcff; border-radius: 10px; }
+.task-board .board-head .tb-view:focus-visible, .task-board .board-head button[data-close]:focus-visible { outline: 2px solid #7fdcff; }
+.tb-scope { flex-basis: 100%; margin: 0; font-size: 12px; color: #9fe8c4; }
+.tb-hint { margin: 4px 0 0; font-size: 12px; color: #a9cfdc; }
+.tb-settings { display: flex; flex-direction: column; gap: 6px; }
+.tb-settings .tb-group { margin-top: 10px; }
+.tb-settings .tb-group:first-child { margin-top: 2px; }
+/* Vehicle: «Automático» on its own row, then the Starship, the station, the lander and every one, two by two. */
+.tb-vehicles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.task-board .tb-vehicles button { min-height: 44px; padding: 6px 10px; font: inherit; font-size: 14px; font-weight: 700; text-align: left; color: #cfe8f5; background: #13243a; border: 1px solid #2c4a6a; border-radius: 10px; }
+.task-board .tb-vehicles button.auto { grid-column: 1 / -1; }
+.task-board .tb-vehicles button small { font-weight: 400; opacity: 0.8; }
+.task-board .tb-vehicles button.on { color: #001018; background: #7fdcff; border-color: #7fdcff; }
+.tb-settings .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.tb-settings .chip { flex: none; gap: 4px; font: inherit; font-size: 13px; color: #cfe8f5; background: #13243a; border: 1px solid #2c4a6a; border-radius: 999px; padding: 0 12px; }
+.tb-settings .chip small { opacity: 0.7; }
+.tb-settings .chip.on { background: #7fdcff; color: #06202b; border-color: #7fdcff; }
+/* «Viaje / Teletransporte»: how «Ir» gets there, a two-way switch in the list's settings. */
+.tb-travel { display: flex; width: 100%; padding: 3px; gap: 3px; background: #0b1726; border: 1px solid #2c4a6a; border-radius: 12px; }
 .task-board .tb-travel button { flex: 1; min-height: 44px; font: inherit; font-size: 15px; font-weight: 700; color: #a9cfdc; background: transparent; border: 0; border-radius: 9px; }
 .task-board .tb-travel button.on { color: #001018; background: #7fdcff; }
 .tb-travel-help { display: block; width: 100%; margin: 4px 0 2px; font-size: 12px; color: #9fe8c4; }

@@ -105,6 +105,22 @@ Capturas (antes / después), en `docs/screenshots/`:
 
 Salas a pie con cámara de casa de muñecas: arriba a la izquierda dónde está; arriba a la derecha el ojo (3ª/1ª persona, V) y Tareas (T); abajo MOVERSE y MIRAR; la tarjeta de la máquina junto a la que está, abajo (móvil) o abajo a la derecha (escritorio), con su acción principal (Intro). Un toque sobre una máquina la lleva andando. En el puente, bajo el título, la lista corta de avisos y una luz de color en cada consola. Con un reto abierto, todo eso se oculta (como H26).
 
+### Menú árbol general (2026-11-17, reglas.md §5.8–5.9)
+
+Petición de Berón (18:22): un solo icono raíz, un **engranaje**, arriba a la derecha en todos los modos (cabina del LM, habitáculo, Starship, puente, estación). Al tocarlo se vuelve una **X** («Cerrar menú») y debajo brotan, en este orden: **Vista** (la cámara o 1ª/3ª persona), **Tareas**, **Áreas** ([areas.md](areas.md)), los botones propios del modo (en la cabina: tiempo, nivelar, el interruptor de acople, dejar el puesto…) y, solo mientras hay un viaje o una operación a distancia en marcha, **Trayecto**. Se recogen a los 5 s sin tocar o tras usar uno.
+
+- Todo lo que antes estaba fijo fuera del menú (el ojo, Tareas, el interruptor de acople, «Dejar el puesto») brota ahora del engranaje: ya no hay iconos sueltos en el HUD.
+- Un icono que abre una ventana (Tareas, Áreas, Trayecto) se vuelve una **X** («Cerrar tareas», «Cerrar áreas», «Cerrar trayecto») mientras la ventana está abierta, y el menú se queda fuera hasta que se cierra. En el móvil las ventanas dejan libre la columna del menú (390 px: 10 px + ventana + 64 px).
+- **Trayecto** es una ventana de solo estado: destino, fase, distancia, lo que falta en tiempo real y una barra. Sin «Ver trayecto» ni «Mando»: esos están solo en los mandos de pilotaje (§5.9). Se cierra sola al acabar el viaje.
+- Con un reto abierto, el menú y sus ventanas se ocultan (como todo, sección 7).
+- Código: `src/ui/root-menu.ts` (`RootMenu.global` pone Áreas y Trayecto en todos los menús), `src/ui/hud-windows.ts` (las ventanas avisan al menú), `src/ui/trip-window.ts`. Recorrido: PX-42.
+
+### Lista de tareas: lista y ajustes (2026-11-17)
+
+Petición de Berón: «En las misiones sería ideal poner un icono de engranaje al lado del de cerrar: ocultaría las misiones y mostraría la opción de teletransporte/viaje, y ahí también tendríamos los filtros, y añadiríamos filtros de vehículo nave/estación. Por defecto se podría seleccionar automáticamente según dónde esté el personaje, pero también se podría elegir en los ajustes. Luego el botón de engranaje se convierte en un icono de lista y, al pulsarlo, oculta los ajustes y muestra las misiones; eso va alineado con la lógica del menú en árbol, ¿no?».
+
+Sí: es la misma revelación progresiva del menú raíz (NN/g, sección 1). La cabecera tiene dos botones a la derecha, **[⚙︎][✕]**, de 44 px y con nombre accesible («Ajustes de tareas», «Cerrar tareas»). El ⚙︎ cambia la vista entera (no abre otra ventana encima) y pasa a ser el **icono de lista** («Volver a la lista de tareas»), en el mismo sitio, igual que la raíz que brota y se recoge. La lista se queda solo con las tareas y su «Ir», más una línea que dice qué enseña («En la estación (automático) · 20 de 55») y, si el filtro deja tareas fuera, cuántas y que están en ⚙︎ › Todos. Todo lo que es elección (Viaje/Teletransporte, vehículo, grupo) vive en los ajustes. Detalle en [viaje-a-una-tarea.md](viaje-a-una-tarea.md#ajustes-de-tareas). Capturas: `docs/screenshots/tareas-ajustes-*-movil.png` (PX-42).
+
 ## 4. Los retos: el fallo de los tres toques y la vista HUD
 
 **Qué pasaba** (reproducido con el recorrido `cocina` y con la prueba `ChoreRun … crema de cacahuete`): en una cadena de pasos (crema de cacahuete: 7 pasos, 3 fallos permitidos) un fallo no cambia de paso, y la pantalla volvía a pintar las mismas opciones sin marcar la fallada. Cada toque sobre la misma opción errónea contaba **otro** fallo: el primero bajaba «Intentos» de 3 a 2, el segundo a 1 —con las celdas casi transparentes y contando hacia abajo, se veía como si el fallo se «desmarcara»— y el tercero agotaba los intentos: el reto se perdía, pero la pantalla seguía diciendo «Así no: inténtalo otra vez» con un único botón «Cerrar» justo donde estaban las opciones, así que parecía que la misión había terminado.
@@ -156,7 +172,7 @@ Apuntados por la suite (`j.problem`) o vistos en sus capturas:
 ## 6. Reglas para lo que venga
 
 1. Toda acción nueva que dependa del momento entra en la columna de contexto (o en el botón de zona de los modos de caminar), no en una esquina nueva.
-2. Un mando de vuelo nuevo es un icono de la raíz (≥ 44 px, con nombre accesible y tecla); un ajuste que no cambia mientras se vuela va en los ajustes de la esterilla. Una acción de modo (entrar, salir, desacoplar) es una máquina del habitáculo, no un botón del HUD.
+2. Un botón nuevo del HUD brota del engranaje del menú árbol (reglas.md §5.8); si abre una ventana, se vuelve la X que la cierra. Un filtro o una opción de una lista no va encima de la lista: va en sus ajustes, tras el ⚙︎ de su cabecera (como la lista de tareas). Un mando de vuelo nuevo es un icono de la raíz (≥ 44 px, con nombre accesible y tecla); un ajuste que no cambia mientras se vuela va en los ajustes de la esterilla. Una acción de modo (entrar, salir, desacoplar) es una máquina del habitáculo, no un botón del HUD.
 3. Ningún elemento fijo nuevo sin pasar `npm run experiencia -- acciones-movil acciones-escritorio`: 0 solapes en 390×664 y 1280×800.
 4. Botones ≥ 44 px de alto en móvil; texto sobre la escena con placa o halo hasta 4,5:1.
 5. El feedback de un acierto o un fallo lleva forma (✓/✗) además de color, y un número que solo sube.

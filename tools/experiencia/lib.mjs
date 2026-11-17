@@ -81,11 +81,20 @@ export class Journey {
   async tap(selector, what = selector) {
     const loc = this.page.locator(selector).first();
     try {
+      await this.sprout(selector);
       await loc.waitFor({ state: "visible", timeout: 15000 });
       await this.invariants(loc, what);
       // A finger on a phone, the mouse on a desktop.
-      if (this.opts.mobile === false) await loc.click({ timeout: 15000 });
-      else await loc.tap({ timeout: 15000 });
+      const press = (ms) => (this.opts.mobile === false ? loc.click({ timeout: ms }) : loc.tap({ timeout: ms }));
+      // The tree menu folds back 5 s after the last touch: at the suite's few frames per second it may fold
+      // while the finger is on the way; then the player opens it again (one more tap on the gear).
+      const inMenu = await loc.evaluate((el) => !!el.closest(".root-menu .rm-shoots")).catch(() => false);
+      if (!inMenu) await press(15000);
+      else
+        await press(8000).catch(async () => {
+          await this.sprout(selector);
+          await press(15000);
+        });
       // A hatch's action (in, out, up, down) starts a passage once she is at it.
       if (/data-act="(entrar|salir|subir|bajar)/.test(selector)) await this.throughHatches();
       return true;
@@ -93,6 +102,44 @@ export class Journey {
       this.check(`se puede tocar «${what}»`, false, e.message.split("\n")[0]);
       return false;
     }
+  }
+
+  /**
+   * The general tree menu (docs/design/reglas.md §5.8): an icon folded under the gear is reached as a player
+   * does, with a visible tap on the gear first. Does nothing if the target is not in a folded menu.
+   */
+  async sprout(selector) {
+    const root = await this.page
+      .evaluate((sel) => {
+        const shown = (el) => el && el.checkVisibility();
+        const el = [...document.querySelectorAll(sel)].find((e) => e.closest(".root-menu:not(.open) .rm-shoots") && !e.classList.contains("hidden") && shown(e.closest(".root-menu")));
+        const menu = el?.closest(".root-menu");
+        if (!menu) return null;
+        menu.dataset.sprout = "1";
+        return true;
+      }, selector)
+      .catch(() => null);
+    if (!root) return;
+    const gear = this.page.locator('.root-menu[data-sprout="1"] > .rm-root').first();
+    await this.invariants(gear, "⚙︎ Menú");
+    if (this.opts.mobile === false) await gear.click({ timeout: 15000 });
+    else await gear.tap({ timeout: 15000 });
+    await this.page.evaluate(() => document.querySelectorAll(".root-menu[data-sprout]").forEach((m) => delete m.dataset.sprout));
+    // The icons fade in (0,18 s, slow at the suite's few frames per second): tap them once they are visible.
+    await this.page
+      .waitForFunction((sel) => [...document.querySelectorAll(sel)].some((e) => e.closest(".root-menu.open") && getComputedStyle(e).visibility === "visible"), selector, { timeout: 12000, polling: 100 })
+      .catch(() => {});
+  }
+
+  /**
+   * With the task list open, change its settings with visible taps (docs/design/viaje-a-una-tarea.md
+   * §Ajustes de tareas): the gear next to ✕, then each `[data-…="…"]` choice (e.g. `vehicle: "todos"`,
+   * `travel: "teletransporte"`, `group: "comida"`), then the list icon back to the list.
+   */
+  async taskSettings(choices) {
+    let ok = await this.tap('.task-board .board-head [data-view][aria-label="Ajustes de tareas"]', "⚙︎ Ajustes de tareas");
+    for (const [k, v] of Object.entries(choices)) ok = (await this.tap(`.task-board .tb-settings [data-${k}="${v}"]`, `${k}: ${v}`)) && ok;
+    return (await this.tap('.task-board .board-head [data-view][aria-label="Volver a la lista de tareas"]', "Lista de tareas")) && ok;
   }
 
   /**
@@ -228,6 +275,34 @@ export class Journey {
     await this.page.waitForTimeout(500);
     if (!act) return true;
     return this.tap(`.room-ui:not(.hidden) .cab-machine [data-act="${act}"]`, what);
+  }
+
+  /**
+   * Opens a root icon menu (reglas.md §5.8) if it is folded, with a tap on its root, and waits until `item`
+   * has sprouted (the shoots fade in in 0,18 s, each a full 44 px box).
+   */
+  async openMenu(bar, item, what = "Mandos de vuelo") {
+    const p = this.page;
+    if (!(await p.evaluate((b) => document.querySelector(b)?.classList.contains("open"), bar))) await this.tap(`${bar} .rm-root`, what);
+    await p.waitForFunction((i) => (document.querySelector(i)?.getBoundingClientRect().width ?? 0) >= 44, item, { timeout: 5000 }).catch(() => {});
+  }
+
+  /**
+   * A tap on an icon that sprouts from a root menu: opens the menu and taps it. The shoots fold back 5 s after
+   * the root was touched, which a slow, shared machine can pass between the two taps: then it opens it again.
+   */
+  async tapInMenu(bar, item, what) {
+    for (let n = 0; n < 2; n++) {
+      await this.openMenu(bar, item);
+      try {
+        await this.page.locator(item).first().tap({ timeout: 4000 });
+        return true;
+      } catch {
+        // Folded back before the tap landed: open it again.
+      }
+    }
+    await this.openMenu(bar, item);
+    return this.tap(item, what);
   }
 
   /** Waits until the challenge screen is up, then checks that it is the only interface on screen. */

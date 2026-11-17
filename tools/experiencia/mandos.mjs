@@ -1,6 +1,6 @@
 // PX-41: the lander's and the probe's controls as Berón asked (2026-11-17), played with taps on an iPhone 13
 // (docs/design/cabina-lm.md «Mandos», modulo-lunar-juventas.md «Cómo sale Juventas»): in the LM's flight view the
-// dock/undock switch sits under the eye only at a port and shows the opposite of the state, with no unexplained
+// dock/undock switch sprouts from the controls' root only at a port and shows the opposite of the state, with no unexplained
 // icon; the commander's station offers Manual and Automático, and Automático lists only the destinations near
 // the mothership and opens the trip challenge; on Starship's flight deck the probe's station offers the same,
 // Juventas starts in its deployer on the hull (wherever the mothership went), the door opens, it slides out and
@@ -21,20 +21,22 @@ async function capture(j, label, title) {
 const tripStep = () => window.codeship.nav.programming?.current ?? null;
 const probeStep = () => window.codeship.probeTravel.trip.programming?.current ?? null;
 const seatButtons = () => [...document.querySelectorAll(".room-ui:not(.hidden) .cab-machine .cm-acts button")].map((b) => ({ id: b.dataset.act, label: b.textContent.trim(), on: !b.disabled }));
-const pinned = () =>
-  [...document.querySelectorAll(".flight-bar .rm-pinned button, .flight-bar > .rm-root")]
-    .filter((b) => b.checkVisibility())
-    .map((b) => ({ cls: b.className, label: b.getAttribute("aria-label"), y: Math.round(b.getBoundingClientRect().top) }));
+// The flight view's own shoots: the general tree menu's Cámara, Tareas, Áreas, Trayecto and «Dejar el puesto»
+// sprout in every cockpit and are left out here (reglas.md §5.8).
+const shoots = () =>
+  [...document.querySelectorAll(".flight-bar .rm-shoots button")]
+    .filter((b) => !b.classList.contains("hidden") && !/cam-btn|fv-tasks|areas-btn|trip-btn|stand-btn/.test(b.className))
+    .map((b) => ({ cls: b.className, label: b.getAttribute("aria-label") }));
 
 export async function mandos(j) {
   const p = j.page;
 
-  // 1. Docked: under the eye, the undock switch (its icon the opposite of «docked»); no other icon.
-  const docked = await p.evaluate(pinned);
-  const eye = docked.find((b) => /cam-btn/.test(b.cls));
-  const sw = docked.find((b) => /dock-btn/.test(b.cls));
-  j.check("acoplado, bajo el ojo está el interruptor «Desacoplar» (el icono de lo contrario del estado)", !!eye && !!sw && sw.y > eye.y && /^Desacoplar/.test(sw.label ?? ""), JSON.stringify(docked));
-  j.check("ningún icono sin explicar: la raíz no sale (no queda nada plegado dentro) y no hay «Centrar la vista»", !docked.some((b) => /rm-root/.test(b.cls)) && !(await p.locator(".center-btn").count()), JSON.stringify(docked));
+  // 1. Docked: the undock switch sprouts from the root of the flight controls (reglas.md §5.8), its icon the
+  // opposite of «docked»; the root holds nothing it cannot explain («Centrar la vista» is gone).
+  await j.openMenu(".flight-bar", ".dock-btn");
+  const docked = await p.evaluate(shoots);
+  j.check("acoplado, de la raíz de los mandos brota el interruptor «Desacoplar» (el icono de lo contrario del estado)", docked.some((b) => /dock-btn/.test(b.cls) && /^Desacoplar/.test(b.label ?? "")), JSON.stringify(docked));
+  j.check("ningún icono sin explicar: acoplado solo brota el interruptor (no hay «Centrar la vista»)", docked.length === 1 && !(await p.locator(".center-btn").count()), JSON.stringify(docked));
   await capture(j, "acoplado", "Vista de vuelo acoplada con el interruptor de acople");
 
   // 2. The commander's station: Manual and Automático; Automático lists only the nearby destinations.
@@ -43,7 +45,8 @@ export async function mandos(j) {
   const seat = await p.evaluate(seatButtons);
   j.check("el puesto del comandante ofrece «Manual» y «Automático» (sin «Desacoplar»: es el interruptor del vuelo)", seat.map((b) => b.label).join("|") === "Manual|Automático", JSON.stringify(seat));
   await j.tap('.room-ui:not(.hidden) .cab-machine [data-act="automatico"]', "Automático");
-  await p.waitForTimeout(500);
+  await p.waitForFunction(() => !!document.querySelector('.room-ui:not(.hidden) .cab-machine [data-act^="auto:"]'), null, { timeout: 10000 }).catch(() => {});
+  await p.waitForTimeout(300);
   const list = await p.evaluate(seatButtons);
   const near = await p.evaluate(() => {
     const c = window.codeship;
@@ -57,10 +60,23 @@ export async function mandos(j) {
   await j.tap(`.room-ui:not(.hidden) .cab-machine [data-act="auto:${bennu}"]`, "Automático a Bennu");
   await j.waitDuel(30000);
   await capture(j, "automatico-reto", "Reto del viaje automático del LM");
+  const shipBefore = await p.evaluate(() => {
+    const m = window.codeship.mothership.position;
+    return [m.x, m.y, m.z];
+  });
   for (let n = 0; n < 9 && (await p.evaluate(() => window.codeship.nav.status)) === "programming"; n++) await j.answer(tripStep, true);
   await p.waitForTimeout(1500);
-  const flying = await p.evaluate(() => ({ status: window.codeship.nav.status, docked: window.codeship.docking.docked, carrier: !!window.codeship.nav.carrierTrip }));
-  j.check("resuelto el reto, el LM se desacopla y su piloto automático lo lleva (la nodriza no se mueve)", flying.status === "autopilot" && !flying.docked && !flying.carrier, JSON.stringify(flying));
+  // A slow machine (CI) may find it already there: «arrived» is the same proof, if it undocked and Starship stayed.
+  const flying = await p.evaluate((b) => {
+    const c = window.codeship;
+    const m = c.mothership.position;
+    return { status: c.nav.status, docked: c.docking.docked, carrier: !!c.nav.carrierTrip, shipMovedM: Math.hypot(m.x - b[0], m.y - b[1], m.z - b[2]) };
+  }, shipBefore);
+  j.check(
+    "resuelto el reto, el LM se desacopla y su piloto automático lo lleva (la nodriza no se mueve)",
+    (flying.status === "autopilot" || flying.status === "arrived") && !flying.docked && !flying.carrier && flying.shipMovedM < 0.01,
+    JSON.stringify(flying),
+  );
 
   // 3. Free near the Starship's port: the switch shows «Acoplar» and the assist flies in.
   await j.setup("se para el viaje y el LM queda a 60 m del puerto de la Starship, en su eje", () => {
@@ -73,16 +89,17 @@ export async function mandos(j) {
   });
   await j.useMachine("cabin", "asiento", "pilotar", "Manual");
   await p.waitForTimeout(1200);
-  const free = await p.evaluate(pinned);
+  const free = await p.evaluate(shoots);
   const sw2 = free.find((b) => /dock-btn/.test(b.cls));
   j.check("libre dentro de la esfera de 200 m del puerto, el interruptor dice «Acoplar»", !!sw2 && sw2.label === "Acoplar", JSON.stringify(free));
+  await j.openMenu(".flight-bar", ".dock-btn");
   await capture(j, "acoplar", "Interruptor «Acoplar» cerca del puerto");
-  await j.tap(".dock-btn", "Acoplar");
+  await j.tapInMenu(".flight-bar", ".dock-btn", "Acoplar");
   await p.waitForTimeout(600);
   j.check("al tocarlo, el asistente lleva el LM al puerto («Acoplando: tocar para parar»)", await p.evaluate(() => window.codeship.docking.assist && /Acoplando/.test(document.querySelector(".dock-btn")?.getAttribute("aria-label") ?? "")));
   await j.setup("el asistente llega al contacto (minutos de juego)", () => window.codeship.docking.dockNow(window.codeship.mothership));
   await p.waitForTimeout(800);
-  await j.tap(".dock-btn", "Desacoplar");
+  await j.tapInMenu(".flight-bar", ".dock-btn", "Desacoplar");
   await p.waitForTimeout(600);
   j.check("y vuelve a desacoplar con el mismo interruptor", await p.evaluate(() => !window.codeship.docking.docked));
   await j.setup("vuelve a acoplar en la Starship", () => window.codeship.docking.dockNow(window.codeship.mothership));
@@ -124,7 +141,8 @@ export async function mandos(j) {
   const ps = await p.evaluate(seatButtons);
   j.check("el mando de la sonda ofrece «Manual» y «Automático»", ps.map((b) => b.label).join("|") === "Manual|Automático", JSON.stringify(ps));
   await j.tap('.room-ui:not(.hidden) .cab-machine [data-act="automatico"]', "Automático");
-  await p.waitForTimeout(500);
+  await p.waitForFunction(() => !!document.querySelector('.room-ui:not(.hidden) .cab-machine [data-act^="auto:"]'), null, { timeout: 10000 }).catch(() => {});
+  await p.waitForTimeout(300);
   const pl = (await p.evaluate(seatButtons)).filter((b) => b.id?.startsWith("auto:")).map((b) => b.id.slice(5));
   j.check("solo asteroides cercanos a la nodriza (Juventas no hace viajes largos)", pl.length > 0 && pl.every((id) => near.find((t) => t.id === id && !t.far)), pl.join(", "));
   await capture(j, "sonda-destinos", "Destinos cercanos del «Automático» de la sonda");

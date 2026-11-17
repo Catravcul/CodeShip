@@ -42,7 +42,7 @@ export async function habitaculo(j) {
   // The commander's station: Manual and Automático; undocking is the dock switch of the flight view (PX-41).
   await j.useMachine("cabin", "asiento", "pilotar", "Manual");
   await p.waitForTimeout(900);
-  await j.tap(".dock-btn", "Desacoplar (interruptor de acople)");
+  await j.tapInMenu(".flight-bar", ".dock-btn", "Desacoplar (interruptor de acople)");
   await p.waitForTimeout(600);
   j.check("el interruptor de acople de la vista de vuelo desacopla el módulo", await p.evaluate(() => !window.codeship.docking.docked));
   await capture(j, "acople", "Interruptor de acople");
@@ -69,9 +69,15 @@ export async function habitaculo(j) {
   });
   await j.tap(".room-ui:not(.hidden) .cab-tasks", "Tareas");
   await p.waitForTimeout(500);
-  const groups = await j.texts(".task-board [data-group]");
-  j.check("la lista de tareas está agrupada (Vuelo, Nave, Estación…)", groups.length >= 3, groups.join(", "));
+  j.check("la lista de tareas está agrupada", (await j.texts(".task-board .tb-group")).length >= 1, (await j.texts(".task-board .tb-group")).join(", "));
   await capture(j, "tareas", "Lista de tareas");
+  // The groups are filters in the list's settings (the gear next to ✕), with every vehicle.
+  await j.tap('.task-board .board-head [data-view][aria-label="Ajustes de tareas"]', "⚙︎ Ajustes de tareas");
+  await j.tap('.task-board .tb-settings [data-vehicle="todos"]', "Vehículo: Todos");
+  const groups = await j.texts(".task-board [data-group]");
+  j.check("los ajustes de la lista filtran por grupo (Todas, Vuelo, Nave, Estación…)", groups.length >= 3, groups.join(", "));
+  await capture(j, "tareas-ajustes", "Ajustes de la lista de tareas");
+  await j.tap('.task-board .board-head [data-view][aria-label="Volver a la lista de tareas"]', "Lista de tareas");
   const flightTask = '.task-board .tb-task:has-text("Aterriza el módulo") .tb-go';
   if (await p.locator(flightTask).count()) {
     await j.tap(flightTask, "Ir: Aterriza el módulo");

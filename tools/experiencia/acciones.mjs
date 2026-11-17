@@ -55,6 +55,10 @@ export async function acciones(j) {
     await j.tap(".tasks-btn", "Tareas");
   }
   await audit(j, "tareas", "Tablero de tareas");
+  // Its settings behind the gear next to ✕ (viaje-a-una-tarea.md §Ajustes de tareas): the gear turns into a list icon.
+  await j.tap('.task-board .board-head [data-view][aria-label="Ajustes de tareas"]', "⚙︎ Ajustes de tareas");
+  await audit(j, "tareas-ajustes", "Ajustes de la lista de tareas");
+  await j.tap('.task-board .board-head [data-view][aria-label="Volver a la lista de tareas"]', "Lista de tareas");
   await j.tap(".task-board [data-close]", "Cerrar tareas");
   // The bridge: a room of consoles, each opening only its own page (docs/design/habitaculo.md §Puente).
   await j.setup("la llevamos a la escotilla del puente", () => {

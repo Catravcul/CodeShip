@@ -61,4 +61,13 @@ describe("general settings (docs/design/habitaculo.md §Ajustes)", () => {
     expect(parseSettings(JSON.stringify({ taskTravel: "volar" }), { touchCapable: true }).taskTravel).toBe("viaje");
     expect(parseSettings(null, { touchCapable: true }).taskTravel).toBe("viaje");
   });
+  it("HAB-41 the task list's vehicle filter follows where she is by default; a chosen vehicle is kept and junk falls back to automatic", () => {
+    expect(DEFAULT_SETTINGS.taskVehicle).toBe("auto");
+    for (const v of ["nodriza", "estacion", "modulo", "todos"] as const) {
+      const s = changeSetting(DEFAULT_SETTINGS, "taskVehicle", v);
+      expect(parseSettings(serializeSettings(s), { touchCapable: true }).taskVehicle).toBe(v);
+    }
+    expect(parseSettings(JSON.stringify({ taskVehicle: "anillo" }), { touchCapable: true }).taskVehicle).toBe("auto");
+    expect(parseSettings(null, { touchCapable: true }).taskVehicle).toBe("auto");
+  });
 });

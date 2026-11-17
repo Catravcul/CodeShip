@@ -57,7 +57,8 @@ export async function nodrizaEstacion(j) {
   const plan = await p.evaluate(() => window.codeship.journey.plan.map((l) => ({ kind: l.kind, from: l.from, to: l.to, label: l.label, s: Math.round(l.seconds) })));
   const fly = plan.find((l) => l.kind === "vuelo");
   j.check("el camino vuela la nodriza desde la consola de navegación (no el módulo)", !!fly && !fly.from.startsWith("modulo") && /dique seco/.test(fly.label), plan.map((l) => `${l.kind} ${l.to} ${l.s}s`).join(" → "));
-  j.check("el vuelo dura lo del viaje comprimido real (entre 5 s y 75 s)", !!fly && fly.s >= 5 && fly.s <= 80, fly && `${fly.s} s`);
+  // At the board's pace, ×60 (docs/design/viajes.md «Un solo reloj»): minutes, capped at 10 plus the berthing.
+  j.check("el vuelo dura minutos reales al ritmo de a bordo (entre 1 y 11 min)", !!fly && fly.s >= 60 && fly.s <= 660, fly && `${fly.s} s`);
 
   const flying = await p.waitForFunction(() => window.codeship.nav.status === "carrier" && window.codeship.journey.plan[window.codeship.journey.legIndex]?.kind === "vuelo", null, { timeout: 120000 }).then(() => true).catch(() => false);
   j.check("al llegar a la consola, la nodriza despega con el piloto automático", flying);
@@ -85,7 +86,7 @@ export async function nodrizaEstacion(j) {
   }));
 
   // She berths in the dry dock; the arms close.
-  const berthed = await p.waitForFunction(() => !!window.codeship.mothership.dockedTo, null, { timeout: 180000 }).then(() => true).catch(() => false);
+  const berthed = await p.waitForFunction(() => !!window.codeship.mothership.dockedTo, null, { timeout: 600000 }).then(() => true).catch(() => false);
   j.check("la nodriza atraca en la estación", berthed);
   const inDock = await p.evaluate(() => {
     const c = window.codeship;

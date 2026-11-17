@@ -100,7 +100,8 @@ export async function viaje(j) {
   // Third person: the eye switches the view and she keeps walking by herself.
   await j.tap(".interior-ui .view-btn", "Vista: 3ª persona");
   const leg0 = await p.evaluate(() => window.codeship.journey.legIndex);
-  await p.waitForFunction((i) => window.codeship.journey.legIndex > i || !window.codeship.journey.active, leg0, { timeout: 120000 }).catch(() => {});
+  // A leg can be the mothership's flight: minutes at the board's pace (docs/design/viajes.md «Un solo reloj»).
+  await p.waitForFunction((i) => window.codeship.journey.legIndex > i || !window.codeship.journey.active, leg0, { timeout: 600000 }).catch(() => {});
   j.check("en tercera persona sigue andando sola", await p.evaluate((i) => window.codeship.journey.legIndex > i && window.codeship.journey.active, leg0));
   await capture(j, "tercera", "Viaje en tercera persona");
   await j.tap(".interior-ui .view-btn", "Vista: 1ª persona");

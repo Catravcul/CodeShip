@@ -43,7 +43,7 @@ npm run build
 | Bahía de la nave (abrir / cerrar) | B |
 | Mapa de navegación (abrir / cerrar) | M |
 
-En la cabina, el mando **Mirar** (o arrastrar la pantalla) gira la cabeza del piloto para ver por las ventanas laterales; la cámara trasera muestra lo que queda detrás de la tobera y la exterior orbita alrededor de la nave. Los RCS empujan poco (≈0,07 m/s² con 670 kg), así que el polvo espacial y la línea de propulsores del HUD muestran que la nave se mueve; el motor principal da ≈0,7 m/s². El tiempo acelerado solo actúa sin maniobrar y a más de 150 m del asteroide.
+En la cabina, el mando **Mirar** (nunca arrastrar la pantalla) gira la cabeza del piloto para ver por las ventanas laterales; la cámara trasera muestra lo que queda detrás de la tobera y la exterior orbita alrededor de la nave. Los RCS empujan poco (≈0,07 m/s² con 670 kg), así que el polvo espacial y la línea de propulsores del HUD muestran que la nave se mueve; el motor principal da ≈0,7 m/s². El tiempo acelerado solo actúa sin maniobrar y a más de 150 m del asteroide.
 
 La partida empieza con el módulo de aterrizaje **acoplado** bajo la **nave nodriza**, que lleva los anillos de 1 g, el huerto y los camarotes, y se mueve entre asteroides con 18 propulsores eléctricos X3 alimentados por un reactor de 2 MWe. **Desacoplar** (K) suelta el módulo para volar a Bennu. Para volver, el botón **Acople** activa el asistente, que se acerca al puerto dentro de los límites IDSS (0,05–0,10 m/s, 0,10 m, 4°). Diseño en [docs/design/nave-nodriza.md](docs/design/nave-nodriza.md).
 

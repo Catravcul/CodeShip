@@ -243,9 +243,9 @@ export class StationInteriorMode {
       if (e.code === "KeyT") this.deps.openTasks();
     });
     window.addEventListener("keyup", (e) => this.keys.delete(e.code));
-    // A short tap on a machine or rack uses it (dragging looks around).
+    // A short tap on a machine or rack uses it (the look stick turns the camera).
     root.addEventListener("pointerdown", (e) => {
-      // While the task list's travel moves her, a tap does not send her elsewhere (dragging still looks).
+      // While the task list's travel moves her, a tap does not send her elsewhere (the look stick still looks).
       if (!this.active || (e.target as HTMLElement).tagName !== "CANVAS" || document.body.classList.contains("in-journey")) return;
       this.tap = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() };
     });

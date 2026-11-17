@@ -269,12 +269,9 @@ body.in-bay canvas, body.in-trip-view .trip-pip.full { touch-action: none; }
 .bay-more summary { min-height: 44px; display: flex; align-items: center; color: #7fdcff; cursor: pointer; }
 .bay-toast { position: fixed; left: 50%; top: 18vh; transform: translateX(-50%); z-index: 12; padding: 8px 14px; background: #000000bb; color: #fff; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
 .bay-toast.on { opacity: 1; }
-body.in-bay .bay-look { display: block; }
-.bay-look { left: 12px; bottom: calc(46vh + 14px); width: 96px; height: 96px; opacity: 0.75; }
-.bay-look .knob { left: 26px; top: 26px; width: 44px; height: 44px; }
-@media (min-aspect-ratio: 1/1) { .bay-look { bottom: 22px; } }
-@media (hover: hover) and (pointer: fine) { .bay-look { opacity: 0.6; } }
-body.in-duel .bay-panel, body.in-duel .bay-back, body.in-duel .bay-look { display: none !important; }
+.cam-stick.bay-look { left: 12px; right: auto; bottom: calc(46vh + 14px); opacity: 0.8; }
+@media (min-aspect-ratio: 1/1) { .cam-stick.bay-look { bottom: 22px; } }
+body.in-duel .bay-panel, body.in-duel .bay-back { display: none !important; }
 /* nano_net: status card (opened from the flight bar) and the core action button. */
 .nano-card { position: fixed; top: 58px; left: 50%; transform: translateX(-50%); z-index: 7; width: min(300px, 92vw); box-sizing: border-box; padding: 10px 12px; color: #d8f6ff; font-size: 13px; line-height: 1.45; background: #05121add; border: 1px solid #7fdcff55; border-radius: 12px; box-shadow: 0 0 18px #00b7ff33; }
 .nano-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; color: #7fdcff; letter-spacing: 0.08em; }
@@ -392,3 +389,15 @@ body.in-station .hud, body.in-station .help, body.in-station .reticle, body.in-s
 body.in-duel .mat-btn, body.in-settings .mat-btn, body.in-zero-g .mat-btn { display: none; }
 /* Keyboard hints only with «Ayuda de teclado» on (general settings). */
 body:not(.kbd-help) .help { display: none !important; }
+
+/* The camera joystick (adapters/input/camera-stick.ts, reglas.md §5.7): the only way to turn a camera that is not
+   first person; «+» and «−» beside it where the view zooms. Each owner places it with its own class. */
+.cam-stick { display: none; position: fixed; right: 14px; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 41; align-items: center; gap: 8px; pointer-events: none; }
+.cam-stick.on { display: flex; }
+body.in-duel .cam-stick:not(.duel-ok) { display: none !important; }
+body .cam-stick.on > .vstick { display: block !important; position: relative; bottom: auto; left: auto; right: auto; width: 104px; height: 104px; pointer-events: auto; }
+.cam-stick > .vstick .knob { left: 28px; top: 28px; width: 48px; height: 48px; }
+.cam-zoom { display: flex; flex-direction: column; gap: 8px; pointer-events: auto; }
+.cam-zoom button { width: 48px; height: 48px; border: 1px solid #7fdcff66; border-radius: 12px; font: inherit; font-size: 24px; line-height: 1; color: #d8f6ff; background: #0b2a36cc; touch-action: none; }
+.cam-stick.st-look { left: 12px; right: auto; bottom: calc(58vh + 14px); opacity: 0.8; }
+@media (min-aspect-ratio: 1/1) { .cam-stick.st-look { bottom: 22px; } }

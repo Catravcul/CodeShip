@@ -72,7 +72,7 @@ En la tarjeta de un destino de la nodriza, junto a «Programar viaje», sale **P
 «Ver trayecto» (barra del viaje y ficha) es una segunda cámara **sobre la misma escena del espacio**: la Starship (su modelo, a su tamaño real de 52 m), la estación, los asteroides y el Sol en su sitio, con la ruta que vuela dibujada en cian y un anillo donde acaba. No es un esquema: es lo que pasa, a ×60.
 
 - La cámara sigue al vehículo desde detrás con el destino al fondo, a unas 2,2 esloras (antes 170 m por eslora: la Starship se veía diminuta).
-- **La cámara se mueve** (regla 3.3): arrastrar gira alrededor del vehículo; rueda o pellizco acercan y alejan (de 0,35× a 12×).
+- **La cámara se mueve** (regla 3.3): el joystick de cámara gira alrededor del vehículo y sus botones «+» y «−» (o la rueda) acercan y alejan (de 0,35× a 12×). Nunca se arrastra ni se pellizca la pantalla (reglas.md §5.7).
 - La ficha de viaje baja al borde inferior para no tapar el vehículo, con botones de 44 px.
 - **Nunca atrapa** (reglas.md §3.8). Berón abrió «Ver trayecto» en la consola de la sonda y se quedó sin cámara ni botones: al cerrarlo, la clase de pantalla entera no se quitaba (solo se quitaba al dibujar la vista, y cerrada ya no se dibujaba). Ahora se quita siempre; PX-07 y PX-16 comprueban que la cámara se gira, que se cierra y que vuelven los botones de la consola.
 

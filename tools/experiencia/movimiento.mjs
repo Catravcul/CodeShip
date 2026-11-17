@@ -72,16 +72,13 @@ export async function movimiento(j) {
     }, id);
   const tapThing = async (id, label) => {
     let pt = await where(id);
-    // Off screen (or under a button): she drags the view toward it (a drag on the canvas looks around), as a player would.
+    // Off screen (or under a button): she turns the view toward it with «Mirar» (reglas.md §5.7), as a player would.
     const vp = p.viewportSize();
     for (let k = 0; k < 6 && !(pt.visible && pt.free); k++) {
-      // Behind her: turn round (a long sideways drag); otherwise toward it.
-      const dx = pt.behind ? 260 : Math.max(-160, Math.min(160, (pt.x - vp.width / 2) * 0.35));
-      const dy = pt.behind ? 0 : Math.max(-160, Math.min(160, (pt.y - vp.height / 2) * 0.35));
-      await p.mouse.move(vp.width / 2, vp.height / 2);
-      await p.mouse.down();
-      await p.mouse.move(vp.width / 2 + dx, vp.height / 2 + dy, { steps: 6 });
-      await p.mouse.up();
+      // Behind her: turn round (the stick held right longer); otherwise toward it.
+      const dx = pt.behind ? 1 : Math.max(-1, Math.min(1, (pt.x - vp.width / 2) / (vp.width / 2)));
+      const dy = pt.behind ? 0 : Math.max(-1, Math.min(1, (pt.y - vp.height / 2) / (vp.height / 2)));
+      await j.stick(".look-stick", Math.round(dx * 50), Math.round(dy * 50), pt.behind ? 1400 : 500);
       await p.waitForTimeout(400);
       pt = await where(id);
     }
@@ -100,14 +97,10 @@ export async function movimiento(j) {
   await p.waitForTimeout(400);
   const flying = (await j.texts(".interior-ui .ihud"))[0] ?? "";
   j.check("el lanzador la empuja y el HUD lo dice", /lanzador|Lanzada|red/i.test(flying), flying.match(/(El lanzador|Lanzada|La red)[^·]*/)?.[0] ?? flying.slice(-60));
-  // Caught by the net, she drags the view back level (she had looked down at the launcher).
+  // Caught by the net, she brings the view back level with «Mirar» (she had looked down at the launcher).
   const pitch = await p.evaluate(() => window.codeship.interior.pitch);
   if (Math.abs(pitch) > 0.2) {
-    const vp = p.viewportSize();
-    await p.mouse.move(vp.width / 2, vp.height / 2);
-    await p.mouse.down();
-    await p.mouse.move(vp.width / 2, vp.height / 2 + pitch / 0.006, { steps: 8 });
-    await p.mouse.up();
+    await j.stick(".look-stick", 0, Math.sign(pitch) * 50, Math.min(1500, (Math.abs(pitch) / 1.4) * 1000));
     await p.waitForTimeout(300);
   }
   j.check("la red del otro extremo la recoge", await arrive(() => window.codeship.interior.zones.heldPoi()?.id === "lanzador-popa"), JSON.stringify(await held()));

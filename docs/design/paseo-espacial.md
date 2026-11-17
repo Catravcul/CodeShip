@@ -88,7 +88,7 @@ Petición de Berón: «Añade la posibilidad de salir de la nave y caminar por e
 3. Fuera, la cámara va en tercera persona detrás de Doménica, con el traje blanco, el visor dorado y la mochila de soporte vital (sin SAFER: Apolo no lo llevaba). Se ven la nave posada, el cable de seguridad desde la escotilla, nubecillas de polvo al avanzar y una lámpara en el casco.
 4. **Controles**:
    - el mando **Moverse** o WASD sirven para avanzar agarrada al regolito;
-   - el mando **Mirar**, las flechas, Q/E o arrastrar mueven la cámara;
+   - el joystick de cámara, las flechas o Q/E mueven la cámara (nunca arrastrar la pantalla, reglas.md §5.7);
    - **Impulso** o Espacio sirven para soltarse con un empujón suave; flotando no hay propulsores: vuelve con el cable;
    - **Recoger cable** (R) activa el torno de la escotilla, que la trae de vuelta;
    - **Tomar muestra** (Intro) aparece junto a una muestra;

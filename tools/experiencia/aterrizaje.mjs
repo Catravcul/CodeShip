@@ -128,13 +128,11 @@ export async function aterrizajePrograma(j) {
   await j.tap(".trip-chip .tc-view", "Ver trayecto");
   await p.waitForTimeout(1200);
   const cam0 = await p.evaluate(() => window.codeship.tripPreview.camera.position.toArray());
-  await p.mouse.move(195, 300);
-  await p.mouse.down();
-  await p.mouse.move(280, 330, { steps: 6 });
-  await p.mouse.up();
+  // The camera turns only with its joystick (reglas.md §5.7), never by dragging the screen.
+  await j.stick(".cam-stick.trip-look .vstick", 50, 15, 700);
   await p.waitForTimeout(400);
   const cam1 = await p.evaluate(() => window.codeship.tripPreview.camera.position.toArray());
-  j.check("en «Ver trayecto» arrastrar gira la cámara", Math.hypot(...cam1.map((v, i) => v - cam0[i])) > 0.1);
+  j.check("en «Ver trayecto» el joystick de cámara la gira", Math.hypot(...cam1.map((v, i) => v - cam0[i])) > 0.1);
   await j.tap(".trip-chip .tc-view", "Ocultar trayecto");
   await p.waitForTimeout(600);
   const back = await p.evaluate(() => ({ full: document.body.classList.contains("in-trip-view"), exit: getComputedStyle(document.querySelector(".pr-exit")).visibility }));

@@ -6,6 +6,7 @@ import { duration, num } from "@modules/navigation/application/trip-chore";
 import type { SketchItem } from "@modules/navigation/application/plan-sketch";
 import { SKETCH_COLOUR } from "../adapters/three/plan-overlay";
 import { dockCardHtml } from "./nav-dock-card";
+import { CameraStick } from "../adapters/input/camera-stick";
 import "./nav-map.css";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
@@ -64,7 +65,7 @@ interface Projected {
 
 /**
  * Navigation map of the region, mobile first: a 3D-orbit schematic (each body on a stalk over the
- * reference plane, drag to turn it), a row of destinations and a data card for the one picked.
+ * reference plane, its camera joystick turns it), a row of destinations and a data card for the one picked.
  */
 export class NavMap {
   readonly el: HTMLElement;
@@ -76,7 +77,8 @@ export class NavMap {
   private zoom = 1;
   private picked: NavTarget | undefined;
   private note = "";
-  private drag: { id: number; x: number; y: number; moved: number } | null = null;
+  private tap: { id: number; x: number; y: number } | null = null;
+  private readonly camStick: CameraStick;
   private screen: { t: NavTarget; x: number; y: number }[] = [];
   private chipsHtml = "";
   private readonly home: HTMLElement;
@@ -105,32 +107,26 @@ export class NavMap {
     this.el.innerHTML = `
       <div class="nav-head"><div class="nav-title">${esc(deps.title)}</div>
         <div class="nav-tools"><button data-act="zin" aria-label="Acercar">+</button><button data-act="zout" aria-label="Alejar">−</button><button data-act="view">Cenital</button><button class="missions" data-act="missions">Misiones</button><button class="x" data-act="close" aria-label="Cerrar mapa">×</button></div></div>
-      <div class="nav-body"><div class="nav-canvas"><canvas></canvas><div class="nav-hint">Arrastra para girar · toca un destino</div></div>
+      <div class="nav-body"><div class="nav-canvas"><canvas></canvas><div class="nav-hint">Toca un destino</div></div>
         <div class="nav-side"><div class="nav-chips"></div><div class="nav-card"></div></div></div>`;
     root.appendChild(this.el);
     this.canvas = this.el.querySelector("canvas")!;
     this.chips = this.el.querySelector(".nav-chips")!;
     this.card = this.el.querySelector(".nav-card")!;
     this.el.addEventListener("click", (e) => this.onClick(e));
-    this.canvas.addEventListener("pointerdown", (e) => {
-      this.drag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: 0 };
-      this.canvas.setPointerCapture(e.pointerId);
-    });
-    this.canvas.addEventListener("pointermove", (e) => {
-      if (!this.drag || e.pointerId !== this.drag.id) return;
-      const dx = e.clientX - this.drag.x, dy = e.clientY - this.drag.y;
-      this.drag.moved += Math.abs(dx) + Math.abs(dy);
-      this.drag.x = e.clientX;
-      this.drag.y = e.clientY;
-      this.yaw += dx * 0.008;
-      this.elevation = Math.max(0.2, Math.min(Math.PI / 2, this.elevation + dy * 0.006));
-      this.draw();
-    });
+    // A tap picks a destination; the map turns only with its camera joystick (reglas.md §5.7: never a drag).
+    this.canvas.addEventListener("pointerdown", (e) => (this.tap = { id: e.pointerId, x: e.clientX, y: e.clientY }));
     this.canvas.addEventListener("pointerup", (e) => {
-      if (!this.drag || e.pointerId !== this.drag.id) return;
-      if (this.drag.moved < 8) this.pickAt(e.clientX, e.clientY);
-      this.drag = null;
+      const t = this.tap;
+      this.tap = null;
+      if (t && e.pointerId === t.id && Math.hypot(e.clientX - t.x, e.clientY - t.y) < 10) this.pickAt(e.clientX, e.clientY);
     });
+    this.camStick = new CameraStick(this.el.querySelector(".nav-canvas")!, "nav-look", (yaw, pitch) => {
+      this.yaw -= yaw;
+      this.elevation = Math.max(0.2, Math.min(Math.PI / 2, this.elevation - pitch));
+      this.draw();
+    }, { label: "Girar" });
+    this.camStick.show(true);
     this.canvas.addEventListener("wheel", (e) => {
       e.preventDefault();
       this.setZoom(this.zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15));

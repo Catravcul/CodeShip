@@ -28,3 +28,7 @@
 /* Outside, only the scene and her suit's readout and controls (and the challenge sheet when she works). */
 body.in-station-eva > :not(#app, script, style),
 body.in-station-eva #app > :not(canvas, .eva-st, .duel) { display: none !important; }
+/* The spacewalk's camera joystick (reglas.md §5.7), on the right under the status line. */
+.cam-stick.eva-cam { top: calc(128px + env(safe-area-inset-top)); bottom: auto; right: 12px; z-index: 42; }
+.cam-stick.eva-cam > .vstick { width: 92px; height: 92px; }
+.cam-stick.eva-cam > .vstick .knob { left: 22px; top: 22px; width: 46px; height: 46px; }

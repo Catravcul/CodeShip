@@ -119,14 +119,12 @@ export async function trayectos(j) {
   j.check("la cámara está cerca, a unas esloras de la Starship (se ve el casco, no un punto)", view.d > view.ship && view.d < 5 * view.ship, `${Math.round(view.d)} m de una nave de ${view.ship} m`);
   await capture(j, "5-ver-trayecto", "Ver trayecto: la Starship volando a la estación");
   const before = await p.evaluate(() => window.codeship.tripPreview.camera.position.toArray());
-  await p.mouse.move(195, 300);
-  await p.mouse.down();
-  await p.mouse.move(280, 330, { steps: 6 });
-  await p.mouse.up();
+  // The camera turns only with its joystick (reglas.md §5.7), never by dragging the screen.
+  await j.stick(".cam-stick.trip-look .vstick", 50, 15, 700);
   await p.waitForTimeout(400);
   const after = await p.evaluate(() => window.codeship.tripPreview.camera.position.toArray());
   const moved = Math.hypot(...after.map((v, i) => v - before[i]));
-  j.check("arrastrar gira la cámara alrededor de la nave", moved > 1, `${moved.toFixed(1)} m`);
+  j.check("el joystick de cámara gira la vista alrededor de la nave", moved > 1, `${moved.toFixed(1)} m`);
   if (await p.evaluate(() => window.codeship.tripPreview.visible)) await j.tap(".trip-chip .tc-view", "Ocultar trayecto");
   // As on a real approach: slow down before the point (0,2 m/s), then stop inside its 100 m.
   const closeTo = async (m) => {

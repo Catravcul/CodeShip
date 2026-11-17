@@ -443,7 +443,7 @@ export class Interior {
       } else if (d > 1e-6) {
         const step = Math.min(d, 2.2 * dt);
         this.pos.addScaledVector(to.normalize(), step);
-        // The view stays free while she walks by herself: a drag turns it from the way she walks.
+        // the view stays free while she walks by herself: the look stick turns it from the way she walks.
         const look = this.walker.look(dt);
         this.walkLook += look.yaw;
         this.pitch = Math.max(-1.2, Math.min(1.2, this.pitch + look.pitch));

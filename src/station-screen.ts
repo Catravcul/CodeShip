@@ -24,6 +24,7 @@ import { ladder } from "@modules/station/domain/component-supply";
 import { SUPPLY_CATEGORIES, supplyItem } from "@modules/station/data/component-supply";
 import { REAL_ONLY } from "@core/realism";
 import { StationScene } from "./adapters/three/station-model";
+import { CameraStick } from "./adapters/input/camera-stick";
 import type { DuelView, SessionText } from "./ui/duel-view";
 import type { StepVisual } from "@modules/chores/domain/step-visual";
 import type { ImportOps } from "@modules/imports/application/import-ops";
@@ -106,7 +107,7 @@ export class StationScreen {
   private key = "";
   private refreshAt = 0;
   private toastUntil = 0;
-  private drag: { id: number; x: number; moved: boolean } | null = null;
+  private readonly camStick: CameraStick;
   onExit?: () => void;
   /**
    * Set by main: the chore's solved steps acted out by Doménica at the machine she opened this screen
@@ -156,17 +157,8 @@ export class StationScreen {
     this.toast = this.ui.querySelector(".st-toast")!;
     this.ui.querySelector(".st-back")!.addEventListener("click", () => this.exit());
     this.panel.addEventListener("click", (e) => this.onClick(e));
-    root.addEventListener("pointerdown", (e) => {
-      if (!this.active || this.duel.visible || (e.target as HTMLElement).closest("button, .st-panel, .duel")) return;
-      this.drag = { id: e.pointerId, x: e.clientX, moved: false };
-    });
-    window.addEventListener("pointermove", (e) => {
-      const d = this.drag;
-      if (!d || e.pointerId !== d.id) return;
-      this.view.orbit(-(e.clientX - d.x) * 0.006, 0);
-      d.x = e.clientX;
-    });
-    window.addEventListener("pointerup", () => (this.drag = null));
+    // The camera joystick turns the hangar view (reglas.md §5.7: never a drag on the screen).
+    this.camStick = new CameraStick(root, "st-look", (yaw) => this.view.orbit(yaw, 0));
     window.addEventListener("keydown", (e) => {
       if (this.active && !this.duel.visible && e.code === "Escape") this.exit();
     });
@@ -193,6 +185,7 @@ export class StationScreen {
     this.active = true;
     this.ui.classList.remove("hidden");
     document.body.classList.add("in-station");
+    this.camStick.show(true);
     const focus = tab === "propelente" || tab === "repostar" ? tab : undefined;
     this.show(focus ? "materiales" : (tab as StationTab));
     if (focus) this.panel.querySelector(`#st-${focus}`)?.scrollIntoView({ block: "start" });
@@ -204,6 +197,7 @@ export class StationScreen {
     this.active = false;
     this.ui.classList.add("hidden");
     document.body.classList.remove("in-station");
+    this.camStick.show(false);
     this.onExit?.();
   }
 

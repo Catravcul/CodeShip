@@ -450,7 +450,7 @@ export abstract class WalkRoom<Id extends string> {
     const busy = this.busy();
     const look = this.walker.look(dt);
     if (!busy && !this.seated && !this.thirdPerson) {
-      // Walking by herself, a drag turns the view from the way she walks (the camera stays free).
+      // Walking by herself, the look stick turns the view from the way she walks (the camera stays free).
       if (this.walkTo) this.walkLook += look.yaw;
       else this.yaw += look.yaw;
       this.pitch = Math.max(-1.2, Math.min(1.3, this.pitch + look.pitch));

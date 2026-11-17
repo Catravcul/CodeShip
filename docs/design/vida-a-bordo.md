@@ -252,7 +252,7 @@ Todo empieza por el **triaje ABCDE** (vía aérea, respiración, circulación, e
 
 ## El interior
 
-El módulo habitable se recorre en primera persona: joystick y arrastrar para mirar en el móvil, WASD y flechas en el escritorio. Tiene estas estaciones:
+El módulo habitable se recorre en primera persona: joysticks para moverse y mirar en el móvil (nunca arrastrar la pantalla, reglas.md §5.7), WASD y flechas en el escritorio. Tiene estas estaciones:
 
 - el **huerto**: dos pisos de bastidores con luces LED, canal de nutrientes y 18 macetas, cada especie con su forma (roseta, fruto, raíz, espigas, hierba);
 - la **cocina**: placa que se enciende al cocinar, horno y nevera;

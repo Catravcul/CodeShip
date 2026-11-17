@@ -61,15 +61,14 @@ export function berthChore(f: BerthFacts): Chore {
     `${id}-espera`,
     2,
     "completar",
-    "En el punto 2 se para y espera",
-    `En el punto 2 (${num(f.waypoint2M)} m), ¿qué espera antes de seguir hasta tocar?`,
+    "Punto 2: parar y esperar",
+    `En el punto 2 (${num(f.waypoint2M)} m), ¿qué espera para seguir?`,
     lines([
-      [`nave.acercar(${num(f.closingMs, 2)}, ${num(f.waypoint2M)})`, `nave.acercar(${f.closingMs}, ${f.waypoint2M});`],
       ["___", "___"],
       [`nave.acercar(${num(f.closingMs, 2)}, 0)   // hasta tocar`, `nave.acercar(${f.closingMs}, 0);`],
     ]),
-    `el «adelante» de la estación (${duration(f.holdS)})`,
-    ["nada: sigue a 1 m/s", "que se cierren los ganchos", "a quedarse sin propelente"],
+    `el «adelante» (${duration(f.holdS)})`,
+    ["nada: sigue a 1 m/s", "los ganchos", "más propelente"],
   );
   const time = choice(
     `${id}-tiempo`,

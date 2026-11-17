@@ -68,6 +68,8 @@ export interface Blueprint {
   readonly requires?: string;
   /** Module that must be built first (its spec id): the biology lab needs the agricultural module. */
   readonly requiresModule?: string;
+  /** A vehicle part that is imported, not made here (only offered with the development switch). */
+  readonly importOnly?: boolean;
 }
 
 /** A refinery batch: raw rock in, refined materials out. */

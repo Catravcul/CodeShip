@@ -34,9 +34,41 @@ export interface FailureMode {
   readonly check: { readonly name: string; readonly value: number; readonly unit: string; readonly wrong: readonly number[] };
   /** Scheduled maintenance (a bed at the end of its life) rather than a fault. */
   readonly maintenance?: boolean;
-  /** Game value: mean board days between two of these when nothing forces it. */
-  readonly meanDays: number;
+  /** What causes it and what wears towards it (docs/design/soporte-vital.md, «Averías con causa»). */
+  readonly wear: Wear;
   readonly source: string;
+}
+
+/**
+ * What a failure feeds on: hours running, the CDRA's half-cycles (each one heats and cools the beds and moves
+ * the selector valves), hours actually processing, kilograms treated (urine, water, brine) or air blown.
+ */
+export type WearDriver = "horas" | "ciclos" | "horas-proceso" | "kg-orina" | "kg-agua" | "kg-salmuera" | "m3-aire";
+
+/** How sure a number is (docs/design/naves-reales.md, «Reglas de datos»): measured, our estimate, or a licence. */
+export type DataLabel = "real" | "estimacion" | "licencia";
+
+/**
+ * The cause model of a failure mode: no dice. A driver accumulates while the machine runs; at `life` the
+ * failure happens. From `SERVICE_AT` of its life a preventive maintenance is due, which resets the wear.
+ */
+export interface Wear {
+  readonly driver: WearDriver;
+  /** The driver's unit as the card says it ("h de marcha", "medios ciclos", "kg de orina"). */
+  readonly unit: string;
+  /** Why it happens, as the sources tell it (Spanish, one line). */
+  readonly cause: string;
+  readonly causeSource: string;
+  /** Driver count at which it fails. */
+  readonly life: number;
+  readonly lifeLabel: DataLabel;
+  readonly lifeNote: string;
+  /** Share of its life it has used when the game starts (game value: the ISS's machines are not new). */
+  readonly startShare: number;
+  /** Another mode that makes this one wear faster: its wear share adds to the rate (rate × (1 + share)). */
+  readonly worsenedBy?: { readonly failure: string; readonly why: string };
+  /** The preventive maintenance: its procedure (the repair's when left out), the spare it takes and where it leaves the wear. */
+  readonly service: { readonly name: string; readonly steps?: readonly string[]; readonly usesSpare: boolean; readonly resetTo: number };
 }
 
 export interface EclssMachineSpec {

@@ -37,6 +37,16 @@ export const ECLSS_SOURCES = {
   fire: "https://ntrs.nasa.gov/api/citations/20030053429/downloads/20030053429.pdf",
   /** RadWorks storm shelter (NTRS 20150001237): water walls, 50 % dose reduction with 9,3–10,8 g/cm². */
   shelter: "https://ntrs.nasa.gov/api/citations/20150001237/downloads/20150001237.pdf",
+  /** ISS CDRA failure causes and sorbent retainment redesign (NTRS 20050210002): a bed seal let zeolite fines out into the check valve, the air save pump and the selector valves. */
+  cdraFailures: "https://ntrs.nasa.gov/api/citations/20050210002/downloads/20050210002.pdf",
+  /** ISS hardware lessons (NASASpaceflight, 2013): CDRA selector valves sticking for years; Sabatier stopped by moisture in the CO₂ accumulator. */
+  issHardware2013: "https://www.nasaspaceflight.com/2013/10/iss-hardware-providing-lessons-learned-deep-space-missions/",
+  /** Cargo Dragon (Dragon 2): up to 2507 kg pressurised and 800 kg in the trunk to the ISS, 9,3 m³ pressurised. */
+  dragon2: "https://en.wikipedia.org/wiki/SpaceX_Dragon_2",
+  /** SpaceX CRS-28: launched 5 June 2023 15:47 UTC, docked 6 June 09:54 UTC (18 h); 3304 kg, 1098 kg of crew supplies. */
+  crs28: "https://en.wikipedia.org/wiki/SpaceX_CRS-28",
+  /** Cygnus NG-19: launched 2 August 2023 00:31 UTC, berthed on Unity nadir 4 August 12:28 UTC (60 h); 3749 kg pressurised, 1590 kg of crew supplies. */
+  ng19: "https://en.wikipedia.org/wiki/Cygnus_NG-19",
   /** International Standard Payload Rack: about 2 m high, 1,05 m wide and 0,86 m deep. */
   ispr: "https://en.wikipedia.org/wiki/International_Standard_Payload_Rack",
   /** ISS facts: 916 m³ pressurised, 388 m³ habitable. */

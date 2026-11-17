@@ -4,7 +4,7 @@ import { areaVisuals } from "@modules/chores/application/step-visuals";
 import { classifyStep } from "@modules/chores/domain/step-visual";
 import { ALL_FAILURES, ECLSS_MACHINES, failureMode } from "../data/eclss-machines";
 import { LifeSupport } from "../domain/life-support";
-import { eclssChore, eclssChores, failureOfChore } from "./eclss-chores";
+import { eclssChore, eclssChores, failureOfChore, serviceChore, serviceOfChore } from "./eclss-chores";
 
 describe("SV-08 a failure is a repair task of code challenges", () => {
   it("the CDRA's clogged beds: its procedure in order, then a real value to restore", () => {
@@ -41,5 +41,24 @@ describe("SV-08 a failure is a repair task of code challenges", () => {
     ls.fail("cdra-lechos");
     ls.fail("wpa-lecho-mf");
     expect(eclssChores(ls).map((c) => c.id)).toEqual(["sv-cdra-lechos", "sv-wpa-lecho-mf"]);
+  });
+});
+
+describe("SV-15 preventive maintenance is a task of code challenges too", () => {
+  it("a worn mode past 80 % gives a «Preventivo» task whose scenario is its cause", () => {
+    const ls = new LifeSupport(ECLSS_MACHINES, { crew: 1, freeAirM3: 388, waterKg: 500, foodKg: 100, o2TankKg: 50, n2TankKg: 50, spares: {} }, { wear: true });
+    ls.setWear("cdra-lechos", 0.85);
+    const c = eclssChores(ls).find((x) => x.id === "sv-pm-cdra-lechos")!;
+    expect(c.title).toBe("Preventivo CDRA: limpiar los lechos");
+    expect(c.scenario).toMatch(/zeolita/);
+    expect(serviceOfChore(c.id)).toBe("cdra-lechos");
+    expect(failureOfChore(c.id)).toBeUndefined();
+    const run = new ChoreRun(c);
+    for (const ex of c.exercises) run.submit(ex.kind === "order" ? { kind: "order", order: ex.solution } : { kind: "choice", index: ex.correct });
+    expect(run.status).toBe("done");
+  });
+
+  it("every service step names a hands-on action too", () => {
+    for (const f of ALL_FAILURES) for (const s of serviceChore(f).exercises[0]!.kind === "order" ? (f.wear.service.steps ?? f.steps) : []) expect(classifyStep(s), `${f.id}: ${s}`).toBeDefined();
   });
 });

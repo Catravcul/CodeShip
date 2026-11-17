@@ -1,6 +1,6 @@
 # Soporte vital real
 
-Rama `eclss-real`, fase 1, punto 2 del plan de [naves-reales.md](naves-reales.md) §3. Las fuentes y las cifras están en [research/soporte-vital.md](../research/soporte-vital.md). Los casos de QA son SV-01…SV-11 y el recorrido es PX-30 (en [qa/casos.md](../qa/casos.md)).
+Rama `eclss-real`, fase 1, punto 2 del plan de [naves-reales.md](naves-reales.md) §3. Las fuentes y las cifras están en [research/soporte-vital.md](../research/soporte-vital.md). Los casos de QA son SV-01…SV-17 y el recorrido es PX-30 (en [qa/casos.md](../qa/casos.md)).
 
 ## Qué es
 
@@ -15,7 +15,7 @@ El soporte vital de la ISS, máquina por máquina, como algo que se ve, se lee y
 - **Incendios**: detectores y extintores.
 - **Galería**: agua caliente y calentador para la comida envasada.
 
-Hay además un **refugio de agua** contra las tormentas solares y la **cuenta del reabastecimiento**. Todo es **real**. Lo único inventado son los ritmos de avería, la masa de algunos repuestos y algunos tamaños, y están marcados (research §6).
+Hay además un **refugio de agua** contra las tormentas solares y la **cuenta del reabastecimiento**. Todo es **real**. Lo inventado son algunas vidas de pieza, la masa de algunos repuestos y algunos tamaños, y están marcados (research §6). Las averías **no son al azar**: cada una tiene su causa y se ve venir («Averías con causa»). La cocina gasta la **despensa**, que llenan los cargueros reales («Despensa»).
 
 ## Dominio (sin vehículo)
 
@@ -24,14 +24,15 @@ Hay además un **refugio de agua** contra las tormentas solares y la **cuenta de
 | Pieza | Archivo | Qué hace |
 | --- | --- | --- |
 | Balance por persona | `data/crew-balance.ts` | MetMan + `CREW_DAILY` (un test comprueba que coinciden) |
-| Máquinas y averías | `data/eclss-machines.ts` | Ritmo, potencia, masa, refrigeración, modos de fallo con repuesto, procedimiento y valor real |
+| Máquinas y averías | `data/eclss-machines.ts` | Ritmo, potencia, masa, refrigeración, modos de fallo con repuesto, procedimiento, valor real y **causa con su desgaste** (`wear`) |
 | Bastidores | `ECLSS_RACKS` (mismo archivo) | Lo que se coloca: tipo, tamaño **real** y máquinas dentro |
 | Simulación | `domain/life-support.ts` | Gases por masa (gas ideal, 22 °C), tanques de orina y de agua sucia, OGA, CDRA, Sabatier, UPA, BPA, WPA, fugas, TCCS, calor y energía |
 | Tripulación | `domain/crew-effects.ts` | Síntomas con umbrales de la NASA; un intento menos en los retos mientras se encuentra mal |
 | Reabastecimiento | `domain/resupply.ts` | Comida, agua perdida, agua para el O₂, fugas y repuestos por persona y periodo |
 | Refugio | `domain/radiation-shelter.ts` | Puntos de RadWorks, agua necesaria y protección con el agua de a bordo |
-| Tareas | `application/eclss-chores.ts` | Cada avería activa es una tarea `soporte-vital` (procedimiento en orden y un valor real) |
-| Anfitrión estación | `data/hosts.ts` | Doménica sola, 388 m³, 1200 L, medio año de comida, un repuesto de cada |
+| Tareas | `application/eclss-chores.ts` | Cada avería activa es una tarea `soporte-vital` (procedimiento en orden y un valor real); cada desgaste al 80 %, un **preventivo** |
+| Cargueros | `data/cargo-vehicles.ts`, `application/cargo-resupply.ts` | Dragon y Cygnus reales: lo que llevan presurizado, su tránsito y lo que traen (`resupply`), por la línea de entregas de las importaciones |
+| Anfitrión estación | `data/hosts.ts` | Doménica sola, 388 m³, 1200 L, dos meses de comida en la despensa (lo que dejó el último carguero), un repuesto de cada |
 | Anfitrión Starship | `mothership/data/starship.ts` (`STARSHIP_LIFE_SUPPORT`) | Doménica sola, 614 m³; agua, comida, tanques y repuestos como la estación. Bastidores con `eclssFixtures` ([nodriza-starship.md](nodriza-starship.md)) |
 
 ### Modelo (lo esencial)
@@ -39,9 +40,68 @@ Hay además un **refugio de agua** contra las tormentas solares y la **cuenta de
 - **CO₂.** Lo que quita el CDRA crece con la ppCO₂: 1,6 kg/día por mmHg, medido. Con una persona en 388 m³ el CO₂ se queda en **0,7 mmHg**. Si los lechos de zeolita quedan al 5 %, pasa de **5,3 mmHg en una semana** de a bordo (una semana son 2,8 h reales). Reparado, vuelve bajo 3 mmHg en un día.
 - **O₂.** El OGA devuelve el O₂ a 21,3 kPa con su ritmo máximo y el agua que haya. Si no puede, el control de presión tira de los tanques. El N₂ repone las fugas.
 - **Agua.** Lo usado va un 37 % a orina y el resto a agua sucia. El UPA destila el 87 % y el BPA sube la orina al 98 %. El WPA trata lo demás. El Sabatier devuelve agua con el H₂ del OGA.
-- **Comida.** 2,39 kg envasados al día son **dos comidas de 1,195 kg**, como el modelo de hambre (dos comidas al día, `CREW_TUNING.mealShareOfDay`). La ración de la ISS es para el astronauta de 82 kg de MetMan (≈ 3050 kcal). Doménica necesita ≈ 2280 kcal (JSC-67378), así que la cuenta va con margen. La despensa del hábitat y la comida envasada del soporte vital son reservas distintas (decisión 4).
+- **Comida.** 2,39 kg envasados al día son **dos comidas de 1,195 kg**, como el modelo de hambre (dos comidas al día, `CREW_TUNING.mealShareOfDay`). La ración de la ISS es para el astronauta de 82 kg de MetMan (≈ 3050 kcal). Doménica necesita ≈ 2280 kcal (JSC-67378), así que la cuenta va con margen. La comida envasada del soporte vital **es la despensa de la cocina** («Despensa»).
 - **Refrigeración.** Sin los lazos de refrigeración (ITCS), las máquinas refrigeradas se paran y la cabina se calienta 0,5 °C por hora (valor de juego).
-- **Averías al azar.** Salen de los modos reales con un tiempo medio de juego y nunca en los dos primeros días: así no aparecen en medio de otros recorridos.
+- **Averías.** Ya no hay dados: cada modo de fallo se gasta con lo que hace su máquina y falla al llegar a su vida («Averías con causa»).
+
+## Averías con causa
+
+Decisión de Berón (2026-11-17): «las averías supongo que deben tener un motivo, antes que ser random». Cada modo de fallo de `ECLSS_MACHINES` lleva un `wear` con:
+
+- **la causa**, como la cuentan las fuentes, con su enlace;
+- **el motor** que la acumula mientras la máquina funciona;
+- **la vida**: al llegar a ella, falla. Siempre igual: dos partidas iguales dan las mismas averías el mismo día;
+- **la etiqueta** de esa cifra: `real` o `estimacion` (con su nota);
+- **el desgaste al empezar** (valor de juego: las máquinas de la ISS no son nuevas; ninguna falla en los primeros días);
+- **el preventivo**: su procedimiento, si gasta repuesto y dónde deja el desgaste.
+
+| Modo | Causa (fuente) | Motor | Vida | Etiqueta |
+| --- | --- | --- | --- | --- |
+| OGA: bomba bloqueada | El niquelado químico de los conectores se degrada y precipita fosfato de níquel en los engranajes (ICES-2024-141) | horas de marcha | 9600 h | estimación |
+| OGA: domo de H₂ | Pasivado pobre: el vástago del regulador se corroe (ICES-2024-141) | horas de marcha | 12 000 h | estimación |
+| Sabatier: compresor | Arranca en cada medio ciclo del CDRA; la humedad del CDRA en el acumulador lo bloquea (NSF 2013) | medios ciclos del CDRA | 9600 | estimación |
+| CDRA: lechos | Cada medio ciclo calienta y enfría la zeolita: se rompe en polvo y, si un sello cede, sale del lecho (NTRS 20050210002) | medios ciclos (16 al día) | 4800 | estimación |
+| CDRA: válvula selectora | Se mueve en cada medio ciclo; el polvo de los lechos la atasca (NSF 2013, NTRS 20050210002). **Se gasta más deprisa cuanto más polvo tienen los lechos** | medios ciclos × (1 + desgaste de los lechos) | 8000 | estimación |
+| TCCS: LiOH | La humedad apelmaza el LiOH de la entrada (NTRS 20070019823) | m³ de aire (15,3 m³/h) | 257 000 m³ | estimación |
+| UPA: destilación | Precipita sulfato de calcio al concentrar la salmuera; el pretratado ácido degrada el sensor de vacío (ICES-2022-098) | kg de orina | 1500 kg | estimación |
+| UPA: PCPA | Se gasta el engranaje planetario de su motor (ICES-2022-098) | horas destilando | **2300 h** | **real** |
+| WPA: lecho de multifiltración | Las resinas se saturan: ruptura iónica (ICES-2022-098) | kg de agua tratada | **4082 kg (9000 lb)** | **real** |
+| WPA: separador | El agua se cuela al lado del aire; la ISS no ha dado con la causa raíz (ICES-2022-098) | horas de marcha | 12 000 h | estimación |
+| BPA: bolsa | Las sales de la salmuera seca la llenan | kg de salmuera | 36 kg | estimación |
+| ITCS: bomba | Cojinetes gastados y gas en el lazo (NTRS 20040086485) | horas de marcha | 14 400 h | estimación |
+| Incendios: detector | Polvo y pelusa en la cámara óptica | horas de marcha | 12 000 h | estimación |
+
+Lo que dice el modelo:
+
+- **Lo que va con el uso depende de la tripulación.** Con Doménica sola el UPA destila 1,4 kg de orina al día y su conjunto de destilación dura años; con cuatro personas, cuatro veces menos. Lo que va por horas (bombas, detectores) se gasta igual con la nave vacía.
+- **Una máquina parada no se gasta.** Una pieza nueva (reparación) empieza de cero.
+- **Preventivo.** Desde el **80 %** de su vida (valor de juego: la ISS cambia piezas por la tendencia de sus datos, ICES-2024-141) hay una tarea «Preventivo …» en la lista global y en el bastidor, con retos como la reparación. Hecho a tiempo, la máquina no se para:
+  - limpiar los lechos del CDRA (como la limpieza de 2023) no gasta repuesto y los deja al 30 %;
+  - limpiar el detector de humo no gasta repuesto;
+  - lo demás cambia la pieza: gasta el repuesto y la deja a cero.
+- **Saltarse el mantenimiento cuesta.** Los lechos con polvo gastan antes la válvula selectora.
+- **Se ve venir.** En la tarjeta del bastidor, cada máquina dice su desgaste mayor y en cuántos días falla al ritmo de ahora, y abajo la causa con la cuenta («3613 de 4800 medios ciclos»). El bastidor se pone ámbar cuando hay un preventivo pendiente. El aviso al averiarse dice la causa.
+- **Repuestos.** `resupply` cuenta los que tocan en el periodo con la vida de cada modo y lo que gasta esa tripulación al día.
+
+Con Doménica sola en la estación (tests SV-15): el primer preventivo (lechos del CDRA) llega hacia el día 15 y su avería, si no se hace, el 75; después, la bolsa del BPA (día 80/119), la válvula del CDRA (105/155), la PCPA (124/247) y la bomba del OGA (200/280).
+
+## Despensa
+
+Decisión de Berón (2026-11-17): «se gasta despensa; al principio se llena con importaciones hasta que podamos ir creando los módulos de autosuficiencia».
+
+- **La despensa es la comida envasada del soporte vital** de cada vehículo: la estación y la Starship tienen la suya.
+- **La cocina cocina de ella** (`Pantry` en `station-crew.ts`, `LifeSupportGame.pantry`). Con la nave real se cocinan los platos de la ISS (`kitchen/data/iss-food.ts`): cada plato saca **una comida** (1,195 kg) de la despensa. Lo que ya salió para un plato se come antes de volver a tocar la despensa, así que no se gasta dos veces. Sin una comida en la despensa no hay platos.
+- **La tarjeta de la cocina** da la despensa en kg y los días que quedan (ámbar por debajo de 45 días, rojo por debajo de 14) y el carguero que viene.
+- **Al principio, importaciones.** La estación empieza con dos meses (lo que dejó el último carguero, valor de juego). En la cocina de Unity se piden los cargueros reales, uno a la vez (`cargo-vehicles.ts`):
+
+  | Vehículo | Presurizado | Tránsito | Llega |
+  | --- | --- | --- | --- |
+  | Dragon de carga | 2507 kg | 18 h (CRS-28) | se acopla sola en el IDA de Harmony |
+  | Cygnus | 3749 kg (NG-19) | 60 h (NG-19) | Canadarm2 la atraca en el CBM de nadir de Unity |
+
+  Cada uno trae la cuenta de `resupply()` para 180 días (valor de juego): comida, el agua que pierde el lazo y la del OGA, O₂ y N₂ de las fugas y los repuestos (20 kg cada uno, estimación). Si la tripulación es grande, trae los días que caben. Vuela por la `DeliveryLine` de las importaciones (fuente `carguero:<id>`) con el reloj de a bordo y, al llegar, descarga en el soporte vital.
+- **La Starship** se carga en la estación: «Víveres para la nodriza», con la nave atracada, pasa la mitad de la despensa de la estación a la suya.
+- **Autosuficiencia.** Solo entra lo real: Veggie y APH (lechuga, mizuna; [estacion.md](estacion.md)), que dan verdura fresca pero no una dieta. Granjas, carne cultivada y demás módulos siguen en el backlog ([pendientes.md](../pendientes.md)).
 
 ## Bastidores: interfaz para colocarlos (para `base-nodriza-real` y `estacion-real`)
 
@@ -89,10 +149,10 @@ En la Starship, `base-nodriza-real` los pone en su distribución con su propio `
 
 ## En el juego
 
-- **Lecturas.** Siguen el estilo HUD: ppO₂, ppCO₂ (ámbar por encima de 3 mmHg, **alarma roja desde 5,3 mmHg**, con flecha de tendencia), agua, días de comida y energía.
+- **Lecturas.** Siguen el estilo HUD: ppO₂, ppCO₂ (ámbar por encima de 3 mmHg, **alarma roja desde 5,3 mmHg**, con flecha de tendencia), agua, días de comida y energía. Cada máquina, con su desgaste mayor y los días que le quedan.
   - Solo salen en la tarjeta de un bastidor mientras ella lo mira, o en la consola, que además da las máquinas, la recuperación de agua, la temperatura, el calor, los tanques, el refugio y la cuenta por año.
   - Fuera de las máquinas no hay nada en el HUD.
-- **Avisos.** Hay un aviso al saltar la alarma de CO₂, al averiarse algo y cuando a Doménica le aparecen síntomas (dolor de cabeza, cansancio, hipoxia, deshidratación, calor).
+- **Avisos.** Hay un aviso al saltar la alarma de CO₂, al averiarse algo (con su causa), al pedir un preventivo, al lanzar y al llegar un carguero, y cuando a Doménica le aparecen síntomas (dolor de cabeza, cansancio, hipoxia, deshidratación, calor).
 - **Tareas.**
   - Cada avería es una tarea de la lista global, en el grupo Estación, con «Ir» hasta su bastidor.
   - En la tarjeta del bastidor, el botón dice la reparación. Sin repuesto, está desactivado y dice por qué.
@@ -105,8 +165,8 @@ En la Starship, `base-nodriza-real` los pone en su distribución con su propio `
 
 ## Decisiones abiertas (para Berón)
 
-1. **Alarma de CO₂.** El diseño pide 5,3 mmHg, el antiguo límite de 180 días de la ISS. La norma actual (NASA-STD-3001) pone 3 mmHg en 1 h, que en el juego es el aviso ámbar. ¿Mantenemos la alarma en 5,3 o la bajamos a 3–4?
-2. **Ritmo de averías.** Ahora hay una avería cada 200–700 días de a bordo por cada modo (≈ 1 cada 2–3 semanas de a bordo en total). ¿Más, menos, o solo provocadas por sucesos?
+1. ~~**Alarma de CO₂.**~~ Decidido (2026-11-17): se queda en 5,3 mmHg; 3 mmHg es el aviso ámbar.
+2. ~~**Ritmo de averías.**~~ Decidido (2026-11-17): averías con causa, sin azar («Averías con causa»). Quedan abiertas las vidas marcadas como estimación (sustituirlas cuando haya cifras publicadas) y el umbral del preventivo (80 %).
 3. **Tripulación.** En la estación está Doménica sola: el CO₂ sube despacio. Con la tripulación de la nodriza (¿cuatro?) todo va cuatro veces más deprisa.
-4. **Comida.** Medio año de comida envasada en la estación. El huerto real (Veggie, APH) es la fase 2: ¿cuánta comida resta?
+4. **Comida.** Decidido (2026-11-17): la despensa se gasta y la llenan los cargueros («Despensa»). Abierto: ¿los cargueros cuestan créditos del monedero de las importaciones? Ahora son gratis. ¿Cuánto resta Veggie cuando entre (fase 2)?
 5. **Masas y potencias sin publicar** (research §6): ¿sustituirlas cuando tengamos el BVAD?

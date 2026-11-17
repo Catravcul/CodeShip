@@ -9,16 +9,29 @@ export interface Launcher {
   readonly usdPerKg: Sourced<number>;
   /** It has no public price yet: the number is a target. */
   readonly target?: boolean;
+  /** Mass it lifts to low Earth orbit, kg (the most a component import can need there, docs/design/importacion.md §5). */
+  readonly leoPayloadKg?: Sourced<number>;
 }
 
 export const LAUNCHERS: readonly Launcher[] = [
-  { id: "falcon-9", name: "Falcon 9", usdPerKg: { value: 3246, source: IMPORT_SRC.launchPrices2026, note: "≈ 74 M US$ por 22 800 kg a LEO (precio de 2026)" } },
-  { id: "falcon-heavy", name: "Falcon Heavy", usdPerKg: { value: 1410, source: IMPORT_SRC.launchCost, note: "1,41 k US$/kg (Jones 2018, tabla A2, dólares de 2018)" } },
+  {
+    id: "falcon-9",
+    name: "Falcon 9",
+    usdPerKg: { value: 3246, source: IMPORT_SRC.launchPrices2026, note: "≈ 74 M US$ por 22 800 kg a LEO (precio de 2026)" },
+    leoPayloadKg: { value: 22800, source: "https://en.wikipedia.org/wiki/Falcon_Heavy", note: "22 800 kg a LEO, desechable" },
+  },
+  {
+    id: "falcon-heavy",
+    name: "Falcon Heavy",
+    usdPerKg: { value: 1410, source: IMPORT_SRC.launchCost, note: "1,41 k US$/kg (Jones 2018, tabla A2, dólares de 2018)" },
+    leoPayloadKg: { value: 63800, source: "https://en.wikipedia.org/wiki/Falcon_Heavy", note: "63 800 kg a LEO, desechable" },
+  },
   {
     id: "starship",
     name: "Starship (objetivo)",
     usdPerKg: { value: 100, source: IMPORT_SRC.launchPrices2026, note: "objetivo: menos de 10 M US$ por vuelo con 100 t (Musk, 2022); sin precio público" },
     target: true,
+    leoPayloadKg: { value: 100000, source: IMPORT_SRC.launchPrices2026, note: "objetivo: 100 t por vuelo (Musk, 2022)" },
   },
 ];
 

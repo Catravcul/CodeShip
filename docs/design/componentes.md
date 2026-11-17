@@ -354,6 +354,8 @@ Un salto del piloto automático gasta como mucho 2 × 25 m/s (`TRANSFER_TUNING`)
 
 ## 2. Qué se fabrica con la roca y qué llega en kits
 
+> **Cambio de diseño (2026-11-17, Berón).** «Como en la realidad no se crean componentes en el espacio, la base sería traer componentes y naves completas por importación». Con el interruptor «solo real» (`src/core/realism.ts`) esta tabla queda en el backlog: la estación **no fabrica** motores, tanques, cabinas, alas, baterías ni cuerpos de vehículo; llegan importados (§7). Los planos siguen en el código (`importOnly` en `station/data/blueprints.ts`) y vuelven con `?ficcion`.
+
 | Pieza | De la roca | Importado (kits) |
 | --- | --- | --- |
 | Cabina de acero | Hierro y níquel (carbonilo) | 2 kits: ventanas y juntas |
@@ -434,3 +436,43 @@ Las recetas, el rendimiento (0,8) y las horas son **valores de juego** (`station
 10. **Repostaje** (resuelto, 2026-11-13). Atracada, la estación rellena los tanques desde su almacén con una cadena de retos y horas de trasvase. La planta hace hidracina y NTO con el nitrógeno de Bennu (escaso); el MMH, el LMP-103S, el helio y el xenón llegan importados. Detalles y fuentes en [estacion.md](estacion.md#planta-de-propelente-y-repostaje).
 11. **Encendidos.** El MR-80B solo tiene 10 encendidos calificados y el MR-107T, 44. Hoy solo se ve en la ficha. ¿Contamos los encendidos y avisamos?
 12. **Consumo de los propulsores.** Los calentadores del lecho (16–60 W cada uno en hidracina, hasta 50 W en verde) no entran en el balance de energía. Con 24 RCS calientes serían cientos de vatios. ¿Los sumamos?
+
+## 7. Componentes por nivel e importación (2026-11-17)
+
+Petición de Berón: «Con los que se empieza deben ser los de menor capacidad, de modo que los mejores se deben conseguir mediante los recursos; como supongo que en la realidad no se crean componentes en el espacio, la base sería traer componentes y naves completas por importación».
+
+**Regla.** Cada categoría es una escala de hardware real (ha volado o tiene programa con fecha), de menor a mayor capacidad según **un número** que importa en el juego. Lo que llevan los vehículos en juego (el LM, Juventas y la Starship) es **de serie**: está en el nivel 1 y no se importa suelto. Lo mejor se importa de la Tierra, pagado en créditos, **un nivel cada vez**: un nivel se abre cuando la estación tiene (o ha tenido) una pieza del nivel de abajo (regla de juego). Código: `station/domain/component-supply.ts`, `station/data/component-supply.ts`, `imports/application/component-imports.ts`. Tests EST-50, IMP-10 e IMP-11.
+
+| Categoría | Se ordena por | Nivel 1 (de serie en negrita) | Niveles siguientes |
+| --- | --- | --- | --- |
+| Motor principal MMH/NTO | Isp: en un asteroide el empuje sobra, cuenta el Δv por kilo | **DPS del LM (311 s)**, R-42 (305 s) | 2: R-4D-11 (315 s), AJ10-190 (316 s) · 3: S400 (321 s), HiPAT (322 s) |
+| Motor principal de hidracina | Isp | MR-80B (200 s) | 2: MR-104H (223 s), MR-107S (225 s) |
+| Motor de metano y oxígeno | Empuje al nivel del mar | **Raptor 2 (2,26 MN, 1630 kg)** | 2: Raptor 3 (2,45 MN, 1525 kg; primer vuelo el 22 de mayo de 2026, en desarrollo) ([Wikipedia](https://en.wikipedia.org/wiki/SpaceX_Raptor)) |
+| RCS MMH/NTO | Isp | **Toberas del LM (290 s)**, R-1E (280,5 s) | 2: ArianeGroup 10N (292 s) |
+| RCS de monopropelente | Isp | MR-111G, MR-107T, MR-106L (219–228 s) | 2: HPGP 5N y 22N de LMP-103S (239–243 s) |
+| Propulsión de cubesat | Isp | **Gas frío de Juventas (50 s)** | 2: Busek BIT-3, yodo, 2150 s, 1,1 mN, 1,28 kg + 1,5 kg de yodo ([ficha](https://www.busek.com/s/BIT3_v10.pdf)); voló en Lunar IceCube (Artemis I, 2022), que se perdió por un fallo de la nave ([Wikipedia](https://en.wikipedia.org/wiki/Lunar_IceCube)) |
+| Tanques en par / de monopropelente | Capacidad (kg) | El menor del estante | Uno por capacidad, hasta el mayor (ship/data/tanks.ts) |
+| Cabinas y módulos presurizados | Volumen habitable | **Etapa de ascenso del LM (4,5 m³)** | 2: Haven-1 (45 m³, 14 t, en desarrollo) ([Wikipedia](https://en.wikipedia.org/wiki/Haven-1)) |
+| Energía | Potencia | **Sin fuente (el LM volaba con baterías)** | 2: dos MMRTG (250 W) · 3: alas rígidas (1,5 kW) · 4: ROSA Diamond (3,3 kW) |
+| Batería | kWh recargables (la primaria cuenta 0) | **Plata-zinc del LM** | 2: ion-litio de 5 kWh · 3: de 10 kWh |
+| Escudo | Diámetro crítico con la cabina de serie | **Sin escudo (0,77 mm)** | 2: Whipple de acero · 3: de aluminio · 4: el de los nodos de la ISS |
+| Soporte vital: CO₂ | CO₂ quitado sin gastar cartuchos | **LiOH del LM (0: se gasta)** | 2: CDRA-4EU (4,8 kg/día; masa de 200 kg estimada) |
+| Aviónica | Reloj | **AGC (2,048 MHz, 32 kg)** ([Wikipedia](https://en.wikipedia.org/wiki/Apollo_Guidance_Computer)) | 2: RAD750 3U a 132 MHz · 3: a 198 MHz (550 g, 11–12,2 W) ([ficha de BAE](https://www.baesystems.com/en-us/dam/jcr:e2c04c2e-8dea-425c-8460-96a509a95111/16-f76-RAD750-3U-CompactPCI-datasheet-2025-web.2025-06-25-21-58-21.pdf)) |
+| Acople | Paso libre | **Adaptador IDSS del LM**, IDA (526 kg) | Sin escala: en la norma IDSS todos tienen 800 mm ([Wikipedia](https://en.wikipedia.org/wiki/Docking_and_berthing_of_spacecraft)) |
+
+Lo que no es de serie y no está en el nivel 1 (por ejemplo el motor de descenso del LM respecto al R-42) se queda en el nivel 1 porque la escala va por bandas de Isp: así el LM sigue funcionando como hoy y todo lo que se importe para él es una mejora.
+
+**Cómo llega** ([importacion.md](importacion.md#5-componentes-y-naves-completas)): en una **Cygnus** si va dentro (aviónica, baterías, soporte vital; 3500 kg, la atraca Canadarm2 en un CBM) o en el **maletero de una Dragon** si va fuera (motores, tanques, alas; 3307 kg; la Bishop llegó así en CRS-21). Lo que pesa más vuela por su cuenta y lo atrapa el brazo. Se paga el kilo puesto en la órbita baja al precio real del lanzador más barato que lo sube, y tarda la transferencia de Hohmann real (unos 372 días, 25 h de estación).
+
+**Montar.** Una pieza importada espera en el hangar. Si encaja en el módulo, «Cambiar en la bahía» abre la bahía y el cambio usa la cadena de retos de siempre (masa, Δv y montaje). Un vehículo del catálogo se monta con sus piezas importadas en su sitio real (Bishop, JEM-EF, CBM con el brazo).
+
+**La impresora.** En el espacio solo se imprimen piezas pequeñas: la ISS imprimió una llave de carraca de ABS en unas cuatro horas en 2014 ([Spaceflight Now](https://spaceflightnow.com/?p=2381)) y la impresora de metal de la ESA sus primeras piezas en 2024 ([ESA](https://esa.int/ESA_Multimedia/Images/2024/06/First_metal_3D_printing_on_Space_Station)). En Planos queda una «pieza pequeña de metal impresa» (100 g, 4 h; masa y receta estimadas).
+
+**En el juego.** Estación → Hangar → «Ver los componentes»: cada componente con su nivel, su número y su fuente, masa, vehículo de carga, lanzador, créditos y días; «De serie en…», «Desbloqueado» o «Bloqueado: primero el nivel N». En cada vehículo del catálogo, «Importar lo que falta» trae en un envío las piezas que le faltan. Recorrido PX-33, capturas `docs/screenshots/componentes-*-movil.png`.
+
+**Preguntas abiertas para Berón**
+
+1. **Precio del equipo.** Casi ningún fabricante publica el precio de un motor o una placa (la RAD6000 costaba unos 200 000 US$ en 2002). Hoy solo se cobra el transporte, y por eso un motor pequeño cuesta poco. ¿Añadimos un precio estimado, o un requisito de misión para abrir cada nivel?
+2. **El nivel por pieza del nivel de abajo** obliga a comprar el R-4D-11 antes del HiPAT. ¿Preferís que los niveles se abran con las misiones de Nevaeh?
+3. **Starship y Haven-1** no caben en ningún lanzador con las etapas de transferencia (la Starship vuela sola tras repostar en órbita). ¿Añadimos el viaje propio para naves completas que repostan en LEO?
+4. **Piezas sin hueco todavía** (Raptor 3, BIT-3, RAD750, CDRA, IDA): se importan y esperan en el hangar. ¿En qué orden les damos hueco?

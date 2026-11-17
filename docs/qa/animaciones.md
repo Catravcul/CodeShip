@@ -11,7 +11,7 @@ Cada reto se juega con toques en las respuestas correctas, en «paso a paso» (c
 
 Regla (docs/qa/README.md): todo reto o visual de paso nuevo debe pasar esta auditoría.
 
-**39 de 39 pasos bien.**
+**38 de 38 pasos bien.**
 
 Sin anillo (REAL_ONLY, src/core/realism.ts): sus tareas y su consola de navegación no se juegan.
 Tareas del anillo jugadas: 0 (0 clases).
@@ -44,13 +44,12 @@ Estación (escala 1,5): la cocina y las máquinas (refinar, fabricar, laboratori
 | Estación: refinar (Extracción térmica del agua) | calienta la roca en vacío | calentar · objetivo | <img src="../screenshots/anim/estacion-refinar-04.webp" width="180" alt="Estación: refinar (Extracción térmica del agua): calienta la roca en vacío"> | ✓ bien |
 | Estación: refinar (Extracción térmica del agua) | condensa el vapor en la trampa fría | programar · objetivo | <img src="../screenshots/anim/estacion-refinar-05.webp" width="180" alt="Estación: refinar (Extracción térmica del agua): condensa el vapor en la trampa fría"> | ✓ bien |
 | Estación: refinar (Extracción térmica del agua) | guarda el agua en el tanque | emplatar · objetivo | <img src="../screenshots/anim/estacion-refinar-06.webp" width="180" alt="Estación: refinar (Extracción térmica del agua): guarda el agua en el tanque"> | ✓ bien |
-| Estación: fabricar (Motor R-4D-15 HiPAT) | 6,8 kg | reparar · objetivo | <img src="../screenshots/anim/estacion-fabricar-01.webp" width="180" alt="Estación: fabricar (Motor R-4D-15 HiPAT): 6,8 kg"> | ✓ bien |
-| Estación: fabricar (Motor R-4D-15 HiPAT) | 2001,6 kg | reparar · objetivo | <img src="../screenshots/anim/estacion-fabricar-02.webp" width="180" alt="Estación: fabricar (Motor R-4D-15 HiPAT): 2001,6 kg"> | ✓ bien |
-| Estación: fabricar (Motor R-4D-15 HiPAT) | carga el polvo de níquel y hierro | reparar · objetivo | <img src="../screenshots/anim/estacion-fabricar-03.webp" width="180" alt="Estación: fabricar (Motor R-4D-15 HiPAT): carga el polvo de níquel y hierro"> | ✓ bien |
-| Estación: fabricar (Motor R-4D-15 HiPAT) | imprime la cámara y la tobera | reparar · objetivo | <img src="../screenshots/anim/estacion-fabricar-04.webp" width="180" alt="Estación: fabricar (Motor R-4D-15 HiPAT): imprime la cámara y la tobera"> | ✓ bien |
-| Estación: fabricar (Motor R-4D-15 HiPAT) | recubre la tobera de cerámica | reparar · objetivo | <img src="../screenshots/anim/estacion-fabricar-05.webp" width="180" alt="Estación: fabricar (Motor R-4D-15 HiPAT): recubre la tobera de cerámica"> | ✓ bien |
-| Estación: fabricar (Motor R-4D-15 HiPAT) | monta las válvulas del kit | reparar · objetivo | <img src="../screenshots/anim/estacion-fabricar-06.webp" width="180" alt="Estación: fabricar (Motor R-4D-15 HiPAT): monta las válvulas del kit"> | ✓ bien |
-| Estación: fabricar (Motor R-4D-15 HiPAT) | prueba la estanqueidad con helio | revisar · objetivo | <img src="../screenshots/anim/estacion-fabricar-07.webp" width="180" alt="Estación: fabricar (Motor R-4D-15 HiPAT): prueba la estanqueidad con helio"> | ✓ bien |
+| Estación: fabricar (Pieza pequeña de metal impresa (soporte o herramienta)) | 0,13 kg | reparar · objetivo | <img src="../screenshots/anim/estacion-fabricar-01.webp" width="180" alt="Estación: fabricar (Pieza pequeña de metal impresa (soporte o herramienta)): 0,13 kg"> | ✓ bien |
+| Estación: fabricar (Pieza pequeña de metal impresa (soporte o herramienta)) | 2029,87 kg | reparar · objetivo | <img src="../screenshots/anim/estacion-fabricar-02.webp" width="180" alt="Estación: fabricar (Pieza pequeña de metal impresa (soporte o herramienta)): 2029,87 kg"> | ✓ bien |
+| Estación: fabricar (Pieza pequeña de metal impresa (soporte o herramienta)) | carga el polvo de hierro | reparar · objetivo | <img src="../screenshots/anim/estacion-fabricar-03.webp" width="180" alt="Estación: fabricar (Pieza pequeña de metal impresa (soporte o herramienta)): carga el polvo de hierro"> | ✓ bien |
+| Estación: fabricar (Pieza pequeña de metal impresa (soporte o herramienta)) | imprime la pieza capa a capa | reparar · objetivo | <img src="../screenshots/anim/estacion-fabricar-04.webp" width="180" alt="Estación: fabricar (Pieza pequeña de metal impresa (soporte o herramienta)): imprime la pieza capa a capa"> | ✓ bien |
+| Estación: fabricar (Pieza pequeña de metal impresa (soporte o herramienta)) | quita los soportes | cortar · objetivo | <img src="../screenshots/anim/estacion-fabricar-05.webp" width="180" alt="Estación: fabricar (Pieza pequeña de metal impresa (soporte o herramienta)): quita los soportes"> | ✓ bien |
+| Estación: fabricar (Pieza pequeña de metal impresa (soporte o herramienta)) | comprueba las medidas | revisar · objetivo | <img src="../screenshots/anim/estacion-fabricar-06.webp" width="180" alt="Estación: fabricar (Pieza pequeña de metal impresa (soporte o herramienta)): comprueba las medidas"> | ✓ bien |
 | Estación: importar (pedido de xenón) | 162,39 kg | programar · objetivo | <img src="../screenshots/anim/estacion-importar-01.webp" width="180" alt="Estación: importar (pedido de xenón): 162,39 kg"> | ✓ bien |
 | Estación: importar (pedido de xenón) | 229 créditos | programar · objetivo | <img src="../screenshots/anim/estacion-importar-02.webp" width="180" alt="Estación: importar (pedido de xenón): 229 créditos"> | ✓ bien |
 | Estación: importar (pedido de xenón) | el Santuario carga el pedido en el Falcon Heavy | programar · objetivo | <img src="../screenshots/anim/estacion-importar-03.webp" width="180" alt="Estación: importar (pedido de xenón): el Santuario carga el pedido en el Falcon Heavy"> | ✓ bien |

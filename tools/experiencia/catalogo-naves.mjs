@@ -41,7 +41,7 @@ export async function catalogoNaves(j) {
   await dart.scrollIntoViewIfNeeded();
   await capture(j, "lista", "Catálogo de naves");
 
-  await j.setup("pone en el hangar las piezas de DART (como si se hubieran fabricado en Planos)", () => {
+  await j.setup("pone en el hangar las piezas de DART (como si hubieran llegado importadas)", () => {
     const h = window.codeship.stationOps.station.hangar;
     h.put("ionico-next-c", 1);
     h.put("rosa-diamond", 2);

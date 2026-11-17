@@ -79,6 +79,8 @@ Todas están en `INTERIOR_SOURCES` (`src/modules/station/data/interior.ts`).
 | Enfermería, animales | No: siguen en la nodriza | Sí |
 | Doménica | La misma persona: un solo `CrewMember` compartido | |
 
+**Nave real (2026-11-17).** Con el interruptor «solo real», la despensa de la cocina es la comida envasada del soporte vital de cada vehículo, los platos son los de la ISS (`iss-food.ts`) y la llenan los cargueros Dragon y Cygnus pedidos en la cocina; «Víveres para la nodriza» pasa la mitad a la Starship. `STATION_LARDER` y lo que sigue quedan para `?ficcion`. Ver [soporte-vital.md](soporte-vital.md), «Despensa».
+
 Los cultivos de la estación (Vida → «Enviar a la despensa») van a la despensa **de la estación**. Antes
 iban a la nodriza. Con la nodriza atracada, la cocina envía la mitad de cada cosa como víveres para el
 viaje (`TRIP_STORES_SHARE`, valor de juego).

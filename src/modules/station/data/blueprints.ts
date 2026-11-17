@@ -277,8 +277,34 @@ export const COMPONENT_BLUEPRINTS: readonly Blueprint[] = [...ALL_PARTS.filter((
 /** Components of the vehicle catalogue: real engines, hulls and bodies (docs/design/naves-reales.md). */
 export const CATALOGUE_BLUEPRINTS: readonly Blueprint[] = CATALOGUE_COMPONENTS.map(catalogueComponentBlueprint).map(withRequirement);
 
+/**
+ * Vehicle parts are not made in space (Berón, 2026-11-17; docs/design/componentes.md §7): engines, tanks,
+ * cabins, wings, batteries and vehicle bodies arrive by import. Their blueprints stay in the code and come
+ * back with the development switch (`?ficcion`); `offeredBlueprints` leaves them out otherwise.
+ */
+const importOnly = (bp: Blueprint): Blueprint => ({ ...bp, importOnly: true });
+export const IMPORT_ONLY_PART_IDS: ReadonlySet<string> = new Set([...COMPONENT_BLUEPRINTS, ...CATALOGUE_BLUEPRINTS].flatMap((b) => (b.product.kind === "part" ? [b.product.partId] : [])));
+
+/**
+ * What a station printer really makes: small parts. The ISS printed a plastic ratchet wrench in about
+ * four hours (2014) and ESA's metal printer its first steel parts (2024). Mass and recipe: estimates.
+ */
+export const REAL_PRINT_BLUEPRINTS: readonly Blueprint[] = [
+  withRequirement({
+    id: "plano-pieza-impresa",
+    name: "Pieza pequeña de metal impresa (soporte o herramienta)",
+    product: { kind: "part", partId: "pieza-impresa" },
+    machine: "impresora",
+    massKg: 0.1,
+    inputs: { hierro: 0.13 },
+    hours: 4,
+    process: { value: "Impresión 3D de piezas pequeñas, como la llave de carraca impresa en la ISS en unas cuatro horas (2014) y las primeras piezas de acero de la impresora de la ESA (2024)", source: "https://spaceflightnow.com/?p=2381", note: "Masa de 100 g y receta: estimación; 4 h como la llave" },
+    steps: ["carga el polvo de hierro", "imprime la pieza capa a capa", "quita los soportes", "comprueba las medidas"],
+  }),
+];
+
 /** Every blueprint the station knows: its modules and equipment, the station's components, and the ships' components. */
-export const BLUEPRINTS: readonly Blueprint[] = [...GROWTH_BLUEPRINTS, ...COMPONENT_BLUEPRINTS, ...CATALOGUE_BLUEPRINTS];
+export const BLUEPRINTS: readonly Blueprint[] = [...GROWTH_BLUEPRINTS, ...REAL_PRINT_BLUEPRINTS, ...COMPONENT_BLUEPRINTS.map(importOnly), ...CATALOGUE_BLUEPRINTS.map(importOnly)];
 
 export const blueprintById = (id: string): Blueprint | undefined => BLUEPRINTS.find((b) => b.id === id);
 export const blueprintForPart = (partId: string): Blueprint | undefined => BLUEPRINTS.find((b) => b.product.kind === "part" && b.product.partId === partId);

@@ -382,7 +382,7 @@ export class ShipBay {
     if (a.drive) return this.runDrive(a.drive);
     if (a.equip) return this.runEquipment(a.equip);
     if (a.station) return this.runStation(a.station);
-    if (a.locked) return this.say("No está en el hangar: fabrícala en la estación (Planos)");
+    if (a.locked) return this.say("No está en el hangar: impórtala desde la estación (Hangar → Componentes)");
     let chore: Chore | undefined;
     const fittedNow = a.slot ? installedId(this.ship.design, a.slot, TANK_PARTS) : undefined;
     const old = fittedNow ? partById(fittedNow) : undefined;

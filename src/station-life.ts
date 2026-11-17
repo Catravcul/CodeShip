@@ -14,6 +14,7 @@ import type { StationAction } from "./station-interior";
 
 const itemName = (id: string) => ITEMS.find((i) => i.id === id)?.name ?? id;
 const MAX_CHORES_ON_CARD = 3;
+const MAX_DISHES_WITH_CARGO = 2;
 
 const choreText = (c: Chore): SessionText => ({
   title: c.title,
@@ -50,6 +51,17 @@ export interface StationLifeDeps {
   stepVisual?(chore: Chore, area: string): StepVisual | undefined;
   /** Another owner of station chores (the life support's repairs): true if it took the chore. */
   otherChore?(id: string): boolean;
+  /**
+   * The galley's cargo orders (life-support-game.ts): Dragon and Cygnus fill the pantry
+   * (docs/design/soporte-vital.md, «Despensa»).
+   */
+  cargoActions?(): StationAction[];
+  cargoAct?(id: string): boolean;
+  /**
+   * Real ships: trip food from the station's pantry to the Starship's, said back; replaces the larder's trip
+   * stores. Undefined when she is not berthed.
+   */
+  sendTripFood?(): string | undefined;
 }
 
 /**
@@ -91,9 +103,13 @@ export class StationLife {
       case "cocina": {
         const dishes = chores("cocina");
         const larder = this.d.mothershipLarder();
+        const cargo = this.d.cargoActions?.();
+        // Real ships: the galley also orders the cargo vehicles, so it shows fewer dishes (all are in the task list)
+        // and the trip stores only while the Starship is berthed.
         return [
-          ...(dishes.length ? dishes : [{ id: "nada", label: "Cocinar", enabled: false, why: "La despensa de la estación no da para ningún plato: sus cultivos (Vida) la llenan" }]),
-          { id: "viaje", label: "Víveres para la nodriza", enabled: !!larder, ...(larder ? {} : { why: "La nodriza no está atracada: los víveres para el viaje se cargan con ella aquí" }) },
+          ...(dishes.length ? dishes.slice(0, cargo ? MAX_DISHES_WITH_CARGO : MAX_CHORES_ON_CARD) : [{ id: "nada", label: "Cocinar", enabled: false, why: cargo ? "La despensa está vacía: pide un carguero aquí (Dragon o Cygnus)" : "La despensa de la estación no da para ningún plato: sus cultivos (Vida) la llenan" }]),
+          ...(cargo ?? []),
+          ...(cargo && !larder ? [] : [{ id: "viaje", label: "Víveres para la nodriza", enabled: !!larder, ...(larder ? {} : { why: "La nodriza no está atracada: los víveres para el viaje se cargan con ella aquí" }) }]),
         ];
       }
       case "esterilla":
@@ -109,6 +125,7 @@ export class StationLife {
 
   act(f: Fixture, id: string): void {
     if (id.startsWith("chore:")) return this.startChore(id.slice(6));
+    if (this.d.cargoAct?.(id)) return;
     if (id.startsWith("guardar:")) {
       const it = id.slice(8);
       return this.d.say(this.d.bishop.stow(it) ?? `${this.d.bishop.item(it).name} va a la Bishop: cabe en sus 3,99 m³`, 5);
@@ -153,6 +170,10 @@ export class StationLife {
       case "viaje": {
         const larder = this.d.mothershipLarder();
         if (!larder) return;
+        if (this.d.sendTripFood) {
+          const said = this.d.sendTripFood();
+          return said ? this.d.say(said, 6) : undefined;
+        }
         const sent = this.d.crew.sendTripStores(larder, TRIP_STORES_SHARE);
         return this.d.say(sent.length ? `A la despensa de la nodriza: ${sent.map(([i, n]) => `${n.toLocaleString("es-ES")} ${itemName(i)}`).join(", ")}` : "No queda nada que cargar", 6);
       }

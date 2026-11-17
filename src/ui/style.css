@@ -231,7 +231,7 @@ body.in-bay .hud, body.in-bay .help, body.in-bay .reticle, body.in-bay .banner, 
 .bay-head { position: fixed; top: 12px; left: 12px; z-index: 6; display: flex; flex-direction: column; gap: 2px; color: #e6f6ff; text-shadow: 0 1px 3px #000; pointer-events: none; }
 .bay-head b { font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; color: #ffd27f; }
 .bay-head span { font-size: 12px; opacity: 0.9; }
-.bay-back { position: fixed; top: 12px; right: 12px; z-index: 7; padding: 10px 14px; font: inherit; font-size: 14px; color: #bfefff; background: #0b2a36dd; border: 1px solid #7fdcff66; border-radius: 10px; }
+.bay-back { position: fixed; top: 12px; right: 12px; z-index: 7; padding: 10px 14px; min-height: 44px; font: inherit; font-size: 14px; color: #bfefff; background: #0b2a36dd; border: 1px solid #7fdcff66; border-radius: 10px; }
 .bay-panel { position: fixed; z-index: 6; left: 0; right: 0; bottom: 0; height: 46vh; overflow-y: auto; box-sizing: border-box; padding: 10px 12px 18px; background: #0a1220f2; border-top: 1px solid #7fdcff44; border-radius: 16px 16px 0 0; color: #e6f6ff; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
 @media (min-aspect-ratio: 1/1) { .bay-panel { top: 0; left: auto; width: min(400px, 40vw); height: auto; padding-top: 60px; border-top: 0; border-left: 1px solid #7fdcff44; border-radius: 0; } }
 .bay-sec { margin-top: 6px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #7fdcffaa; }

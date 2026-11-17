@@ -513,5 +513,6 @@ export const BACKLOG_BLUEPRINT_IDS: ReadonlySet<string> = new Set([
   ...BIO_BLUEPRINTS.map((b) => b.id),
 ]);
 
-/** The blueprints the game offers: without the backlog unless the switch is on. */
-export const offeredBlueprints = <B extends { readonly id: string }>(all: readonly B[], fiction: boolean): B[] => (fiction ? [...all] : all.filter((b) => !BACKLOG_BLUEPRINT_IDS.has(b.id)));
+/** The blueprints the game offers: without the backlog, nor the vehicle parts that are imported (componentes.md §7), unless the switch is on. */
+export const offeredBlueprints = <B extends { readonly id: string; readonly importOnly?: boolean }>(all: readonly B[], fiction: boolean): B[] =>
+  fiction ? [...all] : all.filter((b) => !BACKLOG_BLUEPRINT_IDS.has(b.id) && !b.importOnly);

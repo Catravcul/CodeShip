@@ -63,3 +63,48 @@ describe("SV-13 each vehicle's life support counts only the crew aboard it", () 
     expect(v.ship.system.readout().powerW).toBeGreaterThan(0);
   });
 });
+
+describe("SV-15/SV-17 in play: causes on the rack, preventive tasks, the galley's pantry and its cargo", () => {
+  const rack = (kind: string) => ({ id: `sv-${kind}`, label: kind, info: "", action: { kind: "soporte-vital", rack: kind } }) as unknown as Parameters<LifeSupportGame["readout"]>[0];
+  const galley = { id: "cocina", label: "Cocina", info: "", action: { kind: "tripulacion", area: "cocina" } } as unknown as Parameters<LifeSupportGame["readout"]>[0];
+
+  it("the air rack shows each machine's wear and the cause of what is closest to failing", () => {
+    const v = twoVehicles();
+    v.tick(1);
+    const html = v.station.readout(rack("ar"))!;
+    expect(html).toMatch(/CDRA · en marcha · <span class="sv-wear">7\d % gastado<\/span>/);
+    expect(html).toMatch(/Lechos de zeolita degradados: .*zeolita.*de 4800 medios ciclos/);
+    v.station.system.setWear("cdra-lechos", 0.85);
+    v.tick(1);
+    expect(v.station.readout(rack("ar"))).toMatch(/85 % gastado, falla en \d+ días/);
+  });
+
+  it("a worn mode past 80 % is a «Preventivo» task of the global list and a button on its rack; done, its wear drops", () => {
+    const v = twoVehicles();
+    v.station.system.setWear("cdra-lechos", 0.85);
+    expect(v.station.taskFacts().map((t) => t.id)).toContain("sv-pm-cdra-lechos");
+    const a = v.station.actions(rack("ar")).find((x) => x.id === "chore:sv-pm-cdra-lechos");
+    expect(a).toMatchObject({ label: "Preventivo CDRA: limpiar los lechos", enabled: true });
+    expect(v.station.rackState(rack("ar")).state).toBe("aviso");
+  });
+
+  it("the galley shows the pantry and its days; a Dragon ordered there arrives in 18 h and fills it", () => {
+    const v = twoVehicles();
+    expect(v.station.readout(galley)).toMatch(/Despensa.*kg.*Quedan.*60 días/s);
+    expect(v.station.cargoActions().map((a) => a.label)).toEqual(["Pedir Dragon (2507 kg, 18 h)", "Pedir Cygnus (3749 kg, 60 h)"]);
+    const before = v.station.system.readout().foodKg;
+    expect(v.station.cargoAct("carguero:dragon")).toBe(true);
+    expect(v.station.cargoActions()).toEqual([]);
+    expect(v.station.readout(galley)).toMatch(/Dragon de carga en camino: llega en 18 h/);
+    v.tick(18);
+    expect(v.station.system.readout().foodKg).toBeGreaterThan(before + 400);
+    expect(v.said.estacion.some((t) => /Dragon de carga se acopla sola en el IDA de Harmony/.test(t))).toBe(true);
+  });
+
+  it("a meal at the galley draws from the pantry", () => {
+    const v = twoVehicles();
+    const kg = v.station.system.readout().foodKg;
+    expect(v.station.pantry.draw()).toBe(true);
+    expect(v.station.system.readout().foodKg).toBeCloseTo(kg - 1.195, 6);
+  });
+});

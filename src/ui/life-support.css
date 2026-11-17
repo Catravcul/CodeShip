@@ -10,6 +10,8 @@
 .sv-cell.alarma b { color: #ff8080; }
 .sv-alarm { margin: 0; padding: 3px 8px; font-size: 13px; font-weight: 800; letter-spacing: 0.05em; color: #fff; background: #c81e1e; border-radius: 8px; animation: sv-blink 1s steps(2, start) infinite; }
 .sv-health { margin: 0; font-size: 12px; color: #ffd8a0; }
+.sv-cause { margin: 0; font-size: 11px; line-height: 1.3; color: #ffd8a0; }
+.sv-wear { color: #8fb3c4; }
 .sv-machines { margin: 0; padding: 0; list-style: none; font-size: 12px; color: #a9c8d8; }
 .sv-machines li::before { content: "● "; }
 .sv-machines li.ok::before { color: #3ddc84; }

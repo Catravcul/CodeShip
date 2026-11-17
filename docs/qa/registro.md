@@ -233,7 +233,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-20 | FAIL | 2026-11-17 | `479d038` | [run](runs/2026-11-17-0300-PX-10-PX-12-PX-24-PX-28-PX-29-PX-31-PX-32-PX-33-PX-35-PX-20-PX-30.md): 56 OK, 2 FALLA (B-04: la avena rehidratada de la cocina; ya pasaba antes) |
 | PX-25 | Probado (en vivo) | 2026-11-16 | `9de20b8` | [run](runs/2026-11-16-2058-PX-25.md): 41 OK |
 | PX-30 | Probado (en vivo) | 2026-11-17 | `479d038` | [run](runs/2026-11-17-0359-PX-30.md): 45 OK |
-| PX-32 | Probado (en vivo) | 2026-11-17 | `479d038` | [run](runs/2026-11-17-0300-PX-10-PX-12-PX-24-PX-28-PX-29-PX-31-PX-32-PX-33-PX-35-PX-20-PX-30.md): 21 OK |
+| PX-32 | Probado (en vivo) | 2026-11-17 | `e280886` | [run](runs/2026-11-17-0408-PX-32.md): 21 OK |
 | PX-31 | Probado (en vivo) | 2026-11-17 | `479d038` | [run](runs/2026-11-17-0300-PX-10-PX-12-PX-24-PX-28-PX-29-PX-31-PX-32-PX-33-PX-35-PX-20-PX-30.md): 24 OK |
 | PX-27 | Probado (en vivo) | 2026-11-16 | `1c1b689` | [run](runs/2026-11-16-1952-PX-27.md): 28 OK |
 | PX-28 | Probado (en vivo) | 2026-11-17 | `479d038` | [run](runs/2026-11-17-0300-PX-10-PX-12-PX-24-PX-28-PX-29-PX-31-PX-32-PX-33-PX-35-PX-20-PX-30.md): 36 OK |
@@ -247,6 +247,7 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-17 04:08 | PX-32 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-17-0408-PX-32.md) |
 | 2026-11-17 03:59 | PX-30 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-17-0359-PX-30.md) |
 | 2026-11-17 03:52 | PX-30 | Experiencia (Playwright) | 0/1 recorridos bien | [run](runs/2026-11-17-0352-PX-30.md) |
 | 2026-11-17 03:37 | PX-32 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-17-0337-PX-32.md) |

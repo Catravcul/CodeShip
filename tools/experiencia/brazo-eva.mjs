@@ -4,7 +4,8 @@
 // live), and another one by hand with the THC; a solar-wing swap planned at Unity's cargo laptop becomes a
 // spacewalk: the EMU and the ISLE prebreathe at Quest's suits, the airlock depressed, out along the handrails
 // with the tether hooked at each anchor, feet in the APFR, the job's challenge audited, back in and the suit off;
-// and Dextre swapping the S1 camera burnt by radiation. Rows in docs/qa/animaciones-brazo.md, captures in
+// after its 140 days the Cygnus unberthed and released (the camera turned with a drag); the lander's engine swapped
+// on a spacewalk from Quest and the Starship's power from its own airlock; and Dextre swapping the S1 camera burnt by radiation. Rows in docs/qa/animaciones-brazo.md, captures in
 // docs/screenshots/brazo-<pantalla>-movil.png.
 import { mkdirSync, writeFileSync } from "node:fs";
 

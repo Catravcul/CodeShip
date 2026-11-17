@@ -182,7 +182,9 @@ export class ArmShow {
   /** A plain reach from the MBS (the yard's releases): the base rides toward the work. */
   reachTo(target: THREE.Vector3): void {
     this.base = "mbs-1";
-    this.mbsX = Math.max(-40, Math.min(40, target.x * 0.9));
+    // Never parked over Destiny: what it then reaches (Dextre on the MBS) would go through the lab.
+    const x = Math.max(-40, Math.min(40, target.x * 0.9));
+    this.mbsX = Math.abs(x) < MBS_HOME_X ? MBS_HOME_X : x;
     this.tip.copy(target);
     this.hint.set(0, 1, 0.3);
     this.pose();

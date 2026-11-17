@@ -150,6 +150,8 @@ export class StationEva {
   active = false;
   private readonly root = new THREE.Group();
   private readonly figure = new SuitFigure();
+  /** Where her feet (or, along a rail, her body's line) are: the figure sets its own pelvis height and tilt inside it. */
+  private readonly body = new THREE.Group();
   private readonly rails = new THREE.Group();
   private readonly tether: THREE.Line;
   private readonly apfr = new THREE.Group();
@@ -190,7 +192,8 @@ export class StationEva {
     this.pgt.add(grip, head);
     this.pgt.name = "Llave PGT";
     this.part.visible = false;
-    this.root.add(this.figure.root, this.rails, this.tether, this.apfr, this.pgt, this.part, this.label);
+    this.body.add(this.figure.root);
+    this.root.add(this.body, this.rails, this.tether, this.apfr, this.pgt, this.part, this.label);
     // The EMU's helmet lights (EHIP): in the station's shadow she still sees the handrails, and so do we.
     const lamp = new THREE.PointLight(0xfff4e0, 6, 9, 1.5);
     lamp.position.set(0, 1.9, 0.3);
@@ -523,8 +526,8 @@ export class StationEva {
     // The safety tether from its anchor to her waist.
     const anchor = v3(e.route[e.anchor]!.at).addScaledVector(this.out(v3(e.route[e.anchor]!.at)), -0.25);
     const g = this.tether.geometry as THREE.BufferGeometry;
-    g.setFromPoints([anchor, this.figure.root.position.clone().addScaledVector(n, 0.2)]);
-    this.label.position.copy(this.figure.root.position).addScaledVector(n, 2.2);
+    g.setFromPoints([anchor, this.pelvis().addScaledVector(n, 0.2)]);
+    this.label.position.copy(this.pelvis()).addScaledVector(n, 2.2);
     this.frameCamera(n, head);
     this.renderHud();
   }
@@ -534,9 +537,9 @@ export class StationEva {
     const f = this.figure;
     const e = this.eva;
     if (e.feetIn) {
-      f.root.position.copy(this.apfr.position).addScaledVector(n, 0.05);
+      this.body.position.copy(this.apfr.position).addScaledVector(n, 0.05);
       const fwd = head.clone().projectOnPlane(n).normalize();
-      f.root.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3().crossVectors(n, fwd).normalize(), n, fwd));
+      this.body.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3().crossVectors(n, fwd).normalize(), n, fwd));
       if (!this.working) f.poseAngles(P({ shoulderX: [-0.6, -0.6], elbow: [-0.6, -0.6] }));
       this.pgt.visible = true;
     } else {
@@ -545,8 +548,9 @@ export class StationEva {
       const up = along.clone().projectOnPlane(n).normalize();
       const front = n.clone().negate();
       const right = new THREE.Vector3().crossVectors(up, front).normalize();
-      f.root.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(right, up, front));
-      f.root.position.copy(this.posNow).addScaledVector(up, -0.9).addScaledVector(n, 0.1);
+      this.body.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(right, up, front));
+      // The pelvis sits its standing height along `up` from the body's origin: hands up at the rail.
+      this.body.position.copy(this.posNow).addScaledVector(up, -0.9 - 0.95).addScaledVector(n, 0.1);
       const s = Math.sin(this.crawlPhase) * (this.dir ? 0.35 : 0);
       f.poseAngles(P({ headX: -0.5, shoulderX: [-2.7 + s, -2.7 - s], shoulderZ: [0.15, -0.15], elbow: [-0.3, -0.3], hip: [0.05, 0.05], knee: [0.2, 0.25] }));
       this.pgt.visible = false;
@@ -556,7 +560,7 @@ export class StationEva {
     if (this.pgt.visible) {
       const h = f.handWorld(1, new THREE.Vector3());
       this.pgt.position.copy(this.root.worldToLocal(h));
-      this.pgt.quaternion.copy(f.root.quaternion);
+      this.pgt.quaternion.copy(this.body.quaternion);
     }
   }
 
@@ -596,6 +600,12 @@ export class StationEva {
     if (a.t >= a.dur) this.working = null;
   }
 
+  /** Her pelvis in the station's frame. */
+  private pelvis(): THREE.Vector3 {
+    this.root.updateMatrixWorld(true);
+    return this.root.worldToLocal(this.figure.root.getWorldPosition(new THREE.Vector3()));
+  }
+
   /** From her APFR toward the work (along the route's last leg). */
   private toWork(): THREE.Vector3 {
     return v3(this.eva.heading()).projectOnPlane(this.out(this.apfr.position)).normalize();
@@ -603,7 +613,7 @@ export class StationEva {
 
   /** Behind and above her, turned by dragging; in a challenge, framed in the strip above the sheet. */
   private frameCamera(n: THREE.Vector3, head: THREE.Vector3): void {
-    const at = this.eva.feetIn ? this.apfr.position.clone().addScaledVector(n, 1.0).addScaledVector(this.toWork(), 0.5) : this.figure.root.position.clone().addScaledVector(n, 0.3);
+    const at = this.eva.feetIn ? this.apfr.position.clone().addScaledVector(n, 1.0).addScaledVector(this.toWork(), 0.5) : this.pelvis().addScaledVector(n, 0.3);
     const back = head.clone().negate();
     const side = new THREE.Vector3().crossVectors(n, back).normalize();
     const rot = new THREE.Quaternion().setFromAxisAngle(n, this.yaw);
@@ -723,7 +733,8 @@ export class StationEva {
       const w = insideStation(V(p), POLANA_LAYOUT, 0.1) ?? insideHull(p, this.hulls, -0.1);
       if (w) through.push(`${what} · ${w}`);
     };
-    check("Doménica", this.figure.root.position.clone().addScaledVector(this.out(this.figure.root.position), 0.3));
+    const pelvis = this.pelvis();
+    check("Doménica", pelvis.clone().addScaledVector(this.out(pelvis), 0.3));
     for (const h of hands) check("mano", h);
     if (this.part.visible) check("pieza", partBox.getCenter(new THREE.Vector3()));
     return {

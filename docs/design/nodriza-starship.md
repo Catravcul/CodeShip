@@ -128,6 +128,17 @@ encender los Raptor de vacío, ir por inercia, dar la vuelta antes de los últim
 Las páginas de las pantallas del puesto de pilotaje (propulsión, energía y vida) y las tarjetas del mapa dicen «metano y oxígeno» y «Raptor
 de vacío» en vez de «xenón» y «propulsores eléctricos».
 
+**Vuela como el reto**, no se arrastra (Berón, 2026-11-17): la nave gira la proa hacia la ruta, enciende, va por
+inercia, da la vuelta antes de frenar y frena con los motores por delante; al final gira a la actitud del punto de
+espera, con la proa al puerto (giros a 1°/s, valor de juego; NAV-27, detalle en [puente.md](puente.md)). Junto a una
+estación no se encienden los Raptor: el salto se ve con los soplos del RCS.
+
+**Escala comprobada en la escena** (2026-11-17, cajas de los modelos): la Starship mide 52 m de largo, 9 m de
+diámetro y 17 m con los alerones (SpaceX: unos 50 m y 9 m); la estación, 102,7 × 74,5 × 37,4 m (la ISS: 109 m de
+punta a punta, 73 m de alas). Las dos están a escala 1:1 en la misma escena. Lo que la hacía parecer enorme era la
+cámara de «Ver trayecto», que la seguía desde 115 m por detrás con la estación al fondo; ahora, a menos de unos
+400 m de su destino, la cámara se pone de lado y encuadra las dos a la misma distancia.
+
 ## Repostar: oxígeno y metano
 
 En la estación, el repostaje de la nodriza tiene dos líneas: **oxígeno líquido** y **metano líquido**, que se

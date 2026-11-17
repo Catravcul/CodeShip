@@ -79,9 +79,7 @@ El recorrido real que los sustituye en la nave es **PX-28** (`starship`), en
   que sus averías y su balance diario manden en la Starship como en la estación.
 - **La cubierta de vuelo** sigue siendo el puente de consolas que se recorre andando (rama `puente-real`).
 - **La esclusa** de la cubierta 3 está dibujada; las salidas desde la nave no están hechas.
-- **El viaje real de «Ir» dentro de la Starship.** De momento llega saltando por los asideros dentro de la
-  nave y se teletransporta entre vehículos cuando la tarea está en la nodriza. El planificador de viajes
-  (`journey.ts`) aún conoce el anillo y la espina, no las cubiertas.
+- ~~**El viaje real de «Ir» dentro de la Starship**~~: hecho en la rama `trayectos-reales` (cubiertas, escotillas que se abren, puente, vuelo y túnel de proa; [viajes.md](design/viajes.md#trayectos-por-dentro-escotillas-que-se-abren)). Queda: la hoja de la escotilla delantera del LM al salir a la superficie (EVA).
 - ~~**El módulo lunar Apolo** como módulo de aterrizaje~~: hecho en la rama `catalogo-montaje`, con Juventas como sonda y el montaje real del catálogo ([modulo-lunar-juventas.md](design/modulo-lunar-juventas.md)). Queda de esa rama:
   - la vista de pilotaje sentada sigue siendo la cápsula genérica con la ventana grande (`cockpit.ts`); falta la cabina del LM de pie, con sus ventanas triangulares;
   - un LM montado en el catálogo solo se suelta; no sustituye al módulo de la jugadora;

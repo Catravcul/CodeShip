@@ -28,6 +28,15 @@ Un grafo de lugares y traslados con su duración real (`modules/tasks/domain/jou
 
 Los vuelos cambian cómo están unidos los vehículos (dónde está acoplado el módulo, si la nodriza está atracada). Si no hay camino, se dice por qué: primero el motivo de un vuelo que no puede salir (sin combustible, sin xenón, posada, la sonda fuera), después el de una escotilla cerrada.
 
+## Con la Starship (2026-11-17)
+
+Con la nodriza real ([nodriza-starship.md](nodriza-starship.md)) el grafo no tiene anillo, radio ni espina: tiene la sala `nave` (las tres cubiertas en 0 g, con su propio grafo de saltos, el mismo motor que la estación), la escotilla del techo de la cubierta 1 a la cubierta de vuelo, la escotilla de la cubierta 3 al módulo y el túnel de proa a la estación. El vuelo sale de la mesa de navegación del puente. En cada escotilla ella **la abre** (la hoja gira, 1,2 s), pasa flotando o andando y la escotilla se cierra detrás ([viajes.md](viajes.md#trayectos-por-dentro-escotillas-que-se-abren)). Medido en vivo (PX-36):
+
+| Desde → hasta | Camino | Plan |
+|---|---|---|
+| Asiento del LM → cocina (cubierta 1) | andar a la escotilla del techo, escotilla, saltos por las cubiertas 3, 2 y 1 | 42 s |
+| Asiento del LM → Planos (estación) | escotilla, saltos hasta la escotilla de la cubierta de vuelo, escotilla, andar a la mesa NAV, la Starship vuela y atraca (1 h 21 min de juego = 1 min 21 s), andar, escotilla, saltos al túnel de proa, escotilla, saltos en la estación | 2 min 41 s |
+
 ## Durante el viaje
 
 - Doménica anda, sube en el coche, salta, cruza escotillas, se sienta y vuela con los mismos controladores que usa la jugadora (no hay otro código de movimiento): `src/journey.ts` los conduce tramo a tramo.

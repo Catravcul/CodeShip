@@ -144,9 +144,7 @@ estación por el morro, el túnel de la cubierta 1 lleva a ella.
 
 ## Lo que falta o queda abierto
 
-- **«Ir» por las cubiertas**: el planificador de viajes (`journey.ts`) conoce la espina y el anillo, no las
-  cubiertas. De momento, cuando la tarea o Doménica están en la nodriza, «Ir» la lleva por las escotillas abiertas
-  (como el teletransporte) y, dentro de la nave, salta de asidero en asidero hasta la máquina.
+- ~~**«Ir» por las cubiertas**~~: hecho (2026-11-17, [viajes.md](viajes.md#trayectos-por-dentro-escotillas-que-se-abren)): el planificador conoce las cubiertas, la escotilla de la cubierta de vuelo y las de atraque, y ella abre cada escotilla.
 - **La cubierta de vuelo** sigue siendo el puente de consolas que se recorre andando (rama `puente-real`). En una
   Starship es un espacio en 0 g bajo los depósitos de cabecera.
 - **Una sola tripulante jugable** en una nave para cuatro.

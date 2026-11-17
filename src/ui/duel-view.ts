@@ -299,9 +299,8 @@ export class DuelView {
       ex?.kind === "order"
         ? `<button class="ui-toggle order-toggle" data-act="mode" aria-pressed="${step}" aria-label="${step ? "Modo paso a paso activo: cambiar a ordenar todo y enviar" : "Modo ordenar todo y enviar activo: cambiar a paso a paso"}">${step ? "Ordenar todo" : "Paso a paso"}</button>`
         : "";
-    const sheetTools = this.text.sheet
-      ? `<div class="duel-tools">${orderToggle}<button class="ui-toggle" data-act="ui">${compactUi() ? "Vista panel" : "Vista HUD"}</button><button class="x" data-act="close" aria-label="Cerrar">×</button></div>`
-      : "";
+    // The view toggle is in every challenge, the mind duel too (reglas.md §4.4); only sheets close with ×.
+    const sheetTools = `<div class="duel-tools">${orderToggle}<button class="ui-toggle" data-act="ui">${compactUi() ? "Vista panel" : "Vista HUD"}</button>${this.text.sheet ? `<button class="x" data-act="close" aria-label="Cerrar">×</button>` : ""}</div>`;
     const head = `
       <div class="duel-top">${sheetTools}
       <div class="duel-head">

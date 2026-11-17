@@ -17,10 +17,28 @@ export const STATION_AREA_NAME: Readonly<Record<CrewArea, string>> = {
   esterilla: "Esterilla de yoga de la estación (Nodo 1)",
 };
 
+/**
+ * Port: the pantry the galley cooks from (docs/design/soporte-vital.md, «Despensa»): the vehicle's packaged
+ * food in its life support. One dish takes one meal out of it.
+ */
+export interface Pantry {
+  /** kg of packaged food one meal takes. */
+  readonly mealKg: number;
+  /** Whole meals left. */
+  meals(): number;
+  /** Take one meal out; false if there is none. */
+  draw(): boolean;
+}
+
 export interface StationCrewContext {
   readonly recipes: readonly Recipe[];
   readonly yoga: readonly YogaSequence[];
   readonly workouts: readonly Workout[];
+  /**
+   * The vehicle's pantry, when the galley cooks from it (real ships): its packages are counted from it, a dish
+   * needs a meal in it and takes it out. Left out, the galley cooks from the habitat's own larder.
+   */
+  readonly pantry?: () => Pantry | undefined;
 }
 
 /**
@@ -36,8 +54,20 @@ export class StationCrew {
     private readonly ctx: StationCrewContext,
   ) {}
 
+  /** The packages of the galley's dishes, counted from the pantry's meals (one package of each per meal). */
+  private syncPantry(): Pantry | undefined {
+    const p = this.ctx.pantry?.();
+    if (!p) return undefined;
+    const meals = p.meals();
+    const per = new Map<string, number>();
+    for (const r of this.ctx.recipes) for (const [item, n] of Object.entries(r.ingredients)) per.set(item, Math.max(per.get(item) ?? 0, n));
+    for (const [item, n] of per) this.habitat.stock(item, meals * n - this.habitat.larder(item));
+    return p;
+  }
+
   /** What can be done at the station now: dishes the larder allows, yoga, workouts. */
   chores(): Chore[] {
+    this.syncPantry();
     return this.habitat.chores(this.ctx.recipes, this.ctx.yoga, { workouts: this.ctx.workouts }).filter((c) => AREA[c.kind]);
   }
 
@@ -52,7 +82,21 @@ export class StationCrew {
   start(id: string): ChoreSession | undefined {
     const c = this.chores().find((x) => x.id === id);
     const context: ChoreContext = { recipes: this.ctx.recipes };
-    return c && this.habitat.start(c, context);
+    const s = c && this.habitat.start(c, context);
+    const pantry = this.ctx.pantry?.();
+    if (!s || !pantry || c.kind !== "cocinar") return s;
+    // The dish is served: its meal leaves the pantry.
+    const answer = s.answer.bind(s);
+    s.answer = (a) => {
+      const was = s.run.status;
+      const ok = answer(a);
+      if (was !== "done" && s.run.status === "done") {
+        pantry.draw();
+        this.syncPantry();
+      }
+      return ok;
+    };
+    return s;
   }
 
   /** The chore by id, if it can be done now. */

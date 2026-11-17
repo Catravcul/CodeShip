@@ -3,7 +3,7 @@ import { ECLSS_MACHINES, failureMode } from "../data/eclss-machines";
 import { CO2_LIMITS, LifeSupport, nominalWaterRecovery, partialPressurePa, type LifeSupportConfig } from "./life-support";
 
 const STATION: LifeSupportConfig = { crew: 1, freeAirM3: 388, waterKg: 800, foodKg: 2.39 * 180, o2TankKg: 100, n2TankKg: 100, spares: { "lecho-zeolita": 1, "lecho-mf": 1 } };
-const fresh = (c: Partial<LifeSupportConfig> = {}) => new LifeSupport(ECLSS_MACHINES, { ...STATION, ...c }, { randomFailures: false });
+const fresh = (c: Partial<LifeSupportConfig> = {}) => new LifeSupport(ECLSS_MACHINES, { ...STATION, ...c }, { wear: false });
 const mmHg = (pa: number) => pa / 133.322;
 
 describe("SV-02 the cabin air", () => {
@@ -118,17 +118,6 @@ describe("SV-03 water, food and power", () => {
 });
 
 describe("SV-04 failures", () => {
-  it("random failures come from the real failure modes, never in the first days", () => {
-    let seed = 1;
-    const ls = new LifeSupport(ECLSS_MACHINES, STATION, { randomFailures: true, graceDays: 2, random: () => ((seed = (seed * 16807) % 2147483647) / 2147483647) });
-    ls.advance(47);
-    expect(ls.active()).toEqual([]);
-    for (let i = 0; i < 400; i++) ls.advance(24);
-    const ids = ls.active().map((f) => f.id);
-    expect(ids.length).toBeGreaterThan(0);
-    for (const id of ids) expect(failureMode(id)).toBeDefined();
-  });
-
   it("an event says when the CO₂ alarm starts", () => {
     const ls = fresh();
     ls.fail("cdra-valvula");
@@ -153,14 +142,15 @@ describe("SV-12 only the crew aboard breathes, eats and drinks", () => {
     for (const v of Object.values(r)) if (typeof v === "number") expect(Number.isFinite(v) || v === Infinity).toBe(true);
   });
 
-  it("an empty vehicle still runs its machines and can still fail", () => {
-    let seed = 7;
-    const ls = new LifeSupport(ECLSS_MACHINES, STATION, { randomFailures: true, graceDays: 2, random: () => ((seed = (seed * 16807) % 2147483647) / 2147483647) });
+  it("an empty vehicle still runs its machines and wears what runs by the hour, but not what runs on her urine", () => {
+    const ls = new LifeSupport(ECLSS_MACHINES, STATION, { wear: true });
     ls.setCrewAboard(0);
-    ls.advance(24);
+    const oga = ls.wearShare("oga-bomba");
+    const upa = ls.wearShare("upa-destilacion");
+    ls.advance(24 * 10);
     expect(ls.readout().powerW).toBeGreaterThan(0);
-    for (let i = 0; i < 400; i++) ls.advance(24);
-    expect(ls.active().length).toBeGreaterThan(0);
+    expect(ls.wearShare("oga-bomba")).toBeGreaterThan(oga);
+    expect(ls.wearShare("upa-destilacion")).toBe(upa);
   });
 
   it("with her back aboard, the load comes back", () => {

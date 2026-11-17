@@ -36,7 +36,7 @@ import {
 } from "@modules/garden/data/species";
 import { MACHINES } from "@modules/life-support/data/machines";
 import { LAUNCH_STOCK } from "@modules/kitchen/data/stores";
-import { ISS_LAUNCH_STOCK } from "@modules/kitchen/data/iss-food";
+import { ISS_FOOD, ISS_LAUNCH_STOCK } from "@modules/kitchen/data/iss-food";
 import { Mailbox } from "@modules/story/domain/mailbox";
 import { STORY } from "@modules/story/data/nevaeh";
 import type { Plant } from "@modules/garden/domain/plant";
@@ -91,8 +91,8 @@ import { StationLife } from "./station-life";
 import { stationStepVisuals } from "./station-steps";
 import { LifeSupportGame } from "./life-support-game";
 import { STATION_LIFE_SUPPORT } from "@modules/life-support/data/hosts";
-import { STATION_AREA_NAME, StationCrew } from "@modules/station/application/station-crew";
-import { STATION_LARDER } from "@modules/station/data/galley";
+import { STATION_AREA_NAME, StationCrew, type Pantry } from "@modules/station/application/station-crew";
+import { STATION_LARDER, TRIP_STORES_SHARE } from "@modules/station/data/galley";
 import { LanderBerth } from "@modules/station/domain/hangar-berth";
 import { scaleInteriorPlan } from "@modules/station/domain/interior";
 import { MACHINE_SCALE } from "@core/machine-scale";
@@ -850,7 +850,9 @@ const stationScreen = new StationScreen(
 // Doménica's life at the station (docs/design/estacion-tripulacion.md): the same chores engine, the station's larder, her one body.
 const stationHabitat = new Habitat(seededRandom(2027), 0, undefined, habitat.crew.name, [], habitat.crew);
 stationHabitat.stockAll(STATION_LARDER);
-const stationCrew = new StationCrew(stationHabitat, { recipes: RECIPES, yoga: YOGA_SEQUENCES, workouts: WORKOUTS });
+// Real ships: the galley cooks the ISS's packaged food from the life support's pantry (docs/design/soporte-vital.md, «Despensa»).
+let stationPantry: Pantry | undefined;
+const stationCrew = new StationCrew(stationHabitat, { recipes: REAL_ONLY ? ISS_FOOD : RECIPES, yoga: YOGA_SEQUENCES, workouts: WORKOUTS, pantry: () => stationPantry });
 /** The lander on its IDA or berthed by Canadarm2 on Unity's nadir CBM (docs/design/estacion-real.md). */
 const landerBerth = new LanderBerth();
 const landerOnCbm = () => {
@@ -896,9 +898,23 @@ const stationLife = new StationLife({
   openCatalog: () => sanctuary.catalog.open(),
   stepVisual: (chore, area) => stationSteps.crew(chore, area),
   otherChore: (id) => lifeSupport.startChore(id),
+  ...(REAL_ONLY
+    ? {
+        cargoActions: () => lifeSupport.cargoActions(),
+        cargoAct: (id: string) => lifeSupport.cargoAct(id),
+        sendTripFood: () => {
+          const ship = starship?.lifeSupport;
+          if (!ship) return undefined;
+          const kg = lifeSupport.system.takeFood(lifeSupport.system.readout().foodKg * TRIP_STORES_SHARE);
+          ship.system.restock({ foodKg: kg });
+          return kg > 0 ? `A la despensa de la nodriza: ${Math.round(kg).toLocaleString("es-ES")} kg de comida envasada (${Math.floor(ship.system.readout().foodDays)} días a bordo)` : "La despensa de la estación está vacía";
+        },
+      }
+    : {}),
 });
 // Real life support (docs/design/soporte-vital.md): the station hosts the racks for now; Doménica weighs 58 kg.
 const lifeSupport = new LifeSupportGame({ duel: duelView, say: (t, sec) => stationInside.say(t, sec), rack: (id) => stationInside.rack(id), frame: (at) => stationInside.frame(at), unframe: () => stationInside.unframe(), openTasks: () => taskBoard.open(), crewAboard: () => (crewIn() === "estacion" ? 1 : 0) }, STATION_LIFE_SUPPORT, 58);
+if (REAL_ONLY) stationPantry = lifeSupport.pantry;
 // The Starship's own racks and supplies (docs/design/nodriza-starship.md), on the same clock. Each vehicle
 // counts only the crew aboard it: Doménica is in one of them at a time, or in the lander (crewIn).
 if (starship) starship.lifeSupport = new LifeSupportGame({ duel: duelView, say: (t, sec) => starship.say(t, sec ?? 4), rack: (id) => starship.mode.rack(id), frame: (at) => starship.mode.frame(at), unframe: () => starship.mode.unframe(), openTasks: () => taskBoard.open(), crewAboard: () => (crewIn() === "nodriza" ? 1 : 0) }, STARSHIP_LIFE_SUPPORT, 58);
@@ -935,7 +951,7 @@ const stationInside = new StationInteriorMode(root, playInterior(), {
   openTasks: () => taskBoard.open(),
   actions: (f) => (f.action.kind === "soporte-vital" ? lifeSupport.actions(f) : stationLife.actions(f)),
   act: (f, a) => (f.action.kind === "soporte-vital" ? lifeSupport.act(f, a) : stationLife.act(f, a)),
-  readout: (f) => lifeSupport.readout(f),
+  readout: (f) => (REAL_ONLY || f.id !== "cocina" ? lifeSupport.readout(f) : undefined),
   rackState: (f) => lifeSupport.rackState(f),
   landerInHangar: () => false,
   lookOut: () => (FICTION ? dryDock.open("ventanilla") : stationOutside.open()),

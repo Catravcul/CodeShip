@@ -26,7 +26,7 @@ Escrito por `tools/experiencia/brazo-eva.mjs` (no a mano). Cada bloque bien colo
 | Ponerse el EMU y prerrespirar (ISLE) | ponerse los guantes y el casco | revisar · objetivo ·  | [brazo-traje-04.png](../screenshots/brazo-traje-04.png) | Bien |
 | Ponerse el EMU y prerrespirar (ISLE) | comprobar fugas en el módulo de control del pecho | programar · objetivo ·  | [brazo-traje-05.png](../screenshots/brazo-traje-05.png) | Bien |
 | Ponerse el EMU y prerrespirar (ISLE) | 160 min | entrenar · objetivo ·  | [brazo-traje-06.png](../screenshots/brazo-traje-06.png) | Bien |
-| Paseo: cambiar las alas | 6 h | comprobar · alas | [brazo-eva-01.png](../screenshots/brazo-eva-01.png) | Bien |
+| Paseo: cambiar las alas | 6,1 h | comprobar · alas | [brazo-eva-01.png](../screenshots/brazo-eva-01.png) | Bien |
 | Paseo: cambiar las alas | Canadarm2 trae el rollo nuevo desde la JEM-EF | brazo · alas | [brazo-eva-02.png](../screenshots/brazo-eva-02.png) | Bien |
 | Paseo: cambiar las alas | atar el rollo con un cable de equipo | atar · alas | [brazo-eva-03.png](../screenshots/brazo-eva-03.png) | Bien |
 | Paseo: cambiar las alas | soltarlo del brazo y llevarlo a su soporte | llevar · alas | [brazo-eva-04.png](../screenshots/brazo-eva-04.png) | Bien |
@@ -40,7 +40,7 @@ Escrito por `tools/experiencia/brazo-eva.mjs` (no a mano). Cada bloque bien colo
 | Paseo: cambiar el motor del módulo | dar la pieza vieja al brazo | llevar · modulo | [eva-modulo-05.png](../screenshots/eva-modulo-05.png) | Bien |
 | Paseo: cambiar el motor del módulo | montar la nueva y apretar los pernos | llave · modulo | [eva-modulo-06.png](../screenshots/eva-modulo-06.png) | Bien |
 | Paseo: cambiar el motor del módulo | conectar y comprobar | comprobar · modulo | [eva-modulo-07.png](../screenshots/eva-modulo-07.png) | Bien |
-| Paseo: cambiar la energía de la Starship | 6,9 h | comprobar · nodriza-energia | [eva-starship-01.png](../screenshots/eva-starship-01.png) | Bien |
+| Paseo: cambiar la energía de la Starship | 7 h | comprobar · nodriza-energia | [eva-starship-01.png](../screenshots/eva-starship-01.png) | Bien |
 | Paseo: cambiar la energía de la Starship | sacar el panel por la esclusa con su cable de equipo | atar · nodriza-energia | [eva-starship-02.png](../screenshots/eva-starship-02.png) | Bien |
 | Paseo: cambiar la energía de la Starship | llevarlo a su soporte en el casco | llevar · nodriza-energia | [eva-starship-03.png](../screenshots/eva-starship-03.png) | Bien |
 | Paseo: cambiar la energía de la Starship | apretar los pernos con la llave PGT | llave · nodriza-energia | [eva-starship-04.png](../screenshots/eva-starship-04.png) | Bien |

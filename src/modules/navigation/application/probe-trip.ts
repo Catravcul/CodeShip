@@ -49,6 +49,8 @@ export interface ProbeTripPorts {
   stowed(): boolean;
   /** Release a stowed probe from the bay; false if it can't. */
   launch(): boolean;
+  /** The deployer's sequence is running (door, slide out): the trip waits at ×1 so the release is seen. */
+  deploying?(): boolean;
   /** Bay position and the "up" out of it (world). */
   bay(): { readonly position: Vec3; readonly up: Vec3 };
   /** Keep-out spheres on the way (all bodies but the goal, and the mothership itself). */
@@ -247,6 +249,7 @@ export class ProbeTrip {
 
   /** Game seconds per real second while the probe flies itself (1 otherwise). */
   get lapse(): number {
+    if (this.ports.deploying?.()) return 1;
     return this._status === "flying" && this.clock && this._autopilot ? this.clock.lapse(remainingEstimateS(this._autopilot.status)) : 1;
   }
 

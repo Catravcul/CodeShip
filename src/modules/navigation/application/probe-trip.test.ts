@@ -12,7 +12,7 @@ import { FlightComputer, NO_INPUT } from "@modules/flight/application/flight-com
 import { RigidBodyState } from "@modules/flight/domain/rigid-body";
 import { Mothership } from "@modules/mothership/domain/mothership";
 import { NODRIZA } from "@modules/mothership/data/mothership";
-import { ProbeOps } from "@modules/subjugation/application/probe-ops";
+import { DEPLOYER, ProbeOps } from "@modules/subjugation/application/probe-ops";
 import type { Answer, Exercise } from "@modules/mind-duel/domain/exercise";
 import { TRAVEL_TIME } from "../domain/travel-time";
 import { PROBE_TRIP, ProbeTrip, type ProbeGoal } from "./probe-trip";
@@ -37,6 +37,7 @@ const make = () => {
     flight: () => probe.flight,
     stowed: () => probe.status === "estibada",
     launch: () => probe.launch(mothership.orientation.rotate(Vec3.Y)),
+    deploying: () => probe.deploying,
     bay: () => ({ position: bay().position, up: mothership.orientation.rotate(Vec3.Y) }),
     obstaclesFor: (g: ProbeGoal) => [...region.obstaclesExcept(g.kind === "asteroid" ? g.body : undefined), { centre: mothership.position, radiusM: 96 }],
   });
@@ -82,6 +83,10 @@ describe("ProbeTrip (the probe's long trips)", () => {
     expect(run.chore.title).toContain(member.data.name);
     while (run.current) trip.answer(right(run.current));
     expect(trip.status).toBe("flying");
+    // First the deployer's sequence, at ×1 so it is seen: the door, the slide out, the springs.
+    expect(probe.deploying).toBe(true);
+    expect(trip.lapse).toBe(1);
+    fly(probe, trip, DEPLOYER.doorS + DEPLOYER.pushS + 0.5);
     expect(probe.status).toBe("en-vuelo");
     const p = trip.progress()!;
     expect(p.lapse).toBeGreaterThanOrEqual(TRAVEL_TIME.lapse.probe);
@@ -124,7 +129,8 @@ describe("ProbeTrip (the probe's long trips)", () => {
   it("touching the controls hands the probe back to the remote pilot", () => {
     const { trip, member, probe } = make();
     trip.engage({ kind: "asteroid", body: member });
-    probe.update(1, NO_INPUT);
+    // Out of its deployer first (the sequence runs at ×1).
+    probe.update(DEPLOYER.doorS + DEPLOYER.pushS + 1, NO_INPUT);
     probe.update(0.1, { ...NO_INPUT, mainThrottle: 1 });
     trip.update(0.1);
     expect(trip.status).toBe("manual");

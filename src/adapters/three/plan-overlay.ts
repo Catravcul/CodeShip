@@ -25,9 +25,13 @@ export class PlanOverlay {
     this.caption = document.createElement("div");
     this.caption.className = "plan-caption";
     this.caption.setAttribute("role", "status");
-    // The step overlay stays on screen with a challenge open (docs/design/ux-acciones.md §7).
-    this.caption.dataset.duelKeep = "paso";
+    // Main moves it into the challenge's sheet (DuelView.hold): with a challenge open only the sheet and the scene show.
     host.appendChild(this.caption);
+  }
+
+  /** The step line, for the challenge's sheet to hold. */
+  get captionElement(): HTMLElement {
+    return this.caption;
   }
 
   /** The plan's items drawn so far. */
@@ -83,6 +87,60 @@ export class PlanOverlay {
     }
   }
 
+  /** Frames the plan when the view on screen does not show it (`view`). */
+  readonly camera = new THREE.PerspectiveCamera(50, 1, 0.1, 2e6);
+  /** The open challenge's scene is the plan's, seen by `camera` (decided once per plan: no flicker). */
+  private framing = false;
+
+  /**
+   * The view a challenge that draws a plan shows (docs/design/ux-acciones.md §7, a rule without exceptions):
+   * the view on screen when at least half of the plan's points show above the sheet; otherwise the plan's own
+   * scene, framed by `camera` so that the whole plan fits the part of the screen the sheet leaves open (`open`,
+   * from the top left corner). Wherever the challenge was opened (the cockpit, the travel ship's navigation
+   * console, the probe's console, a room), the plan is in the scene behind the sheet and nothing else needs to stay.
+   */
+  view(challenge: boolean, sc: THREE.Scene, cam: THREE.Camera, open: { readonly w: number; readonly h: number }, size: { readonly w: number; readonly h: number }): { scene: THREE.Scene; camera: THREE.Camera } {
+    const home = this.root.parent as THREE.Scene | null;
+    if (!challenge || !home || this.drawn === 0) {
+      if (!challenge) this.framing = false;
+      return { scene: sc, camera: cam };
+    }
+    if (!this.framing) {
+      const a = this.audit(sc, cam, open.h, size);
+      // Points beside the sheet in landscape: count those left of it too.
+      const enough = a.inView && a.onScreen >= a.points / 2;
+      if (enough) return { scene: sc, camera: cam };
+      this.framing = true;
+    }
+    this.frame(open, size);
+    return { scene: home, camera: this.camera };
+  }
+
+  /** Put `camera` where the whole plan fits the open part of the screen, seen from above and to one side. */
+  private frame(open: { readonly w: number; readonly h: number }, size: { readonly w: number; readonly h: number }): void {
+    const sphere = new THREE.Box3().setFromObject(this.root).getBoundingSphere(new THREE.Sphere());
+    const R = Math.max(1, sphere.radius);
+    const W = size.w, H = size.h;
+    const cx = Math.min(W / 2, open.w / 2), cy = Math.min(H / 2, open.h / 2);
+    const fullW = 2 * (W - cx), fullH = 2 * (H - cy);
+    const half = (22 * Math.PI) / 180;
+    const focal = open.h / 2 / Math.tan(half);
+    const halfW = Math.atan(open.w / 2 / focal);
+    const c = this.camera;
+    c.fov = (2 * Math.atan(fullH / 2 / focal) * 180) / Math.PI;
+    c.aspect = fullW / fullH;
+    c.setViewOffset(fullW, fullH, W - 2 * cx, H - 2 * cy, W, H);
+    const d = (R / Math.sin(Math.min(half, halfW))) * 1.05;
+    const dir = new THREE.Vector3(0.45, 0.6, 0.66).normalize();
+    c.position.copy(sphere.center).addScaledVector(dir, d);
+    c.up.set(0, 1, 0);
+    c.lookAt(sphere.center);
+    c.near = Math.max(0.1, d - 2 * R) * 0.5;
+    c.far = d + 4 * R + 1e5;
+    c.updateProjectionMatrix();
+    c.updateMatrixWorld();
+  }
+
   /** Add a step's sketch to what is drawn and say it. */
   show(step: SketchStep): void {
     if (this.timer) clearTimeout(this.timer);
@@ -104,6 +162,7 @@ export class PlanOverlay {
       this.root.remove(c);
     }
     this.items.length = 0;
+    this.framing = false;
     this.caption.classList.remove("on");
     this.onChange?.();
   }

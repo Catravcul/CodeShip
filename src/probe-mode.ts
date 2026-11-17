@@ -79,7 +79,7 @@ export class ProbeMode {
     this.ui = document.createElement("div");
     this.ui.className = "probe-ui hidden";
     this.ui.innerHTML = `
-      <div class="pr-top"><b class="pr-title"></b><span class="pr-cam">Cámara de la sonda · mando a distancia desde la nodriza (retardo despreciable)</span><button class="pr-exit">Volver al puente</button></div>
+      <div class="pr-top"><b class="pr-title"></b><span class="pr-cam">Cámara de la sonda · sin cabina: mando a distancia desde la consola de la nodriza (retardo despreciable)</span><button class="pr-exit">Volver al puente</button></div>
       <div class="pr-tele"></div>
       <div class="pr-rapport"></div>
       <div class="pr-msg"></div>
@@ -321,7 +321,7 @@ export class ProbeMode {
     const fuel = ship.propellantKg("Hydrazine");
     const bat = p.batteryWh / p.spec.batteryWh;
     const bay = p.bayRange();
-    this.set(this.title, `${ship.name} · ${p.status === "sin-sonda" ? "sin sondas a bordo" : `${p.onBoard} a bordo`}`);
+    this.set(this.title, `${ship.name} · a distancia · ${p.status === "sin-sonda" ? "sin sondas a bordo" : `${p.onBoard} a bordo`}`);
     const status = { estibada: "En su bahía de la nodriza", "en-vuelo": "En vuelo", posada: `Posada en ${d.targetName()}`, "sin-sonda": "No quedan sondas: repón en la estación" }[p.status];
     const near = p.status === "en-vuelo" && t.clearance < 60;
     this.set(

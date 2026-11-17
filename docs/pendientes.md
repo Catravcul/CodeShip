@@ -83,7 +83,7 @@ El recorrido real que los sustituye en la nave es **PX-28** (`starship`), en
   nave y se teletransporta entre vehículos cuando la tarea está en la nodriza. El planificador de viajes
   (`journey.ts`) aún conoce el anillo y la espina, no las cubiertas.
 - ~~**El módulo lunar Apolo** como módulo de aterrizaje~~: hecho en la rama `catalogo-montaje`, con Juventas como sonda y el montaje real del catálogo ([modulo-lunar-juventas.md](design/modulo-lunar-juventas.md)). Queda de esa rama:
-  - la vista de pilotaje sentada sigue siendo la cápsula genérica con la ventana grande (`cockpit.ts`); falta la cabina del LM de pie, con sus ventanas triangulares;
+  - ~~la vista de pilotaje sentada sigue siendo la cápsula genérica~~: hecha la cabina del LM de pie en la rama `cabina-lm` ([cabina-lm.md](design/cabina-lm.md));
   - un LM montado en el catálogo solo se suelta; no sustituye al módulo de la jugadora;
   - la masa del O₂ de ascenso del LM (2 × 2,4 lb) sale de un escaneo ilegible;
   - la Explorer (`explorerDesign`) queda en el código para los tests de vuelo y la bahía, sin usarse como módulo.

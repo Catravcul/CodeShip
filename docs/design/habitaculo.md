@@ -7,7 +7,7 @@ pantalla queda lo mínimo para volar.
 
 ## Habitáculo del módulo
 
-Es la cápsula que el piloto ve desde el asiento (`adapters/three/cockpit.ts`), alargada hacia popa (abajo) y
+Era la cápsula que el piloto veía desde el asiento (`cockpit.ts`, ya sustituida por la cabina real del LM: [cabina-lm.md](cabina-lm.md)), alargada hacia popa (abajo) y
 con el suelo a la altura de sus pies. Doménica camina por ella con cámara de casa de muñecas: la cámara queda fuera y por encima, y
 se quitan las paredes que hay entre ella y la cámara, si se elige la 3ª persona. Por defecto se ve en 1ª
 persona (ajuste «Vista a pie»). Con el ojo (V) se cambia.

@@ -615,7 +615,7 @@ export async function animaciones(j) {
   }
 
   extra.push(
-    "El viaje desde la mesa de navegación (la del anillo con ?ficcion; la de la cubierta de vuelo de la Starship en el juego real): el mapa cubre la escena, así que el plan se dibuja en el mapa, encuadrado en la franja sobre la hoja (sus puntos se miden en el mapa).",
+    "El viaje desde la consola de navegación: el mapa se oculta con el reto como toda interfaz (foco del reto, sin excepciones) y el plan se dibuja en la escena del reto, que lo encuadra en la franja sobre la hoja cuando la vista de la consola no lo ve (PlanOverlay.view).",
   );
   extra.push(
     "Estación (escala 1,5): la cocina, la esterilla de Destiny, la T2 y el ARED, el bastidor de aire y las máquinas (refinar, fabricar, laboratorio de biología, importar) con Doménica en cada una. Starship: la cocina, la esterilla, la T2, el CEVIS, el ARED, el hábitat acuático y el bastidor de aire. Sin visual de pasos, aplazados con nano_net (sistema ficticio, al backlog): los retos de nano_net.",

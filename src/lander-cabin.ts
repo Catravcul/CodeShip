@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { cabinActions, type CabinActionId, type CabinState, type CabinStationId } from "@modules/lander-cabin/domain/cabin";
-import { LANDER_CABIN } from "@modules/lander-cabin/data/cabin";
+import { CABIN_SPREAD, LANDER_CABIN } from "@modules/lander-cabin/data/cabin";
 import { buildLmCabin } from "./adapters/three/lm-cabin";
 import { drawScreen } from "./adapters/three/interior/room";
 import { WalkRoom, type RoomAction } from "./walk-room";
@@ -34,7 +34,7 @@ export class LanderCabin extends WalkRoom<CabinStationId> {
     private readonly deps: CabinDeps,
   ) {
     const k = worldScale();
-    const g = buildLmCabin(LANDER_CABIN, k);
+    const g = buildLmCabin(LANDER_CABIN, k, CABIN_SPREAD);
     scaleLights(g.group, k);
     super(root, {
       layout: LANDER_CABIN,

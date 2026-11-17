@@ -130,7 +130,7 @@ export function nearestStation<Id extends string>(layout: CabinLayout<Id>, p: Fl
 export function cabinActions(id: CabinStationId, s: CabinState): CabinAction[] {
   switch (id) {
     case "asiento":
-      return [{ id: "pilotar", label: "Sentarse a pilotar", enabled: true }];
+      return [{ id: "pilotar", label: "Pilotar de pie (arneses y reposabrazos)", enabled: true }];
     case "esterilla":
       return [{ id: "ajustes", label: "Sentarse en loto: ajustes", enabled: true }];
     case "escotilla":

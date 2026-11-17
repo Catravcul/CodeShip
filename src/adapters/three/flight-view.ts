@@ -1,7 +1,10 @@
 import * as THREE from "three";
 import type { ShipDesign, ThrustCommand } from "@modules/ship/domain/ship";
 import { VirtualStick, curve } from "../input/stick";
-import { buildCockpit } from "./cockpit";
+import { buildLmCabin, type LmCabinGeometry } from "./lm-cabin";
+import type { LmReading } from "./lm-instruments";
+import { LANDER_CABIN, CABIN_SPREAD } from "@modules/lander-cabin/data/cabin";
+import { worldScale, scaleLights } from "./interior/world-scale";
 import { ShipModel } from "./ship-model";
 import { RootMenu, type RootItem } from "../../ui/root-menu";
 import { ICON } from "../../ui/icons";
@@ -30,13 +33,20 @@ export const WARPS = [1, 10, 50] as const;
 export const WARP_MIN_DISTANCE_M = 150;
 
 /**
- * What the pilot sees: the cockpit fixed to the ship with a free-turning head, a rear camera and
- * an exterior chase camera (real spacecraft carry external cameras for what windows can't show),
- * plus drifting space dust so that motion is visible.
+ * What the pilot sees (docs/design/cabina-lm.md): the commander standing at his station in the LM's real cabin
+ * (the same model as the walkable cabin, lm-cabin.ts, with the presentation layer's scale and spacing),
+ * looking out of his triangular window («Cabina») or up through the overhead docking window and the COAS
+ * («Acople»), with a free-turning head; the landing, rear and exterior cameras (real spacecraft carry
+ * external cameras for what windows can't show), plus drifting space dust so that motion is visible.
  */
 export class FlightView {
   readonly rig = new THREE.Group();
-  private readonly cockpit = buildCockpit();
+  private readonly lm: LmCabinGeometry = buildLmCabin(LANDER_CABIN, worldScale(), CABIN_SPREAD);
+  /** The cabin, placed so that the commander's eye is at the ship's origin (the camera's place). */
+  private readonly cockpit = new THREE.Group();
+  /** From the commander's eye to the overhead docking window, in the ship's frame. */
+  private readonly toDockWindow: THREE.Vector3;
+  private reading: LmReading | undefined;
   private readonly ship = new ShipModel();
   private readonly dust: THREE.Points;
   private readonly dustPos: Float32Array;
@@ -65,9 +75,18 @@ export class FlightView {
   ) {
     scene.add(this.rig);
     this.rig.add(this.cockpit, this.ship.root);
-    const cabinLight = new THREE.PointLight(0xdfefff, 3, 4, 1);
-    cabinLight.position.set(0, 0.7, 0.3);
-    this.cockpit.add(cabinLight);
+    scaleLights(this.lm.group, worldScale());
+    // The cabin's ambient light would light space too: in flight only its lamps (short reach) light it.
+    const ambient: THREE.Object3D[] = [];
+    this.lm.group.traverse((o) => (o as THREE.AmbientLight).isAmbientLight && ambient.push(o));
+    for (const a of ambient) a.removeFromParent();
+    const fill = new THREE.PointLight(0xdfefff, 2.5, 3 * worldScale(), 1);
+    fill.position.set(0, 0.3, 0.4);
+    this.cockpit.add(fill);
+    this.lm.group.position.copy(this.lm.commanderEye).negate();
+    this.cockpit.name = "cabina-lm";
+    this.cockpit.add(this.lm.group);
+    this.toDockWindow = this.lm.dockingWindow.clone().sub(this.lm.commanderEye).normalize();
 
     // Dust: points in a 160 m box around the ship, wrapped as it moves.
     const n = 700;
@@ -183,19 +202,36 @@ export class FlightView {
     } else this.pitch = Math.max(-1.4, Math.min(1.4, this.pitch));
   }
 
-  /** Place ship, camera and dust. `pos`/`q` are the ship pose; `warp` is the warp in effect. */
+  /** The flight readings for the LM's instruments (panels 1, 2, 4 and 5), set by main each frame. */
+  instruments(r: LmReading): void {
+    this.reading = r;
+  }
+
+  /** What the instruments show now (for checks). */
+  get instrumentReading(): LmReading | undefined {
+    return this.lm.instruments.shown;
+  }
+
+  /** Whether the camera is inside the LM's cabin (the commander's window or the docking window). */
+  get inCabin(): boolean {
+    return this.mode === "cabina" || this.mode === "acople";
+  }
+
   /** Adds an icon to the cockpit's root menu (flight-computer toggles). */
   addButton(className: string, onClick: () => void, item: Partial<RootItem> = {}): HTMLButtonElement {
     return this.menu.add({ className, icon: item.icon ?? ICON.root, label: item.label ?? className, ...(item.key ? { key: item.key } : {}), ...(item.pinned ? { pinned: true } : {}) }, onClick);
   }
 
+  /** Place ship, camera and dust. `pos`/`q` are the ship pose; `warp` is the warp in effect. */
   update(dt: number, pos: THREE.Vector3, q: THREE.Quaternion, cmd: ThrustCommand, warp: number, warpNote: string): void {
     const s = this.stick.value;
     this.turn(-curve(s.x) * 2.0 * dt, -curve(s.y) * 1.5 * dt);
     this.rig.position.copy(pos);
     this.rig.quaternion.copy(q);
-    this.cockpit.visible = this.mode === "cabina";
-    this.ship.root.visible = this.mode !== "cabina";
+    this.cockpit.visible = this.inCabin;
+    this.ship.root.visible = !this.inCabin;
+    // The instruments run whatever the camera (the panels are there when she looks back in).
+    if (this.reading) this.lm.instruments.update(this.reading, performance.now() / 1000);
     if (this.design) this.ship.setDesign(this.design());
     this.ship.thrust(cmd, performance.now() / 1000);
     const head = new THREE.Quaternion().setFromEuler(new THREE.Euler(this.pitch, this.yaw, 0, "YXZ"));
@@ -211,10 +247,11 @@ export class FlightView {
       this.camera.position.copy(pos).add(new THREE.Vector3(0, 1.25, 2.55).applyQuaternion(q));
       this.camera.quaternion.copy(q).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI)).multiply(head);
     } else if (this.mode === "acople") {
-      // Docking camera beside the dorsal port, looking straight up the docking axis (like the
-      // Apollo LM's overhead window), with the nose toward the top of the screen.
-      this.camera.position.copy(pos).add(new THREE.Vector3(0.45, 1.05, 0.6).applyQuaternion(q));
-      this.camera.quaternion.copy(q).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2)).multiply(head);
+      // The commander tips his head back and looks up through the overhead docking window and the COAS
+      // (as in the LM): the back of the cabin toward the top of the screen.
+      this.camera.position.copy(pos);
+      const up = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), this.toDockWindow);
+      this.camera.quaternion.copy(q).multiply(up).multiply(head);
     } else {
       // Orbit 16 m from the ship; the "Nodriza" camera frames the probe and the mothership together.
       const m = this.mode === "nodriza" ? this.mothership : undefined;

@@ -97,7 +97,7 @@ el encuadre de cada paso de una tarea y el ascensor del radio. En vez de reescri
 
 ### El habitáculo del módulo
 
-La cápsula de `cockpit.ts` va en un grupo estirado (1,5; 1; 1,5). Los asientos, los reposabrazos, las correas y
+(Histórico: hoy el habitáculo y la vista de pilotaje son la cabina real del LM, [cabina-lm.md](cabina-lm.md).) La cápsula de `cockpit.ts` iba en un grupo estirado (1,5; 1; 1,5). Los asientos, los reposabrazos, las correas y
 los mandos de mano llevan `userData.body` y vuelven a su tamaño real. Los rótulos pequeños de la cápsula
 también se quedan a tamaño real: en una cabina tan estrecha, uno 1,5 veces mayor tapa la vista. El techo se
 queda a 1,7 m (a la altura del cuerpo) y la pantalla de la consola de la mente mide 1,5 veces más. A escala

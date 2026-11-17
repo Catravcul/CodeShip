@@ -100,11 +100,11 @@ function phaseTask(a: TaskFacts["asteroids"][number], f: TaskFacts): Task | unde
     case "nave":
       return landed
         ? { id, group: "vuelo", title: `Entrar en la mente de ${a.name} · fase ${n} de 3`, detail: "Consola de la mente, en el habitáculo del módulo", place: { vehicle: "modulo", spot: "mente" } }
-        : { id, group: "vuelo", title: `Aterriza el módulo en ${a.name} · fase ${n} de 3`, detail: `Asiento del piloto${where}`, place: { vehicle: "modulo", spot: "asiento" } };
+        : { id, group: "vuelo", title: `Aterriza el módulo en ${a.name} · fase ${n} de 3`, detail: `Puesto del comandante${where}`, place: { vehicle: "modulo", spot: "asiento" } };
     case "traje":
       return landed
         ? { id, group: "vuelo", title: `Salir con el traje sobre ${a.name} · fase ${n} de 3`, detail: "Escotilla EVA del módulo", place: { vehicle: "modulo", spot: "escotilla" } }
-        : { id, group: "vuelo", title: `Posa el módulo en ${a.name} y sal con el traje · fase ${n} de 3`, detail: `Asiento del piloto${where}`, place: { vehicle: "modulo", spot: "asiento" } };
+        : { id, group: "vuelo", title: `Posa el módulo en ${a.name} y sal con el traje · fase ${n} de 3`, detail: `Puesto del comandante${where}`, place: { vehicle: "modulo", spot: "asiento" } };
   }
 }
 

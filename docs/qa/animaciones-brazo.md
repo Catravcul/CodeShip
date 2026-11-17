@@ -19,7 +19,7 @@ Escrito por `tools/experiencia/brazo-eva.mjs` (no a mano). Cada bloque bien colo
 | Ponerse el EMU y prerrespirar (ISLE) | ponerse los guantes y el casco | revisar · objetivo ·  | [brazo-traje-04.png](../screenshots/brazo-traje-04.png) | Bien |
 | Ponerse el EMU y prerrespirar (ISLE) | comprobar fugas en el módulo de control del pecho | programar · objetivo ·  | [brazo-traje-05.png](../screenshots/brazo-traje-05.png) | Bien |
 | Ponerse el EMU y prerrespirar (ISLE) | 160 min | entrenar · objetivo ·  | [brazo-traje-06.png](../screenshots/brazo-traje-06.png) | Bien |
-| Paseo: cambiar las alas | 6,1 h | comprobar · alas | [brazo-eva-01.png](../screenshots/brazo-eva-01.png) | Mal: atraviesa: pieza · Unity (Nodo 1), pieza · Quest (esclusa de EVA) |
+| Paseo: cambiar las alas | 6,1 h | comprobar · alas | [brazo-eva-01.png](../screenshots/brazo-eva-01.png) | Bien |
 | Paseo: cambiar las alas | Canadarm2 trae el rollo nuevo desde la JEM-EF | brazo · alas | [brazo-eva-02.png](../screenshots/brazo-eva-02.png) | Bien |
 | Paseo: cambiar las alas | atar el rollo con un cable de equipo | atar · alas | [brazo-eva-03.png](../screenshots/brazo-eva-03.png) | Bien |
 | Paseo: cambiar las alas | soltarlo del brazo y llevarlo a su soporte | llevar · alas | [brazo-eva-04.png](../screenshots/brazo-eva-04.png) | Bien |
@@ -31,7 +31,7 @@ Escrito por `tools/experiencia/brazo-eva.mjs` (no a mano). Cada bloque bien colo
 | Dextre cambia la cámara de S1 | llevar a Dextre al estante de repuestos de la JEM-EF | llevar-dextre-ef · camara | [brazo-dextre-03.png](../screenshots/brazo-dextre-03.png) | Bien |
 | Dextre cambia la cámara de S1 | Dextre toma la cámara nueva con su OTCM | tomar-oru · camara | [brazo-dextre-04.png](../screenshots/brazo-dextre-04.png) | Bien |
 | Dextre cambia la cámara de S1 | 6 min | comprobar · camara | [brazo-dextre-05.png](../screenshots/brazo-dextre-05.png) | Bien |
-| Dextre cambia la cámara de S1 | llevar a Dextre hasta la cámara de S1 | llevar-dextre-camara · camara | [brazo-dextre-06.png](../screenshots/brazo-dextre-06.png) | Mal: atraviesa: brazo · Celosía integrada, LEE · Celosía integrada |
+| Dextre cambia la cámara de S1 | llevar a Dextre hasta la cámara de S1 | llevar-dextre-camara · camara | [brazo-dextre-06.png](../screenshots/brazo-dextre-06.png) | Bien |
 | Dextre cambia la cámara de S1 | Dextre desenrosca la cámara vieja y la sujeta con su otra mano | sacar-oru · camara | [brazo-dextre-07.png](../screenshots/brazo-dextre-07.png) | Bien |
 | Dextre cambia la cámara de S1 | Dextre monta la cámara nueva y aprieta el perno | montar-oru · camara | [brazo-dextre-08.png](../screenshots/brazo-dextre-08.png) | Bien |
 | Dextre cambia la cámara de S1 | devolver a Dextre a la MBS con la cámara vieja | devolver-dextre · camara | [brazo-dextre-09.png](../screenshots/brazo-dextre-09.png) | Bien |

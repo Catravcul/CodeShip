@@ -120,6 +120,23 @@ export class DuelView {
   /** «Paso a paso»: a right pick, checked at once (`slot` = its place in the order), e.g. to act the step out in 3D. */
   onRightPick?: (exerciseId: string, slot: number) => void;
 
+  /** Elements that live inside the sheet across renders (the plan's step line: ux-acciones.md §7). */
+  private readonly held: HTMLElement[] = [];
+
+  /** The sheet's element, to hold something that belongs to the challenge (see `hold`). */
+  get element(): HTMLElement {
+    return this.el;
+  }
+
+  /**
+   * Keep `child` inside the sheet whatever it renders: with a challenge open only the sheet and the scene show
+   * (foco-reto.css, no exceptions), so what a challenge says about its steps lives in the sheet.
+   */
+  hold(child: HTMLElement): void {
+    this.held.push(child);
+    this.el.appendChild(child);
+  }
+
   private text: SessionText = asteroidText("");
   private onAnswer: (a: Answer) => { ok: boolean } = () => ({ ok: false });
 
@@ -324,6 +341,7 @@ export class DuelView {
         ? `<div class="result won" role="alert"><b>✓ Conseguido</b><span>${d.progress}/${d.goal} ${esc(this.text.progress.toLowerCase())} con ${fails} ${fails === 1 ? "fallo" : "fallos"}</span></div>`
         : `<div class="result lost" role="alert"><b>✗ Reto perdido</b><span>${fails} fallos de ${d.maxLives}: no se ha gastado nada, puedes volver a intentarlo</span></div>`;
       this.el.innerHTML = `${head}${result}<button class="submit end" data-act="close">${won ? "Continuar" : "Cerrar"}</button>`;
+      this.el.append(...this.held);
       return;
     }
 
@@ -384,5 +402,6 @@ export class DuelView {
         <div class="options">${options}</div>`;
     }
     this.el.innerHTML = `${head}<div class="idea">«${esc(ex.idea)}»</div>${toggle}${body}`;
+    this.el.append(...this.held);
   }
 }

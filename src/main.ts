@@ -705,6 +705,8 @@ function navBusy(carrierTrip: boolean): string | undefined {
 // Each programming step answered right draws what it does (route, burn, arrival, braking point; site,
 // drift, descent curve, flare, anchors) before the autopilot flies it.
 const planOverlay = new PlanOverlay(scene, root);
+// The step line belongs to the challenge: it lives in its sheet (ux-acciones.md §7, no exceptions).
+duelView.hold(planOverlay.captionElement);
 // Over the ring's navigation console the map covers the scene: the map shows the plan instead (fitted above the sheet).
 navMode.map.plan = () => planOverlay.sketch;
 planOverlay.onChange = () => navMode.map.planChanged();

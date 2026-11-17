@@ -112,6 +112,8 @@ export async function cabinaLm(j) {
     return { shown: !!m && m.checkVisibility(), keep: document.querySelectorAll("[data-duel-keep]").length };
   });
   j.check("con el reto abierto el mapa se oculta como toda interfaz (sin data-duel-keep)", !map.shown && map.keep === 0, JSON.stringify(map));
+  const cap = await p.evaluate(() => ({ inSheet: !!document.querySelector(".duel:not(.hidden) .plan-caption.on"), text: document.querySelector(".plan-caption")?.textContent ?? "" }));
+  j.check("la línea del paso va dentro de la hoja del reto", cap.inSheet && cap.text.length > 0, JSON.stringify(cap));
   j.check("el plan del viaje se dibuja en la escena del reto y se ve sobre la hoja", plan.drawn > 0 && plan.inView && plan.onScreen > plan.points / 2, `${plan.onScreen}/${plan.points} puntos · ${plan.drawn} líneas`);
   await j.onlyChallengeVisible("viaje desde la mesa de navegación");
   await capture(j, "plan-viaje", "Plan del viaje en la escena del reto");

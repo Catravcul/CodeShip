@@ -25,8 +25,13 @@ export class PlanOverlay {
     this.caption = document.createElement("div");
     this.caption.className = "plan-caption";
     this.caption.setAttribute("role", "status");
-    // Part of the challenge focus rule (docs/design/ux-acciones.md §7, foco-reto.css): the sheet, the scene and this line.
+    // Main moves it into the challenge's sheet (DuelView.hold): with a challenge open only the sheet and the scene show.
     host.appendChild(this.caption);
+  }
+
+  /** The step line, for the challenge's sheet to hold. */
+  get captionElement(): HTMLElement {
+    return this.caption;
   }
 
   /** The plan's items drawn so far. */

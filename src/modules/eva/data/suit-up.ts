@@ -1,18 +1,18 @@
 import type { Chore } from "@modules/chores/domain/chore";
 import type { ChoiceExercise, OrderExercise } from "@modules/mind-duel/domain/exercise";
-import { EMU } from "./suit";
+import { APOLLO_A7LB } from "./suit";
 
 const steps: OrderExercise = {
   kind: "order",
   id: "eva-prerrespirar",
   concept: 1,
-  idea: "El traje va a 29,6 kPa de oxígeno puro: primero respiro oxígeno para sacar el nitrógeno de la sangre",
+  idea: "El módulo lunar no tiene esclusa: con el traje cerrado se vacía toda la cabina y se sale por la escotilla delantera",
   blocks: [
-    { id: "a", pseudo: "respirar oxígeno puro con la mascarilla", js: "respirarOxigenoPuro();" },
-    { id: "b", pseudo: "ponerse el traje y el casco", js: "ponerseTraje();" },
-    { id: "c", pseudo: "comprobar fugas del traje", js: "comprobarFugas();" },
-    { id: "d", pseudo: "despresurizar la esclusa", js: "despresurizarEsclusa();" },
-    { id: "e", pseudo: "abrir la escotilla", js: "abrirEscotilla();" },
+    { id: "a", pseudo: "ponerse la mochila PLSS y el OPS encima", js: "ponerseMochila();" },
+    { id: "b", pseudo: "conectar las mangueras de la PLSS al traje", js: "conectarMangueras();" },
+    { id: "c", pseudo: "cerrar el casco y los guantes y comprobar fugas", js: "comprobarFugas();" },
+    { id: "d", pseudo: "vaciar la cabina por la válvula de la escotilla", js: "despresurizarCabina();" },
+    { id: "e", pseudo: "abrir la escotilla delantera y salir de espaldas al porche", js: "abrirEscotillaDelantera();" },
     { id: "x", pseudo: "abrir la escotilla sin casco", js: "abrirEscotilla(sinCasco);" },
   ],
   solution: ["a", "b", "c", "d", "e"],
@@ -30,7 +30,7 @@ const pressure: ChoiceExercise = {
     { id: "b", pseudo: "abrir un poco la válvula de oxígeno", js: "abrirValvulaO2();", indent: 1 },
     { id: "c", pseudo: "fin", js: "}" },
   ],
-  options: ["101,3", String(EMU.pressureKPa.value).replace(".", ","), "0", "300"],
+  options: ["101,3", String(APOLLO_A7LB.pressureKPa.value).replace(".", ","), "0", "300"],
   correct: 1,
 };
 
@@ -55,6 +55,6 @@ export const SUIT_UP: Chore = {
   id: "salir-eva",
   kind: "salir-eva",
   title: "Ponerse el traje y salir",
-  scenario: "Doménica va sin traje dentro de la nave: para salir a Bennu necesita el EMU y prerrespirar oxígeno",
+  scenario: "Como en Apolo: el A7LB con su PLSS, la cabina del módulo lunar vaciada y fuera por la escotilla delantera (la cabina ya va a 33 kPa de oxígeno puro, así que no hace falta prerrespirar)",
   exercises: [steps, pressure, tether],
 };

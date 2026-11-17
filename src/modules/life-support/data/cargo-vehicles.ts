@@ -12,6 +12,8 @@ export interface CargoVehicle {
   readonly transitH: Sourced<number>;
   /** Where it arrives (said on the card). */
   readonly port: string;
+  /** Caught by Canadarm2 at the capture point and berthed (Cygnus); otherwise it docks by itself (Dragon). */
+  readonly captured?: boolean;
 }
 
 /**
@@ -33,6 +35,7 @@ export const CARGO_VEHICLES: readonly CargoVehicle[] = [
     pressurizedKg: { value: 3749, source: S.ng19, note: "NG-19: 3749 kg presurizados" },
     transitH: { value: 60, source: S.ng19, note: "NG-19: lanzada el 2 de agosto de 2023 a las 00:31 UTC, atracada el 4 a las 12:28 (60 h)" },
     port: "Canadarm2 la atrapa y la atraca en el CBM de nadir de Unity",
+    captured: true,
   },
 ];
 

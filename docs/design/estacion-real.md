@@ -26,14 +26,14 @@ en el origen. Los volúmenes **copiados** son los de la fuente; los **derivados*
 | Cupola | CUP1 | 1,5 × 2,95 m | 1880 kg | ≈ 10,3 m³ (derivado) | Nadir de Tranquility | Siete ventanas y el puesto robótico de Canadarm2 | [Wikipedia](https://en.wikipedia.org/wiki/Cupola_(ISS_module)) |
 | Columbus | COL1 | 6,871 × 4,477 m | 10 300 kg | ≈ 108,2 m³ (derivado) | Estribor de Harmony | El taller: la impresora de metal de la ESA y, como licencia, refinería, fundición y planta de propelente | [Wikipedia](https://en.wikipedia.org/wiki/Columbus_(ISS_module)) |
 | Kibo (JPM) | JPM1 | 11,19 × 4,39 m | 15 900 kg | ≈ 169,4 m³ (derivado) | Babor de Harmony | Ciencia, el Refabricator y su esclusa de experimentos a la plataforma expuesta (JEM-EF) | [Wikipedia](https://en.wikipedia.org/wiki/Kibo_(ISS_module)) |
-| Quest | AL1 | 5,5 × 4 m | 6064 kg | 34 m³ (copiado) | Estribor de Unity | Trajes y la escotilla EVA (el paseo por fuera está en pendientes) | [Wikipedia](https://en.wikipedia.org/wiki/Quest_Joint_Airlock) |
+| Quest | AL1 | 5,5 × 4 m | 6064 kg | 34 m³ (copiado) | Estribor de Unity | Trajes EMU y la escotilla EVA: el paseo desde Quest ([paseo-espacial.md](paseo-espacial.md), «Desde Quest») | [Wikipedia](https://en.wikipedia.org/wiki/Quest_Joint_Airlock) |
 | Bishop | BSH1 | 1,8 × 2,014 m | 1059 kg | 3,99 m³ (copiado) | Babor de Tranquility | Esclusa de carga: Juventas y los cubesats | [Wikipedia](https://en.wikipedia.org/wiki/Nanoracks_Bishop_Airlock) |
 
 En total ≈ 697 m³ (con los derivados como tope); la ISS entera tiene 1005 m³ presurizados con el segmento
 ruso ([NASA](https://www.nasa.gov/international-space-station/space-station-facts-and-figures/)).
 
 Por fuera: celosía integrada de 94 m sobre Destiny, ocho alas de 35 × 12 m (dos módulos por lado), tres
-radiadores por lado en S1 y P1 (tamaño: valor de juego), Canadarm2 de 17,6 m sobre su base móvil, la
+radiadores por lado en S1 y P1 (tamaño: valor de juego), Canadarm2 de 17,6 m sobre su base móvil con Dextre ([brazo-robotico.md](brazo-robotico.md)), la
 plataforma expuesta de Kibo (4 × 5,6 × 5 m, 12 puertos) y dos IDA en Harmony. Sin el PMA de debajo de cada
 IDA, para no alargar (distribución nuestra).
 
@@ -121,6 +121,7 @@ bastidores lejos de las escotillas.
   bastidor de lazos térmicos.
 - **El PMA bajo cada IDA** no se dibuja (los IDA quedan más cerca de Harmony que en la ISS).
 - **Recoger con el brazo** algo soltado por la Bishop es licencia. ¿Se quita, o se deja con su aviso?
-- **Paseo espacial desde Quest**: la escotilla EVA solo informa (pendientes).
+- **Paseo espacial desde Quest**: hecho ([paseo-espacial.md](paseo-espacial.md)). Las alas, los radiadores y los escudos se cambian fuera en un paseo; la cámara de S1 la cambia Dextre ([brazo-robotico.md](brazo-robotico.md)).
+- **Brazo**: Canadarm2, la MBS y Dextre con sus datos reales, la captura del Cygnus a 10 m y su atraque en el CBM de nadir de Unity ([brazo-robotico.md](brazo-robotico.md)).
 - **`HANGAR_SIZE`** (20 × 14 × 20 m) sigue en el código para el montaje del catálogo de naves («cabe en el
   hangar»); con la ISS ese criterio debería ser el CBM o el brazo.

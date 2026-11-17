@@ -64,3 +64,22 @@ export const SAFETY_TETHER_M: Sourced<number> = {
   source: NASA_EVA,
   note: "Safety Tether (55' and 85'): the long ISS reel, 85 ft = 25.9 m",
 };
+
+const WIKI_A7L = "https://en.wikipedia.org/wiki/Apollo/Skylab_A7L";
+const WIKI_PLSS = "https://en.wikipedia.org/wiki/Primary_life_support_system";
+
+/**
+ * The Apollo J-mission suit (A7LB) with its PLSS backpack and OPS, as worn out of the Lunar Module's forward
+ * hatch (docs/design/paseo-espacial.md, «Desde el módulo lunar»). The LM has no airlock: the whole cabin is
+ * depressurised. Values copied 2026-11-17.
+ */
+export const APOLLO_A7LB: SuitSpec = {
+  name: "A7LB con PLSS (Apolo 15–17)",
+  primaryOxygenS: { value: 7 * 3600, source: WIKI_A7L, note: "A7LB: soporte vital primario de 7 h (la página del PLSS da 8 h para las EVA de Apolo 15–17)" },
+  secondaryOxygenS: { value: 30 * 60, source: WIKI_PLSS, note: "OPS (Oxygen Purge System): unos 30 min de oxígeno de emergencia" },
+  co2ScrubberS: { value: 7 * 3600, source: WIKI_PLSS, note: "Cartucho de LiOH de 1,42 kg (Apolo 15–17), dimensionado a las 7 h del primario (supuesto)" },
+  batteryS: { value: 7 * 3600, source: WIKI_A7L, note: "Dimensionada a las 7 h del primario (supuesto: la fuente no da su capacidad)" },
+  metabolicW: { value: { average: 290, max: 580 }, source: NASA_EVA, note: "Se usan los del EMU: las fuentes de Apolo no dan el diseño metabólico (supuesto)" },
+  pressureKPa: { value: 25.5, source: WIKI_A7L, note: "3,7 psi (25,5 kPa)" },
+  massKg: { value: 96.2, source: WIKI_A7L, note: "Traje de EVA completo de Apolo 15–17: 212 lb (96,2 kg)" },
+};

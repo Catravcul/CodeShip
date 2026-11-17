@@ -132,7 +132,8 @@ export async function compartimentos(j) {
     const s = window.codeship.stationInside;
     return s.interior.plan.fixtures.filter((f) => f.action.kind === "puerta" || f.action.kind === "salir" || /escotilla|esclusa-kibo|cbm|pma|puerto/.test(f.id)).map((f) => `${f.id}:${f.action.kind}`);
   });
-  const bad = doors.filter((d) => !/:(puerta|salir|info)$/.test(d));
+  // Quest's EVA hatch is the way out to the handrails (docs/design/paseo-espacial.md): its action is the airlock's.
+  const bad = doors.filter((d) => !/:(puerta|salir|info)$/.test(d) && d !== "escotilla-eva:esclusa");
   j.check("todas las puertas y escotillas solo dan paso (o dicen por qué están cerradas)", bad.length === 0 && doors.length > 10, bad.join(", ") || `${doors.length} puertas`);
 
   // The Starship: her crew quarter on deck 2 is a room too (our layout: SpaceX has not published one).

@@ -91,6 +91,11 @@ export interface StationInteriorDeps {
   rackState?(f: Fixture): { state: RackState; broken?: string };
   /** The animals of the AQH (one colony, the adopted one: docs/design/equipos.md), drawn in its chambers. */
   aquarium?(): RingAquarium | undefined;
+  /**
+   * Quest's suits and EVA hatch run by the real spacewalk (station-eva.ts, docs/design/paseo-espacial.md): its
+   * actions replace the quick suit toggle of the airlocks.
+   */
+  airlock?: { actions(f: Fixture): StationAction[]; act(f: Fixture, id: string): void };
 }
 
 /** Icon of each kind of fixture on its card. */
@@ -1077,6 +1082,7 @@ export class StationInteriorMode {
       case "bahia":
         return [{ id: "bahia", label: "Abrir la bahía de la nave", enabled: true }, ...(a.panels ?? []).map((p) => ({ id: `abrir:${p}`, label: `Abrir ${PANEL_NAME[p]}`, enabled: true }))];
       case "esclusa": {
+        if (this.deps.airlock) return this.deps.airlock.actions(f);
         const inLock = this.interior.volumeAt(this.p)?.kind === "esclusa";
         const why = this.cycling > 0 ? "La esclusa está cambiando de presión" : !inLock ? "Entra en la esclusa para cambiarte" : undefined;
         return [{ id: "traje", label: this.suited ? "Llenar la esclusa y quitarse el traje" : "Ponerse el traje y vaciar la esclusa", enabled: !why, ...(why ? { why } : {}) }];
@@ -1096,6 +1102,7 @@ export class StationInteriorMode {
   run(f: Fixture, id: string): void {
     const a = f.action;
     if (a.kind === "tripulacion" || a.kind === "brazo" || a.kind === "bishop" || a.kind === "consola" || a.kind === "soporte-vital") return this.deps.act(f, id);
+    if (a.kind === "esclusa" && this.deps.airlock) return this.deps.airlock.act(f, id);
     if (id === "ventana") return this.deps.lookOut?.();
     if (id.startsWith("abrir:")) {
       this.say(`${f.label} · ${this.interior.locationCode(f)}`);
@@ -1149,6 +1156,10 @@ export class StationInteriorMode {
     if (a.kind === "tripulacion" || a.kind === "brazo" || a.kind === "bishop" || a.kind === "consola" || a.kind === "soporte-vital") {
       const main = this.deps.actions(f).find((x) => x.enabled);
       return main ? this.deps.act(f, main.id) : this.say(f.info, 5);
+    }
+    if (a.kind === "esclusa" && this.deps.airlock) {
+      const main = this.deps.airlock.actions(f).find((x) => x.enabled);
+      return main ? this.deps.airlock.act(f, main.id) : this.say(f.info, 5);
     }
     if (!close) return this.say(`${f.label}: acércate para usarla`);
     if (a.kind === "puerta") {

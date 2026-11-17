@@ -3,13 +3,14 @@ import type { Quat } from "@core/math/quat";
 import type { Vec3 } from "@core/math/vec3";
 import type { ShipDesign } from "@modules/ship/domain/ship";
 import type { AirlockItem } from "@modules/station/domain/cargo-airlock";
-import { ARM_BASE, BISHOP_BERTH, LANDER_CBM, POLANA_LAYOUT } from "@modules/station/data/structure";
+import { BISHOP_BERTH, LANDER_CBM, POLANA_LAYOUT } from "@modules/station/data/structure";
 import type { AssemblySite } from "@modules/station/domain/vehicle-catalogue";
 import { lunarModuleDesign } from "@modules/ship/data/apollo-lm";
 import { PROBE_HULL } from "@modules/ship/data/probe";
 import { ProbeModel } from "./adapters/three/probe-model";
 import { BISHOP, ISS_OUTSIDE } from "@modules/station/data/iss";
-import { CanadarmModel } from "./adapters/three/canadarm-model";
+import { ArmShow, type ArmAudit } from "./adapters/three/arm-show";
+import type { ArmMove, ArmProcedureId } from "@modules/robotics/data/procedures";
 import { DockView } from "./adapters/three/dock-view";
 import { ShipModel } from "./adapters/three/ship-model";
 
@@ -28,6 +29,8 @@ export interface StationOutsideDeps {
   berthed(): boolean;
   /** Catalogue vehicles built and still at their assembly site (vehicle-yard.ts). */
   waiting?(): readonly YardCraft[];
+  /** The Cygnus: not here, waiting at the capture point, or berthed (robotics-game.ts). */
+  cygnus?(): "fuera" | "punto" | "atracado";
 }
 
 /** A catalogue vehicle at its assembly site, as the view draws it. */
@@ -91,7 +94,8 @@ function along(points: readonly THREE.Vector3[], t: number): THREE.Vector3 {
 export class StationOutside {
   readonly root = new THREE.Group();
   readonly view: DockView;
-  private readonly arm = new CanadarmModel(ISS_OUTSIDE.canadarm2.lengthM);
+  /** Canadarm2, Dextre and the Cygnus, and the arm's procedures played move by move (arm-show.ts). */
+  readonly armShow: ArmShow;
   private readonly lander: ShipModel;
   private readonly bishop: THREE.Mesh;
   private readonly drifting: { mesh: THREE.Mesh; v: THREE.Vector3; age: number }[] = [];
@@ -112,7 +116,14 @@ export class StationOutside {
     this.bishop = new THREE.Mesh(new THREE.CylinderGeometry(BISHOP.diameterM / 2, BISHOP.diameterM / 2, BISHOP.heightM, 20), new THREE.MeshStandardMaterial({ color: 0xe8e2cf, roughness: 0.9 }));
     this.bishop.rotation.z = Math.PI / 2;
     this.bishop.visible = false;
-    this.root.add(this.arm.root, this.lander.root, this.bishop);
+    this.armShow = new ArmShow(ISS_OUTSIDE.canadarm2.lengthM, {
+      lander: this.lander.root,
+      landerAt: (at) => this.landerAt(at),
+      landerOnUnity: () => deps.berthed(),
+      bishop: this.bishop,
+      bishopModule: () => this.modules().get("bishop"),
+    });
+    this.root.add(this.armShow.root, this.lander.root, this.bishop);
     this.view = new DockView(root, station, new THREE.Vector3(-3, -2, -6), 62, "Vista desde la Cupola");
     this.view.onClose = () => undefined;
     this.rest();
@@ -130,12 +141,71 @@ export class StationOutside {
 
   /** An arm move is playing (the lander is drawn by this view, not the flight scene, meanwhile). */
   get busy(): boolean {
-    return !!this.play;
+    return !!this.play || this.armShow.holdsLander;
   }
 
   /** The lander is drawn here (on the CBM or on the arm). */
   get holdsLander(): boolean {
     return this.lander.root.visible;
+  }
+
+  /** An arm procedure starts at the RWS: the view opens on it (the challenge's sheet hides its frame). */
+  beginProcedure(proc: ArmProcedureId): void {
+    this.play = null;
+    this.armShow.begin(proc);
+    this.view.show("Canadarm2 · puesto robótico de la Cupola");
+    this.framing = true;
+  }
+  /** The moves of the blocks just placed. */
+  playMoves(moves: readonly ArmMove[]): void {
+    this.armShow.play(moves);
+  }
+  /** The challenge closed: the scene stays as it ended, the view goes back to the windows. */
+  endProcedure(ok: boolean): void {
+    this.armShow.end(ok);
+    this.framing = false;
+    this.view.camera.clearViewOffset();
+    this.view.close();
+    this.rest();
+  }
+  /** The arm's live audit (tools/experiencia/brazo-eva.mjs). */
+  armAudit(sheetTop: number): ArmAudit | undefined {
+    const c = document.querySelector("canvas")?.getBoundingClientRect();
+    return this.armShow.audit(this.view.camera, this.root.parent ?? this.root, sheetTop, { w: c?.width ?? innerWidth, h: c?.height ?? innerHeight });
+  }
+
+  /** The Cygnus as robotics-game.ts has it (set by main.ts after both exist). */
+  cygnusOf?: () => "fuera" | "punto" | "atracado";
+
+  /** Capturing by hand (robotics-game.ts): the camera follows the LEE from the Cupola's window. */
+  manualOn = false;
+
+  /** While an arm challenge plays: the camera from the Cupola or an outside camera, in the strip above the sheet. */
+  private framing = false;
+  private readonly eyeNow = new THREE.Vector3();
+  private readonly atNow = new THREE.Vector3();
+  private frameProcedure(): void {
+    const canvas = document.querySelector("canvas")?.getBoundingClientRect();
+    const sheet = [...document.querySelectorAll<HTMLElement>(".duel.sheet")].find((x) => !x.classList.contains("hidden"))?.getBoundingClientRect();
+    const W = canvas?.width ?? innerWidth;
+    const H = canvas?.height ?? innerHeight;
+    const top = sheet && sheet.top > 60 ? sheet.top : H;
+    const cam = this.view.camera;
+    const e = this.armShow.eye(cam.fov, top / H, W / H);
+    this.armShow.viewpoint = e.viewpoint;
+    const first = this.eyeNow.lengthSq() === 0;
+    this.eyeNow.lerp(e.eye, first ? 1 : 0.08);
+    this.atNow.lerp(e.at, first ? 1 : 0.15);
+    this.root.updateMatrixWorld(true);
+    cam.position.copy(this.root.localToWorld(this.eyeNow.clone()));
+    cam.up.set(0, 1, 0).applyQuaternion(this.root.quaternion);
+    cam.lookAt(this.root.localToWorld(this.atNow.clone()));
+    // The strip above the sheet: the view's centre moves up to its middle.
+    cam.aspect = W / H;
+    if (top < H) cam.setViewOffset(W, H, 0, (H - top) / 2, W, H);
+    else cam.clearViewOffset();
+    cam.updateProjectionMatrix();
+    this.view.say(`${e.viewpoint === "cupola" ? "Ventana de la Cupola" : "Cámara exterior"} · ${this.armShow.line}`);
   }
 
   private landerAt(at: "ida" | "cbm") {
@@ -190,17 +260,14 @@ export class StationOutside {
       }
   }
 
-  /** Arm at rest: folded over the truss near Destiny. */
+  /** Arm at rest: on its MBS, folded in front of the truss. */
   private rest(): void {
-    const base = v3(ARM_BASE);
-    this.arm.reach(base, base.clone().add(new THREE.Vector3(6, -1, 6)), base.clone().add(new THREE.Vector3(0, 8, 0)));
+    this.armShow.rest();
   }
 
   private reachTo(target: THREE.Vector3): void {
-    const base = v3(ARM_BASE);
     // The Mobile Base System slides along the truss rails toward the work (game value: how far).
-    base.x = Math.max(-40, Math.min(40, target.x * 0.9));
-    this.arm.reach(base, target, base.clone().add(new THREE.Vector3(0, 9, 0)));
+    this.armShow.reachTo(target);
   }
 
   /** Each frame: follow the station, play the move, keep the lander and the Bishop where they are. */
@@ -209,6 +276,18 @@ export class StationOutside {
     this.root.quaternion.copy(this.station.quaternion);
     this.lander.setDesign(this.deps.design());
     const bishopModule = this.modules().get("bishop");
+    if (this.armShow.procedure) {
+      this.armShow.update(dt);
+      if (this.view.open) this.frameProcedure();
+      return;
+    }
+    if (this.manualOn) {
+      this.armShow.update(dt);
+      if (this.view.open) this.frameProcedure();
+      return;
+    }
+    this.armShow.setCygnus(this.cygnusOf?.() ?? this.deps.cygnus?.() ?? "fuera");
+    this.armShow.update(dt);
     const p = this.play;
     if (p) {
       p.t = Math.min(1, p.t + dt / MOVE_S);

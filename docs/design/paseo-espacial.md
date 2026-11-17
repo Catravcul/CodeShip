@@ -1,16 +1,74 @@
-# Paseo espacial por Bennu
+# Paseo espacial: desde Quest y por Bennu
+
+Hay dos paseos, cada uno con su procedimiento real:
+
+- **Desde Quest**, en la estación: el EMU de la ISS, la prerrespiración ISLE, la esclusa de tripulación y los asideros. Por aquí pasan los cambios de piezas de fuera de la estación. Ver «Desde Quest».
+- **Desde el módulo lunar**, sobre Bennu: el traje A7LB de Apolo con su PLSS y la escotilla delantera. Ver «Desde el módulo lunar» y el resto del documento.
+
+## Desde Quest (la estación)
+
+Petición de Berón (2026-11-17): «Haz el brazo robótico y el paseo espacial reflejando la realidad». Los datos están en `src/modules/eva/data/station-eva.ts`.
+
+### Cómo se juega
+
+1. **Se planea en el portátil de carga de Unity.** Cambiar las alas, los radiadores o los escudos de la estación no se hace en la bahía: el portátil planea el paseo («Paseo planeado: ve a los trajes de Quest») y la tarea sale en la lista. Solo hay un paseo planeado a la vez.
+2. **Los trajes de Quest: «Ponerse el EMU y prerrespirar (ISLE)».** El reto pide ordenar los pasos reales:
+   1. la prenda de refrigeración (LCVG);
+   2. el pantalón;
+   3. entrar por debajo en el torso rígido;
+   4. guantes y casco;
+   5. la prueba de fugas en el módulo del pecho.
+
+   Hay una trampa, y después la pregunta de cuánto dura el ISLE: 160 min. Cada paso se anima en sus manos junto a los trajes.
+3. **ISLE: 160 min de reloj de a bordo** (60 de mascarilla y unos 100 en el traje). La tarjeta cuenta lo que queda. Con el reloj de a bordo (1 h por minuto real) son unos 3 minutos.
+4. **Despresurizar la esclusa** (15 min de a bordo, valor de juego). Después la escotilla EVA dice «Salir por la escotilla EVA».
+5. **Fuera**:
+   - **El HUD del EMU**: oxígeno que queda, CO₂ (METOX), batería, tiempo fuera y cable.
+   - **Los mandos**: «◀ Atrás» y «Avanzar ▶» (mantener pulsado: mano sobre mano por los asideros amarillos), «Enganchar el cable aquí» en cada anclaje, «Pies en el APFR», «Trabajar» y «Entrar en Quest».
+   - **El cable de seguridad** es de 85 ft (25,9 m). La ruta a las alas mide unos 27 m, así que hay que cambiarlo de anclaje en S1. Al volver se desengancha solo al pasar.
+   - **Mientras está fuera** solo se ven la escena y su HUD. Lo que dice el juego sale en su línea, sobre los mandos.
+6. **El trabajo** es otro reto: primero la pregunta del margen de oxígeno (lo que queda menos 30 min de reserva) y luego el orden de los pasos reales del sitio, cada uno animado (Canadarm2 le trae la pieza, el cable de equipo, la llave PGT, llevar, comprobar):
+   - **alas**: como las iROSA;
+   - **radiadores**: como el lazo de amoníaco del EATCS;
+   - **escudos**: como el paseo del 30 de marzo de 2017.
+
+   Al acabar, la pieza nueva sale del hangar y la vieja vuelve a él.
+7. **Volver**: «Entrar en Quest», represurizar (15 min, valor de juego) y «Quitarse el EMU», que recarga oxígeno, agua y batería.
+
+El oxígeno del EMU se gasta con el reloj de a bordo: un paseo típico de 6 h 27 min deja menos de 2 h. Con menos de 30 min de margen, el HUD pide volver.
+
+### Datos
+
+| Dato | Valor | Etiqueta | Fuente |
+| --- | --- | --- | --- |
+| ISLE | 60 min de mascarilla + unos 100 en el traje (50 de ejercicio suave, 50 de reposo) | real | [Space.com, STS-134](https://www.space.com/11776-shuttle-astronauts-spacewalk-hokey-pokey-endeavour.html) |
+| Esclusa a 10,2 psia, EMU a 4,3 psia | 70,3 kPa / 29,6 kPa | real | [NASA OCHMO](https://www.nasa.gov/sites/default/files/atoms/files/dcs_technical_brief_ochmo.pdf) |
+| Paseo típico | 6 h 27 min, de pie en un APFR sobre una WIF | real | [Space.com, iROSA](https://www.space.com/space-exploration/international-space-station/1-more-step-nasa-astronauts-conduct-6-5-hour-spacewalk-to-prep-iss-for-solar-array-upgrade) |
+| Cable de seguridad, ganchos, PGT | 85 ft = 25,9 m | real | [NASA 2014](https://ntrs.nasa.gov/api/citations/20140009556/downloads/20140009556.pdf) |
+| Despresurizar y represurizar | 15 min cada una | valor de juego | la fuente no da el tiempo |
+| Avance por los asideros | 0,5 m/s | valor de juego | — |
+| Rutas y anclajes (Quest → S0 → S1 → S3 → S4; S1; Tranquility) | — | distribución nuestra | — |
+
+### Arquitectura
+
+- `QuestEva` (`src/modules/eva/domain/quest-eva.ts`) recorre estas fases: dentro, traje, prerrespirando, listo, despresurizando, fuera, represurizando y en la esclusa. Lleva también el cable con su anclaje, el APFR y los consumibles del EMU con el reloj de a bordo.
+- `donningChore` y `jobChore` están en `src/modules/eva/application/station-eva-chores.ts`.
+- `src/station-eva.ts` monta la escena fuera: asideros, anclajes, APFR, la figura con el EMU, el cable, la cámara (nunca dentro de la estación ni detrás de ella), el HUD y la auditoría en vivo (`StationEva.audit`).
+- La tarjeta de la escotilla EVA y la de los trajes vienen de `StationEva.actions`. La acción «esclusa» de `station-interior.ts` delega en ella.
+
+## Desde el módulo lunar (Bennu)
 
 Petición de Berón: «Añade la posibilidad de salir de la nave y caminar por el asteroide». Dentro de la nave Doménica va sin traje porque la cabina está presurizada. Para salir necesita un traje espacial: es una actividad extravehicular (EVA).
 
 ## Cómo se juega
 
 1. Con la nave **anclada**, aparece el botón **Salir de la nave** en la barra de cabina.
-2. **Ponerse el traje** es una cadena de tres retos de código con el motor de tareas (`ChoreRun`):
-   - ordenar la preparación: prerrespirar oxígeno, ponerse el traje y el casco, comprobar fugas, despresurizar la esclusa y abrir la escotilla (hay un bloque trampa: «abrir la escotilla sin casco»);
-   - completar el bucle que infla el traje hasta su presión de trabajo, 29,6 kPa;
+2. **Ponerse el traje** es una cadena de tres retos de código con el motor de tareas (`ChoreRun`). Sigue el procedimiento de Apolo: el módulo lunar no tiene esclusa, se vacía toda la cabina y no hace falta prerrespirar, porque la cabina ya va a 33 kPa de oxígeno puro.
+   - Ordenar la preparación: ponerse la mochila PLSS con el OPS encima, conectar las mangueras, cerrar el casco y los guantes y comprobar fugas, vaciar la cabina por la válvula de la escotilla y salir de espaldas al porche por la escotilla delantera. Hay un bloque trampa: «abrir la escotilla sin casco».
+   - Completar el bucle que infla el traje hasta su presión de trabajo: 25,5 kPa, la del A7LB.
    - reparar el fallo de `saltar(1.5)`, que supera la velocidad de escape.
    Con dos fallos la preparación se cancela y Doménica sigue dentro.
-3. Fuera, la cámara va en tercera persona detrás de Doménica, con el EMU blanco, el visor dorado, la mochila de soporte vital y el SAFER. Se ven la nave posada, el cable de seguridad desde la escotilla, nubecillas de polvo al avanzar y una lámpara en el casco.
+3. Fuera, la cámara va en tercera persona detrás de Doménica, con el traje blanco, el visor dorado, la mochila de soporte vital y el SAFER. Se ven la nave posada, el cable de seguridad desde la escotilla, nubecillas de polvo al avanzar y una lámpara en el casco.
 4. **Controles**:
    - el mando **Moverse** o WASD sirven para avanzar agarrada al regolito o, si va flotando, para disparar el SAFER en horizontal;
    - el mando **Mirar**, las flechas, Q/E o arrastrar mueven la cámara;
@@ -43,6 +101,18 @@ Los valores salen de la masa y la forma reales de Bennu, con el mismo modelo de 
 
 ## Traje, mochila y cable (datos con fuente)
 
+El traje del paseo por Bennu es el **A7LB de Apolo con su PLSS** (`APOLLO_A7LB`):
+
+| Elemento | Valor | Fuente |
+| --- | --- | --- |
+| A7LB: soporte vital primario | 7 h | [Wikipedia, A7L](https://en.wikipedia.org/wiki/Apollo/Skylab_A7L) |
+| OPS (oxígeno de emergencia) | unos 30 min | [Wikipedia, PLSS](https://en.wikipedia.org/wiki/Primary_life_support_system) |
+| A7LB: presión | 3,7 psi = 25,5 kPa | Wikipedia, A7L |
+| A7LB: masa (traje de EVA completo de Apolo 15–17) | 96,2 kg | Wikipedia, A7L |
+| Filtro de CO₂ | cartucho de LiOH de 1,42 kg | Wikipedia, PLSS (las 7 h: **supuesto**) |
+
+Los datos del EMU siguen aquí porque son los del paseo desde Quest:
+
 | Elemento | Valor | Fuente |
 | --- | --- | --- |
 | EMU: soporte vital primario | 8 h (480 min) | [Wikipedia, EMU](https://en.wikipedia.org/wiki/Extravehicular_Mobility_Unit) |
@@ -55,7 +125,7 @@ Los valores salen de la masa y la forma reales de Bennu, con el mismo modelo de 
 | Cable de seguridad | 85 ft = 25,9 m (también hay de 55 ft) | NASA 2014 |
 | SAFER | 24 propulsores de N₂, 3,56 N cada uno, Δv 3,05 m/s, 37,7 kg | [Wikipedia, SAFER](https://en.wikipedia.org/wiki/Simplified_Aid_For_EVA_Rescue); [nota de la NASA (STS-64)](https://mailman.amsat.org/hyperkitty/list/sarex@amsat.org/thread/G5ZE64VCGDIWIY5TPJHNYJPU35RAO2NH/) |
 
-- Masa total: Doménica (58 kg, `CrewMember`) + EMU (144,7 kg) + SAFER (37,7 kg) = 240,4 kg. Con 4 propulsores por eje (**supuesto**: 24 propulsores para 6 sentidos), el empuje es 4 × 3,56 N = 14,2 N y da **0,059 m/s²**. En unos 3 s supera la velocidad de escape, así que hay que pulsar con cuidado.
+- Masa total sobre Bennu: Doménica (58 kg, `CrewMember`) + A7LB (96,2 kg) + SAFER (37,7 kg) = 191,9 kg. El **SAFER con el traje de Apolo es licencia**: el SAFER es de 1994 y Apolo no lo llevaba. Con 4 propulsores por eje (**supuesto**: 24 propulsores para 6 sentidos), el empuje es 4 × 3,56 N = 14,2 N y da **0,059 m/s²**. En unos 3 s supera la velocidad de escape, así que hay que pulsar con cuidado.
 - **Consumo**: el oxígeno y el filtro de CO₂ se gastan según el esfuerzo, como múltiplo del metabolismo de diseño: 0,6 en reposo, 1,3 a gatas y 0,9 con el SAFER (valores de juego dentro de 290–580 W). La batería se gasta a ritmo constante. Con menos de 30 min de margen el traje pide volver. Al agotar el primario pasa a la reserva y vuelve sola.
 - El tiempo pasa en tiempo real: 8 h de traje dan para todo un paseo.
 
@@ -78,8 +148,10 @@ Cada muestra son 30 g (valor de juego; OSIRIS-REx trajo 121,6 g en total). Los h
 
 ## Preguntas abiertas para Berón
 
-1. **Prerrespiración**: en la ISS dura horas (o una noche de «campout»). Aquí se resume en un reto. ¿Debería costar tiempo de juego, por ejemplo 40 min acelerados, o bajar la presión de la cabina?
-2. **Tiempo**: 8 h de traje en tiempo real casi nunca se agotan. ¿Comprimimos el tiempo fuera para que el oxígeno importe?
+1. **Prerrespiración**: resuelta. Desde Quest se hace el ISLE real (160 min de a bordo). Desde el módulo lunar no hace falta, como en Apolo.
+2. **Tiempo**: desde Quest, el traje se gasta con el reloj de a bordo. Sobre Bennu sigue en tiempo real: ¿lo pasamos también al reloj de a bordo?
+6. **El SAFER con el A7LB** es licencia (ver arriba). ¿Se quita sobre Bennu y se deja solo el cable?
+7. **Valores de juego desde Quest**: los 15 min de despresurizar y represurizar, y el avance de 0,5 m/s por los asideros.
 3. **Muestras**: ahora solo se cuentan. ¿Van a la bodega (`expedition.cargo`), al laboratorio de a bordo o a una misión de Nevaeh?
 4. ¿Prefieres que se mueva así, a gatas y con impulsos, o con botas o anclas (por ejemplo, clavar estacas en el regolito, aunque casi no tiene cohesión)?
 5. Las rocas grandes de la malla son solo visuales: el suelo del paseo es la forma generada, sin ellas.

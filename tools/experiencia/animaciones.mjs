@@ -42,13 +42,16 @@ async function stripShot(j, file) {
   return file;
 }
 
-/** `who`: the scene acting the steps out, `interior` (the ring) or `stationInside` (the station). */
+/**
+ * `who`: the scene acting the steps out, a path under window.codeship: `interior` (the ring), `stationInside` (the
+ * station) or `starship.mode` (Starship's decks).
+ */
 const auditNow = (j, who = "interior") =>
   j.page.evaluate((w) => {
     const el = [...document.querySelectorAll(".duel.sheet")].find((e) => !e.classList.contains("hidden"));
-    return window.codeship[w].stepAudit(el ? el.getBoundingClientRect().top : innerHeight) ?? null;
+    return w.split(".").reduce((o, k) => o[k], window.codeship).stepAudit(el ? el.getBoundingClientRect().top : innerHeight) ?? null;
   }, who);
-const playedNow = (j, who = "interior") => j.page.evaluate((w) => window.codeship[w].steps.played ?? 0, who);
+const playedNow = (j, who = "interior") => j.page.evaluate((w) => w.split(".").reduce((o, k) => o[k], window.codeship).steps.played ?? 0, who);
 
 /**
  * Follows the act that a right answer started: samples the scene while it plays (from its start to its
@@ -57,7 +60,7 @@ const playedNow = (j, who = "interior") => j.page.evaluate((w) => window.codeshi
 async function followAct(j, before, file, who = "interior") {
   const p = j.page;
   const started = await p
-    .waitForFunction(([n, w]) => (window.codeship[w].steps.played ?? 0) > n, [before, who], { timeout: 5000 })
+    .waitForFunction(([n, w]) => (w.split(".").reduce((o, k) => o[k], window.codeship).steps.played ?? 0) > n, [before, who], { timeout: 5000 })
     .then(() => true)
     .catch(() => false);
   if (!started) return { started: false, samples: [], shot: (await stripShot(j, file)) };
@@ -77,6 +80,8 @@ async function followAct(j, before, file, who = "interior") {
   return { started: true, samples, shot };
 }
 
+const a0 = (s) => s[0] ?? {};
+
 /** Pass or fail of one act from its samples, with the reasons a designer can read. */
 export function judge(r) {
   const why = [];
@@ -86,7 +91,8 @@ export function judge(r) {
   const late = s.filter((x) => x.t >= 0.35 || !x.playing);
   const gesture = Math.max(...s.map((x) => x.gesture));
   if (gesture < RULES.gesture) why.push(`el gesto no se nota (${gesture.toFixed(2)} rad)`);
-  if (!s.some((x) => x.handSeen)) why.push("su mano no se ve encima de la hoja");
+  // A yoga posture is her whole body in the asana (the figure is the step), not something in her hand.
+  if (a0(s).action !== "postura" && !s.some((x) => x.handSeen)) why.push("su mano no se ve encima de la hoja");
   const names = [...new Set(late.flatMap((x) => x.props.map((q) => q.name)))];
   const props = names.map((n) => {
     const seen = late.map((x) => x.props.find((q) => q.name === n)).filter(Boolean);
@@ -177,7 +183,7 @@ async function playChore(j, chore, rows) {
  */
 async function auditSheet(j, rows, chore, oracle, who = "interior") {
   const p = j.page;
-  const framed = await p.evaluate((w) => window.codeship[w].steps.framing, who);
+  const framed = await p.evaluate((w) => w.split(".").reduce((o, k) => o[k], window.codeship).steps.framing, who);
   if (!framed) {
     rows.push({ chore, step: "—", act: "—", shot: await stripShot(j, `${slug(chore.id)}-00.webp`), ok: chore.kind === "yoga", why: chore.kind === "yoga" ? ["la postura de la figura en la esterilla es el paso (no se enmarca)"] : ["no hay escena de pasos"] });
   }
@@ -201,7 +207,7 @@ async function auditSheet(j, rows, chore, oracle, who = "interior") {
   if (await p.locator(".duel button.end").count()) await j.tap(".duel button.end", "Continuar");
   else await j.tap('.duel [data-act="close"]', "Cerrar");
   await p.waitForTimeout(500);
-  j.check(`«${chore.title}»: al cerrar, los utensilios se recogen`, await p.evaluate((w) => !window.codeship[w].steps.root.visible, who));
+  j.check(`«${chore.title}»: al cerrar, los utensilios se recogen`, await p.evaluate((w) => !w.split(".").reduce((o, k) => o[k], window.codeship).steps.root.visible, who));
 }
 
 /** Trip and landing plans: each right step draws its part, on screen above the sheet. */
@@ -294,6 +300,13 @@ async function playStation(j, rows, skipped = []) {
     await auditSheet(j, rows, { id: "estacion-cocina", title: `Estación: ${dish}` }, () => window.codeship.stationLife.session?.run.current ?? null, "stationInside");
   }
 
+  // The crew areas and a repair (Berón, 2026-11-17: «hay acciones sin animación»): yoga on the mat (Destiny), a workout
+  // at the T2/ARED (Tranquility) and the CDRA's clogged beds at the air rack, each one played from its card.
+  await crewAt(j, rows, { placeAt, card: ".sti-card", fixture: "esterilla", act: "chore:yoga", id: "estacion-yoga", title: "Estación: yoga en la esterilla", oracle: () => window.codeship.stationLife.session?.run.current ?? null, who: "stationInside" });
+  await crewAt(j, rows, { placeAt, card: ".sti-card", fixture: "ejercicio", act: "chore:ejercicio", id: "estacion-ejercicio", title: "Estación: ejercicio en la T2 y el ARED", oracle: () => window.codeship.stationLife.session?.run.current ?? null, who: "stationInside" });
+  await j.setup("se taponan los lechos de zeolita del CDRA", () => window.codeship.lifeSupport.system.fail("cdra-lechos"));
+  await crewAt(j, rows, { placeAt, card: ".sti-card", fixture: "sv-ar", act: "chore:sv-cdra-lechos", id: "estacion-cdra", title: "Estación: cambiar los lechos del CDRA (bastidor de aire)", oracle: () => window.codeship.lifeSupport.session?.run.current ?? null, who: "stationInside" });
+
   // The machines: open their tab from the fixture's card, start a chore there.
   const MACHINES = [
     { fixture: "guantera", tab: "materiales", start: '.st-body [data-refine]:not([disabled])', id: "estacion-refinar", title: "Estación: refinar" },
@@ -334,6 +347,56 @@ async function playStation(j, rows, skipped = []) {
     }
     await j.tap(".st-back", "Volver");
   }
+}
+
+/** A chore started from a fixture's card (her card at the galley, the mat, a machine, a rack), then audited. */
+async function crewAt(j, rows, o) {
+  const p = j.page;
+  await o.placeAt(o.fixture);
+  await p.waitForTimeout(500);
+  const btn = `${o.card} [data-act^="${o.act}"]`;
+  const label = await p.evaluate((b) => document.querySelector(b)?.textContent?.trim() ?? "", btn);
+  if (!label) {
+    j.check(`${o.title}: su tarjeta ofrece el reto`, false, await p.evaluate((c) => document.querySelector(c)?.textContent?.slice(0, 160) ?? "sin tarjeta", o.card));
+    return;
+  }
+  if (!(await j.tap(btn, `${o.title}: ${label}`))) return;
+  await j.waitDuel();
+  await p.waitForTimeout(500);
+  await auditSheet(j, rows, { id: o.id, title: `${o.title} (${label})`, kind: o.kind }, o.oracle, o.who);
+}
+
+/**
+ * Starship's decks (the real mothership, docs/design/nodriza-starship.md): every dish of its galley, each workout
+ * at its machine, yoga on the mat, the aquatic habitat (JAXA's AQH, with medakas from the catalogue) and a repair.
+ */
+async function playStarship(j, rows) {
+  const p = j.page;
+  await j.tap(".stand-btn", "Levantarse: habitáculo");
+  await j.useMachine("cabin", "acople", "entrar-nodriza", "Entrar en la Starship");
+  await p.waitForTimeout(900);
+  await j.setup("«paso a paso» en los retos de ordenar", () => localStorage.setItem("codeship.retos-ordenar", "pasos"));
+  const placeAt = (id) => j.setup(`Doménica va hasta «${id}» (los saltos por los asideros se juegan en PX-28)`, (f) => window.codeship.starship.mode.placeAt(f), id);
+  const crew = () => window.codeship.starship.session?.run.current ?? null;
+  const facts = await p.evaluate(() => window.codeship.starship.choreFacts().map((f) => ({ id: f.id, station: f.station, title: f.title })));
+  const W = { card: ".sts-card", oracle: crew, who: "starship.mode", placeAt };
+  for (const f of facts.filter((x) => /^(cocinar|yoga|ejercicio)-/.test(x.id)))
+    await crewAt(j, rows, { ...W, fixture: f.station, act: `chore:${f.id}`, id: `starship-${f.id}`, title: `Starship: ${f.title}` });
+  // The aquatic habitat: medakas adopted at the catalogue terminal (deck 2), then fed at the AQH (deck 3).
+  if (await adoptarStarship(j)) {
+    const fish = await p.evaluate(() => window.codeship.starship.choreFacts().filter((f) => f.station === "habitat-acuatico").map((f) => ({ id: f.id, station: f.station, title: f.title })));
+    for (const f of fish.slice(0, 3)) await crewAt(j, rows, { ...W, fixture: f.station, act: `chore:${f.id}`, id: `starship-${f.id}`, title: `Starship: ${f.title}` });
+  }
+  await j.setup("se taponan los lechos del CDRA de la Starship", () => window.codeship.starship.lifeSupport.system.fail("cdra-lechos"));
+  const rack = await p.evaluate(() => window.codeship.starship.lifeSupport.taskFacts().find((t) => t.id.includes("cdra"))?.area);
+  if (rack) await crewAt(j, rows, { ...W, fixture: rack, act: "chore:sv-cdra-lechos", id: "starship-cdra", title: "Starship: cambiar los lechos del CDRA", oracle: () => window.codeship.starship.lifeSupport.session?.run.current ?? null });
+}
+
+/** Medakas adopted at the catalogue (from the task list, as a player does) and their trip from the Sanctuary. */
+async function adoptarStarship(j) {
+  await adoptar(j, [["medaka", "peces"]]);
+  await llegan(j);
+  return j.page.evaluate(() => window.codeship.starship.choreFacts().some((f) => f.station === "habitat-acuatico"));
 }
 
 /** Contact sheet (docs/qa/animaciones.md): one row per step. */
@@ -446,6 +509,32 @@ export async function animaciones(j) {
     }
   }
 
+  // Without the ring (REAL_ONLY): the trip from the navigation table of Starship's flight deck.
+  if (want("viaje") && !ring) {
+    p = await freshGame(j);
+    await j.tap(".stand-btn", "Levantarse: habitáculo");
+    await j.useMachine("cabin", "acople", "entrar-nodriza", "Entrar en la Starship");
+    await p.waitForTimeout(800);
+    await j.setup("sube a la cubierta de vuelo (los saltos se juegan en PX-28)", () => {
+      const c = window.codeship;
+      c.starship.exit();
+      c.bridge.enter("salida");
+      localStorage.setItem("codeship.retos-ordenar", "pasos");
+    });
+    await j.useMachine("bridge", "nav", "abrir", "Usar la consola: Mesa de navegación");
+    await p.waitForTimeout(1200);
+    const id = await p.evaluate(() => window.codeship.nav.targets.find((t) => t.kind === "asteroid" && t.id !== window.codeship.region.target.data.id)?.id);
+    await j.tap(`.nav-map .nav-chip[data-id="${id}"]`, "asteroide en el mapa");
+    await p.waitForTimeout(400);
+    if (await j.tap('.nav-map [data-act="program"]', "Programar viaje")) {
+      await j.waitDuel(30000);
+      await playPlan(j, rows, "Programar un viaje (mesa de navegación de la cubierta de vuelo de la Starship)", () => window.codeship.nav.programming?.current ?? null, "viaje");
+      await p.waitForTimeout(1500);
+      if (await p.locator(".duel:not(.hidden) button.end").count()) await j.tap(".duel:not(.hidden) button.end", "Continuar");
+      else if (await p.locator('.duel:not(.hidden) [data-act="close"]').count()) await j.tap('.duel:not(.hidden) [data-act="close"]', "×");
+    }
+  }
+
   // Landing by program (the lander, from its cabin at the start): each step draws on the ground.
   if (want("aterrizaje")) {
     // A fresh game: the lander, from its cabin, 300 m over Bennu (the chores above changed the ship's state).
@@ -481,6 +570,12 @@ export async function animaciones(j) {
     }
   }
 
+  // Starship (REAL_ONLY's mothership): its galley, mat, exercise machines, aquatic habitat and a repair.
+  if (want("starship") && !ring) {
+    p = await freshGame(j);
+    await playStarship(j, rows);
+  }
+
   // The station: the galley and its machines, acted out by Doménica at each fixture (at the station's 1,5 scale).
   if (want("estacion")) {
     p = await freshGame(j);
@@ -490,7 +585,7 @@ export async function animaciones(j) {
   }
 
   extra.push(
-    "El viaje desde la consola de navegación del anillo: el mapa cubre la escena, así que el plan se dibuja en el mapa, encuadrado en la franja sobre la hoja (sus puntos se miden en el mapa).",
+    "El viaje desde la mesa de navegación (la del anillo con ?ficcion; la de la cubierta de vuelo de la Starship en el juego real): el mapa cubre la escena, así que el plan se dibuja en el mapa, encuadrado en la franja sobre la hoja (sus puntos se miden en el mapa).",
   );
   extra.push(
     "Estación (escala 1,5): la cocina y las máquinas (refinar, fabricar, laboratorio de biología, importar) con Doménica en los estribos de cada una. Sin visual de pasos, aplazados con nano_net (sistema ficticio, al backlog): los retos de nano_net.",

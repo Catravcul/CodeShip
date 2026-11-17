@@ -245,7 +245,7 @@ export class StarshipInterior {
   choreFacts(): { id: string; title: string; detail: string; category: "comida" | "salud" | "animales" | "nave"; station: string }[] {
     const crew = this.crew.chores().map((c) => {
       const area = this.crew.areaOf(c);
-      return { id: c.id, title: c.title, detail: `${AREA_NAME[area]} · ${c.exercises.length} retos`, category: c.kind === "cocinar" ? ("comida" as const) : ("salud" as const), station: FIXTURE_OF[c.kind] ?? "cocina" };
+      return { id: c.id, title: c.title, detail: `${AREA_NAME[area]} · ${c.exercises.length} retos`, category: c.kind === "cocinar" ? ("comida" as const) : ("salud" as const), station: this.fixtureOf(c) };
     });
     const animals = this.animalChores().map((c) => ({ id: c.id, title: c.title, detail: `${this.sanctuary?.owns(c) ? "Catálogo (cubierta 2)" : "Hábitat acuático (cubierta 3)"} · ${c.exercises.length} retos`, category: "animales" as const, station: this.animalFixture(c) }));
     const eclss = (this.lifeSupport?.taskFacts() ?? []).map((t) => ({ id: t.id, title: t.title, detail: `Starship · ${t.detail}`, category: "nave" as const, station: t.area }));
@@ -310,7 +310,12 @@ export class StarshipInterior {
       case "esterilla":
         return [{ id: "ajustes", label: "Sentarse en loto: ajustes", enabled: true }, ...chores("esterilla")];
       case "ejercicio":
-        return chores("ejercicio");
+        // Each machine its own workouts (the T2 runs, the CEVIS pedals, the ARED lifts).
+        return this.crew
+          .choresAt("ejercicio")
+          .filter((c) => this.fixtureOf(c) === f.id)
+          .slice(0, MAX_ON_CARD)
+          .map((c) => ({ id: `chore:${c.id}`, label: c.title, enabled: true }));
       case "camarotes":
         return [{ id: "dormir", label: "Dormir en un camarote", enabled: true }];
       case "aseo":

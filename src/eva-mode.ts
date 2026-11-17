@@ -1,3 +1,5 @@
+import type { Chore } from "@modules/chores/domain/chore";
+import type { StepVisual } from "@modules/chores/domain/step-visual";
 import * as THREE from "three";
 import { Quat } from "@core/math/quat";
 import { Vec3 } from "@core/math/vec3";
@@ -145,6 +147,8 @@ export class EvaMode {
     // The suit-up sheet shares the challenge screen with the chores: chain its close handler.
     const prev = duel.onClose;
     duel.onClose = () => {
+      this.visual?.clear();
+      this.visual = undefined;
       if (this.eva.phase === "preparando") this.eva.cancelSuitUp();
       else prev?.();
     };
@@ -166,10 +170,16 @@ export class EvaMode {
     this.say(text, ms);
   }
 
+  /** The suit-up acted out where she suits up (the LM's forward hatch): set by main.ts (reglas.md §4.2). */
+  suitUpVisual?: (chore: Chore) => StepVisual | undefined;
+  private visual: StepVisual | undefined;
+
   /** "Salir de la nave": the suit-up chain, then outside. */
   startSuitUp(): void {
     if (!this.eva.canLeave) return;
     const run = this.eva.suitUp();
+    this.visual?.clear();
+    const visual = (this.visual = this.suitUpVisual?.(run.chore));
     this.duel.show(
       {
         get current() {
@@ -186,7 +196,9 @@ export class EvaMode {
       },
       SUIT_UP_TEXT,
       (a) => {
+        const index = run.step;
         const ok = this.eva.answer(a);
+        if (ok) visual?.stepDone(index);
         if (this.eva.outside) setTimeout(() => this.enter(), 600);
         return { ok };
       },
@@ -201,6 +213,8 @@ export class EvaMode {
   }
 
   private enter(): void {
+    this.visual?.clear();
+    this.visual = undefined;
     this.duel.hide();
     const ax = this.eva.shipAxes;
     this.up = ax.up;

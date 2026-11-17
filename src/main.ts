@@ -89,6 +89,7 @@ import { offeredBlueprints } from "@modules/station/data/outfit";
 import { facing } from "@modules/navigation/domain/attitude";
 import { StationLife } from "./station-life";
 import { stationStepVisuals } from "./station-steps";
+import { areaVisuals as SUIT_UP_VISUALS } from "@modules/chores/application/step-visuals";
 import { LifeSupportGame } from "./life-support-game";
 import { STATION_LIFE_SUPPORT } from "@modules/life-support/data/hosts";
 import { STATION_AREA_NAME, StationCrew, type Pantry } from "@modules/station/application/station-crew";
@@ -1035,6 +1036,8 @@ settingsPanel.addRow({
   value: () => LANDING_MODE_LABEL[landingMode()],
   next: () => setLandingMode(LANDING_MODES[(LANDING_MODES.indexOf(landingMode()) + 1) % LANDING_MODES.length]!),
 });
+// The suit-up acted out at the LM's forward hatch, where it is done (reglas.md §4.2; docs/qa/animaciones.md).
+evaMode.suitUpVisual = (chore) => (cabin.active ? cabin.stepVisual("escotilla", (i) => SUIT_UP_VISUALS.acts(chore, i) ?? []) : undefined);
 interior.openSettings = () => {
   settingsFrom = "nodriza";
   settingsPanel.open(starship ? "Doménica en loto en la esterilla de la cubierta 1 (Starship)" : "Doménica en loto en la esterilla del rincón de ejercicio (nodriza)");

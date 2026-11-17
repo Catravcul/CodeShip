@@ -480,6 +480,7 @@ export class StationInteriorMode {
     const vol = this.interior.volume(f.volume);
     if (!vol) return undefined;
     if (f.face === "suelo") return this.floorFrame(f, vol);
+    if (f.face === "techo") return this.ceilingFrame(f, vol);
     if (Math.abs(n.y) > 0.5) return undefined;
     const d = new THREE.Vector3(n.x, 0, n.z).normalize();
     const right = new THREE.Vector3(-d.z, 0, d.x);
@@ -541,13 +542,61 @@ export class StationInteriorMode {
   }
 
   /**
+   * A rack in the overhead (Tranquility's ARS, the fire post): in 0 g she floats up under it, head below the
+   * ceiling and hands at its front, beside it along the module so she does not go into it; the camera from the side.
+   */
+  private ceilingFrame(f: Fixture, vol: { centre: Vec3; half: Vec3 }): StepFrame {
+    const floor = vol.centre.y - vol.half.y + 0.05;
+    const ceiling = vol.centre.y + vol.half.y;
+    const alongX = vol.half.x >= vol.half.z;
+    const d = alongX ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 0, 1);
+    const side = alongX ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(1, 0, 0);
+    const target = new THREE.Vector3(f.at.x, ceiling - 0.05, f.at.z);
+    // Faced along the module, a short step back from under its middle (its front is at her hands).
+    const stand = target.clone().addScaledVector(d, -0.45).setY(Math.max(floor, ceiling - 1.75));
+    const look = target.clone().setY(target.y - 0.45);
+    const sight = sightOfScene(this.scene, [this.steps.root, this.rig]);
+    const cam = new THREE.Vector3();
+    let found = false;
+    for (const back of [2.0, 1.7, 1.4, 1.1, 0.9])
+      for (const s of [1, -1]) {
+        if (found) break;
+        cam.copy(look).addScaledVector(side, s * Math.min(back, 2 * (alongX ? vol.half.z : vol.half.x) - 0.3)).addScaledVector(d, -back).setY(stand.y + 0.9);
+        found = this.interior.fits(new Vec3(cam.x, cam.y, cam.z), 0.1, false) && sight(cam, look);
+      }
+    if (!found) cam.copy(look).addScaledVector(d, -1.2).setY(stand.y + 0.9);
+    return { stand, yaw: Math.atan2(d.x, d.z), camera: cam, look, target };
+  }
+
+  /**
+   * A fixture's frame with the camera stood back along the wall, low, so her whole body shows (yoga, the lotus of
+   * the settings): a teacher's side view, as on the ring (interior.ts, yogaCamera).
+   */
+  private wholeBodyFrame(f: Fixture): StepFrame | undefined {
+    const base = this.stepFrame(f);
+    if (!base) return undefined;
+    const n = FACE_NORMAL[f.face];
+    const d = new THREE.Vector3(n.x, 0, n.z).normalize();
+    const right = new THREE.Vector3(-d.z, 0, d.x);
+    const body = base.stand.clone().setY(base.stand.y + 0.6);
+    const sight = sightOfScene(this.scene, [this.steps.root, this.rig]);
+    const cam = new THREE.Vector3();
+    for (const side of [2.8, -2.8, 2.4, -2.4, 2.0, -2.0, 1.6, -1.6])
+      for (const back of [0.9, 0.6, 0.3]) {
+        cam.copy(body).addScaledVector(right, side).addScaledVector(d, -back).setY(base.stand.y + 1.05);
+        if (this.interior.fits(new Vec3(cam.x, cam.y, cam.z), 0.1, false) && sight(cam, body)) return { ...base, camera: cam.clone(), look: body };
+      }
+    return base;
+  }
+
+  /**
    * Yoga on a mat (reglas.md §4.2): she floats in front of it, feet in its straps, and each right answer takes
    * her into its posture (the asanas of the body module, as on the ring); seen from the aisle. `asanaOf(i)` is
    * step i's asana.
    */
   yogaVisual(id: string, asanaOf: (index: number) => AsanaData | undefined): StepVisual | undefined {
     const f = this.interior.fixture(id);
-    const frame = f && this.stepFrame(f);
+    const frame = f && this.wholeBodyFrame(f);
     if (!frame) return undefined;
     this.steps.begin(frame);
     this.steps.holdPose = true;
@@ -863,7 +912,7 @@ export class StationInteriorMode {
     this.lotus = on;
     // On the mat, seen from the aisle over the settings sheet (in first person she would see nothing of it).
     const mat = this.interior.plan.fixtures.find((f) => f.action.kind === "tripulacion" && f.action.area === "esterilla");
-    const frame = on && mat ? this.stepFrame(mat) : undefined;
+    const frame = on && mat ? this.wholeBodyFrame(mat) : undefined;
     if (frame) {
       this.steps.begin(frame);
       this.steps.holdPose = true;

@@ -166,14 +166,14 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | VID-32 | Solo test | | | `adoption-ops.test.ts`, `import-ops.test.ts`; jugado en PX-27 |
 | VID-33 | Solo test | | | `sleep.test.ts`; jugado en PX-35 y PX-20 |
 | VID-40 | Probado (en vivo) | 2026-11-17 | `1e45fe6` | [run](runs/2026-11-17-0459-PX-28-PX-31-PX-35-PX-37-PX-20.md): PX-20 133/133 pasos y PX-37 OK; `space-galley-visuals.test.ts` |
-| VID-41 | Sin probar | | | Lo juega PX-38 |
-| VID-42 | Sin probar | | | Lo juega PX-38 |
-| VID-43 | Sin probar | | | Lo juega PX-38 |
-| VID-44 | Sin probar | | | Lo juega PX-38 |
-| VID-45 | Sin probar | | | Lo juega PX-38 |
-| VID-46 | Sin probar | | | Lo juega PX-38 |
-| VID-47 | Sin probar | | | Lo juega PX-38 |
-| VID-48 | Sin probar | | | Lo juega PX-38 |
+| VID-41 | Probado (en vivo) | 2026-11-17 | `438bb9d` | [run](runs/2026-11-17-1154-PX-28-PX-35-PX-38-PX-20-PX-30.md): PX-38 |
+| VID-42 | Probado (en vivo) | 2026-11-17 | `438bb9d` | [run](runs/2026-11-17-1154-PX-28-PX-35-PX-38-PX-20-PX-30.md): PX-38 |
+| VID-43 | Probado (en vivo) | 2026-11-17 | `438bb9d` | [run](runs/2026-11-17-1154-PX-28-PX-35-PX-38-PX-20-PX-30.md): PX-38 |
+| VID-44 | Probado (en vivo) | 2026-11-17 | `438bb9d` | [run](runs/2026-11-17-1154-PX-28-PX-35-PX-38-PX-20-PX-30.md): PX-38 |
+| VID-45 | Probado (en vivo) | 2026-11-17 | `438bb9d` | [run](runs/2026-11-17-1154-PX-28-PX-35-PX-38-PX-20-PX-30.md): PX-38 |
+| VID-46 | Probado (en vivo) | 2026-11-17 | `438bb9d` | [run](runs/2026-11-17-1154-PX-28-PX-35-PX-38-PX-20-PX-30.md): PX-38 |
+| VID-47 | Probado (en vivo) | 2026-11-17 | `438bb9d` | [run](runs/2026-11-17-1154-PX-28-PX-35-PX-38-PX-20-PX-30.md): PX-38 |
+| VID-48 | Probado (en vivo) | 2026-11-17 | `438bb9d` | [run](runs/2026-11-17-1154-PX-28-PX-35-PX-38-PX-20-PX-30.md): PX-38 |
 | EVA-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | EVA-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | EVA-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |

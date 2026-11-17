@@ -7,7 +7,12 @@ export const placeAbove = ([which, h, vDown]) => {
   const P = c.flight.state.position.constructor;
   let f;
   if (which === "sonda") {
-    if (c.probe.status === "estibada") c.probe.launch(new P(0, 1, 0));
+    if (c.probe.status === "estibada") {
+      // Out of its deployer: the door, the slide out and the springs (PX-41 plays it at ×1).
+      if (!c.probe.deploying) c.probe.launch(new P(0, 1, 0));
+      const z = new P(0, 0, 0);
+      c.probe.update(10, { mainThrottle: 0, translation: z, rotation: z });
+    }
     f = c.probe.flight;
   } else {
     c.docking.undock();
@@ -83,8 +88,13 @@ export async function aterrizajePrograma(j) {
     if (c.interior.active) c.interior.exit();
     c.bridge.enter("salida");
   });
-  await j.useMachine("bridge", "sonda", "abrir", "Tomar el mando de la sonda");
+  await j.useMachine("bridge", "sonda", "abrir", "Manual: tomar el mando de la sonda");
   await p.waitForTimeout(600);
+  // Juventas leaves its deployer on Starship's hull: the door opens, it slides out, the springs push it at 3 cm/s.
+  await j.tap('.pr-actions [data-act="launch"]', "Soltar del dispensador");
+  await p.waitForTimeout(1500);
+  const rel = await p.evaluate(() => ({ deploying: window.codeship.probe.deploying, msg: document.querySelector(".pr-msg")?.textContent ?? "" }));
+  j.check("«Soltar del dispensador» abre la puerta y dice cómo sale (3 cm/s)", rel.deploying && /puerta del dispensador/.test(rel.msg) && /3 cm\/s/.test(rel.msg), JSON.stringify(rel));
   await j.setup("la sonda llega a 300 m de Bennu (lo que deja el viaje comprimido)", placeAbove, ["sonda", 300, 0]);
   await p.waitForTimeout(1200);
   const r = await readout(j, ".land-box.probe .landing-readout");

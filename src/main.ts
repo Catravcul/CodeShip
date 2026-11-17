@@ -116,7 +116,9 @@ import { ASSIST_RANGE_M, Docking } from "@modules/mothership/application/docking
 import { MothershipModel } from "./adapters/three/mothership-model";
 import { Navigator } from "@modules/navigation/application/navigator";
 import { asteroidTarget, targetPosition, targetRadius, type NavTarget } from "@modules/navigation/domain/nav-target";
-import { NavigationMode, PHASE } from "./navigation";
+import { NavigationMode, PHASE, openTripSheet, TRIP_TEXT } from "./navigation";
+import type { RoomAction } from "./walk-room";
+import { EMPTY_DEPLOYERS } from "./probe-mode";
 import { TRAVEL_TIME, frameClocks } from "@modules/navigation/domain/travel-time";
 import { BOARD_DAYS_PER_REAL_S } from "@core/board-time";
 import { duration, num } from "@modules/navigation/application/trip-chore";
@@ -159,7 +161,8 @@ import { ICON } from "./ui/icons";
 import { mindConsoleHtml, mindScreenLines } from "./ui/rapport-view";
 import { setSound } from "./adapters/audio/alarm";
 import { collectTasks, routeTo, type Task, type TaskPlace, type Vehicle } from "@modules/tasks/application/task-list";
-import type { CabinActionId, CabinState } from "@modules/lander-cabin/domain/cabin";
+import type { CabinActionId, CabinState, SeatDestination } from "@modules/lander-cabin/domain/cabin";
+import { nearbyTargets } from "@modules/navigation/domain/nearby";
 import { needingAttention } from "@modules/ship-bay/application/bay";
 import { G } from "@core/units";
 import { FICTION, REAL_ONLY, fiction } from "@core/realism";
@@ -436,8 +439,10 @@ const view = new FlightView(scene, camera, root, () => ship.design, { position: 
 // the suit and the asteroid's mind moved to machines in the lander's cabin (docs/design/habitaculo.md);
 // the sky names to the general settings.
 const landBtn = view.addButton("land-btn", () => (flight.landingAssist = !flight.landingAssist), { icon: ICON.land, label: "Nivelar sola: no", key: "G" });
-// Free near a port: the docking assist (like the landing assist). Docked, K still undocks on a keyboard.
-const dockBtn = view.addButton("dock-btn", () => (docking.docked ? docking.undock() : docking.toggleAssist()), { icon: ICON.dock, label: "Acople: manual", key: "K" });
+// Dock / undock as one switch (Berón, 2026-11-17), pinned under the eye and only where it makes sense: docked
+// (it undocks) or free inside a port's keep-out sphere (it docks: the assist flies the last metres to contact).
+// It shows the opposite of the state now. K does the same on a keyboard.
+const dockBtn = view.addButton("dock-btn", () => (docking.docked ? docking.undock() : docking.toggleAssist()), { icon: ICON.dock, label: "Acoplar", key: "K", pinned: true });
 // Stand up from the pilot seat into the cabin.
 const standBtn = view.addButton("stand-btn", () => standUp(), { icon: ICON.standUp, label: "Dejar el puesto: habitáculo", key: "H", pinned: true });
 settings.onChange((s) => {
@@ -624,7 +629,10 @@ const subj = new SubjugationUi({
   evaMode,
   map: navMode.map,
   keyboard: () => pilot.command(),
-  atStation: () => atStationPort() || (docking.dockedTo === mothership && !!mothership.dockedTo),
+  atStation: () => (REAL_ONLY ? !!mothership.dockedTo : atStationPort() || (docking.dockedTo === mothership && !!mothership.dockedTo)),
+  // Juventas never comes back (docs/design/modulo-lunar-juventas.md): a new one is built from the catalogue and rides aboard.
+  takeBuiltProbe: () => !!stationScreen.yard?.takeAboard("juventas"),
+  carrierRoot: mothershipModel.root,
   wrath: wrathMode.wrath,
   // The EMU suit is about 145 kg (NASA); her body mass comes from the crew model.
   crewMassKg: habitat.crew.body.massKg + 145,
@@ -660,13 +668,51 @@ const probeMind = () => {
   const why = subj.probe.parkedOn ? ex.bond.levelBlock() || "Ahora su mente no escucha por la sonda" : "Aparca la sonda sobre el asteroide desde la consola de la sonda";
   return can ? { label, enabled: true } : { label, enabled: false, why };
 };
+/** The probe's station is listing its automatic destinations (Berón, 2026-11-17: «Manual y Automático»). */
+let probeSeatPicking = false;
+/**
+ * The probe's station: «Manual» (its console) and «Automático», whose destinations are the asteroids near the
+ * mothership (navigation/domain/nearby.ts): real Juventas works inside the system its carrier brought it to.
+ */
+function probeSeatActions(): RoomAction[] {
+  const near = nearbyTargets(nav.targets, neighbourhood()).flatMap((t) => (t.kind === "asteroid" ? [t] : []));
+  if (probeSeatPicking)
+    return [
+      ...near.map((t): RoomAction => {
+        const can = probeTravel.canProgramTo(t.body);
+        return { id: `auto:${t.id}`, label: `${t.name} (llegar encima para posarse)`, enabled: can.ok, ...(can.ok ? {} : { why: can.reason ?? "" }) };
+      }),
+      { id: "volver", label: "Volver", enabled: true },
+    ];
+  const p = subj.probe;
+  const why = p.status === "sin-sonda" ? EMPTY_DEPLOYERS : p.status === "posada" ? "La sonda está posada: su misión acaba allí (termínala en su consola) o despega a mano" : !near.length ? "No hay asteroides cerca de la nodriza: los viajes largos los hace la nodriza desde su puente" : probeTravel.trip.active ? "La sonda ya está de viaje" : undefined;
+  return [
+    { id: "abrir", label: "Manual", enabled: true },
+    why ? { id: "automatico", label: "Automático", enabled: false, why } : { id: "automatico", label: "Automático", enabled: true },
+  ];
+}
 const bridge = new BridgeRoom(
   root,
   {
     openPanel: (id) => deck.enter("puente", id),
     openMissions: () => missionLog.open(),
     openNano: () => deck.nanoBtn.click(),
-    openProbe: () => subj.probeMode.enter(),
+    openProbe: () => {
+      probeSeatPicking = false;
+      subj.probeMode.enter();
+    },
+    probeSeat: () => probeSeatActions(),
+    probeSeatAct: (a) => {
+      if (a === "automatico") probeSeatPicking = true;
+      else if (a === "volver") probeSeatPicking = false;
+      else if (a.startsWith("auto:")) {
+        probeSeatPicking = false;
+        const body = region.asteroids.find((x) => x.data.id === a.slice(5));
+        if (!body) return;
+        subj.probeMode.enter();
+        probeTravel.programTo(body);
+      }
+    },
     mind: () => {
       const a = expedition.asteroid;
       const r = expedition.rapport.peek(a.data.id);
@@ -1113,6 +1159,8 @@ const mindNow = (): { label: string; enabled: boolean; why?: string } | null => 
 };
 // The LM's own life support, counting only the crew in the lander (docs/design/modulo-lunar-juventas.md).
 const landerEcs = new LanderEcs({ crewAboard: () => (crewIn() === "modulo" ? 1 : 0), docked: () => docking.docked, say: (t, sec) => (cabin.active ? cabin.say(t, sec) : undefined) });
+/** The commander's «Automático» is listing its destinations (Berón, 2026-11-17). */
+let seatPicking = false;
 const cabinState = (): CabinState => ({
   dockedTo: docking.dockedTo === mothership ? "nodriza" : atStationPort() ? "estacion" : null,
   dockInRange: !docking.docked && docking.inRange(),
@@ -1121,19 +1169,60 @@ const cabinState = (): CabinState => ({
   canLeaveEva: eva.canLeave && expedition.phase === "landed",
   mind: mindNow(),
   ecs: landerEcs.state(),
+  auto: { picking: seatPicking, destinations: seatDestinations() },
 });
+/** The mothership's neighbourhood: what the lander and the probe may fly to on their own (navigation/domain/nearby.ts). */
+const neighbourhood = () => ({ carrier: mothership.position, radiusM: carrier.parkingM + nav.approachM });
+/** The lander's nearby destinations, each enabled or with why it can't fly there now. */
+function seatDestinations(): SeatDestination[] {
+  // Not the port it is latched to now: that one is where it already is.
+  return nearbyTargets(nav.targets, neighbourhood()).flatMap((t) => (t.kind === "dock" && docking.dockedTo === t.probePort ? [] : [t])).map((t) => {
+    const can = nav.canFlyLander(t);
+    return { id: t.id, label: t.kind === "dock" ? `${t.name} (acoplar)` : `${t.name} (llegar encima para posarse)`, enabled: can.ok, ...(can.ok ? {} : { why: can.reason ?? "" }) };
+  });
+}
+/** «Automático» → a destination: the trip challenge for the lander's own hop (the sheet over the cabin). */
+function programLanderTrip(id: string): void {
+  seatPicking = false;
+  if (duelView.visible) return;
+  let run;
+  try {
+    run = nav.startLanderProgramming(id);
+  } catch (e) {
+    return cabin.say((e as Error).message, 5);
+  }
+  openTripSheet(
+    duelView,
+    run,
+    (a) => nav.answer(a),
+    () => nav.status === "autopilot",
+    () => {
+      if (nav.status === "programming") nav.cancel();
+    },
+    TRIP_TEXT,
+    planOverlay.visual(() => {
+      const t = nav.landerTrip(nav.target);
+      const from = flight.state.position;
+      const last = t.waypoints[t.waypoints.length - 1] ?? from;
+      const centre = targetPosition(nav.target);
+      const arrival = t.dock ? t.dock.entry : centre.sub(centre.sub(last).normalize().scale(targetRadius(nav.target) + t.facts.approachM));
+      return tripSketch({ from, waypoints: t.waypoints, arrival, brakeM: t.plan.burnDistanceM, cruiseMS: t.plan.cruiseMS, deltaVMS: t.plan.deltaVMS, totalS: t.plan.totalS, targetName: nav.target.name });
+    }),
+  );
+}
 const cabin = new LanderCabin(root, {
   state: cabinState,
   act: (id: CabinActionId) => {
     switch (id) {
       case "pilotar":
+        seatPicking = false;
         return sitDown();
-      case "desacoplar":
-        docking.undock();
-        return cabin.say("Desacoplada: los muelles te separan. Ponte a pilotar en el puesto del comandante", 6);
-      case "asistente-acople":
-        docking.toggleAssist();
-        return cabin.say(docking.assist ? "Asistente de acople: el módulo se acerca solo al puerto" : "Asistente de acople apagado", 5);
+      case "automatico":
+        seatPicking = true;
+        return;
+      case "volver":
+        seatPicking = false;
+        return;
       case "entrar-nodriza":
       case "entrar-estacion":
         return throughHatch();
@@ -1148,6 +1237,9 @@ const cabin = new LanderCabin(root, {
         return cabin.say(landerEcs.replenish(), 5);
       case "mente":
         return enterMind();
+      default:
+        if (id.startsWith("auto:")) return programLanderTrip(id.slice(5));
+        return;
       case "ajustes":
         cabin.sitLotus();
         settingsFrom = "cabina";
@@ -1368,13 +1460,18 @@ function flash(text: string, seconds = 5): void {
   flashUntil = performance.now() + seconds * 1000;
 }
 const n2 = (v: number) => v.toFixed(2).replace(".", ",");
+/**
+ * The dock switch shows inside a port's keep-out sphere: 200 m round the ISS, where only a vehicle on its
+ * final approach along the docking axis may enter (NASA, ISS approach rules).
+ */
+const DOCK_SWITCH_RANGE_M = 200;
 /** Docking line for the banner, or "" when the mothership is far. */
 function dockingText(): string {
   if (performance.now() < flashUntil) return flashText;
   // During a mothership trip the autopilot strip says where it is going.
   if (nav.status === "carrier") return "";
   const on = docking.dockedTo;
-  if (on) return `${on === mothership && mothership.dockedTo ? "Nodriza atracada en la estación" : `Módulo acoplado a ${on === mothership ? "la nodriza" : "la estación"}`} · deja el puesto y ve a la escotilla de acople${settings.key(" (H) · K desacopla")}`;
+  if (on) return `${on === mothership && mothership.dockedTo ? "Nodriza atracada en la estación" : `Módulo acoplado a ${on === mothership ? "la nodriza" : "la estación"}`} · el interruptor de acople (bajo el ojo) desacopla${settings.key(" (K)")}; la escotilla está detrás del puesto`;
   // While the trip autopilot flies away from the port, the docking read-out is noise.
   // The autopilot strip already shows the automatic docking's progress.
   if (nav.status === "autopilot" || nav.status === "docking") return "";
@@ -1700,10 +1797,15 @@ renderer.setAnimationLoop((now) => {
   // It only levels the belly to the ground (attitude hold); landing by itself is «Aterrizar con un programa».
   view.menu.relabel(landBtn, `Nivelar sola: ${flight.landingAssist ? "sí" : "no"}`, "G");
   landBtn.classList.toggle("on", flight.landingAssist);
-  view.menu.relabel(dockBtn, `Acople: ${docking.assist ? "auto" : "manual"}`, "K");
+  const dockLabel = docking.docked ? `Desacoplar de ${docking.dockedTo === mothership ? "la nodriza" : "la estación"}` : docking.assist ? "Acoplando: tocar para parar" : "Acoplar";
+  if (dockBtn.dataset.state !== dockLabel) {
+    dockBtn.dataset.state = dockLabel;
+    view.menu.relabel(dockBtn, dockLabel, "K");
+    dockBtn.querySelector("svg")!.outerHTML = docking.docked ? ICON.undock : ICON.dock;
+  }
   dockBtn.classList.toggle("on", docking.assist && !docking.docked);
-  // Only free and near a port: undocking is at the cabin's docking console now.
-  const dockHidden = docking.docked || !docking.inRange();
+  // The switch only where it makes sense: docked, or free inside a port's keep-out sphere.
+  const dockHidden = !docking.docked && !(docking.inRange() && docking.current().port.position.sub(flight.state.position).length() <= DOCK_SWITCH_RANGE_M);
   // Landing assist only off a port; time warp only on free flight, far from the surface (or to switch it off).
   if (dockBtn.classList.contains("hidden") !== dockHidden || landBtn.classList.contains("hidden") !== docking.docked) {
     dockBtn.classList.toggle("hidden", dockHidden);

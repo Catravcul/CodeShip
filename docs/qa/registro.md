@@ -45,6 +45,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | VUE-09 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | VUE-10 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | VUE-11 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| VUE-20 | Sin probar | | | Adaptador; lo juega PX-41 |
 | NAV-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | NAV-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | NAV-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -63,6 +64,8 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | NAV-16 | Solo test | | | `dock-trip.test.ts` (verde en la suite completa); lo juega PX-36 |
 | NAV-17 | Sin probar | | | Adaptador; lo juegan PX-07, PX-16 y PX-36 |
 | NAV-18 | Sin probar | | | Adaptador; lo juega PX-07 |
+| NAV-30 | Solo test | | | `nearby.test.ts` verde; lo juega PX-41 |
+| NAV-31 | Solo test | | | `navigator.test.ts` verde; lo juega PX-41 |
 | SON-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SON-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SON-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -70,6 +73,8 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | SON-05 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SON-06 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SON-07 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
+| SON-08 | Solo test | | | `probe-ops.test.ts`, `probe-trip.test.ts` verdes; lo juega PX-41 |
+| SON-09 | Solo test | | | `probe-ops.test.ts` verde; lo juega PX-41 |
 | SUB-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SUB-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | SUB-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -227,6 +232,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | HAB-38 | Sin probar | | | Adaptador; lo juega PX-36 |
 | HAB-39 | Solo test | | | `journey.test.ts` (verde en la suite completa); lo juegan PX-16 y PX-36 |
 | HAB-40 | Sin probar | | | Lo juega PX-38 |
+| HAB-50 | Solo test | | | `cabin.test.ts` verde; lo juega PX-41 |
 | HAB-28 | Solo test | | | `compartments.test.ts`, `starship-interior.test.ts`; jugado en PX-35 |
 | HAB-30 | Probado (en vivo) | 2026-11-17 | `1e45fe6` | [run](runs/2026-11-17-0459-PX-28-PX-31-PX-35-PX-37-PX-20.md): PX-37 OK; `crew-areas.test.ts` |
 | HAB-31 | Probado (en vivo) | 2026-11-17 | `1e45fe6` | [run](runs/2026-11-17-0459-PX-28-PX-31-PX-35-PX-37-PX-20.md): PX-37 OK |
@@ -279,7 +285,9 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-35 | Probado (en vivo) | 2026-11-17 | `a515faf` | [run](runs/2026-11-17-1334-PX-12-PX-29-PX-31-PX-33-PX-35-PX-30.md): 44 OK |
 | PX-37 | Probado (en vivo) | 2026-11-17 | `30dd266` | [run](runs/2026-11-17-0931-PX-28-PX-35-PX-37-PX-38-PX-20-PX-30.md): 26 OK |
 | PX-39 | Probado (en vivo) | 2026-11-17 | `5c98cd4` | [run](runs/2026-11-17-1352-PX-28-PX-38-PX-39.md): 128 OK |
+| PX-41 | Sin probar | | | |
 | PX-38 | Probado (en vivo) | 2026-11-17 | `5c98cd4` | [run](runs/2026-11-17-1352-PX-28-PX-38-PX-39.md): 77 OK |
+| PX-41 | Probado (en vivo) | 2026-11-17 | `59fb110` | [run](runs/2026-11-17-1805-PX-41.md): 29 OK |
 
 ## Última ejecución por run log
 
@@ -287,6 +295,7 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-17 18:05 | PX-41 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-17-1805-PX-41.md) |
 | 2026-11-17 17:21 | PX-20 | Experiencia (Playwright) | 0/1 recorridos bien | [run](runs/2026-11-17-1721-PX-20.md) |
 | 2026-11-17 13:52 | PX-28, PX-38, PX-39 | Experiencia (Playwright) | 3/3 recorridos bien | [run](runs/2026-11-17-1352-PX-28-PX-38-PX-39.md) |
 | 2026-11-17 13:46 | PX-20 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-17-1346-PX-20.md) |

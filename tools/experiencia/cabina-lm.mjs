@@ -53,11 +53,12 @@ export async function cabinaLm(j) {
   for (let n = 0; n < 6 && (await p.evaluate(() => window.codeship.view.cameraMode)) !== "cabina"; n++) await j.tap(".cam-btn", "Cámara");
 
   // 3. Undock, and down on Bennu by program: the DSKY shows P64, the camera tag stays in the column (B-03).
-  await j.tap(".stand-btn", "Dejar el puesto: habitáculo");
-  await j.useMachine("cabin", "asiento", "desacoplar", "Desacoplar desde el puesto del comandante");
+  // Undocking is the switch under the eye (PX-41); the commander's station offers Manual and Automático.
+  await j.tap(".dock-btn", "Desacoplar (interruptor de acople)");
   await p.waitForTimeout(600);
+  await j.tap(".stand-btn", "Dejar el puesto: habitáculo");
   await j.setup("el LM llega a 300 m de Bennu (lo que deja el viaje comprimido)", placeAbove, ["modulo", 300, 0]);
-  await j.useMachine("cabin", "asiento", "pilotar", "Pilotar de pie");
+  await j.useMachine("cabin", "asiento", "pilotar", "Manual");
   await p.waitForTimeout(1200);
   await j.tap(".ctx-dock > .land-offer", "Aterrizar con un programa");
   await j.waitDuel(30000);

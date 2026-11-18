@@ -22,9 +22,9 @@ export type HerSpot =
   | "fondo" // on the pool's floor by the ISS mock-up
   | "junto-gondola" // standing by the centrifuge's gondola
   | "gondola" // strapped in the centrifuge's gondola (it spins with the arm)
-  | "avion-escalerilla" // at the foot of the A310's stairs
-  | "avion-asiento" // in a seat at the back of the A310's cabin
-  | "avion-suelo" // lying on the padded floor of the test zone (the 1,8 g phases)
+  | "avion-escalerilla" // at the foot of the Il-76MDK's stairs
+  | "avion-asiento" // in a seat at the back of the Il-76MDK's cabin
+  | "avion-suelo" // lying on the padded floor of the test zone (the 2 g phases)
   | "avion-flotando" // floating in the test zone (0 g)
   | "dragon-asiento" // in the commander's seat of the Dragon simulator
   | "robotica-puesto" // at the robotics workstation, hands on the two controllers
@@ -85,13 +85,13 @@ export type Thing =
 export type ThingSpot = "mesa" | "mano-ella" | "mano-entrenador" | "brazo" | "pecho" | "cara" | "cuerpo" | "cintura" | "agua" | "pared" | "sitio";
 
 /**
- * What a machine of the post does in the beat: the centrifuge spinning up to `g` (its gondola swings out), the A310
+ * What a machine of the post does in the beat: the centrifuge spinning up to `g` (its gondola swings out), the Il-76MDK
  * at a phase of its flight (seen from outside on the runway and climbing out, from its cabin in the parabolas), the
  * simulator's screens showing a phase, the snowmobile line sweeping the ice.
  */
 export type RigCue =
   | { readonly kind: "centrifuga"; readonly g: number }
-  | { readonly kind: "avion"; readonly phase: "parado" | "despegue" | "tiron" | "ingravidez" | "salida" | "aterrizaje"; readonly g: number }
+  | { readonly kind: "avion"; readonly phase: "parado" | "despegue" | "subida" | "tiron" | "ingravidez" | "salida" | "aterrizaje"; readonly g: number }
   | { readonly kind: "pantalla"; readonly show: "lanzamiento" | "aborto" | "acople" | "fallo" | "reentrada" | "alunizaje" };
 
 export interface Beat {

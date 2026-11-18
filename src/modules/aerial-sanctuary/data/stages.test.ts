@@ -53,10 +53,11 @@ for (const k of [1, 1.5]) {
       }
     });
 
-    it("los largos van por el agua de la piscina, a lo largo de 25 m", () => {
+    it("los largos van por el agua de la piscina de supervivencia, a lo largo de 25 m", () => {
       const s = stageFor(L, 3)!;
+      const lane = L.world.waters.find((w) => w.id === "supervivencia-piscina")!;
+      for (const p of [s.lap!.from, s.lap!.to]) expect(p.x > lane.x0 && p.x < lane.x1 && p.z > lane.z0 && p.z < lane.z1).toBe(true);
       const pool = L.world.waters.find((w) => w.id === "nbl-piscina")!;
-      for (const p of [s.lap!.from, s.lap!.to]) expect(p.x > pool.x0 && p.x < pool.x1 && p.z > pool.z0 && p.z < pool.z1).toBe(true);
       expect(Math.abs(s.lap!.to.x - s.lap!.from.x)).toBeCloseTo(25 * k, 6);
       const bottom = stageFor(L, 7)!.her.fondo!;
       expect(bottom.y).toBeCloseTo(pool.yBottom + 0.05, 6);

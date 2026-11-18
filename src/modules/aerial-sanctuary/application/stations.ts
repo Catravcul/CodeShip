@@ -106,7 +106,7 @@ function swim(): Station {
   const total = (SWIM.lengths + SWIM.suitLengths) * SWIM.lengthM;
   return {
     post: 3,
-    machine: "nbl-supervivencia",
+    machine: "supervivencia-piscina",
     sources: [S.training, S.pensacola],
     chore: {
       id: "s3:puesto-3",

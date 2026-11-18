@@ -6,13 +6,14 @@ import type { SceneParts } from "./aerial-models";
 import { BEAT_S } from "./s3-stage";
 import { ArmShow } from "./arm-show";
 import { ISS_OUTSIDE } from "@modules/station/data/iss";
+import { ZERO_G } from "@modules/aerial-sanctuary/data/facts";
 
 /**
  * The machines of sanctuary 3's phase-5 posts that move while a challenge is acted (docs/design/santuario3-puestos.md):
  * the centrifuge's arm with its gondola (18 m, like the TsF-18; the g it pulls sets its turn rate and how far the
- * gondola swings out), the A310 Zero-G off the glacier's runway (takeoff, the 50° pull-up, the arc, the pull-out and
- * the landing), the Dragon simulator's screen and the robotics trainer's screens (the Canadarm2 capture of a Cygnus,
- * the same arm show as on the ISS, rendered to the big screen and the desk's monitor). Her spots on a moving machine
+ * gondola swings out), the Il-76MDK off the glacier's runway (takeoff, the pull-up, the arc, the pull-out and
+ * the landing), the Dragon simulator's screen and the robotics workstation's three screens (the Canadarm2 capture of a
+ * Cygnus, the same arm show as on the ISS). Her spots on a moving machine
  * are `mounts`: S3Stage carries her (and the trainer, `entrenador:<spot>`) there each frame.
  */
 
@@ -22,7 +23,8 @@ const ARM_M = 18;
 /** How fast the shown g follows the profile, g/s: the real 0,1 g/s ramp would outlast a beat (the time is compressed). */
 const SHOWN_RAMP_GS = 1.5;
 /** Where the parabolas are shown, m over the ice (the real ones start at about 6 km: the view needs only the sky). */
-const CRUISE_M = 600;
+/** Where the parabolas start: 6000 m (ZERO_G.floorM; the climb there is cut, like a film's). */
+const CRUISE_M = ZERO_G.floorM.value;
 type PlanePhase = Extract<RigCue, { kind: "avion" }>["phase"];
 
 const mat = (c: number, o: Partial<THREE.MeshStandardMaterialParameters> = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.75, ...o });
@@ -52,8 +54,8 @@ export class S3Rigs {
   private gTarget = 1;
   private angle = 0;
   private seated = false;
-  // The A310.
-  private readonly plane: SceneParts["a310"];
+  // The Il-76MDK.
+  private readonly plane: SceneParts["il76"];
   private readonly rest = { pos: new THREE.Vector3(), yaw: 0 };
   private phase: PlanePhase | undefined;
   private phaseT = 0;
@@ -105,7 +107,7 @@ export class S3Rigs {
       this.swing.add(this.armEye);
     }
     // The plane and its cabin's places (the seats aft, the padded floor, the middle where they float).
-    this.plane = parts.a310;
+    this.plane = parts.il76;
     if (this.plane) {
       this.rest.pos.copy(this.plane.group.position);
       this.rest.yaw = this.plane.group.rotation.y;
@@ -150,23 +152,19 @@ export class S3Rigs {
     earth.position.set(0, -175, 0);
     this.armScene.add(earth);
     const st9 = stages.get(9);
-    const big = st9?.anchors.pantalla;
-    const desk = st9?.anchors.mandos;
+    // The ISS's robotics workstation (CSA): three screens side by side over the desk, each with the arm's cameras
+    // (here the three show the same camera: three views would cost a phone three renders a frame).
+    const mid = st9?.anchors.pantalla;
     const screenMat = new THREE.MeshBasicMaterial({ map: this.target.texture });
-    if (big) {
-      this.armShot = new THREE.Vector3(big.x, big.y, big.z);
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(14.4 * k, 4.4), screenMat);
-      m.position.set(big.x, big.y, big.z - 0.05);
-      m.rotation.y = Math.PI;
-      m.name = "pantalla-robotica";
-      this.armScreens.push(m);
-    }
-    if (desk) {
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.45), screenMat);
-      m.position.set(desk.x, desk.y + 0.42, desk.z + 0.25);
-      m.rotation.y = Math.PI;
-      m.rotation.x = 0.15;
-      this.armScreens.push(m);
+    if (mid) {
+      this.armShot = new THREE.Vector3(mid.x, mid.y, mid.z);
+      for (const dx of [-0.62, 0, 0.62]) {
+        const m = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 0.36), screenMat);
+        m.position.set(mid.x + dx, mid.y, mid.z);
+        m.rotation.y = Math.PI - dx * 0.5;
+        m.name = "pantalla-robotica";
+        this.armScreens.push(m);
+      }
     }
     for (const m of this.armScreens) {
       m.visible = false;
@@ -223,7 +221,7 @@ export class S3Rigs {
         this.phaseT = 0;
         if (c.phase === "aterrizaje") this.approach();
         // The parabolas are flown at altitude: from the climb-out the scene cuts to it (as the films of the flights do).
-        if (c.phase === "tiron" && this.plane && this.plane.group.position.y < this.rest.pos.y + CRUISE_M) this.plane.group.position.y = this.rest.pos.y + CRUISE_M;
+        if ((c.phase === "subida" || c.phase === "tiron") && this.plane && this.plane.group.position.y < this.rest.pos.y + CRUISE_M) this.plane.group.position.y = this.rest.pos.y + CRUISE_M;
       } else this.phaseT = 0;
       this.planeG = c.g;
     } else {
@@ -311,12 +309,16 @@ export class S3Rigs {
         this.speed = Math.min(80, this.speed + 32 * dt);
         if (this.speed > 55) this.pitch = toward(this.pitch, 0.22, 0.4);
         break;
+      case "subida":
+        this.speed = toward(this.speed, 140, 30);
+        this.pitch = toward(this.pitch, 0.08, 0.3);
+        break;
       case "tiron":
         this.speed = toward(this.speed, 140, 30);
         this.pitch = toward(this.pitch, 0.87, 0.7);
         break;
       case "ingravidez":
-        // Over the top of the parabola, from 50° up to as much down; a repeated beat goes round again.
+        // Over the top of the parabola, from the nose up to as much down; a repeated beat goes round again.
         this.speed = toward(this.speed, 140, 30);
         this.pitch = 0.87 * Math.cos((Math.PI * t) / BEAT_S);
         break;
@@ -334,7 +336,7 @@ export class S3Rigs {
       }
     }
     p.position.addScaledVector(fwd, this.speed * Math.cos(this.pitch) * dt);
-    p.position.y = Math.max(this.rest.pos.y + (this.phase === "despegue" ? 0 : CRUISE_M / 2), p.position.y + this.speed * Math.sin(this.pitch) * dt);
+    p.position.y = Math.max(this.rest.pos.y + (this.phase === "despegue" ? 0 : CRUISE_M - 200), p.position.y + this.speed * Math.sin(this.pitch) * dt);
     p.rotation.set(0, this.rest.yaw, this.pitch);
     // Weightless, she and the coach drift in the middle of the padded zone.
     const bob = this.phase === "ingravidez" ? Math.sin(t * 1.7) * 0.25 : 0;
@@ -343,7 +345,7 @@ export class S3Rigs {
   }
 
   /**
-   * The camera on a moving machine: on the centrifuge's arm looking at her in the gondola; in the A310's cabin while
+   * The camera on a moving machine: on the centrifuge's arm looking at her in the gondola; in the Il-76MDK's cabin while
    * she floats or lies on its floor, or chasing the plane while it takes off, pulls up and lands. `turn` (rad) is the
    * camera stick's turn round what it looks at. False: the scene's own camera.
    */
@@ -357,11 +359,10 @@ export class S3Rigs {
       at.addScaledVector(up ?? new THREE.Vector3(0, 1, 0), 0.7);
       return true;
     } else if ((this.post === 8 || this.post === 9) && her) {
-      // Over her shoulder to the screen she works at: the simulator's, close; the robotics trainer's big one, from
-      // higher and farther back, over the desks.
+      // Over her shoulder to the screens she works at: the simulator's, or the robotics workstation's three.
       const P = this.post === 8 ? this.simShot : this.armShot;
       if (!P) return false;
-      const [backM, upM, sideM, toward] = this.post === 8 ? [0.9, 1.6, 0.45, 0.75] : [2.6, 2.4, 1.0, 0.35];
+      const [backM, upM, sideM, toward] = this.post === 8 ? [0.9, 1.6, 0.45, 0.75] : [0.9, 1.5, 0.35, 0.7];
       const back = new THREE.Vector3(her.x - P.x, 0, her.z - P.z).normalize();
       pos.set(her.x, her.y + upM, her.z).addScaledVector(back, backM).add(new THREE.Vector3(-back.z, 0, back.x).multiplyScalar(sideM));
       at.set(her.x, her.y + 1.1, her.z).lerp(P, toward);
@@ -374,9 +375,9 @@ export class S3Rigs {
         if (up) up.set(0, 1, 0).applyQuaternion(c.getWorldQuaternion(new THREE.Quaternion()));
         const local = c.worldToLocal(her.clone());
         // From the padded zone towards the seats, from above to her on the floor, or across to them floating.
-        if (local.x < -7) pos.set(-5, 1.3, 1.9);
-        else if (local.y < 0.2) pos.set(2.5, 2, 1.8);
-        else pos.set(7.5, 1.3, 1.9);
+        if (local.x < -7) pos.set(-5, 1.6, 1.4);
+        else if (local.y < 0.2) pos.set(2.5, 2.6, 1.3);
+        else pos.set(7.5, 1.6, 1.4);
         c.localToWorld(pos);
         at.copy(her).addScaledVector(up ?? new THREE.Vector3(0, 1, 0), local.y < 0.2 && local.x > -7 ? 0.1 : 0.5);
         return true;

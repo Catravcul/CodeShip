@@ -3,8 +3,9 @@
 // settings (PX-45 walks the island), Áreas takes her to each real facility and its rooms: the NBL (the pool with the
 // ISS, Dragon and Cygnus on the bottom, the two bridge cranes and four jib cranes, the suit-up area with the EMU on its
 // donning stands, the divers' stations, the lockers), its control room upstairs behind its windows and the hyperbaric
-// chamber; the mock-up hall (Destiny, Dragon and Orion with their steps, the work platform, the air-bearing floor,
-// the racks); Mission Control (four rows, the sunken trench, FLIGHT and CAPCOM, the five big screens and nine small);
+// chamber; the mock-up hall (Destiny and Orion with their steps, the work platform, the air-bearing floor, the
+// racks); the Crew Dragon sims hall (Hawthorne), the Apollo LM simulator hall (Building 5) and the CSA-style robotics
+// centre (classroom, whiteboards, the 3/4 Destiny); Mission Control (four rows, the sunken trench, FLIGHT and CAPCOM, the five big screens and nine small);
 // the gym; the medical centre (exam room with the ECG, the audiometry booth, the ultrasound, the waiting room and the
 // records) and the hypobaric chamber with its airlock, seats and O₂ panels; the water survival pool (METS, raft,
 // hoist); the helipad (green lights, wind cone, fuel point) and the island (paths, lamps, signpost, tussock, the
@@ -38,7 +39,7 @@ async function until(j, ok, ms) {
 }
 
 /** Turn the camera with its stick (visible drags) until it looks at the point (x, z). */
-async function lookAt(j, x, z) {
+export async function lookAt(j, x, z) {
   const p = j.page;
   for (let i = 0; i < 16; i++) {
     const diff = await p.evaluate(([tx, tz]) => {
@@ -62,7 +63,7 @@ async function tilt(j, want) {
 }
 
 /** Walk at the point with «Moverse» until she is `stop` metres from it (or stops getting closer). */
-async function walkTo(j, x, z, stop) {
+export async function walkTo(j, x, z, stop) {
   const dist = () => j.page.evaluate(([tx, tz]) => Math.hypot(tx - window.codeshipS3.body.x, tz - window.codeshipS3.body.z), [x, z]);
   let d = await dist();
   for (let i = 0; i < 12 && d > stop; i++) {
@@ -81,7 +82,7 @@ async function walkTo(j, x, z, stop) {
 }
 
 /** Áreas → the area on the map → «Ir» (teleport, as set in the settings), then a few steps in with «Moverse». */
-async function goArea(j, id, title) {
+export async function goArea(j, id, title) {
   await j.tap(".areas-btn", "Áreas");
   await j.tap(`.areas-window [data-pick="${id}"]`, `${title} en el mapa`);
   const ok = await j.tap(`.areas-window [data-area="${id}"]`, `Ir: ${title}`);
@@ -108,6 +109,9 @@ const SHOTS = [
   { id: "entrenamiento:nbl-hiperbarica", title: "Cámara hiperbárica (NBL)", label: "nbl-hiperbarica", look: { kind: "hiperbarica" }, stand: 0, back: 2.5, pitch: -0.1, kinds: [] },
   { id: "entrenamiento:svmf", title: "Nave de maquetas (SVMF)", label: "svmf", look: { kind: "maqueta-modulo" }, stand: 11, pitch: -0.12, kinds: ["capsula-orion", "rack-ispr", "trineo", "puerta-industrial"] },
   { id: "entrenamiento:svmf", title: "Nave de maquetas (SVMF)", label: "svmf-orion", go: [{ kind: "capsula-orion", dx: -4.5, keepZ: true }, { kind: "capsula-orion", dx: -4.5, dz: 0 }], look: { kind: "capsula-orion" }, stand: 0, back: 1.5, pitch: -0.12, kinds: [] },
+  { id: "entrenamiento:simulador-dragon", title: "Simuladores de Crew Dragon", label: "simulador-dragon", look: { kind: "consola-fcr" }, stand: 5, pitch: -0.12, kinds: ["consola-fcr", "silla-fcr", "escalon"] },
+  { id: "entrenamiento:simulador-lm", title: "Simulador del módulo lunar (LMS)", label: "simulador-lm", look: { centre: "entrenamiento:simulador-lm" }, stand: 0, back: 0.6, pitch: -0.1, kinds: ["consola-fcr", "silla-fcr"] },
+  { id: "entrenamiento:robotica", title: "Centro de entrenamiento en robótica", label: "robotica", look: { kind: "pizarra" }, stand: 5, pitch: -0.12, kinds: ["pizarra", "mesa", "silla", "escalon"] },
   { id: "entrenamiento:control", title: "Control de misión", label: "control", look: { kind: "pantallas-frente" }, stand: 9, pitch: -0.1, kinds: ["consola-fcr", "silla-fcr", "pantallas-frente", "barandilla"] },
   { id: "entrenamiento:gimnasio", title: "Gimnasio y vestuarios", label: "gimnasio", look: { kind: "ared" }, stand: 5, pitch: -0.15, kinds: ["cinta", "bici", "jaula", "mancuernas", "remo", "polea", "ared", "taquillas"] },
   { id: "entrenamiento:medico", title: "Centro médico y de selección", label: "medico", look: { kind: "ecg" }, stand: 3.5, pitch: -0.15, kinds: ["ecg", "ecografo", "audiometro", "camilla-exam", "asiento-camara", "consola-camara", "archivador", "mostrador"] },
@@ -137,7 +141,7 @@ export async function s3Detalle(j) {
     const c = window.codeshipS3;
     return { areas: c.layout.areas.filter((a) => a.island === "entrenamiento").map((a) => a.id), k: c.layout.k };
   });
-  j.check("Áreas tiene las salas nuevas: la sala de control de la NBL, la cámara hiperbárica, Orion y la piscina de supervivencia", ["entrenamiento:nbl-control", "entrenamiento:nbl-hiperbarica", "entrenamiento:svmf-orion", "entrenamiento:supervivencia"].every((a) => data.areas.includes(a)), data.areas.join(", "));
+  j.check("Áreas tiene las salas nuevas: la sala de control de la NBL, la cámara hiperbárica, Orion, la piscina de supervivencia, los simuladores de Dragon y del LM y el centro de robótica", ["entrenamiento:nbl-control", "entrenamiento:nbl-hiperbarica", "entrenamiento:svmf-orion", "entrenamiento:supervivencia", "entrenamiento:simulador-dragon", "entrenamiento:simulador-lm", "entrenamiento:robotica"].every((a) => data.areas.includes(a)), data.areas.join(", "));
 
   let maxCalls = 0;
   for (const sh of SHOTS) {

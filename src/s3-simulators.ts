@@ -52,10 +52,11 @@ export class S3Simulators {
     root: HTMLElement,
     scene: THREE.Scene,
     private readonly stage: Stage,
+    lmAt: { x: number; y: number; z: number },
   ) {
-    // The LM's cabin at true size on its anchor in the SVMF, its windows to the north.
+    // The LM's cabin at true size in the LM simulator's hall (like the Apollo LMS of Houston's building 5).
     this.lm = buildLmCabin(LANDER_CABIN_REAL, 1);
-    const at = stage.anchors.lm!;
+    const at = lmAt;
     this.lm.group.position.set(at.x, at.y, at.z);
     this.lm.group.name = "maqueta-lm";
     scene.add(this.lm.group);
@@ -108,6 +109,14 @@ export class S3Simulators {
       her.fig.pose("stand-hands");
       this.lmPad.show(true);
     }
+  }
+
+  /**
+   * The LM's cabin is drawn only while she is in its hall (or flying it): from outside the hall's walls hide it, and its
+   * many meshes would only add draw calls.
+   */
+  showLm(on: boolean): void {
+    this.lm.group.visible = on;
   }
 
   end(): void {

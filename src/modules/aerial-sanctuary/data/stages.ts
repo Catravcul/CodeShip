@@ -25,7 +25,7 @@ export interface Stage {
   /** The way point the trainer comes in by (a room's «dentro», a glacier site's edge). */
   readonly door: string;
   /**
-   * Her spots on a moving rig (the centrifuge's gondola, the A310's cabin): the scene carries her there each frame
+   * Her spots on a moving rig (the centrifuge's gondola, the Il-76MDK's hold): the scene carries her there each frame
    * (s3-rigs.ts); the spot here is where the rig stands at rest.
    */
   readonly mounted: readonly HerSpot[];
@@ -77,20 +77,24 @@ const PLANS: Readonly<Record<number, Plan>> = {
   // The trainer is the chamber's inside observer, as in a real altitude chamber run, in by the corridor, the airlock and the hatch (data/fixtures.ts), beside her; the
   // eye in the hatch's corner keeps both in a phone's narrow view.
   4: { room: "entrenamiento:medico", her: { camara: [9.9, 0.2, -1, W] }, trainer: [8.6, 0.2, -2.4, 0.75], trainerVia: [[2.5, 0, 4.6, S], [2.5, 0, -1, E], [3.6, 0, -1, E], [6, 0.2, -1, E]], anchors: { banco: [10.35, 0.65, -1] }, eye: [6, 1.8, 1.2] },
-  // The NBL (95, 45): the pool of 62 × 31 m at the middle (its edge at z = −15,5), surface at −0,3 m.
-  3: { room: "entrenamiento:nbl", her: { borde: [10, 0, -17.5, N], flotando: [6, SURFACE - 1.35, -12, N], balsa: [9, SURFACE - 0.15, -11, N], izada: [9, 2.4, -11, N] }, lap: [[-15, SWIM_Y + 1.2, -12, E], [10, SWIM_Y + 1.2, -12, E]], trainer: [13, 0, -18, N], anchors: { agua: [9, SURFACE, -11], techo: [9, 18, -11] } },
+  // The water-survival pool (260, −85), like Pensacola's: 25 × 12 m and 5 m deep at the middle (its south edge at
+  // z = −6), surface at −0,3 m; a length is its 25 m; the raft afloat at (−7, 2,5); the hoist's collar at (−4, 0), 8 m
+  // up; the METS to the east. The instructor on the south deck by the lifeguard's chair.
+  3: { room: "entrenamiento:supervivencia", her: { borde: [-10, 0, -7.6, N], flotando: [-2, SURFACE - 1.35, -2, N], balsa: [-7, SURFACE - 0.15, 2.5, N], izada: [-4, 2.4, 0, N] }, lap: [[-12.5, SWIM_Y + 1.2, -3, E], [12.5, SWIM_Y + 1.2, -3, E]], trainer: [-12.4, 0, -9, N], trainerVia: [[-17, 0, 6, S], [-17, 0, -9, E]], anchors: { agua: [-4, SURFACE, 0], techo: [-4, 8, 0] } },
   // Post 7 by the west end of the same edge; the ISS mock-up on the bottom at the middle (8,5 × 4,3 m).
   7: { room: "entrenamiento:nbl", her: { "banco-traje": [-10, 0, -17.5, N], fondo: [0, -12 + 0.05, -5, N] }, trainer: [-12.5, 0, -18, E], anchors: { maqueta: [0, -12, 0] } },
   // ── Phase 5 ──
   // The centrifuge (225, 55): the arm's 18 m to the gondola (at rest to the east, k times wider on the plan); the
   // medical monitor at the console, out of the arm's sweep, comes to her for the electrodes.
   5: { room: "entrenamiento:centrifuga", her: { "junto-gondola": [17, 0, -3.4, N], gondola: [18, 0.5, 0, W] }, mounted: ["gondola"], trainer: [-16, 0, 10.6, N], trainerVia: [[-19, 0, -10, E], [-19, 0, 10.6, E]], beside: { "junto-gondola": [18.8, 0, -3.6, N] }, anchors: {} },
-  // The SVMF (95, −45): the Dragon mock-up at (12, 0), its floor 0,6 m up and its hatch to the west; the instructor's
-  // desk outside the hatch. The LM mock-up south of the middle (its cockpit, for the landing practice).
-  8: { room: "entrenamiento:svmf", her: { "dragon-asiento": [11.6, 0.6, 0, E] }, trainer: [8.6, 0, 1.4, E], trainerVia: [[0, 0, 8, S], [8.6, 0, 8, S]], anchors: { pantalla: [13.55, 1.6, 0], lm: [0, 0, -9] }, eye: [10.75, 1.85, -1.1] },
-  // Mission control (215, −25): the robotics desk in the middle row; the instructor beside her; the big screen.
-  9: { room: "entrenamiento:control", her: { "robotica-puesto": [7.5, 0, -2.1, N] }, trainer: [9.3, 0, -2.6, -0.6], trainerVia: [[10.6, 0, -8.4, N], [10.6, 0, -2.6, W]], anchors: { pantalla: [0, 3.5, 9.3], mandos: [7.5, 0.78, -1.3] } },
-  // The runway's apron on the glacier: the A310 Zero-G (nose east) at (−1380, −82) of the glacier, its stairs to the
+  // The Crew Dragon simulators (75, 102), like SpaceX's at Hawthorne: the full-scale cabin at (6, 0), its floor 0,6 m
+  // up and its hatch to the west; the instructor outside the hatch.
+  8: { room: "entrenamiento:simulador-dragon", her: { "dragon-asiento": [5.6, 0.6, 0, E] }, trainer: [2.6, 0, 1.4, E], trainerVia: [[0, 0, -3.5, N], [2.6, 0, -3.5, N]], anchors: { pantalla: [7.55, 1.6, 0] }, eye: [4.75, 1.85, -1.1] },
+  // The robotics training centre (225, 102), like the CSA's: the ISS's robotics workstation on the north wall of the
+  // 3/4 Destiny mock-up at (4, 0) (floor 0,3 m up, hatch to the west); its three screens before her; the instructor
+  // behind her shoulder.
+  9: { room: "entrenamiento:robotica", her: { "robotica-puesto": [4.4, 0.3, 0.15, N] }, trainer: [5.7, 0.3, -0.45, -0.6], trainerVia: [[0, 0, 0, E], [5.7, 0.3, 0, E]], anchors: { pantalla: [4.4, 1.8, 1.0], mandos: [4.4, 1.05, 0.7] } },
+  // The runway's apron on the glacier: the Il-76MDK (nose east) at (−1380, −82) of the glacier, its stairs to the
   // south, aft; the plan is the runway area's (its centre at (0, −107,5)). In flight she and the coach ride the cabin.
   6: { room: "glaciar:pista", door: "glaciar:pista:escalerilla", her: { "avion-escalerilla": [-1395, 0, 14, N], "avion-asiento": [-1380, 2.2, 25.5, E], "avion-suelo": [-1380, 2.2, 25.5, E], "avion-flotando": [-1380, 2.2, 25.5, E] }, mounted: ["avion-asiento", "avion-suelo", "avion-flotando"], trainer: [-1392, 0, 12.5, N], anchors: {} },
   // The blue-ice field (its centre at (−1260, −10) of the glacier): the line of snowmobiles to the west.

@@ -74,18 +74,19 @@ function centrifuge(): Station {
   };
 }
 
-// ── 6. The parabolic flight (the A310 Zero-G, from the glacier's blue-ice runway) ──
+// ── 6. The parabolic flight (the Il-76MDK of the Gagarin centre, from the glacier's blue-ice runway) ──
 const PARABOLIC_STEPS = [
-  "subir por la escalerilla y atarse en los asientos de atrás",
+  "subir por la escalerilla de la puerta lateral y atarse en los asientos de atrás",
   "despegar de la pista de hielo azul",
-  "tirón a 1,8 g con el morro a unos 50°",
-  "unos 20 s de ingravidez: soltarse y flotar",
-  "salida a 1,8 g, tumbada en el suelo acolchado",
-  "repetir hasta 31 parábolas, con descanso cada cinco",
+  "subir a 6000 m",
+  "entrada a 2 g, tumbada en el suelo acolchado",
+  "unos 25 s de ingravidez: soltarse y flotar",
+  "salida a 2 g, tumbada otra vez",
+  "repetir hasta 10 parábolas",
   "volver a los asientos y aterrizar",
 ];
 
-/** «10 min 20 s». */
+/** «4 min 10 s». */
 export const minSec = (s: number): string => `${Math.floor(s / 60)} min ${s % 60} s`;
 
 function parabolic(): Station {
@@ -94,14 +95,14 @@ function parabolic(): Station {
   return {
     post: 6,
     machine: "glaciar-avion",
-    sources: [S.zeroG, S.training, S.blueIce],
+    sources: [S.il76Gctc, S.il76Altitude, S.il76, S.training, S.blueIce],
     chore: {
       id: "s3:puesto-6",
       kind: "iniciacion",
       title: "Vuelo parabólico",
-      scenario: `El A310 Zero-G desde una pista de hielo azul de ${GLACIER.runway.value.length} m: ${z.parabolas.value} parábolas de ${num(z.pullG.value)} g, unos ${z.weightlessS.value} s sin peso y ${num(z.pullG.value)} g`,
+      scenario: `El Il-76MDK del Centro Gagarin desde una pista de hielo azul de ${GLACIER.runway.value.length} m: hasta ${z.parabolas.value} parábolas entre ${z.floorM.value} y ${z.topM.value} m, ${num(z.pullG.value)} g, unos ${z.weightlessS.value} s sin peso y ${num(z.pullG.value)} g`,
       exercises: [
-        order("s3-parabolico-pasos", "Atada en el despegue y el aterrizaje; tumbada a 1,8 g; suelta solo en la ingravidez", PARABOLIC_STEPS, "soltarse del suelo durante el tirón de 1,8 g"),
+        order("s3-parabolico-pasos", `Atada en el despegue y el aterrizaje; tumbada a ${num(z.pullG.value)} g; suelta solo en la ingravidez`, PARABOLIC_STEPS, `soltarse del suelo durante la entrada a ${num(z.pullG.value)} g`),
         choice(
           "s3-parabolico-total",
           { concept: 2, skill: "predecir", idea: "Un bucle por parábola: cada una suma su ingravidez", question: "¿Cuánta ingravidez suma el vuelo?", code: [block("a", "ingravidez = 0", "let ingravidez = 0;"), block("b", `para cada parábola de ${z.parabolas.value}: ingravidez = ingravidez + ${z.weightlessS.value} s`, `for (let p = 0; p < ${z.parabolas.value}; p++) ingravidez += ${z.weightlessS.value};`)] },
@@ -112,12 +113,13 @@ function parabolic(): Station {
     },
     beats: [
       [
-        B("avion-asiento", "sentada", "ayuda", "Sube por la escalerilla y se ata en un asiento de atrás", [], { kind: "avion", phase: "parado", g: 1 }),
+        B("avion-asiento", "sentada", "ayuda", "Sube por la escalerilla de la puerta lateral y se ata atrás", [], { kind: "avion", phase: "parado", g: 1 }),
         B("avion-asiento", "sentada", "mira", `Despega de la pista de hielo azul (${GLACIER.runway.value.length} m)`, [], { kind: "avion", phase: "despegue", g: 1 }),
-        B("avion-suelo", "tumbada", "mira", "Tirón: 1,8 g, el morro a unos 50°", [], { kind: "avion", phase: "tiron", g: z.pullG.value }),
-        B("avion-flotando", "neutra", "mira", "Unos 20 s de ingravidez: flota", [], { kind: "avion", phase: "ingravidez", g: 0 }),
-        B("avion-suelo", "tumbada", "mira", "Salida: otra vez 1,8 g, tumbada", [], { kind: "avion", phase: "salida", g: z.pullG.value }),
-        B("avion-flotando", "neutra", "mira", "Así 31 parábolas, con 8 min de descanso cada cinco", [], { kind: "avion", phase: "ingravidez", g: 0 }, 2),
+        B("avion-asiento", "sentada", "mira", `Sube a ${z.floorM.value} m`, [], { kind: "avion", phase: "subida", g: 1 }),
+        B("avion-suelo", "tumbada", "mira", `Entrada: ${num(z.pullG.value)} g, el morro arriba`, [], { kind: "avion", phase: "tiron", g: z.pullG.value }),
+        B("avion-flotando", "neutra", "mira", `Unos ${z.weightlessS.value} s de ingravidez: flota`, [], { kind: "avion", phase: "ingravidez", g: 0 }),
+        B("avion-suelo", "tumbada", "mira", `Salida: otra vez ${num(z.pullG.value)} g, tumbada`, [], { kind: "avion", phase: "salida", g: z.pullG.value }),
+        B("avion-flotando", "neutra", "mira", `Así hasta ${z.parabolas.value} parábolas`, [], { kind: "avion", phase: "ingravidez", g: 0 }, 2),
         B("avion-asiento", "sentada", "mira", "Atada otra vez: aterriza en el hielo", [], { kind: "avion", phase: "aterrizaje", g: 1 }),
       ],
       [B("avion-flotando", "neutra", "escribe", `${z.parabolas.value} × ${z.weightlessS.value} s: ${minSec(total)} sin peso`, [], { kind: "avion", phase: "ingravidez", g: 0 })],
@@ -142,8 +144,8 @@ function simulators(): Station {
   const set = { thing: "casco-vuelo", at: "cara" } as const;
   return {
     post: 8,
-    machine: "svmf-dragon-sim",
-    sources: [S.dragonTraining, lim.sources[0]!],
+    machine: "dragon-simulador",
+    sources: [S.dragonTraining, S.spacexSims, S.mstf, lim.sources[0]!],
     chore: {
       id: "s3:puesto-8",
       kind: "iniciacion",
@@ -183,7 +185,7 @@ function robotics(): Station {
       ? ex.solution.map((id, i) => B("robotica-puesto", "manos-mandos", i % 3 === 2 ? "escribe" : "mira", capital(ex.blocks.find((b) => b.id === id)!.pseudo), [hands]))
       : [B("robotica-puesto", "manos-mandos", "escribe", "Comprueba la hora en la pantalla", [hands])],
   );
-  return { post: 9, machine: "control-robotica", sources: [S.robotics], chore, beats };
+  return { post: 9, machine: "robotica-puesto", sources: [S.robotics, S.csaRobotics], chore, beats };
 }
 const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 

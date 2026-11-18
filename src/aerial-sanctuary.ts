@@ -229,17 +229,20 @@ const SHEET: SessionText = { title: "", progress: "Pasos", lives: "Intentos", or
 const stages = new Map<number, Stage>(STAGED_POSTS.map((p) => [p, stageFor(L, p)!]));
 const stage = new S3Stage([...stages.values()]);
 scene.add(stage.root);
-// The machines that move while a phase-5 post is acted (the centrifuge, the A310, the simulators' screens).
+// The machines that move while a phase-5 post is acted (the centrifuge, the Il-76MDK, the simulators' screens).
 const rigs = new S3Rigs(parts, stages, L.k);
 scene.add(rigs.root);
 stage.mounts = rigs.mounts;
 stage.onCue = (c) => rigs.cue(c);
 rigs.painter = paintSimScreen;
 // Post 8's simulators flown by hand (Dragon's docking, the LM's landing).
-const sims = new S3Simulators(root, scene, stages.get(8)!);
+const lmBlock = L.blocks.find((q) => q.look === "lm-maqueta")!;
+const sims = new S3Simulators(root, scene, stages.get(8)!, { x: (lmBlock.x0 + lmBlock.x1) / 2, y: 0, z: (lmBlock.z0 + lmBlock.z1) / 2 });
+/** The machine whose simulator she is flying (its sign comes back when she is done). */
+let simAt = "";
 sims.onSay = (t) => say(t, 6);
 sims.onEnd = () => {
-  signsOff("svmf-dragon-sim", false);
+  signsOff(simAt, false);
   mode = { kind: "libre" };
   cardKey = "";
 };
@@ -638,6 +641,7 @@ function renderCard(): void {
     const lift = L.lifts.find((l) => l.id === m.lift!.id)!;
     acts = lift.stops.map((s, i) => (i === m.lift!.stop ? "" : `<button data-act="stop:${i}" aria-label="Ascensor a ${esc(s.label)}">${esc(s.label)}</button>`)).join("");
   } else if (m.kind === "esterilla") acts = `<button class="primary" data-act="ajustes">Sentarse: ajustes</button>`;
+  else if (m.kind === "simulador") acts = "";
   else if (ready && !who) {
     acts = `<button data-act="reto" disabled>Empezar el reto</button>`;
     why = `<p class="cm-why"><b aria-hidden="true">⏸</b> ${esc(pauseText(m.post!))}${passed.has(m.post!) ? ` · <b class="cm-ok">✓ Superado</b>` : ""}</p>`;
@@ -650,7 +654,8 @@ function renderCard(): void {
     why = `<p class="cm-why"><b aria-hidden="true">⊘</b> ${esc(IN_CONSTRUCTION)}</p>`;
   }
   // Post 8's simulators: practice by hand any time (it is the simulator: no trainer needed).
-  if (m.id === "svmf-dragon-sim") acts += `<button data-act="sim:acople">Practicar el acople</button><button data-act="sim:alunizaje">Practicar el alunizaje (LM)</button>`;
+  if (m.id === "dragon-simulador") acts += `<button data-act="sim:acople">Practicar el acople</button>`;
+  if (m.id === "lm-simulador") acts += `<button class="primary" data-act="sim:alunizaje">Practicar el alunizaje (LM)</button>`;
   card.innerHTML = `<div class="cm-head"><b>${esc(m.label)}</b><small>${esc(m.what)}</small></div>${why}<div class="cm-acts">${acts}</div>`;
 }
 card.addEventListener("click", (e) => {
@@ -662,6 +667,7 @@ card.addEventListener("click", (e) => {
   if (act === "reto" && m.post !== undefined) return startPost(m);
   if (act.startsWith("sim:") && mode.kind === "libre") {
     mode = { kind: "reto", what: "simulador" };
+    simAt = m.id;
     signsOff(m.id, true);
     rig.visible = true;
     return sims.start(act.slice(4) as SimKind, { rig, fig: avatar });
@@ -1065,6 +1071,7 @@ function frame(now: number): void {
   renderCard();
   machinePanel.tick();
   const isl = island();
+  sims.showLm(body.area === "entrenamiento:simulador-lm" || sims.kind === "alunizaje");
   const area = L.areas.find((a) => a.id === body.area)?.label;
   const flying = mode.kind === "vuelo" || (mode.kind === "mano" && !mode.s.onGround);
   const where = `${clockText(hour())} · ` + (flying ? "En vuelo" : mode.kind === "ascensor" && !mode.calling ? `${islandById.get(isl)!.name} · Ascensor del tronco` : `${islandById.get(isl)!.name}${area && area !== islandById.get(isl)!.name ? ` · ${area}` : ""}`);

@@ -49,7 +49,7 @@ export interface AreaDef {
   readonly point: string;
 }
 
-export type MachineKind = "navegacion" | "ascensor" | "esterilla" | "puesto";
+export type MachineKind = "navegacion" | "ascensor" | "esterilla" | "puesto" | "simulador";
 
 export interface MachineDef {
   readonly id: string;
@@ -103,7 +103,7 @@ export interface Prop {
     | "lift-shaft"
     | "battery"
     | "sign"
-    | "a310"
+    | "il76"
     | "scott-tent"
     | "snowmobile"
     | "snow-wall";
@@ -582,7 +582,7 @@ const ROOMS: readonly RoomDef[] = [
   {
     id: "nbl",
     label: "Laboratorio de flotabilidad neutra (NBL)",
-    desc: "La piscina de la NBL de Houston, 62 × 31 m y 12 m de fondo, con maquetas de la ISS, Dragon y Cygnus en el fondo, sus grúas, la zona de vestirse con los soportes del EMU, los puestos de los buzos, la sala de control con ventanas sobre la piscina y la cámara hiperbárica: paseos espaciales bajo el agua (puestos 3 y 7)",
+    desc: "La piscina de la NBL de Houston, 62 × 31 m y 12 m de fondo, con maquetas de la ISS, Dragon y Cygnus en el fondo, sus grúas, la zona de vestirse con los soportes del EMU, los puestos de los buzos, la sala de control con ventanas sobre la piscina y la cámara hiperbárica: paseos espaciales bajo el agua (puesto 7)",
     reality: "real",
     centre: { x: 95, z: 45 },
     half: { x: 44, z: 28 },
@@ -593,7 +593,6 @@ const ROOMS: readonly RoomDef[] = [
     items: [{ look: "maqueta", x: 0, z: 0, w: 8.5, d: 4.3, h: 4.3, y0: -12, prop: "iss-mockup" }],
     machines: [
       { id: "nbl-piscina", kind: "puesto", label: "Piscina NBL", what: "El EMU, el lastre de los buzos hasta la flotabilidad neutra y la maqueta en el fondo", x: -10, z: -19, post: 7 },
-      { id: "nbl-supervivencia", kind: "puesto", label: "Prueba de natación", what: "3 largos de 25 m, otros 3 con el mono, 10 min flotando; la balsa y el izado", x: 10, z: -19, post: 3 },
     ],
   },
   {
@@ -619,29 +618,23 @@ const ROOMS: readonly RoomDef[] = [
   {
     id: "svmf",
     label: "Nave de maquetas (SVMF)",
-    desc: "Como el edificio 9 de Johnson: maquetas a escala real de la ISS, de Dragon y de la cabina del LM para entrenar sistemas, emergencias y la vida a bordo (puesto 8)",
+    desc: "Como el edificio 9 de Johnson: maquetas a escala real de los módulos de la ISS y de Orion para entrenar sistemas, emergencias y la vida a bordo, el suelo de cojinetes de aire y los entrenadores parciales (la lista de la NASA: ni Dragon ni el LM, que tienen sus propios simuladores)",
     reality: "real",
     centre: { x: 95, z: -45 },
     half: { x: 30, z: 18 },
     height: 16,
     door: { side: "n", at: 0, width: 4 },
     road: "z",
-    // The LM's cockpit mock-up (drawn by the scene: the lander's own cabin and instruments), for post 8's landing.
-    items: [{ look: "lm-maqueta", x: 0, z: -9, w: 2, d: 2, h: 2.4 }],
     compartments: [
       { id: "svmf-orion", label: "Maqueta de Orion", desc: "La cápsula Orion a escala real (Ø 5,02 m, 3,3 m de alto), en su soporte con la escalera de acceso", x: 20, z: -10, w: 3, d: 3, h: 3.3, floorY: 0.6, hatch: { side: "w", width: 1.1 }, reality: "real", shell: "capsula", via: [{ x: 0, z: 12 }, { x: 15, z: 12 }, { x: 15, z: -10 }] },
-      { id: "svmf-destiny", label: "Maqueta de Destiny", desc: "El laboratorio estadounidense a escala real (8,5 m × Ø 4,3 m): sus bastidores y su puesto robótico", x: -12, z: 0, w: TRAINING.destiny.value.length, d: TRAINING.destiny.value.diameter, h: 4.3, floorY: 0.4, hatch: { side: "e", width: 1.3 }, reality: "real" },
-      { id: "svmf-dragon", label: "Maqueta de Crew Dragon", desc: "La cápsula a escala real (Ø 4 m): cuatro asientos, las tres pantallas táctiles y los botones bajo la tapa", x: 12, z: 0, w: 4, d: 4, h: 3.5, floorY: 0.6, hatch: { side: "w", width: 1.2 }, reality: "real" },
+      { id: "svmf-destiny", label: "Maqueta de Destiny", desc: "El laboratorio estadounidense a escala real (8,5 m × Ø 4,3 m) con sus bastidores", x: -12, z: 0, w: TRAINING.destiny.value.length, d: TRAINING.destiny.value.diameter, h: 4.3, floorY: 0.4, hatch: { side: "e", width: 1.3 }, reality: "real", via: [{ x: 0, z: 8 }, { x: -3, z: 8 }, { x: -3, z: 0 }] },
     ],
-    machines: [
-      { id: "svmf-destiny-robotica", kind: "puesto", label: "Puesto robótico (maqueta de Destiny)", what: "Mandos del brazo en la maqueta: el reto llega con los puestos de robótica", x: -14.5, z: 0, inside: "svmf-destiny", post: 9, via: [{ x: 0, z: 8 }, { x: -3, z: 8 }, { x: -3, z: 0 }] },
-      { id: "svmf-dragon-sim", kind: "puesto", label: "Simulador de Dragon", what: "Las tres pantallas táctiles, los botones bajo la tapa y el tirador EJECT", x: 12.8, z: 0, inside: "svmf-dragon", post: 8, via: [{ x: 0, z: 8 }, { x: 8, z: 8 }, { x: 8, z: 0 }] },
-    ],
+    machines: [],
   },
   {
     id: "control",
     label: "Control de misión",
-    desc: "Una sala de control como la FCR-1 de Houston: dieciséis consolas en cuatro filas (la «trinchera» delante, más baja), las cinco pantallas grandes del frente con nueve pequeñas encima, el puesto del director de vuelo y el de CAPCOM. Robótica, telemetría y el diálogo con la tripulación (puestos 9 y 10)",
+    desc: "Una sala de control como la FCR-1 de Houston: dieciséis consolas en cuatro filas (la «trinchera» delante, más baja), las cinco pantallas grandes del frente con nueve pequeñas encima, el puesto del director de vuelo y el de CAPCOM. Telemetría y el diálogo con la tripulación (puesto 10)",
     reality: "real",
     centre: { x: 215, z: -25 },
     half: { x: 12, z: 10 },
@@ -651,7 +644,6 @@ const ROOMS: readonly RoomDef[] = [
     // The consoles, the screens and the sunken rows are the room's fixtures (data/fixtures.ts).
     machines: [
       { id: "control-director", kind: "puesto", label: "Puesto del director de vuelo", what: "Telemetría, meteorología y la cuenta atrás", x: -2.5, z: -2.4, post: 10, via: [{ x: 10.6, z: -8.4 }, { x: 10.6, z: -3.4 }, { x: -2.5, z: -3.4 }] },
-      { id: "control-robotica", kind: "puesto", label: "Puesto de robótica", what: "Los mandos del brazo robótico en simulador", x: 7.5, z: -2.4, post: 9, via: [{ x: 10.6, z: -8.4 }, { x: 10.6, z: -2.4 }] },
     ],
   },
   {
@@ -698,8 +690,49 @@ const ROOMS: readonly RoomDef[] = [
     height: 10,
     door: { side: "w", at: 6, width: 3 },
     road: "x",
-    pool: { x: 25, z: 12, depth: 5 },
-    machines: [],
+    // 26 m: a 25 m lane with the touch at both ends (the pool's size is ours).
+    pool: { x: 26, z: 12, depth: 5 },
+    machines: [{ id: "supervivencia-piscina", kind: "puesto", label: "Prueba de natación y supervivencia en el agua", what: "3 largos de 25 m, otros 3 con el mono, 10 min flotando; la balsa y el izado con el collar", x: -10, z: -8.6, post: 3, via: [{ x: -17, z: 6 }, { x: -17, z: -8.6 }] }],
+  },
+  {
+    id: "simulador-dragon",
+    label: "Simuladores de Crew Dragon",
+    desc: "Como la zona de entrenamiento de SpaceX en Hawthorne: el simulador a escala real con asientos, paneles, el software de vuelo y el soporte vital (las tres pantallas táctiles, dos filas de botones y el tirador EJECT) y la cabina de dos asientos; los instructores le meten fallos cada vez más difíciles (puesto 8)",
+    reality: "real",
+    centre: { x: 75, z: 102 },
+    half: { x: 10, z: 6.5 },
+    height: 6,
+    door: { side: "s", at: 0, width: 2.4 },
+    road: "x",
+    compartments: [{ id: "simulador-dragon-capsula", label: "Simulador de Crew Dragon", desc: "La cabina a escala real (Ø 4 m): cuatro asientos, las tres pantallas táctiles y los botones bajo la tapa", x: 6, z: 0, w: 4, d: 4, h: 3.5, floorY: 0.6, hatch: { side: "w", width: 1.2 }, reality: "real" }],
+    machines: [{ id: "dragon-simulador", kind: "puesto", label: "Simulador de Dragon", what: "Las tres pantallas táctiles, los botones bajo la tapa y el tirador EJECT", x: 6.8, z: 0, inside: "simulador-dragon-capsula", post: 8, via: [{ x: 0, z: -3.5 }, { x: 2, z: -3.5 }, { x: 2, z: 0 }] }],
+  },
+  {
+    id: "simulador-lm",
+    label: "Simulador del módulo lunar (LMS)",
+    desc: "Como el simulador del LM del Apolo en el edificio 5 de Houston (Mission Simulation and Training Facility): la cabina del LM con sus paneles e instrumentos y la consola de control de los instructores; aquí se practican los últimos 150 m del alunizaje del Apolo 11",
+    reality: "real",
+    centre: { x: 140, z: 102 },
+    half: { x: 10, z: 6.5 },
+    height: 6,
+    door: { side: "e", at: 0, width: 2.4 },
+    road: "x",
+    // The LM's cockpit (drawn by the scene: the lander's own cabin and instruments).
+    items: [{ look: "lm-maqueta", x: 0, z: 0, w: 2, d: 2, h: 2.4 }],
+    machines: [{ id: "lm-simulador", kind: "simulador", label: "Simulador del LM", what: "El motor de descenso y el RCS del LM: los últimos 150 m del Apolo 11, a mano", x: 2.4, z: 0 }],
+  },
+  {
+    id: "robotica",
+    label: "Centro de entrenamiento en robótica",
+    desc: "Como el de la Agencia Espacial Canadiense en Longueuil: el aula con las maquetas a escala de Canadarm2 y Dextre y tres pizarras interactivas, y la estación de robótica igual que la de la ISS (un portátil, dos mandos y tres pantallas con las cámaras del brazo) en una maqueta a 3/4 del laboratorio Destiny (puesto 9)",
+    reality: "real",
+    centre: { x: 225, z: 102 },
+    half: { x: 12, z: 6.5 },
+    height: 5,
+    door: { side: "w", at: 0, width: 2.4 },
+    road: "x",
+    compartments: [{ id: "robotica-destiny", label: "Maqueta de Destiny a 3/4", desc: "El laboratorio Destiny a tres cuartos de su tamaño (6,4 × 3,2 m) con la estación de robótica de la ISS", x: 4, z: 0, w: 6.4, d: 3.2, h: 3.2, floorY: 0.3, hatch: { side: "w", width: 1.1 }, reality: "real" }],
+    machines: [{ id: "robotica-puesto", kind: "puesto", label: "Estación de robótica", what: "Un portátil, dos mandos (traslación y giro) y tres pantallas con las cámaras del brazo", x: 4.4, z: 0, inside: "robotica-destiny", post: 9, via: [{ x: 0, z: 0 }] }],
   },
 ];
 
@@ -973,12 +1006,13 @@ export function buildLayout(k = 1): S3Layout {
   pads.push({ island: "plataforma", at: { ...wide(C, cHeli.x, cHeli.z), y: cy + 0.05 }, crafts: ["helicoptero"] });
 
 
-  // ── The glacier (off the islands, reached by helicopter): a blue-ice runway like Union Glacier's with the A310
-  // Zero-G on its apron, a field camp, a blue-ice field for the meteorite search and the cold-survival site ──
+  // ── The glacier (off the islands, reached by helicopter): a blue-ice runway like Union Glacier's (where Il-76s land)
+  // with the Il-76MDK on its apron, a field camp, a blue-ice field for the meteorite search and the cold-survival site ──
   const G = GLACIER.at.value;
   const gh = GLACIER.half.value;
   const rw = GLACIER.runway.value;
   const plane = ZERO_G.plane.value;
+  const fuselage = ZERO_G.fuselage.value;
   const glMark = b.mark();
   const g = (x: number, z: number) => ({ x: G.x + x, z: G.z + z });
   const gr = (x0: number, x1: number, z0: number, z1: number) => R(G.x + x0, G.x + x1, G.z + z0, G.z + z1);
@@ -1000,9 +1034,9 @@ export function buildLayout(k = 1): S3Layout {
   b.floor("glaciar:helipuerto", 0.05, gPadR);
   b.block("hielo", { ...gr(-gh.x, gh.x, -gh.z, gh.z), y0: -8, y1: -0.26 }, false);
   b.props.push({ kind: "helideck", x: gPad.x, y: 0.05, z: gPad.z, size: { x: hd * 2, y: 0.1, z: hd * 2 } });
-  // The A310 Zero-G on the apron, nose east to the runway; its rear left door's stairs to the south.
+  // The Il-76MDK on the apron, nose east to the runway; the ladder of its rear left side door to the south.
   const ac = g(-1380, -82);
-  b.props.push({ kind: "a310", x: ac.x, y: 0, z: ac.z, label: "Airbus A310 Zero-G" });
+  b.props.push({ kind: "il76", x: ac.x, y: 0, z: ac.z, label: "Il-76MDK" });
   const stairs = g(-1395, -92);
   // The camp: a mess tent and Scott tents (the field parties' pyramid tents).
   b.block("tienda-comedor", { ...gr(-1450, -1440, -93, -86), y0: 0, y1: 3 }, true);
@@ -1028,7 +1062,7 @@ export function buildLayout(k = 1): S3Layout {
   b.link(gCamp, gSurv);
   const outdoor = (id: string, label: string, desc: string, reality: Reality, r: Rect, point: string) => b.area({ id, island: "glaciar", label, desc, reality, centre: { x: (r.x0 + r.x1) / 2, y: 8, z: (r.z0 + r.z1) / 2 }, half: { x: (r.x1 - r.x0) / 2, y: 8, z: (r.z1 - r.z0) / 2 }, point });
   outdoor("glaciar:hielo", "Glaciar", "El hielo alrededor de la pista y del campamento (fuera de las islas: la pista no cabe en ellas)", "licencia", gr(-gh.x, gh.x, -gh.z, gh.z), gCamp);
-  outdoor("glaciar:pista", "Pista de hielo azul", `Una pista de hielo azul de ${rw.length} × ${rw.width} m como la de Union Glacier, con el A310 Zero-G en su plataforma (puesto 6)`, "real", R(Math.min(runway.x0, apron.x0), runway.x1, runway.z0, apron.z1), gApron);
+  outdoor("glaciar:pista", "Pista de hielo azul", `Una pista de hielo azul de ${rw.length} × ${rw.width} m como la de Union Glacier, con el Il-76MDK del Centro Gagarin en su plataforma (puesto 6)`, "real", R(Math.min(runway.x0, apron.x0), runway.x1, runway.z0, apron.z1), gApron);
   outdoor("glaciar:campamento", "Campamento del glaciar", "La tienda comedor y las tiendas Scott de la gente del glaciar, que entrena y come aquí", "real", camp, gCamp);
   outdoor("glaciar:hielo-azul", "Campo de hielo azul", "Donde el viento deja el hielo desnudo y aparecen los meteoritos: la búsqueda de ANSMET en motos de nieve (puesto 11)", "real", field, gField);
   outdoor("glaciar:supervivencia", "Supervivencia en frío", "Tiendas, muro de nieve, zanja y radio, como en la escuela de campo antártica (puesto 12)", "real", survival, gSurv);
@@ -1036,13 +1070,13 @@ export function buildLayout(k = 1): S3Layout {
   b.machine({ id: "nav-glaciar", kind: "navegacion", island: "glaciar", area: "glaciar:helipuerto", label: "Máquina de navegación", what: "El mapa de las islas: helicóptero a la isla de entrenamiento", x: gPad.x - hd - 2.5, y: 0, z: gPad.z - 3 }, gPadEdge);
   b.block("kiosco", { ...around(gPad.x - hd - 4.2, gPad.z - 3, 0.5), y0: 0, y1: 1.3 });
   b.props.push({ kind: "nav-machine", x: gPad.x - hd - 4.2, y: 0, z: gPad.z - 3, rot: Math.PI / 2 });
-  b.machine({ id: "glaciar-avion", kind: "puesto", island: "glaciar", area: "glaciar:pista", label: "A310 Zero-G (escalerilla)", what: "31 parábolas: 1,8 g, unos 20 s de ingravidez y 1,8 g (puesto 6)", x: stairs.x, y: 0, z: stairs.z, post: 6 }, gStairs);
+  b.machine({ id: "glaciar-avion", kind: "puesto", island: "glaciar", area: "glaciar:pista", label: "Il-76MDK (escalerilla)", what: "Hasta 10 parábolas desde 6000 m: 2 g, unos 25 s de ingravidez y 2 g (puesto 6)", x: stairs.x, y: 0, z: stairs.z, post: 6 }, gStairs);
   b.machine({ id: "glaciar-meteoritos", kind: "puesto", island: "glaciar", area: "glaciar:hielo-azul", label: "Búsqueda de meteoritos", what: "Motos de nieve a 30 m, el GPS, el número, la foto y la bolsa estéril (puesto 11)", x: G.x - 1450, y: 0, z: G.z - 40, post: 11 }, gField);
   b.machine({ id: "glaciar-supervivencia", kind: "puesto", island: "glaciar", area: "glaciar:supervivencia", label: "Supervivencia en frío", what: "Tienda Scott, muro de nieve, zanja, agua y radio de HF (puesto 12)", x: G.x - 1460, y: 0, z: G.z - 86, post: 12 }, gSurv);
   b.widen(glMark, G, k);
   // The plane keeps its true size (only its place is widened): its fuselage is solid.
   const acW = wide(G, ac.x, ac.z);
-  b.solids.push({ ...around(acW.x, acW.z, plane.length / 2, plane.fuselage / 2), y0: 0, y1: 7.5 });
+  b.solids.push({ ...around(acW.x, acW.z, plane.length / 2, fuselage / 2), y0: 0, y1: 6.2 });
   pads.push({ island: "glaciar", at: { ...wide(G, gPad.x, gPad.z), y: 0.05 }, crafts: ["helicoptero"] });
 
   const islands: IslandDef[] = [
@@ -1051,7 +1085,7 @@ export function buildLayout(k = 1): S3Layout {
     { id: "parque", name: "Parque energético", desc: "El casquete del parque: el árbol bajo, el campo solar, los tres E-33 de Ross Island con su parada por aves y la mareal piloto", reality: "ficcion", source: S.csBuilder, rect: around(E.x, E.z, EH * k), deckY: 0, pad: pads.find((p) => p.island === "parque")!, arrival: "parque:anden", nav: "m:nav-parque" },
     { id: "muelle", name: "Muelle aéreo", desc: "El muelle de las alfombras voladoras de Cold Sanctuary", reality: "ficcion", source: S.csBuilder, rect: around(Dk.x, Dk.z, (dz.x / 2) * k, (dz.z / 2) * k), deckY: 0, pad: pads.find((p) => p.island === "muelle")!, arrival: "muelle:pista", nav: "m:nav-muelle" },
     { id: "plataforma", name: "Plataforma de tripulación", desc: "El Falcon 9 con la Crew Dragon en una plataforma en el mar, a ~1,1 km: la distancia de seguridad de un cohete tripulado", reality: "licencia", source: S.odyssey, rect: around(C.x, C.z, (cs.x / 2) * k, (cs.z / 2) * k), deckY: cy, pad: pads.find((p) => p.island === "plataforma")!, arrival: "plataforma:helipuerto", nav: "m:nav-plataforma" },
-    { id: "glaciar", name: "Glaciar", desc: "Un glaciar fuera de las islas con una pista de hielo azul como la de Union Glacier: el A310 Zero-G, la búsqueda de meteoritos y la supervivencia en frío", reality: "licencia", source: S.blueIce, rect: around(G.x, G.z, gh.x * k, gh.z * k), deckY: 0, pad: pads.find((p) => p.island === "glaciar")!, arrival: "glaciar:helipuerto:centro", nav: "m:nav-glaciar" },
+    { id: "glaciar", name: "Glaciar", desc: "Un glaciar fuera de las islas con una pista de hielo azul como la de Union Glacier: el Il-76MDK de ingravidez, la búsqueda de meteoritos y la supervivencia en frío", reality: "licencia", source: S.blueIce, rect: around(G.x, G.z, gh.x * k, gh.z * k), deckY: 0, pad: pads.find((p) => p.island === "glaciar")!, arrival: "glaciar:helipuerto:centro", nav: "m:nav-glaciar" },
   ];
 
   const inhabited = [

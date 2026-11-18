@@ -174,16 +174,16 @@ export const CENTRIFUGE = {
   reentryG: fact({ min: 4, max: 5 }, "real", S.dragonReentry, "Crew Dragon, Demo-2"),
 } as const;
 
+/** The Il-76MDK of the Gagarin centre (Star City): the real Russian parabolic aircraft, which also lands on blue ice. */
 export const ZERO_G = {
-  parabolas: fact(31, "real", S.zeroG),
-  weightlessS: fact(20, "real", S.zeroG),
-  pullG: fact(1.8, "real", S.zeroG),
-  pullS: fact(20, "real", S.zeroG),
-  climbDeg: fact(50, "real", S.zeroG),
-  cycleMin: fact(3, "real", S.zeroG, "1 min de parábola y 2 de descanso"),
-  restAfterFiveMin: fact(8, "real", S.zeroG),
-  testZone: fact({ x: 20, y: 2.3, z: 5 }, "real", S.zeroG, "largo, alto y ancho de la zona de ensayo acolchada"),
-  plane: fact({ length: 46.4, span: 43.9, fuselage: 5.6 }, "real", S.zeroG),
+  parabolas: fact(10, "real", S.il76Gctc, "hasta 10 parábolas por vuelo"),
+  weightlessS: fact(25, "real", S.il76Gctc, "de 25 a 28 s de ingravidez cada una"),
+  pullG: fact(2, "real", S.il76Gctc, "hasta 2 g al entrar y al salir"),
+  floorM: fact(6000, "real", S.il76Altitude, "sube a 6000 m y vuelve a ellos al acabar cada parábola"),
+  topM: fact(9000, "real", S.il76Altitude, "unos 3000 m más arriba, en lo alto de la parábola"),
+  testZone: fact({ x: 20, y: 3.4, z: 3.4 }, "licencia", S.il76, "la bodega de las Il-76MF/TF (unos 20 × 3,4 × 3,4 m); la del MDK, acolchada, no tiene medidas publicadas"),
+  plane: fact({ length: 46.6, span: 50.5, height: 14.42 }, "real", S.il76),
+  fuselage: fact(5.2, "licencia", S.ours, "estimado: el fuselaje que rodea una bodega de 3,4 × 3,4 m"),
 } as const;
 
 /** The glacier: an ice island off the map with a blue-ice runway like Union Glacier's, reached by helicopter. */

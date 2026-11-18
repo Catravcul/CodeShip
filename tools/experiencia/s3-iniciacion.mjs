@@ -3,7 +3,7 @@
 // working day). She goes (teleport, chosen in the task settings, since PX-45 walks) to posts 1, 2, 3, 4 and 7; at each
 // the card says who gives the challenge (the trainer on shift), and the challenge is a code challenge whose steps
 // are acted out at the post: the folder before the tribunal, the cuff and the ECG on the couch, the lengths of the
-// pool, the raft and the hoist, the mask in the hypobaric chamber, the EMU and the divers' lead at the bottom of the
+// survival pool, the raft and the hoist, the mask in the hypobaric chamber, the EMU and the divers' lead at the bottom of the
 // NBL. At lunch nobody is on shift and the post waits: the card says when the next shift starts. Then the island flights: «Por reto» (the flight
 // programmed on the sheet, then flown by itself in sight) and «Manual» (the S-92's cyclic, collective and pedals on
 // the pad, landed by hand on the other island's helipad). Captures in docs/screenshots/s3i-<paso>-movil.png.
@@ -172,8 +172,10 @@ export async function s3Iniciacion(j) {
   await goPost(j, 4, "Cámara hipobárica");
   await doPost(j, 4, "Puesto 4, cámara hipobárica", "hipobarica", ["mascara", "lista"]);
 
-  // 6. Post 3: the swim test and water survival (Luciana) — the lengths are swum in the pool.
+  // 6. Post 3: the swim test and water survival (Luciana) — in the survival pool (METS, raft, hoist), not the NBL.
   await goPost(j, 3, "Natación y supervivencia");
+  const where3 = await p.evaluate(() => document.querySelector(".cab-where")?.textContent ?? "");
+  j.check("el puesto 3 está en la piscina de supervivencia, la del METS, la balsa y el izado", /Supervivencia en el agua/.test(where3), where3);
   await j.tap('.s3-ui .cab-machine:not(.hidden) [data-act="reto"]', "Empezar el reto: Natación");
   await j.waitDuel();
   const toggle3 = (await j.texts(".duel .order-toggle"))[0] ?? "";

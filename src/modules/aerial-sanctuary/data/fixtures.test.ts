@@ -49,6 +49,19 @@ for (const k of [1, 1.5]) {
       expect(F.filter((f) => f.kind === "grua-puente" && f.area === "entrenamiento:nbl").length).toBe(2);
     });
 
+    it("los simuladores y la robótica tienen sus salas, como las reales: Hawthorne, el LMS del edificio 5 y el centro de la CSA", () => {
+      const named = (area: string, name: string) => F.filter((f) => f.area.startsWith(`entrenamiento:${area}`) && f.name.includes(name));
+      expect(named("simulador-dragon", "dos asientos").length).toBe(1);
+      expect(named("simulador-dragon", "instructores").length).toBe(1);
+      expect(named("simulador-lm", "Consola de control del LMS").length).toBe(1);
+      expect(named("robotica", "Pizarra interactiva").length).toBe(3);
+      expect(named("robotica", "Canadarm2").length + named("robotica", "Dextre").length).toBe(2);
+      expect(named("robotica-destiny", "Estación de robótica").length).toBe(1);
+      // Neither the SVMF nor Mission Control keeps a Dragon or a robotics station.
+      expect(L.areas.some((a) => a.id === "entrenamiento:svmf-dragon")).toBe(false);
+      expect(L.machines.some((m) => m.id === "control-robotica")).toBe(false);
+    });
+
     it("cada pieza lleva su fuente y su etiqueta (real, en desarrollo, licencia o ficción)", () => {
       for (const f of F) {
         expect(["real", "en-desarrollo", "licencia", "ficcion"], f.name).toContain(f.reality);

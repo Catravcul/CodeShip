@@ -4,6 +4,8 @@ import { moveJoystick } from "@core/realism";
 import { buildS1Layout } from "@modules/sanctuary-one/data/layout";
 import { personRule } from "@modules/sanctuary-one/data/overrides";
 import { placeAt, step, type Body } from "@modules/aerial-sanctuary/domain/walk";
+import { S1_DAY_REAL_S, S1_START_HOUR, activityAt, along, route, wanderAt, type Activity, type Route } from "@modules/sanctuary-one/domain/motion";
+import { staffPlaces, wayBetween, type Place } from "@modules/sanctuary-one/data/jornada";
 import { buildS1Scene } from "./adapters/three/s1-models";
 import { CubeFigure } from "./adapters/three/interior/figure";
 import { textSign } from "./adapters/three/interior/sign";
@@ -44,26 +46,105 @@ camera.rotation.order = "YXZ";
 const world = buildS1Scene(L);
 scene.add(world.root);
 
-// The staff: one figure each, with the name over the head.
-const people: CubeFigure[] = [];
+// The clock of sanctuary 1 (Cold Sanctuary's day: domain/motion.ts) and the workday it drives.
+let hour = S1_START_HOUR;
+const places = staffPlaces(L);
+
+// The staff: one figure each, with the name over the head, following the workday along real routes.
+interface Person {
+  readonly f: CubeFigure;
+  /** Where the figure stands (the figure's own root carries its pose's height). */
+  readonly g: THREE.Group;
+  readonly sign?: THREE.Object3D;
+  readonly plan: Record<Activity, Place>;
+  act: Activity;
+  at: Place;
+  way?: Route;
+  s: number;
+  stride: number;
+}
+const people: Person[] = [];
 for (const i of L.instances) {
-  if (i.model !== "persona") continue;
+  if (i.model !== "persona" || !i.name) continue;
   // Bulk rules for the people (overrides.ts «personas»): hidden, height, skin and clothes, for all or by name.
   const r = personRule(i.name);
   if (r.oculto) continue;
+  const plan = places.get(i.name);
+  if (!plan) continue;
   const f = new CubeFigure(r.piel ?? i.tint ?? 0xe0b48c, r.ropa ?? 0x3d6fa8);
-  f.root.scale.setScalar((r.altura ?? 1) * (i.scale ?? 1));
-  f.root.position.set(i.x, i.y, i.z);
-  f.root.rotation.y = i.rot;
-  f.pose("stand");
-  scene.add(f.root);
-  if (i.name) {
-    const s = textSign(i.name);
-    s.scale.multiplyScalar(0.5);
-    s.position.set(i.x, i.y + 2.1, i.z);
-    scene.add(s);
+  const g = new THREE.Group();
+  g.scale.setScalar((r.altura ?? 1) * (i.scale ?? 1));
+  g.add(f.root);
+  scene.add(g);
+  const s = textSign(i.name);
+  s.scale.multiplyScalar(0.5);
+  scene.add(s);
+  const act = activityAt(hour);
+  const p: Person = { f, g, sign: s, plan, act, at: plan[act], s: 0, stride: 0 };
+  settle(p);
+  people.push(p);
+}
+
+/** A person stands (sits, lies) at their place. */
+function settle(p: Person): void {
+  p.g.position.set(p.at.x, p.at.y, p.at.z);
+  p.g.rotation.y = p.at.yaw;
+  p.f.pose(p.at.pose);
+  p.sign?.position.set(p.at.x, p.at.y + 2.1, p.at.z);
+}
+
+const PEOPLE_WALK_MS = 1.4;
+const PEOPLE_SWIM_MS = 1.8;
+function movePeople(dt: number): void {
+  const act = activityAt(hour);
+  for (const p of people) {
+    if (act !== p.act) {
+      p.act = act;
+      const to = p.plan[act];
+      const pos = p.g.position;
+      p.way = route(wayBetween(L, { ...p.at, x: pos.x, y: pos.y, z: pos.z }, to));
+      p.at = to;
+      p.s = 0;
+    }
+    if (!p.way) {
+      p.f.update(dt);
+      continue;
+    }
+    const here = along(p.way, p.s);
+    p.s += (here.swim ? PEOPLE_SWIM_MS : PEOPLE_WALK_MS) * dt;
+    const q = along(p.way, p.s);
+    if (q.done) {
+      p.way = undefined;
+      settle(p);
+    } else {
+      p.g.position.set(q.x, q.y, q.z);
+      if (!Number.isNaN(q.yaw)) p.g.rotation.y = q.yaw;
+      p.sign?.position.set(q.x, q.y + 2.1, q.z);
+      if (q.swim) p.f.pose("glide");
+      else p.f.walk((p.stride += PEOPLE_WALK_MS * dt * 3), 1);
+    }
+    p.f.update(dt);
   }
-  people.push(f);
+}
+
+// The animals wander in their territories (domain/motion.ts wanderAt).
+const m4 = new THREE.Matrix4();
+const qy = new THREE.Quaternion();
+const UP = new THREE.Vector3(0, 1, 0);
+let wildT = 0;
+function moveAnimals(dt: number): void {
+  wildT += dt;
+  const touched = new Set<THREE.InstancedMesh>();
+  for (const { mesh, index, it } of world.movers) {
+    const w = it.wander!;
+    const p = wanderAt({ x: w.x, z: w.z }, w.r, w.seed, wildT + w.seed, w.speed);
+    qy.setFromAxisAngle(UP, p.yaw);
+    const sc = it.scale ?? 1;
+    m4.compose(new THREE.Vector3(p.x, it.y, p.z), qy, new THREE.Vector3(sc, sc, sc));
+    mesh.setMatrixAt(index, m4);
+    touched.add(mesh);
+  }
+  for (const mesh of touched) mesh.instanceMatrix.needsUpdate = true;
 }
 
 const avatar = new CubeFigure(0xe8b48f, 0x2f7f8f, DOMENICA_HAIR, true);
@@ -144,9 +225,13 @@ function frame(now: number): void {
   last = now;
   frameFree(dt);
   updateCamera(dt);
-  for (const p of people) p.update(dt);
+  hour = (hour + (24 * dt) / S1_DAY_REAL_S) % 24;
+  movePeople(dt);
+  moveAnimals(dt);
   const a = areaById.get(body.area);
-  const where = `Santuario 1 · ${a ? (a.building && !a.label.includes(a.building) ? `${a.building} · ${a.label}` : a.label) : body.motion === "agua" ? "En el agua" : "Hielo"}`;
+  const hh = Math.floor(hour);
+  const clock = `${hh}:${String(Math.floor((hour - hh) * 60)).padStart(2, "0")}`;
+  const where = `Santuario 1 · ${clock} · ${a ? (a.building && !a.label.includes(a.building) ? `${a.building} · ${a.label}` : a.label) : body.motion === "agua" ? "En el agua" : "Hielo"}`;
   if (whereEl.textContent !== where) whereEl.textContent = where;
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
@@ -161,5 +246,5 @@ window.addEventListener("keydown", (e) => {
 });
 // Test hook (tools/experiencia and live checks): the layout, the body and the bulk style switch.
 if (import.meta.env.DEV || new URLSearchParams(location.search).has("prueba"))
-  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { L, world, get body() { return body; }, set body(b: Body) { body = b; }, setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
+  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { L, world, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, get hour() { return hour; }, people, setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
 requestAnimationFrame(frame);

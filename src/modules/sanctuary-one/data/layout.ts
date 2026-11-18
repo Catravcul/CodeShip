@@ -32,6 +32,8 @@ export interface Instance {
   /** Uniform scale and colour set by a bulk rule (overrides.ts). */
   readonly scale?: number;
   readonly tint?: number;
+  /** An animal's territory: it wanders inside (domain/motion.ts wanderAt) at `speed` m/s. */
+  readonly wander?: { readonly x: number; readonly z: number; readonly r: number; readonly speed: number; readonly seed: number };
 }
 
 export interface S1Area {
@@ -46,6 +48,10 @@ export interface S1Area {
   readonly detail: "completo" | "vacio";
   /** For a floor: where she stands outside its door, and the yaw looking in. */
   readonly entry?: { readonly x: number; readonly z: number; readonly yaw: number };
+  /** The floor plan it is furnished with (site.ts `furnish`). */
+  readonly furnish?: string;
+  /** A tower floor's way to its trunk: the tower, and the point inside the trunk's water at its door. */
+  readonly link?: { readonly tower: string; readonly inner: { readonly x: number; readonly z: number } };
 }
 
 export interface TowerShape {
@@ -58,6 +64,8 @@ export interface TowerShape {
   readonly tips: readonly { readonly rect: Rect; readonly y: number }[];
   /** The floors' U rings (their four decks). */
   readonly rings: readonly { readonly rects: readonly Rect[]; readonly y: number }[];
+  /** The ground door: outside on the ice, and inside in the trunk's water. */
+  readonly ground: { readonly out: { readonly x: number; readonly z: number }; readonly inner: { readonly x: number; readonly z: number } };
 }
 
 export interface S1Layout {
@@ -153,7 +161,9 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
   // Ground door (Cold Sanctuary: GroundSide a = +Z), onto the ice, with its threshold.
   gapsOf[0]!.push({ from: door.x - door.w / 2, to: door.x + door.w / 2, y0: 0, y1: door.h });
   b.floors.push({ id: `${t.id}-umbral-suelo`, ...sideRect(S(0), door.x - door.w / 2, door.x + door.w / 2, WH - 0.6, OH + 0.4, o), y: 0, area: trunk });
-  const shape: TowerShape = { id: t.id, building: t.building, x: o.x, z: o.z, rootHeight, floors: [], tips: [], rings: [] };
+  const gOut = side(S(0), door.x, OH + 3);
+  const gIn = side(S(0), door.x, WH - 1.5);
+  const shape: TowerShape = { id: t.id, building: t.building, x: o.x, z: o.z, rootHeight, floors: [], tips: [], rings: [], ground: { out: { x: o.x + gOut.x, z: o.z + gOut.z }, inner: { x: o.x + gIn.x, z: o.z + gIn.z } } };
   let fi = 0;
   let tipIndex = 0;
   for (let l = 1; l <= levels; l++) {
@@ -179,7 +189,8 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
       const out = side(S(s), dx, OH + 3);
       const dir = side(S(s), 0, 1);
       const entry = { x: o.x + out.x, z: o.z + out.z, yaw: Math.atan2(-dir.x, -dir.z) };
-      b.areas.push({ id: area, label: f.name || `Piso libre (${t.building})`, desc: f.desc, building: t.building, x: centre.x, y, z: centre.z, detail: fp ? "completo" : "vacio", entry });
+      const inn = side(S(s), dx, WH - 1.5);
+      b.areas.push({ id: area, label: f.name || `Piso libre (${t.building})`, desc: f.desc, building: t.building, x: centre.x, y, z: centre.z, detail: fp ? "completo" : "vacio", entry, ...(f.furnish ? { furnish: f.furnish } : {}), link: { tower: t.id, inner: { x: o.x + inn.x, z: o.z + inn.z } } });
       if (!fp) continue;
       // Floor frame (Cold Sanctuary's: x across, z away from the trunk, whose face is at z = −FS/2) = the side's frame
       // about the floor's centre; Unity's yaw carries over as is (the plan keeps Cold Sanctuary's x and z).
@@ -332,6 +343,15 @@ function doorFor(fp: FloorPlan, sp: number, k: number, cx: number, limit: number
   return preferred;
 }
 
+/** Walking speeds of the animals by body (m/s): a stroll, not a run. */
+const SPEED: Partial<Record<ModelDef["shape"], number>> = { cuadrupedo: 0.9, pinguino: 0.4, pinnipedo: 0.7, cetaceo: 1.8, ave: 1.2 };
+
+/** Gives the last placed instance (if it was placed) its territory. */
+function wanders(b: Built, model: string, w: NonNullable<Instance["wander"]>): void {
+  const last = b.instances[b.instances.length - 1];
+  if (last && !last.wander && last.model === model) b.instances[b.instances.length - 1] = { ...last, wander: w };
+}
+
 /** A deterministic scatter (no Math.random: the same scene on every load). */
 function scatter(i: number, radius: number): { x: number; z: number } {
   const a = i * 2.399963;
@@ -381,6 +401,7 @@ export function buildS1Layout(k = 1, o: Overrides = OVERRIDES): S1Layout {
       const p = scatter(i, n.radius);
       const y = n.marine ? (d.shape === "cetaceo" ? WATER_Y - d.size.y * 0.55 : WATER_Y - d.size.y * 0.4) : 0;
       place(b, id, n.x + p.x, y, n.z + p.z, i * 1.7, n.marine ? "mar" : "fauna", {}, 1, undefined, false);
+      wanders(b, id, { x: n.x, z: n.z, r: n.radius, speed: SPEED[d.shape] ?? 0.8, seed: b.instances.length * 31 + 7 });
     }
   }
   // Snow petrels: one colony (no nest in Cold Sanctuary's list: it is ours) on the wild northern cap.
@@ -388,6 +409,7 @@ export function buildS1Layout(k = 1, o: Overrides = OVERRIDES): S1Layout {
   for (let i = 0; i < pet; i++) {
     const p = scatter(i, 10);
     place(b, "petrel-niveo", 75 + p.x, 0, 170 + p.z, i, "fauna", {}, 1, undefined, false);
+    wanders(b, "petrel-niveo", { x: 75, z: 170, r: 10, speed: SPEED.ave!, seed: b.instances.length * 31 + 7 });
   }
   // The staff on the hub, 2 m apart (ours: where each one goes comes with the workday).
   STAFF.forEach((name, i) => {

@@ -126,6 +126,8 @@ export interface S1Scene {
   readonly root: THREE.Group;
   /** Each catalogue model's mesh (all its copies), by «model id|tint» (tint empty unless a bulk rule recolours it). */
   readonly meshes: ReadonlyMap<string, THREE.InstancedMesh>;
+  /** The instances that move (wandering animals): their mesh and index. */
+  readonly movers: readonly { readonly mesh: THREE.InstancedMesh; readonly index: number; readonly it: S1Layout["instances"][number] }[];
   /** Bulk change: show/hide or recolour every model of a category (or of one group of it). */
   style(category: Category, o: { visible?: boolean; color?: number; group?: string }): void;
 }
@@ -194,6 +196,7 @@ export function buildS1Scene(L: S1Layout): S1Scene {
 
   // The catalogue's instances: one InstancedMesh per model (people are drawn by the scene as figures).
   const meshes = new Map<string, THREE.InstancedMesh>();
+  const movers: { mesh: THREE.InstancedMesh; index: number; it: S1Layout["instances"][number] }[] = [];
   const by = new Map<string, S1Layout["instances"][number][]>();
   for (const i of L.instances) {
     if (model(i.model).shape === "figura") continue;
@@ -217,6 +220,7 @@ export function buildS1Scene(L: S1Layout): S1Scene {
       const sc = it.scale ?? 1;
       m4.compose(new THREE.Vector3(it.x, it.y, it.z), q, new THREE.Vector3(p * sc, sc, p * sc));
       mesh.setMatrixAt(n, m4);
+      if (it.wander) movers.push({ mesh, index: n, it });
     });
     mesh.name = `modelo-${key}`;
     mesh.userData = { category: d.category, group: d.group, model: d.id };
@@ -241,6 +245,7 @@ export function buildS1Scene(L: S1Layout): S1Scene {
   return {
     root,
     meshes,
+    movers,
     style(category, o) {
       for (const mesh of meshes.values()) {
         const u = mesh.userData as { category: Category; group: string };

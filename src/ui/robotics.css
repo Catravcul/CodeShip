@@ -25,9 +25,9 @@
 .eva-st .es-ctl button { min-height: 48px; min-width: 64px; padding: 0 12px; border: 0; border-radius: 12px; font-size: 15px; color: #04121a; background: #7fdcff; touch-action: none; }
 .eva-st .es-ctl button.primary { background: #ffb347; font-weight: 600; }
 .eva-st .es-ctl button:disabled { opacity: 0.45; }
-/* Outside, only the scene and her suit's readout and controls (and the challenge sheet when she works). */
+/* Outside, only the scene, her suit's readout and controls, the camera joystick (and the challenge sheet when she works). */
 body.in-station-eva > :not(#app, script, style),
-body.in-station-eva #app > :not(canvas, .eva-st, .duel) { display: none !important; }
+body.in-station-eva #app > :not(canvas, .eva-st, .duel, .cam-stick.eva-cam) { display: none !important; }
 /* The spacewalk's camera joystick (reglas.md §5.7), on the right under the status line. */
 .cam-stick.eva-cam { top: calc(128px + env(safe-area-inset-top)); bottom: auto; right: 12px; z-index: 42; }
 .cam-stick.eva-cam > .vstick { width: 92px; height: 92px; }

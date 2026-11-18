@@ -88,6 +88,13 @@ export class FlightComputer {
   autopilot?: (state: RigidBodyState) => ThrustCommand | undefined;
   /** Called after every integration step while free (e.g. to check for docking contact). */
   afterStep?: (state: RigidBodyState) => void;
+  /**
+   * Tap controls (Crew Dragon's manual flight, the LM's rate-command mode): the body rates the RCS holds while
+   * the pilot holds no rotation key, rad/s (null: the usual assists). See `pulse` for translation.
+   */
+  holdRates: Vec3 | null = null;
+  /** Translation Δv still to fire from tapped pulses, body frame, m/s. */
+  private pendingDv = Vec3.ZERO;
 
   constructor(
     readonly ship: Ship,
@@ -180,6 +187,24 @@ export class FlightComputer {
     return out;
   }
 
+  /** One translation tap: the RCS fires until the ship's velocity has changed by `dvBody` (body frame, m/s). */
+  pulse(dvBody: Vec3): void {
+    this.pendingDv = this.pendingDv.add(dvBody);
+  }
+
+  /** Translation Δv of taps not yet fired, body frame, m/s. */
+  get pendingPulse(): Vec3 {
+    return this.pendingDv;
+  }
+
+  /** Stop: hold zero rates and cancel the velocity relative to the target with the RCS (pending taps dropped). */
+  nullRates(): void {
+    this.holdRates = Vec3.ZERO;
+    const t = this._target;
+    const rel = t ? this._state.velocity.sub(t.surfaceVelocity(this._state.position)) : this._state.velocity;
+    this.pendingDv = this._state.toBody(rel).scale(-1);
+  }
+
   update(realDtS: number, input: ThrustCommand): void {
     // Any pilot input takes the controls back from the autopilot.
     if (this._guidance && (input.mainThrottle > 0 || input.translation.length() > 0 || input.rotation.length() > 0)) this._guidance = null;
@@ -259,8 +284,19 @@ export class FlightComputer {
     const auto = pilotIdle ? this.autopilot?.(this._state) : undefined;
     if (auto) input = auto;
     const idleRot = input.rotation.length() === 0;
-    const cmd = idleRot && this.landingAssist && target ? { ...input, rotation: this.levelRotation() } : idleRot && this.rotationAssist ? { ...input, rotation: this.dampRotation() } : input;
+    let cmd = idleRot && this.holdRates ? { ...input, rotation: this.rateLoop(this.holdRates) } : idleRot && this.landingAssist && target ? { ...input, rotation: this.levelRotation() } : idleRot && this.rotationAssist ? { ...input, rotation: this.dampRotation() } : input;
+    // Tapped translation pulses: each axis fires (proportionally on the last step) until its Δv is spent.
+    const pulsing = input.translation.length() === 0 && this.pendingDv.length() > 1e-6;
+    const acc = pulsing ? this.rcsAcceleration() : Vec3.ZERO;
+    const axisDuty = (dv: number, a: number) => (a <= 0 ? 0 : Math.max(-1, Math.min(1, dv / (a * this.stepS))));
+    if (pulsing) cmd = { ...cmd, translation: new Vec3(axisDuty(this.pendingDv.x, acc.x), axisDuty(this.pendingDv.y, acc.y), axisDuty(this.pendingDv.z, acc.z)) };
     const out = this.ship.fire(cmd, this.stepS);
+    // What the RCS was asked for this step comes off the taps (an axis it cannot push along drops its share).
+    if (pulsing) {
+      const t = cmd.translation;
+      const left = (p: number, d: number, ai: number) => (ai > 0 ? p - d * ai * this.stepS : 0);
+      this.pendingDv = new Vec3(left(this.pendingDv.x, t.x, acc.x), left(this.pendingDv.y, t.y, acc.y), left(this.pendingDv.z, t.z, acc.z));
+    }
     let gravity = Vec3.ZERO;
     for (const g of this.world.gravitySources) gravity = gravity.add(g.gravityAt(this._state.position));
     const massKg = this.ship.massKg;
@@ -350,6 +386,22 @@ export class FlightComputer {
       return Math.max(-1, Math.min(1, ((wanted - wi) * Ii) / (mi * ASSIST_TIME_S)));
     };
     return new Vec3(axisCmd(err.x, w.x, I.x, max.x), axisCmd(err.y, w.y, I.y, max.y), axisCmd(err.z, w.z, I.z, max.z));
+  }
+
+  /** Rate loop: the torque that brings the body rates to `target` in ASSIST_TIME_S, saturated by RCS authority. */
+  private rateLoop(target: Vec3): Vec3 {
+    const w = this._state.angularVelocityBody;
+    const I = this.ship.inertiaKgM2;
+    const max = this.rcsTorque();
+    const axis = (ti: number, wi: number, Ii: number, mi: number) => (mi === 0 ? 0 : Math.max(-1, Math.min(1, ((ti - wi) * Ii) / (mi * ASSIST_TIME_S))));
+    return new Vec3(axis(target.x, w.x, I.x, max.x), axis(target.y, w.y, I.y, max.y), axis(target.z, w.z, I.z, max.z));
+  }
+
+  /** The RCS's translation acceleration along each body axis at full duty, m/s² (positive). */
+  private rcsAcceleration(): Vec3 {
+    const m = this.ship.massKg;
+    const f = (v: Vec3, k: "x" | "y" | "z") => Math.abs(this.ship.preview({ mainThrottle: 0, translation: v, rotation: Vec3.ZERO }).forceBody[k]) / m;
+    return new Vec3(f(Vec3.X, "x"), f(Vec3.Y, "y"), f(Vec3.Z, "z"));
   }
 
   private rcsTorque(): Vec3 {

@@ -134,12 +134,33 @@ en la posición y el sitio correctos y que muestre el icono contrario al estado 
     vehículo en su aproximación final ([NASA, SSC24-P3-06](https://ntrs.nasa.gov/api/citations/20240009200/downloads/SSC24-P3-06.pdf));
   - en otro sitio no sale. K hace lo mismo con teclado.
 - El aviso de acoplado dice dónde está el interruptor y que la escotilla está detrás del puesto.
-- El **puesto del comandante** ofrece **Manual** (pilotar de pie) y **Automático**. Automático lista los destinos
-  cercanos a la nodriza ([modulo-lunar-juventas.md](modulo-lunar-juventas.md), «Destinos cercanos»): la estación,
-  si está al lado, y el asteroide junto al que está aparcada. El puerto donde ya está acoplado no sale; uno que
-  ahora no se puede sale apagado, con su porqué. Al elegir uno se abre el reto del viaje del propio LM (nunca lo
-  lleva la nodriza); resuelto, se desacopla si hace falta y su piloto automático lo lleva. A un puerto acaba con
-  el asistente de acople; a un asteroide, a 300 m sobre él, para posarlo a mano o por programa.
+- El **puesto del comandante** ofrece **Manual** y **Automático** (Berón, 2026-11-18: sin selector de destino en
+  el puesto).
+  - **Automático** abre la **ventana de navegación** (`src/ui/nav-map.ts`, la misma de la mesa de la Starship) con
+    todos los destinos. Los que el LM no alcanza salen **bloqueados, con el porqué**: lejos de la nodriza (ese viaje
+    lo hace ella, [modulo-lunar-juventas.md](modulo-lunar-juventas.md), «Destinos cercanos»), el puerto donde ya
+    está acoplado o lo que el LM no puede volar ahora (su Δv). Es `craftReach` en `navigation/domain/nearby.ts`.
+    Al elegir uno y tocar «Programar viaje» se abre el reto del viaje del propio LM (nunca lo lleva la nodriza);
+    resuelto, se desacopla si hace falta y su piloto automático lo lleva. A un puerto acaba con el asistente de
+    acople; a un asteroide, a 300 m sobre él, para posarlo a mano o por programa.
+  - **Manual** es vuelo libre con los mismos mandos táctiles que la Starship (los de Crew Dragon, [puente.md](puente.md),
+    «Pilotar»), sobre los dos mandos del LM de Apolo (`src/lander-manual.ts`):
+    - giro como el ACA en modo de ritmo: cada toque, 1 °/s más que el RCS mantiene (`FlightComputer.holdRates`),
+      tope de 10 °/s;
+    - traslación como el TTCA: cada toque, 0,1 m/s (`FlightComputer.pulse`);
+    - el acelerador del motor de descenso del TTCA: «Motor −/+» de 10 en 10 % y «Corte» (el DPS real se regulaba
+      del 10 al 60 % y a tope).
+    Los pasos son nuestros. Con los mandos salen **los instrumentos del panel 1** (`drawLmInstruments`):
+    - el **FDAI** («8-ball»: cielo blanco, suelo negro, horizonte naranja) con sus agujas de error (alabeo arriba
+      y cabeceo a la derecha, contra la vertical; abajo, el ritmo de guiñada);
+    - la **cruz de velocidades** (X-POINTER, adelante y lateral sobre el suelo, ±2 m/s);
+    - las cintas **ALT** y **ALT RATE**.
+    Debajo van los ritmos, la inclinación, la bajada y la deriva, el empuje y el Δv. Por debajo de 30 m se
+    colorean con los límites de toma: ✓ en verde dentro, ▲ en ámbar fuera. La escala LPD de la ventana sigue en
+    la vista «Ventana (LPD)». Fuentes: [Apollo 11 Flight Plan / paneles del LM](https://apollo11guide.com/Apollo11ManualFree/LunarLander/Lunar_Module_Control_Panel_1.htm)
+    y `crew-station.ts`. Mientras salen
+    los mandos, el menú árbol se esconde: libre en la esfera de un puerto, «Acoplar» está en los propios mandos;
+    acoplado, los mandos se van y vuelve el interruptor del menú.
 - Desacoplar y el asistente ya no están en el puesto: son el interruptor de la vista de vuelo.
 
 ## Juventas no tiene cabina

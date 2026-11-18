@@ -12,7 +12,8 @@ import { FlightComputer, NO_INPUT } from "@modules/flight/application/flight-com
 import { Expedition } from "@modules/expedition/application/expedition";
 import { EXERCISES } from "@modules/mind-duel/data/exercises";
 import { asteroidSurfaceFn } from "./content/asteroid-shape";
-import { TouchPilot, mergeCommands } from "./adapters/input/touch";
+import { mergeCommands } from "./adapters/input/touch";
+import { LanderManual } from "./lander-manual";
 import { DuelView, setStepByStep, stepByStep } from "./ui/duel-view";
 import { LANDING_MODE_LABEL, landingMode, setLandingMode, type LandingMode } from "./ui/landing-readout";
 import { buildAsteroidMesh } from "./adapters/three/asteroid-mesh";
@@ -170,8 +171,8 @@ import { ICON } from "./ui/icons";
 import { mindConsoleHtml, mindScreenLines } from "./ui/rapport-view";
 import { setSound } from "./adapters/audio/alarm";
 import { collectTasks, routeTo, type Task, type TaskPlace, type Vehicle } from "@modules/tasks/application/task-list";
-import type { CabinActionId, CabinState, SeatDestination } from "@modules/lander-cabin/domain/cabin";
-import { nearbyTargets } from "@modules/navigation/domain/nearby";
+import type { CabinActionId, CabinState } from "@modules/lander-cabin/domain/cabin";
+import { craftReach, nearbyTargets } from "@modules/navigation/domain/nearby";
 import { needingAttention } from "@modules/ship-bay/application/bay";
 import { G } from "@core/units";
 import { FICTION, REAL_ONLY, fiction } from "@core/realism";
@@ -432,7 +433,15 @@ const hud = new Hud(root, {
 
 const pilot = new KeyboardPilot(window);
 pilot.onToggleAssist = () => (flight.rotationAssist = !flight.rotationAssist);
-const touch = new TouchPilot(root);
+// The LM's «Manual»: tap controls (Crew Dragon's) on the Apollo LM's hand controllers (lander-manual.ts).
+const landerManual = new LanderManual(root, {
+  flight,
+  active: () => view.enabled && !flight.docked && !flight.guidance && !duelView.visible,
+  standUp: () => standUp(),
+  dockOffer: () => (!docking.docked && docking.inRange() ? (docking.assist ? "Sin acople" : "Acoplar") : undefined),
+  dock: () => docking.toggleAssist(),
+  heightM: () => flight.telemetry().distanceToSurface,
+});
 
 const duelView = new DuelView(root);
 const mothershipModel = REAL_ONLY ? new StarshipModel(mothership.spec) : new MothershipModel(mothership.spec);
@@ -688,22 +697,14 @@ const probeMind = () => {
   const why = subj.probe.parkedOn ? ex.bond.levelBlock() || "Ahora su mente no escucha por la sonda" : "Aparca la sonda sobre el asteroide desde la consola de la sonda";
   return can ? { label, enabled: true } : { label, enabled: false, why };
 };
-/** The probe's station is listing its automatic destinations (Berón, 2026-11-17: «Manual y Automático»). */
-let probeSeatPicking = false;
+/** The probe's reach in the navigation window (Berón, 2026-11-18): asteroids near the mothership it can program now. */
+const probeReach = (t: NavTarget) => craftReach(t, "probe", neighbourhood(), (x) => (x.kind === "asteroid" ? probeTravel.canProgramTo(x.body) : { ok: false }));
 /**
- * The probe's station: «Manual» (its console) and «Automático», whose destinations are the asteroids near the
- * mothership (navigation/domain/nearby.ts): real Juventas works inside the system its carrier brought it to.
+ * The probe's station: «Manual» (its console) and «Automático», the navigation window with what is out of the probe's
+ * reach locked (navigation/domain/nearby.ts): real Juventas works inside the system its carrier brought it to.
  */
 function probeSeatActions(): RoomAction[] {
   const near = nearbyTargets(nav.targets, neighbourhood()).flatMap((t) => (t.kind === "asteroid" ? [t] : []));
-  if (probeSeatPicking)
-    return [
-      ...near.map((t): RoomAction => {
-        const can = probeTravel.canProgramTo(t.body);
-        return { id: `auto:${t.id}`, label: `${t.name} (llegar encima para posarse)`, enabled: can.ok, ...(can.ok ? {} : { why: can.reason ?? "" }) };
-      }),
-      { id: "volver", label: "Volver", enabled: true },
-    ];
   const p = subj.probe;
   const why = p.status === "sin-sonda" ? EMPTY_DEPLOYERS : p.status === "posada" ? "La sonda está posada: su misión acaba allí (termínala en su consola) o despega a mano" : !near.length ? "No hay asteroides cerca de la nodriza: los viajes largos los hace la nodriza desde su puente" : probeTravel.trip.active ? "La sonda ya está de viaje" : undefined;
   return [
@@ -717,21 +718,19 @@ const bridge = new BridgeRoom(
     openPanel: (id) => deck.enter("puente", id),
     openMissions: () => missionLog.open(),
     openNano: () => deck.nanoBtn.click(),
-    openProbe: () => {
-      probeSeatPicking = false;
-      subj.probeMode.enter();
-    },
+    openProbe: () => subj.probeMode.enter(),
     probeSeat: () => probeSeatActions(),
     probeSeatAct: (a) => {
-      if (a === "automatico") probeSeatPicking = true;
-      else if (a === "volver") probeSeatPicking = false;
-      else if (a.startsWith("auto:")) {
-        probeSeatPicking = false;
-        const body = region.asteroids.find((x) => x.data.id === a.slice(5));
-        if (!body) return;
-        subj.probeMode.enter();
-        probeTravel.programTo(body);
-      }
+      if (a !== "automatico") return;
+      // A destination picked in the window: the probe's console, and its trip challenge to it.
+      navMode.map.open({
+        reach: probeReach,
+        program: (t) => {
+          if (t.kind !== "asteroid") return;
+          subj.probeMode.enter();
+          probeTravel.programTo(t.body);
+        },
+      });
     },
     mind: () => {
       const a = expedition.asteroid;
@@ -752,7 +751,7 @@ const bridge = new BridgeRoom(
     openTasks: () => taskBoard.open(),
     // Starship's pilot and docking seats fly and dock (docs/design/puente.md); the ring ship's consoles open pages.
     ...(REAL_ONLY
-      ? flightDeckSeats({ nav, navMode, mothership, duel: duelView, landerAboard: () => docking.dockedTo === mothership, openSystems: () => deck.enter("puente", "prop", ["prop", "power", "life"]), say: (t) => bridge.say(t, 6), dockVisual: (f) => bridge.dockStepVisual(f) })
+      ? flightDeckSeats({ nav, navMode, mothership, duel: duelView, landerAboard: () => docking.dockedTo === mothership, openNav: () => deck.enter("puente", "nav"), openSystems: () => deck.enter("puente", "prop", ["prop", "power", "life"]), say: (t) => bridge.say(t, 6), dockVisual: (f) => bridge.dockStepVisual(f) })
       : {}),
   },
   mothership.name,
@@ -1196,8 +1195,6 @@ const mindNow = (): { label: string; enabled: boolean; why?: string } | null => 
 };
 // The LM's own life support, counting only the crew in the lander (docs/design/modulo-lunar-juventas.md).
 const landerEcs = new LanderEcs({ crewAboard: () => (crewIn() === "modulo" ? 1 : 0), docked: () => docking.docked, say: (t, sec) => (cabin.active ? cabin.say(t, sec) : undefined) });
-/** The commander's «Automático» is listing its destinations (Berón, 2026-11-17). */
-let seatPicking = false;
 const cabinState = (): CabinState => ({
   dockedTo: docking.dockedTo === mothership ? "nodriza" : atStationPort() ? "estacion" : null,
   dockInRange: !docking.docked && docking.inRange(),
@@ -1206,21 +1203,15 @@ const cabinState = (): CabinState => ({
   canLeaveEva: eva.canLeave && expedition.phase === "landed",
   mind: mindNow(),
   ecs: landerEcs.state(),
-  auto: { picking: seatPicking, destinations: seatDestinations() },
+  auto: nearbyTargets(nav.targets, neighbourhood()).length ? {} : { why: "No hay destinos cerca de la nodriza: los viajes largos los hace la nodriza desde su puente" },
 });
 /** The mothership's neighbourhood: what the lander and the probe may fly to on their own (navigation/domain/nearby.ts). */
 const neighbourhood = () => ({ carrier: mothership.position, radiusM: carrier.parkingM + nav.approachM });
-/** The lander's nearby destinations, each enabled or with why it can't fly there now. */
-function seatDestinations(): SeatDestination[] {
-  // Not the port it is latched to now: that one is where it already is.
-  return nearbyTargets(nav.targets, neighbourhood()).flatMap((t) => (t.kind === "dock" && docking.dockedTo === t.probePort ? [] : [t])).map((t) => {
-    const can = nav.canFlyLander(t);
-    return { id: t.id, label: t.kind === "dock" ? `${t.name} (acoplar)` : `${t.name} (llegar encima para posarse)`, enabled: can.ok, ...(can.ok ? {} : { why: can.reason ?? "" }) };
-  });
-}
+/** The LM's reach in the navigation window (Berón, 2026-11-18): near the mothership, and what the LM itself can fly now. */
+const landerReach = (t: NavTarget) =>
+  craftReach(t, "lander", neighbourhood(), (x) => (x.kind === "dock" && docking.dockedTo === x.probePort ? { ok: false, reason: "Ya está acoplado ahí" } : nav.canFlyLander(x)));
 /** «Automático» → a destination: the trip challenge for the lander's own hop (the sheet over the cabin). */
 function programLanderTrip(id: string): void {
-  seatPicking = false;
   if (duelView.visible) return;
   let run;
   try {
@@ -1252,14 +1243,10 @@ const cabin = new LanderCabin(root, {
   act: (id: CabinActionId) => {
     switch (id) {
       case "pilotar":
-        seatPicking = false;
         return sitDown();
       case "automatico":
-        seatPicking = true;
-        return;
-      case "volver":
-        seatPicking = false;
-        return;
+        // The navigation window, with what is out of the LM's reach locked; a destination there opens its trip challenge.
+        return navMode.map.open({ reach: landerReach, program: (t) => programLanderTrip(t.id) });
       case "entrar-nodriza":
       case "entrar-estacion":
         return throughHatch();
@@ -1274,9 +1261,6 @@ const cabin = new LanderCabin(root, {
         return cabin.say(landerEcs.replenish(), 5);
       case "mente":
         return enterMind();
-      default:
-        if (id.startsWith("auto:")) return programLanderTrip(id.slice(5));
-        return;
       case "ajustes":
         cabin.sitLotus();
         settingsFrom = "cabina";
@@ -1657,7 +1641,7 @@ renderer.setAnimationLoop((now) => {
     frameStats.frames++;
     renderer.info.reset();
   }
-  const cmd = subj.piloting || cabin.active || bridge.active || interior.active || stationInside.active || deck.active || bay.active || evaMode.active || stationScreen.active || navMode.blocksInput || missionLog.visible ? NO_INPUT : mergeCommands(pilot.command(), touch.command());
+  const cmd = subj.piloting || cabin.active || bridge.active || interior.active || stationInside.active || deck.active || bay.active || evaMode.active || stationScreen.active || navMode.blocksInput || missionLog.visible ? NO_INPUT : mergeCommands(pilot.command(), landerManual.command());
   const flown = subj.piloting ? subj.probeMode.command() : cmd;
   const idle = flown.mainThrottle === 0 && flown.translation.length() === 0 && flown.rotation.length() === 0;
   // Time warp only on quiet cruise far from the surface, so landing stays real-time.
@@ -1797,7 +1781,7 @@ renderer.setAnimationLoop((now) => {
     const ph = cp?.vehicle === "carrier" ? cp.phase : undefined;
     const pushing = ph === "burn" || ph === "brake";
     const proximity = nav.target.kind === "dock";
-    mothershipModel.setThrust(pushing && !proximity, ph === "aim" || ph === "flip" || ph === "dock" || ph === "undock" || (pushing && proximity) || nav.manualCarrier?.turning === true);
+    mothershipModel.setThrust(pushing && !proximity, ph === "aim" || ph === "flip" || ph === "dock" || ph === "undock" || (pushing && proximity) || nav.manualCarrier?.turning === true || nav.freeCarrier?.turning === true);
   }
   dryDock.update(dt);
   if (dryDock.viewing && !stationInside.active) dryDock.view.close();
@@ -1807,6 +1791,7 @@ renderer.setAnimationLoop((now) => {
   view.rig.visible = !(landerOnCbm() || stationOutside.busy);
   stationModel.setPlatform(stationOps.station.hangar.partList());
   document.body.classList.toggle("in-cockpit", view.enabled);
+  landerManual.update();
   if (interior.active) {
     present(interior.scene, interior.camera);
     return;

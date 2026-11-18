@@ -53,20 +53,13 @@ describe("lander crew cabin (docs/design/habitaculo.md)", () => {
     expect(ids("asiento", { ...base, dockInRange: true })).toEqual(["pilotar"]);
   });
 
-  it("HAB-50 the commander's station offers Manual and Automático; Automático lists only the nearby destinations", () => {
-    const destinations = [
-      { id: "101955-bennu", label: "101955 Bennu", enabled: true },
-      { id: "estacion", label: "Estación", enabled: false, why: "Ya estás acoplada a Estación" },
-    ];
-    const seat = cabinActions("asiento", { ...base, auto: { picking: false, destinations } });
-    expect(seat.map((a) => [a.id, a.label])).toEqual([
-      ["pilotar", "Manual"],
-      ["automatico", "Automático"],
+  it("HAB-50 the commander's station offers Manual and Automático (its destination, in the navigation window)", () => {
+    const seat = cabinActions("asiento", { ...base, auto: {} });
+    expect(seat.map((a) => [a.id, a.label, a.enabled])).toEqual([
+      ["pilotar", "Manual", true],
+      ["automatico", "Automático", true],
     ]);
-    const pick = cabinActions("asiento", { ...base, auto: { picking: true, destinations } });
-    expect(pick.map((a) => a.id)).toEqual(["auto:101955-bennu", "auto:estacion", "volver"]);
-    expect(pick[1]).toMatchObject({ enabled: false, why: "Ya estás acoplada a Estación" });
-    const none = cabinActions("asiento", { ...base, auto: { picking: false, destinations: [] } })[1]!;
+    const none = cabinActions("asiento", { ...base, auto: { why: "No hay destinos cerca de la nodriza" } })[1]!;
     expect(none.enabled).toBe(false);
     expect(none.why).toMatch(/nodriza/);
   });

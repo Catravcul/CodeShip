@@ -1,0 +1,32 @@
+/* «Manual» (src/ui/rcs-pad.ts): Crew Dragon's manual flight touchscreen as taps, at the bottom; 44 px targets. */
+.rcs-pad { position: fixed; left: 50%; bottom: calc(8px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 12; width: min(440px, 96vw); box-sizing: border-box; padding: 6px 8px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #d8f6ff; background: #05141cee; border: 1px solid #58d6ff88; border-radius: 12px; }
+.rcs-pad.hidden { display: none; }
+.rcs-pad .rp-read { display: flex; flex-direction: column; gap: 1px; line-height: 1.25; font-variant-numeric: tabular-nums; }
+.rcs-pad .rp-read b { color: #ffd27f; font-size: 13px; }
+.rcs-pad .rp-cap { font-size: 10px; color: #9fc6d6; }
+.rcs-pad .rp-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+.rcs-pad .rp-row.end { display: flex; }
+.rcs-pad .rp-row.end button { flex: 1; }
+.rcs-pad button { min-height: 44px; min-width: 44px; padding: 0 2px; font: inherit; font-size: 12px; font-weight: 700; color: #06202b; background: #7fdcff; border: 0; border-radius: 10px; }
+.rcs-pad .rp-row.rot button { background: #9fe8c4; }
+.rcs-pad button[data-act="stop"] { background: #ffd27f; }
+.rcs-pad button[data-act="end"] { color: #d8f6ff; background: #0b2a36; border: 1px solid #7fdcff99; }
+.rcs-pad button[data-act^="m:"] { background: #ffb3a0; }
+.rcs-pad .rp-note { font-size: 10px; color: #9fc6d6; }
+body.in-duel .rcs-pad { display: none; }
+/* Piloting by hand is the challenge on screen (Berón, 2026-11-18): the tree menu and the seat's card give way. */
+body.in-manual-flight .root-menu, body.in-manual-flight .room-ui .cab-machine { display: none !important; }
+/* The display: the guidance screen beside a table of attitude and rates; ✓ green inside its limit, ▲ amber out. */
+.rcs-pad .rp-top { display: flex; gap: 6px; align-items: flex-start; }
+.rcs-pad .rp-screen { flex: none; border-radius: 8px; border: 1px solid #7fdcff44; background: #04080c; }
+.rcs-pad .rp-screen[hidden] { display: none; }
+.rcs-pad .rp-read { flex: 1; min-width: 0; font-size: 11px; }
+.rcs-pad .rp-read table { border-collapse: collapse; }
+.rcs-pad .rp-read th { padding: 0 4px 0 0; font-weight: 600; color: #9fc6d6; text-align: left; white-space: nowrap; }
+.rcs-pad .rp-read td { padding: 0 4px 0 0; white-space: nowrap; }
+.rcs-pad .rp-read i { font-style: normal; }
+.rcs-pad .rp-read i.ok { color: #37e07a; }
+.rcs-pad .rp-read i.out { color: #ffb347; font-weight: 700; }
+/* The LM's instruments go across the top, the numbers under them. */
+.rcs-pad.lander-pad .rp-top { flex-direction: column; }
+.rcs-pad.lander-pad .rp-screen { max-width: 100%; }

@@ -73,17 +73,8 @@ body.in-cockpit .autopilot-tag.on { display: block; }
 .card-mission small { margin-left: 0 !important; }
 
 /* Hand flying the mothership (reglas.md §3.6): readouts and three burns at the bottom, thumbs' reach. */
-.carrier-hand { position: fixed; left: 50%; bottom: calc(12px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 12; width: min(420px, 94vw); box-sizing: border-box; padding: 8px 10px; font-size: 12px; color: #d8f6ff; background: #0b2a36ee; border: 1px solid #58d6ff88; border-radius: 12px; display: flex; flex-direction: column; gap: 6px; }
-.carrier-hand.hidden { display: none; }
-.carrier-hand .ch-read { display: flex; flex-direction: column; gap: 2px; }
-.carrier-hand .ch-hint { color: #ffe08a; font-weight: 600; }
-.carrier-hand .ch-btns { display: flex; gap: 8px; }
-.carrier-hand .ch-btns button { flex: 1; min-height: 44px; font: inherit; font-size: 14px; color: #06202b; background: #7fdcff; border: 0; border-radius: 10px; }
-.carrier-hand .ch-btns button[data-dv="stop"] { background: #ffd27f; }
-.carrier-hand .ch-note { font-size: 10px; color: #9fc6d6; }
-body.in-duel .carrier-hand { display: none; }
 /* Flying by hand: the trip chip goes above the hand panel, not over its buttons. */
-body.in-carrier-hand .ctx-dock { bottom: calc(150px + env(safe-area-inset-bottom)); }
+body.in-carrier-hand .ctx-dock { bottom: calc(290px + env(safe-area-inset-bottom)); }
 /* Flying by hand from the deck's navigation page: the destination card gives way to the hand panel. */
 body.in-carrier-hand .nav-map .nav-card { display: none; }
 .nav-map .nav-hand-hint { margin: 4px 0 0; font-size: 12px; color: #9fc6d6; }
@@ -91,3 +82,6 @@ body.in-carrier-hand .nav-map .nav-card { display: none; }
 .nav-canvas .cam-stick.nav-look { position: absolute; left: 8px; right: auto; bottom: 8px; z-index: 2; }
 .nav-canvas .cam-stick.nav-look > .vstick { width: 88px; height: 88px; }
 .nav-canvas .cam-stick.nav-look > .vstick .knob { left: 22px; top: 22px; width: 44px; height: 44px; }
+/* Opened from the LM's or the probe's station: destinations out of that craft's reach, locked (nav-map.ts NavMapOpen). */
+.nav-map .nav-chip.locked { opacity: 0.55; }
+.nav-map .nav-lock { margin: 4px 0; font-size: 12px; color: #ffb347; }

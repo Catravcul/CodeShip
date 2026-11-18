@@ -158,9 +158,12 @@ En el juego (`ProbeOps`, `data/deployer.ts`, `adapters/three/deployer-model.ts`)
 
 ### Mando de la sonda: Manual y Automático
 
-El mando de la sonda en la cubierta de vuelo ofrece **Manual** (su consola, a mano) y **Automático**: la lista de
-asteroides cercanos (ver «Destinos cercanos») y, al elegir uno, el reto del viaje; resuelto, se suelta del
-dispensador y vuela sola hasta 300 m sobre él. Posarla es a mano o con «Aterrizar con un programa»
+El mando de la sonda en la cubierta de vuelo ofrece **Manual** (su consola, a mano) y **Automático**. Sin lista
+propia (Berón, 2026-11-18): Automático abre la **ventana de navegación** con todos los destinos. Los que la sonda no
+alcanza salen bloqueados con el porqué: las estructuras (solo va a asteroides), los lejanos (ver «Destinos
+cercanos») y los que ahora no puede programar (`craftReach` en `navigation/domain/nearby.ts`). Al elegir uno y
+tocar «Programar viaje» se abre su consola y el reto del viaje; resuelto, se suelta del dispensador y vuela sola
+hasta 300 m sobre él. Posarla es a mano o con «Aterrizar con un programa»
 ([aterrizaje.md](aterrizaje.md)).
 
 ### Destinos cercanos

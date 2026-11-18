@@ -29,3 +29,20 @@ export function nearby(t: NavTarget, n: Neighbourhood): NearbyVerdict {
 export function nearbyTargets(targets: readonly NavTarget[], n: Neighbourhood): NavTarget[] {
   return targets.filter((t) => nearby(t, n).ok).sort((a, b) => targetDistance(a, n.carrier) - targetDistance(b, n.carrier));
 }
+
+/** Whether a small craft can be sent to a destination from the navigation window, and if not why (shown locked). */
+export type Reach = { readonly ok: boolean; readonly why?: string };
+
+/**
+ * The navigation window opened from the LM's commander seat or the probe's station (Berón, 2026-11-18): every
+ * destination is listed, those out of the craft's reach locked with the reason. Its reach: the probe only goes to
+ * asteroids (it works on and over them); both only within the mothership's neighbourhood; then whatever the craft
+ * itself cannot do now (`can`: its Δv, its port, a trip already flying).
+ */
+export function craftReach(t: NavTarget, craft: "lander" | "probe", n: Neighbourhood, can: (t: NavTarget) => { ok: boolean; reason?: string }): Reach {
+  if (craft === "probe" && t.kind !== "asteroid") return { ok: false, why: "La sonda solo va a asteroides: se posa en ellos" };
+  const near = nearby(t, n);
+  if (!near.ok) return { ok: false, why: near.why };
+  const c = can(t);
+  return c.ok ? { ok: true } : { ok: false, why: c.reason ?? "No puede ir ahora" };
+}

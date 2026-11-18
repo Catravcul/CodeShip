@@ -67,23 +67,16 @@ export interface CabinState {
   /** The asteroid's mind: the duel the stage allows here, if any (label and whether it can start). */
   readonly mind: { readonly label: string; readonly enabled: boolean; readonly why?: string } | null;
   /**
-   * «Automático» at the commander's station: the lander's own trips, to the destinations near the mothership
-   * (navigation/domain/nearby.ts). `picking`: the station's card lists them.
+   * «Automático» at the commander's station: the lander's own trips, picked in the navigation window with the
+   * destinations out of its reach locked (Berón, 2026-11-18; navigation/domain/nearby.ts). `why`: it can't fly
+   * anywhere now.
    */
-  readonly auto?: { readonly picking: boolean; readonly destinations: readonly SeatDestination[] };
+  readonly auto?: { readonly why?: string };
   /** The LM's own life support (life-support/domain/open-loop.ts): what its panel offers. */
   readonly ecs?: { readonly cartridgeLeft: number; readonly cartridges: number; readonly canReplenish: boolean };
 }
 
-/** A destination the commander's «Automático» can program (a nearby one; disabled with why when it can't fly now). */
-export interface SeatDestination {
-  readonly id: string;
-  readonly label: string;
-  readonly enabled: boolean;
-  readonly why?: string;
-}
-
-export type CabinActionId = "pilotar" | "automatico" | "volver" | `auto:${string}` | "entrar-nodriza" | "entrar-estacion" | "salir-eva" | "mente" | "ajustes" | "cambiar-lioh" | "reponer-ecs";
+export type CabinActionId = "pilotar" | "automatico" | "entrar-nodriza" | "entrar-estacion" | "salir-eva" | "mente" | "ajustes" | "cambiar-lioh" | "reponer-ecs";
 
 export interface CabinAction {
   readonly id: CabinActionId;
@@ -143,29 +136,18 @@ export function nearestStation<Id extends string>(layout: CabinLayout<Id>, p: Fl
  * What a machine offers now. The first action is the main one. The docking hatch only gives passage
  * (docs/design/reglas.md §2.2). The commander's station offers the two ways of every flight (reglas.md §3.6):
  * «Manual» (fly it; docking and undocking are a switch of the flight view, shown at a port) and «Automático»
- * (pick a nearby destination, then the trip challenge).
+ * (the navigation window, then the trip challenge).
  */
 export function cabinActions(id: CabinStationId, s: CabinState): CabinAction[] {
   return stationActions(id, s);
 }
 
-/** The commander's station: Manual / Automático, or the nearby destinations while picking one. */
+/** The commander's station: Manual and Automático (its destination is picked in the navigation window). */
 function seatActions(s: CabinState): CabinAction[] {
-  const a = s.auto;
-  if (a?.picking)
-    return [
-      ...a.destinations.map((d): CabinAction => ({ id: `auto:${d.id}`, label: d.label, enabled: d.enabled, ...(d.why ? { why: d.why } : {}) })),
-      { id: "volver", label: "Volver", enabled: true },
-    ];
   const manual: CabinAction = { id: "pilotar", label: "Manual", enabled: true };
+  const a = s.auto;
   if (!a) return [manual];
-  const any = a.destinations.some((d) => d.enabled);
-  return [
-    manual,
-    any
-      ? { id: "automatico", label: "Automático", enabled: true }
-      : { id: "automatico", label: "Automático", enabled: false, why: a.destinations.length ? a.destinations[0]!.why ?? "Ahora no puede volar solo" : "No hay destinos cerca de la nodriza: los viajes largos los hace la nodriza desde su puente" },
-  ];
+  return [manual, a.why ? { id: "automatico", label: "Automático", enabled: false, why: a.why } : { id: "automatico", label: "Automático", enabled: true }];
 }
 
 function stationActions(id: CabinStationId, s: CabinState): CabinAction[] {

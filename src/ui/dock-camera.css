@@ -28,7 +28,5 @@ body.in-dock-cam .ctx-dock { bottom: calc(330px + env(safe-area-inset-bottom)); 
 /* Starship's flight deck cards (src/bridge.ts): what the seat is based on and the docking state, as plain text. */
 .room-ui .cm-basis { margin: 0; font-size: 11px; color: #9fc6d6; }
 .room-ui .cm-state { margin: 0; font-size: 12px; color: #d8f6ff; }
-.room-ui .cm-dest { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #a9c8d8; }
-.room-ui .cm-dest select { flex: 1; min-width: 0; min-height: 44px; padding: 0 10px; font: inherit; font-size: 14px; font-weight: 700; color: #ffd27f; background: #0b2a36; border: 1px solid #7fdcff99; border-radius: 12px; }
 /* Docking by hand, the camera page already gives the range, the time to contact and «Parar»: the trip chip goes. */
 body.in-dock-cam .trip-chip { display: none !important; }

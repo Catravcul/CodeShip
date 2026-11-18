@@ -12,6 +12,7 @@ import { DOMENICA_HAIR } from "./ui/portraits";
 import { RootMenu } from "./ui/root-menu";
 import { ICON } from "./ui/icons";
 import { settings } from "./ui/settings-store";
+import { orbitAround } from "./adapters/three/orbit-around";
 import "./ui/lander-cabin.css";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
@@ -107,6 +108,12 @@ export abstract class WalkRoom<Id extends string> {
   private walkLook = 0;
   protected seated = false;
   private camAtRear = true;
+  /**
+   * Third person: how far the camera joystick turned the dollhouse camera round her (yaw, radians) and raised
+   * or lowered it (pitch). Berón, 2026-11-18: in third person the joystick moved nothing (reglas.md §5.7).
+   */
+  private orbitYaw = 0;
+  private orbitPitch = 0;
   private readonly walls: THREE.Object3D[] = [];
   private readonly hidden: THREE.Object3D[] = [];
   private readonly ray = new THREE.Raycaster();
@@ -239,6 +246,8 @@ export abstract class WalkRoom<Id extends string> {
     this.walkTo = null;
     this.seated = false;
     this.camAtRear = this.pos.z < this.midZ;
+    this.orbitYaw = 0;
+    this.orbitPitch = 0;
     this.passing = null;
     for (const l of this.leaves.values()) l.set(0);
     // Came in through this machine's hatch: it is open behind her and shuts.
@@ -472,6 +481,10 @@ export abstract class WalkRoom<Id extends string> {
       if (this.walkTo) this.walkLook += look.yaw;
       else this.yaw += look.yaw;
       this.pitch = Math.max(-1.2, Math.min(1.3, this.pitch + look.pitch));
+    } else if (!busy) {
+      // Third person (or seated in lotus): the camera joystick turns the camera round her, never her.
+      this.orbitYaw += look.yaw;
+      this.orbitPitch = Math.max(-0.5, Math.min(0.6, this.orbitPitch + look.pitch));
     }
     let moving = false;
     const speed = this.opts.speedMs;
@@ -587,9 +600,11 @@ export abstract class WalkRoom<Id extends string> {
       const rear = this.camAtRear;
       const back = this.opts.cameraBackM ?? 1.4;
       this.lens(55, 0.05);
-      this.camera.position.set(this.pos.x * 0.4 * k, this.opts.layout.heightM * k + 0.85, rear ? f.maxZ * k + back : f.minZ * k - back);
       // Seated in lotus under the settings sheet: aim low so she shows in the top of the screen.
-      this.camera.lookAt(this.pos.x * 0.85 * k, this.seated ? -0.2 : 0.55, (this.pos.z + (rear ? -0.2 : 0.2)) * k);
+      const aim = new THREE.Vector3(this.pos.x * 0.85 * k, this.seated ? -0.2 : 0.55, (this.pos.z + (rear ? -0.2 : 0.2)) * k);
+      const from = new THREE.Vector3(this.pos.x * 0.4 * k, this.opts.layout.heightM * k + 0.85, rear ? f.maxZ * k + back : f.minZ * k - back);
+      this.camera.position.copy(orbitAround(from, aim, this.orbitYaw, this.orbitPitch));
+      this.camera.lookAt(aim);
       this.cutaway();
     } else {
       this.cutaway(true);
@@ -766,3 +781,4 @@ const POSE_SEAT = { rootY: 0.55, rootX: 0, torso: 0.1, headX: 0.2, headY: 0, hea
 
 /** Hand over hand along the rails (the cube rig's «hold»), for moving about in microgravity. */
 const POSE_HOLD = { rootY: 0.98, rootX: 0, torso: 0.1, headX: -0.1, headY: 0, headZ: 0, shoulderX: [-2.2, -0.9] as [number, number], shoulderZ: [0.05, -0.35] as [number, number], elbow: [-0.25, -0.7] as [number, number], hip: [-0.3, -0.3] as [number, number], knee: [0.4, 0.3] as [number, number] };
+

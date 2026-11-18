@@ -230,7 +230,7 @@ describe("Trips that end docked", () => {
   }, 30_000);
 });
 
-describe("NAV-16 The mothership flown by hand (reglas.md §3.6): she commands the speed, it parks at Waypoint 1 and the docking station docks it", () => {
+describe("Navigator.flyByHand (a route flown by speed commands; the journeys use it to bring Starship to Waypoint 1): it parks at Waypoint 1 and the docking station docks it", () => {
   it("at rest until she burns; at 0,4 m/s it closes in at the board's pace; stopped in the window it holds at Waypoint 1 and docks by program", () => {
     const { nav, mothership, station } = make({ undocked: new Vec3(-200, -300, 1300) });
     expect(nav.flyByHand(station.id).ok).toBe(true);

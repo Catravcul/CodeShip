@@ -24,7 +24,9 @@ puestos se cablean en `src/flight-deck-seats.ts`; la cámara de acople es `src/u
 | Pantallas y mandos | La NASA dice que las pantallas de la tripulación se están decidiendo con SpaceX; no hay planos ni fotos del puesto | sin publicar | [AmericaSpace, 2023-12](https://www.americaspace.com/2023/12/01/spacexs-new-design-for-lunar-starship-unveiled/) |
 | Cabina 1 | Primeras fotos de la NASA (2026-10): paredes acolchadas blancas, aberturas de ventana en el acero | real (en construcción) | [TeslaNorth, 2026-10-23](https://teslanorth.com/2026/10/23/starship-moon-lander-cabin-nasa/) |
 | Base real elegida: Crew Dragon | Tres pantallas táctiles con grupos de botones físicos debajo, casi todos tapados | real | [Engadget](https://www.engadget.com/2018-08-14-spacex-dragon-spacecraft-astronauts.html) |
-| Pilotar a mano en Dragon | Modo manual para acoplar, aterrizar o abortar desde la pantalla táctil; en la Demo-2 (2020-05-30/31) Hurley lo voló cerca de la ISS con el vídeo del objetivo de acople en la misma pantalla | real | [Space.com](https://www.space.com/spacex-crew-dragon-touchscreen-astronaut-thoughts.html), [Spaceflight Now](https://spaceflightnow.com/2020/05/30/dragon-astronauts-name-their-spacecraft-endeavour-complete-first-manual-flight-test/) |
+| Pilotar a mano en Dragon | Modo manual para acoplar, aterrizar o abortar desde la pantalla táctil; en la Demo-2 (2020-05-30/31) Hurley lo voló dos veces: lejos de la ISS puso la cápsula en actitud LVLH con los mandos táctiles, y cerca, con el vídeo del objetivo de acople en la misma pantalla | real | [Space.com](https://www.space.com/spacex-crew-dragon-touchscreen-astronaut-thoughts.html), [TechCrunch, 2020-05-30](https://techcrunch.com/2020/05/30/nasa-astronauts-successfully-pilot-spacexs-crew-dragon-spacecraft-manually-for-the-first-time), [Spaceflight Now](https://spaceflightnow.com/2020/05/30/dragon-astronauts-name-their-spacecraft-endeavour-complete-first-manual-flight-test/) |
+| Mandos manuales de Dragon | Botones táctiles de traslación (adelante/atrás, arriba/abajo, izquierda/derecha) y de giro (cabeceo, guiñada, alabeo); cada toque es un impulso fijo del RCS, no un encendido mientras se pulsa, con un paso fino y uno grueso; la pantalla da los ritmos de giro y la actitud. El simulador público de SpaceX los copia. Los pasos exactos de la nave no se publican | real (pasos sin publicar) | [Simulador de SpaceX](https://iss-sim.spacex.com/), [Hackaday, 2020-05-15](https://hackaday.com/2020/05/15/docking-with-iss-isnt-as-easy-as-you-might-think), [código del simulador](https://gist.github.com/CorvusCorax/d6e6e98c946b8bfad56563b514df23a9) |
+| Mandos del LM de Apolo | Dos mandos de mano: el de giro (ACA, en modo de ritmo: la nave gira al ritmo pedido y lo mantiene) y el de empuje y traslación (TTCA: los chorros de traslación y el acelerador del motor de descenso, regulable del 10 al 60 % y a tope) | real | [Apollo 11 Flight Plan / paneles del LM](https://apollo11guide.com/Apollo11ManualFree/LunarLander/Lunar_Module_Control_Panel_1.htm), [crew-station.ts](../../src/modules/lander-cabin/data/crew-station.ts) |
 | Atraque | Waypoint 1 a 150 m, Waypoint 2 a 20 m con espera, 51 min hasta la captura (Demo-1); ganchos IDSS | real | [berthing.ts](../../src/modules/mothership/application/berthing.ts), [IDSS](https://ntrs.nasa.gov/citations/20220011643) |
 
 Como SpaceX no ha publicado el puesto de mando, la **disposición es nuestra** y la cubierta lo dice en cada ficha
@@ -48,7 +50,7 @@ queda es el de la cámara.
 
 | Puesto | Dónde | Qué hace (como su equivalente real) |
 | --- | --- | --- |
-| **Puesto de pilotaje** | Proa, bajo las tres ventanas, sentada | Tres pantallas táctiles (vuelo, trayectoria, sistemas) con botones físicos debajo, como Dragon. Se elige el **destino** (cualquiera: la estación o un asteroide, con su distancia) y se vuela en **Manual** (los encendidos cortos de ±0,1 m/s, «Parar», lo que falta y el Δv gastado, de trayectos-reales) o en **Automático (retos)** (la cadena de retos del viaje). «Pantallas de sistemas» pasa por propulsión, energía y vida en pestañas, como las páginas de Dragon |
+| **Puesto de pilotaje** | Proa, bajo las tres ventanas, sentada | Tres pantallas táctiles (vuelo, trayectoria, sistemas) con botones físicos debajo, como Dragon. Sin selector de destino propio: **Manual** es vuelo libre con los mandos táctiles de Crew Dragon (solo RCS) y **Automático (retos)** abre la ventana de navegación de la mesa, donde se elige el destino y empieza la cadena de retos del viaje. «Pantallas de sistemas» pasa por propulsión, energía y vida en pestañas, como las páginas de Dragon |
 | **Puesto de acople** | Proa, estribor, sentada | La cámara del puerto de proa. Atracada: **Desacoplar** (los ganchos se abren y retrocede por el eje hasta el punto de espera 1). En el punto de espera de una estación: **Acoplar a mano (cámara)** o **Acoplar automático (retos)**. Lejos: dice que primero hay que llegar al punto de espera. Durante una maniobra: pararla |
 | Mando de la sonda | Proa, babor, sentada | Como antes (lo lleva la rama de los mandos de la sonda) |
 | Mesa de navegación | Popa, estribor | El mapa: planificar (**Programar viaje**) y «Ver trayecto». Ya no vuela a mano: la tarjeta dice que eso es del puesto de pilotaje |
@@ -64,12 +66,46 @@ puesto de acople solo lo menciona en una línea de texto.
 
 ### Pilotar
 
-- **Manual**: `Navigator.flyByHand` (sin cambios de física). El panel de mandos sale **solo sentada en el puesto
-  de pilotaje** (`navMode.handAt`); mientras vuela a mano la ficha del puesto se aparta para no tapar los mandos.
-  Atracada en la estación, «Manual» no se puede: primero se desacopla en el puesto de acople.
-- **Automático (retos)**: fija el destino y abre la cadena de retos del viaje (`NavigationMode.program`); por
-  programa, si está atracada, desatraca y sale sola como la Crew Dragon.
-- A una **estación**, a mano, el ordenador la lleva al punto de espera 1 y **se queda allí** (antes atracaba solo).
+- **Ningún puesto de pilotaje tiene selector de destino propio** (Berón, 2026-11-18). El destino solo se elige en
+  la ventana de navegación (`src/ui/nav-map.ts`), y solo para «Automático».
+- **Manual** (Berón, 2026-11-18: «Manual es vuelo libre, sin destino»; «¿es real?»): vuelo libre con los mandos de
+  **Crew Dragon**, porque los de la Starship no se han publicado (la nota de los mandos dice «en desarrollo» y que
+  el modelo es Dragon). `Navigator.flyFree` y `FreeCarrierRun` (`free-carrier.ts`); los mandos son `RcsPad`
+  (`src/ui/rcs-pad.ts`):
+  - trasladar adelante/atrás, arriba/abajo, izquierda/derecha: cada toque, 0,1 m/s del RCS;
+  - girar en cabeceo, guiñada y alabeo: cada toque, 0,2 °/s más de giro, que se mantiene;
+  - topes de 1 m/s y 1 °/s (el mismo ritmo que los giros de los viajes);
+  - «Parar» anula velocidad y giros; «Dejar de pilotar».
+  Los pasos son nuestros, porque los de Dragon no se publican. La pantalla da la velocidad en los tres ejes, la
+  actitud, los ritmos de giro y el Δv gastado, como en la prueba de Hurley. **Nunca da distancia ni tiempo a un
+  destino** (no hay viaje cargado). Solo RCS: los Raptor no se regulan a mano, y los encendidos grandes van en
+  «Automático». Se juega a tiempo real, como el vuelo de proximidad de Dragon. Los mandos salen **solo sentada en
+  el puesto de pilotaje** (`navMode.handAt`), caben en 390 × 664 con botones de 44 px, y mientras salen pilotar es
+  el reto en pantalla: el menú árbol y la ficha del puesto se esconden (`body.in-manual-flight`). Atracada en la
+  estación, «Manual» no se puede: primero se desacopla en el puesto de acople. Parada (por debajo de 0,05 m/s y
+  sin giro) cerca del punto de espera 1 de un puerto, el puesto de acople puede acoplarla.
+- **La pantalla de Manual** (Berón, 2026-11-18: «¿cómo sabían qué botón tocar?»): la de Dragon, en
+  `src/ui/dragon-display.ts`.
+  - **Cerca del puerto** de una estación (a menos de 1 km de su punto de espera 1, `Navigator.freeGuidance`):
+    - el vídeo de la cámara de eje, con el disco del puerto y su cruz (crece al acercarse y se aparta de la caja
+      verde del centro con el desvío y con el error de actitud);
+    - la distancia y el ritmo de cierre;
+    - el error de actitud contra el eje del puerto (cabeceo, guiñada, alabeo) y el ritmo de cada eje;
+    - el desvío fuera del eje.
+    Es lo que usó la tripulación en la Demo-2 y lo que copia el simulador público de SpaceX.
+  - **En vuelo libre lejos de un puerto**: la actitud y el ritmo de cada eje, sin la cámara.
+  - Cada valor sale en verde con ✓ dentro de su límite y en ámbar con ▲ fuera (reglas §5.6). Los límites son las
+    condiciones de contacto del IDSS: 0,2 °/s por eje, 4° de error, 0,10 m fuera del eje y 0,05–0,10 m/s de cierre
+    por debajo del punto 2. Más lejos, el cierre solo debe quedar por debajo de los 0,5 m/s del acople a mano
+    (valor nuestro).
+  - Fuentes: [simulador de SpaceX](https://iss-sim.spacex.com/) (cámara de eje con su retícula, distancia, ritmo,
+    error y ritmo por eje en verde dentro del límite); [Spaceflight Now, 2020-05-30](https://spaceflightnow.com/2020/05/30/dragon-astronauts-name-their-spacecraft-endeavour-complete-first-manual-flight-test/)
+    y [TechCrunch, 2020-05-30](https://techcrunch.com/2020/05/30/nasa-astronauts-successfully-pilot-spacexs-crew-dragon-spacecraft-manually-for-the-first-time)
+    (la prueba de Hurley: actitud lejos, cámara de acople cerca); IDSS IDD, Rev. F, tabla 3.3.1.1-2
+    (`IDSS_CONTACT_LIMITS`).
+- **Automático (retos)**: abre la **ventana de navegación de la mesa**, sin cambios (la página «nav» de la
+  cubierta). Al elegir un destino y tocar «Programar viaje» se abre la cadena de retos del viaje
+  (`NavigationMode.program`). Por programa, si está atracada, desatraca y sale sola como la Crew Dragon.
 - **Vuela, no se arrastra** (`CarrierTrip`, `carrier-trip.ts`): primero gira la proa (cuerpo −z, los Raptor detrás)
   hacia la ruta, enciende, va por inercia, da la vuelta de 180° antes de frenar (frena con los motores por delante)
   y al final gira a la actitud del punto 1, con la proa al puerto. Gira a 1°/s (`CARRIER_SLEW_DEG_S`, valor de
@@ -124,6 +160,8 @@ Las tres maniobras van por el `Navigator` como los viajes: un solo reloj, el chi
 
 ### Preguntas abiertas para Berón
 
+- Resuelto (2026-11-18): sin selector de destino en los puestos; «Manual» es vuelo libre con los mandos de Crew
+  Dragon (solo RCS) y «Automático» abre la ventana de navegación.
 - Resuelto (2026-11-17): sin gravedad, a saltos; ×10 en el acople a mano, 1°/s de giro, el estado en el puesto de
   acople y la consola de la red (ficción) se quedan como están.
 - La mesa de navegación es nuestra: en una nave real el mapa es una página de las pantallas. ¿La dejamos como mesa

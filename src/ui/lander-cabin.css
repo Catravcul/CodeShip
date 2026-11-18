@@ -6,7 +6,7 @@
 .root-menu.cab-menu { top: calc(10px + env(safe-area-inset-top)); right: 10px; }
 .cab-machine { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(160px + env(safe-area-inset-bottom)); width: min(380px, calc(100vw - 24px)); box-sizing: border-box; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; background: #05141ce6; border: 1px solid #7fdcff55; border-radius: 14px; font-size: 13px; }
 /* Phones: clear of the tree menu's column on the right, which may stay open (reglas.md §5.8). */
-@media (max-width: 520px) { .cab-machine { left: 10px; transform: none; width: calc(100vw - 74px); } }
+@media (max-width: 520px) { .cab-machine { left: 10px; transform: none; width: calc(100vw - 74px); max-height: calc(100dvh - 268px - env(safe-area-inset-bottom)); overflow-y: auto; } }
 .cab-machine.hidden { display: none; }
 .cm-head { display: flex; flex-direction: column; gap: 2px; }
 .cm-head b { font-size: 15px; color: #ffd27f; }

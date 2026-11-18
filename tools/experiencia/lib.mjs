@@ -490,6 +490,18 @@ export class Journey {
         return r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
       });
       const name = (el) => `${el.className.toString().split(" ")[0] || el.tagName.toLowerCase()}«${el.textContent.trim().slice(0, 24)}»`;
+      // What can be seen of it: a button inside a scrolling card is cut at the card's edge.
+      const seen = (el) => {
+        const r = el.getBoundingClientRect();
+        let [l, t, rt, b] = [r.left, r.top, r.right, r.bottom];
+        for (let p = el.parentElement; p; p = p.parentElement) {
+          const o = getComputedStyle(p);
+          if (o.overflowX === "visible" && o.overflowY === "visible") continue;
+          const q = p.getBoundingClientRect();
+          [l, t, rt, b] = [Math.max(l, q.left), Math.max(t, q.top), Math.min(rt, q.right), Math.min(b, q.bottom)];
+        }
+        return { left: l, top: t, right: rt, bottom: b };
+      };
       const out = [];
       for (let i = 0; i < vis.length; i++)
         for (let j = i + 1; j < vis.length; j++) {
@@ -498,8 +510,8 @@ export class Journey {
           if (a.contains(b) || b.contains(a)) continue;
           // A sticky button over a scrolling list is by design: the list scrolls out from under it.
           if (getComputedStyle(a).position === "sticky" || getComputedStyle(b).position === "sticky") continue;
-          const r = a.getBoundingClientRect();
-          const q = b.getBoundingClientRect();
+          const r = seen(a);
+          const q = seen(b);
           const w = Math.min(r.right, q.right) - Math.max(r.left, q.left);
           const h = Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top);
           // Only when both stay on top at their own centre: one hidden behind a sheet is covered, not competing.

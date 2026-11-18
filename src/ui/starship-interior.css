@@ -11,6 +11,7 @@ body.in-duel .sts-ui, body.in-duel .sts-move, body.in-duel .sts-look, body.in-st
 .sts-head > div { display: flex; flex-direction: column; gap: 2px; }
 .sts-icon { flex: 0 0 auto; display: inline-flex; width: 32px; height: 32px; align-items: center; justify-content: center; color: #ffd27f; background: #0b2a36; border: 1px solid #7fdcff55; border-radius: 50%; }
 .sts-card.sts-card { bottom: calc(190px + env(safe-area-inset-bottom)); }
+@media (max-width: 520px) { .sts-card.sts-card { max-height: calc(100dvh - 298px - env(safe-area-inset-bottom)); } }
 .sts-card small { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 body.in-tasks .sts-card, body.in-areas .sts-card, body.in-settings .sts-card, body.in-settings .sts-menu { display: none !important; }
 .sts-toast.cab-toast { top: calc(110px + env(safe-area-inset-top)); z-index: 7; }

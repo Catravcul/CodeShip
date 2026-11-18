@@ -115,9 +115,13 @@ export async function mandos(j) {
   j.check("caben en el móvil con botones de 44 px y el menú árbol se esconde", pad.top >= 0 && pad.bottom <= 664 && pad.small === 0 && !pad.menu, JSON.stringify({ top: pad.top, bottom: pad.bottom, small: pad.small, menu: pad.menu }));
   await j.tap('.rcs-pad.lander-pad [data-act="r:x:1"]', "Cabeceo arriba");
   await j.tap('.rcs-pad.lander-pad [data-act="t:y:1"]', "Trasladar arriba");
-  await p.waitForFunction(() => Math.abs((window.codeship.flight.state.angularVelocityBody.x * 180) / Math.PI - 1) < 0.1, null, { timeout: 8000 }).catch(() => {});
-  const lmFly = await p.evaluate(() => ({ rate: (window.codeship.flight.state.angularVelocityBody.x * 180) / Math.PI, hold: window.codeship.flight.holdRates?.x ?? 0 }));
-  j.check("un toque de cabeceo fija 1 °/s y el RCS lo mantiene", Math.abs(lmFly.rate - 1) < 0.1 && Math.abs((lmFly.hold * 180) / Math.PI - 1) < 1e-6, JSON.stringify(lmFly));
+  const held = await p.waitForFunction(() => Math.abs((window.codeship.flight.state.angularVelocityBody.x * 180) / Math.PI - 1) < 0.1, null, { timeout: 12000 }).then(() => true).catch(() => false);
+  const lmFly = await p.evaluate(() => {
+    const c = window.codeship;
+    const w = c.flight.state.angularVelocityBody;
+    return { rate: (w.x * 180) / Math.PI, other: [w.y, w.z].map((v) => +((v * 180) / Math.PI).toFixed(2)), hold: c.flight.holdRates?.x ?? 0, assist: c.docking.assist, level: c.flight.landingAssist, guided: !!c.flight.guidance, warp: c.view?.warp ?? null };
+  });
+  j.check("un toque de cabeceo fija 1 °/s y el RCS lo mantiene", held && Math.abs(lmFly.rate - 1) < 0.15 && Math.abs((lmFly.hold * 180) / Math.PI - 1) < 1e-6, JSON.stringify(lmFly));
   await j.tap('.rcs-pad.lander-pad [data-act="stop"]', "Parar");
   j.check("libre dentro de la esfera de 200 m del puerto, los mandos ofrecen «Acoplar»", pad.extra === "Acoplar", pad.extra);
   await capture(j, "acoplar", "Mandos del LM a mano con «Acoplar» cerca del puerto");

@@ -101,7 +101,50 @@ const PLANS: Readonly<Record<number, Plan>> = {
   11: { room: "glaciar:hielo-azul", door: "glaciar:hielo-azul:borde", her: { moto: [-14, 0, 0, E], meteorito: [0, 0, 0, E] }, trainer: [0.8, 0, 1.5, S], anchors: { "moto-nieve": [-2.6, 0, -1.6], meteorito: [0.75, 0, 0], gps: [0.55, 0, 0.35], bandera: [1.3, 0, 0.6] } },
   // The cold-survival site (its centre at (−1442,5, 55) of the glacier): the wind from the south (−z).
   12: { room: "glaciar:supervivencia", door: "glaciar:supervivencia:borde", her: { tienda: [-3, 0, -1.4, N], muro: [3, 0, -6, S], zanja: [-6.2, 0, -6.4, N], hornillo: [0.6, 0, 2.5, W], radio: [4, 0, 3, E] }, trainer: [1.5, 0, -1, W], beside: { tienda: [-1.4, 0, -1.4, W], muro: [3, 0, -4.6, S], zanja: [-7.9, 0, -6.4, E], hornillo: [0.6, 0, 4.1, S], radio: [4, 0, 4.6, S] }, anchors: { "tienda-scott": [-3, 0, 1], "muro-nieve": [3, 0, -6.7], "zanja-techo": [-6.2, 0, -4.5], hornillo: [-0.4, 0, 2.5], olla: [-0.4, 0.28, 2.5], "radio-hf": [4.8, 0, 3], antena: [7, 0, 3] } },
+  // ── Phase 6 ──
+  // Mission control (215, −25), like Houston's FCR-1: she sits at the flight director's console (row 3, the FLIGHT
+  // console at (−2,5, −1), its chair moved for her); the trainer stands at her right; the front's big screens show the
+  // Electron on its crown (s3-launch.ts).
+  10: { room: "entrenamiento:control", her: { director: [-2.5, 0, -2.3, N] }, trainer: [-0.9, 0, -2.6, -0.5], trainerVia: [[10.6, 0, -3.4, N], [-0.9, 0, -3.4, W]], anchors: { pantalla: [0, 2.75, 9.3] } },
+  // The crew's suit-up room (148, −106), its door to the north: she dresses standing, then sits in the recliner by the
+  // leak-check stand on the south wall.
+  13: { room: "entrenamiento:trajes", her: { "traje-pie": [2, 0, 0, S], "sillon-traje": [5, 0.45, -2.6, N] }, trainer: [3.4, 0, 0.6, W], trainerVia: [[0, 0, 3.5, S], [3.4, 0, 3.5, S]], beside: { "sillon-traje": [6.4, 0, -1.6, W] }, anchors: {} },
 };
+
+/** Her height over the Falcon 9's foot at the crew access arm's floor: the Dragon's side hatch, over its trunk (ours: the trunk is 3,4 m, the hatch just above it). */
+export const ARM_FLOOR_M = 70 - 8.1 + 3.9;
+/** The white room at the arm's end, m along the arm (NASA: the room the crew goes through into Dragon). */
+export const WHITE_ROOM_M = 2.4;
+
+/**
+ * Her launch day at the crew pad (application/launch.ts): on the crew access arm, in the white room by the hatch,
+ * and in her seat in the Dragon (which flies with the rocket: «dragon-real» is a mount, s3-launch.ts). Nobody gives
+ * these challenges (the crew is hers): the «trainer» is the pad's foot, where nobody is during the launch.
+ */
+export function launchStage(layout: S3Layout): Stage | undefined {
+  const f9 = layout.props.find((p) => p.kind === "falcon9");
+  const tower = layout.props.find((p) => p.kind === "crew-tower");
+  const area = layout.areas.find((a) => a.id === "plataforma:cubierta");
+  if (!f9 || !tower || !area) return undefined;
+  const y = f9.y + ARM_FLOOR_M;
+  const dir = Math.sign(tower.z - f9.z) || 1;
+  // The Dragon's side (Ø 4 m), the white room, then the arm to the tower's face (the tower is drawn k times wider).
+  const side = f9.z + dir * 2;
+  const face = tower.z - dir * 3.3 * layout.k;
+  const back = dir > 0 ? S : N;
+  const spot = (z: number, yy = y): StageSpot => ({ x: f9.x, y: yy, z, face: back });
+  return {
+    post: 13,
+    room: area.id,
+    door: "plataforma:cohete",
+    mounted: ["dragon-real"],
+    her: { "brazo-acceso": spot((side + WHITE_ROOM_M * dir + face) / 2), "sala-blanca": spot(side + dir * WHITE_ROOM_M * 0.5), "dragon-real": spot(f9.z, y + 0.4) },
+    trainer: { x: f9.x - 12, y: f9.y, z: f9.z - 12, face: N },
+    trainerVia: [],
+    beside: {},
+    anchors: {},
+  };
+}
 
 /** The stage of post `post` in this layout (undefined for a post with no challenge yet). */
 export function stageFor(layout: S3Layout, post: number): Stage | undefined {

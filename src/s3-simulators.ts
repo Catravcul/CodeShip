@@ -42,6 +42,8 @@ export class S3Simulators {
   private dock: DockPractice | undefined;
   private land: LmSim | undefined;
   private doneT = 0;
+  /** Flying from another seat than the simulator's (the launch's Dragon): the scene's camera, not the mock-up's. */
+  private ownSeat = false;
   kind: SimKind | undefined;
   /** The practice is over (the scene puts her back). */
   onEnd: (() => void) | undefined;
@@ -91,12 +93,20 @@ export class S3Simulators {
   }
 
   /** Her place at the simulator: the Dragon's commander seat or the LM's commander station. */
-  start(kind: SimKind, her: { rig: THREE.Object3D; fig: CubeFigure }): void {
+  /** The last docking's verdict (the launch's rendezvous by hand reads it when the practice ends). */
+  lastDockOk: boolean | undefined;
+  private title = "Simulador de Dragon · acople a mano";
+
+  /** `opts` for the launch's rendezvous by hand: from Waypoint 2 (20 m), in her seat in the real Dragon. */
+  start(kind: SimKind, her: { rig: THREE.Object3D; fig: CubeFigure }, opts: { fromM?: number; title?: string; seat?: { x: number; y: number; z: number; face: number } } = {}): void {
     this.kind = kind;
     this.doneT = 0;
+    this.lastDockOk = undefined;
+    this.title = opts.title ?? "Simulador de Dragon · acople a mano";
+    this.ownSeat = !!opts.seat;
     if (kind === "acople") {
-      this.dock = dockPractice();
-      const seat = this.stage.her["dragon-asiento"]!;
+      this.dock = dockPractice(opts.fromM);
+      const seat = opts.seat ?? this.stage.her["dragon-asiento"]!;
       her.rig.position.set(seat.x, seat.y, seat.z);
       her.rig.rotation.set(0, seat.face, 0);
       her.fig.pose("sit-hands");
@@ -133,9 +143,10 @@ export class S3Simulators {
     if (this.kind === "acople" && this.dock) {
       const was = this.dock.contact;
       const g = dockTick(this.dock, dt);
-      this.dockPad.update(dragonRead(this.dock.run, g, "Simulador de Dragon · acople a mano"));
+      this.dockPad.update(dragonRead(this.dock.run, g, this.title));
       const sc = this.dockPad.screen(true);
       if (sc) drawDockCamera(sc.g, sc.w, sc.h, g);
+      if (!was && this.dock.contact) this.lastDockOk = this.dock.contact.ok;
       if (!was && this.dock.contact) this.onSay?.(this.dock.contact.ok ? "Contacto dentro de los límites del IDSS: acoplada" : `Contacto fuera de los límites: ${this.dock.contact.out.join(" · ")}. Se aparta y se repite`);
       if (this.dock.contact && (this.doneT += dt) > 4) this.end();
     } else if (this.kind === "alunizaje" && this.land) {
@@ -162,6 +173,7 @@ export class S3Simulators {
 
   /** The camera at the simulator: in the capsule, at her side; in the LM, the commander's eye on his panels. */
   eye(pos: THREE.Vector3, at: THREE.Vector3): boolean {
+    if (this.kind === "acople" && this.ownSeat) return false;
     if (this.kind === "acople") {
       // Over her shoulder in the capsule, at the touchscreen.
       const seat = this.stage.her["dragon-asiento"]!;
@@ -250,4 +262,24 @@ export function paintSimScreen(g: CanvasRenderingContext2D, w: number, h: number
       title("LM · alunizaje");
       return;
   }
+}
+
+/**
+ * Dragon's display in the launch's rendezvous by challenge (s3-launch.ts): the step in words and, inside the 400 m
+ * sphere, the docking camera on the Starship's port at that waypoint's range (on its axis: the challenge flies it right).
+ */
+export function paintRendezvous(g: CanvasRenderingContext2D, w: number, h: number, cue: { readonly step: string; readonly rangeM?: number }): void {
+  if (cue.rangeM !== undefined) drawDockCamera(g, w, h, { name: "Starship", rangeM: cue.rangeM, closingMs: 0, right: 0, up: 0, errDeg: { x: 0, y: 0, z: 0 } });
+  else {
+    g.fillStyle = "#04080c";
+    g.fillRect(0, 0, w, h);
+  }
+  g.fillStyle = "#04080cc0";
+  g.fillRect(0, h - 58, w, 58);
+  g.fillStyle = "#9fd8ff";
+  g.font = "bold 20px sans-serif";
+  g.fillText(cue.rangeM !== undefined ? `Starship · ${Math.round(cue.rangeM)} m` : "Crew Dragon · cita en órbita", 14, h - 34);
+  g.fillStyle = "#e6f3ff";
+  g.font = "16px sans-serif";
+  g.fillText(cue.step.slice(0, 48), 14, h - 12);
 }

@@ -35,8 +35,9 @@ arriba del todo) llevada a una escena de Three.js. Casos AER-01 a AER-09 en [cas
   otra con el aparato, el tiempo y la escala. «Volar» la lleva andando al helipuerto y se ve el vuelo entero: el S-92 (280 km/h, 60 m de
   crucero) o la alfombra (30 s, `AereoRule.FlightSeconds`); la cámara gira alrededor con su joystick. `planTrip` pide el menor número de
   tramos y, a igualdad, el menor tiempo: al parque y al muelle (solo alfombras) se va con escala en la lanzadera.
-- **Puestos.** Los 13 puestos de la iniciación (§4) son tareas del grupo «Iniciación» con «Ir» a su máquina. Su tarjeta dice
-  «⊘ En construcción» y el reto no se puede empezar (llegan con las ramas `s3-iniciacion-*`). La esterilla del gimnasio abre los ajustes.
+- **Puestos.** Los 13 puestos de la iniciación (§4) son tareas del grupo «Iniciación» con «Ir» a su máquina, y la 14.ª,
+  «Lanzamiento», lleva a la torre de la plataforma ([santuario3-lanzamiento.md](santuario3-lanzamiento.md)). Todos tienen su
+  reto (ramas `s3-iniciacion-*` y `s3-lanzamiento`). La esterilla del gimnasio abre los ajustes.
 - **Aves y turbinas.** Diez aves de `ColdBirds.AirBudget` vuelan al sur de la lanzadera; los albatros llegan hasta el parque. Cada segundo
   cada turbina mira sus aves (`scan`): una a ≤ 200 m del buje la para y se rearma 30 s después de la última.
 

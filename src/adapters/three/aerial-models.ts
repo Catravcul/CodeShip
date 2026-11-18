@@ -141,36 +141,43 @@ export function electron(): THREE.Group {
   return g;
 }
 
-/** Falcon 9 Block 5 (70 m, Ø 3,7 m) with Crew Dragon on top (8,1 m with the trunk, Ø 4 m). */
+/** Falcon 9 Block 5 (70 m, Ø 3,7 m) with Crew Dragon on top (8,1 m with the trunk, Ø 4 m): its two stages and the Dragon are groups of their own (they separate in flight, s3-launch.ts). */
 export function falcon9(): THREE.Group {
   const g = new THREE.Group();
   const r = FALCON9_CREW.diameterM.value / 2;
   const total = FALCON9_CREW.heightM.value;
   const dragonH = DRAGON.heightM.value;
   const body = total - dragonH;
-  g.add(lathe([[0, 0], [r, 0], [r, body * 0.68], [0, body * 0.68]], 0xf2f2f2));
-  g.add(lathe([[0, body * 0.68], [r, body * 0.68], [r, body * 0.7], [0, body * 0.7]], 0x1e1e1e));
-  g.add(lathe([[0, body * 0.7], [r, body * 0.7], [r, body], [0, body]], 0xf2f2f2));
+  const first = new THREE.Group();
+  first.name = "f9-etapa1";
+  const second = new THREE.Group();
+  second.name = "f9-etapa2";
+  const dragon = new THREE.Group();
+  dragon.name = "f9-dragon";
+  first.add(lathe([[0, 0], [r, 0], [r, body * 0.68], [0, body * 0.68]], 0xf2f2f2));
+  first.add(lathe([[0, body * 0.68], [r, body * 0.68], [r, body * 0.7], [0, body * 0.7]], 0x1e1e1e));
+  second.add(lathe([[0, body * 0.7], [r, body * 0.7], [r, body], [0, body]], 0xf2f2f2));
   // Grid fins and the legs folded at the base.
   for (let i = 0; i < 4; i++) {
     const fin = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.5, 0.2), mat(0x3a3a3a));
     const a = (i * Math.PI) / 2;
     fin.position.set(Math.cos(a) * (r + 0.6), body * 0.66, Math.sin(a) * (r + 0.6));
     fin.rotation.y = -a;
-    g.add(fin);
+    first.add(fin);
     const leg = new THREE.Mesh(new THREE.BoxGeometry(0.5, 9, 0.3), mat(0x222222));
     leg.position.set(Math.cos(a + 0.78) * (r + 0.1), 5, Math.sin(a + 0.78) * (r + 0.1));
     leg.rotation.y = -(a + 0.78);
-    g.add(leg);
+    first.add(leg);
   }
   const dr = DRAGON.diameterM.value / 2;
-  g.add(lathe([[0, body], [dr, body], [dr, body + 3.4], [0, body + 3.4]], 0xf4f4f4));
-  g.add(lathe([[0, body + 3.4], [dr, body + 3.4], [dr * 0.95, body + 4.2], [dr * 0.6, body + 7.3], [dr * 0.3, body + dragonH], [0, body + dragonH]], 0xffffff));
+  dragon.add(lathe([[0, body], [dr, body], [dr, body + 3.4], [0, body + 3.4]], 0xf4f4f4));
+  dragon.add(lathe([[0, body + 3.4], [dr, body + 3.4], [dr * 0.95, body + 4.2], [dr * 0.6, body + 7.3], [dr * 0.3, body + dragonH], [0, body + dragonH]], 0xffffff));
+  g.add(first, second, dragon);
   g.name = "Falcon 9";
   return g;
 }
 
-/** The crew access tower: a lattice with the access arm at the Dragon's hatch. */
+/** The crew access tower: a lattice (the access arm and its white room swing from it: s3-launch.ts). */
 function crewTower(): THREE.Group {
   const g = new THREE.Group();
   const steel = mat(0x5c6066);
@@ -184,9 +191,6 @@ function crewTower(): THREE.Group {
     deck.position.y = y;
     g.add(deck);
   }
-  const arm = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.4, 6), mat(0x3d4247));
-  arm.position.set(0, FALCON9_CREW.heightM.value - DRAGON.heightM.value + 3.5, -6.5);
-  g.add(arm);
   return g;
 }
 
@@ -460,6 +464,9 @@ export interface SceneParts {
   readonly centrifugeArm?: THREE.Group;
   /** The Il-76MDK on its apron (the parabolic flight's rig flies it, s3-rigs.ts) and its padded cabin. */
   readonly il76?: { group: THREE.Group; cabin: THREE.Group };
+  /** The crew pad's Falcon 9 and the crown's Electron (they launch: s3-launch.ts). */
+  readonly falcon?: THREE.Group;
+  readonly electron?: THREE.Group;
   readonly cabs: Map<string, THREE.Mesh>;
 }
 
@@ -471,6 +478,8 @@ export function buildProps(L: S3Layout): SceneParts {
   const cabs = new Map<string, THREE.Mesh>();
   let centrifugeArm: THREE.Group | undefined;
   let plane: SceneParts["il76"];
+  let falcon: THREE.Group | undefined;
+  let electronRocket: THREE.Group | undefined;
   // Vehicles and machines with their own true size stay as they are; the rest is widened on the plan with its area (§2.4).
   const trueSize = new Set<Prop["kind"]>(["electron", "falcon9", "turbine", "tidal", "helideck", "lift-shaft", "tree", "il76", "scott-tent", "snowmobile"]);
   const at = (o: THREE.Object3D, p: Prop) => {
@@ -483,10 +492,10 @@ export function buildProps(L: S3Layout): SceneParts {
   for (const p of L.props) {
     switch (p.kind) {
       case "electron":
-        at(electron(), p);
+        electronRocket = at(electron(), p) as THREE.Group;
         break;
       case "falcon9":
-        at(falcon9(), p);
+        falcon = at(falcon9(), p) as THREE.Group;
         break;
       case "crew-tower":
         at(crewTower(), p);
@@ -624,7 +633,7 @@ export function buildProps(L: S3Layout): SceneParts {
     s.position.set(el.x, el.y + 22, el.z);
     root.add(s);
   }
-  return { root, rotors, turbines, ...(centrifugeArm ? { centrifugeArm } : {}), ...(plane ? { il76: plane } : {}), cabs };
+  return { root, rotors, turbines, ...(centrifugeArm ? { centrifugeArm } : {}), ...(plane ? { il76: plane } : {}), ...(falcon ? { falcon } : {}), ...(electronRocket ? { electron: electronRocket } : {}), cabs };
 }
 
 /** A tree-building's shell: the floors' undersides and railings, the tips and the crown's slab (walls and water come from the layout). */

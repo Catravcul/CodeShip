@@ -224,7 +224,7 @@ export class S3Rigs {
         if ((c.phase === "subida" || c.phase === "tiron") && this.plane && this.plane.group.position.y < this.rest.pos.y + CRUISE_M) this.plane.group.position.y = this.rest.pos.y + CRUISE_M;
       } else this.phaseT = 0;
       this.planeG = c.g;
-    } else {
+    } else if (c.kind === "pantalla") {
       this.show = c.show;
       this.showT = 0;
     }

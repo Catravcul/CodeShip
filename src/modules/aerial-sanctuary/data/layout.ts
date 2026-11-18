@@ -49,7 +49,7 @@ export interface AreaDef {
   readonly point: string;
 }
 
-export type MachineKind = "navegacion" | "ascensor" | "esterilla" | "puesto" | "simulador";
+export type MachineKind = "navegacion" | "ascensor" | "esterilla" | "puesto" | "simulador" | "lanzamiento";
 
 export interface MachineDef {
   readonly id: string;
@@ -734,6 +734,18 @@ const ROOMS: readonly RoomDef[] = [
     compartments: [{ id: "robotica-destiny", label: "Maqueta de Destiny a 3/4", desc: "El laboratorio Destiny a tres cuartos de su tamaño (6,4 × 3,2 m) con la estación de robótica de la ISS", x: 4, z: 0, w: 6.4, d: 3.2, h: 3.2, floorY: 0.3, hatch: { side: "w", width: 1.1 }, reality: "real" }],
     machines: [{ id: "robotica-puesto", kind: "puesto", label: "Estación de robótica", what: "Un portátil, dos mandos (traslación y giro) y tres pantallas con las cámaras del brazo", x: 4.4, z: 0, inside: "robotica-destiny", post: 9, via: [{ x: 0, z: 0 }] }],
   },
+  {
+    id: "trajes",
+    label: "Sala de trajes de la tripulación",
+    desc: "Como la sala de trajes del edificio de la tripulación (Neil Armstrong O&C, Florida) el día del lanzamiento: el traje de la Crew Dragon hecho a su medida, los sillones reclinables donde se conecta el traje y se comprueban las fugas, y las taquillas. De aquí sale hacia la plataforma (puesto 13); la distribución es nuestra",
+    reality: "real",
+    centre: { x: 148, z: -106 },
+    half: { x: 12, z: 6.5 },
+    height: 4,
+    door: { side: "n", at: 0, width: 2.4 },
+    road: "x",
+    machines: [{ id: "trajes-puesto", kind: "puesto", label: "Puesto de trajes", what: "Ponerse el traje de la Crew Dragon, conectarlo y comprobar las fugas antes de ir a la plataforma", x: 2, z: 1.2, post: 13, via: [{ x: 0, z: 3.5 }, { x: 2, z: 3.5 }] }],
+  },
 ];
 
 function buildRoom(b: Builder, r: RoomDef, k: number): void {
@@ -902,7 +914,7 @@ export function buildLayout(k = 1): S3Layout {
   const lMid = b.point("lanzadera:camino", L.x + 20, 0, L.z - 18);
   b.link(lHeliPt, lMid, lGround);
   b.link(lAnden, lMid);
-  buildTree(b, { id: "lanzadera-arbol", island: "lanzadera", building: "Lanzadera de cohetes", site: L, firstY: launchFirst, floors: ["Fábrica de cohetes", "Control de misión", "Garaje de la lanzadera", "Piso libre"], floorDesc: ["Etapas del Electron en sus cunas, la carga útil y el puente grúa (integración horizontal, real)", "Doce puestos en tres filas y la pantalla de 16 × 5 m: telemetría, meteorología y la cuenta atrás del Electron (puesto 10)", "Plaza del submarino de obra: trae las etapas por el fondo abierto del tronco (ficción de Cold Sanctuary)", "Un piso del árbol todavía sin uso"], tip: "Mirador de la punta", floorMachines: [undefined, { id: "lanzadera-control", kind: "puesto", label: "Control de misión de la lanzadera", what: "Cuenta atrás del Electron, viento en altura, techo de nubes y evacuar a 300 m", post: 10 }], crownRise: CROWN.padRiseM.value, groundLink: lGround });
+  buildTree(b, { id: "lanzadera-arbol", island: "lanzadera", building: "Lanzadera de cohetes", site: L, firstY: launchFirst, floors: ["Fábrica de cohetes", "Control de misión", "Garaje de la lanzadera", "Piso libre"], floorDesc: ["Etapas del Electron en sus cunas, la carga útil y el puente grúa (integración horizontal, real)", "Doce puestos en tres filas y la pantalla de 16 × 5 m: la preparación del Electron; al lanzar se vacía (está a menos de 300 m) y la cuenta atrás se sigue desde la isla de entrenamiento (puesto 10)", "Plaza del submarino de obra: trae las etapas por el fondo abierto del tronco (ficción de Cold Sanctuary)", "Un piso del árbol todavía sin uso"], tip: "Mirador de la punta", floorMachines: [undefined, { id: "lanzadera-control", kind: "puesto", label: "Control de misión de la lanzadera", what: "Vacío al lanzar: la regla de los 300 m saca a todos del árbol; el lanzamiento se sigue desde el control de misión de la isla de entrenamiento (puesto 10)" }], crownRise: CROWN.padRiseM.value, groundLink: lGround });
   const crownY = launchFirst + TREE.levelGap.value + TREE.tipRise.value + TREE.ringH.value + 7 + CROWN.padRiseM.value;
   b.area({ id: "lanzadera:casquete", island: "lanzadera", label: "Casquete de la lanzadera", desc: "El casquete artificial de 110 × 110 m con su pretil, los depósitos de LOX y RP-1 al aire, el polvorín, el helipuerto y el andén de las alfombras", reality: "ficcion", centre: { x: L.x, y: 1, z: L.z }, half: { x: LH, y: 1, z: LH }, point: lAnden });
   b.machine({ id: "nav-lanzadera", kind: "navegacion", island: "lanzadera", area: "lanzadera:casquete", label: "Máquina de navegación", what: "El mapa de las islas: alfombra al muelle o al parque, helicóptero a la isla de entrenamiento", x: L.x + LH - 14, y: 0, z: L.z + 5 }, lAnden);
@@ -1001,7 +1013,7 @@ export function buildLayout(k = 1): S3Layout {
   b.machine({ id: "nav-plataforma", kind: "navegacion", island: "plataforma", area: "plataforma:cubierta", label: "Máquina de navegación", what: "El mapa de las islas: helicóptero a la isla de entrenamiento o a la lanzadera", x: cHeli.x + hd + 3, y: cy, z: cHeli.z + 6 }, cWalk);
   b.block("kiosco", { ...around(cHeli.x + hd + 5.2, cHeli.z + 6, 0.5), y0: cy, y1: cy + 1.3 });
   b.props.push({ kind: "nav-machine", x: cHeli.x + hd + 5.2, y: cy, z: cHeli.z + 6, rot: -Math.PI / 2 });
-  b.machine({ id: "plataforma-acceso", kind: "puesto", island: "plataforma", area: "plataforma:cubierta", label: "Torre de acceso de la tripulación", what: "Traje, brazo de acceso, comprobación de fugas y cuenta atrás (puesto 13)", x: fx - 6, y: cy, z: C.z + 9, post: 13 }, cRocket);
+  b.machine({ id: "plataforma-acceso", kind: "lanzamiento", island: "plataforma", area: "plataforma:cubierta", label: "Torre de acceso de la tripulación", what: "Con el traje puesto (puesto 13): la torre, el brazo de acceso y la sala blanca, la cuenta atrás, el ascenso y la cita en órbita", x: fx - 6, y: cy, z: C.z + 9 }, cRocket);
   b.widen(crewMark, C, k);
   pads.push({ island: "plataforma", at: { ...wide(C, cHeli.x, cHeli.z), y: cy + 0.05 }, crafts: ["helicoptero"] });
 

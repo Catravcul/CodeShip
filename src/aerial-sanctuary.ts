@@ -10,10 +10,14 @@ import { cabHeight, liftPhase, liftSeconds } from "@modules/aerial-sanctuary/dom
 import { legPose, planTrip, tripSeconds, type Craft, type CraftSpec, type Leg } from "@modules/aerial-sanctuary/domain/travel";
 import { RUNNING, scan, type StopState } from "@modules/aerial-sanctuary/domain/energy";
 import { AIR_BIRDS, BIRD_HOME, BIRD_STOP, CRAFT, LIFT, TURBINE } from "@modules/aerial-sanctuary/data/facts";
-import { IN_CONSTRUCTION, READY_POSTS, initiationTasks } from "@modules/aerial-sanctuary/application/initiation";
+import { IN_CONSTRUCTION, LAUNCH_TASK, READY_POSTS, initiationTasks } from "@modules/aerial-sanctuary/application/initiation";
 import { stationFor } from "@modules/aerial-sanctuary/application/stations";
 import { flightChore } from "@modules/aerial-sanctuary/application/flight-program";
-import { stageFor, STAGED_POSTS, type Stage } from "@modules/aerial-sanctuary/data/stages";
+import { launchStage, stageFor, STAGED_POSTS, type Stage } from "@modules/aerial-sanctuary/data/stages";
+import { launchChallenges } from "@modules/aerial-sanctuary/application/launch";
+import { missingBeforeLaunch, nextLaunchStep, type LaunchStep } from "@modules/aerial-sanctuary/domain/launch-sequence";
+import { BENNU_TRIP } from "@modules/aerial-sanctuary/data/facts";
+import { launchHandover, HANDOVER_LEVEL } from "@modules/saves/domain/launch-handover";
 import { TRAINERS, trainerById } from "@modules/aerial-sanctuary/data/trainers";
 import { boardHour, clockText, nextShift, trainerFor } from "@modules/aerial-sanctuary/domain/roster";
 import { beatsFor } from "@modules/aerial-sanctuary/domain/station-beat";
@@ -48,7 +52,8 @@ import { RcsPad } from "./ui/rcs-pad";
 import { S3Stage } from "./adapters/three/s3-stage";
 import { TrainerCrowd } from "./adapters/three/s3-trainers";
 import { S3Rigs } from "./adapters/three/s3-rigs";
-import { S3Simulators, paintSimScreen, type SimKind } from "./s3-simulators";
+import { S3Simulators, paintRendezvous, paintSimScreen, type SimKind } from "./s3-simulators";
+import { S3Launch } from "./adapters/three/s3-launch";
 import { armMoves } from "@modules/robotics/application/arm-chores";
 import "./ui/lander-cabin.css";
 import "./ui/journey.css";
@@ -232,8 +237,16 @@ scene.add(stage.root);
 // The machines that move while a phase-5 post is acted (the centrifuge, the Il-76MDK, the simulators' screens).
 const rigs = new S3Rigs(parts, stages, L.k);
 scene.add(rigs.root);
-stage.mounts = rigs.mounts;
-stage.onCue = (c) => rigs.cue(c);
+// Phase 6: post 10's Electron and her own Falcon 9 (s3-launch.ts).
+const padStage = launchStage(L);
+const launch = new S3Launch(parts, L, stages.get(10), padStage);
+scene.add(launch.root);
+launch.painter = paintRendezvous;
+stage.mounts = new Map([...rigs.mounts, ...launch.mounts]);
+stage.onCue = (c) => {
+  rigs.cue(c);
+  launch.cue(c);
+};
 rigs.painter = paintSimScreen;
 // Post 8's simulators flown by hand (Dragon's docking, the LM's landing).
 const lmBlock = L.blocks.find((q) => q.look === "lm-maqueta")!;
@@ -242,6 +255,13 @@ const sims = new S3Simulators(root, scene, stages.get(8)!, { x: (lmBlock.x0 + lm
 let simAt = "";
 sims.onSay = (t) => say(t, 6);
 sims.onEnd = () => {
+  if (simAt === "lanzamiento" && launchAt) {
+    const m = launchAt;
+    launchAt = undefined;
+    simAt = "";
+    if (sims.lastDockOk) return docked(m);
+    return scrub(m, sims.lastDockOk === false ? "Contacto fuera de los límites del IDSS: la Dragon se aparta; el lanzamiento se repite desde la torre" : "Cita a mano sin terminar: el lanzamiento se repite desde la torre");
+  }
   signsOff(simAt, false);
   mode = { kind: "libre" };
   cardKey = "";
@@ -307,6 +327,7 @@ function goTo(point: string, label: string, to: IslandId, from: "Tareas" | "Áre
 
 function goToTask(t: Task): void {
   if (t.place.spot !== "isla") return;
+  if (t.id === LAUNCH_TASK) return goTo(t.place.point, t.title, t.place.vehicle as IslandId, "Tareas", () => say(`En la torre de acceso: Panel › «Empezar el lanzamiento»${passed.has(13) ? "" : " (antes, el traje: puesto 13)"}`, 6));
   const post = Number(t.id.replace("s3-puesto-", ""));
   goTo(t.place.point, t.title, t.place.vehicle as IslandId, "Tareas", () => say(READY_POSTS.includes(post) ? `En: ${t.title}. Panel › «Empezar el reto»` : `En: ${t.title}. ${IN_CONSTRUCTION}`, 6));
 }
@@ -427,6 +448,9 @@ function startPost(m: MachineDef): void {
   const st = stationFor(post);
   const where = stages.get(post);
   if (!st || !where) return say(IN_CONSTRUCTION);
+  // The suit-up is the first step of her launch day: every other post first (docs/design/santuario3-lanzamiento.md).
+  const missing = post === 13 ? missingBeforeLaunch(passed) : [];
+  if (missing.length) return say(`Antes del traje, los demás puestos: faltan ${missing.join(", ")}`, 6);
   const who = trainerOf(post);
   if (!who) return say(pauseText(post), 6);
   const t = trainerById(who);
@@ -436,6 +460,7 @@ function startPost(m: MachineDef): void {
   const actor = crowd.lend(who, true);
   stage.open(where, { rig, fig: avatar }, actor);
   rigs.begin(post);
+  if (post === 10) launch.begin("electron");
   rigTurn = 0;
   // Side on to the line from her to the trainer (both in a phone's narrow view), from the side with more room; the
   // camera stick turns round them.
@@ -465,6 +490,7 @@ function startPost(m: MachineDef): void {
       endPost = () => {
         stage.clear();
         rigs.end(ok);
+        launch.end();
         signsOff(m.id, false);
         crowd.lend(stageTrainer ?? "", false);
         stageTrainer = undefined;
@@ -476,6 +502,109 @@ function startPost(m: MachineDef): void {
   );
 }
 let endPost: (() => void) | undefined;
+
+// --- Her launch day at the crew pad (application/launch.ts; docs/design/santuario3-lanzamiento.md) ------------------------
+/** The steps of the day done in this attempt (a scrub starts it again from the tower). */
+let launchDone: LaunchStep[] = ["traje"];
+const LAUNCH_STEP_TEXT: Record<LaunchStep, string> = { traje: "el traje", torre: "la torre, el brazo de acceso y la sala blanca", "cuenta-atras": "la cuenta atrás", ascenso: "el ascenso", acople: "la cita con la Starship" };
+function launchStepText(): string {
+  const next = nextLaunchStep(new Set(launchDone));
+  return next ? `sigue ${LAUNCH_STEP_TEXT[next]}` : "acoplada";
+}
+/** The pad's stage with her first spot first (she starts each step where the last left her). */
+function padFor(first: Stage["her"] extends Partial<Record<infer K, unknown>> ? K : never): Stage {
+  const st = padStage!;
+  const { [first]: spot, ...rest } = st.her;
+  return { ...st, her: { [first]: spot, ...rest } };
+}
+function startLaunch(m: MachineDef): void {
+  if (!padStage) return;
+  if (!passed.has(13)) return say("Primero, el traje (puesto 13)");
+  launchDone = ["traje"];
+  signsOff(m.id, true);
+  runLaunchStep(m, nextLaunchStep(new Set(launchDone))!);
+}
+function runLaunchStep(m: MachineDef, step: LaunchStep): void {
+  if (step === "acople" && flightMode() === "manual") return dockByHand(m);
+  const c = launchChallenges().find((x) => x.step === step)!;
+  mode = { kind: "reto", what: c.chore.id };
+  launch.begin(step === "traje" ? "torre" : step);
+  stage.open(padFor(c.beats[0]![0]!.her), { rig, fig: avatar }, undefined);
+  rigTurn = 0;
+  rig.visible = true;
+  say(`Lanzamiento: ${LAUNCH_STEP_TEXT[step]}`, 3);
+  openChallenge(
+    c.chore,
+    (index, part) => stage.play(beatsFor(c.beats, index, part).slice(0, 1)),
+    (ok) => {
+      stage.finish();
+      if (ok) {
+        launchDone = [...launchDone, step];
+        const next = nextLaunchStep(new Set(launchDone));
+        endPost = () => {
+          stage.clear();
+          if (next) runLaunchStep(m, next);
+          else docked(m);
+        };
+        return;
+      }
+      scrub(m, `Lanzamiento suspendido en ${LAUNCH_STEP_TEXT[step]}: se vuelve a empezar desde la torre`);
+    },
+  );
+}
+/** A scrub: off the rocket, back on the pad's deck, the day to start again. */
+function scrub(m: MachineDef, why: string): void {
+  stage.clear();
+  launch.end();
+  launchDone = ["traje"];
+  signsOff(m.id, false);
+  placeAtPoint("plataforma:cohete");
+  mode = { kind: "libre" };
+  cardKey = "";
+  say(why, 6);
+}
+/** «Manual» (the flights' setting): the rendezvous's last 20 m by hand, on Dragon's touchscreen pad (post 8's). */
+function dockByHand(m: MachineDef): void {
+  mode = { kind: "reto", what: "simulador" };
+  simAt = "lanzamiento";
+  launch.begin("acople");
+  launch.cue({ kind: "falcon", phase: "cita", step: "A mano desde el Waypoint 2 (20 m)", rangeM: 20 });
+  const seat = launch.mounts.get("dragon-real")!;
+  seat.updateWorldMatrix(true, false);
+  const p = seat.getWorldPosition(new THREE.Vector3());
+  rigTurn = 0;
+  sims.start("acople", { rig, fig: avatar }, { fromM: 20, title: "Crew Dragon · cita con la Starship, a mano", seat: { x: p.x, y: p.y, z: p.z, face: padStage!.her["dragon-real"]!.face } });
+  launchAt = m;
+}
+let launchAt: MachineDef | undefined;
+/** Docked to the Starship in low orbit: the level-3 game becomes a level-6 one (partidas.md, «Del 3 al 6»). */
+function docked(m: MachineDef): void {
+  launch.end();
+  signsOff(m.id, false);
+  mode = { kind: "reto", what: "acoplada" };
+  const state = launchHandover(days, passed, BENNU_TRIP.days.value);
+  let id = slot ?? book.newSlot();
+  if (id) {
+    const r = book.save(id, { level: HANDOVER_LEVEL, boardDay: boardDayOf(days), summary: { vehicle: "Starship", place: "Crucero a Bennu" }, state });
+    lastSaved = { reason: "lanzamiento", ok: r.ok, ...(r.ok ? {} : { why: r.why }) };
+    if (!r.ok) id = undefined;
+  }
+  if (!id) {
+    mode = { kind: "libre" };
+    return say("Acoplada, pero no hay ranura libre para seguir en el nivel 6: borra una partida en el engranaje del inicio", 8);
+  }
+  slot = undefined;
+  handedOver = id;
+  say("Acoplada a la Starship en órbita baja: sigue el viaje a Bennu (nivel 6)", 6);
+  try {
+    sessionStorage.setItem("codeship.seguir", id);
+  } catch {
+    /* private mode: the start screen's «Continuar» resumes it */
+  }
+  if (!new URLSearchParams(location.search).has("sin-recarga")) window.setTimeout(() => location.reload(), 3500);
+}
+/** The slot the game was handed over in (level 6 now: this page no longer saves into it). */
+let handedOver: string | undefined;
 /** The side to look from with the most room before a wall (the camera never goes through one). */
 function roomiestYaw(st: Stage, first: number): number {
   const a = L.areas.find((q) => q.id === st.room);
@@ -629,7 +758,7 @@ function renderCard(): void {
   const who = ready ? trainerOf(m!.post!) : undefined;
   const there = ready && !!who && crowd.atPost(who, m!.post!);
   // The pause's text changes with the clock only at a change of shift: the hour in the key is enough.
-  const key = m ? `${m.id}|${mode.kind}|${who}|${there}|${ready && passed.has(m.post!)}|${ready && !who ? Math.floor(hour() * 60) : ""}` : "";
+  const key = m ? `${m.id}|${mode.kind}|${who}|${there}|${ready && passed.has(m.post!)}|${ready && !who ? Math.floor(hour() * 60) : ""}|${passed.has(13)}|${launchDone.join()}` : "";
   if (key === cardKey) return;
   cardKey = key;
   card.classList.toggle("hidden", !m);
@@ -642,6 +771,11 @@ function renderCard(): void {
     acts = lift.stops.map((s, i) => (i === m.lift!.stop ? "" : `<button data-act="stop:${i}" aria-label="Ascensor a ${esc(s.label)}">${esc(s.label)}</button>`)).join("");
   } else if (m.kind === "esterilla") acts = `<button class="primary" data-act="ajustes">Sentarse: ajustes</button>`;
   else if (m.kind === "simulador") acts = "";
+  else if (m.kind === "lanzamiento") {
+    const suited = passed.has(13);
+    acts = `<button class="${suited ? "primary" : ""}" data-act="lanzar"${suited ? "" : " disabled"}>Empezar el lanzamiento</button>`;
+    why = suited ? `<p class="cm-who">La tripulación eres tú: ${esc(launchStepText())}</p>` : `<p class="cm-why"><b aria-hidden="true">⊘</b> Primero, el traje: puesto 13, en la sala de trajes de la isla de entrenamiento</p>`;
+  }
   else if (ready && !who) {
     acts = `<button data-act="reto" disabled>Empezar el reto</button>`;
     why = `<p class="cm-why"><b aria-hidden="true">⏸</b> ${esc(pauseText(m.post!))}${passed.has(m.post!) ? ` · <b class="cm-ok">✓ Superado</b>` : ""}</p>`;
@@ -665,6 +799,7 @@ card.addEventListener("click", (e) => {
   const act = b.dataset.act!;
   if (act === "nav") return nav.open(islandChoices());
   if (act === "reto" && m.post !== undefined) return startPost(m);
+  if (act === "lanzar" && mode.kind === "libre") return startLaunch(m);
   if (act.startsWith("sim:") && mode.kind === "libre") {
     mode = { kind: "reto", what: "simulador" };
     simAt = m.id;
@@ -888,7 +1023,7 @@ function updateCamera(dt: number): void {
   yaw += look.yaw;
   pitch = Math.max(-1.3, Math.min(1.3, pitch + look.pitch));
   // At a simulator, or on a moving machine (the gondola, the plane): its own view; the stick turns round it.
-  if (mode.kind === "reto" && (sims.busy ? sims.eye(camPos, camAt) : stage.active && rigs.eye(camPos, camAt, (rigTurn += look.yaw), camUp, rig.position))) {
+  if (mode.kind === "reto" && (sims.busy ? sims.eye(camPos, camAt) || launch.eye(camPos, camAt, (rigTurn += look.yaw), rig.position) : stage.active && (launch.busy ? launch.eye(camPos, camAt, (rigTurn += look.yaw), rig.position) : rigs.eye(camPos, camAt, (rigTurn += look.yaw), camUp, rig.position)))) {
     if (sims.busy) camUp.set(0, 1, 0);
     camera.position.copy(camPos);
     // With the sheet open, what it looks at shows in the band above it.
@@ -1041,6 +1176,7 @@ function frame(now: number): void {
   const m = mode;
   // The moving machines first: she rides them where they are this frame.
   rigs.update(dt, renderer);
+  launch.update(dt, renderer);
   if (m.kind === "ruta") frameRoute(dt, m);
   else if (m.kind === "ascensor") frameLift(dt, m);
   else if (m.kind === "vuelo") frameFlight(dt, m);
@@ -1175,6 +1311,18 @@ if (frameStats) (window as unknown as { codeshipS3: unknown }).codeshipS3 = {
     return [...passed];
   },
   trainerOf,
+  launch,
+  get launchDone() {
+    return [...launchDone];
+  },
+  get handedOver() {
+    return handedOver;
+  },
+  /** Test hook: these posts passed (the journeys reach the launch without replaying every post). */
+  passPosts(ns: number[]) {
+    for (const n of ns) passed.add(n);
+    cardKey = "";
+  },
   cabY: (id: string) => parts.cabs.get(id)?.position.y,
   craftY: () => (heli.group.visible ? heli.group.position.y : rug.group.visible ? rug.group.position.y : undefined),
   saveNow,

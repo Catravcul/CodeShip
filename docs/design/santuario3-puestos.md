@@ -88,7 +88,9 @@ una es nuestro (**licencia**):
 | Linduarda | La doctora de la iniciación | 2 Reconocimiento | 4 Hipobárica |
 | Lizmibet | Médica | 4 Hipobárica | 2 Reconocimiento |
 | Adaguchi | Submarinismo | 7 NBL | 7 NBL |
-| Luciana | Piloto | 3 Natación | 3 Natación |
+| Andrea | Entrenador del gimnasio (desde la fase 6) | 3 Natación | 3 Natación |
+| Luciana | Piloto (en Cold Sanctuary, el control de misión de la lanzadera; desde la fase 6) | 10 Control de misión | 10 Control de misión |
+| Irosene | Letras y textil (fase 6) | 13 Trajes | 13 Trajes |
 | Fausto | Mecánico (la consola de la centrífuga) | 5 Centrífuga | 5 Centrífuga |
 | David | Informática | 8 Simuladores | 8 Simuladores |
 | Adonis | Informática | 9 Robótica | 9 Robótica |
@@ -98,7 +100,7 @@ una es nuestro (**licencia**):
 | Gohageneis | Guardia (glaciar) | 12 Frío | — |
 | Nesvitor | Guardia y agricultor (glaciar) | — | 12 Frío |
 
-Adaguchi y Luciana se quedan cada una en su piscina todo el día: desde que el puesto 3 está en la piscina de supervivencia, ir
+Adaguchi y Andrea se quedan cada uno en su piscina todo el día (hasta la fase 6 el puesto 3 era de Luciana, que pasó al control de misión, su oficio en Cold Sanctuary): desde que el puesto 3 está en la piscina de supervivencia, ir
 de una piscina a otra pasando por la comida no cabe en la hora de comer, y se saltarían la comida.
 
 Entrenando están en el gimnasio; a comer y libres, en el cruce de la isla (la gente del glaciar, en su campamento). Van andando por

@@ -850,7 +850,21 @@ function robotics(sink: FurnishSink, fr: RoomFrame): void {
   lights(4, 2, fr.height - 0.3);
 }
 
-const ROOM_FURNISH: Readonly<Record<string, (sink: FurnishSink, fr: RoomFrame) => void>> = { nbl, svmf, control, medico: medical, gimnasio: gym, supervivencia: survival, "simulador-dragon": dragonSims, "simulador-lm": lmSim, robotica: robotics };
+/**
+ * The crew's suit-up room on launch day (Crew-5: «suit donning and checkouts» in the Neil Armstrong O&C building): the
+ * crew sit in recliners while their suits are plugged in and leak-checked, the suits are hung by the lockers. The
+ * recliners are drawn by the stage (data/stages.ts, post 13's «sillon-traje»); the room's plan is ours.
+ */
+function suitRoom(sink: FurnishSink, fr: RoomFrame): void {
+  const { at, lights } = roomKit(sink, fr);
+  for (let i = 0; i < 6; i++) at({ k: "taquillas", x: -10 + i * 0.42, z: 0, snap: "s", ...(i === 0 ? { plate: true } : {}) });
+  at({ k: "caja", x: -4.5, z: 0, snap: "s", w: 1.6, d: 0.5, h: 1.9, color: 0xe9ecef, name: "Trajes de la Crew Dragon colgados, cada uno a la medida de quien lo lleva", source: S.crew5Timeline, reality: "real", plate: true });
+  at({ k: "consola-fcr", x: 8.5, z: 0, snap: "s", w: 1.6, name: "Puesto de pruebas del traje (aire y comunicaciones por el umbilical)", source: `${S.crewDay} (sitio y forma nuestros)`, reality: "licencia", plate: true });
+  at({ k: "mesa", x: -6, z: 3, name: "Mesa de los técnicos de trajes", source: S.ours, reality: "licencia" });
+  lights(3, 2, fr.height - 0.3);
+}
+
+const ROOM_FURNISH: Readonly<Record<string, (sink: FurnishSink, fr: RoomFrame) => void>> = { nbl, svmf, control, medico: medical, gimnasio: gym, supervivencia: survival, "simulador-dragon": dragonSims, "simulador-lm": lmSim, robotica: robotics, trajes: suitRoom };
 
 /** Furnish one training room (none for the centrifuge: its machines come with its own branch). */
 export function furnishRoom(sink: FurnishSink, fr: RoomFrame): void {
@@ -936,7 +950,8 @@ export function furnishIsland(sink: FurnishSink, k: number, o: IslandFrame): voi
   const free = (x: number, z: number, r: number) => {
     if (x < ti.x0 + 2 || x > ti.x1 - 2 || z < ti.z0 + 2 || z > ti.z1 - 2) return false;
     if (o.rooms.some((q) => x > q.x0 - r - 2 && x < q.x1 + r + 2 && z > q.z0 - r - 2 && z < q.z1 + r + 2)) return false;
-    if (Math.hypot(x - o.heli.x, z - o.heli.z) < o.heliHalf + 6 + r) return false;
+    // The pad and its floodlights at its corners (about 20 m from its middle).
+    if (Math.hypot(x - o.heli.x, z - o.heli.z) < o.heliHalf + 10 + r) return false;
     if (Math.hypot(x - cross.x - 3, z - cross.z) < 7 + r) return false;
     if (Math.abs(x - o.road.x) < 4 + r || Math.abs(z - o.road.z) < 4 + r) return false;
     if (x > pier.x0 - 4 && x < pier.x1 + 4 && z > ti.z1 - 8) return false;

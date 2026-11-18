@@ -216,3 +216,114 @@ export const LM_TOUCHDOWN = {
   /** Descent propellant left at the low gate, kg (ours: about a minute and a half at hover, Apollo 11 landed with ~45 s). */
   propLeftKg: fact(400, "licencia", S.apollo11Landing, "Apolo 11 tocó con unos 45 s de propelente"),
 } as const;
+
+// ── Phase 6 (s3-lanzamiento): the Electron watched from mission control, her own launch and the trip to Bennu ──
+
+/** A moment of a countdown or a flight: seconds from liftoff (negative before it), what happens, and its source. */
+export interface Mark {
+  readonly s: number;
+  readonly what: string;
+}
+
+const h = (hh: number, mm = 0, ss = 0) => -(hh * 3600 + mm * 60 + ss);
+
+/** The Electron's countdown and flight as Rocket Lab gives them (post 10). */
+export const ELECTRON_COUNTDOWN: Fact<readonly Mark[]> = fact(
+  [
+    { s: h(6), what: "cerrar el camino a la plataforma" },
+    { s: h(4), what: "poner el Electron en vertical y cargarlo" },
+    { s: h(2, 30), what: "sacar a la gente de la plataforma" },
+    { s: h(2), what: "cargar el oxígeno líquido" },
+    { s: h(1), what: "avisar a los pilotos (NOTAM)" },
+    { s: h(0, 10), what: "preparativos finales" },
+    { s: h(0, 2), what: "secuencia automática" },
+    { s: -2, what: "encender los nueve Rutherford" },
+    { s: 0, what: "despegue" },
+  ],
+  "real",
+  S.electronCountdown,
+);
+export const ELECTRON_FLIGHT: Fact<readonly Mark[]> = fact(
+  [
+    { s: 150, what: "apagado de la 1.ª etapa (MECO)" },
+    { s: 154, what: "separación de etapas" },
+    { s: 187, what: "fuera el carenado" },
+    { s: 444, what: "apagado de la 2.ª etapa (SECO)" },
+    { s: 451, what: "fuera la carga útil" },
+  ],
+  "real",
+  S.electronCountdown,
+);
+
+/** Her day at the crew pad, as a Crew Dragon crew's (Crew-5 and Demo-2): from the suit to Dragon's separation. */
+export const CREW_DAY = {
+  suitUp: fact<readonly Mark[]>(
+    [
+      { s: h(4), what: "ponerse el traje y comprobarlo" },
+      { s: h(3, 22), what: "salir del edificio de la tripulación" },
+      { s: h(3, 15), what: "ir hacia la plataforma" },
+    ],
+    "real",
+    `${S.crew5Timeline}; ${S.crewDay}`,
+  ),
+  /** Suiting up took about 38 min (Demo-2). */
+  suitMin: fact(38, "real", S.crewDay),
+  boarding: fact<readonly Mark[]>(
+    [
+      { s: h(2, 55), what: "llegar a la plataforma y subir la torre" },
+      { s: h(2, 40), what: "cruzar el brazo de acceso hasta la sala blanca" },
+      { s: h(2, 35), what: "entrar en la Dragon (asientos rectos)" },
+      { s: h(2, 20), what: "comprobar las comunicaciones" },
+      { s: h(2, 15), what: "reclinar los asientos" },
+      { s: h(2, 14), what: "comprobar las fugas del traje" },
+      { s: h(1, 55), what: "cerrar la escotilla lateral" },
+    ],
+    "real",
+    `${S.crew5Timeline}; ${S.crewDay}; ${S.whiteRoom}`,
+  ),
+  countdown: fact<readonly Mark[]>(
+    [
+      { s: h(0, 45), what: "«go» para cargar el propulsante" },
+      { s: h(0, 42), what: "retirar el brazo de acceso" },
+      { s: h(0, 38), what: "armar el sistema de escape" },
+      { s: h(0, 35), what: "cargar RP-1 y el LOX de la 1.ª etapa" },
+      { s: h(0, 19), what: "cargar el LOX de la 2.ª etapa" },
+      { s: 0, what: "despegue" },
+    ],
+    "real",
+    S.crew5Timeline,
+  ),
+  ascent: fact<readonly Mark[]>(
+    [
+      { s: 62, what: "máxima presión dinámica (Max-Q)" },
+      { s: 156, what: "apagado de la 1.ª etapa (MECO)" },
+      { s: 159, what: "separación de etapas" },
+      { s: 529, what: "apagado de la 2.ª etapa (SECO): en órbita" },
+      { s: 720, what: "la Dragon se separa de la 2.ª etapa" },
+    ],
+    "real",
+    S.crew5Timeline,
+  ),
+  /** The crew access arm: 25 m long. */
+  armM: fact(25, "real", S.crewArm),
+} as const;
+
+/** Crew Dragon's way to its port (Demo-2): the burns and the waypoints. Here the port is the Starship's (licence). */
+export const RENDEZVOUS = {
+  burnsMs: fact([16.11, 44.2, 57.89] as const, "real", S.crewDay, "encendidos de fase, de subida y de circularización"),
+  keepOutM: fact(400, "real", S.crewDay),
+  waypoints: fact<readonly { readonly name: string; readonly m: number }[]>(
+    [
+      { name: "Waypoint 0", m: 400 },
+      { name: "Waypoint 1", m: 220 },
+      { name: "Waypoint 2", m: 20 },
+    ],
+    "real",
+    S.crewDay,
+  ),
+} as const;
+
+/** The trip from low Earth orbit to Bennu: OSIRIS-REx's 816 days (the Starship's own trip is not published: licence). */
+export const BENNU_TRIP = {
+  days: fact(816, "licencia", S.osirisRex, "la duración de OSIRIS-REx (2016-09-08 a 2018-12-03); la de una Starship no está publicada"),
+} as const;

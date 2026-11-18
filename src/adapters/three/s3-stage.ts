@@ -26,7 +26,7 @@ export interface Actor {
 const HER_POSE: Readonly<Record<HerPose, string>> = { "de-pie": "stand", sentada: "sit", tumbada: "supine", nadando: "swim", flotando: "tread", "brazos-arriba": "arms-up", "mano-adelante": "reach-one", mareada: "sit-dizzy", neutra: "float", recostada: "sit-recline", "manos-mandos": "stand-hands", moto: "ride", rodillas: "kneel", "boca-abajo": "prone" };
 
 /** Clothes over her suit: the flight suit (olive), the LCVG (pale blue), the EMU's white. */
-const TINT: Partial<Record<Thing, number>> = { mono: 0x5d6b3a, "prenda-lcvg": 0xb9d8ec, "pantalon-emu": 0xf2f2ee, "torso-emu": 0xf2f2ee };
+const TINT: Partial<Record<Thing, number>> = { mono: 0x5d6b3a, "prenda-lcvg": 0xb9d8ec, "pantalon-emu": 0xf2f2ee, "torso-emu": 0xf2f2ee, "traje-ss": 0xe9ecef };
 
 export class S3Stage implements StepVisual {
   readonly root = new THREE.Group();
@@ -70,6 +70,25 @@ export class S3Stage implements StepVisual {
       chair.add(box(0.45, 0.05, 0.45, 0x30343a).translateY(0.45), box(0.45, 0.45, 0.05, 0x30343a).translateY(0.7).translateZ(-0.22));
       for (const [x, z] of [[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.2], [0.2, 0.2]]) chair.add(box(0.04, 0.45, 0.04, 0x8a8f96).translateX(x!).translateY(0.225).translateZ(z!));
       add(chair, silla.x, silla.y, silla.z - Math.cos(silla.face) * 0.05, silla.face);
+    }
+    // Post 10: the flight director's chair (the console's own, moved for her). Post 13: the suit-up room's recliner.
+    const dir = s.her.director;
+    if (dir) {
+      const chair = new THREE.Group();
+      chair.add(box(0.5, 0.06, 0.5, 0x22262c).translateY(0.45), box(0.5, 0.55, 0.06, 0x22262c).translateY(0.75).translateZ(-0.24), box(0.06, 0.42, 0.06, 0x8a8f96).translateY(0.21));
+      add(chair, dir.x, dir.y, dir.z - Math.cos(dir.face) * 0.05, dir.face);
+    }
+    const rec = s.her["sillon-traje"];
+    if (rec) {
+      const chair = new THREE.Group();
+      const leather = 0x4a3326;
+      chair.add(box(0.75, 0.42, 0.75, leather).translateY(-0.24), box(0.75, 0.2, 0.55, leather).translateY(-0.2).translateZ(0.62));
+      const back = box(0.75, 0.9, 0.18, leather);
+      back.position.set(0, 0.25, -0.42);
+      back.rotation.x = -0.45;
+      chair.add(back);
+      for (const x of [-0.42, 0.42]) chair.add(box(0.1, 0.25, 0.7, leather).translateX(x).translateY(0.05));
+      add(chair, rec.x, rec.y, rec.z, rec.face);
     }
     const scale = s.anchors.bascula;
     if (scale) add(box(0.4, 0.05, 0.4, 0xdfe3e6), scale.x, scale.y + 0.025, scale.z);
@@ -148,6 +167,9 @@ export class S3Stage implements StepVisual {
     wire.position.set(5, 2.9, 0);
     aerial.add(wire);
     this.things.set("antena", aerial);
+    // Phase 6: the Crew Dragon suit's helmet (white, its dark visor) and its umbilical (air and power).
+    this.things.set("casco-ss", g(new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 12), mat(0xf4f4f4)), box(0.26, 0.12, 0.06, 0x111418).translateZ(0.17).translateY(-0.02)));
+    this.things.set("umbilical", g(new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.8, 8), mat(0x6f7680)).rotateX(1.2).translateY(-0.35)));
     this.cable.visible = false;
     this.root.add(this.cable);
     for (const o of this.things.values()) {
@@ -181,7 +203,7 @@ export class S3Stage implements StepVisual {
     }
     const first = Object.values(stage.her)[0] ?? stage.lap?.from;
     if (first) this.place(her.rig, first);
-    her.fig.pose(first && (first === stage.her.silla || first === stage.her.camara) ? "sit" : "stand");
+    her.fig.pose(first && (first === stage.her.silla || first === stage.her.camara || first === stage.her.director) ? "sit" : "stand");
     if (trainer) {
       this.place(trainer.rig, stage.trainer);
       trainer.fig.pose("stand");
@@ -303,7 +325,7 @@ export class S3Stage implements StepVisual {
   private enter(b: Beat): void {
     const her = this.her!;
     this.caption = b.caption;
-    const seated = b.her === "silla" || b.her === "camara" || b.her === "camilla-sentada" || b.her === "balsa" || b.her === "avion-asiento" || b.her === "dragon-asiento";
+    const seated = b.her === "silla" || b.her === "camara" || b.her === "camilla-sentada" || b.her === "balsa" || b.her === "avion-asiento" || b.her === "dragon-asiento" || b.her === "director" || b.her === "sillon-traje" || b.her === "dragon-real";
     let pose = HER_POSE[b.pose];
     if (seated && (b.pose === "sentada" || b.pose === "de-pie")) pose = b.pose === "de-pie" && b.her === "silla" ? "stand" : "sit";
     if (seated && b.pose === "mano-adelante") pose = "sit-reach";
@@ -316,7 +338,7 @@ export class S3Stage implements StepVisual {
     this.onCue?.(b.rig);
     // Clothes: the tint of the outermost one listed.
     let tint = this.suitColor;
-    for (const t of ["prenda-lcvg", "mono", "pantalon-emu", "torso-emu"] as const) if (b.things.some((x) => x.thing === t)) tint = TINT[t]!;
+    for (const t of ["prenda-lcvg", "mono", "pantalon-emu", "torso-emu", "traje-ss"] as const) if (b.things.some((x) => x.thing === t)) tint = TINT[t]!;
     for (const m of this.suitMeshes) m.color.setHex(tint);
     for (const [id, o] of this.things) {
       const cue = b.things.find((x) => x.thing === id);
@@ -349,7 +371,7 @@ export class S3Stage implements StepVisual {
       case "pecho":
         return hang(her.chestNode, id === "acreditacion" ? 0.09 : 0, 0.14, 0.12);
       case "cara":
-        return hang(her.headNode, 0, id === "casco" ? 0.13 : 0.08, id === "casco" ? 0 : 0.13);
+        return hang(her.headNode, 0, id === "casco" || id === "casco-ss" ? 0.13 : 0.08, id === "casco" || id === "casco-ss" ? 0 : 0.13);
       case "cintura":
         // Astride the snowmobile: it goes under her, its seat under her hips.
         if (id === "moto-nieve") {

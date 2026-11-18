@@ -45,9 +45,10 @@ import { partidas } from "./partidas.mjs";
 import { s3Recorrido } from "./s3-recorrido.mjs";
 import { s3Iniciacion } from "./s3-iniciacion.mjs";
 import { s3Iniciacion2 } from "./s3-iniciacion-2.mjs";
+import { iniciacionCompleta } from "./iniciacion-completa.mjs";
 import { s3Detalle } from "./s3-detalle.mjs";
 
-const PLAY = { cocina, movimiento, mision, "acciones-movil": acciones, "acciones-escritorio": acciones, ordenar, "aterrizaje-programa": aterrizajePrograma, "aterrizaje-manual": aterrizajeManual, "aterrizaje-escritorio": aterrizajeEscritorio, "habitaculo-movil": habitaculo, "habitaculo-escritorio": habitaculo, "estacion-movil": estacion, "puente-real": puente, acuario, viaje, yoga, "nodriza-estacion": nodrizaEstacion, animaciones, "catalogo-naves": catalogoNaves, "soporte-vital": soporteVital, foco, catalogo, starship, "estacion-iss": estacionIss, "modulo-lunar": moduloLunar, componentes, "cabina-lm": cabinaLm, compartimentos, pendientes, trayectos, "brazo-eva": brazoEva, equipos, mandos, "cubierta-vuelo": cubiertaVuelo, "tareas-ajustes": tareasAjustes, "camara-acuario": camaraAcuario, inicio, partidas, "s3-recorrido": s3Recorrido, "s3-iniciacion": s3Iniciacion, "s3-iniciacion-2": s3Iniciacion2, "s3-detalle": s3Detalle };
+const PLAY = { cocina, movimiento, mision, "acciones-movil": acciones, "acciones-escritorio": acciones, ordenar, "aterrizaje-programa": aterrizajePrograma, "aterrizaje-manual": aterrizajeManual, "aterrizaje-escritorio": aterrizajeEscritorio, "habitaculo-movil": habitaculo, "habitaculo-escritorio": habitaculo, "estacion-movil": estacion, "puente-real": puente, acuario, viaje, yoga, "nodriza-estacion": nodrizaEstacion, animaciones, "catalogo-naves": catalogoNaves, "soporte-vital": soporteVital, foco, catalogo, starship, "estacion-iss": estacionIss, "modulo-lunar": moduloLunar, componentes, "cabina-lm": cabinaLm, compartimentos, pendientes, trayectos, "brazo-eva": brazoEva, equipos, mandos, "cubierta-vuelo": cubiertaVuelo, "tareas-ajustes": tareasAjustes, "camara-acuario": camaraAcuario, inicio, partidas, "s3-recorrido": s3Recorrido, "s3-iniciacion": s3Iniciacion, "s3-iniciacion-2": s3Iniciacion2, "iniciacion-completa": iniciacionCompleta, "s3-detalle": s3Detalle };
 
 const now = new Date();
 const stamp = now.toISOString().replace(/[:.]/g, "-").slice(0, 19);

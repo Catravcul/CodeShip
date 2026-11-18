@@ -31,7 +31,8 @@ describe("la jornada de Cold Sanctuary (WorkRoster) y quién da cada reto", () =
     expect(trainerFor(TRAINERS, 1, 11.5)).toBeUndefined();
     expect(trainerFor(TRAINERS, 6, 9.5)).toBe("ivelyna");
     expect(trainerFor(TRAINERS, 6, 12.5)).toBe("malena");
-    expect(trainerFor(TRAINERS, 10, 9.5)).toBeUndefined();
+    expect(trainerFor(TRAINERS, 10, 9.5)).toBe("luciana");
+    expect(trainerFor(TRAINERS, 13, 12.5)).toBe("irosene");
   });
 
   it("sin turno, la tarjeta dice cuándo empieza el siguiente y con quién", () => {
@@ -40,7 +41,7 @@ describe("la jornada de Cold Sanctuary (WorkRoster) y quién da cada reto", () =
     expect(nextShift(TRAINERS, 1, 11.5)).toEqual({ at: 12, id: "julian" });
     // After 16, tomorrow's first block of tasks (9:00), past the morning's training.
     expect(nextShift(TRAINERS, 6, 17)).toEqual({ at: 33, id: "ivelyna" });
-    expect(nextShift(TRAINERS, 10, 9.5)).toBeUndefined();
+    expect(nextShift(TRAINERS, 10, 11.5)).toEqual({ at: 12, id: "luciana" });
   });
 
   it("quien entrena sale antes para llegar a su hora, sin andar más deprisa", () => {

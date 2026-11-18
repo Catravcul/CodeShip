@@ -71,11 +71,22 @@ Si reanudar una partida falla a medias, se sigue jugando **sin guardar**, para n
   del banco, el agua (nitrato, amonio, algas), el hambre, la salud y la amistad.
 - Los ajustes: los generales, el modo de los retos de ordenar y el de aterrizaje.
 
+## Del 3 al 6 (2026-11-18, `s3-lanzamiento`)
+
+Una partida del 3 pasa a ser del 6 al terminar la iniciación ([santuario3-lanzamiento.md](santuario3-lanzamiento.md)):
+acoplada la Dragon a la Starship en órbita baja, la misma ranura se escribe como **nivel 6** con un traspaso
+(`saves/domain/launch-handover.ts`): los días, los puestos superados y los días del crucero a Bennu por hacer.
+`checkSpaceState` lo acepta (y lo comprueba con `checkHandover`); la lista lo enseña como «Starship · Crucero a Bennu».
+El santuario aéreo deja el id en `sessionStorage` (`codeship.seguir`) y recarga la página: `boot.ts` sigue esa ranura en el
+6 sin pasar por la pantalla de inicio. `GameSave` ve el traspaso: empieza una partida nueva con sus días y con ella en la
+cubierta de vuelo de la Starship, y arranca el crucero (`src/bennu-cruise.ts`); su primer guardado deja ya el estado
+completo del 6. Sin ranura libre, se queda en el 3 y lo dice. El 6 se sigue empezando también desde la pantalla de inicio.
+
 ## Qué no se guarda (todavía)
 
 Al reanudar, esto vuelve como en una partida nueva:
 
-- **Lo que estaba en marcha**: un viaje de la Starship, del módulo o de la sonda, un aterrizaje por programa, el
+- **Lo que estaba en marcha**: el crucero a Bennu del traspaso (si se recarga a medio crucero, sigue ya en Bennu), un viaje de la Starship, del módulo o de la sonda, un aterrizaje por programa, el
   asistente de acople y el pilotaje a mano. Las naves quedan donde estaban (el módulo libre conserva su velocidad);
   el viaje se programa otra vez. También un reto o un duelo abierto, el paseo espacial (vuelve dentro) y el sueño.
 - **Posado en un asteroide**: se guarda la posición junto al suelo, no el anclaje; al reanudar se vuelve a posar.

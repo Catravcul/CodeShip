@@ -287,6 +287,10 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | AER-24 | Probado (en vivo) | 2026-11-18 | `ce1cc7d1` | [run](runs/2026-11-18-1907-PX-46-PX-49.md) (PX-49); `fixtures.test.ts` verde |
 | AER-25 | Probado (en vivo) | 2026-11-18 | `ce1cc7d1` | [run](runs/2026-11-18-1842-PX-45.md) (PX-45), [run](runs/2026-11-18-1907-PX-46-PX-49.md) (PX-46, PX-49); `fixtures.test.ts`, `layout.test.ts` verdes |
 | AER-26 | Probado (en vivo) | 2026-11-18 | `ce1cc7d1` | [run](runs/2026-11-18-1907-PX-46-PX-49.md) (PX-49): 482 llamadas; `fixtures.test.ts` verde |
+| AER-27 | Probado (en vivo) | 2026-11-18 | `e2c1be2d` | [run](runs/2026-11-18-2155-PX-48.md) (PX-48); `launch.test.ts`, `roster.test.ts`, `initiation.test.ts` verdes |
+| AER-28 | Probado (en vivo) | 2026-11-18 | `e2c1be2d` | [run](runs/2026-11-18-2155-PX-48.md) (PX-48); `launch.test.ts` verde |
+| AER-29 | Probado (en vivo) | 2026-11-18 | `e2c1be2d` | [run](runs/2026-11-18-2155-PX-48.md) (PX-48); `launch.test.ts`, `launch-sequence.test.ts` verdes |
+| AER-30 | Probado (en vivo) | 2026-11-18 | `e2c1be2d` | [run](runs/2026-11-18-2155-PX-48.md) (PX-48); `launch-handover.test.ts` verde |
 | CV-01 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK |
 | CV-02 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-01** cerrado |
 | CV-03 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK · **B-01** arreglado |
@@ -343,10 +347,11 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-43 | Probado (en vivo) | 2026-11-18 | `5a82fe6` | [run](runs/2026-11-18-0613-PX-10-PX-15-PX-32-PX-43-PX-39-PX-40.md): 67 OK |
 | PX-44 | Probado (en vivo) | 2026-11-18 | `f263157` | [run](runs/2026-11-18-1414-PX-44-PX-45-PX-46.md): 25 OK |
 | PX-45 | Probado (en vivo) | 2026-11-18 | `fe466708` | [run](runs/2026-11-18-2053-PX-45-PX-49.md): 32 OK |
-| PX-46 | Probado (en vivo) | 2026-11-18 | `fe466708` | [run](runs/2026-11-18-2036-PX-46-PX-47.md): 54 OK |
+| PX-46 | Probado (en vivo) | 2026-11-18 | `e2c1be2d` | [run](runs/2026-11-18-2202-PX-46-PX-47.md): 54 OK |
 | PX-50 | Probado (en vivo) | 2026-11-18 | `90ba319` | [run](runs/2026-11-18-1140-PX-10-PX-44-PX-50.md): 28 OK |
-| PX-47 | Probado (en vivo) | 2026-11-18 | `fe466708` | [run](runs/2026-11-18-2036-PX-46-PX-47.md): 51 OK |
+| PX-47 | Probado (en vivo) | 2026-11-18 | `e2c1be2d` | [run](runs/2026-11-18-2202-PX-46-PX-47.md): 51 OK |
 | PX-49 | Probado (en vivo) | 2026-11-18 | `fe466708` | [run](runs/2026-11-18-2053-PX-45-PX-49.md): 48 OK |
+| PX-48 | Probado (en vivo) | 2026-11-18 | `e2c1be2d` | [run](runs/2026-11-18-2155-PX-48.md): 35 OK |
 
 ## Última ejecución por run log
 
@@ -354,6 +359,8 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-18 22:02 | PX-46, PX-47 | Experiencia (Playwright) | 2/2 recorridos bien | [run](runs/2026-11-18-2202-PX-46-PX-47.md) |
+| 2026-11-18 21:55 | PX-48 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-18-2155-PX-48.md) |
 | 2026-11-18 20:53 | PX-45, PX-49 | Experiencia (Playwright) | 2/2 recorridos bien | [run](runs/2026-11-18-2053-PX-45-PX-49.md) |
 | 2026-11-18 20:36 | PX-46, PX-47 | Experiencia (Playwright) | 2/2 recorridos bien | [run](runs/2026-11-18-2036-PX-46-PX-47.md) |
 | 2026-11-18 19:07 | PX-46, PX-49 | Experiencia (Playwright) | 2/2 recorridos bien | [run](runs/2026-11-18-1907-PX-46-PX-49.md) |

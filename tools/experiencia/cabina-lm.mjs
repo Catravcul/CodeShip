@@ -56,7 +56,7 @@ export async function cabinaLm(j) {
   // Undocking is the dock switch in the flight controls' tree (PX-41); the commander's station offers Manual and Automático.
   await j.tapInMenu(".flight-bar", ".dock-btn", "Desacoplar (interruptor de acople)");
   await p.waitForTimeout(600);
-  await j.tap(".stand-btn", "Dejar el puesto: habitáculo");
+  await j.standUp();
   await j.setup("el LM llega a 300 m de Bennu (lo que deja el viaje comprimido)", placeAbove, ["modulo", 300, 0]);
   await j.useMachine("cabin", "asiento", "pilotar", "Manual");
   await p.waitForTimeout(1200);
@@ -85,7 +85,7 @@ export async function cabinaLm(j) {
     c.docking.dockNow(c.mothership);
   });
   for (let n = 0; n < 6 && (await p.evaluate(() => window.codeship.view.cameraMode)) !== "cabina"; n++) await j.tap(".cam-btn", "Cámara");
-  await j.tap(".stand-btn", "Dejar el puesto: habitáculo");
+  await j.standUp();
   await j.useMachine("cabin", "acople", "entrar-nodriza", "Entrar en la nave de viaje");
   await p.waitForTimeout(1500);
   await j.setup("sube a la cubierta 1, junto a la escotilla de la cubierta de vuelo (los saltos se juegan en «movimiento»)", () => window.codeship.starship.mode.placeAt("subir-cubierta-vuelo"));

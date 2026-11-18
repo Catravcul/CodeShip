@@ -312,6 +312,16 @@ export class Journey {
     await p.waitForFunction((i) => (document.querySelector(i)?.getBoundingClientRect().width ?? 0) >= 44, item, { timeout: 5000 }).catch(() => {});
   }
 
+  /**
+   * Out of the LM's pilot station: with its hand controls on screen (rcs-pad.ts, the tree menu hidden as in any
+   * challenge) by their own «Dejar el puesto», otherwise by the flight controls' menu.
+   */
+  async standUp(what = "Dejar el puesto: habitáculo") {
+    const pad = '.rcs-pad:not(.hidden) [data-act="end"]';
+    if (await this.page.locator(pad).count()) return this.tap(pad, what);
+    return this.tap(".stand-btn", what);
+  }
+
   /** A tap on an icon that sprouts from a root menu: opens the menu (it stays open until its X) and taps it. */
   async tapInMenu(bar, item, what) {
     await this.openMenu(bar, item);

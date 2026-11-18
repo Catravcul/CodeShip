@@ -40,7 +40,7 @@ export async function moduloLunar(j) {
   await j.tapInMenu(".flight-bar", ".dock-btn", "Desacoplar (interruptor de acople)");
   await p.waitForTimeout(600);
   j.check("el interruptor de acople de los mandos de vuelo desacopla el LM de la Starship", await p.evaluate(() => !window.codeship.docking.docked));
-  await j.tap(".stand-btn", "Dejar el puesto: habitáculo");
+  await j.standUp();
   await p.waitForTimeout(900);
   await j.setup("el LM llega a 300 m de Bennu (lo que deja el viaje comprimido)", placeAbove, ["modulo", 300, 0]);
   await j.useMachine("cabin", "asiento", "pilotar", "Manual");

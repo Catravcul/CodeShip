@@ -30,3 +30,6 @@ export const S1_SOURCES = {
   snowPetrel: "Wikipedia, Petrel níveo: 30–40 cm, envergadura de 75–95 cm: https://en.wikipedia.org/wiki/Snow_petrel",
   human: "NCD-RisC (2016), estatura media de adultos: 1,60–1,78 m: https://ncdrisc.org/",
 } as const;
+
+/** A Cold Sanctuary builder as a source: `cs("Training", "FurnishGymCardio")`. */
+export const cs = (file: string, what: string): string => `Cold Sanctuary, Assets/Editor/SampleSceneBuilder.${file}.cs ${what}`;

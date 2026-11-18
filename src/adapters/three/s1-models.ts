@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import type { S1Layout } from "@modules/sanctuary-one/data/layout";
-import { MODELS, model, type Category, type ModelDef } from "@modules/sanctuary-one/data/catalog";
+import { model, type Category, type ModelDef } from "@modules/sanctuary-one/data/catalog";
 import { WATER_Y } from "@modules/sanctuary-one/data/site";
 import { textSign } from "./interior/sign";
 
@@ -18,10 +18,44 @@ function box(x0: number, x1: number, y0: number, y1: number, z0: number, z1: num
   return g;
 }
 
-/** A model's geometry at its true size, standing on y = 0, its front towards −z. */
-function geometryOf(d: ModelDef): THREE.BufferGeometry {
+/** Paints a geometry one colour (vertex colours, so composite models keep each part's own). */
+function paint(g: THREE.BufferGeometry, c: number): THREE.BufferGeometry {
+  const n = g.index ? g.toNonIndexed() : g;
+  const col = new THREE.Color(c);
+  const a = new Float32Array(n.attributes.position!.count * 3);
+  for (let i = 0; i < a.length; i += 3) { a[i] = col.r; a[i + 1] = col.g; a[i + 2] = col.b; }
+  n.setAttribute("color", new THREE.BufferAttribute(a, 3));
+  return n;
+}
+
+/**
+ * A model's geometry at its true size, standing on y = 0, its front towards −z, with vertex colours (each part of a
+ * composite its own; `plain` paints it all white, for a recoloured copy whose material carries the colour).
+ */
+function geometryOf(d: ModelDef, plain = false): THREE.BufferGeometry {
+  if (d.parts) return mergeGeometries(d.parts.map(([cx, cy, cz, sx, sy, sz, c]) => paint(box(cx - sx / 2, cx + sx / 2, cy - sy / 2, cy + sy / 2, cz - sz / 2, cz + sz / 2), plain ? 0xffffff : c ?? d.color)));
+  const g = shapeOf(d);
+  return g.getAttribute("color") && !plain ? g : paint(g, plain ? 0xffffff : d.color);
+}
+
+function shapeOf(d: ModelDef): THREE.BufferGeometry {
   const { x, y, z } = d.size;
   switch (d.shape) {
+    case "cilindro": {
+      const g = new THREE.CylinderGeometry(x / 2, x / 2, y, 16);
+      g.scale(1, 1, z / x);
+      g.translate(0, y / 2, 0);
+      return g;
+    }
+    case "arbol": {
+      // A tree: trunk a fifth of the height, crown the rest (x = crown width).
+      const trunk = new THREE.CylinderGeometry(x * 0.06, x * 0.09, y * 0.35, 7);
+      trunk.translate(0, y * 0.175, 0);
+      const crown = new THREE.IcosahedronGeometry(0.5, 1);
+      crown.scale(x, y * 0.7, z);
+      crown.translate(0, y * 0.62, 0);
+      return mergeGeometries([paint(trunk, 0x6b4f35), paint(crown, d.color)]);
+    }
     case "cuadrupedo": {
       // Body, four legs, neck and head: proportions of a standing mammal of this length and height.
       const legH = y * 0.45;
@@ -90,8 +124,10 @@ function geometryOf(d: ModelDef): THREE.BufferGeometry {
 
 export interface S1Scene {
   readonly root: THREE.Group;
-  /** Each catalogue model's mesh (all its copies), by model id. */
+  /** Each catalogue model's mesh (all its copies), by «model id|tint» (tint empty unless a bulk rule recolours it). */
   readonly meshes: ReadonlyMap<string, THREE.InstancedMesh>;
+  /** The instances that move (wandering animals): their mesh and index. */
+  readonly movers: readonly { readonly mesh: THREE.InstancedMesh; readonly index: number; readonly it: S1Layout["instances"][number] }[];
   /** Bulk change: show/hide or recolour every model of a category (or of one group of it). */
   style(category: Category, o: { visible?: boolean; color?: number; group?: string }): void;
 }
@@ -123,6 +159,7 @@ export function buildS1Scene(L: S1Layout): S1Scene {
   const slabs: THREE.BufferGeometry[] = [];
   const struts: THREE.BufferGeometry[] = [];
   const rails: THREE.BufferGeometry[] = [];
+  const slabsRing: THREE.BufferGeometry[] = [];
   for (const t of L.towers) {
     for (const f of t.floors) {
       const r = f.rect;
@@ -136,12 +173,14 @@ export function buildS1Scene(L: S1Layout): S1Scene {
       }
       for (const [x0, x1, z0, z1] of [[r.x0, r.x1, r.z0, r.z0 + 0.08], [r.x0, r.x1, r.z1 - 0.08, r.z1], [r.x0, r.x0 + 0.08, r.z0, r.z1], [r.x1 - 0.08, r.x1, r.z0, r.z1]] as const) rails.push(box(x0, x1, f.y + 1.0, f.y + 1.1, z0, z1));
     }
+    for (const ring of t.rings) for (const r of ring.rects) slabsRing.push(box(r.x0, r.x1, ring.y - 0.3, ring.y - 0.01, r.z0, r.z1));
     for (const tip of t.tips) {
       const r = tip.rect;
       struts.push(box(r.x0 + 2, r.x0 + 2.6, tip.y - 4.5, tip.y - 0.5, r.z0 + 2, r.z0 + 2.6));
     }
   }
   add(slabs, mat(0xc9cfd4), "losas");
+  add(slabsRing, mat(0x7a6654), "anillos");
   add(struts, mat(0x7d8a94), "tornapuntas");
   add(rails, mat(0x9fb3bf, { metalness: 0.4 }), "barandillas");
   // Water: the trunks, their branches and columns (Cold Sanctuary's magic: water standing in a field) and the sea.
@@ -157,24 +196,35 @@ export function buildS1Scene(L: S1Layout): S1Scene {
 
   // The catalogue's instances: one InstancedMesh per model (people are drawn by the scene as figures).
   const meshes = new Map<string, THREE.InstancedMesh>();
+  const movers: { mesh: THREE.InstancedMesh; index: number; it: S1Layout["instances"][number] }[] = [];
   const by = new Map<string, S1Layout["instances"][number][]>();
-  for (const i of L.instances) if (model(i.model).shape !== "figura") by.set(i.model, [...(by.get(i.model) ?? []), i]);
+  for (const i of L.instances) {
+    if (model(i.model).shape === "figura") continue;
+    const key = `${i.model}|${i.tint ?? ""}`;
+    by.set(key, [...(by.get(key) ?? []), i]);
+  }
   const m4 = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const up = new THREE.Vector3(0, 1, 0);
-  for (const d of MODELS) {
-    const list = by.get(d.id);
-    if (!list?.length) continue;
-    const mesh = new THREE.InstancedMesh(geometryOf(d), mat(d.color), list.length);
+  const geos = new Map<string, THREE.BufferGeometry>();
+  for (const [key, list] of by) {
+    const d = model(list[0]!.model);
+    const tint = list[0]!.tint;
+    const gk = `${d.id}|${tint !== undefined}`;
+    const geo = geos.get(gk) ?? geometryOf(d, tint !== undefined);
+    geos.set(gk, geo);
+    const mesh = new THREE.InstancedMesh(geo, mat(tint ?? 0xffffff, { vertexColors: true }), list.length);
     list.forEach((it, n) => {
       q.setFromAxisAngle(up, it.rot);
       const p = it.plan ?? 1;
-      m4.compose(new THREE.Vector3(it.x, it.y, it.z), q, new THREE.Vector3(p, 1, p));
+      const sc = it.scale ?? 1;
+      m4.compose(new THREE.Vector3(it.x, it.y, it.z), q, new THREE.Vector3(p * sc, sc, p * sc));
       mesh.setMatrixAt(n, m4);
+      if (it.wander) movers.push({ mesh, index: n, it });
     });
-    mesh.name = `modelo-${d.id}`;
+    mesh.name = `modelo-${key}`;
     mesh.userData = { category: d.category, group: d.group, model: d.id };
-    meshes.set(d.id, mesh);
+    meshes.set(key, mesh);
     root.add(mesh);
   }
   // Signs over each floor and building (each floor's name, as Cold Sanctuary's WorldLabel).
@@ -195,12 +245,13 @@ export function buildS1Scene(L: S1Layout): S1Scene {
   return {
     root,
     meshes,
+    movers,
     style(category, o) {
       for (const mesh of meshes.values()) {
         const u = mesh.userData as { category: Category; group: string };
         if (u.category !== category || (o.group && u.group !== o.group)) continue;
         if (o.visible !== undefined) mesh.visible = o.visible;
-        if (o.color !== undefined) (mesh.material as THREE.MeshStandardMaterial).color.setHex(o.color);
+        if (o.color !== undefined) (mesh.material as THREE.MeshStandardMaterial).color.setHex(o.color);   // multiplies the parts' own colours
       }
     },
   };

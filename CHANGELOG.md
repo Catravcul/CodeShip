@@ -5,6 +5,10 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-18
 
+- **Santuario 1 completo (entorno)**: todos los pisos que Cold Sanctuary amuebla (Entrenamiento, Servicios con anillos,
+  Ciencias, Producción, Árbol de los Campos, Residencia), frutales y bancales en las puntas, casquetes silvestres,
+  tundra, icebergs, animales que merodean, el personal siguiendo la jornada por rutas reales, reloj y ventana de Áreas
+  con «Ir». Cambios a gran escala en un archivo (`overrides.ts`). [docs/design/santuario1.md](docs/design/santuario1.md)
 - **Santuario 3, fase 6 (rama `s3-lanzamiento`)**: el puesto 10 (un Electron en la pantalla del control de misión, con
   Luciana) y el 13 (el traje de la Crew Dragon, con Irosene); su día de lanzamiento en la plataforma (torre, brazo y sala
   blanca, cuenta atrás, ascenso por etapas, cita con la Starship por reto o a mano), y la partida del 3 que pasa a ser del 6

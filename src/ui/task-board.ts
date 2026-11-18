@@ -7,7 +7,7 @@ import "./task-board.css";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
-const IN: Record<Vehicle, string> = { nodriza: "En la nave", estacion: "En la estación", modulo: "En el módulo", entrenamiento: "En la isla de entrenamiento", lanzadera: "En la lanzadera", parque: "En el parque energético", muelle: "En el muelle aéreo", plataforma: "En la plataforma de tripulación", glaciar: "En el glaciar" };
+const IN: Record<Vehicle, string> = { nodriza: "En la nave", estacion: "En la estación", modulo: "En el módulo", entrenamiento: "En la isla de entrenamiento", lanzadera: "En la lanzadera", parque: "En el parque energético", muelle: "En el muelle aéreo", plataforma: "En la plataforma de tripulación", glaciar: "En el glaciar", "santuario-1": "En el santuario 1" };
 const NOTHING: Record<Vehicle, string> = Object.fromEntries(Object.entries(IN).map(([k, v]) => [k, `Nada pendiente ${v.charAt(0).toLowerCase()}${v.slice(1)}`])) as Record<Vehicle, string>;
 
 /**

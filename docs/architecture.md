@@ -59,7 +59,7 @@ docs/design/            un documento por sistema; docs/research/ investigación 
 | `crew`, `wellness`, `medical`, `kitchen` | Necesidades de Doménica, yoga/ejercicio/sueño, protocolos médicos, cocina |
 | `habitat`, `garden`, `pets`, `poultry`, `cultured-meat`, `family`, `sanctuary`, `adoption` | Vida a bordo antigua (en pausa tras el reinicio, `REAL_ONLY`) y catálogo de especies |
 | `aerial-sanctuary` | Santuario 3: islas, edificios-árbol con ascensor, `walk.ts` (andar/nadar en cajas), vuelos, puestos |
-| `sanctuary-one` | Santuario 1: catálogo de modelos por categoría, sitio, pisos amueblados, población |
+| `sanctuary-one` | Santuario 1: catálogo de modelos por categoría (`data/models/`), pisos amueblados (`data/floors/`), reglas de cambios a gran escala (`data/overrides.ts`), paisaje, jornada y rutas, rejilla del paseo, población |
 | `settings`, `saves`, `story`, `body` | Ajustes (en la esterilla), partidas, historia, posturas |
 
 ## Patrones

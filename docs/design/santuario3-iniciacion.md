@@ -15,6 +15,8 @@ Petición de Berón (2026-11-18), resumida:
 - **Se viaja entre islas** desde la máquina de navegación de cada isla: la misma ventana de Navegación del puente, con el plano tridimensional de cada isla y su botón descriptivo.
 - **El mismo modelo de ventana** (mapa 3D arriba, opciones con descripción y botón debajo) sirve para elegir santuario en la pantalla de inicio, para viajar entre islas, para Navegación en el espacio, para Áreas y, más adelante, para misiones.
 - En la Tierra hay gravedad: el santuario 3 se anda (y se nada donde haya agua).
+- **De la órbita a Bennu (08:22):** la Dragon se acopla a la nodriza en órbita baja y la nodriza hace el viaje real hasta Bennu.
+- **Entrenadores (08:22):** se recrean los personajes de Cold Sanctuary con sus horarios; se turnan el papel de entrenador según su jornada.
 
 ## Respuestas cortas
 

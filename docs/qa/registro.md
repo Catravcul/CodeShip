@@ -270,20 +270,20 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | AER-07 | Probado (en vivo) | 2026-11-18 | `ccbf700` | [run](runs/2026-11-18-1221-PX-01-PX-44-PX-45.md) (PX-45); `layout.test.ts`, `rules.test.ts` verdes |
 | AER-08 | Solo test | | | `rules.test.ts` (grupo 101) verde |
 | AER-09 | Solo test | | | `aerial-state.test.ts` verde |
-| AER-10 | Probado (en vivo) | 2026-11-18 | `f263157` | [run](runs/2026-11-18-1414-PX-44-PX-45-PX-46.md) (PX-46); `stations.test.ts`, `initiation.test.ts` verdes |
-| AER-11 | Probado (en vivo) | 2026-11-18 | `f263157` | [run](runs/2026-11-18-1414-PX-44-PX-45-PX-46.md) (PX-46); `stages.test.ts`, `stations.test.ts` verdes |
-| AER-12 | Probado (en vivo) | 2026-11-18 | `f263157` | [run](runs/2026-11-18-1414-PX-44-PX-45-PX-46.md) (PX-46); `roster.test.ts`, `stages.test.ts` verdes |
+| AER-10 | Probado (en vivo) | 2026-11-18 | `608fff3` | [run](runs/2026-11-18-1700-PX-46.md) (PX-46); `stations.test.ts`, `initiation.test.ts` verdes |
+| AER-11 | Probado (en vivo) | 2026-11-18 | `608fff3` | [run](runs/2026-11-18-1700-PX-46.md) (PX-46); `stages.test.ts`, `stations.test.ts` verdes |
+| AER-12 | Probado (en vivo) | 2026-11-18 | `608fff3` | [run](runs/2026-11-18-1700-PX-46.md) (PX-46); `roster.test.ts`, `stages.test.ts` verdes |
 | AER-13 | Probado (en vivo) | 2026-11-18 | `f263157` | [run](runs/2026-11-18-1414-PX-44-PX-45-PX-46.md) (PX-46); `flight-program.test.ts`, `hand-flight.test.ts` verdes |
 | AER-14 | Probado (en vivo) | 2026-11-18 | `f263157` | [run](runs/2026-11-18-1414-PX-44-PX-45-PX-46.md) (PX-46); `hand-flight.test.ts` verde |
 | AER-15 | Solo test | | | `layout.test.ts` verde |
-| AER-16 | Pendiente | | | |
-| AER-17 | Pendiente | | | |
-| AER-18 | Pendiente | | | |
-| AER-19 | Pendiente | | | |
-| AER-20 | Pendiente | | | |
-| AER-21 | Pendiente | | | |
-| AER-22 | Pendiente | | | |
-| AER-23 | Pendiente | | | |
+| AER-16 | Probado (en vivo) | 2026-11-18 | `608fff3` | [run](runs/2026-11-18-1640-PX-47.md) (PX-47); `stations-phase5.test.ts`, `initiation.test.ts`, `roster.test.ts` verdes |
+| AER-17 | Probado (en vivo) | 2026-11-18 | `608fff3` | [run](runs/2026-11-18-1640-PX-47.md) (PX-47); `stages.test.ts` verde |
+| AER-18 | Probado (en vivo) | 2026-11-18 | `608fff3` | [run](runs/2026-11-18-1640-PX-47.md) (PX-47); `layout.test.ts`, `stages.test.ts` verdes |
+| AER-19 | Probado (en vivo) | 2026-11-18 | `608fff3` | [run](runs/2026-11-18-1640-PX-47.md) (PX-47); `dock-practice.test.ts` verde |
+| AER-20 | Probado (en vivo) | 2026-11-18 | `608fff3` | [run](runs/2026-11-18-1640-PX-47.md) (PX-47); `lm-sim.test.ts` verde |
+| AER-21 | Probado (en vivo) | 2026-11-18 | `608fff3` | [run](runs/2026-11-18-1640-PX-47.md) (PX-47); `stages.test.ts`, `stations-phase5.test.ts` verdes |
+| AER-22 | Probado (en vivo) | 2026-11-18 | `608fff3` | [run](runs/2026-11-18-1700-PX-46.md) (PX-46), [run](runs/2026-11-18-1640-PX-47.md) (PX-47); `roster.test.ts` verde |
+| AER-23 | Probado (en vivo) | 2026-11-18 | `608fff3` | [run](runs/2026-11-18-1640-PX-47.md) (PX-47); `roster.test.ts` verde |
 | CV-01 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK |
 | CV-02 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-01** cerrado |
 | CV-03 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK · **B-01** arreglado |

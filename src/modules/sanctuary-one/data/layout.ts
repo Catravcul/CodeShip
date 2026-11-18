@@ -4,6 +4,8 @@ import { wallWithGaps } from "@modules/aerial-sanctuary/domain/walk";
 import { CAP_NAME, LAGOON, LOBES, MAP_HALF, NESTS, SPECIES_MODEL, STAFF, TOWERS, WATER_Y, capOf, isLand, lobeRadius, type TowerSpec } from "./site";
 import { FLOOR_PLANS, type FloorPlan } from "./floors";
 import { RING } from "./floors/kit";
+import { bedTip, orchardTip } from "./floors/puntas";
+import { landscape } from "./paisaje";
 import { model, type ModelDef } from "./catalog";
 import { OVERRIDES, resolve, spacing, type Overrides } from "./overrides";
 import { GROUPS, plan, split } from "../domain/population";
@@ -153,6 +155,7 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
   b.floors.push({ id: `${t.id}-umbral-suelo`, ...sideRect(S(0), door.x - door.w / 2, door.x + door.w / 2, WH - 0.6, OH + 0.4, o), y: 0, area: trunk });
   const shape: TowerShape = { id: t.id, building: t.building, x: o.x, z: o.z, rootHeight, floors: [], tips: [], rings: [] };
   let fi = 0;
+  let tipIndex = 0;
   for (let l = 1; l <= levels; l++) {
     const y = levelY(l);
     const floorSides = l % 2 === 1 ? [0, 2] : [1, 3];
@@ -230,7 +233,15 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
       for (const r of [R(tip.x0, tip.x1, tip.z0, col.z0), R(tip.x0, tip.x1, col.z1, tip.z1), R(tip.x0, col.x0, col.z0, col.z1), R(col.x1, tip.x1, col.z0, col.z1)])
         if (r.x1 - r.x0 > 0.01 && r.z1 - r.z0 > 0.01) b.floors.push({ id: `${tipArea}-${b.floors.length}`, ...r, y: ty, area: tipArea });
       (shape.tips as TowerShape["tips"][number][]).push({ rect: tip, y: ty });
-      b.areas.push({ id: tipArea, label: `${t.tip} (${t.building}, nivel ${l})`, desc: "Punta al final de una rama de agua: se llega nadando por la rama y su columna", building: t.building, x: (tip.x0 + tip.x1) / 2, y: ty, z: (tip.z0 + tip.z1) / 2, detail: "vacio" });
+      // What grows there, in the tip's frame (its side's axes about its centre).
+      const colL = { x0: colC.x - ch - tipC.x, x1: colC.x + ch - tipC.x, z0: colC.z - ch - tipC.z, z1: colC.z + ch - tipC.z };
+      const crops = t.tip === "Cultivos";
+      const tipPlan = crops ? bedTip(ts, colL, tipIndex++) : orchardTip(ts, colL);
+      for (const it of tipPlan) {
+        const p = side(S(s), tipC.x + it.x, tipC.z + it.z);
+        place(b, it.model, o.x + p.x, ty, o.z + p.z, (S(s) * Math.PI) / 2 + (it.rot ?? 0), tipArea, { edificio: t.id, piso: tipArea }, 1, it.name);
+      }
+      b.areas.push({ id: tipArea, label: `${crops ? "Campo de punta" : t.tip} (${t.building}, nivel ${l})`, desc: crops ? "Bancal de su gremio junto a la columna; se llega nadando por la rama" : "Frutales en maceta, uno de cada especie y otra vuelta; se llega nadando por la rama y su columna", building: t.building, x: (tip.x0 + tip.x1) / 2, y: ty, z: (tip.z0 + tip.z1) / 2, detail: "completo" });
     }
   }
   // The trunk's acrylic: each face cut into bands at every doorway's edges, so a door is a hole.
@@ -338,6 +349,24 @@ export function buildS1Layout(k = 1, o: Overrides = OVERRIDES): S1Layout {
   }
   b.areas.push({ id: "mar", label: "La laguna y el mar", desc: "Ballenas, orcas, focas y morsas en la laguna central", x: LAGOON.x, y: WATER_Y, z: LAGOON.z, detail: "completo" });
   for (const t of TOWERS) buildTower(b, t, k);
+
+  // The landscape: wild caps, tundra and icebergs (paisaje.ts). Icebergs float at the water line and stand as solids.
+  for (const it of landscape()) {
+    const y = it.sea ? WATER_Y : 0;
+    place(b, it.model, it.x, y, it.z, it.rot, it.sea ? "mar" : "paisaje", {}, 1, it.name, !it.sea);
+    if (it.sea) {
+      const d = model(it.model);
+      b.solids.push({ x0: it.x - d.size.x / 2, x1: it.x + d.size.x / 2, z0: it.z - d.size.z / 2, z1: it.z + d.size.z / 2, y0: -40, y1: y + d.size.y });
+      // Its visitors (IcebergVisitor: 4 seals and 4 penguins, adults, swimming off its ledge).
+      const seals = 2;
+      const penguins = 2;
+      for (const [id, n, dz] of [["foca", seals, 0], ["pinguino", penguins, 4]] as const)
+        for (let i = 0; i < n; i++) {
+          const a = model(id);
+          place(b, id, it.x - d.size.x / 2 - 12 - 6 + i * 4, WATER_Y - a.size.y * 0.4, it.z + dz, Math.PI / 2, "mar", {}, 1, `${id === "foca" ? "Foca" : "Pingüino"} del ${it.name?.toLowerCase()}`, false);
+        }
+    }
+  }
 
   // Animals: Cold Sanctuary's plan for the staff of sanctuary 1 (all of them live here), in their nests' families.
   const counts = plan(STAFF.length + 1);

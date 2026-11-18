@@ -32,11 +32,11 @@ export function fiction<T>(make: () => T): T | undefined {
 export type AreaMotion = "ingravidez" | "gravedad" | "agua";
 
 /**
- * Every area she can be in, and how it moves her (Berón, 2026-11-17 18:54; reglas.md §2): for now there are no
- * gravity or water areas. Every Starship, ISS and LM area is zero g, the LM landed on an asteroid included
- * (microgravity), and outside on the asteroid too: she moves by herself along routes (arrows, «Ir», taps, the
- * spacewalk's buttons) and the on-screen joystick only moves the camera. The joystick that moves her
- * (adapters/input/walker.ts) stays in the code for a gravity or water area that may come later.
+ * Every area she can be in, and how it moves her (Berón, 2026-11-17 18:54; reglas.md §2): in space every Starship,
+ * ISS and LM area is zero g, the LM landed on an asteroid included (microgravity), and outside on the asteroid too:
+ * she moves by herself along routes (arrows, «Ir», taps, the spacewalk's buttons) and the on-screen joystick only
+ * moves the camera. The aerial sanctuary (level 3) is on Earth (Berón, 2026-11-18; santuario3-iniciacion.md): she
+ * walks its islands with gravity and swims its sea, pools and water trunks, so there the stick moves her.
  */
 export const AREA_MOTION = {
   "cabina-lm": "ingravidez",
@@ -47,11 +47,14 @@ export const AREA_MOTION = {
   "paseo-asteroide": "ingravidez",
   // The ring ship's 1 g decks are fiction and unwired (REAL_ONLY): if they come back, they say «gravedad» here.
   anillo: "ingravidez",
+  // Sanctuary 3: its decks and floors, and its water (the sea, the NBL pool, the trees' trunks).
+  "santuario-aereo": "gravedad",
+  "santuario-aereo-agua": "agua",
 } as const satisfies Readonly<Record<string, AreaMotion>>;
 
 export type AreaId = keyof typeof AREA_MOTION;
 
-/** Whether an area has a joystick that moves her (walking with gravity or swimming); none does for now. */
+/** Whether an area has a joystick that moves her (walking with gravity or swimming): only sanctuary 3's. */
 export function moveJoystick(area: AreaId): boolean {
   return AREA_MOTION[area] !== "ingravidez";
 }

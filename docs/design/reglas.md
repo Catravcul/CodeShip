@@ -19,7 +19,7 @@ Detalle y fuentes: [ux-acciones.md](ux-acciones.md), [escala.md](escala.md), [na
 3. **Las ventanas de gestión se abren desde máquinas o consolas** del compartimento donde se hace eso en la realidad. Ejemplos: el catálogo y las cámaras exteriores, en la estación de robótica de la Cupola o en un portátil del módulo; el hábitat de animales, en su rack.
 4. **Las dimensiones son reales y están en los datos.** La capa de presentación las amplía con dos ajustes generales: «Escala de interiores» (Real 1× / Cómoda 1,5×) y «Separación» (Real / Amplia 2 m). Se aplican igual a todas las áreas, cabinas incluidas.
 5. **Hay al menos 2 m entre elementos con los que se interactúa.** En ingravidez hay asideros en cada uno, más saltos, escaleras y lanzadores.
-6. De momento no hay áreas con gravedad: todo es ingravidez (también el módulo posado en un asteroide) y el joystick mueve la cámara.
+6. **La gravedad es la real.** En el espacio todo es ingravidez (también el módulo posado en un asteroide) y el joystick mueve la cámara. En la Tierra (santuario 3) hay gravedad: se anda y se nada con el joystick «Moverse», y la cámara tiene su propio joystick.
 
 ## 3. Trayectos
 

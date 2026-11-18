@@ -7,7 +7,16 @@ import { settings } from "./settings-store";
  * tareas, areas.md): how «Ir» gets there (`taskTravel`) and which vehicle (`taskVehicle`, automatic = where she
  * is). One source of truth, `codeship.ajustes`; both windows draw them with this and change them the same way.
  */
-export const VEHICLE_NAME: Record<Vehicle, string> = { nodriza: "Nave (Starship)", estacion: "Estación", modulo: "Módulo" };
+export const VEHICLE_NAME: Record<Vehicle, string> = { nodriza: "Nave (Starship)", estacion: "Estación", modulo: "Módulo", entrenamiento: "Isla de entrenamiento", lanzadera: "Lanzadera", parque: "Parque energético", muelle: "Muelle aéreo", plataforma: "Plataforma de tripulación" };
+
+/**
+ * Which «vehículos» the shared settings offer and what their heading says: the space game's vehicles, or in
+ * sanctuary 3 its islands (set once by the level that runs).
+ */
+let offered: { readonly list: readonly TaskVehicle[]; readonly heading: string } = { list: TASK_VEHICLES, heading: "Vehículo" };
+export function offerVehicles(list: readonly TaskVehicle[], heading: string): void {
+  offered = { list, heading };
+}
 const TRAVEL: Record<TaskTravel, string> = { viaje: "Viaje", teletransporte: "Teletransporte" };
 
 /** «Ir a una tarea»: Viaje / Teletransporte, with what it does. `id` names the heading for the radio group. */
@@ -24,9 +33,9 @@ export function vehicleHtml(id: string, here: Vehicle, count?: (v: Vehicle | nul
   const filter = settings.value.taskVehicle;
   const n = (v: Vehicle | null) => (count ? ` <small>${count(v)}</small>` : "");
   const label = (v: TaskVehicle) => (v === "auto" ? `Automático: donde está ella <small>${VEHICLE_NAME[here]}${count ? ` · ${count(here)}` : ""}</small>` : v === "todos" ? `Todos${n(null)}` : `${VEHICLE_NAME[v]}${n(v)}`);
-  const list = TASK_VEHICLES.filter((v) => withAll || v !== "todos");
+  const list = offered.list.filter((v) => withAll || v !== "todos");
   const checked = !withAll && filter === "todos" ? "auto" : filter;
-  return `<h3 class="tb-group" id="${id}">Vehículo</h3><div class="tb-vehicles${withAll ? "" : " three"}" role="radiogroup" aria-labelledby="${id}">${list.map((v) => `<button role="radio" data-vehicle="${v}" aria-checked="${v === checked}" class="${v === checked ? "on" : ""}${v === "auto" ? " auto" : ""}">${label(v)}</button>`).join("")}</div>`;
+  return `<h3 class="tb-group" id="${id}">${offered.heading}</h3><div class="tb-vehicles${withAll ? "" : " three"}" role="radiogroup" aria-labelledby="${id}">${list.map((v) => `<button role="radio" data-vehicle="${v}" aria-checked="${v === checked}" class="${v === checked ? "on" : ""}${v === "auto" ? " auto" : ""}">${label(v)}</button>`).join("")}</div>`;
 }
 
 /** A tap on one of those choices: changes the shared setting and says so (the window redraws). */

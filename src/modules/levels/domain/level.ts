@@ -27,25 +27,6 @@ export interface Level {
   readonly source: string;
 }
 
-/** A game kept on this device: the level it was in and when (none is written yet: docs/qa/casos.md HC-06). */
-export interface SavedGame {
-  readonly level: number;
-  readonly savedAt: string;
-}
-
-/** Read a kept game from its stored text; anything else (nothing, broken, an unknown level) is no game. */
-export function parseSave(raw: string | null | undefined, levels: readonly Level[]): SavedGame | undefined {
-  if (!raw) return undefined;
-  try {
-    const v = JSON.parse(raw) as Partial<SavedGame>;
-    if (typeof v.level !== "number" || typeof v.savedAt !== "string") return undefined;
-    if (!levels.some((l) => l.number === v.level && l.state === "jugable")) return undefined;
-    return { level: v.level, savedAt: v.savedAt };
-  } catch {
-    return undefined;
-  }
-}
-
 /** A level as an option of the start screen's list. */
 export interface LevelChoice {
   readonly id: string;
@@ -61,7 +42,8 @@ export interface LevelChoice {
 /** «Próximamente»: the lock of a level that is neither playable nor being built. */
 export const SOON = "Próximamente";
 
-export function levelChoices(levels: readonly Level[], save?: SavedGame): LevelChoice[] {
+/** The choices, with «Continuar» on the level of the newest kept game that can be resumed (docs/design/partidas.md). */
+export function levelChoices(levels: readonly Level[], save?: { readonly level: number }): LevelChoice[] {
   return levels.map((l) => ({
     id: l.id,
     number: l.number,

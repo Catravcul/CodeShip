@@ -6,7 +6,11 @@
  */
 import type { Stage } from "@modules/subjugation/domain/rapport";
 
-export type Vehicle = "modulo" | "nodriza" | "estacion";
+/** The islands of sanctuary 3 (docs/design/santuario3-escena.md): there, the task list's «vehículo» is the island she is on. */
+export type Island = "entrenamiento" | "lanzadera" | "parque" | "muelle" | "plataforma";
+export const ISLANDS: readonly Island[] = ["entrenamiento", "lanzadera", "parque", "muelle", "plataforma"];
+
+export type Vehicle = "modulo" | "nodriza" | "estacion" | Island;
 
 /** Where a task is done. */
 export type TaskPlace =
@@ -16,9 +20,11 @@ export type TaskPlace =
   | { readonly vehicle: "estacion"; readonly spot: "pantalla"; readonly tab: "materiales" | "planos" | "fabricacion" | "hangar" | "importar" | "vida" }
   | { readonly vehicle: "estacion"; readonly spot: "bahia" }
   /** The station's own crew areas (galley, mat, exercise): its chores (docs/design/estacion-tripulacion.md). */
-  | { readonly vehicle: "estacion"; readonly spot: "tripulacion"; readonly area: string };
+  | { readonly vehicle: "estacion"; readonly spot: "tripulacion"; readonly area: string }
+  /** A place on an island of sanctuary 3: its area and the way point «Ir» walks to. */
+  | { readonly vehicle: Island; readonly spot: "isla"; readonly area: string; readonly point: string };
 
-export type TaskGroupId = "vuelo" | "viajes" | "misiones" | "estacion" | "nave" | "comida" | "plantas" | "animales" | "salud";
+export type TaskGroupId = "iniciacion" | "vuelo" | "viajes" | "misiones" | "estacion" | "nave" | "comida" | "plantas" | "animales" | "salud";
 
 export const TASK_GROUPS: readonly { readonly id: TaskGroupId; readonly label: string }[] = [
   { id: "vuelo", label: "Vuelo y asteroides" },
@@ -30,6 +36,8 @@ export const TASK_GROUPS: readonly { readonly id: TaskGroupId; readonly label: s
   { id: "plantas", label: "Plantas" },
   { id: "animales", label: "Animales" },
   { id: "salud", label: "Salud" },
+  /** Sanctuary 3's training posts (docs/design/santuario3-iniciacion.md §4.1). */
+  { id: "iniciacion", label: "Iniciación" },
 ];
 
 export interface Task {
@@ -192,7 +200,7 @@ export function routeTo(place: TaskPlace, where: { crew: Vehicle; links: Vehicle
     for (let v: Vehicle | null = place.vehicle; v; v = prev.get(v) ?? null) path.unshift(v);
     return { kind: "ir", through: path };
   }
-  const name: Record<Vehicle, string> = { modulo: "el módulo de aterrizaje", nodriza: "la nodriza", estacion: "la estación" };
+  const name: Record<Vehicle, string> = { modulo: "el módulo de aterrizaje", nodriza: "la nodriza", estacion: "la estación", entrenamiento: "la isla de entrenamiento", lanzadera: "la lanzadera", parque: "el parque energético", muelle: "el muelle aéreo", plataforma: "la plataforma de tripulación" };
   if (where.crew === "modulo") return { kind: "bloqueado", via: { vehicle: "modulo", spot: "acople" }, why: `Acopla el módulo para llegar a ${name[place.vehicle]}: consola de acople` };
   if (where.crew === "nodriza") return { kind: "bloqueado", via: { vehicle: "nodriza", spot: "puente", page: "nav" }, why: `${cap(name[place.vehicle])} no está acoplada a la nodriza: programa un viaje en el mapa del puente` };
   return { kind: "bloqueado", via: { vehicle: "estacion", spot: "pantalla", tab: "hangar" }, why: `${cap(name[place.vehicle])} no está atracada aquí` };

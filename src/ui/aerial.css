@@ -1,0 +1,17 @@
+/* Sanctuary 3 (src/aerial-sanctuary.ts, docs/design/santuario3-escena.md): the full-screen scene, its two sticks
+   (moving her and the camera: core/realism.ts, gravity and water), and the island navigation window over it. */
+.s3-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+body.in-s3 .vstick.s3-move, body.in-s3 .vstick.s3-look { display: block; }
+body.in-s3 .vstick.s3-move span { color: #9fe8c4; }
+/* The journey bar takes the bottom left while she goes by herself: the move stick hides there (journey.css). */
+body.in-journey .vstick.s3-move { display: none !important; }
+/* The island navigation window covers the screen: nothing of the scene's HUD over it. */
+body.in-island-nav .root-menu, body.in-island-nav .cab-machine, body.in-island-nav .vstick:not(.island-nav .vstick), body.in-island-nav .cab-where, body.in-island-nav .journey-bar { display: none !important; }
+body.in-tasks .cab-where, body.in-areas .cab-where, body.in-settings .cab-where { display: none; }
+.cm-why b { font-weight: 700; margin-right: 4px; }
+/* On a phone: the place tag clear of the tree menu's gear, the notices under the menu's column, and the journey
+   bar clear of the camera's + / − (the move stick it replaces is hidden while she goes by herself). */
+.s3-ui .cab-where { max-width: calc(100vw - 84px); box-sizing: border-box; }
+.s3-ui .cab-toast { top: 42vh; }
+.journey-bar.s3-bar { width: calc(100vw - 244px); min-width: 140px; max-width: 300px; }
+body.in-island-nav .cab-toast, body.in-tasks .cab-toast, body.in-areas .cab-toast { display: none; }

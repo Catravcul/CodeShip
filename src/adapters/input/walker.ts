@@ -4,7 +4,7 @@ import { addZoomButtons, cameraStep } from "./camera-stick";
 /**
  * The on-screen controls of a first- or third-person area. The look stick («Mirar») moves only the camera, with
  * «+» and «−» beside it to zoom (reglas.md §5.7: never a drag on the screen). Only an area with gravity or water
- * (core/realism.ts `moveJoystick`, none for now) also gets the stick that moves her (left) and WASD; in zero g she
+ * (core/realism.ts `moveJoystick`: sanctuary 3) also gets the stick that moves her (left) and WASD; in zero g she
  * moves by herself (arrows, routes, «Ir», taps). Arrow keys and Q/E look around.
  */
 export class Walker {

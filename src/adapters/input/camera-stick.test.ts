@@ -28,9 +28,9 @@ describe("UI-07 camera only by joystick (reglas.md §5.7)", () => {
   it("the one exception: only the map windows' 3D maps turn and zoom with a finger (map-gestures.ts, through map-window.ts)", () => {
     const users = files.filter(({ f, text }) => f !== "src/ui/map-gestures.ts" && /\bmapGestures\(/.test(text)).map(({ f }) => f).sort();
     expect(users).toEqual(["src/ui/map-window.ts"]);
-    // The map windows: the start screen, Navigation and Áreas (Berón, 2026-11-18: one model for all of them).
+    // The map windows: the start screen, Navigation, Áreas and sanctuary 3's island navigation (Berón, 2026-11-18: one model for all of them).
     const windows = files.filter(({ f, text }) => f !== "src/ui/map-window.ts" && /\bnew MapWindow\(/.test(text)).map(({ f }) => f).sort();
-    expect(windows).toEqual(["src/ui/areas-window.ts", "src/ui/nav-map.ts", "src/ui/start-screen.ts"]);
+    expect(windows).toEqual(["src/ui/areas-window.ts", "src/ui/island-nav.ts", "src/ui/nav-map.ts", "src/ui/start-screen.ts"]);
   });
 
   it("the stick listens to moves on its own element only, never on the window or the canvas", () => {
@@ -48,11 +48,15 @@ describe("UI-07 camera only by joystick (reglas.md §5.7)", () => {
   });
 });
 
-describe("UI-08 no gravity areas for now: the joystick moves the camera, never her (Berón, 2026-11-17 18:54)", () => {
+describe("UI-08 no gravity areas in space: the joystick moves the camera, never her (Berón, 2026-11-17 18:54); sanctuary 3 walks and swims (2026-11-18)", () => {
   const src = (f: string) => SOURCES[`/${f}`]!;
 
-  it("no area is flagged with gravity or water, the LM on an asteroid and the asteroid outside included", () => {
+  it("no space area is flagged with gravity or water, the LM on an asteroid and the asteroid outside included; only sanctuary 3 is", () => {
+    expect(AREA_MOTION["santuario-aereo"]).toBe("gravedad");
+    expect(AREA_MOTION["santuario-aereo-agua"]).toBe("agua");
+    expect(moveJoystick("santuario-aereo")).toBe(true);
     for (const [area, motion] of Object.entries(AREA_MOTION)) {
+      if (area.startsWith("santuario-aereo")) continue;
       expect(motion, area).toBe("ingravidez");
       expect(moveJoystick(area as AreaId), area).toBe(false);
     }

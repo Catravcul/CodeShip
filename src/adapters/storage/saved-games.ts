@@ -2,6 +2,7 @@ import { LEVELS } from "@modules/levels/data/levels";
 import { SaveBook, type KeyValueStore } from "@modules/saves/application/save-book";
 import type { SaveSlot } from "@modules/saves/domain/save-slot";
 import { checkSpaceState, SPACE_LEVEL } from "@modules/saves/domain/space-state";
+import { AERIAL_LEVEL, checkAerialState } from "@modules/saves/domain/aerial-state";
 
 /** The saved games' storage port on the browser's localStorage (docs/design/partidas.md). Throws on a full quota. */
 export const browserStore: KeyValueStore = {
@@ -11,18 +12,18 @@ export const browserStore: KeyValueStore = {
   keys: () => Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i)).filter((k): k is string => k !== null),
 };
 
-/** A level can be resumed only while it is playable (level 3 joins when its branch makes it so). */
+/** A level can be resumed only while it is playable (3 and 6). */
 const playable = (level: number) => LEVELS.some((l) => l.number === level && l.state === "jugable");
 
 /** The device's saved games. */
 export const savedGames = (): SaveBook => new SaveBook(browserStore, { now: () => new Date(), playable });
 
 /**
- * Each level's check of its own state (level-aware: level 3 adds its own here when it saves). A level with no
- * check yet cannot be resumed.
+ * Each level's check of its own state (level-aware). A level with no check cannot be resumed.
  */
 const STATE_CHECKS: Readonly<Record<number, (state: unknown) => string | undefined>> = {
   [SPACE_LEVEL]: checkSpaceState,
+  [AERIAL_LEVEL]: checkAerialState,
 };
 
 /** Why a kept game cannot be resumed now, or undefined when it can. */

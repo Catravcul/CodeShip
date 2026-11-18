@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { LEVELS } from "../data/levels";
-import { levelChoices, parseSave, SOON } from "./level";
+import { levelChoices, SOON } from "./level";
 
 describe("the six levels of the start screen", () => {
   it("are the sanctuaries 1 to 6 in order, each with a name, a description and a source", () => {
@@ -24,29 +24,21 @@ describe("the six levels of the start screen", () => {
     expect(y("espacio")).toBeGreaterThan(y("aereo"));
   });
 
-  it("only 6 can be played; 3 is being built, with what it will be; the rest come later", () => {
+  it("3 and 6 can be played; 3 still says its training challenges are being built; the rest come later", () => {
     const c = levelChoices(LEVELS);
     expect(c.filter((x) => x.selectable).map((x) => x.number)).toEqual([3, 6]);
-    expect(c.filter((x) => !x.locked).map((x) => x.number)).toEqual([6]);
-    expect(c.find((x) => x.number === 3)!.locked).toBe("En construcción: iniciación y entrenamiento de Doménica");
+    expect(c.filter((x) => !x.locked).map((x) => x.number)).toEqual([3, 6]);
+    expect(LEVELS.find((l) => l.number === 3)!.desc).toMatch(/En construcción: los retos de los puestos de entrenamiento/);
     for (const n of [1, 2, 4, 5]) expect(c.find((x) => x.number === n)!.locked).toBe(SOON);
     expect(c.every((x) => x.action === "Jugar")).toBe(true);
   });
 
-  it("a kept game of a playable level turns its button into «Continuar»", () => {
-    const save = parseSave(JSON.stringify({ level: 6, savedAt: "2026-11-18T09:00:00Z" }), LEVELS);
-    expect(save).toEqual({ level: 6, savedAt: "2026-11-18T09:00:00Z" });
-    const c = levelChoices(LEVELS, save);
-    expect(c.find((x) => x.number === 6)!.action).toBe("Continuar");
-    expect(c.filter((x) => x.action === "Continuar")).toHaveLength(1);
-  });
-
-  it("no game, a broken one or one of a level that cannot be played is no kept game", () => {
-    expect(parseSave(null, LEVELS)).toBeUndefined();
-    expect(parseSave("", LEVELS)).toBeUndefined();
-    expect(parseSave("{roto", LEVELS)).toBeUndefined();
-    expect(parseSave(JSON.stringify({ level: 6 }), LEVELS)).toBeUndefined();
-    expect(parseSave(JSON.stringify({ level: 3, savedAt: "x" }), LEVELS)).toBeUndefined();
-    expect(parseSave(JSON.stringify({ level: 9, savedAt: "x" }), LEVELS)).toBeUndefined();
+  it("the level of the newest kept game says «Continuar», only that one", () => {
+    for (const level of [3, 6]) {
+      const c = levelChoices(LEVELS, { level });
+      expect(c.find((x) => x.number === level)!.action).toBe("Continuar");
+      expect(c.filter((x) => x.action === "Continuar")).toHaveLength(1);
+    }
+    expect(levelChoices(LEVELS, { level: 2 }).every((x) => x.action === "Jugar")).toBe(true);
   });
 });

@@ -73,6 +73,14 @@ Juegan la nave de anillos; se omiten salvo con `EXPERIENCIA_FICCION=1`, que los 
 El recorrido real que los sustituye en la nave es **PX-28** (`starship`), en
 [nodriza-starship.md](design/nodriza-starship.md).
 
+## Santuario 3 (aéreo, de Cold Sanctuary): propuesta
+
+La iniciación de Doménica en el santuario aéreo de Cold Sanctuary y la pantalla de inicio con el mapa de niveles están
+propuestas en [santuario3-iniciacion.md](design/santuario3-iniciacion.md), con las preguntas para Berón. Si se trae, lo
+ficticio de allí queda apagado tras `REAL_ONLY`: alfombras voladoras, edificios-árbol con tronco de agua, submarino de
+obra por los troncos, máquina de virtualización, dragón de drones, figuras aterradoras y la plataforma en alto (regla de
+altura).
+
 ## Lo que falta en la nave real (siguiente trabajo)
 
 - **Soporte vital real** (rama `eclss-real`): sus bastidores ya están en las paredes de las cubiertas; falta

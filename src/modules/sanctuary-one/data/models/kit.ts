@@ -48,6 +48,8 @@ export interface ModelDef {
   readonly source: string;
   /** The boxes of a composite model (shape «piezas»). */
   readonly parts?: readonly Part[];
+  /** Soft or low things one walks through (a mattress, loose pillows, herbs): drawn, never solid. */
+  readonly walkThrough?: boolean;
 }
 
 export const CATEGORY: Readonly<Record<Category, { readonly label: string; readonly color?: number }>> = {

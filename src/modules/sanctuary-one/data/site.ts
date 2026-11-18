@@ -206,10 +206,10 @@ export const TOWERS: readonly TowerSpec[] = [
     tip: "Cultivos",
     source: `${S.csTree}; docs/edificio-arbol.md de Cold Sanctuary`,
     floors: [
-      F("Cultivos (P1)", "Cultivos del Árbol de los Campos"),
-      F("Cultivos (P2)", "Cultivos del Árbol de los Campos"),
-      F("Huerto", "El huerto: una franja de 24 × 9 m del piso 5"),
-      F("Cultivos (P6)", "Cultivos del Árbol de los Campos"),
+      F("Bosque comestible (P1)", "Dosel, árboles bajos, bananos, trepadoras, hongos y herbáceas", "campos-bosque-1"),
+      F("Bambusal (P2)", "Guadua y cáñamo para construir", "campos-bambusal"),
+      F("Huerto", "El huerto: una franja de 24 × 9 m del piso 5", "campos-huerto"),
+      F("Bosque comestible (P6)", "Los otros árboles del dosel", "campos-bosque-2"),
     ],
   },
   {
@@ -224,12 +224,12 @@ export const TOWERS: readonly TowerSpec[] = [
     tip: "Frutales en maceta",
     source: S.csResidence,
     floors: [
-      F("Plaza de la Residencia", "La plaza y el ring de almohadas"),
-      F("Habitaciones (1)", "7 habitaciones"),
-      F("Habitaciones (2)", "7 habitaciones"),
-      F("Habitaciones (3)", "7 habitaciones"),
-      F("Habitaciones (4)", "7 habitaciones"),
-      F("Habitaciones (5)", "2 habitaciones"),
+      F("Plaza de la Residencia", "La plaza y el ring de almohadas", "residencia-plaza"),
+      F("Habitaciones (1)", "7 habitaciones", "habitaciones-1"),
+      F("Habitaciones (2)", "7 habitaciones", "habitaciones-2"),
+      F("Habitaciones (3)", "7 habitaciones", "habitaciones-3"),
+      F("Habitaciones (4)", "7 habitaciones", "habitaciones-4"),
+      F("Habitaciones (5)", "2 habitaciones", "habitaciones-5"),
     ],
   },
 ];

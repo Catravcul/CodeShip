@@ -287,6 +287,9 @@ export function solidsOf(d: ModelDef, x: number, y: number, z: number, rot: numb
     const ez = (Math.abs(s) * hx + Math.abs(c) * hz) * plan * sc;
     return { x0: px - ex, x1: px + ex, z0: pz - ez, z1: pz + ez, y0: y + y0 * sc, y1: y + y1 * sc };
   };
+  if (d.walkThrough) return [];
+  // A tree stands in the way only by its trunk (the crown is overhead).
+  if (d.shape === "arbol") return [box(0, 0, d.size.x * 0.09, d.size.z * 0.09, 0, d.size.y)];
   if (!d.parts) return [box(0, 0, d.size.x / 2, d.size.z / 2, 0, d.size.y)];
   const out: Solid[] = [];
   for (const [cx, cy, cz, sx, sy, sz] of d.parts) {

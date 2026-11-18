@@ -159,17 +159,17 @@ export async function aterrizajeManual(j) {
   await j.setup("el módulo llega a 250 m de Bennu, bajando a 0,5 m/s con la panza al suelo", placeAbove, ["modulo", 250, 0.5]);
   await p.waitForTimeout(1500);
   // The readout and the offer come up within a few frames (slower under a throttled CPU): wait for them.
-  await p.waitForFunction(() => [...document.querySelectorAll(".ctx-dock > .land-offer, .land-box.lander .landing-readout")].filter((e) => e.getBoundingClientRect().width > 0 && getComputedStyle(e).display !== "none").length >= 2, null, { timeout: 15000 }).catch(() => {});
+  await p.waitForFunction(() => [...document.querySelectorAll('.rcs-pad.lander-pad [data-act="auto"], .land-box.lander .landing-readout')].filter((e) => e.getBoundingClientRect().width > 0 && getComputedStyle(e).display !== "none").length >= 2, null, { timeout: 15000 }).catch(() => {});
   const r = await readout(j, ".land-box.lander .landing-readout");
   j.check("en la cabina aparecen los indicadores X, Y, Z, vx, vy, vz e inclinación", !!r && /X /.test(r.text) && /Y /.test(r.text) && /Z 2\d\d m/.test(r.text) && /∠/.test(r.text), r?.text);
   j.check("bajando a 0,5 m/s a 250 m, la velocidad vertical está en verde", !!r && r.spans.some((s) => /vz/.test(s.t) && s.c === "ok"), r?.spans.map((s) => `${s.t}:${s.c}`).join(" "));
-  const offer = (await j.texts(".ctx-dock > .land-offer"))[0] ?? "";
-  j.check("la columna de contexto ofrece «Aterrizar con un programa»", /programa/.test(offer), offer);
+  const offer = (await j.texts('.rcs-pad.lander-pad [data-act="auto"]'))[0] ?? "";
+  j.check("los mandos a mano ofrecen «Pasar a automático» (el aterrizaje por programa)", /automático/.test(offer) && !(await j.texts(".land-offer.lander")).length, offer);
   const over = await j.overlaps();
   j.check("los indicadores no tapan ningún botón", over.length === 0, over.slice(0, 3).join("; "));
   await j.shot("modulo-indicadores");
-  // The camera icon, under the gear of the tree menu (reglas.md §5.8; j.tap opens the gear first).
-  await j.tap(".cam-btn", "Cámara");
+  // Flying by hand the tree menu gives way to the pad (reglas.md §5.8): «Cámara» is on the pad.
+  await j.tap('.rcs-pad.lander-pad [data-act="cam"]', "Cámara");
   await p.waitForFunction(() => !!document.querySelector(".land-mark.on span"), null, { timeout: 10000 }).catch(() => {});
   j.check("con la cámara ventral se ve el sitio marcado en el suelo", (await j.texts(".land-mark.on span")).length > 0);
   await j.shot("modulo-ventral");
@@ -187,7 +187,7 @@ export async function aterrizajeEscritorio(j) {
   await aterrizajeManual(j);
   await j.setup("el módulo vuelve a 300 m, parado sobre el suelo", placeAbove, ["modulo", 300, 0]);
   await p.waitForTimeout(800);
-  await j.tap(".ctx-dock > .land-offer", "Aterrizar con un programa");
+  await j.tap('.rcs-pad.lander-pad [data-act="auto"]', "Pasar a automático (aterrizar con un programa)");
   await j.waitDuel(30000);
   await j.answer(() => window.codeship.landerLanding.programming?.current ?? null, true);
   await p.waitForTimeout(500);

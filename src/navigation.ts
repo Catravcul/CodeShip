@@ -220,7 +220,7 @@ export class NavigationMode {
     nav.update(dtS, held);
     const now = performance.now();
     if (nav.status !== this.lastStatus) {
-      if (nav.status === "arrived") this.flash(`Llegada: a ${km(nav.approachM)} de ${nav.target.name}. Aterriza a mano con los indicadores o con «Aterrizar con un programa» (retos)`, "done", 10, "lander");
+      if (nav.status === "arrived") this.flash(`Llegada: a ${km(nav.approachM)} de ${nav.target.name}. Aterriza a mano con los indicadores o con «Pasar a automático» (retos)`, "done", 10, "lander");
       if (nav.status === "autopilot" && this.lastStatus === "carrier") this.flash("La nodriza ha aparcado: el módulo de aterrizaje se desacopla y sigue solo", "done", 6, "carrier");
       if (nav.status === "docked")
         this.flash(this.lastStatus === "carrier" ? this.berthedText(nav.target.name, nav.carrying) : `Módulo acoplado a ${nav.target.name}`, "done", 10, this.lastStatus === "carrier" ? "carrier" : "lander");

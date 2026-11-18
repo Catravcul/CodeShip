@@ -155,7 +155,7 @@ export class LandingUi {
     if (zone && !this.wasInZone && p.status !== "flying") {
       const mode = landingMode();
       if (mode === "programa" && d.active() && !d.duel.visible) this.open();
-      else if (mode === "preguntar") d.say("Zona de aterrizaje: pósala a mano con los indicadores X, Y, Z o pulsa «Aterrizar con un programa»");
+      else if (mode === "preguntar") d.say(d.kind === "lander" ? "Zona de aterrizaje: pósalo a mano con los indicadores X, Y, Z o pulsa «Pasar a automático»" : "Zona de aterrizaje: pósala a mano con los indicadores X, Y, Z o pulsa «Aterrizar con un programa»");
     }
     this.wasInZone = zone;
     const r = d.active() ? p.readout() : undefined;
@@ -165,12 +165,23 @@ export class LandingUi {
       this.mark.classList.remove("on");
       return;
     }
+    this.placeBox();
     const pr = p.progress();
     this.readout.render(r, p.siteRadiusM, pr ? `Programa · ${LANDING_PHASE[pr.phase]}` : "Aterrizaje");
     // While the program flies, the trip chip has «Mando» to take over.
     this.offer.classList.toggle("hidden", p.active || p.status === "programming" || !p.canProgram().ok);
     this.offer.classList.toggle("primary", landingMode() !== "manual");
     this.placeMark();
+  }
+
+  /** On a phone the LM's readout sits under the flight HUD's text (top left), never over it. */
+  private placeBox(): void {
+    if (this.d.kind !== "lander") return;
+    if (window.innerWidth >= 900) return void (this.box.style.top = "");
+    const hud = document.querySelector<HTMLElement>(".hud");
+    const bottom = hud && getComputedStyle(hud).display !== "none" ? hud.getBoundingClientRect().bottom : 0;
+    const top = `${Math.round(Math.max(60, bottom + 6))}px`;
+    if (this.box.style.top !== top) this.box.style.top = top;
   }
 
   /** The site on screen: a ring on the ground where the craft should land. */

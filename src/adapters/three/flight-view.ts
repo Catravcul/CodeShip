@@ -108,10 +108,7 @@ export class FlightView {
     this.stick.el.addEventListener("dblclick", () => this.center());
     // The general tree menu (reglas.md §5.8): the camera, Tareas and the flight toggles sprout from the gear.
     this.menu = new RootMenu(root, "flight-bar", "Menú");
-    this.camBtn = this.menu.add({ className: "cam-btn", icon: ICON.eye, label: "Cámara", key: "C", order: 0 }, () => {
-      this.mode = MODES[(MODES.indexOf(this.mode) + 1) % MODES.length]!;
-      this.center();
-    });
+    this.camBtn = this.menu.add({ className: "cam-btn", icon: ICON.eye, label: "Cámara", key: "C", order: 0 }, () => this.nextCamera());
     // Tareas, second under the gear as in every mode (reglas.md §5.8); main.ts says what it opens.
     this.menu.add({ className: "fv-tasks", icon: ICON.tasks, label: "Tareas", window: "tareas", order: 1 }, () => this.onTasks?.());
     this.warpBtn = this.menu.add({ className: "warp-btn", icon: ICON.warp, label: "Tiempo ×1", key: "X" }, () => this.warpAvailable && (this.warpIdx = (this.warpIdx + 1) % WARPS.length));
@@ -181,6 +178,12 @@ export class FlightView {
   /** Time warp asked for; the caller drops it to 1 near the asteroid or while thrusting. */
   get warpRequested(): number {
     return WARPS[this.warpIdx]!;
+  }
+
+  /** The next camera (cockpit, ventral, chase…): the menu's «Cámara», C, or the pad of «Manual». */
+  nextCamera(): void {
+    this.mode = MODES[(MODES.indexOf(this.mode) + 1) % MODES.length]!;
+    this.center();
   }
 
   center(): void {

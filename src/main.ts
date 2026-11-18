@@ -440,6 +440,10 @@ const landerManual = new LanderManual(root, {
   standUp: () => standUp(),
   dockOffer: () => (!docking.docked && docking.inRange() ? (docking.assist ? "Sin acople" : "Acoplar") : undefined),
   dock: () => docking.toggleAssist(),
+  // A landing by program is the automatic mode (reglas.md §3.6): in Manual it is offered only as «Pasar a automático».
+  landingOffer: () => landerLanding.inZone() && !landerLanding.active && landerLanding.status !== "programming" && landerLanding.canProgram().ok,
+  toAuto: () => landerLandingUi.open(),
+  camera: () => view.nextCamera(),
   heightM: () => flight.telemetry().distanceToSurface,
 });
 
@@ -1208,11 +1212,24 @@ const cabinState = (): CabinState => ({
 /** The mothership's neighbourhood: what the lander and the probe may fly to on their own (navigation/domain/nearby.ts). */
 const neighbourhood = () => ({ carrier: mothership.position, radiusM: carrier.parkingM + nav.approachM });
 /** The LM's reach in the navigation window (Berón, 2026-11-18): near the mothership, and what the LM itself can fly now. */
+/** The LM is in the landing zone over `t` (the body it would land on): «Automático» to it is the landing by program. */
+const landsOn = (t: NavTarget) => t.kind === "asteroid" && describeBody(flight.target)?.id === t.id && landerLanding.inZone();
 const landerReach = (t: NavTarget) =>
-  craftReach(t, "lander", neighbourhood(), (x) => (x.kind === "dock" && docking.dockedTo === x.probePort ? { ok: false, reason: "Ya está acoplado ahí" } : nav.canFlyLander(x)));
+  landsOn(t)
+    ? landerLanding.canProgram().ok
+      ? { ok: true }
+      : { ok: false, why: landerLanding.canProgram().reason ?? "No se puede programar el aterrizaje" }
+    : craftReach(t, "lander", neighbourhood(), (x) => (x.kind === "dock" && docking.dockedTo === x.probePort ? { ok: false, reason: "Ya está acoplado ahí" } : nav.canFlyLander(x)));
 /** «Automático» → a destination: the trip challenge for the lander's own hop (the sheet over the cabin). */
 function programLanderTrip(id: string): void {
   if (duelView.visible) return;
+  // Over that body already, in its landing zone: «Automático» goes on into the landing challenge (docs/design/aterrizaje.md).
+  const over = nav.targets.find((t) => t.id === id);
+  if (over && landsOn(over)) {
+    // At the controls, as the commander stood for P64; the challenge sheet opens over the flight view.
+    sitDown();
+    return landerLandingUi.open();
+  }
   let run;
   try {
     run = nav.startLanderProgramming(id);

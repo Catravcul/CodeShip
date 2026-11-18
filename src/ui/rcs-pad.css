@@ -30,3 +30,11 @@ body.in-manual-flight .root-menu, body.in-manual-flight .room-ui .cab-machine { 
 /* The LM's instruments go across the top, the numbers under them. */
 .rcs-pad.lander-pad .rp-top { flex-direction: column; }
 .rcs-pad.lander-pad .rp-screen { max-width: 100%; }
+/* The buttons that come and go («Pasar a automático», «Acoplar»): their own row, only while one applies. */
+.rcs-pad .rp-row.more { display: flex; }
+.rcs-pad .rp-row.more[hidden] { display: none; }
+.rcs-pad .rp-row.more button { flex: 1; }
+.rcs-pad .rp-row.more button[hidden] { display: none; }
+.rcs-pad button[data-act="auto"] { background: #ffd27f; }
+/* At rest (the LM anchored): only the last row, to lift off or leave the seat. */
+.rcs-pad.rest .rp-top, .rcs-pad.rest .rp-cap, .rcs-pad.rest .rp-row:not(.end), .rcs-pad.rest .rp-note { display: none; }

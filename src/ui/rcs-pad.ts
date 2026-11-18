@@ -38,6 +38,10 @@ export interface RcsPadOptions {
   readonly screen?: { readonly w: number; readonly h: number };
   /** One more button that comes and goes (the LM's «Acoplar» inside a port's reach): `setExtra`. */
   extra?(): void;
+  /** «Pasar a automático» (the LM over a body: its landing by program, docs/design/aterrizaje.md): `setAuto`. */
+  auto?(): void;
+  /** «Cámara»: the next camera of the flight view (the LM's ventral one for landing), since the tree menu gives way. */
+  camera?(): void;
 }
 
 const cell = (c: RcsCell) => (c.ok === undefined ? `<i>${c.text}</i>` : `<i class="${c.ok ? "ok" : "out"}">${c.ok ? "✓" : "▲"} ${c.text}</i>`);
@@ -65,7 +69,8 @@ export class RcsPad {
       <div class="rp-row">${b("t:z:-1", "Adel.", "Trasladar adelante")}${b("t:z:1", "Atrás", "Trasladar atrás")}${b("t:y:1", "Arriba", "Trasladar arriba")}${b("t:y:-1", "Abajo", "Trasladar abajo")}${b("t:x:-1", "Izq.", "Trasladar a la izquierda")}${b("t:x:1", "Der.", "Trasladar a la derecha")}</div>
       <div class="rp-cap">Girar (cada toque, un paso de velocidad de giro)</div>
       <div class="rp-row rot">${b("r:x:1", "Cab. ↑", "Cabeceo arriba")}${b("r:x:-1", "Cab. ↓", "Cabeceo abajo")}${b("r:y:1", "Guiñ. ←", "Guiñada a la izquierda")}${b("r:y:-1", "Guiñ. →", "Guiñada a la derecha")}${b("r:z:1", "Alab. ⟲", "Alabeo a la izquierda")}${b("r:z:-1", "Alab. ⟳", "Alabeo a la derecha")}</div>
-      <div class="rp-row end">${o.throttle ? `${b("m:-1", "Motor −", "Bajar el empuje del motor de descenso")}${b("m:1", "Motor +", "Subir el empuje del motor de descenso")}${b("m:0", "Corte", "Apagar el motor de descenso")}` : ""}${b("stop", "Parar", "Anular giros y velocidad")}${b("end", o.endLabel, o.endLabel)}${o.extra ? `<button data-act="extra" hidden></button>` : ""}</div>
+      ${o.extra || o.auto ? `<div class="rp-row more" hidden>${o.auto ? `<button data-act="auto" hidden>Pasar a automático</button>` : ""}${o.extra ? `<button data-act="extra" hidden></button>` : ""}</div>` : ""}
+      <div class="rp-row end">${o.throttle ? `${b("m:-1", "Motor −", "Bajar el empuje del motor de descenso")}${b("m:1", "Motor +", "Subir el empuje del motor de descenso")}${b("m:0", "Corte", "Apagar el motor de descenso")}` : ""}${o.camera ? b("cam", "Cámara", "Cambiar de cámara") : ""}${b("stop", "Parar", "Anular giros y velocidad")}${b("end", o.endLabel, o.endLabel)}</div>
       <div class="rp-note">${o.note}</div>`;
     root.appendChild(this.el);
     this.read = this.el.querySelector(".rp-read")!;
@@ -80,6 +85,8 @@ export class RcsPad {
       else if (k === "stop") o.stop();
       else if (k === "end") o.end();
       else if (k === "extra") o.extra?.();
+      else if (k === "auto") o.auto?.();
+      else if (k === "cam") o.camera?.();
     });
   }
 
@@ -89,6 +96,21 @@ export class RcsPad {
     if (!x) return;
     x.hidden = !label;
     if (label && x.textContent !== label) x.textContent = label;
+    this.moreRow();
+  }
+
+  /** Show «Pasar a automático» (the landing by program is on offer) or hide it. */
+  setAuto(on: boolean): void {
+    const x = this.el.querySelector<HTMLButtonElement>('[data-act="auto"]');
+    if (!x) return;
+    x.hidden = !on;
+    this.moreRow();
+  }
+
+  /** The row of the buttons that come and go shows only with one of them. */
+  private moreRow(): void {
+    const row = this.el.querySelector<HTMLElement>(".rp-row.more");
+    if (row) row.hidden = ![...row.querySelectorAll("button")].some((b) => !b.hidden);
   }
 
   get visible(): boolean {
@@ -97,7 +119,27 @@ export class RcsPad {
 
   show(on: boolean): void {
     this.el.classList.toggle("hidden", !on);
-    document.body.classList.toggle("in-manual-flight", on || !!document.querySelector(".rcs-pad:not(.hidden)"));
+    this.unfocused = false;
+    this.syncFocus();
+  }
+
+  private unfocused = false;
+  /**
+   * Landed and anchored she is not flying: the pad shrinks to its engine row (to lift off) and is no challenge, so
+   * the tree menu comes back.
+   */
+  setFlying(flying: boolean): void {
+    if (this.unfocused === !flying) return;
+    this.unfocused = !flying;
+    this.syncFocus();
+  }
+
+  private syncFocus(): void {
+    this.el.classList.toggle("flying", this.visible && !this.unfocused);
+    // Not flying, only the engine and «Dejar» stay (to lift off), small at the bottom.
+    this.el.classList.toggle("rest", this.visible && this.unfocused);
+    document.body.classList.toggle("in-manual-flight", !!document.querySelector(".rcs-pad.flying:not(.hidden)"));
+    document.body.classList.toggle("has-rcs-pad", !!document.querySelector(".rcs-pad:not(.hidden)"));
   }
 
   /**
@@ -119,6 +161,9 @@ export class RcsPad {
   }
 
   update(r: RcsRead): void {
+    // What it takes at the bottom, for the context column above it (acciones.css).
+    const h = `${this.el.offsetHeight}px`;
+    if (document.documentElement.style.getPropertyValue("--rcs-pad-h") !== h) document.documentElement.style.setProperty("--rcs-pad-h", h);
     const row = (l: { label: string; cells: readonly RcsCell[] }) => `<tr><th>${l.label}</th>${l.cells.map((c) => `<td>${cell(c)}</td>`).join("")}</tr>`;
     const html =
       `<b>${r.title}</b><table><tr><th></th>${r.head.map((h) => `<th>${h}</th>`).join("")}</tr>${r.rows.map(row).join("")}</table>` +

@@ -58,9 +58,14 @@ export async function cabinaLm(j) {
   await p.waitForTimeout(600);
   await j.standUp();
   await j.setup("el LM llega a 300 m de Bennu (lo que deja el viaje comprimido)", placeAbove, ["modulo", 300, 0]);
-  await j.useMachine("cabin", "asiento", "pilotar", "Manual");
-  await p.waitForTimeout(1200);
-  await j.tap(".ctx-dock > .land-offer", "Aterrizar con un programa");
+  // A landing by program is «Automático» (reglas.md §3.6): from the commander's station, the navigation window and the body below.
+  await j.useMachine("cabin", "asiento", "automatico", "Automático");
+  await p.waitForFunction(() => window.codeship.navMode.map.visible, null, { timeout: 10000 }).catch(() => {});
+  const bennu = await p.evaluate(() => window.codeship.region.target.data.id);
+  const chip = await p.evaluate((id) => ({ locked: !!document.querySelector(`.nav-map .nav-chip[data-id="${id}"].locked`), why: document.querySelector(`.nav-map .nav-chip[data-id="${id}"]`)?.getAttribute("title") ?? "" }), bennu);
+  j.check("en la zona de aterrizaje, «Automático» abre la ventana con Bennu abierto: el aterrizaje por programa", !chip.locked, JSON.stringify(chip));
+  await j.tap(`.nav-map .nav-chip[data-id="${bennu}"]`, "Bennu en la ventana de navegación");
+  await j.tap('.nav-map [data-act="program"]', "Programar");
   await j.waitDuel(30000);
   for (let n = 0; n < 9 && (await p.evaluate(() => window.codeship.landerLanding.status)) === "programming"; n++) await j.answer(landing, true);
   await p.waitForTimeout(3000);

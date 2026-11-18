@@ -579,7 +579,7 @@ export async function animaciones(j) {
     p = await freshGame(j);
     await j.setup("el módulo llega a 300 m de Bennu, parado sobre el suelo", placeAbove, ["modulo", 300, 0]);
     await p.waitForTimeout(1200);
-    if (await j.tap(".ctx-dock > .land-offer", "Aterrizar con un programa")) {
+    if (await j.tap('.rcs-pad.lander-pad [data-act="auto"]', "Pasar a automático (aterrizar con un programa)")) {
       await j.waitDuel(30000);
       await playPlan(j, rows, "Aterrizar el módulo con un programa", () => window.codeship.landerLanding.programming?.current ?? null, "aterrizaje-modulo");
       await p.waitForTimeout(800);

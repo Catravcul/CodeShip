@@ -45,12 +45,32 @@ export async function moduloLunar(j) {
   await j.setup("el LM llega a 300 m de Bennu (lo que deja el viaje comprimido)", placeAbove, ["modulo", 300, 0]);
   await j.useMachine("cabin", "asiento", "pilotar", "Manual");
   await p.waitForTimeout(1200);
+  // In Manual the landing by program is the automatic mode: «Pasar a automático» on the controls, never under them.
+  const zone = await p.evaluate(() => {
+    const vis = (e) => !!e && getComputedStyle(e).display !== "none" && e.getBoundingClientRect().width > 0;
+    const hud = document.querySelector(".hud")?.getBoundingClientRect();
+    const box = document.querySelector(".land-box.lander .landing-readout")?.getBoundingClientRect();
+    const pad = document.querySelector(".rcs-pad.lander-pad")?.getBoundingClientRect();
+    const auto = document.querySelector('.rcs-pad.lander-pad [data-act="auto"]');
+    const ar = auto?.getBoundingClientRect();
+    const cross = (a, b) => !!a && !!b && a.width > 0 && b.width > 0 && a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+    return { offer: vis(document.querySelector(".land-offer.lander")), auto: vis(auto), autoH: Math.round(ar?.height ?? 0), hudOver: cross(hud, box), padOver: cross(pad, box), menu: [...document.querySelectorAll(".root-menu")].some(vis) };
+  });
+  j.check("en Manual no se ofrece «Aterrizar con un programa»: los mandos ofrecen «Pasar a automático» (44 px)", !zone.offer && zone.auto && zone.autoH >= 44, JSON.stringify(zone));
+  j.check("los indicadores de aterrizaje no tapan el texto del HUD ni los mandos, y el menú árbol no está abierto encima", !zone.hudOver && !zone.padOver && !zone.menu, JSON.stringify(zone));
   await capture(j, "zona", "El LM en la zona de aterrizaje");
-  await j.tap(".ctx-dock > .land-offer", "Aterrizar con un programa");
+  await j.tap('.rcs-pad.lander-pad [data-act="auto"]', "Pasar a automático (aterrizar con un programa)");
   await j.waitDuel(30000);
   await j.answer(landing, true);
   for (let n = 0; n < 8 && (await p.evaluate(() => window.codeship.landerLanding.status)) === "programming"; n++) await j.answer(landing, true);
   await p.waitForTimeout(3000);
+  const down = await p.evaluate(() => {
+    const box = document.querySelector(".land-box.lander .landing-readout")?.getBoundingClientRect();
+    const rows = [...document.querySelectorAll(".hud > *")].filter((e) => getComputedStyle(e).display !== "none").map((e) => e.getBoundingClientRect());
+    const hit = rows.filter((r) => box && r.width > 0 && r.left < box.right && box.left < r.right && r.top < box.bottom && box.top < r.bottom);
+    return { boxTop: Math.round(box?.top ?? -1), hudBottom: Math.round(document.querySelector(".hud")?.getBoundingClientRect().bottom ?? -1), rowsBottom: Math.round(Math.max(0, ...rows.map((r) => r.bottom))), hits: hit.length };
+  });
+  j.check("bajando por programa, los indicadores quedan bajo el texto del HUD, sin taparlo", down.hits === 0, JSON.stringify(down));
   await capture(j, "bajando", "El LM bajando por programa (cámara ventral)");
   await p.waitForFunction(() => window.codeship.landerLanding.status !== "flying", null, { timeout: 300000 });
   const end = await p.evaluate(() => [window.codeship.landerLanding.status, window.codeship.expedition.phase]);

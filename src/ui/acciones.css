@@ -29,8 +29,12 @@ body.in-cockpit .ctx-dock > .eva-btn:not(.hidden) { display: block; }
 body.in-cockpit .ctx-dock { left: auto; right: 16px; transform: none; bottom: 24px; width: min(360px, 34vw); align-items: flex-end; }
 body.in-cockpit .ctx-dock > .rapport-chip, body.in-cockpit .ctx-dock > .trip-chip, body.in-cockpit .ctx-dock > .region-tag { align-self: stretch; }
 @media (pointer: coarse) {
-  /* Above the MOVER pad (4 rows) and right of the MIRAR stick. */
-  body.in-cockpit .ctx-dock { right: 62px; /* clear of the root menu column (§5.5) */ bottom: calc(266px + env(safe-area-inset-bottom)); width: calc(100vw - 202px); }
+  /* Right of the MIRAR stick, clear of the root menu column (§5.5). The LM has no held MOVER pad any more: its
+     Manual controls (rcs-pad.ts) take the bottom while flying by hand, and then the column goes above them, at the
+     left, beside the landing readout (aterrizaje.css). */
+  body.in-cockpit .ctx-dock { right: 62px; bottom: calc(24px + env(safe-area-inset-bottom)); width: calc(100vw - 202px); }
+  body.in-cockpit.has-rcs-pad .ctx-dock { bottom: calc(var(--rcs-pad-h, 300px) + 14px + env(safe-area-inset-bottom)); }
+  body.in-cockpit.in-manual-flight .ctx-dock { left: 10px; right: auto; width: calc(100vw - 236px); align-items: stretch; }
   body.in-cockpit .ctx-dock > .region-tag { font-size: 11px; text-align: left; }
   /* The trip chip in that narrow column: its buttons go under the line, never out into the open menu's column. */
   body.in-cockpit .ctx-dock > .trip-chip .tc-row { flex-wrap: wrap; }

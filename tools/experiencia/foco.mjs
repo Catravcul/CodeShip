@@ -214,7 +214,7 @@ export async function foco(j) {
   await part(j, "aterrizaje del módulo por programa", async () => {
     await j.setup("el módulo llega a 300 m de Bennu, parado sobre el suelo", placeAbove, ["modulo", 300, 0]);
     await p.waitForTimeout(1200);
-    await j.tap(".ctx-dock > .land-offer", "Aterrizar con un programa");
+    await j.tap('.rcs-pad.lander-pad [data-act="auto"]', "Pasar a automático (aterrizar con un programa)");
     await j.waitDuel(30000);
     await focus(j, "modulo-aterrizaje", "Programa de aterrizaje del módulo");
     await close(j);

@@ -30,6 +30,12 @@ export interface LanderManualDeps {
   /** Inside a port's reach, «Acoplar» (the docking assist), if so. */
   dockOffer(): string | undefined;
   dock(): void;
+  /** Over a body, in its landing zone, with a landing by program possible: «Pasar a automático» on the pad. */
+  landingOffer(): boolean;
+  /** «Pasar a automático»: the landing by program (its challenge), the automatic mode near the ground. */
+  toAuto(): void;
+  /** «Cámara»: the flight view's next camera (cockpit, ventral, chase). */
+  camera(): void;
   /** Height over the ground, m, if over a body. */
   heightM(): number | undefined;
 }
@@ -63,6 +69,8 @@ export class LanderManual {
       end: () => d.standUp(),
       throttleStep: (s) => (this.throttle = s === 0 ? 0 : Math.max(0, Math.min(1, Math.round((this.throttle + s * LM_TAPS.throttleStep) * 10) / 10))),
       extra: () => d.dock(),
+      auto: () => d.toAuto(),
+      camera: () => d.camera(),
     });
   }
 
@@ -85,6 +93,7 @@ export class LanderManual {
     }
     if (!on) return;
     const t = this.d.flight.telemetry();
+    this.pad.setFlying(!t.landed);
     const w = t.angularVelocityBody.scale(1 / RAD);
     const sn = (v: number, d: number) => `${v < -0.5 * 10 ** -d ? "−" : "+"}${Math.abs(v).toFixed(d).replace(".", ",")}`;
     // Near the ground (under 30 m) the touchdown limits colour the numbers (reglas.md §5.6): ✓ inside, ▲ out.
@@ -95,6 +104,7 @@ export class LanderManual {
     const withText = (c: RcsCell, text: string): RcsCell => ({ ...c, text });
     const att = lmAttitude(t.upBody);
     this.pad.setExtra(this.d.dockOffer());
+    this.pad.setAuto(this.d.landingOffer());
     this.pad.update({
       title: "Módulo lunar · a mano",
       head: ["cab.", "guiñ.", "alab."],

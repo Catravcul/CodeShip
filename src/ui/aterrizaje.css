@@ -48,3 +48,12 @@ body:not(.in-cockpit) .ctx-dock > .land-offer { display: none; }
 .plan-caption.on { display: block; animation: plan-in 0.35s ease-out; }
 @keyframes plan-in { from { opacity: 0; transform: translateY(-6px); } }
 @media (prefers-reduced-motion: reduce) { .plan-caption.on { animation: none; } }
+/* In Manual the LM's landing by program is «Pasar a automático» on its controls (rcs-pad.ts), not this offer. */
+body.in-manual-flight .land-offer.lander { display: none !important; }
+/* Phones: the readout goes under the flight HUD (its top is set from the HUD's bottom, landing.ts); in Manual the
+   tree menu is hidden and the controls show the rest, so the HUD keeps only its title and altitude and the readout
+   takes the right edge. */
+@media (max-width: 899px) {
+  body.in-manual-flight .hud .row:not(.title):not(.big), body.has-rcs-pad.in-cockpit .hud .row.small { display: none; }
+  body.in-manual-flight .land-box.lander { right: 10px; }
+}

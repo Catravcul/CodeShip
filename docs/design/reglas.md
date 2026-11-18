@@ -50,8 +50,13 @@ Detalle y fuentes: [ux-acciones.md](ux-acciones.md), [escala.md](escala.md), [na
 4. **La lista de tareas tiene todas las tareas**, cada una con «Ir».
 5. **Es para móvil primero**: iPhone 13, 390×664 visibles. Los objetivos de toque miden al menos 44 px y nada se solapa.
 6. **Los fallos se marcan con forma y color**, nunca solo con color.
-7. **La cámara se mueve solo con joystick.** Nunca se arrastra la pantalla para mover la cámara; donde haya cámara movible hay un joystick de cámara.
+7. **La cámara se mueve solo con joystick.** Nunca se arrastra la pantalla para mover la cámara; donde haya cámara movible hay un joystick de cámara. Única excepción: el mapa tridimensional de las ventanas de Navegación y de Áreas se gira y se amplía con el dedo.
 8. **Menú árbol general.** Un icono raíz (engranaje) que al pulsarlo se vuelve una X. Debajo brotan Vista, Tareas y los botones que apliquen en ese momento (por ejemplo Trayecto). Cada botón que abre una ventana se vuelve X para cerrarla. Dentro de un panel, el engranaje cambia la lista por sus ajustes y pasa a icono de lista para volver.
+   - **El menú solo se cierra con su X.** Nunca se cierra solo al pulsar otros botones; puede quedarse abierto indefinidamente.
+   - **Se oculta un momento solo** durante los retos (el pilotaje manual cuenta como reto) y con las ventanas que ocupan casi toda la pantalla (Tareas, Misiones), que toman el ancho completo y tienen su propio cierre. Al cerrarlas vuelve tal como estaba.
+   - **Las ventanas de máquinas y áreas no se abren solas.** En el menú hay un botón que las muestra u oculta, visible solo cuando hay una ventana que mostrar.
+   - **Áreas replica la ventana de Navegación**: arriba un mapa tridimensional del vehículo que se gira y se amplía; debajo, las áreas con su descripción y el botón de ir.
+   - **Tareas en «Automático»** muestra solo las del vehículo donde está ella. Los filtros de grupo van en la lista.
 9. **La vista queda libre.** No se queda ninguna ventana fija en pantalla al cerrar un reto o una vista. La ventana de Trayecto del menú solo muestra el estado; «Ver trayecto» y tomar el mando solo están en los mandos de pilotaje.
 
 ## 6. Vida a bordo

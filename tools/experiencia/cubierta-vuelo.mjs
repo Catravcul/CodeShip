@@ -75,6 +75,7 @@ export async function cubiertaVuelo(j) {
 
   // 4. By hand to an asteroid: the hand panel, only at the pilot seat.
   const rock = await p.evaluate(() => window.codeship.nav.targets.find((t) => t.kind === "asteroid" && t.id !== window.codeship.region.target.data.id)?.id);
+  await j.showPanel(".cm-dest select");
   await p.selectOption(".cm-dest select", rock);
   await p.waitForTimeout(300);
   await j.tap('.room-ui:not(.hidden) .cab-machine [data-act="manual"]', "Manual");
@@ -98,6 +99,7 @@ export async function cubiertaVuelo(j) {
   j.check("«Dejar de pilotar» deja la Starship parada donde está", await p.evaluate(() => window.codeship.nav.status !== "carrier" && !window.codeship.nav.manualCarrier));
 
   // 5. By challenges to the station: the trip's challenge sheet opens from the seat.
+  await j.showPanel(".cm-dest select");
   await p.selectOption(".cm-dest select", "estacion-polana");
   await p.waitForTimeout(300);
   await j.tap('.room-ui:not(.hidden) .cab-machine [data-act="auto"]', "Automático (retos)");
@@ -184,6 +186,7 @@ export async function cubiertaVuelo(j) {
   j.check("y atraca en la estación", docked2);
   await j.useMachine("bridge", "prop", null);
   await p.waitForTimeout(600);
+  await j.showPanel(".cab-machine");
   const why = (await card(p)).match(/desacopla antes[^\n]*/)?.[0];
   j.check("atracada, «Manual» dice que primero hay que desacoplar en el puesto de acople", !!why, why);
   await capture(j, "9-pilotaje-atracada", "Puesto de pilotaje con la Starship atracada");

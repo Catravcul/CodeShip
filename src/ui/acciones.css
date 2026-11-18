@@ -32,6 +32,9 @@ body.in-cockpit .ctx-dock > .rapport-chip, body.in-cockpit .ctx-dock > .trip-chi
   /* Above the MOVER pad (4 rows) and right of the MIRAR stick. */
   body.in-cockpit .ctx-dock { right: 62px; /* clear of the root menu column (§5.5) */ bottom: calc(266px + env(safe-area-inset-bottom)); width: calc(100vw - 202px); }
   body.in-cockpit .ctx-dock > .region-tag { font-size: 11px; text-align: left; }
+  /* The trip chip in that narrow column: its buttons go under the line, never out into the open menu's column. */
+  body.in-cockpit .ctx-dock > .trip-chip .tc-row { flex-wrap: wrap; }
+  body.in-cockpit .ctx-dock > .trip-chip .tc-title { flex-basis: 100%; }
   /* Left thumb: turning (GIRAR) and looking (MIRAR) together. */
   body.in-cockpit .pilot-look { left: 14px; right: auto; margin-left: 0; bottom: calc(222px + env(safe-area-inset-bottom)); }
   /* A shorter HUD: the detail lines (velocity components, spin, each tank) stay on desktop. */

@@ -23,7 +23,10 @@ async function capture(j, label, title) {
   j.check(`${title}: ningún botón se solapa con otro`, over.length === 0, over.slice(0, 4).join("; "));
 }
 
-const card = (j) => j.page.evaluate(() => document.querySelector(".sti-card:not(.hidden)")?.innerText.replace(/\s+/g, " ") ?? "");
+const card = async (j) => {
+  await j.showPanel(".cab-machine");
+  return j.page.evaluate(() => document.querySelector(".sti-card:not(.hidden)")?.innerText.replace(/\s+/g, " ") ?? "");
+};
 const co2 = (j) => j.page.evaluate(() => window.codeship.lifeSupport.system.readout().ppCO2MmHg);
 /** Teleport to a thing's grab point (crossing the station hop by hop takes minutes with SwiftShader). */
 const placeAt = async (j, id) => {

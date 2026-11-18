@@ -18,7 +18,10 @@ async function capture(j, label, title) {
   j.check(`${title}: ningún botón se solapa con otro`, over.length === 0, over.slice(0, 4).join("; "));
 }
 
-const card = (j) => j.page.evaluate(() => document.querySelector(".sti-card:not(.hidden), .sts-card:not(.hidden)")?.innerText.replace(/\s+/g, " ") ?? "");
+const card = async (j) => {
+  await j.showPanel(".cab-machine");
+  return j.page.evaluate(() => document.querySelector(".sti-card:not(.hidden), .sts-card:not(.hidden)")?.innerText.replace(/\s+/g, " ") ?? "");
+};
 const where = (j) => j.page.evaluate(() => window.codeship.stationInside.where());
 /** Plays the open sleep challenge with the right answers, a capture per step, and closes the sheet. */
 async function playSleep(j, label) {

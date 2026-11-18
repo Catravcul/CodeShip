@@ -96,6 +96,7 @@ export async function trayectos(j) {
   await j.useMachine("bridge", "prop", null);
   await p.waitForTimeout(800);
   const dock = await p.evaluate(() => window.codeship.nav.targets.find((t) => t.kind === "dock" && t.carrierPort)?.id);
+  await j.showPanel(".cm-dest select");
   await p.selectOption(".cm-dest select", dock);
   await p.waitForTimeout(300);
   const modes = await j.texts(".room-ui:not(.hidden) .cab-machine [data-act]");

@@ -1,6 +1,6 @@
 /* Landing readout and offer (docs/design/aterrizaje.md): mono, high contrast, few elements. */
 .land-box { position: fixed; z-index: 8; display: flex; flex-direction: column; align-items: stretch; gap: 6px; width: 206px; pointer-events: none; }
-.land-box.lander { right: 8px; top: 60px; }
+.land-box.lander { right: 62px; top: 60px; } /* clear of the root menu column, which stays open (reglas.md §5.8) */
 @media (min-width: 900px) {
   .land-box { width: 232px; }
   .land-box.lander { right: 18px; top: 300px; }

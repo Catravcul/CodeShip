@@ -71,13 +71,13 @@ export async function habitaculo(j) {
   await p.waitForTimeout(500);
   j.check("la lista de tareas está agrupada", (await j.texts(".task-board .tb-group")).length >= 1, (await j.texts(".task-board .tb-group")).join(", "));
   await capture(j, "tareas", "Lista de tareas");
-  // The groups are filters in the list's settings (the gear next to ✕), with every vehicle.
+  // The vehicle is in the list's settings (the gear next to ✕); the group chips are in the list itself.
   await j.tap('.task-board .board-head [data-view][aria-label="Ajustes de tareas"]', "⚙︎ Ajustes de tareas");
   await j.tap('.task-board .tb-settings [data-vehicle="todos"]', "Vehículo: Todos");
-  const groups = await j.texts(".task-board [data-group]");
-  j.check("los ajustes de la lista filtran por grupo (Todas, Vuelo, Nave, Estación…)", groups.length >= 3, groups.join(", "));
   await capture(j, "tareas-ajustes", "Ajustes de la lista de tareas");
   await j.tap('.task-board .board-head [data-view][aria-label="Volver a la lista de tareas"]', "Lista de tareas");
+  const groups = await j.texts(".task-board .tb-chips [data-group]");
+  j.check("la lista filtra por grupo con sus chips (Todas, Vuelo, Nave, Estación…)", groups.length >= 3, groups.join(", "));
   const flightTask = '.task-board .tb-task:has-text("Aterriza el módulo") .tb-go';
   if (await p.locator(flightTask).count()) {
     await j.tap(flightTask, "Ir: Aterriza el módulo");

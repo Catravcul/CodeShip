@@ -102,6 +102,10 @@ export class Journey {
    * menu's «Panel» first. Does nothing if the target is not in a card, or the card is already shown.
    */
   async showPanel(selector) {
+    if (!/cab-machine|sti-card|sts-card|cm-/.test(selector) && !(await this.page.evaluate((sel) => [...document.querySelectorAll(sel)].some((e) => e.closest(".cab-machine")), selector).catch(() => false))) return;
+    // The card may be the next machine's, still to come: wait for it, and for the menu's frame that sees it.
+    await this.page.locator(selector).first().waitFor({ state: "attached", timeout: 15000 }).catch(() => {});
+    await this.page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))).catch(() => {});
     const hidden = await this.page
       .evaluate((sel) => !document.body.classList.contains("panel-on") && [...document.querySelectorAll(sel)].some((e) => e.closest(".cab-machine:not(.hidden)")), selector)
       .catch(() => false);

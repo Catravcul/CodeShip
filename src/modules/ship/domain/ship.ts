@@ -1,3 +1,4 @@
+import { isRecord, num, numbers } from "@core/snapshot";
 import { Vec3 } from "@core/math/vec3";
 import type { HullSpec, MountedThruster, Propellant, TankSpec } from "./components";
 import { equipmentMassKg, type Equipment } from "./equipment";
@@ -125,6 +126,19 @@ export class Ship {
 
   repair(fraction: number): void {
     this._hull = Math.min(1, this._hull + Math.max(0, fraction));
+  }
+
+  /** Propellant and hull, for a saved game (docs/design/partidas.md). */
+  snapshot(): { fuel: Record<string, number>; hull: number } {
+    return { fuel: Object.fromEntries(this.fuel), hull: this._hull };
+  }
+
+  /** Back to a saved load: each propellant it carries, never past its tanks; others are dropped. */
+  restore(s: unknown): void {
+    if (!isRecord(s)) return;
+    const fuel = numbers(s.fuel);
+    for (const p of this.propellants) if (p in fuel) this.fuel.set(p, Math.max(0, Math.min(fuel[p]!, this.propellantCapacityKg(p))));
+    this._hull = Math.max(0, Math.min(1, num(s.hull, this._hull)));
   }
 
   propellantKg(p: Propellant): number {

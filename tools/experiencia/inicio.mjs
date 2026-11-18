@@ -3,7 +3,7 @@
 // Sanctuary's «depth = danger» axis on top, which a finger turns and a pinch zooms (reglas.md §5.7), and a card for
 // each under it with its description and a 44 px button. Only 6 starts; 3 says it is being built (the iniciación of
 // Doménica); 1, 2, 4 and 5 say «Próximamente». No tree menu: there is no game yet. «Jugar» on 6 starts the game of
-// now; with a kept game the button is «Continuar». Captures in docs/screenshots/inicio-<pantalla>-movil.png.
+// now; with a kept game the button is «Continuar» (the gear's saved games: PX-50). Captures in docs/screenshots/inicio-<pantalla>-movil.png.
 import { mkdirSync } from "node:fs";
 
 async function capture(j, label, title) {
@@ -70,7 +70,7 @@ export async function inicio(j) {
   if (!s0) return;
   j.check("en el inicio no hay menú árbol", !s0.menu);
   j.check("arriba el mapa 3D de los santuarios (al menos 300×150) y debajo la lista, sin pisarse, en 390×664", s0.canvas.w >= 300 && s0.canvas.h >= 150 && s0.side.top >= s0.canvas.bottom - 1 && s0.side.bottom <= 664, JSON.stringify({ canvas: s0.canvas, side: s0.side }));
-  j.check("sus herramientas (+, −, Cenital) miden 44 px y no hay ×: se sale eligiendo", s0.tools.length === 3 && s0.tools.every((t) => t.w >= 44 && t.h >= 44), JSON.stringify(s0.tools));
+  j.check("sus herramientas (+, −, Cenital y el engranaje de las partidas guardadas) miden 44 px y no hay ×: se sale eligiendo", s0.tools.length === 4 && s0.tools[3].label === "Partidas guardadas" && s0.tools.every((t) => t.w >= 44 && t.h >= 44), JSON.stringify(s0.tools));
   j.check("el mapa dibuja los seis santuarios", s0.nodes.length === 6, JSON.stringify(s0.nodes.map((n) => n.id)));
   // The «depth = danger» axis: space on top, then the air, the land, the sea, the rock and the core at the bottom.
   const order = [...s0.nodes].sort((a, b) => a.y - b.y).map((n) => n.id);
@@ -126,8 +126,8 @@ export async function inicio(j) {
   j.check("en la partida vuelve el menú árbol", inGame.menu, JSON.stringify(inGame));
   await capture(j, "partida", "La partida tras el inicio");
 
-  // 6. A kept game: its level's button says «Continuar», and it starts the game too.
-  await j.setup("hay una partida guardada del santuario 6 (todavía no se guardan: docs/qa HC-06)", () => localStorage.setItem("codeship.partida", JSON.stringify({ level: 6, savedAt: "2026-11-18T09:00:00Z" })));
+  // 6. A kept game (docs/design/partidas.md; PX-50 plays it whole): the game saved itself when the page was hidden
+  // by the reload, so its level's button says «Continuar», and it starts the game too.
   await p.reload();
   await p.waitForSelector(".start-screen:not(.hidden)", { timeout: 120000 });
   await p.waitForTimeout(500);
@@ -137,5 +137,4 @@ export async function inicio(j) {
   await j.tap('.start-screen .mw-go[data-go="espacio"]', "Continuar");
   await p.waitForFunction(() => window.codeship, null, { timeout: 120000 }).catch(() => {});
   j.check("«Continuar» entra en la partida", await p.evaluate(() => !!window.codeship && !document.querySelector(".start-screen")));
-  await j.setup("borra la partida guardada de prueba", () => localStorage.removeItem("codeship.partida"));
 }

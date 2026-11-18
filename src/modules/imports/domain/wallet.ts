@@ -1,3 +1,5 @@
+import { isRecord, num } from "@core/snapshot";
+
 /** One line of the account: what came in or went out, and why. */
 export interface Movement {
   readonly credits: number;
@@ -22,6 +24,20 @@ export class Wallet {
   }
   get history(): readonly Movement[] {
     return this.log;
+  }
+
+  /** The balance and the account, for a saved game (docs/design/partidas.md). */
+  snapshot(): { balance: number; log: Movement[] } {
+    return { balance: this._balance, log: this.log.map((m) => ({ ...m })) };
+  }
+
+  restore(s: unknown): void {
+    if (!isRecord(s)) return;
+    this._balance = Math.max(0, num(s.balance, this._balance));
+    if (Array.isArray(s.log)) {
+      this.log.length = 0;
+      for (const m of s.log) if (isRecord(m) && typeof m.credits === "number" && typeof m.why === "string") this.log.push({ credits: m.credits, why: m.why });
+    }
   }
 
   earn(credits: number, why: string): void {

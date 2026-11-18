@@ -1,3 +1,4 @@
+import { bool, isRecord, num, numbers, strings } from "@core/snapshot";
 /** Something that happened on board or in flight that a letter can answer to. */
 export type StoryEvent = "sacudida" | "asteroide-persuadido" | "asteroide-furioso" | "familia";
 
@@ -89,6 +90,38 @@ export class Mailbox {
       const done = this.doneAt.get(t.letterId);
       if (done !== undefined && this.day >= done + t.days) this.deliver(l);
     }
+  }
+
+  /**
+   * What has arrived and what is done, for a saved game (docs/design/partidas.md). Only letters of the story
+   * are kept: the ones written on the spot (`post`: faults, orders) are not.
+   */
+  snapshot(): { day: number; inbox: { id: string; day: number; read: boolean; missionDone: boolean }[]; doneAt: Record<string, number>; achieved: string[] } {
+    const known = new Set(this.letters.map((l) => l.id));
+    return {
+      day: this.day,
+      inbox: this.inbox.filter((r) => known.has(r.letter.id)).map((r) => ({ id: r.letter.id, day: r.day, read: r.read, missionDone: r.missionDone })),
+      doneAt: Object.fromEntries(this.doneAt),
+      achieved: [...this.achieved],
+    };
+  }
+
+  /** Back to a saved mailbox: its letters arrive again as they were (none is announced as new). */
+  restore(s: unknown): void {
+    if (!isRecord(s)) return;
+    this.day = Math.max(0, num(s.day, this.day));
+    if (Array.isArray(s.inbox)) {
+      this.inbox.length = 0;
+      for (const r of s.inbox) {
+        const l = isRecord(r) ? this.letters.find((x) => x.id === r.id) : undefined;
+        if (l && isRecord(r) && !this.has(l.id)) this.inbox.push({ letter: l, day: num(r.day, 0), read: bool(r.read, false), missionDone: bool(r.missionDone, false) });
+      }
+    }
+    this.doneAt.clear();
+    for (const [k, v] of Object.entries(numbers(s.doneAt))) this.doneAt.set(k, v);
+    this.achieved.clear();
+    for (const g of strings(s.achieved)) this.achieved.add(g as MissionGoal);
+    this.fresh = [];
   }
 
   notify(event: StoryEvent): void {

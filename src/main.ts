@@ -184,6 +184,7 @@ import { wireSanctuaryLife } from "./sanctuary-life";
 import { AquariumOps } from "@modules/sanctuary/application/aquarium-ops";
 import { RingAquarium } from "@modules/sanctuary/domain/aquarium";
 import { aquariumEventText } from "./ui/aquarium-text";
+import { GameSave } from "./game-save";
 
 // --- Domain setup -----------------------------------------------------------
 const d = BENNU.dimensionsM.value;
@@ -1780,6 +1781,7 @@ renderer.setAnimationLoop((now) => {
   for (const e of stationAquarium.drainEvents()) stationInside.say(aquariumEventText(e), e.type === "aviso" ? 5 : 3.5);
   sanctuary.update(world.lifeDays);
   journey.update(dt);
+  gameSave.frame(world.lifeDays);
   view.enabled = !cabin.active && !bridge.active && !interior.active && !stationInside.active && !deck.active && !bay.active && !duelView.visible && !evaMode.active && !stationScreen.active && !navMode.mapOpen && !missionLog.visible;
   navMode.update(dt, world.held);
   // Trips run on their own; she sees them only at that vehicle's console (reglas.md §3.8).
@@ -1951,6 +1953,16 @@ renderer.setAnimationLoop((now) => {
   present(scene, camera);
 });
 
+// Saved games (docs/design/partidas.md): a kept game chosen at the start screen comes back here, and this one saves itself.
+const gameSave = new GameSave({
+  flight, ship, docking, mothership, structure, expedition, asteroids: region.asteroids, habitat, stationHabitat, wallet, missions: missions.log, mailbox: habitat.mailbox, stationStock: stationOps.station.stock,
+  lifeSupport: { estacion: lifeSupport.system, ...(starship?.lifeSupport ? { nodriza: starship.lifeSupport.system } : {}), modulo: landerEcs.ecs },
+  aquariums: { estacion: stationAquarium.tank, ...(starship ? { nodriza: starship.aquarium.tank } : {}) },
+  seated: () => view.enabled && !duelView.visible, cabin, bridge, starship, station: stationInside, crewIn, atStationPort,
+  say: (t) => (cabin.active ? cabin.say(t, 7) : bridge.active ? bridge.say(t, 7) : stationInside.active ? stationInside.say(t, 7) : starship?.active ? starship.say(t, 7) : flash(t, 7)),
+  challengeOpen: () => duelView.visible,
+  travelling: () => !!tripsFlying() || landerLanding.active || probeLanding.active,
+});
 // Exposed for automated checks and debugging.
 // --- Action layout (docs/design/ux-acciones.md) -----------------------------
 // One place for what the moment asks for: the context column. In the cockpit it sits over the right
@@ -1966,7 +1978,7 @@ for (const sel of [".nano-action", ".trip-chip", ".land-offer.lander", ".land-bo
   if (el) ctxDock.appendChild(el);
 }
 
-(window as unknown as { codeship: unknown }).codeship = { renderer, tripStatus, mothershipModel, dockCamera, sanctuary, journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, starship, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, stationAquarium, landerBerth, lifeSupport, bishop: bishopAirlock, stationOutside, stationModel, stationOps, refuelOps, importOps, componentImports, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, tripWindow, areasWindow, duelView, levels, dryDock, robotics: arm.robotics, stationEva: arm.stationEva, starshipEva: arm.starshipEva, exteriorWork: arm.work,
+(window as unknown as { codeship: unknown }).codeship = { renderer, gameSave, tripStatus, mothershipModel, dockCamera, sanctuary, journey, cabin, bridge, settings, settingsPanel, taskBoard, tasks: allTasks, goToTask, flight, ship, expedition, habitat, interior, starship, view, bay, nano, region, field, skyBodies, eva, evaMode, ring, mothership, docking, structure, station: stationScreen, stationInside, stationLife, stationCrew, stationAquarium, landerBerth, lifeSupport, bishop: bishopAirlock, stationOutside, stationModel, stationOps, refuelOps, importOps, componentImports, bioOps, wallet, nav, navMode, missions, missionLog, deck, wrathMode, subj, probe: subj.probe, probeTravel, landerLanding, probeLanding, planOverlay, planAudit, tripPreview, tripChip, tripWindow, areasWindow, duelView, levels, dryDock, robotics: arm.robotics, stationEva: arm.stationEva, starshipEva: arm.starshipEva, exteriorWork: arm.work,
   /** The experience suite's setup: the mothership latched on the station's forward IDA (the trip is PX-36's). */
   berthMothershipNow: () => {
     const t = structure.portFor("nodriza")!;

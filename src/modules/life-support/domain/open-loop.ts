@@ -1,4 +1,5 @@
 import { CREW_BALANCE, dailyBalance } from "../data/crew-balance";
+import { bool, isRecord, num, strings } from "@core/snapshot";
 
 /** Drinking and food water per person and day (no hygiene water in the LM), kg. */
 const drinkKgPerDay = (crew: number) => CREW_BALANCE.drinkFoodWaterKg.value * crew;
@@ -77,6 +78,25 @@ export class OpenLoopEcs {
 
   get crewAboard(): number {
     return this.aboard;
+  }
+
+  /** What changes as it runs, for a saved game (docs/design/partidas.md). */
+  snapshot(): { o2: number; cartridges: number; used: number; co2Free: number; water: number; battery: number; aboard: number; warned: boolean; gone: string[] } {
+    return { o2: this.o2, cartridges: this.cartridges, used: this.used, co2Free: this.co2Free, water: this.water, battery: this.battery, aboard: this.aboard, warned: this.warned, gone: [...this.gone] };
+  }
+
+  /** Back to a saved state; a missing or broken field keeps today's value. */
+  restore(s: unknown): void {
+    if (!isRecord(s)) return;
+    this.o2 = num(s.o2, this.o2);
+    this.cartridges = num(s.cartridges, this.cartridges);
+    this.used = num(s.used, this.used);
+    this.co2Free = num(s.co2Free, this.co2Free);
+    this.water = num(s.water, this.water);
+    this.battery = num(s.battery, this.battery);
+    this.aboard = Math.max(0, num(s.aboard, this.aboard));
+    this.warned = bool(s.warned, this.warned);
+    this.gone = new Set(strings(s.gone, [...this.gone]));
   }
   setCrewAboard(n: number): void {
     this.aboard = Math.max(0, n);

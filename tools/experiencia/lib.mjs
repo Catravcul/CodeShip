@@ -27,16 +27,25 @@ const pct = (xs, p) => {
 };
 
 /**
- * Into the game from the start screen (src/boot.ts), as a player: «Continuar» if there is a kept game, else
- * «Jugar» on the space sanctuary (6), the only one that starts. Waits for the game to be there.
+ * Into the game from the start screen (src/boot.ts), as a player. A new game by default: «Jugar» on the space
+ * sanctuary (6), the only one that starts; with a kept game (its button says «Continuar», docs/design/partidas.md)
+ * the gear's «Jugar sin partida guardada», which leaves the kept games alone. `{ resume: true }` taps «Continuar».
+ * Waits for the game to be there.
  */
-export async function enterGame(page) {
+export async function enterGame(page, { resume = false } = {}) {
   await page.waitForFunction(() => window.codeship || document.querySelector(".start-screen:not(.hidden)"), null, { timeout: 120000 });
   if (!(await page.evaluate(() => !!window.codeship))) {
+    const tapIt = async (btn) => {
+      await btn.scrollIntoViewIfNeeded();
+      await btn.tap({ timeout: 15000 }).catch(() => btn.click({ timeout: 15000 }));
+    };
     const cont = page.locator(".start-screen .mw-go:not([disabled])", { hasText: "Continuar" });
-    const btn = (await cont.count()) ? cont.first() : page.locator('.start-screen .mw-go[data-go="espacio"]');
-    await btn.scrollIntoViewIfNeeded();
-    await btn.tap({ timeout: 15000 }).catch(() => btn.click({ timeout: 15000 }));
+    if (!(await cont.count())) await tapIt(page.locator('.start-screen .mw-go[data-go="espacio"]'));
+    else if (resume) await tapIt(cont.first());
+    else {
+      await tapIt(page.locator(".start-screen .mw-gear"));
+      await tapIt(page.locator(".start-screen .ss-fresh"));
+    }
   }
   await page.waitForFunction(() => window.codeship, null, { timeout: 120000 });
 }

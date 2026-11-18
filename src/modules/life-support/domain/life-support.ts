@@ -1,4 +1,5 @@
 import type { Sourced } from "@core/units";
+import { field, isRecord, num, numbers, strings } from "@core/snapshot";
 import { CREW_BALANCE, crewHeatW, dailyBalance } from "../data/crew-balance";
 import { ECLSS_SOURCES as S, GAME_VALUE } from "../data/eclss-sources";
 import type { EclssMachineId, EclssMachineSpec, FailureMode, Wear } from "./eclss";
@@ -184,6 +185,36 @@ export type LifeSupportEvent =
 
 const co2Level = (mmHg: number): Level => (mmHg >= CO2_LIMITS.alarm.value ? "alarma" : mmHg > CO2_LIMITS.nasaStd.value ? "aviso" : "ok");
 
+/** What a saved game keeps of a vehicle's life support (`LifeSupport.snapshot`). */
+export interface LifeSupportSnapshot {
+  readonly o2: number;
+  readonly co2: number;
+  readonly n2: number;
+  readonly water: number;
+  readonly food: number;
+  readonly o2Tank: number;
+  readonly n2Tank: number;
+  readonly urineTank: number;
+  readonly wasteTank: number;
+  readonly tempC: number;
+  readonly contam: number;
+  readonly hours: number;
+  readonly lastCo2: number;
+  readonly trend: number;
+  readonly ogaRate: number;
+  readonly mealCredit: number;
+  readonly aboard: number;
+  /** The failure modes active now, by id. */
+  readonly failed: readonly string[];
+  readonly spares: Readonly<Record<string, number>>;
+  /** Wear of each failure mode (driver count). */
+  readonly worn: Readonly<Record<string, number>>;
+  /** Wear rate of each mode in the last step, per hour (for «days left»). */
+  readonly wearRate: Readonly<Record<string, number>>;
+  /** Power drawn in the last step, W. */
+  readonly powerW: number;
+}
+
 /**
  * The life-support system of one vehicle: its machines, cabin air and stocks, stepped in board hours.
  * Pure and vehicle-agnostic (docs/design/soporte-vital.md).
@@ -310,6 +341,67 @@ export class LifeSupport {
     this.o2Tank += Math.max(0, c.o2Kg ?? 0);
     this.n2Tank += Math.max(0, c.n2Kg ?? 0);
     for (const [id, n] of Object.entries(c.spares ?? {})) this.addSpare(id, n);
+  }
+
+  /** Everything that changes as it runs, as plain JSON for a saved game (docs/design/partidas.md). */
+  snapshot(): LifeSupportSnapshot {
+    return {
+      o2: this.o2,
+      co2: this.co2,
+      n2: this.n2,
+      water: this.water,
+      food: this.food,
+      o2Tank: this.o2Tank,
+      n2Tank: this.n2Tank,
+      urineTank: this.urineTank,
+      wasteTank: this.wasteTank,
+      tempC: this.tempC,
+      contam: this.contam,
+      hours: this.hours,
+      lastCo2: this.lastCo2,
+      trend: this.trend,
+      ogaRate: this.ogaRate,
+      mealCredit: this.mealCredit,
+      aboard: this.aboard,
+      failed: this.active().map((f) => f.id),
+      spares: Object.fromEntries(this.stock),
+      worn: Object.fromEntries(this.worn),
+      wearRate: Object.fromEntries(this.wearRate),
+      powerW: this.lastPowerW,
+    };
+  }
+
+  /** Back to a saved state: a missing or unknown field keeps today's value; unknown failures are dropped. */
+  restore(s: unknown): void {
+    if (!isRecord(s)) return;
+    const n = (k: string, keep: number) => num(field(s, k), keep);
+    this.o2 = n("o2", this.o2);
+    this.co2 = n("co2", this.co2);
+    this.n2 = n("n2", this.n2);
+    this.water = n("water", this.water);
+    this.food = n("food", this.food);
+    this.o2Tank = n("o2Tank", this.o2Tank);
+    this.n2Tank = n("n2Tank", this.n2Tank);
+    this.urineTank = n("urineTank", this.urineTank);
+    this.wasteTank = n("wasteTank", this.wasteTank);
+    this.tempC = n("tempC", this.tempC);
+    this.contam = n("contam", this.contam);
+    this.hours = n("hours", this.hours);
+    this.lastCo2 = n("lastCo2", this.lastCo2);
+    this.trend = n("trend", this.trend);
+    this.ogaRate = n("ogaRate", this.ogaRate);
+    this.mealCredit = n("mealCredit", this.mealCredit);
+    this.aboard = Math.max(0, n("aboard", this.aboard));
+    if (Array.isArray(s.failed)) {
+      this.failed.clear();
+      const known = new Set(this.allFailures().map((f) => f.id));
+      for (const id of strings(s.failed)) if (known.has(id)) this.fail(id);
+    }
+    for (const [k, v] of Object.entries(numbers(s.spares))) this.stock.set(k, Math.max(0, v));
+    const known = new Set(this.allFailures().map((f) => f.id));
+    for (const [k, v] of Object.entries(numbers(s.worn))) if (known.has(k)) this.worn.set(k, Math.max(0, v));
+    for (const [k, v] of Object.entries(numbers(s.wearRate))) if (known.has(k)) this.wearRate.set(k, Math.max(0, v));
+    this.lastPowerW = n("powerW", this.power());
   }
 
   /** How many people are aboard now: only they breathe, eat, drink and give off heat. */

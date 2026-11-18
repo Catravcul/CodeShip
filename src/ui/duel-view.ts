@@ -381,7 +381,7 @@ export class DuelView {
           ? `<button class="submit retry" data-act="retry">Reintentar: quitar los ✗</button>`
           : `<button class="submit" data-act="submit" ${full ? "" : "disabled"}>${esc(this.text.submit)}</button>`;
       body = `
-        <div class="question">${esc(this.text.order)}${step ? ` · paso a paso: elige el paso ${Math.min(next, ex.solution.length)} de ${ex.solution.length}` : ""}</div>
+        <div class="question order-q${step ? " step" : ""}">${esc(this.text.order)}${step ? ` · paso a paso: elige el paso ${Math.min(next, ex.solution.length)} de ${ex.solution.length}` : ""}</div>
         <div class="slots">${slots}</div>
         <div class="tray">${tray}</div>
         ${action}`;
@@ -400,7 +400,8 @@ export class DuelView {
         <div class="question">${esc(ex.question)}</div>
         <div class="options">${options}</div>`;
     }
-    this.el.innerHTML = `${head}<div class="idea">«${esc(ex.idea)}»</div>${toggle}${body}`;
+    // `.idea-row` lays nothing out in the panel (display: contents); in the HUD it puts the toggle beside the idea.
+    this.el.innerHTML = `${head}<div class="idea-row"><div class="idea">«${esc(ex.idea)}»</div>${toggle}</div>${body}`;
     this.el.append(...this.held);
   }
 }

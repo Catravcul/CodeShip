@@ -140,6 +140,8 @@ Sí: es la misma revelación progresiva del menú raíz (NN/g, sección 1). La c
 - El número que cambia **late** (escala 1,6 → 1 con brillo, 0,7 s; sin animación con `prefers-reduced-motion`).
 - En la vista HUD van sobre una **placa oscura** (`#020a12` al 85 %) con halo negro: incluso con la escena blanca detrás el contraste es ≈ 11:1 (verde), ≈ 8:1 (ámbar) y ≈ 5:1 (rojo), por encima del AA (4,5:1).
 - Opciones en HUD: fondo casi opaco, 44 px de alto, borde de 2 px para el bloque colocado (seleccionado) y para la opción fallada (roja con ✗).
+- **En la vista HUD cada paso cabe entero, sin desplazar** (390×664 y 1280×800, 2026-11-18). No se dibujan las casillas vacías: los bloques colocados llevan su número y, paso a paso, la pregunta dice cuál toca. Bloques y opciones son objetivos de 44 px de dos líneas como mucho (13 px). «Ver JavaScript» va al lado de la idea, y en «Ordenar todo» no se repite «Ordena los pasos». En el móvil la cabecera (botones, título, Aciertos/Fallos, el aviso) y la línea del plan van en la misma columna, no fijas encima: un aviso empuja los pasos en vez de taparlos. En pantallas anchas la línea del plan va abajo a la izquierda, lejos de los botones. Los recorridos lo comprueban paso a paso en la HUD (`Journey.fits`: «El paso … no cabe en …»).
+- **La vista panel no cambia** (reglas §4.4): en un móvil deja el 30 % de arriba a la escena y la hoja se desplaza. Una ordenación no cabe en ella sin desplazar, ni siquiera de tres bloques cortos (748 px para 465 visibles en 390×664). Que la HUD sea la vista por defecto lo decide Berón; hasta entonces los recorridos en vista panel siguen avisando «Hay que desplazar…».
 
 Antes (código de `integracion` al empezar), el mismo recorrido `cocina`: tres toques sobre «60 °C».
 

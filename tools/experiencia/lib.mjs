@@ -262,6 +262,27 @@ export class Journey {
     if (!r.name) this.check(`«${label}» tiene nombre accesible`, false);
   }
 
+  /**
+   * Every block (or option) of the step on screen within the viewport, with no scrolling (docs/design/ux-acciones.md:
+   * a step fits its screen). Said once per step, as a problem, naming the step and what falls outside.
+   */
+  async fits(ex) {
+    this.fitSeen ??= new Set();
+    if (!ex.id || this.fitSeen.has(ex.id)) return;
+    this.fitSeen.add(ex.id);
+    const r = await this.page.evaluate(() => {
+      const d = [...document.querySelectorAll(".duel")].find((e) => !e.classList.contains("hidden"));
+      if (!d) return null;
+      const out = [...d.querySelectorAll("button.block, button.option")].filter((b) => {
+        const q = b.getBoundingClientRect();
+        return q.height > 0 && (q.top < 0 || q.bottom > innerHeight + 0.5);
+      });
+      return { idea: d.querySelector(".idea")?.textContent.trim() ?? "", out: out.map((b) => b.textContent.trim().slice(0, 30)), view: document.body.classList.contains("ui-compact") ? "HUD" : "panel" };
+    });
+    // The panel (reglas.md §4.4, unchanged) leaves 30 % of a phone to the scene and scrolls; the HUD must fit.
+    if (r?.out.length && r.view === "HUD") this.problem(`El paso ${r.idea} (${ex.id}, vista ${r.view}) no cabe en ${this.page.viewportSize().width}×${this.page.viewportSize().height}: fuera ${r.out.length} (${r.out.slice(0, 2).map((t) => `«${t}»`).join(", ")})`);
+  }
+
   /** A finger (or the mouse on desktop) on the centre of an element, whatever its state. */
   async tapAt(loc) {
     let b = await loc.boundingBox();
@@ -296,6 +317,7 @@ export class Journey {
   async answer(oracle, right = true) {
     const ex = await this.page.evaluate(oracle);
     if (!ex) return false;
+    await this.fits(ex);
     if (ex.kind === "choice") return this.tapAt(this.page.locator(".duel .option").nth(right ? ex.correct : (ex.correct + 1) % ex.options.length));
     // After a wrong order the ✓ stay and «Reintentar» sends the ✗ back to the tray (only the missing blocks are tapped).
     const retry = this.page.locator(".duel .submit.retry");

@@ -325,7 +325,7 @@ function coastingTripChore(f: CarrierTripFacts): Chore {
     kind: "order",
     id: `${id}-maniobra`,
     concept: 1,
-    idea: "Acelerar, ir por inercia y frenar: el propelente solo se gasta en los dos encendidos",
+    idea: "Acelerar, ir por inercia, frenar",
     blocks: lines([
       [`orientar la nodriza hacia ${name}`, `nodriza.orientar("${f.targetId}");`],
       [`encender los ${f.thrusterCount} ${engines} ${duration(tb)} hasta ${num(v)} m/s`, `motores.encender(${Math.round(tb)});`],

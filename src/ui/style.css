@@ -215,6 +215,34 @@ body.ui-compact .duel .submit { min-height: 44px; font-size: 15px; background: #
 body.ui-compact .duel .question { color: #d8f6ff; font-size: 13px; }
 body.ui-compact .duel .toggle { color: #d8f6ff; background: #0b2a3699; border-color: #7fdcff55; text-shadow: none; align-self: flex-start; }
 body.ui-compact .duel .submit:disabled { background: #3d376099; }
+/* Every block of a step within one screen, with no scrolling (390 × 664 and up): in the HUD the empty slots are not
+   drawn (the question says which step comes next), the placed blocks keep their number, and blocks and options are
+   one 44 px target each, two lines at most (the panel view keeps its own look, reglas.md §4.4). */
+body.ui-compact .duel { gap: 4px; }
+body.ui-compact .duel .block.slot { display: none; }
+body.ui-compact .duel .slots, body.ui-compact .duel .tray, body.ui-compact .duel .options, body.ui-compact .duel .code { gap: 4px; }
+body.ui-compact .duel .slots:not(:has(.placed)) { display: none; }
+body.ui-compact .duel .tray { padding-top: 4px; }
+body.ui-compact .duel .block, body.ui-compact .duel .option { font-size: 13px; line-height: 1.25; padding: 3px 10px; gap: 8px; }
+body.ui-compact .duel .block .n { width: 18px; height: 18px; font-size: 11px; }
+body.ui-compact .duel .idea { font-size: 14px; line-height: 1.3; }
+.idea-row { display: contents; }
+body.ui-compact .duel .idea-row { display: flex; align-items: center; gap: 8px; }
+body.ui-compact .duel .idea-row .idea { flex: 1; min-width: 0; }
+body.ui-compact .duel .idea-row .toggle { flex: none; align-self: center; }
+/* On a phone the HUD's header is part of the column (not pinned over it): its feedback line and the plan's step
+   line push the steps down instead of covering them, and the whole column fits the screen. */
+/* «Ordena los pasos» says nothing the blocks do not; step by step it says which step comes next, so it stays. */
+body.ui-compact .duel .question.order-q:not(.step) { display: none; }
+body.ui-compact .duel .feedback { font-size: 13px; }
+@media (max-aspect-ratio: 1/1) {
+  body.ui-compact .duel, body.ui-compact .duel.sheet { padding: 10px 12px 8px; }
+  body.ui-compact .duel .plan-caption { font-size: 11px; padding: 4px 8px; }
+  body.ui-compact .duel .duel-top { position: static; order: -2; }
+  body.ui-compact .duel .plan-caption { position: static; order: -1; max-width: none; }
+}
+/* Wide screens: the HUD's header is pinned top left, so the plan's step line goes bottom left, clear of its buttons. */
+@media (min-aspect-ratio: 1/1) { body.ui-compact .duel .plan-caption { top: auto; bottom: 18px; left: 18px; max-width: min(460px, calc(60vw - 40px)); } }
 @media (min-aspect-ratio: 1/1) { body.ui-compact .duel, body.ui-compact .duel.sheet { left: auto; width: min(420px, 40vw); padding-inline: 16px; padding-top: 12px; } body.ui-compact .duel .duel-top { left: 18px; right: auto; width: min(460px, 50vw); } }
 
 /* Boards (tasks, radio): the header with the close button stays on top while scrolling. */

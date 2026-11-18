@@ -80,7 +80,7 @@ export async function inicio(j) {
   const row = (s, id) => s.rows.find((r) => r.id === id);
   j.check("se pueden jugar el 6 (Espacio) y el 3 (Aéreo); el 6 empieza elegido", !row(s0, "espacio")?.off && !row(s0, "aereo")?.off && s0.rows.filter((r) => !r.off).length === 2 && s0.picked === "espacio" && row(s0, "espacio")?.on, JSON.stringify(s0.rows.map((r) => [r.id, r.off, r.on])));
   j.check("el 3 dice en su descripción que los retos de entrenamiento están «En construcción», sin candado", !row(s0, "aereo")?.lock && /En construcción: los retos de los puestos de entrenamiento/.test(row(s0, "aereo")?.desc ?? ""), row(s0, "aereo")?.desc);
-  j.check("1, 2, 4 y 5 dicen «Próximamente», con su candado", ["terrestre", "marino", "subterraneo", "nucleo"].every((id) => row(s0, id)?.off && /⊘\s*Próximamente/.test(row(s0, id)?.lock ?? "")), JSON.stringify(s0.rows.map((r) => [r.id, r.lock])));
+  j.check("2, 4 y 5 dicen «Próximamente», con su candado; el 1 se juega (santuario 1)", ["marino", "subterraneo", "nucleo"].every((id) => row(s0, id)?.off && /⊘\s*Próximamente/.test(row(s0, id)?.lock ?? "")), JSON.stringify(s0.rows.map((r) => [r.id, r.lock])));
   await capture(j, "mapa", "Inicio: mapa de santuarios y tarjetas");
 
   // 3. A finger turns the map, a pinch zooms it, «+» and «−» too.
@@ -111,7 +111,7 @@ export async function inicio(j) {
   j.check("tocar el 3 en el mapa lo elige y su tarjeta se marca, con «Jugar» encendido", s5.picked === "aereo" && row(s5, "aereo")?.on && !row(s5, "aereo")?.off, JSON.stringify({ picked: s5.picked, air }));
   await capture(j, "girado", "Inicio: el mapa girado y el 3 elegido");
   // A tap on a later card does not pick it either (it is marked aria-disabled: a finger on it all the same).
-  await j.tapAt(p.locator('.start-screen .mw-pick[data-pick="terrestre"]'));
+  await j.tapAt(p.locator('.start-screen .mw-pick[data-pick="marino"]'));
   const s6 = await start(p);
   j.check("tocar la tarjeta de un santuario que viene más tarde no lo elige", s6.picked === "aereo" && !s6.game, s6.picked);
 

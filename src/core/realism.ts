@@ -50,6 +50,8 @@ export const AREA_MOTION = {
   // Sanctuary 3: its decks and floors, and its water (the sea, the NBL pool, the trees' trunks).
   "santuario-aereo": "gravedad",
   "santuario-aereo-agua": "agua",
+  // Sanctuary 1: its ice, land and tree floors, and its water (the sea, the lagoon, the trunks).
+  "santuario-terrestre": "gravedad",
 } as const satisfies Readonly<Record<string, AreaMotion>>;
 
 export type AreaId = keyof typeof AREA_MOTION;

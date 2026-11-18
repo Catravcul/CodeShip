@@ -24,12 +24,13 @@ describe("the six levels of the start screen", () => {
     expect(y("espacio")).toBeGreaterThan(y("aereo"));
   });
 
-  it("3 and 6 can be played; 3 still says its training challenges are being built; the rest come later", () => {
+  it("1, 3 and 6 can be played; 1 and 3 say what is still being built; the rest come later", () => {
     const c = levelChoices(LEVELS);
-    expect(c.filter((x) => x.selectable).map((x) => x.number)).toEqual([3, 6]);
-    expect(c.filter((x) => !x.locked).map((x) => x.number)).toEqual([3, 6]);
+    expect(c.filter((x) => x.selectable).map((x) => x.number)).toEqual([1, 3, 6]);
+    expect(c.filter((x) => !x.locked).map((x) => x.number)).toEqual([1, 3, 6]);
     expect(LEVELS.find((l) => l.number === 3)!.desc).toMatch(/En construcción: los retos de los puestos de entrenamiento/);
-    for (const n of [1, 2, 4, 5]) expect(c.find((x) => x.number === n)!.locked).toBe(SOON);
+    expect(LEVELS.find((l) => l.number === 1)!.desc).toMatch(/En construcción/);
+    for (const n of [2, 4, 5]) expect(c.find((x) => x.number === n)!.locked).toBe(SOON);
     expect(c.every((x) => x.action === "Jugar")).toBe(true);
   });
 

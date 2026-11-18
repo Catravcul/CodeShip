@@ -56,7 +56,7 @@ describe("UI-08 no gravity areas in space: the joystick moves the camera, never 
     expect(AREA_MOTION["santuario-aereo-agua"]).toBe("agua");
     expect(moveJoystick("santuario-aereo")).toBe(true);
     for (const [area, motion] of Object.entries(AREA_MOTION)) {
-      if (area.startsWith("santuario-aereo")) continue;
+      if (area.startsWith("santuario-aereo") || area === "santuario-terrestre") continue;
       expect(motion, area).toBe("ingravidez");
       expect(moveJoystick(area as AreaId), area).toBe(false);
     }

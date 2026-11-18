@@ -36,7 +36,7 @@ const start = new StartScreen(
   LEVELS,
   { list: () => book.list(), why: cannotResume, remove: (id) => book.remove(id), freeSlot: () => book.newSlot() },
   (level, choice) => {
-    if (level.id !== "espacio" && level.id !== "aereo") return;
+    if (level.id !== "espacio" && level.id !== "aereo" && level.id !== "terrestre") return;
     // How long the player looked at the start screen is not loading time (tools/experiencia measures from here).
     performance.mark("codeship-inicio-elegido");
     if (choice.kind === "continuar") {
@@ -44,7 +44,7 @@ const start = new StartScreen(
       startSession({ slotId: choice.slot.id, resume: choice.slot });
     } else startSession({ slotId: book.newSlot(), resume: undefined });
     start.close();
-    void (level.id === "aereo" ? import("./aerial-sanctuary") : import("./main"));
+    void (level.id === "aereo" ? import("./aerial-sanctuary") : level.id === "terrestre" ? import("./sanctuary-one") : import("./main"));
   },
 );
 start.open();

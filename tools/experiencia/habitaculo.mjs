@@ -46,7 +46,7 @@ export async function habitaculo(j) {
   await p.waitForTimeout(600);
   j.check("el interruptor de acople de la vista de vuelo desacopla el módulo", await p.evaluate(() => !window.codeship.docking.docked));
   await capture(j, "acople", "Interruptor de acople");
-  await j.tap(".stand-btn", "Dejar el puesto: habitáculo");
+  await j.standUp();
   await p.waitForTimeout(900);
 
   // The yoga mat: sit in lotus, the settings open; keyboard help on and off, kept in the browser.

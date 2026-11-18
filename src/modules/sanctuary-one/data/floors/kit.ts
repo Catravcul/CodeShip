@@ -50,3 +50,42 @@ export function ringPoint(floor: number, s: number, cornerClear = RING.width / 2
 
 /** Ring length (Levels.cs RingLength). */
 export const ringLength = (floor: number): number => 4 * (floor - 2 * RING.width * RING.inside + RING.width);
+
+/** A keep-out rectangle of a packed floor, as Unity's Rect(x, z, w, d): corner and size in the floor's frame. */
+export interface Rect {
+  readonly x: number;
+  readonly z: number;
+  readonly w: number;
+  readonly d: number;
+}
+
+/** Cold Sanctuary's keep-outs of a lab floor (Research.cs CarpetKeepOut): the carpet strip at the +z edge round `x`, and the +x,+z corner. */
+export const carpetKeepOut = (size: { x: number; z: number }, x = 0): Rect[] => [
+  { x: x - 4.2, z: size.z / 2 - 5, w: 8.4, d: 5 },
+  { x: size.x / 2 - 4, z: size.z / 2 - 4, w: 4, d: 4 },
+];
+
+/**
+ * Cold Sanctuary's PackFloor (Research.cs): blocks in rows from the −x,−z corner with 2 m of margin and 2,1 m between
+ * them; a row wraps when the next block would pass the margin, and a block that would touch a keep-out (grown by half
+ * a gap) moves past it. Each block is centred on its slot, yaw 0. Blocks that no longer fit are left out.
+ */
+export function packFloor(size: { x: number; z: number }, blocks: readonly (readonly [model: string, w: number, d: number])[], keepOut: readonly Rect[] = [], gap = 2.1, margin = 2): Placed[] {
+  const out: Placed[] = [];
+  let x = -size.x / 2 + margin, z = -size.z / 2 + margin, rowD = 0;
+  const hit = (x0: number, z0: number, w: number, d: number) =>
+    keepOut.find((r) => x0 < r.x + r.w + gap / 2 && x0 + w > r.x - gap / 2 && z0 < r.z + r.d + gap / 2 && z0 + d > r.z - gap / 2);
+  for (const [model, w, d] of blocks) {
+    for (let guard = 0; guard < 50; guard++) {
+      if (x + w > size.x / 2 - margin) { x = -size.x / 2 + margin; z += rowD + gap; rowD = 0; }
+      const r = hit(x, z, w, d);
+      if (!r) break;
+      x = r.x + r.w + gap / 2;
+    }
+    if (z + d > size.z / 2 - margin / 2) continue;
+    out.push({ model, x: x + w / 2, z: z + d / 2 });
+    x += w + gap;
+    rowD = Math.max(rowD, d);
+  }
+  return out;
+}

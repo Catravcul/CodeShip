@@ -72,6 +72,18 @@ export const POSES: Record<string, PoseAngles> = {
   tread: P({ torso: 0.05, shoulderX: [-0.5, -0.5], shoulderZ: [0.9, -0.9], elbow: [-0.4, -0.4], hip: [-0.5, 0.2], knee: [0.9, 0.5] }),
   // One arm out to the front, standing (pressing the suit's check, handing over).
   "reach-one": P({ shoulderX: [-1.35, 0], shoulderZ: [0.1, -0.08], elbow: [-0.2, 0] }),
+  // Reclined in a seat, legs raised (the centrifuge's gondola, a capsule's couch): Gx goes chest to back.
+  "sit-recline": P({ rootY: 0.5, rootX: -0.75, headX: 0.3, hip: [-1.3, -1.3], knee: [1.1, 1.1], shoulderX: [-0.6, -0.6], elbow: [-0.9, -0.9] }),
+  // Seated with both hands on the controls in front (a simulator, the robotics desk).
+  "sit-hands": P({ rootY: 0.5, hip: [-1.55, -1.55], knee: [1.55, 1.55], shoulderX: [-1.05, -1.05], shoulderZ: [0.12, -0.12], elbow: [-0.75, -0.75] }),
+  // Standing with both hands on a desk's controls.
+  "stand-hands": P({ torso: 0.1, headX: 0.15, shoulderX: [-0.95, -0.95], shoulderZ: [0.12, -0.12], elbow: [-0.85, -0.85] }),
+  // Kneeling upright on the ice, hands to the front (the meteorite, the stove, the radio).
+  kneel: P({ rootY: 0.5, torso: 0.3, headX: 0.25, hip: [0, 0], knee: [1.57, 1.57], shoulderX: [-1.0, -1.0], shoulderZ: [0.15, -0.15], elbow: [-0.6, -0.6] }),
+  // Astride a snowmobile's seat, hands on the bar.
+  ride: P({ rootY: 1.05, torso: 0.15, hip: [-1.2, -1.2], knee: [1.5, 1.5], shoulderX: [-1.2, -1.2], shoulderZ: [0.2, -0.2], elbow: [-0.5, -0.5] }),
+  // Face down on the ice, up on the elbows (the photo of a meteorite).
+  prone: P({ rootY: 0.18, rootX: Math.PI / 2, headX: -0.7, shoulderX: [-2.4, -2.4], elbow: [-1.2, -1.2] }),
   // Holding a clipboard in front and writing on it.
   write: P({ headX: 0.3, shoulderX: [-0.9, -0.7], shoulderZ: [0.25, -0.25], elbow: [-1.3, -1.4] }),
 };

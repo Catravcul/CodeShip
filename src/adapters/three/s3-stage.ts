@@ -1,8 +1,9 @@
 import * as THREE from "three";
-import type { Beat, HerPose, Thing, ThingSpot } from "@modules/aerial-sanctuary/domain/station-beat";
+import type { Beat, HerPose, RigCue, Thing, ThingSpot } from "@modules/aerial-sanctuary/domain/station-beat";
 import type { Stage, StageSpot } from "@modules/aerial-sanctuary/data/stages";
 import type { StepVisual } from "@modules/chores/domain/step-visual";
 import type { CubeFigure } from "./interior/figure";
+import { scottTent, snowmobile } from "./aerial-models";
 
 /**
  * Sanctuary 3's training posts acted out (reglas.md §4; domain/station-beat.ts): the furniture each post needs
@@ -22,7 +23,7 @@ export interface Actor {
   readonly fig: CubeFigure;
 }
 
-const HER_POSE: Readonly<Record<HerPose, string>> = { "de-pie": "stand", sentada: "sit", tumbada: "supine", nadando: "swim", flotando: "tread", "brazos-arriba": "arms-up", "mano-adelante": "reach-one", mareada: "sit-dizzy", neutra: "float" };
+const HER_POSE: Readonly<Record<HerPose, string>> = { "de-pie": "stand", sentada: "sit", tumbada: "supine", nadando: "swim", flotando: "tread", "brazos-arriba": "arms-up", "mano-adelante": "reach-one", mareada: "sit-dizzy", neutra: "float", recostada: "sit-recline", "manos-mandos": "stand-hands", moto: "ride", rodillas: "kneel", "boca-abajo": "prone" };
 
 /** Clothes over her suit: the flight suit (olive), the LCVG (pale blue), the EMU's white. */
 const TINT: Partial<Record<Thing, number>> = { mono: 0x5d6b3a, "prenda-lcvg": 0xb9d8ec, "pantalon-emu": 0xf2f2ee, "torso-emu": 0xf2f2ee };
@@ -43,6 +44,13 @@ export class S3Stage implements StepVisual {
   caption = "";
   /** She is being acted (the scene stops moving her by herself). */
   active = false;
+  /**
+   * Her spots on a moving machine (s3-rigs.ts), and the trainer's beside her there (`entrenador:<spot>`): she is
+   * carried with it each frame.
+   */
+  mounts: ReadonlyMap<string, THREE.Object3D> = new Map();
+  /** A beat tells its machine what to do (the centrifuge's g, the plane's phase, the simulator's screen). */
+  onCue: ((cue: RigCue | undefined) => void) | undefined;
 
   constructor(stages: readonly Stage[]) {
     for (const s of stages) this.furnish(s);
@@ -86,7 +94,7 @@ export class S3Stage implements StepVisual {
   private makeThings(): void {
     const g = (...m: THREE.Object3D[]) => {
       const o = new THREE.Group();
-      o.add(...m);
+      if (m.length) o.add(...m);
       return o;
     };
     this.things.set("carpeta", box(0.24, 0.02, 0.32, 0x2f6f9f));
@@ -102,6 +110,44 @@ export class S3Stage implements StepVisual {
     // The life raft (a six-person one is about 2 m across) and the hoist's cable and horse-collar.
     this.things.set("balsa", g(new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.22, 8, 20), mat(0xf26a1b)).rotateX(Math.PI / 2), box(1.5, 0.05, 1.5, 0xf26a1b).translateY(-0.15)));
     this.things.set("arnes", g(new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.05, 6, 12), mat(0xf2c200))));
+    // Phase 5: the centrifuge's electrodes and the button she presses at each light; the simulator's headset and
+    // the robotics desk's two hand controllers.
+    this.things.set("sensores", g(...[-0.07, 0.07].map((x) => box(0.035, 0.035, 0.01, 0xeeeeee).translateX(x)), box(0.2, 0.01, 0.01, 0x333333).translateY(-0.03)));
+    this.things.set("boton", g(box(0.05, 0.1, 0.05, 0x30343a), new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.02, 10), mat(0xd23b2a)).translateY(0.06)));
+    this.things.set("casco-vuelo", g(box(0.24, 0.05, 0.05, 0x222222), box(0.04, 0.09, 0.09, 0x222222).translateX(-0.12).translateY(-0.08), box(0.04, 0.09, 0.09, 0x222222).translateX(0.12).translateY(-0.08)));
+    this.things.set("mandos", g(...[-0.35, 0.35].map((x) => g(box(0.14, 0.04, 0.14, 0x30343a).translateX(x), box(0.04, 0.14, 0.04, 0x111111).translateX(x).translateY(0.09)))));
+    // The meteorite search (ANSMET): the stone, the GPS, the aluminium tag, the counter, the camera, the book, the
+    // sterile tongs and Teflon bag, the tape and the flag.
+    this.things.set("meteorito", new THREE.Mesh(new THREE.DodecahedronGeometry(0.07), mat(0x1c1a18, { flatShading: true })));
+    this.things.set("gps", box(0.07, 0.13, 0.03, 0xf2c200));
+    this.things.set("etiqueta", box(0.05, 0.03, 0.004, 0xc8ccd0));
+    this.things.set("contador", box(0.06, 0.04, 0.04, 0xf26a1b));
+    this.things.set("camara-foto", g(box(0.13, 0.09, 0.07, 0x111111), new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.05, 10), mat(0x333333)).rotateX(Math.PI / 2).translateY(-0.05)));
+    this.things.set("libro", box(0.15, 0.02, 0.21, 0xd8562c));
+    this.things.set("pinzas", g(box(0.008, 0.008, 0.2, 0xdfe3e6).translateX(-0.01), box(0.008, 0.008, 0.2, 0xdfe3e6).translateX(0.01)));
+    this.things.set("bolsa", box(0.14, 0.18, 0.05, 0xe8f4ff));
+    this.things.set("cinta", new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.015, 6, 12), mat(0xd23b2a)));
+    this.things.set("bandera", g(box(0.02, 1.2, 0.02, 0x8a8f96).translateY(0.6), box(0.25, 0.16, 0.01, 0xd23b2a).translateY(1.1).translateX(0.13)));
+    this.things.set("moto-nieve", snowmobile());
+    // Cold survival (the field school): the Scott tent, the snow-block wall against the wind, the roofed trench, the
+    // stove and its pot, the HF radio and its two 10 m antennas.
+    this.things.set("tienda-scott", scottTent());
+    const wall = g();
+    for (let row = 0; row < 3; row++) for (let i = 0; i < 6; i++) wall.add(box(0.48, 0.38, 0.4, 0xf4f8fb).translateX(-1.25 + i * 0.5 + (row % 2) * 0.25).translateY(0.2 + row * 0.4));
+    this.things.set("muro-nieve", wall);
+    const trench = g(box(0.9, 0.02, 2.2, 0x6f8796).translateY(0.01));
+    for (let i = 0; i < 4; i++) trench.add(box(1.0, 0.25, 0.48, 0xf4f8fb).translateY(0.62).translateZ(-0.78 + i * 0.52));
+    for (const x of [-0.55, 0.55]) trench.add(box(0.2, 0.5, 2.2, 0xe6eef3).translateX(x).translateY(0.25));
+    this.things.set("zanja-techo", trench);
+    this.things.set("hornillo", g(box(0.22, 0.12, 0.22, 0x50565e).translateY(0.06)));
+    this.things.set("olla", new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.1, 0.14, 12), mat(0x9aa6ae)));
+    this.things.set("radio-hf", g(box(0.3, 0.18, 0.22, 0x4a5a3a).translateY(0.09)));
+    const aerial = g();
+    for (const x of [0, 10]) aerial.add(box(0.04, 3, 0.04, 0x8a8f96).translateX(x).translateY(1.5));
+    const wire = box(10, 0.01, 0.01, 0x111111);
+    wire.position.set(5, 2.9, 0);
+    aerial.add(wire);
+    this.things.set("antena", aerial);
     this.cable.visible = false;
     this.root.add(this.cable);
     for (const o of this.things.values()) {
@@ -144,7 +190,7 @@ export class S3Stage implements StepVisual {
 
   private place(o: THREE.Object3D, p: StageSpot): void {
     o.position.set(p.x, p.y, p.z);
-    o.rotation.y = p.face;
+    o.rotation.set(0, p.face, 0);
   }
 
   /** Beats to play next, in order. */
@@ -163,6 +209,7 @@ export class S3Stage implements StepVisual {
 
   clear(): void {
     this.active = false;
+    this.held = undefined;
     this.queue = [];
     this.beat = undefined;
     this.caption = "";
@@ -174,6 +221,8 @@ export class S3Stage implements StepVisual {
     this.cable.visible = false;
     // The trainer is back at her place: she leaves the room from there, the way she came in.
     if (this.trainer && this.stage) this.place(this.trainer.rig, this.stage.trainer);
+    this.her?.rig.rotation.set(0, this.her.rig.rotation.y, 0);
+    this.onCue?.(undefined);
     this.her = undefined;
     this.trainer = undefined;
   }
@@ -233,9 +282,17 @@ export class S3Stage implements StepVisual {
     if (this.beat) {
       this.t += dt;
       this.move(this.beat, this.t);
-      if (this.t >= BEAT_S * (this.beat.times ?? 1)) this.beat = undefined;
-    } else if (this.finishing > 0) {
-      this.finishing -= dt;
+      if (this.t >= BEAT_S * (this.beat.times ?? 1)) {
+        this.held = this.beat.her;
+        this.beat = undefined;
+      }
+    } else {
+      // Between beats she stays on the moving machine she is on (the gondola goes on turning).
+      const m = this.held && this.mounts.get(this.held);
+      if (m) this.ride(this.her.rig, m);
+      const tm = this.held && this.mounts.get(`entrenador:${this.held}`);
+      if (tm && this.trainer) this.ride(this.trainer.rig, tm);
+      if (this.finishing > 0) this.finishing -= dt;
     }
     this.her.fig.update(dt);
     this.trainer?.fig.update(dt);
@@ -246,13 +303,17 @@ export class S3Stage implements StepVisual {
   private enter(b: Beat): void {
     const her = this.her!;
     this.caption = b.caption;
-    const seated = b.her === "silla" || b.her === "camara" || b.her === "camilla-sentada" || b.her === "balsa";
+    const seated = b.her === "silla" || b.her === "camara" || b.her === "camilla-sentada" || b.her === "balsa" || b.her === "avion-asiento" || b.her === "dragon-asiento";
     let pose = HER_POSE[b.pose];
     if (seated && (b.pose === "sentada" || b.pose === "de-pie")) pose = b.pose === "de-pie" && b.her === "silla" ? "stand" : "sit";
     if (seated && b.pose === "mano-adelante") pose = "sit-reach";
+    if (seated && b.pose === "manos-mandos") pose = "sit-hands";
     her.fig.pose(pose);
     const tr = this.trainer;
-    if (tr) tr.fig.pose(b.trainer === "escribe" ? "write" : b.trainer === "da" || b.trainer === "ayuda" ? "reach-one" : "stand");
+    // On a moving machine the trainer rides beside her, as she does (seated, lying, floating).
+    if (tr && this.mounts.has(`entrenador:${b.her}`)) tr.fig.pose(pose === "sit-hands" ? "sit" : pose);
+    else if (tr) tr.fig.pose(b.trainer === "escribe" ? "write" : b.trainer === "da" || b.trainer === "ayuda" ? "reach-one" : "stand");
+    this.onCue?.(b.rig);
     // Clothes: the tint of the outermost one listed.
     let tint = this.suitColor;
     for (const t of ["prenda-lcvg", "mono", "pantalon-emu", "torso-emu"] as const) if (b.things.some((x) => x.thing === t)) tint = TINT[t]!;
@@ -290,7 +351,25 @@ export class S3Stage implements StepVisual {
       case "cara":
         return hang(her.headNode, 0, id === "casco" ? 0.13 : 0.08, id === "casco" ? 0 : 0.13);
       case "cintura":
+        // Astride the snowmobile: it goes under her, its seat under her hips.
+        if (id === "moto-nieve") {
+          hang(this.her!.rig, 0, 0, 0.4);
+          o.rotation.y = -Math.PI / 2;
+          return;
+        }
         return hang(her.root, 0, -0.02, 0);
+      case "sitio": {
+        // At the post's place for it (the stone on the ice, the tent, the wall, the desk's controllers).
+        const a = s.anchors[id];
+        if (!a) {
+          o.visible = false;
+          return;
+        }
+        this.root.attach(o);
+        o.position.set(a.x, a.y, a.z);
+        o.rotation.set(0, id === "moto-nieve" ? Math.PI / 4 : 0, 0);
+        return;
+      }
       case "mesa": {
         this.root.attach(o);
         const m = s.anchors.mesa!;
@@ -332,11 +411,16 @@ export class S3Stage implements StepVisual {
     }
     // The trainer goes with her where the post says (the doctor from the scale to the couch), else stays at her place.
     const tr = this.trainer?.rig;
+    const tm = this.mounts.get(`entrenador:${b.her}`);
     const tp = s.beside[b.her] ?? s.trainer;
-    if (tr) {
+    if (tr && tm) this.ride(tr, tm);
+    else if (tr) {
       tr.position.lerp(this.tmp.set(tp.x, tp.y, tp.z), Math.min(1, t / 0.8));
-      tr.rotation.y = tp.face;
+      tr.rotation.set(0, tp.face, 0);
     }
+    const hm = this.mounts.get(b.her);
+    if (hm) return this.ride(rig, hm);
+    rig.rotation.set(0, rig.rotation.y, 0);
     const p = s.her[b.her];
     if (!p) return;
     const e = Math.min(1, t / 0.8);
@@ -347,6 +431,16 @@ export class S3Stage implements StepVisual {
   }
 
   private readonly tmp = new THREE.Vector3();
+  private readonly q = new THREE.Quaternion();
+  /** Her spot at the last beat (she stays on it until the next). */
+  private held: Beat["her"] | undefined;
+  /** Carried by a moving machine: at its mount, turned as it is. */
+  private ride(o: THREE.Object3D, m: THREE.Object3D): void {
+    m.updateWorldMatrix(true, false);
+    m.getWorldPosition(o.position);
+    m.getWorldQuaternion(this.q);
+    o.quaternion.copy(this.q);
+  }
   /** The hoist's cable, from the collar on her chest straight up to the rail. */
   private readonly cable = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1, 6), mat(0x222222));
   private followHands(): void {

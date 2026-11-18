@@ -15,7 +15,7 @@ export type TaskTravel = "viaje" | "teletransporte";
  * Which vehicle's tasks the list shows (Berón, 2026-11-17): «auto» follows where she is; or the
  * Starship (nodriza), the station, the lander (módulo) or every task (docs/design/viaje-a-una-tarea.md §Ajustes de tareas).
  */
-export type TaskVehicle = "auto" | "nodriza" | "estacion" | "modulo" | "todos" | "entrenamiento" | "lanzadera" | "parque" | "muelle" | "plataforma";
+export type TaskVehicle = "auto" | "nodriza" | "estacion" | "modulo" | "todos" | "entrenamiento" | "lanzadera" | "parque" | "muelle" | "plataforma" | "glaciar";
 /** How she is seen walking about rooms and modules: through her eyes or from behind/outside. */
 export type WalkView = "primera" | "tercera";
 /** What the first input of a session was. */
@@ -52,7 +52,7 @@ export const TASK_TRAVELS: readonly TaskTravel[] = ["viaje", "teletransporte"];
 /** The choices of the space game (sanctuary 6). */
 export const TASK_VEHICLES: readonly TaskVehicle[] = ["auto", "nodriza", "estacion", "modulo", "todos"];
 /** The choices in sanctuary 3: its islands. */
-export const ISLAND_TASK_VEHICLES: readonly TaskVehicle[] = ["auto", "entrenamiento", "lanzadera", "parque", "muelle", "plataforma", "todos"];
+export const ISLAND_TASK_VEHICLES: readonly TaskVehicle[] = ["auto", "entrenamiento", "lanzadera", "parque", "muelle", "plataforma", "glaciar", "todos"];
 export const WALK_VIEWS: readonly WalkView[] = ["primera", "tercera"];
 
 export const DEFAULT_SETTINGS: GameSettings = {

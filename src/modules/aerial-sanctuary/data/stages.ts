@@ -1,4 +1,4 @@
-import type { HerSpot } from "../domain/station-beat";
+import type { HerSpot, Thing } from "../domain/station-beat";
 import type { S3Layout } from "./layout";
 
 /**
@@ -15,11 +15,20 @@ export interface StageSpot {
   readonly face: number;
 }
 
-export type Anchor = "mesa" | "pared" | "agua" | "banco" | "bascula" | "techo" | "maqueta";
+/** Furniture to put things on, and (named like the thing) where a thing stands by itself at the post («sitio»). */
+export type Anchor = "mesa" | "pared" | "agua" | "banco" | "bascula" | "techo" | "maqueta" | "pantalla" | "lm" | Thing;
 
 export interface Stage {
   readonly post: number;
+  /** The area it is in (`entrenamiento:medico`, `glaciar:pista`). */
   readonly room: string;
+  /** The way point the trainer comes in by (a room's «dentro», a glacier site's edge). */
+  readonly door: string;
+  /**
+   * Her spots on a moving rig (the centrifuge's gondola, the A310's cabin): the scene carries her there each frame
+   * (s3-rigs.ts); the spot here is where the rig stands at rest.
+   */
+  readonly mounted: readonly HerSpot[];
   readonly her: Partial<Record<HerSpot, StageSpot>>;
   /** For a length of the pool: where it starts and ends. */
   readonly lap?: { readonly from: StageSpot; readonly to: StageSpot };
@@ -36,7 +45,11 @@ export interface Stage {
 /** Local spots, as (x, y, z, face) on the room's plan. */
 type L = readonly [number, number, number, number];
 interface Plan {
+  /** The area's id. */
   readonly room: string;
+  /** The trainer's way in: default the room's «dentro» point. */
+  readonly door?: string;
+  readonly mounted?: readonly HerSpot[];
   readonly her: Partial<Record<HerSpot, L>>;
   readonly lap?: readonly [L, L];
   readonly trainer: L;
@@ -56,25 +69,41 @@ const SWIM_Y = SURFACE - 1.45;
 
 const PLANS: Readonly<Record<number, Plan>> = {
   // Centro médico (95, −100): the tribunal's table at (−9, 2), 3 × 1 m and 0,75 m high.
-  1: { room: "medico", her: { silla: [-9, 0, 0.6, N] }, trainer: [-9, 0, 3.4, S], anchors: { mesa: [-9, 0.75, 2] } },
+  1: { room: "entrenamiento:medico", her: { silla: [-9, 0, 0.6, N] }, trainer: [-9, 0, 3.4, S], anchors: { mesa: [-9, 0.75, 2] } },
   // The couch at (−2, 2.5), 2 × 0,8 m and 0,7 m high; the scale by it; the eye chart on the south wall. The doctor goes
   // with her from one to the next.
-  2: { room: "medico", her: { bascula: [-5, 0.05, 1.2, N], "camilla-sentada": [-2, 0.2, 2.25, S], "camilla-tumbada": [-2, 0.7, 2.5, W], "tabla-vista": [-2, 0, -3.2, S] }, trainer: [-0.6, 0, 1.3, W], trainerVia: [[0.2, 0, 2.6, S], [0.2, 0, 1.3, W]], beside: { "camilla-sentada": [-1.6, 0, 1.3, N], "camilla-tumbada": [-1.6, 0, 1.3, N], bascula: [-3.9, 0, 1.2, W], "tabla-vista": [-3.2, 0, -5.2, N] }, anchors: { bascula: [-5, 0, 1.2], pared: [-2, 1.5, -6.55] } },
+  2: { room: "entrenamiento:medico", her: { bascula: [-5, 0.05, 1.2, N], "camilla-sentada": [-2, 0.2, 2.25, S], "camilla-tumbada": [-2, 0.7, 2.5, W], "tabla-vista": [-2, 0, -3.2, S] }, trainer: [-0.6, 0, 1.3, W], trainerVia: [[0.2, 0, 2.6, S], [0.2, 0, 1.3, W]], beside: { "camilla-sentada": [-1.6, 0, 1.3, N], "camilla-tumbada": [-1.6, 0, 1.3, N], bascula: [-3.9, 0, 1.2, W], "tabla-vista": [-3.2, 0, -5.2, N] }, anchors: { bascula: [-5, 0, 1.2], pared: [-2, 1.5, -6.55] } },
   // The hypobaric chamber at (8, −1), 6 × 6 m, its floor 0,2 m up and its hatch to the west; she sits on its bench.
   // The trainer is the chamber's inside observer, as in a real altitude chamber run, in by the hatch, beside her; the
   // eye in the hatch's corner keeps both in a phone's narrow view.
-  4: { room: "medico", her: { camara: [9.9, 0.2, -1, W] }, trainer: [8.6, 0.2, -2.4, 0.75], trainerVia: [[3.6, 0, -1, E], [6, 0.2, -1, E]], anchors: { banco: [10.35, 0.65, -1] }, eye: [6, 1.8, 1.2] },
+  4: { room: "entrenamiento:medico", her: { camara: [9.9, 0.2, -1, W] }, trainer: [8.6, 0.2, -2.4, 0.75], trainerVia: [[3.6, 0, -1, E], [6, 0.2, -1, E]], anchors: { banco: [10.35, 0.65, -1] }, eye: [6, 1.8, 1.2] },
   // The NBL (95, 45): the pool of 62 × 31 m at the middle (its edge at z = −15,5), surface at −0,3 m.
-  3: { room: "nbl", her: { borde: [10, 0, -17.5, N], flotando: [6, SURFACE - 1.35, -12, N], balsa: [9, SURFACE - 0.15, -11, N], izada: [9, 2.4, -11, N] }, lap: [[-15, SWIM_Y + 1.2, -12, E], [10, SWIM_Y + 1.2, -12, E]], trainer: [13, 0, -18, N], anchors: { agua: [9, SURFACE, -11], techo: [9, 18, -11] } },
+  3: { room: "entrenamiento:nbl", her: { borde: [10, 0, -17.5, N], flotando: [6, SURFACE - 1.35, -12, N], balsa: [9, SURFACE - 0.15, -11, N], izada: [9, 2.4, -11, N] }, lap: [[-15, SWIM_Y + 1.2, -12, E], [10, SWIM_Y + 1.2, -12, E]], trainer: [13, 0, -18, N], anchors: { agua: [9, SURFACE, -11], techo: [9, 18, -11] } },
   // Post 7 by the west end of the same edge; the ISS mock-up on the bottom at the middle (8,5 × 4,3 m).
-  7: { room: "nbl", her: { "banco-traje": [-10, 0, -17.5, N], fondo: [0, -12 + 0.05, -5, N] }, trainer: [-12.5, 0, -18, E], anchors: { maqueta: [0, -12, 0] } },
+  7: { room: "entrenamiento:nbl", her: { "banco-traje": [-10, 0, -17.5, N], fondo: [0, -12 + 0.05, -5, N] }, trainer: [-12.5, 0, -18, E], anchors: { maqueta: [0, -12, 0] } },
+  // ── Phase 5 ──
+  // The centrifuge (225, 55): the arm's 18 m to the gondola (at rest to the east, k times wider on the plan); the
+  // medical monitor at the console, out of the arm's sweep, comes to her for the electrodes.
+  5: { room: "entrenamiento:centrifuga", her: { "junto-gondola": [17, 0, -3.4, N], gondola: [18, 0.5, 0, W] }, mounted: ["gondola"], trainer: [-16, 0, 10.6, N], trainerVia: [[-19, 0, -10, E], [-19, 0, 10.6, E]], beside: { "junto-gondola": [18.8, 0, -3.6, N] }, anchors: {} },
+  // The SVMF (95, −45): the Dragon mock-up at (12, 0), its floor 0,6 m up and its hatch to the west; the instructor's
+  // desk outside the hatch. The LM mock-up south of the middle (its cockpit, for the landing practice).
+  8: { room: "entrenamiento:svmf", her: { "dragon-asiento": [11.6, 0.6, 0, E] }, trainer: [8.6, 0, 1.4, E], trainerVia: [[0, 0, 8, S], [8.6, 0, 8, S]], anchors: { pantalla: [13.55, 1.6, 0], lm: [0, 0, -9] }, eye: [10.75, 1.85, -1.1] },
+  // Mission control (215, −25): the robotics desk in the middle row; the instructor beside her; the big screen.
+  9: { room: "entrenamiento:control", her: { "robotica-puesto": [7.5, 0, -2.1, N] }, trainer: [9.3, 0, -2.6, -0.6], trainerVia: [[10.6, 0, -8.4, N], [10.6, 0, -2.6, W]], anchors: { pantalla: [0, 3.5, 9.3], mandos: [7.5, 0.78, -1.3] } },
+  // The runway's apron on the glacier: the A310 Zero-G (nose east) at (−1380, −82) of the glacier, its stairs to the
+  // south, aft; the plan is the runway area's (its centre at (0, −107,5)). In flight she and the coach ride the cabin.
+  6: { room: "glaciar:pista", door: "glaciar:pista:escalerilla", her: { "avion-escalerilla": [-1395, 0, 14, N], "avion-asiento": [-1380, 2.2, 25.5, E], "avion-suelo": [-1380, 2.2, 25.5, E], "avion-flotando": [-1380, 2.2, 25.5, E] }, mounted: ["avion-asiento", "avion-suelo", "avion-flotando"], trainer: [-1392, 0, 12.5, N], anchors: {} },
+  // The blue-ice field (its centre at (−1260, −10) of the glacier): the line of snowmobiles to the west.
+  11: { room: "glaciar:hielo-azul", door: "glaciar:hielo-azul:borde", her: { moto: [-14, 0, 0, E], meteorito: [0, 0, 0, E] }, trainer: [0.8, 0, 1.5, S], anchors: { "moto-nieve": [-2.6, 0, -1.6], meteorito: [0.75, 0, 0], gps: [0.55, 0, 0.35], bandera: [1.3, 0, 0.6] } },
+  // The cold-survival site (its centre at (−1442,5, 55) of the glacier): the wind from the south (−z).
+  12: { room: "glaciar:supervivencia", door: "glaciar:supervivencia:borde", her: { tienda: [-3, 0, -1.4, N], muro: [3, 0, -6, S], zanja: [-6.2, 0, -6.4, N], hornillo: [0.6, 0, 2.5, W], radio: [4, 0, 3, E] }, trainer: [1.5, 0, -1, W], beside: { tienda: [-1.4, 0, -1.4, W], muro: [3, 0, -4.6, S], zanja: [-7.9, 0, -6.4, E], hornillo: [0.6, 0, 4.1, S], radio: [4, 0, 4.6, S] }, anchors: { "tienda-scott": [-3, 0, 1], "muro-nieve": [3, 0, -6.7], "zanja-techo": [-6.2, 0, -4.5], hornillo: [-0.4, 0, 2.5], olla: [-0.4, 0.28, 2.5], "radio-hf": [4.8, 0, 3], antena: [7, 0, 3] } },
 };
 
 /** The stage of post `post` in this layout (undefined for a post with no challenge yet). */
 export function stageFor(layout: S3Layout, post: number): Stage | undefined {
   const p = PLANS[post];
   if (!p) return undefined;
-  const area = layout.areas.find((a) => a.id === `entrenamiento:${p.room}`);
+  const area = layout.areas.find((a) => a.id === p.room);
   if (!area) return undefined;
   const k = layout.k;
   const c = area.centre;
@@ -87,6 +116,8 @@ export function stageFor(layout: S3Layout, post: number): Stage | undefined {
   return {
     post,
     room: p.room,
+    door: p.door ?? `${p.room}:dentro`,
+    mounted: p.mounted ?? [],
     her,
     ...(p.lap ? { lap: { from: at(p.lap[0]), to: at(p.lap[1]) } } : {}),
     trainer: at(p.trainer),

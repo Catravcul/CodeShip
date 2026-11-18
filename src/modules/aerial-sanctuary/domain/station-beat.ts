@@ -19,10 +19,25 @@ export type HerSpot =
   | "izada" // hoisted on the rescue harness
   | "camara" // seated inside the hypobaric chamber
   | "banco-traje" // standing at the suit's stand on the pool's edge
-  | "fondo"; // on the pool's floor by the ISS mock-up
+  | "fondo" // on the pool's floor by the ISS mock-up
+  | "junto-gondola" // standing by the centrifuge's gondola
+  | "gondola" // strapped in the centrifuge's gondola (it spins with the arm)
+  | "avion-escalerilla" // at the foot of the A310's stairs
+  | "avion-asiento" // in a seat at the back of the A310's cabin
+  | "avion-suelo" // lying on the padded floor of the test zone (the 1,8 g phases)
+  | "avion-flotando" // floating in the test zone (0 g)
+  | "dragon-asiento" // in the commander's seat of the Dragon simulator
+  | "robotica-puesto" // at the robotics workstation, hands on the two controllers
+  | "moto" // on a snowmobile in the search line
+  | "meteorito" // by the meteorite on the blue ice
+  | "tienda" // pitching the Scott tent
+  | "muro" // building the snow wall
+  | "zanja" // in the snow trench
+  | "hornillo" // by the stove
+  | "radio"; // by the HF radio
 
 /** How she holds herself. */
-export type HerPose = "de-pie" | "sentada" | "tumbada" | "nadando" | "flotando" | "brazos-arriba" | "mano-adelante" | "mareada" | "neutra";
+export type HerPose = "de-pie" | "sentada" | "tumbada" | "nadando" | "flotando" | "brazos-arriba" | "mano-adelante" | "mareada" | "neutra" | "recostada" | "manos-mandos" | "rodillas" | "moto" | "boca-abajo";
 
 /** The things in the beat. */
 export type Thing =
@@ -42,10 +57,42 @@ export type Thing =
   | "torso-emu"
   | "casco"
   | "plomo"
-  | "espuma";
+  | "espuma"
+  | "sensores" // the centrifuge's ECG leads and the reaction button
+  | "boton" // the hand control with the button (TsF-18: cancel the light)
+  | "casco-vuelo" // a headset in the simulator
+  | "mandos" // the robotics workstation's two hand controllers
+  | "gps"
+  | "etiqueta" // the meteorite's aluminium tag with its number
+  | "contador" // the counter and scale held over the find for the photo
+  | "camara-foto"
+  | "libro" // the field book
+  | "pinzas"
+  | "bolsa" // the sterile Teflon bag
+  | "cinta" // the freezer tape
+  | "bandera"
+  | "meteorito"
+  | "tienda-scott"
+  | "muro-nieve"
+  | "moto-nieve"
+  | "zanja-techo"
+  | "hornillo"
+  | "olla"
+  | "radio-hf"
+  | "antena";
 
 /** Where a thing is: on the table, in a hand (hers or the trainer's), on her (arm, chest, face, body, waist), in the water. */
-export type ThingSpot = "mesa" | "mano-ella" | "mano-entrenador" | "brazo" | "pecho" | "cara" | "cuerpo" | "cintura" | "agua" | "pared";
+export type ThingSpot = "mesa" | "mano-ella" | "mano-entrenador" | "brazo" | "pecho" | "cara" | "cuerpo" | "cintura" | "agua" | "pared" | "sitio";
+
+/**
+ * What a machine of the post does in the beat: the centrifuge spinning up to `g` (its gondola swings out), the A310
+ * at a phase of its flight (seen from outside on the runway and climbing out, from its cabin in the parabolas), the
+ * simulator's screens showing a phase, the snowmobile line sweeping the ice.
+ */
+export type RigCue =
+  | { readonly kind: "centrifuga"; readonly g: number }
+  | { readonly kind: "avion"; readonly phase: "parado" | "despegue" | "tiron" | "ingravidez" | "salida" | "aterrizaje"; readonly g: number }
+  | { readonly kind: "pantalla"; readonly show: "lanzamiento" | "aborto" | "acople" | "fallo" | "reentrada" | "alunizaje" };
 
 export interface Beat {
   readonly her: HerSpot;
@@ -58,6 +105,8 @@ export interface Beat {
   readonly caption: string;
   /** For a loop: how many times the motion repeats (a length swum three times). */
   readonly times?: number;
+  /** What the post's machine does meanwhile. */
+  readonly rig?: RigCue;
 }
 
 /** The beats of a challenge: per exercise, one per step of an order (in its order) or one for a question. */

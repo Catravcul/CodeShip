@@ -4,9 +4,10 @@ import type { Beat, Beats } from "../domain/station-beat";
 import { S3_SOURCES as S } from "../data/sources";
 import { TRAINING } from "../data/facts";
 import { block, choice, order } from "./challenge-kit";
+import { phase5Stations } from "./stations-phase5";
 
 /**
- * The challenges of posts 1–4 and 7 of the initiation (docs/design/santuario3-iniciacion.md §4.1; phase 4,
+ * The challenges of posts 1–4 and 7 of the initiation (and, from stations-phase5.ts, 5, 6, 8, 9, 11 and 12) (docs/design/santuario3-iniciacion.md §4.1; phase 4,
  * `s3-iniciacion-1`). Each is a chore of real steps with the real numbers and their source, and its beats: what is
  * seen happening at the post as each step is answered right (domain/station-beat.ts). The NBL post reuses the EMU's
  * suit-up steps of the spacewalk (modules/eva).
@@ -218,7 +219,7 @@ function nbl(): Station {
 
 /** Posts 1–4 and 7, by post. */
 export function stations(): Station[] {
-  return [selection(), medical(), swim(), chamber(), nbl()];
+  return [selection(), medical(), swim(), chamber(), nbl(), ...phase5Stations()].sort((a, b) => a.post - b.post);
 }
 
 export const stationFor = (post: number): Station | undefined => stations().find((s) => s.post === post);

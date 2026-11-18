@@ -5,7 +5,7 @@ import type { WayGraph, WayPoint } from "../domain/route";
 import type { IslandPad } from "../domain/travel";
 import { requiredPadHeight, launchFirstFloorY, type ElevatedThing } from "../domain/launch-height";
 import { turbineTopM } from "../domain/energy";
-import { CREW_PAD, CROWN, HEIGHT_RULE, HELIDECK_M, SITE, TABLE, TRAINING, TREE, TURBINE, TURBINES, TIDAL_UNITS, STORAGE, SOLAR, FLOORS_KW, ELECTRON, FALCON9_CREW } from "./facts";
+import { CREW_PAD, CROWN, HEIGHT_RULE, HELIDECK_M, SITE, TABLE, TRAINING, TREE, TURBINE, TURBINES, TIDAL_UNITS, STORAGE, SOLAR, FLOORS_KW, ELECTRON, FALCON9_CREW, GLACIER, ZERO_G } from "./facts";
 import { tablesFor } from "../domain/energy";
 import { S3_SOURCES as S } from "./sources";
 
@@ -19,7 +19,7 @@ import { S3_SOURCES as S } from "./sources";
  * draws every area `k` times bigger on the plan, Cold Sanctuary's too (§2.4): each room about its centre, each cap,
  * the dock and the crew pad about theirs (`Builder.widen`); heights stay true, and the islands keep their places.
  */
-export type IslandId = "entrenamiento" | "lanzadera" | "parque" | "muelle" | "plataforma";
+export type IslandId = "entrenamiento" | "lanzadera" | "parque" | "muelle" | "plataforma" | "glaciar";
 
 export interface IslandDef {
   readonly id: IslandId;
@@ -101,7 +101,11 @@ export interface Prop {
     | "tree"
     | "lift-shaft"
     | "battery"
-    | "sign";
+    | "sign"
+    | "a310"
+    | "scott-tent"
+    | "snowmobile"
+    | "snow-wall";
   readonly x: number;
   readonly y: number;
   readonly z: number;
@@ -583,13 +587,15 @@ const ROOMS: readonly RoomDef[] = [
   {
     id: "svmf",
     label: "Nave de maquetas (SVMF)",
-    desc: "Como el edificio 9 de Johnson: maquetas a escala real de la ISS y de Dragon para entrenar sistemas, emergencias y la vida a bordo (puesto 8)",
+    desc: "Como el edificio 9 de Johnson: maquetas a escala real de la ISS, de Dragon y de la cabina del LM para entrenar sistemas, emergencias y la vida a bordo (puesto 8)",
     reality: "real",
     centre: { x: 95, z: -45 },
     half: { x: 30, z: 18 },
     height: 16,
     door: { side: "n", at: 0, width: 4 },
     road: "z",
+    // The LM's cockpit mock-up (drawn by the scene: the lander's own cabin and instruments), for post 8's landing.
+    items: [{ look: "lm-maqueta", x: 0, z: -9, w: 2, d: 2, h: 2.4 }],
     compartments: [
       { id: "svmf-destiny", label: "Maqueta de Destiny", desc: "El laboratorio estadounidense a escala real (8,5 m × Ø 4,3 m): sus bastidores y su puesto robótico", x: -12, z: 0, w: TRAINING.destiny.value.length, d: TRAINING.destiny.value.diameter, h: 4.3, floorY: 0.4, hatch: { side: "e", width: 1.3 }, reality: "real" },
       { id: "svmf-dragon", label: "Maqueta de Crew Dragon", desc: "La cápsula a escala real (Ø 4 m): cuatro asientos, las tres pantallas táctiles y los botones bajo la tapa", x: 12, z: 0, w: 4, d: 4, h: 3.5, floorY: 0.6, hatch: { side: "w", width: 1.2 }, reality: "real" },
@@ -758,10 +764,9 @@ export function buildLayout(k = 1): S3Layout {
   b.link(...zs.map((p) => p.id));
   b.area({ id: "entrenamiento:isla", island: "entrenamiento", label: "Isla de entrenamiento (exterior)", desc: "Una isla con las instalaciones reales de formación de astronautas (§1.2): todo aquí es real", reality: "real", centre: { x: (ti.x0 + ti.x1) / 2, y: 0.5, z: (ti.z0 + ti.z1) / 2 }, half: { x: (ti.x1 - ti.x0) / 2, y: 0.5, z: (ti.z1 - ti.z0) / 2 }, point: cross });
   b.area({ id: "entrenamiento:helipuerto", island: "entrenamiento", label: "Helipuerto", desc: "Cubierta de 1 D para el S-92 que la trajo; desde aquí se vuela a las demás islas", reality: "real", centre: { x: heliC.x, y: 0.5, z: heliC.z }, half: { x: hd, y: 0.5, z: hd }, point: heliMid });
-  b.machine({ id: "nav-entrenamiento", kind: "navegacion", island: "entrenamiento", area: "entrenamiento:helipuerto", label: "Máquina de navegación", what: "El mapa de las islas: elegir adónde volar en el helicóptero", x: heliC.x - hd - 2.5, y: 0, z: heliC.z - 3 }, heliEdge);
+  b.machine({ id: "nav-entrenamiento", kind: "navegacion", island: "entrenamiento", area: "entrenamiento:helipuerto", label: "Máquina de navegación", what: "El mapa de las islas: elegir adónde volar en el helicóptero (también al glaciar: vuelo parabólico, meteoritos y frío)", x: heliC.x - hd - 2.5, y: 0, z: heliC.z - 3 }, heliEdge);
   b.block("kiosco", { ...around(heliC.x - hd - 4.2, heliC.z - 3, 0.5), y0: 0, y1: 1.3 });
   b.props.push({ kind: "nav-machine", x: heliC.x - hd - 4.2, y: 0, z: heliC.z - 3, rot: Math.PI / 2 });
-  b.machine({ id: "helipuerto-vuelos", kind: "puesto", island: "entrenamiento", area: "entrenamiento:helipuerto", label: "Vuelos de formación", what: "Vuelo parabólico, geología en el hielo y supervivencia en frío salen de aquí, a sitios fuera del mapa", x: heliC.x - hd + 1.5, y: 0.05, z: heliC.z + 3, post: 6 }, heliEdge);
   pads.push({ island: "entrenamiento", at: { x: heliC.x, y: 0.05, z: heliC.z }, crafts: ["helicoptero"] });
 
   // ── The aerial sanctuary: three caps of Cold Sanctuary at their coordinates, with all their magic ──
@@ -895,18 +900,93 @@ export function buildLayout(k = 1): S3Layout {
   b.widen(crewMark, C, k);
   pads.push({ island: "plataforma", at: { ...wide(C, cHeli.x, cHeli.z), y: cy + 0.05 }, crafts: ["helicoptero"] });
 
+
+  // ── The glacier (off the islands, reached by helicopter): a blue-ice runway like Union Glacier's with the A310
+  // Zero-G on its apron, a field camp, a blue-ice field for the meteorite search and the cold-survival site ──
+  const G = GLACIER.at.value;
+  const gh = GLACIER.half.value;
+  const rw = GLACIER.runway.value;
+  const plane = ZERO_G.plane.value;
+  const glMark = b.mark();
+  const g = (x: number, z: number) => ({ x: G.x + x, z: G.z + z });
+  const gr = (x0: number, x1: number, z0: number, z1: number) => R(G.x + x0, G.x + x1, G.z + z0, G.z + z1);
+  const runway = gr(-rw.length / 2, rw.length / 2, -150 - rw.width / 2, -150 + rw.width / 2);
+  const apron = gr(-1425, -1335, -125, -40);
+  // The camp and the three posts within a short walk of each other (the crew walks there and back each shift).
+  const camp = gr(-1452, -1428, -95, -65);
+  const field = gr(-1455, -1425, -60, -30);
+  const survival = gr(-1475, -1455, -95, -60);
+  const gPad = g(-1440, -5);
+  const gPadR = around(gPad.x, gPad.z, hd);
+  const glHalls = [runway, apron, camp, field, survival, gPadR];
+  for (const r of subtractAll(gr(-gh.x, gh.x, -gh.z, gh.z), glHalls)) b.floor("glaciar:hielo", 0, r);
+  b.floor("glaciar:pista", 0, runway);
+  b.floor("glaciar:pista", 0, apron);
+  b.floor("glaciar:campamento", 0, camp);
+  b.floor("glaciar:hielo-azul", 0, field);
+  b.floor("glaciar:supervivencia", 0, survival);
+  b.floor("glaciar:helipuerto", 0.05, gPadR);
+  b.block("hielo", { ...gr(-gh.x, gh.x, -gh.z, gh.z), y0: -8, y1: -0.26 }, false);
+  b.props.push({ kind: "helideck", x: gPad.x, y: 0.05, z: gPad.z, size: { x: hd * 2, y: 0.1, z: hd * 2 } });
+  // The A310 Zero-G on the apron, nose east to the runway; its rear left door's stairs to the south.
+  const ac = g(-1380, -82);
+  b.props.push({ kind: "a310", x: ac.x, y: 0, z: ac.z, label: "Airbus A310 Zero-G" });
+  const stairs = g(-1395, -92);
+  // The camp: a mess tent and Scott tents (the field parties' pyramid tents).
+  b.block("tienda-comedor", { ...gr(-1450, -1440, -93, -86), y0: 0, y1: 3 }, true);
+  for (const [x, z] of [[-1449, -74], [-1449, -67], [-1434, -67]] as const) {
+    b.props.push({ kind: "scott-tent", x: G.x + x, y: 0, z: G.z + z });
+    b.solids.push({ ...around(G.x + x, G.z + z, 1.2), y0: 0, y1: 2.4 });
+  }
+  // The snowmobiles of the search line, parked at the blue ice's edge, 30 m apart in the search.
+  for (const z of [-56, -50, -44]) b.props.push({ kind: "snowmobile", x: G.x - 1428, y: 0, z: G.z + z, rot: Math.PI });
+  const gCamp = b.point("glaciar:campamento", G.x - 1440, 0, G.z - 80);
+  const gPadMid = b.point("glaciar:helipuerto:centro", gPad.x, 0.05, gPad.z + 4);
+  const gPadEdge = b.point("glaciar:helipuerto:borde", gPad.x - hd + 1.5, 0.05, gPad.z);
+  const gApron = b.point("glaciar:pista:plataforma", G.x - 1395, 0, G.z - 30);
+  // Round the plane's tail to its stairs.
+  const gTail = b.point("glaciar:pista:cola", G.x - 1412, 0, G.z - 60);
+  const gStairs = b.point("glaciar:pista:escalerilla", G.x - 1412, 0, G.z - 95);
+  const gField = b.point("glaciar:hielo-azul:borde", G.x - 1445, 0, G.z - 56);
+  const gSurv = b.point("glaciar:supervivencia:borde", G.x - 1457, 0, G.z - 80);
+  b.link(gPadMid, gPadEdge, gCamp);
+  b.link(gCamp, gStairs);
+  b.link(gCamp, gTail, gApron);
+  b.link(gCamp, gField);
+  b.link(gCamp, gSurv);
+  const outdoor = (id: string, label: string, desc: string, reality: Reality, r: Rect, point: string) => b.area({ id, island: "glaciar", label, desc, reality, centre: { x: (r.x0 + r.x1) / 2, y: 8, z: (r.z0 + r.z1) / 2 }, half: { x: (r.x1 - r.x0) / 2, y: 8, z: (r.z1 - r.z0) / 2 }, point });
+  outdoor("glaciar:hielo", "Glaciar", "El hielo alrededor de la pista y del campamento (fuera de las islas: la pista no cabe en ellas)", "licencia", gr(-gh.x, gh.x, -gh.z, gh.z), gCamp);
+  outdoor("glaciar:pista", "Pista de hielo azul", `Una pista de hielo azul de ${rw.length} × ${rw.width} m como la de Union Glacier, con el A310 Zero-G en su plataforma (puesto 6)`, "real", R(Math.min(runway.x0, apron.x0), runway.x1, runway.z0, apron.z1), gApron);
+  outdoor("glaciar:campamento", "Campamento del glaciar", "La tienda comedor y las tiendas Scott de la gente del glaciar, que entrena y come aquí", "real", camp, gCamp);
+  outdoor("glaciar:hielo-azul", "Campo de hielo azul", "Donde el viento deja el hielo desnudo y aparecen los meteoritos: la búsqueda de ANSMET en motos de nieve (puesto 11)", "real", field, gField);
+  outdoor("glaciar:supervivencia", "Supervivencia en frío", "Tiendas, muro de nieve, zanja y radio, como en la escuela de campo antártica (puesto 12)", "real", survival, gSurv);
+  outdoor("glaciar:helipuerto", "Helipuerto del glaciar", "Para el S-92 desde la isla de entrenamiento", "real", gPadR, gPadMid);
+  b.machine({ id: "nav-glaciar", kind: "navegacion", island: "glaciar", area: "glaciar:helipuerto", label: "Máquina de navegación", what: "El mapa de las islas: helicóptero a la isla de entrenamiento", x: gPad.x - hd - 2.5, y: 0, z: gPad.z - 3 }, gPadEdge);
+  b.block("kiosco", { ...around(gPad.x - hd - 4.2, gPad.z - 3, 0.5), y0: 0, y1: 1.3 });
+  b.props.push({ kind: "nav-machine", x: gPad.x - hd - 4.2, y: 0, z: gPad.z - 3, rot: Math.PI / 2 });
+  b.machine({ id: "glaciar-avion", kind: "puesto", island: "glaciar", area: "glaciar:pista", label: "A310 Zero-G (escalerilla)", what: "31 parábolas: 1,8 g, unos 20 s de ingravidez y 1,8 g (puesto 6)", x: stairs.x, y: 0, z: stairs.z, post: 6 }, gStairs);
+  b.machine({ id: "glaciar-meteoritos", kind: "puesto", island: "glaciar", area: "glaciar:hielo-azul", label: "Búsqueda de meteoritos", what: "Motos de nieve a 30 m, el GPS, el número, la foto y la bolsa estéril (puesto 11)", x: G.x - 1450, y: 0, z: G.z - 40, post: 11 }, gField);
+  b.machine({ id: "glaciar-supervivencia", kind: "puesto", island: "glaciar", area: "glaciar:supervivencia", label: "Supervivencia en frío", what: "Tienda Scott, muro de nieve, zanja, agua y radio de HF (puesto 12)", x: G.x - 1460, y: 0, z: G.z - 86, post: 12 }, gSurv);
+  b.widen(glMark, G, k);
+  // The plane keeps its true size (only its place is widened): its fuselage is solid.
+  const acW = wide(G, ac.x, ac.z);
+  b.solids.push({ ...around(acW.x, acW.z, plane.length / 2, plane.fuselage / 2), y0: 0, y1: 7.5 });
+  pads.push({ island: "glaciar", at: { ...wide(G, gPad.x, gPad.z), y: 0.05 }, crafts: ["helicoptero"] });
+
   const islands: IslandDef[] = [
     { id: "entrenamiento", name: "Isla de entrenamiento", desc: "Las instalaciones reales de formación: la piscina NBL, la centrífuga, las maquetas, el control de misión, el centro médico y el helipuerto. Todo aquí es real", reality: "real", source: S.ours, rect: R(ti.x0, ti.x1, ti.z0, ti.z1), deckY: 0, pad: pads[0]!, arrival: "entrenamiento:helipuerto:centro", nav: "m:nav-entrenamiento" },
     { id: "lanzadera", name: "Lanzadera de cohetes", desc: "El casquete de Cold Sanctuary con su edificio-árbol de agua, el ascensor del tronco y la corona del Electron en lo alto (con toda su magia)", reality: "ficcion", source: S.csBuilder, rect: around(L.x, L.z, LH * k), deckY: 0, pad: pads[1]!, arrival: "lanzadera:helipuerto", nav: "m:nav-lanzadera" },
     { id: "parque", name: "Parque energético", desc: "El casquete del parque: el árbol bajo, el campo solar, los tres E-33 de Ross Island con su parada por aves y la mareal piloto", reality: "ficcion", source: S.csBuilder, rect: around(E.x, E.z, EH * k), deckY: 0, pad: pads.find((p) => p.island === "parque")!, arrival: "parque:anden", nav: "m:nav-parque" },
     { id: "muelle", name: "Muelle aéreo", desc: "El muelle de las alfombras voladoras de Cold Sanctuary", reality: "ficcion", source: S.csBuilder, rect: around(Dk.x, Dk.z, (dz.x / 2) * k, (dz.z / 2) * k), deckY: 0, pad: pads.find((p) => p.island === "muelle")!, arrival: "muelle:pista", nav: "m:nav-muelle" },
     { id: "plataforma", name: "Plataforma de tripulación", desc: "El Falcon 9 con la Crew Dragon en una plataforma en el mar, a ~1,1 km: la distancia de seguridad de un cohete tripulado", reality: "licencia", source: S.odyssey, rect: around(C.x, C.z, (cs.x / 2) * k, (cs.z / 2) * k), deckY: cy, pad: pads.find((p) => p.island === "plataforma")!, arrival: "plataforma:helipuerto", nav: "m:nav-plataforma" },
+    { id: "glaciar", name: "Glaciar", desc: "Un glaciar fuera de las islas con una pista de hielo azul como la de Union Glacier: el A310 Zero-G, la búsqueda de meteoritos y la supervivencia en frío", reality: "licencia", source: S.blueIce, rect: around(G.x, G.z, gh.x * k, gh.z * k), deckY: 0, pad: pads.find((p) => p.island === "glaciar")!, arrival: "glaciar:helipuerto:centro", nav: "m:nav-glaciar" },
   ];
 
   const inhabited = [
     { id: "isla de entrenamiento", ...R(ti.x0, ti.x1, ti.z0, ti.z1) },
     { id: "Parque Energético (tronco)", ...around(E.x, E.z, (TREE.waterHalf.value + TREE.wall.value) * k) },
     { id: "muelle aéreo", ...around(Dk.x, Dk.z, (dz.x / 2) * k, (dz.z / 2) * k) },
+    { id: "campamento del glaciar", ...around(G.x + (-1440) * k, G.z + -80 * k, 15 * k, 15 * k) },
   ];
   void FALCON9_CREW;
   return {

@@ -18,7 +18,7 @@ const NOTHING: Record<Vehicle, string> = { nodriza: "Nada pendiente en la nave",
  * Two views, like a branch of the root menu (Berón, 2026-11-17; docs/design/viaje-a-una-tarea.md §Ajustes de tareas):
  * the list, and its settings behind the gear next to ✕. The settings hold «Viaje / Teletransporte»
  * (`taskTravel`), the vehicle (`taskVehicle`: automatic = where she is, the Starship, the station,
- * the lander or every one; both in `codeship.ajustes`, their only place) and the group chips.
+ * the lander or every one; both in `codeship.ajustes`, their only place). The group chips stay in the list.
  * In the settings the gear turns into a list icon that goes back to the list.
  */
 export class TaskBoard {
@@ -104,7 +104,7 @@ export class TaskBoard {
     const head = `<div class="board-head"><b>${settingsView ? "Ajustes de tareas" : "Tareas"}</b><span class="tb-head-btns">${toggle}<button data-close aria-label="Cerrar tareas">✕</button></span>`;
     this.el.setAttribute("aria-label", settingsView ? "Ajustes de tareas" : "Tareas");
     if (settingsView) {
-      this.el.innerHTML = `${head}</div>${this.settingsBody(all, here, groups, inVehicle.length)}`;
+      this.el.innerHTML = `${head}</div>${this.settingsBody(all, here)}`;
       return;
     }
     const groupLabel = this.group ? groups.find((g) => g.id === this.group)?.label : undefined;
@@ -112,8 +112,11 @@ export class TaskBoard {
     const count = shown.reduce((n, g) => n + g.tasks.length, 0);
     const where = vehicle ? `${IN[vehicle]}${filter === "auto" ? " (automático)" : ""}` : "Todos los vehículos";
     const scope = `<p class="tb-scope">${where}${groupLabel ? ` · ${groupLabel}` : ""} · ${count} de ${all.length}</p>`;
-    const elsewhere = all.length - count;
-    const hint = elsewhere > 0 ? `<p class="tb-hint">${elsewhere === 1 ? "Hay 1 tarea más" : `Hay ${elsewhere} tareas más`} fuera de este filtro: ⚙︎ Ajustes de tareas › Todos.</p>` : "";
+    // The groups are chips in the list itself (Berón, 2026-11-18); the vehicle and the way there, behind the gear.
+    const chip = (id: TaskGroupId | null, text: string, k: number) => `<button class="chip ${this.group === id ? "on" : ""}" data-group="${id ?? ""}" aria-pressed="${this.group === id}">${text} <small>${k}</small></button>`;
+    const chips = groups.length ? `<div class="chips tb-chips">${chip(null, "Todas", inVehicle.length)}${groups.map((g) => chip(g.id, g.label, g.tasks.length)).join("")}</div>` : "";
+    const elsewhere = all.length - inVehicle.length;
+    const hint = elsewhere > 0 ? `<p class="tb-hint">${elsewhere === 1 ? "Hay 1 tarea más" : `Hay ${elsewhere} tareas más`} en otros vehículos: ⚙︎ Ajustes de tareas › Todos.</p>` : "";
     const body = shown
       .map(
         (g) =>
@@ -122,15 +125,11 @@ export class TaskBoard {
             .join("")}`,
       )
       .join("");
-    this.el.innerHTML = `${head}${scope}</div>${body || `<p class="tb-empty">${vehicle && !groupLabel ? NOTHING[vehicle] : "Nada pendiente"}</p>`}${hint}`;
+    this.el.innerHTML = `${head}${scope}${chips}</div>${body || `<p class="tb-empty">${vehicle && !groupLabel ? NOTHING[vehicle] : "Nada pendiente"}</p>`}${hint}`;
   }
 
-  /** The settings view: how «Ir» gets there, which vehicle, which group. */
-  private settingsBody(all: Task[], here: Vehicle, groups: ReturnType<typeof groupTasks>, nShown: number): string {
-    const travel = travelHtml("tb-s-travel");
-    const vehicles = vehicleHtml("tb-s-vehicle", here, (v) => tasksIn(all, v).length);
-    const chip = (id: TaskGroupId | null, text: string, k: number) => `<button class="chip ${this.group === id ? "on" : ""}" data-group="${id ?? ""}" aria-pressed="${this.group === id}">${text} <small>${k}</small></button>`;
-    const chips = `<h3 class="tb-group">Grupo</h3><div class="chips tb-chips">${chip(null, "Todas", nShown)}${groups.map((g) => chip(g.id, g.label, g.tasks.length)).join("")}</div>`;
-    return `<div class="tb-settings">${travel}${vehicles}${chips}</div>`;
+  /** The settings view: how «Ir» gets there and which vehicle (shared with Áreas). */
+  private settingsBody(all: Task[], here: Vehicle): string {
+    return `<div class="tb-settings">${travelHtml("tb-s-travel")}${vehicleHtml("tb-s-vehicle", here, (v) => tasksIn(all, v).length)}</div>`;
   }
 }

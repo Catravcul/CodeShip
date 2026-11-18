@@ -126,7 +126,7 @@ export class Journey {
   /**
    * With the task list open, change its settings with visible taps (docs/design/viaje-a-una-tarea.md
    * §Ajustes de tareas): the gear next to ✕, then each `[data-…="…"]` choice (e.g. `vehicle: "todos"`,
-   * `travel: "teletransporte"`, `group: "comida"`), then the list icon back to the list.
+   * `travel: "teletransporte"`), then the list icon back to the list. The group chips are in the list itself.
    */
   async taskSettings(choices) {
     let ok = await this.tap('.task-board .board-head [data-view][aria-label="Ajustes de tareas"]', "⚙︎ Ajustes de tareas");

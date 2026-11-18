@@ -7,7 +7,7 @@
 .tb-task span { font-size: 12px; opacity: 0.85; }
 .tb-go { flex: none; min-width: 52px; min-height: 44px; font: inherit; font-weight: 700; color: #001018; background: #7fdcff; border: 0; border-radius: 10px; }
 .task-board .board-head button[data-close] { min-width: 44px; min-height: 44px; }
-.task-board .chip { min-height: 44px; display: inline-flex; align-items: center; }
+.task-board .chip { min-height: 44px; display: inline-flex; align-items: center; gap: 4px; }
 body.in-tasks .vstick, body.in-tasks .zg-controls, body.in-tasks .cab-machine { display: none !important; }
 /* Header: [⚙︎ / list] [✕] on the right; the gear swaps the list for its settings (viaje-a-una-tarea.md §Ajustes de tareas). */
 .tb-head-btns { display: flex; gap: 4px; margin-left: auto; }
@@ -24,10 +24,6 @@ body.in-tasks .vstick, body.in-tasks .zg-controls, body.in-tasks .cab-machine { 
 .task-board .tb-vehicles button.auto { grid-column: 1 / -1; }
 .task-board .tb-vehicles button small { font-weight: 400; opacity: 0.8; }
 .task-board .tb-vehicles button.on { color: #001018; background: #7fdcff; border-color: #7fdcff; }
-.tb-settings .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.tb-settings .chip { flex: none; gap: 4px; font: inherit; font-size: 13px; color: #cfe8f5; background: #13243a; border: 1px solid #2c4a6a; border-radius: 999px; padding: 0 12px; }
-.tb-settings .chip small { opacity: 0.7; }
-.tb-settings .chip.on { background: #7fdcff; color: #06202b; border-color: #7fdcff; }
 /* «Viaje / Teletransporte»: how «Ir» gets there, a two-way switch in the list's settings. */
 .tb-travel { display: flex; width: 100%; padding: 3px; gap: 3px; background: #0b1726; border: 1px solid #2c4a6a; border-radius: 12px; }
 .task-board .tb-travel button { flex: 1; min-height: 44px; font: inherit; font-size: 15px; font-weight: 700; color: #a9cfdc; background: transparent; border: 0; border-radius: 9px; }

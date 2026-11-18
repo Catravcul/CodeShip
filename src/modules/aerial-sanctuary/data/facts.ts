@@ -163,5 +163,5 @@ export const TRAINING = {
   centrifugeArmM: fact(18, "real", S.centrifuge, "TsF-18, a confirmar"),
   swimLapM: fact(25, "real", S.training, "3 largos de 25 m sin parar"),
   destiny: fact({ length: 8.5, diameter: 4.3 }, "real", "Wikipedia, Destiny (módulo de la ISS): https://en.wikipedia.org/wiki/Destiny_(ISS_module)"),
-  consoles: fact({ rows: 3, perRow: 4 }, "real", `${S.csLaunch}; ${S.dragonTraining}`, "sala de control genérica, como el P2 de Cold Sanctuary"),
+  consoles: fact({ rows: 4, perRow: 4 }, "real", `${S.fcr1}; ${S.mocrRows}`, "16 consolas como la FCR-1 antes de 2006, en cuatro filas como la sala del Apolo; las dos de delante, más bajas; qué puesto va en cada consola es nuestro salvo FLIGHT (3.ª fila) y CAPCOM (2.ª)"),
 } as const;

@@ -89,7 +89,8 @@ for (const k of [1, 1.5]) {
     });
 
     it("los edificios de la isla de entrenamiento caben en la isla y no se pisan, a esta escala", () => {
-      const rooms = L.areas.filter((a) => a.island === "entrenamiento" && !["entrenamiento:isla", "entrenamiento:helipuerto"].includes(a.id) && !/destiny|dragon|hipobarica/.test(a.id));
+      // The buildings (their rooms within, as the NBL's control room or the mock-ups, are inside them).
+      const rooms = L.areas.filter((a) => a.island === "entrenamiento" && !["entrenamiento:isla", "entrenamiento:helipuerto"].includes(a.id) && /^entrenamiento:[a-z]+$/.test(a.id));
       const isl = L.islands.find((i) => i.id === "entrenamiento")!.rect;
       for (const r of rooms) {
         expect(r.centre.x - r.half.x, r.id).toBeGreaterThanOrEqual(isl.x0);

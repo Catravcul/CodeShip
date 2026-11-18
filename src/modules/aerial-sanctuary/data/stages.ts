@@ -61,9 +61,9 @@ const PLANS: Readonly<Record<number, Plan>> = {
   // with her from one to the next.
   2: { room: "medico", her: { bascula: [-5, 0.05, 1.2, N], "camilla-sentada": [-2, 0.2, 2.25, S], "camilla-tumbada": [-2, 0.7, 2.5, W], "tabla-vista": [-2, 0, -3.2, S] }, trainer: [-0.6, 0, 1.3, W], trainerVia: [[0.2, 0, 2.6, S], [0.2, 0, 1.3, W]], beside: { "camilla-sentada": [-1.6, 0, 1.3, N], "camilla-tumbada": [-1.6, 0, 1.3, N], bascula: [-3.9, 0, 1.2, W], "tabla-vista": [-3.2, 0, -5.2, N] }, anchors: { bascula: [-5, 0, 1.2], pared: [-2, 1.5, -6.55] } },
   // The hypobaric chamber at (8, −1), 6 × 6 m, its floor 0,2 m up and its hatch to the west; she sits on its bench.
-  // The trainer is the chamber's inside observer, as in a real altitude chamber run, in by the hatch, beside her; the
+  // The trainer is the chamber's inside observer, as in a real altitude chamber run, in by the corridor, the airlock and the hatch (data/fixtures.ts), beside her; the
   // eye in the hatch's corner keeps both in a phone's narrow view.
-  4: { room: "medico", her: { camara: [9.9, 0.2, -1, W] }, trainer: [8.6, 0.2, -2.4, 0.75], trainerVia: [[3.6, 0, -1, E], [6, 0.2, -1, E]], anchors: { banco: [10.35, 0.65, -1] }, eye: [6, 1.8, 1.2] },
+  4: { room: "medico", her: { camara: [9.9, 0.2, -1, W] }, trainer: [8.6, 0.2, -2.4, 0.75], trainerVia: [[2.5, 0, 4.6, S], [2.5, 0, -1, E], [3.6, 0, -1, E], [6, 0.2, -1, E]], anchors: { banco: [10.35, 0.65, -1] }, eye: [6, 1.8, 1.2] },
   // The NBL (95, 45): the pool of 62 × 31 m at the middle (its edge at z = −15,5), surface at −0,3 m.
   3: { room: "nbl", her: { borde: [10, 0, -17.5, N], flotando: [6, SURFACE - 1.35, -12, N], balsa: [9, SURFACE - 0.15, -11, N], izada: [9, 2.4, -11, N] }, lap: [[-15, SWIM_Y + 1.2, -12, E], [10, SWIM_Y + 1.2, -12, E]], trainer: [13, 0, -18, N], anchors: { agua: [9, SURFACE, -11], techo: [9, 18, -11] } },
   // Post 7 by the west end of the same edge; the ISS mock-up on the bottom at the middle (8,5 × 4,3 m).

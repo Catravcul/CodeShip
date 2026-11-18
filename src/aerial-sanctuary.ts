@@ -30,6 +30,7 @@ import { boardDayOf } from "@modules/saves/domain/space-state";
 import { AERIAL_LEVEL, ISLAND_NAME, type AerialState } from "@modules/saves/domain/aerial-state";
 import { playSession, savedGames } from "./adapters/storage/saved-games";
 import { bird, buildBlocks, buildFloors, buildProps, buildSea, buildWater, carpet, helicopter } from "./adapters/three/aerial-models";
+import { buildFixtures } from "./adapters/three/s3-fixtures";
 import { CubeFigure } from "./adapters/three/interior/figure";
 import { Walker } from "./adapters/input/walker";
 import { DOMENICA_HAIR } from "./ui/portraits";
@@ -82,7 +83,7 @@ sun.position.set(-400, 900, 300);
 scene.add(sun);
 const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.05, 7000);
 camera.rotation.order = "YXZ";
-scene.add(buildSea(), buildFloors(L.world.floors), buildWater(L.world.waters), buildBlocks(L.blocks));
+scene.add(buildSea(L.world.waters.filter((w) => w.id.endsWith("-piscina"))), buildFloors(L.world.floors), buildWater(L.world.waters), buildBlocks(L.blocks), buildFixtures(L.fixtures));
 const parts = buildProps(L);
 scene.add(parts.root);
 
@@ -1062,6 +1063,9 @@ if (frameStats) (window as unknown as { codeshipS3: unknown }).codeshipS3 = {
   },
   get mode() {
     return mode.kind;
+  },
+  get pitch() {
+    return pitch;
   },
   get island() {
     return island();

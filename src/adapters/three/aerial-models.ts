@@ -4,6 +4,7 @@ import type { Block, Prop, S3Layout } from "@modules/aerial-sanctuary/data/layou
 import type { Floor, Water } from "@modules/aerial-sanctuary/domain/walk";
 import { CRAFT, DRAGON, ELECTRON, FALCON9_CREW, S92, TURBINE } from "@modules/aerial-sanctuary/data/facts";
 import { textSign } from "./interior/sign";
+import { interiorFloor } from "./s3-fixtures";
 
 /**
  * Procedural models of sanctuary 3 (docs/design/santuario3-escena.md), at true size: the walls, floors and water
@@ -61,7 +62,7 @@ export function buildBlocks(blocks: readonly Block[]): THREE.Group {
     by.set(b.look, list);
   }
   for (const [look, geos] of by) {
-    if (look === "cohete") continue;
+    if (look === "cohete" || look === "oculto") continue;
     const m = new THREE.Mesh(mergeGeometries(geos), LOOK[look] ?? mat(0xaaaaaa));
     m.name = `bloques-${look}`;
     g.add(m);
@@ -75,7 +76,7 @@ export function buildFloors(floors: readonly Floor[]): THREE.Group {
   const by = new Map<number, THREE.BufferGeometry[]>();
   for (const f of floors) {
     const isl = f.area.split(":")[0]!;
-    const c = f.area.includes("helipuerto") ? 0x3a3f44 : (FLOOR_LOOK[isl] ?? 0xb9c4cc);
+    const c = f.area.includes("helipuerto") ? 0x3a3f44 : (interiorFloor(f.area) ?? FLOOR_LOOK[isl] ?? 0xb9c4cc);
     const list = by.get(c) ?? [];
     list.push(boxGeo(f.x0, f.x1, f.y - 0.25, f.y - 0.01, f.z0, f.z1));
     by.set(c, list);
@@ -97,8 +98,12 @@ export function buildWater(waters: readonly Water[]): THREE.Group {
   return g;
 }
 
-export function buildSea(): THREE.Mesh {
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), mat(0x1f5f80, { roughness: 0.35, metalness: 0.1 }));
+export function buildSea(holes: readonly { x0: number; x1: number; z0: number; z1: number }[] = []): THREE.Mesh {
+  // The pools on the islands go below the sea's level: the sea has a hole over each, or it would hide their bottoms
+  // (the NBL's mock-ups 12 m down). The shape is drawn in (x, −z) and laid flat, so −z on the plane is +z in the world.
+  const shape = new THREE.Shape([new THREE.Vector2(-4500, -4500), new THREE.Vector2(4500, -4500), new THREE.Vector2(4500, 4500), new THREE.Vector2(-4500, 4500)]);
+  for (const h of holes) shape.holes.push(new THREE.Path([new THREE.Vector2(h.x0, -h.z0), new THREE.Vector2(h.x0, -h.z1), new THREE.Vector2(h.x1, -h.z1), new THREE.Vector2(h.x1, -h.z0)]));
+  const m = new THREE.Mesh(new THREE.ShapeGeometry(shape), mat(0x1f5f80, { roughness: 0.35, metalness: 0.1 }));
   m.rotation.x = -Math.PI / 2;
   m.position.y = -0.6;
   m.name = "mar";

@@ -8,6 +8,7 @@ import { turbineTopM } from "../domain/energy";
 import { CREW_PAD, CROWN, HEIGHT_RULE, HELIDECK_M, SITE, TABLE, TRAINING, TREE, TURBINE, TURBINES, TIDAL_UNITS, STORAGE, SOLAR, FLOORS_KW, ELECTRON, FALCON9_CREW } from "./facts";
 import { tablesFor } from "../domain/energy";
 import { S3_SOURCES as S } from "./sources";
+import { furnishIsland, furnishRoom, type PlacedFixture, type WalkCheck } from "./fixtures";
 
 /**
  * Sanctuary 3 as the scene and the rules see it (docs/design/santuario3-escena.md): the islands, their floors, water
@@ -147,6 +148,10 @@ export interface S3Layout {
   /** Footprints of what is inhabited (the safety distances are measured to them). */
   readonly inhabited: readonly { id: string; x0: number; x1: number; z0: number; z1: number }[];
   readonly installedTables: number;
+  /** The real equipment, furniture and fixtures of the training island at true size (data/fixtures.ts). */
+  readonly fixtures: readonly PlacedFixture[];
+  /** Walks that must go through (each sub-room and platform is walkable: reglas.md §2.1). */
+  readonly walkChecks: readonly WalkCheck[];
 }
 
 // ── Small helpers ──
@@ -199,6 +204,8 @@ class Builder {
   readonly machines: MachineDef[] = [];
   readonly lifts: LiftDef[] = [];
   readonly props: Prop[] = [];
+  readonly fixtures: PlacedFixture[] = [];
+  readonly walkChecks: WalkCheck[] = [];
   private n = 0;
 
   floor(area: string, y: number, r: Rect, id = `f${this.n++}`): void {
@@ -206,6 +213,27 @@ class Builder {
   }
   water(w: Water): void {
     this.waters.push(w);
+  }
+  solid(s: Solid): void {
+    this.solids.push(s);
+  }
+  /** A fixture, and its box as a solid when she cannot go through it. */
+  fixture(f: PlacedFixture, solids: readonly Solid[] = []): void {
+    this.fixtures.push(f);
+    for (const s of solids) this.solids.push(s);
+  }
+  walkCheck(c: WalkCheck): void {
+    this.walkChecks.push(c);
+  }
+  /** Cut a hole in an area's floors at height y (a sunken row of consoles, a pit). */
+  cut(area: string, y: number, hole: Rect): void {
+    for (let i = this.floors.length - 1; i >= 0; i--) {
+      const f = this.floors[i]!;
+      if (f.area !== area || Math.abs(f.y - y) > 1e-6) continue;
+      const parts = subtract(f, hole);
+      if (parts.length === 1 && parts[0] === f) continue;
+      this.floors.splice(i, 1, ...parts.map((r, j) => ({ ...r, id: `${f.id}-${j}`, area: f.area, y: f.y })));
+    }
   }
   block(look: string, s: Solid, solid = true): void {
     this.blocks.push({ ...s, look });
@@ -508,6 +536,10 @@ interface Compartment {
   /** Its hatch on its −x («w») or +x («e») end, metres wide (not scaled: it is her body's). */
   readonly hatch: { readonly side: "w" | "e"; readonly width: number };
   readonly reality: Reality;
+  /** A shell that is not a box (the Orion capsule): its walls stop her but the scene draws the shell (data/fixtures.ts). */
+  readonly shell?: "capsula";
+  /** For a compartment with no machine: the way (local) from the door's inside point to its middle. */
+  readonly via?: readonly { x: number; z: number }[];
 }
 interface RoomMachine {
   readonly id: string;
@@ -546,10 +578,10 @@ const ROOMS: readonly RoomDef[] = [
   {
     id: "nbl",
     label: "Laboratorio de flotabilidad neutra (NBL)",
-    desc: "La piscina de la NBL de Houston, 62 × 31 m y 12 m de fondo, con una maqueta de un módulo de la ISS en el fondo: paseos espaciales bajo el agua (puestos 3 y 7)",
+    desc: "La piscina de la NBL de Houston, 62 × 31 m y 12 m de fondo, con maquetas de la ISS, Dragon y Cygnus en el fondo, sus grúas, la zona de vestirse con los soportes del EMU, los puestos de los buzos, la sala de control con ventanas sobre la piscina y la cámara hiperbárica: paseos espaciales bajo el agua (puestos 3 y 7)",
     reality: "real",
     centre: { x: 95, z: 45 },
-    half: { x: 38, z: 22.5 },
+    half: { x: 44, z: 28 },
     height: 18,
     door: { side: "s", at: 0, width: 6 },
     road: "z",
@@ -591,6 +623,7 @@ const ROOMS: readonly RoomDef[] = [
     door: { side: "n", at: 0, width: 4 },
     road: "z",
     compartments: [
+      { id: "svmf-orion", label: "Maqueta de Orion", desc: "La cápsula Orion a escala real (Ø 5,02 m, 3,3 m de alto), en su soporte con la escalera de acceso", x: 20, z: -10, w: 3, d: 3, h: 3.3, floorY: 0.6, hatch: { side: "w", width: 1.1 }, reality: "real", shell: "capsula", via: [{ x: 0, z: 12 }, { x: 15, z: 12 }, { x: 15, z: -10 }] },
       { id: "svmf-destiny", label: "Maqueta de Destiny", desc: "El laboratorio estadounidense a escala real (8,5 m × Ø 4,3 m): sus bastidores y su puesto robótico", x: -12, z: 0, w: TRAINING.destiny.value.length, d: TRAINING.destiny.value.diameter, h: 4.3, floorY: 0.4, hatch: { side: "e", width: 1.3 }, reality: "real" },
       { id: "svmf-dragon", label: "Maqueta de Crew Dragon", desc: "La cápsula a escala real (Ø 4 m): cuatro asientos, las tres pantallas táctiles y los botones bajo la tapa", x: 12, z: 0, w: 4, d: 4, h: 3.5, floorY: 0.6, hatch: { side: "w", width: 1.2 }, reality: "real" },
     ],
@@ -602,29 +635,26 @@ const ROOMS: readonly RoomDef[] = [
   {
     id: "control",
     label: "Control de misión",
-    desc: "Una sala de control: doce puestos en tres filas y la pantalla grande. Robótica, telemetría y el diálogo con la tripulación (puestos 9 y 10)",
+    desc: "Una sala de control como la FCR-1 de Houston: dieciséis consolas en cuatro filas (la «trinchera» delante, más baja), las cinco pantallas grandes del frente con nueve pequeñas encima, el puesto del director de vuelo y el de CAPCOM. Robótica, telemetría y el diálogo con la tripulación (puestos 9 y 10)",
     reality: "real",
     centre: { x: 215, z: -25 },
     half: { x: 12, z: 10 },
     height: 6,
     door: { side: "s", at: 8, width: 2.4 },
     road: "x",
-    items: [
-      ...[0, 1, 2].flatMap((row) => [0, 1, 2, 3].map((i) => ({ look: "consola", x: -7.5 + i * 5, z: -5 + row * 4, w: 2.2, d: 0.9, h: 0.76, prop: "console" as const }))),
-      { look: "pantalla", x: 0, z: 9.6, w: 16, d: 0.3, h: 5, y0: 1, prop: "big-screen" },
-    ],
+    // The consoles, the screens and the sunken rows are the room's fixtures (data/fixtures.ts).
     machines: [
-      { id: "control-director", kind: "puesto", label: "Puesto del director de vuelo", what: "Telemetría, meteorología y la cuenta atrás", x: -7.5, z: -6.4, post: 10, via: [{ x: 8, z: -8.4 }] },
+      { id: "control-director", kind: "puesto", label: "Puesto del director de vuelo", what: "Telemetría, meteorología y la cuenta atrás", x: -2.5, z: -2.4, post: 10, via: [{ x: 10.6, z: -8.4 }, { x: 10.6, z: -3.4 }, { x: -2.5, z: -3.4 }] },
       { id: "control-robotica", kind: "puesto", label: "Puesto de robótica", what: "Los mandos del brazo robótico en simulador", x: 7.5, z: -2.4, post: 9, via: [{ x: 10.6, z: -8.4 }, { x: 10.6, z: -2.4 }] },
     ],
   },
   {
     id: "gimnasio",
     label: "Gimnasio y vestuarios",
-    desc: "El gimnasio de los candidatos, con la cinta y la esterilla de yoga donde se cambian los ajustes generales",
+    desc: "El gimnasio de los candidatos (como el de los astronautas en Johnson): cintas, bicicletas, jaulas de sentadillas, mancuernas, remo, poleas, el ARED de entrenamiento, el tapiz y la esterilla de yoga donde se cambian los ajustes generales; vestuarios con taquillas",
     reality: "real",
     centre: { x: 270, z: -25 },
-    half: { x: 8, z: 6 },
+    half: { x: 12, z: 9 },
     height: 4,
     door: { side: "w", at: 0, width: 2 },
     road: "z",
@@ -634,10 +664,10 @@ const ROOMS: readonly RoomDef[] = [
   {
     id: "medico",
     label: "Centro médico y de selección",
-    desc: "Entrevistas del tribunal, el reconocimiento médico de larga duración y la cámara hipobárica (puestos 1, 2 y 4)",
+    desc: "Entrevistas del tribunal, el reconocimiento médico de larga duración (camilla, ECG, ecógrafo, optotipo a 6,1 m, cabina de audiometría), la sala de espera con el archivo y la cámara hipobárica con su esclusa (puestos 1, 2 y 4)",
     reality: "real",
     centre: { x: 95, z: -100 },
-    half: { x: 14, z: 7 },
+    half: { x: 20, z: 9.75 },
     height: 4,
     door: { side: "n", at: 0, width: 2.4 },
     road: "x",
@@ -651,6 +681,19 @@ const ROOMS: readonly RoomDef[] = [
       { id: "medico-camilla", kind: "puesto", label: "Reconocimiento médico", what: "Tensión, ECG y báscula: las constantes fuera de rango, con forma y color", x: -2, z: 1.2, post: 2, via: [{ x: 0, z: 4.6 }, { x: 0, z: 1.2 }] },
       { id: "medico-hipobarica", kind: "puesto", label: "Cámara hipobárica", what: "Bajar la presión por etapas y ponerse la máscara a tiempo", x: 9, z: -1, inside: "medico-hipobarica", post: 4, via: [{ x: 0, z: 4.6 }, { x: 2.5, z: 4.6 }, { x: 2.5, z: -1 }] },
     ],
+  },
+  {
+    id: "supervivencia",
+    label: "Supervivencia en el agua",
+    desc: "Como la piscina del Naval Survival Training Institute de Pensacola: el simulador de amerizaje de helicóptero (METS), la balsa salvavidas y el izado con el collar de rescate",
+    reality: "real",
+    centre: { x: 260, z: -85 },
+    half: { x: 20, z: 13 },
+    height: 10,
+    door: { side: "w", at: 6, width: 3 },
+    road: "x",
+    pool: { x: 25, z: 12, depth: 5 },
+    machines: [],
   },
 ];
 
@@ -709,9 +752,21 @@ function buildRoom(b: Builder, r: RoomDef, k: number): void {
       { axis: "z" as const, at: p.x + w - 0.1, from: p.z - dd, to: p.z + dd, gaps: cp.hatch.side === "e" ? [{ from: p.z - cp.hatch.width / 2, to: p.z + cp.hatch.width / 2, y1: cp.floorY + 1.9 }] : [] },
       { axis: "z" as const, at: p.x - w + 0.1, from: p.z - dd, to: p.z + dd, gaps: cp.hatch.side === "w" ? [{ from: p.z - cp.hatch.width / 2, to: p.z + cp.hatch.width / 2, y1: cp.floorY + 1.9 }] : [] },
     ];
-    for (const s of cw) for (const q of wallWithGaps({ ...s, y0: 0, y1: cp.h, thick: 0.2 })) b.block("maqueta", q);
-    b.block("maqueta-techo", { ...around(p.x, p.z, w, dd), y0: cp.h, y1: cp.h + 0.15 }, false);
-    b.area({ id: ca, island: "entrenamiento", label: cp.label, desc: cp.desc, reality: cp.reality, centre: { x: p.x, y: cp.h / 2, z: p.z }, half: { x: w, y: cp.h / 2, z: dd }, point: `m:${r.machines.find((m) => m.inside === cp.id)?.id ?? ""}` });
+    for (const s of cw) for (const q of wallWithGaps({ ...s, y0: 0, y1: cp.h, thick: 0.2 })) b.block(cp.shell ? "oculto" : "maqueta", q);
+    if (!cp.shell) b.block("maqueta-techo", { ...around(p.x, p.z, w, dd), y0: cp.h, y1: cp.h + 0.15 }, false);
+    let cpPoint = `m:${r.machines.find((m) => m.inside === cp.id)?.id ?? ""}`;
+    if (cp.via) {
+      let prev = ins;
+      cp.via.forEach((v, i) => {
+        const q = P(v.x, v.z);
+        const id = b.point(`${ca}:${i}`, q.x, 0, q.z);
+        b.link(prev, id);
+        prev = id;
+      });
+      cpPoint = b.point(`${ca}:centro`, p.x, cp.floorY, p.z);
+      b.link(prev, cpPoint);
+    }
+    b.area({ id: ca, island: "entrenamiento", label: cp.label, desc: cp.desc, reality: cp.reality, centre: { x: p.x, y: cp.h / 2, z: p.z }, half: { x: w, y: cp.h / 2, z: dd }, point: cpPoint });
   }
   for (const m of r.machines) {
     const p = P(m.x, m.z);
@@ -727,6 +782,18 @@ function buildRoom(b: Builder, r: RoomDef, k: number): void {
     b.machine({ id: m.id, kind: m.kind, island: "entrenamiento", area: cp ? `entrenamiento:${cp.id}` : area, label: m.label, what: m.what, x: p.x, y, z: p.z, ...(m.post ? { post: m.post } : {}) }, prev);
     if (m.kind === "esterilla") b.props.push({ kind: "mat", x: p.x, y: 0, z: p.z });
   }
+  // The real equipment, furniture and fixtures of the room (data/fixtures.ts), at true size where the room is k times wider.
+  furnishRoom(b, {
+    id: r.id,
+    k,
+    centre: c,
+    half: { x: hx, z: hz },
+    height: r.height,
+    area,
+    inside: ins,
+    ...(r.pool ? { pool: r.pool } : {}),
+    compartments: (r.compartments ?? []).map((cp) => ({ id: cp.id, ...P(cp.x, cp.z), hx: (cp.w * k) / 2, hz: (cp.d * k) / 2, floorY: cp.floorY, h: cp.h, hatch: cp.hatch.side })),
+  });
 }
 
 /** The whole sanctuary at drawing scale `k` (1 or 1,5: the presentation layer). */
@@ -763,6 +830,7 @@ export function buildLayout(k = 1): S3Layout {
   b.props.push({ kind: "nav-machine", x: heliC.x - hd - 4.2, y: 0, z: heliC.z - 3, rot: Math.PI / 2 });
   b.machine({ id: "helipuerto-vuelos", kind: "puesto", island: "entrenamiento", area: "entrenamiento:helipuerto", label: "Vuelos de formación", what: "Vuelo parabólico, geología en el hielo y supervivencia en frío salen de aquí, a sitios fuera del mapa", x: heliC.x - hd + 1.5, y: 0.05, z: heliC.z + 3, post: 6 }, heliEdge);
   pads.push({ island: "entrenamiento", at: { x: heliC.x, y: 0.05, z: heliC.z }, crafts: ["helicoptero"] });
+  furnishIsland(b, k, { heli: heliC, heliHalf: hd, rooms: ROOMS.map((r) => ({ id: r.id, ...around(r.centre.x, r.centre.z, r.half.x * k, r.half.z * k) })), island: R(ti.x0, ti.x1, ti.z0, ti.z1), road: { x: ROAD_X, z: ROAD_Z } });
 
   // ── The aerial sanctuary: three caps of Cold Sanctuary at their coordinates, with all their magic ──
   const L = SITE.launch.value;
@@ -923,6 +991,8 @@ export function buildLayout(k = 1): S3Layout {
     start: "entrenamiento:helipuerto:centro",
     inhabited,
     installedTables,
+    fixtures: b.fixtures,
+    walkChecks: b.walkChecks,
   };
 }
 

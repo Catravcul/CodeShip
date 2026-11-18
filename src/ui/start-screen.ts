@@ -1,4 +1,6 @@
-import { levelChoices, type Level, type LevelChoice, type SavedGame } from "@modules/levels/domain/level";
+import { levelChoices, type Level, type LevelChoice } from "@modules/levels/domain/level";
+import type { SaveSlot } from "@modules/saves/domain/save-slot";
+import type { SlotNotice } from "@modules/saves/application/save-book";
 import { MapWindow, markPicked, optionsHtml, type MapOption } from "./map-window";
 import { MapSelection, nearestPick, orbitProjector, type MapPoint } from "./map-window-model";
 import "./start-screen.css";
@@ -9,6 +11,26 @@ interface Box {
   t: number;
   b: number;
 }
+
+const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+
+/** The device's saved games, as the start screen sees them (adapters/storage/saved-games.ts). */
+export interface StartSaves {
+  list(): { slots: SaveSlot[]; problems: SlotNotice[] };
+  /** Why a kept game cannot be resumed now, or undefined. */
+  why(s: SaveSlot): string | undefined;
+  remove(id: string): void;
+  /** The slot a new game would save into, or none when all are taken. */
+  freeSlot(): string | undefined;
+}
+
+/** What starts: a kept game, or a new one (`fresh`: chosen as «Jugar sin partida guardada»). */
+export type StartChoice = { readonly kind: "continuar"; readonly slot: SaveSlot } | { readonly kind: "nueva"; readonly fresh: boolean };
+
+const when = (iso: string) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "fecha desconocida" : d.toLocaleString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+};
 
 const overlaps = (a: Box, o: Box) => a.l < o.r && o.l < a.r && a.t < o.b && o.t < a.b;
 
@@ -24,17 +46,20 @@ const AXIS_R = 3.8;
 export class StartScreen {
   private readonly win: MapWindow;
   private readonly list: HTMLElement;
-  private readonly choices: readonly LevelChoice[];
+  private choices: readonly LevelChoice[] = [];
   private readonly sel: MapSelection;
   private screen: { id: string; x: number; y: number }[] = [];
+  /** The kept game «Continuar» resumes: the newest one that can be resumed. */
+  private latest: SaveSlot | undefined;
+  /** The slot whose deletion is being confirmed (inside the window, never `window.confirm`). */
+  private confirming: string | undefined;
 
   constructor(
     root: HTMLElement,
     private readonly levels: readonly Level[],
-    save: SavedGame | undefined,
-    private readonly play: (level: Level) => void,
+    private readonly saves: StartSaves,
+    private readonly play: (level: Level, choice: StartChoice) => void,
   ) {
-    this.choices = levelChoices(levels, save);
     this.sel = new MapSelection(() => this.choices);
     this.win = new MapWindow(root, {
       className: "start-screen",
@@ -42,6 +67,13 @@ export class StartScreen {
       title: "Codeship",
       canvasLabel: "Mapa de los santuarios: arriba el espacio, abajo el núcleo",
       hint: "Arrastra para girar · toca un santuario",
+      // Its settings are the saved games (Berón, 2026-11-18): the gear swaps the list for them, the list icon goes back.
+      gear: { label: "Partidas guardadas", backLabel: "Volver a los santuarios", settingsClass: "ss-saves" },
+      settings: (on) => {
+        this.confirming = undefined;
+        if (on) this.renderSaves();
+        else this.mark(false);
+      },
       view: { yaw: 0.5, elevation: 0.32, zoom: 1 },
       limits: { turnPerPx: 0.01, minElevation: 0.05, minZoom: 0.6, maxZoom: 4 },
       side: `<div class="nav-card ss-side"><p class="ss-intro">Elige santuario. Cuanto más hondo, más peligro.</p><div class="mw-list ss-list"></div><p class="ss-src">Del 1 al 5, los santuarios de Cold Sanctuary (docs/world-topology-and-planes.md §3); el 6 es de Codeship. Mundos de ficción.</p></div>`,
@@ -53,8 +85,18 @@ export class StartScreen {
       click: (t) => this.onClick(t),
     });
     this.list = this.win.el.querySelector(".ss-list")!;
+    this.renderCards();
+    // The playable level is picked to start with (with a kept game, its level).
+    this.sel.pick(this.choices.find((c) => c.action === "Continuar")?.id ?? this.choices.find((c) => !c.locked)?.id);
+    window.addEventListener("resize", this.onResize);
+  }
+
+  /** The level cards, with «Continuar» on the level of the newest kept game that can be resumed. */
+  private renderCards(): void {
+    this.latest = this.saves.list().slots.find((s) => !this.saves.why(s));
+    this.choices = levelChoices(this.levels, this.latest);
     // The cards in the map's order, from space at the top down to the core: the playable one first.
-    const options: MapOption[] = [...levels].sort((a, b) => b.at.y - a.at.y).map((l) => {
+    const options: MapOption[] = [...this.levels].sort((a, b) => b.at.y - a.at.y).map((l) => {
       const c = this.choices.find((x) => x.id === l.id)!;
       return {
         id: l.id,
@@ -69,9 +111,46 @@ export class StartScreen {
       };
     });
     this.list.innerHTML = optionsHtml(options, { cls: "ss" });
-    // The playable level is picked to start with (with a kept game, its level).
-    this.sel.pick(this.choices.find((c) => c.action === "Continuar")?.id ?? this.choices.find((c) => !c.locked)?.id);
-    window.addEventListener("resize", this.onResize);
+    markPicked(this.list, this.sel.picked);
+  }
+
+  /**
+   * The gear's settings: the kept games, newest first, each with «Jugar» and «Borrar» (confirmed here, in the
+   * window), the ones that cannot be resumed with why, and «Jugar sin partida guardada».
+   */
+  private renderSaves(): void {
+    const box = this.win.settingsBox;
+    if (!box) return;
+    const { slots, problems } = this.saves.list();
+    const nameOf = (n: number) => this.levels.find((l) => l.number === n)?.name ?? `Santuario ${n}`;
+    const confirm = (id: string, what: string) =>
+      `<p class="ss-confirm" role="alert"><b aria-hidden="true">⚠</b> ¿Borrar ${esc(what)}? No se puede deshacer.</p><div class="ss-save-acts"><button class="ss-del ss-del-yes" data-del-yes="${esc(id)}" aria-label="Sí, borrar ${esc(what)}">Borrar</button><button class="ss-del-no" data-del-no aria-label="No borrar">Cancelar</button></div>`;
+    const rows = slots.map((s) => {
+      const what = `la partida ${s.id}`;
+      if (this.confirming === s.id) return `<div class="mw-row ss-save confirming" data-slot="${esc(s.id)}">${confirm(s.id, what)}</div>`;
+      const why = this.saves.why(s);
+      const lock = why ? `<i class="mw-lock"><b aria-hidden="true">⊘</b> ${esc(why)}</i>` : "";
+      const newest = s.id === this.latest?.id ? ` <em>Continuar</em>` : "";
+      return `<div class="mw-row ss-save${why ? " locked" : ""}" data-slot="${esc(s.id)}"><div class="ss-save-info"><b>Partida ${esc(s.id)} · ${esc(nameOf(s.level))}${newest}</b><small>Día ${s.boardDay} · ${esc(s.summary.vehicle)} · ${esc(s.summary.place)}</small><span>Guardada el ${esc(when(s.savedAt))}</span>${lock}</div><div class="ss-save-acts"><button class="tb-go mw-go" data-load="${esc(s.id)}" aria-label="Jugar ${esc(what)}"${why ? " disabled" : ""}>Jugar</button><button class="ss-del" data-del="${esc(s.id)}" aria-label="Borrar ${esc(what)}">Borrar</button></div></div>`;
+    });
+    const broken = problems.map((p) => {
+      const what = p.id === "antigua" ? "la partida antigua" : `la partida ${p.id}`;
+      if (this.confirming === p.id) return `<div class="mw-row ss-save confirming" data-slot="${esc(p.id)}">${confirm(p.id, what)}</div>`;
+      return `<div class="mw-row ss-save locked" data-slot="${esc(p.id)}"><div class="ss-save-info"><b>${p.id === "antigua" ? "Partida antigua" : `Partida ${esc(p.id)}`}${p.level ? ` · ${esc(nameOf(p.level))}` : ""}</b>${p.savedAt ? `<span>Guardada el ${esc(when(p.savedAt))}</span>` : ""}<i class="mw-lock"><b aria-hidden="true">⊘</b> ${esc(p.text)}</i></div><div class="ss-save-acts"><button class="ss-del" data-del="${esc(p.id)}" aria-label="Borrar ${esc(what)}">Borrar</button></div></div>`;
+    });
+    const free = this.saves.freeSlot();
+    const fresh = this.freshLevel();
+    const freshHelp = free
+      ? `Empieza una partida nueva${fresh ? ` del ${esc(fresh.name)}` : ""}, que se guarda sola en la ranura ${esc(free)}; las partidas guardadas no se tocan.`
+      : "Las ranuras están llenas: esta partida no se guardará (borra una para guardarla). Las guardadas no se tocan.";
+    box.innerHTML = `<h2 class="ss-saves-title">Partidas guardadas</h2><p class="ss-saves-help">Se guarda sola cada minuto, al llegar a un sitio, al acabar un reto, al despertar y al salir del juego.</p><div class="mw-list ss-saves-list">${[...rows, ...broken].join("") || `<p class="ss-saves-none">Todavía no hay ninguna partida guardada en este dispositivo.</p>`}</div><button class="ss-fresh" data-fresh${fresh ? "" : " disabled"}>Jugar sin partida guardada</button><small class="ss-fresh-help">${freshHelp}</small>`;
+  }
+
+  /** The level a new game starts: the one picked, if it can be played; else the first that can. */
+  private freshLevel(): Level | undefined {
+    const ok = (id: string | undefined) => this.choices.some((c) => c.id === id && !c.locked);
+    const id = ok(this.sel.picked) ? this.sel.picked : this.choices.find((c) => !c.locked)?.id;
+    return this.levels.find((l) => l.id === id);
   }
 
   private readonly onResize = () => this.win.visible && this.win.draw();
@@ -100,6 +179,7 @@ export class StartScreen {
   }
 
   private onClick(t: HTMLElement): void {
+    if (this.win.settingsShown) return this.onSavesClick(t);
     const pick = t.closest<HTMLElement>("[data-pick]");
     if (pick) {
       if (this.sel.pick(pick.dataset.pick)) this.mark(false);
@@ -109,7 +189,40 @@ export class StartScreen {
     if (!go) return;
     const r = this.sel.act(go.dataset.go);
     const level = r.ok ? this.levels.find((l) => l.id === r.id) : undefined;
-    if (level) this.play(level);
+    if (!level) return;
+    const resume = this.latest && this.latest.level === level.number ? this.latest : undefined;
+    this.play(level, resume ? { kind: "continuar", slot: resume } : { kind: "nueva", fresh: false });
+  }
+
+  private onSavesClick(t: HTMLElement): void {
+    const b = t.closest<HTMLElement>("button");
+    if (!b || (b as HTMLButtonElement).disabled) return;
+    const d = b.dataset;
+    if (d.load) {
+      const slot = this.saves.list().slots.find((s) => s.id === d.load);
+      const level = slot && !this.saves.why(slot) ? this.levels.find((l) => l.number === slot.level) : undefined;
+      if (slot && level) this.play(level, { kind: "continuar", slot });
+      return;
+    }
+    if (d.del) this.confirming = d.del;
+    else if (d.delYes) {
+      this.saves.remove(d.delYes);
+      this.confirming = undefined;
+      this.renderCards();
+    } else if (d.delNo !== undefined) this.confirming = undefined;
+    else if (d.fresh !== undefined) {
+      const level = this.freshLevel();
+      if (level) this.play(level, { kind: "nueva", fresh: true });
+      return;
+    } else return;
+    this.renderSaves();
+    // Keep the finger's place: the row's own buttons (or the list) get the focus back.
+    this.win.settingsBox?.querySelector<HTMLElement>(this.confirming ? "[data-del-no]" : ".ss-fresh")?.focus({ preventScroll: true });
+  }
+
+  /** The saved games are shown (the gear's settings). */
+  get savesShown(): boolean {
+    return this.win.settingsShown;
   }
 
   private mark(scroll: boolean): void {

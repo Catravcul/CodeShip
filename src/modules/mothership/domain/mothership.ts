@@ -275,6 +275,10 @@ export class Mothership implements DockingTarget {
   get propellantKg(): number {
     return this.propellant;
   }
+  /** A saved game's propellant (docs/design/partidas.md), never past the tanks. */
+  set propellantKg(kg: number) {
+    if (Number.isFinite(kg)) this.propellant = Math.max(0, Math.min(kg, this.spec.propellantCapacityKg));
+  }
   get massKg(): number {
     return this.dryMassKg + this.propellant;
   }

@@ -1,3 +1,4 @@
+import { isRecord, numbers } from "@core/snapshot";
 /** A material the station keeps: raw rock from a hold, refined stock or imported kits. Ids come from the catalog. */
 export type MaterialId = string;
 
@@ -101,6 +102,18 @@ export class MaterialStock {
 
   amount(id: MaterialId): number {
     return this.kg.get(id) ?? 0;
+  }
+
+  /** What the store holds, for a saved game (docs/design/partidas.md); reservations are set by the game. */
+  snapshot(): Record<MaterialId, number> {
+    return Object.fromEntries([...this.kg].filter(([, n]) => n > 0));
+  }
+
+  /** Back to a saved store: exactly what it held (nothing else). */
+  restore(s: unknown): void {
+    if (!isRecord(s)) return;
+    this.kg.clear();
+    for (const [id, n] of Object.entries(numbers(s))) if (n > 0) this.kg.set(id, n);
   }
 
   add(a: Amounts): void {

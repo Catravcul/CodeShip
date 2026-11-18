@@ -56,6 +56,21 @@ class SettingsStore {
     this.apply();
   }
 
+  /** The settings as stored (a saved game keeps them: docs/design/partidas.md). */
+  serialized(): string {
+    return serializeSettings(this.value);
+  }
+
+  /** Back to stored settings (a saved game's): unknown or broken values keep their defaults. */
+  load(raw: string): void {
+    const first = this.s.firstInputSeen;
+    const next = parseSettings(raw, { touchCapable: touchCapable() });
+    this.s = { ...next, firstInputSeen: first || next.firstInputSeen };
+    setCompactUi(this.s.challengeView === "hud");
+    storage.set(KEY, serializeSettings(this.s));
+    this.apply();
+  }
+
   onChange(fn: Listener): void {
     this.listeners.push(fn);
     fn(this.value);

@@ -1,4 +1,5 @@
 import { Health, type Patient } from "@modules/medical/domain/health";
+import { isRecord, num } from "@core/snapshot";
 import { CREW_ENERGY } from "@modules/life-support/domain/sustainability";
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
@@ -62,6 +63,20 @@ export class CrewMember implements Patient {
     readonly body = { age: 30, massKg: 58, heightM: 1.6 },
   ) {
     this.health = new Health(id);
+  }
+
+  /** Her needs, for a saved game (docs/design/partidas.md); injuries are not kept (they heal). */
+  snapshot(): { satiety: number; fitness: number; stress: number; loneliness: number; microgravityDays: number } {
+    return { satiety: this._satiety, fitness: this._fitness, stress: this._stress, loneliness: this._loneliness, microgravityDays: this._microgravityDays };
+  }
+
+  restore(s: unknown): void {
+    if (!isRecord(s)) return;
+    this._satiety = Math.min(1.2, Math.max(0, num(s.satiety, this._satiety)));
+    this._fitness = clamp01(num(s.fitness, this._fitness));
+    this._stress = clamp01(num(s.stress, this._stress));
+    this._loneliness = clamp01(num(s.loneliness, this._loneliness));
+    this._microgravityDays = Math.max(0, num(s.microgravityDays, this._microgravityDays));
   }
 
   /** Daily energy requirement, kcal (NASA exploration equation, low active, with exercise). */

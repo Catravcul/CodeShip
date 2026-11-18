@@ -1,4 +1,5 @@
 import { readStats } from "./cocina.mjs";
+import { enterGame } from "./lib.mjs";
 // Nevaeh's first mission end to end: read the letter on the radio, find it in the mission log, land on
 // Bennu, convince its mind in the duel (one wrong answer on purpose) and see the mission done.
 
@@ -15,7 +16,7 @@ export async function mision(j) {
 
   // Out to the lander and down on Bennu.
   await p.reload();
-  await p.waitForFunction(() => window.codeship, null, { timeout: 120000 });
+  await enterGame(p);
   await p.waitForTimeout(1500);
   await j.setup("posa el módulo sobre Bennu (aterrizar a mano lleva minutos)", () => {
     const c = window.codeship;

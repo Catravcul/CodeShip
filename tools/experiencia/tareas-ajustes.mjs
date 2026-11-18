@@ -8,6 +8,7 @@
 // its gear has «Viaje / Teletransporte» and the vehicle («Automático»: only where she is). Captures in
 // docs/screenshots/tareas-ajustes-<pantalla>-movil.png.
 import { mkdirSync } from "node:fs";
+import { enterGame } from "./lib.mjs";
 
 async function capture(j, label, title) {
   await j.page.waitForTimeout(500);
@@ -252,7 +253,7 @@ export async function tareasAjustes(j) {
 
   // 5. Kept over a reload; the group is not (it starts at «Todas» every time the list opens).
   await p.reload();
-  await p.waitForFunction(() => window.codeship, null, { timeout: 120000 });
+  await enterGame(p);
   await p.waitForTimeout(1500);
   await j.tap(".stand-btn", "Levantarse: habitáculo");
   await p.waitForTimeout(800);

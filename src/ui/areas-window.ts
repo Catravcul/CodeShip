@@ -1,12 +1,10 @@
 import type { AreaMap, AreaNode, AreaVec } from "@modules/tasks/application/areas";
 import type { Vehicle } from "@modules/tasks/application/task-list";
 import { settings } from "./settings-store";
-import { ICON } from "./icons";
 import { onCloseRequest, windowState } from "./hud-windows";
 import { settingsClick, travelHtml, vehicleHtml, VEHICLE_NAME } from "./task-settings";
-import { CameraStick } from "../adapters/input/camera-stick";
-import { mapGestures } from "./map-gestures";
-import "./nav-map.css";
+import { MapWindow, markPicked, optionsHtml, type MapOption } from "./map-window";
+import { MapSelection, nearestPick, orbitProjector } from "./map-window-model";
 import "./task-board.css";
 import "./areas-window.css";
 
@@ -62,8 +60,8 @@ const split = (label: string) => {
 };
 
 /**
- * «Áreas» of the tree menu (Berón, 2026-11-18; reglas.md §5.8, docs/design/areas.md): the same window as
- * Navigation (nav-map.ts and its styles). On top, a 3D map of the vehicle she is in (Starship, the station or
+ * «Áreas» of the tree menu (Berón, 2026-11-18; reglas.md §5.8, docs/design/areas.md): the map window
+ * (map-window.ts), the same as Navigation. On top, a 3D map of the vehicle she is in (Starship, the station or
  * the LM), each area a box of the real plan and the hatches as lines; a finger drags to turn it and pinches to
  * zoom (reglas.md §5.7, its one exception), and so do its joystick and its + / − buttons. Under it, the areas
  * with what is there and «Ir», which takes her there walking the real way unless she chose teleport. Its gear
@@ -71,78 +69,77 @@ const split = (label: string) => {
  * turns into a list icon that goes back. It covers the screen, so the tree menu hides while it is open.
  */
 export class AreasWindow {
+  private readonly win: MapWindow;
   private readonly el: HTMLElement;
-  private readonly canvas: HTMLCanvasElement;
   private readonly side: HTMLElement;
-  private readonly settingsBox: HTMLElement;
-  private view: "mapa" | "ajustes" = "mapa";
   private shown: AreaMap | undefined;
-  private picked: string | undefined;
-  private yaw = 0.6;
-  private elevation = 0.75;
-  private zoom = 1;
+  private readonly sel = new MapSelection(() => this.shown?.nodes.map((n) => ({ id: n.id })) ?? []);
   private screen: { id: string; hull: Pt[]; c: Pt; depth: number }[] = [];
-  private readonly camStick: CameraStick;
 
   constructor(
     root: HTMLElement,
     private readonly d: AreasDeps,
   ) {
-    this.el = document.createElement("div");
-    this.el.className = "nav-map areas-window hidden";
-    this.el.setAttribute("role", "dialog");
-    this.el.setAttribute("aria-label", "Áreas");
-    this.el.innerHTML = `
-      <div class="nav-head"><div class="nav-tools"><button data-act="zin" aria-label="Acercar">+</button><button data-act="zout" aria-label="Alejar">−</button><button data-act="view">Cenital</button><button class="ar-view" data-view aria-label="Ajustes de áreas" title="Ajustes de áreas">${ICON.gear}</button><button class="x" data-close aria-label="Cerrar áreas">×</button></div></div>
-      <div class="nav-body"><div class="nav-canvas"><canvas aria-label="Mapa del vehículo"></canvas><div class="nav-hint">Arrastra para girar · toca un área</div></div>
-        <div class="nav-side"><div class="nav-card ar-side"></div></div></div>
-      <div class="ar-settings tb-settings hidden"></div>`;
-    root.appendChild(this.el);
-    this.canvas = this.el.querySelector("canvas")!;
-    this.side = this.el.querySelector(".ar-side")!;
-    this.settingsBox = this.el.querySelector(".ar-settings")!;
-    this.el.addEventListener("click", (e) => this.onClick(e.target as HTMLElement));
-    mapGestures(this.canvas, {
-      rotate: (dx, dy) => {
-        this.yaw -= dx * 0.01;
-        this.elevation = Math.max(0.1, Math.min(Math.PI / 2, this.elevation + dy * 0.01));
-        this.draw();
-      },
-      zoom: (f) => this.setZoom(this.zoom * f),
+    this.win = new MapWindow(root, {
+      className: "areas-window",
+      label: "Áreas",
+      canvasLabel: "Mapa del vehículo",
+      hint: "Arrastra para girar · toca un área",
+      view: { yaw: 0.6, elevation: 0.75, zoom: 1 },
+      limits: { turnPerPx: 0.01, minElevation: 0.1, minZoom: 0.5, maxZoom: 8 },
+      gear: { className: "ar-view", label: "Ajustes de áreas", backLabel: "Volver al mapa de áreas", settingsClass: "ar-settings tb-settings" },
+      closeLabel: "Cerrar áreas",
+      side: `<div class="nav-card ar-side"></div>`,
+      draw: (g, w, h) => this.draw(g, w, h),
       tap: (x, y) => this.pickAt(x, y),
+      click: (t) => this.onClick(t),
+      onClose: () => this.close(),
+      settings: () => this.render(),
     });
-    this.camStick = new CameraStick(this.el.querySelector(".nav-canvas")!, "nav-look", (yaw, pitch) => {
-      this.yaw -= yaw;
-      this.elevation = Math.max(0.1, Math.min(Math.PI / 2, this.elevation - pitch));
-      this.draw();
-    }, { label: "Girar" });
-    this.camStick.show(true);
-    this.canvas.addEventListener("wheel", (e) => {
-      e.preventDefault();
-      this.setZoom(this.zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15));
-    });
+    this.el = this.win.el;
+    this.side = this.el.querySelector(".ar-side")!;
     window.addEventListener("keydown", (e) => this.visible && e.code === "Escape" && this.close());
-    window.addEventListener("resize", () => this.visible && this.draw());
+    window.addEventListener("resize", () => this.visible && this.win.draw());
     onCloseRequest("areas", () => this.close());
   }
 
   get visible(): boolean {
-    return !this.el.classList.contains("hidden");
+    return this.win.visible;
+  }
+
+  /** How the map is seen and what is picked (read by the journeys, tools/experiencia/tareas-ajustes.mjs). */
+  get yaw(): number {
+    return this.win.view.yaw;
+  }
+  get elevation(): number {
+    return this.win.view.elevation;
+  }
+  get zoom(): number {
+    return this.win.view.zoom;
+  }
+  get picked(): string | undefined {
+    return this.sel.picked;
   }
 
   open(): void {
-    this.view = "mapa";
-    this.picked = this.d.at?.();
-    this.zoom = 1;
-    this.el.classList.remove("hidden");
+    this.win.showSettings(false);
+    this.sel.clear();
+    const at = this.d.at?.();
+    this.win.view.zoom = 1;
+    this.win.show(true);
     document.body.classList.add("in-areas");
     windowState("areas", true);
     this.render();
+    // Where she is, picked (once the map is known).
+    if (at) {
+      this.sel.pick(at);
+      this.renderSide(false);
+    }
   }
 
   close(): void {
     if (!this.visible) return;
-    this.el.classList.add("hidden");
+    this.win.show(false);
     document.body.classList.remove("in-areas");
     windowState("areas", false);
   }
@@ -154,24 +151,10 @@ export class AreasWindow {
   }
 
   private onClick(t: HTMLElement): void {
-    if (t.closest("[data-close]")) return this.close();
-    if (t.closest("[data-view]")) {
-      this.view = this.view === "mapa" ? "ajustes" : "mapa";
-      this.render();
-      return this.el.querySelector<HTMLElement>("[data-view]")?.focus();
-    }
-    const act = t.closest<HTMLElement>("[data-act]")?.dataset.act;
-    if (act === "zin") return this.setZoom(this.zoom * 1.5);
-    if (act === "zout") return this.setZoom(this.zoom / 1.5);
-    if (act === "view") {
-      this.elevation = this.elevation > 1.5 ? 0.75 : Math.PI / 2;
-      t.closest<HTMLElement>("[data-act]")!.textContent = this.elevation > 1.5 ? "Inclinada" : "Cenital";
-      return this.draw();
-    }
     if (settingsClick(t)) return this.render();
     const pick = t.closest<HTMLElement>("[data-pick]");
     if (pick) {
-      this.picked = pick.dataset.pick;
+      this.sel.pick(pick.dataset.pick);
       return this.renderSide(false);
     }
     const area = t.closest<HTMLElement>("[data-area]");
@@ -183,28 +166,18 @@ export class AreasWindow {
     }
   }
 
-  private setZoom(z: number): void {
-    this.zoom = Math.max(0.5, Math.min(8, z));
-    this.draw();
-  }
-
   private render(): void {
-    const settingsView = this.view === "ajustes";
-    const btn = this.el.querySelector<HTMLElement>("[data-view]")!;
-    btn.innerHTML = settingsView ? ICON.tasks : ICON.gear;
-    btn.setAttribute("aria-label", settingsView ? "Volver al mapa de áreas" : "Ajustes de áreas");
-    btn.title = btn.getAttribute("aria-label")!;
+    const settingsView = this.win.settingsShown;
     this.el.setAttribute("aria-label", settingsView ? "Ajustes de áreas" : "Áreas");
     this.el.classList.toggle("ar-in-settings", settingsView);
-    this.settingsBox.classList.toggle("hidden", !settingsView);
     if (settingsView) {
-      this.settingsBox.innerHTML = `<h2 class="ar-title">Ajustes de áreas</h2>${travelHtml("ar-s-travel")}${vehicleHtml("ar-s-vehicle", this.d.here(), undefined, false)}<small class="tb-travel-help">Los mismos ajustes que en Tareas.</small>`;
+      this.win.settingsBox!.innerHTML = `<h2 class="ar-title">Ajustes de áreas</h2>${travelHtml("ar-s-travel")}${vehicleHtml("ar-s-vehicle", this.d.here(), undefined, false)}<small class="tb-travel-help">Los mismos ajustes que en Tareas.</small>`;
       return;
     }
     this.shown = this.d.map(this.vehicle());
-    if (this.picked && !this.shown?.nodes.some((n) => n.id === this.picked)) this.picked = undefined;
+    this.sel.keep();
     this.renderSide(true);
-    this.draw();
+    this.win.draw();
   }
 
   /** The list under the map: what the map shows, then each area with what is there and «Ir». */
@@ -220,54 +193,42 @@ export class AreasWindow {
         this.side.innerHTML = `${scope}<p class="tb-empty">No hay plano de ${VEHICLE_NAME[v].toLowerCase()} ahora.</p>`;
         return;
       }
-      const rows = map.nodes
-        .map((n) => {
-          const { name, sub } = split(n.label);
-          const what = [sub, n.code].filter(Boolean).join(" · ");
-          const here = n.id === at;
-          return `<div class="ar-row" data-row="${esc(n.id)}"><button class="ar-pick" data-pick="${esc(n.id)}" aria-label="Ver ${esc(n.label)} en el mapa"><b>${esc(name)}${here ? ` <em>Aquí</em>` : ""}</b>${what ? `<small>${esc(what)}</small>` : ""}<span>${esc(n.desc)}</span></button><button class="tb-go" data-area="${esc(n.id)}" aria-label="Ir a ${esc(n.label)}${here ? " (aquí)" : ""}">Ir</button></div>`;
-        })
-        .join("");
-      this.side.innerHTML = `${scope}<div class="ar-list">${rows}</div>`;
+      const options: MapOption[] = map.nodes.map((n) => {
+        const { name, sub } = split(n.label);
+        const here = n.id === at;
+        return {
+          id: n.id,
+          name,
+          tag: here ? "Aquí" : undefined,
+          sub: [sub, n.code].filter(Boolean).join(" · ") || undefined,
+          desc: n.desc,
+          action: "Ir",
+          actionLabel: `Ir a ${n.label}${here ? " (aquí)" : ""}`,
+          pickLabel: `Ver ${n.label} en el mapa`,
+        };
+      });
+      this.side.innerHTML = `${scope}<div class="ar-list mw-list">${optionsHtml(options, { cls: "ar", goAttr: "area" })}</div>`;
     }
-    for (const r of this.side.querySelectorAll<HTMLElement>(".ar-row")) {
-      const on = r.dataset.row === this.picked;
-      r.classList.toggle("on", on);
-      r.querySelector(".ar-pick")?.setAttribute("aria-pressed", String(on));
-    }
-    this.draw();
+    markPicked(this.side, this.sel.picked);
+    this.win.draw();
   }
 
-  private pickAt(x: number, y: number): void {
-    const r = this.canvas.getBoundingClientRect();
-    const px = x - r.left;
-    const py = y - r.top;
+  private pickAt(px: number, py: number): void {
     // The nearest box under the finger, else the nearest centre within a fingertip.
     const under = this.screen.filter((s) => inside(s.hull, px, py)).sort((a, b) => b.depth - a.depth)[0];
-    const near = this.screen.map((s) => ({ s, d: Math.hypot(s.c.x - px, s.c.y - py) })).filter((q) => q.d < 28).sort((a, b) => a.d - b.d)[0]?.s;
+    const near = nearestPick(this.screen.map((s) => ({ s, x: s.c.x, y: s.c.y })), px, py, 28)?.s;
     const hit = near ?? under;
     if (!hit) return;
-    this.picked = hit.id;
+    this.sel.pick(hit.id);
     this.renderSide(false);
     this.side.querySelector(`[data-row="${CSS.escape(hit.id)}"]`)?.scrollIntoView({ block: "nearest" });
   }
 
-  private draw(): void {
-    const c = this.canvas;
-    const w = c.clientWidth;
-    const h = c.clientHeight;
+  private draw(g: CanvasRenderingContext2D, w: number, h: number): void {
     const map = this.shown;
-    if (!this.visible || w === 0 || h === 0) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) {
-      c.width = Math.round(w * dpr);
-      c.height = Math.round(h * dpr);
-    }
-    const g = c.getContext("2d")!;
-    g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    g.clearRect(0, 0, w, h);
     this.screen = [];
-    if (!map?.nodes.length) return;
+    if (!this.visible || !map?.nodes.length) return;
+    const chosen = this.sel.picked;
     // The map turns round the middle of the vehicle and fits it at zoom 1.
     const lo = { x: Infinity, y: Infinity, z: Infinity };
     const hi = { x: -Infinity, y: -Infinity, z: -Infinity };
@@ -278,19 +239,8 @@ export class AreasWindow {
       }
     const o = { x: (lo.x + hi.x) / 2, y: (lo.y + hi.y) / 2, z: (lo.z + hi.z) / 2 };
     const R = Math.max(0.5, Math.hypot(hi.x - lo.x, hi.y - lo.y, hi.z - lo.z) / 2);
-    const s = ((0.48 * Math.min(w, h)) / R) * this.zoom;
-    const cosY = Math.cos(this.yaw);
-    const sinY = Math.sin(this.yaw);
-    const sinE = Math.sin(this.elevation);
-    const cosE = Math.cos(this.elevation);
-    const P = (p: AreaVec): Pt & { depth: number } => {
-      const x = p.x - o.x;
-      const y = p.y - o.y;
-      const z = p.z - o.z;
-      const xr = x * cosY - z * sinY;
-      const zr = x * sinY + z * cosY;
-      return { x: w / 2 + xr * s, y: h / 2 + (zr * sinE - y * cosE) * s, depth: zr * cosE + y * sinE };
-    };
+    const s = ((0.48 * Math.min(w, h)) / R) * this.win.view.zoom;
+    const P: (p: AreaVec) => Pt & { depth: number } = orbitProjector(this.win.view, s, w / 2, h / 2, o);
     // The floor under it all, as a faint grid.
     g.lineWidth = 1;
     g.strokeStyle = "#7fdcff1f";
@@ -340,7 +290,7 @@ export class AreasWindow {
       .sort((a, b) => a.depth - b.depth);
     const EDGES = [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7], [0, 4], [1, 5], [2, 6], [3, 7]] as const;
     for (const b of boxes) {
-      const picked = b.n.id === this.picked;
+      const picked = b.n.id === chosen;
       const here = b.n.id === at;
       const hl = hull(b.corners);
       g.beginPath();
@@ -363,9 +313,9 @@ export class AreasWindow {
     g.textAlign = "center";
     g.textBaseline = "middle";
     const written: { l: number; r: number; t: number; b: number }[] = [];
-    const rank = (b: (typeof boxes)[number]) => (b.n.id === this.picked ? 2 : b.n.id === at ? 1 : 0);
+    const rank = (b: (typeof boxes)[number]) => (b.n.id === chosen ? 2 : b.n.id === at ? 1 : 0);
     for (const b of [...boxes].sort((p, q) => rank(q) - rank(p) || q.depth - p.depth)) {
-      const picked = b.n.id === this.picked;
+      const picked = b.n.id === chosen;
       const here = b.n.id === at;
       const text = split(b.n.label).name + (here ? " · aquí" : "");
       g.font = `${picked ? "700 " : ""}12px system-ui, sans-serif`;

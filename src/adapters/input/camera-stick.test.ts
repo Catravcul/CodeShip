@@ -25,9 +25,12 @@ describe("UI-07 camera only by joystick (reglas.md §5.7)", () => {
     expect(bad).toEqual([]);
   });
 
-  it("the one exception: only the Navigation and Áreas 3D maps turn and zoom with a finger (map-gestures.ts)", () => {
+  it("the one exception: only the map windows' 3D maps turn and zoom with a finger (map-gestures.ts, through map-window.ts)", () => {
     const users = files.filter(({ f, text }) => f !== "src/ui/map-gestures.ts" && /\bmapGestures\(/.test(text)).map(({ f }) => f).sort();
-    expect(users).toEqual(["src/ui/areas-window.ts", "src/ui/nav-map.ts"]);
+    expect(users).toEqual(["src/ui/map-window.ts"]);
+    // The map windows: the start screen, Navigation and Áreas (Berón, 2026-11-18: one model for all of them).
+    const windows = files.filter(({ f, text }) => f !== "src/ui/map-window.ts" && /\bnew MapWindow\(/.test(text)).map(({ f }) => f).sort();
+    expect(windows).toEqual(["src/ui/areas-window.ts", "src/ui/nav-map.ts", "src/ui/start-screen.ts"]);
   });
 
   it("the stick listens to moves on its own element only, never on the window or the canvas", () => {
@@ -39,7 +42,7 @@ describe("UI-07 camera only by joystick (reglas.md §5.7)", () => {
 
   it("every view that turns a camera has a joystick for it", () => {
     // The views whose drag turned the camera before (Berón, 2026-11-17) now build a stick.
-    const views = ["src/ship-bay.ts", "src/station-screen.ts", "src/station-eva.ts", "src/ui/nav-map.ts", "src/ui/areas-window.ts", "src/adapters/three/dock-view.ts", "src/adapters/three/trip-preview.ts"];
+    const views = ["src/ship-bay.ts", "src/station-screen.ts", "src/station-eva.ts", "src/ui/map-window.ts", "src/adapters/three/dock-view.ts", "src/adapters/three/trip-preview.ts"];
     for (const v of views) expect(files.find(({ f }) => f === v)?.text, v).toMatch(/new CameraStick\(/);
     for (const v of ["src/adapters/input/walker.ts", "src/adapters/three/flight-view.ts", "src/probe-mode.ts"]) expect(files.find(({ f }) => f === v)?.text, v).toMatch(/new VirtualStick\(/);
   });

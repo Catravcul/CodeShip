@@ -6,9 +6,8 @@ import { duration, num } from "@modules/navigation/application/trip-chore";
 import type { SketchItem } from "@modules/navigation/application/plan-sketch";
 import { SKETCH_COLOUR } from "../adapters/three/plan-overlay";
 import { dockCardHtml } from "./nav-dock-card";
-import { CameraStick } from "../adapters/input/camera-stick";
-import { mapGestures } from "./map-gestures";
-import "./nav-map.css";
+import { MapWindow } from "./map-window";
+import { nearestPick, orbitProjector } from "./map-window-model";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 const km = (m: number) => (Math.abs(m) >= 1000 ? `${num(m / 1000, 1)} km` : `${num(m)} m`);
@@ -82,15 +81,12 @@ interface Projected {
  */
 export class NavMap {
   readonly el: HTMLElement;
+  private readonly win: MapWindow;
   private readonly canvas: HTMLCanvasElement;
   private readonly chips: HTMLElement;
   private readonly card: HTMLElement;
-  private yaw = 0.35;
-  private elevation = 0.95;
-  private zoom = 1;
   private picked: NavTarget | undefined;
   private note = "";
-  private readonly camStick: CameraStick;
   private screen: { t: NavTarget; x: number; y: number }[] = [];
   private chipsHtml = "";
   private readonly home: HTMLElement;
@@ -116,42 +112,30 @@ export class NavMap {
     private readonly deps: NavMapDeps,
   ) {
     this.home = root;
-    this.el = document.createElement("div");
-    this.el.className = "nav-map hidden";
-    // Its name is for the screen reader only: no text over the map and its tools (Berón, 2026-11-18).
-    this.el.setAttribute("role", "dialog");
-    this.el.setAttribute("aria-label", deps.title);
-    this.el.innerHTML = `
-      <div class="nav-head">
-        <div class="nav-tools"><button data-act="zin" aria-label="Acercar">+</button><button data-act="zout" aria-label="Alejar">−</button><button data-act="view">Cenital</button><button class="missions" data-act="missions">Misiones</button><button class="x" data-act="close" aria-label="Cerrar mapa">×</button></div></div>
-      <div class="nav-body"><div class="nav-canvas"><canvas></canvas><div class="nav-hint">Arrastra para girar · toca un destino</div></div>
-        <div class="nav-side"><div class="nav-chips"></div><div class="nav-card"></div></div></div>`;
-    root.appendChild(this.el);
-    this.canvas = this.el.querySelector("canvas")!;
+    // The map window (map-window.ts): a tap picks a destination; a finger drag turns the map and a pinch zooms it
+    // (reglas.md §5.7, its one exception), and so does its camera joystick. Its name is for the screen reader
+    // only: no text over the map and its tools (Berón, 2026-11-18).
+    this.win = new MapWindow(root, {
+      className: "",
+      label: deps.title,
+      hint: "Arrastra para girar · toca un destino",
+      view: { yaw: 0.35, elevation: 0.95, zoom: 1 },
+      limits: { turnPerPx: 0.008, minElevation: 0.2, minZoom: 0.6, maxZoom: 12 },
+      tools: `<button class="missions" data-act="missions">Misiones</button>`,
+      closeLabel: "Cerrar mapa",
+      side: `<div class="nav-chips"></div><div class="nav-card"></div>`,
+      draw: (g, w, h) => this.draw(g, w, h),
+      tap: (x, y) => this.pickAt(x, y),
+      click: (t) => this.onClick(t),
+      onClose: () => {
+        this.close();
+        this.onClose?.();
+      },
+    });
+    this.el = this.win.el;
+    this.canvas = this.win.canvas;
     this.chips = this.el.querySelector(".nav-chips")!;
     this.card = this.el.querySelector(".nav-card")!;
-    this.el.addEventListener("click", (e) => this.onClick(e));
-    // A tap picks a destination; a finger drag turns the map and a pinch zooms it (reglas.md §5.7, its one
-    // exception), and so does its camera joystick.
-    mapGestures(this.canvas, {
-      rotate: (dx, dy) => {
-        this.yaw -= dx * 0.008;
-        this.elevation = Math.max(0.2, Math.min(Math.PI / 2, this.elevation + dy * 0.008));
-        this.draw();
-      },
-      zoom: (f) => this.setZoom(this.zoom * f),
-      tap: (x, y) => this.pickAt(x, y),
-    });
-    this.camStick = new CameraStick(this.el.querySelector(".nav-canvas")!, "nav-look", (yaw, pitch) => {
-      this.yaw -= yaw;
-      this.elevation = Math.max(0.2, Math.min(Math.PI / 2, this.elevation - pitch));
-      this.draw();
-    }, { label: "Girar" });
-    this.camStick.show(true);
-    this.canvas.addEventListener("wheel", (e) => {
-      e.preventDefault();
-      this.setZoom(this.zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15));
-    });
   }
 
   get visible(): boolean {
@@ -205,19 +189,19 @@ export class NavMap {
     if (!this.visible) return;
     this.renderChips();
     this.renderCard();
-    this.draw();
+    this.win.draw();
   }
 
   /** Follow the ship while open: redraw and update distances, without rebuilding the card under the finger. */
   tick(): void {
     if (!this.visible) return;
     this.renderChips();
-    this.draw();
+    this.win.draw();
   }
 
   /** The plan changed (a step was solved, or the sheet closed): redraw now. */
   planChanged(): void {
-    if (this.visible) this.draw();
+    if (this.visible) this.win.draw();
   }
 
   /** The part of the canvas (its px) that is not under the challenge sheet: below it in portrait, beside it in landscape. */
@@ -230,28 +214,11 @@ export class NavMap {
     return { w, h: Math.max(60, Math.min(h, s.top - r.top)) };
   }
 
-  private setZoom(z: number): void {
-    this.zoom = Math.max(0.6, Math.min(12, z));
-    this.draw();
-  }
-
-  private onClick(e: Event): void {
-    const t = (e.target as HTMLElement).closest<HTMLElement>("[data-act]");
+  private onClick(e: HTMLElement): void {
+    const t = e.closest<HTMLElement>("[data-act]");
     if (!t) return;
     const nav = this.deps.nav;
     switch (t.dataset.act) {
-      case "close":
-        this.close();
-        this.onClose?.();
-        return;
-      case "zin":
-        return this.setZoom(this.zoom * 1.5);
-      case "zout":
-        return this.setZoom(this.zoom / 1.5);
-      case "view":
-        this.elevation = this.elevation > 1.5 ? 0.95 : Math.PI / 2;
-        t.textContent = this.elevation > 1.5 ? "Inclinada" : "Cenital";
-        return this.draw();
       case "missions":
         return this.onMissions?.();
       case "pick":
@@ -353,14 +320,8 @@ export class NavMap {
     else if (actions && this.deps.handHint && this.deps.nav.carrierFlies(t) && !!this.deps.nav.trip(t).carrier) actions.insertAdjacentHTML("afterend", `<p class="nav-hand-hint">${esc(this.deps.handHint)}</p>`);
   }
 
-  private pickAt(cx: number, cy: number): void {
-    const r = this.canvas.getBoundingClientRect();
-    const x = cx - r.left, y = cy - r.top;
-    let best: { t: NavTarget; d: number } | undefined;
-    for (const s of this.screen) {
-      const d = Math.hypot(s.x - x, s.y - y);
-      if (d < 32 && (!best || d < best.d)) best = { t: s.t, d };
-    }
+  private pickAt(x: number, y: number): void {
+    const best = nearestPick(this.screen, x, y, 32);
     if (best) {
       this.picked = best.t;
       this.note = "";
@@ -368,28 +329,18 @@ export class NavMap {
     }
   }
 
-  private draw(): void {
+  private draw(g: CanvasRenderingContext2D, w: number, h: number): void {
     // The plan of a trip just programmed (its challenge's own scene drew it step by step: ux-acciones.md §7).
     const plan = this.plan?.() ?? [];
-    const c = this.canvas;
-    const w = c.clientWidth, h = c.clientHeight;
-    if (w === 0 || h === 0) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) {
-      c.width = Math.round(w * dpr);
-      c.height = Math.round(h * dpr);
-    }
-    const g = c.getContext("2d")!;
-    g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    g.clearRect(0, 0, w, h);
+    const view = this.win.view;
     const R = this.deps.boundaryRadiusM;
-    let s = ((0.46 * Math.min(w, h)) / R) * this.zoom;
+    let s = ((0.46 * Math.min(w, h)) / R) * view.zoom;
     let cx = w / 2, cy = h / 2;
-    const cosY = Math.cos(this.yaw), sinY = Math.sin(this.yaw);
-    const sinE = Math.sin(this.elevation), cosE = Math.cos(this.elevation);
+    const cosY = Math.cos(view.yaw), sinY = Math.sin(view.yaw);
+    const sinE = Math.sin(view.elevation), cosE = Math.cos(view.elevation);
     const ship = this.deps.shipPosition();
     // Centred on the region when zoomed out, on the ship when zoomed in.
-    const k = Math.min(1, (this.zoom - 1) / 2);
+    const k = Math.min(1, (view.zoom - 1) / 2);
     let o = { x: ship.x * Math.max(0, k), y: ship.y * Math.max(0, k), z: ship.z * Math.max(0, k) };
     // While a plan is being programmed, the view fits the plan (and the ship) in the part of the map the sheet leaves open.
     const planPts = plan.flatMap(sketchPoints);
@@ -401,12 +352,7 @@ export class NavMap {
       cy = fit.cy;
       o = { x: 0, y: 0, z: 0 };
     }
-    const P = (p: { x: number; y: number; z: number }): Projected => {
-      const x = p.x - o.x, y = p.y - o.y, z = p.z - o.z;
-      const xr = x * cosY - z * sinY;
-      const zr = x * sinY + z * cosY;
-      return { x: cx + xr * s, y: cy + (zr * sinE - y * cosE) * s, gy: cy + zr * sinE * s };
-    };
+    const P: (p: { x: number; y: number; z: number }) => Projected = orbitProjector(view, s, cx, cy, o);
 
     // Reference plane: the flyable sphere's equator and range rings every 5 km.
     g.lineWidth = 1;

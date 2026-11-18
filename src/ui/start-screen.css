@@ -1,0 +1,9 @@
+/* The start screen (start-screen.ts): the map window with the six sanctuaries, before the game. */
+.nav-map.start-screen { z-index: 30; background: radial-gradient(ellipse at 50% 35%, #0c2030, #02060a 75%); }
+.start-screen .nav-head { justify-content: space-between; }
+.start-screen .nav-canvas { flex: 1 1 46%; }
+.start-screen .nav-side { max-height: 50cqh; }
+.start-screen .ss-side { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; }
+.start-screen .ss-intro { margin: 0; font-size: 12px; color: #9fc6d6; }
+.start-screen .ss-src { margin: 4px 0 0; font-size: 11px; color: #9fc6d6; opacity: 0.8; }
+.start-screen .mw-row:not(.locked) .mw-go { background: #58d6ff; }

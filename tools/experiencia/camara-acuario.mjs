@@ -6,6 +6,7 @@
 // the AQH in Kibo and on Starship's deck 2, not a flat panel. (4) An adoption's arrival time counts down with the
 // catalogue open. Captures: docs/screenshots/camara-acuario-*-movil.png.
 import { mkdirSync } from "node:fs";
+import { enterGame } from "./lib.mjs";
 
 async function capture(j, label, title) {
   await j.page.waitForTimeout(700);
@@ -253,7 +254,7 @@ export async function camaraAcuario(j) {
 
   // 6. A new game landed on Bennu: the LM's cabin on the asteroid (0 g too) and the walk outside.
   await p.reload();
-  await p.waitForFunction(() => window.codeship, null, { timeout: 120000 });
+  await enterGame(p);
   await p.waitForTimeout(1500);
   await j.setup("posa el módulo sobre Bennu (aterrizar a mano lleva minutos y se juega en PX-03)", () => {
     const c = window.codeship;

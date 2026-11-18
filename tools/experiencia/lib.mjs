@@ -26,6 +26,21 @@ const pct = (xs, p) => {
   return a[Math.min(a.length - 1, Math.floor((p / 100) * a.length))];
 };
 
+/**
+ * Into the game from the start screen (src/boot.ts), as a player: «Continuar» if there is a kept game, else
+ * «Jugar» on the space sanctuary (6), the only one that starts. Waits for the game to be there.
+ */
+export async function enterGame(page) {
+  await page.waitForFunction(() => window.codeship || document.querySelector(".start-screen:not(.hidden)"), null, { timeout: 120000 });
+  if (!(await page.evaluate(() => !!window.codeship))) {
+    const cont = page.locator(".start-screen .mw-go:not([disabled])", { hasText: "Continuar" });
+    const btn = (await cont.count()) ? cont.first() : page.locator('.start-screen .mw-go[data-go="espacio"]');
+    await btn.scrollIntoViewIfNeeded();
+    await btn.tap({ timeout: 15000 }).catch(() => btn.click({ timeout: 15000 }));
+  }
+  await page.waitForFunction(() => window.codeship, null, { timeout: 120000 });
+}
+
 export class Journey {
   constructor(name, title, opts) {
     this.name = name;
@@ -52,20 +67,40 @@ export class Journey {
     await cdp.send("Emulation.setCPUThrottlingRate", { rate: throttle });
     const t0 = Date.now();
     await this.page.goto(url);
-    await this.page.waitForFunction(() => window.codeship, null, { timeout: 120000 });
+    // The start screen comes first on every load (PX-44 plays it; the others choose 6 or «Continuar»).
+    if (this.opts.startScreen) {
+      await this.page.waitForSelector(".start-screen:not(.hidden)", { timeout: 120000 });
+      this.loadMs = await this.page.evaluate(() => performance.getEntriesByName("codeship-inicio")[0]?.startTime);
+      this.loadMarked = typeof this.loadMs === "number";
+      this.wallLoadMs = Date.now() - t0;
+      await this.resetPerf();
+      return this.page;
+    }
+    await enterGame(this.page);
     await this.page.waitForFunction(() => performance.getEntriesByName("codeship-primer-fotograma").length > 0, null, { timeout: 30000 }).catch(() => {});
-    // The mark the game loop sets on its first frame (older builds without it: when the page had the game).
-    this.loadMs = await this.page.evaluate(() => performance.getEntriesByName("codeship-primer-fotograma")[0]?.startTime);
+    // The mark the game loop sets on its first frame (older builds without it: when the page had the game), less
+    // the time the start screen waited for a choice (a player looking at it is not loading).
+    this.loadMs = await this.page.evaluate(() => {
+      const t = (n) => performance.getEntriesByName(n)[0]?.startTime;
+      const first = t("codeship-primer-fotograma");
+      return typeof first === "number" && typeof t("codeship-inicio-elegido") === "number" ? first - (t("codeship-inicio-elegido") - (t("codeship-inicio") ?? 0)) : first;
+    });
     this.loadMarked = typeof this.loadMs === "number";
     this.wallLoadMs = Date.now() - t0;
-    this.gpu = await this.page.evaluate(() => {
-      const gl = document.querySelector("canvas")?.getContext("webgl2");
-      const ext = gl?.getExtension("WEBGL_debug_renderer_info");
-      return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : "desconocida";
-    });
+    await this.detectGpu();
     await this.page.waitForTimeout(1500);
     await this.resetPerf();
     return this.page;
+  }
+
+  /** The renderer of the game's WebGL canvas (none yet on the start screen: looked for again when measuring). */
+  async detectGpu() {
+    this.gpu = await this.page.evaluate(() => {
+      const c = [...document.querySelectorAll("canvas")].find((x) => !x.closest(".start-screen"));
+      const gl = c?.getContext("webgl2");
+      const ext = gl?.getExtension("WEBGL_debug_renderer_info");
+      return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : "desconocida";
+    });
   }
 
   /** Starts a fresh performance window (after loading or a setup step). */
@@ -538,6 +573,7 @@ export class Journey {
   }
 
   async measure() {
+    if (this.gpu === undefined || this.gpu === "desconocida") await this.detectGpu().catch(() => {});
     const m = await this.page.evaluate(() => {
       const s = window.__exp;
       const f = window.__codeshipFrame;

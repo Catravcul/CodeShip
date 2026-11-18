@@ -215,6 +215,14 @@ Propuesta:
 - `nav-map.ts` todavía gira con el joystick «Girar». La pantalla de inicio seguiría lo mismo que esos dos mapas.
 - ¿Entra en la excepción del dedo? Es la pregunta 9.
 
+### 5.2.1 Hecho en `inicio-niveles` (fase 1)
+
+- **`MapWindow`** (`src/ui/map-window.ts`): el lienzo con el giro con el dedo, el pellizco, el joystick «Girar», +, − y «Cenital»; tocar para elegir; la lista de opciones (descripción y botón de 44 px, las bloqueadas con su motivo y un candado ⊘) y el engranaje de ajustes cuando la ventana los tiene. Su lógica sin DOM (proyección, toque más cercano, selección y bloqueo) está en `map-window-model.ts`, con pruebas.
+- **Navegación** (`nav-map.ts`) y **Áreas** (`areas-window.ts`) usan esa ventana y se ven igual que antes.
+- **Pantalla de inicio** (`src/ui/start-screen.ts`, entrada `src/boot.ts`): sale en cada carga, antes de crear la escena y sin menú árbol. El mapa pone los seis santuarios en el eje profundidad = peligro y la lista los ordena igual, de arriba abajo: 6, 3, 1, 2, 4 y 5. Solo el 6 se juega; el 3 se elige y dice «En construcción: iniciación y entrenamiento de Doménica»; los demás, «Próximamente». Datos en `src/modules/levels/data/levels.ts`, con su fuente.
+- **«Continuar»**: si hay una partida guardada (`localStorage` `codeship.partida`, con el nivel y la fecha), el botón de su nivel dice «Continuar». Todavía nada guarda partidas (docs/qa HC-06): hoy no sale nunca en una partida real.
+- No hay `?nivel=` para saltar el inicio: los recorridos entran tocando el 6 o «Continuar» (`enterGame` en `tools/experiencia/lib.mjs`). Recorrido PX-44.
+
 ### 5.3 Plan por ramas
 
 Cada rama lleva sus pruebas, su recorrido PX (desde PX-44), sus capturas en el móvil y su fila en `docs/qa`.
@@ -248,6 +256,6 @@ Las fases 1 y 2 no dependen de las preguntas y pueden empezar ya. La 3 necesita 
 6. **Plataforma en alto.** La regla de altura de Cold Sanctuary pone la plataforma a unos 192 m. ¿En Codeship va al nivel del mar, como las reales, con la regla apagada?
 7. **Personajes.** ¿Kushal, el protagonista de Cold Sanctuary, aparece en la iniciación (visita o llamada) o hay instructores nuevos?
 8. **Aviones.** El T-38 y el A310 necesitan una pista de kilómetros que no cabe en ±600 m. ¿Salen de una pista de hielo fuera del mapa (como las de McMurdo), a la que se llega en helicóptero?
-9. **Mapa del inicio.** ¿Se gira con el dedo, como Navegación y Áreas en §5.7, o con el joystick, como hace hoy `nav-map.ts`?
+9. ~~**Mapa del inicio.** ¿Se gira con el dedo, como Navegación y Áreas en §5.7, o con el joystick, como hace hoy `nav-map.ts`?~~ Respondida por la decisión de Berón (arriba): es la misma ventana de mapa, que se gira con el dedo y también con su joystick ([reglas.md](reglas.md) §5.7).
 10. **Duración y saltos.** ¿Unas 13 jornadas está bien? ¿Se puede jugar el 6 sin terminar el 3?
 11. **Cold Sanctuary.** El `RocketModel` pone 4 aletas al Electron. ¿Lo comprobamos y avisamos allí?

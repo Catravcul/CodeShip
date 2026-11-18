@@ -6,6 +6,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { placeAbove } from "./aterrizaje.mjs";
 import { adoptar, llegan } from "./catalogo.mjs";
+import { enterGame } from "./lib.mjs";
 
 /** What is open now: the outsiders, a capture, then «×» (or «Continuar»/«Cerrar» once it ended). */
 async function focus(j, id, title, recheck = false) {
@@ -43,7 +44,7 @@ async function part(j, name, fn) {
 async function reload(j) {
   const p = j.page;
   await p.reload();
-  await p.waitForFunction(() => window.codeship, null, { timeout: 120000 });
+  await enterGame(p);
   await p.waitForTimeout(1500);
 }
 

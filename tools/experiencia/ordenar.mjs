@@ -1,4 +1,5 @@
 import { readStats } from "./cocina.mjs";
+import { enterGame } from "./lib.mjs";
 // Order challenges (docs/qa/casos.md UI-04, UI-05): programming a trip from the travel ship's bridge.
 // «Ordenar todo y enviar»: a wrong order marks every slot ✓/✗ and keeps them until «Reintentar», which
 // leaves the right ones in place. «Paso a paso»: a wrong pick is flagged at once and costs one failure;
@@ -119,7 +120,7 @@ export async function ordenar(j) {
   // Opening the game again on the same device (a second tab, so this one keeps its performance sampler).
   const again = await p.context().newPage();
   await again.goto(p.url());
-  await again.waitForFunction(() => window.codeship, null, { timeout: 120000 });
+  await enterGame(again);
   const after = await again.evaluate(() => localStorage.getItem("codeship.retos-ordenar"));
   await again.close();
   j.check("al volver a abrir el juego sigue en paso a paso", after === "pasos", after);

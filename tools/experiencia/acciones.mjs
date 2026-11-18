@@ -1,6 +1,8 @@
 // Audit of the action buttons on every screen (docs/design/ux-acciones.md): visits each screen the way
 // a player gets there, captures it and lists the controls that overlap. Run at 390×844 and 1280×800.
 
+import { enterGame } from "./lib.mjs";
+
 const SCREENS = [];
 const screen = (id, title) => SCREENS.push({ id, title });
 
@@ -80,7 +82,7 @@ export async function acciones(j) {
   j.check("la consola de la mente del puente dice qué falta para entrar por la sonda", /sonda/i.test(why), why.slice(0, 120));
   await audit(j, "mente-puente", "Consola de la mente del asteroide (puente)");
   await p.reload();
-  await p.waitForFunction(() => window.codeship, null, { timeout: 120000 });
+  await enterGame(p);
   await p.waitForTimeout(1500);
 
   // Free flight, then landed on Bennu: the crowded state.
@@ -109,7 +111,7 @@ export async function acciones(j) {
     await audit(j, "eva", "Paseo espacial");
   }
   await p.reload();
-  await p.waitForFunction(() => window.codeship, null, { timeout: 120000 });
+  await enterGame(p);
   await p.waitForTimeout(1500);
 
   // Station: dock the lander at its port, go in, open the tabs.

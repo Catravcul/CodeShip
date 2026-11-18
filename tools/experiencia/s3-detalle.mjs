@@ -107,12 +107,12 @@ const SHOTS = [
   { id: "entrenamiento:nbl-control", title: "Sala de control de la NBL", label: "nbl-control", look: { centre: "entrenamiento:nbl", dz: -10 }, stand: 0, pitch: -0.3, kinds: [] },
   { id: "entrenamiento:nbl-hiperbarica", title: "Cámara hiperbárica (NBL)", label: "nbl-hiperbarica", look: { kind: "hiperbarica" }, stand: 0, back: 2.5, pitch: -0.1, kinds: [] },
   { id: "entrenamiento:svmf", title: "Nave de maquetas (SVMF)", label: "svmf", look: { kind: "maqueta-modulo" }, stand: 11, pitch: -0.12, kinds: ["capsula-orion", "rack-ispr", "trineo", "puerta-industrial"] },
-  { id: "entrenamiento:svmf", title: "Nave de maquetas (SVMF)", label: "svmf-orion", go: [{ kind: "capsula-orion", dx: -7, dz: 8 }, { kind: "capsula-orion", dx: -7, dz: 0 }], look: { kind: "capsula-orion" }, stand: 0, back: 1, pitch: -0.12, kinds: [] },
+  { id: "entrenamiento:svmf", title: "Nave de maquetas (SVMF)", label: "svmf-orion", go: [{ kind: "capsula-orion", dx: -4.5, keepZ: true }, { kind: "capsula-orion", dx: -4.5, dz: 0 }], look: { kind: "capsula-orion" }, stand: 0, back: 1.5, pitch: -0.12, kinds: [] },
   { id: "entrenamiento:control", title: "Control de misión", label: "control", look: { kind: "pantallas-frente" }, stand: 9, pitch: -0.1, kinds: ["consola-fcr", "silla-fcr", "pantallas-frente", "barandilla"] },
   { id: "entrenamiento:gimnasio", title: "Gimnasio y vestuarios", label: "gimnasio", look: { kind: "ared" }, stand: 5, pitch: -0.15, kinds: ["cinta", "bici", "jaula", "mancuernas", "remo", "polea", "ared", "taquillas"] },
   { id: "entrenamiento:medico", title: "Centro médico y de selección", label: "medico", look: { kind: "ecg" }, stand: 3.5, pitch: -0.15, kinds: ["ecg", "ecografo", "audiometro", "camilla-exam", "asiento-camara", "consola-camara", "archivador", "mostrador"] },
   { id: "entrenamiento:medico", title: "Centro médico y de selección", label: "medico-espera", look: { kind: "mostrador" }, stand: 6, pitch: -0.12, kinds: [] },
-  { id: "entrenamiento:medico-hipobarica", title: "Cámara hipobárica", label: "hipobarica", look: { dx: 6 }, stand: 0, back: 1.5, pitch: -0.15, kinds: [] },
+  { id: "entrenamiento:medico-hipobarica", title: "Cámara hipobárica", label: "hipobarica", look: { dx: -6 }, stand: 0, back: 1, pitch: -0.15, kinds: [] },
   { id: "entrenamiento:supervivencia", title: "Supervivencia en el agua", label: "supervivencia", go: { pool: "supervivencia-piscina" }, look: { kind: "mets" }, stand: 0, back: 0.5, pitch: -0.25, kinds: ["mets", "balsa", "izado", "silla-socorrista", "chalecos"] },
   { id: "entrenamiento:helipuerto", title: "Helipuerto", label: "helipuerto", look: { kind: "manga" }, stand: 10, pitch: -0.15, kinds: [] },
   { id: "entrenamiento:isla", title: "Isla de entrenamiento (exterior)", label: "isla", look: { kind: "poste-senal" }, stand: 7, pitch: -0.1, kinds: [] },
@@ -172,7 +172,7 @@ export async function s3Detalle(j) {
             return { x: x + ((b.x - x) / L) * 1.2, z: z + ((b.z - z) / L) * 1.2 };
           }
           const o = go.kind ? c.layout.fixtures.find((q) => q.kind === go.kind) : b;
-          return { x: o.x + (go.dx ?? 0), z: o.z + (go.dz ?? 0) };
+          return { x: o.x + (go.dx ?? 0), z: go.keepZ ? b.z : o.z + (go.dz ?? 0) };
         }, go);
         await walkTo(j, g.x, g.z, 0.4);
       }

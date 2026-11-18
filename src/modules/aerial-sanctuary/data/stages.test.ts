@@ -22,10 +22,12 @@ for (const k of [1, 1.5]) {
     it("ella y quien da el reto están dentro de su sala y no dentro de una pared ni de un mueble", () => {
       for (const post of STAGED_POSTS) {
         const s = stageFor(L, post)!;
-        const room = L.areas.find((a) => a.id === `entrenamiento:${s.room}`)!;
+        const room = L.areas.find((a) => a.id === s.room)!;
         const spots = [...Object.entries(s.her), ["entrenador", s.trainer] as const, ...Object.entries(s.beside).map(([key, q]) => [`entrenador junto a ${key}`, q] as const), ...(s.lap ? [["largo-desde", s.lap.from] as const, ["largo-hasta", s.lap.to] as const] : [])];
         for (const [name, p] of spots) {
           expect(inside(room, p!.x, p!.z), `${post} ${name}`).toBe(true);
+          // On a rig (the gondola, the plane's cabin) she rides it: its own body is not in anyone's way.
+          if (s.mounted.includes(name as never)) continue;
           // Lying on the couch, seated on the couch's edge or in the raft, she rests on it: only the body above it counts.
           const above = name === "camilla-tumbada" ? p!.y + 0.05 : name === "camilla-sentada" ? 0.72 : p!.y + 0.1;
           const hit = inSolid(L.world.solids, p!.x, p!.z, above, p!.y + 1.5);
@@ -36,7 +38,7 @@ for (const k of [1, 1.5]) {
     it("quien da el reto entra desde la puerta de la sala sin atravesar muebles ni paredes", () => {
       for (const post of STAGED_POSTS) {
         const s = stageFor(L, post)!;
-        const door = L.graph.points.find((p) => p.id === `entrenamiento:${s.room}:dentro`)!;
+        const door = L.graph.points.find((p) => p.id === s.door)!;
         const pts = [door, ...s.trainerVia, s.trainer];
         for (let i = 0; i + 1 < pts.length; i++) {
           const a = pts[i]!;

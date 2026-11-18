@@ -160,8 +160,59 @@ export const TRAINING = {
   island: fact({ x0: 20, x1: 300, z0: -125, z1: 115 }, "licencia", S.ours, "isla natural; las instalaciones juntas en una isla son nuestras, cada una copia una real"),
   nblPool: fact({ x: 62, z: 31, depth: 12 }, "real", S.nbl),
   nblVolumeM3: fact(23_000, "real", S.nbl),
-  centrifugeArmM: fact(18, "real", S.centrifuge, "TsF-18, a confirmar"),
+  centrifugeArmM: fact(18, "real", S.tsf18, "TsF-18: brazo de 18 m"),
   swimLapM: fact(25, "real", S.training, "3 largos de 25 m sin parar"),
   destiny: fact({ length: 8.5, diameter: 4.3 }, "real", "Wikipedia, Destiny (módulo de la ISS): https://en.wikipedia.org/wiki/Destiny_(ISS_module)"),
   consoles: fact({ rows: 4, perRow: 4 }, "real", `${S.fcr1}; ${S.mocrRows}`, "16 consolas como la FCR-1 antes de 2006, en cuatro filas como la sala del Apolo; las dos de delante, más bajas; qué puesto va en cada consola es nuestro salvo FLIGHT (3.ª fila) y CAPCOM (2.ª)"),
+} as const;
+
+// ── Phase 5 (s3-iniciacion-2): the centrifuge, the parabolic flight, the glacier, the simulators ──
+export const CENTRIFUGE = {
+  testG: fact(4, "real", S.tsf18, "prueba estándar de la TsF-18"),
+  rampGs: fact(0.1, "real", S.tsf18, "sube 0,1 g cada segundo"),
+  testS: fact(60, "real", S.tsf18, "la prueba dura un minuto"),
+  reentryG: fact({ min: 4, max: 5 }, "real", S.dragonReentry, "Crew Dragon, Demo-2"),
+} as const;
+
+export const ZERO_G = {
+  parabolas: fact(31, "real", S.zeroG),
+  weightlessS: fact(20, "real", S.zeroG),
+  pullG: fact(1.8, "real", S.zeroG),
+  pullS: fact(20, "real", S.zeroG),
+  climbDeg: fact(50, "real", S.zeroG),
+  cycleMin: fact(3, "real", S.zeroG, "1 min de parábola y 2 de descanso"),
+  restAfterFiveMin: fact(8, "real", S.zeroG),
+  testZone: fact({ x: 20, y: 2.3, z: 5 }, "real", S.zeroG, "largo, alto y ancho de la zona de ensayo acolchada"),
+  plane: fact({ length: 46.4, span: 43.9, fuselage: 5.6 }, "real", S.zeroG),
+} as const;
+
+/** The glacier: an ice island off the map with a blue-ice runway like Union Glacier's, reached by helicopter. */
+export const GLACIER = {
+  at: fact({ x: 1600, z: 1700 }, "licencia", S.ours, "un glaciar en el mar del santuario 3, fuera de las islas: la pista de hielo azul no cabe en ellas"),
+  runway: fact({ length: 3000, width: 50 }, "real", S.blueIce),
+  half: fact({ x: 1650, z: 260 }, "licencia", S.ours, "el hielo alrededor de la pista y del campamento"),
+} as const;
+
+export const ANSMET = {
+  spacingM: fact(30, "real", S.ansmet),
+  team: fact({ min: 4, max: 10 }, "real", S.ansmet),
+  minutesPerSample: fact(2, "real", S.ansmet, "sin contar el GPS, que tarda 4–5 min"),
+} as const;
+
+export const COLD = {
+  days: fact(2, "real", S.happyCamper),
+  antennaM: fact(10, "real", S.happyCamper),
+  poleKm: fact(1360, "real", S.happyCamper),
+} as const;
+
+/** The LM's landing gear: the touchdown it was built for (the simulator's limits). */
+export const LM_TOUCHDOWN = {
+  verticalMs: fact(3.05, "real", S.lmGear, "10 ft/s"),
+  horizontalMs: fact(1.22, "real", S.lmGear, "4 ft/s"),
+  /** The Moon's surface gravity, m/s². */
+  moonG: fact(1.62, "real", S.moonFacts, "Gravedad en la superficie de la Luna"),
+  /** Where the practice takes over: the low gate, about 150 m up (Apollo 11 went to P66 at about 500 ft). */
+  startAltM: fact(150, "real", S.apollo11Landing, "Unos 500 ft: Armstrong toma el mando a mano (P66)"),
+  /** Descent propellant left at the low gate, kg (ours: about a minute and a half at hover, Apollo 11 landed with ~45 s). */
+  propLeftKg: fact(400, "licencia", S.apollo11Landing, "Apolo 11 tocó con unos 45 s de propelente"),
 } as const;

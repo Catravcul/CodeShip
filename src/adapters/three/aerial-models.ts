@@ -36,7 +36,8 @@ const LOOK: Record<string, THREE.Material> = {
   maqueta: mat(0xe9ecef),
   "maqueta-techo": mat(0xe9ecef),
   maquina: mat(0x6f7c86),
-  gondola: mat(0x2f6f9f),
+  hielo: mat(0xdfeaf0),
+  "tienda-comedor": mat(0xd8562c),
   consola: mat(0x50565e),
   pantalla: mat(0x1d5a70, { emissive: 0x0d3040 }),
   cinta: mat(0x30343a),
@@ -44,7 +45,9 @@ const LOOK: Record<string, THREE.Material> = {
   camilla: mat(0xd9e6ef),
 };
 
-const FLOOR_LOOK: Record<string, number> = { entrenamiento: 0x7f9a62, lanzadera: 0xd2d7dc, parque: 0xd2d7dc, muelle: 0xc7ccd1, plataforma: 0x77706a };
+const FLOOR_LOOK: Record<string, number> = { entrenamiento: 0x7f9a62, lanzadera: 0xd2d7dc, parque: 0xd2d7dc, muelle: 0xc7ccd1, plataforma: 0x77706a, glaciar: 0xf1f5f8 };
+/** The wind-swept blue ice (the runway and the meteorite field) against the snow around. */
+const BLUE_ICE = 0x9cc8e0;
 
 function boxGeo(x0: number, x1: number, y0: number, y1: number, z0: number, z1: number): THREE.BufferGeometry {
   const g = new THREE.BoxGeometry(Math.max(0.01, x1 - x0), Math.max(0.01, y1 - y0), Math.max(0.01, z1 - z0));
@@ -62,7 +65,9 @@ export function buildBlocks(blocks: readonly Block[]): THREE.Group {
     by.set(b.look, list);
   }
   for (const [look, geos] of by) {
-    if (look === "cohete" || look === "oculto") continue;
+    // The centrifuge's gondola is drawn by its rig (s3-rigs.ts), which swings it round on the arm; the LM mock-up by
+    // the simulators (s3-simulators.ts), with the lander's own cabin.
+    if (look === "cohete" || look === "gondola" || look === "lm-maqueta" || look === "oculto") continue;
     const m = new THREE.Mesh(mergeGeometries(geos), LOOK[look] ?? mat(0xaaaaaa));
     m.name = `bloques-${look}`;
     g.add(m);
@@ -76,7 +81,7 @@ export function buildFloors(floors: readonly Floor[]): THREE.Group {
   const by = new Map<number, THREE.BufferGeometry[]>();
   for (const f of floors) {
     const isl = f.area.split(":")[0]!;
-    const c = f.area.includes("helipuerto") ? 0x3a3f44 : (interiorFloor(f.area) ?? FLOOR_LOOK[isl] ?? 0xb9c4cc);
+    const c = f.area.includes("helipuerto") ? 0x3a3f44 : f.area === "glaciar:pista" || f.area === "glaciar:hielo-azul" ? BLUE_ICE : (interiorFloor(f.area) ?? FLOOR_LOOK[isl] ?? 0xb9c4cc);
     const list = by.get(c) ?? [];
     list.push(boxGeo(f.x0, f.x1, f.y - 0.25, f.y - 0.01, f.z0, f.z1));
     by.set(c, list);
@@ -319,6 +324,100 @@ function centrifuge(): { group: THREE.Group; arm: THREE.Group } {
   return { group: g, arm };
 }
 
+/**
+ * The Airbus A310 Zero-G (ESA, Novespace): 46,4 m long, 43,9 m of span, a 5,6 m fuselage; nose to +x. Its padded
+ * test zone inside (20 × 5 × 2,3 m) is `cabin`, seen from within (the walls face in), with the seats behind it.
+ */
+export function a310(): { group: THREE.Group; cabin: THREE.Group } {
+  const g = new THREE.Group();
+  const white = mat(0xf4f6f8);
+  const R = 2.8;
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 36, 20, 1, true), white);
+  body.rotation.z = Math.PI / 2;
+  body.position.set(-1, 4.2, 0);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(R, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), white);
+  nose.rotation.z = -Math.PI / 2;
+  nose.scale.set(1, 2.2, 1);
+  nose.position.set(17, 4.2, 0);
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(R, 8, 20, 1, true), white);
+  tail.rotation.z = Math.PI / 2;
+  tail.position.set(-23, 4.6, 0);
+  const wing = new THREE.Mesh(new THREE.BoxGeometry(6, 0.5, 43.9), white);
+  // A low wing, under the cabin's floor.
+  wing.position.set(1, 1.75, 0);
+  wing.rotation.y = 0.12;
+  const fin = new THREE.Mesh(new THREE.BoxGeometry(5, 8, 0.4), mat(0x1f4fa0));
+  fin.position.set(-24, 9.5, 0);
+  const stab = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.3, 16), white);
+  stab.position.set(-24, 5.6, 0);
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(34, 0.5, 5.65), mat(0x1f4fa0));
+  stripe.position.set(-1, 4.6, 0);
+  g.add(body, nose, tail, wing, fin, stab, stripe);
+  for (const z of [-7.5, 7.5]) {
+    const eng = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 5, 14), mat(0xb8c0c8));
+    eng.rotation.z = Math.PI / 2;
+    eng.position.set(4, 0.75, z);
+    g.add(eng);
+  }
+  for (const [x, z] of [[13, 0], [0, -4.5], [0, 4.5]] as const) {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.5, 6), mat(0x50565e));
+    leg.position.set(x, 0.75, z);
+    g.add(leg);
+  }
+  // The padded test zone, its floor 1,9 m up in the fuselage; seats aft of it.
+  const cabin = new THREE.Group();
+  cabin.position.set(0, 2.2, 0);
+  const pad = new THREE.Mesh(new THREE.BoxGeometry(20, 2.3, 5), new THREE.MeshStandardMaterial({ color: 0xf1f1ec, roughness: 0.95, side: THREE.BackSide }));
+  pad.position.y = 1.15;
+  cabin.add(pad);
+  for (let i = 0; i < 9; i++) {
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.02, 4.9), mat(0x2f6f9f));
+    strip.position.set(-9 + i * 2.25, 0.01, 0);
+    cabin.add(strip);
+  }
+  for (const z of [-1.2, -0.5, 0.5, 1.2]) {
+    const seat = new THREE.Group();
+    seat.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.45, 0.5), mat(0x30343a)).translateY(0.22), new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.7, 0.5), mat(0x30343a)).translateY(0.75).translateX(-0.25));
+    seat.position.set(-9.4, 0, z);
+    cabin.add(seat);
+  }
+  const light = new THREE.PointLight(0xffffff, 6, 14);
+  light.position.set(0, 2, 0);
+  cabin.add(light);
+  g.add(cabin);
+  return { group: g, cabin };
+}
+
+/** A Scott pyramid tent (the field parties' double-walled tent, about 2,4 m high), with its guys' snow anchors. */
+export function scottTent(): THREE.Group {
+  const g = new THREE.Group();
+  const t = new THREE.Mesh(new THREE.ConeGeometry(1.4, 2.4, 4), mat(0xe8b923));
+  t.rotation.y = Math.PI / 4;
+  t.position.y = 1.2;
+  g.add(t);
+  return g;
+}
+
+/** A snowmobile (about 3 m long), nose to +x. */
+export function snowmobile(): THREE.Group {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.6, 0.9), mat(0xc0392b));
+  body.position.set(0, 0.65, 0);
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(1, 0.2, 0.6), mat(0x222222));
+  seat.position.set(-0.4, 1.05, 0);
+  const track = new THREE.Mesh(new THREE.BoxGeometry(2, 0.35, 0.6), mat(0x222222));
+  track.position.set(-0.3, 0.18, 0);
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.8), mat(0x50565e));
+  bar.position.set(0.5, 1.25, 0);
+  g.add(body, seat, track, bar);
+  for (const z of [-0.4, 0.4]) {
+    const ski = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.06, 0.15), mat(0x50565e));
+    ski.position.set(1.2, 0.05, z);
+    g.add(ski);
+  }
+  return g;
+}
+
 function navMachine(): THREE.Group {
   const g = new THREE.Group();
   const post = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.1, 0.5), mat(0x0b2a36));
@@ -336,6 +435,8 @@ export interface SceneParts {
   readonly rotors: THREE.Object3D[];
   readonly turbines: { group: THREE.Group; rotor: THREE.Group; x: number; z: number; label: string }[];
   readonly centrifugeArm?: THREE.Group;
+  /** The A310 Zero-G on its apron (the parabolic flight's rig flies it, s3-rigs.ts) and its padded cabin. */
+  readonly a310?: { group: THREE.Group; cabin: THREE.Group };
   readonly cabs: Map<string, THREE.Mesh>;
 }
 
@@ -346,8 +447,9 @@ export function buildProps(L: S3Layout): SceneParts {
   const turbines: SceneParts["turbines"] = [];
   const cabs = new Map<string, THREE.Mesh>();
   let centrifugeArm: THREE.Group | undefined;
+  let plane: SceneParts["a310"];
   // Vehicles and machines with their own true size stay as they are; the rest is widened on the plan with its area (§2.4).
-  const trueSize = new Set<Prop["kind"]>(["electron", "falcon9", "turbine", "tidal", "helideck", "lift-shaft", "tree"]);
+  const trueSize = new Set<Prop["kind"]>(["electron", "falcon9", "turbine", "tidal", "helideck", "lift-shaft", "tree", "a310", "scott-tent", "snowmobile"]);
   const at = (o: THREE.Object3D, p: Prop) => {
     o.position.set(p.x, p.y, p.z);
     if (p.rot) o.rotation.y = p.rot;
@@ -425,6 +527,17 @@ export function buildProps(L: S3Layout): SceneParts {
         at(c.group, p);
         break;
       }
+      case "a310": {
+        plane = a310();
+        at(plane.group, p);
+        break;
+      }
+      case "scott-tent":
+        at(scottTent(), p);
+        break;
+      case "snowmobile":
+        at(snowmobile(), p);
+        break;
       case "tree":
         if (p.tree) root.add(treeShell(p));
         break;
@@ -488,7 +601,7 @@ export function buildProps(L: S3Layout): SceneParts {
     s.position.set(el.x, el.y + 22, el.z);
     root.add(s);
   }
-  return { root, rotors, turbines, ...(centrifugeArm ? { centrifugeArm } : {}), cabs };
+  return { root, rotors, turbines, ...(centrifugeArm ? { centrifugeArm } : {}), ...(plane ? { a310: plane } : {}), cabs };
 }
 
 /** A tree-building's shell: the floors' undersides and railings, the tips and the crown's slab (walls and water come from the layout). */

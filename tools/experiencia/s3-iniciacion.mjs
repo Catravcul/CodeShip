@@ -4,7 +4,7 @@
 // the card says who gives the challenge (the trainer on shift), and the challenge is a code challenge whose steps
 // are acted out at the post: the folder before the tribunal, the cuff and the ECG on the couch, the lengths of the
 // pool, the raft and the hoist, the mask in the hypobaric chamber, the EMU and the divers' lead at the bottom of the
-// NBL. At lunch nobody is on shift and the Magnate comes to give it. Then the island flights: «Por reto» (the flight
+// NBL. At lunch nobody is on shift and the post waits: the card says when the next shift starts. Then the island flights: «Por reto» (the flight
 // programmed on the sheet, then flown by itself in sight) and «Manual» (the S-92's cyclic, collective and pedals on
 // the pad, landed by hand on the other island's helipad). Captures in docs/screenshots/s3i-<paso>-movil.png.
 import { mkdirSync } from "node:fs";
@@ -46,7 +46,19 @@ const scene = (p) =>
   });
 
 /** «Ir» from Tareas to a post (teleport, chosen in the settings), then Panel. */
+/**
+ * Each trainer leaves her post a quarter of an hour before lunch: between 10:00 and 11:00 she plays on the next morning, at
+ * 9:12, while the trainers are still at their posts (a post takes about half an hour of the board clock).
+ */
+async function morning(j) {
+  await j.page.evaluate(() => {
+    const c = window.codeshipS3;
+    if (c.hour > 10 && c.hour < 11) c.setHour(9.2);
+  });
+}
+
 async function goPost(j, n, title) {
+  await morning(j);
   await j.tap(".s3-tasks", "Tareas");
   await j.tap(`.task-board [data-go="s3-puesto-${n}"]`, `Ir: ${title}`);
   await until(j, (s) => s.mode === "libre" && s.near, 20000);
@@ -63,6 +75,14 @@ async function doPost(j, n, title, label, expectThings) {
   await j.tap('.s3-ui .cab-machine:not(.hidden) [data-act="reto"]', `Empezar el reto: ${title}`);
   await j.waitDuel();
   const seen = new Set();
+  // What is out is also gathered in the page every 150 ms: on a slow machine a capture can take longer than a beat
+  // (2,2 s), and polling from here alone missed the mask of post 4 on CI.
+  await p.evaluate(() => {
+    const out = (window.__s3seen = new Set());
+    window.__s3timer = setInterval(() => {
+      for (const [k, o] of window.codeshipS3.stage.things.entries()) if (o.visible) out.add(k);
+    }, 150);
+  });
   let shot = false;
   for (let i = 0; i < 4; i++) {
     const ex = await p.evaluate(oracle);
@@ -85,6 +105,7 @@ async function doPost(j, n, title, label, expectThings) {
     if (!(await s3(p)).busy) break;
     await p.waitForTimeout(700);
   }
+  for (const t of await p.evaluate(() => (clearInterval(window.__s3timer), [...window.__s3seen]))) seen.add(t);
   const result = (await j.texts(".duel .result"))[0] ?? "";
   j.check(`${title}: el reto se completa («Conseguido»)`, /Conseguido/.test(result), result);
   j.check(`${title}: cada paso se ve en el sitio, con los objetos (${expectThings.join(", ")})`, expectThings.every((t) => seen.has(t)), [...seen].join(", "));
@@ -114,7 +135,7 @@ export async function s3Iniciacion(j) {
   });
   j.check("la partida empieza a las 9:00 y la hora se ve arriba", start.hour >= 9 && start.hour < 9.2 && /^9:0\d · /.test(start.where), start.where);
   j.check("a las 9 da cada reto quien está de turno en él: Karen, Linduarda, Luciana, Lizmibet y Adaguchi", start.of.join() === "karen,linduarda,luciana,lizmibet,adaguchi", start.of.join());
-  j.check("cada entrenadora de turno ya está en su puesto", start.crowd.filter((c) => c.key.startsWith("puesto:")).every((c) => c.there) && start.crowd.filter((c) => c.key.startsWith("puesto:")).length === 5, JSON.stringify(start.crowd));
+  j.check("cada entrenadora de turno ya está en su puesto", ["karen", "linduarda", "luciana", "lizmibet", "adaguchi"].every((id) => start.crowd.find((c) => c.id === id && c.key.startsWith("puesto:"))?.there), JSON.stringify(start.crowd.filter((c) => ["karen", "linduarda", "luciana", "lizmibet", "adaguchi"].includes(c.id))));
 
   // 2. «Ir» by teleport (PX-45 walks the island): the task settings.
   await j.tap(".s3-tasks", "Tareas");
@@ -178,13 +199,13 @@ export async function s3Iniciacion(j) {
   const fondo = await s3(p);
   void fondo;
 
-  // 8. At lunch (11–12) nobody is on shift: the Magnate comes to the post to give it.
+  // 8. At lunch (11–12) nobody is on shift: the post waits for the next shift (no stand-in), and the card says when.
   await p.evaluate(() => window.codeshipS3.setHour(11.3));
   await goPost(j, 2, "Reconocimiento médico");
   await p.waitForTimeout(800);
-  const lunch = await p.evaluate(() => ({ who: window.codeshipS3.trainerOf(2), at: window.codeshipS3.crowd.positions().find((c) => c.id === "magnate"), card: document.querySelector(".s3-ui .cab-machine:not(.hidden) .cm-who")?.textContent ?? "" }));
-  j.check("a la hora de comer nadie está de turno: la Magnate aparece en el puesto y da el reto", lunch.who === "magnate" && !!lunch.at && /Magnate/.test(lunch.card), JSON.stringify(lunch));
-  await capture(j, "magnate", "La Magnate en el puesto 2 a la hora de comer");
+  const lunch = await p.evaluate(() => ({ who: window.codeshipS3.trainerOf(2) ?? null, card: document.querySelector(".s3-ui .cab-machine:not(.hidden) .cm-why")?.textContent ?? "", off: !!document.querySelector('.s3-ui .cab-machine:not(.hidden) [data-act="reto"][disabled]') }));
+  j.check("a la hora de comer nadie está de turno: el puesto espera y la tarjeta dice cuándo empieza el siguiente turno y con quién", lunch.who === null && lunch.off && /Sin turno a las 11:\d\d: el siguiente empieza a las 12:00, con \S+/.test(lunch.card), JSON.stringify(lunch));
+  await capture(j, "pausa", "El puesto 2 a la hora de comer: espera al siguiente turno");
 
   // 9. Flight «Por reto»: the gear of the navigation window, the program on the sheet, the flight in sight.
   await j.tap(".s3-tasks", "Tareas");

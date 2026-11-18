@@ -14,8 +14,8 @@ import { IN_CONSTRUCTION, READY_POSTS, initiationTasks } from "@modules/aerial-s
 import { stationFor } from "@modules/aerial-sanctuary/application/stations";
 import { flightChore } from "@modules/aerial-sanctuary/application/flight-program";
 import { stageFor, STAGED_POSTS, type Stage } from "@modules/aerial-sanctuary/data/stages";
-import { MAGNATE, TRAINERS, trainerById } from "@modules/aerial-sanctuary/data/trainers";
-import { boardHour, clockText, trainerFor } from "@modules/aerial-sanctuary/domain/roster";
+import { TRAINERS, trainerById } from "@modules/aerial-sanctuary/data/trainers";
+import { boardHour, clockText, nextShift, trainerFor } from "@modules/aerial-sanctuary/domain/roster";
 import { beatsFor } from "@modules/aerial-sanctuary/domain/station-beat";
 import { handHover, handStart, handStep, handTap, type HandControl, type HandState } from "@modules/aerial-sanctuary/domain/hand-flight";
 import { HAND } from "@modules/aerial-sanctuary/data/facts";
@@ -47,6 +47,9 @@ import { DuelView, type SessionText } from "./ui/duel-view";
 import { RcsPad } from "./ui/rcs-pad";
 import { S3Stage } from "./adapters/three/s3-stage";
 import { TrainerCrowd } from "./adapters/three/s3-trainers";
+import { S3Rigs } from "./adapters/three/s3-rigs";
+import { S3Simulators, paintSimScreen, type SimKind } from "./s3-simulators";
+import { armMoves } from "@modules/robotics/application/arm-chores";
 import "./ui/lander-cabin.css";
 import "./ui/journey.css";
 import "./ui/acciones.css";
@@ -226,6 +229,22 @@ const SHEET: SessionText = { title: "", progress: "Pasos", lives: "Intentos", or
 const stages = new Map<number, Stage>(STAGED_POSTS.map((p) => [p, stageFor(L, p)!]));
 const stage = new S3Stage([...stages.values()]);
 scene.add(stage.root);
+// The machines that move while a phase-5 post is acted (the centrifuge, the A310, the simulators' screens).
+const rigs = new S3Rigs(parts, stages, L.k);
+scene.add(rigs.root);
+stage.mounts = rigs.mounts;
+stage.onCue = (c) => rigs.cue(c);
+rigs.painter = paintSimScreen;
+// Post 8's simulators flown by hand (Dragon's docking, the LM's landing).
+const sims = new S3Simulators(root, scene, stages.get(8)!);
+sims.onSay = (t) => say(t, 6);
+sims.onEnd = () => {
+  signsOff("svmf-dragon-sim", false);
+  mode = { kind: "libre" };
+  cardKey = "";
+};
+/** The camera stick's turn round a moving machine's view. */
+let rigTurn = 0;
 const caption = document.createElement("div");
 caption.className = "s3-caption hidden";
 caption.setAttribute("role", "status");
@@ -390,8 +409,14 @@ function openChallenge(chore: Chore, beat: (index: number, part: number) => void
 }
 
 // --- The training posts' challenges (application/stations.ts) --------------------------------------------------------
-/** Who gives post `post`'s challenge now: the trainer on shift there, or the Magnate. */
-const trainerOf = (post: number) => trainerFor(TRAINERS, post, hour(), MAGNATE.id);
+/** Who gives post `post`'s challenge now: the trainer on shift there, if any (else the post waits for the next shift). */
+const trainerOf = (post: number) => trainerFor(TRAINERS, post, hour());
+/** «Sin turno ahora: el siguiente empieza a las 12:00, con Julián». */
+function pauseText(post: number): string {
+  const next = nextShift(TRAINERS, post, hour());
+  const when = next ? `el siguiente empieza a las ${clockText(next.at)}${next.at >= 24 ? " de mañana" : ""}, con ${trainerById(next.id).name}` : "nadie tiene turno aquí";
+  return `Sin turno a las ${clockText(hour())}: ${when}. Mientras, puede comer, descansar o hacer otras tareas`;
+}
 let stageTrainer: string | undefined;
 
 function startPost(m: MachineDef): void {
@@ -400,13 +425,15 @@ function startPost(m: MachineDef): void {
   const where = stages.get(post);
   if (!st || !where) return say(IN_CONSTRUCTION);
   const who = trainerOf(post);
+  if (!who) return say(pauseText(post), 6);
   const t = trainerById(who);
-  if (who === MAGNATE.id) crowd.magnateTo(post);
-  else if (!crowd.atPost(who, post)) return say(`${t.name} está de turno aquí y viene de camino: llega en ${duration(crowd.etaS(who))}`, 5);
+  if (!crowd.atPost(who, post)) return say(`${t.name} está de turno aquí y viene de camino: llega en ${duration(crowd.etaS(who))}`, 5);
   mode = { kind: "reto", what: st.chore.id };
   stageTrainer = who;
   const actor = crowd.lend(who, true);
   stage.open(where, { rig, fig: avatar }, actor);
+  rigs.begin(post);
+  rigTurn = 0;
   // Side on to the line from her to the trainer (both in a phone's narrow view), from the side with more room; the
   // camera stick turns round them.
   const her0 = Object.values(where.her)[0] ?? where.lap?.from;
@@ -418,7 +445,12 @@ function startPost(m: MachineDef): void {
   say(`${t.name} te da el reto`, 3);
   openChallenge(
     st.chore,
-    (index, part) => stage.play(beatsFor(st.beats, index, part).slice(0, 1)),
+    (index, part) => {
+      stage.play(beatsFor(st.beats, index, part).slice(0, 1));
+      // Robotics: the arm's move of the block just placed, on the simulator's screens.
+      const move = post === 9 ? armMoves(st.chore, index)[part] : undefined;
+      if (move) rigs.armPlay([move]);
+    },
     (ok) => {
       stage.finish();
       if (ok) {
@@ -429,6 +461,7 @@ function startPost(m: MachineDef): void {
       // The last beats play out, then she is back where she started it.
       endPost = () => {
         stage.clear();
+        rigs.end(ok);
         signsOff(m.id, false);
         crowd.lend(stageTrainer ?? "", false);
         stageTrainer = undefined;
@@ -442,7 +475,7 @@ function startPost(m: MachineDef): void {
 let endPost: (() => void) | undefined;
 /** The side to look from with the most room before a wall (the camera never goes through one). */
 function roomiestYaw(st: Stage, first: number): number {
-  const a = L.areas.find((q) => q.id === `entrenamiento:${st.room}`);
+  const a = L.areas.find((q) => q.id === st.room);
   const her = Object.values(st.her)[0] ?? st.lap!.from;
   const c = { x: (her.x + st.trainer.x) / 2, z: (her.z + st.trainer.z) / 2 };
   if (!a) return first;
@@ -590,9 +623,10 @@ function nearestMachine(): MachineDef | undefined {
 function renderCard(): void {
   const m = near;
   const ready = m?.post !== undefined && READY_POSTS.includes(m.post);
-  const who = ready ? trainerOf(m!.post!) : "";
-  const there = ready && (who === MAGNATE.id || crowd.atPost(who, m!.post!));
-  const key = m ? `${m.id}|${mode.kind}|${who}|${there}|${ready && passed.has(m.post!)}` : "";
+  const who = ready ? trainerOf(m!.post!) : undefined;
+  const there = ready && !!who && crowd.atPost(who, m!.post!);
+  // The pause's text changes with the clock only at a change of shift: the hour in the key is enough.
+  const key = m ? `${m.id}|${mode.kind}|${who}|${there}|${ready && passed.has(m.post!)}|${ready && !who ? Math.floor(hour() * 60) : ""}` : "";
   if (key === cardKey) return;
   cardKey = key;
   card.classList.toggle("hidden", !m);
@@ -604,14 +638,19 @@ function renderCard(): void {
     const lift = L.lifts.find((l) => l.id === m.lift!.id)!;
     acts = lift.stops.map((s, i) => (i === m.lift!.stop ? "" : `<button data-act="stop:${i}" aria-label="Ascensor a ${esc(s.label)}">${esc(s.label)}</button>`)).join("");
   } else if (m.kind === "esterilla") acts = `<button class="primary" data-act="ajustes">Sentarse: ajustes</button>`;
-  else if (ready) {
+  else if (ready && !who) {
+    acts = `<button data-act="reto" disabled>Empezar el reto</button>`;
+    why = `<p class="cm-why"><b aria-hidden="true">⏸</b> ${esc(pauseText(m.post!))}${passed.has(m.post!) ? ` · <b class="cm-ok">✓ Superado</b>` : ""}</p>`;
+  } else if (ready && who) {
     const t = trainerById(who);
     acts = `<button class="primary" data-act="reto">${passed.has(m.post!) ? "Repetir el reto" : "Empezar el reto"}</button>`;
-    why = `<p class="cm-who">${who === MAGNATE.id ? `Da el reto: <b>la Magnate</b> (no hay nadie de turno a las ${clockText(hour())})` : `Da el reto: <b>${esc(t.name)}</b>, de turno${there ? "" : " · viene de camino"}`}${passed.has(m.post!) ? ` · <b class="cm-ok">✓ Superado</b>` : ""}</p>`;
+    why = `<p class="cm-who">Da el reto: <b>${esc(t.name)}</b>, de turno${there ? "" : " · viene de camino"}${passed.has(m.post!) ? ` · <b class="cm-ok">✓ Superado</b>` : ""}</p>`;
   } else {
     acts = `<button data-act="reto" disabled>Empezar el reto</button>`;
     why = `<p class="cm-why"><b aria-hidden="true">⊘</b> ${esc(IN_CONSTRUCTION)}</p>`;
   }
+  // Post 8's simulators: practice by hand any time (it is the simulator: no trainer needed).
+  if (m.id === "svmf-dragon-sim") acts += `<button data-act="sim:acople">Practicar el acople</button><button data-act="sim:alunizaje">Practicar el alunizaje (LM)</button>`;
   card.innerHTML = `<div class="cm-head"><b>${esc(m.label)}</b><small>${esc(m.what)}</small></div>${why}<div class="cm-acts">${acts}</div>`;
 }
 card.addEventListener("click", (e) => {
@@ -621,6 +660,12 @@ card.addEventListener("click", (e) => {
   const act = b.dataset.act!;
   if (act === "nav") return nav.open(islandChoices());
   if (act === "reto" && m.post !== undefined) return startPost(m);
+  if (act.startsWith("sim:") && mode.kind === "libre") {
+    mode = { kind: "reto", what: "simulador" };
+    signsOff(m.id, true);
+    rig.visible = true;
+    return sims.start(act.slice(4) as SimKind, { rig, fig: avatar });
+  }
   if (act === "ajustes") {
     avatar.pose("lotus");
     return settingsPanel.open("Esterilla del gimnasio, isla de entrenamiento");
@@ -648,7 +693,7 @@ if (session.resume) {
 } else if (!slot) say("Las ranuras de partidas están llenas: esta partida no se guarda (borra una en el engranaje del inicio)", 6);
 let lastSaved: { reason: string; ok: boolean; why?: string } | undefined;
 if (session.resume) for (const n of (session.resume.state as AerialState).posts ?? []) passed.add(n);
-const crowd = new TrainerCrowd(L, stages, TRAINERS, MAGNATE, hour());
+const crowd = new TrainerCrowd(L, stages, TRAINERS, hour());
 scene.add(crowd.root);
 function saveNow(reason: string): boolean {
   autoSave.saved(clock);
@@ -672,6 +717,9 @@ const WALK_MS = 1.4;
 const SWIM_MS = 0.9;
 const tmp = new THREE.Vector3();
 const focusAt = new THREE.Vector3();
+const camPos = new THREE.Vector3();
+const camAt = new THREE.Vector3();
+const camUp = new THREE.Vector3(0, 1, 0);
 
 /** Move her by up to `d` metres towards (x, y, z), in small steps; true when there. */
 function moveToward(p: { x: number; y: number; z: number }, d: number): boolean {
@@ -833,6 +881,18 @@ function updateCamera(dt: number): void {
   const look = walker.look(dt);
   yaw += look.yaw;
   pitch = Math.max(-1.3, Math.min(1.3, pitch + look.pitch));
+  // At a simulator, or on a moving machine (the gondola, the plane): its own view; the stick turns round it.
+  if (mode.kind === "reto" && (sims.busy ? sims.eye(camPos, camAt) : stage.active && rigs.eye(camPos, camAt, (rigTurn += look.yaw), camUp, rig.position))) {
+    if (sims.busy) camUp.set(0, 1, 0);
+    camera.position.copy(camPos);
+    // With the sheet open, what it looks at shows in the band above it.
+    if (duel.visible) camAt.addScaledVector(camUp, -camPos.distanceTo(camAt) * Math.tan(0.36));
+    camera.up.copy(camUp);
+    camera.lookAt(camAt);
+    camera.up.set(0, 1, 0);
+    rig.visible = sims.kind !== "alunizaje";
+    return;
+  }
   if (mode.kind === "reto" && stage.active) {
     // Each beat that moves them, the camera eases side on to her and the trainer again, unless the stick turned it.
     if (stage.moves !== sideMoves) {
@@ -842,7 +902,7 @@ function updateCamera(dt: number): void {
     if (look.yaw !== 0) sideTurned = true;
     const side = stage.sideYaw();
     if (side !== undefined && !sideTurned) {
-      const a = L.areas.find((q) => q.id === `entrenamiento:${stage.room}`);
+      const a = L.areas.find((q) => q.id === stage.room);
       stage.focus(focusAt);
       // Of the two sides, the nearer one with room for the shot.
       const near = (g: number) => Math.atan2(Math.sin(g - yaw), Math.cos(g - yaw));
@@ -863,7 +923,7 @@ function updateCamera(dt: number): void {
     else {
       const d = Math.max(5, apart * 1.2 + 2.5);
       // Inside the room: never through its walls or roof.
-      const a = L.areas.find((q) => q.id === `entrenamiento:${stage.room}`);
+      const a = L.areas.find((q) => q.id === stage.room);
       const clampTo = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
       // She moves on (the scale, the couch, the chart): when a wall comes too close behind the camera and the stick is
       // idle, it eases round to the nearest side with room for the whole shot.
@@ -973,11 +1033,17 @@ function frame(now: number): void {
   clock += dt;
   days += dt * BOARD_DAYS_PER_REAL_S;
   const m = mode;
+  // The moving machines first: she rides them where they are this frame.
+  rigs.update(dt, renderer);
   if (m.kind === "ruta") frameRoute(dt, m);
   else if (m.kind === "ascensor") frameLift(dt, m);
   else if (m.kind === "vuelo") frameFlight(dt, m);
   else if (m.kind === "mano") frameHand(dt, m);
   else if (m.kind === "reto") {
+    if (sims.busy) {
+      sims.update(dt);
+      avatar.update(dt);
+    }
     stage.update(dt);
     if (heliSpin) heli.rotor.rotation.y += dt * 12;
     if (endPost && !stage.busy && !duel.visible) {
@@ -988,13 +1054,8 @@ function frame(now: number): void {
   } else if (!duel.visible && !nav.visible && !settingsPanel.visible && !taskBoard.visible && !areasWindow.visible) frameFree(dt);
   if (mode.kind === "vuelo" || mode.kind === "mano") avatar.pose("lotus");
   crowd.update(dt, hour());
-  // The Magnate comes to the post she is at when nobody is on shift there.
-  if (mode.kind !== "reto") {
-    const p = near?.post;
-    crowd.magnateTo(p !== undefined && READY_POSTS.includes(p) && trainerOf(p) === MAGNATE.id ? p : undefined);
-  }
   // While the sheet is open only it and the scene show (reglas.md §4.3): the caption only once it closes.
-  const cap = mode.kind === "reto" && !duel.visible ? stage.caption : "";
+  const cap = mode.kind === "reto" && !duel.visible ? (stage.caption && rigs.readout ? `${stage.caption} · ${rigs.readout}` : stage.caption) : "";
   caption.classList.toggle("hidden", !cap);
   if (caption.textContent !== cap) caption.textContent = cap;
   frameBirds(dt);
@@ -1051,6 +1112,7 @@ if (frameStats) (window as unknown as { codeshipS3: unknown }).codeshipS3 = {
   layout: L,
   renderer,
   camera,
+  rig,
   tasks,
   taskBoard,
   areasWindow,
@@ -1084,6 +1146,8 @@ if (frameStats) (window as unknown as { codeshipS3: unknown }).codeshipS3 = {
   },
   duel,
   stage,
+  rigs,
+  sims,
   crowd,
   handPad,
   get hour() {

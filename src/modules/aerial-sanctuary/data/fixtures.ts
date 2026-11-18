@@ -618,13 +618,13 @@ function svmf(sink: FurnishSink, fr: RoomFrame): void {
   span({ k: "pavimento", x0: -27, x1: -16, z0: -16.5, z1: -6, y0: 0.0, y1: 0.03, color: 0xd8dfe6, name: "Suelo de cojinetes de aire (PABF)", source: S.svmfPage });
   at({ k: "trineo", x: -21.5, z: -11.2, plate: true });
   // Node 1 and the Joint Airlock, two more of the ISS mock-ups NASA lists in the SVMF (whole-shell trainers, not entered here).
-  at({ k: "maqueta-modulo", x: -3, z: -10, name: "Maqueta de Unity (nodo 1)", source: `${S.svmfPage}; ${S.unity}`, plate: true });
-  at({ k: "maqueta-modulo", x: 5.5, z: -10, w: 5.5, d: 4.0, h: 4.0, name: "Maqueta de Quest (esclusa conjunta)", source: `${S.svmfPage}; ${S.quest}`, plate: true });
+  at({ k: "maqueta-modulo", x: -7.5, z: -11, name: "Maqueta de Unity (nodo 1)", source: `${S.svmfPage}; ${S.unity}`, plate: true });
+  at({ k: "maqueta-modulo", x: 7, z: -11, w: 5.5, d: 4.0, h: 4.0, name: "Maqueta de Quest (esclusa conjunta)", source: `${S.svmfPage}; ${S.quest}`, plate: true });
   for (let i = 0; i < 5; i++) at({ k: "rack-ispr", x: 0, z: 4 + i * 1.12, snap: "w", rot: 1, plate: i === 2 });
   for (let i = 0; i < 4; i++) at({ k: "banco-trabajo", x: -4 + i * 3, z: 0, snap: "s" });
   for (let i = 0; i < 2; i++) at({ k: "armario", x: 9 + i * 1.3, z: 0, snap: "s", name: "Armario de herramientas" });
   at({ k: "elevadora", x: 24, z: 6 });
-  at({ k: "carro-herramientas", x: 17, z: 4 });
+  at({ k: "carro-herramientas", x: 21.5, z: 9 });
   at({ k: "carro-herramientas", x: -20, z: -3, rot: 1 });
   at({ k: "mesa-reunion", x: -20, z: 12 });
   for (const [dx, dz, r] of [[-0.6, -0.85, 0], [0.6, -0.85, 0], [-0.6, 0.85, 2], [0.6, 0.85, 2]] as const) {

@@ -26,7 +26,7 @@ Escrito por `tools/experiencia/brazo-eva.mjs` (no a mano). Cada bloque bien colo
 | Ponerse el EMU y prerrespirar (ISLE) | ponerse los guantes y el casco | revisar · objetivo ·  | [brazo-traje-04.png](../screenshots/brazo-traje-04.png) | Bien |
 | Ponerse el EMU y prerrespirar (ISLE) | comprobar fugas en el módulo de control del pecho | programar · objetivo ·  | [brazo-traje-05.png](../screenshots/brazo-traje-05.png) | Bien |
 | Ponerse el EMU y prerrespirar (ISLE) | 160 min | entrenar · objetivo ·  | [brazo-traje-06.png](../screenshots/brazo-traje-06.png) | Bien |
-| Paseo: cambiar las alas | 6,1 h | comprobar · alas | [brazo-eva-01.png](../screenshots/brazo-eva-01.png) | Bien |
+| Paseo: cambiar las alas | 6 h | comprobar · alas | [brazo-eva-01.png](../screenshots/brazo-eva-01.png) | Bien |
 | Paseo: cambiar las alas | Canadarm2 trae el rollo nuevo desde la JEM-EF | brazo · alas | [brazo-eva-02.png](../screenshots/brazo-eva-02.png) | Bien |
 | Paseo: cambiar las alas | atar el rollo con un cable de equipo | atar · alas | [brazo-eva-03.png](../screenshots/brazo-eva-03.png) | Bien |
 | Paseo: cambiar las alas | soltarlo del brazo y llevarlo a su soporte | llevar · alas | [brazo-eva-04.png](../screenshots/brazo-eva-04.png) | Bien |

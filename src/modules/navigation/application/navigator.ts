@@ -10,12 +10,12 @@ import { facing } from "../domain/attitude";
 import { portFlightTarget, targetDistance, type AsteroidTarget, type DockTarget, type NavTarget } from "../domain/nav-target";
 import type { DockingTarget } from "@modules/mothership/domain/docking";
 import { remainingEstimateS, TripAutopilot, type AutopilotPhase } from "./autopilot";
-import { FreeCarrierRun } from "./free-carrier";
+import { FreeCarrierRun, portGuidance, type PortGuidance } from "./free-carrier";
 import { CarrierTrip, ManualCarrierRun, carrierTurnSeconds, type BerthRun, type CarrierPort } from "./carrier-trip";
 import { legBudgets, TRAVEL_TIME, TravelClock } from "../domain/travel-time";
 import { carrierTripChore, tripChore, type CarrierTripFacts, type DockFacts, type TripFacts } from "./trip-chore";
 import { DOCK_TRIP } from "./dock-trip";
-import { berthSeconds, MANUAL_BERTH, type ManualBerthing, type Unberthing } from "@modules/mothership/application/berthing";
+import { BERTH_STANDOFF_M, berthSeconds, MANUAL_BERTH, type ManualBerthing, type Unberthing } from "@modules/mothership/application/berthing";
 import { planHop } from "./hop";
 
 /**
@@ -25,6 +25,10 @@ import { planHop } from "./hop";
  */
 /** How near Waypoint 1 of a free port the mothership counts as holding there, m (game value: twice Waypoint 1). */
 export const HOLD_RANGE_M = 300;
+/** Free flight within this of a port's Waypoint 1 shows Dragon's docking display for it, m. */
+export const GUIDANCE_RANGE_M = 1000;
+/** …and within this of the port's axis, m. */
+export const GUIDANCE_CORRIDOR_M = 150;
 
 export type TripStatus = "idle" | "programming" | "carrier" | "autopilot" | "docking" | "docked" | "arrived" | "manual" | "failed";
 
@@ -516,6 +520,31 @@ export class Navigator {
     this._freeCarrier = new FreeCarrierRun(c);
     this._status = "carrier";
     return { ok: true };
+  }
+
+  /**
+   * In free flight in a station port's approach corridor (within GUIDANCE_RANGE_M of its Waypoint 1, in front of
+   * the port and within GUIDANCE_CORRIDOR_M of its axis): Dragon's docking
+   * display, measured against that port. Away from every port, undefined (the display shows only rates and attitude).
+   */
+  freeGuidance(): PortGuidance | undefined {
+    const f = this._freeCarrier;
+    const c = this.ports.carrier;
+    if (!f || !c?.berthStandoff) return undefined;
+    let best: { g: PortGuidance; d: number } | undefined;
+    for (const t of this.ports.targets) {
+      if (t.kind !== "dock" || !t.carrierPort) continue;
+      const port = t.carrierPort;
+      const sb = c.berthStandoff(port);
+      const d = sb.position.sub(f.position).length();
+      if (d > GUIDANCE_RANGE_M || (best && d >= best.d)) continue;
+      const faceM = sb.position.sub(port.port.position).dot(port.port.normal) - BERTH_STANDOFF_M;
+      const g = portGuidance(f.position, f.orientation, f.velocity, { name: `${t.name} · ${port.name}`, position: port.port.position, normal: port.port.normal, orientation: port.port.orientation, attitude: sb.orientation, faceM });
+      // Only in the approach corridor: in front of the port and near its axis (the camera sees the target).
+      const ahead = g.rangeM > 0 || f.position.sub(port.port.position).dot(port.port.normal) >= faceM;
+      if (ahead && Math.hypot(g.right, g.up) <= GUIDANCE_CORRIDOR_M) best = { d, g };
+    }
+    return best?.g;
   }
 
   /** The mothership in free flight by hand (Manual), while it flies. */

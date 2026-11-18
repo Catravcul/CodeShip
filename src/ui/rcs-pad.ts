@@ -2,17 +2,23 @@ import "./rcs-pad.css";
 
 export type PadAxis = "x" | "y" | "z";
 
-/** What the pad's display shows (Crew Dragon's manual flight page: translation rates, attitude and body rates). */
+/** One value on the display: green with ✓ inside its limit, amber with ▲ out of it (reglas.md §5.6), plain if it has none. */
+export interface RcsCell {
+  readonly text: string;
+  readonly ok?: boolean;
+}
+
+/**
+ * What the pad's display shows (Crew Dragon's manual flight page: attitude and per-axis rates, and near a port
+ * the range and range rate; the LM's: its FDAI, cross-pointer and tapes on the screen, with these numbers).
+ */
 export interface RcsRead {
   readonly title: string;
-  /** Velocity in the craft's frame (x right, y up, −z forward), m/s. */
-  readonly vBody: { x: number; y: number; z: number };
-  /** Attitude, degrees. */
-  readonly att: { pitch: number; yaw: number; roll: number };
-  /** Body rates, °/s (x pitch, y yaw, z roll). */
-  readonly rates: { x: number; y: number; z: number };
-  /** More lines (Δv spent, the descent engine's throttle, altitude…). */
-  readonly lines?: readonly string[];
+  /** Column heads of the table (the first column is the row's label). */
+  readonly head: readonly string[];
+  readonly rows: readonly { readonly label: string; readonly cells: readonly RcsCell[] }[];
+  /** More lines under the table. */
+  readonly lines?: readonly (string | { readonly label: string; readonly cells: readonly RcsCell[] })[];
 }
 
 export interface RcsPadOptions {
@@ -28,11 +34,13 @@ export interface RcsPadOptions {
   stop(): void;
   end(): void;
   throttleStep?(step: 1 | -1 | 0): void;
+  /** A guidance screen beside the numbers (the docking camera, the LM's 8-ball and tapes), css px. */
+  readonly screen?: { readonly w: number; readonly h: number };
   /** One more button that comes and goes (the LM's «Acoplar» inside a port's reach): `setExtra`. */
   extra?(): void;
 }
 
-const f = (v: number, d: number) => `${v < -0.5 * 10 ** -d ? "−" : "+"}${Math.abs(v).toFixed(d).replace(".", ",")}`;
+const cell = (c: RcsCell) => (c.ok === undefined ? `<i>${c.text}</i>` : `<i class="${c.ok ? "ok" : "out"}">${c.ok ? "✓" : "▲"} ${c.text}</i>`);
 
 /**
  * The tap controls of «Manual» (Berón, 2026-11-18), modelled on Crew Dragon's manual flight touchscreen: translation
@@ -43,6 +51,7 @@ const f = (v: number, d: number) => `${v < -0.5 * 10 ** -d ? "−" : "+"}${Math.
 export class RcsPad {
   readonly el: HTMLElement;
   private readonly read: HTMLElement;
+  private readonly canvas: HTMLCanvasElement | undefined;
   private html = "";
 
   constructor(root: HTMLElement, o: RcsPadOptions) {
@@ -51,7 +60,7 @@ export class RcsPad {
     this.el.setAttribute("role", "group");
     this.el.setAttribute("aria-label", "Pilotaje manual: RCS");
     const b = (act: string, label: string, aria: string) => `<button data-act="${act}" aria-label="${aria}">${label}</button>`;
-    this.el.innerHTML = `<div class="rp-read"></div>
+    this.el.innerHTML = `<div class="rp-top">${o.screen ? `<canvas class="rp-screen" style="width:${o.screen.w}px;height:${o.screen.h}px"></canvas>` : ""}<div class="rp-read"></div></div>
       <div class="rp-cap">Trasladar (cada toque, un paso de velocidad)</div>
       <div class="rp-row">${b("t:z:-1", "Adel.", "Trasladar adelante")}${b("t:z:1", "Atrás", "Trasladar atrás")}${b("t:y:1", "Arriba", "Trasladar arriba")}${b("t:y:-1", "Abajo", "Trasladar abajo")}${b("t:x:-1", "Izq.", "Trasladar a la izquierda")}${b("t:x:1", "Der.", "Trasladar a la derecha")}</div>
       <div class="rp-cap">Girar (cada toque, un paso de velocidad de giro)</div>
@@ -60,6 +69,7 @@ export class RcsPad {
       <div class="rp-note">${o.note}</div>`;
     root.appendChild(this.el);
     this.read = this.el.querySelector(".rp-read")!;
+    this.canvas = this.el.querySelector<HTMLCanvasElement>(".rp-screen") ?? undefined;
     this.el.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).closest<HTMLButtonElement>("button[data-act]")?.dataset.act;
       if (!a) return;
@@ -90,14 +100,29 @@ export class RcsPad {
     document.body.classList.toggle("in-manual-flight", on || !!document.querySelector(".rcs-pad:not(.hidden)"));
   }
 
+  /**
+   * The guidance screen to draw on (sized for the device's pixels, in css px), or undefined when it is off
+   * (`on` false hides it: Dragon's display away from every port has no camera).
+   */
+  screen(on = true): { g: CanvasRenderingContext2D; w: number; h: number } | undefined {
+    const c = this.canvas;
+    if (!c) return undefined;
+    c.hidden = !on;
+    if (!on) return undefined;
+    const w = c.clientWidth, h = c.clientHeight;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (c.width !== Math.round(w * dpr)) c.width = Math.round(w * dpr);
+    if (c.height !== Math.round(h * dpr)) c.height = Math.round(h * dpr);
+    const g = c.getContext("2d")!;
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { g, w, h };
+  }
+
   update(r: RcsRead): void {
-    const v = r.vBody;
+    const row = (l: { label: string; cells: readonly RcsCell[] }) => `<tr><th>${l.label}</th>${l.cells.map((c) => `<td>${cell(c)}</td>`).join("")}</tr>`;
     const html =
-      `<b>${r.title}</b>` +
-      `<span>Velocidad adel. ${f(-v.z, 2)} · arriba ${f(v.y, 2)} · der. ${f(v.x, 2)} m/s</span>` +
-      `<span>Actitud cab. ${f(r.att.pitch, 1)}° · guiñ. ${f(r.att.yaw, 1)}° · alab. ${f(r.att.roll, 1)}°</span>` +
-      `<span>Giro cab. ${f(r.rates.x, 1)} · guiñ. ${f(r.rates.y, 1)} · alab. ${f(r.rates.z, 1)} °/s</span>` +
-      (r.lines ?? []).map((l) => `<span>${l}</span>`).join("");
+      `<b>${r.title}</b><table><tr><th></th>${r.head.map((h) => `<th>${h}</th>`).join("")}</tr>${r.rows.map(row).join("")}</table>` +
+      (r.lines ?? []).map((l) => (typeof l === "string" ? `<span>${l}</span>` : `<span>${l.label} ${l.cells.map(cell).join(" · ")}</span>`)).join("");
     if (html !== this.html) {
       this.html = html;
       this.read.innerHTML = html;

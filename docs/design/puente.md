@@ -84,6 +84,25 @@ puesto de acople solo lo menciona en una línea de texto.
   el reto en pantalla: el menú árbol y la ficha del puesto se esconden (`body.in-manual-flight`). Atracada en la
   estación, «Manual» no se puede: primero se desacopla en el puesto de acople. Parada (por debajo de 0,05 m/s y
   sin giro) cerca del punto de espera 1 de un puerto, el puesto de acople puede acoplarla.
+- **La pantalla de Manual** (Berón, 2026-11-18: «¿cómo sabían qué botón tocar?»): la de Dragon, en
+  `src/ui/dragon-display.ts`.
+  - **Cerca del puerto** de una estación (a menos de 1 km de su punto de espera 1, `Navigator.freeGuidance`):
+    - el vídeo de la cámara de eje, con el disco del puerto y su cruz (crece al acercarse y se aparta de la caja
+      verde del centro con el desvío y con el error de actitud);
+    - la distancia y el ritmo de cierre;
+    - el error de actitud contra el eje del puerto (cabeceo, guiñada, alabeo) y el ritmo de cada eje;
+    - el desvío fuera del eje.
+    Es lo que usó la tripulación en la Demo-2 y lo que copia el simulador público de SpaceX.
+  - **En vuelo libre lejos de un puerto**: la actitud y el ritmo de cada eje, sin la cámara.
+  - Cada valor sale en verde con ✓ dentro de su límite y en ámbar con ▲ fuera (reglas §5.6). Los límites son las
+    condiciones de contacto del IDSS: 0,2 °/s por eje, 4° de error, 0,10 m fuera del eje y 0,05–0,10 m/s de cierre
+    por debajo del punto 2. Más lejos, el cierre solo debe quedar por debajo de los 0,5 m/s del acople a mano
+    (valor nuestro).
+  - Fuentes: [simulador de SpaceX](https://iss-sim.spacex.com/) (cámara de eje con su retícula, distancia, ritmo,
+    error y ritmo por eje en verde dentro del límite); [Spaceflight Now, 2020-05-30](https://spaceflightnow.com/2020/05/30/dragon-astronauts-name-their-spacecraft-endeavour-complete-first-manual-flight-test/)
+    y [TechCrunch, 2020-05-30](https://techcrunch.com/2020/05/30/nasa-astronauts-successfully-pilot-spacexs-crew-dragon-spacecraft-manually-for-the-first-time)
+    (la prueba de Hurley: actitud lejos, cámara de acople cerca); IDSS IDD, Rev. F, tabla 3.3.1.1-2
+    (`IDSS_CONTACT_LIMITS`).
 - **Automático (retos)**: abre la **ventana de navegación de la mesa**, sin cambios (la página «nav» de la
   cubierta). Al elegir un destino y tocar «Programar viaje» se abre la cadena de retos del viaje
   (`NavigationMode.program`). Por programa, si está atracada, desatraca y sale sola como la Crew Dragon.

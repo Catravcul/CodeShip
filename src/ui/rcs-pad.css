@@ -16,3 +16,17 @@
 body.in-duel .rcs-pad { display: none; }
 /* Piloting by hand is the challenge on screen (Berón, 2026-11-18): the tree menu and the seat's card give way. */
 body.in-manual-flight .root-menu, body.in-manual-flight .room-ui .cab-machine { display: none !important; }
+/* The display: the guidance screen beside a table of attitude and rates; ✓ green inside its limit, ▲ amber out. */
+.rcs-pad .rp-top { display: flex; gap: 6px; align-items: flex-start; }
+.rcs-pad .rp-screen { flex: none; border-radius: 8px; border: 1px solid #7fdcff44; background: #04080c; }
+.rcs-pad .rp-screen[hidden] { display: none; }
+.rcs-pad .rp-read { flex: 1; min-width: 0; font-size: 11px; }
+.rcs-pad .rp-read table { border-collapse: collapse; }
+.rcs-pad .rp-read th { padding: 0 4px 0 0; font-weight: 600; color: #9fc6d6; text-align: left; white-space: nowrap; }
+.rcs-pad .rp-read td { padding: 0 4px 0 0; white-space: nowrap; }
+.rcs-pad .rp-read i { font-style: normal; }
+.rcs-pad .rp-read i.ok { color: #37e07a; }
+.rcs-pad .rp-read i.out { color: #ffb347; font-weight: 700; }
+/* The LM's instruments go across the top, the numbers under them. */
+.rcs-pad.lander-pad .rp-top { flex-direction: column; }
+.rcs-pad.lander-pad .rp-screen { max-width: 100%; }

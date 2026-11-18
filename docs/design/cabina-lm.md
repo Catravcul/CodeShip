@@ -150,7 +150,15 @@ en la posición y el sitio correctos y que muestre el icono contrario al estado 
     - traslación como el TTCA: cada toque, 0,1 m/s (`FlightComputer.pulse`);
     - el acelerador del motor de descenso del TTCA: «Motor −/+» de 10 en 10 % y «Corte» (el DPS real se regulaba
       del 10 al 60 % y a tope).
-    Los pasos son nuestros. La pantalla da velocidad, actitud, ritmos, empuje, Δv y altura. Mientras salen
+    Los pasos son nuestros. Con los mandos salen **los instrumentos del panel 1** (`drawLmInstruments`):
+    - el **FDAI** («8-ball»: cielo blanco, suelo negro, horizonte naranja) con sus agujas de error (alabeo arriba
+      y cabeceo a la derecha, contra la vertical; abajo, el ritmo de guiñada);
+    - la **cruz de velocidades** (X-POINTER, adelante y lateral sobre el suelo, ±2 m/s);
+    - las cintas **ALT** y **ALT RATE**.
+    Debajo van los ritmos, la inclinación, la bajada y la deriva, el empuje y el Δv. Por debajo de 30 m se
+    colorean con los límites de toma: ✓ en verde dentro, ▲ en ámbar fuera. La escala LPD de la ventana sigue en
+    la vista «Ventana (LPD)». Fuentes: [Apollo 11 Flight Plan / paneles del LM](https://apollo11guide.com/Apollo11ManualFree/LunarLander/Lunar_Module_Control_Panel_1.htm)
+    y `crew-station.ts`. Mientras salen
     los mandos, el menú árbol se esconde: libre en la esfera de un puerto, «Acoplar» está en los propios mandos;
     acoplado, los mandos se van y vuelve el interruptor del menú.
 - Desacoplar y el asistente ya no están en el puesto: son el interruptor de la vista de vuelo.

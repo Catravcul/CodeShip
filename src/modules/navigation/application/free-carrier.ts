@@ -25,6 +25,59 @@ export const FREE_CARRIER = {
 
 export type BodyAxis = "x" | "y" | "z";
 
+/**
+ * What Dragon's manual flight display shows against the docking target (the centreline camera and its numbers,
+ * as in Hurley's flight on Demo-2 and SpaceX's public ISS docking simulator): range to the port's face along its
+ * axis, closing rate, the offset across the axis on the camera (+ right, + up) and the attitude error against the
+ * port's axis (x pitch, y yaw, z roll), degrees.
+ */
+export interface PortGuidance {
+  readonly name: string;
+  readonly rangeM: number;
+  readonly closingMs: number;
+  readonly right: number;
+  readonly up: number;
+  readonly errDeg: { readonly x: number; readonly y: number; readonly z: number };
+}
+
+/** The port pose a guidance is measured against. */
+export interface GuidancePort {
+  readonly name: string;
+  readonly position: Vec3;
+  /** Outward axis of the port. */
+  readonly normal: Vec3;
+  readonly orientation: Quat;
+  /** The craft's attitude for the approach (its berthing standoff's). */
+  readonly attitude: Quat;
+  /** From the craft's centre to its port's face along the axis, m. */
+  readonly faceM: number;
+}
+
+/** The craft (centre, attitude, velocity) measured against a port: Dragon's display numbers. */
+export function portGuidance(at: Vec3, att: Quat, vel: Vec3, p: GuidancePort): PortGuidance {
+  const n = p.normal;
+  const rel = at.sub(p.position);
+  const axial = rel.dot(n);
+  const lateral = rel.sub(n.scale(axial));
+  const fwd = p.orientation.rotate(new Vec3(0, 0, -1));
+  const up = fwd.sub(n.scale(fwd.dot(n))).normalize();
+  const right = up.cross(n).normalize();
+  // Attitude error in the body frame: the turn from the approach attitude to where it points now.
+  let e = p.attitude.conjugate().multiply(att).normalize();
+  if (e.w < 0) e = new Quat(-e.w, -e.x, -e.y, -e.z);
+  const sin = Math.hypot(e.x, e.y, e.z);
+  const k = sin < 1e-12 ? 2 : (2 * Math.atan2(sin, e.w)) / sin;
+  const deg = 180 / Math.PI;
+  return {
+    name: p.name,
+    rangeM: Math.max(0, axial - p.faceM),
+    closingMs: -vel.dot(n),
+    right: lateral.dot(right),
+    up: lateral.dot(up),
+    errDeg: { x: e.x * k * deg, y: e.y * k * deg, z: e.z * k * deg },
+  };
+}
+
 const RAD = Math.PI / 180;
 const AXIS: Record<BodyAxis, Vec3> = { x: Vec3.X, y: Vec3.Y, z: Vec3.Z };
 
@@ -44,6 +97,16 @@ export class FreeCarrierRun {
     this.att = carrier.orientation;
   }
 
+  get position(): Vec3 {
+    return this.pos;
+  }
+  get orientation(): Quat {
+    return this.att;
+  }
+  /** Velocity, world frame, m/s. */
+  get velocity(): Vec3 {
+    return this.vel;
+  }
   /** Velocity in the ship's frame (x right, y up, −z forward), m/s. */
   get velocityBody(): Vec3 {
     return this.att.conjugate().rotate(this.vel);

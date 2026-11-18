@@ -107,6 +107,11 @@ export async function mandos(j) {
     return { on: !!el, text: el?.innerText ?? "", top: r ? Math.round(r.top) : 0, bottom: r ? Math.round(r.bottom) : 0, small, menu: [...document.querySelectorAll(".root-menu")].some((m) => getComputedStyle(m).display !== "none"), extra: el?.querySelector('[data-act="extra"]:not([hidden])')?.textContent ?? "" };
   });
   j.check("«Manual» del LM: trasladar, girar y el empuje del motor de descenso, a toques (ACA y TTCA del LM de Apolo)", pad.on && /Adel/.test(pad.text) && /Cab\./.test(pad.text) && /Motor \+/.test(pad.text) && /Apolo/.test(pad.text), pad.text.slice(0, 160));
+  const inst = await p.evaluate(() => {
+    const c = document.querySelector(".rcs-pad.lander-pad .rp-screen");
+    return { on: !!c && !c.hidden && c.getBoundingClientRect().width > 200, drawn: !!c && c.width > 0 };
+  });
+  j.check("con los mandos, los instrumentos del LM: el FDAI («8-ball») con sus agujas, la cruz de velocidades y las cintas ALT y ALT RATE", inst.on && inst.drawn && /ALT|Bajada/.test(pad.text), JSON.stringify(inst));
   j.check("caben en el móvil con botones de 44 px y el menú árbol se esconde", pad.top >= 0 && pad.bottom <= 664 && pad.small === 0 && !pad.menu, JSON.stringify({ top: pad.top, bottom: pad.bottom, small: pad.small, menu: pad.menu }));
   await j.tap('.rcs-pad.lander-pad [data-act="r:x:1"]', "Cabeceo arriba");
   await j.tap('.rcs-pad.lander-pad [data-act="t:y:1"]', "Trasladar arriba");

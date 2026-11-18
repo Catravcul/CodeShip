@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Quat } from "@core/math/quat";
 import { Vec3 } from "@core/math/vec3";
 import type { CarrierPort } from "./carrier-trip";
-import { FREE_CARRIER, FreeCarrierRun } from "./free-carrier";
+import { FREE_CARRIER, FreeCarrierRun, portGuidance } from "./free-carrier";
 import { attitudeDeg, facing } from "../domain/attitude";
 
 const craft = (orientation: Quat, fuel = Infinity) => {
@@ -66,5 +66,17 @@ describe("NAV-33 Starship's «Manual» is free flight by RCS taps, as Crew Drago
     expect(run.stop()).toBe(true);
     expect(run.stopped).toBe(true);
     expect(run.spentMs).toBeCloseTo(0.4, 6);
+  });
+
+  it("near a port, Dragon's display numbers: range to the face, closing rate, offset on the camera, attitude error", () => {
+    const port = { name: "Puerto", position: Vec3.ZERO, normal: new Vec3(0, 0, 1), orientation: Quat.fromAxisAngle(Vec3.X, Math.PI / 2), attitude: facing(new Vec3(0, 0, -1)), faceM: 10 };
+    const att = port.attitude.multiply(Quat.fromAxisAngle(Vec3.Y, (1 * Math.PI) / 180));
+    const g = portGuidance(new Vec3(2, 1, 160), att, new Vec3(0, 0, -0.1), port);
+    expect(g.rangeM).toBeCloseTo(150, 6);
+    expect(g.closingMs).toBeCloseTo(0.1, 9);
+    expect(g.right).toBeCloseTo(2, 6);
+    expect(g.up).toBeCloseTo(1, 6);
+    expect(g.errDeg.y).toBeCloseTo(1, 6);
+    expect(Math.abs(g.errDeg.x) + Math.abs(g.errDeg.z)).toBeLessThan(1e-6);
   });
 });

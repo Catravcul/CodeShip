@@ -9,6 +9,7 @@ import type { Answer } from "@modules/mind-duel/domain/exercise";
 import type { DuelView, SessionText } from "./ui/duel-view";
 import { NavMap } from "./ui/nav-map";
 import { RcsPad } from "./ui/rcs-pad";
+import { dragonRead, drawDockCamera } from "./ui/dragon-display";
 import type { StepVisual } from "@modules/chores/domain/step-visual";
 
 export const TRIP_TEXT: SessionText = {
@@ -128,6 +129,7 @@ export class NavigationMode {
     // «Manual» (Berón, 2026-11-18): Crew Dragon's manual flight touchscreen, RCS taps only (free-carrier.ts).
     this.hand = new RcsPad(root, {
       cls: "carrier-pad",
+      screen: { w: 112, h: 112 },
       endLabel: "Dejar de pilotar",
       note: `${REAL_ONLY ? "Mandos de la Starship: en desarrollo (SpaceX no los ha publicado); modelo: el pilotaje manual de Crew Dragon." : "Mandos de la nodriza: en desarrollo; modelo: el pilotaje manual de Crew Dragon."} Solo RCS: los encendidos grandes, en «Automático»`,
       translate: (a, sg) => this.tap(nav.freeCarrier?.translate(a, sg)),
@@ -267,6 +269,10 @@ export class NavigationMode {
     if (this.hand.visible !== !!m) this.hand.show(!!m);
     document.body.classList.toggle("in-carrier-hand", !!m);
     if (!m) return;
-    this.hand.update({ title: `${REAL_ONLY ? "Starship" : "Nodriza"} · vuelo libre a mano`, vBody: m.velocityBody, att: m.attitude, rates: m.ratesDegS, lines: [`Δv gastado ${num(m.spentMs, 2)} m/s · rapidez ${num(m.speedMs, 2)} m/s`] });
+    const g = this.nav.freeGuidance();
+    this.hand.update(dragonRead(m, g, `${REAL_ONLY ? "Starship" : "Nodriza"} · vuelo libre a mano`));
+    // Near a port, the centreline docking camera with its target; away from every port, only the numbers.
+    const sc = this.hand.screen(!!g);
+    if (sc && g) drawDockCamera(sc.g, sc.w, sc.h, g);
   }
 }

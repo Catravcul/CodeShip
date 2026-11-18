@@ -84,6 +84,7 @@ export async function cubiertaVuelo(j) {
   j.check("«Manual» saca los mandos de Crew Dragon: trasladar (adelante/atrás, arriba/abajo, izq./der.) y girar (cabeceo, guiñada, alabeo), en desarrollo", pad.on && /Adel/.test(pad.text) && /Cab\./.test(pad.text) && /Alab/.test(pad.text) && /en desarrollo/.test(pad.text) && /Crew Dragon/.test(pad.text), pad.text.slice(0, 160));
   j.check("los mandos caben en la pantalla del móvil con botones de 44 px", pad.top >= 0 && pad.bottom <= 664 && pad.small === 0, JSON.stringify({ top: pad.top, bottom: pad.bottom, small: pad.small }));
   j.check("pilotar a mano es el reto en pantalla: el menú árbol se esconde", !pad.menu);
+  j.check("lejos de un puerto, la pantalla de Dragon da actitud y giro por eje, sin la cámara del blanco", /Actitud/.test(pad.read) && /°\/s/.test(pad.read) && (await p.evaluate(() => !!document.querySelector(".rcs-pad.carrier-pad .rp-screen")?.hidden)), pad.read.slice(0, 160));
   j.check("vuelo libre: sin destino, ni distancia ni tiempo a un objetivo (no hay viaje automático cargado)", !/faltan|llega en|→|destino/i.test(pad.read) && (await p.evaluate(() => !window.codeship.tripStatus())), pad.read);
   for (let i = 0; i < 2; i++) await j.tap('.rcs-pad.carrier-pad [data-act="t:z:-1"]', "Trasladar adelante");
   await j.tap('.rcs-pad.carrier-pad [data-act="r:y:1"]', "Guiñada a la izquierda");
@@ -92,7 +93,7 @@ export async function cubiertaVuelo(j) {
     const m = window.codeship.nav.freeCarrier;
     return { v: m?.velocityBody.z ?? 0, rate: m?.ratesDegS.y ?? 0, yaw: m?.attitude.yaw ?? 0, read: document.querySelector(".rcs-pad.carrier-pad .rp-read")?.textContent ?? "" };
   });
-  j.check("cada toque es un paso del RCS: dos «Adel.» 0,2 m/s hacia la proa y una guiñada 0,2 °/s que gira la nave", Math.abs(fl.v + 0.2) < 0.01 && Math.abs(fl.rate - 0.2) < 1e-6 && /Giro/.test(fl.read) && /Actitud/.test(fl.read), JSON.stringify(fl));
+  j.check("cada toque es un paso del RCS: dos «Adel.» 0,2 m/s hacia la proa y una guiñada 0,2 °/s que gira la nave", Math.abs(fl.v + 0.2) < 0.01 && Math.abs(fl.rate - 0.2) < 1e-6 && /°\/s/.test(fl.read) && /Actitud/.test(fl.read), JSON.stringify(fl));
   await capture(j, "3-manual-libre", "Pilotar a mano: vuelo libre con los mandos de Crew Dragon");
   await j.setup("se levanta y va a la mesa de navegación", () => window.codeship.bridge.goTo("nav"));
   await p.waitForFunction(() => window.codeship.bridge.near() === "nav" && !window.codeship.bridge.walking, null, { timeout: 30000 }).catch(() => {});
@@ -130,6 +131,20 @@ export async function cubiertaVuelo(j) {
   });
   const held = await p.waitForFunction(() => window.codeship.nav.holdingAt()?.id === "estacion-polana", null, { timeout: 120000 }).then(() => true).catch(() => false);
   j.check("se queda en el punto de espera 1 (150 m), sin atracar sola", held && (await p.evaluate(() => !window.codeship.mothership.dockedTo)));
+  // Dragon's display near a port (Berón, 2026-11-18: «¿cómo sabían qué botón tocar?»): the centreline camera and the numbers.
+  await j.useMachine("bridge", "prop", "manual", "Manual");
+  await p.waitForTimeout(900);
+  const disp = await p.evaluate(() => {
+    const el = document.querySelector(".rcs-pad.carrier-pad:not(.hidden)");
+    const cam = el?.querySelector(".rp-screen");
+    return { cam: !!cam && !cam.hidden && cam.getBoundingClientRect().width > 80, read: el?.querySelector(".rp-read")?.textContent ?? "", ok: el?.querySelectorAll(".rp-read i.ok").length ?? 0, out: el?.querySelectorAll(".rp-read i.out").length ?? 0, bottom: Math.round(el?.getBoundingClientRect().bottom ?? 0), top: Math.round(el?.getBoundingClientRect().top ?? 0) };
+  });
+  j.check("cerca del puerto, los mandos enseñan la cámara de eje con su blanco, la distancia y el cierre, como en la Demo-2", disp.cam && /Estaci/.test(disp.read) && /cierre/.test(disp.read) && /m\b/.test(disp.read), disp.read.slice(0, 200));
+  j.check("cada valor dentro de su límite en verde con ✓ y fuera en ámbar con ▲ (forma y color)", disp.ok > 0 && disp.ok + disp.out >= 7 && /✓/.test(disp.read), JSON.stringify({ ok: disp.ok, out: disp.out }));
+  j.check("la pantalla y los mandos caben en el móvil", disp.top >= 0 && disp.bottom <= 664, JSON.stringify({ top: disp.top, bottom: disp.bottom }));
+  await capture(j, "3b-manual-camara", "Pilotar a mano cerca del puerto: la cámara de eje y sus valores");
+  await j.tap('.rcs-pad.carrier-pad [data-act="end"]', "Dejar de pilotar");
+  await p.waitForTimeout(500);
   await j.useMachine("bridge", "dock", null);
   await p.waitForTimeout(600);
   const d1 = await acts(p);

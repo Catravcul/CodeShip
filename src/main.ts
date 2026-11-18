@@ -1296,7 +1296,7 @@ const cabin = new LanderCabin(root, {
 });
 
 /** Which vehicle she is in now, and which hatches are open between them. */
-const crewIn = (): Vehicle => (interior.active || bridge.active || deck.active || subj.piloting || arm.starshipEva?.active ? "nodriza" : stationInside.active || stationScreen.active || bay.active || arm.stationEva.active ? "estacion" : "modulo");
+const crewIn = (): "modulo" | "nodriza" | "estacion" => (interior.active || bridge.active || deck.active || subj.piloting || arm.starshipEva?.active ? "nodriza" : stationInside.active || stationScreen.active || bay.active || arm.stationEva.active ? "estacion" : "modulo");
 const vehicleLinks = () => ({ moduloNodriza: docking.dockedTo === mothership, moduloEstacion: atStationPort(), nodrizaEstacion: !!mothership.dockedTo });
 /** Every task of the game, from every module (docs/design/habitaculo.md §Tareas). */
 function allTasks(): Task[] {

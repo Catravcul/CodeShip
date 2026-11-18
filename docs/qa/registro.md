@@ -261,6 +261,15 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | HAB-28 | Solo test | | | `compartments.test.ts`, `starship-interior.test.ts`; jugado en PX-35 |
 | HAB-30 | Probado (en vivo) | 2026-11-17 | `1e45fe6` | [run](runs/2026-11-17-0459-PX-28-PX-31-PX-35-PX-37-PX-20.md): PX-37 OK; `crew-areas.test.ts` |
 | HAB-31 | Probado (en vivo) | 2026-11-17 | `1e45fe6` | [run](runs/2026-11-17-0459-PX-28-PX-31-PX-35-PX-37-PX-20.md): PX-37 OK |
+| AER-01 | Sin probar | | | `layout.test.ts`, `camera-stick.test.ts`, `level.test.ts` verdes; lo juega PX-45 |
+| AER-02 | Solo test | | | `layout.test.ts` (escala 1 y 1,5), `rules.test.ts` verdes; lo juega PX-45 |
+| AER-03 | Sin probar | | | `rules.test.ts` verde; lo juega PX-45 |
+| AER-04 | Sin probar | | | `rules.test.ts`, `layout.test.ts` verdes; lo juega PX-45 |
+| AER-05 | Sin probar | | | `initiation.test.ts` verde; lo juega PX-45 |
+| AER-06 | Sin probar | | | `initiation.test.ts` verde; lo juega PX-45 |
+| AER-07 | Solo test | | | `layout.test.ts`, `rules.test.ts` verdes; lo juega PX-45 |
+| AER-08 | Solo test | | | `rules.test.ts` (grupo 101) verde |
+| AER-09 | Solo test | | | `aerial-state.test.ts` verde |
 | CV-01 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK |
 | CV-02 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-01** cerrado |
 | CV-03 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK · **B-01** arreglado |
@@ -316,6 +325,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-42 | Probado (en vivo) | 2026-11-18 | `90ba319` | [run](runs/2026-11-18-1146-PX-42.md): 57 OK |
 | PX-43 | Probado (en vivo) | 2026-11-18 | `5a82fe6` | [run](runs/2026-11-18-0613-PX-10-PX-15-PX-32-PX-43-PX-39-PX-40.md): 67 OK |
 | PX-44 | Probado (en vivo) | 2026-11-18 | `90ba319` | [run](runs/2026-11-18-1140-PX-10-PX-44-PX-50.md): 25 OK |
+| PX-45 | Sin probar | | | |
 | PX-50 | Probado (en vivo) | 2026-11-18 | `90ba319` | [run](runs/2026-11-18-1140-PX-10-PX-44-PX-50.md): 28 OK |
 
 ## Última ejecución por run log

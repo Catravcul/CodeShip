@@ -6,7 +6,8 @@ import { StartScreen } from "./ui/start-screen";
 
 /**
  * The page's entry: the start screen first, on every load (Berón, 2026-11-18; docs/design/santuario3-iniciacion.md
- * §5), and the game (main.ts) only once a level is chosen. Today only the space sanctuary (6) starts. The games
+ * §5), and the game only once a level is chosen: the space sanctuary (6, main.ts) or the aerial one (3,
+ * aerial-sanctuary.ts, docs/design/santuario3-escena.md). The games
  * are saved on this device (docs/design/partidas.md): «Continuar» resumes the newest one, and the screen's gear
  * lists them (choose, delete) with «Jugar sin partida guardada».
  */
@@ -35,7 +36,7 @@ const start = new StartScreen(
   LEVELS,
   { list: () => book.list(), why: cannotResume, remove: (id) => book.remove(id), freeSlot: () => book.newSlot() },
   (level, choice) => {
-    if (level.id !== "espacio") return;
+    if (level.id !== "espacio" && level.id !== "aereo") return;
     // How long the player looked at the start screen is not loading time (tools/experiencia measures from here).
     performance.mark("codeship-inicio-elegido");
     if (choice.kind === "continuar") {
@@ -43,7 +44,7 @@ const start = new StartScreen(
       startSession({ slotId: choice.slot.id, resume: choice.slot });
     } else startSession({ slotId: book.newSlot(), resume: undefined });
     start.close();
-    void import("./main");
+    void (level.id === "aereo" ? import("./aerial-sanctuary") : import("./main"));
   },
 );
 start.open();

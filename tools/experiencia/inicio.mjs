@@ -1,8 +1,8 @@
 // PX-44 The start screen (Berón, 2026-11-18; docs/design/santuario3-iniciacion.md §5), on an iPhone 13 with taps.
 // It comes before the game on every load: the map window (src/ui/map-window.ts) with the six sanctuaries on Cold
 // Sanctuary's «depth = danger» axis on top, which a finger turns and a pinch zooms (reglas.md §5.7), and a card for
-// each under it with its description and a 44 px button. Only 6 starts; 3 says it is being built (the iniciación of
-// Doménica); 1, 2, 4 and 5 say «Próximamente». No tree menu: there is no game yet. «Jugar» on 6 starts the game of
+// each under it with its description and a 44 px button. 6 and 3 start (3's card still says its training challenges
+// are being built; its game: PX-45); 1, 2, 4 and 5 say «Próximamente». No tree menu: there is no game yet. «Jugar» on 6 starts the game of
 // now; with a kept game the button is «Continuar» (the gear's saved games: PX-50). Captures in docs/screenshots/inicio-<pantalla>-movil.png.
 import { mkdirSync } from "node:fs";
 
@@ -75,11 +75,11 @@ export async function inicio(j) {
   // The «depth = danger» axis: space on top, then the air, the land, the sea, the rock and the core at the bottom.
   const order = [...s0.nodes].sort((a, b) => a.y - b.y).map((n) => n.id);
   j.check("en el eje profundidad = peligro: el espacio arriba, luego el aéreo y el terrestre; el núcleo abajo del todo", order[0] === "espacio" && order[1] === "aereo" && order[order.length - 1] === "nucleo", order.join(" > "));
-  // 2. The cards: one per sanctuary, with what it is and a 44 px button; only 6 starts.
+  // 2. The cards: one per sanctuary, with what it is and a 44 px button; 6 and 3 start.
   j.check("una tarjeta por santuario, cada una con su descripción y su botón de 44 px", s0.rows.length === 6 && s0.rows.every((r) => r.desc.length > 30 && r.gw >= 44 && r.gh >= 44), JSON.stringify(s0.rows.map((r) => [r.id, r.gw, r.gh])));
   const row = (s, id) => s.rows.find((r) => r.id === id);
-  j.check("solo el 6 (Espacio) se puede jugar, y empieza elegido", !row(s0, "espacio")?.off && s0.rows.filter((r) => !r.off).length === 1 && s0.picked === "espacio" && row(s0, "espacio")?.on, JSON.stringify(s0.rows.map((r) => [r.id, r.off, r.on])));
-  j.check("el 3 dice «En construcción: iniciación y entrenamiento de Doménica», bloqueado", row(s0, "aereo")?.off && /En construcción: iniciación y entrenamiento de Doménica/.test(row(s0, "aereo")?.lock ?? ""), row(s0, "aereo")?.lock);
+  j.check("se pueden jugar el 6 (Espacio) y el 3 (Aéreo); el 6 empieza elegido", !row(s0, "espacio")?.off && !row(s0, "aereo")?.off && s0.rows.filter((r) => !r.off).length === 2 && s0.picked === "espacio" && row(s0, "espacio")?.on, JSON.stringify(s0.rows.map((r) => [r.id, r.off, r.on])));
+  j.check("el 3 dice en su descripción que los retos de entrenamiento están «En construcción», sin candado", !row(s0, "aereo")?.lock && /En construcción: los retos de los puestos de entrenamiento/.test(row(s0, "aereo")?.desc ?? ""), row(s0, "aereo")?.desc);
   j.check("1, 2, 4 y 5 dicen «Próximamente», con su candado", ["terrestre", "marino", "subterraneo", "nucleo"].every((id) => row(s0, id)?.off && /⊘\s*Próximamente/.test(row(s0, id)?.lock ?? "")), JSON.stringify(s0.rows.map((r) => [r.id, r.lock])));
   await capture(j, "mapa", "Inicio: mapa de santuarios y tarjetas");
 
@@ -98,7 +98,7 @@ export async function inicio(j) {
   const s3 = await start(p);
   j.check("«−» lo aleja", s3.zoom < s2.zoom, `${s2.zoom} → ${s3.zoom}`);
 
-  // 4. A tap on a node: one that comes later is not picked; 3 is, and its card says why it does not start yet.
+  // 4. A tap on a node: one that comes later is not picked; 3 is, and its card can start.
   const later = nodeAt(s3, "nucleo");
   if (later) await p.touchscreen.tap(later.x, later.y);
   await p.waitForTimeout(250);
@@ -108,7 +108,7 @@ export async function inicio(j) {
   if (air) await p.touchscreen.tap(air.x, air.y);
   await p.waitForTimeout(300);
   const s5 = await start(p);
-  j.check("tocar el 3 en el mapa lo elige y su tarjeta se marca, con el botón apagado", s5.picked === "aereo" && row(s5, "aereo")?.on && row(s5, "aereo")?.off, JSON.stringify({ picked: s5.picked, air }));
+  j.check("tocar el 3 en el mapa lo elige y su tarjeta se marca, con «Jugar» encendido", s5.picked === "aereo" && row(s5, "aereo")?.on && !row(s5, "aereo")?.off, JSON.stringify({ picked: s5.picked, air }));
   await capture(j, "girado", "Inicio: el mapa girado y el 3 elegido");
   // A tap on a later card does not pick it either (it is marked aria-disabled: a finger on it all the same).
   await j.tapAt(p.locator('.start-screen .mw-pick[data-pick="terrestre"]'));

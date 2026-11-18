@@ -86,8 +86,9 @@ export class StartScreen {
     });
     this.list = this.win.el.querySelector(".ss-list")!;
     this.renderCards();
-    // The playable level is picked to start with (with a kept game, its level).
-    this.sel.pick(this.choices.find((c) => c.action === "Continuar")?.id ?? this.choices.find((c) => !c.locked)?.id);
+    // The playable level highest on the map (space, the game of now) is picked to start with (with a kept game, its level).
+    const top = [...this.levels].sort((a, b) => b.at.y - a.at.y).find((l) => !this.choices.find((c) => c.id === l.id)?.locked);
+    this.sel.pick(this.choices.find((c) => c.action === "Continuar")?.id ?? top?.id);
     window.addEventListener("resize", this.onResize);
   }
 

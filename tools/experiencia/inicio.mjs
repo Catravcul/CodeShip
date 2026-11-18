@@ -132,7 +132,7 @@ export async function inicio(j) {
   await p.waitForSelector(".start-screen:not(.hidden)", { timeout: 120000 });
   await p.waitForTimeout(500);
   const s7 = await start(p);
-  j.check("con una partida guardada, el botón del 6 dice «Continuar» y es el único activo", row(s7, "espacio")?.action === "Continuar" && s7.rows.filter((r) => r.action === "Continuar").length === 1 && s7.rows.filter((r) => !r.off).length === 1, JSON.stringify(s7.rows.map((r) => [r.id, r.action, r.off])));
+  j.check("con una partida guardada, el botón del 6 dice «Continuar» (el único); el 3 sigue con «Jugar»", row(s7, "espacio")?.action === "Continuar" && s7.rows.filter((r) => r.action === "Continuar").length === 1 && row(s7, "aereo")?.action === "Jugar" && s7.rows.filter((r) => !r.off).length === 2, JSON.stringify(s7.rows.map((r) => [r.id, r.action, r.off])));
   await capture(j, "continuar", "Inicio con una partida guardada");
   await j.tap('.start-screen .mw-go[data-go="espacio"]', "Continuar");
   await p.waitForFunction(() => window.codeship, null, { timeout: 120000 }).catch(() => {});

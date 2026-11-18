@@ -288,7 +288,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | CV-16 | Solo test | | | `round-trip.test.ts` verde; el viaje a medias no se reanuda (partidas.md, **HC-06** cerrado) |
 | CV-17 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-03** cerrado: el aviso dura 5 s reales en el tramo ×60 |
 | CV-20 | Solo test | | | `comidas.test.ts` (verde en la suite completa) |
-| PX-01 | Probado (en vivo) | 2026-11-18 | `90ba319` | [run](runs/2026-11-18-1144-PX-01.md): 54 OK |
+| PX-01 | Probado (en vivo) | 2026-11-18 | `430e597` | [run](runs/2026-11-18-1213-PX-01-PX-44-PX-45.md): 54 OK |
 | PX-02 | FAIL | 2026-11-16 | `1c1b689` | [run](runs/2026-11-16-1923-PX-01-PX-02-PX-13-PX-27.md): 28 OK, 1 FALLA |
 | PX-03 | Probado (en vivo) | 2026-11-18 | `69fb242` | [run](runs/2026-11-18-0606-PX-03-PX-04-PX-05-PX-10-PX-15-PX-31-PX-32-PX-41-PX-36-PX-42-PX-40.md): 18 OK |
 | PX-04 | Probado (en vivo) | 2026-11-18 | `7b9d882` | [run](runs/2026-11-18-0736-PX-04-PX-10-PX-31-PX-32-PX-36-PX-42-PX-40.md): 34 OK |
@@ -324,8 +324,8 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-38 | Probado (en vivo) | 2026-11-18 | `7b9d882` | [run](runs/2026-11-18-0812-PX-38-PX-30.md): 77 OK |
 | PX-42 | Probado (en vivo) | 2026-11-18 | `90ba319` | [run](runs/2026-11-18-1146-PX-42.md): 57 OK |
 | PX-43 | Probado (en vivo) | 2026-11-18 | `5a82fe6` | [run](runs/2026-11-18-0613-PX-10-PX-15-PX-32-PX-43-PX-39-PX-40.md): 67 OK |
-| PX-44 | Probado (en vivo) | 2026-11-18 | `90ba319` | [run](runs/2026-11-18-1140-PX-10-PX-44-PX-50.md): 25 OK |
-| PX-45 | Sin probar | | | |
+| PX-44 | FAIL | 2026-11-18 | `430e597` | [run](runs/2026-11-18-1213-PX-01-PX-44-PX-45.md): 22 OK, 3 FALLA |
+| PX-45 | Probado (en vivo) | 2026-11-18 | `430e597` | [run](runs/2026-11-18-1213-PX-01-PX-44-PX-45.md): 32 OK |
 | PX-50 | Probado (en vivo) | 2026-11-18 | `90ba319` | [run](runs/2026-11-18-1140-PX-10-PX-44-PX-50.md): 28 OK |
 
 ## Última ejecución por run log
@@ -334,6 +334,7 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-18 12:13 | PX-01, PX-44, PX-45 | Experiencia (Playwright) | 2/3 recorridos bien | [run](runs/2026-11-18-1213-PX-01-PX-44-PX-45.md) |
 | 2026-11-18 11:46 | PX-42 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-18-1146-PX-42.md) |
 | 2026-11-18 11:44 | PX-01 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-18-1144-PX-01.md) |
 | 2026-11-18 11:40 | PX-10, PX-44, PX-50 | Experiencia (Playwright) | 3/3 recorridos bien | [run](runs/2026-11-18-1140-PX-10-PX-44-PX-50.md) |

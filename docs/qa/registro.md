@@ -261,13 +261,13 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | HAB-28 | Solo test | | | `compartments.test.ts`, `starship-interior.test.ts`; jugado en PX-35 |
 | HAB-30 | Probado (en vivo) | 2026-11-17 | `1e45fe6` | [run](runs/2026-11-17-0459-PX-28-PX-31-PX-35-PX-37-PX-20.md): PX-37 OK; `crew-areas.test.ts` |
 | HAB-31 | Probado (en vivo) | 2026-11-17 | `1e45fe6` | [run](runs/2026-11-17-0459-PX-28-PX-31-PX-35-PX-37-PX-20.md): PX-37 OK |
-| AER-01 | Sin probar | | | `layout.test.ts`, `camera-stick.test.ts`, `level.test.ts` verdes; lo juega PX-45 |
-| AER-02 | Solo test | | | `layout.test.ts` (escala 1 y 1,5), `rules.test.ts` verdes; lo juega PX-45 |
-| AER-03 | Sin probar | | | `rules.test.ts` verde; lo juega PX-45 |
-| AER-04 | Sin probar | | | `rules.test.ts`, `layout.test.ts` verdes; lo juega PX-45 |
-| AER-05 | Sin probar | | | `initiation.test.ts` verde; lo juega PX-45 |
-| AER-06 | Sin probar | | | `initiation.test.ts` verde; lo juega PX-45 |
-| AER-07 | Solo test | | | `layout.test.ts`, `rules.test.ts` verdes; lo juega PX-45 |
+| AER-01 | Probado (en vivo) | 2026-11-18 | `ccbf700` | [run](runs/2026-11-18-1221-PX-01-PX-44-PX-45.md) (PX-45); `layout.test.ts`, `camera-stick.test.ts`, `level.test.ts` verdes |
+| AER-02 | Probado (en vivo) | 2026-11-18 | `ccbf700` | [run](runs/2026-11-18-1221-PX-01-PX-44-PX-45.md) (PX-45); `layout.test.ts` (escala 1 y 1,5), `rules.test.ts` verdes |
+| AER-03 | Probado (en vivo) | 2026-11-18 | `ccbf700` | [run](runs/2026-11-18-1221-PX-01-PX-44-PX-45.md) (PX-45); `rules.test.ts` verde |
+| AER-04 | Probado (en vivo) | 2026-11-18 | `ccbf700` | [run](runs/2026-11-18-1221-PX-01-PX-44-PX-45.md) (PX-45); `rules.test.ts`, `layout.test.ts` verdes |
+| AER-05 | Probado (en vivo) | 2026-11-18 | `ccbf700` | [run](runs/2026-11-18-1221-PX-01-PX-44-PX-45.md) (PX-45); `initiation.test.ts` verde |
+| AER-06 | Probado (en vivo) | 2026-11-18 | `ccbf700` | [run](runs/2026-11-18-1221-PX-01-PX-44-PX-45.md) (PX-45); `initiation.test.ts` verde |
+| AER-07 | Probado (en vivo) | 2026-11-18 | `ccbf700` | [run](runs/2026-11-18-1221-PX-01-PX-44-PX-45.md) (PX-45); `layout.test.ts`, `rules.test.ts` verdes |
 | AER-08 | Solo test | | | `rules.test.ts` (grupo 101) verde |
 | AER-09 | Solo test | | | `aerial-state.test.ts` verde |
 | CV-01 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK |
@@ -288,7 +288,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | CV-16 | Solo test | | | `round-trip.test.ts` verde; el viaje a medias no se reanuda (partidas.md, **HC-06** cerrado) |
 | CV-17 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-03** cerrado: el aviso dura 5 s reales en el tramo ×60 |
 | CV-20 | Solo test | | | `comidas.test.ts` (verde en la suite completa) |
-| PX-01 | Probado (en vivo) | 2026-11-18 | `430e597` | [run](runs/2026-11-18-1213-PX-01-PX-44-PX-45.md): 54 OK |
+| PX-01 | Probado (en vivo) | 2026-11-18 | `ccbf700` | [run](runs/2026-11-18-1221-PX-01-PX-44-PX-45.md): 54 OK |
 | PX-02 | FAIL | 2026-11-16 | `1c1b689` | [run](runs/2026-11-16-1923-PX-01-PX-02-PX-13-PX-27.md): 28 OK, 1 FALLA |
 | PX-03 | Probado (en vivo) | 2026-11-18 | `69fb242` | [run](runs/2026-11-18-0606-PX-03-PX-04-PX-05-PX-10-PX-15-PX-31-PX-32-PX-41-PX-36-PX-42-PX-40.md): 18 OK |
 | PX-04 | Probado (en vivo) | 2026-11-18 | `ea9c197` | [run](runs/2026-11-18-1210-PX-04-PX-05.md): 34 OK |
@@ -324,8 +324,8 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-38 | Probado (en vivo) | 2026-11-18 | `7b9d882` | [run](runs/2026-11-18-0812-PX-38-PX-30.md): 77 OK |
 | PX-42 | Probado (en vivo) | 2026-11-18 | `90ba319` | [run](runs/2026-11-18-1146-PX-42.md): 57 OK |
 | PX-43 | Probado (en vivo) | 2026-11-18 | `5a82fe6` | [run](runs/2026-11-18-0613-PX-10-PX-15-PX-32-PX-43-PX-39-PX-40.md): 67 OK |
-| PX-44 | FAIL | 2026-11-18 | `430e597` | [run](runs/2026-11-18-1213-PX-01-PX-44-PX-45.md): 22 OK, 3 FALLA |
-| PX-45 | Probado (en vivo) | 2026-11-18 | `430e597` | [run](runs/2026-11-18-1213-PX-01-PX-44-PX-45.md): 32 OK |
+| PX-44 | Probado (en vivo) | 2026-11-18 | `ccbf700` | [run](runs/2026-11-18-1221-PX-01-PX-44-PX-45.md): 25 OK |
+| PX-45 | Probado (en vivo) | 2026-11-18 | `ccbf700` | [run](runs/2026-11-18-1221-PX-01-PX-44-PX-45.md): 32 OK |
 | PX-50 | Probado (en vivo) | 2026-11-18 | `90ba319` | [run](runs/2026-11-18-1140-PX-10-PX-44-PX-50.md): 28 OK |
 
 ## Última ejecución por run log
@@ -334,6 +334,7 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-18 12:21 | PX-01, PX-44, PX-45 | Experiencia (Playwright) | 3/3 recorridos bien | [run](runs/2026-11-18-1221-PX-01-PX-44-PX-45.md) |
 | 2026-11-18 12:13 | PX-01, PX-44, PX-45 | Experiencia (Playwright) | 2/3 recorridos bien | [run](runs/2026-11-18-1213-PX-01-PX-44-PX-45.md) |
 | 2026-11-18 12:10 | PX-04, PX-05 | Experiencia (Playwright) | 2/2 recorridos bien | [run](runs/2026-11-18-1210-PX-04-PX-05.md) |
 | 2026-11-18 12:01 | PX-31, PX-32, PX-41 | Experiencia (Playwright) | 3/3 recorridos bien | [run](runs/2026-11-18-1201-PX-31-PX-32-PX-41.md) |

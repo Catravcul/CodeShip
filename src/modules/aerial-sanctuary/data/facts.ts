@@ -16,7 +16,7 @@ export const SITE = {
   launchCapHalf: fact(55, "ficcion", S.csBuilder, "LaunchCapHalf: 110 × 110 m"),
   energy: fact({ x: -470, z: 470 }, "ficcion", S.csBuilder, "EnergyRule.Center"),
   energyCapHalf: fact(120, "ficcion", S.csBuilder, "EnergyRule.CapHalf: 240 × 240 m"),
-  dock: fact({ x: -300, z: 170 }, "ficcion", S.csBuilder, "AereoDock: el muelle de las alfombras, 32 × 24 m"),
+  dock: fact({ x: -230, z: 210 }, "ficcion", S.csBuilder, "AereoDock (el muelle de las alfombras, 32 × 24 m), movido por nosotros de (−300, 170) a fuera de los 300 m del Electron, también a escala 1,5"),
   dockSize: fact({ x: 32, z: 24 }, "ficcion", S.csBuilder),
   parapetM: fact(1.2, "ficcion", S.csBuilder, "Pretil_casquete"),
 } as const;

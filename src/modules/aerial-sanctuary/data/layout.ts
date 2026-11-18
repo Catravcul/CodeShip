@@ -14,9 +14,10 @@ import { S3_SOURCES as S } from "./sources";
  * and walls, the areas of the Áreas window, the machines she uses, the lifts and the paths she walks by herself.
  * Plan x, z in metres (Cold Sanctuary's coordinates); y up from the sea's datum.
  *
- * Cold Sanctuary's three caps keep their sizes and coordinates (Berón, 2026-11-18). The training island is ours,
- * and each of its buildings copies a real facility: its interiors are drawn `k` times bigger on the plan by the
- * presentation layer («Escala de interiores», src/core/scale.ts), heights and doorways at body size.
+ * Cold Sanctuary's caps keep their sizes and coordinates in the data (Berón, 2026-11-18). The training island is ours,
+ * and each of its buildings copies a real facility. The presentation layer («Escala de interiores», src/core/scale.ts)
+ * draws every area `k` times bigger on the plan, Cold Sanctuary's too (§2.4): each room about its centre, each cap,
+ * the dock and the crew pad about theirs (`Builder.widen`); heights stay true, and the islands keep their places.
  */
 export type IslandId = "entrenamiento" | "lanzadera" | "parque" | "muelle" | "plataforma";
 
@@ -110,6 +111,8 @@ export interface Prop {
   readonly on?: boolean;
   /** For a tree: its trunk height and floors. */
   readonly tree?: TreeShape;
+  /** How much the presentation layer widened it on the plan (Cold Sanctuary's areas at «Escala de interiores»). */
+  readonly plan?: number;
 }
 
 export interface TreeShape {
@@ -217,6 +220,39 @@ class Builder {
   }
   area(a: AreaDef): void {
     this.areas.push(a);
+  }
+  /** Where every list stands now: what is added after it can be widened with `widen`. */
+  mark(): Record<"floors" | "waters" | "solids" | "blocks" | "points" | "areas" | "machines" | "lifts" | "props", number> {
+    return { floors: this.floors.length, waters: this.waters.length, solids: this.solids.length, blocks: this.blocks.length, points: this.points.length, areas: this.areas.length, machines: this.machines.length, lifts: this.lifts.length, props: this.props.length };
+  }
+  /**
+   * The presentation layer's scale (§2.4) on what was built since `m`: the plan (x, z) `k` times wider about `o`,
+   * heights unchanged. Uniform on the plan, so whatever was walkable stays walkable and nothing goes through anything.
+   */
+  widen(m: ReturnType<Builder["mark"]>, o: { x: number; z: number }, k: number): void {
+    if (k === 1) return;
+    const X = (x: number) => o.x + (x - o.x) * k;
+    const Z = (z: number) => o.z + (z - o.z) * k;
+    const rect = <T extends Rect>(r: T): T => ({ ...r, x0: X(r.x0), x1: X(r.x1), z0: Z(r.z0), z1: Z(r.z1) });
+    const each = <T>(list: T[], from: number, f: (t: T) => T) => {
+      for (let i = from; i < list.length; i++) list[i] = f(list[i]!);
+    };
+    each(this.floors, m.floors, rect);
+    each(this.waters, m.waters, rect);
+    each(this.solids, m.solids, rect);
+    each(this.blocks, m.blocks, rect);
+    each(this.points, m.points, (p) => ({ ...p, x: X(p.x), z: Z(p.z) }));
+    each(this.areas, m.areas, (a) => ({ ...a, centre: { ...a.centre, x: X(a.centre.x), z: Z(a.centre.z) }, half: { ...a.half, x: a.half.x * k, z: a.half.z * k } }));
+    each(this.machines, m.machines, (q) => ({ ...q, x: X(q.x), z: Z(q.z) }));
+    each(this.lifts, m.lifts, (l) => ({ ...l, x: X(l.x), z: Z(l.z), half: l.half * k }));
+    each(this.props, m.props, (p) => ({
+      ...p,
+      x: X(p.x),
+      z: Z(p.z),
+      plan: k,
+      ...(p.size ? { size: { x: p.size.x * k, y: p.size.y, z: p.size.z * k } } : {}),
+      ...(p.tree ? { tree: { ...p.tree, floors: p.tree.floors.map((f) => ({ ...f, rect: rect(f.rect) })), tips: p.tree.tips.map((f) => ({ ...f, rect: rect(f.rect), column: rect(f.column) })), tubes: p.tree.tubes.map(rect) } } : {}),
+    }));
   }
   machine(m: Omit<MachineDef, "point">, link: string): string {
     const p = this.point(`m:${m.id}`, m.x, m.y, m.z, m.lift);
@@ -738,7 +774,10 @@ export function buildLayout(k = 1): S3Layout {
   const need = requiredPadHeight(elevated, HEIGHT_RULE.value);
   const launchFirst = launchFirstFloorY(need, { minFirstY: TREE.minFirstY.value, padRiseM: CROWN.padRiseM.value, aboveFirstM: TREE.levelGap.value + TREE.tipRise.value + TREE.ringH.value + 7 });
 
+  /** A point of island `o` as the presentation layer widens it (§2.4). */
+  const wide = (o: { x: number; z: number }, x: number, z: number) => ({ x: o.x + (x - o.x) * k, z: o.z + (z - o.z) * k });
   const LH = SITE.launchCapHalf.value;
+  const launchMark = b.mark();
   buildCap(b, "lanzadera", L, LH, TREE.waterHalf.value + TREE.wall.value, "e");
   const lAnden = b.point("lanzadera:anden", L.x + LH - 14, 0, L.z);
   const lHeli = { x: L.x + 33, z: L.z - 33 };
@@ -762,9 +801,11 @@ export function buildLayout(k = 1): S3Layout {
     b.props.push({ kind, x: L.x + x, y: 0.3, z: L.z + z });
   }
   b.block("polvorin", { ...around(L.x + apart, L.z + apart, 3, 2), y0: 0, y1: 2.6 });
-  pads.push({ island: "lanzadera", at: { x: lHeli.x, y: 0.05, z: lHeli.z }, crafts: ["alfombra", "helicoptero"] });
+  b.widen(launchMark, L, k);
+  pads.push({ island: "lanzadera", at: { ...wide(L, lHeli.x, lHeli.z), y: 0.05 }, crafts: ["alfombra", "helicoptero"] });
 
   const EH = SITE.energyCapHalf.value;
+  const energyMark = b.mark();
   buildCap(b, "parque", E, EH, TREE.waterHalf.value + TREE.wall.value, "e");
   const eAnden = b.point("parque:anden", E.x + EH - 12, 0, E.z + 30);
   b.props.push({ kind: "carpet-pad", x: E.x + EH - 12, y: 0.02, z: E.z + 30 });
@@ -802,8 +843,10 @@ export function buildLayout(k = 1): S3Layout {
     b.block("bateria", { ...around(x, z, 3, 1.25), y0: 0, y1: 2.6 }, true);
     b.props.push({ kind: "battery", x, y: 0, z });
   }
+  b.widen(energyMark, E, k);
 
   const dz = SITE.dockSize.value;
+  const dockMark = b.mark();
   b.floor("muelle:muelle", 0, around(Dk.x, Dk.z, dz.x / 2, dz.z / 2));
   for (const w of [
     ...wallWithGaps({ axis: "x", at: Dk.z + dz.z / 2 - 0.5, from: Dk.x - dz.x / 2, to: Dk.x + dz.x / 2, y0: -3, y1: SITE.parapetM.value, thick: 1 }),
@@ -818,13 +861,15 @@ export function buildLayout(k = 1): S3Layout {
   b.machine({ id: "nav-muelle", kind: "navegacion", island: "muelle", area: "muelle:muelle", label: "Máquina de navegación", what: "El mapa de las islas: alfombra a la lanzadera o al parque", x: Dk.x + 4, y: 0, z: Dk.z }, dPad);
   b.block("kiosco", { ...around(Dk.x + 6.2, Dk.z, 0.5), y0: 0, y1: 1.3 });
   b.props.push({ kind: "nav-machine", x: Dk.x + 6.2, y: 0, z: Dk.z, rot: -Math.PI / 2 });
-  pads.push({ island: "muelle", at: { x: Dk.x - 6, y: 0.02, z: Dk.z }, crafts: ["alfombra"] });
-  pads.push({ island: "parque", at: { x: E.x + EH - 12, y: 0.02, z: E.z + 30 }, crafts: ["alfombra"] });
+  b.widen(dockMark, Dk, k);
+  pads.push({ island: "muelle", at: { ...wide(Dk, Dk.x - 6, Dk.z), y: 0.02 }, crafts: ["alfombra"] });
+  pads.push({ island: "parque", at: { ...wide(E, E.x + EH - 12, E.z + 30), y: 0.02 }, crafts: ["alfombra"] });
 
   // ── The crew pad on the sea: Falcon 9 with Crew Dragon (real vehicles; a Falcon 9 from the sea is licence) ──
   const C = CREW_PAD.at.value;
   const cs = CREW_PAD.size.value;
   const cy = CREW_PAD.deckM.value;
+  const crewMark = b.mark();
   b.floor("plataforma:cubierta", cy, around(C.x, C.z, cs.x / 2, cs.z / 2));
   b.block("plataforma", { ...around(C.x, C.z, cs.x / 2, cs.z / 2), y0: SEA_Y - 4, y1: cy - 0.05 }, false);
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) b.block("columna", { ...around(C.x + sx * (cs.x / 2 - 8), C.z + sz * (cs.z / 2 - 8), 5), y0: -30, y1: cy - 2 }, false);
@@ -844,19 +889,21 @@ export function buildLayout(k = 1): S3Layout {
   b.block("kiosco", { ...around(cHeli.x + hd + 5.2, cHeli.z + 6, 0.5), y0: cy, y1: cy + 1.3 });
   b.props.push({ kind: "nav-machine", x: cHeli.x + hd + 5.2, y: cy, z: cHeli.z + 6, rot: -Math.PI / 2 });
   b.machine({ id: "plataforma-acceso", kind: "puesto", island: "plataforma", area: "plataforma:cubierta", label: "Torre de acceso de la tripulación", what: "Traje, brazo de acceso, comprobación de fugas y cuenta atrás (puesto 13)", x: fx - 6, y: cy, z: C.z + 9, post: 13 }, cRocket);
-  pads.push({ island: "plataforma", at: { x: cHeli.x, y: cy + 0.05, z: cHeli.z }, crafts: ["helicoptero"] });
+  b.widen(crewMark, C, k);
+  pads.push({ island: "plataforma", at: { ...wide(C, cHeli.x, cHeli.z), y: cy + 0.05 }, crafts: ["helicoptero"] });
 
   const islands: IslandDef[] = [
     { id: "entrenamiento", name: "Isla de entrenamiento", desc: "Las instalaciones reales de formación: la piscina NBL, la centrífuga, las maquetas, el control de misión, el centro médico y el helipuerto. Todo aquí es real", reality: "real", source: S.ours, rect: R(ti.x0, ti.x1, ti.z0, ti.z1), deckY: 0, pad: pads[0]!, arrival: "entrenamiento:helipuerto:centro", nav: "m:nav-entrenamiento" },
-    { id: "lanzadera", name: "Lanzadera de cohetes", desc: "El casquete de Cold Sanctuary con su edificio-árbol de agua, el ascensor del tronco y la corona del Electron en lo alto (con toda su magia)", reality: "ficcion", source: S.csBuilder, rect: around(L.x, L.z, LH), deckY: 0, pad: pads[1]!, arrival: "lanzadera:helipuerto", nav: "m:nav-lanzadera" },
-    { id: "parque", name: "Parque energético", desc: "El casquete del parque: el árbol bajo, el campo solar, los tres E-33 de Ross Island con su parada por aves y la mareal piloto", reality: "ficcion", source: S.csBuilder, rect: around(E.x, E.z, EH), deckY: 0, pad: pads.find((p) => p.island === "parque")!, arrival: "parque:anden", nav: "m:nav-parque" },
-    { id: "muelle", name: "Muelle aéreo", desc: "El muelle de las alfombras voladoras de Cold Sanctuary", reality: "ficcion", source: S.csBuilder, rect: around(Dk.x, Dk.z, dz.x / 2, dz.z / 2), deckY: 0, pad: pads.find((p) => p.island === "muelle")!, arrival: "muelle:pista", nav: "m:nav-muelle" },
-    { id: "plataforma", name: "Plataforma de tripulación", desc: "El Falcon 9 con la Crew Dragon en una plataforma en el mar, a ~1,1 km: la distancia de seguridad de un cohete tripulado", reality: "licencia", source: S.odyssey, rect: around(C.x, C.z, cs.x / 2, cs.z / 2), deckY: cy, pad: pads.find((p) => p.island === "plataforma")!, arrival: "plataforma:helipuerto", nav: "m:nav-plataforma" },
+    { id: "lanzadera", name: "Lanzadera de cohetes", desc: "El casquete de Cold Sanctuary con su edificio-árbol de agua, el ascensor del tronco y la corona del Electron en lo alto (con toda su magia)", reality: "ficcion", source: S.csBuilder, rect: around(L.x, L.z, LH * k), deckY: 0, pad: pads[1]!, arrival: "lanzadera:helipuerto", nav: "m:nav-lanzadera" },
+    { id: "parque", name: "Parque energético", desc: "El casquete del parque: el árbol bajo, el campo solar, los tres E-33 de Ross Island con su parada por aves y la mareal piloto", reality: "ficcion", source: S.csBuilder, rect: around(E.x, E.z, EH * k), deckY: 0, pad: pads.find((p) => p.island === "parque")!, arrival: "parque:anden", nav: "m:nav-parque" },
+    { id: "muelle", name: "Muelle aéreo", desc: "El muelle de las alfombras voladoras de Cold Sanctuary", reality: "ficcion", source: S.csBuilder, rect: around(Dk.x, Dk.z, (dz.x / 2) * k, (dz.z / 2) * k), deckY: 0, pad: pads.find((p) => p.island === "muelle")!, arrival: "muelle:pista", nav: "m:nav-muelle" },
+    { id: "plataforma", name: "Plataforma de tripulación", desc: "El Falcon 9 con la Crew Dragon en una plataforma en el mar, a ~1,1 km: la distancia de seguridad de un cohete tripulado", reality: "licencia", source: S.odyssey, rect: around(C.x, C.z, (cs.x / 2) * k, (cs.z / 2) * k), deckY: cy, pad: pads.find((p) => p.island === "plataforma")!, arrival: "plataforma:helipuerto", nav: "m:nav-plataforma" },
   ];
 
   const inhabited = [
     { id: "isla de entrenamiento", ...R(ti.x0, ti.x1, ti.z0, ti.z1) },
-    { id: "Parque Energético (tronco)", ...around(E.x, E.z, TREE.waterHalf.value + TREE.wall.value) },
+    { id: "Parque Energético (tronco)", ...around(E.x, E.z, (TREE.waterHalf.value + TREE.wall.value) * k) },
+    { id: "muelle aéreo", ...around(Dk.x, Dk.z, (dz.x / 2) * k, (dz.z / 2) * k) },
   ];
   void FALCON9_CREW;
   return {

@@ -128,6 +128,17 @@ for (const k of [1, 1.5]) {
       expect(tooClose(pad, safetyDistanceM(ELECTRON.propellantKg.value), L.inhabited)).toEqual([]);
     });
 
+    it(`§2.4: las áreas de Cold Sanctuary también se dibujan ${k} veces más anchas (los datos, a tamaño real)`, () => {
+      const cap = L.areas.find((a) => a.id === "lanzadera:casquete")!;
+      expect(cap.half.x).toBeCloseTo(FACTS.SITE.launchCapHalf.value * k, 6);
+      expect(cap.half.y).toBe(1);
+      const dock = L.areas.find((a) => a.id === "muelle:muelle")!;
+      expect(dock.half.x * 2).toBeCloseTo(FACTS.SITE.dockSize.value.x * k, 6);
+      expect(L.inhabited.map((f) => f.id)).toContain("muelle aéreo");
+      const energy = L.lifts.find((l) => l.id === "parque-arbol")!;
+      expect(energy.stops.map((s) => s.y)).toEqual([0, 12, 34, 57]);
+    });
+
     it("el Falcon 9 tripulado está a ~1,1 km de todo lo habitado, también del árbol de la lanzadera", () => {
       const f9 = L.props.find((p) => p.kind === "falcon9")!;
       const min = safetyDistanceM(FALCON9_CREW.propellantKg.value);

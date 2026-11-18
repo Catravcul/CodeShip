@@ -341,9 +341,12 @@ export function buildProps(L: S3Layout): SceneParts {
   const turbines: SceneParts["turbines"] = [];
   const cabs = new Map<string, THREE.Mesh>();
   let centrifugeArm: THREE.Group | undefined;
+  // Vehicles and machines with their own true size stay as they are; the rest is widened on the plan with its area (§2.4).
+  const trueSize = new Set<Prop["kind"]>(["electron", "falcon9", "turbine", "tidal", "helideck", "lift-shaft", "tree"]);
   const at = (o: THREE.Object3D, p: Prop) => {
     o.position.set(p.x, p.y, p.z);
     if (p.rot) o.rotation.y = p.rot;
+    if (p.plan && !trueSize.has(p.kind)) o.scale.set(p.plan, 1, p.plan);
     root.add(o);
     return o;
   };
@@ -445,6 +448,7 @@ export function buildProps(L: S3Layout): SceneParts {
     if (p.kind === "tank-lox" || p.kind === "tank-rp1") {
       const s = new THREE.Mesh(new THREE.SphereGeometry(4.2, 16, 12), mat(p.kind === "tank-lox" ? 0xd8e2ea : 0xb39e72));
       s.position.set(p.x, 4.5, p.z);
+      if (p.plan) s.scale.set(p.plan, 1, p.plan);
       root.add(s);
     }
   }

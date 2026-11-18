@@ -29,6 +29,43 @@ async function dragScreen(p) {
   await p.waitForTimeout(300);
 }
 
+/** Where a camera looks, as a heading round the vertical (radians). */
+const headingOf = (path) => {
+  const cam = path.split(".").reduce((o, k) => o?.[k], window.codeship);
+  const v = cam.position.clone();
+  cam.updateMatrixWorld();
+  cam.getWorldDirection(v);
+  return Math.atan2(v.x, v.z);
+};
+
+/** A push on the camera joystick `stick` turns the camera `cam` (Berón, 2026-11-18: in 3ª persona nothing moved). */
+async function stickTurns(j, label, cam, stick) {
+  const p = j.page;
+  const shown = await p.locator(stick).first().isVisible().catch(() => false);
+  j.check(`${label}: el joystick de cámara está en pantalla`, shown);
+  const h0 = await p.evaluate(headingOf, cam);
+  await j.stick(stick, 45, 0, 700);
+  await p.waitForTimeout(250);
+  const d = (await p.evaluate(headingOf, cam)) - h0;
+  const turn = Math.atan2(Math.sin(d), Math.cos(d));
+  j.check(`${label}: empujar el joystick gira la cámara`, Math.abs(turn) > 0.05, `${turn.toFixed(2)} rad`);
+}
+
+/** The same in first and third person (the «Vista» button of the menu is played in PX-42), then back to first. */
+async function bothViews(j, label, area, cam, stick, shot) {
+  const view = (third) =>
+    j.setup(`vista en ${third ? "3ª" : "1ª"} persona en ${label}`, ([a, t]) => {
+      a.split(".").reduce((o, k) => o[k], window.codeship).thirdPerson = t;
+    }, [area, third]);
+  for (const third of [false, true]) {
+    await view(third);
+    await j.page.waitForTimeout(400);
+    await stickTurns(j, `${label}, ${third ? "3ª" : "1ª"} persona`, cam, stick);
+    if (third && shot) await capture(j, shot, `${label} en 3ª persona, la cámara girada con el joystick`);
+  }
+  await view(false);
+}
+
 /** The AQH's live audit: every fish's head and tail inside its chamber, sizes, and nothing behind the wall. */
 const aqhAudit = (path) => {
   const c = window.codeship;
@@ -63,6 +100,7 @@ export async function camaraAcuario(j) {
   await j.stick(".vstick.cab-look", 45, 0, 600);
   j.check("en el LM, el joystick «Mirar» gira la cámara", (await p.evaluate(() => window.codeship.cabin.yaw)) !== yaw0);
   await capture(j, "lm-mirar", "El LM con solo el joystick de cámara");
+  await bothViews(j, "el LM", "cabin", "cabin.camera", ".vstick.cab-look", "lm-3p");
 
   // 2. Starship's deck 3: the AQH.
   await j.useMachine("cabin", "acople", "entrar-nodriza", "Entrar en la Starship");
@@ -109,6 +147,7 @@ export async function camaraAcuario(j) {
   const zoom = await p.evaluate(() => window.codeship.starship.mode.camera.zoom);
   j.check("«−» abre la cámara (sin mover a Doménica)", zoom < 0.8, zoom.toFixed(2));
   await capture(j, "starship-aqh-entero", "El AQH entero con «−»");
+  await bothViews(j, "la cubierta 3 de la Starship", "starship.mode", "starship.mode.camera", ".vstick.sts-look", "starship-3p");
 
   // 3. The catalogue's laptop on the animal rack (deck 2), then the live arrival time.
   await placeShip("catalogo");
@@ -140,9 +179,21 @@ export async function camaraAcuario(j) {
   await j.tap(".species-catalog [data-close]", "Cerrar el catálogo");
   await p.waitForTimeout(300);
 
+  // The Starship's airlock and its flight deck (a room of its own since puente-starship): the stick in both views.
+  await placeShip("esclusa");
+  await p.waitForTimeout(1200);
+  await bothViews(j, "la esclusa de la Starship", "starship.mode", "starship.mode.camera", ".vstick.sts-look");
+  await placeShip("subir-cubierta-vuelo");
+  await p.waitForTimeout(1200);
+  await j.tap('.sts-card:not(.hidden) [data-act="subir"]', "Subir a la cubierta de vuelo");
+  await p.waitForFunction(() => window.codeship.bridge.active, null, { timeout: 30000 }).catch(() => {});
+  await p.waitForTimeout(1500);
+  await bothViews(j, "la cubierta de vuelo de la Starship", "bridge", "bridge.camera", ".vstick.puente-look", "cubierta-vuelo-3p");
+
   // 4. The station: Kibo's AQH and the catalogue's laptop beside it (reglas.md §6.0, parity).
   await j.setup("vuelve al LM y lo acopla en su puerto de la estación", () => {
     const c = window.codeship;
+    if (c.bridge.active) c.bridge.exit();
     c.starship.exit();
     c.docking.undock();
     c.docking.dockNow(c.structure.portFor("sonda"));
@@ -161,6 +212,7 @@ export async function camaraAcuario(j) {
   const a = await p.evaluate(aqhAudit, "stationInside");
   j.check("Kibo: las medakas nadan dentro de las cámaras del AQH", a.fish === 6 && a.inside, JSON.stringify(a));
   await capture(j, "kibo-aqh", "El AQH de Kibo");
+  await bothViews(j, "Kibo", "stationInside", "stationInside.camera", ".vstick.sti-look");
   await placeIss("rack-catalogo");
   await p.waitForTimeout(1200);
   const issLap = await p.evaluate(() => window.codeship.stationInside.gearOf("rack-catalogo")?.kind ?? "");
@@ -169,4 +221,58 @@ export async function camaraAcuario(j) {
   const issYaw = await p.evaluate(() => window.codeship.stationInside.yaw);
   await dragScreen(p);
   j.check("en la estación, arrastrar la pantalla no mueve la cámara", (await p.evaluate(() => window.codeship.stationInside.yaw)) === issYaw);
+
+  // 5. The rest of the station's areas (Berón, 2026-11-18: «¿es general?»): Quest's airlock, the bay and outside.
+  await placeIss("trajes");
+  await p.waitForTimeout(1200);
+  await bothViews(j, "la esclusa Quest", "stationInside", "stationInside.camera", ".vstick.sti-look");
+  await j.setup("hay alas nuevas en el hangar (impresas en Planos → Componentes)", () => {
+    const h = window.codeship.stationOps.station.hangar;
+    h.put("alas-saw-irosa-x4");
+    h.put("alas-saw-x4");
+  });
+  await placeIss("consola-bahia");
+  await p.waitForTimeout(1200);
+  await j.tap('.sti-card [data-act="bahia"]', "Abrir la bahía");
+  await p.waitForTimeout(1200);
+  await stickTurns(j, "la bahía", "bay.view.camera", ".cam-stick.bay-look .vstick");
+  await j.tap('.bay-ui [data-view="estacion"]', "Estación");
+  await j.tap('.bay-ui [data-part^="estacion:alas"]', "Alas solares");
+  const fit = p.locator(".bay-ui .bay-act:not(.locked)").first();
+  if (await fit.count()) await j.tapAt(fit);
+  await j.tap(".bay-ui .bay-back", "Volver a la estación");
+  await j.setup("traje puesto, ISLE y esclusa vacía (se juegan en PX-39)", () => {
+    window.codeship.stationEva.eva._phase = "fuera";
+  });
+  await placeIss("escotilla-eva");
+  await p.waitForTimeout(1200);
+  await j.tap('.sti-card [data-act="salir"]', "Salir por la escotilla EVA");
+  await p.waitForTimeout(1500);
+  await stickTurns(j, "fuera de la estación (paseo espacial)", "stationEva.camera", ".cam-stick.eva-cam .vstick");
+  await capture(j, "eva-camara", "Fuera de la estación con el joystick de cámara");
+
+  // 6. A new game landed on Bennu: the LM's cabin on the asteroid (0 g too) and the walk outside.
+  await p.reload();
+  await p.waitForFunction(() => window.codeship, null, { timeout: 120000 });
+  await p.waitForTimeout(1500);
+  await j.setup("posa el módulo sobre Bennu (aterrizar a mano lleva minutos y se juega en PX-03)", () => {
+    const c = window.codeship;
+    const f = c.flight;
+    const s = f.state;
+    const P = s.position.constructor;
+    const Q = s.orientation.constructor;
+    c.docking.undock();
+    const bennu = c.region.target;
+    let y = 400;
+    while (bennu.surfaceDistance(new P(0, y, 0), f.simTimeS) > 3.2) y -= 0.1;
+    f._state = new s.constructor(new P(0, y, 0), new P(0, -0.07, 0), Q.IDENTITY, new P(0, 0, 0));
+  });
+  await p.waitForFunction(() => window.codeship.expedition.phase === "landed", null, { timeout: 180000 }).catch(() => {});
+  await j.tap(".stand-btn", "Levantarse: habitáculo");
+  await p.waitForTimeout(800);
+  await bothViews(j, "el LM posado", "cabin", "cabin.camera", ".vstick.cab-look");
+  await j.setup("fuera con el traje puesto (ponérselo es un reto que se juega en PX-03)", () => window.codeship.evaMode.skipSuitUp());
+  await p.waitForTimeout(1500);
+  await stickTurns(j, "el paseo por Bennu", "evaMode.camera", ".vstick.eva-look");
+  await capture(j, "bennu-eva", "Fuera, en Bennu, con el joystick de cámara");
 }

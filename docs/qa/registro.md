@@ -217,6 +217,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | UI-06 | Probado (en vivo) | 2026-11-17 | `1e45fe6` | [run](runs/2026-11-17-0459-PX-28-PX-31-PX-35-PX-37-PX-20.md): PX-37 OK |
 | UI-07 | Solo test | | | `camera-stick.test.ts` verde; lo juega PX-43 |
 | UI-08 | Solo test | | | `camera-stick.test.ts` verde; lo juega PX-43 |
+| UI-09 | Probado (en vivo) | 2026-11-18 | | `orbit-around.test.ts` verde; PX-43 lo juega en cada área en 1ª y 3ª persona |
 | HAB-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | HAB-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | HAB-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -304,7 +305,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-41 | Probado (en vivo) | 2026-11-17 | `3131bc4` | [run](runs/2026-11-17-2027-PX-04-PX-41-PX-42-PX-40.md): 29 OK |
 | PX-38 | Probado (en vivo) | 2026-11-17 | `5c98cd4` | [run](runs/2026-11-17-1352-PX-28-PX-38-PX-39.md): 77 OK |
 | PX-42 | Probado (en vivo) | 2026-11-17 | `3131bc4` | [run](runs/2026-11-17-2027-PX-04-PX-41-PX-42-PX-40.md): 44 OK |
-| PX-43 | Probado (en vivo) | 2026-11-17 | `65fbb2f` | [run](runs/2026-11-17-2111-PX-28-PX-43-PX-36.md): 28 OK |
+| PX-43 | Probado (en vivo) | 2026-11-18 | `68ceb31` | [run](runs/2026-11-18-0606-PX-43.md): 66 OK |
 
 ## Última ejecución por run log
 
@@ -312,6 +313,7 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-18 06:06 | PX-43 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-18-0606-PX-43.md) |
 | 2026-11-17 21:38 | PX-15, PX-36, PX-40 | Experiencia (Playwright) | 3/3 recorridos bien | [run](runs/2026-11-17-2138-PX-15-PX-36-PX-40.md) |
 | 2026-11-17 21:26 | PX-15, PX-36, PX-40 | Experiencia (Playwright) | 3/3 recorridos bien | [run](runs/2026-11-17-2126-PX-15-PX-36-PX-40.md) |
 | 2026-11-17 21:25 | PX-27 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-17-2125-PX-27.md) |

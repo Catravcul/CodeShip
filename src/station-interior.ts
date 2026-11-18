@@ -527,6 +527,11 @@ export class StationInteriorMode {
     return this.interior.volumeAt(this.p)?.id;
   }
 
+  /** The fixture nearest to her, however far (a saved game keeps where she is: docs/design/partidas.md). */
+  nearestFixture(): string | undefined {
+    return this.near?.id ?? this.interior.fixtureNear(this.p, Infinity)?.id;
+  }
+
   /** The fixture whose grab point she holds, or the one within reach. */
   nearFixture(): string | undefined {
     return this.near?.id;

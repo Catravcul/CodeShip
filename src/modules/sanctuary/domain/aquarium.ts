@@ -1,4 +1,5 @@
 import { FAMILY_TUNING } from "@modules/family/domain/family";
+import { isRecord, num, numbers, str, strings } from "@core/snapshot";
 
 /**
  * The ring aquarium (docs/design/santuario-espacial.md, «Acuario del anillo»): 1 m³ of fresh water on the
@@ -114,6 +115,29 @@ export class RingAquarium {
     this.hornwortG = init.hornwortG ?? AQUARIUM_TUNING.hornwortG;
     this._fish = init.fish ?? AQUARIUM_TUNING.fishCount;
     this._snails = init.snails ?? AQUARIUM_TUNING.snailCount;
+  }
+
+  /** The tank and who lives in it, for a saved game (docs/design/partidas.md). */
+  snapshot(): { fish: number; snails: number; fishName: string; snailBond: number; nitrate: number; ammonia: number; algae: number; hunger: number; health: number; bond: number; help: Record<string, number>; warned: string[] } {
+    return { fish: this._fish, snails: this._snails, fishName: this._fishName, snailBond: this._snailBond, nitrate: this._nitrate, ammonia: this._ammonia, algae: this._algae, hunger: this._hunger, health: this._health, bond: this._bond, help: Object.fromEntries(this._help), warned: [...this.warned] };
+  }
+
+  /** Back to a saved tank; a missing or broken field keeps today's value. */
+  restore(s: unknown): void {
+    if (!isRecord(s)) return;
+    this._fish = Math.max(0, Math.round(num(s.fish, this._fish)));
+    this._snails = Math.max(0, Math.round(num(s.snails, this._snails)));
+    this._fishName = str(s.fishName, this._fishName);
+    this._snailBond = clamp01(num(s.snailBond, this._snailBond));
+    this._nitrate = Math.max(0, num(s.nitrate, this._nitrate));
+    this._ammonia = Math.max(0, num(s.ammonia, this._ammonia));
+    this._algae = clamp01(num(s.algae, this._algae));
+    this._hunger = clamp01(num(s.hunger, this._hunger));
+    this._health = clamp01(num(s.health, this._health));
+    this._bond = clamp01(num(s.bond, this._bond));
+    this._help.clear();
+    for (const [k, v] of Object.entries(numbers(s.help))) if ((AQUARIUM_HELPERS as readonly string[]).includes(k)) this._help.set(k as AquariumHelper, v);
+    this.warned = new Set(strings(s.warned).filter((w): w is "nitrato" | "amonio" => w === "nitrato" || w === "amonio"));
   }
 
   get fishCount(): number {

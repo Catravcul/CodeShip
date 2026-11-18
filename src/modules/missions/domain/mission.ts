@@ -1,3 +1,4 @@
+import { isRecord, num, strings } from "@core/snapshot";
 /** What a mission target is: the story grows from asteroids to a moon and then a planet. */
 export type TargetKind = "asteroide" | "luna" | "planeta";
 
@@ -76,6 +77,23 @@ export class MissionLog {
     if (ids.size !== main.length) throw new Error("Main mission ids must be unique");
     const mainTargets = new Set(main.map((m) => m.target.id));
     this.sides = targets.filter((t) => !mainTargets.has(t.id));
+  }
+
+  /** What is done, for a saved game (docs/design/partidas.md). */
+  snapshot(): { done: string[]; sideDone: string[]; cursor: number } {
+    return { done: [...this.done], sideDone: [...this.sideDone], cursor: this.cursor };
+  }
+
+  /** Back to a saved log; unknown missions and targets are dropped, the cursor stays inside the chain. */
+  restore(s: unknown): void {
+    if (!isRecord(s)) return;
+    const main = new Set(this.main.map((m) => m.id));
+    const sides = new Set(this.sides.map((t) => t.id));
+    this.done.clear();
+    for (const id of strings(s.done)) if (main.has(id)) this.done.add(id);
+    this.sideDone.clear();
+    for (const id of strings(s.sideDone)) if (sides.has(id)) this.sideDone.add(id);
+    this.cursor = Math.max(0, Math.min(this.main.length, Math.round(num(s.cursor, this.cursor))));
   }
 
   /** The main mission being played, if the chain has not reached a locked chapter. */

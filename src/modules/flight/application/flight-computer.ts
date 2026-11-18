@@ -146,6 +146,20 @@ export class FlightComputer {
     return this.berth !== null;
   }
 
+  /**
+   * Back to a saved game (docs/design/partidas.md): the craft's state and the mission clock, free (not anchored,
+   * not docked; the game docks it again if it was). Guidance and tapped pulses are dropped.
+   */
+  restore(state: RigidBodyState, simTimeS: number): void {
+    this.anchor = null;
+    this.berth = null;
+    this._guidance = null;
+    this.pendingDv = Vec3.ZERO;
+    this.accumulator = 0;
+    this._state = state;
+    if (Number.isFinite(simTimeS) && simTimeS >= 0) this._simTimeS = simTimeS;
+  }
+
   /** Latch to a docking port: from now on the ship rides `pose` until `undock`. */
   dock(pose: () => RigidBodyState): void {
     this.anchor = null;

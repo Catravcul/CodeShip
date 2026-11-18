@@ -237,6 +237,11 @@ export abstract class WalkRoom<Id extends string> {
   }
 
   /** Go in at a machine. The view on foot starts as the settings say (first person unless chosen otherwise). */
+  /** A station's name, or undefined for an unknown id (a saved game checks where she was: docs/design/partidas.md). */
+  stationLabel(id: string): string | undefined {
+    return this.opts.layout.stations.find((x) => x.id === id)?.label;
+  }
+
   enter(at: Id = this.opts.layout.stations[0]!.id): void {
     const s = this.opts.layout.stations.find((x) => x.id === at)!;
     this.pos = { ...s.stand };

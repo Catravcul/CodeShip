@@ -1,3 +1,4 @@
+import { isRecord, num } from "@core/snapshot";
 import type { Concept } from "@modules/mind-duel/domain/exercise";
 import type { DuelProfile } from "@modules/mind-duel/domain/difficulty";
 import { LEVEL_TUNING, LEVELS, levelDuelProfile, type Level } from "./levels";
@@ -86,6 +87,19 @@ export class Rapport {
   private _level = 0;
 
   constructor(readonly asteroidId: string) {}
+
+  /** Where she is with it, for a saved game (docs/design/partidas.md). */
+  snapshot(): { done: number; trust: number; failures: number; level: number } {
+    return { done: this._done, trust: this._trust, failures: this._failures, level: this._level };
+  }
+
+  restore(s: unknown): void {
+    if (!isRecord(s)) return;
+    this._done = Math.max(0, Math.min(STAGES.length, Math.round(num(s.done, this._done))));
+    this._trust = Math.max(0, Math.min(1, num(s.trust, this._trust)));
+    this._failures = Math.max(0, Math.round(num(s.failures, this._failures)));
+    this._level = Math.max(0, Math.round(num(s.level, this._level)));
+  }
 
   /** 0 (does not know her) .. 1 (fully trusts her). */
   get trust(): number {
@@ -192,6 +206,17 @@ export class RapportBook {
     let r = this.byId.get(asteroidId);
     if (!r) this.byId.set(asteroidId, (r = new Rapport(asteroidId)));
     return r;
+  }
+
+  /** Every asteroid she has met, for a saved game. */
+  snapshot(): Record<string, ReturnType<Rapport["snapshot"]>> {
+    return Object.fromEntries([...this.byId].map(([id, r]) => [id, r.snapshot()]));
+  }
+
+  restore(s: unknown): void {
+    if (!isRecord(s)) return;
+    this.byId.clear();
+    for (const [id, r] of Object.entries(s)) this.of(id).restore(r);
   }
 
   /** Read without creating. */

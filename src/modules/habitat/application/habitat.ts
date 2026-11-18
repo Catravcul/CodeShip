@@ -275,6 +275,12 @@ export class Habitat {
     return this.bed(id, species, species.areaPerPlantM2?.value ?? 1);
   }
 
+  /** Back to a saved larder (docs/design/partidas.md): exactly these stores, nothing else. */
+  setLarder(items: Readonly<Record<string, number>>): void {
+    this._larder.clear();
+    for (const [item, n] of Object.entries(items)) if (Number.isFinite(n) && n > 0) this._larder.set(item, n);
+  }
+
   /** Put a whole list of stores in the larder (e.g. the launch stock). */
   stockAll(items: Readonly<Record<string, number>>): void {
     for (const [item, n] of Object.entries(items)) this.stock(item, n);

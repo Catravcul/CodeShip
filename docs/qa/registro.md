@@ -223,6 +223,9 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | UI-09 | Probado (en vivo) | 2026-11-18 | | `orbit-around.test.ts` verde; PX-43 lo juega en cada área en 1ª y 3ª persona |
 | UI-10 | Solo test | | | `level.test.ts` verde; lo juega PX-44 |
 | UI-11 | Solo test | | | `map-window-model.test.ts`, `camera-stick.test.ts` verdes; lo juegan PX-44, PX-42, PX-40 y PX-36 |
+| UI-12 | Probado (en vivo) | 2026-11-18 | `partidas` | [run](runs/2026-11-18-1137-PX-50.md) (PX-50); `save-book.test.ts`, `auto-save.test.ts`, `round-trip.test.ts`, `space-state.test.ts` verdes |
+| UI-13 | Probado (en vivo) | 2026-11-18 | `partidas` | [run](runs/2026-11-18-1137-PX-50.md) (PX-50); `save-book.test.ts` verde |
+| UI-14 | Probado (en vivo) | 2026-11-18 | `partidas` | [run](runs/2026-11-18-1137-PX-50.md) (PX-50, ranura dañada); `save-slot.test.ts`, `save-book.test.ts`, `round-trip.test.ts` verdes |
 | HAB-01 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | HAB-02 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
 | HAB-03 | Solo test | | | Tests citados en casos.md (verdes en la suite completa); sin run log jugado |
@@ -273,7 +276,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | CV-13 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK |
 | CV-14 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK |
 | CV-15 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-05** cerrado; botón bloqueado en `hc-pedido-sin-creditos-mobile.png` |
-| CV-16 | No aplica | | | No hay partidas guardadas (**HC-06**) |
+| CV-16 | Solo test | | | `round-trip.test.ts` verde; el viaje a medias no se reanuda (partidas.md, **HC-06** cerrado) |
 | CV-17 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-03** cerrado: el aviso dura 5 s reales en el tramo ×60 |
 | CV-20 | Solo test | | | `comidas.test.ts` (verde en la suite completa) |
 | PX-01 | Probado (en vivo) | 2026-11-18 | `70c6b5c` | [run](runs/2026-11-18-1016-PX-01.md): 54 OK |
@@ -313,6 +316,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-42 | Probado (en vivo) | 2026-11-18 | `70c6b5c` | [run](runs/2026-11-18-0952-PX-10-PX-41-PX-36-PX-42-PX-40-PX-44.md): 57 OK |
 | PX-43 | Probado (en vivo) | 2026-11-18 | `5a82fe6` | [run](runs/2026-11-18-0613-PX-10-PX-15-PX-32-PX-43-PX-39-PX-40.md): 67 OK |
 | PX-44 | Probado (en vivo) | 2026-11-18 | `70c6b5c` | [run](runs/2026-11-18-0952-PX-10-PX-41-PX-36-PX-42-PX-40-PX-44.md): 25 OK |
+| PX-50 | Probado (en vivo) | 2026-11-18 | `9d51b5a` | [run](runs/2026-11-18-1137-PX-50.md): 28 OK |
 
 ## Última ejecución por run log
 
@@ -320,6 +324,7 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-18 11:37 | PX-50 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-18-1137-PX-50.md) |
 | 2026-11-18 10:16 | PX-01 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-18-1016-PX-01.md) |
 | 2026-11-18 10:14 | PX-10 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-18-1014-PX-10.md) |
 | 2026-11-18 09:52 | PX-10, PX-41, PX-36, PX-42, PX-40, PX-44 | Experiencia (Playwright) | 5/6 recorridos bien | [run](runs/2026-11-18-0952-PX-10-PX-41-PX-36-PX-42-PX-40-PX-44.md) |

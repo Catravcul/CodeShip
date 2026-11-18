@@ -41,8 +41,9 @@ import { mandos } from "./mandos.mjs";
 import { tareasAjustes } from "./tareas-ajustes.mjs";
 import { camaraAcuario } from "./camara-acuario.mjs";
 import { inicio } from "./inicio.mjs";
+import { partidas } from "./partidas.mjs";
 
-const PLAY = { cocina, movimiento, mision, "acciones-movil": acciones, "acciones-escritorio": acciones, ordenar, "aterrizaje-programa": aterrizajePrograma, "aterrizaje-manual": aterrizajeManual, "aterrizaje-escritorio": aterrizajeEscritorio, "habitaculo-movil": habitaculo, "habitaculo-escritorio": habitaculo, "estacion-movil": estacion, "puente-real": puente, acuario, viaje, yoga, "nodriza-estacion": nodrizaEstacion, animaciones, "catalogo-naves": catalogoNaves, "soporte-vital": soporteVital, foco, catalogo, starship, "estacion-iss": estacionIss, "modulo-lunar": moduloLunar, componentes, "cabina-lm": cabinaLm, compartimentos, pendientes, trayectos, "brazo-eva": brazoEva, equipos, mandos, "cubierta-vuelo": cubiertaVuelo, "tareas-ajustes": tareasAjustes, "camara-acuario": camaraAcuario, inicio };
+const PLAY = { cocina, movimiento, mision, "acciones-movil": acciones, "acciones-escritorio": acciones, ordenar, "aterrizaje-programa": aterrizajePrograma, "aterrizaje-manual": aterrizajeManual, "aterrizaje-escritorio": aterrizajeEscritorio, "habitaculo-movil": habitaculo, "habitaculo-escritorio": habitaculo, "estacion-movil": estacion, "puente-real": puente, acuario, viaje, yoga, "nodriza-estacion": nodrizaEstacion, animaciones, "catalogo-naves": catalogoNaves, "soporte-vital": soporteVital, foco, catalogo, starship, "estacion-iss": estacionIss, "modulo-lunar": moduloLunar, componentes, "cabina-lm": cabinaLm, compartimentos, pendientes, trayectos, "brazo-eva": brazoEva, equipos, mandos, "cubierta-vuelo": cubiertaVuelo, "tareas-ajustes": tareasAjustes, "camara-acuario": camaraAcuario, inicio, partidas };
 
 const now = new Date();
 const stamp = now.toISOString().replace(/[:.]/g, "-").slice(0, 19);

@@ -7,7 +7,7 @@ Detalle y fuentes: [ux-acciones.md](ux-acciones.md), [escala.md](escala.md), [na
 ## 1. Realismo
 
 1. **Naves, estaciones, interiores y procesos son reales** o están en desarrollo para un lanzamiento: nodriza = Starship, módulo = Apollo LM, sonda = Juventas, estación = segmento estadounidense de la ISS. Cada dato lleva su fuente y su etiqueta: real, en desarrollo, licencia o ficción.
-2. **Lo único ficticio** es el comportamiento de los asteroides: sus mentes y el duelo, la ira, la persecución, el viaje propio, los niveles y nano_net. Las importaciones también se quedan.
+2. **Lo único ficticio** es el comportamiento de los asteroides: sus mentes y el duelo, la ira, la persecución, el viaje propio, los niveles y nano_net. Las importaciones también se quedan. En el santuario 3, las áreas que vienen de Cold Sanctuary conservan toda su magia (edificios-árbol, alfombras, submarinos); su isla de entrenamiento es real.
 3. **Todo lo demás ficticio queda parado** tras `REAL_ONLY` y apuntado en [pendientes.md](../pendientes.md): anillos, granjas, santuario, animales no volados y dique seco.
 4. **Soporte vital real (ECLSS)**. Se consume solo donde está la tripulación. Las averías tienen causa (desgaste, obstrucción, contaminación); nunca son al azar.
 5. **Los componentes y las naves llegan por importación** desde la Tierra. En el espacio solo se imprimen piezas pequeñas, como en la ISS. Se empieza con el componente de menor capacidad de cada tipo.

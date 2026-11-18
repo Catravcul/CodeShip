@@ -8,6 +8,14 @@ Petición de Berón (2026-11-18), resumida:
 
 **Este documento no cambia el juego.** Propone y deja las preguntas para Berón (§6). Etiquetas: **real**, **en desarrollo**, **licencia** (estudiado pero no hecho, o real en otro sitio) y **ficción** ([reglas.md](reglas.md) §1).
 
+## Decisión de Berón (2026-11-18 08:18) — manda sobre §3.2 y §4 donde difieran
+
+- **Las áreas que existen en Cold Sanctuary se recrean con toda su magia**: edificios-árbol con sus áreas, alfombras mágicas, submarinos y demás. No se apagan tras `REAL_ONLY`.
+- **Aparte hay una isla de entrenamiento** (natural o artificial, la que convenga) **donde todo es real**: todas las instalaciones de formación de §1.2, con datos y fuentes.
+- **Se viaja entre islas** desde la máquina de navegación de cada isla: la misma ventana de Navegación del puente, con el plano tridimensional de cada isla y su botón descriptivo.
+- **El mismo modelo de ventana** (mapa 3D arriba, opciones con descripción y botón debajo) sirve para elegir santuario en la pantalla de inicio, para viajar entre islas, para Navegación en el espacio, para Áreas y, más adelante, para misiones.
+- En la Tierra hay gravedad: el santuario 3 se anda (y se nada donde haya agua).
+
 ## Respuestas cortas
 
 - **Formación real**:

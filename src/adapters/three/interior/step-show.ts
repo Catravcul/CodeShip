@@ -852,10 +852,10 @@ export class StepShow {
       case "cortar": {
         const at = vessel();
         const cut = v.action === "cortar";
-        // At a machine the row has at most three pieces, centred on the work (a fourth reached the machine's side: PX-20 in CI).
+        // At a machine the row has at most two pieces, centred on the work (a third reached the machine's side in CI: PX-20).
         const kitchenRow = !!this.df!.kitchen;
         // Opening a package cuts no pieces: the scissors at its top are the step.
-        const pieces = cut && v.vessel === "bolsa" ? 0 : cut ? 1 + Math.min(kitchenRow ? 3 : 2, Math.floor(t * 4)) : 1;
+        const pieces = cut && v.vessel === "bolsa" ? 0 : cut ? 1 + Math.min(kitchenRow ? 3 : 1, Math.floor(t * 4)) : 1;
         const kitchen = !!this.df!.kitchen;
         // In the ring's galley the row runs along the counter's depth. Elsewhere (a machine, a 0 g galley) the
         // pieces float in one row just over the work (not stacked upward, where a shelf or the machine's top can

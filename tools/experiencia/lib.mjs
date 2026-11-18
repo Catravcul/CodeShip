@@ -177,12 +177,18 @@ export class Journey {
     const min = this.opts.mobile === false ? TOUCH_MIN_PX.desktop : TOUCH_MIN_PX.mobile;
     // Off screen (in a list), a player scrolls to it first.
     await loc.scrollIntoViewIfNeeded().catch(() => {});
-    const r = await loc.evaluate((el) => {
+    const probe = () => loc.evaluate((el) => {
       const b = el.getBoundingClientRect();
       const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
       const name = (el.getAttribute("aria-label") || el.textContent || el.getAttribute("title") || "").trim().replace(/\s+/g, " ");
       return { w: Math.round(b.width), h: Math.round(b.height), covered: !hit || !(el === hit || el.contains(hit)), coveredBy: hit ? `${hit.className || hit.tagName}`.toString().split(" ")[0] : "nada", name };
     });
+    let r = await probe();
+    // A menu icon still fading in on a slow machine (CI) is not covered: look again once, as a finger would wait for it.
+    if (r.covered) {
+      await this.page.waitForTimeout(500);
+      r = await probe();
+    }
     const label = what ?? r.name.slice(0, 30);
     this.invariantsSeen ??= new Set();
     if (this.invariantsSeen.has(label)) return;

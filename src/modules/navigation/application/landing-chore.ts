@@ -69,7 +69,8 @@ export function landingChore(f: LandingFacts): Chore {
       [`ir a la velocidad del suelo (${ms(g)} m/s): sin deriva lateral`, `rcs.igualarSuelo(${g.toFixed(3)});`],
       [`bajar como mucho a ${ms(f.maxDescentMs)} m/s frenando con el RCS`, `descenso.perfil(${f.maxDescentMs});`],
       [`a ${num(f.flareM)} m del suelo, bajar a ${ms(f.touchdownMs)} m/s`, `descenso.final(${f.flareM}, ${f.touchdownMs});`],
-      [`al tocar, ${anchors} y apagar los propulsores`, f.craft === "sonda" ? "acelerometros.grabar(); rcs.apagar();" : "anclas.disparar(); rcs.apagar();"],
+      // Two lines at most, so every block fits a phone's screen (the sonda's long form is in the last challenge).
+      [f.craft === "sonda" ? "al tocar: asentarse, grabar acelerómetros y apagar" : "al tocar, anclar las patas y apagar los propulsores", f.craft === "sonda" ? "acelerometros.grabar(); rcs.apagar();" : "anclas.disparar(); rcs.apagar();"],
       // Distractor: coming down fast all the way bounces off (or breaks the legs).
       [`bajar a ${ms(f.maxDescentMs)} m/s hasta tocar el suelo`, `descenso.hastaTocar(${f.maxDescentMs});`],
     ]),

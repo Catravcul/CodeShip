@@ -3,7 +3,8 @@
 // start of her initiation, walking (gravity: the left stick moves her, the right one the camera). She walks with the
 // stick, the task list's «Ir» walks her to post 6 (never a teleport: the journey bar with «Parar»), a task on
 // another island walks her to the navigation machine with a notice (reglas.md §3.5), the machine's Panel opens the
-// island navigation window (the map window, as Áreas) and «Volar» flies her to the launch cap in sight. There Áreas'
+// island navigation window (the map window, as Áreas) and «Volar», with the flight programmed on the sheet («Por reto»),
+// flies her to the launch cap in sight. There Áreas'
 // «Ir» walks her to the tree's lift and rides it to the Electron's crown (182 m, the height rule), from where she sees
 // the Electron and the sea pad's Falcon 9 ~1,1 km away. Captures in docs/screenshots/s3-<paso>-movil.png.
 import { mkdirSync } from "node:fs";
@@ -127,6 +128,16 @@ export async function s3Recorrido(j) {
   await capture(j, "navegacion", "Santuario 3: la máquina de navegación");
   await j.tap('.island-nav .mw-pick[data-pick="lanzadera"]', "Lanzadera en la lista");
   await j.tap('.island-nav .mw-go[data-fly="lanzadera"]', "Volar a la Lanzadera");
+  // «Por reto» (the navigation's gear; reglas §3.6): the flight is programmed on the sheet, then flown in sight (PX-46).
+  await until(j, (s) => s.mode === "reto" || s.mode === "vuelo", 60000);
+  if ((await s3(p)).mode === "reto") {
+    await j.waitDuel(30000);
+    for (let i = 0; i < 3 && (await p.evaluate(() => window.codeshipS3.exercise)); i++) {
+      await j.answer(() => window.codeshipS3.exercise, true);
+      await p.waitForTimeout(500);
+    }
+    await j.tap(".duel button.end", "Continuar");
+  }
   const f0 = await until(j, (s) => s.mode === "vuelo", 30000);
   j.check("camina al helipuerto y despega: se ve el vuelo (sin teletransporte)", f0.mode === "vuelo", f0.mode);
   const f1 = await until(j, (s) => s.mode === "vuelo" && s.craftY > 40, 40000);

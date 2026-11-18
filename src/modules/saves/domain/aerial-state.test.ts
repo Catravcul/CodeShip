@@ -15,5 +15,8 @@ describe("the aerial sanctuary's saved state (level 3)", () => {
     expect(checkAerialState({ ...ok, at: { x: 0, y: 0, z: 0, island: "luna" } })).toBe("sin el sitio de Doménica");
     expect(checkAerialState({ ...ok, at: { x: Number.NaN, y: 0, z: 0, island: "muelle" } })).toBe("sin el sitio de Doménica");
     expect(checkAerialState({ ...ok, settings: 3 })).toBe("ajustes ilegibles");
+    expect(checkAerialState({ ...ok, posts: [1, 2] })).toBeUndefined();
+    expect(checkAerialState({ ...ok, posts: [0] })).toBe("puestos ilegibles");
+    expect(checkAerialState({ ...ok, posts: "1" })).toBe("puestos ilegibles");
   });
 });

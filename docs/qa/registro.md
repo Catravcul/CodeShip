@@ -270,6 +270,12 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | AER-07 | Probado (en vivo) | 2026-11-18 | `ccbf700` | [run](runs/2026-11-18-1221-PX-01-PX-44-PX-45.md) (PX-45); `layout.test.ts`, `rules.test.ts` verdes |
 | AER-08 | Solo test | | | `rules.test.ts` (grupo 101) verde |
 | AER-09 | Solo test | | | `aerial-state.test.ts` verde |
+| AER-10 | Solo test | | | `stations.test.ts`, `initiation.test.ts` verde |
+| AER-11 | Solo test | | | `stages.test.ts` verde |
+| AER-12 | Solo test | | | `roster.test.ts` verde |
+| AER-13 | Solo test | | | `flight-program.test.ts`, `hand-flight.test.ts` verde |
+| AER-14 | Solo test | | | `hand-flight.test.ts` verde |
+| AER-15 | Solo test | | | `layout.test.ts` verde |
 | CV-01 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK |
 | CV-02 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-01** cerrado |
 | CV-03 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK · **B-01** arreglado |
@@ -326,6 +332,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-43 | Probado (en vivo) | 2026-11-18 | `5a82fe6` | [run](runs/2026-11-18-0613-PX-10-PX-15-PX-32-PX-43-PX-39-PX-40.md): 67 OK |
 | PX-44 | Probado (en vivo) | 2026-11-18 | `ccbf700` | [run](runs/2026-11-18-1221-PX-01-PX-44-PX-45.md): 25 OK |
 | PX-45 | Probado (en vivo) | 2026-11-18 | `ccbf700` | [run](runs/2026-11-18-1221-PX-01-PX-44-PX-45.md): 32 OK |
+| PX-46 | Sin probar | | | |
 | PX-50 | Probado (en vivo) | 2026-11-18 | `90ba319` | [run](runs/2026-11-18-1140-PX-10-PX-44-PX-50.md): 28 OK |
 
 ## Última ejecución por run log

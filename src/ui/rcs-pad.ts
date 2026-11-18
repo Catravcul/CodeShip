@@ -42,6 +42,11 @@ export interface RcsPadOptions {
   auto?(): void;
   /** «Cámara»: the next camera of the flight view (the LM's ventral one for landing), since the tree menu gives way. */
   camera?(): void;
+  /**
+   * A helicopter's controls on the same pad (sanctuary 3's island flights, reglas.md §3.6): the cyclic (forward,
+   * back, left, right: translate z and x), the collective (up, down: translate y) and the pedals (yaw).
+   */
+  readonly helicopter?: boolean;
 }
 
 const cell = (c: RcsCell) => (c.ok === undefined ? `<i>${c.text}</i>` : `<i class="${c.ok ? "ok" : "out"}">${c.ok ? "✓" : "▲"} ${c.text}</i>`);
@@ -62,13 +67,19 @@ export class RcsPad {
     this.el = document.createElement("div");
     this.el.className = `rcs-pad ${o.cls} hidden`;
     this.el.setAttribute("role", "group");
-    this.el.setAttribute("aria-label", "Pilotaje manual: RCS");
+    this.el.setAttribute("aria-label", o.helicopter ? "Pilotaje manual: cíclico, colectivo y pedales" : "Pilotaje manual: RCS");
     const b = (act: string, label: string, aria: string) => `<button data-act="${act}" aria-label="${aria}">${label}</button>`;
-    this.el.innerHTML = `<div class="rp-top">${o.screen ? `<canvas class="rp-screen" style="width:${o.screen.w}px;height:${o.screen.h}px"></canvas>` : ""}<div class="rp-read"></div></div>
-      <div class="rp-cap">Trasladar (cada toque, un paso de velocidad)</div>
+    const controls = o.helicopter
+      ? `<div class="rp-cap">Cíclico (inclina el rotor: cada toque, un paso de velocidad) · Colectivo (sube o baja)</div>
+      <div class="rp-row">${b("t:z:-1", "Cícl. ↑", "Cíclico adelante")}${b("t:z:1", "Cícl. ↓", "Cíclico atrás")}${b("t:x:-1", "Cícl. ←", "Cíclico a la izquierda")}${b("t:x:1", "Cícl. →", "Cíclico a la derecha")}${b("t:y:1", "Colect. +", "Colectivo arriba: subir")}${b("t:y:-1", "Colect. −", "Colectivo abajo: bajar")}</div>
+      <div class="rp-cap">Pedales (el rotor de cola gira el morro)</div>
+      <div class="rp-row rot">${b("r:y:1", "Pedal ←", "Pedal izquierdo: morro a la izquierda")}${b("r:y:-1", "Pedal →", "Pedal derecho: morro a la derecha")}</div>`
+      : `<div class="rp-cap">Trasladar (cada toque, un paso de velocidad)</div>
       <div class="rp-row">${b("t:z:-1", "Adel.", "Trasladar adelante")}${b("t:z:1", "Atrás", "Trasladar atrás")}${b("t:y:1", "Arriba", "Trasladar arriba")}${b("t:y:-1", "Abajo", "Trasladar abajo")}${b("t:x:-1", "Izq.", "Trasladar a la izquierda")}${b("t:x:1", "Der.", "Trasladar a la derecha")}</div>
       <div class="rp-cap">Girar (cada toque, un paso de velocidad de giro)</div>
-      <div class="rp-row rot">${b("r:x:1", "Cab. ↑", "Cabeceo arriba")}${b("r:x:-1", "Cab. ↓", "Cabeceo abajo")}${b("r:y:1", "Guiñ. ←", "Guiñada a la izquierda")}${b("r:y:-1", "Guiñ. →", "Guiñada a la derecha")}${b("r:z:1", "Alab. ⟲", "Alabeo a la izquierda")}${b("r:z:-1", "Alab. ⟳", "Alabeo a la derecha")}</div>
+      <div class="rp-row rot">${b("r:x:1", "Cab. ↑", "Cabeceo arriba")}${b("r:x:-1", "Cab. ↓", "Cabeceo abajo")}${b("r:y:1", "Guiñ. ←", "Guiñada a la izquierda")}${b("r:y:-1", "Guiñ. →", "Guiñada a la derecha")}${b("r:z:1", "Alab. ⟲", "Alabeo a la izquierda")}${b("r:z:-1", "Alab. ⟳", "Alabeo a la derecha")}</div>`;
+    this.el.innerHTML = `<div class="rp-top">${o.screen ? `<canvas class="rp-screen" style="width:${o.screen.w}px;height:${o.screen.h}px"></canvas>` : ""}<div class="rp-read"></div></div>
+      ${controls}
       ${o.extra || o.auto ? `<div class="rp-row more" hidden>${o.auto ? `<button data-act="auto" hidden>Pasar a automático</button>` : ""}${o.extra ? `<button data-act="extra" hidden></button>` : ""}</div>` : ""}
       <div class="rp-row end">${o.throttle ? `${b("m:-1", "Motor −", "Bajar el empuje del motor de descenso")}${b("m:1", "Motor +", "Subir el empuje del motor de descenso")}${b("m:0", "Corte", "Apagar el motor de descenso")}` : ""}${o.camera ? b("cam", "Cámara", "Cambiar de cámara") : ""}${b("stop", "Parar", "Anular giros y velocidad")}${b("end", o.endLabel, o.endLabel)}</div>
       <div class="rp-note">${o.note}</div>`;

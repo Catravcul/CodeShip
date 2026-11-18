@@ -10,7 +10,18 @@ import { cabHeight, liftPhase, liftSeconds } from "@modules/aerial-sanctuary/dom
 import { legPose, planTrip, tripSeconds, type Craft, type CraftSpec, type Leg } from "@modules/aerial-sanctuary/domain/travel";
 import { RUNNING, scan, type StopState } from "@modules/aerial-sanctuary/domain/energy";
 import { AIR_BIRDS, BIRD_HOME, BIRD_STOP, CRAFT, LIFT, TURBINE } from "@modules/aerial-sanctuary/data/facts";
-import { IN_CONSTRUCTION, initiationTasks } from "@modules/aerial-sanctuary/application/initiation";
+import { IN_CONSTRUCTION, READY_POSTS, initiationTasks } from "@modules/aerial-sanctuary/application/initiation";
+import { stationFor } from "@modules/aerial-sanctuary/application/stations";
+import { flightChore } from "@modules/aerial-sanctuary/application/flight-program";
+import { stageFor, STAGED_POSTS, type Stage } from "@modules/aerial-sanctuary/data/stages";
+import { MAGNATE, TRAINERS, trainerById } from "@modules/aerial-sanctuary/data/trainers";
+import { boardHour, clockText, trainerFor } from "@modules/aerial-sanctuary/domain/roster";
+import { beatsFor } from "@modules/aerial-sanctuary/domain/station-beat";
+import { handHover, handStart, handStep, handTap, type HandControl, type HandState } from "@modules/aerial-sanctuary/domain/hand-flight";
+import { HAND } from "@modules/aerial-sanctuary/data/facts";
+import { SEA_Y } from "@modules/aerial-sanctuary/data/layout";
+import { ChoreRun, type Chore } from "@modules/chores/domain/chore";
+import type { Answer } from "@modules/mind-duel/domain/exercise";
 import type { AreaMap, AreaNode } from "@modules/tasks/application/areas";
 import type { Task, Vehicle } from "@modules/tasks/application/task-list";
 import { ISLAND_TASK_VEHICLES } from "@modules/settings/domain/settings";
@@ -30,7 +41,11 @@ import { AreasWindow } from "./ui/areas-window";
 import { SettingsPanel } from "./ui/settings-panel";
 import { settings } from "./ui/settings-store";
 import { offerVehicles } from "./ui/task-settings";
-import { IslandNavWindow, type IslandChoice } from "./ui/island-nav";
+import { IslandNavWindow, flightMode, type IslandChoice } from "./ui/island-nav";
+import { DuelView, type SessionText } from "./ui/duel-view";
+import { RcsPad } from "./ui/rcs-pad";
+import { S3Stage } from "./adapters/three/s3-stage";
+import { TrainerCrowd } from "./adapters/three/s3-trainers";
 import "./ui/lander-cabin.css";
 import "./ui/journey.css";
 import "./ui/acciones.css";
@@ -120,7 +135,15 @@ let thirdPerson = settings.value.walkView === "tercera";
 let clock = 0;
 let days = 0;
 
-type Mode = { kind: "libre" } | { kind: "ruta"; pts: WayPoint[]; i: number; label: string; then?: () => void; still: number } | { kind: "ascensor"; lift: LiftDef; from: number; to: number; t: number; calling: boolean; then?: () => void } | { kind: "vuelo"; legs: Leg[]; i: number; t: number; to: IslandId };
+type Mode =
+  | { kind: "libre" }
+  | { kind: "ruta"; pts: WayPoint[]; i: number; label: string; then?: () => void; still: number }
+  | { kind: "ascensor"; lift: LiftDef; from: number; to: number; t: number; calling: boolean; then?: () => void }
+  | { kind: "vuelo"; legs: Leg[]; i: number; t: number; to: IslandId }
+  /** A post's challenge or a flight's program on the sheet, acted out at its place. */
+  | { kind: "reto"; what: string }
+  /** Flying by hand (reglas.md §3.6, «Manual»). */
+  | { kind: "mano"; s: HandState; to: IslandId; from: IslandId };
 let mode: Mode = { kind: "libre" };
 const cabAt = new Map(L.lifts.map((l) => [l.id, 0]));
 
@@ -196,6 +219,20 @@ const settingsPanel = new SettingsPanel(root);
 const nav = new IslandNavWindow(root);
 nav.onFly = (to) => fly(to as IslandId);
 
+// The challenges' sheet (the same as on board), the posts' stages and the trainers.
+const duel = new DuelView(root);
+const SHEET: SessionText = { title: "", progress: "Pasos", lives: "Intentos", order: "Ordena los pasos", submit: "Hacerlo", ok: "Paso hecho", bad: "Así no: inténtalo otra vez", sheet: true };
+const stages = new Map<number, Stage>(STAGED_POSTS.map((p) => [p, stageFor(L, p)!]));
+const stage = new S3Stage([...stages.values()]);
+scene.add(stage.root);
+const caption = document.createElement("div");
+caption.className = "s3-caption hidden";
+caption.setAttribute("role", "status");
+root.appendChild(caption);
+/** The board hour now (a new game starts at 9:00; one hour is one real minute). */
+const hour = () => boardHour(days);
+const passed = new Set<number>();
+
 // --- Going somewhere -------------------------------------------------------------------------------------------------
 function stop(why?: string): void {
   if (mode.kind === "vuelo") return;
@@ -247,7 +284,8 @@ function goTo(point: string, label: string, to: IslandId, from: "Tareas" | "Áre
 
 function goToTask(t: Task): void {
   if (t.place.spot !== "isla") return;
-  goTo(t.place.point, t.title, t.place.vehicle as IslandId, "Tareas", () => say(`En: ${t.title}. ${IN_CONSTRUCTION}`, 6));
+  const post = Number(t.id.replace("s3-puesto-", ""));
+  goTo(t.place.point, t.title, t.place.vehicle as IslandId, "Tareas", () => say(READY_POSTS.includes(post) ? `En: ${t.title}. Panel › «Empezar el reto»` : `En: ${t.title}. ${IN_CONSTRUCTION}`, 6));
 }
 
 /** Ride a tree's lift from the stop she is at to another (the cab comes first if it is elsewhere). */
@@ -269,7 +307,243 @@ function fly(to: IslandId): void {
   if (!legs?.length) return say("No hay vuelo de aquí a esa isla");
   const pad = islandById.get(here)!.arrival;
   walkTo(pad, "Hacia el helipuerto", () => {
-    mode = { kind: "vuelo", legs, i: 0, t: 0, to };
+    if (flightMode() === "manual") return takeControls(here, to, legs[0]!.craft);
+    // «Por reto»: the flight is programmed on the sheet, then the autopilot flies it in sight.
+    const name = (id: string) => islandById.get(id as IslandId)!.name;
+    const chore = flightChore(legs, crafts, name);
+    mode = { kind: "reto", what: chore.id };
+    showCraftOnPad(legs[0]!);
+    openChallenge(chore, (b) => {
+      if (b === 0) heliSpin = 1;
+    }, (ok) => {
+      heliSpin = 0;
+      if (ok) {
+        mode = { kind: "vuelo", legs, i: 0, t: 0, to };
+        say("Programa correcto: despega el piloto automático");
+      } else {
+        heli.group.visible = rug.group.visible = false;
+        mode = { kind: "libre" };
+        say("Vuelo sin programar: sigue en el helipuerto");
+      }
+    });
+  });
+}
+
+/** The craft waits on her pad while she programs it, the rotor starting once it is started. */
+let heliSpin = 0;
+function showCraftOnPad(leg: Leg): void {
+  const craft = leg.craft === "helicoptero" ? heli : rug;
+  heli.group.visible = leg.craft === "helicoptero";
+  rug.group.visible = leg.craft === "alfombra";
+  craft.group.position.set(leg.a.x, leg.a.y, leg.a.z);
+  craft.group.rotation.y = Math.atan2(leg.b.x - leg.a.x, leg.b.z - leg.a.z);
+}
+
+/**
+ * A chore on the sheet: `beat(index, part)` when a step (or, step by step, one block of an order) is answered right;
+ * `done(ok)` when it closes.
+ */
+function openChallenge(chore: Chore, beat: (index: number, part: number) => void, done: (ok: boolean) => void): void {
+  const run = new ChoreRun(chore);
+  const seen = new Map<number, number>();
+  duel.onClose = () => {
+    duel.onClose = undefined;
+    duel.onRightPick = undefined;
+    done(run.status === "done");
+  };
+  duel.show(
+    {
+      get current() {
+        return run.current;
+      },
+      get progress() {
+        return run.step;
+      },
+      goal: run.steps,
+      get lives() {
+        return run.mistakesLeft;
+      },
+      maxLives: run.maxMistakes,
+    },
+    { ...SHEET, title: chore.title },
+    (ans: Answer) => {
+      const index = run.step;
+      const ok = run.submit(ans);
+      if (ok) {
+        // The parts of an order not yet seen step by step, then the rest.
+        const ex = chore.exercises[index]!;
+        const parts = ex.kind === "order" ? ex.solution.length : 1;
+        for (let p = seen.get(index) ?? 0; p < parts; p++) beat(index, p);
+        seen.set(index, parts);
+      }
+      return { ok };
+    },
+  );
+  duel.onRightPick = (id, slot) => {
+    const index = run.step;
+    if (run.current?.id !== id) return;
+    const from = seen.get(index) ?? 0;
+    for (let p = from; p <= slot; p++) beat(index, p);
+    seen.set(index, Math.max(from, slot + 1));
+  };
+}
+
+// --- The training posts' challenges (application/stations.ts) --------------------------------------------------------
+/** Who gives post `post`'s challenge now: the trainer on shift there, or the Magnate. */
+const trainerOf = (post: number) => trainerFor(TRAINERS, post, hour(), MAGNATE.id);
+let stageTrainer: string | undefined;
+
+function startPost(m: MachineDef): void {
+  const post = m.post!;
+  const st = stationFor(post);
+  const where = stages.get(post);
+  if (!st || !where) return say(IN_CONSTRUCTION);
+  const who = trainerOf(post);
+  const t = trainerById(who);
+  if (who === MAGNATE.id) crowd.magnateTo(post);
+  else if (!crowd.atPost(who, post)) return say(`${t.name} está de turno aquí y viene de camino: llega en ${duration(crowd.etaS(who))}`, 5);
+  mode = { kind: "reto", what: st.chore.id };
+  stageTrainer = who;
+  const actor = crowd.lend(who, true);
+  stage.open(where, { rig, fig: avatar }, actor);
+  // Side on to the line from her to the trainer (both in a phone's narrow view), from the side with more room; the
+  // camera stick turns round them.
+  const her0 = Object.values(where.her)[0] ?? where.lap?.from;
+  const side = her0 && Math.hypot(where.trainer.x - her0.x, where.trainer.z - her0.z) > 0.5 ? Math.atan2(where.trainer.x - her0.x, where.trainer.z - her0.z) + Math.PI / 2 : stage.startFace + Math.PI / 2;
+  yaw = roomiestYaw(where, side);
+  pitch = 0;
+  signsOff(m.id, true);
+  rig.visible = true;
+  say(`${t.name} te da el reto`, 3);
+  openChallenge(
+    st.chore,
+    (index, part) => stage.play(beatsFor(st.beats, index, part).slice(0, 1)),
+    (ok) => {
+      stage.finish();
+      if (ok) {
+        passed.add(post);
+        autoSave.mark("reto");
+        say(`Puesto ${post} superado: ${st.chore.title}`, 5);
+      } else say("Reto sin terminar: se puede repetir cuando quieras", 4);
+      // The last beats play out, then she is back where she started it.
+      endPost = () => {
+        stage.clear();
+        signsOff(m.id, false);
+        crowd.lend(stageTrainer ?? "", false);
+        stageTrainer = undefined;
+        mode = { kind: "libre" };
+        cardKey = "";
+      };
+      if (!ok) endPost();
+    },
+  );
+}
+let endPost: (() => void) | undefined;
+/** The side to look from with the most room before a wall (the camera never goes through one). */
+function roomiestYaw(st: Stage, first: number): number {
+  const a = L.areas.find((q) => q.id === `entrenamiento:${st.room}`);
+  const her = Object.values(st.her)[0] ?? st.lap!.from;
+  const c = { x: (her.x + st.trainer.x) / 2, z: (her.z + st.trainer.z) / 2 };
+  if (!a) return first;
+  let best = { yaw: first, room: -1 };
+  for (let i = 0; i < 8; i++) {
+    const yw = first + (i * Math.PI) / 4;
+    const room = Math.min(roomAlong(a, c, yw), 7) - (i % 2) * 0.01;
+    if (room > best.room + 0.5) best = { yaw: yw, room };
+  }
+  return best.yaw;
+}
+
+/** How far from `c` along `yaw` before the area's walls. */
+function roomAlong(a: { centre: { x: number; z: number }; half: { x: number; z: number } }, c: { x: number; z: number }, yaw: number): number {
+  const dx = Math.sin(yaw);
+  const dz = Math.cos(yaw);
+  const tx = dx > 1e-6 ? (a.centre.x + a.half.x - c.x) / dx : dx < -1e-6 ? (a.centre.x - a.half.x - c.x) / dx : Infinity;
+  const tz = dz > 1e-6 ? (a.centre.z + a.half.z - c.z) / dz : dz < -1e-6 ? (a.centre.z - a.half.z - c.z) / dz : Infinity;
+  return Math.min(tx, tz) - 0.7;
+}
+
+/** The machine's and the room's signs hang over the post: hidden while its challenge is acted. */
+function signsOff(machine: string, off: boolean): void {
+  const m = parts.root.getObjectByName(`cartel-m:${machine}`);
+  if (m) m.visible = !off;
+}
+
+// --- Flying by hand (reglas.md §3.6, «Manual») ------------------------------------------------------------------------
+const TAP: Record<string, HandControl> = { "t:z:-1": "ciclico-adelante", "t:z:1": "ciclico-atras", "t:x:-1": "ciclico-izquierda", "t:x:1": "ciclico-derecha", "t:y:1": "colectivo-arriba", "t:y:-1": "colectivo-abajo", "r:y:1": "pedal-izquierdo", "r:y:-1": "pedal-derecho" };
+const handPad = new RcsPad(root, {
+  cls: "s3-hand-pad",
+  helicopter: true,
+  endLabel: "Dejar los mandos",
+  note: "Mandos de un helicóptero (S-92): el cíclico inclina el rotor, el colectivo sube o baja y los pedales giran el morro; la alfombra los imita. Cada toque, un paso (nuestro)",
+  translate: (a, sg) => handInput(TAP[`t:${a}:${sg}`]),
+  rotate: (a, sg) => handInput(TAP[`r:${a}:${sg}`]),
+  stop: () => {
+    if (mode.kind === "mano") mode.s = handHover(mode.s);
+  },
+  end: () => leaveControls(),
+});
+function handInput(c: HandControl | undefined): void {
+  if (mode.kind !== "mano" || !c) return;
+  mode.s = handTap(mode.s, c, HAND[mode.s.craft].value);
+}
+
+function takeControls(from: IslandId, to: IslandId, craft: Craft): void {
+  const pad = islandById.get(from)!.pad;
+  const dest = islandById.get(to)!.pad;
+  const s = handStart(craft, pad, Math.atan2(dest.at.x - pad.at.x, dest.at.z - pad.at.z));
+  mode = { kind: "mano", s, to, from };
+  handPad.show(true);
+  yaw = s.heading + Math.PI;
+  pitch = -0.15;
+  say(`${craft === "helicoptero" ? "A los mandos del S-92" : "En la alfombra"}: colectivo + para despegar; aterriza despacio en ${islandById.get(to)!.name}`, 6);
+}
+
+function leaveControls(): void {
+  if (mode.kind !== "mano") return;
+  const s = mode.s;
+  if (!s.onGround) return say("Primero hay que posarse: colectivo − despacio sobre un helipuerto o un andén");
+  if (!s.landedOn) return say("Aquí no se puede bajar: posa en el círculo de un helipuerto o el andén de las alfombras");
+  const from = mode.from;
+  heli.group.visible = rug.group.visible = false;
+  handPad.show(false);
+  const dest = islandById.get(s.landedOn as IslandId)!;
+  placeAtPoint(dest.arrival);
+  yaw = Math.atan2(-((dest.rect.x0 + dest.rect.x1) / 2 - body.x), -((dest.rect.z0 + dest.rect.z1) / 2 - body.z));
+  pitch = 0;
+  mode = { kind: "libre" };
+  avatar.pose("stand");
+  say(s.landedOn === from ? "Fuera de los mandos, donde despegó" : `En ${dest.name}`);
+}
+
+function frameHand(dt: number, m: Extract<Mode, { kind: "mano" }>): void {
+  const lim = HAND[m.s.craft].value;
+  const world = { floors: L.world.floors, solids: L.world.solids, seaY: SEA_Y, pads };
+  // Small steps, so a fast craft never jumps a wall.
+  const n = Math.max(1, Math.ceil((Math.hypot(m.s.vFwd, m.s.vSide, m.s.vUp) * dt) / 2));
+  for (let i = 0; i < n; i++) m.s = handStep(m.s, dt / n, world, lim);
+  const craft = m.s.craft === "helicoptero" ? heli : rug;
+  heli.group.visible = m.s.craft === "helicoptero";
+  rug.group.visible = m.s.craft === "alfombra";
+  craft.group.position.set(m.s.x, m.s.y, m.s.z);
+  craft.group.rotation.y = m.s.heading;
+  heli.rotor.rotation.y += dt * (m.s.onGround && m.s.ask.up <= 0 ? 8 : 20);
+  craft.seat.getWorldPosition(tmp);
+  body = { ...body, x: tmp.x, y: tmp.y - 0.45, z: tmp.z };
+  const dest = islandById.get(m.to)!.pad.at;
+  const dist = Math.hypot(dest.x - m.s.x, dest.z - m.s.z);
+  const brg = ((Math.atan2(dest.x - m.s.x, dest.z - m.s.z) - m.s.heading) * 180) / Math.PI;
+  const rel = Math.round(((brg % 360) + 540) % 360 - 180);
+  const fmt = (v: number) => (Math.round(v * 10) / 10).toLocaleString("es-ES");
+  handPad.update({
+    title: m.s.onGround ? (m.s.landedOn ? `Posada en ${islandById.get(m.s.landedOn as IslandId)!.name}` : "Posada (fuera de un helipuerto)") : `En vuelo hacia ${islandById.get(m.to)!.name}`,
+    head: ["Ahora", "Pedido"],
+    rows: [
+      { label: "Adelante", cells: [{ text: `${Math.round(m.s.vFwd * 3.6)} km/h` }, { text: `${Math.round(m.s.ask.fwd * lim.fwdStepMs * 3.6)} km/h` }] },
+      { label: "Lado", cells: [{ text: `${fmt(m.s.vSide)} m/s` }, { text: `${fmt(m.s.ask.side * lim.fwdStepMs)} m/s` }] },
+      { label: "Vertical", cells: [{ text: `${fmt(m.s.vUp)} m/s`, ...(m.s.vUp < -lim.touchdownMs ? { ok: false } : {}) }, { text: `${fmt(m.s.ask.up * lim.climbStepMs)} m/s` }] },
+    ],
+    lines: [`Altura ${Math.round(m.s.y - SEA_Y)} m sobre el mar · destino a ${dist < 1000 ? `${Math.round(dist)} m` : `${fmt(dist / 1000)} km`}, ${rel === 0 ? "de frente" : rel > 0 ? `${rel}° a la izquierda` : `${-rel}° a la derecha`}`, m.s.bump === "rotor" ? "▲ El rotor toca algo: atrás o arriba" : m.s.bump === "mar" ? "Sobre el mar: estacionario más bajo (no se amara)" : m.s.bump === "dura" ? "▲ Demasiado deprisa para posarse: colectivo − de un paso" : m.s.onGround && m.s.landedOn ? "«Dejar los mandos» para bajar" : ""],
   });
 }
 
@@ -314,7 +588,10 @@ function nearestMachine(): MachineDef | undefined {
 }
 function renderCard(): void {
   const m = near;
-  const key = m ? `${m.id}|${mode.kind}` : "";
+  const ready = m?.post !== undefined && READY_POSTS.includes(m.post);
+  const who = ready ? trainerOf(m!.post!) : "";
+  const there = ready && (who === MAGNATE.id || crowd.atPost(who, m!.post!));
+  const key = m ? `${m.id}|${mode.kind}|${who}|${there}|${ready && passed.has(m.post!)}` : "";
   if (key === cardKey) return;
   cardKey = key;
   card.classList.toggle("hidden", !m);
@@ -326,7 +603,11 @@ function renderCard(): void {
     const lift = L.lifts.find((l) => l.id === m.lift!.id)!;
     acts = lift.stops.map((s, i) => (i === m.lift!.stop ? "" : `<button data-act="stop:${i}" aria-label="Ascensor a ${esc(s.label)}">${esc(s.label)}</button>`)).join("");
   } else if (m.kind === "esterilla") acts = `<button class="primary" data-act="ajustes">Sentarse: ajustes</button>`;
-  else {
+  else if (ready) {
+    const t = trainerById(who);
+    acts = `<button class="primary" data-act="reto">${passed.has(m.post!) ? "Repetir el reto" : "Empezar el reto"}</button>`;
+    why = `<p class="cm-who">${who === MAGNATE.id ? `Da el reto: <b>la Magnate</b> (no hay nadie de turno a las ${clockText(hour())})` : `Da el reto: <b>${esc(t.name)}</b>, de turno${there ? "" : " · viene de camino"}`}${passed.has(m.post!) ? ` · <b class="cm-ok">✓ Superado</b>` : ""}</p>`;
+  } else {
     acts = `<button data-act="reto" disabled>Empezar el reto</button>`;
     why = `<p class="cm-why"><b aria-hidden="true">⊘</b> ${esc(IN_CONSTRUCTION)}</p>`;
   }
@@ -338,6 +619,7 @@ card.addEventListener("click", (e) => {
   if (!b || b.disabled || !m) return;
   const act = b.dataset.act!;
   if (act === "nav") return nav.open(islandChoices());
+  if (act === "reto" && m.post !== undefined) return startPost(m);
   if (act === "ajustes") {
     avatar.pose("lotus");
     return settingsPanel.open("Esterilla del gimnasio, isla de entrenamiento");
@@ -364,13 +646,17 @@ if (session.resume) {
   say(`Partida ${session.resume.id} recuperada: ${session.resume.summary.vehicle} · ${session.resume.summary.place}`, 5);
 } else if (!slot) say("Las ranuras de partidas están llenas: esta partida no se guarda (borra una en el engranaje del inicio)", 6);
 let lastSaved: { reason: string; ok: boolean; why?: string } | undefined;
+if (session.resume) for (const n of (session.resume.state as AerialState).posts ?? []) passed.add(n);
+const crowd = new TrainerCrowd(L, stages, TRAINERS, MAGNATE, hour());
+scene.add(crowd.root);
 function saveNow(reason: string): boolean {
   autoSave.saved(clock);
   if (!slot) return false;
   // Mid-flight or mid-ride she is kept where it began: a pad or a lift stop is a place to come back to.
-  const at = mode.kind === "vuelo" ? byPoint.get(islandById.get(mode.legs[0]!.from as IslandId)!.arrival)! : body;
-  const isl = mode.kind === "vuelo" ? (mode.legs[0]!.from as IslandId) : island();
-  const state: AerialState = { boardDays: days, at: { x: at.x, y: at.y, z: at.z, island: isl }, yaw, k: L.k, settings: { ajustes: settings.serialized() } };
+  const from = mode.kind === "vuelo" ? (mode.legs[0]!.from as IslandId) : mode.kind === "mano" ? mode.from : undefined;
+  const at = from ? byPoint.get(islandById.get(from)!.arrival)! : body;
+  const isl = from ?? island();
+  const state: AerialState = { boardDays: days, at: { x: at.x, y: at.y, z: at.z, island: isl }, yaw, k: L.k, settings: { ajustes: settings.serialized() }, posts: [...passed].sort((a, b) => a - b) };
   const area = L.areas.find((a) => a.id === body.area)?.label ?? ISLAND_NAME[isl];
   const r = book.save(slot, { level: AERIAL_LEVEL, boardDay: boardDayOf(days), summary: { vehicle: ISLAND_NAME[isl], place: area }, state });
   lastSaved = { reason, ok: r.ok, ...(r.ok ? {} : { why: r.why }) };
@@ -384,6 +670,7 @@ window.addEventListener("pagehide", () => saveNow("ocultar"));
 const WALK_MS = 1.4;
 const SWIM_MS = 0.9;
 const tmp = new THREE.Vector3();
+const focusAt = new THREE.Vector3();
 
 /** Move her by up to `d` metres towards (x, y, z), in small steps; true when there. */
 function moveToward(p: { x: number; y: number; z: number }, d: number): boolean {
@@ -539,21 +826,82 @@ function frameBirds(dt: number): void {
   void dt;
 }
 
+let sideMoves = -1;
+let sideTurned = false;
 function updateCamera(dt: number): void {
   const look = walker.look(dt);
   yaw += look.yaw;
   pitch = Math.max(-1.3, Math.min(1.3, pitch + look.pitch));
+  if (mode.kind === "reto" && stage.active) {
+    // Each beat that moves them, the camera eases side on to her and the trainer again, unless the stick turned it.
+    if (stage.moves !== sideMoves) {
+      sideMoves = stage.moves;
+      sideTurned = false;
+    }
+    if (look.yaw !== 0) sideTurned = true;
+    const side = stage.sideYaw();
+    if (side !== undefined && !sideTurned) {
+      const a = L.areas.find((q) => q.id === `entrenamiento:${stage.room}`);
+      stage.focus(focusAt);
+      // Of the two sides, the nearer one with room for the shot.
+      const near = (g: number) => Math.atan2(Math.sin(g - yaw), Math.cos(g - yaw));
+      const opts = [side, side + Math.PI].map((g) => ({ g, turn: near(g), room: a ? roomAlong(a, focusAt, g) : 9 }));
+      opts.sort((u, v) => (u.room >= 4 ? 0 : 1) - (v.room >= 4 ? 0 : 1) || Math.abs(u.turn) - Math.abs(v.turn));
+      yaw += opts[0]!.turn * Math.min(1, dt * 2.5);
+    }
+    // The post's challenge: the camera frames her and the trainer over the sheet; the camera stick turns round them.
+    const p = rig.position;
+    const eye = stagesEye();
+    const apart = stage.focus(focusAt);
+    const c = focusAt;
+    void p;
+    // A low eye; with the sheet open, the view tilts down so they show in the band above it (a phone's top third).
+    const camY = c.y + (duel.visible ? 0.55 : 1.5) + Math.max(0, -pitch) * 2;
+    let x: number, y: number, z: number;
+    if (eye) ({ x, y, z } = eye);
+    else {
+      const d = Math.max(5, apart * 1.2 + 2.5);
+      // Inside the room: never through its walls or roof.
+      const a = L.areas.find((q) => q.id === `entrenamiento:${stage.room}`);
+      const clampTo = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+      // She moves on (the scale, the couch, the chart): when a wall comes too close behind the camera and the stick is
+      // idle, it eases round to the nearest side with room for the whole shot.
+      if (a && look.yaw === 0 && roomAlong(a, c, yaw) < d * 0.85) {
+        for (let i = 1; i <= 16; i++) {
+          const yw = yaw + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 0.2;
+          if (roomAlong(a, c, yw) >= d * 0.85) {
+            yaw += (yw - yaw) * Math.min(1, dt * 3);
+            break;
+          }
+        }
+      }
+      x = c.x + Math.sin(yaw) * d;
+      z = c.z + Math.cos(yaw) * d;
+      y = camY;
+      if (a) {
+        x = clampTo(x, a.centre.x - a.half.x + 0.7, a.centre.x + a.half.x - 0.7);
+        z = clampTo(z, a.centre.z - a.half.z + 0.7, a.centre.z + a.half.z - 0.7);
+        y = clampTo(y, c.y + 0.3, a.half.y * 2 - 0.4);
+      }
+    }
+    camera.position.set(x, y, z);
+    const D = Math.max(0.5, Math.hypot(x - c.x, z - c.z));
+    const tilt = Math.atan2(c.y + 0.8 - y, D) - (duel.visible ? 0.42 : 0);
+    camera.lookAt(c.x, y + D * Math.tan(tilt), c.z);
+    rig.visible = true;
+    return;
+  }
   rig.position.set(body.x, body.y, body.z);
   rig.rotation.y = yaw + Math.PI;
-  if (mode.kind === "vuelo") {
+  if (mode.kind === "vuelo" || mode.kind === "mano" || (mode.kind === "reto" && (heli.group.visible || rug.group.visible))) {
     // A chase view of the craft; the camera stick turns round it (reglas.md §3.8: the camera is never stuck).
-    const leg = mode.legs[mode.i];
-    const craft = leg?.craft === "alfombra" ? rug.group : heli.group;
-    const dist = leg?.craft === "alfombra" ? 9 : 34;
+    const isRug = rug.group.visible;
+    const craft = isRug ? rug.group : heli.group;
+    const dist = isRug ? 9 : 34;
     const c = craft.position;
     camera.position.set(c.x + Math.sin(yaw) * dist * Math.cos(pitch - 0.25), c.y + 4 + Math.sin(0.25 - pitch) * dist, c.z + Math.cos(yaw) * dist * Math.cos(pitch - 0.25));
     camera.lookAt(c.x, c.y + 2, c.z);
-    rig.visible = leg?.craft === "alfombra";
+    rig.visible = isRug;
     return;
   }
   const swim = body.motion === "agua";
@@ -575,8 +923,14 @@ function updateCamera(dt: number): void {
   avatar.update(dt);
 }
 
+/** The fixed eye of the open post's stage (inside the hypobaric chamber), if it has one. */
+function stagesEye(): { x: number; y: number; z: number } | undefined {
+  for (const st of stages.values()) if (mode.kind === "reto" && stationFor(st.post)?.chore.id === mode.what) return st.eye;
+  return undefined;
+}
+
 function updateBar(): void {
-  const busy = mode.kind !== "libre";
+  const busy = mode.kind === "ruta" || mode.kind === "ascensor" || mode.kind === "vuelo";
   bar.classList.toggle("hidden", !busy);
   document.body.classList.toggle("in-journey", busy);
   if (!busy) return;
@@ -594,7 +948,9 @@ function updateBar(): void {
     const leg = mode.legs[mode.i]!;
     const left = tripSeconds(mode.legs.slice(mode.i)) - mode.t;
     const ph = legPose(leg, mode.t, crafts[leg.craft]).phase;
-    text = `<b>${leg.craft === "helicoptero" ? "Helicóptero" : "Alfombra"} a ${esc(islandById.get(leg.to as IslandId)!.name)}</b><small>${ph === "despegue" ? "Despegando" : ph === "aterrizaje" ? "Aterrizando" : "En vuelo"} · ${duration(left)}</small>`;
+    const last = mode.legs[mode.legs.length - 1]!.b;
+    const far = Math.hypot(last.x - body.x, last.z - body.z);
+    text = `<b>${leg.craft === "helicoptero" ? "Helicóptero" : "Alfombra"} a ${esc(islandById.get(leg.to as IslandId)!.name)}</b><small>${ph === "despegue" ? "Despegando" : ph === "aterrizaje" ? "Aterrizando" : "En vuelo"} · ${far < 1000 ? `${Math.round(far)} m` : `${(Math.round(far / 100) / 10).toLocaleString("es-ES")} km`} · ${duration(left)}</small>`;
   }
   if (barText.innerHTML !== text) barText.innerHTML = text;
   // Mid-air or in a moving cab there is nothing to stop: it lands or arrives first.
@@ -610,7 +966,8 @@ if (frameStats) {
 let firstFrame = true;
 let last = performance.now();
 function frame(now: number): void {
-  const dt = Math.min(0.25, (now - last) / 1000);
+  // rAF can hand a time a little before the first `last`: never a negative step.
+  const dt = Math.max(0, Math.min(0.25, (now - last) / 1000));
   last = now;
   clock += dt;
   days += dt * BOARD_DAYS_PER_REAL_S;
@@ -618,8 +975,27 @@ function frame(now: number): void {
   if (m.kind === "ruta") frameRoute(dt, m);
   else if (m.kind === "ascensor") frameLift(dt, m);
   else if (m.kind === "vuelo") frameFlight(dt, m);
-  else if (!nav.visible && !settingsPanel.visible && !taskBoard.visible && !areasWindow.visible) frameFree(dt);
-  if (mode.kind === "vuelo") avatar.pose("lotus");
+  else if (m.kind === "mano") frameHand(dt, m);
+  else if (m.kind === "reto") {
+    stage.update(dt);
+    if (heliSpin) heli.rotor.rotation.y += dt * 12;
+    if (endPost && !stage.busy && !duel.visible) {
+      const e = endPost;
+      endPost = undefined;
+      e();
+    }
+  } else if (!duel.visible && !nav.visible && !settingsPanel.visible && !taskBoard.visible && !areasWindow.visible) frameFree(dt);
+  if (mode.kind === "vuelo" || mode.kind === "mano") avatar.pose("lotus");
+  crowd.update(dt, hour());
+  // The Magnate comes to the post she is at when nobody is on shift there.
+  if (mode.kind !== "reto") {
+    const p = near?.post;
+    crowd.magnateTo(p !== undefined && READY_POSTS.includes(p) && trainerOf(p) === MAGNATE.id ? p : undefined);
+  }
+  // While the sheet is open only it and the scene show (reglas.md §4.3): the caption only once it closes.
+  const cap = mode.kind === "reto" && !duel.visible ? stage.caption : "";
+  caption.classList.toggle("hidden", !cap);
+  if (caption.textContent !== cap) caption.textContent = cap;
   frameBirds(dt);
   updateCamera(dt);
   updateBar();
@@ -628,7 +1004,8 @@ function frame(now: number): void {
   machinePanel.tick();
   const isl = island();
   const area = L.areas.find((a) => a.id === body.area)?.label;
-  const where = mode.kind === "vuelo" ? "En vuelo" : mode.kind === "ascensor" && !mode.calling ? `${islandById.get(isl)!.name} · Ascensor del tronco` : `${islandById.get(isl)!.name}${area && area !== islandById.get(isl)!.name ? ` · ${area}` : ""}`;
+  const flying = mode.kind === "vuelo" || (mode.kind === "mano" && !mode.s.onGround);
+  const where = `${clockText(hour())} · ` + (flying ? "En vuelo" : mode.kind === "ascensor" && !mode.calling ? `${islandById.get(isl)!.name} · Ascensor del tronco` : `${islandById.get(isl)!.name}${area && area !== islandById.get(isl)!.name ? ` · ${area}` : ""}`);
   if (whereEl.textContent !== where) whereEl.textContent = where;
   if (toastUntil && clock > toastUntil) {
     toast.classList.remove("on");
@@ -701,6 +1078,28 @@ if (frameStats) (window as unknown as { codeshipS3: unknown }).codeshipS3 = {
   get lastSaved() {
     return lastSaved;
   },
+  duel,
+  stage,
+  crowd,
+  handPad,
+  get hour() {
+    return hour();
+  },
+  /** Jump the board clock to hour `h` (later today or tomorrow). */
+  setHour(h: number) {
+    days += ((((h - hour()) % 24) + 24) % 24) / 24;
+  },
+  /** The exercise on the sheet now (the journeys' oracle). */
+  get exercise() {
+    return (duel as unknown as { duel?: { current?: unknown } }).duel?.current;
+  },
+  get hand() {
+    return mode.kind === "mano" ? mode.s : undefined;
+  },
+  get passed() {
+    return [...passed];
+  },
+  trainerOf,
   cabY: (id: string) => parts.cabs.get(id)?.position.y,
   craftY: () => (heli.group.visible ? heli.group.position.y : rug.group.visible ? rug.group.position.y : undefined),
   saveNow,

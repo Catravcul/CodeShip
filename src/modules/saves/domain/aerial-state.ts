@@ -21,6 +21,8 @@ export interface AerialState {
   readonly k?: number;
   /** The general settings, as stored (`codeship.ajustes`). */
   readonly settings?: { readonly ajustes?: string };
+  /** The training posts whose challenge she has passed (docs/design/santuario3-iniciacion.md §4). */
+  readonly posts?: readonly number[];
 }
 
 const num = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
@@ -32,6 +34,7 @@ export function checkAerialState(s: unknown): string | undefined {
   const a = s.at;
   if (!isRecord(a) || !num(a.x) || !num(a.y) || !num(a.z) || !AERIAL_ISLANDS.includes(a.island as AerialIsland)) return "sin el sitio de Doménica";
   if (s.settings !== undefined && !isRecord(s.settings)) return "ajustes ilegibles";
+  if (s.posts !== undefined && !(Array.isArray(s.posts) && s.posts.every((n) => Number.isInteger(n) && n >= 1 && n <= 13))) return "puestos ilegibles";
   return undefined;
 }
 

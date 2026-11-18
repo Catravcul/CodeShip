@@ -466,6 +466,7 @@ export function buildProps(L: S3Layout): SceneParts {
     const s = textSign(m.label);
     s.scale.multiplyScalar(1.2);
     s.position.set(m.x, m.y + 2.3, m.z);
+    s.name = `cartel-m:${m.id}`;
     root.add(s);
   }
   const f9 = L.props.find((p) => p.kind === "falcon9");

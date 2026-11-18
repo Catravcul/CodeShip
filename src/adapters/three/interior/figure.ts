@@ -58,6 +58,22 @@ export const POSES: Record<string, PoseAngles> = {
   reach: P({ torso: 0.15, headX: -0.4, shoulderX: [-2.5, -2.3], shoulderZ: [0.2, -0.2], elbow: [-0.35, -0.35], hip: [-0.6, -0.6], knee: [0.9, 0.9] }),
   // Braced on a bare wall with both hands.
   brace: P({ torso: 0.2, headX: -0.1, shoulderX: [-1.6, -1.6], shoulderZ: [0.25, -0.25], elbow: [-0.9, -0.9], hip: [-0.5, -0.5], knee: [0.8, 0.8] }),
+  // Sanctuary 3's training posts (adapters/three/s3-stage.ts). Seated on a chair or a couch's edge: pelvis 0,5 m over the feet.
+  sit: P({ rootY: 0.5, hip: [-1.55, -1.55], knee: [1.55, 1.55], shoulderX: [-0.35, -0.35], elbow: [-0.9, -0.9] }),
+  // Seated, one arm out to the front (a folder handed over, the arm for the cuff).
+  "sit-reach": P({ rootY: 0.5, hip: [-1.55, -1.55], knee: [1.55, 1.55], shoulderX: [-1.35, -0.35], shoulderZ: [0.15, -0.08], elbow: [-0.15, -0.9] }),
+  // Seated and light-headed (hypoxia): head tilted, shoulders dropped.
+  "sit-dizzy": P({ rootY: 0.5, torso: 0.25, headX: 0.25, headZ: 0.35, hip: [-1.55, -1.55], knee: [1.55, 1.55], shoulderX: [-0.2, -0.5], elbow: [-0.3, -1.2] }),
+  // On her back (the ECG): the whole body pitched back, arms by her sides.
+  supine: P({ rootY: 0.12, rootX: -Math.PI / 2, shoulderZ: [0.12, -0.12] }),
+  // Swimming freestyle, face down.
+  swim: P({ rootY: 0.1, rootX: Math.PI / 2, headX: -0.3, shoulderX: [-2.9, 0.4], elbow: [-0.1, -0.3], hip: [0.1, -0.1], knee: [0.15, 0.15] }),
+  // Treading water: upright, arms sculling out to the sides, legs bent.
+  tread: P({ torso: 0.05, shoulderX: [-0.5, -0.5], shoulderZ: [0.9, -0.9], elbow: [-0.4, -0.4], hip: [-0.5, 0.2], knee: [0.9, 0.5] }),
+  // One arm out to the front, standing (pressing the suit's check, handing over).
+  "reach-one": P({ shoulderX: [-1.35, 0], shoulderZ: [0.1, -0.08], elbow: [-0.2, 0] }),
+  // Holding a clipboard in front and writing on it.
+  write: P({ headX: 0.3, shoulderX: [-0.9, -0.7], shoulderZ: [0.25, -0.25], elbow: [-1.3, -1.4] }),
 };
 
 function box(w: number, h: number, d: number, color: number, y: number): THREE.Mesh {
@@ -212,6 +228,21 @@ export class CubeFigure {
   /** How high hands (palms) and soles are over the floor she stands on, in metres (asanas only). */
   contacts(): Record<ReachEnd, number> | undefined {
     return this.asanaMode && this.player ? contactHeights(CUBE_FIGURE, this.player.body.world) : undefined;
+  }
+
+  /** The wrist of hand 0 (left) or 1 (right): what she holds hangs from it. */
+  hand(i: 0 | 1): THREE.Group {
+    return this.wrists[i]!;
+  }
+
+  /** The head: what she wears on it (a mask, a helmet) hangs from it. */
+  get headNode(): THREE.Group {
+    return this.head;
+  }
+
+  /** The chest: a badge or the ECG's electrodes go on it. */
+  get chestNode(): THREE.Group {
+    return this.chest;
   }
 
   /** World position of a hand (0 or 1), from the current joint angles; the caller updates world matrices. */

@@ -22,6 +22,27 @@ export interface IslandChoice {
   readonly pad: MapVec;
 }
 
+/** How an island flight is flown (reglas.md §3.6): programmed as a challenge and flown by itself, or by hand. */
+export type FlightMode = "reto" | "manual";
+const MODE_KEY = "codeship.s3.modo-vuelo";
+export const FLIGHT_MODE_TEXT: Readonly<Record<FlightMode, string>> = { reto: "Por reto", manual: "Manual" };
+
+/** The flight mode chosen in the window's gear (kept on this device). */
+export function flightMode(): FlightMode {
+  try {
+    return localStorage.getItem(MODE_KEY) === "manual" ? "manual" : "reto";
+  } catch {
+    return "reto";
+  }
+}
+export function setFlightMode(m: FlightMode): void {
+  try {
+    localStorage.setItem(MODE_KEY, m);
+  } catch {
+    /* private mode: only for this visit */
+  }
+}
+
 /**
  * The navigation machine of an island (Berón, 2026-11-18; santuario3-iniciacion.md §3): the map window (map-window.ts),
  * the same model as Navigation, Áreas and the start screen. On top the islands of the sanctuary on a 3D plan, hers in
@@ -45,6 +66,8 @@ export class IslandNavWindow {
       hint: "Arrastra para girar · toca una isla",
       view: { yaw: 0.5, elevation: 0.9, zoom: 1 },
       limits: { turnPerPx: 0.01, minElevation: 0.15, minZoom: 0.5, maxZoom: 10 },
+      gear: { className: "in-gear", label: "Ajustes del vuelo", backLabel: "Volver a las islas", settingsClass: "in-settings tb-settings" },
+      settings: () => this.render(),
       closeLabel: "Cerrar navegación",
       side: `<div class="nav-card in-side"></div>`,
       draw: (g, w, h) => this.draw(g, w, h),
@@ -66,6 +89,7 @@ export class IslandNavWindow {
   }
 
   open(islands: readonly IslandChoice[]): void {
+    this.win.showSettings(false);
     this.islands = islands;
     this.sel.clear();
     this.win.view.zoom = 1;
@@ -81,6 +105,11 @@ export class IslandNavWindow {
   }
 
   private render(): void {
+    if (this.win.settingsShown) {
+      const now = flightMode();
+      this.win.settingsBox!.innerHTML = `<h2 class="ar-title">Ajustes del vuelo</h2><h3 class="tb-group" id="in-s-mode">Modo de vuelo</h3><div class="tb-travel" role="radiogroup" aria-labelledby="in-s-mode">${(["reto", "manual"] as const).map((m) => `<button role="radio" data-mode="${m}" aria-checked="${m === now}" class="${m === now ? "on" : ""}">${FLIGHT_MODE_TEXT[m]}</button>`).join("")}</div><small class="tb-travel-help">${now === "reto" ? "Se programa el vuelo con un reto de código y el piloto automático lo vuela; se ve entero y la cámara gira" : "Pilotas tú: cíclico, colectivo y pedales en los botones; se aterriza despacio en el helipuerto o el andén"}</small>`;
+      return;
+    }
     const options: MapOption[] = this.islands.map((i) => ({
       id: i.id,
       name: i.name,
@@ -92,12 +121,17 @@ export class IslandNavWindow {
       pickLabel: `Ver ${i.name} en el plano`,
       ...(i.locked ? { locked: i.locked } : {}),
     }));
-    this.side.innerHTML = `<p class="tb-scope">Vuelos desde esta isla · se ve el vuelo entero</p><div class="mw-list">${optionsHtml(options, { cls: "in", goAttr: "fly" })}</div>`;
+    this.side.innerHTML = `<p class="tb-scope">Vuelos desde esta isla · ${FLIGHT_MODE_TEXT[flightMode()]} (engranaje) · se ve el vuelo entero</p><div class="mw-list">${optionsHtml(options, { cls: "in", goAttr: "fly" })}</div>`;
     markPicked(this.side, this.sel.picked);
     this.win.draw();
   }
 
   private onClick(t: HTMLElement): void {
+    const mode = t.closest<HTMLElement>("[data-mode]");
+    if (mode) {
+      setFlightMode(mode.dataset.mode === "manual" ? "manual" : "reto");
+      return this.render();
+    }
     const pick = t.closest<HTMLElement>("[data-pick]");
     if (pick) {
       this.sel.pick(pick.dataset.pick);

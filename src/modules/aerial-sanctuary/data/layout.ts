@@ -736,9 +736,9 @@ export function buildLayout(k = 1): S3Layout {
 
   // ── Training island (real) ──
   const ti = TRAINING.island.value;
-  const nbl = ROOMS.find((r) => r.id === "nbl")!;
-  const nblHall = around(nbl.centre.x, nbl.centre.z, nbl.half.x * k, nbl.half.z * k);
-  for (const r of subtract(R(ti.x0, ti.x1, ti.z0, ti.z1), nblHall)) b.floor("entrenamiento:isla", 0, r);
+  // The island's ground around the buildings (inside each, its own floor: the Áreas window says where she is).
+  const halls = ROOMS.map((r) => around(r.centre.x, r.centre.z, r.half.x * k, r.half.z * k));
+  for (const r of subtractAll(R(ti.x0, ti.x1, ti.z0, ti.z1), halls)) b.floor("entrenamiento:isla", 0, r);
   for (const r of ROOMS) buildRoom(b, r, k);
   // Roads: the x = 170 and z = −5 lines join every door's road point (in order along them).
   const roadPts = (axis: "x" | "z") => b.points.filter((p) => p.id.startsWith("entrenamiento:") && p.id.endsWith(":camino") && (axis === "x" ? Math.abs(p.x - ROAD_X) < 1e-6 : Math.abs(p.z - ROAD_Z) < 1e-6));

@@ -1,9 +1,12 @@
-import { placeNodes, type AreaMap, type AreaNode } from "@modules/tasks/application/areas";
+import type { AreaMap, AreaNode, AreaVec } from "@modules/tasks/application/areas";
 import type { Vehicle } from "@modules/tasks/application/task-list";
 import { settings } from "./settings-store";
 import { ICON } from "./icons";
 import { onCloseRequest, windowState } from "./hud-windows";
 import { settingsClick, travelHtml, vehicleHtml, VEHICLE_NAME } from "./task-settings";
+import { CameraStick } from "../adapters/input/camera-stick";
+import { mapGestures } from "./map-gestures";
+import "./nav-map.css";
 import "./task-board.css";
 import "./areas-window.css";
 
@@ -20,46 +23,106 @@ export interface AreasDeps {
   go(node: AreaNode, map: AreaMap): void;
 }
 
+interface Pt {
+  x: number;
+  y: number;
+}
+
+/** The convex hull of a box's projected corners (monotone chain), to fill it and to pick it. */
+function hull(ps: Pt[]): Pt[] {
+  const p = [...ps].sort((a, b) => a.x - b.x || a.y - b.y);
+  const cross = (o: Pt, a: Pt, b: Pt) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const lo: Pt[] = [];
+  for (const q of p) {
+    while (lo.length >= 2 && cross(lo[lo.length - 2]!, lo[lo.length - 1]!, q) <= 0) lo.pop();
+    lo.push(q);
+  }
+  const hi: Pt[] = [];
+  for (const q of p.reverse()) {
+    while (hi.length >= 2 && cross(hi[hi.length - 2]!, hi[hi.length - 1]!, q) <= 0) hi.pop();
+    hi.push(q);
+  }
+  return [...lo.slice(0, -1), ...hi.slice(0, -1)];
+}
+
+const inside = (h: Pt[], x: number, y: number) => {
+  let c = false;
+  for (let i = 0, j = h.length - 1; i < h.length; j = i++) {
+    const a = h[i]!;
+    const b = h[j]!;
+    if (a.y > y !== b.y > y && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) c = !c;
+  }
+  return c;
+};
+
+/** «Harmony (Nodo 2)» → name «Harmony», what it is «Nodo 2». */
+const split = (label: string) => {
+  const m = /^(.*?)\s*\((.*)\)$/.exec(label);
+  return { name: m ? m[1]! : label, sub: m?.[2] };
+};
+
 /**
- * «Áreas» of the tree menu (Berón, 2026-11-17; docs/design/areas.md): the schematic of the vehicle she is in
- * (Starship, the station or the LM), like the navigation map abstracts ships and rocks: each area a node, the
- * hatches as lines. A tap on a node takes her there, walking the real way unless she chose teleport. Its gear
- * swaps the schematic for the shared settings (Viaje/Teletransporte and the vehicle, the same as the task list's)
- * and turns into a list icon that goes back.
+ * «Áreas» of the tree menu (Berón, 2026-11-18; reglas.md §5.8, docs/design/areas.md): the same window as
+ * Navigation (nav-map.ts and its styles). On top, a 3D map of the vehicle she is in (Starship, the station or
+ * the LM), each area a box of the real plan and the hatches as lines; a finger drags to turn it and pinches to
+ * zoom (reglas.md §5.7, its one exception), and so do its joystick and its + / − buttons. Under it, the areas
+ * with what is there and «Ir», which takes her there walking the real way unless she chose teleport. Its gear
+ * swaps both for the shared settings (Viaje/Teletransporte and the vehicle, the same as the task list's) and
+ * turns into a list icon that goes back. It covers the screen, so the tree menu hides while it is open.
  */
 export class AreasWindow {
   private readonly el: HTMLElement;
+  private readonly canvas: HTMLCanvasElement;
+  private readonly side: HTMLElement;
+  private readonly settingsBox: HTMLElement;
   private view: "mapa" | "ajustes" = "mapa";
   private shown: AreaMap | undefined;
+  private picked: string | undefined;
+  private yaw = 0.6;
+  private elevation = 0.75;
+  private zoom = 1;
+  private screen: { id: string; hull: Pt[]; c: Pt; depth: number }[] = [];
+  private readonly camStick: CameraStick;
 
   constructor(
     root: HTMLElement,
     private readonly d: AreasDeps,
   ) {
     this.el = document.createElement("div");
-    this.el.className = "board task-board areas-window hidden";
+    this.el.className = "nav-map areas-window hidden";
     this.el.setAttribute("role", "dialog");
     this.el.setAttribute("aria-label", "Áreas");
+    this.el.innerHTML = `
+      <div class="nav-head"><div class="nav-tools"><button data-act="zin" aria-label="Acercar">+</button><button data-act="zout" aria-label="Alejar">−</button><button data-act="view">Cenital</button><button class="ar-view" data-view aria-label="Ajustes de áreas" title="Ajustes de áreas">${ICON.gear}</button><button class="x" data-close aria-label="Cerrar áreas">×</button></div></div>
+      <div class="nav-body"><div class="nav-canvas"><canvas aria-label="Mapa del vehículo"></canvas><div class="nav-hint">Arrastra para girar · toca un área</div></div>
+        <div class="nav-side"><div class="nav-card ar-side"></div></div></div>
+      <div class="ar-settings tb-settings hidden"></div>`;
     root.appendChild(this.el);
-    this.el.addEventListener("click", (e) => {
-      const t = e.target as HTMLElement;
-      if (t.closest("[data-close]")) return this.close();
-      if (t.closest("[data-view]")) {
-        this.view = this.view === "mapa" ? "ajustes" : "mapa";
-        this.render();
-        return this.el.querySelector<HTMLElement>("[data-view]")?.focus();
-      }
-      if (settingsClick(t)) return this.render();
-      const area = t.closest<HTMLElement>("[data-area]");
-      const node = area && this.shown?.nodes.find((n) => n.id === area.dataset.area);
-      if (node && this.shown) {
-        const map = this.shown;
-        this.close();
-        this.d.go(node, map);
-      }
+    this.canvas = this.el.querySelector("canvas")!;
+    this.side = this.el.querySelector(".ar-side")!;
+    this.settingsBox = this.el.querySelector(".ar-settings")!;
+    this.el.addEventListener("click", (e) => this.onClick(e.target as HTMLElement));
+    mapGestures(this.canvas, {
+      rotate: (dx, dy) => {
+        this.yaw -= dx * 0.01;
+        this.elevation = Math.max(0.1, Math.min(Math.PI / 2, this.elevation + dy * 0.01));
+        this.draw();
+      },
+      zoom: (f) => this.setZoom(this.zoom * f),
+      tap: (x, y) => this.pickAt(x, y),
+    });
+    this.camStick = new CameraStick(this.el.querySelector(".nav-canvas")!, "nav-look", (yaw, pitch) => {
+      this.yaw -= yaw;
+      this.elevation = Math.max(0.1, Math.min(Math.PI / 2, this.elevation - pitch));
+      this.draw();
+    }, { label: "Girar" });
+    this.camStick.show(true);
+    this.canvas.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      this.setZoom(this.zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15));
     });
     window.addEventListener("keydown", (e) => this.visible && e.code === "Escape" && this.close());
-    window.addEventListener("resize", () => this.visible && this.render());
+    window.addEventListener("resize", () => this.visible && this.draw());
     onCloseRequest("areas", () => this.close());
   }
 
@@ -69,75 +132,252 @@ export class AreasWindow {
 
   open(): void {
     this.view = "mapa";
+    this.picked = this.d.at?.();
+    this.zoom = 1;
     this.el.classList.remove("hidden");
-    this.render();
-    this.el.scrollTop = 0;
-    document.body.classList.add("in-tasks");
+    document.body.classList.add("in-areas");
     windowState("areas", true);
+    this.render();
   }
 
   close(): void {
     if (!this.visible) return;
     this.el.classList.add("hidden");
-    document.body.classList.remove("in-tasks");
+    document.body.classList.remove("in-areas");
     windowState("areas", false);
   }
 
-  /** The vehicle shown: the setting, «Automático» (and «Todos», which a schematic cannot show) where she is. */
+  /** The vehicle shown: the setting, «Automático» (and «Todos», which one map cannot show) where she is. */
   private vehicle(): Vehicle {
     const f = settings.value.taskVehicle;
     return f === "auto" || f === "todos" ? this.d.here() : f;
   }
 
+  private onClick(t: HTMLElement): void {
+    if (t.closest("[data-close]")) return this.close();
+    if (t.closest("[data-view]")) {
+      this.view = this.view === "mapa" ? "ajustes" : "mapa";
+      this.render();
+      return this.el.querySelector<HTMLElement>("[data-view]")?.focus();
+    }
+    const act = t.closest<HTMLElement>("[data-act]")?.dataset.act;
+    if (act === "zin") return this.setZoom(this.zoom * 1.5);
+    if (act === "zout") return this.setZoom(this.zoom / 1.5);
+    if (act === "view") {
+      this.elevation = this.elevation > 1.5 ? 0.75 : Math.PI / 2;
+      t.closest<HTMLElement>("[data-act]")!.textContent = this.elevation > 1.5 ? "Inclinada" : "Cenital";
+      return this.draw();
+    }
+    if (settingsClick(t)) return this.render();
+    const pick = t.closest<HTMLElement>("[data-pick]");
+    if (pick) {
+      this.picked = pick.dataset.pick;
+      return this.renderSide(false);
+    }
+    const area = t.closest<HTMLElement>("[data-area]");
+    const node = area && this.shown?.nodes.find((n) => n.id === area.dataset.area);
+    if (node && this.shown) {
+      const map = this.shown;
+      this.close();
+      this.d.go(node, map);
+    }
+  }
+
+  private setZoom(z: number): void {
+    this.zoom = Math.max(0.5, Math.min(8, z));
+    this.draw();
+  }
+
   private render(): void {
-    const here = this.d.here();
-    const v = this.vehicle();
     const settingsView = this.view === "ajustes";
-    const toggle = settingsView
-      ? `<button class="tb-view" data-view aria-label="Volver al mapa de áreas" title="Mapa de áreas">${ICON.tasks}</button>`
-      : `<button class="tb-view" data-view aria-label="Ajustes de áreas" title="Ajustes de áreas">${ICON.gear}</button>`;
+    const btn = this.el.querySelector<HTMLElement>("[data-view]")!;
+    btn.innerHTML = settingsView ? ICON.tasks : ICON.gear;
+    btn.setAttribute("aria-label", settingsView ? "Volver al mapa de áreas" : "Ajustes de áreas");
+    btn.title = btn.getAttribute("aria-label")!;
+    this.el.setAttribute("aria-label", settingsView ? "Ajustes de áreas" : "Áreas");
+    this.el.classList.toggle("ar-in-settings", settingsView);
+    this.settingsBox.classList.toggle("hidden", !settingsView);
+    if (settingsView) {
+      this.settingsBox.innerHTML = `<h2 class="ar-title">Ajustes de áreas</h2>${travelHtml("ar-s-travel")}${vehicleHtml("ar-s-vehicle", this.d.here(), undefined, false)}<small class="tb-travel-help">Los mismos ajustes que en Tareas.</small>`;
+      return;
+    }
+    this.shown = this.d.map(this.vehicle());
+    if (this.picked && !this.shown?.nodes.some((n) => n.id === this.picked)) this.picked = undefined;
+    this.renderSide(true);
+    this.draw();
+  }
+
+  /** The list under the map: what the map shows, then each area with what is there and «Ir». */
+  private renderSide(rebuild: boolean): void {
+    const v = this.vehicle();
+    const map = this.shown;
     const auto = settings.value.taskVehicle === "auto" || settings.value.taskVehicle === "todos";
     const travel = settings.value.taskTravel === "viaje" ? "Viaje: el camino real" : "Teletransporte";
-    const scope = settingsView ? "" : `<p class="tb-scope">${VEHICLE_NAME[v]}${auto ? " (automático)" : ""} · ${travel}</p>`;
-    const head = `<div class="board-head"><b>${settingsView ? "Ajustes de áreas" : "Áreas"}</b><span class="tb-head-btns">${toggle}<button data-close aria-label="Cerrar áreas">✕</button></span>${scope}</div>`;
-    this.el.setAttribute("aria-label", settingsView ? "Ajustes de áreas" : "Áreas");
-    if (settingsView) {
-      this.shown = undefined;
-      this.el.innerHTML = `${head}<div class="tb-settings">${travelHtml("ar-s-travel")}${vehicleHtml("ar-s-vehicle", here, undefined, false)}<small class="tb-travel-help">Los mismos ajustes que en Tareas.</small></div>`;
-      return;
-    }
-    const map = this.d.map(v);
-    this.shown = map;
-    if (!map?.nodes.length) {
-      this.el.innerHTML = `${head}<p class="tb-empty">No hay plano de ${VEHICLE_NAME[v].toLowerCase()} ahora.</p>`;
-      return;
-    }
-    // The schematic fills the window's width; its height follows the plan's shape, within the screen.
-    this.el.innerHTML = `${head}<div class="ar-map"></div><p class="tb-hint">Toca un área para ir${settings.value.taskTravel === "viaje" ? " por el camino real" : " al momento"}.</p>`;
-    const box = this.el.querySelector<HTMLElement>(".ar-map")!;
-    const width = Math.max(200, box.clientWidth);
-    const height = Math.round(Math.min(Math.max(260, width * 1.1), innerHeight * 0.62));
-    const placed = placeNodes(map, width, height, 44, 6, 64);
     const at = this.d.at?.();
-    const centre = new Map(placed.nodes.map((p) => [p.node.id, { x: p.left + p.width / 2, y: p.top + p.height / 2 }]));
-    const lines = map.links
-      .map(([a, b]) => {
-        const p = centre.get(a);
-        const q = centre.get(b);
-        return p && q ? `<line x1="${p.x.toFixed(1)}" y1="${p.y.toFixed(1)}" x2="${q.x.toFixed(1)}" y2="${q.y.toFixed(1)}"/>` : "";
+    if (rebuild) {
+      const scope = `<p class="tb-scope">${VEHICLE_NAME[v]}${auto ? " (automático)" : ""} · ${travel}</p>`;
+      if (!map?.nodes.length) {
+        this.side.innerHTML = `${scope}<p class="tb-empty">No hay plano de ${VEHICLE_NAME[v].toLowerCase()} ahora.</p>`;
+        return;
+      }
+      const rows = map.nodes
+        .map((n) => {
+          const { name, sub } = split(n.label);
+          const what = [sub, n.code].filter(Boolean).join(" · ");
+          const here = n.id === at;
+          return `<div class="ar-row" data-row="${esc(n.id)}"><button class="ar-pick" data-pick="${esc(n.id)}" aria-label="Ver ${esc(n.label)} en el mapa"><b>${esc(name)}${here ? ` <em>Aquí</em>` : ""}</b>${what ? `<small>${esc(what)}</small>` : ""}<span>${esc(n.desc)}</span></button><button class="tb-go" data-area="${esc(n.id)}" aria-label="Ir a ${esc(n.label)}${here ? " (aquí)" : ""}">Ir</button></div>`;
+        })
+        .join("");
+      this.side.innerHTML = `${scope}<div class="ar-list">${rows}</div>`;
+    }
+    for (const r of this.side.querySelectorAll<HTMLElement>(".ar-row")) {
+      const on = r.dataset.row === this.picked;
+      r.classList.toggle("on", on);
+      r.querySelector(".ar-pick")?.setAttribute("aria-pressed", String(on));
+    }
+    this.draw();
+  }
+
+  private pickAt(x: number, y: number): void {
+    const r = this.canvas.getBoundingClientRect();
+    const px = x - r.left;
+    const py = y - r.top;
+    // The nearest box under the finger, else the nearest centre within a fingertip.
+    const under = this.screen.filter((s) => inside(s.hull, px, py)).sort((a, b) => b.depth - a.depth)[0];
+    const near = this.screen.map((s) => ({ s, d: Math.hypot(s.c.x - px, s.c.y - py) })).filter((q) => q.d < 28).sort((a, b) => a.d - b.d)[0]?.s;
+    const hit = near ?? under;
+    if (!hit) return;
+    this.picked = hit.id;
+    this.renderSide(false);
+    this.side.querySelector(`[data-row="${CSS.escape(hit.id)}"]`)?.scrollIntoView({ block: "nearest" });
+  }
+
+  private draw(): void {
+    const c = this.canvas;
+    const w = c.clientWidth;
+    const h = c.clientHeight;
+    const map = this.shown;
+    if (!this.visible || w === 0 || h === 0) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) {
+      c.width = Math.round(w * dpr);
+      c.height = Math.round(h * dpr);
+    }
+    const g = c.getContext("2d")!;
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, w, h);
+    this.screen = [];
+    if (!map?.nodes.length) return;
+    // The map turns round the middle of the vehicle and fits it at zoom 1.
+    const lo = { x: Infinity, y: Infinity, z: Infinity };
+    const hi = { x: -Infinity, y: -Infinity, z: -Infinity };
+    for (const n of map.nodes)
+      for (const k of ["x", "y", "z"] as const) {
+        lo[k] = Math.min(lo[k], n.centre[k] - n.half[k]);
+        hi[k] = Math.max(hi[k], n.centre[k] + n.half[k]);
+      }
+    const o = { x: (lo.x + hi.x) / 2, y: (lo.y + hi.y) / 2, z: (lo.z + hi.z) / 2 };
+    const R = Math.max(0.5, Math.hypot(hi.x - lo.x, hi.y - lo.y, hi.z - lo.z) / 2);
+    const s = ((0.48 * Math.min(w, h)) / R) * this.zoom;
+    const cosY = Math.cos(this.yaw);
+    const sinY = Math.sin(this.yaw);
+    const sinE = Math.sin(this.elevation);
+    const cosE = Math.cos(this.elevation);
+    const P = (p: AreaVec): Pt & { depth: number } => {
+      const x = p.x - o.x;
+      const y = p.y - o.y;
+      const z = p.z - o.z;
+      const xr = x * cosY - z * sinY;
+      const zr = x * sinY + z * cosY;
+      return { x: w / 2 + xr * s, y: h / 2 + (zr * sinE - y * cosE) * s, depth: zr * cosE + y * sinE };
+    };
+    // The floor under it all, as a faint grid.
+    g.lineWidth = 1;
+    g.strokeStyle = "#7fdcff1f";
+    const step = Math.max(0.5, Math.round(R / 4));
+    for (let x = Math.floor(lo.x / step) * step; x <= hi.x + 1e-6; x += step) {
+      const a = P({ x, y: lo.y, z: lo.z });
+      const b = P({ x, y: lo.y, z: hi.z });
+      g.beginPath();
+      g.moveTo(a.x, a.y);
+      g.lineTo(b.x, b.y);
+      g.stroke();
+    }
+    for (let z = Math.floor(lo.z / step) * step; z <= hi.z + 1e-6; z += step) {
+      const a = P({ x: lo.x, y: lo.y, z });
+      const b = P({ x: hi.x, y: lo.y, z });
+      g.beginPath();
+      g.moveTo(a.x, a.y);
+      g.lineTo(b.x, b.y);
+      g.stroke();
+    }
+    // The hatches that join the areas.
+    const byId = new Map(map.nodes.map((n) => [n.id, n]));
+    g.strokeStyle = "#7fdcff88";
+    g.lineWidth = 2;
+    g.setLineDash([5, 4]);
+    for (const [a, b] of map.links) {
+      const na = byId.get(a);
+      const nb = byId.get(b);
+      if (!na || !nb) continue;
+      const p = P(na.centre);
+      const q = P(nb.centre);
+      g.beginPath();
+      g.moveTo(p.x, p.y);
+      g.lineTo(q.x, q.y);
+      g.stroke();
+    }
+    g.setLineDash([]);
+    // The areas, far ones first; the one she is in in green, the one picked in gold.
+    const at = this.d.at?.();
+    const boxes = map.nodes
+      .map((n) => {
+        const corners: (Pt & { depth: number })[] = [];
+        for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) corners.push(P({ x: n.centre.x + sx * n.half.x, y: n.centre.y + sy * n.half.y, z: n.centre.z + sz * n.half.z }));
+        const c0 = P(n.centre);
+        return { n, corners, c: c0, depth: c0.depth };
       })
-      .join("");
-    const nodes = placed.nodes
-      .map((p) => {
-        const here2 = p.node.id === at;
-        // «Harmony (Nodo 2)»: the name on the node, what it is under it with its code.
-        const m = /^(.*?)\s*\((.*)\)$/.exec(p.node.label);
-        const name = m ? m[1]! : p.node.label;
-        const sub = [m?.[2], p.node.code].filter(Boolean).join(" · ");
-        return `<button class="ar-node${here2 ? " here" : ""}" data-area="${esc(p.node.id)}" aria-label="Ir a ${esc(p.node.label)}${here2 ? " (aquí)" : ""}" style="left:${p.left.toFixed(1)}px;top:${p.top.toFixed(1)}px;width:${p.width.toFixed(1)}px;height:${p.height.toFixed(1)}px"><b>${esc(name)}</b>${sub ? `<small>${esc(sub)}</small>` : ""}${here2 ? `<em>Aquí</em>` : ""}</button>`;
-      })
-      .join("");
-    box.style.height = `${Math.ceil(placed.height)}px`;
-    box.innerHTML = `<svg class="ar-links" width="${width}" height="${Math.ceil(placed.height)}" aria-hidden="true">${lines}</svg>${nodes}`;
+      .sort((a, b) => a.depth - b.depth);
+    const EDGES = [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7], [0, 4], [1, 5], [2, 6], [3, 7]] as const;
+    for (const b of boxes) {
+      const picked = b.n.id === this.picked;
+      const here = b.n.id === at;
+      const hl = hull(b.corners);
+      g.beginPath();
+      hl.forEach((p, i) => (i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y)));
+      g.closePath();
+      g.fillStyle = picked ? "#ffd23f3a" : here ? "#9fe8c430" : "#58d6ff1c";
+      g.fill();
+      g.strokeStyle = picked ? "#ffd23f" : here ? "#9fe8c4" : "#7fdcffaa";
+      g.lineWidth = picked ? 2 : 1;
+      g.beginPath();
+      for (const [i, j] of EDGES) {
+        g.moveTo(b.corners[i]!.x, b.corners[i]!.y);
+        g.lineTo(b.corners[j]!.x, b.corners[j]!.y);
+      }
+      g.stroke();
+      this.screen.push({ id: b.n.id, hull: hl, c: b.c, depth: b.depth });
+    }
+    // Names on top, each at its box's middle: the picked one and hers first, then the nearest; a name that would
+    // cover one already written is left out (its box and its row in the list still say it).
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    const written: { l: number; r: number; t: number; b: number }[] = [];
+    const rank = (b: (typeof boxes)[number]) => (b.n.id === this.picked ? 2 : b.n.id === at ? 1 : 0);
+    for (const b of [...boxes].sort((p, q) => rank(q) - rank(p) || q.depth - p.depth)) {
+      const picked = b.n.id === this.picked;
+      const here = b.n.id === at;
+      const text = split(b.n.label).name + (here ? " · aquí" : "");
+      g.font = `${picked ? "700 " : ""}12px system-ui, sans-serif`;
+      const half = g.measureText(text).width / 2 + 2;
+      const box = { l: b.c.x - half, r: b.c.x + half, t: b.c.y - 8, b: b.c.y + 8 };
+      if (written.some((o) => box.l < o.r && o.l < box.r && box.t < o.b && o.t < box.b)) continue;
+      written.push(box);
+      g.lineWidth = 3;
+      g.strokeStyle = "#02060acc";
+      g.strokeText(text, b.c.x, b.c.y);
+      g.fillStyle = picked ? "#ffd23f" : here ? "#c9ffe0" : "#d8f6ff";
+      g.fillText(text, b.c.x, b.c.y);
+    }
   }
 }

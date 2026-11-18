@@ -11,7 +11,7 @@ export interface RootItem {
   readonly key?: string;
   /** The window this icon opens: while it is open the icon is an X that closes it (reglas.md §5.8). */
   readonly window?: HudWindow;
-  /** Place under the gear, top to bottom: Vista 0, Tareas 1, Áreas 2, the mode's own 10, Trayecto 20. */
+  /** Place under the gear, top to bottom: Vista 0, Tareas 1, Áreas 2, Panel 3, the mode's own 10, Trayecto 20. */
   readonly order?: number;
 }
 
@@ -99,7 +99,7 @@ export class RootMenu {
     b.dataset.order = String(item.order ?? 10);
     this.paint(b, item.icon, item.label, item.key);
     b.addEventListener("click", () => (b.classList.contains("rm-open") && item.window ? requestClose(item.window) : onClick()));
-    // In order: Vista, Tareas, Áreas, the mode's own, then Trayecto.
+    // In order: Vista, Tareas, Áreas, Panel, the mode's own, then Trayecto.
     const after = [...this.shoots.children].find((c) => Number((c as HTMLElement).dataset.order) > (item.order ?? 10));
     this.shoots.insertBefore(b, after ?? null);
     this.sync();

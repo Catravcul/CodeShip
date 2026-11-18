@@ -3,7 +3,7 @@
  * the menu's icon that opened it turns into an X that asks it to close. Plain DOM events, so the menu and the
  * windows need not know each other.
  */
-export type HudWindow = "tareas" | "areas" | "trayecto";
+export type HudWindow = "tareas" | "areas" | "trayecto" | "panel";
 
 const STATE = "codeship:ventana";
 const CLOSE = "codeship:cerrar-ventana";

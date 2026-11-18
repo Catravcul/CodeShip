@@ -18,7 +18,7 @@ body.in-duel .sti-ui, body.in-duel .sti-move, body.in-duel .sti-look, body.in-st
 .sti-icon { flex: 0 0 auto; display: inline-flex; width: 32px; height: 32px; align-items: center; justify-content: center; color: #ffd27f; background: #0b2a36; border: 1px solid #7fdcff55; border-radius: 50%; }
 .sti-card.sti-card { bottom: calc(190px + env(safe-area-inset-bottom)); }
 .sti-card small { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-body.in-tasks .sti-card, body.in-settings .sti-card, body.in-settings .sti-menu { display: none !important; }
+body.in-tasks .sti-card, body.in-areas .sti-card, body.in-settings .sti-card, body.in-settings .sti-menu { display: none !important; }
 .sti-toast.cab-toast { top: calc(110px + env(safe-area-inset-top)); z-index: 7; }
 body.in-station-interior .vstick.sti-move span, body.in-station-interior .vstick.sti-look span { color: #9fe8c4; }
 /* Cockpit: the button to go inside the station, next to «Revisar tareas». */

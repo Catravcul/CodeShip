@@ -7,10 +7,9 @@
 .nav-map.embedded .nav-tools .x { display: none; }
 .nav-map.embedded .nav-head { padding-top: 10px; }
 body.in-map .hud, body.in-map .help, body.in-map .reticle, body.in-map .banner, body.in-map .action, body.in-map .touch, body.in-map .mode-btn, body.in-map .flight-bar, body.in-map .cam-tag, body.in-map .pilot-look, body.in-map .region-tag, body.in-map .sky-labels, body.in-map .nano-card, body.in-map .autopilot-tag { display: none !important; }
-.nav-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; padding-top: max(10px, env(safe-area-inset-top)); }
-.nav-title { flex: 1; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #7fdcff; }
+.nav-head { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 10px 12px; padding-top: max(10px, env(safe-area-inset-top)); }
 .nav-tools { display: flex; gap: 6px; }
-.nav-tools button, .card-actions button { min-height: 38px; min-width: 38px; padding: 6px 10px; font: inherit; font-size: 13px; color: #d8f6ff; background: #0b2a36cc; border: 1px solid #7fdcff66; border-radius: 10px; }
+.nav-tools button, .card-actions button { min-height: 44px; min-width: 44px; padding: 6px 10px; font: inherit; font-size: 13px; color: #d8f6ff; background: #0b2a36cc; border: 1px solid #7fdcff66; border-radius: 10px; }
 .nav-tools .x { font-size: 20px; line-height: 1; }
 .nav-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .nav-canvas { position: relative; flex: 1 1 45%; min-height: 180px; touch-action: none; }
@@ -72,12 +71,6 @@ body.in-cockpit .autopilot-tag.on { display: block; }
 .card-mission.hecha { border-left-color: #7dffb0; }
 .card-mission p { margin: 4px 0 2px; line-height: 1.35; }
 .card-mission small { margin-left: 0 !important; }
-/* Narrow phones: the title gets its own line so the tools (with «Misiones») fit. */
-@media (max-width: 520px) {
-  .nav-head { flex-wrap: wrap; row-gap: 6px; }
-  .nav-title { flex-basis: 100%; }
-  .nav-tools { margin-left: auto; }
-}
 
 /* Hand flying the mothership (reglas.md §3.6): readouts and three burns at the bottom, thumbs' reach. */
 .carrier-hand { position: fixed; left: 50%; bottom: calc(12px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 12; width: min(420px, 94vw); box-sizing: border-box; padding: 8px 10px; font-size: 12px; color: #d8f6ff; background: #0b2a36ee; border: 1px solid #58d6ff88; border-radius: 12px; display: flex; flex-direction: column; gap: 6px; }

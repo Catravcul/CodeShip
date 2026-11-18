@@ -1,12 +1,24 @@
-/* «Áreas» (docs/design/areas.md): the vehicle's schematic, nodes to tap and the hatches as lines. */
-.areas-window .ar-map { position: relative; width: 100%; flex: none; }
-.ar-links { position: absolute; inset: 0; pointer-events: none; }
-.ar-links line { stroke: #7fdcff66; stroke-width: 3; stroke-linecap: round; }
-.areas-window .ar-node { position: absolute; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 2px 4px; overflow: hidden; font: inherit; font-size: 11px; line-height: 1.15; text-align: center; color: #e6f6ff; background: #13243a; border: 1px solid #2c4a6a; border-radius: 8px; }
-.areas-window .ar-node b { font-weight: 700; overflow-wrap: normal; hyphens: auto; }
-.areas-window .ar-node small { font-size: 10px; opacity: 0.7; }
-.areas-window .ar-node em { font-style: normal; font-size: 10px; font-weight: 700; color: #001018; background: #9fe8c4; border-radius: 4px; padding: 0 4px; }
-.areas-window .ar-node.here { border: 2px solid #9fe8c4; }
-.areas-window .ar-node:focus-visible { outline: 2px solid #7fdcff; }
-.tb-vehicles.three button.auto { grid-column: 1 / -1; }
+/* «Áreas» (docs/design/areas.md): the Navigation window (nav-map.css) with the vehicle's 3D map on top and its
+   areas under it, each with what is there and «Ir». Over the task list's layer, the tree menu hidden. */
+.nav-map.areas-window { z-index: 11; background: radial-gradient(ellipse at 50% 40%, #0a1a26, #02060a 75%); }
+.areas-window .nav-tools .ar-view { display: inline-flex; align-items: center; justify-content: center; color: #7fdcff; }
+.areas-window .nav-tools .ar-view svg { width: 22px; height: 22px; }
+.areas-window .nav-side { max-height: 50cqh; }
+.areas-window .ar-side { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; }
+.areas-window .tb-scope { margin: 0; }
+.ar-list { display: flex; flex-direction: column; gap: 6px; }
+.ar-row { display: flex; align-items: stretch; gap: 8px; padding: 4px 4px 4px 0; background: #0b1c24; border: 1px solid #ffffff22; border-radius: 10px; }
+.ar-row.on { border-color: #ffd23f; background: #163a48; }
+.ar-pick { flex: 1; min-width: 0; min-height: 44px; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 4px 10px; font: inherit; font-size: 12px; text-align: left; color: #e6dfd3; background: transparent; border: 0; border-radius: 9px; }
+.ar-pick b { font-size: 14px; color: #fff; }
+.ar-pick em { font-style: normal; font-size: 11px; font-weight: 700; color: #001018; background: #9fe8c4; border-radius: 4px; padding: 0 4px; }
+.ar-pick small { font-size: 11px; opacity: 0.7; }
+.ar-pick span { opacity: 0.85; }
+.ar-pick:focus-visible, .areas-window .tb-go:focus-visible { outline: 2px solid #7fdcff; }
+.areas-window .tb-go { align-self: center; }
+/* Its settings take the place of the map and the list. */
+.areas-window.ar-in-settings .nav-body { display: none; }
+.ar-settings { flex: 1; overflow-y: auto; padding: 0 14px 14px; padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+.ar-settings.hidden { display: none; }
+.ar-title { margin: 0 0 4px; font-size: 16px; color: #fff; }
 body.in-duel .areas-window, body.in-duel .task-board { display: none !important; }

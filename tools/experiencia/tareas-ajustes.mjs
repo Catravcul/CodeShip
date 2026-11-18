@@ -1,12 +1,12 @@
-// PX-42 The general tree menu and the task list's settings (docs/design/reglas.md §5.8–5.9, ux-acciones.md
-// §Menú árbol): one gear at the top right that turns into an X and sprouts Vista and Tareas (and Trayecto while a
-// trip runs); an icon that opens a window turns into the X that closes it. Trayecto is a status-only window.
-// The task list's settings (Berón, 2026-11-17; docs/design/viaje-a-una-tarea.md §Ajustes de tareas): on an
-// iPhone 13 with taps. The list's header is [⚙︎][✕]; the list itself has only the tasks with «Ir» (no switch, no
-// chips). ⚙︎ swaps the list for its settings, like a branch of the root menu: «Viaje / Teletransporte», the vehicle
-// (Automático: donde está ella, Nave (Starship), Estación, Módulo, Todos) and the groups, and the gear turns into a
-// list icon that goes back. «Automático» follows her from the LM to the Starship; a chosen vehicle is kept in
-// codeship.ajustes over a reload. Captures in docs/screenshots/tareas-ajustes-<pantalla>-movil.png.
+// PX-42 The general tree menu, «Panel», «Áreas» and the task list's settings (docs/design/reglas.md §5.7–5.9,
+// ux-acciones.md §Menú árbol, areas.md, viaje-a-una-tarea.md §Ajustes de tareas; Berón 2026-11-18), on an
+// iPhone 13 with taps. One gear at the top right turns into an X and sprouts Vista, Tareas, Áreas (and Panel
+// while she is at a machine, Trayecto while a trip runs); only its own X folds it. A machine's card never pops up:
+// «Panel» shows it and turns into the X that hides it. «Áreas» is the Navigation window for the vehicle: a 3D map
+// that turns with a finger and zooms with a pinch, and under it the areas with what is there and «Ir». Tareas and
+// Áreas cover the screen, the menu hides under them and comes back as it was. The task list keeps its group chips;
+// its gear has «Viaje / Teletransporte» and the vehicle («Automático»: only where she is). Captures in
+// docs/screenshots/tareas-ajustes-<pantalla>-movil.png.
 import { mkdirSync } from "node:fs";
 
 async function capture(j, label, title) {
@@ -72,100 +72,183 @@ const menu = (p) =>
     };
   });
 
+/** The Áreas window: its map's view, the rows under it and what is picked. */
+const areas = (p) =>
+  p.evaluate(() => {
+    const w = document.querySelector(".areas-window:not(.hidden)");
+    if (!w) return null;
+    const a = window.codeship.areasWindow;
+    const c = w.querySelector(".nav-canvas canvas").getBoundingClientRect();
+    return {
+      label: w.getAttribute("aria-label"),
+      scope: w.querySelector(".tb-scope")?.textContent ?? "",
+      canvas: { w: Math.round(c.width), h: Math.round(c.height), top: Math.round(c.top) },
+      yaw: a.yaw,
+      elevation: a.elevation,
+      zoom: a.zoom,
+      picked: a.picked,
+      boxes: a.screen.map((s) => ({ id: s.id, x: Math.round(c.left + s.c.x), y: Math.round(c.top + s.c.y) })),
+      rows: [...w.querySelectorAll(".ar-row")].map((r) => {
+        const go = r.querySelector(".tb-go").getBoundingClientRect();
+        return { id: r.dataset.row, name: r.querySelector(".ar-pick b")?.textContent, desc: r.querySelector(".ar-pick span")?.textContent ?? "", go: r.querySelector(".tb-go").getAttribute("aria-label"), gw: go.width, gh: go.height, on: r.classList.contains("on") };
+      }),
+      tools: [...w.querySelectorAll(".nav-tools button")].map((b) => { const r = b.getBoundingClientRect(); return { label: b.getAttribute("aria-label") ?? b.textContent, w: r.width, h: r.height, top: Math.round(r.top) }; }),
+      overText: [...w.querySelectorAll(".nav-head *")].filter((e) => !e.closest("button") && e.children.length === 0 && e.textContent.trim()).map((e) => e.textContent),
+    };
+  });
+
+/** Two fingers on the canvas moving apart (a pinch out), by the browser's touch events. */
+async function pinchOut(p, box) {
+  const cdp = await p.context().newCDPSession(p);
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  const pts = (d) => [{ x: cx - d, y: cy, id: 1 }, { x: cx + d, y: cy, id: 2 }];
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: pts(30) });
+  for (const d of [45, 60, 75, 90]) await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: pts(d) });
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await cdp.detach();
+}
+
+/** One finger dragging sideways across the canvas. */
+async function dragAcross(p, box) {
+  const cdp = await p.context().newCDPSession(p);
+  const y = box.y + box.height / 2;
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: box.x + box.width * 0.3, y, id: 1 }] });
+  for (const f of [0.4, 0.5, 0.6, 0.7]) await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: box.x + box.width * f, y: y + 20 * f, id: 1 }] });
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await cdp.detach();
+}
+
 export async function tareasAjustes(j) {
   const p = j.page;
-  // 0. The tree menu: only the gear is out; it turns into an X and Vista and Tareas sprout below it.
+  // 0. The tree menu: only the gear is out; it turns into an X and Vista, Tareas and Áreas sprout below it.
   await j.tap(".stand-btn", "Levantarse: habitáculo");
   await p.waitForTimeout(1200);
   const m0 = await menu(p);
   j.check("en el habitáculo del LM solo se ve el engranaje del menú, arriba a la derecha", !!m0 && !m0.open && m0.root === "Menú" && m0.out.length === 0 && m0.rootAt.right <= 16 && m0.rootAt.top <= 20 && m0.rootAt.w >= 44, JSON.stringify(m0));
+  const card0 = await p.evaluate(() => [...document.querySelectorAll(".cab-machine:not(.hidden)")].some((c) => c.checkVisibility()));
+  j.check("de pie junto al puesto del comandante, su tarjeta no sale sola", !card0);
   await capture(j, "menu-cerrado", "Menú árbol cerrado");
   await j.tap('.room-ui:not(.hidden) .root-menu:not(.open) > .rm-root', "⚙︎ Menú");
   await p.waitForTimeout(400);
   const m1 = await menu(p);
   const labels = m1?.out.map((b) => b.label) ?? [];
   j.check("el engranaje se vuelve una X («Cerrar menú») y debajo brotan Vista, Tareas y Áreas, de 44 px", !!m1 && m1.open && m1.root === "Cerrar menú" && /^Vista/.test(labels[0] ?? "") && labels[1] === "Tareas" && labels[2] === "Áreas" && m1.out.every((b) => b.y > m1.rootAt.top && b.w >= 44 && b.h >= 44), JSON.stringify(m1));
+  j.check("junto a una máquina brota también «Panel», debajo de Áreas", labels[3] === "Panel", labels.join(" / "));
   await capture(j, "menu-abierto", "Menú árbol abierto");
 
-  // 0b. «Áreas»: the LM's schematic; a tap on a node and she walks there (Viaje, the shared setting).
+  // 0a. «Panel» shows the machine's card and turns into the X that hides it; the menu stays open all along.
+  await j.tap(".room-ui:not(.hidden) .panel-btn", "Panel");
+  await p.waitForTimeout(300);
+  const card1 = await p.evaluate(() => [...document.querySelectorAll(".cab-machine:not(.hidden)")].find((c) => c.checkVisibility())?.querySelector(".cm-head b")?.textContent);
+  const m1b = await menu(p);
+  j.check("«Panel» muestra la tarjeta de la máquina y pasa a ser la X que la oculta; el menú sigue abierto", !!card1 && !!m1b?.open && m1b.out.some((b) => b.label === "Cerrar panel"), `${card1} · ${JSON.stringify(m1b)}`);
+  await capture(j, "panel", "Panel de la máquina desde el menú");
+  await j.tap(".room-ui:not(.hidden) .panel-btn.rm-open", "X del menú: Cerrar panel");
+  await p.waitForTimeout(300);
+  const card2 = await p.evaluate(() => [...document.querySelectorAll(".cab-machine:not(.hidden)")].some((c) => c.checkVisibility()));
+  const m1c = await menu(p);
+  j.check("la X de «Panel» oculta la tarjeta y el menú sigue abierto", !card2 && !!m1c?.open && m1c.out.some((b) => b.label === "Panel"), JSON.stringify(m1c));
+
+  // 0b. «Áreas»: the Navigation window for the LM; the menu hides under it.
   await j.tap(".room-ui:not(.hidden) .areas-btn", "Áreas");
-  await p.waitForTimeout(500);
-  const ar = await p.evaluate(() => {
-    const w = document.querySelector(".areas-window:not(.hidden)");
-    return w && { scope: w.querySelector(".tb-scope")?.textContent, nodes: [...w.querySelectorAll(".ar-node")].map((b) => { const r = b.getBoundingClientRect(); return { id: b.dataset.area, label: b.getAttribute("aria-label"), w: r.width, h: r.height }; }), lines: w.querySelectorAll(".ar-links line").length };
-  });
-  j.check("«Áreas» abre el esquema del LM (el vehículo donde está, automático): sus puestos como nodos de 44 px unidos por líneas", !!ar && /^Módulo \(automático\) · Viaje/.test(ar.scope ?? "") && ar.nodes.length >= 5 && ar.nodes.every((n) => n.w >= 44 && n.h >= 44) && ar.lines >= 4 && ar.nodes.some((n) => n.id === "ecs"), JSON.stringify(ar));
-  const m5 = await menu(p);
-  j.check("con Áreas abierta, su icono del menú es la X que la cierra", (m5?.out ?? []).some((b) => b.label === "Cerrar áreas"), JSON.stringify(m5));
-  await capture(j, "areas-modulo", "Áreas: esquema del LM");
-  // Its gear: the same shared settings as the task list (no «Todos»: a schematic shows one vehicle).
+  await p.waitForTimeout(600);
+  const ar = await areas(p);
+  j.check("«Áreas» abre a toda pantalla el mapa 3D del LM (donde está, automático) y debajo sus áreas", !!ar && /^Módulo \(automático\) · Viaje/.test(ar.scope) && ar.canvas.w >= 300 && ar.canvas.h >= 150 && ar.rows.length >= 5 && ar.boxes.length === ar.rows.length && ar.rows.some((r) => r.id === "ecs"), JSON.stringify(ar));
+  j.check("cada área dice lo que hay y tiene su «Ir» de 44 px", !!ar && ar.rows.every((r) => r.desc.length > 3 && /^Ir a /.test(r.go) && r.gw >= 44 && r.gh >= 44), JSON.stringify(ar?.rows));
+  j.check("arriba solo los botones (+, −, Cenital, ⚙︎, ×) de 44 px, sin texto encima del mapa", !!ar && ar.overText.length === 0 && ar.tools.length === 5 && ar.tools.every((t) => t.w >= 44 && t.h >= 44), JSON.stringify(ar && { tools: ar.tools, overText: ar.overText }));
+  j.check("con Áreas abierta el menú se oculta", !(await menu(p)));
+  await capture(j, "areas-modulo", "Áreas: mapa 3D del LM");
+  // A finger turns it, a pinch zooms it (reglas.md §5.7, its one exception), and «+» zooms too.
+  const canvas = await p.locator(".areas-window .nav-canvas canvas").boundingBox();
+  await dragAcross(p, canvas);
+  await p.waitForTimeout(200);
+  const turned = await areas(p);
+  j.check("arrastrar el dedo por el mapa lo gira", !!turned && Math.abs(turned.yaw - ar.yaw) > 0.05, `${ar?.yaw} → ${turned?.yaw}`);
+  await pinchOut(p, canvas);
+  await p.waitForTimeout(200);
+  const pinched = await areas(p);
+  j.check("pellizcar hacia fuera lo amplía", !!pinched && pinched.zoom > turned.zoom * 1.3, `${turned?.zoom} → ${pinched?.zoom}`);
+  await j.tap('.areas-window [data-act="zout"]', "Alejar");
+  await j.tap('.areas-window [data-act="zout"]', "Alejar");
+  // A tap on a box picks it, and its row lights up.
+  const target = (await areas(p)).boxes.find((b) => b.id === "esterilla");
+  if (target) {
+    await p.touchscreen.tap(target.x, target.y);
+    await p.waitForTimeout(300);
+  }
+  const picked = await areas(p);
+  j.check("tocar un área del mapa la elige y se marca en la lista", !!picked?.picked && picked.rows.some((r) => r.on && r.id === picked.picked), JSON.stringify({ picked: picked?.picked, target }));
+  await capture(j, "areas-girado", "Áreas: el mapa girado y ampliado con el dedo");
+  // Its gear: the same shared settings as the task list (no «Todos»: the map shows one vehicle).
   await j.tap('.areas-window [data-view][aria-label="Ajustes de áreas"]', "⚙︎ Ajustes de áreas");
-  const as = await p.evaluate(() => ({ travel: [...document.querySelectorAll(".areas-window [data-travel]")].map((b) => b.dataset.travel + (b.getAttribute("aria-checked") === "true" ? "*" : "")), vehicles: [...document.querySelectorAll(".areas-window [data-vehicle]")].map((b) => b.dataset.vehicle + (b.getAttribute("aria-checked") === "true" ? "*" : "")) }));
-  j.check("los ajustes de Áreas son los compartidos: Viaje/Teletransporte y el vehículo (automático, nave, estación, módulo)", as.travel.join() === "viaje*,teletransporte" && as.vehicles.join() === "auto*,nodriza,estacion,modulo", JSON.stringify(as));
+  const as = await p.evaluate(() => ({ travel: [...document.querySelectorAll(".areas-window [data-travel]")].map((b) => b.dataset.travel + (b.getAttribute("aria-checked") === "true" ? "*" : "")), vehicles: [...document.querySelectorAll(".areas-window [data-vehicle]")].map((b) => b.dataset.vehicle + (b.getAttribute("aria-checked") === "true" ? "*" : "")), back: !!document.querySelector('.areas-window [data-view][aria-label="Volver al mapa de áreas"]') }));
+  j.check("el engranaje cambia el mapa por los ajustes compartidos (Viaje/Teletransporte y el vehículo) y pasa a icono de lista", as.back && as.travel.join() === "viaje*,teletransporte" && as.vehicles.join() === "auto*,nodriza,estacion,modulo", JSON.stringify(as));
   await capture(j, "areas-ajustes", "Ajustes de Áreas");
   await j.tap('.areas-window [data-vehicle="estacion"]', "Vehículo: Estación");
   await j.tap('.areas-window [data-view][aria-label="Volver al mapa de áreas"]', "Mapa de áreas");
-  const st = await p.evaluate(() => [...document.querySelectorAll(".areas-window .ar-node")].map((b) => b.textContent));
-  j.check("con «Estación», el esquema es el de la ISS (Harmony, Destiny…)", st.some((t) => /Harmony/.test(t)) && st.some((t) => /Destiny/.test(t)), st.join(" / "));
-  await capture(j, "areas-estacion", "Áreas: esquema de la estación");
+  const st = await areas(p);
+  j.check("con «Estación», el mapa y la lista son los de la ISS (Harmony, Destiny…)", !!st && st.rows.some((r) => /Harmony/.test(r.name)) && st.rows.some((r) => /Destiny/.test(r.name)) && st.boxes.length === st.rows.length, JSON.stringify(st?.rows.map((r) => r.name)));
+  await capture(j, "areas-estacion", "Áreas: mapa de la estación");
   await j.tap('.areas-window [data-view][aria-label="Ajustes de áreas"]', "⚙︎ Ajustes de áreas");
   await j.tap('.areas-window [data-vehicle="auto"]', "Vehículo: Automático");
   await j.tap('.areas-window [data-view][aria-label="Volver al mapa de áreas"]', "Mapa de áreas");
-  await j.tap('.areas-window .ar-node[data-area="ecs"]', "Área: Panel del ECS");
+  await j.tap('.areas-window .tb-go[data-area="ecs"]', "Ir: Panel del ECS");
   await p.waitForTimeout(400);
   const walk = await p.evaluate(() => ({ active: window.codeship.journey.active, legs: window.codeship.journey.plan.map((l) => `${l.kind} ${l.to}`), open: !!document.querySelector(".areas-window:not(.hidden)") }));
-  j.check("tocar «Panel del ECS» cierra Áreas y ella va andando por el camino real (Viaje)", !walk.open && (walk.active ? walk.legs.some((l) => /^andar modulo:ecs/.test(l)) : true), JSON.stringify(walk));
+  j.check("«Ir» en «Panel del ECS» cierra Áreas y ella va andando por el camino real (Viaje)", !walk.open && (walk.active ? walk.legs.some((l) => /^andar modulo:ecs/.test(l)) : true), JSON.stringify(walk));
+  const m6 = await menu(p);
+  j.check("al cerrarse Áreas el menú vuelve tal como estaba: abierto", !!m6?.open && (m6?.out ?? []).some((b) => b.label === "Áreas"), JSON.stringify(m6));
   await p.waitForFunction(() => !window.codeship.journey.active, null, { timeout: 60000 }).catch(() => {});
   const near = await p.evaluate(() => window.codeship.cabin.near());
-  j.check("y llega al panel del ECS", near === "ecs", String(near));
+  j.check("y llega al panel del ECS, sin que su tarjeta salga sola", near === "ecs" && !(await p.evaluate(() => [...document.querySelectorAll(".cab-machine:not(.hidden)")].some((c) => c.checkVisibility()))), String(near));
   await capture(j, "areas-llega", "Llega al panel del ECS desde Áreas");
-  // 1. A new game: she is in the LM. The list shows the LM's tasks (automatic), with nothing but «Ir».
+
+  // 1. A new game: she is in the LM. The list shows only the LM's tasks (automatic): none at the start.
   await j.tap(".room-ui:not(.hidden) .cab-tasks", "Tareas");
   await p.waitForTimeout(400);
-  const m2 = await menu(p);
-  j.check("con la lista abierta, «Tareas» del menú es una X («Cerrar tareas») y el menú sigue fuera, sin quedar debajo de la lista", !!m2 && m2.open && m2.out.some((b) => b.label === "Cerrar tareas"), JSON.stringify(m2));
+  j.check("con la lista abierta el menú se oculta (la lista ocupa la pantalla y tiene su propio cierre)", !(await menu(p)));
   const l1 = await board(p);
   j.check("la lista abre con [⚙︎ Ajustes de tareas][✕ Cerrar tareas]", l1?.title === "Tareas" && l1.toggle === "Ajustes de tareas" && l1.close === "Cerrar tareas", JSON.stringify(l1));
   await headerButtons(j, "Lista");
-  j.check("en la lista ya no están el interruptor ni los filtros (están en los ajustes)", l1?.travel === 0 && l1.chips === 0 && l1.vehicleChoices === 0, JSON.stringify(l1));
-  // At the start the LM has no task of its own: the list says so and where the others are.
+  const wide = await p.evaluate(() => { const r = document.querySelector(".task-board:not(.hidden)").getBoundingClientRect(); return { left: r.left, right: innerWidth - r.right }; });
+  j.check("la lista toma su ancho completo de siempre (no deja una columna para el menú)", wide.left <= 20 && wide.right <= 20, JSON.stringify(wide));
+  j.check("en la lista no están el interruptor ni el vehículo (están en los ajustes)", l1?.travel === 0 && l1.vehicleChoices === 0, JSON.stringify(l1));
   const empty = (await j.texts(".task-board .tb-empty, .task-board .tb-hint")).join(" ");
-  j.check("«Automático» por defecto: en el LM solo salen las tareas del módulo (ninguna al empezar), y lo dice", l1?.vehicles.every((v) => v === "modulo") && /En el módulo \(automático\)/.test(l1.scope) && l1.n < l1.total && (l1.n > 0 || (/Nada pendiente en el módulo/.test(empty) && /tareas más fuera de este filtro: ⚙︎ Ajustes de tareas › Todos/.test(empty))), `${JSON.stringify(l1)} · ${empty}`);
+  j.check("«Automático» por defecto: en el LM solo salen las tareas del módulo (ninguna al empezar), y lo dice con la pista", l1?.vehicles.every((v) => v === "modulo") && /En el módulo \(automático\)/.test(l1.scope) && l1.n === 0 && /Nada pendiente en el módulo/.test(empty) && /tareas más en otros vehículos: ⚙︎ Ajustes de tareas › Todos/.test(empty), `${JSON.stringify(l1)} · ${empty}`);
   await capture(j, "lista-modulo", "Lista en el LM");
 
   // 2. The gear: the settings replace the list, and the gear turns into a list icon.
   await j.tap(GEAR, "⚙︎ Ajustes de tareas");
   const s1 = await board(p);
   j.check("⚙︎ cambia la lista por sus ajustes y el engranaje pasa a ser el icono de lista", s1?.title === "Ajustes de tareas" && s1.toggle === "Volver a la lista de tareas" && s1.n === 0, JSON.stringify(s1));
-  j.check("los ajustes llevan Viaje/Teletransporte, los cinco vehículos y los grupos", s1?.travel === 1 && s1.vehicleChoices === 5 && s1.chips >= 1, JSON.stringify(s1));
+  j.check("los ajustes llevan Viaje/Teletransporte y los cinco vehículos (los grupos van en la lista)", s1?.travel === 1 && s1.vehicleChoices === 5 && s1.chips === 0, JSON.stringify(s1));
   j.check("«Viaje» y «Automático» elegidos por defecto", s1?.checkedTravel === "viaje" && s1.checkedVehicle === "auto", JSON.stringify(s1));
   const vehicles = await j.texts(".task-board [data-vehicle]");
   j.check("«Automático: donde está ella» dice dónde está ahora (Módulo)", /^Automático: donde está ella Módulo/.test(vehicles[0] ?? "") && vehicles.slice(1).map((v) => v.replace(/ \d+$/, "")).join("/") === "Nave (Starship)/Estación/Módulo/Todos", vehicles.join(" / "));
   await headerButtons(j, "Ajustes");
   await capture(j, "ajustes", "Ajustes de la lista");
 
-  // 3. Station by hand: back to the list, which shows only the station's tasks.
+  // 3. Station by hand: back to the list, which shows only the station's tasks and its group chips.
   await j.tap('.task-board [data-vehicle="estacion"]', "Vehículo: Estación");
   j.check("«Estación» queda marcada y se guarda en codeship.ajustes", (await board(p))?.checkedVehicle === "estacion" && (await board(p))?.saved === "estacion");
   await j.tap(LIST, "Lista de tareas");
   const l2 = await board(p);
-  j.check("el icono de lista vuelve a la lista: solo tareas de la estación, cada una con «Ir»", l2?.toggle === "Ajustes de tareas" && l2.vehicles.join() === "estacion" && l2.n > 0 && /En la estación · /.test(l2.scope), JSON.stringify(l2));
+  j.check("el icono de lista vuelve a la lista: solo tareas de la estación, cada una con «Ir», y los chips de grupo", l2?.toggle === "Ajustes de tareas" && l2.vehicles.join() === "estacion" && l2.n > 0 && /En la estación · /.test(l2.scope) && l2.chips >= 2, JSON.stringify(l2));
   await capture(j, "lista-estacion", "Lista filtrada a la estación");
 
-  // 4. A group: only its tasks, and the scope line says so.
-  await j.tap(GEAR, "⚙︎ Ajustes de tareas");
-  const chip = await p.evaluate(() => document.querySelector('.task-board [data-group]:not([data-group=""])')?.dataset.group);
+  // 4. A group chip in the list: only its tasks, and the scope line says so.
+  const chip = await p.evaluate(() => document.querySelector('.task-board .tb-chips [data-group]:not([data-group=""])')?.dataset.group);
   if (chip) {
-    await j.tap(`.task-board [data-group="${chip}"]`, `Grupo: ${chip}`);
-    await j.tap(LIST, "Lista de tareas");
+    await j.tap(`.task-board .tb-chips [data-group="${chip}"]`, `Grupo: ${chip}`);
     const g = await p.evaluate(() => [...document.querySelectorAll(".task-board .tb-group")].map((h) => h.textContent));
-    j.check("un grupo deja en la lista solo ese grupo, y la línea de arriba lo dice", g.length === 1 && (await board(p))?.scope.includes(g[0]), `${g.join(", ")} · ${(await board(p))?.scope}`);
+    j.check("un chip de grupo deja en la lista solo ese grupo, y la línea de arriba lo dice", g.length === 1 && (await board(p))?.scope.includes(g[0]), `${g.join(", ")} · ${(await board(p))?.scope}`);
   } else j.check("la estación tiene al menos un grupo de tareas", false);
-  // The menu's X closes the list too, and «Tareas» comes back.
-  await j.tap('.room-ui:not(.hidden) .cab-tasks.rm-open', "X del menú: Cerrar tareas");
+  // The list's own ✕ closes it, and the menu comes back as it was: open.
+  await j.tap(".task-board [data-close]", "Cerrar tareas");
   await p.waitForTimeout(300);
   const m3 = await menu(p);
-  j.check("la X del menú cierra la lista y vuelve a ser «Tareas»", !(await p.locator(".task-board:not(.hidden)").count()) && !(m3?.out ?? []).some((b) => b.label === "Cerrar tareas"), JSON.stringify(m3));
+  j.check("el ✕ de la lista la cierra y el menú vuelve tal como estaba (abierto, con «Tareas»)", !(await p.locator(".task-board:not(.hidden)").count()) && !!m3?.open && (m3?.out ?? []).some((b) => b.label === "Tareas"), JSON.stringify(m3));
 
   // 5. Kept over a reload; the group is not (it starts at «Todas» every time the list opens).
   await p.reload();

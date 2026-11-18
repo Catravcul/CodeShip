@@ -81,6 +81,7 @@ export class Journey {
   async tap(selector, what = selector) {
     const loc = this.page.locator(selector).first();
     try {
+      await this.showPanel(selector);
       await this.sprout(selector);
       await loc.waitFor({ state: "visible", timeout: 15000 });
       await this.invariants(loc, what);
@@ -94,6 +95,28 @@ export class Journey {
       this.check(`se puede tocar «${what}»`, false, e.message.split("\n")[0]);
       return false;
     }
+  }
+
+  /**
+   * A machine's or an area's card never opens on its own (reglas.md §5.8): a player shows it with the tree
+   * menu's «Panel» first. Does nothing if the target is not in a card, or the card is already shown.
+   */
+  async showPanel(selector) {
+    const hidden = await this.page
+      .evaluate((sel) => !document.body.classList.contains("panel-on") && [...document.querySelectorAll(sel)].some((e) => e.closest(".cab-machine")), selector)
+      .catch(() => false);
+    if (!hidden) return;
+    await this.page.waitForFunction(() => [...document.querySelectorAll(".panel-btn:not(.hidden)")].some((b) => b.closest(".root-menu")?.checkVisibility()), null, { timeout: 8000 }).catch(() => {});
+    const btn = await this.page.evaluate(() => {
+      const b = [...document.querySelectorAll(".panel-btn:not(.hidden)")].find((x) => x.closest(".root-menu")?.checkVisibility());
+      if (!b) return null;
+      b.dataset.panelTap = "1";
+      return true;
+    });
+    if (!btn) return;
+    await this.tap('.panel-btn[data-panel-tap="1"]', "Panel");
+    await this.page.evaluate(() => document.querySelectorAll("[data-panel-tap]").forEach((b) => delete b.dataset.panelTap));
+    await this.page.waitForFunction(() => document.body.classList.contains("panel-on"), null, { timeout: 5000 }).catch(() => {});
   }
 
   /**

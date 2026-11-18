@@ -32,3 +32,5 @@ body.in-duel .root-menu, body.in-settings .root-menu.flight-bar { display: none 
 /* Hidden for a moment, kept as it was (reglas.md §5.8): manual piloting counts as a challenge, and the
    full-screen windows (Tareas, Misiones, Áreas) have their own close. */
 body.in-carrier-hand .puente-ui .root-menu, body.arm-manual .root-menu, body.in-tasks .root-menu, body.in-missions .root-menu, body.in-areas .root-menu { display: none !important; }
+/* A machine's or an area's card shows only from the menu's «Panel» (machine-panel.ts, reglas.md §5.8). */
+body:not(.panel-on) .cab-machine { display: none !important; }

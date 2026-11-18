@@ -7,6 +7,7 @@ import type { SketchItem } from "@modules/navigation/application/plan-sketch";
 import { SKETCH_COLOUR } from "../adapters/three/plan-overlay";
 import { dockCardHtml } from "./nav-dock-card";
 import { CameraStick } from "../adapters/input/camera-stick";
+import { mapGestures } from "./map-gestures";
 import "./nav-map.css";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
@@ -67,7 +68,7 @@ interface Projected {
 
 /**
  * Navigation map of the region, mobile first: a 3D-orbit schematic (each body on a stalk over the
- * reference plane, its camera joystick turns it), a row of destinations and a data card for the one picked.
+ * reference plane; a finger or its camera joystick turns it, a pinch zooms it), a row of destinations and a data card for the one picked.
  */
 export class NavMap {
   readonly el: HTMLElement;
@@ -79,7 +80,6 @@ export class NavMap {
   private zoom = 1;
   private picked: NavTarget | undefined;
   private note = "";
-  private tap: { id: number; x: number; y: number } | null = null;
   private readonly camStick: CameraStick;
   private screen: { t: NavTarget; x: number; y: number }[] = [];
   private chipsHtml = "";
@@ -106,22 +106,29 @@ export class NavMap {
     this.home = root;
     this.el = document.createElement("div");
     this.el.className = "nav-map hidden";
+    // Its name is for the screen reader only: no text over the map and its tools (Berón, 2026-11-18).
+    this.el.setAttribute("role", "dialog");
+    this.el.setAttribute("aria-label", deps.title);
     this.el.innerHTML = `
-      <div class="nav-head"><div class="nav-title">${esc(deps.title)}</div>
+      <div class="nav-head">
         <div class="nav-tools"><button data-act="zin" aria-label="Acercar">+</button><button data-act="zout" aria-label="Alejar">−</button><button data-act="view">Cenital</button><button class="missions" data-act="missions">Misiones</button><button class="x" data-act="close" aria-label="Cerrar mapa">×</button></div></div>
-      <div class="nav-body"><div class="nav-canvas"><canvas></canvas><div class="nav-hint">Toca un destino</div></div>
+      <div class="nav-body"><div class="nav-canvas"><canvas></canvas><div class="nav-hint">Arrastra para girar · toca un destino</div></div>
         <div class="nav-side"><div class="nav-chips"></div><div class="nav-card"></div></div></div>`;
     root.appendChild(this.el);
     this.canvas = this.el.querySelector("canvas")!;
     this.chips = this.el.querySelector(".nav-chips")!;
     this.card = this.el.querySelector(".nav-card")!;
     this.el.addEventListener("click", (e) => this.onClick(e));
-    // A tap picks a destination; the map turns only with its camera joystick (reglas.md §5.7: never a drag).
-    this.canvas.addEventListener("pointerdown", (e) => (this.tap = { id: e.pointerId, x: e.clientX, y: e.clientY }));
-    this.canvas.addEventListener("pointerup", (e) => {
-      const t = this.tap;
-      this.tap = null;
-      if (t && e.pointerId === t.id && Math.hypot(e.clientX - t.x, e.clientY - t.y) < 10) this.pickAt(e.clientX, e.clientY);
+    // A tap picks a destination; a finger drag turns the map and a pinch zooms it (reglas.md §5.7, its one
+    // exception), and so does its camera joystick.
+    mapGestures(this.canvas, {
+      rotate: (dx, dy) => {
+        this.yaw -= dx * 0.008;
+        this.elevation = Math.max(0.2, Math.min(Math.PI / 2, this.elevation + dy * 0.008));
+        this.draw();
+      },
+      zoom: (f) => this.setZoom(this.zoom * f),
+      tap: (x, y) => this.pickAt(x, y),
     });
     this.camStick = new CameraStick(this.el.querySelector(".nav-canvas")!, "nav-look", (yaw, pitch) => {
       this.yaw -= yaw;

@@ -242,7 +242,7 @@ export class StationInteriorMode {
     window.addEventListener("keydown", (e) => {
       if (!this.active) return;
       this.keys.add(e.code);
-      if (e.repeat || document.body.classList.contains("in-tasks") || document.body.classList.contains("in-settings")) return;
+      if (e.repeat || document.body.classList.contains("in-tasks") || document.body.classList.contains("in-areas") || document.body.classList.contains("in-settings")) return;
       if (e.code === "Enter" && this.near) this.use(this.near, true);
       if (e.code === "KeyV") this.viewBtn.click();
       if (e.code === "KeyT") this.deps.openTasks();

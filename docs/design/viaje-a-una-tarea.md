@@ -15,16 +15,17 @@ Petición de Berón (2026-11-17): un engranaje junto al botón de cerrar que ocu
 
 | Vista | Cabecera | Qué tiene |
 |---|---|---|
-| Lista | «Tareas» · [⚙︎ Ajustes de tareas] [✕ Cerrar tareas] | La línea de qué enseña («En el módulo (automático) · 0 de 55», «En la estación · Estación · 5 de 55»), el catálogo de especies si está, y las tareas por grupos, cada una con «Ir». Si el filtro deja tareas fuera: «Hay N tareas más fuera de este filtro: ⚙︎ Ajustes de tareas › Todos.» |
-| Ajustes | «Ajustes de tareas» · [☰ Volver a la lista de tareas] [✕] | **Ir a una tarea**: Viaje / Teletransporte. **Vehículo**: Automático: donde está ella (dice dónde: Nave (Starship), Estación o Módulo) · Nave (Starship) · Estación · Módulo · Todos, cada uno con su número de tareas. **Grupo**: Todas, Vuelo y asteroides, Viajes… (los que tienen tareas en ese vehículo). |
+| Lista | «Tareas» · [⚙︎ Ajustes de tareas] [✕ Cerrar tareas] | La línea de qué enseña («En el módulo (automático) · 0 de 55», «En la estación · Estación · 5 de 55»), el catálogo de especies si está, y las tareas por grupos, cada una con «Ir». Debajo, los **chips de grupo** (Todas, Vuelo y asteroides, Viajes…, los que tienen tareas en el vehículo que se enseña). Si hay tareas en otros vehículos: «Hay N tareas más en otros vehículos: ⚙︎ Ajustes de tareas › Todos.» |
+| Ajustes | «Ajustes de tareas» · [☰ Volver a la lista de tareas] [✕] | **Ir a una tarea**: Viaje / Teletransporte. **Vehículo**: Automático: donde está ella (dice dónde: Nave (Starship), Estación o Módulo) · Nave (Starship) · Estación · Módulo · Todos, cada uno con su número de tareas. Los grupos no están aquí: van en la lista (Berón, 2026-11-18). |
 
 - El vehículo es el ajuste `taskVehicle` de `codeship.ajustes` («auto» por defecto; `nodriza`, `estacion`, `modulo`, `todos`). «Automático» usa el vehículo en el que está ella al abrir la lista (`crewIn` de main.ts): el habitáculo y la cabina del LM son el módulo; las cubiertas, el puente y su paseo, la nave; la estación, su pantalla, la bahía y su paseo, la estación. Cada tarea es de un vehículo por su sitio (`place.vehicle`).
 - Viaje/Teletransporte y el vehículo son los mismos en la ventana **Áreas** del menú ([areas.md](areas.md)): un solo ajuste para las dos (`src/ui/task-settings.ts`).
 - El grupo no se guarda: la lista abre siempre en «Todas», como antes.
+- La lista ocupa todo el ancho de la pantalla y tiene su propio ✕: el menú árbol se oculta mientras está abierta y vuelve tal como estaba al cerrarla (reglas.md §5.8).
 - Cerrar (✕ o Escape) cierra la lista desde cualquiera de las dos vistas; al abrirla, sale siempre la lista.
 - Código: `src/ui/task-board.ts`, `shownVehicle` y `tasksIn` en `modules/tasks/application/task-list.ts`. Recorrido: PX-42.
 
-**Para decidir (Berón).** Al empezar una partida ella está en el LM, que no tiene tareas propias: con «Automático» la lista dice «Nada pendiente en el módulo» y que hay 55 fuera del filtro. ¿Lo dejamos así, o «Automático» debería enseñar también los vehículos unidos por una escotilla abierta (el LM acoplado a la Starship)? Y la regla 5.4 dice que la lista tiene todas las tareas: con el filtro siguen todas a un toque (⚙︎ › Todos), pero no a la vista.
+**Decidido (Berón, 2026-11-18; reglas.md §5.8).** «Automático» enseña solo el vehículo donde está ella. Al empezar una partida ella está en el LM, que no tiene tareas propias: la lista sale vacía, dice «Nada pendiente en el módulo» y que hay N tareas más en otros vehículos (⚙︎ › Todos).
 
 ## El camino real
 

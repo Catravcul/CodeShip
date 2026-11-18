@@ -132,6 +132,7 @@ import { TripChip, type TripChipData, type TripStatus } from "./ui/trip-chip";
 import { RootMenu } from "./ui/root-menu";
 import { TripWindow } from "./ui/trip-window";
 import { AreasWindow } from "./ui/areas-window";
+import { MachinePanel } from "./ui/machine-panel";
 import { interiorAreas, landerAreas, starshipAreas, type AreaMap, type AreaNode } from "@modules/tasks/application/areas";
 import { shipPointOf, stationPointOf } from "@modules/tasks/application/journey-world";
 import { LANDER_CABIN } from "@modules/lander-cabin/data/cabin";
@@ -1503,6 +1504,8 @@ const areasWindow = new AreasWindow(root, {
   go: goToArea,
 });
 RootMenu.global({ className: "areas-btn", icon: ICON.areas, label: "Áreas", window: "areas", order: 2 }, () => areasWindow.open()).show(true);
+// «Panel»: the card of the machine or area she is at shows only from the menu (reglas.md §5.8).
+const machinePanel = new MachinePanel();
 
 /** The task list's «Ir»: the real journey there, or (teleport, a setting) straight there through open hatches, or to what joins the vehicles, saying why. */
 function goToTask(t: Task): void {
@@ -1780,6 +1783,7 @@ renderer.setAnimationLoop((now) => {
   // Trips run on their own; she sees them only at that vehicle's console (reglas.md §3.8).
   const running = tripNow();
   tripMenu.show(!!running);
+  machinePanel.tick();
   tripWindow.update(running?.status);
   const trip = atTripConsole() ? running : undefined;
   tripChip.update(trip?.chip, tripPreview.visible);

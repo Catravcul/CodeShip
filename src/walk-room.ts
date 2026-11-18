@@ -222,7 +222,7 @@ export abstract class WalkRoom<Id extends string> {
   /** Something else is on top (a challenge, the settings, the task list, a console's screen). */
   protected busy(): boolean {
     const b = document.body.classList;
-    return b.contains("in-duel") || b.contains("in-settings") || b.contains("in-tasks") || b.contains("in-deck") || b.contains("in-probe") || b.contains("in-missions");
+    return b.contains("in-duel") || b.contains("in-settings") || b.contains("in-tasks") || b.contains("in-areas") || b.contains("in-deck") || b.contains("in-probe") || b.contains("in-missions");
   }
 
   private syncView(): void {

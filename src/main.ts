@@ -1324,7 +1324,7 @@ function allTasks(): Task[] {
     landerEcs: landerEcs.facts(),
   });
 }
-const taskBoard = new TaskBoard(root, allTasks, crewIn, () => vehicleLinks());
+const taskBoard = new TaskBoard(root, allTasks, crewIn);
 // The species catalogue: adopting animals for the ring and the station (docs/design/catalogo-especies.md).
 // Docked, either colony can be carried through the tunnel to the other vehicle's tank.
 interior.aquarium.partner = () => (mothership.dockedTo ? { ops: stationAquarium, where: "a la estación" } : undefined);

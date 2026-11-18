@@ -1,7 +1,7 @@
 // PX-45 Sanctuary 3, the aerial sanctuary (Berón, 2026-11-18; docs/design/santuario3-escena.md), on an iPhone 13
 // with visible taps only. The start screen's «Jugar» on 3 puts Doménica on the training island's helipad at the
 // start of her initiation, walking (gravity: the left stick moves her, the right one the camera). She walks with the
-// stick, the task list's «Ir» walks her to post 6 (never a teleport: the journey bar with «Parar»), a task on
+// stick, the task list's «Ir» walks her to post 2 (never a teleport: the journey bar with «Parar»), a task on
 // another island walks her to the navigation machine with a notice (reglas.md §3.5), the machine's Panel opens the
 // island navigation window (the map window, as Áreas) and «Volar», with the flight programmed on the sheet («Por reto»),
 // flies her to the launch cap in sight. There Áreas'
@@ -43,15 +43,18 @@ async function track(j, ok, ms, maxMs) {
   const t0 = Date.now();
   let s = await s3(j.page);
   let worst = 0;
+  let at = "";
   while (!ok(s) && Date.now() - t0 < ms) {
     const a = s;
     const ta = Date.now();
     await j.page.waitForTimeout(300);
     s = await s3(j.page);
     const d = Math.hypot(s.body.x - a.body.x, s.body.y - a.body.y, s.body.z - a.body.z);
-    worst = Math.max(worst, d / Math.max(0.3, (Date.now() - ta) / 1000));
+    const v = d / Math.max(0.3, (Date.now() - ta) / 1000);
+    if (v > worst) at = `de (${a.body.x.toFixed(1)}, ${a.body.y.toFixed(2)}, ${a.body.z.toFixed(1)}) a (${s.body.x.toFixed(1)}, ${s.body.y.toFixed(2)}, ${s.body.z.toFixed(1)}) en ${Date.now() - ta} ms`;
+    worst = Math.max(worst, v);
   }
-  return { s, worst, ok: worst <= maxMs };
+  return { s, worst, at, ok: worst <= maxMs };
 }
 
 /** Turn the camera with its stick (visible drags) until it looks at a prop of the layout. */
@@ -97,33 +100,33 @@ export async function s3Recorrido(j) {
   await capture(j, "tercera", "Santuario 3: en tercera persona en la isla de entrenamiento");
   await j.tap(".s3-view", "Vista: 1ª persona");
 
-  // 3. The task list: the initiation's posts, each with «Ir»; post 6 is on the helipad: she walks there.
+  // 3. The task list: the initiation's posts of this island, each with «Ir»; she walks to post 2, the medical centre (the centrifuge seats her in its gondola on arrival).
+  // (With s3-iniciacion-2 every post here has its challenge: the «En construcción» card is checked by PX-47's posts 10
+  // and 13; post 6 went to the glacier.)
   await j.tap(".s3-tasks", "Tareas");
   const rows = await p.evaluate(() => [...document.querySelectorAll(".task-board [data-go]")].map((b) => b.dataset.go));
-  j.check("Tareas lista los puestos de la iniciación de esta isla, cada uno con «Ir»", rows.length >= 10 && rows.includes("s3-puesto-6"), rows.join(", "));
+  j.check("Tareas lista los puestos de la iniciación de esta isla, cada uno con «Ir»", rows.length >= 8 && rows.includes("s3-puesto-2"), rows.join(", "));
   await capture(j, "tareas", "Santuario 3: la lista de tareas");
-  await j.tap('.task-board [data-go="s3-puesto-6"]', "Ir: Vuelo parabólico");
+  await j.tap('.task-board [data-go="s3-puesto-2"]', "Ir: Centro médico");
   const s2 = await until(j, (s) => s.mode !== "ruta" || s.bar, 3000);
   j.check("«Ir» la lleva andando (barra del viaje con «Parar»; sin joystick de moverse)", s2.mode === "ruta" && s2.stop && !s2.move, JSON.stringify({ mode: s2.mode, bar: s2.bar, move: s2.move }));
-  const w1 = await track(j, (s) => s.mode === "libre", 60000, 3);
-  j.check("llega al puesto 6 sin saltos (nunca más rápido que andando)", w1.s.near === "helipuerto-vuelos" && w1.ok, `${w1.s.near} · ${w1.worst.toFixed(2)} m/s`);
-  await j.showPanel(".s3-ui .cm-why");
-  const why = await p.evaluate(() => document.querySelector(".s3-ui .cab-machine:not(.hidden) .cm-why")?.textContent ?? "");
-  j.check("el puesto dice que su reto está «En construcción», con forma (⊘) y no solo color", /⊘/.test(why) && /En construcción/.test(why), why);
-  await capture(j, "puesto", "Santuario 3: el puesto 6 y su tarjeta");
+  const w1 = await track(j, (s) => s.mode === "libre", 330000, 3);
+  const post2 = await p.evaluate(() => window.codeshipS3.layout.machines.filter((m) => m.post === 2).map((m) => m.id));
+  j.check("llega al puesto 2 sin saltos (nunca más rápido que andando)", post2.includes(w1.s.near) && w1.ok, `${w1.s.near} · ${w1.worst.toFixed(2)} m/s ${w1.at}`);
+  await capture(j, "puesto", "Santuario 3: el puesto 2 y su tarjeta");
 
   // 4. A task on another island: she walks to the navigation machine and a notice says to fly there first.
   await j.tap(".s3-tasks", "Tareas");
   await j.taskSettings({ vehicle: "todos" });
-  await j.tap('.task-board [data-go="s3-puesto-10"]', "Ir: Control de misión (otra isla)");
-  const w2 = await track(j, (s) => s.mode === "libre", 60000, 3);
+  await j.tap('.task-board [data-go="s3-puesto-6"]', "Ir: Vuelo parabólico (otra isla: el glaciar)");
+  const w2 = await track(j, (s) => s.mode === "libre", 330000, 3);
   const s3b = await s3(p);
   j.check("una tarea de otra isla la lleva andando a la máquina de navegación y un aviso dice que primero hay que volar (reglas §3.5)", w2.s.near === "nav-entrenamiento" && /volar/.test(s3b.toast), `${w2.s.near} · ${s3b.toast}`);
 
   // 5. The navigation machine: Panel › «Abrir navegación», the island window, «Volar» to the launch cap.
   await j.tap('.s3-ui .cm-acts [data-act="nav"]', "Abrir navegación");
   const nav = await p.evaluate(() => [...document.querySelectorAll(".island-nav .mw-row")].map((r) => ({ id: r.dataset.row, go: !r.querySelector(".mw-go").disabled, sub: r.querySelector(".mw-pick small")?.textContent ?? "" })));
-  j.check("la ventana de navegación lista las cinco islas; la suya «Aquí», sin vuelo", nav.length === 5 && nav.find((r) => r.id === "entrenamiento")?.go === false && nav.filter((r) => r.go).length === 4, JSON.stringify(nav));
+  j.check("la ventana de navegación lista las seis islas; la suya «Aquí», sin vuelo", nav.length === 6 && nav.find((r) => r.id === "entrenamiento")?.go === false && nav.filter((r) => r.go).length === 5, JSON.stringify(nav));
   j.check("cada vuelo dice el aparato y su tiempo", nav.filter((r) => r.go).every((r) => /(Helicóptero|Alfombra).*\d+ (s|min)/.test(r.sub)), JSON.stringify(nav.map((r) => r.sub)));
   await capture(j, "navegacion", "Santuario 3: la máquina de navegación");
   await j.tap('.island-nav .mw-pick[data-pick="lanzadera"]', "Lanzadera en la lista");

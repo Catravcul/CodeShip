@@ -726,6 +726,10 @@ function buildRoom(b: Builder, r: RoomDef, k: number): void {
     { side: "w", axis: "z" as const, at: c.x - hx + t / 2, from: c.z - hz, to: c.z + hz },
   ];
   for (const w of walls) for (const s of wallWithGaps({ axis: w.axis, at: w.at, from: w.from, to: w.to, y0: 0, y1: r.height, thick: t, gaps: w.side === d.side ? gap : [] })) b.block("pared", s);
+  // The threshold: the floor across the wall in the doorway (the hall's floor stops 0,2 m short of the island's, and with
+  // small steps she would drop through that strip into the sea under the island).
+  const sill = d.side === "n" || d.side === "s" ? { x0: gap[0]!.from, x1: gap[0]!.to, z0: d.side === "n" ? c.z + hz - t - 0.05 : c.z - hz - 0.05, z1: d.side === "n" ? c.z + hz + 0.05 : c.z - hz + t + 0.05 } : { z0: gap[0]!.from, z1: gap[0]!.to, x0: d.side === "e" ? c.x + hx - t - 0.05 : c.x - hx - 0.05, x1: d.side === "e" ? c.x + hx + 0.05 : c.x - hx + t + 0.05 };
+  b.floor(area, 0, sill);
   b.block("tejado", { ...around(c.x, c.z, hx, hz), y0: r.height, y1: r.height + 0.3 }, false);
   // The door's points, outside and inside, and the road it joins.
   const n = d.side === "n" ? { x: 0, z: 1 } : d.side === "s" ? { x: 0, z: -1 } : d.side === "e" ? { x: 1, z: 0 } : { x: -1, z: 0 };

@@ -7,28 +7,35 @@ import { textSign } from "./interior/sign";
 /**
  * The training island's equipment, furniture and fixtures (data/fixtures.ts) as models at true size: each kind built
  * from boxes, cylinders and lathes in its own frame (base at y = 0, front towards +z), then turned and placed, and
- * all of them merged by material, so hundreds of pieces cost a few dozen draw calls on a phone. The pieces with a
+ * all of them merged into one mesh per kind of material (the colours in the vertices), so the whole island costs about six
+ * draw calls on a phone. The pieces with a
  * plate get a small label with their name and their label (real, en desarrollo, licencia).
  */
 
 type Part = { g: THREE.BufferGeometry; m: string };
 
-// Materials by key: «c» matte, «m» metal, «e» lit (screens, lamps), «g» glass.
+// Materials by kind: «c» matte, «m» metal, «e» lit (screens, lamps), «g» glass, «t» the lit ceiling, «d» two-sided.
+// The colour of each piece goes in its vertices, so the whole island's equipment is one mesh per kind: a handful of
+// draw calls however many colours there are.
 const cache = new Map<string, THREE.Material>();
-function material(key: string): THREE.Material {
-  const hit = cache.get(key);
+function material(kind: string): THREE.Material {
+  const hit = cache.get(kind);
   if (hit) return hit;
-  const [kind, hex] = key.split(":") as [string, string];
-  const color = parseInt(hex, 16);
+  const vertexColors = true;
   let m: THREE.Material;
-  if (kind === "m") m = new THREE.MeshStandardMaterial({ color, roughness: 0.4, metalness: 0.6 });
-  else if (kind === "e") m = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.7, roughness: 0.5 });
-  else if (kind === "g") m = new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.3, roughness: 0.05, metalness: 0.1, depthWrite: false, side: THREE.DoubleSide });
-  else if (kind === "t") m = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.45, roughness: 0.9 });
-  else if (kind === "d") m = new THREE.MeshStandardMaterial({ color, roughness: 0.8, side: THREE.DoubleSide });
-  else m = new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0.05 });
-  cache.set(key, m);
+  if (kind === "m") m = new THREE.MeshStandardMaterial({ vertexColors, roughness: 0.4, metalness: 0.6 });
+  else if (kind === "e" || kind === "t") m = new THREE.MeshBasicMaterial({ vertexColors });
+  else if (kind === "g") m = new THREE.MeshStandardMaterial({ vertexColors, transparent: true, opacity: 0.3, roughness: 0.05, metalness: 0.1, depthWrite: false, side: THREE.DoubleSide });
+  else if (kind === "d") m = new THREE.MeshStandardMaterial({ vertexColors, roughness: 0.8, side: THREE.DoubleSide });
+  else m = new THREE.MeshStandardMaterial({ vertexColors, roughness: 0.8, metalness: 0.05 });
+  cache.set(kind, m);
   return m;
+}
+/** The colour of a key, as the vertices carry it (the ceiling's light a little dimmer than a screen's). */
+function keyColor(key: string): THREE.Color {
+  const [kind, hex] = key.split(":") as [string, string];
+  const c = new THREE.Color(parseInt(hex, 16));
+  return kind === "t" ? c.multiplyScalar(0.85) : c;
 }
 const C = (c: number) => `c:${c.toString(16).padStart(6, "0")}`;
 const Mt = (c: number) => `m:${c.toString(16).padStart(6, "0")}`;
@@ -650,9 +657,15 @@ export function buildFixtures(fixtures: readonly PlacedFixture[]): THREE.Group {
       g.applyMatrix4(m4);
       // Keep only what every geometry has, so they merge.
       for (const name of Object.keys(g.attributes)) if (name !== "position" && name !== "normal") g.deleteAttribute(name);
-      const list = buckets.get(p.m) ?? [];
+      const col = keyColor(p.m);
+      const n = g.attributes.position!.count;
+      const rgb = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) rgb.set([col.r, col.g, col.b], i * 3);
+      g.setAttribute("color", new THREE.BufferAttribute(rgb, 3));
+      const kind = p.m.split(":")[0]!;
+      const list = buckets.get(kind) ?? [];
       list.push(g);
-      buckets.set(p.m, list);
+      buckets.set(kind, list);
       if (g !== p.g) p.g.dispose();
     }
     if (f.plate) {

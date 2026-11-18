@@ -124,6 +124,26 @@ for (const k of [1, 1.5]) {
       expect(bad).toEqual([]);
     });
 
+    it("en cada puerta hay umbral: a pasitos de 2 cm (como anda el «Ir» a muchos fotogramas) no cae al mar bajo la isla", () => {
+      const bad: string[] = [];
+      for (const fuera of L.graph.points.filter((p) => /^entrenamiento:[a-z-]+:fuera$/.test(p.id))) {
+        const dentro = byId.get(fuera.id.replace(/fuera$/, "dentro"));
+        if (!dentro) continue;
+        let b = placeAt(L.world, fuera.x, fuera.y, fuera.z)!;
+        for (let i = 0; i < 2000 && Math.hypot(dentro.x - b.x, dentro.z - b.z) > 0.03; i++) {
+          const dx = dentro.x - b.x;
+          const dz = dentro.z - b.z;
+          const s = Math.min(0.02, Math.hypot(dx, dz)) / Math.hypot(dx, dz);
+          b = step(L.world, b, { dx: dx * s, dz: dz * s });
+          if (b.motion !== "gravedad") {
+            bad.push(`${fuera.id}: al agua en (${b.x.toFixed(2)}, ${b.z.toFixed(2)})`);
+            break;
+          }
+        }
+      }
+      expect(bad).toEqual([]);
+    });
+
     it("la sala de control de la NBL está en el piso alto, sobre la piscina, y se sube andando por su escalera", () => {
       const a = L.areas.find((q) => q.id === "entrenamiento:nbl-control")!;
       const pool = L.world.waters.find((w) => w.id === "nbl-piscina")!;

@@ -22,7 +22,10 @@ Fuentes: `data/sources.ts`. La centrífuga, el parabólico, los simuladores, la 
 - **Caminos libres.** Medio metro entre cada tramo del «Ir» y cada pieza en la que se choca. Los sitios de los retos de
   los puestos 1–4 y 7 y el paso de las entrenadoras (PX-46) quedan sin muebles: el paso de la entrenadora del puesto 4
   va ahora por el pasillo de x = 2,5 (`stages.ts`), lejos de la esclusa de la cámara hipobárica.
-- **Rendimiento.** Menos de 2000 piezas y menos de 45 rótulos; 307 llamadas de dibujo como máximo en PX-49 (tope 600).
+- **Rendimiento.** Menos de 2000 piezas y menos de 45 rótulos; 482 llamadas de dibujo como máximo en PX-49 (tope 600). El equipo de toda la isla es una malla por tipo de material, con el color en los vértices: unas seis llamadas en vez de 106 (con lo de `s3-iniciacion-2` se llegaba a 601).
+- **Umbral en cada puerta.** El suelo de cada nave acababa 0,2 m antes que el de la isla: en el hueco de la puerta,
+  andando a pasitos (el «Ir» a muchos fotogramas por segundo), caía al mar bajo la isla y salía nadando (PX-45 lo veía
+  como un salto de 2 m al entrar al centro médico; ya pasaba en `integracion`). Ahora hay un umbral (`layout.ts`).
 - **El mar no tapa las piscinas.** El plano del mar (y = −0,6) tiene un agujero sobre cada piscina, o escondía su
   fondo: las maquetas de la NBL a 12 m no se veían.
 
@@ -37,7 +40,7 @@ Fuentes: `data/sources.ts`. La centrífuga, el parabólico, los simuladores, la 
 | NBL, taquillas | Seis bloques de taquillas en la pared norte | `S.generic` | real |
 | NBL, sala de control | En el piso alto (4,5 m), con ventanas sobre la piscina: tres puestos (vídeo, director de la prueba, ECS) y el del controlador al lado; pared de vídeo; escalera de 25 peldaños | `S.nblPodcast` | real; altura y sitio nuestros |
 | NBL, cámara hiperbárica | Cámara de dos esclusas en la esquina noreste, que se recorre | `S.nblCranes`, `S.nblPage` | real; medidas de una cámara corriente; la real está 20 pies bajo tierra |
-| SVMF | Carriles y grúa puente, puerta industrial norte, escalones en las escotillas de Destiny, Dragon y Orion, la cápsula de Orion (Ø 5,02 × 3,3 m), Unity y Quest enteras, plataforma de trabajo junto a Destiny con su escalera, suelo de cojinetes de aire (PABF) con su trineo, cinco bastidores ISPR, bancos de trabajo, armarios, plataforma elevadora, carros de herramientas, mesa de reuniones | `S.svmfPage`, `S.svmfWiki`, `S.orion`, `S.unity`, `S.quest` | real; plataforma y su escalera nuestras |
+| SVMF | (Con la cabina del LM de `s3-iniciacion-2`, que no se toca.) Carriles y grúa puente, puerta industrial norte, escalones en las escotillas de Destiny, Dragon y Orion, la cápsula de Orion (Ø 5,02 × 3,3 m), Unity y Quest enteras, plataforma de trabajo junto a Destiny con su escalera, suelo de cojinetes de aire (PABF) con su trineo, cinco bastidores ISPR, bancos de trabajo, armarios, plataforma elevadora, carros de herramientas, mesa de reuniones | `S.svmfPage`, `S.svmfWiki`, `S.orion`, `S.unity`, `S.quest` | real; plataforma y su escalera nuestras |
 | Control de misión | Cuatro filas de cuatro consolas (la trinchera y la segunda fila más bajas), sillas, barandillas de madera, FLIGHT en la tercera fila y CAPCOM en la segunda, cinco pantallas grandes y nueve pequeñas al frente | `S.fcr1`, `S.mocrRows`, `S.mccRestore` | real |
 | Gimnasio | Cintas, bicis, jaulas, banco, mancuernas, polea, remo, ARED, suelo de caucho, esterilla, espejo, taquillas y bancos, fuente, discos, cajones, tele, reloj, pizarra | `S.ascr` (ARED: el material de a bordo); el resto `S.generic` | real |
 | Centro médico | Consulta con el ECG, la camilla, la cortina, el tallímetro y el equipo de pared; cabina de audiometría con su audiómetro; sala del ecógrafo; mesa del médico; optotipo a 6,1 m; sala de espera (doce sillas, mesa baja, recepción, tele, planta); archivo de historiales (seis archivadores, estanterías, mesa); carro de paradas | `S.snellen`, `S.training`, `S.generic` | real |

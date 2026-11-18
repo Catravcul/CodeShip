@@ -235,7 +235,7 @@ Cada rama lleva sus pruebas, su recorrido PX (desde PX-44), sus capturas en el m
 | 4 | `s3-iniciacion-1` | Hecha ([santuario3-puestos.md](santuario3-puestos.md)): puestos 1–4 y 7 (selección, medicina, agua, hipobárica, piscina) con su animación en el sitio, reutilizando los pasos del EMU; las entrenadoras de Cold Sanctuary con su jornada; vuelos entre islas manual y por reto; escala para todas las áreas; el muelle fuera de los 300 m | PX-46 `s3-iniciacion` |
 | 5 | `s3-iniciacion-2` | Hecha ([santuario3-puestos.md](santuario3-puestos.md)): puestos 5, 6, 8, 9, 11 y 12 (centrífuga que gira con ella en la góndola, A310 Zero-G desde la pista de hielo azul de un glaciar al que se va en helicóptero, simulador de Dragon con el acople a mano de la Starship y el alunizaje a mano en la cabina del LM, robótica con el reto del Canadarm2, meteoritos de ANSMET, supervivencia en frío); sin sustituta fuera del turno (el puesto espera y la tarjeta dice cuándo empieza el siguiente) y salida anticipada de las entrenadoras | PX-47 `s3-iniciacion-2` |
 | 6 | `s3-lanzamiento` | Puestos 10 y 13; el paso del 3 al 6 y la partida del 6 desde el lanzamiento | PX-48 `iniciacion-completa` |
-| 7 (opcional) | `s3-energia` | Parque energético y seguridad de aves | PX-49 |
+| 7 (opcional) | `s3-energia` | Parque energético y seguridad de aves | Por asignar (PX-49 es `s3-detalle`: [santuario3-detalle.md](santuario3-detalle.md)) |
 
 Las fases 1 y 2 no dependen de las preguntas y pueden empezar ya. La 3 necesita las respuestas 1, 4, 5 y 6; la 6, la 2 y la 3.
 

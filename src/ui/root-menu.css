@@ -29,3 +29,6 @@
 body.kbd-help .root-menu.open .rm-shoots .rm-label { display: block; }
 @media (pointer: coarse) { .root-menu button:hover .rm-label { display: none; } .root-menu button.rm-show .rm-label { display: block; } }
 body.in-duel .root-menu, body.in-settings .root-menu.flight-bar { display: none !important; }
+/* Hidden for a moment, kept as it was (reglas.md §5.8): manual piloting counts as a challenge, and the
+   full-screen windows (Tareas, Misiones, Áreas) have their own close. */
+body.in-carrier-hand .puente-ui .root-menu, body.arm-manual .root-menu, body.in-tasks .root-menu, body.in-missions .root-menu, body.in-areas .root-menu { display: none !important; }

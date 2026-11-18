@@ -85,16 +85,8 @@ export class Journey {
       await loc.waitFor({ state: "visible", timeout: 15000 });
       await this.invariants(loc, what);
       // A finger on a phone, the mouse on a desktop.
-      const press = (ms) => (this.opts.mobile === false ? loc.click({ timeout: ms }) : loc.tap({ timeout: ms }));
-      // The tree menu folds back 5 s after the last touch: at the suite's few frames per second it may fold
-      // while the finger is on the way; then the player opens it again (one more tap on the gear).
-      const inMenu = await loc.evaluate((el) => !!el.closest(".root-menu .rm-shoots")).catch(() => false);
-      if (!inMenu) await press(15000);
-      else
-        await press(8000).catch(async () => {
-          await this.sprout(selector);
-          await press(15000);
-        });
+      if (this.opts.mobile === false) await loc.click({ timeout: 15000 });
+      else await loc.tap({ timeout: 15000 });
       // A hatch's action (in, out, up, down) starts a passage once she is at it.
       if (/data-act="(entrar|salir|subir|bajar)/.test(selector)) await this.throughHatches();
       return true;
@@ -293,20 +285,8 @@ export class Journey {
     await p.waitForFunction((i) => (document.querySelector(i)?.getBoundingClientRect().width ?? 0) >= 44, item, { timeout: 5000 }).catch(() => {});
   }
 
-  /**
-   * A tap on an icon that sprouts from a root menu: opens the menu and taps it. The shoots fold back 5 s after
-   * the root was touched, which a slow, shared machine can pass between the two taps: then it opens it again.
-   */
+  /** A tap on an icon that sprouts from a root menu: opens the menu (it stays open until its X) and taps it. */
   async tapInMenu(bar, item, what) {
-    for (let n = 0; n < 2; n++) {
-      await this.openMenu(bar, item);
-      try {
-        await this.page.locator(item).first().tap({ timeout: 4000 });
-        return true;
-      } catch {
-        // Folded back before the tap landed: open it again.
-      }
-    }
     await this.openMenu(bar, item);
     return this.tap(item, what);
   }

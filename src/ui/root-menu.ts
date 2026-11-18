@@ -15,8 +15,6 @@ export interface RootItem {
   readonly order?: number;
 }
 
-/** Retract the shoots after this long without a touch, ms. */
-const RETRACT_MS = 5000;
 /** A press this long shows the label (phones have no hover), ms. */
 const LONG_PRESS_MS = 450;
 
@@ -35,9 +33,10 @@ export interface GlobalRootItem {
 /**
  * The general tree menu (docs/design/reglas.md §5.8, ux-acciones.md §Menú árbol): one root icon, a gear, at the
  * top right of every mode. A tap turns it into an X and sprouts the icons below it: Vista, Tareas and whatever
- * applies now (Trayecto while a trip runs; the cockpit's flight toggles). They fold back after a few seconds or
- * after one is used. An icon that opens a window turns into an X while the window is open, and the menu stays
- * out until it closes. Labels show on hover, on a long press, or always with keyboard help on (body.kbd-help).
+ * applies now (Trayecto while a trip runs; the cockpit's flight toggles). Only its own X folds it: it can stay
+ * out for good. It hides for a moment during a challenge (manual piloting included) and under the full-screen
+ * windows (Tareas, Misiones, Áreas), and comes back as it was (root-menu.css). An icon that opens a smaller
+ * window (Trayecto) turns into an X while the window is open. Labels show on hover, on a long press, or always with keyboard help on (body.kbd-help).
  * Every icon is a 44 px target with an accessible name. Hidden while a challenge is open (root-menu.css).
  */
 export class RootMenu {
@@ -63,9 +62,6 @@ export class RootMenu {
   private readonly rootBtn: HTMLButtonElement;
   private readonly shoots: HTMLElement;
   private readonly rootLabel: string;
-  private timer = 0;
-  /** Windows opened from this menu's icons that are open now. */
-  private readonly holding = new Set<HudWindow>();
 
   constructor(parent: HTMLElement, className: string, rootLabel: string) {
     this.rootLabel = rootLabel;
@@ -75,11 +71,8 @@ export class RootMenu {
     parent.appendChild(this.el);
     this.rootBtn = this.el.querySelector(".rm-root")!;
     this.shoots = this.el.querySelector(".rm-shoots")!;
+    // Only its own X closes it (reglas.md §5.8): using an icon never folds it.
     this.rootBtn.addEventListener("click", () => this.toggle());
-    this.el.addEventListener("click", (e) => {
-      const b = (e.target as HTMLElement).closest("button");
-      if (b && b !== this.rootBtn && this.shoots.contains(b) && !b.dataset.window) this.retractSoon(600);
-    });
     // Long press: show the label of the icon under the finger.
     this.el.addEventListener("pointerdown", (e) => {
       const b = (e.target as HTMLElement).closest("button");
@@ -130,7 +123,6 @@ export class RootMenu {
   }
 
   toggle(on = !this.open): void {
-    if (!on && this.holding.size) return;
     this.el.classList.toggle("open", on);
     this.rootBtn.setAttribute("aria-expanded", String(on));
     const label = on ? `Cerrar ${this.rootLabel.toLowerCase()}` : this.rootLabel;
@@ -138,17 +130,12 @@ export class RootMenu {
     this.rootBtn.title = label;
     this.rootBtn.querySelector(".rm-glyph")!.innerHTML = on ? ICON.close : ICON.gear;
     this.rootBtn.querySelector(".rm-label")!.textContent = label;
-    if (on) this.retractSoon(RETRACT_MS);
   }
 
-  /** The root only shows when something is folded into it. */
+  /** The root only shows when something is folded into it (open or not, it keeps its state). */
   sync(): void {
     const any = [...this.shoots.children].some((c) => !c.classList.contains("hidden"));
     this.rootBtn.classList.toggle("hidden", !any);
-    if (!any) {
-      this.holding.clear();
-      this.toggle(false);
-    }
   }
 
   private addGlobal(g: GlobalItem): void {
@@ -165,11 +152,9 @@ export class RootMenu {
     b.innerHTML = `${icon}<span class="rm-label">${label}${key ? ` <kbd>${key}</kbd>` : ""}</span>`;
   }
 
-  /** A window opened or closed: its icon here becomes an X (and the menu stays out) or goes back. */
+  /** A window opened or closed: its icon here becomes an X that closes it, or goes back. The menu stays as it was. */
   private windowChanged(id: HudWindow, open: boolean): void {
-    const mine = [...this.shoots.querySelectorAll<HTMLButtonElement>(`[data-window="${id}"]`)];
-    if (!mine.length) return;
-    for (const b of mine) {
+    for (const b of this.shoots.querySelectorAll<HTMLButtonElement>(`[data-window="${id}"]`)) {
       if (open === b.classList.contains("rm-open")) continue;
       if (open) {
         b.dataset.label = b.getAttribute("aria-label") ?? "";
@@ -180,19 +165,5 @@ export class RootMenu {
         this.paint(b, b.dataset.icon ?? "", b.dataset.label ?? id);
       }
     }
-    if (open) {
-      this.holding.add(id);
-      window.clearTimeout(this.timer);
-      this.toggle(true);
-    } else {
-      this.holding.delete(id);
-      if (!this.holding.size) this.retractSoon(600);
-    }
-  }
-
-  private retractSoon(ms: number): void {
-    window.clearTimeout(this.timer);
-    if (this.holding.size) return;
-    this.timer = window.setTimeout(() => this.toggle(false), ms);
   }
 }

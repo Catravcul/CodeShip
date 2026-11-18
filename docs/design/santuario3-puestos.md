@@ -22,7 +22,7 @@ mando; en la cámara hipobárica mira desde la esquina de la escotilla.
 | 4 | Cámara hipobárica | Prerrespirar O₂, subir a 25 000 pies, quitarse la máscara, anotar síntomas, ponérsela, bajar | Tiempo de consciencia útil: 3–5 min a 25 000 pies (1–2 a 30 000, 20–30 a 18 000) | Sentada en el banco de la cámara, la máscara puesta, en la mano, mareada con la lista; la entrenadora dentro como observadora | FAA AC 61-107B |
 | 7 | Flotabilidad neutra (NBL) | Los pasos del EMU del paseo espacial (`DONNING_STEPS`): LCVG, pantalón, torso rígido, guantes y casco, fugas | Sube 2 kg: los buzos añaden 2 kg de plomo (si baja, espuma) | Se viste en el borde (colores del traje, casco), y en el fondo junto a la maqueta con el lastre en la cintura | NASA, ficha del NBL; Wikipedia NBL |
 
-El puesto 3 tiene su propia máquina en el borde de la NBL («Prueba de natación»); el 7 sigue en «Piscina NBL». Los puestos 10 y
+El puesto 3 está en la piscina de supervivencia, con el METS, la balsa y el izado («Prueba de natación y supervivencia en el agua»): la prueba de natación y la supervivencia en el agua se hacen allí (Pensacola), no en la NBL; el 7 sigue en «Piscina NBL». Los puestos 10 y
 13 siguen «En construcción» (rama `s3-lanzamiento`). Un puesto superado lo dice su tarjeta (✓ Superado) y queda en la partida (`posts` del estado
 del 3).
 
@@ -34,20 +34,22 @@ del 3).
 | # | Puesto | Pasos (orden) | Pregunta | Se ve | Fuente |
 | --- | --- | --- | --- | --- | --- |
 | 5 | Centrífuga (TsF-18, NASTAR) | Sensores del ECG y el botón, recostada de cara al eje (Gx), subir a 4 g a 0,1 g/s, un minuto apagando luces, perfil de reentrada de Dragon (4–5 g), bajar y parar. Trampa: sentarse erguida de cara afuera (Gz) | Bucle: de 1 a 4 g a 0,1 g cada segundo = 30 s | El brazo de 18 m gira a la velocidad que da esa g (√(g² − 1) · 9,81 / 18) y la góndola se abre hacia fuera; la cámara va en la góndola, mirándole la cara; el rótulo dice la g | TechInsider (TsF-18); Inspiration4 y NASTAR; AP (reentrada 4–5 g) |
-| 6 | Vuelo parabólico (A310 Zero-G) | Escalerilla y asiento atrás, despegue de la pista de hielo azul, tirón a 1,8 g con el morro a ~50°, ~20 s sin peso, salida a 1,8 g tumbada, 31 parábolas con 8 min de descanso cada cinco, asiento y aterrizaje. Trampa: soltarse del suelo en el tirón | Bucle: 31 × 20 s = 10 min 20 s | El A310 (46,4 m, 43,9 m de envergadura) en la pista del glaciar: despega, tira con el morro arriba (vista desde fuera), dentro de la zona acolchada (20 × 5 × 2,3 m) ella y la entrenadora flotan o van tumbadas, y aterriza | ESA, *Parabolic flights* y A310 Zero-G; Union Glacier (pista de 3000 m) |
-| 8 | Simuladores de Dragon y del LM | Cascos y asiento del comandante, ensayo de lanzamiento, de aborto, acople a mano, fallo inyectado, reentrada y amerizaje. Trampa: saltarse el ensayo de aborto | Condicional: cierre 0,05–0,10 m/s y ≤ 0,10 m del eje; a 0,12 m, `apartarse()` | En la maqueta de Dragon, la pantalla del simulador muestra cada ensayo (la cámara de acople es la de la Starship); se mira por encima de su hombro | SpaceX (entrenamiento de Dragon); IDSS IDD |
-| 9 | Robótica | La captura de un Cygnus con Canadarm2 (el mismo reto que en la Cupola, `armChore("captura")`) en el simulador del brazo | La del reto del brazo | En el puesto de robótica del control de misión, con los dos mandos: el brazo de la Cupola se mueve bloque a bloque en la pantalla grande y en el monitor de la mesa | Space Center Houston (Generic Robotics Trainer, VR Lab); CSA y NASA |
+| 6 | Vuelo parabólico (Il-76MDK) | Escalerilla de la puerta lateral y asiento atrás, despegue de la pista de hielo azul, subida a 6000 m, entrada a 2 g tumbada, unos 25 s sin peso, salida a 2 g tumbada, hasta 10 parábolas, asiento y aterrizaje. Trampa: soltarse del suelo en la entrada | Bucle: 10 × 25 s = 4 min 10 s | El Il-76MDK (46,6 m, 50,5 m de envergadura, ala alta, cola en T, cuatro motores) en la pista del glaciar: despega, sube a 6000 m, tira con el morro arriba (vista desde fuera), dentro de la bodega acolchada ella y la entrenadora flotan o van tumbadas, y aterriza | Centro Gagarin (Il-76MDK: 25–28 s, hasta 10 parábolas, hasta 2 g); GPS Daily (entre 6000 y 9000 m); Wikipedia Il-76; Union Glacier (pista de 3000 m) |
+| 8 | Simuladores de Dragon y del LM | Cascos y asiento del comandante, ensayo de lanzamiento, de aborto, acople a mano, fallo inyectado, reentrada y amerizaje. Trampa: saltarse el ensayo de aborto | Condicional: cierre 0,05–0,10 m/s y ≤ 0,10 m del eje; a 0,12 m, `apartarse()` | En la sala de los simuladores de Crew Dragon (como la de SpaceX en Hawthorne), dentro del simulador a escala real: la pantalla muestra cada ensayo (la cámara de acople es la de la Starship); se mira por encima de su hombro | SpaceX (entrenamiento de Dragon); Wired (simuladores de Hawthorne); IDSS IDD |
+| 9 | Robótica | La captura de un Cygnus con Canadarm2 (el mismo reto que en la Cupola, `armChore("captura")`) en el simulador del brazo | La del reto del brazo | En el centro de entrenamiento en robótica (como el de la CSA), en la maqueta de Destiny a 3/4, sentada a la estación con el portátil y los dos mandos: el brazo de la Cupola se mueve bloque a bloque en las tres pantallas | CSA (Robotics Training Centre); Space Center Houston (Generic Robotics Trainer); NASA |
 | 11 | Meteoritos en hielo azul (ANSMET) | Barrer en línea con motos a ~30 m, aparcar y el GPS, etiqueta de aluminio, foto con el contador, libro, pinzas y bolsa de teflón estéril, cinta con la etiqueta dentro, bandera. Trampa: cogerla con la mano | Aritmética: 8 motos, 7 huecos de 30 m = 210 m | En el campo de hielo azul del glaciar: en moto, de rodillas junto a la piedra, boca abajo para la foto; cada objeto en su mano o en el hielo | NASA/ANSMET (Case Western, *The Antarctic Search for Meteorites*) |
 | 12 | Supervivencia en frío (*Happy Camper*) | Tienda Scott con anclajes de nieve, muro de bloques contra el viento, zanja techada, nieve al hornillo, las dos antenas de 10 m de la radio de HF, llamar al Polo Sur (1360 km). Trampa: dormir al raso | Condicionales: viento del sur → el muro al sur | La tienda, el muro, la zanja, el hornillo con la olla, la radio y la antena se van levantando en el sitio, y quedan | NASA, *Happy Camper School* (USAP, McMurdo) |
 
 El rótulo del paso suma lo que marca la máquina (la g de la góndola o del avión). En la centrífuga la subida se ve a 1,5 g/s: los
 0,1 g/s reales tardarían 30 s y un paso dura 2,2 s (el tiempo se comprime, como el reloj del juego); el número de la pregunta es el
-real. Las parábolas se ven a 600 m sobre el hielo (las reales empiezan a unos 6 km: dentro solo se ve la cabina).
+real. El avión sube a 6000 m, donde empiezan las parábolas reales del Il-76MDK (GPS Daily: de 6000 a unos 9000 m); la subida se corta,
+como en una película, y la parábola se ve más corta que los 3000 m reales (cada paso dura 2,2 s).
 
-**Simuladores a mano** (tarjeta del simulador de Dragon, sin entrenadora: es el simulador). «Practicar el acople»: el mismo pad y la
+**Simuladores a mano** (sin entrenadora: es el simulador). En la tarjeta del simulador de Dragon, «Practicar el acople»: el mismo pad y la
 misma pantalla de la Starship (`RcsPad`, `dragonRead`, `drawDockCamera`; `FreeCarrierRun`) desde 12 m, algo fuera del eje y girada
-2°; al tocar, los límites del IDSS dicen si acopla y qué se salió (`application/dock-practice.ts`). «Practicar el alunizaje (LM)»:
-en la maqueta de la cabina del LM (la misma cabina e instrumentos que el módulo lunar, `buildLmCabin`), los últimos 150 m de Apolo
+2°; al tocar, los límites del IDSS dicen si acopla y qué se salió (`application/dock-practice.ts`). En la tarjeta del simulador del
+LM, en su propia sala (como el LMS del edificio 5 de Houston), «Practicar el alunizaje (LM)»: en la cabina del LM (la misma cabina e
+instrumentos que el módulo lunar, `buildLmCabin`), los últimos 150 m de Apolo
 11 (P66): el motor de descenso (45 040 N, del 10 % al 60 %, Isp 311 s) contra 1,62 m/s², la deriva con el RCS; toca bien si baja a
 ≤ 3,05 m/s y se desliza a ≤ 1,22 m/s (NASA TN D-6850; `domain/lm-sim.ts`).
 
@@ -55,7 +57,7 @@ en la maqueta de la cabina del LM (la misma cabina e instrumentos que el módulo
 
 Una pista no cabe en las islas: el avión despega de un **glaciar** fuera de ellas (`data/layout.ts`, isla `glaciar`), al que se va en
 helicóptero como a las demás (máquina de navegación en su helipuerto). Tiene una pista de hielo azul de 3000 × 50 m como la de
-Union Glacier con el A310 en su plataforma, y junto a ella, a un paseo corto, el campamento (tienda comedor y tiendas Scott), el campo
+Union Glacier con el Il-76MDK en su plataforma, y junto a ella, a un paseo corto, el campamento (tienda comedor y tiendas Scott), el campo
 de hielo azul de los meteoritos y el sitio de supervivencia en frío. La gente del glaciar entrena y come en su campamento.
 
 ## Qué es real y qué es nuestro (instalaciones)
@@ -65,10 +67,11 @@ Lo que se ve de cada instalación sale de lo publicado; donde no hay nada public
 | Instalación | Real (fuente) | Nuestro (sin fuente publicada, o cambiado para el juego) |
 | --- | --- | --- |
 | Centrífuga | Brazo de 18 m, sala redonda y vacía, cabina para una o dos personas en un anillo con cardanes que se abre hacia fuera, carga del pecho a la espalda, 0,1 g/s y 4 g (TechInsider, ЦФ-18); perfiles de Dragon en Gx (Inspiration4, NASTAR) | La forma y las medidas de la góndola y de la consola (TechInsider no las da); la subida a 1,5 g/s en la escena |
-| Vuelo parabólico | A310 Zero-G de 46,4 m, 43,9 m de envergadura, ala baja, zona acolchada de 20 × 5 × 2,3 m, 1,8 g y ~20 s sin peso, 31 parábolas (ESA); pista de hielo azul de 3000 × 50 m (Union Glacier) | Que el A310 vuele desde una pista de hielo (en Union Glacier aterrizan Il-76, 757 y 767, no el A310); parábolas a 600 m (las reales a ~6–7,5 km); el glaciar a ~2 km de las islas y el helicóptero para llegar (a Union Glacier se llega en avión) |
+| Vuelo parabólico | Il-76MDK, el avión ruso de vuelos parabólicos del Centro Gagarin: de 25 a 28 s sin peso, hasta 10 parábolas por vuelo, hasta 2 g (Centro Gagarin, Rostec); parábolas entre 6000 y unos 9000 m (GPS Daily); 46,6 m de largo, 50,5 m de envergadura, 14,42 m de alto, cuatro turbofanes, ala alta, cola en T, pistas sin asfaltar (Wikipedia Il-76); en Union Glacier aterrizan Il-76 (Wikipedia, Union Glacier); pista de hielo azul de 3000 × 50 m | La bodega acolchada de 20 × 3,4 × 3,4 m es la del Il-76MF/TF (la del MDK no está publicada); el diámetro del fuselaje (5,2 m, para rodear esa bodega); la escalerilla en la puerta lateral de atrás y el ángulo del morro (~50°) salen de fotos, no de una ficha; la parábola en la escena, más corta que los 3000 m reales; el glaciar a ~2 km de las islas y el helicóptero para llegar (a Union Glacier se llega en avión) |
 | Campamento del glaciar | Comedores con calefacción y tiendas junto a la pista (Union Glacier Camp); tienda piramidal Scott de ~30 kg para dos o tres (AAD); motos de nieve a ~30 m en línea (ANSMET) | La pista a un paseo corto del campamento (la real está a ~9 km y se va en furgonetas 4×4 o vehículos de orugas, ALE): acortado para que se pueda ir andando; las medidas de la tienda Scott y de las motos (no las encontramos publicadas) |
-| Simuladores | La SVMF tiene maquetas de la ISS, de Orion y de cargueros comerciales (NASA); límites del IDSS; LM de Apolo 11 (ALSJ, TN D-6850) | Las maquetas de Dragon y de la cabina del LM en la SVMF: la NASA no publica maquetas de Dragon allí (SpaceX entrena en sus simuladores) ni del LM |
-| Robótica | La estación de robótica igual que la de la ISS: un portátil, dos mandos y tres pantallas con las cámaras del brazo (CSA, Robotics Training Centre) | Ponerla en el control de misión (la real está en la CSA, en una maqueta a 3/4 del Destiny, y en Houston); una pantalla grande y un monitor de mesa en vez de tres pantallas |
+| Simuladores | Dragon: SpaceX entrena en Hawthorne con una réplica a escala real (asientos, paneles, software de vuelo y soporte vital; tres pantallas táctiles, dos filas de botones y el tirador EJECT) y una cabina de dos asientos, y sus instructores meten fallos cada vez más difíciles (Wired). LM: el simulador del módulo lunar (LMS) del edificio 5 de Houston, la Mission Simulation and Training Facility, con su consola de control (NASA, *Building on a mission*; foto de 1967); límites del IDSS; LM de Apolo 11 (ALSJ, TN D-6850). Cada uno en su sala, fuera de la SVMF (la NASA no publica allí maquetas de Dragon ni del LM) | La planta de cada sala, el sitio y la forma de la consola de los instructores de Dragon y de la del LMS (las fuentes no las describen); la cabina de dos asientos como un bloque |
+| Robótica | Como el Robotics Training Centre de la CSA: la estación igual que la de la ISS (un portátil, dos mandos y tres pantallas con las cámaras del brazo) en una maqueta a 3/4 del laboratorio Destiny, y el aula con maquetas a escala de Canadarm2 y Dextre y tres pizarras interactivas (CSA) | La planta de la sala, las mesas y sillas del aula; las tres pantallas muestran la misma cámara (en la ISS cada una puede mostrar una distinta) |
+| Supervivencia en el agua (puesto 3) | La prueba de natación y la supervivencia en el agua en una piscina con el simulador de amerizaje (METS), la balsa y el izado con el collar (NASA FS-2011-11-057-JSC; Pensacola, DVIDS 2022; NAVAIR) | Las medidas de la piscina (26 × 12 m: un largo de 25 m con el toque en cada extremo) y del pórtico del METS |
 | Supervivencia en frío | Tienda Scott con anclajes, muro de bloques, zanja techada, hornillo, radio de HF con dos antenas de 10 m (NASA, *Happy Camper*) | La disposición del sitio |
 
 ## Entrenadoras
@@ -84,8 +87,10 @@ una es nuestro (**licencia**):
 | Julian | Dirección de proyectos | — | 1 Tribunal |
 | Linduarda | La doctora de la iniciación | 2 Reconocimiento | 4 Hipobárica |
 | Lizmibet | Médica | 4 Hipobárica | 2 Reconocimiento |
-| Adaguchi | Submarinismo | 7 NBL | 3 Natación |
-| Luciana | Piloto | 3 Natación | 7 NBL |
+| Adaguchi | Submarinismo | 7 NBL | 7 NBL |
+| Andrea | Entrenador del gimnasio (desde la fase 6) | 3 Natación | 3 Natación |
+| Luciana | Piloto (en Cold Sanctuary, el control de misión de la lanzadera; desde la fase 6) | 10 Control de misión | 10 Control de misión |
+| Irosene | Letras y textil (fase 6) | 13 Trajes | 13 Trajes |
 | Fausto | Mecánico (la consola de la centrífuga) | 5 Centrífuga | 5 Centrífuga |
 | David | Informática | 8 Simuladores | 8 Simuladores |
 | Adonis | Informática | 9 Robótica | 9 Robótica |
@@ -94,6 +99,9 @@ una es nuestro (**licencia**):
 | Amykhuz | Química (glaciar) | 11 Meteoritos | 11 Meteoritos |
 | Gohageneis | Guardia (glaciar) | 12 Frío | — |
 | Nesvitor | Guardia y agricultor (glaciar) | — | 12 Frío |
+
+Adaguchi y Andrea se quedan cada uno en su piscina todo el día (hasta la fase 6 el puesto 3 era de Luciana, que pasó al control de misión, su oficio en Cold Sanctuary): desde que el puesto 3 está en la piscina de supervivencia, ir
+de una piscina a otra pasando por la comida no cabe en la hora de comer, y se saltarían la comida.
 
 Entrenando están en el gimnasio; a comer y libres, en el cruce de la isla (la gente del glaciar, en su campamento). Van andando por
 los caminos (1,4 m/s) y entran a su sitio por la puerta de la sala, sin atravesar muebles; **salen antes** para llegar a su hora al

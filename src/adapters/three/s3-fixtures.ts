@@ -610,7 +610,7 @@ function fixtureParts(f: PlacedFixture): Part[] {
 }
 
 /** The floors of the training rooms (Cold Sanctuary's islands keep their colours in aerial-models.ts). */
-const INTERIOR: Readonly<Record<string, number>> = { nbl: 0x8f979d, "nbl-control": 0x4a5662, "nbl-hiperbarica": 0x8c949b, svmf: 0x868c91, "svmf-destiny": 0xd9dde0, "svmf-dragon": 0x3a3f45, "svmf-orion": 0xd9dde0, control: 0x2f3f5a, gimnasio: 0x3a3f45, medico: 0xb4bcb6, "medico-hipobarica": 0x9aa3ab, supervivencia: 0x9fadb3, centrifuga: 0xb9bec2 };
+const INTERIOR: Readonly<Record<string, number>> = { nbl: 0x8f979d, "nbl-control": 0x4a5662, "nbl-hiperbarica": 0x8c949b, svmf: 0x868c91, "svmf-destiny": 0xd9dde0, "svmf-orion": 0xd9dde0, control: 0x2f3f5a, gimnasio: 0x3a3f45, medico: 0xb4bcb6, "medico-hipobarica": 0x9aa3ab, supervivencia: 0x9fadb3, centrifuga: 0xb9bec2, "simulador-dragon": 0x868c91, "simulador-dragon-capsula": 0x2b2f35, "simulador-lm": 0x5a5f66, robotica: 0x9aa3ab, "robotica-destiny": 0xd9dde0, trajes: 0xc9ced3 };
 export function interiorFloor(area: string): number | undefined {
   const [isl, room] = area.split(":");
   return isl === "entrenamiento" && room ? INTERIOR[room] : undefined;

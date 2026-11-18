@@ -26,8 +26,9 @@ export interface DockContact {
 const FACE_M = 2;
 const n = (v: number, d = 2) => v.toFixed(d).replace(".", ",");
 
-export function dockPractice(): DockPractice {
-  let pos = new Vec3(0.35, -0.25, 12 + FACE_M);
+/** From `fromM` out on the port's axis: 12 m in the simulator; 20 m (Waypoint 2, Demo-2's last hold) at the Starship. */
+export function dockPractice(fromM = 12): DockPractice {
+  let pos = new Vec3(0.35, -0.25, fromM + FACE_M);
   let att = Quat.fromAxisAngle(Vec3.Y, (2 * Math.PI) / 180);
   // Only what the hand flight uses of a carrier: where it is, its turn, its tanks (never empty) and its move.
   const sim = {

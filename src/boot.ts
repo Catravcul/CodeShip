@@ -31,6 +31,28 @@ function restoreSettings(slot: SaveSlot): void {
   }
 }
 
+/**
+ * From level 3's launch to level 6 (docs/design/partidas.md, «Del 3 al 6»): the aerial sanctuary wrote the slot as a
+ * level-6 hand-over and left its id here before reloading; the space game starts from it at once, with no start screen.
+ */
+const NEXT_KEY = "codeship.seguir";
+function goOn(): boolean {
+  let id: string | null = null;
+  try {
+    id = sessionStorage.getItem(NEXT_KEY);
+    sessionStorage.removeItem(NEXT_KEY);
+  } catch {
+    return false;
+  }
+  const slot = id ? book.list().slots.find((s) => s.id === id) : undefined;
+  if (!slot || cannotResume(slot)) return false;
+  restoreSettings(slot);
+  startSession({ slotId: slot.id, resume: slot });
+  performance.mark("codeship-inicio-elegido");
+  void import("./main");
+  return true;
+}
+
 const start = new StartScreen(
   document.body,
   LEVELS,
@@ -47,7 +69,7 @@ const start = new StartScreen(
     void (level.id === "aereo" ? import("./aerial-sanctuary") : level.id === "terrestre" ? import("./sanctuary-one") : import("./main"));
   },
 );
-start.open();
+if (!goOn()) start.open();
 performance.mark("codeship-inicio");
 // Test hook, only in dev builds or with `?prueba` (tools/experiencia/inicio.mjs reads the map's view).
 if (import.meta.env.DEV || new URLSearchParams(location.search).has("prueba")) (window as unknown as { codeshipInicio: StartScreen }).codeshipInicio = start;

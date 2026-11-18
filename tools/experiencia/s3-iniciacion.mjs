@@ -3,7 +3,7 @@
 // working day). She goes (teleport, chosen in the task settings, since PX-45 walks) to posts 1, 2, 3, 4 and 7; at each
 // the card says who gives the challenge (the trainer on shift), and the challenge is a code challenge whose steps
 // are acted out at the post: the folder before the tribunal, the cuff and the ECG on the couch, the lengths of the
-// pool, the raft and the hoist, the mask in the hypobaric chamber, the EMU and the divers' lead at the bottom of the
+// survival pool, the raft and the hoist, the mask in the hypobaric chamber, the EMU and the divers' lead at the bottom of the
 // NBL. At lunch nobody is on shift and the post waits: the card says when the next shift starts. Then the island flights: «Por reto» (the flight
 // programmed on the sheet, then flown by itself in sight) and «Manual» (the S-92's cyclic, collective and pedals on
 // the pad, landed by hand on the other island's helipad). Captures in docs/screenshots/s3i-<paso>-movil.png.
@@ -134,8 +134,8 @@ export async function s3Iniciacion(j) {
     return { hour: c.hour, where: document.querySelector(".cab-where")?.textContent ?? "", crowd: c.crowd.positions(), of: [1, 2, 3, 4, 7].map((n) => c.trainerOf(n)) };
   });
   j.check("la partida empieza a las 9:00 y la hora se ve arriba", start.hour >= 9 && start.hour < 9.2 && /^9:0\d · /.test(start.where), start.where);
-  j.check("a las 9 da cada reto quien está de turno en él: Karen, Linduarda, Luciana, Lizmibet y Adaguchi", start.of.join() === "karen,linduarda,luciana,lizmibet,adaguchi", start.of.join());
-  j.check("cada entrenadora de turno ya está en su puesto", ["karen", "linduarda", "luciana", "lizmibet", "adaguchi"].every((id) => start.crowd.find((c) => c.id === id && c.key.startsWith("puesto:"))?.there), JSON.stringify(start.crowd.filter((c) => ["karen", "linduarda", "luciana", "lizmibet", "adaguchi"].includes(c.id))));
+  j.check("a las 9 da cada reto quien está de turno en él: Karen, Linduarda, Andrea, Lizmibet y Adaguchi", start.of.join() === "karen,linduarda,andrea,lizmibet,adaguchi", start.of.join());
+  j.check("cada entrenadora de turno ya está en su puesto", ["karen", "linduarda", "andrea", "lizmibet", "adaguchi"].every((id) => start.crowd.find((c) => c.id === id && c.key.startsWith("puesto:"))?.there), JSON.stringify(start.crowd.filter((c) => ["karen", "linduarda", "andrea", "lizmibet", "adaguchi"].includes(c.id))));
 
   // 2. «Ir» by teleport (PX-45 walks the island): the task settings.
   await j.tap(".s3-tasks", "Tareas");
@@ -172,8 +172,10 @@ export async function s3Iniciacion(j) {
   await goPost(j, 4, "Cámara hipobárica");
   await doPost(j, 4, "Puesto 4, cámara hipobárica", "hipobarica", ["mascara", "lista"]);
 
-  // 6. Post 3: the swim test and water survival (Luciana) — the lengths are swum in the pool.
+  // 6. Post 3: the swim test and water survival (Andrea) — in the survival pool (METS, raft, hoist), not the NBL.
   await goPost(j, 3, "Natación y supervivencia");
+  const where3 = await p.evaluate(() => document.querySelector(".cab-where")?.textContent ?? "");
+  j.check("el puesto 3 está en la piscina de supervivencia, la del METS, la balsa y el izado", /Supervivencia en el agua/.test(where3), where3);
   await j.tap('.s3-ui .cab-machine:not(.hidden) [data-act="reto"]', "Empezar el reto: Natación");
   await j.waitDuel();
   const toggle3 = (await j.texts(".duel .order-toggle"))[0] ?? "";
@@ -211,7 +213,7 @@ export async function s3Iniciacion(j) {
   await j.tap(".s3-tasks", "Tareas");
   // On foot (teleporting would put her straight on the other island): she walks to the navigation machine.
   await j.taskSettings({ travel: "viaje", vehicle: "todos" });
-  await j.tap('.task-board [data-go="s3-puesto-10"]', "Ir: Control de misión (otra isla)");
+  await j.tap('.task-board [data-go="s3-puesto-11"]', "Ir: Geología (otra isla)");
   await until(j, (s) => s.mode === "libre" && s.near === "nav-entrenamiento", 90000);
   await j.showPanel(".s3-ui .cm-acts [data-act='nav']");
   await j.tap('.s3-ui .cm-acts [data-act="nav"]', "Abrir navegación");

@@ -141,36 +141,43 @@ export function electron(): THREE.Group {
   return g;
 }
 
-/** Falcon 9 Block 5 (70 m, Ø 3,7 m) with Crew Dragon on top (8,1 m with the trunk, Ø 4 m). */
+/** Falcon 9 Block 5 (70 m, Ø 3,7 m) with Crew Dragon on top (8,1 m with the trunk, Ø 4 m): its two stages and the Dragon are groups of their own (they separate in flight, s3-launch.ts). */
 export function falcon9(): THREE.Group {
   const g = new THREE.Group();
   const r = FALCON9_CREW.diameterM.value / 2;
   const total = FALCON9_CREW.heightM.value;
   const dragonH = DRAGON.heightM.value;
   const body = total - dragonH;
-  g.add(lathe([[0, 0], [r, 0], [r, body * 0.68], [0, body * 0.68]], 0xf2f2f2));
-  g.add(lathe([[0, body * 0.68], [r, body * 0.68], [r, body * 0.7], [0, body * 0.7]], 0x1e1e1e));
-  g.add(lathe([[0, body * 0.7], [r, body * 0.7], [r, body], [0, body]], 0xf2f2f2));
+  const first = new THREE.Group();
+  first.name = "f9-etapa1";
+  const second = new THREE.Group();
+  second.name = "f9-etapa2";
+  const dragon = new THREE.Group();
+  dragon.name = "f9-dragon";
+  first.add(lathe([[0, 0], [r, 0], [r, body * 0.68], [0, body * 0.68]], 0xf2f2f2));
+  first.add(lathe([[0, body * 0.68], [r, body * 0.68], [r, body * 0.7], [0, body * 0.7]], 0x1e1e1e));
+  second.add(lathe([[0, body * 0.7], [r, body * 0.7], [r, body], [0, body]], 0xf2f2f2));
   // Grid fins and the legs folded at the base.
   for (let i = 0; i < 4; i++) {
     const fin = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.5, 0.2), mat(0x3a3a3a));
     const a = (i * Math.PI) / 2;
     fin.position.set(Math.cos(a) * (r + 0.6), body * 0.66, Math.sin(a) * (r + 0.6));
     fin.rotation.y = -a;
-    g.add(fin);
+    first.add(fin);
     const leg = new THREE.Mesh(new THREE.BoxGeometry(0.5, 9, 0.3), mat(0x222222));
     leg.position.set(Math.cos(a + 0.78) * (r + 0.1), 5, Math.sin(a + 0.78) * (r + 0.1));
     leg.rotation.y = -(a + 0.78);
-    g.add(leg);
+    first.add(leg);
   }
   const dr = DRAGON.diameterM.value / 2;
-  g.add(lathe([[0, body], [dr, body], [dr, body + 3.4], [0, body + 3.4]], 0xf4f4f4));
-  g.add(lathe([[0, body + 3.4], [dr, body + 3.4], [dr * 0.95, body + 4.2], [dr * 0.6, body + 7.3], [dr * 0.3, body + dragonH], [0, body + dragonH]], 0xffffff));
+  dragon.add(lathe([[0, body], [dr, body], [dr, body + 3.4], [0, body + 3.4]], 0xf4f4f4));
+  dragon.add(lathe([[0, body + 3.4], [dr, body + 3.4], [dr * 0.95, body + 4.2], [dr * 0.6, body + 7.3], [dr * 0.3, body + dragonH], [0, body + dragonH]], 0xffffff));
+  g.add(first, second, dragon);
   g.name = "Falcon 9";
   return g;
 }
 
-/** The crew access tower: a lattice with the access arm at the Dragon's hatch. */
+/** The crew access tower: a lattice (the access arm and its white room swing from it: s3-launch.ts). */
 function crewTower(): THREE.Group {
   const g = new THREE.Group();
   const steel = mat(0x5c6066);
@@ -184,9 +191,6 @@ function crewTower(): THREE.Group {
     deck.position.y = y;
     g.add(deck);
   }
-  const arm = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.4, 6), mat(0x3d4247));
-  arm.position.set(0, FALCON9_CREW.heightM.value - DRAGON.heightM.value + 3.5, -6.5);
-  g.add(arm);
   return g;
 }
 
@@ -325,53 +329,76 @@ function centrifuge(): { group: THREE.Group; arm: THREE.Group } {
 }
 
 /**
- * The Airbus A310 Zero-G (ESA, Novespace): 46,4 m long, 43,9 m of span, a 5,6 m fuselage; nose to +x. Its padded
- * test zone inside (20 × 5 × 2,3 m) is `cabin`, seen from within (the walls face in), with the seats behind it.
+ * The Il-76MDK of the Gagarin centre (Wikipedia, Il-76): 46,6 m long, 50,5 m of span, 14,42 m to the top of its
+ * T-tail; a high wing with four turbofans under it, the glazed navigator's nose, the rear ramp and the side doors
+ * aft (from photographs). The fuselage's 5,2 m is ours (it wraps the 3,4 m hold). Nose to +x. Its padded hold
+ * (about 20 × 3,4 × 3,4 m, the MF/TF's: the MDK's is not published) is `cabin`, seen from within, seats aft.
  */
-export function a310(): { group: THREE.Group; cabin: THREE.Group } {
+export function il76(): { group: THREE.Group; cabin: THREE.Group } {
   const g = new THREE.Group();
-  const white = mat(0xf4f6f8);
-  const R = 2.8;
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 36, 20, 1, true), white);
+  const grey = mat(0xd9dde1);
+  const R = 2.6;
+  const Y = 3.6;
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 34, 20, 1, true), grey);
   body.rotation.z = Math.PI / 2;
-  body.position.set(-1, 4.2, 0);
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(R, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), white);
+  body.position.set(0, Y, 0);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(R, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), grey);
   nose.rotation.z = -Math.PI / 2;
   nose.scale.set(1, 2.2, 1);
-  nose.position.set(17, 4.2, 0);
-  const tail = new THREE.Mesh(new THREE.ConeGeometry(R, 8, 20, 1, true), white);
+  nose.position.set(17, Y, 0);
+  // The navigator's glazing under the nose, and the cockpit's windows above it.
+  const glaze = new THREE.Mesh(new THREE.SphereGeometry(1.1, 12, 8), new THREE.MeshStandardMaterial({ color: 0x24323c, roughness: 0.2 }));
+  glaze.scale.set(1.4, 0.8, 1.2);
+  glaze.position.set(21.2, Y - 1.1, 0);
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(R, 9, 20, 1, true), grey);
   tail.rotation.z = Math.PI / 2;
-  tail.position.set(-23, 4.6, 0);
-  const wing = new THREE.Mesh(new THREE.BoxGeometry(6, 0.5, 43.9), white);
-  // A low wing, under the cabin's floor.
-  wing.position.set(1, 1.75, 0);
-  wing.rotation.y = 0.12;
-  const fin = new THREE.Mesh(new THREE.BoxGeometry(5, 8, 0.4), mat(0x1f4fa0));
-  fin.position.set(-24, 9.5, 0);
-  const stab = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.3, 16), white);
-  stab.position.set(-24, 5.6, 0);
-  const stripe = new THREE.Mesh(new THREE.BoxGeometry(34, 0.5, 5.65), mat(0x1f4fa0));
-  stripe.position.set(-1, 4.6, 0);
-  g.add(body, nose, tail, wing, fin, stab, stripe);
-  for (const z of [-7.5, 7.5]) {
-    const eng = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 5, 14), mat(0xb8c0c8));
+  tail.position.set(-21.5, Y + 0.8, 0);
+  // The rear ramp's line under the tail.
+  const ramp = new THREE.Mesh(new THREE.BoxGeometry(6, 0.15, 3.4), mat(0x9aa0a6));
+  ramp.position.set(-19.5, Y - R + 0.6, 0);
+  ramp.rotation.z = 0.25;
+  // A high wing over the hold, swept back, with a little droop.
+  const wing = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.6, 50.5), grey);
+  wing.position.set(2, Y + R - 0.1, 0);
+  wing.rotation.y = 0.2;
+  // The T-tail: the fin up to 14,42 m and the tailplane on its top.
+  const fin = new THREE.Mesh(new THREE.BoxGeometry(6, 14.42 - Y - R, 0.5), grey);
+  fin.position.set(-22, (14.42 + Y + R) / 2 - 0.3, 0);
+  fin.rotation.z = -0.35;
+  const stab = new THREE.Mesh(new THREE.BoxGeometry(4, 0.4, 17.4), grey);
+  stab.position.set(-25.5, 14.1, 0);
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(32, 0.45, 5.25), mat(0x1f4fa0));
+  stripe.position.set(0, Y + 0.3, 0);
+  g.add(body, nose, glaze, tail, ramp, wing, fin, stab, stripe);
+  // Four turbofans on pylons under the wing.
+  for (const z of [-15, -8.5, 8.5, 15]) {
+    const eng = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 5, 14), mat(0xb8c0c8));
     eng.rotation.z = Math.PI / 2;
-    eng.position.set(4, 0.75, z);
-    g.add(eng);
+    eng.position.set(5 - Math.abs(z) * 0.2, Y + R - 1.6, z);
+    const pylon = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.9, 0.3), grey);
+    pylon.position.set(5 - Math.abs(z) * 0.2, Y + R - 0.7, z);
+    g.add(eng, pylon);
   }
-  for (const [x, z] of [[13, 0], [0, -4.5], [0, 4.5]] as const) {
-    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.5, 6), mat(0x50565e));
-    leg.position.set(x, 0.75, z);
+  // The landing gear: the nose leg and the main legs in the fairings low on the sides.
+  for (const [x, z] of [[15, 0], [0, -2.2], [0, 2.2], [-4, -2.2], [-4, 2.2]] as const) {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.6, 10), mat(0x30343a));
+    leg.rotation.x = Math.PI / 2;
+    leg.position.set(x, 0.5, z);
     g.add(leg);
   }
-  // The padded test zone, its floor 1,9 m up in the fuselage; seats aft of it.
+  for (const z of [-2.5, 2.5]) {
+    const fairing = new THREE.Mesh(new THREE.BoxGeometry(10, 1.6, 1), grey);
+    fairing.position.set(-2, Y - R + 0.6, z);
+    g.add(fairing);
+  }
+  // The padded hold, its floor 1,9 m up; seats aft of it.
   const cabin = new THREE.Group();
-  cabin.position.set(0, 2.2, 0);
-  const pad = new THREE.Mesh(new THREE.BoxGeometry(20, 2.3, 5), new THREE.MeshStandardMaterial({ color: 0xf1f1ec, roughness: 0.95, side: THREE.BackSide }));
-  pad.position.y = 1.15;
+  cabin.position.set(0, 1.9, 0);
+  const pad = new THREE.Mesh(new THREE.BoxGeometry(20, 3.4, 3.4), new THREE.MeshStandardMaterial({ color: 0xf1f1ec, roughness: 0.95, side: THREE.BackSide }));
+  pad.position.y = 1.7;
   cabin.add(pad);
   for (let i = 0; i < 9; i++) {
-    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.02, 4.9), mat(0x2f6f9f));
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.02, 3.3), mat(0x2f6f9f));
     strip.position.set(-9 + i * 2.25, 0.01, 0);
     cabin.add(strip);
   }
@@ -382,7 +409,7 @@ export function a310(): { group: THREE.Group; cabin: THREE.Group } {
     cabin.add(seat);
   }
   const light = new THREE.PointLight(0xffffff, 6, 14);
-  light.position.set(0, 2, 0);
+  light.position.set(0, 2.6, 0);
   cabin.add(light);
   g.add(cabin);
   return { group: g, cabin };
@@ -435,8 +462,11 @@ export interface SceneParts {
   readonly rotors: THREE.Object3D[];
   readonly turbines: { group: THREE.Group; rotor: THREE.Group; x: number; z: number; label: string }[];
   readonly centrifugeArm?: THREE.Group;
-  /** The A310 Zero-G on its apron (the parabolic flight's rig flies it, s3-rigs.ts) and its padded cabin. */
-  readonly a310?: { group: THREE.Group; cabin: THREE.Group };
+  /** The Il-76MDK on its apron (the parabolic flight's rig flies it, s3-rigs.ts) and its padded cabin. */
+  readonly il76?: { group: THREE.Group; cabin: THREE.Group };
+  /** The crew pad's Falcon 9 and the crown's Electron (they launch: s3-launch.ts). */
+  readonly falcon?: THREE.Group;
+  readonly electron?: THREE.Group;
   readonly cabs: Map<string, THREE.Mesh>;
 }
 
@@ -447,9 +477,11 @@ export function buildProps(L: S3Layout): SceneParts {
   const turbines: SceneParts["turbines"] = [];
   const cabs = new Map<string, THREE.Mesh>();
   let centrifugeArm: THREE.Group | undefined;
-  let plane: SceneParts["a310"];
+  let plane: SceneParts["il76"];
+  let falcon: THREE.Group | undefined;
+  let electronRocket: THREE.Group | undefined;
   // Vehicles and machines with their own true size stay as they are; the rest is widened on the plan with its area (§2.4).
-  const trueSize = new Set<Prop["kind"]>(["electron", "falcon9", "turbine", "tidal", "helideck", "lift-shaft", "tree", "a310", "scott-tent", "snowmobile"]);
+  const trueSize = new Set<Prop["kind"]>(["electron", "falcon9", "turbine", "tidal", "helideck", "lift-shaft", "tree", "il76", "scott-tent", "snowmobile"]);
   const at = (o: THREE.Object3D, p: Prop) => {
     o.position.set(p.x, p.y, p.z);
     if (p.rot) o.rotation.y = p.rot;
@@ -460,10 +492,10 @@ export function buildProps(L: S3Layout): SceneParts {
   for (const p of L.props) {
     switch (p.kind) {
       case "electron":
-        at(electron(), p);
+        electronRocket = at(electron(), p) as THREE.Group;
         break;
       case "falcon9":
-        at(falcon9(), p);
+        falcon = at(falcon9(), p) as THREE.Group;
         break;
       case "crew-tower":
         at(crewTower(), p);
@@ -527,8 +559,8 @@ export function buildProps(L: S3Layout): SceneParts {
         at(c.group, p);
         break;
       }
-      case "a310": {
-        plane = a310();
+      case "il76": {
+        plane = il76();
         at(plane.group, p);
         break;
       }
@@ -601,7 +633,7 @@ export function buildProps(L: S3Layout): SceneParts {
     s.position.set(el.x, el.y + 22, el.z);
     root.add(s);
   }
-  return { root, rotors, turbines, ...(centrifugeArm ? { centrifugeArm } : {}), ...(plane ? { a310: plane } : {}), cabs };
+  return { root, rotors, turbines, ...(centrifugeArm ? { centrifugeArm } : {}), ...(plane ? { il76: plane } : {}), ...(falcon ? { falcon } : {}), ...(electronRocket ? { electron: electronRocket } : {}), cabs };
 }
 
 /** A tree-building's shell: the floors' undersides and railings, the tips and the crown's slab (walls and water come from the layout). */

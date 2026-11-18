@@ -12,7 +12,7 @@ describe("Puestos 5, 6, 8, 9, 11 y 12: retos de la fase 5", () => {
   it("las cuentas de las preguntas salen de los números reales", () => {
     expect(rampSeconds(4, 0.1)).toBe(30);
     expect(rampSeconds(1, 0.1)).toBe(0);
-    expect(minSec(31 * 20)).toBe("10 min 20 s");
+    expect(minSec(10 * 25)).toBe("4 min 10 s");
     expect(wallSide("sur")).toBe("al sur");
     expect(wallSide("norte")).toBe("al norte");
     expect(wallSide("oeste")).toBe("al oeste");
@@ -38,7 +38,7 @@ describe("Puestos 5, 6, 8, 9, 11 y 12: retos de la fase 5", () => {
   it("las respuestas buenas llevan los números reales", () => {
     const text = (n: number) => JSON.stringify(byPost(n).chore);
     expect(text(5)).toMatch(/30 s/);
-    expect(text(6)).toMatch(/10 min 20 s/);
+    expect(text(6)).toMatch(/4 min 10 s/);
     expect(text(11)).toMatch(/210 m/);
     expect(text(12)).toMatch(/al sur/);
   });

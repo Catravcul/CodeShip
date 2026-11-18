@@ -12,7 +12,7 @@ arriba del todo) llevada a una escena de Three.js. Casos AER-01 a AER-09 en [cas
 
   | Isla | Qué es | Etiqueta | Fuente |
   | --- | --- | --- | --- |
-  | Isla de entrenamiento (x 20…300, z −125…115) | Piscina NBL (62 × 31 × 12 m), centrífuga, nave de maquetas (Destiny y Dragon), control de misión (12 puestos y pantalla), gimnasio con esterilla, centro médico con cámara hipobárica y helipuerto de 1 D (21 m) | instalaciones **reales**; reunidas en una isla, **licencia** | §1.2 de la iniciación; NASA NBL, SVMF, S-92 |
+  | Isla de entrenamiento (x 20…300, z −125…115) | Piscina NBL (62 × 31 × 12 m), centrífuga, nave de maquetas (Destiny y Orion; los simuladores de Dragon y del LM y la robótica, en sus salas), control de misión (12 puestos y pantalla), gimnasio con esterilla, centro médico con cámara hipobárica y helipuerto de 1 D (21 m) | instalaciones **reales**; reunidas en una isla, **licencia** | §1.2 de la iniciación; NASA NBL, SVMF, S-92 |
   | Lanzadera (−560, 0) | El casquete de Cold Sanctuary con su edificio-árbol de agua (Fábrica de cohetes, Control de misión, Garaje, Piso libre, miradores en las puntas) y la corona del Electron a 182 m | **ficción** (con su magia) | Cold Sanctuary `AereoSiteBuilder`, `HelixTower`, `LaunchHeightRule` |
   | Parque energético (−470, 470) | Árbol bajo (Control de energía, Garaje, Taller de paneles), 3 E-33, mareal piloto, 9 mesas solares (7 instaladas por los 50 kW de los pisos), 6 baterías | turbinas, sol y baterías **reales**; el casquete, **ficción** | `EnergyRule`; Ross Island |
   | Muelle aéreo (−230, 210) | El muelle de las alfombras voladoras, apartado por nosotros de (−300, 170) para quedar fuera de los 300 m del Electron (también a escala 1,5) | **ficción** | `AereoLink`, `FlyingCarpet` |
@@ -35,8 +35,9 @@ arriba del todo) llevada a una escena de Three.js. Casos AER-01 a AER-09 en [cas
   otra con el aparato, el tiempo y la escala. «Volar» la lleva andando al helipuerto y se ve el vuelo entero: el S-92 (280 km/h, 60 m de
   crucero) o la alfombra (30 s, `AereoRule.FlightSeconds`); la cámara gira alrededor con su joystick. `planTrip` pide el menor número de
   tramos y, a igualdad, el menor tiempo: al parque y al muelle (solo alfombras) se va con escala en la lanzadera.
-- **Puestos.** Los 13 puestos de la iniciación (§4) son tareas del grupo «Iniciación» con «Ir» a su máquina. Su tarjeta dice
-  «⊘ En construcción» y el reto no se puede empezar (llegan con las ramas `s3-iniciacion-*`). La esterilla del gimnasio abre los ajustes.
+- **Puestos.** Los 13 puestos de la iniciación (§4) son tareas del grupo «Iniciación» con «Ir» a su máquina, y la 14.ª,
+  «Lanzamiento», lleva a la torre de la plataforma ([santuario3-lanzamiento.md](santuario3-lanzamiento.md)). Todos tienen su
+  reto (ramas `s3-iniciacion-*` y `s3-lanzamiento`). La esterilla del gimnasio abre los ajustes.
 - **Aves y turbinas.** Diez aves de `ColdBirds.AirBudget` vuelan al sur de la lanzadera; los albatros llegan hasta el parque. Cada segundo
   cada turbina mira sus aves (`scan`): una a ≤ 200 m del buje la para y se rearma 30 s después de la última.
 

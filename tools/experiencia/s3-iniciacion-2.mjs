@@ -1,12 +1,14 @@
 // PX-47 Sanctuary 3, initiation phase 5 (docs/design/santuario3-iniciacion.md §5.3, s3-iniciacion-2), on an iPhone
 // 13 with visible taps only. At 9:00 the trainers on shift give posts 5, 6, 8, 9, 11 and 12. She goes (teleport, chosen
-// in the task settings) to each: the centrifuge spins up to 4–5 g with her reclined in the gondola; the A310 Zero-G
-// takes off from the glacier's blue-ice runway, pulls 1,8 g and floats her; the Dragon simulator's screen shows each
-// rehearsal; she docks Dragon by hand inside the IDSS limits and lands the LM by hand inside its gear's; the robotics
+// in the task settings) to each: the centrifuge spins up to 4–5 g with her reclined in the gondola; the Il-76MDK
+// takes off from the glacier's blue-ice runway, climbs to 6000 m, pulls 2 g and floats her; the Dragon simulator's screen shows each
+// rehearsal; she docks Dragon by hand inside the IDSS limits and, in the LM simulator's hall, lands the LM by hand inside its gear's; the robotics
 // trainer's screens show the Canadarm2 capturing the Cygnus; the meteorite search and the cold-survival school are
 // acted on the glacier with their things. At lunch the post waits for the next shift, and a trainer sets off early to
-// be at her next place on time; after lunch she waits for each midday trainer at her post (11, 12, 8, 9). Captures in docs/screenshots/s3i2-<paso>-movil.png.
+// be at her next place on time; after lunch she waits for each midday trainer at her post (11, 12, 9, 8), and the hand
+// practices come last (their walks move the clock on). Captures in docs/screenshots/s3i2-<paso>-movil.png.
 import { mkdirSync } from "node:fs";
+import { goArea, walkTo } from "./s3-detalle.mjs";
 
 async function capture(j, label, title, overlaps = true) {
   await j.page.waitForTimeout(400);
@@ -64,6 +66,9 @@ const scene = (p) =>
 async function onShift(j, n, id) {
   await j.page.evaluate(() => window.codeshipS3.setHour(11.95));
   await j.page.waitForFunction(([n, id]) => window.codeshipS3.crowd.positions().some((c) => c.id === id && c.key === `puesto:${n}` && c.there), [n, id], { timeout: 240000 });
+  // Her walk in moved the clock on (a board hour is a minute): back to the start of the shift, so that she does not
+  // set off for the 14:00 training while the challenge is being played.
+  await j.page.evaluate(() => window.codeshipS3.setHour(12.05));
 }
 
 async function goPost(j, n, title) {
@@ -171,9 +176,9 @@ export async function s3Iniciacion2(j) {
   // 3. Post 6: the parabolic flight from the glacier (Ivelyna).
   await goPost(j, 6, "Vuelo parabólico");
   const isl6 = (await s3(p)).island;
-  j.check("el puesto 6 está en el glaciar, junto al A310 de la pista de hielo azul", isl6 === "glaciar", isl6);
+  j.check("el puesto 6 está en el glaciar, junto al Il-76MDK de la pista de hielo azul", isl6 === "glaciar", isl6);
   const c6 = await doPost(j, 6, "Puesto 6, vuelo parabólico", "parabolico", "Ivelyna", []);
-  j.check("el A310 despega, tira a 1,8 g, flota en ingravidez y aterriza, con ella dentro", ["despegue", "ingravidez", "salida", "aterrizaje"].every((f) => c6.phases.has(f)) && c6.maxPlaneY > 100 && Math.max(...c6.herYs) > 100 && c6.reads.has("1,8 g") && c6.reads.has("0,0 g"), JSON.stringify({ phases: [...c6.phases], maxPlaneY: c6.maxPlaneY, herMaxY: Math.max(...c6.herYs), reads: [...c6.reads] }));
+  j.check("el Il-76MDK despega, sube a 6000 m, entra a 2 g, flota en ingravidez y aterriza, con ella dentro", ["despegue", "subida", "ingravidez", "salida", "aterrizaje"].every((f) => c6.phases.has(f)) && c6.maxPlaneY >= 5800 && Math.max(...c6.herYs) >= 5800 && c6.reads.has("2,0 g") && c6.reads.has("0,0 g"), JSON.stringify({ phases: [...c6.phases], maxPlaneY: c6.maxPlaneY, herMaxY: Math.max(...c6.herYs), reads: [...c6.reads] }));
 
   // 4. Lunch: nobody on shift at post 6; the card says when the next shift starts. A trainer sets off early.
   await p.evaluate(() => window.codeshipS3.setHour(10.75));
@@ -195,7 +200,14 @@ export async function s3Iniciacion2(j) {
   await goPost(j, 12, "Supervivencia en frío");
   await doPost(j, 12, "Puesto 12, supervivencia en frío", "frio", "Nesvitor", ["tienda-scott", "muro-nieve", "zanja-techo", "hornillo", "olla", "radio-hf", "antena"]);
 
-  // 7. Post 8: the Dragon simulator (David), then the hand practices.
+  // 7. Post 9: robotics (Adonis) — the Canadarm2 capture on the trainer's screens.
+  await onShift(j, 9, "adonis");
+  await goPost(j, 9, "Robótica");
+  const c9 = await doPost(j, 9, "Puesto 9, robótica", "robotica", "Adonis", ["mandos"]);
+  j.check("las pantallas del simulador del brazo se encienden y el brazo se mueve con cada bloque", c9.armOn && c9.armPlaying, JSON.stringify({ armOn: c9.armOn, armPlaying: c9.armPlaying }));
+
+
+  // 8. Post 8: the Dragon simulator (David), then the hand practices.
   await onShift(j, 8, "david");
   await goPost(j, 8, "Simuladores");
   const c8 = await doPost(j, 8, "Puesto 8, simulador de Dragon", "simulador", "David", ["casco-vuelo"]);
@@ -243,7 +255,11 @@ export async function s3Iniciacion2(j) {
   const toast = (await j.texts(".s3-ui .cab-toast.on"))[0] ?? "";
   j.check("el acople a mano toca dentro de los límites del IDSS y acopla", !!s.contact?.ok && /acoplada/.test(toast), JSON.stringify({ contact: s.contact, toast }));
   await until(j, (q) => q.mode === "libre", 15000);
-  // The LM's landing from 150 m: the descent engine's throttle, the drift nulled with the RCS.
+  // The LM's landing from 150 m, in the LM simulator's own hall (as the LMS of Building 5): Áreas, then a few steps
+  // to the cabin with «Moverse»; the descent engine's throttle, the drift nulled with the RCS.
+  await goArea(j, "entrenamiento:simulador-lm", "Simulador del módulo lunar (LMS)");
+  const lmAt = await p.evaluate(() => window.codeshipS3.layout.machines.find((q) => q.id === "lm-simulador"));
+  await walkTo(j, lmAt.x, lmAt.z, 0.4);
   await j.showPanel('.s3-ui .cm-acts [data-act="sim:alunizaje"]');
   await j.tap('.s3-ui .cm-acts [data-act="sim:alunizaje"]', "Practicar el alunizaje (LM)");
   await capture(j, "alunizaje", "El alunizaje a mano en la maqueta del LM");
@@ -271,12 +287,6 @@ export async function s3Iniciacion2(j) {
   const toastL = (await j.texts(".s3-ui .cab-toast.on"))[0] ?? "";
   j.check("el LM toca dentro de los límites del tren (3,05 m/s y 1,22 m/s): posada", !!m?.landed?.ok && /Posada/.test(toastL), JSON.stringify({ landed: m?.landed, toastL }));
   await until(j, (q) => q.mode === "libre", 15000);
-
-  // 8. Post 9: robotics (Adonis) — the Canadarm2 capture on the trainer's screens.
-  await onShift(j, 9, "adonis");
-  await goPost(j, 9, "Robótica");
-  const c9 = await doPost(j, 9, "Puesto 9, robótica", "robotica", "Adonis", ["mandos"]);
-  j.check("las pantallas del simulador del brazo se encienden y el brazo se mueve con cada bloque", c9.armOn && c9.armPlaying, JSON.stringify({ armOn: c9.armOn, armPlaying: c9.armPlaying }));
 
   j.check("sin errores en la página", j.errors.length === 0, j.errors.slice(0, 3).join(" | "));
 }

@@ -22,9 +22,9 @@ export type HerSpot =
   | "fondo" // on the pool's floor by the ISS mock-up
   | "junto-gondola" // standing by the centrifuge's gondola
   | "gondola" // strapped in the centrifuge's gondola (it spins with the arm)
-  | "avion-escalerilla" // at the foot of the A310's stairs
-  | "avion-asiento" // in a seat at the back of the A310's cabin
-  | "avion-suelo" // lying on the padded floor of the test zone (the 1,8 g phases)
+  | "avion-escalerilla" // at the foot of the Il-76MDK's stairs
+  | "avion-asiento" // in a seat at the back of the Il-76MDK's cabin
+  | "avion-suelo" // lying on the padded floor of the test zone (the 2 g phases)
   | "avion-flotando" // floating in the test zone (0 g)
   | "dragon-asiento" // in the commander's seat of the Dragon simulator
   | "robotica-puesto" // at the robotics workstation, hands on the two controllers
@@ -34,7 +34,13 @@ export type HerSpot =
   | "muro" // building the snow wall
   | "zanja" // in the snow trench
   | "hornillo" // by the stove
-  | "radio"; // by the HF radio
+  | "radio" // by the HF radio
+  | "director" // at the flight director's console in mission control
+  | "sillon-traje" // in the suit-up room's recliner, her suit plugged in for its checks
+  | "traje-pie" // standing in the suit-up room
+  | "brazo-acceso" // on the crew access arm, high on the tower
+  | "sala-blanca" // in the white room at the arm's end, by Dragon's hatch
+  | "dragon-real"; // in her seat in the real Crew Dragon on the Falcon 9 (it flies with the rocket)
 
 /** How she holds herself. */
 export type HerPose = "de-pie" | "sentada" | "tumbada" | "nadando" | "flotando" | "brazos-arriba" | "mano-adelante" | "mareada" | "neutra" | "recostada" | "manos-mandos" | "rodillas" | "moto" | "boca-abajo";
@@ -79,20 +85,31 @@ export type Thing =
   | "hornillo"
   | "olla"
   | "radio-hf"
-  | "antena";
+  | "antena"
+  | "traje-ss" // the Crew Dragon suit (SpaceX's pressure suit)
+  | "casco-ss" // its helmet
+  | "umbilical"; // the suit's umbilical (air and power) to the leak-check stand or the seat
 
 /** Where a thing is: on the table, in a hand (hers or the trainer's), on her (arm, chest, face, body, waist), in the water. */
 export type ThingSpot = "mesa" | "mano-ella" | "mano-entrenador" | "brazo" | "pecho" | "cara" | "cuerpo" | "cintura" | "agua" | "pared" | "sitio";
 
 /**
- * What a machine of the post does in the beat: the centrifuge spinning up to `g` (its gondola swings out), the A310
+ * What a machine of the post does in the beat: the centrifuge spinning up to `g` (its gondola swings out), the Il-76MDK
  * at a phase of its flight (seen from outside on the runway and climbing out, from its cabin in the parabolas), the
  * simulator's screens showing a phase, the snowmobile line sweeping the ice.
  */
 export type RigCue =
   | { readonly kind: "centrifuga"; readonly g: number }
-  | { readonly kind: "avion"; readonly phase: "parado" | "despegue" | "tiron" | "ingravidez" | "salida" | "aterrizaje"; readonly g: number }
-  | { readonly kind: "pantalla"; readonly show: "lanzamiento" | "aborto" | "acople" | "fallo" | "reentrada" | "alunizaje" };
+  | { readonly kind: "avion"; readonly phase: "parado" | "despegue" | "subida" | "tiron" | "ingravidez" | "salida" | "aterrizaje"; readonly g: number }
+  | { readonly kind: "pantalla"; readonly show: "lanzamiento" | "aborto" | "acople" | "fallo" | "reentrada" | "alunizaje" }
+  /** The Electron on the crown, seen on mission control's front screens (post 10). */
+  | { readonly kind: "electron"; readonly phase: "parado" | "carga" | "despegue" | "vuelo" }
+  /**
+   * Her Falcon 9 on the crew pad: the arm, the liftoff, the ascent, the stages parting and orbit; then the rendezvous
+   * («cita»), on Dragon's display: `rangeM` to the Starship's port when it is within the 400 m sphere, `step` the text.
+   */
+  | { readonly kind: "falcon"; readonly phase: "brazo" | "brazo-fuera" | "despegue" | "maxq" | "separacion" | "orbita" }
+  | { readonly kind: "falcon"; readonly phase: "cita"; readonly step: string; readonly rangeM?: number };
 
 export interface Beat {
   readonly her: HerSpot;

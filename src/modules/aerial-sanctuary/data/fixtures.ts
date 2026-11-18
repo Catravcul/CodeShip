@@ -572,6 +572,17 @@ function hyperbaric(sink: FurnishSink, area: string, c: { x: number; z: number }
   sink.walkCheck({ id: "nbl: dentro de la cámara hiperbárica", pts: [{ x: x0 - 1.3, y: 0, z: c.z }, { x: x0 + 1.2, y: 0.5, z: c.z }, { x: c.x + 1.4, y: 0.5, z: c.z }] });
 }
 
+/** An access step at a compartment's hatch, half its floor's height. */
+function hatchStep(sink: FurnishSink, fr: RoomFrame, id: string, side: "w" | "e"): void {
+  const cp = fr.compartments.find((q) => q.id === id)!;
+  const hx = side === "e" ? cp.x + cp.hx : cp.x - cp.hx;
+  const s = side === "e" ? 1 : -1;
+  const x = hx + s * 0.9;
+  const y = cp.floorY / 2;
+  sink.floor(fr.area, y, { x0: x - 0.3, x1: x + 0.3, z0: cp.z - 0.6, z1: cp.z + 0.6 });
+  put(sink, fr.area, { k: "escalon", x: 0, z: 0, wx: x, wz: cp.z, h: y, rot: side === "e" ? 1 : 3, w: 1.2, d: 0.6 });
+}
+
 function svmf(sink: FurnishSink, fr: RoomFrame): void {
   const { P, at, span, lights, face } = roomKit(sink, fr);
   const k = fr.k;
@@ -582,17 +593,8 @@ function svmf(sink: FurnishSink, fr: RoomFrame): void {
   span({ k: "grua-puente", x0: 4 - 0.6 / k, x1: 4 + 0.6 / k, z0: -fr.half.z / k + 0.6, z1: fr.half.z / k - 0.6, y0: 13.3, y1: 14.7, solid: false, name: "Grúa puente" });
   at({ k: "puerta-industrial", x: 20, z: 0, snap: "n", rot: 2, plate: true });
   // Access steps at each mock-up's hatch, and their stands.
-  const step = (id: string, side: "w" | "e") => {
-    const cp = fr.compartments.find((q) => q.id === id)!;
-    const hx = side === "e" ? cp.x + cp.hx : cp.x - cp.hx;
-    const s = side === "e" ? 1 : -1;
-    const x = hx + s * 0.9;
-    const y = cp.floorY / 2;
-    sink.floor(A, y, { x0: x - 0.3, x1: x + 0.3, z0: cp.z - 0.6, z1: cp.z + 0.6 });
-    put(sink, A, { k: "escalon", x: 0, z: 0, wx: x, wz: cp.z, h: y, rot: side === "e" ? 1 : 3, w: 1.2, d: 0.6 });
-  };
+  const step = (id: string, side: "w" | "e") => hatchStep(sink, fr, id, side);
   step("svmf-destiny", "e");
-  step("svmf-dragon", "w");
   step("svmf-orion", "w");
   const orion = fr.compartments.find((q) => q.id === "svmf-orion")!;
   put(sink, A, { k: "capsula-orion", x: 0, z: 0, wx: orion.x, wz: orion.z, plan: k, plate: true });
@@ -799,7 +801,7 @@ function survival(sink: FurnishSink, fr: RoomFrame): void {
   at({ k: "balsa", x: -7, z: 2.5, y: -0.45, plate: true });
   at({ k: "silla-socorrista", x: -14.2, z: -7.4 });
   at({ k: "silla-socorrista", x: 15.5, z: -8.5 });
-  for (const [x, z] of [[-12.5, -5.6], [12.5, 5.6]] as const) put(sink, A, { k: "escalerilla", x: 0, z: 0, wx: P(x, 0).x + (x < 0 ? 0.35 : -0.35), wz: P(0, z).z, y: -0.3, rot: x < 0 ? 1 : 3 });
+  for (const [x, z] of [[-13, -5.6], [13, 5.6]] as const) put(sink, A, { k: "escalerilla", x: 0, z: 0, wx: P(x, 0).x + (x < 0 ? 0.35 : -0.35), wz: P(0, z).z, y: -0.3, rot: x < 0 ? 1 : 3 });
   for (let i = 0; i < 5; i++) at({ k: "banco", x: -8 + i * 4, z: 0, snap: "n", rot: 2, gap: 0.1 });
   for (let i = 0; i < 3; i++) at({ k: "chalecos", x: -6 + i * 3.2, z: 0, snap: "s" });
   at({ k: "estanteria", x: 6, z: 0, snap: "s", name: "Balsas plegadas" });
@@ -809,7 +811,60 @@ function survival(sink: FurnishSink, fr: RoomFrame): void {
   void face;
 }
 
-const ROOM_FURNISH: Readonly<Record<string, (sink: FurnishSink, fr: RoomFrame) => void>> = { nbl, svmf, control, medico: medical, gimnasio: gym, supervivencia: survival };
+/** The Crew Dragon sims, as SpaceX's in Hawthorne (Wired): the full-scale one (the compartment) and the two-seat cockpit. */
+function dragonSims(sink: FurnishSink, fr: RoomFrame): void {
+  const { at, lights } = roomKit(sink, fr);
+  hatchStep(sink, fr, "simulador-dragon-capsula", "w");
+  at({ k: "caja", x: -6, z: 3, w: 2.6, d: 2.2, h: 2.2, color: 0xe8eaec, name: "Simulador de cabina de dos asientos", source: S.spacexSims, reality: "real", plate: true });
+  // The instructors who put the failures in: their console (its place and shape are not published: ours).
+  at({ k: "consola-fcr", x: 0, z: 0, snap: "n", rot: 2, w: 2.4, name: "Consola de los instructores", source: `${S.spacexSims} (sitio y forma nuestros)`, reality: "licencia", plate: true });
+  at({ k: "silla-fcr", x: 0, z: 0, snap: "n", gap: 1.0 });
+  lights(3, 2, fr.height - 0.3);
+}
+
+/** The Apollo LM simulator, as the LMS of Building 5 (NASA): the cabin (drawn by the scene) and the control console. */
+function lmSim(sink: FurnishSink, fr: RoomFrame): void {
+  const { at, lights } = roomKit(sink, fr);
+  at({ k: "consola-fcr", x: -7, z: 0, rot: 1, w: 3.2, name: "Consola de control del LMS", source: `${S.mstf} (sitio nuestro)`, plate: true });
+  at({ k: "silla-fcr", x: -7.9, z: -0.6, rot: 1 });
+  at({ k: "silla-fcr", x: -7.9, z: 0.6, rot: 1 });
+  lights(3, 2, fr.height - 0.3);
+}
+
+/** The CSA's Robotics Training Centre: the classroom (scale models, three interactive whiteboards) and the 3/4 Destiny. */
+function robotics(sink: FurnishSink, fr: RoomFrame): void {
+  const { P, at, lights } = roomKit(sink, fr);
+  hatchStep(sink, fr, "robotica-destiny", "w");
+  for (const x of [-9.5, -6.5, -3.5]) at({ k: "pizarra", x, z: 0, snap: "s", y: 0.9, name: "Pizarra interactiva", source: S.csaRobotics, plate: x === -6.5 });
+  for (const x of [-8, -5]) {
+    at({ k: "mesa", x, z: -2.4, name: "Mesa del aula", source: S.ours, reality: "licencia" });
+    for (const dx of [-0.4, 0.4]) at({ k: "silla", x: x + dx, z: -1.6, rot: 2 });
+  }
+  at({ k: "caja", x: -9, z: 4.2, w: 2.6, d: 0.7, h: 1.1, color: 0xf0f0f0, name: "Maqueta a escala de Canadarm2", source: S.csaRobotics, plate: true });
+  at({ k: "caja", x: -5.5, z: 4.2, w: 1.4, d: 0.7, h: 1.1, color: 0xf0f0f0, name: "Maqueta a escala de Dextre", source: S.csaRobotics, plate: true });
+  // The ISS robotics workstation in the Destiny mock-up: its desk with the laptop and the two hand controllers
+  // (not solid: she sits at it, her knees under it).
+  const cp = fr.compartments.find((q) => q.id === "robotica-destiny")!;
+  const d = P(4.4, 0.75);
+  put(sink, fr.area, { k: "mesa", x: 0, z: 0, wx: d.x, wz: d.z, y: cp.floorY, w: 1.9, d: 0.6, h: 0.75, solid: false, name: "Estación de robótica (portátil y dos mandos)", source: S.csaRobotics, area: `entrenamiento:${cp.id}`, plate: true });
+  lights(4, 2, fr.height - 0.3);
+}
+
+/**
+ * The crew's suit-up room on launch day (Crew-5: «suit donning and checkouts» in the Neil Armstrong O&C building): the
+ * crew sit in recliners while their suits are plugged in and leak-checked, the suits are hung by the lockers. The
+ * recliners are drawn by the stage (data/stages.ts, post 13's «sillon-traje»); the room's plan is ours.
+ */
+function suitRoom(sink: FurnishSink, fr: RoomFrame): void {
+  const { at, lights } = roomKit(sink, fr);
+  for (let i = 0; i < 6; i++) at({ k: "taquillas", x: -10 + i * 0.42, z: 0, snap: "s", ...(i === 0 ? { plate: true } : {}) });
+  at({ k: "caja", x: -4.5, z: 0, snap: "s", w: 1.6, d: 0.5, h: 1.9, color: 0xe9ecef, name: "Trajes de la Crew Dragon colgados, cada uno a la medida de quien lo lleva", source: S.crew5Timeline, reality: "real", plate: true });
+  at({ k: "consola-fcr", x: 8.5, z: 0, snap: "s", w: 1.6, name: "Puesto de pruebas del traje (aire y comunicaciones por el umbilical)", source: `${S.crewDay} (sitio y forma nuestros)`, reality: "licencia", plate: true });
+  at({ k: "mesa", x: -6, z: 3, name: "Mesa de los técnicos de trajes", source: S.ours, reality: "licencia" });
+  lights(3, 2, fr.height - 0.3);
+}
+
+const ROOM_FURNISH: Readonly<Record<string, (sink: FurnishSink, fr: RoomFrame) => void>> = { nbl, svmf, control, medico: medical, gimnasio: gym, supervivencia: survival, "simulador-dragon": dragonSims, "simulador-lm": lmSim, robotica: robotics, trajes: suitRoom };
 
 /** Furnish one training room (none for the centrifuge: its machines come with its own branch). */
 export function furnishRoom(sink: FurnishSink, fr: RoomFrame): void {
@@ -895,7 +950,8 @@ export function furnishIsland(sink: FurnishSink, k: number, o: IslandFrame): voi
   const free = (x: number, z: number, r: number) => {
     if (x < ti.x0 + 2 || x > ti.x1 - 2 || z < ti.z0 + 2 || z > ti.z1 - 2) return false;
     if (o.rooms.some((q) => x > q.x0 - r - 2 && x < q.x1 + r + 2 && z > q.z0 - r - 2 && z < q.z1 + r + 2)) return false;
-    if (Math.hypot(x - o.heli.x, z - o.heli.z) < o.heliHalf + 6 + r) return false;
+    // The pad and its floodlights at its corners (about 20 m from its middle).
+    if (Math.hypot(x - o.heli.x, z - o.heli.z) < o.heliHalf + 10 + r) return false;
     if (Math.hypot(x - cross.x - 3, z - cross.z) < 7 + r) return false;
     if (Math.abs(x - o.road.x) < 4 + r || Math.abs(z - o.road.z) < 4 + r) return false;
     if (x > pier.x0 - 4 && x < pier.x1 + 4 && z > ti.z1 - 8) return false;

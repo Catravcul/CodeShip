@@ -1,4 +1,5 @@
 import { isRecord } from "@core/snapshot";
+import { checkHandover } from "./launch-handover";
 
 /**
  * The space sanctuary's (level 6) saved state (docs/design/partidas.md, «Qué se guarda»): plain JSON written by
@@ -71,9 +72,10 @@ const SPOTS: readonly CrewSpot[] = ["asiento", "cabina", "cubierta-vuelo", "inte
 const finite = (v: unknown, n: number): boolean => Array.isArray(v) && v.length === n && v.every((x) => typeof x === "number" && Number.isFinite(x));
 const pose = (v: unknown): boolean => isRecord(v) && finite(v.p, 3) && finite(v.q, 4);
 
-/** Why a level-6 state cannot be resumed, or undefined when it can. */
+/** Why a level-6 state cannot be resumed, or undefined when it can (a hand-over from level 3's launch is one too). */
 export function checkSpaceState(s: unknown): string | undefined {
   if (!isRecord(s)) return "sin estado";
+  if (isRecord(s.fromLaunch)) return checkHandover(s);
   if (typeof s.boardDays !== "number" || !Number.isFinite(s.boardDays) || s.boardDays < 0) return "sin día a bordo";
   const c = s.crew;
   if (!isRecord(c) || !VEHICLES.includes(c.vehicle as CrewVehicle) || !SPOTS.includes(c.spot as CrewSpot) || (c.at !== undefined && typeof c.at !== "string")) return "sin el sitio de Doménica";

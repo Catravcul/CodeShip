@@ -21,6 +21,7 @@ import type { RingAquarium } from "@modules/sanctuary/domain/aquarium";
 import { AutoSave } from "@modules/saves/application/auto-save";
 import type { SaveBook } from "@modules/saves/application/save-book";
 import { boardDayOf, SPACE_LEVEL, VEHICLE_NAME, type BodyState, type CrewPlace, type PoseState, type SpaceState, type V3 } from "@modules/saves/domain/space-state";
+import { isHandover, type LaunchHandover } from "@modules/saves/domain/launch-handover";
 import { playSession, savedGames } from "./adapters/storage/saved-games";
 import type { LanderCabin } from "./lander-cabin";
 import type { BridgeRoom } from "./bridge";
@@ -87,11 +88,20 @@ export class GameSave {
   private off: string | undefined;
   /** The last save's result, for the experience suite. */
   lastSaved: { reason: string; at: string; ok: boolean; why?: string } | undefined;
+  /** A game that comes from level 3's launch (launch-handover.ts): a new game whose cruise to Bennu is still to fly. */
+  readonly fromLaunch: LaunchHandover["fromLaunch"] | undefined;
 
   constructor(private readonly g: SpaceGame) {
     const s = playSession();
     this.slotId = s.slotId;
-    if (s.resume) {
+    const handover = s.resume && isHandover(s.resume.state) ? s.resume.state : undefined;
+    this.fromLaunch = handover?.fromLaunch;
+    if (handover) {
+      // From the launch: a new game, her days going on, on the Starship's flight deck (she came in through its port).
+      this.days = handover.boardDays;
+      this.place({ vehicle: "nodriza", spot: "cubierta-vuelo" });
+      g.say("Acoplada a la Starship en órbita baja: empieza el crucero a Bennu");
+    } else if (s.resume) {
       try {
         this.restore(s.resume.state as SpaceState);
         g.say(`Partida ${s.resume.id} recuperada: día ${s.resume.boardDay}, ${s.resume.summary.vehicle} · ${s.resume.summary.place}`);

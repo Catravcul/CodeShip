@@ -5,6 +5,7 @@ import { S3_SOURCES as S } from "../data/sources";
 import { TRAINING } from "../data/facts";
 import { block, choice, order } from "./challenge-kit";
 import { phase5Stations } from "./stations-phase5";
+import { launchStations } from "./launch";
 
 /**
  * The challenges of posts 1–4 and 7 of the initiation (and, from stations-phase5.ts, 5, 6, 8, 9, 11 and 12) (docs/design/santuario3-iniciacion.md §4.1; phase 4,
@@ -106,7 +107,7 @@ function swim(): Station {
   const total = (SWIM.lengths + SWIM.suitLengths) * SWIM.lengthM;
   return {
     post: 3,
-    machine: "nbl-supervivencia",
+    machine: "supervivencia-piscina",
     sources: [S.training, S.pensacola],
     chore: {
       id: "s3:puesto-3",
@@ -217,9 +218,9 @@ function nbl(): Station {
   };
 }
 
-/** Posts 1–4 and 7, by post. */
+/** Every post's challenge (1–4 and 7 here; 5, 6, 8, 9, 11 and 12 in phase 5; 10 and 13 in phase 6), by post. */
 export function stations(): Station[] {
-  return [selection(), medical(), swim(), chamber(), nbl(), ...phase5Stations()].sort((a, b) => a.post - b.post);
+  return [selection(), medical(), swim(), chamber(), nbl(), ...phase5Stations(), ...launchStations()].sort((a, b) => a.post - b.post);
 }
 
 export const stationFor = (post: number): Station | undefined => stations().find((s) => s.post === post);

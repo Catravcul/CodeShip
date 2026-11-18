@@ -282,8 +282,8 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-01 | Probado (en vivo) | 2026-11-18 | `90ba319` | [run](runs/2026-11-18-1144-PX-01.md): 54 OK |
 | PX-02 | FAIL | 2026-11-16 | `1c1b689` | [run](runs/2026-11-16-1923-PX-01-PX-02-PX-13-PX-27.md): 28 OK, 1 FALLA |
 | PX-03 | Probado (en vivo) | 2026-11-18 | `69fb242` | [run](runs/2026-11-18-0606-PX-03-PX-04-PX-05-PX-10-PX-15-PX-31-PX-32-PX-41-PX-36-PX-42-PX-40.md): 18 OK |
-| PX-04 | Probado (en vivo) | 2026-11-18 | `9d51b5a` | [run](runs/2026-11-18-1153-PX-04-PX-05.md): 34 OK |
-| PX-05 | Probado (en vivo) | 2026-11-18 | `9d51b5a` | [run](runs/2026-11-18-1153-PX-04-PX-05.md): 34 OK |
+| PX-04 | Probado (en vivo) | 2026-11-18 | `ea9c197` | [run](runs/2026-11-18-1210-PX-04-PX-05.md): 34 OK |
+| PX-05 | Probado (en vivo) | 2026-11-18 | `ea9c197` | [run](runs/2026-11-18-1210-PX-04-PX-05.md): 34 OK |
 | PX-06 | Probado (en vivo) | 2026-11-18 | `69fb242` | [run](runs/2026-11-18-0606-PX-06-PX-07-PX-08-PX-09-PX-11-PX-12-PX-24-PX-28-PX-29-PX-33-PX-35-PX-37-PX-38-PX-43-PX-20-PX-30-PX-39.md): 22 OK |
 | PX-07 | Probado (en vivo) | 2026-11-18 | `1c81c52` | [run](runs/2026-11-18-0919-PX-07-PX-20.md): 21 OK |
 | PX-08 | Probado (en vivo) | 2026-11-18 | `69fb242` | [run](runs/2026-11-18-0606-PX-06-PX-07-PX-08-PX-09-PX-11-PX-12-PX-24-PX-28-PX-29-PX-33-PX-35-PX-37-PX-38-PX-43-PX-20-PX-30-PX-39.md): 7 OK |
@@ -324,6 +324,7 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-18 12:10 | PX-04, PX-05 | Experiencia (Playwright) | 2/2 recorridos bien | [run](runs/2026-11-18-1210-PX-04-PX-05.md) |
 | 2026-11-18 12:01 | PX-31, PX-32, PX-41 | Experiencia (Playwright) | 3/3 recorridos bien | [run](runs/2026-11-18-1201-PX-31-PX-32-PX-41.md) |
 | 2026-11-18 11:53 | PX-04, PX-05 | Experiencia (Playwright) | 2/2 recorridos bien | [run](runs/2026-11-18-1153-PX-04-PX-05.md) |
 | 2026-11-18 11:46 | PX-42 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-18-1146-PX-42.md) |

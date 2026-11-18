@@ -35,6 +35,10 @@ body.in-cockpit .ctx-dock > .rapport-chip, body.in-cockpit .ctx-dock > .trip-chi
   body.in-cockpit .ctx-dock { right: 62px; bottom: calc(24px + env(safe-area-inset-bottom)); width: calc(100vw - 202px); }
   body.in-cockpit.has-rcs-pad .ctx-dock { bottom: calc(var(--rcs-pad-h, 300px) + 14px + env(safe-area-inset-bottom)); }
   body.in-cockpit.in-manual-flight .ctx-dock { left: 10px; right: auto; width: calc(100vw - 236px); align-items: stretch; }
+  /* Between the pad and the HUD's two lines there is room for the notices only: where she is waits until she lands
+     (PX-04), and the column never climbs into the HUD. */
+  body.in-cockpit.in-manual-flight .ctx-dock > .region-tag { display: none; }
+  body.in-cockpit.in-manual-flight .ctx-dock { max-height: calc(100vh - var(--rcs-pad-h, 300px) - 90px - env(safe-area-inset-bottom)); overflow: hidden; }
   body.in-cockpit .ctx-dock > .region-tag { font-size: 11px; text-align: left; }
   /* The trip chip in that narrow column: its buttons go under the line, never out into the open menu's column. */
   body.in-cockpit .ctx-dock > .trip-chip .tc-row { flex-wrap: wrap; }
@@ -89,6 +93,13 @@ body:has(.interior-ui .board:not(.hidden)) .vstick { display: none !important; }
 }
 @media (min-width: 900px) {
   body.in-cockpit.wrath-on .radio-toast { top: auto; bottom: 170px; }
+  /* The LM's «Manual» pad takes the bottom centre (rcs-pad.ts): the toast goes above it (PX-05). Landed, the pad
+     shrinks to one row and the look stick stands on it, so the toast goes above both. */
+  body.in-cockpit.has-rcs-pad .radio-toast { top: auto; bottom: calc(var(--rcs-pad-h, 300px) + 22px); }
+  body.in-cockpit.has-rcs-pad:not(.in-manual-flight) .radio-toast { bottom: calc(var(--rcs-pad-h, 300px) + 190px); }
+}
+@media (min-width: 900px) and (pointer: fine) {
+  body.in-cockpit.has-rcs-pad:not(.in-manual-flight) .pilot-look { bottom: calc(var(--rcs-pad-h, 300px) + 30px); }
 }
 
 /* While a challenge is open nothing else shows (H26): no longer a list of selectors here, one rule for every

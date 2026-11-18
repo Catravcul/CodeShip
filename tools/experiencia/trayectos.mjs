@@ -2,9 +2,9 @@
 // §3.5, §3.6): from the lander's seat, «Ir» to a station task in «Viaje» mode walks to the travel room and stops
 // there: the LM's roof hatch opens, hops through Starship's three decks, the ceiling hatch up to the flight deck
 // opens, the walk to the pilot seat, and a notice says she has to travel first (a task never flies a ship).
-// The pilot seat offers both modes, «Manual» and «Automático (retos)» (docs/design/puente.md); she flies by hand
-// with short burns (0,1 m/s) at the board's ×60, stops at Waypoint 1 and, from the docking seat, docks by
-// challenges: Starship berths like Crew Dragon Demo-1; «Ver trayecto» shows the real ship in the real scene with a camera that turns. Then
+// The pilot seat offers both modes, «Manual» and «Automático (retos)» (docs/design/puente.md); «Automático» opens
+// the navigation window, she picks the station and solves the trip's challenges; Starship flies there and berths
+// like Crew Dragon Demo-1; «Ver trayecto» shows the real ship in the real scene with a camera that turns. Then
 // «Ir» again: down, through the nose tunnel and the station's hops to the machine. Then the bay: the Starship at
 // true scale, «+» to zoom. iPhone 13; captures in docs/screenshots/trayectos-*-movil.png.
 import { mkdirSync } from "node:fs";
@@ -92,30 +92,24 @@ export async function trayectos(j) {
   j.check("un aviso dice que primero hay que viajar a la estación, con los dos modos", /primero hay que viajar a la estación/.test(s3.note) && /Manual/.test(s3.note) && /Automático \(retos\)/.test(s3.note), s3.note);
   await capture(j, "3-aviso-viajar", "Aviso: primero hay que viajar", false);
 
-  // 3. At the pilot seat: both modes (reglas §3.6) and the station as destination; she flies by hand.
+  // 3. At the pilot seat: both modes (reglas §3.6); no destination there: «Automático» opens the navigation window.
   await j.useMachine("bridge", "prop", null);
   await p.waitForTimeout(800);
   const dock = await p.evaluate(() => window.codeship.nav.targets.find((t) => t.kind === "dock" && t.carrierPort)?.id);
-  await p.selectOption(".cm-dest select", dock);
-  await p.waitForTimeout(300);
   const modes = await j.texts(".room-ui:not(.hidden) .cab-machine [data-act]");
-  j.check("el puesto de pilotaje ofrece «Manual» y «Automático (retos)» hacia la estación", modes.includes("Manual") && modes.some((t) => /Automático \(retos\)/.test(t)), modes.join(" | "));
-  await j.tap('.room-ui:not(.hidden) .cab-machine [data-act="manual"]', "Manual");
-  await p.waitForTimeout(800);
-  const hand = (await j.texts(".carrier-hand:not(.hidden)")).join(" ");
-  j.check("sale el panel de pilotaje a mano, marcado en desarrollo", /Starship a mano/.test(hand) && /en desarrollo/.test(hand), hand.slice(0, 200));
-  for (let i = 0; i < 4; i++) await j.tap('.carrier-hand [data-dv="0.1"]', "+0,1 m/s");
+  j.check("el puesto de pilotaje ofrece «Manual» y «Automático (retos)», sin selector de destino", modes.includes("Manual") && modes.some((t) => /Automático \(retos\)/.test(t)) && !(await p.locator(".room-ui:not(.hidden) select").count()), modes.join(" | "));
+  await j.tap('.room-ui:not(.hidden) .cab-machine [data-act="auto"]', "Automático (retos)");
+  await p.waitForTimeout(700);
+  await j.tap(`.nav-map .nav-chip[data-id="${dock}"]`, "la estación en la ventana de navegación");
+  await j.tap('.nav-map [data-act="program"]', "Programar viaje");
+  await j.waitDuel(30000);
+  for (let n = 0; n < 9 && (await p.evaluate(() => window.codeship.nav.status)) === "programming"; n++) await j.answer(() => window.codeship.nav.programming?.current ?? null, true);
+  await p.waitForFunction(() => [...document.querySelectorAll(".duel")].every((e) => e.classList.contains("hidden")), null, { timeout: 15000 }).catch(() => {});
+  const fl = await p.evaluate(() => ({ status: window.codeship.nav.status, q: window.codeship.nav.progress() }));
+  j.check("resuelta la cadena de retos, la Starship vuela sola su programa hacia la estación", fl.status === "carrier" && !!fl.q && !fl.q.manual, JSON.stringify({ status: fl.status, phase: fl.q?.phase }));
+  if (await p.evaluate(() => window.codeship.deck.active)) await j.tap(".fd-panel.max .fd-back", "‹ Dejar la mesa de navegación");
+  await j.useMachine("bridge", "prop", null);
   await p.waitForTimeout(600);
-  const fl = await p.evaluate(() => {
-    const q = window.codeship.nav.progress();
-    const m = window.codeship.nav.manualCarrier;
-    return { manual: !!q?.manual, lapse: q?.lapse ?? 0, v: m?.speedMs ?? 0, left: Math.round(m?.remainingM ?? 0) };
-  });
-  j.check("cuatro toques: 0,4 m/s, como Hayabusa2", Math.abs(fl.v - 0.4) < 0.01 && fl.manual, JSON.stringify(fl));
-  j.check("va al ritmo de a bordo: ×60 (una hora de juego por minuto real)", Math.abs(fl.lapse - 60) < 0.5, `×${fl.lapse.toFixed(1)}`);
-  await capture(j, "4-pilotar-a-mano", "Pilotar la Starship a mano");
-  // Faster for the run (1 m/s, the panel's top), then stop at the parking point.
-  for (let i = 0; i < 6; i++) await j.tap('.carrier-hand [data-dv="0.1"]', "+0,1 m/s");
   await j.tap(".trip-chip .tc-view", "Ver trayecto");
   await p.waitForTimeout(1200);
   const view = await p.evaluate(() => ({ on: window.codeship.tripPreview.visible, d: window.codeship.tripPreview.distanceM, path: window.codeship.tripPreview.pathPoints, ship: window.codeship.mothership.spec.layout.lengthM }));
@@ -130,34 +124,9 @@ export async function trayectos(j) {
   const moved = Math.hypot(...after.map((v, i) => v - before[i]));
   j.check("el joystick de cámara gira la vista alrededor de la nave", moved > 1, `${moved.toFixed(1)} m`);
   if (await p.evaluate(() => window.codeship.tripPreview.visible)) await j.tap(".trip-chip .tc-view", "Ocultar trayecto");
-  // As on a real approach: slow down before the point (0,2 m/s), then stop inside its 100 m.
-  const closeTo = async (m) => {
-    const t0 = Date.now();
-    while (Date.now() - t0 < 180000) {
-      const r = await p.evaluate(() => window.codeship.nav.manualCarrier?.remainingM ?? null);
-      if (r === null) return false;
-      if (r < m) return true;
-      await p.waitForTimeout(100);
-    }
-    return false;
-  };
-  let near = await closeTo(450);
-  if (near) {
-    for (let i = 0; i < 8; i++) await j.tap('.carrier-hand [data-dv="-0.1"]', "−0,1 m/s");
-    near = await closeTo(80);
-  }
-  j.check("llega cerca del punto de espera volando a mano", near);
-  await j.tap('.carrier-hand [data-dv="stop"]', "Parar");
-  // At the parking point the computer only takes it onto the axis at Waypoint 1 and holds.
-  const held = await p.waitForFunction(() => !!window.codeship.nav.holdingAt(), null, { timeout: 300000 }).then(() => true).catch(() => false);
-  j.check("parada en el punto, espera en el punto de espera 1 sin atracar sola", held && (await p.evaluate(() => !window.codeship.mothership.dockedTo)));
-  // The docking seat docks it by challenges: the computer flies the last approach, like Demo-1.
-  await j.useMachine("bridge", "dock", "acoplar-auto", "Acoplar automático (retos)");
-  await j.waitDuel(30000);
-  for (let n = 0; n < 6 && (await p.evaluate(() => !!window.codeship.bridge.dockChore)); n++) await j.answer(() => window.codeship.bridge.dockChore?.current ?? null, true);
+  // The trip ends with the berthing, flown by the computer like Crew Dragon Demo-1 (the docking seat's own ways: PX-40).
   const docking = await p.waitForFunction(() => window.codeship.nav.progress()?.phase === "dock" || !!window.codeship.mothership.dockedTo, null, { timeout: 300000 }).then(() => true).catch(() => false);
-  j.check("con el reto del acople resuelto, se acerca al puerto despacio, como la Crew Dragon (fase de atraque)", docking);
-  await p.waitForFunction(() => [...document.querySelectorAll(".duel")].every((e) => e.classList.contains("hidden")), null, { timeout: 15000 }).catch(() => {});
+  j.check("al llegar, se acerca al puerto despacio, como la Crew Dragon (fase de atraque)", docking);
   if (docking) await capture(j, "6-atraque", "Atraque: la Starship se acerca a la estación");
 
   // Trips run on their own (reglas §3.8): while Starship berths she goes down to cook; the trip shows only at the flight deck.

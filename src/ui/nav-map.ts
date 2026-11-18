@@ -49,6 +49,16 @@ export interface NavMapDeps {
   readonly handHint?: string;
 }
 
+/**
+ * The window opened for one station (Berón, 2026-11-18: the pilot stations have no picker of their own; their
+ * «Automático» opens this window): `reach` locks the destinations that craft cannot fly to, with why
+ * (navigation/domain/nearby.ts craftReach), and `program` takes the picked one into that craft's trip challenge.
+ */
+export interface NavMapOpen {
+  reach?(t: NavTarget): { ok: boolean; why?: string };
+  program?(t: NavTarget): void;
+}
+
 /** How a target stands in Nevaeh's missions (modules/missions), for the marks on the map. */
 export interface MissionMark {
   readonly kind: "principal" | "secundaria";
@@ -84,6 +94,8 @@ export class NavMap {
   private screen: { t: NavTarget; x: number; y: number }[] = [];
   private chipsHtml = "";
   private readonly home: HTMLElement;
+  /** The station it was opened for, if any (its reach and its program). */
+  private session: NavMapOpen = {};
   /** Set by main: the mission mark of a target (Nevaeh's main missions and side missions). */
   missionMark?: (targetId: string) => MissionMark | undefined;
   /** Set by main: the subjugation block of an asteroid's card (stages, trust, next step), as HTML. */
@@ -157,7 +169,9 @@ export class NavMap {
     this.refresh();
   }
 
-  open(): void {
+  open(opts: NavMapOpen = {}): void {
+    this.session = opts;
+    this.chipsHtml = "";
     this.el.classList.remove("hidden");
     if (!this.embedded) document.body.classList.add("in-map");
     this.picked ??= this.deps.nav.target;
@@ -253,6 +267,14 @@ export class NavMap {
       // 2026-11-17: «¿para qué sirve?»; it only set the target the next trip would use, docs/design/viajes.md).
       case "program": {
         if (!this.picked) return;
+        const own = this.session.program;
+        if (own) {
+          const reach = this.reachOf(this.picked);
+          if (!reach.ok) return;
+          if (!this.embedded) this.close();
+          own(this.picked);
+          return;
+        }
         const r = nav.select(this.picked.id);
         if (!r.ok) {
           this.note = r.reason ?? "";
@@ -261,7 +283,7 @@ export class NavMap {
         const can = nav.canProgram();
         if (!can.ok) {
           // It stays the destination (the cockpit's, to fly by hand), as «Fijar destino» did.
-          this.note = `${can.reason ?? "No se puede programar"}. Queda como destino para volar a mano`;
+          this.note = can.reason ?? "No se puede programar";
           return this.refresh();
         }
         // Embedded in a deck panel the map stays put under the challenge sheet.
@@ -272,15 +294,21 @@ export class NavMap {
     }
   }
 
+  /** Whether the station the window is open for can fly to `t` (always, with no reach given). */
+  private reachOf(t: NavTarget): { ok: boolean; why?: string } {
+    return this.session.reach?.(t) ?? { ok: true };
+  }
+
   private renderChips(): void {
     const nav = this.deps.nav;
     const ship = this.deps.shipPosition();
     const html = nav.targets
       .map((t) => {
         const m = this.missionMark?.(t.id);
-        const cls = `${t === this.picked ? "on" : ""} ${t === nav.target ? "target" : ""} ${m ? `m-${m.kind} m-${m.state}` : ""}`;
+        const r = this.reachOf(t);
+        const cls = `${t === this.picked ? "on" : ""} ${t === nav.target ? "target" : ""} ${m ? `m-${m.kind} m-${m.state}` : ""}${r.ok ? "" : " locked"}`;
         const mark = m ? `<i class="mark" title="${m.kind === "principal" ? "Misión de Nevaeh" : "Misión secundaria"}">${m.state === "hecha" ? "✓" : m.kind === "principal" ? "N" : ""}</i>` : "";
-        return `<button class="nav-chip ${cls}" data-act="pick" data-id="${esc(t.id)}"><b>${mark}${esc(t.name)}</b><span></span></button>`;
+        return `<button class="nav-chip ${cls}" data-act="pick" data-id="${esc(t.id)}"${r.ok ? "" : ` title="${esc(r.why ?? "")}"`}><b>${mark}${esc(t.name)}</b><span></span></button>`;
       })
       .join("");
     if (this.chipsHtml !== html) {
@@ -289,7 +317,7 @@ export class NavMap {
     }
     nav.targets.forEach((t, i) => {
       const span = this.chips.children[i]?.querySelector("span");
-      const text = km(targetDistance(t, ship));
+      const text = km(targetDistance(t, ship)) + (this.reachOf(t).ok ? "" : " · bloqueado");
       if (span && span.textContent !== text) span.textContent = text;
     });
   }
@@ -301,8 +329,17 @@ export class NavMap {
       return;
     }
     this.card.innerHTML = t.kind === "dock" ? dockCardHtml(this.deps.nav.dockDestination(t), this.note) : cardHtml(this.deps.nav.destination(t), this.note, this.missionMark?.(t.id), this.rapportMark?.(t.id));
-    // Every flight has two modes (reglas.md §3.6): the mothership's trip by challenges or by hand.
     const actions = this.card.querySelector(".card-actions");
+    // Opened for a station: out of its craft's reach the trip is locked, and the card says why.
+    const reach = this.reachOf(t);
+    if (!reach.ok) {
+      const b = actions?.querySelector<HTMLButtonElement>('[data-act="program"]');
+      if (b) b.disabled = true;
+      // First in the card, where it is seen without scrolling.
+      this.card.insertAdjacentHTML("afterbegin", `<p class="nav-lock">Bloqueado: ${esc(reach.why ?? "fuera de su alcance")}</p>`);
+    }
+    if (this.session.program) return;
+    // Every flight has two modes (reglas.md §3.6): the mothership's trip by challenges or by hand.
     const program = actions?.querySelector<HTMLButtonElement>('[data-act="program"]');
     if (actions && this.deps.onHand && this.deps.nav.carrierFlies(t) && !!this.deps.nav.trip(t).carrier && !program?.disabled)
       actions.insertAdjacentHTML("beforeend", `<button data-act="hand">Pilotar a mano</button>`);

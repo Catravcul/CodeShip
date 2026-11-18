@@ -1,8 +1,9 @@
 // PX-41: the lander's and the probe's controls as Berón asked (2026-11-17), played with taps on an iPhone 13
 // (docs/design/cabina-lm.md «Mandos», modulo-lunar-juventas.md «Cómo sale Juventas»): in the LM's flight view the
 // dock/undock switch sprouts from the controls' root only at a port and shows the opposite of the state, with no unexplained
-// icon; the commander's station offers Manual and Automático, and Automático lists only the destinations near
-// the mothership and opens the trip challenge; on Starship's flight deck the probe's station offers the same,
+// icon; the commander's station offers Manual (free flight with Crew Dragon's tap controls on the LM's hand
+// controllers) and Automático, which opens the navigation window with the destinations out of the LM's reach
+// locked, with why, and then the trip challenge; on Starship's flight deck the probe's station offers the same,
 // Juventas starts in its deployer on the hull (wherever the mothership went), the door opens, it slides out and
 // the springs release it at 3 cm/s; its mission ends on the surface and an empty set of deployers says so.
 // Captures in docs/screenshots/mandos-<pantalla>-movil.png.
@@ -45,19 +46,28 @@ export async function mandos(j) {
   const seat = await p.evaluate(seatButtons);
   j.check("el puesto del comandante ofrece «Manual» y «Automático» (sin «Desacoplar»: es el interruptor del vuelo)", seat.map((b) => b.label).join("|") === "Manual|Automático", JSON.stringify(seat));
   await j.tap('.room-ui:not(.hidden) .cab-machine [data-act="automatico"]', "Automático");
-  await p.waitForFunction(() => !!document.querySelector('.room-ui:not(.hidden) .cab-machine [data-act^="auto:"]'), null, { timeout: 10000 }).catch(() => {});
-  await p.waitForTimeout(300);
-  const list = await p.evaluate(seatButtons);
+  await p.waitForFunction(() => window.codeship.navMode.map.visible, null, { timeout: 10000 }).catch(() => {});
+  await p.waitForTimeout(400);
   const near = await p.evaluate(() => {
     const c = window.codeship;
     const r = c.mothership.spec.parkingDistanceM.value + c.nav.approachM;
     return c.nav.targets.map((t) => ({ id: t.id, far: (t.kind === "asteroid" ? t.body.position.sub(c.mothership.position).length() - t.body.meanRadiusM : t.probePort.port.position.sub(c.mothership.position).length()) > r }));
   });
-  const listed = list.filter((b) => b.id?.startsWith("auto:")).map((b) => b.id.slice(5));
-  j.check("«Automático» lista solo destinos cercanos a la nodriza (ningún asteroide lejano: esos viajes son de la nodriza)", listed.length > 0 && listed.every((id) => near.find((t) => t.id === id && !t.far)) && near.filter((t) => t.far).every((t) => !listed.includes(t.id)), `${listed.join(", ")} · lejos: ${near.filter((t) => t.far).map((t) => t.id).join(", ")}`);
-  await capture(j, "automatico-destinos", "Destinos cercanos del «Automático» del LM");
+  const chips = () => p.$$eval(".nav-map .nav-chip", (els) => els.map((e) => ({ id: e.dataset.id, locked: e.classList.contains("locked"), why: e.getAttribute("title") ?? "" })));
+  const lm = await chips();
+  const open = lm.filter((c) => !c.locked).map((c) => c.id);
+  j.check("«Automático» abre la ventana de navegación, sin lista propia en el puesto", (await p.evaluate(() => window.codeship.navMode.map.visible)) && !(await p.locator('.cab-machine [data-act^="auto:"]').count()));
+  j.check("en la ventana, los destinos lejanos salen bloqueados con el porqué (esos viajes son de la nodriza)", open.length > 0 && open.every((id) => near.find((t) => t.id === id && !t.far)) && near.filter((t) => t.far).every((t) => lm.find((c) => c.id === t.id)?.locked && /nodriza/.test(lm.find((c) => c.id === t.id)?.why ?? "")), `abiertos: ${open.join(", ")} · lejos: ${near.filter((t) => t.far).map((t) => t.id).join(", ")}`);
+  const far1 = lm.find((c) => c.locked && near.find((t) => t.id === c.id && t.far));
+  if (far1) {
+    await j.tap(`.nav-map .nav-chip[data-id="${far1.id}"]`, "un asteroide lejano");
+    const lock = await p.evaluate(() => ({ text: document.querySelector(".nav-map .nav-lock")?.textContent ?? "", off: !!document.querySelector('.nav-map [data-act="program"]')?.disabled }));
+    j.check("elegido uno lejano, su ficha dice «Bloqueado» con el motivo y no deja programar", /Bloqueado/.test(lock.text) && lock.off, lock.text);
+  }
+  await capture(j, "automatico-destinos", "Ventana de navegación del «Automático» del LM");
   const bennu = await p.evaluate(() => window.codeship.region.target.data.id);
-  await j.tap(`.room-ui:not(.hidden) .cab-machine [data-act="auto:${bennu}"]`, "Automático a Bennu");
+  await j.tap(`.nav-map .nav-chip[data-id="${bennu}"]`, "Bennu en el mapa");
+  await j.tap('.nav-map [data-act="program"]', "Programar viaje");
   await j.waitDuel(30000);
   await capture(j, "automatico-reto", "Reto del viaje automático del LM");
   const shipBefore = await p.evaluate(() => {
@@ -89,14 +99,26 @@ export async function mandos(j) {
   });
   await j.useMachine("cabin", "asiento", "pilotar", "Manual");
   await p.waitForTimeout(1200);
-  const free = await p.evaluate(shoots);
-  const sw2 = free.find((b) => /dock-btn/.test(b.cls));
-  j.check("libre dentro de la esfera de 200 m del puerto, el interruptor dice «Acoplar»", !!sw2 && sw2.label === "Acoplar", JSON.stringify(free));
-  await j.openMenu(".flight-bar", ".dock-btn");
-  await capture(j, "acoplar", "Interruptor «Acoplar» cerca del puerto");
-  await j.tapInMenu(".flight-bar", ".dock-btn", "Acoplar");
+  // «Manual» on the LM: the same tap controls as Starship's (Crew Dragon's), on the LM's ACA and TTCA.
+  const pad = await p.evaluate(() => {
+    const el = document.querySelector(".rcs-pad.lander-pad:not(.hidden)");
+    const r = el?.getBoundingClientRect();
+    const small = [...(el?.querySelectorAll("button:not([hidden])") ?? [])].filter((b) => b.getBoundingClientRect().height < 44 || b.getBoundingClientRect().width < 44).length;
+    return { on: !!el, text: el?.innerText ?? "", top: r ? Math.round(r.top) : 0, bottom: r ? Math.round(r.bottom) : 0, small, menu: [...document.querySelectorAll(".root-menu")].some((m) => getComputedStyle(m).display !== "none"), extra: el?.querySelector('[data-act="extra"]:not([hidden])')?.textContent ?? "" };
+  });
+  j.check("«Manual» del LM: trasladar, girar y el empuje del motor de descenso, a toques (ACA y TTCA del LM de Apolo)", pad.on && /Adel/.test(pad.text) && /Cab\./.test(pad.text) && /Motor \+/.test(pad.text) && /Apolo/.test(pad.text), pad.text.slice(0, 160));
+  j.check("caben en el móvil con botones de 44 px y el menú árbol se esconde", pad.top >= 0 && pad.bottom <= 664 && pad.small === 0 && !pad.menu, JSON.stringify({ top: pad.top, bottom: pad.bottom, small: pad.small, menu: pad.menu }));
+  await j.tap('.rcs-pad.lander-pad [data-act="r:x:1"]', "Cabeceo arriba");
+  await j.tap('.rcs-pad.lander-pad [data-act="t:y:1"]', "Trasladar arriba");
+  await p.waitForFunction(() => Math.abs((window.codeship.flight.state.angularVelocityBody.x * 180) / Math.PI - 1) < 0.1, null, { timeout: 8000 }).catch(() => {});
+  const lmFly = await p.evaluate(() => ({ rate: (window.codeship.flight.state.angularVelocityBody.x * 180) / Math.PI, hold: window.codeship.flight.holdRates?.x ?? 0 }));
+  j.check("un toque de cabeceo fija 1 °/s y el RCS lo mantiene", Math.abs(lmFly.rate - 1) < 0.1 && Math.abs((lmFly.hold * 180) / Math.PI - 1) < 1e-6, JSON.stringify(lmFly));
+  await j.tap('.rcs-pad.lander-pad [data-act="stop"]', "Parar");
+  j.check("libre dentro de la esfera de 200 m del puerto, los mandos ofrecen «Acoplar»", pad.extra === "Acoplar", pad.extra);
+  await capture(j, "acoplar", "Mandos del LM a mano con «Acoplar» cerca del puerto");
+  await j.tap('.rcs-pad.lander-pad [data-act="extra"]', "Acoplar");
   await p.waitForTimeout(600);
-  j.check("al tocarlo, el asistente lleva el LM al puerto («Acoplando: tocar para parar»)", await p.evaluate(() => window.codeship.docking.assist && /Acoplando/.test(document.querySelector(".dock-btn")?.getAttribute("aria-label") ?? "")));
+  j.check("al tocarlo, el asistente lleva el LM al puerto", await p.evaluate(() => window.codeship.docking.assist));
   await j.setup("el asistente llega al contacto (minutos de juego)", () => window.codeship.docking.dockNow(window.codeship.mothership));
   await p.waitForTimeout(800);
   await j.tapInMenu(".flight-bar", ".dock-btn", "Desacoplar");
@@ -141,12 +163,16 @@ export async function mandos(j) {
   const ps = await p.evaluate(seatButtons);
   j.check("el mando de la sonda ofrece «Manual» y «Automático»", ps.map((b) => b.label).join("|") === "Manual|Automático", JSON.stringify(ps));
   await j.tap('.room-ui:not(.hidden) .cab-machine [data-act="automatico"]', "Automático");
-  await p.waitForFunction(() => !!document.querySelector('.room-ui:not(.hidden) .cab-machine [data-act^="auto:"]'), null, { timeout: 10000 }).catch(() => {});
-  await p.waitForTimeout(300);
-  const pl = (await p.evaluate(seatButtons)).filter((b) => b.id?.startsWith("auto:")).map((b) => b.id.slice(5));
-  j.check("solo asteroides cercanos a la nodriza (Juventas no hace viajes largos)", pl.length > 0 && pl.every((id) => near.find((t) => t.id === id && !t.far)), pl.join(", "));
-  await capture(j, "sonda-destinos", "Destinos cercanos del «Automático» de la sonda");
-  await j.tap(`.room-ui:not(.hidden) .cab-machine [data-act="auto:${pl[0]}"]`, "Automático al asteroide cercano");
+  await p.waitForFunction(() => window.codeship.navMode.map.visible, null, { timeout: 10000 }).catch(() => {});
+  await p.waitForTimeout(400);
+  const pc = await chips();
+  const pl = pc.filter((c) => !c.locked).map((c) => c.id);
+  const kinds = await p.evaluate(() => Object.fromEntries(window.codeship.nav.targets.map((t) => [t.id, t.kind])));
+  j.check("la ventana de la sonda: abiertos solo asteroides cercanos (Juventas no hace viajes largos)", pl.length > 0 && pl.every((id) => kinds[id] === "asteroid" && near.find((t) => t.id === id && !t.far)), pl.join(", "));
+  j.check("las estructuras salen bloqueadas para la sonda, con el porqué", pc.filter((c) => kinds[c.id] === "dock").every((c) => c.locked && /asteroides/.test(c.why)), JSON.stringify(pc.filter((c) => kinds[c.id] === "dock")));
+  await capture(j, "sonda-destinos", "Ventana de navegación del «Automático» de la sonda");
+  await j.tap(`.nav-map .nav-chip[data-id="${pl[0]}"]`, "el asteroide cercano");
+  await j.tap('.nav-map [data-act="program"]', "Programar viaje");
   await j.waitDuel(30000);
   for (let n = 0; n < 9 && (await p.evaluate(() => window.codeship.probeTravel.trip.status)) === "programming"; n++) await j.answer(probeStep, true);
   await p.waitForFunction(() => window.codeship.probe.doorOpen(window.codeship.probe.slot) > 0.6, null, { timeout: 20000 }).catch(() => {});

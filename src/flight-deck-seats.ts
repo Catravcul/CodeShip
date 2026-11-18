@@ -2,14 +2,13 @@ import { ChoreRun } from "@modules/chores/domain/chore";
 import type { Navigator } from "@modules/navigation/application/navigator";
 import { berthChore } from "@modules/navigation/application/berth-chore";
 import { num } from "@modules/navigation/application/trip-chore";
-import { targetDistance } from "@modules/navigation/domain/nav-target";
 import { PROXIMITY, WAYPOINT2_HOLD_S, BERTH_STANDOFF_M } from "@modules/mothership/application/berthing";
 import { IDSS_CONTACT_LIMITS } from "@modules/mothership/data/mothership";
 import type { Mothership } from "@modules/mothership/domain/mothership";
 import type { DuelView } from "./ui/duel-view";
 import type { StepVisual } from "@modules/chores/domain/step-visual";
 import { openTripSheet, TRIP_TEXT, type NavigationMode } from "./navigation";
-import type { DockDeps, PilotDeps, PilotDestination } from "./bridge";
+import type { DockDeps, PilotDeps } from "./bridge";
 
 const km = (m: number) => (m >= 1000 ? `${num(m / 1000, 1)} km` : `${num(m)} m`);
 
@@ -20,6 +19,8 @@ export interface SeatsWiring {
   readonly duel: DuelView;
   /** The lander is latched to the Starship's belly port. */
   landerAboard(): boolean;
+  /** The navigation window, the nav table's own (the pilot's «Automático»). */
+  openNav(): void;
   /** Open the pilot's systems pages (the deck's propulsion, power and life pages, as tabs). */
   openSystems(): void;
   say(text: string): void;
@@ -34,52 +35,25 @@ export interface SeatsWiring {
  */
 export function flightDeckSeats(w: SeatsWiring): { pilot: PilotDeps; dock: DockDeps } {
   const { nav, mothership } = w;
-  let cache: { at: number; list: PilotDestination[] } | undefined;
   let chore: ChoreRun | undefined;
-  const destinations = (): PilotDestination[] => {
-    const now = performance.now();
-    if (cache && now - cache.at < 600) return cache.list;
-    const list: PilotDestination[] = [];
-    for (const t of nav.targets) {
-      // The probe-only ports (the Starship's own) are not destinations for the Starship.
-      if (t.kind === "dock" && !t.carrierPort) continue;
-      if (t.kind === "dock" && nav.berthedAt()?.id === t.id) continue;
-      const can = nav.canCarry(t);
-      const here = t.kind === "asteroid" && w.landerAboard() && !nav.carrierFlies(t);
-      const why = can.ok ? undefined : here ? `La Starship ya está junto a ${t.name}: baja en el módulo lunar` : t.kind === "asteroid" && !w.landerAboard() ? "A un asteroide la Starship va con el módulo lunar acoplado (aterriza él)" : can.reason;
-      list.push({ id: t.id, name: t.name, distance: km(t.kind === "asteroid" ? targetDistance(t, mothership.position) : t.position.sub(mothership.position).length()), ...(why ? { why } : {}) });
-    }
-    // The station first: it is where the trips of the tasks go.
-    list.sort((a, b) => Number(nav.targets.find((t) => t.id === b.id)?.kind === "dock") - Number(nav.targets.find((t) => t.id === a.id)?.kind === "dock"));
-    cache = { at: now, list };
-    return list;
-  };
   const busy = (): string | undefined => {
     if (nav.status === "programming") return "Programando el viaje";
+    if (nav.freeCarrier) return "Pilotando a mano: los mandos del RCS están abajo";
     const p = nav.progress();
     if (p?.vehicle !== "carrier") return undefined;
     if (p.phase === "dock" || p.phase === "undock") return "Maniobra de acople en curso: se sigue en el puesto de acople";
     return p.manual ? "Pilotando a mano: los mandos están abajo" : "La Starship vuela sola por su programa: «Ver trayecto» en el chip";
   };
   const pilot: PilotDeps = {
-    destinations,
-    current: () => nav.target.id,
     busy,
     blocked: () => (mothership.dockedTo ? "Atracada en la estación: desacopla antes en el puesto de acople" : undefined),
-    flyManual: (id) => {
-      if (mothership.dockedTo) return { ok: false, reason: "Atracada en la estación: desacopla antes en el puesto de acople" };
-      const r = nav.flyByHand(id);
-      cache = undefined;
-      if (r.ok) w.say(`Pilotaje manual hacia ${nav.target.name}: da el empuje con +0,1 m/s`);
+    flyManual: () => {
+      const r = nav.flyFree();
+      if (r.ok) w.say("Vuelo libre a mano: cada toque enciende el RCS (como en Crew Dragon)");
       return r;
     },
-    flyAuto: (id) => {
-      const sel = nav.select(id);
-      if (!sel.ok) return sel;
-      const can = nav.canProgram();
-      if (!can.ok) return can;
-      cache = undefined;
-      w.navMode.program();
+    flyAuto: () => {
+      w.openNav();
       return { ok: true };
     },
     openSystems: w.openSystems,

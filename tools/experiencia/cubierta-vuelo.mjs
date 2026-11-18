@@ -1,7 +1,7 @@
 // PX-40 Starship's flight deck rebuilt from what is public (docs/design/puente.md, Berón 2026-11-17: «¿dónde está el
 // control manual de la nodriza?»): the round deck in the nose under its three windows; no console that only shows
-// numbers; the pilot seat flies to any destination by hand («Manual»: its panel only there) or by challenges
-// («Automático (retos)»); the docking seat docks at the station by hand with the nose port's camera, undocks back to
+// numbers; the pilot seat flies by hand («Manual»: free flight with Crew Dragon's tap controls, only there) or to a
+// destination picked in the navigation window by challenges («Automático (retos)»); the docking seat docks at the station by hand with the nose port's camera, undocks back to
 // Waypoint 1 and docks again by challenges. iPhone 13; captures in docs/screenshots/cubierta-vuelo-*-movil.png.
 import { mkdirSync } from "node:fs";
 
@@ -62,52 +62,65 @@ export async function cubiertaVuelo(j) {
   });
   j.check("cruza la cubierta a saltos de asidero en asidero: se impulsa, planea y se agarra", seen.includes("push") && seen.includes("catch"), seen.join(", "));
 
-  // 3. The pilot seat: destination, «Manual» and «Automático (retos)»; seated.
+  // 3. The pilot seat: «Manual» and «Automático (retos)», no destination picker of its own (Berón, 2026-11-18); seated.
   await j.useMachine("bridge", "prop", null);
   await p.waitForTimeout(800);
-  const seat = await p.evaluate(() => ({ chair: window.codeship.bridge.chair, opts: [...document.querySelectorAll(".cm-dest select option")].map((o) => o.value) }));
+  const seat = await p.evaluate(() => ({ chair: window.codeship.bridge.chair, picker: document.querySelectorAll(".room-ui:not(.hidden) select, .cm-dest").length }));
   j.check("en el puesto de pilotaje se sienta", seat.chair === true, JSON.stringify(seat.chair));
   const a3 = await acts(p);
   j.check("el puesto ofrece «Manual» y «Automático (retos)»", a3.some((x) => x.id === "manual" && x.text === "Manual") && a3.some((x) => x.id === "auto" && /Automático \(retos\)/.test(x.text)), a3.map((x) => x.text).join(" | "));
-  const dest = await p.evaluate(() => window.codeship.nav.targets.filter((t) => t.kind === "asteroid").map((t) => t.id));
-  j.check("el destino puede ser la estación o cualquier asteroide", seat.opts.includes("estacion-polana") && dest.filter((d) => seat.opts.includes(d)).length >= 5, seat.opts.join(", "));
+  j.check("el puesto no tiene selector de destino propio (el destino se elige en la ventana de navegación)", seat.picker === 0, `${seat.picker} selectores`);
   await capture(j, "2-pilotaje", "Puesto de pilotaje");
 
-  // 4. By hand to an asteroid: the hand panel, only at the pilot seat.
-  const rock = await p.evaluate(() => window.codeship.nav.targets.find((t) => t.kind === "asteroid" && t.id !== window.codeship.region.target.data.id)?.id);
-  await p.selectOption(".cm-dest select", rock);
-  await p.waitForTimeout(300);
+  // 4. «Manual»: free flight with no destination, on Crew Dragon's tap controls (RCS only); only at the pilot seat.
   await j.tap('.room-ui:not(.hidden) .cab-machine [data-act="manual"]', "Manual");
   await p.waitForTimeout(700);
-  for (let i = 0; i < 2; i++) await j.tap('.carrier-hand [data-dv="0.1"]', "+0,1 m/s");
-  const fl = await p.evaluate(() => ({ v: window.codeship.nav.manualCarrier?.speedMs ?? 0, goal: window.codeship.nav.target.id, hand: (document.querySelector(".carrier-hand:not(.hidden)")?.textContent ?? "") }));
-  j.check("«Manual» vuela a mano hacia el asteroide elegido con ±0,1 m/s (mandos en desarrollo)", Math.abs(fl.v - 0.2) < 1e-6 && fl.goal === rock && /en desarrollo/.test(fl.hand), JSON.stringify({ v: fl.v, goal: fl.goal }));
-  await capture(j, "3-manual-asteroide", "Pilotar a mano hacia un asteroide");
+  const pad = await p.evaluate(() => {
+    const el = document.querySelector(".rcs-pad.carrier-pad:not(.hidden)");
+    const r = el?.getBoundingClientRect();
+    const small = [...(el?.querySelectorAll("button:not([hidden])") ?? [])].filter((b) => b.getBoundingClientRect().height < 44 || b.getBoundingClientRect().width < 44).length;
+    return { on: !!el, text: el?.innerText ?? "", read: el?.querySelector(".rp-read")?.textContent ?? "", top: r ? Math.round(r.top) : 0, bottom: r ? Math.round(r.bottom) : 0, small, menu: [...document.querySelectorAll(".root-menu")].some((m) => getComputedStyle(m).display !== "none") };
+  });
+  j.check("«Manual» saca los mandos de Crew Dragon: trasladar (adelante/atrás, arriba/abajo, izq./der.) y girar (cabeceo, guiñada, alabeo), en desarrollo", pad.on && /Adel/.test(pad.text) && /Cab\./.test(pad.text) && /Alab/.test(pad.text) && /en desarrollo/.test(pad.text) && /Crew Dragon/.test(pad.text), pad.text.slice(0, 160));
+  j.check("los mandos caben en la pantalla del móvil con botones de 44 px", pad.top >= 0 && pad.bottom <= 664 && pad.small === 0, JSON.stringify({ top: pad.top, bottom: pad.bottom, small: pad.small }));
+  j.check("pilotar a mano es el reto en pantalla: el menú árbol se esconde", !pad.menu);
+  j.check("vuelo libre: sin destino, ni distancia ni tiempo a un objetivo (no hay viaje automático cargado)", !/faltan|llega en|→|destino/i.test(pad.read) && (await p.evaluate(() => !window.codeship.tripStatus())), pad.read);
+  for (let i = 0; i < 2; i++) await j.tap('.rcs-pad.carrier-pad [data-act="t:z:-1"]', "Trasladar adelante");
+  await j.tap('.rcs-pad.carrier-pad [data-act="r:y:1"]', "Guiñada a la izquierda");
+  await p.waitForTimeout(2500);
+  const fl = await p.evaluate(() => {
+    const m = window.codeship.nav.freeCarrier;
+    return { v: m?.velocityBody.z ?? 0, rate: m?.ratesDegS.y ?? 0, yaw: m?.attitude.yaw ?? 0, read: document.querySelector(".rcs-pad.carrier-pad .rp-read")?.textContent ?? "" };
+  });
+  j.check("cada toque es un paso del RCS: dos «Adel.» 0,2 m/s hacia la proa y una guiñada 0,2 °/s que gira la nave", Math.abs(fl.v + 0.2) < 0.01 && Math.abs(fl.rate - 0.2) < 1e-6 && /Giro/.test(fl.read) && /Actitud/.test(fl.read), JSON.stringify(fl));
+  await capture(j, "3-manual-libre", "Pilotar a mano: vuelo libre con los mandos de Crew Dragon");
   await j.setup("se levanta y va a la mesa de navegación", () => window.codeship.bridge.goTo("nav"));
   await p.waitForFunction(() => window.codeship.bridge.near() === "nav" && !window.codeship.bridge.walking, null, { timeout: 30000 }).catch(() => {});
   await p.waitForTimeout(500);
-  j.check("lejos del puesto de pilotaje los mandos no salen (la nave sigue a la velocidad dada)", await p.evaluate(() => !!document.querySelector(".carrier-hand.hidden") && (window.codeship.nav.manualCarrier?.speedMs ?? 0) > 0));
-  const free = await p.evaluate(() => ({ chip: !!document.querySelector(".trip-chip.on"), tag: !!document.querySelector(".autopilot-tag.on"), status: window.codeship.tripStatus() }));
-  j.check("lejos del puesto la vista queda libre: ni el chip del viaje ni su franja (reglas §5.9)", !free.chip && !free.tag, JSON.stringify({ chip: free.chip, tag: free.tag }));
-  j.check("el estado del viaje sigue como dato para la ventana «Trayecto» del menú (destino, distancia, tiempo, fase)", !!free.status && free.status.vehicle === "Starship" && free.status.distanceM > 0 && !!free.status.phase, JSON.stringify(free.status));
+  j.check("lejos del puesto de pilotaje los mandos no salen (la nave sigue a la deriva con su velocidad y su giro)", await p.evaluate(() => !document.querySelector(".rcs-pad.carrier-pad:not(.hidden)") && (window.codeship.nav.freeCarrier?.speedMs ?? 0) > 0));
   await j.useMachine("bridge", "prop", null);
   await p.waitForTimeout(600);
-  await j.tap('.carrier-hand [data-dv="stop"]', "Parar");
-  await j.tap(".trip-chip .tc-take", "Dejar de pilotar");
+  await j.tap('.rcs-pad.carrier-pad [data-act="stop"]', "Parar");
+  j.check("«Parar» anula la velocidad y los giros", await p.evaluate(() => !!window.codeship.nav.freeCarrier?.stopped));
+  await j.tap('.rcs-pad.carrier-pad [data-act="end"]', "Dejar de pilotar");
   await p.waitForTimeout(500);
-  j.check("«Dejar de pilotar» deja la Starship parada donde está", await p.evaluate(() => window.codeship.nav.status !== "carrier" && !window.codeship.nav.manualCarrier));
+  j.check("«Dejar de pilotar» deja la Starship parada donde está y vuelve el menú", await p.evaluate(() => window.codeship.nav.status !== "carrier" && !window.codeship.nav.freeCarrier && !document.body.classList.contains("in-manual-flight")));
 
-  // 5. By challenges to the station: the trip's challenge sheet opens from the seat.
-  await p.selectOption(".cm-dest select", "estacion-polana");
-  await p.waitForTimeout(300);
+  // 5. «Automático (retos)»: the navigation window (the nav table's own); a destination there opens its challenges.
   await j.tap('.room-ui:not(.hidden) .cab-machine [data-act="auto"]', "Automático (retos)");
+  await p.waitForTimeout(700);
+  j.check("«Automático (retos)» abre la ventana de navegación, la misma de la mesa", await p.evaluate(() => window.codeship.navMode.map.visible && !document.querySelector(".nav-map .nav-chip.locked")));
+  await j.tap('.nav-map .nav-chip[data-id="estacion-polana"]', "la estación en el mapa");
+  await j.tap('.nav-map [data-act="program"]', "Programar viaje");
   await j.waitDuel(30000);
   const sheet = await p.evaluate(() => window.codeship.nav.programming?.chore.title ?? "");
-  j.check("«Automático (retos)» abre la cadena de retos del viaje a la estación", /Estación/.test(sheet), sheet);
+  j.check("elegida la estación, se abre la cadena de retos del viaje", /Estación/.test(sheet), sheet);
   await closeSheet(j);
+  if (await p.locator(".fd-panel.max .fd-back").count()) await j.tap(".fd-panel.max .fd-back", "Volver al puente");
+  await j.setup("vuelve a la cubierta", () => window.codeship.deck.exit());
 
-  // 6. Hand flight to the station stops at Waypoint 1; the docking seat docks it by hand with the camera.
-  await j.setup("vuela a mano hasta cerca del punto de espera de la estación (el vuelo a mano entero se juega en PX-36)", () => {
+  // 6. At Waypoint 1 the docking seat docks it by hand with the camera.
+  await j.setup("lleva la Starship cerca del punto de espera de la estación (el viaje automático entero se juega en PX-36)", () => {
     const n = window.codeship.nav;
     n.flyByHand("estacion-polana");
     const m = n.manualCarrier;
@@ -116,7 +129,7 @@ export async function cubiertaVuelo(j) {
     m.hold();
   });
   const held = await p.waitForFunction(() => window.codeship.nav.holdingAt()?.id === "estacion-polana", null, { timeout: 120000 }).then(() => true).catch(() => false);
-  j.check("a mano no atraca sola: se queda en el punto de espera 1 (150 m)", held && (await p.evaluate(() => !window.codeship.mothership.dockedTo)));
+  j.check("se queda en el punto de espera 1 (150 m), sin atracar sola", held && (await p.evaluate(() => !window.codeship.mothership.dockedTo)));
   await j.useMachine("bridge", "dock", null);
   await p.waitForTimeout(600);
   const d1 = await acts(p);

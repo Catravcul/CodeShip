@@ -166,4 +166,26 @@ describe("FlightComputer landing", () => {
     expect(fc.ship.hullIntegrity).toBeLessThan(1);
     expect(fc.landed).toBe(false);
   });
+
+  // NAV-32: the tap controls of Manual (Crew Dragon's touchscreen, the LM's rate-command mode).
+  it("a translation tap fires the RCS until that Δv is given, then stops (NAV-32)", () => {
+    const fc = make({ gravity: false });
+    fc.pulse(new Vec3(0, 0, -0.1));
+    for (let i = 0; i < 600; i++) fc.update(1 / 60, NO_INPUT);
+    const vBody = fc.state.toBody(fc.state.velocity);
+    expect(vBody.z).toBeCloseTo(-0.1, 3);
+    expect(Math.hypot(vBody.x, vBody.y)).toBeLessThan(1e-3);
+    expect(fc.pendingPulse.length()).toBeLessThan(1e-6);
+  });
+
+  it("held rates: the RCS turns the ship at the rate set by the taps and keeps it (NAV-32)", () => {
+    const fc = make({ gravity: false });
+    const rate = (0.6 * Math.PI) / 180;
+    fc.holdRates = new Vec3(0, rate, 0);
+    for (let i = 0; i < 1200; i++) fc.update(1 / 60, NO_INPUT);
+    expect(fc.state.angularVelocityBody.y).toBeCloseTo(rate, 3);
+    fc.nullRates();
+    for (let i = 0; i < 1200; i++) fc.update(1 / 60, NO_INPUT);
+    expect(fc.state.angularVelocityBody.length()).toBeLessThan(1e-4);
+  });
 });

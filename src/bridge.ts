@@ -33,24 +33,15 @@ export interface BridgeDeps {
   readonly dock?: DockDeps;
 }
 
-/** A destination the pilot can pick, with whether the ship can fly there now. */
-export interface PilotDestination {
-  readonly id: string;
-  readonly name: string;
-  readonly distance: string;
-  readonly why?: string;
-}
-
 export interface PilotDeps {
-  destinations(): readonly PilotDestination[];
-  /** The destination picked now (the navigator's target). */
-  current(): string | undefined;
   /** Something flies now (a trip, a docking): the seat says so instead of offering a new flight. */
   busy(): string | undefined;
   /** Why no flight can start from here now (e.g. latched to a port), if so. */
   blocked(): string | undefined;
-  flyManual(id: string): { ok: boolean; reason?: string };
-  flyAuto(id: string): { ok: boolean; reason?: string };
+  /** «Manual»: free flight by RCS taps, with no destination (Crew Dragon's manual flight). */
+  flyManual(): { ok: boolean; reason?: string };
+  /** «Automático (retos)»: the navigation window, the nav table's own; a destination there opens its trip challenge. */
+  flyAuto(): { ok: boolean; reason?: string };
   openSystems(): void;
 }
 
@@ -93,8 +84,6 @@ export class BridgeRoom extends WalkRoom<BridgeStationId> {
 
   /** Which deck this is: Starship's nose (real) or the ring ship's forward node (fiction). */
   readonly shape: DeckShape;
-  /** The pilot seat's destination, by id. */
-  private dest: string | undefined;
 
   constructor(
     root: HTMLElement,
@@ -123,10 +112,6 @@ export class BridgeRoom extends WalkRoom<BridgeStationId> {
     });
     this.model = model;
     this.shape = shape;
-    this.ui.addEventListener("change", (e) => {
-      const el = e.target as HTMLSelectElement;
-      if (el.closest(".cm-dest")) this.dest = el.value;
-    });
     this.alertBox = document.createElement("div");
     this.alertBox.className = "br-alerts";
     this.ui.appendChild(this.alertBox);
@@ -136,22 +121,15 @@ export class BridgeRoom extends WalkRoom<BridgeStationId> {
     return this.opts.layout;
   }
 
-  /** The pilot seat's destination: the one she picked, else the navigator's, else the first. */
-  private pick(): PilotDestination | undefined {
-    const list = this.deps.pilot?.destinations() ?? [];
-    return list.find((d) => d.id === this.dest) ?? list.find((d) => d.id === this.deps.pilot?.current() && !d.why) ?? list.find((d) => !d.why) ?? list[0];
-  }
-
   private pilotActions(p: PilotDeps): RoomAction[] {
     const busy = p.busy();
     const sys = { id: "sistemas", label: "Pantallas de sistemas", enabled: true };
     if (busy) return [{ id: "manual", label: "Manual", enabled: false, why: busy }, sys];
-    const d = this.pick();
-    const why = p.blocked() ?? d?.why;
-    // The destination is picked in the card (extra); the two flying modes come first.
+    const why = p.blocked();
+    // No destination here (Berón, 2026-11-18): «Manual» is free flight; «Automático» picks one in the navigation window.
     return [
-      { id: "manual", label: "Manual", enabled: !!d && !why, ...(why ? { why } : {}) },
-      { id: "auto", label: "Automático (retos)", enabled: !!d && !d.why },
+      { id: "manual", label: "Manual", enabled: !why, ...(why ? { why } : {}) },
+      { id: "auto", label: "Automático (retos)", enabled: true },
       sys,
     ];
   }
@@ -193,16 +171,8 @@ export class BridgeRoom extends WalkRoom<BridgeStationId> {
     const page = PAGE[id];
     const p = this.deps.pilot;
     if (id === "prop" && p) {
-      const d = this.pick();
-      if (action === "destino") {
-        const list = p.destinations();
-        const i = list.findIndex((x) => x.id === d?.id);
-        this.dest = list[(i + 1) % list.length]?.id;
-        return;
-      }
       if (action === "sistemas") return p.openSystems();
-      if (!d) return;
-      const r = action === "manual" ? p.flyManual(d.id) : action === "auto" ? p.flyAuto(d.id) : { ok: true };
+      const r = action === "manual" ? p.flyManual() : action === "auto" ? p.flyAuto() : { ok: true };
       if (!r.ok && r.reason) this.say(r.reason, 6);
       return;
     }
@@ -229,13 +199,6 @@ export class BridgeRoom extends WalkRoom<BridgeStationId> {
     if (id === "mente") return `<div class="cm-mind">${this.deps.mind().html}</div>`;
     const basis = this.shape === "starship" ? STARSHIP_DECK_BASIS[id] : undefined;
     const tag = basis ? `<p class="cm-basis">${basis.tag === "ficción" ? "Ficción" : basis.tag === "nuestra" ? "Distribución nuestra" : basis.tag === "real" ? "Real" : "En desarrollo"}: ${basis.note}</p>` : "";
-    if (id === "prop" && this.deps.pilot && !this.deps.pilot.busy()) {
-      const d = this.pick();
-      // The destination: a picker of every place the Starship can fly to (the station first), with its distance.
-      const list = this.deps.pilot.destinations();
-      const opts = list.map((x) => `<option value="${x.id}" ${x.id === d?.id ? "selected" : ""}>${x.name} · ${x.distance}${x.why ? " (no)" : ""}</option>`).join("");
-      return d ? `<label class="cm-dest">Destino <select aria-label="Destino del vuelo">${opts}</select></label>${tag}` : tag;
-    }
     if (id === "dock" && this.deps.dock) {
       const st = this.deps.dock.state();
       const line = st.kind === "atracada" ? `Atracada en ${st.where}` : st.kind === "espera" ? `En el punto de espera de ${st.where}, a ${Math.round(st.rangeM)} m del puerto` : st.kind === "maniobra" ? st.what : st.why;

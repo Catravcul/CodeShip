@@ -1,6 +1,5 @@
 import type { Vec3 } from "@core/math/vec3";
 import { REAL_ONLY } from "@core/realism";
-import { MANUAL_CARRIER } from "@modules/navigation/application/carrier-trip";
 import type { Rock } from "@modules/celestial/domain/region";
 import type { Navigator } from "@modules/navigation/application/navigator";
 import type { AutopilotPhase } from "@modules/navigation/application/autopilot";
@@ -9,6 +8,7 @@ import type { ChoreRun } from "@modules/chores/domain/chore";
 import type { Answer } from "@modules/mind-duel/domain/exercise";
 import type { DuelView, SessionText } from "./ui/duel-view";
 import { NavMap } from "./ui/nav-map";
+import { RcsPad } from "./ui/rcs-pad";
 import type { StepVisual } from "@modules/chores/domain/step-visual";
 
 export const TRIP_TEXT: SessionText = {
@@ -118,27 +118,22 @@ export class NavigationMode {
     private readonly duel: DuelView,
     opts: { title: string; boundaryRadiusM: number; rocks: readonly Rock[]; shipPosition(): Vec3; shipNose(): Vec3; carrierPosition?(): Vec3 },
   ) {
-    // On Starship she flies by hand from the pilot seat, not from the map (docs/design/puente.md): the card says where.
+    // Hand flying is free flight from the pilot seat («Manual», no destination): not from the map (docs/design/puente.md).
     this.map = new NavMap(root, {
       nav,
       ...opts,
       onProgram: () => this.program(),
-      ...(REAL_ONLY ? { handHint: "Pilotar a mano: en el puesto de pilotaje («Manual»)" } : { onHand: () => this.flash(`Pilotaje manual de la nodriza hacia ${nav.target.name}: da el empuje con +0,1 m/s`, "done") }),
+      handHint: REAL_ONLY ? "A mano es vuelo libre, sin destino: «Manual» en el puesto de pilotaje" : "A mano es vuelo libre, sin destino: «Manual» en el puesto de pilotaje (Starship)",
     });
-    // Hand flying the mothership (reglas.md §3.6): her speed commands, in short translation burns.
-    this.hand = document.createElement("div");
-    this.hand.className = "carrier-hand hidden";
-    this.hand.setAttribute("role", "group");
-    this.hand.setAttribute("aria-label", "Pilotaje manual de la nave");
-    this.hand.innerHTML = `<div class="ch-read"></div><div class="ch-btns"><button data-dv="-0.1" aria-label="Frenar 0,1 m/s">−0,1 m/s</button><button data-dv="stop" aria-label="Parar la nave">Parar</button><button data-dv="0.1" aria-label="Acelerar 0,1 m/s">+0,1 m/s</button></div><div class="ch-note">${REAL_ONLY ? "Mandos de la Starship: en desarrollo (SpaceX no los ha publicado). " : "Mandos de la nodriza: en desarrollo. "}Encendidos cortos, como en las operaciones de proximidad</div>`;
-    root.appendChild(this.hand);
-    this.handRead = this.hand.querySelector(".ch-read")!;
-    this.hand.addEventListener("click", (e) => {
-      const b = (e.target as HTMLElement).closest<HTMLButtonElement>("button[data-dv]");
-      const m = nav.manualCarrier;
-      if (!b || !m) return;
-      const ok = b.dataset.dv === "stop" ? m.hold() : m.command(Number(b.dataset.dv));
-      if (!ok) this.flash(m.refused ?? "No enciende", "bad");
+    // «Manual» (Berón, 2026-11-18): Crew Dragon's manual flight touchscreen, RCS taps only (free-carrier.ts).
+    this.hand = new RcsPad(root, {
+      cls: "carrier-pad",
+      endLabel: "Dejar de pilotar",
+      note: `${REAL_ONLY ? "Mandos de la Starship: en desarrollo (SpaceX no los ha publicado); modelo: el pilotaje manual de Crew Dragon." : "Mandos de la nodriza: en desarrollo; modelo: el pilotaje manual de Crew Dragon."} Solo RCS: los encendidos grandes, en «Automático»`,
+      translate: (a, sg) => this.tap(nav.freeCarrier?.translate(a, sg)),
+      rotate: (a, sg) => this.tap(nav.freeCarrier?.rotate(a, sg)),
+      stop: () => this.tap(nav.freeCarrier?.stop()),
+      end: () => nav.cancel(),
     });
     this.tag = document.createElement("div");
     this.tag.className = "autopilot-tag";
@@ -162,8 +157,12 @@ export class NavigationMode {
   atControls?: (vehicle: "carrier" | "lander") => boolean;
   /** Set by main: she is at the seat the mothership is flown from by hand (Starship's pilot seat); default the flight deck. */
   handAt?: () => boolean;
-  private readonly hand: HTMLElement;
-  private readonly handRead: HTMLElement;
+  private readonly hand: RcsPad;
+
+  /** A tap the RCS could not fire says why. */
+  private tap(ok: boolean | undefined): void {
+    if (ok === false) this.flash(this.nav.freeCarrier?.refused ?? "No enciende", "bad");
+  }
 
   get mapOpen(): boolean {
     return this.map.visible;
@@ -261,27 +260,13 @@ export class NavigationMode {
     this.updateHand();
   }
 
-  /** The hand-flying panel: range to the parking point, speed and what to do next. */
+  /** The hand-flying pad: rates, attitude and velocity, no target (it is free flight). Only at the pilot seat. */
   private updateHand(): void {
-    // Only at the controls (the flight deck); away from them the ship coasts at the speed she gave it.
-    const m = this.nav.manualCarrier && (this.handAt?.() ?? this.atControls?.("carrier") ?? true) ? this.nav.manualCarrier : undefined;
-    this.hand.classList.toggle("hidden", !m);
+    // Only at the controls; away from them the ship drifts and turns at the rates she gave it.
+    const m = this.nav.freeCarrier && (this.handAt?.() ?? this.atControls?.("carrier") ?? true) ? this.nav.freeCarrier : undefined;
+    if (this.hand.visible !== !!m) this.hand.show(!!m);
     document.body.classList.toggle("in-carrier-hand", !!m);
     if (!m) return;
-    const r = m.remainingM;
-    const v = m.speedMs;
-    const window_ = MANUAL_CARRIER.arriveM;
-    const hint =
-      Math.abs(r) <= window_
-        ? Math.abs(v) <= MANUAL_CARRIER.holdMs
-          ? "En el punto de espera"
-          : "¡Estás en el punto: Parar!"
-        : r < 0
-          ? "Te has pasado: da empuje hacia atrás (−)"
-          : v <= 0
-            ? REAL_ONLY ? "Da empuje (+): 0,4 m/s como Hayabusa2" : "Da empuje (+)"
-            : `Para en ${km(Math.max(0, r - window_))}: llegas en ${duration(r / v)} de vuelo`;
-    const html = `<b>${REAL_ONLY ? "Starship" : "Nodriza"} a mano → ${esc(this.nav.target.name)}</b><span>${r >= 0 ? "faltan" : "pasada"} ${km(Math.abs(r))} · ${num(v, 2)} m/s · Δv gastado ${num(m.spentMs, 1)} m/s</span><span class="ch-hint">${hint}</span>`;
-    if (this.handRead.innerHTML !== html) this.handRead.innerHTML = html;
+    this.hand.update({ title: `${REAL_ONLY ? "Starship" : "Nodriza"} · vuelo libre a mano`, vBody: m.velocityBody, att: m.attitude, rates: m.ratesDegS, lines: [`Δv gastado ${num(m.spentMs, 2)} m/s · rapidez ${num(m.speedMs, 2)} m/s`] });
   }
 }

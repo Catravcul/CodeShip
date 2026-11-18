@@ -49,3 +49,23 @@ export function turnToward(from: Quat, to: Quat, maxRad: number): Quat {
   const b = (s * Math.sin(k * theta)) / sin;
   return new Quat(a * from.w + b * to.w, a * from.x + b * to.x, a * from.y + b * to.y, a * from.z + b * to.z).normalize();
 }
+
+/**
+ * Attitude as a display shows it (Crew Dragon's manual flight page: pitch, yaw, roll), degrees, against the
+ * reference frame: yaw is the nose's heading round +y (0 along −z), pitch its elevation, roll the turn of
+ * body +y about the nose from the frame's «up».
+ */
+export function attitudeDeg(q: Quat): { pitch: number; yaw: number; roll: number } {
+  const deg = (r: number) => (r * 180) / Math.PI;
+  const nose = q.rotate(new Vec3(0, 0, -1));
+  const up = q.rotate(Vec3.Y);
+  const pitch = Math.asin(Math.max(-1, Math.min(1, nose.y)));
+  const yaw = Math.atan2(-nose.x, -nose.z);
+  // The frame's level up and right for this nose (straight up or down: any heading is level, take −z).
+  let right = nose.cross(Vec3.Y);
+  if (right.length() < 1e-9) right = new Vec3(Math.cos(yaw), 0, -Math.sin(yaw));
+  right = right.normalize();
+  const levelUp = right.cross(nose).normalize();
+  const roll = Math.atan2(-up.dot(right), up.dot(levelUp));
+  return { pitch: deg(pitch), yaw: deg(yaw), roll: deg(roll) };
+}

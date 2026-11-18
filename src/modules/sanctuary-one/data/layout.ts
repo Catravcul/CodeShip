@@ -4,6 +4,7 @@ import { wallWithGaps } from "@modules/aerial-sanctuary/domain/walk";
 import { CAP_NAME, LAGOON, LOBES, MAP_HALF, NESTS, SPECIES_MODEL, STAFF, TOWERS, WATER_Y, capOf, isLand, lobeRadius, type TowerSpec } from "./site";
 import { FLOOR_PLANS } from "./floors";
 import { model } from "./catalog";
+import { OVERRIDES, resolve, spacing, type Overrides } from "./overrides";
 import { GROUPS, plan, split } from "../domain/population";
 
 /**
@@ -25,6 +26,9 @@ export interface Instance {
   readonly name?: string;
   /** Widening on the plan (furniture of a widened floor). */
   readonly plan?: number;
+  /** Uniform scale and colour set by a bulk rule (overrides.ts). */
+  readonly scale?: number;
+  readonly tint?: number;
 }
 
 export interface S1Area {
@@ -114,6 +118,7 @@ function groundFloors(): Floor[] {
 }
 
 interface Built {
+  o: Overrides;
   floors: Floor[];
   waters: Water[];
   solids: Solid[];
@@ -158,7 +163,7 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
       b.floors.push({ id: `${area}-umbral`, ...sideRect(S(s), door.x - door.w / 2, door.x + door.w / 2, WH - 0.6, OH + 0.2, o), y, area });
       gapsOf[s]!.push({ from: door.x - door.w / 2, to: door.x + door.w / 2, y0: y, y1: y + door.h });
       (shape.floors as TowerShape["floors"][number][]).push({ rect, y, name: f.name || "Piso libre" });
-      // The floor's own frame: centre of the square, −z away from the trunk.
+      // The floor's own frame: centre of the square, +z away from the trunk.
       const c = side(S(s), FS / 2 - OH, OH + FS / 2);
       const centre = { x: o.x + c.x, z: o.z + c.z };
       const fp = f.furnish ? FLOOR_PLANS.get(f.furnish) : undefined;
@@ -167,20 +172,13 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
       const entry = { x: o.x + out.x, z: o.z + out.z, yaw: Math.atan2(-dir.x, -dir.z) };
       b.areas.push({ id: area, label: f.name || `Piso libre (${t.building})`, desc: f.desc, building: t.building, x: centre.x, y, z: centre.z, detail: fp ? "completo" : "vacio", entry });
       if (!fp) continue;
-      // Floor frame (x across, z deep, −z outward) → side frame: x, −z about the centre.
+      // Floor frame (Cold Sanctuary's: x across, z away from the trunk, whose face is at z = −FS/2) = the side's frame
+      // about the floor's centre; Unity's yaw carries over as is (the plan keeps Cold Sanctuary's x and z).
       const turn = (S(s) * Math.PI) / 2;
+      const sp = spacing({ edificio: t.id, piso: area }, b.o) * k;
       for (const it of fp.items) {
-        const p = side(S(s), it.x * k, -it.z * k);
-        // The floor frame is mirrored in z against the side frame, so a turn in it is the opposite turn here.
-        const rot = Math.PI - turn - (it.rot ?? 0);
-        b.instances.push({ model: it.model, x: centre.x + p.x, y, z: centre.z + p.z, rot, area, ...(it.name ? { name: it.name } : {}), plan: k });
-        const d = model(it.model);
-        if (d.size.y > 0.3) {
-          const hx = (d.size.x * k) / 2;
-          const hz = (d.size.z * k) / 2;
-          const q = Math.abs(Math.sin(rot)) > 0.5;
-          b.solids.push({ ...around(centre.x + p.x, centre.z + p.z, q ? hz : hx, q ? hx : hz), y0: y, y1: y + d.size.y });
-        }
+        const p = side(S(s), it.x * sp, it.z * sp);
+        place(b, it.model, centre.x + p.x, y, centre.z + p.z, turn + (it.rot ?? 0), area, { edificio: t.id, piso: area }, k, it.name);
       }
     }
     for (const s of branchSides) {
@@ -227,6 +225,27 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
   b.towers.push(shape);
 }
 
+/**
+ * One catalogue model placed, with the bulk rules applied (hidden, swapped, scaled, recoloured) and, if it stands
+ * taller than 0,3 m, its footprint as a walk solid. `plan` widens it on the plan (interior scale).
+ */
+function place(b: Built, id: string, x: number, y: number, z: number, rot: number, area: string, where: { edificio?: string; piso?: string }, plan = 1, name?: string, solid = true): void {
+  let r = resolve(model(id), where, b.o);
+  if (r.cambiarPor) {
+    id = r.cambiarPor;
+    r = { ...resolve(model(id), where, b.o), ...(r.escala !== undefined ? { escala: r.escala } : {}), ...(r.color !== undefined ? { color: r.color } : {}) };
+  }
+  if (r.oculto) return;
+  const d = model(id);
+  const sc = r.escala ?? 1;
+  b.instances.push({ model: id, x, y, z, rot, area, ...(name ? { name } : {}), ...(plan !== 1 ? { plan } : {}), ...(sc !== 1 ? { scale: sc } : {}), ...(r.color !== undefined ? { tint: r.color } : {}) });
+  if (!solid || d.size.y * sc <= 0.3 || d.shape === "figura") return;
+  const hx = (d.size.x * plan * sc) / 2;
+  const hz = (d.size.z * plan * sc) / 2;
+  const q = Math.abs(Math.sin(rot)) > 0.5;
+  b.solids.push({ ...around(x, z, q ? hz : hx, q ? hx : hz), y0: y, y1: y + d.size.y * sc });
+}
+
 /** A deterministic scatter (no Math.random: the same scene on every load). */
 function scatter(i: number, radius: number): { x: number; z: number } {
   const a = i * 2.399963;
@@ -234,8 +253,8 @@ function scatter(i: number, radius: number): { x: number; z: number } {
   return { x: Math.cos(a) * r, z: Math.sin(a) * r };
 }
 
-export function buildS1Layout(k = 1): S1Layout {
-  const b: Built = { floors: groundFloors(), waters: [], solids: [], walls: [], instances: [], areas: [], towers: [] };
+export function buildS1Layout(k = 1, o: Overrides = OVERRIDES): S1Layout {
+  const b: Built = { o, floors: groundFloors(), waters: [], solids: [], walls: [], instances: [], areas: [], towers: [] };
   b.waters.push({ id: "mar", x0: -4000, x1: 4000, z0: -4000, z1: 4000, yBottom: -40, yTop: WATER_Y, area: "mar" });
   for (const cap of new Set(LOBES.filter((l) => l.r > 0).map(capOf))) {
     const ls = LOBES.filter((l) => l.r > 0 && capOf(l) === cap);
@@ -257,14 +276,14 @@ export function buildS1Layout(k = 1): S1Layout {
     for (let i = 0; i < qty; i++) {
       const p = scatter(i, n.radius);
       const y = n.marine ? (d.shape === "cetaceo" ? WATER_Y - d.size.y * 0.55 : WATER_Y - d.size.y * 0.4) : 0;
-      b.instances.push({ model: id, x: n.x + p.x, y, z: n.z + p.z, rot: i * 1.7, area: n.marine ? "mar" : "fauna" });
+      place(b, id, n.x + p.x, y, n.z + p.z, i * 1.7, n.marine ? "mar" : "fauna", {}, 1, undefined, false);
     }
   }
   // Snow petrels: one colony (no nest in Cold Sanctuary's list: it is ours) on the wild northern cap.
   const pet = counts.get("SnowPetrel") ?? 0;
   for (let i = 0; i < pet; i++) {
     const p = scatter(i, 10);
-    b.instances.push({ model: "petrel-niveo", x: 75 + p.x, y: 0, z: 170 + p.z, rot: i, area: "fauna" });
+    place(b, "petrel-niveo", 75 + p.x, 0, 170 + p.z, i, "fauna", {}, 1, undefined, false);
   }
   // The staff on the hub, 2 m apart (ours: where each one goes comes with the workday).
   STAFF.forEach((name, i) => {

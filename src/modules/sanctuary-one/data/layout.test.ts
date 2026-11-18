@@ -77,3 +77,30 @@ describe("santuario 1: escena", () => {
     expect(W.towers[0]!.floors[0]!.y).toBe(64);
   });
 });
+
+describe("santuario 1: cambios a gran escala (overrides.ts)", () => {
+  const empty = { categoria: {}, grupo: {}, modelo: {}, edificio: {}, piso: {}, personas: {} };
+  const base = buildS1Layout(1, empty);
+  const count = (L: ReturnType<typeof buildS1Layout>, f: (m: string) => boolean) => L.instances.filter((i) => f(i.model)).length;
+  it("ocultar una categoría quita todas sus copias y sus sólidos", () => {
+    const L = buildS1Layout(1, { ...empty, categoria: { maquina: { oculto: true } } });
+    expect(count(L, (m) => model(m).category === "maquina")).toBe(0);
+    expect(L.world.solids.length).toBeLessThan(base.world.solids.length);
+  });
+  it("cambiar un modelo por otro lo cambia en todos los pisos", () => {
+    const L = buildS1Layout(1, { ...empty, modelo: { "gym-smith": { cambiarPor: "gym-jaula" } } });
+    expect(count(L, (m) => m === "gym-smith")).toBe(0);
+    expect(count(L, (m) => m === "gym-jaula")).toBe(count(base, (m) => m === "gym-jaula") + count(base, (m) => m === "gym-smith"));
+  });
+  it("el grupo, el modelo y el piso se combinan: gana lo más concreto", () => {
+    const L = buildS1Layout(1, { ...empty, grupo: { "gimnasio-placas": { color: 1 } }, piso: { "entrenamiento:piso-1": { modelos: { "gym-jalon": { color: 2 } } } } });
+    expect(L.instances.find((i) => i.model === "gym-remo")!.tint).toBe(1);
+    expect(L.instances.find((i) => i.model === "gym-jalon")!.tint).toBe(2);
+  });
+  it("la separación de un edificio aleja el mobiliario del centro de cada piso", () => {
+    const L = buildS1Layout(1, { ...empty, edificio: { entrenamiento: { separacion: 1.2 } } });
+    const a = base.areas.find((x) => x.id === "entrenamiento:piso-1")!;
+    const far = (W: typeof L) => Math.max(...W.instances.filter((i) => i.area === a.id).map((i) => Math.hypot(i.x - a.x, i.z - a.z)));
+    expect(far(L)).toBeCloseTo(far(base) * 1.2, 3);
+  });
+});

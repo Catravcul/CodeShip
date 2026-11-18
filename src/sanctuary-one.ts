@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { WORLD_SCALE } from "@core/scale";
 import { moveJoystick } from "@core/realism";
 import { buildS1Layout } from "@modules/sanctuary-one/data/layout";
+import { personRule } from "@modules/sanctuary-one/data/overrides";
 import { placeAt, step, type Body } from "@modules/aerial-sanctuary/domain/walk";
 import { buildS1Scene } from "./adapters/three/s1-models";
 import { CubeFigure } from "./adapters/three/interior/figure";
@@ -47,7 +48,11 @@ scene.add(world.root);
 const people: CubeFigure[] = [];
 for (const i of L.instances) {
   if (i.model !== "persona") continue;
-  const f = new CubeFigure();
+  // Bulk rules for the people (overrides.ts «personas»): hidden, height, skin and clothes, for all or by name.
+  const r = personRule(i.name);
+  if (r.oculto) continue;
+  const f = new CubeFigure(r.piel ?? i.tint ?? 0xe0b48c, r.ropa ?? 0x3d6fa8);
+  f.root.scale.setScalar((r.altura ?? 1) * (i.scale ?? 1));
   f.root.position.set(i.x, i.y, i.z);
   f.root.rotation.y = i.rot;
   f.pose("stand");

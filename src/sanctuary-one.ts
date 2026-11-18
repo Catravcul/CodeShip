@@ -80,6 +80,8 @@ let yaw = L.start.yaw;
 let pitch = 0;
 let stride = 0;
 let thirdPerson = false;
+/** Third-person camera distance (the test hook sets it for overviews). */
+let camDist = 3.6;
 
 const ui = document.createElement("div");
 ui.className = "cab-ui";
@@ -120,7 +122,7 @@ function updateCamera(dt: number): void {
   rig.rotation.y = yaw + Math.PI;
   const eye = body.y + EYE_M;
   if (thirdPerson) {
-    const d = 3.6;
+    const d = camDist;
     camera.position.set(body.x + Math.sin(yaw) * d * Math.cos(pitch), eye + 0.4 - Math.sin(pitch) * d, body.z + Math.cos(yaw) * d * Math.cos(pitch));
     camera.lookAt(body.x, eye - 0.2, body.z);
     rig.visible = true;
@@ -159,5 +161,5 @@ window.addEventListener("keydown", (e) => {
 });
 // Test hook (tools/experiencia and live checks): the layout, the body and the bulk style switch.
 if (import.meta.env.DEV || new URLSearchParams(location.search).has("prueba"))
-  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { L, world, get body() { return body; }, set body(b: Body) { body = b; }, setView: (y: number, p: number, third: boolean) => { yaw = y; pitch = p; if (third !== thirdPerson) toggleView(); } };
+  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { L, world, get body() { return body; }, set body(b: Body) { body = b; }, setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
 requestAnimationFrame(frame);

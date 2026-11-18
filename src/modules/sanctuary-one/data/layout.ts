@@ -2,8 +2,9 @@ import { TREE } from "@modules/aerial-sanctuary/data/facts";
 import type { Floor, Rect, Solid, Water, WalkWorld } from "@modules/aerial-sanctuary/domain/walk";
 import { wallWithGaps } from "@modules/aerial-sanctuary/domain/walk";
 import { CAP_NAME, LAGOON, LOBES, MAP_HALF, NESTS, SPECIES_MODEL, STAFF, TOWERS, WATER_Y, capOf, isLand, lobeRadius, type TowerSpec } from "./site";
-import { FLOOR_PLANS } from "./floors";
-import { model } from "./catalog";
+import { FLOOR_PLANS, type FloorPlan } from "./floors";
+import { RING } from "./floors/kit";
+import { model, type ModelDef } from "./catalog";
 import { OVERRIDES, resolve, spacing, type Overrides } from "./overrides";
 import { GROUPS, plan, split } from "../domain/population";
 
@@ -53,6 +54,8 @@ export interface TowerShape {
   readonly rootHeight: number;
   readonly floors: readonly { readonly rect: Rect; readonly y: number; readonly name: string }[];
   readonly tips: readonly { readonly rect: Rect; readonly y: number }[];
+  /** The floors' U rings (their four decks). */
+  readonly rings: readonly { readonly rects: readonly Rect[]; readonly y: number }[];
 }
 
 export interface S1Layout {
@@ -148,7 +151,7 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
   // Ground door (Cold Sanctuary: GroundSide a = +Z), onto the ice, with its threshold.
   gapsOf[0]!.push({ from: door.x - door.w / 2, to: door.x + door.w / 2, y0: 0, y1: door.h });
   b.floors.push({ id: `${t.id}-umbral-suelo`, ...sideRect(S(0), door.x - door.w / 2, door.x + door.w / 2, WH - 0.6, OH + 0.4, o), y: 0, area: trunk });
-  const shape: TowerShape = { id: t.id, building: t.building, x: o.x, z: o.z, rootHeight, floors: [], tips: [] };
+  const shape: TowerShape = { id: t.id, building: t.building, x: o.x, z: o.z, rootHeight, floors: [], tips: [], rings: [] };
   let fi = 0;
   for (let l = 1; l <= levels; l++) {
     const y = levelY(l);
@@ -159,15 +162,18 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
       if (!f) continue;
       const area = `${t.id}:piso-${fi}`;
       const rect = sideRect(S(s), -OH, FS - OH, OH, OH + FS, o);
+      const fp = f.furnish ? FLOOR_PLANS.get(f.furnish) : undefined;
+      const sp = spacing({ edificio: t.id, piso: area }, b.o) * k;
+      // Its door: Cold Sanctuary picks each floor's (pickDoors); here the nearest to 5 m whose way in is clear.
+      const dx = fp ? doorFor(fp, sp, k, FS / 2 - OH, OH - door.w / 2, door.x, { edificio: t.id, piso: area }, b.o) : door.x;
       b.floors.push({ id: `${area}`, ...rect, y, area });
-      b.floors.push({ id: `${area}-umbral`, ...sideRect(S(s), door.x - door.w / 2, door.x + door.w / 2, WH - 0.6, OH + 0.2, o), y, area });
-      gapsOf[s]!.push({ from: door.x - door.w / 2, to: door.x + door.w / 2, y0: y, y1: y + door.h });
+      b.floors.push({ id: `${area}-umbral`, ...sideRect(S(s), dx - door.w / 2, dx + door.w / 2, WH - 0.6, OH + 0.2, o), y, area });
+      gapsOf[s]!.push({ from: dx - door.w / 2, to: dx + door.w / 2, y0: y, y1: y + door.h });
       (shape.floors as TowerShape["floors"][number][]).push({ rect, y, name: f.name || "Piso libre" });
       // The floor's own frame: centre of the square, +z away from the trunk.
       const c = side(S(s), FS / 2 - OH, OH + FS / 2);
       const centre = { x: o.x + c.x, z: o.z + c.z };
-      const fp = f.furnish ? FLOOR_PLANS.get(f.furnish) : undefined;
-      const out = side(S(s), door.x, OH + 3);
+      const out = side(S(s), dx, OH + 3);
       const dir = side(S(s), 0, 1);
       const entry = { x: o.x + out.x, z: o.z + out.z, yaw: Math.atan2(-dir.x, -dir.z) };
       b.areas.push({ id: area, label: f.name || `Piso libre (${t.building})`, desc: f.desc, building: t.building, x: centre.x, y, z: centre.z, detail: fp ? "completo" : "vacio", entry });
@@ -175,10 +181,32 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
       // Floor frame (Cold Sanctuary's: x across, z away from the trunk, whose face is at z = −FS/2) = the side's frame
       // about the floor's centre; Unity's yaw carries over as is (the plan keeps Cold Sanctuary's x and z).
       const turn = (S(s) * Math.PI) / 2;
-      const sp = spacing({ edificio: t.id, piso: area }, b.o) * k;
       for (const it of fp.items) {
         const p = side(S(s), it.x * sp, it.z * sp);
         place(b, it.model, centre.x + p.x, y, centre.z + p.z, turn + (it.rot ?? 0), area, { edificio: t.id, piso: area }, k, it.name);
+      }
+      if (fp.ring) {
+        // The U ring 8 m up (Levels.cs RingDeck), its balcony against the trunk with its own door, and its things.
+        const ry = y + RING.over;
+        const ringArea = `${area}:anillo`;
+        const hx = FS / 2 - RING.width * RING.inside;
+        const ox = hx + RING.width;
+        const zb = -FS / 2;
+        const cx = FS / 2 - OH;
+        const cz = OH + FS / 2;
+        const deck = (x0: number, x1: number, z0: number, z1: number, id: string) => b.floors.push({ id: `${ringArea}-${id}`, ...sideRect(S(s), cx + x0, cx + x1, cz + z0, cz + z1, o), y: ry, area: ringArea });
+        deck(-ox, ox, hx, hx + RING.width, "frente");
+        deck(hx, ox, zb, hx, "ala-1");
+        deck(-ox, -hx, zb, hx, "ala-2");
+        deck(-hx, hx, zb, zb + RING.balcony, "balcon");
+        b.floors.push({ id: `${ringArea}-umbral`, ...sideRect(S(s), dx - door.w / 2, dx + door.w / 2, WH - 0.6, OH + 0.2, o), y: ry, area: ringArea });
+        gapsOf[s]!.push({ from: dx - door.w / 2, to: dx + door.w / 2, y0: ry, y1: ry + door.h });
+        (shape.rings as TowerShape["rings"][number][]).push({ rects: [[-ox, ox, hx, hx + RING.width], [hx, ox, zb, hx], [-ox, -hx, zb, hx], [-hx, hx, zb, zb + RING.balcony]].map(([x0, x1, z0, z1]) => sideRect(S(s), cx + x0!, cx + x1!, cz + z0!, cz + z1!, o)), y: ry });
+        b.areas.push({ id: ringArea, label: `Anillo de ${f.name}`, desc: "Anillo en U a 8 m sobre el piso: se llega nadando por su puerta del tronco", building: t.building, x: centre.x, y: ry, z: centre.z, detail: "completo", entry: (() => { const q = side(S(s), dx, OH + 1.5); return { x: o.x + q.x, z: o.z + q.z, yaw: entry.yaw }; })() });
+        for (const it of fp.ring) {
+          const p = side(S(s), it.x * sp, it.z * sp);
+          place(b, it.model, centre.x + p.x, ry, centre.z + p.z, turn + (it.rot ?? 0), ringArea, { edificio: t.id, piso: area }, k, it.name);
+        }
       }
     }
     for (const s of branchSides) {
@@ -240,10 +268,54 @@ function place(b: Built, id: string, x: number, y: number, z: number, rot: numbe
   const sc = r.escala ?? 1;
   b.instances.push({ model: id, x, y, z, rot, area, ...(name ? { name } : {}), ...(plan !== 1 ? { plan } : {}), ...(sc !== 1 ? { scale: sc } : {}), ...(r.color !== undefined ? { tint: r.color } : {}) });
   if (!solid || d.size.y * sc <= 0.3 || d.shape === "figura") return;
-  const hx = (d.size.x * plan * sc) / 2;
-  const hz = (d.size.z * plan * sc) / 2;
-  const q = Math.abs(Math.sin(rot)) > 0.5;
-  b.solids.push({ ...around(x, z, q ? hz : hx, q ? hx : hz), y0: y, y1: y + d.size.y * sc });
+  b.solids.push(...solidsOf(d, x, y, z, rot, plan, sc));
+}
+
+/**
+ * The walk solids of a placed model: its footprint, or for a composite model each part that stands in the way of a
+ * body (taller than 0,3 m and starting below 2 m), so she walks into a cabin through its door and under a rig's bars.
+ * A part turned by a non-square angle keeps the box around it.
+ */
+export function solidsOf(d: ModelDef, x: number, y: number, z: number, rot: number, plan = 1, sc = 1): Solid[] {
+  const c = Math.cos(rot);
+  const s = Math.sin(rot);
+  const box = (cx: number, cz: number, hx: number, hz: number, y0: number, y1: number): Solid => {
+    // Three.js turn about y: (x, z) → (x cos + z sin, −x sin + z cos).
+    const px = x + (cx * c + cz * s) * plan * sc;
+    const pz = z + (-cx * s + cz * c) * plan * sc;
+    const ex = (Math.abs(c) * hx + Math.abs(s) * hz) * plan * sc;
+    const ez = (Math.abs(s) * hx + Math.abs(c) * hz) * plan * sc;
+    return { x0: px - ex, x1: px + ex, z0: pz - ez, z1: pz + ez, y0: y + y0 * sc, y1: y + y1 * sc };
+  };
+  if (!d.parts) return [box(0, 0, d.size.x / 2, d.size.z / 2, 0, d.size.y)];
+  const out: Solid[] = [];
+  for (const [cx, cy, cz, sx, sy, sz] of d.parts) {
+    const y0 = cy - sy / 2;
+    const y1 = cy + sy / 2;
+    if (y1 <= 0.3 || y0 >= 2) continue;
+    out.push(box(cx, cz, sx / 2, sz / 2, y0, y1));
+  }
+  return out;
+}
+
+/**
+ * The door of a furnished floor on the trunk's face (side frame x, within ±`limit`): the nearest to `preferred` with
+ * a clear way 1,6 m wide and 9 m deep into the floor. `cx` is the floor centre's x in the side frame.
+ */
+function doorFor(fp: FloorPlan, sp: number, k: number, cx: number, limit: number, preferred: number, where: { edificio: string; piso: string }, o: Overrides): number {
+  const FS = Math.max(fp.size.x, fp.size.z) * k;
+  const solids: Solid[] = [];
+  for (const it of fp.items) {
+    const r = resolve(model(it.model), where, o);
+    if (r.oculto) continue;
+    const d = model(r.cambiarPor ?? it.model);
+    if (d.size.y <= 0.3) continue;
+    solids.push(...solidsOf(d, it.x * sp, 0, it.z * sp, it.rot ?? 0, k, r.escala ?? 1));
+  }
+  const clear = (x: number) => !solids.some((q) => q.x0 < x + 0.8 && q.x1 > x - 0.8 && q.z0 < -FS / 2 + 9 && q.y0 < 1.7);
+  for (let d = 0; d <= 2 * limit; d += 0.5)
+    for (const x of [preferred + d, preferred - d]) if (Math.abs(x) <= limit && clear(x - cx)) return x;
+  return preferred;
 }
 
 /** A deterministic scatter (no Math.random: the same scene on every load). */

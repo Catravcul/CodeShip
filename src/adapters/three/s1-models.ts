@@ -157,6 +157,7 @@ export function buildS1Scene(L: S1Layout): S1Scene {
   const slabs: THREE.BufferGeometry[] = [];
   const struts: THREE.BufferGeometry[] = [];
   const rails: THREE.BufferGeometry[] = [];
+  const slabsRing: THREE.BufferGeometry[] = [];
   for (const t of L.towers) {
     for (const f of t.floors) {
       const r = f.rect;
@@ -170,12 +171,14 @@ export function buildS1Scene(L: S1Layout): S1Scene {
       }
       for (const [x0, x1, z0, z1] of [[r.x0, r.x1, r.z0, r.z0 + 0.08], [r.x0, r.x1, r.z1 - 0.08, r.z1], [r.x0, r.x0 + 0.08, r.z0, r.z1], [r.x1 - 0.08, r.x1, r.z0, r.z1]] as const) rails.push(box(x0, x1, f.y + 1.0, f.y + 1.1, z0, z1));
     }
+    for (const ring of t.rings) for (const r of ring.rects) slabsRing.push(box(r.x0, r.x1, ring.y - 0.3, ring.y - 0.01, r.z0, r.z1));
     for (const tip of t.tips) {
       const r = tip.rect;
       struts.push(box(r.x0 + 2, r.x0 + 2.6, tip.y - 4.5, tip.y - 0.5, r.z0 + 2, r.z0 + 2.6));
     }
   }
   add(slabs, mat(0xc9cfd4), "losas");
+  add(slabsRing, mat(0x7a6654), "anillos");
   add(struts, mat(0x7d8a94), "tornapuntas");
   add(rails, mat(0x9fb3bf, { metalness: 0.4 }), "barandillas");
   // Water: the trunks, their branches and columns (Cold Sanctuary's magic: water standing in a field) and the sea.

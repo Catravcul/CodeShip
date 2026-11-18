@@ -104,3 +104,43 @@ describe("santuario 1: cambios a gran escala (overrides.ts)", () => {
     expect(far(L)).toBeCloseTo(far(base) * 1.2, 3);
   });
 });
+
+describe("santuario 1: pisos amueblados", () => {
+  it("a cada anillo se llega nadando por el tronco hasta su balcón", () => {
+    const L1 = buildS1Layout(1);
+    const rings = L1.areas.filter((a) => a.id.endsWith(":anillo"));
+    expect(rings.length).toBeGreaterThanOrEqual(4);
+    for (const a of rings) {
+      const t = L1.towers.find((x) => a.id.startsWith(`${x.id}:`))!;
+      // From the trunk's water at the ring's height, swim towards the balcony.
+      let b = placeAt(L1.world, t.x + (a.entry!.x - t.x) * 0.3, a.y + 0.5, t.z + (a.entry!.z - t.z) * 0.3)!;
+      expect(b.motion, a.label).toBe("agua");
+      const d = Math.hypot(a.entry!.x - b.x, a.entry!.z - b.z);
+      for (let i = 0; i < 80 && b.motion === "agua"; i++) b = step(L1.world, b, { dx: ((a.entry!.x - b.x) / d) * 0.2, dy: 0, dz: ((a.entry!.z - b.z) / d) * 0.2 });
+      expect(b.area, a.label).toBe(a.id);
+    }
+  });
+  const L = buildS1Layout(1);
+  it("cada «furnish» de site.ts tiene su plan y cada plan cabe en su piso", () => {
+    for (const t of TOWERS)
+      for (const f of t.floors) if (f.furnish) expect(FLOOR_PLANS.has(f.furnish), f.furnish).toBe(true);
+    for (const p of FLOOR_PLANS.values())
+      for (const it of p.items) {
+        const half = Math.max(p.size.x, p.size.z) / 2;
+        const d = model(it.model);
+        const r = Math.hypot(d.size.x, d.size.z) / 2;
+        expect(Math.abs(it.x) - Math.min(r, 3), `${p.id} ${it.model}`).toBeLessThanOrEqual(half);
+        expect(Math.abs(it.z) - Math.min(r, 3), `${p.id} ${it.model}`).toBeLessThanOrEqual(half);
+      }
+  });
+  it("en cada piso amueblado se entra por la puerta y se anda 3 m dentro", () => {
+    for (const a of L.areas) {
+      if (!a.entry || a.detail !== "completo" || a.id.endsWith(":anillo")) continue;
+      let b = placeAt(L.world, a.entry.x, a.y + 0.01, a.entry.z)!;
+      const dx = -Math.sin(a.entry.yaw) * 0.2;
+      const dz = -Math.cos(a.entry.yaw) * 0.2;
+      for (let i = 0; i < 40; i++) b = step(L.world, b, { dx, dz });
+      expect(Math.hypot(b.x - a.entry.x, b.z - a.entry.z), a.label).toBeGreaterThan(3);
+    }
+  });
+});

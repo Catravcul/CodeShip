@@ -90,3 +90,42 @@ export const IRON = 0x5a5c66;
 export const CHROME = 0xc7ccd6;
 export const PAD = 0x1f1f24;
 export const WOOD = 0xb3855a;
+
+/** A box part from its centre and size (Cold Sanctuary's `KitchenProps.C`). */
+export const C = (cx: number, cy: number, cz: number, sx: number, sy: number, sz: number, color?: number): Part => (color === undefined ? [cx, cy, cz, sx, sy, sz] : [cx, cy, cz, sx, sy, sz, color]);
+
+/** A bar between two points (Cold Sanctuary's `GBar`), as the box around it: straight bars exact, slanted ones boxed. */
+export function bar(ax: number, ay: number, az: number, bx: number, by: number, bz: number, t: number, color?: number): Part {
+  return C((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2, Math.max(t, Math.abs(bx - ax)), Math.max(t, Math.abs(by - ay)), Math.max(t, Math.abs(bz - az)), color);
+}
+
+/** Degrees (Unity's yaw) to radians. */
+export const deg = (d: number): number => (d * Math.PI) / 180;
+
+/** Repeats a builder i = 0…n−1 and joins its parts. */
+export const rep = (n: number, f: (i: number) => readonly Part[]): Part[] => Array.from({ length: n }, (_, i) => f(i)).flat();
+
+/** Cold Sanctuary's palette (KitchenProps and the builders' T* colours), as hex. */
+export const COL = {
+  iron: 0x5a5c66,
+  chrome: 0xc7ccd6,
+  pad: 0x1f1f24,
+  rubber: 0x2e2e33,
+  wood: 0xb3855a,
+  oak: 0x9e7a52,
+  steel: 0xb8bec6,
+  darkSteel: 0x4a4f57,
+  white: 0xf2f2f0,
+  red: 0xb03030,
+  acc: 0xd9a420,
+  turf: 0x4f8a3c,
+  tile: 0x3a3a40,
+  bumper: 0x202024,
+  copper: 0xb87333,
+  water: 0x4fb3d9,
+  glass: 0xbfe3f0,
+  fabric: 0x7a8fb0,
+  screen: 0x1a2a3a,
+  plant: 0x4c8f3a,
+  soil: 0x5a4030,
+} as const;

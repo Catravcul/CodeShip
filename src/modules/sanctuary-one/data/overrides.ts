@@ -44,10 +44,10 @@ export interface Overrides {
   readonly personas: { readonly todas?: PersonOverride; readonly nombres?: Readonly<Record<string, PersonOverride>> };
 }
 
-/** The rules in force. Empty: everything as Cold Sanctuary builds it. */
+/** The rules in force. Cold Sanctuary hides a floor's finish while it is in works (Obras.cs PrepareSite). */
 export const OVERRIDES: Overrides = {
   categoria: {},
-  grupo: {},
+  grupo: { "obra-acabado": { oculto: true } },
   modelo: {},
   edificio: {},
   piso: {},

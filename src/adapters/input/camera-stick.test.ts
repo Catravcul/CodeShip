@@ -18,10 +18,16 @@ describe("UI-07 camera only by joystick (reglas.md §5.7)", () => {
   });
 
   it("only the on-screen sticks follow a moving finger: no pointermove, touchmove or mousemove on the screen", () => {
-    // A camera that follows a finger needs move events; the stick (stick.ts) is the one place that may listen to them.
-    const allowed = new Set(["src/adapters/input/stick.ts"]);
+    // A camera that follows a finger needs move events; the stick (stick.ts) is the one place that may listen to them,
+    // and the 3D maps' finger (map-gestures.ts), the rule's one exception.
+    const allowed = new Set(["src/adapters/input/stick.ts", "src/ui/map-gestures.ts"]);
     const bad = files.filter(({ f, text }) => !allowed.has(f) && /["'](pointermove|touchmove|mousemove)["']/.test(text)).map(({ f }) => f);
     expect(bad).toEqual([]);
+  });
+
+  it("the one exception: only the Navigation and Áreas 3D maps turn and zoom with a finger (map-gestures.ts)", () => {
+    const users = files.filter(({ f, text }) => f !== "src/ui/map-gestures.ts" && /\bmapGestures\(/.test(text)).map(({ f }) => f).sort();
+    expect(users).toEqual(["src/ui/areas-window.ts", "src/ui/nav-map.ts"]);
   });
 
   it("the stick listens to moves on its own element only, never on the window or the canvas", () => {
@@ -33,7 +39,7 @@ describe("UI-07 camera only by joystick (reglas.md §5.7)", () => {
 
   it("every view that turns a camera has a joystick for it", () => {
     // The views whose drag turned the camera before (Berón, 2026-11-17) now build a stick.
-    const views = ["src/ship-bay.ts", "src/station-screen.ts", "src/station-eva.ts", "src/ui/nav-map.ts", "src/adapters/three/dock-view.ts", "src/adapters/three/trip-preview.ts"];
+    const views = ["src/ship-bay.ts", "src/station-screen.ts", "src/station-eva.ts", "src/ui/nav-map.ts", "src/ui/areas-window.ts", "src/adapters/three/dock-view.ts", "src/adapters/three/trip-preview.ts"];
     for (const v of views) expect(files.find(({ f }) => f === v)?.text, v).toMatch(/new CameraStick\(/);
     for (const v of ["src/adapters/input/walker.ts", "src/adapters/three/flight-view.ts", "src/probe-mode.ts"]) expect(files.find(({ f }) => f === v)?.text, v).toMatch(/new VirtualStick\(/);
   });

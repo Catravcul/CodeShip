@@ -248,6 +248,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | HAB-45 | Solo test | | | `starship-deck.test.ts`, `spacing.test.ts`; lo juegan PX-15 y PX-40 |
 | HAB-46 | Solo test | | | `room-hops.test.ts`, `journey-world.test.ts`; lo juegan PX-40 y PX-36 |
 | HAB-50 | Solo test | | | `cabin.test.ts` verde; lo juega PX-41 |
+| HAB-51 | Sin probar | | | Lo juega PX-42 (y todos los recorridos que usan una máquina, con «Panel» en `lib.mjs`) |
 | HAB-28 | Solo test | | | `compartments.test.ts`, `starship-interior.test.ts`; jugado en PX-35 |
 | HAB-30 | Probado (en vivo) | 2026-11-17 | `1e45fe6` | [run](runs/2026-11-17-0459-PX-28-PX-31-PX-35-PX-37-PX-20.md): PX-37 OK; `crew-areas.test.ts` |
 | HAB-31 | Probado (en vivo) | 2026-11-17 | `1e45fe6` | [run](runs/2026-11-17-0459-PX-28-PX-31-PX-35-PX-37-PX-20.md): PX-37 OK |

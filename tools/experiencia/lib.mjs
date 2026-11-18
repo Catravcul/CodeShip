@@ -103,7 +103,7 @@ export class Journey {
    */
   async showPanel(selector) {
     const hidden = await this.page
-      .evaluate((sel) => !document.body.classList.contains("panel-on") && [...document.querySelectorAll(sel)].some((e) => e.closest(".cab-machine")), selector)
+      .evaluate((sel) => !document.body.classList.contains("panel-on") && [...document.querySelectorAll(sel)].some((e) => e.closest(".cab-machine:not(.hidden)")), selector)
       .catch(() => false);
     if (!hidden) return;
     await this.page.waitForFunction(() => [...document.querySelectorAll(".panel-btn:not(.hidden)")].some((b) => b.closest(".root-menu")?.checkVisibility()), null, { timeout: 8000 }).catch(() => {});
@@ -448,6 +448,8 @@ export class Journey {
 
   /** Visible texts of the elements matching `selector`. */
   async texts(selector) {
+    // Reading a machine's card: a player shows it with «Panel» first.
+    if (/cab-machine|sti-card|sts-card/.test(selector)) await this.showPanel(selector);
     return this.page.evaluate(
       (sel) =>
         [...document.querySelectorAll(sel)]

@@ -10,7 +10,7 @@ import type { Stage } from "@modules/subjugation/domain/rapport";
 export type Island = "entrenamiento" | "lanzadera" | "parque" | "muelle" | "plataforma" | "glaciar";
 export const ISLANDS: readonly Island[] = ["entrenamiento", "lanzadera", "parque", "muelle", "plataforma", "glaciar"];
 
-export type Vehicle = "modulo" | "nodriza" | "estacion" | Island;
+export type Vehicle = "modulo" | "nodriza" | "estacion" | Island | "santuario-1";
 
 /** Where a task is done. */
 export type TaskPlace =
@@ -200,7 +200,7 @@ export function routeTo(place: TaskPlace, where: { crew: Vehicle; links: Vehicle
     for (let v: Vehicle | null = place.vehicle; v; v = prev.get(v) ?? null) path.unshift(v);
     return { kind: "ir", through: path };
   }
-  const name: Record<Vehicle, string> = { modulo: "el módulo de aterrizaje", nodriza: "la nodriza", estacion: "la estación", entrenamiento: "la isla de entrenamiento", lanzadera: "la lanzadera", parque: "el parque energético", muelle: "el muelle aéreo", plataforma: "la plataforma de tripulación", glaciar: "el glaciar" };
+  const name: Record<Vehicle, string> = { modulo: "el módulo de aterrizaje", nodriza: "la nodriza", estacion: "la estación", entrenamiento: "la isla de entrenamiento", lanzadera: "la lanzadera", parque: "el parque energético", muelle: "el muelle aéreo", plataforma: "la plataforma de tripulación", glaciar: "el glaciar", "santuario-1": "el santuario 1" };
   if (where.crew === "modulo") return { kind: "bloqueado", via: { vehicle: "modulo", spot: "acople" }, why: `Acopla el módulo para llegar a ${name[place.vehicle]}: consola de acople` };
   if (where.crew === "nodriza") return { kind: "bloqueado", via: { vehicle: "nodriza", spot: "puente", page: "nav" }, why: `${cap(name[place.vehicle])} no está acoplada a la nodriza: programa un viaje en el mapa del puente` };
   return { kind: "bloqueado", via: { vehicle: "estacion", spot: "pantalla", tab: "hangar" }, why: `${cap(name[place.vehicle])} no está atracada aquí` };

@@ -6,6 +6,7 @@ import { personRule } from "@modules/sanctuary-one/data/overrides";
 import { placeAt, step, type Body } from "@modules/aerial-sanctuary/domain/walk";
 import { S1_DAY_REAL_S, S1_START_HOUR, activityAt, along, route, wanderAt, type Activity, type Route } from "@modules/sanctuary-one/domain/motion";
 import { staffPlaces, wayBetween, type Place } from "@modules/sanctuary-one/data/jornada";
+import { WalkIndex } from "@modules/sanctuary-one/data/walk-index";
 import { buildS1Scene } from "./adapters/three/s1-models";
 import { CubeFigure } from "./adapters/three/interior/figure";
 import { textSign } from "./adapters/three/interior/sign";
@@ -13,6 +14,11 @@ import { Walker } from "./adapters/input/walker";
 import { DOMENICA_HAIR } from "./ui/portraits";
 import { RootMenu } from "./ui/root-menu";
 import { ICON } from "./ui/icons";
+import { AreasWindow } from "./ui/areas-window";
+import { settings } from "./ui/settings-store";
+import { offerVehicles } from "./ui/task-settings";
+import type { AreaMap, AreaNode } from "@modules/tasks/application/areas";
+import { LOBES, capOf } from "@modules/sanctuary-one/data/site";
 import "./ui/lander-cabin.css";
 import "./ui/acciones.css";
 import "./ui/aerial.css";
@@ -27,6 +33,9 @@ const root = document.getElementById("app")!;
 // Sanctuary 3's gravity world styles (its «Moverse» and «Mirar» sticks) serve this one too.
 document.body.classList.add("in-s3");
 const L = buildS1Layout(WORLD_SCALE);
+// The walk world by cells (thousands of solids): each step looks only round her.
+const walkIndex = new WalkIndex(L.world);
+const near = (x: number, z: number) => walkIndex.near(x, z);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
 renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
@@ -156,7 +165,7 @@ scene.add(rig);
 const EYE_M = 1.45;
 const WALK_MS = 1.6;
 const SWIM_MS = 2.2;
-let body: Body = placeAt(L.world, L.start.x, L.start.y + 0.01, L.start.z)!;
+let body: Body = placeAt(near(L.start.x, L.start.z), L.start.x, L.start.y + 0.01, L.start.z)!;
 let yaw = L.start.yaw;
 let pitch = 0;
 let stride = 0;
@@ -180,7 +189,84 @@ function toggleView(): void {
   menu.relabel(viewBtn, `Vista: ${thirdPerson ? "3ª" : "1ª"} persona`, "V");
 }
 
+// --- Áreas: the map window with every place of the sanctuary and «Ir» (the real way, or teleport if she chose it) ---
+offerVehicles(["auto"], "Santuario");
+if (settings.value.taskVehicle !== "auto") settings.set("taskVehicle", "auto");
+/** The box of an area on the map: a floor's slab, a ring's U, a cap's disc; the sea round the lagoon. */
+function areaBox(a: (typeof L.areas)[number]): Pick<AreaNode, "centre" | "half"> {
+  for (const t of L.towers) {
+    const f = t.floors.find((q) => Math.abs(q.y - a.y) < 0.01 && a.x >= q.rect.x0 && a.x <= q.rect.x1 && a.z >= q.rect.z0 && a.z <= q.rect.z1);
+    if (f) return { centre: { x: a.x, y: a.y, z: a.z }, half: { x: (f.rect.x1 - f.rect.x0) / 2, y: 2, z: (f.rect.z1 - f.rect.z0) / 2 } };
+    const r = t.rings.find((q) => Math.abs(q.y - a.y) < 0.01);
+    if (r && a.id.endsWith(":anillo")) {
+      const x0 = Math.min(...r.rects.map((q) => q.x0)), x1 = Math.max(...r.rects.map((q) => q.x1)), z0 = Math.min(...r.rects.map((q) => q.z0)), z1 = Math.max(...r.rects.map((q) => q.z1));
+      return { centre: { x: (x0 + x1) / 2, y: a.y, z: (z0 + z1) / 2 }, half: { x: (x1 - x0) / 2, y: 1, z: (z1 - z0) / 2 } };
+    }
+  }
+  const cap = a.id.split(":")[1];
+  const lobes = LOBES.filter((l) => l.r > 0 && capOf(l) === cap);
+  if (lobes.length) {
+    const x0 = Math.min(...lobes.map((l) => l.x - l.r)), x1 = Math.max(...lobes.map((l) => l.x + l.r)), z0 = Math.min(...lobes.map((l) => l.z - l.r)), z1 = Math.max(...lobes.map((l) => l.z + l.r));
+    return { centre: { x: (x0 + x1) / 2, y: 0, z: (z0 + z1) / 2 }, half: { x: (x1 - x0) / 2, y: 0.5, z: (z1 - z0) / 2 } };
+  }
+  return { centre: { x: a.x, y: a.y, z: a.z }, half: { x: 20, y: 0.5, z: 20 } };
+}
+const goable = L.areas.filter((a) => !a.id.endsWith(":tronco") && !a.id.includes(":punta-") && a.id !== "paisaje");
+const s1Map: AreaMap = {
+  vehicle: "santuario-1",
+  nodes: goable.map((a) => ({ id: a.id, label: a.building && !a.label.includes(a.building) ? `${a.label} (${a.building})` : a.label, desc: a.desc, goal: a.id, fixture: a.id, ...areaBox(a) })),
+  links: [],
+};
+/** Where «Ir» takes her in an area: past its door on a floor or ring, the middle of a cap, the lagoon's water. */
+function arrival(a: (typeof L.areas)[number]): Place {
+  if (a.entry) return { area: a.id, x: a.entry.x, y: a.y, z: a.entry.z, yaw: a.entry.yaw, pose: "stand" };
+  return { area: a.id, x: a.x, y: a.y, z: a.z, yaw: 0, pose: "stand" };
+}
+/** The route she is being walked along («Ir» by the real way); any touch of the sticks hands her back. */
+let auto: { way: Route; s: number; to: Place } | undefined;
+function goTo(id: string): void {
+  const a = areaById.get(id);
+  if (!a) return;
+  const to = arrival(a);
+  if (settings.value.taskTravel === "teletransporte") {
+    body = placeAt(near(to.x, to.z), to.x, to.y + 0.01, to.z) ?? body;
+    yaw = to.yaw;
+    return;
+  }
+  auto = { way: route(wayBetween(L, { area: body.area, x: body.x, y: body.y, z: body.z, yaw, pose: "stand" }, to)), s: 0, to };
+}
+function frameAuto(dt: number): boolean {
+  if (!auto) return false;
+  const mv = walker.move();
+  if (mv.forward || mv.right) {
+    auto = undefined;
+    body = placeAt(near(body.x, body.z), body.x, body.y + 0.3, body.z) ?? body;
+    return false;
+  }
+  const here = along(auto.way, auto.s);
+  auto.s += (here.swim ? SWIM_MS : WALK_MS) * dt;
+  const q = along(auto.way, auto.s);
+  if (q.done) {
+    body = placeAt(near(auto.to.x, auto.to.z), auto.to.x, auto.to.y + 0.01, auto.to.z) ?? body;
+    yaw = auto.to.yaw;
+    auto = undefined;
+    return true;
+  }
+  stride += Math.hypot(q.x - body.x, q.z - body.z) * 3;
+  if (!Number.isNaN(q.yaw)) yaw = q.yaw + Math.PI;
+  body = { x: q.x, y: q.y, z: q.z, motion: q.swim ? "agua" : "gravedad", area: "" };
+  return true;
+}
+const areasWindow = new AreasWindow(root, {
+  here: () => "santuario-1",
+  map: () => s1Map,
+  at: () => (areaById.has(body.area) ? body.area : undefined),
+  go: (n) => goTo(n.id),
+});
+RootMenu.global({ className: "areas-btn", icon: ICON.areas, label: "Áreas", window: "areas", order: 2 }, () => areasWindow.open()).show(true);
+
 function frameFree(dt: number): void {
+  if (frameAuto(dt)) return;
   const mv = walker.move();
   if (!mv.forward && !mv.right) return;
   const speed = (body.motion === "agua" ? SWIM_MS : WALK_MS) * dt;
@@ -189,9 +275,9 @@ function frameFree(dt: number): void {
   const dy = body.motion === "agua" ? Math.sin(pitch) * mv.forward * speed : 0;
   const before = body;
   const n = Math.max(1, Math.ceil(Math.hypot(dx, dy, dz) / 0.2));
-  for (let i = 0; i < n; i++) body = step(L.world, body, { dx: dx / n, dy: dy / n, dz: dz / n });
+  for (let i = 0; i < n; i++) body = step(near(body.x, body.z), body, { dx: dx / n, dy: dy / n, dz: dz / n });
   // Swimming straight up or down a trunk (looking up or down with nothing ahead): the vertical part alone.
-  if (body === before && body.motion === "agua" && Math.abs(dy) > 0.01) body = step(L.world, body, { dx: 0, dy, dz: 0 });
+  if (body === before && body.motion === "agua" && Math.abs(dy) > 0.01) body = step(near(body.x, body.z), body, { dx: 0, dy, dz: 0 });
   stride += Math.hypot(body.x - before.x, body.z - before.z) * 3;
 }
 
@@ -212,7 +298,7 @@ function updateCamera(dt: number): void {
     camera.rotation.set(pitch, yaw, 0);
     rig.visible = false;
   }
-  const moving = walker.move().forward !== 0 || walker.move().right !== 0;
+  const moving = !!auto || walker.move().forward !== 0 || walker.move().right !== 0;
   if (body.motion === "agua") avatar.pose("glide");
   else avatar.walk(stride, moving ? 1 : 0);
   avatar.update(dt);
@@ -246,5 +332,5 @@ window.addEventListener("keydown", (e) => {
 });
 // Test hook (tools/experiencia and live checks): the layout, the body and the bulk style switch.
 if (import.meta.env.DEV || new URLSearchParams(location.search).has("prueba"))
-  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { L, world, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, get hour() { return hour; }, people, setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
+  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { L, world, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, goTo, get auto() { return auto; }, areasWindow, get hour() { return hour; }, people, setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
 requestAnimationFrame(frame);

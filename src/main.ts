@@ -1454,6 +1454,7 @@ const journey = new JourneyDriver(root, {
     if (place.vehicle === "nodriza") return place.spot === "anillo" ? void (t.chore && interior.doChore(t.chore)) : useBridgeConsole(place);
     if (place.vehicle === "modulo") return place.spot === "asiento" && !view.enabled ? sitDown() : undefined;
     if (place.spot === "tripulacion") return void (t.chore && stationLife.startChore(t.chore));
+    if (place.spot === "isla") return;
     stationInside.suspend();
     if (place.spot === "bahia") return bay.enter("estacion");
     screenFromInside = true;

@@ -555,7 +555,10 @@ const ROOMS: readonly RoomDef[] = [
     road: "z",
     pool: { x: TRAINING.nblPool.value.x, z: TRAINING.nblPool.value.z, depth: TRAINING.nblPool.value.depth },
     items: [{ look: "maqueta", x: 0, z: 0, w: 8.5, d: 4.3, h: 4.3, y0: -12, prop: "iss-mockup" }],
-    machines: [{ id: "nbl-piscina", kind: "puesto", label: "Piscina NBL", what: "Natación (3 largos de 25 m), supervivencia en el agua y paseos con el traje sobre la maqueta", x: -10, z: -19, post: 7 }],
+    machines: [
+      { id: "nbl-piscina", kind: "puesto", label: "Piscina NBL", what: "El EMU, el lastre de los buzos hasta la flotabilidad neutra y la maqueta en el fondo", x: -10, z: -19, post: 7 },
+      { id: "nbl-supervivencia", kind: "puesto", label: "Prueba de natación", what: "3 largos de 25 m, otros 3 con el mono, 10 min flotando; la balsa y el izado", x: 10, z: -19, post: 3 },
+    ],
   },
   {
     id: "centrifuga",

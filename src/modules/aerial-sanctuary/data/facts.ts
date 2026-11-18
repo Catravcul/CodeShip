@@ -3,6 +3,7 @@ import type { LiftSpec } from "../domain/lift";
 import type { CraftSpec } from "../domain/travel";
 import type { SolarSpec, StopRule, TidalSpec, WindTurbineSpec } from "../domain/energy";
 import type { HeightRule } from "../domain/launch-height";
+import type { HandLimits } from "../domain/hand-flight";
 
 /**
  * Every number of sanctuary 3 with its label and source (reglas.md §1.1). Cold Sanctuary's aerial sanctuary keeps
@@ -107,6 +108,16 @@ export const CRAFT: Readonly<Record<"helicoptero" | "alfombra", Fact<CraftSpec>>
   alfombra: fact({ cruiseMs: 26, climbS: 6, cruiseAboveM: 40, fixedS: 30 }, "ficcion", `${S.csAereo}; ${S.csCarpet}`, "AereoRule.FlightSeconds: 30 s de vuelo"),
 };
 export const S92 = { lengthM: fact(20.88, "real", S.s92), rotorM: fact(17.17, "real", S.s92), heightM: fact(4.7, "real", S.s92) } as const;
+/**
+ * Hand flight (reglas.md §3.6, «Manual»): the S-92's envelope as the pad uses it. Cruise 280 km/h and the rotor are
+ * Sikorsky's; 35 kt sideways and backwards is the usual limit of a transport helicopter; the climb, the lag and the
+ * steps of each tap are ours. The carpet mirrors it with Cold Sanctuary's speed.
+ */
+export const HAND: Readonly<Record<"helicoptero" | "alfombra", Fact<HandLimits>>> = {
+  helicoptero: fact({ fwdMs: 280 / 3.6, backMs: 18, sideMs: 18, climbMs: 7.5, yawDegS: 30, fwdStepMs: 280 / 3.6 / 8, climbStepMs: 1.5, yawStepDegS: 10, lagS: 3, radiusM: 17.17 / 2, heightM: 4.7, touchdownMs: 1.5, padRadiusM: 10, seaHoverM: 5 }, "real", S.s92, "velocidad y rotor del S-92; 35 kt de lado y atrás, el ascenso de 7,5 m/s, el retardo y los pasos: estimación nuestra"),
+  alfombra: fact({ fwdMs: 26, backMs: 8, sideMs: 8, climbMs: 4, yawDegS: 45, fwdStepMs: 26 / 4, climbStepMs: 1, yawStepDegS: 15, lagS: 1, radiusM: 1.6, heightM: 1.8, touchdownMs: 1.5, padRadiusM: 4, seaHoverM: 3 }, "ficcion", `${S.csAereo}; ${S.csCarpet}`, "la alfombra imita los mandos del helicóptero (nuestro), a su velocidad"),
+};
+
 /** A helideck of 1 D (CAP 437 / ICAO: the D-value is the helicopter's overall length). */
 export const HELIDECK_M = fact(21, "real", S.s92, "1 D del S-92 (20,88 m)");
 

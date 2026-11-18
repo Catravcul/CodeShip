@@ -58,7 +58,9 @@ export type ChoreKind =
   /** Canadarm2 and Dextre from the Cupola's RWS (modules/robotics). */
   | "brazo-robotico"
   /** A spacewalk from Quest: suit-up and prebreathe, and the work outside (modules/eva, station-eva). */
-  | "paseo-espacial";
+  | "paseo-espacial"
+  /** A post of Doménica's initiation in sanctuary 3 (modules/aerial-sanctuary, application/stations.ts). */
+  | "iniciacion";
 
 /** Groups for filtering the task board. */
 export type ChoreCategory = "comida" | "plantas" | "animales" | "nave" | "salud" | "misiones";
@@ -112,6 +114,7 @@ export const CHORE_CATEGORY: Readonly<Record<ChoreKind, ChoreCategory>> = {
   medico: "salud",
   "brazo-robotico": "nave",
   "paseo-espacial": "nave",
+  iniciacion: "misiones",
 };
 
 /** A task on board, done by solving code challenges in order. */

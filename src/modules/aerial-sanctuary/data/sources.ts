@@ -28,6 +28,12 @@ export const S3_SOURCES = {
   dragonTraining: "Wired y Axiom (Ax-4): simuladores de Dragon en Hawthorne y diálogo con su control de misión: https://wirednews.pages.dev/story/spacex-astronaut-training-sims",
   rossIsland: "Ross Island: 3 Enercon E-33 de 330 kW, rotor de 33 m, buje a 37 m, 7,9 m/s de media (Antarctica NZ): https://www.antarcticanz.govt.nz/media/news/new-turbines-for-the-windiest-continent",
   seals: "Onoufriou et al., 2019: trauma grave en focas a 5,6 m/s (IC 95 % 4,4–6,6): https://tethys.pnnl.gov/publications/empirical-determination-severe-trauma-seals-collisions-tidal-turbine-blade",
+  csRoster: "Cold Sanctuary, Assets/Scripts/Progression/WorkRoster.cs (jornada desde el 2026-11-05: entrenamiento 8–9 y 14–15, tareas 9–11, 12–14 y 15–16, comida 11–12; la Magnate, si no hay nadie libre) y Professions.cs",
+  csPeople: "Cold Sanctuary, docs/personajes/*.md (aspecto atestiguado por sus fotos; estaturas estimadas allí) y Assets/Scripts/Avatar/CubeHair.cs",
+  nasaApply: "NASA, Become an astronaut: ciudadanía de EE. UU., máster STEM (o doctorado, título médico o escuela de pilotos de pruebas), experiencia o horas al mando de reactores, el reconocimiento de larga duración y dos rondas de entrevistas en Johnson: https://www.nasa.gov/humans-in-space/astronauts/become-an-astronaut",
+  faaHypoxia: "FAA, AC 61-107B (Aircraft Operations at Altitudes Above 25,000 Feet), tiempo de consciencia útil: 18 000 pies 20–30 min, 25 000 pies 3–5 min, 30 000 pies 1–2 min: https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_61-107B.pdf",
+  pensacola: "DVIDS 2022: los candidatos de la NASA en el Naval Survival Training Institute de Pensacola (salir del amerizaje, balsa, rescate e izado): https://www.dvidshub.net/news/421286/astronaut-candidates-train-naval-air-station-pensacola",
+  nblSheet: "NASA, ficha del NBL: buzos de apoyo, el traje lastrado hasta la flotabilidad neutra, agua a 28–31 °C: https://www.nasa.gov/centers/johnson/pdf/167748main_FS_NBL508c.pdf",
   ours: "Codeship, docs/design/santuario3-escena.md: distribución nuestra (no hay plano publicado)",
 } as const;
 

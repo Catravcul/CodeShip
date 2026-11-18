@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { POSTS, initiationTasks, IN_CONSTRUCTION } from "./initiation";
+import { POSTS, initiationTasks, IN_CONSTRUCTION, READY_POSTS } from "./initiation";
 import { buildLayout } from "../data/layout";
 import { reachable } from "../domain/route";
 
@@ -13,7 +13,9 @@ describe("La iniciación como tareas (santuario3-iniciacion.md §4)", () => {
   });
   it("cada uno en su máquina, a la que se llega andando desde su isla, y «En construcción» hasta que llegue su reto", () => {
     for (const t of tasks) {
-      expect(t.detail).toContain(IN_CONSTRUCTION);
+      const n = Number(t.id.split("-").at(-1));
+      if (READY_POSTS.includes(n)) expect(t.detail).not.toContain(IN_CONSTRUCTION);
+      else expect(t.detail).toContain(IN_CONSTRUCTION);
       if (t.place.spot !== "isla") throw new Error("no es de una isla");
       const isl = L.islands.find((i) => i.id === t.place.vehicle)!;
       expect(reachable(L.graph, isl.arrival).has(t.place.point), t.id).toBe(true);

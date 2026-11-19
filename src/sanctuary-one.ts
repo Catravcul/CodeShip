@@ -452,7 +452,7 @@ const missionsWindow = new AreasWindow(root, {
   },
   go: (n) => doMission(MISSIONS.find((q) => q.id === n.id)!),
 });
-RootMenu.global({ className: "s1-missions-btn", icon: ICON.tasks, label: "Misiones", window: "misiones", order: 1 }, () => missionsWindow.open()).show(true);
+RootMenu.global({ className: "s1-missions-btn", icon: ICON.missions, label: "Misiones", window: "misiones", order: 1 }, () => missionsWindow.open()).show(true);
 
 // --- What she can do here: the orange button under the menu (reglas.md §5.8) and the challenges -------------------
 /** Doménica's needs: the challenges' rewards (Berón: no pasar hambre, compañía, fuerza, salud). */
@@ -508,7 +508,7 @@ function updateAtHand(dt: number): void {
   const t = challenge || picker.isOpen ? undefined : findAtHand();
   if (t?.i === atHand?.i && (t === undefined) === (atHand === undefined)) return;
   atHand = t;
-  RootMenu.interact(t ? { icon: ICON.tasks, label: `Reto: ${shortLabel(t.label)}`, onClick: () => offerRetos(t) } : undefined);
+  RootMenu.interact(t ? { icon: ICON.reto, label: `Reto: ${shortLabel(t.label)}`, onClick: () => offerRetos(t) } : undefined);
 }
 const shortLabel = (l: string) => l.replace(/\s*\(.*\)\s*/g, " ").trim();
 

@@ -3,10 +3,9 @@
  * and the people follow the workday from place to place along real routes (walking on the ice, swimming in the sea and
  * up the trunks). Pure functions of time, so the same moment always looks the same and nothing needs saving.
  */
-export interface P2 {
-  readonly x: number;
-  readonly z: number;
-}
+import { hash01, waypoint, wanderAt, type P2 } from "@modules/fauna/domain/roam";
+
+export { hash01, waypoint, wanderAt, type P2 };
 
 /**
  * Real seconds a day of sanctuary 1 lasts: Cold Sanctuary's (its TimeController, 60 real minutes), so its workday works
@@ -15,40 +14,6 @@ export interface P2 {
 export const S1_DAY_REAL_S = 3600;
 /** The hour the scene opens at: breakfast is over and everyone heads to the first training. */
 export const S1_START_HOUR = 7.8;
-
-/** A stable random in [0, 1) for (seed, i). */
-export function hash01(seed: number, i: number): number {
-  let h = (Math.imul(seed | 0, 0x9e3779b1) ^ Math.imul(i | 0, 0x85ebca77)) >>> 0;
-  h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d) >>> 0;
-  h = Math.imul(h ^ (h >>> 12), 0x297a2d39) >>> 0;
-  return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
-}
-
-/** The i-th waypoint of a territory: uniform over its disc. */
-export function waypoint(home: P2, radius: number, seed: number, i: number): P2 {
-  const a = hash01(seed, 2 * i) * Math.PI * 2;
-  const r = radius * Math.sqrt(hash01(seed, 2 * i + 1));
-  return { x: home.x + Math.cos(a) * r, z: home.z + Math.sin(a) * r };
-}
-
-/**
- * Where a wandering animal is at time `t` (s): it walks from waypoint to waypoint at `speed` and rests `rest` s at each.
- * Every leg lasts the same (the longest walk plus the rest), so the leg of any moment is found at once.
- */
-export function wanderAt(home: P2, radius: number, seed: number, t: number, speed: number, rest = 6): { x: number; z: number; yaw: number; moving: boolean } {
-  if (radius <= 0 || speed <= 0) return { x: home.x, z: home.z, yaw: 0, moving: false };
-  const leg = (2 * radius) / speed + rest;
-  const i = Math.floor(t / leg);
-  const into = t - i * leg;
-  const a = waypoint(home, radius, seed, i);
-  const b = waypoint(home, radius, seed, i + 1);
-  const d = Math.hypot(b.x - a.x, b.z - a.z);
-  const yaw = Math.atan2(b.x - a.x, b.z - a.z);
-  const walk = d / speed;
-  if (into >= walk) return { x: b.x, z: b.z, yaw, moving: false };
-  const f = into / walk;
-  return { x: a.x + (b.x - a.x) * f, z: a.z + (b.z - a.z) * f, yaw, moving: true };
-}
 
 /** A point of a route; `swim` marks the way TO it as swimming (sea, trunk), `fly` as flown on a carpet. */
 export interface Waypoint {
@@ -110,4 +75,37 @@ export function activityAt(hour: number): Activity {
   let a: Activity = "dormir";
   for (const [from, act] of WORKDAY) if (h >= from) a = act;
   return a;
+}
+
+/**
+ * A vehicle that goes out along a route and comes back, over and over: `rest` s at the start, the way out at `speed`
+ * m/s, `away` s at the end, and the way back. Its heading is the way it moves (the last one while it waits).
+ */
+export function shuttle(r: Route, t: number, speed: number, rest: number, away: number): { x: number; y: number; z: number; yaw: number; moving: boolean } {
+  const go = r.length / speed;
+  const cycle = rest + go + away + go;
+  const k = ((t % cycle) + cycle) % cycle;
+  const back = k >= rest + go + away;
+  const s = k < rest ? 0 : k < rest + go ? (k - rest) * speed : !back ? r.length : r.length - (k - rest - go - away) * speed;
+  const p = along(r, Math.min(r.length, Math.max(0, s)));
+  // The heading of the stretch it is on (or the last flat one), turned round on the way back.
+  const ahead = along(r, Math.min(r.length, s + 0.5));
+  const behind = along(r, Math.max(0, s - 0.5));
+  const dx = ahead.x - behind.x;
+  const dz = ahead.z - behind.z;
+  let yaw = Math.hypot(dx, dz) > 0.05 ? Math.atan2(dx, dz) : flatYaw(r, s);
+  if (back) yaw += Math.PI;
+  return { x: p.x, y: p.y, z: p.z, yaw, moving: k >= rest && (k < rest + go || back) };
+}
+
+function flatYaw(r: Route, s: number): number {
+  const p = r.points;
+  let i = 1;
+  while (i < p.length - 1 && r.at[i]! < s) i++;
+  for (let j = i; j >= 1; j--) {
+    const a = p[j - 1]!;
+    const b = p[j]!;
+    if (Math.hypot(b.x - a.x, b.z - a.z) > 0.05) return Math.atan2(b.x - a.x, b.z - a.z);
+  }
+  return 0;
 }

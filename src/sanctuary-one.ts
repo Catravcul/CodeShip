@@ -4,7 +4,8 @@ import { moveJoystick } from "@core/realism";
 import { buildS1Layout } from "@modules/sanctuary-one/data/layout";
 import { personRule } from "@modules/sanctuary-one/data/overrides";
 import { blocked, dropTo, placeAt, step, waterAt, type Body } from "@modules/aerial-sanctuary/domain/walk";
-import { S1_DAY_REAL_S, S1_START_HOUR, activityAt, along, hash01, route, wanderAt, type Activity, type Route } from "@modules/sanctuary-one/domain/motion";
+import { S1_DAY_REAL_S, S1_START_HOUR, activityAt, along, hash01, route, shuttle, wanderAt, type Activity, type Route } from "@modules/sanctuary-one/domain/motion";
+import { Wildlife } from "@modules/sanctuary-one/application/wildlife";
 import { staffPlaces, wayBetween, type Place } from "@modules/sanctuary-one/data/jornada";
 import { WalkIndex } from "@modules/sanctuary-one/data/walk-index";
 import { buildS1Scene } from "./adapters/three/s1-models";
@@ -246,11 +247,39 @@ function movePeople(dt: number): void {
 // bodies (domain/animal-body.ts): legs, flippers, flukes and wings while they go, a slow sway at rest.
 let wildT = 0;
 const moving = new Set(world.movers.map((m) => m.it));
+/** Their lives and activities (application/wildlife.ts), on the real calendar: game day 0 is today's date. */
+const yearDay0 = Math.floor((Date.now() - Date.UTC(new Date().getUTCFullYear(), 0, 1)) / 86_400_000);
+const wild = new Wildlife(L.instances, world.movers.map((m) => m.it).filter((it) => !it.wander!.climb), yearDay0);
+// The work submarine (layout.ts submarineDive): five minutes in its bay, out down its trunk to the lagoon at 1,5 m/s
+// (a Triton 3300/3 does up to 3 knots), two minutes there, and back.
+const sub = L.submarine && (() => {
+  const it = L.instances[L.submarine.index]!;
+  const key = `${it.model}|${it.tint ?? ""}`;
+  const n = L.instances.slice(0, L.submarine.index).filter((o) => o.model === it.model && (o.tint ?? "") === (it.tint ?? "")).length;
+  return { it, mesh: world.meshes.get(key), n, route: route(L.submarine.route) };
+})();
+const subM = new THREE.Matrix4();
+const subQ = new THREE.Quaternion();
+const UP = new THREE.Vector3(0, 1, 0);
+function moveSubmarine(): void {
+  if (!sub?.mesh) return;
+  const p = shuttle(sub.route, wildT, 1.5, 300, 120);
+  const sc = sub.it.scale ?? 1;
+  subQ.setFromAxisAngle(UP, p.moving || p.y < sub.it.y - 0.1 ? p.yaw + Math.PI : sub.it.rot);
+  subM.compose(new THREE.Vector3(p.x, p.y, p.z), subQ, new THREE.Vector3(sc, sc, sc));
+  sub.mesh.setMatrixAt(sub.n, subM);
+  sub.mesh.instanceMatrix.needsUpdate = true;
+  sub.mesh.computeBoundingSphere();
+}
 function moveAnimals(dt: number): void {
   wildT += dt;
+  wild.step(dt, wildT, day + hour / 24, { x: body.x, z: body.z });
+  moveSubmarine();
   for (const { herd, index, it } of world.animals) {
     const t = wildT + index * 0.37;
-    if (moving.has(it)) {
+    const a = wild.get(it);
+    if (a) herd.pose(index, a.x, a.y, a.z, a.yaw, t, a.moving, a.scale);
+    else if (moving.has(it)) {
       const w = it.wander!;
       const p = wanderAt({ x: w.x, z: w.z }, w.r, w.seed, wildT + w.seed, w.speed);
       // Up and down its trunk: a slow swim from the root under the ice to the top and back (~0,4 m/s vertically).
@@ -550,10 +579,12 @@ let reachT = 0;
 function findAtHand(): Thing | undefined {
   const here = thingCells.get(cellKey(body.x, body.z)) ?? [];
   // The animals wander: where each is now.
-  const moving = movingThings.map((t) => {
+  const moving = movingThings.flatMap((t) => {
+    const a = wild.get(t.mover!.it);
+    if (a) return a.scale > 0 ? [{ ...t, x: a.x, y: a.y, z: a.z, rot: a.yaw, label: a.label }] : [];
     const w = t.mover!.it.wander!;
     const p = wanderAt({ x: w.x, z: w.z }, w.r, w.seed, wildT + w.seed, w.speed);
-    return { ...t, x: p.x, z: p.z, rot: p.yaw };
+    return [{ ...t, x: p.x, z: p.z, rot: p.yaw }];
   });
   return nearest(body.x, body.y, body.z, [...here, ...moving], REACH_M + (moving.length ? 0 : 0));
 }
@@ -889,5 +920,5 @@ window.addEventListener("keydown", (e) => {
 });
 // Test hook (tools/experiencia and live checks): the layout, the body and the bulk style switch.
 if (import.meta.env.DEV || new URLSearchParams(location.search).has("prueba"))
-  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { L, world, steps, get jumpT() { return jumpT; }, set jumpT(t: number) { jumpT = t; jumpRun = false; }, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, goTo, get auto() { return auto; }, areasWindow, get hour() { return hour; }, people, get atHand() { return atHand; }, openReto, domenica, missionsWindow, get day() { return day; }, doMission: (id: string) => doMission(MISSIONS.find((q) => q.id === id)!), setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
+  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { L, world, steps, wild, get wildT() { return wildT; }, set wildT(v: number) { wildT = v; }, get jumpT() { return jumpT; }, set jumpT(t: number) { jumpT = t; jumpRun = false; }, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, goTo, get auto() { return auto; }, areasWindow, get hour() { return hour; }, people, get atHand() { return atHand; }, openReto, domenica, missionsWindow, get day() { return day; }, doMission: (id: string) => doMission(MISSIONS.find((q) => q.id === id)!), setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
 requestAnimationFrame(frame);

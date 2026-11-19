@@ -1,4 +1,4 @@
-import { RootMenu, type GlobalRootItem } from "./root-menu";
+import { RootMenu } from "./root-menu";
 import { ICON } from "./icons";
 import { onCloseRequest, windowState } from "./hud-windows";
 
@@ -6,18 +6,16 @@ import { onCloseRequest, windowState } from "./hud-windows";
 const CARD = ".cab-machine";
 
 /**
- * «Panel» in the tree menu (reglas.md §5.8, Berón 2026-11-18): the card of the machine or area she is at never
- * opens on its own. The menu's «Panel» shows it, and is there only while there is one to show; while it is shown
- * the icon is the X that hides it. Another machine (or none) hides it again, so walking on never pops one up.
+ * The machine's orange button (reglas.md §5.8, Berón 2026-11-18 and 11-19): the card of the machine or area she is
+ * at never opens on its own. The orange button under the menu's root, named after the machine, shows it, and is
+ * there only while there is one to show; while it is shown it is the X that hides it. Another machine (or none) hides it again, so walking on never pops one up.
  * Hidden or shown with body.panel-on (root-menu.css), so the modes keep drawing their cards as before.
  */
 export class MachinePanel {
-  private readonly item: GlobalRootItem;
   private on = false;
   private key = "";
 
   constructor() {
-    this.item = RootMenu.global({ className: "panel-btn", icon: ICON.machine, label: "Panel", window: "panel", order: 3 }, () => this.set(true));
     onCloseRequest("panel", () => this.set(false));
   }
 
@@ -29,7 +27,8 @@ export class MachinePanel {
       this.key = key;
       this.set(false);
     }
-    this.item.show(!!card);
+    // The orange button under the menu (reglas.md §5.8, Berón 2026-11-19): outside the menu, like an alert.
+    RootMenu.interact(card ? { icon: ICON.machine, label: key === "?" ? "Panel" : key, open: this.on, onClick: () => this.set(!this.on) } : undefined);
   }
 
   private set(on: boolean): void {

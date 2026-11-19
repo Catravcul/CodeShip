@@ -81,6 +81,9 @@ export const STEP_AREAS: Readonly<Record<ChoreKind, Area>> = {
   "brazo-robotico": { fallback: "programar", only: "programar" },
   "paseo-espacial": { fallback: "revisar" },
   iniciacion: { fallback: "revisar" },
+  "alimentar-animal": FEED,
+  limpiar: { fallback: "gesto" },
+  trabajar: STATION,
 };
 
 /** Going to sleep in a crew quarter: fan, alarm, into the bag, zip, light, asleep (modules/wellness/data/sleep.ts). */

@@ -19,6 +19,14 @@ import { settings } from "./ui/settings-store";
 import { offerVehicles } from "./ui/task-settings";
 import type { AreaMap, AreaNode } from "@modules/tasks/application/areas";
 import { LOBES, capOf } from "@modules/sanctuary-one/data/site";
+import { model } from "@modules/sanctuary-one/data/catalog";
+import { applyReward, retosFor, type Reto } from "@modules/sanctuary-one/application/challenges";
+import { nearest, type Reachable } from "@modules/sanctuary-one/domain/reach";
+import { CrewMember } from "@modules/crew/domain/crew-member";
+import { ChoreRun } from "@modules/chores/domain/chore";
+import type { Answer } from "@modules/mind-duel/domain/exercise";
+import { DuelView, type SessionText } from "./ui/duel-view";
+import { RetoPicker } from "./ui/reto-picker";
 import "./ui/lander-cabin.css";
 import "./ui/acciones.css";
 import "./ui/aerial.css";
@@ -175,9 +183,16 @@ let camDist = 3.6;
 
 const ui = document.createElement("div");
 ui.className = "cab-ui";
-ui.innerHTML = `<div class="cab-where"></div>`;
+ui.innerHTML = `<div class="cab-where"></div><div class="cab-toast" role="status"></div>`;
 root.appendChild(ui);
 const whereEl = ui.querySelector<HTMLElement>(".cab-where")!;
+const toast = ui.querySelector<HTMLElement>(".cab-toast")!;
+let toastFor = 0;
+function say(text: string, seconds = 4): void {
+  toast.textContent = text;
+  toast.classList.add("on");
+  toastFor = seconds;
+}
 
 const walker = new Walker(root, { move: "s3-move room-move", look: "s3-look room-look", moveLabel: "Moverse" }, moveJoystick("santuario-terrestre"));
 walker.camera = camera;
@@ -265,7 +280,111 @@ const areasWindow = new AreasWindow(root, {
 });
 RootMenu.global({ className: "areas-btn", icon: ICON.areas, label: "Áreas", window: "areas", order: 2 }, () => areasWindow.open()).show(true);
 
+// --- What she can do here: the orange button under the menu (reglas.md §5.8) and the challenges -------------------
+/** Doménica's needs: the challenges' rewards (Berón: no pasar hambre, compañía, fuerza, salud). */
+const domenica = new CrewMember("Doménica", "domenica");
+interface Thing extends Reachable {
+  readonly i: number;
+  readonly label: string;
+  readonly modelId: string;
+  readonly mover?: (typeof world.movers)[number];
+}
+/** Does a model offer anything? (cached by model) */
+const offers = new Map<string, boolean>();
+const offersAny = (id: string) => offers.get(id) ?? (offers.set(id, retosFor(model(id)).length > 0), offers.get(id)!);
+const CELL = 16;
+const cellKey = (x: number, z: number) => `${Math.floor(x / CELL)},${Math.floor(z / CELL)}`;
+const thingCells = new Map<string, Thing[]>();
+const moversByIt = new Map(world.movers.map((m) => [m.it, m]));
+const movingThings: Thing[] = [];
+L.instances.forEach((it, i) => {
+  if (it.model === "persona" || !offersAny(it.model)) return;
+  const d = model(it.model);
+  const sc = it.scale ?? 1;
+  const t: Thing = { i, label: d.label, modelId: d.id, x: it.x, y: it.y, z: it.z, rot: it.rot, sx: d.size.x * sc * (it.plan ?? 1), sz: d.size.z * sc * (it.plan ?? 1), sy: d.size.y * sc, mover: moversByIt.get(it) };
+  if (t.mover) return void movingThings.push(t);
+  // A thing lies in every cell its footprint touches (floors span several).
+  const r = Math.hypot(t.sx, t.sz) / 2;
+  for (let cx = Math.floor((t.x - r) / CELL); cx <= Math.floor((t.x + r) / CELL); cx++)
+    for (let cz = Math.floor((t.z - r) / CELL); cz <= Math.floor((t.z + r) / CELL); cz++) {
+      const k = `${cx},${cz}`;
+      const list = thingCells.get(k) ?? [];
+      list.push(t);
+      thingCells.set(k, list);
+    }
+});
+/** How far her hand reaches to use a thing, m (a step and an arm). */
+const REACH_M = 1.4;
+let atHand: Thing | undefined;
+let reachT = 0;
+function findAtHand(): Thing | undefined {
+  const here = thingCells.get(cellKey(body.x, body.z)) ?? [];
+  // The animals wander: where each is now.
+  const moving = movingThings.map((t) => {
+    const w = t.mover!.it.wander!;
+    const p = wanderAt({ x: w.x, z: w.z }, w.r, w.seed, wildT + w.seed, w.speed);
+    return { ...t, x: p.x, z: p.z, rot: p.yaw };
+  });
+  return nearest(body.x, body.y, body.z, [...here, ...moving], REACH_M + (moving.length ? 0 : 0));
+}
+function updateAtHand(dt: number): void {
+  reachT -= dt;
+  if (reachT > 0) return;
+  reachT = 0.2;
+  const t = challenge || picker.isOpen ? undefined : findAtHand();
+  if (t?.i === atHand?.i && (t === undefined) === (atHand === undefined)) return;
+  atHand = t;
+  RootMenu.interact(t ? { icon: ICON.tasks, label: `Reto: ${shortLabel(t.label)}`, onClick: () => offerRetos(t) } : undefined);
+}
+const shortLabel = (l: string) => l.replace(/\s*\(.*\)\s*/g, " ").trim();
+
+const duel = new DuelView(root);
+const SHEET: SessionText = { title: "", progress: "Pasos", lives: "Intentos", order: "Ordena los pasos", submit: "Hacerlo", ok: "Paso hecho", bad: "Así no: inténtalo otra vez", sheet: true };
+const picker = new RetoPicker(root);
+let challenge: Reto | undefined;
+const REWARD_LABEL = { comida: "no pasar hambre", compania: "compañía", fuerza: "fuerza", salud: "salud" } as const;
+
+/** The thing's challenges: straight to the sheet if it offers one, else the choice. */
+function offerRetos(t: Thing): void {
+  const rs = retosFor(model(t.modelId), t.i);
+  if (rs.length === 1) return openReto(rs[0]!);
+  picker.open(shortLabel(t.label), rs.map((r) => ({ title: r.chore.title, detail: `${r.chore.exercises.length} pasos · da ${REWARD_LABEL[r.reward]}${r.reality === "ficción" ? " · magia del santuario" : ""}` })), (k) => openReto(rs[k]!));
+}
+
+/** A challenge on the sheet (the same sheet as sanctuary 3 and the ships); her reward when it is done. */
+function openReto(r: Reto, done?: (ok: boolean) => void): void {
+  const run = new ChoreRun(r.chore);
+  challenge = r;
+  RootMenu.interact(undefined);
+  atHand = undefined;
+  duel.onClose = () => {
+    duel.onClose = undefined;
+    challenge = undefined;
+    const ok = run.status === "done";
+    if (ok) say(`${r.chore.title}: hecho. ${applyReward(domenica, r.reward)}`, 5);
+    done?.(ok);
+  };
+  duel.show(
+    {
+      get current() {
+        return run.current;
+      },
+      get progress() {
+        return run.step;
+      },
+      goal: run.steps,
+      get lives() {
+        return run.mistakesLeft;
+      },
+      maxLives: run.maxMistakes,
+    },
+    { ...SHEET, title: r.chore.title },
+    (ans: Answer) => ({ ok: run.submit(ans) }),
+  );
+}
+
 function frameFree(dt: number): void {
+  if (challenge) return;
   if (frameAuto(dt)) return;
   const mv = walker.move();
   if (!mv.forward && !mv.right) return;
@@ -314,6 +433,9 @@ function frame(now: number): void {
   hour = (hour + (24 * dt) / S1_DAY_REAL_S) % 24;
   movePeople(dt);
   moveAnimals(dt);
+  updateAtHand(dt);
+  domenica.tick((24 * dt) / S1_DAY_REAL_S / 24, 0.5, 1);
+  if (toastFor > 0 && (toastFor -= dt) <= 0) toast.classList.remove("on");
   const a = areaById.get(body.area);
   const hh = Math.floor(hour);
   const clock = `${hh}:${String(Math.floor((hour - hh) * 60)).padStart(2, "0")}`;
@@ -332,5 +454,5 @@ window.addEventListener("keydown", (e) => {
 });
 // Test hook (tools/experiencia and live checks): the layout, the body and the bulk style switch.
 if (import.meta.env.DEV || new URLSearchParams(location.search).has("prueba"))
-  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { L, world, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, goTo, get auto() { return auto; }, areasWindow, get hour() { return hour; }, people, setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
+  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { L, world, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, goTo, get auto() { return auto; }, areasWindow, get hour() { return hour; }, people, get atHand() { return atHand; }, openReto, domenica, setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
 requestAnimationFrame(frame);

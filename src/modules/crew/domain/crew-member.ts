@@ -155,6 +155,12 @@ export class CrewMember implements Patient {
     this._stress = clamp01(this._stress - CREW_TUNING.workoutCalm / of);
   }
 
+  /** Time spent with others (caring for animals, a class, the assembly): loneliness and stress go down. */
+  keepCompany(amount: number): void {
+    this._loneliness = clamp01(this._loneliness - amount);
+    this._stress = clamp01(this._stress - amount / 2);
+  }
+
   /** A night in a quiet cabin. */
   rest(): void {
     this._stress = clamp01(this._stress - CREW_TUNING.restCalm);

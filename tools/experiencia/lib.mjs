@@ -154,15 +154,15 @@ export class Journey {
       .evaluate((sel) => !document.body.classList.contains("panel-on") && [...document.querySelectorAll(sel)].some((e) => e.closest(".cab-machine:not(.hidden)")), selector)
       .catch(() => false);
     if (!hidden) return;
-    await this.page.waitForFunction(() => [...document.querySelectorAll(".panel-btn:not(.hidden)")].some((b) => b.closest(".root-menu")?.checkVisibility()), null, { timeout: 8000 }).catch(() => {});
+    await this.page.waitForFunction(() => [...document.querySelectorAll(".rm-act:not(.hidden)")].some((b) => b.closest(".root-menu")?.checkVisibility()), null, { timeout: 8000 }).catch(() => {});
     const btn = await this.page.evaluate(() => {
-      const b = [...document.querySelectorAll(".panel-btn:not(.hidden)")].find((x) => x.closest(".root-menu")?.checkVisibility());
+      const b = [...document.querySelectorAll(".rm-act:not(.hidden)")].find((x) => x.closest(".root-menu")?.checkVisibility());
       if (!b) return null;
       b.dataset.panelTap = "1";
       return true;
     });
     if (!btn) return;
-    await this.tap('.panel-btn[data-panel-tap="1"]', "Panel");
+    await this.tap('.rm-act[data-panel-tap="1"]', "Panel");
     await this.page.evaluate(() => document.querySelectorAll("[data-panel-tap]").forEach((b) => delete b.dataset.panelTap));
     await this.page.waitForFunction(() => document.body.classList.contains("panel-on"), null, { timeout: 5000 }).catch(() => {});
   }

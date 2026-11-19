@@ -87,6 +87,19 @@ export async function s3Recorrido(j) {
   j.check("con gravedad hay dos joysticks: «Moverse» la mueve a ella y «Mirar» la cámara", s0.move && s0.look, JSON.stringify({ move: s0.move, look: s0.look }));
   j.check("no queda la pantalla de inicio ni la partida del espacio", await p.evaluate(() => !document.querySelector(".start-screen:not(.hidden)") && !window.codeship));
   await capture(j, "inicio", "Santuario 3: el helipuerto de la isla de entrenamiento");
+  // The same Switch controls as sanctuary 1 (ui/game-pad.ts, reglas.md §5.7): every button there, the general ones on −, +, capture and home.
+  const pad = await p.evaluate(() => {
+    const on = [...document.querySelectorAll(".switch-pad:not(.hidden) .ap-btn:not(.free)")].map((b) => b.getAttribute("aria-label"));
+    const all = document.querySelectorAll(".switch-pad .ap-btn").length;
+    const gear = [...document.querySelectorAll(".rm-root")].some((g) => g.checkVisibility());
+    return { on, all, gear };
+  });
+  j.check("los mandos de la Switch del santuario 1: los 16 botones; Correr, Saltar, Trepar, zoom, + Tareas, − Áreas, captura Vista, inicio Ajustes", pad.all === 16 && ["Correr", "Saltar", "Trepar", "Acercar", "Alejar", "Tareas", "Áreas", "Vista", "Ajustes"].every((l) => pad.on.some((o) => o.startsWith(l))), JSON.stringify(pad.on));
+  j.check("lo que está en el mando no brota del engranaje: no queda el menú árbol antiguo", !pad.gear);
+  const jump0 = await p.evaluate(() => window.codeshipS3.body.y);
+  await j.tap(".switch-pad .ap-a", "A: Saltar");
+  const jumped = await p.evaluate(() => new Promise((r) => { let top = 0; const t0 = performance.now(); const f = () => { top = Math.max(top, window.codeshipS3.rig.position.y); if (performance.now() - t0 < 1500) requestAnimationFrame(f); else r(top); }; f(); }));
+  j.check("A la hace saltar (los pies suben del suelo, como en el santuario 1)", jumped - jump0 > 0.2, `${(jumped - jump0).toFixed(2)} m`);
 
   // 2. She walks with the stick (a finger on «Moverse»).
   await j.stick(".vstick.s3-move", 0, -45, 2500);
@@ -114,6 +127,8 @@ export async function s3Recorrido(j) {
   const post2 = await p.evaluate(() => window.codeshipS3.layout.machines.filter((m) => m.post === 2).map((m) => m.id));
   j.check("llega al puesto 2 sin saltos (nunca más rápido que andando)", post2.includes(w1.s.near) && w1.ok, `${w1.s.near} · ${w1.worst.toFixed(2)} m/s ${w1.at}`);
   await capture(j, "puesto", "Santuario 3: el puesto 2 y su tarjeta");
+  const act = await p.evaluate(() => [...document.querySelectorAll(".rm-act:not(.hidden)")].find((b) => b.checkVisibility())?.getAttribute("aria-label") ?? "");
+  j.check("junto al puesto, el botón naranja del santuario 1: «Reto: <puesto>» (ui/interaction.ts)", /^Reto: /.test(act), act);
 
   // 4. A task on another island: she walks to the navigation machine and a notice says to fly there first.
   await j.tap(".s3-tasks", "Tareas");

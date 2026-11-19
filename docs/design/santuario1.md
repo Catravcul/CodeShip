@@ -57,7 +57,7 @@ salud.
 | 19 | Icono propio para el reto; **lista de iconos** con dónde se usa cada uno | Hecho: `ui/icon-catalog.ts` (la prueba lo compara con el código: un icono con `usedIn: []` está libre) |
 | 20 | Filtros de Áreas como Codeship y por edificio con sus nombres | Hecho (ver #6) |
 | 21 | Correr y saltar muy notorios, a máximo esfuerzo | Hecho: `domain/effort.ts` (sprint 6,5 m/s; salto de 50 cm con agacharse, impulso, recoger, bajar y amortiguar), `CubeFigure.run/jump`; en 3.ª persona ella gira hacia donde corre; en 1.ª la cabeza se mueve con la zancada y la vista se abre |
-| 22 | Los botones de configuración general, al mando | Hecho: + Misiones, − Áreas, captura Vista (1.ª/3.ª), inicio Menú (vuelve a mostrar el engranaje); el botón naranja sigue arriba |
+| 22 | Los botones de configuración general, al mando | Hecho: + Misiones, − Áreas, captura Vista (1.ª/3.ª), inicio los ajustes generales (con «Pantalla de inicio»); el botón naranja sigue arriba. Desde el 2026-11-19 son los mismos en el santuario 3 y en las naves (`ui/game-pad.ts`) |
 
 ## Cambios a gran escala
 
@@ -93,6 +93,7 @@ catálogo (tamaño, piezas, color) cambia todas sus copias; un piso es una lista
 | Población | `domain/population.ts` | `PopulationPlan` portado |
 | Dibujo | `src/adapters/three/s1-models.ts` | Un `InstancedMesh` por modelo (y color de regla); los animales que merodean se mueven por instancia |
 | Escena | `src/sanctuary-one.ts` | Andar/nadar, vista 1ª/3ª, reloj, personal, ventana de Áreas |
+| Compartido con el santuario 3 y las naves | `ui/game-pad.ts`, `ui/interaction.ts`, `application/free-walk.ts` (en `aerial-sanctuary`), `adapters/three/walk-look.ts`, `adapters/three/interior/reto-focus.ts` | Mandos de la Switch, botón naranja y elección de reto, andar/correr/saltar/trepar/caer/nadar, poses y vista bajo el agua, el foco del reto (2026-11-19: un solo sistema para todos los niveles) |
 
 ## Estado (2026-11-18)
 

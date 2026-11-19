@@ -165,6 +165,7 @@ import { flightDeckSeats } from "./flight-deck-seats";
 import { DockCamera } from "./ui/dock-camera";
 import { settings } from "./ui/settings-store";
 import { SettingsPanel } from "./ui/settings-panel";
+import { GamePad } from "./ui/game-pad";
 import { TaskBoard } from "./ui/task-board";
 import { JourneyDriver } from "./journey";
 import { ICON } from "./ui/icons";
@@ -1143,13 +1144,16 @@ const stationDock = new StationDock((c, f) => view.addButton(c, f), {
 
 // --- The lander's cabin, the general settings and the task list (docs/design/habitaculo.md) --------
 const settingsPanel = new SettingsPanel(root);
-let settingsFrom: "cabina" | "nodriza" | "estacion" | null = null;
+let settingsFrom: "cabina" | "nodriza" | "estacion" | "mando" | null = null;
 settingsPanel.onClose = () => {
   if (settingsFrom === "cabina") cabin.standUp();
   else if (settingsFrom === "estacion") stationInside.sitLotus(false);
-  else interior.standUp();
+  // From the pad's home button she was not seated: nothing to undo.
+  else if (settingsFrom !== "mando") interior.standUp();
   settingsFrom = null;
 };
+// Back to the start screen (as in the sanctuaries): the game is saved on leaving (game-save.ts, pagehide).
+settingsPanel.addRow({ id: "inicio", label: "Pantalla de inicio", help: "Guarda la partida y vuelve a la pantalla de inicio para elegir otro santuario («Continuar» la devuelve aquí)", value: () => "Ir", next: () => location.reload() });
 // The answer mode of order challenges, kept by duel-view.ts next to the challenge view.
 settingsPanel.addRow({
   id: "ordenar",
@@ -1507,7 +1511,17 @@ const areasWindow = new AreasWindow(root, {
   at: () => (stationInside.active ? stationInside.where() : starship?.active ? starship.mode.where() : undefined),
   go: goToArea,
 });
-RootMenu.global({ className: "areas-btn", icon: ICON.areas, label: "Áreas", window: "areas", order: 2 }, () => areasWindow.open()).show(true);
+RootMenu.global({ className: "areas-btn", icon: ICON.areas, label: "Áreas", window: "areas", order: 2, pad: true }, () => areasWindow.open()).show(true);
+// The Switch pad of every scene she moves in (the Starship's decks, the station, the LM's cabin: ui/game-pad.ts): «−»
+// opens Áreas and home the general settings, as in the sanctuaries; each scene adds its zoom, Tareas («+») and Vista.
+GamePad.share({
+  areas: () => areasWindow.open(),
+  home: () => {
+    if (settingsPanel.visible) return settingsPanel.close();
+    settingsFrom = "mando";
+    settingsPanel.open("Botón de inicio del mando");
+  },
+});
 // «Panel»: the card of the machine or area she is at shows only from the menu (reglas.md §5.8).
 const machinePanel = new MachinePanel();
 

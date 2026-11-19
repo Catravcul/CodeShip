@@ -42,7 +42,8 @@ src/content/            generadores deterministas (asteroides)
 src/adapters/three/     modelos y escenas Three.js (aerial-models, s1-models, starship-model, station-model…)
 src/adapters/input/     Walker (joysticks «Moverse»/«Mirar»), teclado
 src/adapters/storage/   partidas guardadas
-src/ui/                 HUD: menú árbol (root-menu), ventanas de mapa (map-window), tareas, áreas, retos (duel-view)
+src/ui/                 HUD: menú árbol (root-menu), ventanas de mapa (map-window), tareas, áreas, retos (duel-view),
+                        mandos de la Switch de todos los niveles (game-pad sobre action-pad), botón naranja (interaction)
 tools/experiencia/      recorridos PX en vivo; docs/qa/ su catálogo y registro
 docs/design/            un documento por sistema; docs/research/ investigación con fuentes
 ```
@@ -65,7 +66,8 @@ docs/design/            un documento por sistema; docs/research/ investigación 
 ## Patrones
 
 - **Datos con fuente:** cada número real lleva fuente y etiqueta (`fact()` en `aerial-sanctuary/data/sources.ts`, `Reality` en `core/reality.ts`).
-- **Mundo andable:** `aerial-sanctuary/domain/walk.ts` (suelos, agua, sólidos en planta; paso de 0,6 m; sin caídas). Lo usan los santuarios 3 y 1.
+- **Mundo andable:** `aerial-sanctuary/domain/walk.ts` (suelos, agua, sólidos en planta; paso de 0,6 m; `dropTo` para caer de un borde). Lo usan los santuarios 3 y 1, y los dos se mueven con `aerial-sanctuary/application/free-walk.ts` (andar, correr, nadar, saltar, trepar, caer); poses y vista bajo el agua en `adapters/three/walk-look.ts`.
+- **Mandos compartidos:** un solo mando de la Switch para todos los niveles, `ui/game-pad.ts`: cada escena donde ella se mueve lo toma (`GamePad.use(root, escena, {zoom, plus, view, moves…})`) al entrar y lo suelta al salir; `GamePad.share` pone lo común de un juego (Áreas y ajustes en `main.ts`). Botón naranja y elección de reto: `ui/interaction.ts` (`offerReto`, `chooseReto`, `RETO_ACTS` para las tarjetas de máquina en `machine-panel.ts`). Foco del reto a pie: `adapters/three/interior/reto-focus.ts`. Tabla por nivel: [design/ux-acciones.md](design/ux-acciones.md).
 - **Retos:** `ChoreRun` sobre `Exercise` de `mind-duel`; la hoja es `ui/duel-view.ts`; mientras está abierta solo se ven la hoja y la escena.
 - **Ventanas de mapa:** Navegación, Áreas e inicio usan `ui/map-window.ts` (mapa 3D que se gira y amplía con el dedo).
 - **Escala de interiores:** los datos son reales; la capa de presentación amplía en planta (`core/scale.ts`).

@@ -4,7 +4,8 @@ import { ACTION_REACH_M } from "@core/spacing";
 import { moveJoystick } from "@core/realism";
 import { BOARD_DAYS_PER_REAL_S } from "@core/board-time";
 import { buildLayout, islandOf, type IslandDef, type IslandId, type LiftDef, type MachineDef } from "@modules/aerial-sanctuary/data/layout";
-import { placeAt, step, type Body } from "@modules/aerial-sanctuary/domain/walk";
+import { placeAt, step, waterAt, type Body } from "@modules/aerial-sanctuary/domain/walk";
+import { FreeWalk } from "@modules/aerial-sanctuary/application/free-walk";
 import { nearestPoint, shortestWay, type WayPoint } from "@modules/aerial-sanctuary/domain/route";
 import { cabHeight, liftPhase, liftSeconds } from "@modules/aerial-sanctuary/domain/lift";
 import { legPose, planTrip, tripSeconds, type Craft, type CraftSpec, type Leg } from "@modules/aerial-sanctuary/domain/travel";
@@ -41,6 +42,9 @@ import { DOMENICA_HAIR } from "./ui/portraits";
 import { RootMenu } from "./ui/root-menu";
 import { ICON } from "./ui/icons";
 import { MachinePanel } from "./ui/machine-panel";
+import { GamePad } from "./ui/game-pad";
+import { poseOnFoot, UnderwaterView } from "./adapters/three/walk-look";
+import { s3AreaCategory } from "@modules/aerial-sanctuary/domain/area-category";
 import { TaskBoard } from "./ui/task-board";
 import { AreasWindow } from "./ui/areas-window";
 import { SettingsPanel } from "./ui/settings-panel";
@@ -91,6 +95,9 @@ sun.position.set(-400, 900, 300);
 scene.add(sun);
 const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.05, 7000);
 camera.rotation.order = "YXZ";
+const BASE_FOV = camera.fov;
+/** Under water (the pools, the trees' water trunks): the same view as sanctuary 1 (adapters/three/walk-look.ts). */
+const underwater = new UnderwaterView(scene);
 scene.add(buildSea(L.world.waters.filter((w) => w.id.endsWith("-piscina"))), buildFloors(L.world.floors), buildWater(L.world.waters), buildBlocks(L.blocks), buildFixtures(L.fixtures));
 const parts = buildProps(L);
 scene.add(parts.root);
@@ -139,7 +146,14 @@ const startPoint = byPoint.get(L.start)!;
 let body: Body = placeAt(L.world, startPoint.x, startPoint.y, startPoint.z)!;
 let yaw = Math.PI;
 let pitch = -0.08;
-let stride = 0;
+/**
+ * Walking, sprinting (Correr), swimming, jumping, climbing and dropping off an edge with the Switch pad: the same moves
+ * as sanctuary 1 (aerial-sanctuary/application/free-walk.ts), at this island's walking and swimming pace. A drop is
+ * at most 10 m, the highest Olympic diving platform (World Aquatics): off an island's edge she does not jump.
+ */
+const WALK_MS = 1.4;
+const SWIM_MS = 0.9;
+const walk = new FreeWalk(() => L.world, { walk: WALK_MS, swim: SWIM_MS, maxDrop: 10 }, Math.PI);
 let thirdPerson = settings.value.walkView === "tercera";
 let clock = 0;
 let days = 0;
@@ -194,15 +208,16 @@ walker.camera = camera;
 walker.enabled = true;
 
 const menu = new RootMenu(ui, "cab-menu", "Menú");
-const viewBtn = menu.add({ className: "s3-view", icon: ICON.eye, label: `Vista: ${thirdPerson ? "3ª" : "1ª"} persona`, key: "V", order: 0 }, () => {
+const viewBtn = menu.add({ className: "s3-view", icon: ICON.eye, label: `Vista: ${thirdPerson ? "3ª" : "1ª"} persona`, key: "V", order: 0, pad: true }, () => toggleView());
+function toggleView(): void {
   thirdPerson = !thirdPerson;
   menu.relabel(viewBtn, `Vista: ${thirdPerson ? "3ª" : "1ª"} persona`, "V");
-});
+}
 offerVehicles(ISLAND_TASK_VEHICLES, "Isla");
 if (!ISLAND_TASK_VEHICLES.includes(settings.value.taskVehicle)) settings.set("taskVehicle", "auto");
 const tasks = initiationTasks(L);
 const taskBoard = new TaskBoard(root, () => tasks, () => island());
-menu.add({ className: "s3-tasks", icon: ICON.tasks, label: "Tareas", key: "T", window: "tareas", order: 1 }, () => taskBoard.open());
+menu.add({ className: "s3-tasks", icon: ICON.tasks, label: "Tareas", key: "T", window: "tareas", order: 1, pad: true }, () => taskBoard.open());
 taskBoard.onGo = (t) => goToTask(t);
 
 const areaMaps = new Map<IslandId, AreaMap>();
@@ -211,7 +226,7 @@ function areaMap(v: Vehicle): AreaMap | undefined {
   const id = v as IslandId;
   const hit = areaMaps.get(id);
   if (hit) return hit;
-  const nodes: AreaNode[] = L.areas.filter((a) => a.island === id).map((a) => ({ id: a.id, label: a.label, desc: a.desc, goal: a.point, fixture: a.point, centre: a.centre, half: a.half }));
+  const nodes: AreaNode[] = L.areas.filter((a) => a.island === id).map((a) => ({ id: a.id, label: a.label, desc: a.desc, goal: a.point, fixture: a.point, centre: a.centre, half: a.half, category: s3AreaCategory(a) }));
   const map: AreaMap = { vehicle: id, nodes, links: [] };
   areaMaps.set(id, map);
   return map;
@@ -222,9 +237,10 @@ const areasWindow = new AreasWindow(root, {
   at: () => L.areas.find((a) => a.id === body.area)?.id,
   go: (n, map) => goTo(n.goal, n.label, map.vehicle as IslandId, "Áreas"),
 });
-RootMenu.global({ className: "areas-btn", icon: ICON.areas, label: "Áreas", window: "areas", order: 2 }, () => areasWindow.open()).show(true);
+RootMenu.global({ className: "areas-btn", icon: ICON.areas, label: "Áreas", window: "areas", order: 2, pad: true }, () => areasWindow.open()).show(true);
 const machinePanel = new MachinePanel();
 const settingsPanel = new SettingsPanel(root);
+settingsPanel.addRow({ id: "s3-inicio", label: "Pantalla de inicio", help: "Guarda la partida y vuelve a la pantalla de inicio para elegir otro santuario o partida («Continuar» la devuelve aquí)", value: () => "Ir", next: () => (saveNow("ocultar"), location.reload()) });
 const nav = new IslandNavWindow(root);
 nav.onFly = (to) => fly(to as IslandId);
 
@@ -818,6 +834,35 @@ card.addEventListener("click", (e) => {
 });
 settingsPanel.onClose = () => avatar.pose("stand");
 
+// --- The Switch controls (ui/game-pad.ts): the same as sanctuary 1; «+» is this level's list, Tareas ------------------
+const pad = GamePad.use(root, "santuario-3", {
+  zoom: (dir) => walker.holdZoom(dir),
+  plus: { label: "Tareas", open: () => taskBoard.open() },
+  areas: () => areasWindow.open(),
+  view: () => toggleView(),
+  home: () => {
+    if (settingsPanel.visible) return settingsPanel.close();
+    avatar.pose("lotus");
+    settingsPanel.open("Santuario 3, botón de inicio del mando");
+  },
+  // During a post's challenge or a ride only the zoom answers (the pad hides on the sheet, the flights and the trips).
+  paused: () => mode.kind !== "libre" || duel.visible,
+  moves: [
+    { letter: "X", label: "Trepar", key: "KeyC", run: () => walk.startClimb(body, yaw) || say("Nada que trepar delante (hasta 2,6 m)", 2) },
+    {
+      letter: "A",
+      label: "Saltar",
+      key: "Space",
+      run: () => {
+        const mv = walker.move();
+        walk.startJump(body, mv.forward !== 0 || mv.right !== 0, pad.isOn("B"));
+      },
+    },
+    { letter: "B", label: "Correr", toggle: true, key: "ShiftLeft", run: () => undefined },
+  ],
+});
+let climbCheck = 0;
+
 // --- Saving (docs/design/partidas.md) ----------------------------------------------------------------------------------
 const book = savedGames();
 const autoSave = new AutoSave();
@@ -854,8 +899,6 @@ document.addEventListener("visibilitychange", () => document.visibilityState ===
 window.addEventListener("pagehide", () => saveNow("ocultar"));
 
 // --- Each frame ------------------------------------------------------------------------------------------------------
-const WALK_MS = 1.4;
-const SWIM_MS = 0.9;
 const tmp = new THREE.Vector3();
 const focusAt = new THREE.Vector3();
 const camPos = new THREE.Vector3();
@@ -887,7 +930,7 @@ function frameRoute(dt: number, m: Extract<Mode, { kind: "ruta" }>): void {
   const target = m.pts[m.i]!;
   const before = { x: body.x, y: body.y, z: body.z };
   const there = moveToward(target, (body.motion === "agua" ? SWIM_MS : WALK_MS) * dt);
-  stride += Math.hypot(body.x - before.x, body.z - before.z) * 3;
+  walk.stride += Math.hypot(body.x - before.x, body.z - before.z) * 3;
   m.still = Math.hypot(body.x - before.x, body.y - before.y, body.z - before.z) < 1e-4 ? m.still + dt : 0;
   if (!there && m.still > 1.5) {
     // Stuck on a corner (should not happen: layout.test.ts walks every link): stop and give her the controls.
@@ -968,18 +1011,15 @@ function frameFlight(dt: number, m: Extract<Mode, { kind: "vuelo" }>): void {
 }
 
 function frameFree(dt: number): void {
+  const c = walk.carry(dt, body);
+  body = c.body;
+  if (c.busy) return;
+  if ((climbCheck -= dt) <= 0) {
+    climbCheck = 0.3;
+    pad.enable("X", !!walk.climbAhead(body, yaw));
+  }
   const mv = walker.move();
-  if (!mv.forward && !mv.right) return;
-  const speed = (body.motion === "agua" ? SWIM_MS : WALK_MS) * dt;
-  const fx = -Math.sin(yaw);
-  const fz = -Math.cos(yaw);
-  const dx = (fx * mv.forward + Math.cos(yaw) * mv.right) * speed;
-  const dz = (fz * mv.forward - Math.sin(yaw) * mv.right) * speed;
-  const dy = body.motion === "agua" ? Math.sin(pitch) * mv.forward * speed : 0;
-  const before = body;
-  const n = Math.max(1, Math.ceil(Math.hypot(dx, dy, dz) / 0.2));
-  for (let i = 0; i < n; i++) body = step(L.world, body, { dx: dx / n, dy: dy / n, dz: dz / n });
-  stride += Math.hypot(body.x - before.x, body.z - before.z) * 3;
+  body = walk.move(dt, body, { ...mv, yaw, pitch, run: pad.isOn("B") });
 }
 
 function frameBirds(dt: number): void {
@@ -1093,8 +1133,19 @@ function updateCamera(dt: number): void {
     rig.visible = true;
     return;
   }
-  rig.position.set(body.x, body.y, body.z);
-  rig.rotation.y = yaw + Math.PI;
+  const free = mode.kind === "libre";
+  const moving = mode.kind === "ruta" || walker.move().forward !== 0 || walker.move().right !== 0;
+  const sprinting = free && !walk.jump && moving && pad.isOn("B") && body.motion === "gravedad";
+  // Felt as in sanctuary 1: the jump lifts her, the head dips in the crouch and bobs at a sprint, the view widens.
+  const { hop, dip, fov: wide } = walk.feel(sprinting);
+  const fov = BASE_FOV + wide;
+  if (Math.abs(camera.fov - fov) > 0.05) {
+    camera.fov += (fov - camera.fov) * Math.min(1, 6 * dt);
+    camera.updateProjectionMatrix();
+  }
+  if (!free || !thirdPerson) walk.facing = yaw;
+  rig.position.set(body.x, body.y + hop, body.z);
+  rig.rotation.y = (thirdPerson ? walk.facing : yaw) + Math.PI;
   if (mode.kind === "vuelo" || mode.kind === "mano" || (mode.kind === "reto" && (heli.group.visible || rug.group.visible))) {
     // A chase view of the craft; the camera stick turns round it (reglas.md §3.8: the camera is never stuck).
     const isRug = rug.group.visible;
@@ -1106,8 +1157,7 @@ function updateCamera(dt: number): void {
     rig.visible = isRug;
     return;
   }
-  const swim = body.motion === "agua";
-  const eye = body.y + EYE_M;
+  const eye = body.y + hop + EYE_M + dip;
   if (thirdPerson) {
     const d = 3.6;
     camera.position.set(body.x + Math.sin(yaw) * d * Math.cos(pitch), eye + 0.4 - Math.sin(pitch) * d, body.z + Math.cos(yaw) * d * Math.cos(pitch));
@@ -1118,11 +1168,10 @@ function updateCamera(dt: number): void {
     camera.rotation.set(pitch, yaw, 0);
     rig.visible = false;
   }
-  const moving = mode.kind === "ruta" || walker.move().forward !== 0 || walker.move().right !== 0;
-  if (swim) avatar.pose("glide");
-  else if (moving) avatar.walk(stride, 1);
-  else if (!settingsPanel.visible) avatar.walk(stride, 0);
-  avatar.update(dt);
+  const cw = waterAt(L.world, camera.position.x, camera.position.y, camera.position.z);
+  underwater.set(!!cw && camera.position.y < cw.yTop && camera.position.y > cw.yBottom);
+  avatar.wearMask(body.motion === "agua");
+  poseOnFoot(avatar, walk, { body, moving, sprinting, lotus: settingsPanel.visible, clock }, dt);
 }
 
 /** The fixed eye of the open post's stage (inside the hypobaric chamber), if it has one. */
@@ -1242,12 +1291,9 @@ window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 window.addEventListener("keydown", (e) => {
-  if (e.code === "KeyV" && !e.repeat && !(e.target as HTMLElement).closest("input, textarea")) {
-    thirdPerson = !thirdPerson;
-    menu.relabel(viewBtn, `Vista: ${thirdPerson ? "3ª" : "1ª"} persona`, "V");
-  }
+  if (e.code === "KeyV" && !e.repeat && !(e.target as HTMLElement).closest("input, textarea")) toggleView();
 });
-say("Isla de entrenamiento: empieza la iniciación. Muévete con el joystick; las tareas están en el menú", 6);
+say("Isla de entrenamiento: empieza la iniciación. Muévete con el joystick; las tareas están en «+» del mando", 6);
 requestAnimationFrame(frame);
 
 // Test hook for the experience suite (only in dev builds or with `?prueba`) (tools/experiencia/s3-recorrido.mjs) and the QA cases.

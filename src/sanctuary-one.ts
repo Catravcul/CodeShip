@@ -3,7 +3,8 @@ import { WORLD_SCALE } from "@core/scale";
 import { moveJoystick } from "@core/realism";
 import { buildS1Layout } from "@modules/sanctuary-one/data/layout";
 import { personRule } from "@modules/sanctuary-one/data/overrides";
-import { blocked, dropTo, placeAt, step, waterAt, type Body } from "@modules/aerial-sanctuary/domain/walk";
+import { placeAt, waterAt, type Body } from "@modules/aerial-sanctuary/domain/walk";
+import { FreeWalk } from "@modules/aerial-sanctuary/application/free-walk";
 import { S1_DAY_REAL_S, S1_START_HOUR, activityAt, along, hash01, route, wanderAt, type Activity, type Route } from "@modules/sanctuary-one/domain/motion";
 import { staffPlaces, wayBetween, type Place } from "@modules/sanctuary-one/data/jornada";
 import { WalkIndex } from "@modules/sanctuary-one/data/walk-index";
@@ -38,11 +39,10 @@ import { StepShow, gesture, STEP_SECONDS } from "./adapters/three/interior/step-
 import type { Answer } from "@modules/mind-duel/domain/exercise";
 import { DuelView, type SessionText } from "./ui/duel-view";
 import { RetoPicker } from "./ui/reto-picker";
-import { ActionPad } from "./ui/action-pad";
-import { climbTarget } from "@modules/sanctuary-one/domain/climb";
-import { LAND_S, SPRINT_MS, jumpAt } from "@modules/sanctuary-one/domain/effort";
-import { GRAVITY_MS2 } from "@modules/sanctuary-one/domain/climb";
-import type { Floor } from "@modules/aerial-sanctuary/domain/walk";
+import { GamePad } from "./ui/game-pad";
+import { chooseReto, offerReto } from "./ui/interaction";
+import { focusReto, sheetLens as lens } from "./adapters/three/interior/reto-focus";
+import { poseOnFoot, UnderwaterView } from "./adapters/three/walk-look";
 import "./ui/lander-cabin.css";
 import "./ui/acciones.css";
 import "./ui/aerial.css";
@@ -69,22 +69,12 @@ const scene = new THREE.Scene();
 const SKY = 0xbfd9ea;
 scene.background = new THREE.Color(SKY);
 scene.fog = new THREE.Fog(SKY, 250, 1400);
-/** Under water (Berón: «bajo el agua parece que se ve todo blanco»): blue-green, and the far side fades out in ~35 m. */
-const UNDER = 0x0e4f63;
-let underwater = false;
-function underwaterView(on: boolean): void {
-  if (on === underwater) return;
-  underwater = on;
-  const fog = scene.fog as THREE.Fog;
-  fog.color.set(on ? UNDER : SKY);
-  fog.near = on ? 0.5 : 250;
-  fog.far = on ? 35 : 1400;
-  (scene.background as THREE.Color).set(on ? UNDER : SKY);
-}
 scene.add(new THREE.HemisphereLight(0xeef6ff, 0x7c8a96, 1.4));
 const sun = new THREE.DirectionalLight(0xffffff, 1.5);
 sun.position.set(-200, 300, 120);
 scene.add(sun);
+/** Under water: blue-green, the far side fading (adapters/three/walk-look.ts, shared with sanctuary 3). */
+const underwater = new UnderwaterView(scene);
 const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.05, 5000);
 const BASE_FOV = camera.fov;
 camera.rotation.order = "YXZ";
@@ -274,15 +264,14 @@ let flying = false;
 const EYE_M = 1.45;
 const WALK_MS = 1.6;
 const SWIM_MS = 2.2;
-/** Running and fast swimming (Correr), at full effort: a sprint (domain/effort.ts); a hard crawl, about 3 m/s. */
-const RUN_MS = SPRINT_MS;
-const SWIM_FAST_MS = 3.0;
 let body: Body = placeAt(near(L.start.x, L.start.z), L.start.x, L.start.y + 0.01, L.start.z)!;
 let yaw = L.start.yaw;
-/** Where her body faces: the way she last moved (third person shows her running sideways, not only her back). */
-let facing = yaw;
+/**
+ * Walking, sprinting (Correr: domain/effort.ts), swimming, jumping, climbing and falling off edges: the same moves as
+ * sanctuary 3 (aerial-sanctuary/application/free-walk.ts). It also keeps where her body faces and her gait's phase.
+ */
+const walk = new FreeWalk(near, { walk: WALK_MS, swim: SWIM_MS }, yaw);
 let pitch = 0;
-let stride = 0;
 let thirdPerson = false;
 /** Third-person camera distance (the test hook sets it for overviews). */
 let camDist = 3.6;
@@ -304,7 +293,7 @@ const walker = new Walker(root, { move: "s3-move room-move", look: "s3-look room
 walker.camera = camera;
 walker.enabled = true;
 const menu = new RootMenu(ui, "cab-menu", "Menú");
-const viewBtn = menu.add({ className: "s1-view", icon: ICON.eye, label: "Vista: 1ª persona", key: "V", order: 0 }, () => toggleView());
+const viewBtn = menu.add({ className: "s1-view", icon: ICON.eye, label: "Vista: 1ª persona", key: "V", order: 0, pad: true }, () => toggleView());
 function toggleView(): void {
   thirdPerson = !thirdPerson;
   menu.relabel(viewBtn, `Vista: ${thirdPerson ? "3ª" : "1ª"} persona`, "V");
@@ -400,7 +389,7 @@ function frameAuto(dt: number): boolean {
     arrived();
     return true;
   }
-  if (!q.fly) stride += Math.hypot(q.x - body.x, q.z - body.z) * 3;
+  if (!q.fly) walk.stride += Math.hypot(q.x - body.x, q.z - body.z) * 3;
   if (!Number.isNaN(q.yaw)) yaw = q.yaw + Math.PI;
   flying = q.fly;
   body = { x: q.x, y: q.y, z: q.z, motion: q.swim ? "agua" : "gravedad", area: "" };
@@ -427,7 +416,7 @@ const areasWindow = new AreasWindow(root, {
   at: () => (areaById.has(body.area) ? body.area : undefined),
   go: (n) => goTo(n.id),
 });
-RootMenu.global({ className: "areas-btn", icon: ICON.areas, label: "Áreas", window: "areas", order: 2 }, () => areasWindow.open()).show(true);
+RootMenu.global({ className: "areas-btn", icon: ICON.areas, label: "Áreas", window: "areas", order: 2, pad: true }, () => areasWindow.open()).show(true);
 
 // --- Misiones: the workday's missions on the same map window (docs/design/misiones-y-jornada.md §3) ---------------
 /** The day of the sanctuary (the clock wraps at midnight) and the missions done today. */
@@ -508,7 +497,7 @@ const missionsWindow = new AreasWindow(root, {
   },
   go: (n) => doMission(MISSIONS.find((q) => q.id === n.id)!),
 });
-RootMenu.global({ className: "s1-missions-btn", icon: ICON.missions, label: "Misiones", window: "misiones", order: 1 }, () => missionsWindow.open()).show(true);
+RootMenu.global({ className: "s1-missions-btn", icon: ICON.missions, label: "Misiones", window: "misiones", order: 1, pad: true }, () => missionsWindow.open()).show(true);
 
 // --- What she can do here: the orange button under the menu (reglas.md §5.8) and the challenges -------------------
 /** Doménica's needs: the challenges' rewards (Berón: no pasar hambre, compañía, fuerza, salud). */
@@ -564,9 +553,8 @@ function updateAtHand(dt: number): void {
   const t = challenge || picker.isOpen ? undefined : findAtHand();
   if (t?.i === atHand?.i && (t === undefined) === (atHand === undefined)) return;
   atHand = t;
-  RootMenu.interact(t ? { icon: ICON.reto, label: `Reto: ${shortLabel(t.label)}`, onClick: () => offerRetos(t) } : undefined);
+  offerReto(t?.label, () => t && offerRetos(t));
 }
-const shortLabel = (l: string) => l.replace(/\s*\(.*\)\s*/g, " ").trim();
 
 const duel = new DuelView(root);
 const SHEET: SessionText = { title: "", progress: "Pasos", lives: "Intentos", order: "Ordena los pasos", submit: "Hacerlo", ok: "Paso hecho", bad: "Así no: inténtalo otra vez", sheet: true };
@@ -577,8 +565,7 @@ const REWARD_LABEL = { comida: "no pasar hambre", compania: "compañía", fuerza
 /** The thing's challenges: straight to the sheet if it offers one, else the choice. */
 function offerRetos(t: Thing): void {
   const rs = retosFor(model(t.modelId), t.i);
-  if (rs.length === 1) return openReto(rs[0]!, undefined, t);
-  picker.open(shortLabel(t.label), rs.map((r) => ({ title: r.chore.title, detail: `${r.chore.exercises.length} pasos · da ${REWARD_LABEL[r.reward]}${r.reality === "ficción" ? " · magia del santuario" : ""}` })), (k) => openReto(rs[k]!, undefined, t));
+  chooseReto(picker, t.label, rs.map((r) => ({ title: r.chore.title, detail: `${r.chore.exercises.length} pasos · da ${REWARD_LABEL[r.reward]}${r.reality === "ficción" ? " · magia del santuario" : ""}`, run: () => openReto(r, undefined, t) })));
 }
 
 /**
@@ -590,41 +577,11 @@ const steps = new StepShow();
 /** Where she stands for the open challenge: whoever works on that very spot steps out of the shot. */
 let stageStand: THREE.Vector3 | undefined;
 scene.add(steps.root);
-/**
- * While the sheet is open the stage is drawn where the sheet leaves room: above it in portrait (as the ships do),
- * left of it in landscape (the sheet takes the right side), so she and the thing are never under it.
- */
-function sheetLens(on: boolean): void {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
-  const fov = camera.fov;
-  camera.clearViewOffset();
-  if (on && h > w) {
-    camera.aspect = w / (1.6 * h);
-    camera.setViewOffset(w, 1.6 * h, 0, 0.6 * h, w, h);
-  } else if (on) {
-    const W = 1.46 * w;
-    camera.aspect = W / h;
-    camera.setViewOffset(W, h, W - w, 0, w, h);
-  } else camera.aspect = w / h;
-  camera.fov = fov;
-  camera.updateProjectionMatrix();
-}
+/** The lens over the free strip (adapters/three/interior/reto-focus.ts, shared). */
+const sheetLens = (on: boolean) => lens(camera, on);
 function stageAt(at: { x: number; y: number; z: number; sy: number }): void {
-  const target = new THREE.Vector3(at.x, at.y + Math.min(1.1, Math.max(0.4, at.sy * 0.7)), at.z);
-  const here = new THREE.Vector3(body.x, body.y, body.z);
-  const d = new THREE.Vector3(at.x - body.x, 0, at.z - body.z);
-  if (d.lengthSq() < 1e-4) d.set(-Math.sin(yaw), 0, -Math.cos(yaw));
-  const dist = d.length();
-  d.normalize();
-  // Close enough: where she is; else 0,9 m in front of it, on its floor.
-  const stand = dist < 2.5 ? here : new THREE.Vector3(at.x, at.y, at.z).addScaledVector(d, -0.9);
-  const right = new THREE.Vector3(-d.z, 0, d.x);
-  const look = stand.clone().addScaledVector(d, 0.3).setY(stand.y + 0.95);
-  const cam = look.clone().addScaledVector(d, -2.0).addScaledVector(right, 1.2).setY(stand.y + 1.85);
-  steps.begin({ stand, yaw: Math.atan2(d.x, d.z), camera: cam, look, target });
+  const stand = focusReto(steps, camera, body, yaw, at);
   stageStand = stand;
-  sheetLens(true);
   body = { ...body, x: stand.x, z: stand.z };
 }
 
@@ -680,154 +637,74 @@ function openReto(r: Reto, done?: (ok: boolean) => void, at?: { x: number; y: nu
   );
 }
 
-// --- The Switch controls: Correr (B), Saltar (A), Trepar (X), zoom on the D-pad; the rest wait for a job --------------------------------------
-/** The tops she has climbed onto: floors she can walk on (walk.ts extra floors). */
-const climbed: Floor[] = [];
-/** Time since Saltar was pressed (−1: not jumping), and whether she was running then (a running take-off). */
-let jumpT = -1;
-let jumpRun = false;
+// --- The Switch controls (ui/game-pad.ts, the same in every level): Correr (B), Saltar (A), Trepar (X), zoom on the D-pad,
+// + Misiones, − Áreas, capture Vista, home the general settings; the rest wait for a job ------------------------------
 /** The general settings (ui/settings-panel.ts), with a way back to the start screen. */
 const settingsPanel = new SettingsPanel(root);
 settingsPanel.addRow({ id: "s1-inicio", label: "Pantalla de inicio", help: "Vuelve a la pantalla de inicio para elegir otro santuario o partida (el santuario 1 empieza de nuevo al volver)", value: () => "Ir", next: () => location.reload() });
 settingsPanel.onClose = () => avatar.pose("stand");
-const pad = new ActionPad(root, [
-  { letter: "X", label: "Trepar", key: "KeyC" },
-  { letter: "A", label: "Saltar", key: "Space" },
-  { letter: "B", label: "Correr", toggle: true, key: "ShiftLeft" },
+const pad = GamePad.use(root, "santuario-1", {
   // The left Joy-Con's D-pad: ↑ / ↓ zoom (Berón: «los de zoom podrían ser los de la izquierda»).
-  { letter: "up", label: "Acercar", hold: true, key: "Equal" },
-  { letter: "down", label: "Alejar", hold: true, key: "Minus" },
+  zoom: (dir) => walker.holdZoom(dir),
   // The general buttons move onto the pad (Berón 2026-11-19: «los botones de config general pueden pasar a los nuevos
   // mandos»): + the day's missions, − the map of Áreas, capture the view (1.ª/3.ª persona), home the general settings
   // (Berón: «no debe abrir el menú árbol antiguo… enviar a la pantalla de inicio o abrir la modal de ajustes generales»).
-  { letter: "+", label: "Misiones" },
-  { letter: "-", label: "Áreas" },
-  { letter: "capture", label: "Vista" },
-  { letter: "home", label: "Ajustes" },
-], (letter, on) => {
-  if (letter === "up" || letter === "down") return walker.holdZoom(on ? (letter === "up" ? 1 : -1) : 0);
-  if (challenge) return;
-  if (letter === "+") return missionsWindow.open();
-  if (letter === "-") return areasWindow.open();
-  if (letter === "capture") return toggleView();
-  if (letter === "home") {
+  plus: { label: "Misiones", open: () => missionsWindow.open() },
+  areas: () => areasWindow.open(),
+  view: () => toggleView(),
+  home: () => {
     // She sits in lotus while the settings are open (habitaculo.md §Ajustes), as on the ships' mats.
     if (settingsPanel.visible) return settingsPanel.close();
     settingsPanel.open("Santuario 1, botón de inicio del mando");
-    return;
-  }
-  if (letter === "A" && body.motion === "gravedad" && jumpT < 0) {
-    jumpT = 0;
-    const mv = walker.move();
-    jumpRun = pad.isOn("B") && (mv.forward !== 0 || mv.right !== 0);
-  }
-  if (letter === "X") {
-    const c = climbTarget(near(body.x, body.z), body, yaw, climbed);
-    if (!c) return say("Nada que trepar delante (hasta 2,6 m)", 2);
-    if (!climbed.includes(c.floor) && c.floor.id.startsWith("trepar:")) climbed.push(c.floor);
-    climbAnim = { from: { x: body.x, y: body.y, z: body.z }, to: c, t: 0 };
-  }
+  },
+  paused: () => !!challenge,
+  moves: [
+    { letter: "X", label: "Trepar", key: "KeyC", run: () => walk.startClimb(body, yaw) || say("Nada que trepar delante (hasta 2,6 m)", 2) },
+    {
+      letter: "A",
+      label: "Saltar",
+      key: "Space",
+      run: () => {
+        const mv = walker.move();
+        walk.startJump(body, mv.forward !== 0 || mv.right !== 0, pad.isOn("B"));
+      },
+    },
+    { letter: "B", label: "Correr", toggle: true, key: "ShiftLeft", run: () => undefined },
+  ],
 });
-/** Climbing up: hands first, then she pulls herself up (0,9 s). */
-let climbAnim: { from: { x: number; y: number; z: number }; to: { x: number; y: number; z: number; floor: Floor; over?: number }; t: number } | undefined;
-const CLIMB_S = 0.9;
-function frameClimb(dt: number): boolean {
-  if (!climbAnim) return false;
-  climbAnim.t += dt / CLIMB_S;
-  const k = Math.min(1, climbAnim.t);
-  const up = Math.min(1, k / 0.7);
-  const fwd = Math.max(0, (k - 0.6) / 0.4);
-  const a = climbAnim.from;
-  const b = climbAnim.to;
-  // Over a thin wall: up to its top, then down the other side.
-  const y = b.over !== undefined ? (k < 0.6 ? a.y + (b.over - a.y) * up : b.over + (b.y - b.over) * fwd) : a.y + (b.y - a.y) * up;
-  body = { x: a.x + (b.x - a.x) * fwd, y, z: a.z + (b.z - a.z) * fwd, motion: "gravedad", area: b.floor.area };
-  if (k >= 1) {
-    body = { x: b.x, y: b.y, z: b.z, motion: "gravedad", area: b.floor.area };
-    climbAnim = undefined;
-  }
-  return true;
-}
 let climbCheck = 0;
-
-/** Falling off an edge: straight down under gravity onto what is below (a floor or the water); then a landing. */
-let fall: { x: number; z: number; y: number; vy: number; to: Body } | undefined;
-let landT = -1;
-function frameFall(dt: number): boolean {
-  if (landT >= 0 && (landT += dt) > LAND_S) landT = -1;
-  if (!fall) return false;
-  fall.vy -= GRAVITY_MS2 * dt;
-  fall.y += fall.vy * dt;
-  const ground = fall.to.y;
-  if (fall.y <= ground) {
-    body = fall.to;
-    if (body.motion === "gravedad") landT = 0;
-    fall = undefined;
-  } else body = { x: fall.x, y: fall.y, z: fall.z, motion: "gravedad", area: body.area };
-  return true;
-}
 
 function frameFree(dt: number): void {
   if (challenge || settingsPanel.visible) return;
-  if (frameFall(dt)) return;
-  if (frameClimb(dt)) return;
-  if (jumpT >= 0) {
-    jumpT += dt;
-    if (jumpAt(jumpT, jumpRun).done) jumpT = -1;
-  }
+  const c = walk.carry(dt, body);
+  body = c.body;
+  if (c.busy) return;
   if ((climbCheck -= dt) <= 0) {
     climbCheck = 0.3;
-    pad.enable("X", !!climbTarget(near(body.x, body.z), body, yaw, climbed));
+    pad.enable("X", !!walk.climbAhead(body, yaw));
   }
   if (frameAuto(dt)) return;
   const mv = walker.move();
-  if (!mv.forward && !mv.right) return;
-  const run = pad.isOn("B");
-  const speed = (body.motion === "agua" ? (run ? SWIM_FAST_MS : SWIM_MS) : run ? RUN_MS : WALK_MS) * dt;
-  const dx = (-Math.sin(yaw) * mv.forward + Math.cos(yaw) * mv.right) * speed;
-  const dz = (-Math.cos(yaw) * mv.forward - Math.sin(yaw) * mv.right) * speed;
-  const dy = body.motion === "agua" ? Math.sin(pitch) * mv.forward * speed : 0;
-  const before = body;
-  if (body.motion !== "agua") {
-    const want = Math.atan2(-dx, -dz);
-    const d = Math.atan2(Math.sin(want - facing), Math.cos(want - facing));
-    facing += d * Math.min(1, 12 * dt);
-  } else facing = yaw;
-  const n = Math.max(1, Math.ceil(Math.hypot(dx, dy, dz) / 0.2));
-  for (let i = 0; i < n; i++) body = step(near(body.x, body.z), body, { dx: dx / n, dy: dy / n, dz: dz / n }, climbed);
-  // Swimming straight up or down a trunk (looking up or down with nothing ahead): the vertical part alone.
-  if (body === before && body.motion === "agua" && Math.abs(dy) > 0.01) body = step(near(body.x, body.z), body, { dx: 0, dy, dz: 0 });
-  // Off the edge of a floor (Berón: «los pisos no deben tener barrera, de modo que es fácil tirarse abajo»): she falls.
-  if (body === before && body.motion === "gravedad") {
-    const len = Math.hypot(dx, dz) || 1;
-    const x = body.x + (dx / len) * 0.5;
-    const z = body.z + (dz / len) * 0.5;
-    const w = near(x, z);
-    const to = blocked(w, x, body.y, z) ? undefined : dropTo(w, x, body.y, z, climbed);
-    if (to) fall = { x, z, y: body.y, vy: 0, to };
-  }
-  // A gait cycle every ~2,1 m walking; sprinting, ~2,25 cycles/s (4,5 steps/s) at full speed.
-  stride += Math.hypot(body.x - before.x, body.motion === "agua" ? body.y - before.y : 0, body.z - before.z) * (run && body.motion !== "agua" ? 2.2 : 3);
+  body = walk.move(dt, body, { ...mv, yaw, pitch, run: pad.isOn("B") });
 }
 
 function updateCamera(dt: number): void {
   const look = walker.look(dt);
   yaw += look.yaw;
   pitch = Math.max(-1.3, Math.min(1.3, pitch + look.pitch));
-  const jump = jumpT >= 0 ? jumpAt(jumpT, jumpRun) : undefined;
-  const hop = jump?.height ?? 0;
+  const jump = walk.jump;
   const moving = !!auto || walker.move().forward !== 0 || walker.move().right !== 0;
   const sprinting = !jump && moving && !auto && pad.isOn("B") && body.motion === "gravedad" && !flying;
   // Felt in first person too: the head drops in the crouch and the landing, bobs with each sprint stride, and the view widens at speed.
-  const dip = jump && (jump.stage === "agacharse" || jump.stage === "amortiguar") ? -0.28 : sprinting ? -0.05 + 0.06 * Math.abs(Math.cos(stride)) : 0;
-  const fov = BASE_FOV + (sprinting ? 9 : 0);
+  const { hop, dip, fov: wide } = walk.feel(sprinting);
+  const fov = BASE_FOV + wide;
   if (Math.abs(camera.fov - fov) > 0.05) {
     camera.fov += (fov - camera.fov) * Math.min(1, 6 * dt);
     camera.updateProjectionMatrix();
   }
   rig.position.set(body.x, body.y + hop, body.z);
-  if (auto || flying || !thirdPerson) facing = yaw;
-  rig.rotation.y = (thirdPerson ? facing : yaw) + Math.PI;
+  if (auto || flying || !thirdPerson) walk.facing = yaw;
+  rig.rotation.y = (thirdPerson ? walk.facing : yaw) + Math.PI;
   const eye = body.y + hop + EYE_M + dip;
   if (thirdPerson) {
     const d = camDist;
@@ -841,17 +718,9 @@ function updateCamera(dt: number): void {
   }
   myCarpet.visible = flying;
   const cw = waterAt(near(camera.position.x, camera.position.z), camera.position.x, camera.position.y, camera.position.z);
-  underwaterView(!!cw && camera.position.y < cw.yTop && camera.position.y > cw.yBottom);
+  underwater.set(!!cw && camera.position.y < cw.yTop && camera.position.y > cw.yBottom);
   avatar.wearMask(body.motion === "agua");
-  if (flying || settingsPanel.visible) avatar.pose("lotus");
-  else if (body.motion === "agua") avatar.swim(moving ? stride : wildT * 2.5, moving);
-  else if (fall) avatar.pose("reach");
-  else if (landT >= 0) avatar.jump("amortiguar");
-  else if (jump) avatar.jump(jump.stage);
-  else if (sprinting) avatar.run(stride);
-  else avatar.walk(stride, moving ? 1 : 0);
-  // Fast easing while running or jumping, so a 4,5-steps-a-second stride and a 0,6 s jump show whole.
-  avatar.update(dt, jump || sprinting || fall || landT >= 0 || body.motion === "agua" ? 16 : 3);
+  poseOnFoot(avatar, walk, { body, moving, sprinting, lotus: flying || settingsPanel.visible, clock: wildT }, dt);
 }
 
 let last = performance.now();
@@ -889,5 +758,5 @@ window.addEventListener("keydown", (e) => {
 });
 // Test hook (tools/experiencia and live checks): the layout, the body and the bulk style switch.
 if (import.meta.env.DEV || new URLSearchParams(location.search).has("prueba"))
-  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { L, world, get jumpT() { return jumpT; }, set jumpT(t: number) { jumpT = t; jumpRun = false; }, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, goTo, get auto() { return auto; }, areasWindow, get hour() { return hour; }, people, get atHand() { return atHand; }, openReto, domenica, missionsWindow, get day() { return day; }, doMission: (id: string) => doMission(MISSIONS.find((q) => q.id === id)!), setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
+  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { L, world, get jumpT() { return walk.jumpClock; }, set jumpT(t: number) { walk.setJump(t); }, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, goTo, get auto() { return auto; }, areasWindow, get hour() { return hour; }, people, get atHand() { return atHand; }, openReto, domenica, missionsWindow, get day() { return day; }, doMission: (id: string) => doMission(MISSIONS.find((q) => q.id === id)!), setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
 requestAnimationFrame(frame);

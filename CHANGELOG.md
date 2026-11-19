@@ -5,6 +5,12 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-19
 
+- **Mismos mandos en todos los niveles**: el santuario 3 y las naves (cubiertas de la Starship, estación, cabina del LM) usan los
+  mandos de la Switch del santuario 1 (zoom en la cruceta, + Tareas/Misiones, − Áreas, captura Vista, inicio Ajustes; en el 3,
+  correr, saltar, trepar y caer de un borde como en el 1; en 0 g esos salen apagados), el mismo botón naranja «Reto: …» y
+  filtros de categoría en las Áreas del 3. Un solo código: `ui/game-pad.ts`, `ui/interaction.ts`, `application/free-walk.ts`.
+  [docs/design/ux-acciones.md](docs/design/ux-acciones.md)
+
 - **Tarjetas de máquina en el móvil**: suben por encima del «−» / «+» redondos del joystick de mirar, que ahora están encima de él. [docs/design/reglas.md](docs/design/reglas.md)
 
 - **Santuario 1, realismo y mandos**: correr es un sprint a tope (6,5 m/s, rodillas altas, brazos a 90°, la vista se

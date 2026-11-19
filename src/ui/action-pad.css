@@ -21,18 +21,18 @@
 .ap-up, .ap-down, .ap-left, .ap-right { border-radius: 12px; }
 .ap-up b, .ap-down b, .ap-left b, .ap-right b { font-size: 14px; }
 /* Shoulders over each pair, as pills: L and R on the inside, ZL and ZR above them. */
-.ap-l, .ap-zl, .ap-r, .ap-zr { width: 64px; height: 34px; border-radius: 17px; }
-.ap-l, .ap-r { top: -46px; }
-.ap-zl, .ap-zr { top: -86px; }
+.ap-l, .ap-zl, .ap-r, .ap-zr { width: 64px; height: 44px; border-radius: 22px; }
+.ap-l, .ap-r { top: -50px; }
+.ap-zl, .ap-zr { top: -100px; }
 .ap-l, .ap-zl { left: -140px; }
 .ap-r, .ap-zr { right: -140px; }
 .ap-l b, .ap-zl b, .ap-r b, .ap-zr b { font-size: 13px; }
-/* «−», capture, «+» and home: small, at the inner top corners. */
-.ap-minus, .ap-capture, .ap-plus, .ap-home { width: 34px; height: 34px; }
+/* «−», capture, «+» and home: small, at the inner top corners, still a 44 px target (reglas.md §5.5). */
+.ap-minus, .ap-capture, .ap-plus, .ap-home { width: 44px; height: 44px; }
 .ap-minus, .ap-plus { top: -4px; }
 .ap-capture, .ap-home { bottom: -4px; }
-.ap-minus, .ap-capture { right: -40px; }
-.ap-plus, .ap-home { left: -40px; }
+.ap-minus, .ap-capture { right: -50px; }
+.ap-plus, .ap-home { left: -50px; }
 .ap-capture { border-radius: 8px; }
 .ap-minus b, .ap-plus b, .ap-home b, .ap-capture b { font-size: 15px; }
 /* The look stick's own «−» / «+» go: the D-pad zooms now. */
@@ -43,11 +43,18 @@ body.has-switch-pad .vstick > .cam-zoom { display: none; }
   .sp-right { right: 14px; }
   .ap-l, .ap-zl { left: 0; }
   .ap-r, .ap-zr { right: 0; }
-  .ap-minus, .ap-plus { top: -46px; }
-  .ap-capture, .ap-home { top: -86px; bottom: auto; }
+  .ap-minus, .ap-plus { top: -50px; }
+  .ap-capture, .ap-home { top: -100px; bottom: auto; }
   .ap-minus, .ap-capture { right: 0; }
   .ap-plus, .ap-home { left: 0; }
 }
-body.in-duel .switch-pad, body.in-areas .switch-pad, body.in-missions .switch-pad, body.in-tasks .switch-pad, body.in-settings .switch-pad, body.in-reto-picker .switch-pad, body.in-journey .switch-pad { display: none; }
-/* With the pad, the general menu's icons live on −, + and capture, and home opens the general settings: the old gear tree stays hidden (the orange interaction button stays). */
-body.has-switch-pad .root-menu > .rm-root, body.has-switch-pad .root-menu > .rm-shoots { display: none; }
+/* Hidden wherever reglas.md hides the controls: a challenge (the sheet, the choice of challenge), manual piloting (any RCS
+   or flight pad), the full-screen windows (Áreas, Misiones, Tareas, the settings, Navegación), an automatic trip, a
+   console's own screen and the views that take the whole screen. */
+body.in-duel .switch-pad, body.in-areas .switch-pad, body.in-missions .switch-pad, body.in-tasks .switch-pad, body.in-settings .switch-pad, body.in-reto-picker .switch-pad, body.in-journey .switch-pad,
+body.has-rcs-pad .switch-pad, body.in-manual-flight .switch-pad, body.in-island-nav .switch-pad, body.in-map .switch-pad, body.in-deck .switch-pad, body.in-cockpit .switch-pad, body.in-carrier-hand .switch-pad, body.arm-manual .switch-pad,
+body.in-trip-view .switch-pad, body.in-dock-view .switch-pad, body.in-probe .switch-pad, body.in-station .switch-pad, body.in-bay .switch-pad { display: none; }
+/* With the pad, the general menu's icons live on −, + and capture, and home opens the general settings (ui/game-pad.ts):
+   those icons hide from the tree, and the gear shows only for what is left (Trayecto while a trip runs, a mode's own);
+   the orange interaction button stays. */
+body.has-switch-pad .root-menu .rm-icon[data-pad] { display: none; }

@@ -121,8 +121,29 @@ export class Journey {
     });
   }
 
+  /**
+   * With the Switch pad on screen (ui/game-pad.ts, reglas.md §5.7–5.8), the tree menu's Vista, Tareas or Misiones and
+   * Áreas live on its capture, «+» and «−» buttons: a tap on one of those icons is the pad's button, as a player does.
+   */
+  async padFor(selector) {
+    return this.page
+      .evaluate((sel) => {
+        if (!document.body.classList.contains("has-switch-pad")) return null;
+        const el = [...document.querySelectorAll(sel)].find((e) => e.closest(".root-menu") && e.matches("[data-pad]"));
+        if (!el) return null;
+        const pad = document.querySelector(".switch-pad:not(.hidden)");
+        if (!pad || !pad.checkVisibility()) return null;
+        const c = el.className;
+        const key = /areas-btn/.test(c) ? "ap-minus" : /-view\b/.test(c) ? "ap-capture" : /tasks|missions/.test(c) ? "ap-plus" : null;
+        return key ? `.switch-pad .${key}` : null;
+      }, selector)
+      .catch(() => null);
+  }
+
   /** A player's tap on a visible control: fails the check if it is hidden or covered. */
   async tap(selector, what = selector) {
+    const onPad = await this.padFor(selector);
+    if (onPad) selector = onPad;
     const loc = this.page.locator(selector).first();
     try {
       await this.showPanel(selector);

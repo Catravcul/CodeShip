@@ -1,6 +1,7 @@
 import { RootMenu } from "./root-menu";
 import { ICON } from "./icons";
 import { onCloseRequest, windowState } from "./hud-windows";
+import { RETO_ACTS, retoButton } from "./interaction";
 
 /** The cards of a machine or an area she is at, in every vehicle (walk-room.ts, station-interior.ts). */
 const CARD = ".cab-machine";
@@ -27,8 +28,11 @@ export class MachinePanel {
       this.key = key;
       this.set(false);
     }
-    // The orange button under the menu (reglas.md §5.8, Berón 2026-11-19): outside the menu, like an alert.
-    RootMenu.interact(card ? { icon: ICON.machine, label: key === "?" ? "Panel" : key, open: this.on, onClick: () => this.set(!this.on) } : undefined);
+    // The orange button under the menu (reglas.md §5.8, Berón 2026-11-19): outside the menu, like an alert. A card that
+    // gives a challenge reads «Reto: <máquina>» as in sanctuary 1 (ui/interaction.ts); another, the machine's name.
+    const toggle = () => this.set(!this.on);
+    const name = key === "?" ? "Panel" : key;
+    RootMenu.interact(!card ? undefined : card.querySelector(RETO_ACTS) ? retoButton(name, toggle, this.on) : { icon: ICON.machine, label: name, open: this.on, onClick: toggle });
   }
 
   private set(on: boolean): void {

@@ -85,6 +85,10 @@ async function doPost(j, n, title, label, who, expectThings) {
   j.check(`${title}: la tarjeta dice quién da el reto: ${who}, de turno`, new RegExp(`${who}, de turno`).test(card) && !/camino/.test(card), card);
   await j.tap('.s3-ui .cab-machine:not(.hidden) [data-act="reto"]', `Empezar el reto: ${title}`);
   await j.waitDuel();
+  // The shared reto focus (reto-focus.ts): her at the post, in the strip above the sheet.
+  await p.waitForTimeout(800);
+  const framed = await j.herFramed("codeshipS3");
+  j.check(`${title}: el reto la enfoca en el puesto, encima de la hoja (reto-focus.ts)`, !!framed?.ok, JSON.stringify(framed));
   const seen = { things: new Set(), reads: new Set(), phases: new Set(), shows: new Set(), maxG: 1, armTurn: 0, maxPlaneY: 0, armOn: false, armPlaying: false, herYs: [] };
   const look = async () => {
     const sc = await scene(p);

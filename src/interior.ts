@@ -850,7 +850,7 @@ export class Interior {
    * the steps out, a phone's strip above the sheet takes a wider view (the whole counter).
    */
   private frameForSheet(on: boolean): void {
-    sheetLens(this.camera, on, { base: 70, half: this.steps.framing || this.figure.root.visible ? 52 : 35 });
+    sheetLens(this.camera, on, { base: 70, half: this.steps.framing || this.figure.root.visible ? 25 : 17 });
   }
 
   private startChore(chore: Chore, stand?: THREE.Vector3, look?: THREE.Vector3): void {

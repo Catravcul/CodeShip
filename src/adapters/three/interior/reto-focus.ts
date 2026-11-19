@@ -11,20 +11,24 @@ import type { StepFrame, StepShow } from "./step-show";
  * frame the pair with `framePair` inside the post's room.
  */
 
-/** The field of view a scene keeps outside a challenge, and the half-angle of the strip in portrait. */
+/** The field of view a scene keeps outside a challenge, and the strip's own angle. */
 export interface LensFov {
   /** The scene's own angle, back when the sheet closes (default: the one it had when the lens came on). */
   readonly base?: number;
-  /** Half the vertical angle of the full frustum's middle in portrait (degrees): 52 shows her whole at a machine. */
+  /** Half the vertical angle of the strip above the sheet in portrait (degrees, default 25: her whole at a thing). */
   readonly half?: number;
 }
 
+/** In portrait, the camera's line shows this far down the screen: the middle of the strip the tallest sheet leaves. */
+export const LENS_LINE = 0.15;
+
 /**
  * While the sheet is open the stage is drawn where the sheet leaves room: above it in portrait, left of it in landscape
- * (the sheet takes the right side), so she and the thing are never under it. The strip has its own angle, the same in
- * every level (2026-11-19: with the scene's narrower 72° the strip above the sheet saw only 10° over the camera's line
- * and cut her head at a low table): from 27° over the line to 33° under it at the sheet's edge, her head, her feet and
- * a machine as tall as her. The scene's own angle comes back after.
+ * (the sheet takes the right side), so she and the thing are never under it. In portrait the camera's line is at the
+ * middle of the top 30 % (the tallest sheet's edge) and those 30 % see `half` degrees up and down of it: with the shoulder
+ * frame of `retoFrame` her head, her feet and a table-high thing all show over the sheet (2026-11-19: with the scene's
+ * own 72° the strip saw only 10° over the line and cut her head at the bioma's field table). The same lens in every
+ * level; the scene's own angle comes back after.
  */
 export function sheetLens(camera: THREE.PerspectiveCamera, on: boolean, fov: LensFov = {}): void {
   const w = window.innerWidth;
@@ -32,15 +36,17 @@ export function sheetLens(camera: THREE.PerspectiveCamera, on: boolean, fov: Len
   const data = camera.userData as { lensBase?: number };
   if (on && data.lensBase === undefined) data.lensBase = camera.fov;
   camera.clearViewOffset();
-  const deg = (half: number, k: number) => (2 * Math.atan(Math.tan((half * Math.PI) / 180) * k) * 180) / Math.PI;
+  const rad = Math.PI / 180;
   if (on && h > w) {
-    camera.aspect = w / (1.6 * h);
-    camera.fov = deg(fov.half ?? 52, 1.6);
-    camera.setViewOffset(w, 1.6 * h, 0, 0.6 * h, w, h);
+    // The full frustum is F tall with its middle at LENS_LINE of the screen; its half angle makes ±LENS_LINE·h span ±half.
+    const F = 2 * (1 - LENS_LINE) * h;
+    camera.aspect = w / F;
+    camera.fov = (2 * Math.atan((Math.tan((fov.half ?? 25) * rad) * (F / 2)) / (LENS_LINE * h))) / rad;
+    camera.setViewOffset(w, F, 0, (1 - 2 * LENS_LINE) * h, w, h);
   } else if (on) {
     const W = 1.44 * w;
     camera.aspect = W / h;
-    camera.fov = deg(35, 1);
+    camera.fov = 70;
     camera.setViewOffset(W, h, W - w, 0, w, h);
   } else {
     camera.aspect = w / h;

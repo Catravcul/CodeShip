@@ -200,6 +200,55 @@ export class Journey {
     return there;
   }
 
+  /**
+   * The shared reto focus (reto-focus.ts): with the sheet open, her middle is in the strip above the sheet and her head
+   * not over the screen's top. `hook` names the page's test hook with `camera` and `rig` (codeshipS3, codeship…).
+   */
+  async herFramed(hook) {
+    return this.page.evaluate((hook) => {
+      const h = window[hook];
+      const cam = h?.camera;
+      const rig = h?.rig;
+      if (!cam || !rig) return null;
+      const sheet = [...document.querySelectorAll(".duel")].find((e) => !e.classList.contains("hidden") && e.checkVisibility());
+      const top = sheet ? sheet.getBoundingClientRect().top : innerHeight;
+      cam.updateMatrixWorld();
+      rig.updateMatrixWorld();
+      const at = (dy) => {
+        const v = rig.getWorldPosition(rig.position.clone());
+        v.y += dy;
+        v.project(cam);
+        return { x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight, front: v.z < 1 };
+      };
+      const mid = at(0.9);
+      const head = at(1.65);
+      const ok = mid.front && mid.x >= 0 && mid.x <= innerWidth && mid.y >= 0 && mid.y <= top && head.y >= -10;
+      return { ok, top: Math.round(top), mid: { x: Math.round(mid.x), y: Math.round(mid.y) }, head: { x: Math.round(head.x), y: Math.round(head.y) }, fov: Math.round(cam.fov) };
+    }, hook);
+  }
+
+  /** A tap on the visible orange interaction button under the tree menu's root; returns its label. */
+  async tapInteraction(what = "Botón naranja") {
+    const label = await this.page.evaluate(() => {
+      const b = [...document.querySelectorAll(".rm-act:not(.hidden)")].find((x) => x.closest(".root-menu")?.checkVisibility() && x.checkVisibility());
+      if (!b) return null;
+      b.dataset.panelTap = "1";
+      return b.getAttribute("aria-label");
+    });
+    if (!label) return null;
+    await this.tap('.rm-act[data-panel-tap="1"]', what);
+    await this.page.evaluate(() => document.querySelectorAll("[data-panel-tap]").forEach((b) => delete b.dataset.panelTap));
+    return label;
+  }
+
+  /** The choice of challenge shown (RetoPicker): its title and options. */
+  picker() {
+    return this.page.evaluate(() => {
+      const el = [...document.querySelectorAll(".reto-picker")].find((e) => !e.classList.contains("hidden") && e.checkVisibility());
+      return el ? { title: el.querySelector(".rp-head b")?.textContent ?? "", options: [...el.querySelectorAll(".rp-opt")].map((o) => ({ title: o.querySelector("b")?.textContent ?? "", detail: o.querySelector("span")?.textContent ?? "", locked: o.disabled })) } : null;
+    });
+  }
+
   /** The card of `selector` gives challenges and has nothing else to do (no other button). */
   retoOnly(selector) {
     return this.page

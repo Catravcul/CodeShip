@@ -109,6 +109,28 @@ export async function starship(j) {
   const care = await j.texts(".sts-card:not(.hidden) button");
   j.check("el hábitat acuático ofrece cuidar las medakas", care.some((t) => /medakas/i.test(t)), care.join(" / "));
   await capture(j, "habitat-acuatico", "Hábitat acuático de la cubierta 3");
+  // The same rule as sanctuary 1 (reglas.md §5.8): «Reto: <cosa>» and, with several challenges, the choice of challenge.
+  const orange = await j.tapInteraction("Reto: Hábitat acuático");
+  await p.waitForTimeout(400);
+  const pick = await j.picker();
+  j.check("en la Starship, el botón naranja del hábitat dice «Reto: …» y, con varios retos, abre la elección de reto (RetoPicker)", /^Reto: /.test(orange ?? "") && !!pick && pick.options.length >= 2 && pick.options.some((o) => /medakas/i.test(o.title)), JSON.stringify({ orange, pick }));
+  await capture(j, "elegir-reto", "Starship: la elección de reto del hábitat acuático");
+  await j.tap(".reto-picker .rp-close", "Cerrar la elección de reto");
+  // Áreas with the shared scope (areas.md): «Automático» is her deck; the gear lists the decks.
+  await j.tap(".areas-btn", "Áreas");
+  await p.waitForTimeout(500);
+  const rowsAt = () => p.evaluate(() => [...document.querySelectorAll(".areas-window [data-area]")].map((b) => b.dataset.area));
+  const auto = await rowsAt();
+  j.check("Áreas en la Starship: «Automático» enseña su cubierta (la 3), no las otras", auto.includes("cubierta-3") && !auto.includes("cubierta-1") && !auto.includes("cubierta-vuelo"), auto.join(", "));
+  await j.tap(".areas-window .ar-view", "Ajustes de áreas");
+  const decks = await p.evaluate(() => [...document.querySelectorAll('.areas-window [data-scope-kind="cubierta"]')].map((b) => b.dataset.scopeId));
+  j.check("el engranaje de Áreas lista el vehículo y sus cubiertas (la de vuelo y las tres), como los edificios del santuario 1", decks.join() === "cubierta-vuelo,cubierta-1,cubierta-2,cubierta-3" && (await p.locator(".areas-window [data-vehicle]").count()) > 0, decks.join(", "));
+  await capture(j, "areas-alcance", "Starship: el alcance de Áreas por cubiertas");
+  await j.tap('.areas-window [data-scope-kind="cubierta"][data-scope-id="cubierta-2"]', "Cubierta 2");
+  await j.tap(".areas-window .ar-view", "Volver al mapa de áreas");
+  const deck2 = await rowsAt();
+  j.check("con la cubierta 2 elegida, Áreas enseña la cubierta 2 y sus camarotes", deck2.includes("cubierta-2") && deck2.some((a) => /^camarote/.test(a)) && !deck2.includes("cubierta-3"), deck2.join(", "));
+  await j.tap('.areas-window [aria-label="Cerrar áreas"]', "Cerrar áreas");
 
   // 5. Up to the flight deck through the hatch in deck 1's ceiling.
   await j.setup("sube a la cubierta 1, junto a la escotilla de la cubierta de vuelo (los saltos por los asideros se juegan en «movimiento»)", () => window.codeship.starship.mode.placeAt("subir-cubierta-vuelo"));

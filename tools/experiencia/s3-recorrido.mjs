@@ -167,6 +167,16 @@ export async function s3Recorrido(j) {
 
   // 6. Áreas: «Ir» to the Electron's crown: walk to the lift, ride it, step out at 182 m.
   await j.tap(".areas-btn", "Áreas");
+  // The shared scope (areas.md): the island, then its buildings and floors, as sanctuary 1's buildings and caps.
+  await j.tap(".areas-window .ar-view", "Ajustes de áreas");
+  const groups = await p.evaluate(() => ({ b: [...document.querySelectorAll('.areas-window [data-scope-kind="edificio"]')].map((x) => x.dataset.scopeId), f: [...document.querySelectorAll('.areas-window [data-scope-kind="piso"]')].map((x) => x.dataset.scopeId), isle: document.querySelectorAll(".areas-window [data-vehicle]").length }));
+  j.check("Áreas del santuario 3: el engranaje lista la isla, el edificio-árbol y sus dos niveles", groups.isle > 0 && groups.b.includes("lanzadera-arbol") && groups.f.join() === "lanzadera-arbol:nivel-1,lanzadera-arbol:nivel-2", JSON.stringify(groups));
+  await capture(j, "areas-alcance", "Santuario 3: el alcance de Áreas (isla, edificio, piso)");
+  await j.tap('.areas-window [data-scope-kind="piso"][data-scope-id="lanzadera-arbol:nivel-1"]', "Nivel 1");
+  await j.tap(".areas-window .ar-view", "Volver al mapa de áreas");
+  const lvl = await p.evaluate(() => [...document.querySelectorAll(".areas-window [data-area]")].map((b) => b.dataset.area));
+  j.check("con el nivel 1 elegido, solo sus pisos y miradores", lvl.length >= 3 && lvl.every((a) => /-1-\d$/.test(a)), lvl.join(", "));
+  await j.areasScope("", "", "Todo: la isla");
   await j.tap('.areas-window [data-pick="lanzadera-arbol:plataforma"]', "Plataforma de lanzamiento en el mapa");
   await capture(j, "areas", "Santuario 3: las áreas de la lanzadera");
   await j.tap('.areas-window [data-area="lanzadera-arbol:plataforma"]', "Ir: Plataforma de lanzamiento");

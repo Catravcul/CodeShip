@@ -74,6 +74,10 @@ async function doPost(j, n, title, label, expectThings) {
   const who = (await j.texts(".s3-ui .cab-machine:not(.hidden) .cm-who"))[0] ?? "";
   await j.tap('.s3-ui .cab-machine:not(.hidden) [data-act="reto"]', `Empezar el reto: ${title}`);
   await j.waitDuel();
+  // The shared reto focus (reto-focus.ts): her at the post, in the strip above the sheet.
+  await p.waitForTimeout(800);
+  const framed = await j.herFramed("codeshipS3");
+  j.check(`${title}: el reto la enfoca en el puesto, encima de la hoja (reto-focus.ts)`, !!framed?.ok, JSON.stringify(framed));
   const seen = new Set();
   // What is out is also gathered in the page every 150 ms: on a slow machine a capture can take longer than a beat
   // (2,2 s), and polling from here alone missed the mask of post 4 on CI.

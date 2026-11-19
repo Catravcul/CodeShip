@@ -5,7 +5,7 @@ import { CAP_NAME, LAGOON, LOBES, MAP_HALF, NESTS, SPECIES_MODEL, STAFF, TOWERS,
 import { FLOOR_PLANS, type FloorPlan } from "./floors";
 import { RING } from "./floors/kit";
 import { bedTip, orchardTip } from "./floors/puntas";
-import { landscape } from "./paisaje";
+import { DRIFT, landscape } from "./paisaje";
 import { model, type ModelDef } from "./catalog";
 import { OVERRIDES, resolve, spacing, type Overrides } from "./overrides";
 import { GROUPS, plan, split } from "../domain/population";
@@ -88,6 +88,8 @@ export interface S1Layout {
   readonly start: { readonly x: number; readonly y: number; readonly z: number; readonly yaw: number };
   /** The work submarine's dive (Berón: «el submarino puede subir por los troncos»): its instance and its way out. */
   readonly submarine?: { readonly index: number; readonly route: readonly Waypoint[] };
+  /** The drifting iceberg (Icebergs.cs driftA → driftB at 0,2 m/s): its instance, its solid and the visitors swimming off it. */
+  readonly drift?: { readonly index: number; readonly visitors: readonly number[]; readonly a: { x: number; z: number }; readonly b: { x: number; z: number } };
 }
 
 const R = (x0: number, x1: number, z0: number, z1: number): Rect => ({ x0: Math.min(x0, x1), x1: Math.max(x0, x1), z0: Math.min(z0, z1), z1: Math.max(z0, z1) });
@@ -459,18 +461,23 @@ export function buildS1Layout(k = 1, o: Overrides = OVERRIDES): S1Layout {
   }
 
   // The landscape: wild caps, tundra and icebergs (paisaje.ts). Icebergs float at the water line and stand as solids.
+  let drifting: S1Layout["drift"];
   for (const it of landscape()) {
     const y = it.sea ? WATER_Y : 0;
+    const at = b.instances.length;
     place(b, it.model, it.x, y, it.z, it.rot, it.sea ? "mar" : "paisaje", {}, 1, it.name, !it.sea);
+    if (it.model === "iceberg-deriva") drifting = { index: at, visitors: [], a: DRIFT.a, b: DRIFT.b };
     if (it.sea) {
       const d = model(it.model);
-      b.solids.push({ x0: it.x - d.size.x / 2, x1: it.x + d.size.x / 2, z0: it.z - d.size.z / 2, z1: it.z + d.size.z / 2, y0: -40, y1: y + d.size.y });
+      // (The drifting one moves: no fixed solid, she would hit an invisible wall where it was.)
+      if (it.model !== "iceberg-deriva") b.solids.push({ x0: it.x - d.size.x / 2, x1: it.x + d.size.x / 2, z0: it.z - d.size.z / 2, z1: it.z + d.size.z / 2, y0: -40, y1: y + d.size.y });
       // Its visitors (IcebergVisitor: 4 seals and 4 penguins, adults, swimming off its ledge).
       const seals = 2;
       const penguins = 2;
       for (const [id, n, dz] of [["foca", seals, 0], ["pinguino", penguins, 4]] as const)
         for (let i = 0; i < n; i++) {
           const a = model(id);
+          if (drifting && it.model === "iceberg-deriva") (drifting.visitors as number[]).push(b.instances.length);
           place(b, id, it.x - d.size.x / 2 - 12 - 6 + i * 4, WATER_Y - a.size.y * 0.4, it.z + dz, Math.PI / 2, "mar", {}, 1, `${id === "foca" ? "Foca" : "Pingüino"} del ${it.name?.toLowerCase()}`, false);
         }
     }
@@ -519,5 +526,5 @@ export function buildS1Layout(k = 1, o: Overrides = OVERRIDES): S1Layout {
   const gym = b.areas.find((a) => a.label === "Gimnasio")!;
   const start = { x: gym.entry!.x, y: gym.y, z: gym.entry!.z, yaw: gym.entry!.yaw };
   const submarine = submarineDive(b);
-  return { k, world: { floors: b.floors, waters: b.waters, solids: b.solids }, instances: b.instances, areas: b.areas, towers: b.towers, walls: b.walls, start, ...(submarine ? { submarine } : {}) };
+  return { k, world: { floors: b.floors, waters: b.waters, solids: b.solids }, instances: b.instances, areas: b.areas, towers: b.towers, walls: b.walls, start, ...(submarine ? { submarine } : {}), ...(drifting ? { drift: drifting } : {}) };
 }

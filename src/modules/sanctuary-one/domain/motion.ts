@@ -109,3 +109,13 @@ function flatYaw(r: Route, s: number): number {
   }
   return 0;
 }
+
+/** Where something drifting from `a` to `b` and back at `speed` m/s is at time `t` (Cold Sanctuary's Iceberg.Update). */
+export function drift(a: P2, b: P2, speed: number, t: number): P2 {
+  const len = Math.hypot(b.x - a.x, b.z - a.z);
+  if (len < 1e-6) return { x: a.x, z: a.z };
+  const leg = len / speed;
+  const k = ((t % (2 * leg)) + 2 * leg) % (2 * leg);
+  const f = k < leg ? k / leg : 2 - k / leg;
+  return { x: a.x + (b.x - a.x) * f, z: a.z + (b.z - a.z) * f };
+}

@@ -4,7 +4,7 @@ import { moveJoystick } from "@core/realism";
 import { buildS1Layout } from "@modules/sanctuary-one/data/layout";
 import { personRule } from "@modules/sanctuary-one/data/overrides";
 import { blocked, dropTo, placeAt, step, waterAt, type Body } from "@modules/aerial-sanctuary/domain/walk";
-import { S1_DAY_REAL_S, S1_START_HOUR, activityAt, along, hash01, route, shuttle, wanderAt, type Activity, type Route } from "@modules/sanctuary-one/domain/motion";
+import { S1_DAY_REAL_S, S1_START_HOUR, activityAt, along, drift, hash01, route, shuttle, wanderAt, type Activity, type Route } from "@modules/sanctuary-one/domain/motion";
 import { Wildlife } from "@modules/sanctuary-one/application/wildlife";
 import { staffPlaces, wayBetween, type Place } from "@modules/sanctuary-one/data/jornada";
 import { WalkIndex } from "@modules/sanctuary-one/data/walk-index";
@@ -271,10 +271,32 @@ function moveSubmarine(): void {
   sub.mesh.instanceMatrix.needsUpdate = true;
   sub.mesh.computeBoundingSphere();
 }
+// The drifting iceberg (Icebergs.cs: 0,2 m/s between its two points, about 38 min a way) and its visitors with it.
+const berg = L.drift && (() => {
+  const it = L.instances[L.drift.index]!;
+  const key = `${it.model}|${it.tint ?? ""}`;
+  const n = L.instances.slice(0, L.drift.index).filter((o) => o.model === it.model && (o.tint ?? "") === (it.tint ?? "")).length;
+  return { it, mesh: world.meshes.get(key), n, visitors: new Set(L.drift.visitors.map((i) => L.instances[i]!)) };
+})();
+let bergDx = 0;
+let bergDz = 0;
+function moveIceberg(): void {
+  if (!berg?.mesh || !L.drift) return;
+  const p = drift(L.drift.a, L.drift.b, 0.2, wildT);
+  bergDx = p.x - berg.it.x;
+  bergDz = p.z - berg.it.z;
+  const sc = berg.it.scale ?? 1;
+  subQ.setFromAxisAngle(UP, berg.it.rot);
+  subM.compose(new THREE.Vector3(p.x, berg.it.y, p.z), subQ, new THREE.Vector3(sc, sc, sc));
+  berg.mesh.setMatrixAt(berg.n, subM);
+  berg.mesh.instanceMatrix.needsUpdate = true;
+  berg.mesh.computeBoundingSphere();
+}
 function moveAnimals(dt: number): void {
   wildT += dt;
   wild.step(dt, wildT, day + hour / 24, { x: body.x, z: body.z });
   moveSubmarine();
+  moveIceberg();
   for (const { herd, index, it } of world.animals) {
     const t = wildT + index * 0.37;
     const a = wild.get(it);
@@ -285,7 +307,8 @@ function moveAnimals(dt: number): void {
       // Up and down its trunk: a slow swim from the root under the ice to the top and back (~0,4 m/s vertically).
       const y = w.climb ? w.climb.y0 + (w.climb.y1 - w.climb.y0) * (0.5 - 0.5 * Math.cos(((wildT + w.seed) * 0.8) / (w.climb.y1 - w.climb.y0))) : it.y;
       herd.pose(index, p.x, y, p.z, p.yaw, t, p.moving || !!w.climb, it.scale ?? 1);
-    } else herd.pose(index, it.x, it.y, it.z, it.rot, t, false, it.scale ?? 1);
+    } else if (berg?.visitors.has(it)) herd.pose(index, it.x + bergDx, it.y, it.z + bergDz, it.rot, t, false, it.scale ?? 1);
+    else herd.pose(index, it.x, it.y, it.z, it.rot, t, false, it.scale ?? 1);
   }
   for (const h of world.herds) h.commit();
 }

@@ -58,3 +58,9 @@ body.in-trip-view .switch-pad, body.in-dock-view .switch-pad, body.in-probe .swi
    those icons hide from the tree, and the gear shows only for what is left (Trayecto while a trip runs, a mode's own);
    the orange interaction button stays. */
 body.has-switch-pad .root-menu .rm-icon[data-pad] { display: none; }
+/* In 0 g the hop arrows (zero-g.css «Saltar», bottom left, 168 px) take the move stick's place: the pad clears them. */
+body:has(.zg-pad:not(.hidden)) .sp-left { left: 198px; }
+@media (orientation: portrait) {
+  body:has(.zg-pad:not(.hidden)) .sp-left { left: 14px; }
+  body:has(.zg-pad:not(.hidden)) .sp-side { bottom: calc(202px + env(safe-area-inset-bottom)); }
+}

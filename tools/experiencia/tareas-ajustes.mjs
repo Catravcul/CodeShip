@@ -1,6 +1,6 @@
 // PX-42 The general tree menu, «Panel», «Áreas» and the task list's settings (docs/design/reglas.md §5.7–5.9,
 // ux-acciones.md §Menú árbol, areas.md, viaje-a-una-tarea.md §Ajustes de tareas; Berón 2026-11-18), on an
-// iPhone 13 with taps. One gear at the top right turns into an X and sprouts Vista, Tareas, Áreas (and
+// iPhone 13 with taps. With the Switch pad (ui/game-pad.ts) Vista, Tareas and Áreas are on its capture, «+» and «−»; the gear shows only for the rest (
 // Trayecto while a trip runs); only its own X folds it. A machine's card never pops up: the orange interaction
 // button under the root (outside the menu, only at a machine; Berón 2026-11-19) shows it and turns into the X that hides it. «Áreas» is the Navigation window for the vehicle: a 3D map
 // that turns with a finger and zooms with a pinch, and under it the areas with what is there and «Ir». Tareas and
@@ -73,6 +73,15 @@ const menu = (p) =>
     };
   });
 
+/** The Switch pad (ui/game-pad.ts): shown, and the jobs of its buttons. */
+const padNow = (p) =>
+  p.evaluate(() => {
+    const pad = document.querySelector(".switch-pad:not(.hidden)");
+    const on = [...document.querySelectorAll(".switch-pad .ap-btn:not(.free)")].map((b) => b.getAttribute("aria-label"));
+    return { shown: !!pad?.checkVisibility(), on };
+  });
+const padHas = (pd, ...labels) => pd.shown && labels.every((l) => pd.on.some((o) => o.startsWith(l)));
+
 /** The Áreas window: its map's view, the rows under it and what is picked. */
 const areas = (p) =>
   p.evaluate(() => {
@@ -122,19 +131,18 @@ async function dragAcross(p, box) {
 
 export async function tareasAjustes(j) {
   const p = j.page;
-  // 0. The tree menu: only the gear is out; it turns into an X and Vista, Tareas and Áreas sprout below it.
+  // 0. The tree menu with the Switch pad (reglas.md §5.7–5.8, 2026-11-19): Vista, Tareas and Áreas are on the pad (capture, +, −),
+  // so they do not sprout from the gear and the gear is not out; the orange interaction button stays under the root.
   await j.tap(".stand-btn", "Levantarse: habitáculo");
   await p.waitForTimeout(1200);
   const m0 = await menu(p);
-  j.check("en el habitáculo del LM solo se ve el engranaje del menú, arriba a la derecha", !!m0 && !m0.open && m0.root === "Menú" && m0.out.length === 0 && m0.rootAt.right <= 16 && m0.rootAt.top <= 20 && m0.rootAt.w >= 44, JSON.stringify(m0));
+  const pd0 = await padNow(p);
+  j.check("en el habitáculo del LM, Vista, Tareas y Áreas están en el mando de la Switch (captura, «+», «−») y no brota nada del engranaje, que no sale", !!m0 && !m0.open && m0.out.length === 0 && m0.rootAt.w === 0 && padHas(pd0, "Vista", "Tareas", "Áreas", "Ajustes", "Acercar"), JSON.stringify({ m0, pd0 }));
   const card0 = await p.evaluate(() => [...document.querySelectorAll(".cab-machine:not(.hidden)")].some((c) => c.checkVisibility()));
   j.check("de pie junto al puesto del comandante, su tarjeta no sale sola", !card0);
   await capture(j, "menu-cerrado", "Menú árbol cerrado");
-  await j.tap('.room-ui:not(.hidden) .root-menu:not(.open) > .rm-root', "⚙︎ Menú");
-  await p.waitForTimeout(400);
   const m1 = await menu(p);
   const labels = m1?.out.map((b) => b.label) ?? [];
-  j.check("el engranaje se vuelve una X («Cerrar menú») y debajo brotan Vista, Tareas y Áreas, de 44 px", !!m1 && m1.open && m1.root === "Cerrar menú" && /^Vista/.test(labels[0] ?? "") && labels[1] === "Tareas" && labels[2] === "Áreas" && m1.out.every((b) => b.y > m1.rootAt.top && b.w >= 44 && b.h >= 44), JSON.stringify(m1));
   const act = () => p.evaluate(() => { const b = [...document.querySelectorAll(".room-ui:not(.hidden) .rm-act")].find((x) => x.checkVisibility()); return b ? { label: b.getAttribute("aria-label"), open: b.classList.contains("rm-open"), inMenu: !!b.closest(".rm-shoots") } : null; });
   const a0 = await act();
   j.check("junto a una máquina sale el botón naranja de interacción bajo la raíz, fuera de lo que brota del menú", !!a0 && !a0.inMenu && !a0.open && !labels.includes("Panel"), `${labels.join(" / ")} · ${JSON.stringify(a0)}`);
@@ -146,14 +154,14 @@ export async function tareasAjustes(j) {
   const card1 = await p.evaluate(() => [...document.querySelectorAll(".cab-machine:not(.hidden)")].find((c) => c.checkVisibility())?.querySelector(".cm-head b")?.textContent);
   const m1b = await menu(p);
   const a1 = await act();
-  j.check("el botón naranja muestra la tarjeta de la máquina y pasa a ser la X que la oculta; el menú sigue abierto", !!card1 && !!m1b?.open && !!a1?.open && /^Cerrar/.test(a1.label ?? ""), `${card1} · ${JSON.stringify(a1)}`);
+  j.check("el botón naranja muestra la tarjeta de la máquina y pasa a ser la X que la oculta; el menú sigue como estaba", !!card1 && m1b?.open === m1?.open && !!a1?.open && /^Cerrar/.test(a1.label ?? ""), `${card1} · ${JSON.stringify(a1)}`);
   await capture(j, "panel", "Panel de la máquina desde el menú");
   await j.tap(".room-ui:not(.hidden) .rm-act.rm-open", "X del menú: Cerrar panel");
   await p.waitForTimeout(300);
   const card2 = await p.evaluate(() => [...document.querySelectorAll(".cab-machine:not(.hidden)")].some((c) => c.checkVisibility()));
   const m1c = await menu(p);
   const a2 = await act();
-  j.check("la X del botón naranja oculta la tarjeta y el menú sigue abierto", !card2 && !!m1c?.open && !!a2 && !a2.open, JSON.stringify(a2));
+  j.check("la X del botón naranja oculta la tarjeta y el menú sigue como estaba", !card2 && m1c?.open === m1?.open && !!a2 && !a2.open, JSON.stringify(a2));
 
   // 0b. «Áreas»: the Navigation window for the LM; the menu hides under it.
   await j.tap(".room-ui:not(.hidden) .areas-btn", "Áreas");
@@ -203,7 +211,10 @@ export async function tareasAjustes(j) {
   const walk = await p.evaluate(() => ({ active: window.codeship.journey.active, legs: window.codeship.journey.plan.map((l) => `${l.kind} ${l.to}`), open: !!document.querySelector(".areas-window:not(.hidden)") }));
   j.check("«Ir» en «Panel del ECS» cierra Áreas y ella va andando por el camino real (Viaje)", !walk.open && (walk.active ? walk.legs.some((l) => /^andar modulo:ecs/.test(l)) : true), JSON.stringify(walk));
   const m6 = await menu(p);
-  j.check("al cerrarse Áreas el menú vuelve tal como estaba: abierto", !!m6?.open && (m6?.out ?? []).some((b) => b.label === "Áreas"), JSON.stringify(m6));
+  const pd6 = await padNow(p);
+  // While «Ir» walks her the pad hides (reglas.md §3.3: no move controls on an automatic trip); Áreas stays on its «−».
+  const going = await p.evaluate(() => document.body.classList.contains("in-journey"));
+  j.check("al cerrarse Áreas el menú vuelve tal como estaba y Áreas sigue en «−» del mando (oculto mientras «Ir» la lleva)", m6?.open === m1?.open && (going || pd6.shown) && pd6.on.some((o) => o.startsWith("Áreas")), JSON.stringify({ m6, pd6, going }));
   await p.waitForFunction(() => !window.codeship.journey.active, null, { timeout: 60000 }).catch(() => {});
   const near = await p.evaluate(() => window.codeship.cabin.near());
   j.check("y llega al panel del ECS, sin que su tarjeta salga sola", near === "ecs" && !(await p.evaluate(() => [...document.querySelectorAll(".cab-machine:not(.hidden)")].some((c) => c.checkVisibility()))), String(near));
@@ -253,7 +264,8 @@ export async function tareasAjustes(j) {
   await j.tap(".task-board [data-close]", "Cerrar tareas");
   await p.waitForTimeout(300);
   const m3 = await menu(p);
-  j.check("el ✕ de la lista la cierra y el menú vuelve tal como estaba (abierto, con «Tareas»)", !(await p.locator(".task-board:not(.hidden)").count()) && !!m3?.open && (m3?.out ?? []).some((b) => b.label === "Tareas"), JSON.stringify(m3));
+  const pd3 = await padNow(p);
+  j.check("el ✕ de la lista la cierra, el menú vuelve tal como estaba y Tareas sigue en «+» del mando", !(await p.locator(".task-board:not(.hidden)").count()) && m3?.open === m1?.open && padHas(pd3, "Tareas"), JSON.stringify({ m3, pd3 }));
 
   // 5. Kept over a reload; the group is not (it starts at «Todas» every time the list opens).
   await p.reload();
@@ -301,12 +313,12 @@ export async function tareasAjustes(j) {
   j.check("sin «Ver trayecto» ni «Mando» en la ventana (solo en los mandos de pilotaje); solo se cierra", !!tw && !/Ver trayecto|Mando/.test(tw.text) && tw.buttons.join() === "Cerrar trayecto", JSON.stringify(tw));
   const m4 = await menu(p);
   const l4b = m4?.out.map((b) => b.label) ?? [];
-  j.check("en el menú, «Trayecto» va debajo de Vista y Tareas y es ahora la X que lo cierra", /^Vista/.test(l4b[0] ?? "") && l4b[1] === "Tareas" && l4b.at(-1) === "Cerrar trayecto", JSON.stringify(m4));
+  j.check("con el mando, solo «Trayecto» brota del engranaje (Vista y Tareas están en el mando) y es ahora la X que lo cierra", l4b.length === 1 && l4b[0] === "Cerrar trayecto" && (m4?.rootAt.w ?? 0) >= 44, JSON.stringify(m4));
   await capture(j, "trayecto", "Ventana de Trayecto desde el menú");
   await j.tap(".sts-ui .trip-btn.rm-open", "X del menú: Cerrar trayecto");
   await p.waitForTimeout(300);
   j.check("la X del menú cierra la ventana de Trayecto", !(await p.locator(".trip-window:not(.hidden)").count()));
   await j.setup("se para el viaje", () => window.codeship.nav.cancel());
   await p.waitForTimeout(800);
-  j.check("sin viaje, «Trayecto» deja de brotar del menú", !(await p.locator(".sts-ui .trip-btn:not(.hidden)").count()));
+  j.check("sin viaje, «Trayecto» deja de brotar del menú y el engranaje se va (no queda nada fuera del mando)", !(await p.locator(".sts-ui .trip-btn:not(.hidden)").count()) && ((await menu(p))?.rootAt.w ?? 0) === 0);
 }

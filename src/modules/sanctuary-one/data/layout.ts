@@ -145,6 +145,8 @@ function groundFloors(): Floor[] {
 
 interface Built {
   o: Overrides;
+  /** The orchards' expert room is placed (in the first orchard tip of Servicios). */
+  expertRoom?: boolean;
   floors: Floor[];
   waters: Water[];
   solids: Solid[];
@@ -279,7 +281,10 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
       // What grows there, in the tip's frame (its side's axes about its centre).
       const colL = { x0: colC.x - ch - tipC.x, x1: colC.x + ch - tipC.x, z0: colC.z - ch - tipC.z, z1: colC.z + ch - tipC.z };
       const crops = t.tip === "Cultivos";
-      const tipPlan = crops ? bedTip(ts, colL, tipIndex++) : orchardTip(ts, colL);
+      // The expert's care room in the first orchard tip of Servicios; a care point in every other.
+      const sala = !crops && t.building === "Servicios" && !b.expertRoom;
+      if (sala) b.expertRoom = true;
+      const tipPlan = crops ? bedTip(ts, colL, tipIndex++) : orchardTip(ts, colL, 3.4, sala ? "sala" : "punto");
       for (const it of tipPlan) {
         const p = side(S(s), tipC.x + it.x, tipC.z + it.z);
         place(b, it.model, o.x + p.x, ty, o.z + p.z, (S(s) * Math.PI) / 2 + (it.rot ?? 0), tipArea, { edificio: t.id, piso: tipArea }, 1, it.name);

@@ -114,3 +114,37 @@ export const ETHOGRAMS: Readonly<Record<string, SpeciesEthogram>> = {
     young: a("espera en el nido", "quieto", 1, 60, "Brown 1966 (el pollo se queda en la grieta 7 semanas)"),
   },
 };
+
+/** Each species' courtship when in estrus (modules/fauna mating), in words, with its source. */
+export const CORTEJOS: Readonly<Record<string, { readonly verb: string; readonly source: string }>> = {
+  Bear: { verb: "la pareja va junta: el macho la siguió por su rastro", source: "Ramsay & Stirling 1986, J Zool 208:63 (el macho sigue el rastro de la hembra y pasan una o dos semanas juntos)" },
+  Seal: { verb: "el macho trina bajo el hielo y la ronda en el agua", source: "Thomas & Kuechle 1982, J Acoust Soc Am 72:1730 (trinos territoriales; apareamiento en el agua)" },
+  Penguin: { verb: "exhibición extática: pico al cielo, aletas batiendo y canto", source: "Ainley 2002, The Adélie Penguin (ecstatic display)" },
+  EmperorPenguin: { verb: "la pareja se reconoce por su canto y se hace reverencias", source: "Jouventin 1982, Visual and Vocal Signals in Penguins" },
+  Whale: { verb: "el macho canta y escolta a la hembra", source: "Payne & McVay 1971, Science 173:585 (canto de la ballena jorobada); Tyack 1981" },
+  Orca: { verb: "nadan juntas rozándose", source: "Ford 2009, Killer whale, en Encyclopedia of Marine Mammals (conducta sociosexual)" },
+  ArcticFox: { verb: "la pareja se acicala y juega junta", source: "Audet et al. 2002, Mammalian Species 713 (pareja estable; el macho lleva comida)" },
+  Wolf: { verb: "la pareja se acicala, juega y duerme junta", source: "Mech 1970, The Wolf (cortejo de la pareja reproductora)" },
+  Walrus: { verb: "el macho canta bajo el agua con golpes y campanas", source: "Stirling, Calvert & Spencer 1987, Can J Zool 65:2311 (cantos del macho junto a las hembras)" },
+  Reindeer: { verb: "el macho en celo brama y persigue a la hembra", source: "Espmark 1964, Behaviour 23 (celo del reno)" },
+  MuskOx: { verb: "el macho en celo ruge y sigue a la hembra rozándola", source: "Tener 1965, Muskoxen in Canada; Gray 1987" },
+  ArcticHare: { verb: "el macho la persigue y ella lo rechaza a manotazos", source: "Aniskowicz et al. 1990, Can Field-Nat 104:470 (persecuciones y «boxeo»)" },
+  SnowPetrel: { verb: "la pareja se saluda en la grieta con reverencias y llamadas", source: "Brown 1966, Ibis 108:157" },
+};
+
+/** Each species' contest between males in the rut (modules/fauna rivalry), with its source. */
+export const RIVALIDADES: Readonly<Record<string, { readonly verb: string; readonly source: string }>> = {
+  Bear: { verb: "se alza ante otro macho y luchan a zarpazos y mordiscos", source: "Stirling 1988, Polar Bears (peleas de machos en primavera; cicatrices)" },
+  Seal: { verb: "pelea bajo el agua con otro macho por el territorio", source: "Kaufman et al. 1975, J Mammal 56 (heridas de machos de Weddell en la época de cría)" },
+  Penguin: { verb: "se pelea a aletazos y picotazos con otro macho por el nido", source: "Ainley 2002, The Adélie Penguin" },
+  EmperorPenguin: { verb: "empuja a otro macho y canta más fuerte", source: "Jouventin 1982, Visual and Vocal Signals in Penguins (poco agresivo: compite cantando)" },
+  Whale: { verb: "empuja y embiste a otro macho junto a la hembra", source: "Baker & Herman 1984, Can J Zool 62:1922 (grupos competitivos)" },
+  Orca: { verb: "nada en paralelo con otro macho, exhibiéndose", source: "Ford 2009 (conducta sociosexual; peleas raras)" },
+  ArcticFox: { verb: "persigue a otro macho de su territorio", source: "Audet et al. 2002, Mammalian Species 713" },
+  Wolf: { verb: "le enseña los dientes a otro macho, erguido, hasta que se aparta", source: "Mech 1970, The Wolf (dominancia en el celo)" },
+  Walrus: { verb: "exhibe sus colmillos ante otro macho y lo embiste", source: "Fay 1982, North American Fauna 74 (machos con colmillos mayores dominan)" },
+  Reindeer: { verb: "choca las cuernas con otro macho", source: "Espmark 1964, Behaviour 23; Kojola 1991 (combates de cuernas en el celo)" },
+  MuskOx: { verb: "carga contra otro macho y chocan las cabezas", source: "Wilkinson & Shank 1976, Anim Behav 24:756 (choques a 50 km/h)" },
+  ArcticHare: { verb: "boxea con otro macho de pie", source: "Aniskowicz et al. 1990, Can Field-Nat 104:470" },
+  SnowPetrel: { verb: "riñe con otro macho a la entrada de la grieta y le escupe aceite", source: "Brown 1966, Ibis 108:157 (escupen aceite estomacal en defensa del nido)" },
+};

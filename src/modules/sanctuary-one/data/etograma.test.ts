@@ -14,3 +14,12 @@ describe("the ethograms of sanctuary 1's species", () => {
     }
   });
 });
+
+describe("courtships", () => {
+  it("has one, with a source, for every species", async () => {
+    const { CORTEJOS } = await import("./etograma");
+    const { RIVALIDADES } = await import("./etograma");
+    for (const s of Object.keys(SPECIES_MODEL)) expect(CORTEJOS[s]?.source.length, s).toBeGreaterThan(10);
+    for (const s of Object.keys(SPECIES_MODEL)) expect(RIVALIDADES[s]?.source.length, s).toBeGreaterThan(10);
+  });
+});

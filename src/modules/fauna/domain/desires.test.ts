@@ -36,4 +36,10 @@ describe("what an animal wants", () => {
     n = tickNeeds(n, 60, 0, "descansar", WOLF);
     expect(n.fatigue).toBeCloseTo(0);
   });
+
+  it("in estrus it looks for a mate, over its habits but under strong hunger", () => {
+    expect(choose(ctx({ estrus: true })).desire).toBe("aparearse");
+    expect(choose(ctx({ estrus: true, needs: { hunger: 0.8, fatigue: 0 } })).desire).toBe("cazar");
+    expect(choose(ctx({ estrus: true, young: true })).desire).not.toBe("aparearse");
+  });
 });

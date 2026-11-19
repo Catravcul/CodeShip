@@ -1,5 +1,5 @@
 import { S1_SOURCES as S } from "../sources";
-import { CHROME, IRON, PAD, WOOD, m, type ModelDef } from "./kit";
+import { C, CHROME, IRON, PAD, WOOD, m, pz, type ModelDef } from "./kit";
 
 /** The first models: the gym's floor 0, the animals and the people. */
 export const BASE_MODELS: readonly ModelDef[] = [
@@ -27,6 +27,15 @@ export const BASE_MODELS: readonly ModelDef[] = [
   m("gym-fuente", "mueble", "gimnasio-servicios", "Fuente de agua", 0.5, 1.05, 0.4, CHROME, "caja", "real", `${S.csGym} (Fuente_de_agua: 0,5 × 1 × 0,4 m)`),
   m("gym-toallas", "mueble", "gimnasio-servicios", "Toallas", 0.8, 1.32, 0.4, WOOD, "caja", "real", `${S.csGym} (Toallas: mueble de 0,8 × 1,2 × 0,4 m)`),
   m("gym-suelo-caucho", "mueble", "gimnasio-servicios", "Suelo de caucho", 1, 0.02, 1, 0x2e2e33, "caja", "real", S.csGym),
+  // A carpet park at each tree-building's crown and foot (Berón 2026-11-19: «deberían haber parqueaderos de alfombras en
+  // las copas y pies de los árbol-edificio»): a deck with four painted bays, a carpet resting in three, and the sign.
+  pz("parqueadero-alfombras", "mueble", "transporte", "Parqueadero de alfombras voladoras (4 plazas)", 0x6f5a48, [
+    C(0, 0.03, 0, 8.4, 0.06, 6.0, 0x6f5a48),
+    ...[-3.0, -1.0, 1.0, 3.0].flatMap((x) => [C(x - 0.95, 0.065, 0, 0.06, 0.01, 5.0, 0xe8e0c8), C(x + 0.95, 0.065, 0, 0.06, 0.01, 5.0, 0xe8e0c8)]),
+    ...[[-3.0, 0x9a3b3b], [-1.0, 0x2f7f8f], [3.0, 0x7a5a9a]].flatMap(([x, c]) => [C(x as number, 0.1, 0, 1.5, 0.04, 2.6, c as number), C(x as number, 0.1, -1.36, 1.5, 0.03, 0.12, 0xe8d8a8), C(x as number, 0.1, 1.36, 1.5, 0.03, 0.12, 0xe8d8a8)]),
+    C(-4.0, 1.1, -2.8, 0.08, 2.2, 0.08, 0x4a4f57),
+    C(-4.0, 2.0, -2.8, 0.7, 0.5, 0.04, 0x2f7f8f),
+  ], "ficcion", `${S.csGym} (GymCarpetSpot, Alfombras_Santuario); el parqueadero en copa y pie, nuestro`),
   m("alfombras-zona", "mueble", "transporte", "Zona de alfombras voladoras (7,6 × 4,4 m)", 7.6, 0.03, 4.4, 0x9a3b3b, "caja", "ficcion", `${S.csGym} (GymCarpetSpot)`),
 
   // ── Animals (adults, true size: body length along z, height to the top along y) ──

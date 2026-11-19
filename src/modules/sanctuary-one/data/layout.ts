@@ -33,7 +33,7 @@ export interface Instance {
   readonly scale?: number;
   readonly tint?: number;
   /** An animal's territory: it wanders inside (domain/motion.ts wanderAt) at `speed` m/s. */
-  readonly wander?: { readonly x: number; readonly z: number; readonly r: number; readonly speed: number; readonly seed: number };
+  readonly wander?: { readonly x: number; readonly z: number; readonly r: number; readonly speed: number; readonly seed: number; readonly climb?: { readonly y0: number; readonly y1: number } };
 }
 
 export interface S1Area {
@@ -291,6 +291,10 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
   }
   // The roof over the trunk.
   b.floors.push({ id: `${t.id}-techo`, ...around(o.x, o.z, OH), y: rootHeight, area: `${t.id}:techo` });
+  // Carpet parks: on the crown (the roof) and at the foot, out on the ice beside the ground door.
+  place(b, "parqueadero-alfombras", o.x, rootHeight, o.z, (S(0) * Math.PI) / 2, `${t.id}:techo`, { edificio: t.id }, 1, `Parqueadero de alfombras de la copa (${t.building})`, false);
+  const foot = side(S(0), door.x - door.w / 2 - 7.5, OH + 5);
+  place(b, "parqueadero-alfombras", o.x + foot.x, 0, o.z + foot.z, (S(0) * Math.PI) / 2, trunk, { edificio: t.id }, 1, `Parqueadero de alfombras del pie (${t.building})`, false);
   b.towers.push(shape);
 }
 
@@ -388,6 +392,15 @@ export function buildS1Layout(k = 1, o: Overrides = OVERRIDES): S1Layout {
   }
   b.areas.push({ id: "mar", label: "La laguna y el mar", desc: "Ballenas, orcas, focas y morsas en la laguna central", x: LAGOON.x, y: WATER_Y, z: LAGOON.z, detail: "completo" });
   for (const t of TOWERS) buildTower(b, t, k);
+  // Up the trunks from the sea (Berón 2026-11-19: «los animales marinos pueden subir por los troncos»): in each trunk a
+  // seal and two penguins swim between its root under the ice and its top (ours: who and how many).
+  for (const tw of b.towers) {
+    const top = tw.rootHeight - 2.5;
+    ["foca", "pinguino", "pinguino"].forEach((id, i) => {
+      place(b, id, tw.x, TRUNK_ROOT_Y + 2, tw.z, i, `${tw.id}:tronco`, {}, 1, undefined, false);
+      wanders(b, id, { x: tw.x, z: tw.z, r: 6, speed: id === "foca" ? 1.2 : 0.9, seed: b.instances.length * 17 + i * 5, climb: { y0: TRUNK_ROOT_Y + 2, y1: top } });
+    });
+  }
 
   // The landscape: wild caps, tundra and icebergs (paisaje.ts). Icebergs float at the water line and stand as solids.
   for (const it of landscape()) {

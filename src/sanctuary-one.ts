@@ -253,7 +253,9 @@ function moveAnimals(dt: number): void {
     if (moving.has(it)) {
       const w = it.wander!;
       const p = wanderAt({ x: w.x, z: w.z }, w.r, w.seed, wildT + w.seed, w.speed);
-      herd.pose(index, p.x, it.y, p.z, p.yaw, t, p.moving, it.scale ?? 1);
+      // Up and down its trunk: a slow swim from the root under the ice to the top and back (~0,4 m/s vertically).
+      const y = w.climb ? w.climb.y0 + (w.climb.y1 - w.climb.y0) * (0.5 - 0.5 * Math.cos(((wildT + w.seed) * 0.8) / (w.climb.y1 - w.climb.y0))) : it.y;
+      herd.pose(index, p.x, y, p.z, p.yaw, t, p.moving || !!w.climb, it.scale ?? 1);
     } else herd.pose(index, it.x, it.y, it.z, it.rot, t, false, it.scale ?? 1);
   }
   for (const h of world.herds) h.commit();

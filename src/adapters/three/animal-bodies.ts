@@ -14,16 +14,31 @@ export class AnimalHerd {
   private readonly parts: readonly BodyPart[];
   private readonly size: THREE.Vector3;
   private readonly hz: number;
+  /** One mesh for every part (`merged`): the part's colour per instance, one draw call per herd. */
+  private readonly merged: boolean;
   private static readonly unit = new THREE.BoxGeometry(1, 1, 1);
 
   constructor(
     readonly d: HerdModel,
-    count: number,
+    readonly capacity: number,
     tint?: number,
+    opts: { merged?: boolean } = {},
   ) {
     this.parts = bodyPlan(d.shape, d.id)!;
     this.size = new THREE.Vector3(d.size.x, d.size.y, d.size.z);
     this.hz = gaitHz(d.shape as BodyKind, Math.max(d.size.z, d.size.y));
+    this.merged = !!opts.merged;
+    if (this.merged) {
+      const m = new THREE.InstancedMesh(AnimalHerd.unit, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, metalness: 0 }), capacity * this.parts.length);
+      const c = new THREE.Color();
+      for (let i = 0; i < capacity; i++) this.parts.forEach((p, k) => m.setColorAt(i * this.parts.length + k, c.set(p.color ?? tint ?? d.color)));
+      m.name = `animal-${d.id}`;
+      m.userData = { category: d.category, group: d.group, model: d.id };
+      m.frustumCulled = false;
+      this.meshes.push(m);
+      return;
+    }
+    const count = capacity;
     for (const p of this.parts) {
       const m = new THREE.InstancedMesh(AnimalHerd.unit, new THREE.MeshStandardMaterial({ color: p.color ?? tint ?? d.color, roughness: 0.9, metalness: 0 }), count);
       m.name = `animal-${d.id}-${p.name}`;
@@ -59,8 +74,18 @@ export class AnimalHerd {
       if (a) M.multiply(J.makeRotationAxis(axes[p.swing!.axis], a));
       M.multiply(J.makeTranslation(p.box[0] * S.x, p.box[1] * S.y, p.box[2] * S.z));
       M.multiply(J.makeScale(p.box[3] * S.x, p.box[4] * S.y, p.box[5] * S.z));
-      this.meshes[k]!.setMatrixAt(i, M);
+      if (this.merged) this.meshes[0]!.setMatrixAt(i * this.parts.length + k, M);
+      else this.meshes[k]!.setMatrixAt(i, M);
     });
+  }
+
+  /** Draw only the first `n` copies (none: no draw call at all). */
+  show(n: number): void {
+    const per = this.merged ? this.parts.length : 1;
+    for (const m of this.meshes) {
+      m.count = Math.min(n, this.capacity) * per;
+      m.visible = n > 0;
+    }
   }
 
   commit(): void {

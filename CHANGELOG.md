@@ -5,6 +5,11 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-19
 
+- **Santuario 3, bioma subantártico**: una isla como Bird Island con 23 especies (tussac, musgo, kelp, kril, peces,
+  papúas, albatros, págalos, lobos y elefantes marinos, foca leopardo…) en una cadena alimenticia viva: nacen en su mes
+  real tras aparearse, crecen, cazan, pasan hambre y mueren de viejos; censo en la estación con el botón naranja.
+  `fauna` gana plantas como comida (`forage.ts`). [docs/design/bioma-s3.md](docs/design/bioma-s3.md)
+
 - **Rivalidad entre machos (`fauna`)**: en el celo, dos machos junto a una hembra se la disputan como su especie
   (bueyes almizcleros chocan las cabezas, renos las cuernas, morsas los colmillos); gana el más fuerte y el otro se va.
   [docs/design/fauna.md](docs/design/fauna.md)

@@ -54,7 +54,7 @@ export async function lookAt(j, x, z) {
 }
 
 /** Tilt the camera with the same stick (up and down drags) to the pitch `want` (negative looks down). */
-async function tilt(j, want) {
+export async function tilt(j, want) {
   for (let i = 0; i < 10; i++) {
     const d = want - (await j.page.evaluate(() => window.codeshipS3.pitch));
     if (Math.abs(d) < 0.06) return;

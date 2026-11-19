@@ -68,6 +68,16 @@ export const COURTSHIPS: Readonly<Record<string, string>> = {
   leopardo: "cantan bajo el agua en el celo (Wikipedia, Leopard seal)",
 };
 
+/**
+ * Each species' contest between males in the rut (fauna `Rivalries`), only where it is documented, with its source.
+ * Elephant seal bulls rear up and slam chest and teeth (Wikipedia, Southern elephant seal; Le Boeuf 1974); fur seal
+ * bulls lunge, bite and push at the edge of their beach territories (Wikipedia, Antarctic fur seal; McCann 1980).
+ */
+export const RIVALRIES: Readonly<Record<string, string>> = {
+  elefante: "los machos se alzan y chocan pecho contra pecho, a mordiscos (Wikipedia, Southern elephant seal; Le Boeuf 1974)",
+  lobo: "los machos se embisten y se muerden en el borde de su territorio (Wikipedia, Antarctic fur seal; McCann 1980)",
+};
+
 const a = (verb: string, mode: EthoAct["mode"], weight: number, seconds: number, source: string): EthoAct => ({ verb, mode, weight, seconds, source });
 
 /** What each does when it is calm (Cold Sanctuary's Ethogram, for these species from their sources). */

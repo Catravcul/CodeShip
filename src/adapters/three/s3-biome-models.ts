@@ -125,18 +125,17 @@ export class BiomeScene {
     const up = new THREE.Vector3(0, 1, 0);
     // TUSSAC: a peat pedestal (~0,8 m) and a fountain of blades to ~2 m (Poa flabellata).
     const blades: THREE.BufferGeometry[] = [];
-    for (let b = 0; b < 14; b++) {
-      const g = new THREE.PlaneGeometry(0.09, 1.5, 1, 3);
+    for (let b = 0; b < 18; b++) {
+      const g = new THREE.PlaneGeometry(0.2, 1.5, 1, 3);
       g.translate(0, 0.75, 0);
       const pos = g.attributes.position!;
       for (let i = 0; i < pos.count; i++) pos.setZ(i, pos.getZ(i) + (pos.getY(i) / 1.5) ** 2 * 0.55);
-      g.rotateY((b / 14) * Math.PI * 2);
-      g.rotateX(0);
+      g.rotateY((b / 18) * Math.PI * 2 + (b % 2) * 0.3);
       blades.push(g);
     }
     const fountain = mergeGeometries(blades);
     fountain.translate(0, 0.75, 0);
-    const pedestal = new THREE.CylinderGeometry(0.45, 0.6, 0.8, 9);
+    const pedestal = new THREE.CylinderGeometry(0.5, 0.65, 0.8, 9);
     pedestal.translate(0, 0.4, 0);
     const tussacAt = [...this.scatter("tussac", 190, 11), ...this.scatter("playa", 40, 12).filter((p) => (p.z - this.C.z) / this.k > -70), ...this.scatter("musgo", 30, 13)].slice(0, PLANT_BUDGET.tussac);
     this.addKind("tussac", tussacAt, [pedestal, fountain], [mat(0x4a3a2a), this.tussacMat], (p, _i, f, m, part) => {
@@ -245,8 +244,8 @@ export class BiomeScene {
           ? { id: `${s.id}-cria`, shape: "pinnipedo", size: s.size, color: s.id === "lobo" ? 0x2a2522 : s.id === "elefante" ? 0x2b2b2b : 0x8a8f94, category: "animal", group: "bioma" }
           : { id: "polluelo-pinguino", shape: "pinguino", size: s.shape === "pinguino" ? s.size : { x: s.size.z * 0.6, y: s.size.z * 0.9, z: s.size.z * 0.6 }, color: s.id === "albatros" ? 0x8c7f70 : 0x6c6660, category: "animal", group: "bioma" };
       const n = Math.ceil(s.cap * 1.6) + s.young * 3;
-      const a = new AnimalHerd(adult, n);
-      const y = new AnimalHerd(young, Math.ceil(s.cap * 1.2) + 2);
+      const a = new AnimalHerd(adult, n, undefined, { merged: true });
+      const y = new AnimalHerd(young, Math.ceil(s.cap * 1.2) + 2, undefined, { merged: true });
       for (const m of [...a.meshes, ...y.meshes]) this.root.add(m);
       this.herds.set(s.id, { adult: a, young: y, n });
     }
@@ -333,7 +332,7 @@ export class BiomeScene {
       const young = p.stage === "cria";
       const herd = young ? h.young : h.adult;
       const k = young ? u[1] : u[0];
-      if (k >= herd.meshes[0]!.count) continue;
+      if (k >= herd.capacity) continue;
       const scale = young ? (p.species === "papua" ? p.scale : p.scale * 1.4) : p.scale;
       herd.pose(k, p.x, p.y, p.z, p.yaw, t + p.id, p.moving, Math.max(0.05, scale));
       if (young) u[1]++;
@@ -342,8 +341,8 @@ export class BiomeScene {
     }
     for (const [sp, h] of this.herds) {
       const u = used.get(sp) ?? [0, 0];
-      for (let i = u[0]; i < h.adult.meshes[0]!.count; i++) h.adult.pose(i, 0, -999, 0, 0, 0, false, 0.0001);
-      for (let i = u[1]; i < h.young.meshes[0]!.count; i++) h.young.pose(i, 0, -999, 0, 0, 0, false, 0.0001);
+      h.adult.show(u[0]);
+      h.young.show(u[1]);
       h.adult.commit();
       h.young.commit();
     }

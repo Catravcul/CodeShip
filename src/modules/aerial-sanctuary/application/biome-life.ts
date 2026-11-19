@@ -5,7 +5,7 @@ import { STAGE_LABEL, type Stage } from "@modules/fauna/domain/life-cycle";
 import { hash01, wanderAt } from "@modules/fauna/domain/roam";
 import { BIOME, type AnimalSpec, type Habitat } from "../data/bioma";
 import { BIOME_ISLAND, BIOME_ZONES, inside } from "../data/bioma-island";
-import { AGENT_NAMES, BIOME_ETHOGRAMS, BIOME_TRAITS, COURTSHIPS, agentKey, agentTraits } from "../data/bioma-conducta";
+import { AGENT_NAMES, BIOME_ETHOGRAMS, BIOME_TRAITS, COURTSHIPS, RIVALRIES, agentKey, agentTraits } from "../data/bioma-conducta";
 import { advance, createBiome, hungerOf, huntKill, mate, scaleOf, stageOfIndividual, youngOf, BIO_DAYS_PER_GAME_DAY, START_DAY_OF_YEAR, STEP_GAME_DAYS, type BiomeState, type Individual } from "../domain/bioma";
 
 /**
@@ -55,6 +55,16 @@ export function biomeGeo(k: number) {
     /** A home for an animal of `habitat`: a point of its zone on land (seeded), and a radius to roam. */
     home(habitat: Habitat, seed: number): { x: number; z: number; r: number } {
       const r = zone(ZONE_OF[habitat]).r;
+      // Colonies are crowded (gentoo nests ~1 m apart; fur seal harems on one beach): round the zone's point.
+      const crowd = habitat === "colonia" ? 9 : habitat === "playa" ? 22 : 0;
+      if (crowd) {
+        const p = zone(ZONE_OF[habitat]).point;
+        for (let i = 0; i < 30; i++) {
+          const x = p.x + (hash01(seed, i * 2) - 0.5) * 2 * crowd;
+          const z = p.z + (hash01(seed, i * 2 + 1) - 0.5) * 2 * crowd;
+          if (inside(x * 1.06, z * 1.06)) return { ...world(x, z), r: (habitat === "colonia" ? 5 : 8) * k };
+        }
+      }
       for (let i = 0; i < 30; i++) {
         const x = r.x0 + (r.x1 - r.x0) * hash01(seed, i * 2);
         const z = r.z0 + (r.z1 - r.z0) * hash01(seed, i * 2 + 1);
@@ -83,7 +93,7 @@ interface Body {
 
 export class BiomeLife {
   readonly state: BiomeState;
-  private readonly eco = new Ecosystem(agentTraits(), AGENT_NAMES, COURTSHIPS);
+  private readonly eco = new Ecosystem(agentTraits(), AGENT_NAMES, COURTSHIPS, RIVALRIES);
   private readonly bodies = new Map<number, Body>();
   private intents = new Map<number, Intent>();
   private since = DECIDE_S;

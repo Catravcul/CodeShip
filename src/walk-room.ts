@@ -3,6 +3,7 @@ import { clampToFloor, floorPath, nearestStation, roomAisles, type CabinLayout, 
 import { CubeFigure, POSES } from "./adapters/three/interior/figure";
 import { roomHopAt, roomHops, type RoomHop } from "@modules/gravity/domain/room-hops";
 import { StepShow } from "./adapters/three/interior/step-show";
+import { GamePad } from "./ui/game-pad";
 import type { StepAct, StepVisual } from "@modules/chores/domain/step-visual";
 import { textSign } from "./adapters/three/interior/sign";
 import { HatchLeaf } from "./adapters/three/interior/hatch-leaf";
@@ -127,7 +128,7 @@ export abstract class WalkRoom<Id extends string> {
   private passing: { id: Id; then: () => void } | null = null;
 
   constructor(
-    root: HTMLElement,
+    protected readonly root: HTMLElement,
     protected readonly opts: WalkRoomOptions<Id>,
   ) {
     const L = opts.layout;
@@ -183,11 +184,11 @@ export abstract class WalkRoom<Id extends string> {
     this.machine = this.ui.querySelector(".cab-machine")!;
     this.toast = this.ui.querySelector(".cab-toast")!;
     this.menu = new RootMenu(this.ui, "cab-menu", "Menú");
-    this.viewBtn = this.menu.add({ className: "cab-view", icon: ICON.eye, label: `Vista: ${this.thirdPerson ? "3ª" : "1ª"} persona`, key: "V", order: 0 }, () => {
+    this.viewBtn = this.menu.add({ className: "cab-view", icon: ICON.eye, label: `Vista: ${this.thirdPerson ? "3ª" : "1ª"} persona`, key: "V", order: 0, pad: true }, () => {
       this.thirdPerson = !this.thirdPerson;
       this.syncView();
     });
-    this.menu.add({ className: "cab-tasks", icon: ICON.tasks, label: "Tareas", key: "T", window: "tareas", order: 1 }, () => this.openTasks());
+    this.menu.add({ className: "cab-tasks", icon: ICON.tasks, label: "Tareas", key: "T", window: "tareas", order: 1, pad: true }, () => this.openTasks());
     this.machine.addEventListener("click", (e) => {
       const b = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-act]");
       const id = this.near();
@@ -294,6 +295,9 @@ export abstract class WalkRoom<Id extends string> {
     this.ui.classList.remove("hidden");
     document.body.classList.add("in-room", `in-${this.opts.cls}`);
     document.body.classList.toggle("in-zero-g-room", !!this.opts.zeroG);
+    // The Switch pad (ui/game-pad.ts), as in the sanctuaries: zoom, + Tareas, − Áreas, capture Vista, home Ajustes. In
+    // 0 g (the LM in space, posado on an asteroid too: reglas.md §2.6) there is no running nor jumping: A, B, X faded.
+    GamePad.use(this.root, this, { zoom: (dir) => this.walker.holdZoom(dir), plus: { label: "Tareas", open: () => this.openTasks() }, view: () => this.viewBtn.click(), paused: () => this.busy() });
     this.resize();
   }
 
@@ -305,6 +309,7 @@ export abstract class WalkRoom<Id extends string> {
     this.ui.classList.add("hidden");
     this.machine.classList.add("hidden");
     this.machineKey = "";
+    GamePad.release(this);
     document.body.classList.remove("in-room", `in-${this.opts.cls}`, "in-zero-g-room");
   }
 

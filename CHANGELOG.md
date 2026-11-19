@@ -12,6 +12,12 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
   marinos. El censo da el kril en toneladas («≈ 800 000 t») y cabe en 390 px. En la cabaña, la mesa de campo: contar
   los nidos y anillar pollos de albatros como retos reales. [docs/design/bioma-s3.md](docs/design/bioma-s3.md)
 
+- **Mismos mandos en todos los niveles**: el santuario 3 y las naves (cubiertas de la Starship, estación, cabina del LM) usan los
+  mandos de la Switch del santuario 1 (zoom en la cruceta, + Tareas/Misiones, − Áreas, captura Vista, inicio Ajustes; en el 3,
+  correr, saltar, trepar y caer de un borde como en el 1; en 0 g esos salen apagados), el mismo botón naranja «Reto: …» y
+  filtros de categoría en las Áreas del 3. Un solo código: `ui/game-pad.ts`, `ui/interaction.ts`, `application/free-walk.ts`.
+  [docs/design/ux-acciones.md](docs/design/ux-acciones.md)
+
 - **Santuario 3, bioma subantártico**: una isla como Bird Island con 23 especies (tussac, musgo, kelp, kril, peces,
   papúas, albatros, págalos, lobos y elefantes marinos, foca leopardo…) en una cadena alimenticia viva: nacen en su mes
   real tras aparearse, crecen, cazan, pasan hambre y mueren de viejos; censo en la estación con el botón naranja.

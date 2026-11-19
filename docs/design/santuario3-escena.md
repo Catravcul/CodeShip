@@ -19,10 +19,19 @@ arriba del todo) llevada a una escena de Three.js. Casos AER-01 a AER-09 en [cas
   | Plataforma de tripulación (150, −1300) | Una plataforma como la Odyssey (132,9 × 67 m, cubierta a 22 m) con el Falcon 9 y la Crew Dragon, la torre de acceso y un helipuerto | vehículo **real**; lanzar desde el mar, **licencia** | Sea Launch, SpaceX |
   | Isla subantártica (760, 230) | Un bioma vivo como Bird Island (Georgia del Sur): tussac, musgo, liquen y kelp; kril y peces; pingüinos, albatros, págalos y focas en una cadena alimenticia; la estación de investigación con el censo y un helipuerto ([bioma-s3.md](bioma-s3.md)) | especies **reales**; la isla y cuántos caben, **licencia** | `data/bioma.ts`, `data/bioma-island.ts` |
 
-- **Moverse.** Gravedad: se anda con el joystick «Moverse» (o WASD) y se mira con «Mirar», con + y −. En el agua (el mar, la piscina,
+- **Mandos (2026-11-19, los mismos del santuario 1: `ui/game-pad.ts`).** Los de la Switch: cruceta ↑/↓ zoom, B «Correr» (sprint de
+  6,5 m/s; en el agua, crol a 3 m/s), A «Saltar» (50 cm, con su agacharse y amortiguar), X «Trepar» (hasta 2,6 m), «+» Tareas,
+  «−» Áreas, captura Vista e inicio los ajustes generales (con «Pantalla de inicio», que guarda antes). Los movimientos son
+  `application/free-walk.ts`, compartido con el santuario 1. Del borde de un suelo se cae (como en el santuario 1) si debajo hay
+  suelo o agua a 10 m o menos (la plataforma de saltos más alta, World Aquatics); de más alto no se tira (del borde de una isla no
+  se salta). Bajo el agua la vista se vuelve verde azulada y nada con su animación. Cada máquina, puesto y simulador tiene el botón
+  naranja («Reto: …» en los puestos, los simuladores y el lanzamiento; su nombre en la navegación, el ascensor y la esterilla), que
+  muestra su tarjeta. Las Áreas tienen filtros de categoría (Troncos, Pisos, Instalaciones, Exterior: `domain/area-category.ts`).
+  Lectura propia, la más cercana al santuario 1: «+» abre Tareas porque en el 3 la lista de lo que hay que hacer son las tareas de la iniciación.
+- **Moverse.** Gravedad: se anda con el joystick «Moverse» (o WASD) y se mira con «Mirar». En el agua (el mar, la piscina,
   los troncos, ramas y columnas de los árboles) se nada y se sube o baja hacia donde se mira; al salir por una orilla baja se vuelve a andar.
   El mundo son cajas en planta (`domain/walk.ts`): suelos, agua y sólidos. Un paso sube o baja como mucho 0,6 m y en una pared se resbala.
-  No hay caídas: donde no hay suelo ni agua no se pasa.
+  Donde no hay suelo ni agua no se pasa, salvo la caída de un borde de 10 m o menos (arriba).
 - **Ascensor.** El de cada árbol es una cabina estanca dentro del tronco de agua (la magia de `AereoLift`), con su pozo de cristal. Para en
   el andén, en cada nivel, en el techo y, en la lanzadera, en la plataforma. Su tarjeta da un botón por parada; la cabina se ve bajar a por
   ella y subir con ella. Tiempo: `LiftSeconds` de Cold Sanctuary (10 m/s, 1,5 m/s², 4 s de puertas).

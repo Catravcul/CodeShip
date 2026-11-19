@@ -13,6 +13,8 @@ export interface RootItem {
   readonly window?: HudWindow;
   /** Place under the gear, top to bottom: Vista 0, Tareas 1, Áreas 2, Panel 3, the mode's own 10, Trayecto 20. */
   readonly order?: number;
+  /** Its job is also on the Switch pad (Vista, Tareas or Misiones, Áreas: ui/game-pad.ts): while the pad shows, it hides here. */
+  readonly pad?: boolean;
 }
 
 /** A press this long shows the label (phones have no hover), ms. */
@@ -63,6 +65,11 @@ export class RootMenu {
     RootMenu.current = i;
     if (same) return;
     for (const m of RootMenu.menus) m.paintAct();
+  }
+
+  /** The pad came or went (ui/game-pad.ts): each root shows only if something not on the pad is folded into it. */
+  static syncAll(): void {
+    for (const m of RootMenu.menus) m.sync();
   }
 
   /** Adds an icon to every root menu, present and future; it starts hidden. */
@@ -132,6 +139,7 @@ export class RootMenu {
     const b = document.createElement("button");
     b.className = `rm-icon ${item.className}`;
     if (item.window) b.dataset.window = item.window;
+    if (item.pad) b.dataset.pad = "1";
     b.dataset.icon = item.icon;
     b.dataset.order = String(item.order ?? 10);
     this.paint(b, item.icon, item.label, item.key);
@@ -169,9 +177,11 @@ export class RootMenu {
     this.rootBtn.querySelector(".rm-label")!.textContent = label;
   }
 
-  /** The root only shows when something is folded into it (open or not, it keeps its state). */
+  /** The root only shows when something is folded into it (open or not, it keeps its state); the pad's icons do not count. */
   sync(): void {
-    const any = [...this.shoots.children].some((c) => !c.classList.contains("hidden"));
+    // With the Switch pad, what is on it (Vista, Tareas, Áreas…) does not count: the gear stays only for the rest (Trayecto).
+    const padOn = document.body.classList.contains("has-switch-pad");
+    const any = [...this.shoots.children].some((c) => !c.classList.contains("hidden") && !(padOn && (c as HTMLElement).dataset.pad));
     this.rootBtn.classList.toggle("hidden", !any);
   }
 

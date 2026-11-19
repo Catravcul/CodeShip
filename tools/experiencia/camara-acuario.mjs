@@ -94,7 +94,8 @@ export async function camaraAcuario(j) {
   await p.waitForTimeout(800);
   const lm = await sticks(j);
   j.check("en el LM solo hay el joystick «Mirar» (sin gravedad, ninguno la mueve)", lm.length === 1 && /Mirar/i.test(lm[0]), lm.join(" / "));
-  j.check("junto a «Mirar» están «+» y «−» para acercar la cámara", (await p.locator(".vstick .cam-zoom button:visible").count()) === 2);
+  // The zoom is on the Switch pad's D-pad ↑ / ↓ in every level (ui/game-pad.ts, reglas.md §5.7): the stick's own «+» «−» go.
+  j.check("el zoom está en la cruceta del mando de la Switch (↑ Acercar, ↓ Alejar), no junto a «Mirar»", (await p.locator(".switch-pad .ap-up:visible, .switch-pad .ap-down:visible").count()) === 2 && (await p.locator(".vstick .cam-zoom button:visible").count()) === 0);
   const yaw0 = await p.evaluate(() => window.codeship.cabin.yaw);
   await dragScreen(p);
   j.check("en el LM, arrastrar la pantalla no mueve la cámara", (await p.evaluate(() => window.codeship.cabin.yaw)) === yaw0);
@@ -144,9 +145,9 @@ export async function camaraAcuario(j) {
   j.check("Starship: el AQH no se mete en la pared (todo él queda en el pasillo)", behind > -1e-3, `${behind.toFixed(3)} m`);
   await capture(j, "starship-aqh", "El AQH de la Starship");
   // Further, with «−»: the whole unit, both chambers with their medaka.
-  await j.hold(".vstick.sts-look .cam-zoom button[data-z='-1']", 1200);
+  await j.hold(".switch-pad .ap-down", 1200);
   const zoom = await p.evaluate(() => window.codeship.starship.mode.camera.zoom);
-  j.check("«−» abre la cámara (sin mover a Doménica)", zoom < 0.8, zoom.toFixed(2));
+  j.check("↓ de la cruceta (Alejar) abre la cámara (sin mover a Doménica)", zoom < 0.8, zoom.toFixed(2));
   await capture(j, "starship-aqh-entero", "El AQH entero con «−»");
   await bothViews(j, "la cubierta 3 de la Starship", "starship.mode", "starship.mode.camera", ".vstick.sts-look", "starship-3p");
 

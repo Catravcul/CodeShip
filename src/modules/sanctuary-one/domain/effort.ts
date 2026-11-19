@@ -7,6 +7,8 @@ import { GRAVITY_MS2, JUMP_V0_MS, jumpHeight } from "./climb";
  * take-off with the arms thrown up, the knees tucked at the top, and the landing absorbed on bent legs.
  */
 export const SPRINT_MS = 6.5;
+/** Swimming hard (Correr in the water): a hard crawl, about 3 m/s (the figure sanctuary 1 has used since its sprint). */
+export const SWIM_SPRINT_MS = 3.0;
 /** The countermovement before a standing jump, s (≈ 0,2–0,3 s in a CMJ). */
 export const CROUCH_S = 0.22;
 /** A running take-off: the last stride is the countermovement. */

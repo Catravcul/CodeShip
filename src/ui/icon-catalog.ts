@@ -88,11 +88,11 @@ export const ICON_CATALOG: Readonly<Record<keyof typeof ICON, IconEntry>> = {
     meaning: "El panel de una máquina",
     usedIn: [
       { where: "Estación: máquina", file: "src/station-interior.ts" },
-      { where: "Naves: botón naranja del panel de la máquina", file: "src/ui/machine-panel.ts" },
+      { where: "Naves y santuario 3: botón naranja de una máquina o consola sin reto (puerta, pantalla, ascensor)", file: "src/ui/machine-panel.ts" },
     ],
   },
   suit: { drawing: "Un traje espacial", meaning: "Trajes y esclusa (EVA)", usedIn: [{ where: "Estación: esclusa", file: "src/station-interior.ts" }] },
   info: { drawing: "Una i en un círculo", meaning: "Algo que mirar o leer", usedIn: [{ where: "Estación: información", file: "src/station-interior.ts" }] },
-  reto: { drawing: "Llaves de código con una chispa", meaning: "Un reto de código a mano (botón naranja)", usedIn: [{ where: "Santuario 1: botón naranja «Reto»", file: "src/sanctuary-one.ts" }] },
+  reto: { drawing: "Llaves de código con una chispa", meaning: "Un reto de código a mano (botón naranja)", usedIn: [{ where: "Botón naranja «Reto: …» de todos los niveles (santuarios 1 y 3, naves y estación)", file: "src/ui/interaction.ts" }] },
   missions: { drawing: "Una hoja de calendario con un reloj", meaning: "Las misiones de la jornada", usedIn: [{ where: "Santuario 1: Misiones", file: "src/sanctuary-one.ts" }] },
 };

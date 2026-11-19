@@ -30,19 +30,38 @@ export class ActionPad {
   readonly el: HTMLElement;
   private readonly on = new Set<string>();
   private readonly spec = new Map<PadKey, ActionPadButton>();
+  private buttons: readonly ActionPadButton[] = [];
 
-  constructor(root: HTMLElement, buttons: readonly ActionPadButton[], private readonly press: (letter: PadKey, on: boolean) => void) {
-    for (const b of buttons) this.spec.set(b.letter, b);
+  constructor(root: HTMLElement, buttons: readonly ActionPadButton[], private press: (letter: PadKey, on: boolean) => void) {
     this.el = document.createElement("div");
     this.el.className = "switch-pad";
+    root.appendChild(this.el);
+    document.body.classList.add("has-switch-pad");
+    this.configure(buttons, press);
+    window.addEventListener("keydown", (e) => {
+      if (e.repeat || this.el.classList.contains("hidden") || (e.target as HTMLElement).closest("input, textarea")) return;
+      const b = this.buttons.find((q) => q.key && e.code === q.key);
+      if (b) this.tap(b.letter, true);
+    });
+    window.addEventListener("keyup", (e) => {
+      const b = this.buttons.find((q) => q.hold && q.key && e.code === q.key);
+      if (b) this.tap(b.letter, false);
+    });
+  }
+
+  /** Give the buttons their jobs (each level its own: ui/game-pad.ts); a button with none is faded. */
+  configure(buttons: readonly ActionPadButton[], press: (letter: PadKey, on: boolean) => void): void {
+    this.press = press;
+    this.buttons = buttons;
+    this.spec.clear();
+    this.on.clear();
+    for (const b of buttons) this.spec.set(b.letter, b);
     const btn = (k: PadKey) => {
       const b = this.spec.get(k);
       const cls = k.replace("+", "plus").replace("-", "minus").toLowerCase();
       return `<button class="ap-btn ap-${cls}${b ? "" : " free"}" data-letter="${k}" aria-label="${b ? `${b.label}${b.key ? ` (${b.key})` : ""}` : `Botón ${FACE[k]} (sin asignar)`}" aria-pressed="false"><b>${FACE[k]}</b>${b ? `<span>${b.label}</span>` : ""}</button>`;
     };
     this.el.innerHTML = `<div class="sp-side sp-left"><div class="sp-cluster">${LEFT.slice(0, 4).map(btn).join("")}</div>${LEFT.slice(4).map(btn).join("")}</div><div class="sp-side sp-right"><div class="sp-cluster">${RIGHT.slice(0, 4).map(btn).join("")}</div>${RIGHT.slice(4).map(btn).join("")}</div>`;
-    root.appendChild(this.el);
-    document.body.classList.add("has-switch-pad");
     for (const el of this.el.querySelectorAll<HTMLButtonElement>(".ap-btn")) {
       const k = el.dataset.letter as PadKey;
       el.addEventListener("pointerdown", (e) => {
@@ -52,15 +71,12 @@ export class ActionPad {
       });
       for (const ev of ["pointerup", "pointercancel", "pointerleave"]) el.addEventListener(ev, () => this.spec.get(k)?.hold && this.tap(k, false));
     }
-    window.addEventListener("keydown", (e) => {
-      if (e.repeat || (e.target as HTMLElement).closest("input, textarea")) return;
-      const b = buttons.find((q) => q.key && e.code === q.key);
-      if (b) this.tap(b.letter, true);
-    });
-    window.addEventListener("keyup", (e) => {
-      const b = buttons.find((q) => q.hold && q.key && e.code === q.key);
-      if (b) this.tap(b.letter, false);
-    });
+  }
+
+  /** Shown or hidden (a level without the pad now: a console's screen, the flight's controls). */
+  show(on: boolean): void {
+    this.el.classList.toggle("hidden", !on);
+    document.body.classList.toggle("has-switch-pad", on);
   }
 
   private tap(k: PadKey, down: boolean): void {

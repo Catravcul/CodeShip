@@ -106,6 +106,40 @@ Capturas (antes / después), en `docs/screenshots/`:
 
 Salas a pie con cámara de casa de muñecas: arriba a la izquierda dónde está; arriba a la derecha el ojo (3ª/1ª persona, V) y Tareas (T); abajo MOVERSE y MIRAR; la tarjeta de la máquina junto a la que está, abajo (móvil) o abajo a la derecha (escritorio), con su acción principal (Intro). Un toque sobre una máquina la lleva andando. En el puente, bajo el título, la lista corta de avisos y una luz de color en cada consola. Con un reto abierto, todo eso se oculta (como H26).
 
+### Mandos de la Switch, iguales en todos los niveles (2026-11-19, reglas.md §5.7–5.8)
+
+Berón: «un solo sistema para todos los niveles, no copias». Los santuarios 1 y 3 y las salas a pie de las naves (las
+cubiertas de la Starship, la estación, la cabina del LM y el puente) usan el mismo mando (`src/ui/game-pad.ts` sobre
+`src/ui/action-pad.ts`). Cada nivel solo dice qué hace cada botón:
+
+| Botón | Santuario 1 | Santuario 3 | Naves (0 g) |
+| --- | --- | --- | --- |
+| Cruceta ↑ / ↓ | Acercar / Alejar | Acercar / Alejar | Acercar / Alejar |
+| B | Correr (sprint; en el agua, crol) | Correr | apagado |
+| A | Saltar | Saltar | apagado |
+| X | Trepar | Trepar | apagado |
+| Y, L, ZL, R, ZR, ← → | apagados | apagados | apagados |
+| «+» | Misiones | Tareas | Tareas |
+| «−» | Áreas | Áreas | Áreas |
+| Captura | Vista (1.ª/3.ª) | Vista | Vista |
+| Inicio | Ajustes generales (y «Pantalla de inicio») | Ajustes (guarda y vuelve al inicio) | Ajustes (guarda y vuelve al inicio) |
+
+- En ingravidez no se corre, salta ni trepa (§2.6): ella se mueve a saltos con las flechas de la escena; por eso A, B y X
+  salen apagados en vez de inventarles otro uso.
+- Lo que está en el mando (Vista, Tareas o Misiones, Áreas) no brota del engranaje (`data-pad` en `RootItem.pad`); el
+  engranaje solo sale si queda algo más (Trayecto con un viaje, los botones propios de un modo).
+- El mando se oculta en los retos (la hoja y la elección de reto), el pilotaje manual (`has-rcs-pad`, la cabina, el brazo en
+  manual), las ventanas a pantalla completa (Tareas, Misiones, Áreas, ajustes, Navegación), los viajes automáticos y las
+  pantallas de consola (`action-pad.css`). Solo lo muestra la escena en la que ella se mueve (`GamePad.use` al entrar,
+  `GamePad.release` al salir).
+- **Botón naranja** (`src/ui/interaction.ts`): «Reto: <cosa>» con el icono de reto cuando lo que hay cerca da un reto (las
+  cosas del santuario 1, los puestos, simuladores y el lanzamiento del 3, y en las naves las tarjetas con retos `chore:` o
+  `brazo:`); el nombre de la máquina con su icono si es otra cosa (escotilla, pantalla, ascensor). Con varios retos, el
+  santuario 1 abre `RetoPicker`; el 3 y las naves muestran la tarjeta de la máquina, que ya los lista.
+- **Andar en la Tierra** (`src/modules/aerial-sanctuary/application/free-walk.ts`, con pruebas): andar, correr, nadar, saltar,
+  trepar y caer de un borde, igual en los dos santuarios; cada uno pone su paso (1,6 / 1,4 m/s andando) y su caída máxima
+  (sin límite en el 1, 10 m en el 3). Poses y vista bajo el agua: `src/adapters/three/walk-look.ts`.
+
 ### Menú árbol general (2026-11-17, reglas.md §5.8–5.9)
 
 Petición de Berón (18:22): un solo icono raíz, un **engranaje**, arriba a la derecha en todos los modos (cabina del LM, habitáculo, Starship, puente, estación). Al tocarlo se vuelve una **X** («Cerrar menú») y debajo brotan, en este orden: **Vista** (la cámara o 1ª/3ª persona), **Tareas**, **Áreas** ([areas.md](areas.md)), los botones propios del modo (en la cabina: tiempo, nivelar, el interruptor de acople, dejar el puesto…) **Panel** (solo junto a una máquina o un área), los botones propios del modo (en la cabina: tiempo, nivelar, el interruptor de acople, dejar el puesto…) y, solo mientras hay un viaje o una operación a distancia en marcha, **Trayecto**. **Solo se recoge con su X** (Berón, 2026-11-18): usar un icono no lo cierra y puede quedarse abierto todo el tiempo.

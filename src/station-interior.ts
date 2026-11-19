@@ -17,6 +17,7 @@ import { buildStationRooms, crateModel, landerModel, probeModel, type StationRoo
 import { CubeFigure } from "./adapters/three/interior/figure";
 import { Walker } from "./adapters/input/walker";
 import { HopControl } from "./adapters/three/interior/hop-control";
+import { GamePad } from "./ui/game-pad";
 import { buildRails, FloatingBody, motionLabel } from "./adapters/three/interior/zero-g-body";
 import { StepShow, type StepFrame } from "./adapters/three/interior/step-show";
 import { HatchLeaf } from "./adapters/three/interior/hatch-leaf";
@@ -188,7 +189,7 @@ export class StationInteriorMode {
   readonly steps = new StepShow();
 
   constructor(
-    root: HTMLElement,
+    private readonly root: HTMLElement,
     public interior: StationInterior,
     private readonly deps: StationInteriorDeps,
     /**
@@ -229,11 +230,11 @@ export class StationInteriorMode {
     this.toast = this.ui.querySelector(`.${P}-toast`)!;
     // The same tree menu as the lander's cabin and the bridge: Vista and Tareas sprout from the gear (reglas.md §5.8).
     this.menu = new RootMenu(this.ui, `cab-menu ${P}-menu`, "Menú");
-    this.viewBtn = this.menu.add({ className: `${P}-view`, icon: ICON.eye, label: "Vista: 1ª persona", key: "V", order: 0 }, () => {
+    this.viewBtn = this.menu.add({ className: `${P}-view`, icon: ICON.eye, label: "Vista: 1ª persona", key: "V", order: 0, pad: true }, () => {
       this.thirdPerson = !this.thirdPerson;
       this.syncView();
     });
-    this.menu.add({ className: `${P}-tasks`, icon: ICON.tasks, label: "Tareas", key: "T", window: "tareas", order: 1 }, () => this.deps.openTasks());
+    this.menu.add({ className: `${P}-tasks`, icon: ICON.tasks, label: "Tareas", key: "T", window: "tareas", order: 1, pad: true }, () => this.deps.openTasks());
     this.syncView();
     this.card.addEventListener("click", (e) => {
       const b = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-act]");
@@ -624,6 +625,9 @@ export class StationInteriorMode {
     // Its own class too: the station and Starship share the engine, and each look stick shows only with its own
     // interior (the station's, later in the page, sat on top of Starship's and took its drags).
     document.body.classList.add(`in-${this.look.prefix ?? "sti"}-interior`);
+    // The Switch pad (ui/game-pad.ts), as in the sanctuaries: zoom, + Tareas, − Áreas, capture Vista, home Ajustes.
+    // In 0 g there is no running, jumping nor climbing (reglas.md §2.6): she hops with the arrows, so A, B and X are faded.
+    GamePad.use(this.root, this, { zoom: (dir) => this.walker.holdZoom(dir), plus: { label: "Tareas", open: () => this.deps.openTasks() }, view: () => this.viewBtn.click(), paused: () => this.steps.framing });
     this.resize();
   }
 
@@ -634,6 +638,7 @@ export class StationInteriorMode {
     this.walker.enabled = false;
     this.ui.classList.add("hidden");
     this.hop.hide();
+    GamePad.release(this);
     document.body.classList.remove("in-station-interior", `in-${this.look.prefix ?? "sti"}-interior`);
   }
 

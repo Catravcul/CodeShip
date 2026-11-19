@@ -60,6 +60,14 @@ export async function starship(j) {
   const hud = (await j.texts(".sts-ui .sts-hud")).join(" ");
   j.check("el letrero dice la cubierta y que es 0 g", /Cubierta 3/.test(hud) && /0 g/.test(hud), hud.slice(0, 80));
   await capture(j, "cubierta-3", "Cubierta 3: ejercicio y esclusa");
+  // The same Switch controls as the sanctuaries (ui/game-pad.ts, reglas.md §5.7): in 0 g, no running, jumping nor climbing.
+  const pad = await p.evaluate(() => {
+    const vis = !!document.querySelector(".switch-pad:not(.hidden)")?.checkVisibility();
+    const on = [...document.querySelectorAll(".switch-pad .ap-btn:not(.free)")].map((b) => b.getAttribute("aria-label"));
+    return { vis, on };
+  });
+  j.check("en la Starship, los mandos de la Switch de los santuarios: zoom, + Tareas, − Áreas, captura Vista, inicio Ajustes", pad.vis && ["Acercar", "Alejar", "Tareas", "Áreas", "Vista", "Ajustes"].every((l) => pad.on.some((o) => o.startsWith(l))), JSON.stringify(pad));
+  j.check("en 0 g Correr, Saltar y Trepar no están (sus botones, apagados)", !pad.on.some((o) => /^(Correr|Saltar|Trepar)/.test(o)), JSON.stringify(pad.on));
 
   // 2. Cook ISS food at the galley of deck 1: «Ir» from the task list (teleport through the hatches).
   const meal = await p.evaluate(() => window.codeship.tasks().find((t) => t.place.vehicle === "nodriza" && t.place.spot === "anillo" && /^Cocinar/.test(t.title))?.title);

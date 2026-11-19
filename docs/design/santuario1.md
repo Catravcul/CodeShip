@@ -57,7 +57,7 @@ salud.
 | 19 | Icono propio para el reto; **lista de iconos** con dónde se usa cada uno | Hecho: `ui/icon-catalog.ts` (la prueba lo compara con el código: un icono con `usedIn: []` está libre) |
 | 20 | Filtros de Áreas como Codeship y por edificio con sus nombres | Hecho (ver #6) |
 | 21 | Correr y saltar muy notorios, a máximo esfuerzo | Hecho: `domain/effort.ts` (sprint 6,5 m/s; salto de 50 cm con agacharse, impulso, recoger, bajar y amortiguar), `CubeFigure.run/jump`; en 3.ª persona ella gira hacia donde corre; en 1.ª la cabeza se mueve con la zancada y la vista se abre |
-| 22 | Los botones de configuración general, al mando | Hecho: + Misiones, − Áreas, captura Vista (1.ª/3.ª), inicio Ajustes (ver #26); el botón naranja sigue arriba |
+| 22 | Los botones de configuración general, al mando | Hecho: + Misiones, − Áreas, captura Vista (1.ª/3.ª), inicio los ajustes generales (con «Pantalla de inicio», ver #26); el botón naranja sigue arriba. Desde el 2026-11-19 son los mismos en el santuario 3 y en las naves (`ui/game-pad.ts`) |
 | 23 | Cada máquina con su animación; lista de animaciones por categoría, con los retos y pasos que las lanzan | Hecho: `data/animaciones.ts` (movimientos, gestos, máquina → movimiento, procedimiento → animación de cada paso) y `application/animations.ts` (`stepAnimation`, `animationTable`, con prueba contra todos los retos); `step-show.ts` `motion()` dibuja cada uno |
 | 24 | Troncos de agua conectados al mar; animales marinos y submarino suben; entrar a un piso desde cualquier punto; pisos sin barandilla | Hecho: los troncos bajan a −12 m y son agua abierta (`Water.open`: ningún suelo dentro); se sale a un piso desde 2,4 m por encima; focas y pingüinos suben y bajan por cada tronco; sin barandillas, caída por el borde (`dropTo`) |
 | 25 | Nado y vista bajo el agua | Hecho: `CubeFigure.swim`, máscara, niebla azul bajo el agua (no blanca) |
@@ -102,6 +102,7 @@ catálogo (tamaño, piezas, color) cambia todas sus copias; un piso es una lista
 | Población | `domain/population.ts` | `PopulationPlan` portado |
 | Dibujo | `src/adapters/three/s1-models.ts` | Un `InstancedMesh` por modelo (y color de regla); los animales que merodean se mueven por instancia |
 | Escena | `src/sanctuary-one.ts` | Andar/nadar, vista 1ª/3ª, reloj, personal, ventana de Áreas |
+| Compartido con el santuario 3 y las naves | `ui/game-pad.ts`, `ui/interaction.ts`, `application/free-walk.ts` (en `aerial-sanctuary`), `adapters/three/walk-look.ts`, `adapters/three/interior/reto-focus.ts` | Mandos de la Switch, botón naranja y elección de reto, andar/correr/saltar/trepar/caer/nadar, poses y vista bajo el agua, el foco del reto (2026-11-19: un solo sistema para todos los niveles) |
 
 ## Estado (2026-11-18)
 

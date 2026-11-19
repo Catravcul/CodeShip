@@ -16,6 +16,7 @@ import { lookOf } from "@modules/sanctuary-one/data/looks";
 /** The cube figure's own height (feet to the top of the head), to scale each person to theirs. */
 const FIGURE_HEIGHT_M = 1.78;
 import { RootMenu } from "./ui/root-menu";
+import { SettingsPanel } from "./ui/settings-panel";
 import { ICON } from "./ui/icons";
 import { AreasWindow } from "./ui/areas-window";
 import { settings } from "./ui/settings-store";
@@ -670,6 +671,10 @@ const climbed: Floor[] = [];
 /** Time since Saltar was pressed (−1: not jumping), and whether she was running then (a running take-off). */
 let jumpT = -1;
 let jumpRun = false;
+/** The general settings (ui/settings-panel.ts), with a way back to the start screen. */
+const settingsPanel = new SettingsPanel(root);
+settingsPanel.addRow({ id: "s1-inicio", label: "Pantalla de inicio", help: "Vuelve a la pantalla de inicio para elegir otro santuario o partida (el santuario 1 empieza de nuevo al volver)", value: () => "Ir", next: () => location.reload() });
+settingsPanel.onClose = () => avatar.pose("stand");
 const pad = new ActionPad(root, [
   { letter: "X", label: "Trepar", key: "KeyC" },
   { letter: "A", label: "Saltar", key: "Space" },
@@ -678,11 +683,12 @@ const pad = new ActionPad(root, [
   { letter: "up", label: "Acercar", hold: true, key: "Equal" },
   { letter: "down", label: "Alejar", hold: true, key: "Minus" },
   // The general buttons move onto the pad (Berón 2026-11-19: «los botones de config general pueden pasar a los nuevos
-  // mandos»): + the day's missions, − the map of Áreas, capture the view (1.ª/3.ª persona), home the gear menu.
+  // mandos»): + the day's missions, − the map of Áreas, capture the view (1.ª/3.ª persona), home the general settings
+  // (Berón: «no debe abrir el menú árbol antiguo… enviar a la pantalla de inicio o abrir la modal de ajustes generales»).
   { letter: "+", label: "Misiones" },
   { letter: "-", label: "Áreas" },
   { letter: "capture", label: "Vista" },
-  { letter: "home", label: "Menú" },
+  { letter: "home", label: "Ajustes" },
 ], (letter, on) => {
   if (letter === "up" || letter === "down") return walker.holdZoom(on ? (letter === "up" ? 1 : -1) : 0);
   if (challenge) return;
@@ -690,9 +696,9 @@ const pad = new ActionPad(root, [
   if (letter === "-") return areasWindow.open();
   if (letter === "capture") return toggleView();
   if (letter === "home") {
-    // The gear menu (Vista, Misiones, Áreas and whatever comes) shows again until home is pressed once more.
-    const shown = menu.el.classList.toggle("pad-shown");
-    menu.toggle(shown);
+    // She sits in lotus while the settings are open (habitaculo.md §Ajustes), as on the ships' mats.
+    if (settingsPanel.visible) return settingsPanel.close();
+    settingsPanel.open("Santuario 1, botón de inicio del mando");
     return;
   }
   if (letter === "A" && body.motion === "gravedad" && jumpT < 0) {
@@ -730,7 +736,7 @@ function frameClimb(dt: number): boolean {
 let climbCheck = 0;
 
 function frameFree(dt: number): void {
-  if (challenge) return;
+  if (challenge || settingsPanel.visible) return;
   if (frameClimb(dt)) return;
   if (jumpT >= 0) {
     jumpT += dt;
@@ -793,7 +799,7 @@ function updateCamera(dt: number): void {
   }
   myCarpet.visible = flying;
   avatar.wearMask(body.motion === "agua");
-  if (flying) avatar.pose("lotus");
+  if (flying || settingsPanel.visible) avatar.pose("lotus");
   else if (body.motion === "agua") avatar.pose("glide");
   else if (jump) avatar.jump(jump.stage);
   else if (sprinting) avatar.run(stride);

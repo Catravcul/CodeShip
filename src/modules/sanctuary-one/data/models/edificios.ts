@@ -1,4 +1,4 @@
-import { C, pz, type ModelDef, type Part } from "./kit";
+import { C, pz, rep, type ModelDef, type Part } from "./kit";
 import { TREE } from "@modules/aerial-sanctuary/data/facts";
 
 /**
@@ -53,6 +53,19 @@ function birch(): Part[] {
 }
 
 export const EDIFICIO_MODELS: readonly ModelDef[] = [
+  // The photobioreactor facade (Cold Sanctuary Fotobio.cs, FotobioSpec): x along the face, +z away from the trunk.
+  pz("fotobio-modulo", "maquina", "fotobiorreactores", "Módulo de fotobiorreactor: arpa de 28 tubos de vidrio (Ø 7 cm) con espirulina, 3 × 4 m", 0x2e8a4f, [
+    C(0, 0.15, 0, 3.2, 0.3, 0.16, 0x9ea6ad), C(0, 4.45, 0, 3.2, 0.3, 0.16, 0x9ea6ad),
+    ...rep(28, (i) => [C(0, 0.3 + (i + 0.5) * 0.14, 0, 3, 0.07, 0.07, 0x2e8a4f)]),
+    ...[-1, 1].flatMap((sx) => [C(sx * 1.56, 2.3, 0, 0.08, 4.6, 0.1, 0x9ea6ad), C(sx * 1.56, 0.5, -0.4, 0.1, 0.1, 0.8, 0x9ea6ad), C(sx * 1.56, 4.1, -0.4, 0.1, 0.1, 0.8, 0x9ea6ad)]),
+    ...rep(4, (k) => [C(0, 0.8 + k, -0.22, 3, 0.05, 0.04, 0xf2f2e6)]),
+  ], "real", "Cold Sanctuary, Assets/Editor/SampleSceneBuilder.Fotobio.cs y Assets/Scripts/World/FotobioFacade.cs (FotobioSpec: arpas tipo MELiSSA de Arthrospira, LED detrás)"),
+  pz("fotobio-columna", "maquina", "fotobiorreactores", "Bomba, tubería de subida y desgasificador de una columna de fotobiorreactores", 0x5a6470, [
+    C(0, 0.3, 0, 0.9, 0.6, 0.5), C(1.7, 23.6, 0, 0.1, 46, 0.1, 0x9ea6ad), C(1.0, 47.6, 0, 0.35, 1.2, 0.35, 0xc7ccd6),
+  ], "real", "Cold Sanctuary, Assets/Editor/SampleSceneBuilder.Fotobio.cs (bomba abajo, desgasificador arriba)"),
+  pz("fotobio-cuadro", "maquina", "fotobiorreactores", "Cuadro de control de los fotobiorreactores (bombas, LED, pH y temperatura)", 0x5a6470, [
+    C(0, 0.4, 0, 0.1, 0.8, 0.1), C(0, 1.6, 0, 1.2, 1.6, 0.4), C(-0.3, 1.9, 0.21, 0.4, 0.25, 0.02, 0x66bb6a), C(0.3, 1.5, 0.21, 0.3, 0.6, 0.02, 0xf2f2f2),
+  ], "real", "Cold Sanctuary, Assets/Editor/SampleSceneBuilder.Fotobio.cs Cuadro_fotobio"),
   pz("marco-puerta-tronco", "edificio", "puertas", "Marco de puerta del tronco (7 × 7 m, el campo que retiene el agua)", AMBER, frame, "ficcion", CS("TreeSpec door 7 × 7 m (Helix.cs); el marco, nuestro para que se vean")),
   pz("perchero-mascaras", "mueble", "mascaras", "Perchero de máscaras de respirar (6, con su botella)", 0x5a6670, rack, "ficcion", CS("BreathingMask.cs / MaskStation Kind.Rack: junto a cada puerta del tronco")),
   pz("estacion-mascaras", "mueble", "mascaras", "Estación de máscaras dentro del agua", 0x5a6670, rack, "ficcion", CS("BreathingMask.cs / MaskStation Kind.Station: dentro del agua, junto a cada puerta")),

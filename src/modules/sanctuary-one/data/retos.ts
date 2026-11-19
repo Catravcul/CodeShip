@@ -379,6 +379,13 @@ export const PLANTAS = {
     "rellena el depósito con agua y nutriente",
     "revisa que todas las bandejas reciben riego",
   ], ["corrige el pH con vinagre del almacén a ojo"], "Resh, Hydroponic Food Production, 7.ª ed. (2012)"),
+  fotobio: p("fotobio-cuidar", "Cuidado diario de los fotobiorreactores", "cosechar", "salud", "El cuadro avisa: la espirulina está densa", [
+    "mira el pH del cultivo en el cuadro: entre 9,5 y {10,5|7|13}",
+    "mira la temperatura: de día unos {33|15|50} °C",
+    "cosecha por el filtro hasta dejarlo en {0,7|0,1|5} g/L de biomasa",
+    "repone el medio con bicarbonato y nutrientes",
+    "comprueba que el desgasificador saca el oxígeno y que las LED encienden",
+  ], ["cosecha hasta dejar el tubo casi vacío", "abre un tubo para mirar el cultivo"], "Cold Sanctuary, docs/fotobiorreactores.md (FotobioSpec); Zarrouk (1966), medio de Arthrospira; ESA MELiSSA, compartimento IVa"),
   maleza: p("huerto-maleza", "Quitar plantas no nativas", "trabajar", "salud", "Han salido plantas no nativas en el bancal", [
     "identifica la planta con la guía antes de arrancarla",
     "arráncala con la raíz entera, antes de que eche semilla",

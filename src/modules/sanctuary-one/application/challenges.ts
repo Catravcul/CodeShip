@@ -130,6 +130,10 @@ export function retosFor(m: ModelDef, seed = 0): Reto[] {
     }
     case "huerto":
       return of(PLANTAS.maleza);
+    case "huerto-mundo":
+      return of(PLANTAS.huerto);
+    case "fotobiorreactores":
+      return of(PLANTAS.fotobio);
     case "hospital":
     case "hospital-camas":
     case "hospital-uci":

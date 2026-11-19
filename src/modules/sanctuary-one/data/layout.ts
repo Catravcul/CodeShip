@@ -193,6 +193,20 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
     place(b, "estacion-mascaras", o.x + st.x, y, o.z + st.z, turn + Math.PI, trunk, { edificio: t.id }, 1, undefined, false);
   };
   doorKit(0, door.x, 0, trunk);
+  // The photobioreactor facade (Fotobio.cs BuildFotobio, docs/fotobiorreactores.md): on the Árbol de los Campos and on
+  // Ciencias, spirulina harps of 28 glass tubes in 3 × 4 m modules, 10 a column from 10 to 56 m, 1,4 m off the acrylic in
+  // the corner bay of each face; a pump below, a degasser above and the riser; the control panel at the foot.
+  if (t.building === "Árbol de los Campos" || t.building === "Ciencias") {
+    const bay = -OH + OH / 6;
+    for (let sd = 0; sd < 4; sd++) {
+      const turn = (S(sd) * Math.PI) / 2;
+      const p = side(S(sd), bay, OH + 1.4);
+      for (let j = 0; j < 10; j++) place(b, "fotobio-modulo", o.x + p.x, 10 + j * 4.6, o.z + p.z, turn, trunk, { edificio: t.id }, 1, j === 0 ? "Fotobiorreactores de espirulina" : undefined, false);
+      place(b, "fotobio-columna", o.x + p.x, 9.1, o.z + p.z, turn, trunk, { edificio: t.id }, 1, undefined, false);
+    }
+    const c = side(S(0), -5.5, OH + 0.2);
+    place(b, "fotobio-cuadro", o.x + c.x, 0, o.z + c.z, (S(0) * Math.PI) / 2, trunk, { edificio: t.id }, 1, "Cuadro de los fotobiorreactores", false);
+  }
   const gOut = side(S(0), door.x, OH + 3);
   const gIn = side(S(0), door.x, WH - 1.5);
   const shape: TowerShape = { id: t.id, building: t.building, x: o.x, z: o.z, rootHeight, floors: [], tips: [], rings: [], ground: { out: { x: o.x + gOut.x, z: o.z + gOut.z }, inner: { x: o.x + gIn.x, z: o.z + gIn.z } } };

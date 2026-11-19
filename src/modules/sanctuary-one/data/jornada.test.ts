@@ -19,18 +19,19 @@ describe("la jornada del personal", () => {
     expect(places.get("Irosene")!.dormir.pose).toBe("supine");
   });
 
-  it("el camino de casa al trabajo pasa por las puertas y los troncos, sin teletransportes", () => {
+  it("el camino de casa al trabajo va en alfombra voladora entre pisos, sin teletransportes", () => {
     for (const [, p] of places) {
       const w = wayBetween(L, p.dormir, p.tareas);
       expect(w[0]).toMatchObject({ x: p.dormir.x, z: p.dormir.z });
       expect(w[w.length - 1]).toMatchObject({ x: p.tareas.x, z: p.tareas.z });
-      // Every stretch in the open air is short (ground is cut in 6 m steps); only the trunks' water is long (swum).
+      // Every stretch on foot is short (ground is cut in 6 m steps); only the carpets' flights and the sea are long.
       for (let i = 1; i < w.length; i++) {
         const a = w[i - 1]!;
         const b = w[i]!;
         const d = Math.hypot(b.x - a.x, b.z - a.z);
-        if (!b.swim) expect(d).toBeLessThan(60);
+        if (!b.swim && !b.fly) expect(d).toBeLessThan(60);
       }
+      if (p.dormir.area !== p.tareas.area) expect(w.some((q) => q.fly)).toBe(true);
     }
   });
 });

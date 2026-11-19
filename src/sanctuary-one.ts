@@ -4,7 +4,7 @@ import { moveJoystick } from "@core/realism";
 import { buildS1Layout } from "@modules/sanctuary-one/data/layout";
 import { personRule } from "@modules/sanctuary-one/data/overrides";
 import { placeAt, step, type Body } from "@modules/aerial-sanctuary/domain/walk";
-import { S1_DAY_REAL_S, S1_START_HOUR, activityAt, along, route, wanderAt, type Activity, type Route } from "@modules/sanctuary-one/domain/motion";
+import { S1_DAY_REAL_S, S1_START_HOUR, activityAt, along, hash01, route, wanderAt, type Activity, type Route } from "@modules/sanctuary-one/domain/motion";
 import { staffPlaces, wayBetween, type Place } from "@modules/sanctuary-one/data/jornada";
 import { WalkIndex } from "@modules/sanctuary-one/data/walk-index";
 import { buildS1Scene } from "./adapters/three/s1-models";
@@ -86,6 +86,32 @@ interface Person {
   way?: Route;
   s: number;
   stride: number;
+  /** Seconds before setting off for the new block (each leaves at a different moment, not all at once). */
+  wait: number;
+  readonly carpet: THREE.Object3D;
+}
+
+/**
+ * A flying carpet (Cold Sanctuary's CarpetPad network, «se va de un piso a otro y de un edificio a otro en
+ * alfombra»): a woven rug of 1 × 1,8 m with its fringes, under whoever flies on it.
+ */
+const RUGS = [0x9a3b3b, 0x3b5f9a, 0x7a5a2a, 0x2f7a5a, 0x6a3b8a, 0xa0663a];
+function carpetMesh(color: number): THREE.Object3D {
+  const g = new THREE.Group();
+  const rug = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.04, 1.8), new THREE.MeshLambertMaterial({ color }));
+  g.add(rug);
+  const border = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.045, 1.6), new THREE.MeshLambertMaterial({ color: 0xe8c66a }));
+  border.position.y = 0.002;
+  g.add(border);
+  const inner = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.05, 1.5), new THREE.MeshLambertMaterial({ color }));
+  g.add(inner);
+  for (const z of [-0.93, 0.93]) {
+    const f = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.02, 0.08), new THREE.MeshLambertMaterial({ color: 0xf2ead8 }));
+    f.position.z = z;
+    g.add(f);
+  }
+  g.visible = false;
+  return g;
 }
 const people: Person[] = [];
 for (const i of L.instances) {
@@ -104,7 +130,9 @@ for (const i of L.instances) {
   s.scale.multiplyScalar(0.5);
   scene.add(s);
   const act = activityAt(hour);
-  const p: Person = { f, g, sign: s, plan, act, at: plan[act], s: 0, stride: 0 };
+  const carpet = carpetMesh(RUGS[people.length % RUGS.length]!);
+  g.add(carpet);
+  const p: Person = { f, g, sign: s, plan, act, at: plan[act], s: 0, stride: 0, wait: 0, carpet };
   settle(p);
   people.push(p);
 }
@@ -119,11 +147,20 @@ function settle(p: Person): void {
 
 const PEOPLE_WALK_MS = 1.4;
 const PEOPLE_SWIM_MS = 1.8;
+/** A carpet's cruise, m/s (ours: a calm glide, about a cyclist's speed). */
+const CARPET_MS = 6;
+/** Up to this many real seconds before a person sets off (about 25 minutes of the sanctuary's day). */
+const LEAVE_SPREAD_S = 60;
 function movePeople(dt: number): void {
   const act = activityAt(hour);
-  for (const p of people) {
+  people.forEach((p, i) => {
     if (act !== p.act) {
       p.act = act;
+      // Each one finishes what they were doing and leaves at their own moment.
+      p.wait = hash01(i + 1, Math.floor(hour * 10) + 7) * LEAVE_SPREAD_S;
+      p.way = undefined;
+    }
+    if (p.wait > 0 && (p.wait -= dt) <= 0) {
       const to = p.plan[act];
       const pos = p.g.position;
       p.way = route(wayBetween(L, { ...p.at, x: pos.x, y: pos.y, z: pos.z }, to));
@@ -132,11 +169,13 @@ function movePeople(dt: number): void {
     }
     if (!p.way) {
       p.f.update(dt);
-      continue;
+      return;
     }
     const here = along(p.way, p.s);
-    p.s += (here.swim ? PEOPLE_SWIM_MS : PEOPLE_WALK_MS) * dt;
+    p.s += (here.fly ? CARPET_MS : here.swim ? PEOPLE_SWIM_MS : PEOPLE_WALK_MS) * dt;
     const q = along(p.way, p.s);
+    p.carpet.visible = q.fly && !q.done;
+    p.f.wearMask(q.swim && !q.done);
     if (q.done) {
       p.way = undefined;
       settle(p);
@@ -144,11 +183,12 @@ function movePeople(dt: number): void {
       p.g.position.set(q.x, q.y, q.z);
       if (!Number.isNaN(q.yaw)) p.g.rotation.y = q.yaw;
       p.sign?.position.set(q.x, q.y + 2.1, q.z);
-      if (q.swim) p.f.pose("glide");
+      if (q.fly) p.f.pose("lotus");
+      else if (q.swim) p.f.pose("glide");
       else p.f.walk((p.stride += PEOPLE_WALK_MS * dt * 3), 1);
     }
     p.f.update(dt);
-  }
+  });
 }
 
 // The animals wander in their territories (domain/motion.ts wanderAt).
@@ -176,6 +216,10 @@ avatar.root.scale.setScalar(0.92);
 const rig = new THREE.Group();
 rig.add(avatar.root);
 scene.add(rig);
+const myCarpet = carpetMesh(0x2f7f8f);
+rig.add(myCarpet);
+/** Flying on a carpet now («Ir» between floors and buildings). */
+let flying = false;
 
 const EYE_M = 1.45;
 const WALK_MS = 1.6;
@@ -273,23 +317,26 @@ function frameAuto(dt: number): boolean {
   if (!auto) return false;
   const mv = walker.move();
   if (mv.forward || mv.right) {
+    if (flying) return true;
     auto = undefined;
     missionGoing = undefined;
     body = placeAt(near(body.x, body.z), body.x, body.y + 0.3, body.z) ?? body;
     return false;
   }
   const here = along(auto.way, auto.s);
-  auto.s += (here.swim ? SWIM_MS : WALK_MS) * dt;
+  auto.s += (here.fly ? CARPET_MS : here.swim ? SWIM_MS : WALK_MS) * dt;
   const q = along(auto.way, auto.s);
   if (q.done) {
     body = placeAt(near(auto.to.x, auto.to.z), auto.to.x, auto.to.y + 0.01, auto.to.z) ?? body;
     yaw = auto.to.yaw;
     auto = undefined;
+    flying = false;
     arrived();
     return true;
   }
-  stride += Math.hypot(q.x - body.x, q.z - body.z) * 3;
+  if (!q.fly) stride += Math.hypot(q.x - body.x, q.z - body.z) * 3;
   if (!Number.isNaN(q.yaw)) yaw = q.yaw + Math.PI;
+  flying = q.fly;
   body = { x: q.x, y: q.y, z: q.z, motion: q.swim ? "agua" : "gravedad", area: "" };
   return true;
 }
@@ -577,7 +624,10 @@ function updateCamera(dt: number): void {
     rig.visible = false;
   }
   const moving = !!auto || walker.move().forward !== 0 || walker.move().right !== 0;
-  if (body.motion === "agua") avatar.pose("glide");
+  myCarpet.visible = flying;
+  avatar.wearMask(body.motion === "agua");
+  if (flying) avatar.pose("lotus");
+  else if (body.motion === "agua") avatar.pose("glide");
   else avatar.walk(stride, moving ? (pad.isOn("B") ? 1.4 : 1) : 0);
   avatar.update(dt);
 }

@@ -91,6 +91,15 @@ export function landscape(): LandItem[] {
       }
     }
   });
+  // The island's trees (Cold Sanctuary's BuildIceFlora): six mountain birches in a ring of 16 m round the grove.
+  const GROVE = { x: -125, z: -165 };
+  for (let k = 0, n = 0; k < 6; k++) {
+    const a = (k * Math.PI) / 3;
+    const x = GROVE.x + Math.sin(a) * 16;
+    const z = GROVE.z + Math.cos(a) * 16;
+    if (!LOBES.some((l) => isLand(l) && Math.hypot(x - l.x, z - l.z) < l.r * 0.92)) continue;
+    out.push({ model: "abedul-isla", x, z, rot: k * 0.7, ...(n++ === 0 ? { name: "Abedules de la isla" } : {}) });
+  }
   out.push({ model: "iceberg-varado", x: -500, z: -500, rot: 0, name: "Iceberg varado", sea: true });
   out.push({ model: "iceberg-deriva", x: 540, z: 200, rot: 0, name: "Iceberg a la deriva", sea: true });
   return out;

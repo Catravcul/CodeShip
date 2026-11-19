@@ -48,7 +48,7 @@ describe("santuario 1: escena", () => {
     const gym = L.areas.find((a) => a.label === "Gimnasio")!;
     const here = L.instances.filter((i) => i.area === gym.id);
     expect(here.filter((i) => model(i.model).group === "gimnasio-placas")).toHaveLength(30);
-    expect(here.length).toBe(FLOOR_PLANS.get("gimnasio-0")!.items.length);
+    expect(here.filter((i) => model(i.model).group !== "puertas" && model(i.model).group !== "mascaras").length).toBe(FLOOR_PLANS.get("gimnasio-0")!.items.length);
   });
   it("todo el personal está y cada uno es una persona", () => {
     const people = L.instances.filter((i) => model(i.model).category === "persona");

@@ -30,7 +30,12 @@ import { missionState } from "@modules/sanctuary-one/domain/workday-missions";
 import { applyReward, retosFor, type Reto } from "@modules/sanctuary-one/application/challenges";
 import { nearest, type Reachable } from "@modules/sanctuary-one/domain/reach";
 import { CrewMember } from "@modules/crew/domain/crew-member";
-import { ChoreRun } from "@modules/chores/domain/chore";
+import { ChoreRun, type Chore } from "@modules/chores/domain/chore";
+import { choreVisuals } from "@modules/chores/application/step-visuals";
+import type { StepAct } from "@modules/chores/domain/step-visual";
+import { RECIPES } from "@modules/kitchen/data/recipes";
+import { PROCESSES } from "@modules/kitchen/data/processes";
+import { StepShow, gesture, STEP_SECONDS } from "./adapters/three/interior/step-show";
 import type { Answer } from "@modules/mind-duel/domain/exercise";
 import { DuelView, type SessionText } from "./ui/duel-view";
 import { RetoPicker } from "./ui/reto-picker";
@@ -144,6 +149,18 @@ for (const i of L.instances) {
   people.push(p);
 }
 
+/** What each solved step of a challenge looks like (the ships' «Pasos visibles», chores/application/step-visuals.ts). */
+const STEP_VISUALS = choreVisuals({ recipes: RECIPES, processes: PROCESSES });
+const actsOf = (c: Chore): StepAct[] => c.exercises.flatMap((_, i) => STEP_VISUALS.acts(c, i) ?? []);
+/** The steps a person is seen doing at a thing (its first challenge's), cached by model. */
+const workActs = new Map<string, StepAct[]>();
+function workOf(modelId: string | undefined): StepAct[] {
+  if (!modelId) return [];
+  let a = workActs.get(modelId);
+  if (!a) workActs.set(modelId, (a = retosFor(model(modelId), 0).slice(0, 1).flatMap((r) => actsOf(r.chore))));
+  return a;
+}
+
 /** A person stands (sits, lies) at their place. */
 function settle(p: Person): void {
   p.g.position.set(p.at.x, p.at.y, p.at.z);
@@ -158,9 +175,15 @@ const PEOPLE_SWIM_MS = 1.8;
 const CARPET_MS = 6;
 /** Up to this many real seconds before a person sets off (about 25 minutes of the sanctuary's day). */
 const LEAVE_SPREAD_S = 60;
+/** The clock of the people's work gestures (s). */
+let workClock = 0;
 function movePeople(dt: number): void {
+  workClock += dt;
   const act = activityAt(hour);
   people.forEach((p, i) => {
+    const inShot = !!stageStand && steps.framing && Math.hypot(p.g.position.x - stageStand.x, p.g.position.z - stageStand.z) < 1.3 && Math.abs(p.g.position.y - stageStand.y) < 1.5;
+    p.g.visible = !inShot;
+    if (p.sign) p.sign.visible = !inShot;
     if (act !== p.act) {
       p.act = act;
       // Each one finishes what they were doing and leaves at their own moment.
@@ -175,6 +198,15 @@ function movePeople(dt: number): void {
       p.s = 0;
     }
     if (!p.way) {
+      // At their place, they do its work: its challenge's steps one after another, each gesture its 2 s and a breath.
+      const acts = p.at.pose === "stand" && p.wait <= 0 ? workOf(p.at.work) : [];
+      if (acts.length && Math.hypot(p.g.position.x - camera.position.x, p.g.position.y - camera.position.y, p.g.position.z - camera.position.z) < 60) {
+        const cyc = STEP_SECONDS + 0.8;
+        const k = (workClock + i * 1.37) / cyc;
+        const v = acts[Math.floor(k) % acts.length]!;
+        const t = Math.min(1, (k % 1) * (cyc / STEP_SECONDS));
+        p.f.poseAngles(gesture(v, t, workClock, false));
+      }
       p.f.update(dt);
       return;
     }
@@ -431,7 +463,9 @@ function doMission(ms: Mission): void {
 function arrived(): void {
   const ms = missionGoing;
   missionGoing = undefined;
-  if (ms) openReto(REWARD_OF(ms), (ok) => ok && doneToday.add(ms.id));
+  if (!ms) return;
+  const it = missionAt.get(ms.id)!.it;
+  openReto(REWARD_OF(ms), (ok) => ok && doneToday.add(ms.id), { x: it.x, y: it.y, z: it.z, sy: model(it.model).size.y });
 }
 const REWARD_TEXT = { comida: "no pasar hambre", compania: "compañía", fuerza: "fuerza", salud: "salud" } as const;
 const missionsWindow = new AreasWindow(root, {
@@ -527,18 +561,77 @@ const REWARD_LABEL = { comida: "no pasar hambre", compania: "compañía", fuerza
 /** The thing's challenges: straight to the sheet if it offers one, else the choice. */
 function offerRetos(t: Thing): void {
   const rs = retosFor(model(t.modelId), t.i);
-  if (rs.length === 1) return openReto(rs[0]!);
-  picker.open(shortLabel(t.label), rs.map((r) => ({ title: r.chore.title, detail: `${r.chore.exercises.length} pasos · da ${REWARD_LABEL[r.reward]}${r.reality === "ficción" ? " · magia del santuario" : ""}` })), (k) => openReto(rs[k]!));
+  if (rs.length === 1) return openReto(rs[0]!, undefined, t);
+  picker.open(shortLabel(t.label), rs.map((r) => ({ title: r.chore.title, detail: `${r.chore.exercises.length} pasos · da ${REWARD_LABEL[r.reward]}${r.reality === "ficción" ? " · magia del santuario" : ""}` })), (k) => openReto(rs[k]!, undefined, t));
+}
+
+/**
+ * The challenge's stage (Berón 2026-11-19: «los retos deberían enfocar para ver la animación»): she stands at the
+ * thing facing it, the camera comes in past her right shoulder so she and the thing are in the strip above the
+ * sheet, and each solved step is acted out (StepShow, the same as in the ships).
+ */
+const steps = new StepShow();
+/** Where she stands for the open challenge: whoever works on that very spot steps out of the shot. */
+let stageStand: THREE.Vector3 | undefined;
+scene.add(steps.root);
+/**
+ * While the sheet is open the stage is drawn where the sheet leaves room: above it in portrait (as the ships do),
+ * left of it in landscape (the sheet takes the right side), so she and the thing are never under it.
+ */
+function sheetLens(on: boolean): void {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const fov = camera.fov;
+  camera.clearViewOffset();
+  if (on && h > w) {
+    camera.aspect = w / (1.6 * h);
+    camera.setViewOffset(w, 1.6 * h, 0, 0.6 * h, w, h);
+  } else if (on) {
+    const W = 1.46 * w;
+    camera.aspect = W / h;
+    camera.setViewOffset(W, h, W - w, 0, w, h);
+  } else camera.aspect = w / h;
+  camera.fov = fov;
+  camera.updateProjectionMatrix();
+}
+function stageAt(at: { x: number; y: number; z: number; sy: number }): void {
+  const target = new THREE.Vector3(at.x, at.y + Math.min(1.1, Math.max(0.4, at.sy * 0.7)), at.z);
+  const here = new THREE.Vector3(body.x, body.y, body.z);
+  const d = new THREE.Vector3(at.x - body.x, 0, at.z - body.z);
+  if (d.lengthSq() < 1e-4) d.set(-Math.sin(yaw), 0, -Math.cos(yaw));
+  const dist = d.length();
+  d.normalize();
+  // Close enough: where she is; else 0,9 m in front of it, on its floor.
+  const stand = dist < 2.5 ? here : new THREE.Vector3(at.x, at.y, at.z).addScaledVector(d, -0.9);
+  const right = new THREE.Vector3(-d.z, 0, d.x);
+  const look = stand.clone().addScaledVector(d, 0.3).setY(stand.y + 0.95);
+  const cam = look.clone().addScaledVector(d, -2.0).addScaledVector(right, 1.2).setY(stand.y + 1.85);
+  steps.begin({ stand, yaw: Math.atan2(d.x, d.z), camera: cam, look, target });
+  stageStand = stand;
+  sheetLens(true);
+  body = { ...body, x: stand.x, z: stand.z };
 }
 
 /** A challenge on the sheet (the same sheet as sanctuary 3 and the ships); her reward when it is done. */
-function openReto(r: Reto, done?: (ok: boolean) => void): void {
+function openReto(r: Reto, done?: (ok: boolean) => void, at?: { x: number; y: number; z: number; sy: number }): void {
   const run = new ChoreRun(r.chore);
   challenge = r;
   RootMenu.interact(undefined);
   atHand = undefined;
+  if (at) stageAt(at);
+  const acts = (i: number) => STEP_VISUALS.acts(r.chore, i) ?? [];
+  let picked = { index: -1, n: 0 };
+  duel.onRightPick = (id, slot) => {
+    if (run.current?.id !== id || !steps.framing) return;
+    const v = acts(run.step)[slot];
+    if (v) steps.play([v]);
+    picked = { index: run.step, n: slot + 1 };
+  };
   duel.onClose = () => {
     duel.onClose = undefined;
+    duel.onRightPick = undefined;
+    if (steps.framing) sheetLens(false);
+    steps.clear();
     challenge = undefined;
     const ok = run.status === "done";
     if (ok) say(`${r.chore.title}: hecho. ${applyReward(domenica, r.reward)}`, 5);
@@ -559,7 +652,14 @@ function openReto(r: Reto, done?: (ok: boolean) => void): void {
       maxLives: run.maxMistakes,
     },
     { ...SHEET, title: r.chore.title },
-    (ans: Answer) => ({ ok: run.submit(ans) }),
+    (ans: Answer) => {
+      const index = run.step;
+      const ok = run.submit(ans);
+      // A right answer acts the step out (the blocks already acted out pick by pick are not played again).
+      if (ok && steps.framing) steps.play(acts(index).slice(picked.index === index ? picked.n : 0));
+      picked = { index: -1, n: 0 };
+      return { ok };
+    },
   );
 }
 
@@ -666,7 +766,7 @@ function frame(now: number): void {
   const dt = Math.max(0, Math.min(0.25, (now - last) / 1000));
   last = now;
   frameFree(dt);
-  updateCamera(dt);
+  if (!steps.frame(dt, camera, rig, avatar)) updateCamera(dt);
   const next = hour + (24 * dt) / S1_DAY_REAL_S;
   if (next >= 24) {
     day++;

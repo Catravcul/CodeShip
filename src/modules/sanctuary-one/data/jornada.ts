@@ -18,6 +18,8 @@ export interface Place {
   readonly z: number;
   readonly yaw: number;
   readonly pose: "stand" | "sit" | "supine";
+  /** The model of the thing she works at here, if any: its challenge's steps are what she is seen doing. */
+  readonly work?: string;
 }
 
 /** The work floors (ours, until WorkRoster): kitchen, hospital, vet, cría, labs, workshops, farm and guard. */
@@ -39,7 +41,7 @@ function spotAt(list: readonly Instance[], n: number, a: S1Area, pose: Place["po
   const off = d.size.z / 2 + 0.7;
   const x = it.x - off * Math.sin(it.rot);
   const z = it.z - off * Math.cos(it.rot);
-  return { area: a.id, x, y: a.y, z, yaw: Math.atan2(it.x - x, it.z - z), pose };
+  return { area: a.id, x, y: a.y, z, yaw: Math.atan2(it.x - x, it.z - z), pose, work: it.model };
 }
 
 /** Each person's place for each activity. */

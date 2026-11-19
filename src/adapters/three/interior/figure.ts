@@ -459,6 +459,27 @@ export class CubeFigure {
     this.target = P({ rootY: 0.9 + 0.06 * Math.abs(Math.cos(phase)), torso: 0.3, headX: -0.25, hip: [a.hip, b.hip], knee: [a.knee, b.knee], shoulderX: [arm, -arm], shoulderZ: [0.12, -0.12], elbow: [-1.6, -1.6] });
   }
 
+  /**
+   * Swimming (Berón 2026-11-19: «falta animación de nado»). Moving: front crawl face down, one arm over the water while
+   * the other pulls under her, a flutter kick from the hips. Still: treading water upright, hands sculling and legs
+   * in an eggbeater kick. Ease it fast (update with a high `k`).
+   */
+  swim(phase: number, moving: boolean): void {
+    this.leaveAsana();
+    this.leaveMotion();
+    const kick = 0.3 * Math.sin(phase * 3);
+    if (moving) {
+      const arm = (p: number) => -((((p % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)));
+      const a = arm(phase);
+      const b = arm(phase + Math.PI);
+      const bend = (x: number) => (x < -Math.PI ? -0.9 : -0.15);
+      this.target = P({ rootY: 0.15, rootX: Math.PI / 2, headX: -0.35, headY: 0.4 * Math.sin(phase), shoulderX: [a, b], shoulderZ: [0.15, -0.15], elbow: [bend(a), bend(b)], hip: [kick, -kick], knee: [0.25 + 0.2 * Math.max(0, kick), 0.25 + 0.2 * Math.max(0, -kick)] });
+    } else {
+      const sc = 0.35 * Math.sin(phase * 2);
+      this.target = P({ torso: 0.1, headX: -0.1, shoulderX: [-0.6, -0.6], shoulderZ: [0.7 + sc, -0.7 - sc], elbow: [-0.5, -0.5], hip: [-0.9 + kick, -0.9 - kick], knee: [1.3 - kick, 1.3 + kick] });
+    }
+  }
+
   /** A full-effort jump's stage (domain/effort.ts JumpStage). */
   jump(stage: "agacharse" | "impulso" | "recoger" | "bajar" | "amortiguar"): void {
     this.leaveAsana();

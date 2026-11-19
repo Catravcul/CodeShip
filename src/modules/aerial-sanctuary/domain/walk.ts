@@ -2,8 +2,8 @@
  * How she moves on Earth (Berón, 2026-11-18: «en la Tierra hay gravedad: el santuario 3 se anda, y se nada donde haya
  * agua»; core/realism.ts `moveJoystick`). The world is boxes on the plan: floors she stands on, water she swims in
  * (the sea, the pool, the trees' water trunks) and solids that stop her (walls, railings). A doorway is only a gap in
- * a wall (reglas.md §2.2). She steps up or down at most `STEP_M`: a ledge higher than that is a wall, and the edge
- * of a high floor never lets her fall. Pure, so the scene and the journeys share it.
+ * a wall (reglas.md §2.2). She steps up or down at most `STEP_M`: a ledge higher than that is a wall; off the edge
+ * of a high floor she can jump down (`dropTo`, where the scene allows it). Pure, so the scene and the journeys share it.
  */
 export interface Rect {
   readonly x0: number;
@@ -26,6 +26,11 @@ export interface Water extends Rect {
   /** The surface. */
   readonly yTop: number;
   readonly area: string;
+  /**
+   * An open column (sanctuary 1's water trunks, open to the sea): nothing inside it is a floor, so a floor that crosses
+   * it (the ice it rises through) neither holds her nor pulls her out of the water.
+   */
+  readonly open?: boolean;
 }
 
 export interface Solid extends Rect {
@@ -66,11 +71,28 @@ export function blocked(w: WalkWorld, x: number, y: number, z: number): boolean 
   return w.solids.some((s) => x + r > s.x0 && x - r < s.x1 && z + r > s.z0 && z - r < s.z1 && y + BODY_HEIGHT_M > s.y0 && y + 0.15 < s.y1);
 }
 
+/** Whether a floor at height `fy` lies inside an open water column at (x, z): it is not there. */
+const inOpen = (w: WalkWorld, x: number, fy: number, z: number) => w.waters.some((v) => v.open && inside(v, x, z) && v.yBottom < fy - 0.05 && v.yTop > fy + 0.5);
+
 /** The floor that carries her at (x, z) from a height `y`: the highest one within a step of her feet. */
 export function floorAt(w: WalkWorld, x: number, y: number, z: number, extra: readonly Floor[] = []): Floor | undefined {
   let best: Floor | undefined;
-  for (const f of [...w.floors, ...extra]) if (inside(f, x, z) && Math.abs(f.y - y) <= STEP_M + 1e-6 && (!best || f.y > best.y)) best = f;
+  for (const f of [...w.floors, ...extra]) if (inside(f, x, z) && Math.abs(f.y - y) <= STEP_M + 1e-6 && (!best || f.y > best.y) && !inOpen(w, x, f.y, z)) best = f;
   return best;
+}
+
+/** How high over a floor she can still be, swimming, and come out onto it through a doorway (its top, ~2,4 m). */
+const OUT_FROM_ABOVE_M = 2.4;
+
+/**
+ * Off an edge (Berón 2026-11-19: «los pisos no deben tener barrera, de modo que es fácil tirarse abajo»): where she
+ * lands from (x, y, z): the highest floor under her, or the water under her (she swims there). Undefined if nothing.
+ */
+export function dropTo(w: WalkWorld, x: number, y: number, z: number, extra: readonly Floor[] = []): Body | undefined {
+  const f = [...w.floors, ...extra].filter((q) => inside(q, x, z) && q.y < y - STEP_M && !inOpen(w, x, q.y, z)).sort((a, c) => c.y - a.y)[0];
+  const v = w.waters.filter((q) => inside(q, x, z) && q.yBottom < y && (!f || q.yTop > f.y)).sort((a, c) => c.yTop - a.yTop)[0];
+  if (v && (!f || v.yTop >= f.y)) return { x, y: swimY(v, Math.min(y, v.yTop)), z, motion: "agua", area: v.area };
+  return f ? { x, y: f.y, z, motion: "gravedad", area: f.area } : undefined;
 }
 
 /** The water at (x, z) whose depth range holds `y` (± a step). */
@@ -92,7 +114,7 @@ function settle(w: WalkWorld, b: Body, x: number, y: number, z: number, extra: r
     return blocked(w, x, sy, z) ? undefined : { x, y: sy, z, motion: "agua", area: v.area };
   }
   // Swimming: out onto a floor near her (a quay at the surface, a doorway at her height), or on in the water.
-  const out = [...w.floors, ...extra].filter((f) => inside(f, x, z) && f.y <= y + SWIM_DEPTH_M + 0.7 && f.y >= y - STEP_M).sort((a, c) => c.y - a.y)[0];
+  const out = [...w.floors, ...extra].filter((f) => inside(f, x, z) && f.y <= y + SWIM_DEPTH_M + 0.7 && f.y >= y - OUT_FROM_ABOVE_M && !inOpen(w, x, f.y, z)).sort((a, c) => c.y - a.y)[0];
   if (out && !blocked(w, x, out.y, z)) return { x, y: out.y, z, motion: "gravedad", area: out.area };
   const v = w.waters.filter((q) => inside(q, x, z) && y >= q.yBottom - STEP_M && y <= q.yTop + STEP_M).sort((a, c) => c.yTop - a.yTop)[0];
   if (!v) return undefined;

@@ -159,10 +159,9 @@ export function buildS1Scene(L: S1Layout): S1Scene {
   add(land, mat(0x7d8460), "tierra");
   add(thresholds, mat(0x8fa2ad), "umbrales");
   add(decks, mat(0x6f8a5a), "puntas-y-techos");
-  // Tower floors: slab, struts and railing (Cold Sanctuary's HelixTower: «tornapuntas» under each floor).
+  // Tower floors: slab and struts (Cold Sanctuary's HelixTower: «tornapuntas» under each floor); no railing, Berón: «los pisos no deben tener barrera».
   const slabs: THREE.BufferGeometry[] = [];
   const struts: THREE.BufferGeometry[] = [];
-  const rails: THREE.BufferGeometry[] = [];
   const slabsRing: THREE.BufferGeometry[] = [];
   for (const t of L.towers) {
     for (const f of t.floors) {
@@ -175,7 +174,6 @@ export function buildS1Scene(L: S1Layout): S1Scene {
         const cz = r.z0 + d * sz;
         struts.push(box(cx - 0.4, cx + 0.4, f.y - 4.6, f.y - 0.6, cz - 0.4, cz + 0.4));
       }
-      for (const [x0, x1, z0, z1] of [[r.x0, r.x1, r.z0, r.z0 + 0.08], [r.x0, r.x1, r.z1 - 0.08, r.z1], [r.x0, r.x0 + 0.08, r.z0, r.z1], [r.x1 - 0.08, r.x1, r.z0, r.z1]] as const) rails.push(box(x0, x1, f.y + 1.0, f.y + 1.1, z0, z1));
     }
     for (const ring of t.rings) for (const r of ring.rects) slabsRing.push(box(r.x0, r.x1, ring.y - 0.3, ring.y - 0.01, r.z0, r.z1));
     for (const tip of t.tips) {
@@ -186,13 +184,12 @@ export function buildS1Scene(L: S1Layout): S1Scene {
   add(slabs, mat(0xc9cfd4), "losas");
   add(slabsRing, mat(0x7a6654), "anillos");
   add(struts, mat(0x7d8a94), "tornapuntas");
-  add(rails, mat(0x9fb3bf, { metalness: 0.4 }), "barandillas");
   // Water: the trunks, their branches and columns (Cold Sanctuary's magic: water standing in a field) and the sea.
   const water: THREE.BufferGeometry[] = [];
   for (const w of L.world.waters) if (w.id !== "mar") water.push(box(w.x0, w.x1, w.yBottom, w.yTop, w.z0, w.z1));
   add(water, mat(0x2f8fbf, { transparent: true, opacity: 0.3, roughness: 0.05, depthWrite: false, side: THREE.DoubleSide }), "agua");
   add(L.walls.map((s) => box(s.x0, s.x1, s.y0, s.y1, s.z0, s.z1)), mat(0x8fd8ff, { transparent: true, opacity: 0.18, roughness: 0.1, depthWrite: false }), "acrilico");
-  const sea = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), mat(0x1d4f6b, { roughness: 0.3, metalness: 0.1 }));
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), mat(0x1d4f6b, { roughness: 0.3, metalness: 0.1, side: THREE.DoubleSide }));
   sea.rotation.x = -Math.PI / 2;
   sea.position.y = WATER_Y;
   sea.name = "mar";

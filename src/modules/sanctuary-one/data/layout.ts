@@ -141,6 +141,9 @@ interface Built {
   towers: TowerShape[];
 }
 
+/** How deep a trunk's root goes into the sea under the ice, m (ours: Cold Sanctuary's ends at −1,6 m). */
+export const TRUNK_ROOT_Y = -12;
+
 /** One tree-building (Cold Sanctuary's HelixTower): the trunk, its doors, the floors pinwheeling round it and the tips at the end of their branches. */
 function buildTower(b: Built, t: TowerSpec, k: number): void {
   const WH = TREE.waterHalf.value;
@@ -155,7 +158,9 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
   const o = { x: t.x, z: t.z };
   const S = (s: number) => s + t.quarter;
   const trunk = `${t.id}:tronco`;
-  b.waters.push({ id: `${t.id}-tronco`, ...around(o.x, o.z, WH), yBottom: -1.6, yTop: rootHeight - 0.5, area: trunk });
+  // Open to the sea under the ice (Berón 2026-11-19: «los edificios árboles son de agua y están conectados al mar»):
+  // its root goes 12 m down, into the sea, so seals, fish and the submarine come up it; nothing inside is a floor.
+  b.waters.push({ id: `${t.id}-tronco`, ...around(o.x, o.z, WH), yBottom: TRUNK_ROOT_Y, yTop: rootHeight - 0.5, area: trunk, open: true });
   b.areas.push({ id: trunk, label: `Tronco de agua (${t.building})`, desc: "Se nada por dentro de piso a piso (ficción de Cold Sanctuary)", building: t.building, x: o.x, y: 0, z: o.z, detail: "completo" });
   const gapsOf: { from: number; to: number; y0: number; y1: number }[][] = [[], [], [], []];
   // Ground door (Cold Sanctuary: GroundSide a = +Z), onto the ice, with its threshold.
@@ -247,9 +252,9 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
       const ty = tipY(l);
       const key = `${t.id}:rama-${l}-${s}`;
       b.waters.push(
-        { id: `${key}-a`, ...sideRect(S(s), mx - th, mx + th, WH - 0.5, colC.z + th, o), yBottom: y, yTop: y + 2 * th, area: key },
-        { id: `${key}-b`, ...sideRect(S(s), mx - th, colC.x + ch, colC.z - th, colC.z + th, o), yBottom: y, yTop: y + 2 * th, area: key },
-        { id: `${key}-c`, ...sideRect(S(s), colC.x - ch, colC.x + ch, colC.z - ch, colC.z + ch, o), yBottom: y, yTop: ty + 1, area: key },
+        { id: `${key}-a`, ...sideRect(S(s), mx - th, mx + th, WH - 0.5, colC.z + th, o), yBottom: y, yTop: y + 2 * th, area: key, open: true },
+        { id: `${key}-b`, ...sideRect(S(s), mx - th, colC.x + ch, colC.z - th, colC.z + th, o), yBottom: y, yTop: y + 2 * th, area: key, open: true },
+        { id: `${key}-c`, ...sideRect(S(s), colC.x - ch, colC.x + ch, colC.z - ch, colC.z + ch, o), yBottom: y, yTop: ty + 1, area: key, open: true },
       );
       gapsOf[s]!.push({ from: mx - th, to: mx + th, y0: y, y1: y + 2 * th });
       const tip = sideRect(S(s), tipC.x - ts / 2, tipC.x + ts / 2, tipC.z - ts / 2, tipC.z + ts / 2, o);

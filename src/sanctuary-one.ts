@@ -3,7 +3,7 @@ import { WORLD_SCALE } from "@core/scale";
 import { moveJoystick } from "@core/realism";
 import { buildS1Layout } from "@modules/sanctuary-one/data/layout";
 import { personRule } from "@modules/sanctuary-one/data/overrides";
-import { placeAt, step, type Body } from "@modules/aerial-sanctuary/domain/walk";
+import { blocked, dropTo, placeAt, step, waterAt, type Body } from "@modules/aerial-sanctuary/domain/walk";
 import { S1_DAY_REAL_S, S1_START_HOUR, activityAt, along, hash01, route, wanderAt, type Activity, type Route } from "@modules/sanctuary-one/domain/motion";
 import { staffPlaces, wayBetween, type Place } from "@modules/sanctuary-one/data/jornada";
 import { WalkIndex } from "@modules/sanctuary-one/data/walk-index";
@@ -40,7 +40,8 @@ import { DuelView, type SessionText } from "./ui/duel-view";
 import { RetoPicker } from "./ui/reto-picker";
 import { ActionPad } from "./ui/action-pad";
 import { climbTarget } from "@modules/sanctuary-one/domain/climb";
-import { SPRINT_MS, jumpAt } from "@modules/sanctuary-one/domain/effort";
+import { LAND_S, SPRINT_MS, jumpAt } from "@modules/sanctuary-one/domain/effort";
+import { GRAVITY_MS2 } from "@modules/sanctuary-one/domain/climb";
 import type { Floor } from "@modules/aerial-sanctuary/domain/walk";
 import "./ui/lander-cabin.css";
 import "./ui/acciones.css";
@@ -68,6 +69,18 @@ const scene = new THREE.Scene();
 const SKY = 0xbfd9ea;
 scene.background = new THREE.Color(SKY);
 scene.fog = new THREE.Fog(SKY, 250, 1400);
+/** Under water (Berón: «bajo el agua parece que se ve todo blanco»): blue-green, and the far side fades out in ~35 m. */
+const UNDER = 0x0e4f63;
+let underwater = false;
+function underwaterView(on: boolean): void {
+  if (on === underwater) return;
+  underwater = on;
+  const fog = scene.fog as THREE.Fog;
+  fog.color.set(on ? UNDER : SKY);
+  fog.near = on ? 0.5 : 250;
+  fog.far = on ? 35 : 1400;
+  (scene.background as THREE.Color).set(on ? UNDER : SKY);
+}
 scene.add(new THREE.HemisphereLight(0xeef6ff, 0x7c8a96, 1.4));
 const sun = new THREE.DirectionalLight(0xffffff, 1.5);
 sun.position.set(-200, 300, 120);
@@ -735,8 +748,26 @@ function frameClimb(dt: number): boolean {
 }
 let climbCheck = 0;
 
+/** Falling off an edge: straight down under gravity onto what is below (a floor or the water); then a landing. */
+let fall: { x: number; z: number; y: number; vy: number; to: Body } | undefined;
+let landT = -1;
+function frameFall(dt: number): boolean {
+  if (landT >= 0 && (landT += dt) > LAND_S) landT = -1;
+  if (!fall) return false;
+  fall.vy -= GRAVITY_MS2 * dt;
+  fall.y += fall.vy * dt;
+  const ground = fall.to.y;
+  if (fall.y <= ground) {
+    body = fall.to;
+    if (body.motion === "gravedad") landT = 0;
+    fall = undefined;
+  } else body = { x: fall.x, y: fall.y, z: fall.z, motion: "gravedad", area: body.area };
+  return true;
+}
+
 function frameFree(dt: number): void {
   if (challenge || settingsPanel.visible) return;
+  if (frameFall(dt)) return;
   if (frameClimb(dt)) return;
   if (jumpT >= 0) {
     jumpT += dt;
@@ -764,8 +795,17 @@ function frameFree(dt: number): void {
   for (let i = 0; i < n; i++) body = step(near(body.x, body.z), body, { dx: dx / n, dy: dy / n, dz: dz / n }, climbed);
   // Swimming straight up or down a trunk (looking up or down with nothing ahead): the vertical part alone.
   if (body === before && body.motion === "agua" && Math.abs(dy) > 0.01) body = step(near(body.x, body.z), body, { dx: 0, dy, dz: 0 });
+  // Off the edge of a floor (Berón: «los pisos no deben tener barrera, de modo que es fácil tirarse abajo»): she falls.
+  if (body === before && body.motion === "gravedad") {
+    const len = Math.hypot(dx, dz) || 1;
+    const x = body.x + (dx / len) * 0.5;
+    const z = body.z + (dz / len) * 0.5;
+    const w = near(x, z);
+    const to = blocked(w, x, body.y, z) ? undefined : dropTo(w, x, body.y, z, climbed);
+    if (to) fall = { x, z, y: body.y, vy: 0, to };
+  }
   // A gait cycle every ~2,1 m walking; sprinting, ~2,25 cycles/s (4,5 steps/s) at full speed.
-  stride += Math.hypot(body.x - before.x, body.z - before.z) * (run && body.motion !== "agua" ? 2.2 : 3);
+  stride += Math.hypot(body.x - before.x, body.motion === "agua" ? body.y - before.y : 0, body.z - before.z) * (run && body.motion !== "agua" ? 2.2 : 3);
 }
 
 function updateCamera(dt: number): void {
@@ -798,14 +838,18 @@ function updateCamera(dt: number): void {
     rig.visible = false;
   }
   myCarpet.visible = flying;
+  const cw = waterAt(near(camera.position.x, camera.position.z), camera.position.x, camera.position.y, camera.position.z);
+  underwaterView(!!cw && camera.position.y < cw.yTop && camera.position.y > cw.yBottom);
   avatar.wearMask(body.motion === "agua");
   if (flying || settingsPanel.visible) avatar.pose("lotus");
-  else if (body.motion === "agua") avatar.pose("glide");
+  else if (body.motion === "agua") avatar.swim(moving ? stride : wildT * 2.5, moving);
+  else if (fall) avatar.pose("reach");
+  else if (landT >= 0) avatar.jump("amortiguar");
   else if (jump) avatar.jump(jump.stage);
   else if (sprinting) avatar.run(stride);
   else avatar.walk(stride, moving ? 1 : 0);
   // Fast easing while running or jumping, so a 4,5-steps-a-second stride and a 0,6 s jump show whole.
-  avatar.update(dt, jump || sprinting ? 16 : 3);
+  avatar.update(dt, jump || sprinting || fall || landT >= 0 || body.motion === "agua" ? 16 : 3);
 }
 
 let last = performance.now();

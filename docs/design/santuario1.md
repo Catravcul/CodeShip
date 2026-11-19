@@ -16,6 +16,36 @@ se nada, con los pisos en molinete alrededor (un nivel cada 22 m, dos pisos por 
 final de ramas de agua y, en algunos pisos, un **anillo en U** 8 m por encima (Levels.cs `RingDeck`). Su magia se
 conserva (reglas.md §1.2).
 
+## Pedidos de Berón (casi literales, con su estado)
+
+Para que ningún resumen se coma un pedido: cada punto se copia de sus mensajes y se marca al cerrarlo.
+
+**2026-11-18 (primer mensaje):** recrear el entorno 3D (edificios, pisos, animales, áreas, personas, utensilios, todos
+los modelos), categorizado para cambios a gran escala; misiones de cocinar, yoga, ejercicio, alimentar animales,
+programar mentes de animales, trabajar en el campo, curar personas y animales, cuidar plantas de los edificios,
+limpieza…; jornada de Cold Sanctuary (tareas distintas por persona y día); **modal de misiones de jornada** que reutiliza
+la de navegación y bloquea/desbloquea por hora/día, en horas libres todas; recompensas: no pasar hambre, compañía, fuerza,
+salud.
+
+**2026-11-19 (revisión):**
+
+| # | Pedido | Estado |
+| --- | --- | --- |
+| 1 | Al acercarse a una máquina, botón para su reto **fuera del menú general, debajo de su botón, naranja** (alerta de que se puede interactuar); igual en las naves, donde hoy va dentro del menú | Pendiente |
+| 2 | Retos de código en máquinas, plantas y demás (los que pidió el primer día) | Pendiente |
+| 3 | Botón de **Misiones** (modal de jornada) | Pendiente |
+| 4 | Rehacer los botones de zoom; mandos como los de una **Nintendo Switch**, con transparencia; botones de **correr**, **saltar** y **trepar** | Pendiente |
+| 5 | Mapa de Áreas en su modo más visible (en el santuario 1, quizá vertical); o un modelo simple como la pantalla de inicio: **cada área una esfera** en su posición | Pendiente |
+| 6 | Ajustes de Áreas: **santuario / casquete / edificio** y debajo sus opciones (como las alfombras mágicas); solo se ven sus áreas | Pendiente |
+| 7 | **Filtros de categoría** en la lista de Áreas (y lo mismo en Codeship, donde también faltan) | Pendiente |
+| 8 | Las **puertas** de los edificios-árbol no se ven: marco | Pendiente |
+| 9 | **Mascarillas de oxígeno** | Pendiente |
+| 10 | **Alfombras voladoras** y **árboles de la isla** | Pendiente |
+| 11 | Personas que parecen **volar todas juntas**; ninguna se ve haciendo sus tareas de jornada | Pendiente |
+| 12 | Animales: mejores modelos, **cuerpos de cubos con articulaciones** de Cold Sanctuary (revisar si encaja con three.js o hay algo mejor) | Pendiente |
+| 13 | Restaurante y todas las áreas con **realismo**: lista de equipos, utensilios, ingredientes, maquinaria (pan, harina, queso, kéfir…), investigada con fuentes | Pendiente |
+| 14 | Usar Unity en su PC para revisar la jerarquía de cada área (preguntado) | Pendiente |
+
 ## Cambios a gran escala
 
 Todo lo que se ve es una **instancia de un modelo del catálogo**, y cada modelo tiene `category` (máquina, mueble,

@@ -111,3 +111,36 @@ export function activityAt(hour: number): Activity {
   for (const [from, act] of WORKDAY) if (h >= from) a = act;
   return a;
 }
+
+/**
+ * A vehicle that goes out along a route and comes back, over and over: `rest` s at the start, the way out at `speed`
+ * m/s, `away` s at the end, and the way back. Its heading is the way it moves (the last one while it waits).
+ */
+export function shuttle(r: Route, t: number, speed: number, rest: number, away: number): { x: number; y: number; z: number; yaw: number; moving: boolean } {
+  const go = r.length / speed;
+  const cycle = rest + go + away + go;
+  const k = ((t % cycle) + cycle) % cycle;
+  const back = k >= rest + go + away;
+  const s = k < rest ? 0 : k < rest + go ? (k - rest) * speed : !back ? r.length : r.length - (k - rest - go - away) * speed;
+  const p = along(r, Math.min(r.length, Math.max(0, s)));
+  // The heading of the stretch it is on (or the last flat one), turned round on the way back.
+  const ahead = along(r, Math.min(r.length, s + 0.5));
+  const behind = along(r, Math.max(0, s - 0.5));
+  const dx = ahead.x - behind.x;
+  const dz = ahead.z - behind.z;
+  let yaw = Math.hypot(dx, dz) > 0.05 ? Math.atan2(dx, dz) : flatYaw(r, s);
+  if (back) yaw += Math.PI;
+  return { x: p.x, y: p.y, z: p.z, yaw, moving: k >= rest && (k < rest + go || back) };
+}
+
+function flatYaw(r: Route, s: number): number {
+  const p = r.points;
+  let i = 1;
+  while (i < p.length - 1 && r.at[i]! < s) i++;
+  for (let j = i; j >= 1; j--) {
+    const a = p[j - 1]!;
+    const b = p[j]!;
+    if (Math.hypot(b.x - a.x, b.z - a.z) > 0.05) return Math.atan2(b.x - a.x, b.z - a.z);
+  }
+  return 0;
+}

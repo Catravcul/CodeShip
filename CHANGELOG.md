@@ -5,6 +5,10 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-19
 
+- **Santuario 1, animales vivos**: crecen día a día, mueren de viejos y nacen crías en la época real de su especie;
+  hacen lo de su etograma (descansar, acechar, pacer, patrullar, apiñarse) y las crías siguen a su madre; el submarino
+  de obra baja por su tronco y va bajo el hielo a la laguna. [docs/design/santuario1.md](docs/design/santuario1.md)
+
 - **Santuario 1, tercera lista**: cada máquina con su animación (jalón al pecho ya no corre) y una tabla de
   animaciones por categoría con los retos y pasos que las lanzan; troncos de agua abiertos al mar (focas y pingüinos
   suben), entrar a un piso nadando desde cualquier punto, pisos sin barandilla, nado y vista azul bajo el agua; el

@@ -1,6 +1,7 @@
 import { cs } from "../sources";
 import { C, COL, bar, m, pz, rep, type Category, type ModelDef, type Part } from "./kit";
 import { bench } from "./entrenamiento";
+import { STATION_UTENSILS, TABLE_SETTING, kitchenBlock } from "./cocina-equipo";
 
 /**
  * Models of the Servicios building (restaurant, hospital ×3, cría, carne cultivada, asambleas, guardia). The big
@@ -99,9 +100,9 @@ export const SERVICIOS_MODELS: readonly ModelDef[] = [
   pz("cocina-mesa-emplatado", "mueble", "cocina", "Mesa de emplatado", steel, counter(4.2, 1.2), "real", K("Mesa de emplatado")),
   pz("cocina-encimera-ingredientes", "mueble", "cocina", "Encimera de ingredientes", steel, [...counter(5.5), ...rep(6, (i) => [C(-2.1 + i * 0.85, 1.0, 0, 0.35, 0.2, 0.3, [0xf2e6cc, 0x6b9e4a, 0xd9c08c, 0xd9583a, 0xf2f2f2, 0x8c5a3a][i]!)])], "real", K("Encimera ingredientes: huevos, verduras, avena, fruta, yogur, legumbres")),
   pz("cocina-estanteria", "mueble", "cocina", "Estantería de despensa", 0x9e7a52, [C(0, 1, 0, 3, 2, 0.06), ...rep(5, (i) => [C(0, 0.1 + i * 0.45, 0.25, 3, 0.04, 0.5)]), ...rep(10, (i) => [C(-1.3 + (i % 5) * 0.65, 0.3 + Math.floor(i / 5) * 0.9, 0.25, 0.4, 0.3, 0.35, 0xc9a66b)])], "real", K("KitchenProps.Shelving (Despensa, Estanteria)")),
-  pz("cocina-puesto", "maquina", "cocina", "Puesto de cocina completo (plancha, fregadero, hornos, inducción, nevera, marmitas, abatidor y barra de sushi)", steel, station, "real", K("CompleteStation (8 puestos)")),
-  ...KITCHEN_BLOCKS.map(([id, label, w, d, h, color]) => eq(`cocina-${id}`, "maquina", "cocina-franjas", label, w, h, d, color, K("Strip: bloques contra las paredes"))),
-  pz("comedor-mesa", "mueble", "comedor", "Mesa del comedor gourmet (4 cubiertos)", 0xf7f7f2, diningTable, "real", cs("Restaurant", "BuildGourmetDining Table")),
+  pz("cocina-puesto", "maquina", "cocina", "Puesto de cocina completo (plancha, fregadero, hornos, inducción, nevera, marmitas, abatidor y barra de sushi)", steel, [...station, ...STATION_UTENSILS], "real", K("CompleteStation (8 puestos)")),
+  ...KITCHEN_BLOCKS.map(([id, label, w, d, h, color]) => pz(`cocina-${id}`, "maquina", "cocina-franjas", label, color, kitchenBlock(id, w, d, h), "real", `${K("Strip: bloques contra las paredes")}; equipo real dentro: ver models/cocina-equipo.ts`)),
+  pz("comedor-mesa", "mueble", "comedor", "Mesa del comedor gourmet (4 cubiertos)", 0xf7f7f2, [...diningTable, ...TABLE_SETTING], "real", cs("Restaurant", "BuildGourmetDining Table")),
   pz("comedor-caja", "mueble", "comedor", "Caja registradora", steel, [...counter(1.6), C(-0.3, 1.02, 0, 0.4, 0.24, 0.35, 0x33383f)], "real", cs("Restaurant", "Caja_registradora")),
   pz("comedor-sushi-cafe", "mueble", "comedor", "Barra de sushi y cafetera espresso", 0x8c6b4d, [C(-1, 0.55, 0, 2.4, 1.1, 0.7), C(1.9, 0.5, 0, 1.2, 1.0, 0.6, steel), C(1.9, 1.2, 0, 0.6, 0.4, 0.45, 0x8c1f1f)], "real", cs("Restaurant", "Eq barra de sushi y cafetera espresso")),
   pz("comedor-vinos", "mueble", "comedor", "Pared de vinos", 0x6b4733, [C(0, 1.2, 0, 6, 2.4, 0.4), ...rep(84, (i) => [C(-2.75 + (i % 14) * 0.42, 0.3 + Math.floor(i / 14) * 0.38, -0.2, 0.09, 0.09, 0.04, (i % 14 + Math.floor(i / 14)) % 3 === 0 ? 0x59141f : 0x2e4726)])], "real", cs("Restaurant", "Pared_de_vinos")),

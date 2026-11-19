@@ -3,6 +3,7 @@ import { clampToFloor, floorPath, nearestStation, roomAisles, type CabinLayout, 
 import { CubeFigure, POSES } from "./adapters/three/interior/figure";
 import { roomHopAt, roomHops, type RoomHop } from "@modules/gravity/domain/room-hops";
 import { StepShow } from "./adapters/three/interior/step-show";
+import { retoFrame, retoVisual, sheetLens } from "./adapters/three/interior/reto-focus";
 import { GamePad } from "./ui/game-pad";
 import type { StepAct, StepVisual } from "@modules/chores/domain/step-visual";
 import { textSign } from "./adapters/three/interior/sign";
@@ -384,41 +385,20 @@ export abstract class WalkRoom<Id extends string> {
     if (!this.steps.root.parent) this.scene.add(this.steps.root);
     const k = this.k;
     this.pos = { ...s.stand };
+    // The shared stage (reto-focus.ts): at the station's spot facing what it looks at, the camera past her right
+    // shoulder; `close` is the 0 g flight deck's console, where she floats in its foot loops.
     const target = new THREE.Vector3(s.look.x * k, s.look.y, s.look.z * k);
     const at = new THREE.Vector3(s.stand.x * k, 0, s.stand.z * k);
-    const d = new THREE.Vector3(target.x - at.x, 0, target.z - at.z);
-    if (d.lengthSq() < 1e-6) d.set(0, 0, -1);
-    d.normalize();
-    const right = new THREE.Vector3(-d.z, 0, d.x);
-    // `close`: in 0 g she floats in the console's foot loops this far in front of its seat (not through it), a little
-    // to the left of its middle screen, and the camera comes in past her right shoulder onto the screens, so her
-    // hands and what they do show.
-    const stand = close ? at.clone().addScaledVector(d, close.towardM).addScaledVector(right, -0.3 * k) : at;
-    // Far and high enough that her head stays in the strip above the sheet (the walls are cut away).
-    const look = close ? target.clone().addScaledVector(d, -0.25) : stand.clone().addScaledVector(d, 0.3).setY(0.95);
-    const camera = close ? look.clone().addScaledVector(d, -1.1).addScaledVector(right, 1.0).setY(target.y + 0.4) : look.clone().addScaledVector(d, -2.0).addScaledVector(right, 1.2).setY(1.85);
-    this.steps.begin({ stand, yaw: Math.atan2(d.x, d.z), camera, look, target });
+    const frame = retoFrame(at, { ...target, sy: 0 }, { target, ...(close ? { close: { towardM: close.towardM, k } } : {}) });
+    this.steps.begin(frame);
     this.sheetLens(true);
     // Signs would cover her in that strip (as in the station); they come back with the walk.
     for (const sign of this.signs.values()) sign.visible = false;
-    let picked = { index: -1, n: 0 };
-    return {
-      stepDone: (index) => {
-        if (this.steps.framing) this.steps.play(acts(index).slice(picked.index === index ? picked.n : 0));
-        picked = { index: -1, n: 0 };
-      },
-      partDone: (index, part) => {
-        const v = acts(index)[part];
-        if (v && this.steps.framing) this.steps.play([v]);
-        picked = { index, n: part + 1 };
-      },
-      finish: () => {},
-      clear: () => {
-        this.steps.clear();
-        this.sheetLens(false);
-        this.cutaway(true);
-      },
-    };
+    return retoVisual(this.steps, acts, () => {
+      this.steps.clear();
+      this.sheetLens(false);
+      this.cutaway(true);
+    });
   }
 
   /**
@@ -452,20 +432,9 @@ export abstract class WalkRoom<Id extends string> {
     for (const sign of this.signs.values()) sign.visible = false;
   }
 
-  /** Under a sheet: a taller frustum whose top shows, so she and the machine are in the strip above it. */
+  /** Under a sheet: the shared lens (reto-focus.ts), the strip above it at its own angle. */
   private sheetLens(on: boolean): void {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    this.camera.clearViewOffset();
-    if (on && h > w) {
-      this.camera.aspect = w / (1.6 * h);
-      this.camera.fov = (2 * Math.atan(Math.tan((52 * Math.PI) / 180) * 1.6) * 180) / Math.PI;
-      this.camera.setViewOffset(w, 1.6 * h, 0, 0.6 * h, w, h);
-    } else {
-      this.camera.aspect = w / h;
-      this.camera.fov = 72;
-    }
-    this.camera.updateProjectionMatrix();
+    sheetLens(this.camera, on, { base: 72 });
   }
 
   update(dt: number): void {
@@ -776,7 +745,7 @@ export abstract class WalkRoom<Id extends string> {
     const kbd = settings.value.keyboardHelp;
     const main = acts.findIndex((a) => a.enabled);
     const html = `<div class="cm-head"><b>${esc(s.label)}</b><small>${esc(s.what)}</small></div>${this.extra(s.id)}<div class="cm-acts">${acts
-      .map((a, i) => `<button data-act="${a.id}" ${a.enabled ? "" : "disabled"} class="${i === main ? "primary" : ""}">${esc(a.label)}${i === main && kbd ? " <kbd>Intro</kbd>" : ""}</button>`)
+      .map((a, i) => `<button data-act="${a.id}" ${a.enabled ? "" : `disabled${a.why ? ` data-why="${esc(a.why)}"` : ""}`} class="${i === main ? "primary" : ""}">${esc(a.label)}${i === main && kbd ? " <kbd>Intro</kbd>" : ""}</button>`)
       .join("")}</div>${acts.filter((a) => !a.enabled && a.why).map((a) => `<p class="cm-why">${esc(a.why!)}</p>`).join("")}`;
     this.machine.classList.remove("hidden");
     if (html !== this.machineKey) {

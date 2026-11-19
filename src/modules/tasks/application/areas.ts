@@ -38,8 +38,21 @@ export interface AreaNode {
   readonly scope?: Readonly<Record<string, string>>;
 }
 
+/**
+ * One level of a place's hierarchy for the window's scope (Berón 2026-11-19, the same in every level): sanctuary 1's
+ * buildings and caps, sanctuary 3's buildings and floors of an island, a vehicle's modules or decks. A node belongs
+ * to option `id` of kind `kind` when `node.scope[kind] === id`.
+ */
+export interface AreaScope {
+  readonly kind: string;
+  readonly label: string;
+  readonly options: readonly { readonly id: string; readonly label: string }[];
+}
+
 export interface AreaMap {
   readonly vehicle: Vehicle;
+  /** Its hierarchy under the vehicle (or island), broadest first: the window's scope groups. */
+  readonly scopes?: readonly AreaScope[];
   readonly nodes: readonly AreaNode[];
   /** Pairs of node ids joined by a hatch or a passage. */
   readonly links: readonly (readonly [string, string])[];
@@ -69,11 +82,13 @@ const touches = (a: InteriorVolume, b: InteriorVolume, eps = 0.05) =>
  * that has somewhere to go, as its box of the plan; the hatches join them.
  * `room` is the journey graph's prefix; `hasPoint` says whether the graph can reach a fixture.
  */
-export function interiorAreas(vehicle: Vehicle, st: StationInterior, room: "estacion" | "nave", hasPoint: (fixtureId: string) => boolean): AreaMap {
+export function interiorAreas(vehicle: Vehicle, st: StationInterior, room: "estacion" | "nave", hasPoint: (fixtureId: string) => boolean, unit: { readonly kind: string; readonly label: string } = { kind: "modulo", label: "Módulos" }): AreaMap {
   const rooms = st.plan.volumes.filter((v) => v.kind !== "escotilla" && v.kind !== "hangar");
   const goalIn = (v: InteriorVolume) => st.plan.fixtures.find((f) => f.volume === v.id && GOAL_KINDS.has(f.action.kind) && f.action.kind !== "salir" && hasPoint(f.id)) ?? st.plan.fixtures.find((f) => f.volume === v.id && GOAL_KINDS.has(f.action.kind) && hasPoint(f.id));
   const withGoal = rooms.map((v) => ({ v, f: goalIn(v) })).filter((r): r is { v: InteriorVolume; f: NonNullable<ReturnType<typeof goalIn>> } => !!r.f);
-  const nodes: AreaNode[] = withGoal.map(({ v, f }) => ({ id: v.id, label: v.label, code: v.code, desc: describe(v, st), goal: `${room}:${f.id}`, fixture: f.id, centre: xyz(v.centre), half: xyz(v.half), category: KIND[v.kind] }));
+  // A compartment (a crew quarter, the Cupola) belongs to the module or deck it opens onto; every other room is its own.
+  const unitOf = (v: InteriorVolume) => (v.kind === "compartimento" ? (rooms.find((u) => u.kind !== "compartimento" && touches(u, v)) ?? v) : v);
+  const nodes: AreaNode[] = withGoal.map(({ v, f }) => ({ id: v.id, label: v.label, code: v.code, desc: describe(v, st), goal: `${room}:${f.id}`, fixture: f.id, centre: xyz(v.centre), half: xyz(v.half), category: KIND[v.kind], scope: { [unit.kind]: unitOf(v).id } }));
   const hatches = st.plan.volumes.filter((v) => v.kind === "escotilla");
   const links: [string, string][] = [];
   const add = (a: string, b: string) => a !== b && !links.some(([p, q]) => (p === a && q === b) || (p === b && q === a)) && links.push([a, b]);
@@ -82,12 +97,23 @@ export function interiorAreas(vehicle: Vehicle, st: StationInterior, room: "esta
     for (let i = 0; i < near.length; i++) for (let j = i + 1; j < near.length; j++) add(near[i]!, near[j]!);
   }
   for (let i = 0; i < withGoal.length; i++) for (let j = i + 1; j < withGoal.length; j++) if (touches(withGoal[i]!.v, withGoal[j]!.v, 0.01)) add(withGoal[i]!.v.id, withGoal[j]!.v.id);
-  return { vehicle, nodes, links };
+  const units = [...new Set(nodes.map((n) => n.scope![unit.kind]!))].map((id) => ({ id, label: rooms.find((v) => v.id === id)?.label ?? id }));
+  return { vehicle, nodes, links, scopes: [{ ...unit, options: units }] };
+}
+
+/** The scope she is in at node `id` («Automático»): its broadest level of the map's hierarchy. */
+export function scopeOfNode(map: AreaMap, id: string | undefined): { kind: string; id: string } | undefined {
+  const n = id === undefined ? undefined : map.nodes.find((q) => q.id === id);
+  for (const g of map.scopes ?? []) {
+    const v = n?.scope?.[g.kind];
+    if (v !== undefined) return { kind: g.kind, id: v };
+  }
+  return undefined;
 }
 
 /** Starship: its decks, plus the flight deck above deck 1 (the bridge, through the ceiling hatch). */
 export function starshipAreas(st: StationInterior, hasPoint: (fixtureId: string) => boolean): AreaMap {
-  const decks = interiorAreas("nodriza", st, "nave", hasPoint);
+  const decks = interiorAreas("nodriza", st, "nave", hasPoint, { kind: "cubierta", label: "Cubiertas" });
   const top = [...decks.nodes].sort((a, b) => b.centre.y + b.half.y - (a.centre.y + a.half.y))[0];
   const deck: AreaNode | undefined = top && {
     id: "cubierta-vuelo",
@@ -98,8 +124,11 @@ export function starshipAreas(st: StationInterior, hasPoint: (fixtureId: string)
     centre: { x: top.centre.x, y: top.centre.y + top.half.y + 1.2, z: top.centre.z },
     half: { x: top.half.x * 0.8, y: 1, z: top.half.z * 0.8 },
     category: "Mando",
+    scope: { cubierta: "cubierta-vuelo" },
   };
-  return { vehicle: "nodriza", nodes: deck ? [deck, ...decks.nodes] : decks.nodes, links: [...decks.links, ...(top ? [["cubierta-vuelo", top.id] as const] : [])] };
+  // Its decks top to bottom, the flight deck first.
+  const options = [...(deck ? [{ id: deck.id, label: deck.label }] : []), ...[...decks.scopes![0]!.options].sort((a, b) => a.label.localeCompare(b.label))];
+  return { vehicle: "nodriza", nodes: deck ? [deck, ...decks.nodes] : decks.nodes, links: [...decks.links, ...(top ? [["cubierta-vuelo", top.id] as const] : [])], scopes: [{ kind: "cubierta", label: "Cubiertas", options }] };
 }
 
 /** The Apollo LM's cabin: its stations where they are on the floor, each a few steps from the docking hatch. */

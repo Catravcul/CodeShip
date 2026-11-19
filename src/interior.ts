@@ -42,6 +42,7 @@ import { settings } from "./ui/settings-store";
 import { FrameTimer } from "@core/frame-timer";
 import { asanaById } from "@modules/body/data/asanas";
 import { galleyFrame, kitchenLayout, StepShow, type KitchenLayout, type KitchenSpot, type StepFrame } from "./adapters/three/interior/step-show";
+import { sheetLens } from "./adapters/three/interior/reto-focus";
 import { auditStep, clearOfScene, type StepAudit } from "./adapters/three/interior/step-audit";
 import { choreVisuals } from "@modules/chores/application/step-visuals";
 import type { StepVisual } from "@modules/chores/domain/step-visual";
@@ -845,29 +846,11 @@ export class Interior {
   }
 
   /**
-   * While a chore is open, render only part of a larger frustum so the chore's target shows beside the
-   * challenge sheet: above it in portrait (sheet at the bottom), left of it in landscape (sheet on the right).
-   * Aspect and fov follow the full frustum so the scene keeps its normal scale.
+   * While a chore is open: the shared lens (reto-focus.ts), the chore's target beside the sheet. With Doménica acting
+   * the steps out, a phone's strip above the sheet takes a wider view (the whole counter).
    */
   private frameForSheet(on: boolean): void {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    if (!on) {
-      this.camera.aspect = w / h;
-      this.camera.fov = 70;
-      this.camera.clearViewOffset();
-      this.camera.updateProjectionMatrix();
-      return;
-    }
-    const landscape = w > h;
-    const fullW = landscape ? 1.44 * w : w;
-    const fullH = landscape ? h : 1.6 * h;
-    this.camera.aspect = fullW / fullH;
-    // With Doménica acting the steps out, a phone's strip above the sheet takes a wider view (the whole counter).
-    const half = !landscape && (this.steps.framing || this.figure.root.visible) ? 52 : 35;
-    this.camera.fov = (2 * Math.atan(Math.tan((half * Math.PI) / 180) * (fullH / h)) * 180) / Math.PI;
-    this.camera.setViewOffset(fullW, fullH, fullW - w, fullH - h, w, h);
-    this.camera.updateProjectionMatrix();
+    sheetLens(this.camera, on, { base: 70, half: this.steps.framing || this.figure.root.visible ? 52 : 35 });
   }
 
   private startChore(chore: Chore, stand?: THREE.Vector3, look?: THREE.Vector3): void {

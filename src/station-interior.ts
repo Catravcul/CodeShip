@@ -20,6 +20,7 @@ import { HopControl } from "./adapters/three/interior/hop-control";
 import { GamePad } from "./ui/game-pad";
 import { buildRails, FloatingBody, motionLabel } from "./adapters/three/interior/zero-g-body";
 import { StepShow, type StepFrame } from "./adapters/three/interior/step-show";
+import { retoVisual, sheetLens } from "./adapters/three/interior/reto-focus";
 import { HatchLeaf } from "./adapters/three/interior/hatch-leaf";
 import { auditStep, clearOfScene, hitOfScene, sightOfScene, type StepAudit } from "./adapters/three/interior/step-audit";
 import type { StepAct, StepVisual } from "@modules/chores/domain/step-visual";
@@ -656,30 +657,17 @@ export class StationInteriorMode {
     // Inside the storm shelter for its drill (among the water bags); at the AQH close to its chambers.
     const frame = f && (this.aqhFrame(f) ?? (this.rooms.gear.get(f.id)?.kind === "refugio" ? this.gearFrame(f) : undefined) ?? this.stepFrame(f));
     if (!frame) return undefined;
-    let picked = { index: -1, n: 0 };
     this.steps.begin(frame);
     this.frameForSheet(true);
     // Labels would cover her and the props in the small strip above the sheet (as in the ring).
     for (const sg of this.rooms.signs) sg.visible = false;
-    return {
-      stepDone: (index) => {
-        if (this.steps.framing) this.steps.play(acts(index).slice(picked.index === index ? picked.n : 0));
-        picked = { index: -1, n: 0 };
-      },
-      partDone: (index, part) => {
-        const v = acts(index)[part];
-        if (v && this.steps.framing) this.steps.play([v]);
-        picked = { index, n: part + 1 };
-      },
-      finish: () => {},
-      clear: () => {
-        this.onGear = undefined;
-        this.steps.clear();
-        this.frameForSheet(false);
-        this.avatar.pose(this.lotus ? "lotus" : "float");
-        this.body.reset();
-      },
-    };
+    return retoVisual(this.steps, acts, () => {
+      this.onGear = undefined;
+      this.steps.clear();
+      this.frameForSheet(false);
+      this.avatar.pose(this.lotus ? "lotus" : "float");
+      this.body.reset();
+    });
   }
 
   /**
@@ -976,28 +964,9 @@ export class StationInteriorMode {
     };
   }
 
-  /**
-   * While steps play under a sheet, render only part of a taller frustum so her and the fixture show in
-   * the strip above it (portrait) or beside it (landscape); the same lens as the ring's (interior.ts).
-   */
+  /** While steps play under a sheet: the shared lens (reto-focus.ts), her and the fixture in the strip it leaves. */
   private frameForSheet(on: boolean): void {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    if (!on) {
-      this.camera.aspect = w / h;
-      this.camera.fov = 72;
-      this.camera.clearViewOffset();
-      this.camera.updateProjectionMatrix();
-      return;
-    }
-    const landscape = w > h;
-    const fullW = landscape ? 1.44 * w : w;
-    const fullH = landscape ? h : 1.6 * h;
-    this.camera.aspect = fullW / fullH;
-    const half = landscape ? 35 : 52;
-    this.camera.fov = (2 * Math.atan(Math.tan((half * Math.PI) / 180) * (fullH / h)) * 180) / Math.PI;
-    this.camera.setViewOffset(fullW, fullH, fullW - w, fullH - h, w, h);
-    this.camera.updateProjectionMatrix();
+    sheetLens(this.camera, on, { base: 72 });
   }
 
   update(dt: number): void {
@@ -1120,7 +1089,7 @@ export class StationInteriorMode {
     const readout = this.deps.readout?.(f);
     const html = `<div class="cm-head ${P}-head"><span class="${P}-icon">${ICON_OF(f, locked)}</span><div><b>${esc(f.label)}</b><small>${esc(f.info)}</small></div></div>${readout !== undefined ? `<div class="sv-readout"></div>` : ""}${
       acts.length
-        ? `<div class="cm-acts">${acts.map((x, i) => `<button data-act="${x.id}" ${x.enabled ? "" : "disabled"} class="${i === main ? "primary" : ""}">${esc(x.label)}${i === main && kbd ? " <kbd>Intro</kbd>" : ""}</button>`).join("")}</div>`
+        ? `<div class="cm-acts">${acts.map((x, i) => `<button data-act="${x.id}" ${x.enabled ? "" : `disabled${x.why ? ` data-why="${esc(x.why)}"` : ""}`} class="${i === main ? "primary" : ""}">${esc(x.label)}${i === main && kbd ? " <kbd>Intro</kbd>" : ""}</button>`).join("")}</div>`
         : ""
     }${acts.filter((x) => !x.enabled && x.why).map((x) => `<p class="cm-why">${esc(x.why!)}</p>`).join("")}`;
     this.card.classList.remove("hidden");

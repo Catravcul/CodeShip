@@ -42,7 +42,7 @@ import { DuelView, type SessionText } from "./ui/duel-view";
 import { RetoPicker } from "./ui/reto-picker";
 import { GamePad } from "./ui/game-pad";
 import { chooseReto, offerReto } from "./ui/interaction";
-import { focusReto, sheetLens as lens } from "./adapters/three/interior/reto-focus";
+import { focusReto, retoVisual, sheetLens as lens } from "./adapters/three/interior/reto-focus";
 import { poseOnFoot, UnderwaterView } from "./adapters/three/walk-look";
 import "./ui/lander-cabin.css";
 import "./ui/acciones.css";
@@ -466,12 +466,14 @@ function s1ScopeAt(): { kind: string; id: string } {
   const tower = areaById.get(body.area)?.link?.tower ?? L.towers.find((t) => body.area.startsWith(`${t.id}:`))?.id;
   return tower ? { kind: "edificio", id: tower } : { kind: "casquete", id: capAt(body.x, body.z) };
 }
+/** The map of Áreas with its hierarchy (buildings and caps), the shared scope of every level. */
+const s1Scoped: AreaMap = { ...s1Map, scopes: s1Scopes };
 /** Seen from the side: the tree-buildings stand, their floors one over the other (its «modo más visible»). */
 const S1_MAP_VIEW = { yaw: 0.5, elevation: 0.18, zoom: 1 };
 const areasWindow = new AreasWindow(root, {
   here: () => "santuario-1",
-  map: () => s1Map,
-  scopes: () => s1Scopes,
+  map: () => s1Scoped,
+  whole: "Todo el santuario",
   scopeAt: s1ScopeAt,
   view: S1_MAP_VIEW,
   at: () => (areaById.has(body.area) ? body.area : undefined),
@@ -494,6 +496,7 @@ for (const ms of MISSIONS) {
 const REWARD_OF = (ms: Mission) => retosFor(model(ms.model), missionAt.get(ms.id)!.i)[ms.reto ?? 0]!;
 const missionsMap: AreaMap = {
   vehicle: "santuario-1",
+  scopes: s1Scopes,
   nodes: MISSIONS.filter((ms) => missionAt.has(ms.id)).map((ms) => {
     const { it, area } = missionAt.get(ms.id)!;
     return {
@@ -538,7 +541,7 @@ const missionsWindow = new AreasWindow(root, {
   kind: { title: "Misiones", window: "misiones", bodyClass: "in-missions", className: "missions-window" },
   here: () => "santuario-1",
   map: () => missionsMap,
-  scopes: () => s1Scopes,
+  whole: "Todo el santuario",
   scopeAt: s1ScopeAt,
   view: S1_MAP_VIEW,
   empty: "Ninguna misión aquí",
@@ -656,19 +659,17 @@ function openReto(r: Reto, done?: (ok: boolean) => void, at?: { x: number; y: nu
   atHand = undefined;
   if (at) stageAt(at);
   // Each step its own animation (data/animaciones.ts): the jalón machine pulls, the treadmill runs.
-  const acts = (i: number) => stepAnimation(r, at?.modelId, i).acts;
-  let picked = { index: -1, n: 0 };
+  const visual = retoVisual(steps, (i: number) => stepAnimation(r, at?.modelId, i).acts, () => {
+    if (steps.framing) sheetLens(false);
+    steps.clear();
+  });
   duel.onRightPick = (id, slot) => {
-    if (run.current?.id !== id || !steps.framing) return;
-    const v = acts(run.step)[slot];
-    if (v) steps.play([v]);
-    picked = { index: run.step, n: slot + 1 };
+    if (run.current?.id === id) visual.partDone?.(run.step, slot);
   };
   duel.onClose = () => {
     duel.onClose = undefined;
     duel.onRightPick = undefined;
-    if (steps.framing) sheetLens(false);
-    steps.clear();
+    visual.clear();
     challenge = undefined;
     const ok = run.status === "done";
     if (ok) say(`${r.chore.title}: hecho. ${applyReward(domenica, r.reward)}`, 5);
@@ -693,8 +694,7 @@ function openReto(r: Reto, done?: (ok: boolean) => void, at?: { x: number; y: nu
       const index = run.step;
       const ok = run.submit(ans);
       // A right answer acts the step out (the blocks already acted out pick by pick are not played again).
-      if (ok && steps.framing) steps.play(acts(index).slice(picked.index === index ? picked.n : 0));
-      picked = { index: -1, n: 0 };
+      if (ok) visual.stepDone(index);
       return { ok };
     },
   );
@@ -812,8 +812,7 @@ function frame(now: number): void {
   requestAnimationFrame(frame);
 }
 window.addEventListener("resize", () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
+  sheetLens(steps.framing);
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 window.addEventListener("keydown", (e) => {

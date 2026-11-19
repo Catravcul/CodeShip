@@ -1,4 +1,4 @@
-import type { AreaMap, AreaNode, AreaVec } from "@modules/tasks/application/areas";
+import { scopeOfNode, type AreaMap, type AreaNode, type AreaScope, type AreaVec } from "@modules/tasks/application/areas";
 import type { Vehicle } from "@modules/tasks/application/task-list";
 import { settings } from "./settings-store";
 import { onCloseRequest, windowState } from "./hud-windows";
@@ -23,11 +23,14 @@ export interface AreasDeps {
   /** The window's own names and HUD id: Áreas by default; the workday's Misiones reuses it (Berón 2026-11-18). */
   readonly kind?: { readonly title: string; readonly window: HudWindow; readonly bodyClass: string; readonly className: string };
   /**
-   * The gear's scope (Berón 2026-11-19, like the magic carpets' choice): «Santuario» shows everything; another
-   * kind («Casquete», «Edificio») lists its options under it, and only the areas of the one chosen are shown.
+   * A level that is one place (sanctuary 1): the name of the whole («Todo el santuario»), and no vehicle list in the
+   * gear. Levels with several (the islands, the vehicles) leave it out: the gear lists them first, as in Tareas.
    */
-  scopes?(): readonly { readonly kind: string; readonly label: string; readonly options: readonly { readonly id: string; readonly label: string }[] }[];
-  /** Where she is, as a scope option («Automático», like the vehicle list of Codeship's Áreas). */
+  readonly whole?: string;
+  /**
+   * Where she is, as a scope option («Automático»), when the place says it better than her node (sanctuary 1: the cap
+   * she stands on outdoors). By default, her node's broadest level of the map's hierarchy (`AreaMap.scopes`).
+   */
   scopeAt?(): { readonly kind: string; readonly id: string } | undefined;
   /** The first view: «su modo más visible» (sanctuary 1 from the side, its tree-buildings standing). */
   readonly view?: MapView;
@@ -103,7 +106,6 @@ export class AreasWindow {
     private readonly d: AreasDeps,
   ) {
     this.k = d.kind ?? { title: "Áreas", window: "areas", bodyClass: "in-areas", className: "" };
-    if (!d.scopes || !d.scopeAt) this.scopeKind = "";
     const t = this.k.title.toLowerCase();
     this.win = new MapWindow(root, {
       className: `areas-window ${this.k.className}`,
@@ -175,13 +177,26 @@ export class AreasWindow {
     return f === "auto" || f === "todos" ? this.d.here() : f;
   }
 
+  /**
+   * The gear's scope (Berón 2026-11-19, the same in every level, like the magic carpets' choice): the place's own
+   * hierarchy under the vehicle or island (`AreaMap.scopes`: sanctuary 1's buildings and caps, sanctuary 3's buildings
+   * and floors, the ships' modules and decks). «Todo» shows everything; an option, only its areas.
+   */
+  private scopes(map = this.shown): readonly AreaScope[] {
+    return map?.scopes ?? [];
+  }
+  /** Where she is as a scope, in the place shown (another island or vehicle has no «where she is»). */
+  private scopeHere(map = this.shown): { kind: string; id: string } | undefined {
+    if (!map || map.vehicle !== this.d.here()) return undefined;
+    return this.d.scopeAt?.() ?? scopeOfNode(map, this.d.at?.());
+  }
   /** The scope in force: the chosen one, or where she is («Automático»). */
   private scope(): { kind: string; id: string } | undefined {
-    if (this.scopeKind === "auto") return this.d.scopeAt?.();
+    if (this.scopeKind === "auto") return this.scopeHere();
     return this.scopeKind && this.scopeId ? { kind: this.scopeKind, id: this.scopeId } : undefined;
   }
-  private scopeLabel(sc = this.scope()): string | undefined {
-    return sc && this.d.scopes?.().find((s) => s.kind === sc.kind)?.options.find((o) => o.id === sc.id)?.label;
+  private scopeLabel(sc = this.scope(), map = this.shown): string | undefined {
+    return sc && this.scopes(map).find((s) => s.kind === sc.kind)?.options.find((o) => o.id === sc.id)?.label;
   }
   private fits(scope: Readonly<Record<string, string>> | undefined): boolean {
     const sc = this.scope();
@@ -196,7 +211,15 @@ export class AreasWindow {
   }
 
   private onClick(t: HTMLElement): void {
-    if (settingsClick(t)) return this.render();
+    if (settingsClick(t)) {
+      // Another island or vehicle: its own hierarchy, from where she is (or the whole of it).
+      if (t.closest("[data-vehicle]")) {
+        this.scopeKind = "auto";
+        this.scopeId = "";
+        this.category = "";
+      }
+      return this.render();
+    }
     const sk = t.closest<HTMLElement>("[data-scope-kind]");
     if (sk) {
       this.scopeKind = sk.dataset.scopeKind ?? "";
@@ -231,7 +254,8 @@ export class AreasWindow {
     this.el.setAttribute("aria-label", settingsView ? `Ajustes de ${t}` : this.k.title);
     this.el.classList.toggle("ar-in-settings", settingsView);
     if (settingsView) {
-      this.win.settingsBox!.innerHTML = `<h2 class="ar-title">Ajustes de ${t}</h2>${this.d.scopes ? this.scopeHtml() : vehicleHtml("ar-s-vehicle", this.d.here(), undefined, false)}${travelHtml("ar-s-travel")}<small class="tb-travel-help">Los mismos ajustes que en Tareas.</small>`;
+      const map = this.d.map(this.vehicle());
+      this.win.settingsBox!.innerHTML = `<h2 class="ar-title">Ajustes de ${t}</h2>${this.d.whole ? "" : vehicleHtml("ar-s-vehicle", this.d.here(), undefined, false)}${this.scopeHtml(map)}${travelHtml("ar-s-travel")}<small class="tb-travel-help">Los mismos ajustes que en Tareas.</small>`;
       return;
     }
     this.shown = this.d.map(this.vehicle());
@@ -244,15 +268,16 @@ export class AreasWindow {
    * The gear's scope, laid out like the vehicle list of Codeship's Áreas (Automático, then each vehicle): here
    * Automático (where she is), the whole sanctuary, then each building by its own name and each cap. One choice.
    */
-  private scopeHtml(): string {
-    const scopes = this.d.scopes?.() ?? [];
+  private scopeHtml(map: AreaMap | undefined): string {
+    const scopes = this.scopes(map);
+    if (!scopes.length) return "";
     const btn = (kind: string, id: string, html: string, cls = "") => {
       const on = this.scopeKind === kind && (kind === "auto" || kind === "" || this.scopeId === id);
       return `<button role="radio" data-scope-kind="${esc(kind)}" data-scope-id="${esc(id)}" aria-checked="${on}" class="${on ? "on" : ""}${cls}">${html}</button>`;
     };
-    const here = this.scopeLabel(this.d.scopeAt?.());
-    const whole = this.d.here() === "santuario-1" ? "Todo el santuario" : "Todo";
-    const top = `${this.d.scopeAt ? btn("auto", "", `Automático: donde está ella <small>${esc(here ?? whole)}</small>`, " auto") : ""}${btn("", "", whole)}`;
+    const whole = this.d.whole ?? `Todo: ${map ? VEHICLE_NAME[map.vehicle] : ""}`;
+    const here = this.scopeLabel(this.scopeHere(map), map);
+    const top = `${btn("auto", "", `Automático: donde está ella <small>${esc(here ?? whole)}</small>`, " auto")}${btn("", "", whole)}`;
     const groups = scopes.map((g, k) => `<h3 class="tb-group" id="ar-s-scope-${k}">${esc(g.label)}</h3><div class="tb-vehicles ar-scope-opts" role="radiogroup" aria-labelledby="ar-s-scope-${k}">${g.options.map((o) => btn(g.kind, o.id, esc(o.label))).join("")}</div>`).join("");
     return `<h3 class="tb-group" id="ar-s-scope">Mostrar</h3><div class="tb-vehicles three ar-scope" role="radiogroup" aria-labelledby="ar-s-scope">${top}</div>${groups}`;
   }
@@ -267,7 +292,7 @@ export class AreasWindow {
     if (rebuild) {
       const named = this.scopeLabel();
       const where = named ? ` · ${named}${this.scopeKind === "auto" ? " (donde está ella)" : ""}` : "";
-      const scope = `<p class="tb-scope">${VEHICLE_NAME[v]}${auto && !this.d.scopes ? " (automático)" : ""}${where} · ${travel}</p>`;
+      const scope = `<p class="tb-scope">${VEHICLE_NAME[v]}${auto && !this.d.whole ? " (automático)" : ""}${where} · ${travel}</p>`;
       if (!map?.nodes.length) {
         this.side.innerHTML = `${scope}<p class="tb-empty">${this.d.empty ?? `No hay plano de ${VEHICLE_NAME[v].toLowerCase()} ahora.`}</p>`;
         return;

@@ -44,6 +44,7 @@ import { ICON } from "./ui/icons";
 import { MachinePanel } from "./ui/machine-panel";
 import { GamePad } from "./ui/game-pad";
 import { poseOnFoot, UnderwaterView } from "./adapters/three/walk-look";
+import { s3AreaScopes } from "@modules/aerial-sanctuary/domain/area-scope";
 import { s3AreaCategory } from "@modules/aerial-sanctuary/domain/area-category";
 import { TaskBoard } from "./ui/task-board";
 import { AreasWindow } from "./ui/areas-window";
@@ -54,6 +55,7 @@ import { IslandNavWindow, flightMode, type IslandChoice } from "./ui/island-nav"
 import { DuelView, type SessionText } from "./ui/duel-view";
 import { RcsPad } from "./ui/rcs-pad";
 import { S3Stage } from "./adapters/three/s3-stage";
+import { framePair, roomAlong, roomiestYaw, sheetLens } from "./adapters/three/interior/reto-focus";
 import { TrainerCrowd } from "./adapters/three/s3-trainers";
 import { S3Rigs } from "./adapters/three/s3-rigs";
 import { S3Simulators, paintRendezvous, paintSimScreen, type SimKind } from "./s3-simulators";
@@ -227,8 +229,14 @@ function areaMap(v: Vehicle): AreaMap | undefined {
   const id = v as IslandId;
   const hit = areaMaps.get(id);
   if (hit) return hit;
-  const nodes: AreaNode[] = L.areas.filter((a) => a.island === id).map((a) => ({ id: a.id, label: a.label, desc: a.desc, goal: a.point, fixture: a.point, centre: a.centre, half: a.half, category: s3AreaCategory(a) }));
-  const map: AreaMap = { vehicle: id, nodes, links: [] };
+  const areas = L.areas.filter((a) => a.island === id);
+  // The island's hierarchy (domain/area-scope.ts): its buildings and their floors, the shared scope of Áreas.
+  const tree = s3AreaScopes(areas);
+  const nodes: AreaNode[] = areas.map((a) => {
+    const scope = tree.of(a.id);
+    return { id: a.id, label: a.label, desc: a.desc, goal: a.point, fixture: a.point, centre: a.centre, half: a.half, category: s3AreaCategory(a), ...(scope ? { scope } : {}) };
+  });
+  const map: AreaMap = { vehicle: id, nodes, links: [], scopes: tree.scopes };
   areaMaps.set(id, map);
   return map;
 }
@@ -239,7 +247,7 @@ const areasWindow = new AreasWindow(root, {
   go: (n, map) => goTo(n.goal, n.label, map.vehicle as IslandId, "Áreas"),
 });
 RootMenu.global({ className: "areas-btn", icon: ICON.areas, label: "Áreas", window: "areas", order: 2, pad: true }, () => areasWindow.open()).show(true);
-const machinePanel = new MachinePanel();
+const machinePanel = new MachinePanel(root);
 const settingsPanel = new SettingsPanel(root);
 settingsPanel.addRow({ id: "s3-inicio", label: "Pantalla de inicio", help: "Guarda la partida y vuelve a la pantalla de inicio para elegir otro santuario o partida («Continuar» la devuelve aquí)", value: () => "Ir", next: () => (saveNow("ocultar"), location.reload()) });
 const nav = new IslandNavWindow(root);
@@ -485,7 +493,7 @@ function startPost(m: MachineDef): void {
   // camera stick turns round them.
   const her0 = Object.values(where.her)[0] ?? where.lap?.from;
   const side = her0 && Math.hypot(where.trainer.x - her0.x, where.trainer.z - her0.z) > 0.5 ? Math.atan2(where.trainer.x - her0.x, where.trainer.z - her0.z) + Math.PI / 2 : stage.startFace + Math.PI / 2;
-  yaw = roomiestYaw(where, side);
+  yaw = roomiestYaw(L.areas.find((q) => q.id === where.room), postCentre(where), side);
   pitch = 0;
   signsOff(m.id, true);
   rig.visible = true;
@@ -624,30 +632,6 @@ function docked(m: MachineDef): void {
 }
 /** The slot the game was handed over in (level 6 now: this page no longer saves into it). */
 let handedOver: string | undefined;
-/** The side to look from with the most room before a wall (the camera never goes through one). */
-function roomiestYaw(st: Stage, first: number): number {
-  const a = L.areas.find((q) => q.id === st.room);
-  const her = Object.values(st.her)[0] ?? st.lap!.from;
-  const c = { x: (her.x + st.trainer.x) / 2, z: (her.z + st.trainer.z) / 2 };
-  if (!a) return first;
-  let best = { yaw: first, room: -1 };
-  for (let i = 0; i < 8; i++) {
-    const yw = first + (i * Math.PI) / 4;
-    const room = Math.min(roomAlong(a, c, yw), 7) - (i % 2) * 0.01;
-    if (room > best.room + 0.5) best = { yaw: yw, room };
-  }
-  return best.yaw;
-}
-
-/** How far from `c` along `yaw` before the area's walls. */
-function roomAlong(a: { centre: { x: number; z: number }; half: { x: number; z: number } }, c: { x: number; z: number }, yaw: number): number {
-  const dx = Math.sin(yaw);
-  const dz = Math.cos(yaw);
-  const tx = dx > 1e-6 ? (a.centre.x + a.half.x - c.x) / dx : dx < -1e-6 ? (a.centre.x - a.half.x - c.x) / dx : Infinity;
-  const tz = dz > 1e-6 ? (a.centre.z + a.half.z - c.z) / dz : dz < -1e-6 ? (a.centre.z - a.half.z - c.z) / dz : Infinity;
-  return Math.min(tx, tz) - 0.7;
-}
-
 /** The machine's and the room's signs hang over the post: hidden while its challenge is acted. */
 function signsOff(machine: string, off: boolean): void {
   const m = parts.root.getObjectByName(`cartel-m:${machine}`);
@@ -784,6 +768,8 @@ function renderCard(): void {
   if (!m) return;
   let acts = "";
   let why = "";
+  // The post's challenge by its name in the choice of the orange button (ui/machine-panel.ts).
+  const postTitle = (m.post !== undefined && stationFor(m.post)?.chore.title) || m.label;
   if (m.kind === "navegacion") acts = `<button class="primary" data-act="nav">Abrir navegación</button>`;
   else if (m.kind === "ascensor" && m.lift) {
     const lift = L.lifts.find((l) => l.id === m.lift!.id)!;
@@ -792,18 +778,18 @@ function renderCard(): void {
   else if (m.kind === "simulador") acts = "";
   else if (m.kind === "lanzamiento") {
     const suited = passed.has(13);
-    acts = `<button class="${suited ? "primary" : ""}" data-act="lanzar"${suited ? "" : " disabled"}>Empezar el lanzamiento</button>`;
+    acts = `<button class="${suited ? "primary" : ""}" data-act="lanzar"${suited ? "" : ` disabled data-why="Primero, el traje: puesto 13, en la sala de trajes de la isla de entrenamiento"`}>Empezar el lanzamiento</button>`;
     why = suited ? `<p class="cm-who">La tripulación eres tú: ${esc(launchStepText())}</p>` : `<p class="cm-why"><b aria-hidden="true">⊘</b> Primero, el traje: puesto 13, en la sala de trajes de la isla de entrenamiento</p>`;
   }
   else if (ready && !who) {
-    acts = `<button data-act="reto" disabled>Empezar el reto</button>`;
+    acts = `<button data-act="reto" data-title="${esc(postTitle)}" data-why="${esc(pauseText(m.post!))}" disabled>Empezar el reto</button>`;
     why = `<p class="cm-why"><b aria-hidden="true">⏸</b> ${esc(pauseText(m.post!))}${passed.has(m.post!) ? ` · <b class="cm-ok">✓ Superado</b>` : ""}</p>`;
   } else if (ready && who) {
     const t = trainerById(who);
-    acts = `<button class="primary" data-act="reto">${passed.has(m.post!) ? "Repetir el reto" : "Empezar el reto"}</button>`;
+    acts = `<button class="primary" data-act="reto" data-title="${esc(postTitle)}" data-detail="${esc(`Con ${t.name}${there ? "" : ", que viene de camino"}${passed.has(m.post!) ? " · ✓ superado: repetirlo" : ""}`)}">${passed.has(m.post!) ? "Repetir el reto" : "Empezar el reto"}</button>`;
     why = `<p class="cm-who">Da el reto: <b>${esc(t.name)}</b>, de turno${there ? "" : " · viene de camino"}${passed.has(m.post!) ? ` · <b class="cm-ok">✓ Superado</b>` : ""}</p>`;
   } else {
-    acts = `<button data-act="reto" disabled>Empezar el reto</button>`;
+    acts = `<button data-act="reto" data-why="${esc(IN_CONSTRUCTION)}" disabled>Empezar el reto</button>`;
     why = `<p class="cm-why"><b aria-hidden="true">⊘</b> ${esc(IN_CONSTRUCTION)}</p>`;
   }
   // Post 8's simulators: practice by hand any time (it is the simulator: no trainer needed).
@@ -1061,7 +1047,15 @@ function frameBirds(dt: number): void {
 
 let sideMoves = -1;
 let sideTurned = false;
+/** The middle of a post's pair: her first spot and the trainer. */
+function postCentre(st: Stage): { x: number; z: number } {
+  const her = Object.values(st.her)[0] ?? st.lap!.from;
+  return { x: (her.x + st.trainer.x) / 2, z: (her.z + st.trainer.z) / 2 };
+}
+/** The shared lens over the strip the sheet leaves (reto-focus.ts), on while a challenge's sheet is open. */
+let lensOn = false;
 function updateCamera(dt: number): void {
+  if ((mode.kind === "reto" && duel.visible) !== lensOn) sheetLens(camera, (lensOn = !lensOn));
   const look = walker.look(dt);
   yaw += look.yaw;
   pitch = Math.max(-1.3, Math.min(1.3, pitch + look.pitch));
@@ -1069,8 +1063,6 @@ function updateCamera(dt: number): void {
   if (mode.kind === "reto" && (sims.busy ? sims.eye(camPos, camAt) || launch.eye(camPos, camAt, (rigTurn += look.yaw), rig.position) : stage.active && (launch.busy ? launch.eye(camPos, camAt, (rigTurn += look.yaw), rig.position) : rigs.eye(camPos, camAt, (rigTurn += look.yaw), camUp, rig.position)))) {
     if (sims.busy) camUp.set(0, 1, 0);
     camera.position.copy(camPos);
-    // With the sheet open, what it looks at shows in the band above it.
-    if (duel.visible) camAt.addScaledVector(camUp, -camPos.distanceTo(camAt) * Math.tan(0.36));
     camera.up.copy(camUp);
     camera.lookAt(camAt);
     camera.up.set(0, 1, 0);
@@ -1085,54 +1077,18 @@ function updateCamera(dt: number): void {
     }
     if (look.yaw !== 0) sideTurned = true;
     const side = stage.sideYaw();
+    const room = L.areas.find((q) => q.id === stage.room);
+    const apart = stage.focus(focusAt);
     if (side !== undefined && !sideTurned) {
-      const a = L.areas.find((q) => q.id === stage.room);
-      stage.focus(focusAt);
       // Of the two sides, the nearer one with room for the shot.
       const near = (g: number) => Math.atan2(Math.sin(g - yaw), Math.cos(g - yaw));
-      const opts = [side, side + Math.PI].map((g) => ({ g, turn: near(g), room: a ? roomAlong(a, focusAt, g) : 9 }));
+      const opts = [side, side + Math.PI].map((g) => ({ g, turn: near(g), room: room ? roomAlong(room, focusAt, g) : 9 }));
       opts.sort((u, v) => (u.room >= 4 ? 0 : 1) - (v.room >= 4 ? 0 : 1) || Math.abs(u.turn) - Math.abs(v.turn));
       yaw += opts[0]!.turn * Math.min(1, dt * 2.5);
     }
-    // The post's challenge: the camera frames her and the trainer over the sheet; the camera stick turns round them.
-    const p = rig.position;
-    const eye = stagesEye();
-    const apart = stage.focus(focusAt);
-    const c = focusAt;
-    void p;
-    // A low eye; with the sheet open, the view tilts down so they show in the band above it (a phone's top third).
-    const camY = c.y + (duel.visible ? 0.55 : 1.5) + Math.max(0, -pitch) * 2;
-    let x: number, y: number, z: number;
-    if (eye) ({ x, y, z } = eye);
-    else {
-      const d = Math.max(5, apart * 1.2 + 2.5);
-      // Inside the room: never through its walls or roof.
-      const a = L.areas.find((q) => q.id === stage.room);
-      const clampTo = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
-      // She moves on (the scale, the couch, the chart): when a wall comes too close behind the camera and the stick is
-      // idle, it eases round to the nearest side with room for the whole shot.
-      if (a && look.yaw === 0 && roomAlong(a, c, yaw) < d * 0.85) {
-        for (let i = 1; i <= 16; i++) {
-          const yw = yaw + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 0.2;
-          if (roomAlong(a, c, yw) >= d * 0.85) {
-            yaw += (yw - yaw) * Math.min(1, dt * 3);
-            break;
-          }
-        }
-      }
-      x = c.x + Math.sin(yaw) * d;
-      z = c.z + Math.cos(yaw) * d;
-      y = camY;
-      if (a) {
-        x = clampTo(x, a.centre.x - a.half.x + 0.7, a.centre.x + a.half.x - 0.7);
-        z = clampTo(z, a.centre.z - a.half.z + 0.7, a.centre.z + a.half.z - 0.7);
-        y = clampTo(y, c.y + 0.3, a.half.y * 2 - 0.4);
-      }
-    }
-    camera.position.set(x, y, z);
-    const D = Math.max(0.5, Math.hypot(x - c.x, z - c.z));
-    const tilt = Math.atan2(c.y + 0.8 - y, D) - (duel.visible ? 0.42 : 0);
-    camera.lookAt(c.x, y + D * Math.tan(tilt), c.z);
+    // The post's challenge: the camera frames her and the trainer (reto-focus.ts, framePair), in the strip the sheet
+    // leaves (the shared lens); the camera stick turns round them.
+    yaw = framePair(camera, focusAt, apart, yaw, pitch, room, look.yaw !== 0, dt, stagesEye());
     rig.visible = true;
     return;
   }
@@ -1290,8 +1246,7 @@ function frame(now: number): void {
 }
 autoSave.saved(0);
 window.addEventListener("resize", () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
+  sheetLens(camera, lensOn);
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 window.addEventListener("keydown", (e) => {

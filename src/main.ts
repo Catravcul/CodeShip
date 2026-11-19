@@ -1538,7 +1538,7 @@ GamePad.share({
   },
 });
 // «Panel»: the card of the machine or area she is at shows only from the menu (reglas.md §5.8).
-const machinePanel = new MachinePanel();
+const machinePanel = new MachinePanel(root);
 
 /** The task list's «Ir»: the real journey there, or (teleport, a setting) straight there through open hatches, or to what joins the vehicles, saying why. */
 function goToTask(t: Task): void {

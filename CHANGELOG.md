@@ -9,6 +9,13 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
   «Reto: <cosa>» y abre el reto, o la elección de reto si hay varios o está cerrado (con «Ver la máquina» si tiene más
   botones), como en el santuario 1; el reto se ve con la misma lente y el mismo foco (`reto-focus.ts`) en todos; Áreas
   tiene el mismo alcance por jerarquía (santuario 3: isla → edificio → piso; naves: vehículo → módulo o cubierta).
+- **Santuario 3, bioma a su densidad real**: la colonia de papúas con cientos de aves y nidos a 1 m, la playa llena de
+  lobos marinos (80 crías por 100 m), un harén de elefantes marinos y el tussac a 650 matas por hectárea; cada animal
+  de la cadena representa a muchos (×50 los papúas), cuerpos de cubos cerca y cajas lejos. Nidos de piedras con huevos
+  en noviembre, pollos de albatros en su nido de barro en invierno, petreles en sus grietas; muda de papúas y elefantes
+  marinos. El censo da el kril en toneladas («≈ 800 000 t») y cabe en 390 px. En la cabaña, la mesa de campo: contar
+  los nidos y anillar pollos de albatros como retos reales. [docs/design/bioma-s3.md](docs/design/bioma-s3.md)
+
 - **Mismos mandos en todos los niveles**: el santuario 3 y las naves (cubiertas de la Starship, estación, cabina del LM) usan los
   mandos de la Switch del santuario 1 (zoom en la cruceta, + Tareas/Misiones, − Áreas, captura Vista, inicio Ajustes; en el 3,
   correr, saltar, trepar y caer de un borde como en el 1; en 0 g esos salen apagados), el mismo botón naranja «Reto: …» y

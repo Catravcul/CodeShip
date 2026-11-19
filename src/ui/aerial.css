@@ -34,3 +34,6 @@ body.has-rcs-pad .vstick.s3-move { display: none !important; }
 .s3-censo small { color: #b8d3de; }
 .s3-censo .cz-events li { font-size: 12px; }
 @media (min-width: 521px) { .s3-censo { max-height: 70vh; overflow-y: auto; } }
+/* Every census row wraps inside a 390 px phone (long numbers and names never push it wider). */
+.s3-censo .cz-list li > *, .s3-censo .cz-events li { overflow-wrap: anywhere; min-width: 0; }
+.s3-censo .cz-seen { color: #ffe3a8; }

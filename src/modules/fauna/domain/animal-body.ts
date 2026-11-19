@@ -106,11 +106,14 @@ function cetacean(id: string): BodyPart[] {
 function penguin(id: string): BodyPart[] {
   const emperor = id === "pinguino-emperador";
   const chick = id === "polluelo-pinguino";
+  // The gentoo: orange-red bill and the white band over the crown from eye to eye (ADW, Pygoscelis papua).
+  const gentoo = id === "papua";
   return [
     P("cuerpo", [0, 0.1, 0], [0, 0.3, 0, 1, 0.62, 0.9], { swing: { axis: "z", amp: 0.08, phase: 0 } }),
     P("pecho", [0, 0.1, 0.38], [0, 0.28, 0.02, 0.82, 0.55, 0.12], { color: chick ? 0x9a9aa2 : WHITE, swing: { axis: "z", amp: 0.08, phase: 0 } }),
     P("cabeza", [0, 0.72, 0], [0, 0.09, 0.03, 0.75, 0.2, 0.75], { swing: { axis: "y", amp: 0.2, phase: 1.5 } }),
-    P("pico", [0, 0.8, 0.4], [0, 0, 0.12, 0.2, 0.06, 0.35], { color: emperor ? 0xe08a2a : BLACK }),
+    P("pico", [0, 0.8, 0.4], [0, 0, 0.12, 0.2, 0.06, 0.35], { color: emperor ? 0xe08a2a : gentoo ? 0xe0502a : BLACK }),
+    ...(gentoo ? [P("banda", [0, 0.86, 0], [0, 0, 0.02, 0.8, 0.05, 0.5], { color: WHITE })] : []),
     ...(emperor ? [P("mancha", [0, 0.72, 0.2], [0, 0, 0.2, 0.85, 0.12, 0.3], { color: 0xf2c94c })] : []),
     P("aleta-izq", [-0.5, 0.6, 0], [-0.05, -0.2, 0, 0.12, 0.42, 0.45], { swing: { axis: "z", amp: 0.35, phase: 0 } }),
     P("aleta-der", [0.5, 0.6, 0], [0.05, -0.2, 0, 0.12, 0.42, 0.45], { swing: { axis: "z", amp: 0.35, phase: Math.PI } }),

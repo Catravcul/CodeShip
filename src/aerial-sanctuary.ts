@@ -302,6 +302,7 @@ const hour = () => boardHour(days);
 const passed = new Set<number>();
 // The biome's island: its living food chain and the census board (s3-biome.ts, docs/design/bioma-s3.md).
 const biome = new S3Biome(scene, ui, L);
+biome.wire(openChallenge, say);
 
 // --- Going somewhere -------------------------------------------------------------------------------------------------
 function stop(why?: string): void {
@@ -1209,12 +1210,12 @@ function frame(now: number): void {
   caption.classList.toggle("hidden", !cap);
   if (caption.textContent !== cap) caption.textContent = cap;
   frameBirds(dt);
-  biome.update(dt, days, hour(), body, clock, camera);
-  updateCamera(dt);
+  biome.update(dt, days, hour(), body, clock, camera, yaw);
+  if (!biome.frameReto(dt, camera, rig, avatar)) updateCamera(dt);
   updateBar();
   near = nearestMachine();
   renderCard();
-  machinePanel.tick();
+  if (!biome.offer()) machinePanel.tick();
   const isl = island();
   sims.showLm(body.area === "entrenamiento:simulador-lm" || sims.kind === "alunizaje");
   const area = L.areas.find((a) => a.id === body.area)?.label;

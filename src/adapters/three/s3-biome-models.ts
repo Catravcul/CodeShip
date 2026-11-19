@@ -4,7 +4,10 @@ import { BIOME, type AnimalSpec } from "@modules/aerial-sanctuary/data/bioma";
 import { BIOME_ISLAND, BIOME_ZONES, inside, shoreAt } from "@modules/aerial-sanctuary/data/bioma-island";
 import { hash01 } from "@modules/fauna/domain/roam";
 import type { Pose } from "@modules/aerial-sanctuary/application/biome-life";
+import type { BiomeState } from "@modules/aerial-sanctuary/domain/bioma";
+import { DENSITY } from "@modules/aerial-sanctuary/data/bioma-crowd";
 import { AnimalHerd, type HerdModel } from "./animal-bodies";
+import { BiomeCrowd, NEAR_CAP } from "./s3-biome-crowd";
 
 /**
  * The biome's island drawn (docs/design/bioma-s3.md §Escena): the ground with its shore, beach and zones; plants with
@@ -15,8 +18,10 @@ import { AnimalHerd, type HerdModel } from "./animal-bodies";
  */
 const mat = (c: number, o: Partial<THREE.MeshStandardMaterialParameters> = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, metalness: 0, ...o });
 
-/** Instances of each plant kind (the mobile budget: docs/design/bioma-s3.md §Presupuesto). */
-export const PLANT_BUDGET = { tussac: 260, musgo: 160, hierba: 140, roca: 60, kelp: 60 } as const;
+/** Tussocks a hectare (Lewis Smith y Clymo 1984) and how near (m) a tussock is drawn with its blades. */
+const TUSSAC_NEAR_M = 42;
+/** Instances of each plant kind (the tussac's: those with blades, near the camera; the mobile budget: docs/design/bioma-s3.md §Presupuesto). */
+export const PLANT_BUDGET = { tussac: 300, musgo: 160, hierba: 140, roca: 60, kelp: 60 } as const;
 /** Fish and krill drawn at once. */
 export const SWARM_BUDGET = { kril: 5 * 40, linterna: 3 * 14, "pez-hielo": 8, austromerluza: 3, calamar: 6 } as const;
 
@@ -35,6 +40,13 @@ export class BiomeScene {
   private readonly bloom: THREE.Mesh;
   private readonly tussacMat: THREE.MeshStandardMaterial;
   private readonly C: { x: number; z: number };
+  /** The colonies, beaches and nests around the chain's animals (s3-biome-crowd.ts). */
+  readonly crowd: BiomeCrowd;
+  /** Jointed bodies of the crowd at the start of each herd (the chain's animals come after them). */
+  private readonly crowdN = new Map<string, number>();
+  private frameNo = 0;
+  /** The tussac's level of detail: every tussock, the near ones with blades, the far as a mound and a cone. */
+  private tussac?: { at: Placed[]; far: THREE.InstancedMesh; near: number[]; cam: THREE.Vector3; cover: number };
 
   constructor(readonly k: number) {
     this.C = BIOME_ISLAND.centre.value;
@@ -48,6 +60,8 @@ export class BiomeScene {
     this.bloom.name = "floracion";
     this.root.add(this.bloom);
     this.addSwarms();
+    this.crowd = new BiomeCrowd(k);
+    this.root.add(this.crowd.boxes);
     this.addAnimals();
     this.addHut();
   }
@@ -124,25 +138,57 @@ export class BiomeScene {
     const sc = new THREE.Vector3();
     const up = new THREE.Vector3(0, 1, 0);
     // TUSSAC: a peat pedestal (~0,8 m) and a fountain of blades to ~2 m (Poa flabellata).
-    const blades: THREE.BufferGeometry[] = [];
-    for (let b = 0; b < 18; b++) {
-      const g = new THREE.PlaneGeometry(0.2, 1.5, 1, 3);
-      g.translate(0, 0.75, 0);
+    // The fountain: green blades arching out to ~3 m across from the pedestal's top, over a skirt of dead straw
+    // hanging down its sides (vertex colours under the season's tint).
+    const blade = (len: number, w: number, out: number, drop: number, yaw: number, base: THREE.Color, tip: THREE.Color) => {
+      const g = new THREE.PlaneGeometry(w, len, 1, 3).translate(0, len / 2, 0);
       const pos = g.attributes.position!;
-      for (let i = 0; i < pos.count; i++) pos.setZ(i, pos.getZ(i) + (pos.getY(i) / 1.5) ** 2 * 0.55);
-      g.rotateY((b / 18) * Math.PI * 2 + (b % 2) * 0.3);
-      blades.push(g);
-    }
+      const col: number[] = [];
+      const c = new THREE.Color();
+      for (let i = 0; i < pos.count; i++) {
+        const u = pos.getY(i) / len;
+        pos.setZ(i, pos.getZ(i) + u ** 1.4 * out);
+        pos.setY(i, pos.getY(i) * (1 - drop * u));
+        c.copy(base).lerp(tip, u);
+        col.push(c.r, c.g, c.b);
+      }
+      g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+      return g.rotateY(yaw);
+    };
+    const straw = new THREE.Color(1, 0.86, 0.58);
+    const green = new THREE.Color(0.86, 1, 0.78);
+    const blades: THREE.BufferGeometry[] = [];
+    for (let b = 0; b < 26; b++) blades.push(blade(1.6 + 0.25 * ((b * 7) % 3), 0.24, 0.9 + 0.5 * (((b * 5) % 4) / 3), 0.5, (b / 26) * Math.PI * 2 + (b % 3) * 0.12, straw, green));
+    // The skirt: dead leaves from the rim down the pedestal (upside-down blades).
+    for (let b = 0; b < 12; b++) blades.push(blade(1.0, 0.5, 0.3, 0, 0, straw.clone().multiplyScalar(0.8), straw.clone().multiplyScalar(0.95)).rotateX(Math.PI).translate(0, 0.02, -0.45).rotateY((b / 12) * Math.PI * 2 + (b % 2) * 0.1));
     const fountain = mergeGeometries(blades);
-    fountain.translate(0, 0.75, 0);
-    const pedestal = new THREE.CylinderGeometry(0.5, 0.65, 0.8, 9);
-    pedestal.translate(0, 0.4, 0);
-    const tussacAt = [...this.scatter("tussac", 190, 11), ...this.scatter("playa", 40, 12).filter((p) => (p.z - this.C.z) / this.k > -70), ...this.scatter("musgo", 30, 13)].slice(0, PLANT_BUDGET.tussac);
-    this.addKind("tussac", tussacAt, [pedestal, fountain], [mat(0x4a3a2a), this.tussacMat], (p, _i, f, m, part) => {
+    fountain.translate(0, 1.0, 0);
+    this.tussacMat.vertexColors = true;
+    const pedestal = new THREE.CylinderGeometry(0.4, 0.6, 0.92, 9);
+    pedestal.translate(0, 0.46, 0);
+    // As dense as a real tussac grassland: 650 tussocks a hectare (Lewis Smith y Clymo 1984), on a jittered grid.
+    const all = [...this.denseTussac(), ...this.scatter("playa", 40, 12).filter((p) => (p.z - this.C.z) / this.k > -70), ...this.scatter("musgo", 30, 13)];
+    this.addKind("tussac", all.slice(0, PLANT_BUDGET.tussac), [pedestal, fountain], [mat(0x5c4632), this.tussacMat], (p, _i, f, m, part) => {
       q.setFromAxisAngle(up, p.r);
-      const s = p.s * (part === 0 ? 1 : 0.55 + 0.45 * f);
-      m.compose(v.set(p.x, 0, p.z), q, sc.set(p.s, part === 0 ? p.s : s, p.s));
+      // The canopy spreads ~3 m across (up to 4,5 m: Lewis Smith y Clymo 1984) from a ~1 m pedestal.
+      const spread = (DENSITY.tussacCanopyM.value / 3) * p.s;
+      const s = part === 0 ? p.s : spread * (0.6 + 0.4 * f);
+      m.compose(v.set(p.x, 0, p.z), q, part === 0 ? sc.set(p.s, p.s, p.s) : sc.set(spread, s, spread));
     });
+    // Far away: a mound and a cone in one mesh (its pedestal darker by its vertex colours).
+    const ped = new THREE.CylinderGeometry(0.5, 0.65, 1, 6).translate(0, 0.5, 0);
+    const cone = new THREE.ConeGeometry(1.5, 1.5, 6).translate(0, 1.55, 0);
+    const paint = (g: THREE.BufferGeometry, c: number) => {
+      const col = new THREE.Color(c);
+      g.setAttribute("color", new THREE.Float32BufferAttribute(Array.from({ length: g.attributes.position!.count }, () => [col.r, col.g, col.b]).flat(), 3));
+      return g;
+    };
+    const farGeo = mergeGeometries([paint(ped.toNonIndexed(), 0x5a4030), paint(cone.toNonIndexed(), 0xffffff)]);
+    const far = new THREE.InstancedMesh(farGeo, new THREE.MeshStandardMaterial({ color: 0xb5b45a, vertexColors: true, roughness: 0.95, flatShading: true }), all.length);
+    far.name = "planta-tussac-lejos";
+    far.count = 0;
+    this.root.add(far);
+    this.tussac = { at: all, far, near: [], cam: new THREE.Vector3(1e9, 0, 0), cover: 1 };
     // MOSS: low cushions of moss banks.
     const cushion = new THREE.SphereGeometry(1, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2);
     this.addKind("musgo", this.scatter("musgo", PLANT_BUDGET.musgo, 21), [cushion], [mat(0x3d6b2a)], (p, _i, f, m) => {
@@ -173,6 +219,54 @@ export class BiomeScene {
       m.compose(v.set(p.x, 0, p.z), q, sc.set(p.s, part === 0 ? 1 : 1, p.s * (part === 0 ? 1 : 0.4 + 0.6 * f)));
     });
     void M;
+  }
+
+  /** Tussocks over the slope at their real density (650 a hectare, as drawn), jittered, never on the hut's ground. */
+  private denseTussac(): Placed[] {
+    const r = BIOME_ZONES.find((q) => q.id === "tussac")!.r;
+    const sp = Math.sqrt(10000 / DENSITY.tussacPerHa.value / 0.866);
+    const out: Placed[] = [];
+    const k = this.k;
+    for (let j = 0, z = r.z0 * k; z <= r.z1 * k; z += sp * 0.866, j++)
+      for (let i = 0, x = r.x0 * k + (j % 2) * sp * 0.5; x <= r.x1 * k; x += sp, i++) {
+        const seed = j * 977 + i;
+        const lx = (x + (hash01(seed, 21) - 0.5) * sp * 0.6) / k;
+        const lz = (z + (hash01(seed, 22) - 0.5) * sp * 0.6) / k;
+        if (!inside(lx * 1.04, lz * 1.04) || Math.hypot(lx, lz) < 22) continue;
+        out.push({ ...this.world(lx, lz), s: 0.75 + 0.5 * hash01(seed, 23), r: hash01(seed, 24) * Math.PI * 2 });
+      }
+    return out;
+  }
+
+  /** The near tussocks get their blades again when the camera moved 4 m or the cover changed; the rest are cones. */
+  private tussacLod(cam: THREE.Vector3, force = false): void {
+    const T = this.tussac;
+    const p = this.plants.get("tussac");
+    if (!T || !p) return;
+    if (!force && Math.hypot(cam.x - T.cam.x, cam.z - T.cam.z) < 4) return;
+    T.cam.copy(cam);
+    const cap = p.meshes[0]!.instanceMatrix.count;
+    const d = T.at.map((a, i) => ({ i, d: Math.hypot(a.x - cam.x, a.z - cam.z) }));
+    const near = d.filter((e) => e.d < TUSSAC_NEAR_M).sort((a, b) => a.d - b.d).slice(0, cap).map((e) => e.i);
+    const isNear = new Set(near);
+    p.at = near.map((i) => T.at[i]!);
+    for (const m of p.meshes) m.count = p.at.length;
+    this.paintPlant("tussac", T.cover);
+    const M = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const v = new THREE.Vector3();
+    const sc = new THREE.Vector3();
+    let n = 0;
+    T.at.forEach((a, i) => {
+      if (isNear.has(i)) return;
+      q.setFromAxisAngle(v.set(0, 1, 0), a.r);
+      const h = a.s * (0.55 + 0.45 * T.cover);
+      M.compose(v.set(a.x, 0, a.z), q, sc.set(a.s, h, a.s));
+      T.far.setMatrixAt(n++, M);
+    });
+    T.far.count = n;
+    T.far.instanceMatrix.needsUpdate = true;
+    T.far.computeBoundingSphere();
   }
 
   private addKind(id: string, at: Placed[], geos: THREE.BufferGeometry[], mats: THREE.Material[], base: (p: Placed, i: number, f: number, m: THREE.Matrix4, part: number) => void): void {
@@ -243,9 +337,10 @@ export class BiomeScene {
         s.shape === "pinnipedo"
           ? { id: `${s.id}-cria`, shape: "pinnipedo", size: s.size, color: s.id === "lobo" ? 0x2a2522 : s.id === "elefante" ? 0x2b2b2b : 0x8a8f94, category: "animal", group: "bioma" }
           : { id: "polluelo-pinguino", shape: "pinguino", size: s.shape === "pinguino" ? s.size : { x: s.size.z * 0.6, y: s.size.z * 0.9, z: s.size.z * 0.6 }, color: s.id === "albatros" ? 0x8c7f70 : 0x6c6660, category: "animal", group: "bioma" };
-      const n = Math.ceil(s.cap * 1.6) + s.young * 3;
+      const extra = NEAR_CAP[s.id] ?? { adult: 0, young: 0 };
+      const n = Math.ceil(s.cap * 1.6) + s.young * 3 + extra.adult;
       const a = new AnimalHerd(adult, n, undefined, { merged: true });
-      const y = new AnimalHerd(young, Math.ceil(s.cap * 1.2) + 2, undefined, { merged: true });
+      const y = new AnimalHerd(young, Math.ceil(s.cap * 1.2) + 2 + extra.young, undefined, { merged: true });
       for (const m of [...a.meshes, ...y.meshes]) this.root.add(m);
       this.herds.set(s.id, { adult: a, young: y, n });
     }
@@ -282,10 +377,40 @@ export class BiomeScene {
     furn(-4.5, 1.5, 1.6, 0.75, 0.8, 0x8a6a48);
     furn(-4.6, -1.8, 0.9, 0.9, 2, 0x5a4a3a);
     furn(4.6, 1.8, 0.7, 1, 0.7, 0x2b2b2b);
+    // On the field table, the tools of the field jobs (s3-biome.ts): the notebook, the tally counter, the ring pliers
+    // and a string of metal rings; one mesh (its colours per vertex).
+    const d = this.deskAt;
+    const tool = (x: number, z: number, sx: number, sy: number, sz: number, c: number) => {
+      const g = new THREE.BoxGeometry(sx, sy, sz).toNonIndexed().translate(d.x + x, 0.75 + sy / 2, d.z + z);
+      const col = new THREE.Color(c);
+      g.setAttribute("color", new THREE.Float32BufferAttribute(Array.from({ length: g.attributes.position!.count }, () => [col.r, col.g, col.b]).flat(), 3));
+      return g;
+    };
+    const tools = new THREE.Mesh(
+      mergeGeometries([tool(-0.35, -0.05, 0.3, 0.03, 0.22, 0xe8e2c8), tool(-0.05, -0.1, 0.06, 0.04, 0.08, 0x8c9096), tool(0.25, -0.05, 0.22, 0.03, 0.05, 0xb03a2a), tool(0.5, 0.05, 0.18, 0.02, 0.06, 0xc8ccd0)]),
+      new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7 }),
+    );
+    tools.name = "mesa-campo";
+    this.root.add(tools);
+  }
+
+  /** Tussocks on the island and those drawn with their blades now (PX-51). */
+  get tussacCount(): { all: number; near: number } {
+    return { all: this.tussac?.at.length ?? 0, near: this.plants.get("tussac")?.meshes[0]?.count ?? 0 };
+  }
+
+  /** The field table's middle (world m): the field jobs are done there (s3-biome.ts). */
+  get deskAt(): { x: number; z: number } {
+    return this.world(-4.5, 1.5);
+  }
+
+  /** Share of each species' adults in moult now (the chain's animals moult with their crowd). */
+  private get moultOf(): Map<string, number> {
+    return new Map([...["papua", "elefante"]].map((id) => [id, this.crowd.countsOf(id)?.moult ?? 0]));
   }
 
   /** Each frame: animals posed, plants grown or withered with their cover, schools circling (`t` real s). */
-  update(t: number, poses: readonly Pose[], cover: Readonly<Record<string, number>>, season: number): void {
+  update(t: number, poses: readonly Pose[], cover: Readonly<Record<string, number>>, season: number, st?: BiomeState, cam?: THREE.Vector3): void {
     // Plants: repainted when their cover moved 3 % (not every frame).
     for (const [id, f] of Object.entries(cover)) {
       const p = this.plants.get(id);
@@ -293,10 +418,16 @@ export class BiomeScene {
       const key = Math.round(Math.min(1.2, f) * 33);
       if ((p as { key?: number }).key === key) continue;
       (p as { key?: number }).key = key;
+      if (id === "tussac" && this.tussac) {
+        this.tussac.cover = Math.min(1.2, f);
+        this.tussacLod(this.tussac.cam, true);
+        continue;
+      }
       this.paintPlant(id, Math.min(1.2, f));
     }
     // The tussac yellows in winter.
     this.tussacMat.color.setHex(0xa3a65a).lerp(new THREE.Color(0xc2a65e), 1 - season);
+    if (this.tussac) (this.tussac.far.material as THREE.MeshStandardMaterial).color.copy(this.tussacMat.color);
     (this.bloom.material as THREE.MeshBasicMaterial).opacity = 0.35 * Math.min(1, (cover["fitoplancton"] ?? 0) * season);
     // Schools: as many as the bank's share of what the place holds.
     const M = new THREE.Matrix4();
@@ -323,24 +454,44 @@ export class BiomeScene {
       }
       s.mesh.instanceMatrix.needsUpdate = true;
     }
-    // Animals.
+    // The crowds: placed again when the chain's numbers change or the camera has moved; their jointed bodies first in
+    // each herd, a third of them posed each frame (a breath, a head turning), the chain's animals after them.
+    const resorted = !!st && !!cam && this.crowd.update(st, cam);
+    if (cam) this.tussacLod(cam);
+    this.frameNo++;
+    for (const [sp, h] of this.herds) {
+      for (const [herd, key] of [[h.adult, sp], [h.young, `${sp}:cria`]] as const) {
+        const near = this.crowd.near.get(key) ?? [];
+        const n = Math.min(near.length, herd.capacity);
+        this.crowdN.set(key, n);
+        for (let i = 0; i < n; i++) {
+          if (!resorted && (i + this.frameNo) % 3) continue;
+          const c = near[i]!;
+          herd.pose(i, c.x, c.y, c.z, c.yaw, t + c.seed * 0.37, false, key.endsWith(":cria") ? (sp === "papua" ? 0.55 : 0.6) : 1);
+          herd.mottle(i, c.moult);
+        }
+      }
+    }
+    // The chain's animals.
+    const moult = this.moultOf;
     const used = new Map<string, [number, number]>();
     for (const p of poses) {
       const h = this.herds.get(p.species);
       if (!h) continue;
-      const u = used.get(p.species) ?? [0, 0];
+      const u = used.get(p.species) ?? [this.crowdN.get(p.species) ?? 0, this.crowdN.get(`${p.species}:cria`) ?? 0];
       const young = p.stage === "cria";
       const herd = young ? h.young : h.adult;
       const k = young ? u[1] : u[0];
       if (k >= herd.capacity) continue;
       const scale = young ? (p.species === "papua" ? p.scale : p.scale * 1.4) : p.scale;
       herd.pose(k, p.x, p.y, p.z, p.yaw, t + p.id, p.moving, Math.max(0.05, scale));
+      herd.mottle(k, young ? 0 : (moult.get(p.species) ?? 0) > hash01(p.id, 91) ? 0.7 : 0);
       if (young) u[1]++;
       else u[0]++;
       used.set(p.species, u);
     }
     for (const [sp, h] of this.herds) {
-      const u = used.get(sp) ?? [0, 0];
+      const u = used.get(sp) ?? [this.crowdN.get(sp) ?? 0, this.crowdN.get(`${sp}:cria`) ?? 0];
       h.adult.show(u[0]);
       h.young.show(u[1]);
       h.adult.commit();

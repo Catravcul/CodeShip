@@ -31,7 +31,7 @@ export interface Agent {
   readonly estrus?: boolean;
 }
 
-export type Doing = Desire | "devorar" | "buscar" | "cortejar";
+export type Doing = Desire | "devorar" | "buscar" | "cortejar" | "rivalizar";
 
 export interface Intent {
   readonly doing: Doing;
@@ -60,6 +60,8 @@ export interface Kill {
 export type Names = Readonly<Record<string, string>>;
 /** Each species' courtship, in words (its real display): «el macho canta bajo el agua». */
 export type Courtships = Readonly<Record<string, string>>;
+/** Each species' contest between males in the rut, in words: «los machos chocan las cabezas». */
+export type Rivalries = Readonly<Record<string, string>>;
 
 /** A chase is given up after this long (a sprint spends it: domain/desires.ts SPRINT_S). */
 export const CHASE_S = 45;
@@ -69,6 +71,12 @@ export const DEVOUR_S = 120;
 export const MISS_COOLDOWN_S = 90;
 /** Allies of its kind within this distance hunt with it (Cold Sanctuary's EffectivePower radius, 8 m; ours wider for families spread on the plan). */
 export const PACK_M = 15;
+/** Males closer than this to the same female contest her, m. */
+export const RIVAL_M = 10;
+/** How long a contest lasts before one gives in, s. */
+export const RIVAL_S = 15;
+/** A beaten male stays out of the season's mating this long, s (in the game, a good while). */
+export const BEATEN_S = 1800;
 /** A young one keeps within this many metres of its mother before it feels lost. */
 const MOTHER_KEEP_M = 6;
 
@@ -84,6 +92,11 @@ interface State {
   court?: { partner: number; s: number };
   /** Mated this season (it stops looking until its estrus is over). */
   mated?: boolean;
+  /** A contest with another male over a female: its rival and the seconds so far. */
+  duel?: { rival: number; s: number };
+  /** Lost a contest: out of the season's mating until then (it leaves the winner the female). */
+  beatenUntil?: number;
+  beaten?: { by: number; at: number };
 }
 
 export class Ecosystem {
@@ -93,6 +106,7 @@ export class Ecosystem {
     private readonly traits: Readonly<Record<string, Traits>>,
     private readonly names: Names,
     private readonly courtships: Courtships = {},
+    private readonly rivalries: Rivalries = {},
   ) {}
 
   needsOf(id: number): Needs | undefined {
@@ -159,8 +173,21 @@ export class Ecosystem {
       const homeFar = committed ? 0 : Math.hypot(a.home.x - a.x, a.home.z - a.z) / Math.max(1, a.home.r);
       const calm = s.calmUntil !== undefined && t < s.calmUntil;
       if (!a.estrus) s.mated = false;
-      const { desire } = choose({ needs: s.needs, traits: tr, threatened: !!threat, young: a.young && !!mother, motherFar, homeFar, estrus: !!a.estrus && !s.mated && !!a.sex });
-      if (desire !== "aparearse") s.court = undefined;
+      const beaten = s.beatenUntil !== undefined && t < s.beatenUntil;
+      // Just beaten: it walks away from the winner.
+      const winner = s.beaten && t - s.beaten.at < 10 ? byId.get(s.beaten.by) : undefined;
+      if (winner && !threat) {
+        const dx = a.x - winner.x;
+        const dz = a.z - winner.z;
+        const d = Math.hypot(dx, dz) || 1;
+        say("huir", "pierde ante otro macho y se aleja", run * 0.5, { x: a.x + (dx / d) * 20, z: a.z + (dz / d) * 20 }, winner.id);
+        continue;
+      }
+      const { desire } = choose({ needs: s.needs, traits: tr, threatened: !!threat, young: a.young && !!mother, motherFar, homeFar, estrus: !!a.estrus && !s.mated && !beaten && !!a.sex });
+      if (desire !== "aparearse") {
+        s.court = undefined;
+        s.duel = undefined;
+      }
       switch (calm && desire === "cazar" ? "descansar" : desire) {
         case "huir": {
           const dx = a.x - threat!.x;
@@ -208,7 +235,8 @@ export class Ecosystem {
           let mate: Agent | undefined;
           let mateD = Math.max(tr.senseM * 3, a.home.r * 4);
           for (const o of here) {
-            if (o.id === a.id || o.species !== a.species || !o.estrus || !o.sex || o.sex === a.sex || this.state.get(o.id)?.mated) continue;
+            const os = this.state.get(o.id);
+            if (o.id === a.id || o.species !== a.species || !o.estrus || !o.sex || o.sex === a.sex || os?.mated || (os?.beatenUntil !== undefined && t < os.beatenUntil)) continue;
             // One already courting it counts as right beside it (so two never wait for different partners).
             const d = this.state.get(o.id)?.court?.partner === a.id ? 0 : Math.hypot(o.x - a.x, o.z - a.z);
             if (d < mateD) {
@@ -221,6 +249,42 @@ export class Ecosystem {
             break;
           }
           mateD = Math.hypot(mate.x - a.x, mate.z - a.z);
+          // RIVALRY: another free male in estrus by the same female: they contest her (each species' real contest);
+          // the stronger by its stats wins (with a share of luck), the other leaves and is out of the season's mating.
+          if (a.sex === "macho") {
+            const rival = here.find((o) => {
+              const os = this.state.get(o.id);
+              return o.id !== a.id && o.species === a.species && o.sex === "macho" && o.estrus && !os?.mated && !(os?.beatenUntil !== undefined && t < os.beatenUntil) && Math.hypot(o.x - mate!.x, o.z - mate!.z) < RIVAL_M && Math.hypot(o.x - a.x, o.z - a.z) < RIVAL_M * 2;
+            });
+            if (rival && mateD < RIVAL_M * 1.5) {
+              const duel = s.duel?.rival === rival.id ? s.duel : (s.duel = { rival: rival.id, s: 0 });
+              duel.s += dtS;
+              s.court = undefined;
+              if (duel.s >= RIVAL_S) {
+                const score = (x: Agent) => predatorPower(tr, x.scale) * (0.8 + 0.4 * hash01(x.id * 31 + Math.floor(t), 5));
+                const loser = score(a) >= score(rival) ? rival : a;
+                const winner = loser === a ? rival : a;
+                const ls = this.st(loser.id);
+                ls.beatenUntil = t + BEATEN_S;
+                ls.beaten = { by: winner.id, at: t };
+                ls.duel = undefined;
+                ls.court = undefined;
+                const ws = this.st(winner.id);
+                ws.duel = undefined;
+                if (loser === a) say("rivalizar", "pierde ante otro macho", 0, undefined, rival.id);
+                else say("rivalizar", "gana a otro macho", 0, undefined, rival.id);
+                break;
+              }
+              const dx = rival.x - a.x;
+              const dz = rival.z - a.z;
+              const d = Math.hypot(dx, dz) || 1;
+              // They face each other, a body's length apart.
+              const to = d > 2 + 2 * a.scale ? { x: a.x + (dx / d) * (d - 2), z: a.z + (dz / d) * (d - 2) } : undefined;
+              say("rivalizar", this.rivalries[a.species] ?? "se enfrenta a otro macho", to ? tr.runMs * 0.3 : 0, to, rival.id);
+              break;
+            }
+            s.duel = undefined;
+          }
           if (mateD <= 1.5 + 2 * a.scale) {
             const court = s.court?.partner === mate.id ? s.court : (s.court = { partner: mate.id, s: 0 });
             court.s += dtS;

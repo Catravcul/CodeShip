@@ -29,11 +29,12 @@ export const REST_S = 120;
 const EAT_PER_DAY = 3;
 
 /** Its needs `dtS` seconds later (`dtDays` of game time) doing `doing`. */
-export function tickNeeds(n: Needs, dtS: number, dtDays: number, doing: Desire | "devorar" | "buscar" | "cortejar", t: Traits): Needs {
+export function tickNeeds(n: Needs, dtS: number, dtDays: number, doing: Desire | "devorar" | "buscar" | "cortejar" | "rivalizar", t: Traits): Needs {
   let hunger = n.hunger + t.hungerPerDay * dtDays;
   if (doing === "comer" || doing === "devorar") hunger -= (EAT_PER_DAY + t.hungerPerDay) * dtDays;
   let fatigue = n.fatigue;
   if (doing === "cazar" || doing === "huir") fatigue += dtS / SPRINT_S;
+  else if (doing === "rivalizar") fatigue += dtS / (SPRINT_S * 2);
   else fatigue -= dtS / (doing === "descansar" ? REST_S : REST_S * 5);
   const c = (v: number) => Math.max(0, Math.min(1, v));
   return { hunger: c(hunger), fatigue: c(fatigue) };

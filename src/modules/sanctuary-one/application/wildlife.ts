@@ -3,7 +3,7 @@ import { MODE_SPEED, actAt, type EthoAct } from "@modules/fauna/domain/ethogram"
 import { ageLabel, lifeAt, nextBirth, sizeAt, stageOf, type Stage } from "@modules/fauna/domain/life-cycle";
 import { wanderAt } from "@modules/fauna/domain/roam";
 import { inEstrus, sexOf, type Sex } from "@modules/fauna/domain/mating";
-import { CORTEJOS, ETHOGRAMS } from "../data/etograma";
+import { CORTEJOS, ETHOGRAMS, RIVALIDADES } from "../data/etograma";
 import { LIFE_CYCLES } from "../data/ciclos-de-vida";
 import { NAMES, TRAITS } from "../data/rasgos";
 import { model } from "../data/catalog";
@@ -35,6 +35,7 @@ export interface AnimalNow {
   intent?: Intent;
 }
 
+const verbs = (r: Readonly<Record<string, { verb: string }>>) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v.verb]));
 const STROLL: EthoAct = { verb: "recorre su territorio", mode: "pasear", weight: 1, seconds: 30, source: "" };
 /** Decisions are taken this often, s (the bodies move every frame). */
 const DECIDE_S = 0.25;
@@ -47,7 +48,7 @@ export class Wildlife {
   /** Each one's day of birth (a newborn's, once it took the place of an old or eaten one). */
   private readonly born = new Map<Instance, number>();
   private readonly ids = new Map<Instance, number>();
-  private readonly eco = new Ecosystem(TRAITS, NAMES, Object.fromEntries(Object.entries(CORTEJOS).map(([k, v]) => [k, v.verb])));
+  private readonly eco = new Ecosystem(TRAITS, NAMES, verbs(CORTEJOS), verbs(RIVALIDADES));
   private readonly sex = new Map<Instance, Sex>();
   /** The day each place's animal was confirmed born (a newborn needs a pregnant female of its kind). */
   private readonly confirmed = new Map<Instance, number>();
@@ -212,10 +213,10 @@ export class Wildlife {
     a.label = `${name}: ${verb}`;
     let to: { x: number; z: number } = a;
     let speed = w.speed * MODE_SPEED[act.mode];
-    if (i && (i.doing === "huir" || i.doing === "cazar" || i.doing === "buscar" || i.doing === "volver" || i.doing === "aparearse") && i.to) {
+    if (i && (i.doing === "huir" || i.doing === "cazar" || i.doing === "buscar" || i.doing === "volver" || i.doing === "aparearse" || i.doing === "rivalizar") && i.to) {
       to = i.to;
       speed = i.speed;
-    } else if (i && (i.doing === "descansar" || i.doing === "devorar" || i.doing === "cortejar")) {
+    } else if (i && (i.doing === "descansar" || i.doing === "devorar" || i.doing === "cortejar" || (i.doing === "rivalizar" && !i.to))) {
       speed = 0;
     } else if ((i?.doing === "seguir" || act.mode === "seguir") && it.life?.mother !== undefined) {
       const m = this.now.get(this.instances[it.life.mother]!);

@@ -115,3 +115,35 @@ describe("estrus and courtship", () => {
     expect([...i.values()].some((x) => x.doing === "cortejar" || x.doing === "aparearse")).toBe(false);
   });
 });
+
+describe("rivalry in the rut", () => {
+  it("two males by one female contest her: the stronger mates, the other leaves", () => {
+    const T2: Record<string, Traits> = { ...T, Ox: { ...T.Hare!, massKg: 300, strength: 0.9, runMs: 11, diet: "herbivoro" } };
+    const eco = new Ecosystem(T2, { ...N, Ox: "un buey" }, {}, { Ox: "los machos chocan las cabezas" });
+    let list = [
+      agent(1, "Ox", 0, 0, { sex: "hembra", estrus: true }),
+      agent(2, "Ox", 4, 0, { sex: "macho", estrus: true }),
+      agent(3, "Ox", -4, 0, { sex: "macho", estrus: true, scale: 0.8 }),
+    ];
+    for (const id of [1, 2, 3]) eco.setNeeds(id, { hunger: 0, fatigue: 0 });
+    let fought = false;
+    const matings: number[][] = [];
+    let left = "";
+    for (let t = 0; t < 90; t += 0.25) {
+      const r = eco.step(0.25, 0, t, list);
+      fought ||= r.intents.get(2)?.verb === "los machos chocan las cabezas";
+      for (const m of r.matings) matings.push([m.female, m.male]);
+      for (const [id, i] of r.intents) if (/pierde/.test(i.verb)) left = String(id);
+      list = list.map((a) => {
+        const i = r.intents.get(a.id);
+        if (!i?.to) return a;
+        const dx = i.to.x - a.x, dz = i.to.z - a.z, d = Math.hypot(dx, dz);
+        const k = Math.min(1, (i.speed * 0.25) / (d || 1));
+        return { ...a, x: a.x + dx * k, z: a.z + dz * k };
+      });
+    }
+    expect(fought).toBe(true);
+    expect(left).toBe("3");
+    expect(matings).toEqual([[1, 2]]);
+  });
+});

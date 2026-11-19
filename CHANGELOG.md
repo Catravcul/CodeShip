@@ -5,6 +5,10 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-19
 
+- **Rivalidad entre machos (`fauna`)**: en el celo, dos machos junto a una hembra se la disputan como su especie
+  (bueyes almizcleros chocan las cabezas, renos las cuernas, morsas los colmillos); gana el más fuerte y el otro se va.
+  [docs/design/fauna.md](docs/design/fauna.md)
+
 - **Celo y cortejo (`fauna`)**: cada especie entra en celo en su época real (partos − gestación), busca pareja y
   corteja con su conducta real; solo nace una cría donde una hembra se apareó. [docs/design/fauna.md](docs/design/fauna.md)
 

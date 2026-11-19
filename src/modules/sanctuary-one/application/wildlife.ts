@@ -212,10 +212,10 @@ export class Wildlife {
     a.label = `${name}: ${verb}`;
     let to: { x: number; z: number } = a;
     let speed = w.speed * MODE_SPEED[act.mode];
-    if (i && (i.doing === "huir" || i.doing === "cazar" || i.doing === "buscar" || i.doing === "volver") && i.to) {
+    if (i && (i.doing === "huir" || i.doing === "cazar" || i.doing === "buscar" || i.doing === "volver" || i.doing === "aparearse") && i.to) {
       to = i.to;
       speed = i.speed;
-    } else if (i && (i.doing === "descansar" || i.doing === "devorar")) {
+    } else if (i && (i.doing === "descansar" || i.doing === "devorar" || i.doing === "cortejar")) {
       speed = 0;
     } else if ((i?.doing === "seguir" || act.mode === "seguir") && it.life?.mother !== undefined) {
       const m = this.now.get(this.instances[it.life.mother]!);

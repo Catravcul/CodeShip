@@ -98,8 +98,9 @@ describe("the food chain of sanctuary 1", () => {
 
   it("in their season they court and mate, and the female carries a young", () => {
     // Game day 0 is 1 November (year day 304): the Weddell seals' mating month.
+    // At the scene's pace (60 frames a second), with the clock running as in the game.
     const w = new Wildlife(L.instances, animals, 304);
-    for (let t = 0; t < 400 && !w.matings.length; t += 0.1) w.step(0.1, t, 1);
+    for (let t = 0; t < 400 && !w.matings.length; t += 1 / 60) w.step(1 / 60, t, 1 + t / 3600);
     expect(w.matings.length).toBeGreaterThan(0);
     const m = w.matings[0]!;
     expect(m.female.life!.species).toBe(m.male.life!.species);

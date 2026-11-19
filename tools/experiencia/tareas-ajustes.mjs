@@ -139,13 +139,13 @@ export async function tareasAjustes(j) {
   await capture(j, "menu-abierto", "Menú árbol abierto");
 
   // 0a. «Panel» shows the machine's card and turns into the X that hides it; the menu stays open all along.
-  await j.tap(".room-ui:not(.hidden) .panel-btn", "Panel");
+  await j.tap(".room-ui:not(.hidden) .rm-act", "Panel");
   await p.waitForTimeout(300);
   const card1 = await p.evaluate(() => [...document.querySelectorAll(".cab-machine:not(.hidden)")].find((c) => c.checkVisibility())?.querySelector(".cm-head b")?.textContent);
   const m1b = await menu(p);
   j.check("«Panel» muestra la tarjeta de la máquina y pasa a ser la X que la oculta; el menú sigue abierto", !!card1 && !!m1b?.open && m1b.out.some((b) => b.label === "Cerrar panel"), `${card1} · ${JSON.stringify(m1b)}`);
   await capture(j, "panel", "Panel de la máquina desde el menú");
-  await j.tap(".room-ui:not(.hidden) .panel-btn.rm-open", "X del menú: Cerrar panel");
+  await j.tap(".room-ui:not(.hidden) .rm-act.rm-open", "X del menú: Cerrar panel");
   await p.waitForTimeout(300);
   const card2 = await p.evaluate(() => [...document.querySelectorAll(".cab-machine:not(.hidden)")].some((c) => c.checkVisibility()));
   const m1c = await menu(p);

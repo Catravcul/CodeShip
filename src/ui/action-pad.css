@@ -1,0 +1,15 @@
+/* The right Joy-Con's diamond (action-pad.ts, reglas.md §5.7): round, dark and see-through, letters in white. */
+.action-pad { position: fixed; z-index: 5; right: 154px; bottom: calc(20px + env(safe-area-inset-bottom)); width: 148px; height: 148px; pointer-events: none; }
+.ap-btn { position: absolute; width: 50px; height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; padding: 0; color: #fff; background: radial-gradient(circle at 40% 35%, #4a4f57cc, #1c1f24cc 70%); border: 2px solid #ffffff40; border-radius: 50%; opacity: 0.62; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; box-shadow: 0 2px 4px #0005; transition: opacity 0.15s, transform 0.08s; }
+.ap-btn b { font: 700 17px/1 system-ui, sans-serif; }
+.ap-btn span { font-size: 9px; letter-spacing: 0.02em; opacity: 0.9; }
+.ap-btn:active, .ap-btn.hit { transform: scale(0.92); opacity: 0.95; }
+.ap-btn.on { opacity: 0.95; color: #1d0d00; background: radial-gradient(circle at 40% 35%, #ffd2a0, #ff9a2e 70%); border-color: #ffd2a0; }
+.ap-btn.idle { opacity: 0.32; }
+.ap-x { left: 49px; top: 0; }
+.ap-a { right: 0; top: 49px; }
+.ap-b { left: 49px; bottom: 0; }
+.ap-y { left: 0; top: 49px; }
+@media (orientation: portrait) { .action-pad { right: 14px; bottom: calc(160px + env(safe-area-inset-bottom)); } }
+body.in-duel .action-pad, body.in-areas .action-pad, body.in-missions .action-pad, body.in-tasks .action-pad, body.in-settings .action-pad, body.in-reto-picker .action-pad, body.in-journey .action-pad { display: none; }
+

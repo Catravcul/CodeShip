@@ -50,12 +50,13 @@ export function wanderAt(home: P2, radius: number, seed: number, t: number, spee
   return { x: a.x + (b.x - a.x) * f, z: a.z + (b.z - a.z) * f, yaw, moving: true };
 }
 
-/** A point of a route; `swim` marks the way TO it as swimming (sea, trunk). */
+/** A point of a route; `swim` marks the way TO it as swimming (sea, trunk), `fly` as flown on a carpet. */
 export interface Waypoint {
   readonly x: number;
   readonly y: number;
   readonly z: number;
   readonly swim?: boolean;
+  readonly fly?: boolean;
 }
 
 /** A route with its cumulative lengths. */
@@ -76,13 +77,13 @@ export function route(points: readonly Waypoint[]): Route {
 }
 
 /** The point `s` metres along a route, its heading on the plan and whether that stretch is swum. */
-export function along(r: Route, s: number): { x: number; y: number; z: number; yaw: number; swim: boolean; done: boolean } {
+export function along(r: Route, s: number): { x: number; y: number; z: number; yaw: number; swim: boolean; fly: boolean; done: boolean } {
   const p = r.points;
-  if (p.length === 0) return { x: 0, y: 0, z: 0, yaw: 0, swim: false, done: true };
+  if (p.length === 0) return { x: 0, y: 0, z: 0, yaw: 0, swim: false, fly: false, done: true };
   if (s >= r.length || p.length === 1) {
     const e = p[p.length - 1]!;
     const q = p[Math.max(0, p.length - 2)]!;
-    return { x: e.x, y: e.y, z: e.z, yaw: Math.atan2(e.x - q.x, e.z - q.z), swim: !!e.swim, done: true };
+    return { x: e.x, y: e.y, z: e.z, yaw: Math.atan2(e.x - q.x, e.z - q.z), swim: !!e.swim, fly: !!e.fly, done: true };
   }
   let i = 1;
   while (i < p.length - 1 && r.at[i]! < s) i++;
@@ -91,7 +92,7 @@ export function along(r: Route, s: number): { x: number; y: number; z: number; y
   const seg = r.at[i]! - r.at[i - 1]!;
   const f = seg > 0 ? (s - r.at[i - 1]!) / seg : 1;
   const flat = Math.hypot(b.x - a.x, b.z - a.z) > 0.05;
-  return { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f, z: a.z + (b.z - a.z) * f, yaw: flat ? Math.atan2(b.x - a.x, b.z - a.z) : NaN, swim: !!b.swim, done: false };
+  return { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f, z: a.z + (b.z - a.z) * f, yaw: flat ? Math.atan2(b.x - a.x, b.z - a.z) : NaN, swim: !!b.swim, fly: !!b.fly, done: false };
 }
 
 /**

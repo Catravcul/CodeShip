@@ -25,6 +25,16 @@ interface GlobalItem {
   shown: boolean;
 }
 
+/** What she can do right here (a machine's challenge, a plant's care, a panel): the orange button under the root. */
+export interface Interaction {
+  readonly icon: string;
+  /** Always shown beside it: it is an alert, not a hidden label. */
+  readonly label: string;
+  readonly onClick: () => void;
+  /** Shown as an X while what it opened is open. */
+  readonly open?: boolean;
+}
+
 /** An icon put in every root menu at once (e.g. «Trayecto», only while a trip runs). */
 export interface GlobalRootItem {
   show(on: boolean): void;
@@ -42,6 +52,18 @@ export interface GlobalRootItem {
 export class RootMenu {
   private static readonly menus: RootMenu[] = [];
   private static readonly globals: GlobalItem[] = [];
+  private static current: Interaction | undefined;
+
+  /**
+   * The interaction button (reglas.md §5.8, Berón 2026-11-19): outside the menu, just under its root, orange, with
+   * its label always out, while there is something to use right here; `undefined` hides it.
+   */
+  static interact(i: Interaction | undefined): void {
+    const same = i && RootMenu.current && i.label === RootMenu.current.label && i.icon === RootMenu.current.icon && !!i.open === !!RootMenu.current.open;
+    RootMenu.current = i;
+    if (same) return;
+    for (const m of RootMenu.menus) m.paintAct();
+  }
 
   /** Adds an icon to every root menu, present and future; it starts hidden. */
   static global(item: RootItem, onClick: () => void): GlobalRootItem {
@@ -61,16 +83,19 @@ export class RootMenu {
   readonly el: HTMLElement;
   private readonly rootBtn: HTMLButtonElement;
   private readonly shoots: HTMLElement;
+  private readonly act: HTMLButtonElement;
   private readonly rootLabel: string;
 
   constructor(parent: HTMLElement, className: string, rootLabel: string) {
     this.rootLabel = rootLabel;
     this.el = document.createElement("div");
     this.el.className = `root-menu ${className}`;
-    this.el.innerHTML = `<button class="rm-root" aria-expanded="false" aria-label="${rootLabel}" title="${rootLabel}"><span class="rm-glyph">${ICON.gear}</span><span class="rm-label">${rootLabel}</span></button><div class="rm-shoots" role="group" aria-label="${rootLabel}"></div>`;
+    this.el.innerHTML = `<button class="rm-root" aria-expanded="false" aria-label="${rootLabel}" title="${rootLabel}"><span class="rm-glyph">${ICON.gear}</span><span class="rm-label">${rootLabel}</span></button><button class="rm-act hidden"></button><div class="rm-shoots" role="group" aria-label="${rootLabel}"></div>`;
     parent.appendChild(this.el);
     this.rootBtn = this.el.querySelector(".rm-root")!;
     this.shoots = this.el.querySelector(".rm-shoots")!;
+    this.act = this.el.querySelector(".rm-act")!;
+    this.act.addEventListener("click", () => RootMenu.current?.onClick());
     // Only its own X closes it (reglas.md §5.8): using an icon never folds it.
     this.rootBtn.addEventListener("click", () => this.toggle());
     // Long press: show the label of the icon under the finger.
@@ -88,6 +113,18 @@ export class RootMenu {
     onWindowState((id, open) => this.windowChanged(id, open));
     RootMenu.menus.push(this);
     for (const g of RootMenu.globals) this.addGlobal(g);
+    this.paintAct();
+  }
+
+  private paintAct(): void {
+    const i = RootMenu.current;
+    this.act.classList.toggle("hidden", !i);
+    if (!i) return;
+    const label = i.open ? `Cerrar: ${i.label}` : i.label;
+    this.act.classList.toggle("rm-open", !!i.open);
+    this.act.setAttribute("aria-label", label);
+    this.act.title = label;
+    this.act.innerHTML = `${i.open ? ICON.close : i.icon}<span class="rm-act-label">${label}</span>`;
   }
 
   /** Adds an icon that sprouts from the root. */

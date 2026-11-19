@@ -430,3 +430,13 @@ body .cam-stick.on > .vstick { display: block !important; position: relative; bo
 @media (min-aspect-ratio: 1/1) { .cam-stick.st-look { bottom: 22px; } }
 /* «+» and «−» beside a look stick (adapters/input/walker.ts): the camera zooms, nothing else moves. */
 .vstick > .cam-zoom { position: absolute; left: -58px; top: 50%; transform: translateY(-50%); }
+
+/* The sticks and the zoom like a Switch's (Berón 2026-11-19): see-through grey bases, a dark thumbstick with its
+   rubber ring, and the zoom as the Joy-Con's round «−» and «+» above the look stick. Every mode shares them. */
+.vstick { background: radial-gradient(circle, #ffffff10 0 44%, #ffffff00 45%), #1c1f2433; border: 2px solid #ffffff38; opacity: 0.72; }
+.vstick .knob { background: radial-gradient(circle at 42% 38%, #5a5f67, #262a30 72%); border: 3px solid #121519; box-shadow: inset 0 0 0 4px #3b4048aa, 0 2px 5px #0007; }
+.vstick:active { opacity: 0.95; }
+.vstick > .cam-zoom { left: 50%; top: -64px; transform: translateX(-50%); flex-direction: row-reverse; gap: 22px; }
+.vstick > .cam-zoom button { width: 44px; height: 44px; border-radius: 50%; font-size: 22px; font-weight: 700; color: #fff; background: radial-gradient(circle at 40% 35%, #4a4f57bb, #1c1f24bb 70%); border: 2px solid #ffffff40; opacity: 0.75; }
+.vstick > .cam-zoom button:active { opacity: 1; transform: scale(0.92); }
+.vstick > span { top: auto; bottom: -18px; }

@@ -123,6 +123,30 @@ export class CubeFigure {
   /** An exercise on a machine, played round and round on the skeleton (body/domain/exercise-motion.ts). */
   private mover?: MotionPlayer;
 
+  private mask?: THREE.Group;
+
+  /**
+   * The breathing mask of the tree-buildings' water (Cold Sanctuary's BreathingMask, Berón 2026-11-03 and 11-19):
+   * a full-face mask over nose and mouth with its hose to a small bottle on the back (a rebreather), worn while
+   * swimming.
+   */
+  wearMask(on: boolean): void {
+    if (!on && !this.mask) return;
+    if (!this.mask) {
+      const m = new THREE.Group();
+      m.add(box(0.2, 0.15, 0.07, 0x1f8fa3, 0.04).translateZ(0.13));
+      m.add(box(0.17, 0.07, 0.02, 0xbfefff, 0.13).translateZ(0.17));
+      m.add(box(0.03, 0.03, 0.2, 0x222a30, 0.02).translateX(0.1).translateZ(0.02));
+      this.head.add(m);
+      const bottle = box(0.1, 0.3, 0.1, 0xf2b134, 0.02).translateZ(-0.17);
+      this.chest.add(bottle);
+      m.userData.bottle = bottle;
+      this.mask = m;
+    }
+    this.mask.visible = on;
+    (this.mask.userData.bottle as THREE.Object3D).visible = on;
+  }
+
   /** `longHair` adds hair down to the shoulders (Doménica: long lavender hair, from her portrait). */
   constructor(skin = 0xe0b48c, suit = 0x3d6fa8, hair = 0x3a2a1e, longHair = false) {
     this.root.add(box(0.34, 0.16, 0.2, suit, 0)); // pelvis

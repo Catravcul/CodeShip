@@ -60,7 +60,11 @@ export type ChoreKind =
   /** A spacewalk from Quest: suit-up and prebreathe, and the work outside (modules/eva, station-eva). */
   | "paseo-espacial"
   /** A post of Doménica's initiation in sanctuary 3 (modules/aerial-sanctuary, application/stations.ts). */
-  | "iniciacion";
+  | "iniciacion"
+  /** Sanctuary 1's work (modules/sanctuary-one/data/retos.ts): feeding an animal, cleaning, a floor's work. */
+  | "alimentar-animal"
+  | "limpiar"
+  | "trabajar";
 
 /** Groups for filtering the task board. */
 export type ChoreCategory = "comida" | "plantas" | "animales" | "nave" | "salud" | "misiones";
@@ -115,6 +119,9 @@ export const CHORE_CATEGORY: Readonly<Record<ChoreKind, ChoreCategory>> = {
   "brazo-robotico": "nave",
   "paseo-espacial": "nave",
   iniciacion: "misiones",
+  "alimentar-animal": "animales",
+  limpiar: "misiones",
+  trabajar: "misiones",
 };
 
 /** A task on board, done by solving code challenges in order. */

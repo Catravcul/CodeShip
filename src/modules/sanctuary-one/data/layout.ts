@@ -161,6 +161,18 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
   // Ground door (Cold Sanctuary: GroundSide a = +Z), onto the ice, with its threshold.
   gapsOf[0]!.push({ from: door.x - door.w / 2, to: door.x + door.w / 2, y0: 0, y1: door.h });
   b.floors.push({ id: `${t.id}-umbral-suelo`, ...sideRect(S(0), door.x - door.w / 2, door.x + door.w / 2, WH - 0.6, OH + 0.4, o), y: 0, area: trunk });
+  // Each door with its frame and, outside beside it, the rack of breathing masks (BreathingMask.cs); one more
+  // station inside the water.
+  const doorKit = (sd: number, dx: number, y: number, area: string) => {
+    const turn = (S(sd) * Math.PI) / 2;
+    const f = side(S(sd), dx, OH - 0.5);
+    place(b, "marco-puerta-tronco", o.x + f.x, y, o.z + f.z, turn, area, { edificio: t.id }, 1, undefined, false);
+    const r = side(S(sd), dx + door.w / 2 + 1.3, OH + 0.35);
+    place(b, "perchero-mascaras", o.x + r.x, y, o.z + r.z, turn, area, { edificio: t.id }, 1, undefined, false);
+    const st = side(S(sd), dx - door.w / 2 - 1.3, WH - 0.4);
+    place(b, "estacion-mascaras", o.x + st.x, y, o.z + st.z, turn + Math.PI, trunk, { edificio: t.id }, 1, undefined, false);
+  };
+  doorKit(0, door.x, 0, trunk);
   const gOut = side(S(0), door.x, OH + 3);
   const gIn = side(S(0), door.x, WH - 1.5);
   const shape: TowerShape = { id: t.id, building: t.building, x: o.x, z: o.z, rootHeight, floors: [], tips: [], rings: [], ground: { out: { x: o.x + gOut.x, z: o.z + gOut.z }, inner: { x: o.x + gIn.x, z: o.z + gIn.z } } };
@@ -182,6 +194,7 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
       b.floors.push({ id: `${area}`, ...rect, y, area });
       b.floors.push({ id: `${area}-umbral`, ...sideRect(S(s), dx - door.w / 2, dx + door.w / 2, WH - 0.6, OH + 0.2, o), y, area });
       gapsOf[s]!.push({ from: dx - door.w / 2, to: dx + door.w / 2, y0: y, y1: y + door.h });
+      doorKit(s, dx, y, area);
       (shape.floors as TowerShape["floors"][number][]).push({ rect, y, name: f.name || "Piso libre" });
       // The floor's own frame: centre of the square, +z away from the trunk.
       const c = side(S(s), FS / 2 - OH, OH + FS / 2);
@@ -215,6 +228,7 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
         deck(-hx, hx, zb, zb + RING.balcony, "balcon");
         b.floors.push({ id: `${ringArea}-umbral`, ...sideRect(S(s), dx - door.w / 2, dx + door.w / 2, WH - 0.6, OH + 0.2, o), y: ry, area: ringArea });
         gapsOf[s]!.push({ from: dx - door.w / 2, to: dx + door.w / 2, y0: ry, y1: ry + door.h });
+        doorKit(s, dx, ry, ringArea);
         (shape.rings as TowerShape["rings"][number][]).push({ rects: [[-ox, ox, hx, hx + RING.width], [hx, ox, zb, hx], [-ox, -hx, zb, hx], [-hx, hx, zb, zb + RING.balcony]].map(([x0, x1, z0, z1]) => sideRect(S(s), cx + x0!, cx + x1!, cz + z0!, cz + z1!, o)), y: ry });
         b.areas.push({ id: ringArea, label: `Anillo de ${f.name}`, desc: "Anillo en U a 8 m sobre el piso: se llega nadando por su puerta del tronco", building: t.building, x: centre.x, y: ry, z: centre.z, detail: "completo", entry: (() => { const q = side(S(s), dx, OH + 1.5); return { x: o.x + q.x, z: o.z + q.z, yaw: entry.yaw }; })(), link: { tower: t.id, inner: { x: o.x + inn.x, z: o.z + inn.z } } });
         for (const it of fp.ring) {

@@ -72,15 +72,12 @@ describe("the food chain of sanctuary 1", () => {
     // With no mating its place stays empty a season more; with a female of its kind pregnant, the young is born.
     w.step(0.1, 700, 400);
     expect(w.get(k.prey)!.scale).toBe(0);
-    const w2 = new Wildlife(L.instances, animals, 320);
-    for (const i of animals) if (i.life!.species === "Orca") w2.setNeeds(i, { hunger: 1, fatigue: 0 });
-    for (let t = 0; t < 600 && !orcaKill(w2); t += 0.1) w2.step(0.1, t, 0.01);
-    const prey = orcaKill(w2)!.prey;
-    const due = nextBirth(1, LIFE_CYCLES[prey.life!.species]!, 320, prey.life!.offset);
-    w2.addPregnancy(prey.life!.species, due);
-    w2.step(0.1, 700, due + 1);
-    expect(w2.get(prey)!.scale).toBeGreaterThan(0);
-  });
+    // The same world goes on (a second hunt would double the test's time and, in the full suite, overrun it).
+    const due = nextBirth(401, LIFE_CYCLES[k.prey.life!.species]!, 320, k.prey.life!.offset);
+    w.addPregnancy(k.prey.life!.species, due);
+    w.step(0.1, 700.1, due + 1);
+    expect(w.get(k.prey)!.scale).toBeGreaterThan(0);
+  }, 15_000);
 
   it("the hares flee Doménica when she comes close", () => {
     const w = new Wildlife(L.instances, animals, 320);

@@ -12,6 +12,9 @@ import { StepShow } from "./adapters/three/interior/step-show";
 import type { CubeFigure } from "./adapters/three/interior/figure";
 import type { Chore } from "@modules/chores/domain/chore";
 import { fieldAct, fieldJobs, type FieldJob } from "@modules/aerial-sanctuary/application/field-work";
+import { focusReto, sheetLens } from "./adapters/three/interior/reto-focus";
+import { chooseReto, offerReto } from "./ui/interaction";
+import { RetoPicker } from "./ui/reto-picker";
 
 /** The sheet of a challenge (aerial-sanctuary.ts `openChallenge`): `beat` on each right step, `done` on closing. */
 type OpenChallenge = (chore: Chore, beat: (index: number, part: number) => void, done: (ok: boolean) => void) => void;
@@ -30,12 +33,16 @@ export class S3Biome {
   private cardKey = "";
   private readonly board: { x: number; y: number; z: number };
   near = false;
-  /** At the hut's field table (its card: the field jobs). */
+  /** At the hut's field table: the orange «Reto: Mesa de campo» button (ui/interaction.ts, as in sanctuary 1). */
   nearDesk = false;
   private readonly desk: { x: number; z: number };
-  private readonly deskCard: HTMLElement;
-  private deskKey = "";
+  /** The choice between the field jobs (sanctuary 1's picker). */
+  readonly picker: RetoPicker;
   private jobs: FieldJob[] = [];
+  /** The total the running nest count asks for (the colony's nests when she started it). */
+  counted?: number;
+  private camera?: THREE.PerspectiveCamera;
+  private her = { x: 0, y: 0, z: 0, yaw: 0 };
   /** The ships' step player, for the field jobs' steps at the table. */
   readonly steps = new StepShow();
   private open?: OpenChallenge;
@@ -59,15 +66,7 @@ export class S3Biome {
     const d = this.view.deskAt;
     this.desk = { x: d.x, z: d.z };
     scene.add(this.steps.root);
-    this.deskCard = document.createElement("div");
-    this.deskCard.className = "cab-machine s3-campo hidden";
-    this.deskCard.setAttribute("role", "region");
-    this.deskCard.setAttribute("aria-label", "Mesa de campo");
-    ui.appendChild(this.deskCard);
-    this.deskCard.addEventListener("click", (e) => {
-      const b = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-job]");
-      if (b && !b.disabled) this.start(Number(b.dataset.job));
-    });
+    this.picker = new RetoPicker(ui);
   }
 
   /** The challenge sheet and the toast of aerial-sanctuary.ts (one line there). */
@@ -82,13 +81,10 @@ export class S3Biome {
     if (!job?.open || !this.open || this.working) return;
     const r = job.reto;
     this.working = r.procedure;
-    const d = this.desk;
-    // She stands 0,9 m south of the table facing it; the camera over her right shoulder.
-    const stand = new THREE.Vector3(d.x, 0.02, d.z - 0.9);
-    const target = new THREE.Vector3(d.x, 0.8, d.z);
-    const look = new THREE.Vector3(d.x, 1.05, d.z - 0.45);
-    const camera = new THREE.Vector3(d.x + 1.7, 2.3, d.z - 3.3);
-    this.steps.begin({ stand, yaw: 0, camera, look, target });
+    this.counted = job.total;
+    // The shared reto stage (reto-focus.ts): she at the table facing it, the camera past her shoulder in the strip
+    // the sheet leaves free.
+    if (this.camera) focusReto(this.steps, this.camera, this.her, this.her.yaw, { x: this.desk.x, y: 0.02, z: this.desk.z, sy: 0.75 });
     this.open(
       r.chore,
       (index, part) => {
@@ -96,11 +92,12 @@ export class S3Biome {
       },
       (ok) => {
         this.steps.clear();
+        if (this.camera) sheetLens(this.camera, false);
         this.working = undefined;
-        this.deskKey = "";
+        this.cardKey = "";
         if (!ok) return;
         const when = dateLabel(this.life.state.day);
-        const text = r.procedure === "s3-contar-nidos" ? `Recuento de la colonia: ${count(this.view.crowd.countsOf("papua")?.nests ?? 0)} nidos ocupados de papúa` : "Pollo de albatros viajero anillado y anotado";
+        const text = r.procedure === "s3-contar-nidos" ? `Recuento de la colonia: ${count(job.total ?? 0)} nidos ocupados de papúa` : "Pollo de albatros viajero anillado y anotado";
         this.notebook.unshift({ when, text });
         this.notebook.splice(8);
         this.say?.(`${r.chore.title}: hecho. ${text}`, 5);
@@ -108,14 +105,24 @@ export class S3Biome {
     );
   }
 
-  /**
-   * While a field job is on the sheet: she and the camera at the table (the step player); with the sheet open the
-   * view tilts down so the table shows in the band above it. False otherwise (the island's camera as usual).
-   */
+  /** While a field job is on the sheet: she and the camera at the table (the step player); false otherwise. */
   frameReto(dt: number, camera: THREE.PerspectiveCamera, rig: THREE.Object3D, fig: CubeFigure): boolean {
     if (!this.steps.framing) return false;
     this.steps.frame(dt, camera, rig, fig);
-    camera.rotateX(-0.3);
+    return true;
+  }
+
+  /**
+   * At the table, the orange «Reto: Mesa de campo» button (ui/interaction.ts): it opens the choice of field jobs, the
+   * ones out of season greyed with why. True while it is offered (the machines' panel then leaves the button alone).
+   */
+  offer(): boolean {
+    if (!this.nearDesk) return false;
+    const st = this.life.state;
+    offerReto("Mesa de campo", () =>
+      // The jobs as they are now: the count asks for the colony's nests at this moment.
+      chooseReto(this.picker, "Mesa de campo", (this.jobs = fieldJobs(st)).map((j, i) => ({ title: j.reto.chore.title, detail: `${j.reto.chore.exercises.length} pasos · ${j.reto.chore.scenario}`, ...(j.open ? {} : { locked: j.why ?? "Fuera de su época" }), run: () => this.start(i) }))),
+    );
     return true;
   }
 
@@ -129,7 +136,9 @@ export class S3Biome {
     this.offset += gameDays;
   }
 
-  update(dt: number, boardDays: number, hour: number, body: { x: number; y: number; z: number; area: string }, t: number, camera: THREE.Camera): void {
+  update(dt: number, boardDays: number, hour: number, body: { x: number; y: number; z: number; area: string }, t: number, camera: THREE.Camera, yaw = 0): void {
+    if (camera instanceof THREE.PerspectiveCamera) this.camera = camera;
+    if (!this.working) this.her = { x: body.x, y: body.y, z: body.z, yaw };
     const onStage = body.area.startsWith("bioma");
     this.life.tick(dt, this.days(boardDays), t, hour, body, onStage);
     const C = BIOME_ISLAND.centre.value;
@@ -145,42 +154,20 @@ export class S3Biome {
       this.view.update(t, this.life.poses(), cover, season, this.life.state, camera.position);
     }
     this.near = onStage && !this.working && Math.hypot(body.x - this.board.x, body.z - this.board.z) < 2.4 && Math.abs(body.y - this.board.y) < 1;
-    this.nearDesk = onStage && !this.working && Math.hypot(body.x - this.desk.x, body.z - this.desk.z) < 1.9 && Math.abs(body.y) < 1;
+    this.nearDesk = onStage && !this.working && !this.near && Math.hypot(body.x - this.desk.x, body.z - this.desk.z) < 1.9 && Math.abs(body.y) < 1;
+    if (!this.nearDesk && this.picker.isOpen) this.picker.close();
     this.renderCard();
-    this.renderDesk();
-  }
-
-  private renderDesk(): void {
-    const st = this.life.state;
-    const key = this.nearDesk ? `${Math.floor(st.day * 4)}|${this.notebook.length}` : "";
-    if (key === this.deskKey) return;
-    this.deskKey = key;
-    this.deskCard.classList.toggle("hidden", !this.nearDesk);
-    if (!this.nearDesk) return;
-    this.jobs = fieldJobs(st);
-    this.deskCard.innerHTML = deskHtml(this.jobs, this.notebook);
   }
 
   private renderCard(): void {
     const st = this.life.state;
-    const key = this.near ? `${Math.floor(st.day * 2)}|${st.events.length}|${st.events.at(-1)?.text}` : "";
+    const key = this.near ? `${Math.floor(st.day * 2)}|${st.events.length}|${st.events.at(-1)?.text}|${this.notebook.length}` : "";
     if (key === this.cardKey) return;
     this.cardKey = key;
     this.card.classList.toggle("hidden", !this.near);
     if (!this.near) return;
-    this.card.innerHTML = censusHtml(census(st), st.events.slice(-10).reverse().map((e) => ({ when: dateLabel(e.day), text: e.text })), dateLabel(st.day), monthOfDay(st.day), Object.fromEntries(CROWDS.map((c) => [c.species, this.view.crowd.countsOf(c.species) ?? crowdCounts(st, c)])));
+    this.card.innerHTML = censusHtml(census(st), st.events.slice(-10).reverse().map((e) => ({ when: dateLabel(e.day), text: e.text })), dateLabel(st.day), monthOfDay(st.day), Object.fromEntries(CROWDS.map((c) => [c.species, this.view.crowd.countsOf(c.species) ?? crowdCounts(st, c)])), this.notebook);
   }
-}
-
-/** The field table's card: each job with its steps and source, open in its season (else why not); her notebook. */
-export function deskHtml(jobs: readonly FieldJob[], notebook: readonly { when: string; text: string }[]): string {
-  const job = (j: FieldJob, i: number) =>
-    `<li data-reto="${esc(j.reto.procedure ?? "")}"><b>${esc(j.reto.chore.title)}</b> <small>${j.reto.chore.exercises.length} pasos · ${esc(j.reto.chore.scenario ?? "")}</small>${
-      j.open ? "" : `<p class="cm-why"><b aria-hidden="true">⏸</b> ${esc(j.why ?? "")}</p>`
-    }<div class="cm-acts"><button data-job="${i}" class="${j.open ? "primary" : ""}"${j.open ? "" : " disabled"}>Empezar</button></div></li>`;
-  return `<div class="cm-head"><b>Mesa de campo</b><small>Estación de investigación · trabajo de campo como en Bird Island</small></div>
-<ul class="cz-jobs">${jobs.map(job).join("")}</ul>
-<h4>Cuaderno de campo</h4><ul class="cz-events">${notebook.map((e) => `<li><small>${esc(e.when)}</small> ${esc(e.text)}</li>`).join("") || "<li>Aún nada anotado</li>"}</ul>`;
 }
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
@@ -188,7 +175,7 @@ const SEASON = (m: number) => (m >= 12 || m <= 2 ? "verano austral" : m <= 5 ? "
 const STAGES: readonly Stage[] = ["cria", "joven", "adulto", "anciano"];
 
 /** The census card: each species with its count by stage, what it eats and who eats it, how fed it is; the last events. */
-export function censusHtml(rows: readonly CensusRow[], events: readonly { when: string; text: string }[], date: string, month: number, crowds: Readonly<Record<string, CrowdCounts>> = {}): string {
+export function censusHtml(rows: readonly CensusRow[], events: readonly { when: string; text: string }[], date: string, month: number, crowds: Readonly<Record<string, CrowdCounts>> = {}, notebook: readonly { when: string; text: string }[] = []): string {
   const row = (r: CensusRow) => {
     const s = BIOME.find((x) => x.id === r.id)!;
     let n = "";
@@ -215,6 +202,7 @@ export function censusHtml(rows: readonly CensusRow[], events: readonly { when: 
   const group = (title: string, kind: CensusRow["kind"]) => `<h4>${title}</h4><ul class="cz-list">${rows.filter((r) => r.kind === kind).map(row).join("")}</ul>`;
   return `<div class="cm-head"><b>Censo de la isla</b><small>Estación de investigación · ${esc(date)} · ${SEASON(month)}</small></div>
 <div class="cz-body">${group("Aves y focas", "animal")}${group("Mar y suelo: kril, peces, calamar, invertebrados", "banco")}${group("Plantas y algas", "planta")}
+<h4>Cuaderno de campo (la mesa de campo)</h4><ul class="cz-events cz-notebook">${notebook.map((e) => `<li><small>${esc(e.when)}</small> ${esc(e.text)}</li>`).join("") || "<li>Aún nada anotado: los recuentos y anillamientos se hacen en la mesa</li>"}</ul>
 <h4>Últimos sucesos</h4><ul class="cz-events">${events.map((e) => `<li><small>${esc(e.when)}</small> ${esc(e.text)}</li>`).join("") || "<li>Aún nada</li>"}</ul>
 <p class="cz-note"><small>Un año de la isla dura 28 días de juego (Cold Sanctuary): cada día de juego son unos 13 días de vida.</small></p></div>`;
 }

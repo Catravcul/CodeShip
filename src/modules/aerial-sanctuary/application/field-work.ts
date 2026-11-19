@@ -16,6 +16,8 @@ export interface FieldJob {
   /** Open now; else why not («Sin nidos ocupados: …»). */
   readonly open: boolean;
   readonly why?: string;
+  /** The nest count's right total (the colony's occupied nests when the job was set). */
+  readonly total?: number;
 }
 
 const POOL = [...FIELD.nidos.steps, ...FIELD.anillar.steps].filter((s) => !s.includes("{"));
@@ -31,7 +33,7 @@ export function fieldJobs(st: BiomeState): FieldJob[] {
   const countOpen = (gentoo.phase === "huevos" || gentoo.phase === "pollos") && n > 0;
   const ringOpen = albatross.phase === "pollos" && albatross.young > 0;
   return [
-    { reto: procedureReto(nidos, undefined, POOL), open: countOpen, ...(countOpen ? {} : { why: "Sin nidos ocupados ahora: se cuentan en la incubación (noviembre a enero en la colonia)" }) },
+    { reto: procedureReto(nidos, undefined, POOL), open: countOpen, total: n, ...(countOpen ? {} : { why: "Sin nidos ocupados ahora: se cuentan en la incubación (noviembre a enero en la colonia)" }) },
     { reto: procedureReto(FIELD.anillar, undefined, POOL), open: ringOpen, ...(ringOpen ? {} : { why: "Ningún pollo de albatros en su nido ahora: nacen en marzo y se anillan antes de volar" }) },
   ];
 }

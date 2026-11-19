@@ -20,7 +20,7 @@ págalos y focas que nacen, comen, cazan, se aparean y mueren. Se llega en helic
 | `aerial-sanctuary/domain/bioma-crowd.ts` | Cuántos adultos, crías, nidos y huevos se dibujan según la cadena, el calendario de cría y la muda; pruebas en `bioma-crowd.test.ts` |
 | `adapters/three/s3-biome-crowd.ts` | Las multitudes dibujadas: cuerpos de cubos cerca, cajas lejos, nidos y huevos (una sola malla instanciada) |
 | `aerial-sanctuary/data/bioma-retos.ts`, `application/field-work.ts` | El trabajo de campo de la cabaña (contar nidos, anillar) como retos, con `procedureReto` del santuario 1 |
-| `src/s3-biome.ts` | El cableado (dos líneas en `aerial-sanctuary.ts`), la tarjeta del censo y la de la mesa de campo |
+| `src/s3-biome.ts` | El cableado (tres líneas en `aerial-sanctuary.ts`), la tarjeta del censo y el botón naranja de la mesa de campo |
 
 ## Especies
 
@@ -97,7 +97,7 @@ sigue). ≤ 600 llamadas de dibujo (PX-51).
 **650 matas por hectárea** (real: Lewis Smith y Clymo 1984, *Nature* 309: 617–620, 600–700/ha en Beauchêne, pedestales
 de 1–1,5 m, copas de hasta 4,5 m), en rejilla con ruido sobre la ladera: ~1950 matas. Cada mata: pedestal de turba de
 ~1 m, abanico de hojas de ~3 m (licencia, dentro de «hasta 4,5 m») y una falda de hojas secas. Nivel de detalle: las
-420 más cercanas (a < 42 m) con hojas; las demás, un montículo y un cono en una malla (2 + 1 llamadas).
+300 más cercanas (a < 42 m) con hojas; las demás, un montículo y un cono en una malla (2 + 1 llamadas).
 
 ## Multitudes (colonias, playas y nidos)
 
@@ -134,17 +134,19 @@ Medido en PX-51 (SwiftShader, sin GPU): ver la última corrida en `docs/qa/regis
 ### Mesa de campo (trabajo de campo como en Bird Island)
 
 Junto a la pared oeste de la cabaña, a más de 2 m del tablón: el cuaderno, el contador manual, los alicates de anillar
-y las anillas. El botón naranja abre «Mesa de campo» (nunca se abre sola). Cada trabajo es un procedimiento real, un
-reto por paso, con `procedureReto` del santuario 1 (`sanctuary-one/application/challenges.ts`, que ahora acepta su
-lista de pasos de distracción) y el reproductor de pasos de las naves (`StepShow`): ella ante la mesa, revisa el
-cuaderno, toma el contador o los alicates.
+y las anillas. Allí sale el botón naranja compartido **«Reto: Mesa de campo»** (`ui/interaction.ts`, como en el
+santuario 1; nunca se abre nada solo) y abre el mismo selector de retos (`RetoPicker`): los trabajos fuera de su época,
+apagados con el porqué. Cada trabajo es un procedimiento real, un reto por paso, con `procedureReto` del santuario 1
+(`sanctuary-one/application/challenges.ts`, que ahora acepta su lista de pasos de distracción); el escenario es el
+compartido `reto-focus.ts` (ella ante la mesa, la cámara sobre su hombro en la franja libre) y cada paso lo actúa el
+reproductor de pasos de las naves (`StepShow`): revisa el cuaderno, toma el contador o los alicates.
 
 | Trabajo | Pasos (fuente) | Cuándo |
 | --- | --- | --- |
 | Contar los nidos de papúa | incubación temprana, contador y plano, a ≥ 5 m, nido ocupado = ave sobre el nido, 3 recuentos, repetir si difieren > 10 %, anotar la media — **la media es el total real de la colonia de la cadena** (CCAMLR CEMP A3; normas de visita de Georgia del Sur) | con huevos o pollos en los nidos |
 | Anillar un pollo de albatros viajero | permiso y número, acercarse por detrás, paño sobre la cabeza, sujetar alas sin oprimir el pecho, anilla en el tarso que gire, anotar, devolver al nido (BTO; BAS Bird Island) | con un pollo en su nido (marzo–diciembre) |
 
-Fuera de su época el botón sale apagado con el porqué. Lo hecho queda en el **cuaderno de campo** de la tarjeta.
+Lo hecho queda en el **cuaderno de campo**, dentro del censo.
 
 ### El censo
 
@@ -160,7 +162,7 @@ cuántos («≈ 2,4 billones de individuos») y el reparto por edades en %. Cifr
 `domain/bioma.test.ts` (10 años con todas las especies presentes o fuera comiendo, nacimientos en su mes, sin macho no
 hay crías, determinista), `domain/bioma-crowd.test.ts` (calendario de nidos, muda, escala, cifras legibles),
 `application/field-work.test.ts`, `application/biome-life.test.ts`, `fauna/domain/forage.test.ts`. Recorrido PX-51
-(`s3-bioma`): densidad a la vista en la colonia (≥ 120 papúas) y la playa (≥ 30 lobos, lo real en noviembre: ~1,6 por metro de playa), nidos con huevos en noviembre,
+(`s3-bioma`): densidad a la vista en la colonia (≥ 120 papúas) y la playa (≥ 20 lobos en el encuadre estrecho del móvil; lo real en noviembre: ~1,6 por metro de playa), nidos con huevos en noviembre,
 tussac a su densidad, kril en toneladas, filas en 390 px, el reto de contar nidos completo en la mesa, la muda en marzo.
 
 ## Para después

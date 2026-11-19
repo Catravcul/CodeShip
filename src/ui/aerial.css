@@ -37,10 +37,3 @@ body.has-rcs-pad .vstick.s3-move { display: none !important; }
 /* Every census row wraps inside a 390 px phone (long numbers and names never push it wider). */
 .s3-censo .cz-list li > *, .s3-censo .cz-events li { overflow-wrap: anywhere; min-width: 0; }
 .s3-censo .cz-seen { color: #ffe3a8; }
-/* The field table at the research hut (s3-biome.ts): its jobs and her field notebook. */
-.s3-campo h4 { margin: 6px 0 2px; font-size: 12px; color: #9fe3ff; }
-.s3-campo .cz-jobs, .s3-campo .cz-events { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.s3-campo .cz-jobs li { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #e6f7ff; overflow-wrap: anywhere; }
-.s3-campo small { color: #b8d3de; }
-.s3-campo .cz-events li { font-size: 12px; }
-@media (min-width: 521px) { .s3-campo { max-height: 70vh; overflow-y: auto; } }

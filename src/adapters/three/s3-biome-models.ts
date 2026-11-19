@@ -21,7 +21,7 @@ const mat = (c: number, o: Partial<THREE.MeshStandardMaterialParameters> = {}) =
 /** Tussocks a hectare (Lewis Smith y Clymo 1984) and how near (m) a tussock is drawn with its blades. */
 const TUSSAC_NEAR_M = 42;
 /** Instances of each plant kind (the tussac's: those with blades, near the camera; the mobile budget: docs/design/bioma-s3.md §Presupuesto). */
-export const PLANT_BUDGET = { tussac: 420, musgo: 160, hierba: 140, roca: 60, kelp: 60 } as const;
+export const PLANT_BUDGET = { tussac: 300, musgo: 160, hierba: 140, roca: 60, kelp: 60 } as const;
 /** Fish and krill drawn at once. */
 export const SWARM_BUDGET = { kril: 5 * 40, linterna: 3 * 14, "pez-hielo": 8, austromerluza: 3, calamar: 6 } as const;
 
@@ -141,7 +141,7 @@ export class BiomeScene {
     // The fountain: green blades arching out to ~3 m across from the pedestal's top, over a skirt of dead straw
     // hanging down its sides (vertex colours under the season's tint).
     const blade = (len: number, w: number, out: number, drop: number, yaw: number, base: THREE.Color, tip: THREE.Color) => {
-      const g = new THREE.PlaneGeometry(w, len, 1, 4).translate(0, len / 2, 0);
+      const g = new THREE.PlaneGeometry(w, len, 1, 3).translate(0, len / 2, 0);
       const pos = g.attributes.position!;
       const col: number[] = [];
       const c = new THREE.Color();
@@ -158,9 +158,9 @@ export class BiomeScene {
     const straw = new THREE.Color(1, 0.86, 0.58);
     const green = new THREE.Color(0.86, 1, 0.78);
     const blades: THREE.BufferGeometry[] = [];
-    for (let b = 0; b < 34; b++) blades.push(blade(1.6 + 0.25 * ((b * 7) % 3), 0.2, 0.9 + 0.5 * (((b * 5) % 4) / 3), 0.5, (b / 34) * Math.PI * 2 + (b % 3) * 0.12, straw, green));
+    for (let b = 0; b < 26; b++) blades.push(blade(1.6 + 0.25 * ((b * 7) % 3), 0.24, 0.9 + 0.5 * (((b * 5) % 4) / 3), 0.5, (b / 26) * Math.PI * 2 + (b % 3) * 0.12, straw, green));
     // The skirt: dead leaves from the rim down the pedestal (upside-down blades).
-    for (let b = 0; b < 18; b++) blades.push(blade(1.0, 0.34, 0.3, 0, 0, straw.clone().multiplyScalar(0.8), straw.clone().multiplyScalar(0.95)).rotateX(Math.PI).translate(0, 0.02, -0.45).rotateY((b / 18) * Math.PI * 2 + (b % 2) * 0.1));
+    for (let b = 0; b < 12; b++) blades.push(blade(1.0, 0.5, 0.3, 0, 0, straw.clone().multiplyScalar(0.8), straw.clone().multiplyScalar(0.95)).rotateX(Math.PI).translate(0, 0.02, -0.45).rotateY((b / 12) * Math.PI * 2 + (b % 2) * 0.1));
     const fountain = mergeGeometries(blades);
     fountain.translate(0, 1.0, 0);
     this.tussacMat.vertexColors = true;

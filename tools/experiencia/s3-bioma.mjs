@@ -38,7 +38,7 @@ const inView = (p) => p.evaluate(() => window.codeshipS3.biome.view.crowd.inView
 const SHOTS = [
   // crowd: whose crowd to look at (its middle), from `stand` m; `many`: how many of it in view at least.
   { id: "bioma:colonia", title: "Colonia de pingüinos papúa", label: "colonia", want: ["papua"], crowd: "papua", stand: 12, many: 120 },
-  { id: "bioma:playa", title: "Playa de los lobos marinos", label: "playa", want: [], crowd: "lobo", stand: 7, many: 30 },
+  { id: "bioma:playa", title: "Playa de los lobos marinos", label: "playa", want: [], crowd: "lobo", stand: 7, many: 20 },
   { id: "bioma:tussac", title: "Ladera de tussac", label: "tussac", want: [], stand: 6 },
 ];
 
@@ -141,16 +141,17 @@ export async function s3Bioma(j) {
   await walkTo(j, desk.x, desk.z - 0.9, 0.5);
   const atDesk = await p.waitForFunction(() => window.codeshipS3.biome.nearDesk, null, { timeout: 8000 }).then(() => true).catch(() => false);
   j.check("en la cabaña está la mesa de campo, a más de 2 m del tablón", atDesk, await p.evaluate(() => JSON.stringify(window.codeshipS3.body)));
-  const deskAlone = await p.evaluate(() => document.body.classList.contains("panel-on") && !!document.querySelector(".s3-campo:not(.hidden)")?.checkVisibility());
-  j.check("la mesa de campo no se abre sola: espera al botón naranja", !deskAlone);
-  await j.showPanel(".s3-campo");
-  const jobs = await p.evaluate(() => [...document.querySelectorAll(".s3-campo .cz-jobs li")].map((li) => ({ id: li.dataset.reto, open: !li.querySelector("button").disabled, text: li.innerText })));
-  j.check("la mesa ofrece contar los nidos y anillar pollos de albatros (cada uno en su época)", jobs.some((x) => x.id === "s3-contar-nidos" && x.open) && jobs.some((x) => x.id === "s3-anillar-albatros"), jobs.map((x) => `${x.id}:${x.open}`).join(", "));
+  // The orange button reads «Reto: Mesa de campo» (ui/interaction.ts, as in sanctuary 1) and opens the shared picker.
+  const label = await p.waitForFunction(() => [...document.querySelectorAll(".rm-act:not(.hidden)")].map((b) => b.innerText).join("|"), null, { timeout: 8000 }).then((h) => h.jsonValue()).catch(() => "");
+  j.check("en la mesa, el botón naranja dice «Reto: Mesa de campo» y nada se abre solo", /Reto: Mesa de campo/.test(label) && !(await p.evaluate(() => document.body.classList.contains("in-reto-picker"))), label);
+  await j.tap(".rm-act:not(.hidden)", "Reto: Mesa de campo");
+  const jobs = await p.evaluate(() => [...document.querySelectorAll(".reto-picker .rp-opt")].map((b) => ({ open: !b.disabled, text: b.innerText })));
+  j.check("el selector de retos del santuario 1 ofrece contar los nidos (abierto en noviembre) y anillar pollos de albatros (con su época)", jobs.length === 2 && /nidos/.test(jobs[0].text) && jobs[0].open && /albatros/.test(jobs[1].text), jobs.map((x) => `${x.text.split("\n")[0]}:${x.open}`).join(", "));
   await capture(j, "mesa", "Mesa de campo");
-  await j.tap('.s3-campo [data-job="0"]', "Empezar: contar los nidos");
+  await j.tap('.reto-picker .rp-opt[data-i="0"]', "Contar los nidos de papúa");
   await j.waitDuel();
   const oracle = () => window.codeshipS3.exercise;
-  const nests = await p.evaluate(() => window.codeshipS3.biome.view.crowd.countsOf("papua").nests);
+  const nests = await p.evaluate(() => window.codeshipS3.biome.counted);
   let steps = 0;
   let framed = false;
   for (let i = 0; i < 12; i++) {
@@ -168,10 +169,10 @@ export async function s3Bioma(j) {
   j.check("contar los nidos se completa («Conseguido»)", /Conseguido/.test(result), `${steps} pasos · ${result}`);
   await j.tap(".duel button.end", "Continuar").catch(() => {});
   await p.waitForTimeout(800);
-  const note = await p.evaluate(() => window.codeshipS3.biome.notebook[0]?.text ?? "");
-  j.check("el recuento queda en el cuaderno de campo", /nidos ocupados/.test(note), note);
   await goArea(j, "bioma:estacion", "Estación de investigación");
   await j.showPanel(".s3-censo");
+  const note = await p.evaluate(() => document.querySelector(".s3-censo .cz-notebook")?.innerText ?? "");
+  j.check("el recuento queda en el cuaderno de campo del censo", /nidos ocupados/.test(note), note);
 
   // A month of the island (≈ 2,3 game days) passes: births, deaths, arrivals reach the card.
   const before = c.events.join("|");

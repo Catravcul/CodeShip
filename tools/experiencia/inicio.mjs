@@ -78,7 +78,7 @@ export async function inicio(j) {
   // 2. The cards: one per sanctuary, with what it is and a 44 px button; 6 and 3 start.
   j.check("una tarjeta por santuario, cada una con su descripción y su botón de 44 px", s0.rows.length === 6 && s0.rows.every((r) => r.desc.length > 30 && r.gw >= 44 && r.gh >= 44), JSON.stringify(s0.rows.map((r) => [r.id, r.gw, r.gh])));
   const row = (s, id) => s.rows.find((r) => r.id === id);
-  j.check("se pueden jugar el 6 (Espacio) y el 3 (Aéreo); el 6 empieza elegido", !row(s0, "espacio")?.off && !row(s0, "aereo")?.off && s0.rows.filter((r) => !r.off).length === 2 && s0.picked === "espacio" && row(s0, "espacio")?.on, JSON.stringify(s0.rows.map((r) => [r.id, r.off, r.on])));
+  j.check("se pueden jugar el 6 (Espacio), el 3 (Aéreo) y el 1 (Terrestre); el 6 empieza elegido", !row(s0, "espacio")?.off && !row(s0, "aereo")?.off && !row(s0, "terrestre")?.off && s0.rows.filter((r) => !r.off).length === 3 && s0.picked === "espacio" && row(s0, "espacio")?.on, JSON.stringify(s0.rows.map((r) => [r.id, r.off, r.on])));
   j.check("el 3 dice en su descripción que los retos de entrenamiento están «En construcción», sin candado", !row(s0, "aereo")?.lock && /En construcción: los retos de los puestos de entrenamiento/.test(row(s0, "aereo")?.desc ?? ""), row(s0, "aereo")?.desc);
   j.check("2, 4 y 5 dicen «Próximamente», con su candado; el 1 se juega (santuario 1)", ["marino", "subterraneo", "nucleo"].every((id) => row(s0, id)?.off && /⊘\s*Próximamente/.test(row(s0, id)?.lock ?? "")), JSON.stringify(s0.rows.map((r) => [r.id, r.lock])));
   await capture(j, "mapa", "Inicio: mapa de santuarios y tarjetas");
@@ -132,7 +132,7 @@ export async function inicio(j) {
   await p.waitForSelector(".start-screen:not(.hidden)", { timeout: 120000 });
   await p.waitForTimeout(500);
   const s7 = await start(p);
-  j.check("con una partida guardada, el botón del 6 dice «Continuar» (el único); el 3 sigue con «Jugar»", row(s7, "espacio")?.action === "Continuar" && s7.rows.filter((r) => r.action === "Continuar").length === 1 && row(s7, "aereo")?.action === "Jugar" && s7.rows.filter((r) => !r.off).length === 2, JSON.stringify(s7.rows.map((r) => [r.id, r.action, r.off])));
+  j.check("con una partida guardada, el botón del 6 dice «Continuar» (el único); el 3 y el 1 siguen con «Jugar»", row(s7, "espacio")?.action === "Continuar" && s7.rows.filter((r) => r.action === "Continuar").length === 1 && row(s7, "aereo")?.action === "Jugar" && row(s7, "terrestre")?.action === "Jugar" && s7.rows.filter((r) => !r.off).length === 3, JSON.stringify(s7.rows.map((r) => [r.id, r.action, r.off])));
   await capture(j, "continuar", "Inicio con una partida guardada");
   await j.tap('.start-screen .mw-go[data-go="espacio"]', "Continuar");
   await p.waitForFunction(() => window.codeship, null, { timeout: 120000 }).catch(() => {});

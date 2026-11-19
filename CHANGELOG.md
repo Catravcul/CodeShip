@@ -5,6 +5,7 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-19
 
+- **Tarjetas de máquina en el móvil**: suben por encima del «−» / «+» redondos del joystick de mirar, que ahora están encima de él. [docs/design/reglas.md](docs/design/reglas.md)
 - **Santuario 1, 2.ª lista**: mandos con todos los botones de la Switch (zoom en la cruceta); Áreas con Automático,
   cada edificio por su nombre y cada casquete, el edificio dibujado; cada persona con su cara, pelo, ropa y estatura
   (de Cold Sanctuary); el personal hace los pasos de su trabajo; los retos enfocan la animación; catálogo de iconos

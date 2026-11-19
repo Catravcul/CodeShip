@@ -1,8 +1,8 @@
 // PX-42 The general tree menu, «Panel», «Áreas» and the task list's settings (docs/design/reglas.md §5.7–5.9,
 // ux-acciones.md §Menú árbol, areas.md, viaje-a-una-tarea.md §Ajustes de tareas; Berón 2026-11-18), on an
-// iPhone 13 with taps. One gear at the top right turns into an X and sprouts Vista, Tareas, Áreas (and Panel
-// while she is at a machine, Trayecto while a trip runs); only its own X folds it. A machine's card never pops up:
-// «Panel» shows it and turns into the X that hides it. «Áreas» is the Navigation window for the vehicle: a 3D map
+// iPhone 13 with taps. One gear at the top right turns into an X and sprouts Vista, Tareas, Áreas (and
+// Trayecto while a trip runs); only its own X folds it. A machine's card never pops up: the orange interaction
+// button under the root (outside the menu, only at a machine; Berón 2026-11-19) shows it and turns into the X that hides it. «Áreas» is the Navigation window for the vehicle: a 3D map
 // that turns with a finger and zooms with a pinch, and under it the areas with what is there and «Ir». Tareas and
 // Áreas cover the screen, the menu hides under them and comes back as it was. The task list keeps its group chips;
 // its gear has «Viaje / Teletransporte» and the vehicle («Automático»: only where she is). Captures in
@@ -135,7 +135,9 @@ export async function tareasAjustes(j) {
   const m1 = await menu(p);
   const labels = m1?.out.map((b) => b.label) ?? [];
   j.check("el engranaje se vuelve una X («Cerrar menú») y debajo brotan Vista, Tareas y Áreas, de 44 px", !!m1 && m1.open && m1.root === "Cerrar menú" && /^Vista/.test(labels[0] ?? "") && labels[1] === "Tareas" && labels[2] === "Áreas" && m1.out.every((b) => b.y > m1.rootAt.top && b.w >= 44 && b.h >= 44), JSON.stringify(m1));
-  j.check("junto a una máquina brota también «Panel», debajo de Áreas", labels[3] === "Panel", labels.join(" / "));
+  const act = () => p.evaluate(() => { const b = [...document.querySelectorAll(".room-ui:not(.hidden) .rm-act")].find((x) => x.checkVisibility()); return b ? { label: b.getAttribute("aria-label"), open: b.classList.contains("rm-open"), inMenu: !!b.closest(".rm-shoots") } : null; });
+  const a0 = await act();
+  j.check("junto a una máquina sale el botón naranja de interacción bajo la raíz, fuera de lo que brota del menú", !!a0 && !a0.inMenu && !a0.open && !labels.includes("Panel"), `${labels.join(" / ")} · ${JSON.stringify(a0)}`);
   await capture(j, "menu-abierto", "Menú árbol abierto");
 
   // 0a. «Panel» shows the machine's card and turns into the X that hides it; the menu stays open all along.
@@ -143,13 +145,15 @@ export async function tareasAjustes(j) {
   await p.waitForTimeout(300);
   const card1 = await p.evaluate(() => [...document.querySelectorAll(".cab-machine:not(.hidden)")].find((c) => c.checkVisibility())?.querySelector(".cm-head b")?.textContent);
   const m1b = await menu(p);
-  j.check("«Panel» muestra la tarjeta de la máquina y pasa a ser la X que la oculta; el menú sigue abierto", !!card1 && !!m1b?.open && m1b.out.some((b) => b.label === "Cerrar panel"), `${card1} · ${JSON.stringify(m1b)}`);
+  const a1 = await act();
+  j.check("el botón naranja muestra la tarjeta de la máquina y pasa a ser la X que la oculta; el menú sigue abierto", !!card1 && !!m1b?.open && !!a1?.open && /^Cerrar/.test(a1.label ?? ""), `${card1} · ${JSON.stringify(a1)}`);
   await capture(j, "panel", "Panel de la máquina desde el menú");
   await j.tap(".room-ui:not(.hidden) .rm-act.rm-open", "X del menú: Cerrar panel");
   await p.waitForTimeout(300);
   const card2 = await p.evaluate(() => [...document.querySelectorAll(".cab-machine:not(.hidden)")].some((c) => c.checkVisibility()));
   const m1c = await menu(p);
-  j.check("la X de «Panel» oculta la tarjeta y el menú sigue abierto", !card2 && !!m1c?.open && m1c.out.some((b) => b.label === "Panel"), JSON.stringify(m1c));
+  const a2 = await act();
+  j.check("la X del botón naranja oculta la tarjeta y el menú sigue abierto", !card2 && !!m1c?.open && !!a2 && !a2.open, JSON.stringify(a2));
 
   // 0b. «Áreas»: the Navigation window for the LM; the menu hides under it.
   await j.tap(".room-ui:not(.hidden) .areas-btn", "Áreas");

@@ -278,6 +278,7 @@ const hour = () => boardHour(days);
 const passed = new Set<number>();
 // The biome's island: its living food chain and the census board (s3-biome.ts, docs/design/bioma-s3.md).
 const biome = new S3Biome(scene, ui, L);
+biome.wire(openChallenge, say);
 
 // --- Going somewhere -------------------------------------------------------------------------------------------------
 function stop(why?: string): void {
@@ -1205,7 +1206,7 @@ function frame(now: number): void {
   if (caption.textContent !== cap) caption.textContent = cap;
   frameBirds(dt);
   biome.update(dt, days, hour(), body, clock, camera);
-  updateCamera(dt);
+  if (!biome.frameReto(dt, camera, rig, avatar)) updateCamera(dt);
   updateBar();
   near = nearestMachine();
   renderCard();

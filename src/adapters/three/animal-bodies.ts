@@ -79,6 +79,31 @@ export class AnimalHerd {
     });
   }
 
+  private mottled?: Float32Array;
+  private static readonly worn = new THREE.Color(0x8a7458);
+  private static readonly c = new THREE.Color();
+
+  /**
+   * Moult (merged herds): copy `i`'s coat `amount` (0–1) worn brown in patches, the new coat showing through (a
+   * moulting gentoo or elephant seal); 0 gives it back its colours.
+   */
+  mottle(i: number, amount: number): void {
+    const m = this.meshes[0];
+    if (!this.merged || !m) return;
+    this.mottled ??= new Float32Array(this.capacity);
+    if (this.mottled[i] === amount) return;
+    this.mottled[i] = amount;
+    const { c, worn } = AnimalHerd;
+    this.parts.forEach((p, k) => {
+      c.set(p.color ?? this.d.color);
+      // Feathers and fur come off in patches: some parts much, some little (a fixed pattern per copy).
+      const patch = ((i * 7 + k * 13) % 5) / 4;
+      if (amount > 0) c.lerp(worn, amount * (0.15 + 0.55 * patch));
+      m.setColorAt(i * this.parts.length + k, c);
+    });
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+  }
+
   /** Draw only the first `n` copies (none: no draw call at all). */
   show(n: number): void {
     const per = this.merged ? this.parts.length : 1;

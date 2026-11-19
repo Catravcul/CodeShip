@@ -5,6 +5,13 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-19
 
+- **Santuario 3, bioma a su densidad real**: la colonia de papúas con cientos de aves y nidos a 1 m, la playa llena de
+  lobos marinos (80 crías por 100 m), un harén de elefantes marinos y el tussac a 650 matas por hectárea; cada animal
+  de la cadena representa a muchos (×50 los papúas), cuerpos de cubos cerca y cajas lejos. Nidos de piedras con huevos
+  en noviembre, pollos de albatros en su nido de barro en invierno, petreles en sus grietas; muda de papúas y elefantes
+  marinos. El censo da el kril en toneladas («≈ 800 000 t») y cabe en 390 px. En la cabaña, la mesa de campo: contar
+  los nidos y anillar pollos de albatros como retos reales. [docs/design/bioma-s3.md](docs/design/bioma-s3.md)
+
 - **Santuario 3, bioma subantártico**: una isla como Bird Island con 23 especies (tussac, musgo, kelp, kril, peces,
   papúas, albatros, págalos, lobos y elefantes marinos, foca leopardo…) en una cadena alimenticia viva: nacen en su mes
   real tras aparearse, crecen, cazan, pasan hambre y mueren de viejos; censo en la estación con el botón naranja.

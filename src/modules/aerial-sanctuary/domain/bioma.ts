@@ -755,9 +755,32 @@ export function census(st: BiomeState): CensusRow[] {
   return rows;
 }
 
-/** «1,2 millones», «3 400», «12». */
+const NBSP = "\u00a0";
+/** Digits grouped by threes with a space, the decimals after a comma (RAE): «800 000», «3 400», «2,4». */
+function grouped(n: number, decimals = 0): string {
+  const [int, dec] = Math.abs(n).toFixed(decimals).split(".");
+  const g = int!.replace(/\B(?=(\d{3})+(?!\d))/g, NBSP);
+  return `${n < 0 ? "−" : ""}${g}${dec && Number(dec) > 0 ? `,${dec.replace(/0+$/, "")}` : ""}`;
+}
+/** Two significant figures, grouped: 798 752 → «800 000», 3,46 → «3,5». */
+function twoFigures(n: number): string {
+  if (n === 0) return "0";
+  const p = Number(n.toPrecision(2));
+  return grouped(p, Math.max(0, 1 - Math.floor(Math.log10(Math.abs(p)))));
+}
+
+/** How many, short and readable on a phone: «12», «3 400», «2,4 millones», «2,4 mil millones», «2,4 billones». */
 export function count(n: number): string {
-  if (n >= 1e6) return `${(Math.round(n / 1e5) / 10).toLocaleString("es-ES")} millones`;
-  if (n >= 1e4) return `${Math.round(n / 1000).toLocaleString("es-ES")} mil`;
-  return Math.round(n).toLocaleString("es-ES");
+  const r = Math.round(n);
+  if (r < 1e6) return grouped(r);
+  if (r < 1e9) return `${twoFigures(r / 1e6)} millones`;
+  if (r < 1e12) return `${twoFigures(r / 1e9)} mil millones`;
+  return `${twoFigures(r / 1e12)} billones`;
+}
+
+/** A mass: «850 g», «12 kg», «3,5 t», «800 000 t» (two significant figures past a tonne). */
+export function mass(kg: number): string {
+  if (kg < 1) return `${grouped(Math.round(kg * 1000))} g`;
+  if (kg < 1000) return `${grouped(Math.round(kg))} kg`;
+  return `${twoFigures(kg / 1000)} t`;
 }

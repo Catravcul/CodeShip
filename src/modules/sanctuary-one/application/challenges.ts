@@ -22,11 +22,14 @@ const AGE = 30;
 
 const ALL_STEPS = stepPool([GYM, COCINA, SALUD, PLANTAS, LIMPIEZA, TRABAJO].flatMap((g) => Object.values(g).map((q: Procedure) => q.steps)));
 
-/** A procedure as a chore: one challenge per real step (chores/application/catalog.ts stepChain). */
-export function procedureReto(q: Procedure, target?: string): Reto {
+/**
+ * A procedure as a chore: one challenge per real step (chores/application/catalog.ts stepChain). `pool`: other real
+ * steps offered among the options (sanctuary 1's own by default; sanctuary 3's field work passes its own).
+ */
+export function procedureReto(q: Procedure, target?: string, pool: readonly string[] = ALL_STEPS): Reto {
   const id = target ? `${q.id}-${target}` : q.id;
   return {
-    chore: { id, kind: q.kind as ChoreKind, title: q.title, scenario: q.scenario, targetId: target, exercises: stepChain(id, 1, (i) => `${q.title}: paso ${i + 1}`, q.steps, [...q.wrong, ...ALL_STEPS]) },
+    chore: { id, kind: q.kind as ChoreKind, title: q.title, scenario: q.scenario, targetId: target, exercises: stepChain(id, 1, (i) => `${q.title}: paso ${i + 1}`, q.steps, [...q.wrong, ...pool]) },
     reward: q.reward,
     source: q.source,
     reality: q.reality,

@@ -1,4 +1,5 @@
 import { ageInGroup, sizeAt, stageOf, STAGE_LABEL, type LifeCycle, type Stage } from "@modules/fauna/domain/life-cycle";
+import { matingMonth } from "@modules/fauna/domain/mating";
 import { daylightHours, eppley, grow, rateFor, seasonFactor, takeable, yearMean } from "@modules/fauna/domain/forage";
 import { BIOME, CARRION, CLIMATE, nameOf, type AnimalSpec, type BiomeSpec, type Food, type PlantSpec, type SwarmSpec } from "../data/bioma";
 
@@ -29,7 +30,7 @@ export const PREY_MARGIN = 0.3;
 /** What a plant or a bank keeps out of reach (ours: deep water, cracks, the bottom of the moss): it never vanishes. */
 export const REFUGE = 0.04;
 
-export type EventKind = "nace" | "muere" | "llega" | "se-va" | "puesta";
+export type EventKind = "nace" | "muere" | "llega" | "se-va" | "puesta" | "aparea";
 export type Cause = "vejez" | "hambre" | "depredacion" | "otras" | "sin-madre";
 
 export interface BiomeEvent {
@@ -55,6 +56,8 @@ export interface Individual {
   lastBirthYear: number;
   /** Food it is owed from animal prey (kg): it hunts when this reaches a prey's worth. */
   debt: Record<string, number>;
+  /** Pregnant (or with eggs on the way): the year of the birth season it is due in. */
+  pregnant?: number;
   /** Whether it died this step (kept for one step so the scene can show it go). */
   dead?: Cause;
 }
@@ -124,6 +127,14 @@ const dayOfMonth = (day: number) => dayOfYear(day) - MONTH_START[monthOfDay(day)
 /** «12 dic, año 1». */
 export const dateLabel = (day: number): string => `${dayOfMonth(day)} ${MONTHS[monthOfDay(day) - 1]}, año ${yearOf(day) - yearOf(0) + 1}`;
 const inWindow = (m: number, from: number, months: number) => ((m - from + 12) % 12) < months;
+/** Day (since day 0) the birth month `m` starts in calendar year `y`. */
+const monthStart = (y: number, m: number) => y * 365 + MONTH_START[m - 1]! - START_DAY_OF_YEAR;
+/** The birth season a mating on `day` is due in: the birth month nearest a gestation later (its calendar year). */
+export function dueYear(day: number, s: AnimalSpec): number {
+  const target = day + s.gestationMonths * 30.4;
+  const y = yearOf(target);
+  return [y - 1, y, y + 1].reduce((best, c) => (Math.abs(monthStart(c, s.birthMonth) + 15 - target) < Math.abs(monthStart(best, s.birthMonth) + 15 - target) ? c : best));
+}
 
 // ── Climate and plant growth ──────────────────────────────────────────────────────────────────────────────────────
 /** Mean temperature of day-of-year `d`, between the monthly means. */
@@ -269,7 +280,11 @@ export function createBiome(seed = 1): BiomeState {
     for (let i = 0; i < count; i++) {
       // Adults of spread ages and last seasons' young (fauna's ageInGroup), never newborns: births come in season.
       const age = Math.max(s.childDays + 1, ageInGroup(i, count, s));
-      st.animals.push({ id: st.nextId++, species: s.id, female: i % 2 === 0, age, reserve: s.fastDays, lastBirthYear: -99, debt: {} });
+      const a: Individual = { id: st.nextId++, species: s.id, female: i % 2 === 0, age, reserve: s.fastDays, lastBirthYear: -99, debt: {} };
+      // Mothers that mated before day 0 carry their young already (most do: ours, 85 %).
+      const next = [yearOf(0), yearOf(0) + 1].map((y) => monthStart(y, s.birthMonth)).find((d) => d + 28 >= 0)!;
+      if (a.female && !s.visitor && stageOf(age, s) !== "joven" && next < s.gestationMonths * 30.4 && hashDay(a.id, 5) < 0.85) a.pregnant = yearOf(next);
+      st.animals.push(a);
     }
     st.births[s.id] = 0;
   }
@@ -514,21 +529,25 @@ export function step(st: BiomeState, dt: number, o: StepOptions = {}): void {
       log(st, { species: s.id, kind: "se-va", n: 1 }, `Un joven de ${s.name.toLowerCase()} se va a otra colonia (la isla está llena)`);
       continue;
     }
+    // Mating in its season (fauna's matingMonth: a gestation before the births), each female on her day of it, with
+    // an adult male of hers on the island. On stage the scene's courtships mate them first (`mate`); the chain mates
+    // the ones left at the end of the month.
+    if (!s.visitor && a.female && a.pregnant === undefined && (stage === "adulto" || stage === "anciano") && month === matingMonth(s) && dayOfMonth(st.day) >= (o.onStage ? 25 : 1 + Math.floor(hashDay(a.id, year + 3) * 27))) {
+      const male = present(s.id).find((m) => !m.female && !m.dead && (stageOfIndividual(m) === "adulto" || stageOfIndividual(m) === "anciano"));
+      if (male) mate(st, a.id, male.id);
+    }
     // Births in their month, each mother on her day of it.
-    if (!s.visitor && a.female && (stage === "adulto" || stage === "anciano") && monthOfDay(st.day) === s.birthMonth && a.lastBirthYear !== year && dayOfMonth(st.day) >= 1 + Math.floor(hashDay(a.id, year) * 27)) {
+    if (a.pregnant === year && monthOfDay(st.day) === s.birthMonth && dayOfMonth(st.day) >= 1 + Math.floor(hashDay(a.id, year) * 27)) {
+      a.pregnant = undefined;
       a.lastBirthYear = year;
-      const others = present(s.id);
-      const male = others.some((m) => !m.female && (stageOfIndividual(m) === "adulto" || stageOfIndividual(m) === "anciano"));
-      const lastBred = st.done[`cria:${a.id}`];
-      const ready = lastBred === undefined || (year - lastBred) * 12 >= s.intervalMonths;
-      if (male && ready && a.reserve >= s.fastDays * 0.5 && others.length < s.cap * 1.5) {
+      if (a.reserve >= s.fastDays * 0.5 && present(s.id).length < s.cap * 1.5) {
         st.done[`cria:${a.id}`] = year;
         for (let i = 0; i < s.young; i++) st.animals.push({ id: st.nextId++, species: s.id, female: rand(st) < 0.5, age: 0, reserve: s.fastDays, mother: a.id, lastBirthYear: -99, debt: {} });
         st.births[s.id] = (st.births[s.id] ?? 0) + s.young;
         const [one, many] = YOUNG_NAME[s.shape]!;
-        log(st, { species: s.id, kind: "nace", n: s.young }, s.young === 1 ? `Nace una ${one === "cría" ? "cría" : "pollo"} de ${s.name.toLowerCase()}`.replace("una pollo", "un pollo") : `Nacen ${s.young} ${many} de ${s.name.toLowerCase()}`);
-      }
-    }
+        log(st, { species: s.id, kind: "nace", n: s.young }, s.young === 1 ? (one === "cría" ? `Nace una cría de ${s.name.toLowerCase()}` : `Nace un pollo de ${s.name.toLowerCase()}`) : `Nacen ${s.young} ${many} de ${s.name.toLowerCase()}`);
+      } else log(st, { species: s.id, kind: "muere", n: s.young, cause: "hambre" }, `Una ${s.name.toLowerCase()} pierde la puesta: estaba sin reservas`);
+    } else if (a.pregnant !== undefined && a.pregnant < year) a.pregnant = undefined;
   }
   // Visitors come and go; a species with no pair left gets one from another colony (open islands: the rescue effect).
   for (const s of animals) {
@@ -645,6 +664,20 @@ function huntIfOwed(st: BiomeState, a: Individual, s: AnimalSpec, onStage: boole
     huntKill(st, a.id, prey.id);
     return;
   }
+}
+
+/** A mating (the chain's or the scene's courtship): she is due in the next birth season, if she is ready (her interval between births). */
+export function mate(st: BiomeState, female: number, male: number): boolean {
+  const f = st.animals.find((a) => a.id === female && !a.dead && a.female);
+  const m = st.animals.find((a) => a.id === male && !a.dead && !a.female);
+  if (!f || !m || f.species !== m.species || f.pregnant !== undefined) return false;
+  const s = animalSpec(f.species);
+  const due = dueYear(st.day, s);
+  const last = st.done[`cria:${f.id}`];
+  if ((last !== undefined && (due - last) * 12 < s.intervalMonths) || f.reserve < s.fastDays * 0.5) return false;
+  f.pregnant = due;
+  log(st, { species: s.id, kind: "aparea", n: 1 }, `Se aparea una pareja de ${s.name.toLowerCase()}`);
+  return true;
 }
 
 /** A kill (the chain's or the scene's chase): the prey dies, the hunter's debt is paid. */

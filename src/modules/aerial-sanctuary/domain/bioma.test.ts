@@ -37,6 +37,19 @@ describe("s3 biome: a living food chain", () => {
     }
   });
 
+  it("births come from matings a gestation before: without a male, no young", () => {
+    const st = createBiome(5);
+    st.animals = st.animals.filter((a) => a.species !== "elefante" || a.female);
+    for (const a of st.animals) if (a.species === "elefante") a.pregnant = undefined;
+    advance(st, GAME_DAYS_PER_YEAR * 0.95);
+    expect(st.events.some((e) => e.species === "elefante" && e.kind === "nace")).toBe(false);
+    const withMale = createBiome(5);
+    advance(withMale, 3.4);
+    const mated = withMale.events.filter((e) => e.species === "lobo" && e.kind === "aparea");
+    expect(mated.length).toBeGreaterThan(0);
+    expect(monthOfDay(mated[0]!.day)).toBe(12);
+  });
+
   it("a hunt kills the prey and pays the hunter", () => {
     const st = createBiome(3);
     const leo = st.animals.find((a) => a.species === "leopardo")!;

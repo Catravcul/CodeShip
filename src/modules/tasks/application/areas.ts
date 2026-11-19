@@ -43,6 +43,11 @@ export interface AreaMap {
   readonly nodes: readonly AreaNode[];
   /** Pairs of node ids joined by a hatch or a passage. */
   readonly links: readonly (readonly [string, string])[];
+  /**
+   * The place's own shape under the areas (sanctuary 1: each tree-building's trunk, floors and rings; the caps of
+   * ice), drawn faint so the chosen building is seen as itself (Berón 2026-11-19). Same scope keys as the nodes.
+   */
+  readonly structure?: readonly { readonly centre: AreaVec; readonly half: AreaVec; readonly scope?: Readonly<Record<string, string>>; readonly kind: "tronco" | "piso" | "anillo" | "hielo" | "tierra" }[];
 }
 
 const xyz = (v: AreaVec): AreaVec => ({ x: v.x, y: v.y, z: v.z });

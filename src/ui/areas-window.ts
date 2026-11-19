@@ -27,6 +27,8 @@ export interface AreasDeps {
    * kind («Casquete», «Edificio») lists its options under it, and only the areas of the one chosen are shown.
    */
   scopes?(): readonly { readonly kind: string; readonly label: string; readonly options: readonly { readonly id: string; readonly label: string }[] }[];
+  /** Where she is, as a scope option («Automático», like the vehicle list of Codeship's Áreas). */
+  scopeAt?(): { readonly kind: string; readonly id: string } | undefined;
   /** The first view: «su modo más visible» (sanctuary 1 from the side, its tree-buildings standing). */
   readonly view?: MapView;
   /** A row's own action, lock and lines (Misiones: «Hacer», locked until its hour, its reward). */
@@ -89,8 +91,8 @@ export class AreasWindow {
   private shown: AreaMap | undefined;
   private readonly sel = new MapSelection(() => this.shown?.nodes.map((n) => ({ id: n.id })) ?? []);
   private screen: { id: string; hull: Pt[]; c: Pt; depth: number }[] = [];
-  /** The gear's scope: "" is the whole place; else a kind with its chosen option. */
-  private scopeKind = "";
+  /** The gear's scope: "auto" is where she is, "" the whole place; else a kind with its chosen option. */
+  private scopeKind = "auto";
   private scopeId = "";
   /** The category chip on («» = Todas). */
   private category = "";
@@ -101,6 +103,7 @@ export class AreasWindow {
     private readonly d: AreasDeps,
   ) {
     this.k = d.kind ?? { title: "Áreas", window: "areas", bodyClass: "in-areas", className: "" };
+    if (!d.scopes || !d.scopeAt) this.scopeKind = "";
     const t = this.k.title.toLowerCase();
     this.win = new MapWindow(root, {
       className: `areas-window ${this.k.className}`,
@@ -172,9 +175,21 @@ export class AreasWindow {
     return f === "auto" || f === "todos" ? this.d.here() : f;
   }
 
+  /** The scope in force: the chosen one, or where she is («Automático»). */
+  private scope(): { kind: string; id: string } | undefined {
+    if (this.scopeKind === "auto") return this.d.scopeAt?.();
+    return this.scopeKind && this.scopeId ? { kind: this.scopeKind, id: this.scopeId } : undefined;
+  }
+  private scopeLabel(sc = this.scope()): string | undefined {
+    return sc && this.d.scopes?.().find((s) => s.kind === sc.kind)?.options.find((o) => o.id === sc.id)?.label;
+  }
+  private fits(scope: Readonly<Record<string, string>> | undefined): boolean {
+    const sc = this.scope();
+    return !sc || scope?.[sc.kind] === sc.id;
+  }
   /** The nodes shown: those of the chosen scope and category. */
   private inScope(): AreaNode[] {
-    return (this.shown?.nodes ?? []).filter((n) => !this.scopeKind || !this.scopeId || n.scope?.[this.scopeKind] === this.scopeId);
+    return (this.shown?.nodes ?? []).filter((n) => this.fits(n.scope));
   }
   private visibleNodes(): AreaNode[] {
     return this.inScope().filter((n) => !this.category || n.category === this.category);
@@ -185,14 +200,9 @@ export class AreasWindow {
     const sk = t.closest<HTMLElement>("[data-scope-kind]");
     if (sk) {
       this.scopeKind = sk.dataset.scopeKind ?? "";
-      this.scopeId = this.d.scopes?.().find((s) => s.kind === this.scopeKind)?.options[0]?.id ?? "";
+      this.scopeId = sk.dataset.scopeId ?? "";
       this.category = "";
-      return this.render();
-    }
-    const so = t.closest<HTMLElement>("[data-scope-id]");
-    if (so) {
-      this.scopeId = so.dataset.scopeId ?? "";
-      this.category = "";
+      this.win.view.zoom = 1;
       return this.render();
     }
     const cat = t.closest<HTMLElement>("[data-cat]");
@@ -221,7 +231,7 @@ export class AreasWindow {
     this.el.setAttribute("aria-label", settingsView ? `Ajustes de ${t}` : this.k.title);
     this.el.classList.toggle("ar-in-settings", settingsView);
     if (settingsView) {
-      this.win.settingsBox!.innerHTML = `<h2 class="ar-title">Ajustes de ${t}</h2>${this.scopeHtml()}${travelHtml("ar-s-travel")}${vehicleHtml("ar-s-vehicle", this.d.here(), undefined, false)}<small class="tb-travel-help">Los mismos ajustes que en Tareas.</small>`;
+      this.win.settingsBox!.innerHTML = `<h2 class="ar-title">Ajustes de ${t}</h2>${this.d.scopes ? this.scopeHtml() : vehicleHtml("ar-s-vehicle", this.d.here(), undefined, false)}${travelHtml("ar-s-travel")}<small class="tb-travel-help">Los mismos ajustes que en Tareas.</small>`;
       return;
     }
     this.shown = this.d.map(this.vehicle());
@@ -230,16 +240,21 @@ export class AreasWindow {
     this.win.draw();
   }
 
-  /** The gear's scope: the kinds as a radio row (the first, the whole place), then the chosen kind's options. */
+  /**
+   * The gear's scope, laid out like the vehicle list of Codeship's Áreas (Automático, then each vehicle): here
+   * Automático (where she is), the whole sanctuary, then each building by its own name and each cap. One choice.
+   */
   private scopeHtml(): string {
     const scopes = this.d.scopes?.() ?? [];
-    if (!scopes.length) return "";
-    const whole = this.d.here() === "santuario-1" ? "Santuario" : "Todo";
-    const kinds = [{ kind: "", label: whole }, ...scopes.map((s) => ({ kind: s.kind, label: s.label }))];
-    const row = kinds.map((k) => `<button role="radio" data-scope-kind="${esc(k.kind)}" aria-checked="${k.kind === this.scopeKind}" class="${k.kind === this.scopeKind ? "on" : ""}">${esc(k.label)}</button>`).join("");
-    const chosen = scopes.find((s) => s.kind === this.scopeKind);
-    const opts = chosen ? `<div class="tb-travel ar-scope-opts" role="radiogroup" aria-label="${esc(chosen.label)}">${chosen.options.map((o) => `<button role="radio" data-scope-id="${esc(o.id)}" aria-checked="${o.id === this.scopeId}" class="${o.id === this.scopeId ? "on" : ""}">${esc(o.label)}</button>`).join("")}</div>` : "";
-    return `<h3 class="tb-group" id="ar-s-scope">Mostrar</h3><div class="tb-travel ar-scope" role="radiogroup" aria-labelledby="ar-s-scope">${row}</div>${opts}<small class="tb-travel-help">${chosen ? `Solo las ${this.k.title.toLowerCase()} de ${esc(chosen.options.find((o) => o.id === this.scopeId)?.label ?? chosen.label.toLowerCase())}` : `Todas las ${this.k.title.toLowerCase()}`}</small>`;
+    const btn = (kind: string, id: string, html: string, cls = "") => {
+      const on = this.scopeKind === kind && (kind === "auto" || kind === "" || this.scopeId === id);
+      return `<button role="radio" data-scope-kind="${esc(kind)}" data-scope-id="${esc(id)}" aria-checked="${on}" class="${on ? "on" : ""}${cls}">${html}</button>`;
+    };
+    const here = this.scopeLabel(this.d.scopeAt?.());
+    const whole = this.d.here() === "santuario-1" ? "Todo el santuario" : "Todo";
+    const top = `${this.d.scopeAt ? btn("auto", "", `Automático: donde está ella <small>${esc(here ?? whole)}</small>`, " auto") : ""}${btn("", "", whole)}`;
+    const groups = scopes.map((g, k) => `<h3 class="tb-group" id="ar-s-scope-${k}">${esc(g.label)}</h3><div class="tb-vehicles ar-scope-opts" role="radiogroup" aria-labelledby="ar-s-scope-${k}">${g.options.map((o) => btn(g.kind, o.id, esc(o.label))).join("")}</div>`).join("");
+    return `<h3 class="tb-group" id="ar-s-scope">Mostrar</h3><div class="tb-vehicles three ar-scope" role="radiogroup" aria-labelledby="ar-s-scope">${top}</div>${groups}`;
   }
 
   /** The list under the map: what the map shows, then each area with what is there and «Ir». */
@@ -250,8 +265,9 @@ export class AreasWindow {
     const travel = settings.value.taskTravel === "viaje" ? "Viaje: el camino real" : "Teletransporte";
     const at = this.d.at?.();
     if (rebuild) {
-      const where = this.scopeKind && this.scopeId ? ` · ${this.d.scopes?.().find((s) => s.kind === this.scopeKind)?.options.find((o) => o.id === this.scopeId)?.label ?? ""}` : "";
-      const scope = `<p class="tb-scope">${VEHICLE_NAME[v]}${auto ? " (automático)" : ""}${where} · ${travel}</p>`;
+      const named = this.scopeLabel();
+      const where = named ? ` · ${named}${this.scopeKind === "auto" ? " (donde está ella)" : ""}` : "";
+      const scope = `<p class="tb-scope">${VEHICLE_NAME[v]}${auto && !this.d.scopes ? " (automático)" : ""}${where} · ${travel}</p>`;
       if (!map?.nodes.length) {
         this.side.innerHTML = `${scope}<p class="tb-empty">${this.d.empty ?? `No hay plano de ${VEHICLE_NAME[v].toLowerCase()} ahora.`}</p>`;
         return;
@@ -310,7 +326,9 @@ export class AreasWindow {
     // The map turns round the middle of what is shown and fits it at zoom 1.
     const lo = { x: Infinity, y: Infinity, z: Infinity };
     const hi = { x: -Infinity, y: -Infinity, z: -Infinity };
-    for (const n of nodes)
+    // The place's own shape in scope (the chosen building's trunk, floors and rings; the caps).
+    const shape = (map.structure ?? []).filter((b) => this.fits(b.scope));
+    for (const n of [...nodes, ...shape])
       for (const k of ["x", "y", "z"] as const) {
         lo[k] = Math.min(lo[k], n.centre[k] - n.half[k]);
         hi[k] = Math.max(hi[k], n.centre[k] + n.half[k]);
@@ -337,6 +355,26 @@ export class AreasWindow {
       g.beginPath();
       g.moveTo(a.x, a.y);
       g.lineTo(b.x, b.y);
+      g.stroke();
+    }
+    // The buildings and caps, faint boxes far ones first: the spheres sit on their real floors.
+    const TINT: Record<string, [string, string]> = { tronco: ["#4fb3d922", "#4fb3d966"], piso: ["#c9d6e01c", "#c9d6e066"], anillo: ["#d9a4201a", "#d9a42066"], hielo: ["#e8f4ff10", "#e8f4ff33"], tierra: ["#8a9a5a18", "#8a9a5a44"] };
+    const boxes = shape
+      .map((b) => {
+        const cs: (Pt & { depth: number })[] = [];
+        for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) cs.push(P({ x: b.centre.x + sx * b.half.x, y: b.centre.y + sy * b.half.y, z: b.centre.z + sz * b.half.z }));
+        return { b, h: hull(cs), depth: cs.reduce((a, c) => a + c.depth, 0) / 8 };
+      })
+      .sort((a, b) => a.depth - b.depth);
+    for (const { b, h } of boxes) {
+      const [fill, line] = TINT[b.kind] ?? TINT.piso!;
+      g.fillStyle = fill;
+      g.strokeStyle = line;
+      g.lineWidth = 1;
+      g.beginPath();
+      h.forEach((q, k) => (k ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y)));
+      g.closePath();
+      g.fill();
       g.stroke();
     }
     // The passages that join the areas.

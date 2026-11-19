@@ -18,7 +18,8 @@ import { AreasWindow } from "./ui/areas-window";
 import { settings } from "./ui/settings-store";
 import { offerVehicles } from "./ui/task-settings";
 import type { AreaMap, AreaNode } from "@modules/tasks/application/areas";
-import { LOBES, capOf } from "@modules/sanctuary-one/data/site";
+import { CAP_NAME, LOBES, capOf, isLand } from "@modules/sanctuary-one/data/site";
+import { TREE } from "@modules/aerial-sanctuary/data/facts";
 import { model } from "@modules/sanctuary-one/data/catalog";
 import { areaCategory, capAt, CAPS } from "@modules/sanctuary-one/data/area-kinds";
 import { MISSIONS, type Mission } from "@modules/sanctuary-one/data/misiones";
@@ -291,6 +292,20 @@ const s1Map: AreaMap = {
     scope: { casquete: a.id.startsWith("hielo:") || a.id.startsWith("tierra:") ? a.id.split(":")[1]! : capAt(a.x, a.z), ...(a.link ? { edificio: a.link.tower } : {}) },
   })),
   links: [],
+  // The buildings themselves (trunk, floor slabs, rings) and the caps, so a chosen building is seen as itself.
+  structure: [
+    ...L.towers.flatMap((t) => {
+      const sc = { edificio: t.id, casquete: capAt(t.x, t.z) };
+      const box = (r: { x0: number; x1: number; z0: number; z1: number }, y: number, hy: number) => ({ centre: { x: (r.x0 + r.x1) / 2, y, z: (r.z0 + r.z1) / 2 }, half: { x: (r.x1 - r.x0) / 2, y: hy, z: (r.z1 - r.z0) / 2 } });
+      const TR = TREE.waterHalf.value + TREE.wall.value;
+      return [
+        { centre: { x: t.x, y: t.rootHeight / 2, z: t.z }, half: { x: TR, y: t.rootHeight / 2, z: TR }, scope: sc, kind: "tronco" as const },
+        ...t.floors.map((f) => ({ ...box(f.rect, f.y, 0.25), scope: sc, kind: "piso" as const })),
+        ...t.rings.flatMap((r) => r.rects.map((q) => ({ ...box(q, r.y, 0.15), scope: sc, kind: "anillo" as const }))),
+      ];
+    }),
+    ...LOBES.filter((l) => l.r > 0).map((l) => ({ centre: { x: l.x, y: -0.2, z: l.z }, half: { x: l.r * 0.85, y: 0.2, z: l.r * 0.85 }, scope: { casquete: capOf(l) }, kind: isLand(l) ? ("tierra" as const) : ("hielo" as const) })),
+  ],
 };
 /** Where «Ir» takes her in an area: past its door on a floor or ring, the middle of a cap, the lagoon's water. */
 function arrival(a: (typeof L.areas)[number]): Place {
@@ -339,15 +354,21 @@ function frameAuto(dt: number): boolean {
 }
 /** The gear's scope (Berón 2026-11-19): the whole sanctuary, a cap or a tree-building, like the carpets' choice. */
 const s1Scopes = [
-  { kind: "casquete", label: "Casquete", options: CAPS.map((c) => ({ id: c, label: c })) },
-  { kind: "edificio", label: "Edificio", options: L.towers.map((t) => ({ id: t.id, label: t.building })) },
+  { kind: "edificio", label: "Edificios", options: L.towers.map((t) => ({ id: t.id, label: t.building })) },
+  { kind: "casquete", label: "Casquetes", options: CAPS.map((c) => ({ id: c, label: CAP_NAME[c] ?? c })) },
 ] as const;
+/** «Automático»: the building she is in (its floors, rings or trunk), else the cap she stands on. */
+function s1ScopeAt(): { kind: string; id: string } {
+  const tower = areaById.get(body.area)?.link?.tower ?? L.towers.find((t) => body.area.startsWith(`${t.id}:`))?.id;
+  return tower ? { kind: "edificio", id: tower } : { kind: "casquete", id: capAt(body.x, body.z) };
+}
 /** Seen from the side: the tree-buildings stand, their floors one over the other (its «modo más visible»). */
 const S1_MAP_VIEW = { yaw: 0.5, elevation: 0.18, zoom: 1 };
 const areasWindow = new AreasWindow(root, {
   here: () => "santuario-1",
   map: () => s1Map,
   scopes: () => s1Scopes,
+  scopeAt: s1ScopeAt,
   view: S1_MAP_VIEW,
   at: () => (areaById.has(body.area) ? body.area : undefined),
   go: (n) => goTo(n.id),
@@ -412,6 +433,7 @@ const missionsWindow = new AreasWindow(root, {
   here: () => "santuario-1",
   map: () => missionsMap,
   scopes: () => s1Scopes,
+  scopeAt: s1ScopeAt,
   view: S1_MAP_VIEW,
   empty: "Ninguna misión aquí",
   at: () => MISSIONS.find((ms) => missionState(ms.id, day, hour, MISSIONS, doneToday).open && (missionState(ms.id, day, hour, MISSIONS, doneToday) as { now: boolean }).now)?.id,

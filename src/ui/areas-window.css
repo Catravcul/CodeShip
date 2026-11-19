@@ -10,3 +10,5 @@ body.in-duel .areas-window, body.in-duel .task-board { display: none !important;
 .areas-window .ar-chips { display: flex; flex-wrap: nowrap; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; flex-shrink: 0; }
 .areas-window .ar-chips .chip { flex-shrink: 0; white-space: nowrap; min-height: 44px; display: inline-flex; align-items: center; gap: 4px; }
 .areas-window .ar-scope-opts { flex-wrap: wrap; }
+.areas-window .ar-side, .areas-window .nav-side { min-width: 0; }
+.areas-window .ar-chips { max-width: 100%; min-width: 0; }

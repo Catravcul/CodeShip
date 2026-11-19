@@ -9,6 +9,12 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
   «Continuar» sigue el viaje donde estaba, en marcha y con «Trayecto», en vez de aparecer en el destino; con la Starship
   de viaje el módulo no se desacopla (el interruptor dice por qué). [docs/design/partidas.md](docs/design/partidas.md)
 
+- **Santuario 1, tercera lista**: cada máquina con su animación (jalón al pecho ya no corre) y una tabla de
+  animaciones por categoría con los retos y pasos que las lanzan; troncos de agua abiertos al mar (focas y pingüinos
+  suben), entrar a un piso nadando desde cualquier punto, pisos sin barandilla, nado y vista azul bajo el agua; el
+  botón de inicio abre los ajustes; parqueaderos de alfombras en copa y pie; ciclos de vida reales (crías, jóvenes y
+  adultos a su tamaño); Kushal, Nevaeh, Sadhguru y Neo. [docs/design/santuario1.md](docs/design/santuario1.md)
+
 - **Tarjetas de máquina en el móvil**: suben por encima del «−» / «+» redondos del joystick de mirar, que ahora están encima de él. [docs/design/reglas.md](docs/design/reglas.md)
 
 - **Santuario 1, realismo y mandos**: correr es un sprint a tope (6,5 m/s, rodillas altas, brazos a 90°, la vista se

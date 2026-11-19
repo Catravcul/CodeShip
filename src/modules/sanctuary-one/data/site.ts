@@ -292,5 +292,9 @@ export const STAFF: readonly string[] = [
   "Gallarle", "Julian", "Fausto",
   "David", "Adonis", "Yulo", "Lale", "Ivelyna", "Luciana", "Malena",
   "Consol", "Fernando",
+  // Not in WorkdayDirector.Staff but in Cold Sanctuary all the same (Berón 2026-11-19: «todos los humanos»): Kushal (its
+  // player), the Magnate (Nevaeh here), Sadhguru (MakeCharacter, yoga teacher) and Neo, Ducristin and Gallarle's child
+  // (1,23 m in the exported scene, Enfermeria_AUTO/Neo; their room is «Ducristin, Gallarle y Neo»).
+  "Kushal", "Nevaeh", "Sadhguru", "Neo",
 ];
 export const STAFF_SOURCE = S.csStaff;

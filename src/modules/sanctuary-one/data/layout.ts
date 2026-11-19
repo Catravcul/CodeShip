@@ -9,6 +9,8 @@ import { landscape } from "./paisaje";
 import { model, type ModelDef } from "./catalog";
 import { OVERRIDES, resolve, spacing, type Overrides } from "./overrides";
 import { GROUPS, plan, split } from "../domain/population";
+import { STAGE_LABEL, ageInGroup, sizeAt, stageOf } from "../domain/life-cycle";
+import { LIFE_CYCLES } from "./ciclos-de-vida";
 
 /**
  * Sanctuary 1 as the scene and the walk see it (docs/design/santuario1.md): the caps of ice and the land island as
@@ -33,7 +35,7 @@ export interface Instance {
   readonly scale?: number;
   readonly tint?: number;
   /** An animal's territory: it wanders inside (domain/motion.ts wanderAt) at `speed` m/s. */
-  readonly wander?: { readonly x: number; readonly z: number; readonly r: number; readonly speed: number; readonly seed: number };
+  readonly wander?: { readonly x: number; readonly z: number; readonly r: number; readonly speed: number; readonly seed: number; readonly climb?: { readonly y0: number; readonly y1: number } };
 }
 
 export interface S1Area {
@@ -141,6 +143,9 @@ interface Built {
   towers: TowerShape[];
 }
 
+/** How deep a trunk's root goes into the sea under the ice, m (ours: Cold Sanctuary's ends at −1,6 m). */
+export const TRUNK_ROOT_Y = -12;
+
 /** One tree-building (Cold Sanctuary's HelixTower): the trunk, its doors, the floors pinwheeling round it and the tips at the end of their branches. */
 function buildTower(b: Built, t: TowerSpec, k: number): void {
   const WH = TREE.waterHalf.value;
@@ -155,7 +160,9 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
   const o = { x: t.x, z: t.z };
   const S = (s: number) => s + t.quarter;
   const trunk = `${t.id}:tronco`;
-  b.waters.push({ id: `${t.id}-tronco`, ...around(o.x, o.z, WH), yBottom: -1.6, yTop: rootHeight - 0.5, area: trunk });
+  // Open to the sea under the ice (Berón 2026-11-19: «los edificios árboles son de agua y están conectados al mar»):
+  // its root goes 12 m down, into the sea, so seals, fish and the submarine come up it; nothing inside is a floor.
+  b.waters.push({ id: `${t.id}-tronco`, ...around(o.x, o.z, WH), yBottom: TRUNK_ROOT_Y, yTop: rootHeight - 0.5, area: trunk, open: true });
   b.areas.push({ id: trunk, label: `Tronco de agua (${t.building})`, desc: "Se nada por dentro de piso a piso (ficción de Cold Sanctuary)", building: t.building, x: o.x, y: 0, z: o.z, detail: "completo" });
   const gapsOf: { from: number; to: number; y0: number; y1: number }[][] = [[], [], [], []];
   // Ground door (Cold Sanctuary: GroundSide a = +Z), onto the ice, with its threshold.
@@ -247,9 +254,9 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
       const ty = tipY(l);
       const key = `${t.id}:rama-${l}-${s}`;
       b.waters.push(
-        { id: `${key}-a`, ...sideRect(S(s), mx - th, mx + th, WH - 0.5, colC.z + th, o), yBottom: y, yTop: y + 2 * th, area: key },
-        { id: `${key}-b`, ...sideRect(S(s), mx - th, colC.x + ch, colC.z - th, colC.z + th, o), yBottom: y, yTop: y + 2 * th, area: key },
-        { id: `${key}-c`, ...sideRect(S(s), colC.x - ch, colC.x + ch, colC.z - ch, colC.z + ch, o), yBottom: y, yTop: ty + 1, area: key },
+        { id: `${key}-a`, ...sideRect(S(s), mx - th, mx + th, WH - 0.5, colC.z + th, o), yBottom: y, yTop: y + 2 * th, area: key, open: true },
+        { id: `${key}-b`, ...sideRect(S(s), mx - th, colC.x + ch, colC.z - th, colC.z + th, o), yBottom: y, yTop: y + 2 * th, area: key, open: true },
+        { id: `${key}-c`, ...sideRect(S(s), colC.x - ch, colC.x + ch, colC.z - ch, colC.z + ch, o), yBottom: y, yTop: ty + 1, area: key, open: true },
       );
       gapsOf[s]!.push({ from: mx - th, to: mx + th, y0: y, y1: y + 2 * th });
       const tip = sideRect(S(s), tipC.x - ts / 2, tipC.x + ts / 2, tipC.z - ts / 2, tipC.z + ts / 2, o);
@@ -286,6 +293,10 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
   }
   // The roof over the trunk.
   b.floors.push({ id: `${t.id}-techo`, ...around(o.x, o.z, OH), y: rootHeight, area: `${t.id}:techo` });
+  // Carpet parks: on the crown (the roof) and at the foot, out on the ice beside the ground door.
+  place(b, "parqueadero-alfombras", o.x, rootHeight, o.z, (S(0) * Math.PI) / 2, `${t.id}:techo`, { edificio: t.id }, 1, `Parqueadero de alfombras de la copa (${t.building})`, false);
+  const foot = side(S(0), door.x - door.w / 2 - 7.5, OH + 5);
+  place(b, "parqueadero-alfombras", o.x + foot.x, 0, o.z + foot.z, (S(0) * Math.PI) / 2, trunk, { edificio: t.id }, 1, `Parqueadero de alfombras del pie (${t.building})`, false);
   b.towers.push(shape);
 }
 
@@ -366,6 +377,25 @@ function wanders(b: Built, model: string, w: NonNullable<Instance["wander"]>): v
   if (last && !last.wander && last.model === model) b.instances[b.instances.length - 1] = { ...last, wander: w };
 }
 
+/**
+ * A wild animal's age in its family (domain/life-cycle.ts, data/ciclos-de-vida.ts): its size by the real growth
+ * curve and a name that says its stage and age, e.g. «Foca, cría de 1 mes».
+ */
+function lifeOf(species: string, i: number, n: number): { scale: number; name?: string } {
+  const c = LIFE_CYCLES[species];
+  if (!c) return { scale: 1 };
+  const age = ageInGroup(i, n, c);
+  const months = Math.round(age / 30.4);
+  const years = Math.round(age / 365);
+  const when = months < 24 ? `${Math.max(1, months)} ${months <= 1 ? "mes" : "meses"}` : `${years} años`;
+  return { scale: sizeAt(age, c), name: `${c.label}, ${STAGE_LABEL[stageOf(age, c)]} de ${when}` };
+}
+
+function aged(b: Built, model: string, scale: number): void {
+  const last = b.instances[b.instances.length - 1];
+  if (last && last.model === model && scale < 0.999) b.instances[b.instances.length - 1] = { ...last, scale: (last.scale ?? 1) * scale };
+}
+
 /** A deterministic scatter (no Math.random: the same scene on every load). */
 function scatter(i: number, radius: number): { x: number; z: number } {
   const a = i * 2.399963;
@@ -383,6 +413,15 @@ export function buildS1Layout(k = 1, o: Overrides = OVERRIDES): S1Layout {
   }
   b.areas.push({ id: "mar", label: "La laguna y el mar", desc: "Ballenas, orcas, focas y morsas en la laguna central", x: LAGOON.x, y: WATER_Y, z: LAGOON.z, detail: "completo" });
   for (const t of TOWERS) buildTower(b, t, k);
+  // Up the trunks from the sea (Berón 2026-11-19: «los animales marinos pueden subir por los troncos»): in each trunk a
+  // seal and two penguins swim between its root under the ice and its top (ours: who and how many).
+  for (const tw of b.towers) {
+    const top = tw.rootHeight - 2.5;
+    ["foca", "pinguino", "pinguino"].forEach((id, i) => {
+      place(b, id, tw.x, TRUNK_ROOT_Y + 2, tw.z, i, `${tw.id}:tronco`, {}, 1, undefined, false);
+      wanders(b, id, { x: tw.x, z: tw.z, r: 6, speed: id === "foca" ? 1.2 : 0.9, seed: b.instances.length * 17 + i * 5, climb: { y0: TRUNK_ROOT_Y + 2, y1: top } });
+    });
+  }
 
   // The landscape: wild caps, tundra and icebergs (paisaje.ts). Icebergs float at the water line and stand as solids.
   for (const it of landscape()) {
@@ -413,16 +452,20 @@ export function buildS1Layout(k = 1, o: Overrides = OVERRIDES): S1Layout {
     const d = model(id);
     for (let i = 0; i < qty; i++) {
       const p = scatter(i, n.radius);
-      const y = n.marine ? (d.shape === "cetaceo" ? WATER_Y - d.size.y * 0.55 : WATER_Y - d.size.y * 0.4) : 0;
-      place(b, id, n.x + p.x, y, n.z + p.z, i * 1.7, n.marine ? "mar" : "fauna", {}, 1, undefined, false);
-      wanders(b, id, { x: n.x, z: n.z, r: n.radius, speed: SPEED[d.shape] ?? 0.8, seed: b.instances.length * 31 + 7 });
+      const life = lifeOf(n.species, i, qty);
+      const y = n.marine ? (d.shape === "cetaceo" ? WATER_Y - d.size.y * life.scale * 0.55 : WATER_Y - d.size.y * life.scale * 0.4) : 0;
+      place(b, id, n.x + p.x, y, n.z + p.z, i * 1.7, n.marine ? "mar" : "fauna", {}, 1, life.name, false);
+      aged(b, id, life.scale);
+      wanders(b, id, { x: n.x, z: n.z, r: n.radius, speed: (SPEED[d.shape] ?? 0.8) * Math.sqrt(life.scale), seed: b.instances.length * 31 + 7 });
     }
   }
   // Snow petrels: one colony (no nest in Cold Sanctuary's list: it is ours) on the wild northern cap.
   const pet = counts.get("SnowPetrel") ?? 0;
   for (let i = 0; i < pet; i++) {
     const p = scatter(i, 10);
-    place(b, "petrel-niveo", 75 + p.x, 0, 170 + p.z, i, "fauna", {}, 1, undefined, false);
+    const life = lifeOf("SnowPetrel", i, pet);
+    place(b, "petrel-niveo", 75 + p.x, 0, 170 + p.z, i, "fauna", {}, 1, life.name, false);
+    aged(b, "petrel-niveo", life.scale);
     wanders(b, "petrel-niveo", { x: 75, z: 170, r: 10, speed: SPEED.ave!, seed: b.instances.length * 31 + 7 });
   }
   // The staff on the hub, 2 m apart (ours: where each one goes comes with the workday).

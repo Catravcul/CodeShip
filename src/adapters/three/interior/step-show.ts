@@ -1118,6 +1118,89 @@ function idle(low: boolean): PoseAngles {
 
 const CROUCH = (o: Partial<PoseAngles>): PoseAngles => P({ rootY: 0.62, torso: 0.45, headX: 0.25, hip: [-1.25, -1.25], knee: [1.9, 1.9], ...o });
 
+/** Seated on a machine's seat: pelvis 0,5 m up, thighs level, shins down. */
+const SEAT = (o: Partial<PoseAngles>): PoseAngles => P({ rootY: 0.5, hip: [-1.55, -1.55], knee: [1.55, 1.55], ...o });
+const L2 = (a: number, b: number, k: number) => a + (b - a) * k;
+const both = (x: number): [number, number] => [x, x];
+
+/**
+ * The exercise motions of sanctuary 1's animation catalog (modules/sanctuary-one/data/animaciones.ts MOTIONS), one
+ * repetition every ~2,9 s: `k` goes 0 (start) → 1 (the effort's end) → 0. Shapes after the NSCA technique of each lift.
+ */
+export function motion(id: string, clock: number): PoseAngles {
+  const k = (1 - Math.cos(clock * 2.2)) / 2;
+  const s = Math.sin(clock * 9);
+  const c = Math.cos(clock * 9);
+  switch (id) {
+    case "jalon":
+      return SEAT({ torso: -0.12, headX: -0.25, shoulderX: both(L2(-2.95, -0.45, k)), shoulderZ: [L2(0.45, 0.6, k), -L2(0.45, 0.6, k)], elbow: both(L2(-0.1, -2.0, k)) });
+    case "press-pecho":
+      return SEAT({ shoulderX: both(-1.45), shoulderZ: [0.3, -0.3], elbow: both(L2(-2.0, -0.1, k)) });
+    case "press-hombros":
+      return SEAT({ shoulderX: both(L2(-2.0, -3.0, k)), shoulderZ: [L2(0.7, 0.2, k), -L2(0.7, 0.2, k)], elbow: both(L2(-1.9, -0.1, k)) });
+    case "remo-sentado":
+      return SEAT({ torso: 0.05, shoulderX: both(L2(-1.5, -0.3, k)), shoulderZ: [0.12, -0.12], elbow: both(L2(-0.1, -1.9, k)) });
+    case "prensa":
+      return P({ rootY: 0.55, torso: -0.55, headX: 0.3, hip: both(L2(-1.9, -0.6, k)), knee: both(L2(1.65, 0.15, k)), shoulderX: both(-0.3), elbow: both(-0.4) });
+    case "extension":
+      return SEAT({ shoulderX: both(-0.2), elbow: both(-0.3), knee: both(L2(1.55, 0.1, k)) });
+    case "curl-femoral":
+      return SEAT({ torso: -0.15, shoulderX: both(-0.4), elbow: both(-0.6), knee: both(L2(0.15, 1.6, k)) });
+    case "hip-thrust":
+      return P({ rootY: L2(0.42, 0.55, k), torso: L2(-0.4, -1.3, k), headX: L2(0.3, 0.9, k), hip: both(L2(-1.6, -0.15, k)), knee: both(L2(1.7, 1.55, k)), shoulderX: both(-0.3), shoulderZ: [0.4, -0.4], elbow: both(-0.4) });
+    case "gemelos":
+      return P({ rootY: 0.95 + 0.09 * k, shoulderX: both(-0.25), shoulderZ: [0.45, -0.45], elbow: both(-1.7) });
+    case "curl-biceps":
+      return SEAT({ torso: 0.2, shoulderX: both(-0.7), elbow: both(L2(-0.2, -2.2, k)) });
+    case "sentadilla":
+      return P({ rootY: L2(0.95, 0.55, k), torso: L2(0.05, 0.55, k), headX: L2(0, -0.4, k), hip: both(L2(0, -1.5, k)), knee: both(L2(0, 1.85, k)), shoulderX: both(-1.0), shoulderZ: [0.9, -0.9], elbow: both(-2.3) });
+    case "press-banca":
+      return P({ rootY: 0.45, rootX: -Math.PI / 2, headX: 0.1, hip: both(-1.2), knee: both(1.5), shoulderX: both(-1.55), shoulderZ: [L2(0.6, 0.2, k), -L2(0.6, 0.2, k)], elbow: both(L2(-1.8, -0.1, k)) });
+    case "peso-muerto": {
+      const t = L2(1.05, 0, k);
+      return P({ rootY: L2(0.7, 0.95, k), torso: t, headX: -t * 0.6, hip: both(L2(-0.7, 0, k)), knee: both(L2(0.8, 0, k)), shoulderX: both(-t - 0.05), elbow: both(0) });
+    }
+    case "curl-mancuernas":
+      return P({ shoulderX: both(-0.1), shoulderZ: [0.12, -0.12], elbow: both(L2(-0.15, -2.3, k)) });
+    case "press-mancuernas":
+      return SEAT({ shoulderX: both(L2(-1.9, -3.0, k)), shoulderZ: [L2(0.8, 0.25, k), -L2(0.8, 0.25, k)], elbow: both(L2(-1.9, -0.1, k)) });
+    case "cargar-discos":
+      return P({ rootY: L2(0.95, 0.6, k), torso: L2(0.1, 0.5, k), hip: both(L2(0, -1.2, k)), knee: both(L2(0, 1.6, k)), shoulderX: both(L2(-0.9, -0.5, k)), elbow: both(-0.9) });
+    case "correr":
+      return P({ torso: 0.2, headX: -0.15, shoulderX: [0.9 * s, -0.9 * s], elbow: both(-1.55), hip: [-0.35 - 0.7 * s, -0.35 + 0.7 * s], knee: [0.4 + 1.2 * Math.max(0, c), 0.4 + 1.2 * Math.max(0, -c)], rootY: 0.92 + 0.04 * Math.abs(c) });
+    case "pedalear":
+      return SEAT({ torso: 0.35, shoulderX: both(-1.2), elbow: both(-0.4), hip: [-1.25 - 0.35 * s, -1.25 + 0.35 * s], knee: [1.1 + 0.55 * c, 1.1 - 0.55 * c] });
+    case "remar":
+      return P({ rootY: 0.3, torso: L2(0.45, -0.35, k), hip: both(L2(-2.0, -1.0, k)), knee: both(L2(2.1, 0.1, k)), shoulderX: both(L2(-1.5, -0.4, k)), elbow: both(L2(-0.1, -1.8, k)) });
+    case "eliptica":
+      return P({ torso: 0.1, shoulderX: [-0.9 + 0.35 * s, -0.9 - 0.35 * s], elbow: both(-1.2), hip: [-0.3 - 0.35 * s, -0.3 + 0.35 * s], knee: [0.35 + 0.3 * c, 0.35 - 0.3 * c] });
+    case "escaladora":
+      return P({ torso: 0.25, shoulderX: both(-1.0), elbow: both(-0.6), hip: [-0.4 - 0.6 * Math.max(0, s), -0.4 - 0.6 * Math.max(0, -s)], knee: [0.4 + 0.9 * Math.max(0, s), 0.4 + 0.9 * Math.max(0, -s)] });
+    case "skierg":
+      return P({ rootY: L2(0.95, 0.8, k), torso: L2(0, 0.8, k), hip: both(L2(0, -0.6, k)), knee: both(L2(0.05, 0.5, k)), shoulderX: both(L2(-2.9, 0.3, k)), elbow: both(L2(-0.3, -0.1, k)) });
+    case "dominada":
+      return P({ rootY: 0.95 + 0.45 * k, headX: -0.3, shoulderX: both(L2(-3.05, -1.0, k)), shoulderZ: [L2(0.35, 0.7, k), -L2(0.35, 0.7, k)], elbow: both(L2(-0.05, -2.1, k)), hip: both(-0.3), knee: both(0.6) });
+    case "plancha":
+      return P({ rootY: 0.32, rootX: 1.4, headX: -0.1, shoulderX: both(-1.5), elbow: both(-1.6 + 0.03 * Math.sin(clock * 2)) });
+    case "puente":
+      return P({ rootY: L2(0.12, 0.3, k), rootX: -Math.PI / 2, torso: 0, hip: both(L2(-1.2, -0.35, k)), knee: both(L2(1.3, 1.6, k)), shoulderZ: [0.12, -0.12] });
+    case "bird-dog":
+      return P({ rootY: 0.5, rootX: 1.45, headX: -0.3, shoulderX: [-1.5, L2(-1.5, -3.0, k)], elbow: both(0), hip: [L2(-1.5, 0.1, k), -1.5], knee: [L2(1.55, 0.05, k), 1.55] });
+    case "estirar":
+      return P({ headX: 0.2, shoulderX: [-0.3, 0.4], elbow: [0, -1.4], knee: [0, 2.2], hip: [0, 0.3] });
+    case "agacharse":
+      return P({ rootY: 0.66, torso: 0.6, headX: -0.4, hip: both(-1.05), knee: both(1.6), shoulderX: both(1.0), elbow: both(-0.2) });
+    case "salto":
+      return P({ rootY: 0.97, torso: -0.1, headX: -0.35, hip: both(L2(0.1, -1.2, k)), knee: both(L2(0.05, 1.7, k)), shoulderX: both(-2.8), shoulderZ: [0.2, -0.2] });
+    case "aterrizar":
+      return P({ rootY: L2(0.95, 0.68, k), torso: L2(0.1, 0.55, k), hip: both(L2(-0.3, -1.0, k)), knee: both(L2(0.3, 1.5, k)), shoulderX: both(-1.2), shoulderZ: [0.3, -0.3], elbow: both(-0.4) });
+    case "empujar-trineo":
+      return P({ rootX: 0.75, rootY: 0.85, headX: -0.6, shoulderX: both(-1.5), elbow: both(-0.15), hip: [-0.9 - 0.5 * s, -0.9 + 0.5 * s], knee: [0.8 + 0.5 * Math.max(0, c), 0.8 + 0.5 * Math.max(0, -c)] });
+    default:
+      return P({ shoulderX: [0.6 * s, -0.6 * s], elbow: both(-1.4) });
+  }
+}
+
 /**
  * The figure's gesture for a step at time `t` (0…1), `clock` in seconds for repeated motions.
  * Arm 1 is her right arm. Shapes after Cold Sanctuary's KitchenCook.Gesture (stir in circles, cut up and down…).
@@ -1185,6 +1268,7 @@ export function gesture(v: StepAct, t: number, clock: number, low: boolean): Pos
     case "curar":
       return base({ torso: 0.35, shoulderX: [-1.0 + 0.1 * s, -1.0 - 0.1 * s], elbow: [-0.6, -0.6] });
     case "entrenar":
+      if (v.vessel?.startsWith("mov:")) return motion(v.vessel.slice(4), clock);
       return P({ shoulderX: [0.6 * s, -0.6 * s], elbow: [-1.4, -1.4], hip: [-0.5 * s, 0.5 * s], knee: [0.6 + 0.4 * c, 0.6 - 0.4 * c] });
     case "saco":
       // Into the bag: knees up and hands pulling its edges; the zip: her right hand runs up her front.

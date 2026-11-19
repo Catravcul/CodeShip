@@ -67,6 +67,8 @@ const NAMED: Readonly<Record<string, Look>> = {
   panterilia: base({ hairStyle: "largo", hair: C(0.66, 0.46, 0.22), skin: SKIN.mid, eyes: C(0.78, 0.58, 0.18), feminine: true, jaw: 0.76, height: 1.68, build: -0.25, top: C(0.45, 0.5, 0.32), pants: C(0.3, 0.28, 0.22) }, CS),
   gohageneis: base({ hairStyle: "degradado", hair: C(0.07, 0.06, 0.06), skin: C(0.66, 0.46, 0.33), eyes: C(0.2, 0.13, 0.08), jaw: 0.84, cap: [C(0.15, 0.3, 0.75), C(0.98, 0.8, 0.15)], height: 1.76, build: 0.15, top: C(0.95, 0.95, 0.93), pants: C(0.85, 0.12, 0.12), shorts: true }),
   irosene: base({ hairStyle: "largo-ondulado", hair: C(0.86, 0.8, 0.64), skin: C(0.93, 0.76, 0.66), eyes: C(0.45, 0.58, 0.62), feminine: true, jaw: 0.9, lips: C(0.82, 0.55, 0.55), height: 1.55, build: -0.05, top: C(0.85, 0.32, 0.3), pants: C(0.3, 0.26, 0.3) }),
+  // The Magnate (Nevaeh here): CubeHair «sin ficha de aspecto; maga de células infinitas», bob, white tunic with violet vest and sleeves.
+  nevaeh: base({ hairStyle: "bob", hair: C(0.13, 0.2, 0.3), skin: C(0.95, 0.87, 0.68), eyes: C(0.32, 0.2, 0.1), feminine: true, jaw: 0.66, lips: C(0.35, 0.22, 0.45), height: 1.66, build: -0.05, top: C(0.95, 0.95, 0.95), vest: C(0.5, 0.15, 0.42), sleeves: C(0.5, 0.15, 0.42), pants: C(0.72, 0.85, 0.9), shoes: C(0.15, 0.17, 0.3) }, CS),
   kushal: base({ hairStyle: "media-melena", hair: C(0.07, 0.06, 0.07), skin: C(0.84, 0.66, 0.6), eyes: C(0.22, 0.16, 0.12), jaw: 0.74, beard: "de-dias", beanie: C(0.55, 0.1, 0.14), glasses: C(0.3, 0.3, 0.32), height: 1.75, build: 0.05, top: C(0.1, 0.1, 0.33), vest: C(0.36, 0.12, 0.45), pants: C(0.08, 0.28, 0.22), shoes: C(0.62, 0.64, 0.68) }, `${CS} (su hoja de diseño)`),
 };
 
@@ -90,6 +92,11 @@ export function lookOf(name: string): Look {
   const n = name.toLowerCase().replace(/[^a-záéíóúñ]/g, "");
   for (const [k, l] of Object.entries(NAMED)) if (n.includes(k)) return l;
   const h = hash(n);
+  if (n === "neo") return { ...varied(n, h), height: 1.23, build: -0.15, beard: "ninguna", source: `${CS}: Neo, niño de Ducristin y Gallarle (1,23 m en la escena exportada); aspecto variado por su nombre` };
+  return varied(n, h);
+}
+
+function varied(n: string, h: number): Look {
   const pick = <T>(xs: readonly T[], k: number): T => xs[Math.floor(h / k) % xs.length]!;
   const hairStyle = pick(STYLES, 1);
   const feminine = ["largo", "mono", "coleta", "bob", "largo-ondulado"].includes(hairStyle) ? h % 5 !== 0 : h % 7 === 0;

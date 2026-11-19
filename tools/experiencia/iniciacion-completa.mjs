@@ -174,8 +174,8 @@ export async function iniciacionCompleta(j) {
   j.check("acoplada: la partida pasa al nivel 6 en la misma ranura, con los días y los puestos, y el crucero a Bennu por hacer", slot?.level === 6 && slot?.state?.fromLaunch?.cruiseDays === 816 && slot.state.fromLaunch.posts.length === 13, JSON.stringify(slot).slice(0, 300));
   await p.waitForFunction(() => window.codeship?.cruise, null, { timeout: 120000 });
   await p.waitForTimeout(2500);
-  const cruise = await p.evaluate(() => ({ active: window.codeship.cruise.active, left: window.codeship.cruise.left, field: window.codeship.field.group.visible, chip: document.querySelector(".cruise-chip")?.textContent ?? "", start: !!document.querySelector(".start-screen:not(.hidden)") }));
-  j.check("sigue sola en el nivel 6, sin la pantalla de inicio: el crucero a Bennu con su chip (816 días, tope de 10 min) y sin asteroides a la vista", cruise.active && !cruise.field && /Starship → Bennu/.test(cruise.chip) && /816 días/.test(cruise.chip) && cruise.left > 500 && cruise.left <= 600, JSON.stringify(cruise));
+  const cruise = await p.evaluate(() => ({ active: window.codeship.cruise.active, left: window.codeship.cruise.left, field: window.codeship.field.group.visible, chip: document.querySelector(".cruise-chip")?.textContent ?? "", trayecto: window.codeship.tripStatus()?.destination ?? null, start: !!document.querySelector(".start-screen:not(.hidden)") }));
+  j.check("sigue sola en el nivel 6, sin la pantalla de inicio: el crucero a Bennu con su ficha (816 días, tope de 10 min; en el puesto de pilotaje) y en «Trayecto», sin asteroides a la vista", cruise.active && !cruise.field && cruise.trayecto === "Bennu" && /Starship → Bennu/.test(cruise.chip) && /816 días/.test(cruise.chip) && cruise.left > 500 && cruise.left <= 600, JSON.stringify(cruise));
   await capture(j, "crucero");
   await p.evaluate(() => window.codeship.cruise.finishNow());
   const arrived = await p.evaluate(() => ({ field: window.codeship.field.group.visible, chip: !!document.querySelector(".cruise-chip") }));

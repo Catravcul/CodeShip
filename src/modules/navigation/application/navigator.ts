@@ -1,4 +1,6 @@
 import { Vec3 } from "@core/math/vec3";
+import { Quat } from "@core/math/quat";
+import { isRecord } from "@core/snapshot";
 import type { FlightComputer } from "@modules/flight/application/flight-computer";
 import { ChoreRun, type Chore } from "@modules/chores/domain/chore";
 import type { Answer } from "@modules/mind-duel/domain/exercise";
@@ -12,7 +14,7 @@ import type { DockingTarget } from "@modules/mothership/domain/docking";
 import { remainingEstimateS, TripAutopilot, type AutopilotPhase } from "./autopilot";
 import { FreeCarrierRun, portGuidance, type PortGuidance } from "./free-carrier";
 import { CarrierTrip, ManualCarrierRun, carrierTurnSeconds, type BerthRun, type CarrierPort } from "./carrier-trip";
-import { legBudgets, TRAVEL_TIME, TravelClock } from "../domain/travel-time";
+import { legBudgets, TRAVEL_TIME, TravelClock, type TravelClockSnapshot } from "../domain/travel-time";
 import { carrierTripChore, tripChore, type CarrierTripFacts, type DockFacts, type TripFacts } from "./trip-chore";
 import { DOCK_TRIP } from "./dock-trip";
 import { BERTH_STANDOFF_M, berthSeconds, MANUAL_BERTH, type ManualBerthing, type Unberthing } from "@modules/mothership/application/berthing";
@@ -152,6 +154,42 @@ export interface NavigatorPorts {
   /** Why no trip can start now (another vehicle is on a compressed trip, the probe is out…), if so. */
   busy?(carrier: boolean): string | undefined;
 }
+
+type V3 = readonly [number, number, number];
+type Q4 = readonly [number, number, number, number];
+
+/**
+ * The mothership's programmed hop as it is saved (docs/design/partidas.md, «Viajes en marcha»): how it started
+ * (its start pose, route and plan), how far it has flown (game seconds) and its time-lapse clock. Read back, the
+ * hop is flown again to the same point and goes on (`Navigator.resumeTrip`); the propellant was spent at the start.
+ */
+export interface CarrierTripSnapshot {
+  readonly kind: "nodriza";
+  readonly targetId: string;
+  readonly from: V3;
+  /** [w, x, y, z]. */
+  readonly startQ: Q4;
+  readonly path: readonly V3[];
+  readonly plan: ContinuousBurnPlan;
+  readonly endQ?: Q4;
+  readonly backingOut: boolean;
+  /** Game seconds flown since it started. */
+  readonly gameS: number;
+  readonly clock: TravelClockSnapshot;
+  readonly landerBudgetS?: number;
+  readonly berthLapse: number;
+  readonly carrying: boolean;
+  readonly route: readonly V3[];
+  readonly startDistanceM: number;
+  readonly holdAtWaypoint: boolean;
+}
+
+const v3 = (v: Vec3): V3 => [v.x, v.y, v.z];
+const q4 = (q: Quat): Q4 => [q.w, q.x, q.y, q.z];
+const finiteList = (v: unknown, n: number): v is number[] => Array.isArray(v) && v.length === n && v.every((x) => typeof x === "number" && Number.isFinite(x));
+const fin = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+const toVec = (a: readonly number[]): Vec3 => new Vec3(a[0]!, a[1]!, a[2]!);
+const toQuat = (a: readonly number[]): Quat => new Quat(a[0]!, a[1]!, a[2]!, a[3]!);
 
 /** Trip progress for the HUD. `vehicle: "probe"` is the lander (the craft the cockpit flies). */
 export interface TripProgress {
@@ -909,6 +947,84 @@ export class Navigator {
       return;
     }
     this._status = "arrived";
+  }
+
+  /**
+   * Why the lander must not undock now, if so: the mothership is flying with it aboard (a programmed hop, by hand
+   * along a route, or its last approach to a station's port). As with Apollo's LM, it separates once the ship has
+   * stopped: at a parking point the trip itself undocks it. docs/design/santuario3-lanzamiento.md.
+   */
+  undockHold(): string | undefined {
+    if (this._status !== "carrier" || !this._carrying) return undefined;
+    if (!this._carrierTrip && !this._manualCarrier && !this._berthing && !this._manualBerth) return undefined;
+    return "La Starship está en viaje con el módulo acoplado: se desacopla cuando aparque";
+  }
+
+  /**
+   * The mothership's programmed hop flying now, as it is saved (docs/design/partidas.md); undefined when none is
+   * (the lander's or the probe's legs, hand flying, berthing and undocking are not kept: they are short or by hand).
+   */
+  tripSnapshot(): CarrierTripSnapshot | undefined {
+    const ct = this._carrierTrip;
+    if (this._status !== "carrier" || !ct || !this.clock || this._berthing || this._manualCarrier || this._freeCarrier || this._manualBerth || this._unberth) return undefined;
+    const s = ct.started;
+    return {
+      kind: "nodriza",
+      targetId: this._target.id,
+      from: v3(s.from),
+      startQ: q4(s.startQ),
+      path: s.path.map(v3),
+      plan: { ...s.plan },
+      ...(s.orientation ? { endQ: q4(s.orientation) } : {}),
+      backingOut: s.backingOut,
+      gameS: ct.advancedS,
+      clock: this.clock.snapshot(),
+      ...(this.landerBudgetS !== undefined ? { landerBudgetS: this.landerBudgetS } : {}),
+      berthLapse: this.berthLapse,
+      carrying: this._carrying,
+      route: this._route.map(v3),
+      startDistanceM: this.startDistanceM,
+      holdAtWaypoint: this.holdAtWaypoint,
+    };
+  }
+
+  /**
+   * A saved hop goes on (docs/design/partidas.md): the mothership flies it again from its start to the point it
+   * had reached (its pose, attitude and phase come back), with the same clock, so it is still flying and arrives
+   * when it would have. Nothing is burnt again. False (and nothing changes) if the snapshot is broken or its
+   * destination is unknown.
+   */
+  resumeTrip(snap: unknown): boolean {
+    const c = this.ports.carrier;
+    if (!c || !isRecord(snap) || snap.kind !== "nodriza" || typeof snap.targetId !== "string") return false;
+    const t = this.ports.targets.find((x) => x.id === snap.targetId);
+    const p = snap.plan;
+    const planOk = isRecord(p) && fin(p.distanceM) && fin(p.accelMS2) && fin(p.peakMS) && fin(p.totalS) && fin(p.deltaVMS) && (p.coastS === undefined || fin(p.coastS));
+    const pathOk = (v: unknown): v is number[][] => Array.isArray(v) && v.every((x) => finiteList(x, 3));
+    if (!t || !planOk || !finiteList(snap.from, 3) || !finiteList(snap.startQ, 4) || !pathOk(snap.path) || !pathOk(snap.route) || !fin(snap.gameS) || snap.gameS < 0) return false;
+    if (snap.endQ !== undefined && !finiteList(snap.endQ, 4)) return false;
+    const clock = TravelClock.restore(snap.clock);
+    if (!clock) return false;
+    if (t !== this._target) {
+      if (!this.ports.retarget(t)) return false;
+      this._target = t;
+    }
+    this.cancel();
+    this._carrierTrip = CarrierTrip.replay(
+      c,
+      { from: toVec(snap.from), startQ: toQuat(snap.startQ), path: snap.path.map(toVec), plan: p as unknown as ContinuousBurnPlan, ...(snap.endQ ? { orientation: toQuat(snap.endQ) } : {}), backingOut: snap.backingOut === true },
+      snap.gameS,
+    );
+    this.clock = clock;
+    this.landerBudgetS = fin(snap.landerBudgetS) ? snap.landerBudgetS : undefined;
+    this.berthLapse = fin(snap.berthLapse) && snap.berthLapse > 0 ? snap.berthLapse : TRAVEL_TIME.lapse.carrier;
+    this._carrying = snap.carrying === true && c.docked();
+    this._route = snap.route.map(toVec);
+    this.startDistanceM = fin(snap.startDistanceM) ? Math.max(1, snap.startDistanceM) : Math.max(1, (p as unknown as ContinuousBurnPlan).distanceM);
+    this.holdAtWaypoint = snap.holdAtWaypoint === true;
+    this.parkedByHand = false;
+    this._status = "carrier";
+    return true;
   }
 
   /** Autopilot progress for the HUD, while it flies. */

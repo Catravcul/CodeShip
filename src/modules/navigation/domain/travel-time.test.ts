@@ -103,6 +103,24 @@ describe("TravelClock", () => {
   });
 });
 
+describe("TravelClock saved (docs/design/partidas.md)", () => {
+  it("comes back en route with the same real and game time passed, and keeps its pace", () => {
+    const c = new TravelClock(3600, 60);
+    c.advance(20);
+    const back = TravelClock.restore(JSON.parse(JSON.stringify(c.snapshot())))!;
+    expect(back.state).toBe("en-ruta");
+    expect(back.realElapsedS).toBeCloseTo(20, 9);
+    expect(back.gameElapsedS).toBeCloseTo(c.gameElapsedS, 9);
+    expect(back.lapse()).toBeCloseTo(c.lapse(), 9);
+    expect(back.etaRealS()).toBeCloseTo(40, 6);
+  });
+
+  it("a broken snapshot is no clock", () => {
+    expect(TravelClock.restore({ plannedGameS: 1, budgetRealS: "x", realS: 0, gameS: 0 })).toBeUndefined();
+    expect(TravelClock.restore(null)).toBeUndefined();
+  });
+});
+
 describe("worldStep (one clock for everyone during a compressed trip)", () => {
   it("the mission clock runs at the trip's lapse", () => {
     expect(worldStep(0.5, 600).missionS).toBeCloseTo(300, 9);

@@ -67,6 +67,14 @@ export function legBudgets(legs: readonly LegTime[], capS: number = TRAVEL_TIME.
 
 export type TravelState = "en-ruta" | "llegada" | "cancelado";
 
+/** A leg's clock as it is saved. */
+export interface TravelClockSnapshot {
+  readonly plannedGameS: number;
+  readonly budgetRealS: number;
+  readonly realS: number;
+  readonly gameS: number;
+}
+
 /** Never plan on less than this real time left (avoids dividing by zero at the end), s. */
 const MIN_LEFT_S = 0.05;
 
@@ -124,6 +132,23 @@ export class TravelClock {
   etaRealS(remainingGameS?: number): number {
     if (this._state !== "en-ruta") return 0;
     return this.left(remainingGameS) / this.lapse(remainingGameS);
+  }
+
+  /** As it is saved (docs/design/partidas.md): the plan, the budget and what has passed of each. */
+  snapshot(): TravelClockSnapshot {
+    return { plannedGameS: this.plannedGameS, budgetRealS: this.budgetRealS, realS: this.real, gameS: this.game };
+  }
+
+  /** A saved leg's clock, en route at the same point; undefined if the snapshot is broken. */
+  static restore(s: unknown, limits?: { readonly minLapse: number; readonly maxLapse: number }): TravelClock | undefined {
+    if (typeof s !== "object" || s === null) return undefined;
+    const r = s as Record<string, unknown>;
+    const ok = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v) && v >= 0;
+    if (!ok(r.plannedGameS) || !ok(r.budgetRealS) || !ok(r.realS) || !ok(r.gameS)) return undefined;
+    const c = new TravelClock(r.plannedGameS, r.budgetRealS, limits);
+    c.real = r.realS;
+    c.game = r.gameS;
+    return c;
   }
 
   arrive(): void {

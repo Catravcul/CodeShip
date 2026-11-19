@@ -40,3 +40,5 @@ body.in-duel .root-menu, body.in-settings .root-menu.flight-bar { display: none 
 body.in-carrier-hand .puente-ui .root-menu, body.arm-manual .root-menu, body.in-tasks .root-menu, body.in-missions .root-menu, body.in-areas .root-menu { display: none !important; }
 /* A machine's or an area's card shows only from the orange button under the menu (machine-panel.ts, reglas.md §5.8). */
 body:not(.panel-on) .cab-machine { display: none !important; }
+/* Locked for now (its label starts with ⊘ and says why): it still answers a tap with why (e.g. «Desacoplar» while the Starship is under way). */
+.root-menu.open .rm-shoots > button.locked { opacity: 0.55; border-style: dashed; }

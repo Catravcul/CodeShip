@@ -55,6 +55,7 @@ Si reanudar una partida falla a medias, se sigue jugando **sin guardar**, para n
 ## Qué se guarda (santuario 6)
 
 - Días a bordo (el día de la lista) y el reloj de la misión (el giro de los asteroides).
+- Los viajes en marcha: el crucero a Bennu y el salto programado de la Starship (abajo, «Viajes en marcha»).
 - Dónde está ella: en el puesto del módulo, en su habitáculo (junto a qué puesto), en la cubierta de vuelo de la
   Starship, en las cubiertas de la Starship o en la estación (junto a qué máquina). Al reanudar vuelve allí.
 - Sus necesidades: saciedad, forma física, estrés, soledad y días en ingravidez.
@@ -82,12 +83,41 @@ El santuario aéreo deja el id en `sessionStorage` (`codeship.seguir`) y recarga
 cubierta de vuelo de la Starship, y arranca el crucero (`src/bennu-cruise.ts`); su primer guardado deja ya el estado
 completo del 6. Sin ranura libre, se queda en el 3 y lo dice. El 6 se sigue empezando también desde la pantalla de inicio.
 
+## Viajes en marcha (2026-11-19, `crucero-recarga`)
+
+Antes, si se recargaba la página a medio crucero a Bennu, «Continuar» la dejaba ya en Bennu: el crucero solo vivía en
+la página (`bennu-cruise.ts`) y el primer guardado del 6 borraba el traspaso. Ahora la partida guarda los viajes en
+marcha en `trips` (opcional: una partida sin él, o con él roto, sigue sin nada en vuelo, como antes) y «Continuar» los
+reanuda en el mismo punto, todavía en marcha, con «Trayecto» en el menú:
+
+- **El crucero a Bennu** (`trips.crucero`, `navigation/domain/cruise.ts` `CruiseClock`): sus días reales, los segundos
+  reales que dura y los que le faltan. Vuelve sin asteroides a la vista y con lo que le faltaba. La lista lo dice
+  («Starship · Crucero a Bennu · Cubierta de vuelo»).
+- **El salto programado de la Starship** (`trips.nodriza`, `Navigator.tripSnapshot` / `resumeTrip`): el destino, cómo
+  empezó (la pose de salida, la ruta y el plan de quemado, inercia y frenado), los segundos de juego volados y el reloj
+  de la cámara rápida. Al reanudar, la Starship vuela otra vez el salto desde su salida hasta el punto al que había
+  llegado (misma pose, actitud y fase) y sigue; el propelente no se gasta de nuevo (se gastó al salir). Llega cuando
+  habría llegado.
+- **El tiempo no corre con la página cerrada.** Los viajes van en tiempo real mientras se juega (a ×60), pero ningún
+  documento de diseño dice qué pasa con la página cerrada: decidimos que **sigue donde estaba**, como el resto de la
+  partida (el día a bordo, el hambre y el soporte vital tampoco avanzan cerrada) y como el crucero ya hacía con la
+  página oculta.
+- `SAVE_FORMAT` sigue en 1: `trips` es una parte opcional más del estado; las partidas de antes se leen igual.
+
+**El módulo no se desacopla mientras la Starship va de viaje con él** (`Docking.undockHold`, `Navigator.undockHold`):
+ni en el crucero a Bennu ni en un salto (programado, a mano o atracando). Como el LM de Apolo, que solo se separaba con
+la nave parada: al aparcar, el viaje mismo lo suelta. El interruptor de acople sale con ⊘ y el porqué («La Starship va de
+crucero a Bennu: el módulo se desacopla al llegar», «La Starship está en viaje con el módulo acoplado: se desacopla
+cuando aparque») y tocarlo lo repite. Durante el crucero tampoco se programa otro viaje («La Starship va de crucero a
+Bennu: espera a que llegue»).
+
 ## Qué no se guarda (todavía)
 
 Al reanudar, esto vuelve como en una partida nueva:
 
-- **Lo que estaba en marcha**: el crucero a Bennu del traspaso (si se recarga a medio crucero, sigue ya en Bennu), un viaje de la Starship, del módulo o de la sonda, un aterrizaje por programa, el
-  asistente de acople y el pilotaje a mano. Las naves quedan donde estaban (el módulo libre conserva su velocidad);
+- **Lo que estaba en marcha**, salvo el crucero a Bennu y el salto programado de la Starship («Viajes en marcha»): el
+  tramo del módulo o un viaje de la sonda, la Starship pilotada a mano, atracando o desacoplando, un aterrizaje por
+  programa y el asistente de acople. Las naves quedan donde estaban (el módulo libre conserva su velocidad);
   el viaje se programa otra vez. También un reto o un duelo abierto, el paseo espacial (vuelve dentro) y el sueño.
 - **Posado en un asteroide**: se guarda la posición junto al suelo, no el anclaje; al reanudar se vuelve a posar.
   La fase de la expedición (persuadido, furioso) sale de nuevo de la relación con el asteroide.

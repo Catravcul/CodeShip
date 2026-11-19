@@ -5,6 +5,10 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-19
 
+- **Viajes en marcha en la partida**: recargar a medio crucero a Bennu (o a medio salto programado de la Starship) y
+  «Continuar» sigue el viaje donde estaba, en marcha y con «Trayecto», en vez de aparecer en el destino; con la Starship
+  de viaje el módulo no se desacopla (el interruptor dice por qué). [docs/design/partidas.md](docs/design/partidas.md)
+
 - **Tarjetas de máquina en el móvil**: suben por encima del «−» / «+» redondos del joystick de mirar, que ahora están encima de él. [docs/design/reglas.md](docs/design/reglas.md)
 
 - **Santuario 1, realismo y mandos**: correr es un sprint a tope (6,5 m/s, rodillas altas, brazos a 90°, la vista se

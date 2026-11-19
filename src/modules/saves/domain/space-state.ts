@@ -62,6 +62,12 @@ export interface SpaceState {
   readonly stationStock?: unknown;
   /** The AQH colonies: the Starship's and Kibo's (the animals adopted from the catalogue). */
   readonly aquariums?: { readonly nodriza?: unknown; readonly estacion?: unknown };
+  /**
+   * Trips under way (docs/design/partidas.md, «Viajes en marcha»): the Starship's cruise to Bennu after the launch
+   * (navigation/domain/cruise.ts) and her programmed hop (Navigator.tripSnapshot). Read back, they go on at the
+   * same point; missing or broken, nothing is flying (as before they were kept).
+   */
+  readonly trips?: { readonly crucero?: unknown; readonly nodriza?: unknown };
   /** The settings: the general ones (`codeship.ajustes`, as stored), the order challenges' mode and the landing mode. */
   readonly settings?: { readonly ajustes?: string; readonly pasoAPaso?: boolean; readonly aterrizaje?: string };
 }

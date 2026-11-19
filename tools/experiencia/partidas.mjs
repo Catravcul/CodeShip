@@ -3,7 +3,9 @@
 // She plays, goes from the LM's seat through the docking hatch into the Starship, the page reloads, and «Continuar»
 // puts her back there with the state intact. The start screen's gear (gear → settings, list icon → back, like the
 // other map windows) lists the save; a broken one says so without breaking anything; deleting asks inside the window
-// (never `window.confirm`); «Jugar sin partida guardada» starts a new game. Captures docs/screenshots/partidas-*-movil.png.
+// (never `window.confirm`); «Jugar sin partida guardada» starts a new game. Trips under way (2026-11-19, «Viajes en
+// marcha»): a reload in the middle of the Starship's hop, and of the cruise to Bennu after the launch, comes back
+// still flying at the same point, with «Trayecto» showing it and the LM latched. Captures docs/screenshots/partidas-*-movil.png.
 import { mkdirSync } from "node:fs";
 import { enterGame } from "./lib.mjs";
 
@@ -39,6 +41,33 @@ const saves = (p) =>
       fresh: box.querySelector(".ss-fresh") ? { off: box.querySelector(".ss-fresh").disabled, ...r(box.querySelector(".ss-fresh")) } : null,
       freshHelp: box.querySelector(".ss-fresh-help")?.textContent ?? "",
       card: w.querySelector('.mw-go[data-go="espacio"]')?.textContent,
+    };
+  });
+
+/** The trip flying now (the Starship's hop or the cruise to Bennu), read for the checks. */
+const trip = (p) =>
+  p.evaluate(() => {
+    const c = window.codeship;
+    const m = c.mothership.position;
+    const pr = c.nav.progress();
+    const t = c.nav.target;
+    const goal = t.kind === "asteroid" ? t.body.position : null;
+    const from = c.nav.route[0];
+    return {
+      status: c.nav.status,
+      target: t.id,
+      phase: pr?.phase ?? null,
+      fraction: pr?.fraction ?? null,
+      etaRealS: pr?.etaRealS ?? null,
+      fromStartM: from ? Math.hypot(m.x - from.x, m.y - from.y, m.z - from.z) : null,
+      toGoalM: goal ? Math.hypot(m.x - goal.x, m.y - goal.y, m.z - goal.z) : null,
+      ship: [m.x, m.y, m.z],
+      dock: c.docking.dockedTo?.id ?? null,
+      canUndock: c.docking.canUndock(),
+      cruise: c.cruise ? { active: c.cruise.active, left: c.cruise.left, total: c.cruise.totalS } : null,
+      rocks: c.field.group.visible,
+      status6: c.tripStatus() ?? null,
+      slot: c.gameSave.slot,
     };
   });
 
@@ -165,4 +194,72 @@ export async function partidas(j) {
   const g3 = await game(p);
   j.check("«Jugar sin partida guardada» empieza una partida nueva: en el puesto del módulo, en la ranura 1", g3.seat && !g3.ship && g3.slot === "1" && g3.days < 0.05 && g3.satiety > g2.satiety, JSON.stringify(g3));
   await capture(j, "nueva", "Partida nueva sin partida guardada");
+
+  // 7. A reload in mid-hop (2026-11-19, «Viajes en marcha»): the Starship's programmed trip is kept and goes on.
+  const set = await j.setup("la Starship sale con el módulo hacia otro asteroide (los retos del viaje se juegan en PX-36)", () => {
+    const c = window.codeship;
+    const t = c.nav.targets.find((x) => x.kind === "asteroid" && x.id !== c.expedition.asteroid.data.id && c.nav.canCarry(x).ok);
+    return t ? c.nav.carry(t.id) : { ok: false, reason: "sin destino" };
+  });
+  if (!j.check("la Starship vuela sola hacia el asteroide", set?.ok, JSON.stringify(set))) return;
+  await p.waitForTimeout(8000);
+  const h1 = await trip(p);
+  j.check("en vuelo: entre el origen y el destino, con fase y avance", h1.status === "carrier" && h1.fraction > 0 && h1.fraction < 1 && h1.fromStartM > 1 && h1.toGoalM > 1000, JSON.stringify(h1));
+  await j.tap(".flight-bar .dock-btn", "⊘ Desacoplar (la Starship va de viaje)");
+  await p.waitForTimeout(500);
+  const lock = await p.evaluate(() => ({ dock: window.codeship.docking.dockedTo?.id ?? null, label: document.querySelector(".flight-bar .dock-btn")?.getAttribute("aria-label"), locked: document.querySelector(".flight-bar .dock-btn")?.classList.contains("locked"), said: document.body.innerText.includes("se desacopla cuando aparque") }));
+  j.check("en viaje el módulo no se desacopla: el interruptor sale bloqueado con el porqué y tocarlo no lo suelta", lock.dock === "nodriza" && lock.locked && lock.said && /⊘ Desacoplar: .*en viaje/.test(lock.label ?? ""), JSON.stringify(lock));
+  await capture(j, "viaje-antes", "La Starship de viaje antes de recargar");
+  await p.reload();
+  await p.waitForSelector(".start-screen:not(.hidden)", { timeout: 120000 });
+  await enterGame(p, { resume: true });
+  await p.waitForTimeout(2500);
+  const h2 = await trip(p);
+  j.check(
+    "«Continuar» a medio viaje: la Starship sigue volando hacia el mismo asteroide, entre el origen y el destino, con el avance de antes",
+    h2.status === "carrier" && h2.target === h1.target && h2.fraction >= h1.fraction - 0.02 && h2.fraction < h1.fraction + 0.1 && h2.fromStartM > 1 && h2.toGoalM > 1000 && Math.abs(h2.etaRealS - h1.etaRealS) < 20,
+    JSON.stringify({ antes: h1, ahora: h2 }),
+  );
+  j.check("con el módulo aún acoplado y «Trayecto» en el menú con el viaje", h2.dock === "nodriza" && !!h2.status6 && h2.status6.destination && h2.status6.fraction > 0, JSON.stringify(h2.status6));
+  await j.tap(".flight-bar .trip-btn", "Trayecto");
+  await p.waitForFunction(() => /Llega en/.test(document.querySelector(".trip-window:not(.hidden)")?.textContent ?? ""), null, { timeout: 10000 }).catch(() => {});
+  const tw = await p.evaluate(() => document.querySelector(".trip-window:not(.hidden)")?.textContent ?? "");
+  j.check("«Trayecto» dice adónde va y cuánto falta", /Destino/.test(tw) && /Llega en/.test(tw), tw);
+  await capture(j, "viaje-recuperado", "El viaje sigue tras «Continuar»");
+  await p.waitForTimeout(3000);
+  const h3 = await trip(p);
+  j.check("y sigue en marcha (avanza)", h3.status === "carrier" && h3.fraction > h2.fraction, JSON.stringify({ antes: h2.fraction, ahora: h3.fraction }));
+  await j.setup("se para el viaje", () => window.codeship.nav.cancel());
+
+  // 8. A reload in mid-cruise to Bennu (after level 3's launch): the cruise is kept, not arrived.
+  await j.setup("la partida llega del lanzamiento del santuario 3 en la ranura 2 (el traspaso; PX-48 juega el lanzamiento)", () => {
+    const state = { boardDays: 3.2, fromLaunch: { posts: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], cruiseDays: 816 } };
+    localStorage.setItem("codeship.partida.2", JSON.stringify({ format: 1, level: 6, savedAt: new Date().toISOString(), boardDay: 4, summary: { vehicle: "Starship", place: "Crucero a Bennu" }, state }));
+    sessionStorage.setItem("codeship.seguir", "2");
+  });
+  await p.reload();
+  await p.waitForFunction(() => window.codeship?.cruise, null, { timeout: 120000 }).catch(() => {});
+  await p.waitForTimeout(10000);
+  const k1 = await trip(p);
+  j.check("del lanzamiento: el crucero a Bennu en marcha, sin asteroides a la vista, en la ranura 2", !!k1.cruise?.active && k1.cruise.left < k1.cruise.total && !k1.rocks && k1.slot === "2", JSON.stringify(k1));
+  j.check("en crucero el módulo no se desacopla, y lo dice", k1.dock === "nodriza" && !k1.canUndock.ok && /crucero/.test(k1.canUndock.reason ?? ""), JSON.stringify(k1.canUndock));
+  await p.reload();
+  await p.waitForSelector(".start-screen:not(.hidden)", { timeout: 120000 });
+  await enterGame(p, { resume: true });
+  await p.waitForTimeout(2500);
+  const k2 = await trip(p);
+  j.check(
+    "«Continuar» a medio crucero: sigue de camino a Bennu (no aparece allí), con lo que faltaba y sin asteroides a la vista",
+    !!k2.cruise?.active && k2.slot === "2" && !k2.rocks && k2.cruise.left <= k1.cruise.left + 1 && k2.cruise.left > k1.cruise.left - 15,
+    JSON.stringify({ antes: k1.cruise, ahora: k2.cruise }),
+  );
+  await j.tap(".room-ui:not(.hidden) .trip-btn", "Trayecto");
+  await p.waitForFunction(() => /Llega en/.test(document.querySelector(".trip-window:not(.hidden)")?.textContent ?? ""), null, { timeout: 10000 }).catch(() => {});
+  const tw2 = await p.evaluate(() => document.querySelector(".trip-window:not(.hidden)")?.textContent ?? "");
+  j.check("la ventana «Trayecto» del menú: Starship → Bennu, fase Crucero y cuánto falta", /Starship → Bennu/.test(tw2) && /Crucero/.test(tw2) && /Llega en/.test(tw2), tw2);
+  const chip = await p.evaluate(() => !!document.querySelector(".cruise-chip.on"));
+  j.check("fuera del puesto de pilotaje la ficha del crucero no sale (reglas.md §3.8): lo dice «Trayecto»", !chip);
+  j.check("«Trayecto» lo enseña: Starship → Bennu, en crucero", k2.status6?.destination === "Bennu" && k2.status6?.phase === "Crucero" && k2.status6.fraction > 0, JSON.stringify(k2.status6));
+  j.check("y el módulo sigue acoplado y bloqueado", k2.dock === "nodriza" && !k2.canUndock.ok, JSON.stringify(k2.canUndock));
+  await capture(j, "crucero-recuperado", "El crucero a Bennu sigue tras «Continuar»");
 }

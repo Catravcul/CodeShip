@@ -25,6 +25,14 @@ describe("the space sanctuary's saved state (level 6)", () => {
     expect(checkSpaceState(bare)).toBeUndefined();
   });
 
+  it("trips under way travel in the state (partidas.md, «Viajes en marcha»); broken, the game still resumes, with nothing flying", () => {
+    const s = { ...state(), trips: { crucero: { cruiseDays: 816, totalS: 600, leftS: 412 }, nodriza: { kind: "nodriza", targetId: "x" } } };
+    expect(checkSpaceState(s)).toBeUndefined();
+    const r = readSlot("1", writeSlot({ id: "1", format: SAVE_FORMAT, level: 6, savedAt: "2026-11-19T10:00:00Z", boardDay: 3, summary: { vehicle: "Starship", place: "Crucero a Bennu" }, state: s }));
+    expect(r.ok && (r.slot.state as SpaceState).trips).toEqual(s.trips);
+    expect(checkSpaceState({ ...state(), trips: "roto" })).toBeUndefined();
+  });
+
   it("without where the craft are or where she is, it cannot be resumed, and says what is missing", () => {
     const s = state();
     expect(checkSpaceState({ ...s, crew: { vehicle: "submarino", spot: "interior" } })).toMatch(/Doménica/);

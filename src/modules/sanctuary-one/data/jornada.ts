@@ -44,6 +44,16 @@ function spotAt(list: readonly Instance[], n: number, a: S1Area, pose: Place["po
   return { area: a.id, x, y: a.y, z, yaw: Math.atan2(it.x - x, it.z - z), pose, work: it.model };
 }
 
+/**
+ * People whose work is their own in Cold Sanctuary: Sadhguru teaches yoga (WorkdayDirector: he meditates in the yoga
+ * room), the Magnate is the sanctuary's teacher (Magnate.cs «la maestra del santuario»), Neo is a child: school and play.
+ */
+const ROLES: Readonly<Record<string, { tareas?: string; entrenamiento?: string }>> = {
+  Sadhguru: { tareas: "yoga-hatha-1", entrenamiento: "yoga-hatha-1" },
+  Nevaeh: { tareas: "aula-1" },
+  Neo: { tareas: "aula-1", entrenamiento: "calistenia" },
+};
+
 /** Each person's place for each activity. */
 export function staffPlaces(L: S1Layout): Map<string, Record<Activity, Place>> {
   const byFurnish = new Map(L.areas.filter((a) => a.furnish).map((a) => [a.furnish!, a]));
@@ -57,7 +67,7 @@ export function staffPlaces(L: S1Layout): Map<string, Record<Activity, Place>> {
   const out = new Map<string, Record<Activity, Place>>();
   STAFF.forEach((name, i) => {
     // Their room: the one whose owners include them (Tote is JefeConstruccion), else a free one.
-    const who = name === "JefeConstruccion" ? "Tote" : name;
+    const who = name === "JefeConstruccion" ? "Tote" : name === "Nevaeh" ? "la Magnate" : name;
     let room = ROOM_OWNERS.findIndex((o) => o.split(/, | y /).includes(who));
     if (room < 0) room = 25 + (i % 5);
     const floor = byFurnish.get(`habitaciones-${Math.floor(room / 7) + 1}`)!;
@@ -66,14 +76,15 @@ export function staffPlaces(L: S1Layout): Map<string, Record<Activity, Place>> {
     const bed: Place = cabin
       ? { area: floor.id, x: cabin.x - 2.6 + lane, y: floor.y + 0.85, z: cabin.z + 2.3, yaw: Math.PI, pose: "supine" }
       : { area: floor.id, x: floor.x, y: floor.y, z: floor.z, yaw: 0, pose: "stand" };
-    const train = TRAINING_FLOORS[i % TRAINING_FLOORS.length]!;
+    const role = ROLES[name];
+    const train = role?.entrenamiento ?? TRAINING_FLOORS[i % TRAINING_FLOORS.length]!;
     const free: Place = i % 2 ? at("residencia-plaza", i, "stand") : { area: hub.id, x: hub.x + Math.cos(i) * 10, y: 0, z: hub.z + Math.sin(i) * 10, yaw: -i, pose: "stand" };
     out.set(name, {
       dormir: bed,
       desayuno: at("restaurante", 1000 + i * 3, "stand"),
       comida: at("restaurante", 1000 + i * 3, "stand"),
       entrenamiento: at(train, i * 5, "stand"),
-      tareas: at(WORK_FLOORS[i % WORK_FLOORS.length]!, i * 7 + 3, "stand"),
+      tareas: at(role?.tareas ?? WORK_FLOORS[i % WORK_FLOORS.length]!, i * 7 + 3, "stand"),
       libre: free,
     });
   });

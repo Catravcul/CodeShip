@@ -19,7 +19,7 @@ describe("each person's look", () => {
     expect(new Set(keys).size).toBe(STAFF.length);
     for (const n of STAFF) {
       const l = lookOf(n);
-      expect(l.height, n).toBeGreaterThan(1.4);
+      expect(l.height, n).toBeGreaterThan(n === "Neo" ? 1.1 : 1.4); // Neo is a child
       expect(l.height, n).toBeLessThan(1.95);
     }
   });

@@ -144,3 +144,27 @@ describe("santuario 1: pisos amueblados", () => {
     }
   });
 });
+
+describe("the life in sanctuary 1", () => {
+  const L = buildS1Layout();
+  it("gives the work submarine a dive out of its bay, down its trunk and under the ice to the lagoon", () => {
+    const s = L.submarine!;
+    expect(s).toBeDefined();
+    expect(L.instances[s.index]!.model).toBe("sub-obra");
+    const ys = s.route.map((p) => p.y);
+    expect(Math.min(...ys)).toBeLessThan(-8);
+    expect(ys[0]).toBeGreaterThan(20);
+    // From the trunk on, every point is in a water: the trunk, or the sea (in the bay it rolls on its cradle to the door).
+    for (const p of s.route.slice(3)) expect(L.world.waters.some((w) => p.x >= w.x0 && p.x <= w.x1 && p.z >= w.z0 && p.z <= w.z1 && p.y >= w.yBottom - 0.01 && p.y <= w.yTop + 3), JSON.stringify(p)).toBe(true);
+  });
+
+  it("gives every young wild animal a mother of its species that is an adult", () => {
+    const young = L.instances.filter((i) => i.life?.mother !== undefined);
+    expect(young.length).toBeGreaterThan(5);
+    for (const y of young) {
+      const m = L.instances[y.life!.mother!]!;
+      expect(m.life?.species).toBe(y.life!.species);
+      expect(m.life!.born).toBeLessThan(y.life!.born);
+    }
+  });
+});

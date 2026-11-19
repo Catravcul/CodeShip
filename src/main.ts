@@ -468,7 +468,17 @@ const landBtn = view.addButton("land-btn", () => (flight.landingAssist = !flight
 // a port's keep-out sphere (it docks: the assist flies the last metres to contact). It shows the opposite of the
 // state now. It sprouts from the root with the other buttons that apply now (reglas.md §5.8, menú árbol).
 // K does the same on a keyboard.
-const dockBtn = view.addButton("dock-btn", () => (docking.docked ? docking.undock() : docking.toggleAssist()), { icon: ICON.dock, label: "Acoplar", key: "K" });
+// While the Starship is under way with it aboard, it stays latched and the switch says why (locked).
+const dockBtn = view.addButton(
+  "dock-btn",
+  () => {
+    if (!docking.docked) return docking.toggleAssist();
+    const can = docking.canUndock();
+    if (!can.ok) return flash(can.reason ?? "Ahora no se puede desacoplar", 6);
+    docking.undock();
+  },
+  { icon: ICON.dock, label: "Acoplar", key: "K" },
+);
 // Stand up from the pilot seat into the cabin.
 const standBtn = view.addButton("stand-btn", () => standUp(), { icon: ICON.standUp, label: "Dejar el puesto: habitáculo", key: "H" });
 settings.onChange((s) => {
@@ -793,9 +803,14 @@ const probeTravel = new ProbeTravel({
         g.kind === "bay" ? bay.position.add(up.scale(PROBE_TRIP.bayHandoverM)) : g.body.position.sub(g.body.position.sub(last).normalize().scale(g.body.meanRadiusM + PROBE_TRIP.approachM));
       return tripSketch({ from, waypoints: h.waypoints, arrival, brakeM: h.plan.burnDistanceM, cruiseMS: h.plan.cruiseMS, deltaVMS: h.plan.deltaVMS, totalS: h.plan.totalS, targetName: ProbeTrip.goalName(g) });
     }),
-  busy: () => (nav.status === "carrier" || nav.status === "autopilot" || nav.status === "docking" ? "La nave ya está de viaje: espera a que llegue" : landingBusy()),
+  busy: () => cruiseBusy() ?? (nav.status === "carrier" || nav.status === "autopilot" || nav.status === "docking" ? "La nave ya está de viaje: espera a que llegue" : landingBusy()),
 });
+/** The Starship's cruise to Bennu after the launch (src/bennu-cruise.ts), once it is made (below, after the saved game). */
+const cruiseRef: { now?: BennuCruise } = {};
+/** Why nothing else flies while the Starship cruises to Bennu (santuario3-lanzamiento.md): the asteroids are months away. */
+const cruiseBusy = (): string | undefined => (cruiseRef.now?.active ? "La Starship va de crucero a Bennu: espera a que llegue" : undefined);
 function navBusy(carrierTrip: boolean): string | undefined {
+  if (cruiseBusy()) return cruiseBusy();
   if (probeTravel.trip.active) return "La sonda está de viaje: espera a que llegue o toma su mando";
   if (landingBusy()) return landingBusy();
   if (carrierTrip && subj.probe.out) return "La sonda está fuera: recógela antes de mover la nodriza";
@@ -825,7 +840,7 @@ const describeBody = (t: unknown) => {
   const a = region.asteroids.find((x) => x === t);
   return a ? { id: a.data.id, name: a.data.name } : undefined;
 };
-const tripsFlying = () => (nav.status === "carrier" || nav.status === "autopilot" || nav.status === "docking" ? "La nave ya está de viaje: espera a que llegue" : probeTravel.trip.active ? "La sonda está de viaje: espera a que llegue o toma su mando" : undefined);
+const tripsFlying = () => cruiseBusy() ?? (nav.status === "carrier" || nav.status === "autopilot" || nav.status === "docking" ? "La nave ya está de viaje: espera a que llegue" : probeTravel.trip.active ? "La sonda está de viaje: espera a que llegue o toma su mando" : undefined);
 const landerLanding = new LandingProgram({ craft: "modulo", flight: () => flight, describe: describeBody, busy: () => tripsFlying() ?? (probeLanding.active ? "La sonda está aterrizando con su programa" : undefined) });
 const probeLanding = new LandingProgram({ craft: "sonda", flight: () => subj.probe.flight, describe: describeBody, busy: () => tripsFlying() ?? (landerLanding.active ? "El módulo está aterrizando con su programa" : undefined) });
 function landingBusy(): string | undefined {
@@ -920,7 +935,7 @@ function tripNow(): { chip: TripChipData; subject: PreviewSubject; status: TripS
   };
 }
 /** Read model for the HUD menu's «Trayecto» window (status only, wherever she is; reglas.md §5.9). */
-const tripStatus = (): TripStatus | undefined => tripNow()?.status;
+const tripStatus = (): TripStatus | undefined => tripNow()?.status ?? cruiseRef.now?.status();
 
 // Ship bay: only at the station (docs/design/accesos.md): its console in node 2, B inside, or the
 // hangar tab of the station screen. Part swaps take the part from the station's hangar; the old one goes back there.
@@ -1801,9 +1816,11 @@ renderer.setAnimationLoop((now) => {
   navMode.update(dt, world.held);
   // Trips run on their own; she sees them only at that vehicle's console (reglas.md §3.8).
   const running = tripNow();
-  tripMenu.show(!!running);
+  // The cruise to Bennu shows in «Trayecto» too (status only).
+  const runningStatus = running?.status ?? cruiseRef.now?.status();
+  tripMenu.show(!!runningStatus);
   machinePanel.tick();
-  tripWindow.update(running?.status);
+  tripWindow.update(runningStatus);
   const trip = atTripConsole() ? running : undefined;
   tripChip.update(trip?.chip, tripPreview.visible);
   tripPreview.follow(trip?.subject);
@@ -1915,13 +1932,16 @@ renderer.setAnimationLoop((now) => {
   // It only levels the belly to the ground (attitude hold); landing by itself is «Aterrizar con un programa».
   view.menu.relabel(landBtn, `Nivelar sola: ${flight.landingAssist ? "sí" : "no"}`, "G");
   landBtn.classList.toggle("on", flight.landingAssist);
-  const dockLabel = docking.docked ? `Desacoplar de ${docking.dockedTo === mothership ? "la nodriza" : "la estación"}` : docking.assist ? "Acoplando: tocar para parar" : "Acoplar";
+  const undockWhy = docking.docked ? docking.canUndock().reason : undefined;
+  const dockLabel = undockWhy ? `⊘ Desacoplar: ${undockWhy}` : docking.docked ? `Desacoplar de ${docking.dockedTo === mothership ? "la nodriza" : "la estación"}` : docking.assist ? "Acoplando: tocar para parar" : "Acoplar";
   if (dockBtn.dataset.state !== dockLabel) {
     dockBtn.dataset.state = dockLabel;
     view.menu.relabel(dockBtn, dockLabel, "K");
     dockBtn.querySelector("svg")!.outerHTML = docking.docked ? ICON.undock : ICON.dock;
   }
   dockBtn.classList.toggle("on", docking.assist && !docking.docked);
+  // Locked, it still answers a tap with why (the label says it too).
+  dockBtn.classList.toggle("locked", !!undockWhy);
   // The switch only where it makes sense: docked, or free inside a port's keep-out sphere.
   const dockHidden = !docking.docked && !(docking.inRange() && docking.current().port.position.sub(flight.state.position).length() <= DOCK_SWITCH_RANGE_M);
   // Landing assist only off a port; time warp only on free flight, far from the surface (or to switch it off).
@@ -1977,9 +1997,16 @@ const gameSave = new GameSave({
   say: (t) => (cabin.active ? cabin.say(t, 7) : bridge.active ? bridge.say(t, 7) : stationInside.active ? stationInside.say(t, 7) : starship?.active ? starship.say(t, 7) : flash(t, 7)),
   challengeOpen: () => duelView.visible,
   travelling: () => !!tripsFlying() || landerLanding.active || probeLanding.active,
+  cruise: () => (cruiseRef.now?.active ? cruiseRef.now.clock.snapshot() : undefined),
+  nav,
 });
 // From level 3's launch: the Starship's cruise to Bennu first (docs/design/santuario3-lanzamiento.md).
-const cruise = gameSave.fromLaunch ? new BennuCruise(root, gameSave.fromLaunch.cruiseDays, { showAsteroids: (on) => (field.group.visible = on), say: (t) => (bridge.active ? bridge.say(t, 7) : flash(t, 7)) }) : undefined;
+// A kept game in mid-cruise goes on where it was (docs/design/partidas.md, «Viajes en marcha»).
+const cruise = gameSave.cruiseToFly ? new BennuCruise(root, gameSave.cruiseToFly, { showAsteroids: (on) => (field.group.visible = on), say: (t) => (bridge.active ? bridge.say(t, 7) : flash(t, 7)), atConsole: atPilotSeat }) : undefined;
+cruiseRef.now = cruise;
+// The lander stays latched while the Starship is under way with it (santuario3-lanzamiento.md): as Apollo's LM,
+// it separates once the ship has stopped (the cruise has arrived, or a hop has parked).
+docking.undockHold = () => (cruise?.active && docking.dockedTo === mothership ? "La Starship va de crucero a Bennu: el módulo se desacopla al llegar" : nav.undockHold());
 // Exposed for automated checks and debugging.
 // --- Action layout (docs/design/ux-acciones.md) -----------------------------
 // One place for what the moment asks for: the context column. In the cockpit it sits over the right

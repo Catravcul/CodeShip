@@ -62,4 +62,20 @@ describe("Docking", () => {
     expect(flight.docked).toBe(false);
     expect(docking.alignment().axialM).toBeGreaterThan(0.3);
   });
+
+  it("while the carrier is under way (cruise or a hop) the latches stay shut and it says why (santuario3-lanzamiento.md)", () => {
+    const { flight, docking } = setup(Vec3.ZERO);
+    docking.dockNow();
+    docking.drainEvents();
+    let why: string | undefined = "La Starship va de crucero a Bennu";
+    docking.undockHold = () => why;
+    expect(docking.canUndock()).toEqual({ ok: false, reason: "La Starship va de crucero a Bennu" });
+    expect(docking.undock()).toBe(false);
+    expect(flight.docked).toBe(true);
+    expect(docking.drainEvents()).toEqual([]);
+    why = undefined;
+    expect(docking.canUndock()).toEqual({ ok: true });
+    expect(docking.undock()).toBe(true);
+    expect(flight.docked).toBe(false);
+  });
 });

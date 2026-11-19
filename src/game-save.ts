@@ -22,6 +22,7 @@ import { AutoSave } from "@modules/saves/application/auto-save";
 import type { SaveBook } from "@modules/saves/application/save-book";
 import { boardDayOf, SPACE_LEVEL, VEHICLE_NAME, type BodyState, type CrewPlace, type PoseState, type SpaceState, type V3 } from "@modules/saves/domain/space-state";
 import { isHandover, type LaunchHandover } from "@modules/saves/domain/launch-handover";
+import { CruiseClock, type CruiseSnapshot } from "@modules/navigation/domain/cruise";
 import { playSession, savedGames } from "./adapters/storage/saved-games";
 import type { LanderCabin } from "./lander-cabin";
 import type { BridgeRoom } from "./bridge";
@@ -64,6 +65,10 @@ export interface SpaceGame {
   /** What is happening now, read each frame for the key moments: a challenge open, a trip flying, her asleep. */
   readonly challengeOpen: () => boolean;
   readonly travelling: () => boolean;
+  /** The Starship's cruise to Bennu under way (src/bennu-cruise.ts), if any. */
+  readonly cruise: () => CruiseSnapshot | undefined;
+  /** The mothership's programmed hop: saved, and resumed at the same point (Navigator). */
+  readonly nav: { tripSnapshot(): unknown; resumeTrip(s: unknown): boolean };
 }
 
 const v3 = (v: Vec3): V3 => [v.x, v.y, v.z];
@@ -90,6 +95,8 @@ export class GameSave {
   lastSaved: { reason: string; at: string; ok: boolean; why?: string } | undefined;
   /** A game that comes from level 3's launch (launch-handover.ts): a new game whose cruise to Bennu is still to fly. */
   readonly fromLaunch: LaunchHandover["fromLaunch"] | undefined;
+  /** The cruise to Bennu to fly now: from the launch (just started) or a kept game's (where it was), if any. */
+  cruiseToFly: CruiseClock | undefined;
 
   constructor(private readonly g: SpaceGame) {
     const s = playSession();
@@ -99,6 +106,7 @@ export class GameSave {
     if (handover) {
       // From the launch: a new game, her days going on, on the Starship's flight deck (she came in through its port).
       this.days = handover.boardDays;
+      this.cruiseToFly = CruiseClock.start(handover.fromLaunch.cruiseDays);
       this.place({ vehicle: "nodriza", spot: "cubierta-vuelo" });
       g.say("Acoplada a la Starship en órbita baja: empieza el crucero a Bennu");
     } else if (s.resume) {
@@ -158,7 +166,7 @@ export class GameSave {
     } catch {
       return false;
     }
-    const place = this.placeLabel(state.crew);
+    const place = `${state.trips?.crucero ? "Crucero a Bennu · " : ""}${this.placeLabel(state.crew)}`;
     const r = this.book.save(this.slot, { level: SPACE_LEVEL, boardDay: boardDayOf(state.boardDays), summary: { vehicle: VEHICLE_NAME[state.crew.vehicle], place }, state });
     this.lastSaved = { reason, at: new Date().toISOString(), ok: r.ok, ...(r.ok ? {} : { why: r.why }) };
     if (!r.ok && this.lastSaved.why) this.g.say(this.lastSaved.why);
@@ -220,6 +228,8 @@ export class GameSave {
   private capture(): SpaceState {
     const g = this.g;
     const s = g.flight.state;
+    const crucero = g.cruise();
+    const nodriza = g.nav.tripSnapshot();
     const body: BodyState = { ...pose(s.position, s.orientation), v: v3(s.velocity), w: v3(s.angularVelocityBody) };
     return {
       boardDays: this.days,
@@ -235,6 +245,7 @@ export class GameSave {
       stationStock: g.stationStock.snapshot(),
       aquariums: { estacion: g.aquariums.estacion.snapshot(), ...(g.aquariums.nodriza ? { nodriza: g.aquariums.nodriza.snapshot() } : {}) },
       settings: { ajustes: settings.serialized(), pasoAPaso: stepByStep(), aterrizaje: landingMode() },
+      ...(crucero || nodriza ? { trips: { ...(crucero ? { crucero } : {}), ...(nodriza ? { nodriza } : {}) } } : {}),
     };
   }
 
@@ -262,6 +273,12 @@ export class GameSave {
     if (port) g.docking.dockNow(port);
     g.docking.drainEvents();
     g.flight.drainEvents();
+    // Trips under way go on where they were (docs/design/partidas.md, «Viajes en marcha»): the game's time
+    // does not run while the page is closed.
+    if (isRecord(s.trips)) {
+      this.cruiseToFly = CruiseClock.restore(s.trips.crucero);
+      if (s.trips.nodriza !== undefined) g.nav.resumeTrip(s.trips.nodriza);
+    }
     // Life on board.
     const ls = s.lifeSupport;
     if (ls) {

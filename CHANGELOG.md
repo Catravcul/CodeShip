@@ -11,6 +11,32 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
   filtros de categoría en las Áreas del 3. Un solo código: `ui/game-pad.ts`, `ui/interaction.ts`, `application/free-walk.ts`.
   [docs/design/ux-acciones.md](docs/design/ux-acciones.md)
 
+- **Rivalidad entre machos (`fauna`)**: en el celo, dos machos junto a una hembra se la disputan como su especie
+  (bueyes almizcleros chocan las cabezas, renos las cuernas, morsas los colmillos); gana el más fuerte y el otro se va.
+  [docs/design/fauna.md](docs/design/fauna.md)
+
+- **Celo y cortejo (`fauna`)**: cada especie entra en celo en su época real (partos − gestación), busca pareja y
+  corteja con su conducta real; solo nace una cría donde una hembra se apareó. [docs/design/fauna.md](docs/design/fauna.md)
+
+- **Animales inteligentes (módulo compartido `fauna`)**: deseos de Cold Sanctuary (hambre, cansancio, miedo) y
+  cadena alimenticia por stats. En el santuario 1 los lobos cazan en manada, las orcas cazan focas y pingüinos, el oso
+  focas; las presas huyen, y la cazada deja su sitio hasta su época de partos. Las liebres huyen de Doménica. El 3 lo
+  reutiliza para su bioma. [docs/design/fauna.md](docs/design/fauna.md)
+
+- **Santuario 1, animales vivos**: crecen día a día, mueren de viejos y nacen crías en la época real de su especie;
+  hacen lo de su etograma (descansar, acechar, pacer, patrullar, apiñarse) y las crías siguen a su madre; el submarino
+  de obra baja por su tronco y va bajo el hielo a la laguna. [docs/design/santuario1.md](docs/design/santuario1.md)
+
+- **Viajes en marcha en la partida**: recargar a medio crucero a Bennu (o a medio salto programado de la Starship) y
+  «Continuar» sigue el viaje donde estaba, en marcha y con «Trayecto», en vez de aparecer en el destino; con la Starship
+  de viaje el módulo no se desacopla (el interruptor dice por qué). [docs/design/partidas.md](docs/design/partidas.md)
+
+- **Santuario 1, tercera lista**: cada máquina con su animación (jalón al pecho ya no corre) y una tabla de
+  animaciones por categoría con los retos y pasos que las lanzan; troncos de agua abiertos al mar (focas y pingüinos
+  suben), entrar a un piso nadando desde cualquier punto, pisos sin barandilla, nado y vista azul bajo el agua; el
+  botón de inicio abre los ajustes; parqueaderos de alfombras en copa y pie; ciclos de vida reales (crías, jóvenes y
+  adultos a su tamaño); Kushal, Nevaeh, Sadhguru y Neo. [docs/design/santuario1.md](docs/design/santuario1.md)
+
 - **Tarjetas de máquina en el móvil**: suben por encima del «−» / «+» redondos del joystick de mirar, que ahora están encima de él. [docs/design/reglas.md](docs/design/reglas.md)
 
 - **Santuario 1, realismo y mandos**: correr es un sprint a tope (6,5 m/s, rodillas altas, brazos a 90°, la vista se

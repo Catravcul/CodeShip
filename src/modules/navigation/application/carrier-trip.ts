@@ -121,8 +121,25 @@ export function carrierTurnSeconds(start: Quat, from: Vec3, path: readonly Vec3[
   return (first + last) / SLEW_RAD_S;
 }
 
+/** What a hop was started with (its start pose included): enough to fly it again to the same point (a saved game). */
+export interface CarrierTripStart {
+  readonly from: Vec3;
+  readonly startQ: Quat;
+  readonly path: readonly Vec3[];
+  readonly plan: ContinuousBurnPlan;
+  readonly orientation?: Quat;
+  readonly backingOut: boolean;
+}
+
+/** Game seconds per step when a saved hop is flown again to where it was (about one frame of a trip at ×60). */
+const REPLAY_STEP_S = 1;
+
 export class CarrierTrip {
   private t = 0;
+  /** Game seconds advanced since it started (turns included). */
+  private advanced = 0;
+  /** How it started, for a saved game. */
+  readonly started: CarrierTripStart;
   private readonly route: Route;
   private att: Quat;
   /** The first turn onto the route, before the burn. */
@@ -148,6 +165,7 @@ export class CarrierTrip {
     this.route = new Route(from, path);
     this.att = carrier.orientation;
     this.start = carrier.orientation;
+    this.started = { from, startQ: carrier.orientation, path: [...path], plan, ...(orientation ? { orientation } : {}), backingOut };
     this.aimed = backingOut;
     this.up = (orientation ?? carrier.orientation).rotate(Vec3.Y);
     // No final attitude asked (a parking point): it stays as it braked, engines toward the way it came.
@@ -173,8 +191,23 @@ export class CarrierTrip {
     return this.t < this.flipAtS ? this.prograde(dir) : this.retrograde(dir);
   }
 
+  /**
+   * A saved hop flown again from its start to where it was (`gameS` advanced): the same steps the trip took, so
+   * the mothership ends at the same point with the same attitude and phase.
+   */
+  static replay(carrier: CarrierPort, s: CarrierTripStart, gameS: number): CarrierTrip {
+    carrier.moveTo(s.from, s.startQ);
+    const trip = new CarrierTrip(carrier, s.from, s.path, s.plan, s.orientation, s.backingOut);
+    for (let left = Math.max(0, gameS); left > 0; left -= REPLAY_STEP_S) trip.advance(Math.min(REPLAY_STEP_S, left));
+    return trip;
+  }
+
   get elapsedS(): number {
     return this.t;
+  }
+  /** Game seconds advanced since it started (its turns included). */
+  get advancedS(): number {
+    return this.advanced;
   }
   get done(): boolean {
     return this.t >= this.plan.totalS && angleBetween(this.att, this.orientation) <= ALIGNED_RAD;
@@ -224,6 +257,7 @@ export class CarrierTrip {
   /** Advance `gameS` seconds: turn, then move the mothership along the route. */
   advance(gameS: number): void {
     let left = Math.max(0, gameS);
+    this.advanced += left;
     const before = this.att;
     if (!this.aimed) {
       const want = this.prograde(this.route.at(0, true).dir);

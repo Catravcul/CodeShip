@@ -71,6 +71,8 @@ los límites del IDSS que el simulador del puesto 8 (`dockPractice(20)`). Fuera 
   se acopla a la ISS); el crucero de la Starship con la duración de OSIRIS-REx (licencia); el crucero apretado en 10 min.
 - **Sin fuente**: los límites de viento y nubes del Electron (Rocket Lab no los publica: el reto no los usa); el empuje al
   despegar del Electron y del Falcon 9 (no se usan: la aceleración que se ve es nuestra).
-- **Pendiente**: el crucero se guarda solo como traspaso; si se recarga la página a medio crucero, el 6 sigue ya en Bennu.
-  Durante el crucero nada impide desacoplar el LM.
+- **Hecho (2026-11-19)**: el crucero se guarda con la partida y, si se recarga a medio crucero, «Continuar» sigue
+  donde estaba ([partidas.md](partidas.md), «Viajes en marcha»); durante el crucero el LM no se desacopla (el interruptor
+  dice por qué) ni se programa otro viaje. La ficha del crucero sale solo en el puesto de pilotaje; en cualquier sitio,
+  «Trayecto» en el menú.
 - Quién da cada puesto (Luciana el 10, Irosene el 13, Andrea pasa al 3) es **licencia**: Cold Sanctuary da los oficios.

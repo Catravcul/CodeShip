@@ -116,14 +116,28 @@ export class Docking {
     this.latch(target);
   }
 
-  /** Open the latches; the springs push the probe away along the port axis. */
-  undock(): void {
+  /**
+   * Why the latches must stay shut now, if they must: the vehicle it rides is under way (the Starship's cruise to
+   * Bennu or a programmed hop: as Apollo's LM, it only separates once the ship has stopped). Set by the game.
+   */
+  undockHold: (() => string | undefined) | undefined;
+
+  /** Whether it can undock now, and why not. */
+  canUndock(): { ok: boolean; reason?: string } {
+    if (!this.dockedTo) return { ok: false, reason: "No está acoplado" };
+    const why = this.undockHold?.();
+    return why ? { ok: false, reason: why } : { ok: true };
+  }
+
+  /** Open the latches; the springs push the probe away along the port axis. False (and nothing happens) when it cannot. */
+  undock(): boolean {
     const t = this.dockedTo;
-    if (!t) return;
+    if (!t || !this.canUndock().ok) return false;
     this.flight.undock(t.port.normal.scale(this.undockPushMs));
     this.assist = false;
     this.aim = undefined;
     this.events.push({ type: "undocked", target: t });
+    return true;
   }
 
   drainEvents(): DockingEvent[] {

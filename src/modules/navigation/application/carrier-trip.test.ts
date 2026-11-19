@@ -125,4 +125,70 @@ describe("Trip with the mothership", () => {
     expect(nav.status).toBe("autopilot");
     expect(docking.docked).toBe(false);
   });
+
+  it("a reload in mid-trip (docs/design/partidas.md): the saved hop resumes at the same point, still flying, and ends where it would have", () => {
+    const a = make();
+    a.nav.select(a.member.data.id);
+    const run = a.nav.startProgramming();
+    while (run.current) a.nav.answer(right(run.current));
+    for (let i = 0; i < 300; i++) a.nav.update(0.1);
+    expect(a.nav.status).toBe("carrier");
+    const before = a.nav.progress()!;
+    const saved = JSON.parse(JSON.stringify(a.nav.tripSnapshot()));
+    expect(saved).toBeDefined();
+
+    // A new game, read back as GameSave does: the mothership where it was (the lander docked to her), then the trip.
+    const b = make();
+    b.mothership.moveTo(a.mothership.position, a.mothership.orientation);
+    const fuel = a.mothership.propellantKg;
+    b.mothership.propellantKg = fuel;
+    expect(b.nav.resumeTrip(saved)).toBe(true);
+    expect(b.nav.status).toBe("carrier");
+    expect(b.nav.target.id).toBe(a.member.data.id);
+    expect(b.nav.carrying).toBe(true);
+    // Not a new burn: the propellant was spent when it set off.
+    expect(b.mothership.propellantKg).toBe(fuel);
+    expect(b.mothership.position.sub(a.mothership.position).length()).toBeLessThan(1);
+    const after = b.nav.progress()!;
+    expect(after.fraction).toBeCloseTo(before.fraction, 3);
+    expect(after.phase).toBe(before.phase);
+    expect(after.etaRealS).toBeCloseTo(before.etaRealS, 0);
+    expect(b.nav.route.length).toBe(a.nav.route.length);
+
+    // Both go on the same way and park at the same point.
+    for (let i = 0; i < 6000 && (a.nav.status === "carrier" || b.nav.status === "carrier"); i++) {
+      a.nav.update(0.1);
+      b.nav.update(0.1);
+    }
+    expect(b.nav.status).toBe("autopilot");
+    expect(b.mothership.position.sub(a.mothership.position).length()).toBeLessThan(1);
+  }, 30_000);
+
+  it("while the mothership flies with the lander aboard it cannot undock; parked, the trip undocks it itself", () => {
+    const { nav, flight, docking, member } = make();
+    docking.undockHold = () => nav.undockHold();
+    expect(nav.undockHold()).toBeUndefined();
+    nav.select(member.data.id);
+    const run = nav.startProgramming();
+    while (run.current) nav.answer(right(run.current));
+    nav.update(1);
+    expect(nav.undockHold()).toMatch(/en viaje/);
+    expect(docking.undock()).toBe(false);
+    expect(docking.docked).toBe(true);
+    for (let i = 0; i < 6000 && nav.status === "carrier"; i++) {
+      nav.update(0.1);
+      flight.update(0.1 * nav.lapse, NO_INPUT);
+    }
+    expect(nav.status).toBe("autopilot");
+    expect(docking.docked).toBe(false);
+    expect(nav.undockHold()).toBeUndefined();
+  }, 30_000);
+
+  it("no trip flying, or a broken one saved: nothing to resume", () => {
+    const { nav } = make();
+    expect(nav.tripSnapshot()).toBeUndefined();
+    expect(nav.resumeTrip({ kind: "nodriza", targetId: "nada" })).toBe(false);
+    expect(nav.resumeTrip(undefined)).toBe(false);
+    expect(nav.status).toBe("idle");
+  });
 });

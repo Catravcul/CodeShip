@@ -273,7 +273,7 @@ function moveSubmarine(): void {
 }
 function moveAnimals(dt: number): void {
   wildT += dt;
-  wild.step(dt, wildT, day + hour / 24);
+  wild.step(dt, wildT, day + hour / 24, { x: body.x, z: body.z });
   moveSubmarine();
   for (const { herd, index, it } of world.animals) {
     const t = wildT + index * 0.37;

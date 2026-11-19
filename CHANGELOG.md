@@ -5,6 +5,11 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-19
 
+- **Animales inteligentes (módulo compartido `fauna`)**: deseos de Cold Sanctuary (hambre, cansancio, miedo) y
+  cadena alimenticia por stats. En el santuario 1 los lobos cazan en manada, las orcas cazan focas y pingüinos, el oso
+  focas; las presas huyen, y la cazada deja su sitio hasta su época de partos. Las liebres huyen de Doménica. El 3 lo
+  reutiliza para su bioma. [docs/design/fauna.md](docs/design/fauna.md)
+
 - **Santuario 1, animales vivos**: crecen día a día, mueren de viejos y nacen crías en la época real de su especie;
   hacen lo de su etograma (descansar, acechar, pacer, patrullar, apiñarse) y las crías siguen a su madre; el submarino
   de obra baja por su tronco y va bajo el hielo a la laguna. [docs/design/santuario1.md](docs/design/santuario1.md)

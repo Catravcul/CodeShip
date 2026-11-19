@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { MODELS } from "../data/catalog";
-import { bodyPlan, gaitHz, jointAngle } from "./animal-body";
+import { MODELS } from "./catalog";
+import { bodyPlan, gaitHz, jointAngle } from "@modules/fauna/domain/animal-body";
 
 describe("animal bodies of jointed cubes", () => {
   const animals = MODELS.filter((m) => m.category === "animal");

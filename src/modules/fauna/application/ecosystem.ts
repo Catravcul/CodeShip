@@ -1,5 +1,6 @@
 import { choose, tickNeeds, type Desire, type Needs } from "../domain/desires";
 import { canHunt, effectivePower, fears, predatorPower, type Medium, type Traits } from "../domain/predation";
+import { COURT_S, type Sex } from "../domain/mating";
 import { hash01 } from "../domain/roam";
 
 /**
@@ -25,9 +26,12 @@ export interface Agent {
   readonly inWater: boolean;
   /** Someone the animals see but who takes no part (the player): feared by the timid, never hunted. */
   readonly observer?: boolean;
+  readonly sex?: Sex;
+  /** In its mating season and adult (domain/mating.ts inEstrus). */
+  readonly estrus?: boolean;
 }
 
-export type Doing = Desire | "devorar" | "buscar";
+export type Doing = Desire | "devorar" | "buscar" | "cortejar";
 
 export interface Intent {
   readonly doing: Doing;
@@ -41,6 +45,12 @@ export interface Intent {
   readonly other?: number;
 }
 
+/** A pair that mated: the female is pregnant. */
+export interface Mating {
+  readonly female: number;
+  readonly male: number;
+}
+
 export interface Kill {
   readonly hunter: number;
   readonly prey: number;
@@ -48,6 +58,8 @@ export interface Kill {
 
 /** How a species is named in the verbs: «un lobo ártico», «una foca». */
 export type Names = Readonly<Record<string, string>>;
+/** Each species' courtship, in words (its real display): «el macho canta bajo el agua». */
+export type Courtships = Readonly<Record<string, string>>;
 
 /** A chase is given up after this long (a sprint spends it: domain/desires.ts SPRINT_S). */
 export const CHASE_S = 45;
@@ -68,6 +80,10 @@ interface State {
   devouring?: string;
   calmUntil?: number;
   attempts: number;
+  /** Seconds courting its partner now. */
+  court?: { partner: number; s: number };
+  /** Mated this season (it stops looking until its estrus is over). */
+  mated?: boolean;
 }
 
 export class Ecosystem {
@@ -76,6 +92,7 @@ export class Ecosystem {
   constructor(
     private readonly traits: Readonly<Record<string, Traits>>,
     private readonly names: Names,
+    private readonly courtships: Courtships = {},
   ) {}
 
   needsOf(id: number): Needs | undefined {
@@ -94,9 +111,10 @@ export class Ecosystem {
   }
 
   /** One decision round: `dtS` seconds since the last (`dtDays` of game time) at clock `t` (s). */
-  step(dtS: number, dtDays: number, t: number, agents: readonly Agent[]): { intents: Map<number, Intent>; kills: Kill[] } {
+  step(dtS: number, dtDays: number, t: number, agents: readonly Agent[]): { intents: Map<number, Intent>; kills: Kill[]; matings: Mating[] } {
     const intents = new Map<number, Intent>();
     const kills: Kill[] = [];
+    const matings: Mating[] = [];
     const here = agents.filter((a) => a.scale > 0);
     const byId = new Map(here.map((a) => [a.id, a]));
     const eaten = new Set<number>();
@@ -140,7 +158,9 @@ export class Ecosystem {
       const committed = s.doing === "cazar" || s.doing === "buscar" || s.doing === "huir";
       const homeFar = committed ? 0 : Math.hypot(a.home.x - a.x, a.home.z - a.z) / Math.max(1, a.home.r);
       const calm = s.calmUntil !== undefined && t < s.calmUntil;
-      const { desire } = choose({ needs: s.needs, traits: tr, threatened: !!threat, young: a.young && !!mother, motherFar, homeFar });
+      if (!a.estrus) s.mated = false;
+      const { desire } = choose({ needs: s.needs, traits: tr, threatened: !!threat, young: a.young && !!mother, motherFar, homeFar, estrus: !!a.estrus && !s.mated && !!a.sex });
+      if (desire !== "aparearse") s.court = undefined;
       switch (calm && desire === "cazar" ? "descansar" : desire) {
         case "huir": {
           const dx = a.x - threat!.x;
@@ -183,6 +203,44 @@ export class Ecosystem {
         case "comer":
           say("comer", "", 0);
           break;
+        case "aparearse": {
+          // The nearest of the other sex of its kind, also in estrus and free, within its senses or its family's reach.
+          let mate: Agent | undefined;
+          let mateD = Math.max(tr.senseM * 3, a.home.r * 4);
+          for (const o of here) {
+            if (o.id === a.id || o.species !== a.species || !o.estrus || !o.sex || o.sex === a.sex || this.state.get(o.id)?.mated) continue;
+            // One already courting it counts as right beside it (so two never wait for different partners).
+            const d = this.state.get(o.id)?.court?.partner === a.id ? 0 : Math.hypot(o.x - a.x, o.z - a.z);
+            if (d < mateD) {
+              mate = o;
+              mateD = d;
+            }
+          }
+          if (!mate) {
+            say("habito", "");
+            break;
+          }
+          mateD = Math.hypot(mate.x - a.x, mate.z - a.z);
+          if (mateD <= 1.5 + 2 * a.scale) {
+            const court = s.court?.partner === mate.id ? s.court : (s.court = { partner: mate.id, s: 0 });
+            court.s += dtS;
+            say("cortejar", this.courtships[a.species] ?? `corteja a ${name(a.species)}`, 0, undefined, mate.id);
+            const other = this.state.get(mate.id);
+            // Both courted long enough: they mate (counted once, by the female).
+            if (court.s >= COURT_S && other?.court?.partner === a.id && other.court.s >= COURT_S - 2 * dtS) {
+              s.mated = true;
+              s.court = undefined;
+              if (other) {
+                other.mated = true;
+                other.court = undefined;
+              }
+              matings.push(a.sex === "hembra" ? { female: a.id, male: mate.id } : { female: mate.id, male: a.id });
+            }
+            break;
+          }
+          say("aparearse", "busca pareja", tr.runMs * 0.5, { x: mate.x, z: mate.z }, mate.id);
+          break;
+        }
         case "descansar":
           say("descansar", calm ? "recupera el aliento tras el ataque" : "descansa", 0);
           break;
@@ -197,7 +255,7 @@ export class Ecosystem {
       }
     }
     for (const k of kills) this.state.delete(k.prey);
-    return { intents, kills };
+    return { intents, kills, matings };
   }
 
   /** The prey it chases: the one it is after, while it lasts, or the nearest it can take within its senses. */

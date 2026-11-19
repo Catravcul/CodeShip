@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildS1Layout } from "../data/layout";
 import { LIFE_CYCLES } from "../data/ciclos-de-vida";
-import { lifespan } from "../domain/life-cycle";
+import { lifespan, nextBirth } from "../domain/life-cycle";
 import { Wildlife } from "./wildlife";
 
 const L = buildS1Layout();
@@ -68,8 +68,17 @@ describe("the food chain of sanctuary 1", () => {
     const k = w.kills[0]!;
     expect(k.hunter.life!.species).toBe("Orca");
     expect(w.get(k.prey)!.scale).toBe(0);
+    // With no mating its place stays empty a season more; with a female of its kind pregnant, the young is born.
     w.step(0.1, 700, 400);
-    expect(w.get(k.prey)!.scale).toBeGreaterThan(0);
+    expect(w.get(k.prey)!.scale).toBe(0);
+    const w2 = new Wildlife(L.instances, animals, 320);
+    for (const i of animals) if (i.life!.species === "Orca") w2.setNeeds(i, { hunger: 1, fatigue: 0 });
+    for (let t = 0; t < 600 && !w2.kills.length; t += 0.1) w2.step(0.1, t, 0.01);
+    const prey = w2.kills[0]!.prey;
+    const due = nextBirth(1, LIFE_CYCLES[prey.life!.species]!, 320, prey.life!.offset);
+    w2.addPregnancy(prey.life!.species, due);
+    w2.step(0.1, 700, due + 1);
+    expect(w2.get(prey)!.scale).toBeGreaterThan(0);
   });
 
   it("the hares flee Doménica when she comes close", () => {
@@ -85,5 +94,16 @@ describe("the food chain of sanctuary 1", () => {
     for (const i of wolves) w.setNeeds(i, { hunger: 1, fatigue: 0 });
     w.step(0.3, 0, 0);
     expect(wolves.some((i) => /busca presas|caza/.test(w.get(i)!.label))).toBe(true);
+  });
+
+  it("in their season they court and mate, and the female carries a young", () => {
+    // Game day 0 is 1 November (year day 304): the Weddell seals' mating month.
+    const w = new Wildlife(L.instances, animals, 304);
+    for (let t = 0; t < 400 && !w.matings.length; t += 0.1) w.step(0.1, t, 1);
+    expect(w.matings.length).toBeGreaterThan(0);
+    const m = w.matings[0]!;
+    expect(m.female.life!.species).toBe(m.male.life!.species);
+    expect(w.sexOf(m.female)).toBe("hembra");
+    expect(w.sexOf(m.male)).toBe("macho");
   });
 });

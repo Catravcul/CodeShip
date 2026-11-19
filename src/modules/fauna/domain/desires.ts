@@ -1,3 +1,4 @@
+import { W_MATE } from "./mating";
 import type { Traits } from "./predation";
 
 /**
@@ -6,7 +7,7 @@ import type { Traits } from "./predation";
  * ThreatResponder). The weights are Cold Sanctuary's: following the family 0.35, the natural habits 0.2, going home
  * 0.12; eating is the hunger itself and resting the fatigue itself, so a hungry or tired animal leaves its habits.
  */
-export type Desire = "huir" | "cazar" | "comer" | "descansar" | "seguir" | "volver" | "habito";
+export type Desire = "huir" | "cazar" | "comer" | "descansar" | "seguir" | "volver" | "habito" | "aparearse";
 
 export interface Needs {
   /** 0 full – 1 starving. */
@@ -28,7 +29,7 @@ export const REST_S = 120;
 const EAT_PER_DAY = 3;
 
 /** Its needs `dtS` seconds later (`dtDays` of game time) doing `doing`. */
-export function tickNeeds(n: Needs, dtS: number, dtDays: number, doing: Desire | "devorar" | "buscar", t: Traits): Needs {
+export function tickNeeds(n: Needs, dtS: number, dtDays: number, doing: Desire | "devorar" | "buscar" | "cortejar", t: Traits): Needs {
   let hunger = n.hunger + t.hungerPerDay * dtDays;
   if (doing === "comer" || doing === "devorar") hunger -= (EAT_PER_DAY + t.hungerPerDay) * dtDays;
   let fatigue = n.fatigue;
@@ -48,6 +49,8 @@ export interface DesireContext {
   readonly motherFar: number;
   /** How far from home, over its territory's radius. */
   readonly homeFar: number;
+  /** In estrus and not yet mated this season (domain/mating.ts). */
+  readonly estrus?: boolean;
 }
 
 /** What it wants most now, and how much. */
@@ -63,6 +66,7 @@ export function choose(c: DesireContext): { desire: Desire; need: number } {
     // Past its territory the pull home grows with the distance (after a long chase it heads back).
     ["volver", W_HOME * c.homeFar],
     ["habito", W_HABIT],
+    ["aparearse", c.estrus && !c.young ? W_MATE : 0],
   ];
   let best = options[0]!;
   for (const o of options) if (o[1] > best[1]) best = o;

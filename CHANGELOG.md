@@ -5,6 +5,9 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-19
 
+- **Celo y cortejo (`fauna`)**: cada especie entra en celo en su época real (partos − gestación), busca pareja y
+  corteja con su conducta real; solo nace una cría donde una hembra se apareó. [docs/design/fauna.md](docs/design/fauna.md)
+
 - **Animales inteligentes (módulo compartido `fauna`)**: deseos de Cold Sanctuary (hambre, cansancio, miedo) y
   cadena alimenticia por stats. En el santuario 1 los lobos cazan en manada, las orcas cazan focas y pingüinos, el oso
   focas; las presas huyen, y la cazada deja su sitio hasta su época de partos. Las liebres huyen de Doménica. El 3 lo

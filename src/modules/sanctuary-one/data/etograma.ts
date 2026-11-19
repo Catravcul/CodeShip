@@ -114,3 +114,20 @@ export const ETHOGRAMS: Readonly<Record<string, SpeciesEthogram>> = {
     young: a("espera en el nido", "quieto", 1, 60, "Brown 1966 (el pollo se queda en la grieta 7 semanas)"),
   },
 };
+
+/** Each species' courtship when in estrus (modules/fauna mating), in words, with its source. */
+export const CORTEJOS: Readonly<Record<string, { readonly verb: string; readonly source: string }>> = {
+  Bear: { verb: "la pareja va junta: el macho la siguió por su rastro", source: "Ramsay & Stirling 1986, J Zool 208:63 (el macho sigue el rastro de la hembra y pasan una o dos semanas juntos)" },
+  Seal: { verb: "el macho trina bajo el hielo y la ronda en el agua", source: "Thomas & Kuechle 1982, J Acoust Soc Am 72:1730 (trinos territoriales; apareamiento en el agua)" },
+  Penguin: { verb: "exhibición extática: pico al cielo, aletas batiendo y canto", source: "Ainley 2002, The Adélie Penguin (ecstatic display)" },
+  EmperorPenguin: { verb: "la pareja se reconoce por su canto y se hace reverencias", source: "Jouventin 1982, Visual and Vocal Signals in Penguins" },
+  Whale: { verb: "el macho canta y escolta a la hembra", source: "Payne & McVay 1971, Science 173:585 (canto de la ballena jorobada); Tyack 1981" },
+  Orca: { verb: "nadan juntas rozándose", source: "Ford 2009, Killer whale, en Encyclopedia of Marine Mammals (conducta sociosexual)" },
+  ArcticFox: { verb: "la pareja se acicala y juega junta", source: "Audet et al. 2002, Mammalian Species 713 (pareja estable; el macho lleva comida)" },
+  Wolf: { verb: "la pareja se acicala, juega y duerme junta", source: "Mech 1970, The Wolf (cortejo de la pareja reproductora)" },
+  Walrus: { verb: "el macho canta bajo el agua con golpes y campanas", source: "Stirling, Calvert & Spencer 1987, Can J Zool 65:2311 (cantos del macho junto a las hembras)" },
+  Reindeer: { verb: "el macho en celo brama y persigue a la hembra", source: "Espmark 1964, Behaviour 23 (celo del reno)" },
+  MuskOx: { verb: "el macho en celo ruge y sigue a la hembra rozándola", source: "Tener 1965, Muskoxen in Canada; Gray 1987" },
+  ArcticHare: { verb: "el macho la persigue y ella lo rechaza a manotazos", source: "Aniskowicz et al. 1990, Can Field-Nat 104:470 (persecuciones y «boxeo»)" },
+  SnowPetrel: { verb: "la pareja se saluda en la grieta con reverencias y llamadas", source: "Brown 1966, Ibis 108:157" },
+};

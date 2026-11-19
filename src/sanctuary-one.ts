@@ -40,7 +40,8 @@ import type { Answer } from "@modules/mind-duel/domain/exercise";
 import { DuelView, type SessionText } from "./ui/duel-view";
 import { RetoPicker } from "./ui/reto-picker";
 import { ActionPad } from "./ui/action-pad";
-import { climbTarget, jumpHeight, JUMP_V0_MS } from "@modules/sanctuary-one/domain/climb";
+import { climbTarget } from "@modules/sanctuary-one/domain/climb";
+import { SPRINT_MS, jumpAt } from "@modules/sanctuary-one/domain/effort";
 import type { Floor } from "@modules/aerial-sanctuary/domain/walk";
 import "./ui/lander-cabin.css";
 import "./ui/acciones.css";
@@ -73,6 +74,7 @@ const sun = new THREE.DirectionalLight(0xffffff, 1.5);
 sun.position.set(-200, 300, 120);
 scene.add(sun);
 const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.05, 5000);
+const BASE_FOV = camera.fov;
 camera.rotation.order = "YXZ";
 
 const world = buildS1Scene(L);
@@ -260,11 +262,13 @@ let flying = false;
 const EYE_M = 1.45;
 const WALK_MS = 1.6;
 const SWIM_MS = 2.2;
-/** Running and fast swimming (Correr): a jog, about 3,4 m/s; a hard crawl, about 3 m/s. */
-const RUN_MS = 3.4;
+/** Running and fast swimming (Correr), at full effort: a sprint (domain/effort.ts); a hard crawl, about 3 m/s. */
+const RUN_MS = SPRINT_MS;
 const SWIM_FAST_MS = 3.0;
 let body: Body = placeAt(near(L.start.x, L.start.z), L.start.x, L.start.y + 0.01, L.start.z)!;
 let yaw = L.start.yaw;
+/** Where her body faces: the way she last moved (third person shows her running sideways, not only her back). */
+let facing = yaw;
 let pitch = 0;
 let stride = 0;
 let thirdPerson = false;
@@ -666,7 +670,9 @@ function openReto(r: Reto, done?: (ok: boolean) => void, at?: { x: number; y: nu
 // --- The Switch controls: Correr (B), Saltar (A), Trepar (X), zoom on the D-pad; the rest wait for a job --------------------------------------
 /** The tops she has climbed onto: floors she can walk on (walk.ts extra floors). */
 const climbed: Floor[] = [];
+/** Time since Saltar was pressed (−1: not jumping), and whether she was running then (a running take-off). */
 let jumpT = -1;
+let jumpRun = false;
 const pad = new ActionPad(root, [
   { letter: "X", label: "Trepar", key: "KeyC" },
   { letter: "A", label: "Saltar", key: "Space" },
@@ -674,10 +680,29 @@ const pad = new ActionPad(root, [
   // The left Joy-Con's D-pad: ↑ / ↓ zoom (Berón: «los de zoom podrían ser los de la izquierda»).
   { letter: "up", label: "Acercar", hold: true, key: "Equal" },
   { letter: "down", label: "Alejar", hold: true, key: "Minus" },
+  // The general buttons move onto the pad (Berón 2026-11-19: «los botones de config general pueden pasar a los nuevos
+  // mandos»): + the day's missions, − the map of Áreas, capture the view (1.ª/3.ª persona), home the gear menu.
+  { letter: "+", label: "Misiones" },
+  { letter: "-", label: "Áreas" },
+  { letter: "capture", label: "Vista" },
+  { letter: "home", label: "Menú" },
 ], (letter, on) => {
   if (letter === "up" || letter === "down") return walker.holdZoom(on ? (letter === "up" ? 1 : -1) : 0);
   if (challenge) return;
-  if (letter === "A" && body.motion === "gravedad" && jumpT < 0) jumpT = 0;
+  if (letter === "+") return missionsWindow.open();
+  if (letter === "-") return areasWindow.open();
+  if (letter === "capture") return toggleView();
+  if (letter === "home") {
+    // The gear menu (Vista, Misiones, Áreas and whatever comes) shows again until home is pressed once more.
+    const shown = menu.el.classList.toggle("pad-shown");
+    menu.toggle(shown);
+    return;
+  }
+  if (letter === "A" && body.motion === "gravedad" && jumpT < 0) {
+    jumpT = 0;
+    const mv = walker.move();
+    jumpRun = pad.isOn("B") && (mv.forward !== 0 || mv.right !== 0);
+  }
   if (letter === "X") {
     const c = climbTarget(near(body.x, body.z), body, yaw, climbed);
     if (!c) return say("Nada que trepar delante (hasta 2,6 m)", 2);
@@ -712,7 +737,7 @@ function frameFree(dt: number): void {
   if (frameClimb(dt)) return;
   if (jumpT >= 0) {
     jumpT += dt;
-    if (jumpHeight(JUMP_V0_MS, jumpT) <= 0 && jumpT > 0.05) jumpT = -1;
+    if (jumpAt(jumpT, jumpRun).done) jumpT = -1;
   }
   if ((climbCheck -= dt) <= 0) {
     climbCheck = 0.3;
@@ -727,21 +752,38 @@ function frameFree(dt: number): void {
   const dz = (-Math.cos(yaw) * mv.forward - Math.sin(yaw) * mv.right) * speed;
   const dy = body.motion === "agua" ? Math.sin(pitch) * mv.forward * speed : 0;
   const before = body;
+  if (body.motion !== "agua") {
+    const want = Math.atan2(-dx, -dz);
+    const d = Math.atan2(Math.sin(want - facing), Math.cos(want - facing));
+    facing += d * Math.min(1, 12 * dt);
+  } else facing = yaw;
   const n = Math.max(1, Math.ceil(Math.hypot(dx, dy, dz) / 0.2));
   for (let i = 0; i < n; i++) body = step(near(body.x, body.z), body, { dx: dx / n, dy: dy / n, dz: dz / n }, climbed);
   // Swimming straight up or down a trunk (looking up or down with nothing ahead): the vertical part alone.
   if (body === before && body.motion === "agua" && Math.abs(dy) > 0.01) body = step(near(body.x, body.z), body, { dx: 0, dy, dz: 0 });
-  stride += Math.hypot(body.x - before.x, body.z - before.z) * 3;
+  // A gait cycle every ~2,1 m walking; sprinting, ~2,25 cycles/s (4,5 steps/s) at full speed.
+  stride += Math.hypot(body.x - before.x, body.z - before.z) * (run && body.motion !== "agua" ? 2.2 : 3);
 }
 
 function updateCamera(dt: number): void {
   const look = walker.look(dt);
   yaw += look.yaw;
   pitch = Math.max(-1.3, Math.min(1.3, pitch + look.pitch));
-  const hop = jumpT >= 0 ? jumpHeight(JUMP_V0_MS, jumpT) : 0;
+  const jump = jumpT >= 0 ? jumpAt(jumpT, jumpRun) : undefined;
+  const hop = jump?.height ?? 0;
+  const moving = !!auto || walker.move().forward !== 0 || walker.move().right !== 0;
+  const sprinting = !jump && moving && !auto && pad.isOn("B") && body.motion === "gravedad" && !flying;
+  // Felt in first person too: the head drops in the crouch and the landing, bobs with each sprint stride, and the view widens at speed.
+  const dip = jump && (jump.stage === "agacharse" || jump.stage === "amortiguar") ? -0.28 : sprinting ? -0.05 + 0.06 * Math.abs(Math.cos(stride)) : 0;
+  const fov = BASE_FOV + (sprinting ? 9 : 0);
+  if (Math.abs(camera.fov - fov) > 0.05) {
+    camera.fov += (fov - camera.fov) * Math.min(1, 6 * dt);
+    camera.updateProjectionMatrix();
+  }
   rig.position.set(body.x, body.y + hop, body.z);
-  rig.rotation.y = yaw + Math.PI;
-  const eye = body.y + hop + EYE_M;
+  if (auto || flying || !thirdPerson) facing = yaw;
+  rig.rotation.y = (thirdPerson ? facing : yaw) + Math.PI;
+  const eye = body.y + hop + EYE_M + dip;
   if (thirdPerson) {
     const d = camDist;
     camera.position.set(body.x + Math.sin(yaw) * d * Math.cos(pitch), eye + 0.4 - Math.sin(pitch) * d, body.z + Math.cos(yaw) * d * Math.cos(pitch));
@@ -752,13 +794,15 @@ function updateCamera(dt: number): void {
     camera.rotation.set(pitch, yaw, 0);
     rig.visible = false;
   }
-  const moving = !!auto || walker.move().forward !== 0 || walker.move().right !== 0;
   myCarpet.visible = flying;
   avatar.wearMask(body.motion === "agua");
   if (flying) avatar.pose("lotus");
   else if (body.motion === "agua") avatar.pose("glide");
-  else avatar.walk(stride, moving ? (pad.isOn("B") ? 1.4 : 1) : 0);
-  avatar.update(dt);
+  else if (jump) avatar.jump(jump.stage);
+  else if (sprinting) avatar.run(stride);
+  else avatar.walk(stride, moving ? 1 : 0);
+  // Fast easing while running or jumping, so a 4,5-steps-a-second stride and a 0,6 s jump show whole.
+  avatar.update(dt, jump || sprinting ? 16 : 3);
 }
 
 let last = performance.now();
@@ -796,5 +840,5 @@ window.addEventListener("keydown", (e) => {
 });
 // Test hook (tools/experiencia and live checks): the layout, the body and the bulk style switch.
 if (import.meta.env.DEV || new URLSearchParams(location.search).has("prueba"))
-  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { L, world, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, goTo, get auto() { return auto; }, areasWindow, get hour() { return hour; }, people, get atHand() { return atHand; }, openReto, domenica, missionsWindow, get day() { return day; }, doMission: (id: string) => doMission(MISSIONS.find((q) => q.id === id)!), setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
+  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { L, world, get jumpT() { return jumpT; }, set jumpT(t: number) { jumpT = t; jumpRun = false; }, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, goTo, get auto() { return auto; }, areasWindow, get hour() { return hour; }, people, get atHand() { return atHand; }, openReto, domenica, missionsWindow, get day() { return day; }, doMission: (id: string) => doMission(MISSIONS.find((q) => q.id === id)!), setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
 requestAnimationFrame(frame);

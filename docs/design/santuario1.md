@@ -56,6 +56,8 @@ salud.
 | 18 | Cada humano con su forma y cara, como en Cold Sanctuary (sus fotos) | Hecho: `data/looks.ts` (de CubeHair.cs y diseno-personajes.md, descritos de sus fotos; las fotos no están en el repositorio) + `CubeFigure.dress()` |
 | 19 | Icono propio para el reto; **lista de iconos** con dónde se usa cada uno | Hecho: `ui/icon-catalog.ts` (la prueba lo compara con el código: un icono con `usedIn: []` está libre) |
 | 20 | Filtros de Áreas como Codeship y por edificio con sus nombres | Hecho (ver #6) |
+| 21 | Correr y saltar muy notorios, a máximo esfuerzo | Hecho: `domain/effort.ts` (sprint 6,5 m/s; salto de 50 cm con agacharse, impulso, recoger, bajar y amortiguar), `CubeFigure.run/jump`; en 3.ª persona ella gira hacia donde corre; en 1.ª la cabeza se mueve con la zancada y la vista se abre |
+| 22 | Los botones de configuración general, al mando | Hecho: + Misiones, − Áreas, captura Vista (1.ª/3.ª), inicio Menú (vuelve a mostrar el engranaje); el botón naranja sigue arriba |
 
 ## Cambios a gran escala
 
@@ -110,9 +112,11 @@ catálogo (tamaño, piezas, color) cambia todas sus copias; un piso es una lista
 
 ## Simplificaciones (para la lista de arreglos)
 
-- Los equipos de laboratorio, hospital y cocina son cajas o pocas piezas con la huella y la altura reales.
+- Los equipos son piezas con la huella y la altura reales; desde la exportación de Unity ninguno de laboratorio,
+  hospital, gimnasio ni huerto vertical es ya una caja (`models/ciencias-detalle.ts`, `models/detalle.ts`).
 - Las franjas de la cocina son una caja por bloque; no hay baldosas de caída ni la fachada de fotobiorreactores.
-- La Mecánica solo tiene sus aseos (como en Cold Sanctuary).
+- La Mecánica: Cold Sanctuary solo pone sus aseos; aquí es un taller real de tractor, barca y submarino
+  (`models/mecanica.ts`, distribución nuestra).
 - El Huerto no lleva los seis métodos del mundo (`FurnishWorldGarden`).
 - Los techos de alfombras con frutales (Orchards.cs) no están: el techo aquí es solo la plataforma del tronco.
 - El iceberg a la deriva está quieto en su punto A.
@@ -128,5 +132,6 @@ catálogo (tamaño, piezas, color) cambia todas sus copias; un piso es una lista
 ## Siguiente
 
 1. La lista de arreglos de Berón (en `overrides.ts` cuando sean a gran escala).
-2. La exportación de Unity: compararla con nuestros pisos e investigar para superar a Cold Sanctuary, piso a piso
-   (después del restaurante: hospital, laboratorios, producción, gimnasio).
+2. La exportación de Unity: compararla con nuestros pisos e investigar para superar a Cold Sanctuary, piso a piso.
+   Hechos: restaurante, hospital, laboratorios, carne cultivada, producción. Siguen: gimnasio, yoga y salas de
+   entrenamiento, cría, veterinario, residencia. Herramienta: el `.jsonl` de la rama `codeship-export`.

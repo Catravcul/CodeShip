@@ -60,5 +60,5 @@ export const GRAVITY_MS2 = 9.81;
 export function jumpHeight(v0: number, t: number): number {
   return Math.max(0, v0 * t - (GRAVITY_MS2 * t * t) / 2);
 }
-/** Take-off speed of a standing jump of about 45 cm (an adult's countermovement jump is 30–50 cm). */
-export const JUMP_V0_MS = Math.sqrt(2 * GRAVITY_MS2 * 0.45);
+/** Take-off speed of a full-effort jump of 50 cm (a countermovement jump with arm swing: active adults 0,4–0,6 m; Markovic et al., J Strength Cond Res 18:551, 2004). */
+export const JUMP_V0_MS = Math.sqrt(2 * GRAVITY_MS2 * 0.5);

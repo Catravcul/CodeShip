@@ -58,6 +58,15 @@ const STAND: PoseAngles = { rootY: 0.95, rootX: 0, torso: 0, headX: 0, headY: 0,
 /** A pose: standing, with some joints changed. */
 export const P = (o: Partial<PoseAngles>): PoseAngles => ({ ...STAND, ...o });
 
+/** A jump at full effort: crouch with the arms swung back, explode with them thrown up, tuck, reach down, absorb. */
+const JUMP_POSES = {
+  agacharse: P({ rootY: 0.66, torso: 0.6, headX: -0.3, hip: [-1.05, -1.05], knee: [1.6, 1.6], shoulderX: [1.0, 1.0], elbow: [-0.2, -0.2] }),
+  impulso: P({ rootY: 0.97, torso: -0.1, headX: -0.35, hip: [0.15, 0.15], knee: [0.05, 0.05], shoulderX: [-2.9, -2.9], shoulderZ: [0.15, -0.15], elbow: [-0.1, -0.1] }),
+  recoger: P({ rootY: 0.95, torso: 0.15, headX: -0.2, hip: [-1.3, -1.3], knee: [1.9, 1.9], shoulderX: [-1.8, -1.8], shoulderZ: [0.3, -0.3], elbow: [-0.5, -0.5] }),
+  bajar: P({ rootY: 0.95, torso: 0.1, headX: 0.1, hip: [-0.5, -0.5], knee: [0.5, 0.5], shoulderX: [-1.3, -1.3], shoulderZ: [0.45, -0.45], elbow: [-0.3, -0.3] }),
+  amortiguar: P({ rootY: 0.72, torso: 0.5, headX: -0.1, hip: [-0.95, -0.95], knee: [1.4, 1.4], shoulderX: [-1.2, -1.2], shoulderZ: [0.3, -0.3], elbow: [-0.4, -0.4] }),
+} as const;
+
 /** Shapes of the yoga data `pose` keys (approximate, like Cold Sanctuary's cube rig). */
 export const POSES: Record<string, PoseAngles> = {
   stand: STAND,
@@ -433,6 +442,28 @@ export class CubeFigure {
     const k = Math.max(0, Math.sin(phase + Math.PI / 2)) * 0.6 * amount;
     const k2 = Math.max(0, -Math.sin(phase + Math.PI / 2)) * 0.6 * amount;
     this.target = P({ hip: [-s, s], knee: [k, k2], shoulderX: [s * 0.8, -s * 0.8], elbow: [-0.25 * amount, -0.25 * amount] });
+  }
+
+  /**
+   * Sprinting flat out (domain/effort.ts): trunk leaning ~17°, the swing thigh driven up to ~75°, the heel kicked to
+   * the seat, elbows at 90° pumping hard against the legs, and the pelvis bouncing at each flight phase. Ease it fast
+   * (update with a high `k`) so the cycle shows.
+   */
+  run(phase: number): void {
+    this.leaveAsana();
+    this.leaveMotion();
+    const leg = (p: number) => ({ hip: -0.4 - 0.9 * Math.sin(p), knee: 0.35 + 1.75 * Math.max(0, Math.cos(p)) });
+    const a = leg(phase);
+    const b = leg(phase + Math.PI);
+    const arm = 1.0 * Math.sin(phase);
+    this.target = P({ rootY: 0.9 + 0.06 * Math.abs(Math.cos(phase)), torso: 0.3, headX: -0.25, hip: [a.hip, b.hip], knee: [a.knee, b.knee], shoulderX: [arm, -arm], shoulderZ: [0.12, -0.12], elbow: [-1.6, -1.6] });
+  }
+
+  /** A full-effort jump's stage (domain/effort.ts JumpStage). */
+  jump(stage: "agacharse" | "impulso" | "recoger" | "bajar" | "amortiguar"): void {
+    this.leaveAsana();
+    this.leaveMotion();
+    this.target = JUMP_POSES[stage];
   }
 
   /** Ease toward the target pose; `k` = fraction per second. */

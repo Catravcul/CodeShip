@@ -264,7 +264,8 @@ export async function s3Iniciacion2(j) {
   await j.tap('.s3-ui .cm-acts [data-act="sim:alunizaje"]', "Practicar el alunizaje (LM)");
   await capture(j, "alunizaje", "El alunizaje a mano en la maqueta del LM");
   await tapPad(j, "Anular giros y velocidad");
-  // Down at about a fifteenth of the height a second (2 m/s at most, 0,6 at the end), looking ahead a tap's time.
+  // Down at about a tenth of the height a second (2,5 m/s at most, 0,6 at the end), looking ahead a tap's time: the
+  // 400 kg of the trainer's propellant last about 100 s of hover, so a slow CI runner must not dawdle (11-19).
   const lm = () => p.evaluate(() => window.codeshipS3.sims.land ?? null);
   let m = await lm();
   let latL = 2;
@@ -276,7 +277,7 @@ export async function s3Iniciacion2(j) {
       break;
     }
     const acc = (m2.vzMs - m.vzMs) / Math.max(0.05, m2.t - m.t);
-    const want = -Math.max(0.6, Math.min(2, m2.altM / 15));
+    const want = -Math.max(0.6, Math.min(2.5, m2.altM / 10));
     const ahead = m2.vzMs + acc * latL;
     const t0 = Date.now();
     if (ahead < want - 0.3) await tapPad(j, "Subir el empuje del motor de descenso");

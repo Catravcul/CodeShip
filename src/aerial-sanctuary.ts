@@ -58,6 +58,7 @@ import { TrainerCrowd } from "./adapters/three/s3-trainers";
 import { S3Rigs } from "./adapters/three/s3-rigs";
 import { S3Simulators, paintRendezvous, paintSimScreen, type SimKind } from "./s3-simulators";
 import { S3Launch } from "./adapters/three/s3-launch";
+import { S3Biome } from "./s3-biome";
 import { armMoves } from "@modules/robotics/application/arm-chores";
 import "./ui/lander-cabin.css";
 import "./ui/journey.css";
@@ -291,6 +292,8 @@ root.appendChild(caption);
 /** The board hour now (a new game starts at 9:00; one hour is one real minute). */
 const hour = () => boardHour(days);
 const passed = new Set<number>();
+// The biome's island: its living food chain and the census board (s3-biome.ts, docs/design/bioma-s3.md).
+const biome = new S3Biome(scene, ui, L);
 
 // --- Going somewhere -------------------------------------------------------------------------------------------------
 function stop(why?: string): void {
@@ -1250,6 +1253,7 @@ function frame(now: number): void {
   caption.classList.toggle("hidden", !cap);
   if (caption.textContent !== cap) caption.textContent = cap;
   frameBirds(dt);
+  biome.update(dt, days, hour(), body, clock, camera);
   updateCamera(dt);
   updateBar();
   near = nearestMachine();
@@ -1372,4 +1376,5 @@ if (frameStats) (window as unknown as { codeshipS3: unknown }).codeshipS3 = {
   cabY: (id: string) => parts.cabs.get(id)?.position.y,
   craftY: () => (heli.group.visible ? heli.group.position.y : rug.group.visible ? rug.group.position.y : undefined),
   saveNow,
+  biome,
 };

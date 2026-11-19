@@ -43,9 +43,13 @@ const LOOK: Record<string, THREE.Material> = {
   cinta: mat(0x30343a),
   mesa: mat(0x8a6a48),
   camilla: mat(0xd9e6ef),
+  // The biome's field station (docs/design/bioma-s3.md): a painted timber hut, its roof and the census board.
+  cabana: mat(0x3f6b4a),
+  "cabana-techo": mat(0x8a2f25),
+  tablon: mat(0xb08a5a),
 };
 
-const FLOOR_LOOK: Record<string, number> = { entrenamiento: 0x7f9a62, lanzadera: 0xd2d7dc, parque: 0xd2d7dc, muelle: 0xc7ccd1, plataforma: 0x77706a, glaciar: 0xf1f5f8 };
+const FLOOR_LOOK: Record<string, number> = { entrenamiento: 0x7f9a62, lanzadera: 0xd2d7dc, parque: 0xd2d7dc, muelle: 0xc7ccd1, plataforma: 0x77706a, glaciar: 0xf1f5f8, bioma: 0x6f7f4a };
 /** The wind-swept blue ice (the runway and the meteorite field) against the snow around. */
 const BLUE_ICE = 0x9cc8e0;
 
@@ -80,6 +84,8 @@ export function buildFloors(floors: readonly Floor[]): THREE.Group {
   const g = new THREE.Group();
   const by = new Map<number, THREE.BufferGeometry[]>();
   for (const f of floors) {
+    // The biome's island draws its own ground, shore and beach (s3-biome-models.ts).
+    if (f.area === "bioma:isla") continue;
     const isl = f.area.split(":")[0]!;
     const c = f.area.includes("helipuerto") ? 0x3a3f44 : f.area === "glaciar:pista" || f.area === "glaciar:hielo-azul" ? BLUE_ICE : (interiorFloor(f.area) ?? FLOOR_LOOK[isl] ?? 0xb9c4cc);
     const list = by.get(c) ?? [];

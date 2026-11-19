@@ -57,6 +57,11 @@ export const MOTIONS = {
   agacharse: { label: "Preparar el salto", category: "peso-corporal", does: "Rodillas y cadera flexionadas, brazos atrás" },
   salto: { label: "Salto de precisión", category: "peso-corporal", does: "Despega con los dos pies lanzando los brazos" },
   aterrizar: { label: "Aterrizaje", category: "peso-corporal", does: "Puntas primero, amortigua con tobillos, rodillas y cadera" },
+  plie: { label: "Plié", category: "peso-corporal", does: "De lado a la barra, dobla las rodillas sobre las puntas de los pies con la espalda recta" },
+  tendu: { label: "Tendu", category: "peso-corporal", does: "La pierna sale estirada desde la cadera, rozando el suelo hasta la punta" },
+  releve: { label: "Relevé", category: "peso-corporal", does: "Sube a media punta despacio y baja los talones" },
+  guardia: { label: "Guardia", category: "peso-corporal", does: "Manos arriba, barbilla abajo, pies a la anchura de los hombros, rebotando" },
+  golpear: { label: "Golpear", category: "peso-corporal", does: "Directo de un brazo y otro, girando la cadera" },
   "empujar-trineo": { label: "Empujar el trineo", category: "peso-corporal", does: "Inclinada a 45°, brazos estirados, pasos cortos de la punta del pie" },
 } as const satisfies Record<string, Animation>;
 export type MotionId = keyof typeof MOTIONS;
@@ -112,6 +117,8 @@ export const PROCEDURE_STEPS: Readonly<Record<string, readonly StepAnimation[]>>
   "gym-mancuernas": ["tomar", "curl-mancuernas", "curl-mancuernas", "press-mancuernas", "tomar"],
   "gym-cardio": ["maquina", "maquina", "maquina", "maquina", "limpiar"],
   "gym-zona-libre": ["tomar", "plancha", "puente", "bird-dog", "estirar", "tomar"],
+  "ballet-barra": ["tomar", "tomar", "plie", "tendu", "releve", "estirar"],
+  "dojo-saco": ["tomar", "salto", "guardia", "golpear", "golpear", "estirar"],
   "gym-calistenia": ["dominada", "dominada", "dominada", "dominada", "dominada"],
   "gym-parkour": ["mirar", "agacharse", "salto", "aterrizar", "aterrizar"],
   "gym-crossfit": ["cargar-discos", "empujar-trineo", "empujar-trineo", "empujar-trineo", "cargar-discos"],

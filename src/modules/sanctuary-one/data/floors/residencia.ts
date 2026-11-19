@@ -1,4 +1,5 @@
 import { ROOM_OWNERS } from "../models/residencia";
+import { FRUITS } from "./puntas";
 import type { FloorPlan, Placed } from "./kit";
 
 /**
@@ -27,7 +28,9 @@ function rooms(index: number): FloorPlan {
       if (room >= ROOMS) continue;
       const who = ROOM_OWNERS[room];
       items.push({ model: `res-habitacion-${(room % 2) + 1}`, x: side * 5.5, z: rows[r]!, name: who ? `Habitación de ${who}` : `Habitación libre ${room + 1}` });
-      items.push({ model: "res-terraza", x: side * 13.5, z: rows[r]!, ...(side < 0 ? { rot: Math.PI } : {}) });
+      // Its fruit: the small ones, a different one in each house (FRUITS[last − room % (n/2)]: Sandía, Frutilla, Piña…).
+      const [fruit, form] = FRUITS[FRUITS.length - 1 - (room % Math.floor(FRUITS.length / 2))]!;
+      items.push({ model: `res-terraza-${form}`, x: side * 13.5, z: rows[r]!, name: `Terraza frutal: ${fruit}`, ...(side < 0 ? { rot: Math.PI } : {}) });
       room++;
     }
   items.push({ model: "aseos-3", x: -5.5, z: 15.5, rot: Math.PI });

@@ -1,4 +1,5 @@
 import { C, COL, rep, type ModelDef, type Part } from "./kit";
+import { GYM_DETAIL } from "./gimnasio-detalle";
 
 /**
  * The shapes of the models that were still one box (Cold Sanctuary draws them as one cube): each from the real thing
@@ -88,7 +89,8 @@ export const DETAIL: Readonly<Record<string, readonly Part[]>> = {
 /** The catalogue with every one-box entry that has a shape here drawn in pieces (same entry and size, its pieces inside it). */
 export function detailed(defs: readonly ModelDef[]): ModelDef[] {
   return defs.map((d) => {
-    const parts = d.shape === "caja" ? DETAIL[d.id] : undefined;
+    // One-box entries, and the gym's generic machines and benches (drawn by a rule till now), get their real pieces.
+    const parts = d.shape === "caja" ? DETAIL[d.id] ?? GYM_DETAIL[d.id] : d.shape === "maquina" || d.shape === "banco" || d.shape === "jaula" ? GYM_DETAIL[d.id] : undefined;
     return parts ? { ...d, shape: "piezas", parts } : d;
   });
 }

@@ -123,13 +123,12 @@ catálogo (tamaño, piezas, color) cambia todas sus copias; un piso es una lista
 ## Simplificaciones (para la lista de arreglos)
 
 - Los equipos son piezas con la huella y la altura reales; desde la exportación de Unity ninguno de laboratorio,
-  hospital, gimnasio ni huerto vertical es ya una caja (`models/ciencias-detalle.ts`, `models/detalle.ts`).
-- Las franjas de la cocina son una caja por bloque; no hay baldosas de caída ni la fachada de fotobiorreactores.
+  hospital, gimnasio, cocina ni huerto vertical es ya una caja (`models/ciencias-detalle.ts`, `models/detalle.ts`,
+  `models/gimnasio-detalle.ts`, `models/cocina-equipo.ts`).
 - La Mecánica: Cold Sanctuary solo pone sus aseos; aquí es un taller real de tractor, barca y submarino
   (`models/mecanica.ts`, distribución nuestra).
-- El Huerto no lleva los seis métodos del mundo (`FurnishWorldGarden`).
-- Los techos de alfombras con frutales (Orchards.cs) no están: el techo aquí es solo la plataforma del tronco.
-- El iceberg a la deriva está quieto en su punto A.
+- Ballet y dojo están terminados (sin la obra de Cold Sanctuary), con sus retos de barra y de saco.
+- Sin la máquina de virtualización (microcosmos) de las salas: es ficción del backlog.
 
 ## Distribución nuestra (no sale de Cold Sanctuary)
 
@@ -143,5 +142,7 @@ catálogo (tamaño, piezas, color) cambia todas sus copias; un piso es una lista
 
 1. La lista de arreglos de Berón (en `overrides.ts` cuando sean a gran escala).
 2. La exportación de Unity: compararla con nuestros pisos e investigar para superar a Cold Sanctuary, piso a piso.
-   Hechos: restaurante, hospital, laboratorios, carne cultivada, producción. Siguen: gimnasio, yoga y salas de
-   entrenamiento, cría, veterinario, residencia. Herramienta: el `.jsonl` de la rama `codeship-export`.
+   Hechos todos los pisos (restaurante, hospital, laboratorios, carne cultivada, producción, gimnasio, yoga y salas de
+   entrenamiento, cría, veterinario, residencia). Herramienta: el `.jsonl` de la rama `codeship-export`.
+3. La fachada de fotobiorreactores está completa (arpas del tronco, quillas bajo las ramas, bombas y cuadro); el iceberg a
+   la deriva es sólido donde está.

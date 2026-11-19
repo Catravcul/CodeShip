@@ -141,7 +141,7 @@ export async function s3Recorrido(j) {
   // 5. The navigation machine: Panel › «Abrir navegación», the island window, «Volar» to the launch cap.
   await j.tap('.s3-ui .cm-acts [data-act="nav"]', "Abrir navegación");
   const nav = await p.evaluate(() => [...document.querySelectorAll(".island-nav .mw-row")].map((r) => ({ id: r.dataset.row, go: !r.querySelector(".mw-go").disabled, sub: r.querySelector(".mw-pick small")?.textContent ?? "" })));
-  j.check("la ventana de navegación lista las seis islas; la suya «Aquí», sin vuelo", nav.length === 6 && nav.find((r) => r.id === "entrenamiento")?.go === false && nav.filter((r) => r.go).length === 5, JSON.stringify(nav));
+  j.check("la ventana de navegación lista las siete islas (con la subantártica); la suya «Aquí», sin vuelo", nav.length === 7 && nav.find((r) => r.id === "entrenamiento")?.go === false && nav.filter((r) => r.go).length === 6, JSON.stringify(nav));
   j.check("cada vuelo dice el aparato y su tiempo", nav.filter((r) => r.go).every((r) => /(Helicóptero|Alfombra).*\d+ (s|min)/.test(r.sub)), JSON.stringify(nav.map((r) => r.sub)));
   await capture(j, "navegacion", "Santuario 3: la máquina de navegación");
   await j.tap('.island-nav .mw-pick[data-pick="lanzadera"]', "Lanzadera en la lista");

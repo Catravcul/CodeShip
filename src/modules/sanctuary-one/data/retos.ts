@@ -89,6 +89,22 @@ export const GYM = {
     "estira cuádriceps, isquios y espalda {30|3|180} segundos cada uno",
     "enrolla la esterilla y devuélvela a la estantería",
   ], ["rebota al estirar", "haz cien abdominales tirando del cuello"], "McGill, Low Back Disorders, 3.ª ed. (2015): los tres grandes; ACSM (2021): estiramientos de 10–30 s"),
+  ballet: p("ballet-barra", "Trabajo de barra", "ejercicio", "fuerza", "La clase empieza en la barra, como cada día", [
+    "frota las zapatillas en la caja de resina para no resbalar",
+    "ponte de lado a la barra, la mano apoyada sin agarrarla",
+    "pliés en primera y segunda: rodillas sobre las puntas de los pies",
+    "tendus y dégagés: la pierna sale estirada desde la cadera",
+    "relevés: sube a media punta {8|80|1} veces, despacio",
+    "estira al final y devuelve las barras portátiles a su sitio",
+  ], ["cuelga el peso del cuerpo de la barra", "fuerza el en dehors desde las rodillas"], "Royal Academy of Dance, Ballet technique: barre work; Kassing, Teaching Beginning Ballet Technique (1998)"),
+  dojo: p("dojo-saco", "Golpeo al saco y a la makiwara", "ejercicio", "fuerza", "Turno de técnica en el dojo", [
+    "véndate las manos y ponte guantes para el saco",
+    "calienta: comba o movilidad {5|60|0} minutos",
+    "guardia: manos arriba, barbilla abajo, pies a la anchura de los hombros",
+    "asaltos de 3 minutos con 1 de descanso, golpeando con la cadera",
+    "en la makiwara, golpes suaves con los nudillos alineados con la muñeca",
+    "estira y deja guantes y vendas en la estantería de equipo",
+  ], ["golpea la makiwara con toda la fuerza el primer día", "baja la guardia al cansarte"], "NSCA, Essentials of Strength Training and Conditioning, 4.ª ed. (2016); Funakoshi, Karate-dō Kyōhan (1935): makiwara"),
   calistenia: p("gym-calistenia", "Dominadas en la barra", "ejercicio", "fuerza", "Tu propio peso es la máquina", [
     "agarra la barra con las palmas hacia delante, algo más abiertas que los hombros",
     "cuelga con los brazos estirados y activa los hombros, bajándolos",
@@ -379,6 +395,13 @@ export const PLANTAS = {
     "rellena el depósito con agua y nutriente",
     "revisa que todas las bandejas reciben riego",
   ], ["corrige el pH con vinagre del almacén a ojo"], "Resh, Hydroponic Food Production, 7.ª ed. (2012)"),
+  fotobio: p("fotobio-cuidar", "Cuidado diario de los fotobiorreactores", "cosechar", "salud", "El cuadro avisa: la espirulina está densa", [
+    "mira el pH del cultivo en el cuadro: entre 9,5 y {10,5|7|13}",
+    "mira la temperatura: de día unos {33|15|50} °C",
+    "cosecha por el filtro hasta dejarlo en {0,7|0,1|5} g/L de biomasa",
+    "repone el medio con bicarbonato y nutrientes",
+    "comprueba que el desgasificador saca el oxígeno y que las LED encienden",
+  ], ["cosecha hasta dejar el tubo casi vacío", "abre un tubo para mirar el cultivo"], "Cold Sanctuary, docs/fotobiorreactores.md (FotobioSpec); Zarrouk (1966), medio de Arthrospira; ESA MELiSSA, compartimento IVa"),
   maleza: p("huerto-maleza", "Quitar plantas no nativas", "trabajar", "salud", "Han salido plantas no nativas en el bancal", [
     "identifica la planta con la guía antes de arrancarla",
     "arráncala con la raíz entera, antes de que eche semilla",

@@ -42,7 +42,9 @@ export function focusReto(steps: StepShow, camera: THREE.PerspectiveCamera, her:
   const stand = dist < 2.5 ? here : new THREE.Vector3(at.x, at.y, at.z).addScaledVector(d, -0.9);
   const right = new THREE.Vector3(-d.z, 0, d.x);
   const look = stand.clone().addScaledVector(d, 0.3).setY(stand.y + 0.95);
-  const cam = look.clone().addScaledVector(d, -2.0).addScaledVector(right, 1.2).setY(stand.y + 1.85);
+  // Wider for the tall machines she sits in (the jalón's column is 2,1 m): the whole machine and her in it.
+  const tall = Math.max(0, at.sy - 1.2);
+  const cam = look.clone().addScaledVector(d, -(2.0 + 3 * tall)).addScaledVector(right, 1.2 + 0.8 * tall).setY(stand.y + 1.85 + 0.8 * tall);
   steps.begin({ stand, yaw: Math.atan2(d.x, d.z), camera: cam, look, target });
   sheetLens(camera, true);
   return stand;

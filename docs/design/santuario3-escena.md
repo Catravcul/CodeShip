@@ -8,7 +8,7 @@ arriba del todo) llevada a una escena de Three.js. Casos AER-01 a AER-09 en [cas
 - **Inicio.** El 3 se juega desde la pantalla de inicio (`boot.ts` carga `src/aerial-sanctuary.ts`). Su tarjeta dice que los retos de
   los puestos de entrenamiento están «En construcción». Doménica empieza en el helipuerto de la isla de entrenamiento, al empezar la
   iniciación. La partida se guarda sola (ranuras de [partidas.md](partidas.md); `checkAerialState` en `STATE_CHECKS`).
-- **Islas.** Cinco, cada una con su máquina de navegación:
+- **Islas.** Cada una con su máquina de navegación:
 
   | Isla | Qué es | Etiqueta | Fuente |
   | --- | --- | --- | --- |
@@ -17,6 +17,7 @@ arriba del todo) llevada a una escena de Three.js. Casos AER-01 a AER-09 en [cas
   | Parque energético (−470, 470) | Árbol bajo (Control de energía, Garaje, Taller de paneles), 3 E-33, mareal piloto, 9 mesas solares (7 instaladas por los 50 kW de los pisos), 6 baterías | turbinas, sol y baterías **reales**; el casquete, **ficción** | `EnergyRule`; Ross Island |
   | Muelle aéreo (−230, 210) | El muelle de las alfombras voladoras, apartado por nosotros de (−300, 170) para quedar fuera de los 300 m del Electron (también a escala 1,5) | **ficción** | `AereoLink`, `FlyingCarpet` |
   | Plataforma de tripulación (150, −1300) | Una plataforma como la Odyssey (132,9 × 67 m, cubierta a 22 m) con el Falcon 9 y la Crew Dragon, la torre de acceso y un helipuerto | vehículo **real**; lanzar desde el mar, **licencia** | Sea Launch, SpaceX |
+  | Isla subantártica (760, 230) | Un bioma vivo como Bird Island (Georgia del Sur): tussac, musgo, liquen y kelp; kril y peces; pingüinos, albatros, págalos y focas en una cadena alimenticia; la estación de investigación con el censo y un helipuerto ([bioma-s3.md](bioma-s3.md)) | especies **reales**; la isla y cuántos caben, **licencia** | `data/bioma.ts`, `data/bioma-island.ts` |
 
 - **Mandos (2026-11-19, los mismos del santuario 1: `ui/game-pad.ts`).** Los de la Switch: cruceta ↑/↓ zoom, B «Correr» (sprint de
   6,5 m/s; en el agua, crol a 3 m/s), A «Saltar» (50 cm, con su agacharse y amortiguar), X «Trepar» (hasta 2,6 m), «+» Tareas,

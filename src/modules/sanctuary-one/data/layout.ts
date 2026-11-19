@@ -5,7 +5,7 @@ import { CAP_NAME, LAGOON, LOBES, MAP_HALF, NESTS, SPECIES_MODEL, STAFF, TOWERS,
 import { FLOOR_PLANS, type FloorPlan } from "./floors";
 import { RING } from "./floors/kit";
 import { bedTip, orchardTip } from "./floors/puntas";
-import { landscape } from "./paisaje";
+import { DRIFT, landscape } from "./paisaje";
 import { model, type ModelDef } from "./catalog";
 import { OVERRIDES, resolve, spacing, type Overrides } from "./overrides";
 import { GROUPS, plan, split } from "../domain/population";
@@ -88,6 +88,8 @@ export interface S1Layout {
   readonly start: { readonly x: number; readonly y: number; readonly z: number; readonly yaw: number };
   /** The work submarine's dive (Berón: «el submarino puede subir por los troncos»): its instance and its way out. */
   readonly submarine?: { readonly index: number; readonly route: readonly Waypoint[] };
+  /** The drifting iceberg (Icebergs.cs driftA → driftB at 0,2 m/s): its instance, its solid and the visitors swimming off it. */
+  readonly drift?: { readonly index: number; readonly visitors: readonly number[]; readonly a: { x: number; z: number }; readonly b: { x: number; z: number } };
 }
 
 const R = (x0: number, x1: number, z0: number, z1: number): Rect => ({ x0: Math.min(x0, x1), x1: Math.max(x0, x1), z0: Math.min(z0, z1), z1: Math.max(z0, z1) });
@@ -143,6 +145,8 @@ function groundFloors(): Floor[] {
 
 interface Built {
   o: Overrides;
+  /** The orchards' expert room is placed (in the first orchard tip of Servicios). */
+  expertRoom?: boolean;
   floors: Floor[];
   waters: Water[];
   solids: Solid[];
@@ -189,6 +193,20 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
     place(b, "estacion-mascaras", o.x + st.x, y, o.z + st.z, turn + Math.PI, trunk, { edificio: t.id }, 1, undefined, false);
   };
   doorKit(0, door.x, 0, trunk);
+  // The photobioreactor facade (Fotobio.cs BuildFotobio, docs/fotobiorreactores.md): on the Árbol de los Campos and on
+  // Ciencias, spirulina harps of 28 glass tubes in 3 × 4 m modules, 10 a column from 10 to 56 m, 1,4 m off the acrylic in
+  // the corner bay of each face; a pump below, a degasser above and the riser; the control panel at the foot.
+  if (t.building === "Árbol de los Campos" || t.building === "Ciencias") {
+    const bay = -OH + OH / 6;
+    for (let sd = 0; sd < 4; sd++) {
+      const turn = (S(sd) * Math.PI) / 2;
+      const p = side(S(sd), bay, OH + 1.4);
+      for (let j = 0; j < 10; j++) place(b, "fotobio-modulo", o.x + p.x, 10 + j * 4.6, o.z + p.z, turn, trunk, { edificio: t.id }, 1, j === 0 ? "Fotobiorreactores de espirulina" : undefined, false);
+      place(b, "fotobio-columna", o.x + p.x, 9.1, o.z + p.z, turn, trunk, { edificio: t.id }, 1, undefined, false);
+    }
+    const c = side(S(0), -5.5, OH + 0.2);
+    place(b, "fotobio-cuadro", o.x + c.x, 0, o.z + c.z, (S(0) * Math.PI) / 2, trunk, { edificio: t.id }, 1, "Cuadro de los fotobiorreactores", false);
+  }
   const gOut = side(S(0), door.x, OH + 3);
   const gIn = side(S(0), door.x, WH - 1.5);
   const shape: TowerShape = { id: t.id, building: t.building, x: o.x, z: o.z, rootHeight, floors: [], tips: [], rings: [], ground: { out: { x: o.x + gOut.x, z: o.z + gOut.z }, inner: { x: o.x + gIn.x, z: o.z + gIn.z } } };
@@ -268,6 +286,22 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
         { id: `${key}-c`, ...sideRect(S(s), colC.x - ch, colC.x + ch, colC.z - ch, colC.z + ch, o), yBottom: y, yTop: ty + 1, area: key, open: true },
       );
       gapsOf[s]!.push({ from: mx - th, to: mx + th, y0: y, y1: y + 2 * th });
+      // The photobioreactor keel (Fotobio.cs, FotobioSpec.Keel) of the Árbol de los Campos: 6 flat panels of 2,4 × 2 m
+      // hung 2,4 m under the long run of the branch, between its mouth and its column, with its pump.
+      if (t.building === "Árbol de los Campos") {
+        const span = colC.x - ch - (mx + th);
+        const n = Math.min(6, Math.floor((span + 0.12) / 2.52));
+        const x0 = (mx + th + colC.x - ch) / 2 - (n * 2.52 - 0.12) / 2;
+        const turn = (S(s) * Math.PI) / 2;
+        for (let pi = 0; pi < n; pi++) {
+          const q = side(S(s), x0 + pi * 2.52 + 1.2, colC.z);
+          place(b, "fotobio-quilla", o.x + q.x, y - 2.4 - 2.08, o.z + q.z, turn, key, { edificio: t.id }, 1, pi === 0 ? "Quilla de fotobiorreactores" : undefined, false);
+        }
+        if (n > 0) {
+          const q = side(S(s), x0 - 0.6, colC.z);
+          place(b, "fotobio-bomba", o.x + q.x, y - 2.4 - 0.7, o.z + q.z, turn, key, { edificio: t.id }, 1, undefined, false);
+        }
+      }
       const tip = sideRect(S(s), tipC.x - ts / 2, tipC.x + ts / 2, tipC.z - ts / 2, tipC.z + ts / 2, o);
       const col = sideRect(S(s), colC.x - ch, colC.x + ch, colC.z - ch, colC.z + ch, o);
       const tipArea = `${t.id}:punta-${l}-${s}`;
@@ -277,7 +311,10 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
       // What grows there, in the tip's frame (its side's axes about its centre).
       const colL = { x0: colC.x - ch - tipC.x, x1: colC.x + ch - tipC.x, z0: colC.z - ch - tipC.z, z1: colC.z + ch - tipC.z };
       const crops = t.tip === "Cultivos";
-      const tipPlan = crops ? bedTip(ts, colL, tipIndex++) : orchardTip(ts, colL);
+      // The expert's care room in the first orchard tip of Servicios; a care point in every other.
+      const sala = !crops && t.building === "Servicios" && !b.expertRoom;
+      if (sala) b.expertRoom = true;
+      const tipPlan = crops ? bedTip(ts, colL, tipIndex++) : orchardTip(ts, colL, 3.4, sala ? "sala" : "punto");
       for (const it of tipPlan) {
         const p = side(S(s), tipC.x + it.x, tipC.z + it.z);
         place(b, it.model, o.x + p.x, ty, o.z + p.z, (S(s) * Math.PI) / 2 + (it.rot ?? 0), tipArea, { edificio: t.id, piso: tipArea }, 1, it.name);
@@ -459,18 +496,23 @@ export function buildS1Layout(k = 1, o: Overrides = OVERRIDES): S1Layout {
   }
 
   // The landscape: wild caps, tundra and icebergs (paisaje.ts). Icebergs float at the water line and stand as solids.
+  let drifting: S1Layout["drift"];
   for (const it of landscape()) {
     const y = it.sea ? WATER_Y : 0;
+    const at = b.instances.length;
     place(b, it.model, it.x, y, it.z, it.rot, it.sea ? "mar" : "paisaje", {}, 1, it.name, !it.sea);
+    if (it.model === "iceberg-deriva") drifting = { index: at, visitors: [], a: DRIFT.a, b: DRIFT.b };
     if (it.sea) {
       const d = model(it.model);
-      b.solids.push({ x0: it.x - d.size.x / 2, x1: it.x + d.size.x / 2, z0: it.z - d.size.z / 2, z1: it.z + d.size.z / 2, y0: -40, y1: y + d.size.y });
+      // (The drifting one moves: its solid goes with it, added round her by the scene, sanctuary-one.ts near.)
+      if (it.model !== "iceberg-deriva") b.solids.push({ x0: it.x - d.size.x / 2, x1: it.x + d.size.x / 2, z0: it.z - d.size.z / 2, z1: it.z + d.size.z / 2, y0: -40, y1: y + d.size.y });
       // Its visitors (IcebergVisitor: 4 seals and 4 penguins, adults, swimming off its ledge).
       const seals = 2;
       const penguins = 2;
       for (const [id, n, dz] of [["foca", seals, 0], ["pinguino", penguins, 4]] as const)
         for (let i = 0; i < n; i++) {
           const a = model(id);
+          if (drifting && it.model === "iceberg-deriva") (drifting.visitors as number[]).push(b.instances.length);
           place(b, id, it.x - d.size.x / 2 - 12 - 6 + i * 4, WATER_Y - a.size.y * 0.4, it.z + dz, Math.PI / 2, "mar", {}, 1, `${id === "foca" ? "Foca" : "Pingüino"} del ${it.name?.toLowerCase()}`, false);
         }
     }
@@ -519,5 +561,5 @@ export function buildS1Layout(k = 1, o: Overrides = OVERRIDES): S1Layout {
   const gym = b.areas.find((a) => a.label === "Gimnasio")!;
   const start = { x: gym.entry!.x, y: gym.y, z: gym.entry!.z, yaw: gym.entry!.yaw };
   const submarine = submarineDive(b);
-  return { k, world: { floors: b.floors, waters: b.waters, solids: b.solids }, instances: b.instances, areas: b.areas, towers: b.towers, walls: b.walls, start, ...(submarine ? { submarine } : {}) };
+  return { k, world: { floors: b.floors, waters: b.waters, solids: b.solids }, instances: b.instances, areas: b.areas, towers: b.towers, walls: b.walls, start, ...(submarine ? { submarine } : {}), ...(drifting ? { drift: drifting } : {}) };
 }

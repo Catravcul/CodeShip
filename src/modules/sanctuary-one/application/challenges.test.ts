@@ -4,8 +4,7 @@ import { retosFor } from "./challenges";
 
 describe("retos del santuario 1 (Berón 2026-11-19: retos en máquinas, plantas y animales)", () => {
   it("cada máquina, animal y planta ofrece al menos un reto", () => {
-    // Obra-acabado is hidden by a rule (in construction); its finished machines open with the building.
-    const need = MODELS.filter((m) => (m.category === "maquina" && m.group !== "obra-acabado") || m.category === "animal" || ["cultivos", "frutales", "plantas-interior", "flora-tundra"].includes(m.group));
+    const need = MODELS.filter((m) => m.category === "maquina" || m.category === "animal" || ["cultivos", "frutales", "plantas-interior", "flora-tundra"].includes(m.group));
     const none = need.filter((m) => retosFor(m).length === 0 && m.id !== "seto-cortavientos" && m.id !== "tundra-charca");
     expect(none.map((m) => m.id)).toEqual([]);
   });

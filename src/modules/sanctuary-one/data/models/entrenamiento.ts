@@ -21,6 +21,20 @@ const STAGE = 0x292629;
 const SEAT_RED = 0x80242a;
 
 /** Toilets (Restaurant.cs Aseos): dry composting cabins of 0,95 m, an accessible one of 1,5 m and two basins. */
+/** A changing room of mycelium panels (x × z, 2 m high) with its door on −z, a bench and hooks inside and a first-aid box outside. */
+const changingRoom = (x: number, z: number): Part[] => [
+  C(0, 1, z / 2 - 0.04, x, 2, 0.08), // back wall
+  C(-x / 2 + 0.04, 1, 0, 0.08, 2, z),
+  C(x / 2 - 0.04, 1, 0, 0.08, 2, z),
+  C(-x / 4 - 0.25, 1, -z / 2 + 0.04, x / 2 - 0.5, 2, 0.08), // front wall left of the door
+  C(x / 4 + 0.25, 1, -z / 2 + 0.04, x / 2 - 0.5, 2, 0.08),
+  C(0, 1.98, 0, x, 0.04, z), // roof
+  C(0, 0.23, z / 2 - 0.45, x - 0.4, 0.06, 0.4, 0xa67c52), // bench
+  ...rep(4, (i) => [C(-x / 2 + 0.5 + (i * (x - 1)) / 3, 1.6, z / 2 - 0.12, 0.04, 0.04, 0.12, 0x8c8c8c)]), // hooks
+  C(x / 4 + 0.25, 1.45, -z / 2 - 0.06, 0.4, 0.4, 0.04, 0xffffff), // first-aid box (white, red cross)
+  C(x / 4 + 0.25, 1.45, -z / 2 - 0.085, 0.24, 0.06, 0.01, 0xc62828),
+  C(x / 4 + 0.25, 1.45, -z / 2 - 0.085, 0.06, 0.24, 0.01, 0xc62828),
+];
 function toilets(cabins: number): Part[] {
   const cw = 0.95, depth = 1.5, h = 2.2, total = cw * cabins + 1.5 + 1.3, wall = 0xdbe6eb, door = 0x739eb8;
   const parts: Part[] = [C(0, h / 2, -depth / 2, total, h, 0.06, wall), C(0, h + 0.03, 0, total, 0.06, depth, wall)];
@@ -118,19 +132,34 @@ export const ENTRENAMIENTO_MODELS: readonly ModelDef[] = [
   m("ballet-suelo", "mueble", "obra-acabado", "Suelo flotante de ballet (18 × 8,6 m)", 18, 0.1, 8.6, 0xd1bd99, "caja", "real", O("FinishedBallet: corcho, guadua y linóleo")),
   pz("ballet-espejo-barras", "mueble", "obra-acabado", "Pared de espejo con barras dobles", GUADUA, [C(0, 1.35, 4.25, 15.6, 2.4, 0.04, 0xd9e6ee), C(0, 0.85, 4.1, 15.6, 0.045, 0.045), C(0, 1.1, 4.1, 15.6, 0.045, 0.045), ...[-1, 1].flatMap((s) => [C(s * 8.8, 0.85, -0.2, 0.045, 0.045, 7.2), C(s * 8.8, 1.1, -0.2, 0.045, 0.045, 7.2)])], "real", O("FinishedBallet: Pared_espejo y Barra a 0,85 y 1,1 m (centrado en z = 3,2)")),
   pz("ballet-piano", "mueble", "obra-acabado", "Piano vertical", STAGE, [C(0, 0.65, 0.15, 1.5, 1.3, 0.5), C(0, 0.75, -0.2, 1.4, 0.06, 0.25, 0xebebe0), C(0, 0.25, -0.65, 0.8, 0.5, 0.35, 0x946e4d)], "real", MU("UprightPiano")),
-  m("ballet-vestuario", "mueble", "obra-acabado", "Vestuario y botiquín de ballet", 3.6, 2, 3.2, MYCEL, "caja", "real", O("FinishedBallet: Vestuario_botiquin (micelio)")),
+  pz("ballet-vestuario", "mueble", "obra-acabado", "Vestuario y botiquín de ballet", MYCEL, changingRoom(3.6, 3.2), "real", O("FinishedBallet: Vestuario_botiquin (micelio)")),
+  pz("ballet-barras-portatiles", "mueble", "obra-acabado", "4 barras portátiles apiladas (2,4 m)", 0xb8a27a, rep(4, (i) => [C(0, 0.06 + i * 0.08, 0, 2.4, 0.06, 0.4)]), "real", O("FinishedBallet: Barra_portatil")),
+  pz("ballet-equipo-sonido", "mueble", "obra-acabado", "Equipo de sonido", 0x26262a, [C(0, 0.2, 0, 0.8, 0.4, 0.4, 0x8c6b4d), C(0, 0.55, 0, 0.6, 0.3, 0.35), C(-0.15, 0.55, -0.18, 0.12, 0.03, 0.01, 0x66bb6a)], "real", O("FinishedBallet: Equipo_sonido")),
+  pz("ballet-altavoz", "mueble", "obra-acabado", "Altavoz de pared", 0x26262a, [C(0, 2.25, 0, 0.3, 0.5, 0.3), C(0, 2.3, -0.155, 0.18, 0.18, 0.01, 0x555555)], "real", O("FinishedBallet: Altavoz (a 2,5 m)")),
+  pz("ballet-caja-resina", "mueble", "obra-acabado", "Caja de resina (colofonia para las zapatillas)", 0x8c6b4d, [C(0, 0.12, 0, 0.6, 0.24, 0.6), C(0, 0.245, 0, 0.5, 0.01, 0.5, 0xe8d9a8)], "real", O("FinishedBallet: Caja_resina")),
+  pz("ballet-fuente", "mueble", "obra-acabado", "Fuente de agua", chrome, [C(0, 0.45, 0.05, 0.4, 0.9, 0.3, steel), C(0, 0.95, 0, 0.45, 0.1, 0.38), C(0, 1.0, -0.08, 0.03, 0.06, 0.03)], "real", O("FinishedBallet: Fuente")),
+  pz("ballet-banco-calzado", "mueble", "obra-acabado", "Banco para calzarse (3,6 m)", GUADUA, [C(0, 0.42, 0, 3.6, 0.04, 0.5), ...[-1.6, 0, 1.6].map((x) => C(x, 0.2, 0, 0.08, 0.4, 0.4)), ...rep(6, (i) => [C(-1.5 + i * 0.6, 0.05, 0.1, 0.25, 0.08, 0.1, 0xf0c8c8)])], "real", O("FinishedBallet: Banco_calzado")),
   m("dojo-corcho", "mueble", "obra-acabado", "Base de corcho del dojo (9,4 × 14,8 m)", 9.4, 0.05, 14.8, CORK, "caja", "real", O("FinishedDojo: Base_corcho")),
   pz("dojo-jaula-mma", "maquina", "obra-acabado", "Jaula de MMA (octógono de guadua y red de cáñamo)", GUADUA, [C(0, 0.04, 0, 5.5, 0.08, 5.5, HEMP), ...rep(8, (i) => { const a = ((i * 45 + 22.5) * Math.PI) / 180, r = 2.75 / Math.cos(Math.PI / 8); return [C(Math.sin(a) * r, 0.95, Math.cos(a) * r, 0.14, 1.9, 0.14)]; }), ...rep(8, (i) => (i === 4 ? [] : [C(Math.sin((i * Math.PI) / 4) * 2.75, 0.95, Math.cos((i * Math.PI) / 4) * 2.75, i % 2 === 0 ? 2.28 : 1.6, 1.8, i % 2 === 0 ? 0.04 : 1.6, 0x998f70)]))], "real", O("FinishedDojo: Jaula_MMA (apotema 2,75 m)")),
   pz("dojo-ring", "maquina", "obra-acabado", "Ring de kickboxing (6,2 m)", HEMP, [C(0, 0.15, 0, 6.2, 0.3, 6.2), ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => C(sx * 2.6, 1, sz * 2.6, 0.16, 1.4, 0.16, sx * sz > 0 ? 0xa63333 : 0x3355a6))), ...rep(4, (k) => { const y = 0.6 + k * 0.3; return [C(0, y, 2.6, 5.2, 0.04, 0.04), C(0, y, -2.6, 5.2, 0.04, 0.04), C(2.6, y, 0, 0.04, 0.04, 5.2), C(-2.6, y, 0, 0.04, 0.04, 5.2)]; })], "real", O("FinishedDojo: Ring_kickboxing")),
   pz("dojo-tatami", "mueble", "obra-acabado", "Tatami de karate (8 × 8 m)", 0xa63333, [C(0, 0.03, 0, 8, 0.06, 8), C(0, 0.035, 0, 6, 0.061, 6, 0x3355a6)], "real", O("FinishedDojo: Tatami_karate")),
   pz("dojo-sacos", "maquina", "obra-acabado", "Pórtico de guadua con 3 sacos pesados", GUADUA, [C(0, 3, 0, 0.12, 0.12, 4.2), C(0, 1.5, -2.1, 0.12, 3, 0.12), C(0, 1.5, 2.1, 0.12, 3, 0.12), ...rep(3, (i) => [C(0, 1.55, (i - 1) * 1.6, 0.35, 1.2, 0.35, 0x6b5238)])], "real", O("FinishedDojo: Sacos_pesados")),
-  m("dojo-vestuario", "mueble", "obra-acabado", "Vestuario del dojo", 2.6, 2, 2, MYCEL, "caja", "real", O("FinishedDojo: Vestuario")),
+  pz("dojo-vestuario", "mueble", "obra-acabado", "Vestuario del dojo", MYCEL, changingRoom(2.6, 2), "real", O("FinishedDojo: Vestuario")),
+  pz("dojo-makiwara", "maquina", "obra-acabado", "Makiwara (poste de golpeo de karate)", 0x8c6b4d, [C(0, 0.6, 0, 0.1, 1.2, 0.2), C(0, 1.05, -0.11, 0.08, 0.25, 0.02, 0xd9c8a0)], "real", O("FinishedDojo: Makiwara")),
+  pz("dojo-estanteria-equipo", "mueble", "obra-acabado", "Estantería de equipo (guantes, espinilleras, cascos)", GUADUA, [C(-1.98, 0.9, 0, 0.04, 1.8, 0.4), C(1.98, 0.9, 0, 0.04, 1.8, 0.4), ...rep(4, (i) => [C(0, 0.05 + i * 0.55, 0, 4, 0.04, 0.4)]), ...rep(8, (i) => [C(-1.7 + i * 0.48, 0.2, 0, 0.3, 0.25, 0.3, i % 2 ? 0xc62828 : 0x1e4fa0), C(-1.7 + i * 0.48, 0.73, 0, 0.25, 0.3, 0.2, 0x222222), C(-1.7 + i * 0.48, 1.28, 0, 0.26, 0.28, 0.28, i % 2 ? 0x1e4fa0 : 0xc62828)])], "real", O("FinishedDojo: Estanteria_equipo")),
+  pz("dojo-primeros-auxilios", "mueble", "obra-acabado", "Puesto de primeros auxilios (camilla y botiquín)", 0xffffff, [C(0, 0.35, 0.3, 2, 0.1, 0.7, 0x2e7d6b), ...[-0.9, 0.9].flatMap((x) => [C(x, 0.15, 0.05, 0.05, 0.3, 0.05, 0x9e9e9e), C(x, 0.15, 0.55, 0.05, 0.3, 0.05, 0x9e9e9e)]), C(0, 0.4, -0.35, 0.8, 0.8, 0.4), C(0, 0.55, -0.56, 0.3, 0.08, 0.01, 0xc62828), C(0, 0.55, -0.56, 0.08, 0.3, 0.01, 0xc62828)], "real", O("FinishedDojo: Primeros_auxilios")),
+  m("dojo-acolchado", "mueble", "obra-acabado", "Acolchado de pared (2 m)", 1, 2, 0.12, 0x1e3a6b, "caja", "real", O("FinishedDojo: Acolchado")),
 
   // ── Aula (Informatica.cs FurnishAulaFloor) ──
   m("aula-suelo", "mueble", "suelos", "Suelo de madera (35,8 × 25,8 m)", 35.8, 0.02, 25.8, 0xb89973, "caja", "real", I("Suelo_de_madera")),
-  pz("aula-tarima", "mueble", "aula", "Tarima del profesor (mesa, pizarra y pantalla)", 0x8c6b4d, [C(0, 0.1, 0, 6, 0.2, 2.6), C(0, 0.95, 0.4, 2, 0.05, 0.8, 0x806142), C(0, 0.55, 0.4, 1.9, 0.7, 0.05, 0x73573d), C(-1.6, 1.6, -1.15, 2.8, 1.2, 0.06, 0x264d38), C(1.6, 1.8, -1.15, 2.6, 1.5, 0.04, 0xf2f2f2)], "real", I("Tarima del profesor; objetos del mundo: ábaco, astrolabio, quipu, esfera")),
+  pz("aula-tarima", "mueble", "aula", "Tarima del profesor (mesa, pizarra y pantalla)", 0x8c6b4d, [C(0, 0.1, 0, 6, 0.2, 2.6), C(0, 0.95, 0.4, 2, 0.05, 0.8, 0x806142), C(0, 0.55, 0.4, 1.9, 0.7, 0.05, 0x73573d), C(-1.6, 1.6, -1.15, 2.8, 1.2, 0.06, 0x264d38), C(1.6, 1.8, -1.15, 2.6, 1.5, 0.04, 0xf2f2f2),
+    // objects of the world on the teacher's table: Chinese abacus, Andalusian astrolabe, Andean quipu, Greek armillary sphere
+    C(-0.7, 1.005, 0.4, 0.3, 0.06, 0.18, 0x6b3f22), ...rep(5, (i) => [C(-0.7, 1.04, 0.33 + i * 0.035, 0.26, 0.012, 0.012, 0xc9a050)]),
+    C(-0.25, 0.99, 0.4, 0.18, 0.03, 0.18, 0xb08d57), C(-0.25, 1.006, 0.4, 0.16, 0.004, 0.02, 0x8a6a3a),
+    C(0.2, 0.985, 0.4, 0.3, 0.012, 0.03, 0xa0522d), ...rep(6, (i) => [C(0.08 + i * 0.05, 0.983, 0.46, 0.012, 0.008, 0.1, [0xc0392b, 0xf1c40f, 0x2e86c1, 0xffffff][i % 4])]),
+    C(0.7, 1.0, 0.4, 0.06, 0.05, 0.06, 0x8a6a3a), C(0.7, 1.1, 0.4, 0.18, 0.18, 0.012, 0xb08d57), C(0.7, 1.1, 0.4, 0.012, 0.18, 0.18, 0xb08d57)], "real", I("Tarima del profesor; objetos del mundo: ábaco (China), astrolabio (al-Ándalus), quipu (Andes), esfera armilar (Grecia)")),
   pz("aula-pupitres-6", "mueble", "aula", "Fila de pupitres (6 plazas)", 0x9e7a52, [C(0, 0.74, 0, 6, 0.04, 0.6), ...rep(6, (i) => [C(-2.5 + i, 0.45, 0.6, 0.45, 0.05, 0.45, 0x5a6b80), C(-2.5 + i, 0.72, 0.82, 0.45, 0.5, 0.04, 0x5a6b80)]), C(-2.95, 0.37, 0, 0.06, 0.74, 0.55), C(2.95, 0.37, 0, 0.06, 0.74, 0.55)], "real", I("DeskRow (6 plazas, 3,4 m entre filas)")),
-  pz("aula-mesa-estudio", "mueble", "aula", "Mesa de estudio (6 plazas)", 0x9e7a52, [C(0, 0.74, 0, 3, 0.05, 1), C(-1.4, 0.37, 0, 0.08, 0.74, 0.9), C(1.4, 0.37, 0, 0.08, 0.74, 0.9), ...[-1, 1].flatMap((s) => rep(3, (i) => [C(-1 + i, 0.45, s * 0.8, 0.45, 0.05, 0.45, 0x5a6b80), C(-1 + i, 0.72, s * 1.02, 0.45, 0.5, 0.04, 0x5a6b80), C(-1 + i + 0.3, 0.9, s * 0.35, 0.12, 0.25, 0.12, 0xffebb3)]))], "real", I("StudyTable (3 por lado)")),
+  pz("aula-mesa-estudio", "mueble", "aula", "Mesa de estudio (6 plazas)", 0x9e7a52, [C(0, 0.74, 0, 3, 0.05, 1), C(-1.4, 0.37, 0, 0.08, 0.74, 0.9), C(1.4, 0.37, 0, 0.08, 0.74, 0.9), ...[-1, 1].flatMap((s) => rep(3, (i) => [C(-1 + i, 0.45, s * 0.8, 0.45, 0.05, 0.45, 0x5a6b80), C(-1 + i, 0.72, s * 1.02, 0.45, 0.5, 0.04, 0x5a6b80), C(-1 + i + 0.3, 0.9, s * 0.35, 0.12, 0.25, 0.12, 0xffebb3), C(-1 + i, 0.775, s * 0.25, 0.3, 0.02, 0.22, 0xf5f0e1)]))], "real", I("StudyTable (3 por lado, con libro abierto y lámpara de estudio)")),
   pz("aula-biblioteca", "mueble", "aula", "Estanterías de la biblioteca (6 cuerpos)", 0x806142, rep(6, (k) => { const z = -6 + k * 2.4; return [C(0, 1.1, z, 0.45, 2.2, 2.3), ...rep(4, (b) => [C(-0.2, 0.35 + b * 0.5, z, 0.06, 0.3, 2.1, [0x8c3333, 0x33598c, 0x4d7340, 0x998040][(k + b) % 4])])]; }), "real", I("Estanterías de la biblioteca")),
   pz("puesto-ordenador", "mueble", "informatica", "Puesto de ordenador", 0x4a4f57, [...bench(1.6, 0.8, 0x4a4f57), C(0, 1.15, 0.2, 0.6, 0.38, 0.04, COL.screen), C(0, 0.92, -0.05, 0.45, 0.02, 0.15, 0x222222), C(0, 0.45, -0.65, 0.45, 0.05, 0.45, 0x333340), C(0, 0.75, -0.87, 0.45, 0.55, 0.05, 0x333340)], "real", I("MonitorDesk")),
 

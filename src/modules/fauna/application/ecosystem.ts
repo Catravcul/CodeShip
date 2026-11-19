@@ -1,4 +1,4 @@
-import { choose, tickNeeds, type Desire, type Needs } from "../domain/desires";
+import { EAT_PER_DAY, choose, tickNeeds, type Desire, type Needs } from "../domain/desires";
 import { canHunt, effectivePower, fears, predatorPower, type Medium, type Traits } from "../domain/predation";
 import { COURT_S, type Sex } from "../domain/mating";
 import { hash01 } from "../domain/roam";
@@ -44,6 +44,13 @@ export interface Intent {
   /** Its prey or the one it flees. */
   readonly other?: number;
 }
+
+/**
+ * Countable food for the grazers (fauna/domain/forage.ts): asked for `meals` (in days of its ration) by an animal that
+ * is eating, it takes what it finds from the sanctuary's plants or banks and says the share found (0–1). Without it,
+ * eating always fills (sanctuary 1).
+ */
+export type Forage = (a: Agent, meals: number) => number;
 
 /** A pair that mated: the female is pregnant. */
 export interface Mating {
@@ -125,7 +132,7 @@ export class Ecosystem {
   }
 
   /** One decision round: `dtS` seconds since the last (`dtDays` of game time) at clock `t` (s). */
-  step(dtS: number, dtDays: number, t: number, agents: readonly Agent[]): { intents: Map<number, Intent>; kills: Kill[]; matings: Mating[] } {
+  step(dtS: number, dtDays: number, t: number, agents: readonly Agent[], forage?: Forage): { intents: Map<number, Intent>; kills: Kill[]; matings: Mating[] } {
     const intents = new Map<number, Intent>();
     const kills: Kill[] = [];
     const matings: Mating[] = [];
@@ -137,7 +144,8 @@ export class Ecosystem {
       const tr = this.traits[a.species];
       if (!tr) continue;
       const s = this.st(a.id);
-      s.needs = tickNeeds(s.needs, dtS, dtDays, s.doing, tr);
+      const fed = forage && s.doing === "comer" ? forage(a, ((EAT_PER_DAY + tr.hungerPerDay) * dtDays) / Math.max(1e-9, tr.hungerPerDay)) : 1;
+      s.needs = tickNeeds(s.needs, dtS, dtDays, s.doing, tr, fed);
       const name = (sp: string) => this.names[sp] ?? sp;
       const say = (doing: Doing, verb: string, speed = 0, to?: { x: number; z: number }, other?: number) => {
         s.doing = doing;

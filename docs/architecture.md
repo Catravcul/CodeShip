@@ -61,7 +61,7 @@ docs/design/            un documento por sistema; docs/research/ investigación 
 | `habitat`, `garden`, `pets`, `poultry`, `cultured-meat`, `family`, `sanctuary`, `adoption` | Vida a bordo antigua (en pausa tras el reinicio, `REAL_ONLY`) y catálogo de especies |
 | `aerial-sanctuary` | Santuario 3: islas, edificios-árbol con ascensor, `walk.ts` (andar/nadar en cajas), vuelos, puestos |
 | `sanctuary-one` | Santuario 1: catálogo de modelos por categoría (`data/models/`), pisos amueblados (`data/floors/`), reglas de cambios a gran escala (`data/overrides.ts`), paisaje, jornada y rutas (alfombras), rejilla del paseo, población; retos (`data/retos.ts`, `application/challenges.ts`), misiones (`data/misiones.ts`, `domain/workday-missions.ts`), trepar/saltar (`domain/climb.ts`), animales vivos (`application/wildlife.ts` sobre `fauna`; datos: `data/ciclos-de-vida.ts`, `data/etograma.ts`, `data/rasgos.ts`) |
-| `fauna` | Compartido entre santuarios ([design/fauna.md](design/fauna.md)): ciclos de vida, etograma, deseos, depredación por stats, deambular, cuerpos articulados (`domain/`) y la cadena alimenticia viva (`application/ecosystem.ts`). Sin datos de ningún santuario: cada uno pasa sus especies |
+| `fauna` | Compartido entre santuarios ([design/fauna.md](design/fauna.md)): ciclos de vida, etograma, deseos, depredación por stats, deambular, cuerpos articulados (`domain/`) plantas como comida contable (`domain/forage.ts`: luz, calor, crecimiento logístico, pastoreo) y la cadena alimenticia viva (`application/ecosystem.ts`, con el gancho `Forage` para quien cuenta la comida). Sin datos de ningún santuario: cada uno pasa sus especies |
 | `settings`, `saves`, `story`, `body` | Ajustes (en la esterilla), partidas, historia, posturas |
 
 ## Patrones

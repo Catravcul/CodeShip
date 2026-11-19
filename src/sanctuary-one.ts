@@ -30,6 +30,9 @@ import { ChoreRun } from "@modules/chores/domain/chore";
 import type { Answer } from "@modules/mind-duel/domain/exercise";
 import { DuelView, type SessionText } from "./ui/duel-view";
 import { RetoPicker } from "./ui/reto-picker";
+import { ActionPad } from "./ui/action-pad";
+import { climbTarget, jumpHeight, JUMP_V0_MS } from "@modules/sanctuary-one/domain/climb";
+import type { Floor } from "@modules/aerial-sanctuary/domain/walk";
 import "./ui/lander-cabin.css";
 import "./ui/acciones.css";
 import "./ui/aerial.css";
@@ -177,6 +180,9 @@ scene.add(rig);
 const EYE_M = 1.45;
 const WALK_MS = 1.6;
 const SWIM_MS = 2.2;
+/** Running and fast swimming (Correr): a jog, about 3,4 m/s; a hard crawl, about 3 m/s. */
+const RUN_MS = 3.4;
+const SWIM_FAST_MS = 3.0;
 let body: Body = placeAt(near(L.start.x, L.start.z), L.start.x, L.start.y + 0.01, L.start.z)!;
 let yaw = L.start.yaw;
 let pitch = 0;
@@ -485,18 +491,68 @@ function openReto(r: Reto, done?: (ok: boolean) => void): void {
   );
 }
 
+// --- The Switch-style action buttons: Correr (B), Saltar (A), Trepar (X) --------------------------------------
+/** The tops she has climbed onto: floors she can walk on (walk.ts extra floors). */
+const climbed: Floor[] = [];
+let jumpT = -1;
+const pad = new ActionPad(root, [
+  { letter: "X", label: "Trepar", key: "KeyC" },
+  { letter: "A", label: "Saltar", key: "Space" },
+  { letter: "B", label: "Correr", toggle: true, key: "ShiftLeft" },
+], (letter) => {
+  if (challenge) return;
+  if (letter === "A" && body.motion === "gravedad" && jumpT < 0) jumpT = 0;
+  if (letter === "X") {
+    const c = climbTarget(near(body.x, body.z), body, yaw, climbed);
+    if (!c) return say("Nada que trepar delante (hasta 2,6 m)", 2);
+    if (!climbed.includes(c.floor) && c.floor.id.startsWith("trepar:")) climbed.push(c.floor);
+    climbAnim = { from: { x: body.x, y: body.y, z: body.z }, to: c, t: 0 };
+  }
+});
+/** Climbing up: hands first, then she pulls herself up (0,9 s). */
+let climbAnim: { from: { x: number; y: number; z: number }; to: { x: number; y: number; z: number; floor: Floor; over?: number }; t: number } | undefined;
+const CLIMB_S = 0.9;
+function frameClimb(dt: number): boolean {
+  if (!climbAnim) return false;
+  climbAnim.t += dt / CLIMB_S;
+  const k = Math.min(1, climbAnim.t);
+  const up = Math.min(1, k / 0.7);
+  const fwd = Math.max(0, (k - 0.6) / 0.4);
+  const a = climbAnim.from;
+  const b = climbAnim.to;
+  // Over a thin wall: up to its top, then down the other side.
+  const y = b.over !== undefined ? (k < 0.6 ? a.y + (b.over - a.y) * up : b.over + (b.y - b.over) * fwd) : a.y + (b.y - a.y) * up;
+  body = { x: a.x + (b.x - a.x) * fwd, y, z: a.z + (b.z - a.z) * fwd, motion: "gravedad", area: b.floor.area };
+  if (k >= 1) {
+    body = { x: b.x, y: b.y, z: b.z, motion: "gravedad", area: b.floor.area };
+    climbAnim = undefined;
+  }
+  return true;
+}
+let climbCheck = 0;
+
 function frameFree(dt: number): void {
   if (challenge) return;
+  if (frameClimb(dt)) return;
+  if (jumpT >= 0) {
+    jumpT += dt;
+    if (jumpHeight(JUMP_V0_MS, jumpT) <= 0 && jumpT > 0.05) jumpT = -1;
+  }
+  if ((climbCheck -= dt) <= 0) {
+    climbCheck = 0.3;
+    pad.enable("X", !!climbTarget(near(body.x, body.z), body, yaw, climbed));
+  }
   if (frameAuto(dt)) return;
   const mv = walker.move();
   if (!mv.forward && !mv.right) return;
-  const speed = (body.motion === "agua" ? SWIM_MS : WALK_MS) * dt;
+  const run = pad.isOn("B");
+  const speed = (body.motion === "agua" ? (run ? SWIM_FAST_MS : SWIM_MS) : run ? RUN_MS : WALK_MS) * dt;
   const dx = (-Math.sin(yaw) * mv.forward + Math.cos(yaw) * mv.right) * speed;
   const dz = (-Math.cos(yaw) * mv.forward - Math.sin(yaw) * mv.right) * speed;
   const dy = body.motion === "agua" ? Math.sin(pitch) * mv.forward * speed : 0;
   const before = body;
   const n = Math.max(1, Math.ceil(Math.hypot(dx, dy, dz) / 0.2));
-  for (let i = 0; i < n; i++) body = step(near(body.x, body.z), body, { dx: dx / n, dy: dy / n, dz: dz / n });
+  for (let i = 0; i < n; i++) body = step(near(body.x, body.z), body, { dx: dx / n, dy: dy / n, dz: dz / n }, climbed);
   // Swimming straight up or down a trunk (looking up or down with nothing ahead): the vertical part alone.
   if (body === before && body.motion === "agua" && Math.abs(dy) > 0.01) body = step(near(body.x, body.z), body, { dx: 0, dy, dz: 0 });
   stride += Math.hypot(body.x - before.x, body.z - before.z) * 3;
@@ -506,9 +562,10 @@ function updateCamera(dt: number): void {
   const look = walker.look(dt);
   yaw += look.yaw;
   pitch = Math.max(-1.3, Math.min(1.3, pitch + look.pitch));
-  rig.position.set(body.x, body.y, body.z);
+  const hop = jumpT >= 0 ? jumpHeight(JUMP_V0_MS, jumpT) : 0;
+  rig.position.set(body.x, body.y + hop, body.z);
   rig.rotation.y = yaw + Math.PI;
-  const eye = body.y + EYE_M;
+  const eye = body.y + hop + EYE_M;
   if (thirdPerson) {
     const d = camDist;
     camera.position.set(body.x + Math.sin(yaw) * d * Math.cos(pitch), eye + 0.4 - Math.sin(pitch) * d, body.z + Math.cos(yaw) * d * Math.cos(pitch));
@@ -521,7 +578,7 @@ function updateCamera(dt: number): void {
   }
   const moving = !!auto || walker.move().forward !== 0 || walker.move().right !== 0;
   if (body.motion === "agua") avatar.pose("glide");
-  else avatar.walk(stride, moving ? 1 : 0);
+  else avatar.walk(stride, moving ? (pad.isOn("B") ? 1.4 : 1) : 0);
   avatar.update(dt);
 }
 

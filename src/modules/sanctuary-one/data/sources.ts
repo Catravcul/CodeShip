@@ -33,3 +33,6 @@ export const S1_SOURCES = {
 
 /** A Cold Sanctuary builder as a source: `cs("Training", "FurnishGymCardio")`. */
 export const cs = (file: string, what: string): string => `Cold Sanctuary, Assets/Editor/SampleSceneBuilder.${file}.cs ${what}`;
+
+/** An object of Cold Sanctuary's scene as exported from Unity (2026-11-19, branch `codeship-export`, Tools › Codeship). */
+export const csx = (path: string): string => `Cold Sanctuary, escena exportada de Unity el 2026-11-19 (rama codeship-export, export/codeship-export.jsonl.gz): ${path}`;

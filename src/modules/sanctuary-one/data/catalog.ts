@@ -7,6 +7,7 @@ import { ENTRENAMIENTO_MODELS } from "./models/entrenamiento";
 import { SERVICIOS_MODELS } from "./models/servicios";
 import { CIENCIAS_MODELS } from "./models/ciencias";
 import { PRODUCCION_MODELS } from "./models/produccion";
+import { HOSPITAL_EXTRA_MODELS } from "./models/hospital-equipo";
 import type { ModelDef } from "./models/kit";
 
 export * from "./models/kit";
@@ -16,7 +17,7 @@ export * from "./models/kit";
  * model the scene draws is one entry, and every placed thing an instance naming it: changing an entry changes every
  * copy, and `overrides.ts` changes a whole category, group, floor or building at once.
  */
-export const MODELS: readonly ModelDef[] = [...BASE_MODELS, ...ENTRENAMIENTO_MODELS, ...SERVICIOS_MODELS, ...CIENCIAS_MODELS, ...PRODUCCION_MODELS, ...RESIDENCIA_MODELS, ...CAMPOS_MODELS, ...PAISAJE_MODELS, ...EDIFICIO_MODELS];
+export const MODELS: readonly ModelDef[] = [...BASE_MODELS, ...ENTRENAMIENTO_MODELS, ...SERVICIOS_MODELS, ...HOSPITAL_EXTRA_MODELS, ...CIENCIAS_MODELS, ...PRODUCCION_MODELS, ...RESIDENCIA_MODELS, ...CAMPOS_MODELS, ...PAISAJE_MODELS, ...EDIFICIO_MODELS];
 
 const BY_ID = new Map(MODELS.map((d) => [d.id, d]));
 

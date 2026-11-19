@@ -220,7 +220,7 @@ export class Journey {
         v.project(cam);
         return { x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight, front: v.z < 1 };
       };
-      const mid = at(0.9);
+      const mid = at(1.2);
       const head = at(1.65);
       const ok = mid.front && mid.x >= 0 && mid.x <= innerWidth && mid.y >= 0 && mid.y <= top && head.y >= -10;
       return { ok, top: Math.round(top), mid: { x: Math.round(mid.x), y: Math.round(mid.y) }, head: { x: Math.round(head.x), y: Math.round(head.y) }, fov: Math.round(cam.fov) };

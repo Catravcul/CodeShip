@@ -1,4 +1,4 @@
-import { C, m, pz, type ModelDef, type Shape } from "./kit";
+import { C, m, pz, rep, type ModelDef, type Part, type Shape } from "./kit";
 
 /**
  * The plants of the Árbol de los Campos (Cold Sanctuary's GardenPlot.cs: each guild its rows, mounds or forest
@@ -12,6 +12,50 @@ const plant = (id: string, label: string, w: number, h: number, color: number, s
   ...m(id, "naturaleza", "cultivos", label, w, h, w, color, shape, "real", GP(what)),
   ...(walkThrough ? { walkThrough } : {}),
 });
+
+/** The six methods of the world in the Huerto (SampleSceneBuilder.WorldMix.cs FurnishWorldGarden): 4 × 4 m plots, each a real technique. */
+const WM = (what: string) => `Cold Sanctuary, Assets/Editor/SampleSceneBuilder.WorldMix.cs FurnishWorldGarden ${what}`;
+const W_SOIL = 0x523b29, W_DRY = 0xb89a6b, W_WATER = 0x5994ad, W_GREEN = 0x5c994d, W_STONE = 0x8f8a80, W_BASALT = 0x333338, W_WOOD = 0x8c6640;
+const chinampa: Part[] = [
+  C(0, 0.05, 0, 4, 0.1, 4, W_WATER), C(0, 0.2, 0, 2.4, 0.3, 3.4, W_SOIL),
+  ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => C(sx * 1.1, 0.9, sz * 1.6, 0.14, 1.2, 0.14, 0x735c38))),
+  ...rep(5, (i) => [C(0, 0.42, (i - 2) * 0.6, 1.8, 0.14, 0.2, W_GREEN)]),
+];
+const zai: Part[] = [
+  C(0, 0.03, 0, 4, 0.06, 4, W_DRY),
+  ...rep(16, (k) => { const x = -1.2 + (k % 4) * 0.8, z = -1.2 + Math.floor(k / 4) * 0.8; return [C(x, 0.07, z, 0.4, 0.02, 0.4, W_SOIL), C(x, 0.2, z, 0.08, 0.26, 0.08, W_GREEN)]; }),
+];
+const anden: Part[] = rep(3, (k) => {
+  const h = 0.3 * (k + 1), z = -1.3 + k * 1.3;
+  return [C(0, h / 2, z, 4, h, 1.3, W_STONE), C(0, h + 0.04, z + 0.05, 3.8, 0.08, 1.1, W_SOIL), C(0, h + 0.16, z + 0.05, 3.4, 0.16, 0.25, W_GREEN)];
+});
+const hugel: Part[] = [
+  ...rep(5, (i) => [C((i - 2) * 0.55, 0.15, 0, 0.3, 0.3, 3.8, W_WOOD)]),
+  ...rep(3, (k) => [C(0, 0.4 + k * 0.25, 0, 3 - k * 0.9, 0.25, 3.3, W_SOIL)]),
+  ...rep(3, (i) => [C(0, 1.1, (i - 1) * 1, 0.7, 0.2, 0.5, W_GREEN)]),
+];
+/** A batdam side: 7 basalt stones at 1,85 m from the centre, turned k × 90° (side 0 keeps its 1,6 m gate). */
+const batdamSide = (k: number): Part[] => rep(7, (j) => {
+  const i = j - 3;
+  if (k === 0 && Math.abs(i) <= 1) return [];
+  const high = 0.45 + (i & 1) * 0.12, a = i * 0.55, b = 1.85;
+  const [x, z, sx, sz] = k === 0 ? [a, b, 0.52, 0.3] : k === 1 ? [b, -a, 0.3, 0.52] : k === 2 ? [-a, -b, 0.52, 0.3] : [-b, a, 0.3, 0.52];
+  return [C(x, high / 2, z, sx, high, sz, W_BASALT)];
+});
+const batdam: Part[] = [C(0, 0.04, 0, 3.6, 0.08, 3.6, W_SOIL), ...[0, 1, 2, 3].flatMap(batdamSide), ...rep(3, (i) => [C((i - 1) * 0.9, 0.2, 0, 0.3, 0.24, 2.8, W_GREEN)])];
+const subak: Part[] = [
+  ...[-1, 1].flatMap((sx) => [C(sx * 1.05, 0.08, -0.2, 1.8, 0.16, 3.4, 0x759e9e), ...rep(5, (i) => [C(sx * 1.05, 0.26, -0.2 + (i - 2) * 0.6, 1.4, 0.2, 0.08, W_GREEN)])]),
+  C(0, 0.09, 0, 0.14, 0.18, 3.8, W_STONE), C(0, 0.1, 1.75, 4, 0.2, 0.4, W_WATER), C(0, 0.28, 1.75, 0.12, 0.2, 0.42, W_STONE),
+];
+export const WORLD_GARDEN: readonly (readonly [id: string, x: number, z: number, label: string])[] = [
+  ["metodo-chinampa", -6.5, 3.5, "Chinampa (Xochimilco, México): huerto entre canales"],
+  ["metodo-zai", 1, 3.5, "Zaï (Burkina Faso): hoyos con compost que recuperan el suelo"],
+  ["metodo-anden", 8.5, 3.5, "Andén (Andes): terrazas de piedra en la ladera"],
+  ["metodo-hugelkultur", -6.5, 10, "Hügelkultur (Europa central): montículo sobre troncos"],
+  ["metodo-batdam", 1, 10, "Batdam (Jeju, Corea): muretes de basalto contra el viento"],
+  ["metodo-subak", 8.5, 10, "Subak (Bali): el agua se reparte entre vecinos"],
+];
+const WORLD_PARTS: Readonly<Record<string, Part[]>> = { "metodo-chinampa": chinampa, "metodo-zai": zai, "metodo-anden": anden, "metodo-hugelkultur": hugel, "metodo-batdam": batdam, "metodo-subak": subak };
 
 export const CAMPOS_MODELS: readonly ModelDef[] = [
   m("campo-suelo", "naturaleza", "suelos", "Suelo del cultivo", 24, 0.06, 20, 0xb3a394, "caja", "real", GP("Suelo_Huerto")),
@@ -36,5 +80,6 @@ export const CAMPOS_MODELS: readonly ModelDef[] = [
   pz("maceta-arbusto", "naturaleza", "frutales", "Arbusto frutal en maceta", 0x4a8a3a, [C(0, 0.3, 0, 0.7, 0.6, 0.7, POT), C(0, 1.2, 0, 1.2, 1.2, 1.2, 0x4a8a3a), C(0.3, 1.0, 0.45, 0.15, 0.15, 0.15, FRUIT)], "real", GP_FRUIT),
   { ...pz("maceta-herbacea", "naturaleza", "frutales", "Herbácea frutal en maceta (piña, frutilla)", 0x6aaa4a, [C(0, 0.2, 0, 0.6, 0.4, 0.6, POT), C(0, 0.55, 0, 0.6, 0.3, 0.6, 0x6aaa4a)], "real", GP_FRUIT), walkThrough: true },
   { ...pz("maceta-rastrera", "naturaleza", "frutales", "Rastrera en maceta (sandía)", 0x3a7a30, [C(0, 0.2, 0, 0.7, 0.4, 0.7, POT), C(0, 0.42, 0.6, 1.0, 0.1, 1.0, 0x3a7a30), C(0.2, 0.47, 0.8, 0.3, 0.2, 0.25, 0x2f6a2a)], "real", GP_FRUIT), walkThrough: true },
+  ...WORLD_GARDEN.map(([id, , , label]) => pz(id, "naturaleza", "huerto-mundo", label, W_GREEN, WORLD_PARTS[id]!, "real", WM(id))),
   m("incinerador-maleza", "maquina", "huerto", "Incinerador de plantas no nativas (con filtro)", 1.2, 2.4, 1.2, 0x4a4f57, "caja", "real", "Cold Sanctuary, Assets/Editor/SampleSceneBuilder.Tree.cs Incinerador_maleza (docs/deshierbe-cuidadoso.md)"),
 ];

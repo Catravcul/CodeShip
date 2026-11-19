@@ -1,3 +1,4 @@
+import { WORLD_GARDEN } from "../models/campos";
 import type { FloorPlan, Placed } from "./kit";
 
 /**
@@ -80,6 +81,8 @@ const field = (id: string, title: string, fill: Parameters<typeof plot>[4], seed
 function huerto(): FloorPlan {
   const items = plot(3, -6.5, 18, 6, vegetables, 55, true);
   items.push({ model: "incinerador-maleza", x: -7, z: -6.5, name: "Incinerador: plantas no nativas con su tierra" });
+  // The six methods of the world, in the free half of the floor (FurnishWorldGarden).
+  for (const [model, x, z] of WORLD_GARDEN) items.push({ model, x, z });
   return { id: "campos-huerto", size: SIZE, items, source: `${SRC} Hortalizas; SampleSceneBuilder.Tree.cs TrunkFloor (piso 5)` };
 }
 

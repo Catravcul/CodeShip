@@ -7,7 +7,7 @@ import { settings } from "./settings-store";
  * tareas, areas.md): how «Ir» gets there (`taskTravel`) and which vehicle (`taskVehicle`, automatic = where she
  * is). One source of truth, `codeship.ajustes`; both windows draw them with this and change them the same way.
  */
-export const VEHICLE_NAME: Record<Vehicle, string> = { nodriza: "Nave (Starship)", estacion: "Estación", modulo: "Módulo", entrenamiento: "Isla de entrenamiento", lanzadera: "Lanzadera", parque: "Parque energético", muelle: "Muelle aéreo", plataforma: "Plataforma de tripulación", glaciar: "Glaciar", "santuario-1": "Santuario 1" };
+export const VEHICLE_NAME: Record<Vehicle, string> = { nodriza: "Nave (Starship)", estacion: "Estación", modulo: "Módulo", entrenamiento: "Isla de entrenamiento", lanzadera: "Lanzadera", parque: "Parque energético", muelle: "Muelle aéreo", plataforma: "Plataforma de tripulación", glaciar: "Glaciar", bioma: "Isla subantártica", "santuario-1": "Santuario 1" };
 
 /**
  * Which «vehículos» the shared settings offer and what their heading says: the space game's vehicles, or in

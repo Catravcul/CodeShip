@@ -45,7 +45,7 @@ const LOOK: Record<string, THREE.Material> = {
   camilla: mat(0xd9e6ef),
 };
 
-const FLOOR_LOOK: Record<string, number> = { entrenamiento: 0x7f9a62, lanzadera: 0xd2d7dc, parque: 0xd2d7dc, muelle: 0xc7ccd1, plataforma: 0x77706a, glaciar: 0xf1f5f8 };
+const FLOOR_LOOK: Record<string, number> = { entrenamiento: 0x7f9a62, lanzadera: 0xd2d7dc, parque: 0xd2d7dc, muelle: 0xc7ccd1, plataforma: 0x77706a, glaciar: 0xf1f5f8, bioma: 0x6f7f4a };
 /** The wind-swept blue ice (the runway and the meteorite field) against the snow around. */
 const BLUE_ICE = 0x9cc8e0;
 

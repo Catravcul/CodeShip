@@ -7,7 +7,7 @@ import { isRecord } from "@core/snapshot";
  */
 export const AERIAL_LEVEL = 3;
 
-export const AERIAL_ISLANDS = ["entrenamiento", "lanzadera", "parque", "muelle", "plataforma", "glaciar"] as const;
+export const AERIAL_ISLANDS = ["entrenamiento", "lanzadera", "parque", "muelle", "plataforma", "glaciar", "bioma"] as const;
 export type AerialIsland = (typeof AERIAL_ISLANDS)[number];
 
 export interface AerialState {
@@ -46,4 +46,5 @@ export const ISLAND_NAME: Readonly<Record<AerialIsland, string>> = {
   muelle: "Muelle aéreo",
   plataforma: "Plataforma de tripulación",
   glaciar: "Glaciar",
+  bioma: "Isla subantártica",
 };

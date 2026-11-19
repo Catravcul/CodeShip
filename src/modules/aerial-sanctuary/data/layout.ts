@@ -9,6 +9,7 @@ import { CREW_PAD, CROWN, HEIGHT_RULE, HELIDECK_M, SITE, TABLE, TRAINING, TREE, 
 import { tablesFor } from "../domain/energy";
 import { S3_SOURCES as S } from "./sources";
 import { furnishIsland, furnishRoom, type PlacedFixture, type WalkCheck } from "./fixtures";
+import { BIOME_ISLAND, buildBiomeIsland } from "./bioma-island";
 
 /**
  * Sanctuary 3 as the scene and the rules see it (docs/design/santuario3-escena.md): the islands, their floors, water
@@ -20,7 +21,7 @@ import { furnishIsland, furnishRoom, type PlacedFixture, type WalkCheck } from "
  * draws every area `k` times bigger on the plan, Cold Sanctuary's too (§2.4): each room about its centre, each cap,
  * the dock and the crew pad about theirs (`Builder.widen`); heights stay true, and the islands keep their places.
  */
-export type IslandId = "entrenamiento" | "lanzadera" | "parque" | "muelle" | "plataforma" | "glaciar";
+export type IslandId = "entrenamiento" | "lanzadera" | "parque" | "muelle" | "plataforma" | "glaciar" | "bioma";
 
 export interface IslandDef {
   readonly id: IslandId;
@@ -1091,6 +1092,10 @@ export function buildLayout(k = 1): S3Layout {
   b.solids.push({ ...around(acW.x, acW.z, plane.length / 2, fuselage / 2), y0: 0, y1: 6.2 });
   pads.push({ island: "glaciar", at: { ...wide(G, gPad.x, gPad.z), y: 0.05 }, crafts: ["helicoptero"] });
 
+  // ── The biome's island (docs/design/bioma-s3.md): data/bioma-island.ts ──
+  const biome = buildBiomeIsland(b, k, HELIDECK_M.value);
+  pads.push(biome.pad);
+
   const islands: IslandDef[] = [
     { id: "entrenamiento", name: "Isla de entrenamiento", desc: "Las instalaciones reales de formación: la piscina NBL, la centrífuga, las maquetas, el control de misión, el centro médico y el helipuerto. Todo aquí es real", reality: "real", source: S.ours, rect: R(ti.x0, ti.x1, ti.z0, ti.z1), deckY: 0, pad: pads[0]!, arrival: "entrenamiento:helipuerto:centro", nav: "m:nav-entrenamiento" },
     { id: "lanzadera", name: "Lanzadera de cohetes", desc: "El casquete de Cold Sanctuary con su edificio-árbol de agua, el ascensor del tronco y la corona del Electron en lo alto (con toda su magia)", reality: "ficcion", source: S.csBuilder, rect: around(L.x, L.z, LH * k), deckY: 0, pad: pads[1]!, arrival: "lanzadera:helipuerto", nav: "m:nav-lanzadera" },
@@ -1098,6 +1103,7 @@ export function buildLayout(k = 1): S3Layout {
     { id: "muelle", name: "Muelle aéreo", desc: "El muelle de las alfombras voladoras de Cold Sanctuary", reality: "ficcion", source: S.csBuilder, rect: around(Dk.x, Dk.z, (dz.x / 2) * k, (dz.z / 2) * k), deckY: 0, pad: pads.find((p) => p.island === "muelle")!, arrival: "muelle:pista", nav: "m:nav-muelle" },
     { id: "plataforma", name: "Plataforma de tripulación", desc: "El Falcon 9 con la Crew Dragon en una plataforma en el mar, a ~1,1 km: la distancia de seguridad de un cohete tripulado", reality: "licencia", source: S.odyssey, rect: around(C.x, C.z, (cs.x / 2) * k, (cs.z / 2) * k), deckY: cy, pad: pads.find((p) => p.island === "plataforma")!, arrival: "plataforma:helipuerto", nav: "m:nav-plataforma" },
     { id: "glaciar", name: "Glaciar", desc: "Un glaciar fuera de las islas con una pista de hielo azul como la de Union Glacier: el Il-76MDK de ingravidez, la búsqueda de meteoritos y la supervivencia en frío", reality: "licencia", source: S.blueIce, rect: around(G.x, G.z, gh.x * k, gh.z * k), deckY: 0, pad: pads.find((p) => p.island === "glaciar")!, arrival: "glaciar:helipuerto:centro", nav: "m:nav-glaciar" },
+    biome,
   ];
 
   const inhabited = [
@@ -1105,6 +1111,7 @@ export function buildLayout(k = 1): S3Layout {
     { id: "Parque Energético (tronco)", ...around(E.x, E.z, (TREE.waterHalf.value + TREE.wall.value) * k) },
     { id: "muelle aéreo", ...around(Dk.x, Dk.z, (dz.x / 2) * k, (dz.z / 2) * k) },
     { id: "campamento del glaciar", ...around(G.x + (-1440) * k, G.z + -80 * k, 15 * k, 15 * k) },
+    { id: "estación del bioma", ...around(BIOME_ISLAND.centre.value.x, BIOME_ISLAND.centre.value.z, 10 * k) },
   ];
   void FALCON9_CREW;
   return {

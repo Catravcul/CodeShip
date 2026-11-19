@@ -291,6 +291,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | AER-28 | Probado (en vivo) | 2026-11-18 | `e2c1be2d` | [run](runs/2026-11-18-2155-PX-48.md) (PX-48); `launch.test.ts` verde |
 | AER-29 | Probado (en vivo) | 2026-11-18 | `e2c1be2d` | [run](runs/2026-11-18-2155-PX-48.md) (PX-48); `launch.test.ts`, `launch-sequence.test.ts` verdes |
 | AER-30 | Probado (en vivo) | 2026-11-18 | `e2c1be2d` | [run](runs/2026-11-18-2155-PX-48.md) (PX-48); `launch-handover.test.ts` verde |
+| AER-31 | Probado (en vivo) | 2026-11-19 | `3bfdaf12` | [run](runs/2026-11-19-2129-PX-51.md) (PX-51); `bioma.test.ts`, `biome-life.test.ts`, `forage.test.ts` verdes |
 | CV-01 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK |
 | CV-02 | Probado (suite) | 2026-11-13 | `c21eebe` | [run](runs/2026-11-13-1200-hc-decisiones-vitest.md): OK · **HC-01** cerrado |
 | CV-03 | Probado (suite) | 2026-11-13 | `99b1cef` | [run](runs/2026-11-13-1018-cv-convivencia-vitest.md): OK · **B-01** arreglado |
@@ -349,6 +350,7 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-45 | Probado (en vivo) | 2026-11-18 | `fe466708` | [run](runs/2026-11-18-2053-PX-45-PX-49.md): 32 OK |
 | PX-46 | Probado (en vivo) | 2026-11-18 | `e2c1be2d` | [run](runs/2026-11-18-2202-PX-46-PX-47.md): 54 OK |
 | PX-50 | Probado (en vivo) | 2026-11-18 | `90ba319` | [run](runs/2026-11-18-1140-PX-10-PX-44-PX-50.md): 28 OK |
+| PX-51 | Probado (en vivo) | 2026-11-19 | `3bfdaf12` | [run](runs/2026-11-19-2129-PX-51.md): 23 OK |
 | PX-47 | Probado (en vivo) | 2026-11-18 | `e2c1be2d` | [run](runs/2026-11-18-2202-PX-46-PX-47.md): 51 OK |
 | PX-49 | Probado (en vivo) | 2026-11-18 | `fe466708` | [run](runs/2026-11-18-2053-PX-45-PX-49.md): 48 OK |
 | PX-48 | Probado (en vivo) | 2026-11-18 | `e2c1be2d` | [run](runs/2026-11-18-2155-PX-48.md): 35 OK |
@@ -389,6 +391,7 @@ La más reciente arriba.
 | 2026-11-18 11:46 | PX-42 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-18-1146-PX-42.md) |
 | 2026-11-18 11:45 | PX-04, PX-05 | Experiencia (Playwright) | 1/2 recorridos bien | [run](runs/2026-11-18-1145-PX-04-PX-05.md) |
 | 2026-11-18 11:44 | PX-01 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-18-1144-PX-01.md) |
+| 2026-11-19 21:29 | PX-51 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-19-2129-PX-51.md) |
 | 2026-11-18 11:40 | PX-10, PX-44, PX-50 | Experiencia (Playwright) | 3/3 recorridos bien | [run](runs/2026-11-18-1140-PX-10-PX-44-PX-50.md) |
 | 2026-11-18 11:37 | PX-50 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-18-1137-PX-50.md) |
 | 2026-11-18 10:16 | PX-01 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-18-1016-PX-01.md) |

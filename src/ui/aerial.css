@@ -23,3 +23,14 @@ body.in-island-nav .cab-toast, body.in-tasks .cab-toast, body.in-areas .cab-toas
 body.in-duel .vstick.s3-move, body.in-duel .cab-machine, body.in-duel .s3-bar { display: none !important; }
 /* Flying by hand: the pad replaces the move stick; the place tag stays at the top. */
 body.has-rcs-pad .vstick.s3-move { display: none !important; }
+/* The biome's census board (s3-biome.ts, docs/design/bioma-s3.md). */
+.s3-censo .cz-body h4 { margin: 6px 0 2px; font-size: 12px; color: #9fe3ff; }
+.s3-censo .cz-list, .s3-censo .cz-events { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.s3-censo .cz-list li { display: flex; flex-direction: column; padding: 4px 0; border-bottom: 1px solid #7fdcff22; font-size: 12px; }
+.s3-censo .cz-name { font-weight: 600; color: #e6f7ff; }
+.s3-censo .cz-name i { font-weight: 400; color: #9bb7c4; }
+.s3-censo .cz-n { color: #ffd27a; }
+.s3-censo .cz-hungry { color: #ff9b7a; }
+.s3-censo small { color: #b8d3de; }
+.s3-censo .cz-events li { font-size: 12px; }
+@media (min-width: 521px) { .s3-censo { max-height: 70vh; overflow-y: auto; } }

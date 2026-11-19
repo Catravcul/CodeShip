@@ -6,6 +6,9 @@ import type { ModelDef } from "@modules/sanctuary-one/data/catalog";
  * The animals of a species drawn as jointed cube bodies (domain/animal-body.ts): one InstancedMesh per body part,
  * each copy posed every frame from its place, heading and the time of its gait. A herd of 30 is ~10 draw calls.
  */
+/** What a herd needs of its model: sanctuary 1's catalogue entries, or sanctuary 3's biome species. */
+export type HerdModel = Pick<ModelDef, "id" | "shape" | "size" | "color" | "category" | "group">;
+
 export class AnimalHerd {
   readonly meshes: THREE.InstancedMesh[] = [];
   private readonly parts: readonly BodyPart[];
@@ -14,7 +17,7 @@ export class AnimalHerd {
   private static readonly unit = new THREE.BoxGeometry(1, 1, 1);
 
   constructor(
-    readonly d: ModelDef,
+    readonly d: HerdModel,
     count: number,
     tint?: number,
   ) {
@@ -30,7 +33,7 @@ export class AnimalHerd {
     }
   }
 
-  static has(d: ModelDef): boolean {
+  static has(d: HerdModel): boolean {
     return d.category === "animal" && !!bodyPlan(d.shape, d.id);
   }
 

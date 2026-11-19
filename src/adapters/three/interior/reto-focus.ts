@@ -15,7 +15,7 @@ import type { StepFrame, StepShow } from "./step-show";
 export interface LensFov {
   /** The scene's own angle, back when the sheet closes (default: the one it had when the lens came on). */
   readonly base?: number;
-  /** Half the vertical angle of the strip above the sheet in portrait (degrees, default 25: her whole at a thing). */
+  /** Half the vertical angle of the strip above the sheet in portrait (degrees, default 28: her whole at a thing). */
   readonly half?: number;
 }
 
@@ -41,7 +41,7 @@ export function sheetLens(camera: THREE.PerspectiveCamera, on: boolean, fov: Len
     // The full frustum is F tall with its middle at LENS_LINE of the screen; its half angle makes ±LENS_LINE·h span ±half.
     const F = 2 * (1 - LENS_LINE) * h;
     camera.aspect = w / F;
-    camera.fov = (2 * Math.atan((Math.tan((fov.half ?? 25) * rad) * (F / 2)) / (LENS_LINE * h))) / rad;
+    camera.fov = (2 * Math.atan((Math.tan((fov.half ?? 28) * rad) * (F / 2)) / (LENS_LINE * h))) / rad;
     camera.setViewOffset(w, F, 0, (1 - 2 * LENS_LINE) * h, w, h);
   } else if (on) {
     const W = 1.44 * w;

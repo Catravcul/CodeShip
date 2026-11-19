@@ -140,7 +140,9 @@ cubiertas de la Starship, la estación, la cabina del LM y el puente) usan el mi
   opción (`data-title`, `data-detail` y, si está apagado, `data-why`), y si la tarjeta tiene más botones la elección
   añade «Ver la máquina», que la muestra. Las máquinas sin reto siguen con su tarjeta.
 - **Foco del reto, uno para todos** (`src/adapters/three/interior/reto-focus.ts`): `sheetLens` (la franja libre encima de
-  la hoja en vertical, a su izquierda en horizontal) en los santuarios 1 y 3, las cubiertas de la Starship, la estación,
+  la hoja en vertical, a su izquierda en horizontal; en vertical la línea de la cámara queda en el 15 % de arriba y el 30 %
+  de arriba ve ±28°, así caben su cabeza, sus pies y la cosa aunque la hoja sea alta: antes, con los 72° de la escena, la
+  mesa de campo del bioma le cortaba la cabeza) en los santuarios 1 y 3, las cubiertas de la Starship, la estación,
   el anillo, el puente y la cabina del LM; `retoFrame`/`focusReto` (ella delante de la cosa, la cámara tras su hombro
   derecho, más alta y lejos en las máquinas altas; `close` para la consola de 0 g del puente); `retoVisual` (cada paso
   resuelto se representa, sin repetir los bloques ya hechos «paso a paso»); `framePair` (los puestos del santuario 3,

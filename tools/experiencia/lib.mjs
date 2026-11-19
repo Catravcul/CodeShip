@@ -709,7 +709,7 @@ export class Journey {
     // Reading a machine's card: a player shows it with «Panel» first.
     if (/cab-machine|sti-card|sts-card/.test(selector)) await this.showPanel(selector);
     // A machine with challenges only has no card to show: what it says is what its choice of challenge says.
-    if (/cab-machine/.test(selector) && !(await this.page.evaluate(() => document.body.classList.contains("panel-on"))) && (await this.retoOnly(selector)))
+    if (/cab-machine|sti-card|sts-card/.test(selector) && !(await this.page.evaluate(() => document.body.classList.contains("panel-on"))) && (await this.retoOnly(selector)))
       return this.page.evaluate((sel) => [...document.querySelectorAll(sel)].filter((e) => e.closest(".cab-machine:not(.hidden)")).map((e) => e.textContent.replace(/\s+/g, " ").trim()), selector);
     return this.page.evaluate(
       (sel) =>

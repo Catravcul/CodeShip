@@ -86,6 +86,7 @@ Capturas (antes / después), en `docs/screenshots/`:
   pulgar izquierdo: orienta      pulgar derecho: mueve y actúa
 ```
 
+- **Catálogo de iconos** (`src/ui/icon-catalog.ts`, Berón 2026-11-19): cada icono de `icons.ts` con lo que dibuja, lo que significa y dónde se usa; su prueba lo compara con el código. Antes de usar un icono para algo nuevo, mirar si está libre (`usedIn: []`) o añadir uno.
 - **Iconos de raíz** (antes «☰ Mandos», retirado): arriba a la derecha, fijos, el **ojo** (cámara: cabina, exterior, ventral, trasera; 1ª/3ª persona; nombre accesible «Cámara: …», tecla C) y **Levantarse** (al habitáculo, H). De la raíz brotan Aterrizaje (G), Acople (K, solo en alcance), Tiempo y Centrar, y se recogen a los 5 s. Las etiquetas salen con una pulsación larga o siempre con la ayuda de teclado encendida. Todos ≥ 44 px y con nombre.
 - **Sin botones de modo en la cabina:** «Entrar en la nave de viaje / en la estación», «Salir de la nave» (EVA), «Entrar en su mente» y «Nombres» ya no están en el HUD. Son máquinas del habitáculo del módulo: consola de acople, escotilla EVA, consola de la mente y esterilla ([habitaculo.md](habitaculo.md)). Fase y confianza del asteroide tampoco: viven en la consola de la mente y en la ficha del mapa.
 - La **columna de contexto** (`.ctx-dock`, creada en `main.ts`) reúne el aviso, el chip del viaje y la región. Fuera de la cabina solo muestra el chip del viaje, abajo al centro, donde estaba.

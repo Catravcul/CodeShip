@@ -34,17 +34,28 @@ salud.
 | 1 | Al acercarse a una máquina, botón para su reto **fuera del menú general, debajo de su botón, naranja** (alerta de que se puede interactuar); igual en las naves, donde hoy va dentro del menú | Hecho: `RootMenu.interact()` (botón `.rm-act` bajo el engranaje); las naves lo usan también (MachinePanel) |
 | 2 | Retos de código en máquinas, plantas y demás (los que pidió el primer día) | Hecho: `application/challenges.ts` `retosFor` + `data/retos.ts` (procedimientos reales con fuente; la «mente» de los animales es ficción) |
 | 3 | Botón de **Misiones** (modal de jornada) | Hecho: ventana Misiones (`data/misiones.ts`, `domain/workday-missions.ts`): bloqueo por hora y día, libres a partir de las 16:00, recompensas comida/compañía/fuerza/salud |
-| 4 | Rehacer los botones de zoom; mandos como los de una **Nintendo Switch**, con transparencia; botones de **correr**, **saltar** y **trepar** | Hecho: `ui/action-pad.ts` (X trepar, A saltar, B correr), palancas translúcidas, zoom − / + redondo sobre la palanca de mirar |
+| 4 | Rehacer los botones de zoom; mandos como los de una **Nintendo Switch**, con transparencia; botones de **correr**, **saltar** y **trepar** | Hecho: `ui/action-pad.ts` con todos los botones de la Switch (2.ª lista: cruceta, L/ZL, −, captura a la izquierda; A/B/X/Y, R/ZR, +, inicio a la derecha); asignados X trepar, A saltar, B correr, cruceta ↑/↓ zoom; los libres, atenuados |
 | 5 | Mapa de Áreas en su modo más visible (en el santuario 1, quizá vertical); o un modelo simple como la pantalla de inicio: **cada área una esfera** en su posición | Hecho: Áreas como esferas en su posición (vista inclinada en el S1) |
-| 6 | Ajustes de Áreas: **santuario / casquete / edificio** y debajo sus opciones (como las alfombras mágicas); solo se ven sus áreas | Hecho: ajustes santuario / casquete / edificio con sus opciones |
+| 6 | Ajustes de Áreas: **santuario / casquete / edificio** y debajo sus opciones (como las alfombras mágicas); solo se ven sus áreas | Hecho (2.ª lista): como la lista de vehículos de Codeship: Automático (donde está ella), todo el santuario, cada edificio por su nombre (Servicios, Entrenamiento…) y cada casquete; el mapa dibuja el edificio elegido (tronco, pisos y anillos) |
 | 7 | **Filtros de categoría** en la lista de Áreas (y lo mismo en Codeship, donde también faltan) | Hecho: chips de categoría (también en Codeship: AreaNode.category) |
 | 8 | Las **puertas** de los edificios-árbol no se ven: marco | Hecho: marco ámbar en cada puerta (suelo, pisos y anillos) |
 | 9 | **Mascarillas de oxígeno** | Hecho: perchero fuera y estación dentro del agua en cada puerta; las personas se la ponen al nadar |
 | 10 | **Alfombras voladoras** y **árboles de la isla** | Hecho: alfombras voladoras con plataformas por piso (`CARPET` en jornada.ts) y abedules de bloques en la isla |
-| 11 | Personas que parecen **volar todas juntas**; ninguna se ve haciendo sus tareas de jornada | En parte: salen escalonados (hasta 60 s) cada uno en su alfombra, sentados en loto; en su puesto se quedan frente al equipo (falta la animación de cada tarea) |
+| 11 | Personas que parecen **volar todas juntas**; ninguna se ve haciendo sus tareas de jornada | Hecho: salen escalonados (hasta 60 s) cada uno en su alfombra; en su puesto hacen los pasos del reto de esa máquina (los gestos de `step-show.ts`) |
 | 12 | Animales: mejores modelos, **cuerpos de cubos con articulaciones** de Cold Sanctuary (revisar si encaja con three.js o hay algo mejor) | Hecho: `domain/animal-body.ts` + `adapters/three/animal-bodies.ts` (un InstancedMesh por parte, articulaciones por anatomía real) |
 | 13 | Restaurante y todas las áreas con **realismo**: lista de equipos, utensilios, ingredientes, maquinaria (pan, harina, queso, kéfir…), investigada con fuentes | Restaurante hecho (`models/cocina-equipo.ts`: equipo real por oficio, utensilios, ingredientes y mesas puestas); el resto de áreas, piso a piso |
-| 14 | Usar Unity en su PC para revisar la jerarquía de cada área (preguntado) | En curso: exportador `Tools > Codeship > Exportar escena` en su PC; al llegar, revisar código e investigar para mejorarlo |
+| 14 | Usar Unity en su PC para revisar la jerarquía de cada área (preguntado) | Exportado: rama `codeship-export` de Cold-Sanctuary (61 470 objetos con posición, tamaño, malla, color y componentes); se usa piso a piso junto con el código y la investigación |
+
+### Segunda lista (2026-11-19)
+
+| # | Pedido | Estado |
+| --- | --- | --- |
+| 15 | Animaciones: las personas haciendo sus tareas | Hecho: cada puesto (`Place.work`) reproduce los pasos de su reto |
+| 16 | Los retos deben **enfocar** para ver la animación | Hecho: `StepShow` en el S1: ella frente a la máquina, cámara por su hombro en la franja libre de la hoja, cada paso resuelto actuado |
+| 17 | Mandos: 4 botones a cada lado; primero todos los de la Switch y luego se asignan | Hecho (ver #4) |
+| 18 | Cada humano con su forma y cara, como en Cold Sanctuary (sus fotos) | Hecho: `data/looks.ts` (de CubeHair.cs y diseno-personajes.md, descritos de sus fotos; las fotos no están en el repositorio) + `CubeFigure.dress()` |
+| 19 | Icono propio para el reto; **lista de iconos** con dónde se usa cada uno | Hecho: `ui/icon-catalog.ts` (la prueba lo compara con el código: un icono con `usedIn: []` está libre) |
+| 20 | Filtros de Áreas como Codeship y por edificio con sus nombres | Hecho (ver #6) |
 
 ## Cambios a gran escala
 
@@ -119,4 +130,3 @@ catálogo (tamaño, piezas, color) cambia todas sus copias; un piso es una lista
 1. La lista de arreglos de Berón (en `overrides.ts` cuando sean a gran escala).
 2. La exportación de Unity: compararla con nuestros pisos e investigar para superar a Cold Sanctuary, piso a piso
    (después del restaurante: hospital, laboratorios, producción, gimnasio).
-3. Personas trabajando visiblemente en su puesto (postura y gesto por tarea).

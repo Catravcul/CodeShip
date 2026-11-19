@@ -5,6 +5,11 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-19
 
+- **Santuario 1, 2.ª lista**: mandos con todos los botones de la Switch (zoom en la cruceta); Áreas con Automático,
+  cada edificio por su nombre y cada casquete, el edificio dibujado; cada persona con su cara, pelo, ropa y estatura
+  (de Cold Sanctuary); el personal hace los pasos de su trabajo; los retos enfocan la animación; catálogo de iconos
+  (`ui/icon-catalog.ts`). [docs/design/santuario1.md](docs/design/santuario1.md)
+
 - **Santuario 1, pedidos del 19-nov**: botón naranja de interacción (también en las naves) con retos reales en
   máquinas, plantas y animales; ventana Misiones con la jornada y recompensas; Áreas en esferas con filtros y ajustes
   santuario/casquete/edificio; mandos estilo Switch (correr, saltar, trepar); alfombras voladoras, mascarillas y marcos

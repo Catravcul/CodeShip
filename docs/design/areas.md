@@ -20,6 +20,14 @@ Ir a un área
 - **Viaje** (por defecto): el mismo motor de «Ir» de las tareas (`JourneyDriver.goTo`), con el sitio del grafo del área (`estacion:<accesorio>`, `nave:<accesorio>`, `puente:nav`, `modulo:<puesto>`). Al llegar no usa ninguna máquina: se queda allí y lo dice («En: Destiny»). Si hay que volar antes, para donde se vuela con el aviso de siempre (reglas.md §3.5).
 - **Teletransporte**: como en las tareas, con fundido y el aviso «Teletransporte (elegido en Áreas)»; si los vehículos no están unidos, la lleva a lo que los une y dice por qué.
 
+## Todos los niveles (2026-11-19)
+
+La misma ventana (`ui/areas-window.ts`) en las naves y en los santuarios 1 y 3, cada uno con sus datos: cada área es una
+esfera en su sitio, y la lista tiene los chips de categoría (en las naves, el tipo de módulo; en el santuario 1, la del
+edificio; en el 3, Troncos, Pisos, Instalaciones y Exterior: `aerial-sanctuary/domain/area-category.ts`). Se abre con «−» del
+mando de la Switch ([ux-acciones.md](ux-acciones.md)). El alcance por casquete o edificio es del santuario 1; el 3 y las naves
+eligen isla o vehículo, como antes.
+
 ## Para más adelante (no hecho)
 
 Berón puede pedir que las misiones usen el mismo mapa: un mapa que resalte el área de la tarea elegida. El mapa ya está pensado para eso: un nodo solo sabe dónde está, cómo se llama y su sitio del grafo (`AreaNode.goal`), que es el mismo que da `taskGoal` para una tarea; bastaría con marcar el nodo cuyo sitio es el de la tarea.

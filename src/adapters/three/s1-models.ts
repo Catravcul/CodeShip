@@ -4,6 +4,7 @@ import type { S1Layout } from "@modules/sanctuary-one/data/layout";
 import { model, type Category, type ModelDef } from "@modules/sanctuary-one/data/catalog";
 import { WATER_Y } from "@modules/sanctuary-one/data/site";
 import { textSign } from "./interior/sign";
+import { AnimalHerd } from "./animal-bodies";
 
 /**
  * Sanctuary 1 drawn from its layout (docs/design/santuario1.md). Every catalogue model is ONE geometry and one
@@ -126,8 +127,11 @@ export interface S1Scene {
   readonly root: THREE.Group;
   /** Each catalogue model's mesh (all its copies), by «model id|tint» (tint empty unless a bulk rule recolours it). */
   readonly meshes: ReadonlyMap<string, THREE.InstancedMesh>;
-  /** The instances that move (wandering animals): their mesh and index. */
-  readonly movers: readonly { readonly mesh: THREE.InstancedMesh; readonly index: number; readonly it: S1Layout["instances"][number] }[];
+  /** The instances that move (wandering animals): their herd and index in it. */
+  readonly movers: readonly { readonly herd: AnimalHerd; readonly index: number; readonly it: S1Layout["instances"][number] }[];
+  /** Every animal, jointed (domain/animal-body.ts): its herd, index and instance; posed each frame by the scene. */
+  readonly animals: readonly { readonly herd: AnimalHerd; readonly index: number; readonly it: S1Layout["instances"][number] }[];
+  readonly herds: readonly AnimalHerd[];
   /** Bulk change: show/hide or recolour every model of a category (or of one group of it). */
   style(category: Category, o: { visible?: boolean; color?: number; group?: string }): void;
 }
@@ -196,7 +200,9 @@ export function buildS1Scene(L: S1Layout): S1Scene {
 
   // The catalogue's instances: one InstancedMesh per model (people are drawn by the scene as figures).
   const meshes = new Map<string, THREE.InstancedMesh>();
-  const movers: { mesh: THREE.InstancedMesh; index: number; it: S1Layout["instances"][number] }[] = [];
+  const movers: { herd: AnimalHerd; index: number; it: S1Layout["instances"][number] }[] = [];
+  const animals: { herd: AnimalHerd; index: number; it: S1Layout["instances"][number] }[] = [];
+  const herds: AnimalHerd[] = [];
   const by = new Map<string, S1Layout["instances"][number][]>();
   for (const i of L.instances) {
     if (model(i.model).shape === "figura") continue;
@@ -210,6 +216,19 @@ export function buildS1Scene(L: S1Layout): S1Scene {
   for (const [key, list] of by) {
     const d = model(list[0]!.model);
     const tint = list[0]!.tint;
+    if (AnimalHerd.has(d)) {
+      // Animals: jointed cube bodies, one InstancedMesh per body part (animal-bodies.ts).
+      const herd = new AnimalHerd(d, list.length, tint);
+      list.forEach((it, n) => {
+        herd.pose(n, it.x, it.y, it.z, it.rot, n * 0.37, false, it.scale ?? 1);
+        animals.push({ herd, index: n, it });
+        if (it.wander) movers.push({ herd, index: n, it });
+      });
+      herd.commit();
+      herds.push(herd);
+      for (const m of herd.meshes) root.add(m);
+      continue;
+    }
     const gk = `${d.id}|${tint !== undefined}`;
     const geo = geos.get(gk) ?? geometryOf(d, tint !== undefined);
     geos.set(gk, geo);
@@ -220,7 +239,6 @@ export function buildS1Scene(L: S1Layout): S1Scene {
       const sc = it.scale ?? 1;
       m4.compose(new THREE.Vector3(it.x, it.y, it.z), q, new THREE.Vector3(p * sc, sc, p * sc));
       mesh.setMatrixAt(n, m4);
-      if (it.wander) movers.push({ mesh, index: n, it });
     });
     mesh.name = `modelo-${key}`;
     mesh.userData = { category: d.category, group: d.group, model: d.id };
@@ -246,6 +264,8 @@ export function buildS1Scene(L: S1Layout): S1Scene {
     root,
     meshes,
     movers,
+    animals,
+    herds,
     style(category, o) {
       for (const mesh of meshes.values()) {
         const u = mesh.userData as { category: Category; group: string };

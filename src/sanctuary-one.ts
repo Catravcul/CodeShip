@@ -191,24 +191,21 @@ function movePeople(dt: number): void {
   });
 }
 
-// The animals wander in their territories (domain/motion.ts wanderAt).
-const m4 = new THREE.Matrix4();
-const qy = new THREE.Quaternion();
-const UP = new THREE.Vector3(0, 1, 0);
+// The animals: the wandering ones walk their territories (domain/motion.ts wanderAt), all move their jointed
+// bodies (domain/animal-body.ts): legs, flippers, flukes and wings while they go, a slow sway at rest.
 let wildT = 0;
+const moving = new Set(world.movers.map((m) => m.it));
 function moveAnimals(dt: number): void {
   wildT += dt;
-  const touched = new Set<THREE.InstancedMesh>();
-  for (const { mesh, index, it } of world.movers) {
-    const w = it.wander!;
-    const p = wanderAt({ x: w.x, z: w.z }, w.r, w.seed, wildT + w.seed, w.speed);
-    qy.setFromAxisAngle(UP, p.yaw);
-    const sc = it.scale ?? 1;
-    m4.compose(new THREE.Vector3(p.x, it.y, p.z), qy, new THREE.Vector3(sc, sc, sc));
-    mesh.setMatrixAt(index, m4);
-    touched.add(mesh);
+  for (const { herd, index, it } of world.animals) {
+    const t = wildT + index * 0.37;
+    if (moving.has(it)) {
+      const w = it.wander!;
+      const p = wanderAt({ x: w.x, z: w.z }, w.r, w.seed, wildT + w.seed, w.speed);
+      herd.pose(index, p.x, it.y, p.z, p.yaw, t, p.moving, it.scale ?? 1);
+    } else herd.pose(index, it.x, it.y, it.z, it.rot, t, false, it.scale ?? 1);
   }
-  for (const mesh of touched) mesh.instanceMatrix.needsUpdate = true;
+  for (const h of world.herds) h.commit();
 }
 
 const avatar = new CubeFigure(0xe8b48f, 0x2f7f8f, DOMENICA_HAIR, true);

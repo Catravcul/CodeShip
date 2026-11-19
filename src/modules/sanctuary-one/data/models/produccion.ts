@@ -13,7 +13,7 @@ const YEL = 0xe0a81c;
 const P = (id: string, group: string, label: string, color: number, parts: readonly Part[], source: string) => pz(id, "maquina", group, label, color, parts, "real", source);
 const box = (id: string, group: string, label: string, w: number, h: number, d: number, color: number, source: string, category: "mueble" | "utensilio" | "maquina" = "mueble") => m(id, category, group, label, w, h, d, color, "caja", "real", source);
 /** A rack of shelves (n levels) w × d up to h. */
-const shelves = (w: number, d: number, h: number, n: number, color: number, load?: number): Part[] => [
+export const shelves = (w: number, d: number, h: number, n: number, color: number, load?: number): Part[] => [
   ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => C(sx * (w / 2 - 0.03), h / 2, sz * (d / 2 - 0.03), 0.05, h, 0.05, color))),
   ...rep(n, (i) => {
     const y = 0.15 + (i * (h - 0.2)) / Math.max(1, n - 1);

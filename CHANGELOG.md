@@ -6,6 +6,14 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 ## 2026-11-19
 
 - **Tarjetas de máquina en el móvil**: suben por encima del «−» / «+» redondos del joystick de mirar, que ahora están encima de él. [docs/design/reglas.md](docs/design/reglas.md)
+
+- **Santuario 1, realismo y mandos**: correr es un sprint a tope (6,5 m/s, rodillas altas, brazos a 90°, la vista se
+  abre) y saltar un salto de 50 cm (agacharse, impulso, recoger, amortiguar), y en 3.ª persona ella mira hacia donde
+  corre; los botones generales pasan al mando (+ Misiones, − Áreas, captura Vista, inicio Menú); el hospital, los
+  laboratorios y la carne cultivada con el equipo de la escena exportada de Unity y forma real en cada equipo; la
+  Mecánica (vacía en Cold Sanctuary) es un taller real de tractor, barca y submarino con sus retos.
+  [docs/design/santuario1.md](docs/design/santuario1.md)
+
 - **Santuario 1, 2.ª lista**: mandos con todos los botones de la Switch (zoom en la cruceta); Áreas con Automático,
   cada edificio por su nombre y cada casquete, el edificio dibujado; cada persona con su cara, pelo, ropa y estatura
   (de Cold Sanctuary); el personal hace los pasos de su trabajo; los retos enfocan la animación; catálogo de iconos

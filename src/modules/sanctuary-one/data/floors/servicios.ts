@@ -107,6 +107,10 @@ function hospitalUrgencias(): FloorPlan {
   items.push(P("hospital-laboratorio", -13.4, -10.6, PI), P("hospital-analizador", -9.25, -10.6, PI), P("hospital-banco-sangre", -3.4, -10.6), P("hospital-espera", 5.6, 11.2));
   for (let i = 0; i < 2; i++) items.push(P("zona-rayos-x", 4.8 + i * 6, 4.6), P("zona-ecografia", 4.8 + i * 6, 0.2), P("hospital-camilla", 5.4 + i * 6, 0.4));
   for (let i = 0; i < 4; i++) items.push(P("hospital-paritorio", 5.8 + (i % 2) * 6.1, -5.3 - Math.floor(i / 2) * 6.1, 0, `Paritorio ${i + 1}`));
+  // From the exported scene (Equipamiento): triage, consulting rooms, telemedicine, crash carts and the pharmacy.
+  items.push(P("hospital-triaje", -14, 8.6, PI, "Triaje 1"), P("hospital-triaje", -6.4, 9, PI, "Triaje 2"), P("hospital-triaje", -2.3, 5.6, D(90), "Triaje 3"), P("hospital-triaje", 14.6, 8.4, PI, "Triaje 4"));
+  items.push(P("hospital-mesa-medico", -10.1, 5.6, PI), P("hospital-consulta", -13.6, 1.4, PI, "Consulta 2"), P("hospital-consulta", -5.6, 1.4, PI, "Consulta 3"), P("hospital-consulta", -13.6, -2.6, PI, "Consulta 4"), P("hospital-telemedicina", -5.6, -2.6, PI));
+  items.push(P("hospital-carro-parada", -12, -6.6, D(-90)), P("hospital-carro-parada", -6.4, -6.6, D(-90)), P("hospital-farmacia", 10, 12.2));
   return { id: "hospital-urgencias", size: SIZE, items, ring: ringBeds([["observación de urgencias", 6], ["maternidad", 12]]), source: cs("Hospital", "BuildHospital (planta baja: urgencias y maternidad)") };
 }
 
@@ -117,6 +121,8 @@ function hospitalQuirofanos(): FloorPlan {
   items.push(P("hospital-sala-uci", 13, 13.9));
   for (let i = 0; i < 4; i++) items.push(P("hospital-aislamiento", -16.8 + i * 5.35, 16.15, 0, `Aislamiento ${i + 1}`));
   items.push(P("hospital-esclusa", -8.8, 16.15 - 4.91), P("hospital-epi", 3, 16.15 - 11.15, D(-90)), toilets1);
+  // From the exported scene (Planta1_equipamiento): surgical scrub sinks, sterilisation, the oxygen plant and the ICU desk.
+  items.push(P("hospital-lavado-quirurgico", -11.1, -2.2), P("hospital-lavado-quirurgico", 5.7, -2.2), P("hospital-autoclave", -18.3, -1.9, D(90)), P("hospital-planta-oxigeno", 16.8, -1.6, PI), P("hospital-control-uci", 12.9, 5.2));
   return { id: "hospital-quirofanos", size: SIZE, items, ring: ringBeds([["recuperación postquirúrgica", 10], ["hospitalización", 20]]), source: cs("Hospital", "BuildHospital (planta 1: quirófanos, UCI y aislamiento)") };
 }
 
@@ -168,11 +174,12 @@ function cria(): FloorPlan {
 function culturedMeat(): FloorPlan {
   const hx = 13;
   const hz = 10;
-  const items: Placed[] = [P("lab-campana", -hx + 1.2, -hz + 1), P("lab-microscopio", -hx + 2.4, -hz + 0.9), P("lab-criogenico", -hx + 0.8, 0.2), P("lab-incubadora", -hx + 0.8, 3.2)];
+  const items: Placed[] = [P("lab-campana", -hx + 1.2, -hz + 1), P("lab-microscopio", -hx + 2.4, -hz + 0.9), P("lab-criogenico", -hx + 0.8, 0.2), P("lab-incubadora", -hx + 0.8, 3.2, D(90))];
   items.push(P("lab-medio", -hx + 1.2, hz - 1.3), P("lab-autoclave", -hx + 5.2, hz - 1), P("lab-biorreactor-semilla", -3.2, -hz + 1.4));
   items.push(P("lab-biorreactor", 1.4, -hz + 1.6, 0, "Producción 1"), P("lab-biorreactor", 5.75, -hz + 1.6, 0, "Producción 2"), P("lab-biorreactor", -1, -4, 0, "Producción 3"));
   for (let u = 0; u < 6; u++) items.push(P("lab-perfusion", hx - 1.5 - (u % 3) * 3.9, u < 3 ? -0.4 : -3.6));
-  items.push(P("lab-centrifuga", hx - 1, hz - 1.4), P("lab-centrifuga", hx - 7, hz - 1.4), P("lab-formadora", hx - 4, hz - 1.3), P("lab-raciones", 7.5, 4.5));
+  items.push(P("lab-centrifuga", hx - 1, hz - 1.4), P("lab-centrifuga", hx - 7, hz - 1.4), P("lab-formadora", hx - 4, hz - 1.3), P("lab-formadora", hx - 10, hz - 1.3, 0, "Formadora 2"), P("lab-raciones", 7.5, 4.5));
+  items.push(P("lab-camara-fria", hx - 0.6, 3.5), P("lab-consola-lote", 0, 0.8));
   items.push(P("aseos-1", hx - 0.2 - 1.9, -hz + 0.9));
   return { id: "carne-cultivada", size: SIZE, items, source: "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Build (distribución de 26 × 20 m)" };
 }

@@ -1,6 +1,7 @@
 import { cs } from "../sources";
 import { C, COL, m, pz, rep, type ModelDef, type Part } from "./kit";
 import { glassRoom } from "./servicios";
+import { CIENCIAS_DETAIL } from "./ciencias-detalle";
 
 /**
  * Models of the Ciencias building (Química síntesis/análisis, Biología cultivo/molecular, Informática). Cold Sanctuary
@@ -97,8 +98,10 @@ export const INFORMATICA: readonly Block[] = [
   ["i-repuestos", "Repuestos", 1.2, 0.6, 2.0, 0x8a8f96, "informatica-planta", IN("Repuestos")],
 ];
 
-const toModel = ([id, label, w, d, h, color, group, source, parts]: Block): ModelDef =>
-  parts ? pz(id, "maquina", group, label, color, parts, "real", source) : m(id, "maquina", group, label, w, h, d, color, "caja", "real", source);
+const toModel = ([id, label, w, d, h, color, group, source, own]: Block): ModelDef => {
+  const parts = own ?? CIENCIAS_DETAIL[id];
+  return parts ? pz(id, "maquina", group, label, color, parts, "real", source) : m(id, "maquina", group, label, w, h, d, color, "caja", "real", source);
+};
 
 export const CIENCIAS_MODELS: readonly ModelDef[] = [
   m("lab-suelo", "mueble", "suelos", "Suelo de laboratorio (vinilo)", 31.6, 0.02, 19.6, 0xd6dadc, "caja", "real", R("Suelo_laboratorio")),

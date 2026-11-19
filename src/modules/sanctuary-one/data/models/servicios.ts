@@ -1,4 +1,4 @@
-import { cs } from "../sources";
+import { cs, csx } from "../sources";
 import { C, COL, bar, m, pz, rep, type Category, type ModelDef, type Part } from "./kit";
 import { bench } from "./entrenamiento";
 import { STATION_UTENSILS, TABLE_SETTING, kitchenBlock } from "./cocina-equipo";
@@ -165,6 +165,8 @@ export const SERVICIOS_MODELS: readonly ModelDef[] = [
   pz("lab-perfusion", "maquina", "carne-cultivada", "Biorreactor de perfusión con andamio (fibras)", steel, [C(0, 0.45, 0, 1.8, 0.9, 1), C(0, 1.1, 0, 1.7, 0.4, 0.9, glass), C(0, 1.65, 0, 1.7, 0.4, 0.9, glass), C(0, 1.05, 0, 1.4, 0.06, 0.75, 0xd98c80)], "real", "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Biorreactor_andamio"),
   pz("lab-centrifuga", "maquina", "carne-cultivada", "Centrífuga", white, [C(0, 0.45, 0, 0.8, 0.9, 0.8), C(0, 0.92, 0, 0.6, 0.04, 0.6, 0x26262a)], "real", "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Centrifuga"),
   pz("lab-formadora", "maquina", "carne-cultivada", "Formadora (prensa de carne)", steel, [C(0, 0.45, 0, 1, 0.9, 0.7), C(0, 1.1, 0, 0.5, 0.4, 0.5, 0x26262a)], "real", "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Formadora"),
+  pz("lab-camara-fria", "maquina", "carne-cultivada", "Cámara fría de producto (4 °C)", white, [C(0, 1, 0, 0.9, 2, 1.4), C(-0.46, 1, 0, 0.02, 1.8, 1.2, 0xb9bec6), C(-0.48, 1.0, 0.45, 0.03, 0.35, 0.04, 0xc7ccd6), C(-0.47, 1.75, -0.4, 0.01, 0.12, 0.25, 0x1a2a3a), C(0, 2.05, 0.3, 0.6, 0.1, 0.5, 0xb8bec6)], "real", `${csx("CulturedMeatLab_Area/Laboratorio_CarneCultivada/Camara_fria")}; puerta, termómetro y evaporador: cámaras frigoríficas de laboratorio`),
+  pz("lab-consola-lote", "maquina", "carne-cultivada", "Consola de lote (registro de lote y control de los biorreactores)", white, [C(0, 0.5, 0, 1.2, 1, 0.5), C(0, 1.3, 0, 1.1, 0.6, 0.05, 0x1f4052), C(0, 1.02, -0.1, 0.5, 0.03, 0.2, 0x26262a), C(0.45, 1.05, -0.1, 0.12, 0.08, 0.12, 0x26262a)], "real", `${csx("CulturedMeatLab_Area/Laboratorio_CarneCultivada/Consola_lote")}; registro de lote (GMP) y SCADA de los biorreactores`),
   eq("lab-raciones", "maquina", "carne-cultivada", "Almacén de raciones para el alimentador (cámara)", 1.4, 1.4, 0.7, darkSteel, "Cold Sanctuary, Assets/Editor/SampleSceneBuilder.cs Almacen_raciones (docs/alimentador.md)"),
 
   // ── Sala de asambleas (Asamblea.cs FurnishAssembly) ──

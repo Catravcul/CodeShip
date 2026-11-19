@@ -49,3 +49,5 @@ body.has-switch-pad .vstick > .cam-zoom { display: none; }
   .ap-plus, .ap-home { left: 0; }
 }
 body.in-duel .switch-pad, body.in-areas .switch-pad, body.in-missions .switch-pad, body.in-tasks .switch-pad, body.in-settings .switch-pad, body.in-reto-picker .switch-pad, body.in-journey .switch-pad { display: none; }
+/* With the pad, the general menu's gear and its icons live on −, +, capture and home; home brings the gear back (the orange interaction button stays). */
+body.has-switch-pad .root-menu:not(.pad-shown) > .rm-root, body.has-switch-pad .root-menu:not(.pad-shown) > .rm-shoots { display: none; }

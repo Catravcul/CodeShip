@@ -26,7 +26,7 @@ describe("trepar y saltar (Berón 2026-11-19)", () => {
   });
   it("un salto de pie sube unos 45 cm y vuelve al suelo", () => {
     const top = JUMP_V0_MS / 9.81;
-    expect(jumpHeight(JUMP_V0_MS, top)).toBeCloseTo(0.45, 2);
+    expect(jumpHeight(JUMP_V0_MS, top)).toBeCloseTo(0.5, 2);
     expect(jumpHeight(JUMP_V0_MS, 2 * top + 0.01)).toBe(0);
   });
 });

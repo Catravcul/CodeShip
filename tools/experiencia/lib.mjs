@@ -126,6 +126,17 @@ export class Journey {
    * Áreas live on its capture, «+» and «−» buttons: a tap on one of those icons is the pad's button, as a player does.
    */
   async padFor(selector) {
+    // A machine's card shown with the orange button hides the pad (action-pad.css): a player closes it with its X first.
+    const carded = await this.page
+      .evaluate((sel) => document.body.classList.contains("panel-on") && document.body.classList.contains("has-switch-pad") && [...document.querySelectorAll(sel)].some((e) => e.closest(".root-menu") && e.matches("[data-pad]")), selector)
+      .catch(() => false);
+    if (carded) {
+      const x = [...(await this.page.locator(".rm-act.rm-open").all())];
+      for (const b of x) if (await b.isVisible()) {
+        await b.tap({ timeout: 5000 }).catch(() => b.click({ timeout: 5000 }));
+        break;
+      }
+    }
     return this.page
       .evaluate((sel) => {
         if (!document.body.classList.contains("has-switch-pad")) return null;
@@ -157,7 +168,16 @@ export class Journey {
       if (/data-act="(entrar|salir|subir|bajar)/.test(selector)) await this.throughHatches();
       return true;
     } catch (e) {
-      this.check(`se puede tocar «${what}»`, false, e.message.split("\n")[0]);
+      // What lies on top of it, if anything (a tap that times out on a visible control is usually covered).
+      const over = await this.page
+        .evaluate((sel) => {
+          const el = document.querySelector(sel);
+          const r = el?.getBoundingClientRect();
+          const top = r && document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+          return top && top !== el && !el.contains(top) ? ` · encima: ${top.tagName.toLowerCase()}.${String(top.className).split(" ").join(".")}` : "";
+        }, selector)
+        .catch(() => "");
+      this.check(`se puede tocar «${what}»`, false, e.message.split("\n")[0] + over);
       return false;
     }
   }

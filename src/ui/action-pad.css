@@ -50,10 +50,12 @@ body.has-switch-pad .vstick > .cam-zoom { display: none; }
 }
 /* Hidden wherever reglas.md hides the controls: a challenge (the sheet, the choice of challenge), manual piloting (any RCS
    or flight pad), the full-screen windows (Áreas, Misiones, Tareas, the settings, Navegación), an automatic trip, a
-   console's own screen and the views that take the whole screen. */
+   console's own screen, the views that take the whole screen and a machine's card (body.panel-on). */
 body.in-duel .switch-pad, body.in-areas .switch-pad, body.in-missions .switch-pad, body.in-tasks .switch-pad, body.in-settings .switch-pad, body.in-reto-picker .switch-pad, body.in-journey .switch-pad,
 body.has-rcs-pad .switch-pad, body.in-manual-flight .switch-pad, body.in-island-nav .switch-pad, body.in-map .switch-pad, body.in-deck .switch-pad, body.in-cockpit .switch-pad, body.in-carrier-hand .switch-pad, body.arm-manual .switch-pad,
-body.in-trip-view .switch-pad, body.in-dock-view .switch-pad, body.in-probe .switch-pad, body.in-station .switch-pad, body.in-bay .switch-pad { display: none; }
+body.in-trip-view .switch-pad, body.in-dock-view .switch-pad, body.in-probe .switch-pad, body.in-station .switch-pad, body.in-bay .switch-pad,
+/* A machine's card shown with the orange button sits over the pad, like the choice of challenge in sanctuary 1: the pad steps aside until its X. */
+body.panel-on .switch-pad { display: none; }
 /* With the pad, the general menu's icons live on −, + and capture, and home opens the general settings (ui/game-pad.ts):
    those icons hide from the tree, and the gear shows only for what is left (Trayecto while a trip runs, a mode's own);
    the orange interaction button stays. */

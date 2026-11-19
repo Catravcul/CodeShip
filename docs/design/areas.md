@@ -25,8 +25,24 @@ Ir a un área
 La misma ventana (`ui/areas-window.ts`) en las naves y en los santuarios 1 y 3, cada uno con sus datos: cada área es una
 esfera en su sitio, y la lista tiene los chips de categoría (en las naves, el tipo de módulo; en el santuario 1, la del
 edificio; en el 3, Troncos, Pisos, Instalaciones y Exterior: `aerial-sanctuary/domain/area-category.ts`). Se abre con «−» del
-mando de la Switch ([ux-acciones.md](ux-acciones.md)). El alcance por casquete o edificio es del santuario 1; el 3 y las naves
-eligen isla o vehículo, como antes.
+mando de la Switch ([ux-acciones.md](ux-acciones.md)).
+
+## El alcance, compartido (2026-11-19)
+
+Berón: los niveles comparten sistemas, no copias. El alcance del engranaje es uno solo (`AreasWindow` sobre
+`AreaMap.scopes` de `tasks/application/areas.ts`): cada nivel da su jerarquía en su mapa y la ventana pone la misma
+lista, los mismos chips y el mismo filtro.
+
+| Nivel | Arriba (lista de vehículos o islas) | Jerarquía (`AreaMap.scopes`) | Áreas |
+| --- | --- | --- | --- |
+| Santuario 1 | (un solo sitio: «Todo el santuario») | Edificios, Casquetes | pisos, anillos, troncos |
+| Santuario 3 | la isla (los ajustes de Tareas) | Edificios (edificios-árbol e instalaciones), Pisos (nivel 1, 2) — `aerial-sanctuary/domain/area-scope.ts` | salas, pisos, miradores |
+| Naves | el vehículo | Starship: Cubiertas (la de vuelo y las tres); estación: Módulos — `interiorAreas` | compartimentos (los camarotes van con el módulo o la cubierta a la que se abren) |
+
+- «Automático: donde está ella» es el nivel más ancho del área donde está (su edificio, su cubierta, su módulo); el
+  santuario 1 lo dice mejor fuera de los edificios (el casquete que pisa, `scopeAt`). En otra isla o vehículo no hay
+  «donde está ella»: se ve todo. Al cambiar de isla o vehículo, el alcance vuelve a «Automático».
+- Una isla o vehículo sin jerarquía (el glaciar, el LM) no enseña el grupo «Mostrar».
 
 ## Para más adelante (no hecho)
 
@@ -34,7 +50,7 @@ Berón puede pedir que las misiones usen el mismo mapa: un mapa que resalte el �
 
 ## Archivos
 
-- `src/modules/tasks/application/areas.ts` (puro, con tests): `interiorAreas`, `starshipAreas`, `landerAreas`; cada `AreaNode` lleva su caja (`centre`, `half`) y su descripción (`desc`).
+- `src/modules/tasks/application/areas.ts` (puro, con tests): `interiorAreas`, `starshipAreas`, `landerAreas`, `scopeOfNode`; cada `AreaNode` lleva su caja (`centre`, `half`), su descripción (`desc`) y su sitio en la jerarquía (`scope`); el `AreaMap`, la jerarquía (`scopes`).
 - `src/ui/areas-window.ts` (la ventana, con la estructura y los estilos de `nav-map.css`), `src/ui/map-gestures.ts` (arrastrar y pellizcar, compartido con Navegación), `src/ui/task-settings.ts` (los ajustes compartidos con Tareas).
 - `src/journey.ts`: `goTo(sitio, nombre)`.
 - Recorrido: PX-42 (`tareas-ajustes`). Casos: HAB-42.

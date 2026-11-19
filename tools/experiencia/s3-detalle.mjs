@@ -84,6 +84,8 @@ export async function walkTo(j, x, z, stop) {
 /** Áreas → the area on the map → «Ir» (teleport, as set in the settings), then a few steps in with «Moverse». */
 export async function goArea(j, id, title) {
   await j.tap(".areas-btn", "Áreas");
+  // «Automático» shows the building she is in (the shared scope, areas.md): another one is under «Todo» in the gear.
+  if (!(await j.page.locator(`.areas-window [data-pick="${id}"]`).count())) await j.areasScope("", "", "Todo: la isla");
   await j.tap(`.areas-window [data-pick="${id}"]`, `${title} en el mapa`);
   const ok = await j.tap(`.areas-window [data-area="${id}"]`, `Ir: ${title}`);
   const s = await until(j, (q) => q.mode === "libre", 20000);

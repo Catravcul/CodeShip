@@ -25,8 +25,12 @@ arriba del todo) llevada a una escena de Three.js. Casos AER-01 a AER-09 en [cas
   `application/free-walk.ts`, compartido con el santuario 1. Del borde de un suelo se cae (como en el santuario 1) si debajo hay
   suelo o agua a 10 m o menos (la plataforma de saltos más alta, World Aquatics); de más alto no se tira (del borde de una isla no
   se salta). Bajo el agua la vista se vuelve verde azulada y nada con su animación. Cada máquina, puesto y simulador tiene el botón
-  naranja («Reto: …» en los puestos, los simuladores y el lanzamiento; su nombre en la navegación, el ascensor y la esterilla), que
-  muestra su tarjeta. Las Áreas tienen filtros de categoría (Troncos, Pisos, Instalaciones, Exterior: `domain/area-category.ts`).
+  naranja, el mismo que en el santuario 1 y las naves (2026-11-19): «Reto: …» en los puestos, los simuladores y el lanzamiento,
+  que abre el reto (con quien está de turno) o, si hay varios —el simulador de Dragon: su puesto y «Practicar el acople»— o el
+  puesto está sin turno, la elección de reto con el motivo; su nombre en la navegación, el ascensor y la esterilla, que
+  muestra su tarjeta. El reto se ve con la lente compartida (`reto-focus.ts`: ella y la entrenadora encima de la hoja, sin
+  atravesar las paredes de la sala, `framePair`). Las Áreas tienen filtros de categoría (Troncos, Pisos, Instalaciones,
+  Exterior: `domain/area-category.ts`) y el alcance compartido: isla → edificio → piso (`domain/area-scope.ts`).
   Lectura propia, la más cercana al santuario 1: «+» abre Tareas porque en el 3 la lista de lo que hay que hacer son las tareas de la iniciación.
 - **Moverse.** Gravedad: se anda con el joystick «Moverse» (o WASD) y se mira con «Mirar». En el agua (el mar, la piscina,
   los troncos, ramas y columnas de los árboles) se nada y se sube o baja hacia donde se mira; al salir por una orilla baja se vuelve a andar.

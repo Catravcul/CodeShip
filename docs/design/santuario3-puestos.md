@@ -23,7 +23,7 @@ mando; en la cámara hipobárica mira desde la esquina de la escotilla.
 | 7 | Flotabilidad neutra (NBL) | Los pasos del EMU del paseo espacial (`DONNING_STEPS`): LCVG, pantalón, torso rígido, guantes y casco, fugas | Sube 2 kg: los buzos añaden 2 kg de plomo (si baja, espuma) | Se viste en el borde (colores del traje, casco), y en el fondo junto a la maqueta con el lastre en la cintura | NASA, ficha del NBL; Wikipedia NBL |
 
 El puesto 3 está en la piscina de supervivencia, con el METS, la balsa y el izado («Prueba de natación y supervivencia en el agua»): la prueba de natación y la supervivencia en el agua se hacen allí (Pensacola), no en la NBL; el 7 sigue en «Piscina NBL». Los puestos 10 y
-13 siguen «En construcción» (rama `s3-lanzamiento`). Un puesto superado lo dice su tarjeta (✓ Superado) y queda en la partida (`posts` del estado
+13 siguen «En construcción» (rama `s3-lanzamiento`). Un puesto superado lo dice su tarjeta (✓ Superado; en la elección del botón naranja, «superado: repetirlo») y queda en la partida (`posts` del estado
 del 3).
 
 ## Puestos de la fase 5 (`s3-iniciacion-2`)

@@ -134,8 +134,24 @@ cubiertas de la Starship, la estación, la cabina del LM y el puente) usan el mi
   `GamePad.release` al salir).
 - **Botón naranja** (`src/ui/interaction.ts`): «Reto: <cosa>» con el icono de reto cuando lo que hay cerca da un reto (las
   cosas del santuario 1, los puestos, simuladores y el lanzamiento del 3, y en las naves las tarjetas con retos `chore:` o
-  `brazo:`); el nombre de la máquina con su icono si es otra cosa (escotilla, pantalla, ascensor). Con varios retos, el
-  santuario 1 abre `RetoPicker`; el 3 y las naves muestran la tarjeta de la máquina, que ya los lista.
+  `brazo:`); el nombre de la máquina con su icono si es otra cosa (escotilla, pantalla, ascensor). Igual en todos los
+  niveles (2026-11-19): «Reto: <cosa>» pasa por `chooseReto` (un reto lo abre; varios, o uno cerrado, abren `RetoPicker`).
+  En el 3 y las naves lo hace `ui/machine-panel.ts` con los botones de reto de la tarjeta (`RETO_ACTS`): cada uno es una
+  opción (`data-title`, `data-detail` y, si está apagado, `data-why`), y si la tarjeta tiene más botones la elección
+  añade «Ver la máquina», que la muestra. Las máquinas sin reto siguen con su tarjeta.
+- **Foco del reto, uno para todos** (`src/adapters/three/interior/reto-focus.ts`): `sheetLens` (la franja libre encima de
+  la hoja en vertical, a su izquierda en horizontal) en los santuarios 1 y 3, las cubiertas de la Starship, la estación,
+  el anillo, el puente y la cabina del LM; `retoFrame`/`focusReto` (ella delante de la cosa, la cámara tras su hombro
+  derecho, más alta y lejos en las máquinas altas; `close` para la consola de 0 g del puente); `retoVisual` (cada paso
+  resuelto se representa, sin repetir los bloques ya hechos «paso a paso»); `framePair` (los puestos del santuario 3,
+  con ella y la entrenadora, sin atravesar las paredes de la sala). Los encuadres de 0 g de la estación (estribos,
+  bastidor en el techo, cinta) siguen siendo propios porque buscan sitio entre los bastidores, pero usan la misma lente y
+  los mismos pasos. Los puestos del 3 se siguen representando con `S3Stage` (los pasos con la entrenadora y sus
+  objetos), que StepShow no sabe hacer.
+- **«+»**: Misiones en el santuario 1 (sus misiones de la jornada, `sanctuary-one/data/misiones.ts`); Tareas en el 3 y
+  en las naves, que no tienen otra fuente de misiones. Se queda así por nivel hasta que el 3 o las naves tengan misiones
+  propias.
+- **Áreas**: el mismo alcance en todos los niveles ([areas.md](areas.md)): cada nivel da su jerarquía.
 - **Andar en la Tierra** (`src/modules/aerial-sanctuary/application/free-walk.ts`, con pruebas): andar, correr, nadar, saltar,
   trepar y caer de un borde, igual en los dos santuarios; cada uno pone su paso (1,6 / 1,4 m/s andando) y su caída máxima
   (sin límite en el 1, 10 m en el 3). Poses y vista bajo el agua: `src/adapters/three/walk-look.ts`.

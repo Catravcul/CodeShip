@@ -2,6 +2,8 @@
 // visible controls, on an iPhone 13 with the CPU throttled ×4, and records what the player sees (text,
 // counters, colours, screenshots) and what the phone would feel (frame time, long tasks, heap, draw calls).
 // Modelled on Cold Sanctuary's ExperienciaJugadorTest: each check has a sentence a designer can read.
+/** The challenge buttons of a machine's card (ui/interaction.ts, RETO_ACTS). */
+const RETO = '[data-act^="chore:"], [data-act^="brazo:"], [data-act="reto"], [data-act^="sim:"], [data-act="lanzar"], [data-reto]';
 import { createRequire } from "node:module";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -157,6 +159,9 @@ export class Journey {
     if (onPad) selector = onPad;
     const loc = this.page.locator(selector).first();
     try {
+      // A machine's challenge is reached with the orange button, as a player does (ui/machine-panel.ts): one opens
+      // straight away, several through the choice. Then there is nothing more to tap.
+      if (await this.viaReto(selector, what)) return true;
       await this.showPanel(selector);
       await this.sprout(selector);
       await loc.waitFor({ state: "visible", timeout: 15000 });
@@ -183,6 +188,82 @@ export class Journey {
   }
 
   /**
+   * Áreas' gear (open window): the scope option `kind`/`id` (the shared hierarchy: «» is «Todo», "auto" where she is),
+   * then back to the list. True if the option was there.
+   */
+  async areasScope(kind, id, what = `Mostrar: ${kind || "Todo"} ${id}`) {
+    await this.tap(".areas-window .ar-view", "Ajustes de áreas");
+    const sel = `.areas-window [data-scope-kind="${kind}"][data-scope-id="${id}"]`;
+    const there = (await this.page.locator(sel).count()) > 0;
+    if (there) await this.tap(sel, what);
+    await this.tap(".areas-window .ar-view", "Volver al mapa de áreas");
+    return there;
+  }
+
+  /** The card of `selector` gives challenges and has nothing else to do (no other button). */
+  retoOnly(selector) {
+    return this.page
+      .evaluate(
+        ([sel, RETO]) => {
+          const card = [...document.querySelectorAll(sel)].map((e) => e.closest(".cab-machine:not(.hidden)")).find(Boolean);
+          const retos = card ? [...card.querySelectorAll(RETO)] : [];
+          return retos.length > 0 && [...card.querySelectorAll("button")].every((b) => b.disabled || retos.includes(b));
+        },
+        [selector, RETO],
+      )
+      .catch(() => false);
+  }
+
+  /** The card of `selector` gives challenges. */
+  retoCard(selector) {
+    return this.page.evaluate(([sel, RETO]) => !![...document.querySelectorAll(sel)].map((e) => e.closest(".cab-machine:not(.hidden)")).find((c) => c?.querySelector(RETO)), [selector, RETO]).catch(() => false);
+  }
+
+  /**
+   * The orange button of a machine with challenges (reglas.md §5.8, the same in every level) goes through the choice of
+   * challenge, not its card: a challenge button of a card is reached by tapping it and, if the choice (RetoPicker)
+   * opens, the challenge's option there; any other button of such a card, by the choice's «Ver la máquina». True when
+   * the challenge was started this way (nothing more to tap).
+   */
+  async viaReto(selector, what) {
+    const at = await this.page
+      .evaluate(
+        ([sel, RETO]) => {
+          if (document.body.classList.contains("panel-on")) return null;
+          const el = [...document.querySelectorAll(sel)].find((e) => e.closest(".cab-machine:not(.hidden)"));
+          const card = el?.closest(".cab-machine");
+          if (!el || !card) return null;
+          const retos = [...card.querySelectorAll(RETO)];
+          if (!retos.length) return null;
+          const i = retos.indexOf(el);
+          const others = [...card.querySelectorAll("button")].filter((b) => !b.disabled && !retos.includes(b)).length;
+          return { i, n: retos.length, others };
+        },
+        [selector, RETO],
+      )
+      .catch(() => null);
+    if (!at) return false;
+    await this.page.waitForFunction(() => [...document.querySelectorAll(".rm-act:not(.hidden)")].some((b) => b.closest(".root-menu")?.checkVisibility() && /^Reto: /.test(b.getAttribute("aria-label") ?? b.textContent ?? "")), null, { timeout: 8000 }).catch(() => {});
+    const marked = await this.page.evaluate(() => {
+      const b = [...document.querySelectorAll(".rm-act:not(.hidden)")].find((x) => x.closest(".root-menu")?.checkVisibility());
+      if (!b) return false;
+      b.dataset.panelTap = "1";
+      return true;
+    });
+    if (!marked) return false;
+    await this.tap('.rm-act[data-panel-tap="1"]', "Reto (botón naranja)");
+    await this.page.evaluate(() => document.querySelectorAll("[data-panel-tap]").forEach((b) => delete b.dataset.panelTap));
+    const picker = await this.page.waitForFunction(() => document.body.classList.contains("in-reto-picker"), null, { timeout: 1500 }).then(() => true).catch(() => false);
+    if (!picker) return at.i >= 0;
+    // The challenge's option, or «Ver la máquina» (the last) for another button of the card.
+    const k = at.i >= 0 ? at.i : at.n;
+    await this.tap(`.reto-picker .rp-opt[data-i="${k}"]`, at.i >= 0 ? `${what} (en la elección de reto)` : "Ver la máquina");
+    if (at.i >= 0) return true;
+    await this.page.waitForFunction(() => document.body.classList.contains("panel-on"), null, { timeout: 5000 }).catch(() => {});
+    return false;
+  }
+
+  /**
    * A machine's or an area's card never opens on its own (reglas.md §5.8): a player shows it with the tree
    * menu's «Panel» first. Does nothing if the target is not in a card, or the card is already shown.
    */
@@ -195,6 +276,13 @@ export class Journey {
       .evaluate((sel) => !document.body.classList.contains("panel-on") && [...document.querySelectorAll(sel)].some((e) => e.closest(".cab-machine:not(.hidden)")), selector)
       .catch(() => false);
     if (!hidden) return;
+    // A machine with challenges only: its orange button goes to the challenge, there is no card to show (its text is
+    // what the choice of challenge says, read by `texts`).
+    if (await this.retoOnly(selector)) return;
+    if (await this.retoCard(selector)) {
+      await this.viaReto(selector, "Ver la máquina");
+      return;
+    }
     await this.page.waitForFunction(() => [...document.querySelectorAll(".rm-act:not(.hidden)")].some((b) => b.closest(".root-menu")?.checkVisibility()), null, { timeout: 8000 }).catch(() => {});
     const btn = await this.page.evaluate(() => {
       const b = [...document.querySelectorAll(".rm-act:not(.hidden)")].find((x) => x.closest(".root-menu")?.checkVisibility());
@@ -571,6 +659,9 @@ export class Journey {
   async texts(selector) {
     // Reading a machine's card: a player shows it with «Panel» first.
     if (/cab-machine|sti-card|sts-card/.test(selector)) await this.showPanel(selector);
+    // A machine with challenges only has no card to show: what it says is what its choice of challenge says.
+    if (/cab-machine/.test(selector) && !(await this.page.evaluate(() => document.body.classList.contains("panel-on"))) && (await this.retoOnly(selector)))
+      return this.page.evaluate((sel) => [...document.querySelectorAll(sel)].filter((e) => e.closest(".cab-machine:not(.hidden)")).map((e) => e.textContent.replace(/\s+/g, " ").trim()), selector);
     return this.page.evaluate(
       (sel) =>
         [...document.querySelectorAll(sel)]

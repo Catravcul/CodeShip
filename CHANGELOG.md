@@ -5,6 +5,10 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-19
 
+- **Retos y Áreas iguales en todos los niveles**: el botón naranja de una máquina con retos (santuario 3 y naves) dice
+  «Reto: <cosa>» y abre el reto, o la elección de reto si hay varios o está cerrado (con «Ver la máquina» si tiene más
+  botones), como en el santuario 1; el reto se ve con la misma lente y el mismo foco (`reto-focus.ts`) en todos; Áreas
+  tiene el mismo alcance por jerarquía (santuario 3: isla → edificio → piso; naves: vehículo → módulo o cubierta).
 - **Mismos mandos en todos los niveles**: el santuario 3 y las naves (cubiertas de la Starship, estación, cabina del LM) usan los
   mandos de la Switch del santuario 1 (zoom en la cruceta, + Tareas/Misiones, − Áreas, captura Vista, inicio Ajustes; en el 3,
   correr, saltar, trepar y caer de un borde como en el 1; en 0 g esos salen apagados), el mismo botón naranja «Reto: …» y

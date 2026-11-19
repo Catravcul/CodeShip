@@ -32,6 +32,10 @@ export interface AreaNode {
   /** The area as a box of the vehicle, metres: the 3D map draws it there. */
   readonly centre: AreaVec;
   readonly half: AreaVec;
+  /** Its kind, for the category chips of the list (Hábitat, Laboratorio; Gimnasio, Cocina…). */
+  readonly category?: string;
+  /** Where it belongs, for the window's scope setting: e.g. `{ edificio: "entrenamiento" }` or `{ casquete: "norte" }`. */
+  readonly scope?: Readonly<Record<string, string>>;
 }
 
 export interface AreaMap {
@@ -64,7 +68,7 @@ export function interiorAreas(vehicle: Vehicle, st: StationInterior, room: "esta
   const rooms = st.plan.volumes.filter((v) => v.kind !== "escotilla" && v.kind !== "hangar");
   const goalIn = (v: InteriorVolume) => st.plan.fixtures.find((f) => f.volume === v.id && GOAL_KINDS.has(f.action.kind) && f.action.kind !== "salir" && hasPoint(f.id)) ?? st.plan.fixtures.find((f) => f.volume === v.id && GOAL_KINDS.has(f.action.kind) && hasPoint(f.id));
   const withGoal = rooms.map((v) => ({ v, f: goalIn(v) })).filter((r): r is { v: InteriorVolume; f: NonNullable<ReturnType<typeof goalIn>> } => !!r.f);
-  const nodes: AreaNode[] = withGoal.map(({ v, f }) => ({ id: v.id, label: v.label, code: v.code, desc: describe(v, st), goal: `${room}:${f.id}`, fixture: f.id, centre: xyz(v.centre), half: xyz(v.half) }));
+  const nodes: AreaNode[] = withGoal.map(({ v, f }) => ({ id: v.id, label: v.label, code: v.code, desc: describe(v, st), goal: `${room}:${f.id}`, fixture: f.id, centre: xyz(v.centre), half: xyz(v.half), category: KIND[v.kind] }));
   const hatches = st.plan.volumes.filter((v) => v.kind === "escotilla");
   const links: [string, string][] = [];
   const add = (a: string, b: string) => a !== b && !links.some(([p, q]) => (p === a && q === b) || (p === b && q === a)) && links.push([a, b]);
@@ -88,13 +92,14 @@ export function starshipAreas(st: StationInterior, hasPoint: (fixtureId: string)
     fixture: "nav",
     centre: { x: top.centre.x, y: top.centre.y + top.half.y + 1.2, z: top.centre.z },
     half: { x: top.half.x * 0.8, y: 1, z: top.half.z * 0.8 },
+    category: "Mando",
   };
   return { vehicle: "nodriza", nodes: deck ? [deck, ...decks.nodes] : decks.nodes, links: [...decks.links, ...(top ? [["cubierta-vuelo", top.id] as const] : [])] };
 }
 
 /** The Apollo LM's cabin: its stations where they are on the floor, each a few steps from the docking hatch. */
 export function landerAreas(stations: readonly { id: string; label: string; what: string; stand: { x: number; z: number } }[]): AreaMap {
-  const nodes: AreaNode[] = stations.map((s) => ({ id: s.id, label: s.label, desc: s.what, goal: `modulo:${s.id}`, fixture: s.id, centre: { x: s.stand.x, y: 0.3, z: s.stand.z }, half: { x: 0.18, y: 0.3, z: 0.18 } }));
+  const nodes: AreaNode[] = stations.map((s) => ({ id: s.id, label: s.label, desc: s.what, goal: `modulo:${s.id}`, fixture: s.id, centre: { x: s.stand.x, y: 0.3, z: s.stand.z }, half: { x: 0.18, y: 0.3, z: 0.18 }, category: "Puesto" }));
   // In the cabin every station is a few steps from the docking hatch's spot (the journey walks from there).
   const links = nodes.filter((n) => n.id !== "acople").map((n) => ["acople", n.id] as const);
   return { vehicle: "modulo", nodes, links };

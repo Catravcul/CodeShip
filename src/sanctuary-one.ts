@@ -20,6 +20,9 @@ import { offerVehicles } from "./ui/task-settings";
 import type { AreaMap, AreaNode } from "@modules/tasks/application/areas";
 import { LOBES, capOf } from "@modules/sanctuary-one/data/site";
 import { model } from "@modules/sanctuary-one/data/catalog";
+import { areaCategory, capAt, CAPS } from "@modules/sanctuary-one/data/area-kinds";
+import { MISSIONS, type Mission } from "@modules/sanctuary-one/data/misiones";
+import { missionState } from "@modules/sanctuary-one/domain/workday-missions";
 import { applyReward, retosFor, type Reto } from "@modules/sanctuary-one/application/challenges";
 import { nearest, type Reachable } from "@modules/sanctuary-one/domain/reach";
 import { CrewMember } from "@modules/crew/domain/crew-member";
@@ -66,6 +69,7 @@ scene.add(world.root);
 // The clock of sanctuary 1 (Cold Sanctuary's day: domain/motion.ts) and the workday it drives.
 let hour = S1_START_HOUR;
 const places = staffPlaces(L);
+const areaById = new Map(L.areas.map((a) => [a.id, a]));
 
 // The staff: one figure each, with the name over the head, following the workday along real routes.
 interface Person {
@@ -229,7 +233,16 @@ function areaBox(a: (typeof L.areas)[number]): Pick<AreaNode, "centre" | "half">
 const goable = L.areas.filter((a) => !a.id.endsWith(":tronco") && !a.id.includes(":punta-") && a.id !== "paisaje");
 const s1Map: AreaMap = {
   vehicle: "santuario-1",
-  nodes: goable.map((a) => ({ id: a.id, label: a.building && !a.label.includes(a.building) ? `${a.label} (${a.building})` : a.label, desc: a.desc, goal: a.id, fixture: a.id, ...areaBox(a) })),
+  nodes: goable.map((a) => ({
+    id: a.id,
+    label: a.building && !a.label.includes(a.building) ? `${a.label} (${a.building})` : a.label,
+    desc: a.desc,
+    goal: a.id,
+    fixture: a.id,
+    ...areaBox(a),
+    category: areaCategory(a),
+    scope: { casquete: a.id.startsWith("hielo:") || a.id.startsWith("tierra:") ? a.id.split(":")[1]! : capAt(a.x, a.z), ...(a.link ? { edificio: a.link.tower } : {}) },
+  })),
   links: [],
 };
 /** Where «Ir» takes her in an area: past its door on a floor or ring, the middle of a cap, the lagoon's water. */
@@ -255,6 +268,7 @@ function frameAuto(dt: number): boolean {
   const mv = walker.move();
   if (mv.forward || mv.right) {
     auto = undefined;
+    missionGoing = undefined;
     body = placeAt(near(body.x, body.z), body.x, body.y + 0.3, body.z) ?? body;
     return false;
   }
@@ -265,6 +279,7 @@ function frameAuto(dt: number): boolean {
     body = placeAt(near(auto.to.x, auto.to.z), auto.to.x, auto.to.y + 0.01, auto.to.z) ?? body;
     yaw = auto.to.yaw;
     auto = undefined;
+    arrived();
     return true;
   }
   stride += Math.hypot(q.x - body.x, q.z - body.z) * 3;
@@ -272,13 +287,100 @@ function frameAuto(dt: number): boolean {
   body = { x: q.x, y: q.y, z: q.z, motion: q.swim ? "agua" : "gravedad", area: "" };
   return true;
 }
+/** The gear's scope (Berón 2026-11-19): the whole sanctuary, a cap or a tree-building, like the carpets' choice. */
+const s1Scopes = [
+  { kind: "casquete", label: "Casquete", options: CAPS.map((c) => ({ id: c, label: c })) },
+  { kind: "edificio", label: "Edificio", options: L.towers.map((t) => ({ id: t.id, label: t.building })) },
+] as const;
+/** Seen from the side: the tree-buildings stand, their floors one over the other (its «modo más visible»). */
+const S1_MAP_VIEW = { yaw: 0.5, elevation: 0.18, zoom: 1 };
 const areasWindow = new AreasWindow(root, {
   here: () => "santuario-1",
   map: () => s1Map,
+  scopes: () => s1Scopes,
+  view: S1_MAP_VIEW,
   at: () => (areaById.has(body.area) ? body.area : undefined),
   go: (n) => goTo(n.id),
 });
 RootMenu.global({ className: "areas-btn", icon: ICON.areas, label: "Áreas", window: "areas", order: 2 }, () => areasWindow.open()).show(true);
+
+// --- Misiones: the workday's missions on the same map window (docs/design/misiones-y-jornada.md §3) ---------------
+/** The day of the sanctuary (the clock wraps at midnight) and the missions done today. */
+let day = 0;
+let doneToday = new Set<string>();
+/** Each mission's machine: the first copy of its model on its floor. */
+const missionAt = new Map<string, { it: (typeof L.instances)[number]; i: number; area: (typeof L.areas)[number] }>();
+for (const ms of MISSIONS) {
+  const i = L.instances.findIndex((q) => q.model === ms.model && (areaById.get(q.area)?.furnish === ms.floor || q.area === ms.floor));
+  const it = L.instances[i];
+  const area = it && areaById.get(it.area);
+  if (it && area) missionAt.set(ms.id, { it, i, area });
+}
+const REWARD_OF = (ms: Mission) => retosFor(model(ms.model), missionAt.get(ms.id)!.i)[ms.reto ?? 0]!;
+const missionsMap: AreaMap = {
+  vehicle: "santuario-1",
+  nodes: MISSIONS.filter((ms) => missionAt.has(ms.id)).map((ms) => {
+    const { it, area } = missionAt.get(ms.id)!;
+    return {
+      id: ms.id,
+      label: `${ms.title} (${area.label})`,
+      desc: "",
+      goal: area.id,
+      fixture: area.id,
+      centre: { x: it.x, y: it.y, z: it.z },
+      half: { x: 1, y: 1, z: 1 },
+      category: ms.category,
+      scope: { casquete: capAt(area.x, area.z), ...(area.link ? { edificio: area.link.tower } : {}) },
+    };
+  }),
+  links: [],
+};
+const hourText = (h: number) => `${Math.floor(h)}:${String(Math.floor((h % 1) * 60)).padStart(2, "0")}`;
+/** The mission she is walking to: its challenge opens when she arrives. */
+let missionGoing: Mission | undefined;
+function doMission(ms: Mission): void {
+  const at = missionAt.get(ms.id)!;
+  const r = REWARD_OF(ms);
+  if (body.area === at.area.id) {
+    missionGoing = undefined;
+    return openReto(r, (ok) => ok && doneToday.add(ms.id));
+  }
+  missionGoing = ms;
+  goTo(at.area.id);
+  if (settings.value.taskTravel === "teletransporte") arrived();
+  else say(`De camino a «${ms.title}»: su reto se abre al llegar`, 5);
+}
+/** At the end of «Ir»: the mission she was going to opens. */
+function arrived(): void {
+  const ms = missionGoing;
+  missionGoing = undefined;
+  if (ms) openReto(REWARD_OF(ms), (ok) => ok && doneToday.add(ms.id));
+}
+const REWARD_TEXT = { comida: "no pasar hambre", compania: "compañía", fuerza: "fuerza", salud: "salud" } as const;
+const missionsWindow = new AreasWindow(root, {
+  kind: { title: "Misiones", window: "misiones", bodyClass: "in-missions", className: "missions-window" },
+  here: () => "santuario-1",
+  map: () => missionsMap,
+  scopes: () => s1Scopes,
+  view: S1_MAP_VIEW,
+  empty: "Ninguna misión aquí",
+  at: () => MISSIONS.find((ms) => missionState(ms.id, day, hour, MISSIONS, doneToday).open && (missionState(ms.id, day, hour, MISSIONS, doneToday) as { now: boolean }).now)?.id,
+  row: (n) => {
+    const ms = MISSIONS.find((q) => q.id === n.id)!;
+    const st = missionState(ms.id, day, hour, MISSIONS, doneToday);
+    const r = REWARD_OF(ms);
+    const here = body.area === missionAt.get(ms.id)!.area.id;
+    return {
+      tag: st.open && st.now ? `Ahora (${hourText(hour)})` : doneToday.has(ms.id) ? "Hecha" : undefined,
+      desc: `${r.chore.title} · ${r.chore.exercises.length} pasos · da ${REWARD_TEXT[r.reward]}`,
+      locked: st.open ? undefined : st.why,
+      action: here ? "Hacer" : "Ir",
+      actionLabel: `${here ? "Hacer" : "Ir a hacer"} ${ms.title}`,
+    };
+  },
+  go: (n) => doMission(MISSIONS.find((q) => q.id === n.id)!),
+});
+RootMenu.global({ className: "s1-missions-btn", icon: ICON.tasks, label: "Misiones", window: "misiones", order: 1 }, () => missionsWindow.open()).show(true);
 
 // --- What she can do here: the orange button under the menu (reglas.md §5.8) and the challenges -------------------
 /** Doménica's needs: the challenges' rewards (Berón: no pasar hambre, compañía, fuerza, salud). */
@@ -423,14 +525,18 @@ function updateCamera(dt: number): void {
   avatar.update(dt);
 }
 
-const areaById = new Map(L.areas.map((a) => [a.id, a]));
 let last = performance.now();
 function frame(now: number): void {
   const dt = Math.max(0, Math.min(0.25, (now - last) / 1000));
   last = now;
   frameFree(dt);
   updateCamera(dt);
-  hour = (hour + (24 * dt) / S1_DAY_REAL_S) % 24;
+  const next = hour + (24 * dt) / S1_DAY_REAL_S;
+  if (next >= 24) {
+    day++;
+    doneToday = new Set();
+  }
+  hour = next % 24;
   movePeople(dt);
   moveAnimals(dt);
   updateAtHand(dt);
@@ -454,5 +560,5 @@ window.addEventListener("keydown", (e) => {
 });
 // Test hook (tools/experiencia and live checks): the layout, the body and the bulk style switch.
 if (import.meta.env.DEV || new URLSearchParams(location.search).has("prueba"))
-  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { L, world, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, goTo, get auto() { return auto; }, areasWindow, get hour() { return hour; }, people, get atHand() { return atHand; }, openReto, domenica, setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
+  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { L, world, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, goTo, get auto() { return auto; }, areasWindow, get hour() { return hour; }, people, get atHand() { return atHand; }, openReto, domenica, missionsWindow, get day() { return day; }, doMission: (id: string) => doMission(MISSIONS.find((q) => q.id === id)!), setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
 requestAnimationFrame(frame);

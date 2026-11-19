@@ -12,6 +12,9 @@ import { CubeFigure } from "./adapters/three/interior/figure";
 import { textSign } from "./adapters/three/interior/sign";
 import { Walker } from "./adapters/input/walker";
 import { DOMENICA_HAIR } from "./ui/portraits";
+import { lookOf } from "@modules/sanctuary-one/data/looks";
+/** The cube figure's own height (feet to the top of the head), to scale each person to theirs. */
+const FIGURE_HEIGHT_M = 1.78;
 import { RootMenu } from "./ui/root-menu";
 import { ICON } from "./ui/icons";
 import { AreasWindow } from "./ui/areas-window";
@@ -122,9 +125,12 @@ for (const i of L.instances) {
   if (r.oculto) continue;
   const plan = places.get(i.name);
   if (!plan) continue;
-  const f = new CubeFigure(r.piel ?? i.tint ?? 0xe0b48c, r.ropa ?? 0x3d6fa8);
+  // Each one dressed as themself (looks.ts, from Cold Sanctuary's photos and sheets); bulk rules still win.
+  const look = lookOf(i.name);
+  const f = new CubeFigure(r.piel ?? look.skin, r.ropa ?? look.top, look.hair);
+  f.dress({ ...look, ...(r.piel !== undefined ? { skin: r.piel } : {}), ...(r.ropa !== undefined ? { top: r.ropa } : {}) });
   const g = new THREE.Group();
-  g.scale.setScalar((r.altura ?? 1) * (i.scale ?? 1));
+  g.scale.setScalar((r.altura ?? 1) * (i.scale ?? 1) * (look.height / FIGURE_HEIGHT_M));
   g.add(f.root);
   scene.add(g);
   const s = textSign(i.name);

@@ -7,6 +7,38 @@ import { MotionPlayer, type ExerciseMotionData } from "@modules/body/domain/exer
 import { contactHeights } from "@modules/body/domain/body-solver";
 import { CUBE_FIGURE, JOINTS, type BodyPose, type JointId } from "@modules/body/domain/skeleton";
 
+/** What dress() needs of a person's look (structurally the same as sanctuary-one/data/looks.ts `Look`). */
+export interface FigureLook {
+  readonly hairStyle: string;
+  readonly hair: number;
+  readonly skin: number;
+  readonly eyes: number;
+  readonly beard: "ninguna" | "completa" | "perilla" | "de-dias" | "larga";
+  readonly build: number;
+  readonly top: number;
+  readonly pants: number;
+  readonly shorts?: boolean;
+  readonly sleeves?: number;
+  readonly sleeveless?: boolean;
+  readonly shoes: number;
+  readonly glasses?: number;
+  readonly cap?: readonly [number, number];
+  readonly beanie?: number;
+  readonly turban?: readonly [number, number];
+  readonly lips?: number;
+  readonly vest?: number;
+  readonly stole?: number;
+  readonly necklace?: number;
+  readonly earring?: boolean;
+  readonly feminine?: boolean;
+  readonly jaw: number;
+}
+
+const mix = (a: number, b: number, k: number): number => {
+  const ch = (s: number) => Math.round(((a >> s) & 255) * (1 - k) + ((b >> s) & 255) * k);
+  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
+};
+
 /** Joint angles (radians) of the cube figure. Figure faces +Z; limbs hang along −Y from their pivot. */
 export interface PoseAngles {
   rootY: number; // pelvis height
@@ -124,6 +156,8 @@ export class CubeFigure {
   private mover?: MotionPlayer;
 
   private mask?: THREE.Group;
+  /** The boxes that clothes and build change (dress()). */
+  private readonly skinParts: { pelvis?: THREE.Mesh; lumbar?: THREE.Mesh; chestBox?: THREE.Mesh; headBox?: THREE.Mesh; hairBox?: THREE.Mesh; eyes: THREE.Mesh[]; upper: THREE.Mesh[]; fore: THREE.Mesh[]; thigh: THREE.Mesh[]; shin: THREE.Mesh[]; foot: THREE.Mesh[] } = { eyes: [], upper: [], fore: [], thigh: [], shin: [], foot: [] };
 
   /**
    * The breathing mask of the tree-buildings' water (Cold Sanctuary's BreathingMask, Berón 2026-11-03 and 11-19):
@@ -149,20 +183,25 @@ export class CubeFigure {
 
   /** `longHair` adds hair down to the shoulders (Doménica: long lavender hair, from her portrait). */
   constructor(skin = 0xe0b48c, suit = 0x3d6fa8, hair = 0x3a2a1e, longHair = false) {
-    this.root.add(box(0.34, 0.16, 0.2, suit, 0)); // pelvis
+    const sp = this.skinParts;
+    this.root.add((sp.pelvis = box(0.34, 0.16, 0.2, suit, 0))); // pelvis
     this.root.add(this.torso);
     // The torso in two boxes (lumbar 0,24 + chest 0,26 m = the old 0,5 m box), so the spine can curve.
-    this.torso.add(box(0.38, 0.24, 0.22, suit, 0.17));
+    this.torso.add((sp.lumbar = box(0.38, 0.24, 0.22, suit, 0.17)));
     this.chest.position.y = 0.29;
-    this.chest.add(box(0.38, 0.26, 0.22, suit, 0.13));
+    this.chest.add((sp.chestBox = box(0.38, 0.26, 0.22, suit, 0.13)));
     this.torso.add(this.chest);
     this.neck.position.y = 0.26;
     this.chest.add(this.neck);
     this.neck.add(this.head);
     this.head.position.y = 0.03;
-    this.head.add(box(0.22, 0.25, 0.22, skin, 0.13));
-    for (const side of [1, -1]) this.head.add(box(0.035, 0.035, 0.01, 0x222222, 0.16).translateX(0.05 * side).translateZ(0.111));
-    this.head.add(box(0.24, 0.07, 0.24, hair, 0.27)); // hair
+    this.head.add((sp.headBox = box(0.22, 0.25, 0.22, skin, 0.13)));
+    for (const side of [1, -1]) {
+      const eye = box(0.035, 0.035, 0.01, 0x222222, 0.16).translateX(0.05 * side).translateZ(0.111);
+      sp.eyes.push(eye);
+      this.head.add(eye);
+    }
+    this.head.add((sp.hairBox = box(0.24, 0.07, 0.24, hair, 0.27))); // hair
     if (longHair) {
       this.head.add(box(0.25, 0.34, 0.06, hair, 0.1).translateZ(-0.1)); // down the back
       for (const side of [1, -1]) this.head.add(box(0.03, 0.3, 0.2, hair, 0.11).translateX(0.12 * side).translateZ(-0.01)); // framing the face
@@ -173,10 +212,14 @@ export class CubeFigure {
       this.chest.add(scap);
       const sh = new THREE.Group();
       sh.position.set(0.17 * side, 0, 0);
-      sh.add(box(0.11, 0.3, 0.11, suit, -0.15));
+      const up = box(0.11, 0.3, 0.11, suit, -0.15);
+      sp.upper.push(up);
+      sh.add(up);
       const el = new THREE.Group();
       el.position.y = -0.3;
-      el.add(box(0.1, 0.28, 0.1, skin, -0.14));
+      const fore = box(0.1, 0.28, 0.1, skin, -0.14);
+      sp.fore.push(fore);
+      el.add(fore);
       sh.add(el);
       const wrist = new THREE.Group();
       wrist.position.y = -0.28;
@@ -188,13 +231,19 @@ export class CubeFigure {
       this.wrists.push(wrist);
       const hip = new THREE.Group();
       hip.position.set(0.1 * side, -0.06, 0);
-      hip.add(box(0.14, 0.44, 0.14, suit, -0.22));
+      const thigh = box(0.14, 0.44, 0.14, suit, -0.22);
+      sp.thigh.push(thigh);
+      hip.add(thigh);
       const knee = new THREE.Group();
       knee.position.y = -0.44;
-      knee.add(box(0.12, 0.42, 0.12, suit, -0.21));
+      const shin = box(0.12, 0.42, 0.12, suit, -0.21);
+      sp.shin.push(shin);
+      knee.add(shin);
       const ankle = new THREE.Group();
       ankle.position.y = -0.42;
-      ankle.add(box(0.12, 0.06, 0.22, 0x222222, 0).translateZ(0.05));
+      const foot = box(0.12, 0.06, 0.22, 0x222222, 0).translateZ(0.05);
+      sp.foot.push(foot);
+      ankle.add(foot);
       knee.add(ankle);
       hip.add(knee);
       this.root.add(hip);
@@ -203,6 +252,96 @@ export class CubeFigure {
       this.ankles.push(ankle);
     }
     this.apply();
+  }
+
+  /**
+   * Dress the figure as one person (sanctuary-one/data/looks.ts, from Cold Sanctuary's CubeHair and CubeFace): the
+   * clothes on each segment (top, sleeves, trousers or shorts, shoes), the build (wider or slimmer segments), the
+   * face (eyes with their colour, brows, nose, mouth or painted lips, jaw width, beard) and the hair by its style,
+   * with glasses, cap, beanie, turban, stole, necklace and earring. Height is the caller's (the figure's group).
+   */
+  dress(l: FigureLook): void {
+    const sp = this.skinParts;
+    const paint = (m: THREE.Mesh | undefined, c: number) => m && (m.material as THREE.MeshStandardMaterial).color.setHex(c);
+    for (const m of [sp.lumbar, sp.chestBox]) paint(m, l.vest ?? l.top);
+    for (const m of sp.upper) paint(m, l.sleeveless ? l.skin : l.top);
+    for (const m of sp.fore) paint(m, l.sleeves ?? l.skin);
+    paint(sp.pelvis, l.pants);
+    for (const m of sp.thigh) paint(m, l.pants);
+    for (const m of sp.shin) paint(m, l.shorts ? l.skin : l.pants);
+    for (const m of sp.foot) paint(m, l.shoes);
+    paint(sp.headBox, l.skin);
+    // Build: segments wider for a broad body, narrower for a slim one (BodyShape's girth).
+    const g = 1 + l.build * 0.6;
+    for (const m of [sp.pelvis, sp.lumbar, sp.chestBox]) m?.scale.set(g, 1, 1 + l.build * 0.5);
+    for (const m of [...sp.upper, ...sp.fore, ...sp.thigh, ...sp.shin]) m.scale.set(1 + l.build * 0.5, 1, 1 + l.build * 0.5);
+    // Face: jaw width, eyes (white and iris), brows, nose and mouth.
+    sp.headBox?.scale.set(0.85 + (l.jaw - 0.66) * 0.6, 1, 1);
+    const face = new THREE.Group();
+    face.position.z = 0.111;
+    for (const s of [1, -1]) {
+      face.add(box(0.05, 0.035, 0.01, 0xf4f4f0, 0.16).translateX(0.05 * s));
+      face.add(box(l.feminine ? 0.05 : 0.055, l.feminine ? 0.012 : 0.02, 0.012, l.hairStyle === "turbante" ? 0x2a2420 : l.hair, 0.195).translateX(0.05 * s));
+    }
+    for (const e of sp.eyes) {
+      paint(e, l.eyes);
+      e.scale.set(0.6, 0.9, 1);
+      e.position.z = 0.118;
+    }
+    face.add(box(0.035, 0.05, 0.03, l.skin, 0.12).translateZ(0.01));
+    face.add(box(0.07, 0.018, 0.012, l.lips ?? 0x8a4a42, 0.07));
+    this.head.add(face);
+    if (l.beard !== "ninguna") {
+      const b = l.beard === "perilla" ? box(0.06, 0.06, 0.03, l.hair, 0.035) : l.beard === "de-dias" ? box(0.2, 0.08, 0.02, mix(l.hair, l.skin, 0.55), 0.06) : box(0.2, l.beard === "larga" ? 0.22 : 0.1, 0.05, l.hair, l.beard === "larga" ? -0.02 : 0.04);
+      b.position.z = 0.115;
+      this.head.add(b);
+    }
+    // Hair by style (CubeHair.Build), over the old flat cap.
+    if (sp.hairBox) sp.hairBox.visible = false;
+    const H = (w: number, h: number, d: number, y: number, z = 0, x = 0, c = l.hair) => this.head.add(box(w, h, d, c, y).translateZ(z).translateX(x));
+    const st = l.hairStyle;
+    if (st === "turbante" && l.turban) {
+      H(0.26, 0.12, 0.26, 0.3, 0, 0, l.turban[0]);
+      H(0.27, 0.03, 0.27, 0.27, 0, 0, l.turban[1]);
+    } else if (st === "gorro-cocinero") {
+      H(0.24, 0.06, 0.24, 0.28, 0, 0, 0xffffff);
+      H(0.22, 0.2, 0.22, 0.41, 0, 0, 0xffffff);
+    } else if (st === "rapado") {
+      H(0.22, 0.01, 0.2, 0.258);
+    } else {
+      H(0.24, st === "degradado" ? 0.04 : 0.06, 0.24, 0.275);
+      H(0.24, 0.19, 0.03, 0.15, -0.12); // the back
+      if (st === "degradado") for (let i = 0; i < 6; i++) H(0.05, 0.04, 0.05, 0.31, ((i % 2) - 0.5) * 0.12, ((i % 3) - 1) * 0.07);
+      else for (const s of [1, -1]) H(0.03, 0.12, 0.14, 0.2, -0.03, 0.12 * s);
+      if (st === "corto" || st === "rizado" || st === "media-melena" || st === "largo" || st === "largo-ondulado") H(0.19, 0.04, 0.025, 0.235, 0.115);
+      if (st === "rizado") for (let i = 0; i < 8; i++) H(0.07, 0.07, 0.07, 0.29 + (i % 2) * 0.02, ((i % 3) - 1) * 0.08, ((Math.floor(i / 2) % 3) - 1) * 0.08);
+      if (st === "media-melena" || st === "bob") {
+        const len = st === "media-melena" ? 0.26 : 0.18;
+        H(0.25, len, 0.04, 0.2 - len / 2 + 0.05, -0.12);
+        for (const s of [1, -1]) H(0.035, len, 0.16, 0.2 - len / 2 + 0.05, -0.01, 0.125 * s);
+        if (st === "bob") H(0.2, 0.05, 0.02, 0.23, 0.12);
+      }
+      if (st === "largo" || st === "largo-ondulado") {
+        H(0.25, 0.36, 0.05, 0.02, -0.12);
+        for (const s of [1, -1]) H(0.035, 0.3, 0.12, 0.08, -0.03, 0.125 * s);
+        if (st === "largo-ondulado") for (let k = 0; k < 3; k++) for (const s of [1, -1]) H(0.05, 0.09, 0.12, 0.12 - k * 0.09, -0.03, (0.14 + (k % 2) * 0.02) * s);
+      }
+      if (st === "coleta") H(0.07, 0.26, 0.07, 0.12, -0.15);
+      if (st === "mono") H(0.12, 0.1, 0.1, 0.28, -0.12);
+    }
+    if (l.glasses !== undefined) {
+      for (const s of [1, -1]) H(0.065, 0.05, 0.01, 0.16, 0.125, 0.05 * s, l.glasses);
+      H(0.22, 0.012, 0.01, 0.175, 0.125, 0, l.glasses);
+    }
+    if (l.cap) {
+      H(0.25, 0.07, 0.25, 0.29, 0, 0, l.cap[0]);
+      H(0.2, 0.015, 0.1, 0.26, 0.16, 0, l.cap[0]);
+      H(0.05, 0.04, 0.01, 0.29, 0.126, 0, l.cap[1]);
+    }
+    if (l.beanie !== undefined) H(0.25, 0.1, 0.25, 0.3, 0, 0, l.beanie);
+    if (l.earring) for (const s of [1, -1]) H(0.015, 0.025, 0.015, 0.09, 0, 0.115 * s, 0xd9c060);
+    if (l.stole !== undefined) this.chest.add(box(0.42, 0.06, 0.24, l.stole, 0.2).rotateZ(0.5));
+    if (l.necklace !== undefined) this.chest.add(box(0.2, 0.025, 0.01, l.necklace, 0.2).translateZ(0.115));
   }
 
   pose(key: string): void {

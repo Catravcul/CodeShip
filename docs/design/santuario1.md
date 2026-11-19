@@ -57,7 +57,14 @@ salud.
 | 19 | Icono propio para el reto; **lista de iconos** con dónde se usa cada uno | Hecho: `ui/icon-catalog.ts` (la prueba lo compara con el código: un icono con `usedIn: []` está libre) |
 | 20 | Filtros de Áreas como Codeship y por edificio con sus nombres | Hecho (ver #6) |
 | 21 | Correr y saltar muy notorios, a máximo esfuerzo | Hecho: `domain/effort.ts` (sprint 6,5 m/s; salto de 50 cm con agacharse, impulso, recoger, bajar y amortiguar), `CubeFigure.run/jump`; en 3.ª persona ella gira hacia donde corre; en 1.ª la cabeza se mueve con la zancada y la vista se abre |
-| 22 | Los botones de configuración general, al mando | Hecho: + Misiones, − Áreas, captura Vista (1.ª/3.ª), inicio Menú (vuelve a mostrar el engranaje); el botón naranja sigue arriba |
+| 22 | Los botones de configuración general, al mando | Hecho: + Misiones, − Áreas, captura Vista (1.ª/3.ª), inicio Ajustes (ver #26); el botón naranja sigue arriba |
+| 23 | Cada máquina con su animación; lista de animaciones por categoría, con los retos y pasos que las lanzan | Hecho: `data/animaciones.ts` (movimientos, gestos, máquina → movimiento, procedimiento → animación de cada paso) y `application/animations.ts` (`stepAnimation`, `animationTable`, con prueba contra todos los retos); `step-show.ts` `motion()` dibuja cada uno |
+| 24 | Troncos de agua conectados al mar; animales marinos y submarino suben; entrar a un piso desde cualquier punto; pisos sin barandilla | Hecho: los troncos bajan a −12 m y son agua abierta (`Water.open`: ningún suelo dentro); se sale a un piso desde 2,4 m por encima; focas y pingüinos suben y bajan por cada tronco; sin barandillas, caída por el borde (`dropTo`) |
+| 25 | Nado y vista bajo el agua | Hecho: `CubeFigure.swim`, máscara, niebla azul bajo el agua (no blanca) |
+| 26 | El botón de menú no abre el menú árbol antiguo | Hecho: inicio abre los ajustes generales, con una fila para volver a la pantalla de inicio |
+| 27 | Parqueaderos de alfombras en la copa y el pie de cada árbol-edificio | Hecho: `parqueadero-alfombras` (ficción) en ambos sitios |
+| 28 | Ciclos de vida reales, a escala | Hecho: `data/ciclos-de-vida.ts` (etapas y gestación de Cold Sanctuary donde tiene la especie; el resto, AnAge y ADW) y `domain/life-cycle.ts`: cada familia tiene crías, jóvenes y adultos a su tamaño por la curva de crecimiento, con su nombre («Foca, cría de 1 mes»). Los adultos ya estaban a tamaño real con fuente. Pendiente: que nazcan, crezcan y mueran en vivo y la conducta de Cold Sanctuary (Ethogram, deseos, depredación) |
+| 29 | Todos los humanos de Cold Sanctuary | Hecho: faltaban Kushal, la Magnate (Nevaeh), Sadhguru y Neo; ya son 33 |
 
 ## Cambios a gran escala
 

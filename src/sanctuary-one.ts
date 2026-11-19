@@ -4,7 +4,7 @@ import { moveJoystick } from "@core/realism";
 import { buildS1Layout } from "@modules/sanctuary-one/data/layout";
 import { personRule } from "@modules/sanctuary-one/data/overrides";
 import { blocked, dropTo, placeAt, step, waterAt, type Body } from "@modules/aerial-sanctuary/domain/walk";
-import { S1_DAY_REAL_S, S1_START_HOUR, activityAt, along, hash01, route, shuttle, wanderAt, type Activity, type Route } from "@modules/sanctuary-one/domain/motion";
+import { S1_DAY_REAL_S, S1_START_HOUR, activityAt, along, drift, hash01, route, shuttle, wanderAt, type Activity, type Route } from "@modules/sanctuary-one/domain/motion";
 import { Wildlife } from "@modules/sanctuary-one/application/wildlife";
 import { staffPlaces, wayBetween, type Place } from "@modules/sanctuary-one/data/jornada";
 import { WalkIndex } from "@modules/sanctuary-one/data/walk-index";
@@ -60,7 +60,14 @@ document.body.classList.add("in-s3");
 const L = buildS1Layout(WORLD_SCALE);
 // The walk world by cells (thousands of solids): each step looks only round her.
 const walkIndex = new WalkIndex(L.world);
-const near = (x: number, z: number) => walkIndex.near(x, z);
+/** The drifting iceberg's solid, where it is now (moveIceberg); added to the world round her when it is near. */
+let bergSolid: { x0: number; x1: number; z0: number; z1: number; y0: number; y1: number } | undefined;
+const near = (x: number, z: number) => {
+  const w = walkIndex.near(x, z);
+  const b = bergSolid;
+  if (!b || x < b.x0 - 64 || x > b.x1 + 64 || z < b.z0 - 64 || z > b.z1 + 64) return w;
+  return { ...w, solids: [...w.solids, b] };
+};
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
 renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
@@ -271,10 +278,34 @@ function moveSubmarine(): void {
   sub.mesh.instanceMatrix.needsUpdate = true;
   sub.mesh.computeBoundingSphere();
 }
+// The drifting iceberg (Icebergs.cs: 0,2 m/s between its two points, about 38 min a way) and its visitors with it.
+const berg = L.drift && (() => {
+  const it = L.instances[L.drift.index]!;
+  const key = `${it.model}|${it.tint ?? ""}`;
+  const n = L.instances.slice(0, L.drift.index).filter((o) => o.model === it.model && (o.tint ?? "") === (it.tint ?? "")).length;
+  return { it, mesh: world.meshes.get(key), n, visitors: new Set(L.drift.visitors.map((i) => L.instances[i]!)) };
+})();
+let bergDx = 0;
+let bergDz = 0;
+function moveIceberg(): void {
+  if (!berg?.mesh || !L.drift) return;
+  const p = drift(L.drift.a, L.drift.b, 0.2, wildT);
+  bergDx = p.x - berg.it.x;
+  bergDz = p.z - berg.it.z;
+  const d = model(berg.it.model).size;
+  bergSolid = { x0: p.x - d.x / 2, x1: p.x + d.x / 2, z0: p.z - d.z / 2, z1: p.z + d.z / 2, y0: -40, y1: berg.it.y + d.y };
+  const sc = berg.it.scale ?? 1;
+  subQ.setFromAxisAngle(UP, berg.it.rot);
+  subM.compose(new THREE.Vector3(p.x, berg.it.y, p.z), subQ, new THREE.Vector3(sc, sc, sc));
+  berg.mesh.setMatrixAt(berg.n, subM);
+  berg.mesh.instanceMatrix.needsUpdate = true;
+  berg.mesh.computeBoundingSphere();
+}
 function moveAnimals(dt: number): void {
   wildT += dt;
   wild.step(dt, wildT, day + hour / 24, { x: body.x, z: body.z });
   moveSubmarine();
+  moveIceberg();
   for (const { herd, index, it } of world.animals) {
     const t = wildT + index * 0.37;
     const a = wild.get(it);
@@ -285,7 +316,8 @@ function moveAnimals(dt: number): void {
       // Up and down its trunk: a slow swim from the root under the ice to the top and back (~0,4 m/s vertically).
       const y = w.climb ? w.climb.y0 + (w.climb.y1 - w.climb.y0) * (0.5 - 0.5 * Math.cos(((wildT + w.seed) * 0.8) / (w.climb.y1 - w.climb.y0))) : it.y;
       herd.pose(index, p.x, y, p.z, p.yaw, t, p.moving || !!w.climb, it.scale ?? 1);
-    } else herd.pose(index, it.x, it.y, it.z, it.rot, t, false, it.scale ?? 1);
+    } else if (berg?.visitors.has(it)) herd.pose(index, it.x + bergDx, it.y, it.z + bergDz, it.rot, t, false, it.scale ?? 1);
+    else herd.pose(index, it.x, it.y, it.z, it.rot, t, false, it.scale ?? 1);
   }
   for (const h of world.herds) h.commit();
 }
@@ -652,7 +684,9 @@ function stageAt(at: { x: number; y: number; z: number; sy: number }): void {
   const stand = dist < 2.5 ? here : new THREE.Vector3(at.x, at.y, at.z).addScaledVector(d, -0.9);
   const right = new THREE.Vector3(-d.z, 0, d.x);
   const look = stand.clone().addScaledVector(d, 0.3).setY(stand.y + 0.95);
-  const cam = look.clone().addScaledVector(d, -2.0).addScaledVector(right, 1.2).setY(stand.y + 1.85);
+  // Wider for the tall machines she sits in (the jalón's column is 2,1 m): the whole machine and her in it.
+  const tall = Math.max(0, at.sy - 1.2);
+  const cam = look.clone().addScaledVector(d, -(2.0 + 3 * tall)).addScaledVector(right, 1.2 + 0.8 * tall).setY(stand.y + 1.85 + 0.8 * tall);
   steps.begin({ stand, yaw: Math.atan2(d.x, d.z), camera: cam, look, target });
   stageStand = stand;
   sheetLens(true);

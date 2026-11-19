@@ -1194,6 +1194,18 @@ export function motion(id: string, clock: number): PoseAngles {
       return P({ rootY: 0.97, torso: -0.1, headX: -0.35, hip: both(L2(0.1, -1.2, k)), knee: both(L2(0.05, 1.7, k)), shoulderX: both(-2.8), shoulderZ: [0.2, -0.2] });
     case "aterrizar":
       return P({ rootY: L2(0.95, 0.68, k), torso: L2(0.1, 0.55, k), hip: both(L2(-0.3, -1.0, k)), knee: both(L2(0.3, 1.5, k)), shoulderX: both(-1.2), shoulderZ: [0.3, -0.3], elbow: both(-0.4) });
+    case "plie":
+      return P({ rootY: L2(0.95, 0.72, k), torso: -0.05, hip: both(L2(-0.05, -0.75, k)), knee: both(L2(0.05, 1.3, k)), shoulderX: [-1.2, -0.2], shoulderZ: [0.2, -1.2], elbow: [-0.5, -0.2] });
+    case "tendu":
+      return P({ hip: [L2(0, -0.6, k), 0], knee: [0, 0], shoulderX: [-1.2, -0.2], shoulderZ: [0.2, -1.2], elbow: [-0.5, -0.2] });
+    case "releve":
+      return P({ rootY: 0.95 + 0.1 * k, shoulderX: [-1.2, -2.9], shoulderZ: [0.2, -0.3], elbow: [-0.5, -0.3] });
+    case "guardia":
+      return P({ rootY: 0.9 + 0.02 * Math.abs(s), torso: 0.1, headX: 0.15, hip: [-0.3, 0.1], knee: both(0.35), shoulderX: both(-1.3), shoulderZ: [0.35, -0.35], elbow: both(-2.3) });
+    case "golpear": {
+      const a = Math.max(0, s), b = Math.max(0, -s);
+      return P({ rootY: 0.9, torso: 0.15, headX: 0.15, hip: [-0.3, 0.1], knee: both(0.35), shoulderX: [L2(-1.3, -1.6, a), L2(-1.3, -1.6, b)], shoulderZ: [0.35, -0.35], elbow: [L2(-2.3, -0.05, a), L2(-2.3, -0.05, b)] });
+    }
     case "empujar-trineo":
       return P({ rootX: 0.75, rootY: 0.85, headX: -0.6, shoulderX: both(-1.5), elbow: both(-0.15), hip: [-0.9 - 0.5 * s, -0.9 + 0.5 * s], knee: [0.8 + 0.5 * Math.max(0, c), 0.8 + 0.5 * Math.max(0, -c)] });
     default:

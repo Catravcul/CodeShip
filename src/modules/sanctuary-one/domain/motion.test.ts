@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activityAt, along, route, shuttle, wanderAt, waypoint } from "./motion";
+import { activityAt, along, drift, route, shuttle, wanderAt, waypoint } from "./motion";
 
 describe("movimiento del santuario 1", () => {
   it("un animal merodea dentro de su territorio, y el mismo instante da el mismo sitio", () => {
@@ -62,5 +62,17 @@ describe("a vehicle's round trip", () => {
     expect(back.z).toBeCloseTo(3);
     expect(Math.abs(back.yaw)).toBeCloseTo(Math.PI);
     expect(shuttle(r, 50, 1, 5, 5)).toMatchObject({ x: 0, z: 0 });
+  });
+});
+
+describe("an iceberg drifting between two points", () => {
+  const a = { x: 0, z: 0 };
+  const b = { x: 0, z: -100 };
+  it("goes from A to B at its speed and back again", () => {
+    expect(drift(a, b, 0.2, 0)).toEqual({ x: 0, z: 0 });
+    expect(drift(a, b, 0.2, 250).z).toBeCloseTo(-50);
+    expect(drift(a, b, 0.2, 500).z).toBeCloseTo(-100);
+    expect(drift(a, b, 0.2, 750).z).toBeCloseTo(-50);
+    expect(drift(a, b, 0.2, 1000).z).toBeCloseTo(0);
   });
 });

@@ -10,6 +10,18 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
   real tras aparearse, crecen, cazan, pasan hambre y mueren de viejos; censo en la estación con el botón naranja.
   `fauna` gana plantas como comida (`forage.ts`). [docs/design/bioma-s3.md](docs/design/bioma-s3.md)
 
+- **Santuario 1 terminado para revisar**: quillas de fotobiorreactores bajo las ramas del Árbol de los Campos; el
+  iceberg a la deriva es sólido; ballet y dojo abiertos (sin obras), con retos de barra y de saco y sus animaciones
+  (plié, tendu, relevé, guardia, golpe). [docs/design/santuario1.md](docs/design/santuario1.md)
+
+- **Santuario 1, pisos desde la exportación de Unity**: gimnasio con piezas reales (máquinas de placas, jaula, bancos,
+  mancuernas, parkour, botiquín, materiales de obra); ballet, dojo y aula con lo que faltaba (barras portátiles, caja de
+  resina, makiwaras, acolchados, primeros auxilios, ábaco, astrolabio, quipu y esfera armilar); refugio de aves del
+  veterinario; cada terraza de la residencia con su frutal (sandía, frutilla, piña…); los seis métodos del mundo en el
+  Huerto; punto de cuidados de los frutales en cada punta y la sala de la experta; la fachada de fotobiorreactores de
+  espirulina (Árbol de los Campos y Ciencias) con su reto; el iceberg a la deriva se mueve; cámara más abierta en los
+  retos de máquinas altas. [docs/design/santuario1.md](docs/design/santuario1.md)
+
 - **Rivalidad entre machos (`fauna`)**: en el celo, dos machos junto a una hembra se la disputan como su especie
   (bueyes almizcleros chocan las cabezas, renos las cuernas, morsas los colmillos); gana el más fuerte y el otro se va.
   [docs/design/fauna.md](docs/design/fauna.md)

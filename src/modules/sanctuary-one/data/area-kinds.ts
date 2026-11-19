@@ -7,7 +7,7 @@ import { LOBES, capOf } from "./site";
 const BY_FURNISH: readonly (readonly [RegExp, string])[] = [
   [/^(gimnasio|cardio|calistenia)/, "Gimnasio"],
   [/^yoga/, "Yoga"],
-  [/^(ballet|dojo)/, "En obras"],
+  [/^(ballet|dojo)/, "Gimnasio"],
   [/^restaurante/, "Cocina"],
   [/^hospital-veterinario|^cria/, "Animales"],
   [/^hospital/, "Hospital"],

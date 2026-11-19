@@ -132,6 +132,8 @@ function hospitalVet(): FloorPlan {
   for (let i = 0; i < 8; i++) items.push(P("vet-perrera", -14.6 + i * 1.45, -layZ + 2.4, 0, `Box ${i + 1}`), P("vet-perrera", -14.6 + i * 1.45, -layZ + 6.2, PI, `Box ${i + 9}`));
   items.push(P("vet-jaulas", -13.6, 1.8), P("vet-jaulas", -10.2, 1.8), P("vet-pediluvio", -4.2, -layZ + 4.3), P("vet-bascula", -13.4, 9.6));
   for (let i = 0; i < 4; i++) items.push(P("vet-quirofano", 6.2 + (i % 2) * 8, -10.1 + Math.floor(i / 2) * 6.05, 0, `Quirófano veterinario ${i + 1}`));
+  // The bird refuge: 6 recovery boxes in a row (Refugio_aves).
+  for (let i = 0; i < 6; i++) items.push(P("vet-caja-aves", -14.6 + i * 1.4, 5.6, 0, `Caja de aves ${i + 1}`));
   items.push(P("vet-sala-fria", 7.1, 4.15));
   for (let i = 0; i < 3; i++) items.push(P("vet-jaulas", 4.9 + i * 2.2, 4.15));
   items.push(P("vet-aislamiento", 15.9, 4.15), P("vet-perrera", 15.2, 4.15), P("vet-perrera", 16.65, 4.15), P("zona-rayos-x", 12.6, 10.5));

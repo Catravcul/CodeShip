@@ -14,13 +14,34 @@ export const FRUITS: readonly (readonly [species: string, form: "arbol" | "palme
 
 type Sq = { x0: number; x1: number; z0: number; z1: number };
 
-export function orchardTip(size: number, col: Sq, step = 3.4): Placed[] {
+/** The care line's length (Orchards.cs BuildCareEquipment) and how deep its working strip is: the expert's room or a care point. */
+const CARE = { sala: { model: "frutal-sala-cuidados", len: 14.8, depth: 3.6 }, punto: { model: "frutal-punto-cuidados", len: 4.9, depth: 2.6 } } as const;
+
+/**
+ * The pots of a tip and, first, its care point against a free edge, facing in (Orchards.cs PlaceCareStation: the
+ * first edge whose line and working strip miss the water column); no pot within its strip and 2 m of way.
+ */
+export function orchardTip(size: number, col: Sq, step = 3.4, care: keyof typeof CARE = "punto"): Placed[] {
   const out: Placed[] = [];
+  const c = CARE[care];
+  const half = size / 2;
+  const back = 0.95;
+  // Each edge: the strip the line and its work take (in the tip's frame), where the line goes and its turn.
+  const edges = [
+    { r: { x0: -c.len / 2, x1: c.len / 2, z0: -half, z1: -half + back + c.depth }, x: 0, z: -half + back, rot: 0 },
+    { r: { x0: -c.len / 2, x1: c.len / 2, z0: half - back - c.depth, z1: half }, x: 0, z: half - back, rot: Math.PI },
+    { r: { x0: -half, x1: -half + back + c.depth, z0: -c.len / 2, z1: c.len / 2 }, x: -half + back, z: 0, rot: Math.PI / 2 },
+    { r: { x0: half - back - c.depth, x1: half, z0: -c.len / 2, z1: c.len / 2 }, x: half - back, z: 0, rot: -Math.PI / 2 },
+  ];
+  const hits = (a: Sq, b: Sq, m: number) => a.x0 < b.x1 + m && a.x1 > b.x0 - m && a.z0 < b.z1 + m && a.z1 > b.z0 - m;
+  const edge = c.len <= size - 0.8 ? edges.find((e) => !hits(e.r, col, 1.5)) : undefined;
+  if (edge) out.push({ model: c.model, x: edge.x, z: edge.z, rot: edge.rot, name: care === "sala" ? "Sala de cuidados de los frutales" : "Punto de cuidados de los frutales" });
   let i = 0;
-  const h = size / 2 - 1.2;
+  const h = half - 1.2;
   for (let z = -h; z <= h + 1e-6; z += step)
     for (let x = -h; x <= h + 1e-6; x += step) {
       if (x > col.x0 - 1.5 && x < col.x1 + 1.5 && z > col.z0 - 1.5 && z < col.z1 + 1.5) continue;
+      if (edge && hits({ x0: x - 0.6, x1: x + 0.6, z0: z - 0.6, z1: z + 0.6 }, edge.r, 1)) continue;
       const [species, form] = FRUITS[i++ % FRUITS.length]!;
       out.push({ model: `maceta-${form}`, x, z, name: `Frutal en maceta: ${species}` });
     }

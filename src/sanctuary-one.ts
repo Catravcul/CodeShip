@@ -31,10 +31,8 @@ import { applyReward, retosFor, type Reto } from "@modules/sanctuary-one/applica
 import { nearest, type Reachable } from "@modules/sanctuary-one/domain/reach";
 import { CrewMember } from "@modules/crew/domain/crew-member";
 import { ChoreRun, type Chore } from "@modules/chores/domain/chore";
-import { choreVisuals } from "@modules/chores/application/step-visuals";
+import { stepAnimation } from "@modules/sanctuary-one/application/animations";
 import type { StepAct } from "@modules/chores/domain/step-visual";
-import { RECIPES } from "@modules/kitchen/data/recipes";
-import { PROCESSES } from "@modules/kitchen/data/processes";
 import { StepShow, gesture, STEP_SECONDS } from "./adapters/three/interior/step-show";
 import type { Answer } from "@modules/mind-duel/domain/exercise";
 import { DuelView, type SessionText } from "./ui/duel-view";
@@ -152,14 +150,12 @@ for (const i of L.instances) {
 }
 
 /** What each solved step of a challenge looks like (the ships' «Pasos visibles», chores/application/step-visuals.ts). */
-const STEP_VISUALS = choreVisuals({ recipes: RECIPES, processes: PROCESSES });
-const actsOf = (c: Chore): StepAct[] => c.exercises.flatMap((_, i) => STEP_VISUALS.acts(c, i) ?? []);
 /** The steps a person is seen doing at a thing (its first challenge's), cached by model. */
 const workActs = new Map<string, StepAct[]>();
 function workOf(modelId: string | undefined): StepAct[] {
   if (!modelId) return [];
   let a = workActs.get(modelId);
-  if (!a) workActs.set(modelId, (a = retosFor(model(modelId), 0).slice(0, 1).flatMap((r) => actsOf(r.chore))));
+  if (!a) workActs.set(modelId, (a = retosFor(model(modelId), 0).slice(0, 1).flatMap((r) => r.chore.exercises.flatMap((_, i) => stepAnimation(r, modelId, i).acts))));
   return a;
 }
 
@@ -469,7 +465,7 @@ function arrived(): void {
   missionGoing = undefined;
   if (!ms) return;
   const it = missionAt.get(ms.id)!.it;
-  openReto(REWARD_OF(ms), (ok) => ok && doneToday.add(ms.id), { x: it.x, y: it.y, z: it.z, sy: model(it.model).size.y });
+  openReto(REWARD_OF(ms), (ok) => ok && doneToday.add(ms.id), { x: it.x, y: it.y, z: it.z, sy: model(it.model).size.y, modelId: it.model });
 }
 const REWARD_TEXT = { comida: "no pasar hambre", compania: "compañía", fuerza: "fuerza", salud: "salud" } as const;
 const missionsWindow = new AreasWindow(root, {
@@ -617,13 +613,14 @@ function stageAt(at: { x: number; y: number; z: number; sy: number }): void {
 }
 
 /** A challenge on the sheet (the same sheet as sanctuary 3 and the ships); her reward when it is done. */
-function openReto(r: Reto, done?: (ok: boolean) => void, at?: { x: number; y: number; z: number; sy: number }): void {
+function openReto(r: Reto, done?: (ok: boolean) => void, at?: { x: number; y: number; z: number; sy: number; modelId?: string }): void {
   const run = new ChoreRun(r.chore);
   challenge = r;
   RootMenu.interact(undefined);
   atHand = undefined;
   if (at) stageAt(at);
-  const acts = (i: number) => STEP_VISUALS.acts(r.chore, i) ?? [];
+  // Each step its own animation (data/animaciones.ts): the jalón machine pulls, the treadmill runs.
+  const acts = (i: number) => stepAnimation(r, at?.modelId, i).acts;
   let picked = { index: -1, n: 0 };
   duel.onRightPick = (id, slot) => {
     if (run.current?.id !== id || !steps.framing) return;

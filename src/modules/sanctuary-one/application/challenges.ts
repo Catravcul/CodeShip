@@ -13,6 +13,8 @@ export interface Reto {
   readonly reward: Reward;
   readonly source: string;
   readonly reality: "real" | "ficción";
+  /** The procedure it runs (data/retos.ts), when it is one: its steps' animations come from data/animaciones.ts. */
+  readonly procedure?: string;
 }
 
 /** Doménica's age (her crew profile), for the heart-rate numbers of a workout. */
@@ -28,6 +30,7 @@ export function procedureReto(q: Procedure, target?: string): Reto {
     reward: q.reward,
     source: q.source,
     reality: q.reality,
+    procedure: q.id,
   };
 }
 
@@ -90,6 +93,9 @@ export function retosFor(m: ModelDef, seed = 0): Reto[] {
     case "gimnasio-placas":
       return of(GYM.placas, GYM.aseoGym);
     case "gimnasio-peso-libre":
+      if (m.id === "gym-press-banca" || m.id === "gym-press-inclinado" || m.id === "gym-banco-fid") return of(GYM.pressBanca, GYM.aseoGym);
+      if (m.id === "gym-plataforma") return of(GYM.pesoMuerto);
+      if (m.id === "gym-estante-mancuernas") return of(GYM.mancuernas);
       return m.category === "maquina" ? of(GYM.pesoLibre, GYM.aseoGym) : of(GYM.pesoLibre);
     case "gimnasio-cardio": {
       const device = m.id === "gym-cinta" ? "cinta" : m.id.startsWith("gym-bici") ? "bicicleta" : undefined;

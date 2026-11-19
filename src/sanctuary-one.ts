@@ -531,7 +531,7 @@ L.instances.forEach((it, i) => {
   if (it.model === "persona" || !offersAny(it.model)) return;
   const d = model(it.model);
   const sc = it.scale ?? 1;
-  const t: Thing = { i, label: d.label, modelId: d.id, x: it.x, y: it.y, z: it.z, rot: it.rot, sx: d.size.x * sc * (it.plan ?? 1), sz: d.size.z * sc * (it.plan ?? 1), sy: d.size.y * sc, mover: moversByIt.get(it) };
+  const t: Thing = { i, label: it.name ?? d.label, modelId: d.id, x: it.x, y: it.y, z: it.z, rot: it.rot, sx: d.size.x * sc * (it.plan ?? 1), sz: d.size.z * sc * (it.plan ?? 1), sy: d.size.y * sc, mover: moversByIt.get(it) };
   if (t.mover) return void movingThings.push(t);
   // A thing lies in every cell its footprint touches (floors span several).
   const r = Math.hypot(t.sx, t.sz) / 2;

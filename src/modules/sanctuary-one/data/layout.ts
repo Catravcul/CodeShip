@@ -9,6 +9,8 @@ import { landscape } from "./paisaje";
 import { model, type ModelDef } from "./catalog";
 import { OVERRIDES, resolve, spacing, type Overrides } from "./overrides";
 import { GROUPS, plan, split } from "../domain/population";
+import { STAGE_LABEL, ageInGroup, sizeAt, stageOf } from "../domain/life-cycle";
+import { LIFE_CYCLES } from "./ciclos-de-vida";
 
 /**
  * Sanctuary 1 as the scene and the walk see it (docs/design/santuario1.md): the caps of ice and the land island as
@@ -375,6 +377,25 @@ function wanders(b: Built, model: string, w: NonNullable<Instance["wander"]>): v
   if (last && !last.wander && last.model === model) b.instances[b.instances.length - 1] = { ...last, wander: w };
 }
 
+/**
+ * A wild animal's age in its family (domain/life-cycle.ts, data/ciclos-de-vida.ts): its size by the real growth
+ * curve and a name that says its stage and age, e.g. «Foca, cría de 1 mes».
+ */
+function lifeOf(species: string, i: number, n: number): { scale: number; name?: string } {
+  const c = LIFE_CYCLES[species];
+  if (!c) return { scale: 1 };
+  const age = ageInGroup(i, n, c);
+  const months = Math.round(age / 30.4);
+  const years = Math.round(age / 365);
+  const when = months < 24 ? `${Math.max(1, months)} ${months <= 1 ? "mes" : "meses"}` : `${years} años`;
+  return { scale: sizeAt(age, c), name: `${c.label}, ${STAGE_LABEL[stageOf(age, c)]} de ${when}` };
+}
+
+function aged(b: Built, model: string, scale: number): void {
+  const last = b.instances[b.instances.length - 1];
+  if (last && last.model === model && scale < 0.999) b.instances[b.instances.length - 1] = { ...last, scale: (last.scale ?? 1) * scale };
+}
+
 /** A deterministic scatter (no Math.random: the same scene on every load). */
 function scatter(i: number, radius: number): { x: number; z: number } {
   const a = i * 2.399963;
@@ -431,16 +452,20 @@ export function buildS1Layout(k = 1, o: Overrides = OVERRIDES): S1Layout {
     const d = model(id);
     for (let i = 0; i < qty; i++) {
       const p = scatter(i, n.radius);
-      const y = n.marine ? (d.shape === "cetaceo" ? WATER_Y - d.size.y * 0.55 : WATER_Y - d.size.y * 0.4) : 0;
-      place(b, id, n.x + p.x, y, n.z + p.z, i * 1.7, n.marine ? "mar" : "fauna", {}, 1, undefined, false);
-      wanders(b, id, { x: n.x, z: n.z, r: n.radius, speed: SPEED[d.shape] ?? 0.8, seed: b.instances.length * 31 + 7 });
+      const life = lifeOf(n.species, i, qty);
+      const y = n.marine ? (d.shape === "cetaceo" ? WATER_Y - d.size.y * life.scale * 0.55 : WATER_Y - d.size.y * life.scale * 0.4) : 0;
+      place(b, id, n.x + p.x, y, n.z + p.z, i * 1.7, n.marine ? "mar" : "fauna", {}, 1, life.name, false);
+      aged(b, id, life.scale);
+      wanders(b, id, { x: n.x, z: n.z, r: n.radius, speed: (SPEED[d.shape] ?? 0.8) * Math.sqrt(life.scale), seed: b.instances.length * 31 + 7 });
     }
   }
   // Snow petrels: one colony (no nest in Cold Sanctuary's list: it is ours) on the wild northern cap.
   const pet = counts.get("SnowPetrel") ?? 0;
   for (let i = 0; i < pet; i++) {
     const p = scatter(i, 10);
-    place(b, "petrel-niveo", 75 + p.x, 0, 170 + p.z, i, "fauna", {}, 1, undefined, false);
+    const life = lifeOf("SnowPetrel", i, pet);
+    place(b, "petrel-niveo", 75 + p.x, 0, 170 + p.z, i, "fauna", {}, 1, life.name, false);
+    aged(b, "petrel-niveo", life.scale);
     wanders(b, "petrel-niveo", { x: 75, z: 170, r: 10, speed: SPEED.ave!, seed: b.instances.length * 31 + 7 });
   }
   // The staff on the hub, 2 m apart (ours: where each one goes comes with the workday).

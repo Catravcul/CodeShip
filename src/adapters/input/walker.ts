@@ -33,6 +33,11 @@ export class Walker {
     addZoomButtons(this.lookStick.el, (dir) => (this.zoomDir = dir));
   }
 
+  /** Hold the zoom from another control (the Switch pad's D-pad ↑ / ↓): +1 closer, −1 further, 0 let go. */
+  holdZoom(dir: -1 | 0 | 1): void {
+    this.zoomDir = dir;
+  }
+
   /** Movement intent: forward (+) / right (+), each −1..1. */
   move(): { forward: number; right: number } {
     if (!this.moves || !this.moveStick) return { forward: 0, right: 0 };

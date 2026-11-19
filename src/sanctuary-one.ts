@@ -557,7 +557,7 @@ function openReto(r: Reto, done?: (ok: boolean) => void): void {
   );
 }
 
-// --- The Switch-style action buttons: Correr (B), Saltar (A), Trepar (X) --------------------------------------
+// --- The Switch controls: Correr (B), Saltar (A), Trepar (X), zoom on the D-pad; the rest wait for a job --------------------------------------
 /** The tops she has climbed onto: floors she can walk on (walk.ts extra floors). */
 const climbed: Floor[] = [];
 let jumpT = -1;
@@ -565,7 +565,11 @@ const pad = new ActionPad(root, [
   { letter: "X", label: "Trepar", key: "KeyC" },
   { letter: "A", label: "Saltar", key: "Space" },
   { letter: "B", label: "Correr", toggle: true, key: "ShiftLeft" },
-], (letter) => {
+  // The left Joy-Con's D-pad: ↑ / ↓ zoom (Berón: «los de zoom podrían ser los de la izquierda»).
+  { letter: "up", label: "Acercar", hold: true, key: "Equal" },
+  { letter: "down", label: "Alejar", hold: true, key: "Minus" },
+], (letter, on) => {
+  if (letter === "up" || letter === "down") return walker.holdZoom(on ? (letter === "up" ? 1 : -1) : 0);
   if (challenge) return;
   if (letter === "A" && body.motion === "gravedad" && jumpT < 0) jumpT = 0;
   if (letter === "X") {

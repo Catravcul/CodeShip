@@ -1,15 +1,51 @@
-/* The right Joy-Con's diamond (action-pad.ts, reglas.md §5.7): round, dark and see-through, letters in white. */
-.action-pad { position: fixed; z-index: 5; right: 154px; bottom: calc(20px + env(safe-area-inset-bottom)); width: 148px; height: 148px; pointer-events: none; }
+/* The Switch's Joy-Cons (action-pad.ts, reglas.md §5.7): round, dark and see-through, marks in white. Left: the D-pad
+   beside the move stick, L/ZL over it, «−» and capture inside. Right: the A/B/X/Y diamond beside the look stick,
+   R/ZR over it, «+» and home inside. A button with no job yet is faded. */
+.switch-pad { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
+.sp-side { position: absolute; bottom: calc(20px + env(safe-area-inset-bottom)); width: 148px; height: 148px; }
+.sp-left { left: 154px; }
+.sp-right { right: 154px; }
+.sp-cluster { position: absolute; inset: 0; }
 .ap-btn { position: absolute; width: 50px; height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; padding: 0; color: #fff; background: radial-gradient(circle at 40% 35%, #4a4f57cc, #1c1f24cc 70%); border: 2px solid #ffffff40; border-radius: 50%; opacity: 0.62; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; box-shadow: 0 2px 4px #0005; transition: opacity 0.15s, transform 0.08s; }
 .ap-btn b { font: 700 17px/1 system-ui, sans-serif; }
 .ap-btn span { font-size: 9px; letter-spacing: 0.02em; opacity: 0.9; }
 .ap-btn:active, .ap-btn.hit { transform: scale(0.92); opacity: 0.95; }
 .ap-btn.on { opacity: 0.95; color: #1d0d00; background: radial-gradient(circle at 40% 35%, #ffd2a0, #ff9a2e 70%); border-color: #ffd2a0; }
 .ap-btn.idle { opacity: 0.32; }
-.ap-x { left: 49px; top: 0; }
-.ap-a { right: 0; top: 49px; }
-.ap-b { left: 49px; bottom: 0; }
-.ap-y { left: 0; top: 49px; }
-@media (orientation: portrait) { .action-pad { right: 14px; bottom: calc(160px + env(safe-area-inset-bottom)); } }
-body.in-duel .action-pad, body.in-areas .action-pad, body.in-missions .action-pad, body.in-tasks .action-pad, body.in-settings .action-pad, body.in-reto-picker .action-pad, body.in-journey .action-pad { display: none; }
-
+.ap-btn.free { opacity: 0.3; }
+/* The diamond and the D-pad: top, right, bottom, left. */
+.ap-x, .ap-up { left: 49px; top: 0; }
+.ap-a, .ap-right { right: 0; top: 49px; }
+.ap-b, .ap-down { left: 49px; bottom: 0; }
+.ap-y, .ap-left { left: 0; top: 49px; }
+.ap-up, .ap-down, .ap-left, .ap-right { border-radius: 12px; }
+.ap-up b, .ap-down b, .ap-left b, .ap-right b { font-size: 14px; }
+/* Shoulders over each pair, as pills: L and R on the inside, ZL and ZR above them. */
+.ap-l, .ap-zl, .ap-r, .ap-zr { width: 64px; height: 34px; border-radius: 17px; }
+.ap-l, .ap-r { top: -46px; }
+.ap-zl, .ap-zr { top: -86px; }
+.ap-l, .ap-zl { left: -140px; }
+.ap-r, .ap-zr { right: -140px; }
+.ap-l b, .ap-zl b, .ap-r b, .ap-zr b { font-size: 13px; }
+/* «−», capture, «+» and home: small, at the inner top corners. */
+.ap-minus, .ap-capture, .ap-plus, .ap-home { width: 34px; height: 34px; }
+.ap-minus, .ap-plus { top: -4px; }
+.ap-capture, .ap-home { bottom: -4px; }
+.ap-minus, .ap-capture { right: -40px; }
+.ap-plus, .ap-home { left: -40px; }
+.ap-capture { border-radius: 8px; }
+.ap-minus b, .ap-plus b, .ap-home b, .ap-capture b { font-size: 15px; }
+/* The look stick's own «−» / «+» go: the D-pad zooms now. */
+body.has-switch-pad .vstick > .cam-zoom { display: none; }
+@media (orientation: portrait) {
+  .sp-side { bottom: calc(160px + env(safe-area-inset-bottom)); }
+  .sp-left { left: 14px; }
+  .sp-right { right: 14px; }
+  .ap-l, .ap-zl { left: 0; }
+  .ap-r, .ap-zr { right: 0; }
+  .ap-minus, .ap-plus { top: -46px; }
+  .ap-capture, .ap-home { top: -86px; bottom: auto; }
+  .ap-minus, .ap-capture { right: 0; }
+  .ap-plus, .ap-home { left: 0; }
+}
+body.in-duel .switch-pad, body.in-areas .switch-pad, body.in-missions .switch-pad, body.in-tasks .switch-pad, body.in-settings .switch-pad, body.in-reto-picker .switch-pad, body.in-journey .switch-pad { display: none; }

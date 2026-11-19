@@ -466,6 +466,22 @@ export const TRABAJO = {
     "cierra y revisa la escotilla y la cúpula",
     "avisa a superficie y empieza a lastrar",
   ], ["sumérgete sin avisar a superficie"], "DNV, Rules for Classification: Underwater Technology (2023); IMCA, submersibles"),
+  aceiteTractor: p("mec-aceite-tractor", "Cambiar el aceite del tractor", "trabajar", "fuerza", "El tractor compacto cumple sus 200 horas", [
+    "calienta el motor unos minutos y apágalo en llano",
+    "pon el recipiente bajo el tapón de vaciado y quítalo",
+    "deja escurrir y cambia el filtro, con la junta untada de aceite nuevo",
+    "pon el tapón con su arandela nueva y llena hasta la marca de la varilla",
+    "arranca, busca fugas y vuelve a mirar el nivel",
+    "vierte el aceite usado en su bidón del cubeto",
+  ], ["tira el aceite usado por el desagüe", "llena por encima de la marca máxima"], "Kubota, manual del operador de tractores compactos (mantenimiento cada 200 h); Directiva 2008/98/CE (aceites usados)"),
+  fueraborda: p("mec-fueraborda", "Lavar el fueraborda tras salir al mar", "trabajar", "salud", "La barca de trabajo vuelve del mar", [
+    "lava el motor por fuera con agua dulce",
+    "pon las orejeras de lavado en la toma de agua y abre el grifo",
+    "arranca y deja circular agua dulce unos minutos al ralentí",
+    "comprueba que sale el chorro testigo de la refrigeración",
+    "revisa los ánodos de sacrificio y cambia los gastados a la mitad",
+    "inclina el motor hacia arriba para guardarlo",
+  ], ["arranca el motor sin agua en las orejeras"], "Yamaha y Mercury, manuales del propietario de motores fueraborda: lavado con agua dulce y ánodos"),
   guardia: p("guardia-radio", "Guardia: prueba de radio y carta de hielo", "trabajar", "salud", "Empieza tu turno de guardia", [
     "escucha el canal {16|1|99} de VHF, el de socorro",
     "haz la prueba de radio con la otra torre",

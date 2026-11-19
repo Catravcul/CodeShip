@@ -170,6 +170,8 @@ export function retosFor(m: ModelDef, seed = 0): Reto[] {
       return m.id.startsWith("tex-telar") ? of(TRABAJO.telar) : of(TRABAJO.textil);
     case "submarino":
       return of(TRABAJO.submarino);
+    case "mecanica":
+      return m.id === "mec-cuna-submarino" ? of(TRABAJO.submarino) : m.id === "mec-barca-remolque" ? of(TRABAJO.fueraborda) : of(TRABAJO.aceiteTractor, TRABAJO.fueraborda);
     case "guardia":
       return of(TRABAJO.guardia);
     case "aula":

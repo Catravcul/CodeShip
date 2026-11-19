@@ -174,11 +174,12 @@ function cria(): FloorPlan {
 function culturedMeat(): FloorPlan {
   const hx = 13;
   const hz = 10;
-  const items: Placed[] = [P("lab-campana", -hx + 1.2, -hz + 1), P("lab-microscopio", -hx + 2.4, -hz + 0.9), P("lab-criogenico", -hx + 0.8, 0.2), P("lab-incubadora", -hx + 0.8, 3.2)];
+  const items: Placed[] = [P("lab-campana", -hx + 1.2, -hz + 1), P("lab-microscopio", -hx + 2.4, -hz + 0.9), P("lab-criogenico", -hx + 0.8, 0.2), P("lab-incubadora", -hx + 0.8, 3.2, D(90))];
   items.push(P("lab-medio", -hx + 1.2, hz - 1.3), P("lab-autoclave", -hx + 5.2, hz - 1), P("lab-biorreactor-semilla", -3.2, -hz + 1.4));
   items.push(P("lab-biorreactor", 1.4, -hz + 1.6, 0, "Producción 1"), P("lab-biorreactor", 5.75, -hz + 1.6, 0, "Producción 2"), P("lab-biorreactor", -1, -4, 0, "Producción 3"));
   for (let u = 0; u < 6; u++) items.push(P("lab-perfusion", hx - 1.5 - (u % 3) * 3.9, u < 3 ? -0.4 : -3.6));
-  items.push(P("lab-centrifuga", hx - 1, hz - 1.4), P("lab-centrifuga", hx - 7, hz - 1.4), P("lab-formadora", hx - 4, hz - 1.3), P("lab-raciones", 7.5, 4.5));
+  items.push(P("lab-centrifuga", hx - 1, hz - 1.4), P("lab-centrifuga", hx - 7, hz - 1.4), P("lab-formadora", hx - 4, hz - 1.3), P("lab-formadora", hx - 10, hz - 1.3, 0, "Formadora 2"), P("lab-raciones", 7.5, 4.5));
+  items.push(P("lab-camara-fria", hx - 0.6, 3.5), P("lab-consola-lote", 0, 0.8));
   items.push(P("aseos-1", hx - 0.2 - 1.9, -hz + 0.9));
   return { id: "carne-cultivada", size: SIZE, items, source: "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Build (distribución de 26 × 20 m)" };
 }

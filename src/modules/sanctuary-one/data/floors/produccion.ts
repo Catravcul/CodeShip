@@ -17,13 +17,26 @@ function construction(): FloorPlan {
   const items = [floor, P("cons-miniexcavadora", -11.93, -7.6, deg(20)), P("cons-minicargadora", -8.06, -7.8), P("cons-hormigonera", -4.75, -8), P("cons-grua", 10.6, -8.5)];
   items.push(P("cons-ladrillos", -10.6, 2.85), P("cons-cemento", -10.6, 4.15), P("cons-madera", -12.15, 4.6), P("cons-vigas", -12.15, 1.2), P("cons-tuberias", -10.6, 0.8));
   items.push(P("cons-cable", 11.6, 2.6), P("cons-repuestos", 11.8, 0.2, deg(-90)), P("cons-tejas", 11.6, -1.8));
-  items.push(P("cons-panel", -1.5, 1.48, PI), P("cons-andamio", 3.05, 0.94), P("cons-carretilla", 5.4, -0.2, PI / 2), P("cons-carretilla", 5.4, 0.9, PI / 2));
+  items.push(P("cons-banco", -1.5, 0.93, PI), P("cons-muestrario", 0, 4.3), P("cons-panel", -1.5, 1.48, PI), P("cons-andamio", 3.05, 0.94), P("cons-carretilla", 5.4, -0.2, PI / 2), P("cons-carretilla", 5.4, 0.9, PI / 2));
   for (let i = 0; i < 5; i++) items.push(P("cons-cono", -12.4 + i * 0.9, 9.2));
   items.push(P("aseos-1", 10.9, 9.1, PI));
   return { id: "construccion", size: SIZE, items, source: cs("Construction", "FurnishConstruction") };
 }
 
-const mechanics = (): FloorPlan => ({ id: "mecanica", size: SIZE, items: [floor, P("aseos-1", -10.9, 9.1, PI)], source: cs("Construction", "Mecánica: solo sus aseos") });
+/**
+ * The vehicle workshop: Cold Sanctuary leaves it empty (only its toilets); here a real one for its tractor, boat and
+ * submarine (models/mecanica.ts). Bays on the north wall, machines on the east, bench and welding on the west, oil and
+ * spares on the south; the middle stays free to move a vehicle in.
+ */
+function mechanics(): FloorPlan {
+  const R = deg(90);
+  const L = deg(-90);
+  const items = [floor, P("mec-elevador-tractor", -8.5, -7.6, PI), P("mec-cuna-submarino", -1.2, -7.9, R), P("mec-barca-remolque", 6.8, -7.9, R)];
+  items.push(P("mec-grua-motor", 11.9, -3.4, L), P("mec-neumaticos", 12.3, 0.4, L), P("mec-lavapiezas", 12.5, 3.2, L), P("mec-baterias", 12.5, 4.9, L));
+  items.push(P("mec-banco", -12.4, -2.8, R), P("mec-soldadura", -12.3, 1.4, R), P("mec-compresor", -12.6, 4.0, R), P("mec-prensa", -12.5, 6.0, R));
+  items.push(P("mec-aceite", -6.5, 9.4), P("mec-estanteria", 6.5, 9.4), P("aseos-1", -10.9, 9.1, PI));
+  return { id: "mecanica", size: SIZE, items, source: `${cs("Construction", "Mecánica: en Cold Sanctuary solo sus aseos")}; taller amueblado aquí (models/mecanica.ts)` };
+}
 
 function textile(): FloorPlan {
   const items = [floor, P("tex-telar-pie", -11.4, -8.6), P("tex-telar-cintura", 12, -8.8), P("tex-rueca", -11.8, 2.4), P("tex-ovillos", -2, -9.65)];

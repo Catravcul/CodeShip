@@ -3,6 +3,14 @@
 Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documento. El historial anterior al
 2026-11-18 está en git y en `docs/design/`.
 
+## 2026-11-19
+
+- **Santuario 1, pedidos del 19-nov**: botón naranja de interacción (también en las naves) con retos reales en
+  máquinas, plantas y animales; ventana Misiones con la jornada y recompensas; Áreas en esferas con filtros y ajustes
+  santuario/casquete/edificio; mandos estilo Switch (correr, saltar, trepar); alfombras voladoras, mascarillas y marcos
+  en cada puerta, abedules en la isla; animales de cubos articulados; restaurante con equipo real por oficio, utensilios
+  e ingredientes. [docs/design/santuario1.md](docs/design/santuario1.md)
+
 ## 2026-11-18
 
 - **Santuario 1 completo (entorno)**: todos los pisos que Cold Sanctuary amuebla (Entrenamiento, Servicios con anillos,

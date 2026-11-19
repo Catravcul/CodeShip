@@ -1,3 +1,4 @@
+import { CAMPOS_MODELS } from "./campos";
 import { C, COL, m, pz, rep, type ModelDef, type Part } from "./kit";
 
 /**
@@ -43,8 +44,15 @@ const room = (i: number): Part[] => [
   C(2.8, 0.27, -1.65, 2.8, 0.02, 3.6, 0x6a8f7a),
 ];
 
-/** The fruit terrace (Terraza_frutal): a 7 × 7 m deck with a potted dwarf fruit tree 2 m off its centre (+x). */
-const terrace: Part[] = [C(0, 0.075, 0, 7, 0.15, 7, WOOD), C(2, 0.4, 0, 0.7, 0.5, 0.7, 0x8c5a3c), C(2, 0.62, 0, 0.6, 0.04, 0.6, soil), C(2, 1.1, 0, 0.12, 1.0, 0.12, 0x6b4f35), C(2, 2.1, 0, 1.6, 1.2, 1.6, 0x5a9a48), C(2.4, 2.0, 0.4, 0.15, 0.15, 0.15, 0xe0a020), C(1.6, 2.2, -0.3, 0.15, 0.15, 0.15, 0xe0a020)];
+/**
+ * The fruit terrace (Terraza_frutal): a 7 × 7 m deck with its potted dwarf fruit 2 m off its centre (+x), the pot of the
+ * tips (Orchards.cs BuildPotted) of the room's species, one model per growth form.
+ */
+const FORMS = ["arbol", "palmera", "arbusto", "herbacea", "rastrera"] as const;
+const terrace = (form: (typeof FORMS)[number]): Part[] => [
+  C(0, 0.075, 0, 7, 0.15, 7, WOOD),
+  ...(CAMPOS_MODELS.find((d) => d.id === `maceta-${form}`)!.parts ?? []).map(([x, y, z, a, b, c, col]) => [x + 2, y + 0.15, z, a, b, c, col] as Part),
+];
 
 /** The pillow ring for `residents` (PillowRing.CellsFor: ⌈√n⌉ cells of 2,5 m, bumper 0,6, walkway 2): platform and its soft bed. */
 export function pillowRing(residents: number): { x: number; z: number; hard: Part[]; soft: Part[] } {
@@ -79,7 +87,7 @@ const RING = pillowRing(RESIDENTS);
 export const RESIDENCIA_MODELS: readonly ModelDef[] = [
   m("plaza-suelo", "mueble", "suelos", "Suelo de la plaza", 39.8, 0.1, 37.8, 0xb8a88f, "caja", "real", RB("FurnishPlaza Suelo_plaza")),
   ...[0, 1].map((i) => pz(`res-habitacion-${i + 1}`, "mueble", "residencia-habitaciones", "Habitación abierta (cama-litera de 8 con tobogán, mesilla, armario y alfombra-esterilla)", WOOD, room(i * 3), "real", RB("Cabin (9 × 7 m, BedWidth 3,6, BedUpperTop 1,6)"))),
-  pz("res-terraza", "naturaleza", "residencia-terrazas", "Terraza frutal con su frutal enano en maceta", WOOD, terrace, "real", RB("Cabin Terraza_frutal y PottedFruit")),
+  ...FORMS.map((f) => pz(`res-terraza-${f}`, "naturaleza", "residencia-terrazas", "Terraza frutal con su frutal enano en maceta", WOOD, terrace(f), "real", RB("Cabin Terraza_frutal y PottedFruit (FruitCare.All, una especie distinta en cada casa)"))),
   pz("res-ring", "mueble", "residencia-ring", `Ring de almohadas: plataforma y cabecero (${RING.x.toFixed(1)} × ${RING.z.toFixed(1)} m)`, WOOD, RING.hard, "ficcion", RB("BuildPillowRing (docs/guerra-de-almohadas.md)")),
   { ...pz("res-ring-colchon", "mueble", "residencia-ring", "Cama colosal del ring, borde blando y almohadas", 0xf7f2e8, RING.soft, "ficcion", RB("BuildPillowRing Colchon_colosal, Borde_blando, Almohadas")), walkThrough: true },
   m("res-banco-lectura", "mueble", "residencia-plaza", "Banco de lectura (12 plazas)", 8.4, 0.45, 0.5, WOOD, "banco", "real", RB("FurnishPlaza Banco_lectura")),

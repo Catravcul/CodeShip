@@ -63,6 +63,12 @@ export const EDIFICIO_MODELS: readonly ModelDef[] = [
   pz("fotobio-columna", "maquina", "fotobiorreactores", "Bomba, tubería de subida y desgasificador de una columna de fotobiorreactores", 0x5a6470, [
     C(0, 0.3, 0, 0.9, 0.6, 0.5), C(1.7, 23.6, 0, 0.1, 46, 0.1, 0x9ea6ad), C(1.0, 47.6, 0, 0.35, 1.2, 0.35, 0xc7ccd6),
   ], "real", "Cold Sanctuary, Assets/Editor/SampleSceneBuilder.Fotobio.cs (bomba abajo, desgasificador arriba)"),
+  pz("fotobio-quilla", "maquina", "fotobiorreactores", "Panel plano de fotobiorreactor (2,4 × 2 m) de la quilla bajo la rama, con sus LED a los dos lados", 0x2e8a4f, [
+    C(0, 0.04, 0, 2.4, 0.08, 0.1, 0x9ea6ad), C(0, 1.08, 0, 2.4, 2, 0.05, 0x2e8a4f), C(0, 2.12, 0, 2.4, 0.08, 0.1, 0x9ea6ad),
+    C(-0.9, 3.31, 0, 0.08, 2.3, 0.08, 0x9ea6ad), C(0.9, 3.31, 0, 0.08, 2.3, 0.08, 0x9ea6ad),
+    C(0, 1.08, -0.28, 2.4, 0.04, 0.04, 0xf2f2e6), C(0, 1.08, 0.28, 2.4, 0.04, 0.04, 0xf2f2e6),
+  ], "real", "Cold Sanctuary, Assets/Editor/SampleSceneBuilder.Fotobio.cs (quillas: FotobioSpec.Keel, 6 paneles de 2,4 × 2 m a 2,4 m bajo la rama)"),
+  pz("fotobio-bomba", "maquina", "fotobiorreactores", "Bomba de la quilla de fotobiorreactores", 0x5a6470, [C(0, 0.3, 0, 0.6, 0.6, 0.5), C(0, 0.85, 0, 0.08, 0.5, 0.08, 0x9ea6ad)], "real", "Cold Sanctuary, Assets/Editor/SampleSceneBuilder.Fotobio.cs (su bomba)"),
   pz("fotobio-cuadro", "maquina", "fotobiorreactores", "Cuadro de control de los fotobiorreactores (bombas, LED, pH y temperatura)", 0x5a6470, [
     C(0, 0.4, 0, 0.1, 0.8, 0.1), C(0, 1.6, 0, 1.2, 1.6, 0.4), C(-0.3, 1.9, 0.21, 0.4, 0.25, 0.02, 0x66bb6a), C(0.3, 1.5, 0.21, 0.3, 0.6, 0.02, 0xf2f2f2),
   ], "real", "Cold Sanctuary, Assets/Editor/SampleSceneBuilder.Fotobio.cs Cuadro_fotobio"),

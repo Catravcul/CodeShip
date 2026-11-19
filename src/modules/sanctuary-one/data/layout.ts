@@ -286,6 +286,22 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
         { id: `${key}-c`, ...sideRect(S(s), colC.x - ch, colC.x + ch, colC.z - ch, colC.z + ch, o), yBottom: y, yTop: ty + 1, area: key, open: true },
       );
       gapsOf[s]!.push({ from: mx - th, to: mx + th, y0: y, y1: y + 2 * th });
+      // The photobioreactor keel (Fotobio.cs, FotobioSpec.Keel) of the Árbol de los Campos: 6 flat panels of 2,4 × 2 m
+      // hung 2,4 m under the long run of the branch, between its mouth and its column, with its pump.
+      if (t.building === "Árbol de los Campos") {
+        const span = colC.x - ch - (mx + th);
+        const n = Math.min(6, Math.floor((span + 0.12) / 2.52));
+        const x0 = (mx + th + colC.x - ch) / 2 - (n * 2.52 - 0.12) / 2;
+        const turn = (S(s) * Math.PI) / 2;
+        for (let pi = 0; pi < n; pi++) {
+          const q = side(S(s), x0 + pi * 2.52 + 1.2, colC.z);
+          place(b, "fotobio-quilla", o.x + q.x, y - 2.4 - 2.08, o.z + q.z, turn, key, { edificio: t.id }, 1, pi === 0 ? "Quilla de fotobiorreactores" : undefined, false);
+        }
+        if (n > 0) {
+          const q = side(S(s), x0 - 0.6, colC.z);
+          place(b, "fotobio-bomba", o.x + q.x, y - 2.4 - 0.7, o.z + q.z, turn, key, { edificio: t.id }, 1, undefined, false);
+        }
+      }
       const tip = sideRect(S(s), tipC.x - ts / 2, tipC.x + ts / 2, tipC.z - ts / 2, tipC.z + ts / 2, o);
       const col = sideRect(S(s), colC.x - ch, colC.x + ch, colC.z - ch, colC.z + ch, o);
       const tipArea = `${t.id}:punta-${l}-${s}`;
@@ -488,7 +504,7 @@ export function buildS1Layout(k = 1, o: Overrides = OVERRIDES): S1Layout {
     if (it.model === "iceberg-deriva") drifting = { index: at, visitors: [], a: DRIFT.a, b: DRIFT.b };
     if (it.sea) {
       const d = model(it.model);
-      // (The drifting one moves: no fixed solid, she would hit an invisible wall where it was.)
+      // (The drifting one moves: its solid goes with it, added round her by the scene, sanctuary-one.ts near.)
       if (it.model !== "iceberg-deriva") b.solids.push({ x0: it.x - d.size.x / 2, x1: it.x + d.size.x / 2, z0: it.z - d.size.z / 2, z1: it.z + d.size.z / 2, y0: -40, y1: y + d.size.y });
       // Its visitors (IcebergVisitor: 4 seals and 4 penguins, adults, swimming off its ledge).
       const seals = 2;

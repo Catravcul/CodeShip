@@ -5,6 +5,10 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-19
 
+- **Santuario 1 terminado para revisar**: quillas de fotobiorreactores bajo las ramas del Árbol de los Campos; el
+  iceberg a la deriva es sólido; ballet y dojo abiertos (sin obras), con retos de barra y de saco y sus animaciones
+  (plié, tendu, relevé, guardia, golpe). [docs/design/santuario1.md](docs/design/santuario1.md)
+
 - **Santuario 1, pisos desde la exportación de Unity**: gimnasio con piezas reales (máquinas de placas, jaula, bancos,
   mancuernas, parkour, botiquín, materiales de obra); ballet, dojo y aula con lo que faltaba (barras portátiles, caja de
   resina, makiwaras, acolchados, primeros auxilios, ábaco, astrolabio, quipu y esfera armilar); refugio de aves del

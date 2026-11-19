@@ -89,6 +89,22 @@ export const GYM = {
     "estira cuádriceps, isquios y espalda {30|3|180} segundos cada uno",
     "enrolla la esterilla y devuélvela a la estantería",
   ], ["rebota al estirar", "haz cien abdominales tirando del cuello"], "McGill, Low Back Disorders, 3.ª ed. (2015): los tres grandes; ACSM (2021): estiramientos de 10–30 s"),
+  ballet: p("ballet-barra", "Trabajo de barra", "ejercicio", "fuerza", "La clase empieza en la barra, como cada día", [
+    "frota las zapatillas en la caja de resina para no resbalar",
+    "ponte de lado a la barra, la mano apoyada sin agarrarla",
+    "pliés en primera y segunda: rodillas sobre las puntas de los pies",
+    "tendus y dégagés: la pierna sale estirada desde la cadera",
+    "relevés: sube a media punta {8|80|1} veces, despacio",
+    "estira al final y devuelve las barras portátiles a su sitio",
+  ], ["cuelga el peso del cuerpo de la barra", "fuerza el en dehors desde las rodillas"], "Royal Academy of Dance, Ballet technique: barre work; Kassing, Teaching Beginning Ballet Technique (1998)"),
+  dojo: p("dojo-saco", "Golpeo al saco y a la makiwara", "ejercicio", "fuerza", "Turno de técnica en el dojo", [
+    "véndate las manos y ponte guantes para el saco",
+    "calienta: comba o movilidad {5|60|0} minutos",
+    "guardia: manos arriba, barbilla abajo, pies a la anchura de los hombros",
+    "asaltos de 3 minutos con 1 de descanso, golpeando con la cadera",
+    "en la makiwara, golpes suaves con los nudillos alineados con la muñeca",
+    "estira y deja guantes y vendas en la estantería de equipo",
+  ], ["golpea la makiwara con toda la fuerza el primer día", "baja la guardia al cansarte"], "NSCA, Essentials of Strength Training and Conditioning, 4.ª ed. (2016); Funakoshi, Karate-dō Kyōhan (1935): makiwara"),
   calistenia: p("gym-calistenia", "Dominadas en la barra", "ejercicio", "fuerza", "Tu propio peso es la máquina", [
     "agarra la barra con las palmas hacia delante, algo más abiertas que los hombros",
     "cuelga con los brazos estirados y activa los hombros, bajándolos",

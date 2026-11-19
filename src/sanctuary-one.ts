@@ -60,7 +60,14 @@ document.body.classList.add("in-s3");
 const L = buildS1Layout(WORLD_SCALE);
 // The walk world by cells (thousands of solids): each step looks only round her.
 const walkIndex = new WalkIndex(L.world);
-const near = (x: number, z: number) => walkIndex.near(x, z);
+/** The drifting iceberg's solid, where it is now (moveIceberg); added to the world round her when it is near. */
+let bergSolid: { x0: number; x1: number; z0: number; z1: number; y0: number; y1: number } | undefined;
+const near = (x: number, z: number) => {
+  const w = walkIndex.near(x, z);
+  const b = bergSolid;
+  if (!b || x < b.x0 - 64 || x > b.x1 + 64 || z < b.z0 - 64 || z > b.z1 + 64) return w;
+  return { ...w, solids: [...w.solids, b] };
+};
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
 renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
@@ -285,6 +292,8 @@ function moveIceberg(): void {
   const p = drift(L.drift.a, L.drift.b, 0.2, wildT);
   bergDx = p.x - berg.it.x;
   bergDz = p.z - berg.it.z;
+  const d = model(berg.it.model).size;
+  bergSolid = { x0: p.x - d.x / 2, x1: p.x + d.x / 2, z0: p.z - d.z / 2, z1: p.z + d.z / 2, y0: -40, y1: berg.it.y + d.y };
   const sc = berg.it.scale ?? 1;
   subQ.setFromAxisAngle(UP, berg.it.rot);
   subM.compose(new THREE.Vector3(p.x, berg.it.y, p.z), subQ, new THREE.Vector3(sc, sc, sc));

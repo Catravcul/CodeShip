@@ -126,10 +126,7 @@ catálogo (tamaño, piezas, color) cambia todas sus copias; un piso es una lista
   `models/gimnasio-detalle.ts`, `models/cocina-equipo.ts`).
 - La Mecánica: Cold Sanctuary solo pone sus aseos; aquí es un taller real de tractor, barca y submarino
   (`models/mecanica.ts`, distribución nuestra).
-- La fachada de fotobiorreactores lleva las arpas del tronco, sus bombas y el cuadro; faltan las quillas de paneles
-  planos bajo las ramas del Árbol de los Campos.
-- El iceberg a la deriva no es sólido mientras se mueve (se nada a través); el varado sí.
-- Ballet y dojo siguen «en obras» (su acabado está oculto por la regla de `overrides.ts`, ya amueblado).
+- Ballet y dojo están terminados (sin la obra de Cold Sanctuary), con sus retos de barra y de saco.
 - Sin la máquina de virtualización (microcosmos) de las salas: es ficción del backlog.
 
 ## Distribución nuestra (no sale de Cold Sanctuary)
@@ -146,4 +143,5 @@ catálogo (tamaño, piezas, color) cambia todas sus copias; un piso es una lista
 2. La exportación de Unity: compararla con nuestros pisos e investigar para superar a Cold Sanctuary, piso a piso.
    Hechos todos los pisos (restaurante, hospital, laboratorios, carne cultivada, producción, gimnasio, yoga y salas de
    entrenamiento, cría, veterinario, residencia). Herramienta: el `.jsonl` de la rama `codeship-export`.
-3. Las quillas de fotobiorreactores bajo las ramas del Árbol de los Campos.
+3. La fachada de fotobiorreactores está completa (arpas del tronco, quillas bajo las ramas, bombas y cuadro); el iceberg a
+   la deriva es sólido donde está.

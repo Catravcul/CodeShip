@@ -105,6 +105,8 @@ export function retosFor(m: ModelDef, seed = 0): Reto[] {
     }
     case "gimnasio-zona-libre":
       return of(GYM.zonaLibre);
+    case "obra-acabado":
+      return m.id.startsWith("ballet") ? of(GYM.ballet) : of(GYM.dojo);
     case "gimnasio-calistenia":
       return of(GYM.calistenia);
     case "gimnasio-parkour":

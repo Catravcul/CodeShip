@@ -74,9 +74,9 @@ function yoga(style: "hatha" | "ashtanga", n: number): FloorPlan {
   return { id: `yoga-${style}-${n}`, size: SIZE, items, source: cs("Yoga", `FurnishYogaFloors (${style}, piso ${n})`) };
 }
 
-/** A floor in works (Obras.cs PrepareSite): the scaffold and the day's material; its finish (group «obra-acabado») waits hidden. */
+/** A finished ballet or dojo floor (Obras.cs FinishedBallet / FinishedDojo): its works are over, the hall is in use. */
 function works(kind: "ballet" | "dojo", n: number): FloorPlan {
-  const items: Placed[] = [P("obra-andamio", 18 - 1.4, -13 + 1), P("obra-material", 0.9, -5)];
+  const items: Placed[] = [];
   if (kind === "ballet") {
     items.push(P("ballet-suelo", 0, 3.2), P("ballet-espejo-barras", 0, 3.2), P("ballet-piano", -6, -2.3), P("ballet-vestuario", 7.2, -5.9));
     items.push(P("ballet-barras-portatiles", 3, -5.5), P("ballet-equipo-sonido", -2.8, -2.3), P("ballet-altavoz", -8.5, 7, PI), P("ballet-altavoz", 8.5, 7, PI));
@@ -89,7 +89,7 @@ function works(kind: "ballet" | "dojo", n: number): FloorPlan {
     for (let i = 0; i < 8; i++) items.push(P("dojo-acolchado", -8.9, -0.4 + i, PI / 2), P("dojo-acolchado", -8.1 + i, 7.4));
     for (let i = 0; i < 6; i++) items.push(P("dojo-acolchado", 8.9, 1.1 + i, PI / 2));
   }
-  return { id: `${kind}-${n}`, size: SIZE, items, source: cs("Obras", `PrepareSite y Finished${kind === "ballet" ? "Ballet" : "Dojo"}`) };
+  return { id: `${kind}-${n}`, size: SIZE, items, source: cs("Obras", `Finished${kind === "ballet" ? "Ballet" : "Dojo"}`) };
 }
 
 /** Aula (FurnishAulaFloor): a group of 6 per 6 seats, up to 4; 30 people → 24 on the first floor and 6 on the second. */

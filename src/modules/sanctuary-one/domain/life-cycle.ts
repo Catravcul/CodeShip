@@ -49,3 +49,49 @@ export function ageInGroup(i: number, n: number, c: LifeCycle): number {
   // The youngest is a fifth into its childhood; the next ones a birth interval older each, kept under adulthood.
   return Math.round(Math.min(young - 1, c.childDays * 0.2 + season));
 }
+
+/** First day (0-based) of each month in a 365-day year. */
+const MONTH_START = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334] as const;
+export const YEAR_DAYS = 365;
+
+/** The month (1–12) of game day `day`, game day 0 being day `yearDay0` (0-based) of the year. */
+export function monthOf(day: number, yearDay0: number): number {
+  const d = (((Math.floor(day) + yearDay0) % YEAR_DAYS) + YEAR_DAYS) % YEAR_DAYS;
+  let m = 11;
+  while (MONTH_START[m]! > d) m--;
+  return m + 1;
+}
+
+/** The first game day ≥ `from` that falls `offset` days into the birth month. */
+export function nextBirth(from: number, c: LifeCycle, yearDay0: number, offset = 0): number {
+  const doy = (((from + yearDay0) % YEAR_DAYS) + YEAR_DAYS) % YEAR_DAYS;
+  let wait = MONTH_START[c.birthMonth - 1]! + offset - doy;
+  while (wait < 0) wait += YEAR_DAYS;
+  return from + wait;
+}
+
+export const lifespan = (c: LifeCycle): number => c.childDays + c.teenDays + c.adultDays;
+
+/**
+ * Who lives in an animal's place on game day `now` (days, fractional): it was born on `born0`; when it dies of old
+ * age its place stays empty until the next birth season of its species, when a newborn takes it (Cold Sanctuary's
+ * PopulationPlan keeps each species' number). `generation` counts the newborns since the first.
+ */
+export function lifeAt(born0: number, now: number, c: LifeCycle, yearDay0: number, offset = 0): { born: number; alive: boolean; generation: number } {
+  let born = born0;
+  for (let generation = 0; generation < 1000; generation++) {
+    const death = born + lifespan(c);
+    if (now < death) return { born, alive: now >= born, generation };
+    const next = nextBirth(death, c, yearDay0, offset);
+    if (now < next) return { born: next, alive: false, generation: generation + 1 };
+    born = next;
+  }
+  return { born, alive: false, generation: 1000 };
+}
+
+/** «cría de 3 meses», «adulto de 7 años». */
+export function ageLabel(ageDays: number, c: LifeCycle): string {
+  const months = Math.round(ageDays / 30.4);
+  const when = ageDays < 30 ? `${Math.max(1, Math.round(ageDays))} ${Math.round(ageDays) <= 1 ? "día" : "días"}` : months < 24 ? `${months} ${months === 1 ? "mes" : "meses"}` : `${Math.round(ageDays / 365)} años`;
+  return `${STAGE_LABEL[stageOf(ageDays, c)]} de ${when}`;
+}

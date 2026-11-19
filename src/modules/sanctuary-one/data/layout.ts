@@ -9,7 +9,8 @@ import { landscape } from "./paisaje";
 import { model, type ModelDef } from "./catalog";
 import { OVERRIDES, resolve, spacing, type Overrides } from "./overrides";
 import { GROUPS, plan, split } from "../domain/population";
-import { STAGE_LABEL, ageInGroup, sizeAt, stageOf } from "../domain/life-cycle";
+import { ageInGroup, ageLabel, sizeAt } from "../domain/life-cycle";
+import { hash01, type Waypoint } from "../domain/motion";
 import { LIFE_CYCLES } from "./ciclos-de-vida";
 
 /**
@@ -36,6 +37,12 @@ export interface Instance {
   readonly tint?: number;
   /** An animal's territory: it wanders inside (domain/motion.ts wanderAt) at `speed` m/s. */
   readonly wander?: { readonly x: number; readonly z: number; readonly r: number; readonly speed: number; readonly seed: number; readonly climb?: { readonly y0: number; readonly y1: number } };
+  /**
+   * A wild animal's life (domain/life-cycle.ts): its species (data/ciclos-de-vida.ts, data/etograma.ts), the game day it
+   * was born (negative: before the game began), its mother (index in `instances`, for the young) and its day of birth
+   * within the season.
+   */
+  readonly life?: { readonly species: string; readonly born: number; readonly mother?: number; readonly offset: number };
 }
 
 export interface S1Area {
@@ -79,6 +86,8 @@ export interface S1Layout {
   /** Acrylic of the trunks (drawn as glass). */
   readonly walls: readonly Solid[];
   readonly start: { readonly x: number; readonly y: number; readonly z: number; readonly yaw: number };
+  /** The work submarine's dive (Berón: «el submarino puede subir por los troncos»): its instance and its way out. */
+  readonly submarine?: { readonly index: number; readonly route: readonly Waypoint[] };
 }
 
 const R = (x0: number, x1: number, z0: number, z1: number): Rect => ({ x0: Math.min(x0, x1), x1: Math.max(x0, x1), z0: Math.min(z0, z1), z1: Math.max(z0, z1) });
@@ -381,19 +390,45 @@ function wanders(b: Built, model: string, w: NonNullable<Instance["wander"]>): v
  * A wild animal's age in its family (domain/life-cycle.ts, data/ciclos-de-vida.ts): its size by the real growth
  * curve and a name that says its stage and age, e.g. «Foca, cría de 1 mes».
  */
-function lifeOf(species: string, i: number, n: number): { scale: number; name?: string } {
+function lifeOf(species: string, i: number, n: number, first: number): { scale: number; name?: string; life?: NonNullable<Instance["life"]> } {
   const c = LIFE_CYCLES[species];
   if (!c) return { scale: 1 };
   const age = ageInGroup(i, n, c);
-  const months = Math.round(age / 30.4);
-  const years = Math.round(age / 365);
-  const when = months < 24 ? `${Math.max(1, months)} ${months <= 1 ? "mes" : "meses"}` : `${years} años`;
-  return { scale: sizeAt(age, c), name: `${c.label}, ${STAGE_LABEL[stageOf(age, c)]} de ${when}` };
+  const adults = Math.max(1, Math.ceil(n / 2));
+  // The young keep to the family's adults, one mother each in turn (each instance is placed right after the last).
+  const mother = i >= adults ? first + ((i - adults) % adults) : undefined;
+  const life = { species, born: -age, offset: Math.floor(hash01(first + i, 3) * 21), ...(mother !== undefined ? { mother } : {}) };
+  return { scale: sizeAt(age, c), name: `${c.label}, ${ageLabel(age, c)}`, life };
 }
 
-function aged(b: Built, model: string, scale: number): void {
+function aged(b: Built, model: string, l: ReturnType<typeof lifeOf>): void {
   const last = b.instances[b.instances.length - 1];
-  if (last && last.model === model && scale < 0.999) b.instances[b.instances.length - 1] = { ...last, scale: (last.scale ?? 1) * scale };
+  if (!last || last.model !== model) return;
+  b.instances[b.instances.length - 1] = { ...last, ...(l.scale < 0.999 ? { scale: (last.scale ?? 1) * l.scale } : {}), ...(l.life ? { life: l.life } : {}) };
+}
+
+/**
+ * The work submarine's way from its bay to the sea and back (ours; the trunk's water is the sea's, Cold Sanctuary's
+ * magic): out of the bay through the floor's trunk door, down the trunk to its root under the ice, then under the ice
+ * (8 m down) to the lagoon, where it surfaces. Its route is swum both ways.
+ */
+function submarineDive(b: Built): S1Layout["submarine"] {
+  const index = b.instances.findIndex((i) => i.model === "sub-obra");
+  const sub = b.instances[index];
+  const bay = sub && b.areas.find((a) => a.id === sub.area);
+  const tower = bay?.link && b.towers.find((t) => t.id === bay.link!.tower);
+  if (!sub || !bay?.entry || !bay.link || !tower) return undefined;
+  const y = sub.y;
+  const route: Waypoint[] = [
+    { x: sub.x, y, z: sub.z },
+    { x: bay.entry.x, y, z: bay.entry.z, swim: true },
+    { x: bay.link.inner.x, y, z: bay.link.inner.z, swim: true },
+    { x: tower.x, y, z: tower.z, swim: true },
+    { x: tower.x, y: TRUNK_ROOT_Y + 2.5, z: tower.z, swim: true },
+    { x: LAGOON.x, y: -8, z: LAGOON.z, swim: true },
+    { x: LAGOON.x, y: WATER_Y - 1.4, z: LAGOON.z, swim: true },
+  ];
+  return { index, route };
 }
 
 /** A deterministic scatter (no Math.random: the same scene on every load). */
@@ -450,22 +485,24 @@ export function buildS1Layout(k = 1, o: Overrides = OVERRIDES): S1Layout {
     const qty = split(counts.get(n.species) ?? 0, GROUPS[n.species] ?? 1)[gi] ?? 0;
     const id = SPECIES_MODEL[n.species]!;
     const d = model(id);
+    const first = b.instances.length;
     for (let i = 0; i < qty; i++) {
       const p = scatter(i, n.radius);
-      const life = lifeOf(n.species, i, qty);
+      const life = lifeOf(n.species, i, qty, first);
       const y = n.marine ? (d.shape === "cetaceo" ? WATER_Y - d.size.y * life.scale * 0.55 : WATER_Y - d.size.y * life.scale * 0.4) : 0;
       place(b, id, n.x + p.x, y, n.z + p.z, i * 1.7, n.marine ? "mar" : "fauna", {}, 1, life.name, false);
-      aged(b, id, life.scale);
+      aged(b, id, life);
       wanders(b, id, { x: n.x, z: n.z, r: n.radius, speed: (SPEED[d.shape] ?? 0.8) * Math.sqrt(life.scale), seed: b.instances.length * 31 + 7 });
     }
   }
   // Snow petrels: one colony (no nest in Cold Sanctuary's list: it is ours) on the wild northern cap.
   const pet = counts.get("SnowPetrel") ?? 0;
+  const petrels = b.instances.length;
   for (let i = 0; i < pet; i++) {
     const p = scatter(i, 10);
-    const life = lifeOf("SnowPetrel", i, pet);
+    const life = lifeOf("SnowPetrel", i, pet, petrels);
     place(b, "petrel-niveo", 75 + p.x, 0, 170 + p.z, i, "fauna", {}, 1, life.name, false);
-    aged(b, "petrel-niveo", life.scale);
+    aged(b, "petrel-niveo", life);
     wanders(b, "petrel-niveo", { x: 75, z: 170, r: 10, speed: SPEED.ave!, seed: b.instances.length * 31 + 7 });
   }
   // The staff on the hub, 2 m apart (ours: where each one goes comes with the workday).
@@ -481,5 +518,6 @@ export function buildS1Layout(k = 1, o: Overrides = OVERRIDES): S1Layout {
   // She starts at the gym's door (its floor is the first ported in full).
   const gym = b.areas.find((a) => a.label === "Gimnasio")!;
   const start = { x: gym.entry!.x, y: gym.y, z: gym.entry!.z, yaw: gym.entry!.yaw };
-  return { k, world: { floors: b.floors, waters: b.waters, solids: b.solids }, instances: b.instances, areas: b.areas, towers: b.towers, walls: b.walls, start };
+  const submarine = submarineDive(b);
+  return { k, world: { floors: b.floors, waters: b.waters, solids: b.solids }, instances: b.instances, areas: b.areas, towers: b.towers, walls: b.walls, start, ...(submarine ? { submarine } : {}) };
 }

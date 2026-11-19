@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activityAt, along, route, wanderAt, waypoint } from "./motion";
+import { activityAt, along, route, shuttle, wanderAt, waypoint } from "./motion";
 
 describe("movimiento del santuario 1", () => {
   it("un animal merodea dentro de su territorio, y el mismo instante da el mismo sitio", () => {
@@ -47,5 +47,20 @@ describe("movimiento del santuario 1", () => {
     expect(activityAt(14.5)).toBe("entrenamiento");
     expect(activityAt(18)).toBe("libre");
     expect(activityAt(23)).toBe("dormir");
+  });
+});
+
+describe("a vehicle's round trip", () => {
+  const r = route([{ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 10 }, { x: 0, y: -10, z: 10 }]);
+  it("waits, goes out, waits away and comes back the same way", () => {
+    expect(shuttle(r, 1, 1, 5, 5)).toMatchObject({ x: 0, z: 0, moving: false });
+    expect(shuttle(r, 10, 1, 5, 5)).toMatchObject({ z: 5, moving: true });
+    expect(shuttle(r, 10, 1, 5, 5).yaw).toBeCloseTo(0);
+    expect(shuttle(r, 27, 1, 5, 5)).toMatchObject({ y: -10, moving: false });
+    const back = shuttle(r, 47, 1, 5, 5);
+    expect(back.moving).toBe(true);
+    expect(back.z).toBeCloseTo(3);
+    expect(Math.abs(back.yaw)).toBeCloseTo(Math.PI);
+    expect(shuttle(r, 50, 1, 5, 5)).toMatchObject({ x: 0, z: 0 });
   });
 });

@@ -265,10 +265,10 @@ export const BIOME: readonly BiomeSpec[] = [
   {
     kind: "animal", id: "picovaina", name: "Picovaina nevado", latin: "Chionis albus", habitat: "colonia", trophic: 3, shape: "ave",
     massKg: 0.65, size: { x: 0.8, y: 0.2, z: 0.4 }, male: 1.1, color: 0xf6f6f2, intakeKgDay: 0.1,
-    diet: [{ food: "papua", stages: ["cria"], pref: 1 }, { food: "kril" }, { food: "carrona", pref: 2 }],
+    diet: [{ food: "papua", stages: ["cria"], pref: 1 }, { food: "kril" }, { food: "carrona", pref: 2 }, { food: "kelp", pref: 0.5 }],
     childDays: 55, teenDays: 1040, adultDays: 3650, birthSize: 0.35, gestationMonths: 1, intervalMonths: 12, birthMonth: 1, young: 2,
     survival: 0.85, fastDays: 4, start: 4, cap: 6, huntSuccess: 0.25,
-    source: `${WIKI("Snowy_sheathbill")} (460–780 g; anda más que vuela; carroñero y ladrón de kril, huevos y pollos de pingüino; pone 2–3 huevos en diciembre, 28–32 días, el pollo vuela a los 50–60)`,
+    source: `${WIKI("Snowy_sheathbill")} (460–780 g; anda más que vuela; carroñero y ladrón de kril, huevos y pollos de pingüino; también lapas, invertebrados y algas; pone 2–3 huevos en diciembre, 28–32 días, el pollo vuela a los 50–60)`,
     ours: { intakeKgDay: OURS_INTAKE, survival: OURS_SURV, fastDays: OURS_FAST, cap: OURS_CAP, teenDays: "madurez nuestra", adultDays: "vida nuestra", huntSuccess: "nuestro", birthSize: "nuestro" },
   },
 

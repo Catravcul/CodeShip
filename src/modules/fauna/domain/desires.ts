@@ -25,12 +25,16 @@ export const W_YOUNG = 1;
 export const SPRINT_S = 60;
 export const REST_S = 120;
 /** How fast grazing (or eating its kill) fills it, per day: a third of a day eating fills it from empty. */
-const EAT_PER_DAY = 3;
+export const EAT_PER_DAY = 3;
 
-/** Its needs `dtS` seconds later (`dtDays` of game time) doing `doing`. */
-export function tickNeeds(n: Needs, dtS: number, dtDays: number, doing: Desire | "devorar" | "buscar", t: Traits): Needs {
+/**
+ * Its needs `dtS` seconds later (`dtDays` of game time) doing `doing`. `fed`: the share of its meal it found while
+ * grazing (fauna/domain/forage.ts: plants as countable food); 1 when the sanctuary does not count its food.
+ */
+export function tickNeeds(n: Needs, dtS: number, dtDays: number, doing: Desire | "devorar" | "buscar", t: Traits, fed = 1): Needs {
   let hunger = n.hunger + t.hungerPerDay * dtDays;
-  if (doing === "comer" || doing === "devorar") hunger -= (EAT_PER_DAY + t.hungerPerDay) * dtDays;
+  if (doing === "devorar") hunger -= (EAT_PER_DAY + t.hungerPerDay) * dtDays;
+  else if (doing === "comer") hunger -= (EAT_PER_DAY + t.hungerPerDay) * dtDays * Math.max(0, Math.min(1, fed));
   let fatigue = n.fatigue;
   if (doing === "cazar" || doing === "huir") fatigue += dtS / SPRINT_S;
   else fatigue -= dtS / (doing === "descansar" ? REST_S : REST_S * 5);

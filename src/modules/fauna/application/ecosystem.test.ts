@@ -81,4 +81,23 @@ describe("a living food chain", () => {
     expect(i.get(5)!.doing).toBe("seguir");
     expect(i.get(5)!.to).toEqual({ x: 0, z: 0 });
   });
+
+  it("a grazer with countable food (forage) stays hungry when the plants run out, and fills when they are there", () => {
+    const run = (found: number) => {
+      const eco = new Ecosystem(T, N);
+      eco.setNeeds(1, { hunger: 0.8, fatigue: 0 });
+      let asked = 0;
+      for (let t = 0; t < 10; t += 0.25)
+        eco.step(0.25, 0.01, t, [agent(1, "Hare", 0, 0)], (_a, meals) => {
+          asked += meals;
+          return found;
+        });
+      return { hunger: eco.needsOf(1)!.hunger, asked };
+    };
+    const none = run(0);
+    const full = run(1);
+    expect(none.asked).toBeGreaterThan(0);
+    expect(none.hunger).toBeGreaterThan(0.8);
+    expect(full.hunger).toBeLessThan(0.8);
+  });
 });

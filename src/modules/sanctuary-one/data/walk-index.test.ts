@@ -16,11 +16,11 @@ describe("rejilla del mundo de paseo", () => {
       for (let i = 0; i < 60; i++) {
         const d = { dx: Math.sin(i * 0.7) * 0.2, dz: Math.cos(i * 0.3) * 0.2 };
         full = step(L.world, full, d);
-        fast = step(idx.near(fast.x, fast.z), fast, d);
+        fast = step(idx.near(fast.x, fast.z, fast.y), fast, d);
         expect(fast).toEqual(full);
       }
       checked++;
-      expect(idx.near(a.x, a.z).solids.length).toBeLessThan(L.world.solids.length / 4);
+      expect(idx.near(a.x, a.z, a.y).solids.length).toBeLessThan(L.world.solids.length / 4);
     }
     expect(checked).toBeGreaterThan(20);
   });

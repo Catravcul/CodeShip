@@ -1,5 +1,5 @@
 import { ActionPad, type ActionPadButton, type PadKey } from "./action-pad";
-import { RootMenu } from "./root-menu";
+import { RootMenu, type Interaction } from "./root-menu";
 
 /** A level's own button (Correr, Saltar, Trepar): what it does when pressed (a toggle or a hold also when let go). */
 export interface PadMove extends ActionPadButton {
@@ -45,8 +45,16 @@ let owner: unknown;
 /** What every level of a game shares (the ships: Áreas and the settings live in main.ts); a level's own setup wins. */
 let shared: PadSetup = {};
 
+/** What is at hand now (RootMenu.interact): its button is Y, orange (Berón 2026-11-20). */
+let interaction: Interaction | undefined;
+/** The setup the pad has now. */
+let current: PadSetup | undefined;
+const yButton = (): ActionPadButton | undefined => (interaction ? { letter: "Y", label: interaction.open ? `Cerrar: ${interaction.label}` : interaction.label, key: "KeyE", alert: true } : undefined);
+
 function buttons(s: PadSetup): ActionPadButton[] {
   const out: ActionPadButton[] = [...(s.moves ?? []).map(({ run: _r, ...b }) => b)];
+  const y = yButton();
+  if (y && !out.some((b) => b.letter === "Y")) out.push(y);
   const add = (k: keyof typeof GENERAL, on: unknown, label?: string) => on && out.push({ letter: k, ...GENERAL[k], ...(label ? { label } : {}) });
   add("up", s.zoom);
   add("down", s.zoom);
@@ -64,6 +72,7 @@ function press(s: PadSetup, k: PadKey, on: boolean): void {
   if (k === "-") return s.areas?.();
   if (k === "capture") return s.view?.();
   if (k === "home") return s.home?.();
+  if (k === "Y" && interaction) return interaction.onClick();
   s.moves?.find((m) => m.letter === k)?.run(on);
 }
 
@@ -81,6 +90,8 @@ export const GamePad = {
   use(root: HTMLElement, who: unknown, own: PadSetup): ActionPad {
     const s: PadSetup = { ...shared, ...own };
     owner = who;
+    current = s;
+    interaction = RootMenu.interaction;
     if (!pad) pad = new ActionPad(root, buttons(s), (k, on) => press(s, k, on));
     else pad.configure(buttons(s), (k, on) => press(s, k, on));
     pad.show(true);
@@ -100,4 +111,14 @@ export const GamePad = {
   get pad(): ActionPad | undefined {
     return owner !== undefined ? pad : undefined;
   },
+};
+
+// The interaction button lives on Y while the pad is out (the orange button under the root stays hidden then).
+RootMenu.padInteract = (i) => {
+  const same = i === interaction || (!!i && !!interaction && i.label === interaction.label && !!i.open === !!interaction.open);
+  interaction = i;
+  if (same || !pad || !current || owner === undefined) return;
+  // A level's own Y (none yet) would win; the interaction only fills a free Y.
+  if (current.moves?.some((m) => m.letter === "Y")) return;
+  pad.setButton("Y", yButton());
 };

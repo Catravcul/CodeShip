@@ -35,6 +35,7 @@ import { nearest, type Reachable } from "@modules/sanctuary-one/domain/reach";
 import { CrewMember } from "@modules/crew/domain/crew-member";
 import { ChoreRun, type Chore } from "@modules/chores/domain/chore";
 import { stepAnimation } from "@modules/sanctuary-one/application/animations";
+import { STATIONS, stationWorld, type RetoAt } from "@modules/sanctuary-one/data/estaciones";
 import type { StepAct } from "@modules/chores/domain/step-visual";
 import { StepShow, gesture, STEP_SECONDS } from "./adapters/three/interior/step-show";
 import type { Answer } from "@modules/mind-duel/domain/exercise";
@@ -62,8 +63,10 @@ const L = buildS1Layout(WORLD_SCALE);
 const walkIndex = new WalkIndex(L.world);
 /** The drifting iceberg's solid, where it is now (moveIceberg); added to the world round her when it is near. */
 let bergSolid: { x0: number; x1: number; z0: number; z1: number; y0: number; y1: number } | undefined;
+/** Her height for the walk index (the solids of the floors far above and below are left out); set as she moves. */
+let nearY: number | undefined;
 const near = (x: number, z: number) => {
-  const w = walkIndex.near(x, z);
+  const w = walkIndex.near(x, z, nearY);
   const b = bergSolid;
   if (!b || x < b.x0 - 64 || x > b.x1 + 64 || z < b.z0 - 64 || z > b.z1 + 64) return w;
   return { ...w, solids: [...w.solids, b] };
@@ -167,7 +170,9 @@ const workActs = new Map<string, StepAct[]>();
 function workOf(modelId: string | undefined): StepAct[] {
   if (!modelId) return [];
   let a = workActs.get(modelId);
-  if (!a) workActs.set(modelId, (a = retosFor(model(modelId), 0).slice(0, 1).flatMap((r) => r.chore.exercises.flatMap((_, i) => stepAnimation(r, modelId, i).acts))));
+  // On a machine's station only its exercise (adjusting and cleaning are done standing beside it).
+  const all = () => retosFor(model(modelId), 0).slice(0, 1).flatMap((r) => r.chore.exercises.flatMap((_, i) => stepAnimation(r, modelId, i).acts));
+  if (!a) workActs.set(modelId, (a = STATIONS[modelId] ? all().filter((v) => v.vessel?.startsWith("mov:")) : all()));
   return a;
 }
 
@@ -534,7 +539,7 @@ function arrived(): void {
   missionGoing = undefined;
   if (!ms) return;
   const it = missionAt.get(ms.id)!.it;
-  openReto(REWARD_OF(ms), (ok) => ok && doneToday.add(ms.id), { x: it.x, y: it.y, z: it.z, sy: model(it.model).size.y, modelId: it.model });
+  openReto(REWARD_OF(ms), (ok) => ok && doneToday.add(ms.id), { x: it.x, y: it.y, z: it.z, sy: model(it.model).size.y, modelId: it.model, rot: it.rot, plan: it.plan });
 }
 const REWARD_TEXT = { comida: "no pasar hambre", compania: "compañía", fuerza: "fuerza", salud: "salud" } as const;
 const missionsWindow = new AreasWindow(root, {
@@ -570,6 +575,7 @@ interface Thing extends Reachable {
   readonly i: number;
   readonly label: string;
   readonly modelId: string;
+  readonly plan?: number;
   readonly mover?: (typeof world.movers)[number];
 }
 /** Does a model offer anything? (cached by model) */
@@ -584,7 +590,7 @@ L.instances.forEach((it, i) => {
   if (it.model === "persona" || !offersAny(it.model)) return;
   const d = model(it.model);
   const sc = it.scale ?? 1;
-  const t: Thing = { i, label: it.name ?? d.label, modelId: d.id, x: it.x, y: it.y, z: it.z, rot: it.rot, sx: d.size.x * sc * (it.plan ?? 1), sz: d.size.z * sc * (it.plan ?? 1), sy: d.size.y * sc, mover: moversByIt.get(it) };
+  const t: Thing = { i, label: it.name ?? d.label, modelId: d.id, x: it.x, y: it.y, z: it.z, rot: it.rot, plan: it.plan, sx: d.size.x * sc * (it.plan ?? 1), sz: d.size.z * sc * (it.plan ?? 1), sy: d.size.y * sc, mover: moversByIt.get(it) };
   if (t.mover) return void movingThings.push(t);
   // A thing lies in every cell its footprint touches (floors span several).
   const r = Math.hypot(t.sx, t.sz) / 2;
@@ -645,14 +651,22 @@ let stageStand: THREE.Vector3 | undefined;
 scene.add(steps.root);
 /** The lens over the free strip (adapters/three/interior/reto-focus.ts, shared). */
 const sheetLens = (on: boolean) => lens(camera, on);
-function stageAt(at: { x: number; y: number; z: number; sy: number }): void {
-  const stand = focusReto(steps, camera, body, yaw, at);
+/** The model of the open challenge (its machine's own motions and its station). */
+let stagedModel: string | undefined;
+function stageAt(at: RetoAt): void {
+  stagedModel = at.modelId;
+  const st = at.modelId ? STATIONS[at.modelId] : undefined;
+  // At a machine she first stands where she gets on it (its station's side), not wherever she came from.
+  const mount = st && at.rot !== undefined ? stationWorld(st, at) : undefined;
+  const from = mount ? { ...body, x: mount.getOn.x, z: mount.getOn.z } : body;
+  // …and the shot is on her station (a long barre's middle is metres away from where she works at it).
+  const stand = focusReto(steps, camera, from, yaw, mount ? { ...at, x: mount.x, z: mount.z } : at, undefined, mount ? { feet: new THREE.Vector3(mount.x, at.y + (st!.y ?? 0), mount.z), yaw: mount.yaw } : undefined);
   stageStand = stand;
   body = { ...body, x: stand.x, z: stand.z };
 }
 
 /** A challenge on the sheet (the same sheet as sanctuary 3 and the ships); her reward when it is done. */
-function openReto(r: Reto, done?: (ok: boolean) => void, at?: { x: number; y: number; z: number; sy: number; modelId?: string }): void {
+function openReto(r: Reto, done?: (ok: boolean) => void, at?: RetoAt): void {
   const run = new ChoreRun(r.chore);
   challenge = r;
   RootMenu.interact(undefined);
@@ -790,6 +804,7 @@ let last = performance.now();
 function frame(now: number): void {
   const dt = Math.max(0, Math.min(0.25, (now - last) / 1000));
   last = now;
+  nearY = body.y;
   frameFree(dt);
   if (!steps.frame(dt, camera, rig, avatar)) updateCamera(dt);
   const next = hour + (24 * dt) / S1_DAY_REAL_S;
@@ -820,5 +835,5 @@ window.addEventListener("keydown", (e) => {
 });
 // Test hook (tools/experiencia and live checks): the layout, the body and the bulk style switch.
 if (import.meta.env.DEV || new URLSearchParams(location.search).has("prueba"))
-  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { L, world, steps, wild, get wildT() { return wildT; }, set wildT(v: number) { wildT = v; }, get jumpT() { return walk.jumpClock; }, set jumpT(t: number) { walk.setJump(t); }, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, goTo, get auto() { return auto; }, areasWindow, get hour() { return hour; }, people, get atHand() { return atHand; }, openReto, domenica, missionsWindow, get day() { return day; }, doMission: (id: string) => doMission(MISSIONS.find((q) => q.id === id)!), setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
+  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { L, world, steps, wild, get wildT() { return wildT; }, set wildT(v: number) { wildT = v; }, get jumpT() { return walk.jumpClock; }, set jumpT(t: number) { walk.setJump(t); }, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, goTo, get auto() { return auto; }, areasWindow, get hour() { return hour; }, people, get atHand() { return atHand; }, openReto, domenica, missionsWindow, get day() { return day; }, doMission: (id: string) => doMission(MISSIONS.find((q) => q.id === id)!), retoAt: (id: string, k = 0, n = 0) => { const i = L.instances.map((it, j) => [it, j] as const).filter(([it]) => it.model === id)[n]?.[1]; if (i === undefined) return undefined; const it = L.instances[i]!; const r = retosFor(model(id), i)[k]; if (!r) return undefined; body = { ...body, x: it.x, y: it.y, z: it.z + 1.2 }; openReto(r, undefined, { x: it.x, y: it.y, z: it.z, sy: model(id).size.y * (it.scale ?? 1), modelId: id, rot: it.rot, plan: it.plan }); return { title: r.chore.title, steps: r.chore.exercises.length }; }, playStep: (i: number, dry = false) => { if (!challenge) return undefined; const a = stepAnimation(challenge, stagedModel, i); if (!dry) steps.play(a.acts); return a.id; }, closeReto: () => (document.querySelector('.duel [data-act="close"]') as HTMLElement | null)?.click(), setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
 requestAnimationFrame(frame);

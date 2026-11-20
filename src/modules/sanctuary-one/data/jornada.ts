@@ -1,3 +1,4 @@
+import { STATIONS, stationWorld } from "./estaciones";
 import { TREE } from "@modules/aerial-sanctuary/data/facts";
 import { model } from "./catalog";
 import type { Instance, S1Area, S1Layout } from "./layout";
@@ -37,6 +38,12 @@ const FLOORISH = /suelo|alfombras|bahia|bancal|zona-/;
 function spotAt(list: readonly Instance[], n: number, a: S1Area, pose: Place["pose"]): Place {
   const it = list[n % list.length];
   if (!it) return { area: a.id, x: a.x, y: a.y, z: a.z, yaw: 0, pose: "stand" };
+  // On a machine with a station (a gym seat, a treadmill's belt) they work on it, not in front of it.
+  const st = STATIONS[it.model];
+  if (st) {
+    const w = stationWorld(st, it);
+    return { area: a.id, x: w.x, y: it.y + (st.y ?? 0), z: w.z, yaw: w.yaw, pose, work: it.model };
+  }
   const d = model(it.model);
   const off = d.size.z / 2 + 0.7;
   const x = it.x - off * Math.sin(it.rot);
@@ -50,8 +57,8 @@ function spotAt(list: readonly Instance[], n: number, a: S1Area, pose: Place["po
  */
 const ROLES: Readonly<Record<string, { tareas?: string; entrenamiento?: string }>> = {
   Sadhguru: { tareas: "yoga-hatha-1", entrenamiento: "yoga-hatha-1" },
-  Nevaeh: { tareas: "aula-1" },
-  Neo: { tareas: "aula-1", entrenamiento: "calistenia" },
+  Nevaeh: { tareas: "aula-historia" },
+  Neo: { tareas: "aula-matematicas", entrenamiento: "calistenia" },
 };
 
 /** Each person's place for each activity. */

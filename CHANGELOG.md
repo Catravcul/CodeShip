@@ -3,6 +3,15 @@
 Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documento. El historial anterior al
 2026-11-18 está en git y en `docs/design/`.
 
+## 2026-11-20
+
+- **Gimnasio: cada ejercicio sobre su máquina**: sentada en el asiento, boca abajo en el femoral, en la cinta, bajo la
+  barra… (`data/estaciones.ts`), poses corregidas y un reto por aparato; revisadas en vivo las ~45 máquinas.
+  [docs/design/santuario1.md](docs/design/santuario1.md) #32
+- **Música y aulas rehechas de cero**: 5 salas de música y 7 aulas (una por materia), cada una su piso con su equipo
+  real, pasillo central y su reto; los pisos pequeños van dos por lado del árbol. #33–35
+- **El reto en el botón Y del mando** (todos los niveles): naranja con «Reto: …» al acercarse; sin el botón de arriba. #36
+
 ## 2026-11-19
 
 - **Retos y Áreas iguales en todos los niveles**: el botón naranja de una máquina con retos (santuario 3 y naves) dice

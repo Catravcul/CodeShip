@@ -12,6 +12,8 @@ export interface ActionPadButton {
   readonly hold?: boolean;
   /** Keyboard key. */
   readonly key?: string;
+  /** Orange, the alert colour (the interaction on Y: «Reto: <cosa>»). */
+  readonly alert?: boolean;
 }
 
 /** What each key shows on its face (the Joy-Con's own marks). */
@@ -59,7 +61,7 @@ export class ActionPad {
     const btn = (k: PadKey) => {
       const b = this.spec.get(k);
       const cls = k.replace("+", "plus").replace("-", "minus").toLowerCase();
-      return `<button class="ap-btn ap-${cls}${b ? "" : " free"}" data-letter="${k}" aria-label="${b ? `${b.label}${b.key ? ` (${b.key})` : ""}` : `Botón ${FACE[k]} (sin asignar)`}" aria-pressed="false"><b>${FACE[k]}</b>${b ? `<span>${b.label}</span>` : ""}</button>`;
+      return `<button class="ap-btn ap-${cls}${b ? "" : " free"}${b?.alert ? " alert" : ""}" data-letter="${k}" aria-label="${b ? `${b.label}${b.key ? ` (${b.key})` : ""}` : `Botón ${FACE[k]} (sin asignar)`}" aria-pressed="false"><b>${FACE[k]}</b>${b ? `<span>${b.label}</span>` : ""}</button>`;
     };
     this.el.innerHTML = `<div class="sp-side sp-left"><div class="sp-cluster">${LEFT.slice(0, 4).map(btn).join("")}</div>${LEFT.slice(4).map(btn).join("")}</div><div class="sp-side sp-right"><div class="sp-cluster">${RIGHT.slice(0, 4).map(btn).join("")}</div>${RIGHT.slice(4).map(btn).join("")}</div>`;
     for (const el of this.el.querySelectorAll<HTMLButtonElement>(".ap-btn")) {
@@ -71,6 +73,19 @@ export class ActionPad {
       });
       for (const ev of ["pointerup", "pointercancel", "pointerleave"]) el.addEventListener(ev, () => this.spec.get(k)?.hold && this.tap(k, false));
     }
+  }
+
+  /** Give one button a job (or take it away) without touching the others (their toggles stay lit). */
+  setButton(letter: PadKey, b: ActionPadButton | undefined): void {
+    if (b) this.spec.set(letter, b);
+    else this.spec.delete(letter);
+    this.buttons = [...this.buttons.filter((q) => q.letter !== letter), ...(b ? [b] : [])];
+    const el = this.el.querySelector<HTMLButtonElement>(`[data-letter="${CSS.escape(letter)}"]`);
+    if (!el) return;
+    el.classList.toggle("free", !b);
+    el.classList.toggle("alert", !!b?.alert);
+    el.setAttribute("aria-label", b ? `${b.label}${b.key ? ` (${b.key})` : ""}` : `Botón ${FACE[letter]} (sin asignar)`);
+    el.innerHTML = `<b>${FACE[letter]}</b>${b ? `<span>${b.label}</span>` : ""}`;
   }
 
   /** Shown or hidden (a level without the pad now: a console's screen, the flight's controls). */

@@ -119,7 +119,7 @@ export async function partidas(j) {
   j.check("una partida nueva se guarda en la ranura 1", g0.slot === "1", JSON.stringify(g0.slot));
   await j.tap(".stand-btn", "Levantarse: habitáculo");
   await p.waitForTimeout(1200);
-  await j.tap(".room-ui:not(.hidden) .root-menu:not(.open) > .rm-root", "⚙︎ Menú");
+  // Áreas: the Switch pad's «−» (ui/game-pad.ts); j.tap opens the gear itself where there is no pad.
   await j.tap(".room-ui:not(.hidden) .areas-btn", "Áreas");
   await p.waitForTimeout(500);
   await j.tap('.areas-window .tb-go[data-area="acople"]', "Ir: Escotilla de acople");

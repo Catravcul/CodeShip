@@ -72,7 +72,7 @@ export interface RetoThing {
  * comes in close past her right shoulder onto its screens (the Starship's flight deck). `target`: the thing's own
  * point for the steps' props (default: on it, at 70 % of its height).
  */
-export function retoFrame(stand: THREE.Vector3, at: RetoThing, opts: { readonly close?: { readonly towardM: number; readonly k?: number }; readonly target?: THREE.Vector3 } = {}): StepFrame {
+export function retoFrame(stand: THREE.Vector3, at: RetoThing, opts: { readonly close?: { readonly towardM: number; readonly k?: number }; readonly target?: THREE.Vector3; readonly mount?: StepFrame["mount"] } = {}): StepFrame {
   const target = opts.target ?? new THREE.Vector3(at.x, at.y + Math.min(1.1, Math.max(0.4, at.sy * 0.7)), at.z);
   const d = new THREE.Vector3(target.x - stand.x, 0, target.z - stand.z);
   if (d.lengthSq() < 1e-6) d.set(0, 0, -1);
@@ -87,22 +87,24 @@ export function retoFrame(stand: THREE.Vector3, at: RetoThing, opts: { readonly 
     return { stand: feet, yaw, camera, look, target };
   }
   const look = stand.clone().addScaledVector(d, 0.3).setY(stand.y + 0.95);
-  const tall = Math.max(0, at.sy - 1.2);
+  // On a machine (opts.mount) she is the subject, not the whole machine: the camera stays closer.
+  const tall = Math.max(0, at.sy - 1.2) * (opts.mount ? 0.35 : 1);
   const camera = look.clone().addScaledVector(d, -(2.0 + 3 * tall)).addScaledVector(right, 1.2 + 0.8 * tall).setY(stand.y + 1.85 + 0.8 * tall);
-  return { stand, yaw, camera, look, target };
+  return { stand, yaw, camera, look, target, mount: opts.mount };
 }
 
 /**
  * Begin the stage at a thing for her at `her`, looking `yaw`: she stands where she is if within 2,5 m, else 0,9 m in
- * front of it on its floor. The lens narrows to the free strip. Returns where she stands.
+ * front of it on its floor. The lens narrows to the free strip. Returns where she stands. `mount`: the machine's own
+ * place for her while she does the exercise (on its seat, its belt, under its bar), see StepFrame.mount.
  */
-export function focusReto(steps: StepShow, camera: THREE.PerspectiveCamera, her: { x: number; y: number; z: number }, yaw: number, at: RetoThing, fov?: LensFov): THREE.Vector3 {
+export function focusReto(steps: StepShow, camera: THREE.PerspectiveCamera, her: { x: number; y: number; z: number }, yaw: number, at: RetoThing, fov?: LensFov, mount?: StepFrame["mount"]): THREE.Vector3 {
   const d = new THREE.Vector3(at.x - her.x, 0, at.z - her.z);
   if (d.lengthSq() < 1e-4) d.set(-Math.sin(yaw), 0, -Math.cos(yaw));
   const dist = d.length();
   d.normalize();
   const stand = dist < 2.5 ? new THREE.Vector3(her.x, her.y, her.z) : new THREE.Vector3(at.x, at.y, at.z).addScaledVector(d, -0.9);
-  steps.begin(retoFrame(stand, at));
+  steps.begin(retoFrame(stand, at, { mount }));
   sheetLens(camera, true, fov);
   return stand;
 }

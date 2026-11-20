@@ -5,7 +5,8 @@ import { RECIPES } from "@modules/kitchen/data/recipes";
 import { WORKOUTS } from "@modules/wellness/data/exercise";
 import { YOGA_SEQUENCES } from "@modules/wellness/data/yoga";
 import type { ModelDef } from "../data/models/kit";
-import { ANIMALES, COCINA, GYM, LIMPIEZA, PLANTAS, SALA_YOGA, SALUD, TRABAJO, type AnimalCare, type Procedure, type Reward } from "../data/retos";
+import { MACHINE_MOTION } from "../data/animaciones";
+import { ANIMALES, AULAS, COCINA, GYM, LIMPIEZA, MUSICA, PLANTAS, SALA_YOGA, SALUD, TRABAJO, type AnimalCare, type Procedure, type Reward } from "../data/retos";
 
 /** One challenge a thing offers: the chore on the sheet, what it gives her, and where its steps come from. */
 export interface Reto {
@@ -107,15 +108,30 @@ export function retosFor(m: ModelDef, seed = 0): Reto[] {
       return [...own, ...of(GYM.cardio, GYM.aseoGym)];
     }
     case "gimnasio-zona-libre":
+      // Each machine its own exercise (Berón 2026-11-20: «animaciones que no encajaban con las máquinas»).
+      if (m.id === "gym-portico-sacos") return of(GYM.dojo);
+      if (m.id in MACHINE_MOTION) return of(GYM.coreMaquina, GYM.aseoGym);
       return of(GYM.zonaLibre);
     case "obra-acabado":
-      return m.id.startsWith("ballet") ? of(GYM.ballet) : of(GYM.dojo);
+      // The barre and the floor for the class, the bags, rings and mats for fighting; the rest is furniture.
+      if (/^ballet-(espejo-barras|barras-portatiles|suelo)$/.test(m.id)) return of(GYM.ballet);
+      if (/^dojo-(sacos|makiwara|ring|jaula-mma|tatami|corcho)$/.test(m.id)) return of(GYM.dojo);
+      return [];
     case "gimnasio-calistenia":
+      if (MACHINE_MOTION[m.id] === "fondos") return of(GYM.fondos);
+      if (MACHINE_MOTION[m.id] === "elevar-rodillas") return of(GYM.coreMaquina);
+      if (MACHINE_MOTION[m.id] === "plancha") return of(GYM.zonaLibre);
       return of(GYM.calistenia);
     case "gimnasio-parkour":
-      return of(GYM.parkour);
+      return m.id === "pk-lache" ? of(GYM.calistenia) : of(GYM.parkour);
     case "gimnasio-crossfit":
-      return of(GYM.crossfit);
+      if (m.id === "cf-trineo") return of(GYM.crossfit);
+      if (m.id === "cf-plataforma") return of(GYM.pesoMuerto);
+      if (m.id === "cf-kettlebells") return of(GYM.swing);
+      if (m.id.startsWith("cf-cajon")) return of(GYM.saltoCajon);
+      if (m.id === "cf-rig") return of(GYM.calistenia);
+      if (m.id === "cf-ghd") return of(GYM.coreMaquina, GYM.aseoGym);
+      return [];
     case "gimnasio-servicios":
     case "suelos":
       return m.category === "naturaleza" ? of(PLANTAS.huerto) : of(LIMPIEZA.suelo);
@@ -190,9 +206,32 @@ export function retosFor(m: ModelDef, seed = 0): Reto[] {
     case "guardia":
       return of(TRABAJO.guardia);
     case "aula":
-      return of(TRABAJO.aula);
+      // The study room's tables and computers give revision; the teacher's desk the subject's class.
+      return m.id === "aula-mesa-profesor" ? of(TRABAJO.aula) : m.id === "aula-mesa-estudio" || m.id === "aula-biblioteca" ? of(AULAS.estudio) : [];
+    case "aula-matematicas":
+      return of(AULAS.matematicas);
+    case "aula-lengua":
+      return of(AULAS.lengua);
+    case "aula-ciencias":
+      return of(AULAS.ciencias);
+    case "aula-historia":
+      return of(AULAS.historia);
+    case "aula-idiomas":
+      return of(AULAS.idiomas);
+    case "aula-arte":
+      return of(AULAS.arte);
+    case "musica-banda":
+      return m.category === "maquina" ? of(TRABAJO.musica) : [];
+    case "musica-estudio":
+      return m.category === "maquina" ? of(MUSICA.grabar) : [];
+    case "musica-practica":
+      return of(MUSICA.practicar);
+    case "musica-orquesta":
+      return of(MUSICA.orquesta);
+    case "musica-auditorio":
+      return of(MUSICA.concierto);
     case "musica":
-      return of(TRABAJO.musica);
+      return m.id === "mus-piano-cola" ? of(MUSICA.practicar) : [];
     case "asamblea":
       return of(TRABAJO.asamblea);
     case "residencia-habitaciones":

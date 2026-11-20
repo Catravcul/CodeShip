@@ -328,6 +328,8 @@ rig.add(myCarpet);
 let flying = false;
 
 const EYE_M = 1.45;
+/** Swimming at the surface, her eyes this far over the water (m). */
+const EYE_OVER_WATER_M = 0.3;
 const WALK_MS = 1.6;
 const SWIM_MS = 2.2;
 let body: Body = placeAt(near(L.start.x, L.start.z), L.start.x, L.start.y + 0.01, L.start.z)!;
@@ -800,7 +802,11 @@ function updateCamera(dt: number): void {
   rig.position.set(body.x, body.y + hop, body.z);
   if (auto || flying || !thirdPerson) walk.facing = yaw;
   rig.rotation.y = (thirdPerson ? walk.facing : yaw) + Math.PI;
-  const eye = body.y + hop + EYE_M + dip;
+  let eye = body.y + hop + EYE_M + dip;
+  // Swimming at the surface her eyes are just out of the water (Berón 2026-11-20: «en primera persona la cámara
+  // muestra todo blanco… y oculta el agua»): at the surface's own height the water is seen edge on, so not at all.
+  const sw = body.motion === "agua" ? waterAt(near(body.x, body.z), body.x, body.y, body.z) : undefined;
+  if (sw && Math.abs(eye - sw.yTop) < EYE_OVER_WATER_M) eye = sw.yTop + EYE_OVER_WATER_M;
   if (thirdPerson) {
     const d = camDist;
     camera.position.set(body.x + Math.sin(yaw) * d * Math.cos(pitch), eye + 0.4 - Math.sin(pitch) * d, body.z + Math.cos(yaw) * d * Math.cos(pitch));

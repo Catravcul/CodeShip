@@ -189,7 +189,9 @@ export function buildS1Scene(L: S1Layout): S1Scene {
   for (const w of L.world.waters) if (w.id !== "mar") water.push(box(w.x0, w.x1, w.yBottom, w.yTop, w.z0, w.z1));
   add(water, mat(0x2f8fbf, { transparent: true, opacity: 0.3, roughness: 0.05, depthWrite: false, side: THREE.DoubleSide }), "agua");
   add(L.walls.map((s) => box(s.x0, s.x1, s.y0, s.y1, s.z0, s.z1)), mat(0x8fd8ff, { transparent: true, opacity: 0.18, roughness: 0.1, depthWrite: false }), "acrilico");
-  const sea = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), mat(0x1d4f6b, { roughness: 0.3, metalness: 0.1, side: THREE.DoubleSide }));
+  // Matte (Lambert): seen from just over it, swimming, a glossy plane at a grazing angle turns as white as the sky
+  // (Berón 2026-11-20: «en primera persona… oculta el agua»).
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), new THREE.MeshLambertMaterial({ color: 0x1d4f6b, side: THREE.DoubleSide }));
   sea.rotation.x = -Math.PI / 2;
   sea.position.y = WATER_Y;
   sea.name = "mar";

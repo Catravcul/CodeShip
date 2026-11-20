@@ -115,6 +115,12 @@ export interface StepFrame {
   readonly orient?: THREE.Quaternion;
   /** The camera's «up» (on a wall mat, out of the wall: the mat reads as the floor on screen). */
   readonly cameraUp?: THREE.Vector3;
+  /**
+   * The machine's own place for her (sanctuary 1's stations, data/estaciones.ts): while a step plays an exercise
+   * («entrenar» with a `mov:` motion) she is on it, her feet's origin here facing `yaw` (on the seat, the belt, the
+   * bench, under the bar), and back at `stand` for the other steps (adjusting, cleaning).
+   */
+  readonly mount?: { readonly feet: THREE.Vector3; readonly yaw: number };
 }
 
 /**
@@ -126,6 +132,7 @@ export function drawnFrame(f: StepFrame, k: number): StepFrame {
   const look = D(f.look);
   const kitchen = f.kitchen;
   const target = D(f.target);
+  const mount = f.mount && { feet: D(f.mount.feet), yaw: f.mount.yaw };
   // She is drawn at real size: at the galley she stands as far from the counter's (drawn) edge as at 1×.
   // Elsewhere the frame already keeps her clear of the (drawn bigger) machine, so her spot scales with it.
   const stand = kitchen ? D(f.stand).setX(kitchen.counter.front * k - (kitchen.counter.front - f.stand.x)) : D(f.stand);
@@ -135,6 +142,7 @@ export function drawnFrame(f: StepFrame, k: number): StepFrame {
     look,
     camera: f.orbit ? look.clone().add(f.orbit) : D(f.camera),
     target,
+    mount,
     ...(f.slide ? { slide: { axis: f.slide.axis, min: f.slide.min * k, max: f.slide.max * k } } : {}),
     ...(kitchen
       ? {
@@ -431,15 +439,17 @@ export class StepShow {
     }
     // In a crew quarter's bag she floats with her back to the wall it is strapped to, facing the camera.
     const inBag = !!vis && inQuarter(vis);
+    // On the machine while its exercise plays (and until the next step that is not one).
+    const onIt = !!f.mount && !!vis && vis.action === "entrenar" && !!vis.vessel?.startsWith("mov:");
     if (!f.slide) {
-      const want = inBag ? this.tmp.copy(f.stand).sub(f.target).setY(0).normalize().multiplyScalar(BAG_OFF_WALL).add(f.target).setY(f.stand.y) : this.tmp.copy(f.stand);
+      const want = onIt ? this.tmp.copy(f.mount!.feet) : inBag ? this.tmp.copy(f.stand).sub(f.target).setY(0).normalize().multiplyScalar(BAG_OFF_WALL).add(f.target).setY(f.stand.y) : this.tmp.copy(f.stand);
       this.feet.lerp(want, 1 - Math.exp(-6 * dt));
     }
     rig.visible = true;
     rig.position.set(this.feet.x / k, this.feet.y, this.feet.z / k);
     if (f.orient) rig.quaternion.copy(f.orient);
     else {
-      rig.rotation.set(0, inBag ? f.yaw + Math.PI : f.yaw, 0);
+      rig.rotation.set(0, onIt ? f.mount!.yaw : inBag ? f.yaw + Math.PI : f.yaw, 0);
       rig.quaternion.setFromEuler(rig.rotation);
     }
     if (!this.holdPose) figure.poseAngles(this.now ? gesture(vis!, t, this.clock, this.low(vis!)) : idle(vis ? this.low(vis) : false));
@@ -1145,25 +1155,49 @@ export function motion(id: string, clock: number): PoseAngles {
     case "extension":
       return SEAT({ shoulderX: both(-0.2), elbow: both(-0.3), knee: both(L2(1.55, 0.1, k)) });
     case "curl-femoral":
-      return SEAT({ torso: -0.15, shoulderX: both(-0.4), elbow: both(-0.6), knee: both(L2(0.15, 1.6, k)) });
+      // Lying face down on the pad (pelvis 0,72 m up), hands on the grips ahead, heels pulled up to the glutes.
+      return P({ rootY: 0.72, rootX: Math.PI / 2, headX: -0.5, shoulderX: both(-2.6), elbow: both(-0.5), hip: both(0), knee: both(L2(0.1, 1.9, k)) });
     case "hip-thrust":
       return P({ rootY: L2(0.42, 0.55, k), torso: L2(-0.4, -1.3, k), headX: L2(0.3, 0.9, k), hip: both(L2(-1.6, -0.15, k)), knee: both(L2(1.7, 1.55, k)), shoulderX: both(-0.3), shoulderZ: [0.4, -0.4], elbow: both(-0.4) });
     case "gemelos":
-      return P({ rootY: 0.95 + 0.09 * k, shoulderX: both(-0.25), shoulderZ: [0.45, -0.45], elbow: both(-1.7) });
+      // Seated, the knee pads on her thighs: the heels rise and lift the knees with them.
+      return SEAT({ rootY: 0.5, hip: both(L2(-1.55, -1.45, k)), knee: both(L2(1.55, 1.3, k)), shoulderX: both(-0.75), elbow: both(-0.7) });
     case "curl-biceps":
       return SEAT({ torso: 0.2, shoulderX: both(-0.7), elbow: both(L2(-0.2, -2.2, k)) });
     case "sentadilla":
       return P({ rootY: L2(0.95, 0.55, k), torso: L2(0.05, 0.55, k), headX: L2(0, -0.4, k), hip: both(L2(0, -1.5, k)), knee: both(L2(0, 1.85, k)), shoulderX: both(-1.0), shoulderZ: [0.9, -0.9], elbow: both(-2.3) });
     case "press-banca":
-      return P({ rootY: 0.45, rootX: -Math.PI / 2, headX: 0.1, hip: both(-1.2), knee: both(1.5), shoulderX: both(-1.55), shoulderZ: [L2(0.6, 0.2, k), -L2(0.6, 0.2, k)], elbow: both(L2(-1.8, -0.1, k)) });
+      return P({ rootY: 0.45, rootX: -Math.PI / 2, headX: 0.1, hip: both(-0.25), knee: both(1.45), shoulderX: both(-1.55), shoulderZ: [L2(0.6, 0.2, k), -L2(0.6, 0.2, k)], elbow: both(L2(-1.8, -0.1, k)) });
     case "peso-muerto": {
       const t = L2(1.05, 0, k);
       return P({ rootY: L2(0.7, 0.95, k), torso: t, headX: -t * 0.6, hip: both(L2(-0.7, 0, k)), knee: both(L2(0.8, 0, k)), shoulderX: both(-t - 0.05), elbow: both(0) });
     }
     case "curl-mancuernas":
       return P({ shoulderX: both(-0.1), shoulderZ: [0.12, -0.12], elbow: both(L2(-0.15, -2.3, k)) });
+    case "press-inclinado":
+      // On the incline bench: seated, back reclined at ~45°, pressing up and over the face.
+      return SEAT({ rootY: 0.48, torso: -0.75, headX: 0.45, shoulderX: both(L2(-1.0, -2.3, k)), shoulderZ: [L2(0.65, 0.2, k), -L2(0.65, 0.2, k)], elbow: both(L2(-1.8, -0.1, k)) });
+    case "elevar-rodillas":
+      // Captain's chair: forearms on the pads, back on the pad, knees up to the chest.
+      return P({ rootY: 0.95, shoulderX: both(0), shoulderZ: [0.2, -0.2], elbow: both(-1.57), hip: both(L2(-0.1, -1.7, k)), knee: both(L2(0.1, 1.6, k)) });
+    case "abdominal-declinado":
+      // Feet hooked under the roller, from lying back to sitting up, arms crossed.
+      return P({ rootY: 0.62, rootX: L2(-1.45, -0.35, k), headX: 0.3, hip: both(-1.2), knee: both(1.4), shoulderX: both(-0.9), shoulderZ: [-0.4, 0.4], elbow: both(-2.2) });
+    case "hiperextension":
+      // Hips on the pad, heels under the roller behind: the trunk drops forward and rises into line with the legs.
+      return P({ rootY: 0.88, rootX: 0.65, torso: L2(1.4, 0, k), headX: L2(-0.3, -0.6, k), shoulderX: both(-0.2), shoulderZ: [-0.3, 0.3], elbow: both(-2.3) });
+    case "fondos":
+      // Hands on the bars at the sides, legs bent behind: the elbows bend to 90° and straighten.
+      return P({ rootY: L2(0.95, 0.65, k), torso: L2(0.05, 0.25, k), shoulderX: both(L2(0, 0.6, k)), shoulderZ: [0.12, -0.12], elbow: both(L2(0, -1.5, k)), hip: both(-0.2), knee: both(1.4) });
+    case "remo-australiano":
+      // Hanging under the low bar, body straight from heels to head, pulling the chest to it.
+      return P({ rootY: L2(0.35, 0.55, k), rootX: -1.2, headX: 0.3, shoulderX: both(L2(-1.55, -0.7, k)), shoulderZ: [0.4, -0.4], elbow: both(L2(-0.05, -1.7, k)) });
+    case "swing":
+      // Kettlebell swing: hip hinge, the bell between the legs, then the hips snap and the arms float to the chest.
+      return P({ rootY: L2(0.82, 0.95, k), torso: L2(0.9, -0.05, k), headX: L2(-0.6, 0, k), hip: both(L2(-0.5, 0, k)), knee: both(L2(0.5, 0, k)), shoulderX: both(L2(0.1, -1.5, k)), shoulderZ: [0.08, -0.08], elbow: both(0) });
     case "press-mancuernas":
-      return SEAT({ shoulderX: both(L2(-1.9, -3.0, k)), shoulderZ: [L2(0.8, 0.25, k), -L2(0.8, 0.25, k)], elbow: both(L2(-1.9, -0.1, k)) });
+      // Standing overhead press (Berón 2026-11-20: at the rack there is no bench under her).
+      return P({ shoulderX: both(L2(-1.9, -3.0, k)), shoulderZ: [L2(0.8, 0.25, k), -L2(0.8, 0.25, k)], elbow: both(L2(-1.9, -0.1, k)) });
     case "cargar-discos":
       return P({ rootY: L2(0.95, 0.6, k), torso: L2(0.1, 0.5, k), hip: both(L2(0, -1.2, k)), knee: both(L2(0, 1.6, k)), shoulderX: both(L2(-0.9, -0.5, k)), elbow: both(-0.9) });
     case "correr":

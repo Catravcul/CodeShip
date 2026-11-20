@@ -152,6 +152,7 @@ export function buildS1Scene(L: S1Layout): S1Scene {
       ice.push(box(f.x0, f.x1, -2.3, -0.3, f.z0, f.z1));
     }
     else if (f.area.startsWith("tierra:")) land.push(box(f.x0, f.x1, -3, 0, f.z0, f.z1));
+    else if (f.id.endsWith("rellano-alfombras")) thresholds.push(box(f.x0, f.x1, f.y - 0.6, f.y - 0.01, f.z0, f.z1));
     else if (f.id.endsWith("umbral") || f.id.includes("umbral-suelo")) thresholds.push(box(f.x0, f.x1, f.y - 0.3, f.y - 0.01, f.z0, f.z1));
     else if (f.area.endsWith(":techo") || f.area.includes(":punta-")) decks.push(box(f.x0, f.x1, f.y - 0.5, f.y - 0.01, f.z0, f.z1));
   }
@@ -238,7 +239,8 @@ export function buildS1Scene(L: S1Layout): S1Scene {
     const gk = `${d.id}|${tint !== undefined}`;
     const geo = geos.get(gk) ?? geometryOf(d, tint !== undefined);
     geos.set(gk, geo);
-    const mesh = new THREE.InstancedMesh(geo, mat(tint ?? 0xffffff, { vertexColors: true }), list.length);
+    const material = d.glow ? new THREE.MeshBasicMaterial({ color: tint ?? 0xffffff, vertexColors: true }) : mat(tint ?? 0xffffff, { vertexColors: true });
+    const mesh = new THREE.InstancedMesh(geo, material, list.length);
     list.forEach((it, n) => {
       q.setFromAxisAngle(up, it.rot);
       const p = it.plan ?? 1;

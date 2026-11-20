@@ -42,6 +42,9 @@ function textile(): FloorPlan {
   const items = [floor, P("tex-telar-pie", -11.4, -8.6), P("tex-telar-cintura", 12, -8.8), P("tex-rueca", -11.8, 2.4), P("tex-ovillos", -2, -9.65)];
   for (let i = 0; i < 4; i++) items.push(P("tex-tina", 12.3, 0.4 + i * 0.8));
   items.push(P("tex-mesa-corte", 0, 2.4), P("tex-coser", -6, 8.8));
+  // A real workroom sews at several machines and cuts on two tables.
+  for (const x of [-9.5, -3.5]) items.push(P("tex-coser", x, 8.8));
+  items.push(P("tex-mesa-corte", 0, -3.4, 0, "Mesa de corte 2"), P("tex-telar-pie", -11.4, -4.6, 0, "Telar de pedales 2"), P("cocina-estanteria", 11.6, 6.4, -PI / 2, "Estantería de telas"));
   for (let k = 0; k < 3; k++) items.push(P("tex-maniqui", 2.8 + k * 1.1, 9));
   items.push(P("tex-tendedero", -1, 9.7), P("aseos-1", 3.5, -9.1));
   return { id: "textil", size: SIZE, items, source: cs("Restaurant", "FurnishTextile") };
@@ -57,6 +60,11 @@ function verticalFarm(n: number): FloorPlan {
 
 function submarineBay(): FloorPlan {
   const items = [floor, P("sub-bahia", 0, 1), P("sub-obra", 0, 1), P("sub-taller", 8.5, 7.5, PI)];
+  // What a submersible's bay needs between dives (ours, from work-class ROV and manned-submersible hangars): the hoist
+  // for the thrusters and batteries, the charging station, the breathing-air compressor, the spares and the bench, the
+  // parts washer, and the masks by the door to the water.
+  items.push(P("mec-grua-motor", -6.5, -5.5, PI / 2, "Grúa de taller"), P("mec-baterias", -12.4, -3, PI / 2, "Carga de baterías del submarino"), P("mec-compresor", -12.4, 0, PI / 2, "Compresor de aire respirable"));
+  items.push(P("mec-estanteria", -12.2, 4.5, PI / 2, "Repuestos del submarino"), P("mec-banco", 11.9, -2.5, -PI / 2), P("mec-lavapiezas", 12.4, 1, -PI / 2), P("perchero-mascaras", 6.5, -9.3));
   return { id: "garaje-submarino", size: SIZE, items, source: cs("Submarine", "SubmarineBay") };
 }
 

@@ -17,6 +17,8 @@ export interface WalkSpeeds {
   readonly swimRun?: number;
   /** Highest drop she lets herself fall off an edge, m (no limit if absent). */
   readonly maxDrop?: number;
+  /** How much a water's current speeds her swim, by its area (1 if absent: the sea; sanctuary 1's tree water carries her). */
+  readonly current?: (area: string) => number;
 }
 
 export interface WalkInput {
@@ -151,7 +153,7 @@ export class FreeWalk {
   move(dt: number, b: Body, i: WalkInput): Body {
     if (!i.forward && !i.right) return b;
     const swim = b.motion === "agua";
-    const speed = (swim ? (i.run ? (this.speeds.swimRun ?? SWIM_SPRINT_MS) : this.speeds.swim) : i.run ? (this.speeds.run ?? SPRINT_MS) : this.speeds.walk) * dt;
+    const speed = (swim ? (i.run ? (this.speeds.swimRun ?? SWIM_SPRINT_MS) : this.speeds.swim) * (this.speeds.current?.(b.area) ?? 1) : i.run ? (this.speeds.run ?? SPRINT_MS) : this.speeds.walk) * dt;
     const dx = (-Math.sin(i.yaw) * i.forward + Math.cos(i.yaw) * i.right) * speed;
     const dz = (-Math.cos(i.yaw) * i.forward - Math.sin(i.yaw) * i.right) * speed;
     const dy = swim ? Math.sin(i.pitch) * i.forward * speed : 0;

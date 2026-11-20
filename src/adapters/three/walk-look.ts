@@ -22,10 +22,15 @@ export function poseOnFoot(avatar: CubeFigure, walk: FreeWalk, o: { body: Body; 
   avatar.update(dt, j || o.sprinting || walk.falling || walk.landing || o.body.motion === "agua" ? 16 : 3);
 }
 
-/** Under water (Berón: «bajo el agua parece que se ve todo blanco»): blue-green, and the far side fades out in ~35 m. */
-const UNDER = 0x0e4f63;
+/**
+ * Under water (Berón: «bajo el agua parece que se ve todo blanco»): the sea blue-green, its far side fading out in
+ * ~35 m; a tree-building's water (Berón 2026-11-20: «la visión es muy oscura y borrosa que dificulta ver los túneles»)
+ * clear and light, filtered fresh water behind acrylic (ours), so its branches and rings show 150 m away.
+ */
+const UNDER = { mar: { color: 0x0e4f63, near: 0.5, far: 35 }, claro: { color: 0x5fb4c9, near: 12, far: 150 } } as const;
+export type UnderwaterKind = keyof typeof UNDER;
 export class UnderwaterView {
-  private on = false;
+  private on: UnderwaterKind | false = false;
   private readonly sky: { color: number; near: number; far: number; bg: number };
 
   constructor(private readonly scene: THREE.Scene) {
@@ -33,14 +38,16 @@ export class UnderwaterView {
     this.sky = { color: fog.color.getHex(), near: fog.near, far: fog.far, bg: (scene.background as THREE.Color).getHex() };
   }
 
-  /** The camera is under water (or not) now. */
-  set(on: boolean): void {
-    if (on === this.on) return;
-    this.on = on;
+  /** The camera is under water now, the sea's (`true`, "mar") or clear water ("claro"), or not. */
+  set(on: boolean | UnderwaterKind): void {
+    const k: UnderwaterKind | false = on === true ? "mar" : on;
+    if (k === this.on) return;
+    this.on = k;
     const fog = this.scene.fog as THREE.Fog;
-    fog.color.set(on ? UNDER : this.sky.color);
-    fog.near = on ? 0.5 : this.sky.near;
-    fog.far = on ? 35 : this.sky.far;
-    (this.scene.background as THREE.Color).set(on ? UNDER : this.sky.bg);
+    const u = k ? UNDER[k] : { color: this.sky.color, near: this.sky.near, far: this.sky.far };
+    fog.color.set(u.color);
+    fog.near = u.near;
+    fog.far = u.far;
+    (this.scene.background as THREE.Color).set(k ? u.color : this.sky.bg);
   }
 }

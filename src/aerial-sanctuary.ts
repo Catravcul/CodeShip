@@ -1266,6 +1266,7 @@ if (frameStats) (window as unknown as { codeshipS3: unknown }).codeshipS3 = {
   taskBoard,
   areasWindow,
   nav,
+  islandChoices,
   get body() {
     return body;
   },

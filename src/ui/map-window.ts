@@ -1,7 +1,6 @@
-import { CameraStick } from "../adapters/input/camera-stick";
 import { mapGestures } from "./map-gestures";
 import { ICON } from "./icons";
-import { clampElevation, clampZoom, turnBy, type MapLimits, type MapView } from "./map-window-model";
+import { clampZoom, turnBy, type MapLimits, type MapView } from "./map-window-model";
 import "./nav-map.css";
 import "./map-window.css";
 
@@ -61,7 +60,7 @@ export interface MapWindowOptions {
 /**
  * The map window (Berón, 2026-11-18: one model for the start screen, each island's navigation machine, space
  * Navigation, Áreas and, later, the missions). On top a 3D map that a finger turns and a pinch zooms (reglas.md
- * §5.7, its one exception), with its camera joystick «Girar», + / − and «Cenital»; a tap on it picks. Under it,
+ * §5.7, its one exception; no joystick or zoom buttons on it); a tap on it picks. Under it,
  * the options, each with its description and a 44 px action button, the locked ones with why. A gear swaps the
  * list for the window's settings when it has any (reglas.md §5.8).
  */
@@ -72,7 +71,6 @@ export class MapWindow {
   readonly settingsBox: HTMLElement | undefined;
   readonly view: MapView;
   private inSettings = false;
-  private readonly camStick: CameraStick;
 
   constructor(
     root: HTMLElement,
@@ -87,7 +85,7 @@ export class MapWindow {
     const close = o.closeLabel ? `<button class="x" data-act="close" data-close aria-label="${esc(o.closeLabel)}">×</button>` : "";
     const title = o.title ? `<h1 class="mw-title">${esc(o.title)}</h1>` : "";
     this.el.innerHTML = `
-      <div class="nav-head">${title}<div class="nav-tools"><button data-act="zin" aria-label="Acercar">+</button><button data-act="zout" aria-label="Alejar">−</button><button data-act="view">Cenital</button>${o.tools ?? ""}${gear}${close}</div></div>
+      <div class="nav-head">${title}<div class="nav-tools">${o.tools ?? ""}${gear}${close}</div></div>
       <div class="nav-body"><div class="nav-canvas"><canvas${o.canvasLabel ? ` aria-label="${esc(o.canvasLabel)}"` : ""}></canvas><div class="nav-hint">${esc(o.hint)}</div></div>
         <div class="nav-side">${o.side}</div></div>${o.gear ? `<div class="mw-settings ${o.gear.settingsClass ?? ""} hidden"></div>` : ""}`;
     root.appendChild(this.el);
@@ -95,8 +93,8 @@ export class MapWindow {
     this.side = this.el.querySelector(".nav-side")!;
     this.settingsBox = this.el.querySelector<HTMLElement>(".mw-settings") ?? undefined;
     this.el.addEventListener("click", (e) => this.onClick(e.target as HTMLElement));
-    // A tap picks; a finger drag turns the map and a pinch zooms it (reglas.md §5.7, its one exception), and so
-    // does its camera joystick.
+    // A tap picks; a finger drag turns the map and a pinch zooms it (reglas.md §5.7, its one exception): no camera
+    // joystick and no zoom or tilt buttons on these maps (Berón, 2026-11-20), the fingers (or the wheel) do it.
     mapGestures(this.canvas, {
       rotate: (dx, dy) => {
         turnBy(this.view, dx, dy, o.limits);
@@ -108,12 +106,6 @@ export class MapWindow {
         o.tap(x - r.left, y - r.top);
       },
     });
-    this.camStick = new CameraStick(this.el.querySelector(".nav-canvas")!, "nav-look", (yaw, pitch) => {
-      this.view.yaw -= yaw;
-      this.view.elevation = clampElevation(this.view.elevation - pitch, o.limits);
-      this.draw();
-    }, { label: "Girar" });
-    this.camStick.show(true);
     this.canvas.addEventListener("wheel", (e) => {
       e.preventDefault();
       this.setZoom(this.view.zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15));
@@ -175,14 +167,6 @@ export class MapWindow {
       this.o.settings?.(this.inSettings);
       return this.el.querySelector<HTMLElement>("[data-view]")?.focus();
     }
-    const act = t.closest<HTMLElement>("[data-act]");
-    if (act?.dataset.act === "zin") return this.setZoom(this.view.zoom * 1.5);
-    if (act?.dataset.act === "zout") return this.setZoom(this.view.zoom / 1.5);
-    if (act?.dataset.act === "view") {
-      this.view.elevation = this.view.elevation > 1.5 ? this.o.view.elevation : Math.PI / 2;
-      act.textContent = this.view.elevation > 1.5 ? "Inclinada" : "Cenital";
-      return this.draw();
-    }
     this.o.click?.(t);
   }
 }
@@ -204,6 +188,34 @@ export function optionsHtml(options: readonly MapOption[], o: { cls?: string; go
       return `<div class="${k("row")}${n.locked ? " locked" : ""}${off ? " off" : ""}" data-row="${esc(n.id)}">${pick}${go}</div>`;
     })
     .join("");
+}
+
+type Project = (p: { x: number; y: number; z: number }) => { x: number; y: number };
+
+/** A level ellipse round `c` (radii `rx`, `rz` on the ground), as a path to stroke: an island, a cap, a ring. */
+export function outlinePath(g: CanvasRenderingContext2D, P: Project, c: { x: number; y: number; z: number }, rx: number, rz: number): void {
+  g.beginPath();
+  for (let i = 0; i <= 48; i++) {
+    const a = (i / 48) * Math.PI * 2;
+    const q = P({ x: c.x + Math.cos(a) * rx, y: c.y, z: c.z + Math.sin(a) * rz });
+    if (i) g.lineTo(q.x, q.y);
+    else g.moveTo(q.x, q.y);
+  }
+}
+
+/**
+ * The base of a map window's model (Berón 2026-11-20: a closed piece, like the start screen's): three rings round
+ * the middle, the outer one solid, the inner ones dashed.
+ */
+export function baseRings(g: CanvasRenderingContext2D, P: Project, c: { x: number; y: number; z: number }, r: number): void {
+  g.lineWidth = 1;
+  for (const k of [1, 2, 3]) {
+    outlinePath(g, P, c, (r * k) / 3, (r * k) / 3);
+    g.strokeStyle = k === 3 ? "#9fe8c455" : "#7fdcff22";
+    g.setLineDash(k === 3 ? [] : [4, 6]);
+    g.stroke();
+  }
+  g.setLineDash([]);
 }
 
 /** Mark the picked row of a list built by `optionsHtml`. */

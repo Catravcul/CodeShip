@@ -1,4 +1,5 @@
 import { TREE } from "@modules/aerial-sanctuary/data/facts";
+import { carpetStations, STATION_PAD, type CarpetStation } from "./alfombras";
 import type { Floor, Rect, Solid, Water, WalkWorld } from "@modules/aerial-sanctuary/domain/walk";
 import { wallWithGaps } from "@modules/aerial-sanctuary/domain/walk";
 import { CAP_NAME, LAGOON, LOBES, MAP_HALF, NESTS, SPECIES_MODEL, STAFF, TOWERS, WATER_Y, capOf, isLand, lobeRadius, type TowerSpec } from "./site";
@@ -91,6 +92,8 @@ export interface S1Layout {
   /** The work submarine's dive (Berón: «el submarino puede subir por los troncos»): its instance and its way out. */
   readonly submarine?: { readonly index: number; readonly route: readonly Waypoint[] };
   /** The drifting iceberg (Icebergs.cs driftA → driftB at 0,2 m/s): its instance, its solid and the visitors swimming off it. */
+  /** The flying-carpet stations: one on every floor and ring, each crown and each foot (alfombras.ts). */
+  readonly carpets: readonly CarpetStation[];
   readonly drift?: { readonly index: number; readonly visitors: readonly number[]; readonly a: { x: number; z: number }; readonly b: { x: number; z: number } };
 }
 
@@ -161,6 +164,36 @@ interface Built {
 /** How deep a trunk's root goes into the sea under the ice, m (ours: Cold Sanctuary's ends at −1,6 m). */
 export const TRUNK_ROOT_Y = -12;
 
+/** Whether a water is a tree-building's (its trunk or a branch), not the sea's. */
+export const treeWater = (area: string) => /:(tronco|rama)/.test(area);
+/**
+ * How much faster she swims in a tree's water (Berón 2026-11-20: «los viajes se alargan mucho entre rama y rama»):
+ * ours, its pumps keep a current along the trunk and the branches that carries her (×3: 6,6 m/s, 9 m/s crawling).
+ */
+export const TREE_CURRENT = 3;
+
+/**
+ * Where a floor's carpet station goes, in its plan's frame (m about its centre, +z away from its door): on the outer
+ * edge, like Cold Sanctuary's carpet strip (Research.cs CarpetKeepOut), at the free spot nearest the middle; if the
+ * edge is full, the next row in; a room full to its walls (a classroom) gets it on a landing just outside.
+ */
+function padSpot(fp: FloorPlan | undefined, k: number, sp: number, width: number, depth: number): { x: number; z: number } {
+  const hx = STATION_PAD.x / 2 + 0.4;
+  const hz = STATION_PAD.z / 2 + 0.4;
+  const edge = depth / 2 - hz - 0.3;
+  const area = fp ? fp.size.x * fp.size.z : 0;
+  const boxes = (fp?.items ?? []).flatMap((it) => {
+    const d = model(it.model);
+    if (d.size.x * d.size.z > area * 0.6) return [];
+    const turned = Math.abs(Math.sin(it.rot ?? 0)) > 0.7;
+    return [{ x: it.x * sp, z: it.z * sp, ax: ((turned ? d.size.z : d.size.x) * k) / 2, az: ((turned ? d.size.x : d.size.z) * k) / 2 }];
+  });
+  const free = (x: number, z: number) => boxes.every((q) => Math.abs(q.x - x) >= q.ax + hx || Math.abs(q.z - z) >= q.az + hz);
+  for (let z = edge; z > -depth / 2 + hz; z -= 1)
+    for (let a = 0; a <= width / 2 - hx; a += 1) for (const x of a ? [a, -a] : [0]) if (free(x, z)) return { x, z };
+  return { x: 0, z: depth / 2 + hz };
+}
+
 /** One floor in its level: a full one against the trunk, a compact one out at its branch's tip. */
 interface FloorSlot {
   readonly f: TowerSpec["floors"][number];
@@ -222,6 +255,8 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
   const levels = Math.max(1, tree.length);
   /** Each level's count of compact levels under it (where its compact floors go takes turns). */
   const compactIndex = tree.map((_, i) => tree.slice(0, i).filter((q) => q.compact).length);
+  /** The deepest compact floor straight out of the trunk (the second straight place starts past it). */
+  const deepest = Math.max(0, ...tree.flatMap((lv) => lv.slots.filter((q) => q.compact).map((q) => q.d * k)));
   const levelY = (l: number) => t.firstY + (l - 1) * gap;
   const tipY = (l: number) => levelY(l) + TREE.tipRise.value;
   const rootHeight = levelY(levels) + TREE.tipRise.value + TREE.ringH.value + 7;
@@ -279,15 +314,18 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
       const y = levelY(l);
       const area = `${t.id}:piso-${fi}`;
       // A full floor is the tower's square against the trunk; a compact one its own plan at the end of its branch, out
-      // past the full squares (Berón 2026-11-20: «pueden nacer en las puntas»), in one of three places that take turns
-      // level after level so none is over another: the tip (TowerHelix's: the tip gap out on both axes; its door faces
-      // back along the branch, −x), beyond the square's outer edge (door towards the trunk, −z), and beyond both.
-      const pos = compactIndex[l - 1]! % 3;
-      const sideDoor = slot.compact && pos !== 1;
+      // past the full squares (Berón 2026-11-20: «pueden nacer en las puntas… una media de 1 rama torcida por cada 2
+      // rectas, distribuir las torcidas en vertical»), in one of three places that take turns side after side and level
+      // after level, so none is over another and each level has its bent ones on other sides than the next: straight out
+      // of the middle of the trunk's face past the full square (its door towards the trunk), straight on one floor
+      // further, or at the tip (TowerHelix's: the tip gap out on both axes; one bend, its door back along the branch, −x).
+      const q = slot.compact ? (compactIndex[l - 1]! + s) % 3 : -1;
+      const sideDoor = q === 1;
       const W = !slot.compact ? FS : sideDoor ? slot.d * k : slot.w * k;
       const D = !slot.compact ? FS : sideDoor ? slot.w * k : slot.d * k;
-      const x0 = !slot.compact ? -OH : pos === 1 ? -OH + (FS - W) / 2 : FS - OH + t.tipGap;
-      const z0 = !slot.compact ? OH : pos === 0 ? OH + t.tipGap : OH + FS + t.tipGap;
+      const far = OH + FS + t.tipGap;
+      const x0 = !slot.compact ? -OH : sideDoor ? FS - OH + t.tipGap : -W / 2;
+      const z0 = !slot.compact ? OH : sideDoor ? OH + t.tipGap : q === 0 ? far : far + deepest + t.tipGap;
       const rect = sideRect(S(s), x0, x0 + W, z0, z0 + D, o);
       const sp = spacing({ edificio: t.id, piso: area }, b.o) * k;
       // Its door: Cold Sanctuary picks each floor's (pickDoors); here the nearest to 5 m whose way in is clear. A compact
@@ -297,32 +335,35 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
       // Where the way in starts in the trunk (a compact floor's: its branch's mouth).
       let mouth = dx;
       if (slot.compact) {
-        // The branch, a door-sized water tube: out of the trunk at its mouth along the face's normal, then across to the door.
+        // The branch, a door-sized water tube out of the trunk along the face's normal: straight to the door, or to
+        // the tip's row and across; a lit ring where it leaves the trunk and where it turns.
         const h = ROOM_BRANCH.half;
         const key = `${area}:rama`;
         const tube = (id: string, ax0: number, ax1: number, az0: number, az1: number) => b.waters.push({ id: `${key}-${id}`, ...sideRect(S(s), ax0, ax1, az0, az1, o), yBottom: y, yTop: y + 2 * h, area: key, open: true });
+        const ring = (x: number, z: number, along: "x" | "z") => {
+          const p = side(S(s), x, z);
+          place(b, "aro-rama", o.x + p.x, y, o.z + p.z, (S(s) * Math.PI) / 2 + (along === "x" ? Math.PI / 2 : 0), key, { edificio: t.id }, 1, undefined, false);
+        };
         let turn: number, frame: { x: number; z: number }, rack: { x: number; z: number }, corner: { x: number; z: number };
         if (sideDoor) {
           mouth = TREE.mouthX.value;
           tube("a", mouth - h, mouth + h, WH - 0.5, dx + h);
           tube("b", mouth - h, x0, dx - h, dx + h);
+          ring(mouth + h + 0.3, dx, "x");
           turn = (S(s) * Math.PI) / 2 + Math.PI / 2;
           frame = { x: x0 - 0.5, z: dx };
           rack = { x: x0 + 0.35, z: dx - h - 1.3 };
           corner = { x: (mouth + x0) / 2, z: dx };
         } else {
-          mouth = Math.max(-OH + h + 0.5, Math.min(OH - h - 0.5, dx));
-          const zr = z0 - 1 - h;
-          tube("a", mouth - h, mouth + h, WH - 0.5, zr + h);
-          tube("b", Math.min(mouth, dx) - h, Math.max(mouth, dx) + h, zr - h, zr + h);
-          tube("c", dx - h, dx + h, zr - h, z0);
+          tube("a", mouth - h, mouth + h, WH - 0.5, z0);
           turn = (S(s) * Math.PI) / 2;
           frame = { x: dx, z: z0 - 0.5 };
           rack = { x: dx + h + 1.3, z: z0 + 0.35 };
-          corner = { x: dx, z: zr };
+          corner = { x: dx, z: (OH + z0) / 2 };
         }
+        ring(mouth, OH + 0.3, "z");
         const mid = side(S(s), corner.x, corner.z);
-        b.areas.push({ id: key, label: `Rama de ${f.name || "un piso"}`, desc: "Tubo de agua del tronco a la puerta del piso, en la punta: se llega nadando", building: t.building, x: o.x + mid.x, y, z: o.z + mid.z, detail: "completo" });
+        b.areas.push({ id: key, label: `Rama de ${f.name || "un piso"}`, desc: sideDoor ? "Tubo de agua del tronco a la punta, con un quiebre: se llega nadando" : "Tubo de agua recto del tronco a la puerta del piso: se llega nadando", building: t.building, x: o.x + mid.x, y, z: o.z + mid.z, detail: "completo" });
         gapsOf[s]!.push({ from: mouth - h, to: mouth + h, y0: y, y1: y + 2 * h });
         // The door at the branch's end, with its frame and the rack of masks beside it.
         const fr = side(S(s), frame.x, frame.z);
@@ -343,8 +384,19 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
       const dir = sideDoor ? side(S(s), 1, 0) : side(S(s), 0, 1);
       const entry = { x: o.x + out.x, z: o.z + out.z, yaw: Math.atan2(-dir.x, -dir.z) };
       const inn = side(S(s), mouth, WH - 1.5);
-      const pad = !slot.compact ? undefined : sideDoor ? side(S(s), x0 + W - 3, dx) : side(S(s), dx, z0 + D - 3);
-      b.areas.push({ id: area, label: f.name || `Piso libre (${t.building})`, desc: f.desc, building: t.building, x: centre.x, y, z: centre.z, detail: fp ? "completo" : "vacio", entry, ...(pad ? { pad: { x: o.x + pad.x, z: o.z + pad.z } } : {}), ...(f.furnish ? { furnish: f.furnish } : {}), link: { tower: t.id, inner: { x: o.x + inn.x, z: o.z + inn.z } } });
+      // Its carpet station: on the plan's outer edge, the free spot nearest the middle (plan frame → the side's).
+      const spot = padSpot(fp, k, sp, fp ? fp.size.x * k : FS, fp ? fp.size.z * k : FS);
+      const toSide = (x: number, z: number) => (sideDoor ? side(S(s), z, -x) : side(S(s), x, z));
+      const pl = toSide(spot.x, spot.z);
+      const pad = { x: c.x + pl.x, z: c.z + pl.z };
+      // Out past the floor's edge: its landing (a deck as big as the station's pad).
+      const floorHalf = (sideDoor ? W : D) / 2;
+      if (spot.z + STATION_PAD.z / 2 + 0.4 > floorHalf) {
+        const a = toSide(spot.x - STATION_PAD.x / 2 - 0.4, floorHalf);
+        const z = toSide(spot.x + STATION_PAD.x / 2 + 0.4, spot.z + STATION_PAD.z / 2 + 0.4);
+        b.floors.push({ id: `${area}-rellano-alfombras`, x0: o.x + c.x + Math.min(a.x, z.x), x1: o.x + c.x + Math.max(a.x, z.x), z0: o.z + c.z + Math.min(a.z, z.z), z1: o.z + c.z + Math.max(a.z, z.z), y, area });
+      }
+      b.areas.push({ id: area, label: f.name || `Piso libre (${t.building})`, desc: f.desc, building: t.building, x: centre.x, y, z: centre.z, detail: fp ? "completo" : "vacio", entry, pad: { x: o.x + pad.x, z: o.z + pad.z }, ...(f.furnish ? { furnish: f.furnish } : {}), link: { tower: t.id, inner: { x: o.x + inn.x, z: o.z + inn.z } } });
       if (!fp) continue;
       // Floor frame (Cold Sanctuary's: x across, z away from the trunk, whose face is at z = −FS/2) = the side's frame
       // about the floor's centre; Unity's yaw carries over as is (the plan keeps Cold Sanctuary's x and z).
@@ -372,7 +424,7 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
         gapsOf[s]!.push({ from: dx - door.w / 2, to: dx + door.w / 2, y0: ry, y1: ry + door.h });
         doorKit(s, dx, ry, ringArea);
         (shape.rings as TowerShape["rings"][number][]).push({ rects: [[-ox, ox, hx, hx + RING.width], [hx, ox, zb, hx], [-ox, -hx, zb, hx], [-hx, hx, zb, zb + RING.balcony]].map(([x0, x1, z0, z1]) => sideRect(S(s), cx + x0!, cx + x1!, cz + z0!, cz + z1!, o)), y: ry });
-        b.areas.push({ id: ringArea, label: `Anillo de ${f.name}`, desc: "Anillo en U a 8 m sobre el piso: se llega nadando por su puerta del tronco", building: t.building, x: centre.x, y: ry, z: centre.z, detail: "completo", entry: (() => { const q = side(S(s), dx, OH + 1.5); return { x: o.x + q.x, z: o.z + q.z, yaw: entry.yaw }; })(), link: { tower: t.id, inner: { x: o.x + inn.x, z: o.z + inn.z } } });
+        b.areas.push({ id: ringArea, label: `Anillo de ${f.name}`, desc: "Anillo en U a 8 m sobre el piso: se llega nadando por su puerta del tronco", building: t.building, x: centre.x, y: ry, z: centre.z, detail: "completo", entry: (() => { const q = side(S(s), dx, OH + 1.5); return { x: o.x + q.x, z: o.z + q.z, yaw: entry.yaw }; })(), pad: (() => { const q = side(S(s), 0, hx + RING.width / 2); return { x: centre.x + q.x, z: centre.z + q.z }; })(), link: { tower: t.id, inner: { x: o.x + inn.x, z: o.z + inn.z } } });
         for (const it of fp.ring) {
           const p = side(S(s), it.x * sp, it.z * sp);
           place(b, it.model, centre.x + p.x, ry, centre.z + p.z, turn + (it.rot ?? 0), ringArea, { edificio: t.id, piso: area }, k, it.name);
@@ -394,6 +446,11 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
         { id: `${key}-c`, ...sideRect(S(s), colC.x - ch, colC.x + ch, colC.z - ch, colC.z + ch, o), yBottom: y, yTop: ty + 1, area: key, open: true },
       );
       gapsOf[s]!.push({ from: mx - th, to: mx + th, y0: y, y1: y + 2 * th });
+      // Its lit rings: where it leaves the trunk and where it turns towards the tip's column.
+      for (const [rx, rz, along] of [[mx, OH + 0.3, 0], [mx + th + 0.3, colC.z, 1]] as const) {
+        const p = side(S(s), rx, rz);
+        place(b, "aro-rama-huerto", o.x + p.x, y, o.z + p.z, (S(s) * Math.PI) / 2 + along * (Math.PI / 2), key, { edificio: t.id }, 1, undefined, false);
+      }
       // The photobioreactor keel (Fotobio.cs, FotobioSpec.Keel) of the Árbol de los Campos: 6 flat panels of 2,4 × 2 m
       // hung 2,4 m under the long run of the branch, between its mouth and its column, with its pump.
       if (t.building === "Árbol de los Campos") {
@@ -602,6 +659,15 @@ export function buildS1Layout(k = 1, o: Overrides = OVERRIDES): S1Layout {
   }
   b.areas.push({ id: "mar", label: "La laguna y el mar", desc: "Ballenas, orcas, focas y morsas en la laguna central", x: LAGOON.x, y: WATER_Y, z: LAGOON.z, detail: "completo" });
   for (const t of TOWERS) buildTower(b, t, k);
+  // A carpet station on every floor and ring, where its carpets wait (the crown's and the foot's are their parks).
+  const park = (area: string, y: number) => b.instances.find((i) => i.model === "parqueadero-alfombras" && i.area === area && Math.abs(i.y - y) < 0.5)!;
+  const carpets = carpetStations(b, (id) => {
+    const tw = b.towers.find((q) => q.id === id)!;
+    const c = park(`${id}:techo`, tw.rootHeight);
+    const f = park(`${id}:tronco`, 0);
+    return { crown: { x: c.x, y: c.y, z: c.z }, foot: { x: f.x, y: f.y, z: f.z } };
+  });
+  for (const st of carpets) if (st.kind === "piso") place(b, "estacion-alfombras", st.x, st.y, st.z, Math.atan2(st.out.x, st.out.z), st.area, { edificio: st.tower, piso: st.area }, 1, `Estación de alfombras (${st.label})`, false);
   // Up the trunks from the sea (Berón 2026-11-19: «los animales marinos pueden subir por los troncos»): in each trunk a
   // seal and two penguins swim between its root under the ice and its top (ours: who and how many).
   for (const tw of b.towers) {
@@ -678,5 +744,5 @@ export function buildS1Layout(k = 1, o: Overrides = OVERRIDES): S1Layout {
   const gym = b.areas.find((a) => a.label === "Gimnasio")!;
   const start = { x: gym.entry!.x, y: gym.y, z: gym.entry!.z, yaw: gym.entry!.yaw };
   const submarine = submarineDive(b);
-  return { k, world: { floors: b.floors, waters: b.waters, solids: b.solids }, instances: b.instances, areas: b.areas, towers: b.towers, walls: b.walls, start, ...(submarine ? { submarine } : {}), ...(drifting ? { drift: drifting } : {}) };
+  return { k, world: { floors: b.floors, waters: b.waters, solids: b.solids }, instances: b.instances, areas: b.areas, towers: b.towers, walls: b.walls, carpets, start, ...(submarine ? { submarine } : {}), ...(drifting ? { drift: drifting } : {}) };
 }

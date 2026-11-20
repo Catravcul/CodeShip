@@ -19,6 +19,20 @@ const frame: Part[] = [
   C(0, D.h + 0.65, 0.75, 1.2, 0.3, 0.2, 0xfff2b0),
 ];
 
+/**
+ * A branch's ring (Berón 2026-11-20: «un aro en el punto de quiebre de una rama y también en su entrada desde el
+ * tronco»): a lit square just inside the 7 × 7 m tube, where it leaves the trunk and where it turns. Ours.
+ */
+const ringOf = (tube: number): Part[] => {
+  const n = tube - 0.3;
+  return [
+    C(-(n / 2), n / 2 + 0.15, 0, 0.3, n + 0.3, 0.5, 0xffcf5a),
+    C(n / 2, n / 2 + 0.15, 0, 0.3, n + 0.3, 0.5, 0xffcf5a),
+    C(0, n + 0.15, 0, n, 0.3, 0.5, 0xffcf5a),
+    C(0, 0.15, 0, n, 0.3, 0.5, 0xffcf5a),
+  ];
+};
+
 /** A rack of breathing masks: a board with six masks on their hooks and their bottles below. */
 const rack: Part[] = [C(0, 0.9, 0, 1.3, 1.8, 0.08, 0x5a6670), C(0, 0.25, 0.18, 1.3, 0.05, 0.3, 0x5a6670)];
 for (let i = 0; i < 6; i++) {
@@ -73,6 +87,8 @@ export const EDIFICIO_MODELS: readonly ModelDef[] = [
     C(0, 0.4, 0, 0.1, 0.8, 0.1), C(0, 1.6, 0, 1.2, 1.6, 0.4), C(-0.3, 1.9, 0.21, 0.4, 0.25, 0.02, 0x66bb6a), C(0.3, 1.5, 0.21, 0.3, 0.6, 0.02, 0xf2f2f2),
   ], "real", "Cold Sanctuary, Assets/Editor/SampleSceneBuilder.Fotobio.cs Cuadro_fotobio"),
   pz("marco-puerta-tronco", "edificio", "puertas", "Marco de puerta del tronco (7 × 7 m, el campo que retiene el agua)", AMBER, frame, "ficcion", CS("TreeSpec door 7 × 7 m (Helix.cs); el marco, nuestro para que se vean")),
+  { ...pz("aro-rama", "edificio", "puertas", "Aro de luz de la rama de un piso (en su boca del tronco y en su quiebre)", 0xffcf5a, ringOf(7), "ficcion", "Nuestro: Berón 2026-11-20, para ver por dónde se nada en el árbol"), walkThrough: true, glow: true },
+  { ...pz("aro-rama-huerto", "edificio", "puertas", "Aro de luz de la rama de una punta (en su boca del tronco y en sus quiebres)", 0xffcf5a, ringOf(2 * TREE.tubeHalf.value), "ficcion", "Nuestro: Berón 2026-11-20, para ver por dónde se nada en el árbol"), walkThrough: true, glow: true },
   pz("perchero-mascaras", "mueble", "mascaras", "Perchero de máscaras de respirar (6, con su botella)", 0x5a6670, rack, "ficcion", CS("BreathingMask.cs / MaskStation Kind.Rack: junto a cada puerta del tronco")),
   pz("estacion-mascaras", "mueble", "mascaras", "Estación de máscaras dentro del agua", 0x5a6670, rack, "ficcion", CS("BreathingMask.cs / MaskStation Kind.Station: dentro del agua, junto a cada puerta")),
   pz("abedul-isla", "naturaleza", "arboles-isla", "Abedul de montaña de la isla (10 m)", 0xe9e4d8, birch(), "real", CS("SampleSceneBuilder.BuildIceFlora: 6 abedules (Betula pubescens subsp. czerepanovii) en la isla, con panales")),

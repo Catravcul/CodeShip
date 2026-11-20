@@ -5,6 +5,12 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-20
 
+- **Alfombras en cada piso**: una estación en cada piso, copa y pie, con dos alfombras que flotan en ondas y un orrery
+  de luz encima; al pisarla, «Volar» abre la ventana de mapa con sus destinos y su propio ajuste de viaje. Ballet en
+  dos estudios reales; ramas rectas con aros de luz, agua clara y corriente; mapas de las ventanas sin joystick ni
+  botones, dibujados como la pantalla de inicio; 9 pisos medio vacíos rehechos. Reglas con tests.
+  [docs/design/santuario1.md](docs/design/santuario1.md) #47–53
+
 - **Árbol espacioso**: por nivel, 2 pisos grandes o 4 pequeños (uno por lado), cada pequeño al final de su rama en la
   punta; ningún pequeño encima de otro. Artes marciales en cuatro pisos: karate, kickboxing, MMA y judo.
   [docs/design/santuario1.md](docs/design/santuario1.md) #44–46

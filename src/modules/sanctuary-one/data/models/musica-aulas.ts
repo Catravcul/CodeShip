@@ -271,6 +271,8 @@ const FINISH: readonly (readonly [string, number, number, number, string])[] = [
   ["dojo-kickboxing", 16, 13, 0x4a4f57, "Suelo de caucho"],
   ["dojo-mma", 15, 13, 0x4a4f57, "Suelo de caucho"],
   ["dojo-judo", 15, 15, 0x9a7a52, "Tarima de madera"],
+  ["ballet-grande", 15, 12, 0x3a3a3e, "Suelo flotante con vinilo de danza"],
+  ["ballet-pequeno", 12, 10, 0x3a3a3e, "Suelo flotante con vinilo de danza"],
 ];
 /**
  * The martial arts rooms' own kit (Berón 2026-11-20: «el piso de artes marciales también se puede dividir en pisos
@@ -286,9 +288,29 @@ const DOJO_KIT: readonly ModelDef[] = [
   pz("dojo-banco", "mueble", "dojo", "Banco (2 m)", 0x9e7a52, [C(0, 0.44, 0, 2, 0.05, 0.35), C(-0.85, 0.22, 0, 0.06, 0.44, 0.3), C(0.85, 0.22, 0, 0.06, 0.44, 0.3)], "real", "Banco de vestuario"),
 ];
 
-export const FLOOR_FINISH_MODELS: readonly ModelDef[] = FINISH.map(([id, x, z, c, what]) => m(`suelo-${id}`, "mueble", "suelos", `${what} (${x} × ${z} m)`, x - 0.2, 0.02, z - 0.2, c, "caja", "real", "Acabados de suelo de salas de música, aulas y dojos"));
+/**
+ * The ballet studios' own kit (Berón 2026-11-20: «se debe rehacer un piso real de ballet, se puede dividir en pisos
+ * pequeños»): the mirror wall with its double barre (Sport England, Studios for Dance: mirrors 2 m high from ~0,3 m;
+ * barres of 38–50 mm at ~0,86 and ~1,07 m, 0,35–0,4 m off the wall) and a freestanding barre in use.
+ */
+const BALLET_KIT: readonly ModelDef[] = [
+  pz("ballet-espejo-barra", "mueble", "ballet", "Pared de espejo con barra doble (6 m)", oak, [
+    C(0, 1.3, 0, 6, 2, 0.04, 0xd9e6ee),
+    C(0, 0.12, -0.02, 6, 0.24, 0.06, 0x6b4a32),
+    ...[-2.7, -0.9, 0.9, 2.7].flatMap((x) => [C(x, 0.97, -0.2, 0.05, 0.3, 0.4, darkSteel)]),
+    C(0, 0.86, -0.38, 6, 0.045, 0.045, oak),
+    C(0, 1.07, -0.38, 6, 0.045, 0.045, oak),
+  ], "real", "Sport England, Studios for Dance (2016): espejos de 2 m desde 0,3 m; barras a 0,86 y 1,07 m, a 0,38 m de la pared"),
+  pz("ballet-barra-portatil", "mueble", "ballet", "Barra portátil doble (2,4 m)", oak, [
+    ...[-1.1, 1.1].flatMap((x) => [C(x, 0.55, 0, 0.05, 1.1, 0.05, darkSteel), C(x, 0.02, 0, 0.08, 0.04, 0.7, darkSteel)]),
+    C(0, 0.86, 0, 2.4, 0.045, 0.045, oak),
+    C(0, 1.07, 0, 2.4, 0.045, 0.045, oak),
+  ], "real", "Barras portátiles de danza en A (2,4 m, dos alturas)"),
+];
+
+export const FLOOR_FINISH_MODELS: readonly ModelDef[] = FINISH.map(([id, x, z, c, what]) => m(`suelo-${id}`, "mueble", "suelos", `${what} (${x} × ${z} m)`, x - 0.2, 0.02, z - 0.2, c, "caja", "real", "Acabados de suelo de salas de música, aulas, dojos y estudios de ballet"));
 
 /** The ids, for the floor plans and the tests. */
 export const MUSIC_ROOM_GROUPS = ["musica-banda", "musica-estudio", "musica-practica", "musica-orquesta", "musica-auditorio"] as const;
 
-export const MUSICA_AULAS_MODELS: readonly ModelDef[] = [...ROOMS, ...DOJO_KIT, ...FLOOR_FINISH_MODELS];
+export const MUSICA_AULAS_MODELS: readonly ModelDef[] = [...ROOMS, ...DOJO_KIT, ...BALLET_KIT, ...FLOOR_FINISH_MODELS];

@@ -162,7 +162,13 @@ function hospitalVet(): FloorPlan {
   return { id: "hospital-veterinario", size: SIZE, items, ring, source: cs("Hospital", "BuildHospital (planta 2: veterinario y anillo de grandes animales)") };
 }
 
-/** Cría (Cria.cs FurnishCria), its 26 × 20 m layout in the middle of the floor. */
+/** Its own small floor of 26 × 20 m (Cold Sanctuary's own layout; Berón 2026-11-20: small floors at the branch tips). */
+const SMALL = { x: 26, z: 20 } as const;
+
+/** Front to back: a small floor's door is on its −z edge, and these open onto the aisle, not onto a pen or a bioreactor. */
+const mirrorZ = (items: readonly Placed[]): Placed[] => items.map((it) => ({ ...it, z: -it.z, rot: PI - (it.rot ?? 0) }));
+
+/** Cría (Cria.cs FurnishCria), its 26 × 20 m layout as its own small floor. */
 function cria(): FloorPlan {
   const hx = 13;
   const hz = 10;
@@ -170,7 +176,7 @@ function cria(): FloorPlan {
   for (let i = 0; i < 2; i++) items.push(P("osezno", -9.5 + i, -6.1, i), P("cria-foca", -1 + i, -6.1, i));
   for (let i = 0; i < 3; i++) items.push(P("polluelo-pinguino", 7.5 + i, -6.1, i), P("cachorro-malamute", -9.1, 3.5 + i, i));
   items.push(P("cria-cocina-leche", hx - 3.2, 3.5, D(-90)), P("cocina-estanteria", hx - 0.6, -1.4, D(-90), "Almacén de cría"), P("cria-pizarra", 3.5, -2.9), P("aseos-1", -4.2, hz - 0.9, PI));
-  return { id: "cria", size: SIZE, items, source: cs("Cria", "FurnishCria (distribución de 26 × 20 m)") };
+  return { id: "cria", size: SMALL, items: mirrorZ(items), source: cs("Cria", "FurnishCria (distribución de 26 × 20 m)") };
 }
 
 function culturedMeat(): FloorPlan {
@@ -183,7 +189,7 @@ function culturedMeat(): FloorPlan {
   items.push(P("lab-centrifuga", hx - 1, hz - 1.4), P("lab-centrifuga", hx - 7, hz - 1.4), P("lab-formadora", hx - 4, hz - 1.3), P("lab-formadora", hx - 10, hz - 1.3, 0, "Formadora 2"), P("lab-raciones", 7.5, 4.5));
   items.push(P("lab-camara-fria", hx - 0.6, 3.5), P("lab-consola-lote", 0, 0.8));
   items.push(P("aseos-1", hx - 0.2 - 1.9, -hz + 0.9));
-  return { id: "carne-cultivada", size: SIZE, items, source: "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Build (distribución de 26 × 20 m)" };
+  return { id: "carne-cultivada", size: SMALL, items: mirrorZ(items), source: "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Build (distribución de 26 × 20 m)" };
 }
 
 function assembly(): FloorPlan {
@@ -204,6 +210,11 @@ function guard(): FloorPlan {
   for (const z of [9.5, 5.5]) for (let i = 0; i < 6; i++) items.push(P("guardia-consola", (i - 2.5) * 2.6, z));
   items.push(P("guardia-radar", -14, -3), P("guardia-carta-hielo", -7, -3), P("guardia-sismografo", 7, -3), P("guardia-mareografo", 14, -3));
   items.push(P("guardia-radio", -14, -10), P("guardia-tablero", -6, -10), P("guardia-respaldo", 14, -10), toilets1);
+  // The watch's own room (a coastguard operations centre's: the briefing table for the change of watch, lockers, a
+  // kitchenette and a rest corner for the night shift).
+  items.push(P("asamblea-mesa-comision", 2, -15, 0, "Mesa de relevo de guardia"), P("comedor-mesa", 8, -15, 0, "Mesa de la guardia"));
+  items.push(P("mus-taquillas", -16, -17.6, 0, "Taquillas de la guardia"), P("cocina-estanteria", -10, -17.6, 0, "Office"), P("mus-sofa", 15, -17.4, 0, "Descanso de la guardia de noche"), P("mus-sofa", 17.6, -14, -PI / 2));
+  for (const [x, z] of [[-18, 17], [18, 17], [-18, 2], [18, 2]] as const) items.push(P("planta-maceta", x, z));
   return { id: "guardia", size: SIZE, items, source: cs("GuardRoom", "FurnishGuardRoom") };
 }
 

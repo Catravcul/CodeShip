@@ -95,4 +95,5 @@ export const ICON_CATALOG: Readonly<Record<keyof typeof ICON, IconEntry>> = {
   info: { drawing: "Una i en un círculo", meaning: "Algo que mirar o leer", usedIn: [{ where: "Estación: información", file: "src/station-interior.ts" }] },
   reto: { drawing: "Llaves de código con una chispa", meaning: "Un reto de código a mano (botón naranja)", usedIn: [{ where: "Botón naranja «Reto: …» de todos los niveles (santuarios 1 y 3, naves y estación)", file: "src/ui/interaction.ts" }] },
   missions: { drawing: "Una hoja de calendario con un reloj", meaning: "Las misiones de la jornada", usedIn: [{ where: "Santuario 1: Misiones", file: "src/sanctuary-one.ts" }] },
+  carpet: { drawing: "Una alfombra ondeando con sus flecos y el aire debajo", meaning: "Volar en alfombra desde una estación de alfombras", usedIn: [{ where: "Santuario 1: botón naranja (o Y) sobre una estación", file: "src/sanctuary-one.ts" }] },
 };

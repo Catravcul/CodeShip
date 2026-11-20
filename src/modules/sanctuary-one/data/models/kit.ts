@@ -50,6 +50,8 @@ export interface ModelDef {
   readonly parts?: readonly Part[];
   /** Soft or low things one walks through (a mattress, loose pillows, herbs): drawn, never solid. */
   readonly walkThrough?: boolean;
+  /** Lit from within (a branch's ring, a carpet station's orrery): drawn with its own light, never shaded. */
+  readonly glow?: boolean;
 }
 
 export const CATEGORY: Readonly<Record<Category, { readonly label: string; readonly color?: number }>> = {

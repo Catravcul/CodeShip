@@ -79,9 +79,6 @@ body.in-carrier-hand .ctx-dock { bottom: calc(290px + env(safe-area-inset-bottom
 body.in-carrier-hand .nav-map .nav-card { display: none; }
 .nav-map .nav-hand-hint { margin: 4px 0 0; font-size: 12px; color: #9fc6d6; }
 /* The map's camera joystick (reglas.md §5.7), in the canvas's corner: the map turns only with it. */
-.nav-canvas .cam-stick.nav-look { position: absolute; left: 8px; right: auto; bottom: 8px; z-index: 2; }
-.nav-canvas .cam-stick.nav-look > .vstick { width: 88px; height: 88px; }
-.nav-canvas .cam-stick.nav-look > .vstick .knob { left: 22px; top: 22px; width: 44px; height: 44px; }
 /* Opened from the LM's or the probe's station: destinations out of that craft's reach, locked (nav-map.ts NavMapOpen). */
 .nav-map .nav-chip.locked { opacity: 0.55; }
 .nav-map .nav-lock { margin: 4px 0; font-size: 12px; color: #ffb347; }

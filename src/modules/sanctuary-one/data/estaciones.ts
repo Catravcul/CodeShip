@@ -66,6 +66,8 @@ export const STATIONS: Readonly<Record<string, Station>> = {
   "pk-lache": { x: 0, z: 0, face: PI / 2 },
   // Ballet: side-on to the barre (left hand on it), by the mirror wall.
   "ballet-espejo-barras": { x: 0, z: 3.7, face: PI / 2 },
+  "ballet-espejo-barra": { x: 0, z: -0.8, face: PI / 2 },
+  "ballet-barra-portatil": { x: 0, z: -0.45, face: PI / 2 },
 };
 
 /** What a challenge is done at: its base, height, model and turn (and plan scale, for the station's offsets). */

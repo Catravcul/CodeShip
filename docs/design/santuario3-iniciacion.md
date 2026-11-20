@@ -187,7 +187,7 @@ Los conceptos de código siguen [indice-de-estudio.md](../research/indice-de-est
 
 | Parte | Qué tiene |
 | --- | --- |
-| Cabecera | «Codeship» · [+] [−] [Cenital], como en Navegación |
+| Cabecera | «Codeship», como en Navegación (sin + / − ni «Cenital» desde 2026-11-20: zoom y giro con los dedos) |
 | Mapa 3D (arriba, ~45 % de la altura) | Los santuarios en un eje vertical de **profundidad = peligro**, como en `docs/world-topology-and-planes.md` §3 de Cold Sanctuary: Núcleo (5) y Subterráneo (4) abajo, Marino (2), Terrestre (1) en el centro y Aéreo (3) encima; el Espacio (6) arriba, con la órbita. Cada uno, un nodo sobre su tallo encima del plano de referencia, como los asteroides en `nav-map.ts`. Jugables: 3 y 6. Los demás, apagados con la etiqueta «En Cold Sanctuary». Una línea discontinua une 3 con 6: es el lanzamiento |
 | Lista (abajo) | Una fila por nivel jugable con su descripción, su estado (sin empezar, en curso con el puesto n.º, terminado) y **Jugar**. «Santuario 3 · Aéreo: la iniciación de Doménica» y «Santuario 6 · Espacio: la nodriza, la estación y los asteroides» |
 | Ficha | Al tocar un nodo o una fila: qué es, qué es real y qué es ficción, y de dónde viene en Cold Sanctuary |
@@ -217,7 +217,7 @@ Propuesta:
 
 ### 5.2.1 Hecho en `inicio-niveles` (fase 1)
 
-- **`MapWindow`** (`src/ui/map-window.ts`): el lienzo con el giro con el dedo, el pellizco, el joystick «Girar», +, − y «Cenital»; tocar para elegir; la lista de opciones (descripción y botón de 44 px, las bloqueadas con su motivo y un candado ⊘) y el engranaje de ajustes cuando la ventana los tiene. Su lógica sin DOM (proyección, toque más cercano, selección y bloqueo) está en `map-window-model.ts`, con pruebas.
+- **`MapWindow`** (`src/ui/map-window.ts`): el lienzo con el giro con el dedo, el pellizco y la rueda (sin joystick ni botones de zoom o inclinar desde 2026-11-20); tocar para elegir; la lista de opciones (descripción y botón de 44 px, las bloqueadas con su motivo y un candado ⊘) y el engranaje de ajustes cuando la ventana los tiene. Su lógica sin DOM (proyección, toque más cercano, selección y bloqueo) está en `map-window-model.ts`, con pruebas.
 - **Navegación** (`nav-map.ts`) y **Áreas** (`areas-window.ts`) usan esa ventana y se ven igual que antes.
 - **Pantalla de inicio** (`src/ui/start-screen.ts`, entrada `src/boot.ts`): sale en cada carga, antes de crear la escena y sin menú árbol. El mapa pone los seis santuarios en el eje profundidad = peligro y la lista los ordena igual, de arriba abajo: 6, 3, 1, 2, 4 y 5. Solo el 6 se juega; el 3 se elige y dice «En construcción: iniciación y entrenamiento de Doménica»; los demás, «Próximamente». Datos en `src/modules/levels/data/levels.ts`, con su fuente.
 - **«Continuar»**: si hay una partida guardada (`localStorage` `codeship.partida`, con el nivel y la fecha), el botón de su nivel dice «Continuar». Todavía nada guarda partidas (docs/qa HC-06): hoy no sale nunca en una partida real.

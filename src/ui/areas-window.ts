@@ -3,7 +3,8 @@ import type { Vehicle } from "@modules/tasks/application/task-list";
 import { settings } from "./settings-store";
 import { onCloseRequest, windowState } from "./hud-windows";
 import { settingsClick, travelHtml, vehicleHtml, VEHICLE_NAME } from "./task-settings";
-import { MapWindow, markPicked, optionsHtml, type MapOption } from "./map-window";
+import type { TaskTravel } from "@modules/settings/domain/settings";
+import { baseRings, MapWindow, markPicked, optionsHtml, outlinePath, type MapOption } from "./map-window";
 import { MapSelection, nearestPick, orbitProjector, type MapView } from "./map-window-model";
 import type { HudWindow } from "./hud-windows";
 import "./task-board.css";
@@ -38,28 +39,16 @@ export interface AreasDeps {
   row?(n: AreaNode): Partial<Pick<MapOption, "action" | "actionLabel" | "locked" | "sub" | "tag" | "desc">>;
   /** What the list says when nothing is shown. */
   readonly empty?: string;
+  /**
+   * Its own «Viaje o teletransporte» instead of the shared one (each carpet station keeps its own, Berón 2026-11-20):
+   * what it reads now, how to change it, the heading and what the gear says of it.
+   */
+  readonly travel?: { get(): TaskTravel; set(v: TaskTravel): void; readonly heading: string; readonly help: string };
 }
 
 interface Pt {
   x: number;
   y: number;
-}
-
-/** The convex hull of a box's projected corners (monotone chain), to fill it and to pick it. */
-function hull(ps: Pt[]): Pt[] {
-  const p = [...ps].sort((a, b) => a.x - b.x || a.y - b.y);
-  const cross = (o: Pt, a: Pt, b: Pt) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
-  const lo: Pt[] = [];
-  for (const q of p) {
-    while (lo.length >= 2 && cross(lo[lo.length - 2]!, lo[lo.length - 1]!, q) <= 0) lo.pop();
-    lo.push(q);
-  }
-  const hi: Pt[] = [];
-  for (const q of p.reverse()) {
-    while (hi.length >= 2 && cross(hi[hi.length - 2]!, hi[hi.length - 1]!, q) <= 0) hi.pop();
-    hi.push(q);
-  }
-  return [...lo.slice(0, -1), ...hi.slice(0, -1)];
 }
 
 const inside = (h: Pt[], x: number, y: number) => {
@@ -82,7 +71,7 @@ const split = (label: string) => {
  * «Áreas» of the tree menu (Berón, 2026-11-18; reglas.md §5.8, docs/design/areas.md): the map window
  * (map-window.ts), the same as Navigation. On top, a 3D map of the vehicle she is in (Starship, the station or
  * the LM), each area a box of the real plan and the hatches as lines; a finger drags to turn it and pinches to
- * zoom (reglas.md §5.7, its one exception), and so do its joystick and its + / − buttons. Under it, the areas
+ * zoom (reglas.md §5.7, its one exception; no joystick or buttons on it). Under it, the areas
  * with what is there and «Ir», which takes her there walking the real way unless she chose teleport. Its gear
  * swaps both for the shared settings (Viaje/Teletransporte and the vehicle, the same as the task list's) and
  * turns into a list icon that goes back. It covers the screen, so the tree menu hides while it is open.
@@ -211,6 +200,11 @@ export class AreasWindow {
   }
 
   private onClick(t: HTMLElement): void {
+    const own = this.d.travel && t.closest<HTMLElement>("[data-travel]");
+    if (own) {
+      this.d.travel!.set(own.dataset.travel as TaskTravel);
+      return this.render();
+    }
     if (settingsClick(t)) {
       // Another island or vehicle: its own hierarchy, from where she is (or the whole of it).
       if (t.closest("[data-vehicle]")) {
@@ -255,7 +249,7 @@ export class AreasWindow {
     this.el.classList.toggle("ar-in-settings", settingsView);
     if (settingsView) {
       const map = this.d.map(this.vehicle());
-      this.win.settingsBox!.innerHTML = `<h2 class="ar-title">Ajustes de ${t}</h2>${this.d.whole ? "" : vehicleHtml("ar-s-vehicle", this.d.here(), undefined, false)}${this.scopeHtml(map)}${travelHtml("ar-s-travel")}<small class="tb-travel-help">Los mismos ajustes que en Tareas.</small>`;
+      this.win.settingsBox!.innerHTML = `<h2 class="ar-title">Ajustes de ${t}</h2>${this.d.whole ? "" : vehicleHtml("ar-s-vehicle", this.d.here(), undefined, false)}${this.scopeHtml(map)}${this.d.travel ? `${travelHtml("ar-s-travel", this.d.travel.get(), this.d.travel.heading)}<small class="tb-travel-help">${esc(this.d.travel.help)}</small>` : `${travelHtml("ar-s-travel")}<small class="tb-travel-help">Los mismos ajustes que en Tareas.</small>`}`;
       return;
     }
     this.shown = this.d.map(this.vehicle());
@@ -287,7 +281,7 @@ export class AreasWindow {
     const v = this.vehicle();
     const map = this.shown;
     const auto = settings.value.taskVehicle === "auto" || settings.value.taskVehicle === "todos";
-    const travel = settings.value.taskTravel === "viaje" ? "Viaje: el camino real" : "Teletransporte";
+    const travel = (this.d.travel?.get() ?? settings.value.taskTravel) === "viaje" ? "Viaje: el camino real" : "Teletransporte";
     const at = this.d.at?.();
     if (rebuild) {
       const named = this.scopeLabel();
@@ -339,8 +333,9 @@ export class AreasWindow {
 
   /**
    * The map (Berón 2026-11-19: «cada área es una esfera en el espacio y lo único que representan es su
-   * posición», like the start screen): a sphere at each area's middle, the passages as dashed lines, a faint
-   * ground grid. Her area in green, the picked one in gold; names where they do not overlap.
+   * posición», like the start screen; 2026-11-20: a closed piece, made of lines and spheres): a sphere at each
+   * area's middle, the passages as dashed lines, base rings under it all, the trunks as lines with their floors
+   * joined to them, the caps as outlines. Her area in green, the picked one in gold; names where they do not overlap.
    */
   private draw(g: CanvasRenderingContext2D, w: number, h: number): void {
     const map = this.shown;
@@ -362,51 +357,56 @@ export class AreasWindow {
     const R = Math.max(0.5, Math.hypot(hi.x - lo.x, hi.y - lo.y, hi.z - lo.z) / 2);
     const s = ((0.48 * Math.min(w, h)) / R) * this.win.view.zoom;
     const P: (p: AreaVec) => Pt & { depth: number } = orbitProjector(this.win.view, s, w / 2, h / 2, o);
-    // The ground under it all, as a faint grid.
-    g.lineWidth = 1;
-    g.strokeStyle = "#7fdcff1f";
-    const step = Math.max(0.5, Math.round(Math.max(hi.x - lo.x, hi.z - lo.z) / 8));
-    for (let x = Math.floor(lo.x / step) * step; x <= hi.x + 1e-6; x += step) {
-      const a = P({ x, y: lo.y, z: lo.z });
-      const b = P({ x, y: lo.y, z: hi.z });
+    // A closed piece, like the start screen (Berón, 2026-11-20: no grid, no boxes that look cut from a bigger map).
+    baseRings(g, P, { x: o.x, y: lo.y, z: o.z }, Math.max(hi.x - lo.x, hi.z - lo.z) / 2 + 0.6);
+    const outline = (c: AreaVec, rx: number, rz: number) => outlinePath(g, P, c, rx, rz);
+    // The place's shape as lines: the caps as outlines, each trunk a vertical line (calm at its foot, sky at its
+    // top), its rings round it and each floor joined to its trunk, so it reads as a tree.
+    for (const b of shape.filter((b) => b.kind === "hielo" || b.kind === "tierra")) {
+      outline({ x: b.centre.x, y: b.centre.y + b.half.y, z: b.centre.z }, b.half.x, b.half.z);
+      g.strokeStyle = b.kind === "hielo" ? "#e8f4ff55" : "#b8c98a55";
+      g.stroke();
+    }
+    const trunks = shape.filter((b) => b.kind === "tronco");
+    for (const t of trunks) {
+      const a = P({ x: t.centre.x, y: t.centre.y - t.half.y, z: t.centre.z });
+      const b = P({ x: t.centre.x, y: t.centre.y + t.half.y, z: t.centre.z });
+      const grad = g.createLinearGradient(a.x, a.y, b.x, b.y);
+      grad.addColorStop(0, "#9fe8c4");
+      grad.addColorStop(1, "#7fdcff");
+      g.strokeStyle = grad;
+      g.lineWidth = 2.5;
       g.beginPath();
       g.moveTo(a.x, a.y);
       g.lineTo(b.x, b.y);
       g.stroke();
     }
-    for (let z = Math.floor(lo.z / step) * step; z <= hi.z + 1e-6; z += step) {
-      const a = P({ x: lo.x, y: lo.y, z });
-      const b = P({ x: hi.x, y: lo.y, z });
+    g.lineWidth = 1.2;
+    for (const b of shape.filter((b) => b.kind === "anillo")) {
+      outline(b.centre, b.half.x, b.half.z);
+      g.strokeStyle = "#ffd27f66";
+      g.stroke();
+    }
+    const trunkOf = (c: AreaVec) => trunks.reduce<(typeof trunks)[number] | undefined>((best, t) => (!best || Math.hypot(t.centre.x - c.x, t.centre.z - c.z) < Math.hypot(best.centre.x - c.x, best.centre.z - c.z) ? t : best), undefined);
+    g.strokeStyle = "#7fdcff99";
+    g.lineWidth = 1.5;
+    const onTree = new Set<string>();
+    for (const n of nodes) {
+      const t = trunkOf(n.centre);
+      if (!t || Math.abs(n.centre.y - t.centre.y) > t.half.y + 2) continue;
+      onTree.add(n.id);
+      const a = P({ x: t.centre.x, y: n.centre.y, z: t.centre.z });
+      const b = P(n.centre);
       g.beginPath();
       g.moveTo(a.x, a.y);
       g.lineTo(b.x, b.y);
-      g.stroke();
-    }
-    // The buildings and caps, faint boxes far ones first: the spheres sit on their real floors.
-    const TINT: Record<string, [string, string]> = { tronco: ["#4fb3d922", "#4fb3d966"], piso: ["#c9d6e01c", "#c9d6e066"], anillo: ["#d9a4201a", "#d9a42066"], hielo: ["#e8f4ff10", "#e8f4ff33"], tierra: ["#8a9a5a18", "#8a9a5a44"] };
-    const boxes = shape
-      .map((b) => {
-        const cs: (Pt & { depth: number })[] = [];
-        for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) cs.push(P({ x: b.centre.x + sx * b.half.x, y: b.centre.y + sy * b.half.y, z: b.centre.z + sz * b.half.z }));
-        return { b, h: hull(cs), depth: cs.reduce((a, c) => a + c.depth, 0) / 8 };
-      })
-      .sort((a, b) => a.depth - b.depth);
-    for (const { b, h } of boxes) {
-      const [fill, line] = TINT[b.kind] ?? TINT.piso!;
-      g.fillStyle = fill;
-      g.strokeStyle = line;
-      g.lineWidth = 1;
-      g.beginPath();
-      h.forEach((q, k) => (k ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y)));
-      g.closePath();
-      g.fill();
       g.stroke();
     }
     // The passages that join the areas.
     const byId = new Map(nodes.map((n) => [n.id, n]));
-    g.strokeStyle = "#7fdcff66";
-    g.lineWidth = 1.5;
-    g.setLineDash([5, 4]);
+    g.strokeStyle = "#7fdcff44";
+    g.lineWidth = 1;
+    g.setLineDash([4, 5]);
     for (const [a, b] of map.links) {
       const na = byId.get(a);
       const nb = byId.get(b);
@@ -422,18 +422,21 @@ export class AreasWindow {
     // The spheres, far ones first: a stalk to the ground shows how high each one is.
     const at = this.d.at?.();
     const balls = nodes.map((n) => ({ n, c: P(n.centre), foot: P({ x: n.centre.x, y: lo.y, z: n.centre.z }) })).sort((a, b) => a.c.depth - b.c.depth);
-    const r0 = Math.max(5, Math.min(11, 2.2 * Math.sqrt((w * h) / Math.max(1, nodes.length)) / 10));
+    const r0 = Math.max(4, Math.min(10, 1.6 * Math.sqrt((w * h) / Math.max(1, nodes.length)) / 10));
     for (const b of balls) {
       const picked = b.n.id === chosen;
       const here = b.n.id === at;
       const locked = !!this.d.row?.(b.n).locked;
       const r = picked ? r0 * 1.5 : here ? r0 * 1.25 : r0;
-      g.strokeStyle = "#7fdcff26";
-      g.lineWidth = 1;
-      g.beginPath();
-      g.moveTo(b.c.x, b.c.y);
-      g.lineTo(b.foot.x, b.foot.y);
-      g.stroke();
+      if (!onTree.has(b.n.id)) {
+        // Off the tree: a stalk to the ground shows how high it is.
+        g.strokeStyle = "#ffffff33";
+        g.lineWidth = 1;
+        g.beginPath();
+        g.moveTo(b.c.x, b.c.y);
+        g.lineTo(b.foot.x, b.foot.y);
+        g.stroke();
+      }
       const base = picked ? "#ffd23f" : here ? "#9fe8c4" : locked ? "#6c7a86" : "#58d6ff";
       const grad = g.createRadialGradient(b.c.x - r / 3, b.c.y - r / 3, r / 5, b.c.x, b.c.y, r);
       grad.addColorStop(0, "#ffffff");

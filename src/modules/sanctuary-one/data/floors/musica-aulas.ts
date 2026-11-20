@@ -246,5 +246,53 @@ const DOJOS: readonly FloorPlan[] = [
   },
 ];
 
+/**
+ * Ballet, two studios each its own small floor (Berón 2026-11-20: «se debe rehacer un piso real de ballet, se puede
+ * dividir en pisos pequeños»; Sport England, Studios for Dance: a full class needs ~15 × 12 m, a small one 12 × 10;
+ * sprung floor with a vinyl dance surface): the mirror wall with its double barre at the far end, a barre on a side
+ * wall, freestanding barres for the centre, the accompanist's upright piano by the door, the sound, the rosin box, the
+ * water, the bench to change shoes and, in the big one, the changing room. The door's strip (x ±2, z < −3) is clear.
+ */
+const BALLET: readonly FloorPlan[] = [
+  {
+    id: "ballet-grande",
+    size: { x: 15, z: 12 },
+    items: [
+      P("ballet-espejo-barra", -3, 5.7, 0, "Espejo y barra"),
+      P("ballet-espejo-barra", 3, 5.7),
+      P("ballet-espejo-barra", 7.2, 0.4, FACE_NX),
+      P("ballet-barra-portatil", -2.6, 0.2, 0, "Barras del centro"),
+      P("ballet-barra-portatil", 2.6, 0.2),
+      P("ballet-piano", 5.4, -5, 0, "Piano del pianista acompañante"),
+      P("ballet-equipo-sonido", 3.4, -5.6),
+      P("ballet-altavoz", -7, 5.5),
+      P("ballet-altavoz", 7, 5.5),
+      P("ballet-vestuario", -5.5, -4.2),
+      P("ballet-banco-calzado", -6.9, 1, FACE_PX),
+      P("ballet-fuente", -7.1, -1.6, FACE_PX),
+      P("ballet-caja-resina", -6.6, 4.2),
+    ],
+    source: "Estudio de ballet de 15 × 12 m (Sport England, Studios for Dance 2016): suelo flotante con vinilo, espejos y barras, piano vertical",
+  },
+  {
+    id: "ballet-pequeno",
+    size: { x: 12, z: 10 },
+    items: [
+      P("ballet-espejo-barra", -3, 4.7, 0, "Espejo y barra"),
+      P("ballet-espejo-barra", 3, 4.7),
+      P("ballet-barra-portatil", 0, 2.2, 0, "Barra del centro"),
+      P("ballet-barra-portatil", 4.3, -1.4, FACE_NX),
+      P("ballet-piano", -4.4, -4.1, 0, "Piano del pianista acompañante"),
+      P("ballet-equipo-sonido", 3.4, -4.6),
+      P("ballet-altavoz", -5.6, 4.5),
+      P("ballet-altavoz", 5.6, 4.5),
+      P("ballet-banco-calzado", -5.6, 0.6, FACE_PX),
+      P("ballet-fuente", 5.6, 1.2, FACE_NX),
+      P("ballet-caja-resina", -5.3, 3.4),
+    ],
+    source: "Estudio de ballet de 12 × 10 m (Sport England, Studios for Dance 2016): suelo flotante con vinilo, espejos y barras, piano vertical",
+  },
+];
+
 /** Each with its floor finish (models/musica-aulas.ts FLOOR_FINISH_MODELS) under everything. */
-export const MUSICA_AULAS_FLOORS: readonly FloorPlan[] = [recital(), rehearsal(), studio(), practice(), orchestra(), ...CLASSROOMS, study(), ...DOJOS].map((f) => ({ ...f, items: [P(`suelo-${f.id}`, 0, 0), ...f.items] }));
+export const MUSICA_AULAS_FLOORS: readonly FloorPlan[] = [recital(), rehearsal(), studio(), practice(), orchestra(), ...CLASSROOMS, study(), ...DOJOS, ...BALLET].map((f) => ({ ...f, items: [P(`suelo-${f.id}`, 0, 0), ...f.items] }));

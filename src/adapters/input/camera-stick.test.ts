@@ -42,8 +42,13 @@ describe("UI-07 camera only by joystick (reglas.md §5.7)", () => {
 
   it("every view that turns a camera has a joystick for it", () => {
     // The views whose drag turned the camera before (Berón, 2026-11-17) now build a stick.
-    const views = ["src/ship-bay.ts", "src/station-screen.ts", "src/station-eva.ts", "src/ui/map-window.ts", "src/adapters/three/dock-view.ts", "src/adapters/three/trip-preview.ts"];
+    const views = ["src/ship-bay.ts", "src/station-screen.ts", "src/station-eva.ts", "src/adapters/three/dock-view.ts", "src/adapters/three/trip-preview.ts"];
     for (const v of views) expect(files.find(({ f }) => f === v)?.text, v).toMatch(/new CameraStick\(/);
+    // The map windows are the one exception (reglas.md §5.7): turned and zoomed with the fingers, no stick and no
+    // zoom or tilt buttons (Berón, 2026-11-20).
+    const map = files.find(({ f }) => f === "src/ui/map-window.ts")!.text;
+    expect(map).not.toMatch(/new CameraStick\(|data-act="zin"|data-act="view"/);
+    expect(map).toMatch(/mapGestures\(/);
     for (const v of ["src/adapters/input/walker.ts", "src/adapters/three/flight-view.ts", "src/probe-mode.ts"]) expect(files.find(({ f }) => f === v)?.text, v).toMatch(/new VirtualStick\(/);
   });
 });

@@ -1,5 +1,6 @@
 import { STATIONS, stationWorld } from "./estaciones";
-import { TREE } from "@modules/aerial-sanctuary/data/facts";
+import { carpetFlight, padOf } from "./alfombras";
+export { CARPET, padOf } from "./alfombras";
 import { model } from "./catalog";
 import type { Instance, S1Area, S1Layout } from "./layout";
 import { ROOM_OWNERS } from "./models/residencia";
@@ -98,32 +99,6 @@ export function staffPlaces(L: S1Layout): Map<string, Record<Activity, Place>> {
   return out;
 }
 
-/** How high over the higher end a carpet flies, and how far out from the building it leaves and arrives, m. */
-export const CARPET = { climb: 4, out: 8 } as const;
-
-/**
- * Where a floor's (or a ring's) carpets wait: near its outer edge, away from the trunk (Cold Sanctuary's
- * `CarpetPad` areas: «ya no hay escaleras ni puentes: se va de un piso a otro y de un edificio a otro en alfombra»).
- */
-export function padOf(L: S1Layout, areaId: string): { x: number; y: number; z: number; out: { x: number; z: number } } | undefined {
-  const a = L.areas.find((q) => q.id === areaId);
-  const t = a?.link && L.towers.find((q) => q.id === a.link!.tower);
-  if (!a || !t) return undefined;
-  const dx = a.x - t.x;
-  const dz = a.z - t.z;
-  const d = Math.hypot(dx, dz) || 1;
-  // A floor at the end of a branch says where its carpets wait; they leave straight out from the trunk's face.
-  if (a.pad) {
-    const ox = Math.abs(a.entry!.x - t.x) > Math.abs(a.entry!.z - t.z) ? Math.sign(a.entry!.x - t.x) : 0;
-    const oz = ox ? 0 : Math.sign(a.entry!.z - t.z);
-    return { x: a.pad.x, y: a.y, z: a.pad.z, out: { x: ox, z: oz } };
-  }
-  // The floor's centre is OH + FS/2 from the trunk's axis; the pad is 3 m in from its outer edge.
-  const half = Math.max(4, d - (TREE.waterHalf.value + TREE.wall.value));
-  const r = d + half - 3;
-  return { x: t.x + (dx / d) * r, y: a.y, z: t.z + (dz / d) * r, out: { x: dx / d, z: dz / d } };
-}
-
 /**
  * The way from one place to another, as Cold Sanctuary's people go (no teleports): between floors and buildings
  * by flying carpet (`CarpetPad`): she walks to her floor's carpets, flies out from the building, over, and in to the
@@ -154,17 +129,7 @@ export function wayBetween(L: S1Layout, a: Place, b: Place): Waypoint[] {
   // From her place to the carpets (or, on the ice, the carpet comes to her).
   const from = pa ?? { x: a.x, y: a.y, z: a.z, out: { x: 0, z: 0 } };
   const to = pb ?? { x: b.x, y: b.y, z: b.z, out: { x: 0, z: 0 } };
-  if (pa) pts.push({ x: pa.x, y: pa.y, z: pa.z });
-  const top = Math.max(from.y, to.y) + CARPET.climb;
-  pts.push(
-    { x: from.x, y: from.y + 1, z: from.z, fly: true },
-    { x: from.x + from.out.x * CARPET.out, y: from.y + CARPET.climb, z: from.z + from.out.z * CARPET.out, fly: true },
-    { x: from.x + from.out.x * CARPET.out, y: top, z: from.z + from.out.z * CARPET.out, fly: true },
-    { x: to.x + to.out.x * CARPET.out, y: top, z: to.z + to.out.z * CARPET.out, fly: true },
-    { x: to.x + to.out.x * CARPET.out, y: to.y + CARPET.climb, z: to.z + to.out.z * CARPET.out, fly: true },
-    { x: to.x, y: to.y + 1, z: to.z, fly: true },
-    { x: to.x, y: to.y, z: to.z, fly: true },
-  );
+  pts.push(...carpetFlight(from, to).slice(pa ? 0 : 1));
   pts.push({ x: b.x, y: b.y, z: b.z });
   return pts;
 }

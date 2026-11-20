@@ -18,6 +18,21 @@ function plaza(): FloorPlan {
   return { id: "residencia-plaza", size: SIZE, items, source: `${SRC} FurnishPlaza` };
 }
 
+/** The residents' shared kitchen and common room, where a floor has rooms to spare (ours: a residence hall's). */
+const COMMON: readonly Placed[] = [
+  { model: "cocina-encimera-ingredientes", x: -5.5, z: -6, name: "Cocina compartida" },
+  { model: "cocina-estanteria", x: -9.5, z: 1.5, rot: Math.PI / 2, name: "Despensa compartida" },
+  { model: "comedor-mesa", x: -5.5, z: -0.5, name: "Mesa de la cocina compartida" },
+  { model: "comedor-mesa", x: -1.5, z: -0.5 },
+  { model: "mus-sofa", x: 4, z: 4, name: "Sala común" },
+  { model: "mus-sofa", x: 7, z: 4 },
+  { model: "mus-sofa", x: 5.5, z: 8.5, rot: Math.PI },
+  { model: "comedor-mesa", x: 5.5, z: 6.3, name: "Mesa de juegos" },
+  { model: "res-banco-lectura", x: 0, z: 12.5, name: "Banco de lectura de la sala común" },
+  { model: "aula-biblioteca", x: 9.5, z: 9, name: "Biblioteca de la residencia" },
+  ...[[-9.5, -9], [9.5, -1], [1.5, 6], [-9.5, 9]].map(([x, z]) => ({ model: "planta-maceta", x: x!, z: z! })),
+];
+
 function rooms(index: number): FloorPlan {
   const items: Placed[] = [];
   const rows = [-11.5, -2.5, 6.5, 15.5];
@@ -34,6 +49,8 @@ function rooms(index: number): FloorPlan {
       room++;
     }
   items.push({ model: "aseos-3", x: -5.5, z: 15.5, rot: Math.PI });
+  // The floor with the last rooms keeps the rest for everyone (a residence hall's shared kitchen and common room).
+  if (room - index * ROOMS_PER_FLOOR <= 3) items.push(...COMMON);
   return { id: `habitaciones-${index + 1}`, size: SIZE, items, source: `${SRC} FurnishRoomFloor (piso ${index + 1})` };
 }
 

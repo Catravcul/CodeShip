@@ -28,6 +28,5 @@ export function gymFloor0(): FloorPlan {
   items.push({ model: "gym-smith", x: 6, z: -8 }, { model: "gym-plataforma", x: 12.5, z: -8 });
   items.push({ model: "gym-arbol-discos", x: 17.1, z: 2.5 }, { model: "gym-arbol-discos", x: 17.1, z: -2.5 }, { model: "gym-soporte-barras", x: 17.1, z: -8 });
   items.push({ model: "gym-fuente", x: -15.4, z: -10.5 }, { model: "gym-toallas", x: 0, z: -10.5 });
-  items.push({ model: "alfombras-zona", x: -8, z: -9.8 });
   return { id: "gimnasio-0", size: { x: 36, z: 26 }, items, source: S.csGym };
 }

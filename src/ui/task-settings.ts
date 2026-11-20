@@ -20,9 +20,8 @@ export function offerVehicles(list: readonly TaskVehicle[], heading: string): vo
 const TRAVEL: Record<TaskTravel, string> = { viaje: "Viaje", teletransporte: "Teletransporte" };
 
 /** «Ir a una tarea»: Viaje / Teletransporte, with what it does. `id` names the heading for the radio group. */
-export function travelHtml(id: string): string {
-  const now = settings.value.taskTravel;
-  return `<h3 class="tb-group" id="${id}">Ir a una tarea</h3><div class="tb-travel" role="radiogroup" aria-labelledby="${id}">${TASK_TRAVELS.map((m) => `<button role="radio" data-travel="${m}" aria-checked="${m === now}" class="${m === now ? "on" : ""}">${TRAVEL[m]}</button>`).join("")}</div><small class="tb-travel-help">${now === "viaje" ? "«Ir» hace el camino real: andando, saltando y abriendo escotillas" : "«Ir» aparece allí al momento"}</small>`;
+export function travelHtml(id: string, now: TaskTravel = settings.value.taskTravel, heading = "Ir a una tarea"): string {
+  return `<h3 class="tb-group" id="${id}">${heading}</h3><div class="tb-travel" role="radiogroup" aria-labelledby="${id}">${TASK_TRAVELS.map((m) => `<button role="radio" data-travel="${m}" aria-checked="${m === now}" class="${m === now ? "on" : ""}">${TRAVEL[m]}</button>`).join("")}</div><small class="tb-travel-help">${now === "viaje" ? "«Ir» hace el camino real: andando, saltando y abriendo escotillas" : "«Ir» aparece allí al momento"}</small>`;
 }
 
 /**

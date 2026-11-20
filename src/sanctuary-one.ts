@@ -1,7 +1,10 @@
 import * as THREE from "three";
 import { WORLD_SCALE } from "@core/scale";
 import { moveJoystick } from "@core/realism";
-import { buildS1Layout } from "@modules/sanctuary-one/data/layout";
+import { buildS1Layout, TREE_CURRENT, treeWater } from "@modules/sanctuary-one/data/layout";
+import { carpetDestinations, carpetFlight, stationAt, type CarpetStation } from "@modules/sanctuary-one/data/alfombras";
+import { CarpetStationsView } from "./adapters/three/s1-carpets";
+import { carpetTravel } from "./ui/carpet-travel";
 import { personRule } from "@modules/sanctuary-one/data/overrides";
 import { blocked, placeAt, waterAt, type Body } from "@modules/aerial-sanctuary/domain/walk";
 import { FreeWalk } from "@modules/aerial-sanctuary/application/free-walk";
@@ -338,7 +341,7 @@ let yaw = L.start.yaw;
  * Walking, sprinting (Correr: domain/effort.ts), swimming, jumping, climbing and falling off edges: the same moves as
  * sanctuary 3 (aerial-sanctuary/application/free-walk.ts). It also keeps where her body faces and her gait's phase.
  */
-const walk = new FreeWalk(near, { walk: WALK_MS, swim: SWIM_MS }, yaw);
+const walk = new FreeWalk(near, { walk: WALK_MS, swim: SWIM_MS, current: (a) => (treeWater(a) ? TREE_CURRENT : 1) }, yaw);
 let pitch = 0;
 let thirdPerson = false;
 /** Third-person camera distance (the test hook sets it for overviews). */
@@ -488,6 +491,47 @@ const areasWindow = new AreasWindow(root, {
 });
 RootMenu.global({ className: "areas-btn", icon: ICON.areas, label: "Áreas", window: "areas", order: 2, pad: true }, () => areasWindow.open()).show(true);
 
+// --- Alfombras: a station on every floor and ring, each crown and each foot (data/alfombras.ts) -------------------
+const carpetsView = new CarpetStationsView(scene, L.carpets);
+const stationById = new Map(L.carpets.map((s) => [s.id, s]));
+/** The station she stands on: the carpets' window is its own (where its carpets reach, its own travel setting). */
+let station: CarpetStation | undefined;
+const CARPET_DESC: Record<CarpetStation["kind"], string> = { piso: "Su estación de alfombras", copa: "En la copa: alfombras del edificio y del santuario (a las otras copas y pies)", pie: "En el hielo, junto a la puerta del tronco" };
+/** What a station's carpets reach, on the same map as Áreas: its building (from a crown, also the others' crowns and feet). */
+function carpetMap(st: CarpetStation): AreaMap {
+  const shown = [st, ...carpetDestinations(L.carpets, st)];
+  const towers = new Set(shown.map((s) => s.tower));
+  return {
+    vehicle: "santuario-1",
+    nodes: shown.map((s) => ({ id: s.id, label: s.kind === "piso" ? s.label : `${s.label} (${s.building})`, desc: s.kind === "piso" ? (areaById.get(s.area)?.desc ?? CARPET_DESC.piso) : CARPET_DESC[s.kind], goal: s.area, fixture: s.area, centre: { x: s.x, y: s.y, z: s.z }, half: { x: 1, y: 1, z: 1 }, category: st.reach === "santuario" ? s.building : s.kind === "piso" ? "Pisos" : "Copa y pie", scope: { edificio: s.tower } })),
+    links: [],
+    structure: (s1Map.structure ?? []).filter((b) => b.kind === "tronco" && towers.has(b.scope?.edificio ?? "")),
+  };
+}
+/** Fly (automatic, no challenge) or appear there, as the station she leaves from is set. */
+function flyTo(id: string): void {
+  const from = station;
+  const to = stationById.get(id);
+  if (!from || !to) return;
+  if (carpetTravel.get(from.id) === "teletransporte") {
+    body = placeAt(near(to.x, to.z), to.x, to.y + 0.01, to.z) ?? body;
+    yaw = Math.atan2(to.out.x, to.out.z);
+    return;
+  }
+  auto = { way: route(carpetFlight(from, to)), s: 0, to: { area: to.area, x: to.x, y: to.y, z: to.z, yaw: Math.atan2(to.out.x, to.out.z), pose: "stand" } };
+}
+const carpetsWindow = new AreasWindow(root, {
+  kind: { title: "Alfombras", window: "alfombras", bodyClass: "in-carpets", className: "carpets-window" },
+  here: () => "santuario-1",
+  map: () => (station ? carpetMap(station) : undefined),
+  whole: "Todo el santuario",
+  view: S1_MAP_VIEW,
+  at: () => station?.id,
+  row: (n) => (n.id === station?.id ? { locked: "Estás aquí" } : { action: "Volar", actionLabel: `Volar a ${n.label}` }),
+  travel: { get: () => carpetTravel.get(station?.id ?? ""), set: (v) => station && carpetTravel.set(station.id, v), heading: "Desde esta estación", help: "Ajuste propio de esta estación de alfombras: cada una guarda el suyo." },
+  go: (n) => flyTo(n.id),
+});
+
 // --- Misiones: the workday's missions on the same map window (docs/design/misiones-y-jornada.md §3) ---------------
 /** The day of the sanctuary (the clock wraps at midnight) and the missions done today. */
 let day = 0;
@@ -625,9 +669,13 @@ function updateAtHand(dt: number): void {
   if (reachT > 0) return;
   reachT = 0.2;
   const t = challenge || picker.isOpen ? undefined : findAtHand();
-  if (t?.i === atHand?.i && (t === undefined) === (atHand === undefined)) return;
+  // On a carpet station with nothing else at hand: «Volar» opens its carpets (Berón 2026-11-20).
+  const st = t || challenge || picker.isOpen || auto || flying ? undefined : stationAt(L.carpets, body.x, body.y, body.z);
+  if (t?.i === atHand?.i && (t === undefined) === (atHand === undefined) && st === station) return;
   atHand = t;
-  offerReto(t?.label, () => t && offerRetos(t));
+  station = st ?? (carpetsWindow.visible ? station : undefined);
+  if (st) RootMenu.interact({ icon: ICON.carpet, label: `Volar: ${st.kind === "piso" ? "estación de alfombras" : `${st.label.toLowerCase()} de ${st.building}`}`, onClick: () => carpetsWindow.open() });
+  else offerReto(t?.label, () => t && offerRetos(t));
 }
 
 const duel = new DuelView(root);
@@ -819,7 +867,7 @@ function updateCamera(dt: number): void {
   }
   myCarpet.visible = flying;
   const cw = waterAt(near(camera.position.x, camera.position.z), camera.position.x, camera.position.y, camera.position.z);
-  underwater.set(!!cw && camera.position.y < cw.yTop && camera.position.y > cw.yBottom);
+  underwater.set(!!cw && camera.position.y < cw.yTop && camera.position.y > cw.yBottom && (treeWater(cw.area) ? "claro" : "mar"));
   avatar.wearMask(body.motion === "agua");
   poseOnFoot(avatar, walk, { body, moving, sprinting, lotus: flying || settingsPanel.visible, clock: wildT }, dt);
 }
@@ -840,12 +888,13 @@ function frame(now: number): void {
   movePeople(dt);
   moveAnimals(dt);
   updateAtHand(dt);
+  carpetsView.update(dt, wildT, body.x, body.y, body.z);
   domenica.tick((24 * dt) / S1_DAY_REAL_S / 24, 0.5, 1);
   if (toastFor > 0 && (toastFor -= dt) <= 0) toast.classList.remove("on");
   const a = areaById.get(body.area);
   const hh = Math.floor(hour);
   const clock = `${hh}:${String(Math.floor((hour - hh) * 60)).padStart(2, "0")}`;
-  const where = `Santuario 1 · ${clock} · ${a ? (a.building && !a.label.includes(a.building) ? `${a.building} · ${a.label}` : a.label) : body.motion === "agua" ? "En el agua" : "Hielo"}`;
+  const where = `Santuario 1 · ${clock} · ${a ? (a.building && !a.label.includes(a.building) ? `${a.building} · ${a.label}` : a.label) : flying ? "Volando en alfombra" : body.motion === "agua" ? "En el agua" : "Hielo"}`;
   if (whereEl.textContent !== where) whereEl.textContent = where;
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
@@ -859,5 +908,5 @@ window.addEventListener("keydown", (e) => {
 });
 // Test hook (tools/experiencia and live checks): the layout, the body and the bulk style switch.
 if (import.meta.env.DEV || new URLSearchParams(location.search).has("prueba"))
-  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { L, world, steps, camera, wild, get wildT() { return wildT; }, set wildT(v: number) { wildT = v; }, get jumpT() { return walk.jumpClock; }, set jumpT(t: number) { walk.setJump(t); }, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, goTo, get auto() { return auto; }, areasWindow, get hour() { return hour; }, people, get atHand() { return atHand; }, openReto, domenica, missionsWindow, get day() { return day; }, doMission: (id: string) => doMission(MISSIONS.find((q) => q.id === id)!), retoAt: (id: string, k = 0, n = 0, keep = false) => { const i = L.instances.map((it, j) => [it, j] as const).filter(([it]) => it.model === id)[n]?.[1]; if (i === undefined) return undefined; const it = L.instances[i]!; const r = retosFor(model(id), i)[k]; if (!r) return undefined; if (!keep) body = { ...body, x: it.x, y: it.y, z: it.z + 1.2 }; openReto(r, undefined, { x: it.x, y: it.y, z: it.z, sy: model(id).size.y * (it.scale ?? 1), modelId: id, rot: it.rot, plan: it.plan }); return { title: r.chore.title, steps: r.chore.exercises.length }; }, playStep: (i: number, dry = false) => { if (!challenge) return undefined; const a = stepAnimation(challenge, stagedModel, i); if (!dry) steps.play(a.acts); return a.id; }, get exercise() { return challenge ? retoRun?.current : undefined; }, closeReto: () => (document.querySelector('.duel [data-act="close"]') as HTMLElement | null)?.click(), setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
+  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { L, world, steps, camera, wild, get wildT() { return wildT; }, set wildT(v: number) { wildT = v; }, get jumpT() { return walk.jumpClock; }, set jumpT(t: number) { walk.setJump(t); }, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, goTo, get auto() { return auto; }, areasWindow, carpetsWindow, get station() { return station; }, get hour() { return hour; }, people, get atHand() { return atHand; }, openReto, domenica, missionsWindow, get day() { return day; }, doMission: (id: string) => doMission(MISSIONS.find((q) => q.id === id)!), retoAt: (id: string, k = 0, n = 0, keep = false) => { const i = L.instances.map((it, j) => [it, j] as const).filter(([it]) => it.model === id)[n]?.[1]; if (i === undefined) return undefined; const it = L.instances[i]!; const r = retosFor(model(id), i)[k]; if (!r) return undefined; if (!keep) body = { ...body, x: it.x, y: it.y, z: it.z + 1.2 }; openReto(r, undefined, { x: it.x, y: it.y, z: it.z, sy: model(id).size.y * (it.scale ?? 1), modelId: id, rot: it.rot, plan: it.plan }); return { title: r.chore.title, steps: r.chore.exercises.length }; }, playStep: (i: number, dry = false) => { if (!challenge) return undefined; const a = stepAnimation(challenge, stagedModel, i); if (!dry) steps.play(a.acts); return a.id; }, get exercise() { return challenge ? retoRun?.current : undefined; }, closeReto: () => (document.querySelector('.duel [data-act="close"]') as HTMLElement | null)?.click(), setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
 requestAnimationFrame(frame);

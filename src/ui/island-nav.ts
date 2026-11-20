@@ -1,4 +1,4 @@
-import { MapWindow, markPicked, optionsHtml, type MapOption } from "./map-window";
+import { baseRings, MapWindow, markPicked, optionsHtml, outlinePath, type MapOption } from "./map-window";
 import { MapSelection, nearestPick, orbitProjector, type MapVec } from "./map-window-model";
 import "./task-board.css";
 
@@ -170,25 +170,9 @@ export class IslandNavWindow {
     const R = Math.max(50, Math.hypot(hi.x - lo.x, hi.z - lo.z) / 2);
     const s = ((0.46 * Math.min(w, h)) / R) * this.win.view.zoom;
     const P = orbitProjector(this.win.view, s, w / 2, h / 2, o);
-    // The sea, as a faint grid every 250 m.
-    g.lineWidth = 1;
-    g.strokeStyle = "#7fdcff1a";
-    for (let x = Math.floor(lo.x / 250) * 250; x <= hi.x; x += 250) {
-      const a = P({ x, y: 0, z: lo.z });
-      const b = P({ x, y: 0, z: hi.z });
-      g.beginPath();
-      g.moveTo(a.x, a.y);
-      g.lineTo(b.x, b.y);
-      g.stroke();
-    }
-    for (let z = Math.floor(lo.z / 250) * 250; z <= hi.z; z += 250) {
-      const a = P({ x: lo.x, y: 0, z });
-      const b = P({ x: hi.x, y: 0, z });
-      g.beginPath();
-      g.moveTo(a.x, a.y);
-      g.lineTo(b.x, b.y);
-      g.stroke();
-    }
+    // A closed piece, like the start screen (Berón, 2026-11-20): the sea as rings round the middle.
+    baseRings(g, P, o, R);
+    const outline = (cx: number, cy: number, cz: number, rx: number, rz: number) => outlinePath(g, P, { x: cx, y: cy, z: cz }, rx, rz);
     // The flights from her island: dashed, from her pad to each island's.
     const here = this.islands.find((i) => i.here);
     if (here) {
@@ -206,22 +190,25 @@ export class IslandNavWindow {
       }
       g.setLineDash([]);
     }
-    // Each island: its deck as a filled outline, at least a few px across so a small one still shows.
-    for (const i of this.islands) {
+    // Each island: its deck as an outline round a sphere on a stalk from the sea, far ones first.
+    const order = this.islands.map((i) => ({ i, c: P({ x: (i.x0 + i.x1) / 2, y: i.y, z: (i.z0 + i.z1) / 2 }) })).sort((a, b) => a.c.depth - b.c.depth);
+    for (const { i, c } of order) {
       const picked = i.id === this.sel.picked;
-      const corners = [P({ x: i.x0, y: i.y, z: i.z0 }), P({ x: i.x1, y: i.y, z: i.z0 }), P({ x: i.x1, y: i.y, z: i.z1 }), P({ x: i.x0, y: i.y, z: i.z1 })];
-      g.beginPath();
-      corners.forEach((p, k) => (k ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y)));
-      g.closePath();
-      g.fillStyle = picked ? "#ffd23f40" : i.here ? "#9fe8c440" : "#58d6ff26";
-      g.fill();
-      g.strokeStyle = picked ? "#ffd23f" : i.here ? "#9fe8c4" : "#7fdcffaa";
+      const col = picked ? "#ffd23f" : i.here ? "#9fe8c4" : i.locked ? "#6c7a86" : "#58d6ff";
+      outline((i.x0 + i.x1) / 2, i.y, (i.z0 + i.z1) / 2, (i.x1 - i.x0) / 2, (i.z1 - i.z0) / 2);
+      g.strokeStyle = `${col}aa`;
       g.lineWidth = picked ? 2 : 1;
       g.stroke();
-      const c = P({ x: (i.x0 + i.x1) / 2, y: i.y, z: (i.z0 + i.z1) / 2 });
+      const foot = P({ x: (i.x0 + i.x1) / 2, y: 0, z: (i.z0 + i.z1) / 2 });
+      g.strokeStyle = "#ffffff33";
+      g.lineWidth = 1;
       g.beginPath();
-      g.arc(c.x, c.y, 4, 0, Math.PI * 2);
-      g.fillStyle = picked ? "#ffd23f" : i.here ? "#9fe8c4" : "#d8f6ff";
+      g.moveTo(c.x, c.y);
+      g.lineTo(foot.x, foot.y);
+      g.stroke();
+      g.beginPath();
+      g.arc(c.x, c.y, picked ? 9 : 7, 0, Math.PI * 2);
+      g.fillStyle = col;
       g.fill();
       this.screen.push({ id: i.id, x: c.x, y: c.y });
     }

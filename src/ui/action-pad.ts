@@ -30,6 +30,8 @@ const ariaOf = (b: ActionPadButton) => `${b.aria ?? b.label}${b.key ? ` (${b.key
 function swallowGhostClick(pad: HTMLElement): void {
   const off = () => window.removeEventListener("click", eat, true);
   const eat = (e: MouseEvent) => {
+    // The press's own job may click a card's button itself (one challenge opens straight away): that one goes through.
+    if (!e.isTrusted) return;
     off();
     if (pad.contains(e.target as Node)) return;
     e.preventDefault();

@@ -27,17 +27,27 @@ const ariaOf = (b: ActionPadButton) => `${b.aria ?? b.label}${b.key ? ` (${b.key
  * under it), that click would press the card's button under the finger: a hatch's «Subir» would run by itself. The
  * click of a tap that began on the pad never reaches anything but the pad.
  */
-function swallowGhostClick(pad: HTMLElement): void {
-  const off = () => window.removeEventListener("click", eat, true);
+function swallowGhostClick(pad: HTMLElement, down: PointerEvent): void {
+  const off = () => {
+    window.removeEventListener("click", eat, true);
+    window.removeEventListener("pointerdown", next, true);
+  };
   const eat = (e: MouseEvent) => {
     // The press's own job may click a card's button itself (one challenge opens straight away): that one goes through.
     if (!e.isTrusted) return;
     off();
     if (pad.contains(e.target as Node)) return;
+    // Only the click of this same touch, where the finger was: never a new tap somewhere else.
+    if (Math.hypot(e.clientX - down.clientX, e.clientY - down.clientY) > 24) return;
     e.preventDefault();
     e.stopPropagation();
   };
+  // A new touch means this one's click is not coming (it was cancelled or went nowhere): stop waiting.
+  const next = (e: PointerEvent) => {
+    if (e.pointerId !== down.pointerId || e.timeStamp - down.timeStamp > 40) off();
+  };
   window.addEventListener("click", eat, true);
+  window.addEventListener("pointerdown", next, true);
   // A long press makes no click; the next real tap must not be eaten.
   window.setTimeout(off, 800);
 }
@@ -95,7 +105,7 @@ export class ActionPad {
       el.addEventListener("pointerdown", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (e.pointerType !== "mouse") swallowGhostClick(this.el);
+        if (e.pointerType !== "mouse") swallowGhostClick(this.el, e);
         this.tap(k, true);
       });
       for (const ev of ["pointerup", "pointercancel", "pointerleave"]) el.addEventListener(ev, () => this.spec.get(k)?.hold && this.tap(k, false));

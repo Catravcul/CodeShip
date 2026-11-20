@@ -5,6 +5,7 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-20
 
+- **Mando**: tras pulsar la Y, el siguiente toque en la tarjeta ya no se pierde (solo se anula el clic del mismo dedo, donde estaba). [docs/design/ux-acciones.md](docs/design/ux-acciones.md)
 - **Calistenia, parkour y crossfit en tres pisos** con su tamaño real (revisión de realismo aplicada).
   [docs/design/santuario1.md](docs/design/santuario1.md) #63
 

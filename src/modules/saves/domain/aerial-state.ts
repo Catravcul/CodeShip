@@ -46,5 +46,5 @@ export const ISLAND_NAME: Readonly<Record<AerialIsland, string>> = {
   muelle: "Muelle aéreo",
   plataforma: "Plataforma de tripulación",
   glaciar: "Glaciar",
-  bioma: "Isla subantártica",
+  bioma: "Isla de las alturas",
 };

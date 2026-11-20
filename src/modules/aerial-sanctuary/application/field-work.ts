@@ -3,38 +3,44 @@ import type { StepAct } from "@modules/chores/domain/step-visual";
 import { CROWDS } from "../data/bioma-crowd";
 import { FIELD, FIELD_GESTURES } from "../data/bioma-retos";
 import { crowdCounts } from "../domain/bioma-crowd";
-import type { BiomeState } from "../domain/bioma";
+import { monthOfDay, type BiomeState } from "../domain/bioma";
 
 /**
  * THE FIELD WORK AT THE RESEARCH HUT (docs/design/bioma-s3.md §La estación): sanctuary 1's procedures-as-challenges
- * (sanctuary-one/application/challenges.ts `procedureReto`) on the island's own jobs. Each is open only in its real
- * season: the nests are counted while the gentoos sit on them (CEMP A3), the albatross chicks are ringed while they
- * are on the nest; the count asks for the colony's real total, the chain's crowd.
+ * (sanctuary-one/application/challenges.ts `procedureReto`) on the island's own jobs, each open only in its real
+ * season: the camera traps in winter (January to March, as in Hemis), the double-observer count whenever the ibex are
+ * there, the griffons' nests while they are sat or have a chick. Each asks for the island's real total: the chain's
+ * leopards, the ibex its crowd draws, the griffons' occupied nests.
  */
 export interface FieldJob {
   readonly reto: Reto;
-  /** Open now; else why not («Sin nidos ocupados: …»). */
+  /** Open now; else why not. */
   readonly open: boolean;
   readonly why?: string;
-  /** The nest count's right total (the colony's occupied nests when the job was set). */
+  /** The job's right total (when it was set). */
   readonly total?: number;
 }
 
-const POOL = [...FIELD.nidos.steps, ...FIELD.anillar.steps].filter((s) => !s.includes("{"));
+const POOL = [...FIELD.camaras.steps, ...FIELD.doble.steps, ...FIELD.buitres.steps].filter((s) => !s.includes("{"));
 const crowd = (id: string) => CROWDS.find((c) => c.species === id)!;
+/** The right total and two wrong ones, as a step's choice. */
+const choice = (n: number) => `{${n}|${[Math.max(1, Math.round(n / 2)) === n ? n + 3 : Math.max(1, Math.round(n / 2)), n * 2 + 7].join("|")}}`;
+const fill = <P extends { readonly steps: readonly string[] }>(p: P, key: string, n: number): P => ({ ...p, steps: p.steps.map((s) => s.replace(`{${key}}`, choice(n))) });
 
-/** The jobs of the hut now, with the colony's nest count in the count's last step. */
+/** The jobs of the hut now, with the island's totals in their last steps. */
 export function fieldJobs(st: BiomeState): FieldJob[] {
-  const gentoo = crowdCounts(st, crowd("papua"));
-  const albatross = crowdCounts(st, crowd("albatros"));
-  const n = gentoo.nests;
-  const wrong = [Math.max(1, Math.round(n / 2)), n * 2 + 7].filter((v) => v !== n);
-  const nidos = { ...FIELD.nidos, steps: FIELD.nidos.steps.map((s) => s.replace("{NIDOS}", `{${n}|${wrong.join("|")}}`)) };
-  const countOpen = (gentoo.phase === "huevos" || gentoo.phase === "pollos") && n > 0;
-  const ringOpen = albatross.phase === "pollos" && albatross.young > 0;
+  const month = monthOfDay(st.day, st.def.startDayOfYear);
+  const leopards = st.animals.filter((a) => a.species === "leopardo" && !a.dead).length;
+  const ibex = crowdCounts(st, crowd("ibice"));
+  const griffons = crowdCounts(st, crowd("buitre"));
+  const ibexN = ibex.adults + ibex.young;
+  const camOpen = month >= 1 && month <= 3 && leopards > 0;
+  const countOpen = ibexN > 0;
+  const nestOpen = (griffons.phase === "huevos" || griffons.phase === "pollos") && griffons.nests > 0;
   return [
-    { reto: procedureReto(nidos, undefined, POOL), open: countOpen, total: n, ...(countOpen ? {} : { why: "Sin nidos ocupados ahora: se cuentan en la incubación (noviembre a enero en la colonia)" }) },
-    { reto: procedureReto(FIELD.anillar, undefined, POOL), open: ringOpen, ...(ringOpen ? {} : { why: "Ningún pollo de albatros en su nido ahora: nacen en marzo y se anillan antes de volar" }) },
+    { reto: procedureReto(fill(FIELD.camaras, "LEOPARDOS", leopards), undefined, POOL), open: camOpen, total: leopards, ...(camOpen ? {} : { why: "Las cámaras se revisan en invierno, de enero a marzo, cuando los leopardos bajan por las crestas" }) },
+    { reto: procedureReto(fill(FIELD.doble, "IBICES", ibexN), undefined, POOL), open: countOpen, total: ibexN, ...(countOpen ? {} : { why: "No hay íbices que contar ahora" }) },
+    { reto: procedureReto(fill(FIELD.buitres, "NIDOS", griffons.nests), undefined, POOL), open: nestOpen, total: griffons.nests, ...(nestOpen ? {} : { why: "Sin nidos ocupados ahora: los buitres ponen de finales de diciembre a marzo" }) },
   ];
 }
 

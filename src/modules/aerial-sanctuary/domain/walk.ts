@@ -38,10 +38,26 @@ export interface Solid extends Rect {
   readonly y1: number;
 }
 
+/**
+ * A ground that is not a box: a height field (the mountain of the air island, docs/design/bioma-s3.md). Where it is
+ * gentle enough to stand on (`walkable`), it carries her like a floor at its height there; a cliff is not walkable:
+ * she climbs it by its ledges (floors) or falls off its edge. Optional: worlds of boxes alone have none.
+ */
+export interface Ground extends Rect {
+  readonly id: string;
+  /** The ground's height at (x, z), or undefined where it is not (the sea). */
+  heightAt(x: number, z: number): number | undefined;
+  /** Gentle enough to stand and walk on. */
+  walkable(x: number, z: number): boolean;
+  /** The area (Áreas node) of the point. */
+  areaAt(x: number, z: number): string;
+}
+
 export interface WalkWorld {
   readonly floors: readonly Floor[];
   readonly waters: readonly Water[];
   readonly solids: readonly Solid[];
+  readonly grounds?: readonly Ground[];
 }
 
 export type Motion = "gravedad" | "agua";
@@ -65,6 +81,22 @@ export const SWIM_DEPTH_M = 1.45;
 
 const inside = (r: Rect, x: number, z: number) => x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1;
 
+/** The grounds under (x, z) as floors there (a small square at the ground's height), where they can be stood on. */
+export function groundFloors(w: WalkWorld, x: number, z: number): Floor[] {
+  const out: Floor[] = [];
+  for (const g of w.grounds ?? []) {
+    if (!inside(g, x, z)) continue;
+    const y = g.heightAt(x, z);
+    if (y === undefined || !g.walkable(x, z)) continue;
+    out.push({ id: `suelo:${g.id}`, x0: x - 0.35, x1: x + 0.35, z0: z - 0.35, z1: z + 0.35, y, area: g.areaAt(x, z) });
+  }
+  return out;
+}
+function allFloors(w: WalkWorld, x: number, z: number, extra: readonly Floor[]): readonly Floor[] {
+  const g = w.grounds?.length ? groundFloors(w, x, z) : [];
+  return g.length || extra.length ? [...w.floors, ...extra, ...g] : w.floors;
+}
+
 /** Whether her body at (x, y, z) runs into a solid. */
 export function blocked(w: WalkWorld, x: number, y: number, z: number): boolean {
   const r = BODY_RADIUS_M;
@@ -77,7 +109,7 @@ const inOpen = (w: WalkWorld, x: number, fy: number, z: number) => w.waters.some
 /** The floor that carries her at (x, z) from a height `y`: the highest one within a step of her feet. */
 export function floorAt(w: WalkWorld, x: number, y: number, z: number, extra: readonly Floor[] = []): Floor | undefined {
   let best: Floor | undefined;
-  for (const f of [...w.floors, ...extra]) if (inside(f, x, z) && Math.abs(f.y - y) <= STEP_M + 1e-6 && (!best || f.y > best.y) && !inOpen(w, x, f.y, z)) best = f;
+  for (const f of allFloors(w, x, z, extra)) if (inside(f, x, z) && Math.abs(f.y - y) <= STEP_M + 1e-6 && (!best || f.y > best.y) && !inOpen(w, x, f.y, z)) best = f;
   return best;
 }
 
@@ -89,7 +121,7 @@ const OUT_FROM_ABOVE_M = 2.4;
  * lands from (x, y, z): the highest floor under her, or the water under her (she swims there). Undefined if nothing.
  */
 export function dropTo(w: WalkWorld, x: number, y: number, z: number, extra: readonly Floor[] = []): Body | undefined {
-  const f = [...w.floors, ...extra].filter((q) => inside(q, x, z) && q.y < y - STEP_M && !inOpen(w, x, q.y, z)).sort((a, c) => c.y - a.y)[0];
+  const f = allFloors(w, x, z, extra).filter((q) => inside(q, x, z) && q.y < y - STEP_M && !inOpen(w, x, q.y, z)).sort((a, c) => c.y - a.y)[0];
   const v = w.waters.filter((q) => inside(q, x, z) && q.yBottom < y && (!f || q.yTop > f.y)).sort((a, c) => c.yTop - a.yTop)[0];
   if (v && (!f || v.yTop >= f.y)) return { x, y: swimY(v, Math.min(y, v.yTop)), z, motion: "agua", area: v.area };
   return f ? { x, y: f.y, z, motion: "gravedad", area: f.area } : undefined;
@@ -114,7 +146,7 @@ function settle(w: WalkWorld, b: Body, x: number, y: number, z: number, extra: r
     return blocked(w, x, sy, z) ? undefined : { x, y: sy, z, motion: "agua", area: v.area };
   }
   // Swimming: out onto a floor near her (a quay at the surface, a doorway at her height), or on in the water.
-  const out = [...w.floors, ...extra].filter((f) => inside(f, x, z) && f.y <= y + SWIM_DEPTH_M + 0.7 && f.y >= y - OUT_FROM_ABOVE_M && !inOpen(w, x, f.y, z)).sort((a, c) => c.y - a.y)[0];
+  const out = allFloors(w, x, z, extra).filter((f) => inside(f, x, z) && f.y <= y + SWIM_DEPTH_M + 0.7 && f.y >= y - OUT_FROM_ABOVE_M && !inOpen(w, x, f.y, z)).sort((a, c) => c.y - a.y)[0];
   if (out && !blocked(w, x, out.y, z)) return { x, y: out.y, z, motion: "gravedad", area: out.area };
   const v = w.waters.filter((q) => inside(q, x, z) && y >= q.yBottom - STEP_M && y <= q.yTop + STEP_M).sort((a, c) => c.yTop - a.yTop)[0];
   if (!v) return undefined;

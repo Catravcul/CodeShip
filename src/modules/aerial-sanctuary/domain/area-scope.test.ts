@@ -28,4 +28,12 @@ describe("el alcance de Áreas del santuario 3: isla → edificio → piso (Ber�
   it("una isla sin edificios (el glaciar) no tiene alcance propio: solo «Toda la isla»", () => {
     expect(s3AreaScopes(L.areas.filter((a) => a.island === "glaciar")).scopes).toEqual([]);
   });
+  it("en la isla de las alturas, las zonas por su cinturón de altitud: de la estepa a las nieves", () => {
+    const s = s3AreaScopes(L.areas.filter((a) => a.island === "bioma"));
+    expect(s.scopes.map((g) => g.kind)).toEqual(["cinturon"]);
+    expect(s.scopes[0]!.options.map((o) => o.id)).toEqual(expect.arrayContaining(["submontano", "montano", "subalpino", "alpino", "subnival", "nival"]));
+    expect(s.of("bioma:estepa")).toEqual({ cinturon: "submontano" });
+    expect(s.of("bioma:nieves")).toEqual({ cinturon: "nival" });
+    expect(s.of("bioma:isla")).toBeUndefined();
+  });
 });

@@ -1,32 +1,45 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { BIOME, type AnimalSpec } from "@modules/aerial-sanctuary/data/bioma";
-import { BIOME_ISLAND, BIOME_ZONES, inside, shoreAt } from "@modules/aerial-sanctuary/data/bioma-island";
+import type { AnimalSpec, BiomeDef } from "@modules/aerial-sanctuary/data/bioma";
+import { BELTS, BIOME_ISLAND, BIOME_ZONES, HUT_Y, MOUNTAIN, hutPoint } from "@modules/aerial-sanctuary/data/bioma-island";
+import { altitudeOf, fbm, gorgeAt, heightAt, slopeAt } from "@modules/aerial-sanctuary/domain/mountain";
 import { hash01 } from "@modules/fauna/domain/roam";
 import type { Pose } from "@modules/aerial-sanctuary/application/biome-life";
 import type { BiomeState } from "@modules/aerial-sanctuary/domain/bioma";
-import { DENSITY } from "@modules/aerial-sanctuary/data/bioma-crowd";
 import { AnimalHerd, type HerdModel } from "./animal-bodies";
 import { BiomeCrowd, NEAR_CAP } from "./s3-biome-crowd";
 
 /**
- * The biome's island drawn (docs/design/bioma-s3.md §Escena): the ground with its shore, beach and zones; plants with
- * their real shapes (tussac on its pedestal with a fountain of blades, moss cushions, hair-grass tufts, lichen on
- * rocks, giant kelp from the bottom to its canopy on the surface), the bloom tinting the water; the banks (krill,
- * lanternfish, icefish, toothfish, squid) as schools; and the birds and seals as jointed cube bodies (fauna's
- * animal-body). Every plant kind is one InstancedMesh per part and every species one herd: few draw calls on a phone.
+ * The air island drawn (docs/design/bioma-s3.md §Escena): ONE GIANT MOUNTAIN, procedural, at its true size. The ground
+ * is a height field (domain/mountain.ts) in chunks, coloured by its real belt (artemisia steppe, pine forest floor,
+ * tree line, alpine meadow, scree, snow), by its slope (bare rock on the cliffs) and its trails; boulders and rock
+ * slabs stand out of the cliffs; the river runs down the gorge. The plants with their real shapes: blue pines and
+ * spruce in the forest belt, birches and junipers at the tree line, artemisia bushes on the steppe, sea buckthorn by
+ * the river, and near the camera the meadow's sedges, the cushion plants, the blue poppies of the scree and the woolly
+ * saussureas of the ridge. The animals are jointed cube bodies (fauna's animal-body) and their crowds. Every kind is
+ * one InstancedMesh (or one per chunk for the ground): few draw calls on a phone (PX-51 ≤ 600).
  */
 const mat = (c: number, o: Partial<THREE.MeshStandardMaterialParameters> = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, metalness: 0, ...o });
 
-/** Tussocks a hectare (Lewis Smith y Clymo 1984) and how near (m) a tussock is drawn with its blades. */
-const TUSSAC_NEAR_M = 42;
-/** Instances of each plant kind (the tussac's: those with blades, near the camera; the mobile budget: docs/design/bioma-s3.md §Presupuesto). */
-export const PLANT_BUDGET = { tussac: 300, musgo: 160, hierba: 140, roca: 60, kelp: 60 } as const;
-/** Fish and krill drawn at once. */
-export const SWARM_BUDGET = { kril: 5 * 40, linterna: 3 * 14, "pez-hielo": 8, austromerluza: 3, calamar: 6 } as const;
+/** The ground's grid step (m) and chunks per side. */
+const GRID_M = 6;
+const CHUNKS = 4;
+/** Instances of each plant kind (the mobile budget: docs/design/bioma-s3.md §Presupuesto). */
+export const PLANT_BUDGET = { pino: 900, abedul: 160, enebro: 420, artemisa: 700, espino: 140, roca: 900, pradera: 1400, cojines: 500, amapola: 120, saussurea: 140, piedras: 1800 } as const;
+/** Near-camera plants (sedges, cushions, flowers) are scattered this far (m), and again when she moved this far. */
+const NEAR_PLANTS_M = 70;
+const NEAR_MOVE_M = 8;
+
+/** Belt colours (ours, from photographs of the Hunza valley sides). */
+const BELT_COLOR: Readonly<Record<string, number>> = { submontano: 0xb09a6a, montano: 0x5d6a3c, subalpino: 0x6c7a44, alpino: 0x7f9a4c, subnival: 0x8c877e, nival: 0xeef1f4 };
+const ROCK = new THREE.Color(0x6e665d);
+const TRAIL = new THREE.Color(0xb8a888);
+const SAND = new THREE.Color(0xa49c88);
+const GRAVEL = new THREE.Color(0x8d8a84);
 
 interface Placed {
   readonly x: number;
+  readonly y: number;
   readonly z: number;
   readonly s: number;
   readonly r: number;
@@ -34,322 +47,402 @@ interface Placed {
 
 export class BiomeScene {
   readonly root = new THREE.Group();
-  private readonly plants = new Map<string, { meshes: THREE.InstancedMesh[]; at: Placed[]; base: (p: Placed, i: number, f: number, m: THREE.Matrix4, part: number) => void }>();
   private readonly herds = new Map<string, { adult: AnimalHerd; young: AnimalHerd; n: number }>();
-  private readonly swarms = new Map<string, { mesh: THREE.InstancedMesh; centres: { x: number; z: number; y: number }[] }>();
-  private readonly bloom: THREE.Mesh;
-  private readonly tussacMat: THREE.MeshStandardMaterial;
   private readonly C: { x: number; z: number };
-  /** The colonies, beaches and nests around the chain's animals (s3-biome-crowd.ts). */
+  private readonly M = MOUNTAIN.value;
+  /** The crowds on the mountain (s3-biome-crowd.ts). */
   readonly crowd: BiomeCrowd;
   /** Jointed bodies of the crowd at the start of each herd (the chain's animals come after them). */
   private readonly crowdN = new Map<string, number>();
   private frameNo = 0;
-  /** The tussac's level of detail: every tussock, the near ones with blades, the far as a mound and a cone. */
-  private tussac?: { at: Placed[]; far: THREE.InstancedMesh; near: number[]; cam: THREE.Vector3; cover: number };
+  /** Plants by kind: their instances, where they are, and how they grow with their cover. */
+  private readonly plants = new Map<string, { mesh: THREE.InstancedMesh; at: Placed[]; base: (p: Placed, f: number, m: THREE.Matrix4) => void; key?: number }>();
+  /** Near-camera plants and where they were last scattered. */
+  private readonly nearKinds: { id: string; mesh: THREE.InstancedMesh; cap: number; ok: (alt: number, slope: number, lx: number, lz: number) => boolean; spacing: number; size: number }[] = [];
+  private nearAt = new THREE.Vector3(1e9, 0, 0);
+  private readonly nearCache = new Map<string, Placed | null>();
+  private cover: Readonly<Record<string, number>> = {};
+  private readonly soarers = new Set(["buitre", "quebrantahuesos", "aguila"]);
 
-  constructor(readonly k: number) {
+  constructor(readonly k: number, def: BiomeDef) {
     this.C = BIOME_ISLAND.centre.value;
     this.root.name = "bioma";
-    this.root.add(this.ground());
-    this.tussacMat = mat(0xb5b45a, { side: THREE.DoubleSide });
-    this.addPlants();
-    this.bloom = new THREE.Mesh(new THREE.CircleGeometry(BIOME_ISLAND.half.value.x * 1.9 * k, 48), new THREE.MeshBasicMaterial({ color: 0x3f8a5a, transparent: true, opacity: 0, depthWrite: false }));
-    this.bloom.rotation.x = -Math.PI / 2;
-    this.bloom.position.set(this.C.x, -0.57, this.C.z);
-    this.bloom.name = "floracion";
-    this.root.add(this.bloom);
-    this.addSwarms();
-    this.crowd = new BiomeCrowd(k);
+    this.addGround();
+    this.addRiver();
+    this.addRocks();
+    this.addTrees();
+    this.addShrubs();
+    this.addNearPlants();
+    this.crowd = new BiomeCrowd();
     this.root.add(this.crowd.boxes);
-    this.addAnimals();
-    this.addHut();
+    this.addAnimals(def);
+    this.addHut(def);
   }
 
   private world(x: number, z: number) {
-    return { x: this.C.x + x * this.k, z: this.C.z + z * this.k };
+    return { x: this.C.x + x, z: this.C.z + z };
   }
 
-  /** The ground: a radial mesh, flat where she walks, falling to a beach and under the sea past the shore; coloured by zone. */
-  private ground(): THREE.Mesh {
-    const H = BIOME_ISLAND.half.value;
-    const rings = 26;
-    const seg = 120;
-    const pos: number[] = [];
-    const col: number[] = [];
-    const idx: number[] = [];
+  /** The ground at local (x, z). */
+  private h(x: number, z: number): number {
+    return heightAt(this.M, x, z);
+  }
+
+  /** The colour of the ground at local (x, z): its belt, bare rock where it is steep, the trails, the river's gravel. */
+  private groundColor(x: number, z: number, y: number, slope: number, c: THREE.Color): THREE.Color {
+    const alt = altitudeOf(this.M, y);
+    const n = fbm(x, z, 25, 2, 3);
+    // Between belts the colours blend over ~150 real metres.
+    let belt = BELTS[0]!;
+    for (const b of BELTS) if (alt >= b.from - 75) belt = b;
+    const i = BELTS.indexOf(belt);
+    c.setHex(BELT_COLOR[belt.id]!);
+    if (i > 0) {
+      const t = Math.min(1, Math.max(0, (alt - (belt.from - 75)) / 150));
+      c.lerpColors(new THREE.Color(BELT_COLOR[BELTS[i - 1]!.id]!), new THREE.Color(BELT_COLOR[belt.id]!), t);
+    }
+    // Patchy snow in the subnival belt (hollows and north faces), none on the steep rock.
+    if (belt.id === "subnival" && n > 0.15) c.lerp(new THREE.Color(BELT_COLOR.nival!), Math.min(1, (n - 0.15) * 3));
+    const rock = Math.min(1, Math.max(0, (slope - 0.75) / 0.6));
+    if (rock > 0) c.lerp(ROCK, belt.id === "nival" ? rock * 0.8 : rock);
+    if (y < 0.9) c.lerp(SAND, Math.min(1, (0.9 - y) / 0.6));
+    const g = gorgeAt(this.M, x, z);
+    if (g.q < this.M.gorgeFloorHalf + 1 && y < g.floor + 1.5) c.copy(GRAVEL);
+    if (this.trailDist(x, z) < 2.2) c.lerp(TRAIL, 0.75);
+    return c.offsetHSL(0.01 * n, 0, n * 0.05);
+  }
+
+  /** Distance to the nearest trail (local m). */
+  private trailDist(x: number, z: number): number {
+    let best = Infinity;
+    for (const t of this.M.trails ?? [])
+      for (let i = 1; i < t.length; i++) {
+        const a = t[i - 1]!;
+        const b = t[i]!;
+        const dx = b.x - a.x;
+        const dz = b.z - a.z;
+        const u = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / (dx * dx + dz * dz)));
+        best = Math.min(best, Math.hypot(x - (a.x + dx * u), z - (a.z + dz * u)));
+      }
+    return best;
+  }
+
+  /** The ground: the height field in chunks (each culled on its own), coloured per vertex. */
+  private addGround(): void {
+    const X = this.M.half.x * 1.15;
+    const Z = this.M.half.z * 1.15;
+    const nx = Math.ceil((2 * X) / GRID_M);
+    const nz = Math.ceil((2 * Z) / GRID_M);
+    const cx = Math.ceil(nx / CHUNKS);
+    const cz = Math.ceil(nz / CHUNKS);
+    const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: false });
     const c = new THREE.Color();
-    for (let i = 0; i <= rings; i++) {
-      const f = (i / rings) * 1.16;
-      for (let j = 0; j < seg; j++) {
-        const a = (j / seg) * Math.PI * 2;
-        const s = shoreAt(a);
-        const lx = Math.cos(a) * H.x * f * s;
-        const lz = Math.sin(a) * H.z * f * s;
-        const edge = f - 1;
-        const y = edge <= -0.03 ? 0 : edge <= 0.02 ? -0.02 - (edge + 0.03) * 4 : -0.22 - (edge - 0.02) * 14;
-        const w = this.world(lx, lz);
-        pos.push(w.x, Math.max(-3, y), w.z);
-        const n = hash01(i * 131 + j, 3);
-        if (edge > -0.04) c.setHex(0x8a8070).offsetHSL(0, 0, (n - 0.5) * 0.08);
-        else if (lz < -55) c.setHex(0x7a7262).offsetHSL(0, 0, (n - 0.5) * 0.06);
-        else if (lx > 85) c.setHex(0x8b877c).offsetHSL(0, 0, (n - 0.5) * 0.08);
-        else if (lz > 30) c.setHex(0x4f6a35).offsetHSL(0.02 * (n - 0.5), 0, (n - 0.5) * 0.1);
-        else c.setHex(0x8a8a48).offsetHSL(0.03 * (n - 0.5), 0, (n - 0.5) * 0.1);
-        col.push(c.r, c.g, c.b);
-        if (i > 0) {
-          const a0 = (i - 1) * seg + j;
-          const a1 = (i - 1) * seg + ((j + 1) % seg);
-          const b0 = i * seg + j;
-          const b1 = i * seg + ((j + 1) % seg);
-          idx.push(a0, b0, a1, a1, b0, b1);
+    for (let a = 0; a < CHUNKS; a++)
+      for (let b = 0; b < CHUNKS; b++) {
+        const i0 = a * cx;
+        const j0 = b * cz;
+        const i1 = Math.min(nx, i0 + cx);
+        const j1 = Math.min(nz, j0 + cz);
+        const w = i1 - i0 + 1;
+        const pos: number[] = [];
+        const col: number[] = [];
+        const idx: number[] = [];
+        let land = false;
+        for (let j = j0; j <= j1; j++)
+          for (let i = i0; i <= i1; i++) {
+            const x = -X + i * GRID_M;
+            const z = -Z + j * GRID_M;
+            const y = this.h(x, z);
+            if (y > -0.5) land = true;
+            const p = this.world(x, z);
+            pos.push(p.x, Math.max(-12, y), p.z);
+            this.groundColor(x, z, y, slopeAt(this.M, x, z, GRID_M / 2), c);
+            col.push(c.r, c.g, c.b);
+          }
+        if (!land) continue;
+        for (let j = 0; j < j1 - j0; j++)
+          for (let i = 0; i < i1 - i0; i++) {
+            const q = j * w + i;
+            idx.push(q, q + w, q + 1, q + 1, q + w, q + w + 1);
+          }
+        const g = new THREE.BufferGeometry();
+        g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+        g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+        g.setIndex(idx);
+        g.computeVertexNormals();
+        g.computeBoundingSphere();
+        const m = new THREE.Mesh(g, material);
+        m.name = `bioma-suelo-${a}-${b}`;
+        this.root.add(m);
+      }
+  }
+
+  /** The river down the gorge's floor to the sea: a ribbon a little above the gravel. */
+  private addRiver(): void {
+    const G = this.M.gorge;
+    const pos: number[] = [];
+    const idx: number[] = [];
+    const half = this.M.gorgeFloorHalf * 0.7;
+    let n = 0;
+    for (let i = 1; i < G.length; i++) {
+      const a = G[i - 1]!;
+      const b = G[i]!;
+      const L = Math.hypot(b.x - a.x, b.z - a.z);
+      const nx = -(b.z - a.z) / L;
+      const nz = (b.x - a.x) / L;
+      const steps = Math.ceil(L / 8);
+      for (let s = i === 1 ? 0 : 1; s <= steps; s++) {
+        const u = s / steps;
+        const x = a.x + (b.x - a.x) * u;
+        const z = a.z + (b.z - a.z) * u;
+        const y = Math.max(-0.5, a.floor + (b.floor - a.floor) * u) + 0.25;
+        for (const side of [-1, 1]) {
+          const p = this.world(x + nx * half * side, z + nz * half * side);
+          pos.push(p.x, y, p.z);
         }
+        if (n > 0) idx.push((n - 1) * 2, n * 2, (n - 1) * 2 + 1, (n - 1) * 2 + 1, n * 2, n * 2 + 1);
+        n++;
       }
     }
-    // The centre: a fan.
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-    g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
     g.setIndex(idx);
     g.computeVertexNormals();
-    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, side: THREE.DoubleSide }));
-    m.name = "bioma-suelo";
-    return m;
+    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x6f9aa4, roughness: 0.25, metalness: 0.1, transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
+    m.name = "bioma-rio";
+    this.root.add(m);
   }
 
-  /** Scatter `n` points over a zone (on land or, for the kelp, in the sea), seeded. */
-  private scatter(zone: string, n: number, seed: number, sea = false): Placed[] {
-    const r = BIOME_ZONES.find((q) => q.id === zone)!.r;
+  /** Points over the island accepted by `ok`, on a jittered grid of `spacing` m (seeded), at most `cap`. */
+  private sample(spacing: number, seed: number, cap: number, ok: (alt: number, slope: number, lx: number, lz: number, y: number) => boolean): Placed[] {
+    const X = this.M.half.x * 1.1;
+    const Z = this.M.half.z * 1.1;
     const out: Placed[] = [];
-    for (let i = 0; out.length < n && i < n * 20; i++) {
-      const x = r.x0 + (r.x1 - r.x0) * hash01(seed, i * 3);
-      const z = r.z0 + (r.z1 - r.z0) * hash01(seed, i * 3 + 1);
-      const ok = sea ? !inside(x * 0.97, z * 0.97) && inside(x * 0.72, z * 0.72) : inside(x * 1.05, z * 1.05) && Math.hypot(x, z) > 22;
-      if (!ok) continue;
-      out.push({ ...this.world(x, z), s: 0.7 + 0.6 * hash01(seed, i * 3 + 2), r: hash01(seed, i * 5) * Math.PI * 2 });
-    }
-    return out;
-  }
-
-  private addPlants(): void {
-    const M = new THREE.Matrix4();
-    const q = new THREE.Quaternion();
-    const v = new THREE.Vector3();
-    const sc = new THREE.Vector3();
-    const up = new THREE.Vector3(0, 1, 0);
-    // TUSSAC: a peat pedestal (~0,8 m) and a fountain of blades to ~2 m (Poa flabellata).
-    // The fountain: green blades arching out to ~3 m across from the pedestal's top, over a skirt of dead straw
-    // hanging down its sides (vertex colours under the season's tint).
-    const blade = (len: number, w: number, out: number, drop: number, yaw: number, base: THREE.Color, tip: THREE.Color) => {
-      const g = new THREE.PlaneGeometry(w, len, 1, 3).translate(0, len / 2, 0);
-      const pos = g.attributes.position!;
-      const col: number[] = [];
-      const c = new THREE.Color();
-      for (let i = 0; i < pos.count; i++) {
-        const u = pos.getY(i) / len;
-        pos.setZ(i, pos.getZ(i) + u ** 1.4 * out);
-        pos.setY(i, pos.getY(i) * (1 - drop * u));
-        c.copy(base).lerp(tip, u);
-        col.push(c.r, c.g, c.b);
+    for (let j = 0, z = -Z; z <= Z; z += spacing, j++)
+      for (let i = 0, x = -X; x <= X; x += spacing, i++) {
+        const s2 = seed * 7 + j * 1009 + i;
+        const lx = x + (hash01(s2, 1) - 0.5) * spacing;
+        const lz = z + (hash01(s2, 2) - 0.5) * spacing;
+        const y = this.h(lx, lz);
+        if (y < 1) continue;
+        if (!ok(altitudeOf(this.M, y), slopeAt(this.M, lx, lz), lx, lz, y)) continue;
+        out.push({ ...this.world(lx, lz), y, s: 0.7 + 0.6 * hash01(s2, 3), r: hash01(s2, 4) * Math.PI * 2 });
       }
-      g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
-      return g.rotateY(yaw);
-    };
-    const straw = new THREE.Color(1, 0.86, 0.58);
-    const green = new THREE.Color(0.86, 1, 0.78);
-    const blades: THREE.BufferGeometry[] = [];
-    for (let b = 0; b < 26; b++) blades.push(blade(1.6 + 0.25 * ((b * 7) % 3), 0.24, 0.9 + 0.5 * (((b * 5) % 4) / 3), 0.5, (b / 26) * Math.PI * 2 + (b % 3) * 0.12, straw, green));
-    // The skirt: dead leaves from the rim down the pedestal (upside-down blades).
-    for (let b = 0; b < 12; b++) blades.push(blade(1.0, 0.5, 0.3, 0, 0, straw.clone().multiplyScalar(0.8), straw.clone().multiplyScalar(0.95)).rotateX(Math.PI).translate(0, 0.02, -0.45).rotateY((b / 12) * Math.PI * 2 + (b % 2) * 0.1));
-    const fountain = mergeGeometries(blades);
-    fountain.translate(0, 1.0, 0);
-    this.tussacMat.vertexColors = true;
-    const pedestal = new THREE.CylinderGeometry(0.4, 0.6, 0.92, 9);
-    pedestal.translate(0, 0.46, 0);
-    // As dense as a real tussac grassland: 650 tussocks a hectare (Lewis Smith y Clymo 1984), on a jittered grid.
-    const all = [...this.denseTussac(), ...this.scatter("playa", 40, 12).filter((p) => (p.z - this.C.z) / this.k > -70), ...this.scatter("musgo", 30, 13)];
-    this.addKind("tussac", all.slice(0, PLANT_BUDGET.tussac), [pedestal, fountain], [mat(0x5c4632), this.tussacMat], (p, _i, f, m, part) => {
-      q.setFromAxisAngle(up, p.r);
-      // The canopy spreads ~3 m across (up to 4,5 m: Lewis Smith y Clymo 1984) from a ~1 m pedestal.
-      const spread = (DENSITY.tussacCanopyM.value / 3) * p.s;
-      const s = part === 0 ? p.s : spread * (0.6 + 0.4 * f);
-      m.compose(v.set(p.x, 0, p.z), q, part === 0 ? sc.set(p.s, p.s, p.s) : sc.set(spread, s, spread));
-    });
-    // Far away: a mound and a cone in one mesh (its pedestal darker by its vertex colours).
-    const ped = new THREE.CylinderGeometry(0.5, 0.65, 1, 6).translate(0, 0.5, 0);
-    const cone = new THREE.ConeGeometry(1.5, 1.5, 6).translate(0, 1.55, 0);
-    const paint = (g: THREE.BufferGeometry, c: number) => {
-      const col = new THREE.Color(c);
-      g.setAttribute("color", new THREE.Float32BufferAttribute(Array.from({ length: g.attributes.position!.count }, () => [col.r, col.g, col.b]).flat(), 3));
-      return g;
-    };
-    const farGeo = mergeGeometries([paint(ped.toNonIndexed(), 0x5a4030), paint(cone.toNonIndexed(), 0xffffff)]);
-    const far = new THREE.InstancedMesh(farGeo, new THREE.MeshStandardMaterial({ color: 0xb5b45a, vertexColors: true, roughness: 0.95, flatShading: true }), all.length);
-    far.name = "planta-tussac-lejos";
-    far.count = 0;
-    this.root.add(far);
-    this.tussac = { at: all, far, near: [], cam: new THREE.Vector3(1e9, 0, 0), cover: 1 };
-    // MOSS: low cushions of moss banks.
-    const cushion = new THREE.SphereGeometry(1, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2);
-    this.addKind("musgo", this.scatter("musgo", PLANT_BUDGET.musgo, 21), [cushion], [mat(0x3d6b2a)], (p, _i, f, m) => {
-      q.setFromAxisAngle(up, p.r);
-      m.compose(v.set(p.x, -0.05, p.z), q, sc.set(1.4 * p.s, 0.18 * p.s * (0.7 + 0.3 * f), 1 * p.s));
-    });
-    // HAIR GRASS: small tufts.
-    const tuft = mergeGeometries(Array.from({ length: 7 }, (_, b) => new THREE.PlaneGeometry(0.03, 0.25, 1, 1).translate(0, 0.12, 0).rotateZ(0.25).rotateY((b / 7) * Math.PI * 2)));
-    this.addKind("hierba-pilosa", [...this.scatter("musgo", 90, 31), ...this.scatter("tussac", 50, 32)].slice(0, PLANT_BUDGET.hierba), [tuft], [mat(0x8fa64a, { side: THREE.DoubleSide })], (p, _i, f, m) => {
-      q.setFromAxisAngle(up, p.r);
-      m.compose(v.set(p.x, 0, p.z), q, sc.setScalar(p.s * (0.5 + 0.5 * f)));
-    });
-    // LICHEN: grey rocks with orange and pale crusts (Usnea and crustose lichens).
-    const rock = new THREE.DodecahedronGeometry(0.45, 0);
-    const crust = new THREE.CircleGeometry(0.22, 7).rotateX(-Math.PI / 2).translate(0.05, 0.36, 0.05);
-    const crust2 = new THREE.CircleGeometry(0.16, 6).rotateX(-Math.PI / 2.4).translate(-0.18, 0.28, -0.1);
-    this.addKind("liquen", [...this.scatter("musgo", 40, 41), ...this.scatter("colonia", 20, 42)].slice(0, PLANT_BUDGET.roca), [rock, crust, crust2], [mat(0x6d6b66, { flatShading: true }), mat(0xd27a2a, { side: THREE.DoubleSide }), mat(0xb8c79a, { side: THREE.DoubleSide })], (p, _i, f, m, part) => {
-      q.setFromAxisAngle(up, p.r);
-      const s = part === 0 ? p.s : p.s * (0.5 + 0.5 * f);
-      m.compose(v.set(p.x, 0.05, p.z), q, sc.set(s * 1.2, part === 0 ? p.s * 0.7 : p.s * 0.7, s));
-    });
-    // KELP: a stipe from the bottom (−10 m) and its fronds lying on the surface.
-    const stipe = new THREE.CylinderGeometry(0.04, 0.05, 10, 4).translate(0, -5.6, 0);
-    const canopy = mergeGeometries(Array.from({ length: 6 }, (_, b) => new THREE.PlaneGeometry(0.35, 3.2).rotateX(-Math.PI / 2).translate(0, 0, 1.4).rotateY((b / 6) * Math.PI * 2)));
-    canopy.translate(0, -0.56, 0);
-    this.addKind("kelp", [...this.scatter("kelp", 45, 51, true), ...this.scatter("playa", 15, 52, true)].slice(0, PLANT_BUDGET.kelp), [stipe, canopy], [mat(0x5a4a1c), mat(0x6f5a1e, { side: THREE.DoubleSide })], (p, _i, f, m, part) => {
-      q.setFromAxisAngle(up, p.r);
-      m.compose(v.set(p.x, 0, p.z), q, sc.set(p.s, part === 0 ? 1 : 1, p.s * (part === 0 ? 1 : 0.4 + 0.6 * f)));
-    });
-    void M;
+    // Spread over the whole island when there are more than the budget (every n-th, not the first rows).
+    if (out.length <= cap) return out;
+    const step = out.length / cap;
+    return Array.from({ length: cap }, (_, i) => out[Math.floor(i * step)]!);
   }
 
-  /** Tussocks over the slope at their real density (650 a hectare, as drawn), jittered, never on the hut's ground. */
-  private denseTussac(): Placed[] {
-    const r = BIOME_ZONES.find((q) => q.id === "tussac")!.r;
-    const sp = Math.sqrt(10000 / DENSITY.tussacPerHa.value / 0.866);
-    const out: Placed[] = [];
-    const k = this.k;
-    for (let j = 0, z = r.z0 * k; z <= r.z1 * k; z += sp * 0.866, j++)
-      for (let i = 0, x = r.x0 * k + (j % 2) * sp * 0.5; x <= r.x1 * k; x += sp, i++) {
-        const seed = j * 977 + i;
-        const lx = (x + (hash01(seed, 21) - 0.5) * sp * 0.6) / k;
-        const lz = (z + (hash01(seed, 22) - 0.5) * sp * 0.6) / k;
-        if (!inside(lx * 1.04, lz * 1.04) || Math.hypot(lx, lz) < 22) continue;
-        out.push({ ...this.world(lx, lz), s: 0.75 + 0.5 * hash01(seed, 23), r: hash01(seed, 24) * Math.PI * 2 });
-      }
-    return out;
+  /** One instanced kind; `base` places each with its growth `f` (its cover, 0–1,2). */
+  private addKind(id: string, at: Placed[], geo: THREE.BufferGeometry, material: THREE.Material, base: (p: Placed, f: number, m: THREE.Matrix4) => void): void {
+    const mesh = new THREE.InstancedMesh(geo, material, Math.max(1, at.length));
+    mesh.name = `planta-${id}`;
+    mesh.count = at.length;
+    this.root.add(mesh);
+    this.plants.set(id, { mesh, at, base });
+    this.paint(id, 1);
   }
 
-  /** The near tussocks get their blades again when the camera moved 4 m or the cover changed; the rest are cones. */
-  private tussacLod(cam: THREE.Vector3, force = false): void {
-    const T = this.tussac;
-    const p = this.plants.get("tussac");
-    if (!T || !p) return;
-    if (!force && Math.hypot(cam.x - T.cam.x, cam.z - T.cam.z) < 4) return;
-    T.cam.copy(cam);
-    const cap = p.meshes[0]!.instanceMatrix.count;
-    const d = T.at.map((a, i) => ({ i, d: Math.hypot(a.x - cam.x, a.z - cam.z) }));
-    const near = d.filter((e) => e.d < TUSSAC_NEAR_M).sort((a, b) => a.d - b.d).slice(0, cap).map((e) => e.i);
-    const isNear = new Set(near);
-    p.at = near.map((i) => T.at[i]!);
-    for (const m of p.meshes) m.count = p.at.length;
-    this.paintPlant("tussac", T.cover);
-    const M = new THREE.Matrix4();
-    const q = new THREE.Quaternion();
-    const v = new THREE.Vector3();
-    const sc = new THREE.Vector3();
-    let n = 0;
-    T.at.forEach((a, i) => {
-      if (isNear.has(i)) return;
-      q.setFromAxisAngle(v.set(0, 1, 0), a.r);
-      const h = a.s * (0.55 + 0.45 * T.cover);
-      M.compose(v.set(a.x, 0, a.z), q, sc.set(a.s, h, a.s));
-      T.far.setMatrixAt(n++, M);
-    });
-    T.far.count = n;
-    T.far.instanceMatrix.needsUpdate = true;
-    T.far.computeBoundingSphere();
-  }
-
-  private addKind(id: string, at: Placed[], geos: THREE.BufferGeometry[], mats: THREE.Material[], base: (p: Placed, i: number, f: number, m: THREE.Matrix4, part: number) => void): void {
-    const meshes = geos.map((g, j) => {
-      const m = new THREE.InstancedMesh(g, mats[j]!, at.length);
-      m.name = `planta-${id}-${j}`;
-      this.root.add(m);
-      return m;
-    });
-    this.plants.set(id, { meshes, at, base });
-    this.paintPlant(id, 1);
-  }
-
-  private paintPlant(id: string, cover: number): void {
+  private paint(id: string, f: number): void {
     const p = this.plants.get(id);
     if (!p) return;
     const M = new THREE.Matrix4();
     p.at.forEach((a, i) => {
-      p.meshes.forEach((m, j) => {
-        p.base(a, i, cover, M, j);
-        m.setMatrixAt(i, M);
-      });
+      p.base(a, f, M);
+      p.mesh.setMatrixAt(i, M);
     });
-    for (const m of p.meshes) {
-      m.instanceMatrix.needsUpdate = true;
-      m.computeBoundingSphere();
-    }
+    p.mesh.instanceMatrix.needsUpdate = true;
+    p.mesh.computeBoundingSphere();
   }
 
-  private addSwarms(): void {
-    const H = BIOME_ISLAND.half.value;
-    const ring = (n: number, d: number, seed: number, y: number) =>
-      Array.from({ length: n }, (_, i) => {
-        const a = hash01(seed, i) * Math.PI * 2;
-        return { ...this.world(Math.cos(a) * H.x * d, Math.sin(a) * H.z * d), y };
-      });
-    const fish = (len: number, color: number, slim = 0.25) => {
-      const g = new THREE.BoxGeometry(len * slim, len * slim * 1.2, len);
-      return { g, m: mat(color, { metalness: 0.3, roughness: 0.4 }) };
-    };
-    const kinds: [string, number, THREE.BufferGeometry, THREE.Material, { x: number; z: number; y: number }[]][] = [];
-    // Krill drawn 5× its 6 cm so a swarm shows at a glance (ours: presentation only).
-    const kr = fish(0.3, 0xe8763a, 0.3);
-    kinds.push(["kril", SWARM_BUDGET.kril, kr.g, kr.m, ring(5, 1.35, 61, -1.5)]);
-    const ln = fish(0.11, 0xc8d4dc);
-    kinds.push(["linterna", SWARM_BUDGET.linterna, ln.g, ln.m, ring(3, 1.3, 62, -3)]);
-    const ic = fish(0.6, 0xdde6ea);
-    kinds.push(["pez-hielo", SWARM_BUDGET["pez-hielo"], ic.g, ic.m, ring(2, 1.25, 63, -6)]);
-    const tf = fish(1.6, 0x3a3f44, 0.22);
-    kinds.push(["austromerluza", SWARM_BUDGET.austromerluza, tf.g, tf.m, ring(1, 1.5, 64, -18)]);
-    const sq = new THREE.ConeGeometry(0.12, 0.6, 6).rotateX(Math.PI / 2);
-    kinds.push(["calamar", SWARM_BUDGET.calamar, sq, mat(0xa83a3a), ring(2, 1.6, 65, -10)]);
-    for (const [id, n, g, m, centres] of kinds) {
-      const mesh = new THREE.InstancedMesh(g, m, n);
-      mesh.name = `banco-${id}`;
+  /** Geometry painted one colour per vertex (so a merged plant keeps its parts' colours in one draw call). */
+  private static paintGeo(g: THREE.BufferGeometry, c: number): THREE.BufferGeometry {
+    const geo = g.index ? g.toNonIndexed() : g;
+    const col = new THREE.Color(c);
+    geo.setAttribute("color", new THREE.Float32BufferAttribute(Array.from({ length: geo.attributes.position!.count }, () => [col.r, col.g, col.b]).flat(), 3));
+    return geo;
+  }
+
+  /** Boulders and slabs out of the cliffs and the scree, some with orange and pale lichen. */
+  private addRocks(): void {
+    const at = this.sample(9, 5, PLANT_BUDGET.roca, (alt, slope, lx, lz) => slope > 1.1 || (alt > 4300 && slope > 0.5 && hash01(Math.round(lx), Math.round(lz)) < 0.35));
+    const g = new THREE.DodecahedronGeometry(1, 0);
+    const mesh = new THREE.InstancedMesh(g, mat(0xffffff, { flatShading: true, roughness: 0.95 }), Math.max(1, at.length));
+    mesh.name = "bioma-rocas";
+    const M = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const e = new THREE.Euler();
+    const v = new THREE.Vector3();
+    const sc = new THREE.Vector3();
+    const c = new THREE.Color();
+    at.forEach((p, i) => {
+      e.set(hash01(i, 1) * 0.6, p.r, hash01(i, 2) * 0.6);
+      q.setFromEuler(e);
+      const s = 1.5 + 4 * hash01(i, 3);
+      M.compose(v.set(p.x, p.y - s * 0.25, p.z), q, sc.set(s * 1.3, s * 0.7, s));
+      mesh.setMatrixAt(i, M);
+      const lichen = hash01(i, 4);
+      mesh.setColorAt(i, c.setHex(lichen < 0.12 ? 0xc87a32 : lichen < 0.22 ? 0xb4b89a : 0x8a8278).offsetHSL(0, 0, (hash01(i, 5) - 0.5) * 0.1));
+    });
+    mesh.count = at.length;
+    this.root.add(mesh);
+    // Bones on the slabs below the bearded vulture's drop (at the gorge's lookout).
+    const lookout = BIOME_ZONES.find((z) => z.id === "garganta")!.point;
+    const bones = mergeGeometries(
+      Array.from({ length: 7 }, (_, i) => {
+        const x = lookout.x + (hash01(i, 6) - 0.5) * 10;
+        const z = lookout.z + (hash01(i, 7) - 0.5) * 10;
+        const p = this.world(x, z);
+        return new THREE.BoxGeometry(0.06, 0.06, 0.35 + 0.3 * hash01(i, 8)).rotateY(hash01(i, 9) * 3).translate(p.x, this.h(x, z) + 0.04, p.z);
+      }),
+    );
+    const bm = new THREE.Mesh(bones, mat(0xe8e2d0));
+    bm.name = "bioma-huesos";
+    this.root.add(bm);
+  }
+
+  /** The forest: blue pines and spruce in the montane belt, birches at the tree line (each one merged mesh). */
+  private addTrees(): void {
+    const q = new THREE.Quaternion();
+    const v = new THREE.Vector3();
+    const sc = new THREE.Vector3();
+    const up = new THREE.Vector3(0, 1, 0);
+    const trunk = BiomeScene.paintGeo(new THREE.CylinderGeometry(0.18, 0.3, 4, 5).translate(0, 2, 0), 0x4a3828);
+    const tiers = [0, 1, 2, 3].map((k) => BiomeScene.paintGeo(new THREE.ConeGeometry(2.6 - k * 0.55, 4.2 - k * 0.5, 7).translate(0, 4 + k * 3, 0), k % 2 ? 0x2f4a2e : 0x2a4429));
+    const pine = mergeGeometries([trunk, ...tiers]);
+    // Not on the trails nor the hut's flat (a blue pine is 30–50 m in Rakaposhi's forest; drawn ~14 m).
+    const clear = (lx: number, lz: number) => this.trailDist(lx, lz) > 6 && Math.hypot(lx + 150, lz + 470) > 60;
+    const pines = this.sample(11, 11, PLANT_BUDGET.pino, (alt, slope, lx, lz) => alt > 2850 && alt < 3600 && slope < 0.95 && clear(lx, lz) && hash01(Math.round(lx * 3), Math.round(lz * 3)) < 0.8 + (lz < 0 ? 0 : -0.3));
+    this.addKind("pino", pines, pine, mat(0xffffff, { vertexColors: true, flatShading: true }), (p, f, m) => {
+      q.setFromAxisAngle(up, p.r);
+      const s = p.s * (0.85 + 0.15 * Math.min(1, f));
+      m.compose(v.set(p.x, p.y - 0.3, p.z), q, sc.set(s, s * (1 + 0.3 * hash01(Math.round(p.x), 7)), s));
+    });
+    const birch = mergeGeometries([BiomeScene.paintGeo(new THREE.CylinderGeometry(0.1, 0.16, 5, 5).translate(0, 2.5, 0), 0xe6e0d4), BiomeScene.paintGeo(new THREE.IcosahedronGeometry(1.8, 0).scale(1, 1.3, 1).translate(0, 5.4, 0), 0xffffff)]);
+    const birches = this.sample(17, 12, PLANT_BUDGET.abedul, (alt, slope, lx, lz) => alt > 3450 && alt < 3950 && slope < 0.9 && clear(lx, lz));
+    this.addKind("abedul", birches, birch, mat(0x8fae5a, { vertexColors: true, flatShading: true }), (p, f, m) => {
+      q.setFromAxisAngle(up, p.r);
+      m.compose(v.set(p.x, p.y - 0.2, p.z), q, sc.setScalar(p.s * (0.8 + 0.2 * Math.min(1, f))));
+    });
+  }
+
+  /** Shrubs: junipers at the tree line, artemisia on the steppe, sea buckthorn by the river. */
+  private addShrubs(): void {
+    const q = new THREE.Quaternion();
+    const v = new THREE.Vector3();
+    const sc = new THREE.Vector3();
+    const up = new THREE.Vector3(0, 1, 0);
+    const clear = (lx: number, lz: number) => this.trailDist(lx, lz) > 3 && Math.hypot(lx + 150, lz + 470) > 50;
+    const juniper = new THREE.DodecahedronGeometry(1, 0).scale(1.4, 0.8, 1.2).translate(0, 0.5, 0);
+    this.addKind("enebro", this.sample(9, 21, PLANT_BUDGET.enebro, (alt, slope, lx, lz) => alt > 3300 && alt < 4250 && slope < 1 && clear(lx, lz)), juniper, mat(0x3c5a3a, { flatShading: true }), (p, f, m) => {
+      q.setFromAxisAngle(up, p.r);
+      m.compose(v.set(p.x, p.y - 0.15, p.z), q, sc.setScalar(p.s * (0.6 + 0.4 * Math.min(1.2, f))));
+    });
+    const bush = new THREE.SphereGeometry(0.5, 6, 4, 0, Math.PI * 2, 0, Math.PI / 2);
+    this.addKind("artemisa", this.sample(7, 22, PLANT_BUDGET.artemisa, (alt, slope, lx, lz) => alt < 2850 && slope < 0.8 && clear(lx, lz)), bush, mat(0x9aa08a, { flatShading: true }), (p, f, m) => {
+      q.setFromAxisAngle(up, p.r);
+      const s = p.s * (0.5 + 0.5 * Math.min(1.2, f));
+      m.compose(v.set(p.x, p.y - 0.05, p.z), q, sc.set(s * 1.3, s * 0.9, s * 1.1));
+    });
+    // Sea buckthorn: a silvery bush with orange berries, in the river's gravel (Hippophae).
+    const buck = mergeGeometries([BiomeScene.paintGeo(new THREE.DodecahedronGeometry(0.9, 0).scale(1, 1.3, 1).translate(0, 1, 0), 0xffffff), BiomeScene.paintGeo(new THREE.IcosahedronGeometry(0.25, 0).translate(0.5, 1.4, 0.4), 0xe07a20), BiomeScene.paintGeo(new THREE.IcosahedronGeometry(0.22, 0).translate(-0.4, 1.1, -0.5), 0xe07a20)]);
+    const river = this.sample(6, 23, PLANT_BUDGET.espino, (alt, slope, lx, lz) => {
+      const g = gorgeAt(this.M, lx, lz);
+      return slope < 0.8 && g.q > this.M.gorgeFloorHalf * 0.8 && g.q < this.M.gorgeFloorHalf + 14 && alt < 2700;
+    });
+    this.addKind("espino", river, buck, mat(0x9aa898, { vertexColors: true, flatShading: true }), (p, f, m) => {
+      q.setFromAxisAngle(up, p.r);
+      m.compose(v.set(p.x, p.y, p.z), q, sc.setScalar(p.s * (0.7 + 0.3 * Math.min(1, f))));
+    });
+  }
+
+  /** Near-camera plants: sedges of the meadow, cushions, blue poppies on the scree, woolly saussureas on the ridge. */
+  private addNearPlants(): void {
+    const tuft = mergeGeometries(Array.from({ length: 6 }, (_, b) => new THREE.PlaneGeometry(0.05, 0.3).translate(0, 0.15, 0).rotateZ(0.3).rotateY((b / 6) * Math.PI * 2)));
+    const cushion = new THREE.SphereGeometry(0.3, 7, 3, 0, Math.PI * 2, 0, Math.PI / 2);
+    const poppy = mergeGeometries([BiomeScene.paintGeo(new THREE.CylinderGeometry(0.015, 0.02, 0.5, 4).translate(0, 0.25, 0), 0x6a7a4a), BiomeScene.paintGeo(new THREE.IcosahedronGeometry(0.09, 0).scale(1, 0.6, 1).translate(0, 0.52, 0), 0x6a8ad8)]);
+    const saussurea = mergeGeometries([BiomeScene.paintGeo(new THREE.IcosahedronGeometry(0.16, 1).scale(1, 1.5, 1).translate(0, 0.22, 0), 0xf2f0ea), BiomeScene.paintGeo(new THREE.ConeGeometry(0.06, 0.08, 5).translate(0, 0.46, 0), 0x6a3a6a)]);
+    const stone = new THREE.DodecahedronGeometry(0.22, 0).scale(1.3, 0.6, 1);
+    const kinds: [string, THREE.BufferGeometry, THREE.Material, number, (alt: number, slope: number, lx: number, lz: number) => boolean, number, number][] = [
+      // The scree: loose stones over the cones below the cliffs and the subnival slopes.
+      ["piedras", stone, mat(0x8f887e, { flatShading: true }), PLANT_BUDGET.piedras, (alt, slope, lx, lz) => (alt > 4300 && slope > 0.35) || Math.hypot(lx - 175, lz + 75) < 55, 1.1, 1],
+      ["pradera", tuft, mat(0x8aa64e, { side: THREE.DoubleSide }), PLANT_BUDGET.pradera, (alt, slope) => alt > 3700 && alt < 4700 && slope < 0.75, 1.6, 1],
+      ["cojines", cushion, mat(0x5f8a3e, { flatShading: true }), PLANT_BUDGET.cojines, (alt, slope) => alt > 3900 && alt < 5000 && slope < 0.8, 2.6, 1],
+      ["amapola", poppy, mat(0xffffff, { vertexColors: true, flatShading: true }), PLANT_BUDGET.amapola, (alt, slope, lx, lz) => alt > 4250 && alt < 4800 && slope < 0.9 && Math.hypot(lx - 190, lz + 84) < 70, 3.2, 1],
+      ["saussurea", saussurea, mat(0xffffff, { vertexColors: true }), PLANT_BUDGET.saussurea, (alt, slope) => alt > 4700 && alt < 5250 && slope < 0.9, 3.5, 1],
+    ];
+    for (const [id, geo, m, cap, ok, spacing, size] of kinds) {
+      const mesh = new THREE.InstancedMesh(geo, m, cap);
+      mesh.name = `planta-${id}`;
+      mesh.count = 0;
       mesh.frustumCulled = false;
       this.root.add(mesh);
-      this.swarms.set(id, { mesh, centres });
+      this.nearKinds.push({ id, mesh, cap, ok, spacing, size });
     }
   }
 
-  private addAnimals(): void {
-    for (const s of BIOME.filter((x): x is AnimalSpec => x.kind === "animal")) {
+  /** The near plants scattered again round the camera (each cell's plant remembered: the same plant every time). */
+  private nearLod(cam: THREE.Vector3, force = false): void {
+    if (!force && Math.hypot(cam.x - this.nearAt.x, cam.z - this.nearAt.z) < NEAR_MOVE_M) return;
+    this.nearAt.copy(cam);
+    const M4 = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const v = new THREE.Vector3();
+    const sc = new THREE.Vector3();
+    const up = new THREE.Vector3(0, 1, 0);
+    const lc = { x: cam.x - this.C.x, z: cam.z - this.C.z };
+    for (const k of this.nearKinds) {
+      const f = Math.max(0.15, Math.min(1.2, this.cover[k.id] ?? 1));
+      let n = 0;
+      const R = NEAR_PLANTS_M;
+      const i0 = Math.floor((lc.x - R) / k.spacing);
+      const j0 = Math.floor((lc.z - R) / k.spacing);
+      for (let j = j0; j <= j0 + (2 * R) / k.spacing && n < k.cap; j++)
+        for (let i = i0; i <= i0 + (2 * R) / k.spacing && n < k.cap; i++) {
+          const key = `${k.id}:${i}:${j}`;
+          let p = this.nearCache.get(key);
+          if (p === undefined) {
+            const lx = (i + hash01(i * 31 + j, 41)) * k.spacing;
+            const lz = (j + hash01(i * 37 + j, 42)) * k.spacing;
+            const y = this.h(lx, lz);
+            p = y > 1 && k.ok(altitudeOf(this.M, y), slopeAt(this.M, lx, lz), lx, lz) && this.trailDist(lx, lz) > 1.8 ? { ...this.world(lx, lz), y, s: 0.6 + 0.8 * hash01(i, j), r: hash01(j, i) * 6.28 } : null;
+            this.nearCache.set(key, p);
+          }
+          if (!p || Math.hypot(p.x - cam.x, p.z - cam.z) > R) continue;
+          q.setFromAxisAngle(up, p.r);
+          const s = p.s * k.size * f;
+          M4.compose(v.set(p.x, p.y - 0.02, p.z), q, sc.set(s, s, s));
+          k.mesh.setMatrixAt(n++, M4);
+        }
+      k.mesh.count = n;
+      k.mesh.instanceMatrix.needsUpdate = true;
+    }
+    if (this.nearCache.size > 60000) this.nearCache.clear();
+  }
+
+  private addAnimals(def: BiomeDef): void {
+    for (const s of def.species.filter((x): x is AnimalSpec => x.kind === "animal")) {
       const shape = s.shape === "pajaro" ? "ave" : s.shape;
-      const adult: HerdModel = { id: s.id === "papua" ? "papua" : s.id, shape, size: s.size, color: s.color, category: "animal", group: "bioma" };
-      // The young: seal pups dark and on the beach; chicks of every bird as downy upright chicks.
+      const adult: HerdModel = { id: s.id, shape, size: s.size, color: s.color, category: "animal", group: "bioma" };
+      // The young: kids and cubs as their parents, small; chicks of every bird as downy upright chicks.
       const young: HerdModel =
-        s.shape === "pinnipedo"
-          ? { id: `${s.id}-cria`, shape: "pinnipedo", size: s.size, color: s.id === "lobo" ? 0x2a2522 : s.id === "elefante" ? 0x2b2b2b : 0x8a8f94, category: "animal", group: "bioma" }
-          : { id: "polluelo-pinguino", shape: "pinguino", size: s.shape === "pinguino" ? s.size : { x: s.size.z * 0.6, y: s.size.z * 0.9, z: s.size.z * 0.6 }, color: s.id === "albatros" ? 0x8c7f70 : 0x6c6660, category: "animal", group: "bioma" };
+        shape === "cuadrupedo"
+          ? { id: s.id, shape, size: s.size, color: s.color, category: "animal", group: "bioma" }
+          : { id: "polluelo-pinguino", shape: "pinguino", size: { x: s.size.z * 0.6, y: s.size.z * 0.9, z: s.size.z * 0.6 }, color: s.id === "buitre" || s.id === "quebrantahuesos" ? 0xd8d0c4 : 0x8a8070, category: "animal", group: "bioma" };
       const extra = NEAR_CAP[s.id] ?? { adult: 0, young: 0 };
       const n = Math.ceil(s.cap * 1.6) + s.young * 3 + extra.adult;
       const a = new AnimalHerd(adult, n, undefined, { merged: true });
-      const y = new AnimalHerd(young, Math.ceil(s.cap * 1.2) + 2 + extra.young, undefined, { merged: true });
+      const y = new AnimalHerd(young, Math.ceil(s.cap * 1.2) + s.young * 3 + 2 + extra.young, undefined, { merged: true });
       for (const m of [...a.meshes, ...y.meshes]) this.root.add(m);
       this.herds.set(s.id, { adult: a, young: y, n });
     }
   }
 
-  private addHut(): void {
-    // The census board's face: the species in columns (its live text is the card's, opened at the board).
+  private addHut(def: BiomeDef): void {
+    const Y = HUT_Y();
     const st = BIOME_ISLAND.station.value;
-    const board = this.world(0, st.z / 2 - 0.4);
+    const board = hutPoint(this.k, 0, st.z / 2 - 0.4);
     const c = document.createElement("canvas");
     c.width = 512;
     c.height = 256;
@@ -357,107 +450,72 @@ export class BiomeScene {
     g.fillStyle = "#c8a46e";
     g.fillRect(0, 0, 512, 256);
     g.fillStyle = "#1b1b1b";
-    g.font = "bold 34px system-ui, sans-serif";
-    g.fillText("CENSO DE LA ISLA", 24, 48);
-    g.font = "20px system-ui, sans-serif";
-    BIOME.filter((s) => s.kind === "animal").forEach((s, i) => g.fillText(`· ${s.name}`, 24 + (i % 2) * 250, 92 + Math.floor(i / 2) * 30));
+    g.font = "bold 30px system-ui, sans-serif";
+    g.fillText("CENSO DE LA MONTAÑA", 20, 42);
+    g.font = "16px system-ui, sans-serif";
+    def.species.filter((s) => s.kind === "animal").forEach((s, i) => g.fillText(`· ${s.name}`, 20 + (i % 3) * 165, 78 + Math.floor(i / 3) * 26));
     const tex = new THREE.CanvasTexture(c);
     const face = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 1.2), new THREE.MeshBasicMaterial({ map: tex }));
-    face.position.set(board.x, 1.55, board.z - 0.1);
+    face.position.set(board.x, Y + 1.55, board.z - 0.1);
     face.rotation.y = Math.PI;
     face.name = "tablon-censo";
     this.root.add(face);
     // A desk, a bunk and a stove: the furniture of a field hut (ours).
-    const furn = (x: number, z: number, sx: number, sy: number, sz: number, c: number) => {
-      const p = this.world(x, z);
-      const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), mat(c));
-      m.position.set(p.x, sy / 2, p.z);
+    const furn = (x: number, z: number, sx: number, sy: number, sz: number, col: number) => {
+      const p = hutPoint(this.k, x, z);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), mat(col));
+      m.position.set(p.x, Y + sy / 2, p.z);
       this.root.add(m);
     };
     furn(-4.5, 1.5, 1.6, 0.75, 0.8, 0x8a6a48);
     furn(-4.6, -1.8, 0.9, 0.9, 2, 0x5a4a3a);
     furn(4.6, 1.8, 0.7, 1, 0.7, 0x2b2b2b);
-    // On the field table, the tools of the field jobs (s3-biome.ts): the notebook, the tally counter, the ring pliers
-    // and a string of metal rings; one mesh (its colours per vertex).
+    // On the field table, the tools of the field jobs (s3-biome.ts): the notebook, a camera trap, the binoculars and
+    // the spotting scope; one mesh (its colours per vertex).
     const d = this.deskAt;
-    const tool = (x: number, z: number, sx: number, sy: number, sz: number, c: number) => {
-      const g = new THREE.BoxGeometry(sx, sy, sz).toNonIndexed().translate(d.x + x, 0.75 + sy / 2, d.z + z);
-      const col = new THREE.Color(c);
-      g.setAttribute("color", new THREE.Float32BufferAttribute(Array.from({ length: g.attributes.position!.count }, () => [col.r, col.g, col.b]).flat(), 3));
-      return g;
-    };
+    const tool = (x: number, z: number, sx: number, sy: number, sz: number, col: number) => BiomeScene.paintGeo(new THREE.BoxGeometry(sx, sy, sz).translate(d.x + x, Y + 0.75 + sy / 2, d.z + z), col);
     const tools = new THREE.Mesh(
-      mergeGeometries([tool(-0.35, -0.05, 0.3, 0.03, 0.22, 0xe8e2c8), tool(-0.05, -0.1, 0.06, 0.04, 0.08, 0x8c9096), tool(0.25, -0.05, 0.22, 0.03, 0.05, 0xb03a2a), tool(0.5, 0.05, 0.18, 0.02, 0.06, 0xc8ccd0)]),
+      mergeGeometries([tool(-0.35, -0.05, 0.3, 0.03, 0.22, 0xe8e2c8), tool(-0.02, -0.08, 0.12, 0.16, 0.1, 0x4a5a3a), tool(0.25, -0.05, 0.16, 0.06, 0.1, 0x2a2a2a), tool(0.5, 0.05, 0.08, 0.08, 0.32, 0x5a5f66)]),
       new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7 }),
     );
     tools.name = "mesa-campo";
     this.root.add(tools);
   }
 
-  /** Tussocks on the island and those drawn with their blades now (PX-51). */
-  get tussacCount(): { all: number; near: number } {
-    return { all: this.tussac?.at.length ?? 0, near: this.plants.get("tussac")?.meshes[0]?.count ?? 0 };
-  }
-
   /** The field table's middle (world m): the field jobs are done there (s3-biome.ts). */
-  get deskAt(): { x: number; z: number } {
-    return this.world(-4.5, 1.5);
+  get deskAt(): { x: number; y: number; z: number } {
+    return { ...hutPoint(this.k, -4.5, 1.5), y: HUT_Y() };
   }
 
-  /** Share of each species' adults in moult now (the chain's animals moult with their crowd). */
-  private get moultOf(): Map<string, number> {
-    return new Map([...["papua", "elefante"]].map((id) => [id, this.crowd.countsOf(id)?.moult ?? 0]));
+  /** Instances of a plant kind drawn now (PX-51). */
+  plantCount(id: string): number {
+    return this.plants.get(id)?.mesh.count ?? this.nearKinds.find((k) => k.id === id)?.mesh.count ?? 0;
   }
 
-  /** Each frame: animals posed, plants grown or withered with their cover, schools circling (`t` real s). */
-  update(t: number, poses: readonly Pose[], cover: Readonly<Record<string, number>>, season: number, st?: BiomeState, cam?: THREE.Vector3): void {
+  /** Each frame: animals posed, plants grown or withered with their cover (`t` real s). */
+  update(t: number, poses: readonly Pose[], cover: Readonly<Record<string, number>>, st?: BiomeState, cam?: THREE.Vector3): void {
+    this.cover = cover;
     // Plants: repainted when their cover moved 3 % (not every frame).
+    let nearChanged = false;
     for (const [id, f] of Object.entries(cover)) {
-      const p = this.plants.get(id);
-      if (!p) continue;
       const key = Math.round(Math.min(1.2, f) * 33);
-      if ((p as { key?: number }).key === key) continue;
-      (p as { key?: number }).key = key;
-      if (id === "tussac" && this.tussac) {
-        this.tussac.cover = Math.min(1.2, f);
-        this.tussacLod(this.tussac.cam, true);
-        continue;
+      const p = this.plants.get(id);
+      if (p) {
+        if (p.key === key) continue;
+        p.key = key;
+        this.paint(id, Math.min(1.2, f));
+      } else if (this.nearKinds.some((k) => k.id === id)) {
+        const k = this.nearKinds.find((q) => q.id === id) as { key?: number };
+        if (k.key !== key) {
+          k.key = key;
+          nearChanged = true;
+        }
       }
-      this.paintPlant(id, Math.min(1.2, f));
     }
-    // The tussac yellows in winter.
-    this.tussacMat.color.setHex(0xa3a65a).lerp(new THREE.Color(0xc2a65e), 1 - season);
-    if (this.tussac) (this.tussac.far.material as THREE.MeshStandardMaterial).color.copy(this.tussacMat.color);
-    (this.bloom.material as THREE.MeshBasicMaterial).opacity = 0.35 * Math.min(1, (cover["fitoplancton"] ?? 0) * season);
-    // Schools: as many as the bank's share of what the place holds.
-    const M = new THREE.Matrix4();
-    const q = new THREE.Quaternion();
-    const e = new THREE.Euler();
-    const v = new THREE.Vector3();
-    const one = new THREE.Vector3(1, 1, 1);
-    for (const [id, s] of this.swarms) {
-      const n = s.mesh.count;
-      const show = Math.round(n * Math.max(0.15, Math.min(1, cover[id] ?? 0)));
-      const per = Math.ceil(n / s.centres.length);
-      for (let i = 0; i < n; i++) {
-        const c = s.centres[Math.floor(i / per) % s.centres.length]!;
-        const ph = hash01(i, 77) * 6.28;
-        const r = (id === "kril" ? 3 : 5) + 4 * hash01(i, 78);
-        const w = t * (id === "austromerluza" ? 0.05 : 0.25) + ph;
-        const x = c.x + Math.cos(w) * r;
-        const z = c.z + Math.sin(w) * r;
-        const y = c.y + Math.sin(t * 0.7 + ph) * 0.6 - hash01(i, 79) * 1.5;
-        e.set(0, w + Math.PI, 0);
-        q.setFromEuler(e);
-        M.compose(v.set(x, y, z), q, i < show ? one : v.clone().set(0, 0, 0));
-        s.mesh.setMatrixAt(i, M);
-      }
-      s.mesh.instanceMatrix.needsUpdate = true;
-    }
+    if (cam) this.nearLod(cam, nearChanged);
     // The crowds: placed again when the chain's numbers change or the camera has moved; their jointed bodies first in
     // each herd, a third of them posed each frame (a breath, a head turning), the chain's animals after them.
     const resorted = !!st && !!cam && this.crowd.update(st, cam);
-    if (cam) this.tussacLod(cam);
     this.frameNo++;
     for (const [sp, h] of this.herds) {
       for (const [herd, key] of [[h.adult, sp], [h.young, `${sp}:cria`]] as const) {
@@ -467,15 +525,14 @@ export class BiomeScene {
         for (let i = 0; i < n; i++) {
           if (!resorted && (i + this.frameNo) % 3) continue;
           const c = near[i]!;
-          herd.pose(i, c.x, c.y, c.z, c.yaw, t + c.seed * 0.37, false, key.endsWith(":cria") ? (sp === "papua" ? 0.55 : 0.6) : 1);
-          herd.mottle(i, c.moult);
+          herd.pose(i, c.x, c.y, c.z, c.yaw, t + c.seed * 0.37, false, key.endsWith(":cria") ? 0.55 : 1);
         }
       }
     }
-    // The chain's animals.
-    const moult = this.moultOf;
+    // The chain's animals (not the ones asleep out of sight); the soaring birds glide with their wings still.
     const used = new Map<string, [number, number]>();
     for (const p of poses) {
+      if (p.hidden) continue;
       const h = this.herds.get(p.species);
       if (!h) continue;
       const u = used.get(p.species) ?? [this.crowdN.get(p.species) ?? 0, this.crowdN.get(`${p.species}:cria`) ?? 0];
@@ -483,9 +540,8 @@ export class BiomeScene {
       const herd = young ? h.young : h.adult;
       const k = young ? u[1] : u[0];
       if (k >= herd.capacity) continue;
-      const scale = young ? (p.species === "papua" ? p.scale : p.scale * 1.4) : p.scale;
-      herd.pose(k, p.x, p.y, p.z, p.yaw, t + p.id, p.moving, Math.max(0.05, scale));
-      herd.mottle(k, young ? 0 : (moult.get(p.species) ?? 0) > hash01(p.id, 91) ? 0.7 : 0);
+      const flaps = p.moving && !(p.flying && this.soarers.has(p.species));
+      herd.pose(k, p.x, p.y, p.z, p.yaw, t + p.id, flaps, Math.max(0.05, young && h.young.d.shape !== "cuadrupedo" ? p.scale * 1.4 : p.scale));
       if (young) u[1]++;
       else u[0]++;
       used.set(p.species, u);

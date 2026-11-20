@@ -29,9 +29,58 @@ const BLACK = 0x1a1a1a;
 const WHITE = 0xf4f4f0;
 const HORN = 0xd8cfb8;
 
+/**
+ * The animals of the heights (sanctuary 3's air biome, docs/design/bioma-s3.md): their legs, tails and silhouettes by
+ * id, from their sources (Wikipedia and ADW species pages): the ibex's scimitar horns curving back and its beard, the
+ * markhor's tall corkscrew horns and its long ruff, the bharal's horns sweeping out sideways and its black flank stripe,
+ * the marmot's long tail, the large-eared pika's round ears, the woolly flying squirrel's gliding membrane and bushy
+ * tail, the snow leopard's thick tail almost as long as its body, the fox's brush.
+ */
+const LEG_H: Readonly<Record<string, number>> = { marmota: 0.28, pika: 0.2, ardilla: 0.3, leopardo: 0.4, zorro: 0.42 };
+/** Tail length and width (fractions of the size). */
+const TAIL: Readonly<Record<string, readonly [number, number]>> = { leopardo: [0.75, 0.16], marmota: [0.3, 0.14], ardilla: [0.55, 0.22], zorro: [0.38, 0.18], pika: [0.01, 0.05] };
+const DARK = 0x2e2620;
+const HIGH_PARTS: Readonly<Record<string, (legH: number, bodyH: number) => BodyPart[]>> = {
+  ibice: (L, B) => [
+    P("orejas", [0, L + B * 0.98, 0.36], [0, 0.04, 0, 0.45, 0.05, 0.04]),
+    // Scimitar horns: up from the crown, then back over the neck.
+    P("cuerno-izq", [-0.1, L + B * 1.02, 0.38], [0, 0.12, -0.04, 0.07, 0.26, 0.07], { color: 0x5a4a38 }),
+    P("cuerno-der", [0.1, L + B * 1.02, 0.38], [0, 0.12, -0.04, 0.07, 0.26, 0.07], { color: 0x5a4a38 }),
+    P("cuerno-izq-punta", [-0.1, L + B * 1.02, 0.38], [0, 0.26, -0.2, 0.06, 0.1, 0.26], { color: 0x5a4a38 }),
+    P("cuerno-der-punta", [0.1, L + B * 1.02, 0.38], [0, 0.26, -0.2, 0.06, 0.1, 0.26], { color: 0x5a4a38 }),
+    P("barba", [0, L + B * 0.72, 0.5], [0, -0.06, 0.02, 0.12, 0.12, 0.05], { color: DARK }),
+  ],
+  markhor: (L, B) => [
+    P("orejas", [0, L + B * 0.98, 0.36], [0, 0.04, 0, 0.45, 0.05, 0.04]),
+    // Corkscrew horns, tall and twisting: stacked turns, each offset (ADW: «flaring, corkscrew-like horns»).
+    ...[0, 1, 2, 3].flatMap((k) => [
+      P(`espiral-izq-${k}`, [-0.12, L + B * 1.02, 0.36], [(k % 2 ? -0.05 : 0.02), 0.07 + k * 0.1, -0.02, 0.08, 0.1, 0.08], { color: 0x6a5a44 }),
+      P(`espiral-der-${k}`, [0.12, L + B * 1.02, 0.36], [(k % 2 ? 0.05 : -0.02), 0.07 + k * 0.1, -0.02, 0.08, 0.1, 0.08], { color: 0x6a5a44 }),
+    ]),
+    P("melena", [0, L + B * 0.55, 0.3], [0, -0.12, 0, 0.4, 0.4, 0.2], { color: 0xd8ccb4 }),
+  ],
+  bharal: (L, B) => [
+    P("orejas", [0, L + B * 0.98, 0.36], [0, 0.04, 0, 0.45, 0.05, 0.04]),
+    // Horns sweeping out to the sides and back.
+    P("cuerno-izq", [-0.12, L + B * 1.0, 0.38], [-0.2, 0.04, -0.06, 0.4, 0.07, 0.08], { color: 0x6a6258 }),
+    P("cuerno-der", [0.12, L + B * 1.0, 0.38], [0.2, 0.04, -0.06, 0.4, 0.07, 0.08], { color: 0x6a6258 }),
+    P("franja-izq", [-0.5, L + B * 0.15, 0], [0, 0, 0, 0.02, 0.06, 0.85], { color: BLACK }),
+    P("franja-der", [0.5, L + B * 0.15, 0], [0, 0, 0, 0.02, 0.06, 0.85], { color: BLACK }),
+  ],
+  marmota: (L, B) => [P("orejas", [0, L + B * 1.0, 0.36], [0, 0.03, 0, 0.45, 0.06, 0.05])],
+  pika: (L, B) => [P("orejas", [0, L + B * 1.05, 0.34], [0, 0.08, -0.02, 0.6, 0.2, 0.06])],
+  ardilla: (L, B) => [
+    P("orejas", [0, L + B * 1.0, 0.36], [0, 0.04, 0, 0.4, 0.08, 0.04]),
+    // The gliding membrane between fore and hind legs.
+    P("membrana", [0, L + B * 0.3, 0], [0, 0, -0.02, 1.9, 0.04, 0.6], { color: 0x9a948c }),
+  ],
+  leopardo: (L, B) => [P("orejas", [0, L + B * 0.98, 0.36], [0, 0.03, 0, 0.4, 0.05, 0.04]), P("manchas", [0, L + B, -0.05], [0, 0, 0, 0.7, 0.02, 0.6], { color: 0x6a6660 })],
+  zorro: (L, B) => [P("orejas", [0, L + B * 1.0, 0.36], [0, 0.06, 0, 0.45, 0.12, 0.04], { color: DARK }), P("punta-cola", [0, L + B * 0.75, -0.38], [0, -0.02, -0.42, 0.18, 0.08, 0.08], { color: WHITE })],
+};
+
 /** A four-legged mammal: trunk, neck and head forward, four legs from shoulders and hips (diagonal pairs), tail. */
 function quadruped(id: string): BodyPart[] {
-  const legH = id === "buey-almizclero" ? 0.38 : id === "oso-polar" || id === "osezno" ? 0.42 : id === "liebre-artica" ? 0.35 : 0.5;
+  const legH = id === "buey-almizclero" ? 0.38 : id === "oso-polar" || id === "osezno" ? 0.42 : id === "liebre-artica" ? 0.35 : LEG_H[id] ?? 0.5;
   const bodyH = 0.92 - legH - 0.12;
   const parts: BodyPart[] = [
     P("tronco", [0, legH, 0], [0, bodyH / 2, -0.03, 1, bodyH, 0.7]),
@@ -51,7 +100,13 @@ function quadruped(id: string): BodyPart[] {
     const h = z < 0 ? hind : 1;
     parts.push(P(n, [x, legH + 0.02, z], [0, (-legH * h) / 2, 0, 0.26, legH * h + 0.02, 0.1], { swing: { axis: "x", amp: 0.5, phase: ph } }));
   }
-  parts.push(P("cola", [0, legH + bodyH * 0.75, -0.38], [0, -0.02, -0.06, 0.12, 0.08, id === "zorro-artico" ? 0.3 : id.includes("lobo") || id.includes("malamute") ? 0.22 : 0.07], { swing: { axis: "y", amp: 0.35, phase: 0.6 } }));
+  const tail = TAIL[id];
+  parts.push(P("cola", [0, legH + bodyH * 0.75, -0.38], [0, -0.02, -0.06, tail ? tail[1] : 0.12, 0.08, id === "zorro-artico" ? 0.3 : id.includes("lobo") || id.includes("malamute") ? 0.22 : tail ? tail[0] : 0.07], { swing: { axis: "y", amp: 0.35, phase: 0.6 } }));
+  const own = HIGH_PARTS[id];
+  if (own) {
+    parts.push(...own(legH, bodyH));
+    return parts;
+  }
   // Each species' own silhouette (CubeBody.Differentiate): ears, antlers, horns, the muskox's skirt.
   if (id === "liebre-artica") parts.push(P("orejas", [0, legH + bodyH * 1.05, 0.4], [0, 0.12, -0.02, 0.4, 0.24, 0.04]));
   else if (id === "reno") {
@@ -122,16 +177,39 @@ function penguin(id: string): BodyPart[] {
   ];
 }
 
-/** A flying seabird (the snow petrel): body, head and beak, long wings flapping, tail. Size x is the wingspan. */
-function bird(): BodyPart[] {
-  return [
-    P("cuerpo", [0, 0.5, 0], [0, 0, 0, 0.22, 0.8, 0.7]),
-    P("cabeza", [0, 0.6, 0.35], [0, 0.05, 0.1, 0.18, 0.7, 0.3]),
-    P("pico", [0, 0.6, 0.6], [0, 0, 0.06, 0.06, 0.2, 0.15], { color: BLACK }),
+/**
+ * A flying bird (the snow petrel): body, head and beak, long wings flapping, tail. Size x is the wingspan. The birds of
+ * the heights by id, from their sources: the bearded vulture's rusty body, pale head and long wedge tail; the griffon's
+ * pale body and dark flight feathers; the golden eagle's golden nape; the chough's yellow bill; the snow pigeon's dark
+ * head; the bar-headed goose's white head with its two black bars and orange bill; the wallcreeper's crimson wings.
+ */
+const BIRD: Readonly<Record<string, { body?: number; head?: number; beak?: number; tail?: number; tips?: number; nape?: number; bars?: boolean }>> = {
+  quebrantahuesos: { body: 0xd89a5a, head: 0xe8dcc0, tail: 0.45 },
+  buitre: { tips: 0x3a3028, beak: 0x9a9088 },
+  aguila: { nape: 0xc8a050, beak: 0x3a3a3a },
+  chova: { beak: 0xe8c830 },
+  paloma: { head: 0x4a4a50, tips: 0x5a5a60 },
+  ansar: { head: WHITE, beak: 0xe8a040, bars: true },
+  treparriscos: { tips: 0xc8283c },
+  cernicalo: { head: 0x8a9096 },
+};
+function bird(id = ""): BodyPart[] {
+  const v = BIRD[id] ?? {};
+  const parts = [
+    P("cuerpo", [0, 0.5, 0], [0, 0, 0, 0.22, 0.8, 0.7], v.body !== undefined ? { color: v.body } : {}),
+    P("cabeza", [0, 0.6, 0.35], [0, 0.05, 0.1, 0.18, 0.7, 0.3], v.head !== undefined ? { color: v.head } : {}),
+    P("pico", [0, 0.6, 0.6], [0, 0, 0.06, 0.06, 0.2, 0.15], { color: v.beak ?? BLACK }),
     P("ala-izq", [-0.1, 0.6, 0.05], [-0.22, 0, 0, 0.44, 0.15, 0.45], { swing: { axis: "z", amp: 0.7, phase: 0 } }),
     P("ala-der", [0.1, 0.6, 0.05], [0.22, 0, 0, 0.44, 0.15, 0.45], { swing: { axis: "z", amp: 0.7, phase: Math.PI } }),
-    P("cola", [0, 0.5, -0.32], [0, 0, -0.1, 0.15, 0.2, 0.25]),
+    P("cola", [0, 0.5, -0.32], [0, 0, -0.1, 0.15, 0.2, v.tail ?? 0.25]),
   ];
+  if (v.tips !== undefined) {
+    parts.push(P("remeras-izq", [-0.1, 0.6, 0.05], [-0.4, 0, -0.05, 0.1, 0.16, 0.3], { color: v.tips, swing: { axis: "z", amp: 0.7, phase: 0 } }));
+    parts.push(P("remeras-der", [0.1, 0.6, 0.05], [0.4, 0, -0.05, 0.1, 0.16, 0.3], { color: v.tips, swing: { axis: "z", amp: 0.7, phase: Math.PI } }));
+  }
+  if (v.nape !== undefined) parts.push(P("nuca", [0, 0.6, 0.3], [0, 0.3, 0, 0.19, 0.2, 0.12], { color: v.nape }));
+  if (v.bars) parts.push(P("barras", [0, 0.6, 0.35], [0, 0.38, 0.06, 0.19, 0.08, 0.2], { color: BLACK }));
+  return parts;
 }
 
 /** The parts of a model's body by its shape, or undefined if it has no jointed body. */
@@ -146,7 +224,7 @@ export function bodyPlan(shape: string, id: string): readonly BodyPart[] | undef
     case "pinguino":
       return penguin(id);
     case "ave":
-      return bird();
+      return bird(id);
     default:
       return undefined;
   }

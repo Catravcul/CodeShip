@@ -5,10 +5,12 @@ import { crowdCounts } from "../domain/bioma-crowd";
 import { CROWDS } from "../data/bioma-crowd";
 import { fieldAct, fieldJobs } from "./field-work";
 
-describe("s3 biome: field work at the research hut", () => {
-  it("both jobs are real procedures with a source, one challenge per step, each step acted at the table", () => {
+const crowd = (id: string) => CROWDS.find((c) => c.species === id)!;
+
+describe("s3 biome: Himalayan field work at the research hut", () => {
+  it("the three jobs are real procedures with a source, one challenge per step, each step acted at the table", () => {
     const jobs = fieldJobs(createBiome(1));
-    expect(jobs.map((j) => j.reto.procedure)).toEqual([FIELD.nidos.id, FIELD.anillar.id]);
+    expect(jobs.map((j) => j.reto.procedure)).toEqual([FIELD.camaras.id, FIELD.doble.id, FIELD.buitres.id]);
     for (const j of jobs) {
       expect(j.reto.reality).toBe("real");
       expect(j.reto.source.length).toBeGreaterThan(30);
@@ -17,20 +19,32 @@ describe("s3 biome: field work at the research hut", () => {
     }
   });
 
-  it("the nest count asks for the colony's real total while the gentoos sit; closed with no nests", () => {
+  it("the double-observer count asks for the ibex the island shows; the cameras wait for winter", () => {
     const st = createBiome(1);
-    advance(st, (GAME_DAYS_PER_YEAR * 20) / 365);
-    const n = crowdCounts(st, CROWDS[0]!).nests;
-    const [count] = fieldJobs(st);
-    if (n > 0) {
-      expect(count!.open).toBe(true);
-      const last = count!.reto.chore.exercises.at(-1)!;
-      expect(JSON.stringify(last)).toContain(String(n));
-    }
-    // Winter (July): no nests, the count waits for its season.
-    advance(st, (GAME_DAYS_PER_YEAR * 210) / 365);
-    const w = fieldJobs(st)[0]!;
-    expect(w.open).toBe(false);
-    expect(w.why).toMatch(/incubación/);
+    const [cams, count] = fieldJobs(st);
+    const c = crowdCounts(st, crowd("ibice"));
+    expect(count!.open).toBe(true);
+    expect(count!.total).toBe(c.adults + c.young);
+    expect(JSON.stringify(count!.reto.chore.exercises.at(-1))).toContain(String(c.adults + c.young));
+    // 20 November: no camera season yet.
+    expect(cams!.open).toBe(false);
+    expect(cams!.why).toMatch(/enero a marzo/);
+    // Mid January: the cameras are checked and ask for the chain's leopards.
+    advance(st, (GAME_DAYS_PER_YEAR * 56) / 365);
+    const jan = fieldJobs(st)[0]!;
+    expect(jan.open).toBe(true);
+    expect(jan.total).toBe(st.animals.filter((a) => a.species === "leopardo" && !a.dead).length);
+  });
+
+  it("the griffon nests are followed while they are sat; closed in autumn", () => {
+    const st = createBiome(2);
+    advance(st, (GAME_DAYS_PER_YEAR * 75) / 365);
+    const n = crowdCounts(st, crowd("buitre")).nests;
+    const job = fieldJobs(st)[2]!;
+    if (n > 0) expect(job.open).toBe(true);
+    advance(st, (GAME_DAYS_PER_YEAR * 240) / 365);
+    const oct = fieldJobs(st)[2]!;
+    expect(oct.open).toBe(false);
+    expect(oct.why).toMatch(/diciembre/);
   });
 });

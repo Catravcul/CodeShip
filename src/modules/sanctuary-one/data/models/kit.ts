@@ -50,6 +50,11 @@ export interface ModelDef {
   readonly parts?: readonly Part[];
   /** Soft or low things one walks through (a mattress, loose pillows, herbs): drawn, never solid. */
   readonly walkThrough?: boolean;
+  /**
+   * A vehicle, and where it goes (the work submarine: «agua»). Linked to the tree's size: every branch and trunk door
+   * lets the largest water vehicle through with room for people and animals beside it (data/paso.ts).
+   */
+  readonly travels?: "agua";
   /** Lit from within (a branch's ring, a carpet station's orrery): drawn with its own light, never shaded. */
   readonly glow?: boolean;
 }

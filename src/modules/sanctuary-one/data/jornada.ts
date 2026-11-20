@@ -1,6 +1,5 @@
 import { STATIONS, stationWorld } from "./estaciones";
-import { carpetFlight, padOf } from "./alfombras";
-export { CARPET, padOf } from "./alfombras";
+import { carpetRoute, type CarpetStation } from "./alfombras";
 import { model } from "./catalog";
 import type { Instance, S1Area, S1Layout } from "./layout";
 import { ROOM_OWNERS } from "./models/residencia";
@@ -26,7 +25,7 @@ export interface Place {
 
 /** The work floors (ours, until WorkRoster): kitchen, hospital, vet, cría, labs, workshops, farm and guard. */
 export const WORK_FLOORS = ["restaurante", "hospital-urgencias", "hospital-veterinario", "cria", "carne-cultivada", "construccion", "textil", "huerto-vertical-1", "campos-huerto", "informatica", "quimica-sintesis", "biologia-cultivo", "mecanica", "guardia", "garaje-submarino"] as const;
-export const TRAINING_FLOORS = ["gimnasio-0", "cardio", "calistenia", "yoga-hatha-1", "yoga-ashtanga-1"] as const;
+export const TRAINING_FLOORS = ["gimnasio-0", "cardio", "calistenia", "yoga-hatha-occidental-1", "yoga-ashtanga-occidental-1"] as const;
 
 /** Is (x, z) on ice or land (else it is sea)? */
 export function onGround(x: number, z: number): boolean {
@@ -57,7 +56,7 @@ function spotAt(list: readonly Instance[], n: number, a: S1Area, pose: Place["po
  * room), the Magnate is the sanctuary's teacher (Magnate.cs «la maestra del santuario»), Neo is a child: school and play.
  */
 const ROLES: Readonly<Record<string, { tareas?: string; entrenamiento?: string }>> = {
-  Sadhguru: { tareas: "yoga-hatha-1", entrenamiento: "yoga-hatha-1" },
+  Sadhguru: { tareas: "yoga-hatha-tradicional-1", entrenamiento: "yoga-hatha-tradicional-1" },
   Nevaeh: { tareas: "aula-historia" },
   Neo: { tareas: "aula-matematicas", entrenamiento: "calistenia" },
 };
@@ -101,15 +100,12 @@ export function staffPlaces(L: S1Layout): Map<string, Record<Activity, Place>> {
 
 /**
  * The way from one place to another, as Cold Sanctuary's people go (no teleports): between floors and buildings
- * by flying carpet (`CarpetPad`): she walks to her floor's carpets, flies out from the building, over, and in to the
- * other floor's carpets, and walks to her place. On the ice she walks, swimming where the sea is between two caps;
- * a carpet takes her up from (or down to) the foot of a building. Ground stretches are cut in 6 m steps so the
- * swum ones are marked.
+ * by flying carpet: she walks to her floor's station, flies by its lanes (alfombras.ts) to the other floor's, and walks
+ * to her place; to another building by the crowns (or from the ice by the feet). On the ice she walks, swimming where
+ * the sea is between two caps. Ground stretches are cut in 6 m steps so the swum ones are marked.
  */
 export function wayBetween(L: S1Layout, a: Place, b: Place): Waypoint[] {
   const pts: Waypoint[] = [{ x: a.x, y: a.y, z: a.z }];
-  const pa = a.area === b.area ? undefined : padOf(L, a.area);
-  const pb = a.area === b.area ? undefined : padOf(L, b.area);
   const ground = (x: number, z: number) => {
     const p = pts[pts.length - 1]!;
     const d = Math.hypot(x - p.x, z - p.z);
@@ -121,15 +117,34 @@ export function wayBetween(L: S1Layout, a: Place, b: Place): Waypoint[] {
       pts.push({ x: qx, y: sea ? WATER_Y - 1 : 0, z: qz, ...(sea ? { swim: true } : {}) });
     }
   };
-  if (!pa && !pb) {
+  const own = (p: Place) => L.carpets.find((s) => s.kind === "piso" && s.area === p.area);
+  const foot = (p: Place) => L.carpets.filter((s) => s.kind === "pie").reduce<CarpetStation | undefined>((m, s) => (!m || Math.hypot(s.x - p.x, s.z - p.z) < Math.hypot(m.x - p.x, m.z - p.z) ? s : m), undefined);
+  const sa = a.area === b.area ? undefined : own(a);
+  const sb = a.area === b.area ? undefined : own(b);
+  if (!sa && !sb) {
     ground(b.x, b.z);
     pts.push({ x: b.x, y: b.y, z: b.z });
     return pts;
   }
-  // From her place to the carpets (or, on the ice, the carpet comes to her).
-  const from = pa ?? { x: a.x, y: a.y, z: a.z, out: { x: 0, z: 0 } };
-  const to = pb ?? { x: b.x, y: b.y, z: b.z, out: { x: 0, z: 0 } };
-  pts.push(...carpetFlight(from, to).slice(pa ? 0 : 1));
+  const from = sa ?? foot(a)!;
+  const to = sb ?? foot(b)!;
+  // On the ice she walks to the foot's station first.
+  if (!sa) ground(from.x, from.z);
+  else pts.push({ x: from.x, y: from.y, z: from.z });
+  const hop = (x: CarpetStation, y: CarpetStation) => {
+    if (x.id !== y.id) pts.push(...carpetRoute({ ...L.world, towers: L.towers }, x, y).slice(1));
+  };
+  if (from.tower === to.tower) hop(from, to);
+  else {
+    // Between buildings: by the crowns (from and to the ice, by the feet).
+    const kind = !sa || !sb ? "pie" : "copa";
+    const ga = L.carpets.find((s) => s.tower === from.tower && s.kind === kind)!;
+    const gb = L.carpets.find((s) => s.tower === to.tower && s.kind === kind)!;
+    hop(from, ga);
+    hop(ga, gb);
+    hop(gb, to);
+  }
+  if (!sb) ground(b.x, b.z);
   pts.push({ x: b.x, y: b.y, z: b.z });
   return pts;
 }

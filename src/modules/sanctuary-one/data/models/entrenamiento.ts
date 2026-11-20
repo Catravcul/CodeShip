@@ -109,8 +109,8 @@ export const ENTRENAMIENTO_MODELS: readonly ModelDef[] = [
   m("cf-cajon-61", "mueble", "gimnasio-crossfit", "Cajón pliométrico de 61 cm", 0.76, 0.61, 0.51, wood, "caja", "real", T("Cajon_pliometrico")),
 
   // ── Yoga (Yoga.cs BuildYogaHall: dos salas de 18 × 26 m por piso) ──
-  m("yoga-suelo-madera", "mueble", "yoga", "Suelo de madera de la sala occidental (17,6 × 25,6 m)", 17.6, 0.006, 25.6, 0xcca673, "caja", "real", Y("Suelo_madera")),
-  m("yoga-suelo-tierra", "mueble", "yoga", "Suelo de tierra de la sala tradicional (17,6 × 25,6 m)", 17.6, 0.006, 25.6, 0x806142, "caja", "real", Y("Suelo_tierra")),
+  m("yoga-suelo-madera", "mueble", "yoga", "Suelo de madera de la sala occidental (13,6 × 15,6 m)", 13.6, 0.006, 15.6, 0xcca673, "caja", "real", Y("Suelo_madera")),
+  m("yoga-suelo-tierra", "mueble", "yoga", "Suelo de tierra de la sala tradicional (13,6 × 15,6 m)", 13.6, 0.006, 15.6, 0x806142, "caja", "real", Y("Suelo_tierra")),
   m("yoga-esterilla", "mueble", "yoga", "Esterilla de yoga (0,6 × 1,8 m)", 0.6, 0.01, 1.8, 0x7a4f9e, "caja", "real", Y("CarpetPad: 8 esterillas por sala, ≥ 2 m entre ellas")),
   m("yoga-durrie", "mueble", "yoga", "Durrie de algodón (alfombra tradicional, 0,6 × 1,8 m)", 0.6, 0.01, 1.8, 0xede6d1, "caja", "real", Y("DurrieLook")),
   pz("yoga-tarima-occidental", "mueble", "yoga", "Tarima del maestro con su esterilla", 0x998069, [C(0, 0.2, 0, 2.6, 0.4, 2.6), C(0, 0.41, 0, 0.8, 0.02, 2, 0x8c5999), C(1, 0.5, 0.9, 0.25, 0.2, 0.25, 0xd9b359)], "real", Y("Tarima del maestro (2,6 × 0,4 × 2,6 m) y cuenco tibetano")),

@@ -100,7 +100,7 @@ describe("santuario 1: cambios a gran escala (overrides.ts)", () => {
   it("la separación de un edificio aleja el mobiliario del centro de cada piso", () => {
     const L = buildS1Layout(1, { ...empty, edificio: { entrenamiento: { separacion: 1.2 } } });
     const a = base.areas.find((x) => x.id === "entrenamiento:piso-1")!;
-    const far = (W: typeof L) => Math.max(...W.instances.filter((i) => i.area === a.id).map((i) => Math.hypot(i.x - a.x, i.z - a.z)));
+    const far = (W: typeof L) => Math.max(...W.instances.filter((i) => i.area === a.id && i.model !== "estacion-alfombras").map((i) => Math.hypot(i.x - a.x, i.z - a.z)));
     expect(far(L)).toBeCloseTo(far(base) * 1.2, 3);
   });
 });
@@ -116,7 +116,7 @@ describe("santuario 1: pisos amueblados", () => {
       let b = placeAt(L1.world, t.x + (a.entry!.x - t.x) * 0.3, a.y + 0.5, t.z + (a.entry!.z - t.z) * 0.3)!;
       expect(b.motion, a.label).toBe("agua");
       const d = Math.hypot(a.entry!.x - b.x, a.entry!.z - b.z);
-      for (let i = 0; i < 80 && b.motion === "agua"; i++) b = step(L1.world, b, { dx: ((a.entry!.x - b.x) / d) * 0.2, dy: 0, dz: ((a.entry!.z - b.z) / d) * 0.2 });
+      for (let i = 0; i < 200 && b.motion === "agua"; i++) b = step(L1.world, b, { dx: ((a.entry!.x - b.x) / d) * 0.2, dy: 0, dz: ((a.entry!.z - b.z) / d) * 0.2 });
       expect(b.area, a.label).toBe(a.id);
     }
   });

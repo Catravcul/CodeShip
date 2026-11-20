@@ -42,10 +42,10 @@ export const MISSIONS: readonly Mission[] = [
   M("s1_cardio", "Cardio en la cinta", "Ejercicio", 1, true, "cardio", "gym-cinta", 0, true),
   M("s1_calistenia", "Calistenia: dominadas", "Ejercicio", 1, true, "calistenia", "cal-dominadas", 0, true),
   M("s1_parkour", "Parkour: saltos de precisión", "Ejercicio", 1, false, "calistenia", "pk-bloques", 0, true),
-  M("yog_practica", "Clase de Hatha: practicar", "Yoga", 1, true, "yoga-hatha-1", "yoga-esterilla", 0, true),
-  M("yog_ashtanga", "Clase de Ashtanga: practicar", "Yoga", 1, false, "yoga-ashtanga-1", "yoga-esterilla", 0, true),
+  M("yog_practica", "Clase de Hatha: practicar", "Yoga", 1, true, "yoga-hatha-occidental-1", "yoga-esterilla", 0, true),
+  M("yog_ashtanga", "Clase de Ashtanga: practicar", "Yoga", 1, false, "yoga-ashtanga-occidental-1", "yoga-esterilla", 0, true),
   M("gym_limpieza", "Limpieza del gimnasio", "Limpieza", 0.5, false, "gimnasio-0", "gym-prensa", 1),
-  M("yog_sala", "Preparar y limpiar las salas de yoga", "Limpieza", 1, false, "yoga-hatha-1", "yoga-suelo-madera"),
+  M("yog_sala", "Preparar y limpiar las salas de yoga", "Limpieza", 1, false, "yoga-hatha-occidental-1", "yoga-suelo-madera"),
   // Animals.
   M("cri_tomas", "Tomas y pesaje de las crías (anotar en la pizarra)", "Alimentar animales", 1, true, "cria", "cria-cocina-leche"),
   M("s1_dietas", "Preparar las dietas de focas y pingüinos", "Alimentar animales", 1, true, "hospital-veterinario", "vet-dietas"),

@@ -218,6 +218,34 @@ export function baseRings(g: CanvasRenderingContext2D, P: Project, c: { x: numbe
   g.setLineDash([]);
 }
 
+/**
+ * Asteroids as decoration round a map window's model (Berón 2026-11-20: «para estas otras modales se puede agregar los
+ * puntos de asteroides como decoración»): small grey rocks scattered on a shell round the middle, turning with the
+ * model; always the same ones (no Math.random). Drawn first, behind everything.
+ */
+export function asteroidDecor(g: CanvasRenderingContext2D, P: (p: { x: number; y: number; z: number }) => { x: number; y: number; depth?: number }, c: { x: number; y: number; z: number }, r: number, n = 46): void {
+  for (let i = 0; i < n; i++) {
+    // A golden-angle spiral over the shell, its radius 1,15–1,6 × the model's.
+    const u = (i + 0.5) / n;
+    const lat = Math.asin(2 * u - 1) * 0.55;
+    const lon = i * 2.399963;
+    const rr = r * (1.15 + 0.45 * ((i * 0.618034) % 1));
+    const q = P({ x: c.x + Math.cos(lat) * Math.cos(lon) * rr, y: c.y + Math.sin(lat) * rr, z: c.z + Math.cos(lat) * Math.sin(lon) * rr });
+    const size = 1.6 + 2.8 * ((i * 0.414214) % 1);
+    g.fillStyle = i % 5 === 0 ? "#c4a6809a" : "#a9b3bd88";
+    g.beginPath();
+    // An irregular rock: five points round it.
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * Math.PI * 2 + i;
+      const d = size * (0.7 + 0.3 * (((i + 1) * (k + 3) * 0.37) % 1));
+      if (k) g.lineTo(q.x + Math.cos(a) * d, q.y + Math.sin(a) * d);
+      else g.moveTo(q.x + Math.cos(a) * d, q.y + Math.sin(a) * d);
+    }
+    g.closePath();
+    g.fill();
+  }
+}
+
 /** Mark the picked row of a list built by `optionsHtml`. */
 export function markPicked(host: HTMLElement, picked: string | undefined): void {
   for (const r of host.querySelectorAll<HTMLElement>(".mw-row")) {

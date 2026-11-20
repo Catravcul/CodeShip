@@ -1,4 +1,4 @@
-import { baseRings, MapWindow, markPicked, optionsHtml, outlinePath, type MapOption } from "./map-window";
+import { asteroidDecor, baseRings, MapWindow, markPicked, optionsHtml, outlinePath, type MapOption } from "./map-window";
 import { MapSelection, nearestPick, orbitProjector, type MapVec } from "./map-window-model";
 import "./task-board.css";
 
@@ -170,6 +170,7 @@ export class IslandNavWindow {
     const R = Math.max(50, Math.hypot(hi.x - lo.x, hi.z - lo.z) / 2);
     const s = ((0.46 * Math.min(w, h)) / R) * this.win.view.zoom;
     const P = orbitProjector(this.win.view, s, w / 2, h / 2, o);
+    asteroidDecor(g, P, o, R);
     // A closed piece, like the start screen (Berón, 2026-11-20): the sea as rings round the middle.
     baseRings(g, P, o, R);
     const outline = (cx: number, cy: number, cz: number, rx: number, rz: number) => outlinePath(g, P, { x: cx, y: cy, z: cz }, rx, rz);
@@ -207,7 +208,7 @@ export class IslandNavWindow {
       g.lineTo(foot.x, foot.y);
       g.stroke();
       g.beginPath();
-      g.arc(c.x, c.y, picked ? 9 : 7, 0, Math.PI * 2);
+      g.arc(c.x, c.y, picked ? 6 : 4.5, 0, Math.PI * 2);
       g.fillStyle = col;
       g.fill();
       this.screen.push({ id: i.id, x: c.x, y: c.y });

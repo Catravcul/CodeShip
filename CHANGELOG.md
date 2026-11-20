@@ -5,6 +5,12 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-20
 
+- **Alfombras que no atraviesan nada**: cada estación con su carril de aire libre; las de los pisos vuelan por su
+  edificio, las de copa y pie entre edificios; estaciones de piso como rellanos que salen del borde, alcanzables desde
+  la puerta; alfombras y orrery más bajos; la cámara ya no cambia el vuelo. Árboles más anchos (tronco ×1,5, ramas ×2)
+  por la regla del submarino más grande, sin suelo bajo el tronco. Yoga en 8 pisos de una clase. Esferas de mapas más
+  pequeñas y asteroides de decoración. [docs/design/santuario1.md](docs/design/santuario1.md) #54–63
+
 - **Alfombras en cada piso**: una estación en cada piso, copa y pie, con dos alfombras que flotan en ondas y un orrery
   de luz encima; al pisarla, «Volar» abre la ventana de mapa con sus destinos y su propio ajuste de viaje. Ballet en
   dos estudios reales; ramas rectas con aros de luz, agua clara y corriente; mapas de las ventanas sin joystick ni

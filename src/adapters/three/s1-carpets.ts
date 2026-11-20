@@ -3,7 +3,9 @@ import type { CarpetStation } from "@modules/sanctuary-one/data/alfombras";
 
 /** How many stations nearby are drawn alive (their carpets and their orrery): the rest show only their pads. */
 const ALIVE = 8;
-const RUG = { w: 1.5, l: 2.6, over: 0.22, wave: 0.045 } as const;
+const RUG = { w: 1.5, l: 2.6, over: 0.11, wave: 0.045 } as const;
+/** The orrery over the pad (Berón 2026-11-20: «que baje la mitad… lo mismo para el orrery»), m. */
+const ORRERY_Y = 1.7;
 const RUG_COLORS = [0x9a3b3b, 0x2f7f8f, 0x7a5a9a, 0xb07a2a] as const;
 
 /**
@@ -50,7 +52,7 @@ export class CarpetStationsView {
       b.rotation.set(Math.PI / 2, 0.5, 0);
       const moon = new THREE.Mesh(moonG, gold);
       orrery.add(a, b, moon);
-      orrery.position.y = 3.4;
+      orrery.position.y = ORRERY_Y;
       g.add(orrery);
       scene.add(g);
       this.slots.push({ g, rugs, orrery, moon, base });
@@ -70,12 +72,12 @@ export class CarpetStationsView {
         if (!st) return;
         s.g.position.set(st.x, st.y, st.z);
         s.g.rotation.y = Math.atan2(st.out.x, st.out.z);
-        for (const r of s.rugs) r.visible = st.kind === "piso";
+        for (const r of s.rugs) r.visible = true;
       });
     }
     for (const [i, s] of this.slots.entries()) {
       if (!s.g.visible) continue;
-      s.orrery.position.y = 3.4 + Math.sin(t * 1.3 + i) * 0.15;
+      s.orrery.position.y = ORRERY_Y + Math.sin(t * 1.3 + i) * 0.15;
       s.orrery.rotation.y = t * 0.6;
       s.moon.position.set(Math.cos(t * 1.7) * 1.15, Math.sin(t * 1.7) * 0.35, Math.sin(t * 1.7) * 1.15);
       if (!s.rugs[0]!.visible) continue;

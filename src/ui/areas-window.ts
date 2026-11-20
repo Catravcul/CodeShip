@@ -4,7 +4,7 @@ import { settings } from "./settings-store";
 import { onCloseRequest, windowState } from "./hud-windows";
 import { settingsClick, travelHtml, vehicleHtml, VEHICLE_NAME } from "./task-settings";
 import type { TaskTravel } from "@modules/settings/domain/settings";
-import { baseRings, MapWindow, markPicked, optionsHtml, outlinePath, type MapOption } from "./map-window";
+import { asteroidDecor, baseRings, MapWindow, markPicked, optionsHtml, outlinePath, type MapOption } from "./map-window";
 import { MapSelection, nearestPick, orbitProjector, type MapView } from "./map-window-model";
 import type { HudWindow } from "./hud-windows";
 import "./task-board.css";
@@ -357,6 +357,7 @@ export class AreasWindow {
     const R = Math.max(0.5, Math.hypot(hi.x - lo.x, hi.y - lo.y, hi.z - lo.z) / 2);
     const s = ((0.48 * Math.min(w, h)) / R) * this.win.view.zoom;
     const P: (p: AreaVec) => Pt & { depth: number } = orbitProjector(this.win.view, s, w / 2, h / 2, o);
+    asteroidDecor(g, P, o, R);
     // A closed piece, like the start screen (Berón, 2026-11-20: no grid, no boxes that look cut from a bigger map).
     baseRings(g, P, { x: o.x, y: lo.y, z: o.z }, Math.max(hi.x - lo.x, hi.z - lo.z) / 2 + 0.6);
     const outline = (c: AreaVec, rx: number, rz: number) => outlinePath(g, P, c, rx, rz);
@@ -422,7 +423,8 @@ export class AreasWindow {
     // The spheres, far ones first: a stalk to the ground shows how high each one is.
     const at = this.d.at?.();
     const balls = nodes.map((n) => ({ n, c: P(n.centre), foot: P({ x: n.centre.x, y: lo.y, z: n.centre.z }) })).sort((a, b) => a.c.depth - b.c.depth);
-    const r0 = Math.max(4, Math.min(10, 1.6 * Math.sqrt((w * h) / Math.max(1, nodes.length)) / 10));
+    // Small, so they stand well apart (Berón 2026-11-20: «las esferas de los mapas hazlas más pequeñas»).
+    const r0 = Math.max(2.5, Math.min(6, Math.sqrt((w * h) / Math.max(1, nodes.length)) / 10));
     for (const b of balls) {
       const picked = b.n.id === chosen;
       const here = b.n.id === at;
@@ -447,7 +449,7 @@ export class AreasWindow {
       g.arc(b.c.x, b.c.y, r, 0, Math.PI * 2);
       g.fill();
       const ring: Pt[] = [];
-      for (let k = 0; k < 10; k++) ring.push({ x: b.c.x + Math.cos((k / 10) * Math.PI * 2) * (r + 4), y: b.c.y + Math.sin((k / 10) * Math.PI * 2) * (r + 4) });
+      for (let k = 0; k < 10; k++) ring.push({ x: b.c.x + Math.cos((k / 10) * Math.PI * 2) * (r + 7), y: b.c.y + Math.sin((k / 10) * Math.PI * 2) * (r + 7) });
       this.screen.push({ id: b.n.id, hull: ring, c: b.c, depth: b.c.depth });
     }
     // Names beside the spheres: the picked one and hers first, then the nearest; one that would cover another

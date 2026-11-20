@@ -2,8 +2,9 @@ import * as THREE from "three";
 import { WORLD_SCALE } from "@core/scale";
 import { moveJoystick } from "@core/realism";
 import { buildS1Layout, TREE_CURRENT, treeWater } from "@modules/sanctuary-one/data/layout";
-import { carpetDestinations, carpetFlight, stationAt, type CarpetStation } from "@modules/sanctuary-one/data/alfombras";
+import { carpetDestinations, carpetRoute, stationAt, type CarpetStation } from "@modules/sanctuary-one/data/alfombras";
 import { CarpetStationsView } from "./adapters/three/s1-carpets";
+import { TRUNK_HALF } from "@modules/sanctuary-one/data/paso";
 import { carpetTravel } from "./ui/carpet-travel";
 import { personRule } from "@modules/sanctuary-one/data/overrides";
 import { blocked, placeAt, waterAt, type Body } from "@modules/aerial-sanctuary/domain/walk";
@@ -411,7 +412,7 @@ const s1Map: AreaMap = {
     ...L.towers.flatMap((t) => {
       const sc = { edificio: t.id, casquete: capAt(t.x, t.z) };
       const box = (r: { x0: number; x1: number; z0: number; z1: number }, y: number, hy: number) => ({ centre: { x: (r.x0 + r.x1) / 2, y, z: (r.z0 + r.z1) / 2 }, half: { x: (r.x1 - r.x0) / 2, y: hy, z: (r.z1 - r.z0) / 2 } });
-      const TR = TREE.waterHalf.value + TREE.wall.value;
+      const TR = TRUNK_HALF + TREE.wall.value;
       return [
         { centre: { x: t.x, y: t.rootHeight / 2, z: t.z }, half: { x: TR, y: t.rootHeight / 2, z: TR }, scope: sc, kind: "tronco" as const },
         ...t.floors.map((f) => ({ ...box(f.rect, f.y, 0.25), scope: sc, kind: "piso" as const })),
@@ -428,6 +429,8 @@ function arrival(a: (typeof L.areas)[number]): Place {
 }
 /** The route she is being walked along («Ir» by the real way); any touch of the sticks hands her back. */
 let auto: { way: Route; s: number; to: Place } | undefined;
+/** The carpet's heading while flying (its own, not the camera's). */
+let rideYaw = 0;
 function goTo(id: string): void {
   const a = areaById.get(id);
   if (!a) return;
@@ -461,7 +464,13 @@ function frameAuto(dt: number): boolean {
     return true;
   }
   if (!q.fly) walk.stride += Math.hypot(q.x - body.x, q.z - body.z) * 3;
-  if (!Number.isNaN(q.yaw)) yaw = q.yaw + Math.PI;
+  // On a carpet the flight keeps its own heading: the camera looks around freely and moves nothing (Berón 2026-11-20:
+  // «el viaje en alfombra es automático y no debería verse afectado por los controles de movimiento ni cámara»).
+  if (!Number.isNaN(q.yaw)) {
+    if (q.fly) rideYaw = q.yaw + Math.PI;
+    else yaw = q.yaw + Math.PI;
+  }
+  if (q.fly && !flying && Number.isNaN(q.yaw)) rideYaw = yaw;
   flying = q.fly;
   body = { x: q.x, y: q.y, z: q.z, motion: q.swim ? "agua" : "gravedad", area: "" };
   return true;
@@ -518,7 +527,7 @@ function flyTo(id: string): void {
     yaw = Math.atan2(to.out.x, to.out.z);
     return;
   }
-  auto = { way: route(carpetFlight(from, to)), s: 0, to: { area: to.area, x: to.x, y: to.y, z: to.z, yaw: Math.atan2(to.out.x, to.out.z), pose: "stand" } };
+  auto = { way: route(carpetRoute({ ...L.world, towers: L.towers }, from, to)), s: 0, to: { area: to.area, x: to.x, y: to.y, z: to.z, yaw: Math.atan2(to.out.x, to.out.z), pose: "stand" } };
 }
 const carpetsWindow = new AreasWindow(root, {
   kind: { title: "Alfombras", window: "alfombras", bodyClass: "in-carpets", className: "carpets-window" },
@@ -848,8 +857,9 @@ function updateCamera(dt: number): void {
     camera.updateProjectionMatrix();
   }
   rig.position.set(body.x, body.y + hop, body.z);
-  if (auto || flying || !thirdPerson) walk.facing = yaw;
-  rig.rotation.y = (thirdPerson ? walk.facing : yaw) + Math.PI;
+  if (flying) walk.facing = rideYaw;
+  else if (auto || !thirdPerson) walk.facing = yaw;
+  rig.rotation.y = (thirdPerson || flying ? walk.facing : yaw) + Math.PI;
   let eye = body.y + hop + EYE_M + dip;
   // Swimming at the surface her eyes are just out of the water (Berón 2026-11-20: «en primera persona la cámara
   // muestra todo blanco… y oculta el agua»): at the surface's own height the water is seen edge on, so not at all.

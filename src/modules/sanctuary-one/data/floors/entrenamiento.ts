@@ -3,15 +3,13 @@ import type { FloorPlan, Placed } from "./kit";
 
 /**
  * The Entrenamiento floors after the gym (Cold Sanctuary's SampleSceneBuilder.cs: «cada centro lleva los pisos que
- * necesita para todos los miembros», TrainingCentres.FloorsFor with its 30 people): cardio, calistenia, 2 + 2 of
- * yoga. Floor plan 36 × 26 m. The martial arts, the ballet studios, the music rooms and the classrooms are their own
+ * necesita para todos los miembros», TrainingCentres.FloorsFor with its 30 people): cardio, calistenia, and 8 small
+ * yoga floors (one class each). Floor plan 36 × 26 m. The martial arts, the ballet studios, the music rooms and the classrooms are their own
  * (smaller) floors since 2026-11-20: floors/musica-aulas.ts.
  */
 const SIZE = { x: 36, z: 26 } as const;
 const P = (model: string, x: number, z: number, rot?: number, name?: string): Placed => ({ model, x, z, ...(rot ? { rot } : {}), ...(name ? { name } : {}) });
 const PI = Math.PI;
-/** Toilets against the +z edge, −x corner (Aseos(…, (−s.x/2 + 3,1 | 2,1, …, s.y/2 − 0,8 | 0,9), 180°)). */
-const toilets3 = P("aseos-3", -18 + 3.1, 13 - 0.8, PI);
 
 function cardio(): FloorPlan {
   const items: Placed[] = [P("suelo-caucho-piso", 0, 0)];
@@ -48,37 +46,40 @@ function calisthenics(): FloorPlan {
   return { id: "calistenia", size: SIZE, items, source: cs("Training", "FurnishCalisthenics") };
 }
 
-/** One yoga floor: the occidental hall at x −9 and the traditional at x +9 (BuildYogaHall), 8 mats each round the teacher. */
-function yoga(style: "hatha" | "ashtanga", n: number): FloorPlan {
+/** A yoga hall's floor plan (one class: 8 students and the teacher), m. */
+const YOGA_SIZE = { x: 14, z: 16 } as const;
+
+/**
+ * One yoga floor, one class (Berón 2026-11-20: «parece que un mismo piso da para dos clases, quizás falta allí la
+ * separación en pisos pequeños»): Cold Sanctuary's BuildYogaHall, its occidental hall or its traditional one, each on
+ * its own small floor. Seen from the door (+z away from it): two rows of 4 mats 3 m apart and 2 m between the rows
+ * (CarpetPad: ≥ 2 m), the teacher's platform before them and the altar at the far wall; the traditional hall's kund
+ * by the door, to the left, out of the way in.
+ */
+function yoga(style: "hatha" | "ashtanga", hall: "occidental" | "tradicional", n: number): FloorPlan {
   const items: Placed[] = [];
   const ash = style === "ashtanga";
-  for (const [cx, trad] of [[-9, false], [9, true]] as const) {
-    items.push(P(trad ? "yoga-suelo-tierra" : "yoga-suelo-madera", cx, 0));
-    for (const z of [-5, 0, 5]) for (const sx of [-1, 1]) items.push(P(trad ? "yoga-durrie" : "yoga-esterilla", cx + sx * 5.5, z, PI / 2));
-    items.push(P(trad ? "yoga-durrie" : "yoga-esterilla", cx, 5.1), P(trad ? "yoga-durrie" : "yoga-esterilla", cx, -5.1));
-    items.push(P(trad ? "yoga-tarima-tradicional" : "yoga-tarima-occidental", cx, 0));
-    if (trad) {
-      if (ash) items.push(P("yoga-patanjali", cx - 3, 11), P("yoga-adiyogi", cx + 1.5, 11));
-      else items.push(P("yoga-linga", cx, 10.6));
-      for (let a = -3; a <= 3; a++) {
-        const ang = (a * 20 * PI) / 180;
-        items.push(P("yoga-lampara-aceite", cx + (ash ? -0.75 : 0) + Math.sin(ang) * 2.2 * 1.4, 10.6 - Math.cos(ang) * 2.2 * 0.8));
-      }
-      items.push(P("yoga-kund", cx, -10.5));
-    } else {
-      items.push(P(ash ? "yoga-ganesha" : "yoga-buda", cx, 11));
-      items.push(P(ash ? "yoga-estante-ashtanga" : "yoga-estante-hatha", cx + 4, 11, PI));
+  const trad = hall === "tradicional";
+  items.push(P(trad ? "yoga-suelo-tierra" : "yoga-suelo-madera", 0, 0));
+  for (const z of [1.4, -2.4]) for (const x of [-4.5, -1.5, 1.5, 4.5]) items.push(P(trad ? "yoga-durrie" : "yoga-esterilla", x, z));
+  items.push(P(trad ? "yoga-tarima-tradicional" : "yoga-tarima-occidental", 0, 4.6));
+  if (trad) {
+    if (ash) items.push(P("yoga-patanjali", -2.2, 7.2), P("yoga-adiyogi", 1.8, 7.3));
+    else items.push(P("yoga-linga", 0, 7.2));
+    for (let a = -3; a <= 3; a++) {
+      const ang = (a * 20 * PI) / 180;
+      items.push(P("yoga-lampara-aceite", (ash ? -0.2 : 0) + Math.sin(ang) * 3, 7.2 - Math.cos(ang) * 1));
     }
+    items.push(P("yoga-kund", -3.6, -6.1));
+  } else {
+    items.push(P(ash ? "yoga-ganesha" : "yoga-buda", 0, 7.3));
+    items.push(P(ash ? "yoga-estante-ashtanga" : "yoga-estante-hatha", 4.6, 7.6, PI));
   }
-  items.push(toilets3);
-  return { id: `yoga-${style}-${n}`, size: SIZE, items, source: cs("Yoga", `FurnishYogaFloors (${style}, piso ${n})`) };
+  return { id: `yoga-${style}-${hall}-${n}`, size: YOGA_SIZE, items, source: cs("Yoga", `BuildYogaHall (${style}, sala ${hall}, piso ${n}); una clase por piso`) };
 }
 
 export const ENTRENAMIENTO_FLOORS: readonly FloorPlan[] = [
   cardio(),
   calisthenics(),
-  yoga("hatha", 1),
-  yoga("hatha", 2),
-  yoga("ashtanga", 1),
-  yoga("ashtanga", 2),
+  ...(["hatha", "ashtanga"] as const).flatMap((st) => [1, 2].flatMap((n) => (["occidental", "tradicional"] as const).map((h) => yoga(st, h, n)))),
 ];

@@ -123,7 +123,7 @@ salud.
 | 60 | El **viaje en alfombra** se veía afectado por la cámara | Hecho: la alfombra lleva su propio rumbo; la cámara mira libre y el movimiento no hace nada mientras vuela |
 | 61 | **Esferas de los mapas** más pequeñas; ¿asteroides de decoración? | Hecho: esferas de 2,5–6 px (antes 4–10) en Áreas, Misiones y Alfombras, y más pequeñas en la navegación de islas; un cinturón de asteroides grises alrededor del modelo, que gira con él (`asteroidDecor`) |
 | 62 | **Yoga**: un piso daba para dos clases | Hecho: 8 pisos pequeños de 14 × 16 m, uno por clase (Hatha y Ashtanga, sala occidental y tradicional, 1 y 2): 8 esterillas en dos filas, tarima del maestro, altar; la tradicional con durries, lámparas y kund |
-| 63 | ¿**Revisión de realismo** de todos los pisos? | Hecha: ver la tabla siguiente |
+| 63 | ¿**Revisión de realismo** de todos los pisos? | Hecha y aplicada: ver la tabla siguiente (yoga y calistenia/parkour/crossfit separados en pisos de una actividad) |
 
 #### Revisión de realismo de los pisos (2026-11-20)
 
@@ -132,7 +132,7 @@ Criterios: fuente real o de Cold Sanctuary, tamaño real de la sala, una funció
 | Pisos | Fuente y tamaño | Veredicto |
 | --- | --- | --- |
 | Gimnasio, cardio | Cold Sanctuary (FurnishGym, FurnishGymCardio), 36 × 26 m | Bien: sala de fitness abierta, sin clases |
-| Calistenia, parkour y crossfit | Cold Sanctuary, 36 × 26 m | Aceptable: zonas abiertas sin horario de clase. Si se quiere una clase por piso, se separa en tres pisos pequeños (propuesta) |
+| Calistenia, parkour y crossfit | Cold Sanctuary, antes los tres en 36 × 26 m | Rehecho: tres pisos pequeños, cada zona con su tamaño real (parque de calistenia de 20 × 16 m, sala de parkour de 14 × 16 m, box de crossfit de 16 × 25 m), su suelo y su entrada libre. Los Campos se movieron 30 m al norte: la rama sur de Entrenamiento llegaba a su piso 6 |
 | Yoga (8) | BuildYogaHall, 14 × 16 m | Rehecho en esta lista: una clase por piso |
 | Ballet (2), dojos (4) | Sport England, WKF, WAKO, IJF, Unified Rules | Bien: tamaños reglamentarios |
 | Música (5), aulas (7) | Wenger, Newell, Everest; guías de aulas de secundaria | Bien |

@@ -5,6 +5,9 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-20
 
+- **Calistenia, parkour y crossfit en tres pisos** con su tamaño real (revisión de realismo aplicada).
+  [docs/design/santuario1.md](docs/design/santuario1.md) #63
+
 - **Alfombras que no atraviesan nada**: cada estación con su carril de aire libre; las de los pisos vuelan por su
   edificio, las de copa y pie entre edificios; estaciones de piso como rellanos que salen del borde, alcanzables desde
   la puerta; alfombras y orrery más bajos; la cámara ya no cambia el vuelo. Árboles más anchos (tronco ×1,5, ramas ×2)

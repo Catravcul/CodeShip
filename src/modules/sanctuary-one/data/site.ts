@@ -137,7 +137,9 @@ export const TOWERS: readonly TowerSpec[] = [
     floors: [
       F("Gimnasio", "Máquinas de placas (30) y peso libre", "gimnasio-0"),
       F("Cardio y zona libre", "Cintas, elípticas, escaladoras, bicis, remos, esterillas y sacos", "cardio"),
-      F("Calistenia, parkour y crossfit", "Barras, anillas, paralelas, muros, bloques y el rig", "calistenia"),
+      F("Calistenia", "Parque de calistenia: barras, anillas, paralelas, monkey bars y bandera", "calistenia"),
+      F("Parkour", "Sala de parkour: muros, lache, cajones, barandillas y bloques", "parkour"),
+      F("Crossfit", "Box de crossfit: rig, plataformas, remos, bicis, skiergs, trineo y kettlebells", "crossfit"),
       F("Yoga Hatha: sala occidental (1)", "Una clase: 8 esterillas, tarima del maestro y altar", "yoga-hatha-occidental-1"),
       F("Yoga Hatha: sala tradicional (1)", "Una clase: 8 durries de algodón, tarima con asiento kusha, altar con lámparas y kund", "yoga-hatha-tradicional-1"),
       F("Yoga Hatha: sala occidental (2)", "Una clase: 8 esterillas, tarima del maestro y altar", "yoga-hatha-occidental-2"),
@@ -213,7 +215,8 @@ export const TOWERS: readonly TowerSpec[] = [
     id: "campos",
     building: "Árbol de los Campos",
     x: -50,
-    z: -84,
+    // 30 m north of its old place (2026-11-20): Entrenamiento's yoga floor at the end of its south branch reached it.
+    z: -54,
     size: { x: 32, z: 32 },
     quarter: 0,
     firstY: FIRST_Y,

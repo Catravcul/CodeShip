@@ -28,22 +28,40 @@ function cardio(): FloorPlan {
   return { id: "cardio", size: SIZE, items, source: cs("Training", "FurnishGymCardio") };
 }
 
+/**
+ * Calistenia, parkour and crossfit, each its own small floor (Berón 2026-11-20: «una clase por piso», revisión de
+ * realismo #63): Cold Sanctuary's FurnishCalisthenics zones, each moved about its own middle, at their real size (a
+ * street-workout park of ~20 × 12 m, an indoor parkour room of ~14 × 16 m, a crossfit box of ~16 × 25 m).
+ */
 function calisthenics(): FloorPlan {
-  const items: Placed[] = [P("suelo-caucho-piso", 0, 0)];
-  // Calistenia (x −17…1, z 2,6…12).
-  items.push(P("cal-dominadas", -15.1, 10), P("cal-monkey-bars", -9.4, 10), P("cal-anillas", -4.1, 10), P("cal-paralelas-bajas", 0.2, 10));
-  items.push(P("cal-paralelas", -16, 4.9), P("cal-fondos-v", -12.6, 4.9), P("cal-barras-bajas", -9, 4.9), P("cal-bandera", -3.8, 5), P("gym-espalderas-3", 0.9, 4.95, PI / 2));
-  // Parkour (x −17…−5,4, z −12…0,6).
-  items.push(P("pk-muro-alto", -15.5, -11.6), P("pk-muro-medio", -11, -11.6), P("pk-lache", -7.6, -10.8));
-  items.push(P("pk-cajon", -11, -5.5), P("pk-cajon", -7.8, -5.5), P("pk-barandilla-05", -16.4, -1.1), P("pk-barandilla-10", -14.9, -1.1), P("pk-bloques", -9.3, -1));
-  // Crossfit (x 3…17).
-  items.push(P("gym-cesped-trineo", 4, -1), P("cf-trineo", 3.5, -9.3), P("cf-trineo", 4.5, -9.3));
-  for (const z of [-9.9, -5.4, -0.9]) items.push(P("cf-plataforma", 8.15, z));
-  for (const x of [11.7, 14.3]) items.push(P("gym-remo-ergometro", x, -10.8), P("gym-assault-bike", x, -6.95), P("gym-skierg", x, -3.65));
-  items.push(P("cf-kettlebells", 16.9, -7), P("cf-rig", 12.5, 6), P("cf-ghd", 8.2, 3.5), P("cf-ghd", 8.2, 7.5));
-  items.push(P("cf-bumpers", 16.5, 2), P("cf-cajones-pliometricos", 16.5, 4.5), P("cf-balones", 16.5, 7), P("gym-soporte-barras", 16.5, 9.5));
-  items.push(P("cf-cajon-61", 6.5, 11.1), P("cf-cajon-61", 9, 11.1));
-  return { id: "calistenia", size: SIZE, items, source: cs("Training", "FurnishCalisthenics") };
+  const items: Placed[] = [P("suelo-caucho-calistenia", 0, 0)];
+  const at = (m: string, x: number, z: number, rot?: number) => items.push(P(m, x + 8, z - 4.3, rot));
+  at("cal-dominadas", -15.1, 10), at("cal-monkey-bars", -9.4, 10), at("cal-anillas", -4.1, 10), at("cal-paralelas-bajas", 0.2, 10);
+  at("cal-paralelas", -16, 4.9), at("cal-fondos-v", -12.6, 4.9), at("cal-barras-bajas", -9, 4.9), at("cal-bandera", -3.8, 5), at("gym-espalderas-3", 0.9, 4.95, PI / 2);
+  return { id: "calistenia", size: { x: 20, z: 16 }, items, source: cs("Training", "FurnishCalisthenics (zona de calistenia, piso propio)") };
+}
+
+function parkour(): FloorPlan {
+  const items: Placed[] = [P("suelo-parkour", 0, 0)];
+  // Turned round (the tall walls at the far end, away from the door).
+  const at = (m: string, x: number, z: number, rot?: number) => items.push(P(m, x + 11.2, 1.5 - (z + 5.7), rot));
+  at("pk-muro-alto", -15.5, -11.6), at("pk-muro-medio", -11, -11.6), at("pk-lache", -7.6, -10.8);
+  at("pk-cajon", -11, -5.5), at("pk-cajon", -7.8, -5.5), at("pk-barandilla-05", -16.4, -1.1), at("pk-barandilla-10", -14.9, -1.1);
+  // The precision blocks run along the right wall (across they stood in the way in).
+  at("pk-bloques", -6.3, -1.7, PI / 2);
+  return { id: "parkour", size: { x: 14, z: 16 }, items, source: cs("Training", "FurnishCalisthenics (zona de parkour, piso propio)") };
+}
+
+function crossfit(): FloorPlan {
+  const items: Placed[] = [P("suelo-crossfit", 0, 0)];
+  const at = (m: string, x: number, z: number, rot?: number) => items.push(P(m, x - 10, z, rot));
+  at("gym-cesped-trineo", 4, -1), at("cf-trineo", 3.5, -9.3), at("cf-trineo", 4.5, -9.3);
+  for (const z of [-9.9, -5.4, -0.9]) at("cf-plataforma", 8.15, z);
+  for (const x of [11.7, 14.3]) at("gym-remo-ergometro", x, -10.8), at("gym-assault-bike", x, -6.95), at("gym-skierg", x, -3.65);
+  at("cf-kettlebells", 16.9, -7), at("cf-rig", 12.5, 6), at("cf-ghd", 8.2, 3.5), at("cf-ghd", 8.2, 7.5);
+  at("cf-bumpers", 16.5, 2), at("cf-cajones-pliometricos", 16.5, 4.5), at("cf-balones", 16.5, 7), at("gym-soporte-barras", 16.5, 9.5);
+  at("cf-cajon-61", 6.5, 11.1), at("cf-cajon-61", 9, 11.1);
+  return { id: "crossfit", size: { x: 16, z: 25 }, items, source: cs("Training", "FurnishCalisthenics (box de crossfit, piso propio)") };
 }
 
 /** A yoga hall's floor plan (one class: 8 students and the teacher), m. */
@@ -81,5 +99,7 @@ function yoga(style: "hatha" | "ashtanga", hall: "occidental" | "tradicional", n
 export const ENTRENAMIENTO_FLOORS: readonly FloorPlan[] = [
   cardio(),
   calisthenics(),
+  parkour(),
+  crossfit(),
   ...(["hatha", "ashtanga"] as const).flatMap((st) => [1, 2].flatMap((n) => (["occidental", "tradicional"] as const).map((h) => yoga(st, h, n)))),
 ];

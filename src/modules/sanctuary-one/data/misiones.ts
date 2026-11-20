@@ -41,7 +41,7 @@ export const MISSIONS: readonly Mission[] = [
   M("s1_peso_libre", "Entrenamiento de fuerza (sentadilla en la jaula)", "Ejercicio", 1, true, "gimnasio-0", "gym-jaula", 0, true),
   M("s1_cardio", "Cardio en la cinta", "Ejercicio", 1, true, "cardio", "gym-cinta", 0, true),
   M("s1_calistenia", "Calistenia: dominadas", "Ejercicio", 1, true, "calistenia", "cal-dominadas", 0, true),
-  M("s1_parkour", "Parkour: saltos de precisión", "Ejercicio", 1, false, "calistenia", "pk-bloques", 0, true),
+  M("s1_parkour", "Parkour: saltos de precisión", "Ejercicio", 1, false, "parkour", "pk-bloques", 0, true),
   M("yog_practica", "Clase de Hatha: practicar", "Yoga", 1, true, "yoga-hatha-occidental-1", "yoga-esterilla", 0, true),
   M("yog_ashtanga", "Clase de Ashtanga: practicar", "Yoga", 1, false, "yoga-ashtanga-occidental-1", "yoga-esterilla", 0, true),
   M("gym_limpieza", "Limpieza del gimnasio", "Limpieza", 0.5, false, "gimnasio-0", "gym-prensa", 1),

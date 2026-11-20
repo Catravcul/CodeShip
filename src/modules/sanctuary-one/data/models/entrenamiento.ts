@@ -61,6 +61,9 @@ export const ENTRENAMIENTO_MODELS: readonly ModelDef[] = [
   pz("aseos-3", "mueble", "aseos", "Aseos (3 cabinas, accesible y lavabos)", 0xdbe6eb, toilets(3), "real", cs("Restaurant", "Aseos: inodoros secos de compostaje")),
   pz("aseos-1", "mueble", "aseos", "Aseos (1 cabina, accesible y lavabos)", 0xdbe6eb, toilets(1), "real", cs("Restaurant", "Aseos: inodoros secos de compostaje")),
   m("suelo-caucho-piso", "mueble", "suelos", "Suelo de caucho del piso (35,6 × 25,6 m)", 35.6, 0.02, 25.6, rubber, "caja", "real", T("Suelo_caucho")),
+  m("suelo-caucho-calistenia", "mueble", "suelos", "Suelo de caucho del parque de calistenia (19,6 × 15,6 m)", 19.6, 0.02, 15.6, rubber, "caja", "real", T("Suelo_caucho")),
+  m("suelo-parkour", "mueble", "suelos", "Suelo de caucho de la sala de parkour (13,6 × 15,6 m)", 13.6, 0.02, 15.6, rubber, "caja", "real", T("Suelo_caucho")),
+  m("suelo-crossfit", "mueble", "suelos", "Suelo de caucho del box de crossfit (15,6 × 24,6 m)", 15.6, 0.02, 24.6, rubber, "caja", "real", T("Suelo_caucho")),
 
   // ── Cardio y zona libre (FurnishGymCardio) ──
   pz("gym-cinta", "maquina", "gimnasio-cardio", "Cinta de correr", iron, [C(0, 0.02, 0.15, 0.56, 0.04, 1.7, rubber), C(-0.37, 0.04, 0.12, 0.16, 0.08, 1.85), C(0.37, 0.04, 0.12, 0.16, 0.08, 1.85), bar(-0.38, 0.1, -0.85, -0.36, 1.25, -0.8, 0.07), bar(0.38, 0.1, -0.85, 0.36, 1.25, -0.8, 0.07), bar(-0.38, 1, -0.78, -0.38, 1, -0.25, 0.04, chrome), bar(0.38, 1, -0.78, 0.38, 1, -0.25, 0.04, chrome), C(0, 0.12, -0.87, 0.85, 0.24, 0.35), C(0, 1.32, -0.8, 0.8, 0.3, 0.1)], "real", T("GymCardio Cinta (0,9 × 2,1 m)")),

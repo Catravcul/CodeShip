@@ -1,7 +1,7 @@
 import { cs, csx } from "../sources";
 import { C, COL, bar, m, pz, rep, type Category, type ModelDef, type Part } from "./kit";
 import { bench } from "./entrenamiento";
-import { STATION_UTENSILS, TABLE_SETTING, kitchenBlock } from "./cocina-equipo";
+import { STATION, STATION_UTENSILS, TABLE_SETTING, kitchenBlock } from "./cocina-equipo";
 
 /**
  * Models of the Servicios building (restaurant, hospital ×3, cría, carne cultivada, asambleas, guardia). The big
@@ -37,16 +37,6 @@ export function glassRoom(w: number, d: number, door: 0 | 1 | 2 | 3, color: numb
 /** A hospital bed (InfirmaryProps.HospitalBed): 1 × 2,1 m, mattress at 0,6 m, head at −z. */
 const bedParts = (blanket: number): Part[] => [C(0, 0.3, 0, 0.95, 0.12, 2.05, steel), C(0, 0.5, 0.05, 0.9, 0.18, 1.95, white), C(0, 0.6, 0.35, 0.92, 0.04, 1.3, blanket), C(0, 0.75, -0.98, 0.95, 0.6, 0.06, steel), ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => C(sx * 0.42, 0.13, sz * 0.9, 0.06, 0.26, 0.06, darkSteel)))];
 
-/** A kitchen station (KitchenPlan.cs CompleteStation): counter, griddle, sink and ovens in front; induction, fridge and cauldrons at the sides. */
-const station: Part[] = [
-  ...counter(1.25).map(([x, y, z, a, b, c, col]) => [x - 2, y, z + 2.1, a, b, c, col] as Part),
-  C(-0.9, 0.45, 2.1, 0.9, 0.9, 0.7, darkSteel), C(-0.9, 0.92, 2.1, 0.8, 0.04, 0.6, 0x222222),
-  C(0.1, 0.45, 2.1, 1, 0.9, 0.7, steel), C(0.1, 0.88, 2.1, 0.6, 0.06, 0.45, 0x8fb8cc),
-  C(1.25, 0.9, 2.1, 1, 1.8, 0.9, darkSteel), C(2.45, 0.75, 2, 1.2, 1.5, 1, 0x8c4a2f),
-  ...[0.9, -0.25, -1.4].map((z) => C(-3.1, 0.45, z, 0.7, 0.9, 1.0, darkSteel)), C(-3.1, 1.05, -2.5, 0.8, 2.1, 0.9, 0xe8eaec),
-  ...[0.9, -0.25, -1.4, -2.5, -3.6].map((z) => C(3.1, 0.5, z, 0.7, 1.0, 1.0, steel)),
-  C(-0.6, 0.45, -3.3, 2, 0.9, 0.6, 0xc9d2d6),
-];
 
 /** The blocks along the kitchen's walls (KitchenPlan.cs StoresBlocks/PrepBlocks/DoughBlocks/DairyBlocks): name, width, depth, height, colour. */
 export const KITCHEN_BLOCKS: readonly (readonly [id: string, label: string, w: number, d: number, h: number, color: number])[] = [
@@ -96,11 +86,20 @@ const bioreactor = (r: number, h: number): Part[] => [C(0, h * 0.45, 0, 2 * r, h
 export const SERVICIOS_MODELS: readonly ModelDef[] = [
   // ── Restaurante (KitchenPlan.cs KitchenFloorPlan, ProKitchen; Restaurant.cs BuildGourmetDining) ──
   eq("cocina-suelo", "mueble", "suelos", "Suelo de baldosa de pizarra de la cocina", 39.6, 0.04, 37.6, 0x333538, K("Suelo_Cocina (GourmetKitchen: pizarra)")),
-  pz("cocina-barra-servicio", "mueble", "cocina", "Barra de servicio (pase, con riel de comandas)", steel, [...counter(5), C(0, 1.45, 0.45, 4.6, 0.03, 0.03, steel)], "real", K("Barra de servicio")),
-  pz("cocina-mesa-emplatado", "mueble", "cocina", "Mesa de emplatado", steel, counter(4.2, 1.2), "real", K("Mesa de emplatado")),
+  pz("cocina-barra-servicio", "mueble", "cocina", "Barra de servicio (pase, con riel de comandas)", steel, [...counter(5), C(0, 1.45, 0.45, 4.6, 0.03, 0.03, steel),
+    // The pass: the heat-lamp gantry (Hatco Glo-Ray) on its two posts, its red lamps, the plates waiting and the tickets on the rail.
+    ...[-1, 1].map((sx) => C(sx * 2.3, 1.25, 0, 0.05, 0.7, 0.05, steel)), C(0, 1.62, 0, 4.7, 0.06, 0.3, darkSteel),
+    ...rep(6, (i) => [C(-1.9 + i * 0.76, 1.57, 0, 0.3, 0.03, 0.12, 0xd94a2a)]),
+    ...rep(5, (i) => [C(-1.6 + i * 0.8, 0.915, 0, 0.27, 0.015, 0.27, white), C(-1.6 + i * 0.8, 0.93, 0, 0.12, 0.03, 0.12, [0x6b9e4a, 0xd9583a, 0xe8c66a, 0x8c5a3a, 0xf2e6cc][i]!)]),
+    ...rep(6, (i) => [C(-1.8 + i * 0.7, 1.38, 0.45, 0.08, 0.12, 0.005, white)])], "real", K("Barra de servicio")),
+  pz("cocina-mesa-emplatado", "mueble", "cocina", "Mesa de emplatado", steel, [...counter(4.2, 1.2),
+    // Stacks of plates, the squeeze bottles of sauces, the tweezers and the GN of garnishes.
+    ...rep(15, (n) => [C(-1.5 + Math.floor(n / 5) * 0.4, 0.91 + (n % 5) * 0.012, 0.35, 0.28, 0.01, 0.28, white)]),
+    ...rep(6, (i) => [C(0.2 + i * 0.1, 0.99, 0.4, 0.05, 0.18, 0.05, [0xd9583a, 0xe8c66a, 0x4f8a3c, 0x5a3a2a, 0xf2f2f2, 0x8c1f1f][i]!)]),
+    C(1.4, 0.91, -0.2, 0.18, 0.01, 0.02, steel), ...rep(4, (i) => [C(1.0 + i * 0.2, 0.94, 0.3, 0.17, 0.08, 0.3, steel), C(1.0 + i * 0.2, 0.97, 0.3, 0.15, 0.02, 0.28, [0x4f8a3c, 0xd9583a, 0xf2e6cc, 0x6b9e4a][i]!)])], "real", K("Mesa de emplatado")),
   pz("cocina-encimera-ingredientes", "mueble", "cocina", "Encimera de ingredientes", steel, [...counter(5.5), ...rep(6, (i) => [C(-2.1 + i * 0.85, 1.0, 0, 0.35, 0.2, 0.3, [0xf2e6cc, 0x6b9e4a, 0xd9c08c, 0xd9583a, 0xf2f2f2, 0x8c5a3a][i]!)])], "real", K("Encimera ingredientes: huevos, verduras, avena, fruta, yogur, legumbres")),
   pz("cocina-estanteria", "mueble", "cocina", "Estantería de despensa", 0x9e7a52, [C(0, 1, 0, 3, 2, 0.06), ...rep(5, (i) => [C(0, 0.1 + i * 0.45, 0.25, 3, 0.04, 0.5)]), ...rep(10, (i) => [C(-1.3 + (i % 5) * 0.65, 0.3 + Math.floor(i / 5) * 0.9, 0.25, 0.4, 0.3, 0.35, 0xc9a66b)])], "real", K("KitchenProps.Shelving (Despensa, Estanteria)")),
-  pz("cocina-puesto", "maquina", "cocina", "Puesto de cocina completo (plancha, fregadero, hornos, inducción, nevera, marmitas, abatidor y barra de sushi)", steel, [...station, ...STATION_UTENSILS], "real", K("CompleteStation (8 puestos)")),
+  pz("cocina-puesto", "maquina", "cocina", "Puesto de cocina completo (plancha, fregadero, hornos, inducción, nevera, marmitas, abatidor y barra de sushi)", steel, [...STATION, ...STATION_UTENSILS], "real", K("CompleteStation (8 puestos)")),
   ...KITCHEN_BLOCKS.map(([id, label, w, d, h, color]) => pz(`cocina-${id}`, "maquina", "cocina-franjas", label, color, kitchenBlock(id, w, d, h), "real", `${K("Strip: bloques contra las paredes")}; equipo real dentro: ver models/cocina-equipo.ts`)),
   pz("comedor-mesa", "mueble", "comedor", "Mesa del comedor gourmet (4 cubiertos)", 0xf7f7f2, [...diningTable, ...TABLE_SETTING], "real", cs("Restaurant", "BuildGourmetDining Table")),
   pz("comedor-caja", "mueble", "comedor", "Caja registradora", steel, [...counter(1.6), C(-0.3, 1.02, 0, 0.4, 0.24, 0.35, 0x33383f)], "real", cs("Restaurant", "Caja_registradora")),

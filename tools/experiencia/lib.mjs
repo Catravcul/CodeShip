@@ -25,14 +25,16 @@ const FIND_ACT = (mark) => {
  */
 const ACT_FOR = ([sel, reto]) => {
   const card = [...document.querySelectorAll(sel)].map((e) => e.closest(".cab-machine:not(.hidden)")).find(Boolean);
-  const name = (card?.querySelector(".cm-head b")?.textContent ?? "").replace(/\s*\(.*\)\s*/g, " ").trim();
+  // A challenge's button shortens the name («Lavadora (Servicios)» → «Lavadora», ui/interaction.ts); another keeps it.
+  const full = (card?.querySelector(".cm-head b")?.textContent ?? "").trim();
+  const name = full.replace(/\s*\(.*\)\s*/g, " ").trim();
   const b =
     [...document.querySelectorAll(".rm-act:not(.hidden)")].find((x) => x.closest(".root-menu")?.checkVisibility() && x.checkVisibility()) ??
     [...document.querySelectorAll('.switch-pad .ap-btn.alert[data-letter="Y"]')].find((x) => x.checkVisibility());
   if (!b) return false;
   const label = (b.getAttribute("aria-label") ?? b.textContent ?? "").replace(/ \(KeyE\)$/, "");
-  if (!name) return true;
-  return reto ? label === `Reto: ${name}` : [name, `Reto: ${name}`, `Cerrar: ${name}`].includes(label);
+  if (!full) return true;
+  return reto ? label === `Reto: ${name}` : [full, `Reto: ${name}`, `Cerrar: ${full}`, `Cerrar: Reto: ${name}`].includes(label);
 };
 import { createRequire } from "node:module";
 import { mkdirSync } from "node:fs";

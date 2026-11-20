@@ -60,6 +60,18 @@ async function pinchOut(p, box) {
   await cdp.detach();
 }
 
+/** Two fingers on the canvas moving together (a pinch in). */
+async function pinchIn(p, box) {
+  const cdp = await p.context().newCDPSession(p);
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  const pts = (d) => [{ x: cx - d, y: cy, id: 1 }, { x: cx + d, y: cy, id: 2 }];
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: pts(90) });
+  for (const d of [75, 60, 45, 30]) await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: pts(d) });
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await cdp.detach();
+}
+
 const nodeAt = (s, id) => s.nodes.find((n) => n.id === id);
 
 export async function inicio(j) {
@@ -70,7 +82,7 @@ export async function inicio(j) {
   if (!s0) return;
   j.check("en el inicio no hay menú árbol", !s0.menu);
   j.check("arriba el mapa 3D de los santuarios (al menos 300×150) y debajo la lista, sin pisarse, en 390×664", s0.canvas.w >= 300 && s0.canvas.h >= 150 && s0.side.top >= s0.canvas.bottom - 1 && s0.side.bottom <= 664, JSON.stringify({ canvas: s0.canvas, side: s0.side }));
-  j.check("sus herramientas (+, −, Cenital y el engranaje de las partidas guardadas) miden 44 px y no hay ×: se sale eligiendo", s0.tools.length === 4 && s0.tools[3].label === "Partidas guardadas" && s0.tools.every((t) => t.w >= 44 && t.h >= 44), JSON.stringify(s0.tools));
+  j.check("su única herramienta es el engranaje de las partidas guardadas, de 44 px (sin +, −, Cenital ni ×: se gira y amplía con los dedos, se sale eligiendo)", s0.tools.length === 1 && s0.tools[0].label === "Partidas guardadas" && s0.tools.every((t) => t.w >= 44 && t.h >= 44), JSON.stringify(s0.tools));
   j.check("el mapa dibuja los seis santuarios", s0.nodes.length === 6, JSON.stringify(s0.nodes.map((n) => n.id)));
   // The «depth = danger» axis: space on top, then the air, the land, the sea, the rock and the core at the bottom.
   const order = [...s0.nodes].sort((a, b) => a.y - b.y).map((n) => n.id);
@@ -83,7 +95,7 @@ export async function inicio(j) {
   j.check("2, 4 y 5 dicen «Próximamente», con su candado; el 1 se juega (santuario 1)", ["marino", "subterraneo", "nucleo"].every((id) => row(s0, id)?.off && /⊘\s*Próximamente/.test(row(s0, id)?.lock ?? "")), JSON.stringify(s0.rows.map((r) => [r.id, r.lock])));
   await capture(j, "mapa", "Inicio: mapa de santuarios y tarjetas");
 
-  // 3. A finger turns the map, a pinch zooms it, «+» and «−» too.
+  // 3. A finger turns the map, a pinch zooms it in and out.
   const canvas = await p.locator(".start-screen .nav-canvas canvas").boundingBox();
   await dragAcross(p, canvas);
   await p.waitForTimeout(200);
@@ -93,10 +105,11 @@ export async function inicio(j) {
   await p.waitForTimeout(200);
   const s2 = await start(p);
   j.check("pellizcar hacia fuera lo amplía", s2.zoom > s1.zoom * 1.3, `${s1.zoom} → ${s2.zoom}`);
-  await j.tap('.start-screen [data-act="zout"]', "Alejar");
-  await j.tap('.start-screen [data-act="zout"]', "Alejar");
+  // No «+» or «−» since 2026-11-20 (Berón: «fuera el joystick de cámara y los botones de zoom e Inclinada»): a pinch in.
+  await pinchIn(p, canvas);
+  await p.waitForTimeout(200);
   const s3 = await start(p);
-  j.check("«−» lo aleja", s3.zoom < s2.zoom, `${s2.zoom} → ${s3.zoom}`);
+  j.check("pellizcar hacia dentro lo aleja", s3.zoom < s2.zoom, `${s2.zoom} → ${s3.zoom}`);
 
   // 4. A tap on a node: one that comes later is not picked; 3 is, and its card can start.
   const later = nodeAt(s3, "nucleo");

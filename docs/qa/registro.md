@@ -321,18 +321,18 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-09 | Probado (en vivo) | 2026-11-18 | `3f0d291` | [run](runs/2026-11-18-1349-PX-09-PX-31-PX-32.md): 10 OK |
 | PX-10 | Probado (en vivo) | 2026-11-18 | `90ba319` | [run](runs/2026-11-18-1140-PX-10-PX-44-PX-50.md): 29 OK |
 | PX-11 | Probado (en vivo) | 2026-11-18 | `7b9d882` | [run](runs/2026-11-18-0736-PX-11-PX-12-PX-29-PX-35-PX-38-PX-30-PX-39.md): 29 OK |
-| PX-12 | Probado (en vivo) | 2026-11-18 | `7b9d882` | [run](runs/2026-11-18-0812-PX-12-PX-28-PX-37.md): 35 OK |
+| PX-12 | Probado (en vivo) | 2026-11-20 | `5322f1b` | [run](runs/2026-11-20-1929-PX-12-PX-31-PX-42-PX-44.md): 35 OK |
 | PX-13 | Probado (en vivo) | 2026-11-16 | `1c1b689` | [run](runs/2026-11-16-1923-PX-01-PX-02-PX-13-PX-27.md): 42 OK |
 | PX-14 | Probado (en vivo) | 2026-11-17 | `d9ffc9f` | [run](runs/2026-11-17-0616-PX-14-PX-16.md): 34 OK |
 | PX-15 | Probado (en vivo) | 2026-11-18 | `a2665f9` | [run](runs/2026-11-18-0824-PX-15-PX-31-PX-32-PX-41.md): 51 OK |
 | PX-16 | Probado (en vivo) | 2026-11-17 | `8ee6cc7` | [run](runs/2026-11-17-0910-PX-16.md): 32 OK |
 | PX-23 | Probado (en vivo) | 2026-11-16 | `e3b90f0` | [run](runs/2026-11-16-1521-PX-01-PX-02-PX-23.md): 62 OK |
-| PX-24 | Probado (en vivo) | 2026-11-18 | `69fb242` | [run](runs/2026-11-18-0606-PX-06-PX-07-PX-08-PX-09-PX-11-PX-12-PX-24-PX-28-PX-29-PX-33-PX-35-PX-37-PX-38-PX-43-PX-20-PX-30-PX-39.md): 12 OK |
+| PX-24 | Probado (en vivo) | 2026-11-20 | `5322f1b` | [run](runs/2026-11-20-1929-PX-24.md): 12 OK |
 | PX-20 | Probado (en vivo) | 2026-11-18 | `1c81c52` | [run](runs/2026-11-18-0919-PX-07-PX-20.md): 190 OK |
 | PX-25 | Probado (en vivo) | 2026-11-16 | `9de20b8` | [run](runs/2026-11-16-2058-PX-25.md): 41 OK |
 | PX-30 | Probado (en vivo) | 2026-11-18 | `7b9d882` | [run](runs/2026-11-18-0821-PX-30.md): 45 OK |
 | PX-32 | Probado (en vivo) | 2026-11-18 | `3f0d291` | [run](runs/2026-11-18-1349-PX-09-PX-31-PX-32.md): 22 OK |
-| PX-31 | Probado (en vivo) | 2026-11-18 | `3f0d291` | [run](runs/2026-11-18-1349-PX-09-PX-31-PX-32.md): 27 OK |
+| PX-31 | Probado (en vivo) | 2026-11-20 | `5322f1b` | [run](runs/2026-11-20-1929-PX-12-PX-31-PX-42-PX-44.md): 27 OK |
 | PX-27 | Probado (en vivo) | 2026-11-17 | `65fbb2f` | [run](runs/2026-11-17-2125-PX-27.md): 29 OK |
 | PX-28 | Probado (en vivo) | 2026-11-18 | `7b9d882` | [run](runs/2026-11-18-0812-PX-12-PX-28-PX-37.md): 38 OK |
 | PX-29 | Probado (en vivo) | 2026-11-18 | `7b9d882` | [run](runs/2026-11-18-0736-PX-11-PX-12-PX-29-PX-35-PX-38-PX-30-PX-39.md): 52 OK |
@@ -344,9 +344,9 @@ de la nave real es **PX-28** (`starship`); PX-03 y PX-04/05 leen la radio y audi
 | PX-40 | Probado (en vivo) | 2026-11-18 | `70c6b5c` | [run](runs/2026-11-18-0952-PX-10-PX-41-PX-36-PX-42-PX-40-PX-44.md): 58 OK |
 | PX-41 | Probado (en vivo) | 2026-11-18 | `9d51b5a` | [run](runs/2026-11-18-1201-PX-31-PX-32-PX-41.md): 36 OK |
 | PX-38 | Probado (en vivo) | 2026-11-18 | `3f0d291` | [run](runs/2026-11-18-1337-PX-06-PX-07-PX-37-PX-38.md): 77 OK |
-| PX-42 | Probado (en vivo) | 2026-11-18 | `90ba319` | [run](runs/2026-11-18-1146-PX-42.md): 57 OK |
+| PX-42 | Probado (en vivo) | 2026-11-20 | `5322f1b` | [run](runs/2026-11-20-1929-PX-12-PX-31-PX-42-PX-44.md): 56 OK |
 | PX-43 | Probado (en vivo) | 2026-11-18 | `5a82fe6` | [run](runs/2026-11-18-0613-PX-10-PX-15-PX-32-PX-43-PX-39-PX-40.md): 67 OK |
-| PX-44 | Probado (en vivo) | 2026-11-18 | `f263157` | [run](runs/2026-11-18-1414-PX-44-PX-45-PX-46.md): 25 OK |
+| PX-44 | Probado (en vivo) | 2026-11-20 | `5322f1b` | [run](runs/2026-11-20-1929-PX-12-PX-31-PX-42-PX-44.md): 25 OK |
 | PX-45 | Probado (en vivo) | 2026-11-18 | `fe466708` | [run](runs/2026-11-18-2053-PX-45-PX-49.md): 32 OK |
 | PX-46 | Probado (en vivo) | 2026-11-18 | `e2c1be2d` | [run](runs/2026-11-18-2202-PX-46-PX-47.md): 54 OK |
 | PX-50 | Probado (en vivo) | 2026-11-18 | `90ba319` | [run](runs/2026-11-18-1140-PX-10-PX-44-PX-50.md): 28 OK |
@@ -361,6 +361,8 @@ La más reciente arriba.
 
 | Fecha | Casos | Modo | Resultado | Run |
 |---|---|---|---|---|
+| 2026-11-20 19:29 | PX-12, PX-31, PX-42, PX-44 | Experiencia (Playwright) | 4/4 recorridos bien | [run](runs/2026-11-20-1929-PX-12-PX-31-PX-42-PX-44.md) |
+| 2026-11-20 19:29 | PX-24 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-20-1929-PX-24.md) |
 | 2026-11-19 22:52 | PX-49 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-19-2252-PX-49.md) |
 | 2026-11-19 22:46 | PX-51 | Experiencia (Playwright) | 1/1 recorridos bien | [run](runs/2026-11-19-2246-PX-51.md) |
 | 2026-11-18 22:02 | PX-46, PX-47 | Experiencia (Playwright) | 2/2 recorridos bien | [run](runs/2026-11-18-2202-PX-46-PX-47.md) |

@@ -119,6 +119,18 @@ async function pinchOut(p, box) {
   await cdp.detach();
 }
 
+/** Two fingers on the canvas moving together (a pinch in). */
+async function pinchIn(p, box) {
+  const cdp = await p.context().newCDPSession(p);
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  const pts = (d) => [{ x: cx - d, y: cy, id: 1 }, { x: cx + d, y: cy, id: 2 }];
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: pts(90) });
+  for (const d of [75, 60, 45, 30]) await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: pts(d) });
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await cdp.detach();
+}
+
 /** One finger dragging sideways across the canvas. */
 async function dragAcross(p, box) {
   const cdp = await p.context().newCDPSession(p);
@@ -174,10 +186,10 @@ export async function tareasAjustes(j) {
   const ar = await areas(p);
   j.check("«Áreas» abre a toda pantalla el mapa 3D del LM (donde está, automático) y debajo sus áreas", !!ar && /^Módulo \(automático\) · Viaje/.test(ar.scope) && ar.canvas.w >= 300 && ar.canvas.h >= 150 && ar.rows.length >= 5 && ar.boxes.length === ar.rows.length && ar.rows.some((r) => r.id === "ecs"), JSON.stringify(ar));
   j.check("cada área dice lo que hay y tiene su «Ir» de 44 px", !!ar && ar.rows.every((r) => r.desc.length > 3 && /^Ir a /.test(r.go) && r.gw >= 44 && r.gh >= 44), JSON.stringify(ar?.rows));
-  j.check("arriba solo los botones (+, −, Cenital, ⚙︎, ×) de 44 px, sin texto encima del mapa", !!ar && ar.overText.length === 0 && ar.tools.length === 5 && ar.tools.every((t) => t.w >= 44 && t.h >= 44), JSON.stringify(ar && { tools: ar.tools, overText: ar.overText }));
+  j.check("arriba solo los botones ⚙︎ y × de 44 px (sin +, −, Cenital ni joystick), sin texto encima del mapa", !!ar && ar.overText.length === 0 && ar.tools.length === 2 && ar.tools.every((t) => t.w >= 44 && t.h >= 44), JSON.stringify(ar && { tools: ar.tools, overText: ar.overText }));
   j.check("con Áreas abierta el menú se oculta", !(await menu(p)));
   await capture(j, "areas-modulo", "Áreas: mapa 3D del LM");
-  // A finger turns it, a pinch zooms it (reglas.md §5.7, its one exception), and «+» zooms too.
+  // A finger turns it, a pinch zooms it in and out (reglas.md §5.7, its one exception).
   const canvas = await p.locator(".areas-window .nav-canvas canvas").boundingBox();
   await dragAcross(p, canvas);
   await p.waitForTimeout(200);
@@ -187,8 +199,9 @@ export async function tareasAjustes(j) {
   await p.waitForTimeout(200);
   const pinched = await areas(p);
   j.check("pellizcar hacia fuera lo amplía", !!pinched && pinched.zoom > turned.zoom * 1.3, `${turned?.zoom} → ${pinched?.zoom}`);
-  await j.tap('.areas-window [data-act="zout"]', "Alejar");
-  await j.tap('.areas-window [data-act="zout"]', "Alejar");
+  // No «+» or «−» since 2026-11-20 (Berón: «fuera el joystick de cámara y los botones de zoom e Inclinada»): a pinch in.
+  await pinchIn(p, canvas);
+  await p.waitForTimeout(200);
   // A tap on a box picks it, and its row lights up.
   const target = (await areas(p)).boxes.find((b) => b.id === "esterilla");
   if (target) {

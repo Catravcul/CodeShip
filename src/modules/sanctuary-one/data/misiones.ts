@@ -71,8 +71,8 @@ export const MISSIONS: readonly Mission[] = [
   M("ifo_refrigeracion", "Ronda del centro de datos", "Trabajo", 1, false, "informatica", "i-intercambiador"),
   M("tex_tejer", "Tejer y teñir", "Trabajo", 2, false, "textil", "tex-tina"),
   M("gua_sala", "Turno en la sala de guardia", "Trabajo", 2, true, "guardia", "guardia-radio"),
-  M("aul_clase", "Dar o recibir una clase en el aula", "Trabajo", 1, false, "aula-1", "aula-tarima"),
-  M("son_ensayo", "Preparar y ensayar el concierto de la semana", "Trabajo", 1, false, "musica-estudios-1", "mus-banda"),
+  M("aul_clase", "Dar o recibir una clase en el aula", "Trabajo", 1, false, "aula-matematicas", "aula-mesa-profesor"),
+  M("son_ensayo", "Preparar y ensayar el concierto de la semana", "Trabajo", 1, false, "musica-ensayo", "mus-bateria"),
   M("asa_orden", "Moderar la asamblea", "Trabajo", 1, false, "asambleas", "asamblea-centro"),
   M("con_almacen", "Obra: hacer hormigón", "Trabajo", 1, false, "construccion", "cons-hormigonera"),
 ];

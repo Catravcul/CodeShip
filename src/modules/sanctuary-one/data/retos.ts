@@ -593,3 +593,89 @@ export const TRABAJO = {
     "apaga la luz grande y deja la de la mesilla",
   ], ["deja la ropa mojada en la cama"], "CDC, Healthy Housing Reference Manual (2006); el orden, nuestro"),
 } as const;
+
+// --- The classrooms, one per subject (Berón 2026-11-20: «cada aula preparada para una materia») ----------------------
+export const AULAS = {
+  matematicas: p("aula-matematicas-clase", "Clase de matemáticas: el teorema de Pitágoras", "trabajar", "compania", "Hoy toca geometría en el aula de matemáticas", [
+    "repasa con la clase qué es un triángulo rectángulo",
+    "dibuja en la pizarra cuadrados sobre los catetos de {3|2|5} y 4 unidades",
+    "que cuenten las cuadrículas de cada cuadrado con el geoplano",
+    "comprueba que 9 + 16 = 25: el cuadrado de la hipotenusa",
+    "proponed un problema: la diagonal de una puerta de 2 × 1 m",
+  ], ["da la fórmula sin que la comprueben", "usa un triángulo que no es rectángulo"], "Euclides, Elementos I.47; NCTM, Principles and Standards for School Mathematics (2000): manipulativos"),
+  lengua: p("aula-lengua-clase", "Clase de lengua: leer y comentar un poema", "trabajar", "compania", "Un poema de Gabriela Mistral para la clase", [
+    "lee el poema en voz alta, despacio",
+    "pide que subrayen las palabras que no entiendan y buscadlas",
+    "cuenta las sílabas de un verso: ¿cuántas tiene?",
+    "busca con la clase las rimas y las imágenes",
+    "que cada uno escriba en {5|1|50} líneas qué le ha hecho sentir",
+  ], ["explica tú el poema sin dejarles hablar"], "Rosenblatt, Literature as Exploration (1938); RAE, Ortografía (2010): métrica"),
+  ciencias: p("aula-ciencias-practica", "Práctica de laboratorio: el pH con col lombarda", "trabajar", "salud", "En la mesa de laboratorio hay col lombarda, vinagre y bicarbonato", [
+    "ponte las gafas de seguridad y la bata",
+    "hierve la col troceada {10|1|90} minutos y cuela el caldo morado",
+    "reparte el caldo en tres vasos de precipitados",
+    "añade vinagre a uno y bicarbonato a otro; el tercero es el control",
+    "anota los colores: rojo ácido, morado neutro, verde básico",
+    "tira los restos por el fregadero con mucha agua y lava el material",
+  ], ["prueba las disoluciones con la lengua", "trabaja sin gafas"], "CLEAPSS, Student Safety Sheets; Royal Society of Chemistry, Red cabbage indicator (Practical Chemistry)"),
+  historia: p("aula-historia-clase", "Clase de historia: cómo se orientaban con el astrolabio", "trabajar", "compania", "La vitrina de objetos del mundo está abierta", [
+    "saca el astrolabio de la vitrina y enséñalo a la clase",
+    "explica que medía la altura del Sol o de una estrella",
+    "situad en el globo al-Ándalus, donde se perfeccionó",
+    "comparad con el quipu inca: otra forma de guardar números",
+    "marcad las dos fechas en la línea del tiempo",
+  ], ["presenta las fechas sin situarlas en el mapa"], "Museo Arqueológico Nacional, astrolabios andalusíes; Urton, Signs of the Inka Khipu (2003)"),
+  idiomas: p("aula-idiomas-clase", "Clase de idiomas: escuchar y repetir", "trabajar", "compania", "Los puestos del laboratorio de idiomas están listos", [
+    "ponte los auriculares y ajusta el micrófono a dos dedos de la boca",
+    "escucha el diálogo entero sin pausa",
+    "escúchalo otra vez parando en cada frase y repítela",
+    "grábate y compara tu pronunciación con la original",
+    "habla {2|0|30} minutos con tu pareja usando las frases nuevas",
+  ], ["lee la transcripción antes de escuchar"], "Consejo de Europa, Marco común europeo de referencia (2020); Krashen, Principles and Practice in SLA (1982)"),
+  arte: p("aula-arte-taller", "Taller de arte: pintar del natural", "trabajar", "salud", "Un bodegón espera en el centro del taller", [
+    "coloca el lienzo en el caballete a la altura de los ojos",
+    "encaja las formas grandes a lápiz, sin detalles",
+    "mancha primero los colores medios, luego las sombras",
+    "termina con las luces, la pintura más espesa",
+    "lava los pinceles con jabón en el fregadero y deja la lámina en el secadero",
+  ], ["empieza por los detalles pequeños", "tira los restos de óleo por el fregadero"], "Ching, Drawing: A Creative Process (2010); Gottsegen, The Painter's Handbook (2006)"),
+  estudio: p("aula-estudio-repaso", "Repasar en la sala de estudio", "trabajar", "salud", "Mañana hay examen", [
+    "deja el móvil fuera de la mesa",
+    "lee el tema una vez entero",
+    "cierra el libro y escribe de memoria lo que recuerdes",
+    "compara con el libro y repasa lo que faltaba",
+    "descansa {5|0|60} minutos cada 25 de estudio",
+  ], ["subraya el libro entero en amarillo"], "Dunlosky et al., Improving Students' Learning, Psychological Science in the Public Interest 14 (2013): práctica de recuperación"),
+} as const;
+
+// --- The music rooms, each with its own work --------------------------------------------------------------------------
+export const MUSICA = {
+  grabar: p("musica-grabar", "Grabar una toma en el estudio", "trabajar", "compania", "La banda graba hoy su canción", [
+    "coloca los micrófonos y comprueba cada canal en la consola",
+    "ajusta la ganancia: picos a unos {-12|0|-60} dBFS",
+    "da a los músicos su mezcla de auriculares",
+    "graba la toma con el claqué a tempo",
+    "escuchad la toma en la sala de control y elegid la mejor",
+  ], ["graba con los picos a 0 dBFS"], "Owsinski, The Recording Engineer's Handbook, 4.ª ed. (2017)"),
+  practicar: p("musica-practicar", "Estudiar piano en la cabina", "trabajar", "salud", "Tu cabina está libre una hora", [
+    "siéntate con los antebrazos a la altura del teclado",
+    "calienta con escalas a {60|200|5} pulsaciones por minuto",
+    "estudia el pasaje difícil con manos separadas",
+    "júntalas despacio y sube el metrónomo poco a poco",
+    "toca la pieza entera una vez sin parar",
+  ], ["toca la pieza entera deprisa una y otra vez"], "Ericsson et al., The role of deliberate practice, Psychological Review 100 (1993)"),
+  orquesta: p("musica-orquesta-ensayo", "Ensayo de orquesta", "trabajar", "compania", "El director sube al podio", [
+    "afina con el la del oboe a {440|100|1000} Hz",
+    "mira al director en la entrada",
+    "toca el primer movimiento sin parar",
+    "repasa los compases que marque el director",
+    "guarda el instrumento en su taquilla y la partitura en el archivo",
+  ], ["afina cada uno con su propio diapasón"], "Meier, The Score, the Orchestra, and the Conductor (2009)"),
+  concierto: p("musica-concierto", "Prueba de sonido para el concierto", "trabajar", "compania", "Esta tarde hay concierto en el auditorio", [
+    "revisa que los monitores de suelo y las torres estén conectados",
+    "prueba cada micrófono del escenario desde el control de sala",
+    "ajusta la mezcla de monitores de cada músico",
+    "deja el nivel de sala a unos {95|60|130} dB(A) como máximo",
+    "apunta la escena en la mesa y apaga las luces de trabajo",
+  ], ["sube el volumen hasta que pite", "deja el nivel por encima de 100 dB(A) toda la noche"], "Yamaha, CL Series Reference Manual; OMS, Make Listening Safe (2022): 100 dB(A) como máximo en recintos"),
+} as const;

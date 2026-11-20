@@ -6,7 +6,7 @@ import { FLOOR_PLANS, type FloorPlan } from "./floors";
 import { RING } from "./floors/kit";
 import { bedTip, orchardTip } from "./floors/puntas";
 import { DRIFT, landscape } from "./paisaje";
-import { model, type ModelDef } from "./catalog";
+import { model, type ModelDef, type Part } from "./catalog";
 import { OVERRIDES, resolve, spacing, type Overrides } from "./overrides";
 import { GROUPS, plan, split } from "../domain/population";
 import { ageInGroup, ageLabel, sizeAt } from "../domain/life-cycle";
@@ -159,6 +159,50 @@ interface Built {
 /** How deep a trunk's root goes into the sea under the ice, m (ours: Cold Sanctuary's ends at −1,6 m). */
 export const TRUNK_ROOT_Y = -12;
 
+/** One floor in its place on a side: a compact one centred on the trunk's face, `dy` up (the second of a stack). */
+interface FloorSlot {
+  readonly f: TowerSpec["floors"][number];
+  /** 1-based, the floor's number in the tower (its area id). */
+  readonly fi: number;
+  readonly fp?: FloorPlan;
+  readonly compact: boolean;
+  readonly w: number;
+  readonly d: number;
+  readonly dy: number;
+}
+
+/** How many compact floors one side of a level holds, one over the other. */
+export const STACK = 2;
+
+/**
+ * The tower's floors bottom up, side after side (Berón 2026-11-20: «si son muy pequeños se podría plantear de poner más
+ * de una rama por lado en el árbol, de modo que habría más de un piso por lado»): a full floor (its plan the tower's)
+ * takes a side of its level alone; compact ones (a plan smaller than the tower's: a classroom, a studio) go two to a
+ * side, the second half a level (11 m) over the first, each centred on the trunk's face with its own door. Beside each
+ * other they would not fit: two doors of 7 m and two rooms at the comfortable scale need more than the trunk's 22 m.
+ */
+export function packFloors(t: Pick<TowerSpec, "floors" | "size">, k: number, levelGap: number): FloorSlot[][] {
+  const out: FloorSlot[][] = [];
+  let side: FloorSlot[] = [];
+  const close = () => {
+    if (side.length) out.push(side);
+    side = [];
+  };
+  t.floors.forEach((f, i) => {
+    const fp = f.furnish ? FLOOR_PLANS.get(f.furnish) : undefined;
+    const compact = !!fp && (fp.size.x < t.size.x || fp.size.z < t.size.z);
+    if (!compact) {
+      close();
+      out.push([{ f, fi: i + 1, fp, compact: false, w: 0, d: 0, dy: 0 }]);
+      return;
+    }
+    if (side.length >= STACK) close();
+    side.push({ f, fi: i + 1, fp, compact: true, w: fp.size.x * k, d: fp.size.z * k, dy: (side.length * levelGap) / STACK });
+  });
+  close();
+  return out;
+}
+
 /** One tree-building (Cold Sanctuary's HelixTower): the trunk, its doors, the floors pinwheeling round it and the tips at the end of their branches. */
 function buildTower(b: Built, t: TowerSpec, k: number): void {
   const WH = TREE.waterHalf.value;
@@ -166,7 +210,8 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
   const gap = TREE.levelGap.value;
   const FS = Math.max(t.size.x, t.size.z) * k;
   const door = TREE.door.value;
-  const levels = Math.ceil(t.floors.length / 2);
+  const groups = packFloors(t, k, gap);
+  const levels = Math.max(1, Math.ceil(groups.length / 2));
   const levelY = (l: number) => t.firstY + (l - 1) * gap;
   const tipY = (l: number) => levelY(l) + TREE.tipRise.value;
   const rootHeight = levelY(levels) + TREE.tipRise.value + TREE.ringH.value + 7;
@@ -210,28 +255,32 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
   const gOut = side(S(0), door.x, OH + 3);
   const gIn = side(S(0), door.x, WH - 1.5);
   const shape: TowerShape = { id: t.id, building: t.building, x: o.x, z: o.z, rootHeight, floors: [], tips: [], rings: [], ground: { out: { x: o.x + gOut.x, z: o.z + gOut.z }, inner: { x: o.x + gIn.x, z: o.z + gIn.z } } };
-  let fi = 0;
   let tipIndex = 0;
   for (let l = 1; l <= levels; l++) {
     const y = levelY(l);
     const floorSides = l % 2 === 1 ? [0, 2] : [1, 3];
     const branchSides = l % 2 === 1 ? [1, 3] : [0, 2];
-    for (const s of floorSides) {
-      const f = t.floors[fi++];
-      if (!f) continue;
+    for (const [si, s] of floorSides.entries())
+    for (const slot of groups[(l - 1) * 2 + si] ?? []) {
+      const { f, fi, fp } = slot;
+      const y = levelY(l) + slot.dy;
       const area = `${t.id}:piso-${fi}`;
-      const rect = sideRect(S(s), -OH, FS - OH, OH, OH + FS, o);
-      const fp = f.furnish ? FLOOR_PLANS.get(f.furnish) : undefined;
+      // A full floor is the tower's square; a compact one its own plan, side by side with its neighbours on the side.
+      const x0 = slot.compact ? -slot.w / 2 : -OH;
+      const W = slot.compact ? slot.w : FS;
+      const D = slot.compact ? slot.d : FS;
+      const rect = sideRect(S(s), x0, x0 + W, OH, OH + D, o);
       const sp = spacing({ edificio: t.id, piso: area }, b.o) * k;
-      // Its door: Cold Sanctuary picks each floor's (pickDoors); here the nearest to 5 m whose way in is clear.
-      const dx = fp ? doorFor(fp, sp, k, FS / 2 - OH, OH - door.w / 2, door.x, { edificio: t.id, piso: area }, b.o) : door.x;
+      // Its door: Cold Sanctuary picks each floor's (pickDoors); here the nearest to 5 m whose way in is clear. A compact
+      // floor's in the middle of its trunk-side edge, on the middle of the trunk's face.
+      const dx = slot.compact ? x0 + W / 2 : fp ? doorFor(fp, sp, k, FS / 2 - OH, OH - door.w / 2, door.x, { edificio: t.id, piso: area }, b.o) : door.x;
       b.floors.push({ id: `${area}`, ...rect, y, area });
       b.floors.push({ id: `${area}-umbral`, ...sideRect(S(s), dx - door.w / 2, dx + door.w / 2, WH - 0.6, OH + 0.2, o), y, area });
       gapsOf[s]!.push({ from: dx - door.w / 2, to: dx + door.w / 2, y0: y, y1: y + door.h });
       doorKit(s, dx, y, area);
       (shape.floors as TowerShape["floors"][number][]).push({ rect, y, name: f.name || "Piso libre" });
       // The floor's own frame: centre of the square, +z away from the trunk.
-      const c = side(S(s), FS / 2 - OH, OH + FS / 2);
+      const c = side(S(s), x0 + W / 2, OH + D / 2);
       const centre = { x: o.x + c.x, z: o.z + c.z };
       const out = side(S(s), dx, OH + 3);
       const dir = side(S(s), 0, 1);
@@ -244,9 +293,9 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
       const turn = (S(s) * Math.PI) / 2;
       for (const it of fp.items) {
         const p = side(S(s), it.x * sp, it.z * sp);
-        place(b, it.model, centre.x + p.x, y, centre.z + p.z, turn + (it.rot ?? 0), area, { edificio: t.id, piso: area }, k, it.name);
+        place(b, it.model, centre.x + p.x, y + (it.y ?? 0), centre.z + p.z, turn + (it.rot ?? 0), area, { edificio: t.id, piso: area }, k, it.name);
       }
-      if (fp.ring) {
+      if (fp.ring && !slot.compact) {
         // The U ring 8 m up (Levels.cs RingDeck), its balcony against the trunk with its own door, and its things.
         const ry = y + RING.over;
         const ringArea = `${area}:anillo`;
@@ -384,13 +433,22 @@ export function solidsOf(d: ModelDef, x: number, y: number, z: number, rot: numb
   // A tree stands in the way only by its trunk (the crown is overhead).
   if (d.shape === "arbol") return [box(0, 0, d.size.x * 0.09, d.size.z * 0.09, 0, d.size.y)];
   if (!d.parts) return [box(0, 0, d.size.x / 2, d.size.z / 2, 0, d.size.y)];
-  const out: Solid[] = [];
-  for (const [cx, cy, cz, sx, sy, sz] of d.parts) {
-    const y0 = cy - sy / 2;
-    const y1 = cy + sy / 2;
-    if (y1 <= 0.3 || y0 >= 2) continue;
-    out.push(box(cx, cz, sx / 2, sz / 2, y0, y1));
-  }
+  return blockingParts(d).map((p) => box(p[0]!, p[2]!, p[3]! / 2, p[5]! / 2, p[1]! - p[4]! / 2, p[1]! + p[4]! / 2));
+}
+
+/**
+ * The parts of a model that stand in the way, once per model: those between knee and head height (0,3–2 m), but not thin
+ * posts (a desk's legs, a mic stand: under 5 cm both ways, they stop nobody on their own; the tops they hold do) nor
+ * parts inside another (the books in a bookcase), so the walk scans far fewer pieces.
+ */
+const BLOCKING = new WeakMap<ModelDef, readonly Part[]>();
+function blockingParts(d: ModelDef): readonly Part[] {
+  let out = BLOCKING.get(d);
+  if (out) return out;
+  const ps = (d.parts ?? []).filter(([, cy, , sx, sy, sz]) => cy! + sy! / 2 > 0.3 && cy! - sy! / 2 < 2 && !(sx! < 0.05 && sz! < 0.05));
+  const inside = (a: Part, b: Part) => [0, 1, 2].every((k) => a[k]! - a[k + 3]! / 2 >= b[k]! - b[k + 3]! / 2 - 1e-6 && a[k]! + a[k + 3]! / 2 <= b[k]! + b[k + 3]! / 2 + 1e-6);
+  out = ps.filter((a, i) => !ps.some((b, j) => j !== i && inside(a, b) && (!inside(b, a) || j < i)));
+  BLOCKING.set(d, out);
   return out;
 }
 

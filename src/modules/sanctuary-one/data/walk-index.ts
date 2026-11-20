@@ -7,6 +7,9 @@ import type { Floor, Solid, Water, WalkWorld } from "@modules/aerial-sanctuary/d
  * thousands. Anything wider than `huge` m (the sea, long ground runs) is in every cell. The walk itself (walk.ts) is
  * shared with sanctuary 3 and stays as it is.
  */
+/** Solids farther than this above or below her are left out of `near` (m: more than a level of a tree-building). */
+export const SOLID_BAND = 24;
+
 export class WalkIndex {
   private readonly cells = new Map<string, { floors: Floor[]; waters: Water[]; solids: Solid[] }>();
   private readonly huge: { floors: Floor[]; waters: Water[]; solids: Solid[] } = { floors: [], waters: [], solids: [] };
@@ -35,8 +38,26 @@ export class WalkIndex {
     for (const s of world.solids) put("solids", s);
   }
 
-  /** The world round (x, z): its 3 × 3 cells and the huge pieces, each piece once, in the world's own order. */
-  near(x: number, z: number): WalkWorld {
+  /**
+   * The world round (x, z): its 3 × 3 cells and the huge pieces, each piece once, in the world's own order. With her
+   * height `y`, only the solids within `SOLID_BAND` m above or below (a tree-building stacks a dozen floors of furniture
+   * on the same cells); floors and waters stay all, so she always finds the ground under her.
+   */
+  near(x: number, z: number, y?: number): WalkWorld {
+    if (y === undefined) return this.flat(x, z);
+    const band = Math.floor(y / (SOLID_BAND / 2));
+    const key = `${Math.floor(x / this.cell)},${Math.floor(z / this.cell)},${band}`;
+    const hit = this.cache.get(key);
+    if (hit) return hit;
+    const w = this.flat(x, z);
+    const lo = (band - 2) * (SOLID_BAND / 2);
+    const hi = (band + 3) * (SOLID_BAND / 2);
+    const out: WalkWorld = { floors: w.floors, waters: w.waters, solids: w.solids.filter((s) => s.y1 > lo && s.y0 < hi) };
+    this.cache.set(key, out);
+    return out;
+  }
+
+  private flat(x: number, z: number): WalkWorld {
     const ci = Math.floor(x / this.cell);
     const cj = Math.floor(z / this.cell);
     const key = `${ci},${cj}`;
@@ -48,7 +69,7 @@ export class WalkIndex {
       return all.filter((it) => s.has(it));
     };
     const w: WalkWorld = { floors: pick("floors", this.world.floors), waters: pick("waters", this.world.waters), solids: pick("solids", this.world.solids) };
-    if (this.cache.size > 400) this.cache.clear();
+    if (this.cache.size > 800) this.cache.clear();
     this.cache.set(key, w);
     return w;
   }

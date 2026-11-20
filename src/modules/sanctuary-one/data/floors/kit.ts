@@ -9,6 +9,8 @@ export interface Placed {
   readonly z: number;
   readonly rot?: number;
   readonly name?: string;
+  /** Up from the floor (m): a piano on its stage. */
+  readonly y?: number;
 }
 
 export interface FloorPlan {

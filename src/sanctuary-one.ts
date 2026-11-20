@@ -63,8 +63,10 @@ const L = buildS1Layout(WORLD_SCALE);
 const walkIndex = new WalkIndex(L.world);
 /** The drifting iceberg's solid, where it is now (moveIceberg); added to the world round her when it is near. */
 let bergSolid: { x0: number; x1: number; z0: number; z1: number; y0: number; y1: number } | undefined;
+/** Her height for the walk index (the solids of the floors far above and below are left out); set as she moves. */
+let nearY: number | undefined;
 const near = (x: number, z: number) => {
-  const w = walkIndex.near(x, z);
+  const w = walkIndex.near(x, z, nearY);
   const b = bergSolid;
   if (!b || x < b.x0 - 64 || x > b.x1 + 64 || z < b.z0 - 64 || z > b.z1 + 64) return w;
   return { ...w, solids: [...w.solids, b] };
@@ -802,6 +804,7 @@ let last = performance.now();
 function frame(now: number): void {
   const dt = Math.max(0, Math.min(0.25, (now - last) / 1000));
   last = now;
+  nearY = body.y;
   frameFree(dt);
   if (!steps.frame(dt, camera, rig, avatar)) updateCamera(dt);
   const next = hour + (24 * dt) / S1_DAY_REAL_S;

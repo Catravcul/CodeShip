@@ -57,8 +57,8 @@ function spotAt(list: readonly Instance[], n: number, a: S1Area, pose: Place["po
  */
 const ROLES: Readonly<Record<string, { tareas?: string; entrenamiento?: string }>> = {
   Sadhguru: { tareas: "yoga-hatha-1", entrenamiento: "yoga-hatha-1" },
-  Nevaeh: { tareas: "aula-1" },
-  Neo: { tareas: "aula-1", entrenamiento: "calistenia" },
+  Nevaeh: { tareas: "aula-historia" },
+  Neo: { tareas: "aula-matematicas", entrenamiento: "calistenia" },
 };
 
 /** Each person's place for each activity. */

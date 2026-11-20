@@ -4,14 +4,14 @@ import type { FloorPlan, Placed } from "./kit";
 /**
  * The Entrenamiento floors after the gym (Cold Sanctuary's SampleSceneBuilder.cs: «cada centro lleva los pisos que
  * necesita para todos los miembros», TrainingCentres.FloorsFor with its 30 people): cardio, calistenia, 2 + 2 of
- * yoga, 2 of ballet and 2 of dojo (in works), 2 of aula, the concert floor and 2 of studios. Floor plan 36 × 26 m.
+ * yoga, 2 of ballet and 2 of dojo. Floor plan 36 × 26 m. The music rooms and the classrooms are their own (smaller)
+ * floors since 2026-11-20: floors/musica-aulas.ts.
  */
 const SIZE = { x: 36, z: 26 } as const;
 const P = (model: string, x: number, z: number, rot?: number, name?: string): Placed => ({ model, x, z, ...(rot ? { rot } : {}), ...(name ? { name } : {}) });
 const PI = Math.PI;
 /** Toilets against the +z edge, −x corner (Aseos(…, (−s.x/2 + 3,1 | 2,1, …, s.y/2 − 0,8 | 0,9), 180°)). */
 const toilets3 = P("aseos-3", -18 + 3.1, 13 - 0.8, PI);
-const toilets1 = P("aseos-1", -18 + 2.1, 13 - 0.9, PI);
 
 function cardio(): FloorPlan {
   const items: Placed[] = [P("suelo-caucho-piso", 0, 0)];
@@ -92,37 +92,6 @@ function works(kind: "ballet" | "dojo", n: number): FloorPlan {
   return { id: `${kind}-${n}`, size: SIZE, items, source: cs("Obras", `Finished${kind === "ballet" ? "Ballet" : "Dojo"}`) };
 }
 
-/** Aula (FurnishAulaFloor): a group of 6 per 6 seats, up to 4; 30 people → 24 on the first floor and 6 on the second. */
-function aula(n: number, seats: number): FloorPlan {
-  const groups = Math.min(4, Math.max(1, Math.ceil(seats / 6)));
-  const ax = -18 * 0.47;
-  const lx = 18 * 0.25;
-  const lx2 = 18 * 0.58;
-  const items: Placed[] = [P("aula-suelo", 0, 0), P("aula-tarima", ax, -13 + 2.3)];
-  for (let r = 0; r < groups; r++) items.push(P("aula-pupitres-6", ax, -13 + 6.2 + r * 3.4, 0, `Fila ${r + 1}`));
-  const tables = [[lx, -8], [lx2, -8], [lx, -2], [lx2, -2]] as const;
-  for (let t = 0; t < groups; t++) items.push(P("aula-mesa-estudio", tables[t]![0], tables[t]![1]));
-  items.push(P("aula-biblioteca", 18 - 2.2, -13 + 8.5), P("puesto-ordenador", lx, -13 + 16.5), P("puesto-ordenador", lx2, -13 + 16.5), toilets1);
-  return { id: `aula-${n}`, size: SIZE, items, source: cs("Informatica", `FurnishAulaFloor (piso ${n}, ${seats} plazas)`) };
-}
-
-function concerts(): FloorPlan {
-  const items: Placed[] = [P("aula-suelo", 0, 0), P("mus-escenario-grande", -10, -13 + 3.4)];
-  for (let r = 0; r < 5; r++) items.push(P("mus-fila-10", -8, -3.6 + r * 2.8));
-  items.push(P("mus-escenario-pequeno", 10.5, -7.9), P("mus-fila-8", 10.5, -1.2), P("mus-fila-8", 10.5, 1.6), P("mus-sala-sonica-grande", 10.5, -2.2));
-  items.push(P("mus-banco-tecnico", 5.5, 13 - 2.2), toilets1);
-  return { id: "musica-conciertos", size: SIZE, items, source: cs("Musica", "FurnishConcertFloor") };
-}
-
-function studios(index: number): FloorPlan {
-  const X = (c: number) => -13.35 + c * 8.9;
-  const items: Placed[] = [P("aula-suelo", 0, 0)];
-  for (let c = 0; c < 4; c++) items.push(P("mus-banda", X(c), -13 + 7.7, 0, `Banda ${index * 4 + c + 1}`));
-  for (let st = 0; st < 2; st++) items.push(P("mus-control", X(st * 2), -13 + 16.9), P("mus-cabina", X(st * 2 + 1), -13 + 16.9));
-  items.push(toilets1);
-  return { id: `musica-estudios-${index + 1}`, size: SIZE, items, source: cs("Musica", `FurnishStudioFloor (${index + 1})`) };
-}
-
 export const ENTRENAMIENTO_FLOORS: readonly FloorPlan[] = [
   cardio(),
   calisthenics(),
@@ -134,9 +103,4 @@ export const ENTRENAMIENTO_FLOORS: readonly FloorPlan[] = [
   works("ballet", 2),
   works("dojo", 1),
   works("dojo", 2),
-  aula(1, 24),
-  aula(2, 6),
-  concerts(),
-  studios(0),
-  studios(1),
 ];

@@ -523,9 +523,20 @@ export class Journey {
    */
   async useMachine(room, id, act, what) {
     const pt = await this.page.evaluate(([r, m]) => {
-      const p = window.codeship[r].screenPoint(m);
-      const hit = document.elementFromPoint(p.x, p.y);
-      return { ...p, free: !!hit && hit.tagName === "CANVAS" };
+      const w = window.codeship[r];
+      const c = w.screenPoint(m);
+      const canvas = (x, y) => document.elementFromPoint(x, y)?.tagName === "CANVAS";
+      // A finger, not a pixel: the browser snaps a touch to a button within reach (the Switch pad's «−» or capture
+      // beside a console in the middle of the screen), so the player taps the console where no button is that close.
+      const R = 26;
+      const clear = (x, y) => canvas(x, y) && [[R, 0], [-R, 0], [0, R], [0, -R], [R, R], [-R, R], [R, -R], [-R, -R]].every(([dx, dy]) => canvas(x + dx, y + dy) || x + dx < 0 || y + dy < 0 || x + dx > innerWidth || y + dy > innerHeight);
+      const box = w.measure?.().hits?.[m];
+      if (!box || clear(c.x, c.y)) return { ...c, free: canvas(c.x, c.y) };
+      const pts = [];
+      for (let i = -4; i <= 4; i++) for (let k = -4; k <= 4; k++) pts.push({ x: c.x + (i / 10) * box.w, y: c.y + (k / 10) * box.h });
+      pts.sort((a, b) => Math.hypot(a.x - c.x, a.y - c.y) - Math.hypot(b.x - c.x, b.y - c.y));
+      const ok = pts.find((q) => clear(q.x, q.y) && (typeof w.stationAt !== "function" || w.stationAt(q.x, q.y) === m));
+      return ok ? { ...ok, free: true } : { ...c, free: canvas(c.x, c.y) };
     }, [room, id]);
     const vp = this.page.viewportSize();
     if (pt.free && pt.x > 0 && pt.y > 0 && pt.x < vp.width && pt.y < vp.height) {

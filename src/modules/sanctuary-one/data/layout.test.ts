@@ -120,6 +120,28 @@ describe("santuario 1: pisos amueblados", () => {
       expect(b.area, a.label).toBe(a.id);
     }
   });
+  it("a cada piso pequeño se llega nadando por su rama, dos ramas por lado (Berón 2026-11-20)", () => {
+    const L1 = buildS1Layout(1.5);
+    const branches = L1.areas.filter((a) => a.id.endsWith(":rama"));
+    expect(branches.length).toBeGreaterThanOrEqual(12);
+    for (const r of branches) {
+      const a = L1.areas.find((x) => `${x.id}:rama` === r.id)!;
+      const t = L1.towers.find((x) => x.id === a.link!.tower)!;
+      // Out of the trunk at the mouth, along the branch, and in at the door.
+      const n = { x: Math.sign(Math.round(a.entry!.x - a.link!.inner.x)), z: Math.sign(Math.round(a.entry!.z - a.link!.inner.z)) };
+      const out = Math.abs(n.x) > 0 && Math.abs(a.entry!.x - t.x) > Math.abs(a.entry!.z - t.z) ? { x: n.x, z: 0 } : { x: 0, z: n.z };
+      const row = out.x ? { x: r.x, z: a.link!.inner.z } : { x: a.link!.inner.x, z: r.z };
+      let b = placeAt(L1.world, a.link!.inner.x, a.y + 1, a.link!.inner.z)!;
+      expect(b.motion, a.label).toBe("agua");
+      for (const p of [row, { x: r.x, z: r.z }, a.entry!]) {
+        for (let i = 0; i < 400 && Math.hypot(p.x - b.x, p.z - b.z) > 0.15 && b.motion === "agua"; i++) {
+          const d = Math.hypot(p.x - b.x, p.z - b.z);
+          b = step(L1.world, b, { dx: ((p.x - b.x) / d) * 0.1, dy: 0, dz: ((p.z - b.z) / d) * 0.1 });
+        }
+      }
+      expect(b.area, a.label).toBe(a.id);
+    }
+  });
   const L = buildS1Layout(1);
   it("cada «furnish» de site.ts tiene su plan y cada plan cabe en su piso", () => {
     for (const t of TOWERS)

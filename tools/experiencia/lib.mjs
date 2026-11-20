@@ -18,6 +18,22 @@ const FIND_ACT = (mark) => {
   if (mark) b.dataset.panelTap = "1";
   return (b.getAttribute("aria-label") ?? b.textContent ?? "").replace(/ \(KeyE\)$/, "");
 };
+/**
+ * In the page: the interaction button is already the one of the card holding `sel` (its name, or «Reto: <name>» when
+ * `reto`; the same search as FIND_ACT). The card is drawn in the frame she reaches the thing; the button follows in
+ * the menu's next frame, so a tap in between would hit the previous machine's (a player cannot tap that fast).
+ */
+const ACT_FOR = ([sel, reto]) => {
+  const card = [...document.querySelectorAll(sel)].map((e) => e.closest(".cab-machine:not(.hidden)")).find(Boolean);
+  const name = (card?.querySelector(".cm-head b")?.textContent ?? "").replace(/\s*\(.*\)\s*/g, " ").trim();
+  const b =
+    [...document.querySelectorAll(".rm-act:not(.hidden)")].find((x) => x.closest(".root-menu")?.checkVisibility() && x.checkVisibility()) ??
+    [...document.querySelectorAll('.switch-pad .ap-btn.alert[data-letter="Y"]')].find((x) => x.checkVisibility());
+  if (!b) return false;
+  const label = (b.getAttribute("aria-label") ?? b.textContent ?? "").replace(/ \(KeyE\)$/, "");
+  if (!name) return true;
+  return reto ? label === `Reto: ${name}` : [name, `Reto: ${name}`, `Cerrar: ${name}`].includes(label);
+};
 import { createRequire } from "node:module";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -306,7 +322,7 @@ export class Journey {
       )
       .catch(() => null);
     if (!at) return false;
-    await this.page.waitForFunction(`/^Reto: /.test((${FIND_ACT})(false) ?? "")`, null, { timeout: 8000 }).catch(() => {});
+    await this.page.waitForFunction(ACT_FOR, [selector, true], { timeout: 8000 }).catch(() => {});
     const marked = await this.page.evaluate(FIND_ACT, true);
     if (!marked) return false;
     await this.tap('[data-panel-tap="1"]', "Reto (botón naranja)");
@@ -341,7 +357,7 @@ export class Journey {
       await this.viaReto(selector, "Ver la máquina");
       return;
     }
-    await this.page.waitForFunction(`(${FIND_ACT})(false) !== null`, null, { timeout: 8000 }).catch(() => {});
+    await this.page.waitForFunction(ACT_FOR, [selector, false], { timeout: 8000 }).catch(() => {});
     const btn = await this.page.evaluate(FIND_ACT, true);
     if (!btn) return;
     await this.tap('[data-panel-tap="1"]', "Panel");

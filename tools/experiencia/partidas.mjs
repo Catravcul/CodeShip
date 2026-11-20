@@ -124,7 +124,7 @@ export async function partidas(j) {
   await p.waitForTimeout(500);
   await j.tap('.areas-window .tb-go[data-area="acople"]', "Ir: Escotilla de acople");
   await p.waitForFunction(() => !window.codeship.journey.active, null, { timeout: 60000 }).catch(() => {});
-  await j.tap(".room-ui:not(.hidden) .rm-act", "Panel");
+  await j.tapInteraction("Mostrar la tarjeta (Y del mando)");
   await j.tap('.cab-machine:not(.hidden) button[data-act="entrar-nodriza"]', "Entrar en la nodriza");
   await p.waitForFunction(() => window.codeship.starship?.active, null, { timeout: 30000 }).catch(() => {});
   await p.waitForTimeout(3000);

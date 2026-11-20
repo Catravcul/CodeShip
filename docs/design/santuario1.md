@@ -76,7 +76,7 @@ salud.
 | 33 | Música: **pasillos muy estrechos** y una sala casi vacía con tres cubos; recrearla de cero, salas a lujo de detalle, **cada una su piso** | Hecho: auditorio, sala de ensayo, estudio de grabación, cabinas de práctica y sala de orquesta, cada una su piso con su equipo real (`models/musica-aulas.ts`, `floors/musica-aulas.ts`), pasillo central y su reto |
 | 34 | Si los pisos son pequeños, **más de una rama por lado** del árbol | Hecho: `layout.ts packFloors`: los pisos más pequeños que la cara del tronco van de dos en dos por lado, a media altura de piso uno del otro (a escala 1,5 no caben dos lado a lado) |
 | 35 | Lo mismo para las **aulas**: cada aula para una materia | Hecho: matemáticas, lengua, ciencias, historia, idiomas, arte y sala de estudio, cada una su piso, su equipo y su reto; Nevaeh enseña historia y Neo matemáticas |
-| 36 | El botón de reto debe **migrar a los mandos de la Switch** | Hecho: el botón Y del mando (`ui/game-pad.ts`, compartido con el santuario 3 y las naves) se pone naranja y dice «Reto: …» al acercarse; el botón naranja de arriba se oculta cuando hay mando (tecla E) |
+| 36 | El botón de reto debe **migrar a los mandos de la Switch** | Hecho: el botón Y del mando (`ui/game-pad.ts`, compartido con el santuario 3 y las naves) se pone naranja y dice «Reto» debajo, como los demás botones, al acercarse; el botón naranja de arriba se oculta cuando hay mando (tecla E) |
 
 ## Cambios a gran escala
 

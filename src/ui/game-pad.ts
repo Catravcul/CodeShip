@@ -49,7 +49,18 @@ let shared: PadSetup = {};
 let interaction: Interaction | undefined;
 /** The setup the pad has now. */
 let current: PadSetup | undefined;
-const yButton = (): ActionPadButton | undefined => (interaction ? { letter: "Y", label: interaction.open ? `Cerrar: ${interaction.label}` : interaction.label, key: "KeyE", alert: true } : undefined);
+// Under the Y only «Reto» (or the machine's name), «Cerrar» while its card is open, like the other buttons (Berón
+// 2026-11-20); its full name stays its accessible name.
+const yButton = (): ActionPadButton | undefined =>
+  interaction
+    ? {
+        letter: "Y",
+        label: interaction.open ? "Cerrar" : (interaction.label.split(":")[0] ?? "").trim(),
+        aria: interaction.open ? `Cerrar: ${interaction.label}` : interaction.label,
+        key: "KeyE",
+        alert: true,
+      }
+    : undefined;
 
 function buttons(s: PadSetup): ActionPadButton[] {
   const out: ActionPadButton[] = [...(s.moves ?? []).map(({ run: _r, ...b }) => b)];

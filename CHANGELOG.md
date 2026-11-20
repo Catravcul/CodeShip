@@ -5,6 +5,9 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-20
 
+- **La Y del mando abre la tarjeta sin pulsar lo de debajo**: el mismo toque ya no sube por la escotilla ni abre la
+  pantalla que la tarjeta pone bajo el dedo; bajo la Y solo «Reto» (o «Cerrar»), como los demás botones.
+  [docs/design/reglas.md](docs/design/reglas.md)
 - **Santuario 3: la Isla de las alturas** sustituye a la isla subantártica: una montaña gigante del Karakórum de Hunza
   con sus 6 cinturones reales, cantiles con repisas para trepar (X), una garganta y senderos; íbices, markhores, bharales,
   marmotas que hibernan, pikas, leopardo, buitres, quebrantahuesos y 28 especies en una cadena alimenticia genérica;

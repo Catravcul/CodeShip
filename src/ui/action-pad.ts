@@ -14,6 +14,30 @@ export interface ActionPadButton {
   readonly key?: string;
   /** Orange, the alert colour (the interaction on Y: «Reto: <cosa>»). */
   readonly alert?: boolean;
+  /** Its full name, read aloud and in the tooltip, when the face shows a short one («Reto» → «Reto: Lavadora»). */
+  readonly aria?: string;
+}
+
+/** The accessible name of a button (its key in brackets). */
+const ariaOf = (b: ActionPadButton) => `${b.aria ?? b.label}${b.key ? ` (${b.key})` : ""}`;
+
+/**
+ * A finger's tap on the pad acts on pointerdown; the browser's click for that same tap comes after the finger lifts, at
+ * the same spot, hit-tested again. When the press changed what lies there (Y shows a machine's card and the pad hides
+ * under it), that click would press the card's button under the finger: a hatch's «Subir» would run by itself. The
+ * click of a tap that began on the pad never reaches anything but the pad.
+ */
+function swallowGhostClick(pad: HTMLElement): void {
+  const off = () => window.removeEventListener("click", eat, true);
+  const eat = (e: MouseEvent) => {
+    off();
+    if (pad.contains(e.target as Node)) return;
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  window.addEventListener("click", eat, true);
+  // A long press makes no click; the next real tap must not be eaten.
+  window.setTimeout(off, 800);
 }
 
 /** What each key shows on its face (the Joy-Con's own marks). */
@@ -61,7 +85,7 @@ export class ActionPad {
     const btn = (k: PadKey) => {
       const b = this.spec.get(k);
       const cls = k.replace("+", "plus").replace("-", "minus").toLowerCase();
-      return `<button class="ap-btn ap-${cls}${b ? "" : " free"}${b?.alert ? " alert" : ""}" data-letter="${k}" aria-label="${b ? `${b.label}${b.key ? ` (${b.key})` : ""}` : `Botón ${FACE[k]} (sin asignar)`}" aria-pressed="false"><b>${FACE[k]}</b>${b ? `<span>${b.label}</span>` : ""}</button>`;
+      return `<button class="ap-btn ap-${cls}${b ? "" : " free"}${b?.alert ? " alert" : ""}" data-letter="${k}" aria-label="${b ? ariaOf(b) : `Botón ${FACE[k]} (sin asignar)`}" aria-pressed="false"><b>${FACE[k]}</b>${b ? `<span>${b.label}</span>` : ""}</button>`;
     };
     this.el.innerHTML = `<div class="sp-side sp-left"><div class="sp-cluster">${LEFT.slice(0, 4).map(btn).join("")}</div>${LEFT.slice(4).map(btn).join("")}</div><div class="sp-side sp-right"><div class="sp-cluster">${RIGHT.slice(0, 4).map(btn).join("")}</div>${RIGHT.slice(4).map(btn).join("")}</div>`;
     for (const el of this.el.querySelectorAll<HTMLButtonElement>(".ap-btn")) {
@@ -69,6 +93,7 @@ export class ActionPad {
       el.addEventListener("pointerdown", (e) => {
         e.preventDefault();
         e.stopPropagation();
+        if (e.pointerType !== "mouse") swallowGhostClick(this.el);
         this.tap(k, true);
       });
       for (const ev of ["pointerup", "pointercancel", "pointerleave"]) el.addEventListener(ev, () => this.spec.get(k)?.hold && this.tap(k, false));
@@ -84,7 +109,7 @@ export class ActionPad {
     if (!el) return;
     el.classList.toggle("free", !b);
     el.classList.toggle("alert", !!b?.alert);
-    el.setAttribute("aria-label", b ? `${b.label}${b.key ? ` (${b.key})` : ""}` : `Botón ${FACE[letter]} (sin asignar)`);
+    el.setAttribute("aria-label", b ? ariaOf(b) : `Botón ${FACE[letter]} (sin asignar)`);
     el.innerHTML = `<b>${FACE[letter]}</b>${b ? `<span>${b.label}</span>` : ""}`;
   }
 

@@ -76,6 +76,8 @@ export const STEP_M = 0.6;
 /** Her body for the walls: radius and height, m (Doménica is 1,60 m; the eye is lower). */
 export const BODY_RADIUS_M = 0.3;
 export const BODY_HEIGHT_M = 1.7;
+/** Her body's height swimming (lying in the water, from her feet's height): what has to fit through a doorway. */
+export const SWIM_BODY_M = 0.6;
 /** Swimming at the surface, her feet are this far under it (her eyes just above). */
 export const SWIM_DEPTH_M = 1.45;
 
@@ -97,10 +99,10 @@ function allFloors(w: WalkWorld, x: number, z: number, extra: readonly Floor[]):
   return g.length || extra.length ? [...w.floors, ...extra, ...g] : w.floors;
 }
 
-/** Whether her body at (x, y, z) runs into a solid. */
-export function blocked(w: WalkWorld, x: number, y: number, z: number): boolean {
+/** Whether her body at (x, y, z) runs into a solid (`height`: standing; lying in the water she is less, SWIM_BODY_M). */
+export function blocked(w: WalkWorld, x: number, y: number, z: number, height = BODY_HEIGHT_M): boolean {
   const r = BODY_RADIUS_M;
-  return w.solids.some((s) => x + r > s.x0 && x - r < s.x1 && z + r > s.z0 && z - r < s.z1 && y + BODY_HEIGHT_M > s.y0 && y + 0.15 < s.y1);
+  return w.solids.some((s) => x + r > s.x0 && x - r < s.x1 && z + r > s.z0 && z - r < s.z1 && y + height > s.y0 && y + 0.15 < s.y1);
 }
 
 /** Whether a floor at height `fy` lies inside an open water column at (x, z): it is not there. */
@@ -151,7 +153,8 @@ function settle(w: WalkWorld, b: Body, x: number, y: number, z: number, extra: r
   const v = w.waters.filter((q) => inside(q, x, z) && y >= q.yBottom - STEP_M && y <= q.yTop + STEP_M).sort((a, c) => c.yTop - a.yTop)[0];
   if (!v) return undefined;
   const sy = swimY(v, y);
-  return blocked(w, x, sy, z) ? undefined : { x, y: sy, z, motion: "agua", area: v.area };
+  // Lying in the water she fits where standing she would not (the top of a doorway).
+  return blocked(w, x, sy, z, SWIM_BODY_M) ? undefined : { x, y: sy, z, motion: "agua", area: v.area };
 }
 
 /**

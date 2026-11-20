@@ -1,4 +1,4 @@
-import { blocked, dropTo, step, type Body, type Floor, type WalkWorld } from "../domain/walk";
+import { blocked, dropTo, step, SWIM_BODY_M, waterAt, type Body, type Floor, type WalkWorld } from "../domain/walk";
 import { climbTarget, GRAVITY_MS2, type Climb } from "@modules/sanctuary-one/domain/climb";
 import { jumpAt, LAND_S, SPRINT_MS, SWIM_SPRINT_MS, type JumpStage } from "@modules/sanctuary-one/domain/effort";
 
@@ -32,6 +32,9 @@ export interface WalkInput {
 
 /** Climbing up: hands first, then she pulls herself up, s. */
 export const CLIMB_S = 0.9;
+
+/** The highest a doorway lets her drop out of the water onto its floor (the trunks' doors are 7 m tall). */
+const DOOR_DROP_M = 7.5;
 
 export class FreeWalk {
   /** The tops she has climbed onto: floors she can walk on (walk.ts extra floors). */
@@ -159,10 +162,22 @@ export class FreeWalk {
     } else this.facing = i.yaw;
     const n = Math.max(1, Math.ceil(Math.hypot(dx, dy, dz) / 0.2));
     let body = b;
-    const still = (q: Body) => q.x === b.x && q.y === b.y && q.z === b.z;
+    const still = (q: Body) => Math.abs(q.x - b.x) + Math.abs(q.y - b.y) + Math.abs(q.z - b.z) < 1e-6;
     for (let k = 0; k < n; k++) body = step(this.world(body.x, body.z), body, { dx: dx / n, dy: dy / n, dz: dz / n }, this.climbed);
     // Swimming straight up or down a trunk (looking up or down with nothing ahead): the vertical part alone.
     if (still(body) && swim && Math.abs(dy) > 0.01) body = step(this.world(body.x, body.z), body, { dx: 0, dy, dz: 0 });
+    // Out of the water through a doorway high over its floor (Berón 2026-11-20: «no puedo entrar desde esquinas
+    // superiores y debo bajar hasta tocar el suelo»): where the water ends and her body fits, she drops onto the floor.
+    if (still(body) && swim) {
+      const len = Math.hypot(dx, dz);
+      if (len > 1e-6) {
+        const x = b.x + (dx / len) * 0.5;
+        const z = b.z + (dz / len) * 0.5;
+        const w = this.world(x, z);
+        const to = waterAt(w, x, b.y, z) || blocked(w, x, b.y, z, SWIM_BODY_M) ? undefined : dropTo(w, x, b.y, z, this.climbed);
+        if (to?.motion === "gravedad" && b.y - to.y <= DOOR_DROP_M) this.fall = { x, z, y: b.y, vy: 0, to };
+      }
+    }
     // Off the edge of a floor with no railing (Berón 2026-11-19: «es fácil tirarse abajo»): she falls.
     if (still(body) && b.motion === "gravedad") {
       const len = Math.hypot(dx, dz) || 1;

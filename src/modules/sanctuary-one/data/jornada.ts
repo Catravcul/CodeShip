@@ -112,6 +112,12 @@ export function padOf(L: S1Layout, areaId: string): { x: number; y: number; z: n
   const dx = a.x - t.x;
   const dz = a.z - t.z;
   const d = Math.hypot(dx, dz) || 1;
+  // A floor at the end of a branch says where its carpets wait; they leave straight out from the trunk's face.
+  if (a.pad) {
+    const ox = Math.abs(a.entry!.x - t.x) > Math.abs(a.entry!.z - t.z) ? Math.sign(a.entry!.x - t.x) : 0;
+    const oz = ox ? 0 : Math.sign(a.entry!.z - t.z);
+    return { x: a.pad.x, y: a.y, z: a.pad.z, out: { x: ox, z: oz } };
+  }
   // The floor's centre is OH + FS/2 from the trunk's axis; the pad is 3 m in from its outer edge.
   const half = Math.max(4, d - (TREE.waterHalf.value + TREE.wall.value));
   const r = d + half - 3;

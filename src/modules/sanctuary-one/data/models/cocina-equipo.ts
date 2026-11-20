@@ -299,8 +299,8 @@ export const STATION_UTENSILS: readonly Part[] = [
   // Boards and a GN mise en place on the counter, the knife magnet and the ladles hanging over the station.
   C(-2.2, 0.92, 2.1, 0.5, 0.02, 0.32, BOARD.verde), C(-1.85, 0.92, 2.1, 0.4, 0.02, 0.3, BOARD.rojo), C(-2.55, 0.95, 2.25, 0.17, 0.08, 0.32, STAINLESS), C(-2.55, 0.99, 2.25, 0.15, 0.02, 0.3, 0x4f8a3c),
   C(-2.0, 1.35, 2.42, 0.5, 0.05, 0.02, darkSteel), ...rep(4, (i) => [C(-2.15 + i * 0.1, 1.3, 2.41, 0.03, 0.22, 0.01, STAINLESS)]),
-  // Plates warming and a stack of clean towels by the pass side.
-  ...rep(6, (i) => [C(3.1, 1.02 + i * 0.012, 0.9, 0.28, 0.01, 0.28, white)]), C(3.1, 1.04, -0.25, 0.3, 0.08, 0.2, white),
+  // A stack of clean towels by the sink.
+  C(0.45, 0.94, 2.3, 0.3, 0.08, 0.2, white),
 ];
 
 /** What a table for four has when it is set: plates, cutlery, glasses and the water jug. */
@@ -318,4 +318,166 @@ export const TABLE_SETTING: readonly Part[] = [
     ];
   }),
   C(0.12, 0.88, 0.12, 0.1, 0.22, 0.1, glass),
+];
+
+// ── The cook's station (KitchenPlan.cs CompleteStation), each appliance as it is drawn in its maker's sheet ──────────
+// Berón 2026-11-20: «sigo viendo muchos cubos que no sé lo que son»: every box of the station was one colour block.
+// Each appliance below is built facing −z about its footprint's centre, floor at 0, then turned to face the cook.
+//  - Fry-top (plancha) de 90 cm (Fagor 900, Electrolux Thermaline): placa negra de acero, peto, canaleta de grasa, mandos.
+//  - Fregadero de un seno con grifo de ducha (pre-rinse) y peto (Franke, Teka): seno de 50 × 40 cm.
+//  - Horno mixto 6-1/1 en columna doble (Rational iCombi Pro Combi-Duo): 85 × 77 cm, puerta de cristal, pantalla a la derecha.
+//  - Abatidor de temperatura de 10 bandejas (Irinox EasyFresh): 79 × 83 × 180 cm; aquí uno de 5 a la medida del hueco.
+//  - Cocina de inducción de 2 zonas sobre horno (Fagor 700): vitro negra, zonas marcadas, mandos al frente.
+//  - Armario frigorífico de una puerta de cristal (Infrico, Coreco 600 l): baldas con producto, display arriba.
+//  - Marmita basculante de 100 l (Fagor, Electrolux): cuba entre dos pedestales, volante de vuelco, tapa abierta, grifo.
+//  - Sartén basculante (braseadora) de 80 l: cuba rectangular sobre pedestales.
+//  - Barra de sushi: vitrina refrigerada de neta (Hoshizaki), arrocera, hangiri de madera y esterillas.
+
+type Face = "-z" | "+x" | "-x" | "+z";
+/** Turns parts built facing −z to face `f`, and moves them to (ox, oz). */
+const facing = (parts: readonly Part[], f: Face, ox: number, oz: number): Part[] =>
+  parts.map(([x, y, z, w, h, d, c]) => {
+    const [nx, nz, nw, nd] = f === "-z" ? [x, z, w, d] : f === "+z" ? [-x, -z, w, d] : f === "+x" ? [-z, x, d, w] : [z, -x, d, w];
+    return c === undefined ? ([nx + ox, y, nz + oz, nw, h, nd] as Part) : ([nx + ox, y, nz + oz, nw, h, nd, c] as Part);
+  });
+
+const KNOB = 0x1c1c1e;
+const GLASS_DARK = 0x26323a;
+const BLACK_PLATE = 0x2b2b2b;
+
+/** A steel base cabinet to 0,85 m with `doors` doors (their seams and handles), w × d. */
+const cabinet = (w: number, d: number, doors: number): Part[] => [
+  C(0, 0.47, 0, w, 0.76, d, STAINLESS),
+  C(0, 0.045, -0.04, w - 0.02, 0.09, d - 0.1, darkSteel),
+  ...rep(doors - 1, (i) => [C(-w / 2 + ((i + 1) * w) / doors, 0.47, -d / 2 - 0.003, 0.01, 0.7, 0.005, darkSteel)]),
+  ...rep(doors, (i) => [C(-w / 2 + ((i + 0.5) * w) / doors + (i % 2 ? -1 : 1) * (w / doors / 2 - 0.08), 0.6, -d / 2 - 0.02, 0.02, 0.2, 0.02, darkSteel)]),
+];
+
+const fryTop = (w: number, d: number): Part[] => [
+  ...cabinet(w, d, 2),
+  C(0, 0.875, 0, w, 0.05, d, STAINLESS),
+  C(0, 0.905, 0.02, w - 0.1, 0.015, d - 0.2, BLACK_PLATE),
+  C(0, 0.98, d / 2 - 0.03, w, 0.16, 0.04, STAINLESS),
+  ...[-1, 1].map((s) => C(s * (w / 2 - 0.02), 0.94, 0.02, 0.03, 0.08, d - 0.2, STAINLESS)),
+  C(0, 0.9, -d / 2 + 0.07, w - 0.1, 0.02, 0.05, darkSteel),
+  ...rep(3, (i) => [C(-0.25 + i * 0.25, 0.8, -d / 2 - 0.02, 0.05, 0.05, 0.04, KNOB)]),
+];
+
+const sinkUnit = (w: number, d: number): Part[] => [
+  ...cabinet(w, d, 2),
+  C(0, 0.875, 0, w, 0.05, d, STAINLESS),
+  C(0, 0.88, -0.02, 0.5, 0.05, 0.4, 0x5d6a74),
+  C(0, 0.98, d / 2 - 0.03, w, 0.16, 0.04, STAINLESS),
+  // The pre-rinse tap: the riser, its spring and the spray head, and the swing spout.
+  C(0.25, 1.25, d / 2 - 0.12, 0.04, 0.7, 0.04, COL.chrome),
+  C(0.25, 1.35, d / 2 - 0.12, 0.08, 0.3, 0.08, 0x9aa0a8),
+  C(0.25, 1.15, d / 2 - 0.2, 0.06, 0.12, 0.06, darkSteel),
+  C(0.1, 1.05, d / 2 - 0.2, 0.3, 0.03, 0.03, COL.chrome),
+  C(0, 1.0, d / 2 - 0.1, 0.03, 0.12, 0.03, COL.chrome),
+];
+
+/** One combi oven 6-1/1 (85 × 77 cm drawn in the footprint): body, glass door with its frame, screen and handle. */
+const combi = (w: number, d: number, y0: number): Part[] => [
+  C(0, y0 + 0.39, 0, w, 0.78, d, STAINLESS),
+  C(-0.08, y0 + 0.4, -d / 2 - 0.01, w - 0.3, 0.6, 0.02, darkSteel),
+  C(-0.08, y0 + 0.4, -d / 2 - 0.02, w - 0.38, 0.5, 0.02, GLASS_DARK),
+  ...rep(3, (i) => [C(-0.08, y0 + 0.25 + i * 0.15, -d / 2 - 0.025, w - 0.42, 0.01, 0.01, 0x4a5560)]),
+  C(w / 2 - 0.1, y0 + 0.55, -d / 2 - 0.015, 0.14, 0.2, 0.02, screen),
+  C(w / 2 - 0.1, y0 + 0.3, -d / 2 - 0.02, 0.06, 0.06, 0.03, KNOB),
+  C(w / 2 - 0.22, y0 + 0.4, -d / 2 - 0.05, 0.03, 0.4, 0.03, darkSteel),
+];
+const combiTower = (w: number, h: number, d: number): Part[] => [
+  ...combi(w, d, 0.1),
+  ...combi(w, d, 0.9),
+  ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => C(sx * (w / 2 - 0.05), 0.05, sz * (d / 2 - 0.05), 0.05, 0.1, 0.05, darkSteel))),
+  C(0, h - 0.05, 0, w - 0.1, 0.1, d - 0.1, 0x9aa0a8),
+];
+
+const blastChiller = (w: number, h: number, d: number): Part[] => [
+  C(0, h / 2, 0, w, h, d, STAINLESS),
+  C(-0.05, h / 2 - 0.05, -d / 2 - 0.01, w - 0.2, h - 0.35, 0.02, 0xc4c9ce),
+  C(w / 2 - 0.16, h / 2 - 0.05, -d / 2 - 0.05, 0.04, h - 0.6, 0.04, darkSteel),
+  C(0, h - 0.12, -d / 2 - 0.01, w - 0.1, 0.16, 0.02, 0x30363c),
+  C(-0.2, h - 0.12, -d / 2 - 0.02, 0.22, 0.08, 0.02, 0x2f6f9f),
+  C(0.15, h - 0.12, -d / 2 - 0.02, 0.05, 0.05, 0.02, 0x3fbf5f),
+  ...rep(5, (i) => [C(0, 0.06 + i * 0.025, -d / 2 - 0.01, w - 0.2, 0.01, 0.02, darkSteel)]),
+];
+
+const induction = (w: number, d: number): Part[] => [
+  ...cabinet(w, d, 1),
+  C(0, 0.875, 0, w, 0.05, d, STAINLESS),
+  C(0, 0.905, -0.02, w - 0.06, 0.012, d - 0.12, 0x151517),
+  ...[-1, 1].flatMap((s) => [C(0, 0.912, s * 0.22, 0.3, 0.004, 0.3, 0x3a3a40), C(0, 0.913, s * 0.22, 0.24, 0.004, 0.24, 0x151517)]),
+  C(0, 0.98, d / 2 - 0.03, w, 0.16, 0.04, STAINLESS),
+  ...[-1, 1].map((s) => C(s * 0.15, 0.8, -d / 2 - 0.02, 0.05, 0.05, 0.04, KNOB)),
+  C(0, 0.4, -d / 2 - 0.012, w - 0.12, 0.35, 0.01, GLASS_DARK),
+];
+
+const fridge = (w: number, h: number, d: number): Part[] => [
+  C(0, h / 2 + 0.05, 0, w, h - 0.1, d, STAINLESS),
+  ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => C(sx * (w / 2 - 0.05), 0.05, sz * (d / 2 - 0.05), 0.05, 0.1, 0.05, darkSteel))),
+  // Glass door with its steel frame, the shelves and what stands on them seen through it.
+  C(0, 1.0, -d / 2 - 0.01, w - 0.06, 1.6, 0.02, 0x9aa0a8),
+  C(0, 1.0, -d / 2 - 0.02, w - 0.16, 1.5, 0.01, 0x6f8a99),
+  ...rep(4, (i) => [C(0, 0.35 + i * 0.38, -d / 2 + 0.05, w - 0.2, 0.02, 0.08, 0xdfe5ea)]),
+  ...rep(12, (i) => [C(-0.24 + (i % 3) * 0.24, 0.43 + Math.floor(i / 3) * 0.38, -d / 2 + 0.06, 0.16, 0.14, 0.06, [0xd9583a, 0x6b9e4a, 0xf2e6cc, 0xe8c66a, 0x3b6fc2, 0xf2f2f2][i % 6]!)]),
+  C(w / 2 - 0.08, 1.0, -d / 2 - 0.05, 0.03, 0.6, 0.04, darkSteel),
+  C(0, h - 0.12, -d / 2 - 0.01, w - 0.06, 0.16, 0.02, 0x30363c),
+  C(-0.15, h - 0.12, -d / 2 - 0.02, 0.18, 0.07, 0.01, 0x3f9fdf),
+];
+
+const kettle = (w: number, d: number): Part[] => [
+  ...[-1, 1].map((s) => C(s * (w / 2 - 0.08), 0.48, 0.05, 0.16, 0.96, d - 0.2, STAINLESS)),
+  // The bowl hangs between the pedestals on its trunnions; its open lid stands up behind it.
+  C(0, 0.68, -0.02, w - 0.3, 0.42, 0.62, STAINLESS),
+  C(0, 0.88, -0.02, w - 0.36, 0.02, 0.56, 0x5d6a74),
+  C(0, 0.9, -0.02, w - 0.26, 0.03, 0.66, 0xd8dcdf),
+  C(0, 0.55, -0.36, 0.08, 0.08, 0.06, darkSteel),
+  C(0, 1.18, 0.33, w - 0.3, 0.56, 0.03, 0xd8dcdf),
+  C(0, 1.42, 0.31, 0.12, 0.04, 0.04, darkSteel),
+  C(w / 2 - 0.08, 0.7, -d / 2 + 0.08, 0.04, 0.22, 0.22, KNOB),
+  C(-w / 2 + 0.08, 0.98, 0.25, 0.04, 0.04, 0.04, KNOB),
+  C(-w / 2 + 0.08, 1.15, 0.2, 0.03, 0.35, 0.03, COL.chrome),
+  C(-w / 2 + 0.2, 1.31, 0.05, 0.25, 0.03, 0.03, COL.chrome),
+];
+
+const braisingPan = (w: number, d: number): Part[] => [
+  ...[-1, 1].map((s) => C(s * (w / 2 - 0.06), 0.4, 0, 0.12, 0.8, d - 0.1, STAINLESS)),
+  C(0, 0.72, -0.02, w - 0.24, 0.26, d - 0.2, STAINLESS),
+  C(0, 0.855, -0.02, w - 0.3, 0.02, d - 0.26, 0x4a4f57),
+  C(0, 1.16, d / 2 - 0.12, w - 0.24, 0.6, 0.03, 0xd8dcdf),
+  C(0, 0.8, -d / 2 + 0.04, 0.2, 0.03, 0.06, darkSteel),
+  C(w / 2 - 0.06, 0.6, -d / 2 + 0.1, 0.04, 0.2, 0.2, KNOB),
+];
+
+const sushiBar = (w: number, d: number): Part[] => [
+  C(0, 0.45, 0, w, 0.9, d, 0x8c6b4d),
+  C(0, 0.915, 0, w + 0.04, 0.03, d + 0.04, 0xd9c19a),
+  // The neta case: refrigerated glass over the fish, along the front.
+  C(0, 1.0, d / 2 - 0.12, w - 0.2, 0.14, 0.22, 0x9aa0a8),
+  C(0, 1.13, d / 2 - 0.12, w - 0.2, 0.12, 0.22, glass),
+  ...rep(6, (i) => [C(-0.75 + i * 0.3, 1.09, d / 2 - 0.12, 0.22, 0.03, 0.14, [0xe8754a, 0xc23b3b, 0xf2a07a, 0xe8754a, 0xf2f2f0, 0xc23b3b][i]!)]),
+  // Rice cooker, the wooden hangiri and two bamboo mats with a roll on the work side.
+  C(-0.75, 1.05, -0.1, 0.3, 0.26, 0.3, white), C(-0.75, 1.19, -0.1, 0.26, 0.03, 0.26, 0x6b6b6b),
+  C(-0.25, 0.98, -0.12, 0.45, 0.1, 0.45, 0xd9b77a), C(-0.25, 1.02, -0.12, 0.38, 0.02, 0.38, 0xf7f3ea),
+  C(0.3, 0.935, -0.12, 0.26, 0.01, 0.26, 0xc9b26b), C(0.62, 0.935, -0.12, 0.26, 0.01, 0.26, 0xc9b26b),
+  C(0.3, 0.96, -0.12, 0.05, 0.05, 0.22, 0x1f2a1f),
+];
+
+/**
+ * The whole station in its frame (the cook works inside the U): along the back the counter, the fry-top, the sink,
+ * the double combi oven and the blast chiller; down the left the inductions and the glass-door fridge; down the right
+ * the kettles and the braising pans; in front the sushi bar.
+ */
+export const STATION: readonly Part[] = [
+  ...facing(table(0, 1.25, 0.7), "-z", -2, 2.1),
+  ...facing(fryTop(0.9, 0.7), "-z", -0.9, 2.1),
+  ...facing(sinkUnit(1, 0.7), "-z", 0.1, 2.1),
+  ...facing(combiTower(1, 1.8, 0.9), "-z", 1.25, 2.1),
+  ...facing(blastChiller(1.2, 1.5, 1), "-z", 2.45, 2.0),
+  ...[0.9, -0.25, -1.4].flatMap((z) => facing(induction(1.0, 0.7), "+x", -3.1, z)),
+  ...facing(fridge(0.9, 2.1, 0.8), "+x", -3.1, -2.5),
+  ...[0.9, -0.25, -1.4].flatMap((z) => facing(kettle(1.0, 0.7), "-x", 3.1, z)),
+  ...[-2.5, -3.6].flatMap((z) => facing(braisingPan(1.0, 0.7), "-x", 3.1, z)),
+  ...facing(sushiBar(2, 0.6), "+z", -0.6, -3.3),
 ];

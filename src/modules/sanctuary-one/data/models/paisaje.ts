@@ -26,6 +26,11 @@ export const PAISAJE_MODELS: readonly ModelDef[] = [
   { ...m("tundra-dryas", "naturaleza", "flora-tundra", "Dríada de ocho pétalos en flor (Dryas octopetala)", 0.8, 0.12, 0.8, 0xe8e0a0, "arbol", "real", TU("tundra: Dryas octopetala")), walkThrough: true },
   { ...m("tundra-algodon", "naturaleza", "flora-tundra", "Algodón ártico (Eriophorum)", 0.6, 0.3, 0.6, 0xf2f2ea, "arbol", "real", TU("tundra: charcas con Eriophorum")), walkThrough: true },
   { ...m("tundra-charca", "naturaleza", "flora-tundra", "Charca de tundra", 6, 0.02, 4, 0x5a8fae, "cilindro", "real", TU("charcas")), walkThrough: true },
+  // The caps' own surface (Berón 2026-11-20: «¿los casquetes son realistas?»), docs/design/santuario1.md §Casquetes: wind-cut
+  // snow ridges along the wind (sastrugi, 10–50 cm), hummocks of broken ice on the edges, and the cracks of the shore.
+  { ...pz("sastrugi", "naturaleza", "hielo-casquete", "Sastrugi (crestas de nieve talladas por el viento)", 0xf6f9fb, [C(0, 0.1, 0, 0.9, 0.2, 4.2), C(0.1, 0.24, -0.4, 0.55, 0.1, 2.8), C(-0.1, 0.31, -0.8, 0.3, 0.06, 1.4)], "real", "Sastrugi: crestas de 0,1–0,5 m alineadas con el viento dominante (Filhol y Sturm 2015, «Snow bedforms: a review, new data, and a formation model», J. Geophys. Res. Earth Surf.)"), walkThrough: true },
+  pz("hummock", "naturaleza", "hielo-casquete", "Montículo de hielo roto (hummock) cubierto de nieve", 0xd4e7f2, [C(0, 0.35, 0, 2.6, 0.7, 2.2, 0xd4e7f2), C(0.3, 0.85, 0.2, 1.4, 0.5, 1.2, 0xc4dff0), C(-0.5, 0.6, -0.5, 1.0, 0.6, 0.9, 0xb8d8ec), C(0.1, 0.72, 0.1, 2.2, 0.06, 1.8, 0xf6f9fb)], "real", "Hummocks: bloques de hielo roto de 0,5–2 m apilados por la presión (WMO Sea-Ice Nomenclature, «hummock»)"),
+  { ...m("grieta-marea", "naturaleza", "hielo-casquete", "Grieta de marea (el hielo fijo se rompe donde sube y baja con la marea)", 1.2, 0.02, 14, 0x2e5a6e, "caja", "real", "Tide crack: grieta paralela a la costa del hielo fijo (WMO Sea-Ice Nomenclature, «tide crack»)"), walkThrough: true },
   pz("iceberg-varado", "terreno", "icebergs", "Iceberg tabular varado (80 × 60 m, 240 m de alto, un décimo fuera)", ICE, berg(80, 60, 24, 40), "real", IB("Iceberg_varado (−500, −500)")),
   pz("iceberg-deriva", "terreno", "icebergs", "Iceberg tabular a la deriva (100 × 70 m, 300 m de alto)", ICE, berg(100, 70, 30, 40), "real", IB("Iceberg_deriva (540, 200) → (520, −260)")),
 ];

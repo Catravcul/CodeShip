@@ -29,6 +29,8 @@ function rng(seed: number): (a: number, b: number) => number {
 }
 
 const nearTrunk = (x: number, z: number) => TOWERS.some((t) => Math.hypot(x - t.x, z - t.z) < TRUNK_MARGIN);
+/** Inside another lobe (overlapping caps: drawn once). */
+const inOther = (l: { x: number; z: number }, x: number, z: number) => LOBES.some((q) => q !== l && q.r > 0 && q.name < (l as { name?: string }).name! && Math.hypot(x - q.x, z - q.z) < q.r);
 const onLobe = (l: { x: number; z: number; r: number }, x: number, z: number, margin: number) => Math.hypot(x - l.x, z - l.z) < l.r - margin;
 
 /** A free spot of the lobe (WildSpot): 12 angles from `angle`, at `radius` from its centre. */
@@ -89,6 +91,35 @@ export function landscape(): LandItem[] {
           out.push({ model: kind % 2 ? "tundra-sauce" : "tundra-dryas", x: x + R(-1, 1), z: z + R(-1, 1), rot: R(0, 3), name: kind % 2 ? "Sauce ártico" : "Dríada de ocho pétalos" });
         }
       }
+    }
+  });
+  // Every ice cap's surface (docs/design/santuario1.md §Casquetes): sastrugi along the wind every ~12 m, a few hummocks
+  // near the edge where the floe was pressed, and on the caps that touch the land island the tide crack of its shore.
+  LOBES.forEach((l, index) => {
+    if (l.r <= 0 || isLand(l)) return;
+    const R = rng(9100 + index * 53);
+    for (let gx = -l.r; gx <= l.r; gx += 12)
+      for (let gz = -l.r; gz <= l.r; gz += 12) {
+        const x = l.x + gx + R(-4, 4), z = l.z + gz + R(-4, 4);
+        if (!onLobe(l, x, z, 3) || nearTrunk(x, z) || inOther(l, x, z)) continue;
+        out.push({ model: "sastrugi", x, z, rot: alongYaw + Math.PI / 2 + R(-0.2, 0.2) });
+      }
+    const n = Math.max(2, Math.round(l.r / 9));
+    for (let i = 0; i < n; i++) {
+      const a = R(0, Math.PI * 2), r = l.r - R(4, 7);
+      const x = l.x + Math.sin(a) * r, z = l.z + Math.cos(a) * r;
+      if (nearTrunk(x, z) || inOther(l, x, z)) continue;
+      out.push({ model: "hummock", x, z, rot: R(0, 3), ...(i === 0 ? { name: "Montículos de hielo (hummocks)" } : {}) });
+    }
+    for (const q of LOBES) {
+      if (q.r <= 0 || !isLand(q)) continue;
+      const d = Math.hypot(q.x - l.x, q.z - l.z);
+      if (d > l.r + q.r - 2) continue;
+      // Where the two touch: the crack runs along the shore, 6 m out on the ice.
+      const ux = (q.x - l.x) / d, uz = (q.z - l.z) / d;
+      const at = Math.max(0, (d - q.r) - 6);
+      const x = l.x + ux * Math.min(at, l.r - 4), z = l.z + uz * Math.min(at, l.r - 4);
+      if (!nearTrunk(x, z)) out.push({ model: "grieta-marea", x, z, rot: Math.atan2(ux, uz) + Math.PI / 2, name: "Grieta de marea" });
     }
   });
   // The island's trees (Cold Sanctuary's BuildIceFlora): six mountain birches in a ring of 16 m round the grove.

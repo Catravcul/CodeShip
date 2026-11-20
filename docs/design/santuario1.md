@@ -78,6 +78,32 @@ salud.
 | 35 | Lo mismo para las **aulas**: cada aula para una materia | Hecho: matemáticas, lengua, ciencias, historia, idiomas, arte y sala de estudio, cada una su piso, su equipo y su reto; Nevaeh enseña historia y Neo matemáticas |
 | 36 | El botón de reto debe **migrar a los mandos de la Switch** | Hecho: el botón Y del mando (`ui/game-pad.ts`, compartido con el santuario 3 y las naves) se pone naranja y dice «Reto: …» al acercarse; el botón naranja de arriba se oculta cuando hay mando (tecla E) |
 
+### Cuarta lista (2026-11-20)
+
+| # | Pedido | Estado |
+| --- | --- | --- |
+| 37 | La cocina del restaurante: **muchos cubos que no se sabe qué son** | Hecho: cada uno de los 8 puestos con su equipo dibujado como el del fabricante (fry-top, fregadero con ducha, horno mixto doble, abatidor, inducción, armario de puerta de cristal con producto, marmitas con tapa abierta, braseadoras, barra de sushi con vitrina de neta), el pase con sus lámparas y la mesa de emplatado (`models/cocina-equipo.ts` STATION) |
+| 38 | En el gimnasio, **al terminar un ejercicio atraviesa el suelo y cae** | Hecho: al abrir el reto ella queda en el piso de la máquina (antes guardaba la altura de donde venía, p. ej. tras la ruta o el teletransporte de una misión) y al cerrarlo, si no hay suelo libre, vuelve donde estaba (`sanctuary-one.ts` stageAt/offStage). Probado en vivo |
+| 39 | Música: dos pisos por lado **con ramas**, no entradas directas al tronco | Hecho: cada piso pequeño está al final de su rama (tubo de agua de 7 × 7 m que sale del tronco, va junto a la cara y entra por la puerta del piso), dos por lado uno junto al otro a la misma altura (`layout.ts` packFloors, `ROOM_BRANCH`) |
+| 40 | El mensaje del botón de reto tapa otros botones | Hecho: solo «Reto» bajo la Y, como los demás |
+| 41 | **Puerta**: no se entra desde las esquinas altas, hay que bajar hasta el suelo | Hecho y probado en vivo en las 7 posiciones (centro, esquinas altas y laterales): nadando, su cuerpo tumbado cabe hasta lo alto de la puerta y donde acaba el agua cae al piso (`free-walk.ts`, `walk.ts` SWIM_BODY_M) |
+| 42 | **Nado en 1.ª persona**: todo blanco en cierta perspectiva y el agua oculta | Hecho: los ojos quedaban justo a la altura de la superficie (el agua se veía de canto, es decir, nada); ahora van 30 cm por encima, y el mar es mate (un plano brillante a ras se volvía del color del cielo) |
+| 43 | ¿Los **casquetes** son realistas? ¿Se han investigado? | Ver §Casquetes |
+
+## Casquetes
+
+Los casquetes son la distribución de Cold Sanctuary (`PolarLandscapeBuilder.Islands`: círculos que se solapan, ficción
+del juego): hielo flotante en una laguna con edificios encima. Lo que no era real y se ha corregido (2026-11-20):
+
+| Antes | Real | Ahora |
+| --- | --- | --- |
+| Placa blanca de 1,5 m con 25 cm fuera del agua (17 %) | El hielo marino (densidad ≈ 0,9) flota con una décima parte fuera; el hielo fijo de varios años tiene 2–4 m | 2,3 m de hielo azulado bajo 30 cm de nieve, 25 cm fuera del agua |
+| Superficie lisa | El viento talla la nieve en sastrugi, crestas de 0,1–0,5 m alineadas con él (Filhol y Sturm 2015) | Sastrugi cada ~12 m en todos los casquetes, a lo largo del viento del suroeste |
+| Solo crestas de presión en los lóbulos «Bosque» | La presión entre placas deja crestas y montículos de hielo roto (*hummocks*) en los bordes ([Pressure ridge](https://en.wikipedia.org/wiki/Pressure_ridge_(ice))) | Hummocks en el borde de cada casquete |
+| — | Donde el hielo fijo toca la costa, la marea lo rompe en una grieta paralela a ella (*tide crack*, WMO Sea-Ice Nomenclature) | Grieta de marea donde un casquete toca la isla de tierra |
+
+Siguen siendo ficción, y así se marcan: que haya edificios sobre hielo flotante y la forma de círculos de los casquetes.
+
 ## Cambios a gran escala
 
 Todo lo que se ve es una **instancia de un modelo del catálogo**, y cada modelo tiene `category` (máquina, mueble,

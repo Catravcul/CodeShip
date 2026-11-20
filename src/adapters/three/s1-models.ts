@@ -138,13 +138,19 @@ export interface S1Scene {
 
 export function buildS1Scene(L: S1Layout): S1Scene {
   const root = new THREE.Group();
-  // The ground: ice caps (white, 1,5 m thick plates) and the land island (tundra), merged by kind.
+  // The ground: ice caps (snow over blue sea ice, 2,3 m thick plates) and the land island (tundra), merged by kind.
   const ice: THREE.BufferGeometry[] = [];
+  const snow: THREE.BufferGeometry[] = [];
   const land: THREE.BufferGeometry[] = [];
   const decks: THREE.BufferGeometry[] = [];
   const thresholds: THREE.BufferGeometry[] = [];
   for (const f of L.world.floors) {
-    if (f.area.startsWith("hielo:")) ice.push(box(f.x0, f.x1, -1.5, 0, f.z0, f.z1));
+    // Sea ice floats with about a tenth above the water (density ~0,9): 2,3 m of ice under 25 cm of freeboard, the top
+    // 30 cm of it snow (docs/design/santuario1.md §Casquetes).
+    if (f.area.startsWith("hielo:")) {
+      snow.push(box(f.x0, f.x1, -0.3, 0, f.z0, f.z1));
+      ice.push(box(f.x0, f.x1, -2.3, -0.3, f.z0, f.z1));
+    }
     else if (f.area.startsWith("tierra:")) land.push(box(f.x0, f.x1, -3, 0, f.z0, f.z1));
     else if (f.id.endsWith("umbral") || f.id.includes("umbral-suelo")) thresholds.push(box(f.x0, f.x1, f.y - 0.3, f.y - 0.01, f.z0, f.z1));
     else if (f.area.endsWith(":techo") || f.area.includes(":punta-")) decks.push(box(f.x0, f.x1, f.y - 0.5, f.y - 0.01, f.z0, f.z1));
@@ -155,7 +161,8 @@ export function buildS1Scene(L: S1Layout): S1Scene {
     mesh.name = name;
     root.add(mesh);
   };
-  add(ice, mat(0xe9f2f7, { roughness: 0.4 }), "hielo");
+  add(snow, mat(0xf3f7fa, { roughness: 0.6 }), "nieve");
+  add(ice, mat(0x9fcbe0, { roughness: 0.2 }), "hielo");
   add(land, mat(0x7d8460), "tierra");
   add(thresholds, mat(0x8fa2ad), "umbrales");
   add(decks, mat(0x6f8a5a), "puntas-y-techos");

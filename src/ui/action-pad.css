@@ -66,3 +66,8 @@ body:has(.zg-pad:not(.hidden)) .sp-left { left: 198px; }
   body:has(.zg-pad:not(.hidden)) .sp-left { left: 14px; }
   body:has(.zg-pad:not(.hidden)) .sp-side { bottom: calc(202px + env(safe-area-inset-bottom)); }
 }
+
+/* The interaction on Y (Berón 2026-11-20): orange like the alert it replaces, its «Reto: <cosa>» beside the diamond. */
+.ap-btn.alert { opacity: 0.95; color: #1d0d00; background: radial-gradient(circle at 40% 35%, #ffc27a, #ff8a1e 70%); border-color: #ffe0b8; box-shadow: 0 0 0 3px #ff8a1e55, 0 2px 4px #0005; animation: ap-alert 1.6s ease-in-out infinite; }
+.ap-btn.alert span { position: absolute; right: 56px; top: 50%; transform: translateY(-50%); width: max-content; max-width: 46vw; padding: 5px 9px; font: 600 12px/1.2 system-ui, sans-serif; color: #1d0d00; text-align: right; white-space: normal; background: #ff9a2ee6; border-radius: 10px; opacity: 1; pointer-events: none; }
+@keyframes ap-alert { 50% { box-shadow: 0 0 0 7px #ff8a1e22, 0 2px 4px #0005; } }

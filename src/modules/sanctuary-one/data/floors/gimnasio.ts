@@ -4,6 +4,7 @@ import type { FloorPlan, Placed } from "./kit";
 /** Gym, floor 0 (FurnishGym): 30 plate machines in 5 rows of 6, the central aisle (x 2…4,2) and the free weights. */
 export function gymFloor0(): FloorPlan {
   const types = ["gym-press-pecho", "gym-press-hombros", "gym-jalon", "gym-remo", "gym-prensa", "gym-extension", "gym-curl-femoral", "gym-hip-thrust", "gym-gemelos", "gym-curl-biceps"];
+  const NAMES = ["Press de pecho", "Press de hombros", "Jalón al pecho", "Remo sentado", "Prensa de piernas", "Extensión de cuádriceps", "Curl femoral", "Hip thrust", "Gemelos", "Curl de bíceps"];
   const rowZ = [11.3, 7.9, 4.05, -0.1, -3.8];
   const rowTypes = [[0, 1], [2, 3], [4, 8], [5, 6], [7, 9]] as const;
   const rowX = [
@@ -17,7 +18,7 @@ export function gymFloor0(): FloorPlan {
   for (let row = 0; row < 5; row++)
     for (let j = 0; j < 6; j++) {
       const t = rowTypes[row]![Math.floor(j / 3)]!;
-      items.push({ model: types[t]!, x: rowX[row]![j]!, z: rowZ[row]!, name: `${j % 3 + 1}` });
+      items.push({ model: types[t]!, x: rowX[row]![j]!, z: rowZ[row]!, name: `${NAMES[t]} ${j % 3 + 1}` });
     }
   items.push({ model: "gym-estante-mancuernas", x: 6, z: 11.6 }, { model: "gym-estante-mancuernas", x: 12.5, z: 11.6 });
   for (const x of [4.5, 7.6, 10.7, 13.8]) items.push({ model: "gym-banco-fid", x, z: 7.5 });

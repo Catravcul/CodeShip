@@ -63,13 +63,29 @@ export class RootMenu {
   static interact(i: Interaction | undefined): void {
     const same = i && RootMenu.current && i.label === RootMenu.current.label && i.icon === RootMenu.current.icon && !!i.open === !!RootMenu.current.open;
     RootMenu.current = i;
+    // The pad takes the same callback every time (its own button's job may be newer).
+    RootMenu.padInteract?.(i);
     if (same) return;
     for (const m of RootMenu.menus) m.paintAct();
   }
 
+  /**
+   * With the Switch pad on (Berón 2026-11-20: «el botón de reto debe migrar a los mandos de switch»), the interaction
+   * goes to its Y button (ui/game-pad.ts sets this) and the orange button under the root stays hidden.
+   */
+  static padInteract: ((i: Interaction | undefined) => void) | undefined;
+
+  /** The interaction now (the pad paints it when it comes back). */
+  static get interaction(): Interaction | undefined {
+    return RootMenu.current;
+  }
+
   /** The pad came or went (ui/game-pad.ts): each root shows only if something not on the pad is folded into it. */
   static syncAll(): void {
-    for (const m of RootMenu.menus) m.sync();
+    for (const m of RootMenu.menus) {
+      m.sync();
+      m.paintAct();
+    }
   }
 
   /** Adds an icon to every root menu, present and future; it starts hidden. */
@@ -125,7 +141,8 @@ export class RootMenu {
 
   private paintAct(): void {
     const i = RootMenu.current;
-    this.act.classList.toggle("hidden", !i);
+    // On the pad's Y while the pad is out.
+    this.act.classList.toggle("hidden", !i || document.body.classList.contains("has-switch-pad"));
     if (!i) return;
     const label = i.open ? `Cerrar: ${i.label}` : i.label;
     this.act.classList.toggle("rm-open", !!i.open);

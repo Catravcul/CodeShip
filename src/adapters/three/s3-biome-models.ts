@@ -385,7 +385,7 @@ export class BiomeScene {
     const stone = new THREE.DodecahedronGeometry(0.22, 0).scale(1.3, 0.6, 1);
     const kinds: [string, THREE.BufferGeometry, THREE.Material, number, (alt: number, slope: number, lx: number, lz: number) => boolean, number, number][] = [
       // The scree: loose stones over the cones below the cliffs and the subnival slopes.
-      ["piedras", stone, mat(0x8f887e, { flatShading: true }), PLANT_BUDGET.piedras, (alt, slope, lx, lz) => (alt > 4300 && slope > 0.35) || inScree(lx, lz) > 0, 1.1, 1],
+      ["piedras", stone, mat(0x8f887e, { flatShading: true }), PLANT_BUDGET.piedras, (alt, slope, lx, lz) => (alt > 4600 && slope > 0.35) || inScree(lx, lz) > 0, 1.1, 1],
       ["pradera", tuft, mat(0x8aa64e, { side: THREE.DoubleSide }), PLANT_BUDGET.pradera, (alt, slope) => alt > 3700 && alt < 4700 && slope < 0.75, 1.6, 1],
       ["cojines", cushion, mat(0x5f8a3e, { flatShading: true }), PLANT_BUDGET.cojines, (alt, slope) => alt > 3900 && alt < 5000 && slope < 0.8, 2.6, 1],
       ["amapola", poppy, mat(0xffffff, { vertexColors: true, flatShading: true }), PLANT_BUDGET.amapola, (alt, slope, lx, lz) => alt > 4250 && alt < 4800 && slope < 0.9 && Math.hypot(lx - 190, lz + 84) < 70, 3.2, 1],

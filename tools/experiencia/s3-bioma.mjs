@@ -127,6 +127,7 @@ export async function s3Bioma(j) {
   j.check("los buitres del Himalaya planean en las térmicas sobre los cantiles", (a.flying.buitre ?? 0) > 0, JSON.stringify(a.flying));
   await capture(j, "farallon", "Farallón de los íbices");
   // The ledges: from the foot of the first one, facing the cliff, X (Trepar) climbs her onto it.
+  await goArea(j, "bioma:farallon", "Farallón de los íbices");
   const ledge = await p.evaluate(() => window.codeshipS3.layout.world.floors.filter((f) => f.id.startsWith("bioma:repisa")).sort((a, b) => a.y - b.y)[0]);
   await walkTo(j, (ledge.x0 + ledge.x1) / 2, ledge.z0 - 0.5, 0.4);
   await lookAt(j, (ledge.x0 + ledge.x1) / 2, ledge.z1 + 20);
@@ -139,33 +140,28 @@ export async function s3Bioma(j) {
   // ── The gorge: the bearded vulture over it, markhor on its walls, the river 160 m below.
   went = await goArea(j, "bioma:garganta", "Mirador de la garganta");
   j.check("«Ir» la lleva al mirador de la garganta", went, await p.evaluate(() => window.codeshipS3.body.area));
-  // It patrols up and down inside the gorge, below her: turn to where it will be in a few seconds, and wait for it to cross the view.
-  const bird = () =>
-    p.evaluate(() => {
-      const v = window.codeshipS3.biome.life.poses().find((x) => x.species === "quebrantahuesos" && x.flying);
-      return v && { x: v.x, y: v.y, z: v.z };
-    });
+  // It patrols up and down the gorge at the height of its rims and swings close past the lookout: from the lookout,
+  // facing the gorge where it passes, wait for it to cross the view.
+  const look = await p.evaluate(() => {
+    const c = window.codeshipS3;
+    const g = c.biome.life.geo;
+    const z = g.zone("garganta");
+    const run = c.biome.life.gorgeRun;
+    return { z, o: run ? g.world(run.o.x, run.o.z) : null, oy: run?.o.y };
+  });
+  if (look.z) await walkTo(j, look.z.x, look.z.z, 1.5);
   let g = {};
-  for (let i = 0; i < 8 && !(g["quebrantahuesos:vuela"] > 0); i++) {
-    const q0 = await bird();
-    await p.waitForTimeout(500);
-    const q1 = await bird();
-    if (!q0 || !q1) {
-      await p.waitForTimeout(1500);
-      continue;
-    }
-    const lead = 3;
-    const q = { x: q1.x + (q1.x - q0.x) * 2 * lead, y: q1.y, z: q1.z + (q1.z - q0.z) * 2 * lead };
+  if (look.o) {
     const b = await p.evaluate(() => window.codeshipS3.body);
-    await face(j, q, Math.max(-1.1, Math.min(0.5, Math.atan2(q.y - b.y - 1.6, Math.hypot(q.x - b.x, q.z - b.z)) - 0.15)));
-    for (let k = 0; k < 20 && !(g["quebrantahuesos:vuela"] > 0); k++) {
-      g = await chainInView(p, 400);
-      if (!(g["quebrantahuesos:vuela"] > 0)) await p.waitForTimeout(400);
-    }
+    await face(j, look.o, Math.atan2(look.oy - b.y - 1.6, Math.hypot(look.o.x - b.x, look.o.z - b.z)) - 0.2);
+  }
+  for (let k = 0; k < 120 && !(g["quebrantahuesos:vuela"] > 0); k++) {
+    g = await chainInView(p, 90);
+    if (!(g["quebrantahuesos:vuela"] > 0)) await p.waitForTimeout(400);
   }
   a = await around(p, 400);
   maxCalls = Math.max(maxCalls, a.calls);
-  j.check("un quebrantahuesos vuela sobre la garganta, a la vista", (g["quebrantahuesos:vuela"] ?? 0) > 0, JSON.stringify(g));
+  j.check("un quebrantahuesos vuela sobre la garganta, a la vista (a menos de 90 m)", (g["quebrantahuesos:vuela"] ?? 0) > 0, JSON.stringify(g));
   await capture(j, "garganta", "Quebrantahuesos sobre la garganta");
   const mk = await p.evaluate(() => window.codeshipS3.biome.view.crowd.countsOf("markhor"));
   j.check("los markhores están en las paredes de la garganta (su rebaño, con el número de la cadena)", mk && mk.adults >= 8, JSON.stringify(mk));
@@ -246,7 +242,7 @@ export async function s3Bioma(j) {
   await j.tapInteraction("Cerrar el censo (botón naranja)");
   for (const sh of [
     { id: "bioma:pradera", title: "Pradera de las marmotas", label: "pradera", crowd: "marmota", many: 10, stand: 9 },
-    { id: "bioma:pedrera", title: "Pedrera de las pikas", label: "pedrera", crowd: "pika", many: 8, stand: 4.5 },
+    { id: "bioma:pedrera", title: "Pedrera de las pikas", label: "pedrera", crowd: "pika", many: 8, stand: 6 },
   ]) {
     went = await goArea(j, sh.id, sh.title);
     j.check(`«Ir» la lleva a ${sh.title}`, went, await p.evaluate(() => window.codeshipS3.body.area));

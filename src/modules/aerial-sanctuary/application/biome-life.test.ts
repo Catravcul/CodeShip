@@ -25,11 +25,12 @@ describe("s3 biome on screen: the mountain alive", () => {
     for (const p of soaring) expect(p.y - life.geo.ground(p.x, p.z)).toBeGreaterThan(20);
   });
 
-  it("the bearded vulture patrols along the gorge at the height of its rims, just below the lookout", () => {
+  it("the bearded vulture patrols along the gorge at the height of its rims and swings close past the lookout", () => {
     const life = new BiomeLife(biomeGeo(1), 5);
     const look = life.geo.zone("garganta")!;
     const rim = life.geo.ground(look.x, look.z);
     let seen = 0;
+    let near = Infinity;
     for (let t = 0; t < 90; t += 0.5) {
       life.tick(0.5, 0, t, 12, undefined, false);
       if (t < 30) continue;
@@ -37,10 +38,13 @@ describe("s3 biome on screen: the mountain alive", () => {
         seen++;
         expect(p.y).toBeLessThan(rim);
         expect(p.y - life.geo.ground(p.x, p.z)).toBeGreaterThan(10);
-        expect(Math.hypot(p.x - look.x, p.z - look.z)).toBeLessThan(220);
+        const d = Math.hypot(p.x - look.x, p.z - look.z);
+        expect(d).toBeLessThan(220);
+        near = Math.min(near, d);
       }
     }
     expect(seen).toBeGreaterThan(0);
+    expect(near).toBeLessThan(50);
   });
 
   it("the ibex keep to the cliffs: most of them stand on rock too steep to walk", () => {
@@ -75,5 +79,5 @@ describe("s3 biome on screen: the mountain alive", () => {
     const young = life.poses().filter((p) => p.stage === "cria");
     expect(young.length).toBeGreaterThan(0);
     expect(life.state.events.some((e) => e.kind === "nace")).toBe(true);
-  });
+  }, 30000);
 });

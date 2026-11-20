@@ -116,7 +116,7 @@ export class BiomeLife {
   private lastDays = 0;
   private readonly specOf: ReadonlyMap<string, AnimalSpec>;
   /** The gorge's line below its lookout (world), where the bearded vulture flies. */
-  private gorgeRun?: { a: { x: number; z: number; floor: number }; o: { x: number; z: number; floor: number }; b: { x: number; z: number; floor: number } };
+  private gorgeRun?: { a: { x: number; z: number; y: number }; o: { x: number; z: number; y: number }; b: { x: number; z: number; y: number } };
   /** Hunts and courtships the scene saw (the census lists the chain's events). */
   readonly seen: { day: number; text: string }[] = [];
 
@@ -234,26 +234,25 @@ export class BiomeLife {
       return { x, z: zz, y: Math.max(g.ground(c.x, c.z), g.ground(x, zz)) + 40 + climb, verb: s.id === "aguila" ? "da vueltas en la térmica buscando marmotas" : "sube en espiral en una térmica" };
     }
     if (f.style === "huesos") {
-      // Patrolling up and down the gorge below the lookout at the height of its rims (just below her, the far wall
-      // behind it), and every few passes over the lookout's slabs it drops a bone from 50–150 m (Bearded vulture).
+      // Patrolling up and down the gorge at the height of its rims, swinging close past the lookout (where it drops its
+      // bones on the slabs, from 50–150 m: Bearded vulture), the far wall behind it.
       const run = (this.gorgeRun ??= (() => {
         const G = MOUNTAIN.value.gorge;
         const C = BIOME_ISLAND.centre.value;
+        const look = { x: z.x - C.x, z: z.z - C.z };
         let k = 0;
-        for (let i = 1; i < G.length; i++) if (Math.hypot(G[i]!.x - (z.x - C.x), G[i]!.z - (z.z - C.z)) < Math.hypot(G[k]!.x - (z.x - C.x), G[k]!.z - (z.z - C.z))) k = i;
+        for (let i = 1; i < G.length; i++) if (Math.hypot(G[i]!.x - look.x, G[i]!.z - look.z) < Math.hypot(G[k]!.x - look.x, G[k]!.z - look.z)) k = i;
         const o = G[k]!;
-        const half = (q: { x: number; z: number; floor: number } | undefined) => (q ? { x: (o.x + q.x) / 2, z: (o.z + q.z) / 2, floor: (o.floor + q.floor) / 2 } : o);
-        return { a: half(G[k - 1]), o, b: half(G[k + 1]) };
+        const end = (q: { x: number; z: number; floor: number } | undefined) => (q ? { x: (o.x + q.x) / 2, z: (o.z + q.z) / 2, y: (o.floor + q.floor) / 2 + 140 } : { x: o.x, z: o.z, y: o.floor + 140 });
+        const rim = g.ground(z.x, z.z);
+        return { a: end(G[k - 1]), o: { x: o.x + (look.x - o.x) * 0.45, z: o.z + (look.z - o.z) * 0.45, y: rim - 10 }, b: end(G[k + 1]) };
       })());
       const u = Math.sin((9 / 110) * t + ph);
       const [p0, p1, v] = u < 0 ? [run.o, run.a, -u] : [run.o, run.b, u];
-      const lx = p0.x + (p1.x - p0.x) * v;
-      const lz = p0.z + (p1.z - p0.z) * v;
-      const w = g.world(lx, lz);
-      const floor = p0.floor + (p1.floor - p0.floor) * v;
+      const w = g.world(p0.x + (p1.x - p0.x) * v, p0.z + (p1.z - p0.z) * v);
       const lap = (((9 / 110) * t + ph) / (Math.PI * 2)) % 3;
       const drop = lap > 2.9 && doing === "comer";
-      return { x: w.x, z: w.z, y: Math.max(g.ground(w.x, w.z) + 15, floor + 140), verb: drop ? "deja caer un hueso sobre las losas para romperlo" : "planea a lo largo de la garganta" };
+      return { x: w.x, z: w.z, y: Math.max(g.ground(w.x, w.z) + 15, p0.y + (p1.y - p0.y) * v), verb: drop ? "deja caer un hueso sobre las losas para romperlo" : "planea a lo largo de la garganta" };
     }
     if (f.style === "cernido") {
       // Hovering into the wind at 10–20 m, then a short stoop (Common kestrel).

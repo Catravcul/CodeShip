@@ -68,4 +68,25 @@ describe("andar, correr, saltar, trepar y caer: lo mismo en cada nivel con grave
     expect(slow.motion).toBe("agua");
     expect(b.z - fast.z).toBeGreaterThan(b.z - slow.z);
   });
+  it("sale del agua por una puerta alta sin bajar hasta el suelo: cae al piso (Berón 2026-11-20)", () => {
+    // A water trunk to x = 0, its wall to x = 1 with a 7 × 7 m doorway, the floor beyond.
+    const T: WalkWorld = {
+      floors: [{ id: "piso", x0: 0.4, x1: 20, z0: -10, z1: 10, y: 0, area: "piso" }],
+      waters: [{ id: "tronco", x0: -20, x1: 0, z0: -10, z1: 10, yBottom: -20, yTop: 30, area: "tronco", open: true }],
+      solids: [
+        { x0: 0, x1: 1, z0: -10, z1: -3.5, y0: -20, y1: 30 },
+        { x0: 0, x1: 1, z0: 3.5, z1: 10, y0: -20, y1: 30 },
+        { x0: 0, x1: 1, z0: -3.5, z1: 3.5, y0: 7, y1: 30 },
+        { x0: 0, x1: 1, z0: -3.5, z1: 3.5, y0: -20, y1: 0 },
+      ],
+    };
+    const east = { forward: 1, right: 0, yaw: -Math.PI / 2, pitch: 0, run: false };
+    for (const [y, z] of [[3, 0], [6, 0], [6, 3]] as const) {
+      const w = new FreeWalk(() => T, { walk: 1.6, swim: 1.5 });
+      expect(run(w, { x: -1, y, z, motion: "agua", area: "tronco" }, 4, east)).toMatchObject({ y: 0, motion: "gravedad", area: "piso" });
+    }
+    // Against a wall with no doorway she stays in the water.
+    const w = new FreeWalk(() => T, { walk: 1.6, swim: 1.5 });
+    expect(run(w, { x: -1, y: 3, z: 7, motion: "agua", area: "tronco" }, 3, east).motion).toBe("agua");
+  });
 });

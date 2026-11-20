@@ -3,7 +3,7 @@ import { WORLD_SCALE } from "@core/scale";
 import { moveJoystick } from "@core/realism";
 import { buildS1Layout } from "@modules/sanctuary-one/data/layout";
 import { personRule } from "@modules/sanctuary-one/data/overrides";
-import { placeAt, waterAt, type Body } from "@modules/aerial-sanctuary/domain/walk";
+import { blocked, placeAt, waterAt, type Body } from "@modules/aerial-sanctuary/domain/walk";
 import { FreeWalk } from "@modules/aerial-sanctuary/application/free-walk";
 import { S1_DAY_REAL_S, S1_START_HOUR, activityAt, along, drift, hash01, route, shuttle, wanderAt, type Activity, type Route } from "@modules/sanctuary-one/domain/motion";
 import { Wildlife } from "@modules/sanctuary-one/application/wildlife";
@@ -632,6 +632,8 @@ const duel = new DuelView(root);
 const SHEET: SessionText = { title: "", progress: "Pasos", lives: "Intentos", order: "Ordena los pasos", submit: "Hacerlo", ok: "Paso hecho", bad: "Así no: inténtalo otra vez", sheet: true };
 const picker = new RetoPicker(root);
 let challenge: Reto | undefined;
+/** The open challenge's run (the debug hook answers it in the live checks). */
+let retoRun: ChoreRun | undefined;
 const REWARD_LABEL = { comida: "no pasar hambre", compania: "compañía", fuerza: "fuerza", salud: "salud" } as const;
 
 /** The thing's challenges: straight to the sheet if it offers one, else the choice. */
@@ -662,15 +664,30 @@ function stageAt(at: RetoAt): void {
   // …and the shot is on her station (a long barre's middle is metres away from where she works at it).
   const stand = focusReto(steps, camera, from, yaw, mount ? { ...at, x: mount.x, z: mount.z } : at, undefined, mount ? { feet: new THREE.Vector3(mount.x, at.y + (st!.y ?? 0), mount.z), yaw: mount.yaw } : undefined);
   stageStand = stand;
-  body = { ...body, x: stand.x, z: stand.z };
+  // On the machine's own floor (Berón 2026-11-20: «al terminar parece que ha atravesado el suelo y caído»): she came
+  // from wherever the route or the teleport left her, so her height and area are the floor's at the stand, not hers.
+  const w = near(stand.x, stand.z);
+  const on = placeAt(w, stand.x, at.y + 0.01, stand.z);
+  body = on && !blocked(w, on.x, on.y, on.z) ? on : { ...body, x: stand.x, y: at.y, z: stand.z, motion: "gravedad" };
+}
+/** Where she was before the challenge: if the stage left her nowhere to stand, she is put back there. */
+let beforeReto: Body | undefined;
+/** After the challenge: on a floor and clear of the machine, or back where she was. */
+function offStage(): void {
+  const w = near(body.x, body.z);
+  const on = placeAt(w, body.x, body.y + 0.01, body.z);
+  body = on && !blocked(w, on.x, on.y, on.z) ? on : (beforeReto ?? body);
+  beforeReto = undefined;
 }
 
 /** A challenge on the sheet (the same sheet as sanctuary 3 and the ships); her reward when it is done. */
 function openReto(r: Reto, done?: (ok: boolean) => void, at?: RetoAt): void {
   const run = new ChoreRun(r.chore);
+  retoRun = run;
   challenge = r;
   RootMenu.interact(undefined);
   atHand = undefined;
+  beforeReto = { ...body };
   if (at) stageAt(at);
   // Each step its own animation (data/animaciones.ts): the jalón machine pulls, the treadmill runs.
   const visual = retoVisual(steps, (i: number) => stepAnimation(r, at?.modelId, i).acts, () => {
@@ -685,6 +702,7 @@ function openReto(r: Reto, done?: (ok: boolean) => void, at?: RetoAt): void {
     duel.onRightPick = undefined;
     visual.clear();
     challenge = undefined;
+    offStage();
     const ok = run.status === "done";
     if (ok) say(`${r.chore.title}: hecho. ${applyReward(domenica, r.reward)}`, 5);
     done?.(ok);
@@ -835,5 +853,5 @@ window.addEventListener("keydown", (e) => {
 });
 // Test hook (tools/experiencia and live checks): the layout, the body and the bulk style switch.
 if (import.meta.env.DEV || new URLSearchParams(location.search).has("prueba"))
-  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { L, world, steps, wild, get wildT() { return wildT; }, set wildT(v: number) { wildT = v; }, get jumpT() { return walk.jumpClock; }, set jumpT(t: number) { walk.setJump(t); }, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, goTo, get auto() { return auto; }, areasWindow, get hour() { return hour; }, people, get atHand() { return atHand; }, openReto, domenica, missionsWindow, get day() { return day; }, doMission: (id: string) => doMission(MISSIONS.find((q) => q.id === id)!), retoAt: (id: string, k = 0, n = 0) => { const i = L.instances.map((it, j) => [it, j] as const).filter(([it]) => it.model === id)[n]?.[1]; if (i === undefined) return undefined; const it = L.instances[i]!; const r = retosFor(model(id), i)[k]; if (!r) return undefined; body = { ...body, x: it.x, y: it.y, z: it.z + 1.2 }; openReto(r, undefined, { x: it.x, y: it.y, z: it.z, sy: model(id).size.y * (it.scale ?? 1), modelId: id, rot: it.rot, plan: it.plan }); return { title: r.chore.title, steps: r.chore.exercises.length }; }, playStep: (i: number, dry = false) => { if (!challenge) return undefined; const a = stepAnimation(challenge, stagedModel, i); if (!dry) steps.play(a.acts); return a.id; }, closeReto: () => (document.querySelector('.duel [data-act="close"]') as HTMLElement | null)?.click(), setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
+  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { L, world, steps, camera, wild, get wildT() { return wildT; }, set wildT(v: number) { wildT = v; }, get jumpT() { return walk.jumpClock; }, set jumpT(t: number) { walk.setJump(t); }, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, goTo, get auto() { return auto; }, areasWindow, get hour() { return hour; }, people, get atHand() { return atHand; }, openReto, domenica, missionsWindow, get day() { return day; }, doMission: (id: string) => doMission(MISSIONS.find((q) => q.id === id)!), retoAt: (id: string, k = 0, n = 0, keep = false) => { const i = L.instances.map((it, j) => [it, j] as const).filter(([it]) => it.model === id)[n]?.[1]; if (i === undefined) return undefined; const it = L.instances[i]!; const r = retosFor(model(id), i)[k]; if (!r) return undefined; if (!keep) body = { ...body, x: it.x, y: it.y, z: it.z + 1.2 }; openReto(r, undefined, { x: it.x, y: it.y, z: it.z, sy: model(id).size.y * (it.scale ?? 1), modelId: id, rot: it.rot, plan: it.plan }); return { title: r.chore.title, steps: r.chore.exercises.length }; }, playStep: (i: number, dry = false) => { if (!challenge) return undefined; const a = stepAnimation(challenge, stagedModel, i); if (!dry) steps.play(a.acts); return a.id; }, get exercise() { return challenge ? retoRun?.current : undefined; }, closeReto: () => (document.querySelector('.duel [data-act="close"]') as HTMLElement | null)?.click(), setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
 requestAnimationFrame(frame);

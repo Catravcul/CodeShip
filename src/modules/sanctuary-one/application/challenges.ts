@@ -117,6 +117,10 @@ export function retosFor(m: ModelDef, seed = 0): Reto[] {
       if (/^ballet-(espejo-barras|barras-portatiles|suelo)$/.test(m.id)) return of(GYM.ballet);
       if (/^dojo-(sacos|makiwara|ring|jaula-mma|tatami|corcho)$/.test(m.id)) return of(GYM.dojo);
       return [];
+    case "dojo":
+      // The martial arts rooms' own kit: the mats and the speed bag train; the shelf, mirror and bench are furniture.
+      if (/^dojo-(pera|tatami-judo|tatami-grappling)$/.test(m.id)) return of(GYM.dojo);
+      return [];
     case "gimnasio-calistenia":
       if (MACHINE_MOTION[m.id] === "fondos") return of(GYM.fondos);
       if (MACHINE_MOTION[m.id] === "elevar-rodillas") return of(GYM.coreMaquina);

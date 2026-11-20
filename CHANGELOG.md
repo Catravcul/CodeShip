@@ -5,6 +5,9 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-20
 
+- **Árbol espacioso**: por nivel, 2 pisos grandes o 4 pequeños (uno por lado), cada pequeño al final de su rama en la
+  punta; ningún pequeño encima de otro. Artes marciales en cuatro pisos: karate, kickboxing, MMA y judo.
+  [docs/design/santuario1.md](docs/design/santuario1.md) #44–46
 - **La Y del mando abre la tarjeta sin pulsar lo de debajo**: el mismo toque ya no sube por la escotilla ni abre la
   pantalla que la tarjeta pone bajo el dedo; bajo la Y solo «Reto» (o «Cerrar»), como los demás botones.
   [docs/design/reglas.md](docs/design/reglas.md)

@@ -143,8 +143,10 @@ export const TOWERS: readonly TowerSpec[] = [
       F("Yoga Ashtanga (2)", "Sala occidental y sala tradicional, 8 esterillas cada una", "yoga-ashtanga-2"),
       F("Sala de Ballet", "Suelo flotante, pared de espejo con barras, piano y vestuario", "ballet-1"),
       F("Sala de Ballet (piso 2)", "Suelo flotante, pared de espejo con barras, piano y vestuario", "ballet-2"),
-      F("Dojo", "MMA, kickboxing y karate, sacos y makiwaras", "dojo-1"),
-      F("Dojo (piso 2)", "MMA, kickboxing y karate, sacos y makiwaras", "dojo-2"),
+      F("Dojo de karate", "Tatami de 8 × 8 m, makiwaras y kamiza", "dojo-karate"),
+      F("Gimnasio de kickboxing", "Ring, sacos pesados y pera", "dojo-kickboxing"),
+      F("Sala de MMA", "Octógono y tapiz de grappling", "dojo-mma"),
+      F("Dojo de judo", "Tatami de 10 × 10 m y kamiza", "dojo-judo"),
       // Classrooms and music rooms, each its own floor and two to a side (Berón 2026-11-20).
       F("Aula de matemáticas", "24 pupitres, material manipulativo y vitrina de poliedros", "aula-matematicas"),
       F("Aula de lengua y literatura", "24 pupitres, biblioteca de aula y rincón de lectura", "aula-lengua"),

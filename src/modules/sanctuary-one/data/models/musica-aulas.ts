@@ -267,10 +267,28 @@ const FINISH: readonly (readonly [string, number, number, number, string])[] = [
   ["aula-idiomas", 12, 12, 0x8a9aac, "Linóleo"],
   ["aula-arte", 13, 12, 0xa0a0a0, "Hormigón pulido"],
   ["aula-estudio", 20, 16, 0xb89973, "Tarima de madera"],
+  ["dojo-karate", 14, 13, 0x9a7a52, "Tarima de madera"],
+  ["dojo-kickboxing", 16, 13, 0x4a4f57, "Suelo de caucho"],
+  ["dojo-mma", 15, 13, 0x4a4f57, "Suelo de caucho"],
+  ["dojo-judo", 15, 15, 0x9a7a52, "Tarima de madera"],
 ];
-export const FLOOR_FINISH_MODELS: readonly ModelDef[] = FINISH.map(([id, x, z, c, what]) => m(`suelo-${id}`, "mueble", "suelos", `${what} (${x} × ${z} m)`, x - 0.2, 0.02, z - 0.2, c, "caja", "real", "Acabados de suelo de salas de música y aulas"));
+/**
+ * The martial arts rooms' own kit (Berón 2026-11-20: «el piso de artes marciales también se puede dividir en pisos
+ * pequeños y realistas»): the judo tatami (IJF: contest area of 8 × 8 m inside a 3 m safety area, here a club's 10 × 10
+ * with 1 m of safety), the kamiza shelf of a traditional dojo, the mirror wall, the speed-bag platform and a bench.
+ */
+const DOJO_KIT: readonly ModelDef[] = [
+  pz("dojo-tatami-judo", "mueble", "dojo", "Tatami de judo (10 × 10 m: zona de combate de 8 × 8 y seguridad)", 0x3f7f4a, [C(0, 0.025, 0, 10, 0.05, 10, 0x3f7f4a), C(0, 0.03, 0, 8, 0.051, 8, 0xd9b84a)], "real", "IJF Sport and Organisation Rules: zona de combate de 8 × 8 m como mínimo, tatamis de 1 × 2 m y 4–5 cm"),
+  pz("dojo-tatami-grappling", "mueble", "dojo", "Tapiz de grappling (6 × 6 m)", 0x26262a, [C(0, 0.025, 0, 6, 0.05, 6, 0x26262a), C(0, 0.03, 0, 5.6, 0.051, 5.6, 0x3a3f4a)], "real", "Tapices de lucha de 4 cm en rollos (UWW: círculo de 9 m; aquí el de un club)"),
+  pz("dojo-kamiza", "mueble", "dojo", "Kamiza (estante de honor del dojo)", 0x6b4a32, [C(0, 1.5, 0, 1.6, 0.06, 0.4), C(0, 1.62, 0, 0.5, 0.2, 0.3, 0xe8dcc4), C(-0.55, 1.6, 0, 0.12, 0.16, 0.12, 0x3f7f4a), C(0.55, 1.6, 0, 0.12, 0.16, 0.12, 0x3f7f4a), C(0, 2.05, 0.18, 0.6, 0.4, 0.02, 0xf2efe6), C(0, 2.05, 0.17, 0.4, 0.3, 0.01, 0x222222)], "real", "Kamiza o shomen: estante con caligrafía en la pared principal del dojo"),
+  pz("dojo-espejo", "mueble", "dojo", "Pared de espejo (6 m)", 0xd9e6ee, [C(0, 1.25, 0, 6, 2.1, 0.04, 0xd9e6ee), C(0, 0.12, -0.02, 6, 0.24, 0.06, 0x6b4a32)], "real", "Espejos de sala de entrenamiento (2 m de alto desde 0,2 m)"),
+  pz("dojo-pera", "maquina", "dojo", "Plataforma de pera loca (speed bag)", 0x26262a, [C(0, 2.1, -0.3, 0.7, 0.06, 0.7, 0x6b4a32), C(0, 1.2, 0.02, 0.1, 2.4, 0.06, 0x26262a), C(0, 1.88, -0.3, 0.2, 0.3, 0.2, 0x8c1f1f)], "real", "Speed bag de 23 cm bajo plataforma regulable"),
+  pz("dojo-banco", "mueble", "dojo", "Banco (2 m)", 0x9e7a52, [C(0, 0.44, 0, 2, 0.05, 0.35), C(-0.85, 0.22, 0, 0.06, 0.44, 0.3), C(0.85, 0.22, 0, 0.06, 0.44, 0.3)], "real", "Banco de vestuario"),
+];
+
+export const FLOOR_FINISH_MODELS: readonly ModelDef[] = FINISH.map(([id, x, z, c, what]) => m(`suelo-${id}`, "mueble", "suelos", `${what} (${x} × ${z} m)`, x - 0.2, 0.02, z - 0.2, c, "caja", "real", "Acabados de suelo de salas de música, aulas y dojos"));
 
 /** The ids, for the floor plans and the tests. */
 export const MUSIC_ROOM_GROUPS = ["musica-banda", "musica-estudio", "musica-practica", "musica-orquesta", "musica-auditorio"] as const;
 
-export const MUSICA_AULAS_MODELS: readonly ModelDef[] = [...ROOMS, ...FLOOR_FINISH_MODELS];
+export const MUSICA_AULAS_MODELS: readonly ModelDef[] = [...ROOMS, ...DOJO_KIT, ...FLOOR_FINISH_MODELS];

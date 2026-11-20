@@ -4,7 +4,7 @@ import type { FloorPlan, Placed } from "./kit";
 /**
  * The Entrenamiento floors after the gym (Cold Sanctuary's SampleSceneBuilder.cs: «cada centro lleva los pisos que
  * necesita para todos los miembros», TrainingCentres.FloorsFor with its 30 people): cardio, calistenia, 2 + 2 of
- * yoga, 2 of ballet and 2 of dojo. Floor plan 36 × 26 m. The music rooms and the classrooms are their own (smaller)
+ * yoga and 2 of ballet (the martial arts are their own rooms, floors/musica-aulas.ts DOJOS). Floor plan 36 × 26 m. The music rooms and the classrooms are their own (smaller)
  * floors since 2026-11-20: floors/musica-aulas.ts.
  */
 const SIZE = { x: 36, z: 26 } as const;
@@ -101,6 +101,4 @@ export const ENTRENAMIENTO_FLOORS: readonly FloorPlan[] = [
   yoga("ashtanga", 2),
   works("ballet", 1),
   works("ballet", 2),
-  works("dojo", 1),
-  works("dojo", 2),
 ];

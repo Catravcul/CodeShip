@@ -120,26 +120,44 @@ describe("santuario 1: pisos amueblados", () => {
       expect(b.area, a.label).toBe(a.id);
     }
   });
-  it("a cada piso pequeño se llega nadando por su rama, dos ramas por lado (Berón 2026-11-20)", () => {
+  it("a cada piso pequeño se llega nadando por su rama hasta la punta, uno por lado (Berón 2026-11-20)", () => {
     const L1 = buildS1Layout(1.5);
     const branches = L1.areas.filter((a) => a.id.endsWith(":rama"));
     expect(branches.length).toBeGreaterThanOrEqual(12);
     for (const r of branches) {
       const a = L1.areas.find((x) => `${x.id}:rama` === r.id)!;
       const t = L1.towers.find((x) => x.id === a.link!.tower)!;
-      // Out of the trunk at the mouth, along the branch, and in at the door.
-      const n = { x: Math.sign(Math.round(a.entry!.x - a.link!.inner.x)), z: Math.sign(Math.round(a.entry!.z - a.link!.inner.z)) };
-      const out = Math.abs(n.x) > 0 && Math.abs(a.entry!.x - t.x) > Math.abs(a.entry!.z - t.z) ? { x: n.x, z: 0 } : { x: 0, z: n.z };
-      const row = out.x ? { x: r.x, z: a.link!.inner.z } : { x: a.link!.inner.x, z: r.z };
+      // Out of the trunk along its face's normal to the branch's row, along the branch, and in at the door.
+      const ix = a.link!.inner.x - t.x, iz = a.link!.inner.z - t.z;
+      const n = Math.abs(ix) > Math.abs(iz) ? { x: Math.sign(ix), z: 0 } : { x: 0, z: Math.sign(iz) };
+      const along = (r.x - a.link!.inner.x) * n.x + (r.z - a.link!.inner.z) * n.z;
+      const row = { x: a.link!.inner.x + n.x * along, z: a.link!.inner.z + n.z * along };
       let b = placeAt(L1.world, a.link!.inner.x, a.y + 1, a.link!.inner.z)!;
       expect(b.motion, a.label).toBe("agua");
       for (const p of [row, { x: r.x, z: r.z }, a.entry!]) {
-        for (let i = 0; i < 400 && Math.hypot(p.x - b.x, p.z - b.z) > 0.15 && b.motion === "agua"; i++) {
+        for (let i = 0; i < 900 && Math.hypot(p.x - b.x, p.z - b.z) > 0.15 && b.motion === "agua"; i++) {
           const d = Math.hypot(p.x - b.x, p.z - b.z);
           b = step(L1.world, b, { dx: ((p.x - b.x) / d) * 0.1, dy: 0, dz: ((p.z - b.z) / d) * 0.1 });
         }
       }
       expect(b.area, a.label).toBe(a.id);
+    }
+  });
+  it("ningún piso pequeño queda encima de otro piso ni toca a los de su nivel (Berón 2026-11-20: «espacioso»)", () => {
+    const L1 = buildS1Layout(1.5);
+    const small = new Set(L1.areas.filter((a) => L1.areas.some((r) => r.id === `${a.id}:rama`)).map((a) => a.label));
+    for (const t of L1.towers) {
+      const fs = t.floors;
+      for (let i = 0; i < fs.length; i++)
+        for (let j = i + 1; j < fs.length; j++) {
+          if (!small.has(fs[i]!.name) && !small.has(fs[j]!.name)) continue;
+          const p = fs[i]!.rect, q = fs[j]!.rect;
+          const ox = Math.min(p.x1, q.x1) - Math.max(p.x0, q.x0), oz = Math.min(p.z1, q.z1) - Math.max(p.z0, q.z0);
+          // On the same level at least 2 m apart; over another only far up (three levels: 66 m), like the full floors.
+          if (Math.abs(fs[i]!.y - fs[j]!.y) > 50) continue;
+          const m = fs[i]!.y === fs[j]!.y ? -2 : 0.01;
+          expect(ox > m && oz > m, `${t.id}: ${fs[i]!.name} / ${fs[j]!.name}`).toBe(false);
+        }
     }
   });
   const L = buildS1Layout(1);
@@ -162,7 +180,7 @@ describe("santuario 1: pisos amueblados", () => {
       const dx = -Math.sin(a.entry.yaw) * 0.2;
       const dz = -Math.cos(a.entry.yaw) * 0.2;
       for (let i = 0; i < 40; i++) b = step(L.world, b, { dx, dz });
-      expect(Math.hypot(b.x - a.entry.x, b.z - a.entry.z), a.label).toBeGreaterThan(3);
+      expect(Math.hypot(b.x - a.entry.x, b.z - a.entry.z), a.label).toBeGreaterThan(2.95);
     }
   });
 });

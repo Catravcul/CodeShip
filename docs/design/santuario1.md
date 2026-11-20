@@ -90,6 +90,14 @@ salud.
 | 42 | **Nado en 1.ª persona**: todo blanco en cierta perspectiva y el agua oculta | Hecho: los ojos quedaban justo a la altura de la superficie (el agua se veía de canto, es decir, nada); ahora van 30 cm por encima, y el mar es mate (un plano brillante a ras se volvía del color del cielo) |
 | 43 | ¿Los **casquetes** son realistas? ¿Se han investigado? | Ver §Casquetes |
 
+### Quinta lista (2026-11-20)
+
+| # | Pedido | Estado |
+| --- | --- | --- |
+| 44 | Los pisos pequeños **muy pegados**; el árbol-edificio con **estructura de árbol, espacioso y fácil de navegar**: un piso por lado, 2 grandes por nivel y 4 pequeños, que pueden **nacer en las puntas** | Hecho: `layout.ts packFloors` da niveles de 2 pisos grandes (lados opuestos, en molinete) o de 4 pequeños (uno por lado), cada pequeño al final de su rama de agua (tubo de 7 × 7 m), fuera de los cuadrados de los pisos grandes. Hay tres sitios de punta (la punta, más allá del borde y más allá de ambos) que se turnan nivel a nivel, para que ningún piso pequeño quede encima de otro en 66 m. Lo comprueba una prueba (`layout.test.ts`) |
+| 45 | **Artes marciales** en pisos pequeños, un aula por arte | Hecho: dojo de karate (tatami de 8 × 8, makiwaras, kamiza), gimnasio de kickboxing (ring, sacos, pera), sala de MMA (octógono y tapiz de grappling) y dojo de judo (tatami de 10 × 10), cada uno su piso (`floors/musica-aulas.ts` DOJOS) |
+| 46 | El santuario 1 muestra un **popup en lugar del nombre fijo** | Revisado en vivo: bajo la Y sale fijo «Reto» desde la publicación de las 12:15 UTC; el mensaje flotante ya no existe |
+
 ## Casquetes
 
 Los casquetes son la distribución de Cold Sanctuary (`PolarLandscapeBuilder.Islands`: círculos que se solapan, ficción

@@ -184,5 +184,67 @@ function study(): FloorPlan {
   };
 }
 
+/**
+ * The martial arts, one room each (Berón 2026-11-20: «cada habitáculo es una aula para entrenar un arte marcial? …se
+ * pueden dividir en varios pisos»): karate, kickboxing, MMA and judo, each with its mat or ring at its real size, its
+ * striking kit, the changing room and first aid. The door's strip (z < −4) is kept clear.
+ */
+const DOJOS: readonly FloorPlan[] = [
+  {
+    id: "dojo-karate",
+    size: { x: 14, z: 13 },
+    items: [
+      P("dojo-tatami", -1.2, 1.6, 0, "Tatami de karate (8 × 8 m)"),
+      P("dojo-kamiza", -1.2, 6.2, PI, "Kamiza"),
+      ...[-0.5, 1.5, 3.5].map((z, i) => P("dojo-makiwara", 5.6, z, FACE_NX, i === 0 ? "Makiwaras" : undefined)),
+      P("dojo-espejo", -6.8, 1.6, FACE_PX),
+      P("dojo-estanteria-equipo", 4.4, -4.6, PI),
+      P("dojo-vestuario", -5.4, -4.9),
+      P("dojo-banco", 4.6, 6.0, PI),
+    ],
+    source: "Dojo de karate: área de competición WKF de 8 × 8 m con 1 m de seguridad, makiwaras y kamiza (WKF Competition Rules, art. 1)",
+  },
+  {
+    id: "dojo-kickboxing",
+    size: { x: 16, z: 13 },
+    items: [
+      P("dojo-ring", -3.6, 2.2, 0, "Ring de kickboxing"),
+      P("dojo-sacos", 5.2, 1.6, 0, "Sacos pesados"),
+      P("dojo-pera", 7.4, -2.2, FACE_NX, "Pera loca"),
+      P("dojo-espejo", -3.6, 6.3, PI),
+      P("dojo-estanteria-equipo", 4.8, -4.8, PI),
+      P("dojo-vestuario", -6.2, -4.9),
+      P("dojo-primeros-auxilios", 7.2, 5.0, FACE_NX),
+    ],
+    source: "Gimnasio de kickboxing y muay thai: ring de 6,1 m (WAKO: 5–7 m entre cuerdas), sacos pesados y pera",
+  },
+  {
+    id: "dojo-mma",
+    size: { x: 15, z: 13 },
+    items: [
+      P("dojo-jaula-mma", -3.4, 1.8, 0, "Jaula de MMA"),
+      P("dojo-tatami-grappling", 3.6, 2.0, 0, "Tapiz de grappling"),
+      ...[0, 1, 2, 3, 4, 5].map((i) => P("dojo-acolchado", 7.3, -0.5 + i, FACE_NX)),
+      P("dojo-estanteria-equipo", 4.4, -4.8, PI),
+      P("dojo-vestuario", -5.6, -4.9),
+      P("dojo-primeros-auxilios", 3.6, 6.0, PI),
+    ],
+    source: "Sala de MMA: octógono y tapiz de grappling con paredes acolchadas (Unified Rules of MMA: jaula de 20–32 pies; aquí la de un club)",
+  },
+  {
+    id: "dojo-judo",
+    size: { x: 15, z: 15 },
+    items: [
+      P("dojo-tatami-judo", 0, 1.8, 0, "Tatami de judo"),
+      P("dojo-kamiza", 0, 7.2, PI, "Kamiza"),
+      ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => P("dojo-acolchado", -7.3, -2 + i, FACE_PX)),
+      P("dojo-estanteria-equipo", 4.6, -5.8, PI),
+      P("dojo-vestuario", -5.4, -5.9),
+      P("dojo-banco", 6.6, 1.8, FACE_NX),
+    ],
+    source: "Dojo de judo: tatami de 10 × 10 m (IJF: zona de combate de 8 × 8 m como mínimo), kamiza y paredes acolchadas",
+  },
+];
+
 /** Each with its floor finish (models/musica-aulas.ts FLOOR_FINISH_MODELS) under everything. */
-export const MUSICA_AULAS_FLOORS: readonly FloorPlan[] = [recital(), rehearsal(), studio(), practice(), orchestra(), ...CLASSROOMS, study()].map((f) => ({ ...f, items: [P(`suelo-${f.id}`, 0, 0), ...f.items] }));
+export const MUSICA_AULAS_FLOORS: readonly FloorPlan[] = [recital(), rehearsal(), studio(), practice(), orchestra(), ...CLASSROOMS, study(), ...DOJOS].map((f) => ({ ...f, items: [P(`suelo-${f.id}`, 0, 0), ...f.items] }));

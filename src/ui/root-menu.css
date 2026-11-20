@@ -6,6 +6,8 @@
 .rm-root { order: 1; }
 /* The interaction button (§5.8): under the root, outside the menu, orange like an alert, its label always out. */
 .root-menu .rm-act { order: 1; color: #1d0d00; background: #ff9a2ee6; border: 2px solid #ffd2a0; box-shadow: 0 0 0 0 #ff9a2e88; animation: rm-act-pulse 1.6s ease-out infinite; }
+/* With the Switch pad out the interaction lives on its Y; a shown card hides the pad, and its «Cerrar» is here again. */
+body.has-switch-pad:not(.panel-on) .root-menu .rm-act { display: none; }
 .root-menu .rm-act.rm-open { background: #ffd27f; animation: none; }
 .rm-act-label { position: absolute; right: calc(100% + 8px); top: 50%; transform: translateY(-50%); padding: 4px 9px; font-size: 13px; font-weight: 600; white-space: nowrap; color: #1d0d00; background: #ffb357ee; border-radius: 10px; pointer-events: none; max-width: 60vw; overflow: hidden; text-overflow: ellipsis; }
 @keyframes rm-act-pulse { 0% { box-shadow: 0 0 0 0 #ff9a2e99; } 80%, 100% { box-shadow: 0 0 0 12px #ff9a2e00; } }

@@ -98,9 +98,27 @@ export async function s3Bioma(j) {
   j.check("«Ir» la lleva al pie del farallón", went && (await p.evaluate(() => window.codeshipS3.body.area)).startsWith("bioma"), await p.evaluate(() => JSON.stringify(window.codeshipS3.body)));
   const ibex = await p.evaluate(() => window.codeshipS3.biome.view.crowd.centreOf("ibice"));
   if (ibex) {
-    await walkTo(j, ibex.x, ibex.z, 30);
+    // Back from the herd (~25 m) on open ground below it, so the cliff and the herd fill the view.
+    const stand = await p.evaluate((h) => {
+      const g = window.codeshipS3.biome.life.geo;
+      let best = null;
+      for (const r of [25, 20, 32]) {
+        for (let i = 0; i < 24; i++) {
+          const a = (i / 24) * Math.PI * 2;
+          const x = h.x + r * Math.cos(a);
+          const z = h.z + r * Math.sin(a);
+          if (g.isSea(x, z) || g.steep(x, z) > 0.6) continue;
+          const y = g.ground(x, z);
+          if (!best || y < best.y) best = { x, z, y };
+        }
+        if (best) return best;
+      }
+      return null;
+    }, ibex);
+    if (stand) await walkTo(j, stand.x, stand.z, 2);
+    else await walkTo(j, ibex.x, ibex.z, 30);
     const b = await p.evaluate(() => window.codeshipS3.body);
-    await face(j, ibex, Math.max(-0.4, Math.min(0.5, Math.atan2(ibex.y - b.y, Math.hypot(ibex.x - b.x, ibex.z - b.z)))));
+    await face(j, ibex, Math.max(-0.6, Math.min(0.7, Math.atan2(ibex.y - b.y - 1.6, Math.hypot(ibex.x - b.x, ibex.z - b.z)) - 0.12)));
   }
   let v = await inView(p);
   let a = await around(p, 250);
@@ -121,14 +139,14 @@ export async function s3Bioma(j) {
   // ── The gorge: the bearded vulture over it, markhor on its walls, the river 160 m below.
   went = await goArea(j, "bioma:garganta", "Mirador de la garganta");
   j.check("«Ir» la lleva al mirador de la garganta", went, await p.evaluate(() => window.codeshipS3.body.area));
-  // It circles over the gorge: turn to where it will be in a few seconds, and wait for it to cross the view.
+  // It patrols up and down inside the gorge, below her: turn to where it will be in a few seconds, and wait for it to cross the view.
   const bird = () =>
     p.evaluate(() => {
       const v = window.codeshipS3.biome.life.poses().find((x) => x.species === "quebrantahuesos" && x.flying);
       return v && { x: v.x, y: v.y, z: v.z };
     });
   let g = {};
-  for (let i = 0; i < 6 && !(g["quebrantahuesos:vuela"] > 0); i++) {
+  for (let i = 0; i < 8 && !(g["quebrantahuesos:vuela"] > 0); i++) {
     const q0 = await bird();
     await p.waitForTimeout(500);
     const q1 = await bird();
@@ -136,10 +154,10 @@ export async function s3Bioma(j) {
       await p.waitForTimeout(1500);
       continue;
     }
-    const lead = 6;
+    const lead = 3;
     const q = { x: q1.x + (q1.x - q0.x) * 2 * lead, y: q1.y, z: q1.z + (q1.z - q0.z) * 2 * lead };
     const b = await p.evaluate(() => window.codeshipS3.body);
-    await face(j, q, Math.max(-0.4, Math.min(0.5, Math.atan2(q.y - b.y - 1.6, Math.hypot(q.x - b.x, q.z - b.z)) - 0.12)));
+    await face(j, q, Math.max(-1.1, Math.min(0.5, Math.atan2(q.y - b.y - 1.6, Math.hypot(q.x - b.x, q.z - b.z)) - 0.15)));
     for (let k = 0; k < 20 && !(g["quebrantahuesos:vuela"] > 0); k++) {
       g = await chainInView(p, 400);
       if (!(g["quebrantahuesos:vuela"] > 0)) await p.waitForTimeout(400);
@@ -181,14 +199,15 @@ export async function s3Bioma(j) {
   await capture(j, "censo", "Censo de la montaña");
 
   // ── The field table: the Himalayan field methods; she does the double-observer count of the ibex.
-  await j.tap(".rm-act:not(.hidden)", "Cerrar el censo (botón naranja)").catch(() => {});
+  await j.tapInteraction("Cerrar el censo (botón naranja)");
   const desk = await p.evaluate(() => window.codeshipS3.biome.view.deskAt);
   await walkTo(j, desk.x, desk.z - 0.9, 0.5);
   const atDesk = await p.waitForFunction(() => window.codeshipS3.biome.nearDesk, null, { timeout: 8000 }).then(() => true).catch(() => false);
   j.check("en la cabaña está la mesa de campo, a más de 2 m del tablón", atDesk, await p.evaluate(() => JSON.stringify(window.codeshipS3.body)));
-  const label = await p.waitForFunction(() => [...document.querySelectorAll(".rm-act:not(.hidden)")].map((b) => b.innerText).join("|"), null, { timeout: 8000 }).then((h) => h.jsonValue()).catch(() => "");
-  j.check("en la mesa, el botón naranja dice «Reto: Mesa de campo» y nada se abre solo", /Reto: Mesa de campo/.test(label) && !(await p.evaluate(() => document.body.classList.contains("in-reto-picker"))), label);
-  await j.tap(".rm-act:not(.hidden)", "Reto: Mesa de campo");
+  await p.waitForFunction(() => window.codeshipS3.biome.nearDesk, null, { timeout: 8000 }).catch(() => {});
+  const label = await j.interactionLabel();
+  j.check("en la mesa, el botón naranja (la Y del mando) dice «Reto: Mesa de campo» y nada se abre solo", /Reto: Mesa de campo/.test(label) && !(await p.evaluate(() => document.body.classList.contains("in-reto-picker"))), label);
+  await j.tapInteraction("Reto: Mesa de campo (Y del mando)");
   const jobs = await p.evaluate(() => [...document.querySelectorAll(".reto-picker .rp-opt")].map((b) => ({ open: !b.disabled, text: b.innerText })));
   j.check("los métodos de campo del Himalaya: cámaras trampa (cerradas hasta enero), doble observador (abierto) y nidos de buitre", jobs.length === 3 && /Cámaras/.test(jobs[0].text) && !jobs[0].open && /doble observador/.test(jobs[1].text) && jobs[1].open && /buitre/.test(jobs[2].text), jobs.map((x) => `${x.text.split("\n")[0]}:${x.open}`).join(", "));
   await capture(j, "mesa", "Mesa de campo");
@@ -224,10 +243,10 @@ export async function s3Bioma(j) {
   const note = await p.evaluate(() => document.querySelector(".s3-censo .cz-notebook")?.innerText ?? "");
   j.check("el censo por doble observador queda en el cuaderno de campo", /íbices/.test(note), note);
   j.check("al pasar el tiempo el censo cuenta nacimientos o muertes", c.events.some((e) => /nace|muere| caza |crías nuevas/i.test(e)), c.events.slice(0, 5).join(" / "));
-  await j.tap(".rm-act:not(.hidden)", "Cerrar el censo (botón naranja)").catch(() => {});
+  await j.tapInteraction("Cerrar el censo (botón naranja)");
   for (const sh of [
-    { id: "bioma:pradera", title: "Pradera de las marmotas", label: "pradera", crowd: "marmota", many: 10, stand: 14 },
-    { id: "bioma:pedrera", title: "Pedrera de las pikas", label: "pedrera", crowd: "pika", many: 8, stand: 10 },
+    { id: "bioma:pradera", title: "Pradera de las marmotas", label: "pradera", crowd: "marmota", many: 10, stand: 9 },
+    { id: "bioma:pedrera", title: "Pedrera de las pikas", label: "pedrera", crowd: "pika", many: 8, stand: 4.5 },
   ]) {
     went = await goArea(j, sh.id, sh.title);
     j.check(`«Ir» la lleva a ${sh.title}`, went, await p.evaluate(() => window.codeshipS3.body.area));
@@ -235,7 +254,8 @@ export async function s3Bioma(j) {
     if (t) {
       // From `stand` m downhill (south) of them, looking at them.
       await walkTo(j, t.x, t.z - sh.stand, 1.5);
-      await face(j, t, -0.22);
+      const b = await p.evaluate(() => window.codeshipS3.body);
+      await face(j, t, Math.atan2(t.y - b.y - 1.6, Math.hypot(t.x - b.x, t.z - b.z)) - 0.3);
     }
     v = await inView(p);
     a = await around(p, 120);

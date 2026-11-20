@@ -4,6 +4,20 @@
 // Modelled on Cold Sanctuary's ExperienciaJugadorTest: each check has a sentence a designer can read.
 /** The challenge buttons of a machine's card (ui/interaction.ts, RETO_ACTS). */
 const RETO = '[data-act^="chore:"], [data-act^="brazo:"], [data-act="reto"], [data-act^="sim:"], [data-act="lanzar"], [data-reto]';
+
+/**
+ * The interaction button a player sees (reglas.md §5.8): the orange one under the tree menu's root, or, with the Switch
+ * pad out, the pad's orange Y (ui/game-pad.ts; the root's stays hidden then). In the page: marks it with
+ * data-panel-tap when `mark`, and returns its label without the key («Reto: …», «Cerrar: …»), or null.
+ */
+const FIND_ACT = (mark) => {
+  const b =
+    [...document.querySelectorAll(".rm-act:not(.hidden)")].find((x) => x.closest(".root-menu")?.checkVisibility() && x.checkVisibility()) ??
+    [...document.querySelectorAll('.switch-pad .ap-btn.alert[data-letter="Y"]')].find((x) => x.checkVisibility());
+  if (!b) return null;
+  if (mark) b.dataset.panelTap = "1";
+  return (b.getAttribute("aria-label") ?? b.textContent ?? "").replace(/ \(KeyE\)$/, "");
+};
 import { createRequire } from "node:module";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -227,16 +241,16 @@ export class Journey {
     }, hook);
   }
 
-  /** A tap on the visible orange interaction button under the tree menu's root; returns its label. */
+  /** The label of the visible orange interaction button (under the root, or the pad's Y), or "". */
+  async interactionLabel() {
+    return (await this.page.evaluate(FIND_ACT, false).catch(() => null)) ?? "";
+  }
+
+  /** A tap on the visible orange interaction button (under the tree menu's root, or the pad's Y); returns its label. */
   async tapInteraction(what = "Botón naranja") {
-    const label = await this.page.evaluate(() => {
-      const b = [...document.querySelectorAll(".rm-act:not(.hidden)")].find((x) => x.closest(".root-menu")?.checkVisibility() && x.checkVisibility());
-      if (!b) return null;
-      b.dataset.panelTap = "1";
-      return b.getAttribute("aria-label");
-    });
+    const label = await this.page.evaluate(FIND_ACT, true);
     if (!label) return null;
-    await this.tap('.rm-act[data-panel-tap="1"]', what);
+    await this.tap('[data-panel-tap="1"]', what);
     await this.page.evaluate(() => document.querySelectorAll("[data-panel-tap]").forEach((b) => delete b.dataset.panelTap));
     return label;
   }
@@ -292,15 +306,10 @@ export class Journey {
       )
       .catch(() => null);
     if (!at) return false;
-    await this.page.waitForFunction(() => [...document.querySelectorAll(".rm-act:not(.hidden)")].some((b) => b.closest(".root-menu")?.checkVisibility() && /^Reto: /.test(b.getAttribute("aria-label") ?? b.textContent ?? "")), null, { timeout: 8000 }).catch(() => {});
-    const marked = await this.page.evaluate(() => {
-      const b = [...document.querySelectorAll(".rm-act:not(.hidden)")].find((x) => x.closest(".root-menu")?.checkVisibility());
-      if (!b) return false;
-      b.dataset.panelTap = "1";
-      return true;
-    });
+    await this.page.waitForFunction(`/^Reto: /.test((${FIND_ACT})(false) ?? "")`, null, { timeout: 8000 }).catch(() => {});
+    const marked = await this.page.evaluate(FIND_ACT, true);
     if (!marked) return false;
-    await this.tap('.rm-act[data-panel-tap="1"]', "Reto (botón naranja)");
+    await this.tap('[data-panel-tap="1"]', "Reto (botón naranja)");
     await this.page.evaluate(() => document.querySelectorAll("[data-panel-tap]").forEach((b) => delete b.dataset.panelTap));
     const picker = await this.page.waitForFunction(() => document.body.classList.contains("in-reto-picker"), null, { timeout: 1500 }).then(() => true).catch(() => false);
     if (!picker) return at.i >= 0;
@@ -332,15 +341,10 @@ export class Journey {
       await this.viaReto(selector, "Ver la máquina");
       return;
     }
-    await this.page.waitForFunction(() => [...document.querySelectorAll(".rm-act:not(.hidden)")].some((b) => b.closest(".root-menu")?.checkVisibility()), null, { timeout: 8000 }).catch(() => {});
-    const btn = await this.page.evaluate(() => {
-      const b = [...document.querySelectorAll(".rm-act:not(.hidden)")].find((x) => x.closest(".root-menu")?.checkVisibility());
-      if (!b) return null;
-      b.dataset.panelTap = "1";
-      return true;
-    });
+    await this.page.waitForFunction(`(${FIND_ACT})(false) !== null`, null, { timeout: 8000 }).catch(() => {});
+    const btn = await this.page.evaluate(FIND_ACT, true);
     if (!btn) return;
-    await this.tap('.rm-act[data-panel-tap="1"]', "Panel");
+    await this.tap('[data-panel-tap="1"]', "Panel");
     await this.page.evaluate(() => document.querySelectorAll("[data-panel-tap]").forEach((b) => delete b.dataset.panelTap));
     await this.page.waitForFunction(() => document.body.classList.contains("panel-on"), null, { timeout: 5000 }).catch(() => {});
   }

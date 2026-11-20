@@ -11,6 +11,7 @@ Detalle y fuentes: [ux-acciones.md](ux-acciones.md), [escala.md](escala.md), [na
 3. **Todo lo demás ficticio queda parado** tras `REAL_ONLY` y apuntado en [pendientes.md](../pendientes.md): anillos, granjas, santuario, animales no volados y dique seco.
 4. **Soporte vital real (ECLSS)**. Se consume solo donde está la tripulación. Las averías tienen causa (desgaste, obstrucción, contaminación); nunca son al azar.
 5. **Los componentes y las naves llegan por importación** desde la Tierra. En el espacio solo se imprimen piezas pequeñas, como en la ISS. Se empieza con el componente de menor capacidad de cada tipo.
+6. **Cada santuario recrea el bioma de un elemento** (Berón, 2026-11-20), con especies reales de una sola región que viven juntas, cada dato con fuente: 1 terrestre, 2 acuático, 3 aire y alturas ([bioma-s3.md](bioma-s3.md): el Karakórum de Hunza en la Isla de las alturas), 4 subterráneo, 5 nucleico, 6 espacial.
 
 ## 2. Espacios y exploración
 

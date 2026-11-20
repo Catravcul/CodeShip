@@ -29,6 +29,21 @@ export const PLANT_BUDGET = { pino: 900, abedul: 160, enebro: 420, artemisa: 700
 /** Near-camera plants (sedges, cushions, flowers) are scattered this far (m), and again when she moved this far. */
 const NEAR_PLANTS_M = 70;
 const NEAR_MOVE_M = 8;
+/** The grid offsets within `r` cells, nearest first (cached by radius). */
+const RINGS = new Map<number, readonly (readonly [number, number])[]>();
+function ringOrder(r: number): readonly (readonly [number, number])[] {
+  let o = RINGS.get(r);
+  if (!o) {
+    const a: [number, number][] = [];
+    for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) if (i * i + j * j <= r * r) a.push([i, j]);
+    o = a.sort((p, q) => p[0] * p[0] + p[1] * p[1] - (q[0] * q[0] + q[1] * q[1]));
+    RINGS.set(r, o);
+  }
+  return o;
+}
+/** The scree cone below the cliffs (local m): the pikas' pedrera (data/bioma-island.ts, zone «pedrera»). */
+const SCREE = { x: 175, z: -75, r: 55 };
+const inScree = (lx: number, lz: number): number => Math.max(0, 1 - Math.hypot(lx - SCREE.x, lz - SCREE.z) / SCREE.r);
 
 /** Belt colours (ours, from photographs of the Hunza valley sides). */
 const BELT_COLOR: Readonly<Record<string, number>> = { submontano: 0xb09a6a, montano: 0x5d6a3c, subalpino: 0x6c7a44, alpino: 0x7f9a4c, subnival: 0x8c877e, nival: 0xeef1f4 };
@@ -36,6 +51,7 @@ const ROCK = new THREE.Color(0x6e665d);
 const TRAIL = new THREE.Color(0xb8a888);
 const SAND = new THREE.Color(0xa49c88);
 const GRAVEL = new THREE.Color(0x8d8a84);
+const SCREE_COLOR = new THREE.Color(0x938c80);
 
 interface Placed {
   readonly x: number;
@@ -105,6 +121,9 @@ export class BiomeScene {
     if (belt.id === "subnival" && n > 0.15) c.lerp(new THREE.Color(BELT_COLOR.nival!), Math.min(1, (n - 0.15) * 3));
     const rock = Math.min(1, Math.max(0, (slope - 0.75) / 0.6));
     if (rock > 0) c.lerp(ROCK, belt.id === "nival" ? rock * 0.8 : rock);
+    // The scree cone: grey stones over the meadow, thinning at its edge.
+    const scree = inScree(x, z);
+    if (scree > 0) c.lerp(SCREE_COLOR, Math.min(1, scree * 2.2));
     if (y < 0.9) c.lerp(SAND, Math.min(1, (0.9 - y) / 0.6));
     const g = gorgeAt(this.M, x, z);
     if (g.q < this.M.gorgeFloorHalf + 1 && y < g.floor + 1.5) c.copy(GRAVEL);
@@ -279,11 +298,11 @@ export class BiomeScene {
     at.forEach((p, i) => {
       e.set(hash01(i, 1) * 0.6, p.r, hash01(i, 2) * 0.6);
       q.setFromEuler(e);
-      const s = 1.5 + 4 * hash01(i, 3);
+      const s = 0.7 + 2 * hash01(i, 3) ** 2;
       M.compose(v.set(p.x, p.y - s * 0.25, p.z), q, sc.set(s * 1.3, s * 0.7, s));
       mesh.setMatrixAt(i, M);
       const lichen = hash01(i, 4);
-      mesh.setColorAt(i, c.setHex(lichen < 0.12 ? 0xc87a32 : lichen < 0.22 ? 0xb4b89a : 0x8a8278).offsetHSL(0, 0, (hash01(i, 5) - 0.5) * 0.1));
+      mesh.setColorAt(i, c.setHex(lichen < 0.12 ? 0xc87a32 : lichen < 0.22 ? 0xb4b89a : 0x9a9289).offsetHSL(0, 0, (hash01(i, 5) - 0.5) * 0.1));
     });
     mesh.count = at.length;
     this.root.add(mesh);
@@ -366,7 +385,7 @@ export class BiomeScene {
     const stone = new THREE.DodecahedronGeometry(0.22, 0).scale(1.3, 0.6, 1);
     const kinds: [string, THREE.BufferGeometry, THREE.Material, number, (alt: number, slope: number, lx: number, lz: number) => boolean, number, number][] = [
       // The scree: loose stones over the cones below the cliffs and the subnival slopes.
-      ["piedras", stone, mat(0x8f887e, { flatShading: true }), PLANT_BUDGET.piedras, (alt, slope, lx, lz) => (alt > 4300 && slope > 0.35) || Math.hypot(lx - 175, lz + 75) < 55, 1.1, 1],
+      ["piedras", stone, mat(0x8f887e, { flatShading: true }), PLANT_BUDGET.piedras, (alt, slope, lx, lz) => (alt > 4300 && slope > 0.35) || inScree(lx, lz) > 0, 1.1, 1],
       ["pradera", tuft, mat(0x8aa64e, { side: THREE.DoubleSide }), PLANT_BUDGET.pradera, (alt, slope) => alt > 3700 && alt < 4700 && slope < 0.75, 1.6, 1],
       ["cojines", cushion, mat(0x5f8a3e, { flatShading: true }), PLANT_BUDGET.cojines, (alt, slope) => alt > 3900 && alt < 5000 && slope < 0.8, 2.6, 1],
       ["amapola", poppy, mat(0xffffff, { vertexColors: true, flatShading: true }), PLANT_BUDGET.amapola, (alt, slope, lx, lz) => alt > 4250 && alt < 4800 && slope < 0.9 && Math.hypot(lx - 190, lz + 84) < 70, 3.2, 1],
@@ -396,25 +415,28 @@ export class BiomeScene {
       const f = Math.max(0.15, Math.min(1.2, this.cover[k.id] ?? 1));
       let n = 0;
       const R = NEAR_PLANTS_M;
-      const i0 = Math.floor((lc.x - R) / k.spacing);
-      const j0 = Math.floor((lc.z - R) / k.spacing);
-      for (let j = j0; j <= j0 + (2 * R) / k.spacing && n < k.cap; j++)
-        for (let i = i0; i <= i0 + (2 * R) / k.spacing && n < k.cap; i++) {
-          const key = `${k.id}:${i}:${j}`;
-          let p = this.nearCache.get(key);
-          if (p === undefined) {
-            const lx = (i + hash01(i * 31 + j, 41)) * k.spacing;
-            const lz = (j + hash01(i * 37 + j, 42)) * k.spacing;
-            const y = this.h(lx, lz);
-            p = y > 1 && k.ok(altitudeOf(this.M, y), slopeAt(this.M, lx, lz), lx, lz) && this.trailDist(lx, lz) > 1.8 ? { ...this.world(lx, lz), y, s: 0.6 + 0.8 * hash01(i, j), r: hash01(j, i) * 6.28 } : null;
-            this.nearCache.set(key, p);
-          }
-          if (!p || Math.hypot(p.x - cam.x, p.z - cam.z) > R) continue;
-          q.setFromAxisAngle(up, p.r);
-          const s = p.s * k.size * f;
-          M4.compose(v.set(p.x, p.y - 0.02, p.z), q, sc.set(s, s, s));
-          k.mesh.setMatrixAt(n++, M4);
+      const ci = Math.floor(lc.x / k.spacing);
+      const cj = Math.floor(lc.z / k.spacing);
+      // Nearest cells first: the budget goes to what she sees close, never to one far side of the disc.
+      for (const [di, dj] of ringOrder(Math.ceil(R / k.spacing) + 1)) {
+        if (n >= k.cap) break;
+        const i = ci + di;
+        const j = cj + dj;
+        const key = `${k.id}:${i}:${j}`;
+        let p = this.nearCache.get(key);
+        if (p === undefined) {
+          const lx = (i + hash01(i * 31 + j, 41)) * k.spacing;
+          const lz = (j + hash01(i * 37 + j, 42)) * k.spacing;
+          const y = this.h(lx, lz);
+          p = y > 1 && k.ok(altitudeOf(this.M, y), slopeAt(this.M, lx, lz), lx, lz) && this.trailDist(lx, lz) > 1.8 ? { ...this.world(lx, lz), y, s: 0.6 + 0.8 * hash01(i, j), r: hash01(j, i) * 6.28 } : null;
+          this.nearCache.set(key, p);
         }
+        if (!p || Math.hypot(p.x - cam.x, p.z - cam.z) > R) continue;
+        q.setFromAxisAngle(up, p.r);
+        const sz = p.s * k.size * f;
+        M4.compose(v.set(p.x, p.y - 0.02, p.z), q, sc.set(sz, sz, sz));
+        k.mesh.setMatrixAt(n++, M4);
+      }
       k.mesh.count = n;
       k.mesh.instanceMatrix.needsUpdate = true;
     }

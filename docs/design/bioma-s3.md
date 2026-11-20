@@ -1,171 +1,147 @@
-# Santuario 3: el bioma subantártico (rama `bioma-s3`)
+# Santuario 3: el bioma del aire y las alturas (rama `bioma-aire`)
 
 Berón, 2026-11-19: «crear un bioma donde hay animales y plantas de todo tipo para cumplir una cadena alimenticia y que
-sigan sus ciclos de vida naturales». Una sexta isla del santuario 3, **Isla subantártica** (centro (760, 230), 300 × 200 m
-a escala 1), como Bird Island en Georgia del Sur: tussac, musgo y kelp; kril y peces; pingüinos, albatros, petreles,
-págalos y focas que nacen, comen, cazan, se aparean y mueren. Se llega en helicóptero (su máquina de navegación) o con
-«Ir» desde Áreas (elegir «Isla subantártica» en sus ajustes). El censo está en la estación de investigación.
+sigan sus ciclos de vida naturales». Berón, 2026-11-20: cada santuario recrea el bioma de un elemento (reglas.md §1); el
+3 es **el aire y las alturas**: aves, cabras que trepan, acantilados, cañones y roedores. La isla subantártica de la
+primera versión se sustituye por una sola isla gigante, la **Isla de las alturas** (las demás islas del santuario 3
+siguen: entrenamiento, plataforma de lanzamiento e islas mágicas). Se llega en helicóptero (su máquina de navegación)
+o con «Ir» desde Áreas.
+
+**Una región real**: los valles de Hunza–Nagar en el Karakórum (Gilgit-Baltistán, Pakistán), del fondo del valle a
+Khunjerab. Todas las especies viven juntas allí: la lista del Parque Nacional de Khunjerab, más el markhor y la ardilla
+voladora lanuda de los bosques de Nagar y Gilgit; las plantas son los cinturones del valle de Batura (Eberhardt,
+Dickoré y Miehe 2007) y los bosques húmedos del Rakaposhi.
 
 ## Dónde está el código
 
 | Archivo | Qué |
 | --- | --- |
-| `aerial-sanctuary/data/bioma.ts` | Las 23 especies: datos de ciclo de vida, dieta, tamaños, cada una con **una fuente**; los campos nuestros, en `ours` con el porqué (etiqueta **licencia**) |
-| `aerial-sanctuary/data/bioma-island.ts` | La isla: zonas (estación, playa, colonia, tussac, musgo, kelp), cabaña de 12 × 6 × 3,2 m con el tablón del censo, helipuerto, Áreas |
-| `aerial-sanctuary/data/bioma-conducta.ts` | Rasgos de conducta para `fauna` (velocidades, miedos, caza; por etapa: `papua:cria`), cortejos, rivalidades y etogramas, con fuente |
-| `aerial-sanctuary/domain/bioma.ts` | La cadena alimenticia: determinista y con semilla; pruebas en `bioma.test.ts` (10 años acotados) |
-| `aerial-sanctuary/application/biome-life.ts` | La cadena + `fauna/Ecosystem`: cada animal con su intención (huir, cazar, seguir a la madre, cortejar, rivalizar, descansar de noche, pescar en el mar) |
-| `adapters/three/s3-biome-models.ts` | La escena: suelo por zonas, plantas instanciadas, bancos de peces y kril, cuerpos de cubos (`animal-bodies.ts`) |
-| `aerial-sanctuary/data/bioma-crowd.ts` | Densidades reales con fuente, factores de escala (licencia), parches, meses en tierra y muda de las multitudes |
-| `aerial-sanctuary/domain/bioma-crowd.ts` | Cuántos adultos, crías, nidos y huevos se dibujan según la cadena, el calendario de cría y la muda; pruebas en `bioma-crowd.test.ts` |
-| `adapters/three/s3-biome-crowd.ts` | Las multitudes dibujadas: cuerpos de cubos cerca, cajas lejos, nidos y huevos (una sola malla instanciada) |
-| `aerial-sanctuary/data/bioma-retos.ts`, `application/field-work.ts` | El trabajo de campo de la cabaña (contar nidos, anillar) como retos, con `procedureReto` del santuario 1 |
-| `src/s3-biome.ts` | El cableado (tres líneas en `aerial-sanctuary.ts`), la tarjeta del censo y el botón naranja de la mesa de campo |
+| `aerial-sanctuary/data/bioma.ts` | `AIR_BIOME` (un `BiomeDef`): 28 especies y dos restos (carroña, huesos), el clima de Gilgit, el día 0 (20 de noviembre); **una fuente** por especie; lo nuestro en `ours` con el porqué (**licencia**) |
+| `aerial-sanctuary/domain/mountain.ts` | La montaña como función de altura: macizo con anillo de cantiles, cresta, garganta, senderos, rellanos; pendiente, cinturón y altitud real |
+| `aerial-sanctuary/data/bioma-island.ts` | La isla: `MOUNTAIN` (sus datos), `BELTS`, zonas, cabaña, helipuerto, senderos, repisas del farallón, Áreas con cinturón |
+| `aerial-sanctuary/domain/bioma.ts` | La cadena alimenticia **genérica**: vive cualquier `BiomeDef` (determinista, con semilla) |
+| `aerial-sanctuary/data/bioma-conducta.ts` | Rasgos de conducta para `fauna`, cortejos, rivalidades (choque de cuernos) y etogramas, con fuente |
+| `aerial-sanctuary/application/biome-life.ts` | La cadena + `fauna/Ecosystem` sobre el terreno: cada animal en su zona y su suelo, los que trepan en la roca, los vuelos (térmicas, picados, cernido, bandadas, huesos, vencejos, uve de los ánsares), la ardilla que planea al anochecer, las marmotas que hibernan |
+| `aerial-sanctuary/data/bioma-crowd.ts`, `domain/bioma-crowd.ts` | Multitudes (genéricas: especies como datos): tamaños de grupo reales, escala (licencia), parches, madrigueras y nidos |
+| `adapters/three/s3-biome-models.ts` | La escena: terreno por trozos con colores por cinturón, roca y sendero; río; árboles, matorrales y plantas con nivel de detalle; cabaña y mesa |
+| `adapters/three/s3-biome-crowd.ts` | Las multitudes dibujadas: cuerpos de cubos cerca, cajas lejos (una malla instanciada) |
+| `aerial-sanctuary/data/bioma-retos.ts`, `application/field-work.ts` | Los métodos de campo del Himalaya como retos (`procedureReto` del santuario 1) |
+| `src/s3-biome.ts` | El cableado, la tarjeta del censo y la Y/botón naranja de la mesa de campo |
+
+## La isla
+
+Centro (1450, 250), 1600 × 1200 m, sin escalar (ya es gigante; solo la cabaña y el helipuerto crecen con la escala de
+presentación). **Licencia**: 1 m de la isla son 9 m de ladera real; la playa son 2 400 m y la cumbre, a 520 m sobre el
+mar, 5 080 m. Cada zona cae en su cinturón real (Batura): submontano hasta 2 700 m, montano hasta 3 500, subalpino
+hasta 3 900, alpino hasta 4 600, subnival hasta 5 200 y nival encima.
+
+| Zona (Áreas) | Cinturón | Qué hay |
+| --- | --- | --- |
+| Estación de investigación | submontano | Cabaña junto al río: tablón del censo y mesa de campo |
+| Estepa de artemisa | submontano | Artemisa, efedra; ratones y hámsteres; zorro y cernícalo |
+| Río de la garganta | submontano | Espino amarillo en la grava; palomas nivales |
+| Bosque de pino azul | montano | Pino azul y pícea; la ardilla voladora lanuda |
+| Enebral y abedules | subalpino | El límite del bosque; el markhor ramonea |
+| Mirador de la garganta | alpino | Garganta de 160 m: markhores en sus paredes, el quebrantahuesos, el treparriscos |
+| Pradera de las marmotas | alpino | Juncias y cojines; familias de marmotas en sus madrigueras, bharales, el águila real |
+| Pedrera de las pikas | alpino | Cono de piedras; pikas entre las grietas, amapola azul |
+| Farallón de los íbices | alpino | Anillo de cantiles de ~90 m: íbices en las repisas, colonia de buitres; **9 repisas para trepar con X** |
+| Collado de la perdiz nival | subnival | Saussureas; la perdiz nival; pasan los ánsares indios |
+| Campo de nieve | nival | Líquenes, colémbolos y arañas saltarinas de la zona eólica |
+
+Áreas agrupa por **isla → cinturón** (`area-scope.ts`, alcance «cinturon»). Senderos andables del helipuerto a las
+nieves, al mirador y al río (`mountain.test.ts`: todos por debajo de la pendiente andable). La roca más empinada que
+`walkSlope` no tiene suelo: solo se sube por las repisas (suelos `bioma:repisa-N`, `climbTarget` del santuario 1).
 
 ## Especies
 
 Todo **real** desde su fuente salvo lo dicho. Fuentes completas en `data/bioma.ts`.
 
-| Grupo | Especie | Come | Fuente |
-| --- | --- | --- | --- |
-| Planta | Fitoplancton (diatomeas) | sol y nutrientes (curva de Eppley) | Eppley 1972; Korb et al. 2008 |
-| Planta | Kelp gigante *Macrocystis pyrifera* | — (guardería de peces) | Wikipedia |
-| Planta | Tussac *Poa flabellata* | — (crece más con guano) | Smith 1985; Wikipedia |
-| Planta | Hierba pilosa *Deschampsia antarctica* | — | Wikipedia |
-| Planta | Banco de musgo *Chorisodontium*, *Polytrichum* | — | Fenton 1980 |
-| Planta | Liquen *Usnea antarctica* | — | Sancho et al. 2007 |
-| Banco | Kril *Euphausia superba* | fitoplancton | Wikipedia; CCAMLR; Murphy et al. 2007 (años malos) |
-| Banco | Colémbolo *Cryptopygus antarcticus* | musgo, restos | Wikipedia |
-| Banco | Mosquito sin alas *Belgica antarctica* | musgo, guano | USAP Antarctic Sun 2020 |
-| Banco | Calamar *Martialia hyadesi* | kril, pez linterna | Wikipedia |
-| Banco | Pez linterna *Electrona antarctica* | kril | FishBase |
-| Banco | Pez de hielo *Chaenocephalus aceratus* | kril, peces | Cold Sanctuary (`Icefish`); FishBase |
-| Banco | Austromerluza *Dissostichus mawsoni* | pez de hielo, calamar | Cold Sanctuary (`Toothfish`); CCAMLR |
-| Ave | Pingüino papúa *Pygoscelis papua* | kril, peces | Wikipedia; ADW |
-| Ave | Petrel damero *Daption capense* | kril, peces | Cold Sanctuary (`CapePetrel`, `FoodChain`) |
-| Ave | Albatros viajero *Diomedea exulans* | calamar, peces | Cold Sanctuary (`WanderingAlbatross`); Wikipedia |
-| Ave | Págalo polar *Stercorarius maccormicki* | peces, huevos y pollos, carroña | Cold Sanctuary (`PolarSkua`); Wikipedia |
-| Ave | Charrán ártico *Sterna paradisaea* (visitante nov–abr) | kril, peces | Cold Sanctuary (`ArcticTern`) |
-| Ave | Bisbita de Georgia del Sur *Anthus antarcticus* | colémbolos, mosquitos | Wikipedia; BirdLife |
-| Ave | Picovaina nevado *Chionis albus* | kril, huevos, pollos, carroña, algas | Wikipedia |
-| Foca | Lobo marino antártico *Arctocephalus gazella* | kril, peces | Wikipedia |
-| Foca | Elefante marino del sur *Mirounga leonina* | calamar, peces | Wikipedia |
-| Foca | Foca leopardo *Hydrurga leptonyx* | kril, papúas, crías de lobo marino, peces | Wikipedia |
+| Grupo | Especies |
+| --- | --- |
+| Plantas (por cinturón) | estepa de artemisa, espino amarillo, pino azul, abedul y sauce, enebro, pradera alpina, plantas en cojín, amapola azul, saussurea, líquenes, y la **lluvia eólica** (lo que sube el viento: Swan 1961, 1992) |
+| Bancos | insectos de la pradera, insectos voladores, ratones y hámsteres, colémbolos de la nieve, arañas saltarinas |
+| Herbívoros | íbice, markhor, bharal, marmota de cola larga (hiberna sep–abr), pika orejuda, ardilla voladora lanuda (agujas de pino: Zahler y Khan 2003) |
+| Depredadores | zorro rojo, leopardo de las nieves, águila real, cernícalo |
+| Carroñeros | buitre del Himalaya (carroña), quebrantahuesos (huesos) |
+| Aves | chova piquigualda, treparriscos, perdiz nival, paloma nival, vencejo real (visitante, may–sep), ánsar indio (de paso) |
 
-**Licencia (nuestro):** cuántos caben en la isla (`cap`, de decenas, no de miles: presupuesto del móvil; la multitud
-que representan, en §Multitudes), el reparto de la
-dieta (`pref`), la reserva en días de ayuno de algunas aves, la carroña (se pudre al 8 % al día), el mar a 2–5 °C,
-la colocación de las zonas. El clima del aire es **real** (Grytviken).
+Dejadas fuera (también del Khunjerab): lobo y oso pardo (el leopardo es el gran depredador; el presupuesto de la
+cadena), argalí de Marco Polo y kiang (viven en las mesetas del paso, no en una ladera de cantiles; el bharal hace su
+papel), murciélagos y liebre (nocturnos o sin nicho propio aquí). Las 23 especies subantárticas salen: no son de la región.
 
 ## Cómo funciona la cadena
 
-Port de `FoodChain` de Cold Sanctuary: una fuente da como mucho `MARGIN` = 0,8 de lo que produce; se suben las fuentes
-hasta cubrir a sus consumidores.
+Port de `FoodChain` de Cold Sanctuary, ahora **genérico**: `domain/bioma.ts` recibe un `BiomeDef` (especies, restos,
+clima, día de inicio, «a otra parte de…») y construye su modelo una vez; nada del aire está en el dominio.
 
-- **Tiempo.** El año de la isla dura 28 días de juego (`DaysPerYear` de Cold Sanctuary): un día de juego son 365/28 ≈ 13
-  días de vida. Se avanza a pasos de una hora de juego. El día 0 es el 19 de noviembre. Como es determinista con semilla,
-  se recalcula desde los días del santuario 3 y no se guarda nada más.
-- **Plantas** (`fauna/domain/forage.ts`, genérico): crecen logísticas por la luz del día (modelo CBM de Forsythe, latitud
-  −54,3°) × el calor del mes (Grytviken); el fitoplancton con Eppley; el tussac con guano. Se las comen (`graze`) sin
-  pasar de lo que pueden dar.
-- **Bancos** (kril, peces, calamar, invertebrados del suelo): biomasa continua con crecimiento logístico, menos actividad
-  en invierno, el kelp como guardería y los años de kril (malos ≈ 1 de cada 5, Murphy et al.). Una estructura de edades:
-  al acabar el desove entran los del año y salen los más viejos.
-- **Individuos** (aves y focas): etapas de `fauna/life-cycle` (cría, joven, adulto, anciano), masa ∝ tamaño³, ingesta ∝
-  masa^0,75. Las madres alimentan a sus crías; una cría sin madre muere. Una reserva de ayuno que se gasta cuando come
-  menos del 80 %. Muertes: de viejos (en la etapa de anciano), cazados, de hambre y sin madre.
-- **Celo y partos.** Se aparean en su mes real (`fauna/mating.ts`, `matingMonth`); la hembra preñada pare en su mes real
-  (`birthMonth`). Sin macho no hay crías (probado con el elefante marino). En la isla se ven los cortejos y, entre los
-  machos de lobo marino y elefante marino, las peleas por el harén (`rivalries`).
-- **Caza.** Cada depredador puede quitar a cada presa el 30 % de lo que produce (`PREY_MARGIN`); acierta como la especie
-  real (`huntSuccess`) y prefiere a los más débiles. Respuesta funcional de tipo II: si escasea, come menos.
-- **Acotado.** Con hambre, los adultos «se van a comer a otra parte» y vuelven en otra temporada; si falta un sexo llega
-  una pareja de otra colonia; por encima del tope los jóvenes se van a otra colonia. En años malos de kril se pasan a peces.
-- **Lo que se ve.** Cuando ella está en la isla, las cazas y los apareamientos que se ven en la escena (`Ecosystem`) son
-  los que cuenta la cadena.
+- **Tiempo.** El año dura 28 días de juego; pasos de una hora de juego; el día 0 es el 20 de noviembre. Determinista.
+- **Plantas** crecen con la luz del día (latitud 35,9°) × el calor del mes de **Gilgit** a su altitud (−6,5 °C/km,
+  OACI): la pradera alpina crece en verano, la estepa casi todo el año.
+- **Restos.** Carroña y huesos: lo que dejan las muertes y las cazas (y algo de fuera, nuestro); se pudren a su ritmo.
+  El buitre come carroña, el quebrantahuesos huesos.
+- **Letargo** (`dormant`): las marmotas hibernan de septiembre a abril (ni comen ni gastan; ocultas en su madriguera).
+- **Visitantes** (`windows`): el vencejo llega en mayo y se va en septiembre; los ánsares pasan en primavera y otoño.
+  Llegan con edad de adulto. Los enjambres de insectos varían por año (`yearFactor`).
+- **Individuos**: etapas, masa, ingesta ∝ masa^0,75, madres que alimentan a sus crías, reserva de ayuno; muertes de
+  viejos, cazados, de hambre y sin madre. **Celo y partos** en su mes real; sin macho no hay crías (el íbice, celo
+  dic–ene). Si el valle está lleno, «no cría este año».
+- **Caza**: cada depredador quita como mucho el 30 % de lo que produce cada presa, con su éxito real; los cazadores del
+  aire cazan «en ambos medios» (`fauna/Ecosystem`).
+- **Estable**: 10 años con las semillas 4, 11 y 23 sin extinciones; los vencejos llegan cada año (`bioma.test.ts`).
+
+## Multitudes (rebaños, colonias, madrigueras)
+
+La cadena vive uno a uno unas decenas de animales; cada adulto **representa a `perAdult` más** (licencia) dibujados
+alrededor. Tamaños de grupo reales:
+
+| Multitud | Real (fuente) | Escala | Se ven |
+| --- | --- | --- | --- |
+| Íbices, dos rebaños en el farallón | 5–30 por rebaño (Wikipedia) | ×2 | ~28 |
+| Markhores, en la garganta | hembras en grupos de 8–9 (ADW) | ×1,6 | ~16 |
+| Bharales, pradera alta | grupos de hasta 10 (Wikipedia) | ×1,5 | ~20 |
+| Marmotas, cinco familias | hasta 7 adultos y ~3 madrigueras (Wikipedia) | ×2,5 | ~35 y sus madrigueras |
+| Pikas, dos pedreras | en grietas, sin madriguera | ×2 | ~32 |
+| Buitres, colonia en repisas | 5–7 parejas (Wikipedia) | ×2 | ~12, nidos de palos |
+| Perdiz nival, palomas, chovas | bandos y colonias en grietas | ×1,5 / ×4 / ×3 | 12 / 48 / 36 |
+
+Los que viven en la roca (`footing: "roca"`) solo se colocan en roca empinada. Las madrigueras de las marmotas se ven
+todo el año; en invierno las marmotas no. Nidos y huevos siguen el calendario real (`nestPhase`).
 
 ## Escena y presupuesto (iPhone 13)
 
-Suelo radial con colores por zona y la playa en pendiente; musgo, hierba pilosa, rocas con liquen y kelp, instanciados:
-musgo 160, hierba 140, rocas 60, kelp 60. La floración del fitoplancton como un disco de color en el mar. Bancos: kril
-200 (dibujado ×5), linterna 42, pez de hielo 8, austromerluza 3, calamar 6. Los animales, con los cuerpos de cubos de
-`fauna` (el papúa con su pico rojo anaranjado y la banda blanca). Más allá de 900 m la escena no se dibuja (la cadena
-sigue). ≤ 600 llamadas de dibujo (PX-51).
-
-### Tussac a su densidad real
-
-**650 matas por hectárea** (real: Lewis Smith y Clymo 1984, *Nature* 309: 617–620, 600–700/ha en Beauchêne, pedestales
-de 1–1,5 m, copas de hasta 4,5 m), en rejilla con ruido sobre la ladera: ~1950 matas. Cada mata: pedestal de turba de
-~1 m, abanico de hojas de ~3 m (licencia, dentro de «hasta 4,5 m») y una falda de hojas secas. Nivel de detalle: las
-300 más cercanas (a < 42 m) con hojas; las demás, un montículo y un cono en una malla (2 + 1 llamadas).
-
-## Multitudes (colonias, playas y nidos)
-
-La cadena vive uno a uno solo unas decenas de animales. Cada uno **representa a `perAdult` más** (factor de escala,
-**licencia**) dibujados a la densidad real a su alrededor: si la cadena pierde papúas, la colonia se vacía; si nacen
-pollos, se ven ×50 en sus nidos. `domain/bioma-crowd.ts` cuenta, `adapters/three/s3-biome-crowd.ts` dibuja.
-
-| Multitud | Densidad real (fuente) | Escala (licencia) | Se ven con la cadena llena |
-| --- | --- | --- | --- |
-| Colonia de papúas (4 grupos, punta este) | nidos **a 1 m** unos de otros (≈ 1 nido/m²), nido de piedras de 45 cm × 10–20 cm (ADW) | ×50 | ~1100 papúas, ~550 nidos |
-| Playa de lobos marinos (franja de 9 harenes) | **80 crías por 100 m** de costa (Cooper Bay: 2789 crías en ~3,5 km; Staniland et al. 2011); hasta 20 hembras por macho (Wikipedia) | ×30 | ~420 en ~180 m de playa |
-| Harén de elefantes marinos | «varias docenas» de hembras por macho (Wikipedia; 40, nuestro) | ×8 | ~48 |
-| Nidos de albatros viajero en el tussac | nido de turba de 1 m de base y 0,5 m de alto, colonias sueltas; 1278 parejas en Georgia del Sur (Mackley et al. 2025) | ×3 | 12, a ~16 m |
-| Petreles dameros en las grietas (norte) | nido de piedrecillas bajo una roca o en una grieta (Wikipedia) | ×6 | ~60 |
-
-- **Cuántos en tierra por mes** (licencia, del calendario de cada fuente): lobos de noviembre a abril, casi ninguno en
-  invierno; elefantes en la cría (sep–nov) y la muda (dic–abr); papúas todo el año, menos en invierno.
-- **Nidos y huevos** siguen el calendario real de la especie (`nestPhase`: nido dos semanas antes de la puesta, huevos
-  durante la incubación de la cadena, pollos durante sus `childDays`): papúas con 2 huevos en noviembre-diciembre y
-  pollos hasta febrero; el pollo de albatros pasa el invierno en su nido de barro; el damero, un huevo en su grieta en
-  diciembre. Hay tantos nidos con huevos como hembras empolladas de la cadena × su escala.
-- **Muda**: los papúas mudan 25 días en tierra cuando se van sus pollos (ADW, real: finales de marzo en la isla); los
-  elefantes marinos en verano (Wikipedia; reparto por meses nuestro: enero-febrero sobre todo). Se ven pardos a parches.
-- **Nivel de detalle**: a menos de 24 m de la cámara, el cuerpo de cubos de su especie (en la misma manada que los de la
-  cadena: ninguna llamada de más; tope de 200 papúas, 90 lobos…; un tercio se re-posa cada fotograma, respiran y giran la
-  cabeza); más lejos, una o dos cajas con sus colores. Las cajas lejanas, nidos, huevos (solo a < 40 m) y rocas de las
-  grietas son **una sola malla instanciada** (una llamada). Se recolocan solo si cambian las cuentas o la cámara se
-  mueve 3 m.
-
-Medido en PX-51 (SwiftShader, sin GPU): ver la última corrida en `docs/qa/registro.md`.
+Terreno en 16 trozos de rejilla de 6 m, colores por cinturón, roca, sendero y grava; el río en el fondo de la garganta.
+Pinos y abedules en una geometría fundida; enebros, artemisa, espino; cerca de ella (nivel de detalle): pedregal,
+hierba, cojines, amapolas, saussureas. Animales con los cuerpos de cubos de `fauna` (nuevas siluetas: patas y cola por
+especie, aves por envergadura). La vida se actualiza si la cámara está a menos de 1 600 m. **≤ 600 llamadas** (PX-51:
+~225).
 
 ## La estación: el censo y la mesa de campo
 
-### Mesa de campo (trabajo de campo como en Bird Island)
+En la cabaña, el botón de interacción (la **Y naranja** del mando de Switch, o el botón naranja bajo el menú si no hay
+mando) abre **«Censo de la montaña»**: cada especie con su cinturón, sus etapas, qué come y quién se la come, muertes y
+nacimientos; «Duermen bajo tierra» para las marmotas en invierno; las multitudes con sus madrigueras y nidos; los
+enjambres por su peso. En la **mesa de campo**, «Reto: Mesa de campo» abre los métodos de campo del Himalaya:
 
-Junto a la pared oeste de la cabaña, a más de 2 m del tablón: el cuaderno, el contador manual, los alicates de anillar
-y las anillas. Allí sale el botón naranja compartido **«Reto: Mesa de campo»** (`ui/interaction.ts`, como en el
-santuario 1; nunca se abre nada solo) y abre el mismo selector de retos (`RetoPicker`): los trabajos fuera de su época,
-apagados con el porqué. Cada trabajo es un procedimiento real, un reto por paso, con `procedureReto` del santuario 1
-(`sanctuary-one/application/challenges.ts`, que ahora acepta su lista de pasos de distracción); el escenario es el
-compartido `reto-focus.ts` (ella ante la mesa, la cámara sobre su hombro en la franja libre) y cada paso lo actúa el
-reproductor de pasos de las naves (`StepShow`): revisa el cuaderno, toma el contador o los alicates.
-
-| Trabajo | Pasos (fuente) | Cuándo |
+| Trabajo | Fuente | Cuándo |
 | --- | --- | --- |
-| Contar los nidos de papúa | incubación temprana, contador y plano, a ≥ 5 m, nido ocupado = ave sobre el nido, 3 recuentos, repetir si difieren > 10 %, anotar la media — **la media es el total real de la colonia de la cadena** (CCAMLR CEMP A3; normas de visita de Georgia del Sur) | con huevos o pollos en los nidos |
-| Anillar un pollo de albatros viajero | permiso y número, acercarse por detrás, paño sobre la cabeza, sujetar alas sin oprimir el pecho, anilla en el tarso que gire, anotar, devolver al nido (BTO; BAS Bird Island) | con un pollo en su nido (marzo–diciembre) |
+| Cámaras trampa para el leopardo de las nieves | Jackson, Roe, Wangchuk y Hunter 2006 (Wildlife Society Bulletin 34: 772); Durbach et al. (Snow Leopard Trust) | enero–marzo |
+| Censo de íbices por doble observador (el total es la multitud de la cadena) | GSLEP 2019, «Double-observer survey manual» | con íbices en el farallón |
+| Seguimiento de los nidos de buitre del Himalaya | Smith, Slater y Neal, BLM Technical Note 436 | con huevos o pollos |
 
-Lo hecho queda en el **cuaderno de campo**, dentro del censo.
-
-### El censo
-
-En la cabaña, ante el tablón: el botón naranja abre «Censo de la isla» (reglas §5.8). Cada especie: su número por
-etapa, cuánto come si pasa hambre, qué come, quién se la come, sus muertes por causa y sus nacimientos; las aves y
-focas con multitud, cuántas se ven en la isla (×escala), sus nidos, huevos y si están en muda; las plantas, cuánto
-cubren de lo que cabe. Los bancos **por su peso** («≈ 800 000 t» de kril, dos cifras significativas) y en letra pequeña
-cuántos («≈ 2,4 billones de individuos») y el reparto por edades en %. Cifras en español: grupos de tres con espacio,
-«millones», «mil millones», «billones». Cada fila cabe en 390 px (PX-51). Los últimos 10 sucesos.
+Lo hecho queda en el **cuaderno de campo** del censo.
 
 ## Pruebas
 
-`domain/bioma.test.ts` (10 años con todas las especies presentes o fuera comiendo, nacimientos en su mes, sin macho no
-hay crías, determinista), `domain/bioma-crowd.test.ts` (calendario de nidos, muda, escala, cifras legibles),
-`application/field-work.test.ts`, `application/biome-life.test.ts`, `fauna/domain/forage.test.ts`. Recorrido PX-51
-(`s3-bioma`): densidad a la vista en la colonia (≥ 120 papúas) y la playa (≥ 20 lobos en el encuadre estrecho del móvil; lo real en noviembre: ~1,6 por metro de playa), nidos con huevos en noviembre,
-tussac a su densidad, kril en toneladas, filas en 390 px, el reto de contar nidos completo en la mesa, la muda en marzo.
+`domain/bioma.test.ts`, `domain/mountain.test.ts`, `domain/bioma-crowd.test.ts`, `domain/area-scope.test.ts`,
+`data/bioma-island.test.ts` (sendero andable, trepar las 9 repisas), `application/biome-life.test.ts` (todos en tierra y
+en su suelo, los íbices en la roca, la ardilla planea al anochecer), `application/field-work.test.ts`,
+`fauna/domain/animal-body-heights.test.ts`. Recorrido **PX-51** (`s3-bioma`): farallón (≥ 10 íbices a la vista,
+buitres en térmicas, X sube a la repisa), garganta (quebrantahuesos a la vista, ≥ 8 markhores), censo (marmotas
+hibernando en noviembre), mesa de campo (doble observador), en junio pradera (≥ 10 marmotas) y pedrera (≥ 8 pikas),
+las 11 plantas vivas, ≤ 600 llamadas.
 
 ## Para después
 
-- Que la multitud reaccione (se aparte al pasar ella, los págalos roben huevos de los nidos que se ven).
-- Más trabajos de campo: recuento de crías en la playa de estudio, pesar pollos de albatros.
+- Que la multitud reaccione a ella (los íbices se apartan, las marmotas silban y se meten en la madriguera).
+- El leopardo visible en las cámaras trampa (fotos en el cuaderno).

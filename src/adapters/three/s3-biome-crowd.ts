@@ -55,7 +55,7 @@ export interface CrowdPose {
 
 const COLOR = {
   stick: new THREE.Color(0x6a5238),
-  dirt: new THREE.Color(0x7a6248),
+  dirt: new THREE.Color(0xa88d68),
   rock: new THREE.Color(0x6a655e),
   egg: new THREE.Color(0xf1ede0),
   scrape: new THREE.Color(0x8a8a60),
@@ -210,8 +210,10 @@ export class BiomeCrowd {
     for (let i = 0; i < nests; i++) {
       const p = P[(i * 3) % P.length]!;
       if (c.nest === "madriguera") {
-        this.box(p.x, p.y - 0.1, p.z, p.yaw, 1.4, 0.35, 1.1, COLOR.dirt);
-        this.boxAt(p, p.yaw, 0.55, 0, p.y - 0.05, 0.35, 0.28, 0.12, COLOR.hole);
+        // A low fan of dug earth, its crown, and the mouth on the downhill side.
+        this.box(p.x, p.y - 0.06, p.z, p.yaw, 1.5, 0.14, 1.2, COLOR.dirt);
+        this.box(p.x, p.y + 0.02, p.z, p.yaw, 0.8, 0.12, 0.65, COLOR.dirt);
+        this.boxAt(p, p.yaw, 0.42, 0, p.y + 0.02, 0.28, 0.16, 0.08, COLOR.hole);
       } else if (c.nest === "repisa") this.box(p.x, p.y, p.z, p.yaw, 1.3, nestH, 1.3, COLOR.stick);
       else if (c.nest === "suelo") this.box(p.x, p.y, p.z, p.yaw, 0.35, nestH, 0.35, COLOR.scrape);
       else {

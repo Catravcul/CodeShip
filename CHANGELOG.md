@@ -5,6 +5,10 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-20
 
+- **Santuario 3: la Isla de las alturas** sustituye a la isla subantártica: una montaña gigante del Karakórum de Hunza
+  con sus 6 cinturones reales, cantiles con repisas para trepar (X), una garganta y senderos; íbices, markhores, bharales,
+  marmotas que hibernan, pikas, leopardo, buitres, quebrantahuesos y 28 especies en una cadena alimenticia genérica;
+  Áreas por isla → cinturón; métodos de campo del Himalaya en la mesa. [docs/design/bioma-s3.md](docs/design/bioma-s3.md)
 - **Gimnasio: cada ejercicio sobre su máquina**: sentada en el asiento, boca abajo en el femoral, en la cinta, bajo la
   barra… (`data/estaciones.ts`), poses corregidas y un reto por aparato; revisadas en vivo las ~45 máquinas.
   [docs/design/santuario1.md](docs/design/santuario1.md) #32

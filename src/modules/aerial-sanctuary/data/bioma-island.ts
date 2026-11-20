@@ -3,7 +3,7 @@ import type { IslandPad } from "../domain/travel";
 import type { AreaDef, IslandDef, MachineDef, Prop } from "./layout";
 import type { Reality } from "@core/reality";
 import { wallWithGaps } from "../domain/walk";
-import { altitudeOf, beltOf, heightAt, landRadius, slopeAt, walkableAt, type Belt, type MountainDef } from "../domain/mountain";
+import { altitudeOf, beltOf, heightAt, landRadius, walkableAt, type Belt, type MountainDef } from "../domain/mountain";
 import { BELT_ALTITUDES } from "./bioma";
 import { fact } from "./sources";
 
@@ -270,6 +270,3 @@ export function buildBiomeIsland(b: IslandBuilder, k: number, helideckM: number)
 export function inside(x: number, z: number): boolean {
   return landRadius(MOUNTAIN.value, x, z) < 0.99;
 }
-
-/** The ground's steepness at local (x, z), rise over run (the scene's rock and the crowds' footing). */
-export const steepAt = (x: number, z: number): number => slopeAt(MOUNTAIN.value, x, z);

@@ -127,7 +127,7 @@ export async function s3Recorrido(j) {
   const post2 = await p.evaluate(() => window.codeshipS3.layout.machines.filter((m) => m.post === 2).map((m) => m.id));
   j.check("llega al puesto 2 sin saltos (nunca más rápido que andando)", post2.includes(w1.s.near) && w1.ok, `${w1.s.near} · ${w1.worst.toFixed(2)} m/s ${w1.at}`);
   await capture(j, "puesto", "Santuario 3: el puesto 2 y su tarjeta");
-  const act = await p.evaluate(() => [...document.querySelectorAll(".rm-act:not(.hidden)")].find((b) => b.checkVisibility())?.getAttribute("aria-label") ?? "");
+  const act = await j.interactionLabel();
   j.check("junto al puesto, el botón naranja del santuario 1: «Reto: <puesto>» (ui/interaction.ts)", /^Reto: /.test(act), act);
 
   // 4. A task on another island: she walks to the navigation machine and a notice says to fly there first.

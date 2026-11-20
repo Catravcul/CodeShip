@@ -26,7 +26,7 @@ al elegir, carga dinámica de un juego:
 | Nivel | Archivo | Qué |
 | --- | --- | --- |
 | 6 Espacio | `src/main.ts` | Nodriza (Starship), estación (ISS), módulo (Apollo LM), sonda, asteroides y duelos |
-| 3 Santuario Aéreo | `src/aerial-sanctuary.ts` | Islas de Cold Sanctuary + isla de entrenamiento real; iniciación de Doménica |
+| 3 Santuario Aéreo | `src/aerial-sanctuary.ts` | Islas de Cold Sanctuary + isla de entrenamiento real; iniciación de Doménica; la Isla de las alturas con su bioma (`src/s3-biome.ts`) |
 | 1 Santuario Terrestre | `src/sanctuary-one.ts` | El santuario de hielo de Cold Sanctuary ([design/santuario1.md](design/santuario1.md)) |
 
 Los archivos `src/<proceso>.ts` (bridge, station-*, lander-*, probe-*, eva-mode, wrath-mode…) son pegamento de cada
@@ -59,7 +59,7 @@ docs/design/            un documento por sistema; docs/research/ investigación 
 | `chores`, `tasks`, `missions`, `notices` | Retos de código por pasos, lista de tareas y Áreas, misiones de Nevaeh, avisos |
 | `crew`, `wellness`, `medical`, `kitchen` | Necesidades de Doménica, yoga/ejercicio/sueño, protocolos médicos, cocina |
 | `habitat`, `garden`, `pets`, `poultry`, `cultured-meat`, `family`, `sanctuary`, `adoption` | Vida a bordo antigua (en pausa tras el reinicio, `REAL_ONLY`) y catálogo de especies |
-| `aerial-sanctuary` | Santuario 3: islas, edificios-árbol con ascensor, `walk.ts` (andar/nadar en cajas), vuelos, puestos |
+| `aerial-sanctuary` | Santuario 3: islas, edificios-árbol con ascensor, `walk.ts` (andar/nadar en cajas), vuelos, puestos; el bioma: `bioma.ts` (cadena alimenticia genérica, el bioma como `BiomeDef`), `mountain.ts` (montaña como función de altura), `bioma-crowd.ts` |
 | `sanctuary-one` | Santuario 1: catálogo de modelos por categoría (`data/models/`), pisos amueblados (`data/floors/`), reglas de cambios a gran escala (`data/overrides.ts`), paisaje, jornada y rutas (alfombras), rejilla del paseo, población; retos (`data/retos.ts`, `application/challenges.ts`), misiones (`data/misiones.ts`, `domain/workday-missions.ts`), trepar/saltar (`domain/climb.ts`), animales vivos (`application/wildlife.ts` sobre `fauna`; datos: `data/ciclos-de-vida.ts`, `data/etograma.ts`, `data/rasgos.ts`) |
 | `fauna` | Compartido entre santuarios ([design/fauna.md](design/fauna.md)): ciclos de vida, etograma, deseos, depredación por stats, deambular, cuerpos articulados (`domain/`) plantas como comida contable (`domain/forage.ts`: luz, calor, crecimiento logístico, pastoreo) y la cadena alimenticia viva (`application/ecosystem.ts`, con el gancho `Forage` para quien cuenta la comida). Sin datos de ningún santuario: cada uno pasa sus especies |
 | `settings`, `saves`, `story`, `body` | Ajustes (en la esterilla), partidas, historia, posturas |
@@ -67,7 +67,7 @@ docs/design/            un documento por sistema; docs/research/ investigación 
 ## Patrones
 
 - **Datos con fuente:** cada número real lleva fuente y etiqueta (`fact()` en `aerial-sanctuary/data/sources.ts`, `Reality` en `core/reality.ts`).
-- **Mundo andable:** `aerial-sanctuary/domain/walk.ts` (suelos, agua, sólidos en planta; paso de 0,6 m; `dropTo` para caer de un borde). Lo usan los santuarios 3 y 1, y los dos se mueven con `aerial-sanctuary/application/free-walk.ts` (andar, correr, nadar, saltar, trepar, caer); poses y vista bajo el agua en `adapters/three/walk-look.ts`.
+- **Mundo andable:** `aerial-sanctuary/domain/walk.ts` (suelos, agua, sólidos en planta; paso de 0,6 m; `dropTo` para caer de un borde; `grounds`: un terreno como función de altura y pendiente, el de la Isla de las alturas). Lo usan los santuarios 3 y 1, y los dos se mueven con `aerial-sanctuary/application/free-walk.ts` (andar, correr, nadar, saltar, trepar, caer); poses y vista bajo el agua en `adapters/three/walk-look.ts`.
 - **Mandos compartidos:** un solo mando de la Switch para todos los niveles, `ui/game-pad.ts`: cada escena donde ella se mueve lo toma (`GamePad.use(root, escena, {zoom, plus, view, moves…})`) al entrar y lo suelta al salir; `GamePad.share` pone lo común de un juego (Áreas y ajustes en `main.ts`). Botón naranja y elección de reto: `ui/interaction.ts` (`offerReto`, `chooseReto`); en las tarjetas de máquina (santuario 3 y naves) `ui/machine-panel.ts` pasa sus botones `RETO_ACTS` por `chooseReto`. Foco del reto en todos los niveles: `adapters/three/interior/reto-focus.ts` (`sheetLens`, `retoFrame`/`focusReto`, `retoVisual`, `framePair`). Alcance de Áreas: `AreaMap.scopes` (cada nivel su jerarquía). Tabla por nivel: [design/ux-acciones.md](design/ux-acciones.md).
 - **Retos:** `ChoreRun` sobre `Exercise` de `mind-duel`; la hoja es `ui/duel-view.ts`; mientras está abierta solo se ven la hoja y la escena.
 - **Ventanas de mapa:** Navegación, Áreas e inicio usan `ui/map-window.ts` (mapa 3D que se gira y amplía con el dedo).

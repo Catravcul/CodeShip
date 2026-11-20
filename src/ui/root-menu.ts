@@ -141,8 +141,9 @@ export class RootMenu {
 
   private paintAct(): void {
     const i = RootMenu.current;
-    // On the pad's Y while the pad is out.
-    this.act.classList.toggle("hidden", !i || document.body.classList.contains("has-switch-pad"));
+    // On the pad's Y while the pad is out (root-menu.css hides this one then; a shown card hides the pad, so its
+    // «Cerrar» comes back here).
+    this.act.classList.toggle("hidden", !i);
     if (!i) return;
     const label = i.open ? `Cerrar: ${i.label}` : i.label;
     this.act.classList.toggle("rm-open", !!i.open);

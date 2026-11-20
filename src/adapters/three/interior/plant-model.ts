@@ -71,6 +71,7 @@ export class PlantModel {
         break;
       }
       case "fruto":
+      case "arbol":
         this.fruiting(g, droop);
         break;
     }

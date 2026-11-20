@@ -1,0 +1,26 @@
+/* The map window (map-window.ts): the start screen, Navigation and Áreas share it. On top the 3D map (nav-map.css),
+   under it the options, each with its description and a 44 px action button; the gear swaps them for settings. */
+.mw-title { margin: 0 auto 0 2px; font-size: 18px; font-weight: 700; letter-spacing: 0.02em; color: #fff; }
+.nav-tools .mw-gear { display: inline-flex; align-items: center; justify-content: center; color: #7fdcff; }
+.nav-tools .mw-gear svg { width: 22px; height: 22px; }
+.mw-list { display: flex; flex-direction: column; gap: 6px; }
+.mw-row { display: flex; align-items: stretch; gap: 8px; padding: 4px 4px 4px 0; background: #0b1c24; border: 1px solid #ffffff22; border-radius: 10px; }
+.mw-row.on { border-color: #ffd23f; background: #163a48; }
+.mw-pick { flex: 1; min-width: 0; min-height: 44px; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 4px 10px; font: inherit; font-size: 12px; text-align: left; color: #e6dfd3; background: transparent; border: 0; border-radius: 9px; }
+.mw-pick b { font-size: 14px; color: #fff; }
+.mw-pick em { font-style: normal; font-size: 11px; font-weight: 700; color: #001018; background: #9fe8c4; border-radius: 4px; padding: 0 4px; }
+.mw-pick small { font-size: 11px; opacity: 0.7; }
+.mw-pick span { opacity: 0.85; }
+.mw-pick:focus-visible, .mw-go:focus-visible { outline: 2px solid #7fdcff; }
+.mw-go { flex: none; align-self: center; min-width: 52px; min-height: 44px; font: inherit; font-weight: 700; color: #001018; background: #7fdcff; border: 0; border-radius: 10px; }
+/* Locked: a lock and why (shape and colour, reglas.md §5.6); its button is off. */
+.mw-lock { display: block; margin-top: 2px; font-style: normal; font-size: 12px; color: #ffb347; }
+.mw-lock b { font-size: 13px; color: #ffb347; }
+.mw-row.locked .mw-go { color: #9fb3bd; background: #23343c; border: 1px dashed #9fb3bd88; }
+.mw-row.off { border-style: dashed; }
+.mw-row.off .mw-pick { cursor: default; }
+.mw-row.off .mw-pick b { color: #c9d4da; }
+/* The settings take the place of the map and the list. */
+.map-window.mw-in-settings .nav-body { display: none; }
+.mw-settings { flex: 1; overflow-y: auto; padding: 0 14px 14px; padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+.mw-settings.hidden { display: none; }

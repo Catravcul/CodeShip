@@ -1,0 +1,228 @@
+// PX-41: the lander's and the probe's controls as Berón asked (2026-11-17), played with taps on an iPhone 13
+// (docs/design/cabina-lm.md «Mandos», modulo-lunar-juventas.md «Cómo sale Juventas»): in the LM's flight view the
+// dock/undock switch sprouts from the controls' root only at a port and shows the opposite of the state, with no unexplained
+// icon; the commander's station offers Manual (free flight with Crew Dragon's tap controls on the LM's hand
+// controllers) and Automático, which opens the navigation window with the destinations out of the LM's reach
+// locked, with why, and then the trip challenge; on Starship's flight deck the probe's station offers the same,
+// Juventas starts in its deployer on the hull (wherever the mothership went), the door opens, it slides out and
+// the springs release it at 3 cm/s; its mission ends on the surface and an empty set of deployers says so.
+// Captures in docs/screenshots/mandos-<pantalla>-movil.png.
+import { mkdirSync } from "node:fs";
+import { placeAbove } from "./aterrizaje.mjs";
+
+async function capture(j, label, title) {
+  await j.page.waitForTimeout(800);
+  mkdirSync("docs/screenshots", { recursive: true });
+  await j.page.screenshot({ path: `docs/screenshots/mandos-${label}-movil.png`, timeout: 120000 });
+  await j.shot(`mandos-${label}`);
+  const over = await j.overlaps();
+  j.check(`${title}: ningún botón ni rótulo se solapa con otro`, over.length === 0, over.slice(0, 4).join("; "));
+}
+
+const tripStep = () => window.codeship.nav.programming?.current ?? null;
+const probeStep = () => window.codeship.probeTravel.trip.programming?.current ?? null;
+const seatButtons = () => [...document.querySelectorAll(".room-ui:not(.hidden) .cab-machine .cm-acts button")].map((b) => ({ id: b.dataset.act, label: b.textContent.trim(), on: !b.disabled }));
+// The flight view's own shoots: the general tree menu's Cámara, Tareas, Áreas, Trayecto and «Dejar el puesto»
+// sprout in every cockpit and are left out here (reglas.md §5.8).
+const shoots = () =>
+  [...document.querySelectorAll(".flight-bar .rm-shoots button")]
+    .filter((b) => !b.classList.contains("hidden") && !/cam-btn|fv-tasks|areas-btn|trip-btn|stand-btn/.test(b.className))
+    .map((b) => ({ cls: b.className, label: b.getAttribute("aria-label") }));
+
+export async function mandos(j) {
+  const p = j.page;
+
+  // 1. Docked: the undock switch sprouts from the root of the flight controls (reglas.md §5.8), its icon the
+  // opposite of «docked»; the root holds nothing it cannot explain («Centrar la vista» is gone).
+  await j.openMenu(".flight-bar", ".dock-btn");
+  const docked = await p.evaluate(shoots);
+  j.check("acoplado, de la raíz de los mandos brota el interruptor «Desacoplar» (el icono de lo contrario del estado)", docked.some((b) => /dock-btn/.test(b.cls) && /^Desacoplar/.test(b.label ?? "")), JSON.stringify(docked));
+  j.check("ningún icono sin explicar: acoplado solo brota el interruptor (no hay «Centrar la vista»)", docked.length === 1 && !(await p.locator(".center-btn").count()), JSON.stringify(docked));
+  await capture(j, "acoplado", "Vista de vuelo acoplada con el interruptor de acople");
+
+  // 2. The commander's station: Manual and Automático; Automático lists only the nearby destinations.
+  await j.tap(".stand-btn", "Dejar el puesto: habitáculo");
+  await j.useMachine("cabin", "asiento", null);
+  const seat = await p.evaluate(seatButtons);
+  j.check("el puesto del comandante ofrece «Manual» y «Automático» (sin «Desacoplar»: es el interruptor del vuelo)", seat.map((b) => b.label).join("|") === "Manual|Automático", JSON.stringify(seat));
+  await j.tap('.room-ui:not(.hidden) .cab-machine [data-act="automatico"]', "Automático");
+  await p.waitForFunction(() => window.codeship.navMode.map.visible, null, { timeout: 10000 }).catch(() => {});
+  await p.waitForTimeout(400);
+  const near = await p.evaluate(() => {
+    const c = window.codeship;
+    const r = c.mothership.spec.parkingDistanceM.value + c.nav.approachM;
+    return c.nav.targets.map((t) => ({ id: t.id, far: (t.kind === "asteroid" ? t.body.position.sub(c.mothership.position).length() - t.body.meanRadiusM : t.probePort.port.position.sub(c.mothership.position).length()) > r }));
+  });
+  const chips = () => p.$$eval(".nav-map .nav-chip", (els) => els.map((e) => ({ id: e.dataset.id, locked: e.classList.contains("locked"), why: e.getAttribute("title") ?? "" })));
+  const lm = await chips();
+  const open = lm.filter((c) => !c.locked).map((c) => c.id);
+  j.check("«Automático» abre la ventana de navegación, sin lista propia en el puesto", (await p.evaluate(() => window.codeship.navMode.map.visible)) && !(await p.locator('.cab-machine [data-act^="auto:"]').count()));
+  j.check("en la ventana, los destinos lejanos salen bloqueados con el porqué (esos viajes son de la nodriza)", open.length > 0 && open.every((id) => near.find((t) => t.id === id && !t.far)) && near.filter((t) => t.far).every((t) => lm.find((c) => c.id === t.id)?.locked && /nodriza/.test(lm.find((c) => c.id === t.id)?.why ?? "")), `abiertos: ${open.join(", ")} · lejos: ${near.filter((t) => t.far).map((t) => t.id).join(", ")}`);
+  const far1 = lm.find((c) => c.locked && near.find((t) => t.id === c.id && t.far));
+  if (far1) {
+    await j.tap(`.nav-map .nav-chip[data-id="${far1.id}"]`, "un asteroide lejano");
+    const lock = await p.evaluate(() => ({ text: document.querySelector(".nav-map .nav-lock")?.textContent ?? "", off: !!document.querySelector('.nav-map [data-act="program"]')?.disabled }));
+    j.check("elegido uno lejano, su ficha dice «Bloqueado» con el motivo y no deja programar", /Bloqueado/.test(lock.text) && lock.off, lock.text);
+  }
+  await capture(j, "automatico-destinos", "Ventana de navegación del «Automático» del LM");
+  const bennu = await p.evaluate(() => window.codeship.region.target.data.id);
+  await j.tap(`.nav-map .nav-chip[data-id="${bennu}"]`, "Bennu en el mapa");
+  await j.tap('.nav-map [data-act="program"]', "Programar viaje");
+  await j.waitDuel(30000);
+  await capture(j, "automatico-reto", "Reto del viaje automático del LM");
+  const shipBefore = await p.evaluate(() => {
+    const m = window.codeship.mothership.position;
+    return [m.x, m.y, m.z];
+  });
+  for (let n = 0; n < 9 && (await p.evaluate(() => window.codeship.nav.status)) === "programming"; n++) await j.answer(tripStep, true);
+  await p.waitForTimeout(1500);
+  // A slow machine (CI) may find it already there: «arrived» is the same proof, if it undocked and Starship stayed.
+  const flying = await p.evaluate((b) => {
+    const c = window.codeship;
+    const m = c.mothership.position;
+    return { status: c.nav.status, docked: c.docking.docked, carrier: !!c.nav.carrierTrip, shipMovedM: Math.hypot(m.x - b[0], m.y - b[1], m.z - b[2]) };
+  }, shipBefore);
+  j.check(
+    "resuelto el reto, el LM se desacopla y su piloto automático lo lleva (la nodriza no se mueve)",
+    (flying.status === "autopilot" || flying.status === "arrived") && !flying.docked && !flying.carrier && flying.shipMovedM < 0.01,
+    JSON.stringify(flying),
+  );
+
+  // 3. Free near the Starship's port: the switch shows «Acoplar» and the assist flies in.
+  await j.setup("se para el viaje y el LM queda a 60 m del puerto de la Starship, en su eje", () => {
+    const c = window.codeship;
+    c.nav.cancel();
+    const port = c.mothership.port ?? c.docking.targets[0].port;
+    const at = port.position.add(port.normal.scale(60));
+    c.flight.applyImpulse(c.flight.state.velocity.scale(-1));
+    c.flight.nudge(at.sub(c.flight.state.position));
+  });
+  await j.useMachine("cabin", "asiento", "pilotar", "Manual");
+  await p.waitForTimeout(1200);
+  // «Manual» on the LM: the same tap controls as Starship's (Crew Dragon's), on the LM's ACA and TTCA.
+  const pad = await p.evaluate(() => {
+    const el = document.querySelector(".rcs-pad.lander-pad:not(.hidden)");
+    const r = el?.getBoundingClientRect();
+    const small = [...(el?.querySelectorAll("button:not([hidden])") ?? [])].filter((b) => b.getBoundingClientRect().height < 44 || b.getBoundingClientRect().width < 44).length;
+    return { on: !!el, text: el?.innerText ?? "", top: r ? Math.round(r.top) : 0, bottom: r ? Math.round(r.bottom) : 0, small, menu: [...document.querySelectorAll(".root-menu")].some((m) => getComputedStyle(m).display !== "none"), extra: el?.querySelector('[data-act="extra"]:not([hidden])')?.textContent ?? "" };
+  });
+  j.check("«Manual» del LM: trasladar, girar y el empuje del motor de descenso, a toques (ACA y TTCA del LM de Apolo)", pad.on && /Adel/.test(pad.text) && /Cab\./.test(pad.text) && /Motor \+/.test(pad.text) && /Apolo/.test(pad.text), pad.text.slice(0, 160));
+  const inst = await p.evaluate(() => {
+    const c = document.querySelector(".rcs-pad.lander-pad .rp-screen");
+    return { on: !!c && !c.hidden && c.getBoundingClientRect().width > 200, drawn: !!c && c.width > 0 };
+  });
+  j.check("con los mandos, los instrumentos del LM: el FDAI («8-ball») con sus agujas, la cruz de velocidades y las cintas ALT y ALT RATE", inst.on && inst.drawn && /ALT|Bajada/.test(pad.text), JSON.stringify(inst));
+  j.check("caben en el móvil con botones de 44 px y el menú árbol se esconde", pad.top >= 0 && pad.bottom <= 664 && pad.small === 0 && !pad.menu, JSON.stringify({ top: pad.top, bottom: pad.bottom, small: pad.small, menu: pad.menu }));
+  await j.tap('.rcs-pad.lander-pad [data-act="r:x:1"]', "Cabeceo arriba");
+  await j.tap('.rcs-pad.lander-pad [data-act="t:y:1"]', "Trasladar arriba");
+  const held = await p.waitForFunction(() => Math.abs((window.codeship.flight.state.angularVelocityBody.x * 180) / Math.PI - 1) < 0.1, null, { timeout: 12000 }).then(() => true).catch(() => false);
+  const lmFly = await p.evaluate(() => {
+    const c = window.codeship;
+    const w = c.flight.state.angularVelocityBody;
+    return { rate: (w.x * 180) / Math.PI, other: [w.y, w.z].map((v) => +((v * 180) / Math.PI).toFixed(2)), hold: c.flight.holdRates?.x ?? 0, assist: c.docking.assist, level: c.flight.landingAssist, guided: !!c.flight.guidance, warp: c.view?.warp ?? null };
+  });
+  j.check("un toque de cabeceo fija 1 °/s y el RCS lo mantiene", held && Math.abs(lmFly.rate - 1) < 0.15 && Math.abs((lmFly.hold * 180) / Math.PI - 1) < 1e-6, JSON.stringify(lmFly));
+  await j.tap('.rcs-pad.lander-pad [data-act="stop"]', "Parar");
+  j.check("libre dentro de la esfera de 200 m del puerto, los mandos ofrecen «Acoplar»", pad.extra === "Acoplar", pad.extra);
+  await capture(j, "acoplar", "Mandos del LM a mano con «Acoplar» cerca del puerto");
+  await j.tap('.rcs-pad.lander-pad [data-act="extra"]', "Acoplar");
+  await p.waitForTimeout(600);
+  j.check("al tocarlo, el asistente lleva el LM al puerto", await p.evaluate(() => window.codeship.docking.assist));
+  await j.setup("el asistente llega al contacto (minutos de juego)", () => window.codeship.docking.dockNow(window.codeship.mothership));
+  await p.waitForTimeout(800);
+  await j.tapInMenu(".flight-bar", ".dock-btn", "Desacoplar");
+  await p.waitForTimeout(600);
+  j.check("y vuelve a desacoplar con el mismo interruptor", await p.evaluate(() => !window.codeship.docking.docked));
+  await j.setup("vuelve a acoplar en la Starship", () => window.codeship.docking.dockNow(window.codeship.mothership));
+
+  // 4. Juventas in its deployer on Starship's hull, wherever she is.
+  await j.tap(".stand-btn", "Dejar el puesto: habitáculo");
+  await j.useMachine("cabin", "acople", "entrar-nodriza", "Entrar en la nave de viaje");
+  await p.waitForTimeout(1500);
+  await j.setup("sube a la cubierta 1, junto a la escotilla de la cubierta de vuelo", () => window.codeship.starship.mode.placeAt("subir-cubierta-vuelo"));
+  await p.waitForTimeout(1200);
+  await j.tap('.sts-card:not(.hidden) [data-act="subir"]', "Subir a la cubierta de vuelo");
+  await p.waitForTimeout(1500);
+  const inHull = () =>
+    p.evaluate(() => {
+      const c = window.codeship;
+      const m = c.mothership;
+      const rel = c.probe.flight.state.position.sub(m.position);
+      const body = m.orientation.conjugate().rotate(rel);
+      return { r: Math.hypot(body.x, body.y), z: body.z, R: m.spec.layout.spine.radiusM, half: m.spec.layout.lengthM / 2 };
+    });
+  const at0 = await inHull();
+  j.check("Juventas empieza dentro de su dispensador, bajo la piel del casco de la Starship", at0.r < at0.R && at0.r > at0.R - 0.5 && Math.abs(at0.z) < at0.half, JSON.stringify(at0));
+  await j.setup("la Starship viaja 4 km (el viaje entero lo juega PX-28)", () => {
+    const c = window.codeship;
+    const m = c.mothership;
+    m.moveTo(m.position.add(c.region.target.position.sub(m.position).normalize().scale(-4000)));
+  });
+  await p.waitForTimeout(800);
+  const at1 = await inHull();
+  j.check("tras el viaje de la nodriza, la sonda sigue en su dispensador, en la nodriza (no a una distancia fija)", at1.r < at1.R && Math.abs(at1.z) < at1.half, JSON.stringify(at1));
+  await j.setup("la Starship vuelve a su sitio junto a Bennu", () => {
+    const c = window.codeship;
+    const m = c.mothership;
+    m.moveTo(m.position.add(c.region.target.position.sub(m.position).normalize().scale(4000)));
+  });
+
+  // 5. The probe's station: Manual / Automático; Automático to Bennu shows the release from the deployer.
+  await j.useMachine("bridge", "sonda", null);
+  const ps = await p.evaluate(seatButtons);
+  j.check("el mando de la sonda ofrece «Manual» y «Automático»", ps.map((b) => b.label).join("|") === "Manual|Automático", JSON.stringify(ps));
+  await j.tap('.room-ui:not(.hidden) .cab-machine [data-act="automatico"]', "Automático");
+  await p.waitForFunction(() => window.codeship.navMode.map.visible, null, { timeout: 10000 }).catch(() => {});
+  await p.waitForTimeout(400);
+  const pc = await chips();
+  const pl = pc.filter((c) => !c.locked).map((c) => c.id);
+  const kinds = await p.evaluate(() => Object.fromEntries(window.codeship.nav.targets.map((t) => [t.id, t.kind])));
+  j.check("la ventana de la sonda: abiertos solo asteroides cercanos (Juventas no hace viajes largos)", pl.length > 0 && pl.every((id) => kinds[id] === "asteroid" && near.find((t) => t.id === id && !t.far)), pl.join(", "));
+  j.check("las estructuras salen bloqueadas para la sonda, con el porqué", pc.filter((c) => kinds[c.id] === "dock").every((c) => c.locked && /asteroides/.test(c.why)), JSON.stringify(pc.filter((c) => kinds[c.id] === "dock")));
+  await capture(j, "sonda-destinos", "Ventana de navegación del «Automático» de la sonda");
+  await j.tap(`.nav-map .nav-chip[data-id="${pl[0]}"]`, "el asteroide cercano");
+  await j.tap('.nav-map [data-act="program"]', "Programar viaje");
+  await j.waitDuel(30000);
+  for (let n = 0; n < 9 && (await p.evaluate(() => window.codeship.probeTravel.trip.status)) === "programming"; n++) await j.answer(probeStep, true);
+  await p.waitForFunction(() => window.codeship.probe.doorOpen(window.codeship.probe.slot) > 0.6, null, { timeout: 20000 }).catch(() => {});
+  const door = await p.evaluate(() => ({ deploying: window.codeship.probe.deploying, door: window.codeship.probe.doorOpen(window.codeship.probe.slot), lapse: window.codeship.probeTravel.trip.lapse, msg: document.querySelector(".pr-msg")?.textContent ?? "" }));
+  j.check("primero se abre la puerta del dispensador, a ×1 para que se vea, y la consola lo dice", door.deploying && door.door > 0.5 && door.lapse === 1 && /puerta del dispensador/.test(door.msg), JSON.stringify(door));
+  await capture(j, "sonda-puerta", "La puerta del dispensador abierta y la sonda saliendo");
+  await p.waitForFunction(() => window.codeship.probe.status === "en-vuelo", null, { timeout: 60000 }).catch(() => {});
+  const out = await p.evaluate(() => {
+    const c = window.codeship;
+    const v = c.probe.flight.state.velocity.length();
+    return { status: c.probe.status, v, trip: c.probeTravel.trip.status, left: c.probe.inDeployers };
+  });
+  j.check("los muelles la sueltan a unos 3 cm/s y el viaje automático sigue solo", out.status === "en-vuelo" && out.trip === "flying" && out.left === 1, JSON.stringify(out));
+  await capture(j, "sonda-suelta", "Juventas suelta junto a la Starship");
+
+  // 6. Its mission ends on the surface: the next one, then empty deployers.
+  await j.setup("se para el viaje y la sonda queda posada sobre el asteroide (posarla la juega PX-07)", () => {
+    const c = window.codeship;
+    c.probeTravel.trip.cancel();
+    c.probe._status = "posada";
+  });
+  await p.waitForTimeout(600);
+  const end = await p.evaluate(() => [...document.querySelectorAll(".pr-actions button")].filter((b) => b.checkVisibility()).map((b) => b.textContent));
+  j.check("posada, la consola ofrece terminar su misión (no hay «Recuperar con el brazo»: Juventas no vuelve)", end.some((t) => /Terminar su misión/.test(t)) && !end.some((t) => /Recuperar/.test(t)), end.join(" | "));
+  await j.tap('.pr-actions [data-act="abandon"]', "Terminar su misión");
+  await p.waitForTimeout(600);
+  j.check("la siguiente Juventas espera en su dispensador", await p.evaluate(() => window.codeship.probe.status === "estibada" && window.codeship.probe.inDeployers === 1 && window.codeship.probe.ended.length === 1));
+  await j.setup("la segunda también termina su misión (soltarla y posarla es lo mismo)", () => {
+    const pr = window.codeship.probe;
+    pr.full[pr.slot] = false;
+    pr._status = "posada";
+    pr.endMission();
+  });
+  await p.waitForTimeout(800);
+  const empty = await p.evaluate(() => ({ status: window.codeship.probe.status, tele: document.querySelector(".pr-tele")?.textContent ?? "" }));
+  j.check("con los dispensadores vacíos la consola lo dice: importar otra del catálogo", empty.status === "sin-sonda" && /dispensadores están vacíos/.test(empty.tele) && /catálogo/.test(empty.tele), JSON.stringify(empty));
+  await capture(j, "sonda-vacio", "Dispensadores vacíos");
+  await j.tap(".pr-exit", "Volver al puente");
+  await p.waitForTimeout(800);
+  await j.useMachine("bridge", "sonda", null);
+  const auto = (await p.evaluate(seatButtons)).find((b) => b.id === "automatico");
+  const why = (await j.texts(".room-ui:not(.hidden) .cab-machine .cm-why")).join(" ");
+  j.check("en el mando, «Automático» queda apagado y dice que los dispensadores están vacíos", !!auto && !auto.on && /vacíos/.test(why), why);
+}

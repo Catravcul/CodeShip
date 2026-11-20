@@ -68,6 +68,6 @@ Con el asteroide agresivo, el casco sufre daño mientras la nave esté dentro de
 | Aterrizaje, rebote e impacto | En esta rama |
 | Duelo: ideas, persuasión, paciencia, dificultad, agresividad | En esta rama |
 | Pantalla del duelo para móvil | En esta rama |
-| Viaje programado entre asteroides | Pendiente |
+| Viaje programado entre asteroides | Hecho: mapa, retos del viaje y piloto automático ([navegacion.md](navegacion.md)) |
 | Vida a bordo (actividades de Cold Sanctuary) | Pendiente |
 | Controles táctiles de vuelo | Pendiente |

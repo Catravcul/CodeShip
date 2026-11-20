@@ -1,0 +1,9 @@
+/* Foco del reto (docs/design/ux-acciones.md §7, Berón 2026-11-16): mientras hay un reto abierto, en pantalla
+   solo quedan la hoja del reto y la escena 3D (docs/design/reglas.md §4.3). Una sola regla por capas, no una
+   lista y sin excepciones: toda interfaz cuelga de #app (o de body) y se oculta, salvo el lienzo de la escena y
+   la hoja (.duel). No hay marca para dejar nada más a la vista: lo que un reto tenga que enseñar se dibuja en su
+   escena (el plan de un viaje: PlanOverlay.view) o va en su hoja (la línea del paso: DuelView.hold).
+   La comprueba j.onlyChallengeVisible (tools/experiencia/lib.mjs) cada vez que un recorrido abre un reto,
+   y PX-25 en todos los sitios. */
+body.in-duel > :not(#app, script, style),
+body.in-duel #app > :not(canvas, .duel) { display: none !important; }

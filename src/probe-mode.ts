@@ -1,0 +1,410 @@
+import { settings } from "./ui/settings-store";
+import { LANDING_PROGRAM } from "@modules/navigation/application/landing-program";
+import * as THREE from "three";
+import { Vec3 } from "@core/math/vec3";
+import type { ThrustCommand } from "@modules/ship/domain/ship";
+import type { ProbeEvent, ProbeOps } from "@modules/subjugation/application/probe-ops";
+import { PROBE_TUNING } from "@modules/subjugation/application/probe-ops";
+import type { Rapport } from "@modules/subjugation/domain/rapport";
+import { PROBE_HULL } from "@modules/ship/data/probe";
+import { ProbeModel } from "./adapters/three/probe-model";
+import { TouchPilot, mergeCommands } from "./adapters/input/touch";
+import { VirtualStick, curve } from "./adapters/input/stick";
+import { REAL_ONLY } from "@core/realism";
+
+/** What the console says when no probe is left (real: Juventas never comes back; a new one comes from the catalogue). */
+export const EMPTY_DEPLOYERS = "Los dispensadores están vacíos: Juventas no vuelve. Monta otra en el catálogo de la estación (Cupola) y atraca la nodriza allí para cargarla";
+
+const fmt = (v: number, d = 2) => v.toFixed(d).replace(".", ",");
+const dist = (m: number) => (m >= 1000 ? `${fmt(m / 1000, 2)} km` : `${fmt(m, m < 10 ? 2 : 0)} m`);
+const WARPS = [1, 10, 100] as const;
+/** Closer than this to its deployer the console's camera looks at the deployer on the hull, m. */
+const DEPLOYER_VIEW_M = 3;
+/** The landing side view keeps the drop from the probe to its site this much smaller than the strip it shows in. */
+const LANDING_VIEW_MARGIN = 1.5;
+
+export interface ProbeModeDeps {
+  readonly probe: ProbeOps;
+  /** World direction the release springs push it (away from the travel ship's bay). */
+  launchDirection(): Vec3;
+  targetName(): string;
+  bond(): Rapport;
+  /** The target asteroid is angry now. */
+  angry(): boolean;
+  /** Stage 1 can start now (parked on the target, stage on offer). */
+  canStartDuel(): boolean;
+  startDuel(): void;
+  /** Label of the duel button when a level duel is on offer (subjugation levels); undefined for the stage. */
+  duelLabel?(): string | undefined;
+  /** Keyboard flight command (shared with the cockpit). */
+  keyboard(): ThrustCommand;
+  /**
+   * Automatic long trips (docs/design/viajes.md): which can be programmed now (`to`: the far target's
+   * name; `home`: back to the bay) and how to start one.
+   */
+  tripOffer?(): { readonly to?: string; readonly home?: boolean; readonly flying?: boolean };
+  programTrip?(home: boolean): void;
+}
+
+/**
+ * The probe's console on the travel ship's flight deck: the probe's own camera on the 3D scene,
+ * its telemetry, the flight pads (same thrusters model and flight computer as the lander) and the
+ * actions: launch, park, enter its mind (stage 1), recover with the arm, or abandon it.
+ */
+export class ProbeMode {
+  readonly camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.02, 2e6);
+  readonly model = new ProbeModel(PROBE_HULL);
+  private readonly ui: HTMLElement;
+  private readonly tele: HTMLElement;
+  private readonly rapport: HTMLElement;
+  private readonly msg: HTMLElement;
+  private readonly title: HTMLElement;
+  private readonly btn: Record<"launch" | "assist" | "recover" | "abandon" | "warp" | "trip" | "home", HTMLButtonElement>;
+  private readonly touch: TouchPilot;
+  private msgUntil = 0;
+  private warpIdx = 0;
+  private cmd: ThrustCommand = { mainThrottle: 0, translation: Vec3.ZERO, rotation: Vec3.ZERO };
+  private html = new Map<HTMLElement, string>();
+  /** A landing program is being written (`open`) or flies (`flying`): the camera frames the probe and its site. */
+  private plan: { state: "open" | "flying"; site: () => Vec3 | undefined } | undefined;
+  active = false;
+  onExit?: () => void;
+  /**
+   * The player's look around the probe (reglas.md §5.3: the camera is controlled in every vehicle and mode):
+   * its own stick orbits the chase camera (reglas.md §5.7: never a drag), yaw and pitch from behind the nose.
+   */
+  private readonly lookStick: VirtualStick;
+  readonly orbit = { yaw: 0, pitch: 0 };
+
+  constructor(
+    root: HTMLElement,
+    scene: THREE.Scene,
+    readonly deps: ProbeModeDeps,
+  ) {
+    scene.add(this.model.root);
+    this.ui = document.createElement("div");
+    this.ui.className = "probe-ui hidden";
+    this.ui.innerHTML = `
+      <div class="pr-top"><b class="pr-title"></b><span class="pr-cam">Cámara de la sonda · sin cabina: mando a distancia desde la consola de la nodriza (retardo despreciable)</span><button class="pr-exit">Volver al puente</button></div>
+      <div class="pr-tele"></div>
+      <div class="pr-rapport"></div>
+      <div class="pr-msg"></div>
+      <div class="pr-actions">
+        <button data-act="trip" class="primary">Programar viaje</button>
+        <button data-act="home">Programar vuelta</button>
+        <button data-act="launch" class="primary">Soltar del dispensador</button>
+        <button data-act="assist">Nivelar sola: no</button>
+        <button data-act="recover">Recuperar con el brazo</button>
+        <button data-act="warp">Tiempo ×1</button>
+        <button data-act="abandon" class="danger">Abandonar la sonda</button>
+      </div>`;
+    root.appendChild(this.ui);
+    this.tele = this.ui.querySelector(".pr-tele")!;
+    this.rapport = this.ui.querySelector(".pr-rapport")!;
+    this.msg = this.ui.querySelector(".pr-msg")!;
+    this.title = this.ui.querySelector(".pr-title")!;
+    const b = (k: string) => this.ui.querySelector<HTMLButtonElement>(`[data-act="${k}"]`)!;
+    this.btn = { launch: b("launch"), assist: b("assist"), recover: b("recover"), abandon: b("abandon"), warp: b("warp"), trip: b("trip"), home: b("home") };
+    this.touch = new TouchPilot(this.ui);
+    this.lookStick = new VirtualStick(root, "probe-look", "Mirar");
+    this.lookStick.el.addEventListener("dblclick", () => Object.assign(this.orbit, { yaw: 0, pitch: 0 }));
+    // The camera turns only with «Mirar» (reglas.md §5.7): no drag on the screen.
+    this.ui.querySelector(".pr-exit")!.addEventListener("click", () => this.exit());
+    this.ui.addEventListener("click", (e) => this.onClick(e));
+    window.addEventListener("keydown", (e) => {
+      if (!this.active || e.repeat) return;
+      if (e.code === "Escape") this.exit();
+      if (e.code === "KeyG") this.btn.assist.click();
+    });
+  }
+
+  /** Time warp asked for from the console. */
+  get warpRequested(): number {
+    return WARPS[this.warpIdx]!;
+  }
+
+  /** Pilot command for the probe this frame (pads and keyboard). */
+  command(): ThrustCommand {
+    return this.active ? this.cmd : { mainThrottle: 0, translation: Vec3.ZERO, rotation: Vec3.ZERO };
+  }
+
+  private turn(yaw: number, pitch: number): void {
+    this.orbit.yaw += yaw;
+    this.orbit.pitch = Math.max(-1.2, Math.min(1.2, this.orbit.pitch + pitch));
+  }
+
+  enter(): void {
+    this.active = true;
+    Object.assign(this.orbit, { yaw: 0, pitch: 0 });
+    this.ui.classList.remove("hidden");
+    document.body.classList.add("in-probe");
+    this.resize();
+    const p = this.pending;
+    this.pending = undefined;
+    if (p) this.say(p.text, Math.max(p.seconds, 8));
+  }
+
+  exit(): void {
+    if (!this.active) return;
+    this.active = false;
+    this.ui.classList.add("hidden");
+    document.body.classList.remove("in-probe");
+    this.warpIdx = 0;
+    this.onExit?.();
+  }
+
+  resize(): void {
+    this.camera.aspect = window.innerWidth / window.innerHeight;
+    this.camera.clearViewOffset();
+    this.camera.fov = 68;
+    this.camera.updateProjectionMatrix();
+  }
+
+  /**
+   * A landing program (docs/design/aterrizaje.md): each step draws on the ground below (site, drift,
+   * descent curve, anchors), which the chase camera along the nose does not see. While the sheet is open
+   * the camera looks from the side at the probe and its site, both in the strip above the sheet (PX-20,
+   * animation audit); while the program flies it keeps that side view (full screen once the sheet goes);
+   * closed without flying, or landed, back to the chase.
+   */
+  landingSheet(state: "open" | "flying" | "closed", site: () => Vec3 | undefined): void {
+    // The side view starts square to the site, and the chase view behind the nose again after it.
+    if (state !== "flying") Object.assign(this.orbit, { yaw: 0, pitch: 0 });
+    this.plan = state === "closed" ? undefined : { state, site };
+    if (state === "closed") this.resize();
+  }
+
+  /** The side view of a landing: the probe and its site, framed in the part of the screen the sheet leaves open. */
+  private frameLanding(pos: Vec3, up: Vec3): boolean {
+    const site = this.plan?.site();
+    if (!site) return false;
+    const drop = pos.sub(site);
+    const h = Math.max(5, drop.length());
+    // Local vertical from the site up to the probe; a side perpendicular to it.
+    const v = drop.length() > 1e-6 ? drop.normalize() : up;
+    const ref = Math.abs(v.x) < 0.9 ? Vec3.X : Vec3.Z;
+    const side0 = v.cross(ref).normalize();
+    // The look stick still turns it (reglas.md §3.8): yaw about the vertical, pitch up over the site.
+    const across = v.cross(side0);
+    const yawed = side0.scale(Math.cos(this.orbit.yaw)).add(across.scale(Math.sin(this.orbit.yaw)));
+    const pitch = Math.max(-0.9, Math.min(0.9, this.orbit.pitch));
+    const side = yawed.scale(Math.cos(pitch)).add(v.scale(Math.sin(pitch))).normalize();
+    const mid = site.add(v.scale(h * 0.5));
+    // With the sheet open, the look point sits in the middle of the strip above it (a taller frustum, its top
+    // shown); the camera stands back until the drop from the probe to its site fits that strip, with a margin.
+    const w = window.innerWidth;
+    const H = window.innerHeight;
+    const sheet = [...document.querySelectorAll<HTMLElement>(".duel.sheet")].find((e) => !e.classList.contains("hidden"));
+    const top = sheet ? sheet.getBoundingClientRect().top : H;
+    const strip = sheet && top < H * 0.9 && w < H;
+    const ys = strip ? Math.max(40, top / 2) : H / 2;
+    const tanHalf = Math.tan((68 * Math.PI) / 360) * (ys / (H / 2)) * Math.min(1, w / H);
+    const back = (h * 0.5 * LANDING_VIEW_MARGIN) / tanHalf;
+    const eye = mid.add(side.scale(back));
+    this.camera.position.set(eye.x, eye.y, eye.z);
+    this.camera.up.set(v.x, v.y, v.z);
+    this.camera.lookAt(mid.x, mid.y, mid.z);
+    if (strip) {
+      const full = 2 * (H - ys);
+      this.camera.aspect = w / full;
+      this.camera.fov = (2 * Math.atan(Math.tan((68 * Math.PI) / 360) * (full / H)) * 180) / Math.PI;
+      this.camera.setViewOffset(w, full, 0, full - H, w, H);
+    } else {
+      this.camera.aspect = w / H;
+      this.camera.fov = 68;
+      this.camera.clearViewOffset();
+    }
+    this.camera.updateProjectionMatrix();
+    return true;
+  }
+
+  /** What the probe said while she was away from its console: shown when she comes back (reglas.md §3.8). */
+  private pending: { text: string; seconds: number } | undefined;
+
+  say(text: string, seconds = 4): void {
+    if (!this.active) {
+      this.pending = { text, seconds };
+      return;
+    }
+    this.msg.textContent = text;
+    this.msg.classList.add("on");
+    this.msgUntil = performance.now() + seconds * 1000;
+  }
+
+  private onClick(e: Event): void {
+    const t = (e.target as HTMLElement).closest<HTMLElement>("[data-act]");
+    if (!t) return;
+    const p = this.deps.probe;
+    switch (t.dataset.act) {
+      case "launch":
+        p.launch(this.deps.launchDirection());
+        break;
+      case "assist":
+        p.flight.landingAssist = !p.flight.landingAssist;
+        // It does not land and goes nowhere: it only turns the probe belly to the ground (attitude hold).
+        if (p.flight.landingAssist) this.say(`Nivelar sola: la sonda gira sola hasta poner la panza hacia el suelo; no va a ningún sitio ni aterriza. Para que aterrice sola, «Aterrizar con un programa» a menos de ${LANDING_PROGRAM.zoneM} m del suelo`, 9);
+        break;
+      case "recover":
+        if (!p.recover()) this.say(`El brazo agarra a menos de ${PROBE_TUNING.captureRangeM} m de la bahía y a menos de ${fmt(PROBE_TUNING.captureSpeedMs)} m/s`);
+        break;
+      case "trip":
+        this.deps.programTrip?.(false);
+        break;
+      case "home":
+        this.deps.programTrip?.(true);
+        break;
+      case "warp":
+        this.warpIdx = (this.warpIdx + 1) % WARPS.length;
+        break;
+      case "abandon":
+        if (!p.endMission()) p.abandon();
+        break;
+    }
+  }
+
+  /** Messages for what happened to the probe (also shown when the console is closed, on the next open). */
+  onEvent(e: ProbeEvent): void {
+    const name = this.deps.targetName();
+    const p = this.deps.probe;
+    switch (e.type) {
+      case "posada":
+        return this.say(`Sonda posada en ${name}: las anclas sujetan. Ya puedes entrar en su mente`, 6);
+      case "despegada":
+        return this.say("La sonda despega");
+      case "recuperada":
+        return this.say("El brazo la agarra y la guarda en su bahía: batería cargada", 6);
+      case "sacudida":
+        return this.say(`¡${name} sacude la sonda! Aléjala o abandónala`, 6);
+      case "perdida":
+        if (e.why === "fin-de-mision")
+          return this.say(`Misión terminada: la sonda se queda posada en ${name}, como Juventas en Dimorphos. ${p.status === "sin-sonda" ? EMPTY_DEPLOYERS : "La siguiente espera en su dispensador"}`, 9);
+        return this.say(`${e.why === "abandonada" ? "Sonda abandonada" : e.why === "destruida" ? "Sonda destruida por los escombros" : "Sonda sin batería: perdida"}${p.status === "sin-sonda" ? `. ${EMPTY_DEPLOYERS}` : ""}`, 7);
+      case "desplegando":
+        return this.say(`Se abre la puerta del dispensador: la sonda sale hasta el borde y los muelles la sueltan a ${fmt(PROBE_TUNING.releaseMs * 100, 0)} cm/s`, 8);
+      case "lanzada":
+        return this.say(`Suelta: se separa de la nodriza a ${fmt(PROBE_TUNING.releaseMs * 100, 0)} cm/s`, 5);
+    }
+  }
+
+  /** Pose the model every frame; while active also read the pads, aim the camera and draw the console. */
+  update(dt: number, warp: number, warpNote: string): void {
+    const p = this.deps.probe;
+    const s = p.flight.state;
+    this.model.root.visible = p.status !== "sin-sonda";
+    this.model.root.position.set(s.position.x, s.position.y, s.position.z);
+    this.model.root.quaternion.set(s.orientation.x, s.orientation.y, s.orientation.z, s.orientation.w);
+    this.cmd = mergeCommands(this.deps.keyboard(), this.touch.command());
+    const firing = this.active && p.out && (this.cmd.mainThrottle > 0 || this.cmd.translation.length() > 0);
+    this.model.update(dt, firing);
+    if (!this.active) return;
+    if (this.plan?.state === "flying" && p.status !== "en-vuelo") {
+      this.plan = undefined;
+      this.resize();
+    }
+    // The look stick turns the camera in every view, the landing's side view too (reglas.md §3.8).
+    const st = this.lookStick.value;
+    this.turn(-curve(st.x) * 2.0 * dt, -curve(st.y) * 1.4 * dt);
+    if (this.plan && this.frameLanding(s.position, s.toWorld(Vec3.Y))) {
+      this.render(warp, warpNote);
+      if (performance.now() > this.msgUntil) this.msg.classList.remove("on");
+      return;
+    }
+    // In its deployer and just out of it: a camera over the deployer on the carrier's hull, so the door, the
+    // slide out and the release are seen (Berón: «nunca las veo salir de la nodriza»). The look still orbits it.
+    if (p.status === "estibada" || (p.status === "en-vuelo" && p.bayRange().distanceM < DEPLOYER_VIEW_M)) {
+      const dep = p.deployerPose();
+      const up = dep.toWorld(Vec3.Y);
+      const off = new THREE.Vector3(0.9, 1.6, 1.5).applyEuler(new THREE.Euler(-this.orbit.pitch * 0.5, this.orbit.yaw, 0, "YXZ"));
+      const eye = dep.position.add(dep.toWorld(new Vec3(off.x, off.y, off.z)));
+      const at = dep.position.add(up.scale(0.35));
+      this.camera.position.set(eye.x, eye.y, eye.z);
+      this.camera.up.set(up.x, up.y, up.z);
+      this.camera.lookAt(at.x, at.y, at.z);
+      this.render(warp, warpNote);
+      if (performance.now() > this.msgUntil) this.msg.classList.remove("on");
+      return;
+    }
+    // Chase camera a little behind and above it, looking along its nose; the player's look orbits it about the probe.
+    const turned = (v: Vec3) => {
+      const t = new THREE.Vector3(v.x, v.y, v.z).applyEuler(new THREE.Euler(this.orbit.pitch, this.orbit.yaw, 0, "YXZ"));
+      return new Vec3(t.x, t.y, t.z);
+    };
+    const behind = s.toWorld(turned(new Vec3(0.35, 0.75, 2.4))).add(s.position);
+    const ahead = s.toWorld(turned(new Vec3(0, -0.1, -4))).add(s.position);
+    const up = s.toWorld(Vec3.Y);
+    this.camera.position.set(behind.x, behind.y, behind.z);
+    this.camera.up.set(up.x, up.y, up.z);
+    this.camera.lookAt(ahead.x, ahead.y, ahead.z);
+    this.render(warp, warpNote);
+    if (performance.now() > this.msgUntil) this.msg.classList.remove("on");
+  }
+
+  private set(el: HTMLElement, html: string): void {
+    if (this.html.get(el) === html) return;
+    this.html.set(el, html);
+    el.innerHTML = html;
+  }
+
+  private render(warp: number, warpNote: string): void {
+    const d = this.deps;
+    const p = d.probe;
+    const f = p.flight;
+    const t = f.telemetry();
+    const ship = f.ship;
+    // Juventas's butane (its cold-gas module); whatever the probe design carries.
+    const fuel = ship.propellants.reduce((a, k) => a + ship.propellantKg(k), 0);
+    const bat = p.batteryWh / p.spec.batteryWh;
+    const bay = p.bayRange();
+    this.set(this.title, `${ship.name} · a distancia · ${p.status === "sin-sonda" ? "dispensadores vacíos" : `${p.inDeployers} de ${p.deployers} en sus dispensadores`}`);
+    const status = {
+      estibada: p.deploying ? "Saliendo del dispensador" : "En su dispensador, en el casco de la nodriza",
+      "en-vuelo": "En vuelo",
+      posada: `Posada en ${d.targetName()}`,
+      "sin-sonda": REAL_ONLY ? EMPTY_DEPLOYERS : "No quedan sondas: repón en la estación",
+    }[p.status];
+    const near = p.status === "en-vuelo" && t.clearance < 60;
+    if (p.status === "sin-sonda") this.set(this.tele, `<span><b>${status}</b></span>`);
+    else
+      this.set(
+        this.tele,
+      `<span><b>${status}</b></span>
+       <span>${esc(d.targetName())} a ${dist(Math.max(0, t.distanceToSurface))}</span>
+       <span>cierre ${fmt(t.closingSpeed)} m/s</span>
+       <span>Δv ${fmt(t.deltaV, 0)} m/s · ${fmt(fuel * 1000, 0)} g de ${REAL_ONLY ? "butano" : "propelente"}</span>
+       <span class="${bat < 0.2 ? "warn" : ""}">batería ${Math.round(bat * 100)} %</span>
+       <span class="${t.hullIntegrity < 0.5 ? "bad" : ""}">casco ${Math.round(t.hullIntegrity * 100)} %</span>
+       <span>${REAL_ONLY ? "nodriza" : "bahía"} a ${dist(bay.distanceM)}</span>
+       ${warp > 1 || warpNote ? `<span>${warpNote || `tiempo ×${warp}`}</span>` : ""}
+       ${near ? `<span class="warn">${t.tiltDeg > 30 ? `Gira la panza al suelo (${fmt(t.tiltDeg, 0)}°): asistente${settings.key(" con G")}` : "Posa las patas a menos de 0,10 m/s"}</span>` : ""}`,
+    );
+    const angry = d.angry();
+    const r = d.bond();
+    // Only what flying it needs (designer, 2026-11-13): the asteroid's phase, trust and mind are on the
+    // bridge's mind console. Parked and with a duel on offer, one line says where to go.
+    this.rapport.classList.toggle("angry", angry);
+    this.set(this.rapport, p.status === "posada" && !angry && d.canStartDuel() ? `Sonda posada en ${esc(d.targetName())}: su mente está en la consola de la mente del asteroide, junto a esta` : p.status === "posada" && r.next !== "sonda" ? (REAL_ONLY ? "Fase de la sonda hecha: su misión acaba aquí. «Terminar su misión» la deja posada y prepara la siguiente" : "Fase de la sonda hecha: recupérala con el brazo") : "");
+    this.rapport.classList.toggle("hidden", this.rapport.innerHTML === "");
+    const show = (b: HTMLButtonElement, on: boolean) => b.classList.toggle("hidden", !on);
+    show(this.btn.launch, p.canLaunch);
+    show(this.btn.assist, p.out);
+    this.btn.assist.textContent = `Nivelar sola: ${f.landingAssist ? "sí" : "no"}`;
+    this.btn.assist.classList.toggle("on", f.landingAssist);
+    // Real Juventas never comes back (docs/design/modulo-lunar-juventas.md): no arm catch on the real ship.
+    show(this.btn.recover, !REAL_ONLY && p.status === "en-vuelo");
+    this.btn.recover.classList.toggle("primary", p.canRecover);
+    this.btn.recover.textContent = p.canRecover ? "Recuperar con el brazo" : `Recuperar: acércala (${dist(bay.distanceM)})`;
+    show(this.btn.abandon, p.out);
+    this.btn.abandon.textContent = p.status === "posada" ? "Terminar su misión (se queda posada)" : "Abandonar la sonda";
+    const offer = d.tripOffer?.() ?? {};
+    // The automatic trips are chosen at the probe's station (Manual / Automático), not here.
+    show(this.btn.trip, !REAL_ONLY && !!offer.to);
+    this.btn.trip.textContent = `Programar viaje a ${offer.to ?? ""}`;
+    show(this.btn.home, !REAL_ONLY && !!offer.home);
+    this.btn.home.textContent = "Programar vuelta a la nodriza";
+    // On an automatic trip the time-lapse is the trip's.
+    show(this.btn.warp, p.status === "en-vuelo" && !offer.flying);
+    this.btn.warp.textContent = `Tiempo ×${this.warpRequested}`;
+  }
+}
+
+const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);

@@ -1,0 +1,106 @@
+/* Action layout (docs/design/ux-acciones.md).
+   Rules: one context column for what the moment asks for; secondary toggles in a menu on phones;
+   left thumb turns and looks, right thumb moves and acts; nothing overlaps at 390×664 or 1280×800. */
+
+/* The context column. Outside the cockpit it only shows the trip chip, bottom-centre as before. */
+.ctx-dock { position: fixed; z-index: 9; left: 50%; bottom: calc(8px + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(380px, calc(100vw - 16px)); display: flex; flex-direction: column-reverse; align-items: stretch; gap: 6px; pointer-events: none; }
+.ctx-dock > * { position: static !important; inset: auto !important; transform: none !important; margin: 0 !important; max-width: none !important; width: auto !important; pointer-events: auto; box-sizing: border-box; }
+.ctx-dock > .banner, .ctx-dock > .rapport-chip, .ctx-dock > .region-tag, .ctx-dock > .cam-tag { pointer-events: none; }
+/* Bottom up: primary action, its message, trust chip, trip chip, where you are. */
+.ctx-dock > .action, .ctx-dock > .nano-action { order: 1; }
+.ctx-dock > .mode-btn { order: 2; }
+.ctx-dock > .eva-btn { order: 3; }
+.ctx-dock > .banner { order: 4; }
+.ctx-dock > .rapport-chip { order: 5; }
+.ctx-dock > .trip-chip { order: 6; }
+.ctx-dock > .region-tag { order: 7; }
+/* The camera tag goes in the column too (B-03): it used to float under the screen's centre, over the trip chip, the MIRAR stick and the asteroid's notice. */
+.ctx-dock > .cam-tag { order: 8; pointer-events: none; text-align: right; }
+/* Out of the cockpit the moved buttons and tags keep their own hiding rules; the EVA button only shows in it. */
+.ctx-dock > .eva-btn { display: none; }
+body.in-cockpit .ctx-dock > .eva-btn:not(.hidden) { display: block; }
+.ctx-dock > .eva-btn { min-height: 48px; padding: 10px 16px; font: inherit; font-size: 15px; font-weight: 700; color: #001018; background: #ffd23f; border: 0; border-radius: 12px; }
+.ctx-dock > .action { padding: 12px 16px; font-size: 16px; min-height: 52px; }
+.ctx-dock > .mode-btn { min-height: 48px; }
+.ctx-dock > .banner { text-align: right; background: #05060cd9; padding: 6px 10px; border-radius: 8px; font-size: 13px; }
+.ctx-dock > .banner:empty { display: none; }
+
+/* Cockpit: the column sits bottom-right, over the right thumb. */
+body.in-cockpit .ctx-dock { left: auto; right: 16px; transform: none; bottom: 24px; width: min(360px, 34vw); align-items: flex-end; }
+body.in-cockpit .ctx-dock > .rapport-chip, body.in-cockpit .ctx-dock > .trip-chip, body.in-cockpit .ctx-dock > .region-tag { align-self: stretch; }
+@media (pointer: coarse) {
+  /* Right of the MIRAR stick, clear of the root menu column (§5.5). The LM has no held MOVER pad any more: its
+     Manual controls (rcs-pad.ts) take the bottom while flying by hand, and then the column goes above them, at the
+     left, beside the landing readout (aterrizaje.css). */
+  body.in-cockpit .ctx-dock { right: 62px; bottom: calc(24px + env(safe-area-inset-bottom)); width: calc(100vw - 202px); }
+  body.in-cockpit.has-rcs-pad .ctx-dock { bottom: calc(var(--rcs-pad-h, 300px) + 14px + env(safe-area-inset-bottom)); }
+  body.in-cockpit.in-manual-flight .ctx-dock { left: 10px; right: auto; width: calc(100vw - 236px); align-items: stretch; }
+  /* Between the pad and the HUD's two lines there is room for the notices only: where she is waits until she lands
+     (PX-04), and the column never climbs into the HUD. */
+  body.in-cockpit.in-manual-flight .ctx-dock > .region-tag { display: none; }
+  body.in-cockpit.in-manual-flight .ctx-dock { max-height: calc(100vh - var(--rcs-pad-h, 300px) - 90px - env(safe-area-inset-bottom)); overflow: hidden; }
+  body.in-cockpit .ctx-dock > .region-tag { font-size: 11px; text-align: left; }
+  /* The trip chip in that narrow column: its buttons go under the line, never out into the open menu's column. */
+  body.in-cockpit .ctx-dock > .trip-chip .tc-row { flex-wrap: wrap; }
+  body.in-cockpit .ctx-dock > .trip-chip .tc-title { flex-basis: 100%; }
+  /* Left thumb: turning (GIRAR) and looking (MIRAR) together. */
+  body.in-cockpit .pilot-look { left: 14px; right: auto; margin-left: 0; bottom: calc(222px + env(safe-area-inset-bottom)); }
+  /* A shorter HUD: the detail lines (velocity components, spin, each tank) stay on desktop. */
+  .hud { max-width: calc(100vw - 140px); }
+  .hud .row.small:not(.mail) { display: none; }
+}
+/* Probe console: its own primary action sits over the right thumb, so the trip chip goes over the left one. */
+@media (pointer: coarse) { body.in-probe .ctx-dock { left: 10px; transform: none; bottom: calc(222px + env(safe-area-inset-bottom)); width: calc(52vw - 10px); } }
+/* With the task board or the radio open, the interior's notices drop to the bottom instead of covering the list. */
+.interior-ui .board:not(.hidden) ~ .toast { top: auto; bottom: calc(16px + env(safe-area-inset-bottom)); }
+/* Desktop: the keyboard help moves to the bottom left, free on desktop (no touch pads), so the context column has the right. */
+.help { right: auto; left: 18px; text-align: left; }
+/* The interior status (bars, larder, gravity) gets a dark plate: over bright signs and lights it could not be read. */
+.ihud { box-sizing: border-box; padding: 6px 8px; background: #05141cc4; border-radius: 10px; }
+/* A mission notice that arrives during a challenge waits under it (foco-reto.css, mission-log.ts). */
+/* Interior status on phones: portrait, the four bars and where she is; larder and self-sufficiency fold under a tap. */
+@media (pointer: coarse) {
+  .ihud { pointer-events: auto; width: min(210px, 54vw); font-size: 11px; }
+  .ihud .bar { height: 14px; margin: 2px 0; }
+  .ihud .bar span { line-height: 14px; }
+  .ihud:not(.open) .more { display: none; }
+  .ihud .ihud-who::after { content: "▾"; margin-left: auto; color: #7fdcff; }
+  .ihud.open .ihud-who::after { content: "▴"; }
+  .ihud-who .portrait-img { width: 30px; height: 30px; }
+}
+/* The task board and the radio hang from the top, leaving the bottom for notices. */
+.interior-ui .board { top: 10px; transform: translateX(-50%); max-height: calc(100% - 110px); }
+/* Touch targets of at least 44×44 px on phones (Apple HIG; checked before every tap by the experience suite). */
+@media (pointer: coarse) {
+  .tasks-btn, .radio-btn, .view-btn, .board-head button, .board-head .chip, .duel-tools button, .duel .toggle, .trip-chip button, .flight-bar button,
+  .mission-log button, .ml-head .x, .st-back, .sti-ui button, .zone-btn, .eva-ui button, .pr-exit, .station-btn, .throw-btn, .fd-exit {
+    min-height: 44px !important; min-width: 44px !important; box-sizing: border-box;
+  }
+  /* Interior notices below the right-hand menu column, above the zone button. */
+  .interior-ui .toast { top: 40vh; }
+  .board-head .chip { display: inline-flex; align-items: center; }
+}
+/* Desktop floor (WCAG 2.5.8): the board's close buttons were 23 px. */
+.board-head button { min-width: 28px; min-height: 28px; }
+/* With the task board or the radio open (a modal), the walking sticks under it are hidden. */
+body:has(.interior-ui .board:not(.hidden)) .vstick { display: none !important; }
+
+/* An angry asteroid's card (wrath.css) sits where the radio toast of the levels would land: the toast moves
+   beside it on a phone (clear of the flight controls' column of icons on the right, PX-04) and above the look
+   stick on a desktop, so both stay readable (docs/design/ux-acciones.md). */
+@media (max-width: 899px) {
+  body.in-cockpit.wrath-on .radio-toast { top: 190px; bottom: auto; left: calc(min(180px, 46vw) + 16px); right: 62px; width: auto; transform: none; }
+}
+@media (min-width: 900px) {
+  body.in-cockpit.wrath-on .radio-toast { top: auto; bottom: 170px; }
+  /* The LM's «Manual» pad takes the bottom centre (rcs-pad.ts): the toast goes above it (PX-05). Landed, the pad
+     shrinks to one row and the look stick stands on it, so the toast goes above both. */
+  body.in-cockpit.has-rcs-pad .radio-toast { top: auto; bottom: calc(var(--rcs-pad-h, 300px) + 22px); }
+  body.in-cockpit.has-rcs-pad:not(.in-manual-flight) .radio-toast { bottom: calc(var(--rcs-pad-h, 300px) + 190px); }
+}
+@media (min-width: 900px) and (pointer: fine) {
+  body.in-cockpit.has-rcs-pad:not(.in-manual-flight) .pilot-look { bottom: calc(var(--rcs-pad-h, 300px) + 30px); }
+}
+
+/* While a challenge is open nothing else shows (H26): no longer a list of selectors here, one rule for every
+   overlay root in foco-reto.css (docs/design/ux-acciones.md §7). */

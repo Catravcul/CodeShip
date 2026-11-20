@@ -1,0 +1,43 @@
+/* --- Inside the station (zero g) ------------------------------------------ */
+body.in-station-interior .hud, body.in-station-interior .help, body.in-station-interior .reticle, body.in-station-interior .banner,
+body.in-station-interior .action, body.in-station-interior .touch, body.in-station-interior .mode-btn, body.in-station-interior .flight-bar,
+body.in-station-interior .cam-tag, body.in-station-interior .pilot-look, body.in-station-interior .region-tag, body.in-station-interior .nano-card,
+body.in-station-interior .station-dock-btn, body.in-station-interior .walk-stick, body.in-station-interior .look-stick { display: none !important; }
+body.in-sti-interior .sti-look { display: block; }
+/* The arrow pad (zero-g.css) hops from rail to rail: no movement stick in the station. */
+.sti-move { display: none !important; }
+.sti-look { right: 22px; }
+body.in-duel .sti-ui, body.in-duel .sti-move, body.in-duel .sti-look, body.in-station .sti-move, body.in-station .sti-look { display: none !important; }
+.sti-ui.hidden, .sti-ui .hidden { display: none !important; }
+/* The station uses the walkable rooms' look (lander-cabin.css): title top left, root icons top right, the card of what is in front. */
+.sti-hud { max-width: min(250px, calc(100vw - 90px)); line-height: 1.35; z-index: 4; }
+.sti-hud .sti-title { font-weight: 700; color: #7fdcff; }
+.sti-hud .sti-grav, .sti-hud .sti-move-line { font-size: 11px; color: #a9c8d8; }
+.sti-head { flex-direction: row; align-items: flex-start; gap: 10px; }
+.sti-head > div { display: flex; flex-direction: column; gap: 2px; }
+.sti-icon { flex: 0 0 auto; display: inline-flex; width: 32px; height: 32px; align-items: center; justify-content: center; color: #ffd27f; background: #0b2a36; border: 1px solid #7fdcff55; border-radius: 50%; }
+.sti-card.sti-card { bottom: calc(190px + env(safe-area-inset-bottom)); }
+/* Narrower beside the open menu, it grows taller: never up over the location HUD (~100 px). */
+@media (max-width: 520px) { .sti-card.sti-card { max-height: calc(100dvh - 298px - env(safe-area-inset-bottom)); } }
+.sti-card small { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+body.in-tasks .sti-card, body.in-areas .sti-card, body.in-settings .sti-card, body.in-settings .sti-menu { display: none !important; }
+.sti-toast.cab-toast { top: calc(110px + env(safe-area-inset-top)); z-index: 7; }
+body.in-station-interior .vstick.sti-move span, body.in-station-interior .vstick.sti-look span { color: #9fe8c4; }
+/* Cockpit: the button to go inside the station, next to «Revisar tareas». */
+.station-enter-btn { position: fixed; left: 50%; bottom: 214px; transform: translateX(-50%); z-index: 6; min-height: 48px; padding: 10px 22px; font: inherit; font-size: 15px; font-weight: 700; color: #001018; background: #9fe8c4; border: 0; border-radius: 14px; box-shadow: 0 0 18px #3fd09a88; }
+.station-enter-btn.hidden, body.in-station .station-enter-btn, body.in-map .station-enter-btn, body.in-duel .station-enter-btn, body.in-bay .station-enter-btn, body.in-interior .station-enter-btn, body.in-eva .station-enter-btn, body.in-station-interior .station-enter-btn { display: none; }
+@media (pointer: coarse) {
+  .station-enter-btn { left: 8px; transform: none; bottom: calc(300px + env(safe-area-inset-bottom)); width: calc(56vw - 8px); padding: 8px 10px; font-size: 14px; }
+}
+/* The dry dock's cameras (docs/design/dique-seco.md): full screen over the station, its HUD hidden. */
+.dock-view { position: fixed; left: 0; right: 0; top: 0; z-index: 40; display: none; padding: calc(10px + env(safe-area-inset-top)) 12px 10px; background: linear-gradient(#020a10ee, #020a1000); color: #d8f6ff; pointer-events: none; }
+.dock-view.on { display: block; }
+.dock-view .dv-head { display: flex; align-items: center; gap: 10px; pointer-events: auto; }
+.dock-view .dv-title { flex: 1; font-size: 16px; }
+.dock-view .dv-close { min-width: 48px; min-height: 48px; border: 0; border-radius: 12px; font-size: 24px; color: #04121a; background: #7fdcff; }
+.dock-view .dv-status { margin: 6px 0 0; font-size: 13px; color: #9fe8c4; max-width: 520px; }
+body.in-dock-view .sti-ui, body.in-dock-view .sti-move, body.in-dock-view .sti-look, body.in-dock-view .zg-pad, body.in-dock-view .zg-controls { display: none !important; }
+/* The outside view's camera joystick (reglas.md §5.7): under its title, so the arm's sheet and THC stay clear. */
+.cam-stick.dock-look { top: calc(112px + env(safe-area-inset-top)); bottom: auto; right: 12px; z-index: 42; }
+.cam-stick.dock-look > .vstick { width: 92px; height: 92px; }
+.cam-stick.dock-look > .vstick .knob { left: 22px; top: 22px; width: 46px; height: 46px; }

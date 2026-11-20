@@ -132,7 +132,7 @@ async function dragAcross(p, box) {
 export async function tareasAjustes(j) {
   const p = j.page;
   // 0. The tree menu with the Switch pad (reglas.md §5.7–5.8, 2026-11-19): Vista, Tareas and Áreas are on the pad (capture, +, −),
-  // so they do not sprout from the gear and the gear is not out; the orange interaction button stays under the root.
+  // so they do not sprout from the gear and the gear is not out; the interaction is the pad's orange Y.
   await j.tap(".stand-btn", "Levantarse: habitáculo");
   await p.waitForTimeout(1200);
   const m0 = await menu(p);
@@ -143,25 +143,30 @@ export async function tareasAjustes(j) {
   await capture(j, "menu-cerrado", "Menú árbol cerrado");
   const m1 = await menu(p);
   const labels = m1?.out.map((b) => b.label) ?? [];
+  // The interaction (reglas.md §5.8, 2026-11-20): with the pad out it is the pad's orange Y, and the orange button under
+  // the root stays hidden; a shown card hides the pad, and its «Cerrar» is the orange button under the root again.
   const act = () => p.evaluate(() => { const b = [...document.querySelectorAll(".room-ui:not(.hidden) .rm-act")].find((x) => x.checkVisibility()); return b ? { label: b.getAttribute("aria-label"), open: b.classList.contains("rm-open"), inMenu: !!b.closest(".rm-shoots") } : null; });
+  const padY = () => p.evaluate(() => { const b = [...document.querySelectorAll('.switch-pad .ap-btn.alert[data-letter="Y"]')].find((x) => x.checkVisibility()); return b ? { label: b.getAttribute("aria-label"), face: b.querySelector("span")?.textContent ?? "" } : null; });
   const a0 = await act();
-  j.check("junto a una máquina sale el botón naranja de interacción bajo la raíz, fuera de lo que brota del menú", !!a0 && !a0.inMenu && !a0.open && !labels.includes("Panel"), `${labels.join(" / ")} · ${JSON.stringify(a0)}`);
+  const y0 = await padY();
+  j.check("junto a una máquina la Y del mando se enciende en naranja con su nombre corto debajo, y no hay otro botón naranja bajo la raíz ni «Panel» en el menú", !!y0 && !/:/.test(y0.face) && !a0 && !labels.includes("Panel"), `${labels.join(" / ")} · ${JSON.stringify({ y0, a0 })}`);
   await capture(j, "menu-abierto", "Menú árbol abierto");
 
-  // 0a. «Panel» shows the machine's card and turns into the X that hides it; the menu stays open all along.
-  await j.tap(".room-ui:not(.hidden) .rm-act", "Panel");
+  // 0a. The Y shows the machine's card (the pad hides under it) and the orange button under the root is its «Cerrar».
+  await j.tap('.switch-pad .ap-btn.alert[data-letter="Y"]', "Y: mostrar la tarjeta");
   await p.waitForTimeout(300);
   const card1 = await p.evaluate(() => [...document.querySelectorAll(".cab-machine:not(.hidden)")].find((c) => c.checkVisibility())?.querySelector(".cm-head b")?.textContent);
   const m1b = await menu(p);
   const a1 = await act();
-  j.check("el botón naranja muestra la tarjeta de la máquina y pasa a ser la X que la oculta; el menú sigue como estaba", !!card1 && m1b?.open === m1?.open && !!a1?.open && /^Cerrar/.test(a1.label ?? ""), `${card1} · ${JSON.stringify(a1)}`);
+  j.check("la Y muestra la tarjeta de la máquina y el botón naranja bajo la raíz pasa a ser la X que la oculta; el menú sigue como estaba", !!card1 && m1b?.open === m1?.open && !!a1?.open && /^Cerrar/.test(a1.label ?? "") && !(await padY()), `${card1} · ${JSON.stringify(a1)}`);
   await capture(j, "panel", "Panel de la máquina desde el menú");
   await j.tap(".room-ui:not(.hidden) .rm-act.rm-open", "X del menú: Cerrar panel");
   await p.waitForTimeout(300);
   const card2 = await p.evaluate(() => [...document.querySelectorAll(".cab-machine:not(.hidden)")].some((c) => c.checkVisibility()));
   const m1c = await menu(p);
   const a2 = await act();
-  j.check("la X del botón naranja oculta la tarjeta y el menú sigue como estaba", !card2 && m1c?.open === m1?.open && !!a2 && !a2.open, JSON.stringify(a2));
+  const y2 = await padY();
+  j.check("la X oculta la tarjeta, la interacción vuelve a la Y y el menú sigue como estaba", !card2 && m1c?.open === m1?.open && !a2 && !!y2, JSON.stringify({ a2, y2 }));
 
   // 0b. «Áreas»: the Navigation window for the LM; the menu hides under it.
   await j.tap(".room-ui:not(.hidden) .areas-btn", "Áreas");

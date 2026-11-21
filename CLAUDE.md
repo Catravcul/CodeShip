@@ -19,3 +19,6 @@ El diseñador es Berón; escribe en español: responder en español, corto.
 - Correr solo las pruebas de lo tocado; `npx tsc --noEmit` y `npm run lint:arch` antes de publicar.
 - Revisar en vivo con Playwright (iPhone 13) lo que se ve; capturas a `docs/screenshots/` solo si se van a enseñar.
 - Al cambiar un sistema, actualizar su `docs/design/*.md`. Mantener este archivo corto.
+- Relevo ([docs/relevo.md](docs/relevo.md)): al pasar de ~400k tokens, cerrar los procesos que se dejaron corriendo y
+  escribir el relevo; una sesión nueva lee primero el último relevo. Varios agentes solo para tareas independientes,
+  cada uno en su worktree con su PR a `integracion`; al fusionar se borra el worktree.

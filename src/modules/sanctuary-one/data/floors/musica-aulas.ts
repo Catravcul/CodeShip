@@ -4,7 +4,7 @@ import type { FloorPlan, Placed } from "./kit";
  * THE MUSIC ROOMS AND THE CLASSROOMS, each its own floor (Berón 2026-11-20: «se crean las salas necesarias a lujo de
  * detalle/realismo y se separan en pisos propios… seguramente variarán mucho de tamaño los pisos resultantes… un aula
  * preparada para cada materia»). Each plan is the room's real size plus a 2 m walkway; being smaller than the tower's
- * square, two of them share a side of the trunk (layout.ts `packFloors`). Frame: metres from the centre, x across,
+ * * square, they grow out of the middle of a side of the trunk (layout.ts `buildTower`). Frame: metres from the centre, x across,
  * z away from the trunk; the strip by the trunk (the door, 2,5 m) is kept clear. Models: models/musica-aulas.ts.
  */
 const P = (model: string, x: number, z: number, rot = 0, name?: string, y?: number): Placed => ({ model, x, z, ...(rot ? { rot } : {}), ...(name ? { name } : {}), ...(y ? { y } : {}) });

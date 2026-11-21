@@ -20,7 +20,9 @@ describe("rejilla del mundo de paseo", () => {
         expect(fast).toEqual(full);
       }
       checked++;
-      expect(idx.near(a.x, a.z, a.y).solids.length).toBeLessThan(L.world.solids.length / 4);
+      // A third at most: since 2026-11-21 the sanctuary has half the floors, so the whole is smaller and a busy tree's
+      // three levels round her (Servicios: kitchen, hospital, vet) are a bigger share of it.
+      expect(idx.near(a.x, a.z, a.y).solids.length, a.id).toBeLessThan(L.world.solids.length / 3);
     }
     expect(checked).toBeGreaterThan(20);
   });

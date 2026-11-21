@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { placeAt, step } from "@modules/aerial-sanctuary/domain/walk";
 import { buildS1Layout } from "./layout";
 import { MODELS, model } from "./catalog";
-import { TOWERS, STAFF } from "./site";
+import { TOWERS, TOWERS_AMPLIOS, STAFF } from "./site";
 import { FLOOR_PLANS } from "./floors";
 import { allocate, plan, split } from "../domain/population";
 
@@ -44,11 +44,14 @@ describe("santuario 1: escena", () => {
       if (s.floors.length > 2) expect(s.floors[2]!.y).toBe(86);
     }
   });
-  it("el gimnasio lleva sus 30 máquinas de placas y su peso libre", () => {
+  it("el gimnasio lleva una máquina de placas de cada tipo, su peso libre y su cardio (Berón 2026-11-21: un solo piso)", () => {
     const gym = L.areas.find((a) => a.label === "Gimnasio")!;
     const here = L.instances.filter((i) => i.area === gym.id);
-    expect(here.filter((i) => model(i.model).group === "gimnasio-placas")).toHaveLength(30);
-    expect(here.filter((i) => model(i.model).group !== "puertas" && model(i.model).group !== "mascaras" && i.model !== "estacion-alfombras").length).toBe(FLOOR_PLANS.get("gimnasio-0")!.items.length);
+    const plates = here.filter((i) => model(i.model).group === "gimnasio-placas");
+    expect(plates).toHaveLength(10);
+    expect(new Set(plates.map((i) => i.model)).size).toBe(10);
+    expect(here.some((i) => i.model === "gym-cinta")).toBe(true);
+    expect(here.filter((i) => model(i.model).group !== "puertas" && model(i.model).group !== "mascaras" && i.model !== "estacion-alfombras").length).toBe(FLOOR_PLANS.get("gimnasio")!.items.length);
   });
   it("todo el personal está y cada uno es una persona", () => {
     const people = L.instances.filter((i) => model(i.model).category === "persona");
@@ -109,7 +112,7 @@ describe("santuario 1: pisos amueblados", () => {
   it("a cada anillo se llega nadando por el tronco hasta su balcón", () => {
     const L1 = buildS1Layout(1);
     const rings = L1.areas.filter((a) => a.id.endsWith(":anillo"));
-    expect(rings.length).toBeGreaterThanOrEqual(4);
+    expect(rings.length).toBeGreaterThanOrEqual(3);
     for (const a of rings) {
       const t = L1.towers.find((x) => a.id.startsWith(`${x.id}:`))!;
       // From the trunk's water at the ring's height, swim towards the balcony.
@@ -120,49 +123,24 @@ describe("santuario 1: pisos amueblados", () => {
       expect(b.area, a.label).toBe(a.id);
     }
   });
-  it("a cada piso pequeño se llega nadando por su rama hasta la punta, uno por lado (Berón 2026-11-20)", () => {
-    const L1 = buildS1Layout(1.5);
-    const branches = L1.areas.filter((a) => a.id.endsWith(":rama"));
-    expect(branches.length).toBeGreaterThanOrEqual(12);
-    for (const r of branches) {
-      const a = L1.areas.find((x) => `${x.id}:rama` === r.id)!;
-      const t = L1.towers.find((x) => x.id === a.link!.tower)!;
-      // Out of the trunk along its face's normal to the branch's row, along the branch, and in at the door.
-      const ix = a.link!.inner.x - t.x, iz = a.link!.inner.z - t.z;
-      const n = Math.abs(ix) > Math.abs(iz) ? { x: Math.sign(ix), z: 0 } : { x: 0, z: Math.sign(iz) };
-      const along = (r.x - a.link!.inner.x) * n.x + (r.z - a.link!.inner.z) * n.z;
-      const row = { x: a.link!.inner.x + n.x * along, z: a.link!.inner.z + n.z * along };
-      let b = placeAt(L1.world, a.link!.inner.x, a.y + 1, a.link!.inner.z)!;
-      expect(b.motion, a.label).toBe("agua");
-      for (const p of [row, { x: r.x, z: r.z }, a.entry!]) {
-        for (let i = 0; i < 900 && Math.hypot(p.x - b.x, p.z - b.z) > 0.15 && b.motion === "agua"; i++) {
-          const d = Math.hypot(p.x - b.x, p.z - b.z);
-          b = step(L1.world, b, { dx: ((p.x - b.x) / d) * 0.1, dy: 0, dz: ((p.z - b.z) / d) * 0.1 });
-        }
-      }
-      expect(b.area, a.label).toBe(a.id);
-    }
+  it("los edificios amplios quedan guardados con todos sus pisos, y se pueden volver a construir", () => {
+    expect(TOWERS_AMPLIOS.reduce((n, t) => n + t.floors.length, 0)).toBe(63);
+    for (const t of TOWERS_AMPLIOS) for (const f of t.floors) if (f.furnish) expect(FLOOR_PLANS.has(f.furnish), f.furnish).toBe(true);
+    const A = buildS1Layout(1, undefined, TOWERS_AMPLIOS);
+    expect(A.towers.reduce((n, t) => n + t.floors.length, 0)).toBe(63);
   });
-  it("ningún piso pequeño queda encima de otro piso ni toca a los de su nivel (Berón 2026-11-20: «espacioso»)", () => {
-    const L1 = buildS1Layout(1.5);
-    const small = new Set(L1.areas.filter((a) => L1.areas.some((r) => r.id === `${a.id}:rama`)).map((a) => a.label));
-    for (const t of L1.towers) {
-      const fs = t.floors;
-      for (let i = 0; i < fs.length; i++)
-        for (let j = i + 1; j < fs.length; j++) {
-          if (!small.has(fs[i]!.name) && !small.has(fs[j]!.name)) continue;
-          const p = fs[i]!.rect, q = fs[j]!.rect;
-          const ox = Math.min(p.x1, q.x1) - Math.max(p.x0, q.x0), oz = Math.min(p.z1, q.z1) - Math.max(p.z0, q.z0);
-          // On the same level at least 2 m apart; over another only far up (three levels: 66 m), like the full floors.
-          if (Math.abs(fs[i]!.y - fs[j]!.y) > 50) continue;
-          const m = fs[i]!.y === fs[j]!.y ? -2 : 0.01;
-          expect(ox > m && oz > m, `${t.id}: ${fs[i]!.name} / ${fs[j]!.name}`).toBe(false);
-        }
-    }
+  it("los edificios de hoy: un piso de gimnasio, uno de yoga, uno de aula y un hospital", () => {
+    const furn = TOWERS.flatMap((t) => t.floors.map((f) => f.furnish ?? ""));
+    expect(furn.filter((f) => /^yoga/.test(f))).toHaveLength(1);
+    expect(furn.filter((f) => /^aula/.test(f))).toHaveLength(1);
+    expect(furn.filter((f) => /^musica/.test(f))).toHaveLength(1);
+    expect(furn.filter((f) => /^(gimnasio|cardio)/.test(f))).toHaveLength(1);
+    expect(furn.filter((f) => /^hospital/.test(f) && f !== "hospital-veterinario")).toHaveLength(1);
+    expect(TOWERS.reduce((n, t) => n + t.floors.length, 0)).toBeLessThan(40);
   });
   const L = buildS1Layout(1);
   it("cada «furnish» de site.ts tiene su plan y cada plan cabe en su piso", () => {
-    for (const t of TOWERS)
+    for (const t of [...TOWERS, ...TOWERS_AMPLIOS])
       for (const f of t.floors) if (f.furnish) expect(FLOOR_PLANS.has(f.furnish), f.furnish).toBe(true);
     for (const p of FLOOR_PLANS.values())
       for (const it of p.items) {

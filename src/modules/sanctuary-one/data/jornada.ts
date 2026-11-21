@@ -24,8 +24,8 @@ export interface Place {
 }
 
 /** The work floors (ours, until WorkRoster): kitchen, hospital, vet, cría, labs, workshops, farm and guard. */
-export const WORK_FLOORS = ["restaurante", "hospital-urgencias", "hospital-veterinario", "cria", "carne-cultivada", "construccion", "textil", "huerto-vertical-1", "campos-huerto", "informatica", "quimica-sintesis", "biologia-cultivo", "mecanica", "guardia", "garaje-submarino"] as const;
-export const TRAINING_FLOORS = ["gimnasio-0", "cardio", "calistenia", "yoga-hatha-occidental-1", "yoga-ashtanga-occidental-1"] as const;
+export const WORK_FLOORS = ["restaurante", "hospital", "hospital-veterinario", "cria-carne-cultivada", "construccion", "textil", "huerto-vertical-1", "campos-huerto", "informatica", "quimica", "biologia", "mecanica", "guardia", "garaje-submarino"] as const;
+export const TRAINING_FLOORS = ["gimnasio", "calistenia-parkour", "crossfit", "yoga-hatha-occidental-1", "dojo-judo"] as const;
 
 /** Is (x, z) on ice or land (else it is sea)? */
 export function onGround(x: number, z: number): boolean {
@@ -56,9 +56,9 @@ function spotAt(list: readonly Instance[], n: number, a: S1Area, pose: Place["po
  * room), the Magnate is the sanctuary's teacher (Magnate.cs «la maestra del santuario»), Neo is a child: school and play.
  */
 const ROLES: Readonly<Record<string, { tareas?: string; entrenamiento?: string }>> = {
-  Sadhguru: { tareas: "yoga-hatha-tradicional-1", entrenamiento: "yoga-hatha-tradicional-1" },
+  Sadhguru: { tareas: "yoga-hatha-occidental-1", entrenamiento: "yoga-hatha-occidental-1" },
   Nevaeh: { tareas: "aula-historia" },
-  Neo: { tareas: "aula-matematicas", entrenamiento: "calistenia" },
+  Neo: { tareas: "aula-historia", entrenamiento: "calistenia-parkour" },
 };
 
 /** Each person's place for each activity. */

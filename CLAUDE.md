@@ -13,7 +13,8 @@ El diseñador es Berón; escribe en español: responder en español, corto.
 ## Cómo se trabaja aquí
 
 - Rama por tema desde `integracion`; se fusiona en `integracion` y se publica en la web de pruebas
-  (`npx vite build --base=./` → rama `gh-pages`, https://catravcul.github.io/CodeShip/). Solo Berón la usa: siempre lo último.
+  (`npx vite build --base=./` → rama `gh-pages`, https://catravcul.github.io/CodeShip/; lo hace solo
+  `.github/workflows/pages.yml` en cada push a `integracion`). Solo Berón la usa: siempre lo último.
 - TDD en `domain/` y `application/`; cada dato real con fuente y etiqueta (real, en desarrollo, licencia, ficción).
 - Correr solo las pruebas de lo tocado; `npx tsc --noEmit` y `npm run lint:arch` antes de publicar.
 - Revisar en vivo con Playwright (iPhone 13) lo que se ve; capturas a `docs/screenshots/` solo si se van a enseñar.

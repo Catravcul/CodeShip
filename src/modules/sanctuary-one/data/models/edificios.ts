@@ -1,6 +1,6 @@
 import { C, pz, rep, type ModelDef, type Part } from "./kit";
 import { TREE } from "@modules/aerial-sanctuary/data/facts";
-import { ORCHARD_BRANCH, ROOM_BRANCH_HALF } from "../paso";
+import { ORCHARD_BRANCH } from "../paso";
 
 /**
  * The tree-buildings' doors and masks, and the island's trees (Berón 2026-11-19: «no consigo ver las puertas,
@@ -8,30 +8,36 @@ import { ORCHARD_BRANCH, ROOM_BRANCH_HALF } from "../paso";
  */
 const CS = (what: string) => `Cold Sanctuary, ${what}`;
 const D = TREE.door.value;
-const AMBER = 0xd9822b;
+/** The trees' wood (Berón 2026-11-21: «el color para los anillos y columnas creo que debería ser marrón… una imagen más de madera»). */
+export const WOOD = 0x7a5232;
 const DARK = 0x3a2a1e;
 
-/** The door's frame: two jambs and a lintel round the 7 × 7 m opening in the 1 m acrylic wall, a lamp on top. */
+/**
+ * The door's ring: two thin jambs and a lintel round the 7 × 7 m opening in the 1 m acrylic wall, in wood (Berón
+ * 2026-11-21: «los anillos de puerta… deben ser más delgados para no resaltar demasiado, su función es solo dar
+ * visibilidad a la puerta»).
+ */
+const RING_BAR = 0.2;
 const frame: Part[] = [
-  C(-(D.w / 2 + 0.25), (D.h + 0.5) / 2, 0, 0.5, D.h + 0.5, 1.4, AMBER),
-  C(D.w / 2 + 0.25, (D.h + 0.5) / 2, 0, 0.5, D.h + 0.5, 1.4, AMBER),
-  C(0, D.h + 0.25, 0, D.w + 1, 0.5, 1.4, AMBER),
-  C(0, 0.04, 0, D.w, 0.08, 1.4, DARK),
-  C(0, D.h + 0.65, 0.75, 1.2, 0.3, 0.2, 0xfff2b0),
+  C(-(D.w / 2 + RING_BAR / 2), (D.h + RING_BAR) / 2, 0, RING_BAR, D.h + RING_BAR, 0.4, WOOD),
+  C(D.w / 2 + RING_BAR / 2, (D.h + RING_BAR) / 2, 0, RING_BAR, D.h + RING_BAR, 0.4, WOOD),
+  C(0, D.h + RING_BAR / 2, 0, D.w + 2 * RING_BAR, RING_BAR, 0.4, WOOD),
+  C(0, 0.04, 0, D.w, 0.08, 0.4, DARK),
 ];
 
 /**
  * A branch's ring (Berón 2026-11-20: «un aro en el punto de quiebre de una rama y también en su entrada desde el
- * tronco»): a lit square just inside the 7 × 7 m tube, where it leaves the trunk and where it turns. Ours.
+ * tronco»): a thin wooden square just inside the tube, where it leaves the trunk and where it turns. Ours.
  */
 const ringOf = (tube: number, tall = tube): Part[] => {
   const n = tube - 0.3;
   const m = tall - 0.3;
+  const t = 0.15;
   return [
-    C(-(n / 2), m / 2 + 0.15, 0, 0.3, m + 0.3, 0.5, 0xffcf5a),
-    C(n / 2, m / 2 + 0.15, 0, 0.3, m + 0.3, 0.5, 0xffcf5a),
-    C(0, m + 0.15, 0, n, 0.3, 0.5, 0xffcf5a),
-    C(0, 0.15, 0, n, 0.3, 0.5, 0xffcf5a),
+    C(-(n / 2), m / 2 + t / 2, 0, t, m + t, 0.3, WOOD),
+    C(n / 2, m / 2 + t / 2, 0, t, m + t, 0.3, WOOD),
+    C(0, m + t / 2, 0, n, t, 0.3, WOOD),
+    C(0, t / 2, 0, n, t, 0.3, WOOD),
   ];
 };
 
@@ -88,9 +94,8 @@ export const EDIFICIO_MODELS: readonly ModelDef[] = [
   pz("fotobio-cuadro", "maquina", "fotobiorreactores", "Cuadro de control de los fotobiorreactores (bombas, LED, pH y temperatura)", 0x5a6470, [
     C(0, 0.4, 0, 0.1, 0.8, 0.1), C(0, 1.6, 0, 1.2, 1.6, 0.4), C(-0.3, 1.9, 0.21, 0.4, 0.25, 0.02, 0x66bb6a), C(0.3, 1.5, 0.21, 0.3, 0.6, 0.02, 0xf2f2f2),
   ], "real", "Cold Sanctuary, Assets/Editor/SampleSceneBuilder.Fotobio.cs Cuadro_fotobio"),
-  pz("marco-puerta-tronco", "edificio", "puertas", "Marco de puerta del tronco (7 × 7 m, el campo que retiene el agua)", AMBER, frame, "ficcion", CS("TreeSpec door 7 × 7 m (Helix.cs); el marco, nuestro para que se vean")),
-  { ...pz("aro-rama", "edificio", "puertas", "Aro de luz de la rama de un piso (en su boca del tronco y en su quiebre)", 0xffcf5a, ringOf(2 * ROOM_BRANCH_HALF), "ficcion", "Nuestro: Berón 2026-11-20, para ver por dónde se nada en el árbol"), walkThrough: true, glow: true },
-  { ...pz("aro-rama-huerto", "edificio", "puertas", "Aro de luz de la rama de una punta (en su boca del tronco y en sus quiebres)", 0xffcf5a, ringOf(2 * ORCHARD_BRANCH.halfWidth, 2 * ORCHARD_BRANCH.halfHeight), "ficcion", "Nuestro: Berón 2026-11-20, para ver por dónde se nada en el árbol"), walkThrough: true, glow: true },
+  { ...pz("marco-puerta-tronco", "edificio", "puertas", "Anillo de madera de la puerta del tronco (7 × 7 m, el campo que retiene el agua)", WOOD, frame, "ficcion", CS("TreeSpec door 7 × 7 m (Helix.cs); el anillo, nuestro para que se vean (Berón 2026-11-21: delgado y de madera)")), wood: true },
+  { ...pz("aro-rama-huerto", "edificio", "puertas", "Aro de madera de la rama de una punta (en su boca del tronco y en su quiebre)", WOOD, ringOf(2 * ORCHARD_BRANCH.halfWidth, 2 * ORCHARD_BRANCH.halfHeight), "ficcion", "Nuestro: Berón 2026-11-20, para ver por dónde se nada en el árbol; delgado y de madera desde el 2026-11-21"), walkThrough: true, wood: true },
   pz("perchero-mascaras", "mueble", "mascaras", "Perchero de máscaras de respirar (6, con su botella)", 0x5a6670, rack, "ficcion", CS("BreathingMask.cs / MaskStation Kind.Rack: junto a cada puerta del tronco")),
   pz("estacion-mascaras", "mueble", "mascaras", "Estación de máscaras dentro del agua", 0x5a6670, rack, "ficcion", CS("BreathingMask.cs / MaskStation Kind.Station: dentro del agua, junto a cada puerta")),
   pz("abedul-isla", "naturaleza", "arboles-isla", "Abedul de montaña de la isla (10 m)", 0xe9e4d8, birch(), "real", CS("SampleSceneBuilder.BuildIceFlora: 6 abedules (Betula pubescens subsp. czerepanovii) en la isla, con panales")),

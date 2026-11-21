@@ -59,6 +59,7 @@ export const BASE_MODELS: readonly ModelDef[] = [
   m("foca", "animal", "fauna-marina", "Foca de Weddell", 0.7, 0.6, 3.0, 0x5d6670, "pinnipedo", "real", S.sealWeddell),
   m("morsa", "animal", "fauna-marina", "Morsa", 1.2, 1.0, 3.0, 0x9a6f55, "pinnipedo", "real", S.walrus),
   m("orca", "animal", "fauna-marina", "Orca", 1.6, 1.8, 8.0, 0x15161a, "cetaceo", "real", S.orca),
+  m("delfin", "animal", "fauna-marina", "Delfín mular", 0.6, 0.6, 2.8, 0x6f7f8e, "cetaceo", "real", S.dolphin),
   m("ballena", "animal", "fauna-marina", "Ballena jorobada", 3.0, 3.0, 15.0, 0x3b4450, "cetaceo", "real", S.humpback),
   m("pinguino", "animal", "fauna-aves", "Pingüino de Adelia", 0.3, 0.7, 0.3, 0x1c1c22, "pinguino", "real", S.adelie),
   m("pinguino-emperador", "animal", "fauna-aves", "Pingüino emperador", 0.45, 1.15, 0.45, 0x22232a, "pinguino", "real", S.emperor),

@@ -17,6 +17,7 @@ export const S1_SOURCES = {
   // Real animals: adult sizes.
   polarBear: "Polar Bears International, «Polar bear facts»: machos de 2,4–3 m de largo y hasta 1,6 m a la cruz: https://polarbearsinternational.org/polar-bears-changing-arctic/polar-bear-facts/",
   orca: "NOAA Fisheries, Killer whale: hasta 9,8 m (machos) y 6 t: https://www.fisheries.noaa.gov/species/killer-whale",
+  dolphin: "NOAA Fisheries, Common bottlenose dolphin: 1,8–3,8 m y hasta 650 kg: https://www.fisheries.noaa.gov/species/common-bottlenose-dolphin",
   humpback: "NOAA Fisheries, Humpback whale: hasta 18 m y 36 t: https://www.fisheries.noaa.gov/species/humpback-whale",
   sealWeddell: "NOAA Fisheries / Wikipedia, Foca de Weddell: 2,5–3,5 m: https://en.wikipedia.org/wiki/Weddell_seal",
   walrus: "NOAA Fisheries, Pacific walrus: 2,2–3,6 m, hasta 1 900 kg: https://www.fisheries.noaa.gov/species/pacific-walrus",

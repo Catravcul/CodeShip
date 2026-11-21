@@ -44,7 +44,7 @@ const animalCare = (id: string): AnimalCare | undefined => {
   if (id === "zorro-artico") return ANIMALES.zorro;
   if (["liebre-artica", "reno", "buey-almizclero"].includes(id)) return ANIMALES.herbivoro;
   if (id === "foca" || id === "morsa") return ANIMALES.foca;
-  if (id === "orca" || id === "ballena") return ANIMALES.cetaceo;
+  if (id === "orca" || id === "ballena" || id === "delfin") return ANIMALES.cetaceo;
   if (id.startsWith("pinguino")) return ANIMALES.pinguino;
   if (id === "petrel-niveo") return ANIMALES.ave;
   if (["osezno", "cria-foca", "polluelo-pinguino", "cachorro-malamute"].includes(id)) return ANIMALES.cria;

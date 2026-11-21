@@ -3,7 +3,7 @@ import { carpetStations, STATION_PAD, type CarpetStation } from "./alfombras";
 import { ORCHARD_BRANCH, TRUNK_HALF } from "./paso";
 import type { Floor, Rect, Solid, Water, WalkWorld } from "@modules/aerial-sanctuary/domain/walk";
 import { wallWithGaps } from "@modules/aerial-sanctuary/domain/walk";
-import { CAP_NAME, LAGOON, LOBES, MAP_HALF, NESTS, SPECIES_MODEL, STAFF, TOWERS, WATER_Y, capOf, isLand, lobeRadius, type TowerSpec } from "./site";
+import { AQUARIUM, BASE, CAP_NAME, LOBES, MAP_HALF, NESTS, SEA, aquariumHalf, onMovedCap, SPECIES_MODEL, STAFF, TOWERS, WATER_Y, capOf, isLand, lobeRadius, type TowerSpec } from "./site";
 import { FLOOR_PLANS, type FloorPlan } from "./floors";
 import { RING } from "./floors/kit";
 import { bedTip, orchardTip } from "./floors/puntas";
@@ -85,7 +85,9 @@ export interface TowerShape {
    * tronco»): two wooden struts under each floor, from the trunk's face up to the floor's underside. World points.
    */
   readonly braces: readonly { readonly foot: Point3; readonly head: Point3 }[];
-  /** The ground door: outside on the ice, and inside in the trunk's water. */
+  /** Its base at sea (BASE): the deck's outer edge (the trunk's hole in the middle). */
+  readonly base: Rect;
+  /** The ground door: outside on its base, and inside in the trunk's water. */
   readonly ground: { readonly out: { readonly x: number; readonly z: number }; readonly inner: { readonly x: number; readonly z: number } };
 }
 
@@ -251,7 +253,15 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
   }
   const gOut = side(S(0), door.x, OH + 3);
   const gIn = side(S(0), door.x, WH - 1.5);
-  const shape: TowerShape = { id: t.id, building: t.building, x: o.x, z: o.z, rootHeight, floors: [], tips: [], rings: [], frame: [], braces: [], ground: { out: { x: o.x + gOut.x, z: o.z + gOut.z }, inner: { x: o.x + gIn.x, z: o.z + gIn.z } } };
+  const BH = OH + BASE.walk;
+  const shape: TowerShape = { id: t.id, building: t.building, x: o.x, z: o.z, rootHeight, floors: [], tips: [], rings: [], frame: [], braces: [], base: R(o.x - BH, o.x + BH, o.z - BH, o.z + BH), ground: { out: { x: o.x + gOut.x, z: o.z + gOut.z }, inner: { x: o.x + gIn.x, z: o.z + gIn.z } } };
+  // Its own base out at sea (Berón 2026-11-21: «que nazca de una propia base artificial… una base negra que tiene la
+  // estación de alfombras… y una superficie que rodea al tronco y da unos 10 m de espacio para que los humanos puedan
+  // caminar»): a black hull round the trunk, its deck at the ice's height, open where the trunk goes down to the sea.
+  const baseArea = `base:${t.id}`;
+  for (const [x0, x1, z0, z1, k] of [[-BH, BH, OH, BH, "n"], [-BH, BH, -BH, -OH, "s"], [OH, BH, -OH, OH, "e"], [-BH, -OH, -OH, OH, "o"]] as const)
+    b.floors.push({ id: `${baseArea}-${k}`, x0: o.x + x0, x1: o.x + x1, z0: o.z + z0, z1: o.z + z1, y: 0, area: baseArea });
+  b.areas.push({ id: baseArea, label: `Base de ${t.building}`, desc: "La base negra del árbol, en el mar: 10 m de cubierta alrededor del tronco y su estación de alfombras", building: t.building, x: o.x + gOut.x, y: 0, z: o.z + gOut.z, detail: "completo", entry: { x: o.x + gOut.x, z: o.z + gOut.z, yaw: 0 } });
   // The wooden frame (Berón 2026-11-21: «columnas para el tronco y ramas… como un armazón»): a bar between two points of
   // a side's frame (x, z) and two heights, FRAME.beam thick.
   const B = FRAME.beam;
@@ -540,7 +550,7 @@ function aged(b: Built, model: string, l: ReturnType<typeof lifeOf>): void {
 /**
  * The work submarine's way from its bay to the sea and back (ours; the trunk's water is the sea's, Cold Sanctuary's
  * magic): out of the bay through the floor's trunk door, down the trunk to its root under the ice, then under the ice
- * (8 m down) to the lagoon, where it surfaces. Its route is swum both ways.
+ * (8 m down) to the whales' sea, where it surfaces. Its route is swum both ways.
  */
 function submarineDive(b: Built): S1Layout["submarine"] {
   const index = b.instances.findIndex((i) => i.model === "sub-obra");
@@ -555,8 +565,8 @@ function submarineDive(b: Built): S1Layout["submarine"] {
     { x: bay.link.inner.x, y, z: bay.link.inner.z, swim: true },
     { x: tower.x, y, z: tower.z, swim: true },
     { x: tower.x, y: TRUNK_ROOT_Y + 2.5, z: tower.z, swim: true },
-    { x: LAGOON.x, y: -8, z: LAGOON.z, swim: true },
-    { x: LAGOON.x, y: WATER_Y - 1.4, z: LAGOON.z, swim: true },
+    { x: SEA.x, y: -8, z: SEA.z, swim: true },
+    { x: SEA.x, y: WATER_Y - 1.4, z: SEA.z, swim: true },
   ];
   return { index, route };
 }
@@ -584,6 +594,44 @@ function cutTrunkHoles(b: Built): void {
   }
 }
 
+/** The whales' water tower's area (site.ts AQUARIUM). */
+export const AQUARIUM_AREA = "mar:piramide";
+/** Its water in layers of this height, m: each layer a box as wide as the shape at its middle. */
+export const AQUARIUM_LAYER = 5;
+
+/**
+ * The whales' water tower (site.ts AQUARIUM): its water as stacked boxes (one swims in it like in a trunk), its area,
+ * and who lives up there besides the pyramid's whales (NESTS): a pod of dolphins in the pyramid and a few of them, with
+ * seals, going up and down the hourglass between the sea and the pyramid. Ours.
+ */
+function aquarium(b: Built): void {
+  const A = AQUARIUM;
+  for (let y = -12; y < A.topY; y += AQUARIUM_LAYER) {
+    const y1 = Math.min(A.topY, y + AQUARIUM_LAYER);
+    const h = aquariumHalf(Math.max(0, (y + y1) / 2));
+    b.waters.push({ id: `${AQUARIUM_AREA}-${y}`, x0: A.x - h, x1: A.x + h, z0: A.z - h, z1: A.z + h, yBottom: y, yTop: y1, area: AQUARIUM_AREA });
+  }
+  b.areas.push({ id: AQUARIUM_AREA, label: "La pirámide de las ballenas", desc: `Un reloj de arena de agua de ${A.neckY} m que sale del mar y, encima, una pirámide invertida de ${2 * A.topHalf} m de lado: el agua de las ballenas, los delfines y las focas`, x: A.x, y: (A.neckY + A.topY) / 2, z: A.z, detail: "completo" });
+  const pod = 8;
+  for (let i = 0; i < pod; i++) {
+    const p = scatter(i, 40);
+    const y = 110 + (i % 3) * 14;
+    place(b, "delfin", A.x + p.x, y, A.z + p.z, i * 1.3, AQUARIUM_AREA, {}, 1, `Delfín ${i + 1}`, false);
+    wanders(b, "delfin", { x: A.x, z: A.z, r: aquariumHalf(y) * 0.55, speed: 2.4, seed: b.instances.length * 13 + i });
+  }
+  // Up and down the hourglass (its waist is 12 m: they keep 6 m round the axis).
+  (["delfin", "delfin", "foca", "foca"] as const).forEach((id, i) => {
+    place(b, id, A.x, 2 + i * 10, A.z, i, AQUARIUM_AREA, {}, 1, id === "delfin" ? `Delfín del reloj de arena ${i + 1}` : `Foca del reloj de arena ${i - 1}`, false);
+    wanders(b, id, { x: A.x, z: A.z, r: 6, speed: id === "delfin" ? 2 : 1.2, seed: b.instances.length * 19 + i, climb: { y0: WATER_Y - 2, y1: A.neckY + 20 } });
+  });
+  // A pod of dolphins round the sea too.
+  for (let i = 0; i < 6; i++) {
+    const p = scatter(i, 30);
+    place(b, "delfin", SEA.x + 60 + p.x, WATER_Y - 0.6, SEA.z + p.z, i, "mar", {}, 1, `Delfín del mar ${i + 1}`, false);
+    wanders(b, "delfin", { x: SEA.x, z: SEA.z, r: 95, speed: 2.4, seed: b.instances.length * 23 + i });
+  }
+}
+
 /** A deterministic scatter (no Math.random: the same scene on every load). */
 function scatter(i: number, radius: number): { x: number; z: number } {
   const a = i * 2.399963;
@@ -600,7 +648,8 @@ export function buildS1Layout(k = 1, o: Overrides = OVERRIDES, towers: readonly 
     const big = ls.reduce((a, l) => (l.r > a.r ? l : a));
     b.areas.push({ id: `${ls.some(isLand) ? "tierra" : "hielo"}:${cap}`, label: CAP_NAME[cap] ?? cap, desc: ls.map((l) => l.name.split(":")[1]!.replace(/_/g, " ")).join(", "), x: big.x, y: 0, z: big.z, detail: "vacio" });
   }
-  b.areas.push({ id: "mar", label: "La laguna y el mar", desc: "Ballenas, orcas, focas y morsas en la laguna central", x: LAGOON.x, y: WATER_Y, z: LAGOON.z, detail: "completo" });
+  b.areas.push({ id: "mar", label: "El mar de las ballenas", desc: "El mar abierto del centro: ballenas, orcas, delfines, focas y morsas", x: SEA.x, y: WATER_Y, z: SEA.z, detail: "completo" });
+  aquarium(b);
   for (const t of towers) buildTower(b, t, k);
   cutTrunkHoles(b);
   // The carpet stations (alfombras.ts): on a landing out of each floor's and ring's edge, on each crown and at each foot.
@@ -656,8 +705,8 @@ export function buildS1Layout(k = 1, o: Overrides = OVERRIDES, towers: readonly 
     for (let i = 0; i < qty; i++) {
       const p = scatter(i, n.radius);
       const life = lifeOf(n.species, i, qty, first);
-      const y = n.marine ? (d.shape === "cetaceo" ? WATER_Y - d.size.y * life.scale * 0.55 : WATER_Y - d.size.y * life.scale * 0.4) : 0;
-      place(b, id, n.x + p.x, y, n.z + p.z, i * 1.7, n.marine ? "mar" : "fauna", {}, 1, life.name, false);
+      const y = n.y ?? (n.marine ? (d.shape === "cetaceo" ? WATER_Y - d.size.y * life.scale * 0.55 : WATER_Y - d.size.y * life.scale * 0.4) : 0);
+      place(b, id, n.x + p.x, y, n.z + p.z, i * 1.7, n.y !== undefined ? AQUARIUM_AREA : n.marine ? "mar" : "fauna", {}, 1, life.name, false);
       aged(b, id, life);
       wanders(b, id, { x: n.x, z: n.z, r: n.radius, speed: (SPEED[d.shape] ?? 0.8) * Math.sqrt(life.scale), seed: b.instances.length * 31 + 7 });
     }
@@ -665,21 +714,23 @@ export function buildS1Layout(k = 1, o: Overrides = OVERRIDES, towers: readonly 
   // Snow petrels: one colony (no nest in Cold Sanctuary's list: it is ours) on the wild northern cap.
   const pet = counts.get("SnowPetrel") ?? 0;
   const petrels = b.instances.length;
+  const colony = onMovedCap(75, 170);
   for (let i = 0; i < pet; i++) {
     const p = scatter(i, 10);
     const life = lifeOf("SnowPetrel", i, pet, petrels);
-    place(b, "petrel-niveo", 75 + p.x, 0, 170 + p.z, i, "fauna", {}, 1, life.name, false);
+    place(b, "petrel-niveo", colony.x + p.x, 0, colony.z + p.z, i, "fauna", {}, 1, life.name, false);
     aged(b, "petrel-niveo", life);
-    wanders(b, "petrel-niveo", { x: 75, z: 170, r: 10, speed: SPEED.ave!, seed: b.instances.length * 31 + 7 });
+    wanders(b, "petrel-niveo", { x: colony.x, z: colony.z, r: 10, speed: SPEED.ave!, seed: b.instances.length * 31 + 7 });
   }
   // The staff on the hub, 2 m apart (ours: where each one goes comes with the workday).
+  const hub = onMovedCap(5, -10);
   STAFF.forEach((name, i) => {
     const ring = i < 12 ? 0 : 1;
     const j = ring ? i - 12 : i;
     const n = ring ? STAFF.length - 12 : 12;
     const r = ring ? 7 : 4;
     const a = (j / n) * Math.PI * 2;
-    b.instances.push({ model: "persona", x: 5 + Math.cos(a) * r, y: 0, z: -10 + Math.sin(a) * r, rot: -a - Math.PI / 2, area: "hielo:Centro", name });
+    b.instances.push({ model: "persona", x: hub.x + Math.cos(a) * r, y: 0, z: hub.z + Math.sin(a) * r, rot: -a - Math.PI / 2, area: "hielo:Centro", name });
   });
 
   // She starts at the gym's door (its floor is the first ported in full).

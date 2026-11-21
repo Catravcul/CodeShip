@@ -137,6 +137,16 @@ salud.
 | 69 | Las ramas se agrandaron para el submarino: **volver a hacerlas pequeñas** (el submarino ya no pasa por ellas) | Hecho: `paso.ts` `ORCHARD_BRANCH` vuelve al tubo de 10,6 m de Cold Sanctuary; la regla del submarino queda para el tronco y sus puertas |
 | 70 | **Aros de puerta** muy anchos: más delgados; aros y columnas **marrones**, **suelo de los pisos marrón**; ¿una imagen para que parezcan de **madera**? | Hecho: aros de 20 cm (antes 50) sin lámpara, aros de rama de 15 cm sin luz propia; aros, armazón, suelos de los pisos y anillos en madera con una textura de tablas dibujada en un lienzo (sin imagen que descargar, `woodTexture` en `s1-models.ts`), puesta por su tamaño real (tablas de 0,5 m). Los acabados propios de cada sala (caucho, tatami, linóleo) siguen encima |
 
+### Novena lista (2026-11-21): el mapa en anillos
+
+| # | Pedido | Estado |
+| --- | --- | --- |
+| 71 | Los edificios árbol **no deben salir de los casquetes** ni quitar espacio a los animales: que nazcan de **una base artificial propia** (¿barco, isla artificial, nave?) | Hecho: cada árbol nace de **su base negra en el mar** (`site.ts` `BASE`, `layout.ts` `TowerShape.base`): un casco negro de 3 m con su cubierta a la altura del hielo y **10 m para andar** alrededor del tronco, abierta donde el tronco baja al mar. Elegida la base flotante (un casco, como un barco) sobre la isla artificial: es lo que se ve en el mar y no ocupa tierra. Test en `mapa.test.ts` |
+| 72 | La base tiene **la estación de alfombras** que viaja entre edificios | Hecho: el pie de cada árbol está en su base (`alfombras.ts`). Donde la copa tapa toda la base (Servicios, Producción, Campos, Residencia) sale un **muelle** negro de 8–35 m hasta cielo abierto, con la estación al final |
+| 73 | Más espacio entre árboles: **en los bordes del mapa**; los casquetes y la isla, en el centro | Hecho: los 6 árboles en un anillo de 470 m de radio, a 470 m unos de otros (`TREE_RING_R`); ningún piso ni punta sobre un casquete (test) |
+| 74 | En el centro, **un mar circular grande** para ballenas, delfines, focas, peces… | Hecho: `SEA` de 120 m de radio, sin hielo. Los casquetes se han movido enteros alrededor (`CAP_MOVES`; el Sur y la isla juntos), con sus nidos, colonias y arboledas (`onMovedCap`). Ballenas, orcas, focas, morsas y una manada de delfines (nuevo: delfín mular, NOAA) viven en él |
+| 75 | Una **estructura de agua** en el aire a ~80 m, más grande que el mar: ¿esfera sobre un tronco como un **reloj de arena**, o **pirámide invertida**? | Hecho, la pirámide (encaja con el agua de cajas del juego y da más agua arriba, donde es más ancha): un **reloj de arena** de agua de 80 m (30 m de lado abajo y arriba, 12 en su cintura) que sale del mar y, encima, una **pirámide invertida** de 264 m de lado arriba (más que el mar, 240) a 165 m. Se nada en ella como en un tronco. Dentro: la otra familia de ballenas, 8 delfines, y delfines y focas que suben y bajan por el reloj de arena (`site.ts` `AQUARIUM`, `layout.ts` `aquarium`) |
+
 #### Revisión de realismo de los pisos (2026-11-20)
 
 Criterios: fuente real o de Cold Sanctuary, tamaño real de la sala, una función (o una clase) por piso, sin medio vacío (test), se llega a todo desde la puerta (test).

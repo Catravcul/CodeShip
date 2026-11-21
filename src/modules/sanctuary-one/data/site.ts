@@ -15,7 +15,8 @@ export interface Lobe {
 }
 
 /** `Cap:Lobe`; the «Sur:» and «Isla:» lobes are land (tundra), the rest ice. Radius 0: retired (kept for its index). */
-export const LOBES: readonly Lobe[] = [
+/** The lobes where Cold Sanctuary has them (its PolarLandscapeBuilder.Islands); `LOBES` is where they are here (MAP_PLAN). */
+export const LOBES_CS: readonly Lobe[] = [
   { name: "Norte:Cocina", x: 5, z: 95, r: 30 },
   { name: "Norte:Enfermeria", x: 55, z: 97, r: 28 },
   { name: "Norte:Paso", x: -28, z: 95, r: 22 },
@@ -51,6 +52,49 @@ export const LOBES: readonly Lobe[] = [
   { name: "Isla:Meseta", x: -48, z: -172, r: 44 },
   { name: "Isla:Lomas", x: 5, z: -176, r: 36 },
 ];
+
+/**
+ * The map in rings (Berón 2026-11-21, ours): «en el centro de todo debe haber un área grande mar circular donde residen
+ * las ballenas… los casquetes y la isla quedan en el centro… los edificios árbol… como bordes del mapa». In the middle
+ * the whales' sea (open water, no ice), round it the caps and the land, each moved as a whole (its lobes, nests and all
+ * keep their places on it), and the tree-buildings on their own bases out at the edge.
+ */
+export const SEA = { x: 0, z: 0, r: 120 } as const;
+/** How far each cap moved from Cold Sanctuary's place (Sur and the island go together: they touch). */
+export const CAP_MOVES: Readonly<Record<string, { readonly x: number; readonly z: number }>> = {
+  Norte: { x: -44, z: 74 },
+  Centro: { x: 209, z: -39 },
+  BosqueOeste: { x: -27, z: 1 },
+  BosqueNorte: { x: 43, z: -30 },
+  Sur: { x: -3, z: -72 },
+  Isla: { x: -3, z: -72 },
+  Este: { x: 0, z: 0 },
+};
+/** A tree's base at sea (Berón 2026-11-21): the walk round the trunk and the hull's depth under the deck, m. Ours. */
+export const BASE = { walk: 10, hull: 3 } as const;
+/** The tree-buildings' ring: their trunks this far from the sea's centre, at the edge of the map. */
+export const TREE_RING_R = 470;
+
+export const LOBES: readonly Lobe[] = LOBES_CS.map((l) => {
+  const m = CAP_MOVES[l.name.split(":")[0]!] ?? { x: 0, z: 0 };
+  return { ...l, x: l.x + m.x, z: l.z + m.z };
+});
+
+/** A point of Cold Sanctuary's map moved with the cap it is on (or the nearest one): nests, groves, colonies. */
+export function onMovedCap(x: number, z: number): { x: number; z: number } {
+  let best = LOBES_CS[0]!;
+  let d = Infinity;
+  for (const l of LOBES_CS) {
+    if (l.r <= 0) continue;
+    const e = Math.hypot(x - l.x, z - l.z) - l.r;
+    if (e < d) {
+      d = e;
+      best = l;
+    }
+  }
+  const m = CAP_MOVES[best.name.split(":")[0]!] ?? { x: 0, z: 0 };
+  return { x: x + m.x, z: z + m.z };
+}
 export const LOBES_SOURCE = S.csLandscape;
 
 export const CAP_NAME: Readonly<Record<string, string>> = {
@@ -72,10 +116,9 @@ export function lobeRadius(l: Lobe, i: number, x: number, z: number): number {
   return l.r * (1 + 0.06 * Math.sin(a * 5 + i) + 0.03 * Math.sin(a * 11 + 2 * i));
 }
 
-/** The map is [−HALF, HALF] on both axes; the water shows 25 cm under the ice's edge. */
-export const MAP_HALF = 250;
+/** The caps' map is [−HALF, HALF] on both axes (the trees stand out beyond it); the water shows 25 cm under the ice's edge. */
+export const MAP_HALF = 400;
 export const WATER_Y = -0.25;
-export const LAGOON = { x: 60, z: 25, r: 28 } as const;
 
 /** A tree-building (HelixTower): its trunk of water on the plan, its turn and its floors in order (two per level). */
 export interface TowerSpec {
@@ -97,6 +140,8 @@ export interface TowerSpec {
 }
 
 const FIRST_Y = 64;
+/** A place on the trees' ring, by its angle (degrees, from +x towards +z). */
+const ring = (deg: number) => ({ x: Math.round(TREE_RING_R * Math.cos((deg * Math.PI) / 180)), z: Math.round(TREE_RING_R * Math.sin((deg * Math.PI) / 180)) });
 const F = (name: string, desc: string, furnish?: string) => ({ name, desc, ...(furnish ? { furnish } : {}) });
 
 /**
@@ -110,8 +155,8 @@ export const TOWERS_AMPLIOS: readonly TowerSpec[] = [
   {
     id: "servicios",
     building: "Servicios",
-    x: 55,
-    z: 102,
+    x: ring(100).x,
+    z: ring(100).z,
     size: { x: 40, z: 38 },
     quarter: 0,
     firstY: FIRST_Y,
@@ -133,8 +178,8 @@ export const TOWERS_AMPLIOS: readonly TowerSpec[] = [
     id: "entrenamiento",
     building: "Entrenamiento",
     // 20 m west of its old place (2026-11-20): with its yoga in 8 small floors its branches reach Servicios' otherwise.
-    x: -97,
-    z: 52,
+    x: ring(40).x,
+    z: ring(40).z,
     size: { x: 36, z: 26 },
     quarter: 1,
     firstY: FIRST_Y,
@@ -179,8 +224,8 @@ export const TOWERS_AMPLIOS: readonly TowerSpec[] = [
   {
     id: "ciencias",
     building: "Ciencias",
-    x: 92,
-    z: -117,
+    x: ring(-80).x,
+    z: ring(-80).z,
     size: { x: 32, z: 20 },
     quarter: 1,
     firstY: FIRST_Y,
@@ -201,8 +246,8 @@ export const TOWERS_AMPLIOS: readonly TowerSpec[] = [
   {
     id: "produccion",
     building: "Producción",
-    x: -180,
-    z: -140,
+    x: ring(-140).x,
+    z: ring(-140).z,
     size: { x: 26, z: 20 },
     quarter: 1,
     firstY: FIRST_Y,
@@ -221,9 +266,9 @@ export const TOWERS_AMPLIOS: readonly TowerSpec[] = [
   {
     id: "campos",
     building: "Árbol de los Campos",
-    x: -50,
+    x: ring(-20).x,
     // 30 m north of its old place (2026-11-20): Entrenamiento's yoga floor at the end of its south branch reached it.
-    z: -54,
+    z: ring(-20).z,
     size: { x: 32, z: 32 },
     quarter: 0,
     firstY: FIRST_Y,
@@ -240,10 +285,10 @@ export const TOWERS_AMPLIOS: readonly TowerSpec[] = [
   {
     id: "residencia",
     building: "Residencia",
-    x: -66,
+    x: ring(160).x,
     // 13 m further south than it was: its floors crossed corners of Producción's and, with the wider trunks (paso.ts),
     // of Campos' (reglas.test.ts).
-    z: -228,
+    z: ring(160).z,
     size: { x: 40, z: 38 },
     quarter: 0,
     firstY: FIRST_Y,
@@ -319,37 +364,74 @@ export const TOWERS: readonly TowerSpec[] = [
   TOWERS_AMPLIOS[5]!,
 ];
 
-/** The wild families (BuildWildlifePopulation): species, nest and spread. Marine nests are in the lagoon's water. */
+/**
+ * The whales' water tower (Berón 2026-11-21: «una esfera de agua… o quizás en lugar de una esfera, podríamos usar una
+ * pirámide invertida… nacería de un tronco de agua que mediría esos 80 m… con una forma más parecida a un reloj de
+ * arena»): out of the middle of the sea, an hourglass trunk of water 80 m tall, and on it an inverted pyramid whose top
+ * is wider than the sea itself, for the great ones to swim at ease. Square, like the trees' trunks, held by the same
+ * magic (reglas.md §1.2). Ours. `half(y)`: half its side at height y, m.
+ */
+export const AQUARIUM = {
+  x: SEA.x,
+  z: SEA.z,
+  /** The hourglass: wide at the sea, narrow at its waist (40 m up), wide again at 80 m where the pyramid starts. */
+  neckY: 80,
+  waistY: 40,
+  footHalf: 30,
+  waistHalf: 12,
+  /** The pyramid: from its tip (as wide as the hourglass's top) to its top, wider than the sea (SEA.r 120). */
+  topY: 165,
+  topHalf: 132,
+} as const;
+
+export function aquariumHalf(y: number): number {
+  const A = AQUARIUM;
+  if (y <= A.neckY) {
+    const t = (y - A.waistY) / A.waistY;
+    return A.waistHalf + (A.footHalf - A.waistHalf) * t * t;
+  }
+  return A.footHalf + ((A.topHalf - A.footHalf) * (y - A.neckY)) / (A.topY - A.neckY);
+}
+
+/**
+ * The wild families (BuildWildlifePopulation): species, nest and spread. The land ones where Cold Sanctuary has them, on
+ * their moved caps; the marine ones in the whales' sea and up in the pyramid (`y`: their swimming height, else the
+ * sea's surface).
+ */
 export interface Nest {
   readonly species: string;
   readonly x: number;
   readonly z: number;
   readonly radius: number;
   readonly marine: boolean;
+  readonly y?: number;
 }
 
-const EMPEROR = { x: 50, z: -55 };
+const EMPEROR = onMovedCap(50, -55);
+const land = (species: string, x: number, z: number, radius: number): Nest => ({ species, ...onMovedCap(x, z), radius, marine: false });
+const sea = (species: string, deg: number, at: number, radius: number, y?: number): Nest => ({ species, x: SEA.x + at * Math.cos((deg * Math.PI) / 180), z: SEA.z + at * Math.sin((deg * Math.PI) / 180), radius, marine: true, ...(y !== undefined ? { y } : {}) });
 export const NESTS: readonly Nest[] = [
-  { species: "Bear", x: -180 + 19, z: -140, radius: 12, marine: false },
-  { species: "Whale", x: 60, z: 25, radius: 14, marine: true },
-  { species: "Seal", x: 48, z: 14, radius: 8, marine: true },
-  { species: "Seal", x: 74, z: 36, radius: 8, marine: true },
-  { species: "Seal", x: 66, z: 8, radius: 8, marine: true },
-  { species: "Whale", x: 50, z: 34, radius: 14, marine: true },
-  { species: "Penguin", x: 60, z: -22, radius: 6, marine: false },
-  { species: "Penguin", x: 66, z: -19, radius: 6, marine: false },
-  { species: "Orca", x: 72, z: 32, radius: 12, marine: true },
-  { species: "Walrus", x: 52, z: 34, radius: 8, marine: true },
-  { species: "Walrus", x: 70, z: 12, radius: 8, marine: true },
+  land("Bear", -180 + 19, -140, 12),
+  // Whales: one family round the sea, the other up in the pyramid (Berón: «más espacio a los gigantes marinos»).
+  sea("Whale", 0, 0, 80),
+  sea("Seal", 20, 100, 8),
+  sea("Seal", 140, 100, 8),
+  sea("Seal", 260, 100, 8),
+  sea("Whale", 0, 0, 90, 140),
+  land("Penguin", 60, -22, 6),
+  land("Penguin", 66, -19, 6),
+  sea("Orca", 140, 80, 25),
+  sea("Walrus", 80, 104, 8),
+  sea("Walrus", 320, 104, 8),
   { species: "EmperorPenguin", x: EMPEROR.x - 3, z: EMPEROR.z + 2, radius: 5, marine: false },
   { species: "EmperorPenguin", x: EMPEROR.x + 3, z: EMPEROR.z - 2, radius: 5, marine: false },
-  { species: "Reindeer", x: -100, z: -148, radius: 10, marine: false },
-  { species: "Reindeer", x: -62, z: -150, radius: 10, marine: false },
-  { species: "MuskOx", x: -112, z: -205, radius: 10, marine: false },
-  { species: "ArcticHare", x: -205, z: -112, radius: 8, marine: false },
-  { species: "ArcticHare", x: -28, z: -178, radius: 8, marine: false },
-  { species: "ArcticFox", x: -118, z: -132, radius: 6, marine: false },
-  { species: "Wolf", x: -205, z: -190, radius: 8, marine: false },
+  land("Reindeer", -100, -148, 10),
+  land("Reindeer", -62, -150, 10),
+  land("MuskOx", -112, -205, 10),
+  land("ArcticHare", -205, -112, 8),
+  land("ArcticHare", -28, -178, 8),
+  land("ArcticFox", -118, -132, 6),
+  land("Wolf", -205, -190, 8),
 ];
 export const NESTS_SOURCE = `${S.csFauna}; ${S.csTerritory}`;
 

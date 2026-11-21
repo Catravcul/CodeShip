@@ -1,8 +1,8 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import type { S1Layout } from "@modules/sanctuary-one/data/layout";
+import { AQUARIUM_AREA, type S1Layout } from "@modules/sanctuary-one/data/layout";
 import { model, type Category, type ModelDef } from "@modules/sanctuary-one/data/catalog";
-import { WATER_Y } from "@modules/sanctuary-one/data/site";
+import { AQUARIUM, BASE, WATER_Y, aquariumHalf } from "@modules/sanctuary-one/data/site";
 import { textSign } from "./interior/sign";
 import { AnimalHerd } from "./animal-bodies";
 
@@ -221,6 +221,8 @@ export function buildS1Scene(L: S1Layout): S1Scene {
   const land: THREE.BufferGeometry[] = [];
   const decks: THREE.BufferGeometry[] = [];
   const thresholds: THREE.BufferGeometry[] = [];
+  const baseDeck: THREE.BufferGeometry[] = [];
+  const hull: THREE.BufferGeometry[] = [];
   for (const f of L.world.floors) {
     // Sea ice floats with about a tenth above the water (density ~0,9): 2,3 m of ice under 25 cm of freeboard, the top
     // 30 cm of it snow (docs/design/santuario1.md §Casquetes).
@@ -229,6 +231,11 @@ export function buildS1Scene(L: S1Layout): S1Scene {
       ice.push(box(f.x0, f.x1, -2.3, -0.3, f.z0, f.z1));
     }
     else if (f.area.startsWith("tierra:")) land.push(box(f.x0, f.x1, -3, 0, f.z0, f.z1));
+    else if (f.area.startsWith("base:") || (f.y === 0 && f.id.endsWith("rellano-alfombras"))) {
+      // A tree's base at sea and its jetty (Berón 2026-11-21: «una base negra»): a dark deck on a black hull.
+      baseDeck.push(box(f.x0, f.x1, -0.12, 0, f.z0, f.z1));
+      hull.push(box(f.x0, f.x1, -BASE.hull, -0.12, f.z0, f.z1));
+    }
     else if (f.id.endsWith("rellano-alfombras")) thresholds.push(box(f.x0, f.x1, f.y - 0.6, f.y - 0.01, f.z0, f.z1));
     else if (f.id.endsWith("umbral") || f.id.includes("umbral-suelo")) thresholds.push(box(f.x0, f.x1, f.y - 0.3, f.y - 0.01, f.z0, f.z1));
     else if (f.area.endsWith(":techo") || f.area.includes(":punta-")) decks.push(box(f.x0, f.x1, f.y - 0.5, f.y - 0.01, f.z0, f.z1));
@@ -243,6 +250,8 @@ export function buildS1Scene(L: S1Layout): S1Scene {
   add(ice, mat(0x9fcbe0, { roughness: 0.2 }), "hielo");
   add(land, mat(0x7d8460), "tierra");
   add(thresholds, mat(0x8fa2ad), "umbrales");
+  add(baseDeck, mat(0x2a2d33, { roughness: 0.55, metalness: 0.2 }), "bases-cubierta");
+  add(hull, mat(0x101114, { roughness: 0.4, metalness: 0.3 }), "bases-casco");
   add(decks, mat(0x6f8a5a), "puntas-y-techos");
   // Tower floors: wooden slabs straight out of the trunk, held by diagonal braces instead of table legs (Berón
   // 2026-11-21: «el piso debería ser levantado por columnas diagonales que las apoyen en el tronco… el suelo de los pisos
@@ -269,8 +278,25 @@ export function buildS1Scene(L: S1Layout): S1Scene {
   add(frame, woodMat(0x6b4526), "armazon");
   // Water: the trunks, their branches and columns (Cold Sanctuary's magic: water standing in a field) and the sea.
   const water: THREE.BufferGeometry[] = [];
-  for (const w of L.world.waters) if (w.id !== "mar") water.push(box(w.x0, w.x1, w.yBottom, w.yTop, w.z0, w.z1));
+  for (const w of L.world.waters) if (w.id !== "mar" && w.area !== AQUARIUM_AREA) water.push(box(w.x0, w.x1, w.yBottom, w.yTop, w.z0, w.z1));
   add(water, mat(0x2f8fbf, { transparent: true, opacity: 0.3, roughness: 0.05, depthWrite: false, side: THREE.DoubleSide }), "agua");
+  // The whales' water tower (site.ts AQUARIUM): one smooth square hourglass and inverted pyramid (a lathe of 4 sides
+  // turned 45° so its faces are the boxes' faces), its edges drawn faintly so its shape reads against the sky.
+  {
+    const A = AQUARIUM;
+    const prof: THREE.Vector2[] = [];
+    for (let y = -12; y < A.topY; y += 2.5) prof.push(new THREE.Vector2(aquariumHalf(Math.max(0, y)) * Math.SQRT2, y));
+    prof.push(new THREE.Vector2(A.topHalf * Math.SQRT2, A.topY), new THREE.Vector2(0, A.topY));
+    const g = new THREE.LatheGeometry(prof, 4);
+    g.rotateY(Math.PI / 4);
+    g.translate(A.x, 0, A.z);
+    const tower = new THREE.Mesh(g, mat(0x2b8ccf, { transparent: true, opacity: 0.28, roughness: 0.05, depthWrite: false, side: THREE.DoubleSide }));
+    tower.name = "piramide-ballenas";
+    root.add(tower);
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(g, 25), new THREE.LineBasicMaterial({ color: 0xbfeaff, transparent: true, opacity: 0.55 }));
+    edges.name = "piramide-ballenas-aristas";
+    root.add(edges);
+  }
   add(L.walls.map((s) => box(s.x0, s.x1, s.y0, s.y1, s.z0, s.z1)), mat(0x8fd8ff, { transparent: true, opacity: 0.18, roughness: 0.1, depthWrite: false }), "acrilico");
   // Matte (Lambert): seen from just over it, swimming, a glossy plane at a grazing angle turns as white as the sky
   // (Berón 2026-11-20: «en primera persona… oculta el agua»).

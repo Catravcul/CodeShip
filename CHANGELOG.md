@@ -5,6 +5,11 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-21
 
+- **Mapa en anillos del santuario 1**: en el centro, un mar circular de 120 m de radio para las ballenas, con un reloj de
+  arena de agua de 80 m y encima una pirámide invertida de agua más ancha que el mar (ballenas, delfines y focas
+  nadan en ella); alrededor, los casquetes y la isla; en el borde, los 6 árboles, cada uno sobre su base negra en el
+  mar con 10 m de cubierta y su estación de alfombras. [docs/design/santuario1.md](docs/design/santuario1.md) #71–75
+
 - **Edificios árbol para los miembros que hay**: 33 pisos en lugar de 63 (un gimnasio, una sala de yoga, un aula, una
   sala de música, un estudio de ballet, dos salas de artes marciales, un hospital, cría con carne cultivada, un
   laboratorio por ciencia, un huerto vertical); los amplios, guardados (`TOWERS_AMPLIOS`, rama

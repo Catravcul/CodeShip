@@ -190,8 +190,7 @@ export function carpetStations(w: StationWorld): CarpetStation[] {
   const sky = skyOf(w.towers);
   // A landing chosen is in the way of the lanes after it; a lane chosen keeps the landings after it out.
   const lanes: { x: number; z: number }[] = [];
-  const ground = w.floors.filter((f) => Math.abs(f.y) < 0.01 && /^(hielo|tierra):/.test(f.area));
-  const onGround = (x: number, z: number, m: number) => [[-m, -m], [m, -m], [-m, m], [m, m], [0, 0]].every(([dx, dz]) => ground.some((f) => inRect(f, x + dx!, z + dz!)));
+  const ground = w.floors.filter((f) => Math.abs(f.y) < 0.01 && /^(hielo|tierra|base):/.test(f.area));
   for (const t of w.towers) {
     for (const a of w.areas) {
       if (a.link?.tower !== t.id || !a.entry) continue;
@@ -255,22 +254,53 @@ export function carpetStations(w: StationWorld): CarpetStation[] {
     const crown = span(grid, t.x, t.z, up, up, sky);
     out.push({ id: `${t.id}:techo:alfombras`, area: `${t.id}:techo`, tower: t.id, building: t.building, kind: "copa", label: "Copa", x: t.x, y: t.rootHeight, z: t.z, out: { x: 0, z: 0 }, reach: "santuario", lane: { x: t.x, z: t.z, lo: up, hi: crown?.hi ?? up } });
     // The foot's: on the ice, the nearest spot to the ground door with open sky over it.
+    // The foot is on the tree's own base (Berón 2026-11-21: «una base negra que tiene la estación de alfombras»).
+    const deck = ground.filter((f) => f.area === `base:${t.id}`);
+    const onDeck = (x: number, z: number, m: number) => [[-m, -m], [m, -m], [-m, m], [m, m], [0, 0]].every(([dx, dz]) => deck.some((f) => inRect(f, x + dx!, z + dz!)));
     const door = t.ground.out;
     const fo = axis(door.x - t.x, door.z - t.z);
     let foot: { x: number; z: number; lo: number; hi: number } | undefined;
-    for (let r = 0; r < 160 && !foot; r += 2)
+    for (let r = 0; r < 80 && !foot; r += 1)
       for (let k = 0; k < Math.max(1, Math.round((2 * Math.PI * r) / 4)) && !foot; k++) {
         const ang = Math.atan2(fo.z, fo.x) + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (4 / Math.max(r, 1));
         const x = door.x + Math.cos(ang) * r;
         const z = door.z + Math.sin(ang) * r;
-        if (!onGround(x, z, STATION_PAD.x / 2 + 1)) continue;
+        if (!onDeck(x, z, STATION_PAD.x / 2 + 1)) continue;
         if (lanes.some((l) => Math.hypot(l.x - x, l.z - z) < STATION_PAD.x + CARPET_CLEAR_M)) continue;
         const sp = span(grid, x, z, 1, 1, sky);
         if (sp && sp.hi >= sky) foot = { x, z, ...sp };
       }
+    // Where the tree's crown covers all its base (Servicios' rings), a jetty out of the base to the nearest open sky
+    // (ours, 2026-11-21): the station at its end, the jetty its landing.
+    let jetty: Rect | undefined;
+    if (!foot) {
+      const B = t.base;
+      const cx = (B.x0 + B.x1) / 2;
+      const cz = (B.z0 + B.z1) / 2;
+      const hx = STATION_PAD.x / 2 + 0.4;
+      const hz = STATION_PAD.z / 2 + 0.3;
+      for (let d = 2; d < 140 && !foot; d += 2)
+        for (const [ux, uz] of [[fo.x, fo.z], [fo.z, -fo.x], [-fo.z, fo.x], [-fo.x, -fo.z]] as const) {
+          if (foot) break;
+          for (const off of [0, 8, -8, 16, -16]) {
+            const edge = ux ? (ux > 0 ? B.x1 : B.x0) : uz > 0 ? B.z1 : B.z0;
+            const x = ux ? edge + ux * (d + hz) : cx + off;
+            const z = uz ? edge + uz * (d + hz) : cz + off;
+            if (lanes.some((l) => Math.hypot(l.x - x, l.z - z) < STATION_PAD.x + CARPET_CLEAR_M)) continue;
+            const sp = span(grid, x, z, 1, 1, sky);
+            if (!sp || sp.hi < sky) continue;
+            const w = ux ? hz : hx;
+            const v = ux ? hx : hz;
+            const far = ux ? x + ux * w : z + uz * w;
+            jetty = ux ? { x0: Math.min(edge, far), x1: Math.max(edge, far), z0: z - v, z1: z + v } : { x0: x - w, x1: x + w, z0: Math.min(edge, far), z1: Math.max(edge, far) };
+            foot = { x, z, ...sp };
+            break;
+          }
+        }
+    }
     if (!foot) continue;
     lanes.push(foot);
-    out.push({ id: `${t.id}:pie:alfombras`, area: `${t.id}:tronco`, tower: t.id, building: t.building, kind: "pie", label: "Pie", x: foot.x, y: 0, z: foot.z, out: fo, reach: "santuario", lane: { x: foot.x, z: foot.z, lo: 1, hi: foot.hi } });
+    out.push({ id: `${t.id}:pie:alfombras`, area: `${t.id}:tronco`, tower: t.id, building: t.building, kind: "pie", label: "Pie", x: foot.x, y: 0, z: foot.z, out: fo, reach: "santuario", lane: { x: foot.x, z: foot.z, lo: 1, hi: foot.hi }, ...(jetty ? { landing: jetty } : {}) });
   }
   return out;
 }

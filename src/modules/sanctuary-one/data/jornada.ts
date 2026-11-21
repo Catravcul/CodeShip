@@ -3,7 +3,9 @@ import { carpetRoute, type CarpetStation } from "./alfombras";
 import { model } from "./catalog";
 import type { Instance, S1Area, S1Layout } from "./layout";
 import { ROOM_OWNERS } from "./models/residencia";
-import { LOBES, STAFF, WATER_Y, lobeRadius } from "./site";
+import { BASE, LOBES, STAFF, TOWERS, WATER_Y, lobeRadius } from "./site";
+import { TRUNK_HALF } from "./paso";
+import { TREE } from "@modules/aerial-sanctuary/data/facts";
 import type { Activity, Waypoint } from "../domain/motion";
 
 /**
@@ -29,7 +31,14 @@ export const TRAINING_FLOORS = ["gimnasio", "calistenia-parkour", "crossfit", "y
 
 /** Is (x, z) on ice or land (else it is sea)? */
 export function onGround(x: number, z: number): boolean {
-  return LOBES.some((l, i) => l.r > 0 && Math.hypot(x - l.x, z - l.z) <= lobeRadius(l, i, x, z));
+  return LOBES.some((l, i) => l.r > 0 && Math.hypot(x - l.x, z - l.z) <= lobeRadius(l, i, x, z)) || onBase(x, z);
+}
+
+/** Is (x, z) on a tree's base at sea (layout.ts BASE: its deck round the trunk, not its hole)? */
+function onBase(x: number, z: number): boolean {
+  const OH = TRUNK_HALF + TREE.wall.value;
+  const BH = OH + BASE.walk;
+  return TOWERS.some((t) => Math.abs(x - t.x) <= BH && Math.abs(z - t.z) <= BH && (Math.abs(x - t.x) >= OH || Math.abs(z - t.z) >= OH));
 }
 
 const FLOORISH = /suelo|alfombras|bahia|bancal|zona-/;

@@ -3,7 +3,7 @@ import { areaCategory, capAt, CAPS } from "./area-kinds";
 
 describe("categorías y ámbito de las áreas del santuario 1", () => {
   it("cada piso por su función", () => {
-    expect(areaCategory({ id: "entrenamiento:piso-1", furnish: "gimnasio-0" })).toBe("Gimnasio");
+    expect(areaCategory({ id: "entrenamiento:piso-1", furnish: "gimnasio" })).toBe("Gimnasio");
     expect(areaCategory({ id: "servicios:piso-1", furnish: "restaurante" })).toBe("Cocina");
     expect(areaCategory({ id: "servicios:piso-4", furnish: "hospital-veterinario" })).toBe("Animales");
     expect(areaCategory({ id: "servicios:anillo" })).toBe("Anillos");

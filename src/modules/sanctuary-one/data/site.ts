@@ -99,7 +99,14 @@ export interface TowerSpec {
 const FIRST_Y = 64;
 const F = (name: string, desc: string, furnish?: string) => ({ name, desc, ...(furnish ? { furnish } : {}) });
 
-export const TOWERS: readonly TowerSpec[] = [
+/**
+ * The roomy buildings as they were until 2026-11-20 (63 floors: two gym floors, 8 of yoga, 7 classrooms, 5 music
+ * rooms, 4 dojos, 3 hospital floors…), kept for when the sanctuary has people enough to fill them (Berón 2026-11-21:
+ * «dejar los existentes guardados y reemplazarlos por otros edificios con pisos más pequeños»). Their floor plans stay
+ * in `floors/`; `buildS1Layout(k, o, TOWERS_AMPLIOS)` builds them with today's tree rules. The exact scene of that day
+ * is the git tag `edificios-amplios-2026-11-20`.
+ */
+export const TOWERS_AMPLIOS: readonly TowerSpec[] = [
   {
     id: "servicios",
     building: "Servicios",
@@ -252,6 +259,64 @@ export const TOWERS: readonly TowerSpec[] = [
       F("Habitaciones (5)", "2 habitaciones", "habitaciones-5"),
     ],
   },
+];
+
+/**
+ * The buildings for the people there are now (Berón 2026-11-21: «se va a reconstruir los edificios en base a los
+ * miembros actuales con la idea de que muy pocas veces van a coincidir todos en el mismo piso»): 33 floors instead of
+ * 63. One gym (plate machines, free weights and cardio together), one yoga room, one classroom, one music room, one
+ * ballet studio, two martial arts rooms, one hospital (emergencies, theatres and ICU), cría with the cultured meat,
+ * one lab per science and one vertical farm. Every floor at its real size, straight out of the trunk, two to a level
+ * on opposite sides (reglas.md §2.7).
+ */
+export const TOWERS: readonly TowerSpec[] = [
+  {
+    ...TOWERS_AMPLIOS[0]!,
+    source: `${S.csTowers}; ${S.csFloors}; pisos reducidos a los miembros actuales (Berón 2026-11-21)`,
+    floors: [
+      F("Restaurante", "Cocina abierta en el centro y el comedor gourmet para 30 en su anillo", "restaurante"),
+      F("Hospital", "Urgencias, consultas, paritorios, 2 quirófanos, UCI y aislamiento; las camas en su anillo", "hospital"),
+      F("Hospital veterinario", "Para animales de todo tamaño, con anillo de grandes animales", "hospital-veterinario"),
+      F("Cría y carne cultivada", "Recintos de crías, cocina de leche y el laboratorio de carne para los depredadores", "cria-carne-cultivada"),
+      F("Sala de asambleas", "Donde se reúne el santuario", "asambleas"),
+      F("Sala de guardia", "La guardia y sus puestos", "guardia"),
+    ],
+  },
+  {
+    ...TOWERS_AMPLIOS[1]!,
+    source: `${S.csTowers}; ${S.csFloors}; un piso por actividad para los miembros actuales (Berón 2026-11-21)`,
+    floors: [
+      F("Gimnasio", "Una máquina de placas de cada tipo, peso libre y cardio", "gimnasio"),
+      F("Calistenia y parkour", "Barras, anillas, paralelas y bandera; muros, lache, cajones y bloques", "calistenia-parkour"),
+      F("Crossfit", "Box de crossfit: rig, plataformas, remos, bicis, skiergs, trineo y kettlebells", "crossfit"),
+      F("Sala de yoga", "Hatha y Ashtanga a sus horas: 8 esterillas, tarima del maestro y altar", "yoga-hatha-occidental-1"),
+      F("Estudio de ballet", "15 × 12 m: suelo flotante, espejos con barra doble, barras del centro, piano y vestuario", "ballet-grande"),
+      F("Dojo", "Judo y karate: tatami de 10 × 10 m y kamiza", "dojo-judo"),
+      F("Sala de contacto", "Kickboxing y MMA: ring, sacos pesados y pera", "dojo-kickboxing"),
+      F("Aula", "24 pupitres y pizarra: cada materia a su hora", "aula-historia"),
+      F("Sala de música", "Batería, amplificadores, teclado, voces y paredes tratadas", "musica-ensayo"),
+    ],
+  },
+  {
+    ...TOWERS_AMPLIOS[2]!,
+    floors: [
+      F("Química", "Síntesis y análisis: campanas, rotavapores, HPLC y RMN", "quimica"),
+      F("Biología", "Cultivo y biología molecular, con la fachada de fotobiorreactores", "biologia"),
+      F("Informática", "El clúster de IA local", "informatica"),
+    ],
+  },
+  {
+    ...TOWERS_AMPLIOS[3]!,
+    floors: [
+      F("Construcción", "Maquinaria, material, herramientas y taller de obra", "construccion"),
+      F("Mecánica", "Taller de vehículos y máquinas", "mecanica"),
+      F("Estudio textil", "Telares, rueca, lanas, tintes, corte y costura", "textil"),
+      F("Huerto vertical", "Estantes de cultivo LED, vivero y dosificación", "huerto-vertical-1"),
+      F("Garaje del submarino", "El submarino de obra", "garaje-submarino"),
+    ],
+  },
+  TOWERS_AMPLIOS[4]!,
+  TOWERS_AMPLIOS[5]!,
 ];
 
 /** The wild families (BuildWildlifePopulation): species, nest and spread. Marine nests are in the lagoon's water. */

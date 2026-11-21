@@ -125,6 +125,18 @@ salud.
 | 62 | **Yoga**: un piso daba para dos clases | Hecho: 8 pisos pequeños de 14 × 16 m, uno por clase (Hatha y Ashtanga, sala occidental y tradicional, 1 y 2): 8 esterillas en dos filas, tarima del maestro, altar; la tradicional con durries, lámparas y kund |
 | 63 | ¿**Revisión de realismo** de todos los pisos? | Hecha y aplicada: ver la tabla siguiente (yoga y calistenia/parkour/crossfit separados en pisos de una actividad) |
 
+### Octava lista (2026-11-21)
+
+| # | Pedido | Estado |
+| --- | --- | --- |
+| 64 | Pisos enormes llenos de maquinaria para muchísimas personas que no hay: **guardar los edificios actuales** y **reemplazarlos por otros con pisos más pequeños**, hechos para los miembros actuales (casi nunca coinciden todos en un piso) | Hecho: los de antes quedan en `site.ts` `TOWERS_AMPLIOS` (63 pisos, con sus planos en `floors/`; `buildS1Layout(k, o, TOWERS_AMPLIOS)` los vuelve a construir) y en la etiqueta git `edificios-amplios-2026-11-20`. `TOWERS` tiene 33 pisos |
+| 65 | Pisos repetidos: **un solo piso de yoga, uno de aula, el gimnasio en uno** (antes dos); revisar qué pisos pueden ser más pequeños o fusionarse; quizá **fusionar el hospital** | Hecho (`floors/reducidos.ts`): gimnasio (una máquina de placas de cada tipo, peso libre y cardio juntos), una sala de yoga (Hatha y Ashtanga a sus horas), un aula (cada materia a su hora), una sala de música, un estudio de ballet, dojo (judo y karate) y sala de contacto (kickboxing y MMA), calistenia y parkour en un piso, hospital en uno (urgencias, consultas, paritorios, 2 quirófanos, 3 UCI y 2 aislamientos; 24 camas en su anillo), cría y carne cultivada en uno, química y biología un laboratorio cada una, un huerto vertical; fuera los 3 pisos libres de Ciencias |
+| 66 | **Columnas** en el tronco y las ramas para orientarse al nadar, como un armazón | Hecho: `TowerShape.frame` (`layout.ts`): un poste en cada esquina del tronco de la raíz al techo, una viga alrededor bajo las puertas de cada nivel, y en cada rama sus cantos y los cuatro postes de su columna. Se dibuja, no es sólido (no estorba al nadar). Test en `reglas.test.ts` |
+| 67 | Los pisos **tienen patas**: quitarlas | Hecho: fuera las tornapuntas de los pisos y las puntas (`s1-models.ts`) |
+| 68 | **Los pisos solo nacen del tronco**; las ramas, solo para los anillos frutales (deshacer las ramas de los pisos pequeños, la regla de rectas y torcidas y los 4 pisos pequeños por nivel) | Hecho: dos pisos por nivel en lados opuestos, cada uno de su tamaño real pegado a su cara (centrado si es más estrecho), con su puerta en el tronco. Tests: «todos los pisos nacen del tronco», «las ramas solo llevan a las puntas» |
+| 69 | Las ramas se agrandaron para el submarino: **volver a hacerlas pequeñas** (el submarino ya no pasa por ellas) | Hecho: `paso.ts` `ORCHARD_BRANCH` vuelve al tubo de 10,6 m de Cold Sanctuary; la regla del submarino queda para el tronco y sus puertas |
+| 70 | **Aros de puerta** muy anchos: más delgados; aros y columnas **marrones**, **suelo de los pisos marrón**; ¿una imagen para que parezcan de **madera**? | Hecho: aros de 20 cm (antes 50) sin lámpara, aros de rama de 15 cm sin luz propia; aros, armazón, suelos de los pisos y anillos en madera con una textura de tablas dibujada en un lienzo (sin imagen que descargar, `woodTexture` en `s1-models.ts`), puesta por su tamaño real (tablas de 0,5 m). Los acabados propios de cada sala (caucho, tatami, linóleo) siguen encima |
+
 #### Revisión de realismo de los pisos (2026-11-20)
 
 Criterios: fuente real o de Cold Sanctuary, tamaño real de la sala, una función (o una clase) por piso, sin medio vacío (test), se llega a todo desde la puerta (test).

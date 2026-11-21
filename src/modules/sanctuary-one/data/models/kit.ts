@@ -57,6 +57,8 @@ export interface ModelDef {
   readonly travels?: "agua";
   /** Lit from within (a branch's ring, a carpet station's orrery): drawn with its own light, never shaded. */
   readonly glow?: boolean;
+  /** Drawn with the wood grain (the trees' door rings, Berón 2026-11-21: «una imagen sobre estos objetos para dar más sensación de madera»). */
+  readonly wood?: boolean;
 }
 
 export const CATEGORY: Readonly<Record<Category, { readonly label: string; readonly color?: number }>> = {

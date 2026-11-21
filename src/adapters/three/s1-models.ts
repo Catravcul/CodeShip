@@ -30,10 +30,87 @@ function paint(g: THREE.BufferGeometry, c: number): THREE.BufferGeometry {
 }
 
 /**
+ * The trees' wood (Berón 2026-11-21: «¿se podría usar una imagen sobre estos objetos para dar más sensación de
+ * madera?»): a plank texture drawn once on a canvas (no image to download: planks of 0,5 m with grain, knots and
+ * seams), laid on each face by its world position so a 40 m floor shows its planks at their size. Ours.
+ */
+let woodMap: THREE.CanvasTexture | undefined;
+function woodTexture(): THREE.Texture | undefined {
+  if (woodMap) return woodMap;
+  if (typeof document === "undefined") return undefined;
+  const c = document.createElement("canvas");
+  c.width = c.height = 256;
+  const g = c.getContext("2d");
+  if (!g) return undefined;
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const planks = 8;
+  const h = 256 / planks;
+  for (let i = 0; i < planks; i++) {
+    const tone = 0.85 + rnd() * 0.3;
+    g.fillStyle = `rgb(${Math.round(150 * tone)},${Math.round(105 * tone)},${Math.round(66 * tone)})`;
+    g.fillRect(0, i * h, 256, h);
+    // Grain: thin wavy lines along the plank.
+    for (let k = 0; k < 7; k++) {
+      const y0 = i * h + rnd() * h;
+      g.strokeStyle = `rgba(70,42,22,${0.15 + rnd() * 0.25})`;
+      g.lineWidth = 0.6 + rnd();
+      g.beginPath();
+      for (let x = 0; x <= 256; x += 8) g.lineTo(x, y0 + Math.sin(x / 23 + k) * 1.6);
+      g.stroke();
+    }
+    if (rnd() < 0.5) {
+      g.fillStyle = "rgba(60,35,18,0.55)";
+      g.beginPath();
+      g.ellipse(rnd() * 256, i * h + h / 2, 5, 2.5, 0, 0, Math.PI * 2);
+      g.fill();
+    }
+    // The seam between planks and the butt joint.
+    g.fillStyle = "rgba(40,24,12,0.8)";
+    g.fillRect(0, i * h, 256, 1.5);
+    g.fillRect(((i * 97) % 256), i * h, 1.5, h);
+  }
+  woodMap = new THREE.CanvasTexture(c);
+  woodMap.wrapS = woodMap.wrapT = THREE.RepeatWrapping;
+  woodMap.colorSpace = THREE.SRGBColorSpace;
+  woodMap.anisotropy = 4;
+  return woodMap;
+}
+
+/** How many metres the texture covers (8 planks of 0,5 m). */
+const WOOD_M = 4;
+
+/** UVs from the position, face by face (the grain along a beam's length), so the planks keep their size anywhere. */
+function woodUV(g: THREE.BufferGeometry): THREE.BufferGeometry {
+  const n = g.index ? g.toNonIndexed() : g;
+  if (!n.attributes.normal) n.computeVertexNormals();
+  const pos = n.attributes.position!;
+  const nor = n.attributes.normal!;
+  const uv = new Float32Array(pos.count * 2);
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const ax = Math.abs(nor.getX(i)), ay = Math.abs(nor.getY(i)), az = Math.abs(nor.getZ(i));
+    const [u, v] = ay >= ax && ay >= az ? [x, z] : ax >= az ? [y, z] : [y, x];
+    uv[2 * i] = u / WOOD_M;
+    uv[2 * i + 1] = v / WOOD_M;
+  }
+  n.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+  return n;
+}
+
+/** A wood material: the plank texture over the colour (brown when there is no canvas, as in the tests). */
+const woodMat = (c: number, o: Partial<THREE.MeshStandardMaterialParameters> = {}) => {
+  const map = woodTexture();
+  return mat(map ? 0xffffff : c, { ...(map ? { map, color: new THREE.Color(c).lerp(new THREE.Color(0xffffff), 0.6) } : {}), roughness: 0.8, ...o });
+};
+
+/**
  * A model's geometry at its true size, standing on y = 0, its front towards −z, with vertex colours (each part of a
  * composite its own; `plain` paints it all white, for a recoloured copy whose material carries the colour).
  */
 function geometryOf(d: ModelDef, plain = false): THREE.BufferGeometry {
+  // Wood: white under its wood material (the grain and the model's colour come from it, woodMat).
+  if (d.parts && d.wood) return woodUV(mergeGeometries(d.parts.map(([cx, cy, cz, sx, sy, sz]) => paint(box(cx - sx / 2, cx + sx / 2, cy - sy / 2, cy + sy / 2, cz - sz / 2, cz + sz / 2), 0xffffff))));
   if (d.parts) return mergeGeometries(d.parts.map(([cx, cy, cz, sx, sy, sz, c]) => paint(box(cx - sx / 2, cx + sx / 2, cy - sy / 2, cy + sy / 2, cz - sz / 2, cz + sz / 2), plain ? 0xffffff : c ?? d.color)));
   const g = shapeOf(d);
   return g.getAttribute("color") && !plain ? g : paint(g, plain ? 0xffffff : d.color);
@@ -167,31 +244,20 @@ export function buildS1Scene(L: S1Layout): S1Scene {
   add(land, mat(0x7d8460), "tierra");
   add(thresholds, mat(0x8fa2ad), "umbrales");
   add(decks, mat(0x6f8a5a), "puntas-y-techos");
-  // Tower floors: slab and struts (Cold Sanctuary's HelixTower: «tornapuntas» under each floor); no railing, Berón: «los pisos no deben tener barrera».
+  // Tower floors: wooden slabs straight out of the trunk, no struts under them (Berón 2026-11-21: «los pisos parece que se
+  // han creado con patas, se deben quitar… el suelo de los pisos también debería ser marrón para dar la impresión de
+  // madera»); no railing (Berón: «los pisos no deben tener barrera»). The trees' frame: posts and beams of wood.
   const slabs: THREE.BufferGeometry[] = [];
-  const struts: THREE.BufferGeometry[] = [];
   const slabsRing: THREE.BufferGeometry[] = [];
+  const frame: THREE.BufferGeometry[] = [];
   for (const t of L.towers) {
-    for (const f of t.floors) {
-      const r = f.rect;
-      slabs.push(box(r.x0, r.x1, f.y - 0.6, f.y - 0.01, r.z0, r.z1));
-      const w = r.x1 - r.x0;
-      const d = r.z1 - r.z0;
-      for (const [sx, sz] of [[0.15, 0.15], [0.85, 0.15], [0.15, 0.85], [0.85, 0.85]] as const) {
-        const cx = r.x0 + w * sx;
-        const cz = r.z0 + d * sz;
-        struts.push(box(cx - 0.4, cx + 0.4, f.y - 4.6, f.y - 0.6, cz - 0.4, cz + 0.4));
-      }
-    }
-    for (const ring of t.rings) for (const r of ring.rects) slabsRing.push(box(r.x0, r.x1, ring.y - 0.3, ring.y - 0.01, r.z0, r.z1));
-    for (const tip of t.tips) {
-      const r = tip.rect;
-      struts.push(box(r.x0 + 2, r.x0 + 2.6, tip.y - 4.5, tip.y - 0.5, r.z0 + 2, r.z0 + 2.6));
-    }
+    for (const f of t.floors) slabs.push(woodUV(box(f.rect.x0, f.rect.x1, f.y - 0.6, f.y - 0.01, f.rect.z0, f.rect.z1)));
+    for (const ring of t.rings) for (const r of ring.rects) slabsRing.push(woodUV(box(r.x0, r.x1, ring.y - 0.3, ring.y - 0.01, r.z0, r.z1)));
+    for (const q of t.frame) frame.push(woodUV(box(q.x0, q.x1, q.y0, q.y1, q.z0, q.z1)));
   }
-  add(slabs, mat(0xc9cfd4), "losas");
-  add(slabsRing, mat(0x7a6654), "anillos");
-  add(struts, mat(0x7d8a94), "tornapuntas");
+  add(slabs, woodMat(0x9a6a40), "losas");
+  add(slabsRing, woodMat(0x7a5232), "anillos");
+  add(frame, woodMat(0x6b4526), "armazon");
   // Water: the trunks, their branches and columns (Cold Sanctuary's magic: water standing in a field) and the sea.
   const water: THREE.BufferGeometry[] = [];
   for (const w of L.world.waters) if (w.id !== "mar") water.push(box(w.x0, w.x1, w.yBottom, w.yTop, w.z0, w.z1));
@@ -239,7 +305,7 @@ export function buildS1Scene(L: S1Layout): S1Scene {
     const gk = `${d.id}|${tint !== undefined}`;
     const geo = geos.get(gk) ?? geometryOf(d, tint !== undefined);
     geos.set(gk, geo);
-    const material = d.glow ? new THREE.MeshBasicMaterial({ color: tint ?? 0xffffff, vertexColors: true }) : mat(tint ?? 0xffffff, { vertexColors: true });
+    const material = d.glow ? new THREE.MeshBasicMaterial({ color: tint ?? 0xffffff, vertexColors: true }) : d.wood ? woodMat(tint ?? d.color, { vertexColors: true }) : mat(tint ?? 0xffffff, { vertexColors: true });
     const mesh = new THREE.InstancedMesh(geo, material, list.length);
     list.forEach((it, n) => {
       q.setFromAxisAngle(up, it.rot);

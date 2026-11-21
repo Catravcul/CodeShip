@@ -8,7 +8,7 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 - **Edificios árbol para los miembros que hay**: 33 pisos en lugar de 63 (un gimnasio, una sala de yoga, un aula, una
   sala de música, un estudio de ballet, dos salas de artes marciales, un hospital, cría con carne cultivada, un
   laboratorio por ciencia, un huerto vertical); los amplios, guardados (`TOWERS_AMPLIOS`, rama
-  `edificios-amplios`). Los pisos solo nacen del tronco, dos por nivel y sin patas; las ramas solo van a
+  `edificios-amplios`). Los pisos solo nacen del tronco, dos por nivel, sin patas y apoyados en el tronco con tornapuntas diagonales; las ramas solo van a
   las puntas, otra vez del tamaño de Cold Sanctuary; armazón de madera en tronco y ramas para orientarse nadando;
   aros de puerta delgados y suelos, aros y armazón de madera con textura de tablas.
   [docs/design/santuario1.md](docs/design/santuario1.md) #64–70, [docs/design/reglas.md](docs/design/reglas.md) §2.7

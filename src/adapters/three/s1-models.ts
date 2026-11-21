@@ -244,9 +244,9 @@ export function buildS1Scene(L: S1Layout): S1Scene {
   add(land, mat(0x7d8460), "tierra");
   add(thresholds, mat(0x8fa2ad), "umbrales");
   add(decks, mat(0x6f8a5a), "puntas-y-techos");
-  // Tower floors: wooden slabs straight out of the trunk, no struts under them (Berón 2026-11-21: «los pisos parece que se
-  // han creado con patas, se deben quitar… el suelo de los pisos también debería ser marrón para dar la impresión de
-  // madera»); no railing (Berón: «los pisos no deben tener barrera»). The trees' frame: posts and beams of wood.
+  // Tower floors: wooden slabs straight out of the trunk, held by diagonal braces instead of table legs (Berón
+  // 2026-11-21: «el piso debería ser levantado por columnas diagonales que las apoyen en el tronco… el suelo de los pisos
+  // también debería ser marrón»); no railing (Berón: «los pisos no deben tener barrera»). The trees' frame: wooden posts.
   const slabs: THREE.BufferGeometry[] = [];
   const slabsRing: THREE.BufferGeometry[] = [];
   const frame: THREE.BufferGeometry[] = [];
@@ -254,6 +254,15 @@ export function buildS1Scene(L: S1Layout): S1Scene {
     for (const f of t.floors) slabs.push(woodUV(box(f.rect.x0, f.rect.x1, f.y - 0.6, f.y - 0.01, f.rect.z0, f.rect.z1)));
     for (const ring of t.rings) for (const r of ring.rects) slabsRing.push(woodUV(box(r.x0, r.x1, ring.y - 0.3, ring.y - 0.01, r.z0, r.z1)));
     for (const q of t.frame) frame.push(woodUV(box(q.x0, q.x1, q.y0, q.y1, q.z0, q.z1)));
+    // The floors' diagonal braces from the trunk (layout.ts `braces`), 0,4 m square.
+    for (const { foot, head } of t.braces) {
+      const a = new THREE.Vector3(foot.x, foot.y, foot.z);
+      const d = new THREE.Vector3(head.x, head.y, head.z).sub(a);
+      const g = new THREE.BoxGeometry(0.4, d.length(), 0.4);
+      g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.clone().normalize()));
+      g.translate(a.x + d.x / 2, a.y + d.y / 2, a.z + d.z / 2);
+      frame.push(woodUV(g));
+    }
   }
   add(slabs, woodMat(0x9a6a40), "losas");
   add(slabsRing, woodMat(0x7a5232), "anillos");

@@ -65,6 +65,9 @@ export interface S1Area {
   readonly link?: { readonly tower: string; readonly inner: { readonly x: number; readonly z: number } };
 }
 
+/** A point in the world, m. */
+export type Point3 = { readonly x: number; readonly y: number; readonly z: number };
+
 export interface TowerShape {
   readonly id: string;
   readonly building: string;
@@ -77,6 +80,11 @@ export interface TowerShape {
   readonly rings: readonly { readonly rects: readonly Rect[]; readonly y: number }[];
   /** The wooden frame (FRAME): the trunk's corner posts and a beam round it at each level, and the edges of each branch. Drawn, never solid. */
   readonly frame: readonly Solid[];
+  /**
+   * The floors' braces (Berón 2026-11-21: «el piso debería ser levantado por columnas diagonales que las apoyen en el
+   * tronco»): two wooden struts under each floor, from the trunk's face up to the floor's underside. World points.
+   */
+  readonly braces: readonly { readonly foot: Point3; readonly head: Point3 }[];
   /** The ground door: outside on the ice, and inside in the trunk's water. */
   readonly ground: { readonly out: { readonly x: number; readonly z: number }; readonly inner: { readonly x: number; readonly z: number } };
 }
@@ -243,7 +251,7 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
   }
   const gOut = side(S(0), door.x, OH + 3);
   const gIn = side(S(0), door.x, WH - 1.5);
-  const shape: TowerShape = { id: t.id, building: t.building, x: o.x, z: o.z, rootHeight, floors: [], tips: [], rings: [], frame: [], ground: { out: { x: o.x + gOut.x, z: o.z + gOut.z }, inner: { x: o.x + gIn.x, z: o.z + gIn.z } } };
+  const shape: TowerShape = { id: t.id, building: t.building, x: o.x, z: o.z, rootHeight, floors: [], tips: [], rings: [], frame: [], braces: [], ground: { out: { x: o.x + gOut.x, z: o.z + gOut.z }, inner: { x: o.x + gIn.x, z: o.z + gIn.z } } };
   // The wooden frame (Berón 2026-11-21: «columnas para el tronco y ramas… como un armazón»): a bar between two points of
   // a side's frame (x, z) and two heights, FRAME.beam thick.
   const B = FRAME.beam;
@@ -288,6 +296,14 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
       gapsOf[s]!.push({ from: dx - door.w / 2, to: dx + door.w / 2, y0: y, y1: y + door.h });
       doorKit(s, dx, y, area);
       (shape.floors as TowerShape["floors"][number][]).push({ rect, y, name: f.name || "Piso libre" });
+      // Its two braces: feet on the trunk's face under the floor (inside the face), heads under the slab 70 % out.
+      const reach = Math.min(9, 0.7 * D);
+      for (const u of [0.25, 0.75]) {
+        const bx = Math.min(OH - 1, Math.max(-OH + 1, x0 + W * u));
+        const fo = side(S(s), bx, OH);
+        const he = side(S(s), bx, OH + reach);
+        (shape.braces as TowerShape["braces"][number][]).push({ foot: { x: o.x + fo.x, y: y - 0.6 - reach, z: o.z + fo.z }, head: { x: o.x + he.x, y: y - 0.6, z: o.z + he.z } });
+      }
       // The floor's own frame: its centre, +z away from the trunk.
       const c = side(S(s), cxS, z0 + D / 2);
       const centre = { x: o.x + c.x, z: o.z + c.z };

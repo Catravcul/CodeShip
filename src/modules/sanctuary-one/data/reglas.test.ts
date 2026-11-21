@@ -74,6 +74,22 @@ describe("reglas de los pisos y de los árboles (Berón 2026-11-20)", () => {
     }
   });
 
+  it("cada piso se apoya en el tronco con dos tornapuntas diagonales, sin patas (Berón 2026-11-21)", () => {
+    const OH = TRUNK_HALF + TREE.wall.value;
+    for (const t of L.towers) {
+      expect(t.braces.length, t.id).toBe(2 * t.floors.length);
+      for (const b of t.braces) {
+        // The foot on the trunk's acrylic face, the head out and up under a floor.
+        const fx = Math.abs(b.foot.x - t.x), fz = Math.abs(b.foot.z - t.z);
+        expect(Math.abs(Math.max(fx, fz) - OH), t.id).toBeLessThan(0.01);
+        expect(Math.min(fx, fz), t.id).toBeLessThanOrEqual(OH);
+        expect(b.head.y - b.foot.y, t.id).toBeGreaterThan(3);
+        const under = t.floors.some((f) => Math.abs(f.y - 0.6 - b.head.y) < 0.01 && b.head.x >= f.rect.x0 && b.head.x <= f.rect.x1 && b.head.z >= f.rect.z0 && b.head.z <= f.rect.z1);
+        expect(under, t.id).toBe(true);
+      }
+    }
+  });
+
   it("cada árbol tiene su armazón de madera: cuatro postes en el tronco, una viga por nivel y los cantos de cada rama", () => {
     for (const t of L.towers) {
       const posts = t.frame.filter((q) => q.y1 - q.y0 > t.rootHeight * 0.9);

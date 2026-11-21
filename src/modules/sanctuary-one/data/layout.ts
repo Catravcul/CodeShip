@@ -1,6 +1,6 @@
 import { TREE } from "@modules/aerial-sanctuary/data/facts";
 import { carpetStations, STATION_PAD, type CarpetStation } from "./alfombras";
-import { ORCHARD_BRANCH, ROOM_BRANCH_HALF, TRUNK_HALF } from "./paso";
+import { ORCHARD_BRANCH, TRUNK_HALF } from "./paso";
 import type { Floor, Rect, Solid, Water, WalkWorld } from "@modules/aerial-sanctuary/domain/walk";
 import { wallWithGaps } from "@modules/aerial-sanctuary/domain/walk";
 import { CAP_NAME, LAGOON, LOBES, MAP_HALF, NESTS, SPECIES_MODEL, STAFF, TOWERS, WATER_Y, capOf, isLand, lobeRadius, type TowerSpec } from "./site";
@@ -75,6 +75,8 @@ export interface TowerShape {
   readonly tips: readonly { readonly rect: Rect; readonly y: number }[];
   /** The floors' U rings (their four decks). */
   readonly rings: readonly { readonly rects: readonly Rect[]; readonly y: number }[];
+  /** The wooden frame (FRAME): the trunk's corner posts and a beam round it at each level, and the edges of each branch. Drawn, never solid. */
+  readonly frame: readonly Solid[];
   /** The ground door: outside on the ice, and inside in the trunk's water. */
   readonly ground: { readonly out: { readonly x: number; readonly z: number }; readonly inner: { readonly x: number; readonly z: number } };
 }
@@ -171,70 +173,34 @@ export const treeWater = (area: string) => /:(tronco|rama)/.test(area);
  */
 export const TREE_CURRENT = 3;
 
-/** One floor in its level: a full one against the trunk, a compact one out at its branch's tip. */
-interface FloorSlot {
-  readonly f: TowerSpec["floors"][number];
-  /** 1-based, the floor's number in the tower (its area id). */
-  readonly fi: number;
-  readonly fp?: FloorPlan;
-  readonly compact: boolean;
-  /** A compact floor's plan, m (its width along its door's edge, its depth away from it). */
-  readonly w: number;
-  readonly d: number;
-}
-
-/** A level of the tree: two full floors on opposite sides, or up to four compact ones, one on each side. */
-export interface TreeLevel {
-  readonly compact: boolean;
-  readonly slots: readonly FloorSlot[];
-}
-
-/** How many full floors a level holds (opposite sides, never one over another), and how many compact ones. */
-export const FULL_PER_LEVEL = 2;
-export const COMPACT_PER_LEVEL = 4;
-/** A compact floor's branch (Berón 2026-11-20: «utilizar ramas en lugar de entradas directas al tronco… pueden nacer
- * en las puntas»): a water tube from the trunk out to the floor at the tip, twice Cold Sanctuary's door-sized one and
- * never too small for the largest submarine with people beside it (paso.ts). */
-export const ROOM_BRANCH = { half: ROOM_BRANCH_HALF } as const;
-
 /**
- * The tower's levels bottom up (Berón 2026-11-20: «el edificio árbol debe mostrar la estructura de árbol y debe ser
- * espacioso… los pisos grandes están reducidos a 2 y los pequeños a 4»): full floors (their plan the tower's) two to
- * a level on opposite sides, pinwheeling so none is over another; compact ones (a classroom, a studio, a dojo) four to
- * a level, one on each side, each at the tip of its own branch, out past the full floors' squares.
+ * Two floors to a level, on opposite sides of the trunk, pinwheeling level after level so none is over the next one
+ * (Cold Sanctuary's HelixTower). Every floor grows straight out of the trunk (Berón 2026-11-21: «los pisos solo nacen del
+ * tronco, las ramas quedan para los anillos frutales»); the other two sides of each level carry the orchard tips.
  */
-export function packFloors(t: Pick<TowerSpec, "floors" | "size">): TreeLevel[] {
-  const out: TreeLevel[] = [];
-  let cur: FloorSlot[] = [];
-  let curCompact = false;
-  const close = () => {
-    if (cur.length) out.push({ compact: curCompact, slots: cur });
-    cur = [];
-  };
-  t.floors.forEach((f, i) => {
+export const FLOORS_PER_LEVEL = 2;
+
+/** A tree's square, m (k = 1): its largest floor (every floor keeps its own plan inside it). */
+export function towerSquare(t: Pick<TowerSpec, "floors" | "size">): number {
+  let s = Math.max(t.size.x, t.size.z);
+  for (const f of t.floors) {
     const fp = f.furnish ? FLOOR_PLANS.get(f.furnish) : undefined;
-    const compact = !!fp && (fp.size.x < t.size.x || fp.size.z < t.size.z);
-    if (cur.length && (compact !== curCompact || cur.length >= (compact ? COMPACT_PER_LEVEL : FULL_PER_LEVEL))) close();
-    curCompact = compact;
-    cur.push({ f, fi: i + 1, fp, compact, w: fp ? fp.size.x : 0, d: fp ? fp.size.z : 0 });
-  });
-  close();
-  return out;
+    if (fp) s = Math.max(s, fp.size.x, fp.size.z);
+  }
+  return s;
 }
+
+/** The wooden frame of a tree (Berón 2026-11-21: «columnas para el tronco y ramas… para que las personas puedan orientarse fácilmente cuando nadan»): thin posts and beams, m. Ours. */
+export const FRAME = { beam: 0.3 } as const;
 
 /** One tree-building (Cold Sanctuary's HelixTower): the trunk, its doors, the floors pinwheeling round it and the tips at the end of their branches. */
 function buildTower(b: Built, t: TowerSpec, k: number): void {
   const WH = TRUNK_HALF;
   const OH = WH + TREE.wall.value;
   const gap = TREE.levelGap.value;
-  const FS = Math.max(t.size.x, t.size.z) * k;
+  const FS = towerSquare(t) * k;
   const door = TREE.door.value;
-  const tree = packFloors(t);
-  const levels = Math.max(1, tree.length);
-  /** Each level's count of compact levels under it (where its compact floors go takes turns). */
-  const compactIndex = tree.map((_, i) => tree.slice(0, i).filter((q) => q.compact).length);
-  /** The deepest compact floor straight out of the trunk (the second straight place starts past it). */
-  const deepest = Math.max(0, ...tree.flatMap((lv) => lv.slots.filter((q) => q.compact).map((q) => q.d * k)));
+  const levels = Math.max(1, Math.ceil(t.floors.length / FLOORS_PER_LEVEL));
   const levelY = (l: number) => t.firstY + (l - 1) * gap;
   const tipY = (l: number) => levelY(l) + TREE.tipRise.value;
   const rootHeight = levelY(levels) + TREE.tipRise.value + TREE.ringH.value + 7;
@@ -277,110 +243,76 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
   }
   const gOut = side(S(0), door.x, OH + 3);
   const gIn = side(S(0), door.x, WH - 1.5);
-  const shape: TowerShape = { id: t.id, building: t.building, x: o.x, z: o.z, rootHeight, floors: [], tips: [], rings: [], ground: { out: { x: o.x + gOut.x, z: o.z + gOut.z }, inner: { x: o.x + gIn.x, z: o.z + gIn.z } } };
+  const shape: TowerShape = { id: t.id, building: t.building, x: o.x, z: o.z, rootHeight, floors: [], tips: [], rings: [], frame: [], ground: { out: { x: o.x + gOut.x, z: o.z + gOut.z }, inner: { x: o.x + gIn.x, z: o.z + gIn.z } } };
+  // The wooden frame (Berón 2026-11-21: «columnas para el tronco y ramas… como un armazón»): a bar between two points of
+  // a side's frame (x, z) and two heights, FRAME.beam thick.
+  const B = FRAME.beam;
+  const bar = (sd: number, xa: number, xb: number, za: number, zb: number, ya: number, yb: number) => {
+    const r = sideRect(S(sd), Math.min(xa, xb) - B / 2, Math.max(xa, xb) + B / 2, Math.min(za, zb) - B / 2, Math.max(za, zb) + B / 2, o);
+    (shape.frame as Solid[]).push({ ...r, y0: Math.min(ya, yb) - B / 2, y1: Math.max(ya, yb) + B / 2 });
+  };
+  // The trunk's four corner posts, root to roof, just inside the acrylic, and a beam round it under each level's doors.
+  const IN = WH - B / 2;
+  for (const [px, pz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) bar(0, px * IN, px * IN, pz * IN, pz * IN, TRUNK_ROOT_Y, rootHeight - 0.5);
+  for (const yb of [0, ...Array.from({ length: levels }, (_, i) => levelY(i + 1))])
+    for (let sd = 0; sd < 4; sd++) bar(sd, -IN, IN, IN, IN, yb - B / 2, yb - B / 2);
   let tipIndex = 0;
+  let fi = 0;
   for (let l = 1; l <= levels; l++) {
     const y = levelY(l);
-    const lev = tree[l - 1];
-    const floorSides = lev?.compact ? [0, 1, 2, 3] : l % 2 === 1 ? [0, 2] : [1, 3];
-    // A level of compact floors has them at its tips: no orchard tips there.
-    const branchSides = lev?.compact ? [] : l % 2 === 1 ? [1, 3] : [0, 2];
-    for (const [si, s] of floorSides.entries()) {
-      const slot = lev?.slots[si];
-      if (!slot) continue;
-      const { f, fi, fp } = slot;
-      const y = levelY(l);
+    const floorSides = l % 2 === 1 ? [0, 2] : [1, 3];
+    const branchSides = l % 2 === 1 ? [1, 3] : [0, 2];
+    for (const s of floorSides) {
+      const f = t.floors[fi++];
+      if (!f) continue;
       const area = `${t.id}:piso-${fi}`;
-      // A full floor is the tower's square against the trunk; a compact one its own plan at the end of its branch, out
-      // past the full squares (Berón 2026-11-20: «pueden nacer en las puntas… una media de 1 rama torcida por cada 2
-      // rectas, distribuir las torcidas en vertical»), in one of three places that take turns side after side and level
-      // after level, so none is over another and each level has its bent ones on other sides than the next: straight out
-      // of the middle of the trunk's face past the full square (its door towards the trunk), straight on one floor
-      // further, or at the tip (TowerHelix's: the tip gap out on both axes; one bend, its door back along the branch, −x).
-      const q = slot.compact ? (compactIndex[l - 1]! + s) % 3 : -1;
-      const sideDoor = q === 1;
-      const W = !slot.compact ? FS : sideDoor ? slot.d * k : slot.w * k;
-      const D = !slot.compact ? FS : sideDoor ? slot.w * k : slot.d * k;
-      const far = OH + FS + t.tipGap;
-      const x0 = !slot.compact ? -OH : sideDoor ? FS - OH + t.tipGap : -W / 2;
-      const z0 = !slot.compact ? OH : sideDoor ? OH + t.tipGap : q === 0 ? far : far + deepest + t.tipGap;
+      const fp = f.furnish ? FLOOR_PLANS.get(f.furnish) : undefined;
+      // Each floor its own plan, straight out of the trunk's face (Berón 2026-11-21: «edificios con pisos más pequeños…
+      // los pisos solo nacen del tronco»): one as wide as the face or wider starts at its corner (Cold Sanctuary's
+      // pinwheel); a narrower one sits in the middle of the face. A floor with a ring keeps the tower's square (its U).
+      const W = fp && !fp.ring ? fp.size.x * k : FS;
+      const D = fp && !fp.ring ? fp.size.z * k : FS;
+      const x0 = W >= 2 * OH ? -OH : -W / 2;
+      const z0 = OH;
+      const cxS = x0 + W / 2;
       const rect = sideRect(S(s), x0, x0 + W, z0, z0 + D, o);
       const sp = spacing({ edificio: t.id, piso: area }, b.o) * k;
-      // Its door: Cold Sanctuary picks each floor's (pickDoors); here the nearest to 5 m whose way in is clear. A compact
-      // floor's in the middle of the edge its branch comes in by (along z for a side door, along x for a front one).
-      const dx = slot.compact ? (sideDoor ? z0 + D / 2 : x0 + W / 2) : fp ? doorFor(fp, sp, k, FS / 2 - OH, OH - door.w / 2, door.x, { edificio: t.id, piso: area }, b.o) : door.x;
+      // Its door: Cold Sanctuary picks each floor's (pickDoors); here the nearest to 5 m (the middle of a narrow floor)
+      // whose way in is clear, on the part of the face the floor touches.
+      const lo = Math.max(-OH, x0) + door.w / 2;
+      const hi = Math.min(OH, x0 + W) - door.w / 2;
+      const preferred = W >= 2 * OH ? door.x : cxS;
+      const dx = fp ? doorFor(fp, sp, k, cxS, lo, hi, preferred, { edificio: t.id, piso: area }, b.o) : Math.min(hi, Math.max(lo, preferred));
       b.floors.push({ id: `${area}`, ...rect, y, area });
-      // Where the way in starts in the trunk (a compact floor's: its branch's mouth).
-      let mouth = dx;
-      if (slot.compact) {
-        // The branch, a door-sized water tube out of the trunk along the face's normal: straight to the door, or to
-        // the tip's row and across; a lit ring where it leaves the trunk and where it turns.
-        const h = ROOM_BRANCH.half;
-        const key = `${area}:rama`;
-        const tube = (id: string, ax0: number, ax1: number, az0: number, az1: number) => b.waters.push({ id: `${key}-${id}`, ...sideRect(S(s), ax0, ax1, az0, az1, o), yBottom: y, yTop: y + 2 * h, area: key, open: true });
-        const ring = (x: number, z: number, along: "x" | "z") => {
-          const p = side(S(s), x, z);
-          place(b, "aro-rama", o.x + p.x, y, o.z + p.z, (S(s) * Math.PI) / 2 + (along === "x" ? Math.PI / 2 : 0), key, { edificio: t.id }, 1, undefined, false);
-        };
-        let turn: number, frame: { x: number; z: number }, rack: { x: number; z: number }, corner: { x: number; z: number };
-        if (sideDoor) {
-          mouth = TREE.mouthX.value;
-          tube("a", mouth - h, mouth + h, WH - 0.5, dx + h);
-          tube("b", mouth - h, x0, dx - h, dx + h);
-          ring(mouth + h + 0.3, dx, "x");
-          turn = (S(s) * Math.PI) / 2 + Math.PI / 2;
-          frame = { x: x0 - 0.5, z: dx };
-          rack = { x: x0 + 0.35, z: dx - h - 1.3 };
-          corner = { x: (mouth + x0) / 2, z: dx };
-        } else {
-          tube("a", mouth - h, mouth + h, WH - 0.5, z0);
-          turn = (S(s) * Math.PI) / 2;
-          frame = { x: dx, z: z0 - 0.5 };
-          rack = { x: dx + h + 1.3, z: z0 + 0.35 };
-          corner = { x: dx, z: (OH + z0) / 2 };
-        }
-        ring(mouth, OH + 0.3, "z");
-        const mid = side(S(s), corner.x, corner.z);
-        b.areas.push({ id: key, label: `Rama de ${f.name || "un piso"}`, desc: sideDoor ? "Tubo de agua del tronco a la punta, con un quiebre: se llega nadando" : "Tubo de agua recto del tronco a la puerta del piso: se llega nadando", building: t.building, x: o.x + mid.x, y, z: o.z + mid.z, detail: "completo" });
-        gapsOf[s]!.push({ from: mouth - h, to: mouth + h, y0: y, y1: y + 2 * h });
-        // The door at the branch's end, with its frame and the rack of masks beside it.
-        const fr = side(S(s), frame.x, frame.z);
-        place(b, "marco-puerta-tronco", o.x + fr.x, y, o.z + fr.z, turn, area, { edificio: t.id }, 1, undefined, false);
-        const rk = side(S(s), rack.x, rack.z);
-        place(b, "perchero-mascaras", o.x + rk.x, y, o.z + rk.z, turn, area, { edificio: t.id }, 1, undefined, false);
-      } else {
-        b.floors.push({ id: `${area}-umbral`, ...sideRect(S(s), dx - door.w / 2, dx + door.w / 2, WH - 0.6, OH + 0.2, o), y, area });
-        gapsOf[s]!.push({ from: dx - door.w / 2, to: dx + door.w / 2, y0: y, y1: y + door.h });
-        doorKit(s, dx, y, area);
-      }
+      b.floors.push({ id: `${area}-umbral`, ...sideRect(S(s), dx - door.w / 2, dx + door.w / 2, WH - 0.6, OH + 0.2, o), y, area });
+      gapsOf[s]!.push({ from: dx - door.w / 2, to: dx + door.w / 2, y0: y, y1: y + door.h });
+      doorKit(s, dx, y, area);
       (shape.floors as TowerShape["floors"][number][]).push({ rect, y, name: f.name || "Piso libre" });
-      // The floor's own frame: centre of the square, +z away from the trunk.
-      const c = side(S(s), x0 + W / 2, z0 + D / 2);
+      // The floor's own frame: its centre, +z away from the trunk.
+      const c = side(S(s), cxS, z0 + D / 2);
       const centre = { x: o.x + c.x, z: o.z + c.z };
-      // In through the door: a full floor's faces the trunk (+z in), a compact one's its branch (+x in).
-      const out = sideDoor ? side(S(s), x0 + 3, dx) : side(S(s), dx, z0 + 3);
-      const dir = sideDoor ? side(S(s), 1, 0) : side(S(s), 0, 1);
+      const out = side(S(s), dx, OH + 3);
+      const dir = side(S(s), 0, 1);
       const entry = { x: o.x + out.x, z: o.z + out.z, yaw: Math.atan2(-dir.x, -dir.z) };
-      const inn = side(S(s), mouth, WH - 1.5);
+      const inn = side(S(s), dx, WH - 1.5);
       b.areas.push({ id: area, label: f.name || `Piso libre (${t.building})`, desc: f.desc, building: t.building, x: centre.x, y, z: centre.z, detail: fp ? "completo" : "vacio", entry, ...(f.furnish ? { furnish: f.furnish } : {}), link: { tower: t.id, inner: { x: o.x + inn.x, z: o.z + inn.z } } });
       if (!fp) continue;
-      // Floor frame (Cold Sanctuary's: x across, z away from the trunk, whose face is at z = −FS/2) = the side's frame
-      // about the floor's centre; Unity's yaw carries over as is (the plan keeps Cold Sanctuary's x and z).
-      // A compact floor is turned a quarter: its plan's «away from the door» (+z) runs out along the side's +x.
-      const turn = (S(s) * Math.PI) / 2 + (sideDoor ? Math.PI / 2 : 0);
+      // Floor frame (Cold Sanctuary's: x across, z away from the trunk) = the side's frame about the floor's centre;
+      // Unity's yaw carries over as is (the plan keeps Cold Sanctuary's x and z).
+      const turn = (S(s) * Math.PI) / 2;
       for (const it of fp.items) {
-        const p = sideDoor ? side(S(s), it.z * sp, -it.x * sp) : side(S(s), it.x * sp, it.z * sp);
+        const p = side(S(s), it.x * sp, it.z * sp);
         place(b, it.model, centre.x + p.x, y + (it.y ?? 0), centre.z + p.z, turn + (it.rot ?? 0), area, { edificio: t.id, piso: area }, k, it.name);
       }
-      if (fp.ring && !slot.compact) {
+      if (fp.ring) {
         // The U ring 8 m up (Levels.cs RingDeck), its balcony against the trunk with its own door, and its things.
         const ry = y + RING.over;
         const ringArea = `${area}:anillo`;
         const hx = FS / 2 - RING.width * RING.inside;
         const ox = hx + RING.width;
         const zb = -FS / 2;
-        const cx = FS / 2 - OH;
-        const cz = OH + FS / 2;
+        const cx = cxS;
+        const cz = z0 + D / 2;
         const deck = (x0: number, x1: number, z0: number, z1: number, id: string) => b.floors.push({ id: `${ringArea}-${id}`, ...sideRect(S(s), cx + x0, cx + x1, cz + z0, cz + z1, o), y: ry, area: ringArea });
         deck(-ox, ox, hx, hx + RING.width, "frente");
         deck(hx, ox, zb, hx, "ala-1");
@@ -413,7 +345,15 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
         { id: `${key}-c`, ...sideRect(S(s), colC.x - ch, colC.x + ch, colC.z - ch, colC.z + ch, o), yBottom: y, yTop: ty + 1, area: key, open: true },
       );
       gapsOf[s]!.push({ from: mx - th, to: mx + th, y0: y, y1: y + 2 * thH });
-      // Its lit rings: where it leaves the trunk and where it turns towards the tip's column.
+      // Its frame: the long edges of both tubes and the column's four posts.
+      for (const yy of [y, y + 2 * thH]) {
+        bar(s, mx - th, mx - th, OH, colC.z + th, yy, yy);
+        bar(s, mx + th, mx + th, OH, colC.z - th, yy, yy);
+        bar(s, mx - th, colC.x - ch, colC.z + th, colC.z + th, yy, yy);
+        bar(s, mx + th, colC.x - ch, colC.z - th, colC.z - th, yy, yy);
+      }
+      for (const [px, pz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) bar(s, colC.x + px * ch, colC.x + px * ch, colC.z + pz * ch, colC.z + pz * ch, y, ty);
+      // Its rings: where it leaves the trunk and where it turns towards the tip's column.
       for (const [rx, rz, along] of [[mx, OH + 0.3, 0], [mx + th + 0.3, colC.z, 1]] as const) {
         const p = side(S(s), rx, rz);
         place(b, "aro-rama-huerto", o.x + p.x, y, o.z + p.z, (S(s) * Math.PI) / 2 + along * (Math.PI / 2), key, { edificio: t.id }, 1, undefined, false);
@@ -532,11 +472,11 @@ function blockingParts(d: ModelDef): readonly Part[] {
 }
 
 /**
- * The door of a furnished floor on the trunk's face (side frame x, within ±`limit`): the nearest to `preferred` with
+ * The door of a furnished floor on the trunk's face (side frame x, within [`lo`, `hi`]): the nearest to `preferred` with
  * a clear way 1,6 m wide and 9 m deep into the floor. `cx` is the floor centre's x in the side frame.
  */
-function doorFor(fp: FloorPlan, sp: number, k: number, cx: number, limit: number, preferred: number, where: { edificio: string; piso: string }, o: Overrides): number {
-  const FS = Math.max(fp.size.x, fp.size.z) * k;
+function doorFor(fp: FloorPlan, sp: number, k: number, cx: number, lo: number, hi: number, preferred: number, where: { edificio: string; piso: string }, o: Overrides): number {
+  const half = (fp.ring ? Math.max(fp.size.x, fp.size.z) : fp.size.z) * k / 2;
   const solids: Solid[] = [];
   for (const it of fp.items) {
     const r = resolve(model(it.model), where, o);
@@ -545,10 +485,10 @@ function doorFor(fp: FloorPlan, sp: number, k: number, cx: number, limit: number
     if (d.size.y <= 0.3) continue;
     solids.push(...solidsOf(d, it.x * sp, 0, it.z * sp, it.rot ?? 0, k, r.escala ?? 1));
   }
-  const clear = (x: number) => !solids.some((q) => q.x0 < x + 0.8 && q.x1 > x - 0.8 && q.z0 < -FS / 2 + 9 && q.y0 < 1.7);
-  for (let d = 0; d <= 2 * limit; d += 0.5)
-    for (const x of [preferred + d, preferred - d]) if (Math.abs(x) <= limit && clear(x - cx)) return x;
-  return preferred;
+  const clear = (x: number) => !solids.some((q) => q.x0 < x + 0.8 && q.x1 > x - 0.8 && q.z0 < -half + 9 && q.y0 < 1.7);
+  for (let d = 0; d <= hi - lo + Math.abs(preferred); d += 0.5)
+    for (const x of [preferred + d, preferred - d]) if (x >= lo && x <= hi && clear(x - cx)) return x;
+  return Math.min(hi, Math.max(lo, preferred));
 }
 
 /** Walking speeds of the animals by body (m/s): a stroll, not a run. */
@@ -635,7 +575,8 @@ function scatter(i: number, radius: number): { x: number; z: number } {
   return { x: Math.cos(a) * r, z: Math.sin(a) * r };
 }
 
-export function buildS1Layout(k = 1, o: Overrides = OVERRIDES): S1Layout {
+/** `towers`: today's buildings, or the roomy ones kept in site.ts (TOWERS_AMPLIOS). */
+export function buildS1Layout(k = 1, o: Overrides = OVERRIDES, towers: readonly TowerSpec[] = TOWERS): S1Layout {
   const b: Built = { o, floors: groundFloors(), waters: [], solids: [], walls: [], instances: [], areas: [], towers: [] };
   b.waters.push({ id: "mar", x0: -4000, x1: 4000, z0: -4000, z1: 4000, yBottom: -40, yTop: WATER_Y, area: "mar" });
   for (const cap of new Set(LOBES.filter((l) => l.r > 0).map(capOf))) {
@@ -644,7 +585,7 @@ export function buildS1Layout(k = 1, o: Overrides = OVERRIDES): S1Layout {
     b.areas.push({ id: `${ls.some(isLand) ? "tierra" : "hielo"}:${cap}`, label: CAP_NAME[cap] ?? cap, desc: ls.map((l) => l.name.split(":")[1]!.replace(/_/g, " ")).join(", "), x: big.x, y: 0, z: big.z, detail: "vacio" });
   }
   b.areas.push({ id: "mar", label: "La laguna y el mar", desc: "Ballenas, orcas, focas y morsas en la laguna central", x: LAGOON.x, y: WATER_Y, z: LAGOON.z, detail: "completo" });
-  for (const t of TOWERS) buildTower(b, t, k);
+  for (const t of towers) buildTower(b, t, k);
   cutTrunkHoles(b);
   // The carpet stations (alfombras.ts): on a landing out of each floor's and ring's edge, on each crown and at each foot.
   const carpets = carpetStations({ areas: b.areas, towers: b.towers, floors: b.floors, waters: b.waters, solids: b.solids });

@@ -4,7 +4,8 @@ import { FLOOR_PLANS } from "./floors";
 import { model } from "./catalog";
 import { carpetDestinations, carpetRoute, Grid, obstaclesOf, stationAt, touches, STATION_PAD, type Box, type CarpetStation } from "./alfombras";
 import { MODELS } from "./catalog";
-import { NEEDED, TRUNK_HALF, WATER_VEHICLES } from "./paso";
+import { NEEDED, ORCHARD_BRANCH, TRUNK_HALF, WATER_VEHICLES } from "./paso";
+import { FLOORS_PER_LEVEL } from "./layout";
 import { TREE } from "@modules/aerial-sanctuary/data/facts";
 
 /**
@@ -12,7 +13,6 @@ import { TREE } from "@modules/aerial-sanctuary/data/facts";
  * fails when a new floor or a new building breaks it.
  */
 const L = buildS1Layout(1.5);
-const small = new Set(L.areas.filter((a) => L.areas.some((r) => r.id === `${a.id}:rama`)).map((a) => a.id));
 
 /** How much of a floor plan has something within 3 m (2 m cells), its finish (> 60 % of the floor) left out. */
 function coverage(p: { size: { x: number; z: number }; items: readonly { model: string; x: number; z: number }[] }): number {
@@ -33,19 +33,57 @@ describe("reglas de los pisos y de los árboles (Berón 2026-11-20)", () => {
     for (const p of FLOOR_PLANS.values()) expect(coverage(p), p.id).toBeGreaterThanOrEqual(0.6);
   });
 
-  it("el submarino más grande pasa por cada rama y cada puerta del tronco con sitio para personas y animales (regla dinámica)", () => {
+  it("el submarino más grande pasa por el tronco y por cada puerta del tronco con sitio para personas y animales (regla dinámica)", () => {
     // Every vehicle that goes by water is in the rule (the catalogue's, not a hand list).
     expect(MODELS.filter((m) => m.travels === "agua").map((m) => m.id).sort()).toEqual(WATER_VEHICLES.map((m) => m.id).sort());
     expect(WATER_VEHICLES.length).toBeGreaterThan(0);
-    for (const w of L.world.waters.filter((q) => /:rama/.test(q.area) && !/-c$/.test(q.id))) {
-      const across = Math.min(w.x1 - w.x0, w.z1 - w.z0);
-      expect(across, w.id).toBeGreaterThanOrEqual(NEEDED.w);
-      expect(w.yTop - w.yBottom, w.id).toBeGreaterThanOrEqual(NEEDED.h);
-    }
+    expect(2 * TRUNK_HALF).toBeGreaterThanOrEqual(NEEDED.w);
     expect(TREE.door.value.w).toBeGreaterThanOrEqual(NEEDED.w);
     expect(TREE.door.value.h).toBeGreaterThanOrEqual(NEEDED.h);
-    // Cold Sanctuary's sizes ×2 (branches) and ×1,5 (trunk) at least (Berón 2026-11-20).
+    // Cold Sanctuary's trunk ×1,5 at least (Berón 2026-11-20).
     expect(TRUNK_HALF).toBeGreaterThanOrEqual(TREE.waterHalf.value * 1.5);
+  });
+
+  it("las ramas solo llevan a las puntas de frutales y vuelven al tamaño de Cold Sanctuary (Berón 2026-11-21)", () => {
+    const branches = L.world.waters.filter((w) => /:rama/.test(w.area));
+    expect(branches.length).toBeGreaterThan(12);
+    for (const w of branches) expect(w.area, w.id).toMatch(/:rama-\d+-\d+$/);
+    expect(ORCHARD_BRANCH.halfWidth).toBe(TREE.tubeHalf.value);
+    // No floor's own branch: every floor's way in is a door of the trunk.
+    expect(L.areas.filter((a) => a.id.endsWith(":rama")).map((a) => a.id)).toEqual([]);
+  });
+
+  it("todos los pisos nacen del tronco: dos por nivel, en lados opuestos, pegados a su cara", () => {
+    for (const t of L.towers) {
+      const byY = new Map<number, (typeof t.floors)[number][]>();
+      for (const f of t.floors) byY.set(f.y, [...(byY.get(f.y) ?? []), f]);
+      for (const [y, fs] of byY) {
+        expect(fs.length, `${t.id} ${y}`).toBeLessThanOrEqual(FLOORS_PER_LEVEL);
+        if (fs.length === 2) {
+          const c = fs.map((f) => ({ x: (f.rect.x0 + f.rect.x1) / 2 - t.x, z: (f.rect.z0 + f.rect.z1) / 2 - t.z }));
+          // Opposite sides: their centres on either side of the trunk.
+          expect(c[0]!.x * c[1]!.x + c[0]!.z * c[1]!.z, `${t.id} ${y}`).toBeLessThan(0);
+        }
+        // Each touches the trunk's acrylic (its edge 1 m out of the water).
+        const OH = TRUNK_HALF + TREE.wall.value;
+        for (const f of fs) {
+          const d = Math.min(Math.abs(f.rect.x0 - (t.x + OH)), Math.abs(f.rect.x1 - (t.x - OH)), Math.abs(f.rect.z0 - (t.z + OH)), Math.abs(f.rect.z1 - (t.z - OH)));
+          expect(d, `${t.id} ${f.name}`).toBeLessThan(0.01);
+        }
+      }
+    }
+  });
+
+  it("cada árbol tiene su armazón de madera: cuatro postes en el tronco, una viga por nivel y los cantos de cada rama", () => {
+    for (const t of L.towers) {
+      const posts = t.frame.filter((q) => q.y1 - q.y0 > t.rootHeight * 0.9);
+      expect(posts.length, t.id).toBe(4);
+      const levels = new Set(t.floors.map((f) => f.y)).size;
+      const inTrunk = (q: (typeof t.frame)[number]) => Math.abs((q.x0 + q.x1) / 2 - t.x) <= TRUNK_HALF && Math.abs((q.z0 + q.z1) / 2 - t.z) <= TRUNK_HALF;
+      expect(t.frame.filter((q) => inTrunk(q) && q.y1 - q.y0 < 1).length, t.id).toBe(4 * (levels + 1));
+      // Each orchard branch: 8 edges and 4 posts.
+      expect(t.frame.length, t.id).toBe(4 + 4 * (levels + 1) + 12 * t.tips.length);
+    }
   });
 
   it("bajo el tronco no hay suelo: su agua baja al mar", () => {
@@ -61,34 +99,10 @@ describe("reglas de los pisos y de los árboles (Berón 2026-11-20)", () => {
     }
   });
 
-  it("cada rama sale del tronco con un aro, y cada quiebre tiene el suyo", () => {
+  it("cada rama sale del tronco con un aro, y su quiebre tiene el suyo", () => {
     const rings = L.instances.filter((i) => i.model.startsWith("aro-rama"));
     const branches = new Set(L.world.waters.filter((w) => /:rama/.test(w.area)).map((w) => w.area));
-    expect(branches.size).toBeGreaterThan(12);
-    for (const b of branches) {
-      const bends = L.world.waters.filter((w) => w.area === b).length - 1;
-      // Each tube after the first turns once (the orchard's column goes up, from the same turn's ring).
-      const want = 1 + Math.min(bends, 1);
-      expect(rings.filter((r) => r.area === b).length, b).toBe(want);
-    }
-  });
-
-  it("de media una rama torcida por cada dos rectas, y las torcidas no van una sobre otra", () => {
-    for (const t of L.towers) {
-      const mine = [...small].filter((id) => id.startsWith(`${t.id}:`));
-      if (mine.length < 3) continue;
-      const bent = mine.filter((id) => L.world.waters.some((w) => w.id === `${id}:rama-b`));
-      expect(bent.length, t.id).toBeLessThanOrEqual(Math.ceil(mine.length / 3));
-      // Bent ones stacked on the same side within two levels (44 m): none.
-      const at = (id: string) => L.areas.find((a) => a.id === id)!;
-      for (const a of bent)
-        for (const b of bent) {
-          if (a === b) continue;
-          const p = at(a), q = at(b);
-          const sameSide = Math.sign(Math.round(p.x - t.x)) === Math.sign(Math.round(q.x - t.x)) && Math.sign(Math.round(p.z - t.z)) === Math.sign(Math.round(q.z - t.z));
-          if (sameSide) expect(Math.abs(p.y - q.y), `${a} / ${b}`).toBeGreaterThan(44);
-        }
-    }
+    for (const b of branches) expect(rings.filter((r) => r.area === b).length, b).toBe(2);
   });
 
   it("cada piso y anillo tiene su estación de alfombras, y cada copa y cada pie la suya", () => {
@@ -156,7 +170,7 @@ describe("reglas de los pisos y de los árboles (Berón 2026-11-20)", () => {
           }
         }
       }
-    expect(n).toBeGreaterThan(500);
+    expect(n).toBeGreaterThan(300);
     expect(bad).toEqual([]);
   });
 

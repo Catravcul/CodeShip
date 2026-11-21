@@ -104,7 +104,7 @@ const F = (name: string, desc: string, furnish?: string) => ({ name, desc, ...(f
  * rooms, 4 dojos, 3 hospital floors…), kept for when the sanctuary has people enough to fill them (Berón 2026-11-21:
  * «dejar los existentes guardados y reemplazarlos por otros edificios con pisos más pequeños»). Their floor plans stay
  * in `floors/`; `buildS1Layout(k, o, TOWERS_AMPLIOS)` builds them with today's tree rules. The exact scene of that day
- * is the git tag `edificios-amplios-2026-11-20`.
+ * is the git branch `edificios-amplios`.
  */
 export const TOWERS_AMPLIOS: readonly TowerSpec[] = [
   {

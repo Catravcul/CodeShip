@@ -27,7 +27,7 @@ export interface Place {
 
 /** The work floors (ours, until WorkRoster): kitchen, hospital, vet, cría, labs, workshops, farm and guard. */
 export const WORK_FLOORS = ["restaurante", "hospital", "hospital-veterinario", "cria-carne-cultivada", "construccion", "mecanica-garaje", "textil-huerto", "campos-huerto", "informatica", "laboratorios", "asambleas-guardia"] as const;
-export const TRAINING_FLOORS = ["gimnasio", "funcional", "salas"] as const;
+export const TRAINING_FLOORS = ["gimnasio", "funcional", "combate", "salas"] as const;
 
 /** Is (x, z) on ice or land (else it is sea)? */
 export function onGround(x: number, z: number): boolean {

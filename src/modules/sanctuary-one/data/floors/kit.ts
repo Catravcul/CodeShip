@@ -125,6 +125,114 @@ export function spreadTo(p: FloorPlan, size: { readonly x: number; readonly z: n
   return { ...p, size: { x: size.x, z: size.z }, items, spread: Math.max(p.spread ?? 1, sx, sz) };
 }
 
+/**
+ * The distribution rule (Berón 2026-11-22: «una regla de distribución para que los objetos de los pisos ocupen el
+ * espacio del piso de forma más uniforme sin dejar grandes huecos»; reglas.md §2.10). Along each axis the things are
+ * gathered into bands (things less than `join` m apart stay together, as a desk and its chair, a row of beds), and the
+ * bands are laid out from `margin` m off one edge to `margin` m off the other with the same gap between each two: the
+ * rows and columns of the room's own layout are kept, its empty sides and its crowded ones are evened out. Their
+ * places move, never their size. `sizeOf` gives a thing's footprint half-widths (from the catalogue).
+ */
+export function evened(p: FloorPlan, sizeOf: (it: Placed) => { readonly hx: number; readonly hz: number }, margin = 2.5, join = 2): FloorPlan {
+  const things = p.items.filter((it) => !isFinish(it.model) && it.model !== "plaza-suelo");
+  if (things.length < 4) return p;
+  const axis = (c: (it: Placed) => number, h: (it: Placed) => number, half: number): Map<Placed, number> => {
+    const spans = things.map((it) => ({ it, lo: c(it) - h(it), hi: c(it) + h(it) })).sort((a, b) => a.lo - b.lo);
+    const bands: { lo: number; hi: number; its: Placed[] }[] = [];
+    for (const s of spans) {
+      const last = bands[bands.length - 1];
+      if (last && s.lo - last.hi < join) {
+        last.hi = Math.max(last.hi, s.hi);
+        last.its.push(s.it);
+      } else bands.push({ lo: s.lo, hi: s.hi, its: [s.it] });
+    }
+    const shift = new Map<Placed, number>();
+    if (bands.length < 2) return shift;
+    const t0 = Math.min(-half + margin, bands[0]!.lo);
+    const t1 = Math.max(half - margin, bands[bands.length - 1]!.hi);
+    const filled = bands.reduce((n, b) => n + (b.hi - b.lo), 0);
+    const gap = (t1 - t0 - filled) / (bands.length - 1);
+    if (gap < join) return shift;
+    let at = t0;
+    for (const b of bands) {
+      for (const it of b.its) shift.set(it, at - b.lo);
+      at += b.hi - b.lo + gap;
+    }
+    return shift;
+  };
+  const dx = axis((it) => it.x, (it) => sizeOf(it).hx, p.size.x / 2);
+  const dz = axis((it) => it.z, (it) => sizeOf(it).hz, p.size.z / 2);
+  return { ...p, items: p.items.map((it) => (dx.has(it) || dz.has(it) ? { ...it, x: it.x + (dx.get(it) ?? 0), z: it.z + (dz.get(it) ?? 0) } : it)) };
+}
+
+/** How far from everything a floor may have a point (its 2,5 m edge, the door's aisle and the carpet's landing left out), m. */
+export const MAX_HOLE_M = 5;
+
+/** Things that stay where their room put them: walls and what hangs on them, toilets, the carpet's station. */
+const FIXED = /pared|muro|ventana|puerta|rellano|estacion|escalera|aseos|espejo|vestuario|kamiza|-suelo|^suelo|plaza-suelo|ring|anillo|tobogan/;
+
+/**
+ * The distribution rule's second half: while a floor has a hole wider than MAX_HOLE_M (a point that far from every
+ * thing), the movable thing from its most crowded part (the one nearest another) goes to the middle of the hole,
+ * where it fits with 1 m round it. So the things of a fused floor fill it instead of crowding a side.
+ */
+export function filledHoles(p: FloorPlan, sizeOf: (it: Placed) => { readonly hx: number; readonly hz: number }, maxHole = MAX_HOLE_M): FloorPlan {
+  let items = [...p.items];
+  const hx = p.size.x / 2, hz = p.size.z / 2;
+  for (let round = 0; round < 40; round++) {
+    const cur = { ...p, items };
+    const hole = largestHole(cur, sizeOf, 2);
+    if (hole.r <= maxHole) break;
+    const solids = items.filter((it) => countsAsThing(cur, it, sizeOf));
+    // The movable thing with the nearest neighbour, put in the middle of the hole (inside the floor), where it fits.
+    const crowd = solids
+      .filter((it) => !FIXED.test(it.model))
+      .map((it) => ({ it, n: Math.min(...solids.filter((o) => o !== it).map((o) => gapTo(o, it.x, it.z, sizeOf))) }))
+      .sort((a, b) => a.n - b.n);
+    const at = (it: Placed) => {
+      const h = sizeOf(it);
+      return { x: Math.max(-hx + 1 + h.hx, Math.min(hx - 1 - h.hx, hole.x)), z: Math.max(-hz + 1 + h.hz, Math.min(hz - 1 - h.hz, hole.z)) };
+    };
+    const fits = (it: Placed) => {
+      const h = sizeOf(it);
+      const q = at(it);
+      return solids.every((o) => o === it || Math.abs(o.x - q.x) > sizeOf(o).hx + h.hx + 1 || Math.abs(o.z - q.z) > sizeOf(o).hz + h.hz + 1);
+    };
+    const pick = crowd.find(({ it }) => fits(it));
+    if (!pick) break;
+    const q = at(pick.it);
+    items = items.map((it) => (it === pick.it ? { ...it, ...q } : it));
+  }
+  return { ...p, items };
+}
+
+/** Does a thing count for the distribution (not the room's finish, not one as big as the floor)? */
+const countsAsThing = (p: FloorPlan, it: Placed, sizeOf: (it: Placed) => { readonly hx: number; readonly hz: number }) =>
+  !isFinish(it.model) && it.model !== "plaza-suelo" && sizeOf(it).hx * sizeOf(it).hz * 4 <= p.size.x * p.size.z * 0.6;
+const gapTo = (a: Placed, x: number, z: number, sizeOf: (it: Placed) => { readonly hx: number; readonly hz: number }) => {
+  const h = sizeOf(a);
+  return Math.hypot(Math.max(0, Math.abs(x - a.x) - h.hx), Math.max(0, Math.abs(z - a.z) - h.hz));
+};
+
+/**
+ * The floor's widest hole: the point furthest from every thing, and how far (on a grid of `step` m; the 2,5 m along
+ * the edges, the door's aisle and the carpet's landing left out, as they are kept clear on purpose).
+ */
+export function largestHole(p: FloorPlan, sizeOf: (it: Placed) => { readonly hx: number; readonly hz: number }, step = 1): { x: number; z: number; r: number } {
+  const hx = p.size.x / 2, hz = p.size.z / 2;
+  const keep = carpetKeepOut(p.size);
+  const solids = p.items.filter((it) => countsAsThing(p, it, sizeOf));
+  let best = { x: 0, z: 0, r: 0 };
+  for (let x = -hx + 2.5; x <= hx - 2.5 + 1e-9; x += step)
+    for (let z = -hz + 2.5; z <= hz - 2.5 + 1e-9; z += step) {
+      if ((Math.abs(x) < 2.5 && z < -hz + 6) || keep.some((k) => Math.abs(x - k.x) < k.w / 2 + 1 && Math.abs(z - k.z) < k.d / 2 + 1)) continue;
+      let d = Infinity;
+      for (const it of solids) d = Math.min(d, gapTo(it, x, z, sizeOf));
+      if (d > best.r) best = { x, z, r: d };
+    }
+  return best;
+}
+
 /** A room turned a quarter (its x becomes z): its plan, its things and their facing. */
 export function turned(p: FloorPlan): FloorPlan {
   return { ...p, size: { x: p.size.z, z: p.size.x }, items: p.items.map((it) => ({ ...it, x: it.z, z: -it.x, rot: (it.rot ?? 0) + Math.PI / 2 })) };
@@ -144,3 +252,23 @@ export function composed(id: string, parts: readonly { readonly plan: FloorPlan;
   }
   return { id, size: { x: FLOOR_SIZE.x, z: FLOOR_SIZE.z }, items, source, spread };
 }
+
+/**
+ * Things laid evenly over a rectangle (the distribution rule, reglas.md §2.10): as many columns as keep the cells near
+ * square, each thing in the middle of its cell, the last row centred. So a zone has no crowded side and no empty one.
+ */
+export function gridIn(things: readonly { readonly model: string; readonly name?: string; readonly rot?: number }[], r: { readonly x0: number; readonly x1: number; readonly z0: number; readonly z1: number }, cols?: number): Placed[] {
+  const n = things.length;
+  if (!n) return [];
+  const w = r.x1 - r.x0;
+  const d = r.z1 - r.z0;
+  const c = cols ?? Math.max(1, Math.min(n, Math.round(Math.sqrt((n * w) / d))));
+  const rows = Math.ceil(n / c);
+  return things.map((t, i) => {
+    const row = Math.floor(i / c);
+    const inRow = row === rows - 1 ? n - row * c : c;
+    const col = i % c;
+    return { model: t.model, x: r.x0 + (w / inRow) * (col + 0.5), z: r.z0 + (d / rows) * (row + 0.5), ...(t.rot ? { rot: t.rot } : {}), ...(t.name ? { name: t.name } : {}) };
+  });
+}
+

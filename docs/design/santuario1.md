@@ -182,6 +182,20 @@ salud.
 | 99 | Bajo el mar, **la luz viene de la superficie** y se oscurece con la profundidad; mirando arriba se ve fuera según la profundidad | Hecho: la profundidad del globo se mide hasta su piel más cercana (`globeDepth`), y bajo el mar hasta la superficie; niebla y fondo del agua según ella |
 | 100 | **Control de rendimiento** | Hecho: presupuesto en `data/rendimiento.test.ts` (instancias, piezas, sólidos, aguas, caras del globo, sólidos por paso) y `tools/rendimiento-s1.mjs` (llamadas, triángulos y fps en vistas fijas) |
 
+### Duodécima lista (2026-11-22, noche)
+
+| # | Pedido | Estado |
+| --- | --- | --- |
+| 101 | **Poder tirarse de todos los pisos y anillos** | Probado: en vivo (gimnasio, funcional, plaza) y en `caidas.test.ts` para cada piso (desde tres sitios de cada lado abierto, por lo menos) y cada pieza de anillo de las puntas. El gimnasio tenía máquinas a lo largo del borde; ahora deja 2 m libres |
+| 102 | **Sin dojo en el gimnasio**; baile (salsa, bachata, merengue, reguetón…) junto al ballet | Hecho: piso «Combate» (judo, karate, kickboxing y MMA); en «Salas», el ballet junto a la sala de bailes sociales (tarima, espejos, sonido, bola de espejos, tablón de clases), con los espejos hacia el centro para dejar libre el borde |
+| 103 | **Filtro de áreas**: pisos que salían como «Pisos libres» | Arreglado (`area-kinds.ts`) y con test: ningún piso amueblado sale como libre |
+| 104 | **Regla de distribución**: sin grandes huecos | Hecho (`reglas.md` §2.10): al montar cada piso se igualan las filas y columnas (`evened`) y lo que sobra va a los huecos (`filledHoles`); ningún punto a más de 6 m de algo |
+| 105 | **Gimnasio**: al menos 2 de cada tipo, 3 de algunos, todo el piso | Hecho: 10 tipos de máquinas de placas (3 de pecho, jalón, prensa y bíceps), peso libre, abdominales, spinning y cardio, repartidos por zonas |
+| 106 | **Terminar los pendientes** de realismo | Hecho: los 80 rehechos (`models/rehechos.ts`) o sujetos con escuadras y postes (`braced`); la lista está vacía |
+| 107 | **Nadar dentro del globo** | Arreglado: cada capa del globo frenaba en su superficie; ahora la superficie es la de la columna de agua entera (`surfaceAbove`), y mirando arriba se avanza menos y se sube más |
+| 108 | El globo **parecía un útero** | Hecho: sobre la boquilla, una esfera de 140 m de radio; las capas pasan de la forma del mar a círculos desde la boquilla |
+| 109 | **Más animales**: ajuste, 4 por persona | Hecho: ajuste «Animales por persona» (3 a 6), 4 por defecto; dentro del presupuesto de rendimiento |
+
 #### Revisión de realismo de los pisos (2026-11-20)
 
 Criterios: fuente real o de Cold Sanctuary, tamaño real de la sala, una función (o una clase) por piso, sin medio vacío (test), se llega a todo desde la puerta (test).

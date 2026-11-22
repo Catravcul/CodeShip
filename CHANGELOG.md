@@ -5,6 +5,10 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-22
 
+- **Santuario 1, duodécima lista**: se puede saltar de todos los pisos y anillos (test); gimnasio lleno (2-3 de cada
+  tipo); piso de combate; baile latino junto al ballet; regla de distribución sin grandes huecos; filtro de áreas al
+  día; los 80 modelos pendientes de realismo rehechos; se nada dentro del globo, que vuelve a ser una esfera; ajuste
+  «Animales por persona» (4). [docs/design/santuario1.md](docs/design/santuario1.md) #101–109
 - **Santuario 1, undécima lista**: el globo sigue la forma del mar entre casquetes (pixelado, 6/10 en su pie) con el
   embrión en azules y verdes; bases cuadradas; pisos por afinidad (23); asambleas con una guardia realista; aula en la
   plaza; literas al doble de alto con escalera para trepar; carne cultivada rehecha; revisión de realismo con puntaje

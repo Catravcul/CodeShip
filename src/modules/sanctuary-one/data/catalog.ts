@@ -13,11 +13,16 @@ import { MECANICA_MODELS } from "./models/mecanica";
 import { CONSTRUCCION_EXTRA_MODELS } from "./models/construccion-extra";
 import type { ModelDef } from "./models/kit";
 import { detailed } from "./models/detalle";
-import { settled } from "./realismo";
+import { braced, settled } from "./realismo";
+import { REHECHOS } from "./models/rehechos";
 
-/** Every composite model with its pieces settled (realismo.ts: nothing a few cm in the air), its size kept. */
+/** Every composite model with its pieces settled and held (realismo.ts: nothing in the air), its size kept. */
 function grounded(list: readonly ModelDef[]): ModelDef[] {
-  return list.map((d) => (d.parts && !d.walkThrough ? { ...d, parts: settled(d.parts) } : d));
+  return list.map((d) => {
+    const redone = REHECHOS[d.id];
+    const e = redone ? { ...d, shape: "piezas" as const, parts: redone } : d;
+    return e.parts && !e.walkThrough ? { ...e, parts: braced(settled(e.parts)) } : e;
+  });
 }
 
 export * from "./models/kit";

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { placeAt, step } from "@modules/aerial-sanctuary/domain/walk";
-import { buildS1Layout } from "./layout";
+import { ANIMALS_PER_PERSON_S1, buildS1Layout } from "./layout";
 import { MODELS, model } from "./catalog";
 import { TOWERS, TOWERS_AMPLIOS, STAFF } from "./site";
 import { FLOOR_PLANS } from "./floors";
@@ -45,14 +45,24 @@ describe("santuario 1: escena", () => {
       if (s.floors.length > 2) expect(s.floors[2]!.y).toBe(86);
     }
   });
-  it("el gimnasio lleva una máquina de placas de cada tipo, su peso libre y su cardio (Berón 2026-11-21: un solo piso)", () => {
+  it("el gimnasio lleva al menos 2 máquinas de cada tipo (3 de algunas), su peso libre, abdominales, spinning y cardio (Berón 2026-11-22)", () => {
     const gym = L.areas.find((a) => a.label === "Gimnasio")!;
     const here = L.instances.filter((i) => i.area === gym.id);
     const plates = here.filter((i) => model(i.model).group === "gimnasio-placas");
-    expect(plates).toHaveLength(10);
-    expect(new Set(plates.map((i) => i.model)).size).toBe(10);
-    expect(here.some((i) => i.model === "gym-cinta")).toBe(true);
+    const per = new Map<string, number>();
+    for (const p of plates) per.set(p.model, (per.get(p.model) ?? 0) + 1);
+    expect(per.size).toBe(10);
+    for (const [, n] of per) expect(n).toBeGreaterThanOrEqual(2);
+    expect([...per.values()].filter((n) => n >= 3).length).toBeGreaterThanOrEqual(3);
+    for (const m of ["gym-cinta", "gym-bici", "gym-eliptica", "gym-esterilla", "gym-silla-romana", "gym-jaula", "gym-estante-mancuernas"]) expect(here.filter((i) => i.model === m).length, m).toBeGreaterThanOrEqual(2);
     expect(here.filter((i) => model(i.model).group !== "puertas" && model(i.model).group !== "mascaras" && i.model !== "estacion-alfombras").length).toBe(FLOOR_PLANS.get("gimnasio")!.items.length);
+  });
+  it("viven 4 animales por persona por defecto (Berón 2026-11-22), y el ajuste lo cambia", () => {
+    const animals = (l: typeof L) => l.instances.filter((i) => i.life && model(i.model).category === "animal").length;
+    const people = STAFF.length + 1;
+    expect(ANIMALS_PER_PERSON_S1).toBe(4);
+    expect(animals(L)).toBeGreaterThanOrEqual(4 * people);
+    expect(animals(buildS1Layout(1, undefined, undefined, { animalsPerPerson: 3 }))).toBeLessThan(animals(L));
   });
   it("todo el personal está y cada uno es una persona", () => {
     const people = L.instances.filter((i) => model(i.model).category === "persona");

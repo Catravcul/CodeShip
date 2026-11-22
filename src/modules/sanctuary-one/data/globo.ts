@@ -16,19 +16,20 @@ export const GLOBE_CELL = 8;
 export const GLOBE_LAYER = 8;
 /** Its foot under the sea surface, m. */
 export const GLOBE_FOOT_Y = -16;
-/** Its share of the sea, by height (y m → share of the sea's area): 6/10 at the water, a nozzle, the belly, the top. */
+/** Its foot and nozzle, by height (y m → share of the sea's area): 6/10 at the water, narrowing to the nozzle. */
 export const GLOBE_PROFILE: readonly (readonly [y: number, share: number])[] = [
   [GLOBE_FOOT_Y, 0.6],
   [0, 0.6],
-  [40, 0.22],
-  [80, 0.5],
-  [130, 1.15],
-  [175, 1.5],
-  [215, 1.35],
-  [250, 0.8],
-  [272, 0.2],
-  [280, 0],
+  [40, 0.16],
 ];
+/**
+ * The globe itself, a sphere on the nozzle (Berón 2026-11-22: «ha perdido forma de globo y ahora se ve más como
+ * útero»): its centre's height and its radius, m. Its layers are round from the nozzle up (`ROUND_FROM`…`ROUND_BY`),
+ * the foot's follow the sea.
+ */
+export const GLOBE_SPHERE = { y: 185, r: 140 } as const;
+const ROUND_FROM = 20;
+const ROUND_BY = 90;
 /** How close the sea's shape comes to a cap, m (its water never touches the ice). */
 const SHORE = 6;
 /** How far out the sea between the caps reaches at most from its centre, m (beyond, the gaps lead out to the ocean). */
@@ -70,20 +71,29 @@ function reachAt(a: number): number {
   return SEA_REACH;
 }
 
-/** The share of the sea at height y (GLOBE_PROFILE, eased between its points). */
+/** The share of the sea at height y: the foot and nozzle (GLOBE_PROFILE, eased), then the sphere's round section. */
 export function globeShare(y: number): number {
   const P = GLOBE_PROFILE;
-  if (y <= P[0]![0]) return P[0]![1];
-  for (let k = 1; k < P.length; k++) {
-    const [y0, s0] = P[k - 1]!;
-    const [y1, s1] = P[k]!;
-    if (y <= y1) {
-      const t = (y - y0) / (y1 - y0);
-      return s0 + (s1 - s0) * (0.5 - 0.5 * Math.cos(Math.PI * t));
+  let neck = 0;
+  if (y <= P[0]![0]) neck = P[0]![1];
+  else if (y >= P[P.length - 1]![0]) neck = P[P.length - 1]![1];
+  else
+    for (let k = 1; k < P.length; k++) {
+      const [y0, s0] = P[k - 1]!;
+      const [y1, s1] = P[k]!;
+      if (y <= y1) {
+        neck = s0 + (s1 - s0) * (0.5 - 0.5 * Math.cos((Math.PI * (y - y0)) / (y1 - y0)));
+        break;
+      }
     }
-  }
-  return 0;
+  const dy = y - GLOBE_SPHERE.y;
+  const r2 = GLOBE_SPHERE.r ** 2 - dy * dy;
+  const sphere = r2 > 0 ? (Math.PI * r2) / SEA_AREA_M2 : 0;
+  // Above the sphere's widest the nozzle is long gone: only the sphere.
+  return y > GLOBE_SPHERE.y ? sphere : Math.max(neck, sphere);
 }
+/** The sea's area, m² (filled in by build: the sphere's sections are shares of it). */
+let SEA_AREA_M2 = 1;
 
 function build(): Globe {
   // The sea between the caps: star-shaped from its centre, each direction out to the first cap (a little eased so a
@@ -117,16 +127,32 @@ function build(): Globe {
     }
   const sorted = [...dist.entries()].sort((p, q) => q[1] - p[1]);
   const seaCells = sea.size;
-  /** The cells of a layer holding `share` of the sea's area: the sea's shape grown or shrunk evenly. */
-  const cellsFor = (share: number): Set<string> => new Set(sorted.slice(0, Math.round(share * seaCells)).map(([k]) => k));
+  SEA_AREA_M2 = seaCells * GLOBE_CELL * GLOBE_CELL;
+  // The centre of its foot (the deepest cells of the sea): the sphere stands over it.
+  const deep = sorted.slice(0, Math.max(1, Math.round(0.05 * seaCells)));
+  const x = deep.reduce((s, [k]) => s + centre(Number(k.split(",")[0])), 0) / deep.length;
+  const z = deep.reduce((s, [k]) => s + centre(Number(k.split(",")[1])), 0) / deep.length;
+  /**
+   * The cells of a layer holding `share` of the sea's area: at the foot the sea's shape grown or shrunk evenly; from
+   * the nozzle up, more and more round about the centre (t from 0 to 1), so the globe is a globe.
+   */
+  const cellsFor = (share: number, t: number): Set<string> => {
+    const score = (k: string, d: number) => {
+      const [i, j] = k.split(",").map(Number) as [number, number];
+      return (1 - t) * d - t * Math.hypot(centre(i) - x, centre(j) - z);
+    };
+    const ranked = t <= 0 ? sorted : [...dist.entries()].map(([k, d]) => [k, score(k, d)] as const).sort((p, q) => q[1] - p[1]);
+    return new Set(ranked.slice(0, Math.round(share * seaCells)).map(([k]) => k));
+  };
   const layers: GlobeLayer[] = [];
   let top = 0;
   let belly = 0;
   let widest = 0;
   for (let y0 = GLOBE_FOOT_Y; ; y0 += GLOBE_LAYER) {
-    const share = globeShare(y0 + GLOBE_LAYER / 2);
+    const ym = y0 + GLOBE_LAYER / 2;
+    const share = globeShare(ym);
     if (share <= 0.002) break;
-    const cells = cellsFor(share);
+    const cells = cellsFor(share, Math.max(0, Math.min(1, (ym - ROUND_FROM) / (ROUND_BY - ROUND_FROM))));
     if (!cells.size) break;
     layers.push({ y0, y1: y0 + GLOBE_LAYER, cells });
     top = y0 + GLOBE_LAYER;
@@ -135,10 +161,6 @@ function build(): Globe {
       belly = y0 + GLOBE_LAYER / 2;
     }
   }
-  // The centre of its foot (the deepest cells of the sea).
-  const deep = sorted.slice(0, Math.max(1, Math.round(0.05 * seaCells)));
-  const x = deep.reduce((s, [k]) => s + centre(Number(k.split(",")[0])), 0) / deep.length;
-  const z = deep.reduce((s, [k]) => s + centre(Number(k.split(",")[1])), 0) / deep.length;
   const across = 2 * Math.sqrt((widest * GLOBE_CELL * GLOBE_CELL) / Math.PI);
   return { sea, seaArea: seaCells * GLOBE_CELL * GLOBE_CELL, layers, topY: top, bellyY: belly, x, z, embryo: across / 3 };
 }

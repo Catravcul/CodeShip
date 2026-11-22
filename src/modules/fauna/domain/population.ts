@@ -6,6 +6,7 @@
  */
 export type Trophic = "presa" | "meso" | "apice";
 
+/** Cold Sanctuary's K (3); sanctuary 1 asks for 4 by default (Berón 2026-11-22), a setting («Animales por persona»). */
 export const ANIMALS_PER_HUMAN = 3;
 export const LEVEL_SHARE: Readonly<Record<Trophic, number>> = { presa: 0.7, meso: 0.22, apice: 0.08 };
 
@@ -81,9 +82,9 @@ export function allocate(total: number, species: readonly string[]): { counts: M
   return { counts: r, dropped };
 }
 
-/** The plan of sanctuary 1 for `humans` people: species → individuals. */
-export function plan(humans: number): Map<string, number> {
-  return allocate(Math.max(0, ANIMALS_PER_HUMAN * humans), Object.keys(GROUPS)).counts;
+/** The plan of sanctuary 1 for `humans` people, `k` animals each: species → individuals. */
+export function plan(humans: number, k = ANIMALS_PER_HUMAN): Map<string, number> {
+  return allocate(Math.max(0, k * humans), Object.keys(GROUPS)).counts;
 }
 
 /** `n` animals into `groups` families: the first ones one more if it is not exact (PopulationPlan.Split). */

@@ -154,8 +154,11 @@ export class FreeWalk {
     if (!i.forward && !i.right) return b;
     const swim = b.motion === "agua";
     const speed = (swim ? (i.run ? (this.speeds.swimRun ?? SWIM_SPRINT_MS) : this.speeds.swim) * (this.speeds.current?.(b.area) ?? 1) : i.run ? (this.speeds.run ?? SPRINT_MS) : this.speeds.walk) * dt;
-    const dx = (-Math.sin(i.yaw) * i.forward + Math.cos(i.yaw) * i.right) * speed;
-    const dz = (-Math.cos(i.yaw) * i.forward - Math.sin(i.yaw) * i.right) * speed;
+    // Swimming, looking up or down tilts her way: less of it ahead, the rest up or down (Berón 2026-11-22: «en el globo
+    // de agua no puedo nadar»: straight up she went as fast ahead as up, and out of the nozzle's side).
+    const ahead = swim ? Math.cos(i.pitch) : 1;
+    const dx = (-Math.sin(i.yaw) * i.forward * ahead + Math.cos(i.yaw) * i.right) * speed;
+    const dz = (-Math.cos(i.yaw) * i.forward * ahead - Math.sin(i.yaw) * i.right) * speed;
     const dy = swim ? Math.sin(i.pitch) * i.forward * speed : 0;
     if (!swim) {
       const want = Math.atan2(-dx, -dz);

@@ -5,13 +5,14 @@ import { LOBES, capOf } from "./site";
  * settings santuario / casquete / edificio). Pure, from the area's id, its floor plan and where it is.
  */
 const BY_FURNISH: readonly (readonly [RegExp, string])[] = [
-  [/^(gimnasio|cardio|calistenia|parkour|crossfit)/, "Gimnasio"],
-  [/^yoga/, "Yoga"],
-  [/^(ballet|dojo)/, "Gimnasio"],
+  [/^(gimnasio|cardio|calistenia|parkour|crossfit|funcional|combate)/, "Gimnasio"],
+  [/^(yoga|salas)/, "Yoga y baile"],
+  [/^(ballet|baile)/, "Yoga y baile"],
+  [/^dojo/, "Gimnasio"],
   [/^restaurante/, "Cocina"],
   [/^hospital-veterinario|^cria/, "Animales"],
   [/^hospital/, "Hospital"],
-  [/^(carne-cultivada|quimica|biologia|informatica)/, "Ciencia"],
+  [/^(carne-cultivada|quimica|biologia|informatica|laboratorios)/, "Ciencia"],
   [/^(construccion|mecanica|textil|garaje)/, "Taller"],
   [/^(huerto|campos)/, "Cultivos"],
   [/^(aula|musica|asambleas|guardia)/, "Comunidad"],

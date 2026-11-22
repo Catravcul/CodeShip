@@ -65,7 +65,7 @@ import "./ui/aerial.css";
 const root = document.getElementById("app")!;
 // Sanctuary 3's gravity world styles (its «Moverse» and «Mirar» sticks) serve this one too.
 document.body.classList.add("in-s3");
-const L = buildS1Layout(WORLD_SCALE, undefined, undefined, { woodGrid: woodGridMetres(settings.value.woodGrid) });
+const L = buildS1Layout(WORLD_SCALE, undefined, undefined, { woodGrid: woodGridMetres(settings.value.woodGrid), animalsPerPerson: Number(settings.value.animalsPerPerson) });
 // The walk world by cells (thousands of solids): each step looks only round her.
 const walkIndex = new WalkIndex(L.world);
 /** The drifting iceberg's solid, where it is now (moveIceberg); added to the world round her when it is near. */

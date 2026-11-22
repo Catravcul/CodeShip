@@ -91,6 +91,52 @@ export function settled(parts: readonly Part[], gap = 0.15): Part[] {
   return out;
 }
 
+/** The colour of a bracket or a strut added to hold a piece (dark steel). */
+const BRACE = 0x4a4f57;
+
+/**
+ * The pieces held (the creation rule's mechanical half, after `settled`): a piece still in the air gets what holds it
+ * in the real thing, the shortest that does: a bracket across to the nearest piece beside it (a handle to its frame, a
+ * shelf to its post, up to 50 cm), else a strut down to what is under it, else a post down to the floor.
+ */
+export function braced(parts: readonly Part[]): Part[] {
+  const out = [...parts];
+  for (let pass = 0; pass < 6; pass++) {
+    const free = new Set(floatingParts(out));
+    if (!free.size) break;
+    const held = out.filter((q) => !free.has(q));
+    // The lowest floating piece first: what it gets may hold the others.
+    const p = [...free].sort((a, b) => bottom(a) - bottom(b))[0]!;
+    const yLo = Math.max(bottom(p), 0), yHi = top(p);
+    let best: { g: number; part: Part } | undefined;
+    for (const q of held) {
+      const lo = Math.max(yLo, bottom(q)), hi = Math.min(yHi, top(q));
+      if (hi < lo) continue;
+      const gx = Math.max(0, Math.abs(p[0] - q[0]) - (p[3] + q[3]) / 2);
+      const gz = Math.max(0, Math.abs(p[2] - q[2]) - (p[5] + q[5]) / 2);
+      const g = Math.hypot(gx, gz);
+      if (g > 0.5 || (best && best.g <= g)) continue;
+      // A bar from the near face of one to the other, at the height both share.
+      const x0 = gx > 0 ? (p[0] < q[0] ? p[0] + p[3] / 2 : q[0] + q[3] / 2) : Math.max(p[0] - p[3] / 2, q[0] - q[3] / 2);
+      const x1 = gx > 0 ? (p[0] < q[0] ? q[0] - q[3] / 2 : p[0] - p[3] / 2) : Math.min(p[0] + p[3] / 2, q[0] + q[3] / 2);
+      const z0 = gz > 0 ? (p[2] < q[2] ? p[2] + p[5] / 2 : q[2] + q[5] / 2) : Math.max(p[2] - p[5] / 2, q[2] - q[5] / 2);
+      const z1 = gz > 0 ? (p[2] < q[2] ? q[2] - q[5] / 2 : p[2] - p[5] / 2) : Math.min(p[2] + p[5] / 2, q[2] + q[5] / 2);
+      const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+      best = { g, part: [cx, (lo + hi) / 2, cz, Math.max(0.04, Math.abs(x1 - x0) + 0.04), 0.04, Math.max(0.04, Math.abs(z1 - z0) + 0.04), BRACE] as unknown as Part };
+    }
+    if (!best) {
+      // Under it: the highest held top below its foot over its footprint, or the floor.
+      let rest = Math.max(0, Math.min(...out.map(bottom)));
+      for (const q of held) if (Math.abs(p[0] - q[0]) <= (p[3] + q[3]) / 2 && Math.abs(p[2] - q[2]) <= (p[5] + q[5]) / 2 && top(q) <= bottom(p) + 0.03) rest = Math.max(rest, top(q));
+      const h = bottom(p) - rest;
+      const w = Math.min(0.06, p[3], p[5]);
+      best = { g: 0, part: [p[0], rest + h / 2, p[2], w, h + 0.02, w, BRACE] as unknown as Part };
+    }
+    out.push(best.part);
+  }
+  return out;
+}
+
 export function realism(d: ModelDef): Realism {
   const notes: string[] = [];
   const flat = FLAT.test(d.id) && d.size.y <= 0.3;
@@ -114,21 +160,8 @@ export function realism(d: ModelDef): Realism {
 export const MIN_SCORE = 80;
 
 /**
- * The models of today's floors still under the bar when the review began (2026-11-22): each to be redone from its
- * source. The list only shrinks: a model that reaches the bar leaves it (realismo.test.ts), and a new one never enters.
+ * The models of today's floors still under the bar. When the review began (2026-11-22) there were 80; all were redone
+ * the same day (models/rehechos.ts, and `braced` for the pieces in the air). The list only shrinks, and a new model
+ * never enters it: it is made to the bar (realismo.test.ts).
  */
-export const PENDIENTES: ReadonlySet<string> = new Set([
-  "asamblea-fila-10", "asamblea-fila-8", "asamblea-marcador", "asamblea-mesa-comision", "aula-armario",
-  "b-autoclave", "b-cabina", "b-prepcr", "ballet-altavoz", "ballet-caja-resina", "ballet-fuente", "ballet-vestuario",
-  "cal-fondos-v", "cf-cajon-61", "cf-cajones-pliometricos", "cf-rig", "cocina-barra-servicio", "cocina-lavado",
-  "cocina-prep-carne", "cocina-puesto", "cons-hormigonera", "cons-ladrillos", "cons-tuberias", "cons-vigas",
-  "cria-pizarra", "dojo-banco", "dojo-espejo", "dojo-kamiza", "dojo-makiwara", "dojo-pera", "dojo-vestuario",
-  "gym-assault-bike", "gym-eliptica", "gym-escaladora", "gym-jaula", "gym-plataforma", "gym-prensa",
-  "gym-press-hombros", "gym-press-pecho", "gym-remo", "gym-smith", "hospital-banco-sangre", "hospital-camilla",
-  "hospital-consulta", "hospital-epi", "hospital-lavabotas", "hospital-lavamanos", "hospital-quirofano",
-  "hospital-silla-examen", "hospital-telemedicina", "hospital-triaje", "i-monitor", "mec-barca-remolque",
-  "mec-baterias", "mec-compresor", "mec-elevador-tractor", "mus-sofa", "pk-barandilla-05", "pk-barandilla-10",
-  "pk-bloques", "pk-cajon", "pk-lache", "pk-muro-alto", "pk-muro-medio", "q-campana", "q-ducha", "tex-maniqui",
-  "tex-rueca", "tex-telar-pie", "tex-tina", "vet-aislamiento", "vet-dietas", "vet-jaulas", "vet-pediluvio",
-  "vf-camara", "vf-compostador", "vf-descanso", "vf-dosificador", "vf-rack", "yoga-buda",
-]);
+export const PENDIENTES: ReadonlySet<string> = new Set<string>();

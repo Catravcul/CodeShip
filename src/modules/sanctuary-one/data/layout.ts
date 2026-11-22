@@ -3,8 +3,9 @@ import { carpetStations, STATION_PAD, type CarpetStation } from "./alfombras";
 import { ORCHARD_BRANCH, TRUNK_HALF } from "./paso";
 import type { Floor, Rect, Solid, Water, WalkWorld } from "@modules/aerial-sanctuary/domain/walk";
 import { wallWithGaps } from "@modules/aerial-sanctuary/domain/walk";
-import { AQUARIUM, BASE, CAP_NAME, LOBES, MAP_HALF, NESTS, SEA, aquariumHalf, onMovedCap, SPECIES_MODEL, STAFF, TOWERS, WATER_Y, capOf, isLand, lobeRadius, type TowerSpec } from "./site";
+import { AQUARIUM, BASE, CAP_NAME, LOBES, MAP_HALF, NESTS, SEA, aquariumRadius, onMovedCap, SPECIES_MODEL, STAFF, TOWERS, WATER_Y, capOf, isLand, lobeRadius, type TowerSpec } from "./site";
 import { FLOOR_PLANS, type FloorPlan } from "./floors";
+import { FLOOR_SIZE } from "./floors/kit";
 import { RING } from "./floors/kit";
 import { bedTip, orchardTip } from "./floors/puntas";
 import { DRIFT, landscape } from "./paisaje";
@@ -85,7 +86,7 @@ export interface TowerShape {
    * tronco»): two wooden struts under each floor, from the trunk's face up to the floor's underside. World points.
    */
   readonly braces: readonly { readonly foot: Point3; readonly head: Point3 }[];
-  /** Its base at sea (BASE): the deck's outer edge (the trunk's hole in the middle). */
+  /** Its base at sea (BASE): the square round its round deck (the trunk's hole in the middle). */
   readonly base: Rect;
   /** The ground door: outside on its base, and inside in the trunk's water. */
   readonly ground: { readonly out: { readonly x: number; readonly z: number }; readonly inner: { readonly x: number; readonly z: number } };
@@ -161,6 +162,8 @@ function groundFloors(): Floor[] {
 
 interface Built {
   o: Overrides;
+  /** The wooden grid's spacing, m (FRAME.grid, the «Rejilla de madera» setting); 0: only the corners and the levels. */
+  grid: number;
   /** The orchards' expert room is placed (in the first orchard tip of Servicios). */
   expertRoom?: boolean;
   floors: Floor[];
@@ -176,7 +179,8 @@ interface Built {
 export const TRUNK_ROOT_Y = -12;
 
 /** Whether a water is a tree-building's (its trunk or a branch), not the sea's. */
-export const treeWater = (area: string) => /:(tronco|rama)/.test(area);
+/** Clear water (the trees' and the globe's): seen through like filtered water, and its current carries her. */
+export const treeWater = (area: string) => /:(tronco|rama)/.test(area) || area === "mar:globo";
 /**
  * How much faster she swims in a tree's water (Berón 2026-11-20: «los viajes se alargan mucho entre rama y rama»):
  * ours, its pumps keep a current along the trunk and the branches that carries her (×3: 6,6 m/s, 9 m/s crawling).
@@ -190,9 +194,9 @@ export const TREE_CURRENT = 3;
  */
 export const FLOORS_PER_LEVEL = 2;
 
-/** A tree's square, m (k = 1): its largest floor (every floor keeps its own plan inside it). */
-export function towerSquare(t: Pick<TowerSpec, "floors" | "size">): number {
-  let s = Math.max(t.size.x, t.size.z);
+/** A tree's square, m (k = 1): every floor's, the kitchen's (floors/kit.ts FLOOR_SIZE, Berón 2026-11-22). */
+export function towerSquare(t: Pick<TowerSpec, "floors">): number {
+  let s = Math.max(FLOOR_SIZE.x, FLOOR_SIZE.z);
   for (const f of t.floors) {
     const fp = f.furnish ? FLOOR_PLANS.get(f.furnish) : undefined;
     if (fp) s = Math.max(s, fp.size.x, fp.size.z);
@@ -201,7 +205,15 @@ export function towerSquare(t: Pick<TowerSpec, "floors" | "size">): number {
 }
 
 /** The wooden frame of a tree (Berón 2026-11-21: «columnas para el tronco y ramas… para que las personas puedan orientarse fácilmente cuando nadan»): thin posts and beams, m. Ours. */
-export const FRAME = { beam: 0.3 } as const;
+export const FRAME = {
+  beam: 0.3,
+  /**
+   * The grid (Berón 2026-11-22: «¿puedes agregar más columnas de madera? como una rejilla… cada 4… quizás puede ir por
+   * setting para irlo ajustando fácilmente»): a post and a beam every this many metres on the trunk's faces, and a ring
+   * round each branch as often. The default of the «Rejilla de madera» setting.
+   */
+  grid: 4,
+} as const;
 
 /** One tree-building (Cold Sanctuary's HelixTower): the trunk, its doors, the floors pinwheeling round it and the tips at the end of their branches. */
 function buildTower(b: Built, t: TowerSpec, k: number): void {
@@ -253,15 +265,27 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
   }
   const gOut = side(S(0), door.x, OH + 3);
   const gIn = side(S(0), door.x, WH - 1.5);
-  const BH = OH + BASE.walk;
+  const BH = BASE.r;
   const shape: TowerShape = { id: t.id, building: t.building, x: o.x, z: o.z, rootHeight, floors: [], tips: [], rings: [], frame: [], braces: [], base: R(o.x - BH, o.x + BH, o.z - BH, o.z + BH), ground: { out: { x: o.x + gOut.x, z: o.z + gOut.z }, inner: { x: o.x + gIn.x, z: o.z + gIn.z } } };
   // Its own base out at sea (Berón 2026-11-21: «que nazca de una propia base artificial… una base negra que tiene la
-  // estación de alfombras… y una superficie que rodea al tronco y da unos 10 m de espacio para que los humanos puedan
-  // caminar»): a black hull round the trunk, its deck at the ice's height, open where the trunk goes down to the sea.
+  // estación de alfombras… una superficie que rodea al tronco… para que los humanos puedan caminar»), round since
+  // 2026-11-22: a black hull, its deck at the ice's height in strips across the circle, open where the trunk goes down.
   const baseArea = `base:${t.id}`;
-  for (const [x0, x1, z0, z1, k] of [[-BH, BH, OH, BH, "n"], [-BH, BH, -BH, -OH, "s"], [OH, BH, -OH, OH, "e"], [-BH, -OH, -OH, OH, "o"]] as const)
-    b.floors.push({ id: `${baseArea}-${k}`, x0: o.x + x0, x1: o.x + x1, z0: o.z + z0, z1: o.z + z1, y: 0, area: baseArea });
-  b.areas.push({ id: baseArea, label: `Base de ${t.building}`, desc: "La base negra del árbol, en el mar: 10 m de cubierta alrededor del tronco y su estación de alfombras", building: t.building, x: o.x + gOut.x, y: 0, z: o.z + gOut.z, detail: "completo", entry: { x: o.x + gOut.x, z: o.z + gOut.z, yaw: 0 } });
+  const STRIP = 1.5;
+  const cuts = [...new Set([...Array.from({ length: Math.ceil((2 * BH) / STRIP) + 1 }, (_, i) => Math.min(BH, -BH + i * STRIP)), -OH, OH])].sort((p, q) => p - q);
+  for (let i = 0; i + 1 < cuts.length; i++) {
+    const z0 = cuts[i]!;
+    const z1 = cuts[i + 1]!;
+    if (z1 - z0 < 0.01) continue;
+    const far = Math.max(Math.abs(z0), Math.abs(z1));
+    const xh = Math.sqrt(Math.max(0, BH * BH - far * far));
+    if (xh < 1) continue;
+    // Beside the trunk the strip is cut at its faces (the deck meets the acrylic, never goes into the water).
+    const beside = z0 >= -OH && z1 <= OH;
+    const parts: [number, number][] = !beside ? [[-xh, xh]] : xh > OH ? [[-xh, -OH], [OH, xh]] : [];
+    for (const [x0, x1] of parts) b.floors.push({ id: `${baseArea}-${b.floors.length}`, x0: o.x + x0, x1: o.x + x1, z0: o.z + z0, z1: o.z + z1, y: 0, area: baseArea });
+  }
+  b.areas.push({ id: baseArea, label: `Base de ${t.building}`, desc: "La base negra y redonda del árbol, en el mar: su cubierta alrededor del tronco y su estación de alfombras", building: t.building, x: o.x + gOut.x, y: 0, z: o.z + gOut.z, detail: "completo", entry: { x: o.x + gOut.x, z: o.z + gOut.z, yaw: 0 } });
   // The wooden frame (Berón 2026-11-21: «columnas para el tronco y ramas… como un armazón»): a bar between two points of
   // a side's frame (x, z) and two heights, FRAME.beam thick.
   const B = FRAME.beam;
@@ -288,8 +312,8 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
       // Each floor its own plan, straight out of the trunk's face (Berón 2026-11-21: «edificios con pisos más pequeños…
       // los pisos solo nacen del tronco»): one as wide as the face or wider starts at its corner (Cold Sanctuary's
       // pinwheel); a narrower one sits in the middle of the face. A floor with a ring keeps the tower's square (its U).
-      const W = fp && !fp.ring ? fp.size.x * k : FS;
-      const D = fp && !fp.ring ? fp.size.z * k : FS;
+      const W = FS;
+      const D = FS;
       const x0 = W >= 2 * OH ? -OH : -W / 2;
       const z0 = OH;
       const cxS = x0 + W / 2;
@@ -379,6 +403,25 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
         bar(s, mx + th, colC.x - ch, colC.z - th, colC.z - th, yy, yy);
       }
       for (const [px, pz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) bar(s, colC.x + px * ch, colC.x + px * ch, colC.z + pz * ch, colC.z + pz * ch, y, ty);
+      // Its grid: a ring round the tubes every b.grid m (FRAME.grid), and round the column.
+      if (b.grid > 0) {
+        const G = b.grid;
+        const y1 = y + 2 * thH;
+        for (let zz = OH + G; zz < colC.z - th - 0.5; zz += G) {
+          bar(s, mx - th, mx + th, zz, zz, y, y);
+          bar(s, mx - th, mx + th, zz, zz, y1, y1);
+          bar(s, mx - th, mx - th, zz, zz, y, y1);
+          bar(s, mx + th, mx + th, zz, zz, y, y1);
+        }
+        for (let xx = mx + th + G; xx < colC.x - ch - 0.5; xx += G) {
+          bar(s, xx, xx, colC.z - th, colC.z + th, y, y);
+          bar(s, xx, xx, colC.z - th, colC.z + th, y1, y1);
+          bar(s, xx, xx, colC.z - th, colC.z - th, y, y1);
+          bar(s, xx, xx, colC.z + th, colC.z + th, y, y1);
+        }
+        for (let yy = y1 + G; yy < ty - 0.5; yy += G)
+          for (const [xa, xb, za, zb] of [[-ch, ch, -ch, -ch], [-ch, ch, ch, ch], [-ch, -ch, -ch, ch], [ch, ch, -ch, ch]] as const) bar(s, colC.x + xa, colC.x + xb, colC.z + za, colC.z + zb, yy, yy);
+      }
       // Its rings: where it leaves the trunk and where it turns towards the tip's column.
       for (const [rx, rz, along] of [[mx, OH + 0.3, 0], [mx + th + 0.3, colC.z, 1]] as const) {
         const p = side(S(s), rx, rz);
@@ -418,6 +461,33 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
         place(b, it.model, o.x + p.x, ty, o.z + p.z, (S(s) * Math.PI) / 2 + (it.rot ?? 0), tipArea, { edificio: t.id, piso: tipArea }, 1, it.name);
       }
       b.areas.push({ id: tipArea, label: `${crops ? "Campo de punta" : t.tip} (${t.building}, nivel ${l})`, desc: crops ? "Bancal de su gremio junto a la columna; se llega nadando por la rama" : "Frutales en maceta, uno de cada especie y otra vuelta; se llega nadando por la rama y su columna", building: t.building, x: (tip.x0 + tip.x1) / 2, y: ty, z: (tip.z0 + tip.z1) / 2, detail: "completo" });
+    }
+  }
+  // The wooden grid on the trunk's faces (FRAME.grid): posts and beams every b.grid m, never across a doorway.
+  if (b.grid > 0) {
+    const G = b.grid;
+    for (let sd = 0; sd < 4; sd++) {
+      const g = gapsOf[sd]!;
+      // Posts: from one corner to the other, every G m; each cut where a doorway is.
+      for (let x = -IN + G; x < IN - G / 2; x += G) {
+        const cuts = g.filter((q) => x + B / 2 > q.from && x - B / 2 < q.to).sort((p, q) => p.y0 - q.y0);
+        let y0 = TRUNK_ROOT_Y;
+        for (const c of cuts) {
+          if (c.y0 - y0 > 1) bar(sd, x, x, IN, IN, y0, c.y0 - 0.1);
+          y0 = Math.max(y0, c.y1 + 0.1);
+        }
+        if (rootHeight - 0.5 - y0 > 1) bar(sd, x, x, IN, IN, y0, rootHeight - 0.5);
+      }
+      // Beams: every G m up; each cut where a doorway is.
+      for (let yb = G; yb < rootHeight - 1; yb += G) {
+        const cuts = g.filter((q) => yb + B / 2 > q.y0 && yb - B / 2 < q.y1).sort((p, q) => p.from - q.from);
+        let x0 = -IN;
+        for (const c of cuts) {
+          if (c.from - x0 > 1) bar(sd, x0, c.from - 0.1, IN, IN, yb, yb);
+          x0 = Math.max(x0, c.to + 0.1);
+        }
+        if (IN - x0 > 1) bar(sd, x0, IN, IN, IN, yb, yb);
+      }
     }
   }
   // The trunk's acrylic: each face cut into bands at every doorway's edges, so a door is a hole.
@@ -594,30 +664,46 @@ function cutTrunkHoles(b: Built): void {
   }
 }
 
-/** The whales' water tower's area (site.ts AQUARIUM). */
-export const AQUARIUM_AREA = "mar:piramide";
-/** Its water in layers of this height, m: each layer a box as wide as the shape at its middle. */
+/** The whales' globe's area (site.ts AQUARIUM). */
+export const AQUARIUM_AREA = "mar:globo";
+/** Its water in layers of this height, m; each layer a round disc made of strips (boxes) across it. */
 export const AQUARIUM_LAYER = 5;
+const AQUARIUM_STRIPS = 6;
+
+/** The embryo in the globe's middle (site.ts AQUARIUM.embryo): its centre and the box one bumps into, swimming. */
+export function embryoBox(): Solid {
+  const A = AQUARIUM;
+  const h = A.embryo * 0.32;
+  return { x0: A.x - h, x1: A.x + h, z0: A.z - h * 0.8, z1: A.z + h * 0.8, y0: A.centreY - h, y1: A.centreY + h };
+}
 
 /**
- * The whales' water tower (site.ts AQUARIUM): its water as stacked boxes (one swims in it like in a trunk), its area,
- * and who lives up there besides the pyramid's whales (NESTS): a pod of dolphins in the pyramid and a few of them, with
- * seals, going up and down the hourglass between the sea and the pyramid. Ours.
+ * The whales' globe (site.ts AQUARIUM): its water as layers of strips (one swims in it like in a trunk), the embryo
+ * in its middle, its area, and who lives up there besides its whales (NESTS): a pod of dolphins under the embryo, and
+ * dolphins and seals going up and down the hourglass between the sea and the globe. Ours.
  */
 function aquarium(b: Built): void {
   const A = AQUARIUM;
   for (let y = -12; y < A.topY; y += AQUARIUM_LAYER) {
     const y1 = Math.min(A.topY, y + AQUARIUM_LAYER);
-    const h = aquariumHalf(Math.max(0, (y + y1) / 2));
-    b.waters.push({ id: `${AQUARIUM_AREA}-${y}`, x0: A.x - h, x1: A.x + h, z0: A.z - h, z1: A.z + h, yBottom: y, yTop: y1, area: AQUARIUM_AREA });
+    const r = aquariumRadius(Math.max(0, (y + y1) / 2));
+    if (r < 1) continue;
+    const w = (2 * r) / AQUARIUM_STRIPS;
+    for (let j = 0; j < AQUARIUM_STRIPS; j++) {
+      const z0 = -r + j * w;
+      const zm = Math.abs(z0 + w / 2);
+      const h = Math.sqrt(Math.max(0, r * r - zm * zm));
+      b.waters.push({ id: `${AQUARIUM_AREA}-${y}-${j}`, x0: A.x - h, x1: A.x + h, z0: A.z + z0, z1: A.z + z0 + w, yBottom: y, yTop: y1, area: AQUARIUM_AREA });
+    }
   }
-  b.areas.push({ id: AQUARIUM_AREA, label: "La pirámide de las ballenas", desc: `Un reloj de arena de agua de ${A.neckY} m que sale del mar y, encima, una pirámide invertida de ${2 * A.topHalf} m de lado: el agua de las ballenas, los delfines y las focas`, x: A.x, y: (A.neckY + A.topY) / 2, z: A.z, detail: "completo" });
+  b.solids.push(embryoBox());
+  b.areas.push({ id: AQUARIUM_AREA, label: "El globo de las ballenas", desc: `Un reloj de arena de agua de ${A.neckY} m que sale del mar y, encima, un globo de agua de ${2 * A.globeR} m con un embrión en su centro: el vientre donde viven las ballenas, los delfines y las focas`, x: A.x, y: A.centreY, z: A.z, detail: "completo" });
   const pod = 8;
   for (let i = 0; i < pod; i++) {
-    const p = scatter(i, 40);
-    const y = 110 + (i % 3) * 14;
-    place(b, "delfin", A.x + p.x, y, A.z + p.z, i * 1.3, AQUARIUM_AREA, {}, 1, `Delfín ${i + 1}`, false);
-    wanders(b, "delfin", { x: A.x, z: A.z, r: aquariumHalf(y) * 0.55, speed: 2.4, seed: b.instances.length * 13 + i });
+    const p = scatter(i, 30);
+    const y = 120 + (i % 3) * 6;
+    place(b, "delfin", A.x + 50 + p.x, y, A.z + p.z, i * 1.3, AQUARIUM_AREA, {}, 1, `Delfín ${i + 1}`, false);
+    wanders(b, "delfin", { x: A.x, z: A.z, r: aquariumRadius(y) * 0.6, speed: 2.4, seed: b.instances.length * 13 + i });
   }
   // Up and down the hourglass (its waist is 12 m: they keep 6 m round the axis).
   (["delfin", "delfin", "foca", "foca"] as const).forEach((id, i) => {
@@ -640,8 +726,8 @@ function scatter(i: number, radius: number): { x: number; z: number } {
 }
 
 /** `towers`: today's buildings, or the roomy ones kept in site.ts (TOWERS_AMPLIOS). */
-export function buildS1Layout(k = 1, o: Overrides = OVERRIDES, towers: readonly TowerSpec[] = TOWERS): S1Layout {
-  const b: Built = { o, floors: groundFloors(), waters: [], solids: [], walls: [], instances: [], areas: [], towers: [] };
+export function buildS1Layout(k = 1, o: Overrides = OVERRIDES, towers: readonly TowerSpec[] = TOWERS, opts: { readonly woodGrid?: number } = {}): S1Layout {
+  const b: Built = { o, grid: opts.woodGrid ?? FRAME.grid, floors: groundFloors(), waters: [], solids: [], walls: [], instances: [], areas: [], towers: [] };
   b.waters.push({ id: "mar", x0: -4000, x1: 4000, z0: -4000, z1: 4000, yBottom: -40, yTop: WATER_Y, area: "mar" });
   for (const cap of new Set(LOBES.filter((l) => l.r > 0).map(capOf))) {
     const ls = LOBES.filter((l) => l.r > 0 && capOf(l) === cap);

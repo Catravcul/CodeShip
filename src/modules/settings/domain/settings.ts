@@ -18,6 +18,14 @@ export type TaskTravel = "viaje" | "teletransporte";
 export type TaskVehicle = "auto" | "nodriza" | "estacion" | "modulo" | "todos" | "entrenamiento" | "lanzadera" | "parque" | "muelle" | "plataforma" | "glaciar" | "bioma";
 /** How she is seen walking about rooms and modules: through her eyes or from behind/outside. */
 export type WalkView = "primera" | "tercera";
+/**
+ * The trees' wooden grid in sanctuary 1 (Berón 2026-11-22: «más columnas de madera… como una rejilla… por setting para
+ * irlo ajustando fácilmente»): a post and a beam every 4, 8 or 16 m, or only the corners and the levels. On the next load.
+ */
+export type WoodGrid = "4" | "8" | "16" | "no";
+export const WOOD_GRIDS: readonly WoodGrid[] = ["4", "8", "16", "no"];
+/** The grid's spacing in metres (0: none). */
+export const woodGridMetres = (g: WoodGrid): number => (g === "no" ? 0 : Number(g));
 /** What the first input of a session was. */
 export type FirstInput = "tecla" | "toque" | "raton";
 
@@ -44,6 +52,8 @@ export interface GameSettings {
   readonly interiorScale: InteriorScale;
   /** Presentation layer: interactables where the data put them, or spread to 2 m. Applies on the next load. */
   readonly spacing: InteriorSpacing;
+  /** Sanctuary 1's wooden grid in the trees. Applies on the next load. */
+  readonly woodGrid: WoodGrid;
 }
 
 export const CHALLENGE_VIEWS: readonly ChallengeView[] = ["panel", "hud"];
@@ -68,6 +78,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   taskVehicle: "auto",
   interiorScale: DEFAULT_PRESENTATION.interiorScale,
   spacing: DEFAULT_PRESENTATION.spacing,
+  woodGrid: "4",
 };
 
 /**
@@ -126,5 +137,6 @@ export function parseSettings(raw: string | null, env: { touchCapable: boolean; 
     taskVehicle: oneOf(o?.taskVehicle, [...TASK_VEHICLES, ...ISLAND_TASK_VEHICLES], DEFAULT_SETTINGS.taskVehicle),
     interiorScale: oneOf(o?.interiorScale, INTERIOR_SCALES, DEFAULT_SETTINGS.interiorScale),
     spacing: oneOf(o?.spacing, INTERIOR_SPACINGS, DEFAULT_SETTINGS.spacing),
+    woodGrid: oneOf(o?.woodGrid, WOOD_GRIDS, DEFAULT_SETTINGS.woodGrid),
   };
 }

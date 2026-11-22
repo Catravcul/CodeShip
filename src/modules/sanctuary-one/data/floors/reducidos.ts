@@ -2,7 +2,8 @@ import { cs, S1_SOURCES as S } from "../sources";
 import { ANALISIS, CULTIVO, MOLECULAR, SINTESIS, type Block } from "../models/ciencias";
 import { ENTRENAMIENTO_FLOORS } from "./entrenamiento";
 import { SERVICIOS_FLOORS } from "./servicios";
-import { carpetKeepOut, packFloor, ringLength, ringPoint, type FloorPlan, type Placed } from "./kit";
+import { FLOOR_SIZE, carpetKeepOut, composed, packFloor, ringLength, ringPoint, turned, type FloorPlan, type Placed } from "./kit";
+import { MUSICA_AULAS_FLOORS } from "./musica-aulas";
 
 /**
  * The floors of the buildings for the people there are now (Berón 2026-11-21: «muy pocas veces van a coincidir todos
@@ -135,7 +136,33 @@ function lab(id: string, lists: readonly (readonly Block[])[], counts: Readonly<
   return { id, size: LAB, items, source: cs("Research", `${what} (PackFloor), en un piso (Berón 2026-11-21)`) };
 }
 
+/** Half the floor across (x) and away from the trunk (z), and its quarters: where the rooms of a shared floor go. */
+const HX = FLOOR_SIZE.x / 2;
+const HZ = FLOOR_SIZE.z / 2;
+const left = { x0: -HX, x1: 0, z0: -HZ, z1: HZ };
+const right = { x0: 0, x1: HX, z0: -HZ, z1: HZ };
+const front = { x0: -HX, x1: HX, z0: -HZ, z1: 0 };
+const back = { x0: -HX, x1: HX, z0: 0, z1: HZ };
+
+/**
+ * The training tower's rooms two to a floor, each spread over its half (Berón 2026-11-22: «hacer más espacio entre
+ * máquinas y muebles o unir pisos, quizás el de CrossFit se podría unir al de calistenia, y en el aula seguramente
+ * vendría bien mayor espacio entre pupitres»).
+ */
+function shared(): FloorPlan[] {
+  const e = (id: string) => plan(ENTRENAMIENTO_FLOORS, id);
+  const m = (id: string) => plan(MUSICA_AULAS_FLOORS, id);
+  const cp = calisthenicsParkour();
+  return [
+    composed("funcional", [{ plan: cp, ...front }, { plan: turned(e("crossfit")), ...back }], `${cp.source}; ${e("crossfit").source}; crossfit con calistenia y parkour (Berón 2026-11-22)`),
+    composed("yoga-ballet", [{ plan: e("yoga-hatha-occidental-1"), ...left }, { plan: m("ballet-grande"), ...right }], `${e("yoga-hatha-occidental-1").source}; ${m("ballet-grande").source}; en un piso (2026-11-22)`),
+    composed("artes-marciales", [{ plan: m("dojo-judo"), ...left }, { plan: m("dojo-kickboxing"), ...right }], `${m("dojo-judo").source}; ${m("dojo-kickboxing").source}; en un piso (2026-11-22)`),
+    composed("aula-musica", [{ plan: m("aula-historia"), ...left }, { plan: m("musica-ensayo"), ...right }], `${m("aula-historia").source}; ${m("musica-ensayo").source}; en un piso, con más espacio entre pupitres (2026-11-22)`),
+  ];
+}
+
 export const REDUCIDOS_FLOORS: readonly FloorPlan[] = [
+  ...shared(),
   gym(),
   calisthenicsParkour(),
   hospital(),

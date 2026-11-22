@@ -1,6 +1,6 @@
 import { REAL_ONLY } from "@core/realism";
 import type { GameSettings, StartCamera } from "@modules/settings/domain/settings";
-import { START_CAMERAS } from "@modules/settings/domain/settings";
+import { START_CAMERAS, WOOD_GRIDS } from "@modules/settings/domain/settings";
 import { settings } from "./settings-store";
 import "./settings.css";
 
@@ -53,6 +53,13 @@ const ROWS: readonly Row[] = [
     help: "Real: cada cosa donde la ponen los datos · Amplia (2 m): las salas se alargan hasta que entre dos cosas que se usan haya 2 m. Se aplica al volver a cargar el juego",
     value: (s) => (s.spacing === "real" ? "Real" : "Amplia (2 m)"),
     next: (s) => (s.spacing === "real" ? "amplia" : "real"),
+  },
+  {
+    key: "woodGrid",
+    label: "Rejilla de madera",
+    help: "Santuario 1: un poste y una viga de madera cada 4, 8 o 16 m en los troncos y las ramas de los árboles, para orientarse nadando; o solo las esquinas y los niveles. Se aplica al volver a cargar el juego",
+    value: (s) => (s.woodGrid === "no" ? "Solo esquinas" : `Cada ${s.woodGrid} m`),
+    next: (s) => WOOD_GRIDS[(WOOD_GRIDS.indexOf(s.woodGrid) + 1) % WOOD_GRIDS.length]!,
   },
   { key: "sound", label: "Sonido", help: "Alarmas de embestida e impactos", value: (s) => yes(s.sound), next: (s) => !s.sound },
 ];

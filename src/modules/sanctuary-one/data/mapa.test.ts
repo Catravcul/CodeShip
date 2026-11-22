@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { AQUARIUM_AREA, buildS1Layout } from "./layout";
-import { AQUARIUM, BASE, LOBES, NESTS, SEA, TOWERS, aquariumHalf, capOf } from "./site";
+import { AQUARIUM_AREA, buildS1Layout, embryoBox } from "./layout";
+import { AQUARIUM, BASE, LOBES, NESTS, SEA, TOWERS, aquariumRadius, capOf } from "./site";
 import { TRUNK_HALF } from "./paso";
 import { TREE } from "@modules/aerial-sanctuary/data/facts";
 
@@ -26,8 +26,12 @@ describe("el mapa en anillos", () => {
   });
 
   it("los árboles están en el borde, más allá de todos los casquetes, y lejos unos de otros", () => {
-    const outer = Math.max(...live.map((l) => Math.hypot(l.x - SEA.x, l.z - SEA.z) + l.r));
-    for (const t of TOWERS) expect(Math.hypot(t.x - SEA.x, t.z - SEA.z), t.id).toBeGreaterThan(outer);
+    // Beyond every cap on its side of the sea (within 45° of its direction).
+    for (const t of TOWERS) {
+      const a = Math.atan2(t.z - SEA.z, t.x - SEA.x);
+      const side = live.filter((l) => Math.abs(Math.atan2(Math.sin(Math.atan2(l.z - SEA.z, l.x - SEA.x) - a), Math.cos(Math.atan2(l.z - SEA.z, l.x - SEA.x) - a))) < Math.PI / 4);
+      for (const l of side) expect(Math.hypot(t.x - SEA.x, t.z - SEA.z), `${t.id} / ${l.name}`).toBeGreaterThan(Math.hypot(l.x - SEA.x, l.z - SEA.z) + l.r);
+    }
     for (const a of TOWERS) for (const b of TOWERS) if (a !== b) expect(Math.hypot(a.x - b.x, a.z - b.z), `${a.id} / ${b.id}`).toBeGreaterThan(300);
     // No tree's floors, rings or tips over a cap: they stand clear of the animals' space.
     for (const t of L.towers)
@@ -39,50 +43,78 @@ describe("el mapa en anillos", () => {
         }
   });
 
-  it("cada árbol nace de su base en el mar: 10 m de cubierta alrededor del tronco, abierta donde baja el tronco, con su estación de alfombras", () => {
+  it("cada árbol nace de su base redonda en el mar: cubierta alrededor del tronco (3 m en sus esquinas), abierta donde baja el tronco, con su estación de alfombras", () => {
     const OH = TRUNK_HALF + TREE.wall.value;
+    expect(BASE.r - OH * Math.SQRT2).toBeGreaterThanOrEqual(2.5);
     for (const t of L.towers) {
-      expect(t.base.x1 - t.base.x0, t.id).toBeCloseTo(2 * (OH + BASE.walk));
+      expect(t.base.x1 - t.base.x0, t.id).toBeCloseTo(2 * BASE.r);
       const deck = L.world.floors.filter((f) => f.area === `base:${t.id}`);
-      expect(deck.length, t.id).toBe(4);
-      // The trunk's hole is open.
-      for (const f of deck) expect(f.x1 <= t.x - OH + 0.01 || f.x0 >= t.x + OH - 0.01 || f.z1 <= t.z - OH + 0.01 || f.z0 >= t.z + OH - 0.01, f.id).toBe(true);
+      expect(deck.length, t.id).toBeGreaterThan(20);
+      for (const f of deck) {
+        // Inside the circle, out of the trunk.
+        for (const [x, z] of [[f.x0, f.z0], [f.x1, f.z0], [f.x0, f.z1], [f.x1, f.z1]]) expect(Math.hypot(x! - t.x, z! - t.z), f.id).toBeLessThanOrEqual(BASE.r + 0.01);
+        expect(f.x1 <= t.x - OH + 0.01 || f.x0 >= t.x + OH - 0.01 || f.z1 <= t.z - OH + 0.01 || f.z0 >= t.z + OH - 0.01, f.id).toBe(true);
+      }
+      // The deck goes all round: in front of each face, 1 m out, there is deck.
+      for (const [dx, dz] of [[0.7, OH + 1], [0.7, -OH - 1], [OH + 1, 0.7], [-OH - 1, 0.7]]) expect(deck.some((f) => t.x + dx! > f.x0 && t.x + dx! < f.x1 && t.z + dz! > f.z0 && t.z + dz! < f.z1), `${t.id} ${dx} ${dz}`).toBe(true);
       const foot = L.carpets.find((s) => s.tower === t.id && s.kind === "pie")!;
       expect(foot, t.id).toBeDefined();
       const onDeck = deck.some((f) => foot.x >= f.x0 && foot.x <= f.x1 && foot.z >= f.z0 && foot.z <= f.z1);
-      const onJetty = !!foot.landing && [t.base.x0, t.base.x1].some((e) => Math.abs(foot.landing!.x0 - e) < 0.01 || Math.abs(foot.landing!.x1 - e) < 0.01) || [t.base.z0, t.base.z1].some((e) => Math.abs((foot.landing?.z0 ?? NaN) - e) < 0.01 || Math.abs((foot.landing?.z1 ?? NaN) - e) < 0.01);
+      // Or at the end of its jetty, which starts at the deck's edge.
+      const j = foot.landing;
+      const onJetty = !!j && [[j.x0, (j.z0 + j.z1) / 2], [j.x1, (j.z0 + j.z1) / 2], [(j.x0 + j.x1) / 2, j.z0], [(j.x0 + j.x1) / 2, j.z1]].some(([x, z]) => Math.abs(Math.hypot(x! - t.x, z! - t.z) - BASE.r) < 1);
       expect(onDeck || onJetty, t.id).toBe(true);
     }
   });
 
-  it("la pirámide de las ballenas: un reloj de arena de agua de 80 m y encima una pirámide invertida más ancha que el mar", () => {
-    const layers = L.world.waters.filter((w) => w.area === AQUARIUM_AREA).sort((a, b) => a.yBottom - b.yBottom);
-    expect(layers.length).toBeGreaterThan(20);
+  it("el globo de las ballenas: un reloj de arena de agua de 80 m y encima un globo más grande que cualquier edificio, con un embrión de un tercio en su centro", () => {
+    const water = L.world.waters.filter((w) => w.area === AQUARIUM_AREA);
+    const ys = [...new Set(water.map((w) => w.yBottom))].sort((a, b) => a - b);
+    expect(ys.length).toBeGreaterThan(40);
     // One column of water, layer on layer, from under the sea to its top.
-    for (let i = 1; i < layers.length; i++) expect(layers[i]!.yBottom).toBeCloseTo(layers[i - 1]!.yTop);
-    expect(layers[0]!.yBottom).toBeLessThan(0);
-    expect(layers[layers.length - 1]!.yTop).toBe(AQUARIUM.topY);
-    // The hourglass: narrower at its waist than at either end.
-    expect(aquariumHalf(AQUARIUM.waistY)).toBeLessThan(aquariumHalf(0));
-    expect(aquariumHalf(AQUARIUM.waistY)).toBeLessThan(aquariumHalf(AQUARIUM.neckY));
+    const top = (y: number) => Math.max(...water.filter((w) => w.yBottom === y).map((w) => w.yTop));
+    for (let i = 1; i < ys.length; i++) expect(ys[i]!).toBeCloseTo(top(ys[i - 1]!));
+    expect(ys[0]!).toBeLessThan(0);
+    expect(top(ys[ys.length - 1]!)).toBeCloseTo(AQUARIUM.topY);
+    // The hourglass: narrower at its waist than at either end; 80 m tall.
+    expect(aquariumRadius(AQUARIUM.waistY)).toBeLessThan(aquariumRadius(0));
+    expect(aquariumRadius(AQUARIUM.waistY)).toBeLessThan(aquariumRadius(AQUARIUM.neckY));
     expect(AQUARIUM.neckY).toBe(80);
-    // The pyramid widens all the way up, its top wider than the sea.
-    for (let y = AQUARIUM.neckY; y < AQUARIUM.topY; y += 5) expect(aquariumHalf(y + 5)).toBeGreaterThan(aquariumHalf(y));
-    expect(AQUARIUM.topHalf).toBeGreaterThan(SEA.r);
-    // Under the carpets' sky way (over the highest crown).
-    expect(AQUARIUM.topY).toBeLessThan(Math.max(...L.towers.map((t) => t.rootHeight)));
+    // The globe: round, taller than every tree; the hourglass meets it.
+    expect(aquariumRadius(AQUARIUM.centreY)).toBeCloseTo(AQUARIUM.globeR);
+    expect(aquariumRadius(AQUARIUM.neckY + 0.01)).toBeCloseTo(AQUARIUM.neckR, 0);
+    expect(2 * AQUARIUM.globeR).toBeGreaterThan(Math.max(...L.towers.map((t) => t.rootHeight)));
+    // Every strip of water inside the round shape (its corners at most on it).
+    for (const w of water) {
+      const r = aquariumRadius(Math.max(0, (w.yBottom + w.yTop) / 2));
+      const zIn = Math.min(Math.abs(w.z0 - AQUARIUM.z), Math.abs(w.z1 - AQUARIUM.z));
+      const zMid = Math.abs((w.z0 + w.z1) / 2 - AQUARIUM.z);
+      expect(Math.hypot(w.x1 - AQUARIUM.x, w.z0 < AQUARIUM.z && w.z1 > AQUARIUM.z ? 0 : Math.min(zIn, zMid)), w.id).toBeLessThanOrEqual(r + 0.01);
+    }
+    // The embryo: a third of the globe, in its middle, solid.
+    expect(AQUARIUM.embryo).toBeCloseTo((2 * AQUARIUM.globeR) / 3);
+    const e = embryoBox();
+    expect((e.y0 + e.y1) / 2).toBeCloseTo(AQUARIUM.centreY);
+    expect(L.world.solids.some((q) => q.x0 === e.x0 && q.y0 === e.y0 && q.z1 === e.z1)).toBe(true);
   });
 
-  it("las ballenas, delfines y focas viven en el mar y en la pirámide, dentro del agua", () => {
+  it("las alfombras vuelan por encima del globo", () => {
+    for (const s of L.carpets) expect(s.lane.hi, s.id).toBeGreaterThan(AQUARIUM.topY);
+  });
+
+  it("las ballenas, delfines y focas viven en el mar y en el globo, dentro del agua y sin atravesar el embrión", () => {
     const up = NESTS.filter((n) => n.y !== undefined);
     expect(up.some((n) => n.species === "Whale")).toBe(true);
-    for (const n of up) expect(n.radius, n.species).toBeLessThan(aquariumHalf(n.y!));
+    for (const n of up) expect(n.radius, n.species).toBeLessThan(aquariumRadius(n.y!));
+    const e = embryoBox();
+    for (const n of up) expect(n.y! > e.y1 || n.y! < e.y0, n.species).toBe(true);
     const inside = L.instances.filter((i) => i.area === AQUARIUM_AREA);
     expect(inside.some((i) => i.model === "ballena")).toBe(true);
+    expect(inside.filter((i) => i.model === "delfin" && i.y > 100).every((i) => i.y < embryoBox().y0)).toBe(true);
     expect(inside.some((i) => i.model === "delfin")).toBe(true);
     for (const i of inside) {
       expect(i.y, i.name).toBeLessThan(AQUARIUM.topY);
-      expect(Math.max(Math.abs(i.x - AQUARIUM.x), Math.abs(i.z - AQUARIUM.z)), i.name).toBeLessThan(aquariumHalf(Math.max(0, i.y)));
+      expect(Math.hypot(i.x - AQUARIUM.x, i.z - AQUARIUM.z), i.name).toBeLessThan(aquariumRadius(Math.max(0, i.y)));
     }
     // Some go up and down the hourglass.
     expect(inside.some((i) => i.wander?.climb && i.wander.climb.y1 > AQUARIUM.neckY)).toBe(true);

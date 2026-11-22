@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { buildS1Layout } from "./layout";
 import { FLOOR_PLANS } from "./floors";
+import { FLOOR_SIZE } from "./floors/kit";
+import { TOWERS } from "./site";
 import { model } from "./catalog";
 import { carpetDestinations, carpetRoute, Grid, obstaclesOf, stationAt, touches, STATION_PAD, type Box, type CarpetStation } from "./alfombras";
 import { MODELS } from "./catalog";
 import { NEEDED, ORCHARD_BRANCH, TRUNK_HALF, WATER_VEHICLES } from "./paso";
-import { FLOORS_PER_LEVEL } from "./layout";
+import { FLOORS_PER_LEVEL, FRAME } from "./layout";
 import { TREE } from "@modules/aerial-sanctuary/data/facts";
 
 /**
@@ -14,8 +16,12 @@ import { TREE } from "@modules/aerial-sanctuary/data/facts";
  */
 const L = buildS1Layout(1.5);
 
-/** How much of a floor plan has something within 3 m (2 m cells), its finish (> 60 % of the floor) left out. */
-function coverage(p: { size: { x: number; z: number }; items: readonly { model: string; x: number; z: number }[] }): number {
+/**
+ * How much of a floor plan has something within 3 m (2 m cells), its finish (> 60 % of the floor) left out; 3 m times
+ * its spread where its things were spread out to leave room to run (floors/kit.ts FloorPlan.spread).
+ */
+function coverage(p: { size: { x: number; z: number }; items: readonly { model: string; x: number; z: number }[]; spread?: number }): number {
+  const reach = 3 * (p.spread ?? 1);
   const A = p.size.x * p.size.z;
   const pts = p.items.map((it) => ({ it, d: model(it.model) })).filter(({ d }) => d.size.x * d.size.z <= A * 0.6).map(({ it, d }) => ({ x: it.x, z: it.z, r: Math.max(d.size.x, d.size.z) / 2 }));
   let cov = 0;
@@ -23,14 +29,22 @@ function coverage(p: { size: { x: number; z: number }; items: readonly { model: 
   for (let x = -p.size.x / 2 + 1; x < p.size.x / 2; x += 2)
     for (let z = -p.size.z / 2 + 1; z < p.size.z / 2; z += 2) {
       n++;
-      if (pts.some((q) => Math.hypot(q.x - x, q.z - z) < q.r + 3)) cov++;
+      if (pts.some((q) => Math.hypot(q.x - x, q.z - z) < q.r + reach)) cov++;
     }
   return cov / n;
 }
 
 describe("reglas de los pisos y de los árboles (Berón 2026-11-20)", () => {
   it("ningún piso amueblado queda medio vacío: algo a menos de 3 m de cada punto del 60 % del piso o más", () => {
-    for (const p of FLOOR_PLANS.values()) expect(coverage(p), p.id).toBeGreaterThanOrEqual(0.6);
+    // Today's buildings' floors (the roomy ones kept in TOWERS_AMPLIOS are not built).
+    for (const id of new Set(TOWERS.flatMap((t) => t.floors.map((f) => f.furnish ?? "")).filter(Boolean))) expect(coverage(FLOOR_PLANS.get(id)!), id).toBeGreaterThanOrEqual(0.6);
+  });
+
+  it("todos los pisos de hoy tienen el tamaño del de la cocina (Berón 2026-11-22)", () => {
+    for (const t of L.towers) for (const f of t.floors) {
+      expect(f.rect.x1 - f.rect.x0, `${t.id} ${f.name}`).toBeCloseTo(FLOOR_SIZE.x * 1.5);
+      expect(f.rect.z1 - f.rect.z0, `${t.id} ${f.name}`).toBeCloseTo(FLOOR_SIZE.z * 1.5);
+    }
   });
 
   it("el submarino más grande pasa por el tronco y por cada puerta del tronco con sitio para personas y animales (regla dinámica)", () => {
@@ -90,17 +104,36 @@ describe("reglas de los pisos y de los árboles (Berón 2026-11-20)", () => {
     }
   });
 
-  it("cada árbol tiene su armazón de madera: cuatro postes en el tronco, una viga por nivel y los cantos de cada rama", () => {
+  it("cada árbol tiene su armazón de madera: cuatro postes en el tronco, una viga por nivel, los cantos de cada rama y la rejilla (Berón 2026-11-22)", () => {
+    const G = FRAME.grid;
     for (const t of L.towers) {
+      // The four corner posts, root to roof.
       const posts = t.frame.filter((q) => q.y1 - q.y0 > t.rootHeight * 0.9);
-      expect(posts.length, t.id).toBe(4);
+      expect(posts.length, t.id).toBeGreaterThanOrEqual(4);
       const levels = new Set(t.floors.map((f) => f.y)).size;
-      const inTrunk = (q: (typeof t.frame)[number]) => Math.abs((q.x0 + q.x1) / 2 - t.x) <= TRUNK_HALF && Math.abs((q.z0 + q.z1) / 2 - t.z) <= TRUNK_HALF;
-      expect(t.frame.filter((q) => inTrunk(q) && q.y1 - q.y0 < 1).length, t.id).toBe(4 * (levels + 1));
-      // Each orchard branch: 8 edges and 4 posts.
-      expect(t.frame.length, t.id).toBe(4 + 4 * (levels + 1) + 12 * t.tips.length);
+      const inTrunk = (q: (typeof t.frame)[number]) => Math.abs((q.x0 + q.x1) / 2 - t.x) <= TRUNK_HALF * 1.5 && Math.abs((q.z0 + q.z1) / 2 - t.z) <= TRUNK_HALF * 1.5;
+      const beams = t.frame.filter((q) => inTrunk(q) && q.y1 - q.y0 < 1);
+      // A beam every G m up the trunk (each face's, cut at its doorways) besides the levels'.
+      const heights = new Set(beams.map((q) => Math.round((q.y0 + q.y1) / 2)));
+      expect(heights.size, t.id).toBeGreaterThanOrEqual(levels);
+      expect(heights.size, t.id).toBeGreaterThan(t.rootHeight / G - 3);
     }
   });
+
+  it("la rejilla de madera nunca cruza una puerta del tronco", () => {
+    const door = TREE.door.value;
+    for (const f of L.world.floors.filter((q) => q.id.endsWith("-umbral"))) {
+      const t = L.towers.find((q) => f.id.startsWith(`${q.id}:`))!;
+      if (!t) continue;
+      for (const q of t.frame) {
+        const inX = q.x1 > f.x0 + 0.05 && q.x0 < f.x1 - 0.05;
+        const inZ = q.z1 > f.z0 + 0.05 && q.z0 < f.z1 - 0.05;
+        const inY = q.y1 > f.y + 0.2 && q.y0 < f.y + door.h - 0.2;
+        expect(inX && inZ && inY, `${f.id}`).toBe(false);
+      }
+    }
+  });
+
 
   it("bajo el tronco no hay suelo: su agua baja al mar", () => {
     for (const t of L.towers) expect(L.world.floors.filter((f) => f.y === 0 && t.x > f.x0 && t.x < f.x1 && t.z > f.z0 && t.z < f.z1).map((f) => f.id), t.id).toEqual([]);

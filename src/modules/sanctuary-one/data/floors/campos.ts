@@ -50,7 +50,7 @@ function forest(offset: number): Parameters<typeof plot>[4] {
 }
 
 const bamboo: Parameters<typeof plot>[4] = (put, hx, hz, R) => {
-  for (let x = -hx + 2; x <= hx - 2; x += 3.5) for (let z = -hz + 2; z <= hz - 3; z += 3.5) put("planta-bambu", "Guadua", x + R(-0.4, 0.4), z + R(-0.4, 0.4));
+  for (let x = -hx + 2; x <= hx - 2; x += 2.8) for (let z = -hz + 2; z <= hz - 3; z += 2.8) put("planta-bambu", "Guadua", x + R(-0.4, 0.4), z + R(-0.4, 0.4));
   for (let x = -hx + 0.8; x <= hx - 0.8; x += 1.1) put("planta-canamo", "Cáñamo", x, hz - 1);
 };
 
@@ -74,7 +74,7 @@ const vegetables: Parameters<typeof plot>[4] = (put, hx, hz, R) => {
 const field = (id: string, title: string, fill: Parameters<typeof plot>[4], seed: number, hedge: boolean): FloorPlan => ({
   id,
   size: SIZE,
-  items: plot(1, 4, 22, 18, fill, seed, hedge),
+  items: plot(1, 3, 26, 24, fill, seed, hedge),
   source: `${SRC} ${title}`,
 });
 

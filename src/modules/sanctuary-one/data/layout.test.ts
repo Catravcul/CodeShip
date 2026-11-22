@@ -131,10 +131,11 @@ describe("santuario 1: pisos amueblados", () => {
   });
   it("los edificios de hoy: un piso de gimnasio, uno de yoga, uno de aula y un hospital", () => {
     const furn = TOWERS.flatMap((t) => t.floors.map((f) => f.furnish ?? ""));
-    expect(furn.filter((f) => /^yoga/.test(f))).toHaveLength(1);
-    expect(furn.filter((f) => /^aula/.test(f))).toHaveLength(1);
-    expect(furn.filter((f) => /^musica/.test(f))).toHaveLength(1);
+    expect(furn.filter((f) => /yoga/.test(f))).toHaveLength(1);
+    expect(furn.filter((f) => /aula/.test(f))).toHaveLength(1);
+    expect(furn.filter((f) => /musica/.test(f))).toHaveLength(1);
     expect(furn.filter((f) => /^(gimnasio|cardio)/.test(f))).toHaveLength(1);
+    expect(furn.filter((f) => /crossfit|funcional/.test(f))).toHaveLength(1);
     expect(furn.filter((f) => /^hospital/.test(f) && f !== "hospital-veterinario")).toHaveLength(1);
     expect(TOWERS.reduce((n, t) => n + t.floors.length, 0)).toBeLessThan(40);
   });

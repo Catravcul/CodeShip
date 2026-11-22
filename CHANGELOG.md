@@ -3,6 +3,15 @@
 Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documento. El historial anterior al
 2026-11-18 está en git y en `docs/design/`.
 
+## 2026-11-22
+
+- **Santuario 1, décima lista**: globo de agua de 240 m con un embrión en el centro sobre el reloj de arena (sin
+  aristas); bases redondas más pequeñas; árboles a la mitad de distancia de los casquetes; todos los pisos del tamaño
+  de la cocina con más espacio para correr (crossfit con calistenia, aula con más sitio entre pupitres); rejilla de
+  madera cada 4 m (ajuste «Rejilla de madera»); el agua clara deja ver el cielo; día y noche con amanecer, atardecer,
+  estrellas y luna; alfombras al doble de velocidad, acelerando y frenando como un coche.
+  [docs/design/santuario1.md](docs/design/santuario1.md) #76–85
+
 ## 2026-11-21
 
 - **Mapa en anillos del santuario 1**: en el centro, un mar circular de 120 m de radio para las ballenas, con un reloj de

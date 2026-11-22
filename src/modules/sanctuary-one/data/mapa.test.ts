@@ -1,3 +1,6 @@
+import type { Body } from "@modules/aerial-sanctuary/domain/walk";
+import { FreeWalk } from "@modules/aerial-sanctuary/application/free-walk";
+import { WalkIndex } from "./walk-index";
 import { describe, expect, it } from "vitest";
 import { AQUARIUM_AREA, buildS1Layout, embryoBox } from "./layout";
 import { BASE, LOBES, NESTS, SEA, TOWERS, WATER_Y, capOf, lobeRadius } from "./site";
@@ -77,7 +80,7 @@ describe("el mapa en anillos", () => {
     expect(GLOBE.layers[0]!.y0).toBeLessThan(WATER_Y);
   });
 
-  it("el globo: una boquilla suave que se va abriendo, más ancho que el mar en su vientre, más alto que cualquier árbol", () => {
+  it("el globo: una boquilla suave que se abre en una esfera (Berón 2026-11-22: «forma de globo»), más alto que cualquier árbol", () => {
     const L0 = GLOBE.layers;
     for (let n = 1; n < L0.length; n++) expect(L0[n]!.y0).toBe(L0[n - 1]!.y1);
     const sizes = L0.map((l) => l.cells.size);
@@ -90,7 +93,14 @@ describe("el mapa en anillos", () => {
       expect(sizes[n]!, String(L0[n]!.y0)).toBeGreaterThanOrEqual(sizes[n - 1]!);
       expect(sizes[n]! / sizes[n - 1]!, String(L0[n]!.y0)).toBeLessThan(1.4);
     }
-    expect(Math.max(...sizes) * GLOBE_CELL * GLOBE_CELL).toBeGreaterThan(GLOBE.seaArea);
+    // Round: its belly's cells within the sphere's circle (a cell's diagonal of play), and as many as the circle holds.
+    const bl = L0[belly]!;
+    const R = Math.sqrt((bl.cells.size * GLOBE_CELL * GLOBE_CELL) / Math.PI);
+    for (const k of bl.cells) {
+      const [i, j] = k.split(",").map(Number) as [number, number];
+      expect(Math.hypot((i + 0.5) * GLOBE_CELL - GLOBE.x, (j + 0.5) * GLOBE_CELL - GLOBE.z)).toBeLessThan(R + GLOBE_CELL * 1.5);
+    }
+    expect(R).toBeGreaterThan(120);
     expect(GLOBE.topY).toBeGreaterThan(Math.max(...L.towers.map((t) => t.rootHeight)));
     expect(globeShare(GLOBE.topY + 1)).toBe(0);
   });
@@ -152,5 +162,20 @@ describe("el mapa en anillos", () => {
     expect(d).toBeLessThanOrEqual(half + GLOBE_CELL);
     // Near its top, shallow.
     expect(globeDepth(GLOBE.x, GLOBE.topY - 4, GLOBE.z)).toBeLessThanOrEqual(8);
+  });
+  it("se nada desde el mar hasta dentro del globo, mirando arriba (Berón 2026-11-22: «en el globo de agua no puedo nadar»)", () => {
+    const L = buildS1Layout(1);
+    const ix = new WalkIndex(L.world);
+    let y = -3;
+    const w = new FreeWalk((x, z) => ix.near(x, z, y), { walk: 1.6, swim: 1.2 }, 0);
+    let b: Body = { x: GLOBE.x + 4, y: -3, z: GLOBE.z + 4, motion: "agua", area: AQUARIUM_AREA };
+    for (let t = 0; t < 60; t += 0.1) {
+      const c = w.carry(0.1, b);
+      b = c.body;
+      y = b.y;
+      if (!c.busy) b = w.move(0.1, b, { forward: 1, right: 0, yaw: 0, pitch: 1.4, run: true });
+    }
+    expect(b.motion).toBe("agua");
+    expect(b.y).toBeGreaterThan(100);
   });
 });

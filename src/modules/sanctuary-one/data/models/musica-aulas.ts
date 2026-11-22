@@ -274,6 +274,7 @@ const FINISH: readonly (readonly [string, number, number, number, string])[] = [
   ["dojo-judo", 15, 15, 0x9a7a52, "Tarima de madera"],
   ["ballet-grande", 15, 12, 0x3a3a3e, "Suelo flotante con vinilo de danza"],
   ["ballet-pequeno", 12, 10, 0x3a3a3e, "Suelo flotante con vinilo de danza"],
+  ["baile-latino", 15, 12, 0xa8794a, "Tarima flotante de baile (roble)"],
 ];
 /**
  * The martial arts rooms' own kit (Berón 2026-11-20: «el piso de artes marciales también se puede dividir en pisos
@@ -295,6 +296,22 @@ const DOJO_KIT: readonly ModelDef[] = [
  * barres of 38–50 mm at ~0,86 and ~1,07 m, 0,35–0,4 m off the wall) and a freestanding barre in use.
  */
 const BALLET_KIT: readonly ModelDef[] = [
+  // The social dances' room (Berón 2026-11-22: «nos falta salsa, bachata, merengue, reguetón y quizás otros tipos»).
+  pz("baile-espejo", "mueble", "baile", "Pared de espejo de baile (6 m, sin barra)", oak, [
+    C(0, 1.2, 0, 6, 2.1, 0.04, 0xd9e6ee), C(0, 0.06, -0.02, 6, 0.12, 0.06, 0x6b4a32), C(0, 2.28, -0.01, 6.04, 0.06, 0.06, 0x6b4a32), ...[-3, 0, 3].map((x) => C(x, 1.2, -0.01, 0.04, 2.2, 0.05, 0x8c8a85)),
+  ], "real", "Sport England, Studios for Dance (2016): espejos de 2,1 m desde 0,15 m en la pared frontal"),
+  pz("baile-cartel", "mueble", "baile", "Tablón de clases: salsa, bachata, merengue, reguetón, kizomba, tango, swing y danza urbana", oak, [
+    ...[-0.75, 0.75].map((x) => C(x, 0.85, 0, 0.05, 1.7, 0.05, darkSteel)), ...[-0.75, 0.75].map((x) => C(x, 0.02, 0, 0.1, 0.04, 0.5, darkSteel)),
+    C(0, 1.4, 0.01, 1.6, 1.0, 0.03, 0x2a2a2e), ...rep(8, (i) => [C(-0.4 + (i % 2) * 0.8, 1.75 - Math.floor(i / 2) * 0.22, -0.01, 0.7, 0.16, 0.01, [0xe8483a, 0xe8a03a, 0x3ab0e8, 0xb03ae8, 0x3ae87a, 0xe83a8c, 0xe8e03a, 0xffffff][i])]),
+  ], "real", "Horario de clases de bailes sociales (salsa, bachata, merengue, reguetón, kizomba, tango, swing, danza urbana)"),
+  pz("baile-sillas", "mueble", "baile", "Fila de 4 sillas apilables", oak, rep(4, (i) => {
+    const x = (i - 1.5) * 0.55;
+    return [C(x, 0.45, 0, 0.45, 0.04, 0.42, 0x3a3a3e), C(x, 0.7, 0.2, 0.45, 0.45, 0.03, 0x3a3a3e), ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => C(x + sx * 0.2, 0.22, sz * 0.18, 0.025, 0.44, 0.025, darkSteel)))];
+  }), "real", "Silla apilable de sala (45 cm de asiento)"),
+  pz("baile-bola", "mueble", "baile", "Bola de espejos en su pie y foco", oak, [
+    C(0, 0.03, 0, 0.6, 0.06, 0.6, darkSteel), C(0, 1.3, 0, 0.05, 2.5, 0.05, darkSteel), C(0, 2.58, 0, 0.36, 0.36, 0.36, 0xd8dce4), C(0, 2.58, 0, 0.3, 0.42, 0.3, 0xc0c4cc), C(0.12, 1.7, 0, 0.18, 0.18, 0.24, 0x26262a), C(0.12, 1.7, -0.13, 0.12, 0.12, 0.01, 0xf2e6a0),
+  ], "real", "Bola de espejos de 30 cm con motor en pie de 2,6 m y foco PAR"),
+
   pz("ballet-espejo-barra", "mueble", "ballet", "Pared de espejo con barra doble (6 m)", oak, [
     C(0, 1.3, 0, 6, 2, 0.04, 0xd9e6ee),
     C(0, 0.12, -0.02, 6, 0.24, 0.06, 0x6b4a32),

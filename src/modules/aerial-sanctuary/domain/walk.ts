@@ -136,7 +136,24 @@ export function waterAt(w: WalkWorld, x: number, y: number, z: number): Water | 
   return w.waters.find((v) => inside(v, x, z) && y >= v.yBottom - STEP_M && y <= v.yTop + STEP_M);
 }
 
-const swimY = (v: Water, y: number) => Math.max(v.yBottom, Math.min(v.yTop - SWIM_DEPTH_M, y));
+const swimY = (v: Water, y: number, top = v.yTop) => Math.max(v.yBottom, Math.min(top - SWIM_DEPTH_M, y));
+
+/**
+ * The surface over (x, z) from a water up: its top, or the top of the waters stacked on it (a tall water in layers,
+ * as sanctuary 1's globe: Berón 2026-11-22 «en el globo de agua no puedo nadar»: each layer's top stopped her).
+ */
+export function surfaceAbove(w: WalkWorld, v: Water, x: number, z: number): number {
+  let top = v.yTop;
+  for (let more = true; more; ) {
+    more = false;
+    for (const q of w.waters)
+      if (q.yBottom <= top + 0.01 && q.yTop > top && inside(q, x, z)) {
+        top = q.yTop;
+        more = true;
+      }
+  }
+  return top;
+}
 
 /** Where she would be after trying to go to (x, y, z), or undefined if nothing holds her there. */
 function settle(w: WalkWorld, b: Body, x: number, y: number, z: number, extra: readonly Floor[]): Body | undefined {
@@ -154,7 +171,7 @@ function settle(w: WalkWorld, b: Body, x: number, y: number, z: number, extra: r
   if (out && !blocked(w, x, out.y, z)) return { x, y: out.y, z, motion: "gravedad", area: out.area };
   const v = w.waters.filter((q) => inside(q, x, z) && y >= q.yBottom - STEP_M && y <= q.yTop + STEP_M).sort((a, c) => c.yTop - a.yTop)[0];
   if (!v) return undefined;
-  const sy = swimY(v, y);
+  const sy = swimY(v, y, surfaceAbove(w, v, x, z));
   // Lying in the water she fits where standing she would not (the top of a doorway).
   return blocked(w, x, sy, z, SWIM_BODY_M) ? undefined : { x, y: sy, z, motion: "agua", area: v.area };
 }

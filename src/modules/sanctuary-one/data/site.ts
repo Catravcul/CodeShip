@@ -315,10 +315,10 @@ export const TOWERS_AMPLIOS: readonly TowerSpec[] = [
 
 /**
  * The buildings for the people there are now (Berón 2026-11-21: «se va a reconstruir los edificios en base a los
- * miembros actuales con la idea de que muy pocas veces van a coincidir todos en el mismo piso»): 23 floors instead of
+ * miembros actuales con la idea de que muy pocas veces van a coincidir todos en el mismo piso»): 24 floors instead of
  * 63, every one the kitchen's 40 × 40 m (Berón 2026-11-22: «el tamaño base de los pisos era el mismo que el de cocina»),
- * rooms joined by affinity and hours (Berón 2026-11-22: «fusionar pisos por afinidad»): the gym with its fighting
- * corner, calisthenics with parkour and crossfit, yoga, judo, ballet and music one to a quarter, the assembly hall with
+ * rooms joined by affinity and hours (Berón 2026-11-22: «fusionar pisos por afinidad»): the gym on its whole floor,
+ * calisthenics with parkour and crossfit, the four fighting arts, yoga and music with ballet and the social dances, the assembly hall with
  * the watch, one hospital, cría with the cultured meat, both labs on one floor, mechanics with the submarine's garage,
  * textiles with the vertical farm, the classroom in the Residencia's plaza. Straight out of the trunk, two to a level on
  * opposite sides (reglas.md §2.7).
@@ -339,9 +339,10 @@ export const TOWERS: readonly TowerSpec[] = [
     ...TOWERS_AMPLIOS[1]!,
     source: `${S.csTowers}; ${S.csFloors}; un piso por actividad para los miembros actuales (Berón 2026-11-21)`,
     floors: [
-      F("Gimnasio", "Máquinas de placas, peso libre y cardio, y al fondo la zona de combate (kickboxing y karate)", "gimnasio"),
+      F("Gimnasio", "Dos o tres máquinas de cada tipo, peso libre, abdominales, spinning y cardio, en todo el piso", "gimnasio"),
       F("Calistenia, parkour y crossfit", "Barras, anillas, muros y cajones delante; el box de crossfit detrás", "funcional"),
-      F("Salas", "Yoga, el dojo de judo, el estudio de ballet y la sala de música, una por cuarto", "salas"),
+      F("Combate", "Judo, karate, kickboxing y MMA, una sala por cuarto", "combate"),
+      F("Salas", "Yoga y música delante; detrás el ballet junto a la sala de bailes (salsa, bachata, merengue, reguetón…)", "salas"),
     ],
   },
   {

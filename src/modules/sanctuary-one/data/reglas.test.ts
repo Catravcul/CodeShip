@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildS1Layout } from "./layout";
-import { FLOOR_PLANS } from "./floors";
+import { FLOOR_PLANS, half } from "./floors";
+import { largestHole } from "./floors/kit";
 import { FLOOR_SIZE } from "./floors/kit";
 import { TOWERS } from "./site";
 import { model } from "./catalog";
@@ -39,6 +40,14 @@ describe("reglas de los pisos y de los árboles (Berón 2026-11-20)", () => {
   it("ningún piso amueblado queda medio vacío: algo a menos de 3 m (sin contar la separación) de cada punto de la mitad del piso o más", () => {
     // Today's buildings' floors (the roomy ones kept in TOWERS_AMPLIOS are not built).
     for (const id of new Set(TOWERS.flatMap((t) => t.floors.map((f) => f.furnish ?? "")).filter(Boolean))) expect(coverage(FLOOR_PLANS.get(id)!), id).toBeGreaterThanOrEqual(0.5);
+  });
+  it("regla de distribución: ningún hueco grande, las cosas repartidas por todo el piso (Berón 2026-11-22)", () => {
+    // No point of a floor (its 2,5 m edge, the door's aisle and the carpet's landing kept clear on purpose) more than
+    // 6 m from every thing: a fused floor fills its whole square instead of crowding a side.
+    for (const id of new Set(TOWERS.flatMap((t) => t.floors.map((f) => f.furnish ?? "")).filter(Boolean))) {
+      const h = largestHole(FLOOR_PLANS.get(id)!, half);
+      expect(h.r, `${id}: hueco de ${h.r.toFixed(1)} m en (${h.x}, ${h.z})`).toBeLessThanOrEqual(6);
+    }
   });
 
   it("todos los pisos de hoy tienen el tamaño del de la cocina (Berón 2026-11-22)", () => {

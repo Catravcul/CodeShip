@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { FreeWalk, CLIMB_S } from "./free-walk";
-import type { Body, WalkWorld } from "../domain/walk";
+import { surfaceAbove, type Body, type WalkWorld } from "../domain/walk";
 import { SPRINT_MS } from "@modules/sanctuary-one/domain/effort";
 
 /** A floor at 0, a high floor at 12 with no railing, a box to climb and a pool. */
@@ -90,3 +90,19 @@ describe("andar, correr, saltar, trepar y caer: lo mismo en cada nivel con grave
     expect(run(w, { x: -1, y: 3, z: 7, motion: "agua", area: "tronco" }, 3, east).motion).toBe("agua");
   });
 });
+
+describe("agua en capas (el globo del santuario 1, Berón 2026-11-22)", () => {
+  const layers = [0, 8, 16].map((y0) => ({ id: `capa-${y0}`, x0: -4, x1: 4, z0: -4, z1: 4, yBottom: y0, yTop: y0 + 8, area: "globo" }));
+  const w = { floors: [], solids: [], waters: layers };
+  it("la superficie es la de la capa más alta apilada", () => {
+    expect(surfaceAbove(w, layers[0]!, 0, 0)).toBe(24);
+  });
+  it("mirando arriba se nada de una capa a otra, y se avanza menos", () => {
+    const walk = new FreeWalk(() => w, { walk: 1.6, swim: 1.2 }, 0);
+    let b: Body = { x: 0, y: 2, z: 0, motion: "agua", area: "globo" };
+    for (let k = 0; k < 150; k++) b = walk.move(0.1, b, { forward: 1, right: 0, yaw: 0, pitch: 1.4, run: false });
+    expect(b.y).toBeGreaterThan(18);
+    expect(Math.abs(b.z)).toBeLessThan(4);
+  });
+});
+

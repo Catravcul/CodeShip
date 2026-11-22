@@ -26,6 +26,12 @@ export type WoodGrid = "4" | "8" | "16" | "no";
 export const WOOD_GRIDS: readonly WoodGrid[] = ["4", "8", "16", "no"];
 /** The grid's spacing in metres (0: none). */
 export const woodGridMetres = (g: WoodGrid): number => (g === "no" ? 0 : Number(g));
+/**
+ * How many animals live in sanctuary 1 per person (Berón 2026-11-22: «me parece que existe una regla de que existan 3
+ * por cada persona, ¿es una settings? ¿se podría incrementar a 4?»): Cold Sanctuary's 3, or more. On the next load.
+ */
+export type AnimalsPerPerson = "3" | "4" | "5" | "6";
+export const ANIMALS_PER_PERSON: readonly AnimalsPerPerson[] = ["3", "4", "5", "6"];
 /** What the first input of a session was. */
 export type FirstInput = "tecla" | "toque" | "raton";
 
@@ -54,6 +60,7 @@ export interface GameSettings {
   readonly spacing: InteriorSpacing;
   /** Sanctuary 1's wooden grid in the trees. Applies on the next load. */
   readonly woodGrid: WoodGrid;
+  readonly animalsPerPerson: AnimalsPerPerson;
 }
 
 export const CHALLENGE_VIEWS: readonly ChallengeView[] = ["panel", "hud"];
@@ -79,6 +86,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   interiorScale: DEFAULT_PRESENTATION.interiorScale,
   spacing: DEFAULT_PRESENTATION.spacing,
   woodGrid: "4",
+  animalsPerPerson: "4",
 };
 
 /**
@@ -138,5 +146,6 @@ export function parseSettings(raw: string | null, env: { touchCapable: boolean; 
     interiorScale: oneOf(o?.interiorScale, INTERIOR_SCALES, DEFAULT_SETTINGS.interiorScale),
     spacing: oneOf(o?.spacing, INTERIOR_SPACINGS, DEFAULT_SETTINGS.spacing),
     woodGrid: oneOf(o?.woodGrid, WOOD_GRIDS, DEFAULT_SETTINGS.woodGrid),
+    animalsPerPerson: oneOf(o?.animalsPerPerson, ANIMALS_PER_PERSON, DEFAULT_SETTINGS.animalsPerPerson),
   };
 }

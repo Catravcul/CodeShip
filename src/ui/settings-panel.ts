@@ -1,6 +1,6 @@
 import { REAL_ONLY } from "@core/realism";
 import type { GameSettings, StartCamera } from "@modules/settings/domain/settings";
-import { START_CAMERAS, WOOD_GRIDS } from "@modules/settings/domain/settings";
+import { START_CAMERAS, ANIMALS_PER_PERSON, WOOD_GRIDS } from "@modules/settings/domain/settings";
 import { settings } from "./settings-store";
 import "./settings.css";
 
@@ -60,6 +60,13 @@ const ROWS: readonly Row[] = [
     help: "Santuario 1: un poste y una viga de madera cada 4, 8 o 16 m en los troncos y las ramas de los árboles, para orientarse nadando; o solo las esquinas y los niveles. Se aplica al volver a cargar el juego",
     value: (s) => (s.woodGrid === "no" ? "Solo esquinas" : `Cada ${s.woodGrid} m`),
     next: (s) => WOOD_GRIDS[(WOOD_GRIDS.indexOf(s.woodGrid) + 1) % WOOD_GRIDS.length]!,
+  },
+  {
+    key: "animalsPerPerson",
+    label: "Animales por persona",
+    help: "Santuario 1: cuántos animales viven en él por cada persona (Cold Sanctuary pone 3), repartidos entre presas, intermedios y depredadores. Más animales piden más al móvil. Se aplica al volver a cargar el juego",
+    value: (s) => s.animalsPerPerson,
+    next: (s) => ANIMALS_PER_PERSON[(ANIMALS_PER_PERSON.indexOf(s.animalsPerPerson) + 1) % ANIMALS_PER_PERSON.length]!,
   },
   { key: "sound", label: "Sonido", help: "Alarmas de embestida e impactos", value: (s) => yes(s.sound), next: (s) => !s.sound },
 ];

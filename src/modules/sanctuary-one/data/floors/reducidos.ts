@@ -2,7 +2,7 @@ import { cs, S1_SOURCES as S } from "../sources";
 import { ANALISIS, CULTIVO, MOLECULAR, SINTESIS, type Block } from "../models/ciencias";
 import { ENTRENAMIENTO_FLOORS } from "./entrenamiento";
 import { SERVICIOS_FLOORS } from "./servicios";
-import { FLOOR_SIZE, carpetKeepOut, composed, packFloor, ringLength, ringPoint, turned, type FloorPlan, type Placed } from "./kit";
+import { FLOOR_SIZE, carpetKeepOut, composed, gridIn, packFloor, ringLength, ringPoint, turned, type FloorPlan, type Placed } from "./kit";
 import { MUSICA_AULAS_FLOORS } from "./musica-aulas";
 import { PRODUCCION_FLOORS } from "./produccion";
 
@@ -20,35 +20,37 @@ const plan = (list: readonly FloorPlan[], id: string): FloorPlan => list.find((f
 const shift = (items: readonly Placed[], dx: number, dz: number): Placed[] => items.map((it) => ({ ...it, x: it.x + dx, z: it.z + dz }));
 
 /**
- * The gym, one floor (gym + cardio were two): of Cold Sanctuary's 30 plate machines (FurnishGym, 3 of each of 10) one of
- * each type in their two columns, the free weights for two at once, and a cardio corner where the other plate machines
- * and racks stood. The central aisle (x 1,5…4,5) stays clear from the door to the far wall.
+ * The gym, the whole floor (Berón 2026-11-22: «en el gym antes había máquinas de cada tipo de músculo, área de
+ * ejercicios libres, abdominales, spinner y cintas… por lo menos debe haber 2 de cada tipo… 3 de algunos»): of Cold
+ * Sanctuary's plate machines (FurnishGym, 3 of each of 10) two of each type and three of the most used, the free
+ * weights, abs and stretching, and the cardio with its spinning bikes; each zone laid evenly (gridIn), the central
+ * aisle (|x| < 2) clear from the door to the carpet at the far end, 2 m free along the open edges to jump off.
  */
 function gym(): FloorPlan {
-  const types = ["gym-press-pecho", "gym-press-hombros", "gym-jalon", "gym-remo", "gym-prensa", "gym-extension", "gym-curl-femoral", "gym-hip-thrust", "gym-gemelos", "gym-curl-biceps"];
-  const NAMES = ["Press de pecho", "Press de hombros", "Jalón al pecho", "Remo sentado", "Prensa de piernas", "Extensión de cuádriceps", "Curl femoral", "Hip thrust", "Gemelos", "Curl de bíceps"];
-  const rowZ = [11.3, 7.9, 4.05, -0.1, -3.8];
-  const rowTypes = [[0, 1], [2, 3], [4, 8], [5, 6], [7, 9]] as const;
-  // FurnishGym's first and fourth places of each row (the first of each type).
-  const rowX = [[-16.5, -7.5], [-16.4, -6.9], [-16.1, -5.0], [-16.35, -6.5], [-16.25, -6.0]];
-  const items: Placed[] = [P("suelo-caucho-piso", 0, 0)];
-  for (let row = 0; row < 5; row++)
-    for (let j = 0; j < 2; j++) {
-      const t = rowTypes[row]![j]!;
-      items.push(P(types[t]!, rowX[row]![j]!, rowZ[row]!, 0, NAMES[t]));
-    }
-  // Free weights (FurnishGym's, the first of each).
-  items.push(P("gym-estante-mancuernas", 6, 11.6), P("gym-banco-fid", 4.5, 7.5), P("gym-banco-fid", 7.6, 7.5));
-  items.push(P("gym-jaula", 5.3, 2.5), P("gym-arbol-discos", 8.1, 2.5), P("gym-press-banca", 5.3, -2.5, PI));
-  items.push(P("gym-smith", 6, -8), P("gym-plataforma", 12.5, -8), P("gym-soporte-barras", 17.1, -8));
-  // Cardio (FurnishGymCardio, its first of each kind), 2 m between machines.
-  [9.5, 12.4, 15.3].forEach((x, i) => items.push(P("gym-cinta", x, 11, 0, `Cinta ${i + 1}`)));
-  items.push(P("gym-eliptica", 10, 6.9, 0, "Elíptica 1"), P("gym-eliptica", 12.9, 6.9, 0, "Elíptica 2"), P("gym-escaladora", 15.8, 6.9));
-  items.push(P("gym-bici", 10.75, 2.7), P("gym-bici", 12.9, 2.7), P("gym-bici-reclinada", 15.8, 2.7));
-  items.push(P("gym-remo-ergometro", 10, -1.5), P("gym-remo-ergometro", 12.9, -1.5), P("gym-esterilla", 15.6, -1.5), P("gym-esterilla", 17.1, -1.5));
-  items.push(P("gym-silla-romana", 9.5, -11.4), P("gym-hiperextensiones", 15.5, -11.4));
-  items.push(P("gym-fuente", -15.4, -10.5), P("gym-toallas", 0, -10.5));
-  return { id: "gimnasio", size: { x: 36, z: 26 }, items, source: `${S.csGym}; ${cs("Training", "FurnishGymCardio")}; uno de cada tipo (Berón 2026-11-21: el gimnasio en un solo piso)` };
+  const M = (model: string, n: number, name: string) => Array.from({ length: n }, (_, i) => ({ model, name: `${name} ${i + 1}` }));
+  const machines = [
+    ...M("gym-press-pecho", 3, "Press de pecho"), ...M("gym-press-hombros", 2, "Press de hombros"), ...M("gym-jalon", 3, "Jalón al pecho"), ...M("gym-remo", 2, "Remo sentado"),
+    ...M("gym-prensa", 3, "Prensa de piernas"), ...M("gym-extension", 2, "Extensión de cuádriceps"), ...M("gym-curl-femoral", 2, "Curl femoral"), ...M("gym-hip-thrust", 2, "Hip thrust"),
+    ...M("gym-gemelos", 2, "Gemelos"), ...M("gym-curl-biceps", 3, "Curl de bíceps"),
+  ];
+  const abs = [...M("gym-esterilla", 4, "Esterilla"), ...M("gym-silla-romana", 2, "Silla romana"), ...M("gym-banco-declinado", 2, "Banco de abdominales"), ...M("gym-hiperextensiones", 2, "Hiperextensiones"), { model: "gym-espalderas-3", name: "Espalderas" }, { model: "gym-estanteria-material", name: "Material" }];
+  const cardio = [
+    ...M("gym-cinta", 4, "Cinta"), ...M("gym-eliptica", 3, "Elíptica"), ...M("gym-bici", 4, "Bici de spinning"), ...M("gym-bici-reclinada", 2, "Bici reclinada"),
+    ...M("gym-escaladora", 2, "Escaladora"), ...M("gym-remo-ergometro", 3, "Remo ergómetro"), { model: "gym-assault-bike", name: "Assault bike" }, { model: "gym-skierg", name: "SkiErg" },
+  ];
+  const free = [
+    ...M("gym-estante-mancuernas", 2, "Mancuernas"), ...M("gym-banco-fid", 4, "Banco regulable"), ...M("gym-jaula", 2, "Jaula de sentadillas"), ...M("gym-press-banca", 2, "Press de banca"),
+    { model: "gym-press-inclinado", name: "Press inclinado" }, ...M("gym-smith", 2, "Smith"), ...M("gym-plataforma", 2, "Plataforma de peso muerto"), ...M("gym-arbol-discos", 2, "Discos"), { model: "gym-soporte-barras", name: "Barras" },
+  ];
+  const items: Placed[] = [
+    P("suelo-caucho-gimnasio", 0, 0),
+    ...gridIn(machines, { x0: -18, x1: -2.5, z0: -17, z1: 4 }, 4),
+    ...gridIn(abs, { x0: -18, x1: -5, z0: 5, z1: 17 }, 4),
+    ...gridIn(cardio, { x0: 2.5, x1: 18, z0: -17, z1: -1 }, 5),
+    ...gridIn(free, { x0: 2.5, x1: 18, z0: 0, z1: 15 }, 5),
+    P("gym-fuente", -3.6, -18.4), P("gym-toallas", 3.6, -18.4),
+  ];
+  return { id: "gimnasio", size: { x: 40, z: 40 }, items, source: `${S.csGym}; ${cs("Training", "FurnishGymCardio")}; dos o tres de cada tipo, el gimnasio ocupa su piso (Berón 2026-11-22)` };
 }
 
 /** Calistenia and parkour side by side on one floor (they were two small floors): each room at its real size. */
@@ -180,10 +182,12 @@ function shared(): FloorPlan[] {
   const q = (x0: number, x1: number, z0: number, z1: number) => ({ x0, x1, z0, z1 });
   return [
     composed("funcional", [{ plan: cp, ...front }, { plan: turned(e("crossfit")), ...back }], `${cp.source}; ${e("crossfit").source}; crossfit con calistenia y parkour (Berón 2026-11-22)`),
-    // The gym with its fighting corner at the far end, as many gyms have a boxing area (Berón 2026-11-22: «el gym… se ve muy vacío»).
-    composed("gimnasio", [{ plan: gym(), ...q(-HX, HX, -HZ, 6) }, { plan: m("dojo-kickboxing"), ...q(-HX, 0, 6, HZ) }, { plan: m("dojo-karate"), ...q(0, HX, 6, HZ) }], `${gym().source}; ${m("dojo-kickboxing").source}; ${m("dojo-karate").source}; con su zona de combate (2026-11-22)`),
-    // Four rooms, one to a quarter: yoga and music on opposite corners, the dojo and the ballet studio between them.
-    composed("salas", [{ plan: e("yoga-hatha-occidental-1"), ...q(-HX, 0, -HZ, 0) }, { plan: m("dojo-judo"), ...q(0, HX, -HZ, 0) }, { plan: m("ballet-grande"), ...q(-HX, 0, 0, HZ) }, { plan: m("musica-ensayo"), ...q(0, HX, 0, HZ) }], `${e("yoga-hatha-occidental-1").source}; ${m("dojo-judo").source}; ${m("ballet-grande").source}; ${m("musica-ensayo").source}; una sala por cuarto (Berón 2026-11-22: «fusionar pisos por afinidad»)`),
+    gym(),
+    // The fighting arts together (Berón 2026-11-22: the dojo out of the gym), one to a quarter.
+    composed("combate", [{ plan: m("dojo-judo"), ...q(-HX, 0, -HZ, 0) }, { plan: m("dojo-karate"), ...q(0, HX, -HZ, 0) }, { plan: m("dojo-kickboxing"), ...q(-HX, 0, 0, HZ) }, { plan: m("dojo-mma"), ...q(0, HX, 0, HZ) }], `${m("dojo-judo").source}; ${m("dojo-karate").source}; ${m("dojo-kickboxing").source}; ${m("dojo-mma").source}; las artes de combate en un piso (2026-11-22)`),
+    // Yoga and music at the front; at the back the dance, ballet beside the social dances (Berón 2026-11-22: «el área
+    // de baile podría fusionarse con el ballet»), their mirror walls in the middle so the far edge stays open to jump.
+    composed("salas", [{ plan: e("yoga-hatha-occidental-1"), ...q(-HX, 0, -HZ, 0) }, { plan: m("musica-ensayo"), ...q(0, HX, -HZ, 0) }, { plan: facedBack(m("ballet-grande")), ...q(-HX, 0, 0, HZ) }, { plan: facedBack(m("baile-latino")), ...q(0, HX, 0, HZ) }], `${e("yoga-hatha-occidental-1").source}; ${m("musica-ensayo").source}; ${m("ballet-grande").source}; ${m("baile-latino").source}; yoga, música y baile (Berón 2026-11-22)`),
     // The workshops by affinity, front and back (Berón 2026-11-22: «las áreas del taller… se ven muy vacías»): the
     // mechanics with the submarine they keep, the textile studio with the vertical farm (fibres and dye plants).
     composed("mecanica-garaje", [{ plan: plan(PRODUCCION_FLOORS, "mecanica"), ...front }, { plan: plan(PRODUCCION_FLOORS, "garaje-submarino"), ...back }], `${plan(PRODUCCION_FLOORS, "mecanica").source}; ${plan(PRODUCCION_FLOORS, "garaje-submarino").source}; la mecánica con el garaje del submarino (2026-11-22)`),

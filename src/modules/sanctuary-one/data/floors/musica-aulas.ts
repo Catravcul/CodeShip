@@ -262,6 +262,26 @@ const DOJOS: readonly FloorPlan[] = [
  */
 const BALLET: readonly FloorPlan[] = [
   {
+    // Social dances (Berón 2026-11-22): the same studio size as the ballet one, its mirror wall at the far end, sound
+    // and speakers in the corners, chairs to rest along a side, the timetable by the door.
+    id: "baile-latino",
+    size: { x: 15, z: 12 },
+    items: [
+      P("baile-espejo", -3, 5.8, 0, "Espejo de baile"),
+      P("baile-espejo", 3, 5.8),
+      P("ballet-equipo-sonido", 5.6, -5.2),
+      P("ballet-altavoz", -7, 5.5),
+      P("ballet-altavoz", 7, 5.5),
+      P("ballet-altavoz", -7, -5.2),
+      P("baile-bola", 0, 0.6),
+      P("baile-sillas", -7, -1, FACE_PX, "Sillas"),
+      P("baile-sillas", -7, 2.4, FACE_PX),
+      P("baile-cartel", -4.8, -5.4, PI, "Clases: salsa, bachata, merengue, reguetón, kizomba, tango, swing y danza urbana"),
+      P("ballet-fuente", 7.1, 1.6, FACE_NX),
+    ],
+    source: "Sala de bailes sociales de 15 × 12 m (Sport England, Studios for Dance 2016): tarima flotante, espejos, sonido",
+  },
+  {
     id: "ballet-grande",
     size: { x: 15, z: 12 },
     items: [

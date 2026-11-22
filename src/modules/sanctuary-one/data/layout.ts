@@ -722,7 +722,10 @@ function scatter(i: number, radius: number): { x: number; z: number } {
 }
 
 /** `towers`: today's buildings, or the roomy ones kept in site.ts (TOWERS_AMPLIOS). */
-export function buildS1Layout(k = 1, o: Overrides = OVERRIDES, towers: readonly TowerSpec[] = TOWERS, opts: { readonly woodGrid?: number } = {}): S1Layout {
+/** Animals per person in sanctuary 1 unless the setting says otherwise (Berón 2026-11-22: 4, Cold Sanctuary's 3 + 1). */
+export const ANIMALS_PER_PERSON_S1 = 4;
+
+export function buildS1Layout(k = 1, o: Overrides = OVERRIDES, towers: readonly TowerSpec[] = TOWERS, opts: { readonly woodGrid?: number; readonly animalsPerPerson?: number } = {}): S1Layout {
   const b: Built = { o, grid: opts.woodGrid ?? FRAME.grid, floors: groundFloors(), waters: [], solids: [], walls: [], instances: [], areas: [], towers: [] };
   b.waters.push({ id: "mar", x0: -4000, x1: 4000, z0: -4000, z1: 4000, yBottom: -40, yTop: WATER_Y, area: "mar" });
   for (const cap of new Set(LOBES.filter((l) => l.r > 0).map(capOf))) {
@@ -775,7 +778,7 @@ export function buildS1Layout(k = 1, o: Overrides = OVERRIDES, towers: readonly 
   }
 
   // Animals: Cold Sanctuary's plan for the staff of sanctuary 1 (all of them live here), in their nests' families.
-  const counts = plan(STAFF.length + 1);
+  const counts = plan(STAFF.length + 1, opts.animalsPerPerson ?? ANIMALS_PER_PERSON_S1);
   const used = new Map<string, number>();
   for (const n of NESTS) {
     const gi = used.get(n.species) ?? 0;

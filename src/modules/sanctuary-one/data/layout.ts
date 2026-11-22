@@ -3,9 +3,10 @@ import { carpetStations, STATION_PAD, type CarpetStation } from "./alfombras";
 import { ORCHARD_BRANCH, TRUNK_HALF } from "./paso";
 import type { Floor, Rect, Solid, Water, WalkWorld } from "@modules/aerial-sanctuary/domain/walk";
 import { wallWithGaps } from "@modules/aerial-sanctuary/domain/walk";
-import { AQUARIUM, BASE, CAP_NAME, LOBES, MAP_HALF, NESTS, SEA, aquariumRadius, onMovedCap, SPECIES_MODEL, STAFF, TOWERS, WATER_Y, capOf, isLand, lobeRadius, type TowerSpec } from "./site";
+import { BASE, CAP_NAME, LOBES, MAP_HALF, NESTS, SEA, onMovedCap, SPECIES_MODEL, STAFF, TOWERS, WATER_Y, capOf, isLand, lobeRadius, type TowerSpec } from "./site";
 import { FLOOR_PLANS, type FloorPlan } from "./floors";
 import { FLOOR_SIZE } from "./floors/kit";
+import { GLOBE, globeCell, globeTopAt, layerBoxes } from "./globo";
 import { RING } from "./floors/kit";
 import { bedTip, orchardTip } from "./floors/puntas";
 import { DRIFT, landscape } from "./paisaje";
@@ -86,7 +87,7 @@ export interface TowerShape {
    * tronco»): two wooden struts under each floor, from the trunk's face up to the floor's underside. World points.
    */
   readonly braces: readonly { readonly foot: Point3; readonly head: Point3 }[];
-  /** Its base at sea (BASE): the square round its round deck (the trunk's hole in the middle). */
+  /** Its base at sea (BASE): the deck's outer edge (the trunk's hole in the middle). */
   readonly base: Rect;
   /** The ground door: outside on its base, and inside in the trunk's water. */
   readonly ground: { readonly out: { readonly x: number; readonly z: number }; readonly inner: { readonly x: number; readonly z: number } };
@@ -265,27 +266,15 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
   }
   const gOut = side(S(0), door.x, OH + 3);
   const gIn = side(S(0), door.x, WH - 1.5);
-  const BH = BASE.r;
+  const BH = OH + BASE.walk;
   const shape: TowerShape = { id: t.id, building: t.building, x: o.x, z: o.z, rootHeight, floors: [], tips: [], rings: [], frame: [], braces: [], base: R(o.x - BH, o.x + BH, o.z - BH, o.z + BH), ground: { out: { x: o.x + gOut.x, z: o.z + gOut.z }, inner: { x: o.x + gIn.x, z: o.z + gIn.z } } };
   // Its own base out at sea (Berón 2026-11-21: «que nazca de una propia base artificial… una base negra que tiene la
-  // estación de alfombras… una superficie que rodea al tronco… para que los humanos puedan caminar»), round since
-  // 2026-11-22: a black hull, its deck at the ice's height in strips across the circle, open where the trunk goes down.
+  // estación de alfombras… una superficie que rodea al tronco y da unos 10 m de espacio para que los humanos puedan
+  // caminar»), square (2026-11-22): a black hull, its deck at the ice's height, open where the trunk goes down.
   const baseArea = `base:${t.id}`;
-  const STRIP = 1.5;
-  const cuts = [...new Set([...Array.from({ length: Math.ceil((2 * BH) / STRIP) + 1 }, (_, i) => Math.min(BH, -BH + i * STRIP)), -OH, OH])].sort((p, q) => p - q);
-  for (let i = 0; i + 1 < cuts.length; i++) {
-    const z0 = cuts[i]!;
-    const z1 = cuts[i + 1]!;
-    if (z1 - z0 < 0.01) continue;
-    const far = Math.max(Math.abs(z0), Math.abs(z1));
-    const xh = Math.sqrt(Math.max(0, BH * BH - far * far));
-    if (xh < 1) continue;
-    // Beside the trunk the strip is cut at its faces (the deck meets the acrylic, never goes into the water).
-    const beside = z0 >= -OH && z1 <= OH;
-    const parts: [number, number][] = !beside ? [[-xh, xh]] : xh > OH ? [[-xh, -OH], [OH, xh]] : [];
-    for (const [x0, x1] of parts) b.floors.push({ id: `${baseArea}-${b.floors.length}`, x0: o.x + x0, x1: o.x + x1, z0: o.z + z0, z1: o.z + z1, y: 0, area: baseArea });
-  }
-  b.areas.push({ id: baseArea, label: `Base de ${t.building}`, desc: "La base negra y redonda del árbol, en el mar: su cubierta alrededor del tronco y su estación de alfombras", building: t.building, x: o.x + gOut.x, y: 0, z: o.z + gOut.z, detail: "completo", entry: { x: o.x + gOut.x, z: o.z + gOut.z, yaw: 0 } });
+  for (const [x0, x1, z0, z1, kk] of [[-BH, BH, OH, BH, "n"], [-BH, BH, -BH, -OH, "s"], [OH, BH, -OH, OH, "e"], [-BH, -OH, -OH, OH, "o"]] as const)
+    b.floors.push({ id: `${baseArea}-${kk}`, x0: o.x + x0, x1: o.x + x1, z0: o.z + z0, z1: o.z + z1, y: 0, area: baseArea });
+  b.areas.push({ id: baseArea, label: `Base de ${t.building}`, desc: "La base negra del árbol, en el mar: 10 m de cubierta alrededor del tronco y su estación de alfombras", building: t.building, x: o.x + gOut.x, y: 0, z: o.z + gOut.z, detail: "completo", entry: { x: o.x + gOut.x, z: o.z + gOut.z, yaw: 0 } });
   // The wooden frame (Berón 2026-11-21: «columnas para el tronco y ramas… como un armazón»): a bar between two points of
   // a side's frame (x, z) and two heights, FRAME.beam thick.
   const B = FRAME.beam;
@@ -524,8 +513,23 @@ function place(b: Built, id: string, x: number, y: number, z: number, rot: numbe
   const d = model(id);
   const sc = r.escala ?? 1;
   b.instances.push({ model: id, x, y, z, rot, area, ...(name ? { name } : {}), ...(plan !== 1 ? { plan } : {}), ...(sc !== 1 ? { scale: sc } : {}), ...(r.color !== undefined ? { tint: r.color } : {}) });
+  if (d.decks) b.floors.push(...decksOf(d, x, y, z, rot, area, plan * sc));
   if (!solid || d.size.y * sc <= 0.3 || d.shape === "figura") return;
   b.solids.push(...solidsOf(d, x, y, z, rot, plan, sc));
+}
+
+/** A placed model's high surfaces (ModelDef.decks) as walk floors, with their ladders, turned and scaled with it. */
+export function decksOf(d: ModelDef, x: number, y: number, z: number, rot: number, area: string, k = 1): Floor[] {
+  const c = Math.cos(rot);
+  const s = Math.sin(rot);
+  const rect = (cx: number, cz: number, w: number, dd: number) => {
+    const px = x + (cx * c + cz * s) * k;
+    const pz = z + (-cx * s + cz * c) * k;
+    const ex = ((Math.abs(c) * w + Math.abs(s) * dd) / 2) * k;
+    const ez = ((Math.abs(s) * w + Math.abs(c) * dd) / 2) * k;
+    return { x0: px - ex, x1: px + ex, z0: pz - ez, z1: pz + ez };
+  };
+  return (d.decks ?? []).map((q, i) => ({ id: `cubierta:${d.id}:${i}:${x.toFixed(2)},${z.toFixed(2)}`, ...rect(q.x, q.z, q.w, q.d), y: y + q.y * k, area, ...(q.ladder ? { ladder: rect(q.ladder.x, q.ladder.z, q.ladder.w, q.ladder.d) } : {}) }));
 }
 
 /**
@@ -664,51 +668,43 @@ function cutTrunkHoles(b: Built): void {
   }
 }
 
-/** The whales' globe's area (site.ts AQUARIUM). */
+/** The whales' globe's area (data/globo.ts). */
 export const AQUARIUM_AREA = "mar:globo";
-/** Its water in layers of this height, m; each layer a round disc made of strips (boxes) across it. */
-export const AQUARIUM_LAYER = 5;
-const AQUARIUM_STRIPS = 6;
 
-/** The embryo in the globe's middle (site.ts AQUARIUM.embryo): its centre and the box one bumps into, swimming. */
+/** The embryo in the globe's belly (GLOBE.embryo, a third of it across): the box one bumps into, swimming. */
 export function embryoBox(): Solid {
-  const A = AQUARIUM;
-  const h = A.embryo * 0.32;
-  return { x0: A.x - h, x1: A.x + h, z0: A.z - h * 0.8, z1: A.z + h * 0.8, y0: A.centreY - h, y1: A.centreY + h };
+  const h = GLOBE.embryo * 0.32;
+  return { x0: GLOBE.x - h, x1: GLOBE.x + h, z0: GLOBE.z - h * 0.8, z1: GLOBE.z + h * 0.8, y0: GLOBE.bellyY - h, y1: GLOBE.bellyY + h };
 }
 
 /**
- * The whales' globe (site.ts AQUARIUM): its water as layers of strips (one swims in it like in a trunk), the embryo
- * in its middle, its area, and who lives up there besides its whales (NESTS): a pod of dolphins under the embryo, and
- * dolphins and seals going up and down the hourglass between the sea and the globe. Ours.
+ * The whales' globe (data/globo.ts): its water layer by layer (boxes of its cells; one swims in it like in a trunk,
+ * up from the sea), the embryo in its belly, its area, and who lives up there besides its whales (NESTS): a pod of
+ * dolphins under the embryo, and dolphins and seals going up and down its nozzle between the sea and the belly. Ours.
  */
 function aquarium(b: Built): void {
-  const A = AQUARIUM;
-  for (let y = -12; y < A.topY; y += AQUARIUM_LAYER) {
-    const y1 = Math.min(A.topY, y + AQUARIUM_LAYER);
-    const r = aquariumRadius(Math.max(0, (y + y1) / 2));
-    if (r < 1) continue;
-    const w = (2 * r) / AQUARIUM_STRIPS;
-    for (let j = 0; j < AQUARIUM_STRIPS; j++) {
-      const z0 = -r + j * w;
-      const zm = Math.abs(z0 + w / 2);
-      const h = Math.sqrt(Math.max(0, r * r - zm * zm));
-      b.waters.push({ id: `${AQUARIUM_AREA}-${y}-${j}`, x0: A.x - h, x1: A.x + h, z0: A.z + z0, z1: A.z + z0 + w, yBottom: y, yTop: y1, area: AQUARIUM_AREA });
-    }
-  }
+  const G = GLOBE;
+  for (const l of G.layers) layerBoxes(l).forEach((q, n) => b.waters.push({ id: `${AQUARIUM_AREA}-${l.y0}-${n}`, ...q, yBottom: l.y0, yTop: l.y1, area: AQUARIUM_AREA }));
   b.solids.push(embryoBox());
-  b.areas.push({ id: AQUARIUM_AREA, label: "El globo de las ballenas", desc: `Un reloj de arena de agua de ${A.neckY} m que sale del mar y, encima, un globo de agua de ${2 * A.globeR} m con un embrión en su centro: el vientre donde viven las ballenas, los delfines y las focas`, x: A.x, y: A.centreY, z: A.z, detail: "completo" });
-  const pod = 8;
-  for (let i = 0; i < pod; i++) {
-    const p = scatter(i, 30);
-    const y = 120 + (i % 3) * 6;
-    place(b, "delfin", A.x + 50 + p.x, y, A.z + p.z, i * 1.3, AQUARIUM_AREA, {}, 1, `Delfín ${i + 1}`, false);
-    wanders(b, "delfin", { x: A.x, z: A.z, r: aquariumRadius(y) * 0.6, speed: 2.4, seed: b.instances.length * 13 + i });
+  b.areas.push({ id: AQUARIUM_AREA, label: "El globo de las ballenas", desc: `Una masa de agua que nace del mar entre los casquetes (6/10 de él), se estrecha en su boquilla y se abre hasta ${Math.round(G.topY)} m de alto, más ancha que el mar, con un embrión en su vientre: donde viven las ballenas, los delfines y las focas`, x: G.x, y: G.bellyY, z: G.z, detail: "completo" });
+  const e = embryoBox();
+  const inside = (x: number, y: number, z: number) => (globeTopAt(x, z) ?? -Infinity) > y + 3 && G.layers.some((l) => l.y0 <= y && l.y1 > y && l.cells.has(globeCell(x, z).join(",")));
+  const reachAt = (y: number) => {
+    let r = 0;
+    for (let d = 4; d < 400; d += 4) if ([0, 1, 2, 3].every((k) => inside(G.x + Math.cos((k * Math.PI) / 2) * d, y, G.z + Math.sin((k * Math.PI) / 2) * d))) r = d;
+    return r;
+  };
+  const podY = Math.max(G.layers[0]!.y1, e.y0 - 20);
+  const podR = reachAt(podY) * 0.6;
+  for (let i = 0; i < 8; i++) {
+    const p = scatter(i, Math.min(30, podR));
+    place(b, "delfin", G.x + p.x, podY, G.z + p.z, i * 1.3, AQUARIUM_AREA, {}, 1, `Delfín ${i + 1}`, false);
+    wanders(b, "delfin", { x: G.x, z: G.z, r: podR, speed: 2.4, seed: b.instances.length * 13 + i });
   }
-  // Up and down the hourglass (its waist is 12 m: they keep 6 m round the axis).
+  // Up and down the nozzle, round its axis.
   (["delfin", "delfin", "foca", "foca"] as const).forEach((id, i) => {
-    place(b, id, A.x, 2 + i * 10, A.z, i, AQUARIUM_AREA, {}, 1, id === "delfin" ? `Delfín del reloj de arena ${i + 1}` : `Foca del reloj de arena ${i - 1}`, false);
-    wanders(b, id, { x: A.x, z: A.z, r: 6, speed: id === "delfin" ? 2 : 1.2, seed: b.instances.length * 19 + i, climb: { y0: WATER_Y - 2, y1: A.neckY + 20 } });
+    place(b, id, G.x, 2 + i * 10, G.z, i, AQUARIUM_AREA, {}, 1, id === "delfin" ? `Delfín de la boquilla ${i + 1}` : `Foca de la boquilla ${i - 1}`, false);
+    wanders(b, id, { x: G.x, z: G.z, r: 6, speed: id === "delfin" ? 2 : 1.2, seed: b.instances.length * 19 + i, climb: { y0: WATER_Y - 2, y1: e.y0 - 10 } });
   });
   // A pod of dolphins round the sea too.
   for (let i = 0; i < 6; i++) {

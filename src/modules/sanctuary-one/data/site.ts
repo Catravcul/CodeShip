@@ -71,11 +71,10 @@ export const CAP_MOVES: Readonly<Record<string, { readonly x: number; readonly z
   Este: { x: 0, z: 0 },
 };
 /**
- * A tree's base at sea (Berón 2026-11-21, ours), round (Berón 2026-11-22: «la base debería ocupar 6/10 del espacio que
- * tiene… con suficientes lados para dar una forma circular»): its deck's radius (6/10 of the square deck it had, 3 m
- * clear round the trunk's corners and 10 m at the middle of its faces), its hull's depth and its sides. m.
+ * A tree's base at sea (Berón 2026-11-21, ours): square like its trunk (Berón 2026-11-22: «las bases de los edificios
+ * árbol no deben ser circulares»), 10 m to walk round the trunk, and its hull's depth under the deck, m.
  */
-export const BASE = { r: 27, hull: 3, sides: 48 } as const;
+export const BASE = { walk: 10, hull: 3 } as const;
 /**
  * The tree-buildings' ring: their trunks this far from the sea's centre, at the edge of the map; each tree half as far
  * from its nearest cap as on 2026-11-21 (Berón 2026-11-22: «el espacio entre edificios-árbol y los casquetes e islas se
@@ -304,7 +303,7 @@ export const TOWERS_AMPLIOS: readonly TowerSpec[] = [
     tip: "Frutales en maceta",
     source: S.csResidence,
     floors: [
-      F("Plaza de la Residencia", "La plaza y el ring de almohadas", "residencia-plaza"),
+      F("Plaza de la Residencia", "La plaza, el ring de almohadas y el aula", "residencia-plaza"),
       F("Habitaciones (1)", "7 habitaciones", "habitaciones-1"),
       F("Habitaciones (2)", "7 habitaciones", "habitaciones-2"),
       F("Habitaciones (3)", "7 habitaciones", "habitaciones-3"),
@@ -316,12 +315,13 @@ export const TOWERS_AMPLIOS: readonly TowerSpec[] = [
 
 /**
  * The buildings for the people there are now (Berón 2026-11-21: «se va a reconstruir los edificios en base a los
- * miembros actuales con la idea de que muy pocas veces van a coincidir todos en el mismo piso»): 29 floors instead of
+ * miembros actuales con la idea de que muy pocas veces van a coincidir todos en el mismo piso»): 23 floors instead of
  * 63, every one the kitchen's 40 × 40 m (Berón 2026-11-22: «el tamaño base de los pisos era el mismo que el de cocina»),
- * smaller rooms spread out or two to a floor. One gym (plate machines, free weights and cardio together), calisthenics
- * with parkour and crossfit, yoga with ballet, the two martial arts rooms, the classroom with music, one hospital
- * (emergencies, theatres and ICU), cría with the cultured meat, one lab per science and one vertical farm. Straight out
- * of the trunk, two to a level on opposite sides (reglas.md §2.7).
+ * rooms joined by affinity and hours (Berón 2026-11-22: «fusionar pisos por afinidad»): the gym with its fighting
+ * corner, calisthenics with parkour and crossfit, yoga, judo, ballet and music one to a quarter, the assembly hall with
+ * the watch, one hospital, cría with the cultured meat, both labs on one floor, mechanics with the submarine's garage,
+ * textiles with the vertical farm, the classroom in the Residencia's plaza. Straight out of the trunk, two to a level on
+ * opposite sides (reglas.md §2.7).
  */
 export const TOWERS: readonly TowerSpec[] = [
   {
@@ -332,26 +332,22 @@ export const TOWERS: readonly TowerSpec[] = [
       F("Hospital", "Urgencias, consultas, paritorios, 2 quirófanos, UCI y aislamiento; las camas en su anillo", "hospital"),
       F("Hospital veterinario", "Para animales de todo tamaño, con anillo de grandes animales", "hospital-veterinario"),
       F("Cría y carne cultivada", "Recintos de crías, cocina de leche y el laboratorio de carne para los depredadores", "cria-carne-cultivada"),
-      F("Sala de asambleas", "Donde se reúne el santuario", "asambleas"),
-      F("Sala de guardia", "La guardia y sus puestos", "guardia"),
+      F("Asambleas y guardia", "La sala donde se reúne el santuario y, junto a la puerta, la sala de guardia", "asambleas-guardia"),
     ],
   },
   {
     ...TOWERS_AMPLIOS[1]!,
     source: `${S.csTowers}; ${S.csFloors}; un piso por actividad para los miembros actuales (Berón 2026-11-21)`,
     floors: [
-      F("Gimnasio", "Una máquina de placas de cada tipo, peso libre y cardio, con sitio para correr entre ellas", "gimnasio"),
+      F("Gimnasio", "Máquinas de placas, peso libre y cardio, y al fondo la zona de combate (kickboxing y karate)", "gimnasio"),
       F("Calistenia, parkour y crossfit", "Barras, anillas, muros y cajones delante; el box de crossfit detrás", "funcional"),
-      F("Yoga y ballet", "La sala de yoga (Hatha y Ashtanga a sus horas) y el estudio de ballet, uno a cada lado", "yoga-ballet"),
-      F("Artes marciales", "El dojo de judo y karate y la sala de kickboxing y MMA, uno a cada lado", "artes-marciales"),
-      F("Aula y música", "El aula, con más sitio entre pupitres, y la sala de música", "aula-musica"),
+      F("Salas", "Yoga, el dojo de judo, el estudio de ballet y la sala de música, una por cuarto", "salas"),
     ],
   },
   {
     ...TOWERS_AMPLIOS[2]!,
     floors: [
-      F("Química", "Síntesis y análisis: campanas, rotavapores, HPLC y RMN", "quimica"),
-      F("Biología", "Cultivo y biología molecular, con la fachada de fotobiorreactores", "biologia"),
+      F("Laboratorios", "Química (síntesis y análisis) delante y biología (cultivo y molecular) detrás", "laboratorios"),
       F("Informática", "El clúster de IA local", "informatica"),
     ],
   },
@@ -359,56 +355,13 @@ export const TOWERS: readonly TowerSpec[] = [
     ...TOWERS_AMPLIOS[3]!,
     floors: [
       F("Construcción", "Maquinaria, material, herramientas y taller de obra", "construccion"),
-      F("Mecánica", "Taller de vehículos y máquinas", "mecanica"),
-      F("Estudio textil", "Telares, rueca, lanas, tintes, corte y costura", "textil"),
-      F("Huerto vertical", "Estantes de cultivo LED, vivero y dosificación", "huerto-vertical-1"),
-      F("Garaje del submarino", "El submarino de obra", "garaje-submarino"),
+      F("Mecánica y garaje", "El taller de vehículos y máquinas delante y el submarino de obra detrás", "mecanica-garaje"),
+      F("Textil y huerto", "Telares, rueca, tintes y costura delante; los estantes de cultivo LED detrás", "textil-huerto"),
     ],
   },
   TOWERS_AMPLIOS[4]!,
   TOWERS_AMPLIOS[5]!,
 ];
-
-/**
- * The whales' globe (Berón 2026-11-22: «¿se podría convertir la pirámide en globo? … un globo gigante que nace del agua,
- * y en el centro podrías colocar un embrión… el globo de agua es como un vientre donde se está formando un bebé… debería
- * ocupar una tercera parte del globo… más grande que cualquier edificio y podría contener toda la vida marina»): out of
- * the middle of the sea, a round hourglass of water 80 m tall (Berón 2026-11-21) and on it a globe of water 240 m across,
- * higher than any tree, with an embryo in its middle a third of its size. Held by the trees' magic (reglas.md §1.2). Ours.
- */
-export const AQUARIUM = (() => {
-  const neckY = 80;
-  const neckR = 30;
-  const globeR = 120;
-  const centreY = neckY + Math.sqrt(globeR * globeR - neckR * neckR);
-  return {
-    x: SEA.x,
-    z: SEA.z,
-    /** The hourglass: 30 m round at the sea and at its top, 12 m at its waist (40 m up). */
-    neckY,
-    waistY: 40,
-    footR: 30,
-    waistR: 12,
-    neckR,
-    /** The globe: where the hourglass's top meets it, its centre and its top. */
-    globeR,
-    centreY,
-    topY: centreY + globeR,
-    /** The embryo in the globe's middle: a third of the globe. */
-    embryo: (2 * globeR) / 3,
-  } as const;
-})();
-
-/** The water's radius at height y (round), m: the hourglass up to its neck, the globe above. */
-export function aquariumRadius(y: number): number {
-  const A = AQUARIUM;
-  if (y <= A.neckY) {
-    const t = (y - A.waistY) / A.waistY;
-    return A.waistR + (A.footR - A.waistR) * t * t;
-  }
-  const d = y - A.centreY;
-  return Math.sqrt(Math.max(0, A.globeR * A.globeR - d * d));
-}
 
 /**
  * The wild families (BuildWildlifePopulation): species, nest and spread. The land ones where Cold Sanctuary has them, on
@@ -430,12 +383,12 @@ const sea = (species: string, deg: number, at: number, radius: number, y?: numbe
 export const NESTS: readonly Nest[] = [
   land("Bear", -180 + 19, -140, 12),
   // Whales: one family round the sea, the other up in the globe over the embryo (Berón: «podría contener toda la vida
-  // marina en su interior»).
+  // marina en su interior»; data/globo.ts).
   sea("Whale", 0, 0, 80),
   sea("Seal", 20, 100, 8),
   sea("Seal", 140, 100, 8),
   sea("Seal", 260, 100, 8),
-  sea("Whale", 0, 0, 70, 275),
+  sea("Whale", 0, 0, 80, 240),
   land("Penguin", 60, -22, 6),
   land("Penguin", 66, -19, 6),
   sea("Orca", 140, 80, 25),

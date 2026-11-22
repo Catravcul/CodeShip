@@ -249,6 +249,14 @@ export const COCINA = {
     "lava y desinfecta las tablas de corte por colores",
     "friega el suelo de lo más limpio a la salida",
   ], ["desinfecta sin lavar antes la grasa", "usa la tabla de carne para la verdura"], "FDA Food Code (2022), 4-6: limpieza y desinfección"),
+  // A dining table is not a kitchen (Berón 2026-11-22: «he visto retos de cocina y limpieza de cocina sobre las mesas de comer?»).
+  mesa: p("comedor-mesa", "Poner y recoger la mesa", "limpiar", "salud", "Antes y después de comer", [
+    "limpia la mesa con un paño húmedo y deja que se seque",
+    "pon el mantel y, para cada uno, el plato, el tenedor a la izquierda y el cuchillo y la cuchara a la derecha",
+    "pon el vaso sobre la punta del cuchillo y la servilleta",
+    "al terminar, retira de la mesa primero las fuentes y después los platos",
+    "separa los restos para el compost y limpia la mesa de nuevo",
+  ], ["pon el cuchillo con el filo hacia fuera", "limpia la mesa con el paño del suelo"], "Protocolo de mesa (Escuela de Hostelería); FDA Food Code (2022), 4-6: superficies en contacto con alimentos"),
 } as const;
 
 // --- Hospital and veterinary --------------------------------------------------------------------------------------

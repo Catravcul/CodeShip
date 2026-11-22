@@ -34,6 +34,25 @@ export function glassRoom(w: number, d: number, door: 0 | 1 | 2 | 3, color: numb
   return [0, 1, 2, 3].flatMap(wall);
 }
 
+/** An office chair for round-the-clock use (EN 1335): five-star base on casters, gas lift, seat and back, armrests; facing +z. */
+export const officeChair = (x: number, z: number): Part[] => [
+  C(x, 0.04, z, 0.62, 0.05, 0.06, darkSteel), C(x, 0.04, z, 0.06, 0.05, 0.62, darkSteel), ...[-1, 1].flatMap((s) => [C(x + s * 0.3, 0.025, z, 0.05, 0.05, 0.05, 0x26262a), C(x, 0.025, z + s * 0.3, 0.05, 0.05, 0.05, 0x26262a)]),
+  C(x, 0.26, z, 0.05, 0.4, 0.05, 0x8c9096), C(x, 0.48, z, 0.5, 0.08, 0.48, 0x26262a), C(x, 0.8, z - 0.26, 0.46, 0.56, 0.06, 0x26262a), C(x, 0.6, z - 0.22, 0.05, 0.2, 0.05, darkSteel),
+  ...[-1, 1].flatMap((s) => [C(x + s * 0.26, 0.6, z, 0.04, 0.16, 0.04, darkSteel), C(x + s * 0.26, 0.68, z, 0.06, 0.03, 0.26, 0x26262a)]),
+];
+/** A table on four legs, its top at h. */
+export const legsTable = (w: number, d: number, h: number, color: number): Part[] => [C(0, h - 0.02, 0, w, 0.04, d, color), ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => C(sx * (w / 2 - 0.05), (h - 0.04) / 2, sz * (d / 2 - 0.05), 0.05, h - 0.04, 0.05, darkSteel)))];
+/** An operator's desk (w × 0,9 m at 74 cm, panel legs) with `screens` monitors on their stands, keyboard, mouse, headset and the chair; the operator faces +z. */
+const opsDesk = (w: number, screens: number): Part[] => [
+  C(0, 0.72, 0, w, 0.04, 0.9, 0x5a5e66), ...[-1, 1].map((sx) => C(sx * (w / 2 - 0.03), 0.35, 0, 0.04, 0.7, 0.8, 0x404550)), C(0, 0.4, 0.4, w - 0.1, 0.4, 0.02, 0x404550),
+  ...rep(screens, (i) => {
+    const x = (i - (screens - 1) / 2) * 0.56;
+    return [C(x, 0.75, 0.25, 0.22, 0.02, 0.18, 0x26262a), C(x, 0.85, 0.3, 0.05, 0.2, 0.05, 0x26262a), C(x, 1.12, 0.28, 0.54, 0.33, 0.03, 0x16181c), C(x, 1.12, 0.262, 0.5, 0.29, 0.005, [0x1d4f6b, 0x2b6e4f, 0x3a5a7a][i % 3])];
+  }),
+  C(-0.05, 0.75, -0.15, 0.45, 0.02, 0.15, 0x26262a), C(0.3, 0.75, -0.15, 0.06, 0.02, 0.1, 0x26262a), C(-0.55, 0.77, 0.05, 0.18, 0.06, 0.16, 0x26262a),
+  ...officeChair(0, -0.75),
+];
+
 /** A hospital bed (InfirmaryProps.HospitalBed): 1 × 2,1 m, mattress at 0,6 m, head at −z. */
 const bedParts = (blanket: number): Part[] => [C(0, 0.3, 0, 0.95, 0.12, 2.05, steel), C(0, 0.5, 0.05, 0.9, 0.18, 1.95, white), C(0, 0.6, 0.35, 0.92, 0.04, 1.3, blanket), C(0, 0.75, -0.98, 0.95, 0.6, 0.06, steel), ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => C(sx * 0.42, 0.13, sz * 0.9, 0.06, 0.26, 0.06, darkSteel)))];
 
@@ -81,7 +100,29 @@ const pen = (w: number, d: number, floor: number, doorEast: boolean): Part[] => 
 };
 
 /** A stirred-tank bioreactor (CulturedMeatLab.Bioreactor): glass vessel of radius r and height h with its steel jacket and motor. */
-const bioreactor = (r: number, h: number): Part[] => [C(0, h * 0.45, 0, 2 * r, h * 0.9, 2 * r, 0xc9a08c), C(0, 0.15, 0, 2 * r + 0.1, 0.3, 2 * r + 0.1, steel), C(0, h * 0.95, 0, 0.3, h * 0.1, 0.3, darkSteel)];
+/** A round thing of boxes (a vessel, a dewar): an octagon of three boxes, radius r, from y0 to y1. */
+const round = (x: number, y0: number, y1: number, z: number, r: number, color: number): Part[] => [C(x, (y0 + y1) / 2, z, 2 * r, y1 - y0, 1.2 * r, color), C(x, (y0 + y1) / 2, z, 1.2 * r, y1 - y0, 2 * r, color), C(x, (y0 + y1) / 2, z, 1.7 * r, y1 - y0, 1.7 * r, color)];
+/**
+ * A stirred-tank bioreactor (Berón 2026-11-22: «los objetos de cultivo de carne… ¿son realistas?»; GFI, «Trends in
+ * cultivated meat scale-up and bioprocessing», 2024: stirred tanks ported from pharma, perfusion for differentiation):
+ * a stainless vessel of radius r on legs, its dished head with the agitator's motor on top, the sight glass, the probes
+ * (pH, oxygen, temperature) in their ports, the jacket's water pipes, and its control cabinet beside it.
+ */
+const bioreactor = (r: number, h: number): Part[] => {
+  const leg = h * 0.18, top = h * 0.8;
+  return [
+    ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => C(sx * r * 0.6, leg / 2, sz * r * 0.6, 0.07, leg, 0.07, steel))),
+    ...round(0, leg, top, 0, r, 0xc9ced4), ...round(0, top, top + h * 0.05, 0, r * 0.8, 0xc9ced4), ...round(0, leg - 0.05, leg, 0, r * 0.8, 0xc9ced4),
+    C(0, top + h * 0.09, 0, r * 0.45, h * 0.08, r * 0.45, darkSteel), C(0, top + h * 0.16, 0, r * 0.3, h * 0.08, r * 0.3, 0x3a6fb0),
+    C(r * 0.45, top + h * 0.07, 0.1, r * 0.35, 0.04, r * 0.35, steel),
+    C(0, (leg + top) / 2, -r * 1.0, r * 0.18, (top - leg) * 0.6, 0.02, 0x2a3a44),
+    ...[-0.5, 0, 0.5].map((dx) => C(dx * r, leg + (top - leg) * 0.35, -r * 0.95, 0.03, 0.03, 0.22, darkSteel)),
+    C(r * 1.02, (leg + top) / 2, 0, 0.05, top - leg, 0.05, steel), C(-r * 1.02, (leg + top) / 2, 0, 0.05, top - leg, 0.05, steel),
+    C(r + 0.45, 0.8, r * 0.3, 0.6, 1.6, 0.4, 0xd8dadc), C(r + 0.45, 1.25, r * 0.3 - 0.21, 0.4, 0.3, 0.01, 0x1f4052),
+  ];
+};
+/** A lab bench on four legs, top at 0,9 m, w × d. */
+const labBench = (w: number, d: number): Part[] => [C(0, 0.88, 0, w, 0.04, d, 0x3a3d42), ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => C(sx * (w / 2 - 0.05), 0.43, sz * (d / 2 - 0.05), 0.05, 0.86, 0.05, white))), C(0, 0.15, 0, w - 0.1, 0.03, d - 0.1, white)];
 
 export const SERVICIOS_MODELS: readonly ModelDef[] = [
   // ── Restaurante (KitchenPlan.cs KitchenFloorPlan, ProKitchen; Restaurant.cs BuildGourmetDining) ──
@@ -105,7 +146,7 @@ export const SERVICIOS_MODELS: readonly ModelDef[] = [
   pz("comedor-caja", "mueble", "comedor", "Caja registradora", steel, [...counter(1.6), C(-0.3, 1.02, 0, 0.4, 0.24, 0.35, 0x33383f)], "real", cs("Restaurant", "Caja_registradora")),
   pz("comedor-sushi-cafe", "mueble", "comedor", "Barra de sushi y cafetera espresso", 0x8c6b4d, [C(-1, 0.55, 0, 2.4, 1.1, 0.7), C(1.9, 0.5, 0, 1.2, 1.0, 0.6, steel), C(1.9, 1.2, 0, 0.6, 0.4, 0.45, 0x8c1f1f)], "real", cs("Restaurant", "Eq barra de sushi y cafetera espresso")),
   pz("comedor-vinos", "mueble", "comedor", "Pared de vinos", 0x6b4733, [C(0, 1.2, 0, 6, 2.4, 0.4), ...rep(84, (i) => [C(-2.75 + (i % 14) * 0.42, 0.3 + Math.floor(i / 14) * 0.38, -0.2, 0.09, 0.09, 0.04, (i % 14 + Math.floor(i / 14)) % 3 === 0 ? 0x59141f : 0x2e4726)])], "real", cs("Restaurant", "Pared_de_vinos")),
-  pz("planta-maceta", "naturaleza", "plantas-interior", "Planta en macetero", 0x4d8c4d, [C(0, 0.25, 0, 0.5, 0.5, 0.5, 0x4d4d52), C(0, 0.9, 0, 0.8, 0.9, 0.8)], "real", cs("Restaurant", "Planta (esquinas del anillo)")),
+  pz("planta-maceta", "naturaleza", "plantas-interior", "Planta en macetero", 0x4d8c4d, [C(0, 0.22, 0, 0.42, 0.44, 0.42, 0x4d4d52), C(0, 0.47, 0, 0.5, 0.06, 0.5, 0x5a5a60), C(0, 0.49, 0, 0.44, 0.02, 0.44, 0x4a3a2a), C(0, 0.75, 0, 0.06, 0.5, 0.06, 0x6a5a40), C(0, 1.05, 0, 0.75, 0.5, 0.75, 0x4d8c4d), ...[[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dz], i) => C(dx! * 0.3, 0.95 + (i % 2) * 0.12, dz! * 0.3, 0.42, 0.35, 0.42, i % 2 ? 0x3f7a3f : 0x5a9a50)), C(0, 1.35, 0, 0.45, 0.25, 0.45, 0x5a9a50)], "real", cs("Restaurant", "Planta (esquinas del anillo)")),
 
   // ── Hospital (Hospital.cs BuildHospital, InfirmaryProps) ──
   eq("hospital-suelo", "mueble", "suelos", "Suelo del hospital", 39.6, 0.04, 39.6, 0xdbf0eb, H("Suelo_Hospital")),
@@ -154,19 +195,19 @@ export const SERVICIOS_MODELS: readonly ModelDef[] = [
   m("cachorro-malamute", "animal", "crias", "Cachorro de malamute", 0.2, 0.3, 0.5, 0x8c8278, "cuadrupedo", "real", cs("Cria", "CriaCubs Malamute")),
 
   // ── Carne cultivada (Scripts/World/CulturedMeatLab.cs Build) ──
-  pz("lab-campana", "maquina", "carne-cultivada", "Campana de flujo laminar", white, [C(0, 0.45, 0, 1.6, 0.9, 0.8), C(0, 1.35, 0, 1.6, 0.9, 0.8), C(0, 1.3, 0.41, 1.4, 0.6, 0.02, glass), C(0, 1.95, 0, 1.6, 0.3, 0.8, steel)], "real", "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Campana_flujo_laminar"),
-  pz("lab-microscopio", "maquina", "carne-cultivada", "Microscopio en su mesa", white, [C(0, 0.45, 0, 0.7, 0.9, 0.6), C(0, 1.05, 0, 0.18, 0.3, 0.22, 0x26262a)], "real", "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Microscopio"),
-  pz("lab-criogenico", "maquina", "carne-cultivada", "Tanque criogénico (nitrógeno líquido)", steel, [C(0, 0.55, 0, 0.7, 1.1, 0.7), C(0, 1.15, 0, 0.35, 0.1, 0.35, 0x26262a)], "real", "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Tanque_criogenico"),
+  pz("lab-campana", "maquina", "carne-cultivada", "Cabina de seguridad biológica de clase II", white, [...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => C(sx * 0.72, 0.35, sz * 0.3, 0.05, 0.7, 0.05, darkSteel))), C(0, 0.72, 0, 1.6, 0.06, 0.8, darkSteel), C(0, 1.0, 0.05, 1.6, 0.5, 0.7, white), C(0, 1.02, -0.2, 1.4, 0.02, 0.4, steel), ...[-1, 1].map((sx) => C(sx * 0.78, 1.4, 0, 0.04, 1.3, 0.8, white)), C(0, 1.95, 0.1, 1.6, 0.5, 0.6, white), C(0, 1.55, -0.32, 1.45, 0.55, 0.02, glass), C(0, 1.85, -0.36, 1.5, 0.1, 0.04, 0x26262a), C(0, 2.25, 0.1, 1.2, 0.1, 0.5, steel)], "real", "Cabina de clase II tipo A2 de 1,6 m sobre su soporte (EN 12469): cristal de guillotina, superficie de trabajo y filtros HEPA arriba; " + "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Campana"),
+  pz("lab-microscopio", "maquina", "carne-cultivada", "Microscopio invertido en su mesa", white, [...labBench(1.2, 0.7), C(0, 0.95, 0, 0.3, 0.1, 0.4, 0x2a2d33), C(0, 1.12, 0.12, 0.08, 0.3, 0.08, 0x2a2d33), C(0, 1.05, -0.02, 0.24, 0.02, 0.22, 0x2a2d33), C(0, 1.25, 0.12, 0.08, 0.06, 0.25, 0x2a2d33), C(0, 1.08, -0.2, 0.1, 0.08, 0.14, 0x2a2d33), C(-0.03, 1.13, -0.27, 0.03, 0.06, 0.03, 0x111111), C(0.03, 1.13, -0.27, 0.03, 0.06, 0.03, 0x111111), C(0.35, 1.06, 0, 0.28, 0.3, 0.02, 0x16181c)], "real", "Microscopio invertido de cultivo celular con cámara y monitor; " + "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Microscopio"),
+  pz("lab-criogenico", "maquina", "carne-cultivada", "Tanque criogénico de nitrógeno líquido (banco de células)", steel, [C(0, 0.05, 0, 0.7, 0.06, 0.7, darkSteel), ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => C(sx * 0.28, 0.025, sz * 0.28, 0.06, 0.05, 0.06, 0x26262a))), ...round(0, 0.08, 1.0, 0, 0.32, 0xc9ced4), ...round(0, 1.0, 1.08, 0, 0.18, 0xc9ced4), C(0, 1.13, 0, 0.22, 0.08, 0.22, 0x3a6fb0), C(0.36, 0.6, 0, 0.08, 0.3, 0.08, darkSteel)], "real", "Tanque de almacenamiento en vapor de nitrógeno (unos 170 L, −190 °C) sobre carro de ruedas; " + "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Tanque_criogenico"),
   eq("lab-incubadora", "maquina", "carne-cultivada", "Incubadora de CO₂", 0.75, 1.2, 0.75, white, "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Incubadora_CO2"),
-  pz("lab-medio", "maquina", "carne-cultivada", "Preparación de medio (depósito, agitador y filtro de 0,2 µm)", steel, [C(0, 0.6, 0, 0.9, 1.2, 0.9), C(0, 1.3, 0, 0.12, 0.2, 0.12, 0x26262a), C(0.7, 0.9, 0, 0.25, 0.5, 0.25, white)], "real", "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Preparacion_medio"),
+  pz("lab-medio", "maquina", "carne-cultivada", "Preparación de medio (depósito con agitador, bomba y filtro de 0,2 µm)", steel, [...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => C(sx * 0.25, 0.15, sz * 0.25, 0.05, 0.3, 0.05, steel))), ...round(0, 0.3, 1.2, 0, 0.36, 0xc9ced4), C(0, 1.3, 0, 0.2, 0.2, 0.2, darkSteel), C(0.7, 0.3, 0, 0.25, 0.3, 0.2, 0x3a6fb0), C(0.7, 0.9, 0, 0.1, 0.35, 0.1, white), bar(0.36, 0.4, 0, 0.62, 0.35, 0, 0.03, 0xe8e8e0), bar(0.7, 1.07, 0, 0.36, 1.1, 0, 0.03, 0xe8e8e0)], "real", "Depósito de medio de 200 L con agitador, bomba peristáltica y filtro capsular de 0,2 µm (medio sin suero, GFI 2024); " + "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Medio"),
   eq("lab-autoclave", "maquina", "carne-cultivada", "Autoclave", 0.8, 1, 0.7, steel, "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Autoclave"),
-  pz("lab-biorreactor-semilla", "maquina", "carne-cultivada", "Biorreactor semilla (50 L)", steel, bioreactor(0.45, 1.2), "real", "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Biorreactor_semilla"),
+  pz("lab-biorreactor-semilla", "maquina", "carne-cultivada", "Biorreactor semilla (50 L)", steel, bioreactor(0.3, 1.4), "real", "Tren de semilla: tanque agitado de 50 L (GFI 2024); " + "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Biorreactor_semilla"),
   pz("lab-biorreactor", "maquina", "carne-cultivada", "Biorreactor de producción (1 500 L, 37 °C, pH 7,3)", steel, bioreactor(1.15, 3), "real", "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Biorreactor_produccion (LitresFor: radio 0,8·(L/500)^⅓)"),
-  pz("lab-perfusion", "maquina", "carne-cultivada", "Biorreactor de perfusión con andamio (fibras)", steel, [C(0, 0.45, 0, 1.8, 0.9, 1), C(0, 1.1, 0, 1.7, 0.4, 0.9, glass), C(0, 1.65, 0, 1.7, 0.4, 0.9, glass), C(0, 1.05, 0, 1.4, 0.06, 0.75, 0xd98c80)], "real", "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Biorreactor_andamio"),
-  pz("lab-centrifuga", "maquina", "carne-cultivada", "Centrífuga", white, [C(0, 0.45, 0, 0.8, 0.9, 0.8), C(0, 0.92, 0, 0.6, 0.04, 0.6, 0x26262a)], "real", "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Centrifuga"),
-  pz("lab-formadora", "maquina", "carne-cultivada", "Formadora (prensa de carne)", steel, [C(0, 0.45, 0, 1, 0.9, 0.7), C(0, 1.1, 0, 0.5, 0.4, 0.5, 0x26262a)], "real", "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Formadora"),
+  pz("lab-perfusion", "maquina", "carne-cultivada", "Biorreactor de perfusión con su andamio (fibras)", steel, [...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => C(sx * 0.82, 0.04, sz * 0.42, 0.08, 0.08, 0.08, 0x26262a))), C(0, 0.1, 0, 1.8, 0.06, 1, steel), ...[-1, 1].flatMap((sx) => [C(sx * 0.85, 0.5, -0.45, 0.05, 0.8, 0.05, steel), C(sx * 0.85, 0.5, 0.45, 0.05, 0.8, 0.05, steel)]), C(0, 0.9, 0, 1.8, 0.04, 1, steel), C(-0.3, 1.25, 0, 1.0, 0.6, 0.6, glass), ...rep(5, (i) => [C(-0.7 + i * 0.2, 1.22, 0, 0.04, 0.45, 0.45, 0xd98c80)]), C(0.55, 1.2, 0.1, 0.5, 0.55, 0.5, 0xd8dadc), C(0.55, 1.3, -0.16, 0.36, 0.22, 0.01, 0x1f4052), ...[0.4, 0.7].map((x) => C(x, 1.05, -0.16, 0.12, 0.12, 0.04, 0x3a6fb0)), C(0, 0.45, 0, 0.3, 0.5, 0.3, 0xe8e0c8)], "real", "Perfusión para la diferenciación (GFI 2024: el modo preferido para esa etapa): cámara de vidrio con andamios de fibras, bombas y medio en carro; " + "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Perfusion"),
+  pz("lab-centrifuga", "maquina", "carne-cultivada", "Centrífuga de suelo", white, [...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => C(sx * 0.32, 0.03, sz * 0.32, 0.06, 0.06, 0.06, 0x26262a))), C(0, 0.45, 0, 0.8, 0.8, 0.8, white), C(0, 0.88, 0.05, 0.72, 0.06, 0.6, 0xd8dadc), C(0, 0.92, 0.05, 0.4, 0.02, 0.4, 0x26262a), C(0, 0.7, -0.41, 0.5, 0.2, 0.02, 0x2a2d33), C(0, 0.7, -0.42, 0.3, 0.1, 0.01, 0x1f4052)], "real", "Centrífuga de suelo refrigerada con rotor oscilante (cosecha de células); " + "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Centrifuga"),
+  pz("lab-formadora", "maquina", "carne-cultivada", "Formadora de hamburguesas (tolva y cinta)", steel, [...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => C(sx * 0.42, 0.4, sz * 0.28, 0.05, 0.8, 0.05, steel))), C(0, 0.82, 0, 1, 0.06, 0.65, steel), C(0, 0.88, 0, 0.95, 0.02, 0.4, 0x2a2d33), ...rep(4, (i) => [C(-0.35 + i * 0.22, 0.9, 0, 0.12, 0.02, 0.12, 0xc97a6a)]), C(-0.25, 1.15, 0, 0.45, 0.5, 0.5, steel), C(-0.25, 1.42, 0, 0.55, 0.06, 0.55, steel), C(0.35, 1.05, -0.3, 0.2, 0.3, 0.05, 0x2a2d33)], "real", "Formadora de mesa de acero inoxidable: tolva, molde y cinta de salida; " + "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Formadora"),
   pz("lab-camara-fria", "maquina", "carne-cultivada", "Cámara fría de producto (4 °C)", white, [C(0, 1, 0, 0.9, 2, 1.4), C(-0.46, 1, 0, 0.02, 1.8, 1.2, 0xb9bec6), C(-0.48, 1.0, 0.45, 0.03, 0.35, 0.04, 0xc7ccd6), C(-0.47, 1.75, -0.4, 0.01, 0.12, 0.25, 0x1a2a3a), C(0, 2.05, 0.3, 0.6, 0.1, 0.5, 0xb8bec6)], "real", `${csx("CulturedMeatLab_Area/Laboratorio_CarneCultivada/Camara_fria")}; puerta, termómetro y evaporador: cámaras frigoríficas de laboratorio`),
-  pz("lab-consola-lote", "maquina", "carne-cultivada", "Consola de lote (registro de lote y control de los biorreactores)", white, [C(0, 0.5, 0, 1.2, 1, 0.5), C(0, 1.3, 0, 1.1, 0.6, 0.05, 0x1f4052), C(0, 1.02, -0.1, 0.5, 0.03, 0.2, 0x26262a), C(0.45, 1.05, -0.1, 0.12, 0.08, 0.12, 0x26262a)], "real", `${csx("CulturedMeatLab_Area/Laboratorio_CarneCultivada/Consola_lote")}; registro de lote (GMP) y SCADA de los biorreactores`),
+  pz("lab-consola-lote", "maquina", "carne-cultivada", "Consola de lote (registro de lote y control de los biorreactores)", white, [...opsDesk(1.4, 2)], "real", "Puesto del sistema de control (SCADA) y registro de lote; " + "Cold Sanctuary, Assets/Scripts/World/CulturedMeatLab.cs Consola_lote"),
   eq("lab-raciones", "maquina", "carne-cultivada", "Almacén de raciones para el alimentador (cámara)", 1.4, 1.4, 0.7, darkSteel, "Cold Sanctuary, Assets/Editor/SampleSceneBuilder.cs Almacen_raciones (docs/alimentador.md)"),
 
   // ── Sala de asambleas (Asamblea.cs FurnishAssembly) ──
@@ -174,7 +215,7 @@ export const SERVICIOS_MODELS: readonly ModelDef[] = [
   pz("asamblea-centro", "mueble", "asamblea", "Piedra de la palabra (Lögberg) y cono de luz (Reichstag)", 0x8c8a85, [C(0, 0.06, 0, 2.4, 0.12, 2.4), C(0, 0.04, -1.9, 1.2, 0.08, 1.4), ...[-1, 1].flatMap((x) => [-1, 1].map((z) => C(x * 3, 2.2, z * 3, 0.1, 4.4, 0.1, steel))), C(0, 4.45, 0, 6.1, 0.08, 6.1, 0xbfe0f0), ...rep(4, (k) => [C(0, 4.2 - k * 0.3, 0, 3 - k * 0.7, 0.5, 3 - k * 0.7, 0xbfe0f0)])], "real", cs("Asamblea", "Lögberg y cono de espejos")),
   pz("asamblea-fila-8", "mueble", "asamblea", "Fila de 8 asientos", 0x8c6b4d, [C(0, 0.225, 0, 8 * 0.7, 0.45, 0.5), C(0, 0.65, 0.27, 8 * 0.7, 0.5, 0.06)], "real", cs("Asamblea", "AssemblyRow (anillo interior a 6 m)")),
   pz("asamblea-fila-10", "mueble", "asamblea", "Fila de 10 asientos", 0x8c6b4d, [C(0, 0.225, 0, 10 * 0.7, 0.45, 0.5), C(0, 0.65, 0.27, 10 * 0.7, 0.5, 0.06)], "real", cs("Asamblea", "AssemblyRow (anillo exterior a 9,75 m)")),
-  pz("asamblea-toguna", "mueble", "asamblea", "Toguna de mediación (dogon)", 0x8c6b4d, [...[-1, 0, 1].flatMap((x) => [-1, 1].map((z) => C(x * 2.4, 0.7, z * 2, 0.28, 1.4, 0.28))), ...rep(9, (k) => [C(0, 1.46, -2 + k * 0.5, 5.4, 0.1, 0.14, 0xb39966)]), C(0, 0.22, -1.1, 3.6, 0.44, 0.5), C(0, 0.22, 1.1, 3.6, 0.44, 0.5)], "real", cs("Asamblea", "Toguna (techo bajo de 1,4 m: se discute sentado)")),
+  pz("asamblea-toguna", "mueble", "asamblea", "Toguna de mediación (dogon)", 0x8c6b4d, [...[-1, 0, 1].flatMap((x) => [-1, 1].map((z) => C(x * 2.4, 0.7, z * 2, 0.28, 1.4, 0.28))), ...[-1, 0, 1].map((x) => C(x * 2.4, 1.43, 0, 0.22, 0.06, 4.3, 0x6b5238)), ...rep(9, (k) => [C(0, 1.49, -2 + k * 0.5, 5.4, 0.1, 0.14, 0xb39966)]), C(0, 1.72, 0, 5.8, 0.36, 4.8, 0xc9b27a), C(0, 1.95, 0, 5.2, 0.1, 4.2, 0xa8945e), C(0, 0.22, -1.1, 3.6, 0.44, 0.5), C(0, 0.22, 1.1, 3.6, 0.44, 0.5)], "real", cs("Asamblea", "Toguna (techo bajo de 1,4 m: se discute sentado)")),
   pz("asamblea-mesa-comision", "mueble", "asamblea", "Mesa de la comisión", 0x8c6b4d, bench(3.4, 1.4, 0x8c6b4d), "real", cs("Asamblea", "Mesa de la comisión")),
   pz("asamblea-archivo", "mueble", "asamblea", "Archivo de actas (quipus, cinturón de conchas, libro)", 0x8c6b4d, [...bench(3.6, 0.8, 0x8c6b4d), ...rep(7, (k) => [C(-1.4 + k * 0.2, 1.25, 0.3, 0.03, 0.7, 0.03, 0xf2e6cc)]), C(1.2, 0.98, 0, 0.7, 0.1, 0.5, 0x6b1f26)], "real", cs("Asamblea", "Archivo de actas")),
   pz("asamblea-marcador", "mueble", "asamblea", "Marcador de votos", 0x222226, [C(0, 1.9, 0, 4, 2.2, 0.16), C(-1.8, 0.4, 0, 0.14, 0.8, 0.14, steel), C(1.8, 0.4, 0, 0.14, 0.8, 0.14, steel)], "real", cs("Asamblea", "Marcador de votos")),
@@ -184,15 +225,36 @@ export const SERVICIOS_MODELS: readonly ModelDef[] = [
 
   // ── Sala de guardia (GuardRoom.cs FurnishGuardRoom) ──
   eq("guardia-suelo", "mueble", "suelos", "Suelo de la sala de guardia", 39.8, 0.02, 37.8, 0x575c66, cs("GuardRoom", "Suelo_de_sala")),
-  pz("guardia-pantalla", "maquina", "guardia", "Pantalla del muro de guardia", 0x1f3340, [C(0, 0.9, 0, 0.14, 1.8, 0.14, darkSteel), C(0, 2.5, 0, 3.6, 2, 0.1)], "real", cs("GuardRoom", "Muro_de_pantallas (una por fuente)")),
-  pz("guardia-consola", "maquina", "guardia", "Consola de guardia", 0x404550, [...bench(1.8, 0.9, 0x404550), C(0, 1.15, 0.3, 0.9, 0.5, 0.05, 0x1f3340), C(0, 0.45, -0.7, 0.5, 0.05, 0.5, 0x26262a)], "real", cs("GuardRoom", "GrConsoles")),
-  pz("guardia-radar", "maquina", "guardia", "Mesa de radar (tráfico marítimo)", 0x404550, [C(0, 0.45, 0, 2.6, 0.9, 2.6), C(0, 0.92, 0, 2.2, 0.04, 2.2, 0x1f3340)], "real", cs("GuardRoom", "Mesa de radar")),
-  pz("guardia-carta-hielo", "maquina", "guardia", "Carta de hielo (Patrulla Internacional del Hielo)", 0x404550, [...bench(3, 1.6, 0x404550), C(0, 0.92, 0, 2.7, 0.02, 1.3, 0xdbe6eb)], "real", cs("GuardRoom", "Carta de hielo")),
-  pz("guardia-sismografo", "maquina", "guardia", "Sismógrafo", 0x404550, [...bench(2.6, 1, 0x404550), C(0, 1.15, 0, 1.6, 0.4, 0.4, 0xebe6d6)], "real", cs("GuardRoom", "Sismógrafo")),
-  pz("guardia-mareografo", "maquina", "guardia", "Mareógrafo y maqueta de boya DART", 0x404550, [C(0, 1.1, 0, 0.5, 2.2, 0.5), C(1.3, 0.35, 0, 1.2, 0.7, 1.2, 0xe6b326), C(1.3, 1.05, 0, 0.1, 0.7, 0.1, darkSteel)], "real", cs("GuardRoom", "Mareógrafo y boya")),
-  pz("guardia-radio", "maquina", "guardia", "Radio VHF", 0x404550, [C(0, 0.9, 0, 1.6, 1.8, 0.6), ...rep(3, (i) => [C(0, 0.5 + i * 0.45, -0.32, 1.2, 0.25, 0.04, 0x1f3340)])], "real", cs("GuardRoom", "Radio VHF")),
-  pz("guardia-tablero", "mueble", "guardia", "Tablero de guardia", 0xdbc79e, [C(0, 1.3, 0, 2, 1.4, 0.1), C(0, 0.3, 0, 0.14, 0.6, 0.14, darkSteel)], "real", cs("GuardRoom", "Tablero de guardia")),
-  pz("guardia-respaldo", "maquina", "guardia", "Puesto de respaldo", 0x404550, [...bench(3.2, 1.2, 0x404550), C(0, 1.25, 0.3, 1.4, 0.8, 0.06, 0x1f3340)], "real", cs("GuardRoom", "Puesto de respaldo")),
+  // The watch as a maritime rescue coordination centre's (Berón 2026-11-22: «mesas con un tipo de pantalla y silla
+  // voladora… se debe dar realismo a esta sala»): desks on their legs, monitors on their stands, chairs on their bases.
+  pz("guardia-muro-video", "maquina", "guardia", "Muro de vídeo: 2 × 3 pantallas de 55″ en su bastidor", 0x16181c, [
+    ...[-1, 1].flatMap((sx) => [C(sx * 1.75, 0.03, 0, 0.12, 0.06, 0.9, darkSteel), C(sx * 1.75, 1.5, 0.1, 0.1, 3.0, 0.1, darkSteel)]),
+    C(0, 0.95, 0.1, 3.6, 0.08, 0.08, darkSteel), C(0, 2.95, 0.1, 3.6, 0.08, 0.08, darkSteel),
+    ...rep(6, (i) => [C(-1.22 + (i % 3) * 1.22, 1.33 + Math.floor(i / 3) * 0.7, 0.02, 1.2, 0.68, 0.06, 0x16181c), C(-1.22 + (i % 3) * 1.22, 1.33 + Math.floor(i / 3) * 0.7, -0.015, 1.12, 0.6, 0.01, [0x1d4f6b, 0x2b6e4f, 0x1d4f6b, 0x3a5a7a, 0x1a2a3a, 0x2b6e4f][i])]),
+  ], "real", "Muro de vídeo de un centro de coordinación de salvamento (MRCC): pantallas de 55″ (121 × 68 cm) sin marco en bastidor de suelo; cs GuardRoom Muro_de_pantallas"),
+  pz("guardia-consola", "maquina", "guardia", "Puesto de operador: mesa, 3 monitores, teclado y silla de 24 h", 0x404550, opsDesk(1.8, 3), "real", "Puesto de operador de un MRCC: mesa de 180 × 90 cm a 74 cm, 3 monitores de 24″ en brazo y silla de uso continuo (EN 1335); cs GuardRoom GrConsoles"),
+  pz("guardia-respaldo", "maquina", "guardia", "Puesto del jefe de guardia: mesa, 2 monitores, teléfono y silla", 0x404550, [...opsDesk(1.6, 2), C(0.55, 0.79, 0.05, 0.22, 0.08, 0.2, 0x26262a)], "real", "Mesa del jefe de guardia de un MRCC (160 × 90 cm, 2 monitores y teléfono); cs GuardRoom Puesto de respaldo"),
+  pz("guardia-radar", "maquina", "guardia", "Consola de radar (tráfico marítimo, VTS)", 0x404550, [
+    C(0, 0.4, 0, 1.2, 0.8, 0.8), C(0, 0.83, -0.1, 1.2, 0.06, 0.6, 0x26262a), C(0, 1.15, 0.25, 1.1, 0.7, 0.12, 0x2a2d33), C(0, 1.15, 0.18, 0.62, 0.62, 0.01, 0x123a2a), C(0, 1.15, 0.175, 0.08, 0.08, 0.01, 0x40d080),
+    C(-0.35, 0.87, -0.2, 0.4, 0.03, 0.18, 0x26262a), C(0.35, 0.88, -0.2, 0.12, 0.05, 0.12, 0x26262a), ...officeChair(0, -0.85),
+  ], "real", "Consola de radar ARPA de un VTS (pantalla de 27″, panel de control y bola de seguimiento); cs GuardRoom Mesa de radar"),
+  pz("guardia-carta-hielo", "maquina", "guardia", "Mesa de cartas con la carta de hielo (Patrulla Internacional del Hielo)", 0x404550, [
+    ...legsTable(2.4, 1.3, 0.92, 0x404550), C(0, 0.945, 0, 2.2, 0.01, 1.1, 0xdbe6eb), C(-0.5, 0.95, 0.1, 0.5, 0.01, 0.35, 0xf2f2f2), C(0.6, 0.955, -0.2, 0.3, 0.02, 0.04, 0x26262a), C(0, 1.6, 0.6, 0.06, 1.3, 0.06, darkSteel), C(0, 2.2, 0.4, 0.4, 0.1, 0.4, 0xe8e8e0),
+  ], "real", "Mesa de cartas náuticas de pie (92 cm) con lámpara de brazo; carta de hielo de la IIP (USCG); cs GuardRoom Carta de hielo"),
+  pz("guardia-sismografo", "maquina", "guardia", "Sismógrafo de tambor y su registrador", 0x404550, [
+    ...legsTable(1.6, 0.8, 0.78, 0x404550), C(0, 1.0, 0, 1.0, 0.36, 0.36, 0x2a2d33), C(0, 1.0, -0.19, 0.9, 0.3, 0.01, 0xebe6d6), ...rep(5, (i) => [C(0, 0.9 + i * 0.05, -0.2, 0.86, 0.005, 0.005, 0x26262a)]), C(0.35, 1.25, -0.1, 0.03, 0.15, 0.03, 0x8c8a85),
+  ], "real", "Sismógrafo de tambor (registro en papel ahumado, 60 mm/min) sobre su mesa; cs GuardRoom Sismógrafo"),
+  pz("guardia-mareografo", "maquina", "guardia", "Mareógrafo de flotador y maqueta de boya DART", 0x404550, [
+    C(0, 0.03, 0, 0.6, 0.06, 0.6, darkSteel), C(0, 0.75, 0, 0.3, 1.4, 0.3, 0x8c9096), C(0, 1.55, 0, 0.45, 0.3, 0.35, 0x404550), C(0, 1.55, -0.18, 0.3, 0.2, 0.01, 0xebe6d6),
+    C(1.2, 0.05, 0, 1.0, 0.1, 1.0, darkSteel), C(1.2, 0.4, 0, 0.9, 0.6, 0.9, 0xe6b326), C(1.2, 0.95, 0, 0.5, 0.5, 0.5, 0xe6b326), C(1.2, 1.5, 0, 0.06, 0.6, 0.06, darkSteel), C(1.2, 1.82, 0, 0.14, 0.06, 0.14, 0xd04030),
+  ], "real", "Mareógrafo de flotador (pozo y registrador) y maqueta 1:3 de la boya DART II (NOAA); cs GuardRoom Mareógrafo y boya"),
+  pz("guardia-radio", "maquina", "guardia", "Armario de radio VHF/HF con su mesa y micrófono", 0x404550, [
+    C(0, 0.95, 0.15, 0.8, 1.9, 0.6, 0x2a2d33), ...rep(4, (i) => [C(0, 0.6 + i * 0.35, -0.16, 0.7, 0.22, 0.02, i % 2 ? 0x1a2a3a : 0x404550)]), C(0, 1.85, -0.16, 0.3, 0.06, 0.02, 0x40d080),
+    C(0.95, 0.73, -0.1, 1.0, 0.04, 0.7, 0x404550), C(0.55, 0.36, -0.1, 0.05, 0.72, 0.6, darkSteel), C(1.4, 0.36, -0.1, 0.05, 0.72, 0.6, darkSteel), C(0.95, 0.8, -0.05, 0.12, 0.1, 0.12, 0x26262a),
+  ], "real", "Radio VHF marina (canal 16 y DSC 70) y HF en armario de 19″; cs GuardRoom Radio VHF"),
+  pz("guardia-tablero", "mueble", "guardia", "Tablero de guardia (turnos y avisos) en su caballete", 0xdbc79e, [
+    C(0, 1.4, 0, 1.8, 1.1, 0.04, 0xdbc79e), C(0, 1.4, -0.03, 1.84, 1.14, 0.02, 0x8c8a85), ...[-1, 1].flatMap((sx) => [C(sx * 0.8, 0.43, 0, 0.05, 0.86, 0.05, darkSteel), C(sx * 0.8, 0.03, 0, 0.06, 0.06, 0.6, darkSteel)]), C(-0.4, 1.6, -0.05, 0.3, 0.2, 0.01, 0xf2f2f2), C(0.3, 1.3, -0.05, 0.25, 0.3, 0.01, 0xf2e6a0),
+  ], "real", "Tablero de corcho de 180 × 110 cm en caballete; cs GuardRoom Tablero de guardia"),
 ];
 
 void bar;

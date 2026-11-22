@@ -4,6 +4,7 @@ import { ENTRENAMIENTO_FLOORS } from "./entrenamiento";
 import { SERVICIOS_FLOORS } from "./servicios";
 import { FLOOR_SIZE, carpetKeepOut, composed, packFloor, ringLength, ringPoint, turned, type FloorPlan, type Placed } from "./kit";
 import { MUSICA_AULAS_FLOORS } from "./musica-aulas";
+import { PRODUCCION_FLOORS } from "./produccion";
 
 /**
  * The floors of the buildings for the people there are now (Berón 2026-11-21: «muy pocas veces van a coincidir todos
@@ -121,6 +122,24 @@ function criaCulturedMeat(): FloorPlan {
   };
 }
 
+/**
+ * The assembly hall with the watch on its trunk side (Berón 2026-11-22: «la sala de guardia… creo que se puede juntar a
+ * la de asambleas»): the hall as it was, and in front of it an operations room as a coastguard's (MRCC) is laid out,
+ * 4 operator desks facing the video wall, the watch officer's desk behind them, and the instruments in a row on the
+ * other side of the door, 1,2 m at least between any two.
+ */
+function assemblyGuard(): FloorPlan {
+  const hall = plan(SERVICIOS_FLOORS, "asambleas");
+  const z = -14.2;
+  const items: Placed[] = [...hall.items];
+  items.push(P("guardia-muro-video", -13, -10.6, 0, "Muro de vídeo de la guardia"));
+  [-17.5, -14.5, -11.5, -8.5].forEach((x, i) => items.push(P("guardia-consola", x, z, 0, `Puesto de guardia ${i + 1}`)));
+  items.push(P("guardia-respaldo", -13, -17.6, 0, "Puesto del jefe de guardia"));
+  items.push(P("guardia-radar", 6, z, 0), P("guardia-carta-hielo", 10.6, z), P("guardia-sismografo", 15, z), P("guardia-mareografo", 17.2, -17.6));
+  items.push(P("guardia-radio", 6, -17.9), P("guardia-tablero", 10.6, -18.1));
+  return { id: "asambleas-guardia", size: hall.size, items, source: `${hall.source}; ${cs("GuardRoom", "FurnishGuardRoom")}; la guardia como un centro de salvamento marítimo (MRCC), juntas en un piso (Berón 2026-11-22)` };
+}
+
 /** The blocks of a list, each as many times as asked (once when not). */
 function expand(list: readonly Block[], counts: Readonly<Record<string, number>>): [string, number, number][] {
   return list.flatMap(([id, , w, d]) => Array.from({ length: counts[id] ?? 1 }, () => [id, w, d] as [string, number, number]));
@@ -144,6 +163,11 @@ const right = { x0: 0, x1: HX, z0: -HZ, z1: HZ };
 const front = { x0: -HX, x1: HX, z0: -HZ, z1: 0 };
 const back = { x0: -HX, x1: HX, z0: 0, z1: HZ };
 
+/** A room the other way round (its far end by the trunk): its things mirrored across x and turned half round. */
+const facedBack = (p: FloorPlan): FloorPlan => ({ ...p, items: p.items.map((it) => ({ ...it, x: -it.x, z: -it.z, rot: (it.rot ?? 0) + PI })) });
+const chem = (): FloorPlan => lab("quimica", [SINTESIS, ANALISIS], { "q-campana": 3, "q-rotavapor": 2, "q-ducha": 1, "q-cuaderno": 2, "q-hplc": 2, "q-puesto-analisis": 1, "q-rmn-sobremesa": 0, "q-hornos": 0 }, "FurnishSynthesis y FurnishAnalysis");
+const bio = (): FloorPlan => lab("biologia", [CULTIVO, MOLECULAR], { "b-cabina": 2, "b-incubador": 2, "b-microscopio": 1, "b-fluorescencia": 1, "b-centrifuga": 2, "b-biorreactor-mesa": 1, "b-congelador": 1, "b-prepcr": 2, "b-extraccion": 2, "b-termociclador": 2, "b-nevera": 1, "b-puesto-datos": 2, "b-lavamanos": 1, "b-autoclave": 1, "b-dewar": 1 }, "FurnishCulture y FurnishMolecular");
+
 /**
  * The training tower's rooms two to a floor, each spread over its half (Berón 2026-11-22: «hacer más espacio entre
  * máquinas y muebles o unir pisos, quizás el de CrossFit se podría unir al de calistenia, y en el aula seguramente
@@ -153,20 +177,25 @@ function shared(): FloorPlan[] {
   const e = (id: string) => plan(ENTRENAMIENTO_FLOORS, id);
   const m = (id: string) => plan(MUSICA_AULAS_FLOORS, id);
   const cp = calisthenicsParkour();
+  const q = (x0: number, x1: number, z0: number, z1: number) => ({ x0, x1, z0, z1 });
   return [
     composed("funcional", [{ plan: cp, ...front }, { plan: turned(e("crossfit")), ...back }], `${cp.source}; ${e("crossfit").source}; crossfit con calistenia y parkour (Berón 2026-11-22)`),
-    composed("yoga-ballet", [{ plan: e("yoga-hatha-occidental-1"), ...left }, { plan: m("ballet-grande"), ...right }], `${e("yoga-hatha-occidental-1").source}; ${m("ballet-grande").source}; en un piso (2026-11-22)`),
-    composed("artes-marciales", [{ plan: m("dojo-judo"), ...left }, { plan: m("dojo-kickboxing"), ...right }], `${m("dojo-judo").source}; ${m("dojo-kickboxing").source}; en un piso (2026-11-22)`),
-    composed("aula-musica", [{ plan: m("aula-historia"), ...left }, { plan: m("musica-ensayo"), ...right }], `${m("aula-historia").source}; ${m("musica-ensayo").source}; en un piso, con más espacio entre pupitres (2026-11-22)`),
+    // The gym with its fighting corner at the far end, as many gyms have a boxing area (Berón 2026-11-22: «el gym… se ve muy vacío»).
+    composed("gimnasio", [{ plan: gym(), ...q(-HX, HX, -HZ, 6) }, { plan: m("dojo-kickboxing"), ...q(-HX, 0, 6, HZ) }, { plan: m("dojo-karate"), ...q(0, HX, 6, HZ) }], `${gym().source}; ${m("dojo-kickboxing").source}; ${m("dojo-karate").source}; con su zona de combate (2026-11-22)`),
+    // Four rooms, one to a quarter: yoga and music on opposite corners, the dojo and the ballet studio between them.
+    composed("salas", [{ plan: e("yoga-hatha-occidental-1"), ...q(-HX, 0, -HZ, 0) }, { plan: m("dojo-judo"), ...q(0, HX, -HZ, 0) }, { plan: m("ballet-grande"), ...q(-HX, 0, 0, HZ) }, { plan: m("musica-ensayo"), ...q(0, HX, 0, HZ) }], `${e("yoga-hatha-occidental-1").source}; ${m("dojo-judo").source}; ${m("ballet-grande").source}; ${m("musica-ensayo").source}; una sala por cuarto (Berón 2026-11-22: «fusionar pisos por afinidad»)`),
+    // The workshops by affinity, front and back (Berón 2026-11-22: «las áreas del taller… se ven muy vacías»): the
+    // mechanics with the submarine they keep, the textile studio with the vertical farm (fibres and dye plants).
+    composed("mecanica-garaje", [{ plan: plan(PRODUCCION_FLOORS, "mecanica"), ...front }, { plan: plan(PRODUCCION_FLOORS, "garaje-submarino"), ...back }], `${plan(PRODUCCION_FLOORS, "mecanica").source}; ${plan(PRODUCCION_FLOORS, "garaje-submarino").source}; la mecánica con el garaje del submarino (2026-11-22)`),
+    composed("textil-huerto", [{ plan: plan(PRODUCCION_FLOORS, "textil"), ...front }, { plan: plan(PRODUCCION_FLOORS, "huerto-vertical-1"), ...back }], `${plan(PRODUCCION_FLOORS, "textil").source}; ${plan(PRODUCCION_FLOORS, "huerto-vertical-1").source}; el textil con el huerto vertical (2026-11-22)`),
+    // The chemistry lab faced the other way, so its clear aisle (where the carpet lands) meets the trunk's door.
+    composed("laboratorios", [{ plan: facedBack(chem()), ...front }, { plan: bio(), ...back }], `${chem().source}; ${bio().source}; química y biología en un piso (2026-11-22)`),
   ];
 }
 
 export const REDUCIDOS_FLOORS: readonly FloorPlan[] = [
   ...shared(),
-  gym(),
-  calisthenicsParkour(),
   hospital(),
   criaCulturedMeat(),
-  lab("quimica", [SINTESIS, ANALISIS], { "q-campana": 3, "q-rotavapor": 2, "q-ducha": 1, "q-cuaderno": 2, "q-hplc": 2, "q-puesto-analisis": 1, "q-rmn-sobremesa": 0, "q-hornos": 0 }, "FurnishSynthesis y FurnishAnalysis"),
-  lab("biologia", [CULTIVO, MOLECULAR], { "b-cabina": 2, "b-incubador": 2, "b-microscopio": 1, "b-fluorescencia": 1, "b-centrifuga": 2, "b-biorreactor-mesa": 1, "b-congelador": 1, "b-prepcr": 2, "b-extraccion": 2, "b-termociclador": 2, "b-nevera": 1, "b-puesto-datos": 2, "b-lavamanos": 1, "b-autoclave": 1, "b-dewar": 1 }, "FurnishCulture y FurnishMolecular"),
+  assemblyGuard(),
 ];

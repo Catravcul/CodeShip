@@ -162,6 +162,26 @@ salud.
 | 84 | Alfombras **al doble de velocidad**, acelerando y frenando **como un coche** | Hecho: 12 m/s de crucero (antes 6); arrancan despacio, aceleran a 2,5 m/s², frenan antes de cada giro brusco y al llegar (`domain/motion.ts` `flightSpeed`, tests) |
 | 85 | ¿Está todo fusionado en `integracion`? | Sí: cada lista se fusiona y la web se publica sola en cada fusión |
 
+### Undécima lista (2026-11-22, tarde)
+
+| # | Pedido | Estado |
+| --- | --- | --- |
+| 86 | **Embrión en azules y verdes** | Hecho: piel verde azulada, cordón verde agua, placenta azul |
+| 87 | La base del globo es **6/10 del mar entre casquetes e islas**; el globo **sigue esa forma, pixelado**, abriéndose desde la boquilla, una sola estructura con el mar | Hecho (`data/globo.ts`): celdas de 8 m del mar; la capa del pie es el 60 % del mar, la boquilla se estrecha y el globo se abre capa a capa siguiendo los rayos hasta los casquetes; su piel se dibuja cara a cara |
+| 88 | **Bases de los árboles cuadradas**, no redondas | Hecho: la cubierta cuadrada de 10 m |
+| 89 | Poder **tirarse desde los pisos y anillos** | Ya se puede: los bordes no tienen barrera y la caída es libre (comprobado en el test de paseo). Si en algún sitio no deja, se mira dónde |
+| 90 | **Retos de cocina en las mesas de comer** | Arreglado: la mesa del comedor da «Poner y recoger la mesa» (`retos.ts` `COCINA.mesa`) |
+| 91 | **Sala de guardia** realista y **junto a la de asambleas** | Hecho: un piso «Asambleas y guardia»; la guardia como un centro de salvamento marítimo (MRCC): 4 puestos con 3 monitores y silla de 24 h frente al muro de vídeo, el jefe de guardia detrás y los instrumentos al otro lado de la puerta, a 1,2 m o más |
+| 92 | La regla de **pisos no vacíos**, ajustada | Hecho: la mitad del piso con algo a menos de 3 m, sin alargar los 3 m por la separación (antes pasaban pisos que se veían vacíos) |
+| 93 | **Carne cultivada** realista | Rehecho con GFI 2024: biorreactores de tanque agitado de acero con motor, mirilla, sondas y su armario; cabina de bioseguridad II, microscopio invertido, dewar, perfusión con andamios, centrífuga de suelo, formadora con tolva y cinta |
+| 94 | **Pupitres pegados** | Hecho: pupitres uno a uno (`aula-pupitre`); el aula en la plaza a 1,5 veces su separación |
+| 95 | **Literas al doble de alto** con **escalera vertical** que se sube con «Trepar» | Hecho: cama de arriba a 3,2 m, escalera con peldaños cada 30 cm (EN 747); «Trepar» al pie de la escalera sube hasta 4,5 m (`domain/climb.ts`, `Floor.ladder`) |
+| 96 | **Cubos verdes y marrones** de las habitaciones | Eran las macetas frutales y la mesilla: macetas de barro con borde, copas de varias hojas y fruta; mesilla con patas y cajón; armario con puertas |
+| 97 | **Revisión de realismo** con puntaje y fuentes, como **regla de creación**, y tests | Hecho (`data/realismo.ts`, `reglas.md` §1.7): 100 puntos (fuente, forma, color, apoyo); 80 y nada en el aire para lo de los pisos de hoy; las piezas a menos de 15 cm se asientan solas; 80 modelos pendientes de rehacer, en una lista que solo baja |
+| 98 | **Pisos por afinidad** (taller, gimnasio, plaza, ciencias vacíos; aula lejos de la música) | Hecho: gimnasio con su zona de combate; «Salas» (yoga, judo, ballet y música, una por cuarto); laboratorios (química y biología); mecánica con el garaje; textil con el huerto; el aula en la plaza. 23 pisos |
+| 99 | Bajo el mar, **la luz viene de la superficie** y se oscurece con la profundidad; mirando arriba se ve fuera según la profundidad | Hecho: la profundidad del globo se mide hasta su piel más cercana (`globeDepth`), y bajo el mar hasta la superficie; niebla y fondo del agua según ella |
+| 100 | **Control de rendimiento** | Hecho: presupuesto en `data/rendimiento.test.ts` (instancias, piezas, sólidos, aguas, caras del globo, sólidos por paso) y `tools/rendimiento-s1.mjs` (llamadas, triángulos y fps en vistas fijas) |
+
 #### Revisión de realismo de los pisos (2026-11-20)
 
 Criterios: fuente real o de Cold Sanctuary, tamaño real de la sala, una función (o una clase) por piso, sin medio vacío (test), se llega a todo desde la puerta (test).
@@ -212,6 +232,15 @@ utensilio, animal, persona, naturaleza, edificio, terreno…) y `group` (p. ej. 
 
 Gana la regla más concreta, campo a campo: categoría < grupo < modelo < edificio < piso. Cambiar la entrada del
 catálogo (tamaño, piezas, color) cambia todas sus copias; un piso es una lista de datos en `data/floors/<edificio>.ts`.
+
+## Rendimiento
+
+El móvil tiene que seguir jugando tras cada cambio (Berón, 2026-11-22). Dos controles:
+
+- `data/rendimiento.test.ts`, en cada prueba: instancias (≤ 3 500), piezas dibujadas (≤ 32 000), sólidos (≤ 14 500), aguas (≤ 2 000), caras del globo (≤ 15 000) y sólidos que mira el paseo en un sitio (`WalkIndex.near`, ≤ 3 600). Lo medido el 2026-11-22 está en el test.
+- `tools/rendimiento-s1.mjs`, en vivo (vista del iPhone 13): llamadas de dibujo (≤ 500), triángulos (≤ 550 000) y fps en el inicio, el mapa desde arriba, el globo por fuera, bajo el mar a 3, 12 y 30 m y dentro del globo; `--shots` guarda una captura de cada vista. En la nube va con SwiftShader: sus fps solo se comparan consigo mismos.
+
+Si algo pasa un presupuesto, se mira en vivo antes de subirlo.
 
 ## Arquitectura (código)
 

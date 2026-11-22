@@ -1,7 +1,7 @@
 import type { Floor, Rect, Solid, Water } from "@modules/aerial-sanctuary/domain/walk";
 import type { S1Area, TowerShape } from "./layout";
 import type { Waypoint } from "../domain/motion";
-import { AQUARIUM } from "./site";
+import { GLOBE } from "./globo";
 
 /**
  * The flying-carpet stations and their flights (Cold Sanctuary's `CarpetPad` areas, csx docs/alfombras-plan.md).
@@ -179,8 +179,8 @@ function reachable(floor: Rect, y: number, things: readonly Solid[], from: { x: 
 const axis = (dx: number, dz: number) => (Math.abs(dx) > Math.abs(dz) ? { x: Math.sign(dx), z: 0 } : { x: 0, z: Math.sign(dz) });
 
 /** The sky way: over every crown. */
-/** The carpets' sky way: over every crown and over the whales' globe (site.ts AQUARIUM, 2026-11-22). */
-const skyOf = (towers: readonly { readonly rootHeight: number }[]) => Math.ceil(Math.max(AQUARIUM.topY, ...towers.map((t) => t.rootHeight))) + HIGH_OVER_M;
+/** The carpets' sky way: over every crown and over the whales' globe (globo.ts, 2026-11-22). */
+const skyOf = (towers: readonly { readonly rootHeight: number }[]) => Math.ceil(Math.max(GLOBE.topY, ...towers.map((t) => t.rootHeight))) + HIGH_OVER_M;
 
 /**
  * Every station: one on a landing out of each floor's and ring's edge (the spot whose lane is nearest and that one walks
@@ -285,10 +285,7 @@ export function carpetStations(w: StationWorld): CarpetStation[] {
         for (const [ux, uz] of [[fo.x, fo.z], [fo.z, -fo.x], [-fo.z, fo.x], [-fo.x, -fo.z]] as const) {
           if (foot) break;
           for (const off of [0, 8, -8, 16, -16]) {
-            // The round deck's edge along this line (BASE: B is the square round it).
-            const br = (B.x1 - B.x0) / 2;
-            const reach = Math.sqrt(Math.max(0, br * br - off * off)) - 0.3;
-            const edge = ux ? cx + ux * reach : cz + uz * reach;
+            const edge = ux ? (ux > 0 ? B.x1 : B.x0) : uz > 0 ? B.z1 : B.z0;
             const x = ux ? edge + ux * (d + hz) : cx + off;
             const z = uz ? edge + uz * (d + hz) : cz + off;
             if (lanes.some((l) => Math.hypot(l.x - x, l.z - z) < STATION_PAD.x + CARPET_CLEAR_M)) continue;

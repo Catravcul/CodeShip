@@ -1,6 +1,7 @@
 import { ROOM_OWNERS } from "../models/residencia";
 import { FRUITS } from "./puntas";
 import type { FloorPlan, Placed } from "./kit";
+import { MUSICA_AULAS_FLOORS } from "./musica-aulas";
 
 /**
  * The Residencia floors (ResidentialBuilder.FurnishPlaza / FurnishRoomFloor): the plaza with the pillow ring and the
@@ -12,10 +13,19 @@ const SRC = "Cold Sanctuary, Assets/Editor/ResidentialBuilder.cs";
 export const ROOMS = 30;
 export const ROOMS_PER_FLOOR = 7;
 
+/**
+ * The plaza, with the classroom on its trunk-side left (Berón 2026-11-22: «el aula y música no encajan… la música hace
+ * ruido y el aula necesita más silencio… quizás el aula puede ir junto a la plaza, pues se usarían en horarios
+ * distintos»): the pillow ring on the right, the reading benches behind the classroom, the carpets by the trunk. The
+ * classroom is the history one (musica-aulas.ts) at 1,5 times its spacing, so there is room to run between desks.
+ */
+const AULA = { x: -10.5, z: -9.5, spread: 1.5 } as const;
 function plaza(): FloorPlan {
-  const items: Placed[] = [{ model: "plaza-suelo", x: 0, z: 0 }, { model: "res-ring", x: -5, z: 4 }, { model: "res-ring-colchon", x: -5, z: 4 }, { model: "res-alfombras", x: 9, z: -11 }];
-  for (let r = 0; r < 4; r++) items.push({ model: "res-banco-lectura", x: r < 2 ? 12 : 16, z: r % 2 === 0 ? 0 : 10, rot: Math.PI / 2, name: `Banco de lectura ${r + 1}` });
-  return { id: "residencia-plaza", size: SIZE, items, source: `${SRC} FurnishPlaza` };
+  const items: Placed[] = [{ model: "plaza-suelo", x: 0, z: 0 }, { model: "res-ring", x: 9.6, z: 5.5 }, { model: "res-ring-colchon", x: 9.6, z: 5.5 }, { model: "res-alfombras", x: 9, z: -11 }];
+  [[-14, 7], [-5, 7], [-14, 13], [-5, 13]].forEach(([x, z], r) => items.push({ model: "res-banco-lectura", x: x!, z: z!, name: `Banco de lectura ${r + 1}` }));
+  const aula = MUSICA_AULAS_FLOORS.find((f) => f.id === "aula-historia")!;
+  for (const it of aula.items) if (!it.model.startsWith("suelo-")) items.push({ ...it, x: AULA.x + it.x * AULA.spread, z: AULA.z + it.z * AULA.spread, ...(it.model === "aula-mesa-profesor" ? { name: "Mesa del profesor del aula" } : {}) });
+  return { id: "residencia-plaza", size: SIZE, items, source: `${SRC} FurnishPlaza; ${aula.source}; el aula en la plaza (Berón 2026-11-22)` };
 }
 
 /** The residents' shared kitchen and common room, where a floor has rooms to spare (ours: a residence hall's). */

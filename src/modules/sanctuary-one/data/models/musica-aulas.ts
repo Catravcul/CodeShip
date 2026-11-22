@@ -170,6 +170,7 @@ const ROOMS: readonly ModelDef[] = [
   ], "real", "Butacas de auditorio (Figueras, 55 cm, paso de 1 m entre filas) sobre gradas de 30 cm; pasillo lateral"),
 
   // ── Classrooms: what every classroom has ──
+  pz("aula-pupitre", "mueble", "aula", "Pupitre individual con su silla", oak, desk(0, 0), "real", "Pupitre escolar UNE-EN 1729 (talla 6: mesa 70 × 50 a 76 cm, silla a 46 cm)"),
   pz("aula-pupitres-24", "mueble", "aula", "24 pupitres individuales con su silla (4 filas de 6)", oak, rep(4, (r) => rep(6, (c) => desk(-2.9 + c * 1.04 + (c >= 3 ? 0.7 : 0), -r * 1.5))), "real", "Pupitre escolar UNE-EN 1729 (talla 6: mesa 70 × 50 a 76 cm, silla a 46 cm); filas a 1,5 m y pasillo central de 1,4 m (la puerta da a él)"),
   pz("aula-pared-pizarra", "mueble", "aula", "Pared frontal: pizarra blanca, pantalla del proyector y reloj (8 m)", 0xe8e4da, [
     wall(8), C(-1.2, 1.5, -0.01, 3.6, 1.2, 0.03, BOARD), C(-1.2, 0.88, -0.06, 3.6, 0.04, 0.1, 0x9a9a9a), C(2.4, 1.6, -0.02, 2.0, 1.25, 0.02, white), C(0, 2.55, -0.01, 0.3, 0.3, 0.03, white),

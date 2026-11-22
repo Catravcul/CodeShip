@@ -6,6 +6,8 @@ import { STEP_M, blocked, floorAt, type Body, type Floor, type WalkWorld } from 
  * floor she can walk on (walk.ts takes extra floors), so she can stand and walk on what she climbed.
  */
 export const CLIMB_MAX_M = 2.6;
+/** Up a ladder (a floor's `ladder`): as high as a bunk's upper bed, m. */
+export const LADDER_MAX_M = 4.5;
 /** How far ahead she reaches for a hold, m. */
 const REACH = [0.45, 0.7, 0.95];
 
@@ -30,7 +32,12 @@ export function climbTarget(w: WalkWorld, b: Body, yaw: number, extra: readonly 
     const z = b.z + fz * d;
     for (const s of w.solids)
       if (x > s.x0 && x < s.x1 && z > s.z0 && z < s.z1 && s.y1 > b.y + STEP_M && s.y1 <= b.y + CLIMB_MAX_M) tops.push({ y: s.y1, floor: { id: `trepar:${s.x0.toFixed(2)},${s.z0.toFixed(2)},${s.y1.toFixed(2)}`, x0: s.x0, x1: s.x1, z0: s.z0, z1: s.z1, y: s.y1, area: b.area } });
-    for (const f of [...w.floors, ...extra]) if (x > f.x0 && x < f.x1 && z > f.z0 && z < f.z1 && f.y > b.y + STEP_M && f.y <= b.y + CLIMB_MAX_M) tops.push({ y: f.y, floor: f });
+    for (const f of [...w.floors, ...extra]) {
+      if (x > f.x0 && x < f.x1 && z > f.z0 && z < f.z1 && f.y > b.y + STEP_M && f.y <= b.y + CLIMB_MAX_M) tops.push({ y: f.y, floor: f });
+      // A ladder: from where it stands (its rungs within reach), up to the floor it leads to.
+      const l = f.ladder;
+      if (l && x > l.x0 - 0.3 && x < l.x1 + 0.3 && z > l.z0 - 0.3 && z < l.z1 + 0.3 && f.y > b.y + CLIMB_MAX_M && f.y <= b.y + LADDER_MAX_M) tops.push({ y: f.y, floor: f });
+    }
   }
   // The lowest hold first; she lands a body's width onto it, where nothing above blocks her.
   for (const t of tops.sort((a, c) => a.y - c.y)) {

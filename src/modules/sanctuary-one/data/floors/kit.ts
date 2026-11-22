@@ -25,6 +25,11 @@ export interface FloorPlan {
    */
   readonly ring?: readonly Placed[];
   readonly source: string;
+  /**
+   * How far apart its things were spread to fill the kitchen's square (spreadTo, composed): the «not half empty» rule
+   * measures 3 m times this from each thing (room to run between them is the point, Berón 2026-11-22). 1 when not.
+   */
+  readonly spread?: number;
 }
 
 /** Cold Sanctuary's ring numbers (Levels.cs RingDeck, TreeSpec.RingOverFloor). */
@@ -90,4 +95,52 @@ export function packFloor(size: { x: number; z: number }, blocks: readonly (read
     rowD = Math.max(rowD, d);
   }
   return out;
+}
+
+/**
+ * Every floor the size of the kitchen's and the hospital's (Berón 2026-11-22: «en un principio el tamaño base de los
+ * pisos era el mismo que el de cocina o de los hospitales, vamos a recuperar esa regla porque genera una forma más
+ * simétrica… el personaje posiblemente siempre vaya corriendo por lo que es ideal generar grandes espacios»): the
+ * tower's square the kitchen's ring sits on, 40 × 40 m (its plan is 40 × 38, centred on it).
+ */
+export const FLOOR_SIZE = { x: 40, z: 40 } as const;
+/** How far a smaller room is spread out at most to fill its floor (its things further apart, never bigger). */
+export const MAX_SPREAD = 1.8;
+
+/** A floor finish (a rubber floor, a lab's or the hospital's): it fits only its own plan. */
+const isFinish = (model: string) => model.startsWith("suelo-") || model.endsWith("-suelo");
+
+/**
+ * A room spread out over `size` (its things further apart, up to MAX_SPREAD; at least as it was), centred; its own floor
+ * finish left out when it no longer fits (the wooden floor shows).
+ */
+export function spreadTo(p: FloorPlan, size: { readonly x: number; readonly z: number }): FloorPlan {
+  // A room within 6 % of its part is left as it is (the kitchen's 40 × 38 on its 40 × 40).
+  const k = (r: number) => (r < 1.06 ? 1 : Math.min(MAX_SPREAD, r));
+  const sx = k(size.x / p.size.x);
+  const sz = k(size.z / p.size.z);
+  if (sx === 1 && sz === 1 && p.size.x === size.x && p.size.z === size.z) return p;
+  if (sx === 1 && sz === 1) return { ...p, size: { x: Math.max(p.size.x, size.x), z: Math.max(p.size.z, size.z) } };
+  const items = p.items.filter((it) => !isFinish(it.model)).map((it) => ({ ...it, x: it.x * sx, z: it.z * sz }));
+  return { ...p, size: { x: size.x, z: size.z }, items, spread: Math.max(p.spread ?? 1, sx, sz) };
+}
+
+/** A room turned a quarter (its x becomes z): its plan, its things and their facing. */
+export function turned(p: FloorPlan): FloorPlan {
+  return { ...p, size: { x: p.size.z, z: p.size.x }, items: p.items.map((it) => ({ ...it, x: it.z, z: -it.x, rot: (it.rot ?? 0) + Math.PI / 2 })) };
+}
+
+/**
+ * Several rooms on one floor of FLOOR_SIZE: each spread over its part (x0…x1 across, z0…z1 away from the trunk, in the
+ * floor's frame) and put there.
+ */
+export function composed(id: string, parts: readonly { readonly plan: FloorPlan; readonly x0: number; readonly x1: number; readonly z0: number; readonly z1: number }[], source: string): FloorPlan {
+  const items: Placed[] = [];
+  let spread = 1;
+  for (const { plan, x0, x1, z0, z1 } of parts) {
+    const s = spreadTo(plan, { x: x1 - x0, z: z1 - z0 });
+    spread = Math.max(spread, s.spread ?? 1);
+    items.push(...s.items.map((it) => ({ ...it, x: it.x + (x0 + x1) / 2, z: it.z + (z0 + z1) / 2 })));
+  }
+  return { id, size: { x: FLOOR_SIZE.x, z: FLOOR_SIZE.z }, items, source, spread };
 }

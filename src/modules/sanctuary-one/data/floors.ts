@@ -7,9 +7,12 @@ import { SERVICIOS_FLOORS } from "./floors/servicios";
 import { CIENCIAS_FLOORS } from "./floors/ciencias";
 import { PRODUCCION_FLOORS } from "./floors/produccion";
 import { REDUCIDOS_FLOORS } from "./floors/reducidos";
-import type { FloorPlan } from "./floors/kit";
+import { FLOOR_SIZE, spreadTo, type FloorPlan } from "./floors/kit";
 
 export type { FloorPlan, Placed } from "./floors/kit";
 
-/** Every furnished floor by id (`furnish` in site.ts), one file per building in `floors/` (the fused ones of the reduced buildings in `floors/reducidos.ts`). */
-export const FLOOR_PLANS: ReadonlyMap<string, FloorPlan> = new Map([gymFloor0(), ...ENTRENAMIENTO_FLOORS, ...MUSICA_AULAS_FLOORS, ...SERVICIOS_FLOORS, ...CIENCIAS_FLOORS, ...PRODUCCION_FLOORS, ...RESIDENCIA_FLOORS, ...CAMPOS_FLOORS, ...REDUCIDOS_FLOORS].map((f) => [f.id, f]));
+/**
+ * Every furnished floor by id (`furnish` in site.ts), one file per building in `floors/` (the fused ones of the reduced
+ * buildings in `floors/reducidos.ts`), each spread over the kitchen's square (kit.ts FLOOR_SIZE, Berón 2026-11-22).
+ */
+export const FLOOR_PLANS: ReadonlyMap<string, FloorPlan> = new Map([gymFloor0(), ...ENTRENAMIENTO_FLOORS, ...MUSICA_AULAS_FLOORS, ...SERVICIOS_FLOORS, ...CIENCIAS_FLOORS, ...PRODUCCION_FLOORS, ...RESIDENCIA_FLOORS, ...CAMPOS_FLOORS, ...REDUCIDOS_FLOORS].map((f) => [f.id, spreadTo(f, FLOOR_SIZE)]));

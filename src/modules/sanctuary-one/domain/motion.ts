@@ -119,3 +119,43 @@ export function drift(a: P2, b: P2, speed: number, t: number): P2 {
   const f = k < leg ? k / leg : 2 - k / leg;
   return { x: a.x + (b.x - a.x) * f, z: a.z + (b.z - a.z) * f };
 }
+
+/**
+ * A flying carpet's speed like a car's (Berón 2026-11-22: «las alfombras voladoras deben ir unas 2 veces más rápido,
+ * sería ideal que su velocidad fuera gradual para incrementar y disminuir, como un coche»): along each stretch flown
+ * it speeds up from `start` at `accel` m/s² to its cruise, slows down the same way to stop at the stretch's end, and
+ * eases off before each sharp turn (more than 45°) to `turn`. `s` metres along the route.
+ */
+export const CARPET_RIDE = { cruise: 12, accel: 2.5, start: 1.2, turn: 4 } as const;
+
+export function flightSpeed(r: Route, s: number, ride: { readonly cruise: number; readonly accel: number; readonly start: number; readonly turn: number } = CARPET_RIDE): number {
+  const p = r.points;
+  if (p.length < 2) return ride.start;
+  let i = 1;
+  while (i < p.length - 1 && r.at[i]! < s) i++;
+  // The stretch flown round s: its first and last points (consecutive points flown to).
+  let a = i;
+  while (a > 1 && p[a - 1]!.fly) a--;
+  let b = i;
+  while (b < p.length - 1 && p[b + 1]!.fly) b++;
+  const from = r.at[a - 1]!;
+  const to = r.at[b]!;
+  const ease = (d: number, floor: number) => floor + Math.sqrt(2 * ride.accel * Math.max(0, d));
+  let v = Math.min(ride.cruise, ease(s - from, ride.start), ease(to - s, ride.start));
+  // The sharp turns of this stretch: slowing before each one, speeding up again after it.
+  for (let k = a; k < b; k++) {
+    const p0 = p[k - 1]!;
+    const p1 = p[k]!;
+    const p2 = p[k + 1]!;
+    const u = [p1.x - p0.x, p1.y - p0.y, p1.z - p0.z];
+    const w = [p2.x - p1.x, p2.y - p1.y, p2.z - p1.z];
+    const lu = Math.hypot(u[0]!, u[1]!, u[2]!);
+    const lw = Math.hypot(w[0]!, w[1]!, w[2]!);
+    if (lu < 0.01 || lw < 0.01) continue;
+    const cos = (u[0]! * w[0]! + u[1]! * w[1]! + u[2]! * w[2]!) / (lu * lw);
+    if (cos > Math.SQRT1_2) continue;
+    const d = Math.abs(r.at[k]! - s);
+    v = Math.min(v, ease(d, ride.turn));
+  }
+  return Math.max(ride.start, v);
+}

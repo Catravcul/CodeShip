@@ -70,10 +70,18 @@ export const CAP_MOVES: Readonly<Record<string, { readonly x: number; readonly z
   Isla: { x: -3, z: -72 },
   Este: { x: 0, z: 0 },
 };
-/** A tree's base at sea (Berón 2026-11-21): the walk round the trunk and the hull's depth under the deck, m. Ours. */
-export const BASE = { walk: 10, hull: 3 } as const;
-/** The tree-buildings' ring: their trunks this far from the sea's centre, at the edge of the map. */
-export const TREE_RING_R = 470;
+/**
+ * A tree's base at sea (Berón 2026-11-21, ours), round (Berón 2026-11-22: «la base debería ocupar 6/10 del espacio que
+ * tiene… con suficientes lados para dar una forma circular»): its deck's radius (6/10 of the square deck it had, 3 m
+ * clear round the trunk's corners and 10 m at the middle of its faces), its hull's depth and its sides. m.
+ */
+export const BASE = { r: 27, hull: 3, sides: 48 } as const;
+/**
+ * The tree-buildings' ring: their trunks this far from the sea's centre, at the edge of the map; each tree half as far
+ * from its nearest cap as on 2026-11-21 (Berón 2026-11-22: «el espacio entre edificios-árbol y los casquetes e islas se
+ * debe disminuir a la mitad, para disminuir trayectos»), m.
+ */
+export const TREE_RING_R: Readonly<Record<string, number>> = { servicios: 371, entrenamiento: 388, ciencias: 408, produccion: 435, campos: 414, residencia: 379 };
 
 export const LOBES: readonly Lobe[] = LOBES_CS.map((l) => {
   const m = CAP_MOVES[l.name.split(":")[0]!] ?? { x: 0, z: 0 };
@@ -140,8 +148,8 @@ export interface TowerSpec {
 }
 
 const FIRST_Y = 64;
-/** A place on the trees' ring, by its angle (degrees, from +x towards +z). */
-const ring = (deg: number) => ({ x: Math.round(TREE_RING_R * Math.cos((deg * Math.PI) / 180)), z: Math.round(TREE_RING_R * Math.sin((deg * Math.PI) / 180)) });
+/** A tree's place on the ring, by its angle (degrees, from +x towards +z). */
+const ring = (id: string, deg: number) => ({ x: Math.round(TREE_RING_R[id]! * Math.cos((deg * Math.PI) / 180)), z: Math.round(TREE_RING_R[id]! * Math.sin((deg * Math.PI) / 180)) });
 const F = (name: string, desc: string, furnish?: string) => ({ name, desc, ...(furnish ? { furnish } : {}) });
 
 /**
@@ -155,8 +163,8 @@ export const TOWERS_AMPLIOS: readonly TowerSpec[] = [
   {
     id: "servicios",
     building: "Servicios",
-    x: ring(100).x,
-    z: ring(100).z,
+    x: ring("servicios", 100).x,
+    z: ring("servicios", 100).z,
     size: { x: 40, z: 38 },
     quarter: 0,
     firstY: FIRST_Y,
@@ -178,8 +186,8 @@ export const TOWERS_AMPLIOS: readonly TowerSpec[] = [
     id: "entrenamiento",
     building: "Entrenamiento",
     // 20 m west of its old place (2026-11-20): with its yoga in 8 small floors its branches reach Servicios' otherwise.
-    x: ring(40).x,
-    z: ring(40).z,
+    x: ring("entrenamiento", 40).x,
+    z: ring("entrenamiento", 40).z,
     size: { x: 36, z: 26 },
     quarter: 1,
     firstY: FIRST_Y,
@@ -224,8 +232,8 @@ export const TOWERS_AMPLIOS: readonly TowerSpec[] = [
   {
     id: "ciencias",
     building: "Ciencias",
-    x: ring(-80).x,
-    z: ring(-80).z,
+    x: ring("ciencias", -80).x,
+    z: ring("ciencias", -80).z,
     size: { x: 32, z: 20 },
     quarter: 1,
     firstY: FIRST_Y,
@@ -246,8 +254,8 @@ export const TOWERS_AMPLIOS: readonly TowerSpec[] = [
   {
     id: "produccion",
     building: "Producción",
-    x: ring(-140).x,
-    z: ring(-140).z,
+    x: ring("produccion", -140).x,
+    z: ring("produccion", -140).z,
     size: { x: 26, z: 20 },
     quarter: 1,
     firstY: FIRST_Y,
@@ -266,9 +274,9 @@ export const TOWERS_AMPLIOS: readonly TowerSpec[] = [
   {
     id: "campos",
     building: "Árbol de los Campos",
-    x: ring(-20).x,
+    x: ring("campos", -20).x,
     // 30 m north of its old place (2026-11-20): Entrenamiento's yoga floor at the end of its south branch reached it.
-    z: ring(-20).z,
+    z: ring("campos", -20).z,
     size: { x: 32, z: 32 },
     quarter: 0,
     firstY: FIRST_Y,
@@ -285,10 +293,10 @@ export const TOWERS_AMPLIOS: readonly TowerSpec[] = [
   {
     id: "residencia",
     building: "Residencia",
-    x: ring(160).x,
+    x: ring("residencia", 160).x,
     // 13 m further south than it was: its floors crossed corners of Producción's and, with the wider trunks (paso.ts),
     // of Campos' (reglas.test.ts).
-    z: ring(160).z,
+    z: ring("residencia", 160).z,
     size: { x: 40, z: 38 },
     quarter: 0,
     firstY: FIRST_Y,
@@ -308,11 +316,12 @@ export const TOWERS_AMPLIOS: readonly TowerSpec[] = [
 
 /**
  * The buildings for the people there are now (Berón 2026-11-21: «se va a reconstruir los edificios en base a los
- * miembros actuales con la idea de que muy pocas veces van a coincidir todos en el mismo piso»): 33 floors instead of
- * 63. One gym (plate machines, free weights and cardio together), one yoga room, one classroom, one music room, one
- * ballet studio, two martial arts rooms, one hospital (emergencies, theatres and ICU), cría with the cultured meat,
- * one lab per science and one vertical farm. Every floor at its real size, straight out of the trunk, two to a level
- * on opposite sides (reglas.md §2.7).
+ * miembros actuales con la idea de que muy pocas veces van a coincidir todos en el mismo piso»): 29 floors instead of
+ * 63, every one the kitchen's 40 × 40 m (Berón 2026-11-22: «el tamaño base de los pisos era el mismo que el de cocina»),
+ * smaller rooms spread out or two to a floor. One gym (plate machines, free weights and cardio together), calisthenics
+ * with parkour and crossfit, yoga with ballet, the two martial arts rooms, the classroom with music, one hospital
+ * (emergencies, theatres and ICU), cría with the cultured meat, one lab per science and one vertical farm. Straight out
+ * of the trunk, two to a level on opposite sides (reglas.md §2.7).
  */
 export const TOWERS: readonly TowerSpec[] = [
   {
@@ -331,15 +340,11 @@ export const TOWERS: readonly TowerSpec[] = [
     ...TOWERS_AMPLIOS[1]!,
     source: `${S.csTowers}; ${S.csFloors}; un piso por actividad para los miembros actuales (Berón 2026-11-21)`,
     floors: [
-      F("Gimnasio", "Una máquina de placas de cada tipo, peso libre y cardio", "gimnasio"),
-      F("Calistenia y parkour", "Barras, anillas, paralelas y bandera; muros, lache, cajones y bloques", "calistenia-parkour"),
-      F("Crossfit", "Box de crossfit: rig, plataformas, remos, bicis, skiergs, trineo y kettlebells", "crossfit"),
-      F("Sala de yoga", "Hatha y Ashtanga a sus horas: 8 esterillas, tarima del maestro y altar", "yoga-hatha-occidental-1"),
-      F("Estudio de ballet", "15 × 12 m: suelo flotante, espejos con barra doble, barras del centro, piano y vestuario", "ballet-grande"),
-      F("Dojo", "Judo y karate: tatami de 10 × 10 m y kamiza", "dojo-judo"),
-      F("Sala de contacto", "Kickboxing y MMA: ring, sacos pesados y pera", "dojo-kickboxing"),
-      F("Aula", "24 pupitres y pizarra: cada materia a su hora", "aula-historia"),
-      F("Sala de música", "Batería, amplificadores, teclado, voces y paredes tratadas", "musica-ensayo"),
+      F("Gimnasio", "Una máquina de placas de cada tipo, peso libre y cardio, con sitio para correr entre ellas", "gimnasio"),
+      F("Calistenia, parkour y crossfit", "Barras, anillas, muros y cajones delante; el box de crossfit detrás", "funcional"),
+      F("Yoga y ballet", "La sala de yoga (Hatha y Ashtanga a sus horas) y el estudio de ballet, uno a cada lado", "yoga-ballet"),
+      F("Artes marciales", "El dojo de judo y karate y la sala de kickboxing y MMA, uno a cada lado", "artes-marciales"),
+      F("Aula y música", "El aula, con más sitio entre pupitres, y la sala de música", "aula-musica"),
     ],
   },
   {
@@ -365,37 +370,49 @@ export const TOWERS: readonly TowerSpec[] = [
 ];
 
 /**
- * The whales' water tower (Berón 2026-11-21: «una esfera de agua… o quizás en lugar de una esfera, podríamos usar una
- * pirámide invertida… nacería de un tronco de agua que mediría esos 80 m… con una forma más parecida a un reloj de
- * arena»): out of the middle of the sea, an hourglass trunk of water 80 m tall, and on it an inverted pyramid whose top
- * is wider than the sea itself, for the great ones to swim at ease. Square, like the trees' trunks, held by the same
- * magic (reglas.md §1.2). Ours. `half(y)`: half its side at height y, m.
+ * The whales' globe (Berón 2026-11-22: «¿se podría convertir la pirámide en globo? … un globo gigante que nace del agua,
+ * y en el centro podrías colocar un embrión… el globo de agua es como un vientre donde se está formando un bebé… debería
+ * ocupar una tercera parte del globo… más grande que cualquier edificio y podría contener toda la vida marina»): out of
+ * the middle of the sea, a round hourglass of water 80 m tall (Berón 2026-11-21) and on it a globe of water 240 m across,
+ * higher than any tree, with an embryo in its middle a third of its size. Held by the trees' magic (reglas.md §1.2). Ours.
  */
-export const AQUARIUM = {
-  x: SEA.x,
-  z: SEA.z,
-  /** The hourglass: wide at the sea, narrow at its waist (40 m up), wide again at 80 m where the pyramid starts. */
-  neckY: 80,
-  waistY: 40,
-  footHalf: 30,
-  waistHalf: 12,
-  /** The pyramid: from its tip (as wide as the hourglass's top) to its top, wider than the sea (SEA.r 120). */
-  topY: 165,
-  topHalf: 132,
-} as const;
+export const AQUARIUM = (() => {
+  const neckY = 80;
+  const neckR = 30;
+  const globeR = 120;
+  const centreY = neckY + Math.sqrt(globeR * globeR - neckR * neckR);
+  return {
+    x: SEA.x,
+    z: SEA.z,
+    /** The hourglass: 30 m round at the sea and at its top, 12 m at its waist (40 m up). */
+    neckY,
+    waistY: 40,
+    footR: 30,
+    waistR: 12,
+    neckR,
+    /** The globe: where the hourglass's top meets it, its centre and its top. */
+    globeR,
+    centreY,
+    topY: centreY + globeR,
+    /** The embryo in the globe's middle: a third of the globe. */
+    embryo: (2 * globeR) / 3,
+  } as const;
+})();
 
-export function aquariumHalf(y: number): number {
+/** The water's radius at height y (round), m: the hourglass up to its neck, the globe above. */
+export function aquariumRadius(y: number): number {
   const A = AQUARIUM;
   if (y <= A.neckY) {
     const t = (y - A.waistY) / A.waistY;
-    return A.waistHalf + (A.footHalf - A.waistHalf) * t * t;
+    return A.waistR + (A.footR - A.waistR) * t * t;
   }
-  return A.footHalf + ((A.topHalf - A.footHalf) * (y - A.neckY)) / (A.topY - A.neckY);
+  const d = y - A.centreY;
+  return Math.sqrt(Math.max(0, A.globeR * A.globeR - d * d));
 }
 
 /**
  * The wild families (BuildWildlifePopulation): species, nest and spread. The land ones where Cold Sanctuary has them, on
- * their moved caps; the marine ones in the whales' sea and up in the pyramid (`y`: their swimming height, else the
+ * their moved caps; the marine ones in the whales' sea and up in the globe (`y`: their swimming height, else the
  * sea's surface).
  */
 export interface Nest {
@@ -412,12 +429,13 @@ const land = (species: string, x: number, z: number, radius: number): Nest => ({
 const sea = (species: string, deg: number, at: number, radius: number, y?: number): Nest => ({ species, x: SEA.x + at * Math.cos((deg * Math.PI) / 180), z: SEA.z + at * Math.sin((deg * Math.PI) / 180), radius, marine: true, ...(y !== undefined ? { y } : {}) });
 export const NESTS: readonly Nest[] = [
   land("Bear", -180 + 19, -140, 12),
-  // Whales: one family round the sea, the other up in the pyramid (Berón: «más espacio a los gigantes marinos»).
+  // Whales: one family round the sea, the other up in the globe over the embryo (Berón: «podría contener toda la vida
+  // marina en su interior»).
   sea("Whale", 0, 0, 80),
   sea("Seal", 20, 100, 8),
   sea("Seal", 140, 100, 8),
   sea("Seal", 260, 100, 8),
-  sea("Whale", 0, 0, 90, 140),
+  sea("Whale", 0, 0, 70, 275),
   land("Penguin", 60, -22, 6),
   land("Penguin", 66, -19, 6),
   sea("Orca", 140, 80, 25),

@@ -9,7 +9,7 @@ import { carpetTravel } from "./ui/carpet-travel";
 import { personRule } from "@modules/sanctuary-one/data/overrides";
 import { blocked, placeAt, waterAt, type Body } from "@modules/aerial-sanctuary/domain/walk";
 import { FreeWalk } from "@modules/aerial-sanctuary/application/free-walk";
-import { S1_DAY_REAL_S, S1_START_HOUR, activityAt, along, drift, hash01, route, shuttle, wanderAt, type Activity, type Route } from "@modules/sanctuary-one/domain/motion";
+import { S1_DAY_REAL_S, S1_START_HOUR, activityAt, along, drift, flightSpeed, hash01, route, shuttle, wanderAt, type Activity, type Route } from "@modules/sanctuary-one/domain/motion";
 import { Wildlife } from "@modules/sanctuary-one/application/wildlife";
 import { staffPlaces, wayBetween, type Place } from "@modules/sanctuary-one/data/jornada";
 import { WalkIndex } from "@modules/sanctuary-one/data/walk-index";
@@ -26,6 +26,8 @@ import { SettingsPanel } from "./ui/settings-panel";
 import { ICON } from "./ui/icons";
 import { AreasWindow } from "./ui/areas-window";
 import { settings } from "./ui/settings-store";
+import { DayNight } from "./adapters/three/day-night";
+import { woodGridMetres } from "@modules/settings/domain/settings";
 import { offerVehicles } from "./ui/task-settings";
 import type { AreaMap, AreaNode } from "@modules/tasks/application/areas";
 import { CAP_NAME, LOBES, capOf, isLand } from "@modules/sanctuary-one/data/site";
@@ -62,7 +64,7 @@ import "./ui/aerial.css";
 const root = document.getElementById("app")!;
 // Sanctuary 3's gravity world styles (its «Moverse» and «Mirar» sticks) serve this one too.
 document.body.classList.add("in-s3");
-const L = buildS1Layout(WORLD_SCALE);
+const L = buildS1Layout(WORLD_SCALE, undefined, undefined, { woodGrid: woodGridMetres(settings.value.woodGrid) });
 // The walk world by cells (thousands of solids): each step looks only round her.
 const walkIndex = new WalkIndex(L.world);
 /** The drifting iceberg's solid, where it is now (moveIceberg); added to the world round her when it is near. */
@@ -84,12 +86,15 @@ const scene = new THREE.Scene();
 const SKY = 0xbfd9ea;
 scene.background = new THREE.Color(SKY);
 scene.fog = new THREE.Fog(SKY, 250, 1400);
-scene.add(new THREE.HemisphereLight(0xeef6ff, 0x7c8a96, 1.4));
+const hemi = new THREE.HemisphereLight(0xeef6ff, 0x7c8a96, 1.4);
+scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 1.5);
 sun.position.set(-200, 300, 120);
 scene.add(sun);
 /** Under water: blue-green, the far side fading (adapters/three/walk-look.ts, shared with sanctuary 3). */
 const underwater = new UnderwaterView(scene);
+/** Day and night: the sun's arc, the sky, the stars and the moon (adapters/three/day-night.ts). */
+const dayNight = new DayNight(scene, hemi, sun);
 const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.05, 5000);
 const BASE_FOV = camera.fov;
 camera.rotation.order = "YXZ";
@@ -190,8 +195,6 @@ function settle(p: Person): void {
 
 const PEOPLE_WALK_MS = 1.4;
 const PEOPLE_SWIM_MS = 1.8;
-/** A carpet's cruise, m/s (ours: a calm glide, about a cyclist's speed). */
-const CARPET_MS = 6;
 /** Up to this many real seconds before a person sets off (about 25 minutes of the sanctuary's day). */
 const LEAVE_SPREAD_S = 60;
 /** The clock of the people's work gestures (s). */
@@ -230,7 +233,8 @@ function movePeople(dt: number): void {
       return;
     }
     const here = along(p.way, p.s);
-    p.s += (here.fly ? CARPET_MS : here.swim ? PEOPLE_SWIM_MS : PEOPLE_WALK_MS) * dt;
+    // On a carpet: like a car, speeding up and slowing down (domain/motion.ts flightSpeed, 12 m/s cruise).
+    p.s += (here.fly ? flightSpeed(p.way, p.s) : here.swim ? PEOPLE_SWIM_MS : PEOPLE_WALK_MS) * dt;
     const q = along(p.way, p.s);
     p.carpet.visible = q.fly && !q.done;
     p.f.wearMask(q.swim && !q.done);
@@ -453,7 +457,7 @@ function frameAuto(dt: number): boolean {
     return false;
   }
   const here = along(auto.way, auto.s);
-  auto.s += (here.fly ? CARPET_MS : here.swim ? SWIM_MS : WALK_MS) * dt;
+  auto.s += (here.fly ? flightSpeed(auto.way, auto.s) : here.swim ? SWIM_MS : WALK_MS) * dt;
   const q = along(auto.way, auto.s);
   if (q.done) {
     body = placeAt(near(auto.to.x, auto.to.z), auto.to.x, auto.to.y + 0.01, auto.to.z) ?? body;
@@ -895,6 +899,8 @@ function frame(now: number): void {
     doneToday = new Set();
   }
   hour = next % 24;
+  dayNight.update(hour, camera);
+  underwater.setSky(dayNight.sky);
   movePeople(dt);
   moveAnimals(dt);
   updateAtHand(dt);

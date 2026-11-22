@@ -2,7 +2,9 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { AQUARIUM_AREA, type S1Layout } from "@modules/sanctuary-one/data/layout";
 import { model, type Category, type ModelDef } from "@modules/sanctuary-one/data/catalog";
-import { AQUARIUM, BASE, WATER_Y, aquariumHalf } from "@modules/sanctuary-one/data/site";
+import { AQUARIUM, BASE, WATER_Y, aquariumRadius } from "@modules/sanctuary-one/data/site";
+import { TRUNK_HALF } from "@modules/sanctuary-one/data/paso";
+import { TREE } from "@modules/aerial-sanctuary/data/facts";
 import { textSign } from "./interior/sign";
 import { AnimalHerd } from "./animal-bodies";
 
@@ -231,7 +233,8 @@ export function buildS1Scene(L: S1Layout): S1Scene {
       ice.push(box(f.x0, f.x1, -2.3, -0.3, f.z0, f.z1));
     }
     else if (f.area.startsWith("tierra:")) land.push(box(f.x0, f.x1, -3, 0, f.z0, f.z1));
-    else if (f.area.startsWith("base:") || (f.y === 0 && f.id.endsWith("rellano-alfombras"))) {
+    else if (f.area.startsWith("base:")) continue; // drawn round below
+    else if (f.y === 0 && f.id.endsWith("rellano-alfombras")) {
       // A tree's base at sea and its jetty (Berón 2026-11-21: «una base negra»): a dark deck on a black hull.
       baseDeck.push(box(f.x0, f.x1, -0.12, 0, f.z0, f.z1));
       hull.push(box(f.x0, f.x1, -BASE.hull, -0.12, f.z0, f.z1));
@@ -250,8 +253,41 @@ export function buildS1Scene(L: S1Layout): S1Scene {
   add(ice, mat(0x9fcbe0, { roughness: 0.2 }), "hielo");
   add(land, mat(0x7d8460), "tierra");
   add(thresholds, mat(0x8fa2ad), "umbrales");
-  add(baseDeck, mat(0x2a2d33, { roughness: 0.55, metalness: 0.2 }), "bases-cubierta");
-  add(hull, mat(0x101114, { roughness: 0.4, metalness: 0.3 }), "bases-casco");
+  const roundDeck: THREE.BufferGeometry[] = [];
+  const roundHull: THREE.BufferGeometry[] = [];
+  // The trees' bases: a round black hull (BASE.sides sides) with the trunk's square hole, its deck a shade lighter.
+  for (const t of L.towers) {
+    const cx = (t.base.x0 + t.base.x1) / 2;
+    const cz = (t.base.z0 + t.base.z1) / 2;
+    const ring = new THREE.Shape();
+    for (let i = 0; i <= BASE.sides; i++) {
+      const a = (i / BASE.sides) * Math.PI * 2;
+      const p = [Math.cos(a) * BASE.r, Math.sin(a) * BASE.r] as const;
+      if (i === 0) ring.moveTo(p[0], p[1]);
+      else ring.lineTo(p[0], p[1]);
+    }
+    const oh = TRUNK_HALF + TREE.wall.value;
+    const hole = new THREE.Path();
+    hole.moveTo(-oh, -oh);
+    hole.lineTo(-oh, oh);
+    hole.lineTo(oh, oh);
+    hole.lineTo(oh, -oh);
+    hole.lineTo(-oh, -oh);
+    ring.holes.push(hole);
+    const solid = (depth: number, top: number) => {
+      const g = new THREE.ExtrudeGeometry(ring, { depth, bevelEnabled: false, curveSegments: 1 });
+      // The shape is drawn in x, y and pushed along z: lay it flat (y up) and put its top at `top`.
+      g.rotateX(Math.PI / 2);
+      g.translate(cx, top, cz);
+      return g;
+    };
+    roundDeck.push(solid(0.12, 0));
+    roundHull.push(solid(BASE.hull - 0.12, -0.12));
+  }
+  add(roundDeck, mat(0x2a2d33, { roughness: 0.55, metalness: 0.2 }), "bases-cubierta");
+  add(roundHull, mat(0x101114, { roughness: 0.4, metalness: 0.3 }), "bases-casco");
+  add(baseDeck, mat(0x2a2d33, { roughness: 0.55, metalness: 0.2 }), "muelles-cubierta");
+  add(hull, mat(0x101114, { roughness: 0.4, metalness: 0.3 }), "muelles-casco");
   add(decks, mat(0x6f8a5a), "puntas-y-techos");
   // Tower floors: wooden slabs straight out of the trunk, held by diagonal braces instead of table legs (Berón
   // 2026-11-21: «el piso debería ser levantado por columnas diagonales que las apoyen en el tronco… el suelo de los pisos
@@ -280,23 +316,22 @@ export function buildS1Scene(L: S1Layout): S1Scene {
   const water: THREE.BufferGeometry[] = [];
   for (const w of L.world.waters) if (w.id !== "mar" && w.area !== AQUARIUM_AREA) water.push(box(w.x0, w.x1, w.yBottom, w.yTop, w.z0, w.z1));
   add(water, mat(0x2f8fbf, { transparent: true, opacity: 0.3, roughness: 0.05, depthWrite: false, side: THREE.DoubleSide }), "agua");
-  // The whales' water tower (site.ts AQUARIUM): one smooth square hourglass and inverted pyramid (a lathe of 4 sides
-  // turned 45° so its faces are the boxes' faces), its edges drawn faintly so its shape reads against the sky.
+  // The whales' globe (site.ts AQUARIUM): one smooth round hourglass and globe of water (a lathe), no edges drawn
+  // (Berón 2026-11-22: «parece tuviera un borde, ¿se puede quitar?»), and the embryo in its middle.
   {
     const A = AQUARIUM;
     const prof: THREE.Vector2[] = [];
-    for (let y = -12; y < A.topY; y += 2.5) prof.push(new THREE.Vector2(aquariumHalf(Math.max(0, y)) * Math.SQRT2, y));
-    prof.push(new THREE.Vector2(A.topHalf * Math.SQRT2, A.topY), new THREE.Vector2(0, A.topY));
-    const g = new THREE.LatheGeometry(prof, 4);
-    g.rotateY(Math.PI / 4);
+    for (let y = -12; y < A.topY; y += 2) prof.push(new THREE.Vector2(Math.max(0.01, aquariumRadius(Math.max(0, y))), y));
+    prof.push(new THREE.Vector2(0, A.topY));
+    const g = new THREE.LatheGeometry(prof, 64);
     g.translate(A.x, 0, A.z);
-    const tower = new THREE.Mesh(g, mat(0x2b8ccf, { transparent: true, opacity: 0.28, roughness: 0.05, depthWrite: false, side: THREE.DoubleSide }));
-    tower.name = "piramide-ballenas";
-    root.add(tower);
-    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(g, 25), new THREE.LineBasicMaterial({ color: 0xbfeaff, transparent: true, opacity: 0.55 }));
-    edges.name = "piramide-ballenas-aristas";
-    root.add(edges);
+    const globe = new THREE.Mesh(g, mat(0x3a9ad6, { transparent: true, opacity: 0.22, roughness: 0.05, metalness: 0.1, depthWrite: false, side: THREE.DoubleSide }));
+    globe.name = "globo-ballenas";
+    globe.renderOrder = 2;
+    root.add(globe);
+    root.add(embryo(A.x, A.centreY, A.z, A.embryo, A.globeR));
   }
+
   add(L.walls.map((s) => box(s.x0, s.x1, s.y0, s.y1, s.z0, s.z1)), mat(0x8fd8ff, { transparent: true, opacity: 0.18, roughness: 0.1, depthWrite: false }), "acrilico");
   // Matte (Lambert): seen from just over it, swimming, a glossy plane at a grazing angle turns as white as the sky
   // (Berón 2026-11-20: «en primera persona… oculta el agua»).
@@ -384,4 +419,63 @@ export function buildS1Scene(L: S1Layout): S1Scene {
       }
     },
   };
+}
+
+/**
+ * The embryo in the whales' globe (Berón 2026-11-22: «el globo de agua es como un vientre donde se está formando un
+ * bebé»): curled like a foetus of some 20 weeks, `size` m from head to rump, its cord out to the placenta on the
+ * globe's wall; it glows a little and its heart beats (about 140 a minute, as a foetus's). Drawn from spheres and tubes,
+ * ours.
+ */
+function embryo(x: number, y: number, z: number, size: number, wall: number): THREE.Object3D {
+  const g = new THREE.Group();
+  g.name = "embrion";
+  const skin = new THREE.MeshStandardMaterial({ color: 0xf1b9a8, emissive: 0x5a2219, emissiveIntensity: 0.35, roughness: 0.55, transparent: true, opacity: 0.95 });
+  const ball = (r: number, px: number, py: number, pz: number, sx = 1, sy = 1, sz = 1, m: THREE.Material = skin) => {
+    const b = new THREE.Mesh(new THREE.SphereGeometry(r, 28, 20), m);
+    b.position.set(px, py, pz);
+    b.scale.set(sx, sy, sz);
+    g.add(b);
+    return b;
+  };
+  const S = size;
+  // The back's curl: spheres along a C, the head at its top bowed onto the chest.
+  const curl = 0.24 * S;
+  for (let i = 0; i <= 14; i++) {
+    const t = i / 14;
+    const a = (110 - 230 * t) * (Math.PI / 180);
+    const r = (0.15 - 0.06 * t) * S;
+    ball(r, Math.cos(a) * curl * 0.9, Math.sin(a) * curl, 0);
+  }
+  ball(0.22 * S, 0.12 * S, 0.3 * S, 0, 1, 0.95, 0.9);
+  // Arms folded to the face, legs folded to the belly.
+  const limb = (pts: [number, number, number][], r: number) => {
+    const c = new THREE.CatmullRomCurve3(pts.map(([a, b, c]) => new THREE.Vector3(a * S, b * S, c * S)));
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(c, 16, r * S, 10, false), skin));
+    ball(r * 1.5 * S, pts[pts.length - 1]![0] * S, pts[pts.length - 1]![1] * S, pts[pts.length - 1]![2] * S);
+  };
+  for (const side of [-1, 1]) {
+    limb([[0.05, 0.12, side * 0.1], [0.2, 0.06, side * 0.14], [0.27, 0.18, side * 0.08]], 0.035);
+    limb([[-0.12, -0.2, side * 0.09], [0.12, -0.22, side * 0.15], [0.16, -0.05, side * 0.1]], 0.05);
+  }
+  // The cord from the belly to the placenta on the globe's wall.
+  const belly = new THREE.Vector3(0.12 * S, -0.06 * S, 0);
+  const wallAt = new THREE.Vector3(wall * 0.92, -0.25 * wall, 0.2 * wall);
+  const cord = new THREE.CatmullRomCurve3([belly, new THREE.Vector3(0.35 * S, -0.3 * S, 0.2 * S), new THREE.Vector3(wall * 0.55, -0.1 * wall, -0.1 * wall), wallAt]);
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(cord, 64, 0.022 * S, 10, false), new THREE.MeshStandardMaterial({ color: 0xd9a3b6, emissive: 0x40202c, emissiveIntensity: 0.3, roughness: 0.5 })));
+  const placenta = ball(0.2 * S, wallAt.x, wallAt.y, wallAt.z, 0.35, 1, 1, new THREE.MeshStandardMaterial({ color: 0xa8434a, emissive: 0x3a0e12, emissiveIntensity: 0.3, roughness: 0.7 }));
+  placenta.lookAt(0, 0, 0);
+  // Its heartbeat: a soft double pulse, ~140 a minute.
+  const body = new THREE.Group();
+  body.add(...g.children.splice(0, g.children.length));
+  g.add(body);
+  // (onBeforeRender fires for meshes only: the head's drives the whole body.)
+  body.children[0]!.onBeforeRender = () => {
+    const t = (performance.now() / 1000) * (140 / 60);
+    const f = t - Math.floor(t);
+    const pulse = Math.exp(-((f - 0.1) ** 2) / 0.002) + 0.6 * Math.exp(-((f - 0.3) ** 2) / 0.002);
+    body.scale.setScalar(1 + 0.012 * pulse);
+  };
+  g.position.set(x, y, z);
+  return g;
 }

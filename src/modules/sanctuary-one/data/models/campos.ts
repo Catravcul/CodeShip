@@ -97,16 +97,30 @@ function careLine(items: [number, Part[]][]): Part[] {
   return out;
 }
 
+/** A terracotta pot w across and h high, narrower at its foot, with its rim and soil. */
+const pot = (w: number, h: number): Part[] => [C(0, h * 0.3, 0, w * 0.8, h * 0.6, w * 0.8, POT), C(0, h * 0.75, 0, w * 0.92, h * 0.4, w * 0.92, POT), C(0, h - 0.03, 0, w, 0.06, w, 0x9a5a3a), C(0, h - 0.04, 0, w * 0.86, 0.03, w * 0.86, SOIL)];
+/** A crown of leaf clusters round (x, y, z): radius r, height h, two greens. */
+const crown = (x: number, y: number, z: number, r: number, h: number, g1: number, g2: number): Part[] => [
+  C(x, y, z, r * 1.3, h, r * 1.3, g1), ...[[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dz], i) => C(x + dx! * r * 0.55, y - h * 0.15 + (i % 2) * 0.1, z + dz! * r * 0.55, r * 0.8, h * 0.7, r * 0.8, i % 2 ? g2 : g1)), C(x, y + h * 0.45, z, r * 0.8, h * 0.4, r * 0.8, g2),
+];
+/** A frond (a palm's, a pineapple's leaf): a flat strip from (x, y, z) out by `len` at angle a, drooping. */
+const frond = (x: number, y: number, z: number, a: number, len: number, color: number, rise = -0.25): Part[] => {
+  const c = Math.cos(a), s = Math.sin(a);
+  // Each length as deep as the leaf drops (or rises) along it, so the leaf is one piece from its base.
+  const sy = 0.04 + Math.abs(rise) * len * 0.45;
+  return [0.25, 0.6, 0.9].map((t) => C(x + c * len * t, y + rise * len * t * t, z + s * len * t, Math.abs(c) * len * 0.4 + 0.08, sy, Math.abs(s) * len * 0.4 + 0.08, color));
+};
+
 export const CAMPOS_MODELS: readonly ModelDef[] = [
   m("campo-suelo", "naturaleza", "suelos", "Suelo del cultivo", 24, 0.06, 20, 0xb3a394, "caja", "real", GP("Suelo_Huerto")),
   plant("planta-dosel", "Árbol del dosel (bosque comestible)", 4.5, 7, 0x3f7a34, "arbol", "BosqueComestible canopy"),
   plant("planta-arbolito", "Árbol bajo (cítricos, cacao, café…)", 2.4, 3.5, 0x4f8f3a, "arbol", "BosqueComestible small"),
   plant("planta-banano", "Banano", 2.6, 4, 0x6fae3a, "arbol", "BosqueComestible Banana"),
   plant("planta-trepadora", "Pimienta trepando por el tronco", 0.3, 3, 0x2f6a2a, "cilindro", "BosqueComestible Pimienta"),
-  plant("planta-hongos", "Tronco con shiitake", 1, 0.3, 0x8a6a4a, "caja", "BosqueComestible Shiitake", true),
+  { ...pz("planta-hongos", "naturaleza", "cultivos", "Tronco con shiitake", 0x8a6a4a, [C(0, 0.12, 0, 1, 0.24, 0.26, 0x8a6a4a), C(-0.51, 0.12, 0, 0.02, 0.22, 0.24, 0xc9a878), C(0.51, 0.12, 0, 0.02, 0.22, 0.24, 0xc9a878), ...[[-0.3, 0.14], [0, -0.14], [0.3, 0.14], [-0.15, -0.14], [0.2, -0.14]].flatMap(([x, z]) => [C(x!, 0.18, z!, 0.03, 0.06, 0.03, 0xe8dcc0), C(x!, 0.22, z! + (z! > 0 ? 0.02 : -0.02), 0.1, 0.03, 0.1, 0x7a4a2a)])], "real", GP("BosqueComestible Shiitake")), walkThrough: true },
   plant("planta-hierba", "Planta herbácea (piña, jengibre, cúrcuma)", 0.7, 0.8, 0x5a9a40, "arbol", "BosqueComestible herbáceas", true),
   plant("planta-arbusto", "Arbusto (caña, naranjilla, mortiño)", 1, 1.8, 0x4a8a3a, "arbol", "BosqueComestible borde"),
-  plant("planta-rastrera", "Sandía (rastrera)", 0.9, 0.3, 0x3a7a30, "caja", "Border Sandia", true),
+  { ...pz("planta-rastrera", "naturaleza", "cultivos", "Sandía (rastrera)", 0x3a7a30, [C(0, 0.02, 0, 0.9, 0.04, 0.05, 0x3a7a30), C(0, 0.02, 0, 0.05, 0.04, 0.9, 0x3a7a30), ...[[-0.3, 0.1], [0.3, -0.1], [0.1, 0.35], [-0.1, -0.35]].map(([x, z]) => C(x!, 0.06, z!, 0.26, 0.05, 0.22, 0x4a8a3a)), C(0.15, 0.13, 0.12, 0.4, 0.26, 0.3, 0x2f6a2a), ...rep(3, (i) => [C(0.05 + i * 0.1, 0.13, 0.12, 0.03, 0.27, 0.31, 0x5a9a50)]), C(-0.3, 0.08, -0.25, 0.08, 0.06, 0.08, 0xe8d040)], "real", GP("Border Sandia")), walkThrough: true },
   plant("planta-bambu", "Mata de guadua (bambú)", 1.2, 9, 0x8fb04a, "cilindro", "Bambusal Bambu"),
   plant("planta-canamo", "Cáñamo", 0.4, 2.4, 0x5a8a3a, "cilindro", "Bambusal Canamo"),
   plant("cultivo-alto", "Hortaliza alta (tomate, pepino, berenjena, pimiento)", 0.7, 1.3, 0x4a9a3a, "arbol", "Hortalizas"),
@@ -115,11 +129,13 @@ export const CAMPOS_MODELS: readonly ModelDef[] = [
   plant("seto-cortavientos", "Seto cortavientos (arbusto de hielo)", 1.3, 1.7, 0xb3d1bd, "arbol", "Windbreak"),
   m("campo-bancal", "naturaleza", "suelos", "Bancal de un campo de punta (7,2 × 15 m)", 7.2, 0.06, 15, 0xb3a394, "caja", "real", "Cold Sanctuary, Assets/Editor/SampleSceneBuilder.Tree.cs TreeTip"),
   // Potted fruit trees of the tips (Orchards.cs BuildPotted, FruitCare.All: one model per form, each instance its species).
-  pz("maceta-arbol", "naturaleza", "frutales", "Frutal en maceta (árbol enano)", 0x4f8f3a, [C(0, 0.35, 0, 0.8, 0.7, 0.8, POT), C(0, 0.72, 0, 0.7, 0.04, 0.7, SOIL), C(0, 1.3, 0, 0.14, 1.2, 0.14, BARK), C(0, 2.5, 0, 2.0, 1.6, 2.0, 0x4f8f3a), C(0.5, 2.2, 0.6, 0.18, 0.18, 0.18, FRUIT)], "real", GP_FRUIT),
-  pz("maceta-palmera", "naturaleza", "frutales", "Palmera en maceta (enana)", 0x5a9a40, [C(0, 0.35, 0, 0.8, 0.7, 0.8, POT), C(0, 1.6, 0, 0.18, 2.2, 0.18, BARK), C(0, 2.8, 0, 2.4, 0.3, 0.5, 0x5a9a40), C(0, 2.8, 0, 0.5, 0.3, 2.4, 0x5a9a40)], "real", GP_FRUIT),
-  pz("maceta-arbusto", "naturaleza", "frutales", "Arbusto frutal en maceta", 0x4a8a3a, [C(0, 0.3, 0, 0.7, 0.6, 0.7, POT), C(0, 1.2, 0, 1.2, 1.2, 1.2, 0x4a8a3a), C(0.3, 1.0, 0.45, 0.15, 0.15, 0.15, FRUIT)], "real", GP_FRUIT),
-  { ...pz("maceta-herbacea", "naturaleza", "frutales", "Herbácea frutal en maceta (piña, frutilla)", 0x6aaa4a, [C(0, 0.2, 0, 0.6, 0.4, 0.6, POT), C(0, 0.55, 0, 0.6, 0.3, 0.6, 0x6aaa4a)], "real", GP_FRUIT), walkThrough: true },
-  { ...pz("maceta-rastrera", "naturaleza", "frutales", "Rastrera en maceta (sandía)", 0x3a7a30, [C(0, 0.2, 0, 0.7, 0.4, 0.7, POT), C(0, 0.42, 0.6, 1.0, 0.1, 1.0, 0x3a7a30), C(0.2, 0.47, 0.8, 0.3, 0.2, 0.25, 0x2f6a2a)], "real", GP_FRUIT), walkThrough: true },
+  // Each recognisable (Berón 2026-11-22: «cubos verdes y marrones que no sé lo que son»): a tapered terracotta pot with
+  // its rim and soil, a crown of leaf clusters in two greens, the fruit where it grows.
+  pz("maceta-arbol", "naturaleza", "frutales", "Frutal en maceta (árbol enano)", 0x4f8f3a, [...pot(0.8, 0.7), C(0, 1.3, 0, 0.14, 1.2, 0.14, BARK), C(0.25, 1.75, 0, 0.5, 0.08, 0.08, BARK), C(-0.2, 1.85, 0.1, 0.4, 0.08, 0.08, BARK), ...crown(0, 2.45, 0, 1.0, 0.7, 0x4f8f3a, 0x3f7a34), ...[[0.55, 2.1, 0.55], [-0.6, 2.3, 0.3], [0.2, 2.0, -0.65], [-0.3, 2.05, -0.5]].map(([x, y, z]) => C(x!, y!, z!, 0.14, 0.14, 0.14, FRUIT))], "real", GP_FRUIT),
+  pz("maceta-palmera", "naturaleza", "frutales", "Palmera en maceta (enana)", 0x5a9a40, [...pot(0.8, 0.7), ...rep(5, (i) => [C(0, 0.85 + i * 0.42, 0, 0.2 - i * 0.01, 0.4, 0.2 - i * 0.01, i % 2 ? BARK : 0x6a5a40)]), ...rep(8, (i) => frond(0, 2.75, 0, (i * Math.PI) / 4, 1.3, i % 2 ? 0x5a9a40 : 0x4a8a3a)), C(0.15, 2.7, 0.1, 0.25, 0.3, 0.25, 0x8a6a2a)], "real", GP_FRUIT),
+  pz("maceta-arbusto", "naturaleza", "frutales", "Arbusto frutal en maceta", 0x4a8a3a, [...pot(0.7, 0.6), C(0, 0.8, 0, 0.08, 0.4, 0.08, BARK), ...crown(0, 1.2, 0, 0.65, 0.5, 0x4a8a3a, 0x5a9a40), ...[[0.4, 1.0, 0.45], [-0.45, 1.1, 0.3], [0.1, 0.9, -0.5], [0.45, 1.35, -0.2], [-0.2, 1.45, 0.4]].map(([x, y, z]) => C(x!, y!, z!, 0.1, 0.1, 0.1, FRUIT))], "real", GP_FRUIT),
+  { ...pz("maceta-herbacea", "naturaleza", "frutales", "Herbácea frutal en maceta (piña, frutilla)", 0x6aaa4a, [...pot(0.6, 0.4), ...rep(8, (i) => frond(0, 0.45, 0, (i * Math.PI) / 4, 0.38, i % 2 ? 0x6aaa4a : 0x4f8f3a, 0.7)), C(0, 0.6, 0, 0.18, 0.22, 0.18, 0xd9a02a), C(0, 0.75, 0, 0.08, 0.1, 0.08, 0x4f8f3a)], "real", GP_FRUIT), walkThrough: true },
+  { ...pz("maceta-rastrera", "naturaleza", "frutales", "Rastrera en maceta (sandía)", 0x3a7a30, [...pot(0.7, 0.4), C(0, 0.41, 0.45, 0.05, 0.03, 0.9, 0x3a7a30), ...[[-0.2, 0.3], [0.25, 0.55], [-0.1, 0.8], [0.3, 1.0]].map(([x, z]) => C(x!, 0.43, z!, 0.32, 0.04, 0.26, 0x3a7a30)), C(0.05, 0.5, 0.95, 0.42, 0.3, 0.32, 0x2f6a2a), ...rep(3, (i) => [C(-0.1 + i * 0.1, 0.5, 0.95, 0.03, 0.31, 0.33, 0x4f8f3a)])], "real", GP_FRUIT), walkThrough: true },
   ...WORLD_GARDEN.map(([id, , , label]) => pz(id, "naturaleza", "huerto-mundo", label, W_GREEN, WORLD_PARTS[id]!, "real", WM(id))),
   pz("frutal-sala-cuidados", "maquina", "frutales", "Sala de cuidados de los frutales (trasplante, fertirriego, abonos, diagnóstico pH/EC, poda, compost, abejorros, cosecha, goteo)", OR_LOCKER, careLine(CARE_MAIN), "real", `${GP_FRUIT}; Orchards.cs BuildCareEquipment (sala de la experta)`),
   pz("frutal-punto-cuidados", "maquina", "frutales", "Punto de cuidados de los frutales (depósito de fertirriego, carro, cabezal de goteo, armario)", OR_LOCKER, careLine(CARE_POINT), "real", `${GP_FRUIT}; Orchards.cs BuildCareEquipment`),

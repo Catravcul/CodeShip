@@ -13,6 +13,12 @@ import { MECANICA_MODELS } from "./models/mecanica";
 import { CONSTRUCCION_EXTRA_MODELS } from "./models/construccion-extra";
 import type { ModelDef } from "./models/kit";
 import { detailed } from "./models/detalle";
+import { settled } from "./realismo";
+
+/** Every composite model with its pieces settled (realismo.ts: nothing a few cm in the air), its size kept. */
+function grounded(list: readonly ModelDef[]): ModelDef[] {
+  return list.map((d) => (d.parts && !d.walkThrough ? { ...d, parts: settled(d.parts) } : d));
+}
 
 export * from "./models/kit";
 
@@ -21,7 +27,7 @@ export * from "./models/kit";
  * model the scene draws is one entry, and every placed thing an instance naming it: changing an entry changes every
  * copy, and `overrides.ts` changes a whole category, group, floor or building at once.
  */
-export const MODELS: readonly ModelDef[] = detailed([...BASE_MODELS, ...ENTRENAMIENTO_MODELS, ...MUSICA_AULAS_MODELS, ...SERVICIOS_MODELS, ...HOSPITAL_EXTRA_MODELS, ...CIENCIAS_MODELS, ...PRODUCCION_MODELS, ...MECANICA_MODELS, ...CONSTRUCCION_EXTRA_MODELS, ...RESIDENCIA_MODELS, ...CAMPOS_MODELS, ...PAISAJE_MODELS, ...EDIFICIO_MODELS]);
+export const MODELS: readonly ModelDef[] = grounded(detailed([...BASE_MODELS, ...ENTRENAMIENTO_MODELS, ...MUSICA_AULAS_MODELS, ...SERVICIOS_MODELS, ...HOSPITAL_EXTRA_MODELS, ...CIENCIAS_MODELS, ...PRODUCCION_MODELS, ...MECANICA_MODELS, ...CONSTRUCCION_EXTRA_MODELS, ...RESIDENCIA_MODELS, ...CAMPOS_MODELS, ...PAISAJE_MODELS, ...EDIFICIO_MODELS]));
 
 const BY_ID = new Map(MODELS.map((d) => [d.id, d]));
 

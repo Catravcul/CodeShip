@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import { WORLD_SCALE } from "@core/scale";
 import { moveJoystick } from "@core/realism";
-import { buildS1Layout, TREE_CURRENT, treeWater } from "@modules/sanctuary-one/data/layout";
+import { AQUARIUM_AREA, buildS1Layout, TREE_CURRENT, treeWater } from "@modules/sanctuary-one/data/layout";
+import { globeDepth } from "@modules/sanctuary-one/data/globo";
 import { carpetDestinations, carpetRoute, stationAt, type CarpetStation } from "@modules/sanctuary-one/data/alfombras";
 import { CarpetStationsView } from "./adapters/three/s1-carpets";
 import { TRUNK_HALF } from "@modules/sanctuary-one/data/paso";
@@ -30,7 +31,7 @@ import { DayNight } from "./adapters/three/day-night";
 import { woodGridMetres } from "@modules/settings/domain/settings";
 import { offerVehicles } from "./ui/task-settings";
 import type { AreaMap, AreaNode } from "@modules/tasks/application/areas";
-import { CAP_NAME, LOBES, capOf, isLand } from "@modules/sanctuary-one/data/site";
+import { CAP_NAME, LOBES, WATER_Y, capOf, isLand } from "@modules/sanctuary-one/data/site";
 import { TREE } from "@modules/aerial-sanctuary/data/facts";
 import { model } from "@modules/sanctuary-one/data/catalog";
 import { areaCategory, capAt, CAPS } from "@modules/sanctuary-one/data/area-kinds";
@@ -881,7 +882,11 @@ function updateCamera(dt: number): void {
   }
   myCarpet.visible = flying;
   const cw = waterAt(near(camera.position.x, camera.position.z), camera.position.x, camera.position.y, camera.position.z);
-  underwater.set(!!cw && camera.position.y < cw.yTop && camera.position.y > cw.yBottom && (treeWater(cw.area) ? "claro" : "mar"));
+  // Under water: the trees' clear water; the globe's and the sea's darker with depth (walk-look.ts UnderwaterView).
+  const under = !!cw && camera.position.y < cw.yTop && camera.position.y > cw.yBottom;
+  const globe = under && cw!.area === AQUARIUM_AREA;
+  const depth = globe ? globeDepth(camera.position.x, camera.position.y, camera.position.z) : WATER_Y - camera.position.y;
+  underwater.set(under && (globe ? "globo" : treeWater(cw!.area) ? "claro" : "oceano"), depth);
   avatar.wearMask(body.motion === "agua");
   poseOnFoot(avatar, walk, { body, moving, sprinting, lotus: flying || settingsPanel.visible, clock: wildT }, dt);
 }
@@ -924,5 +929,5 @@ window.addEventListener("keydown", (e) => {
 });
 // Test hook (tools/experiencia and live checks): the layout, the body and the bulk style switch.
 if (import.meta.env.DEV || new URLSearchParams(location.search).has("prueba"))
-  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { L, world, steps, camera, wild, get wildT() { return wildT; }, set wildT(v: number) { wildT = v; }, get jumpT() { return walk.jumpClock; }, set jumpT(t: number) { walk.setJump(t); }, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, goTo, get auto() { return auto; }, areasWindow, carpetsWindow, get station() { return station; }, get hour() { return hour; }, people, get atHand() { return atHand; }, openReto, domenica, missionsWindow, get day() { return day; }, doMission: (id: string) => doMission(MISSIONS.find((q) => q.id === id)!), retoAt: (id: string, k = 0, n = 0, keep = false) => { const i = L.instances.map((it, j) => [it, j] as const).filter(([it]) => it.model === id)[n]?.[1]; if (i === undefined) return undefined; const it = L.instances[i]!; const r = retosFor(model(id), i)[k]; if (!r) return undefined; if (!keep) body = { ...body, x: it.x, y: it.y, z: it.z + 1.2 }; openReto(r, undefined, { x: it.x, y: it.y, z: it.z, sy: model(id).size.y * (it.scale ?? 1), modelId: id, rot: it.rot, plan: it.plan }); return { title: r.chore.title, steps: r.chore.exercises.length }; }, playStep: (i: number, dry = false) => { if (!challenge) return undefined; const a = stepAnimation(challenge, stagedModel, i); if (!dry) steps.play(a.acts); return a.id; }, get exercise() { return challenge ? retoRun?.current : undefined; }, closeReto: () => (document.querySelector('.duel [data-act="close"]') as HTMLElement | null)?.click(), setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
+  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { L, world, steps, camera, renderer, wild, get wildT() { return wildT; }, set wildT(v: number) { wildT = v; }, get jumpT() { return walk.jumpClock; }, set jumpT(t: number) { walk.setJump(t); }, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, goTo, get auto() { return auto; }, areasWindow, carpetsWindow, get station() { return station; }, get hour() { return hour; }, people, get atHand() { return atHand; }, openReto, domenica, missionsWindow, get day() { return day; }, doMission: (id: string) => doMission(MISSIONS.find((q) => q.id === id)!), retoAt: (id: string, k = 0, n = 0, keep = false) => { const i = L.instances.map((it, j) => [it, j] as const).filter(([it]) => it.model === id)[n]?.[1]; if (i === undefined) return undefined; const it = L.instances[i]!; const r = retosFor(model(id), i)[k]; if (!r) return undefined; if (!keep) body = { ...body, x: it.x, y: it.y, z: it.z + 1.2 }; openReto(r, undefined, { x: it.x, y: it.y, z: it.z, sy: model(id).size.y * (it.scale ?? 1), modelId: id, rot: it.rot, plan: it.plan }); return { title: r.chore.title, steps: r.chore.exercises.length }; }, playStep: (i: number, dry = false) => { if (!challenge) return undefined; const a = stepAnimation(challenge, stagedModel, i); if (!dry) steps.play(a.acts); return a.id; }, get exercise() { return challenge ? retoRun?.current : undefined; }, closeReto: () => (document.querySelector('.duel [data-act="close"]') as HTMLElement | null)?.click(), setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
 requestAnimationFrame(frame);

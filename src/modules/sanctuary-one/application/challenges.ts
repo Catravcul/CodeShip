@@ -147,8 +147,9 @@ export function retosFor(m: ModelDef, seed = 0): Reto[] {
     case "yoga":
       if (m.id.includes("suelo")) return of(SALA_YOGA);
       return [{ chore: yogaChore(pick(YOGA_SEQUENCES)), reward: "fuerza", source: "wellness/data/yoga.ts (Upa Yoga, Saludo al sol)", reality: "real" }, ...of(SALA_YOGA)];
-    case "cocina":
-    case "comedor": {
+    case "comedor":
+      return of(COCINA.mesa);
+    case "cocina": {
       const r = pick(RECIPES);
       return [{ chore: cookingChore(r, ALL_STEPS), reward: "comida", source: "kitchen/data/recipes.ts", reality: "real" }, ...of(COCINA.limpieza)];
     }

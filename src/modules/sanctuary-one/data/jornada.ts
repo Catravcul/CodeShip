@@ -26,18 +26,19 @@ export interface Place {
 }
 
 /** The work floors (ours, until WorkRoster): kitchen, hospital, vet, cría, labs, workshops, farm and guard. */
-export const WORK_FLOORS = ["restaurante", "hospital", "hospital-veterinario", "cria-carne-cultivada", "construccion", "textil", "huerto-vertical-1", "campos-huerto", "informatica", "quimica", "biologia", "mecanica", "guardia", "garaje-submarino"] as const;
-export const TRAINING_FLOORS = ["gimnasio", "funcional", "yoga-ballet", "artes-marciales"] as const;
+export const WORK_FLOORS = ["restaurante", "hospital", "hospital-veterinario", "cria-carne-cultivada", "construccion", "mecanica-garaje", "textil-huerto", "campos-huerto", "informatica", "laboratorios", "asambleas-guardia"] as const;
+export const TRAINING_FLOORS = ["gimnasio", "funcional", "salas"] as const;
 
 /** Is (x, z) on ice or land (else it is sea)? */
 export function onGround(x: number, z: number): boolean {
   return LOBES.some((l, i) => l.r > 0 && Math.hypot(x - l.x, z - l.z) <= lobeRadius(l, i, x, z)) || onBase(x, z);
 }
 
-/** Is (x, z) on a tree's base at sea (site.ts BASE: its round deck round the trunk, not its hole)? */
+/** Is (x, z) on a tree's base at sea (site.ts BASE: its deck round the trunk, not its hole)? */
 function onBase(x: number, z: number): boolean {
   const OH = TRUNK_HALF + TREE.wall.value;
-  return TOWERS.some((t) => Math.hypot(x - t.x, z - t.z) <= BASE.r && (Math.abs(x - t.x) >= OH || Math.abs(z - t.z) >= OH));
+  const BH = OH + BASE.walk;
+  return TOWERS.some((t) => Math.abs(x - t.x) <= BH && Math.abs(z - t.z) <= BH && (Math.abs(x - t.x) >= OH || Math.abs(z - t.z) >= OH));
 }
 
 const FLOORISH = /suelo|alfombras|bahia|bancal|zona-/;
@@ -64,9 +65,9 @@ function spotAt(list: readonly Instance[], n: number, a: S1Area, pose: Place["po
  * room), the Magnate is the sanctuary's teacher (Magnate.cs «la maestra del santuario»), Neo is a child: school and play.
  */
 const ROLES: Readonly<Record<string, { tareas?: string; entrenamiento?: string }>> = {
-  Sadhguru: { tareas: "yoga-ballet", entrenamiento: "yoga-ballet" },
-  Nevaeh: { tareas: "aula-musica" },
-  Neo: { tareas: "aula-musica", entrenamiento: "funcional" },
+  Sadhguru: { tareas: "salas", entrenamiento: "salas" },
+  Nevaeh: { tareas: "residencia-plaza" },
+  Neo: { tareas: "residencia-plaza", entrenamiento: "funcional" },
 };
 
 /** Each person's place for each activity. */

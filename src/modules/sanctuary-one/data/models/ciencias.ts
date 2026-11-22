@@ -88,7 +88,7 @@ export const INFORMATICA: readonly Block[] = [
   ["i-almacen", "Almacenamiento", 1.6, 1.4, 2.2, 0x2a2e36, "informatica-cluster", IN("Storage")],
   ["i-intercambiador", "Intercambiador de calor", 2.4, 1.4, 1.8, 0x7a8c99, "informatica-planta", IN("Intercambiador")],
   ["i-bombas", "Bombas del circuito de agua", 2, 1, 1.2, 0x3a6fb0, "informatica-planta", IN("Bombas")],
-  ["i-deposito", "Depósito de expansión", 1.4, 1.4, 1.8, 0x7a8c99, "informatica-planta", IN("Deposito"), [C(0, 0.9, 0, 1.3, 1.8, 1.3, 0x7a8c99)]],
+  ["i-deposito", "Depósito de expansión", 1.4, 1.4, 1.8, 0x7a8c99, "informatica-planta", IN("Deposito"), [...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => C(sx * 0.45, 0.12, sz * 0.45, 0.08, 0.24, 0.08, 0x4a4f57))), C(0, 0.95, 0, 1.3, 1.4, 0.8, 0x7a8c99), C(0, 0.95, 0, 0.8, 1.4, 1.3, 0x7a8c99), C(0, 0.95, 0, 1.1, 1.4, 1.1, 0x7a8c99), C(0, 1.72, 0, 0.6, 0.15, 0.6, 0x6a7a88), C(0.4, 1.3, -0.56, 0.16, 0.16, 0.04, 0xe8e8e0), C(0, 0.4, -0.6, 0.12, 0.12, 0.3, 0x3a6fb0), C(0, 1.85, 0, 0.1, 0.12, 0.1, 0xc03030)]],
   ["i-cuadro", "Cuadro eléctrico", 2.4, 0.8, 2.0, 0x8a8f96, "informatica-planta", IN("Cuadro")],
   ["i-sai", "SAI", 1.2, 0.9, 2.0, 0x2a2e36, "informatica-planta", IN("SAI")],
   ["i-baterias", "Armario de baterías", 0.8, 0.8, 2.0, 0x2a2e36, "informatica-planta", IN("Baterias")],

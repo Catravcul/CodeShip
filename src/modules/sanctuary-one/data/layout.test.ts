@@ -5,6 +5,7 @@ import { MODELS, model } from "./catalog";
 import { TOWERS, TOWERS_AMPLIOS, STAFF } from "./site";
 import { FLOOR_PLANS } from "./floors";
 import { allocate, plan, split } from "../domain/population";
+import { climbTarget } from "../domain/climb";
 
 describe("santuario 1: catálogo", () => {
   it("cada modelo tiene fuente, etiqueta de realidad y tamaño real", () => {
@@ -131,9 +132,13 @@ describe("santuario 1: pisos amueblados", () => {
   });
   it("los edificios de hoy: un piso de gimnasio, uno de yoga, uno de aula y un hospital", () => {
     const furn = TOWERS.flatMap((t) => t.floors.map((f) => f.furnish ?? ""));
-    expect(furn.filter((f) => /yoga/.test(f))).toHaveLength(1);
-    expect(furn.filter((f) => /aula/.test(f))).toHaveLength(1);
-    expect(furn.filter((f) => /musica/.test(f))).toHaveLength(1);
+    // By what is on them (Berón 2026-11-22: pisos por afinidad; the classroom in the plaza, away from the music).
+    const on = (re: RegExp) => furn.filter((f) => FLOOR_PLANS.get(f)?.items.some((it) => re.test(it.model)));
+    expect(on(/^yoga-esterilla/)).toHaveLength(1);
+    expect(on(/^aula-pupitre$/)).toHaveLength(1);
+    expect(on(/^mus-bateria/)).toHaveLength(1);
+    expect(on(/^aula-pupitre$/)).not.toEqual(on(/^mus-bateria/));
+    expect(on(/^guardia-consola/)).toEqual(on(/^asamblea-centro/));
     expect(furn.filter((f) => /^(gimnasio|cardio)/.test(f))).toHaveLength(1);
     expect(furn.filter((f) => /crossfit|funcional/.test(f))).toHaveLength(1);
     expect(furn.filter((f) => /^hospital/.test(f) && f !== "hospital-veterinario")).toHaveLength(1);
@@ -187,3 +192,26 @@ describe("the life in sanctuary 1", () => {
     }
   });
 });
+
+describe("santuario 1: literas (Berón 2026-11-22)", () => {
+  const L = buildS1Layout(1);
+  const decks = L.world.floors.filter((f) => f.id.startsWith("cubierta:res-habitacion"));
+  it("cada habitación tiene su cama de arriba al doble de alto (3,2 m) con su escalera vertical", () => {
+    expect(decks.length).toBeGreaterThanOrEqual(25);
+    const rooms = L.instances.filter((i) => i.model.startsWith("res-habitacion"));
+    for (const d of decks) {
+      const r = rooms.find((i) => Math.hypot((d.x0 + d.x1) / 2 - i.x, (d.z0 + d.z1) / 2 - i.z) < 5 && d.y > i.y && d.y - i.y < 4)!;
+      expect(d.y - r.y).toBeCloseTo(3.45, 1);
+      expect(d.ladder).toBeDefined();
+    }
+  });
+  it("desde el pie de la escalera, «Trepar» sube a la cama de arriba", () => {
+    const d = decks[0]!;
+    const l = d.ladder!;
+    const below = L.world.floors.filter((f) => f !== d && f.x0 <= (l.x0 + l.x1) / 2 && f.x1 >= (l.x0 + l.x1) / 2 && f.z0 <= l.z0 - 0.6 && f.z1 >= l.z0 - 0.6 && f.y < d.y - 2).sort((a, b) => b.y - a.y)[0]!;
+    const b = { x: (l.x0 + l.x1) / 2, y: below.y, z: l.z0 - 0.5, motion: "gravedad" as const, area: d.area };
+    const c = climbTarget(L.world, b, Math.PI);
+    expect(c?.floor).toBe(d);
+  });
+});
+

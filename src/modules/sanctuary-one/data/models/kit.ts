@@ -57,6 +57,11 @@ export interface ModelDef {
   readonly travels?: "agua";
   /** Lit from within (a branch's ring, a carpet station's orrery): drawn with its own light, never shaded. */
   readonly glow?: boolean;
+  /**
+   * Surfaces up high one stands on (a bunk's upper bed), in the model's frame: each a walk floor at y over the model's
+   * base, with the ladder that leads up to it («Trepar» from where the ladder stands).
+   */
+  readonly decks?: readonly { readonly x: number; readonly z: number; readonly w: number; readonly d: number; readonly y: number; readonly ladder?: { readonly x: number; readonly z: number; readonly w: number; readonly d: number } }[];
   /** Drawn with the wood grain (the trees' door rings, Berón 2026-11-21: «una imagen sobre estos objetos para dar más sensación de madera»). */
   readonly wood?: boolean;
 }

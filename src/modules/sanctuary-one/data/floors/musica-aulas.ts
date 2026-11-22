@@ -112,8 +112,14 @@ function recital(): FloorPlan {
   };
 }
 
+/** The 24 desks (aula-pupitres-24's places): 4 rows of 6 at 1,5 m, the central aisle of 1,4 m. */
+const DESKS: readonly [number, number][] = Array.from({ length: 24 }, (_, i) => {
+  const r = Math.floor(i / 6), c = i % 6;
+  return [-2.9 + c * 1.04 + (c >= 3 ? 0.7 : 0), -r * 1.5] as [number, number];
+});
+
 /** A classroom: the board wall at the far end, the teacher's desk before it, 24 desks in 4 rows (or the subject's own benches), the subject's furniture on the sides. */
-function classroom(id: string, size: { x: number; z: number }, subject: readonly Placed[], desks = true, source = ""): FloorPlan {
+export function classroom(id: string, size: { x: number; z: number }, subject: readonly Placed[], desks = true, source = ""): FloorPlan {
   const far = size.z / 2;
   return {
     id,
@@ -121,7 +127,8 @@ function classroom(id: string, size: { x: number; z: number }, subject: readonly
     items: [
       P("aula-pared-pizarra", 0, far - 0.2),
       P("aula-mesa-profesor", -2.4, far - 1.7, PI, "Mesa del profesor"),
-      ...(desks ? [P("aula-pupitres-24", 0, far - 3.4, 0, "Pupitres")] : []),
+      // One by one (Berón 2026-11-22: «veo todos los pupitres pegados»), so spreading the room spreads them too.
+      ...(desks ? DESKS.map(([x, z], i) => P("aula-pupitre", x, far - 3.4 + z, 0, `Pupitre ${i + 1}`)) : []),
       P("aula-armario", size.x / 2 - 0.5, -far + 3.6, FACE_NX),
       ...subject,
     ],

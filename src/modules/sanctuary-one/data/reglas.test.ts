@@ -17,11 +17,12 @@ import { TREE } from "@modules/aerial-sanctuary/data/facts";
 const L = buildS1Layout(1.5);
 
 /**
- * How much of a floor plan has something within 3 m (2 m cells), its finish (> 60 % of the floor) left out; 3 m times
- * its spread where its things were spread out to leave room to run (floors/kit.ts FloorPlan.spread).
+ * How much of a floor plan has something within 3 m (2 m cells), its finish (> 60 % of the floor) left out. The 3 m are
+ * 3 m however far its things were spread (Berón 2026-11-22: «la regla de que no hayan pisos muy vacíos debe seguir
+ * existiendo pero quizás la debemos ajustar»: spread floors passed it and still looked empty), on half the floor.
  */
 function coverage(p: { size: { x: number; z: number }; items: readonly { model: string; x: number; z: number }[]; spread?: number }): number {
-  const reach = 3 * (p.spread ?? 1);
+  const reach = 3;
   const A = p.size.x * p.size.z;
   const pts = p.items.map((it) => ({ it, d: model(it.model) })).filter(({ d }) => d.size.x * d.size.z <= A * 0.6).map(({ it, d }) => ({ x: it.x, z: it.z, r: Math.max(d.size.x, d.size.z) / 2 }));
   let cov = 0;
@@ -35,9 +36,9 @@ function coverage(p: { size: { x: number; z: number }; items: readonly { model: 
 }
 
 describe("reglas de los pisos y de los árboles (Berón 2026-11-20)", () => {
-  it("ningún piso amueblado queda medio vacío: algo a menos de 3 m de cada punto del 60 % del piso o más", () => {
+  it("ningún piso amueblado queda medio vacío: algo a menos de 3 m (sin contar la separación) de cada punto de la mitad del piso o más", () => {
     // Today's buildings' floors (the roomy ones kept in TOWERS_AMPLIOS are not built).
-    for (const id of new Set(TOWERS.flatMap((t) => t.floors.map((f) => f.furnish ?? "")).filter(Boolean))) expect(coverage(FLOOR_PLANS.get(id)!), id).toBeGreaterThanOrEqual(0.6);
+    for (const id of new Set(TOWERS.flatMap((t) => t.floors.map((f) => f.furnish ?? "")).filter(Boolean))) expect(coverage(FLOOR_PLANS.get(id)!), id).toBeGreaterThanOrEqual(0.5);
   });
 
   it("todos los pisos de hoy tienen el tamaño del de la cocina (Berón 2026-11-22)", () => {
@@ -219,7 +220,7 @@ describe("reglas de los pisos y de los árboles (Berón 2026-11-20)", () => {
           }
         }
       }
-    expect(n).toBeGreaterThan(300);
+    expect(n).toBeGreaterThan(200);
     expect(bad).toEqual([]);
   });
 

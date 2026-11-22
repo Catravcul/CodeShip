@@ -60,7 +60,7 @@ export const PRODUCCION_MODELS: readonly ModelDef[] = [
   box("vf-dosificador", "huerto-vertical", "Dosificador de nutrientes y depósitos", 2.4, 1.4, 1.2, 0x4a8ab0, VF("Dosificador"), "maquina"),
   box("vf-lavado", "huerto-vertical", "Lavado de bandejas", 2.4, 1.0, 1.0, steel, VF("Lavado"), "maquina"),
   P("vf-camara", "huerto-vertical", "Cámara de verdura (fría)", 0xdfe8ee, [C(0, 1.25, 0, 3.2, 2.5, 3.2, 0xdfe8ee), C(0, 1.0, -1.61, 1.0, 2.0, 0.03, 0x9aa0a8)], VF("Camara_verdura")),
-  P("vf-banco", "huerto-vertical", "Banco de herramientas", wood, [C(0, 0.45, 0, 3.0, 0.9, 1.0, wood), C(0, 1.4, 0.9, 3.0, 1.0, 0.05, 0xd8c8a0)], VF("Banco_herramientas")),
+  P("vf-banco", "huerto-vertical", "Banco de herramientas con su panel", wood, [C(0, 0.88, 0, 3.0, 0.05, 1.0, wood), ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => C(sx * 1.45, 0.43, sz * 0.45, 0.07, 0.86, 0.07, 0x7a5a3a))), C(0, 0.2, 0, 2.9, 0.03, 0.9, wood), ...[-1, 1].map((sx) => C(sx * 1.45, 1.4, 0.45, 0.07, 1.05, 0.07, 0x7a5a3a)), C(0, 1.4, 0.47, 3.0, 1.0, 0.03, 0xd8c8a0), ...rep(6, (i) => [C(-1.2 + i * 0.48, 1.45, 0.43, 0.05, 0.35 + (i % 2) * 0.1, 0.03, [0xc03030, 0x2a2a2e, 0x8c9096][i % 3])]), C(-0.8, 0.95, 0.1, 0.5, 0.1, 0.3, 0x4a8a3a), C(0.6, 0.93, -0.1, 0.35, 0.05, 0.25, 0x8c6a4a)], VF("Banco_herramientas")),
   P("vf-compostador", "huerto-vertical", "Compostador", soil, [C(0, 0.45, 0, 1.2, 0.9, 1.0, 0x3a5a3a), C(0, 0.85, 0, 1.1, 0.04, 0.9, soil)], VF("Compostador")),
   P("vf-descanso", "huerto-vertical", "Banco de descanso", wood, [C(0, 0.45, 0, 1.8, 0.05, 0.5, wood), C(0, 0.22, 0, 1.6, 0.44, 0.06, wood), C(0, 0.75, 0.25, 1.8, 0.5, 0.05, wood)], VF("Descanso")),
   // Garaje del submarino.

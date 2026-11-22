@@ -18,6 +18,8 @@ export interface Floor extends Rect {
   readonly y: number;
   /** The area it belongs to (the Áreas window's node). */
   readonly area: string;
+  /** A ladder up to it (a bunk's): climbed («Trepar») from below, higher than a ledge, only where it stands. */
+  readonly ladder?: Rect;
 }
 
 export interface Water extends Rect {

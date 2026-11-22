@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { AQUARIUM_AREA, buildS1Layout, embryoBox } from "./layout";
-import { AQUARIUM, BASE, LOBES, NESTS, SEA, TOWERS, aquariumRadius, capOf } from "./site";
+import { BASE, LOBES, NESTS, SEA, TOWERS, WATER_Y, capOf, lobeRadius } from "./site";
+import { GLOBE, GLOBE_CELL, globeShare, globeDepth, globeTopAt, layerBoxes } from "./globo";
 import { TRUNK_HALF } from "./paso";
 import { TREE } from "@modules/aerial-sanctuary/data/facts";
 
@@ -43,80 +44,113 @@ describe("el mapa en anillos", () => {
         }
   });
 
-  it("cada árbol nace de su base redonda en el mar: cubierta alrededor del tronco (3 m en sus esquinas), abierta donde baja el tronco, con su estación de alfombras", () => {
+  it("cada árbol nace de su base cuadrada en el mar: 10 m de cubierta alrededor del tronco, abierta donde baja el tronco, con su estación de alfombras", () => {
     const OH = TRUNK_HALF + TREE.wall.value;
-    expect(BASE.r - OH * Math.SQRT2).toBeGreaterThanOrEqual(2.5);
     for (const t of L.towers) {
-      expect(t.base.x1 - t.base.x0, t.id).toBeCloseTo(2 * BASE.r);
+      expect(t.base.x1 - t.base.x0, t.id).toBeCloseTo(2 * (OH + BASE.walk));
       const deck = L.world.floors.filter((f) => f.area === `base:${t.id}`);
-      expect(deck.length, t.id).toBeGreaterThan(20);
-      for (const f of deck) {
-        // Inside the circle, out of the trunk.
-        for (const [x, z] of [[f.x0, f.z0], [f.x1, f.z0], [f.x0, f.z1], [f.x1, f.z1]]) expect(Math.hypot(x! - t.x, z! - t.z), f.id).toBeLessThanOrEqual(BASE.r + 0.01);
-        expect(f.x1 <= t.x - OH + 0.01 || f.x0 >= t.x + OH - 0.01 || f.z1 <= t.z - OH + 0.01 || f.z0 >= t.z + OH - 0.01, f.id).toBe(true);
-      }
-      // The deck goes all round: in front of each face, 1 m out, there is deck.
-      for (const [dx, dz] of [[0.7, OH + 1], [0.7, -OH - 1], [OH + 1, 0.7], [-OH - 1, 0.7]]) expect(deck.some((f) => t.x + dx! > f.x0 && t.x + dx! < f.x1 && t.z + dz! > f.z0 && t.z + dz! < f.z1), `${t.id} ${dx} ${dz}`).toBe(true);
+      expect(deck.length, t.id).toBe(4);
+      for (const f of deck) expect(f.x1 <= t.x - OH + 0.01 || f.x0 >= t.x + OH - 0.01 || f.z1 <= t.z - OH + 0.01 || f.z0 >= t.z + OH - 0.01, f.id).toBe(true);
       const foot = L.carpets.find((s) => s.tower === t.id && s.kind === "pie")!;
       expect(foot, t.id).toBeDefined();
       const onDeck = deck.some((f) => foot.x >= f.x0 && foot.x <= f.x1 && foot.z >= f.z0 && foot.z <= f.z1);
-      // Or at the end of its jetty, which starts at the deck's edge.
       const j = foot.landing;
-      const onJetty = !!j && [[j.x0, (j.z0 + j.z1) / 2], [j.x1, (j.z0 + j.z1) / 2], [(j.x0 + j.x1) / 2, j.z0], [(j.x0 + j.x1) / 2, j.z1]].some(([x, z]) => Math.abs(Math.hypot(x! - t.x, z! - t.z) - BASE.r) < 1);
+      const onJetty = !!j && ([t.base.x0, t.base.x1].some((e) => Math.abs(j.x0 - e) < 0.01 || Math.abs(j.x1 - e) < 0.01) || [t.base.z0, t.base.z1].some((e) => Math.abs(j.z0 - e) < 0.01 || Math.abs(j.z1 - e) < 0.01));
       expect(onDeck || onJetty, t.id).toBe(true);
     }
   });
 
-  it("el globo de las ballenas: un reloj de arena de agua de 80 m y encima un globo más grande que cualquier edificio, con un embrión de un tercio en su centro", () => {
-    const water = L.world.waters.filter((w) => w.area === AQUARIUM_AREA);
-    const ys = [...new Set(water.map((w) => w.yBottom))].sort((a, b) => a - b);
-    expect(ys.length).toBeGreaterThan(40);
-    // One column of water, layer on layer, from under the sea to its top.
-    const top = (y: number) => Math.max(...water.filter((w) => w.yBottom === y).map((w) => w.yTop));
-    for (let i = 1; i < ys.length; i++) expect(ys[i]!).toBeCloseTo(top(ys[i - 1]!));
-    expect(ys[0]!).toBeLessThan(0);
-    expect(top(ys[ys.length - 1]!)).toBeCloseTo(AQUARIUM.topY);
-    // The hourglass: narrower at its waist than at either end; 80 m tall.
-    expect(aquariumRadius(AQUARIUM.waistY)).toBeLessThan(aquariumRadius(0));
-    expect(aquariumRadius(AQUARIUM.waistY)).toBeLessThan(aquariumRadius(AQUARIUM.neckY));
-    expect(AQUARIUM.neckY).toBe(80);
-    // The globe: round, taller than every tree; the hourglass meets it.
-    expect(aquariumRadius(AQUARIUM.centreY)).toBeCloseTo(AQUARIUM.globeR);
-    expect(aquariumRadius(AQUARIUM.neckY + 0.01)).toBeCloseTo(AQUARIUM.neckR, 0);
-    expect(2 * AQUARIUM.globeR).toBeGreaterThan(Math.max(...L.towers.map((t) => t.rootHeight)));
-    // Every strip of water inside the round shape (its corners at most on it).
-    for (const w of water) {
-      const r = aquariumRadius(Math.max(0, (w.yBottom + w.yTop) / 2));
-      const zIn = Math.min(Math.abs(w.z0 - AQUARIUM.z), Math.abs(w.z1 - AQUARIUM.z));
-      const zMid = Math.abs((w.z0 + w.z1) / 2 - AQUARIUM.z);
-      expect(Math.hypot(w.x1 - AQUARIUM.x, w.z0 < AQUARIUM.z && w.z1 > AQUARIUM.z ? 0 : Math.min(zIn, zMid)), w.id).toBeLessThanOrEqual(r + 0.01);
+  it("el globo nace del mar entre los casquetes: su base es 6/10 de ese mar y sigue su forma, pixelada (Berón 2026-11-22)", () => {
+    const area = (n: number) => n * GLOBE_CELL * GLOBE_CELL;
+    // The sea between the caps: open water, never on a cap.
+    expect(GLOBE.seaArea).toBeGreaterThan(Math.PI * 120 * 120);
+    for (const c of GLOBE.sea) {
+      const [i, j] = c.split(",").map(Number) as [number, number];
+      const x = (i + 0.5) * GLOBE_CELL;
+      const z = (j + 0.5) * GLOBE_CELL;
+      for (const [n, l] of LOBES.entries()) if (l.r > 0) expect(Math.hypot(x - l.x, z - l.z), `${c} / ${l.name}`).toBeGreaterThan(lobeRadius(l, n, x, z));
     }
-    // The embryo: a third of the globe, in its middle, solid.
-    expect(AQUARIUM.embryo).toBeCloseTo((2 * AQUARIUM.globeR) / 3);
-    const e = embryoBox();
-    expect((e.y0 + e.y1) / 2).toBeCloseTo(AQUARIUM.centreY);
-    expect(L.world.solids.some((q) => q.x0 === e.x0 && q.y0 === e.y0 && q.z1 === e.z1)).toBe(true);
+    // At the water: 6/10 of that sea, inside it; one body with the sea (its foot under the surface).
+    const foot = GLOBE.layers.find((l) => l.y0 <= WATER_Y && l.y1 > WATER_Y)!;
+    expect(area(foot.cells.size) / GLOBE.seaArea).toBeCloseTo(0.6, 1);
+    for (const c of foot.cells) expect(GLOBE.sea.has(c), c).toBe(true);
+    expect(GLOBE.layers[0]!.y0).toBeLessThan(WATER_Y);
   });
 
-  it("las alfombras vuelan por encima del globo", () => {
-    for (const s of L.carpets) expect(s.lane.hi, s.id).toBeGreaterThan(AQUARIUM.topY);
+  it("el globo: una boquilla suave que se va abriendo, más ancho que el mar en su vientre, más alto que cualquier árbol", () => {
+    const L0 = GLOBE.layers;
+    for (let n = 1; n < L0.length; n++) expect(L0[n]!.y0).toBe(L0[n - 1]!.y1);
+    const sizes = L0.map((l) => l.cells.size);
+    const waist = Math.min(...sizes.slice(0, 10));
+    expect(waist).toBeLessThan(sizes[0]! * 0.6);
+    // From the nozzle up it keeps opening to the belly, never a jump of more than a quarter from one layer to the next.
+    const w = sizes.indexOf(waist);
+    const belly = sizes.indexOf(Math.max(...sizes));
+    for (let n = w + 1; n <= belly; n++) {
+      expect(sizes[n]!, String(L0[n]!.y0)).toBeGreaterThanOrEqual(sizes[n - 1]!);
+      expect(sizes[n]! / sizes[n - 1]!, String(L0[n]!.y0)).toBeLessThan(1.4);
+    }
+    expect(Math.max(...sizes) * GLOBE_CELL * GLOBE_CELL).toBeGreaterThan(GLOBE.seaArea);
+    expect(GLOBE.topY).toBeGreaterThan(Math.max(...L.towers.map((t) => t.rootHeight)));
+    expect(globeShare(GLOBE.topY + 1)).toBe(0);
+  });
+
+  it("el agua del globo son sus celdas, capa a capa (se nada en ella desde el mar hasta arriba)", () => {
+    const water = L.world.waters.filter((w) => w.area === AQUARIUM_AREA);
+    for (const l of GLOBE.layers) {
+      const boxes = water.filter((w) => w.yBottom === l.y0);
+      const sum = boxes.reduce((s, q) => s + (q.x1 - q.x0) * (q.z1 - q.z0), 0);
+      expect(sum, String(l.y0)).toBeCloseTo(l.cells.size * GLOBE_CELL * GLOBE_CELL);
+      expect(layerBoxes(l).length, String(l.y0)).toBe(boxes.length);
+    }
+    // Straight up its middle there is water all the way to the top.
+    for (let y = 0; y < GLOBE.topY - GLOBE_CELL; y += 4) expect(water.some((w) => w.yBottom <= y && w.yTop > y && GLOBE.x > w.x0 && GLOBE.x < w.x1 && GLOBE.z > w.z0 && GLOBE.z < w.z1), String(y)).toBe(true);
+    expect(globeTopAt(GLOBE.x, GLOBE.z)).toBeCloseTo(GLOBE.topY, -1);
+  });
+
+  it("el globo no toca ningún árbol", () => {
+    const water = L.world.waters.filter((w) => w.area === AQUARIUM_AREA);
+    for (const t of L.towers) {
+      const parts = [...t.floors.map((f) => ({ ...f.rect, y0: f.y - 1, y1: f.y + 8 })), ...t.tips.map((f) => ({ ...f.rect, y0: f.y - 1, y1: f.y + 8 })), { ...t.base, y0: -3, y1: t.rootHeight }];
+      for (const p of parts) for (const w of water) expect(p.x1 > w.x0 && p.x0 < w.x1 && p.z1 > w.z0 && p.z0 < w.z1 && p.y1 > w.yBottom && p.y0 < w.yTop, `${t.id} / ${w.id}`).toBe(false);
+    }
+  });
+
+  it("el embrión: un tercio del globo, en su vientre, sólido; las alfombras vuelan por encima del globo", () => {
+    const e = embryoBox();
+    expect((e.y0 + e.y1) / 2).toBeCloseTo(GLOBE.bellyY);
+    expect(L.world.solids.some((q) => q.x0 === e.x0 && q.y0 === e.y0 && q.z1 === e.z1)).toBe(true);
+    const widest = Math.max(...GLOBE.layers.map((l) => l.cells.size)) * GLOBE_CELL * GLOBE_CELL;
+    expect(GLOBE.embryo).toBeCloseTo((2 * Math.sqrt(widest / Math.PI)) / 3);
+    for (const s of L.carpets) expect(s.lane.hi, s.id).toBeGreaterThan(GLOBE.topY);
   });
 
   it("las ballenas, delfines y focas viven en el mar y en el globo, dentro del agua y sin atravesar el embrión", () => {
+    const e = embryoBox();
     const up = NESTS.filter((n) => n.y !== undefined);
     expect(up.some((n) => n.species === "Whale")).toBe(true);
-    for (const n of up) expect(n.radius, n.species).toBeLessThan(aquariumRadius(n.y!));
-    const e = embryoBox();
     for (const n of up) expect(n.y! > e.y1 || n.y! < e.y0, n.species).toBe(true);
-    const inside = L.instances.filter((i) => i.area === AQUARIUM_AREA);
+    const water = L.world.waters.filter((w) => w.area === AQUARIUM_AREA);
+    const wet = (x: number, y: number, z: number) => water.some((w) => w.yBottom <= y && w.yTop > y && x >= w.x0 && x <= w.x1 && z >= w.z0 && z <= w.z1);
+    const inside = L.instances.filter((i) => i.area === AQUARIUM_AREA || (i.y > 5 && NESTS.some((n) => n.y !== undefined && Math.abs(n.y - i.y) < 6)));
     expect(inside.some((i) => i.model === "ballena")).toBe(true);
-    expect(inside.filter((i) => i.model === "delfin" && i.y > 100).every((i) => i.y < embryoBox().y0)).toBe(true);
     expect(inside.some((i) => i.model === "delfin")).toBe(true);
     for (const i of inside) {
-      expect(i.y, i.name).toBeLessThan(AQUARIUM.topY);
-      expect(Math.hypot(i.x - AQUARIUM.x, i.z - AQUARIUM.z), i.name).toBeLessThan(aquariumRadius(Math.max(0, i.y)));
+      expect(wet(i.x, i.y, i.z), i.name).toBe(true);
+      expect(i.y > e.y1 || i.y < e.y0 || Math.abs(i.x - GLOBE.x) > e.x1 - GLOBE.x, i.name).toBe(true);
     }
-    // Some go up and down the hourglass.
-    expect(inside.some((i) => i.wander?.climb && i.wander.climb.y1 > AQUARIUM.neckY)).toBe(true);
+    expect(inside.some((i) => i.wander?.climb && i.wander.climb.y1 > 40)).toBe(true);
+  });
+  it("la luz del globo entra por su piel: bajo el mar, por la superficie; dentro del globo, por su lado más cercano (Berón 2026-11-22)", () => {
+    // In the sea, the deeper the darker, whatever is above (the column of the nozzle does not darken the sea).
+    expect(globeDepth(GLOBE.x, -3, GLOBE.z)).toBeCloseTo(2.75, 5);
+    expect(globeDepth(GLOBE.x, -12, GLOBE.z)).toBeGreaterThan(globeDepth(GLOBE.x, -3, GLOBE.z));
+    // In the belly, never deeper than its half-width: the sky lights it from the side.
+    const half = Math.sqrt((GLOBE.layers.reduce((n, l) => Math.max(n, l.cells.size), 0) * GLOBE_CELL * GLOBE_CELL) / Math.PI);
+    const d = globeDepth(GLOBE.x, GLOBE.bellyY, GLOBE.z);
+    expect(d).toBeGreaterThan(20);
+    expect(d).toBeLessThanOrEqual(half + GLOBE_CELL);
+    // Near its top, shallow.
+    expect(globeDepth(GLOBE.x, GLOBE.topY - 4, GLOBE.z)).toBeLessThanOrEqual(8);
   });
 });

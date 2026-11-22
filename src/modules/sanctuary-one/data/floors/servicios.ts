@@ -206,7 +206,7 @@ function assembly(): FloorPlan {
 
 function guard(): FloorPlan {
   const items: Placed[] = [P("guardia-suelo", 0, 0)];
-  for (let i = 0; i < 6; i++) items.push(P("guardia-pantalla", (i - 2.5) * 4.4, 14.5));
+  for (let i = 0; i < 3; i++) items.push(P("guardia-muro-video", (i - 1) * 8.8, 14.5, PI));
   for (const z of [9.5, 5.5]) for (let i = 0; i < 6; i++) items.push(P("guardia-consola", (i - 2.5) * 2.6, z));
   items.push(P("guardia-radar", -14, -3), P("guardia-carta-hielo", -7, -3), P("guardia-sismografo", 7, -3), P("guardia-mareografo", 14, -3));
   items.push(P("guardia-radio", -14, -10), P("guardia-tablero", -6, -10), P("guardia-respaldo", 14, -10), toilets1);

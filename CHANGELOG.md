@@ -5,6 +5,11 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-22
 
+- **Santuario 1, undécima lista**: el globo sigue la forma del mar entre casquetes (pixelado, 6/10 en su pie) con el
+  embrión en azules y verdes; bases cuadradas; pisos por afinidad (23); asambleas con una guardia realista; aula en la
+  plaza; literas al doble de alto con escalera para trepar; carne cultivada rehecha; revisión de realismo con puntaje
+  (`realismo.ts`); la luz bajo el agua según la profundidad; control de rendimiento.
+  [docs/design/santuario1.md](docs/design/santuario1.md) #86–100
 - **Santuario 1, décima lista**: globo de agua de 240 m con un embrión en el centro sobre el reloj de arena (sin
   aristas); bases redondas más pequeñas; árboles a la mitad de distancia de los casquetes; todos los pisos del tamaño
   de la cocina con más espacio para correr (crossfit con calistenia, aula con más sitio entre pupitres); rejilla de

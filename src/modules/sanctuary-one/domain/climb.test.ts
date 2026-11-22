@@ -24,6 +24,14 @@ describe("trepar y saltar (Berón 2026-11-19)", () => {
     expect(climbTarget(w, b, Math.PI)).toBeUndefined();
     expect(climbTarget({ ...w, solids: [{ ...wall, y1: 4 }] }, b, 0)).toBeUndefined();
   });
+  it("por una escalera de mano sube más alto: a la litera de arriba, solo desde la escalera (Berón 2026-11-22)", () => {
+    const deck = { id: "litera", x0: -1.8, x1: 1.8, z0: -3.2, z1: -1.1, y: 3.4, area: "gym", ladder: { x0: -0.25, x1: 0.25, z0: -1.1, z1: -1.0 } };
+    const c = climbTarget({ ...w, solids: [], floors: [ground, deck] }, b, 0)!;
+    expect(c.y).toBe(3.4);
+    expect(c.floor).toBe(deck);
+    // Beside the bed, away from its ladder, it is too high.
+    expect(climbTarget({ ...w, solids: [], floors: [ground, deck] }, { ...b, x: 1.4 }, 0)).toBeUndefined();
+  });
   it("un salto de pie sube unos 45 cm y vuelve al suelo", () => {
     const top = JUMP_V0_MS / 9.81;
     expect(jumpHeight(JUMP_V0_MS, top)).toBeCloseTo(0.5, 2);

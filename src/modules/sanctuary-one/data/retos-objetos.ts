@@ -277,6 +277,14 @@ const inventario = k("cocina-inventario", "Inventario de la estantería", "Cada 
   "limpia el estante vacío antes de reponer",
 ], ["pon lo nuevo delante de lo viejo", "deja lo caducado en el estante"], "salud");
 
+// --- The simulation machine itself (data/simulacion.ts): its upkeep; its area's challenges are chosen inside it.
+const tanque = p("sim-tanque-revision", "Revisar la máquina de simulación", "trabajar", "salud", "Antes de usarla, la pecera se revisa", [
+  "comprueba que el agua llega a la marca de {2,4|1|5} m",
+  "limpia el cristal por fuera con un paño suave",
+  "abre la puerta y comprueba que el campo sostiene el agua como una pared",
+  "revisa la máscara: la goma entera y el tubo sin dobleces",
+], ["abre la puerta con el campo apagado", "limpia el cristal con un estropajo"], "Cold Sanctuary, VirtualizationTank.cs; el campo que sostiene el agua es ficción del santuario (haría falta ~75–80 T)", "ficción");
+
 /** The own challenge of each model (model id → procedure). */
 export const OBJETO: Readonly<Record<string, Procedure>> = {
   "mus-bateria": bateria,
@@ -324,4 +332,5 @@ export const OBJETO: Readonly<Record<string, Procedure>> = {
   "cocina-mesa-emplatado": emplatado,
   "cocina-encimera-ingredientes": mise,
   "cocina-estanteria": inventario,
+  simulador: tanque,
 };

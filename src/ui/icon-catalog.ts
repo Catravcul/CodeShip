@@ -89,6 +89,7 @@ export const ICON_CATALOG: Readonly<Record<keyof typeof ICON, IconEntry>> = {
     usedIn: [
       { where: "Estación: máquina", file: "src/station-interior.ts" },
       { where: "Naves y santuario 3: botón naranja de una máquina o consola sin reto (puerta, pantalla, ascensor)", file: "src/ui/machine-panel.ts" },
+      { where: "Microcosmos de la Academia: botón naranja «Subir al carro»", file: "src/microcosmos-academia.ts" },
     ],
   },
   suit: { drawing: "Un traje espacial", meaning: "Trajes y esclusa (EVA)", usedIn: [{ where: "Estación: esclusa", file: "src/station-interior.ts" }] },

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { FLOOR_PLANS } from "./floors";
 import { TOWERS } from "./site";
 import { MOTIONS, PROCEDURE_STEPS } from "./animaciones";
-import { SIM_RETOS, SIM_TANK } from "./simulacion";
+import { SIM_MICROCOSMOS, SIM_RETOS, SIM_TANK } from "./simulacion";
 import { model } from "./catalog";
 import { realism } from "./realismo";
 
@@ -41,5 +41,8 @@ describe("la máquina de simulación y los retos de área (Berón 2026-11-23)", 
     expect(d.reality).toBe("ficcion");
     expect(realism(d).score).toBeGreaterThanOrEqual(80);
     expect(realism(d).floating).toBe(0);
+  });
+  it("the assembly's machine takes her to Plato's Academy", () => {
+    expect(SIM_MICROCOSMOS["asambleas-guardia"]?.[0]?.id).toBe("academia-platon");
   });
 });

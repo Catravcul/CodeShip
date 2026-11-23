@@ -5,6 +5,9 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-23
 
+- **Microcosmos: la Academia de Platón** (Atenas, verano de 360 a. C.), desde la máquina de la sala de asambleas: palestra,
+  Museo, exedra, olivar sagrado, acequia, el Dromos con sus tumbas y su carro, la casa de Platón; Platón, sus discípulos y
+  doce familias que viven su ciclo de vida; una historia de 8 pasos con 6 retos. Se carga al entrar y se libera al salir.
 - **Santuario 1, máquina de simulación (fase 2)**: la pecera de Cold Sanctuary en Salas, el restaurante y la
   asamblea, con su entrada animada (máscara, puertas, flotar en estrella, cámara alrededor); retos de área en equipo
   (ensayo de la banda, servicio del restaurante) con otros personajes en sus papeles y la recompensa para todos.

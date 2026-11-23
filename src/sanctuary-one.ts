@@ -46,7 +46,8 @@ import { STATIONS, stationWorld, type RetoAt } from "@modules/sanctuary-one/data
 import type { StepAct } from "@modules/chores/domain/step-visual";
 import { StepShow, gesture, motion, STEP_SECONDS } from "./adapters/three/interior/step-show";
 import { SimTanks } from "./adapters/three/sim-tank";
-import { SIM_RETOS, type SimReto } from "@modules/sanctuary-one/data/simulacion";
+import { SIM_MICROCOSMOS, SIM_RETOS, type SimMicrocosmos, type SimReto } from "@modules/sanctuary-one/data/simulacion";
+import type { AcademiaMicro } from "./microcosmos-academia";
 import type { Answer } from "@modules/mind-duel/domain/exercise";
 import { DuelView, type SessionText } from "./ui/duel-view";
 import { RetoPicker } from "./ui/reto-picker";
@@ -727,7 +728,9 @@ function offerRetos(t: Thing): void {
     detail: `${sr.procedure.steps.length} pasos · tú: ${sr.playerRole}; ${sr.roles.length} más en sus papeles · todos ganan ${REWARD_LABEL[sr.procedure.reward]}`,
     run: () => enterSim(t, sr),
   }));
-  chooseReto(picker, t.label, [...sims, ...own]);
+  // …and the microcosms it takes her into (modules/microcosmos).
+  const micros = (area?.furnish ? SIM_MICROCOSMOS[area.furnish] ?? [] : []).map((mc) => ({ title: mc.title, detail: mc.detail, run: () => enterMicro(t, mc) }));
+  chooseReto(picker, t.label, [...micros, ...sims, ...own]);
 }
 
 // --- The simulation machine (data/simulacion.ts; Berón 2026-11-23) ---------------------------------------------------
@@ -741,6 +744,36 @@ function enterSim(t: Thing, sr: SimReto): void {
   if (i === undefined) return;
   RootMenu.interact(undefined);
   simTanks.enter(i, body, () => openTeamReto(t, sr, i));
+}
+
+// --- The microcosms (Berón 2026-11-23: «¿Podrías crear el de Platón?»): a chunk of its own, loaded on the way in and
+// disposed of on the way out, so sanctuary 1 runs as before while she is not inside one. Only one is ever loaded.
+let micro: AcademiaMicro | undefined;
+let microTank: number | undefined;
+function enterMicro(t: Thing, mc: SimMicrocosmos): void {
+  const i = simTanks.nearest(t.x, t.z);
+  if (i === undefined || mc.id !== "academia-platon") return;
+  RootMenu.interact(undefined);
+  // The chunk loads while she goes in (the entry takes ~9 s).
+  const loading = import("./microcosmos-academia");
+  simTanks.enter(i, body, () => {
+    say("Entrando en el microcosmos…", 2);
+    void loading.then(({ AcademiaMicro }) => {
+      microTank = i;
+      ui.style.display = "none";
+      micro = new AcademiaMicro({ root, renderer, camera, walker, duel, sheet: SHEET, reward: (r) => applyReward(domenica, r), exit: leaveMicro });
+    });
+  });
+}
+function leaveMicro(): void {
+  if (!micro) return;
+  micro.dispose();
+  micro = undefined;
+  ui.style.display = "";
+  GamePad.use(root, "santuario-1", padSetup);
+  const out = microTank !== undefined ? simTanks.frontOf(microTank) : undefined;
+  if (out) body = { ...body, x: out.x, y: out.y, z: out.z, motion: "gravedad" };
+  say("De vuelta en el santuario, delante de la máquina", 3);
 }
 
 /** Where someone stands to work at a placed thing (its station, or in front of it facing it). */
@@ -949,7 +982,7 @@ function openReto(r: Reto, done?: (ok: boolean) => void, at?: RetoAt): void {
 const settingsPanel = new SettingsPanel(root);
 settingsPanel.addRow({ id: "s1-inicio", label: "Pantalla de inicio", help: "Vuelve a la pantalla de inicio para elegir otro santuario o partida (el santuario 1 empieza de nuevo al volver)", value: () => "Ir", next: () => location.reload() });
 settingsPanel.onClose = () => avatar.pose("stand");
-const pad = GamePad.use(root, "santuario-1", {
+const padSetup: Parameters<typeof GamePad.use>[2] = {
   // The left Joy-Con's D-pad: ↑ / ↓ zoom (Berón: «los de zoom podrían ser los de la izquierda»).
   zoom: (dir) => walker.holdZoom(dir),
   // The general buttons move onto the pad (Berón 2026-11-19: «los botones de config general pueden pasar a los nuevos
@@ -977,7 +1010,8 @@ const pad = GamePad.use(root, "santuario-1", {
     },
     { letter: "B", label: "Correr", toggle: true, key: "ShiftLeft", run: () => undefined },
   ],
-});
+};
+const pad = GamePad.use(root, "santuario-1", padSetup);
 let climbCheck = 0;
 
 function frameFree(dt: number): void {
@@ -1042,6 +1076,13 @@ let last = performance.now();
 function frame(now: number): void {
   const dt = Math.max(0, Math.min(0.25, (now - last) / 1000));
   last = now;
+  // Inside a microcosm: only it moves and is drawn (sanctuary 1 waits as it was).
+  if (micro) {
+    micro.frame(dt);
+    renderer.render(micro.scene, camera);
+    requestAnimationFrame(frame);
+    return;
+  }
   nearY = body.y;
   // Going into the simulation machine: her way in and the orbiting camera, nothing else moves her.
   if (!simTanks.frame(dt, camera, rig, avatar)) {
@@ -1086,5 +1127,5 @@ window.addEventListener("keydown", (e) => {
 });
 // Test hook (tools/experiencia and live checks): the layout, the body and the bulk style switch.
 if (import.meta.env.DEV || new URLSearchParams(location.search).has("prueba"))
-  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { L, world, steps, camera, renderer, wild, get wildT() { return wildT; }, set wildT(v: number) { wildT = v; }, get jumpT() { return walk.jumpClock; }, set jumpT(t: number) { walk.setJump(t); }, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, goTo, get auto() { return auto; }, areasWindow, carpetsWindow, get station() { return station; }, get hour() { return hour; }, people, get atHand() { return atHand; }, openReto, domenica, missionsWindow, get day() { return day; }, doMission: (id: string) => doMission(MISSIONS.find((q) => q.id === id)!), retoAt: (id: string, k = 0, n = 0, keep = false) => { const i = L.instances.map((it, j) => [it, j] as const).filter(([it]) => it.model === id)[n]?.[1]; if (i === undefined) return undefined; const it = L.instances[i]!; const r = retosFor(model(id), i)[k]; if (!r) return undefined; if (!keep) body = { ...body, x: it.x, y: it.y, z: it.z + 1.2 }; openReto(r, undefined, { x: it.x, y: it.y, z: it.z, sy: model(id).size.y * (it.scale ?? 1), modelId: id, rot: it.rot, plan: it.plan }); return { title: r.chore.title, steps: r.chore.exercises.length }; }, playStep: (i: number, dry = false) => { if (!challenge) return undefined; const a = stepAnimation(challenge, stagedModel, i); if (!dry) steps.play(a.acts); return a.id; }, get exercise() { return challenge ? retoRun?.current : undefined; }, closeReto: () => (document.querySelector('.duel [data-act="close"]') as HTMLElement | null)?.click(), simAt: (furnish: string, k = 0) => { const a = L.areas.find((q) => q.furnish === furnish); const j = L.instances.findIndex((q) => q.model === "simulador" && q.area === a?.id); const sr = SIM_RETOS[furnish]?.[k]; if (j < 0 || !sr) return false; const it = L.instances[j]!; body = { ...body, x: it.x, y: it.y, z: it.z - 3, area: it.area, motion: "gravedad" }; enterSim({ i: j, label: "Máquina de simulación", modelId: "simulador", x: it.x, y: it.y, z: it.z, rot: it.rot, plan: it.plan, sy: 2.7 } as unknown as Thing, sr); return true; }, get simActive() { return simTanks.active; }, setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
+  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { get micro() { return micro; }, leaveMicro, microAt: () => { const a = L.areas.find((q) => q.furnish === "asambleas-guardia"); const j = L.instances.findIndex((q) => q.model === "simulador" && q.area === a?.id); if (j < 0) return false; const it = L.instances[j]!; body = { ...body, x: it.x, y: it.y, z: it.z - 3, area: it.area, motion: "gravedad" }; enterMicro({ i: j, label: "Máquina de simulación", modelId: "simulador", x: it.x, y: it.y, z: it.z } as unknown as Thing, SIM_MICROCOSMOS["asambleas-guardia"]![0]!); return true; }, L, world, steps, camera, renderer, wild, get wildT() { return wildT; }, set wildT(v: number) { wildT = v; }, get jumpT() { return walk.jumpClock; }, set jumpT(t: number) { walk.setJump(t); }, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, goTo, get auto() { return auto; }, areasWindow, carpetsWindow, get station() { return station; }, get hour() { return hour; }, people, get atHand() { return atHand; }, openReto, domenica, missionsWindow, get day() { return day; }, doMission: (id: string) => doMission(MISSIONS.find((q) => q.id === id)!), retoAt: (id: string, k = 0, n = 0, keep = false) => { const i = L.instances.map((it, j) => [it, j] as const).filter(([it]) => it.model === id)[n]?.[1]; if (i === undefined) return undefined; const it = L.instances[i]!; const r = retosFor(model(id), i)[k]; if (!r) return undefined; if (!keep) body = { ...body, x: it.x, y: it.y, z: it.z + 1.2 }; openReto(r, undefined, { x: it.x, y: it.y, z: it.z, sy: model(id).size.y * (it.scale ?? 1), modelId: id, rot: it.rot, plan: it.plan }); return { title: r.chore.title, steps: r.chore.exercises.length }; }, playStep: (i: number, dry = false) => { if (!challenge) return undefined; const a = stepAnimation(challenge, stagedModel, i); if (!dry) steps.play(a.acts); return a.id; }, get exercise() { return challenge ? retoRun?.current : undefined; }, closeReto: () => (document.querySelector('.duel [data-act="close"]') as HTMLElement | null)?.click(), simAt: (furnish: string, k = 0) => { const a = L.areas.find((q) => q.furnish === furnish); const j = L.instances.findIndex((q) => q.model === "simulador" && q.area === a?.id); const sr = SIM_RETOS[furnish]?.[k]; if (j < 0 || !sr) return false; const it = L.instances[j]!; body = { ...body, x: it.x, y: it.y, z: it.z - 3, area: it.area, motion: "gravedad" }; enterSim({ i: j, label: "Máquina de simulación", modelId: "simulador", x: it.x, y: it.y, z: it.z, rot: it.rot, plan: it.plan, sy: 2.7 } as unknown as Thing, sr); return true; }, get simActive() { return simTanks.active; }, setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
 requestAnimationFrame(frame);

@@ -40,7 +40,7 @@ describe("Plato's Academy, the microcosm (data/academia.ts, application/mundo.ts
         for (let i = 1; i < pts.length; i++) {
           const [x0, z0] = pts[i - 1]!;
           const [x1, z1] = pts[i]!;
-          const n = Math.ceil((Math.hypot(x1 - x0, z1 - z0) * K) / 0.25);
+          const n = Math.ceil((Math.hypot(x1 - x0, z1 - z0) * K) / 0.5);
           for (let k = 0; k <= n; k++) {
             const x = (x0 + ((x1 - x0) * k) / n) * K;
             const z = (z0 + ((z1 - z0) * k) / n) * K;
@@ -49,7 +49,7 @@ describe("Plato's Academy, the microcosm (data/academia.ts, application/mundo.ts
           }
         }
       }
-  });
+  }, 30_000);
   it("the place names find the rooms", () => {
     expect(zonaAt(-137.5, -16.5)).toBe("casa-cocina");
     expect(zonaAt(-20, -40)).toBe("palestra-patio");

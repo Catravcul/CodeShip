@@ -1,3 +1,5 @@
+import { PASOS_2 } from "./retos-objetos-2";
+
 /**
  * THE ANIMATION CATALOG of sanctuary 1 (Berón 2026-11-19: «he ido a la máquina de jalón al pecho y el reto mostraba
  * la animación de correr… quizás nos falta una lista de animaciones categorizadas y con los retos que las lanzan y en
@@ -230,4 +232,6 @@ export const PROCEDURE_STEPS: Readonly<Record<string, readonly StepAnimation[]>>
   "sim-ensayo-banda": ["afinar", "respirar", "respirar", "cantar", "cantar", "respirar"],
   "sim-servicio-sala": ["pedir", "pedir", "respirar", "emplatar-plato", "servir-plato", "pedir"],
   "sim-tanque-revision": ["mirar", "limpiar", "ajustar", "mirar"],
+  // The second batch of each object's own challenge (data/retos-objetos-2.ts): hospital, veterinary, guard room.
+  ...PASOS_2,
 };

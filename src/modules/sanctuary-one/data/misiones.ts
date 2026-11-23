@@ -55,7 +55,7 @@ export const MISSIONS: readonly Mission[] = [
   M("s1_pediluvio", "Renovar el pediluvio del veterinario", "Curar animales", 0.5, false, "hospital-veterinario", "vet-pediluvio"),
   // People.
   M("enf_visita", "Pasar visita en las salas de camas", "Curar personas", 2, true, "servicios:piso-2:anillo", "hospital-cama"),
-  M("hos_urgencias", "Guardia de urgencias (curas)", "Curar personas", 2, true, "hospital", "hospital-camilla", 1),
+  M("hos_urgencias", "Guardia de urgencias (curas)", "Curar personas", 2, true, "hospital", "hospital-botiquin"),
   // The fields and the buildings' plants.
   M("hue_riego", "Riego y cuidado del huerto", "Campo", 2, true, "campos-huerto", "cultivo-alto", 1),
   M("hue_cosecha", "Cosecha para la cocina", "Campo", 1, false, "campos-huerto", "cultivo-alto"),

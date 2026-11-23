@@ -60,6 +60,22 @@ cuadrado con Platón en la exedra (Menón 82b–85b); regar el olivar con la ace
 Prometeo. Quien acompaña un paso deja su jornada y espera en el sitio. La recompensa de cada reto va a sus necesidades del
 santuario 1. Botón de inicio: salir; vuelve delante de la máquina.
 
+**Diálogos** (`data/dialogos-academia.ts`): cada persona de la historia tiene una conversación que es un reto de código:
+ella ordena lo que se dice, turno a turno, y las opciones falsas son lo que esa persona nunca diría. Platón, la caverna
+(República VII); Aristóteles, por qué filosofar (Protréptico, escrito después); Espeusipo, clasificar por semejanzas;
+Jenócrates, la paciencia («necesita espuela»); Heráclides, el giro diario de la Tierra; Filipo, el ciclo de Metón; Axiotea,
+venir a estudiar tras leer la República; Lastenia, aprender con amigos; Ártemis, el fuego del hogar; el paidotriba,
+gimnasia y música en equilibrio; el jardinero, los olivos de Atenea y el aceite de las Panateneas; el carretero, las tumbas
+del Dromos y el discurso de Pericles. Botón naranja «Hablar con…» al acercarse; mientras habla, la persona se vuelve hacia
+ella y gesticula. Recompensa: compañía.
+
+## Animaciones de los retos y rendimiento
+
+Animar una figura en un paso (`motion()` + `poseAngles` + `update`) cuesta ~2 µs por figura y fotograma en el servidor de
+pruebas (medido con 20.000 repeticiones); en un móvil, del orden de 10–20 µs. Un reto de equipo con seis figuras anima, así,
+~0,1 ms de los 16,7 ms de un fotograma: no se nota. Lo que cuesta es dibujar las figuras (cada una son varias llamadas de
+dibujo), y eso ocurre haya reto o no.
+
 ## Siguiente (propuesto)
 
 - Más microcosmos con el mismo patrón (p. ej. Hawthorne 2008, cuando Cold Sanctuary lo rehaga).

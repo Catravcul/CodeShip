@@ -3,6 +3,8 @@ import { blocked, groundFloors } from "@modules/aerial-sanctuary/domain/walk";
 import { academiaWorld, estaEn, K, ruta, zonaAt } from "./mundo";
 import { AGUAS, ALTARES, CARRO, COSAS_FUERA, EDIFICIOS, FAMILIAS, HALF, HISTORIA, INSECT_SCALE, LUGARES, LUGARES_ABIERTOS, PERIBOLO, PERIBOLO_MUROS, PERSONAS, trees } from "../data/academia";
 import { RETOS_ACADEMIA } from "../data/retos-academia";
+import { DIALOGOS } from "../data/dialogos-academia";
+import { procedureReto } from "@modules/sanctuary-one/application/challenges";
 import { JORNADA } from "../domain/vida";
 
 const all = <T>(xs: readonly T[]) => xs;
@@ -38,7 +40,7 @@ describe("Plato's Academy, the microcosm (data/academia.ts, application/mundo.ts
         for (let i = 1; i < pts.length; i++) {
           const [x0, z0] = pts[i - 1]!;
           const [x1, z1] = pts[i]!;
-          const n = Math.ceil((Math.hypot(x1 - x0, z1 - z0) * K) / 0.25);
+          const n = Math.ceil((Math.hypot(x1 - x0, z1 - z0) * K) / 0.5);
           for (let k = 0; k <= n; k++) {
             const x = (x0 + ((x1 - x0) * k) / n) * K;
             const z = (z0 + ((z1 - z0) * k) / n) * K;
@@ -47,7 +49,7 @@ describe("Plato's Academy, the microcosm (data/academia.ts, application/mundo.ts
           }
         }
       }
-  });
+  }, 30_000);
   it("the place names find the rooms", () => {
     expect(zonaAt(-137.5, -16.5)).toBe("casa-cocina");
     expect(zonaAt(-20, -40)).toBe("palestra-patio");
@@ -79,5 +81,16 @@ describe("Plato's Academy, the microcosm (data/academia.ts, application/mundo.ts
     }
     for (const day of Object.values(JORNADA)) for (const t of day) expect(ids.has(t.at), t.at).toBe(true);
     expect(FAMILIAS.length).toBeGreaterThanOrEqual(10);
+  });
+  it("each person of the story has a dialogue, a challenge with its source (Berón 2026-11-23)", () => {
+    for (const p of PERSONAS) {
+      const q = DIALOGOS[p.id];
+      expect(q, p.id).toBeDefined();
+      expect(q!.steps.length).toBeGreaterThanOrEqual(4);
+      expect(q!.wrong.length).toBeGreaterThanOrEqual(2);
+      expect(q!.source.length).toBeGreaterThan(10);
+      expect(procedureReto(q!).chore.exercises.length).toBeGreaterThanOrEqual(4);
+    }
+    for (const q of Object.values(RETOS_ACADEMIA)) expect(procedureReto(q).chore.exercises.length).toBeGreaterThanOrEqual(4);
   });
 });

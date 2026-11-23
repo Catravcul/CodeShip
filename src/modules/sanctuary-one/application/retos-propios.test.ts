@@ -7,10 +7,10 @@ import { retosFor } from "./challenges";
 /**
  * Each object its own challenge (Berón 2026-11-23: «lo ideal es que cada instrumento tenga su reto propio para que el
  * jugador aprenda de cada instrumento, y también debería funcionar así con los objetos de otras áreas»). Done for the
- * band, the dojo, the gym and the kitchen's stations (data/retos-objetos.ts); the hospital, the labs, the workshops and
- * the fields still share theirs. The count of objects sharing their first challenge with another only goes down.
+ * band, the dojo, the gym and the kitchen's stations (data/retos-objetos.ts), and for the hospital, the veterinary
+ * hospital and the guard room (data/retos-objetos-2.ts); the labs, the workshops and the fields still share theirs. The count of objects sharing their first challenge with another only goes down.
  */
-const SHARING_AT_MOST = 255;
+const SHARING_AT_MOST = 216;
 
 describe("retos propios de cada objeto", () => {
   it("los objetos que aún comparten su primer reto con otro objeto distinto no aumentan", () => {

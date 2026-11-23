@@ -1,4 +1,5 @@
 import type { Procedure, Reality, RetoKind, Reward } from "./retos";
+import { OBJETO_2 } from "./retos-objetos-2";
 
 /**
  * EACH OBJECT ITS OWN CHALLENGE (Berón 2026-11-23: «cada instrumento parece que lleva al mismo reto de ensayo… lo
@@ -333,4 +334,5 @@ export const OBJETO: Readonly<Record<string, Procedure>> = {
   "cocina-encimera-ingredientes": mise,
   "cocina-estanteria": inventario,
   simulador: tanque,
+  ...OBJETO_2,
 };

@@ -104,6 +104,11 @@ export const MOTIONS = {
   "l-sit": { label: "L-sit", category: "peso-corporal", does: "Apoyada en las paralelas con los brazos estirados, las piernas al frente" },
   "llevar-barra": { label: "Llevar la barra", category: "peso-libre", does: "Camina con la barra horizontal en las dos manos" },
   "pedalear-de-pie": { label: "Pedalear de pie", category: "cardio", does: "De pie sobre los pedales, inclinada sobre el manillar" },
+  // The simulation's team parts (data/simulacion.ts).
+  cocinar: { label: "Cocinar en el fogón", category: "oficio", does: "Ante el fogón, una mano en el mango de la sartén y la otra removiendo" },
+  "emplatar-plato": { label: "Emplatar", category: "oficio", does: "Inclinada sobre la mesa, coloca con cuidado sobre el plato" },
+  pedir: { label: "Hablar y pedir", category: "oficio", does: "De pie, una mano abierta acompaña lo que dice" },
+  "servir-plato": { label: "Servir el plato", category: "oficio", does: "Lleva el plato con las dos manos y lo deja delante" },
 } as const satisfies Record<string, Animation>;
 export type MotionId = keyof typeof MOTIONS;
 
@@ -221,4 +226,8 @@ export const PROCEDURE_STEPS: Readonly<Record<string, readonly StepAnimation[]>>
   "cocina-emplatar": ["tomar", "emplatar", "emplatar", "emplatar", "limpiar"],
   "cocina-mise-en-place": ["mirar", "tomar", "tomar", "tomar", "tomar"],
   "cocina-inventario": ["mirar", "mirar", "tomar", "mirar", "limpiar"],
+  // The simulation machine's area challenges (data/simulacion.ts): hers, step by step.
+  "sim-ensayo-banda": ["afinar", "respirar", "respirar", "cantar", "cantar", "respirar"],
+  "sim-servicio-sala": ["pedir", "pedir", "respirar", "emplatar-plato", "servir-plato", "pedir"],
+  "sim-tanque-revision": ["mirar", "limpiar", "ajustar", "mirar"],
 };

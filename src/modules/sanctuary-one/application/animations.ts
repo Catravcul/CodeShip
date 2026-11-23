@@ -1,4 +1,5 @@
 import type { StepAct } from "@modules/chores/domain/step-visual";
+import { SIM_RETOS } from "../data/simulacion";
 import { choreVisuals } from "@modules/chores/application/step-visuals";
 import { RECIPES } from "@modules/kitchen/data/recipes";
 import { PROCESSES } from "@modules/kitchen/data/processes";
@@ -62,6 +63,19 @@ export function animationTable(): AnimationRow[] {
         e.models.add(m.id);
         by.set(k, e);
       });
+  // The simulation machine's area challenges: her steps, and the parts the others take all along (data/simulacion.ts).
+  const add = (id: string, reto: string, step: number, modelId: string) => {
+    const by = row(id).by;
+    const e = by.get(reto) ?? { steps: new Set<number>(), models: new Set<string>() };
+    e.steps.add(step);
+    e.models.add(modelId);
+    by.set(reto, e);
+  };
+  for (const list of Object.values(SIM_RETOS))
+    for (const sr of list) {
+      (PROCEDURE_STEPS[sr.procedure.id] ?? []).forEach((id, i) => add(id === "maquina" ? "ajustar" : id, sr.procedure.title, i + 1, sr.player));
+      for (const role of sr.roles) sr.procedure.steps.forEach((_, i) => add(role.motion, `${sr.procedure.title} (${role.label})`, i + 1, role.model ?? sr.player));
+    }
   return [...rows].map(([id, r]) => ({ id, label: r.label, category: r.category, launchedBy: [...r.by].map(([reto, e]) => ({ reto, steps: [...e.steps].sort((a, b) => a - b), models: [...e.models] })) }));
 }
 

@@ -1387,6 +1387,15 @@ export function motion(id: string, clock: number): PoseAngles {
       return P({ shoulderX: both(-0.7), shoulderZ: [0.4, -0.4], elbow: both(-1.0), hip: [-0.3 * s, 0.3 * s], knee: [0.3 * Math.max(0, c), 0.3 * Math.max(0, -c)] });
     case "pedalear-de-pie":
       return P({ rootY: 1.25, torso: 0.6, headX: -0.4, shoulderX: both(-1.1), elbow: both(-0.4), hip: [-0.9 - 0.5 * s, -0.9 + 0.5 * s], knee: [0.8 + 0.6 * c, 0.8 - 0.6 * c] });
+    // The simulation's team parts.
+    case "cocinar":
+      return P({ torso: 0.2, headX: 0.4, shoulderX: [-0.7, -0.9 + 0.2 * s], shoulderZ: [0.25, -0.35 - 0.15 * c], elbow: [-1.2, -1.0] });
+    case "emplatar-plato":
+      return P({ torso: 0.45, headX: 0.5, shoulderX: [-0.7 - 0.1 * k, -0.8 + 0.1 * k], shoulderZ: [0.2, -0.2], elbow: [-1.0, -0.9 - 0.2 * k] });
+    case "pedir":
+      return P({ headY: 0.15 * Math.sin(clock * 1.3), shoulderX: [0, -0.9 - 0.25 * s], shoulderZ: [0.05, -0.35], elbow: [-0.2, -1.2 + 0.2 * c] });
+    case "servir-plato":
+      return P({ torso: 0.15 * k, shoulderX: both(L2(-0.7, -1.2, k)), shoulderZ: [0.2, -0.2], elbow: both(L2(-1.4, -0.5, k)) });
     default:
       return P({ shoulderX: [0.6 * s, -0.6 * s], elbow: both(-1.4) });
   }

@@ -80,6 +80,8 @@ function restaurant(): FloorPlan {
   ring.push(P("aseos-3", mid!.x, mid!.z, mid!.yaw));
   slots.forEach((p, i) => ring.push(P("comedor-mesa", p.x, p.z, 0, `Mesa ${i + 1}`)));
   ring.push(P("comedor-vinos", c, c, D(45)), P("planta-maceta", -c, c));
+  // The simulation machine for the service's challenge (data/simulacion.ts; Berón 2026-11-23).
+  items.push(P("simulador", -16.5, 15.5, 0, "Máquina de simulación"));
   return { id: "restaurante", size: SIZE, items, ring, source: `${cs("KitchenPlan", "KitchenFloorPlan")}; ${cs("Restaurant", "BuildGourmetDining")}` };
 }
 

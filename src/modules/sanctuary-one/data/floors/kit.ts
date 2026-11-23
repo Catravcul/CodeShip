@@ -169,7 +169,7 @@ export function evened(p: FloorPlan, sizeOf: (it: Placed) => { readonly hx: numb
 export const MAX_HOLE_M = 5;
 
 /** Things that stay where their room put them: walls and what hangs on them, toilets, the carpet's station. */
-const FIXED = /pared|muro|ventana|puerta|rellano|estacion|escalera|aseos|espejo|vestuario|kamiza|-suelo|^suelo|plaza-suelo|ring|anillo|tobogan/;
+const FIXED = /pared|muro|ventana|puerta|rellano|estacion|escalera|aseos|espejo|vestuario|kamiza|-suelo|^suelo|plaza-suelo|ring|anillo|tobogan|simulador/;
 
 /**
  * The distribution rule's second half: while a floor has a hole wider than MAX_HOLE_M (a point that far from every

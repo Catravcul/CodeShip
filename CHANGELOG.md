@@ -5,6 +5,9 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-23
 
+- **Santuario 1, máquina de simulación (fase 2)**: la pecera de Cold Sanctuary en Salas, el restaurante y la
+  asamblea, con su entrada animada (máscara, puertas, flotar en estrella, cámara alrededor); retos de área en equipo
+  (ensayo de la banda, servicio del restaurante) con otros personajes en sus papeles y la recompensa para todos.
 - **Santuario 1, retos por objeto (fase 1)**: cada instrumento, saco, máquina del gimnasio y puesto de cocina con su
   reto propio; cada paso con su animación, que sigue hasta el siguiente paso; guitarra, bajo, baquetas y guantes en
   las manos; la estación del saco ya mira al saco; zoom y giro de la cámara en el reto, y encuadre según la vista.

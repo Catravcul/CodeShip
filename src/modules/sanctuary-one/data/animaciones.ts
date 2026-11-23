@@ -6,7 +6,7 @@
  * retos, so no step is left with a wrong or missing animation. The shapes are drawn in
  * adapters/three/interior/step-show.ts (`gesture`, «entrenar» by its `mov:` name).
  */
-export type AnimationCategory = "fuerza-maquina" | "peso-libre" | "cardio" | "peso-corporal" | "preparar" | "oficio" | "yoga";
+export type AnimationCategory = "fuerza-maquina" | "peso-libre" | "cardio" | "peso-corporal" | "combate" | "musica" | "preparar" | "oficio" | "yoga";
 
 export interface Animation {
   readonly label: string;
@@ -20,6 +20,8 @@ export const CATEGORY_LABEL: Readonly<Record<AnimationCategory, string>> = {
   "peso-libre": "Peso libre",
   cardio: "Cardio",
   "peso-corporal": "Peso corporal y saltos",
+  combate: "Artes de combate",
+  musica: "Música",
   preparar: "Preparar, recoger y limpiar",
   oficio: "Gestos de oficio (cocina, cuidado, laboratorio, taller)",
   yoga: "Yoga",
@@ -70,6 +72,38 @@ export const MOTIONS = {
   guardia: { label: "Guardia", category: "peso-corporal", does: "Manos arriba, barbilla abajo, pies a la anchura de los hombros, rebotando" },
   golpear: { label: "Golpear", category: "peso-corporal", does: "Directo de un brazo y otro, girando la cadera" },
   "empujar-trineo": { label: "Empujar el trineo", category: "peso-corporal", does: "Inclinada a 45°, brazos estirados, pasos cortos de la punta del pie" },
+  // Music (Berón 2026-11-23: each instrument its own challenge and motion).
+  "tocar-bateria": { label: "Tocar la batería", category: "musica", does: "Sentada en el taburete, baquetas alternas sobre charles y caja, el pie en el bombo" },
+  "tocar-guitarra": { label: "Tocar la guitarra", category: "musica", does: "La izquierda en el mástil, la derecha rasgueando sobre la boca" },
+  "tocar-bajo": { label: "Tocar el bajo", category: "musica", does: "La izquierda en el mástil, índice y medio de la derecha pulsando" },
+  "tocar-teclado": { label: "Tocar el teclado", category: "musica", does: "Sentada, antebrazos a la altura de las teclas, los dedos curvados" },
+  cantar: { label: "Cantar", category: "musica", does: "De pie, el micrófono a un palmo, la cabeza arriba" },
+  respirar: { label: "Respirar con el diafragma", category: "musica", does: "Las manos en el abdomen, que sube y baja" },
+  afinar: { label: "Afinar", category: "musica", does: "Una mano en la clavija y la cabeza ladeada escuchando" },
+  mezclar: { label: "Mezclar en la mesa", category: "musica", does: "Inclinada sobre la mesa, las manos en los faders" },
+  // Fighting arts.
+  guantes: { label: "Ponerse los guantes", category: "combate", does: "Las manos al pecho, una tira del velcro de la otra" },
+  comba: { label: "Saltar a la comba", category: "combate", does: "Saltitos sobre las puntas, las muñecas girando la cuerda" },
+  pera: { label: "Golpear la pera", category: "combate", does: "Los puños a la altura de la cara, en círculos alternos" },
+  makiwara: { label: "Choku-zuki a la makiwara", category: "combate", does: "En zenkutsu-dachi, un puño sale recto mientras el otro vuelve a la cadera" },
+  rei: { label: "Saludo (rei)", category: "combate", does: "De pie, se inclina desde la cadera y vuelve" },
+  "ukemi-atras": { label: "Caída atrás (ushiro-ukemi)", category: "combate", does: "Se sienta y rueda atrás con la barbilla al pecho, los brazos palmean el tatami" },
+  "ukemi-lado": { label: "Caída de lado (yoko-ukemi)", category: "combate", does: "Cae de lado y palmea con el brazo a 45°" },
+  uchikomi: { label: "Uchi-komi", category: "combate", does: "Gira la cadera hacia dentro y se agacha bajo la compañera, repitiendo la entrada" },
+  sombra: { label: "Boxeo de sombra", category: "combate", does: "Directos y crochets al aire moviéndose sobre las puntas" },
+  patada: { label: "Patada circular", category: "combate", does: "Gira el pie de apoyo y la pierna barre a la altura de la cadera" },
+  derribo: { label: "Entrada de doble pierna", category: "combate", does: "Baja la cadera y entra con la rodilla al suelo" },
+  sprawl: { label: "Sprawl", category: "combate", does: "Echa las piernas atrás y deja caer la cadera al suelo" },
+  gamba: { label: "Gamba", category: "combate", does: "Tumbada, apoya un pie y saca la cadera hacia atrás" },
+  levantarse: { label: "Levantarse técnico", category: "combate", does: "De sentada, una mano y un pie en el suelo, se levanta atrás protegiéndose" },
+  // Mats, bands, bars.
+  crunch: { label: "Crunch", category: "peso-corporal", does: "Tumbada boca arriba, sube los hombros sin tirar del cuello" },
+  "plancha-lateral": { label: "Plancha lateral", category: "peso-corporal", does: "Sobre un antebrazo, el cuerpo de lado en línea" },
+  "estirar-nino": { label: "Postura del niño", category: "peso-corporal", does: "De rodillas, se sienta en los talones con los brazos estirados al frente" },
+  banda: { label: "Banda elástica", category: "peso-libre", does: "Separa la banda a la altura del pecho juntando las escápulas" },
+  "l-sit": { label: "L-sit", category: "peso-corporal", does: "Apoyada en las paralelas con los brazos estirados, las piernas al frente" },
+  "llevar-barra": { label: "Llevar la barra", category: "peso-libre", does: "Camina con la barra horizontal en las dos manos" },
+  "pedalear-de-pie": { label: "Pedalear de pie", category: "cardio", does: "De pie sobre los pedales, inclinada sobre el manillar" },
 } as const satisfies Record<string, Animation>;
 export type MotionId = keyof typeof MOTIONS;
 
@@ -79,6 +113,9 @@ export const GESTURES = {
   limpiar: { label: "Limpiar", category: "preparar", does: "Frota con la toalla" },
   tomar: { label: "Tomar o dejar algo", category: "preparar", does: "Alcanza, coge y deja" },
   mirar: { label: "Mirar", category: "preparar", does: "Mira y mide con la vista" },
+  cortar: { label: "Cortar", category: "oficio", does: "La mano en garra guía el cuchillo arriba y abajo" },
+  emplatar: { label: "Emplatar", category: "oficio", does: "Coloca con cuidado sobre el plato" },
+  servir: { label: "Servir", category: "oficio", does: "Entrega el plato con las dos manos" },
 } as const satisfies Record<string, Animation>;
 export type GestureId = keyof typeof GESTURES;
 
@@ -149,4 +186,39 @@ export const PROCEDURE_STEPS: Readonly<Record<string, readonly StepAnimation[]>>
   "gym-parkour": ["mirar", "agacharse", "salto", "aterrizar", "aterrizar"],
   "gym-crossfit": ["cargar-discos", "empujar-trineo", "empujar-trineo", "empujar-trineo", "cargar-discos"],
   "gym-limpiar-maquina": ["limpiar", "limpiar", "limpiar", "limpiar"],
+  // Each object its own (data/retos-objetos.ts, Berón 2026-11-23).
+  "musica-bateria": ["ajustar", "tomar", "tocar-bateria", "tocar-bateria", "tocar-bateria"],
+  "musica-guitarra": ["tomar", "afinar", "tocar-guitarra", "tocar-guitarra", "tocar-guitarra"],
+  "musica-bajo": ["tomar", "afinar", "tocar-bajo", "tocar-bajo", "tocar-bajo"],
+  "musica-teclado": ["ajustar", "tocar-teclado", "tocar-teclado", "tocar-teclado", "tocar-teclado"],
+  "musica-voz": ["respirar", "cantar", "cantar", "ajustar", "cantar"],
+  "musica-mesa": ["ajustar", "mezclar", "mezclar", "mezclar", "ajustar"],
+  "dojo-saco-pesado": ["guantes", "comba", "guardia", "golpear", "respirar", "estirar"],
+  "dojo-pera-rapida": ["guantes", "ajustar", "pera", "pera", "respirar"],
+  "dojo-makiwara-zuki": ["rei", "makiwara", "makiwara", "makiwara", "estirar"],
+  "dojo-judo-ukemi": ["rei", "ukemi-atras", "ukemi-lado", "uchikomi", "rei"],
+  "dojo-ring-sombra": ["guardia", "sombra", "patada", "sombra", "estirar"],
+  "dojo-jaula-derribo": ["guantes", "agacharse", "derribo", "sprawl", "guardia"],
+  "dojo-grappling-gamba": ["crunch", "gamba", "puente", "levantarse", "gamba"],
+  "gym-smith-sentadilla": ["ajustar", "sentadilla", "ajustar", "sentadilla", "ajustar"],
+  "gym-discos-orden": ["cargar-discos", "cargar-discos", "ajustar", "cargar-discos", "cargar-discos"],
+  "gym-barras-elegir": ["mirar", "llevar-barra", "llevar-barra", "tomar", "llevar-barra"],
+  "gym-esterilla-core": ["tomar", "crunch", "plancha", "plancha-lateral", "estirar-nino"],
+  "gym-bandas": ["tomar", "banda", "banda", "banda", "tomar"],
+  "cal-l-sit": ["l-sit", "l-sit", "l-sit", "l-sit", "estirar"],
+  "gym-cinta-carrera": ["ajustar", "correr", "correr", "correr", "limpiar"],
+  "gym-eliptica-sesion": ["eliptica", "eliptica", "eliptica", "eliptica", "limpiar"],
+  "gym-bici-spinning": ["ajustar", "ajustar", "pedalear", "pedalear-de-pie", "limpiar"],
+  "gym-bici-reclinada-sesion": ["ajustar", "pedalear", "pedalear", "pedalear", "limpiar"],
+  "gym-escaladora-sesion": ["escaladora", "escaladora", "escaladora", "escaladora", "limpiar"],
+  "gym-remo-tecnica": ["ajustar", "remar", "remar", "remar", "remar"],
+  "gym-assault-intervalos": ["ajustar", "pedalear", "pedalear", "pedalear", "pedalear"],
+  "gym-skierg-tecnica": ["skierg", "skierg", "skierg", "skierg", "skierg"],
+  ...Object.fromEntries(["press-pecho", "press-hombros", "jalon", "remo", "prensa", "extension", "femoral", "hip-thrust", "gemelos", "curl-biceps"].map((m) => [`gym-${m}-serie`, ["ajustar", "ajustar", "maquina", "maquina", "ajustar"] as const])),
+  "cocina-cortar-verdura": ["limpiar", "tomar", "cortar", "tomar", "limpiar"],
+  "cocina-preparar-carne": ["limpiar", "tomar", "cortar", "tomar", "limpiar"],
+  "cocina-pase-servicio": ["mirar", "mirar", "mirar", "servir", "mirar"],
+  "cocina-emplatar": ["tomar", "emplatar", "emplatar", "emplatar", "limpiar"],
+  "cocina-mise-en-place": ["mirar", "tomar", "tomar", "tomar", "tomar"],
+  "cocina-inventario": ["mirar", "mirar", "tomar", "mirar", "limpiar"],
 };

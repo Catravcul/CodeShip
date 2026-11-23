@@ -51,6 +51,7 @@ import { RetoPicker } from "./ui/reto-picker";
 import { GamePad } from "./ui/game-pad";
 import { chooseReto, offerReto } from "./ui/interaction";
 import { focusReto, retoVisual, sheetLens as lens } from "./adapters/three/interior/reto-focus";
+import { mapGestures } from "./ui/map-gestures";
 import { poseOnFoot, UnderwaterView } from "./adapters/three/walk-look";
 import "./ui/lander-cabin.css";
 import "./ui/acciones.css";
@@ -716,7 +717,52 @@ const steps = new StepShow();
 let stageStand: THREE.Vector3 | undefined;
 scene.add(steps.root);
 /** The lens over the free strip (adapters/three/interior/reto-focus.ts, shared). */
-const sheetLens = (on: boolean) => lens(camera, on);
+/**
+ * The free band above (or between) the sheet's blocks, measured (Berón 2026-11-23: the HUD and panel views leave
+ * different room): the tallest screen-wide stretch no block of the sheet covers, in px from the top.
+ */
+function sheetBand(): { top: number; bottom: number } | undefined {
+  const d = document.querySelector(".duel:not(.hidden)");
+  if (!d) return undefined;
+  const h = window.innerHeight;
+  const blocks = [...d.querySelectorAll<HTMLElement>(":scope > *, :scope > * > *")].map((e) => e.getBoundingClientRect()).filter((r) => r.width > 40 && r.height > 8 && r.bottom > 0 && r.top < h);
+  const cuts = [0, h];
+  for (const r of blocks) cuts.push(Math.max(0, r.top), Math.min(h, r.bottom));
+  const ys = [...new Set(cuts)].sort((a, b) => a - b);
+  let best = { top: 0, bottom: 0 };
+  for (let i = 0; i + 1 < ys.length; i++) {
+    const mid = (ys[i]! + ys[i + 1]!) / 2;
+    if (blocks.some((r) => r.top <= mid && r.bottom >= mid)) continue;
+    // Join the free stretches that touch.
+    let j = i;
+    while (j + 2 < ys.length && !blocks.some((r) => r.top <= (ys[j + 1]! + ys[j + 2]!) / 2 && r.bottom >= (ys[j + 1]! + ys[j + 2]!) / 2)) j++;
+    // The stage is shown above the sheet (or between its head and its body): a band starting in the top half.
+    if (ys[i]! < h * 0.5 && ys[j + 1]! - ys[i]! > best.bottom - best.top) best = { top: ys[i]!, bottom: ys[j + 1]! };
+  }
+  return best.bottom - best.top > 80 ? best : undefined;
+}
+let lensBand = "";
+const sheetLens = (on: boolean) => {
+  const band = on ? sheetBand() : undefined;
+  lensBand = band ? `${Math.round(band.top)}-${Math.round(band.bottom)}` : "";
+  lens(camera, on, band ? { band } : {});
+};
+// The player's look at a challenge's stage: a finger turns it, a pinch or the wheel zooms (as in the Áreas map).
+{
+  const el = renderer.domElement;
+  mapGestures(el, {
+    rotate: (dx, dy) => {
+      if (steps.framing) steps.orbit(-dx * 0.008, dy * 0.006);
+    },
+    zoom: (f) => {
+      if (steps.framing) steps.zoomBy(f);
+    },
+    tap: () => {},
+  });
+  el.addEventListener("wheel", (e) => {
+    if (steps.framing) steps.zoomBy(e.deltaY > 0 ? 0.9 : 1.1);
+  }, { passive: true });
+}
 /** The model of the open challenge (its machine's own motions and its station). */
 let stagedModel: string | undefined;
 function stageAt(at: RetoAt): void {
@@ -726,7 +772,7 @@ function stageAt(at: RetoAt): void {
   const mount = st && at.rot !== undefined ? stationWorld(st, at) : undefined;
   const from = mount ? { ...body, x: mount.getOn.x, z: mount.getOn.z } : body;
   // …and the shot is on her station (a long barre's middle is metres away from where she works at it).
-  const stand = focusReto(steps, camera, from, yaw, mount ? { ...at, x: mount.x, z: mount.z } : at, undefined, mount ? { feet: new THREE.Vector3(mount.x, at.y + (st!.y ?? 0), mount.z), yaw: mount.yaw } : undefined);
+  const stand = focusReto(steps, camera, from, yaw, mount ? { ...at, x: mount.x, z: mount.z } : at, undefined, mount ? { feet: new THREE.Vector3(mount.x, at.y + (st!.y ?? 0), mount.z), yaw: mount.yaw, shot: st!.shot } : undefined);
   stageStand = stand;
   // On the machine's own floor (Berón 2026-11-20: «al terminar parece que ha atravesado el suelo y caído»): she came
   // from wherever the route or the teleport left her, so her height and area are the floor's at the stand, not hers.
@@ -791,6 +837,7 @@ function openReto(r: Reto, done?: (ok: boolean) => void, at?: RetoAt): void {
       const ok = run.submit(ans);
       // A right answer acts the step out (the blocks already acted out pick by pick are not played again).
       if (ok) visual.stepDone(index);
+      else steps.rest();
       return { ok };
     },
   );
@@ -917,9 +964,16 @@ function frame(now: number): void {
   const clock = `${hh}:${String(Math.floor((hour - hh) * 60)).padStart(2, "0")}`;
   const where = `Santuario 1 · ${clock} · ${a ? (a.building && !a.label.includes(a.building) ? `${a.building} · ${a.label}` : a.label) : flying ? "Volando en alfombra" : body.motion === "agua" ? "En el agua" : "Hielo"}`;
   if (whereEl.textContent !== where) whereEl.textContent = where;
+  // The sheet changes (HUD or panel view, a longer question): the stage follows the room it leaves.
+  if (steps.framing && (frameNo++ & 15) === 0) {
+    const b = sheetBand();
+    const key = b ? `${Math.round(b.top)}-${Math.round(b.bottom)}` : "";
+    if (key !== lensBand) sheetLens(true);
+  }
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
+let frameNo = 0;
 window.addEventListener("resize", () => {
   sheetLens(steps.framing);
   renderer.setSize(window.innerWidth, window.innerHeight);

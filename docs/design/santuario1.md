@@ -182,6 +182,19 @@ salud.
 | 99 | Bajo el mar, **la luz viene de la superficie** y se oscurece con la profundidad; mirando arriba se ve fuera según la profundidad | Hecho: la profundidad del globo se mide hasta su piel más cercana (`globeDepth`), y bajo el mar hasta la superficie; niebla y fondo del agua según ella |
 | 100 | **Control de rendimiento** | Hecho: presupuesto en `data/rendimiento.test.ts` (instancias, piezas, sólidos, aguas, caras del globo, sólidos por paso) y `tools/rendimiento-s1.mjs` (llamadas, triángulos y fps en vistas fijas) |
 
+### Decimotercera lista (2026-11-23): retos por objeto, animación por paso, máquina de simulación y microcosmos
+
+Por fases, cada una con su PR.
+
+| # | Pedido | Estado |
+| --- | --- | --- |
+| 110 | **Cada objeto con su reto propio** (instrumentos, pesas, esterillas, cocina…) | Fase 1 hecha para la banda (batería, guitarra, bajo, teclado, voz, mesa), el dojo (saco, pera, makiwara, judo, ring, MMA, suelo), el gimnasio (10 máquinas de placas, 8 de cardio, Smith, discos, barras, esterilla, bandas, L-sit) y los puestos de la cocina (`data/retos-objetos.ts`). Quedan el hospital, los laboratorios, los talleres y los campos: `retos-propios.test.ts` cuenta los objetos que aún comparten reto (255) y solo puede bajar |
+| 111 | **Cada paso con su animación, y se repite hasta el siguiente** | Hecho: al resolver un paso, ella lo hace (ponerse los guantes, la comba, los asaltos…) y lo sigue haciendo hasta que se resuelve o falla el siguiente; al fallar, descansa. 30 movimientos nuevos (música, combate, esterilla, bandas…) con su pose, y un test que impide que un movimiento caiga en la pose por defecto. Guitarra, bajo, baquetas y guantes en sus manos |
+| 112 | **Golpeaba al aire con el saco detrás** | Era la estación del saco, que la ponía de espaldas a él; arreglada y con test (de cara a lo que golpea o toca). Estaciones nuevas en la batería, el teclado, los amplificadores, los micrófonos, la mesa y la pera |
+| 113 | **Zoom y mover la cámara en el reto**; **encuadre distinto en vista HUD y panel** | Hecho: un dedo gira la cámara alrededor de ella, pellizcar o la rueda acerca y aleja (`reglas.md` §5.7, nueva excepción); el encuadre mide la franja que deja libre la hoja del reto, sea panel o HUD |
+| 114 | **Máquina de simulación** para retos de área (ensayo en equipo, servicio al cliente), con otros personajes en sus papeles y la recompensa para todos | Fase 2. Hoy las recompensas existen (comida, fuerza, compañía, salud) pero solo para Doménica; el ensayo de la banda queda de momento en la mesa de sonido |
+| 115 | **Microcosmos de Platón** | Fase 3, siguiendo el de Elon Musk rehecho en Cold Sanctuary: un microcosmos se carga solo al entrar por la máquina y se descarga al salir, así que el límite es el móvil dentro de él, no cuántos haya; se medirá con el control de rendimiento |
+
 ### Duodécima lista (2026-11-22, noche)
 
 | # | Pedido | Estado |

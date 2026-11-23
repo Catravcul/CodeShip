@@ -17,6 +17,12 @@ export interface LensFov {
   readonly base?: number;
   /** Half the vertical angle of the strip above the sheet in portrait (degrees, default 28: her whole at a thing). */
   readonly half?: number;
+  /**
+   * The free band of the screen in portrait (px from the top: where the sheet leaves room), measured from the sheet
+   * itself (Berón 2026-11-23: «la vista HUD y vista panel de los retos debe enfocar diferente porque su área visible
+   * es diferente»). Default: the top 30 % (the tallest panel's edge).
+   */
+  readonly band?: { readonly top: number; readonly bottom: number };
 }
 
 /** In portrait, the camera's line shows this far down the screen: the middle of the strip the tallest sheet leaves. */
@@ -38,11 +44,14 @@ export function sheetLens(camera: THREE.PerspectiveCamera, on: boolean, fov: Len
   camera.clearViewOffset();
   const rad = Math.PI / 180;
   if (on && h > w) {
-    // The full frustum is F tall with its middle at LENS_LINE of the screen; its half angle makes ±LENS_LINE·h span ±half.
-    const F = 2 * (1 - LENS_LINE) * h;
+    // The full frustum is F tall with its middle on the band's middle line c; its half angle makes the band span ±half.
+    const b = fov.band ?? { top: 0, bottom: 2 * LENS_LINE * h };
+    const c = Math.max(1, (b.top + b.bottom) / 2);
+    const half = Math.max(20, (b.bottom - b.top) / 2);
+    const F = 2 * Math.max(c, h - c);
     camera.aspect = w / F;
-    camera.fov = (2 * Math.atan((Math.tan((fov.half ?? 28) * rad) * (F / 2)) / (LENS_LINE * h))) / rad;
-    camera.setViewOffset(w, F, 0, (1 - 2 * LENS_LINE) * h, w, h);
+    camera.fov = (2 * Math.atan((Math.tan((fov.half ?? 28) * rad) * (F / 2)) / half)) / rad;
+    camera.setViewOffset(w, F, 0, F / 2 - c, w, h);
   } else if (on) {
     const W = 1.44 * w;
     camera.aspect = W / h;

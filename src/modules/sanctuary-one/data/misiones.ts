@@ -72,7 +72,7 @@ export const MISSIONS: readonly Mission[] = [
   M("tex_tejer", "Tejer y teñir", "Trabajo", 2, false, "textil-huerto", "tex-tina"),
   M("gua_sala", "Turno en la sala de guardia", "Trabajo", 2, true, "asambleas-guardia", "guardia-radio"),
   M("aul_clase", "Dar o recibir una clase en el aula", "Trabajo", 1, false, "residencia-plaza", "aula-mesa-profesor"),
-  M("son_ensayo", "Preparar y ensayar el concierto de la semana", "Trabajo", 1, false, "salas", "mus-bateria"),
+  M("son_ensayo", "Preparar y ensayar el concierto de la semana", "Trabajo", 1, false, "salas", "mus-pa-ensayo", 1),
   M("asa_orden", "Moderar la asamblea", "Trabajo", 1, false, "asambleas-guardia", "asamblea-centro"),
   M("con_almacen", "Obra: hacer hormigón", "Trabajo", 1, false, "construccion", "cons-hormigonera"),
 ];

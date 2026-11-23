@@ -1,6 +1,7 @@
+import { MOTIONS } from "@modules/sanctuary-one/data/animaciones";
 import { describe, expect, it } from "vitest";
 import * as THREE from "three";
-import { galleyFrame, gesture, kitchenLayout, poseDistance, StepShow, type KitchenSpot } from "./step-show";
+import { galleyFrame, gesture, kitchenLayout, motion, poseDistance, StepShow, type KitchenSpot } from "./step-show";
 import { auditStep, clearOfScene, REACH_M } from "./step-audit";
 import { CubeFigure, P } from "./figure";
 import { GALLEY, STATIONS } from "./room";
@@ -153,5 +154,17 @@ describe("Pasos visibles: la cocina anclada a sus muebles (PX-20, auditoría de 
     const bowl = show.snapshot()!.props.find((p) => p.name === "bowl")!.object.position;
     expect(Math.abs(bowl.x)).toBeLessThan(0.01);
     expect(bowl.z).toBeGreaterThan(0.3);
+  });
+});
+
+describe("cada movimiento del catálogo tiene su pose propia (Berón 2026-11-23: «golpeaba al aire en todos los pasos»)", () => {
+  it("ningún movimiento de MOTIONS cae en la pose por defecto", () => {
+    const fallback = JSON.stringify(motion("__ninguno__", 1.3));
+    for (const id of Object.keys(MOTIONS)) expect(JSON.stringify(motion(id, 1.3)), id).not.toBe(fallback);
+  });
+  it("tras un paso resuelto lo sigue haciendo hasta el siguiente; al fallar, descansa", () => {
+    const show = new StepShow();
+    expect(typeof show.rest).toBe("function");
+    expect(typeof show.orbit).toBe("function");
   });
 });

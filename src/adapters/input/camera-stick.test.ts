@@ -25,9 +25,10 @@ describe("UI-07 camera only by joystick (reglas.md §5.7)", () => {
     expect(bad).toEqual([]);
   });
 
-  it("the one exception: only the map windows' 3D maps turn and zoom with a finger (map-gestures.ts, through map-window.ts)", () => {
+  it("the exceptions: the map windows' 3D maps and sanctuary 1's challenge stage turn and zoom with a finger (map-gestures.ts)", () => {
     const users = files.filter(({ f, text }) => f !== "src/ui/map-gestures.ts" && /\bmapGestures\(/.test(text)).map(({ f }) => f).sort();
-    expect(users).toEqual(["src/ui/map-window.ts"]);
+    // The challenge's stage (Berón 2026-11-23: «en el reto se debe poder hacer zoom y mover cámara como en la modal de áreas»).
+    expect(users).toEqual(["src/sanctuary-one.ts", "src/ui/map-window.ts"]);
     // The map windows: the start screen, Navigation, Áreas and sanctuary 3's island navigation (Berón, 2026-11-18: one model for all of them).
     const windows = files.filter(({ f, text }) => f !== "src/ui/map-window.ts" && /\bnew MapWindow\(/.test(text)).map(({ f }) => f).sort();
     expect(windows).toEqual(["src/ui/areas-window.ts", "src/ui/island-nav.ts", "src/ui/nav-map.ts", "src/ui/start-screen.ts"]);

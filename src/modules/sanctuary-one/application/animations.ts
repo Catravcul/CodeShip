@@ -14,6 +14,9 @@ const GESTURE_ACT: Readonly<Record<GestureId, StepAct>> = {
   limpiar: { action: "lavar", place: "objetivo" },
   tomar: { action: "tomar", place: "objetivo" },
   mirar: { action: "revisar", place: "objetivo" },
+  cortar: { action: "cortar", place: "objetivo" },
+  emplatar: { action: "emplatar", place: "objetivo" },
+  servir: { action: "servir", place: "objetivo" },
 };
 
 /** The animation of step `i` of a reto done at model `modelId`: its id (motion, gesture or the step player's action) and its acts. */

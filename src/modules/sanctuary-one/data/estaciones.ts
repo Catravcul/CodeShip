@@ -11,6 +11,8 @@ export interface Station {
   readonly z: number;
   readonly face?: number;
   readonly y?: number;
+  /** The challenge's shot turned this much round her (rad), where the machine's frame would hide her. */
+  readonly shot?: number;
 }
 
 const PI = Math.PI;
@@ -52,8 +54,10 @@ export const STATIONS: Readonly<Record<string, Station>> = {
   "cf-ghd": { x: 0, z: 0.15 },
   // Hitting: in front of a bag, facing it.
   "gym-portico-sacos": { x: -1.5, z: -0.6, face: PI },
-  "dojo-sacos": { x: 0.6, z: 0, face: -PI / 2 },
+  // Facing the middle bag at x 0 (face −π/2 faced away: «golpeaba al aire», Berón 2026-11-23).
+  "dojo-sacos": { x: 0.6, z: 0, face: PI / 2, shot: -PI / 2 },
   "dojo-makiwara": { x: 0, z: -0.7, face: PI },
+  "dojo-pera": { x: 0, z: -0.85, face: PI },
   // Bodyweight: under the lowest bar, between the bars, under the rungs; leaning back under the rings and the low bar.
   "cal-dominadas": { x: -1.2, z: 0 },
   "gym-espalderas-3": { x: 0, z: -0.18, y: 0.12 },
@@ -68,6 +72,13 @@ export const STATIONS: Readonly<Record<string, Station>> = {
   "ballet-espejo-barras": { x: 0, z: 3.7, face: PI / 2 },
   "ballet-espejo-barra": { x: 0, z: -0.8, face: PI / 2 },
   "ballet-barra-portatil": { x: 0, z: -0.45, face: PI / 2 },
+  // The band (Berón 2026-11-23): on the drum throne and the keyboard bench, at the amplifiers, the microphone, the desk.
+  "mus-bateria": { x: 0.05, z: -0.55, face: PI, y: 0.2 },
+  "mus-teclado": { x: 0, z: -0.6, face: PI, y: 0.03 },
+  "mus-ampli-guitarra": { x: -0.3, z: -0.7, face: PI },
+  "mus-ampli-bajo": { x: 0.3, z: -0.7, face: PI },
+  "mus-microfonos": { x: 0, z: -0.45, face: PI },
+  "mus-pa-ensayo": { x: 0, z: -0.65, face: PI },
 };
 
 /** What a challenge is done at: its base, height, model and turn (and plan scale, for the station's offsets). */

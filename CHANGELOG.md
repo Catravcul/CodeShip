@@ -3,6 +3,13 @@
 Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documento. El historial anterior al
 2026-11-18 está en git y en `docs/design/`.
 
+## 2026-11-23
+
+- **Santuario 1, retos por objeto (fase 1)**: cada instrumento, saco, máquina del gimnasio y puesto de cocina con su
+  reto propio; cada paso con su animación, que sigue hasta el siguiente paso; guitarra, bajo, baquetas y guantes en
+  las manos; la estación del saco ya mira al saco; zoom y giro de la cámara en el reto, y encuadre según la vista.
+  [docs/design/santuario1.md](docs/design/santuario1.md) #110–115
+
 ## 2026-11-22
 
 - **Santuario 1, duodécima lista**: se puede saltar de todos los pisos y anillos (test); gimnasio lleno (2-3 de cada

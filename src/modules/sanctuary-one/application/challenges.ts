@@ -6,6 +6,7 @@ import { WORKOUTS } from "@modules/wellness/data/exercise";
 import { YOGA_SEQUENCES } from "@modules/wellness/data/yoga";
 import type { ModelDef } from "../data/models/kit";
 import { MACHINE_MOTION } from "../data/animaciones";
+import { OBJETO } from "../data/retos-objetos";
 import { ANIMALES, AULAS, COCINA, GYM, LIMPIEZA, MUSICA, PLANTAS, SALA_YOGA, SALUD, TRABAJO, type AnimalCare, type Procedure, type Reward } from "../data/retos";
 
 /** One challenge a thing offers: the chore on the sheet, what it gives her, and where its steps come from. */
@@ -86,6 +87,20 @@ function kitchenStrip(id: string): readonly Procedure[] {
  * sequence of two) so that neighbouring copies offer different ones. Ground, walls and decoration offer nothing.
  */
 export function retosFor(m: ModelDef, seed = 0): Reto[] {
+  // Each object its own challenge first (data/retos-objetos.ts); of the shared ones it keeps only its cleaning and the
+  // timed workouts. The band's rehearsal stays at the sound desk until the simulation machine takes the area's ones.
+  const own = OBJETO[m.id];
+  if (own) {
+    const keep = sharedRetos(m, seed).filter((r) => (r.procedure && SECOND.has(r.procedure)) || (r.chore.kind === "ejercicio" && !r.procedure));
+    return [procedureReto(own), ...keep, ...(m.id === "mus-pa-ensayo" ? [procedureReto(TRABAJO.musica)] : [])];
+  }
+  return sharedRetos(m, seed);
+}
+
+/** The second challenges an object keeps beside its own: cleaning it and its floor. */
+const SECOND = new Set(["gym-limpiar-maquina", "cocina-limpieza", "limpiar-suelo"]);
+
+function sharedRetos(m: ModelDef, seed: number): Reto[] {
   const g = m.group;
   const pick = <T>(xs: readonly T[]): T => xs[Math.abs(seed) % xs.length]!;
   const of = (...qs: Procedure[]) => qs.map((q) => procedureReto(q));

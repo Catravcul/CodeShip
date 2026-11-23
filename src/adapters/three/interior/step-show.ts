@@ -120,7 +120,7 @@ export interface StepFrame {
    * («entrenar» with a `mov:` motion) she is on it, her feet's origin here facing `yaw` (on the seat, the belt, the
    * bench, under the bar), and back at `stand` for the other steps (adjusting, cleaning).
    */
-  readonly mount?: { readonly feet: THREE.Vector3; readonly yaw: number };
+  readonly mount?: { readonly feet: THREE.Vector3; readonly yaw: number; readonly shot?: number };
 }
 
 /**
@@ -251,6 +251,11 @@ interface Props {
   readonly zip: THREE.Mesh;
   readonly lamp: THREE.Mesh;
   readonly dots: THREE.Points;
+  /** What a motion is done with (Berón 2026-11-23): the guitar and the bass across her, sticks and gloves in her hands. */
+  readonly guitar: THREE.Group;
+  readonly bass: THREE.Group;
+  readonly sticks: readonly THREE.Mesh[];
+  readonly gloves: readonly THREE.Mesh[];
 }
 
 /** Acts done in a crew quarter's bag: she turns her back to the wall it is strapped to (modules/wellness/data/sleep.ts). */
@@ -325,6 +330,29 @@ export class StepShow {
   private readonly bowlSpot = new THREE.Vector3();
   private hasBowlSpot = false;
 
+  /**
+   * The player's own look at the stage (Berón 2026-11-23: «en el reto se debe poder hacer zoom y mover cámara como en
+   * la modal de áreas»): turned round her (rad), up or down (rad) and closer or farther (×), from the frame's shot.
+   */
+  private orbitYaw = 0;
+  private orbitPitch = 0;
+  private orbitZoom = 1;
+  orbit(dYaw: number, dPitch: number): void {
+    this.orbitYaw += dYaw;
+    this.orbitPitch = Math.max(-0.5, Math.min(1.0, this.orbitPitch + dPitch));
+  }
+  zoomBy(f: number): void {
+    this.orbitZoom = Math.max(0.35, Math.min(3, this.orbitZoom / f));
+  }
+  /**
+   * A step failed: she stops acting out the last one solved (Berón 2026-11-23: «debe hacer asaltos hasta que el
+   * siguiente paso sea resuelto o fallido»).
+   */
+  rest(): void {
+    this.queue.length = 0;
+    this.now = this.last = undefined;
+  }
+
   get current(): StepAct | undefined {
     return this.now ?? this.last;
   }
@@ -345,6 +373,10 @@ export class StepShow {
     this.played = 0;
     this.queue.length = 0;
     this.now = this.last = undefined;
+    // A station can ask for the shot from another side (the bags' gantry posts hide her from behind her shoulder).
+    this.orbitYaw = frame.mount?.shot ?? 0;
+    this.orbitPitch = 0;
+    this.orbitZoom = 1;
     this.hideAll();
     this.root.visible = true;
   }
@@ -452,7 +484,9 @@ export class StepShow {
       rig.rotation.set(0, onIt ? f.mount!.yaw : inBag ? f.yaw + Math.PI : f.yaw, 0);
       rig.quaternion.setFromEuler(rig.rotation);
     }
-    if (!this.holdPose) figure.poseAngles(this.now ? gesture(vis!, t, this.clock, this.low(vis!)) : idle(vis ? this.low(vis) : false));
+    // A solved step goes on until the next is solved or one fails (Berón 2026-11-23): the repeated motions (rounds on
+    // the bag, the treadmill, stirring) keep moving with the clock; a one-off (taking the gloves) holds its end.
+    if (!this.holdPose) figure.poseAngles(vis ? gesture(vis, t, this.clock, this.low(vis)) : idle(false));
     figure.update(dt, 9);
     rig.updateMatrixWorld(true);
     // Her hands as drawn (her figure is counter-scaled: drawn at real size where she stands).
@@ -467,7 +501,14 @@ export class StepShow {
       this.focus.lerp(this.tmp, 1 - Math.exp(-4 * dt));
     }
     // In real metres for the PlanCamera, which draws them back at this place.
-    camera.position.set((this.focus.x + this.camOffset.x) / k, this.focus.y + this.camOffset.y, (this.focus.z + this.camOffset.z) / k);
+    // The player's orbit round the shot's look point (turned, raised, nearer or farther).
+    const o = this.tmp.copy(this.camOffset);
+    const r = Math.hypot(o.x, o.z);
+    const a = Math.atan2(o.x, o.z) + this.orbitYaw;
+    const el = Math.atan2(o.y, Math.max(0.01, r)) + this.orbitPitch;
+    const dist = Math.hypot(r, o.y) * this.orbitZoom;
+    o.set(Math.sin(a) * Math.cos(el) * dist, Math.sin(el) * dist, Math.cos(a) * Math.cos(el) * dist);
+    camera.position.set((this.focus.x + o.x) / k, this.focus.y + o.y, (this.focus.z + o.z) / k);
     if (f.cameraUp) camera.up.copy(f.cameraUp);
     camera.lookAt(this.tmp.set(this.focus.x / k, this.focus.y, this.focus.z / k));
     this.lastFigure = figure;
@@ -632,6 +673,16 @@ export class StepShow {
       g.add(...parts);
       return g;
     };
+    // A guitar or a bass: its body at the origin, its neck along +x (towards her left hand).
+    const instrument = (color: number, neck: number) => {
+      const body = mesh(BOX, std(color), 0.4, 0.32, 0.06);
+      body.position.x = -0.12;
+      const n = mesh(BOX, std(0xc9a66b), neck, 0.05, 0.03);
+      n.position.x = 0.08 + neck / 2;
+      const head = mesh(BOX, dark, 0.12, 0.07, 0.03);
+      head.position.x = 0.14 + neck;
+      return group(body, n, head);
+    };
     const knifeBlade = mesh(BOX, metal, 0.14, 0.006, 0.025);
     knifeBlade.position.x = 0.07;
     const knifeHandle = mesh(BOX, dark, 0.07, 0.014, 0.02);
@@ -691,6 +742,10 @@ export class StepShow {
       zip: mesh(BOX, std(0xdfe6ee, { metalness: 0.5 }), 0.03, 0.05, 0.02),
       lamp: mesh(BOX, basic(0xffe6a8, 0.95), 0.16, 0.1, 0.02),
       dots,
+      guitar: instrument(0xb03a2e, 0.62),
+      bass: instrument(0x2a2a2a, 0.85),
+      sticks: [0, 1].map(() => mesh(ROD, wood, 0.008, 0.4, 0.008)),
+      gloves: [0, 1].map(() => mesh(BOX, red, 0.11, 0.12, 0.13)),
     };
     for (const p of Object.values(this.props)) for (const o of Array.isArray(p) ? p : [p]) this.root.add(o as THREE.Object3D);
     this.root.visible = false;
@@ -714,9 +769,34 @@ export class StepShow {
   }
 
   /** Puts the step's props where they go at time `t` (0…1) of the step. */
+  /** The guitar or bass across her (body at the strumming hand, neck to the other), the sticks and the gloves. */
+  private heldThings(v: StepAct, t: number): void {
+    const p = this.props!;
+    const m = v.vessel?.startsWith("mov:") ? v.vessel.slice(4) : "";
+    const inst = m === "tocar-guitarra" || m === "afinar" ? p.guitar : m === "tocar-bajo" ? p.bass : undefined;
+    if (inst) {
+      inst.visible = true;
+      inst.position.copy(this.hand).setY(this.hand.y - 0.05);
+      const dir = this.v.copy(this.otherHand).sub(this.hand);
+      if (dir.lengthSq() > 1e-4) inst.quaternion.setFromUnitVectors(this.w.set(1, 0, 0), dir.normalize());
+    }
+    if (m === "tocar-bateria")
+      p.sticks.forEach((st, i) => {
+        st.visible = true;
+        st.position.copy(i ? this.hand : this.otherHand);
+        st.rotation.set(1.2, 0, 0);
+      });
+    if (["golpear", "guardia", "pera", "sombra"].includes(m) || (m === "guantes" && t > 0.4))
+      p.gloves.forEach((g, i) => {
+        g.visible = true;
+        g.position.copy(i ? this.hand : this.otherHand);
+      });
+  }
+
   private animate(v: StepAct, t: number): void {
     const p = this.props!;
-    for (const o of [p.bowl, p.pot, p.plate, p.jar, p.tray, p.board, p.knife, p.spoon, p.shaker, ...p.food, ...p.shells, p.can, p.scissors, p.basket, p.ball, p.tablet, p.wrench, p.kit, p.bag, p.zip, p.lamp, p.pouch]) o.visible = false;
+    for (const o of [p.bowl, p.pot, p.plate, p.jar, p.tray, p.board, p.knife, p.spoon, p.shaker, ...p.food, ...p.shells, p.can, p.scissors, p.basket, p.ball, p.tablet, p.wrench, p.kit, p.bag, p.zip, p.lamp, p.pouch, p.guitar, p.bass, ...p.sticks, ...p.gloves]) o.visible = false;
+    this.heldThings(v, t);
     p.pouch.scale.set(0.13, 0.03, 0.17);
     p.fridgeInside.visible = p.fridgeDoor.visible = p.ovenGlow.visible = false;
     p.bowl.scale.set(0.085, 0.06, 0.085);
@@ -1242,6 +1322,71 @@ export function motion(id: string, clock: number): PoseAngles {
     }
     case "empujar-trineo":
       return P({ rootX: 0.75, rootY: 0.85, headX: -0.6, shoulderX: both(-1.5), elbow: both(-0.15), hip: [-0.9 - 0.5 * s, -0.9 + 0.5 * s], knee: [0.8 + 0.5 * Math.max(0, c), 0.8 + 0.5 * Math.max(0, -c)] });
+    // Music (Berón 2026-11-23: each instrument its own motion).
+    case "tocar-bateria":
+      return SEAT({ torso: 0.1, shoulderX: [-0.9 + 0.35 * Math.max(0, s), -0.9 + 0.35 * Math.max(0, -s)], shoulderZ: [0.35, -0.35], elbow: [-1.1 - 0.3 * Math.max(0, s), -1.1 - 0.3 * Math.max(0, -s)], knee: [1.55 + 0.15 * Math.max(0, c), 1.55] });
+    case "tocar-guitarra":
+      return P({ headX: 0.35, shoulderX: [-0.9, -0.55 + 0.25 * s], shoulderZ: [0.45, -0.15], elbow: [-1.6, -1.2 + 0.2 * s] });
+    case "tocar-bajo":
+      return P({ headX: 0.3, hip: [-0.05, 0.05], shoulderX: [-0.85, -0.5 + 0.15 * Math.sin(clock * 6)], shoulderZ: [0.5, -0.1], elbow: [-1.7, -1.3] });
+    case "tocar-teclado":
+      return SEAT({ headX: 0.3, torso: 0.1, shoulderX: [-0.75 + 0.05 * s, -0.75 - 0.05 * s], shoulderZ: [0.2 + 0.1 * k, -0.2 - 0.1 * (1 - k)], elbow: both(-0.9) });
+    case "cantar":
+      return P({ headX: -0.15, torso: -0.05, shoulderX: [-0.2, -1.3], elbow: [-0.3, -1.9], headY: 0.1 * Math.sin(clock * 1.5) });
+    case "respirar":
+      return P({ headX: -0.1, rootY: 0.95 + 0.01 * k, shoulderX: both(-0.35), shoulderZ: [0.25, -0.25], elbow: both(-1.5), torso: -0.04 * k });
+    case "afinar":
+      return P({ headX: 0.4, headY: -0.3, shoulderX: [-1.3, -0.6], shoulderZ: [0.7, -0.15], elbow: [-0.6, -1.3] });
+    case "mezclar":
+      return P({ torso: 0.35, headX: 0.45, shoulderX: [-0.9 + 0.1 * s, -0.9 - 0.1 * s], shoulderZ: [0.2 + 0.1 * k, -0.2], elbow: both(-0.7) });
+    // Fighting arts.
+    case "guantes":
+      return P({ headX: 0.45, shoulderX: both(-0.9), shoulderZ: [0.25, -0.25], elbow: [-1.6, -1.6 + 0.4 * k] });
+    case "comba":
+      return P({ rootY: 0.95 + 0.08 * Math.abs(s), shoulderX: both(-0.3), shoulderZ: [0.5 + 0.1 * c, -0.5 - 0.1 * c], elbow: both(-0.9), knee: both(0.15 + 0.15 * Math.abs(c)) });
+    case "pera": {
+      const a = Math.max(0, s), b = Math.max(0, -s);
+      return P({ headX: -0.15, shoulderX: [-1.9 + 0.3 * a, -1.9 + 0.3 * b], shoulderZ: [0.35, -0.35], elbow: [-1.7 + 0.5 * a, -1.7 + 0.5 * b] });
+    }
+    case "makiwara":
+      return P({ rootY: 0.82, hip: [-0.6, 0.45], knee: [0.8, 0.1], torso: 0.05, shoulderX: [L2(-0.5, -1.55, 1 - k), L2(-1.55, -0.5, 1 - k)], shoulderZ: [0.15, -0.15], elbow: [L2(-2.0, 0, 1 - k), L2(0, -2.0, 1 - k)] });
+    case "rei":
+      return P({ torso: 0.5 * k, headX: 0.3 * k, shoulderX: both(0), elbow: both(0) });
+    case "ukemi-atras":
+      return P({ rootY: L2(0.95, 0.2, k), rootX: -1.3 * k, headX: 0.6, hip: both(L2(-0.2, -1.5, k)), knee: both(L2(0.3, 0.9, k)), shoulderX: both(L2(-1.5, -0.3, k)), shoulderZ: [L2(0.2, 0.9, k), -L2(0.2, 0.9, k)] });
+    case "ukemi-lado":
+      return P({ rootY: L2(0.95, 0.2, k), rootX: -1.3 * k, headX: 0.6, headY: 0.4, hip: [L2(-0.2, -1.4, k), L2(-0.2, -0.5, k)], knee: [0.8, 0.3], shoulderX: [L2(-1.2, -0.2, k), -0.6], shoulderZ: [L2(0.2, 1.3, k), -0.3] });
+    case "uchikomi":
+      return P({ rootY: L2(0.92, 0.78, k), torso: L2(0.1, 0.5, k), headY: 0.4 * k, hip: [L2(-0.3, -0.7, k), L2(0, -0.3, k)], knee: both(L2(0.3, 0.8, k)), shoulderX: [-1.3, L2(-1.3, -0.6, k)], shoulderZ: [0.4, -0.6], elbow: [-1.2, -0.8] });
+    case "sombra": {
+      const a = Math.max(0, s), b = Math.max(0, -s);
+      return P({ rootY: 0.9 + 0.02 * Math.abs(c), torso: 0.15, headX: 0.15, headY: 0.2 * c, hip: [-0.3 + 0.1 * c, 0.1 - 0.1 * c], knee: both(0.35), shoulderX: [L2(-1.3, -1.6, a), L2(-1.3, -1.6, b)], shoulderZ: [0.35, -0.35], elbow: [L2(-2.3, -0.05, a), L2(-2.3, -0.05, b)] });
+    }
+    case "patada":
+      return P({ rootY: 0.93, torso: L2(0.1, -0.35, k), headX: 0.2, hip: [-0.2, L2(0, -1.6, k)], knee: [0.2, L2(0.6, 0.1, k)], shoulderX: both(-1.2), shoulderZ: [0.4, -0.6], elbow: both(-2.1) });
+    case "derribo":
+      return P({ rootY: L2(0.75, 0.45, k), torso: 0.55, headX: -0.5, hip: [L2(-1.0, -1.5, k), L2(-0.3, 0.4, k)], knee: [L2(1.4, 1.6, k), L2(0.6, 1.9, k)], shoulderX: both(-1.2), shoulderZ: [0.4, -0.4], elbow: both(-0.6) });
+    case "sprawl":
+      return P({ rootY: L2(0.8, 0.3, k), rootX: 1.2 * k, headX: -0.4, hip: both(L2(-0.8, 0.2, k)), knee: both(L2(1.0, 0.1, k)), shoulderX: both(-1.3), shoulderZ: [0.5, -0.5], elbow: both(-0.4) });
+    case "gamba":
+      return P({ rootY: 0.15, rootX: -Math.PI / 2, headX: 0.4, hip: [L2(-1.2, -0.4, k), -1.2], knee: [L2(1.4, 0.3, k), 1.4], shoulderX: both(-1.0), shoulderZ: [0.3, -0.3], elbow: both(-1.2) });
+    case "levantarse":
+      return P({ rootY: L2(0.3, 0.75, k), torso: L2(0.6, 0.3, k), headX: -0.3, hip: [L2(-1.5, -0.8, k), L2(-0.2, 0.3, k)], knee: [L2(1.5, 1.0, k), L2(1.8, 0.6, k)], shoulderX: [L2(0.5, -0.6, k), -1.2], shoulderZ: [0.5, -0.5], elbow: [0, -1.5] });
+    // Mats, bands and bars.
+    case "crunch":
+      return P({ rootY: 0.12, rootX: -Math.PI / 2, torso: 0.5 * k, headX: 0.3, hip: both(-1.0), knee: both(1.6), shoulderX: both(-0.4), shoulderZ: [0.9, -0.9], elbow: both(-2.3) });
+    case "plancha-lateral":
+      return P({ rootY: 0.3, rootX: 1.4, headX: -0.1, headY: 0.8, shoulderX: [-1.5, -0.4], shoulderZ: [0.1, -1.5], elbow: [-1.6, 0] });
+    case "estirar-nino":
+      return P({ rootY: 0.3, rootX: 1.0, torso: 0.9, headX: 0.3, hip: both(-1.9), knee: both(2.5), shoulderX: both(-2.8), elbow: both(0) });
+    case "banda":
+      return P({ shoulderX: both(-1.5), shoulderZ: [L2(0.1, 1.2, k), -L2(0.1, 1.2, k)], elbow: both(-0.05) });
+    case "l-sit":
+      return P({ rootY: 0.55, hip: both(-1.5), knee: both(L2(1.4, 0.05, k)), shoulderX: both(0.15), shoulderZ: [0.2, -0.2], elbow: both(0) });
+    case "llevar-barra":
+      return P({ shoulderX: both(-0.7), shoulderZ: [0.4, -0.4], elbow: both(-1.0), hip: [-0.3 * s, 0.3 * s], knee: [0.3 * Math.max(0, c), 0.3 * Math.max(0, -c)] });
+    case "pedalear-de-pie":
+      return P({ rootY: 1.25, torso: 0.6, headX: -0.4, shoulderX: both(-1.1), elbow: both(-0.4), hip: [-0.9 - 0.5 * s, -0.9 + 0.5 * s], knee: [0.8 + 0.6 * c, 0.8 - 0.6 * c] });
     default:
       return P({ shoulderX: [0.6 * s, -0.6 * s], elbow: both(-1.4) });
   }

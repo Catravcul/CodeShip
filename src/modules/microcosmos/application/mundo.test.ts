@@ -3,6 +3,8 @@ import { blocked, groundFloors } from "@modules/aerial-sanctuary/domain/walk";
 import { academiaWorld, estaEn, K, ruta, zonaAt } from "./mundo";
 import { AGUAS, ALTARES, CARRO, COSAS_FUERA, EDIFICIOS, FAMILIAS, HALF, HISTORIA, INSECT_SCALE, LUGARES, LUGARES_ABIERTOS, PERIBOLO, PERIBOLO_MUROS, PERSONAS, trees } from "../data/academia";
 import { RETOS_ACADEMIA } from "../data/retos-academia";
+import { DIALOGOS } from "../data/dialogos-academia";
+import { procedureReto } from "@modules/sanctuary-one/application/challenges";
 import { JORNADA } from "../domain/vida";
 
 const all = <T>(xs: readonly T[]) => xs;
@@ -79,5 +81,16 @@ describe("Plato's Academy, the microcosm (data/academia.ts, application/mundo.ts
     }
     for (const day of Object.values(JORNADA)) for (const t of day) expect(ids.has(t.at), t.at).toBe(true);
     expect(FAMILIAS.length).toBeGreaterThanOrEqual(10);
+  });
+  it("each person of the story has a dialogue, a challenge with its source (Berón 2026-11-23)", () => {
+    for (const p of PERSONAS) {
+      const q = DIALOGOS[p.id];
+      expect(q, p.id).toBeDefined();
+      expect(q!.steps.length).toBeGreaterThanOrEqual(4);
+      expect(q!.wrong.length).toBeGreaterThanOrEqual(2);
+      expect(q!.source.length).toBeGreaterThan(10);
+      expect(procedureReto(q!).chore.exercises.length).toBeGreaterThanOrEqual(4);
+    }
+    for (const q of Object.values(RETOS_ACADEMIA)) expect(procedureReto(q).chore.exercises.length).toBeGreaterThanOrEqual(4);
   });
 });

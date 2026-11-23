@@ -5,6 +5,10 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-23
 
+- **Diálogos en la Academia**: «Hablar con…» cada persona de la historia, como reto de código con fuentes
+  ([microcosmos.md](docs/design/microcosmos.md)).
+- **Santuario 1, retos propios (2.ª tanda)**: 38 objetos del hospital, el hospital veterinario y la guardia con su reto
+  propio y su animación por paso (`data/retos-objetos-2.ts`); los objetos que comparten reto bajan de 255 a 216.
 - **Microcosmos: la Academia de Platón** (Atenas, verano de 360 a. C.), desde la máquina de la sala de asambleas: palestra,
   Museo, exedra, olivar sagrado, acequia, el Dromos con sus tumbas y su carro, la casa de Platón; Platón, sus discípulos y
   doce familias que viven su ciclo de vida; una historia de 8 pasos con 6 retos. Se carga al entrar y se libera al salir.

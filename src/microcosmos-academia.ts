@@ -4,11 +4,12 @@ import { placeAt, wallWithGaps, type Body } from "@modules/aerial-sanctuary/doma
 import { FreeWalk } from "@modules/aerial-sanctuary/application/free-walk";
 import { AGUAS, ALTARES, ARBOLES, CARRO, COSAS_FUERA, EDIFICIOS, FAMILIAS, FECHA, FONDO, HALF, HISTORIA, LUGARES_ABIERTOS, PERIBOLO_MUROS, PERSONAS, PUENTES, trees, type Arbol, type Cosa, type Edificio, type Muro } from "@modules/microcosmos/data/academia";
 import { RETOS_ACADEMIA } from "@modules/microcosmos/data/retos-academia";
+import { DIALOGOS } from "@modules/microcosmos/data/dialogos-academia";
 import { academiaWorld, estaEn, K, lugar, ruta, zonaAt, zonaLabel } from "@modules/microcosmos/application/mundo";
 import { acabada, avanzar, linea, START, type EstadoHistoria } from "@modules/microcosmos/domain/historia";
 import { ageAt, lineAt, papelPorEdad, spanOf, tallaPorEdad, tramoAt, type Papel, type Quehacer, type Vida } from "@modules/microcosmos/domain/vida";
 import { procedureReto, type Reto } from "@modules/sanctuary-one/application/challenges";
-import type { Reward } from "@modules/sanctuary-one/data/retos";
+import type { Procedure, Reward } from "@modules/sanctuary-one/data/retos";
 import { S1_DAY_REAL_S } from "@modules/sanctuary-one/domain/motion";
 import { ChoreRun } from "@modules/chores/domain/chore";
 import type { Answer } from "@modules/mind-duel/domain/exercise";
@@ -243,6 +244,8 @@ export class AcademiaMicro {
   private readonly toastEl: HTMLElement;
   private toastFor = 0;
   private challenge?: Reto;
+  /** Who she is talking with (they keep still and gesture). */
+  private talking?: Gente;
   private offered = "";
   private readonly pad: ReturnType<typeof GamePad.use>;
   private disposed = false;
@@ -486,6 +489,12 @@ export class AcademiaMicro {
         p.what = t.what;
         p.block = t.from;
       }
+      if (p === this.talking) {
+        p.f.poseAngles(motion("pedir", clock + i));
+        p.f.update(dt);
+        this.placeSign(p);
+        return;
+      }
       const hidden = p.at === "ciudad" && !p.way;
       p.g.visible = !hidden;
       p.sign.visible = !hidden && near(p);
@@ -634,16 +643,30 @@ export class AcademiaMicro {
     // The orange button: the step's challenge where it is, or the cart when it is at hand.
     const cur = HISTORIA[this.story.step];
     const cartNear = !this.riding && Math.hypot(this.cart.position.x - this.body.x, this.cart.position.z - this.body.z) < 3.2 * K;
+    // …or a talk with whoever of the story's people is at hand (their dialogue, a challenge too).
+    const talk = cartNear ? undefined : this.people.find((p) => DIALOGOS[p.id] && p.g.visible && Math.hypot(p.g.position.x - this.body.x, p.g.position.z - this.body.z) < 2.2 * K);
     let key = "";
     if (cur?.reto && this.story.there) key = `reto:${cur.reto}`;
     else if (cartNear) key = "carro";
+    else if (talk) key = `hablar:${talk.id}`;
     if (key === this.offered) return;
     this.offered = key;
     if (key.startsWith("reto:")) {
       const q = RETOS_ACADEMIA[cur!.reto!]!;
       RootMenu.interact(retoButton(q.title, () => this.openReto(cur!.reto!)));
     } else if (key === "carro") RootMenu.interact({ icon: ICON.machine, label: "Subir al carro", onClick: () => this.ride() });
+    else if (talk) RootMenu.interact(retoButton(`Hablar con ${talk.name}`, () => this.talk(talk)));
     else RootMenu.interact(undefined);
+  }
+
+  /** A talk: they turn to her and speak while she orders what is said. */
+  private talk(p: Gente): void {
+    this.talking = p;
+    p.g.rotation.y = Math.atan2(this.body.x - p.g.position.x, this.body.z - p.g.position.z);
+    this.open(DIALOGOS[p.id]!, (ok, r) => {
+      this.talking = undefined;
+      if (ok) this.say(`${r.chore.title}: ${this.host.reward(r.reward)}`, 5);
+    });
   }
 
   private stepDone(): void {
@@ -660,7 +683,16 @@ export class AcademiaMicro {
   }
 
   private openReto(id: string): void {
-    const r = procedureReto(RETOS_ACADEMIA[id]!);
+    this.open(RETOS_ACADEMIA[id]!, (ok, r) => {
+      const before = this.story.step;
+      this.story = avanzar(HISTORIA, this.story, { kind: "reto", id, ok });
+      if (ok) this.say(`${r.chore.title}: hecho. ${this.host.reward(r.reward)}`, 5);
+      if (this.story.step !== before) this.stepDone();
+    });
+  }
+
+  private open(proc: Procedure, done: (ok: boolean, r: Reto) => void): void {
+    const r = procedureReto(proc);
     const run = new ChoreRun(r.chore);
     this.challenge = r;
     this.offered = "";
@@ -670,11 +702,7 @@ export class AcademiaMicro {
     duel.onClose = () => {
       duel.onClose = undefined;
       this.challenge = undefined;
-      const ok = run.status === "done";
-      const before = this.story.step;
-      this.story = avanzar(HISTORIA, this.story, { kind: "reto", id, ok });
-      if (ok) this.say(`${r.chore.title}: hecho. ${this.host.reward(r.reward)}`, 5);
-      if (this.story.step !== before) this.stepDone();
+      done(run.status === "done", r);
     };
     duel.show(
       {

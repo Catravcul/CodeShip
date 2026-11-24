@@ -7,6 +7,7 @@ import { BASE, CAP_NAME, LOBES, MAP_HALF, NESTS, SEA, onMovedCap, SPECIES_MODEL,
 import { FLOOR_PLANS, type FloorPlan } from "./floors";
 import { FLOOR_SIZE } from "./floors/kit";
 import { GLOBE, globeCell, globeTopAt, layerBoxes } from "./globo";
+import { EGG } from "../domain/pulpo";
 import { RING } from "./floors/kit";
 import { bedTip, orchardTip } from "./floors/puntas";
 import { DRIFT, landscape } from "./paisaje";
@@ -671,10 +672,11 @@ function cutTrunkHoles(b: Built): void {
 /** The whales' globe's area (data/globo.ts). */
 export const AQUARIUM_AREA = "mar:globo";
 
-/** The embryo in the globe's belly, an octopus in its egg (GLOBE.embryo, a third of it across): the box one bumps into, swimming. */
+/** The octopus egg in the globe's belly (domain/pulpo.ts; its hatchling a third of the globe across, GLOBE.embryo): the box one bumps into, swimming. */
 export function embryoBox(): Solid {
-  const h = GLOBE.embryo * 0.32;
-  return { x0: GLOBE.x - h, x1: GLOBE.x + h, z0: GLOBE.z - h * 0.8, z1: GLOBE.z + h * 0.8, y0: GLOBE.bellyY - h, y1: GLOBE.bellyY + h };
+  const w = (GLOBE.embryo * EGG.width) / 2;
+  const h = (GLOBE.embryo * EGG.length) / 2;
+  return { x0: GLOBE.x - w, x1: GLOBE.x + w, z0: GLOBE.z - w, z1: GLOBE.z + w, y0: GLOBE.bellyY - h, y1: GLOBE.bellyY + h };
 }
 
 /**

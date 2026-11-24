@@ -183,8 +183,11 @@ export class FreeWalk {
         if (to?.motion === "gravedad" && b.y - to.y <= DOOR_DROP_M) this.fall = { x, z, y: b.y, vy: 0, to };
       }
     }
-    // Off the edge of a floor with no railing (Berón 2026-11-19: «es fácil tirarse abajo»): she falls.
-    if (still(body) && b.motion === "gravedad") {
+    // Off the edge of a floor with no railing (Berón 2026-11-19: «es fácil tirarse abajo»): she falls. Also when the
+    // stick pushes her slantwise against the edge and she slides along it (Berón 2026-11-24: «sigo sin poderme tirar
+    // de los pisos»: with the touch stick she never pushed straight out, so she never stood still at the edge).
+    const held = Math.hypot(body.x - b.x, body.z - b.z) < 0.5 * Math.hypot(dx, dz);
+    if (held && b.motion === "gravedad") {
       const len = Math.hypot(dx, dz) || 1;
       const x = b.x + (dx / len) * 0.5;
       const z = b.z + (dz / len) * 0.5;

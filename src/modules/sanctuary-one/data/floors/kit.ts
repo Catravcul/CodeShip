@@ -271,37 +271,3 @@ export function gridIn(things: readonly { readonly model: string; readonly name?
     return { model: t.model, x: r.x0 + (w / inRow) * (col + 0.5), z: r.z0 + (d / rows) * (row + 0.5), ...(t.rot ? { rot: t.rot } : {}), ...(t.name ? { name: t.name } : {}) };
   });
 }
-
-
-/** The simulation machine's model id, and the clear space kept in front of its door (m). */
-export const SIM_MODEL = "simulador";
-const SIM_FRONT_M = 2.2;
-
-/**
- * A simulation machine on every floor (Berón 2026-11-24: «debe haber una máquina de simulación en cada piso»): a floor
- * without one gets it where it is furthest from every thing, with room in front of its door (facing −z), clear of the
- * edges, the door's aisle and the carpet's landing. Floors that place theirs by hand keep it.
- */
-export function withSimulator(p: FloorPlan, sizeOf: (it: Placed) => { readonly hx: number; readonly hz: number }): FloorPlan {
-  if (p.items.some((it) => it.model === SIM_MODEL)) return p;
-  const hx = p.size.x / 2, hz = p.size.z / 2;
-  const keep = carpetKeepOut(p.size);
-  const solids = p.items.filter((it) => countsAsThing(p, it, sizeOf));
-  const probe = (x: number, z: number): Placed => ({ model: SIM_MODEL, x, z, rot: 0, name: "Máquina de simulación" });
-  const s = sizeOf(probe(0, 0));
-  let best = { x: 0, z: 0, gap: -Infinity };
-  for (let x = -hx + 2.5 + s.hx; x <= hx - 2.5 - s.hx + 1e-9; x += 0.5)
-    for (let z = -hz + 2.5 + s.hz + SIM_FRONT_M; z <= hz - 2.5 - s.hz + 1e-9; z += 0.5) {
-      // Its box with the space before its door.
-      const x0 = x - s.hx, x1 = x + s.hx, z0 = z - s.hz - SIM_FRONT_M, z1 = z + s.hz;
-      if (Math.abs(x) < 2.5 + s.hx && z0 < -hz + 6) continue;
-      if (keep.some((k) => x1 > k.x - k.w / 2 - 1 && x0 < k.x + k.w / 2 + 1 && z1 > k.z - k.d / 2 - 1 && z0 < k.z + k.d / 2 + 1)) continue;
-      let gap = Infinity;
-      for (const it of solids) {
-        const h = sizeOf(it);
-        gap = Math.min(gap, Math.hypot(Math.max(0, x0 - (it.x + h.hx), it.x - h.hx - x1), Math.max(0, z0 - (it.z + h.hz), it.z - h.hz - z1)));
-      }
-      if (gap > best.gap) best = { x, z, gap };
-    }
-  return { ...p, items: [...p.items, probe(best.x, best.z)] };
-}

@@ -4,8 +4,8 @@
  * and the scene are the place times `K` and the figures keep their usual size: the same proportions, and her walking,
  * jumping and climbing work unchanged.
  */
-import { wallWithGaps, type Floor, type Solid, type WalkWorld, type Water } from "@modules/aerial-sanctuary/domain/walk";
-import { AGUAS, ALTARES, COSAS_FUERA, EDIFICIOS, ENTRE, HALF, HUBS, INSECT_SCALE, LUGARES, PERIBOLO_MUROS, PUENTES, LUGARES_ABIERTOS, trees, ARBOLES, type Cosa, type Lugar, type Muro } from "../data/academia";
+import { STEP_M, wallWithGaps, type Floor, type Solid, type WalkWorld, type Water } from "@modules/aerial-sanctuary/domain/walk";
+import { AGUAS, ALTARES, COSAS_FUERA, EDIFICIOS, ENTRE, HALF, HUBS, INSECT_SCALE, LUGARES, PERIBOLO_MUROS, PUENTES, LUGARES_ABIERTOS, trees, ARBOLES, type Cosa, type Edificio, type Lugar, type Muro } from "../data/academia";
 
 /** World units per real metre of the place. */
 export const K = 1 / INSECT_SCALE;
@@ -32,6 +32,13 @@ export function academiaWorld(withTrees = true): WalkWorld {
   const waters: Water[] = [];
   for (const b of EDIFICIOS) {
     floors.push({ id: b.id, area: b.id, y: b.floor * K, ...scaleRect(b) });
+    // A floor higher than a step stands on its plinth (Berón 2026-11-24: «el museo… lo atravesaba caminando»), with
+    // steps up to it on its stairs' sides.
+    if (b.floor * K > STEP_M) {
+      const e = 0.05;
+      solids.push({ ...scaleRect({ x0: b.x0 + e, x1: b.x1 - e, z0: b.z0 + e, z1: b.z1 - e }), y0: 0, y1: b.floor * K });
+      for (const st of b.stairs ?? []) for (const r of stairRects(b, st)) floors.push({ id: `${b.id}-grada-${r.n}`, area: AREA, y: r.y * K, ...scaleRect(r) });
+    }
     for (const m of b.walls) solids.push(...wallSolids(m, b.floor));
     for (const c of b.columns ?? []) solids.push({ x0: (c.x - c.d / 2) * K, x1: (c.x + c.d / 2) * K, z0: (c.z - c.d / 2) * K, z1: (c.z + c.d / 2) * K, y0: b.floor * K, y1: (b.floor + c.h) * K });
     for (const c of b.things) if (c.solid) solids.push(thingSolid(c, b.floor));
@@ -59,6 +66,23 @@ export function academiaWorld(withTrees = true): WalkWorld {
       solids.push({ x0: (t.x - r) * K, x1: (t.x + r) * K, z0: (t.z - r) * K, z1: (t.z + r) * K, y0: 0, y1: ARBOLES[t.kind].h * t.s * K });
     }
   return { floors, waters, solids };
+}
+
+/** The steps up a building's side (real metres): each 0,35 m deep and as high as its share of the floor's height. */
+export function stairRects(b: Edificio, st: NonNullable<Edificio["stairs"]>[number]): { n: number; y: number; x0: number; x1: number; z0: number; z1: number }[] {
+  const n = Math.max(1, Math.ceil(b.floor / 0.2)) - 1;
+  const out: { n: number; y: number; x0: number; x1: number; z0: number; z1: number }[] = [];
+  for (let i = 1; i <= n; i++) {
+    const y = (b.floor * i) / (n + 1);
+    // Step i is (n + 1 − i) treads out from the edge.
+    const o0 = (n - i) * 0.35;
+    const o1 = (n + 1 - i) * 0.35;
+    if (st.side === "z1") out.push({ n: i, y, x0: st.from, x1: st.to, z0: b.z1 + o0, z1: b.z1 + o1 });
+    else if (st.side === "z0") out.push({ n: i, y, x0: st.from, x1: st.to, z0: b.z0 - o1, z1: b.z0 - o0 });
+    else if (st.side === "x1") out.push({ n: i, y, z0: st.from, z1: st.to, x0: b.x1 + o0, x1: b.x1 + o1 });
+    else out.push({ n: i, y, z0: st.from, z1: st.to, x0: b.x0 - o1, x1: b.x0 - o0 });
+  }
+  return out;
 }
 
 const inRect = (r: { x0: number; x1: number; z0: number; z1: number }, x: number, z: number) => x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1;

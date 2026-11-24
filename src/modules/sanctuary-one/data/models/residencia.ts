@@ -3,7 +3,7 @@ import { C, COL, m, pz, rep, type ModelDef, type Part } from "./kit";
 
 /**
  * Models of the Residencia (Cold Sanctuary's ResidentialBuilder.cs): the open room «al estilo de los templos griegos»
- * (9 × 7 m, floor and stylobate, the bunk bed for 8 with its slide, bedside table, wardrobe and the carpet that is also
+ * (9 × 7 m, floor and stylobate, the bunk bed for 8, bedside table, wardrobe and the carpet that is also
  * the yoga mat), its fruit terrace (7 × 7 m with a potted fruit tree), and the plaza's pillow ring (the colossal bed)
  * and reading benches.
  */
@@ -14,7 +14,7 @@ const MARBLE = 0xd1ccc2;
 const { white, soil } = COL;
 
 /**
- * Bunk bed of two 4-place mattresses 3,6 × 2,1 m (BedWidth, BedLength), head at +z, with its slide. The upper bed at
+ * Bunk bed of two 4-place mattresses 3,6 × 2,1 m (BedWidth, BedLength), head at +z. The upper bed at
  * 3,2 m, twice Cold Sanctuary's 1,6 (Berón 2026-11-22: «las literas el doble de alto y la escalera vertical, que se
  * pueda subir con trepar»), its vertical ladder at the foot on +x (rungs every 30 cm, EN 747) and a rail all round.
  */
@@ -28,24 +28,14 @@ function bunk(blanket: number, blanket2: number): Part[] {
     C(0, (up + 0.5) / 2, L / 2 + 0.06, W + 0.1, up + 0.5, 0.1, WOOD_DARK),
     ...rep(4, (k) => [C((k - 1.5) * 0.9, 0.55, L / 2 - 0.3, 0.7, 0.1, 0.35, white), C((k - 1.5) * 0.9, up + 0.05, L / 2 - 0.3, 0.7, 0.1, 0.35, white)]),
     ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => C(sx * (W / 2 + 0.05), (up + 0.5) / 2, sz * (L / 2 + 0.1), 0.1, up + 0.5, 0.1, WOOD_DARK))),
-    // The upper bed's rail (30 cm over the mattress), open at the ladder and the slide.
-    C(-(W / 2 + 0.05), up + 0.3, 0, 0.05, 0.05, L, WOOD_DARK), C(W / 2 + 0.05, up + 0.3, 0, 0.05, 0.05, L, WOOD_DARK), C(0.2, up + 0.3, foot, 2.2, 0.05, 0.05, WOOD_DARK),
+    // The upper bed's rail (30 cm over the mattress), open at the ladder.
+    C(-(W / 2 + 0.05), up + 0.3, 0, 0.05, 0.05, L, WOOD_DARK), C(W / 2 + 0.05, up + 0.3, 0, 0.05, 0.05, L, WOOD_DARK), C(-0.35, up + 0.3, foot, W - 0.7, 0.05, 0.05, WOOD_DARK),
     // The ladder: two rails and the rungs, straight up to the upper bed.
     ...[-0.22, 0.22].map((dx) => C(ladderX + dx, (up + 0.4) / 2, foot - 0.05, 0.05, up + 0.4, 0.05, WOOD_DARK)),
     ...rep(Math.floor(up / 0.3), (i) => [C(ladderX, 0.3 + i * 0.3, foot - 0.05, 0.44, 0.035, 0.035, WOOD)]),
   ];
-  // The slide (Tobogán): from the foot of the upper bed, −x side, 4,2 m down towards −z, and its braking strip.
-  const sx = -W / 2 + 0.4, run = 4.2, drop = up - 0.05, n = 8;
-  for (let i = 0; i < n; i++) {
-    const t = (i + 0.5) / n;
-    // Each length of chute as deep as its drop, so the chute runs on without steps in the air.
-    const sy = drop / n + 0.06;
-    parts.push(C(sx, 0.1 + drop * (1 - t), foot - run * t, 0.6, sy, run / n + 0.04, 0xf28c33));
-    parts.push(...[-1, 1].map((e) => C(sx + e * 0.32, 0.22 + drop * (1 - t), foot - run * t, 0.04, sy + 0.14, run / n + 0.04, 0xd9762a)));
-  }
-  parts.push(C(sx, 0.08, foot - run - 0.3, 0.6, 0.04, 0.6, 0xf28c33));
-  // Its two legs, under the middle and the lower third.
-  parts.push(...[0.35, 0.7].map((t) => C(sx, (drop * (1 - t)) / 2 + 0.05, foot - run * t, 0.08, drop * (1 - t) + 0.1, 0.08, WOOD_DARK)));
+  // No slide (Berón 2026-11-24: «en las literas veo unas gradas que no puedo usar, quítalas»): Cold Sanctuary's
+  // tobogán, drawn in boxes, read as steps that could not be walked.
   return parts;
 }
 
@@ -113,7 +103,7 @@ const RING = pillowRing(RESIDENTS);
 
 export const RESIDENCIA_MODELS: readonly ModelDef[] = [
   m("plaza-suelo", "mueble", "suelos", "Suelo de la plaza", 39.8, 0.1, 37.8, 0xb8a88f, "caja", "real", RB("FurnishPlaza Suelo_plaza")),
-  ...[0, 1].map((i) => ({ ...pz(`res-habitacion-${i + 1}`, "mueble", "residencia-habitaciones", "Habitación abierta (cama-litera de 8 con escalera y tobogán, mesilla, armario y alfombra-esterilla)", WOOD, room(i * 3), "real", RB("Cabin (9 × 7 m, BedWidth 3,6, BedUpperTop 1,6)")), decks: [ROOM_DECK] })),
+  ...[0, 1].map((i) => ({ ...pz(`res-habitacion-${i + 1}`, "mueble", "residencia-habitaciones", "Habitación abierta (cama-litera de 8 con escalera, mesilla, armario y alfombra-esterilla)", WOOD, room(i * 3), "real", RB("Cabin (9 × 7 m, BedWidth 3,6, BedUpperTop 1,6)")), decks: [ROOM_DECK] })),
   ...FORMS.map((f) => pz(`res-terraza-${f}`, "naturaleza", "residencia-terrazas", "Terraza frutal con su frutal enano en maceta", WOOD, terrace(f), "real", RB("Cabin Terraza_frutal y PottedFruit (FruitCare.All, una especie distinta en cada casa)"))),
   pz("res-ring", "mueble", "residencia-ring", `Ring de almohadas: plataforma y cabecero (${RING.x.toFixed(1)} × ${RING.z.toFixed(1)} m)`, WOOD, RING.hard, "ficcion", RB("BuildPillowRing (docs/guerra-de-almohadas.md)")),
   { ...pz("res-ring-colchon", "mueble", "residencia-ring", "Cama colosal del ring, borde blando y almohadas", 0xf7f2e8, RING.soft, "ficcion", RB("BuildPillowRing Colchon_colosal, Borde_blando, Almohadas")), walkThrough: true },

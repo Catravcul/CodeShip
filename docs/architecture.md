@@ -27,7 +27,7 @@ al elegir, carga dinámica de un juego:
 | --- | --- | --- |
 | 6 Espacio | `src/main.ts` | Nodriza (Starship), estación (ISS), módulo (Apollo LM), sonda, asteroides y duelos |
 | 3 Santuario Aéreo | `src/aerial-sanctuary.ts` | Islas de Cold Sanctuary + isla de entrenamiento real; iniciación de Doménica; la Isla de las alturas con su bioma (`src/s3-biome.ts`) |
-| (dentro del 1) Microcosmos | `src/microcosmos-academia.ts` | La Academia de Platón, cargada al entrar por la máquina de simulación ([design/microcosmos.md](design/microcosmos.md)) |
+| (dentro del 1) Microcosmos | `src/microcosmos-academia.ts` (su arte: `adapters/three/academia-art.ts`) | La Academia de Platón, cargada al entrar por la máquina de simulación ([design/microcosmos.md](design/microcosmos.md)) |
 | 1 Santuario Terrestre | `src/sanctuary-one.ts` | El santuario de hielo de Cold Sanctuary ([design/santuario1.md](design/santuario1.md)) |
 
 Los archivos `src/<proceso>.ts` (bridge, station-*, lander-*, probe-*, eva-mode, wrath-mode…) son pegamento de cada
@@ -62,6 +62,7 @@ docs/design/            un documento por sistema; docs/research/ investigación 
 | `habitat`, `garden`, `pets`, `poultry`, `cultured-meat`, `family`, `sanctuary`, `adoption` | Vida a bordo antigua (en pausa tras el reinicio, `REAL_ONLY`) y catálogo de especies |
 | `aerial-sanctuary` | Santuario 3: islas, edificios-árbol con ascensor, `walk.ts` (andar/nadar en cajas), vuelos, puestos; el bioma: `bioma.ts` (cadena alimenticia genérica, el bioma como `BiomeDef`), `mountain.ts` (montaña como función de altura), `bioma-crowd.ts` |
 | `sanctuary-one` | Santuario 1: catálogo de modelos por categoría (`data/models/`), pisos amueblados (`data/floors/`; edificios de hoy `TOWERS` y guardados `TOWERS_AMPLIOS` en `data/site.ts`), reglas de cambios a gran escala (`data/overrides.ts`), paisaje, jornada y rutas (alfombras), rejilla del paseo, población; retos (`data/retos.ts`, `application/challenges.ts`), misiones (`data/misiones.ts`, `domain/workday-missions.ts`), trepar/saltar (`domain/climb.ts`), animales vivos (`application/wildlife.ts` sobre `fauna`; datos: `data/ciclos-de-vida.ts`, `data/etograma.ts`, `data/rasgos.ts`) |
+| `qa-vivo` | Lista de lo creado y su revisión en vivo con fecha (`data/revisado.ts`, genera [qa/revision-en-vivo.md](qa/revision-en-vivo.md)) |
 | `microcosmos` | Microcosmos de la máquina de simulación: el lugar con fuentes (`data/academia.ts`), mundo andable a escala de insecto y rutas (`application/mundo.ts`), días y ciclo de vida (`domain/vida.ts`), historia por pasos (`domain/historia.ts`) |
 | `fauna` | Compartido entre santuarios ([design/fauna.md](design/fauna.md)): ciclos de vida, etograma, deseos, depredación por stats, deambular, cuerpos articulados (`domain/`) plantas como comida contable (`domain/forage.ts`: luz, calor, crecimiento logístico, pastoreo) y la cadena alimenticia viva (`application/ecosystem.ts`, con el gancho `Forage` para quien cuenta la comida). Sin datos de ningún santuario: cada uno pasa sus especies |
 | `settings`, `saves`, `story`, `body` | Ajustes (en la esterilla), partidas, historia, posturas |

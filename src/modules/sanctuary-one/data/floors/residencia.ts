@@ -22,7 +22,10 @@ export const ROOMS_PER_FLOOR = 7;
 const AULA = { x: -10.5, z: -9.5, spread: 1.5 } as const;
 function plaza(): FloorPlan {
   const items: Placed[] = [{ model: "plaza-suelo", x: 0, z: 0 }, { model: "res-ring", x: 9.6, z: 5.5 }, { model: "res-ring-colchon", x: 9.6, z: 5.5 }, { model: "res-alfombras", x: 9, z: -11 }];
-  [[-14, 7], [-5, 7], [-14, 13], [-5, 13]].forEach(([x, z], r) => items.push({ model: "res-banco-lectura", x: x!, z: z!, name: `Banco de lectura ${r + 1}` }));
+  // The reading benches behind the pillow ring; where they were, the one simulation machine, a great tank many go into
+  // at once, its door towards the classroom (Berón 2026-11-24: «una sola máquina… ¿en la plaza?… una gran pecera»).
+  [[3, 14], [12, 14], [3, 16.8], [12, 16.8]].forEach(([x, z], r) => items.push({ model: "res-banco-lectura", x: x!, z: z!, name: `Banco de lectura ${r + 1}` }));
+  items.push({ model: "simulador", x: -9.5, z: 11, name: "Máquina de simulación (gran pecera)" });
   const aula = MUSICA_AULAS_FLOORS.find((f) => f.id === "aula-historia")!;
   for (const it of aula.items) if (!it.model.startsWith("suelo-")) items.push({ ...it, x: AULA.x + it.x * AULA.spread, z: AULA.z + it.z * AULA.spread, ...(it.model === "aula-mesa-profesor" ? { name: "Mesa del profesor del aula" } : {}) });
   return { id: "residencia-plaza", size: SIZE, items, source: `${SRC} FurnishPlaza; ${aula.source}; el aula en la plaza (Berón 2026-11-22)` };

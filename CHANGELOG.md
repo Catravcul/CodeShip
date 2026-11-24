@@ -5,6 +5,14 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-24
 
+- **Pulpo que se desarrolla hasta nacer** en el globo (estadios reales, duración en Ajustes); **caída** desde los bordes
+  también en diagonal; **literas** sin tobogán; **una sola gran pecera** de simulación en la plaza (entran muchos), los
+  **retos de equipo** en la estación de alfombras; **pantalla de carga**; **ropa** de trabajo según el horario.
+- **Microcosmos de Platón, segunda pasada**: arte y detalle (columnas, pinturas, estatuas, vasos, tejados), el Museo
+  rehecho, cámara con zoom y giro en los retos, animaciones por paso, ventana de misiones con plano, baliza y flecha,
+  portal de vuelta, ropa de época.
+- **Lista de revisión en vivo** ([qa/revision-en-vivo.md](docs/qa/revision-en-vivo.md)).
+
 - **Santuario 1, todos los retos propios**: los 216 objetos que compartían reto tienen ya el suyo, con fuente y animación por paso.
 - **El embrión del globo es un pulpo** en su huevo, a punto de eclosionar.
 - **Una máquina de simulación en cada piso**, y desde cualquiera se entra a todos los microcosmos.

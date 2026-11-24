@@ -23,8 +23,11 @@ interface Tank {
   readonly g: THREE.Group;
 }
 
+/** Floating in the tank, arms and legs open in a star (the end of the entry; and those floating with her). */
+export const STAR_POSE = { rootY: 0.95, rootX: 0, torso: 0, headX: -0.1, headY: 0, headZ: 0, shoulderX: [0, 0] as [number, number], shoulderZ: [1.4, -1.4] as [number, number], elbow: [0, 0] as [number, number], hip: [-0.45, 0.45] as [number, number], knee: [0.1, 0.1] as [number, number] };
+
 /** Machines further than this from the camera are not drawn (m). */
-const CULL_M = 40;
+const CULL_M = 90;
 
 const T = SIM_TANK;
 
@@ -61,6 +64,8 @@ export class SimTanks {
       const panes = [box(r * 2, h, 0.03, glass, 0, y0 + h / 2, r), box(0.03, h, r * 2, glass, -r, y0 + h / 2, 0), box(0.03, h, r * 2, glass, r, y0 + h / 2, 0), ...[-1, 1].map((s) => box(side, h, 0.03, glass, s * (T.door + 0.11 + side / 2), y0 + h / 2, -r))];
       g.add(new THREE.Mesh(mergeGeometries(panes.map((b) => (b.updateMatrix(), b.geometry.applyMatrix4(b.matrix)))), glass));
       g.add(box(r * 1.96, h - 0.02, r * 1.96, water, 0, y0 + h / 2, 0));
+      // The glass lid: one sees the floating people from above too.
+      g.add(box(r * 2, 0.03, r * 2, glass, 0, y0 + h + 0.04, 0));
       const field = box(T.door * 2, h - 0.1, 0.01, glow, 0, y0 + (h - 0.1) / 2, -r + 0.01);
       field.visible = false;
       const doors = [-1, 1].map((s) => box(T.door, h - 0.1, 0.03, glass, (s * T.door) / 2, y0 + (h - 0.1) / 2, -r - 0.07));
@@ -106,8 +111,7 @@ export class SimTanks {
 
   /** One frame of her way in; false when there is none. */
   frame(dt: number, camera: THREE.PerspectiveCamera, rig: THREE.Object3D, avatar: CubeFigure): boolean {
-    // With a machine on every floor, only those near the camera are drawn (their glass and water are see-through:
-    // costly to draw for nothing far away). Checked every few frames.
+    // Not drawn from far away (its glass and water are see-through: costly to draw for nothing). Every few frames.
     if ((this.cull = (this.cull + 1) % 12) === 0) for (const t of this.tanks) t.g.visible = camera.position.distanceTo(this.tmp.set(t.x, t.y, t.z)) < CULL_M;
     const run = this.run;
     if (!run) return false;
@@ -117,7 +121,7 @@ export class SimTanks {
     const r = T.half;
     // Her way: start → in front of the door → just inside → the centre; floating up to half the water.
     const front = this.world(t, 0, 0, T.front.z, new THREE.Vector3());
-    const inside = this.world(t, 0, T.base, -r + 0.45, new THREE.Vector3());
+    const inside = this.world(t, 0, T.base, -r + 0.6, new THREE.Vector3());
     const centre = this.world(t, 0, T.base, 0, new THREE.Vector3());
     const p = this.tmp;
     if (m.along <= 1) p.copy(run.from).lerp(front, m.along);
@@ -157,8 +161,8 @@ export class SimTanks {
     // The camera: from in front, then all round the tank (Cold Sanctuary's orbiting shot).
     const a = m.orbit;
     // (The pad's buttons cover the screen's lower part: the tank is framed a little above the middle.)
-    const look = this.world(t, 0, T.base + T.water * 0.15, 0, new THREE.Vector3());
-    const cam = this.world(t, -Math.sin(a) * 4.6, 2.1, -Math.cos(a) * 4.6, new THREE.Vector3());
+    const look = this.world(t, 0, T.base - T.water * 0.3, 0, new THREE.Vector3());
+    const cam = this.world(t, -Math.sin(a) * T.half * 2.2, T.base + T.water * 0.7, -Math.cos(a) * T.half * 2.2, new THREE.Vector3());
     camera.position.copy(cam);
     camera.lookAt(look);
     this.fadeEl.style.opacity = String(m.fade);
@@ -173,6 +177,14 @@ export class SimTanks {
       run.done();
     }
     return true;
+  }
+
+  /** Where someone floats in it (a spot of SIM_SPOTS, or its middle): world position and the tank's facing. */
+  floatAt(i: number, spot?: { x: number; z: number }): { x: number; y: number; z: number; yaw: number } | undefined {
+    const t = this.tanks[i];
+    if (!t) return undefined;
+    const p = this.world(t, spot?.x ?? 0, T.base + T.water * 0.5 - 0.9, spot?.z ?? 0, new THREE.Vector3());
+    return { x: p.x, y: p.y, z: p.z, yaw: t.rot };
   }
 
   /** Where she comes out: in front of its door. */

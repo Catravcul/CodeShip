@@ -197,17 +197,4 @@ function shared(): FloorPlan[] {
   ];
 }
 
-/**
- * The simulation machine of the floors whose area has its challenges (data/simulacion.ts SIM_RETOS; Berón 2026-11-23),
- * and of the assembly's, the door to the microcosm: placed where it leaves the room's own things alone.
- */
-const SIM_AT: Readonly<Record<string, { x: number; z: number; rot?: number }>> = {
-  salas: { x: 0, z: 0 },
-  "asambleas-guardia": { x: 16.5, z: -14, rot: PI },
-};
-const withSim = (p: FloorPlan): FloorPlan => {
-  const at = SIM_AT[p.id];
-  return at ? { ...p, items: [...p.items, P("simulador", at.x, at.z, at.rot ?? 0, "Máquina de simulación")] } : p;
-};
-
-export const REDUCIDOS_FLOORS: readonly FloorPlan[] = [...shared(), hospital(), criaCulturedMeat(), assemblyGuard()].map(withSim);
+export const REDUCIDOS_FLOORS: readonly FloorPlan[] = [...shared(), hospital(), criaCulturedMeat(), assemblyGuard()];

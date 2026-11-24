@@ -389,7 +389,7 @@ export const NESTS: readonly Nest[] = [
   sea("Seal", 20, 100, 8),
   sea("Seal", 140, 100, 8),
   sea("Seal", 260, 100, 8),
-  sea("Whale", 0, 0, 80, 240),
+  sea("Whale", 0, 0, 80, 275),
   land("Penguin", 60, -22, 6),
   land("Penguin", 66, -19, 6),
   sea("Orca", 140, 80, 25),

@@ -94,6 +94,12 @@ export interface Edificio {
   readonly things: readonly Cosa[];
   readonly color: number;
   readonly fuente: Fuente;
+  /** Its walls painted inside and out (a dado, a field, a band and a frieze). */
+  readonly painted?: boolean;
+  /** A thatched roof (the huts), not tiles. */
+  readonly thatch?: boolean;
+  /** Steps up to its floor along one side (from–to along it), when the floor is higher than a step. */
+  readonly stairs?: readonly { readonly side: "x0" | "x1" | "z0" | "z1"; readonly from: number; readonly to: number }[];
 }
 
 const W = (axis: "x" | "z", at: number, from: number, to: number, h: number, gaps?: Muro["gaps"], t = 0.5): Muro => ({ axis, at, from, to, h, t, gaps });
@@ -121,6 +127,7 @@ const PALESTRA: Edificio = {
   wallH: PAL_H,
   color: 0xe6dcc8,
   fuente: { source: `${S.caruso}; ${S.vitr}. Los 40 × 40 m y la altura de 5 m: supuesto`, reality: "real" },
+  painted: true,
   walls: [
     // The outer walls; the way in from the south.
     W("x", -60, -40, 0, PAL_H),
@@ -177,28 +184,54 @@ const PALESTRA: Edificio = {
     thing("bancos-o", "Bancos de piedra", "banco", -32, -21, 14, 0.6, 0.45),
     thing("bancos-e", "Bancos de piedra", "banco", -8, -21, 14, 0.6, 0.45),
     thing("skamma", "Foso de arena cavada (skamma)", "foso", -20, -40, 6, 4, 0.05, { solid: false }),
+    // Hermes and Heracles, the palaestra's gods, in the court's corners (Pausanias I.30: their altars in the Academy).
+    thing("estatua-hermes", "Estatua de Hermes, dios de la palestra", "estatua", -30, -30, 0.7, 0.7, 2.2, { rot: Math.PI * 0.75 }),
+    thing("estatua-heracles", "Estatua de Heracles", "estatua", -10, -30, 0.7, 0.7, 2.2, { rot: -Math.PI * 0.75 }),
+    thing("aceite-mesa-vasos", "Aríbalos y estrígilos colgados", "estante", -1, -55, 0.4, 2.4, 1.8),
   ],
 };
 
 // --- The Museum (the shrine of the Muses that Plato set up), the exedra and the students' huts ------------------------
+/** The nine Muses (Hesiod, Theogony 75–79), along the walls of the Museum. */
+const MUSAS = ["Calíope", "Clío", "Euterpe", "Talía", "Melpómene", "Terpsícore", "Érato", "Polimnia", "Urania"];
 const MUSEO: Edificio = {
   id: "museo",
   label: "Museo (santuario de las Musas)",
-  x0: 25,
-  x1: 35,
-  z0: -80,
-  z1: -73,
+  x0: 24,
+  x1: 36,
+  z0: -84,
+  z1: -71,
   floor: 0.6,
-  wallH: 4.5,
+  wallH: 5,
   color: 0xf0ebe0,
-  fuente: { source: `${S.dl} (IV 1: las Gracias que Espeusipo dedicó en el museo que Platón fundó). El tamaño y los rollos: supuesto`, reality: "real" },
-  walls: [W("x", -80, 25, 35, 4.5), W("x", -73, 25, 35, 4.5, [g(29.2, 30.8)]), W("z", 25, -80, -73, 4.5), W("z", 35, -80, -73, 4.5)],
-  rooms: [room("museo", "Museo: los libros y las Musas", 25, 35, -80, -73)],
+  painted: true,
+  stairs: [{ side: "z1", from: 24, to: 36 }],
+  fuente: { source: `${S.dl} (IV 1: las Gracias que Espeusipo dedicó en el museo que Platón fundó). La planta de templo próstilo (pórtico de dos columnas sobre su crepidoma), el tamaño, los rollos y las estatuas: supuesto`, reality: "real" },
+  walls: [
+    W("x", -84, 24, 36, 5),
+    W("x", -75, 24, 36, 5, [g(29, 31)]),
+    W("z", 24, -84, -72, 5),
+    W("z", 36, -84, -72, 5),
+  ],
+  rooms: [room("museo", "Museo: los libros y las Musas", 24, 36, -84, -75), room("museo-portico", "Pórtico del Museo", 24, 36, -75, -71)],
+  columns: [
+    { x: 28, z: -71.8, d: 0.7, h: 4.6 },
+    { x: 32, z: -71.8, d: 0.7, h: 4.6 },
+  ],
   things: [
-    thing("estatuas-musas", "Basa con las Musas", "basa", 30, -79, 4, 1, 1.8),
-    thing("rollos-1", "Estante de rollos de papiro", "estante", 26, -76.5, 0.6, 4, 2),
-    thing("rollos-2", "Estante de rollos de papiro", "estante", 34, -76.5, 0.6, 4, 2),
-    thing("mesa-museo", "Mesa para leer", "mesa", 30, -76, 2, 1, 0.8),
+    // The Muses, three on the back wall and three on each side, on their bases.
+    ...MUSAS.map((m, i) => {
+      const at = i < 3 ? { x: 27 + i * 3, z: -83.2, rot: 0 } : i < 6 ? { x: 24.8, z: -82 + (i - 3) * 2.2, rot: Math.PI / 2 } : { x: 35.2, z: -82 + (i - 6) * 2.2, rot: -Math.PI / 2 };
+      return thing(`musa-${i}`, `Estatua de ${m}, musa`, "estatua", at.x, at.z, 0.7, 0.7, 2.2, { rot: at.rot });
+    }),
+    thing("rollos-1", "Estantería de rollos de papiro", "rollos", 28.5, -78.6, 3, 0.5, 2.1, { rot: 0 }),
+    thing("rollos-2", "Estantería de rollos de papiro", "rollos", 31.5, -78.6, 3, 0.5, 2.1, { rot: 0 }),
+    thing("mesa-museo", "Mesa para leer, con rollos abiertos y tablillas de cera", "mesa", 27.5, -76.6, 2, 0.9, 0.8),
+    thing("mesa-museo-2", "Mesa para leer, con rollos abiertos y tablillas de cera", "mesa", 32.5, -76.6, 2, 0.9, 0.8),
+    thing("silla-1", "Silla (klismos)", "silla", 27, -77.4, 0.5, 0.5, 0.9, { solid: false }),
+    thing("silla-2", "Silla (klismos)", "silla", 33, -77.4, 0.5, 0.5, 0.9, { solid: false }),
+    thing("lampadario-1", "Lampadario", "lampadario", 25.6, -76, 0.3, 0.3, 1.4),
+    thing("lampadario-2", "Lampadario", "lampadario", 34.4, -76, 0.3, 0.3, 1.4),
   ],
 };
 
@@ -215,6 +248,7 @@ function choza(i: number, x: number): Edificio {
     wallH: 2.6,
     color: 0xb59a74,
     fuente: { source: `${S.dl} IV 19, unos años después; en 360 a. C.: supuesto`, reality: "supuesto" },
+    thatch: true,
     walls: [W("x", -97, x - 1.6, x + 1.6, 2.6, undefined, 0.3), W("x", -93, x - 1.6, x + 1.6, 2.6, [g(x - 0.6, x + 0.6)], 0.3), W("z", x - 1.6, -97, -93, 2.6, undefined, 0.3), W("z", x + 1.6, -97, -93, 2.6, undefined, 0.3)],
     rooms: [room(i === 0 ? "chozas" : `choza-${i}`, "Choza de un discípulo", x - 1.6, x + 1.6, -97, -93)],
     things: [thing(`jergon-${i}`, "Jergón de paja", "cama", x - 0.6, -96, 0.9, 1.9, 0.25), thing(`lampara-${i}`, "Lámpara de aceite", "lampara", x + 1.1, -96.4, 0.3, 0.3, 0.6)],
@@ -234,6 +268,7 @@ const CASA: Edificio = {
   wallH: CASA_H,
   color: 0xd9c7a6,
   fuente: { source: `${S.olinto}; ${S.dl} III 20 y 41–43 (el jardín junto a la Academia; el testamento: la casa, los esclavos, Artemis libre). La planta: supuesto`, reality: "supuesto" },
+  painted: true,
   walls: [
     W("x", -20, -147, -129, CASA_H),
     W("x", -2, -147, -129, CASA_H),
@@ -280,6 +315,9 @@ const CASA: Edificio = {
     thing("cama-casa", "Cama", "cama", -130.6, -11, 1, 2, 0.5),
     thing("altar-patio", "Altar del patio (Zeus Herkeios)", "altar", -138, -5.5, 0.8, 0.8, 0.9),
     thing("cisterna", "Boca de la cisterna", "pozo", -136, -11, 0.9, 0.9, 0.7),
+    thing("herma-casa", "Herma a la puerta de la casa", "herma", -129.8, -6.5, 0.35, 0.35, 1.4),
+    thing("silla-andron", "Silla (klismos)", "silla", -143.5, -15.4, 0.5, 0.5, 0.9, { solid: false }),
+    thing("lampara-andron", "Lampadario del andrón", "lampadario", -146.5, -14.5, 0.3, 0.3, 1.4),
   ],
 };
 
@@ -322,7 +360,7 @@ export const ALTARES: readonly (Cosa & { readonly fuente: Fuente; readonly fire?
   { ...thing("altar-hermes", "Altar de Hermes", "altar", 14, 48, 1.4, 1, 1), fuente: { source: S.paus, reality: "real" } },
   { ...thing("altar-atenea", "Altar de Atenea, junto a los olivos", "altar", -48, 30, 1.6, 1.2, 1.1), fuente: { source: S.paus, reality: "real" } },
   { ...thing("altar-heracles", "Altar de Heracles", "altar", 70, -10, 1.4, 1, 1), fuente: { source: S.paus, reality: "real" } },
-  { ...thing("altar-musas", "Altar de las Musas", "altar", 26, -69, 1.4, 1, 1), fuente: { source: S.paus, reality: "real" } },
+  { ...thing("altar-musas", "Altar de las Musas", "altar", 24.5, -68.5, 1.4, 1, 1), fuente: { source: S.paus, reality: "real" } },
 ];
 
 /** Water: Cimon's channel from the Kephissos (it waters the grove), the fountain basin, the house's cistern below ground. */
@@ -347,10 +385,15 @@ export const COSAS_FUERA: readonly Cosa[] = [
     return thing(`exedra-${i}`, "Banco de la exedra", "banco", 50 + Math.cos(a) * 6, -55 + Math.sin(a) * 6, 2.3, 0.6, 0.45, { rot: -a + Math.PI / 2, solid: false });
   }),
   thing("arena-geometria", "Arena para dibujar figuras", "foso", 50, -57, 3, 2, 0.04, { solid: false }),
-  thing("gnomon", "Gnomon (la varilla del reloj de sombra)", "gnomon", 36, -67, 0.12, 0.12, 1.5),
+  thing("gnomon", "Gnomon (la varilla del reloj de sombra)", "gnomon", 37, -67, 0.12, 0.12, 1.5),
   thing("meta-sur", "Poste de salida de la pista", "poste", 89, 55, 0.3, 0.3, 1.4),
   thing("meta-norte", "Poste de vuelta de la pista", "poste", 89, -120, 0.3, 0.3, 1.4),
   thing("antorchas", "Haz de antorchas", "estante", 3, 42.5, 1, 0.4, 1.2),
+  thing("estatua-atenea", "Estatua de Atenea, junto a sus olivos", "estatua", -51, 30, 0.8, 0.8, 2.6, { rot: Math.PI / 2 }),
+  thing("herma-puerta-1", "Herma de la puerta", "herma", -8, 58, 0.4, 0.4, 1.6),
+  thing("herma-palestra-1", "Herma a la entrada de la palestra (Hermes en un pilar)", "herma", -23, -18.6, 0.4, 0.4, 1.6),
+  thing("herma-palestra-2", "Herma a la entrada de la palestra (Hermes en un pilar)", "herma", -17, -18.6, 0.4, 0.4, 1.6),
+  thing("herma-puerta-2", "Herma de la puerta", "herma", 8, 58, 0.4, 0.4, 1.6),
   thing("compuerta", "Compuerta de la acequia", "compuerta", -45.4, -60, 1.6, 0.3, 0.6, { solid: false }),
   thing("bancal-1", "Bancal de lentejas y habas", "bancal", -140, 10, 6, 3, 0.25, { solid: false }),
   thing("bancal-2", "Bancal de coles y cebollas", "bancal", -130, 10, 6, 3, 0.25, { solid: false }),
@@ -405,6 +448,12 @@ export const FONDO = [
   { id: "murallas", label: "Las murallas y la puerta del Dipilón", kind: "murallas", x: 120, z: 420, r: 160, h: 9 },
 ] as const;
 
+/**
+ * The way back to the mesocosm (Cold Sanctuary's GalaxyPortal, Berón 2026-10-27: «como un agujero negro en medio de una
+ * galaxia»): by the road's end where she arrives, out of the way. Ficción.
+ */
+export const PORTAL = { x: -12, z: 144, r: 2.4 } as const;
+
 /** The period transport: the cart of the Dromos (a two-wheeled cart, a donkey), from the road's end to the gate. */
 export const CARRO = {
   id: "carro",
@@ -442,7 +491,7 @@ export const LUGARES: readonly Lugar[] = [
   { id: "palestra-banos", x: -4.8, z: -33.4, r: 0.5, region: "dentro", path: into([...PAL_IN, [-7.5, -27.5], [-7.5, -33.4], [-4.8, -33.4]]) },
   { id: "palestra-aceite", x: -10.4, z: -57, r: 1, region: "dentro", path: into([...PAL_IN, [-7.5, -27.5], [-7.5, -52.5], [-10.4, -52.5], [-10.4, -57]]) },
   { id: "exedra", x: 50, z: -57, r: 3.5, region: "dentro", path: into([[30, 0], [50, -45], [50, -57]]) },
-  { id: "museo", x: 30, z: -74.5, r: 1, region: "dentro", path: into([[30, 0], [30, -60], [30, -71], [30, -74.5]]) },
+  { id: "museo", x: 30, z: -77.6, r: 0.8, region: "dentro", path: into([[30, 0], [30, -60], [30, -69.5], [30, -73], [30, -77.6]]) },
   { id: "chozas", x: 60, z: -95, r: 1, region: "dentro", path: into([[30, 0], [55, -60], [60, -88], [60, -95]]) },
   { id: "paseo-platanos", x: 30, z: 0, r: 10, region: "dentro", path: into([[30, 0]]) },
   { id: "pista", x: 89, z: -35, r: 6, region: "dentro", path: into([[60, 20], [89, -35]]) },
@@ -509,12 +558,12 @@ export const FAMILIAS: readonly { readonly family: string; readonly age: number;
 
 /** The story of the day: eight steps, six with a challenge (data/retos-academia.ts). */
 export const HISTORIA: readonly PasoHistoria[] = [
-  { id: "llegar", at: "puerta", text: "Llega por el Dromos, entre las tumbas de los caídos, hasta la puerta de la Academia (puedes subir al carro)" },
-  { id: "lucha", at: "palestra-patio", reto: "aca-lucha", with: "paidotriba", text: "En la palestra, el paidotriba enseña a luchar: prepárate como un atleta" },
-  { id: "cuadrado", at: "exedra", reto: "aca-cuadrado", with: "platon", text: "En la exedra, Platón pregunta cómo se duplica un cuadrado" },
-  { id: "riego", at: "acequia", reto: "aca-riego", with: "jardinero", text: "Ayuda al jardinero a regar el olivar con la acequia de Cimón" },
-  { id: "comida", at: "casa-cocina", reto: "aca-comida", with: "artemis", text: "En casa de Platón, prepara la comida sencilla con Ártemis" },
-  { id: "andron", at: "casa-andron", with: "platon", text: "Come con Platón y los discípulos en el andrón" },
-  { id: "gnomon", at: "museo", reto: "aca-gnomon", with: "filipo", text: "En el Museo, Filipo de Opunte mide el día con el gnomon" },
-  { id: "antorcha", at: "altar-prometeo", reto: "aca-antorcha", with: "aristoteles", text: "Al atardecer, ensaya la carrera de antorchas desde el altar de Prometeo" },
+  { id: "llegar", icon: "🛤️", at: "puerta", text: "Llega por el Dromos, entre las tumbas de los caídos, hasta la puerta de la Academia (puedes subir al carro)" },
+  { id: "lucha", icon: "🤼", at: "palestra-patio", reto: "aca-lucha", with: "paidotriba", text: "En la palestra, el paidotriba enseña a luchar: prepárate como un atleta" },
+  { id: "cuadrado", icon: "📐", at: "exedra", reto: "aca-cuadrado", with: "platon", text: "En la exedra, Platón pregunta cómo se duplica un cuadrado" },
+  { id: "riego", icon: "🫒", at: "acequia", reto: "aca-riego", with: "jardinero", text: "Ayuda al jardinero a regar el olivar con la acequia de Cimón" },
+  { id: "comida", icon: "🫓", at: "casa-cocina", reto: "aca-comida", with: "artemis", text: "En casa de Platón, prepara la comida sencilla con Ártemis" },
+  { id: "andron", icon: "🍇", at: "casa-andron", with: "platon", text: "Come con Platón y los discípulos en el andrón" },
+  { id: "gnomon", icon: "☀️", at: "museo", reto: "aca-gnomon", with: "filipo", text: "En el Museo, Filipo de Opunte mide el día con el gnomon" },
+  { id: "antorcha", icon: "🔥", at: "altar-prometeo", reto: "aca-antorcha", with: "aristoteles", text: "Al atardecer, ensaya la carrera de antorchas desde el altar de Prometeo" },
 ];

@@ -104,5 +104,19 @@ describe("agua en capas (el globo del santuario 1, Berón 2026-11-22)", () => {
     expect(b.y).toBeGreaterThan(18);
     expect(Math.abs(b.z)).toBeLessThan(4);
   });
+  it("falls off an edge pushed slantwise against it, sliding along it (Berón 2026-11-24)", () => {
+    const w: WalkWorld = { floors: [{ id: "alto", area: "alto", y: 10, x0: -10, x1: 10, z0: -10, z1: 10 }, { id: "bajo", area: "bajo", y: 0, x0: -50, x1: 50, z0: -50, z1: 50 }], waters: [], solids: [] };
+    const walk = new FreeWalk(() => w, { walk: 1.6, swim: 1 }, 0);
+    let b: Body = { x: 0, y: 10, z: -9.9, motion: "gravedad", area: "alto" };
+    // Forward is −z; 25° to the right of straight out over the −z edge.
+    const yaw = -0.44;
+    let fell = false;
+    for (let t = 0; t < 3 && !fell; t += 0.1) {
+      const c = walk.carry(0.1, b);
+      b = c.body;
+      fell = walk.falling || b.y < 10;
+      if (!c.busy) b = walk.move(0.1, b, { forward: 1, right: 0, yaw, pitch: 0, run: false });
+    }
+    expect(fell).toBe(true);
+  });
 });
-

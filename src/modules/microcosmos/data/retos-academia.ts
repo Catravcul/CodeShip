@@ -3,6 +3,7 @@
  * ordering its steps (sanctuary-one's Procedure, run by application/challenges.ts procedureReto). Each with its source.
  */
 import type { Procedure, Reality, RetoKind, Reward } from "@modules/sanctuary-one/data/retos";
+import type { MotionId } from "@modules/sanctuary-one/data/animaciones";
 
 const p = (id: string, title: string, kind: RetoKind, reward: Reward, scenario: string, steps: readonly string[], wrong: readonly string[], source: string, reality: Reality = "real"): Procedure => ({ id, title, kind, reward, scenario, steps, wrong, source, reality });
 
@@ -103,3 +104,19 @@ export const RETOS_ACADEMIA: Readonly<Record<string, Procedure>> = {
     "Pausanias I.30.2 (la carrera de antorchas desde el altar de Prometeo)",
   ),
 };
+
+/**
+ * What she does at each step of each challenge (Berón 2026-11-24: «las animaciones deben ser al detalle»), from the
+ * motions of sanctuary 1 (data/animaciones.ts), and what the one who is with her does meanwhile.
+ */
+export const PASOS_ACADEMIA: Readonly<Record<string, { readonly her: readonly MotionId[]; readonly partner: readonly MotionId[] }>> = {
+  "aca-lucha": { her: ["agacharse", "estirar", "mezclar", "derribo", "estirar", "agacharse"], partner: ["pedir", "estirar", "mezclar", "uchikomi", "pedir", "respirar"] },
+  "aca-cuadrado": { her: ["agacharse", "agacharse", "agacharse", "agacharse", "pedir"], partner: ["pedir", "pedir", "pedir", "agacharse", "respirar"] },
+  "aca-riego": { her: ["respirar", "agacharse", "agacharse", "agacharse", "respirar"], partner: ["pedir", "agacharse", "agacharse", "pedir", "respirar"] },
+  "aca-comida": { her: ["agacharse", "mezclar", "mezclar", "servir-plato", "mezclar"], partner: ["pedir", "cocinar", "cocinar", "emplatar-plato", "pedir"] },
+  "aca-gnomon": { her: ["agacharse", "agacharse", "respirar", "pedir"], partner: ["pedir", "agacharse", "pedir", "pedir"] },
+  "aca-antorcha": { her: ["estirar", "guardia", "correr", "correr"], partner: ["pedir", "guardia", "correr", "respirar"] },
+};
+
+/** In a talk, she and they speak in turns. */
+export const PASOS_DIALOGO: { readonly her: readonly MotionId[]; readonly partner: readonly MotionId[] } = { her: ["respirar", "pedir"], partner: ["pedir", "respirar"] };

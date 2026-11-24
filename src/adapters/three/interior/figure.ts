@@ -5,6 +5,7 @@ import type { AsanaData, ReachEnd } from "@modules/body/domain/asana";
 import { AsanaPlayer } from "@modules/body/domain/asana-player";
 import { MotionPlayer, type ExerciseMotionData } from "@modules/body/domain/exercise-motion";
 import { contactHeights } from "@modules/body/domain/body-solver";
+import type { Outfit } from "@modules/sanctuary-one/domain/ropa";
 import { CUBE_FIGURE, JOINTS, type BodyPose, type JointId } from "@modules/body/domain/skeleton";
 
 /** What dress() needs of a person's look (structurally the same as sanctuary-one/data/looks.ts `Look`). */
@@ -351,6 +352,84 @@ export class CubeFigure {
     if (l.earring) for (const s of [1, -1]) H(0.015, 0.025, 0.015, 0.09, 0, 0.115 * s, 0xd9c060);
     if (l.stole !== undefined) this.chest.add(box(0.42, 0.06, 0.24, l.stole, 0.2).rotateZ(0.5));
     if (l.necklace !== undefined) this.chest.add(box(0.2, 0.025, 0.01, l.necklace, 0.2).translateZ(0.115));
+  }
+
+  /** The clothes put on by `wear` (removed on the next wear). */
+  private worn: THREE.Object3D[] = [];
+  private wornKey = "";
+  private bare?: { top: number; pants: number; fore: number; shin: number; foot: number };
+
+  /**
+   * Put on an outfit (sanctuary-one/domain/ropa.ts: work clothes, a period's dress): repaints the segments and adds its
+   * pieces (a tunic over the hips, a cloak, an apron or coat, a hat, gloves). `undefined` takes them off again. Calling
+   * it every frame with the same outfit does nothing.
+   */
+  wear(o: Outfit | undefined): void {
+    const key = o ? o.label + o.top + o.pants : "";
+    if (key === this.wornKey) return;
+    this.wornKey = key;
+    const sp = this.skinParts;
+    const col = (m: THREE.Mesh | undefined) => (m ? (m.material as THREE.MeshStandardMaterial).color.getHex() : 0);
+    this.bare ??= { top: col(sp.chestBox), pants: col(sp.pelvis), fore: col(sp.fore[0]), shin: col(sp.shin[0]), foot: col(sp.foot[0]) };
+    const b = this.bare;
+    for (const w of this.worn) w.parent?.remove(w);
+    this.worn = [];
+    const paint = (m: THREE.Mesh | undefined, c: number) => m && (m.material as THREE.MeshStandardMaterial).color.setHex(c);
+    const skin = col(sp.headBox);
+    for (const m of [sp.lumbar, sp.chestBox]) paint(m, o ? o.top : b.top);
+    for (const m of sp.upper) paint(m, o ? (o.sleeveless ? skin : o.top) : b.top);
+    for (const m of sp.fore) paint(m, o ? (o.sleeves ?? skin) : b.fore);
+    paint(sp.pelvis, o ? o.pants : b.pants);
+    for (const m of sp.thigh) paint(m, o ? (o.robe && !o.robe.long ? skin : o.pants) : b.pants);
+    for (const m of sp.shin) paint(m, o ? (o.shorts || o.robe ? skin : o.pants) : b.shin);
+    for (const m of sp.foot) paint(m, o ? o.shoes : b.foot);
+    if (!o) return;
+    const put = (parent: THREE.Object3D, m: THREE.Object3D) => {
+      parent.add(m);
+      this.worn.push(m);
+      return m;
+    };
+    if (o.robe) {
+      // A tunic: from the waist down, a little wider than the hips, to the knee or the ankle; its border below.
+      const len = o.robe.long ? 0.92 : 0.46;
+      put(this.root, box(0.42, len, 0.28, o.robe.color, -0.02 - len / 2 + 0.08));
+      if (o.robe.border !== undefined) put(this.root, box(0.43, 0.05, 0.29, o.robe.border, -0.02 - len + 0.1));
+    }
+    if (o.cloak !== undefined) {
+      // A cloak over the left shoulder and down the back, slanting across the chest.
+      put(this.chest, box(0.42, 0.42, 0.06, o.cloak, -0.02).translateZ(-0.13));
+      put(this.chest, box(0.14, 0.5, 0.24, o.cloak, 0.0).translateX(0.17).rotateZ(-0.12));
+    }
+    if (o.apron !== undefined) {
+      put(this.chest, box(0.3, 0.24, 0.02, o.apron, 0.13).translateZ(0.12));
+      put(this.root, box(0.34, 0.44, 0.02, o.apron, -0.16).translateZ(0.12));
+    }
+    if (o.coat !== undefined) {
+      // A long open coat: its two fronts and back over the torso and down to the knee, its sleeves.
+      for (const sx of [-1, 1]) put(this.chest, box(0.14, 0.3, 0.24, o.coat, 0.12).translateX(0.13 * sx));
+      put(this.root, box(0.42, 0.5, 0.26, o.coat, -0.22));
+      for (const u of sp.upper) paint(u, o.coat);
+      for (const f of sp.fore) paint(f, o.coat);
+    }
+    if (o.hat) {
+      const h = o.hat;
+      if (h.kind === "cocinero") {
+        put(this.head, box(0.24, 0.06, 0.24, h.color, 0.3));
+        put(this.head, box(0.22, 0.2, 0.22, h.color, 0.43));
+      } else if (h.kind === "quirofano") put(this.head, box(0.25, 0.09, 0.25, h.color, 0.28));
+      else if (h.kind === "casco") {
+        put(this.head, box(0.27, 0.12, 0.27, h.color, 0.32));
+        put(this.head, box(0.29, 0.02, 0.33, h.color, 0.27).translateZ(0.02));
+      } else if (h.kind === "petaso") {
+        put(this.head, box(0.42, 0.02, 0.42, h.color, 0.29));
+        put(this.head, box(0.2, 0.08, 0.2, h.color, 0.33));
+      } else if (h.kind === "corona") put(this.head, box(0.25, 0.04, 0.25, h.color, 0.28));
+      else {
+        put(this.head, box(0.25, 0.07, 0.25, h.color, 0.29));
+        put(this.head, box(0.2, 0.015, 0.1, h.color, 0.26).translateZ(0.16));
+      }
+    }
+    if (o.gloves !== undefined) for (const w of this.wrists) put(w, box(0.11, 0.1, 0.11, o.gloves, -0.04));
   }
 
   pose(key: string): void {

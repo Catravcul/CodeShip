@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { WORLD_SCALE } from "@core/scale";
 import { moveJoystick } from "@core/realism";
 import { advance as advanceEgg, stageAt as eggStage } from "@modules/sanctuary-one/domain/pulpo";
+import { workOutfit } from "@modules/sanctuary-one/domain/ropa";
 import { AQUARIUM_AREA, buildS1Layout, TREE_CURRENT, treeWater } from "@modules/sanctuary-one/data/layout";
 import { globeDepth } from "@modules/sanctuary-one/data/globo";
 import { carpetDestinations, carpetRoute, stationAt, type CarpetStation } from "@modules/sanctuary-one/data/alfombras";
@@ -57,6 +58,7 @@ import { GamePad } from "./ui/game-pad";
 import { chooseReto, offerReto } from "./ui/interaction";
 import { focusReto, retoVisual, sheetLens as lens } from "./adapters/three/interior/reto-focus";
 import { mapGestures } from "./ui/map-gestures";
+import { sheetBand } from "./ui/sheet-band";
 import { poseOnFoot, UnderwaterView } from "./adapters/three/walk-look";
 import "./ui/lander-cabin.css";
 import "./ui/acciones.css";
@@ -132,6 +134,8 @@ interface Person {
   readonly name: string;
   /** Taking a part in an area's challenge in the simulation (data/simulacion.ts): there, doing that, till it ends. */
   role?: { x: number; y: number; z: number; yaw: number; motion: string };
+  /** Dressed for the current block of the day. */
+  dressed?: boolean;
 }
 
 /**
@@ -229,6 +233,11 @@ function movePeople(dt: number): void {
     const inShot = !!stageStand && steps.framing && Math.hypot(p.g.position.x - stageStand.x, p.g.position.z - stageStand.z) < 1.3 && Math.abs(p.g.position.y - stageStand.y) < 1.5;
     p.g.visible = !inShot;
     if (p.sign) p.sign.visible = !inShot;
+    if (act !== p.act || !p.dressed) {
+      p.dressed = true;
+      // The clothes of their schedule: their trade's at work and training, their own otherwise (Berón 2026-11-24).
+      p.f.wear(act === "tareas" || act === "entrenamiento" ? workOutfit(areaById.get(p.plan[act].area)?.furnish) : undefined);
+    }
     if (act !== p.act) {
       p.act = act;
       // Each one finishes what they were doing and leaves at their own moment.
@@ -781,7 +790,7 @@ function enterMicro(t: Thing, mc: SimMicrocosmos): void {
     void loading.then(({ AcademiaMicro }) => {
       microTank = i;
       ui.style.display = "none";
-      micro = new AcademiaMicro({ root, renderer, camera, walker, duel, sheet: SHEET, reward: (r) => applyReward(domenica, r), exit: leaveMicro });
+      micro = new AcademiaMicro({ root, renderer, camera, walker, duel, sheet: SHEET, reward: (r) => applyReward(domenica, r), exit: leaveMicro, openSettings: () => (settingsPanel.visible ? settingsPanel.close() : settingsPanel.open("Microcosmos, botón de inicio del mando")) });
     });
   });
 }
@@ -870,30 +879,6 @@ const steps = new StepShow();
 let stageStand: THREE.Vector3 | undefined;
 scene.add(steps.root);
 /** The lens over the free strip (adapters/three/interior/reto-focus.ts, shared). */
-/**
- * The free band above (or between) the sheet's blocks, measured (Berón 2026-11-23: the HUD and panel views leave
- * different room): the tallest screen-wide stretch no block of the sheet covers, in px from the top.
- */
-function sheetBand(): { top: number; bottom: number } | undefined {
-  const d = document.querySelector(".duel:not(.hidden)");
-  if (!d) return undefined;
-  const h = window.innerHeight;
-  const blocks = [...d.querySelectorAll<HTMLElement>(":scope > *, :scope > * > *")].map((e) => e.getBoundingClientRect()).filter((r) => r.width > 40 && r.height > 8 && r.bottom > 0 && r.top < h);
-  const cuts = [0, h];
-  for (const r of blocks) cuts.push(Math.max(0, r.top), Math.min(h, r.bottom));
-  const ys = [...new Set(cuts)].sort((a, b) => a - b);
-  let best = { top: 0, bottom: 0 };
-  for (let i = 0; i + 1 < ys.length; i++) {
-    const mid = (ys[i]! + ys[i + 1]!) / 2;
-    if (blocks.some((r) => r.top <= mid && r.bottom >= mid)) continue;
-    // Join the free stretches that touch.
-    let j = i;
-    while (j + 2 < ys.length && !blocks.some((r) => r.top <= (ys[j + 1]! + ys[j + 2]!) / 2 && r.bottom >= (ys[j + 1]! + ys[j + 2]!) / 2)) j++;
-    // The stage is shown above the sheet (or between its head and its body): a band starting in the top half.
-    if (ys[i]! < h * 0.5 && ys[j + 1]! - ys[i]! > best.bottom - best.top) best = { top: ys[i]!, bottom: ys[j + 1]! };
-  }
-  return best.bottom - best.top > 80 ? best : undefined;
-}
 let lensBand = "";
 const sheetLens = (on: boolean) => {
   const band = on ? sheetBand() : undefined;
@@ -905,15 +890,18 @@ const sheetLens = (on: boolean) => {
   const el = renderer.domElement;
   mapGestures(el, {
     rotate: (dx, dy) => {
-      if (steps.framing) steps.orbit(-dx * 0.008, dy * 0.006);
+      if (micro) micro.gesture(dx, dy);
+      else if (steps.framing) steps.orbit(-dx * 0.008, dy * 0.006);
     },
     zoom: (f) => {
-      if (steps.framing) steps.zoomBy(f);
+      if (micro) micro.zoomBy(f);
+      else if (steps.framing) steps.zoomBy(f);
     },
     tap: () => {},
   });
   el.addEventListener("wheel", (e) => {
-    if (steps.framing) steps.zoomBy(e.deltaY > 0 ? 0.9 : 1.1);
+    if (micro) micro.zoomBy(e.deltaY > 0 ? 0.9 : 1.1);
+    else if (steps.framing) steps.zoomBy(e.deltaY > 0 ? 0.9 : 1.1);
   }, { passive: true });
 }
 /** The model of the open challenge (its machine's own motions and its station). */
@@ -1090,6 +1078,10 @@ function updateCamera(dt: number): void {
   underwater.set(under && (globe ? "globo" : treeWater(cw!.area) ? "claro" : "oceano"), depth);
   avatar.wearMask(body.motion === "agua");
   poseOnFoot(avatar, walk, { body, moving, sprinting, lotus: flying || settingsPanel.visible, clock: wildT }, dt);
+  // Her clothes: at work or training time, those of the floor she is on (Berón 2026-11-24: «la ropa específica para la
+  // tarea laboral que indique su horario»); her own otherwise.
+  const block = activityAt(hour);
+  avatar.wear(block === "tareas" || block === "entrenamiento" ? workOutfit(areaById.get(body.area.split(":").slice(0, 2).join(":"))?.furnish ?? areaById.get(body.area)?.furnish) : undefined);
 }
 
 let last = performance.now();

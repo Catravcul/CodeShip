@@ -1,22 +1,27 @@
 import * as THREE from "three";
-import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { placeAt, wallWithGaps, type Body } from "@modules/aerial-sanctuary/domain/walk";
+import { placeAt, type Body } from "@modules/aerial-sanctuary/domain/walk";
 import { FreeWalk } from "@modules/aerial-sanctuary/application/free-walk";
-import { AGUAS, ALTARES, ARBOLES, CARRO, COSAS_FUERA, EDIFICIOS, FAMILIAS, FECHA, FONDO, HALF, HISTORIA, LUGARES_ABIERTOS, PERIBOLO_MUROS, PERSONAS, PUENTES, trees, type Arbol, type Cosa, type Edificio, type Muro } from "@modules/microcosmos/data/academia";
-import { RETOS_ACADEMIA } from "@modules/microcosmos/data/retos-academia";
+import { AGUAS, ALTARES, ARBOLES, CARRO, COSAS_FUERA, EDIFICIOS, FAMILIAS, FECHA, FONDO, HALF, HISTORIA, LUGARES_ABIERTOS, PERIBOLO, PERIBOLO_MUROS, PERSONAS, PORTAL, PUENTES, trees, type Arbol, type Cosa, type Edificio, type Muro } from "@modules/microcosmos/data/academia";
+import { PASOS_ACADEMIA, PASOS_DIALOGO, RETOS_ACADEMIA } from "@modules/microcosmos/data/retos-academia";
 import { DIALOGOS } from "@modules/microcosmos/data/dialogos-academia";
-import { academiaWorld, estaEn, K, lugar, ruta, zonaAt, zonaLabel } from "@modules/microcosmos/application/mundo";
-import { acabada, avanzar, linea, START, type EstadoHistoria } from "@modules/microcosmos/domain/historia";
+import { academiaWorld, estaEn, K, lugar, ruta, stairRects, zonaAt, zonaLabel } from "@modules/microcosmos/application/mundo";
+import { Batch, doric, drawThing, drawWall, M, roofOf } from "./adapters/three/academia-art";
+import { acabada, avanzar, START, type EstadoHistoria } from "@modules/microcosmos/domain/historia";
 import { ageAt, lineAt, papelPorEdad, spanOf, tallaPorEdad, tramoAt, type Papel, type Quehacer, type Vida } from "@modules/microcosmos/domain/vida";
 import { procedureReto, type Reto } from "@modules/sanctuary-one/application/challenges";
 import type { Procedure, Reward } from "@modules/sanctuary-one/data/retos";
 import { S1_DAY_REAL_S } from "@modules/sanctuary-one/domain/motion";
+import { greekOutfit } from "@modules/sanctuary-one/domain/ropa";
 import { ChoreRun } from "@modules/chores/domain/chore";
 import type { Answer } from "@modules/mind-duel/domain/exercise";
 import { CubeFigure } from "./adapters/three/interior/figure";
 import { textSign } from "./adapters/three/interior/sign";
 import { motion } from "./adapters/three/interior/step-show";
 import { DayNight } from "./adapters/three/day-night";
+import { sheetLens } from "./adapters/three/interior/reto-focus";
+import { sheetBand } from "./ui/sheet-band";
+import "./ui/microcosmos.css";
+import type { MotionId } from "@modules/sanctuary-one/data/animaciones";
 import { poseOnFoot } from "./adapters/three/walk-look";
 import { DOMENICA_HAIR } from "./ui/portraits";
 import type { Walker } from "./adapters/input/walker";
@@ -41,147 +46,18 @@ export interface MicroHost {
   readonly sheet: SessionText;
   /** Her reward for a challenge (the needs she keeps in sanctuary 1); the message to show. */
   reward(r: Reward): string;
-  /** Back to the machine in sanctuary 1. */
+  /** Back to the machine in sanctuary 1 (through the portal). */
   exit(): void;
+  /** The settings (the pad's home button, as in sanctuary 1). */
+  openSettings(): void;
 }
 
-const ROOF = 0xb5583a;
 const WALK_MS = 2.2;
 const SWIM_MS = 1.6;
 const EYE_M = 1.45;
 const PEOPLE_MS = 1.4;
 /** Walking slowly along a walk. */
 const STROLL_MS = 0.7;
-
-/** Geometries of one colour each, merged into a single mesh (a draw call for all the stone, wood and earth). */
-class Batch {
-  private readonly geos: THREE.BufferGeometry[] = [];
-  add(geo: THREE.BufferGeometry, color: number, at: THREE.Matrix4): void {
-    const g = (geo.index ? geo.toNonIndexed() : geo).applyMatrix4(at);
-    const c = new THREE.Color(color);
-    const n = g.getAttribute("position").count;
-    const col = new Float32Array(n * 3);
-    for (let i = 0; i < n; i++) col.set([c.r, c.g, c.b], i * 3);
-    g.setAttribute("color", new THREE.BufferAttribute(col, 3));
-    g.deleteAttribute("uv");
-    this.geos.push(g);
-    if (g !== geo) geo.dispose();
-  }
-  box(x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, color: number, rot = 0): void {
-    const m = new THREE.Matrix4().makeRotationY(rot).setPosition((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
-    this.add(new THREE.BoxGeometry(Math.abs(x1 - x0), Math.abs(y1 - y0), Math.abs(z1 - z0)), color, m);
-  }
-  mesh(mat: THREE.Material): THREE.Mesh | undefined {
-    if (!this.geos.length) return undefined;
-    const merged = mergeGeometries(this.geos, false)!;
-    for (const g of this.geos) g.dispose();
-    this.geos.length = 0;
-    return new THREE.Mesh(merged, mat);
-  }
-}
-
-const M = (x: number, y: number, z: number, rot = 0, s = 1) => new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rot), new THREE.Vector3(s, s, s));
-
-/** A thing's look (real metres in, world units out): simple shapes of its kind. */
-function drawThing(b: Batch, c: Cosa, floor: number): void {
-  const x = c.x * K;
-  const z = c.z * K;
-  const y = (floor + (c.y ?? 0)) * K;
-  const w = c.w * K;
-  const d = c.d * K;
-  const h = c.h * K;
-  const rot = c.rot ?? 0;
-  const box = (color: number, dx = 0, dy = 0, dz = 0, ww = w, hh = h, dd = d) => b.add(new THREE.BoxGeometry(ww, hh, dd), color, M(x + dx, y + dy + hh / 2, z + dz, rot));
-  switch (c.kind) {
-    case "anforas": {
-      const n = Math.max(1, Math.round(c.w / 0.6));
-      for (let i = 0; i < n; i++) b.add(new THREE.CylinderGeometry(0.22 * K, 0.12 * K, h, 10), 0xb8633a, M(x - w / 2 + ((i + 0.5) * w) / n, y + h / 2, z));
-      return;
-    }
-    case "vasija":
-    case "pozo":
-      b.add(new THREE.CylinderGeometry((w / 2) * 0.9, (w / 2) * 0.7, h, 12), c.kind === "pozo" ? 0x9a9488 : 0xb8633a, M(x, y + h / 2, z));
-      return;
-    case "saco":
-      b.add(new THREE.CylinderGeometry(w / 2, w / 2, h, 10), 0x7a4a2a, M(x, y + h / 2, z));
-      b.add(new THREE.CylinderGeometry(0.02 * K, 0.02 * K, (2.6 - (c.y ?? 0) - c.h) * K, 4), 0x5a4a3a, M(x, y + h + ((2.6 - (c.y ?? 0) - c.h) * K) / 2, z));
-      return;
-    case "gnomon":
-    case "poste":
-      b.add(new THREE.CylinderGeometry(w / 2, w / 2, h, 8), c.kind === "gnomon" ? 0x6a5a40 : 0xe8e0d0, M(x, y + h / 2, z));
-      return;
-    case "tumulo":
-      b.add(new THREE.SphereGeometry(w / 2, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), 0x9a8a62, M(x, y, z));
-      b.add(new THREE.BoxGeometry(0.6 * K, 1.6 * K, 0.2 * K), 0xe8e2d4, M(x, y + w / 2 + 0.6 * K, z));
-      return;
-    case "estela":
-      box(0xe8e2d4, 0, 0, 0, w * 0.8, h, d * 0.5);
-      box(0xd0c8b8, 0, 0, 0, w, 0.25 * K, d);
-      return;
-    case "altar":
-      box(0xece6da);
-      box(0xd8d0c0, 0, h - 0.12 * K, 0, w * 1.1, 0.12 * K, d * 1.1);
-      return;
-    case "kline":
-    case "cama":
-      box(0x8a5a32, 0, 0, 0, w, h * 0.65, d);
-      box(c.kind === "kline" ? 0xa83a3a : 0xd8d0b8, 0, h * 0.65, 0, w * 0.95, 0.08 * K, d * 0.95);
-      return;
-    case "foso":
-      b.add(new THREE.BoxGeometry(w, 0.04 * K, d), 0xe9d6a6, M(x, y + 0.02 * K, z, rot));
-      return;
-    case "bancal":
-      b.add(new THREE.BoxGeometry(w, h, d), 0x5a4a2a, M(x, y + h / 2, z, rot));
-      for (let i = 0; i < 6; i++) b.add(new THREE.SphereGeometry(0.25 * K, 6, 4), 0x4f8a3a, M(x - w / 2 + ((i + 0.5) * w) / 6, y + h + 0.1 * K, z));
-      return;
-    case "parra":
-      for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) b.add(new THREE.CylinderGeometry(0.06 * K, 0.06 * K, h, 6), 0x6a4a2a, M(x + (dx * w) / 2, y + h / 2, z + (dz * d) / 2));
-      b.add(new THREE.BoxGeometry(w, 0.2 * K, d), 0x4f7a32, M(x, y + h, z));
-      return;
-    case "telar":
-      box(0x8a6a42, 0, 0, 0, w, h, 0.12 * K);
-      box(0xc8b090, 0, 0.3 * K, 0.03 * K, w * 0.85, h * 0.7, 0.04 * K);
-      return;
-    case "hogar":
-      box(0x8a7a6a);
-      box(0xd8642a, 0, h, 0, w * 0.5, 0.08 * K, d * 0.5);
-      return;
-    case "compuerta":
-      box(0x7a5a3a);
-      return;
-    case "banco":
-      box(0xd8d0c0);
-      return;
-    case "estante":
-      box(0x8a6a42, 0, 0, 0, w, h, d);
-      return;
-    default:
-      box(c.kind === "mesa" ? 0x8a6a42 : c.kind === "arca" ? 0x7a5a3a : c.kind === "basa" ? 0xeae4d8 : c.kind === "lampara" ? 0xb8633a : c.kind === "molino" ? 0x8a8478 : 0xc8bca8);
-  }
-}
-
-/** A wall's pieces (and the lintels over its doors, 2,3 m up: the doors are doors, not slots to the roof). */
-function drawWall(b: Batch, m: Muro, floor: number, color: number): void {
-  for (const s of wallWithGaps({ axis: m.axis, at: m.at * K, from: m.from * K, to: m.to * K, y0: floor * K, y1: (floor + m.h) * K, thick: m.t * K, gaps: m.gaps?.map((g) => ({ from: g.from * K, to: g.to * K, y1: g.to - g.from > 3 ? undefined : (Math.min(2.3, m.h - 0.1) + floor) * K })) })) b.box(s.x0, s.y0, s.z0, s.x1, s.y1, s.z1, color);
-}
-
-/** The roof over a building, less its open courts (up to four strips round a court). */
-function roofOf(e: Edificio): THREE.Mesh {
-  const b = new Batch();
-  const y = (e.floor + e.wallH) * K;
-  const t = 0.3 * K;
-  const court = e.courts?.[0];
-  const rects = court
-    ? [
-        [e.x0, court.z0, e.x1, e.z0],
-        [e.x0, e.z1, e.x1, court.z1],
-        [e.x0, court.z0, court.x0, court.z1],
-        [court.x1, court.z0, e.x1, court.z1],
-      ]
-    : [[e.x0, e.z0, e.x1, e.z1]];
-  for (const [x0, z0, x1, z1] of rects) b.box(x0! * K - 0.3 * K, y, z0! * K - 0.3 * K, x1! * K + 0.3 * K, y + t, z1! * K + 0.3 * K, ROOF);
-  return b.mesh(new THREE.MeshLambertMaterial({ vertexColors: true }))!;
-}
 
 interface Gente {
   readonly id: string;
@@ -206,6 +82,8 @@ interface Gente {
   /** Strolling: the next point round the place. */
   stroll?: THREE.Vector3;
   readonly seed: number;
+  readonly feminine: boolean;
+  readonly robe: number;
 }
 
 const roman = (n: number) => ["", "", " II", " III", " IV", " V", " VI", " VII", " VIII", " IX", " X"][n] ?? ` ${n}`;
@@ -244,6 +122,18 @@ export class AcademiaMicro {
   private readonly toastEl: HTMLElement;
   private toastFor = 0;
   private challenge?: Reto;
+  /** The open challenge's stage: who is with her, the camera's orbit round them, the step she last solved. */
+  private stage?: { partner?: Gente; cx: number; cy: number; cz: number; yaw: number; pitch: number; dist: number; step: number; her: readonly MotionId[]; them: readonly MotionId[]; lensKey: string };
+  private frameNo = 0;
+  /** The third-person camera's distance (a pinch, the wheel; Berón 2026-11-24: «no había zoom»). */
+  private camDist = 4.2;
+  private readonly portal = new THREE.Group();
+  private bornAt = 0;
+  private readonly beacon = new THREE.Group();
+  private readonly arrowEl: HTMLElement;
+  private readonly cardEl: HTMLElement;
+  private cardFor = 0;
+  private readonly missionsEl: HTMLElement;
   /** Who she is talking with (they keep still and gesture). */
   private talking?: Gente;
   private offered = "";
@@ -269,17 +159,31 @@ export class AcademiaMicro {
     this.body = placeAt(this.world, start.x, 0.01, start.z)!;
     this.walk = new FreeWalk(() => this.world, { walk: WALK_MS, swim: SWIM_MS }, this.yaw);
     this.ui.className = "cab-ui micro-ui";
-    this.ui.innerHTML = `<div class="cab-where"></div><div class="cab-where micro-mision" style="top:calc(48px + env(safe-area-inset-top));right:12px;color:#ffe2a8"></div><div class="cab-toast" role="status" style="top:calc(118px + env(safe-area-inset-top))"></div>`;
+    this.ui.innerHTML = `<div class="cab-where"></div><div class="cab-where micro-mision" style="top:calc(48px + env(safe-area-inset-top));right:12px;color:#ffe2a8"></div><div class="cab-toast" role="status" style="top:calc(140px + env(safe-area-inset-top))"></div>`;
     host.root.appendChild(this.ui);
     this.whereEl = this.ui.children[0] as HTMLElement;
     this.missionEl = this.ui.children[1] as HTMLElement;
     this.toastEl = this.ui.children[2] as HTMLElement;
-    this.missionEl.textContent = linea(HISTORIA, this.story);
+    this.missionLine();
+    // Where to go: an arrow and the distance (the step's place also has a beam of light over it).
+    this.arrowEl = document.createElement("div");
+    this.arrowEl.className = "micro-arrow";
+    this.arrowEl.innerHTML = `<span class="micro-arrow-head">➤</span><span class="micro-arrow-text"></span>`;
+    this.ui.appendChild(this.arrowEl);
+    // The story in pictures: a card for each step reached.
+    this.cardEl = document.createElement("div");
+    this.cardEl.className = "micro-card";
+    this.ui.appendChild(this.cardEl);
+    this.missionsEl = document.createElement("div");
+    this.missionsEl.className = "micro-missions hidden";
+    host.root.appendChild(this.missionsEl);
     this.pad = GamePad.use(host.root, this, {
       zoom: (dir) => host.walker.holdZoom(dir),
-      plus: { label: "Historia", open: () => this.say(linea(HISTORIA, this.story), 6) },
+      plus: { label: "Misiones", open: () => this.openMissions() },
       view: () => (this.thirdPerson = !this.thirdPerson),
-      home: () => this.leave(),
+      // Settings, as in sanctuary 1 (Berón 2026-11-24: «el botón de ajustes… me ha enviado de vuelta»); the way out is
+      // the portal.
+      home: () => host.openSettings(),
       paused: () => !!this.challenge,
       moves: [
         { letter: "X", label: "Trepar", key: "KeyC", run: () => this.walk.startClimb(this.body, this.yaw) || this.say("Nada que trepar delante", 2) },
@@ -287,7 +191,8 @@ export class AcademiaMicro {
         { letter: "B", label: "Correr", toggle: true, key: "ShiftLeft", run: () => undefined },
       ],
     });
-    this.say(`${FECHA.label}. Eres una insecto-humana entre ellos. Botón de inicio: salir del microcosmos.`, 7);
+    this.say(`${FECHA.label}. Eres una insecto-humana entre ellos. Para volver, el portal junto al camino.`, 7);
+    this.showCard(0);
   }
 
   private say(text: string, seconds = 4): void {
@@ -311,28 +216,30 @@ export class AcademiaMicro {
     s.add(ground.mesh(lambert)!);
 
     const stone = new Batch();
-    for (const m of PERIBOLO_MUROS) drawWall(stone, m, 0, 0xcfc2a4);
+    for (const m of PERIBOLO_MUROS) drawWall(stone, m, 0, 0xcfc2a4, K, false);
     for (const e of EDIFICIOS) {
+      // Its plinth (the krepis) and its steps.
       stone.box(e.x0 * K, 0, e.z0 * K, e.x1 * K, e.floor * K, e.z1 * K, 0xd8ccb2);
+      for (const st of e.stairs ?? []) for (const r of stairRects(e, st)) stone.box(r.x0 * K, 0, r.z0 * K, r.x1 * K, r.y * K, r.z1 * K, 0xe2d8c2);
+      // Its floor: the rooms paved (a pebble mosaic in the andron), the courts of sand or beaten earth.
+      stone.box(e.x0 * K, e.floor * K, e.z0 * K, e.x1 * K, e.floor * K + 0.01 * K, e.z1 * K, e.thatch ? 0x9a8a62 : 0xcfc4ae);
+      for (const r of e.rooms) if (r.id === "casa-andron") stone.box(r.x0 * K + 0.3 * K, e.floor * K + 0.01 * K, r.z0 * K + 0.3 * K, r.x1 * K - 0.3 * K, e.floor * K + 0.02 * K, r.z1 * K - 0.3 * K, 0x2a3a4a);
       for (const c of e.courts ?? []) stone.box(c.x0 * K, e.floor * K, c.z0 * K, c.x1 * K, e.floor * K + 0.02 * K, c.z1 * K, e.id === "palestra" ? 0xe9d6a6 : 0xb8a888);
-      for (const m of e.walls) drawWall(stone, m, e.floor, e.color);
-      for (const c of e.things) drawThing(stone, c, e.floor);
-      this.roofs.push({ e, mesh: roofOf(e) });
+      for (const m of e.walls) drawWall(stone, m, e.floor, e.thatch ? 0xb59a74 : e.color, K, !!e.painted);
+      for (const c of e.things) drawThing(stone, c, e.floor, K);
+      for (const c of e.columns ?? []) doric(stone, c.x * K, e.floor * K, c.z * K, c.h * K, c.d * K);
+      this.roofs.push({ e, mesh: roofOf(e, K, e.thatch) });
     }
-    for (const c of [...ALTARES, ...COSAS_FUERA]) drawThing(stone, c, 0);
-    // The fountain's basin.
-    for (const a of AGUAS) if (a.id === "fuente") stone.box(a.x0 * K, 0, a.z0 * K, a.x1 * K, 0.8 * K, a.z1 * K, 0xcfc8b8);
+    for (const c of [...ALTARES, ...COSAS_FUERA]) drawThing(stone, c, 0, K);
+    // The fountain: a stone basin with its spout on a pillar.
+    for (const a of AGUAS)
+      if (a.id === "fuente") {
+        stone.box(a.x0 * K, 0, a.z0 * K, a.x1 * K, 0.8 * K, a.z1 * K, 0xcfc8b8);
+        stone.box(((a.x0 + a.x1) / 2 - 0.3) * K, 0, (a.z0 - 0.5) * K, ((a.x0 + a.x1) / 2 + 0.3) * K, 1.8 * K, a.z0 * K, 0xe8e2d4);
+        stone.add(new THREE.SphereGeometry(0.15 * K, 8, 6), 0xb87338, M(((a.x0 + a.x1) / 2) * K, 1.4 * K, (a.z0 + 0.05) * K));
+      }
     s.add(stone.mesh(lambert)!);
     for (const r of this.roofs) s.add(r.mesh);
-
-    // The columns, all at once.
-    const cols = EDIFICIOS.flatMap((e) => (e.columns ?? []).map((c) => ({ ...c, y: e.floor })));
-    if (cols.length) {
-      const geo = new THREE.CylinderGeometry(0.24 * K, 0.28 * K, 1, 12);
-      const im = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ color: 0xf2eee4 }), cols.length);
-      cols.forEach((c, i) => im.setMatrixAt(i, new THREE.Matrix4().compose(new THREE.Vector3(c.x * K, (c.y + c.h / 2) * K, c.z * K), new THREE.Quaternion(), new THREE.Vector3((c.d / 0.55), c.h * K, c.d / 0.55))));
-      s.add(im);
-    }
 
     // Water: the channel and the fountain.
     const water = new Batch();
@@ -395,6 +302,54 @@ export class AcademiaMicro {
     for (const [lx, lz] of [[-0.18, -3.5], [0.18, -3.5], [-0.18, -2.5], [0.18, -2.5]] as const) cb.box((lx - 0.05) * K, 0, (lz - 0.05) * K, (lx + 0.05) * K, 0.7 * K, (lz + 0.05) * K, 0x7a746a);
     this.cart.add(cb.mesh(lambert)!);
     s.add(this.cart);
+    this.buildPortal();
+    this.buildBeacon();
+  }
+
+  /**
+   * The portal back (Cold Sanctuary's GalaxyPortal): a black hole with its glowing accretion disc and two spiral arms of
+   * blue and violet stars, turning slowly, standing by the road's end. Walking into it takes her back.
+   */
+  private buildPortal(): void {
+    const r = PORTAL.r * K;
+    const g = this.portal;
+    const unlit = (c: number, o = 1) => new THREE.MeshBasicMaterial({ color: c, transparent: o < 1, opacity: o });
+    g.add(new THREE.Mesh(new THREE.SphereGeometry(r * 0.42, 24, 16), unlit(0x020205)));
+    const disk = new THREE.Group();
+    disk.rotation.x = (72 * Math.PI) / 180;
+    for (const [rr, c] of [[0.32, 0xfff2d8], [0.42, 0xffc673], [0.52, 0xff9a40]] as const) disk.add(new THREE.Mesh(new THREE.TorusGeometry(r * rr, r * 0.035, 8, 48), unlit(c)));
+    g.add(disk);
+    const arms = new THREE.Group();
+    const star = new THREE.BoxGeometry(1, 1, 1);
+    const blue = unlit(0x8cb3ff);
+    const violet = unlit(0xbf8cf2);
+    for (let arm = 0; arm < 2; arm++)
+      for (let i = 0; i < 60; i++) {
+        const t = i / 60;
+        const a = arm * Math.PI + t * Math.PI * 2.6;
+        const rr = r * (0.5 + t * 0.9);
+        const m = new THREE.Mesh(star, i % 3 ? blue : violet);
+        m.position.set(Math.cos(a) * rr + (hash(i, arm) - 0.5) * 0.18 * r, Math.sin(a) * rr + (hash(arm, i) - 0.5) * 0.18 * r, (hash(i + 7, arm) - 0.5) * 0.08 * r);
+        m.scale.setScalar(r * (0.05 + 0.04 * (1 - t)));
+        arms.add(m);
+      }
+    g.add(arms);
+    g.userData = { disk, arms };
+    g.position.set(PORTAL.x * K, r * 1.1, PORTAL.z * K);
+    const label = textSign("Portal de vuelta al santuario");
+    label.position.set(PORTAL.x * K, r * 2.4, PORTAL.z * K);
+    this.scene.add(g, label);
+  }
+
+  /** A beam of light and a turning gem over the current step's place (the way, shown in the world). */
+  private buildBeacon(): void {
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 40, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xffc04a, transparent: true, opacity: 0.28, depthWrite: false, side: THREE.DoubleSide }));
+    beam.position.y = 20;
+    const gem = new THREE.Mesh(new THREE.OctahedronGeometry(1.2), new THREE.MeshBasicMaterial({ color: 0xffb02a }));
+    gem.position.y = 9;
+    this.beacon.add(beam, gem);
+    this.beacon.userData = { gem };
+    this.scene.add(this.beacon);
   }
 
   // --- The people --------------------------------------------------------------------------------------------------
@@ -406,7 +361,7 @@ export class AcademiaMicro {
       const sign = textSign(name);
       this.scene.add(g, sign);
       const i = this.people.length;
-      const p: Gente = { id, f, g, sign, name, papel, vida, at: "ciudad", what: "dormir", block: -1, s: 0, wait: 0, stride: 0, off: { x: (hash(i, 1) - 0.5) * 2, z: (hash(i, 2) - 0.5) * 2 }, seed: i };
+      const p: Gente = { id, f, g, sign, name, papel, vida, at: "ciudad", what: "dormir", block: -1, s: 0, wait: 0, stride: 0, off: { x: (hash(i, 1) - 0.5) * 2, z: (hash(i, 2) - 0.5) * 2 }, seed: i, feminine, robe };
       this.people.push(p);
       return p;
     };
@@ -476,6 +431,9 @@ export class AcademiaMicro {
     this.people.forEach((p, i) => {
       this.lifeTick(p);
       const t = this.blockOf(p);
+      // Dressed as in Athens then, for what they do (domain/ropa.ts): exomis to exercise, a short chiton to work.
+      const what = t.what === "entrenar" || t.what === "correr" ? "ejercicio" : t.what === "cuidar" || (t.what === "trabajar" && p.papel !== "maestro") ? "trabajo" : undefined;
+      p.f.wear(greekOutfit({ feminine: p.feminine, robe: p.robe, what, elder: p.papel === "maestro" || p.papel === "anciano" }));
       if (t.from !== p.block || t.at !== p.at) {
         if (t.at !== p.at) {
           // Each sets off at their own moment.
@@ -489,8 +447,15 @@ export class AcademiaMicro {
         p.what = t.what;
         p.block = t.from;
       }
+      if (p.id === "carretero" && p.at === "carro" && !p.way) {
+        // Moved and posed with his cart (moveCart).
+        p.g.visible = true;
+        p.sign.visible = near(p);
+        return;
+      }
       if (p === this.talking) {
-        p.f.poseAngles(motion("pedir", clock + i));
+        const st = this.stage;
+        p.f.poseAngles(motion(st && st.step >= 0 ? st.them[st.step]! : "respirar", clock + i));
         p.f.update(dt);
         this.placeSign(p);
         return;
@@ -610,12 +575,20 @@ export class AcademiaMicro {
     const x = CARRO.from.x + (CARRO.to.x - CARRO.from.x) * this.cartS;
     const z = CARRO.from.z + (CARRO.to.z - CARRO.from.z) * this.cartS;
     this.cart.position.set(x * K, 0, z * K);
-    this.cart.rotation.y = this.cartDir > 0 ? Math.PI : 0;
+    // The donkey ahead (the cart's −z), pulling it the way it goes (Berón 2026-11-24: it went backwards, «como siendo
+    // jalado»): towards the gate it faces −z as drawn, back to the road's end it turns round.
+    this.cart.rotation.y = this.cartDir > 0 ? 0 : Math.PI;
     const driver = this.people.find((p) => p.id === "carretero");
     if (driver && driver.at === "carro" && !driver.way) {
-      driver.g.position.set((x - 1.4) * K, 0, z * K);
-      driver.g.rotation.y = this.cart.rotation.y + Math.PI;
-      if (this.cartWait <= 0) driver.f.walk((driver.stride += dt * 3), 0.7);
+      // He walks by the donkey's head, leading it, facing where they go.
+      const r = this.cart.rotation.y;
+      const lx = -0.9 * K, lz = -3.0 * K;
+      driver.g.position.set(x * K + lx * Math.cos(r) + lz * Math.sin(r), 0, z * K - lx * Math.sin(r) + lz * Math.cos(r));
+      driver.g.rotation.y = r + Math.PI;
+      if (this.cartWait <= 0 && (working || this.riding)) driver.f.walk((driver.stride += CARRO.speed * dt * 3), 1);
+      else driver.f.pose("stand");
+      driver.f.update(dt);
+      driver.sign.position.set(driver.g.position.x, driver.g.position.y + 2.1, driver.g.position.z);
     }
   }
 
@@ -663,16 +636,89 @@ export class AcademiaMicro {
   private talk(p: Gente): void {
     this.talking = p;
     p.g.rotation.y = Math.atan2(this.body.x - p.g.position.x, this.body.z - p.g.position.z);
-    this.open(DIALOGOS[p.id]!, (ok, r) => {
-      this.talking = undefined;
-      if (ok) this.say(`${r.chore.title}: ${this.host.reward(r.reward)}`, 5);
-    });
+    this.open(
+      DIALOGOS[p.id]!,
+      (ok, r) => {
+        this.talking = undefined;
+        if (ok) this.say(`${r.chore.title}: ${this.host.reward(r.reward)}`, 5);
+      },
+      p,
+    );
+  }
+
+  /** The current step, short: its picture and number (the whole of it is in the card and the missions window). */
+  private missionLine(): void {
+    const cur = HISTORIA[this.story.step];
+    this.missionEl.textContent = cur ? `${cur.icon ?? ""} Paso ${this.story.step + 1} de ${HISTORIA.length} · ＋ Misiones` : `🏛️ Historia completa`;
   }
 
   private stepDone(): void {
-    this.missionEl.textContent = linea(HISTORIA, this.story);
-    if (acabada(HISTORIA, this.story)) this.say("Historia completa: has vivido un día en la Academia de Platón. Botón de inicio para salir.", 8);
-    else this.say(`Hecho. ${linea(HISTORIA, this.story)}`, 5);
+    this.missionLine();
+    if (acabada(HISTORIA, this.story)) this.showCard(HISTORIA.length, "Has vivido un día en la Academia de Platón. Vuelve por el portal cuando quieras.");
+    else this.showCard(this.story.step, "Hecho. Ahora:");
+  }
+
+  /** The story in pictures: the step's picture, its number and what to do, for a few seconds. */
+  private showCard(step: number, lead = ""): void {
+    const cur = HISTORIA[step];
+    const pics = HISTORIA.map((h, i) => `<span class="${i < this.story.step ? "done" : i === this.story.step ? "now" : ""}">${h.icon ?? "•"}</span>`).join("");
+    this.cardEl.innerHTML = cur
+      ? `<div class="micro-card-pic">${cur.icon ?? ""}</div><div class="micro-card-lead">${lead} Paso ${step + 1} de ${HISTORIA.length}</div><div class="micro-card-text">${cur.text}</div><div class="micro-card-strip">${pics}</div>`
+      : `<div class="micro-card-pic">🏛️</div><div class="micro-card-lead">Historia completa</div><div class="micro-card-text">${lead}</div><div class="micro-card-strip">${pics}</div>`;
+    this.cardEl.classList.add("on");
+    this.cardFor = 6;
+  }
+
+  /**
+   * The missions window (Berón 2026-11-24: «falta que se le muestre al jugador la modal de misiones para que se mueva
+   * fácilmente por el lugar»): the plan of the Academy with each step's place numbered and where she is, and the steps
+   * in pictures, each with «Ir» to go there; and the way back through the portal.
+   */
+  private openMissions(): void {
+    const el = this.missionsEl;
+    const X = (x: number) => x.toFixed(1);
+    const rect = (r: { x0: number; x1: number; z0: number; z1: number }, fill: string, extra = "") => `<rect x="${X(r.x0)}" y="${X(r.z0)}" width="${X(r.x1 - r.x0)}" height="${X(r.z1 - r.z0)}" fill="${fill}" ${extra}/>`;
+    const parts: string[] = [];
+    parts.push(rect({ x0: -HALF, x1: HALF, z0: -HALF, z1: HALF }, "#cdbb8e"));
+    for (const l of LUGARES_ABIERTOS) parts.push(rect(l, `#${l.ground.toString(16).padStart(6, "0")}`));
+    parts.push(rect(PERIBOLO, "none", `stroke="#8a7a5a" stroke-width="1.2"`));
+    for (const t of trees().filter((_, i) => i % 2 === 0)) parts.push(`<circle cx="${X(t.x)}" cy="${X(t.z)}" r="${t.kind === "platano" ? 2.6 : 1.6}" fill="${t.kind === "olivo" ? "#7d8f62" : "#4f7a3a"}"/>`);
+    for (const a of AGUAS) parts.push(rect(a, "#3f86a8"));
+    for (const e of EDIFICIOS) {
+      parts.push(rect(e, e.thatch ? "#b59a74" : "#b5583a", `stroke="#6a3a2a" stroke-width="0.6"`));
+      for (const c of e.courts ?? []) parts.push(rect(c, "#e9d6a6"));
+    }
+    for (const e of EDIFICIOS.filter((q) => !q.id.startsWith("choza") || q.id === "choza-0")) parts.push(`<text x="${X((e.x0 + e.x1) / 2)}" y="${X(e.z0 - 2)}" font-size="6" text-anchor="middle" fill="#2a2018">${e.id.startsWith("choza") ? "Chozas" : e.label.split(" (")[0]}</text>`);
+    parts.push(`<circle cx="${PORTAL.x}" cy="${PORTAL.z}" r="5" fill="#0a0a14" stroke="#ffc673" stroke-width="1.5"/><text x="${PORTAL.x}" y="${PORTAL.z - 8}" font-size="6" text-anchor="middle" fill="#2a2018">Portal</text>`);
+    HISTORIA.forEach((h, i) => {
+      const l = lugar(h.at);
+      const st = i < this.story.step ? "done" : i === this.story.step ? "now" : "next";
+      parts.push(`<g class="mm-step ${st}"><circle cx="${X(l.x)}" cy="${X(l.z)}" r="7"/><text x="${X(l.x)}" y="${X(l.z + 2.6)}" font-size="8" text-anchor="middle">${i + 1}</text></g>`);
+    });
+    const bx = this.body.x / K, bz = this.body.z / K;
+    parts.push(`<circle class="mm-me" cx="${X(bx)}" cy="${X(bz)}" r="4.5"/>`);
+    const rows = HISTORIA.map((h, i) => {
+      const st = i < this.story.step ? "done" : i === this.story.step ? "now" : "next";
+      return `<li class="${st}"><span class="mm-pic">${h.icon ?? ""}</span><span class="mm-text"><b>${i + 1}.</b> ${h.text}${h.reto ? ` <em>· reto: ${RETOS_ACADEMIA[h.reto]!.title}</em>` : ""}</span><button data-go="${i}">${st === "done" ? "Volver" : "Ir"}</button></li>`;
+    }).join("");
+    el.innerHTML = `<div class="mm-box"><div class="mm-head"><b>Misiones · ${FECHA.label}</b><button data-close>✕</button></div><svg viewBox="${-HALF} ${-HALF} ${HALF * 2} ${HALF * 2}" class="mm-map">${parts.join("")}</svg><ol class="mm-list">${rows}</ol><button class="mm-portal" data-portal>🌀 Volver al santuario por el portal</button></div>`;
+    el.classList.remove("hidden");
+    el.onclick = (ev) => {
+      const t = ev.target as HTMLElement;
+      if (t.closest("[data-close]") || t === el) return el.classList.add("hidden");
+      const go = t.closest<HTMLElement>("[data-go]");
+      if (go) {
+        const l = lugar(HISTORIA[Number(go.dataset.go)]!.at);
+        el.classList.add("hidden");
+        this.teleport(l.x + 1.2, l.z + 1.2);
+        return;
+      }
+      if (t.closest("[data-portal]")) {
+        el.classList.add("hidden");
+        this.teleport(PORTAL.x + 4, PORTAL.z);
+        this.yaw = Math.PI / 2;
+      }
+    };
   }
 
   private ride(): void {
@@ -683,25 +729,54 @@ export class AcademiaMicro {
   }
 
   private openReto(id: string): void {
-    this.open(RETOS_ACADEMIA[id]!, (ok, r) => {
-      const before = this.story.step;
-      this.story = avanzar(HISTORIA, this.story, { kind: "reto", id, ok });
-      if (ok) this.say(`${r.chore.title}: hecho. ${this.host.reward(r.reward)}`, 5);
-      if (this.story.step !== before) this.stepDone();
-    });
+    const withId = HISTORIA[this.story.step]?.with;
+    const partner = this.people.find((p) => p.id === withId && !p.way && p.g.position.distanceTo(this.rig.position) < 14);
+    if (partner) this.talking = partner;
+    this.open(
+      RETOS_ACADEMIA[id]!,
+      (ok, r) => {
+        this.talking = undefined;
+        const before = this.story.step;
+        this.story = avanzar(HISTORIA, this.story, { kind: "reto", id, ok });
+        if (ok) this.say(`${r.chore.title}: hecho. ${this.host.reward(r.reward)}`, 5);
+        if (this.story.step !== before) this.stepDone();
+      },
+      partner,
+    );
   }
 
-  private open(proc: Procedure, done: (ok: boolean, r: Reto) => void): void {
+  private open(proc: Procedure, done: (ok: boolean, r: Reto) => void, partner?: Gente): void {
     const r = procedureReto(proc);
     const run = new ChoreRun(r.chore);
     this.challenge = r;
     this.offered = "";
     RootMenu.interact(undefined);
     this.avatar.pose("stand");
+    // The stage: she and whoever is with her face each other; the camera looks at them from the side, and the player
+    // turns it with a finger or the stick and zooms with a pinch or the zoom buttons (Berón 2026-11-24).
+    const anims = PASOS_ACADEMIA[proc.id] ?? PASOS_DIALOGO;
+    const cyc = (xs: readonly MotionId[], n: number) => Array.from({ length: n }, (_, i) => xs[i % xs.length]!);
+    let cx = this.body.x, cz = this.body.z;
+    let face = this.walk.facing;
+    if (partner) {
+      const dx = this.body.x - partner.g.position.x, dz = this.body.z - partner.g.position.z;
+      const d = Math.hypot(dx, dz) || 1;
+      // She stands 1,6 m from them, facing them.
+      const bx = partner.g.position.x + (dx / d) * 1.6, bz = partner.g.position.z + (dz / d) * 1.6;
+      this.body = placeAt(this.world, bx, this.body.y + 0.3, bz) ?? this.body;
+      face = Math.atan2(-dx, -dz);
+      partner.g.rotation.y = Math.atan2(dx, dz);
+      cx = (this.body.x + partner.g.position.x) / 2;
+      cz = (this.body.z + partner.g.position.z) / 2;
+    }
+    this.walk.facing = face;
+    this.stage = { partner, cx, cy: this.body.y + 1, cz, yaw: face + Math.PI / 2, pitch: 0.25, dist: 4.6, step: -1, her: cyc(anims.her, r.chore.exercises.length), them: cyc(anims.partner, r.chore.exercises.length), lensKey: "" };
     const duel = this.host.duel;
     duel.onClose = () => {
       duel.onClose = undefined;
       this.challenge = undefined;
+      this.stage = undefined;
+      sheetLens(this.host.camera, false);
       done(run.status === "done", r);
     };
     duel.show(
@@ -719,7 +794,13 @@ export class AcademiaMicro {
         maxLives: run.maxMistakes,
       },
       { ...this.host.sheet, title: r.chore.title },
-      (ans: Answer) => ({ ok: run.submit(ans) }),
+      (ans: Answer) => {
+        const before = run.step;
+        const ok = run.submit(ans);
+        // Each solved step is acted out, over and over until the next is solved.
+        if (ok && this.stage && run.step > before) this.stage.step = run.step - 1;
+        return { ok };
+      },
     );
   }
 
@@ -749,16 +830,35 @@ export class AcademiaMicro {
     }
     this.movePeople(dt);
     this.storyTick();
-    // The camera: hers, first or third person.
+    // The camera: hers, first or third person; at a challenge, round her and whoever is with her.
     const look = walker.look(dt);
-    this.yaw += look.yaw;
-    this.pitch = Math.max(-1.3, Math.min(1.3, this.pitch + look.pitch));
-    if (!this.thirdPerson && !this.riding) this.walk.facing = this.yaw;
+    const st = this.stage;
+    if (st) {
+      st.yaw += look.yaw;
+      st.pitch = Math.max(-0.2, Math.min(1.2, st.pitch + look.pitch));
+    } else {
+      this.yaw += look.yaw;
+      this.pitch = Math.max(-1.3, Math.min(1.3, this.pitch + look.pitch));
+    }
+    if (!this.thirdPerson && !this.riding && !st) this.walk.facing = this.yaw;
     this.rig.position.set(this.body.x, this.body.y, this.body.z);
-    this.rig.rotation.y = (this.thirdPerson ? this.walk.facing : this.yaw) + Math.PI;
+    this.rig.rotation.y = (this.thirdPerson || st ? this.walk.facing : this.yaw) + Math.PI;
     const eye = this.body.y + EYE_M;
-    if (this.thirdPerson || this.riding) {
-      const d = 3.6;
+    if (st) {
+      cam.position.set(st.cx + Math.sin(st.yaw) * st.dist * Math.cos(st.pitch), st.cy + Math.sin(st.pitch) * st.dist, st.cz + Math.cos(st.yaw) * st.dist * Math.cos(st.pitch));
+      cam.lookAt(st.cx, st.cy, st.cz);
+      this.rig.visible = true;
+      // Framed in the free band over (or between) the sheet's blocks: the panel and HUD views leave different room.
+      if ((this.frameNo++ & 15) === 0) {
+        const band = sheetBand();
+        const key = band ? `${Math.round(band.top)}-${Math.round(band.bottom)}` : "-";
+        if (key !== st.lensKey) {
+          st.lensKey = key;
+          sheetLens(cam, true, band ? { band } : {});
+        }
+      }
+    } else if (this.thirdPerson || this.riding) {
+      const d = this.camDist;
       cam.position.set(this.body.x + Math.sin(this.yaw) * d * Math.cos(this.pitch), eye + 0.4 - Math.sin(this.pitch) * d, this.body.z + Math.cos(this.yaw) * d * Math.cos(this.pitch));
       cam.lookAt(this.body.x, eye - 0.2, this.body.z);
       this.rig.visible = true;
@@ -767,13 +867,49 @@ export class AcademiaMicro {
       cam.rotation.set(this.pitch, this.yaw, 0);
       this.rig.visible = false;
     }
-    if (this.riding) this.avatar.pose("ride");
+    // Her clothes: a chiton and cloak; the exomis at the palaestra and the track, a short chiton for work (domain/ropa.ts).
+    const zone = zonaAt(this.body.x / K, this.body.z / K);
+    const doing = /^palestra|^pista/.test(zone) || this.challenge?.chore.title.includes("antorchas") ? "ejercicio" : /cocina|huerto|olivar|acequia/.test(zone) ? "trabajo" : undefined;
+    this.avatar.wear(greekOutfit({ feminine: true, robe: 0xc9d8e8, what: doing }));
+    if (st) {
+      if (st.step >= 0) this.avatar.poseAngles(motion(st.her[st.step]!, this.clockH * 3600));
+      else this.avatar.pose("stand");
+    } else if (this.riding) this.avatar.pose("ride");
     else poseOnFoot(this.avatar, this.walk, { body: this.body, moving, sprinting: moving && this.pad.isOn("B"), lotus: false, clock: this.clockH * 3600 }, dt);
     this.avatar.update(dt);
     // The cut-away view: a building's roof is not drawn while she is in it.
     const x = this.body.x / K;
     const z = this.body.z / K;
     for (const r of this.roofs) r.mesh.visible = !(x >= r.e.x0 && x <= r.e.x1 && z >= r.e.z0 && z <= r.e.z1);
+    // The portal turns; walking into it takes her back (not in her first seconds here, when she arrives beside it).
+    const pd = this.portal.userData as { disk: THREE.Object3D; arms: THREE.Object3D };
+    pd.disk.rotation.z += dt * 0.32;
+    pd.arms.rotation.z += dt * 0.08;
+    this.bornAt += dt;
+    if (!this.challenge && this.bornAt > 4 && Math.hypot(this.body.x - this.portal.position.x, this.body.z - this.portal.position.z) < PORTAL.r * K * 0.5) {
+      this.leave();
+      return;
+    }
+    // The way to the current step: the beam over its place and the arrow with the distance.
+    const cur = HISTORIA[this.story.step];
+    const there = !cur || this.story.there || estaEn(cur.at, this.body.x / K, this.body.z / K);
+    this.beacon.visible = !there;
+    this.arrowEl.style.display = there || st ? "none" : "";
+    if (cur && !there) {
+      const l = lugar(cur.at);
+      this.beacon.position.set(l.x * K, this.floorY(l.x, l.z), l.z * K);
+      (this.beacon.userData.gem as THREE.Object3D).rotation.y += dt * 1.5;
+      const dx = l.x * K - this.body.x, dz = l.z * K - this.body.z;
+      // Relative to where the camera looks (screen up = ahead).
+      const camYaw = this.thirdPerson ? this.yaw : this.yaw;
+      const a = Math.atan2(dx, dz) - (camYaw + Math.PI);
+      (this.arrowEl.firstElementChild as HTMLElement).style.transform = `rotate(${(-a * 180) / Math.PI - 90}deg)`;
+      const m = Math.round(Math.hypot(dx, dz) / K);
+      const txt = `${cur.icon ?? ""} ${m} m`;
+      const te = this.arrowEl.lastElementChild as HTMLElement;
+      if (te.textContent !== txt) te.textContent = txt;
+    }
+    if (this.cardFor > 0 && (this.cardFor -= dt) <= 0) this.cardEl.classList.remove("on");
     const tt = this.clockH * 3600;
     for (const f of this.flames) f.scale.set(1 + Math.sin(tt * 9) * 0.08, 1 + Math.sin(tt * 13) * 0.15, 1 + Math.cos(tt * 11) * 0.08);
     const hour = this.hour();
@@ -782,6 +918,18 @@ export class AcademiaMicro {
     const where = `Microcosmos · ${hh}:${String(Math.floor((hour - hh) * 60)).padStart(2, "0")} · ${this.riding ? "En el carro del Dromos" : zonaLabel(zonaAt(x, z))}`;
     if (this.whereEl.textContent !== where) this.whereEl.textContent = where;
     if (this.toastFor > 0 && (this.toastFor -= dt) <= 0) this.toastEl.classList.remove("on");
+  }
+
+  /** A finger turns the challenge's view (sanctuary 1 passes its canvas gestures on while she is here). */
+  gesture(dx: number, dy: number): void {
+    if (!this.stage) return;
+    this.stage.yaw -= dx * 0.008;
+    this.stage.pitch = Math.max(-0.2, Math.min(1.2, this.stage.pitch + dy * 0.006));
+  }
+  /** A pinch or the wheel zooms the challenge's view (>1 closer). */
+  zoomBy(f: number): void {
+    if (this.stage) this.stage.dist = Math.max(1.6, Math.min(14, this.stage.dist / f));
+    else this.camDist = Math.max(1.6, Math.min(30, this.camDist / f));
   }
 
   /** The figures and the draw calls (performance, for the live checks). */
@@ -808,6 +956,8 @@ export class AcademiaMicro {
     RootMenu.interact(undefined);
     GamePad.release(this);
     this.ui.remove();
+    this.missionsEl.remove();
+    sheetLens(this.host.camera, false);
     this.scene.traverse((o) => {
       const m = o as THREE.Mesh;
       m.geometry?.dispose();

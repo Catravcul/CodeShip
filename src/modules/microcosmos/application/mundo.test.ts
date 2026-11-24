@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { blocked, groundFloors } from "@modules/aerial-sanctuary/domain/walk";
+import { blocked } from "@modules/aerial-sanctuary/domain/walk";
 import { academiaWorld, estaEn, K, ruta, zonaAt } from "./mundo";
 import { AGUAS, ALTARES, CARRO, COSAS_FUERA, EDIFICIOS, FAMILIAS, HALF, HISTORIA, INSECT_SCALE, LUGARES, LUGARES_ABIERTOS, PERIBOLO, PERIBOLO_MUROS, PERSONAS, trees } from "../data/academia";
-import { RETOS_ACADEMIA } from "../data/retos-academia";
+import { PASOS_ACADEMIA, RETOS_ACADEMIA } from "../data/retos-academia";
+import { MOTIONS } from "@modules/sanctuary-one/data/animaciones";
 import { DIALOGOS } from "../data/dialogos-academia";
 import { procedureReto } from "@modules/sanctuary-one/application/challenges";
 import { JORNADA } from "../domain/vida";
@@ -44,7 +45,8 @@ describe("Plato's Academy, the microcosm (data/academia.ts, application/mundo.ts
           for (let k = 0; k <= n; k++) {
             const x = (x0 + ((x1 - x0) * k) / n) * K;
             const z = (z0 + ((z1 - z0) * k) / n) * K;
-            const y = Math.max(...groundFloors(w, x, z).map((f) => f.y), 0);
+            // The floor she stands on there: the highest one under her body (at a step's edge she is already up it).
+            const y = Math.max(0, ...w.floors.filter((f) => f.y < 3 * K && x > f.x0 - 0.35 && x < f.x1 + 0.35 && z > f.z0 - 0.35 && z < f.z1 + 0.35).map((f) => f.y));
             expect(blocked(w, x, y + 0.01, z, 1.6), `${a.id}→${b.id} at (${(x / K).toFixed(1)}, ${(z / K).toFixed(1)})`).toBe(false);
           }
         }
@@ -92,5 +94,14 @@ describe("Plato's Academy, the microcosm (data/academia.ts, application/mundo.ts
       expect(procedureReto(q!).chore.exercises.length).toBeGreaterThanOrEqual(4);
     }
     for (const q of Object.values(RETOS_ACADEMIA)) expect(procedureReto(q).chore.exercises.length).toBeGreaterThanOrEqual(4);
+  });
+  it("each step of each challenge has her motion and her partner's, from the catalogue", () => {
+    for (const [id, q] of Object.entries(RETOS_ACADEMIA)) {
+      const a = PASOS_ACADEMIA[id]!;
+      expect(a.her.length, id).toBe(q.steps.length);
+      expect(a.partner.length, id).toBe(q.steps.length);
+      for (const m of [...a.her, ...a.partner]) expect(Object.keys(MOTIONS), m).toContain(m);
+    }
+    for (const s of HISTORIA) expect(s.icon, s.id).toBeDefined();
   });
 });

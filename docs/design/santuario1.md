@@ -205,6 +205,19 @@ Por fases, cada una con su PR.
 | 119 | **El feto es de un pulpo** | Hecho: en el globo, un pulpo a punto de eclosionar dentro de su huevo transparente, colgado de su pedúnculo (como cuelga la madre sus huevos): manto con cromatóforos, ojos grandes, ocho brazos cortos y el saco vitelino externo; respira con el manto, mueve los brazos y gira despacio en el huevo (Naef 1928; *Octopus vulgaris*, estadios XIX–XX) |
 | 120 | **Entrar a todos los microcosmos desde cualquier máquina**; **una máquina en cada piso** | Hecho: cada máquina ofrece todos los microcosmos (`MICROCOSMOS`); cada piso tiene la suya, puesta donde más sitio libre hay y con espacio ante su puerta (`floors/kit.ts` `withSimulator`, test). Las máquinas lejos de la cámara no se dibujan (40 m) y su cristal va en una sola malla |
 
+### Decimoquinta lista (2026-11-24 03:08)
+
+| # | Pedido | Estado |
+| --- | --- | --- |
+| 121 | **Quitar las gradas de las literas** | Hecho: eran el tobogán (dibujado en tramos, parecía una escalera inútil) |
+| 122 | **Sigo sin poderme tirar de los pisos** | Hecho: con el joystick en diagonal se deslizaba por el borde y nunca «se quedaba quieta», que era lo que activaba la caída; ahora cae si el borde la frena (prueba en free-walk.test.ts). En vivo, andando recto, caen 65 de 72 lados (los otros 7 tienen un mueble delante) |
+| 123 | **El pulpo se desarrolla hasta nacer** (2 h, por ajuste; 1 min para probar), fases reales, transición fluida, tamaño (¿un tercio del globo?) | Hecho (`domain/pulpo.ts`): estadios de Naef I–XX de *Octopus vulgaris*, con las dos inversiones, ojos que se pigmentan, cromatóforos, latido, vitelo que se gasta, eclosión y la paralarva nadando; luego otro huevo. Ajuste «Huevo de pulpo»: 1, 3 (por defecto, para verlo), 10 min o 2 h. Tamaño: la paralarva al nacer mide un tercio del globo (la regla); el huevo, 1,25 veces la paralarva de largo y 0,45 de ancho (proporciones reales: huevo de ~2,5 × 0,9 mm, paralarva de ~2 mm con el manto de ~1,1 mm). Si el globo fuera el huevo, la paralarva mediría el 80 % de su altura: queda como opción. En el HUD se lee el estadio al estar en el globo |
+| 124 | **Una sola máquina de simulación, gran pecera para muchos; las tareas de grupo a la estación de alfombras** | Hecho: una gran pecera de 9 × 9 m y 4 m de agua en la plaza, con nueve máscaras; quien está en la plaza entra con ella y flota en estrella. Los retos de equipo se eligen en la estación de alfombras del piso. (Los personajes con papel no se animaban: faltaba actualizar su pose; arreglado) |
+| 125 | **Pantalla de carga** | Hecho (`ui/loading-screen.ts`): un dibujo del santuario (árboles con pisos, el globo con el huevo, una alfombra cruzando) y «Cargando...» con el último punto parpadeando |
+| 126 | **Ropa: la del microcosmos y la del trabajo según el horario** | Hecho (`domain/ropa.ts`): en horas de tareas y entrenamiento, la ropa del piso (pijama y gorro en el hospital, bata en laboratorios, chaqueta y gorro de cocina, casco y chaleco en obra, mono en el taller, deporte en el gimnasio…), para ella y para la gente; en la Academia, quitón y manto, exomis para ejercitarse, quitón corto para trabajar |
+| 127 | **Microcosmos: más arte, detalle, cámara, misiones, portal, animaciones** | Ver [microcosmos.md](microcosmos.md) (2026-11-24) |
+| 128 | **Lista de lo creado, revisado o no y su fecha** | Hecho: [qa/revision-en-vivo.md](../qa/revision-en-vivo.md), generada de los catálogos y de `src/modules/qa-vivo/data/revisado.ts`; una prueba falla si no está al día |
+
 ### Duodécima lista (2026-11-22, noche)
 
 | # | Pedido | Estado |

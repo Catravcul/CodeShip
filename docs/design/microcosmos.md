@@ -26,7 +26,7 @@ el nombre. Caben tantos como se quieran, uno abierto cada vez.
 
 ## La Academia de Platón (Atenas, verano de 360 a. C.)
 
-Se entra desde cualquier máquina de simulación: hay una en cada piso (`MICROCOSMOS`, Berón 2026-11-24). Datos:
+Se entra por la gran pecera de la plaza de la residencia, la única máquina de simulación (`MICROCOSMOS`, Berón 2026-11-24). Datos:
 `modules/microcosmos/data/academia.ts`; retos: `data/retos-academia.ts`.
 
 | Parte | Qué | Fuente |
@@ -75,6 +75,29 @@ Animar una figura en un paso (`motion()` + `poseAngles` + `update`) cuesta ~2 µ
 pruebas (medido con 20.000 repeticiones); en un móvil, del orden de 10–20 µs. Un reto de equipo con seis figuras anima, así,
 ~0,1 ms de los 16,7 ms de un fotograma: no se nota. Lo que cuesta es dibujar las figuras (cada una son varias llamadas de
 dibujo), y eso ocurre haya reto o no.
+
+## Segunda pasada (Berón 2026-11-24)
+
+- **Arte y detalle** (`adapters/three/academia-art.ts`): columnas dóricas con equino, ábaco y estrías; muros de estuco
+  pintado (zócalo rojo, campo claro, banda azul y friso ocre: el «estilo de mampostería»); tejados de tejas a dos aguas
+  con frontones, o a un agua hacia el patio en la palestra y la casa; chozas de paja; estatuas de mármol (las nueve Musas,
+  Hermes y Heracles en la palestra, Atenea junto a sus olivos), hermas en las puertas; vasos de su forma real (ánfora,
+  hidria, crátera, pithos, louterion sobre su pie), lechos con cojín, sillas klismos, mesas de tres patas con rollos y
+  tablillas, lampadarios, telar de pesas, pozo con torno, estelas con relieve y túmulos con loutróforo.
+- **El Museo** se rehízo: templo próstilo de 12 × 13 m sobre su crepidoma, con gradas (antes se atravesaba el zócalo),
+  pórtico de dos columnas, frontón, las nueve Musas, estanterías de rollos, mesas de lectura, sillas y lampadarios.
+  Los suelos altos tienen zócalo sólido y gradas (`mundo.ts`).
+- **Cámara**: zoom con pellizco o rueda también fuera de los retos; en un reto, la cámara mira a ella y a quien la
+  acompaña, gira con el dedo o el mando y se encuadra en el hueco libre sobre la hoja (vista panel o HUD).
+- **Animaciones**: cada paso de cada reto tiene su movimiento para ella y para quien la acompaña (`PASOS_ACADEMIA`);
+  en los diálogos hablan por turnos. El carro va con el asno delante y el carretero guiándolo de la cabeza (iba al
+  revés, «como siendo jalado»).
+- **Misiones**: el botón «＋ Misiones» abre el plano de la Academia con los pasos numerados, dónde está ella y su lista
+  en dibujos con «Ir»; una baliza de luz sobre el sitio del paso y una flecha con la distancia; cada paso alcanzado
+  muestra su tarjeta con su dibujo.
+- **Ajustes** (botón de inicio) abre los ajustes, como en el santuario 1; **la salida es el portal** (agujero negro en una
+  galaxia, como el GalaxyPortal de Cold Sanctuary) junto al final del Dromos.
+- **Ropa**: quitón y manto; exomis en la palestra y la pista; quitón corto para trabajar.
 
 ## Siguiente (propuesto)
 

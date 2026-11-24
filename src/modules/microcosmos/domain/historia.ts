@@ -14,6 +14,8 @@ export interface PasoHistoria {
   readonly reto?: string;
   /** Who is there for it (a person id of the roster), if anyone. */
   readonly with?: string;
+  /** Its picture in the missions window and on the step's card (the story told in pictures, Berón 2026-11-24). */
+  readonly icon?: string;
 }
 
 export interface EstadoHistoria {

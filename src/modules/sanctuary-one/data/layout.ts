@@ -17,6 +17,8 @@ import { GROUPS, plan, split } from "../domain/population";
 import { ageInGroup, ageLabel, sizeAt } from "../domain/life-cycle";
 import { hash01, type Waypoint } from "../domain/motion";
 import { LIFE_CYCLES } from "./ciclos-de-vida";
+import { ARENA_Y, arenaRects, CASTILLOS, CROWN, type P3, type TeamId } from "./castillos";
+import { CIMA_RESIDENCIA } from "./floors/residencia-cima";
 
 /**
  * Sanctuary 1 as the scene and the walk see it (docs/design/santuario1.md): the caps of ice and the land island as
@@ -71,6 +73,27 @@ export interface S1Area {
 /** A point in the world, m. */
 export type Point3 = { readonly x: number; readonly y: number; readonly z: number };
 
+/** A tree's crown floor as drawn: its square, the garden band, the pillow ring and the castles. World coordinates. */
+export interface CrownShape {
+  readonly area: string;
+  readonly y: number;
+  readonly rect: Rect;
+  readonly arena: readonly Rect[];
+  readonly castles: readonly {
+    readonly team: TeamId;
+    readonly name: string;
+    readonly color: number;
+    readonly decks: readonly (Rect & { readonly y: number; readonly kind: string; readonly ladder?: Rect })[];
+    readonly rails: readonly Solid[];
+    readonly columns: readonly Solid[];
+    readonly slides: readonly (readonly Point3[])[];
+    readonly treasure: Point3;
+    readonly rect: Rect;
+    /** The tower's top deck (its roof is drawn over it). */
+    readonly tower: Rect & { readonly y: number };
+  }[];
+}
+
 export interface TowerShape {
   readonly id: string;
   readonly building: string;
@@ -88,6 +111,8 @@ export interface TowerShape {
    * tronco»): two wooden struts under each floor, from the trunk's face up to the floor's underside. World points.
    */
   readonly braces: readonly { readonly foot: Point3; readonly head: Point3 }[];
+  /** Its crown's giant floor (castillos.ts), in world coordinates, if it has one. */
+  readonly cima?: CrownShape;
   /** Its base at sea (BASE): the deck's outer edge (the trunk's hole in the middle). */
   readonly base: Rect;
   /** The ground door: outside on its base, and inside in the trunk's water. */
@@ -497,7 +522,76 @@ function buildTower(b: Built, t: TowerSpec, k: number): void {
   }
   // The roof over the trunk.
   b.floors.push({ id: `${t.id}-techo`, ...around(o.x, o.z, OH), y: rootHeight, area: `${t.id}:techo` });
+  if (t.cima) {
+    (shape as { cima?: CrownShape }).cima = buildCrown(b, t, o, rootHeight, k);
+    // Its braces: from the trunk's faces 24 m down to under the crown's slab, fanned out to its edges.
+    for (const [ux, uz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const)
+      for (const along of [-40, -14, 14, 40]) {
+        const at = (r: number, a: number) => ({ x: o.x + ux * r + uz * a, z: o.z + uz * r + ux * a });
+        const foot = at(OH, Math.max(-OH + 2, Math.min(OH - 2, along / 3)));
+        const head = at(42, along);
+        (shape.braces as TowerShape["braces"][number][]).push({ foot: { ...foot, y: rootHeight - 24 }, head: { ...head, y: rootHeight - 0.6 } });
+      }
+  }
   b.towers.push(shape);
+}
+
+/**
+ * The giant floor on a tree's crown (organizacion.ts rule 1; castillos.ts, floors/residencia-cima.ts): its square round
+ * the trunk's top, the pillow ring, the castles' decks, stairs, nets, rails and posts, and its things. The crown frame
+ * (origin on the trunk's axis) turns with the tree's quarter.
+ */
+function buildCrown(b: Built, t: TowerSpec, o: { x: number; z: number }, y: number, k: number): CrownShape {
+  const area = `${t.id}:cima`;
+  const q = (((t.quarter % 4) + 4) % 4) as 0 | 1 | 2 | 3;
+  const P = (x: number, z: number) => (q === 0 ? { x, z } : q === 1 ? { x: z, z: -x } : q === 2 ? { x: -x, z: -z } : { x: -z, z: x });
+  const W = (r: { x0: number; x1: number; z0: number; z1: number }): Rect => {
+    const a = P(r.x0, r.z0);
+    const c = P(r.x1, r.z1);
+    return { x0: o.x + Math.min(a.x, c.x), x1: o.x + Math.max(a.x, c.x), z0: o.z + Math.min(a.z, c.z), z1: o.z + Math.max(a.z, c.z) };
+  };
+  const pt = (p: P3): Point3 => {
+    const w = P(p.x, p.z);
+    return { x: o.x + w.x, y: y + p.y, z: o.z + w.z };
+  };
+  const turn = (q * Math.PI) / 2;
+  const H = CROWN.half;
+  const rect = W({ x0: -H, x1: H, z0: -H, z1: H });
+  b.floors.push({ id: area, ...rect, y, area });
+  const arena = arenaRects().map(W);
+  arena.forEach((r, i) => b.floors.push({ id: `${area}-ring-${i}`, ...r, y: y + ARENA_Y, area }));
+  const castles = CASTILLOS.map((c) => {
+    const decks = c.decks.map((d, i) => {
+      const r = { ...W(d), y: y + d.y, kind: d.kind, ...(d.ladder ? { ladder: W(d.ladder) } : {}) };
+      b.floors.push({ id: `${area}-${c.team}-${i}`, x0: r.x0, x1: r.x1, z0: r.z0, z1: r.z1, y: r.y, area, ...(r.ladder ? { ladder: r.ladder } : {}) });
+      return r;
+    });
+    const solid = (s: { x0: number; x1: number; z0: number; z1: number; y0: number; y1: number }): Solid => ({ ...W(s), y0: y + s.y0, y1: y + s.y1 });
+    const rails = c.rails.map(solid);
+    const columns = c.columns.map(solid);
+    b.solids.push(...rails, ...columns);
+    const tower = c.decks.find((d) => d.kind === "torre")!;
+    return { team: c.team, name: c.name, color: c.color, decks, rails, columns, slides: c.slides.map((s) => s.map(pt)), treasure: pt(c.treasure), rect: W(c.area), tower: { ...W(tower), y: y + tower.y } };
+  });
+  for (const it of CIMA_RESIDENCIA.items) {
+    const w = P(it.x, it.z);
+    place(b, it.model, o.x + w.x, y + (it.y ?? 0), o.z + w.z, turn + (it.rot ?? 0), area, { edificio: t.id, piso: area }, k, it.name);
+  }
+  const door = P(0, CROWN.walk - 1);
+  b.areas.push({
+    id: area,
+    label: t.cima!.name,
+    desc: t.cima!.desc,
+    building: t.building,
+    x: o.x,
+    y,
+    z: o.z,
+    detail: "completo",
+    furnish: t.cima!.furnish,
+    entry: { x: o.x + door.x, z: o.z + door.z, yaw: turn + Math.PI },
+    link: { tower: t.id, inner: { x: o.x, z: o.z } },
+  });
+  return { area, y, rect, arena, castles };
 }
 
 /**

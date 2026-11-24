@@ -2,6 +2,8 @@
 const svg = (body: string) => `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
 
 export const ICON = {
+  /** A treasure chest (the pillow war, s1-castillos.ts). */
+  chest: svg('<rect x="3" y="10" width="18" height="10" rx="1"/><path d="M3 10a9 5 0 0 1 18 0"/><path d="M3 14h18M12 12v4"/>'),
   /** Camera / view: an eye. */
   eye: svg('<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
   /** The root: a seed with three shoots. */

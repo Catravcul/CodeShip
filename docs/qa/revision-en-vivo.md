@@ -5,14 +5,17 @@ Berón) y cuándo. Generado de los catálogos y de `src/modules/qa-vivo/data/rev
 como pendiente; al revisarlo se anota allí con su fecha y lo visto, y se regenera con
 `REVISION_ESCRIBIR=1 npx vitest run src/modules/qa-vivo`. Una prueba falla si este archivo no está al día.
 
-**Revisado: 21 de 175.**
+**Revisado: 25 de 179.**
 
-## Sistema (10/11)
+## Sistema (13/14)
 
 | Qué | Revisado | Lo visto |
 | --- | --- | --- |
 | Huevo de pulpo del globo (fases hasta nacer) | 2026-11-24 | Las fases del huevo de pulpo en el globo (segmentación, primera inversión, órganos, ojos, cromatóforos, segunda inversión, eclosión y la paralarva nadando); transición fluida |
-| Gran pecera de simulación de la plaza | 2026-11-24 | La gran pecera de la plaza: entrada animada, seis personajes flotando en estrella dentro, paso al microcosmos |
+| Gran pecera de simulación (piso de Informática) | 2026-11-24 | La gran pecera de la plaza: entrada animada, seis personajes flotando en estrella dentro, paso al microcosmos |
+| Castillos de la cima de la Residencia (escaleras, redes, aposentos) | 2026-11-24 | La cima de 110 × 110 m sobre Ciencias: ring con almohadas, los 4 castillos con cubiertas, torres, escaleras, barandas y postes, jardín al borde; subida a pie por la escalera hasta la cubierta baja (prueba) |
+| Toboganes reales de los castillos | 2026-11-24 | Bajada por el tobogán corto y por el de hélice desde la torre hasta el ring |
+| Guerra de almohadas con tesoros | 2026-11-24 | Empezar la guerra junto al tesoro rojo, coger el azul (lo lleva sobre la cabeza) y el marcador en el HUD |
 | Retos de equipo desde la estación de alfombras | 2026-11-24 | Ensayo de la banda desde la estación de alfombras de Salas: cuatro personajes en sus instrumentos |
 | Pantalla de carga del santuario 1 | 2026-11-24 | La pantalla de carga del santuario 1 y su desaparición al primer fotograma |
 | Caer desde los pisos | 2026-11-24 | Caer desde el borde de los pisos andando recto (65 de 72 lados) y en diagonal (prueba de dominio) |
@@ -104,7 +107,7 @@ como pendiente; al revisarlo se anota allí con su fecha y lo visto, y se regene
 | Hablar y pedir | pendiente |  |
 | Servir el plato | pendiente |  |
 
-## Piso del santuario 1 (0/71)
+## Piso del santuario 1 (1/72)
 
 | Qué | Revisado | Lo visto |
 | --- | --- | --- |
@@ -179,6 +182,7 @@ como pendiente; al revisarlo se anota allí con su fecha y lo visto, y se regene
 | hospital | pendiente |  |
 | cria-carne-cultivada | pendiente |  |
 | asambleas-guardia | pendiente |  |
+| residencia-cima | 2026-11-24 | Aposentos, aula, lectura, cocina, aseos y jardín de la cima |
 
 ## Microcosmos: edificio (3/4)
 

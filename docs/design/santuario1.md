@@ -218,6 +218,17 @@ Por fases, cada una con su PR.
 | 127 | **Microcosmos: más arte, detalle, cámara, misiones, portal, animaciones** | Ver [microcosmos.md](microcosmos.md) (2026-11-24) |
 | 128 | **Lista de lo creado, revisado o no y su fecha** | Hecho: [qa/revision-en-vivo.md](../qa/revision-en-vivo.md), generada de los catálogos y de `src/modules/qa-vivo/data/revisado.ts`; una prueba falla si no está al día |
 
+### Decimosexta lista (2026-11-24 05:31): castillos, toboganes y reglas de organización
+
+| # | Pedido | Estado |
+| --- | --- | --- |
+| 129 | **¿Tobogán real?** | Hecho (`domain/tobogan.ts`): se entra andando por la boca, se sienta y baja por gravedad con rozamiento hasta el ring |
+| 130 | **Las literas pasan a castillos alrededor del ring, con toboganes al ring** | Hecho: 4 castillos con cubiertas a varias alturas, puente, torre, varias escaleras y redes; 30 aposentos; dos toboganes cada uno. Ver [organizacion.md](organizacion.md) |
+| 131 | **Guerra de almohadas con tesoros** | Hecho (`domain/guerra-almohadas.ts`): gana quien tenga todos o más al acabar el tiempo |
+| 132 | **Residencia y plaza en un piso gigante en la cima, jardín al borde, entrada en el centro, estación de alfombras como apéndice** | Hecho: la cima de 110 × 110 m; las reglas la llevan a Ciencias y la Residencia desaparece |
+| 133 | **La pecera con Informática** | Hecho: en el piso de Informática |
+| 134 | **Reglas de reorganización por cálculo (marcas, mixto/puro, categorías, migrar, cima/anillo/repartir)** | Hecho (`domain/organizacion.ts`, [reglas.md](reglas.md) §2.13) |
+
 ### Duodécima lista (2026-11-22, noche)
 
 | # | Pedido | Estado |

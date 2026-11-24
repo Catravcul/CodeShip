@@ -101,7 +101,7 @@ describe("reglas de los pisos y de los árboles (Berón 2026-11-20)", () => {
   it("cada piso se apoya en el tronco con dos tornapuntas diagonales, sin patas (Berón 2026-11-21)", () => {
     const OH = TRUNK_HALF + TREE.wall.value;
     for (const t of L.towers) {
-      expect(t.braces.length, t.id).toBe(2 * t.floors.length);
+      expect(t.braces.length, t.id).toBe(2 * t.floors.length + (t.cima ? 16 : 0));
       for (const b of t.braces) {
         // The foot on the trunk's acrylic face, the head out and up under a floor.
         const fx = Math.abs(b.foot.x - t.x), fz = Math.abs(b.foot.z - t.z);
@@ -109,7 +109,8 @@ describe("reglas de los pisos y de los árboles (Berón 2026-11-20)", () => {
         expect(Math.min(fx, fz), t.id).toBeLessThanOrEqual(OH);
         expect(b.head.y - b.foot.y, t.id).toBeGreaterThan(3);
         const under = t.floors.some((f) => Math.abs(f.y - 0.6 - b.head.y) < 0.01 && b.head.x >= f.rect.x0 && b.head.x <= f.rect.x1 && b.head.z >= f.rect.z0 && b.head.z <= f.rect.z1);
-        expect(under, t.id).toBe(true);
+        const crown = !!t.cima && Math.abs(t.cima.y - 0.6 - b.head.y) < 0.01 && b.head.x >= t.cima.rect.x0 && b.head.x <= t.cima.rect.x1 && b.head.z >= t.cima.rect.z0 && b.head.z <= t.cima.rect.z1;
+        expect(under || crown, t.id).toBe(true);
       }
     }
   });
@@ -179,7 +180,7 @@ describe("reglas de los pisos y de los árboles (Berón 2026-11-20)", () => {
   });
 
   it("cada estación de alfombras está en su piso, sin pisar ningún mueble", () => {
-    for (const st of L.carpets.filter((c) => c.kind === "piso")) {
+    for (const st of L.carpets.filter((c) => c.kind === "piso" || c.area.endsWith(":cima"))) {
       const along = Math.abs(st.out.x) > 0.5 ? "x" : "z";
       const hx = along === "x" ? STATION_PAD.z / 2 : STATION_PAD.x / 2;
       const hz = along === "x" ? STATION_PAD.x / 2 : STATION_PAD.z / 2;
@@ -207,7 +208,7 @@ describe("reglas de los pisos y de los árboles (Berón 2026-11-20)", () => {
     const grid = new Grid(obstaclesOf(world));
     // Leaving and reaching its pad a carpet flies over its own floor and landing: those (and what stands on them) aside.
     const near = (s: CarpetStation, p: { x: number; y: number; z: number }) =>
-      s.kind === "piso" ? Math.hypot(p.x - s.x, p.z - s.z) <= Math.hypot(s.lane.x - s.x, s.lane.z - s.z) + 0.5 && Math.abs(p.y - s.y) <= 2.5 : Math.hypot(p.x - s.x, p.z - s.z) < 0.5;
+      s.kind === "piso" || s.area.endsWith(":cima") ? Math.hypot(p.x - s.x, p.z - s.z) <= Math.hypot(s.lane.x - s.x, s.lane.z - s.z) + 0.5 && Math.abs(p.y - s.y) <= 2.5 : Math.hypot(p.x - s.x, p.z - s.z) < 0.5;
     const own = (s: CarpetStation, b: Box) => b.area === s.area || (s.kind === "copa" && b.area === `${s.tower}:tronco`) || (b.area === undefined && b.y0 >= s.y - 0.5 && b.y1 <= s.y + 3.5);
     const bad: string[] = [];
     let n = 0;

@@ -5,6 +5,9 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-24
 
+- **Cima de la Residencia** en lo alto de Ciencias: 4 **castillos** con aposentos, escaleras, redes y **toboganes reales**
+  al **ring de almohadas**, **guerra de almohadas** con tesoros, jardín al borde; **reglas de organización** de edificios
+  y pisos por cálculo; la pecera, en Informática ([organizacion.md](docs/design/organizacion.md)).
 - **Pulpo que se desarrolla hasta nacer** en el globo (estadios reales, duración en Ajustes); **caída** desde los bordes
   también en diagonal; **literas** sin tobogán; **una sola gran pecera** de simulación en la plaza (entran muchos), los
   **retos de equipo** en la estación de alfombras; **pantalla de carga**; **ropa** de trabajo según el horario.

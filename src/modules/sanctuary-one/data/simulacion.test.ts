@@ -35,9 +35,9 @@ describe("la máquina de simulación y los retos de área (Berón 2026-11-23)", 
     expect(realism(d).score).toBeGreaterThanOrEqual(80);
     expect(realism(d).floating).toBe(0);
   });
-  it("una sola máquina en todo el santuario, en la plaza, y lleva a todos los microcosmos (Berón 2026-11-24)", () => {
+  it("una sola máquina en todo el santuario, en Informática, y lleva a todos los microcosmos (Berón 2026-11-24)", () => {
     expect(MICROCOSMOS.map((m) => m.id)).toContain("academia-platon");
     const all = [...FLOOR_PLANS].flatMap(([id, p]) => p.items.filter((i) => i.model === "simulador").map(() => id));
-    expect(all).toEqual(["residencia-plaza"]);
+    expect(all).toEqual(["informatica"]);
   });
 });

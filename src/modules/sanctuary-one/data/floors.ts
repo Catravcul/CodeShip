@@ -9,6 +9,7 @@ import { PRODUCCION_FLOORS } from "./floors/produccion";
 import { REDUCIDOS_FLOORS } from "./floors/reducidos";
 import { FLOOR_SIZE, evened, filledHoles, spreadTo, type FloorPlan, type Placed } from "./floors/kit";
 import { model } from "./catalog";
+import { CIMA_RESIDENCIA } from "./floors/residencia-cima";
 
 export type { FloorPlan, Placed } from "./floors/kit";
 
@@ -24,4 +25,8 @@ export function half(it: Placed): { hx: number; hz: number } {
  * buildings in `floors/reducidos.ts`), each spread over the kitchen's square (kit.ts FLOOR_SIZE, Berón 2026-11-22) and
  * evened out to its edges (kit.ts `evened`: the distribution rule).
  */
-export const FLOOR_PLANS: ReadonlyMap<string, FloorPlan> = new Map([gymFloor0(), ...ENTRENAMIENTO_FLOORS, ...MUSICA_AULAS_FLOORS, ...SERVICIOS_FLOORS, ...CIENCIAS_FLOORS, ...PRODUCCION_FLOORS, ...RESIDENCIA_FLOORS, ...CAMPOS_FLOORS, ...REDUCIDOS_FLOORS].map((f) => [f.id, filledHoles(evened(spreadTo(f, FLOOR_SIZE), half), half)]));
+export const FLOOR_PLANS: ReadonlyMap<string, FloorPlan> = new Map<string, FloorPlan>([
+  ...[gymFloor0(), ...ENTRENAMIENTO_FLOORS, ...MUSICA_AULAS_FLOORS, ...SERVICIOS_FLOORS, ...CIENCIAS_FLOORS, ...PRODUCCION_FLOORS, ...RESIDENCIA_FLOORS, ...CAMPOS_FLOORS, ...REDUCIDOS_FLOORS].map((f) => [f.id, filledHoles(evened(spreadTo(f, FLOOR_SIZE), half), half)] as const),
+  // The crown's giant floor, as drawn (its own square, not the kitchen's).
+  [CIMA_RESIDENCIA.id, CIMA_RESIDENCIA],
+]);

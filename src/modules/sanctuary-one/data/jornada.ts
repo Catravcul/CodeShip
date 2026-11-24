@@ -3,6 +3,7 @@ import { carpetRoute, type CarpetStation } from "./alfombras";
 import { model } from "./catalog";
 import type { Instance, S1Area, S1Layout } from "./layout";
 import { ROOM_OWNERS } from "./models/residencia";
+import { ARENA_Y, CROWN } from "./castillos";
 import { BASE, LOBES, STAFF, TOWERS, WATER_Y, lobeRadius } from "./site";
 import { TRUNK_HALF } from "./paso";
 import { TREE } from "@modules/aerial-sanctuary/data/facts";
@@ -66,8 +67,8 @@ function spotAt(list: readonly Instance[], n: number, a: S1Area, pose: Place["po
  */
 const ROLES: Readonly<Record<string, { tareas?: string; entrenamiento?: string }>> = {
   Sadhguru: { tareas: "salas", entrenamiento: "salas" },
-  Nevaeh: { tareas: "residencia-plaza" },
-  Neo: { tareas: "residencia-plaza", entrenamiento: "funcional" },
+  Nevaeh: { tareas: "residencia-cima" },
+  Neo: { tareas: "residencia-cima", entrenamiento: "funcional" },
 };
 
 /** Each person's place for each activity. */
@@ -86,15 +87,19 @@ export function staffPlaces(L: S1Layout): Map<string, Record<Activity, Place>> {
     const who = name === "JefeConstruccion" ? "Tote" : name === "Nevaeh" ? "la Magnate" : name;
     let room = ROOM_OWNERS.findIndex((o) => o.split(/, | y /).includes(who));
     if (room < 0) room = 25 + (i % 5);
-    const floor = byFurnish.get(`habitaciones-${Math.floor(room / 7) + 1}`)!;
-    const cabin = L.instances.find((q) => q.area === floor.id && q.model.startsWith("res-habitacion") && q.name?.includes(ROOM_OWNERS[room] ?? `libre ${room + 1}`));
+    // Her aposento in a castle of the Residencia's crown (castillos.ts, 2026-11-24): its bunk, turned with the room.
+    const home = byFurnish.get("residencia-cima")!;
+    const label = ROOM_OWNERS[room] ? `Aposento de ${ROOM_OWNERS[room]}` : `Aposento libre ${room + 1}`;
+    const cabin = L.instances.find((q) => q.area === home.id && q.model.startsWith("res-habitacion") && q.name === label);
     const lane = (ROOM_OWNERS[room]?.split(/, | y /).indexOf(who) ?? 0) * 0.9 - 1.35;
+    const turn = (dx: number, dz: number) => ({ x: dx * Math.cos(cabin!.rot) + dz * Math.sin(cabin!.rot), z: -dx * Math.sin(cabin!.rot) + dz * Math.cos(cabin!.rot) });
+    const off = cabin ? turn(-2.6 + lane, 2.3) : { x: 0, z: 0 };
     const bed: Place = cabin
-      ? { area: floor.id, x: cabin.x - 2.6 + lane, y: floor.y + 0.85, z: cabin.z + 2.3, yaw: Math.PI, pose: "supine" }
-      : { area: floor.id, x: floor.x, y: floor.y, z: floor.z, yaw: 0, pose: "stand" };
+      ? { area: home.id, x: cabin.x + off.x, y: cabin.y + 0.85, z: cabin.z + off.z, yaw: cabin.rot + Math.PI, pose: "supine" }
+      : { area: home.id, x: home.x, y: home.y, z: home.z, yaw: 0, pose: "stand" };
     const role = ROLES[name];
     const train = role?.entrenamiento ?? TRAINING_FLOORS[i % TRAINING_FLOORS.length]!;
-    const free: Place = i % 2 ? at("residencia-plaza", i, "stand") : { area: hub.id, x: hub.x + Math.cos(i) * 10, y: 0, z: hub.z + Math.sin(i) * 10, yaw: -i, pose: "stand" };
+    const free: Place = i % 2 ? at("residencia-cima", i, "stand") : { area: hub.id, x: hub.x + Math.cos(i) * 10, y: 0, z: hub.z + Math.sin(i) * 10, yaw: -i, pose: "stand" };
     out.set(name, {
       dormir: bed,
       desayuno: at("restaurante", 1000 + i * 3, "stand"),
@@ -126,8 +131,23 @@ export function wayBetween(L: S1Layout, a: Place, b: Place): Waypoint[] {
       pts.push({ x: qx, y: sea ? WATER_Y - 1 : 0, z: qz, ...(sea ? { swim: true } : {}) });
     }
   };
-  const own = (p: Place) => L.carpets.find((s) => s.kind === "piso" && s.area === p.area);
+  const own = (p: Place) => L.carpets.find((s) => (s.kind === "piso" || s.area.endsWith(":cima")) && s.area === p.area);
   const foot = (p: Place) => L.carpets.filter((s) => s.kind === "pie").reduce<CarpetStation | undefined>((m, s) => (!m || Math.hypot(s.x - p.x, s.z - p.z) < Math.hypot(m.x - p.x, m.z - p.z) ? s : m), undefined);
+  // On a crown's giant floor (castillos.ts) she goes by the pillow ring round the way in, not through the castles.
+  const ring = (p: { area: string; x: number; z: number }, q: { x: number; z: number }, back = false) => {
+    const t = L.towers.find((w) => w.cima?.area === p.area);
+    if (!t) return;
+    const at = (x: number, z: number) => Math.atan2(z - t.z, x - t.x);
+    const on = (ang: number) => {
+      const c = Math.cos(ang), s = Math.sin(ang), k = RING_WALK_M / Math.max(Math.abs(c), Math.abs(s));
+      return { x: t.x + c * k, y: t.cima!.y + ARENA_Y, z: t.z + s * k };
+    };
+    const a0 = at(back ? q.x : p.x, back ? q.z : p.z);
+    let d = at(back ? p.x : q.x, back ? p.z : q.z) - a0;
+    d = Math.atan2(Math.sin(d), Math.cos(d));
+    const n = Math.max(1, Math.ceil(Math.abs(d) / (Math.PI / 12)));
+    for (let k = 0; k <= n; k++) pts.push(on(a0 + (d * k) / n));
+  };
   const sa = a.area === b.area ? undefined : own(a);
   const sb = a.area === b.area ? undefined : own(b);
   if (!sa && !sb) {
@@ -139,7 +159,10 @@ export function wayBetween(L: S1Layout, a: Place, b: Place): Waypoint[] {
   const to = sb ?? foot(b)!;
   // On the ice she walks to the foot's station first.
   if (!sa) ground(from.x, from.z);
-  else pts.push({ x: from.x, y: from.y, z: from.z });
+  else {
+    ring(a, from);
+    pts.push({ x: from.x, y: from.y, z: from.z });
+  }
   const hop = (x: CarpetStation, y: CarpetStation) => {
     if (x.id !== y.id) pts.push(...carpetRoute({ ...L.world, towers: L.towers }, x, y).slice(1));
   };
@@ -154,6 +177,10 @@ export function wayBetween(L: S1Layout, a: Place, b: Place): Waypoint[] {
     hop(gb, to);
   }
   if (!sb) ground(b.x, b.z);
+  else ring(b, to, true);
   pts.push({ x: b.x, y: b.y, z: b.z });
   return pts;
 }
+
+/** How far out from the trunk's axis she walks round a crown's pillow ring (its middle). */
+const RING_WALK_M = (CROWN.walk + CROWN.arena) / 2;

@@ -15,6 +15,10 @@ export interface Revision {
 
 export const REVISADO: Readonly<Record<string, Revision>> = {
   // Systems.
+  "sistema:castillos": { fecha: "2026-11-24", visto: "La cima de 110 × 110 m sobre Ciencias: ring con almohadas, los 4 castillos con cubiertas, torres, escaleras, barandas y postes, jardín al borde; subida a pie por la escalera hasta la cubierta baja (prueba)" },
+  "sistema:toboganes": { fecha: "2026-11-24", visto: "Bajada por el tobogán corto y por el de hélice desde la torre hasta el ring" },
+  "sistema:guerra-almohadas": { fecha: "2026-11-24", visto: "Empezar la guerra junto al tesoro rojo, coger el azul (lo lleva sobre la cabeza) y el marcador en el HUD" },
+  "piso:residencia-cima": { fecha: "2026-11-24", visto: "Aposentos, aula, lectura, cocina, aseos y jardín de la cima" },
   "sistema:pulpo": { fecha: "2026-11-24", visto: "Las fases del huevo de pulpo en el globo (segmentación, primera inversión, órganos, ojos, cromatóforos, segunda inversión, eclosión y la paralarva nadando); transición fluida" },
   "sistema:pecera": { fecha: "2026-11-24", visto: "La gran pecera de la plaza: entrada animada, seis personajes flotando en estrella dentro, paso al microcosmos" },
   "sistema:retos-equipo": { fecha: "2026-11-24", visto: "Ensayo de la banda desde la estación de alfombras de Salas: cuatro personajes en sus instrumentos" },

@@ -1,4 +1,6 @@
 import { S1_SOURCES as S } from "./sources";
+import { reorganizar, type Categoria, type Componente, type EdificioTag, type PisoTag } from "../domain/organizacion";
+import { CROWN_AREA_M2 } from "./castillos";
 
 /**
  * Sanctuary 1 as Cold Sanctuary builds it (its coordinates, m on the plan; y up): the ice caps and the land island,
@@ -144,6 +146,8 @@ export interface TowerSpec {
   /** What grows on the tips. */
   readonly tip: string;
   readonly source: string;
+  /** The giant floor on its crown, round the trunk's top (organizacion.ts rule 1), if any. */
+  readonly cima?: { readonly name: string; readonly desc: string; readonly furnish: string };
 }
 
 const FIRST_Y = 64;
@@ -323,7 +327,7 @@ export const TOWERS_AMPLIOS: readonly TowerSpec[] = [
  * textiles with the vertical farm, the classroom in the Residencia's plaza. Straight out of the trunk, two to a level on
  * opposite sides (reglas.md §2.7).
  */
-export const TOWERS: readonly TowerSpec[] = [
+export const TOWERS_PREVIOS: readonly TowerSpec[] = [
   {
     ...TOWERS_AMPLIOS[0]!,
     source: `${S.csTowers}; ${S.csFloors}; pisos reducidos a los miembros actuales (Berón 2026-11-21)`,
@@ -363,6 +367,90 @@ export const TOWERS: readonly TowerSpec[] = [
   TOWERS_AMPLIOS[4]!,
   TOWERS_AMPLIOS[5]!,
 ];
+
+/** Each tree's category (organizacion.ts): its id is its kind. */
+const CATEGORIA: Readonly<Record<string, Categoria>> = { servicios: "servicios", entrenamiento: "entrenamiento", ciencias: "ciencias", produccion: "produccion", campos: "campos", residencia: "vivienda" };
+
+/**
+ * THE FLOORS' TAGS (Berón 2026-11-24: «los pisos deberían tener marcas que nos digan si eran mixtos o puros»): what
+ * shares each floor and how much of it each needs (1 = the whole floor). Floors not listed are pure: one component, the
+ * whole floor, of their tree's category.
+ */
+export const PISO_TAGS: Readonly<Record<string, readonly Componente[]>> = {
+  "asambleas-guardia": [
+    { id: "asambleas", nombre: "Sala de asambleas", categoria: "servicios", cuota: 0.75 },
+    { id: "guardia", nombre: "Sala de guardia", categoria: "servicios", cuota: 0.25 },
+  ],
+  "cria-carne-cultivada": [
+    { id: "cria", nombre: "Cría", categoria: "servicios", cuota: 0.6 },
+    { id: "carne-cultivada", nombre: "Carne cultivada", categoria: "ciencias", cuota: 0.4 },
+  ],
+  funcional: [
+    { id: "calistenia", nombre: "Calistenia", categoria: "entrenamiento", cuota: 0.35 },
+    { id: "parkour", nombre: "Parkour", categoria: "entrenamiento", cuota: 0.3 },
+    { id: "crossfit", nombre: "CrossFit", categoria: "entrenamiento", cuota: 0.35 },
+  ],
+  combate: ["Judo", "Karate", "Kickboxing", "MMA"].map((n) => ({ id: n.toLowerCase(), nombre: n, categoria: "entrenamiento" as const, cuota: 0.25 })),
+  salas: ["Yoga", "Música", "Ballet", "Bailes sociales"].map((n) => ({ id: n.toLowerCase(), nombre: n, categoria: "entrenamiento" as const, cuota: 0.25 })),
+  laboratorios: [
+    { id: "quimica", nombre: "Química", categoria: "ciencias", cuota: 0.5 },
+    { id: "biologia", nombre: "Biología", categoria: "ciencias", cuota: 0.5 },
+  ],
+  // The great simulation tank joins the computing floor (Berón 2026-11-24: «la máquina de simulación podría pasar a
+  // compartir área con la informática»).
+  informatica: [
+    { id: "informatica", nombre: "Informática", categoria: "ciencias", cuota: 0.8 },
+    { id: "simulacion", nombre: "Máquina de simulación", categoria: "ciencias", cuota: 0.15 },
+  ],
+  "mecanica-garaje": [
+    { id: "mecanica", nombre: "Mecánica", categoria: "produccion", cuota: 0.5 },
+    { id: "garaje-submarino", nombre: "Garaje del submarino", categoria: "produccion", cuota: 0.5 },
+  ],
+  "textil-huerto": [
+    { id: "textil", nombre: "Textil", categoria: "produccion", cuota: 0.5 },
+    { id: "huerto-vertical", nombre: "Granja vertical", categoria: "campos", cuota: 0.5 },
+  ],
+  // The Residencia with its castles round the pillow ring (castillos.ts): what it needs is the crown's square.
+  "residencia-plaza": [{ id: "residencia", nombre: "Residencia: castillos y ring de almohadas", categoria: "vivienda", cuota: CROWN_AREA_M2 / 1600 }],
+  ...Object.fromEntries([1, 2, 3, 4, 5].map((i) => [`habitaciones-${i}`, [{ id: `habitaciones-${i}`, nombre: `Habitaciones (${i})`, categoria: "vivienda" as const, cuota: 1 }]])),
+};
+
+/** A floor's tags (its listed components, or one of its tree's category). */
+export function pisoTag(t: Pick<TowerSpec, "id">, f: { readonly name: string; readonly furnish?: string }): PisoTag {
+  const id = f.furnish ?? f.name;
+  return { id, componentes: PISO_TAGS[id] ?? [{ id, nombre: f.name, categoria: CATEGORIA[t.id] ?? "servicios", cuota: 1 }] };
+}
+
+/** A tree's tags (Berón: «los edificios-árbol nos deberían decir a qué categoría pertenecen y su cantidad de pisos»). */
+export const edificioTag = (t: TowerSpec): EdificioTag => ({ id: t.id, nombre: t.building, pisos: t.floors.map((f) => pisoTag(t, f)), ...(t.cima ? { cima: { id: t.cima.furnish, componentes: PISO_TAGS[t.cima.furnish] ?? [] } } : {}) });
+
+/** What the crowns built by the rules are: the component's crown floor. */
+const CIMAS: Readonly<Record<string, NonNullable<TowerSpec["cima"]>>> = {
+  "residencia-cima": { name: "Residencia (cima)", desc: "Cuatro castillos con sus aposentos y toboganes alrededor del ring de almohadas, el aula, la lectura, la cocina compartida y el jardín", furnish: "residencia-cima" },
+};
+
+/**
+ * The trees as the reorganisation rules leave them (organizacion.ts `reorganizar`, Berón 2026-11-24: «quizás por
+ * cálculos?»): from `TOWERS_PREVIOS` (the buildings before the change), a component that no longer fits a floor goes up
+ * to its tree's crown with its floors, and a tree left with only its crown hands it to the tree with the fewest floors.
+ * What was done is in `REORGANIZACION`.
+ */
+function aplicar(previos: readonly TowerSpec[]): { towers: TowerSpec[]; hecho: string[] } {
+  const r = reorganizar(previos.map(edificioTag));
+  const towers: TowerSpec[] = [];
+  for (const t of previos) {
+    const e = r.edificios.find((q) => q.id === t.id);
+    if (!e) continue;
+    const keep = new Set(e.pisos.map((p) => p.id));
+    const cima = e.cima ? CIMAS[e.cima.id] : undefined;
+    towers.push({ ...t, floors: t.floors.filter((f) => keep.has(f.furnish ?? f.name)), ...(cima ? { cima } : {}) });
+  }
+  return { towers, hecho: r.hecho };
+}
+const APLICADO = aplicar(TOWERS_PREVIOS);
+export const TOWERS: readonly TowerSpec[] = APLICADO.towers;
+/** What the rules did to `TOWERS_PREVIOS`, in words. */
+export const REORGANIZACION: readonly string[] = APLICADO.hecho;
 
 /**
  * The wild families (BuildWildlifePopulation): species, nest and spread. The land ones where Cold Sanctuary has them, on

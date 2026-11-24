@@ -32,7 +32,7 @@ describe("se puede tirar desde todos los pisos", () => {
     return { a, f };
   });
   it("cada piso de los árboles tiene su suelo", () => {
-    expect(floors.length).toBeGreaterThanOrEqual(20);
+    expect(floors.length).toBeGreaterThanOrEqual(18);
     for (const { a, f } of floors) expect(f, a.id).toBeDefined();
   });
   it("de cada piso se cae por los tres lados que no dan al tronco", () => {

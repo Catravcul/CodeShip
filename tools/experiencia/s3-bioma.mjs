@@ -253,7 +253,14 @@ export async function s3Bioma(j) {
       const b = await p.evaluate(() => window.codeshipS3.body);
       await face(j, t, Math.atan2(t.y - b.y - 1.6, Math.hypot(t.x - b.x, t.z - b.z)) - 0.3);
     }
+    // She watches a few seconds, as a player does: pikas and marmots dart in and out of their burrows and rocks, so one
+    // frame may catch one fewer (7 of 8 pikas on CI run 45477655808).
     v = await inView(p);
+    for (let k = 0; k < 6 && (v[sh.crowd] ?? 0) < sh.many; k++) {
+      await p.waitForTimeout(700);
+      const w = await inView(p);
+      if ((w[sh.crowd] ?? 0) > (v[sh.crowd] ?? 0)) v = w;
+    }
     a = await around(p, 120);
     maxCalls = Math.max(maxCalls, a.calls);
     const where = await p.evaluate((s) => ({ b: window.codeshipS3.body, n: window.codeshipS3.biome.view.crowd.countsOf(s) }), sh.crowd);

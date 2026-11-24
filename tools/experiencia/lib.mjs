@@ -336,6 +336,12 @@ export class Journey {
       )
       .catch(() => null);
     if (!at) return false;
+    // A challenge greyed for now (its trainer still walking to the post, the hour not come) shows locked in the
+    // choice: a player waits until it is free, as here, instead of tapping a greyed option (PX-46 on CI run 45477655808).
+    if (at.i >= 0)
+      await this.page
+        .waitForFunction((sel) => [...document.querySelectorAll(sel)].some((e) => e.closest(".cab-machine:not(.hidden)") && !e.disabled), selector, { timeout: 30000, polling: 200 })
+        .catch(() => {});
     await this.page.waitForFunction(ACT_FOR, [selector, true], { timeout: 8000 }).catch(() => {});
     const marked = await this.page.evaluate(FIND_ACT, true);
     if (!marked) return false;

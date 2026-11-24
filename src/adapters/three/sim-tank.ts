@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { SIM_TANK } from "@modules/sanctuary-one/data/simulacion";
 import { SIM_ENTRY_S, simMoment } from "@modules/sanctuary-one/domain/sim-entry";
 import type { CubeFigure } from "./interior/figure";
@@ -19,7 +20,11 @@ interface Tank {
   readonly k: number;
   readonly doors: readonly THREE.Mesh[];
   readonly field: THREE.Mesh;
+  readonly g: THREE.Group;
 }
+
+/** Machines further than this from the camera are not drawn (m). */
+const CULL_M = 40;
 
 const T = SIM_TANK;
 
@@ -28,6 +33,7 @@ export class SimTanks {
   private run: { tank: Tank; t: number; from: THREE.Vector3; done: () => void; fired: boolean } | undefined;
   private readonly fadeEl: HTMLDivElement;
   private readonly tmp = new THREE.Vector3();
+  private cull = 0;
 
   constructor(
     scene: THREE.Scene,
@@ -50,17 +56,17 @@ export class SimTanks {
       g.position.set(p.x, p.y, p.z);
       g.rotation.y = p.rot ?? 0;
       g.scale.set(p.plan ?? 1, 1, p.plan ?? 1);
-      // The back and side glass, the water, the fixed glass beside the doorway.
-      g.add(box(r * 2, h, 0.03, glass, 0, y0 + h / 2, r), box(0.03, h, r * 2, glass, -r, y0 + h / 2, 0), box(0.03, h, r * 2, glass, r, y0 + h / 2, 0));
-      g.add(box(r * 1.96, h - 0.02, r * 1.96, water, 0, y0 + h / 2, 0));
+      // The back and side glass and the fixed glass beside the doorway, merged into one mesh; the water.
       const side = r - T.door - 0.11;
-      for (const s of [-1, 1]) g.add(box(side, h, 0.03, glass, s * (T.door + 0.11 + side / 2), y0 + h / 2, -r));
+      const panes = [box(r * 2, h, 0.03, glass, 0, y0 + h / 2, r), box(0.03, h, r * 2, glass, -r, y0 + h / 2, 0), box(0.03, h, r * 2, glass, r, y0 + h / 2, 0), ...[-1, 1].map((s) => box(side, h, 0.03, glass, s * (T.door + 0.11 + side / 2), y0 + h / 2, -r))];
+      g.add(new THREE.Mesh(mergeGeometries(panes.map((b) => (b.updateMatrix(), b.geometry.applyMatrix4(b.matrix)))), glass));
+      g.add(box(r * 1.96, h - 0.02, r * 1.96, water, 0, y0 + h / 2, 0));
       const field = box(T.door * 2, h - 0.1, 0.01, glow, 0, y0 + (h - 0.1) / 2, -r + 0.01);
       field.visible = false;
       const doors = [-1, 1].map((s) => box(T.door, h - 0.1, 0.03, glass, (s * T.door) / 2, y0 + (h - 0.1) / 2, -r - 0.07));
       g.add(field, ...doors);
       scene.add(g);
-      this.tanks.push({ x: p.x, y: p.y, z: p.z, rot: p.rot ?? 0, k: p.plan ?? 1, doors, field });
+      this.tanks.push({ x: p.x, y: p.y, z: p.z, rot: p.rot ?? 0, k: p.plan ?? 1, doors, field, g });
     }
     this.fadeEl = document.createElement("div");
     this.fadeEl.style.cssText = "position:fixed;inset:0;background:#02131c;opacity:0;pointer-events:none;z-index:30;transition:none";
@@ -68,10 +74,12 @@ export class SimTanks {
   }
 
   /** The nearest tank to a point (its index), within `within` m. */
-  nearest(x: number, z: number, within = 4): number | undefined {
+  nearest(x: number, z: number, within = 4, y?: number): number | undefined {
     let best: number | undefined;
     let d = within;
     this.tanks.forEach((t, i) => {
+      // One machine on every floor: only the one on her floor.
+      if (y !== undefined && Math.abs(t.y - y) > 3) return;
       const e = Math.hypot(t.x - x, t.z - z);
       if (e < d) [d, best] = [e, i];
     });
@@ -98,6 +106,9 @@ export class SimTanks {
 
   /** One frame of her way in; false when there is none. */
   frame(dt: number, camera: THREE.PerspectiveCamera, rig: THREE.Object3D, avatar: CubeFigure): boolean {
+    // With a machine on every floor, only those near the camera are drawn (their glass and water are see-through:
+    // costly to draw for nothing far away). Checked every few frames.
+    if ((this.cull = (this.cull + 1) % 12) === 0) for (const t of this.tanks) t.g.visible = camera.position.distanceTo(this.tmp.set(t.x, t.y, t.z)) < CULL_M;
     const run = this.run;
     if (!run) return false;
     run.t += dt;

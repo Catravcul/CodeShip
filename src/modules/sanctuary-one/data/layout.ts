@@ -671,7 +671,7 @@ function cutTrunkHoles(b: Built): void {
 /** The whales' globe's area (data/globo.ts). */
 export const AQUARIUM_AREA = "mar:globo";
 
-/** The embryo in the globe's belly (GLOBE.embryo, a third of it across): the box one bumps into, swimming. */
+/** The embryo in the globe's belly, an octopus in its egg (GLOBE.embryo, a third of it across): the box one bumps into, swimming. */
 export function embryoBox(): Solid {
   const h = GLOBE.embryo * 0.32;
   return { x0: GLOBE.x - h, x1: GLOBE.x + h, z0: GLOBE.z - h * 0.8, z1: GLOBE.z + h * 0.8, y0: GLOBE.bellyY - h, y1: GLOBE.bellyY + h };
@@ -686,7 +686,7 @@ function aquarium(b: Built): void {
   const G = GLOBE;
   for (const l of G.layers) layerBoxes(l).forEach((q, n) => b.waters.push({ id: `${AQUARIUM_AREA}-${l.y0}-${n}`, ...q, yBottom: l.y0, yTop: l.y1, area: AQUARIUM_AREA }));
   b.solids.push(embryoBox());
-  b.areas.push({ id: AQUARIUM_AREA, label: "El globo de las ballenas", desc: `Una masa de agua que nace del mar entre los casquetes (6/10 de él), se estrecha en su boquilla y se abre hasta ${Math.round(G.topY)} m de alto, más ancha que el mar, con un embrión en su vientre: donde viven las ballenas, los delfines y las focas`, x: G.x, y: G.bellyY, z: G.z, detail: "completo" });
+  b.areas.push({ id: AQUARIUM_AREA, label: "El globo de las ballenas", desc: `Una masa de agua que nace del mar entre los casquetes (6/10 de él), se estrecha en su boquilla y se abre hasta ${Math.round(G.topY)} m de alto, más ancha que el mar, con un huevo de pulpo a punto de eclosionar en su vientre: donde viven las ballenas, los delfines y las focas`, x: G.x, y: G.bellyY, z: G.z, detail: "completo" });
   const e = embryoBox();
   const inside = (x: number, y: number, z: number) => (globeTopAt(x, z) ?? -Infinity) > y + 3 && G.layers.some((l) => l.y0 <= y && l.y1 > y && l.cells.has(globeCell(x, z).join(",")));
   const reachAt = (y: number) => {

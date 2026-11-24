@@ -8,12 +8,13 @@ import { retosFor } from "./challenges";
  * Each object its own challenge (Berón 2026-11-23: «lo ideal es que cada instrumento tenga su reto propio para que el
  * jugador aprenda de cada instrumento, y también debería funcionar así con los objetos de otras áreas»). Done for the
  * band, the dojo, the gym and the kitchen's stations (data/retos-objetos.ts), and for the hospital, the veterinary
- * hospital and the guard room (data/retos-objetos-2.ts); the labs, the workshops and the fields still share theirs. The count of objects sharing their first challenge with another only goes down.
+ * hospital and the guard room (data/retos-objetos-2.ts), and all the rest (retos-objetos-3.ts and -4.ts, 2026-11-24):
+ * no object shares its first challenge with another any more.
  */
-const SHARING_AT_MOST = 216;
+const SHARING_AT_MOST = 0;
 
 describe("retos propios de cada objeto", () => {
-  it("los objetos que aún comparten su primer reto con otro objeto distinto no aumentan", () => {
+  it("ningún objeto comparte su primer reto con otro (Berón 2026-11-24: «terminar todos los retos»)", () => {
     const used = new Set<string>();
     for (const t of TOWERS) for (const f of t.floors) if (f.furnish) for (const i of FLOOR_PLANS.get(f.furnish)!.items) used.add(i.model);
     const first = new Map<string, string[]>();

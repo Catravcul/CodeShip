@@ -394,60 +394,73 @@ export function buildS1Scene(L: S1Layout): S1Scene {
 
 /**
  * The embryo in the whales' globe (Berón 2026-11-22: «el globo de agua es como un vientre donde se está formando un
- * bebé»; «con tonos azules y verdosos»): curled like a foetus of some 20 weeks, `size` m from head to rump, its cord
- * out to the placenta; it glows a little and its heart beats (about 140 a minute, as a foetus's). Drawn from spheres
- * and tubes, ours.
+ * bebé», «con tonos azules y verdosos»; 2026-11-24: «el feto es de un pulpo»): an octopus near hatching inside its
+ * egg, as Octopus vulgaris at stages XIX–XX (Naef 1928; Deryckere et al., «Identification of neural progenitor cells…
+ * Octopus vulgaris embryos», 2021): a clear egg (the chorion) hung by its stalk, as the mother hangs her eggs in
+ * festoons, here from the globe's wall; inside, the mantle, the head with its big eyes, eight short arms and the outer
+ * yolk sac between them still feeding it; the first chromatophores as dots. It breathes with its mantle, its arms stir,
+ * and it turns slowly in the egg. `size` m is the egg's length. Drawn from spheres and tubes, ours.
  */
 function embryo(x: number, y: number, z: number, size: number): THREE.Object3D {
   const g = new THREE.Group();
   g.name = "embrion";
-  // Blue and green tones (Berón 2026-11-22: «el embrión debe ser con tonos azules y verdosos»), glowing a little.
+  const S = size;
+  // Blue and green tones, glowing a little.
   const skin = new THREE.MeshStandardMaterial({ color: 0x5fc2b8, emissive: 0x0d4a5e, emissiveIntensity: 0.6, roughness: 0.45, transparent: true, opacity: 0.93 });
-  const ball = (r: number, px: number, py: number, pz: number, sx = 1, sy = 1, sz = 1, m: THREE.Material = skin) => {
+  const yolk = new THREE.MeshStandardMaterial({ color: 0x9fe0b0, emissive: 0x1f5a3a, emissiveIntensity: 0.5, roughness: 0.6 });
+  const eyeM = new THREE.MeshStandardMaterial({ color: 0x0d1f2a, emissive: 0x1a3f5a, emissiveIntensity: 0.4, roughness: 0.2, metalness: 0.3 });
+  const dotM = new THREE.MeshStandardMaterial({ color: 0x2f6f9a, emissive: 0x0a2f45, emissiveIntensity: 0.4, roughness: 0.6 });
+  const ball = (r: number, px: number, py: number, pz: number, sx = 1, sy = 1, sz = 1, m: THREE.Material = skin, parent: THREE.Object3D = g) => {
     const b = new THREE.Mesh(new THREE.SphereGeometry(r, 28, 20), m);
     b.position.set(px, py, pz);
     b.scale.set(sx, sy, sz);
-    g.add(b);
+    parent.add(b);
     return b;
   };
-  const S = size;
-  // The back's curl: spheres along a C, the head at its top bowed onto the chest.
-  const curl = 0.24 * S;
-  for (let i = 0; i <= 14; i++) {
-    const t = i / 14;
-    const a = (110 - 230 * t) * (Math.PI / 180);
-    const r = (0.15 - 0.06 * t) * S;
-    ball(r, Math.cos(a) * curl * 0.9, Math.sin(a) * curl, 0);
-  }
-  ball(0.22 * S, 0.12 * S, 0.3 * S, 0, 1, 0.95, 0.9);
-  // Arms folded to the face, legs folded to the belly.
-  const limb = (pts: [number, number, number][], r: number) => {
-    const c = new THREE.CatmullRomCurve3(pts.map(([a, b, c]) => new THREE.Vector3(a * S, b * S, c * S)));
-    g.add(new THREE.Mesh(new THREE.TubeGeometry(c, 16, r * S, 10, false), skin));
-    ball(r * 1.5 * S, pts[pts.length - 1]![0] * S, pts[pts.length - 1]![1] * S, pts[pts.length - 1]![2] * S);
-  };
-  for (const side of [-1, 1]) {
-    limb([[0.05, 0.12, side * 0.1], [0.2, 0.06, side * 0.14], [0.27, 0.18, side * 0.08]], 0.035);
-    limb([[-0.12, -0.2, side * 0.09], [0.12, -0.22, side * 0.15], [0.16, -0.05, side * 0.1]], 0.05);
-  }
-  // The cord from the belly to the placenta on the globe's wall.
-  const belly = new THREE.Vector3(0.12 * S, -0.06 * S, 0);
-  const wall = size * 0.9;
-  const wallAt = new THREE.Vector3(wall * 0.92, -0.25 * wall, 0.2 * wall);
-  const cord = new THREE.CatmullRomCurve3([belly, new THREE.Vector3(0.35 * S, -0.3 * S, 0.2 * S), new THREE.Vector3(wall * 0.55, -0.1 * wall, -0.1 * wall), wallAt]);
-  g.add(new THREE.Mesh(new THREE.TubeGeometry(cord, 64, 0.022 * S, 10, false), new THREE.MeshStandardMaterial({ color: 0x7fd6c4, emissive: 0x0f4a44, emissiveIntensity: 0.5, roughness: 0.5 })));
-  const placenta = ball(0.2 * S, wallAt.x, wallAt.y, wallAt.z, 0.35, 1, 1, new THREE.MeshStandardMaterial({ color: 0x2f7fa3, emissive: 0x0a2f45, emissiveIntensity: 0.5, roughness: 0.7 }));
-  placenta.lookAt(0, 0, 0);
-  // Its heartbeat: a soft double pulse, ~140 a minute.
+  // The egg: a clear ellipsoid (the chorion) and its stalk up to the globe's wall.
+  const chorion = ball(0.3 * S, 0, 0, 0, 0.82, 1, 0.82, new THREE.MeshStandardMaterial({ color: 0xd8f4ff, transparent: true, opacity: 0.16, roughness: 0.05, depthWrite: false, side: THREE.DoubleSide }));
+  chorion.renderOrder = 2;
+  const wall = S * 0.9;
+  const stalk = new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0.3 * S, 0), new THREE.Vector3(0.05 * S, 0.5 * S, 0.05 * S), new THREE.Vector3(wall * 0.5, wall * 0.75, 0.1 * wall), new THREE.Vector3(wall * 0.92, wall * 0.9, 0.2 * wall)]);
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(stalk, 48, 0.012 * S, 8, false), new THREE.MeshStandardMaterial({ color: 0x7fd6c4, emissive: 0x0f4a44, emissiveIntensity: 0.5, roughness: 0.5 })));
+  // The octopus as it lies before hatching: its mantle to the egg's free end (it hatches mantle first, out of that end),
+  // its arms and yolk to the stalk.
   const body = new THREE.Group();
-  body.add(...g.children.splice(0, g.children.length));
+  body.rotation.x = Math.PI;
   g.add(body);
-  // (onBeforeRender fires for meshes only: the head's drives the whole body.)
-  body.children[0]!.onBeforeRender = () => {
-    const t = (performance.now() / 1000) * (140 / 60);
-    const f = t - Math.floor(t);
-    const pulse = Math.exp(-((f - 0.1) ** 2) / 0.002) + 0.6 * Math.exp(-((f - 0.3) ** 2) / 0.002);
-    body.scale.setScalar(1 + 0.012 * pulse);
+  const mantle = ball(0.105 * S, 0, 0.12 * S, 0, 1, 1.25, 1, skin, body);
+  ball(0.085 * S, 0, -0.005 * S, 0, 1.15, 0.85, 1.05, skin, body);
+  for (const side of [-1, 1]) {
+    ball(0.034 * S, side * 0.07 * S, 0.0, 0.05 * S, 1, 1, 0.7, eyeM, body);
+    ball(0.012 * S, side * 0.075 * S, 0.012 * S, 0.075 * S, 1, 1, 1, new THREE.MeshStandardMaterial({ color: 0xe8fbff, emissive: 0x6fa8c0, emissiveIntensity: 0.5 }), body);
+  }
+  // The first chromatophores: dots on the mantle.
+  for (let i = 0; i < 14; i++) {
+    const a = i * 2.39996;
+    const h = 0.04 + ((i * 37) % 10) / 100;
+    ball(0.008 * S, Math.cos(a) * 0.1 * S, (0.08 + h) * S, Math.sin(a) * 0.1 * S, 1, 1, 0.4, dotM, mantle.parent!);
+  }
+  // Eight short arms round the mouth, and the outer yolk sac between them.
+  const arms: THREE.Mesh[] = [];
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2;
+    const c = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(Math.cos(a) * 0.05 * S, -0.06 * S, Math.sin(a) * 0.05 * S),
+      new THREE.Vector3(Math.cos(a) * 0.09 * S, -0.11 * S, Math.sin(a) * 0.09 * S),
+      new THREE.Vector3(Math.cos(a + 0.3) * 0.11 * S, -0.17 * S, Math.sin(a + 0.3) * 0.11 * S),
+    ]);
+    const arm = new THREE.Mesh(new THREE.TubeGeometry(c, 12, 0.016 * S, 8, false), skin);
+    body.add(arm);
+    arms.push(arm);
+  }
+  ball(0.075 * S, 0, -0.17 * S, 0, 1, 0.9, 1, yolk, body);
+  // It breathes with its mantle (about one stroke a second: supuesto), its arms stir, and it turns slowly in its egg.
+  mantle.onBeforeRender = () => {
+    const t = performance.now() / 1000;
+    const pulse = 0.5 + 0.5 * Math.sin(t * Math.PI * 2 * 0.9);
+    mantle.scale.set(1 + 0.06 * pulse, 1.25 - 0.04 * pulse, 1 + 0.06 * pulse);
+    arms.forEach((a, k) => (a.rotation.y = Math.sin(t * 1.3 + k) * 0.08));
+    body.rotation.y = t * 0.05;
   };
   g.position.set(x, y, z);
   return g;

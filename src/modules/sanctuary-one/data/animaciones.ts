@@ -1,4 +1,5 @@
 import { PASOS_2 } from "./retos-objetos-2";
+import { PASOS_3 } from "./retos-objetos-3";
 
 /**
  * THE ANIMATION CATALOG of sanctuary 1 (Berón 2026-11-19: «he ido a la máquina de jalón al pecho y el reto mostraba
@@ -234,4 +235,6 @@ export const PROCEDURE_STEPS: Readonly<Record<string, readonly StepAnimation[]>>
   "sim-tanque-revision": ["mirar", "limpiar", "ajustar", "mirar"],
   // The second batch of each object's own challenge (data/retos-objetos-2.ts): hospital, veterinary, guard room.
   ...PASOS_2,
+  // …and the rest (data/retos-objetos-3.ts and -4.ts): each step's animation from its verb.
+  ...PASOS_3,
 };

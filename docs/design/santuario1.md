@@ -197,6 +197,14 @@ Por fases, cada una con su PR.
 | 116 | **Sigue con los retos propios** | 2.ª tanda (`data/retos-objetos-2.ts`): 38 objetos del hospital (exploración, transferencias, curas, muestras, controles del analizador, transfusión, nota SOAP, entrevista, telemedicina, RCP, aislamiento, equipo de protección, espera, cinco correctos, parto, pausa quirúrgica, lavado, autoclave, oxígeno, UCI ABCDE, relevo SBAR), el veterinario (perrera, gatos, báscula y dosis, anestesia, aves, vacunas en frío, aislamiento) y la guardia (vídeo, parte, generador, radar, hielo, sismógrafo, mareógrafo, radio, salidas), cada uno con su fuente y su animación por paso. Comparten reto 216 objetos (antes 255): quedan laboratorios, talleres, textil, campos y la cría |
 | 117 | **Diálogos con los personajes**, también como retos de código; ¿las animaciones de los retos afectan mucho al rendimiento? | Hecho en la Academia ([microcosmos.md](microcosmos.md)): «Hablar con…» cada persona, ordenando la conversación. Rendimiento: animar una figura cuesta ~2 µs por fotograma (medido); un reto de equipo con seis, ~0,1 ms de 16,7: lo caro es dibujar figuras, no animarlas |
 
+### Decimocuarta lista (2026-11-24): todos los retos, el pulpo, una máquina por piso
+
+| # | Pedido | Estado |
+| --- | --- | --- |
+| 118 | **Terminar todos los retos** | Hecho: los 216 objetos que quedaban tienen su reto propio con fuente (`data/retos-objetos-3.ts` y `-4.ts`: cocina, suelos, aseos, cría, carne cultivada, asamblea, gimnasio, calistenia, parkour, CrossFit, dojo, yoga, ballet, química, biología, centro de datos, obra, taller, submarino, textil, granja vertical, plantas, cultivos y métodos antiguos, historia, habitaciones). La animación de cada paso sale de su verbo (`animFor`). Ningún objeto comparte ya su primer reto (test). Las crías conservan su programación de la mente y los cultivos su riego, que piden las misiones |
+| 119 | **El feto es de un pulpo** | Hecho: en el globo, un pulpo a punto de eclosionar dentro de su huevo transparente, colgado de su pedúnculo (como cuelga la madre sus huevos): manto con cromatóforos, ojos grandes, ocho brazos cortos y el saco vitelino externo; respira con el manto, mueve los brazos y gira despacio en el huevo (Naef 1928; *Octopus vulgaris*, estadios XIX–XX) |
+| 120 | **Entrar a todos los microcosmos desde cualquier máquina**; **una máquina en cada piso** | Hecho: cada máquina ofrece todos los microcosmos (`MICROCOSMOS`); cada piso tiene la suya, puesta donde más sitio libre hay y con espacio ante su puerta (`floors/kit.ts` `withSimulator`, test). Las máquinas lejos de la cámara no se dibujan (40 m) y su cristal va en una sola malla |
+
 ### Duodécima lista (2026-11-22, noche)
 
 | # | Pedido | Estado |

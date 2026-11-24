@@ -26,7 +26,7 @@ el nombre. Caben tantos como se quieran, uno abierto cada vez.
 
 ## La Academia de Platón (Atenas, verano de 360 a. C.)
 
-Se entra por la máquina de simulación de la sala de asambleas y guardia (`SIM_MICROCOSMOS`). Datos:
+Se entra desde cualquier máquina de simulación: hay una en cada piso (`MICROCOSMOS`, Berón 2026-11-24). Datos:
 `modules/microcosmos/data/academia.ts`; retos: `data/retos-academia.ts`.
 
 | Parte | Qué | Fuente |

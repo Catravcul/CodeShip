@@ -91,7 +91,8 @@ export function retosFor(m: ModelDef, seed = 0): Reto[] {
   // timed workouts. The band's rehearsal stays at the sound desk until the simulation machine takes the area's ones.
   const own = OBJETO[m.id];
   if (own) {
-    const keep = sharedRetos(m, seed).filter((r) => (r.procedure && SECOND.has(r.procedure)) || (r.chore.kind === "ejercicio" && !r.procedure));
+    // Also an animal's mind programming and a crop's watering: what the missions ask of them (data/misiones.ts).
+    const keep = sharedRetos(m, seed).filter((r) => (r.procedure && SECOND.has(r.procedure)) || (r.chore.kind === "ejercicio" && !r.procedure) || r.chore.kind === "programar-animal" || r.chore.kind === "regar");
     return [procedureReto(own), ...keep, ...(m.id === "mus-pa-ensayo" ? [procedureReto(TRABAJO.musica)] : [])];
   }
   return sharedRetos(m, seed);

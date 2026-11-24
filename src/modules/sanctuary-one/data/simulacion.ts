@@ -125,7 +125,8 @@ export interface SimMicrocosmos {
   readonly detail: string;
 }
 
-/** The microcosms of each floor's machine (by the floor's furnish id): loaded only when she goes in. */
-export const SIM_MICROCOSMOS: Readonly<Record<string, readonly SimMicrocosmos[]>> = {
-  "asambleas-guardia": [{ id: "academia-platon", title: "Microcosmos: la Academia de Platón", detail: "Atenas, verano de 360 a. C. · un día con Platón y sus discípulos, 8 pasos y 6 retos" }],
-};
+/** The microcosms: any simulation machine takes her into any of them (Berón 2026-11-24: «debe ser posible entrar a
+ * todos los microcosmos desde cualquier máquina de simulación»). Each is loaded only when she goes in. */
+export const MICROCOSMOS: readonly SimMicrocosmos[] = [
+  { id: "academia-platon", title: "Microcosmos: la Academia de Platón", detail: "Atenas, verano de 360 a. C. · un día con Platón y sus discípulos, 8 pasos y 6 retos" },
+];

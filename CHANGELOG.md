@@ -3,6 +3,12 @@
 Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documento. El historial anterior al
 2026-11-18 está en git y en `docs/design/`.
 
+## 2026-11-24
+
+- **Santuario 1, todos los retos propios**: los 216 objetos que compartían reto tienen ya el suyo, con fuente y animación por paso.
+- **El embrión del globo es un pulpo** en su huevo, a punto de eclosionar.
+- **Una máquina de simulación en cada piso**, y desde cualquiera se entra a todos los microcosmos.
+
 ## 2026-11-23
 
 - **Diálogos en la Academia**: «Hablar con…» cada persona de la historia, como reto de código con fuentes

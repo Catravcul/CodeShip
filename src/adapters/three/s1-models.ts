@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { AQUARIUM_AREA, type S1Layout } from "@modules/sanctuary-one/data/layout";
+import { AQUARIUM_AREA, type CrownShape, type S1Layout } from "@modules/sanctuary-one/data/layout";
+import { CROWN, TRUNK_OUT } from "@modules/sanctuary-one/data/castillos";
 import { model, type Category, type ModelDef } from "@modules/sanctuary-one/data/catalog";
 import { BASE, WATER_Y } from "@modules/sanctuary-one/data/site";
 import { GLOBE, globeSkin } from "@modules/sanctuary-one/data/globo";
@@ -202,6 +203,90 @@ function shapeOf(d: ModelDef): THREE.BufferGeometry {
   }
 }
 
+/** A square band round (cx, cz) between two half-widths, as four boxes from y0 to y1. */
+function band(cx: number, cz: number, a: number, b: number, y0: number, y1: number): THREE.BufferGeometry[] {
+  return [
+    box(cx - b, cx + b, y0, y1, cz + a, cz + b),
+    box(cx - b, cx + b, y0, y1, cz - b, cz - a),
+    box(cx + a, cx + b, y0, y1, cz - a, cz + a),
+    box(cx - b, cx - a, y0, y1, cz - a, cz + a),
+  ];
+}
+
+/**
+ * The Residencia's crown (castillos.ts, Berón 2026-11-24, after the photos of a restaurant's play structure): the
+ * wooden square round the trunk's top, the garden along its edge, the pillow ring's mattress with its pillows, and the
+ * four castles: decks in their team's colour, red posts, see-through rail panels, the towers' roofs and the yellow
+ * tube slides down to the ring. The treasures are named meshes (`tesoro-<team>`) the game moves.
+ */
+function crown(cx: number, cz: number, c: CrownShape): THREE.Group {
+  const g = new THREE.Group();
+  g.name = "cima-residencia";
+  const put = (geos: THREE.BufferGeometry[], m: THREE.Material, name: string) => {
+    if (!geos.length) return;
+    const mesh = new THREE.Mesh(mergeGeometries(geos), m);
+    mesh.name = name;
+    g.add(mesh);
+  };
+  const y = c.y;
+  put(band(cx, cz, TRUNK_OUT, CROWN.castles, y - 0.6, y - 0.02).map(woodUV), woodMat(0x9a6a40), "cima-losa");
+  put(band(cx, cz, CROWN.castles, CROWN.half, y - 0.6, y + 0.05), mat(0x5f8a46), "cima-jardin");
+  put(band(cx, cz, CROWN.walk, CROWN.arena, y, y + 0.25), mat(0x3f6fb5, { roughness: 0.95 }), "ring-colchon");
+  // The pillows: a few hundred, scattered on the mattress (fixed by a hash, so every visit is the same).
+  const pillows: THREE.BufferGeometry[] = [];
+  for (let i = 0; i < 260; i++) {
+    const h = (k: number) => ((Math.sin(i * 12.9898 + k * 78.233) * 43758.5453) % 1 + 1) % 1;
+    const side = i % 4;
+    const along = (h(1) * 2 - 1) * (CROWN.arena - 1);
+    const out = CROWN.walk + 1 + h(2) * (CROWN.arena - CROWN.walk - 2);
+    const [px, pz] = side === 0 ? [along, out] : side === 1 ? [along, -out] : side === 2 ? [out, along] : [-out, along];
+    const q = box(-0.35, 0.35, 0, 0.18, -0.25, 0.25);
+    q.rotateY(h(3) * Math.PI);
+    q.translate(cx + px, y + 0.25, cz + pz);
+    pillows.push(paint(q, [0xf4f1ea, 0xf2c6d2, 0xc9e3f2, 0xf6e6a8][i % 4]!));
+  }
+  put(pillows, mat(0xffffff, { vertexColors: true, roughness: 0.95 }), "almohadas");
+  const posts: THREE.BufferGeometry[] = [];
+  const roofs: THREE.BufferGeometry[] = [];
+  const slides: THREE.BufferGeometry[] = [];
+  for (const k of c.castles) {
+    const deck: THREE.BufferGeometry[] = [];
+    for (const d of k.decks) deck.push(box(d.x0, d.x1, d.y - (d.kind === "escalon" ? 0.12 : 0.25), d.y - 0.01, d.z0, d.z1));
+    put(deck, mat(new THREE.Color(k.color).lerp(new THREE.Color(0xffffff), 0.25).getHex(), { roughness: 0.6 }), `castillo-${k.team}`);
+    put(k.rails.map((r) => box(r.x0, r.x1, r.y0, r.y1, r.z0, r.z1)), mat(k.color, { transparent: true, opacity: 0.45, roughness: 0.3, depthWrite: false }), `barandas-${k.team}`);
+    for (const p of k.columns) {
+      const cyl = new THREE.CylinderGeometry(0.16, 0.16, p.y1 - p.y0, 10);
+      cyl.translate((p.x0 + p.x1) / 2, (p.y0 + p.y1) / 2, (p.z0 + p.z1) / 2);
+      posts.push(cyl);
+    }
+    // The tower's roof: a four-sided cone over its posts.
+    const t = k.tower;
+    const r = new THREE.ConeGeometry(Math.hypot(t.x1 - t.x0, t.z1 - t.z0) / 2, 3, 4);
+    r.rotateY(Math.PI / 4);
+    r.translate((t.x0 + t.x1) / 2, t.y + 2.6 + 1.5, (t.z0 + t.z1) / 2);
+    roofs.push(paint(r, k.color));
+    // The slides: a tube along each path, open on top (a chute) for the run-out.
+    for (const sl of k.slides) {
+      const curve = new THREE.CatmullRomCurve3(sl.map((p) => new THREE.Vector3(p.x, p.y + 0.5, p.z)));
+      slides.push(new THREE.TubeGeometry(curve, Math.max(24, sl.length * 6), 0.6, 12, false));
+    }
+    const chest = new THREE.Group();
+    chest.name = `tesoro-${k.team}`;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.55, 0.6), mat(0x8a5a2b));
+    body.position.y = 0.28;
+    const lid = new THREE.Mesh(new THREE.BoxGeometry(0.94, 0.18, 0.64), mat(0xd9a520, { metalness: 0.6, roughness: 0.35 }));
+    lid.position.y = 0.64;
+    chest.add(body, lid);
+    chest.position.set(k.treasure.x, k.treasure.y, k.treasure.z);
+    chest.userData = { team: k.team, home: { ...k.treasure } };
+    g.add(chest);
+  }
+  put(posts, mat(0xc62828, { roughness: 0.5 }), "castillos-postes");
+  put(roofs, mat(0xffffff, { vertexColors: true, roughness: 0.6 }), "castillos-tejados");
+  put(slides, mat(0xf2c230, { roughness: 0.35, side: THREE.DoubleSide, transparent: true, opacity: 0.85 }), "toboganes");
+  return g;
+}
+
 export interface S1Scene {
   readonly root: THREE.Group;
   /** Each catalogue model's mesh (all its copies), by «model id|tint» (tint empty unless a bulk rule recolours it). */
@@ -276,6 +361,7 @@ export function buildS1Scene(L: S1Layout): S1Scene {
       frame.push(woodUV(g));
     }
   }
+  for (const t of L.towers) if (t.cima) root.add(crown(t.x, t.z, t.cima));
   add(slabs, woodMat(0x9a6a40), "losas");
   add(slabsRing, woodMat(0x7a5232), "anillos");
   add(frame, woodMat(0x6b4526), "armazon");

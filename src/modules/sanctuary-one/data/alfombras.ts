@@ -25,7 +25,7 @@ import { GLOBE } from "./globo";
 export interface CarpetStation {
   /** `<area>:alfombras`. */
   readonly id: string;
-  /** The area it stands in: a floor, a ring, the crown (`<tower>:techo`) or the ice at its foot (`<tower>:tronco`). */
+  /** The area it stands in: a floor, a ring, the crown (`<tower>:techo`, or its giant floor `<tower>:cima`) or the ice at its foot (`<tower>:tronco`). */
   readonly area: string;
   readonly tower: string;
   readonly building: string;
@@ -247,14 +247,17 @@ export function carpetStations(w: StationWorld): CarpetStation[] {
       if (!best) continue;
       grid.add({ ...best.landing, y0: a.y - 0.8, y1: a.y + 3, area: a.id });
       lanes.push(best.lane);
-      out.push({ id: `${a.id}:alfombras`, area: a.id, tower: t.id, building: t.building, kind: "piso", label: a.label, x: best.x, y: a.y, z: best.z, out: best.o, reach: "edificio", lane: best.lane, landing: best.landing });
+      // A crown's giant floor (organizacion.ts): its station is the tree's crown one, an appendix out of its edge.
+      if (a.id.endsWith(":cima")) out.push({ id: `${t.id}:techo:alfombras`, area: a.id, tower: t.id, building: t.building, kind: "copa", label: "Copa", x: best.x, y: a.y, z: best.z, out: best.o, reach: "santuario", lane: best.lane, landing: best.landing });
+      else out.push({ id: `${a.id}:alfombras`, area: a.id, tower: t.id, building: t.building, kind: "piso", label: a.label, x: best.x, y: a.y, z: best.z, out: best.o, reach: "edificio", lane: best.lane, landing: best.landing });
     }
   }
   for (const t of w.towers) {
     // The crown's: on the roof, over the trunk; its lane straight up.
     const up = t.rootHeight + 3 + CARPET_CLEAR_M + 0.5;
     const crown = span(grid, t.x, t.z, up, up, sky);
-    out.push({ id: `${t.id}:techo:alfombras`, area: `${t.id}:techo`, tower: t.id, building: t.building, kind: "copa", label: "Copa", x: t.x, y: t.rootHeight, z: t.z, out: { x: 0, z: 0 }, reach: "santuario", lane: { x: t.x, z: t.z, lo: up, hi: crown?.hi ?? up } });
+    if (!out.some((s) => s.id === `${t.id}:techo:alfombras`))
+      out.push({ id: `${t.id}:techo:alfombras`, area: `${t.id}:techo`, tower: t.id, building: t.building, kind: "copa", label: "Copa", x: t.x, y: t.rootHeight, z: t.z, out: { x: 0, z: 0 }, reach: "santuario", lane: { x: t.x, z: t.z, lo: up, hi: crown?.hi ?? up } });
     // The foot's: on the ice, the nearest spot to the ground door with open sky over it.
     // The foot is on the tree's own base (Berón 2026-11-21: «una base negra que tiene la estación de alfombras»).
     const deck = ground.filter((f) => f.area === `base:${t.id}`);

@@ -60,6 +60,7 @@ import { focusReto, retoVisual, sheetLens as lens } from "./adapters/three/inter
 import { mapGestures } from "./ui/map-gestures";
 import { sheetBand } from "./ui/sheet-band";
 import { poseOnFoot, UnderwaterView } from "./adapters/three/walk-look";
+import { CrownPlay } from "./s1-castillos";
 import "./ui/lander-cabin.css";
 import "./ui/acciones.css";
 import "./ui/aerial.css";
@@ -110,6 +111,8 @@ camera.rotation.order = "YXZ";
 
 const world = buildS1Scene(L);
 scene.add(world.root);
+/** The Residencia's crown at play: its slides and the pillow war (s1-castillos.ts). */
+const crownPlay = new CrownPlay(L, world.root, (t, s) => say(t, s));
 
 // The clock of sanctuary 1 (Cold Sanctuary's day: domain/motion.ts) and the workday it drives.
 let hour = S1_START_HOUR;
@@ -709,6 +712,7 @@ function findAtHand(): Thing | undefined {
   });
   return nearest(body.x, body.y, body.z, [...here, ...moving], REACH_M + (moving.length ? 0 : 0));
 }
+let warLabel: string | undefined;
 function updateAtHand(dt: number): void {
   reachT -= dt;
   if (reachT > 0) return;
@@ -716,10 +720,14 @@ function updateAtHand(dt: number): void {
   const t = challenge || picker.isOpen ? undefined : findAtHand();
   // On a carpet station with nothing else at hand: «Volar» opens its carpets (Berón 2026-11-20).
   const st = t || challenge || picker.isOpen || auto || flying ? undefined : stationAt(L.carpets, body.x, body.y, body.z);
-  if (t?.i === atHand?.i && (t === undefined) === (atHand === undefined) && st === station) return;
+  // On the Residencia's crown: the pillow war's treasures (s1-castillos.ts).
+  const war = t || st || challenge || picker.isOpen ? undefined : crownPlay.offer(body);
+  if (t?.i === atHand?.i && (t === undefined) === (atHand === undefined) && st === station && war?.label === warLabel) return;
   atHand = t;
+  warLabel = war?.label;
   station = st ?? (carpetsWindow.visible ? station : undefined);
   if (st) RootMenu.interact({ icon: ICON.carpet, label: `Volar: ${st.kind === "piso" ? "estación de alfombras" : `${st.label.toLowerCase()} de ${st.building}`}`, onClick: () => stationChoices(st) });
+  else if (war) RootMenu.interact({ icon: ICON.chest, label: war.label, onClick: () => ((reachT = 0), war.run()) });
   else offerReto(t?.label, () => t && offerRetos(t));
 }
 
@@ -1024,6 +1032,13 @@ let climbCheck = 0;
 
 function frameFree(dt: number): void {
   if (challenge || settingsPanel.visible) return;
+  // Down a slide: gravity along its tube, nothing else moves her (s1-castillos.ts).
+  const rode = crownPlay.rideFrame(dt, body);
+  if (rode) {
+    body = rode.body;
+    walk.facing = rode.yaw;
+    return;
+  }
   const c = walk.carry(dt, body);
   body = c.body;
   if (c.busy) return;
@@ -1034,6 +1049,7 @@ function frameFree(dt: number): void {
   if (frameAuto(dt)) return;
   const mv = walker.move();
   body = walk.move(dt, body, { ...mv, yaw, pitch, run: pad.isOn("B") });
+  if (crownPlay.tryEnter(body, mv.forward !== 0 || mv.right !== 0)) say("¡Al tobogán!", 1.5);
 }
 
 function updateCamera(dt: number): void {
@@ -1052,7 +1068,7 @@ function updateCamera(dt: number): void {
   }
   rig.position.set(body.x, body.y + hop, body.z);
   if (flying) walk.facing = rideYaw;
-  else if (auto || !thirdPerson) walk.facing = yaw;
+  else if ((auto || !thirdPerson) && !crownPlay.riding) walk.facing = yaw;
   rig.rotation.y = (thirdPerson || flying ? walk.facing : yaw) + Math.PI;
   let eye = body.y + hop + EYE_M + dip;
   // Swimming at the surface her eyes are just out of the water (Berón 2026-11-20: «en primera persona la cámara
@@ -1077,7 +1093,7 @@ function updateCamera(dt: number): void {
   const depth = globe ? globeDepth(camera.position.x, camera.position.y, camera.position.z) : WATER_Y - camera.position.y;
   underwater.set(under && (globe ? "globo" : treeWater(cw!.area) ? "claro" : "oceano"), depth);
   avatar.wearMask(body.motion === "agua");
-  poseOnFoot(avatar, walk, { body, moving, sprinting, lotus: flying || settingsPanel.visible, clock: wildT }, dt);
+  poseOnFoot(avatar, walk, { body, moving, sprinting, lotus: flying || settingsPanel.visible || crownPlay.riding, clock: wildT }, dt);
   // Her clothes: at work or training time, those of the floor she is on (Berón 2026-11-24: «la ropa específica para la
   // tarea laboral que indique su horario»); her own otherwise.
   const block = activityAt(hour);
@@ -1126,7 +1142,7 @@ function frame(now: number): void {
   const clock = `${hh}:${String(Math.floor((hour - hh) * 60)).padStart(2, "0")}`;
   PULPO.k = advanceEgg(PULPO.k, dt, Number(settings.value.pulpoMinutes));
   // In the globe, the octopus egg's stage (domain/pulpo.ts).
-  const egg = body.area === AQUARIUM_AREA ? ` · Huevo de pulpo: ${eggStage(Math.min(1, PULPO.k)).label}` : "";
+  const egg = (body.area === AQUARIUM_AREA ? ` · Huevo de pulpo: ${eggStage(Math.min(1, PULPO.k)).label}` : "") + crownPlay.frame(dt, body);
   const where = `Santuario 1 · ${clock} · ${a ? (a.building && !a.label.includes(a.building) ? `${a.building} · ${a.label}` : a.label) : flying ? "Volando en alfombra" : body.motion === "agua" ? "En el agua" : "Hielo"}${egg}`;
   if (whereEl.textContent !== where) whereEl.textContent = where;
   // The sheet changes (HUD or panel view, a longer question): the stage follows the room it leaves.
@@ -1148,5 +1164,5 @@ window.addEventListener("keydown", (e) => {
 });
 // Test hook (tools/experiencia and live checks): the layout, the body and the bulk style switch.
 if (import.meta.env.DEV || new URLSearchParams(location.search).has("prueba"))
-  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { pulpo: PULPO, get micro() { return micro; }, leaveMicro, microAt: () => { const j = L.instances.findIndex((q) => q.model === "simulador"); if (j < 0) return false; const it = L.instances[j]!; body = { ...body, x: it.x, y: it.y, z: it.z - 7, area: it.area, motion: "gravedad" }; enterMicro({ i: j, label: "Máquina de simulación", modelId: "simulador", x: it.x, y: it.y, z: it.z } as unknown as Thing, MICROCOSMOS[0]!); return true; }, L, world, steps, camera, renderer, wild, get wildT() { return wildT; }, set wildT(v: number) { wildT = v; }, get jumpT() { return walk.jumpClock; }, set jumpT(t: number) { walk.setJump(t); }, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, goTo, get auto() { return auto; }, areasWindow, carpetsWindow, get station() { return station; }, get hour() { return hour; }, people, get atHand() { return atHand; }, openReto, domenica, missionsWindow, get day() { return day; }, doMission: (id: string) => doMission(MISSIONS.find((q) => q.id === id)!), retoAt: (id: string, k = 0, n = 0, keep = false) => { const i = L.instances.map((it, j) => [it, j] as const).filter(([it]) => it.model === id)[n]?.[1]; if (i === undefined) return undefined; const it = L.instances[i]!; const r = retosFor(model(id), i)[k]; if (!r) return undefined; if (!keep) body = { ...body, x: it.x, y: it.y, z: it.z + 1.2 }; openReto(r, undefined, { x: it.x, y: it.y, z: it.z, sy: model(id).size.y * (it.scale ?? 1), modelId: id, rot: it.rot, plan: it.plan }); return { title: r.chore.title, steps: r.chore.exercises.length }; }, playStep: (i: number, dry = false) => { if (!challenge) return undefined; const a = stepAnimation(challenge, stagedModel, i); if (!dry) steps.play(a.acts); return a.id; }, get exercise() { return challenge ? retoRun?.current : undefined; }, closeReto: () => (document.querySelector('.duel [data-act="close"]') as HTMLElement | null)?.click(), teamAt: (furnish: string, k = 0) => { const a = L.areas.find((q) => q.furnish === furnish); const sr = SIM_RETOS[furnish]?.[k]; if (!a || !sr) return false; openTeamReto(a.id, sr); return true; }, get simActive() { return simTanks.active; }, setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
+  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { crownPlay, pulpo: PULPO, get micro() { return micro; }, leaveMicro, microAt: () => { const j = L.instances.findIndex((q) => q.model === "simulador"); if (j < 0) return false; const it = L.instances[j]!; body = { ...body, x: it.x, y: it.y, z: it.z - 7, area: it.area, motion: "gravedad" }; enterMicro({ i: j, label: "Máquina de simulación", modelId: "simulador", x: it.x, y: it.y, z: it.z } as unknown as Thing, MICROCOSMOS[0]!); return true; }, L, world, steps, camera, renderer, wild, get wildT() { return wildT; }, set wildT(v: number) { wildT = v; }, get jumpT() { return walk.jumpClock; }, set jumpT(t: number) { walk.setJump(t); }, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, goTo, get auto() { return auto; }, areasWindow, carpetsWindow, get station() { return station; }, get hour() { return hour; }, people, get atHand() { return atHand; }, openReto, domenica, missionsWindow, get day() { return day; }, doMission: (id: string) => doMission(MISSIONS.find((q) => q.id === id)!), retoAt: (id: string, k = 0, n = 0, keep = false) => { const i = L.instances.map((it, j) => [it, j] as const).filter(([it]) => it.model === id)[n]?.[1]; if (i === undefined) return undefined; const it = L.instances[i]!; const r = retosFor(model(id), i)[k]; if (!r) return undefined; if (!keep) body = { ...body, x: it.x, y: it.y, z: it.z + 1.2 }; openReto(r, undefined, { x: it.x, y: it.y, z: it.z, sy: model(id).size.y * (it.scale ?? 1), modelId: id, rot: it.rot, plan: it.plan }); return { title: r.chore.title, steps: r.chore.exercises.length }; }, playStep: (i: number, dry = false) => { if (!challenge) return undefined; const a = stepAnimation(challenge, stagedModel, i); if (!dry) steps.play(a.acts); return a.id; }, get exercise() { return challenge ? retoRun?.current : undefined; }, closeReto: () => (document.querySelector('.duel [data-act="close"]') as HTMLElement | null)?.click(), teamAt: (furnish: string, k = 0) => { const a = L.areas.find((q) => q.furnish === furnish); const sr = SIM_RETOS[furnish]?.[k]; if (!a || !sr) return false; openTeamReto(a.id, sr); return true; }, get simActive() { return simTanks.active; }, setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
 requestAnimationFrame(frame);

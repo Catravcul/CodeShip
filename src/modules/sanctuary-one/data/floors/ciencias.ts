@@ -21,10 +21,18 @@ function lab(id: string, floor: string, list: readonly Block[], counts: Readonly
   return { id, size: SIZE, items, source: cs(id === "informatica" ? "Informatica" : "Research", what) };
 }
 
+/**
+ * The one simulation machine, the great tank (sim-tank.ts), on the computing floor beside the cluster that runs it
+ * (Berón 2026-11-24: «¿la máquina de simulación podría compartir con informática?»), in its free half.
+ */
+function withTank(p: FloorPlan): FloorPlan {
+  return { ...p, items: [...p.items, { model: "simulador", x: 6, z: 6.5, rot: Math.PI, name: "Máquina de simulación (gran pecera)" }], source: `${p.source}; la gran pecera junto al clúster (2026-11-24)` };
+}
+
 export const CIENCIAS_FLOORS: readonly FloorPlan[] = [
   lab("quimica-sintesis", "lab-suelo", SINTESIS, { "q-campana": 6, "q-rotavapor": 4, "q-ducha": 2, "q-cuaderno": 4 }, "FurnishSynthesis (PackFloor)"),
   lab("quimica-analisis", "lab-suelo", ANALISIS, { "q-hplc": 6, "q-puesto-analisis": 4 }, "FurnishAnalysis (PackFloor)", -SIZE.x * 0.3),
   lab("biologia-cultivo", "lab-suelo", CULTIVO, { "b-cabina": 4, "b-incubador": 4, "b-microscopio": 2, "b-fluorescencia": 2, "b-centrifuga": 4, "b-biorreactor-mesa": 2, "b-congelador": 2 }, "FurnishCulture (PackFloor)"),
   lab("biologia-molecular", "lab-suelo", MOLECULAR, { "b-prepcr": 4, "b-extraccion": 4, "b-termociclador": 4, "b-nevera": 2, "b-puesto-datos": 6 }, "FurnishMolecular (PackFloor)", -SIZE.x * 0.3),
-  lab("informatica", "cpd-suelo", INFORMATICA, { "i-intercambiador": 2, "i-sai": 2, "i-baterias": 3, "i-monitor": 4, "i-banco": 2 }, "FurnishCluster (PackFloor)"),
+  withTank(lab("informatica", "cpd-suelo", INFORMATICA, { "i-intercambiador": 2, "i-sai": 2, "i-baterias": 3, "i-monitor": 4, "i-banco": 2 }, "FurnishCluster (PackFloor)")),
 ];

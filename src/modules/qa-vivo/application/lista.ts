@@ -15,7 +15,10 @@ export interface Fila {
 /** The systems reviewed as wholes (each added here when it is built). */
 const SISTEMAS: Readonly<Record<string, string>> = {
   pulpo: "Huevo de pulpo del globo (fases hasta nacer)",
-  pecera: "Gran pecera de simulación de la plaza",
+  pecera: "Gran pecera de simulación (piso de Informática)",
+  castillos: "Castillos de la cima de la Residencia (escaleras, redes, aposentos)",
+  toboganes: "Toboganes reales de los castillos",
+  "guerra-almohadas": "Guerra de almohadas con tesoros",
   "retos-equipo": "Retos de equipo desde la estación de alfombras",
   carga: "Pantalla de carga del santuario 1",
   caidas: "Caer desde los pisos",

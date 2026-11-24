@@ -141,7 +141,7 @@ describe("santuario 1: pisos amueblados", () => {
     expect(A.towers.reduce((n, t) => n + t.floors.length, 0)).toBe(63);
   });
   it("los edificios de hoy: un piso de gimnasio, uno de yoga, uno de aula y un hospital", () => {
-    const furn = TOWERS.flatMap((t) => t.floors.map((f) => f.furnish ?? ""));
+    const furn = TOWERS.flatMap((t) => [...t.floors.map((f) => f.furnish ?? ""), ...(t.cima ? [t.cima.furnish] : [])]);
     // By what is on them (Berón 2026-11-22: pisos por afinidad; the classroom in the plaza, away from the music).
     const on = (re: RegExp) => furn.filter((f) => FLOOR_PLANS.get(f)?.items.some((it) => re.test(it.model)));
     expect(on(/^yoga-esterilla/)).toHaveLength(1);

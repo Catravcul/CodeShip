@@ -16,6 +16,11 @@ export interface IconEntry {
 }
 
 export const ICON_CATALOG: Readonly<Record<keyof typeof ICON, IconEntry>> = {
+  chest: {
+    drawing: "Un cofre",
+    meaning: "La guerra de almohadas: empezarla, coger un tesoro o dejarlo en tu castillo",
+    usedIn: [{ where: "Santuario 1: cima de la Residencia", file: "src/sanctuary-one.ts" }],
+  },
   eye: {
     drawing: "Un ojo",
     meaning: "La vista: cambiar de cámara o de 1.ª a 3.ª persona",

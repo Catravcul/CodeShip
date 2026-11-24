@@ -1,6 +1,6 @@
 import { REAL_ONLY } from "@core/realism";
 import type { GameSettings, StartCamera } from "@modules/settings/domain/settings";
-import { START_CAMERAS, ANIMALS_PER_PERSON, WOOD_GRIDS } from "@modules/settings/domain/settings";
+import { START_CAMERAS, ANIMALS_PER_PERSON, PULPO_MINUTES, WOOD_GRIDS } from "@modules/settings/domain/settings";
 import { settings } from "./settings-store";
 import "./settings.css";
 
@@ -67,6 +67,13 @@ const ROWS: readonly Row[] = [
     help: "Santuario 1: cuántos animales viven en él por cada persona (Cold Sanctuary pone 3), repartidos entre presas, intermedios y depredadores. Más animales piden más al móvil. Se aplica al volver a cargar el juego",
     value: (s) => s.animalsPerPerson,
     next: (s) => ANIMALS_PER_PERSON[(ANIMALS_PER_PERSON.indexOf(s.animalsPerPerson) + 1) % ANIMALS_PER_PERSON.length]!,
+  },
+  {
+    key: "pulpoMinutes",
+    label: "Huevo de pulpo",
+    help: "Santuario 1: cuánto tarda en nacer el pulpo del globo de las ballenas, pasando por sus estadios. Para verlo, 1 o 3 minutos; como sería en el juego, 2 horas",
+    value: (s) => (s.pulpoMinutes === "120" ? "2 horas" : `${s.pulpoMinutes} min`),
+    next: (s) => PULPO_MINUTES[(PULPO_MINUTES.indexOf(s.pulpoMinutes) + 1) % PULPO_MINUTES.length]!,
   },
   { key: "sound", label: "Sonido", help: "Alarmas de embestida e impactos", value: (s) => yes(s.sound), next: (s) => !s.sound },
 ];

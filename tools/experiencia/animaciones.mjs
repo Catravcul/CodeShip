@@ -337,6 +337,28 @@ async function playStation(j, rows, skipped = []) {
     }
     await p.locator(m.start).first().evaluate((el) => el.scrollIntoView({ block: "center" }));
     const label = await p.locator(m.start).first().evaluate((el) => el.closest(".st-card")?.querySelector("b")?.textContent ?? "");
+    // The station screen slides in: tap once its button stays put for a few frames (on a loaded runner the slide
+    // outlasts the 500 ms above and a tap mid-slide missed the button, so no sheet opened).
+    await p
+      .locator(m.start)
+      .first()
+      .evaluate(
+        (el) =>
+          new Promise((done) => {
+            let last = "";
+            let same = 0;
+            const t0 = performance.now();
+            const look = () => {
+              const r = el.getBoundingClientRect();
+              const k = `${Math.round(r.x)},${Math.round(r.y)}`;
+              same = k === last ? same + 1 : 0;
+              last = k;
+              if (same >= 3 || performance.now() - t0 > 10000) done();
+              else requestAnimationFrame(look);
+            };
+            requestAnimationFrame(look);
+          }),
+      );
     await j.tapAt(p.locator(m.start).first());
     await j.waitDuel();
     await p.waitForTimeout(500);

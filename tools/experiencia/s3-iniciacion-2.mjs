@@ -147,12 +147,32 @@ async function doPost(j, n, title, label, who, expectThings) {
   return seen;
 }
 
+/** Pad buttons already checked once (visible, not overlapped): later presses are a finger's tap, not the full check. */
+const padChecked = new Set();
+/**
+ * A tap on a pad of the hand practices. The first press of each button goes through `j.tap` (its overlap checks);
+ * the next ones are a plain tap, as quick as a pilot's finger. With the full check every press took ~2 s on CI, so
+ * the shortest correction (a translation tap, then «Anular» one press later) moved Dragon ~0,2 m: more than the
+ * IDSS's 0,10 m off the axis, and the docking failed now and then (CI runs 44952767116, 44997439276, 45055879960…).
+ */
 async function tapPad(j, label) {
-  await j.tap(`.rcs-pad:not(.hidden) [aria-label="${label}"]`, label);
+  const sel = `.rcs-pad:not(.hidden) [aria-label="${label}"]`;
+  if (!padChecked.has(label)) {
+    padChecked.add(label);
+    return j.tap(sel, label);
+  }
+  const loc = j.page.locator(sel).first();
+  try {
+    if (j.opts.mobile === false) await loc.click({ timeout: 15000 });
+    else await loc.tap({ timeout: 15000 });
+  } catch (e) {
+    j.check(`se puede tocar «${label}»`, false, e.message.split("\n")[0]);
+  }
 }
 
 export async function s3Iniciacion2(j) {
   const p = j.page;
+  padChecked.clear();
   await j.tap('.start-screen .mw-pick[data-pick="aereo"]', "Tarjeta: Santuario Aéreo");
   await j.tap('.start-screen .mw-go[data-go="aereo"]', "Jugar: Santuario Aéreo");
   await p.waitForFunction(() => window.codeshipS3, null, { timeout: 120000 });
@@ -225,7 +245,7 @@ export async function s3Iniciacion2(j) {
     const d = window.codeshipS3.sims.dock;
     const r = d.run;
     const q = r.orientation;
-    return { yaw: (2 * Math.atan2(q.y, q.w) * 180) / Math.PI, yawRate: r.ratesDegS.y, right: r.position.x, up: r.position.y, contact: d.contact ?? null, v: r.velocity };
+    return { yaw: (2 * Math.atan2(q.y, q.w) * 180) / Math.PI, yawRate: r.ratesDegS.y, right: r.position.x, up: r.position.y, z: r.position.z, contact: d.contact ?? null, v: r.velocity };
   });
   let lat = 2;
   const timed = async (label) => {
@@ -245,16 +265,24 @@ export async function s3Iniciacion2(j) {
     }
     await timed("Anular giros y velocidad");
   };
-  await settle("yaw", (s) => s.yawRate, "Guiñada a la derecha", "Guiñada a la izquierda", 0.1);
-  for (let pass = 0; pass < 2; pass++) {
-    await settle("right", (s) => s.v.x, "Trasladar a la izquierda", "Trasladar a la derecha", 0.03);
-    await settle("up", (s) => s.v.y, "Trasladar abajo", "Trasladar arriba", 0.03);
+  // Round after round until Dragon is turned square and on the axis (a pilot checks before going in), not a set
+  // number of rounds: on a slow runner one round can stop short or past.
+  const TOL = { yaw: 0.1, right: 0.03, up: 0.03 };
+  for (let round = 0; round < 8; round++) {
+    await settle("yaw", (s) => s.yawRate, "Guiñada a la derecha", "Guiñada a la izquierda", TOL.yaw);
+    await settle("right", (s) => s.v.x, "Trasladar a la izquierda", "Trasladar a la derecha", TOL.right);
+    await settle("up", (s) => s.v.y, "Trasladar abajo", "Trasladar arriba", TOL.up);
+    const s = await g();
+    if (Math.abs(s.yaw) < TOL.yaw && Math.abs(s.right) < TOL.right && Math.abs(s.up) < TOL.up && Math.hypot(s.v.x, s.v.y, s.v.z) < 1e-3) break;
   }
   await tapPad(j, "Trasladar adelante");
+  // In at 0,1 m/s until contact: ~2 min of simulator time, more on a loaded runner (its frames, and so the simulator,
+  // go slower than the clock). It waits while Dragon is still closing, not a fixed time.
   let s = await g();
-  for (let k = 0; k < 400 && !s.contact; k++) {
+  for (let seen = { z: s.z, at: Date.now() }; !s.contact && Date.now() - seen.at < 30000; ) {
     await p.waitForTimeout(500);
     s = await g();
+    if (s.z < seen.z - 0.05) seen = { z: s.z, at: Date.now() };
   }
   const toast = (await j.texts(".s3-ui .cab-toast.on"))[0] ?? "";
   j.check("el acople a mano toca dentro de los límites del IDSS y acopla", !!s.contact?.ok && /acoplada/.test(toast), JSON.stringify({ contact: s.contact, toast }));
@@ -268,25 +296,27 @@ export async function s3Iniciacion2(j) {
   await j.tap('.s3-ui .cm-acts [data-act="sim:alunizaje"]', "Practicar el alunizaje (LM)");
   await capture(j, "alunizaje", "El alunizaje a mano en la maqueta del LM");
   await tapPad(j, "Anular giros y velocidad");
-  // Down at about a tenth of the height a second (2,5 m/s at most, 0,6 at the end), looking ahead a tap's time: the
-  // 400 kg of the trainer's propellant last about 100 s of hover, so a slow CI runner must not dawdle (11-19).
+  // Down at about a tenth of the height a second (2,5 m/s at most, 0,6 at the end): the 400 kg of the trainer's
+  // propellant last about 100 s of hover, so a slow CI runner must not dawdle (11-19). Until it touches down (the
+  // simulator's own clock runs slower than the wall's on a loaded runner), not for a set number of looks.
   const lm = () => p.evaluate(() => window.codeshipS3.sims.land ?? null);
   let m = await lm();
-  let latL = 2;
-  for (let k = 0; k < 400 && m && !m.landed; k++) {
+  for (let k = 0; k < 2000 && m && !m.landed; k++) {
     await p.waitForTimeout(300);
     const m2 = await lm();
     if (!m2 || m2.landed) {
       m = m2;
       break;
     }
+    // Each throttle tap changes the acceleration by ~0,3 m/s² and takes a second or two on a slow runner: it tracks
+    // an acceleration that brings the descent rate to its target over ~3 s, tapping only when off by more than half a
+    // tap (no hunting near the ground), and never below the engine's 10 % (a tap there cuts it). Chasing the rate a
+    // tap late made it bounce near the ground and touch at 5,1 and 5,6 m/s (CI runs 45238233908, 45331168037).
     const acc = (m2.vzMs - m.vzMs) / Math.max(0.05, m2.t - m.t);
     const want = -Math.max(0.6, Math.min(2.5, m2.altM / 10));
-    const ahead = m2.vzMs + acc * latL;
-    const t0 = Date.now();
-    if (ahead < want - 0.3) await tapPad(j, "Subir el empuje del motor de descenso");
-    else if (ahead > want + 0.3) await tapPad(j, "Bajar el empuje del motor de descenso");
-    if (Date.now() - t0 > 50) latL = 0.5 * latL + 0.5 * ((Date.now() - t0) / 1000 + 0.3);
+    const aim = Math.max(-0.5, Math.min(0.5, (want - m2.vzMs) / 3));
+    if (acc < aim - 0.17) await tapPad(j, "Subir el empuje del motor de descenso");
+    else if (acc > aim + 0.17 && m2.throttle - 0.05 >= 0.1 + 1e-6) await tapPad(j, "Bajar el empuje del motor de descenso");
     m = await lm();
   }
   const toastL = (await j.texts(".s3-ui .cab-toast.on"))[0] ?? "";

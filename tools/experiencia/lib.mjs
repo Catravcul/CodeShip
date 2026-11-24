@@ -194,7 +194,7 @@ export class Journey {
       // A machine's challenge is reached with the orange button, as a player does (ui/machine-panel.ts): one opens
       // straight away, several through the choice. Then there is nothing more to tap.
       if (await this.viaReto(selector, what)) return true;
-      await this.showPanel(selector);
+      if (await this.showPanel(selector)) return true;
       await this.sprout(selector);
       await loc.waitFor({ state: "visible", timeout: 15000 });
       await this.invariants(loc, what);
@@ -307,6 +307,18 @@ export class Journey {
    * the challenge was started this way (nothing more to tap).
    */
   async viaReto(selector, what) {
+    // A card of a fixture she was just put at is drawn in the mode's next frame (station-interior.ts renderCard): wait
+    // for it to show before deciding. Without this, under load the first look found no card, `showPanel` came back
+    // here as «Ver la máquina» once it showed and, for a challenge button, started that challenge through the choice;
+    // `tap` then waited for a button under the open sheet and the whole station leg failed (PX-20 in CI runs
+    // 45055879960, 45192500714, 45238233908, 45331168037).
+    if (/cab-machine|sti-card|sts-card|cm-/.test(selector))
+      await this.page
+        .waitForFunction((sel) => {
+          const els = [...document.querySelectorAll(sel)];
+          return els.length > 0 && els.some((e) => !e.closest(".cab-machine") || e.closest(".cab-machine:not(.hidden)"));
+        }, selector, { timeout: 8000, polling: 100 })
+        .catch(() => {});
     const at = await this.page
       .evaluate(
         ([sel, RETO]) => {
@@ -355,10 +367,8 @@ export class Journey {
     // A machine with challenges only: its orange button goes to the challenge, there is no card to show (its text is
     // what the choice of challenge says, read by `texts`).
     if (await this.retoOnly(selector)) return;
-    if (await this.retoCard(selector)) {
-      await this.viaReto(selector, "Ver la máquina");
-      return;
-    }
+    // True when this started the challenge itself (`selector` is one of the card's challenges): nothing more to tap.
+    if (await this.retoCard(selector)) return this.viaReto(selector, "Ver la máquina");
     await this.page.waitForFunction(ACT_FOR, [selector, false], { timeout: 8000 }).catch(() => {});
     const btn = await this.page.evaluate(FIND_ACT, true);
     if (!btn) return;

@@ -97,6 +97,7 @@ Lo que se arregló:
 - **Ya no se mete en la pared**: el frente del bastidor estaba en el mismo plano que la pared y parpadeaba dentro de ella; ahora sale 3 cm y toda la unidad queda en el pasillo (en la Starship y en Kibo, que usan el mismo modelo).
 - **Los peces nadan dentro**: cada medaka da vueltas por su cámara a una distancia del cristal de medio cuerpo más 3 mm, sea cual sea su rumbo, y mira hacia donde nada (`fishPose`, VID-50). Antes la malla de los peces se quedaba sin dibujar: se calculaba su esfera de recorte con el tanque vacío.
 - **Se ve al llegar**: la unidad está a la altura de sus ojos y ella mira las cámaras un poco por debajo, para que se vean encima de su tarjeta; el filtro está al lado de la unidad, no delante de las cámaras. Con «−» junto a «Mirar» se ve entera.
+- **En el reto se ven las cámaras, sus manos y la tableta** (2026-11-24): la cámara del reto mira 12 cm por encima de las cámaras y se aparta 0,9 m del cristal; antes, a 0,7 m y mirando las cámaras, la tableta que lee en «revisar» quedaba fuera de la franja sobre la hoja (PX-20). Desde que ella mantiene el gesto entre pasos ya no aparecía ni un instante.
 
 ## Una colonia en cada vehículo
 

@@ -5,6 +5,8 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-24
 
+- **Hábitat acuático (AQH)**: en sus retos la cámara encuadra las cámaras, sus manos y la tableta que lee, sobre la hoja
+  (PX-20 en rojo en CI desde el 23) ([equipos.md](docs/design/equipos.md)).
 - **Cima de la Residencia** en lo alto de Ciencias: 4 **castillos** con aposentos, escaleras, redes y **toboganes reales**
   al **ring de almohadas**, **guerra de almohadas** con tesoros, jardín al borde; **reglas de organización** de edificios
   y pisos por cálculo; la pecera, en Informática ([organizacion.md](docs/design/organizacion.md)).

@@ -65,6 +65,8 @@ const WORK_DROP = 1.0;
 const FACE_UNDER_RAD = 0.35;
 /** …and this far out from its front (m, her feet). */
 const WORK_OFF = 0.75;
+/** At the AQH the shot looks this far over the chambers (m): her hands and the tablet over them are in the strip too. */
+const AQH_LOOK_UP = 0.12;
 
 export interface StationInteriorDeps {
   /** Machines working right now (their lamps glow). */
@@ -919,11 +921,15 @@ export class StationInteriorMode {
     const side = new THREE.Vector3(1, 0, 0).applyQuaternion(q);
     const stand = g.root.localToWorld(g.feet.clone().setX(-0.35));
     const focus = g.root.localToWorld(g.focus.clone());
-    const cam = focus.clone().addScaledVector(out, 0.7).addScaledVector(side, 0.35).add(new THREE.Vector3(0, 0.22, 0));
+    // The chambers sit at her waist and her hands above them: the shot looks a little over the chambers, so the
+    // chambers, her hands and what is in them (the tablet she reads) all show in the strip over the sheet (with
+    // the look on the chambers and the camera 0,7 m out, the tablet was ~36° over the line, off the 28° strip).
+    const look = focus.clone().add(new THREE.Vector3(0, AQH_LOOK_UP, 0));
+    const cam = focus.clone().addScaledVector(out, 0.9).addScaledVector(side, 0.35).add(new THREE.Vector3(0, 0.32, 0));
     const face = out.clone().negate();
     // The step's props (food, a sponge) a hand in front of the glass, never inside the chambers or the rack.
     const target = focus.clone().addScaledVector(out, 0.15).add(new THREE.Vector3(0, 0.15, 0));
-    return { stand, yaw: Math.atan2(face.x, face.z), camera: cam, look: focus, target };
+    return { stand, yaw: Math.atan2(face.x, face.z), camera: cam, look, target };
   }
 
   /**

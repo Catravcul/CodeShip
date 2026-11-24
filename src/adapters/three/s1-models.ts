@@ -4,7 +4,7 @@ import { AQUARIUM_AREA, type S1Layout } from "@modules/sanctuary-one/data/layout
 import { model, type Category, type ModelDef } from "@modules/sanctuary-one/data/catalog";
 import { BASE, WATER_Y } from "@modules/sanctuary-one/data/site";
 import { GLOBE, globeSkin } from "@modules/sanctuary-one/data/globo";
-import { advance, EGG, pulpoAt } from "@modules/sanctuary-one/domain/pulpo";
+import { EGG, pulpoAt } from "@modules/sanctuary-one/domain/pulpo";
 import { textSign } from "./interior/sign";
 import { AnimalHerd } from "./animal-bodies";
 
@@ -393,8 +393,8 @@ export function buildS1Scene(L: S1Layout): S1Scene {
   };
 }
 
-/** The octopus egg's clock (sanctuary-one.ts sets its duration from the settings and reads its stage). */
-export const PULPO = { k: 0, minutes: 3 };
+/** The octopus egg's clock (sanctuary-one.ts advances it every frame, seen or not, by the settings' duration). */
+export const PULPO = { k: 0 };
 
 /**
  * The octopus egg in the whales' globe, developing until it hatches (domain/pulpo.ts: Naef's stages, real
@@ -465,12 +465,8 @@ function embryo(x: number, y: number, z: number, size: number): THREE.Object3D {
   });
   const dark = new THREE.Color(0x0d1f2a);
   const clear = new THREE.Color(0xcfe8f0);
-  let last = performance.now();
   shell.onBeforeRender = () => {
-    const now = performance.now();
-    PULPO.k = advance(PULPO.k, Math.min(0.5, (now - last) / 1000), PULPO.minutes);
-    last = now;
-    const t = now / 1000;
+    const t = performance.now() / 1000;
     const p = pulpoAt(PULPO.k);
     const b = p.body * u;
     const on = p.body > 0.002;

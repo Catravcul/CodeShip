@@ -10,26 +10,38 @@ import type { MotionId } from "./animaciones";
  * the strongest continuous magnet, ~45 T: that part is the sanctuary's magic). The breathing mask hangs on its tube by
  * the door; the console stands at its side.
  *
- * It holds the area's challenges, the ones the whole area takes (a band's rehearsal, a restaurant's service): she goes
- * in, and inside the simulation others come to take their parts. Everyone who takes part earns the reward.
+ * It takes her (and those with her) into the microcosms. The area's challenges, the ones the whole area takes (a band's
+ * rehearsal, a restaurant's service), are offered at the floor's carpet station (Berón 2026-11-24): others come to take
+ * their parts, and everyone who takes part earns the reward.
  */
 export const SIM_TANK = {
-  /** Half its side, m (VirtualizationTank.radius). */
-  half: 0.9,
+  /**
+   * Half its side, m: a great tank of 9 × 9 m, the only one in the sanctuary, on the plaza, that many go into at once
+   * (Berón 2026-11-24; Cold Sanctuary's VirtualizationTank is 1,8 m for one person).
+   */
+  half: 4.5,
   /** The water's height, m. */
-  water: 2.4,
+  water: 4,
   /** The plinth, m: the tank's floor is this high. */
-  base: 0.25,
-  /** Half the doorway's width, m. */
-  door: 0.55,
-  /** The mask on its hook, beside the door (x, y, z from the tank's centre; the door is at −z). */
-  mask: { x: 1.15, y: 1.5, z: -0.9 },
+  base: 0.3,
+  /** Half the doorway's width, m (a door 2,8 m wide). */
+  door: 1.4,
+  /** The rack of masks on their hooks, beside the door (x, y, z from the tank's centre; the door is at −z): one each. */
+  mask: { x: 2.6, y: 1.5, z: -4.95 },
+  /** How many masks the rack holds: how many go in at once. */
+  places: 9,
   /** The console, beside the tank. */
-  console: { x: -1.5, z: -0.3 },
+  console: { x: -5.3, z: -2.5 },
   /** Where she stands before going in, in front of the door. */
-  front: { x: 0, z: -2.0 },
-  source: "Cold Sanctuary, Assets/Scripts/Meditation/VirtualizationTank.cs (Build y Enter)",
+  front: { x: 0, z: -6.4 },
+  source: "Cold Sanctuary, Assets/Scripts/Meditation/VirtualizationTank.cs (Build y Enter), a 5 veces su tamaño",
 } as const;
+
+/** Where each of the others floats, round her in the middle (x, z from the tank's centre, m). */
+export const SIM_SPOTS: readonly { readonly x: number; readonly z: number }[] = Array.from({ length: SIM_TANK.places - 1 }, (_, i) => {
+  const a = (i / (SIM_TANK.places - 1)) * Math.PI * 2;
+  return { x: Math.sin(a) * 2.6, z: Math.cos(a) * 2.6 };
+});
 
 /** A part someone else takes in an area's challenge: where (a thing of the floor, or a place in front of hers) and doing what. */
 export interface SimRole {

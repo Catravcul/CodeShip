@@ -1,0 +1,96 @@
+.cs-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: #0b1a2e;
+  color: #e8f1f7;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  transition: opacity 0.6s ease;
+}
+.cs-loading-out {
+  opacity: 0;
+  pointer-events: none;
+}
+.cs-loading-art {
+  width: min(86vw, 460px);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+}
+.cs-loading-art svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.cs-loading-title {
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  color: #9fd6f0;
+}
+.cs-loading-text {
+  font-size: 20px;
+  letter-spacing: 0.06em;
+}
+/* The last dot blinks. */
+.cs-loading-last {
+  animation: cs-loading-blink 1s steps(2, start) infinite;
+}
+@keyframes cs-loading-blink {
+  to {
+    visibility: hidden;
+  }
+}
+.cs-loading .ld-aurora {
+  animation: cs-loading-aurora 6s ease-in-out infinite alternate;
+}
+@keyframes cs-loading-aurora {
+  from {
+    opacity: 0.5;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(10px);
+  }
+}
+.cs-loading .ld-carpet {
+  animation: cs-loading-carpet 7s linear infinite;
+}
+@keyframes cs-loading-carpet {
+  from {
+    transform: translate(60px, 120px);
+  }
+  50% {
+    transform: translate(190px, 70px);
+  }
+  to {
+    transform: translate(300px, 110px);
+  }
+}
+.cs-loading .ld-whale {
+  transform-origin: 184px 112px;
+  animation: cs-loading-whale 9s linear infinite;
+}
+@keyframes cs-loading-whale {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.cs-loading .ld-egg {
+  animation: cs-loading-egg 2.4s ease-in-out infinite alternate;
+}
+@keyframes cs-loading-egg {
+  to {
+    fill-opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cs-loading * {
+    animation: none !important;
+  }
+}

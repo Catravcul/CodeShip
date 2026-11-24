@@ -2,6 +2,7 @@ import { LEVELS } from "@modules/levels/data/levels";
 import type { SaveSlot } from "@modules/saves/domain/save-slot";
 import { isRecord } from "@core/snapshot";
 import { cannotResume, savedGames, startSession } from "./adapters/storage/saved-games";
+import { showLoading } from "./ui/loading-screen";
 import { StartScreen } from "./ui/start-screen";
 
 /**
@@ -66,6 +67,7 @@ const start = new StartScreen(
       startSession({ slotId: choice.slot.id, resume: choice.slot });
     } else startSession({ slotId: book.newSlot(), resume: undefined });
     start.close();
+    if (level.id === "terrestre") showLoading("santuario-1");
     void (level.id === "aereo" ? import("./aerial-sanctuary") : level.id === "terrestre" ? import("./sanctuary-one") : import("./main"));
   },
 );

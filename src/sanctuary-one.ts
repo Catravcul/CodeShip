@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { WORLD_SCALE } from "@core/scale";
 import { moveJoystick } from "@core/realism";
-import { stageAt as eggStage } from "@modules/sanctuary-one/domain/pulpo";
+import { advance as advanceEgg, stageAt as eggStage } from "@modules/sanctuary-one/domain/pulpo";
 import { AQUARIUM_AREA, buildS1Layout, TREE_CURRENT, treeWater } from "@modules/sanctuary-one/data/layout";
 import { globeDepth } from "@modules/sanctuary-one/data/globo";
 import { carpetDestinations, carpetRoute, stationAt, type CarpetStation } from "@modules/sanctuary-one/data/alfombras";
@@ -16,6 +16,7 @@ import { Wildlife } from "@modules/sanctuary-one/application/wildlife";
 import { staffPlaces, wayBetween, type Place } from "@modules/sanctuary-one/data/jornada";
 import { WalkIndex } from "@modules/sanctuary-one/data/walk-index";
 import { buildS1Scene, PULPO } from "./adapters/three/s1-models";
+import { doneLoading } from "./ui/loading-screen";
 import { CubeFigure } from "./adapters/three/interior/figure";
 import { textSign } from "./adapters/three/interior/sign";
 import { Walker } from "./adapters/input/walker";
@@ -46,8 +47,8 @@ import { stepAnimation } from "@modules/sanctuary-one/application/animations";
 import { STATIONS, stationWorld, type RetoAt } from "@modules/sanctuary-one/data/estaciones";
 import type { StepAct } from "@modules/chores/domain/step-visual";
 import { StepShow, gesture, motion, STEP_SECONDS } from "./adapters/three/interior/step-show";
-import { SimTanks } from "./adapters/three/sim-tank";
-import { MICROCOSMOS, SIM_RETOS, type SimMicrocosmos, type SimReto } from "@modules/sanctuary-one/data/simulacion";
+import { SimTanks, STAR_POSE } from "./adapters/three/sim-tank";
+import { MICROCOSMOS, SIM_RETOS, SIM_SPOTS, type SimMicrocosmos, type SimReto } from "@modules/sanctuary-one/data/simulacion";
 import type { AcademiaMicro } from "./microcosmos-academia";
 import type { Answer } from "@modules/mind-duel/domain/exercise";
 import { DuelView, type SessionText } from "./ui/duel-view";
@@ -218,7 +219,10 @@ function movePeople(dt: number): void {
       p.carpet.visible = false;
       p.g.position.set(p.role.x, p.role.y, p.role.z);
       p.g.rotation.y = p.role.yaw;
-      p.f.poseAngles(motion(p.role.motion, workClock + i));
+      if (p.role.motion === "estrella") p.f.poseAngles(STAR_POSE);
+      else p.f.poseAngles(motion(p.role.motion, workClock + i));
+      // (The pose is only reached through update: without it the parts stood still, Berón 2026-11-24.)
+      p.f.update(dt, 10);
       p.sign?.position.set(p.role.x, p.role.y + 2.1, p.role.z);
       return;
     }
@@ -706,7 +710,7 @@ function updateAtHand(dt: number): void {
   if (t?.i === atHand?.i && (t === undefined) === (atHand === undefined) && st === station) return;
   atHand = t;
   station = st ?? (carpetsWindow.visible ? station : undefined);
-  if (st) RootMenu.interact({ icon: ICON.carpet, label: `Volar: ${st.kind === "piso" ? "estación de alfombras" : `${st.label.toLowerCase()} de ${st.building}`}`, onClick: () => carpetsWindow.open() });
+  if (st) RootMenu.interact({ icon: ICON.carpet, label: `Volar: ${st.kind === "piso" ? "estación de alfombras" : `${st.label.toLowerCase()} de ${st.building}`}`, onClick: () => stationChoices(st) });
   else offerReto(t?.label, () => t && offerRetos(t));
 }
 
@@ -722,16 +726,30 @@ const REWARD_LABEL = { comida: "no pasar hambre", compania: "compañía", fuerza
 function offerRetos(t: Thing): void {
   const rs = retosFor(model(t.modelId), t.i);
   const own = rs.map((r) => ({ title: r.chore.title, detail: `${r.chore.exercises.length} pasos · da ${REWARD_LABEL[r.reward]}${r.reality === "ficción" ? " · magia del santuario" : ""}`, run: () => openReto(r, undefined, t) }));
-  // The simulation machine: its area's challenges, done in a team inside it (data/simulacion.ts).
-  const area = t.modelId === "simulador" ? areaById.get(L.instances[t.i]!.area) : undefined;
-  const sims = (area?.furnish ? SIM_RETOS[area.furnish] ?? [] : []).map((sr) => ({
-    title: `Simulación: ${sr.procedure.title}`,
-    detail: `${sr.procedure.steps.length} pasos · tú: ${sr.playerRole}; ${sr.roles.length} más en sus papeles · todos ganan ${REWARD_LABEL[sr.procedure.reward]}`,
-    run: () => enterSim(t, sr),
-  }));
-  // …and the microcosms it takes her into (modules/microcosmos).
+  // The simulation machine: the microcosms it takes her into (modules/microcosmos).
   const micros = (t.modelId === "simulador" ? MICROCOSMOS : []).map((mc) => ({ title: mc.title, detail: mc.detail, run: () => enterMicro(t, mc) }));
-  chooseReto(picker, t.label, [...micros, ...sims, ...own]);
+  chooseReto(picker, t.label, [...micros, ...own]);
+}
+
+/**
+ * A carpet station: its flights, and the floor's team challenges (Berón 2026-11-24: «al quitar las máquinas de
+ * simulación por piso podemos mover las tareas grupales a la estación de alfombras»).
+ */
+function stationChoices(st: CarpetStation): void {
+  const area = areaById.get(st.area);
+  const team = area?.furnish ? SIM_RETOS[area.furnish] ?? [] : [];
+  if (!team.length) {
+    carpetsWindow.open();
+    return;
+  }
+  chooseReto(picker, `Estación de alfombras · ${area!.label}`, [
+    { title: "Volar", detail: "Las alfombras de esta estación", run: () => carpetsWindow.open() },
+    ...team.map((sr) => ({
+      title: `En equipo: ${sr.procedure.title}`,
+      detail: `${sr.procedure.steps.length} pasos · tú: ${sr.playerRole}; ${sr.roles.length} más en sus papeles · todos ganan ${REWARD_LABEL[sr.procedure.reward]}`,
+      run: () => openTeamReto(st.area, sr),
+    })),
+  ]);
 }
 
 // --- The simulation machine (data/simulacion.ts; Berón 2026-11-23) ---------------------------------------------------
@@ -739,22 +757,23 @@ const simTanks = new SimTanks(scene, L.instances.filter((i) => i.model === "simu
 /** Everyone's needs after a team challenge: hers is Doménica's; the others' kept here by name. */
 const teamCrew = new Map<string, CrewMember>();
 
-/** In through the tank, then the area's challenge with the others in their parts. */
-function enterSim(t: Thing, sr: SimReto): void {
-  const i = simTanks.nearest(t.x, t.z, 4, t.y);
-  if (i === undefined) return;
-  RootMenu.interact(undefined);
-  simTanks.enter(i, body, () => openTeamReto(t, sr, i));
-}
-
 // --- The microcosms (Berón 2026-11-23: «¿Podrías crear el de Platón?»): a chunk of its own, loaded on the way in and
 // disposed of on the way out, so sanctuary 1 runs as before while she is not inside one. Only one is ever loaded.
 let micro: AcademiaMicro | undefined;
 let microTank: number | undefined;
+/** Who went into the tank with her (they float in it while she is in the microcosm). */
+let microCrew: Person[] = [];
 function enterMicro(t: Thing, mc: SimMicrocosmos): void {
-  const i = simTanks.nearest(t.x, t.z, 4, t.y);
+  const i = simTanks.nearest(t.x, t.z, 9, t.y);
   if (i === undefined || mc.id !== "academia-platon") return;
   RootMenu.interact(undefined);
+  // The great tank holds many (Berón 2026-11-24): those on the plaza go in with her and float round her.
+  const tank = simTanks.floatAt(i);
+  microCrew = tank ? people.filter((p) => !p.role && Math.abs(p.g.position.y - tank.y) < 6 && Math.hypot(p.g.position.x - tank.x, p.g.position.z - tank.z) < 30).slice(0, SIM_SPOTS.length) : [];
+  microCrew.forEach((p, k) => {
+    const at = simTanks.floatAt(i, SIM_SPOTS[k])!;
+    p.role = { ...at, yaw: at.yaw + Math.PI, motion: "estrella" };
+  });
   // The chunk loads while she goes in (the entry takes ~9 s).
   const loading = import("./microcosmos-academia");
   simTanks.enter(i, body, () => {
@@ -774,6 +793,8 @@ function leaveMicro(): void {
   GamePad.use(root, "santuario-1", padSetup);
   const out = microTank !== undefined ? simTanks.frontOf(microTank) : undefined;
   if (out) body = { ...body, x: out.x, y: out.y, z: out.z, motion: "gravedad" };
+  for (const p of microCrew) p.role = undefined;
+  microCrew = [];
   say("De vuelta en el santuario, delante de la máquina", 3);
 }
 
@@ -791,13 +812,14 @@ function standAt(it: (typeof L.instances)[number]): { x: number; y: number; z: n
   return { x, y: it.y, z, yaw: Math.atan2(it.x - x, it.z - z) };
 }
 
-function openTeamReto(t: Thing, sr: SimReto, tank: number): void {
-  const areaId = L.instances[t.i]!.area;
+function openTeamReto(areaId: string, sr: SimReto): void {
   const here = L.instances.map((it, j) => [it, j] as const).filter(([it]) => it.area === areaId);
   const mine = here.find(([it]) => it.model === sr.player);
   if (!mine) return;
   const [me] = mine;
   const meAt = standAt(me);
+  // She goes to her place.
+  body = { ...body, x: meAt.x, y: meAt.y, z: meAt.z, area: areaId, motion: "gravedad" };
   // The others: first those who work or train on this floor, then whoever is nearest (as many as the parts).
   const area = areaById.get(areaId);
   const ranked = [...people].sort((a, b) => Number(b.plan.tareas.area === areaId || b.plan.entrenamiento.area === areaId) - Number(a.plan.tareas.area === areaId || a.plan.entrenamiento.area === areaId) || Math.hypot(a.g.position.x - me.x, a.g.position.z - me.z) - Math.hypot(b.g.position.x - me.x, b.g.position.z - me.z));
@@ -827,9 +849,6 @@ function openTeamReto(t: Thing, sr: SimReto, tank: number): void {
   const at: RetoAt = { x: me.x, y: me.y, z: me.z, sy: model(me.model).size.y * (me.scale ?? 1), modelId: me.model, rot: me.rot, plan: me.plan };
   openReto(r, (ok) => {
     for (const p of cast) p.role = undefined;
-    // Out of the simulation: in front of the tank's door.
-    const out = simTanks.frontOf(tank);
-    if (out) body = { ...body, x: out.x, y: out.y, z: out.z, motion: "gravedad" };
     if (!ok) return;
     const names = cast.map((p) => p.name);
     for (const n of names) {
@@ -1074,6 +1093,7 @@ function updateCamera(dt: number): void {
 }
 
 let last = performance.now();
+let loaded = false;
 function frame(now: number): void {
   const dt = Math.max(0, Math.min(0.25, (now - last) / 1000));
   last = now;
@@ -1085,6 +1105,11 @@ function frame(now: number): void {
     return;
   }
   nearY = body.y;
+  if (!loaded) {
+    loaded = true;
+    // The first frame is about to be drawn: the loading screen goes (ui/loading-screen.ts).
+    requestAnimationFrame(() => doneLoading());
+  }
   // Going into the simulation machine: her way in and the orbiting camera, nothing else moves her.
   if (!simTanks.frame(dt, camera, rig, avatar)) {
     frameFree(dt);
@@ -1107,7 +1132,7 @@ function frame(now: number): void {
   const a = areaById.get(body.area);
   const hh = Math.floor(hour);
   const clock = `${hh}:${String(Math.floor((hour - hh) * 60)).padStart(2, "0")}`;
-  PULPO.minutes = Number(settings.value.pulpoMinutes);
+  PULPO.k = advanceEgg(PULPO.k, dt, Number(settings.value.pulpoMinutes));
   // In the globe, the octopus egg's stage (domain/pulpo.ts).
   const egg = body.area === AQUARIUM_AREA ? ` · Huevo de pulpo: ${eggStage(Math.min(1, PULPO.k)).label}` : "";
   const where = `Santuario 1 · ${clock} · ${a ? (a.building && !a.label.includes(a.building) ? `${a.building} · ${a.label}` : a.label) : flying ? "Volando en alfombra" : body.motion === "agua" ? "En el agua" : "Hielo"}${egg}`;
@@ -1131,5 +1156,5 @@ window.addEventListener("keydown", (e) => {
 });
 // Test hook (tools/experiencia and live checks): the layout, the body and the bulk style switch.
 if (import.meta.env.DEV || new URLSearchParams(location.search).has("prueba"))
-  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { pulpo: PULPO, get micro() { return micro; }, leaveMicro, microAt: () => { const a = L.areas.find((q) => q.furnish === "asambleas-guardia"); const j = L.instances.findIndex((q) => q.model === "simulador" && q.area === a?.id); if (j < 0) return false; const it = L.instances[j]!; body = { ...body, x: it.x, y: it.y, z: it.z - 3, area: it.area, motion: "gravedad" }; enterMicro({ i: j, label: "Máquina de simulación", modelId: "simulador", x: it.x, y: it.y, z: it.z } as unknown as Thing, MICROCOSMOS[0]!); return true; }, L, world, steps, camera, renderer, wild, get wildT() { return wildT; }, set wildT(v: number) { wildT = v; }, get jumpT() { return walk.jumpClock; }, set jumpT(t: number) { walk.setJump(t); }, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, goTo, get auto() { return auto; }, areasWindow, carpetsWindow, get station() { return station; }, get hour() { return hour; }, people, get atHand() { return atHand; }, openReto, domenica, missionsWindow, get day() { return day; }, doMission: (id: string) => doMission(MISSIONS.find((q) => q.id === id)!), retoAt: (id: string, k = 0, n = 0, keep = false) => { const i = L.instances.map((it, j) => [it, j] as const).filter(([it]) => it.model === id)[n]?.[1]; if (i === undefined) return undefined; const it = L.instances[i]!; const r = retosFor(model(id), i)[k]; if (!r) return undefined; if (!keep) body = { ...body, x: it.x, y: it.y, z: it.z + 1.2 }; openReto(r, undefined, { x: it.x, y: it.y, z: it.z, sy: model(id).size.y * (it.scale ?? 1), modelId: id, rot: it.rot, plan: it.plan }); return { title: r.chore.title, steps: r.chore.exercises.length }; }, playStep: (i: number, dry = false) => { if (!challenge) return undefined; const a = stepAnimation(challenge, stagedModel, i); if (!dry) steps.play(a.acts); return a.id; }, get exercise() { return challenge ? retoRun?.current : undefined; }, closeReto: () => (document.querySelector('.duel [data-act="close"]') as HTMLElement | null)?.click(), simAt: (furnish: string, k = 0) => { const a = L.areas.find((q) => q.furnish === furnish); const j = L.instances.findIndex((q) => q.model === "simulador" && q.area === a?.id); const sr = SIM_RETOS[furnish]?.[k]; if (j < 0 || !sr) return false; const it = L.instances[j]!; body = { ...body, x: it.x, y: it.y, z: it.z - 3, area: it.area, motion: "gravedad" }; enterSim({ i: j, label: "Máquina de simulación", modelId: "simulador", x: it.x, y: it.y, z: it.z, rot: it.rot, plan: it.plan, sy: 2.7 } as unknown as Thing, sr); return true; }, get simActive() { return simTanks.active; }, setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
+  (window as unknown as { codeshipS1: unknown }).codeshipS1 = { pulpo: PULPO, get micro() { return micro; }, leaveMicro, microAt: () => { const j = L.instances.findIndex((q) => q.model === "simulador"); if (j < 0) return false; const it = L.instances[j]!; body = { ...body, x: it.x, y: it.y, z: it.z - 7, area: it.area, motion: "gravedad" }; enterMicro({ i: j, label: "Máquina de simulación", modelId: "simulador", x: it.x, y: it.y, z: it.z } as unknown as Thing, MICROCOSMOS[0]!); return true; }, L, world, steps, camera, renderer, wild, get wildT() { return wildT; }, set wildT(v: number) { wildT = v; }, get jumpT() { return walk.jumpClock; }, set jumpT(t: number) { walk.setJump(t); }, get body() { return body; }, set body(b: Body) { body = b; }, setHour: (h: number) => { hour = h; }, goTo, get auto() { return auto; }, areasWindow, carpetsWindow, get station() { return station; }, get hour() { return hour; }, people, get atHand() { return atHand; }, openReto, domenica, missionsWindow, get day() { return day; }, doMission: (id: string) => doMission(MISSIONS.find((q) => q.id === id)!), retoAt: (id: string, k = 0, n = 0, keep = false) => { const i = L.instances.map((it, j) => [it, j] as const).filter(([it]) => it.model === id)[n]?.[1]; if (i === undefined) return undefined; const it = L.instances[i]!; const r = retosFor(model(id), i)[k]; if (!r) return undefined; if (!keep) body = { ...body, x: it.x, y: it.y, z: it.z + 1.2 }; openReto(r, undefined, { x: it.x, y: it.y, z: it.z, sy: model(id).size.y * (it.scale ?? 1), modelId: id, rot: it.rot, plan: it.plan }); return { title: r.chore.title, steps: r.chore.exercises.length }; }, playStep: (i: number, dry = false) => { if (!challenge) return undefined; const a = stepAnimation(challenge, stagedModel, i); if (!dry) steps.play(a.acts); return a.id; }, get exercise() { return challenge ? retoRun?.current : undefined; }, closeReto: () => (document.querySelector('.duel [data-act="close"]') as HTMLElement | null)?.click(), teamAt: (furnish: string, k = 0) => { const a = L.areas.find((q) => q.furnish === furnish); const sr = SIM_RETOS[furnish]?.[k]; if (!a || !sr) return false; openTeamReto(a.id, sr); return true; }, get simActive() { return simTanks.active; }, setView: (y: number, p: number, third: boolean, dist = 3.6) => { yaw = y; pitch = p; camDist = dist; if (third !== thirdPerson) toggleView(); } };
 requestAnimationFrame(frame);

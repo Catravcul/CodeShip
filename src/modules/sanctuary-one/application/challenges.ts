@@ -1,4 +1,5 @@
 import type { Chore, ChoreKind } from "@modules/chores/domain/chore";
+import type { RetoTag } from "@modules/chores/domain/palabra";
 import type { CrewMember } from "@modules/crew/domain/crew-member";
 import { cookingChore, stepChain, stepPool, workoutChore, yogaChore } from "@modules/chores/application/catalog";
 import { RECIPES } from "@modules/kitchen/data/recipes";
@@ -17,7 +18,12 @@ export interface Reto {
   readonly reality: "real" | "ficción";
   /** The procedure it runs (data/retos.ts), when it is one: its steps' animations come from data/animaciones.ts. */
   readonly procedure?: string;
+  /** Its button's word, when its procedure sets one (chores/domain/palabra.ts). */
+  readonly palabra?: string;
 }
+
+/** What chores/domain/palabra.ts reads of a challenge to give its one word. */
+export const retoTag = (r: Reto): RetoTag => ({ palabra: r.palabra ?? r.chore.palabra, id: r.procedure ?? r.chore.id, kind: r.chore.kind, title: r.chore.title });
 
 /** Doménica's age (her crew profile), for the heart-rate numbers of a workout. */
 const AGE = 30;
@@ -36,6 +42,7 @@ export function procedureReto(q: Procedure, target?: string, pool: readonly stri
     source: q.source,
     reality: q.reality,
     procedure: q.id,
+    ...(q.palabra ? { palabra: q.palabra } : {}),
   };
 }
 

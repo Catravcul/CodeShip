@@ -32,6 +32,8 @@ export interface Interaction {
   readonly icon: string;
   /** Always shown beside it: it is an alert, not a hidden label. */
   readonly label: string;
+  /** A challenge's one word (chores/domain/palabra.ts): its face shows it, `label` stays its accessible name. */
+  readonly word?: string;
   readonly onClick: () => void;
   /** Shown as an X while what it opened is open. */
   readonly open?: boolean;
@@ -61,7 +63,7 @@ export class RootMenu {
    * its label always out, while there is something to use right here; `undefined` hides it.
    */
   static interact(i: Interaction | undefined): void {
-    const same = i && RootMenu.current && i.label === RootMenu.current.label && i.icon === RootMenu.current.icon && !!i.open === !!RootMenu.current.open;
+    const same = i && RootMenu.current && i.label === RootMenu.current.label && i.word === RootMenu.current.word && i.icon === RootMenu.current.icon && !!i.open === !!RootMenu.current.open;
     RootMenu.current = i;
     // The pad takes the same callback every time (its own button's job may be newer).
     RootMenu.padInteract?.(i);
@@ -149,7 +151,7 @@ export class RootMenu {
     this.act.classList.toggle("rm-open", !!i.open);
     this.act.setAttribute("aria-label", label);
     this.act.title = label;
-    this.act.innerHTML = `${i.open ? ICON.close : i.icon}<span class="rm-act-label">${label}</span>`;
+    this.act.innerHTML = `${i.open ? ICON.close : i.icon}<span class="rm-act-label">${i.open || !i.word ? label : i.word}</span>`;
   }
 
   /** Adds an icon that sprouts from the root. */

@@ -129,6 +129,8 @@ export interface Chore {
   readonly id: string;
   readonly kind: ChoreKind;
   readonly title: string;
+  /** The one word of its button (chores/domain/palabra.ts), only where its id, title and kind cannot tell it. */
+  readonly palabra?: string;
   /** Why it is needed now ("Luna mordió la lechuga", "la sacudida volcó la maceta"…). */
   readonly scenario: string;
   readonly targetId?: string;

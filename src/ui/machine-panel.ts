@@ -3,6 +3,19 @@ import { ICON } from "./icons";
 import { onCloseRequest, windowState } from "./hud-windows";
 import { RETO_ACTS, chooseReto, retoButton } from "./interaction";
 import { RetoPicker } from "./reto-picker";
+import { retosWord, type RetoTag } from "@modules/chores/domain/palabra";
+
+/** The label of a card's button (its keyboard hint left out). */
+const label = (b: HTMLButtonElement) => b.dataset.title ?? [...b.childNodes].filter((n) => n.nodeName !== "KBD").map((n) => n.textContent).join("").trim();
+
+/**
+ * What a card's challenge button tells of its challenge, for its one word (chores/domain/palabra.ts): a `data-palabra`
+ * if the card sets one, the chore's id of «chore:<id>» / «brazo:<id>», its title and the machine's name.
+ */
+const tagOf = (b: HTMLButtonElement, place: string): RetoTag => {
+  const act = b.dataset.act ?? "";
+  return { palabra: b.dataset.palabra, id: /^(chore|brazo):/.test(act) ? act : undefined, title: label(b), place };
+};
 
 /** The cards of a machine or an area she is at, in every vehicle (walk-room.ts, station-interior.ts). */
 const CARD = ".cab-machine";
@@ -40,14 +53,13 @@ export class MachinePanel {
     const retos = card ? [...card.querySelectorAll<HTMLButtonElement>(RETO_ACTS)] : [];
     if (!card) return RootMenu.interact(undefined);
     if (!retos.length || this.on) return RootMenu.interact(retos.length ? retoButton(name, toggle, true) : { icon: ICON.machine, label: name, open: this.on, onClick: toggle });
-    RootMenu.interact(retoButton(name, () => this.choose(card, name, retos), this.picker.isOpen));
+    RootMenu.interact(retoButton(name, () => this.choose(card, name, retos), this.picker.isOpen, retosWord(retos.map((b) => tagOf(b, name)))));
   }
 
   /** The orange button of a machine with challenges: its challenges, and its card if it has more to do. */
   private choose(card: HTMLElement, name: string, retos: HTMLButtonElement[]): void {
     if (this.picker.isOpen) return this.picker.close();
     const text = (sel: string) => card.querySelector(sel)?.textContent?.replace(/\s+/g, " ").trim() || undefined;
-    const label = (b: HTMLButtonElement) => b.dataset.title ?? [...b.childNodes].filter((n) => n.nodeName !== "KBD").map((n) => n.textContent).join("").trim();
     const options = retos.map((b) => ({
       title: label(b),
       detail: b.dataset.detail ?? text(".cm-who") ?? text(".cm-head small") ?? "",

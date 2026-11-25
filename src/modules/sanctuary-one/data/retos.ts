@@ -23,6 +23,8 @@ export interface Procedure {
   readonly reward: Reward;
   readonly reality: Reality;
   readonly source: string;
+  /** The one word of its button (chores/domain/palabra.ts), only where its id cannot tell it. */
+  readonly palabra?: string;
 }
 
 const NSCA = "NSCA, Essentials of Strength Training and Conditioning, 4.ª ed. (2016), cap. 15: técnica de ejercicios";

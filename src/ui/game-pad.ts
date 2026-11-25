@@ -49,13 +49,19 @@ let shared: PadSetup = {};
 let interaction: Interaction | undefined;
 /** The setup the pad has now. */
 let current: PadSetup | undefined;
-// Under the Y only «Reto» (or the machine's name), «Cerrar» while its card is open, like the other buttons (Berón
-// 2026-11-20); its full name stays its accessible name.
+// Under the Y one word: what the challenge is about («Cocina», «Boxeo»: Berón 2026-11-25, chores/domain/palabra.ts),
+// or the machine's name; «Cerrar» while its card is open, like the other buttons (Berón 2026-11-20); its full name
+// stays its accessible name.
+/** A machine's name on Y, in one word too: «Volar: estación…» → «Volar», «Puesto del comandante» → «Puesto». */
+const oneWord = (label: string) => {
+  const head = (label.split(":")[0] ?? "").trim();
+  return head.length > 10 ? (head.split(/\s+/)[0] ?? head) : head;
+};
 const yButton = (): ActionPadButton | undefined =>
   interaction
     ? {
         letter: "Y",
-        label: interaction.open ? "Cerrar" : (interaction.label.split(":")[0] ?? "").trim(),
+        label: interaction.open ? "Cerrar" : (interaction.word ?? oneWord(interaction.label)),
         aria: interaction.open ? `Cerrar: ${interaction.label}` : interaction.label,
         key: "KeyE",
         alert: true,
@@ -126,7 +132,7 @@ export const GamePad = {
 
 // The interaction button lives on Y while the pad is out (the orange button under the root stays hidden then).
 RootMenu.padInteract = (i) => {
-  const same = i === interaction || (!!i && !!interaction && i.label === interaction.label && !!i.open === !!interaction.open);
+  const same = i === interaction || (!!i && !!interaction && i.label === interaction.label && i.word === interaction.word && !!i.open === !!interaction.open);
   interaction = i;
   if (same || !pad || !current || owner === undefined) return;
   // A level's own Y (none yet) would win; the interaction only fills a free Y.

@@ -208,6 +208,22 @@ export const growthFactor = (p: PlantSpec, d: number, def: BiomeDef = AIR_BIOME)
 export const cycleOf = (s: AnimalSpec): LifeCycle => s;
 export const lifespanOf = (s: AnimalSpec): number => s.childDays + s.teenDays + s.adultDays;
 export const stageOfIndividual = (a: Individual): Stage => stageOf(a.age, animalSpec(a.species));
+/** An insect's stage of life: egg, larva (or nymph), pupa, adult; a vertebrate's young is its «cría». */
+export type LifeStage = "huevo" | "larva" | "ninfa" | "pupa" | "cria" | "joven" | "adulto" | "anciano";
+export function lifeStageOf(a: Individual): LifeStage {
+  const s = animalSpec(a.species);
+  const st = stageOfIndividual(a);
+  if (s.eggDays !== undefined && a.age < s.eggDays) return "huevo";
+  if (s.shape !== "insecto") return st;
+  if (st === "cria") return s.nymph ? "ninfa" : "larva";
+  if (st === "joven") return s.pupa ? "pupa" : "ninfa";
+  return st;
+}
+/** An egg or a pupa: it neither eats nor moves nor is hunted (insects). */
+export const quietNow = (a: Individual): boolean => {
+  const l = lifeStageOf(a);
+  return l === "huevo" || l === "pupa";
+};
 /** Size over the adult female's (length), with the male's size. */
 export function scaleOf(a: Individual): number {
   const s = animalSpec(a.species);
@@ -336,12 +352,14 @@ export function createBiome(seed = 1, def: BiomeDef = AIR_BIOME): BiomeState {
   for (const s of m.animals) {
     const count = s.visitor ? (presentIn(s, month0) ? s.visitor.count : 0) : s.start;
     for (let i = 0; i < count; i++) {
-      // Adults of spread ages and last seasons' young (fauna's ageInGroup), never newborns: births come in season.
-      const age = Math.max(s.childDays + 1, ageInGroup(i, count, s));
+      // Adults of spread ages and last seasons' young (fauna's ageInGroup), never newborns: births come in season. An
+      // annual insect is all of one generation: born in its last laying month, some days apart.
+      const laid = (monthStart(yearOf(0, start), s.birthMonth, start) + 365 * 4) % 365;
+      const age = s.annual ? Math.max(1, ((365 - laid) % 365) - hashDay(i, 41) * 25) : Math.max(s.childDays + 1, ageInGroup(i, count, s));
       const a: Individual = { id: st.nextId++, species: s.id, female: i % 2 === 0, age, reserve: s.fastDays, lastBirthYear: -99, debt: {} };
       // Mothers that mated before day 0 carry their young already (most do: ours, 85 %).
       const next = [yearOf(0, start), yearOf(0, start) + 1].map((y) => monthStart(y, s.birthMonth, start)).find((d) => d + 28 >= 0)!;
-      if (a.female && (!s.visitor || s.visitor.breeds) && stageOf(age, s) !== "joven" && next < s.gestationMonths * 30.4 && hashDay(a.id, 5) < 0.85) a.pregnant = yearOf(next, start);
+      if (!s.annual && a.female && (!s.visitor || s.visitor.breeds) && stageOf(age, s) !== "joven" && next < s.gestationMonths * 30.4 && hashDay(a.id, 5) < 0.85) a.pregnant = yearOf(next, start);
       st.animals.push(a);
     }
     st.births[s.id] = 0;
@@ -361,6 +379,9 @@ function yearFactorOf(seed: number, id: string, year: number): number {
 const YOUNG_NAME: Record<string, [string, string]> = {
   pinguino: ["pollo", "pollos"], ave: ["pollo", "pollos"], pajaro: ["pollo", "pollos"], pinnipedo: ["cría", "crías"], cuadrupedo: ["cría", "crías"],
 };
+/** The young's word: «pollo», «cría», or an insect's «huevo» (its births are layings). */
+const youngWord = (s: AnimalSpec): [string, string] => (s.shape === "insecto" ? ["huevo", "huevos"] : YOUNG_NAME[s.shape]!);
+const LIFE_WORD: Partial<Record<LifeStage, string>> = { huevo: "un huevo", larva: "una larva", ninfa: "una ninfa", pupa: "una pupa" };
 function log(st: BiomeState, e: Omit<BiomeEvent, "day" | "text">, text: string): void {
   st.events.push({ ...e, day: st.day, text });
   if (st.events.length > MAX_EVENTS) st.events.splice(0, st.events.length - MAX_EVENTS);
@@ -373,7 +394,8 @@ function kill(st: BiomeState, a: Individual, cause: Cause, by?: string): void {
   a.dead = cause;
   const s = animalSpec(a.species);
   const stage = stageOfIndividual(a);
-  const who = stage === "cria" ? `${YOUNG_NAME[s.shape]![0]} de ${s.name.toLowerCase()}` : `${s.name} (${STAGE_LABEL[stage]})`;
+  const life = LIFE_WORD[lifeStageOf(a)];
+  const who = life ? `${life} de ${s.name.toLowerCase()}` : stage === "cria" ? `${youngWord(s)[0]} de ${s.name.toLowerCase()}` : `${s.name} (${STAGE_LABEL[stage]})`;
   (st.deaths[a.species] ??= {})[cause] = (st.deaths[a.species]![cause] ?? 0) + 1;
   // What is not eaten is carrion, and the bones stay.
   for (const r of st.def.remains) st.remains[r.id] = (st.remains[r.id] ?? 0) + massOf(a) * (cause === "depredacion" ? r.shareKilled : r.share);
@@ -447,10 +469,11 @@ export function step(st: BiomeState, dt: number, o: StepOptions = {}): void {
   for (const a of st.animals) {
     const s = animalSpec(a.species);
     if (dormantIn(s, month)) continue; // asleep in its burrow: it lives on its fat
-    if (stageOfIndividual(a) === "cria" && motherOf(a)) continue; // fed by its mother
+    if (quietNow(a)) continue; // an egg or a pupa: it lives on its yolk or its fat
+    if (stageOfIndividual(a) === "cria" && motherOf(a) && !s.selfFed) continue; // fed by its mother
     let need = intakeOf(a) * dt;
     // A mother feeds her young (both parents in birds: the mother here carries it).
-    for (const y of kids.get(a.id) ?? []) if (!y.dead && stageOfIndividual(y) === "cria") need += intakeOf(y) * dt;
+    if (!s.selfFed) for (const y of kids.get(a.id) ?? []) if (!y.dead && stageOfIndividual(y) === "cria") need += intakeOf(y) * dt;
     // Animal prey: up to its allowance; the rest from the banks, plants and remains.
     const allowance = st.preyAllowance[s.id] ?? {};
     let fromPrey = 0;
@@ -549,11 +572,11 @@ export function step(st: BiomeState, dt: number, o: StepOptions = {}): void {
     a.age += dt;
     const stage = stageOfIndividual(a);
     const mother = motherOf(a);
-    const asleep = dormantIn(s, month);
+    const asleep = dormantIn(s, month) || quietNow(a);
     // Fed? The young by its mother; the rest by what it found (animal prey counts as found while its debt is not overdue).
     let fed: number;
     if (asleep) fed = 1;
-    else if (stage === "cria" && a.mother !== undefined) fed = mother && !mother.dead ? (st.fed[`#${mother.id}`] ?? 1) : 0;
+    else if (stage === "cria" && a.mother !== undefined && !s.selfFed) fed = mother && !mother.dead ? (st.fed[`#${mother.id}`] ?? 1) : 0;
     else {
       const w = asked.get(a) ?? 0;
       fed = w > 0 ? (got.get(a) ?? 0) / w : 1;
@@ -565,7 +588,7 @@ export function step(st: BiomeState, dt: number, o: StepOptions = {}): void {
     // Fed enough (80 %), it keeps or rebuilds its reserve; short of food, it spends it.
     a.reserve = Math.min(s.fastDays, a.reserve + (fed >= 0.8 ? ((fed - 0.8) / 0.2) * dt : (-(0.8 - fed) / 0.8) * dt));
     if (a.reserve <= 0) {
-      kill(st, a, stage === "cria" && (!mother || mother.dead) ? "sin-madre" : "hambre");
+      kill(st, a, stage === "cria" && !s.selfFed && (!mother || mother.dead) ? "sin-madre" : "hambre");
       continue;
     }
     // Short of food, a grown animal goes to feed elsewhere (birds and ungulates range far), leaving any young it had
@@ -598,7 +621,7 @@ export function step(st: BiomeState, dt: number, o: StepOptions = {}): void {
       continue;
     }
     // Come of age: the young of a full island leave (natal dispersal).
-    if (before < s.childDays && a.age >= s.childDays && present(s.id).length > s.cap) {
+    if (!s.annual && before < s.childDays && a.age >= s.childDays && present(s.id).length > s.cap) {
       a.dead = "otras";
       log(st, { species: s.id, kind: "se-va", n: 1 }, `Un joven de ${s.name.toLowerCase()} se va ${st.def.elsewhere} (la isla está llena)`);
       continue;
@@ -616,13 +639,14 @@ export function step(st: BiomeState, dt: number, o: StepOptions = {}): void {
       a.pregnant = undefined;
       a.lastBirthYear = year;
       // Room in the valley (a pair of a small population always has room for its brood).
-      const room = present(s.id).length < Math.max(s.cap * 1.5, s.cap + s.young + 1);
+      // (An annual insect's parents die after laying: its room is the generation's.)
+      const room = present(s.id).length < (s.annual ? s.cap * 1.5 : Math.max(s.cap * 1.5, s.cap + s.young + 1));
       if (a.reserve >= s.fastDays * 0.5 && room) {
         st.done[`cria:${a.id}`] = year;
         for (let i = 0; i < s.young; i++) st.animals.push({ id: st.nextId++, species: s.id, female: rand(st) < 0.5, age: 0, reserve: s.fastDays, mother: a.id, lastBirthYear: -99, debt: {} });
         st.births[s.id] = (st.births[s.id] ?? 0) + s.young;
-        const [one, many] = YOUNG_NAME[s.shape]!;
-        log(st, { species: s.id, kind: "nace", n: s.young }, s.young === 1 ? (one === "cría" ? `Nace una cría de ${s.name.toLowerCase()}` : `Nace un pollo de ${s.name.toLowerCase()}`) : `Nacen ${s.young} ${many} de ${s.name.toLowerCase()}`);
+        const [one, many] = youngWord(s);
+        log(st, { species: s.id, kind: "nace", n: s.young }, s.shape === "insecto" ? `${s.name}: pone ${s.young} huevos` : s.young === 1 ? (one === "cría" ? `Nace una cría de ${s.name.toLowerCase()}` : `Nace un pollo de ${s.name.toLowerCase()}`) : `Nacen ${s.young} ${many} de ${s.name.toLowerCase()}`);
       } else if (!room) log(st, { species: s.id, kind: "muere", n: s.young, cause: "otras" }, `Una ${s.name.toLowerCase()} no cría este año: el valle está lleno`);
       else log(st, { species: s.id, kind: "muere", n: s.young, cause: "hambre" }, `Una ${s.name.toLowerCase()} pierde la camada: estaba sin reservas`);
     } else if (a.pregnant !== undefined && a.pregnant < year) a.pregnant = undefined;
@@ -647,14 +671,15 @@ export function step(st: BiomeState, dt: number, o: StepOptions = {}): void {
       });
       continue;
     }
-    if (month === s.birthMonth && st.done[`rescate:${key}`] === undefined) {
+    // (An annual insect's come in its mating month, to mate: its generation lasts one year.)
+    if (month === (s.annual ? matingMonth(s) : s.birthMonth) && st.done[`rescate:${key}`] === undefined) {
       st.done[`rescate:${key}`] = 1;
       const adults = present(s.id).filter((a) => stageOfIndividual(a) === "adulto");
       const back = Math.min(st.away[s.id] ?? 0, s.cap - present(s.id).length);
       if (back > 0) {
         st.away[s.id]! -= back;
         for (let i = 0; i < back; i++) {
-          const b: Individual = { id: st.nextId++, species: s.id, female: i % 2 === 0, age: s.childDays + s.teenDays + 365 * (1 + (i % 3)), reserve: s.fastDays, lastBirthYear: -99, debt: {} };
+          const b: Individual = { id: st.nextId++, species: s.id, female: i % 2 === 0, age: s.childDays + s.teenDays + Math.min(365 * (1 + (i % 3)), s.adultDays * 0.3), reserve: s.fastDays, lastBirthYear: -99, debt: {} };
           st.animals.push(b);
           adults.push(b);
         }
@@ -662,7 +687,7 @@ export function step(st: BiomeState, dt: number, o: StepOptions = {}): void {
       }
       for (const female of [true, false])
         if (!adults.some((a) => a.female === female)) {
-          st.animals.push({ id: st.nextId++, species: s.id, female, age: s.childDays + s.teenDays + 365, reserve: s.fastDays, lastBirthYear: -99, debt: {} });
+          st.animals.push({ id: st.nextId++, species: s.id, female, age: s.childDays + s.teenDays + Math.min(365, s.adultDays * 0.3), reserve: s.fastDays, lastBirthYear: -99, debt: {} });
           log(st, { species: s.id, kind: "llega", n: 1 }, `Llega ${female ? "una hembra" : "un macho"} de ${s.name.toLowerCase()} de otro valle`);
         }
     }
@@ -705,7 +730,7 @@ const INDEX = new WeakMap<BiomeState, Map<string, Individual[]>>();
 function victims(st: BiomeState, f: Food): Individual[] {
   const list = INDEX.get(st)?.get(f.food) ?? st.animals.filter((v) => v.species === f.food);
   const month = monthOfDay(st.day, st.def.startDayOfYear);
-  return list.filter((v) => !v.dead && (!f.stages || f.stages.includes(stageOfIndividual(v))) && !dormantIn(animalSpec(v.species), month));
+  return list.filter((v) => !v.dead && !quietNow(v) && (!f.stages || f.stages.includes(stageOfIndividual(v))) && !dormantIn(animalSpec(v.species), month));
 }
 /** The mean worth (kg eaten) of the animals of one species and stages it can take now; 0 if there are none. */
 function preyWorth(st: BiomeState, f: Food): number {
@@ -836,11 +861,11 @@ export function census(st: BiomeState): CensusRow[] {
         s.visitor && !here.length
           ? `fuera: ${s.visitor.from}`
           : dormantIn(s, month)
-            ? "hibernando en su madriguera"
+            ? s.shape === "insecto" ? "pasa el invierno escondido" : "hibernando en su madriguera"
             : st.away[s.id]
               ? `${st.away[s.id]} comiendo en otra parte; vuelven en su época de cría`
               : month === s.birthMonth
-                ? "en época de crías"
+                ? s.shape === "insecto" ? "en época de puesta" : "en época de crías"
                 : undefined;
       rows.push({ ...base, count: here.length, stages, kg: here.reduce((t, a) => t + massOf(a), 0), eats: s.diet.map((f) => foodName(st, f.food) + (f.stages ? ` (${f.stages.map((x) => STAGE_LABEL[x]).join(", ")})` : "")), note });
     }

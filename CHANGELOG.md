@@ -17,6 +17,11 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
   también en 0 g), **la Y dice el reto en una palabra** («Boxeo», «Cocina», «Natación», «Hipoxia»: `retoWord`) y
   **pantalla de carga en los santuarios 3 y 6**, regla para todos ([reglas.md](docs/design/reglas.md) §5,
   [ux-acciones.md](docs/design/ux-acciones.md)).
+- **Santuario 3, insectos gigantes**: la fauna de la Isla de las alturas son 15 insectos reales de Gilgit-Baltistán
+  ×400 (la mosca de la fruta mide 1 m), con cadena viva, vuelos reales, colonias y la regla de **animales por persona**
+  del santuario 1; y el **globo de nubes** al sur de la isla, donde se nada hasta una abeja asiática gigante que se
+  desarrolla de huevo a adulta (ajuste «Duración del desarrollo de la abeja») ([bioma-s3.md](docs/design/bioma-s3.md),
+  [globo-nubes.md](docs/design/globo-nubes.md)).
 
 ## 2026-11-24
 

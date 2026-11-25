@@ -15,6 +15,14 @@ import { fieldAct, fieldJobs, type FieldJob } from "@modules/aerial-sanctuary/ap
 import { focusReto, sheetLens } from "./adapters/three/interior/reto-focus";
 import { chooseReto, offerReto } from "./ui/interaction";
 import { RetoPicker } from "./ui/reto-picker";
+import { airBiome } from "@modules/aerial-sanctuary/data/bioma";
+import { CLOUD_AREA, CLOUD_ENTRY, CLOUD_GLOBE, CLOUD_GLOBE_DESC, CLOUD_POINT, cloudGlobeWorld } from "@modules/aerial-sanctuary/data/globo-nubes";
+import { advanceBee } from "@modules/aerial-sanctuary/domain/abeja";
+import { waterAt, type Floor, type Solid, type Water } from "@modules/aerial-sanctuary/domain/walk";
+import type { AreaDef } from "@modules/aerial-sanctuary/data/layout";
+import type { WayPoint } from "@modules/aerial-sanctuary/domain/route";
+import { CloudGlobeView } from "./adapters/three/s3-cloud-globe";
+import { settings } from "./ui/settings-store";
 
 /** The sheet of a challenge (aerial-sanctuary.ts `openChallenge`): `beat` on each right step, `done` on closing. */
 type OpenChallenge = (chore: Chore, beat: (index: number, part: number) => void, done: (ok: boolean) => void) => void;
@@ -51,10 +59,37 @@ export class S3Biome {
   working?: string;
   readonly notebook: { when: string; text: string }[] = [];
 
+  /** The cloud globe and its honeybee (data/globo-nubes.ts, domain/abeja.ts): its moment 0 laid … 1 out. */
+  readonly globe: CloudGlobeView;
+  bee = { k: 0 };
+  /** The points the globe adds to the way graph (aerial-sanctuary.ts puts them in its map: one line). */
+  readonly points: readonly WayPoint[];
+  private readonly beeTag: HTMLElement;
+  private readonly scene: THREE.Scene;
+
   constructor(scene: THREE.Scene, ui: HTMLElement, private readonly L: S3Layout) {
-    this.life = new BiomeLife(biomeGeo(L.k), 1);
+    // The rule of animals per person (the shared setting, as sanctuary 1's): the chain's numbers (data/bioma.ts).
+    this.life = new BiomeLife(biomeGeo(L.k), 1, airBiome(Number(settings.value.animalsPerPerson)));
     this.view = new BiomeScene(L.k, this.life.state.def);
     scene.add(this.view.root);
+    this.scene = scene;
+    // The hornets hunt at the bees' hives (application/biome-life.ts).
+    this.life.hives = this.view.crowd.hivesOf("abeja");
+    // The cloud globe: its cloud-water, landing and comb into the walk world; its area and entry point.
+    const g = cloudGlobeWorld();
+    (L.world.waters as Water[]).push(...g.waters);
+    (L.world.floors as Floor[]).push(...g.floors);
+    (L.world.solids as Solid[]).push(...g.solids);
+    const G = CLOUD_GLOBE.value;
+    (L.areas as AreaDef[]).push({ id: CLOUD_AREA, island: "bioma", label: "El globo de nubes", desc: CLOUD_GLOBE_DESC, reality: "ficcion", centre: { x: G.x, y: G.y, z: G.z }, half: { x: G.r, y: G.r, z: G.r }, point: CLOUD_POINT });
+    this.points = [{ id: CLOUD_POINT, ...CLOUD_ENTRY }];
+    (L.graph.points as WayPoint[]).push(...this.points);
+    this.globe = new CloudGlobeView();
+    scene.add(this.globe.root);
+    this.beeTag = document.createElement("div");
+    this.beeTag.className = "s3-globo-etapa hidden";
+    this.beeTag.setAttribute("role", "status");
+    ui.appendChild(this.beeTag);
     const p = L.graph.points.find((q) => q.id === "bioma:estacion:censo")!;
     this.board = { x: p.x, y: p.y, z: p.z };
     this.card = document.createElement("div");
@@ -97,7 +132,7 @@ export class S3Biome {
         if (!ok) return;
         const when = dateLabel(this.life.state.day);
         const n = count(job.total ?? 0);
-        const text = r.procedure === "s3-camaras-leopardo" ? `Cámaras trampa revisadas: ${n} leopardos de las nieves distintos` : r.procedure === "s3-doble-observador" ? `Censo por doble observador: ${n} íbices` : `Colonia de buitres del farallón: ${n} nidos ocupados`;
+        const text = r.procedure === "s3-colmenas-cerana" ? `Colmenas revisadas: ${n} colonias de abeja asiática` : r.procedure === "s3-transecto-mariposas" ? `Transecto de mariposas: ${n} apolos del Himalaya` : `Trampas de caída: ${n} escarabajos`;
         this.notebook.unshift({ when, text });
         this.notebook.splice(8);
         this.say?.(`${r.chore.title}: hecho. ${text}`, 5);
@@ -140,7 +175,8 @@ export class S3Biome {
     if (camera instanceof THREE.PerspectiveCamera) this.camera = camera;
     if (!this.working) this.her = { x: body.x, y: body.y, z: body.z, yaw };
     const onStage = body.area.startsWith("bioma");
-    this.life.tick(dt, this.days(boardDays), t, hour, body, onStage);
+    this.life.tick(dt, this.days(boardDays), t, hour, body, onStage && body.area !== CLOUD_AREA);
+    this.updateGlobe(dt, t, body, camera);
     const C = BIOME_ISLAND.centre.value;
     const far = Math.hypot(camera.position.x - C.x, camera.position.z - C.z);
     // The mountain is seen from every island; its life is posed only from nearby (mobile budget): the chain lives on.
@@ -154,6 +190,29 @@ export class S3Biome {
     this.nearDesk = onStage && !this.working && !this.near && Math.hypot(body.x - this.desk.x, body.z - this.desk.z) < 1.9 && Math.abs(body.y - this.desk.y) < 1;
     if (!this.nearDesk && this.picker.isOpen) this.picker.close();
     this.renderCard();
+  }
+
+  /** The bee's clock (the setting's minutes), its pose when the globe is near, its stage on screen inside it, the cloud's haze. */
+  private updateGlobe(dt: number, t: number, body: { area: string }, camera: THREE.Camera): void {
+    this.bee.k = advanceBee(this.bee.k, dt, Number(settings.value.abejaMinutes));
+    const G = CLOUD_GLOBE.value;
+    const d = camera.position.distanceTo(new THREE.Vector3(G.x, G.y, G.z));
+    this.globe.root.visible = d < 4000;
+    const look = d < 1500 ? this.globe.update(this.bee.k, t) : undefined;
+    const inside = body.area === CLOUD_AREA;
+    const text = inside && look ? `Abeja del globo · ${look.stage.label}` : "";
+    if (this.beeTag.textContent !== text) this.beeTag.textContent = text;
+    this.beeTag.classList.toggle("hidden", !text);
+    // Inside the cloud (the camera in its cloud-water), a white haze instead of the sea's murk (walk-look's
+    // UnderwaterView sets that first each change; this follows it while inside).
+    const P = camera.position;
+    const cw = d < G.r + 10 ? waterAt(this.L.world, P.x, P.y, P.z) : undefined;
+    if (cw?.area === CLOUD_AREA && P.y < cw.yTop && P.y > cw.yBottom && this.scene.fog instanceof THREE.Fog) {
+      this.scene.fog.color.setHex(0xe8eef2);
+      this.scene.fog.near = 8;
+      this.scene.fog.far = 320;
+      if (this.scene.background instanceof THREE.Color) this.scene.background.setHex(0xe8eef2);
+    }
   }
 
   private renderCard(): void {
@@ -171,6 +230,7 @@ export class S3Biome {
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 const SEASON = (m: number) => (m >= 12 || m <= 2 ? "invierno" : m <= 5 ? "primavera" : m <= 8 ? "verano" : "otoño");
 const STAGES: readonly Stage[] = ["cria", "joven", "adulto", "anciano"];
+const NEST_WORD = { colmena: "colmenas", nido: "nidos", hormiguero: "hormigueros" } as const;
 
 /** The census card: each species with its count by stage, what it eats and who eats it, how fed it is; the last events. */
 export function censusHtml(def: BiomeDef, rows: readonly CensusRow[], events: readonly { when: string; text: string }[], date: string, month: number, crowds: Readonly<Record<string, CrowdCounts>> = {}, notebook: readonly { when: string; text: string }[] = []): string {
@@ -193,13 +253,13 @@ export function censusHtml(def: BiomeDef, rows: readonly CensusRow[], events: re
     // The crowd each of them stands for (bioma-crowd.ts): what she sees on the mountain, burrows and nests.
     const c = crowds[r.id];
     const per = CROWDS.find((x) => x.species === r.id)?.perAdult;
-    const seen = c && per && (c.adults + c.young > 0 || c.asleep) ? `<small class="cz-seen">${c.asleep ? "Duermen bajo tierra" : `Se ven ≈ ${count(c.adults + c.young)} en la montaña`} (×${String(per).replace(".", ",")} cada uno)${c.nests ? ` · ${count(c.nests)} ${CROWDS.find((x) => x.species === r.id)?.nest === "madriguera" ? "madrigueras" : "nidos"}` : ""}${c.eggs ? ` · ${count(c.eggs)} huevos` : ""}</small>` : "";
+    const seen = c && per && (c.adults + c.young > 0 || c.asleep) ? `<small class="cz-seen">${c.asleep ? "Pasan el invierno dentro del nido" : `Se ven ≈ ${count(c.adults + c.young)} obreras`} (×${String(per).replace(".", ",")} cada colonia)${c.nests ? ` · ${count(c.nests)} ${NEST_WORD[CROWDS.find((x) => x.species === r.id)?.nest ?? "nido"]}` : ""}</small>` : "";
     return `<li data-especie="${r.id}"><span class="cz-name">${esc(r.name)} <i>${esc(s.latin)}</i></span><span>${n}${fed}${r.note ? ` · ${esc(r.note)}` : ""}</span>${seen}${eats}${by}${deaths}</li>`;
   };
   const group = (title: string, kind: CensusRow["kind"]) => `<h4>${title}</h4><ul class="cz-list">${rows.filter((r) => r.kind === kind).map(row).join("")}</ul>`;
   return `<div class="cm-head"><b>Censo de la montaña</b><small>Estación de investigación · ${esc(date)} · ${SEASON(month)}</small></div>
-<div class="cz-body">${group("Aves y mamíferos", "animal")}${group("Suelo y aire: insectos, arañas y ratones", "banco")}${group("Plantas, de la estepa a las nieves", "planta")}
-<h4>Cuaderno de campo (la mesa de campo)</h4><ul class="cz-events cz-notebook">${notebook.map((e) => `<li><small>${esc(e.when)}</small> ${esc(e.text)}</li>`).join("") || "<li>Aún nada anotado: las cámaras, los censos y los nidos se hacen en la mesa</li>"}</ul>
+<div class="cz-body">${group("Insectos gigantes (cada colonia, por su reina)", "animal")}${group("Los pequeños: pulgones, mosquitos, colémbolos y arañas", "banco")}${group("Plantas, de la estepa a las nieves", "planta")}
+<h4>Cuaderno de campo (la mesa de campo)</h4><ul class="cz-events cz-notebook">${notebook.map((e) => `<li><small>${esc(e.when)}</small> ${esc(e.text)}</li>`).join("") || "<li>Aún nada anotado: las colmenas, el transecto de mariposas y las trampas se hacen en la mesa</li>"}</ul>
 <h4>Últimos sucesos</h4><ul class="cz-events">${events.map((e) => `<li><small>${esc(e.when)}</small> ${esc(e.text)}</li>`).join("") || "<li>Aún nada</li>"}</ul>
 <p class="cz-note"><small>Un año de la montaña dura 28 días de juego (Cold Sanctuary): cada día de juego son unos 13 días de vida.</small></p></div>`;
 }

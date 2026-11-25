@@ -8,15 +8,15 @@
  * Unit: the hatchling's total length (mantle and arms) = 1. Real proportions (O. vulgaris): the egg (chorion) is
  * ~2,5 × 0,9 mm and the hatchling ~2 mm long with its mantle ~1,1 mm and short arms (Villanueva y Norman 2008,
  * Oceanogr. Mar. Biol. 46): the egg is 1,25 hatchlings long and 0,45 wide; the mantle 0,55, the head 0,23, the arms 0,22.
+ *
+ * The clock, the stages and the ramps are the globe embryo's shared ones (fauna/domain/globe-embryo.ts; sanctuary 3's
+ * cloud globe uses them for its honeybee).
  */
+import { advanceCycle, ramp, smooth, stageIn, type EmbryoStage } from "@modules/fauna/domain/globe-embryo";
 
-export interface PulpoStage {
-  /** When it starts, as a share of the development (0–1). */
-  readonly at: number;
+export interface PulpoStage extends EmbryoStage {
   /** Naef's stages it covers. */
   readonly naef: string;
-  /** What happens, for the player. */
-  readonly label: string;
 }
 
 export const STAGES: readonly PulpoStage[] = [
@@ -69,18 +69,9 @@ export interface PulpoLook {
   readonly away: number;
 }
 
-const smooth = (x: number) => {
-  const t = Math.max(0, Math.min(1, x));
-  return t * t * (3 - 2 * t);
-};
-/** From `a` to `b` while k goes from k0 to k1, smoothly. */
-const ramp = (k: number, k0: number, k1: number, a: number, b: number) => a + (b - a) * smooth((k - k0) / (k1 - k0));
-
 /** The stage at a moment. */
 export function stageAt(k: number): PulpoStage {
-  let s = STAGES[0]!;
-  for (const q of STAGES) if (q.at <= k + 1e-9) s = q;
-  return s;
+  return stageIn(STAGES, k);
 }
 
 /**
@@ -113,6 +104,5 @@ export function pulpoAt(k: number): PulpoLook {
 
 /** The clock of the egg: advances by real seconds, loops after the paralarva has swum away (a new egg). */
 export function advance(k: number, dtSeconds: number, minutes: number): number {
-  const next = k + dtSeconds / (minutes * 60);
-  return next > 1 + SWIM_SHARE ? 0 : next;
+  return advanceCycle(k, dtSeconds, minutes, SWIM_SHARE);
 }

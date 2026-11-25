@@ -1,6 +1,6 @@
 import { REAL_ONLY } from "@core/realism";
 import type { GameSettings, StartCamera } from "@modules/settings/domain/settings";
-import { START_CAMERAS, ANIMALS_PER_PERSON, PULPO_MINUTES, WOOD_GRIDS } from "@modules/settings/domain/settings";
+import { START_CAMERAS, ANIMALS_PER_PERSON, PULPO_MINUTES, ABEJA_MINUTES, WOOD_GRIDS } from "@modules/settings/domain/settings";
 import { settings } from "./settings-store";
 import "./settings.css";
 
@@ -64,7 +64,7 @@ const ROWS: readonly Row[] = [
   {
     key: "animalsPerPerson",
     label: "Animales por persona",
-    help: "Santuario 1: cuántos animales viven en él por cada persona (Cold Sanctuary pone 3), repartidos entre presas, intermedios y depredadores. Más animales piden más al móvil. Se aplica al volver a cargar el juego",
+    help: "Santuarios 1 y 3: cuántos animales viven en ellos por cada persona (Cold Sanctuary pone 3), repartidos entre presas, intermedios y depredadores (en el 3, insectos; cada colonia cuenta como uno). Más animales piden más al móvil. Se aplica al volver a cargar el juego",
     value: (s) => s.animalsPerPerson,
     next: (s) => ANIMALS_PER_PERSON[(ANIMALS_PER_PERSON.indexOf(s.animalsPerPerson) + 1) % ANIMALS_PER_PERSON.length]!,
   },
@@ -74,6 +74,13 @@ const ROWS: readonly Row[] = [
     help: "Santuario 1: cuánto tarda en nacer el pulpo del globo de las ballenas, pasando por sus estadios. Para verlo, 1 o 3 minutos; como sería en el juego, 2 horas",
     value: (s) => (s.pulpoMinutes === "120" ? "2 horas" : `${s.pulpoMinutes} min`),
     next: (s) => PULPO_MINUTES[(PULPO_MINUTES.indexOf(s.pulpoMinutes) + 1) % PULPO_MINUTES.length]!,
+  },
+  {
+    key: "abejaMinutes",
+    label: "Duración del desarrollo de la abeja",
+    help: "Santuario 3: cuánto tarda la abeja del globo de nubes en pasar de huevo a adulta (19 días reales), por sus fases. Para verlo, 1 o 3 minutos; despacio, 2 horas",
+    value: (s) => (s.abejaMinutes === "120" ? "2 horas" : `${s.abejaMinutes} min`),
+    next: (s) => ABEJA_MINUTES[(ABEJA_MINUTES.indexOf(s.abejaMinutes) + 1) % ABEJA_MINUTES.length]!,
   },
   { key: "sound", label: "Sonido", help: "Alarmas de embestida e impactos", value: (s) => yes(s.sound), next: (s) => !s.sound },
 ];

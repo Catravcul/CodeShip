@@ -8,34 +8,28 @@ import { heightAt, slopeAt } from "@modules/aerial-sanctuary/domain/mountain";
 import { hash01 } from "@modules/fauna/domain/roam";
 
 /**
- * THE CROWDS DRAWN (docs/design/bioma-s3.md §Multitudes): around the few animals the food chain lives, the ibex herds
- * on the cliff ring, the markhor nannies on the gorge walls, the bharal on the meadow, the marmot families at their
- * burrows, the pikas of the scree, the griffons' colony on the ledges, the snowcock covey, the pigeons and the choughs,
- * as many as the chain's numbers times their scale factor (domain/bioma-crowd.ts), each standing on the mountain's
- * ground (cliff dwellers only on steep rock). Level of detail: near the camera they are the species' own jointed cube
- * bodies (the same herd as the chain's animals: no extra draw call), farther away one or two plain boxes each; burrows,
- * nests, eggs and the crevices' rocks are boxes too. All the boxes are ONE instanced mesh (one draw call). They are
- * placed again only when the counts change or the camera has moved a few metres.
+ * THE COLONIES DRAWN (docs/design/bioma-s3.md §Colonias): around the queens the food chain lives, their workers out
+ * (domain/bioma-crowd.ts): the Asian honeybees' hives in the rock cavities of the meadow, the Gilgit bumblebees' nests
+ * in old burrows, the hornets' paper nests hanging in the trees and the wood ants' mounds of needles. The workers fly
+ * round their nest (the ants walk round their mound). Level of detail: near the camera they are the species' own
+ * jointed cube bodies (the same herd as the chain's animals: no extra draw call), farther away one box each; the nests
+ * are boxes too. All the boxes are ONE instanced mesh (one draw call). They are placed again only when the counts
+ * change or the camera has moved a few metres; the near workers' flight is posed by the scene each frame (`orbit`).
+ *
+ * The nests are drawn smaller than the insects' scale (licencia): a hive's cavity ×400 would be a hill of 160 m.
  */
 
 /** Within this distance of the camera (m) a crowd animal is a jointed body. */
 export const NEAR_M = 30;
 /** Jointed bodies of the crowd per herd, at most (the iPhone 13's budget, PX-51). */
 export const NEAR_CAP: Readonly<Record<string, { adult: number; young: number }>> = {
-  ibice: { adult: 30, young: 10 },
-  markhor: { adult: 18, young: 8 },
-  bharal: { adult: 22, young: 8 },
-  marmota: { adult: 36, young: 20 },
-  pika: { adult: 32, young: 12 },
-  buitre: { adult: 12, young: 6 },
-  perdiz: { adult: 12, young: 12 },
-  paloma: { adult: 40, young: 10 },
-  chova: { adult: 30, young: 10 },
+  abeja: { adult: 24, young: 0 },
+  abejorro: { adult: 12, young: 0 },
+  avispon: { adult: 12, young: 0 },
+  hormiga: { adult: 24, young: 0 },
 };
-/** Boxes for everything far, the burrows, nests and eggs. */
-const BOX_CAP = 3000;
-/** Eggs are drawn only this near (under a sitting bird they are not seen from afar). */
-const EGG_M = 40;
+/** Boxes for everything far and the nests. */
+const BOX_CAP = 2000;
 /** Moved this far, the camera's near and far are sorted again. */
 const RESORT_M = 3;
 
@@ -51,15 +45,20 @@ export interface CrowdPose {
   z: number;
   yaw: number;
   seed: number;
+  /** A worker's round about its nest (centre x, z; radius, height over y, turns a second): the scene flies it. */
+  orbit?: { cx: number; cz: number; r: number; h: number; w: number };
 }
 
 const COLOR = {
-  stick: new THREE.Color(0x6a5238),
   dirt: new THREE.Color(0xa88d68),
   rock: new THREE.Color(0x6a655e),
-  egg: new THREE.Color(0xf1ede0),
-  scrape: new THREE.Color(0x8a8a60),
   hole: new THREE.Color(0x2a221a),
+  comb: new THREE.Color(0xe0b040),
+  moss: new THREE.Color(0x5a6a3a),
+  paper: new THREE.Color(0xb8a68a),
+  paperBand: new THREE.Color(0x8a7658),
+  trunk: new THREE.Color(0x4a3828),
+  needles: new THREE.Color(0x7a5a36),
 };
 
 export class BiomeCrowd {
@@ -83,7 +82,7 @@ export class BiomeCrowd {
     m.name = "bioma-multitud";
     m.frustumCulled = false;
     m.count = 0;
-    m.setColorAt(0, COLOR.stick);
+    m.setColorAt(0, COLOR.dirt);
     this.boxes = m;
     for (const c of CROWDS) this.places.set(c.species, this.placesOf(c));
   }
@@ -107,7 +106,7 @@ export class BiomeCrowd {
           const lz = p.z + dz;
           const y = heightAt(M, lx, lz);
           if (y < 0.5) continue;
-          // Cliff dwellers stand on the steep rock (ledges); the rest on ground they could walk.
+          // Nests on steep rock only if so; the rest on ground she could walk to.
           const sl = slopeAt(M, lx, lz);
           if (c.footing === "roca" ? sl < 0.6 : sl > 0.9) continue;
           out.push({ x: C.x + lx, y, z: C.z + lz, yaw: hash01(seed, 3) * Math.PI * 2, order: d / p.r + 0.35 * hash01(seed, 4) });
@@ -139,11 +138,16 @@ export class BiomeCrowd {
       const p = this.places.get(species)?.[0];
       return p && { x: p.x, y: p.y, z: p.z };
     }
-    // The group of the first one drawn (a herd, a family): those within 18 m of it.
+    // The colony of the first one drawn: those within 30 m of it.
     const d0 = ds[0]!;
-    const g = ds.filter((d) => Math.hypot(d.x - d0.x, d.z - d0.z) < 18);
+    const g = ds.filter((d) => Math.hypot(d.x - d0.x, d.z - d0.z) < 30);
     const n = g.length;
     return { x: g.reduce((t, d) => t + d.x, 0) / n, y: g.reduce((t, d) => t + d.y, 0) / n, z: g.reduce((t, d) => t + d.z, 0) / n };
+  }
+
+  /** Where a colony's nests stand (world m): the hives, for the hornets that hunt before them. */
+  hivesOf(species: string, max = 12): { x: number; z: number }[] {
+    return (this.places.get(species) ?? []).slice(0, max).map((p) => ({ x: p.x, z: p.z }));
   }
 
   /** How many drawn now, by crowd (the test hook and the census check). */
@@ -167,7 +171,7 @@ export class BiomeCrowd {
     this.drawn.length = 0;
     for (const c of CROWDS) {
       const s = crowdSpecies(st, c);
-      if (s) this.place(c, s);
+      if (s) this.place(c, s, st.def.drawScale ?? 1);
     }
     this.boxes.count = this.n;
     this.boxes.instanceMatrix.needsUpdate = true;
@@ -191,79 +195,79 @@ export class BiomeCrowd {
     this.box(p.x + sin * f + cos * r, y, p.z + cos * f - sin * r, yaw, sx, sy, sz, color);
   }
 
-  private place(c: CrowdSpec, s: AnimalSpec): void {
+  /** The nest of a colony at `p`: a rock cavity with its combs, a mossy burrow, a paper nest in a tree, a mound. */
+  private nest(c: CrowdSpec, p: Place): number {
+    if (c.nest === "colmena") {
+      // A boulder split by a cleft: the combs of Apis cerana hang in parallel inside its dark mouth.
+      this.boxAt(p, p.yaw, 0, -1.6, p.y - 0.3, 2.4, 4.2, 3.4, COLOR.rock);
+      this.boxAt(p, p.yaw, 0, 1.6, p.y - 0.3, 2.4, 3.8, 3.4, COLOR.rock);
+      this.boxAt(p, p.yaw, -0.2, 0, p.y + 3.2, 5.6, 1.2, 3.6, COLOR.rock);
+      this.boxAt(p, p.yaw, 0, 0, p.y - 0.3, 0.9, 3.4, 3, COLOR.hole);
+      for (const r of [-0.3, 0, 0.3]) this.boxAt(p, p.yaw, 0.6, r, p.y + 0.8, 0.08, 2.2, 1.6, COLOR.comb);
+      return 1.5;
+    }
+    if (c.nest === "hormiguero") {
+      // The wood ants' mound of pine needles and twigs, its crown and two doors.
+      this.box(p.x, p.y - 0.2, p.z, p.yaw, 7, 1.4, 6.4, COLOR.needles);
+      this.box(p.x, p.y + 1, p.z, p.yaw + 0.5, 4.4, 1.2, 4, COLOR.needles);
+      this.box(p.x, p.y + 2, p.z, p.yaw, 2, 0.6, 1.8, COLOR.needles);
+      this.boxAt(p, p.yaw, 3.3, 0, p.y, 0.6, 0.4, 0.3, COLOR.hole);
+      this.boxAt(p, p.yaw, -3.3, 0.6, p.y, 0.6, 0.4, 0.3, COLOR.hole);
+      return 0;
+    }
+    if (c.species === "avispon") {
+      // A trunk and the hornets' paper nest hanging from it, banded, its door low on one side.
+      this.box(p.x, p.y - 0.5, p.z, p.yaw, 1.2, 14, 1.2, COLOR.trunk);
+      this.boxAt(p, p.yaw, 0, 2, p.y + 10.5, 4.6, 0.6, 0.6, COLOR.trunk);
+      for (let k = 0; k < 5; k++) {
+        const w = [2.4, 3.6, 4.2, 3.8, 2.6][k]!;
+        this.boxAt(p, p.yaw, 0, 3.4, p.y + 9.8 - k * 1.1, w, 1.1, w, k % 2 ? COLOR.paperBand : COLOR.paper);
+      }
+      this.boxAt(p, p.yaw, 2, 3.4, p.y + 5.6, 0.6, 0.5, 0.2, COLOR.hole);
+      return 7;
+    }
+    // The bumblebee's nest in an old rodent burrow under moss: a low mound and its mouth.
+    this.box(p.x, p.y - 0.15, p.z, p.yaw, 4, 0.9, 3.4, COLOR.moss);
+    this.box(p.x, p.y + 0.5, p.z, p.yaw, 2.4, 0.5, 2, COLOR.dirt);
+    this.boxAt(p, p.yaw, 1.8, 0, p.y + 0.05, 0.9, 0.6, 0.3, COLOR.hole);
+    return 1.2;
+  }
+
+  private place(c: CrowdSpec, s: AnimalSpec, scale: number): void {
     const n = this.counts.get(c.species)!;
     const P = this.places.get(c.species)!;
     if (!P.length) return;
     const nearA: CrowdPose[] = [];
-    const nearY: CrowdPose[] = [];
     this.near.set(c.species, nearA);
-    this.near.set(`${c.species}:cria`, nearY);
+    this.near.set(`${c.species}:cria`, []);
     const cap = NEAR_CAP[c.species] ?? { adult: 0, young: 0 };
     const cam = this.cam;
     const dist = (p: { x: number; z: number }) => Math.hypot(p.x - cam.x, p.z - cam.z);
-    const clutch = Math.max(1, s.young);
     const nests = Math.min(n.nests, P.length);
-    const chickNests = n.phase === "pollos" ? Math.min(nests, Math.ceil(n.young / clutch)) : 0;
-    const nestH = c.nest === "repisa" ? 0.3 : c.nest === "suelo" ? 0.05 : 0.08;
-    // Burrows (a mound of dug earth and its dark mouth), stick nests on the ledges, crevices, scrapes; eggs while sat.
-    for (let i = 0; i < nests; i++) {
-      const p = P[(i * 3) % P.length]!;
-      if (c.nest === "madriguera") {
-        // A low fan of dug earth, its crown, and the mouth on the downhill side.
-        this.box(p.x, p.y - 0.06, p.z, p.yaw, 1.5, 0.14, 1.2, COLOR.dirt);
-        this.box(p.x, p.y + 0.02, p.z, p.yaw, 0.8, 0.12, 0.65, COLOR.dirt);
-        this.boxAt(p, p.yaw, 0.42, 0, p.y + 0.02, 0.28, 0.16, 0.08, COLOR.hole);
-      } else if (c.nest === "repisa") this.box(p.x, p.y, p.z, p.yaw, 1.3, nestH, 1.3, COLOR.stick);
-      else if (c.nest === "suelo") this.box(p.x, p.y, p.z, p.yaw, 0.35, nestH, 0.35, COLOR.scrape);
-      else {
-        this.boxAt(p, p.yaw, 0, -0.4, p.y, 0.45, 0.55, 0.6, COLOR.rock);
-        this.boxAt(p, p.yaw, 0, 0.4, p.y, 0.45, 0.45, 0.6, COLOR.rock);
-      }
-      const egged = c.nest !== "madriguera" && i >= chickNests && i < chickNests + n.broodNests;
-      if (egged && dist(p) < EGG_M) {
-        const e = c.species === "buitre" ? 0.1 : 0.045;
-        for (let k = 0; k < clutch; k++) this.boxAt(p, p.yaw, 0.1 + k * 0.02, (k - (clutch - 1) / 2) * 0.1, p.y + nestH, e, e * 1.3, e, COLOR.egg);
-      }
-    }
-    // Adults: on the nests (sitting), the rest by them; past the places, partners beside them.
+    const door: number[] = [];
+    for (let i = 0; i < nests; i++) door.push(this.nest(c, P[i]!));
+    if (!nests) return;
+    // The workers out: round their nest (the ants on the ground), each its own radius, height and pace.
+    const len = s.size.z * scale;
+    const walks = c.nest === "hormiguero";
     for (let i = 0; i < n.adults; i++) {
-      const base = P[i % P.length]!;
-      const partner = i >= P.length;
-      const at = partner ? { x: base.x + 0.6 * Math.cos(base.yaw), z: base.z - 0.6 * Math.sin(base.yaw) } : base;
-      const onNest = !partner && i < nests && (c.nest === "repisa" || c.nest === "suelo");
-      const y = base.y + (onNest ? nestH * 0.7 : 0);
+      const k = i % nests;
+      const base = P[k]!;
+      const r = (walks ? 4.5 : 3) + len * (walks ? 0.8 : 1.5) * (0.6 + hash01(i, 71));
+      const h = walks ? 0 : (door[k] ?? 1) + len * (0.3 + 1.2 * hash01(i, 72));
+      const w = (walks ? 0.03 : 0.08) * (0.7 + 0.6 * hash01(i, 73)) * (hash01(i, 74) < 0.5 ? -1 : 1);
+      const a = hash01(i, 75) * Math.PI * 2;
+      const at = { x: base.x + Math.cos(a) * r, z: base.z + Math.sin(a) * r };
+      const y = base.y + h;
       this.drawn.push({ x: at.x, y, z: at.z, species: c.species });
-      if (nearA.length < cap.adult && dist(at) < NEAR_M) nearA.push({ x: at.x, y, z: at.z, yaw: base.yaw + (partner ? 2.6 : 0), seed: i });
-      else this.impostor(s, at, base.yaw, y, false);
-    }
-    // Young: chicks in their nest, kids and pups by their mothers.
-    const nestBound = s.shape !== "cuadrupedo" && c.nest !== "suelo";
-    for (let j = 0; j < n.young; j++) {
-      const base = nestBound ? P[((Math.floor(j / clutch) % P.length) * 3) % P.length]! : P[j % P.length]!;
-      const side = nestBound ? ((j % clutch) - (clutch - 1) / 2) * 0.3 : 0.9;
-      const at = { x: base.x + Math.cos(base.yaw) * side + Math.sin(base.yaw) * (nestBound ? 0.25 : 0), z: base.z - Math.sin(base.yaw) * side + Math.cos(base.yaw) * (nestBound ? 0.25 : 0) };
-      const y = base.y + (nestBound ? nestH * 0.7 : 0);
-      this.drawn.push({ x: at.x, y, z: at.z, species: c.species });
-      if (nearY.length < cap.young && dist(at) < NEAR_M) nearY.push({ x: at.x, y, z: at.z, yaw: base.yaw + 0.4 * (hash01(j, 93) - 0.5), seed: j + 5000 });
-      else this.impostor(s, at, base.yaw, y, true);
+      if (nearA.length < cap.adult && dist(at) < NEAR_M + len * 4) nearA.push({ x: at.x, y, z: at.z, yaw: a + Math.PI / 2, seed: i, orbit: { cx: base.x, cz: base.z, r, h, w } });
+      else this.impostor(s, at, a + Math.PI / 2, y, scale);
     }
   }
 
-  /** The simplified body far away: one or two boxes in the species' colours. */
-  private impostor(s: AnimalSpec, p: { x: number; z: number }, yaw: number, y: number, young: boolean): void {
+  /** The simplified insect far away: one box of its body in its colour. */
+  private impostor(s: AnimalSpec, p: { x: number; z: number }, yaw: number, y: number, scale: number): void {
     const S = s.size;
-    const body = this.c.set(s.color);
-    const k = young ? 0.55 : 1;
-    if (s.shape === "cuadrupedo") {
-      // Body on legs, and the head.
-      this.boxAt(p, yaw, 0, 0, y + S.y * 0.45 * k, S.x * k, S.y * 0.45 * k, S.z * 0.8 * k, body);
-      this.boxAt(p, yaw, S.z * 0.45 * k, 0, y + S.y * 0.7 * k, S.x * 0.6 * k, S.y * 0.25 * k, S.z * 0.2 * k, body);
-      this.boxAt(p, yaw, 0, 0, y, S.x * 0.8 * k, S.y * 0.45 * k, S.z * 0.6 * k, body);
-    } else {
-      // A bird standing: body and folded wings (size x is the wingspan).
-      const L = S.z * k;
-      this.boxAt(p, yaw, 0, 0, y, L * 0.4, L * 0.45, L * 0.85, body);
-    }
+    this.boxAt(p, yaw, 0, 0, y, S.x * 0.3 * scale, S.y * scale, S.z * scale, this.c.set(s.color));
   }
 }

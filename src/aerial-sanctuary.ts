@@ -318,6 +318,7 @@ const hour = () => boardHour(days);
 const passed = new Set<number>();
 // The biome's island: its living food chain and the census board (s3-biome.ts, docs/design/bioma-s3.md).
 const biome = new S3Biome(scene, ui, L);
+for (const p of biome.points) byPoint.set(p.id, p);
 biome.wire(openChallenge, say);
 
 // --- Going somewhere -------------------------------------------------------------------------------------------------

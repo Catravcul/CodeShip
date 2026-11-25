@@ -569,16 +569,25 @@ export class Journey {
       await this.page.waitForTimeout(800);
       return true;
     }
-    for (const path of right ? paths : paths.slice(0, 1)) {
+    const drag = async (path) => {
       const [a, ...rest] = path;
       await this.page.mouse.move(a.x, a.y);
       await this.page.mouse.down();
       for (const q of rest) await this.page.mouse.move(q.x, q.y, { steps: 2 });
       await this.page.mouse.up();
-      await this.page.waitForTimeout(120);
-      if (right) break;
+      await this.page.waitForTimeout(150);
+    };
+    if (!right) {
+      await drag(paths[0]);
+      return true;
     }
-    // A stroke's paths change as it is drawn: one stroke per call is enough; the caller asks again.
+    // Right: every stroke of every glyph, to the molecule (at most 80 strokes), as the player would.
+    for (let k = 0, next = paths; k < 80 && next.length; k++) {
+      await drag(next[0]);
+      next = await this.page.evaluate(() => (window.codeshipS3?.trace?.state ? window.codeshipS3.trace.ideal() : []));
+      if (!next.length) await this.page.waitForTimeout(600);
+      if (!next.length) next = await this.page.evaluate(() => (window.codeshipS3?.trace?.state ? window.codeshipS3.trace.ideal() : []));
+    }
     return true;
   }
 
@@ -650,7 +659,7 @@ export class Journey {
 
   /** Waits until the challenge screen is up, then checks that it is the only interface on screen. */
   async waitDuel(timeout = 30000) {
-    await this.page.waitForFunction(() => [...document.querySelectorAll(".duel")].some((e) => !e.classList.contains("hidden")), null, { timeout });
+    await this.page.waitForFunction(() => [...document.querySelectorAll(".duel, .trace")].some((e) => !e.classList.contains("hidden")), null, { timeout });
     await this.page.waitForTimeout(400);
     await this.onlyChallengeVisible();
   }
@@ -845,6 +854,15 @@ export class Journey {
           if (getComputedStyle(a).position === "sticky" || getComputedStyle(b).position === "sticky") continue;
           const r = seen(a);
           const q = seen(b);
+          // The joysticks are round and the pad's buttons orbit them (action-pad.css, Berón 2026-11-25): a stick and a
+          // round button (or two buttons) touch only if their circles do.
+          const round = (el) => el.classList.contains("vstick") || el.classList.contains("ap-btn");
+          if (round(a) && round(b)) {
+            const c = (k) => ({ x: (k.left + k.right) / 2, y: (k.top + k.bottom) / 2, r: Math.min(k.right - k.left, k.bottom - k.top) / 2 });
+            const u = c(a.getBoundingClientRect());
+            const v = c(b.getBoundingClientRect());
+            if (Math.hypot(u.x - v.x, u.y - v.y) > u.r + v.r - 4) continue;
+          }
           const w = Math.min(r.right, q.right) - Math.max(r.left, q.left);
           const h = Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top);
           // Only when both stay on top at their own centre: one hidden behind a sheet is covered, not competing.

@@ -50,7 +50,10 @@ async function track(j, ok, ms, maxMs) {
     await j.page.waitForTimeout(300);
     s = await s3(j.page);
     const d = Math.hypot(s.body.x - a.body.x, s.body.y - a.body.y, s.body.z - a.body.z);
-    const v = d / Math.max(0.3, (Date.now() - ta) / 1000);
+    const v0 = d / Math.max(0.3, (Date.now() - ta) / 1000);
+    // On a carpet of the hollow mountain she flies at up to its 12 m/s cruise (montana-hueca.md; the samples' timing
+    // jitters by a few hundred ms): faster than 20 m/s is a jump.
+    const v = (a.mode === "alfombra" || s.mode === "alfombra") && v0 <= 20 ? 0 : v0;
     if (v > worst) at = `de (${a.body.x.toFixed(1)}, ${a.body.y.toFixed(2)}, ${a.body.z.toFixed(1)}) a (${s.body.x.toFixed(1)}, ${s.body.y.toFixed(2)}, ${s.body.z.toFixed(1)}) en ${Date.now() - ta} ms`;
     worst = Math.max(worst, v);
   }

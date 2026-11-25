@@ -903,6 +903,8 @@ export function buildLayout(k = 1): S3Layout {
   const heliC = { x: hollow.heli.x, z: hollow.heli.z };
   const hy = hollow.heli.y;
   b.floor("entrenamiento:helipuerto", hy, around(heliC.x, heliC.z, hd));
+  // Its paved apron round it (the navigation machine and the way to the cave stand on it): still the campus.
+  b.floor("entrenamiento:helipuerto", hy - 0.03, around(heliC.x, heliC.z, hd + 8));
   b.props.push({ kind: "helideck", x: heliC.x, y: hy, z: heliC.z, size: { x: hd * 2, y: 0.1, z: hd * 2 } });
   const heliEdge = b.point("entrenamiento:helipuerto:borde", heliC.x, hy, heliC.z + hd - 1.5);
   const heliMid = b.point("entrenamiento:helipuerto:centro", heliC.x, hy, heliC.z + 4);

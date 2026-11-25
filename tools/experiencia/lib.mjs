@@ -636,7 +636,7 @@ export class Journey {
    */
   async outsideChallenge() {
     return this.page.evaluate(() => {
-      const keep = (el) => !!el.closest("#app > canvas, .duel");
+      const keep = (el) => !!el.closest("#app > canvas, .duel, .trace");
       const root = (el) => {
         let r = el;
         while (r.parentElement && r.parentElement !== document.body && r.parentElement.id !== "app") r = r.parentElement;

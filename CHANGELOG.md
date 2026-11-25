@@ -10,6 +10,9 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
   dormir, restaurante para comer, clínica, aulas, biblioteca, laboratorio, crianza, huerto, taller, asambleas); alfombras
   entre estaciones; un Starship inundado para nadar; luz pareja sin sombras ([montana-hueca.md](docs/design/montana-hueca.md),
   reglas indexadas en [edificios-y-pisos.md](docs/design/edificios-y-pisos.md)).
+- **Santuario 3: los retos se dibujan** como con una varita mágica: cada reto es un compuesto real (H₂O en la NBL, O₂ en la
+  hipobárica, TEA en la cuenta atrás…) que se traza letra a letra con el dedo, con su aspecto (gotas, burbujas, cristales
+  cúbicos…) y su molécula al final; los pasos del puesto siguen animándose ([retos-trazos.md](docs/design/retos-trazos.md)).
 
 ## 2026-11-24
 

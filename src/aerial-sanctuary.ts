@@ -59,6 +59,8 @@ import { settings } from "./ui/settings-store";
 import { offerVehicles } from "./ui/task-settings";
 import { IslandNavWindow, flightMode, type IslandChoice } from "./ui/island-nav";
 import { DuelView, type SessionText } from "./ui/duel-view";
+import { TraceView, openTraceChallenge } from "./ui/trace-view";
+import { compoundForChore } from "@modules/aerial-sanctuary/data/retos-trazos";
 import { RcsPad } from "./ui/rcs-pad";
 import { S3Stage } from "./adapters/three/s3-stage";
 import { framePair, roomAlong, roomiestYaw, sheetLens } from "./adapters/three/interior/reto-focus";
@@ -266,6 +268,8 @@ nav.onFly = (to) => fly(to as IslandId);
 
 // The challenges' sheet (the same as on board), the posts' stages and the trainers.
 const duel = new DuelView(root);
+// Sanctuary 3's challenges are drawn as compounds, like a magic wand (docs/design/retos-trazos.md).
+const trace = new TraceView(root, duel);
 const SHEET: SessionText = { title: "", progress: "Pasos", lives: "Intentos", order: "Ordena los pasos", submit: "Hacerlo", ok: "Paso hecho", bad: "Así no: inténtalo otra vez", sheet: true };
 const stages = new Map<number, Stage>(STAGED_POSTS.map((p) => [p, stageFor(L, p)!]));
 const stage = new S3Stage([...stages.values()]);
@@ -504,6 +508,8 @@ function showCraftOnPad(leg: Leg): void {
  * `done(ok)` when it closes.
  */
 function openChallenge(chore: Chore, beat: (index: number, part: number) => void, done: (ok: boolean) => void): void {
+  const compound = compoundForChore(chore.id);
+  if (compound) return openTraceChallenge(trace, chore, compound, beat, done);
   const run = new ChoreRun(chore);
   const seen = new Map<number, number>();
   duel.onClose = () => {
@@ -1451,6 +1457,7 @@ if (frameStats) (window as unknown as { codeshipS3: unknown }).codeshipS3 = {
     return lastSaved;
   },
   duel,
+  trace,
   stage,
   rigs,
   sims,

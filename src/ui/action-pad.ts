@@ -18,6 +18,9 @@ export interface ActionPadButton {
   readonly aria?: string;
 }
 
+/** A button's face: its mark and its label, smaller when the label is a long word («Supervivencia»), so it fits. */
+const face = (k: PadKey, b: ActionPadButton | undefined) => `<b>${FACE[k]}</b>${b ? `<span${b.label.length > 11 ? ' class="xl"' : b.label.length > 8 ? ' class="l"' : ""}>${b.label}</span>` : ""}`;
+
 /** The accessible name of a button (its key in brackets). */
 const ariaOf = (b: ActionPadButton) => `${b.aria ?? b.label}${b.key ? ` (${b.key})` : ""}`;
 
@@ -61,8 +64,9 @@ const RIGHT: readonly PadKey[] = ["X", "A", "B", "Y", "R", "ZR", "+", "home"];
  * The Switch controls (Berón 2026-11-19: «los mandos deben recrear los de una Nintendo Switch y tener
  * transparencia»; then «deberían haber 4 botones a la derecha y 4 a la izquierda… primero crear los botones que tiene
  * la Switch y luego iremos asignándoles funcionalidad»; reglas.md §5.7). Every Joy-Con button is here: on the left,
- * the D-pad beside the move stick, L and ZL over it, «−» and capture; on the right, the A/B/X/Y diamond beside the
- * look stick, R and ZR over it, «+» and home. A button with no job yet shows only its mark, faded.
+ * the D-pad, L, ZL, «−» and capture; on the right, A, B, X, Y, R, ZR, «+» and home. Each one orbits its stick
+ * (Berón 2026-11-25: «vamos a moverlos para que orbiten los joysticks»; action-pad.css places them on two rings, in an
+ * arc towards the inside and the top of the screen). A button with no job yet shows only its mark, faded.
  */
 export class ActionPad {
   readonly el: HTMLElement;
@@ -97,7 +101,7 @@ export class ActionPad {
     const btn = (k: PadKey) => {
       const b = this.spec.get(k);
       const cls = k.replace("+", "plus").replace("-", "minus").toLowerCase();
-      return `<button class="ap-btn ap-${cls}${b ? "" : " free"}${b?.alert ? " alert" : ""}" data-letter="${k}" aria-label="${b ? ariaOf(b) : `Botón ${FACE[k]} (sin asignar)`}" aria-pressed="false"><b>${FACE[k]}</b>${b ? `<span>${b.label}</span>` : ""}</button>`;
+      return `<button class="ap-btn ap-${cls}${b ? "" : " free"}${b?.alert ? " alert" : ""}" data-letter="${k}" aria-label="${b ? ariaOf(b) : `Botón ${FACE[k]} (sin asignar)`}" aria-pressed="false">${face(k, b)}</button>`;
     };
     this.el.innerHTML = `<div class="sp-side sp-left"><div class="sp-cluster">${LEFT.slice(0, 4).map(btn).join("")}</div>${LEFT.slice(4).map(btn).join("")}</div><div class="sp-side sp-right"><div class="sp-cluster">${RIGHT.slice(0, 4).map(btn).join("")}</div>${RIGHT.slice(4).map(btn).join("")}</div>`;
     for (const el of this.el.querySelectorAll<HTMLButtonElement>(".ap-btn")) {
@@ -122,7 +126,7 @@ export class ActionPad {
     el.classList.toggle("free", !b);
     el.classList.toggle("alert", !!b?.alert);
     el.setAttribute("aria-label", b ? ariaOf(b) : `Botón ${FACE[letter]} (sin asignar)`);
-    el.innerHTML = `<b>${FACE[letter]}</b>${b ? `<span>${b.label}</span>` : ""}`;
+    el.innerHTML = face(letter, b);
   }
 
   /** Shown or hidden (a level without the pad now: a console's screen, the flight's controls). */

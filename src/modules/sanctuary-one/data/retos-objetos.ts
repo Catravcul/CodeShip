@@ -45,13 +45,14 @@ const teclado = p("musica-teclado", "Acordes y escala en el teclado", "trabajar"
   "junta las manos: acorde en la izquierda y melodía en la derecha",
   "toca con el pedal de sustain, levantándolo en cada cambio de acorde",
 ], ["toca con los dedos estirados", "deja el pedal pisado toda la pieza"], "Alfred's Basic Adult Piano Course, nivel 1 (1983)");
-const voz = p("musica-voz", "Calentar la voz y cantar al micrófono", "trabajar", "compania", "Tu voz también se entrena", [
+// Its button says «Canto», not «Música» (chores/domain/palabra.ts: the word where the id cannot tell it).
+const voz: Procedure = { ...p("musica-voz", "Calentar la voz y cantar al micrófono", "trabajar", "compania", "Tu voz también se entrena", [
   "de pie, hombros sueltos: respira con el diafragma, el abdomen se hincha",
   "calienta con labios en vibración (brrr) subiendo y bajando suave",
   "escala de cinco notas con «mi-me-ma-mo-mu»",
   "pon el micrófono a un palmo de la boca, ligeramente por debajo",
   "canta la estrofa sin forzar y bebe agua entre tomas",
-], ["grita para calentar", "pega los labios a la rejilla del micrófono"], "Titze, Principles of Voice Production (1994); Shure, Microphone Techniques for Live Sound (2014)");
+], ["grita para calentar", "pega los labios a la rejilla del micrófono"], "Titze, Principles of Voice Production (1994); Shure, Microphone Techniques for Live Sound (2014)"), palabra: "Canto" };
 const mesa = p("musica-mesa", "Prueba de sonido en la mesa", "trabajar", "compania", "Antes de tocar, cada canal en su sitio", [
   "enciende primero la mesa y después los altavoces",
   "canal por canal, sube la ganancia hasta que los picos queden a {-18|0|-60} dBFS",

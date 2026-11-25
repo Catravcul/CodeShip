@@ -74,6 +74,7 @@ import "./ui/lander-cabin.css";
 import "./ui/journey.css";
 import "./ui/acciones.css";
 import "./ui/aerial.css";
+import { doneLoading } from "./ui/loading-screen";
 
 /**
  * Sanctuary 3, the aerial sanctuary (Berón, 2026-11-18; docs/design/santuario3-escena.md): Cold Sanctuary's aerial
@@ -1403,7 +1404,7 @@ function frame(now: number): void {
   }
   if (firstFrame) {
     firstFrame = false;
-    performance.mark("codeship-primer-fotograma");
+    performance.mark("codeship-primer-fotograma"); doneLoading(); // its loading screen goes (ui/loading-screen.ts)
   }
   requestAnimationFrame(frame);
 }

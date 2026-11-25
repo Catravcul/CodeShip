@@ -3,6 +3,9 @@ import type { Level } from "../domain/level";
 /** Cold Sanctuary's world design: the five sanctuaries on the «depth = danger» axis (decided there on 2026-07-23). */
 const COLD_SANCTUARY = "Cold Sanctuary, docs/world-topology-and-planes.md §3";
 
+/** The six levels' ids: what is kept per level (each one's loading drawing, ui/loading-pictures.ts) is keyed by them. */
+export type LevelId = "terrestre" | "marino" | "aereo" | "subterraneo" | "nucleo" | "espacio";
+
 /**
  * The six levels of the start screen (Berón, 2026-11-18; docs/design/santuario3-iniciacion.md §5): the five
  * sanctuaries of Cold Sanctuary on its «depth = danger» axis, and Codeship's space above them. Their worlds are
@@ -10,7 +13,7 @@ const COLD_SANCTUARY = "Cold Sanctuary, docs/world-topology-and-planes.md §3";
  * Sanctuary's table; the map places them as it says (the core and the rock at the bottom, the sea, the land in
  * the middle, the air above it, and space at the top).
  */
-export const LEVELS: readonly Level[] = [
+export const LEVELS: readonly (Level & { readonly id: LevelId })[] = [
   {
     id: "terrestre",
     number: 1,

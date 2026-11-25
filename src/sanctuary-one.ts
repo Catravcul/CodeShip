@@ -40,7 +40,8 @@ import { model } from "@modules/sanctuary-one/data/catalog";
 import { areaCategory, capAt, CAPS } from "@modules/sanctuary-one/data/area-kinds";
 import { MISSIONS, type Mission } from "@modules/sanctuary-one/data/misiones";
 import { missionState } from "@modules/sanctuary-one/domain/workday-missions";
-import { applyReward, procedureReto, retosFor, type Reto } from "@modules/sanctuary-one/application/challenges";
+import { applyReward, procedureReto, retoTag, retosFor, type Reto } from "@modules/sanctuary-one/application/challenges";
+import { retosWord } from "@modules/chores/domain/palabra";
 import { nearest, type Reachable } from "@modules/sanctuary-one/domain/reach";
 import { CrewMember } from "@modules/crew/domain/crew-member";
 import { ChoreRun, type Chore } from "@modules/chores/domain/chore";
@@ -728,7 +729,8 @@ function updateAtHand(dt: number): void {
   station = st ?? (carpetsWindow.visible ? station : undefined);
   if (st) RootMenu.interact({ icon: ICON.carpet, label: `Volar: ${st.kind === "piso" ? "estación de alfombras" : `${st.label.toLowerCase()} de ${st.building}`}`, onClick: () => stationChoices(st) });
   else if (war) RootMenu.interact({ icon: ICON.chest, label: war.label, onClick: () => ((reachT = 0), war.run()) });
-  else offerReto(t?.label, () => t && offerRetos(t));
+  // Its button says in one word what its challenges are about (chores/domain/palabra.ts).
+  else offerReto(t?.label, () => t && offerRetos(t), t && retosWord(retosFor(model(t.modelId), t.i).map(retoTag)));
 }
 
 const duel = new DuelView(root);

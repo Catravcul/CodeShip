@@ -187,6 +187,7 @@ import { RingAquarium } from "@modules/sanctuary/domain/aquarium";
 import { aquariumEventText } from "./ui/aquarium-text";
 import { GameSave } from "./game-save";
 import { BennuCruise } from "./bennu-cruise";
+import { doneLoading } from "./ui/loading-screen";
 
 // --- Domain setup -----------------------------------------------------------
 const d = BENNU.dimensionsM.value;
@@ -1682,7 +1683,7 @@ renderer.setAnimationLoop((now) => {
   if (firstFrame) {
     // Load time to the first interactive frame (read by the experience suite).
     firstFrame = false;
-    performance.mark("codeship-primer-fotograma");
+    performance.mark("codeship-primer-fotograma"); doneLoading(); // its loading screen goes (ui/loading-screen.ts)
   }
   if (frameStats) {
     frameStats.calls = renderer.info.render.calls;

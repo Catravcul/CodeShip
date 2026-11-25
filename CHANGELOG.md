@@ -13,6 +13,10 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 - **Santuario 3: los retos se dibujan** como con una varita mágica: cada reto es un compuesto real (H₂O en la NBL, O₂ en la
   hipobárica, TEA en la cuenta atrás…) que se traza letra a letra con el dedo, con su aspecto (gotas, burbujas, cristales
   cúbicos…) y su molécula al final; los pasos del puesto siguen animándose ([retos-trazos.md](docs/design/retos-trazos.md)).
+- **Mandos alrededor de los joysticks** (todos los botones de la Switch en dos anillos alrededor de «Moverse» y «Mirar»,
+  también en 0 g), **la Y dice el reto en una palabra** («Boxeo», «Cocina», «Natación», «Hipoxia»: `retoWord`) y
+  **pantalla de carga en los santuarios 3 y 6**, regla para todos ([reglas.md](docs/design/reglas.md) §5,
+  [ux-acciones.md](docs/design/ux-acciones.md)).
 
 ## 2026-11-24
 

@@ -86,15 +86,15 @@ export class TrainerCrowd {
     if (w.who.base === "glaciar") {
       const c = this.L.graph.points.find((q) => q.id === "glaciar:campamento")!;
       const a = (n / Math.max(1, this.walkers.length)) * Math.PI * 2 + (where.kind === "gimnasio" ? 0.4 : 0);
-      return { x: c.x + Math.cos(a) * 3 * k, y: 0, z: c.z + Math.sin(a) * 3 * k, face: a + Math.PI, via: c.id };
+      return { x: c.x + Math.cos(a) * 3 * k, y: c.y, z: c.z + Math.sin(a) * 3 * k, face: a + Math.PI, via: c.id };
     }
     if (where.kind === "gimnasio") {
       const p = this.L.graph.points.find((q) => q.id === "entrenamiento:gimnasio:dentro")!;
-      return { x: p.x + 1.5 * k, y: 0, z: p.z - 2.5 * k + (n % 8) * 1.0 * k, face: Math.PI / 2, via: p.id };
+      return { x: p.x + 1.5 * k, y: p.y, z: p.z - 2.5 * k + (n % 8) * 1.0 * k, face: Math.PI / 2, via: p.id };
     }
     const c = this.L.graph.points.find((q) => q.id === "entrenamiento:cruce")!;
     const a = (n / Math.max(1, this.walkers.length)) * Math.PI * 2;
-    return { x: c.x + 3 + Math.cos(a) * 2.2, y: 0, z: c.z + Math.sin(a) * 2.2, face: a + Math.PI, via: c.id };
+    return { x: c.x + 3 + Math.cos(a) * 2.2, y: c.y, z: c.z + Math.sin(a) * 2.2, face: a + Math.PI, via: c.id };
   }
 
   /** Board hours of the walk from where she is (or is going), or from place `from`, to `to`. */

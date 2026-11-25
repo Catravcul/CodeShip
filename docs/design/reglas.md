@@ -2,7 +2,7 @@
 
 Estas son las reglas que Berón ha ido fijando. Son **generales y sin excepciones**: cada rama las cumple al implementar, y cada revisión las comprueba con la lista del final. Si una regla choca con otra, se pregunta al diseñador; no se inventa una excepción. Si algo concreto no le gusta al verlo en vivo, lo pedirá él.
 
-Detalle y fuentes: [ux-acciones.md](ux-acciones.md), [escala.md](escala.md), [naves-reales.md](naves-reales.md), [soporte-vital.md](soporte-vital.md), [viaje-a-una-tarea.md](viaje-a-una-tarea.md).
+Reglas de edificios y pisos, indexadas: [edificios-y-pisos.md](edificios-y-pisos.md). Detalle y fuentes: [ux-acciones.md](ux-acciones.md), [escala.md](escala.md), [naves-reales.md](naves-reales.md), [soporte-vital.md](soporte-vital.md), [viaje-a-una-tarea.md](viaje-a-una-tarea.md).
 
 ## 1. Realismo
 

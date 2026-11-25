@@ -11,6 +11,9 @@ export type S3AreaCategory = "Troncos" | "Pisos" | "Instalaciones" | "Exterior";
 export function s3AreaCategory(a: Pick<AreaDef, "id" | "label" | "island">): S3AreaCategory {
   if (/^(Tronco de agua|Techo) \(/.test(a.label)) return "Troncos";
   if (/, nivel \d+\)$/.test(a.label)) return "Pisos";
+  // The hollow mountain (montana-hueca.md): the giant trees' feet and floors are Pisos; its caves, lake and hall, Exterior.
+  if (/^entrenamiento:arbol-[a-z]+:(pie|piso-\d+)$/.test(a.id)) return "Pisos";
+  if (/^entrenamiento:(cueva-[a-z]+|lago|montana)$/.test(a.id)) return "Exterior";
   if (a.island === "entrenamiento" && a.id !== "entrenamiento:isla" && a.id !== "entrenamiento:helipuerto") return "Instalaciones";
   return "Exterior";
 }

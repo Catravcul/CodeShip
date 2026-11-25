@@ -25,6 +25,11 @@ import { beatsFor } from "@modules/aerial-sanctuary/domain/station-beat";
 import { handHover, handStart, handStep, handTap, type HandControl, type HandState } from "@modules/aerial-sanctuary/domain/hand-flight";
 import { HAND } from "@modules/aerial-sanctuary/data/facts";
 import { SEA_Y } from "@modules/aerial-sanctuary/data/layout";
+import { HOLLOW, ceilingAt, flightWorld } from "@modules/aerial-sanctuary/data/montana";
+import { CAMPUS_RETOS } from "@modules/aerial-sanctuary/data/campus";
+import { carpetRoute } from "@modules/sanctuary-one/data/alfombras";
+import { along, flightSpeed, route as carpetPath, type Route } from "@modules/sanctuary-one/domain/motion";
+import { procedureReto } from "@modules/sanctuary-one/application/challenges";
 import { ChoreRun, type Chore } from "@modules/chores/domain/chore";
 import type { Answer } from "@modules/mind-duel/domain/exercise";
 import type { AreaMap, AreaNode } from "@modules/tasks/application/areas";
@@ -36,6 +41,7 @@ import { AERIAL_LEVEL, ISLAND_NAME, type AerialState } from "@modules/saves/doma
 import { playSession, savedGames } from "./adapters/storage/saved-games";
 import { bird, buildBlocks, buildFloors, buildProps, buildSea, buildWater, carpet, helicopter } from "./adapters/three/aerial-models";
 import { buildFixtures } from "./adapters/three/s3-fixtures";
+import { buildMountain, isClearWater } from "./adapters/three/s3-mountain";
 import { CubeFigure } from "./adapters/three/interior/figure";
 import { Walker } from "./adapters/input/walker";
 import { DOMENICA_HAIR } from "./ui/portraits";
@@ -92,7 +98,8 @@ const scene = new THREE.Scene();
 const SKY = 0x9fd0f0;
 scene.background = new THREE.Color(SKY);
 scene.fog = new THREE.Fog(SKY, 900, 5200);
-scene.add(new THREE.HemisphereLight(0xdff2ff, 0x5d6b4f, 1.3));
+const hemi = new THREE.HemisphereLight(0xdff2ff, 0x5d6b4f, 1.3);
+scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 1.7);
 sun.position.set(-400, 900, 300);
 scene.add(sun);
@@ -101,7 +108,7 @@ camera.rotation.order = "YXZ";
 const BASE_FOV = camera.fov;
 /** Under water (the pools, the trees' water trunks): the same view as sanctuary 1 (adapters/three/walk-look.ts). */
 const underwater = new UnderwaterView(scene);
-scene.add(buildSea(L.world.waters.filter((w) => w.id.endsWith("-piscina"))), buildFloors(L.world.floors), buildWater(L.world.waters), buildBlocks(L.blocks), buildFixtures(L.fixtures));
+scene.add(buildSea(L.world.waters.filter((w) => w.id.endsWith("-piscina"))), buildFloors(L.world.floors), buildWater(L.world.waters), buildBlocks(L.blocks), buildFixtures(L.fixtures), buildMountain(L));
 const parts = buildProps(L);
 scene.add(parts.root);
 
@@ -169,7 +176,11 @@ type Mode =
   /** A post's challenge or a flight's program on the sheet, acted out at its place. */
   | { kind: "reto"; what: string }
   /** Flying by hand (reglas.md §3.6, «Manual»). */
-  | { kind: "mano"; s: HandState; to: IslandId; from: IslandId };
+  | { kind: "mano"; s: HandState; to: IslandId; from: IslandId }
+  /** A carpet between two stations of the hollow mountain (data/montana.ts), flown like sanctuary 1's. */
+  | { kind: "alfombra"; r: Route; s: number; label: string; then: () => void }
+  /** Sleeping in her bed or eating at the table: her pose there for a while, then the clock moves on. */
+  | { kind: "acto"; pose: string; t: number; seconds: number; label: string; at: { x: number; y: number; z: number; yaw: number }; then: () => void };
 let mode: Mode = { kind: "libre" };
 const cabAt = new Map(L.lifts.map((l) => [l.id, 0]));
 
@@ -306,7 +317,7 @@ biome.wire(openChallenge, say);
 
 // --- Going somewhere -------------------------------------------------------------------------------------------------
 function stop(why?: string): void {
-  if (mode.kind === "vuelo") return;
+  if (mode.kind === "vuelo" || mode.kind === "alfombra") return;
   if (mode.kind === "ascensor" && !mode.calling) return;
   mode = { kind: "libre" };
   if (why) say(why);
@@ -344,6 +355,8 @@ function goTo(point: string, label: string, to: IslandId, from: "Tareas" | "Áre
     return;
   }
   const here = island();
+  const start = to !== here ? nearestPoint(L.graph, body) : undefined;
+  if (start && shortestWay(L.graph, start.id, point)) return void walkTo(point, label, then);
   if (to !== here) {
     // A task on another island never makes a craft fly by itself (reglas.md §3.5): she walks to the navigation machine.
     const name = islandById.get(to)!.name;
@@ -370,6 +383,81 @@ function ride(lift: LiftDef, from: number, to: number, then?: () => void): void 
 function startRide(lift: LiftDef, from: number, to: number, then?: () => void): void {
   cabAt.set(lift.id, from);
   mode = { kind: "ascensor", lift, from, to, t: 0, calling: false, ...(then ? { then } : {}) };
+}
+
+// --- The carpets of the hollow mountain (data/montana.ts): station to station, in sight (no teleport) ---------------
+const carpetWorld = flightWorld(L);
+const stationById = new Map(L.hollow.stations.map((s) => [s.id, s]));
+const carpetOfPoint = new Map(L.graph.points.filter((p) => p.carpet).map((p) => [p.id, p.carpet!]));
+/** Each station's pad point and the pads a carpet flies to from it (the links data/montana.ts found clear). */
+const carpetNext = new Map<string, string[]>();
+for (const [a, b] of L.graph.links)
+  if (carpetOfPoint.has(a) && carpetOfPoint.has(b)) {
+    carpetNext.set(a, [...(carpetNext.get(a) ?? []), b]);
+    carpetNext.set(b, [...(carpetNext.get(b) ?? []), a]);
+  }
+/** «Árbol de los servicios · piso 2», «Cueva sur». */
+const stationName = (id: string) => {
+  const s = stationById.get(id);
+  return !s ? id : s.building && !s.label.startsWith(s.building) ? `${s.building} · ${s.label.toLowerCase()}` : s.label;
+};
+function flyCarpet(from: string, to: string, then: () => void): void {
+  const a = stationById.get(from);
+  const b = stationById.get(to);
+  if (!a || !b) return then();
+  mode = { kind: "alfombra", r: carpetPath(carpetRoute(carpetWorld, a, b, L.hollow.sky)), s: 0, label: stationName(b.id), then };
+}
+function frameCarpet(dt: number, m: Extract<Mode, { kind: "alfombra" }>): void {
+  // Like a car: speeding up and slowing down (sanctuary 1's domain/motion.ts flightSpeed).
+  m.s += flightSpeed(m.r, m.s) * dt;
+  const q = along(m.r, m.s);
+  rug.group.visible = true;
+  rug.group.position.set(q.x, q.y, q.z);
+  if (!Number.isNaN(q.yaw)) rug.group.rotation.y = q.yaw;
+  body = { ...body, x: q.x, y: q.y + 0.08, z: q.z };
+  avatar.pose("lotus");
+  avatar.update(dt);
+  if (!q.done) return;
+  rug.group.visible = false;
+  const e = m.r.points[m.r.points.length - 1]!;
+  body = placeAt(L.world, e.x, e.y + 0.05, e.z) ?? body;
+  mode = { kind: "libre" };
+  avatar.pose("stand");
+  m.then();
+}
+
+/** Sleep or eat at a campus machine: in the nearest bed or chair, for a few seconds of the scene. */
+function startActo(m: MachineDef, kind: "cama" | "silla", pose: string, seconds: number, label: string, then: () => void): void {
+  let best: { f: (typeof L.fixtures)[number]; d: number } | undefined;
+  for (const f of L.fixtures) {
+    if (f.kind !== kind || Math.abs(f.y - m.y) > 1) continue;
+    const d = Math.hypot(f.x - m.x, f.z - m.z);
+    if (d < 4 && (!best || d < best.d)) best = { f, d };
+  }
+  const f = best?.f;
+  const at = f ? { x: f.x, y: f.y + (kind === "cama" ? f.h : 0), z: f.z, yaw: (f.rot * Math.PI) / 2 } : { x: body.x, y: body.y, z: body.z, yaw };
+  fade();
+  mode = { kind: "acto", pose, t: 0, seconds, label, at, then };
+}
+function frameActo(dt: number, m: Extract<Mode, { kind: "acto" }>): void {
+  m.t += dt;
+  if (m.t < m.seconds) return;
+  mode = { kind: "libre" };
+  avatar.pose("stand");
+  fade();
+  m.then();
+}
+
+/** A campus service's challenge (data/campus.ts CAMPUS_RETOS), on the sheet like every other. */
+function startService(m: MachineDef): void {
+  const q = m.reto ? CAMPUS_RETOS[m.reto] : undefined;
+  if (!q) return;
+  const r = procedureReto(q);
+  mode = { kind: "reto", what: r.chore.id };
+  openChallenge(r.chore, () => undefined, (ok) => {
+    mode = { kind: "libre" };
+    say(ok ? `${q.title}: superado` : `${q.title}: sin terminar`);
+  });
 }
 
 /** Fly to another island: walk to her pad, board, and fly each leg in sight (no teleport). */
@@ -782,6 +870,14 @@ function renderCard(): void {
     acts = `<button class="${suited ? "primary" : ""}" data-act="lanzar"${suited ? "" : ` disabled data-why="Primero, el traje: puesto 13, en la sala de trajes de la isla de entrenamiento"`}>Empezar el lanzamiento</button>`;
     why = suited ? `<p class="cm-who">La tripulación eres tú: ${esc(launchStepText())}</p>` : `<p class="cm-why"><b aria-hidden="true">⊘</b> Primero, el traje: puesto 13, en la sala de trajes de la isla de entrenamiento</p>`;
   }
+  else if (m.kind === "alfombra" && m.station) {
+    const st = stationById.get(m.station);
+    const to = st ? (carpetNext.get(st.point) ?? []) : [];
+    acts = to.map((p) => `<button data-act="carpet:${esc(p)}">${esc(stationName(carpetOfPoint.get(p)!))}</button>`).join("");
+    why = `<p class="cm-who">${to.length ? "Elige destino: la alfombra sale de la plataforma" : "Sin vuelos desde aquí"}</p>`;
+  } else if (m.kind === "cama") acts = `<button class="primary" data-act="dormir">Dormir 8 horas</button>`;
+  else if (m.kind === "comedor") acts = `<button class="primary" data-act="comer">Comer</button>`;
+  else if (m.kind === "servicio" && m.reto && CAMPUS_RETOS[m.reto]) acts = `<button class="primary" data-act="servicio" data-title="${esc(CAMPUS_RETOS[m.reto]!.title)}">Empezar el reto</button>`;
   else if (ready && !who) {
     acts = `<button data-act="reto" data-title="${esc(postTitle)}" data-why="${esc(pauseText(m.post!))}" disabled>Empezar el reto</button>`;
     why = `<p class="cm-why"><b aria-hidden="true">⏸</b> ${esc(pauseText(m.post!))}${passed.has(m.post!) ? ` · <b class="cm-ok">✓ Superado</b>` : ""}</p>`;
@@ -806,6 +902,18 @@ card.addEventListener("click", (e) => {
   if (act === "nav") return nav.open(islandChoices());
   if (act === "reto" && m.post !== undefined) return startPost(m);
   if (act === "lanzar" && mode.kind === "libre") return startLaunch(m);
+  if (act.startsWith("carpet:") && mode.kind === "libre" && m.station) {
+    const st = stationById.get(m.station);
+    const to = carpetOfPoint.get(act.slice(7));
+    if (!st || !to) return;
+    return void walkTo(st.point, "A la plataforma de las alfombras", () => flyCarpet(st.id, to, () => say(`En ${stationName(to)}`)));
+  }
+  if (act === "dormir" && mode.kind === "libre") return startActo(m, "cama", "supine", 6, "Durmiendo", () => {
+    days += 8 / 24;
+    say(`Ocho horas de sueño: son las ${clockText(hour())}`);
+  });
+  if (act === "comer" && mode.kind === "libre") return startActo(m, "silla", "sit", 8, "Comiendo", () => say("Comida del día: hecha (dos al día)"));
+  if (act === "servicio" && mode.kind === "libre") return startService(m);
   if (act.startsWith("sim:") && mode.kind === "libre") {
     mode = { kind: "reto", what: "simulador" };
     simAt = m.id;
@@ -941,6 +1049,16 @@ function frameRoute(dt: number, m: Extract<Mode, { kind: "ruta" }>): void {
         mode = { kind: "libre" };
         rest.then?.();
       }
+    });
+    return;
+  }
+  // At a carpet pad whose next point is another pad: that edge is flown (a hop of the hollow mountain's carpets).
+  if (next && target.carpet && next.carpet) {
+    // She lands on the next pad: from it the route goes on (another hop if the point after it is a pad too).
+    const rest = { ...m, i: m.i + 1, still: 0 };
+    flyCarpet(target.carpet, next.carpet, () => {
+      if (rest.i < rest.pts.length) mode = rest;
+      else rest.then?.();
     });
     return;
   }
@@ -1106,7 +1224,20 @@ function updateCamera(dt: number): void {
   if (!free || !thirdPerson) walk.facing = yaw;
   rig.position.set(body.x, body.y + hop, body.z);
   rig.rotation.y = (thirdPerson ? walk.facing : yaw) + Math.PI;
-  if (mode.kind === "vuelo" || mode.kind === "mano" || (mode.kind === "reto" && (heli.group.visible || rug.group.visible))) {
+  if (mode.kind === "acto") {
+    // In bed or at the table: seen from beside her; the camera stick turns round her.
+    const a = mode.at;
+    rig.position.set(a.x, a.y, a.z);
+    rig.rotation.y = a.yaw;
+    const d = 3.2;
+    camera.position.set(a.x + Math.sin(yaw) * d * Math.cos(pitch), a.y + 1.6 - Math.sin(pitch) * d, a.z + Math.cos(yaw) * d * Math.cos(pitch));
+    camera.lookAt(a.x, a.y + 0.5, a.z);
+    rig.visible = true;
+    avatar.pose(mode.pose);
+    avatar.update(dt);
+    return;
+  }
+  if (mode.kind === "vuelo" || mode.kind === "mano" || mode.kind === "alfombra" || (mode.kind === "reto" && (heli.group.visible || rug.group.visible))) {
     // A chase view of the craft; the camera stick turns round it (reglas.md §3.8: the camera is never stuck).
     const isRug = rug.group.visible;
     const craft = isRug ? rug.group : heli.group;
@@ -1129,7 +1260,7 @@ function updateCamera(dt: number): void {
     rig.visible = false;
   }
   const cw = waterAt(L.world, camera.position.x, camera.position.y, camera.position.z);
-  underwater.set(!!cw && camera.position.y < cw.yTop && camera.position.y > cw.yBottom);
+  underwater.set(!!cw && camera.position.y < cw.yTop && camera.position.y > cw.yBottom && (isClearWater(cw.id) ? "claro" : true));
   avatar.wearMask(body.motion === "agua");
   poseOnFoot(avatar, walk, { body, moving, sprinting, lotus: settingsPanel.visible, clock }, dt);
 }
@@ -1140,8 +1271,26 @@ function stagesEye(): { x: number; y: number; z: number } | undefined {
   return undefined;
 }
 
+/**
+ * Inside the hollow mountain (montana-hueca.md): bright and without shadows, the light even from every side (the
+ * panels of the ceiling), no haze, so the lake's bottom shows through the water.
+ */
+let inHollow = false;
+const HOLLOW_LIGHT = 0xf4efe2;
+function lightHollow(): void {
+  const c = camera.position;
+  const inside = Math.max(Math.abs(c.x - HOLLOW.x), Math.abs(c.z - HOLLOW.z)) < 210 && c.y > HOLLOW.floorY - 1 && c.y < ceilingAt(c.x, c.z);
+  if (inside === inHollow) return;
+  inHollow = inside;
+  hemi.intensity = inside ? 2.6 : 1.3;
+  hemi.groundColor.set(inside ? 0xf4efe2 : 0x5d6b4f);
+  sun.intensity = inside ? 0.25 : 1.7;
+  // The haze starts 900 m off, past the far wall (420 m across): inside, its colour is the walls' light.
+  underwater.setSky(inside ? HOLLOW_LIGHT : SKY);
+}
+
 function updateBar(): void {
-  const busy = mode.kind === "ruta" || mode.kind === "ascensor" || mode.kind === "vuelo";
+  const busy = mode.kind === "ruta" || mode.kind === "ascensor" || mode.kind === "vuelo" || mode.kind === "alfombra" || mode.kind === "acto";
   bar.classList.toggle("hidden", !busy);
   document.body.classList.toggle("in-journey", busy);
   if (!busy) return;
@@ -1163,9 +1312,13 @@ function updateBar(): void {
     const far = Math.hypot(last.x - body.x, last.z - body.z);
     text = `<b>${leg.craft === "helicoptero" ? "Helicóptero" : "Alfombra"} a ${esc(islandById.get(leg.to as IslandId)!.name)}</b><small>${ph === "despegue" ? "Despegando" : ph === "aterrizaje" ? "Aterrizando" : "En vuelo"} · ${far < 1000 ? `${Math.round(far)} m` : `${(Math.round(far / 100) / 10).toLocaleString("es-ES")} km`} · ${duration(left)}</small>`;
   }
+  else if (mode.kind === "alfombra") {
+    const left = Math.max(0, mode.r.length - mode.s);
+    text = `<b>Alfombra a ${esc(mode.label)}</b><small>En vuelo · ${Math.round(left)} m</small>`;
+  } else if (mode.kind === "acto") text = `<b>${esc(mode.label)}</b><small>${Math.ceil(mode.seconds - mode.t)} s</small>`;
   if (barText.innerHTML !== text) barText.innerHTML = text;
   // Mid-air or in a moving cab there is nothing to stop: it lands or arrives first.
-  barStop.hidden = mode.kind === "vuelo" || (mode.kind === "ascensor" && !mode.calling);
+  barStop.hidden = mode.kind === "vuelo" || mode.kind === "alfombra" || (mode.kind === "ascensor" && !mode.calling);
 }
 
 /** Test hook (dev builds or `?prueba`): the last frame's draw calls and triangles for tools/experiencia. */
@@ -1190,6 +1343,8 @@ function frame(now: number): void {
   else if (m.kind === "ascensor") frameLift(dt, m);
   else if (m.kind === "vuelo") frameFlight(dt, m);
   else if (m.kind === "mano") frameHand(dt, m);
+  else if (m.kind === "alfombra") frameCarpet(dt, m);
+  else if (m.kind === "acto") frameActo(dt, m);
   else if (m.kind === "reto") {
     if (sims.busy) {
       sims.update(dt);
@@ -1210,6 +1365,7 @@ function frame(now: number): void {
   caption.classList.toggle("hidden", !cap);
   if (caption.textContent !== cap) caption.textContent = cap;
   frameBirds(dt);
+  lightHollow();
   biome.update(dt, days, hour(), body, clock, camera, yaw);
   if (!biome.frameReto(dt, camera, rig, avatar)) updateCamera(dt);
   updateBar();
@@ -1253,7 +1409,7 @@ window.addEventListener("resize", () => {
 window.addEventListener("keydown", (e) => {
   if (e.code === "KeyV" && !e.repeat && !(e.target as HTMLElement).closest("input, textarea")) toggleView();
 });
-say("Isla de entrenamiento: empieza la iniciación. Muévete con el joystick; las tareas están en «+» del mando", 6);
+say("Campus de la montaña: empieza la iniciación. Muévete con el joystick; las tareas están en «+» del mando", 6);
 requestAnimationFrame(frame);
 
 // Test hook for the experience suite (only in dev builds or with `?prueba`) (tools/experiencia/s3-recorrido.mjs) and the QA cases.
@@ -1334,4 +1490,7 @@ if (frameStats) (window as unknown as { codeshipS3: unknown }).codeshipS3 = {
   craftY: () => (heli.group.visible ? heli.group.position.y : rug.group.visible ? rug.group.position.y : undefined),
   saveNow,
   biome,
+  /** Test hook: walk her by herself to a way point (as «Ir» does), or put her there at once. */
+  walkTo: (id: string) => walkTo(id, "Prueba"),
+  placeAt: placeAtPoint,
 };

@@ -1,6 +1,6 @@
 # Arquitectura de Codeship (mapa para retomar)
 
-Léelo antes de explorar el código. Reglas de diseño: [design/reglas.md](design/reglas.md). Cambios recientes:
+Léelo antes de explorar el código. Reglas de diseño: [design/reglas.md](design/reglas.md) (edificios y pisos: [design/edificios-y-pisos.md](design/edificios-y-pisos.md); la montaña hueca del 3: [design/montana-hueca.md](design/montana-hueca.md)). Cambios recientes:
 [../CHANGELOG.md](../CHANGELOG.md). Pendientes: [pendientes.md](pendientes.md).
 
 ## Stack y comandos

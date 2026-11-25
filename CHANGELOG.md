@@ -3,6 +3,14 @@
 Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documento. El historial anterior al
 2026-11-18 está en git y en `docs/design/`.
 
+## 2026-11-25
+
+- **Santuario 3, montaña hueca**: la montaña es una pirámide hueca con tres cuevas sobre un lago de 4 m; cuatro árboles
+  gigantes hasta el techo llevan en sus pisos el entrenamiento y los servicios del campus (residencia con cama para
+  dormir, restaurante para comer, clínica, aulas, biblioteca, laboratorio, crianza, huerto, taller, asambleas); alfombras
+  entre estaciones; un Starship inundado para nadar; luz pareja sin sombras ([montana-hueca.md](docs/design/montana-hueca.md),
+  reglas indexadas en [edificios-y-pisos.md](docs/design/edificios-y-pisos.md)).
+
 ## 2026-11-24
 
 - **Hábitat acuático (AQH)**: en sus retos la cámara encuadra las cámaras, sus manos y la tableta que lee, sobre la hoja

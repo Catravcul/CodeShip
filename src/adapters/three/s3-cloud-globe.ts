@@ -68,16 +68,26 @@ export class CloudGlobeView {
     const base = new THREE.Vector3(C.x, C.y, C.z - C.depth / 2).add(new THREE.Vector3(0, 0, 0));
     this.cell.compose(base, this.q, new THREE.Vector3(1, 1, 1));
     const tube = new THREE.CylinderGeometry(r, r, C.depth, 6, 1, true).rotateX(Math.PI / 2).rotateZ(Math.PI / 6).translate(0, 0, C.depth / 2);
-    const wax = new THREE.InstancedMesh(tube, new THREE.MeshStandardMaterial({ color: 0xe8c060, roughness: 0.6, transparent: true, opacity: 0.38, side: THREE.DoubleSide, depthWrite: false }), 7);
+    // The comb's face round the bee's cell: six sealed neighbours (solid wax prisms, their caps at the face), and the bee's own
+    // cell a clear tube with its edges drawn, so she sees into it.
+    const lid = new THREE.CylinderGeometry(r * 0.96, r * 0.96, C.depth, 6).rotateX(Math.PI / 2).rotateZ(Math.PI / 6).translate(0, 0, C.depth / 2);
+    const wax = new THREE.InstancedMesh(lid, new THREE.MeshStandardMaterial({ color: 0xe2b85a, roughness: 0.7, flatShading: true }), 6);
     wax.name = "globo-nubes-panal";
-    const at = [[0, 0], ...Array.from({ length: 6 }, (_, k) => [Math.cos((k * Math.PI) / 3) * C.cellWidth, Math.sin((k * Math.PI) / 3) * C.cellWidth])] as const;
-    at.forEach(([x, y], i) => {
-      M.multiplyMatrices(this.cell, new THREE.Matrix4().makeTranslation(x!, y!, 0));
-      wax.setMatrixAt(i, M);
-    });
-    wax.renderOrder = 3;
+    for (let k = 0; k < 6; k++) {
+      M.multiplyMatrices(this.cell, new THREE.Matrix4().makeTranslation(Math.cos((k * Math.PI) / 3 + Math.PI / 6) * C.cellWidth, Math.sin((k * Math.PI) / 3 + Math.PI / 6) * C.cellWidth, 0));
+      wax.setMatrixAt(k, M);
+    }
     this.root.add(wax);
-    const rib = new THREE.Mesh(new THREE.CylinderGeometry(C.cellWidth * 1.75, C.cellWidth * 1.75, 2, 6).rotateX(Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xc89a40, roughness: 0.7 }));
+    const own = new THREE.Mesh(tube, new THREE.MeshStandardMaterial({ color: 0xe8c060, roughness: 0.6, transparent: true, opacity: 0.14, side: THREE.DoubleSide, depthWrite: false }));
+    own.applyMatrix4(this.cell);
+    own.name = "globo-nubes-celda";
+    own.renderOrder = 4;
+    this.root.add(own);
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(tube), new THREE.LineBasicMaterial({ color: 0xa07a28 }));
+    edges.applyMatrix4(this.cell);
+    edges.name = "globo-nubes-celda-aristas";
+    this.root.add(edges);
+    const rib = new THREE.Mesh(new THREE.CylinderGeometry(C.cellWidth * 1.6, C.cellWidth * 1.6, 2, 6).rotateX(Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xc89a40, roughness: 0.7 }));
     rib.applyMatrix4(new THREE.Matrix4().multiplyMatrices(this.cell, new THREE.Matrix4().makeTranslation(0, 0, -1)));
     rib.name = "globo-nubes-panal-base";
     this.root.add(rib);

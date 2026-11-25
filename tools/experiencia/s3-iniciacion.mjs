@@ -53,7 +53,7 @@ const scene = (p) =>
 async function morning(j) {
   await j.page.evaluate(() => {
     const c = window.codeshipS3;
-    if (c.hour > 10 && c.hour < 11) c.setHour(9.2);
+    if (c.hour > 10 || c.hour < 9) c.setHour(9.2);
   });
 }
 

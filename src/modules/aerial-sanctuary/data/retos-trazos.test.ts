@@ -10,6 +10,8 @@ import { buildLayout } from "./layout";
 import { CRAFT } from "./facts";
 import { planTrip } from "../domain/travel";
 import { COMPOUNDS } from "@modules/trazos/data/compounds";
+import { CAMPUS_RETOS } from "./campus";
+import { procedureReto } from "@modules/sanctuary-one/application/challenges";
 
 describe("santuario 3: cada reto se dibuja como un compuesto", () => {
   it("todos los retos del santuario tienen su compuesto", () => {
@@ -23,6 +25,7 @@ describe("santuario 3: cada reto se dibuja como un compuesto", () => {
       ...launchChallenges().map((c) => c.chore),
       flightChore(legs, crafts, (id) => id),
       ...fieldJobs(createBiome(1)).map((j) => j.reto.chore),
+      ...Object.values(CAMPUS_RETOS).map((q) => procedureReto(q).chore),
     ];
     expect(chores.length).toBeGreaterThanOrEqual(20);
     for (const c of chores) expect(compoundForChore(c.id), c.id).toBeDefined();

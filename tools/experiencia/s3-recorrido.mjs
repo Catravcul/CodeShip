@@ -150,8 +150,8 @@ export async function s3Recorrido(j) {
   await until(j, (s) => s.mode === "reto" || s.mode === "vuelo", 60000);
   if ((await s3(p)).mode === "reto") {
     await j.waitDuel(30000);
-    for (let i = 0; i < 3 && (await p.evaluate(() => window.codeshipS3.exercise)); i++) {
-      await j.answer(() => window.codeshipS3.exercise, true);
+    for (let i = 0; i < 3 && (await p.evaluate(() => window.codeshipS3.exercise ?? window.codeshipS3.trace?.state)); i++) {
+      await j.answer(() => window.codeshipS3.exercise ?? window.codeshipS3.trace?.state, true);
       await p.waitForTimeout(500);
     }
     await j.tap(".duel button.end", "Continuar");

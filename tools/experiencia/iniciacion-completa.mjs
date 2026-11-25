@@ -31,7 +31,7 @@ async function until(j, ok, ms) {
   return s;
 }
 
-const oracle = () => window.codeshipS3.exercise;
+const oracle = () => window.codeshipS3.exercise ?? window.codeshipS3.trace?.state;
 
 /** Gathers in the page, every 150 ms, what the launches show (the beats are faster than a capture). */
 const watch = (p) =>

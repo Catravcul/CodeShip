@@ -109,7 +109,7 @@ const BY_TEXT: readonly Rule[] = [
   [/seleccion|entrevista/, "Selección"],
   [/traje/, "Traje"],
   [/reconocimiento|medic|botiquin/, "Medicina"],
-  [/camaras? trampa|censo|nido|mesa de campo|ibice|leopardo|buitre|fauna/, "Fauna"],
+  [/camaras? trampa|censo|nido|mesa de campo|ibice|leopardo|buitre|fauna|colmena|transecto|mariposa|escarabajo|insecto/, "Fauna"],
   [/yoga|saludo al sol/, "Yoga"],
   [/boxeo|\bsaco\b/, "Boxeo"],
   [/cocin|receta/, "Cocina"],

@@ -209,7 +209,7 @@ export async function s3Bioma(j) {
   await capture(j, "mesa", "Mesa de campo");
   await j.tap('.reto-picker .rp-opt[data-i="1"]', "Censo de íbices por doble observador");
   await j.waitDuel();
-  const oracle = () => window.codeshipS3.exercise;
+  const oracle = () => window.codeshipS3.exercise ?? window.codeshipS3.trace?.state;
   const total = await p.evaluate(() => window.codeshipS3.biome.counted);
   let steps = 0;
   let framed = false;

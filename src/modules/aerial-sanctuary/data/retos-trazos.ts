@@ -31,9 +31,21 @@ export const RETO_COMPOUNDS: readonly RetoCompound[] = [
   { match: "s3:lanzamiento-ascenso", compound: "co2", why: "En el ascenso el queroseno arde con el oxígeno líquido y sale sobre todo CO₂ y agua por las toberas" },
   { match: "s3:lanzamiento-acople", compound: "metano", why: "La cita es con la Starship, cuyos Raptor queman metano con oxígeno líquido" },
   { match: "s3-vuelo:", compound: "dodecano", why: "El S-92 quema Jet A, un queroseno; el dodecano es su modelo químico de una sola molécula" },
-  { match: "s3-camaras-leopardo", compound: "pirita", why: "Las cámaras trampa van con pilas de litio Li/FeS₂, las que aguantan el frío de las crestas en invierno" },
-  { match: "s3-doble-observador", compound: "sal", why: "Los íbices bajan a los saladeros a lamer sal: allí se juntan y se ven los grupos que cuentan los dos observadores" },
-  { match: "s3-nidos-buitre", compound: "carbonato-calcio", why: "El seguimiento de los nidos busca los huevos y su eclosión: la cáscara del huevo es carbonato de calcio" },
+  { match: "s3-colmenas-cerana", compound: "glucosa", why: "Se mide la fuerza de la colonia por sus cuadros de cría y de miel: la miel es sobre todo glucosa y fructosa" },
+  { match: "s3-transecto-mariposas", compound: "celulosa", why: "El paseo de Pollard se apunta a mano: cada apolo contada en la hoja de campo, papel de celulosa" },
+  { match: "s3-trampas-escarabajos", compound: "sal", why: "Las trampas de caída llevan agua saturada de sal, que conserva a los escarabajos hasta la revisión" },
+  // The campus's services in the hollow mountain (data/campus.ts CAMPUS_RETOS, montana-hueca.md).
+  { match: "s3-sueno", compound: "oxigeno", why: "Para dormir bien, la habitación fresca y ventilada: aire con su oxígeno, sin CO₂ acumulado (en la ISS el CO₂ alto quita el sueño)" },
+  { match: "s3-cata", compound: "agua", why: "La comida espacial se rehidrata: la bolsa se llena con el agua que dice su etiqueta" },
+  { match: "s3-cuarentena", compound: "sal", why: "El suero fisiológico del médico de vuelo es agua con un 0,9 % de cloruro de sodio" },
+  { match: "s3-clase-eclss", compound: "metano", why: "El reactor Sabatier del soporte vital junta CO₂ e hidrógeno y da agua y metano" },
+  { match: "s3-odf", compound: "celulosa", why: "Los procedimientos del ODF se imprimen y se llevan en carpetas: papel, celulosa" },
+  { match: "s3-guantera", compound: "nitrogeno", why: "La guantera de las muestras se llena de nitrógeno seco para que la roca no se oxide ni se moje" },
+  { match: "s3-moscas", compound: "co2", why: "En el laboratorio de moscas se duermen con CO₂ para contarlas y pasarlas de vial" },
+  { match: "s3-colmena", compound: "glucosa", why: "La miel que se revisa en la colmena es sobre todo glucosa y fructosa" },
+  { match: "s3-veggie", compound: "co2", why: "Las lechugas de Veggie toman el CO₂ del aire de la cabina para crecer" },
+  { match: "s3-impresora", compound: "pet", why: "El filamento de la impresora es un poliéster (PETG, de la familia del PET)" },
+  { match: "s3-reunion", compound: "celulosa", why: "En la reunión de los lunes se apuntan las tareas de la semana: papel, celulosa" },
 ];
 
 /** The compound a sanctuary-3 challenge is drawn as (none for one not in the table: it keeps the sheet). */

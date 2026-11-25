@@ -531,6 +531,9 @@ export class Journey {
    * and returns the challenge being shown (the answer key a player who knows the code would have).
    */
   async answer(oracle, right = true) {
+    // Sanctuary 3 draws its challenges (docs/design/retos-trazos.md): one call traces the glyph now with the finger,
+    // along its ideal path (or, wrong, a stroke across the canvas's corner).
+    if (await this.page.evaluate(() => !!window.codeshipS3?.trace?.state)) return this.traceGlyph(right);
     const ex = await this.page.evaluate(oracle);
     if (!ex) return false;
     await this.fits(ex);
@@ -553,6 +556,30 @@ export class Journey {
     }
     for (const id of right ? ex.solution : [...ex.solution].reverse()) if (await inTray(id)) await pick(id);
     return this.tapAt(this.page.locator(".duel .submit"));
+  }
+
+  /** Trace the glyph now on sanctuary 3's drawing sheet: every stroke left, as a finger drag (pointer events). */
+  async traceGlyph(right = true) {
+    const paths = right ? await this.page.evaluate(() => window.codeshipS3.trace.ideal()) : await this.page.evaluate(() => {
+      const r = document.querySelector(".trace canvas, canvas.trace-canvas")?.getBoundingClientRect() ?? { left: 20, top: 120 };
+      return [[{ x: r.left + 8, y: r.top + 8 }, { x: r.left + 30, y: r.top + 12 }, { x: r.left + 50, y: r.top + 9 }]];
+    });
+    if (!paths.length) {
+      // The molecule's closing animation: wait for it to pass.
+      await this.page.waitForTimeout(800);
+      return true;
+    }
+    for (const path of right ? paths : paths.slice(0, 1)) {
+      const [a, ...rest] = path;
+      await this.page.mouse.move(a.x, a.y);
+      await this.page.mouse.down();
+      for (const q of rest) await this.page.mouse.move(q.x, q.y, { steps: 2 });
+      await this.page.mouse.up();
+      await this.page.waitForTimeout(120);
+      if (right) break;
+    }
+    // A stroke's paths change as it is drawn: one stroke per call is enough; the caller asks again.
+    return true;
   }
 
   /**

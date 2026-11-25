@@ -94,9 +94,20 @@ Los compuestos y sus datos son **reales** (PubChem). Qué compuesto representa a
 | Lanzamiento: ascenso | CO₂ dióxido de carbono | CID 280 | Gas incoloro | El queroseno arde con el oxígeno y sale CO₂ y agua |
 | Lanzamiento: cita con la Starship | CH₄ metano | CID 297 | Gas incoloro; llama azul | Los Raptor de la Starship queman metano |
 | Programar un vuelo | C₁₂H₂₆ dodecano | CID 8182 | Líquido incoloro | El S-92 quema Jet A; el dodecano es su modelo de una molécula |
-| Cámaras trampa (bioma) | FeS₂ pirita | Pyrite | Cubos amarillo latón | Las cámaras van con pilas Li/FeS₂, que aguantan el frío |
-| Doble observador (bioma) | NaCl sal | CID 5234 | Cristales cúbicos blancos | Los íbices se juntan en los saladeros |
-| Nidos de buitre (bioma) | CaCO₃ carbonato de calcio | CID 10112 | Polvo blanco; calcita | Se siguen los huevos: la cáscara es carbonato de calcio |
+| Colmenas de abeja asiática (bioma) | C₆H₁₂O₆ glucosa | CID 5793 | Polvo blanco dulce | Se miden los cuadros de miel: glucosa y fructosa |
+| Transecto de mariposas (bioma) | (C₆H₁₀O₅)n celulosa | Cellulose | Fibras blancas | Cada apolo se apunta en la hoja de campo |
+| Trampas de escarabajos (bioma) | NaCl sal | CID 5234 | Cristales cúbicos blancos | Las trampas llevan agua saturada de sal |
+| Rutina de sueño (residencia) | O₂ oxígeno | CID 977 | Gas incoloro | Habitación ventilada: aire fresco, sin CO₂ acumulado |
+| Cata (restaurante) | H₂O agua | CID 962 | Líquido incoloro | La comida espacial se rehidrata con agua |
+| Cuarentena (clínica) | NaCl sal | CID 5234 | Cristales cúbicos blancos | El suero fisiológico lleva un 0,9 % de sal |
+| Clase de soporte vital (aulas) | CH₄ metano | CID 297 | Gas incoloro | El Sabatier da agua y metano |
+| Procedimiento del ODF (biblioteca) | (C₆H₁₀O₅)n celulosa | Cellulose | Fibras blancas | Los procedimientos van en papel |
+| Guantera (laboratorio) | N₂ nitrógeno | CID 947 | Gas incoloro | La guantera se llena de nitrógeno seco |
+| Moscas (crianza) | CO₂ | CID 280 | Gas incoloro | Las moscas se duermen con CO₂ para pasarlas de vial |
+| Colmena (crianza) | C₆H₁₂O₆ glucosa | CID 5793 | Polvo blanco dulce | La miel es glucosa y fructosa |
+| Veggie (huerto) | CO₂ | CID 280 | Gas incoloro | Las lechugas toman el CO₂ de la cabina |
+| Impresora 3D (taller) | PET | Polyethylene terephthalate | Sólido blanco o transparente | El filamento es PETG |
+| Reunión de los lunes (asambleas) | (C₆H₁₀O₅)n celulosa | Cellulose | Fibras blancas | Las tareas se apuntan en papel |
 
 **Fuente.** PubChem (pubchem.ncbi.nlm.nih.gov): fórmula, nombre y «Physical Description». El 2026-11-25 PubChem no era
 accesible desde la máquina de trabajo (el proxy lo bloquea): los CID se escribieron de memoria y quedan **por

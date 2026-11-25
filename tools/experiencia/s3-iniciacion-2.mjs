@@ -36,7 +36,7 @@ async function until(j, ok, ms) {
   return s;
 }
 
-const oracle = () => window.codeshipS3.exercise;
+const oracle = () => window.codeshipS3.exercise ?? window.codeshipS3.trace?.state;
 
 /** What the post's scene shows now: the things out, the caption, the machine's reading and state. */
 const scene = (p) =>

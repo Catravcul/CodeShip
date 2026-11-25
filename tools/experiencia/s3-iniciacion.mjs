@@ -35,7 +35,7 @@ async function until(j, ok, ms) {
   return s;
 }
 
-const oracle = () => window.codeshipS3.exercise;
+const oracle = () => window.codeshipS3.exercise ?? window.codeshipS3.trace?.state;
 
 /** What is out in the post's scene now: the things shown and where her rig is. */
 const scene = (p) =>

@@ -3,21 +3,21 @@ import { MODE_SPEED, actAt, type EthoAct } from "@modules/fauna/domain/ethogram"
 import { inEstrus } from "@modules/fauna/domain/mating";
 import { STAGE_LABEL, type Stage } from "@modules/fauna/domain/life-cycle";
 import { hash01, wanderAt } from "@modules/fauna/domain/roam";
-import type { AnimalSpec, Habitat } from "../data/bioma";
+import { AIR_BIOME, type AnimalSpec, type BiomeDef, type Habitat } from "../data/bioma";
 import { BIOME_ISLAND, BIOME_ZONES, MOUNTAIN } from "../data/bioma-island";
 import { AGENT_NAMES, BIOME_ETHOGRAMS, BIOME_TRAITS, COURTSHIPS, RIVALRIES, agentKey, agentTraits } from "../data/bioma-conducta";
-import { advance, createBiome, dormantIn, hungerOf, huntKill, mate, monthOfDay, scaleOf, stageOfIndividual, youngOf, BIO_DAYS_PER_GAME_DAY, STEP_GAME_DAYS, type BiomeState, type Individual } from "../domain/bioma";
+import { advance, createBiome, dormantIn, hungerOf, huntKill, lifeStageOf, mate, monthOfDay, quietNow, scaleOf, stageOfIndividual, BIO_DAYS_PER_GAME_DAY, STEP_GAME_DAYS, type BiomeState, type Individual, type LifeStage } from "../domain/bioma";
 import { heightAt, slopeAt } from "../domain/mountain";
 
 /**
  * THE BIOME LIVING ON SCREEN (docs/design/bioma-s3.md): the food chain of domain/bioma.ts (births, growth, hunger,
- * sleep, old age, what is eaten, by the game clock) and, on top, each animal acting its life with fauna's Ecosystem
- * (Cold Sanctuary's desires and predation) on the mountain: the hoofed keep to their cliffs and meadows, the marmots
- * to their burrows (and sleep under them all winter), the pikas to their scree; the griffons and the bearded vulture
- * soar in the thermals and the bearded vulture drops its bones on the gorge's slabs, the golden eagle circles and
- * stoops, the kestrel hovers into the wind, the choughs and the pigeons fly in flocks, the flying squirrel glides from
- * tree to tree at dusk, the swifts hawk over the gorge and the geese cross the island in a V on their migration.
- * No engine: the scene draws the poses this gives.
+ * sleep, old age, what is eaten, by the game clock) and, on top, each giant insect acting its life with fauna's
+ * Ecosystem (Cold Sanctuary's desires and predation) on the mountain, each flying its real way: the bees and bumblebees
+ * from flower to flower and back to their nest, the Apollo gliding slowly over the scree, the hoverfly hanging still in
+ * the air and darting off, the dragonfly patrolling the river in long fast beats, the robber fly sallying from its
+ * perch, the hornet hovering before the hives, the fruit flies and the lacewings fluttering in small circles; the
+ * locust hops and flies a stretch; the beetles and the ants walk. Eggs and pupae are out of sight, and so are the
+ * larvae in the soil, the dung, a carcass's crypt or the river. No engine: the scene draws the poses this gives.
  */
 export interface Pose {
   readonly id: number;
@@ -30,11 +30,13 @@ export interface Pose {
   /** Size over the adult female's. */
   scale: number;
   stage: Stage;
+  /** Its stage of life (an insect's egg, larva, nymph, pupa or adult). */
+  life: LifeStage;
   flying: boolean;
   swimming: boolean;
-  /** Out of sight (asleep in its burrow or its cave). */
+  /** Out of sight (an egg, a pupa, a larva underground, a colony overwintering). */
   hidden: boolean;
-  /** «Íbice del Himalaya, cría de 2 meses: sigue a su madre». */
+  /** «Abeja melífera asiática, adulto: liba néctar…». */
   label: string;
 }
 
@@ -44,20 +46,26 @@ const PLAYER = -1;
 /** The sea's surface (layout.ts SEA_Y). */
 const SEA = -0.6;
 /** The zone each habitat lives in (data/bioma-island.ts BIOME_ZONES). */
-const ZONE_OF: Readonly<Record<Habitat, string>> = { aire: "farallon" };
-/** Where each soaring bird finds its thermals or hunts (a zone), and how it flies (ours, from each one's source). */
-const FLIGHT: Readonly<Record<string, { zone: string; style: "termica" | "picado" | "cernido" | "bandada" | "huesos" | "vencejo" | "uve" }>> = {
-  buitre: { zone: "farallon", style: "termica" },
-  quebrantahuesos: { zone: "garganta", style: "huesos" },
-  aguila: { zone: "pradera", style: "picado" },
-  cernicalo: { zone: "estepa", style: "cernido" },
-  chova: { zone: "farallon", style: "bandada" },
-  paloma: { zone: "rio", style: "bandada" },
-  vencejo: { zone: "garganta", style: "vencejo" },
-  ansar: { zone: "cresta", style: "uve" },
+const ZONE_OF: Readonly<Record<Habitat, string>> = { aire: "rio" };
+/**
+ * How each flier flies (its real pattern, from its source in data/bioma-conducta.ts), the zone it flies over and its
+ * height over the ground in its own body lengths (ours: a giant at the real height would fly hundreds of metres up).
+ */
+type FlightStyle = "pecoreo" | "planeo" | "cernido" | "patrulla" | "acecho" | "colmena" | "revoloteo" | "salto";
+export const FLIGHT: Readonly<Record<string, { style: FlightStyle; zone?: string; bodies: number }>> = {
+  abeja: { style: "pecoreo", bodies: 2 },
+  abejorro: { style: "pecoreo", bodies: 1.5 },
+  mariposa: { style: "planeo", bodies: 1.2 },
+  sirfido: { style: "cernido", bodies: 3 },
+  libelula: { style: "patrulla", zone: "rio", bodies: 0.8 },
+  asilido: { style: "acecho", bodies: 1.5 },
+  avispon: { style: "colmena", bodies: 1.2 },
+  drosophila: { style: "revoloteo", bodies: 3 },
+  crisopa: { style: "revoloteo", bodies: 2 },
+  mariquita: { style: "revoloteo", bodies: 3 },
+  saltamontes: { style: "salto", bodies: 1 },
 };
-/** The ones that stand on rock too steep to walk (wild goats, the wallcreeper on its wall). */
-const CLIMBERS = new Set(["ibice", "markhor", "bharal", "treparriscos", "leopardo"]);
+const LIFE_VERB: Partial<Record<LifeStage, string>> = { huevo: "un huevo, se desarrolla", pupa: "una pupa, se transforma en adulto" };
 
 /** The island's frame: local plan metres ↔ world (the mountain keeps its true size), its ground and its zones. */
 export function biomeGeo(_k = 1) {
@@ -103,7 +111,6 @@ interface Body {
   pose: Pose;
   home: { x: number; z: number; r: number };
   seed: number;
-  alt: number;
 }
 
 export class BiomeLife {
@@ -115,19 +122,25 @@ export class BiomeLife {
   private stepsDone = 0;
   private lastDays = 0;
   private readonly specOf: ReadonlyMap<string, AnimalSpec>;
-  /** The gorge's line below its lookout (world), where the bearded vulture flies. */
-  private gorgeRun?: { a: { x: number; z: number; y: number }; o: { x: number; z: number; y: number }; b: { x: number; z: number; y: number } };
+  /** Times its real size each insect is drawn (data/bioma.ts INSECT_SCALE). */
+  readonly drawScale: number;
   /** Hunts and courtships the scene saw (the census lists the chain's events). */
   readonly seen: { day: number; text: string }[] = [];
 
-  constructor(readonly geo: BiomeGeo, seed = 1) {
-    this.state = createBiome(seed);
+  constructor(readonly geo: BiomeGeo, seed = 1, def: BiomeDef = AIR_BIOME) {
+    this.state = createBiome(seed, def);
+    this.drawScale = def.drawScale ?? 1;
     this.specOf = new Map(this.state.def.species.filter((s): s is AnimalSpec => s.kind === "animal").map((s) => [s.id, s]));
   }
 
   /** Game days since the island's day 0 that the chain has lived. */
   get gameDays(): number {
     return this.stepsDone * STEP_GAME_DAYS;
+  }
+
+  /** A species' drawn length (m): its real body × the scale. */
+  lengthOf(species: string): number {
+    return (this.specOf.get(species)?.size.z ?? 1) * this.drawScale;
   }
 
   /**
@@ -151,16 +164,15 @@ export class BiomeLife {
       const agents: Agent[] = [];
       for (const a of alive) {
         const s = this.specOf.get(a.species)!;
-        // Asleep underground it takes no part (no one hunts a marmot in its burrow).
-        if (dormantIn(s, month)) continue;
+        // Out of sight it takes no part (no one hunts an egg, a pupa or a queen asleep).
+        if (dormantIn(s, month) || this.unseen(a, s)) continue;
         const b = this.bodies.get(a.id)!;
         const stage = stageOfIndividual(a);
-        const mother = a.mother !== undefined && ids.has(a.mother) ? a.mother : undefined;
         const n = this.eco.needsOf(a.id);
         this.eco.setNeeds(a.id, { hunger: hungerOf(st, a), fatigue: n?.fatigue ?? 0 });
         agents.push({
-          id: a.id, species: agentKey(a.species, stage), x: b.pose.x, z: b.pose.z, home: b.home, scale: scaleOf(a), young: stage === "cria",
-          ...(mother !== undefined ? { mother } : {}), inWater: false, sex: a.female ? "hembra" : "macho",
+          id: a.id, species: agentKey(a.species, stage), x: b.pose.x, z: b.pose.z, home: b.home, scale: scaleOf(a) * this.drawScale, young: stage === "cria",
+          inWater: false, sex: a.female ? "hembra" : "macho",
           estrus: (!s.visitor || !!s.visitor.breeds) && a.pregnant === undefined && inEstrus(st.day, s, st.def.startDayOfYear, stage),
         });
       }
@@ -174,11 +186,7 @@ export class BiomeLife {
       if (this.seen.length > 30) this.seen.splice(0, this.seen.length - 30);
     }
     const night = hour < 5 || hour >= 21;
-    const dusk = (hour >= 18 && hour < 21) || (hour >= 4.5 && hour < 6);
-    // The geese of a flock in their V: their order in it.
-    const geese = alive.filter((a) => a.species === "ansar").map((a) => a.id);
-    for (const a of alive) if (a.mother === undefined || !ids.has(a.mother)) this.move(a, dt, t, night, dusk, month, geese);
-    for (const a of alive) if (a.mother !== undefined && ids.has(a.mother)) this.move(a, dt, t, night, dusk, month, geese);
+    for (const a of alive) this.move(a, dt, t, night, month);
   }
 
   poses(): Pose[] {
@@ -193,105 +201,118 @@ export class BiomeLife {
     return this.intents.get(id);
   }
 
-  /** A newborn starts by its mother (or at its home: a newcomer lands there). */
+  /** An egg or a pupa, or a young that lives out of sight (in the soil, the dung, a crypt, the river). */
+  private unseen(a: Individual, s: AnimalSpec): boolean {
+    return quietNow(a) || (!!s.hiddenYoung && stageOfIndividual(a) === "cria");
+  }
+
+  /** A newborn starts where its mother laid it (or at its home: a newcomer lands there). */
   private born(a: Individual): Body {
     const s = this.specOf.get(a.species)!;
     const seed = a.id * 7919 + 13;
     const m = a.mother !== undefined ? this.bodies.get(a.mother) : undefined;
-    const home = m ? { ...m.home } : this.geo.home(s.habitat, seed, CLIMBERS.has(s.id) && s.id !== "leopardo");
-    const at = m ? { x: m.pose.x + 0.6, z: m.pose.z + 0.4 } : wanderAt(home, home.r, seed, 0, 1);
+    const home = m ? { ...m.home } : this.geo.home(s.habitat, seed);
+    const at = m ? { x: m.pose.x + 2 * Math.cos(seed), z: m.pose.z + 2 * Math.sin(seed) } : wanderAt(home, home.r, seed, 0, 1);
     return {
-      home, seed, alt: 25 + 40 * hash01(seed, 3),
-      pose: { id: a.id, species: a.species, x: at.x, y: this.geo.ground(at.x, at.z), z: at.z, yaw: hash01(seed, 5) * 6.28, moving: false, scale: scaleOf(a), stage: stageOfIndividual(a), flying: false, swimming: false, hidden: false, label: s.name },
+      home, seed,
+      pose: { id: a.id, species: a.species, x: at.x, y: this.geo.ground(at.x, at.z), z: at.z, yaw: hash01(seed, 5) * 6.28, moving: false, scale: scaleOf(a), stage: stageOfIndividual(a), life: lifeStageOf(a), flying: false, swimming: false, hidden: false, label: s.name },
     };
   }
 
-  /** Where a flier is now, if it is in the air (each its own way of flying). */
-  private flight(a: Individual, b: Body, s: AnimalSpec, t: number, doing: string | undefined, geese: readonly number[]): { x: number; z: number; y: number; verb?: string } | undefined {
+  /** Where a flier is now, in the air its own way (`len`: its drawn length, m). */
+  private flight(b: Body, s: AnimalSpec, t: number, len: number, doing: string | undefined, hives: readonly { x: number; z: number }[]): { x: number; z: number; y: number; verb: string } | undefined {
     const f = FLIGHT[s.id];
     if (!f) return undefined;
     const g = this.geo;
-    const z = g.zone(f.zone);
     const ph = hash01(b.seed, 11) * Math.PI * 2;
-    if (f.style === "uve") {
-      // The flock crosses the island high (bar-headed geese fly over the Himalaya), in a V, and comes round again.
-      const i = Math.max(0, geese.indexOf(a.id));
-      const span = 2200;
-      const u = ((t * 18) % span) - span / 2;
-      const head = { x: BIOME_ISLAND.centre.value.x + u * 0.8, z: BIOME_ISLAND.centre.value.z + u * 0.6 };
-      const rank = Math.ceil(i / 2);
-      const side = i % 2 ? 1 : -1;
-      return { x: head.x - 0.8 * rank * 4 + side * 0.6 * rank * 3, z: head.z - 0.6 * rank * 4 - side * 0.8 * rank * 3, y: 560 + rank * 0.5, verb: "cruza la isla en uve en su migración" };
+    const over = (x: number, z: number, h: number) => g.ground(x, z) + h;
+    const H = f.bodies * len;
+    const hop = (period: number, reach: number) => {
+      const n = Math.floor((t + b.seed) / period);
+      const u = ((t + b.seed) % period) / period;
+      const A = { x: b.home.x + (hash01(b.seed, n) - 0.5) * reach, z: b.home.z + (hash01(b.seed + 3, n) - 0.5) * reach };
+      const B = { x: b.home.x + (hash01(b.seed, n + 1) - 0.5) * reach, z: b.home.z + (hash01(b.seed + 3, n + 1) - 0.5) * reach };
+      return { A, B, u };
+    };
+    switch (f.style) {
+      case "pecoreo": {
+        // Flower to flower: a short flight and a stop on each flower (Apis cerana, Bombus).
+        const { A, B, u } = hop(9, b.home.r * 2);
+        const k = Math.min(1, Math.max(0, (u - 0.55) / 0.45));
+        const x = A.x + (B.x - A.x) * k;
+        const z = A.z + (B.z - A.z) * k;
+        return { x, z, y: over(x, z, k > 0 && k < 1 ? H * (0.5 + Math.sin(k * Math.PI)) : len * 0.3), verb: k > 0 && k < 1 ? "vuela a otra flor" : "liba en una flor" };
+      }
+      case "planeo": {
+        // The Apollo's slow flight, gliding close over the scree with a few wingbeats.
+        const R = b.home.r * 0.8;
+        const x = b.home.x + R * Math.cos(t * 0.05 + ph) + 8 * Math.sin(t * 0.21);
+        const z = b.home.z + R * Math.sin(t * 0.05 + ph);
+        return { x, z, y: over(x, z, H + len * 0.4 * Math.sin(t * 0.8 + ph)), verb: "planea despacio sobre la pedrera" };
+      }
+      case "cernido": {
+        // The hoverfly hangs still in the air, then darts a few metres to hang again (Episyrphus balteatus).
+        const { A, B, u } = hop(6, 50);
+        const k = u > 0.85 ? (u - 0.85) / 0.15 : 0;
+        const x = A.x + (B.x - A.x) * k;
+        const z = A.z + (B.z - A.z) * k;
+        return { x, z, y: over(x, z, H + 0.15 * Math.sin(t * 9)), verb: k ? "sale disparado" : "se cierne inmóvil en el aire" };
+      }
+      case "patrulla": {
+        // The dragonfly patrols a beat along the river, long and fast, turning at its ends.
+        const zz = f.zone ? g.zone(f.zone) : b.home;
+        const u = Math.sin(t * 0.12 + ph);
+        const x = zz.x + u * zz.r * 1.2;
+        const z = zz.z + Math.sin(t * 0.31 + ph) * zz.r * 0.4;
+        return { x, z, y: over(x, z, H + 4 + 3 * Math.sin(t * 0.5)), verb: doing === "cazar" ? "caza al vuelo" : "patrulla sobre el río" };
+      }
+      case "acecho": {
+        // The robber fly waits on its perch and sallies after a passing insect, back to the perch.
+        const { A, u } = hop(10, 40);
+        const out = u > 0.7 ? Math.sin(((u - 0.7) / 0.3) * Math.PI) : 0;
+        const x = A.x + out * 25 * Math.cos(ph);
+        const z = A.z + out * 25 * Math.sin(ph);
+        return { x, z, y: over(x, z, len * 0.2 + out * H * 3), verb: out ? "sale al vuelo tras un insecto" : "acecha desde su percha" };
+      }
+      case "colmena": {
+        // The hornet hovers before the hives, watching the bees come home (Asian hornet).
+        const hv = hives.length ? hives[Math.floor(hash01(b.seed, 7) * hives.length)]! : b.home;
+        const x = hv.x + 10 * Math.cos(ph) + 2 * Math.sin(t * 0.7);
+        const z = hv.z + 10 * Math.sin(ph) + 2 * Math.cos(t * 0.6);
+        return { x, z, y: over(x, z, H + 3 + 0.3 * Math.sin(t * 5)), verb: hives.length ? "se cierne ante una colmena esperando a las abejas" : "caza insectos al vuelo" };
+      }
+      case "revoloteo": {
+        const x = b.home.x + 6 * Math.cos(t * 0.9 + ph) + 3 * Math.sin(t * 2.3);
+        const z = b.home.z + 6 * Math.sin(t * 0.7 + ph);
+        return { x, z, y: over(x, z, H + len * Math.sin(t * 1.7 + ph)), verb: "revolotea" };
+      }
+      case "salto": {
+        // The locust: a jump and a short flight, then it lands to feed.
+        const { A, B, u } = hop(12, 60);
+        const k = u > 0.8 ? (u - 0.8) / 0.2 : 0;
+        if (!k) return undefined;
+        const x = A.x + (B.x - A.x) * k;
+        const z = A.z + (B.z - A.z) * k;
+        return { x, z, y: over(x, z, Math.sin(k * Math.PI) * len * 2.5), verb: "salta y vuela un trecho" };
+      }
     }
-    if (f.style === "termica" || (f.style === "picado" && doing !== "cazar")) {
-      // Circling up a thermal over the sunlit rock, then gliding off to the next (ours: ~1 m/s up, 120 m).
-      const R = 30 + 25 * hash01(b.seed, 12);
-      const w = (s.id === "aguila" ? 14 : 11) / R;
-      const climb = (t * 1.1 + hash01(b.seed, 13) * 120) % 120;
-      const c = { x: z.x + (hash01(b.seed, 14) - 0.5) * z.r, z: z.z + (hash01(b.seed, 15) - 0.5) * z.r };
-      const x = c.x + R * Math.cos(w * t + ph);
-      const zz = c.z + R * Math.sin(w * t + ph);
-      return { x, z: zz, y: Math.max(g.ground(c.x, c.z), g.ground(x, zz)) + 40 + climb, verb: s.id === "aguila" ? "da vueltas en la térmica buscando marmotas" : "sube en espiral en una térmica" };
-    }
-    if (f.style === "huesos") {
-      // Patrolling up and down the gorge at the height of its rims, swinging close past the lookout (where it drops its
-      // bones on the slabs, from 50–150 m: Bearded vulture), the far wall behind it.
-      const run = (this.gorgeRun ??= (() => {
-        const G = MOUNTAIN.value.gorge;
-        const C = BIOME_ISLAND.centre.value;
-        const look = { x: z.x - C.x, z: z.z - C.z };
-        let k = 0;
-        for (let i = 1; i < G.length; i++) if (Math.hypot(G[i]!.x - look.x, G[i]!.z - look.z) < Math.hypot(G[k]!.x - look.x, G[k]!.z - look.z)) k = i;
-        const o = G[k]!;
-        const end = (q: { x: number; z: number; floor: number } | undefined) => (q ? { x: (o.x + q.x) / 2, z: (o.z + q.z) / 2, y: (o.floor + q.floor) / 2 + 140 } : { x: o.x, z: o.z, y: o.floor + 140 });
-        const rim = g.ground(z.x, z.z);
-        return { a: end(G[k - 1]), o: { x: o.x + (look.x - o.x) * 0.45, z: o.z + (look.z - o.z) * 0.45, y: rim - 10 }, b: end(G[k + 1]) };
-      })());
-      const u = Math.sin((9 / 110) * t + ph);
-      const [p0, p1, v] = u < 0 ? [run.o, run.a, -u] : [run.o, run.b, u];
-      const w = g.world(p0.x + (p1.x - p0.x) * v, p0.z + (p1.z - p0.z) * v);
-      const lap = (((9 / 110) * t + ph) / (Math.PI * 2)) % 3;
-      const drop = lap > 2.9 && doing === "comer";
-      return { x: w.x, z: w.z, y: Math.max(g.ground(w.x, w.z) + 15, p0.y + (p1.y - p0.y) * v), verb: drop ? "deja caer un hueso sobre las losas para romperlo" : "planea a lo largo de la garganta" };
-    }
-    if (f.style === "cernido") {
-      // Hovering into the wind at 10–20 m, then a short stoop (Common kestrel).
-      const c = { x: b.home.x + (hash01(b.seed, Math.floor(t / 25)) - 0.5) * 40, z: b.home.z + (hash01(b.seed + 1, Math.floor(t / 25)) - 0.5) * 40 };
-      const k = (t % 25) / 25;
-      const y = g.ground(c.x, c.z) + (k > 0.85 ? 15 * (1 - (k - 0.85) / 0.15) + 1 : 15 + 0.4 * Math.sin(t * 6));
-      return { x: c.x, z: c.z, y, verb: k > 0.85 ? "se lanza en picado corto sobre un ratón" : "se cierne contra el viento" };
-    }
-    if (f.style === "bandada") {
-      // The flock wheels together over its cliff (one centre for the species, each bird its place in it).
-      const c = wanderAt(z, z.r, s.id.length * 977, t, 9);
-      const o = 3 + 6 * hash01(b.seed, 16);
-      const x = c.x + o * Math.cos(t * 1.3 + ph);
-      const zz = c.z + o * Math.sin(t * 1.3 + ph);
-      return { x, z: zz, y: Math.max(g.ground(c.x, c.z), g.ground(x, zz)) + 22 + 6 * Math.sin(t * 0.7 + ph), verb: "vuela en bandada" };
-    }
-    if (f.style === "vencejo") {
-      const R = 60 + 40 * hash01(b.seed, 17);
-      const w = 22 / R;
-      const x = z.x + R * Math.cos(w * t + ph);
-      const zz = z.z + R * Math.sin(w * t + ph) * 0.7;
-      return { x, z: zz, y: Math.max(g.ground(z.x, z.z), g.ground(x, zz)) + 35 + 15 * Math.sin(t * 0.9 + ph), verb: "caza insectos en vuelo sobre la garganta" };
-    }
-    return undefined;
   }
 
-  private move(a: Individual, dt: number, t: number, night: boolean, dusk: boolean, month: number, geese: readonly number[]): void {
+  private move(a: Individual, dt: number, t: number, night: boolean, month: number): void {
     const b = this.bodies.get(a.id)!;
     const p = b.pose;
     const s = this.specOf.get(a.species)!;
     const g = this.geo;
     const tr = BIOME_TRAITS[a.species]!;
     p.stage = stageOfIndividual(a);
+    p.life = lifeStageOf(a);
     p.scale = scaleOf(a);
     p.swimming = false;
-    const days = Math.round(a.age);
-    const label = (verb: string) => `${s.name}, ${STAGE_LABEL[p.stage]}${p.stage === "cria" ? ` de ${days < 30 ? `${Math.max(1, days)} días` : `${Math.round(days / 30.4)} meses`}` : ""}: ${verb}`;
-    // Asleep: the marmots in their burrows all winter; the flying squirrel in its cave by day.
-    const asleep = dormantIn(s, month) ? "hiberna en su madriguera" : s.id === "ardilla" && !night && !dusk ? "duerme en su cueva del cantil" : undefined;
+    const len = s.size.z * this.drawScale * p.scale;
+    const days = Math.round(a.age - (s.eggDays ?? 0));
+    const label = (verb: string) => `${s.name}, ${LIFE_LABEL[p.life]}${p.stage === "cria" ? ` de ${days < 30 ? `${Math.max(1, days)} días` : `${Math.round(days / 30.4)} meses`}` : ""}: ${verb}`;
+    // Out of sight: overwintering, an egg, a pupa, a larva in the soil.
+    const asleep = dormantIn(s, month) ? (s.social ? "pasa el invierno dentro del nido" : "pasa el invierno escondido") : this.unseen(a, s) ? (LIFE_VERB[p.life] ?? "crece escondida") : undefined;
     p.hidden = !!asleep;
     if (asleep) {
       p.x = b.home.x;
@@ -307,45 +328,24 @@ export class BiomeLife {
     const act: EthoAct = actAt(e, b.seed, t + b.seed, p.stage);
     const walk = Math.max(0.4, tr.runMs * 0.12);
     let verb = i?.verb || act.verb;
-    const nest = youngOf(this.state, a).length > 0;
-    const grown = p.stage !== "cria";
-    // In the air: each flier its own way, while it is not resting, nesting, hunting on foot or fleeing.
+    const grown = p.stage !== "cria" && p.stage !== "joven";
+    // In the air: each flier its own way, while it is not hunting, fleeing or courting (those fly straight to their mark).
     const busy = i && (i.doing === "huir" || i.doing === "cazar" || i.doing === "aparearse" || i.doing === "rivalizar" || i.doing === "cortejar" || i.doing === "devorar");
-    const airborne = grown && !night && (s.id === "ansar" || (FLIGHT[s.id] && !nest && !(busy && s.id !== "aguila") && (act.mode === "patrullar" || i?.doing === "comer" || s.id === "vencejo")));
-    if (airborne) {
-      const to = s.id === "aguila" && i?.doing === "cazar" && i.to ? { ...i.to, y: g.ground(i.to.x, i.to.z) + 0.5, verb: "se lanza en picado sobre su presa" } : this.flight(a, b, s, t, i?.doing, geese);
+    if (grown && !night && FLIGHT[s.id] && !busy) {
+      const to = this.flight(b, s, t, len, i?.doing, this.hives);
       if (to) {
-        const stoop = to.verb?.includes("picado") ? 3 : 1;
-        const k = Math.min(1, dt * 1.5 * stoop);
+        const k = Math.min(1, dt * 2);
         const dx = to.x - p.x;
         const dz = to.z - p.z;
         if (Math.hypot(dx, dz) > 0.05) p.yaw = Math.atan2(dx, dz);
         p.x += dx * k;
         p.z += dz * k;
         p.y += (to.y - p.y) * k;
-        p.flying = true;
+        p.flying = p.y - g.ground(p.x, p.z) > len * 0.25;
         p.moving = true;
-        p.label = label(to.verb ?? verb);
+        p.label = label(to.verb);
         return;
       }
-    }
-    // The flying squirrel at dusk: from a treetop it glides down to the next tree, then climbs it (Woolly flying squirrel).
-    if (s.id === "ardilla" && grown && (dusk || night)) {
-      const cyc = 14;
-      const n = Math.floor((t + b.seed) / cyc);
-      const u = ((t + b.seed) % cyc) / cyc;
-      const A = { x: b.home.x + (hash01(b.seed, n) - 0.5) * 60, z: b.home.z + (hash01(b.seed + 3, n) - 0.5) * 60 };
-      const B = { x: b.home.x + (hash01(b.seed, n + 1) - 0.5) * 60, z: b.home.z + (hash01(b.seed + 3, n + 1) - 0.5) * 60 };
-      const glide = Math.min(1, u / 0.45);
-      const at = glide < 1 ? { x: A.x + (B.x - A.x) * glide, z: A.z + (B.z - A.z) * glide } : B;
-      p.yaw = Math.atan2(B.x - A.x, B.z - A.z);
-      p.x = at.x;
-      p.z = at.z;
-      p.y = g.ground(at.x, at.z) + (glide < 1 ? 22 - 18 * glide : 4 + 18 * ((u - 0.45) / 0.55));
-      p.flying = glide < 1;
-      p.moving = true;
-      p.label = label(glide < 1 ? "planea de un pino a otro con la membrana abierta" : "trepa por el tronco");
-      return;
     }
     let to: { x: number; z: number } = p;
     let speed = 0;
@@ -354,29 +354,21 @@ export class BiomeLife {
       speed = i.speed;
     } else if (i && (i.doing === "descansar" || i.doing === "devorar" || i.doing === "cortejar")) {
       speed = 0;
-    } else if (a.mother !== undefined && this.bodies.has(a.mother) && (p.stage === "cria" || i?.doing === "seguir")) {
-      // The young keeps by its mother: kids and cubs follow her; nestlings wait at the nest while she is away.
-      const m = this.bodies.get(a.mother)!.pose;
-      const nestBound = s.shape !== "cuadrupedo" && s.id !== "perdiz" && s.id !== "ansar";
-      const anchor = (nestBound && m.flying) || m.hidden ? b.home : m;
-      to = { x: anchor.x + 0.5 * Math.cos(b.seed), z: anchor.z + 0.5 * Math.sin(b.seed) };
-      speed = Math.max(walk, Math.hypot(to.x - p.x, to.z - p.z) > 6 ? tr.runMs * 0.4 : walk);
-      verb = nestBound ? (m.flying ? "espera en el nido a que vuelva su madre con comida" : "pide comida a su madre") : s.id === "marmota" ? "juega junto a la madriguera" : "sigue a su madre";
-    } else if (night && !i?.doing.startsWith("ca")) {
+    } else if (night) {
       to = b.home;
       speed = Math.hypot(b.home.x - p.x, b.home.z - p.z) > b.home.r ? walk * 2 : 0;
-      verb = s.id === "leopardo" ? "patrulla de noche" : "duerme";
-      if (s.id === "leopardo") speed = walk;
-    } else if (act.mode !== "quieto" && !(nest && s.shape !== "cuadrupedo")) {
-      const r = act.mode === "apinarse" ? { ...b.home, r: b.home.r * 0.4 } : b.home;
-      to = wanderAt(r, r.r, b.seed, t + b.seed, Math.max(0.3, walk * MODE_SPEED[act.mode]));
+      verb = s.social ? "duerme en el nido" : "descansa";
+    } else if (act.mode !== "quieto") {
+      to = wanderAt(b.home, b.home.r, b.seed, t + b.seed, Math.max(0.3, walk * MODE_SPEED[act.mode]));
       speed = walk * Math.max(0.3, MODE_SPEED[act.mode]);
-    } else if (nest) verb = s.shape === "cuadrupedo" ? "cuida a su cría" : "incuba y da de comer a su cría en el nido";
-    // Never into the sea; only the climbers onto rock too steep to walk.
-    if (to !== p && (g.isSea(to.x, to.z) || (!CLIMBERS.has(s.id) && g.steep(to.x, to.z) > 1.1))) to = b.home;
+    }
+    // Never into the sea, nor up rock too steep for it.
+    if (to !== p && (g.isSea(to.x, to.z) || g.steep(to.x, to.z) > 1.1)) to = b.home;
     const dx = to.x - p.x;
     const dz = to.z - p.z;
     const dist = Math.hypot(dx, dz);
+    // A flier chasing or fleeing flies there, at its height.
+    const fliesThere = grown && !!FLIGHT[s.id] && tr.medium !== "tierra" && speed > 0 && dist > len;
     if (dist > 0.05 && speed > 0) {
       const k = Math.min(1, (speed * dt) / dist);
       p.x += dx * k;
@@ -384,14 +376,19 @@ export class BiomeLife {
       p.yaw = Math.atan2(dx, dz);
       p.moving = true;
     } else p.moving = false;
-    // Landing: down onto the ground where it is (fliers glide down to it).
     const gy = g.ground(p.x, p.z);
-    p.y = p.flying ? p.y + (gy - p.y) * Math.min(1, dt * 1.5) : gy;
-    if (p.flying && p.y - gy < 0.3) p.flying = false;
+    const target = fliesThere ? gy + (FLIGHT[s.id]!.bodies * len) : gy;
+    p.y = p.flying || fliesThere ? p.y + (target - p.y) * Math.min(1, dt * 1.5) : gy;
+    p.flying = p.y - gy > len * 0.25;
     if (!p.flying) p.y = gy;
     p.label = label(verb);
   }
+
+  /** The honeybees' hives (the hornets hover before them): set by the scene from its colonies. */
+  hives: readonly { x: number; z: number }[] = [];
 }
+
+const LIFE_LABEL: Readonly<Record<LifeStage, string>> = { huevo: "huevo", larva: "larva", ninfa: "ninfa", pupa: "pupa", cria: STAGE_LABEL.cria, joven: STAGE_LABEL.joven, adulto: STAGE_LABEL.adulto, anciano: "adulto viejo" };
 
 /** Real days of biology in a game day (for the scene's labels). */
 export const BIO_PER_GAME_DAY = BIO_DAYS_PER_GAME_DAY;

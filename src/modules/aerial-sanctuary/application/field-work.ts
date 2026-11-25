@@ -3,14 +3,14 @@ import type { StepAct } from "@modules/chores/domain/step-visual";
 import { CROWDS } from "../data/bioma-crowd";
 import { FIELD, FIELD_GESTURES } from "../data/bioma-retos";
 import { crowdCounts } from "../domain/bioma-crowd";
-import { monthOfDay, type BiomeState } from "../domain/bioma";
+import { monthOfDay, stageOfIndividual, type BiomeState } from "../domain/bioma";
 
 /**
  * THE FIELD WORK AT THE RESEARCH HUT (docs/design/bioma-s3.md §La estación): sanctuary 1's procedures-as-challenges
  * (sanctuary-one/application/challenges.ts `procedureReto`) on the island's own jobs, each open only in its real
- * season: the camera traps in winter (January to March, as in Hemis), the double-observer count whenever the ibex are
- * there, the griffons' nests while they are sat or have a chick. Each asks for the island's real total: the chain's
- * leopards, the ibex its crowd draws, the griffons' occupied nests.
+ * season: the hives while the colonies fly (not in their winter cluster), the butterfly transect while the Apollos fly
+ * (summer), the pitfall traps while the beetles walk. Each asks for the island's real total: the hives of the
+ * honeybees' colonies, the Apollo adults of the chain, its beetles.
  */
 export interface FieldJob {
   readonly reto: Reto;
@@ -21,7 +21,7 @@ export interface FieldJob {
   readonly total?: number;
 }
 
-const POOL = [...FIELD.camaras.steps, ...FIELD.doble.steps, ...FIELD.buitres.steps].filter((s) => !s.includes("{"));
+const POOL = [...FIELD.colmenas.steps, ...FIELD.mariposas.steps, ...FIELD.trampas.steps].filter((s) => !s.includes("{"));
 const crowd = (id: string) => CROWDS.find((c) => c.species === id)!;
 /** The right total and two wrong ones, as a step's choice. */
 const choice = (n: number) => `{${n}|${[Math.max(1, Math.round(n / 2)) === n ? n + 3 : Math.max(1, Math.round(n / 2)), n * 2 + 7].join("|")}}`;
@@ -29,18 +29,18 @@ const fill = <P extends { readonly steps: readonly string[] }>(p: P, key: string
 
 /** The jobs of the hut now, with the island's totals in their last steps. */
 export function fieldJobs(st: BiomeState): FieldJob[] {
+  const hives = crowdCounts(st, crowd("abeja"));
+  const grown = (sp: string) => st.animals.filter((a) => a.species === sp && !a.dead && ["adulto", "anciano"].includes(stageOfIndividual(a))).length;
+  const apollos = grown("mariposa");
   const month = monthOfDay(st.day, st.def.startDayOfYear);
-  const leopards = st.animals.filter((a) => a.species === "leopardo" && !a.dead).length;
-  const ibex = crowdCounts(st, crowd("ibice"));
-  const griffons = crowdCounts(st, crowd("buitre"));
-  const ibexN = ibex.adults + ibex.young;
-  const camOpen = month >= 1 && month <= 3 && leopards > 0;
-  const countOpen = ibexN > 0;
-  const nestOpen = (griffons.phase === "huevos" || griffons.phase === "pollos") && griffons.nests > 0;
+  const beetles = month >= 4 && month <= 10 ? grown("carronero") + grown("pelotero") : 0;
+  const hiveOpen = !hives.asleep && hives.nests > 0;
+  const walkOpen = apollos > 0 && month >= 6 && month <= 8;
+  const trapOpen = beetles > 0;
   return [
-    { reto: procedureReto(fill(FIELD.camaras, "LEOPARDOS", leopards), undefined, POOL), open: camOpen, total: leopards, ...(camOpen ? {} : { why: "Las cámaras se revisan en invierno, de enero a marzo, cuando los leopardos bajan por las crestas" }) },
-    { reto: procedureReto(fill(FIELD.doble, "IBICES", ibexN), undefined, POOL), open: countOpen, total: ibexN, ...(countOpen ? {} : { why: "No hay íbices que contar ahora" }) },
-    { reto: procedureReto(fill(FIELD.buitres, "NIDOS", griffons.nests), undefined, POOL), open: nestOpen, total: griffons.nests, ...(nestOpen ? {} : { why: "Sin nidos ocupados ahora: los buitres ponen de finales de diciembre a marzo" }) },
+    { reto: procedureReto(fill(FIELD.colmenas, "COLMENAS", hives.nests), undefined, POOL), open: hiveOpen, total: hives.nests, ...(hiveOpen ? {} : { why: "En diciembre y enero las colonias se apiñan dentro: no se abren" }) },
+    { reto: procedureReto(fill(FIELD.mariposas, "APOLOS", apollos), undefined, POOL), open: walkOpen, total: apollos, ...(walkOpen ? {} : { why: "Las apolo vuelan en verano, de junio a agosto: ahora son huevos, orugas o crisálidas" }) },
+    { reto: procedureReto(fill(FIELD.trampas, "ESCARABAJOS", beetles), undefined, POOL), open: trapOpen, total: beetles, ...(trapOpen ? {} : { why: "Los escarabajos pasan el invierno bajo tierra: las trampas se ponen de abril a octubre" }) },
   ];
 }
 

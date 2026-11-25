@@ -3,6 +3,12 @@
 Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documento. El historial anterior al
 2026-11-18 está en git y en `docs/design/`.
 
+## 2026-11-25
+
+- **Santuario 3: los retos se dibujan** como con una varita mágica: cada reto es un compuesto real (H₂O en la NBL, O₂ en la
+  hipobárica, TEA en la cuenta atrás…) que se traza letra a letra con el dedo, con su aspecto (gotas, burbujas, cristales
+  cúbicos…) y su molécula al final; los pasos del puesto siguen animándose ([retos-trazos.md](docs/design/retos-trazos.md)).
+
 ## 2026-11-24
 
 - **Hábitat acuático (AQH)**: en sus retos la cámara encuadra las cámaras, sus manos y la tableta que lee, sobre la hoja

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildLayout, subtract, SEA_Y } from "./layout";
+import { ceilingOver } from "./montana";
 import { placeAt, step, type Body, type Floor, type WalkWorld } from "../domain/walk";
 import { reachable, shortestWay } from "../domain/route";
 import { safetyDistanceM, tooClose } from "../domain/safety";
@@ -49,6 +50,8 @@ for (const k of [1, 1.5]) {
         const p = byId.get(a)!;
         const q = byId.get(b)!;
         if (p.lift && q.lift && p.lift.id === q.lift.id) continue;
+        // A carpet flight is flown, not walked (montana.test.ts flies them).
+        if (p.carpet && q.carpet) continue;
         const start = placeAt(W, p.x, p.y, p.z);
         if (!start) {
           bad.push(`${a}: no hay suelo ni agua`);
@@ -88,20 +91,22 @@ for (const k of [1, 1.5]) {
       for (const isl of L.islands) expect(L.machines.filter((m) => m.island === isl.id && m.kind === "navegacion").length, isl.id).toBe(1);
     });
 
-    it("los edificios de la isla de entrenamiento caben en la isla y no se pisan, a esta escala", () => {
-      // The buildings (their rooms within, as the NBL's control room or the mock-ups, are inside them).
-      const rooms = L.areas.filter((a) => a.island === "entrenamiento" && !["entrenamiento:isla", "entrenamiento:helipuerto"].includes(a.id) && /^entrenamiento:[a-z]+$/.test(a.id));
-      const isl = L.islands.find((i) => i.id === "entrenamiento")!.rect;
+    it("las salas del campus caben bajo el techo de la montaña hueca y no se pisan, a esta escala", () => {
+      // The buildings (their rooms within, as the NBL's control room or the mock-ups, are inside them), each on its tree's floor.
+      const rooms = L.areas.filter((a) => a.island === "entrenamiento" && a.floorY !== undefined && /^entrenamiento:[a-z-]+$/.test(a.id) && !a.id.includes("arbol"));
+      expect(rooms.length).toBeGreaterThanOrEqual(20);
       for (const r of rooms) {
-        expect(r.centre.x - r.half.x, r.id).toBeGreaterThanOrEqual(isl.x0);
-        expect(r.centre.x + r.half.x, r.id).toBeLessThanOrEqual(isl.x1);
-        expect(r.centre.z - r.half.z, r.id).toBeGreaterThanOrEqual(isl.z0);
-        expect(r.centre.z + r.half.z, r.id).toBeLessThanOrEqual(isl.z1);
+        const box = { x0: r.centre.x - r.half.x, x1: r.centre.x + r.half.x, z0: r.centre.z - r.half.z, z1: r.centre.z + r.half.z };
+        expect(ceilingOver(box), `${r.id}: techo`).toBeGreaterThan(r.centre.y + r.half.y + 4);
       }
       for (let i = 0; i < rooms.length; i++)
         for (let j = i + 1; j < rooms.length; j++) {
           const a = rooms[i]!;
           const b = rooms[j]!;
+          if (Math.abs(a.centre.y - b.centre.y) > a.half.y + b.half.y + 2) continue;
+          // A compartment (a mock-up, a chamber) stands inside its hall.
+          const inside = (p: typeof a, q: typeof a) => Math.abs(p.centre.x - q.centre.x) + p.half.x <= q.half.x + 0.01 && Math.abs(p.centre.z - q.centre.z) + p.half.z <= q.half.z + 0.01;
+          if (inside(a, b) || inside(b, a)) continue;
           const apart = Math.abs(a.centre.x - b.centre.x) >= a.half.x + b.half.x + 2 || Math.abs(a.centre.z - b.centre.z) >= a.half.z + b.half.z + 2;
           expect(apart, `${a.id} y ${b.id}`).toBe(true);
         }
@@ -166,10 +171,10 @@ for (const k of [1, 1.5]) {
       const sea = placeAt(W, 0, SEA_Y - 2, 0)!;
       expect(sea.motion).toBe("agua");
       const pool = L.world.waters.find((w) => w.id === "nbl-piscina")!;
-      const inPool = placeAt(W, (pool.x0 + pool.x1) / 2, -3, (pool.z0 + pool.z1) / 2)!;
+      const inPool = placeAt(W, (pool.x0 + pool.x1) / 2, pool.yTop - 3, (pool.z0 + pool.z1) / 2)!;
       expect(inPool.motion).toBe("agua");
       // Swim to the pool's south edge and out onto the deck.
-      const out = walk(W, inPool, { x: (pool.x0 + pool.x1) / 2, y: 0, z: pool.z0 - 2 });
+      const out = walk(W, inPool, { x: (pool.x0 + pool.x1) / 2, y: pool.yTop + 0.3, z: pool.z0 - 2 });
       expect(out.motion).toBe("gravedad");
       expect(out.area).toBe("entrenamiento:nbl");
     });
@@ -202,10 +207,11 @@ describe("Datos del santuario 3", () => {
     }
   });
 
-  it("las áreas de Cold Sanctuary son ficción y las de la isla de entrenamiento, reales", () => {
+  it("las áreas de Cold Sanctuary son ficción y las salas del campus, reales (la montaña, sus árboles y el Starship inundado, ficción)", () => {
     const L = buildLayout(1);
+    const built = /:(lago|montana|cueva-|arbol-|starship)/;
     for (const a of L.areas) {
-      if (a.island === "entrenamiento") expect(a.reality, a.id).toBe("real");
+      if (a.island === "entrenamiento") expect(a.reality, a.id).toBe(built.test(a.id) ? "ficcion" : "real");
       if (a.island === "lanzadera" || a.island === "parque" || a.island === "muelle") expect(a.reality, a.id).toBe("ficcion");
     }
   });

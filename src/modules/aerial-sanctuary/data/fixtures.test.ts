@@ -43,7 +43,7 @@ for (const k of [1, 1.5]) {
       const count = (room: string) => F.filter((f) => f.area.startsWith(`entrenamiento:${room}`) && f.kind !== "caja" && f.kind !== "luz-techo").length;
       for (const room of ["nbl", "svmf", "control", "gimnasio", "medico", "supervivencia"]) expect(count(room), room).toBeGreaterThanOrEqual(12);
       const kinds = new Set(F.map((f) => f.kind));
-      for (const want of ["grua-puente", "grua-pluma", "soporte-emu", "puesto-buzos", "camaras-buceo", "hiperbarica", "maqueta-modulo", "consola-fcr", "pantallas-frente", "camilla-exam", "ecg", "ecografo", "audiometro", "asiento-camara", "consola-camara", "cinta", "bici", "jaula", "ared", "taquillas", "mets", "balsa", "izado", "luz-pista", "manga", "surtidor", "farola", "tussac", "capsula-orion", "rack-ispr"] as const) expect(kinds.has(want), want).toBe(true);
+      for (const want of ["grua-puente", "grua-pluma", "soporte-emu", "puesto-buzos", "camaras-buceo", "hiperbarica", "maqueta-modulo", "consola-fcr", "pantallas-frente", "camilla-exam", "ecg", "ecografo", "audiometro", "asiento-camara", "consola-camara", "cinta", "bici", "jaula", "ared", "taquillas", "mets", "balsa", "izado", "luz-pista", "manga", "surtidor", "capsula-orion", "cama", "guantera", "insectario", "colmena", "camara-cultivo", "impresora-3d", "rack-ispr"] as const) expect(kinds.has(want), want).toBe(true);
       expect(F.filter((f) => f.kind === "consola-fcr" && f.area === "entrenamiento:control").length).toBe(16);
       expect(F.filter((f) => f.kind === "grua-pluma").length).toBe(4);
       expect(F.filter((f) => f.kind === "grua-puente" && f.area === "entrenamiento:nbl").length).toBe(2);
@@ -70,8 +70,10 @@ for (const k of [1, 1.5]) {
     });
 
     it("nada atraviesa nada: ninguna pieza se mete en otra, en una pared ni en un mueble de la sala", () => {
-      const fixtureBoxes = new Set(F.filter((f) => f.solid).map((f) => JSON.stringify(boxOf(f))));
-      const others = L.world.solids.filter((s) => !fixtureBoxes.has(JSON.stringify(s)));
+      // (Rounded: a room carried onto its tree's floor moves its fixtures and their boxes apart, to the last bit.)
+      const key = (b: { x0: number; x1: number; z0: number; z1: number; y0: number; y1: number }) => [b.x0, b.x1, b.z0, b.z1, b.y0, b.y1].map((v) => v.toFixed(3)).join(",");
+      const fixtureBoxes = new Set(F.filter((f) => f.solid).map((f) => key(boxOf(f))));
+      const others = L.world.solids.filter((s) => !fixtureBoxes.has(key(s)));
       const solidOnes = F.filter((f) => f.solid);
       const bad: string[] = [];
       for (let i = 0; i < solidOnes.length; i++) {
@@ -89,7 +91,7 @@ for (const k of [1, 1.5]) {
       for (const [a, b] of L.graph.links) {
         const p = byId.get(a)!;
         const q = byId.get(b)!;
-        if (!a.startsWith("entrenamiento") || (p.lift && q.lift)) continue;
+        if (!a.startsWith("entrenamiento") || (p.lift && q.lift) || (p.carpet && q.carpet)) continue;
         const y = Math.min(p.y, q.y);
         for (const f of F.filter((g) => g.solid && g.kind !== "caja" && g.y < Math.max(p.y, q.y) + 1.7 && g.y + g.h > y + 0.15)) {
           const r = footprint(f);
@@ -168,7 +170,8 @@ for (const k of [1, 1.5]) {
     });
 
     it("el control de misión tiene la trinchera más baja y las cuatro filas", () => {
-      const ys = new Set(F.filter((f) => f.kind === "consola-fcr" && f.area === "entrenamiento:control").map((f) => f.y));
+      const fy = L.areas.find((a) => a.id === "entrenamiento:control")!.floorY ?? 0;
+      const ys = new Set(F.filter((f) => f.kind === "consola-fcr" && f.area === "entrenamiento:control").map((f) => Math.round((f.y - fy) * 10) / 10));
       expect([...ys].sort((a, b) => a - b)).toEqual([-0.6, -0.3, 0]);
       const plates = F.filter((f) => f.kind === "consola-fcr" && f.text).map((f) => f.text);
       expect(plates.sort()).toEqual(["CAPCOM", "FLIGHT"]);
@@ -182,7 +185,8 @@ for (const k of [1, 1.5]) {
 
     it("el rendimiento: piezas sin texturas, en pocos materiales", () => {
       expect(F.length).toBeLessThan(2000);
-      expect(F.filter((f) => f.plate).length).toBeLessThan(45);
+      // The training rooms' plates and the campus's (data/campus-fixtures.ts).
+      expect(F.filter((f) => f.plate).length).toBeLessThan(80);
     });
   });
 }

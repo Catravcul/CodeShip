@@ -8,7 +8,10 @@ import { turbineTopM } from "../domain/energy";
 import { CREW_PAD, CROWN, HEIGHT_RULE, HELIDECK_M, SITE, TABLE, TRAINING, TREE, TURBINE, TURBINES, TIDAL_UNITS, STORAGE, SOLAR, FLOORS_KW, ELECTRON, FALCON9_CREW, GLACIER, ZERO_G } from "./facts";
 import { tablesFor } from "../domain/energy";
 import { S3_SOURCES as S } from "./sources";
-import { furnishIsland, furnishRoom, type PlacedFixture, type WalkCheck } from "./fixtures";
+import { furnishHelipad, furnishRoom, type PlacedFixture, type WalkCheck } from "./fixtures";
+import { furnishCampus } from "./campus-fixtures";
+import { CAMPUS_ROOMS } from "./campus";
+import { buildHollow, HOLLOW, type HollowPlan, type RoomSize } from "./montana";
 import { buildBiomeIsland } from "./bioma-island";
 
 /**
@@ -50,9 +53,11 @@ export interface AreaDef {
   readonly point: string;
   /** The altitude belt it lies in, on a mountain (the air island's Áreas scope). */
   readonly belt?: { readonly id: string; readonly label: string };
+  /** Its floor's height, where it is not at the sea's level (a room on a giant tree's floor): stages stand on it. */
+  readonly floorY?: number;
 }
 
-export type MachineKind = "navegacion" | "ascensor" | "esterilla" | "puesto" | "simulador" | "lanzamiento";
+export type MachineKind = "navegacion" | "ascensor" | "esterilla" | "puesto" | "simulador" | "lanzamiento" | "cama" | "comedor" | "servicio" | "alfombra";
 
 export interface MachineDef {
   readonly id: string;
@@ -69,6 +74,10 @@ export interface MachineDef {
   readonly lift?: { readonly id: string; readonly stop: number };
   /** For a training post: which one (docs/design/santuario3-iniciacion.md §4.1) and that its challenge is still to come. */
   readonly post?: number;
+  /** For a campus service (kind «servicio»): its challenge (data/campus.ts CAMPUS_RETOS). */
+  readonly reto?: string;
+  /** For a carpet station (kind «alfombra»): its id (data/montana.ts). */
+  readonly station?: string;
 }
 
 export interface LiftDef {
@@ -109,7 +118,9 @@ export interface Prop {
     | "il76"
     | "scott-tent"
     | "snowmobile"
-    | "snow-wall";
+    | "snow-wall"
+    | "giant-tree"
+    | "lake-starship";
   readonly x: number;
   readonly y: number;
   readonly z: number;
@@ -157,6 +168,8 @@ export interface S3Layout {
   readonly installedTables: number;
   /** The real equipment, furniture and fixtures of the training island at true size (data/fixtures.ts). */
   readonly fixtures: readonly PlacedFixture[];
+  /** The hollow mountain's campus: its giant trees, carpet stations and the flooded Starship (data/montana.ts). */
+  readonly hollow: HollowPlan;
   /** Walks that must go through (each sub-room and platform is walkable: reglas.md §2.1). */
   readonly walkChecks: readonly WalkCheck[];
 }
@@ -246,8 +259,8 @@ class Builder {
     this.blocks.push({ ...s, look });
     if (solid) this.solids.push(s);
   }
-  point(id: string, x: number, y: number, z: number, lift?: WayPoint["lift"]): string {
-    this.points.push(lift ? { id, x, y, z, lift } : { id, x, y, z });
+  point(id: string, x: number, y: number, z: number, lift?: WayPoint["lift"], carpet?: string): string {
+    this.points.push({ id, x, y, z, ...(lift ? { lift } : {}), ...(carpet ? { carpet } : {}) });
     return id;
   }
   link(...ids: string[]): void {
@@ -257,8 +270,30 @@ class Builder {
     this.areas.push(a);
   }
   /** Where every list stands now: what is added after it can be widened with `widen`. */
-  mark(): Record<"floors" | "waters" | "solids" | "blocks" | "points" | "areas" | "machines" | "lifts" | "props", number> {
-    return { floors: this.floors.length, waters: this.waters.length, solids: this.solids.length, blocks: this.blocks.length, points: this.points.length, areas: this.areas.length, machines: this.machines.length, lifts: this.lifts.length, props: this.props.length };
+  mark(): Record<"floors" | "waters" | "solids" | "blocks" | "points" | "areas" | "machines" | "lifts" | "props" | "fixtures" | "walkChecks", number> {
+    return { floors: this.floors.length, waters: this.waters.length, solids: this.solids.length, blocks: this.blocks.length, points: this.points.length, areas: this.areas.length, machines: this.machines.length, lifts: this.lifts.length, props: this.props.length, fixtures: this.fixtures.length, walkChecks: this.walkChecks.length };
+  }
+  /**
+   * Carry what was built since `m` by (dx, dy, dz): a training room built at the sea's level is lifted onto its giant
+   * tree's floor inside the mountain (docs/design/montana-hueca.md). Rigid, so whatever was walkable stays walkable.
+   */
+  move(m: ReturnType<Builder["mark"]>, dx: number, dy: number, dz: number): void {
+    const rect = <T extends Rect>(r: T): T => ({ ...r, x0: r.x0 + dx, x1: r.x1 + dx, z0: r.z0 + dz, z1: r.z1 + dz });
+    const box = <T extends Solid>(s: T): T => ({ ...rect(s), y0: s.y0 + dy, y1: s.y1 + dy });
+    const each = <T>(list: T[], from: number, f: (t: T) => T) => {
+      for (let i = from; i < list.length; i++) list[i] = f(list[i]!);
+    };
+    const pt = <T extends { x: number; y: number; z: number }>(p: T): T => ({ ...p, x: p.x + dx, y: p.y + dy, z: p.z + dz });
+    each(this.floors, m.floors, (f) => ({ ...rect(f), y: f.y + dy }));
+    each(this.waters, m.waters, (w) => ({ ...rect(w), yBottom: w.yBottom + dy, yTop: w.yTop + dy }));
+    each(this.solids, m.solids, box);
+    each(this.blocks, m.blocks, box);
+    each(this.points, m.points, pt);
+    each(this.areas, m.areas, (a) => ({ ...a, centre: pt(a.centre), floorY: (a.floorY ?? 0) + dy }));
+    each(this.machines, m.machines, pt);
+    each(this.props, m.props, pt);
+    each(this.fixtures, m.fixtures, pt);
+    each(this.walkChecks, m.walkChecks, (c) => ({ ...c, pts: c.pts.map(pt) }));
   }
   /**
    * The presentation layer's scale (§2.4) on what was built since `m`: the plan (x, z) `k` times wider about `o`,
@@ -519,7 +554,7 @@ function buildCap(b: Builder, island: IslandId, c: { x: number; z: number }, hal
 }
 
 // ── The training island's buildings (real facilities; interiors drawn k times bigger on the plan) ──
-interface RoomItem {
+export interface RoomItem {
   readonly look: string;
   readonly x: number;
   readonly z: number;
@@ -530,7 +565,7 @@ interface RoomItem {
   readonly solid?: boolean;
   readonly prop?: Prop["kind"];
 }
-interface Compartment {
+export interface Compartment {
   readonly id: string;
   readonly label: string;
   readonly desc: string;
@@ -548,7 +583,7 @@ interface Compartment {
   /** For a compartment with no machine: the way (local) from the door's inside point to its middle. */
   readonly via?: readonly { x: number; z: number }[];
 }
-interface RoomMachine {
+export interface RoomMachine {
   readonly id: string;
   readonly kind: MachineKind;
   readonly label: string;
@@ -558,10 +593,11 @@ interface RoomMachine {
   /** In a compartment (its id). */
   readonly inside?: string;
   readonly post?: number;
+  readonly reto?: string;
   /** Way points (local) to reach it from the door's inside point, in order. */
   readonly via?: readonly { x: number; z: number }[];
 }
-interface RoomDef {
+export interface RoomDef {
   readonly id: string;
   readonly label: string;
   readonly desc: string;
@@ -571,7 +607,7 @@ interface RoomDef {
   readonly height: number;
   readonly door: { readonly side: "n" | "s" | "e" | "w"; readonly at: number; readonly width: number };
   /** How its door's outside point reaches the island's roads: straight to the x = 170 road, or to the z = −5 road. */
-  readonly road: "x" | "z";
+  readonly road?: "x" | "z";
   readonly pool?: { x: number; z: number; depth: number };
   readonly items?: readonly RoomItem[];
   readonly compartments?: readonly Compartment[];
@@ -591,7 +627,6 @@ const ROOMS: readonly RoomDef[] = [
     half: { x: 44, z: 28 },
     height: 18,
     door: { side: "s", at: 0, width: 6 },
-    road: "z",
     pool: { x: TRAINING.nblPool.value.x, z: TRAINING.nblPool.value.z, depth: TRAINING.nblPool.value.depth },
     items: [{ look: "maqueta", x: 0, z: 0, w: 8.5, d: 4.3, h: 4.3, y0: -12, prop: "iss-mockup" }],
     machines: [
@@ -607,7 +642,6 @@ const ROOMS: readonly RoomDef[] = [
     half: { x: 22, z: 22 },
     height: 14,
     door: { side: "w", at: -10, width: 3 },
-    road: "x",
     items: [
       { look: "maquina", x: 0, z: 0, w: 4, d: 4, h: 4, prop: "centrifuge" },
       { look: "gondola", x: 18, z: 0, w: 3, d: 3, h: 3 },
@@ -627,7 +661,6 @@ const ROOMS: readonly RoomDef[] = [
     half: { x: 30, z: 18 },
     height: 16,
     door: { side: "n", at: 0, width: 4 },
-    road: "z",
     compartments: [
       { id: "svmf-orion", label: "Maqueta de Orion", desc: "La cápsula Orion a escala real (Ø 5,02 m, 3,3 m de alto), en su soporte con la escalera de acceso", x: 20, z: -10, w: 3, d: 3, h: 3.3, floorY: 0.6, hatch: { side: "w", width: 1.1 }, reality: "real", shell: "capsula", via: [{ x: 0, z: 12 }, { x: 15, z: 12 }, { x: 15, z: -10 }] },
       { id: "svmf-destiny", label: "Maqueta de Destiny", desc: "El laboratorio estadounidense a escala real (8,5 m × Ø 4,3 m) con sus bastidores", x: -12, z: 0, w: TRAINING.destiny.value.length, d: TRAINING.destiny.value.diameter, h: 4.3, floorY: 0.4, hatch: { side: "e", width: 1.3 }, reality: "real", via: [{ x: 0, z: 8 }, { x: -3, z: 8 }, { x: -3, z: 0 }] },
@@ -643,7 +676,6 @@ const ROOMS: readonly RoomDef[] = [
     half: { x: 12, z: 10 },
     height: 6,
     door: { side: "s", at: 8, width: 2.4 },
-    road: "x",
     // The consoles, the screens and the sunken rows are the room's fixtures (data/fixtures.ts).
     machines: [
       { id: "control-director", kind: "puesto", label: "Puesto del director de vuelo", what: "Telemetría, meteorología y la cuenta atrás", x: -2.5, z: -2.4, post: 10, via: [{ x: 10.6, z: -8.4 }, { x: 10.6, z: -3.4 }, { x: -2.5, z: -3.4 }] },
@@ -658,7 +690,6 @@ const ROOMS: readonly RoomDef[] = [
     half: { x: 12, z: 9 },
     height: 4,
     door: { side: "w", at: 0, width: 2 },
-    road: "z",
     items: [{ look: "cinta", x: -3, z: 3.5, w: 2, d: 0.9, h: 1.4 }],
     machines: [{ id: "gimnasio-esterilla", kind: "esterilla", label: "Esterilla de yoga", what: "Sentarse en loto: los ajustes generales", x: 3, z: -1.5 }],
   },
@@ -671,7 +702,6 @@ const ROOMS: readonly RoomDef[] = [
     half: { x: 20, z: 9.75 },
     height: 4,
     door: { side: "n", at: 0, width: 2.4 },
-    road: "x",
     items: [
       { look: "mesa", x: -9, z: 2, w: 3, d: 1, h: 0.75 },
       { look: "camilla", x: -2, z: 2.5, w: 2, d: 0.8, h: 0.7 },
@@ -692,7 +722,6 @@ const ROOMS: readonly RoomDef[] = [
     half: { x: 20, z: 13 },
     height: 10,
     door: { side: "w", at: 6, width: 3 },
-    road: "x",
     // 26 m: a 25 m lane with the touch at both ends (the pool's size is ours).
     pool: { x: 26, z: 12, depth: 5 },
     machines: [{ id: "supervivencia-piscina", kind: "puesto", label: "Prueba de natación y supervivencia en el agua", what: "3 largos de 25 m, otros 3 con el mono, 10 min flotando; la balsa y el izado con el collar", x: -10, z: -8.6, post: 3, via: [{ x: -17, z: 6 }, { x: -17, z: -8.6 }] }],
@@ -706,7 +735,6 @@ const ROOMS: readonly RoomDef[] = [
     half: { x: 10, z: 6.5 },
     height: 6,
     door: { side: "s", at: 0, width: 2.4 },
-    road: "x",
     compartments: [{ id: "simulador-dragon-capsula", label: "Simulador de Crew Dragon", desc: "La cabina a escala real (Ø 4 m): cuatro asientos, las tres pantallas táctiles y los botones bajo la tapa", x: 6, z: 0, w: 4, d: 4, h: 3.5, floorY: 0.6, hatch: { side: "w", width: 1.2 }, reality: "real" }],
     machines: [{ id: "dragon-simulador", kind: "puesto", label: "Simulador de Dragon", what: "Las tres pantallas táctiles, los botones bajo la tapa y el tirador EJECT", x: 6.8, z: 0, inside: "simulador-dragon-capsula", post: 8, via: [{ x: 0, z: -3.5 }, { x: 2, z: -3.5 }, { x: 2, z: 0 }] }],
   },
@@ -719,7 +747,6 @@ const ROOMS: readonly RoomDef[] = [
     half: { x: 10, z: 6.5 },
     height: 6,
     door: { side: "e", at: 0, width: 2.4 },
-    road: "x",
     // The LM's cockpit (drawn by the scene: the lander's own cabin and instruments).
     items: [{ look: "lm-maqueta", x: 0, z: 0, w: 2, d: 2, h: 2.4 }],
     machines: [{ id: "lm-simulador", kind: "simulador", label: "Simulador del LM", what: "El motor de descenso y el RCS del LM: los últimos 150 m del Apolo 11, a mano", x: 2.4, z: 0 }],
@@ -733,7 +760,6 @@ const ROOMS: readonly RoomDef[] = [
     half: { x: 12, z: 6.5 },
     height: 5,
     door: { side: "w", at: 0, width: 2.4 },
-    road: "x",
     compartments: [{ id: "robotica-destiny", label: "Maqueta de Destiny a 3/4", desc: "El laboratorio Destiny a tres cuartos de su tamaño (6,4 × 3,2 m) con la estación de robótica de la ISS", x: 4, z: 0, w: 6.4, d: 3.2, h: 3.2, floorY: 0.3, hatch: { side: "w", width: 1.1 }, reality: "real" }],
     machines: [{ id: "robotica-puesto", kind: "puesto", label: "Estación de robótica", what: "Un portátil, dos mandos (traslación y giro) y tres pantallas con las cámaras del brazo", x: 4.4, z: 0, inside: "robotica-destiny", post: 9, via: [{ x: 0, z: 0 }] }],
   },
@@ -746,7 +772,6 @@ const ROOMS: readonly RoomDef[] = [
     half: { x: 12, z: 6.5 },
     height: 4,
     door: { side: "n", at: 0, width: 2.4 },
-    road: "x",
     machines: [{ id: "trajes-puesto", kind: "puesto", label: "Puesto de trajes", what: "Ponerse el traje de la Crew Dragon, conectarlo y comprobar las fugas antes de ir a la plataforma", x: 2, z: 1.2, post: 13, via: [{ x: 0, z: 3.5 }, { x: 2, z: 3.5 }] }],
   },
 ];
@@ -786,8 +811,7 @@ function buildRoom(b: Builder, r: RoomDef, k: number): void {
   const ins = b.point(`${area}:dentro`, doorAt.x - n.x * 2, 0, doorAt.z - n.z * 2);
   b.link(out, ins);
   const op = b.points.find((p) => p.id === out)!;
-  const road = r.road === "x" ? b.point(`${area}:camino`, ROAD_X, 0, op.z) : b.point(`${area}:camino`, op.x, 0, ROAD_Z);
-  b.link(out, road);
+  if (r.road) b.link(out, r.road === "x" ? b.point(`${area}:camino`, ROAD_X, 0, op.z) : b.point(`${area}:camino`, op.x, 0, ROAD_Z));
   b.area({ id: area, island: "entrenamiento", label: r.label, desc: r.desc, reality: r.reality, centre: { x: c.x, y: r.height / 2, z: c.z }, half: { x: hx, y: r.height / 2, z: hz }, point: ins });
   for (const it of r.items ?? []) {
     const p = P(it.x, it.z);
@@ -837,11 +861,11 @@ function buildRoom(b: Builder, r: RoomDef, k: number): void {
       b.link(prev, id);
       prev = id;
     });
-    b.machine({ id: m.id, kind: m.kind, island: "entrenamiento", area: cp ? `entrenamiento:${cp.id}` : area, label: m.label, what: m.what, x: p.x, y, z: p.z, ...(m.post ? { post: m.post } : {}) }, prev);
+    b.machine({ id: m.id, kind: m.kind, island: "entrenamiento", area: cp ? `entrenamiento:${cp.id}` : area, label: m.label, what: m.what, x: p.x, y, z: p.z, ...(m.post ? { post: m.post } : {}), ...(m.reto ? { reto: m.reto } : {}) }, prev);
     if (m.kind === "esterilla") b.props.push({ kind: "mat", x: p.x, y: 0, z: p.z });
   }
   // The real equipment, furniture and fixtures of the room (data/fixtures.ts), at true size where the room is k times wider.
-  furnishRoom(b, {
+  const frame = {
     id: r.id,
     k,
     centre: c,
@@ -851,7 +875,9 @@ function buildRoom(b: Builder, r: RoomDef, k: number): void {
     inside: ins,
     ...(r.pool ? { pool: r.pool } : {}),
     compartments: (r.compartments ?? []).map((cp) => ({ id: cp.id, ...P(cp.x, cp.z), hx: (cp.w * k) / 2, hz: (cp.d * k) / 2, floorY: cp.floorY, h: cp.h, hatch: cp.hatch.side })),
-  });
+  };
+  furnishRoom(b, frame);
+  furnishCampus(b, frame);
 }
 
 /** The whole sanctuary at drawing scale `k` (1 or 1,5: the presentation layer). */
@@ -859,35 +885,36 @@ export function buildLayout(k = 1): S3Layout {
   const b = new Builder();
   const pads: IslandPad[] = [];
 
-  // ── Training island (real) ──
-  const ti = TRAINING.island.value;
-  // The island's ground around the buildings (inside each, its own floor: the Áreas window says where she is).
-  const halls = ROOMS.map((r) => around(r.centre.x, r.centre.z, r.half.x * k, r.half.z * k));
-  for (const r of subtractAll(R(ti.x0, ti.x1, ti.z0, ti.z1), halls)) b.floor("entrenamiento:isla", 0, r);
-  for (const r of ROOMS) buildRoom(b, r, k);
-  // Roads: the x = 170 and z = −5 lines join every door's road point (in order along them).
-  const roadPts = (axis: "x" | "z") => b.points.filter((p) => p.id.startsWith("entrenamiento:") && p.id.endsWith(":camino") && (axis === "x" ? Math.abs(p.x - ROAD_X) < 1e-6 : Math.abs(p.z - ROAD_Z) < 1e-6));
-  const cross = b.point("entrenamiento:cruce", ROAD_X, 0, ROAD_Z);
-  const heliC = { x: 200, z: -95 };
+  // ── The campus inside the hollow mountain (docs/design/montana-hueca.md): the real training rooms and the campus's
+  // services on the floors of four giant trees, built where they were drawn and carried to their floor ──
+  const ROOM = new Map([...ROOMS, ...CAMPUS_ROOMS].map((r) => [r.id, r]));
+  const size = (id: string): RoomSize => {
+    const r = ROOM.get(id)!;
+    return { hx: r.half.x * k, hz: r.half.z * k, h: r.height, pool: r.pool?.depth ?? 0 };
+  };
   const hd = HELIDECK_M.value / 2;
-  b.floor("entrenamiento:helipuerto", 0.05, around(heliC.x, heliC.z, hd));
-  b.props.push({ kind: "helideck", x: heliC.x, y: 0.05, z: heliC.z, size: { x: hd * 2, y: 0.1, z: hd * 2 } });
-  const heliRoad = b.point("entrenamiento:helipuerto:camino", ROAD_X, 0, heliC.z);
-  const heliEdge = b.point("entrenamiento:helipuerto:borde", heliC.x - hd + 1.5, 0.05, heliC.z);
-  const heliMid = b.point("entrenamiento:helipuerto:centro", heliC.x, 0.05, heliC.z + 4);
-  b.link(heliRoad, heliEdge, heliMid);
-  const pt = (id: string) => b.points.find((p) => p.id === id)!;
-  const xs = [...roadPts("x"), pt(cross)].sort((p, q) => p.z - q.z);
-  b.link(...xs.map((p) => p.id));
-  const zs = [...roadPts("z"), pt(cross)].sort((p, q) => p.x - q.x);
-  b.link(...zs.map((p) => p.id));
-  b.area({ id: "entrenamiento:isla", island: "entrenamiento", label: "Isla de entrenamiento (exterior)", desc: "Una isla con las instalaciones reales de formación de astronautas (§1.2): todo aquí es real", reality: "real", centre: { x: (ti.x0 + ti.x1) / 2, y: 0.5, z: (ti.z0 + ti.z1) / 2 }, half: { x: (ti.x1 - ti.x0) / 2, y: 0.5, z: (ti.z1 - ti.z0) / 2 }, point: cross });
-  b.area({ id: "entrenamiento:helipuerto", island: "entrenamiento", label: "Helipuerto", desc: "Cubierta de 1 D para el S-92 que la trajo; desde aquí se vuela a las demás islas", reality: "real", centre: { x: heliC.x, y: 0.5, z: heliC.z }, half: { x: hd, y: 0.5, z: hd }, point: heliMid });
-  b.machine({ id: "nav-entrenamiento", kind: "navegacion", island: "entrenamiento", area: "entrenamiento:helipuerto", label: "Máquina de navegación", what: "El mapa de las islas: elegir adónde volar en el helicóptero (también al glaciar: vuelo parabólico, meteoritos y frío)", x: heliC.x - hd - 2.5, y: 0, z: heliC.z - 3 }, heliEdge);
-  b.block("kiosco", { ...around(heliC.x - hd - 4.2, heliC.z - 3, 0.5), y0: 0, y1: 1.3 });
-  b.props.push({ kind: "nav-machine", x: heliC.x - hd - 4.2, y: 0, z: heliC.z - 3, rot: Math.PI / 2 });
-  pads.push({ island: "entrenamiento", at: { x: heliC.x, y: 0.05, z: heliC.z }, crafts: ["helicoptero"] });
-  furnishIsland(b, k, { heli: heliC, heliHalf: hd, rooms: ROOMS.map((r) => ({ id: r.id, ...around(r.centre.x, r.centre.z, r.half.x * k, r.half.z * k) })), island: R(ti.x0, ti.x1, ti.z0, ti.z1), road: { x: ROAD_X, z: ROAD_Z } });
+  const hollow = buildHollow(b, k, size, (id) => ROOM.get(id)!.label, (id, at) => {
+    const r = ROOM.get(id)!;
+    const m = b.mark();
+    buildRoom(b, r, k);
+    b.move(m, at.x - r.centre.x, at.y, at.z - r.centre.z);
+  }, hd);
+  // The helipad: outside, on the apron at the south cave's mouth (the walk in is the cave).
+  const heliC = { x: hollow.heli.x, z: hollow.heli.z };
+  const hy = hollow.heli.y;
+  b.floor("entrenamiento:helipuerto", hy, around(heliC.x, heliC.z, hd));
+  b.props.push({ kind: "helideck", x: heliC.x, y: hy, z: heliC.z, size: { x: hd * 2, y: 0.1, z: hd * 2 } });
+  const heliEdge = b.point("entrenamiento:helipuerto:borde", heliC.x, hy, heliC.z + hd - 1.5);
+  const heliMid = b.point("entrenamiento:helipuerto:centro", heliC.x, hy, heliC.z + 4);
+  const cross = b.point("entrenamiento:cruce", heliC.x, hy - 0.05, heliC.z + hd + 6);
+  b.link(heliMid, heliEdge, cross, "entrenamiento:cueva-sur:boca");
+  b.area({ id: "entrenamiento:helipuerto", island: "entrenamiento", label: "Helipuerto del campus", desc: "Cubierta de 1 D para el S-92 en la explanada de la cueva sur: por la cueva se entra al campus de la montaña hueca; desde aquí se vuela a las demás islas", reality: "real", centre: { x: heliC.x, y: hy + 0.5, z: heliC.z }, half: { x: hd, y: 0.5, z: hd }, point: heliMid });
+  const kiosk = { x: heliC.x - hd - 2.5, z: heliC.z + 3 };
+  b.machine({ id: "nav-entrenamiento", kind: "navegacion", island: "entrenamiento", area: "entrenamiento:helipuerto", label: "Máquina de navegación", what: "El mapa de las islas: elegir adónde volar en el helicóptero (también al glaciar: vuelo parabólico, meteoritos y frío)", x: kiosk.x, y: hy, z: kiosk.z }, heliEdge);
+  b.block("kiosco", { ...around(kiosk.x - 1.7, kiosk.z, 0.5), y0: hy, y1: hy + 1.3 });
+  b.props.push({ kind: "nav-machine", x: kiosk.x - 1.7, y: hy, z: kiosk.z, rot: Math.PI / 2 });
+  pads.push({ island: "entrenamiento", at: { x: heliC.x, y: hy, z: heliC.z }, crafts: ["helicoptero"] });
+  furnishHelipad(b, "entrenamiento:helipuerto", heliC, hd, hy);
 
   // ── The aerial sanctuary: three caps of Cold Sanctuary at their coordinates, with all their magic ──
   const L = SITE.launch.value;
@@ -1096,11 +1123,14 @@ export function buildLayout(k = 1): S3Layout {
 
   // ── The biome's island (docs/design/bioma-s3.md): data/bioma-island.ts ──
   const biome = buildBiomeIsland(b, k, HELIDECK_M.value);
+  // The campus's helipad and the caves' mouths on the mountain's trail under the south face.
+  b.link("entrenamiento:cruce", "bioma:sendero-5-3");
+  for (const [cave, trail] of [["suroeste", "bioma:sendero-6-1"], ["sureste", "bioma:sendero-7-1"]] as const) b.link(b.points.some((p) => p.id === `entrenamiento:cueva-${cave}:escalones`) ? `entrenamiento:cueva-${cave}:escalones` : `entrenamiento:cueva-${cave}:boca`, trail);
   const { ground: _ground, ...biomeDef } = biome;
   pads.push(biome.pad);
 
   const islands: IslandDef[] = [
-    { id: "entrenamiento", name: "Isla de entrenamiento", desc: "Las instalaciones reales de formación: la piscina NBL, la centrífuga, las maquetas, el control de misión, el centro médico y el helipuerto. Todo aquí es real", reality: "real", source: S.ours, rect: R(ti.x0, ti.x1, ti.z0, ti.z1), deckY: 0, pad: pads[0]!, arrival: "entrenamiento:helipuerto:centro", nav: "m:nav-entrenamiento" },
+    { id: "entrenamiento", name: "Campus de la montaña", desc: "El campus de los astronautas dentro de la montaña hueca: las instalaciones reales de formación (la piscina NBL, la centrífuga, las maquetas, el control de misión, el centro médico) y los servicios del campus (residencia, restaurante, clínica, aulas, biblioteca, laboratorio, crianza, huerto, taller) en los pisos de cuatro árboles colosales, y el Starship inundado. Se entra por las cuevas", reality: "ficcion", source: S.ours, rect: around(HOLLOW.x, HOLLOW.z, 210), deckY: hy, pad: pads[0]!, arrival: "entrenamiento:helipuerto:centro", nav: "m:nav-entrenamiento" },
     { id: "lanzadera", name: "Lanzadera de cohetes", desc: "El casquete de Cold Sanctuary con su edificio-árbol de agua, el ascensor del tronco y la corona del Electron en lo alto (con toda su magia)", reality: "ficcion", source: S.csBuilder, rect: around(L.x, L.z, LH * k), deckY: 0, pad: pads[1]!, arrival: "lanzadera:helipuerto", nav: "m:nav-lanzadera" },
     { id: "parque", name: "Parque energético", desc: "El casquete del parque: el árbol bajo, el campo solar, los tres E-33 de Ross Island con su parada por aves y la mareal piloto", reality: "ficcion", source: S.csBuilder, rect: around(E.x, E.z, EH * k), deckY: 0, pad: pads.find((p) => p.island === "parque")!, arrival: "parque:anden", nav: "m:nav-parque" },
     { id: "muelle", name: "Muelle aéreo", desc: "El muelle de las alfombras voladoras de Cold Sanctuary", reality: "ficcion", source: S.csBuilder, rect: around(Dk.x, Dk.z, (dz.x / 2) * k, (dz.z / 2) * k), deckY: 0, pad: pads.find((p) => p.island === "muelle")!, arrival: "muelle:pista", nav: "m:nav-muelle" },
@@ -1110,7 +1140,7 @@ export function buildLayout(k = 1): S3Layout {
   ];
 
   const inhabited = [
-    { id: "isla de entrenamiento", ...R(ti.x0, ti.x1, ti.z0, ti.z1) },
+    { id: "campus de la montaña", ...around(HOLLOW.x, HOLLOW.z, 210) },
     { id: "Parque Energético (tronco)", ...around(E.x, E.z, (TREE.waterHalf.value + TREE.wall.value) * k) },
     { id: "muelle aéreo", ...around(Dk.x, Dk.z, (dz.x / 2) * k, (dz.z / 2) * k) },
     { id: "campamento del glaciar", ...around(G.x + (-1440) * k, G.z + -80 * k, 15 * k, 15 * k) },
@@ -1133,6 +1163,7 @@ export function buildLayout(k = 1): S3Layout {
     installedTables,
     fixtures: b.fixtures,
     walkChecks: b.walkChecks,
+    hollow,
   };
 }
 

@@ -603,6 +603,65 @@ function fixtureParts(f: PlacedFixture): Part[] {
       p.push(B(w, 0.04, d, 0, 0.82, 0, DARK), B(0.04, 0.2, 0.04, w / 2 - 0.02, 0.95, 0, STEEL), B(0.3, 0.05, 0.1, -0.1, 0.86, 0, C(0xe8c12a)));
       for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) p.push(Cy(0.05, 0.1, sx! * (w / 2 - 0.08), 0, sz! * (d / 2 - 0.08), DARK, 6));
       return p;
+    // ── The campus (data/campus-fixtures.ts) ──
+    case "cama":
+      p.push(B(w, 0.3, d, 0, 0.15, 0, WOOD), B(w - 0.06, 0.22, d - 0.08, 0, 0.41, 0.02, C(0xf3f1ea)), B(w - 0.08, 0.05, d * 0.6, 0, 0.54, 0.25, C(0x3a6ea5)), B(w * 0.7, 0.1, 0.35, 0, 0.57, -d / 2 + 0.3, WHITE), B(w, 0.7, 0.06, 0, 0.35, -d / 2 + 0.03, WOOD));
+      return p;
+    case "cocina":
+      p.push(B(w, h, d, 0, h / 2, 0, C(0xd5d8db)), B(w, 0.04, d, 0, h + 0.02, 0, DARK), B(w * 0.6, h * 0.45, 0.02, 0, h * 0.35, d / 2 + 0.01, DARK));
+      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) p.push(Cy(0.11, 0.01, sx! * w * 0.2, h + 0.04, sz! * d * 0.2, C(0x555a60), 10));
+      p.push(B(w * 0.8, 0.35, d * 0.7, 0, h + 0.9, -0.05, STEEL));
+      return p;
+    case "nevera":
+      p.push(B(w, h, d, 0, h / 2, 0, WHITE), B(0.03, h * 0.5, 0.03, w / 2 - 0.08, h * 0.55, d / 2 + 0.02, STEEL), B(w, 0.01, 0.01, 0, h * 0.6, d / 2 + 0.005, GREY));
+      return p;
+    case "sofa":
+      p.push(B(w, 0.42, d, 0, 0.21, 0, C(0x5a6b7d)), B(w, 0.45, 0.2, 0, 0.63, -d / 2 + 0.1, C(0x5a6b7d)), B(0.18, 0.25, d, -w / 2 + 0.09, 0.55, 0, C(0x4d5d6e)), B(0.18, 0.25, d, w / 2 - 0.09, 0.55, 0, C(0x4d5d6e)));
+      return p;
+    case "guantera":
+      p.push(B(w, 0.85, d, 0, 0.425, 0, STEEL), B(w, h - 0.85, d * 0.8, 0, 0.85 + (h - 0.85) / 2, -0.05, C(0xb8c0c6)), B(w * 0.85, (h - 0.85) * 0.55, 0.02, 0, 0.85 + (h - 0.85) * 0.5, d * 0.35 + 0.01, GL));
+      for (const sx of [-0.25, 0.25]) p.push(CyX(0.08, 0.06, sx * w, 1.3, d * 0.36, DARK, 12, true));
+      p.push(B(0.35, 0.35, 0.35, w / 2 + 0.17, 1.2, 0, STEEL));
+      return p;
+    case "camara-cultivo":
+      p.push(B(w, h, d, 0, h / 2, 0, WHITE), B(w * 0.85, h * 0.6, 0.02, 0, h * 0.55, d / 2 + 0.01, C(0xc75bd9)));
+      for (let i = 0; i < 3; i++) p.push(B(w * 0.7, 0.12, 0.25, 0, h * 0.35 + i * 0.3, 0.1, C(0x4caf50)));
+      return p;
+    case "estante-cultivo":
+      for (const x of [-w / 2 + 0.02, w / 2 - 0.02]) p.push(B(0.04, h, d, x, h / 2, 0, STEEL));
+      for (let i = 0; i < 4; i++) {
+        const y = 0.3 + i * 0.5;
+        p.push(B(w, 0.03, d, 0, y, 0, STEEL), B(w * 0.9, 0.14, d * 0.8, 0, y + 0.09, 0, C(0x58a55c)), B(w * 0.9, 0.02, 0.06, 0, y + 0.45, 0, C(0xe57cf0)));
+      }
+      return p;
+    case "colmena":
+      p.push(B(w, h, d, 0, h / 2, 0, WOOD), B(w * 0.8, h * 0.75, 0.02, 0, h * 0.5, d / 2 + 0.01, GL));
+      for (let i = 0; i < 3; i++) p.push(B(w * 0.75, h * 0.2, 0.01, 0, h * 0.25 + i * h * 0.22, d / 2 - 0.02, C(0xe0a526)));
+      return p;
+    case "insectario":
+      for (const x of [-w / 2 + 0.02, w / 2 - 0.02]) p.push(B(0.04, h, d, x, h / 2, 0, STEEL));
+      for (let i = 0; i < 4; i++) {
+        const y = 0.25 + i * 0.42;
+        p.push(B(w, 0.03, d, 0, y, 0, STEEL), B(w * 0.42, 0.3, d * 0.8, -w * 0.24, y + 0.16, 0, GL), B(w * 0.42, 0.3, d * 0.8, w * 0.24, y + 0.16, 0, GL));
+        for (let j = 0; j < 4; j++) p.push(Cy(0.03, 0.1, -w * 0.4 + j * w * 0.11, y + 0.02, 0, C(0xd9b36c), 6));
+      }
+      return p;
+    case "impresora-3d":
+      p.push(B(w, 0.75, d, 0, 0.375, 0, C(0x3a3f45)), B(w, h - 0.75, d, 0, 0.75 + (h - 0.75) / 2, 0, GL), B(w * 0.9, 0.03, d * 0.9, 0, 0.8, 0, DARK), B(0.15, 0.1, 0.15, 0, h - 0.15, 0, C(0xe67e22)));
+      return p;
+    case "torno":
+      p.push(B(w, 0.8, d, 0, 0.4, 0, C(0x4a6a8a)), CyX(0.15, w * 0.8, 0, 1.05, 0, STEEL), B(0.4, 0.45, d * 0.8, -w / 2 + 0.2, 1.02, 0, C(0x4a6a8a)));
+      return p;
+    case "fresadora":
+      p.push(B(w, 0.9, d, 0, 0.45, 0, C(0x4a6a8a)), B(w * 0.8, 0.08, d * 0.5, 0, 0.95, 0.2, STEEL), B(0.4, h - 0.9, 0.4, 0, 0.9 + (h - 0.9) / 2, -d / 2 + 0.2, C(0x4a6a8a)), B(0.3, 0.45, 0.5, 0, h - 0.5, 0, C(0x4a6a8a)), Cy(0.05, 0.25, 0, h - 0.95, 0.05, STEEL, 8));
+      return p;
+    case "pupitre":
+      p.push(B(w, 0.03, d, 0, h - 0.015, 0, C(0xd7cbb4)), B(w * 0.9, 0.3, 0.02, 0, h - 0.2, d / 2 - 0.02, STEEL));
+      for (const sx of [-1, 1]) p.push(B(0.04, h - 0.03, d * 0.8, sx * (w / 2 - 0.05), (h - 0.03) / 2, 0, STEEL));
+      return p;
+    case "sillon-dental":
+      p.push(Cy(0.25, 0.4, 0, 0, 0.2, STEEL, 12), B(w, 0.15, d * 0.6, 0, 0.5, 0.25, C(0x2e86c1)), B(w, 0.6, 0.15, 0, 0.85, -0.25, C(0x2e86c1)), B(0.6, 0.06, 0.4, 0.7, 1.3, 0.2, WHITE), Cy(0.03, 1.2, 0.7, 0, -0.2, STEEL, 6));
+      return p;
     case "mesa-reunion":
       p.push(B(w, 0.05, d, 0, h - 0.025, 0, C(0xd7cbb4)), B(0.1, h - 0.05, d * 0.6, -w / 2 + 0.3, (h - 0.05) / 2, 0, STEEL), B(0.1, h - 0.05, d * 0.6, w / 2 - 0.3, (h - 0.05) / 2, 0, STEEL), B(0.35, 0.02, 0.25, -0.5, h + 0.01, 0, C(0xffffff)), B(0.35, 0.02, 0.25, 0.4, h + 0.01, 0.1, C(0x3a6ea5)));
       return p;

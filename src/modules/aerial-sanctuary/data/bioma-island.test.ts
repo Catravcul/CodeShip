@@ -15,8 +15,8 @@ describe("the air island in the walk world", () => {
       const a = L.areas.find((q) => q.id === `bioma:${z.id}`)!;
       expect(a.belt?.id).toBe(beltAt(z.point.x, z.point.z).belt.id);
     }
-    // Nothing of the other islands overlaps it.
-    for (const o of L.islands.filter((i) => i.id !== "bioma")) {
+    // Nothing of the other islands overlaps it (the campus is inside its mountain: docs/design/montana-hueca.md).
+    for (const o of L.islands.filter((i) => i.id !== "bioma" && i.id !== "entrenamiento")) {
       const apart = o.rect.x1 < isl.rect.x0 || o.rect.x0 > isl.rect.x1 || o.rect.z1 < isl.rect.z0 || o.rect.z0 > isl.rect.z1;
       expect(apart, o.id).toBe(true);
     }

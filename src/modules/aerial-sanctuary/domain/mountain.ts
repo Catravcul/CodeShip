@@ -39,6 +39,70 @@ export interface MountainDef {
   readonly altitudePerM: number;
   /** Steepest ground she walks on (rad). */
   readonly walkSlope: number;
+  /** The hollow pyramid buried under the mountain and its caves (Berón 2026-11-25), if it has one. */
+  readonly core?: MountainCore;
+}
+
+/**
+ * THE ARTIFICIAL MOUNTAIN (Berón 2026-11-25: «la montaña pasará a ser una montaña artificial, tendrá cuevas hacia su
+ * interior que estará hueco… imagino que la construcción es una pirámide que ha sido cubierta por tierra y piedra hasta
+ * llegar a parecer una montaña»): a square pyramid (centre, half base, base level, height) buried under at least
+ * `cover` m of earth and stone, and the caves that bore into it, each a straight tunnel at its floor level from the
+ * mouth on the slope to the pyramid's wall. Local m, as the rest of the mountain.
+ */
+export interface MountainCore {
+  readonly x: number;
+  readonly z: number;
+  readonly half: number;
+  readonly baseY: number;
+  readonly height: number;
+  readonly cover: number;
+  readonly caves: readonly CaveDef[];
+}
+
+export interface CaveDef {
+  readonly id: string;
+  /** From the mouth (on the slope) to the end (at the pyramid's inner wall), local m. */
+  readonly from: { readonly x: number; readonly z: number };
+  readonly to: { readonly x: number; readonly z: number };
+  /** Its floor's height (over the lake inside: the caves never end under water). */
+  readonly y: number;
+  /** Half its width, and its height to the vault, m. */
+  readonly half: number;
+  readonly vault: number;
+}
+
+/** The pyramid's own height at (x, z) (its outer face), or −∞ off it. */
+export function pyramidTop(c: MountainCore, x: number, z: number): number {
+  const d = Math.max(Math.abs(x - c.x), Math.abs(z - c.z));
+  return d > c.half ? -Infinity : c.baseY + c.height * (1 - d / c.half);
+}
+
+/** The least height of the ground over the buried pyramid: its face plus the cover, falling at 45° past its base. */
+function coverAt(c: MountainCore, x: number, z: number): number {
+  const d = Math.max(Math.abs(x - c.x), Math.abs(z - c.z));
+  return d <= c.half ? c.baseY + c.height * (1 - d / c.half) + c.cover : c.baseY + c.cover - (d - c.half);
+}
+
+/** Distance from (x, z) to a cave's line, and how far along it (0 the mouth … 1 the end). */
+export function caveAt(cave: CaveDef, x: number, z: number): { q: number; t: number } {
+  const dx = cave.to.x - cave.from.x;
+  const dz = cave.to.z - cave.from.z;
+  const L2 = dx * dx + dz * dz;
+  const t = Math.max(0, Math.min(1, ((x - cave.from.x) * dx + (z - cave.from.z) * dz) / L2));
+  return { q: Math.hypot(x - (cave.from.x + dx * t), z - (cave.from.z + dz * t)), t };
+}
+
+/** The open cut at a cave's mouth: where the ground is lower than its vault the ground is dug down to its floor. */
+function caveCut(c: MountainCore, x: number, z: number, h: number): number {
+  for (const cave of c.caves) {
+    const { q } = caveAt(cave, x, z);
+    if (q > cave.half + 6) continue;
+    if (h <= cave.y - 0.05 || h >= cave.y + cave.vault + 2) continue;
+    const floor = cave.y - 0.05;
+    h = q <= cave.half ? floor : floor + (h - floor) * smooth(cave.half, cave.half + 6, q);
+  }
+  return h;
 }
 
 /** The sea's surface (layout.ts SEA_Y). */
@@ -186,6 +250,14 @@ function trailHeight(m: MountainDef, p: { readonly x: number; readonly z: number
 
 /** The ground's height at local (x, z): the massif and its trails, with the gorge cut into it down to its river. */
 export function heightAt(m: MountainDef, x: number, z: number): number {
+  const h = natural(m, x, z);
+  if (!m.core) return h;
+  // The buried pyramid: never less than its cover over it; the caves' mouths cut into the slope.
+  return caveCut(m.core, x, z, Math.max(h, coverAt(m.core, x, z)));
+}
+
+/** The ground before the pyramid was buried in it. */
+function natural(m: MountainDef, x: number, z: number): number {
   // The flats win over the trails that leave them (a trail starts at the flat's height and climbs from its edge).
   const h = levelled(m, x, z, trails(m, x, z, massif(m, x, z)));
   const g = gorgeAt(m, x, z);

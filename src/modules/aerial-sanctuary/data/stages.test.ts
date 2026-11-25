@@ -29,7 +29,7 @@ for (const k of [1, 1.5]) {
           // On a rig (the gondola, the plane's cabin) she rides it: its own body is not in anyone's way.
           if (s.mounted.includes(name as never)) continue;
           // Lying on the couch, seated on the couch's edge or in the raft, she rests on it: only the body above it counts.
-          const above = name === "camilla-tumbada" ? p!.y + 0.05 : name === "camilla-sentada" ? 0.72 : p!.y + 0.1;
+          const above = name === "camilla-tumbada" ? p!.y + 0.05 : name === "camilla-sentada" ? p!.y + 0.52 : p!.y + 0.1;
           const hit = inSolid(L.world.solids, p!.x, p!.z, above, p!.y + 1.5);
           expect(hit, `${post} ${name} en (${p!.x.toFixed(1)}, ${p!.z.toFixed(1)})`).toBeUndefined();
         }
@@ -61,7 +61,7 @@ for (const k of [1, 1.5]) {
       expect(Math.abs(s.lap!.to.x - s.lap!.from.x)).toBeCloseTo(25 * k, 6);
       const bottom = stageFor(L, 7)!.her.fondo!;
       expect(bottom.y).toBeCloseTo(pool.yBottom + 0.05, 6);
-      const mock = L.blocks.find((b) => b.look === "maqueta" && b.y0 < -10)!;
+      const mock = L.blocks.find((b) => b.look === "maqueta" && b.y0 < pool.yBottom + 2)!;
       expect(bottom.z < mock.z0 - 0.3 || bottom.z > mock.z1 + 0.3).toBe(true);
     });
   });

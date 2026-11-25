@@ -78,7 +78,8 @@ export class BiomeScene {
   private nearAt = new THREE.Vector3(1e9, 0, 0);
   private readonly nearCache = new Map<string, Placed | null>();
   private cover: Readonly<Record<string, number>> = {};
-  private readonly soarers = new Set(["buitre", "quebrantahuesos", "aguila"]);
+  /** Gliders: their wings held still in the air (the Apollo butterfly sails between beats; birds of other biomes). */
+  private readonly soarers = new Set(["mariposa", "buitre", "quebrantahuesos", "aguila"]);
 
   constructor(readonly k: number, def: BiomeDef) {
     this.C = BIOME_ISLAND.centre.value;
@@ -444,14 +445,19 @@ export class BiomeScene {
   }
 
   private addAnimals(def: BiomeDef): void {
+    const k = def.drawScale ?? 1;
+    const big = (z: { x: number; y: number; z: number }, f = 1) => ({ x: z.x * k * f, y: z.y * k * f, z: z.z * k * f });
     for (const s of def.species.filter((x): x is AnimalSpec => x.kind === "animal")) {
       const shape = s.shape === "pajaro" ? "ave" : s.shape;
-      const adult: HerdModel = { id: s.id, shape, size: s.size, color: s.color, category: "animal", group: "bioma" };
-      // The young: kids and cubs as their parents, small; chicks of every bird as downy upright chicks.
+      const adult: HerdModel = { id: s.id, shape, size: big(s.size), color: s.color, category: "animal", group: "bioma" };
+      // The young: an insect's larva (a grub, a caterpillar) or its nymph (wing buds), at the adult's size (the pose
+      // scales it); a mammal's young as its parents, small; chicks of every bird as downy upright chicks.
       const young: HerdModel =
-        shape === "cuadrupedo"
-          ? { id: s.id, shape, size: s.size, color: s.color, category: "animal", group: "bioma" }
-          : { id: "polluelo-pinguino", shape: "pinguino", size: { x: s.size.z * 0.6, y: s.size.z * 0.9, z: s.size.z * 0.6 }, color: s.id === "buitre" || s.id === "quebrantahuesos" ? 0xd8d0c4 : 0x8a8070, category: "animal", group: "bioma" };
+        shape === "insecto"
+          ? { id: s.nymph ? `${s.id}-ninfa` : `larva-${s.id}`, shape, size: big(s.size), color: s.color, category: "animal", group: "bioma" }
+          : shape === "cuadrupedo"
+            ? { id: s.id, shape, size: s.size, color: s.color, category: "animal", group: "bioma" }
+            : { id: "polluelo-pinguino", shape: "pinguino", size: { x: s.size.z * 0.6, y: s.size.z * 0.9, z: s.size.z * 0.6 }, color: 0x8a8070, category: "animal", group: "bioma" };
       const extra = NEAR_CAP[s.id] ?? { adult: 0, young: 0 };
       const n = Math.ceil(s.cap * 1.6) + s.young * 3 + extra.adult;
       const a = new AnimalHerd(adult, n, undefined, { merged: true });
@@ -545,8 +551,16 @@ export class BiomeScene {
         const n = Math.min(near.length, herd.capacity);
         this.crowdN.set(key, n);
         for (let i = 0; i < n; i++) {
-          if (!resorted && (i + this.frameNo) % 3) continue;
           const c = near[i]!;
+          // A worker flies (or walks) its round about the nest every frame, wings beating; the rest breathe.
+          if (c.orbit) {
+            const o = c.orbit;
+            const a = Math.atan2(c.z - o.cz, c.x - o.cx) + o.w * Math.PI * 2 * t;
+            const bob = o.h > 0 ? Math.sin(t * 1.7 + c.seed) * 0.4 : 0;
+            herd.pose(i, o.cx + Math.cos(a) * o.r, c.y + bob, o.cz + Math.sin(a) * o.r, o.w > 0 ? -a : Math.PI - a, t + c.seed * 0.37, true, 1);
+            continue;
+          }
+          if (!resorted && (i + this.frameNo) % 3) continue;
           herd.pose(i, c.x, c.y, c.z, c.yaw, t + c.seed * 0.37, false, key.endsWith(":cria") ? 0.55 : 1);
         }
       }
@@ -563,7 +577,7 @@ export class BiomeScene {
       const k = young ? u[1] : u[0];
       if (k >= herd.capacity) continue;
       const flaps = p.moving && !(p.flying && this.soarers.has(p.species));
-      herd.pose(k, p.x, p.y, p.z, p.yaw, t + p.id, flaps, Math.max(0.05, young && h.young.d.shape !== "cuadrupedo" ? p.scale * 1.4 : p.scale));
+      herd.pose(k, p.x, p.y, p.z, p.yaw, t + p.id, flaps, Math.max(0.05, young && h.young.d.shape !== "cuadrupedo" && h.young.d.shape !== "insecto" ? p.scale * 1.4 : p.scale));
       if (young) u[1]++;
       else u[0]++;
       used.set(p.species, u);

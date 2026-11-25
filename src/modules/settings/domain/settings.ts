@@ -35,6 +35,9 @@ export const ANIMALS_PER_PERSON: readonly AnimalsPerPerson[] = ["3", "4", "5", "
 /** How long sanctuary 1's octopus egg takes to hatch, minutes (Berón 2026-11-24: «unas 2 horas»; 1–10 to watch it). */
 export type PulpoMinutes = "1" | "3" | "10" | "120";
 export const PULPO_MINUTES: readonly PulpoMinutes[] = ["1", "3", "10", "120"];
+/** How long sanctuary 3's cloud-globe honeybee takes from egg to adult, minutes (its sibling: the same choices). */
+export type AbejaMinutes = PulpoMinutes;
+export const ABEJA_MINUTES: readonly AbejaMinutes[] = PULPO_MINUTES;
 /** What the first input of a session was. */
 export type FirstInput = "tecla" | "toque" | "raton";
 
@@ -65,6 +68,7 @@ export interface GameSettings {
   readonly woodGrid: WoodGrid;
   readonly animalsPerPerson: AnimalsPerPerson;
   readonly pulpoMinutes: PulpoMinutes;
+  readonly abejaMinutes: AbejaMinutes;
 }
 
 export const CHALLENGE_VIEWS: readonly ChallengeView[] = ["panel", "hud"];
@@ -92,6 +96,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   woodGrid: "4",
   animalsPerPerson: "4",
   pulpoMinutes: "3",
+  abejaMinutes: "3",
 };
 
 /**
@@ -153,5 +158,6 @@ export function parseSettings(raw: string | null, env: { touchCapable: boolean; 
     woodGrid: oneOf(o?.woodGrid, WOOD_GRIDS, DEFAULT_SETTINGS.woodGrid),
     animalsPerPerson: oneOf(o?.animalsPerPerson, ANIMALS_PER_PERSON, DEFAULT_SETTINGS.animalsPerPerson),
     pulpoMinutes: oneOf(o?.pulpoMinutes, PULPO_MINUTES, DEFAULT_SETTINGS.pulpoMinutes),
+    abejaMinutes: oneOf(o?.abejaMinutes, ABEJA_MINUTES, DEFAULT_SETTINGS.abejaMinutes),
   };
 }

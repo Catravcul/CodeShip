@@ -3,6 +3,13 @@
 Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documento. El historial anterior al
 2026-11-18 está en git y en `docs/design/`.
 
+## 2026-11-25
+
+- **Mandos alrededor de los joysticks** (todos los botones de la Switch en dos anillos alrededor de «Moverse» y «Mirar»,
+  también en 0 g), **la Y dice el reto en una palabra** («Boxeo», «Cocina», «Natación», «Hipoxia»: `retoWord`) y
+  **pantalla de carga en los santuarios 3 y 6**, regla para todos ([reglas.md](docs/design/reglas.md) §5,
+  [ux-acciones.md](docs/design/ux-acciones.md)).
+
 ## 2026-11-24
 
 - **Hábitat acuático (AQH)**: en sus retos la cámara encuadra las cámaras, sus manos y la tableta que lee, sobre la hoja

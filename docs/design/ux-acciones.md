@@ -106,7 +106,7 @@ Capturas (antes / después), en `docs/screenshots/`:
 
 Salas a pie con cámara de casa de muñecas: arriba a la izquierda dónde está; arriba a la derecha el ojo (3ª/1ª persona, V) y Tareas (T); abajo MOVERSE y MIRAR; la tarjeta de la máquina junto a la que está, abajo (móvil) o abajo a la derecha (escritorio), con su acción principal (Intro). Un toque sobre una máquina la lleva andando. En el puente, bajo el título, la lista corta de avisos y una luz de color en cada consola. Con un reto abierto, todo eso se oculta (como H26).
 
-### Mandos de la Switch, iguales en todos los niveles (2026-11-19, reglas.md §5.7–5.8)
+### Mandos de la Switch, iguales en todos los niveles (2026-11-19, reglas.md §5.7–5.8; alrededor de los joysticks desde el 2026-11-25, §5.1–5.2)
 
 Berón: «un solo sistema para todos los niveles, no copias». Los santuarios 1 y 3 y las salas a pie de las naves (las
 cubiertas de la Starship, la estación, la cabina del LM y el puente) usan el mismo mando (`src/ui/game-pad.ts` sobre
@@ -124,6 +124,41 @@ cubiertas de la Starship, la estación, la cabina del LM y el puente) usan el mi
 | Captura | Vista (1.ª/3.ª) | Vista | Vista |
 | Inicio | Ajustes generales (y «Pantalla de inicio») | Ajustes (guarda y vuelve al inicio) | Ajustes (guarda y vuelve al inicio) |
 
+- **Los botones orbitan los joysticks** (Berón, 2026-11-25; [reglas.md](reglas.md) §5.1). Ya no hay bloques al lado de
+  cada joystick (el diamante y la cruceta quedaban lejos del pulgar): cada botón va en uno de dos anillos alrededor de
+  su joystick, en un arco hacia dentro y hacia arriba (`action-pad.css`: cada botón tiene su ángulo `--a` y el radio de
+  su anillo; el de la derecha es el espejo del de la izquierda).
+
+  | Anillo | «Moverse» (izquierda), de fuera a dentro | «Mirar» (derecha), de fuera a dentro |
+  | --- | --- | --- |
+  | Dentro (90 px del centro del joystick, a un pulgar sin soltarlo) | ◀ 130°, ▲ 96°, ▶ 62°, ▼ 28° | A 50°, X 84°, Y 118° (naranja, 54 px, 96 px), B 152° |
+  | Fuera (148 px) | ZL 114°, L 95,5°, «−» 77°, captura 58,5° | ZR 66°, R 84,5°, «+» 103°, inicio 121,5° |
+
+  Los ángulos se cuentan desde la derecha en sentido antihorario. Los límites: a 375 px de ancho (iPhone SE) los
+  botones de los dos lados no se tocan en el centro (por eso el anillo de dentro no baja de 28° y el de fuera de 58°), y
+  ninguno sale por el borde (130° y 114°). Todos son redondos y de 44 px (con cuadrados redondeados se tocaban en las
+  diagonales). En 0 g la cruceta de saltos (`.zg-pad`, 168 px) ocupa el sitio de «Moverse»: los de la izquierda la
+  orbitan con anillos de 114 y 166 px (sus flechas llegan a 84 px del centro) y, en horizontal, el anillo de fuera gira
+  hacia dentro (55° a 5°) para no tapar la ficha de estado de arriba. Comprobado sin solapes (huecos de 3 px o más entre
+  botones, joysticks, flechas y fichas) en iPhone 13 vertical y horizontal, iPhone SE vertical y horizontal y 1280 × 800,
+  en los santuarios 1 y 3 y en la Starship en 0 g:
+
+  | Santuario 1 (vertical) | Santuario 1 (horizontal) | Santuario 3 (vertical) | Santuario 3 (horizontal) |
+  | --- | --- | --- | --- |
+  | ![](../screenshots/mandos-orbita-s1-vertical.png) | ![](../screenshots/mandos-orbita-s1-horizontal.png) | ![](../screenshots/mandos-orbita-s3-vertical.png) | ![](../screenshots/mandos-orbita-s3-horizontal.png) |
+  | **iPhone SE (3, centrífuga)** | **0 g, vertical** | **0 g, horizontal** | **Escritorio** |
+  | ![](../screenshots/mandos-orbita-s3-iphone-se.png) | ![](../screenshots/mandos-orbita-0g-vertical.png) | ![](../screenshots/mandos-orbita-0g-horizontal.png) | ![](../screenshots/mandos-orbita-escritorio.png) |
+
+- **La Y dice de qué va el reto en una palabra** (Berón, 2026-11-25; [reglas.md](reglas.md) §5.2): «Boxeo» junto a los
+  sacos, «Cocina» en la cocina, «Natación», «Hipoxia», «Centrífuga» en los puestos del 3, «Fauna» en la mesa de campo,
+  «Robótica», «Reparación», «Mantenimiento» o «Cocina» en las tarjetas de las naves. La da `retoWord` / `retosWord`
+  (`modules/chores/domain/palabra.ts`): el campo `palabra` del reto si lo tiene (p. ej. «Canto» en el micrófono, que por
+  su id sería «Música»), si no su id, su título o el nombre de la máquina, y su tipo. El santuario 1 la saca de sus retos
+  (`retoTag` en `sanctuary-one/application/challenges.ts`); el 3 y las naves, de los botones de reto de la tarjeta
+  (`ui/machine-panel.ts`: `data-palabra`, el id de `chore:`/`brazo:`, `data-title` y el nombre de la máquina); los
+  demás (`offerReto`, `retoButton`), del nombre de la cosa. Con varios retos de tipos distintos dice «Retos». El nombre
+  completo sigue siendo el nombre accesible. Sin mando, el botón naranja bajo la raíz dice lo mismo. Una máquina que no
+  da reto también cabe en una palabra en la Y («Escotilla», «Puesto»).
 - En ingravidez no se corre, salta ni trepa (§2.6): ella se mueve a saltos con las flechas de la escena; por eso A, B y X
   salen apagados en vez de inventarles otro uso.
 - Lo que está en el mando (Vista, Tareas o Misiones, Áreas) no brota del engranaje (`data-pad` en `RootItem.pad`); el
@@ -272,3 +307,18 @@ No es una lista: una interfaz nueva queda oculta durante los retos sin que nadie
 | Después | ![](../screenshots/foco-puente-viaje-movil.png) | ![](../screenshots/foco-estacion-importar-movil.png) | ![](../screenshots/foco-hangar-pieza-movil.png) | ![](../screenshots/foco-anillo-avisos-movil.png) |
 
 **Cómo se comprueba.** `j.onlyChallengeVisible()` (`tools/experiencia/lib.mjs`) recorre todos los elementos fuera de la hoja, la escena y lo marcado, y falla si alguno pinta algo en la pantalla (texto, fondo, borde, imagen o control) o si un toque en una rejilla de 12 px cae en él. `j.waitDuel()` lo llama cada vez que un recorrido abre un reto, así que lo cumplen todos los recorridos; PX-25 (`foco`) abre cada clase de reto en cada sitio, con toques, y guarda una captura de cada uno en `docs/screenshots/foco-<sitio>-movil.png`.
+
+## 8. Pantallas de carga (2026-11-25, reglas.md §5.3)
+
+Todos los santuarios equivalentes: al elegir un nivel, `boot.ts` muestra su pantalla de carga (`ui/loading-screen.ts`,
+el dibujo de `ui/loading-pictures.ts` y «Cargando» con su último punto parpadeando) y cada juego la quita en su primer
+fotograma con `doneLoading()` (`sanctuary-one.ts`, `aerial-sanctuary.ts` y `main.ts`; también al pasar del 3 al 6).
+
+| Santuario | Dibujo | Captura |
+| --- | --- | --- |
+| 1 Terrestre | Casquetes y mar, árboles con pisos, el globo de las ballenas con el huevo de pulpo, una alfombra | — |
+| 3 Aéreo | La montaña-pirámide cubierta de tierra con sus cuevas que brillan, los árboles colosales dentro asomando por la entrada, nubes, el globo de nubes con su abeja, una libélula y una mariposa gigantes, alfombras voladoras | ![](../screenshots/carga-s3.png) |
+| 6 Espacio | La Starship, la ISS, un asteroide que gira y las estrellas, sobre el borde de la Tierra | ![](../screenshots/carga-s6.png) |
+
+`PICTURES` está tipado por `LevelId`: un nivel nuevo no compila sin su clave, y `loading-pictures.test.ts` falla si un
+nivel jugable no tiene dibujo (o si dos dibujos repiten un id de SVG).

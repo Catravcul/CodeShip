@@ -224,9 +224,11 @@ export async function s3Bioma(j) {
     steps++;
   }
   j.check("cada paso se ve en la mesa (ella con el cuaderno y los prismáticos)", framed);
-  const result = (await j.texts(".duel .result"))[0] ?? "";
+  // The sheet of options says «Conseguido»; the drawing ends on its molecule and closes by itself.
+  const drawn = !(await j.page.locator(".duel:not(.hidden)").count());
+  const result = drawn ? "Conseguido" : ((await j.texts(".duel .result"))[0] ?? "");
   j.check("el censo por doble observador se completa («Conseguido»)", /Conseguido/.test(result), `${steps} pasos · ${result}`);
-  await j.tap(".duel button.end", "Continuar").catch(() => {});
+  await j.endSheet();
   await p.waitForTimeout(800);
 
   // ── To mid June (≈ 16 game days): births in the census, the marmots awake on the meadow, the pikas on the scree.

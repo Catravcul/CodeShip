@@ -110,13 +110,15 @@ async function doPost(j, n, title, label, expectThings) {
     await p.waitForTimeout(700);
   }
   for (const t of await p.evaluate(() => (clearInterval(window.__s3timer), [...window.__s3seen]))) seen.add(t);
-  const result = (await j.texts(".duel .result"))[0] ?? "";
-  j.check(`${title}: el reto se completa («Conseguido»)`, /Conseguido/.test(result), result);
+  // The sheet of options says «Conseguido»; the drawing ends on its molecule and closes (its pass is checked below).
+  const drawn = !(await p.locator(".duel:not(.hidden)").count());
+  const result = drawn ? "" : ((await j.texts(".duel .result"))[0] ?? "");
+  if (!drawn) j.check(`${title}: el reto se completa («Conseguido»)`, /Conseguido/.test(result), result);
   j.check(`${title}: cada paso se ve en el sitio, con los objetos (${expectThings.join(", ")})`, expectThings.every((t) => seen.has(t)), [...seen].join(", "));
   await capture(j, `${label}-reto`, `${title}: la hoja del reto y la escena`, false);
   const only = await j.outsideChallenge().catch(() => null);
-  if (only) j.check(`${title}: con el reto abierto solo se ven la hoja y la escena (reglas §4.3)`, only.length === 0, JSON.stringify(only).slice(0, 200));
-  await j.tap(".duel button.end", "Continuar");
+  if (only && !drawn) j.check(`${title}: con el reto abierto solo se ven la hoja y la escena (reglas §4.3)`, only.length === 0, JSON.stringify(only).slice(0, 200));
+  await j.endSheet();
   const after = await until(j, (s) => s.mode === "libre", 30000);
   j.check(`${title}: el puesto queda superado y ella vuelve a andar`, after.passed.includes(n) && after.mode === "libre", JSON.stringify({ passed: after.passed, mode: after.mode }));
   return who;
@@ -154,16 +156,12 @@ export async function s3Iniciacion(j) {
   // «Paso a paso»: each block placed right is acted at once.
   await j.tap('.s3-ui .cab-machine:not(.hidden) [data-act="reto"]', "Empezar el reto: Selección");
   await j.waitDuel();
-  const toggle = (await j.texts(".duel .order-toggle"))[0] ?? "";
-  if (/Paso a paso/.test(toggle)) await j.tap(".duel .order-toggle", "Paso a paso");
-  const ex1 = await p.evaluate(oracle);
-  await p.locator(`.duel .tray [data-id="${ex1.solution[0]}"]`).first().waitFor({ timeout: 5000 });
-  await j.tapAt(p.locator(`.duel .tray [data-id="${ex1.solution[0]}"]`));
+  await j.firstStep(oracle);
   await p.waitForTimeout(1200);
   const b1 = await scene(p);
   j.check("paso a paso, el primer bloque bien se ve al momento: la solicitud sobre la mesa del tribunal", b1.shown.includes("carpeta"), JSON.stringify(b1));
   await capture(j, "tribunal-paso", "Puesto 1: la carpeta sobre la mesa", false);
-  await j.tap(".duel [data-act='close']", "Cerrar el reto");
+  await j.closeChallenge();
   await until(j, (s) => s.mode === "libre", 15000);
   await j.showPanel(".s3-ui .cm-who");
   await doPost(j, 1, "Puesto 1, selección", "tribunal", ["carpeta", "acreditacion", "sello"]);
@@ -182,10 +180,7 @@ export async function s3Iniciacion(j) {
   j.check("el puesto 3 está en la piscina de supervivencia, la del METS, la balsa y el izado", /Supervivencia en el agua/.test(where3), where3);
   await j.tap('.s3-ui .cab-machine:not(.hidden) [data-act="reto"]', "Empezar el reto: Natación");
   await j.waitDuel();
-  const toggle3 = (await j.texts(".duel .order-toggle"))[0] ?? "";
-  if (/Paso a paso/.test(toggle3)) await j.tap(".duel .order-toggle", "Paso a paso");
-  const ex3 = await p.evaluate(oracle);
-  await j.tapAt(p.locator(`.duel .tray [data-id="${ex3.solution[0]}"]`));
+  await j.firstStep(oracle);
   const xs = [];
   for (let k = 0; k < 10; k++) {
     await p.waitForTimeout(500);
@@ -194,7 +189,7 @@ export async function s3Iniciacion(j) {
   const span = Math.max(...xs) - Math.min(...xs);
   j.check("los largos se nadan: ella va de un extremo al otro de la piscina", span > 10, xs.map((x) => x.toFixed(1)).join(" "));
   await capture(j, "natacion-largo", "Puesto 3: un largo de la piscina", false);
-  await j.tap(".duel [data-act='close']", "Cerrar el reto");
+  await j.closeChallenge();
   await until(j, (s) => s.mode === "libre", 20000);
   await j.showPanel(".s3-ui .cm-who");
   await doPost(j, 3, "Puesto 3, natación y supervivencia", "natacion", ["balsa", "arnes"]);
@@ -238,7 +233,7 @@ export async function s3Iniciacion(j) {
     await j.answer(oracle, true);
     await p.waitForTimeout(600);
   }
-  await j.tap(".duel button.end", "Continuar");
+  await j.endSheet();
   const f1 = await until(j, (s) => s.mode === "vuelo" && s.craftY > 40, 60000);
   j.check("con el programa bien, el piloto automático despega y se ve el vuelo", f1.mode === "vuelo" && f1.craftY > 40, JSON.stringify({ mode: f1.mode, y: f1.craftY }));
   const bar = (await j.texts(".s3-bar .jb-text"))[0] ?? "";

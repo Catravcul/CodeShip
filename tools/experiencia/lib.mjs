@@ -558,6 +558,52 @@ export class Journey {
     return this.tapAt(this.page.locator(".duel .submit"));
   }
 
+  /** Sanctuary 3's drawing sheet is open (docs/design/retos-trazos.md). */
+  async tracing() {
+    return this.page.evaluate(() => !!window.codeshipS3?.trace?.state);
+  }
+
+  /**
+   * The challenge's first step, right: on the drawing, its first glyph traced stroke by stroke; on the sheet of
+   * options «Paso a paso», its first block placed.
+   */
+  async firstStep(oracle) {
+    if (await this.tracing()) {
+      const g0 = await this.page.evaluate(() => window.codeshipS3.trace.state.glyph);
+      for (let k = 0; k < 20; k++) {
+        const st = await this.page.evaluate(() => window.codeshipS3.trace.state);
+        if (!st || st.glyph !== g0) return true;
+        const paths = await this.page.evaluate(() => window.codeshipS3.trace.ideal());
+        if (!paths.length) return true;
+        const [a, ...rest] = paths[0];
+        await this.page.mouse.move(a.x, a.y);
+        await this.page.mouse.down();
+        for (const q of rest) await this.page.mouse.move(q.x, q.y, { steps: 2 });
+        await this.page.mouse.up();
+        await this.page.waitForTimeout(150);
+      }
+      return true;
+    }
+    const toggle = (await this.texts(".duel .order-toggle"))[0] ?? "";
+    if (/Paso a paso/.test(toggle)) await this.tap(".duel .order-toggle", "Paso a paso");
+    const ex = await this.page.evaluate(oracle);
+    await this.page.locator(`.duel .tray [data-id="${ex.solution[0]}"]`).first().waitFor({ timeout: 5000 });
+    return this.tapAt(this.page.locator(`.duel .tray [data-id="${ex.solution[0]}"]`));
+  }
+
+  /** Close the open challenge without finishing it (the drawing's × or the sheet's). */
+  async closeChallenge() {
+    if (await this.page.locator(".trace:not(.hidden) .trace-close").count()) return this.tap(".trace .trace-close", "Cerrar el reto");
+    return this.tap(".duel [data-act='close']", "Cerrar el reto");
+  }
+
+  /** Close the challenge: «Continuar» on the sheet of options; the drawing of sanctuary 3 closes by itself. */
+  async endSheet() {
+    await this.page.waitForFunction(() => !document.querySelector(".trace:not(.hidden)") || document.querySelector(".duel:not(.hidden) button.end"), null, { timeout: 20000 }).catch(() => {});
+    if (await this.page.locator(".duel:not(.hidden) button.end").count()) return this.tap(".duel button.end", "Continuar");
+    return true;
+  }
+
   /** Trace the glyph now on sanctuary 3's drawing sheet: every stroke left, as a finger drag (pointer events). */
   async traceGlyph(right = true) {
     const paths = right ? await this.page.evaluate(() => window.codeshipS3.trace.ideal()) : await this.page.evaluate(() => {

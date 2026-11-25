@@ -135,13 +135,15 @@ async function doPost(j, n, title, label, who, expectThings) {
   }
   const inPage = await p.evaluate(() => (clearInterval(window.__s3timer), { things: [...window.__s3seen.things], shows: [...window.__s3seen.shows], phases: [...window.__s3seen.phases] }));
   for (const k of ["things", "shows", "phases"]) for (const t of inPage[k]) seen[k].add(t);
-  const result = (await j.texts(".duel .result"))[0] ?? "";
+  // The sheet of options says «Conseguido»; the drawing ends on its molecule and closes by itself.
+  const drawn = !(await j.page.locator(".duel:not(.hidden)").count());
+  const result = drawn ? "Conseguido" : ((await j.texts(".duel .result"))[0] ?? "");
   j.check(`${title}: el reto se completa («Conseguido»)`, /Conseguido/.test(result), result);
   if (expectThings.length) j.check(`${title}: cada paso se ve en el sitio, con los objetos (${expectThings.join(", ")})`, expectThings.every((t) => seen.things.has(t)), [...seen.things].join(", "));
   await capture(j, `${label}-reto`, `${title}: la hoja del reto y la escena`, false);
   const only = await j.outsideChallenge().catch(() => null);
   if (only) j.check(`${title}: con el reto abierto solo se ven la hoja y la escena (reglas §4.3)`, only.length === 0, JSON.stringify(only).slice(0, 200));
-  await j.tap(".duel button.end", "Continuar");
+  await j.endSheet();
   const after = await until(j, (s) => s.mode === "libre", 40000);
   j.check(`${title}: el puesto queda superado y ella vuelve a andar`, after.passed.includes(n) && after.mode === "libre", JSON.stringify({ passed: after.passed, mode: after.mode }));
   return seen;

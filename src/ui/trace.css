@@ -5,7 +5,7 @@
 @media (min-aspect-ratio: 1/1) { .trace { top: 0; left: auto; width: min(480px, 46vw); padding-inline: 14px; border-radius: 18px 0 0 18px; border-top: 0; border-left: 1px solid color-mix(in srgb, var(--tc0, #fff) 40%, transparent); } }
 .trace-top { display: flex; align-items: center; gap: 8px; }
 .trace-title { flex: 1; margin: 0; font-size: 15px; font-weight: 600; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.trace-close { flex: none; width: 40px; height: 40px; border-radius: 50%; border: 1px solid #ffffff33; background: #ffffff14; color: #fff; font-size: 24px; line-height: 1; cursor: pointer; }
+.trace-close { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 1px solid #ffffff33; background: #ffffff14; color: #fff; font-size: 24px; line-height: 1; cursor: pointer; }
 .trace-formula { display: flex; justify-content: center; align-items: baseline; flex-wrap: wrap; gap: 1px; min-height: 42px; font: 600 30px/1.2 "Georgia", "Times New Roman", serif; letter-spacing: 1px; }
 .trace-formula .tg { color: #8f8aa8; padding: 0 1px; border-radius: 6px; transition: color 0.2s, text-shadow 0.2s; }
 .trace-formula .tg.sub { font-size: 0.62em; transform: translateY(0.25em); }

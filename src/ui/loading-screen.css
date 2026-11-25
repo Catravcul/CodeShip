@@ -89,6 +89,86 @@
     fill-opacity: 0.45;
   }
 }
+/* Sanctuary 3: the caves glow, the clouds drift, the balloon and its bee bob, the insects hover, a carpet far off. */
+.cs-loading .ld3-cave {
+  animation: cs-loading-cave 2.4s ease-in-out infinite alternate;
+}
+@keyframes cs-loading-cave {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.cs-loading .ld3-cloud {
+  animation: cs-loading-drift 14s ease-in-out infinite alternate;
+}
+.cs-loading .ld3-cloud-near {
+  animation-duration: 9s;
+  animation-direction: alternate-reverse;
+}
+@keyframes cs-loading-drift {
+  to {
+    transform: translateX(16px);
+  }
+}
+.cs-loading .ld3-balloon {
+  animation: cs-loading-bob 4s ease-in-out infinite alternate;
+}
+.cs-loading .ld3-bee,
+.cs-loading .ld3-butterfly {
+  animation: cs-loading-bob 0.9s ease-in-out infinite alternate;
+}
+.cs-loading .ld3-dragonfly {
+  animation: cs-loading-hover 5s ease-in-out infinite alternate;
+}
+@keyframes cs-loading-bob {
+  to {
+    transform: translateY(-5px);
+  }
+}
+@keyframes cs-loading-hover {
+  50% {
+    transform: translate(12px, -6px);
+  }
+  to {
+    transform: translate(26px, 2px);
+  }
+}
+.cs-loading .ld3-carpet-far {
+  animation: cs-loading-far 11s linear infinite;
+}
+@keyframes cs-loading-far {
+  from {
+    transform: translateX(30px);
+  }
+  to {
+    transform: translateX(-120px);
+  }
+}
+/* Sanctuary 6: the stars twinkle, the asteroid turns, the Starship and the ISS drift. */
+.cs-loading .ld6-star {
+  animation: cs-loading-twinkle 1.8s ease-in-out infinite alternate;
+}
+@keyframes cs-loading-twinkle {
+  to {
+    opacity: 0.25;
+  }
+}
+.cs-loading .ld6-rock {
+  transform-origin: 298px 204px;
+  animation: cs-loading-whale 40s linear infinite;
+}
+.cs-loading .ld6-ship {
+  animation: cs-loading-hover 12s ease-in-out infinite alternate;
+}
+.cs-loading .ld6-iss {
+  animation: cs-loading-drift 18s ease-in-out infinite alternate-reverse;
+}
+.cs-loading .ld6-flame {
+  animation: cs-loading-egg 0.5s ease-in-out infinite alternate;
+}
 @media (prefers-reduced-motion: reduce) {
   .cs-loading * {
     animation: none !important;

@@ -1,0 +1,22 @@
+/* The wand (ui/trace-view.ts): a challenge drawn as a compound, in the sheet's place (as .duel.sheet). */
+.trace { position: fixed; left: 0; right: 0; bottom: 0; top: 38vh; z-index: 10; box-sizing: border-box; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); padding-inline: max(14px, calc((100vw - 560px) / 2)); display: flex; flex-direction: column; gap: 6px; color: #e8e4ff; background: #05060cf2; border-radius: 18px 18px 0 0; border-top: 1px solid color-mix(in srgb, var(--tc0, #fff) 40%, transparent); box-shadow: 0 -6px 30px color-mix(in srgb, var(--tc0, #fff) 18%, transparent); font-family: system-ui, sans-serif; }
+.trace.hidden { display: none; }
+@media (max-height: 760px) and (max-aspect-ratio: 1/1) { .trace { top: 30vh; } }
+@media (min-aspect-ratio: 1/1) { .trace { top: 0; left: auto; width: min(480px, 46vw); padding-inline: 14px; border-radius: 18px 0 0 18px; border-top: 0; border-left: 1px solid color-mix(in srgb, var(--tc0, #fff) 40%, transparent); } }
+.trace-top { display: flex; align-items: center; gap: 8px; }
+.trace-title { flex: 1; margin: 0; font-size: 15px; font-weight: 600; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trace-close { flex: none; width: 40px; height: 40px; border-radius: 50%; border: 1px solid #ffffff33; background: #ffffff14; color: #fff; font-size: 24px; line-height: 1; cursor: pointer; }
+.trace-formula { display: flex; justify-content: center; align-items: baseline; flex-wrap: wrap; gap: 1px; min-height: 42px; font: 600 30px/1.2 "Georgia", "Times New Roman", serif; letter-spacing: 1px; }
+.trace-formula .tg { color: #8f8aa8; padding: 0 1px; border-radius: 6px; transition: color 0.2s, text-shadow 0.2s; }
+.trace-formula .tg.sub { font-size: 0.62em; transform: translateY(0.25em); }
+.trace-formula .tg.sup { font-size: 0.62em; transform: translateY(-0.6em); }
+.trace-formula .tg.done { color: var(--tc0, #fff); text-shadow: 0 0 8px var(--tc0, #fff); }
+.trace-formula .tg.now { color: #05060c; background: var(--tc1, #fff); box-shadow: 0 0 14px var(--tc0, #fff); animation: trace-now 1.2s ease-in-out infinite; }
+@keyframes trace-now { 50% { box-shadow: 0 0 22px var(--tc0, #fff); } }
+.trace-pad { flex: 1; min-height: 160px; position: relative; border-radius: 14px; overflow: hidden; border: 1px solid #ffffff1f; }
+.trace-canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; user-select: none; -webkit-user-select: none; }
+.trace-hint { margin: 0; min-height: 2.4em; font-size: 14px; line-height: 1.2; text-align: center; color: var(--tc1, #fff); }
+.trace-foot { display: flex; gap: 10px; justify-content: space-between; align-items: baseline; font-size: 12px; color: #a9a4c6; }
+.trace-name { flex: 1; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.25; }
+.trace-steps { flex: none; font-weight: 600; color: #e8e4ff; }
+body.in-trace .duel { display: none; }

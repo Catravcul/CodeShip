@@ -39,6 +39,13 @@ Cuatro troncos de madera maciza (18 × 18 m) del lago al techo: lo sostienen. Su
 
 21 salas en total. Cada pie y cada piso tiene su estación de alfombras.
 
+## La pupa del centro
+
+En el centro del hueco (`HOLLOW`), de pie en el lago, la celda gigante de la abeja con su galería y un muelle hasta la
+cubierta del árbol más cercano ([pupa-abeja.md](pupa-abeja.md)); se construye en `buildHollow` antes que las rutas de
+alfombra, así que ninguna la atraviesa. Para dejarle sitio, el árbol de entrenamiento (A) está en (−65, 80) respecto al
+centro (antes (−40, 30)). En el fondo del lago viven larvas acuáticas ([larvas-lago.md](larvas-lago.md)).
+
 ## Alfombras
 
 Las del santuario 1 (`sanctuary-one/data/alfombras.ts`, `carpetRoute`): cada estación tiene su carril libre; un piso

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { S3Layout } from "@modules/aerial-sanctuary/data/layout";
 import { BIOME_ISLAND } from "@modules/aerial-sanctuary/data/bioma-island";
-import { BiomeLife, biomeGeo } from "@modules/aerial-sanctuary/application/biome-life";
+import { BiomeLife, biomeGeo, carbonGeo } from "@modules/aerial-sanctuary/application/biome-life";
 import { census, count, mass, dateLabel, monthOfDay, type CensusRow } from "@modules/aerial-sanctuary/domain/bioma";
 import type { BiomeDef, SwarmSpec } from "@modules/aerial-sanctuary/data/bioma";
 import { CROWDS } from "@modules/aerial-sanctuary/data/bioma-crowd";
@@ -15,7 +15,14 @@ import { fieldAct, fieldJobs, type FieldJob } from "@modules/aerial-sanctuary/ap
 import { focusReto, sheetLens } from "./adapters/three/interior/reto-focus";
 import { chooseReto, offerReto } from "./ui/interaction";
 import { RetoPicker } from "./ui/reto-picker";
-import { airBiome } from "@modules/aerial-sanctuary/data/bioma";
+import { airBiome, carbonBiome } from "@modules/aerial-sanctuary/data/bioma";
+import { CARBON_CHAIN, CARBON_ZONE } from "@modules/aerial-sanctuary/data/carbonifero";
+import type { AreaDef } from "@modules/aerial-sanctuary/data/layout";
+import type { WayPoint } from "@modules/aerial-sanctuary/domain/route";
+import { heightAt } from "@modules/aerial-sanctuary/domain/mountain";
+import { MOUNTAIN, beltAt } from "@modules/aerial-sanctuary/data/bioma-island";
+import { GIANT, HOLLOW, LAKE_STARSHIP } from "@modules/aerial-sanctuary/data/montana";
+import { CarbonScene } from "./adapters/three/s3-carbon";
 import { PUPA_AREA, pupaOfArea, type PupaPlan } from "@modules/aerial-sanctuary/data/pupa-abeja";
 import { advanceBee } from "@modules/aerial-sanctuary/domain/abeja";
 import { BeePupaView } from "./adapters/three/s3-bee-pupa";
@@ -61,6 +68,11 @@ export class S3Biome {
   readonly pupaAt: PupaPlan;
   bee = { k: 0 };
   private readonly beeTag: HTMLElement;
+  /** The Carboniferous forest at the pyramid's foot (data/carbonifero.ts) and the lake's larvae (data/larvas-lago.ts). */
+  readonly carbon: BiomeLife;
+  readonly carbonView: CarbonScene;
+  /** The points this adds to the way graph (the forest's: aerial-sanctuary.ts puts them in its map, one line). */
+  readonly points: readonly WayPoint[];
 
   constructor(scene: THREE.Scene, ui: HTMLElement, private readonly L: S3Layout) {
     // The rule of animals per person (the shared setting, as sanctuary 1's): the chain's numbers (data/bioma.ts).
@@ -73,6 +85,24 @@ export class S3Biome {
     this.pupaAt = pupaOfArea(L.areas.find((a) => a.id === PUPA_AREA)!);
     this.pupa = new BeePupaView(this.pupaAt);
     scene.add(this.pupa.root);
+    // The Carboniferous giants (their own chain, the same rule of animals per person) and the larvae of the lake.
+    this.carbon = new BiomeLife(carbonGeo(), 7, carbonBiome(Number(settings.value.animalsPerPerson)));
+    const D = GIANT.deckHalf + 4;
+    const P = this.pupaAt;
+    const ss = L.hollow.starship;
+    const ssR = LAKE_STARSHIP.radiusM * ss.k + 6;
+    this.carbonView = new CarbonScene(this.carbon.state.def, {
+      x: P.x, z: P.z, floorY: HOLLOW.floorY, lakeTop: HOLLOW.lakeTop, r0: P.gallery.x1 - P.x + 6, r1: P.gallery.x1 - P.x + 90,
+      keepOut: [...L.hollow.trees.map((t) => ({ x0: t.x - D, x1: t.x + D, z0: t.z - D, z1: t.z + D })), { x0: ss.x - ssR, x1: ss.x + ssR, z0: ss.z - ssR - 20, z1: ss.z + ssR }, P.gallery],
+    });
+    scene.add(this.carbonView.root);
+    // The forest in Áreas (the air island, its own zone): «Ir» takes her to its middle.
+    const Z = CARBON_ZONE.value;
+    const IC = BIOME_ISLAND.centre.value;
+    const fp = { id: `bioma:${Z.id}`, x: IC.x + Z.point.x, y: heightAt(MOUNTAIN.value, Z.point.x, Z.point.z), z: IC.z + Z.point.z };
+    (L.areas as AreaDef[]).push({ id: `bioma:${Z.id}`, island: "bioma", label: Z.label, desc: Z.desc, reality: Z.reality, centre: { x: fp.x, y: fp.y, z: fp.z }, half: { x: Z.r, y: 20, z: Z.r }, point: fp.id, belt: (({ id, label }) => ({ id, label }))(beltAt(Z.point.x, Z.point.z).belt) });
+    this.points = [fp];
+    (L.graph.points as WayPoint[]).push(...this.points);
     this.beeTag = document.createElement("div");
     this.beeTag.className = "s3-pupa-etapa hidden";
     this.beeTag.setAttribute("role", "status");
@@ -163,6 +193,7 @@ export class S3Biome {
     if (!this.working) this.her = { x: body.x, y: body.y, z: body.z, yaw };
     const onStage = body.area.startsWith("bioma");
     this.life.tick(dt, this.days(boardDays), t, hour, body, onStage);
+    this.carbon.tick(dt, this.days(boardDays), t, hour, body, onStage);
     this.updatePupa(dt, t, body, camera);
     const C = BIOME_ISLAND.centre.value;
     const far = Math.hypot(camera.position.x - C.x, camera.position.z - C.z);
@@ -172,6 +203,7 @@ export class S3Biome {
       const cover: Record<string, number> = {};
       for (const r of rows) if (r.cover !== undefined) cover[r.id] = r.cover;
       this.view.update(t, this.life.poses(), cover, this.life.state, camera.position);
+      this.carbonView.update(t, this.carbon.poses(), this.carbon.state.day + this.carbon.state.def.startDayOfYear, camera.position);
     }
     this.near = onStage && !this.working && Math.hypot(body.x - this.board.x, body.z - this.board.z) < 2.4 && Math.abs(body.y - this.board.y) < 1;
     this.nearDesk = onStage && !this.working && !this.near && Math.hypot(body.x - this.desk.x, body.z - this.desk.z) < 1.9 && Math.abs(body.y - this.desk.y) < 1;
@@ -188,7 +220,10 @@ export class S3Biome {
     const look = d < 700 ? this.pupa.update(this.bee.k, t) : undefined;
     const g = P.gallery;
     const by = body.area === PUPA_AREA || (body.x > g.x0 - 12 && body.x < g.x1 + 12 && body.z > g.z0 - 12 && body.z < g.z1 + 12 && body.y < P.y0 + P.h);
-    const text = by && look ? `Abeja de la pupa · ${look.stage.label}` : "";
+    // Diving in the lake, the larva nearest the camera says its stage.
+    const C = camera.position;
+    const larva = C.y < HOLLOW.lakeTop ? this.carbonView.lastLarvae.filter((q) => q.y < HOLLOW.lakeTop).map((q) => ({ q, d: Math.hypot(q.x - C.x, q.y - C.y, q.z - C.z) })).sort((a, b) => a.d - b.d)[0] : undefined;
+    const text = by && look ? `Abeja de la pupa · ${look.stage.label}` : larva && larva.d < 40 ? larva.q.label : "";
     if (this.beeTag.textContent !== text) this.beeTag.textContent = text;
     this.beeTag.classList.toggle("hidden", !text);
   }
@@ -201,7 +236,7 @@ export class S3Biome {
     this.card.classList.toggle("hidden", !this.near);
     if (!this.near) return;
     const start = st.def.startDayOfYear;
-    this.card.innerHTML = censusHtml(st.def, census(st), st.events.slice(-10).reverse().map((e) => ({ when: dateLabel(e.day, start), text: e.text })), dateLabel(st.day, start), monthOfDay(st.day, start), Object.fromEntries(CROWDS.map((c) => [c.species, this.view.crowd.countsOf(c.species) ?? crowdCounts(st, c)])), this.notebook);
+    this.card.innerHTML = censusHtml(st.def, census(st), st.events.slice(-10).reverse().map((e) => ({ when: dateLabel(e.day, start), text: e.text })), dateLabel(st.day, start), monthOfDay(st.day, start), Object.fromEntries(CROWDS.map((c) => [c.species, this.view.crowd.countsOf(c.species) ?? crowdCounts(st, c)])), this.notebook, { title: "Bosque del Carbonífero (pie noreste de la pirámide, a tamaño real)", def: this.carbon.state.def, rows: census(this.carbon.state), chain: CARBON_CHAIN });
   }
 }
 
@@ -211,9 +246,9 @@ const STAGES: readonly Stage[] = ["cria", "joven", "adulto", "anciano"];
 const NEST_WORD = { colmena: "colmenas", nido: "nidos", hormiguero: "hormigueros" } as const;
 
 /** The census card: each species with its count by stage, what it eats and who eats it, how fed it is; the last events. */
-export function censusHtml(def: BiomeDef, rows: readonly CensusRow[], events: readonly { when: string; text: string }[], date: string, month: number, crowds: Readonly<Record<string, CrowdCounts>> = {}, notebook: readonly { when: string; text: string }[] = []): string {
+export function censusHtml(def: BiomeDef, rows: readonly CensusRow[], events: readonly { when: string; text: string }[], date: string, month: number, crowds: Readonly<Record<string, CrowdCounts>> = {}, notebook: readonly { when: string; text: string }[] = [], more?: { title: string; def: BiomeDef; rows: readonly CensusRow[]; chain: readonly string[] }): string {
   const row = (r: CensusRow) => {
-    const s = def.species.find((x) => x.id === r.id)!;
+    const s = (def.species.find((x) => x.id === r.id) ?? more?.def.species.find((x) => x.id === r.id))!;
     let n = "";
     if (r.kind === "animal") n = `<b class="cz-n">${r.count}</b> ${STAGES.filter((k) => r.stages[k] > 0).map((k) => `${STAGE_LABEL[k]} ${r.stages[k]}`).join(" · ") || "ninguno ahora"}`;
     else if (r.kind === "banco") {
@@ -237,6 +272,7 @@ export function censusHtml(def: BiomeDef, rows: readonly CensusRow[], events: re
   const group = (title: string, kind: CensusRow["kind"]) => `<h4>${title}</h4><ul class="cz-list">${rows.filter((r) => r.kind === kind).map(row).join("")}</ul>`;
   return `<div class="cm-head"><b>Censo de la montaña</b><small>Estación de investigación · ${esc(date)} · ${SEASON(month)}</small></div>
 <div class="cz-body">${group("Insectos gigantes (cada colonia, por su reina)", "animal")}${group("Los pequeños: pulgones, mosquitos, colémbolos y arañas", "banco")}${group("Plantas, de la estepa a las nieves", "planta")}
+${more ? `<h4>${esc(more.title)}</h4><ul class="cz-list">${more.rows.filter((r) => r.kind !== "planta").map(row).join("")}</ul><p class="cz-note"><small>${more.chain.map(esc).join(". ")}.</small></p>` : ""}
 <h4>Cuaderno de campo (la mesa de campo)</h4><ul class="cz-events cz-notebook">${notebook.map((e) => `<li><small>${esc(e.when)}</small> ${esc(e.text)}</li>`).join("") || "<li>Aún nada anotado: las colmenas, el transecto de mariposas y las trampas se hacen en la mesa</li>"}</ul>
 <h4>Últimos sucesos</h4><ul class="cz-events">${events.map((e) => `<li><small>${esc(e.when)}</small> ${esc(e.text)}</li>`).join("") || "<li>Aún nada</li>"}</ul>
 <p class="cz-note"><small>Un año de la montaña dura 28 días de juego (Cold Sanctuary): cada día de juego son unos 13 días de vida.</small></p></div>`;

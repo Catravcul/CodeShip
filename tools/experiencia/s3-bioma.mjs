@@ -1,15 +1,33 @@
-// PX-51 Sanctuary 3, the biome of the air and the heights (Berón, 2026-11-20: cada santuario recrea el bioma de un
-// elemento; el 3 es el aire y las alturas: aves, cabras que trepan, acantilados, cañones y roedores en una isla gigante;
-// docs/design/bioma-s3.md), on an iPhone 13 with visible taps only. The «Isla de las alturas» is one giant mountain of
-// the Karakoram from the river to the snows. With «Ir» set to teleport, Áreas (its zones grouped by altitude belt)
-// takes her to the cliffs (ibex herds on the ledges, the griffons in their thermals, and X climbs the ledges), to the
-// gorge's lookout (markhor on the walls, the bearded vulture over the gorge), and in June to the meadow (marmot
-// families at their burrows) and the scree (pikas); at the research hut the orange button opens the census (each
-// species, its stages, what it eats and who eats it; the marmots hibernating in November) and the field table offers
-// the Himalayan field methods (camera traps, the double-observer count, the vulture nests): she does the count.
-// The draw calls stay ≤ 600 on the mountain. Captures in docs/screenshots/s3b-<zona>-movil.png.
+// PX-51 Sanctuary 3, the biome of the air and the heights (docs/design/bioma-s3.md, pupa-abeja.md, larvas-lago.md,
+// carbonifero.md), on an iPhone 13 with visible taps only. The «Isla de las alturas» is a mountain of the Karakoram from
+// the river to the snows with its giant insects of Gilgit-Baltistán (×400); the hollow pyramid in it holds at its
+// middle the bee's pupa (Berón 2026-11-26: it takes the cloud globe's place), a translucent wax cell where an Asian
+// honeybee lives its metamorphosis, reached walking along the pier from a tree's foot; its lake holds the larvae of
+// the island's insects (dragonfly nymphs, mayflies, caddisflies, midges), seen diving; at the pyramid's north-east
+// foot, the Carboniferous forest (Lepidodendron, Sigillaria, Calamites, Psaronius, Cordaites) with its giants at real
+// size (Arthropleura, roachoids, Mazothairos, Meganeura, Meganeuropsis). At the research hut the orange button opens
+// the census (insects, the Carboniferous and their food chain) and the field table offers the field methods (hive
+// inspection, butterfly transect, pitfall traps): she does one. The draw calls stay ≤ 600. Captures in
+// docs/screenshots/s3b-<sitio>-movil.png.
 import { mkdirSync } from "node:fs";
-import { goArea, lookAt, tilt, walkTo } from "./s3-detalle.mjs";
+import { lookAt, tilt, walkTo } from "./s3-detalle.mjs";
+
+/** Áreas on the area's own island (the gear's island list: the pupa is on the training island, the zones on the air island), then «Ir». */
+async function goArea(j, id, title) {
+  const island = id.split(":")[0];
+  await j.tap(".areas-btn", "Áreas");
+  await j.tap(".areas-window .ar-view", "Ajustes de áreas");
+  const isl = `.areas-window [data-vehicle="${island}"]`;
+  if (await j.page.locator(isl).count()) await j.tap(isl, `Isla: ${island}`);
+  const all = '.areas-window [data-scope-kind=""][data-scope-id=""]';
+  if (await j.page.locator(all).count()) await j.tap(all, "Todo: la isla");
+  await j.tap(".areas-window .ar-view", "Volver al mapa de áreas");
+  await j.tap(`.areas-window [data-pick="${id}"]`, `${title} en el mapa`);
+  const ok = await j.tap(`.areas-window [data-area="${id}"]`, `Ir: ${title}`);
+  for (let i = 0; i < 40 && (await j.page.evaluate(() => window.codeshipS3.mode)) !== "libre"; i++) await j.page.waitForTimeout(500);
+  await j.page.waitForTimeout(600);
+  return ok && (await j.page.evaluate(() => window.codeshipS3.mode)) === "libre";
+}
 
 async function capture(j, label, title) {
   await j.page.waitForTimeout(600);
@@ -20,53 +38,33 @@ async function capture(j, label, title) {
   j.check(`${title}: ningún botón se solapa con otro`, over.length === 0, over.slice(0, 4).join("; "));
 }
 
-/** What lives near her: animals by species within `r` metres (those in the air apart), the draw calls of the last frame. */
-const around = (p, r) =>
-  p.evaluate((r) => {
-    const c = window.codeshipS3;
-    const b = c.body;
-    const near = {};
-    const flying = {};
-    for (const q of c.biome.life.poses()) {
-      if (q.hidden || Math.hypot(q.x - b.x, q.z - b.z) >= r) continue;
-      near[q.species] = (near[q.species] ?? 0) + 1;
-      if (q.flying) flying[q.species] = (flying[q.species] ?? 0) + 1;
-    }
-    const plants = c.biome.life.state.plants;
-    return { near, flying, plants: Object.fromEntries(Object.entries(plants).map(([k, v]) => [k, Math.round(v)])), calls: window.__codeshipFrame?.calls ?? 0, visible: c.biome.view.root.visible };
-  }, r);
+/** The animals of a chain (`life`: "life" the island's, "carbon" the Carboniferous) near her, by species; flying apart. */
+const around = (p, r, life = "life") =>
+  p.evaluate(
+    ([r, life]) => {
+      const c = window.codeshipS3;
+      const b = c.body;
+      const near = {};
+      const flying = {};
+      for (const q of c.biome[life].poses()) {
+        if (q.hidden || Math.hypot(q.x - b.x, q.z - b.z) >= r) continue;
+        near[q.species] = (near[q.species] ?? 0) + 1;
+        if (q.flying) flying[q.species] = (flying[q.species] ?? 0) + 1;
+      }
+      return { near, flying, calls: window.__codeshipFrame?.calls ?? 0 };
+    },
+    [r, life],
+  );
 
-/** Crowd animals in the camera's view within 140 m, by species. */
-const inView = (p) => p.evaluate(() => window.codeshipS3.biome.view.crowd.inView(window.codeshipS3.camera, 140));
-
-/** Animals of the chain in the camera's view (in the frustum, within `r` m), by species; in the air apart. */
-const chainInView = (p, r) =>
-  p.evaluate((r) => {
-    const c = window.codeshipS3;
-    const cam = c.camera;
-    cam.updateMatrixWorld();
-    const m = cam.projectionMatrix.clone().multiply(cam.matrixWorldInverse);
-    const out = {};
-    for (const q of c.biome.life.poses()) {
-      if (q.hidden) continue;
-      const d = Math.hypot(q.x - cam.position.x, q.y - cam.position.y, q.z - cam.position.z);
-      if (d > r) continue;
-      const e = m.elements;
-      const w = e[3] * q.x + e[7] * q.y + e[11] * q.z + e[15];
-      const x = (e[0] * q.x + e[4] * q.y + e[8] * q.z + e[12]) / w;
-      const y = (e[1] * q.x + e[5] * q.y + e[9] * q.z + e[13]) / w;
-      if (w <= 0 || Math.abs(x) > 1 || Math.abs(y) > 1) continue;
-      const k = q.flying ? `${q.species}:vuela` : q.species;
-      out[k] = (out[k] ?? 0) + 1;
-    }
-    return out;
-  }, r);
-
-/** Turn and tilt to look at a world point from where she stands. */
-async function face(j, t, pitch) {
-  await lookAt(j, t.x, t.z);
-  await tilt(j, pitch);
-  await j.page.waitForTimeout(900);
+/** Swim (or walk) at a point with «Moverse», the camera tilted `pitch` (down dives), for at most `ms`. */
+async function swimTo(j, x, z, pitch, stop, tries = 8) {
+  const dist = () => j.page.evaluate(([tx, tz]) => Math.hypot(tx - window.codeshipS3.body.x, tz - window.codeshipS3.body.z), [x, z]);
+  for (let i = 0; i < tries && (await dist()) > stop; i++) {
+    await lookAt(j, x, z);
+    await tilt(j, pitch);
+    await j.stick(".vstick.s3-move", 0, -40, 900);
+  }
+  return dist();
 }
 
 export async function s3Bioma(j) {
@@ -80,93 +78,105 @@ export async function s3Bioma(j) {
   await j.resetPerf();
 
   await j.tap(".s3-tasks", "Tareas");
-  // Áreas shows the island chosen in the shared settings: the air island, from the training one.
   await j.taskSettings({ travel: "teletransporte", vehicle: "bioma" });
   await j.tap(".task-board .tb-close, .task-board [aria-label='Cerrar tareas']", "Cerrar tareas").catch(() => {});
 
-  const zones = ["estacion", "estepa", "rio", "bosque", "enebral", "garganta", "pradera", "pedrera", "farallon", "cresta", "nieves"].map((z) => `bioma:${z}`);
+  const zones = ["estacion", "estepa", "rio", "bosque", "enebral", "garganta", "pradera", "pedrera", "farallon", "cresta", "nieves", "bosque-carbonifero"].map((z) => `bioma:${z}`);
   const isl = await p.evaluate(() => {
     const c = window.codeshipS3;
-    return { name: c.layout.islands.find((i) => i.id === "bioma")?.name, areas: c.layout.areas.filter((a) => a.island === "bioma").map((a) => ({ id: a.id, belt: a.belt?.id })) };
+    return { name: c.layout.islands.find((i) => i.id === "bioma")?.name, areas: c.layout.areas.filter((a) => a.island === "bioma").map((a) => ({ id: a.id, belt: a.belt?.id })), pupa: c.layout.areas.find((a) => a.id === "entrenamiento:pupa"), globe: c.layout.areas.some((a) => a.id.includes("globo")) };
   });
-  j.check("la isla subantártica es ahora la «Isla de las alturas», con sus zonas del río a las nieves", isl.name === "Isla de las alturas" && zones.every((z) => isl.areas.some((a) => a.id === z)), `${isl.name}: ${isl.areas.map((a) => a.id).join(", ")}`);
-  j.check("cada zona en su cinturón de altitud real (de la estepa submontana a las nieves)", new Set(isl.areas.map((a) => a.belt).filter(Boolean)).size === 6, JSON.stringify(isl.areas));
+  j.check("la Isla de las alturas tiene sus zonas del río a las nieves y el bosque del Carbonífero", isl.name === "Isla de las alturas" && zones.every((z) => isl.areas.some((a) => a.id === z)), isl.areas.map((a) => a.id).join(", "));
+  j.check("Áreas tiene la pupa de la abeja en la montaña hueca, y ya no el globo de nubes", !!isl.pupa && !isl.globe, JSON.stringify(isl.pupa?.label));
 
   let maxCalls = 0;
-  // ── The cliffs: ibex herds on the ledges, the griffons soaring in their thermals; X climbs the ledges.
-  let went = await goArea(j, "bioma:farallon", "Farallón de los íbices");
-  j.check("«Ir» la lleva al pie del farallón", went && (await p.evaluate(() => window.codeshipS3.body.area)).startsWith("bioma"), await p.evaluate(() => JSON.stringify(window.codeshipS3.body)));
-  const ibex = await p.evaluate(() => window.codeshipS3.biome.view.crowd.centreOf("ibice"));
-  if (ibex) {
-    // Back from the herd (~25 m) on open ground below it, so the cliff and the herd fill the view.
-    const stand = await p.evaluate((h) => {
-      const g = window.codeshipS3.biome.life.geo;
-      let best = null;
-      for (const r of [25, 20, 32]) {
-        for (let i = 0; i < 24; i++) {
-          const a = (i / 24) * Math.PI * 2;
-          const x = h.x + r * Math.cos(a);
-          const z = h.z + r * Math.sin(a);
-          if (g.isSea(x, z) || g.steep(x, z) > 0.6) continue;
-          const y = g.ground(x, z);
-          if (!best || y < best.y) best = { x, z, y };
-        }
-        if (best) return best;
-      }
-      return null;
-    }, ibex);
-    if (stand) await walkTo(j, stand.x, stand.z, 2);
-    else await walkTo(j, ibex.x, ibex.z, 30);
-    const b = await p.evaluate(() => window.codeshipS3.body);
-    await face(j, ibex, Math.max(-0.6, Math.min(0.7, Math.atan2(ibex.y - b.y - 1.6, Math.hypot(ibex.x - b.x, ibex.z - b.z)) - 0.12)));
-  }
-  let v = await inView(p);
-  let a = await around(p, 250);
-  maxCalls = Math.max(maxCalls, a.calls);
-  j.check("en el farallón se ven rebaños de íbices en las repisas (al menos 10 a la vista)", (v.ibice ?? 0) >= 10, JSON.stringify(v));
-  j.check("los buitres del Himalaya planean en las térmicas sobre los cantiles", (a.flying.buitre ?? 0) > 0, JSON.stringify(a.flying));
-  await capture(j, "farallon", "Farallón de los íbices");
-  // The ledges: from the foot of the first one, facing the cliff, X (Trepar) climbs her onto it.
-  await goArea(j, "bioma:farallon", "Farallón de los íbices");
-  const ledge = await p.evaluate(() => window.codeshipS3.layout.world.floors.filter((f) => f.id.startsWith("bioma:repisa")).sort((a, b) => a.y - b.y)[0]);
-  await walkTo(j, (ledge.x0 + ledge.x1) / 2, ledge.z0 - 0.5, 0.4);
-  await lookAt(j, (ledge.x0 + ledge.x1) / 2, ledge.z1 + 20);
-  const y0 = await p.evaluate(() => window.codeshipS3.body.y);
-  await j.tap('.switch-pad .ap-btn[aria-label^="Trepar"]', "Trepar (X)").catch(() => {});
-  await p.waitForTimeout(1600);
-  const y1 = await p.evaluate(() => window.codeshipS3.body.y);
-  j.check("con X (Trepar) sube a la primera repisa del farallón", y1 - y0 > 0.6, `${y0.toFixed(1)} → ${y1.toFixed(1)} m`);
+  // ── The bee's pupa at the hollow pyramid's middle: «Ir» from Áreas, then walked from a tree's foot along the pier.
+  let went = await goArea(j, "entrenamiento:pupa", "La pupa de la abeja");
+  const P = await p.evaluate(() => window.codeshipS3.biome.pupaAt);
+  j.check("«Ir» la lleva al mirador de la pupa, en el centro de la pirámide", went && (await p.evaluate(() => window.codeshipS3.body.area)) === "entrenamiento:pupa", await p.evaluate(() => JSON.stringify(window.codeshipS3.body)));
+  await walkTo(j, P.x, P.gallery.z0 + 1.5, 1);
+  await lookAt(j, P.x, P.z);
+  // At the gallery: the young larva curled on the cell's bottom (day ~4 of 19), looked at a little down.
+  await p.evaluate(() => (window.codeshipS3.biome.bee.k = 0.22));
+  await tilt(j, -0.15);
+  await p.waitForTimeout(1200);
+  let tag = await p.evaluate(() => document.querySelector(".s3-pupa-etapa:not(.hidden)")?.textContent ?? "");
+  j.check("junto a la pupa, la etiqueta dice la etapa de la abeja: la larva en el fondo de la celda", /Abeja de la pupa · .*[Ll]arva/.test(tag), tag);
+  maxCalls = Math.max(maxCalls, await p.evaluate(() => window.__codeshipFrame?.calls ?? 0));
+  await capture(j, "pupa-larva", "La pupa: la larva");
 
-  // ── The gorge: the bearded vulture over it, markhor on its walls, the river 160 m below.
-  went = await goArea(j, "bioma:garganta", "Mirador de la garganta");
-  j.check("«Ir» la lleva al mirador de la garganta", went, await p.evaluate(() => window.codeshipS3.body.area));
-  // It patrols up and down the gorge at the height of its rims and swings close past the lookout: from the lookout,
-  // facing the gorge where it passes, wait for it to cross the view.
-  const look = await p.evaluate(() => {
+  // Walking: from the root deck of the tree its pier leaves (the carpets' foot station), by the graph's walked links.
+  const foot = await p.evaluate(() => {
     const c = window.codeshipS3;
-    const g = c.biome.life.geo;
-    const z = g.zone("garganta");
-    const run = c.biome.life.gorgeRun;
-    return { z, o: run ? g.world(run.o.x, run.o.z) : null, oy: run?.o.y };
+    const end = c.layout.graph.points.filter((q) => q.id.startsWith("entrenamiento:pupa:muelle")).at(-1);
+    return c.layout.hollow.trees.map((t) => ({ id: `entrenamiento:${t.def.id}:pie`, d: Math.hypot(t.x - end.x, t.z - end.z) })).sort((a, b) => a.d - b.d)[0].id;
   });
-  if (look.z) await walkTo(j, look.z.x, look.z.z, 1.5);
-  let g = {};
-  if (look.o) {
-    const b = await p.evaluate(() => window.codeshipS3.body);
-    await face(j, look.o, Math.atan2(look.oy - b.y - 1.6, Math.hypot(look.o.x - b.x, look.o.z - b.z)) - 0.2);
-  }
-  for (let k = 0; k < 120 && !(g["quebrantahuesos:vuela"] > 0); k++) {
-    g = await chainInView(p, 90);
-    if (!(g["quebrantahuesos:vuela"] > 0)) await p.waitForTimeout(400);
-  }
-  a = await around(p, 400);
-  maxCalls = Math.max(maxCalls, a.calls);
-  j.check("un quebrantahuesos vuela sobre la garganta, a la vista (a menos de 90 m)", (g["quebrantahuesos:vuela"] ?? 0) > 0, JSON.stringify(g));
-  await capture(j, "garganta", "Quebrantahuesos sobre la garganta");
-  const mk = await p.evaluate(() => window.codeshipS3.biome.view.crowd.countsOf("markhor"));
-  j.check("los markhores están en las paredes de la garganta (su rebaño, con el número de la cadena)", mk && mk.adults >= 8, JSON.stringify(mk));
+  const way = await p.evaluate((foot) => {
+    const g = window.codeshipS3.layout.graph;
+    const from = window.codeshipS3.layout.areas.find((a) => a.id === foot).point;
+    const by = new Map(g.points.map((q) => [q.id, q]));
+    const prev = new Map([[from, ""]]);
+    const queue = [from];
+    while (queue.length) {
+      const id = queue.shift();
+      if (id === "entrenamiento:pupa:mirador") break;
+      for (const [a, b] of g.links) {
+        const n = a === id ? b : b === id ? a : undefined;
+        if (!n || prev.has(n) || (by.get(id)?.carpet && by.get(n)?.carpet) || by.get(n)?.lift) continue;
+        prev.set(n, id);
+        queue.push(n);
+      }
+    }
+    const out = [];
+    for (let id = "entrenamiento:pupa:mirador"; id; id = prev.get(id)) out.unshift(by.get(id));
+    return out.map((q) => ({ id: q.id, x: q.x, z: q.z }));
+  }, foot);
+  went = await goArea(j, foot, "Pie del árbol del muelle");
+  const pierAt = way.findIndex((q) => q.id.startsWith("entrenamiento:pupa:"));
+  // Along each stretch in short legs (the stick's aim drifts over a long one, and the pier is 6 m wide).
+  const along = async (pts) => {
+    for (const q of pts) {
+      const b = await p.evaluate(() => ({ x: window.codeshipS3.body.x, z: window.codeshipS3.body.z }));
+      const n = Math.max(1, Math.ceil(Math.hypot(q.x - b.x, q.z - b.z) / 8));
+      for (let i = 1; i <= n; i++) await walkTo(j, b.x + ((q.x - b.x) * i) / n, b.z + ((q.z - b.z) * i) / n, 0.8);
+    }
+  };
+  await along(way.slice(1, pierAt + 1));
+  // From the pier's start: the whole cell standing in the lake among the giant trees, the pupa inside it.
+  await p.evaluate(() => (window.codeshipS3.biome.bee.k = 12 / 19));
+  await lookAt(j, P.x, P.z);
+  await tilt(j, 0.35);
+  await p.waitForTimeout(1200);
+  j.check("desde el muelle se ve la celda entera, con la pupa dentro", await p.evaluate(() => window.codeshipS3.biome.pupa.root.visible && window.codeshipS3.biome.pupa.bee.count > 10));
+  await capture(j, "pupa", "La pupa de la abeja desde el muelle");
+  await along(way.slice(pierAt + 1));
+  const atPupa = await p.evaluate(() => window.codeshipS3.body);
+  j.check("andando por el muelle desde el pie del árbol se llega a la pupa", went && atPupa.area === "entrenamiento:pupa", `${way.map((q) => q.id).join(" → ")}; ${JSON.stringify(atPupa)}`);
+  tag = await p.evaluate(() => document.querySelector(".s3-pupa-etapa:not(.hidden)")?.textContent ?? "");
+  j.check("en la galería, la etiqueta dice la etapa: la pupa con sus ojos de color", /Abeja de la pupa · .*(ojos|[Pp]upa)/.test(tag), tag);
 
-  // ── The research hut: the census through the orange button; in November the marmots hibernate.
+  // ── The lake's larvae: off the gallery into the lake, down to the bottom where the nymphs and larvae live.
+  const larva = await p.evaluate(() => {
+    const c = window.codeshipS3;
+    const b = c.body;
+    return c.biome.carbonView.lastLarvae.filter((q) => q.stage !== "emergencia").sort((a, q) => Math.hypot(a.x - b.x, a.z - b.z) - Math.hypot(q.x - b.x, q.z - b.z))[0];
+  });
+  await swimTo(j, larva.x, larva.z, -0.9, 9);
+  await lookAt(j, larva.x, larva.z);
+  await tilt(j, -0.2);
+  await p.waitForTimeout(1200);
+  const under = await p.evaluate(() => {
+    const c = window.codeshipS3;
+    const cam = c.camera.position;
+    const near = c.biome.carbonView.lastLarvae.filter((q) => Math.hypot(q.x - cam.x, q.z - cam.z) < 60);
+    return { y: cam.y, motion: c.body.motion, n: near.length, kinds: [...new Set(near.map((q) => q.species))], stages: [...new Set(near.map((q) => q.stage))], tag: document.querySelector(".s3-pupa-etapa:not(.hidden)")?.textContent ?? "" };
+  });
+  j.check("bucea en el lago de la pirámide (la cámara bajo el agua)", under.motion === "agua" && under.y < 104, JSON.stringify(under));
+  j.check("en el fondo viven larvas de los insectos: al menos 3 a la vista y de 2 especies, en distintas etapas", under.n >= 3 && under.kinds.length >= 2, JSON.stringify(under));
+  j.check("buceando, la etiqueta dice la larva más cercana y su etapa", /·/.test(under.tag) && !/Abeja/.test(under.tag), under.tag);
+  await capture(j, "lago-larvas", "Larvas del lago");
+
+  // ── The research hut: the census through the orange button (insects, the Carboniferous, their food chain).
   went = await goArea(j, "bioma:estacion", "Estación de investigación");
   const near = await p.waitForFunction(() => window.codeshipS3.biome.near, null, { timeout: 8000 }).then(() => true).catch(() => false);
   j.check("«Ir» la deja ante el tablón del censo, dentro de la cabaña", went && near, await p.evaluate(() => JSON.stringify(window.codeshipS3.body)));
@@ -177,15 +187,15 @@ export async function s3Bioma(j) {
     p.evaluate(() => {
       const el = document.querySelector(".s3-censo");
       const rows = [...el.querySelectorAll("li[data-especie]")].map((li) => ({ id: li.dataset.especie, text: li.innerText }));
-      return { open: !!el.checkVisibility() && document.body.classList.contains("panel-on"), rows, events: [...el.querySelectorAll(".cz-events li")].map((li) => li.innerText) };
+      return { open: !!el.checkVisibility() && document.body.classList.contains("panel-on"), rows, events: [...el.querySelectorAll(".cz-events li")].map((li) => li.innerText), text: el.innerText };
     });
   let c = await card();
-  j.check("el botón naranja abre el censo de la montaña", c.open, String(c.rows.length));
   const row = (id) => c.rows.find((r) => r.id === id)?.text ?? "";
-  j.check("cada especie tiene su fila: 11 plantas, 5 de suelo y aire, 18 aves y mamíferos", c.rows.length >= 34, String(c.rows.length));
-  j.check("los íbices salen con su número y sus etapas, y cuántos se ven en la montaña", /\d/.test(row("ibice")) && /adulto/i.test(row("ibice")) && /Se ven ≈/.test(row("ibice")), row("ibice"));
-  j.check("la dieta está: el leopardo de las nieves come bharal e íbices; a la marmota se la comen el águila y el zorro", /Come:.*Bharal/i.test(row("leopardo")) && /Lo comen:.*Águila/i.test(row("marmota")), `${row("leopardo")} | ${row("marmota")}`);
-  j.check("en noviembre las marmotas hibernan en sus madrigueras", /hibern/i.test(row("marmota")), row("marmota"));
+  j.check("el botón naranja abre el censo de la montaña", c.open, String(c.rows.length));
+  j.check("cada especie tiene su fila: plantas, bancos, 15 insectos de Gilgit-Baltistán y 5 gigantes del Carbonífero", c.rows.length >= 36, String(c.rows.length));
+  j.check("las colonias de abeja asiática salen con sus obreras y sus colmenas", /abeja/i.test(row("abeja")) && /colmena/i.test(row("abeja")), row("abeja"));
+  j.check("la cadena del Carbonífero: Meganeuropsis come Mazothairos; a la cucaracha primitiva se la comen las libélulas gigantes", /Come:.*Mazothairos/i.test(row("meganeuropsis")) && /Lo comen:.*Meganeur/i.test(row("cucaracha")), `${row("meganeuropsis")} | ${row("cucaracha")}`);
+  j.check("el censo dice quién come a quién en el bosque del Carbonífero", /hojarasca/i.test(c.text) && /Carbonífero/.test(c.text));
   const wide = await p.evaluate(() => {
     const el = document.querySelector(".s3-censo");
     const over = [...el.querySelectorAll("li")].filter((li) => li.scrollWidth > li.clientWidth + 1 || li.getBoundingClientRect().right > window.innerWidth + 1).map((li) => li.dataset.especie ?? li.innerText.slice(0, 20));
@@ -194,83 +204,88 @@ export async function s3Bioma(j) {
   j.check("cada fila del censo cabe en el móvil de 390 px", wide.over.length === 0 && wide.card <= wide.vw, JSON.stringify(wide));
   await capture(j, "censo", "Censo de la montaña");
 
-  // ── The field table: the Himalayan field methods; she does the double-observer count of the ibex.
+  // ── The field table: the field methods; she does the first one open now.
   await j.tapInteraction("Cerrar el censo (botón naranja)");
   const desk = await p.evaluate(() => window.codeshipS3.biome.view.deskAt);
   await walkTo(j, desk.x, desk.z - 0.9, 0.5);
   const atDesk = await p.waitForFunction(() => window.codeshipS3.biome.nearDesk, null, { timeout: 8000 }).then(() => true).catch(() => false);
   j.check("en la cabaña está la mesa de campo, a más de 2 m del tablón", atDesk, await p.evaluate(() => JSON.stringify(window.codeshipS3.body)));
-  await p.waitForFunction(() => window.codeshipS3.biome.nearDesk, null, { timeout: 8000 }).catch(() => {});
   const label = await j.interactionLabel();
-  j.check("en la mesa, el botón naranja (la Y del mando) dice «Reto: Mesa de campo» y nada se abre solo", /Reto: Mesa de campo/.test(label) && !(await p.evaluate(() => document.body.classList.contains("in-reto-picker"))), label);
-  await j.tapInteraction("Reto: Mesa de campo (Y del mando)");
-  const jobs = await p.evaluate(() => [...document.querySelectorAll(".reto-picker .rp-opt")].map((b) => ({ open: !b.disabled, text: b.innerText })));
-  j.check("los métodos de campo del Himalaya: cámaras trampa (cerradas hasta enero), doble observador (abierto) y nidos de buitre", jobs.length === 3 && /Cámaras/.test(jobs[0].text) && !jobs[0].open && /doble observador/.test(jobs[1].text) && jobs[1].open && /buitre/.test(jobs[2].text), jobs.map((x) => `${x.text.split("\n")[0]}:${x.open}`).join(", "));
+  j.check("en la mesa, el botón naranja dice «Mesa de campo» y nada se abre solo", /Mesa de campo/.test(label) && !(await p.evaluate(() => document.body.classList.contains("in-reto-picker"))), label);
+  await j.tapInteraction("Mesa de campo (Y del mando)");
+  const jobs = await p.evaluate(() => [...document.querySelectorAll(".reto-picker .rp-opt")].map((b, i) => ({ i, open: !b.disabled, text: b.innerText })));
+  j.check("los métodos de campo: colmenas, transecto de mariposas y trampas de caída", jobs.length === 3 && /colmenas/i.test(jobs[0].text) && /Transecto/i.test(jobs[1].text) && /Trampas/i.test(jobs[2].text), jobs.map((x) => `${x.text.split("\n")[0]}:${x.open}`).join(", "));
   await capture(j, "mesa", "Mesa de campo");
-  await j.tap('.reto-picker .rp-opt[data-i="1"]', "Censo de íbices por doble observador");
-  await j.waitDuel();
-  const oracle = () => window.codeshipS3.exercise ?? window.codeshipS3.trace?.state;
-  const total = await p.evaluate(() => window.codeshipS3.biome.counted);
-  let steps = 0;
-  let framed = false;
-  for (let i = 0; i < 12; i++) {
-    const ex = await p.evaluate(oracle);
-    if (!ex) break;
-    if (i === 6) j.check(`el último paso pide el total de íbices de la montaña (${total})`, JSON.stringify(ex).includes(String(total)), JSON.stringify(ex).slice(0, 200));
-    await j.answer(oracle, true);
-    await p.waitForTimeout(900);
-    framed ||= await p.evaluate(() => window.codeshipS3.biome.steps.framing && window.codeshipS3.biome.steps.played > 0);
-    if (i === 2) await capture(j, "mesa-paso", "Doble observador: un paso en la mesa");
-    steps++;
+  const job = jobs.find((x) => x.open);
+  if (job) {
+    await j.tap(`.reto-picker .rp-opt[data-i="${job.i}"]`, job.text.split("\n")[0]);
+    await j.waitDuel();
+    const oracle = () => window.codeshipS3.exercise ?? window.codeshipS3.trace?.state;
+    let steps = 0;
+    for (let i = 0; i < 12; i++) {
+      const ex = await p.evaluate(oracle);
+      if (!ex) break;
+      await j.answer(oracle, true);
+      await p.waitForTimeout(900);
+      steps++;
+    }
+    const drawn = !(await j.page.locator(".duel:not(.hidden)").count());
+    const result = drawn ? "Conseguido" : ((await j.texts(".duel .result"))[0] ?? "");
+    j.check(`${job.text.split("\n")[0]}: se completa`, /Conseguido/.test(result), `${steps} pasos · ${result}`);
+    await j.endSheet();
+    await p.waitForTimeout(800);
+  } else {
+    // The game's clock may be past November (December–January): every method then says why it waits, by its season.
+    j.check("fuera de temporada, cada método de campo dice por qué espera", jobs.every((x) => x.text.split("\n")[1]?.length > 10), JSON.stringify(jobs));
+    await j.tap(".reto-picker .rp-close, .reto-picker [aria-label='Cerrar']", "Cerrar la mesa de campo").catch(() => {});
   }
-  j.check("cada paso se ve en la mesa (ella con el cuaderno y los prismáticos)", framed);
-  // The sheet of options says «Conseguido»; the drawing ends on its molecule and closes by itself.
-  const drawn = !(await j.page.locator(".duel:not(.hidden)").count());
-  const result = drawn ? "Conseguido" : ((await j.texts(".duel .result"))[0] ?? "");
-  j.check("el censo por doble observador se completa («Conseguido»)", /Conseguido/.test(result), `${steps} pasos · ${result}`);
-  await j.endSheet();
-  await p.waitForTimeout(800);
 
-  // ── To mid June (≈ 16 game days): births in the census, the marmots awake on the meadow, the pikas on the scree.
-  const before = c.events.join("|");
+  // ── The Carboniferous forest at the pyramid's north-east foot: its five trees, its giants walking.
+  went = await goArea(j, "bioma:bosque-carbonifero", "Bosque del Carbonífero");
+  j.check("«Ir» la lleva al bosque del Carbonífero, al pie de la pirámide", went, await p.evaluate(() => window.codeshipS3.body.area));
+  const forest = await p.evaluate(() => {
+    const c = window.codeshipS3;
+    const b = c.body;
+    const t = c.biome.carbonView.trees.filter((q) => Math.hypot(q.x - b.x, q.z - b.z) < 120);
+    return { kinds: [...new Set(t.map((q) => q.species))], n: t.length };
+  });
+  j.check("el bosque tiene sus cinco árboles del Carbonífero (Lepidodendron, Sigillaria, Calamites, Psaronius, Cordaites)", forest.kinds.length === 5 && forest.n >= 40, JSON.stringify(forest));
+  const giant = await p.evaluate(() => {
+    const c = window.codeshipS3;
+    return c.biome.carbon.poses().filter((q) => !q.hidden && q.species === "arthropleura")[0];
+  });
+  if (giant) {
+    await walkTo(j, giant.x, giant.z - 7, 3);
+    await lookAt(j, giant.x, giant.z);
+    await tilt(j, 0.05);
+  }
+  let a = await around(p, 150, "carbon");
+  maxCalls = Math.max(maxCalls, a.calls);
+  j.check("en noviembre camina por el bosque Arthropleura, el miriápodo de 2,6 m", (a.near.arthropleura ?? 0) > 0, JSON.stringify(a.near));
+  await capture(j, "carbonifero", "Bosque del Carbonífero");
+
+  // ── To mid June (≈ 16 game days): births or deaths in the census; the griffenflies fly over the forest.
   await p.evaluate(() => window.codeshipS3.biome.skip(15.8));
+  await p.waitForTimeout(2500);
+  let fly = {};
+  for (let k = 0; k < 20 && !((fly.meganeura ?? 0) + (fly.meganeuropsis ?? 0) > 0); k++) {
+    fly = (await around(p, 250, "carbon")).flying;
+    if (!((fly.meganeura ?? 0) + (fly.meganeuropsis ?? 0) > 0)) await p.waitForTimeout(500);
+  }
+  j.check("en junio las libélulas gigantes (Meganeura, Meganeuropsis) patrullan sobre el bosque", (fly.meganeura ?? 0) + (fly.meganeuropsis ?? 0) > 0, JSON.stringify(fly));
+  const m = await p.evaluate(() => window.codeshipS3.biome.carbon.poses().find((q) => !q.hidden && q.flying && q.species.startsWith("meganeur")));
+  if (m) {
+    const b = await p.evaluate(() => window.codeshipS3.body);
+    await lookAt(j, m.x, m.z);
+    await tilt(j, Math.max(-0.4, Math.min(0.8, Math.atan2(m.y - b.y - 1.6, Math.hypot(m.x - b.x, m.z - b.z)))));
+  }
+  a = await around(p, 150, "carbon");
+  maxCalls = Math.max(maxCalls, a.calls);
+  await capture(j, "carbonifero-junio", "Bosque del Carbonífero en junio");
   await goArea(j, "bioma:estacion", "Estación de investigación");
   await j.showPanel(".s3-censo");
-  await p.waitForFunction((b) => [...document.querySelectorAll(".s3-censo .cz-events li")].map((li) => li.innerText).join("|") !== b, before, { timeout: 30000 }).catch(() => {});
   c = await card();
-  const note = await p.evaluate(() => document.querySelector(".s3-censo .cz-notebook")?.innerText ?? "");
-  j.check("el censo por doble observador queda en el cuaderno de campo", /íbices/.test(note), note);
-  j.check("al pasar el tiempo el censo cuenta nacimientos o muertes", c.events.some((e) => /nace|muere| caza |crías nuevas/i.test(e)), c.events.slice(0, 5).join(" / "));
+  j.check("al pasar el tiempo el censo cuenta nacimientos o muertes", c.events.some((e) => /nace|muere|caza|pone|crías nuevas/i.test(e)), c.events.slice(0, 5).join(" / "));
   await j.tapInteraction("Cerrar el censo (botón naranja)");
-  for (const sh of [
-    { id: "bioma:pradera", title: "Pradera de las marmotas", label: "pradera", crowd: "marmota", many: 10, stand: 9 },
-    { id: "bioma:pedrera", title: "Pedrera de las pikas", label: "pedrera", crowd: "pika", many: 8, stand: 6 },
-  ]) {
-    went = await goArea(j, sh.id, sh.title);
-    j.check(`«Ir» la lleva a ${sh.title}`, went, await p.evaluate(() => window.codeshipS3.body.area));
-    const t = await p.evaluate((s) => window.codeshipS3.biome.view.crowd.centreOf(s), sh.crowd);
-    if (t) {
-      // From `stand` m downhill (south) of them, looking at them.
-      await walkTo(j, t.x, t.z - sh.stand, 1.5);
-      const b = await p.evaluate(() => window.codeshipS3.body);
-      await face(j, t, Math.atan2(t.y - b.y - 1.6, Math.hypot(t.x - b.x, t.z - b.z)) - 0.3);
-    }
-    // She watches a few seconds, as a player does: pikas and marmots dart in and out of their burrows and rocks, so one
-    // frame may catch one fewer (7 of 8 pikas on CI run 45477655808).
-    v = await inView(p);
-    for (let k = 0; k < 6 && (v[sh.crowd] ?? 0) < sh.many; k++) {
-      await p.waitForTimeout(700);
-      const w = await inView(p);
-      if ((w[sh.crowd] ?? 0) > (v[sh.crowd] ?? 0)) v = w;
-    }
-    a = await around(p, 120);
-    maxCalls = Math.max(maxCalls, a.calls);
-    const where = await p.evaluate((s) => ({ b: window.codeshipS3.body, n: window.codeshipS3.biome.view.crowd.countsOf(s) }), sh.crowd);
-    j.check(`${sh.title}: en junio se ven al menos ${sh.many} a la vista`, (v[sh.crowd] ?? 0) >= sh.many, `${JSON.stringify(v)} · mira a ${JSON.stringify(t)} desde ${JSON.stringify(where)}`);
-    await capture(j, sh.label, sh.title);
-  }
-  const plants = (await around(p, 1)).plants;
-  const all = ["artemisa", "espino", "pino", "abedul", "enebro", "pradera", "cojines", "amapola", "saussurea", "liquen", "eolica"];
-  j.check("las plantas de cada cinturón están vivas, de la artemisa a los líquenes", all.every((k) => (plants[k] ?? 0) > 0), JSON.stringify(plants));
-  j.check("las llamadas de dibujo quedan en el presupuesto (≤ 600) en la montaña", maxCalls > 0 && maxCalls <= 600, String(maxCalls));
+  j.check("las llamadas de dibujo quedan en el presupuesto (≤ 600)", maxCalls > 0 && maxCalls <= 600, String(maxCalls));
 }

@@ -29,8 +29,8 @@ export const PUPA_RULES = {
   clear: 8,
   /** The gallery round the cell's foot, m. */
   gallery: 6,
-  /** Half the pier's width, m. */
-  pierHalf: 2,
+  /** Half the pier's width, m (6 m: a stick's walk drifts, and nothing keeps her from the water). */
+  pierHalf: 3,
   /** Air kept under the ceiling over the cell, m. */
   headroom: 12,
 } as const;

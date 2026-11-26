@@ -3,6 +3,16 @@
 Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documento. El historial anterior al
 2026-11-18 está en git y en `docs/design/`.
 
+## 2026-11-26
+
+- **Santuario 3, la pupa, el Carbonífero y el lago**: el globo de nubes da paso a una celda gigante translúcida en el
+  centro de la pirámide, entre los árboles colosales, donde una obrera de *Apis cerana* pasa de huevo a adulta; se llega
+  andando por un muelle desde la cubierta del árbol más cercano y está en Áreas ([pupa-abeja.md](docs/design/pupa-abeja.md)).
+  Al pie noreste y en la cima, un bosque del Carbonífero (Lepidodendron, Sigillaria, Calamites, Psaronius, Cordaites)
+  con Meganeura, Meganeuropsis, Arthropleura, Mazothairos y cucarachas primitivas a tamaño fósil, con su cadena en el
+  censo ([carbonifero.md](docs/design/carbonifero.md)); en el fondo del lago, ninfas de libélula y efímera y larvas de
+  tricóptero y quironómido con su ciclo real ([larvas-lago.md](docs/design/larvas-lago.md)).
+
 ## 2026-11-25
 
 - **Santuario 3, montaña hueca**: la montaña es una pirámide hueca con tres cuevas sobre un lago de 4 m; cuatro árboles

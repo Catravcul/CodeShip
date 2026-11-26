@@ -47,7 +47,7 @@ export class BeePupaView {
     this.q.setFromEuler(this.e);
     this.cell.compose(new THREE.Vector3(p.x, p.y0, p.z), this.q, new THREE.Vector3(1, 1, 1));
     const tube = new THREE.CylinderGeometry(r, r, d, 6, 1, true).rotateX(Math.PI / 2).rotateZ(Math.PI / 6).translate(0, 0, d / 2);
-    const own = new THREE.Mesh(tube, new THREE.MeshStandardMaterial({ color: 0xe8c060, roughness: 0.4, transparent: true, opacity: 0.2, side: THREE.DoubleSide, depthWrite: false }));
+    const own = new THREE.Mesh(tube, new THREE.MeshStandardMaterial({ color: 0xd89a30, roughness: 0.4, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false }));
     own.applyMatrix4(this.cell);
     own.name = "pupa-abeja-celda";
     own.renderOrder = 4;
@@ -57,8 +57,9 @@ export class BeePupaView {
     edges.name = "pupa-abeja-aristas";
     this.root.add(edges);
     // Its foot: a solid prism of wax from the lake's bottom to the gallery, and the cell's floor (the rhombi of a real cell: flat here).
-    const foot = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.04, r * 1.12, p.y0 - HOLLOW.floorY + 0.6, 6).rotateY(Math.PI / 6), new THREE.MeshStandardMaterial({ color: 0xc89a40, roughness: 0.7, flatShading: true }));
-    foot.position.set(p.x, (HOLLOW.floorY + p.y0) / 2 + 0.3, p.z);
+    const foot = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.04, r * 1.12, p.y0 - HOLLOW.floorY - 0.05, 6).rotateY(Math.PI / 6), new THREE.MeshStandardMaterial({ color: 0xc89a40, roughness: 0.7, flatShading: true }));
+    // Its top just under the cell's bottom, so the egg and the young larva lie on it, not inside it.
+    foot.position.set(p.x, (HOLLOW.floorY + p.y0 - 0.05) / 2, p.z);
     foot.name = "pupa-abeja-pie";
     this.root.add(foot);
     // The wax cap (slightly domed in a worker's cell: a flat hexagon here), translucent so the pupa shows through.

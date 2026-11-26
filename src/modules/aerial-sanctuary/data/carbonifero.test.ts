@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { carbonBiome, type AnimalSpec } from "./bioma";
+import { airBiome, carbonBiome, type AnimalSpec } from "./bioma";
 import { CARBON_ANIMALS, CARBON_O2, CARBON_SCALE, CARBON_SPECIES } from "./carbonifero";
 import { advance, census, createBiome, GAME_DAYS_PER_YEAR, REFUGE } from "../domain/bioma";
 
@@ -7,6 +7,15 @@ const def = carbonBiome(4);
 const animal = (id: string) => def.species.find((s) => s.id === id) as AnimalSpec;
 
 describe("el bosque del Carbonífero al pie de la pirámide (carbonifero.md)", () => {
+  it("caben por las cuevas: el mayor dibujado (×1) es mucho menor que el mayor insecto de Gilgit ×400 y que ~38 m", () => {
+    const drawn = (d: { species: readonly unknown[]; drawScale?: number }) =>
+      Math.max(...(d.species as AnimalSpec[]).filter((s) => s.kind === "animal" && s.size).map((s) => Math.max(s.size.x, s.size.z) * (d.drawScale ?? 1)));
+    const carbon = drawn(def);
+    expect(carbon).toBeLessThan(3);
+    expect(carbon).toBeLessThan(drawn(airBiome(4)));
+    expect(carbon).toBeLessThan(38);
+  });
+
   it("sus gigantes van a su tamaño fósil real: Meganeura ~70 cm, Meganeuropsis ~71 cm, Arthropleura ~2,6 m", () => {
     expect(CARBON_SCALE.value).toBe(1);
     expect(def.drawScale).toBe(1);

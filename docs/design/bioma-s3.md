@@ -23,7 +23,9 @@ Dickoré y Miehe 2007) y los bosques húmedos del Rakaposhi.
 | `aerial-sanctuary/data/bioma-conducta.ts` | Rasgos de conducta para `fauna`, cortejos, rivalidades (choque de cuernos) y etogramas, con fuente |
 | `aerial-sanctuary/application/biome-life.ts` | La cadena + `fauna/Ecosystem` sobre el terreno: cada animal en su zona y su suelo, los que trepan en la roca, los vuelos (térmicas, picados, cernido, bandadas, huesos, vencejos, uve de los ánsares), la ardilla que planea al anochecer, las marmotas que hibernan |
 | `aerial-sanctuary/data/bioma-crowd.ts`, `domain/bioma-crowd.ts` | Colonias (genéricas: especies como datos): tamaños reales, obreras dibujadas (licencia), colmenas, nidos y hormigueros |
-| `aerial-sanctuary/data/globo-nubes.ts`, `domain/abeja.ts`, `adapters/three/s3-cloud-globe.ts` | El globo de nubes y su abeja ([globo-nubes.md](globo-nubes.md)) |
+| `aerial-sanctuary/data/pupa-abeja.ts`, `domain/abeja.ts`, `adapters/three/s3-bee-pupa.ts` | La pupa de la abeja en el centro de la pirámide ([pupa-abeja.md](pupa-abeja.md)) |
+| `aerial-sanctuary/data/carbonifero.ts`, `adapters/three/s3-carbon.ts` | El bosque del Carbonífero y sus gigantes a tamaño fósil ([carbonifero.md](carbonifero.md)) |
+| `aerial-sanctuary/data/larvas-lago.ts`, `domain/larvas-lago.ts` | Las larvas del lago de la pirámide ([larvas-lago.md](larvas-lago.md)) |
 | `adapters/three/s3-biome-models.ts` | La escena: terreno por trozos con colores por cinturón, roca y sendero; río; árboles, matorrales y plantas con nivel de detalle; cabaña y mesa |
 | `adapters/three/s3-biome-crowd.ts` | Las colonias dibujadas: obreras volando ante su nido cerca, cajas lejos (una malla instanciada) |
 | `aerial-sanctuary/data/bioma-retos.ts`, `application/field-work.ts` | Los métodos de campo del Himalaya como retos (`procedureReto` del santuario 1) |
@@ -130,17 +132,21 @@ alrededor de su nido; en invierno no sale ninguna.
 Cerca de ella las obreras son cuerpos articulados que vuelan en círculo ante su nido (las hormigas andan); lejos, una
 caja cada una. Los nidos se dibujan más pequeños que la escala ×400 (licencia: una colmena serían 160 m).
 
-## El globo de nubes
+## La pupa, el Carbonífero y el lago (Berón, 2026-11-26)
 
-Sobre el mar al sur de la isla: una esfera de nubes donde se nada, con una abeja gigante que se desarrolla de huevo a
-adulta en su celda. Ver [globo-nubes.md](globo-nubes.md).
+- El globo de nubes ya no está: en el centro de la pirámide hay una **celda gigante translúcida** con la abeja que se
+  desarrolla de huevo a adulta; se llega andando por un muelle ([pupa-abeja.md](pupa-abeja.md)).
+- Al pie noreste de la pirámide y en su cima, el **bosque del Carbonífero** con sus insectos gigantes a tamaño fósil,
+  que acompañan a los de Gilgit con la misma regla por persona; el censo tiene su sección y su cadena
+  ([carbonifero.md](carbonifero.md)).
+- En el fondo del lago de la pirámide, **larvas acuáticas** con su ciclo real ([larvas-lago.md](larvas-lago.md)).
 
 ## Escena y presupuesto (iPhone 13)
 
 Terreno en 16 trozos de rejilla de 6 m, colores por cinturón, roca, sendero y grava; el río en el fondo de la garganta.
 Pinos y abedules en una geometría fundida; enebros, artemisa, espino; cerca de ella (nivel de detalle): pedregal,
 hierba, cojines, amapolas, saussureas. Insectos con los cuerpos de cubos de `fauna` ×400 (una malla fundida por
-especie y etapa: una llamada cada una), sus colonias en una sola malla de cajas, el globo de nubes en ~7 llamadas. La
+especie y etapa: una llamada cada una), sus colonias en una sola malla de cajas, la pupa en ~7, el bosque del Carbonífero en una por árbol y por cuerpo. La
 vida se actualiza si la cámara está a menos de 1 600 m. **≤ 600 llamadas** (en la pradera en junio: ~40).
 
 ## La estación: el censo y la mesa de campo
@@ -160,7 +166,8 @@ Lo hecho queda en el **cuaderno de campo** del censo.
 ## Pruebas
 
 `domain/bioma.test.ts` (regla por persona, escala, estado inicial, 10 años estables, una cadena genérica con una
-langosta), `domain/abeja.test.ts`, `data/globo-nubes.test.ts`, `domain/mountain.test.ts`, `domain/bioma-crowd.test.ts`,
+langosta), `domain/abeja.test.ts`, `data/pupa-abeja.test.ts`, `data/carbonifero.test.ts`, `domain/larvas-lago.test.ts`,
+`application/carbon-life.test.ts`, `domain/mountain.test.ts`, `domain/bioma-crowd.test.ts`,
 `data/bioma-island.test.ts`, `application/biome-life.test.ts`, `application/field-work.test.ts`,
 `sanctuary-one/data/layout.test.ts` (el santuario 1 no cambia).
 
@@ -168,6 +175,4 @@ langosta), `domain/abeja.test.ts`, `data/globo-nubes.test.ts`, `domain/mountain.
 
 - Los nombres de las zonas de `data/bioma-island.ts` aún hablan de mamíferos («Pradera de las marmotas», «Farallón de
   los íbices»): ese archivo lo cambia otro hilo (la montaña hueca con cuevas).
-- El recorrido **PX-51** (`tools/experiencia/s3-bioma.mjs`) busca íbices, markhores y marmotas: hay que reescribirlo
-  para los insectos (colmenas, Apolo en junio, avispón ante la colmena, el globo de nubes).
 - Varias generaciones al año para la mosca y la mariquita; la bola de calor de las abejas contra el avispón.

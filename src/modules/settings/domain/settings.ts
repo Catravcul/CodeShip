@@ -35,7 +35,7 @@ export const ANIMALS_PER_PERSON: readonly AnimalsPerPerson[] = ["3", "4", "5", "
 /** How long sanctuary 1's octopus egg takes to hatch, minutes (Berón 2026-11-24: «unas 2 horas»; 1–10 to watch it). */
 export type PulpoMinutes = "1" | "3" | "10" | "120";
 export const PULPO_MINUTES: readonly PulpoMinutes[] = ["1", "3", "10", "120"];
-/** How long sanctuary 3's cloud-globe honeybee takes from egg to adult, minutes (its sibling: the same choices). */
+/** How long sanctuary 3's honeybee in its pupa (the hollow pyramid's middle) takes from egg to adult, minutes (its sibling: the same choices). */
 export type AbejaMinutes = PulpoMinutes;
 export const ABEJA_MINUTES: readonly AbejaMinutes[] = PULPO_MINUTES;
 /** What the first input of a session was. */

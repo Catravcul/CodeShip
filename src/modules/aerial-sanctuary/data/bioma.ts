@@ -2,6 +2,7 @@ import type { Reality } from "@core/reality";
 import { allocate, ANIMALS_PER_HUMAN, type PopulationTable, type Trophic } from "@modules/fauna/domain/population";
 import { fact } from "./sources";
 import { TRAINERS } from "./trainers";
+import { CARBON_ANIMALS, CARBON_CLIMATE, CARBON_SCALE, CARBON_SPECIES } from "./carbonifero";
 
 /**
  * THE BIOME of sanctuary 3: the AIR and the HEIGHTS (Berón, 2026-11-20: «sanctuary3 debe ser más aéreo»;
@@ -25,7 +26,7 @@ import { TRAINERS } from "./trainers";
 export type Stage = "cria" | "joven" | "adulto" | "anciano";
 /** The zone of the island it lives in (data/bioma-island.ts `ZONES`), or the air. */
 export type Habitat = string;
-export type BodyShape = "cuadrupedo" | "ave" | "pajaro" | "insecto";
+export type BodyShape = "cuadrupedo" | "ave" | "pajaro" | "insecto" | "miriapodo";
 
 /** What a consumer eats: a food (species id or remains) and, for animals, which of its stages. `pref` weighs it. */
 export interface Food {
@@ -512,10 +513,12 @@ export const CLIMATE: ClimateSpec = {
 /** The trophic level of a species for the rule (presas 2, meso 3, ápice 4). */
 const levelOfTrophic = (t: number): Trophic => (t >= 4 ? "apice" : t === 3 ? "meso" : "presa");
 const ANIMALS = SPECIES.filter((s): s is AnimalSpec => s.kind === "animal");
-/** The tables of the rule for sanctuary 3 (fauna/domain/population.ts `allocate`). */
+/** Every animal of sanctuary 3 under the rule: Gilgit-Baltistán's insects and the Carboniferous giants (data/carbonifero.ts). */
+const RULED = [...ANIMALS, ...CARBON_ANIMALS];
+/** The tables of the rule for sanctuary 3 (fauna/domain/population.ts `allocate`): one rule for the whole sanctuary. */
 export const S3_POPULATION: PopulationTable = {
-  perHuman: S3_PER_HUMAN,
-  level: Object.fromEntries(ANIMALS.map((s) => [s.id, levelOfTrophic(s.trophic)])),
+  perHuman: { ...S3_PER_HUMAN, ...Object.fromEntries(CARBON_ANIMALS.map((s) => [s.id, 1])) },
+  level: Object.fromEntries(RULED.map((s) => [s.id, levelOfTrophic(s.trophic)])),
 };
 
 /** The people of sanctuary 3 (the rule's humans): the trainers of the initiation (data/trainers.ts) and Doménica. */
@@ -525,18 +528,29 @@ export function s3People(): number {
 
 /** How many of each insect live on the island for `k` animals per person (the setting): species → individuals. */
 export function s3Plan(k: number = ANIMALS_PER_HUMAN, people = s3People()): Map<string, number> {
-  return allocate(Math.max(0, k * people), ANIMALS.map((s) => s.id), S3_POPULATION).counts;
+  return allocate(Math.max(0, k * people), RULED.map((s) => s.id), S3_POPULATION).counts;
 }
 
 /** The air biome for `k` animals per person: every insect's start and cap by the rule (a visitor brings as many). */
 export function airBiome(k = 4): BiomeDef {
-  const plan = s3Plan(k);
-  const species = SPECIES.map((s): BiomeSpec => {
+  const species = ruled(SPECIES, s3Plan(k));
+  return { id: `aire-${k}`, name: "Karakórum (Hunza–Nagar)", species, remains: REMAINS, climate: CLIMATE, startDayOfYear: 323, elsewhere: "a otra parte del valle", drawScale: INSECT_SCALE.value };
+}
+
+/** The species of a biome with their start and cap by the rule's plan. */
+const ruled = (species: readonly BiomeSpec[], plan: ReadonlyMap<string, number>): BiomeSpec[] =>
+  species.map((s): BiomeSpec => {
     if (s.kind !== "animal") return s;
     const n = plan.get(s.id) ?? s.cap;
     return s.visitor ? { ...s, start: 0, cap: n, visitor: { ...s.visitor, count: n } } : { ...s, start: n, cap: n };
   });
-  return { id: `aire-${k}`, name: "Karakórum (Hunza–Nagar)", species, remains: REMAINS, climate: CLIMATE, startDayOfYear: 323, elsewhere: "a otra parte del valle", drawScale: INSECT_SCALE.value };
+
+/**
+ * The Carboniferous forest at the pyramid's foot for `k` animals per person (data/carbonifero.ts): its own food chain
+ * on the same calendar as the island, its giants at their fossil size, its numbers from the same rule.
+ */
+export function carbonBiome(k = 4): BiomeDef {
+  return { id: `carbonifero-${k}`, name: "Bosque del Carbonífero (Euramérica, ~300 Ma)", species: ruled(CARBON_SPECIES, s3Plan(k)), remains: [], climate: CARBON_CLIMATE, startDayOfYear: 323, elsewhere: "a otra parte del bosque", drawScale: CARBON_SCALE.value };
 }
 
 /** The air biome: the Hunza–Nagar valleys from the valley floor to Khunjerab, at 4 animals per person (the default). Day 0 is 20 November (Berón's day). */

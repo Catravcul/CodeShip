@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { AIR_BIOME, BIOME, FRUIT_FLY_M, INSECT_SCALE, airBiome, s3People, s3Plan, type AnimalSpec, type BiomeDef, type PlantSpec } from "../data/bioma";
+import { AIR_BIOME, BIOME, FRUIT_FLY_M, INSECT_SCALE, airBiome, carbonBiome, s3People, s3Plan, type AnimalSpec, type BiomeDef, type PlantSpec } from "../data/bioma";
 import { advance, census, createBiome, dateLabel, dormantIn, growthFactor, huntKill, lifeStageOf, monthOfDay, presentIn, quietNow, swarmKg, GAME_DAYS_PER_YEAR, REFUGE } from "./bioma";
 import { LEVEL_SHARE } from "@modules/fauna/domain/population";
+import { CARBON_ANIMALS } from "../data/carbonifero";
 
 const animals = BIOME.filter((s): s is AnimalSpec => s.kind === "animal");
 const plant = (id: string) => BIOME.find((s) => s.id === id) as PlantSpec;
@@ -26,19 +27,20 @@ describe("s3 biome: the living food chain of the air and the heights (Karakoram)
     expect(AIR_BIOME.drawScale).toBe(INSECT_SCALE.value);
   });
 
-  it("the rule of animals per person, as in sanctuary 1: people × setting, 70/22/8 by trophic level", () => {
+  it("the rule of animals per person, as in sanctuary 1: people × setting, 70/22/8 by trophic level, for the whole sanctuary (Gilgit-Baltistán and the Carboniferous together)", () => {
+    const all = [...animals, ...CARBON_ANIMALS];
     expect(s3People()).toBe(17);
     for (const k of [3, 4, 5, 6]) {
       const plan = s3Plan(k);
       const total = [...plan.values()].reduce((t, v) => t + v, 0);
       expect(total, `k=${k}`).toBe(k * s3People());
-      const by = (t: number) => animals.filter((s) => s.trophic === t).reduce((n, s) => n + plan.get(s.id)!, 0);
+      const by = (t: number) => all.filter((s) => s.trophic === t).reduce((n, s) => n + plan.get(s.id)!, 0);
       // The top predators keep two of each at least; the levels come near their shares.
       expect(by(2) / total).toBeGreaterThan(LEVEL_SHARE.presa - 0.1);
       expect(by(3) / total).toBeGreaterThan(LEVEL_SHARE.meso - 0.08);
-      for (const s of animals) expect(plan.get(s.id)!, s.id).toBeGreaterThanOrEqual(2);
+      for (const s of all) expect(plan.get(s.id)!, s.id).toBeGreaterThanOrEqual(2);
     }
-    const four = airBiome(4).species.filter((s): s is AnimalSpec => s.kind === "animal");
+    const four = [...airBiome(4).species, ...carbonBiome(4).species].filter((s): s is AnimalSpec => s.kind === "animal");
     expect(four.reduce((t, s) => t + s.cap, 0)).toBe(4 * s3People());
   });
 

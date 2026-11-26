@@ -1,6 +1,7 @@
 import type { Traits } from "@modules/fauna/domain/predation";
 import type { EthoAct, SpeciesEthogram } from "@modules/fauna/domain/ethogram";
 import { fact } from "./sources";
+import { CARBON_ETHOGRAMS, CARBON_NAMES, CARBON_TRAITS } from "./carbonifero-conducta";
 
 /**
  * How the giant insects of the air biome behave (fauna's Ecosystem: who hunts whom by stats, who flees, the habits of
@@ -39,6 +40,8 @@ export const BIOME_TRAITS: Readonly<Record<string, Traits & { readonly source: s
   mantis: { ...t({ massKg: 2.5e-3, strength: 0.5, armour: 0.2, agility: 0.7, armament: 0.8, diet: "carnivoro", medium: "ambos", runMs: v(1.5), senseM: 40, huntSuccess: 0.5, rangeM: 200, eats: [...ADULT_NYMPH("saltamontes"), "mariposa", "sirfido", "abeja"] }), source: `${W("European mantis")} (caza al acecho con las patas raptoras)` },
   avispon: { ...t({ massKg: 6e-4, strength: 0.6, armour: 0.35, agility: 0.8, armament: 0.8, diet: "carnivoro", medium: "ambos", runMs: v(6), senseM: 80, huntSuccess: 0.3, rangeM: 1500, eats: ["abeja", "sirfido", "drosophila", ...ADULT_NYMPH("saltamontes")] }), source: `${W("Asian hornet")} (se cierne ante las colmenas y caza abejas al vuelo)` },
   // Next to insects 400 times their size, Doménica is as small as a 4 mm insect: her 60 kg ÷ 400³ (they do not flee her).
+  // The Carboniferous giants at the pyramid's foot (data/carbonifero-conducta.ts).
+  ...CARBON_TRAITS,
   Humano: { ...t({ massKg: 60 / 400 ** 3, strength: 0.01, armament: 0, diet: "omnivoro", medium: "ambos", runMs: 6.5, senseM: 0, huntSuccess: 0, rangeM: 0 }), source: "Doménica (sprint de 6,5 m/s); su masa a la escala de los insectos gigantes (60 kg ÷ 400³): nuestro" },
 };
 
@@ -74,6 +77,7 @@ const NAME: Readonly<Record<string, [string, string, string]>> = {
   libelula: ["una libélula", "una ninfa de libélula", "una libélula joven"],
   mantis: ["una mantis", "una ninfa de mantis", "una mantis joven"],
   avispon: ["un avispón", "una larva de avispón", "una pupa de avispón"],
+  ...CARBON_NAMES,
   Humano: ["Doménica", "Doménica", "Doménica"],
 };
 export const AGENT_NAMES: Readonly<Record<string, string>> = Object.fromEntries(Object.entries(NAME).flatMap(([k, [a, c, j]]) => [[k, a], [`${k}:cria`, c], [`${k}:joven`, j]]));
@@ -114,4 +118,5 @@ export const BIOME_ETHOGRAMS: Readonly<Record<string, SpeciesEthogram>> = {
   libelula: { acts: [a("patrulla sobre el río cazando al vuelo", "patrullar", 0.7, 30, W("Pantala flavescens")), a("descansa en una rama con las alas abiertas", "quieto", 0.3, 20, W("Dragonfly"))], young: a("caza bajo el agua con su máscara (una ninfa)", "pacer", 1, 30, W("Dragonfly")) },
   mantis: { acts: [a("acecha inmóvil con las patas raptoras plegadas", "quieto", 0.7, 30, W("European mantis")), a("se balancea despacio como una hoja al viento", "pasear", 0.3, 15, W("European mantis"))], young: a("acecha moscas pequeñas (una ninfa)", "quieto", 1, 30, W("European mantis")) },
   avispon: { acts: [a("se cierne ante una colmena esperando a las abejas", "quieto", 0.4, 20, W("Asian hornet")), a("caza insectos al vuelo", "patrullar", 0.6, 25, W("Asian hornet"))], young: LARVA("espera en su celda a que le traigan carne masticada", W("Asian hornet")) },
+  ...CARBON_ETHOGRAMS,
 };

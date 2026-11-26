@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BEE_DAYS, BEE_STAGES, BEE_TOTAL_DAYS, FLY_SHARE, advanceBee, beeAt, beeStageAt } from "./abeja";
 
-describe("la abeja del globo de nubes (Apis cerana)", () => {
+describe("la abeja de la pupa del centro de la pirámide (Apis cerana)", () => {
   it("dura 3 + 5 + 11 = 19 días, uno o dos menos que A. mellifera (21: Winston 1987)", () => {
     expect(BEE_DAYS.egg + BEE_DAYS.larva + BEE_DAYS.capped).toBe(19);
     expect(BEE_TOTAL_DAYS).toBeLessThan(21);

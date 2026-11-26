@@ -7,6 +7,7 @@ import { heightAt } from "../domain/mountain";
 import { BIOME_ISLAND, MOUNTAIN, CORE_DEF, CAVE_HALF_M, CAVE_VAULT_M, INNER_HALF, caves, innerAt, innerY } from "./bioma-island";
 import { scaleInteriorPlan } from "@modules/station/domain/interior";
 import { starshipInteriorPlan, STARSHIP_DECKS } from "@modules/mothership/data/starship-interior";
+import { buildPupa } from "./pupa-abeja";
 
 /**
  * INSIDE THE HOLLOW MOUNTAIN (docs/design/montana-hueca.md; Berón 2026-11-25): the buried pyramid's hollow is the
@@ -71,7 +72,7 @@ export interface GiantTreeDef {
 
 /** The four giant trees and what each holds (the audit: data/campus.ts CAMPUS_SERVICES). */
 export const GIANT_TREES: readonly GiantTreeDef[] = [
-  { id: "arbol-entrenamiento", label: "Árbol del entrenamiento", building: "entrenamiento", desc: "Las instalaciones reales de formación de astronautas, un piso de árbol cada una; arriba, la NBL", at: { x: -40, z: 30 }, first: "ew", floors: [["supervivencia"], ["gimnasio", "trajes"], ["simulador-dragon", "simulador-lm"], ["robotica", "control"], ["svmf"]], cima: { room: "nbl", side: "e" } },
+  { id: "arbol-entrenamiento", label: "Árbol del entrenamiento", building: "entrenamiento", desc: "Las instalaciones reales de formación de astronautas, un piso de árbol cada una; arriba, la NBL", at: { x: -65, z: 80 }, first: "ew", floors: [["supervivencia"], ["gimnasio", "trajes"], ["simulador-dragon", "simulador-lm"], ["robotica", "control"], ["svmf"]], cima: { room: "nbl", side: "e" } },
   { id: "arbol-servicios", label: "Árbol de los servicios", building: "servicios", desc: "Donde se vive: la residencia, el restaurante, la clínica, el médico de selección y la sala de asambleas", at: { x: 105, z: -70 }, first: "ns", floors: [["residencia"], ["restaurante"], ["clinica"], ["medico"], ["asambleas"]] },
   { id: "arbol-ciencias", label: "Árbol de las ciencias y el estudio", building: "ciencias", desc: "Las aulas, la biblioteca, el laboratorio de muestras y el área de crianza", at: { x: 95, z: 120 }, first: "ew", floors: [["aulas"], ["biblioteca"], ["laboratorio"], ["crianza"]] },
   { id: "arbol-produccion", label: "Árbol de la producción y los campos", building: "produccion", desc: "El huerto y el taller; arriba, la centrífuga", at: { x: -85, z: -115 }, first: "ns", floors: [["huerto"], ["taller"]], cima: { room: "centrifuga", side: "e" } },
@@ -524,6 +525,9 @@ export function buildHollow(b: HollowBuilder, k: number, size: (id: string) => R
     b.link(c.point, p);
     stationsDraft.push({ id: `${area}:alfombras`, area, tower: c.id, building: c.label, kind: "pie", label: c.label, x: c.pad.x, y: c.pad.y, z: c.pad.z, out: { x: 0, z: 1 }, point: p });
   }
+
+  // ── The bee's pupa at the hollow's middle, in the room the campus leaves (data/pupa-abeja.ts) ──
+  buildPupa(b, trees);
 
   // ── The stations: their pads, consoles and lanes (found from what was built) ──
   const g = new Grid(obstaclesOf({ floors: b.floors, waters: b.waters.filter(flownOver), solids: b.solids }));

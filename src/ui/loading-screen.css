@@ -89,7 +89,7 @@
     fill-opacity: 0.45;
   }
 }
-/* Sanctuary 3: the caves glow, the clouds drift, the balloon and its bee bob, the insects hover, a carpet far off. */
+/* Sanctuary 3: the caves glow, the clouds drift, the bee in its pupa breathes, the insects hover, a carpet far off. */
 .cs-loading .ld3-cave {
   animation: cs-loading-cave 2.4s ease-in-out infinite alternate;
 }
@@ -112,9 +112,6 @@
   to {
     transform: translateX(16px);
   }
-}
-.cs-loading .ld3-balloon {
-  animation: cs-loading-bob 4s ease-in-out infinite alternate;
 }
 .cs-loading .ld3-bee,
 .cs-loading .ld3-butterfly {

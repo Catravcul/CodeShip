@@ -26,7 +26,7 @@ export type Category =
   /** Signs over areas. */
   | "rotulo";
 
-export type Shape = "caja" | "maquina" | "banco" | "jaula" | "figura" | "cuadrupedo" | "cetaceo" | "pinnipedo" | "pinguino" | "ave" | "insecto" | "piezas" | "cilindro" | "arbol";
+export type Shape = "caja" | "maquina" | "banco" | "jaula" | "figura" | "cuadrupedo" | "cetaceo" | "pinnipedo" | "pinguino" | "ave" | "insecto" | "miriapodo" | "piezas" | "cilindro" | "arbol";
 
 /**
  * A box of a composite model («piezas»), in the model's frame (metres; y up from the floor, front towards −z):

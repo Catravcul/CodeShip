@@ -16,12 +16,9 @@ import { focusReto, sheetLens } from "./adapters/three/interior/reto-focus";
 import { chooseReto, offerReto } from "./ui/interaction";
 import { RetoPicker } from "./ui/reto-picker";
 import { airBiome } from "@modules/aerial-sanctuary/data/bioma";
-import { CLOUD_AREA, CLOUD_ENTRY, CLOUD_GLOBE, CLOUD_GLOBE_DESC, CLOUD_POINT, cloudGlobeWorld } from "@modules/aerial-sanctuary/data/globo-nubes";
+import { PUPA_AREA, pupaOfArea, type PupaPlan } from "@modules/aerial-sanctuary/data/pupa-abeja";
 import { advanceBee } from "@modules/aerial-sanctuary/domain/abeja";
-import { waterAt, type Floor, type Solid, type Water } from "@modules/aerial-sanctuary/domain/walk";
-import type { AreaDef } from "@modules/aerial-sanctuary/data/layout";
-import type { WayPoint } from "@modules/aerial-sanctuary/domain/route";
-import { CloudGlobeView } from "./adapters/three/s3-cloud-globe";
+import { BeePupaView } from "./adapters/three/s3-bee-pupa";
 import { settings } from "./ui/settings-store";
 
 /** The sheet of a challenge (aerial-sanctuary.ts `openChallenge`): `beat` on each right step, `done` on closing. */
@@ -59,35 +56,25 @@ export class S3Biome {
   working?: string;
   readonly notebook: { when: string; text: string }[] = [];
 
-  /** The cloud globe and its honeybee (data/globo-nubes.ts, domain/abeja.ts): its moment 0 laid … 1 out. */
-  readonly globe: CloudGlobeView;
+  /** The bee's pupa at the hollow's middle (data/pupa-abeja.ts, domain/abeja.ts): its moment 0 laid … 1 out. */
+  readonly pupa: BeePupaView;
+  readonly pupaAt: PupaPlan;
   bee = { k: 0 };
-  /** The points the globe adds to the way graph (aerial-sanctuary.ts puts them in its map: one line). */
-  readonly points: readonly WayPoint[];
   private readonly beeTag: HTMLElement;
-  private readonly scene: THREE.Scene;
 
   constructor(scene: THREE.Scene, ui: HTMLElement, private readonly L: S3Layout) {
     // The rule of animals per person (the shared setting, as sanctuary 1's): the chain's numbers (data/bioma.ts).
     this.life = new BiomeLife(biomeGeo(L.k), 1, airBiome(Number(settings.value.animalsPerPerson)));
     this.view = new BiomeScene(L.k, this.life.state.def);
     scene.add(this.view.root);
-    this.scene = scene;
     // The hornets hunt at the bees' hives (application/biome-life.ts).
     this.life.hives = this.view.crowd.hivesOf("abeja");
-    // The cloud globe: its cloud-water, landing and comb into the walk world; its area and entry point.
-    const g = cloudGlobeWorld();
-    (L.world.waters as Water[]).push(...g.waters);
-    (L.world.floors as Floor[]).push(...g.floors);
-    (L.world.solids as Solid[]).push(...g.solids);
-    const G = CLOUD_GLOBE.value;
-    (L.areas as AreaDef[]).push({ id: CLOUD_AREA, island: "bioma", label: "El globo de nubes", desc: CLOUD_GLOBE_DESC, reality: "ficcion", centre: { x: G.x, y: G.y, z: G.z }, half: { x: G.r, y: G.r, z: G.r }, point: CLOUD_POINT });
-    this.points = [{ id: CLOUD_POINT, ...CLOUD_ENTRY }];
-    (L.graph.points as WayPoint[]).push(...this.points);
-    this.globe = new CloudGlobeView();
-    scene.add(this.globe.root);
+    // The bee's pupa: built into the hollow with the campus (data/montana.ts); drawn here from its area.
+    this.pupaAt = pupaOfArea(L.areas.find((a) => a.id === PUPA_AREA)!);
+    this.pupa = new BeePupaView(this.pupaAt);
+    scene.add(this.pupa.root);
     this.beeTag = document.createElement("div");
-    this.beeTag.className = "s3-globo-etapa hidden";
+    this.beeTag.className = "s3-pupa-etapa hidden";
     this.beeTag.setAttribute("role", "status");
     ui.appendChild(this.beeTag);
     const p = L.graph.points.find((q) => q.id === "bioma:estacion:censo")!;
@@ -175,8 +162,8 @@ export class S3Biome {
     if (camera instanceof THREE.PerspectiveCamera) this.camera = camera;
     if (!this.working) this.her = { x: body.x, y: body.y, z: body.z, yaw };
     const onStage = body.area.startsWith("bioma");
-    this.life.tick(dt, this.days(boardDays), t, hour, body, onStage && body.area !== CLOUD_AREA);
-    this.updateGlobe(dt, t, body, camera);
+    this.life.tick(dt, this.days(boardDays), t, hour, body, onStage);
+    this.updatePupa(dt, t, body, camera);
     const C = BIOME_ISLAND.centre.value;
     const far = Math.hypot(camera.position.x - C.x, camera.position.z - C.z);
     // The mountain is seen from every island; its life is posed only from nearby (mobile budget): the chain lives on.
@@ -192,27 +179,18 @@ export class S3Biome {
     this.renderCard();
   }
 
-  /** The bee's clock (the setting's minutes), its pose when the globe is near, its stage on screen inside it, the cloud's haze. */
-  private updateGlobe(dt: number, t: number, body: { area: string }, camera: THREE.Camera): void {
+  /** The bee's clock (the setting's minutes), its pose when the pupa is near, its stage on screen at its gallery or swimming by it. */
+  private updatePupa(dt: number, t: number, body: { x: number; y: number; z: number; area: string }, camera: THREE.Camera): void {
     this.bee.k = advanceBee(this.bee.k, dt, Number(settings.value.abejaMinutes));
-    const G = CLOUD_GLOBE.value;
-    const d = camera.position.distanceTo(new THREE.Vector3(G.x, G.y, G.z));
-    this.globe.root.visible = d < 4000;
-    const look = d < 1500 ? this.globe.update(this.bee.k, t) : undefined;
-    const inside = body.area === CLOUD_AREA;
-    const text = inside && look ? `Abeja del globo · ${look.stage.label}` : "";
+    const P = this.pupaAt;
+    const d = Math.hypot(camera.position.x - P.x, camera.position.z - P.z);
+    this.pupa.root.visible = d < 1200;
+    const look = d < 700 ? this.pupa.update(this.bee.k, t) : undefined;
+    const g = P.gallery;
+    const by = body.area === PUPA_AREA || (body.x > g.x0 - 12 && body.x < g.x1 + 12 && body.z > g.z0 - 12 && body.z < g.z1 + 12 && body.y < P.y0 + P.h);
+    const text = by && look ? `Abeja de la pupa · ${look.stage.label}` : "";
     if (this.beeTag.textContent !== text) this.beeTag.textContent = text;
     this.beeTag.classList.toggle("hidden", !text);
-    // Inside the cloud (the camera in its cloud-water), a white haze instead of the sea's murk (walk-look's
-    // UnderwaterView sets that first each change; this follows it while inside).
-    const P = camera.position;
-    const cw = d < G.r + 10 ? waterAt(this.L.world, P.x, P.y, P.z) : undefined;
-    if (cw?.area === CLOUD_AREA && P.y < cw.yTop && P.y > cw.yBottom && this.scene.fog instanceof THREE.Fog) {
-      this.scene.fog.color.setHex(0xe8eef2);
-      this.scene.fog.near = 8;
-      this.scene.fog.far = 320;
-      if (this.scene.background instanceof THREE.Color) this.scene.background.setHex(0xe8eef2);
-    }
   }
 
   private renderCard(): void {

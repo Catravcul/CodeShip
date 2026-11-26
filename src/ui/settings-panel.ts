@@ -78,7 +78,7 @@ const ROWS: readonly Row[] = [
   {
     key: "abejaMinutes",
     label: "Duración del desarrollo de la abeja",
-    help: "Santuario 3: cuánto tarda la abeja del globo de nubes en pasar de huevo a adulta (19 días reales), por sus fases. Para verlo, 1 o 3 minutos; despacio, 2 horas",
+    help: "Santuario 3: cuánto tarda la abeja de la pupa, en el centro de la pirámide, en pasar de huevo a adulta (19 días reales), por sus fases. Para verlo, 1 o 3 minutos; despacio, 2 horas",
     value: (s) => (s.abejaMinutes === "120" ? "2 horas" : `${s.abejaMinutes} min`),
     next: (s) => ABEJA_MINUTES[(ABEJA_MINUTES.indexOf(s.abejaMinutes) + 1) % ABEJA_MINUTES.length]!,
   },

@@ -3,6 +3,11 @@
 Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documento. El historial anterior al
 2026-11-18 está en git y en `docs/design/`.
 
+## 2026-11-26
+
+- **Mandos**: con ratón, el clic en un botón del mando que abre una tarjeta ya no cae en la escena y no la hace andar a otra
+  máquina (el Y del puesto del comandante, junto a la escotilla delantera del LM, la mandaba a la escotilla).
+
 ## 2026-11-25
 
 - **Santuario 3, montaña hueca**: la montaña es una pirámide hueca con tres cuevas sobre un lago de 4 m; cuatro árboles

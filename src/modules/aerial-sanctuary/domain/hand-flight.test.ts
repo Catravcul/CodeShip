@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { handHover, handStart, handStep, handTap, type HandLimits, type HandWorld } from "./hand-flight";
+import { handHits, handHover, handStart, handStep, handTap, type HandLimits, type HandWorld } from "./hand-flight";
 import type { IslandPad } from "./travel";
 
 const LIM: HandLimits = { fwdMs: 80, backMs: 20, sideMs: 20, climbMs: 6, yawDegS: 30, fwdStepMs: 10, climbStepMs: 1.5, yawStepDegS: 10, lagS: 2, radiusM: 8, heightM: 4.7, touchdownMs: 1.5, padRadiusM: 10, seaHoverM: 5 };
@@ -105,5 +105,25 @@ describe("vuelo a mano (§3.6 Manual: cíclico, colectivo y pedales)", () => {
     s = taps(handHover(s), "colectivo-abajo", 1);
     s = run(s, 10);
     expect(s.onGround).toBe(true);
+  });
+
+  it("el disco del rotor va arriba: pasa sobre lo bajo de junto a la cubierta (un surtidor), no sobre un poste alto", () => {
+    // A helicopter: the disc is the top metre of its height; under it only the fuselage, 2,6 m to each side.
+    const heli: HandLimits = { ...LIM, rotorDiscM: 1, bodyRadiusM: 2.6 };
+    const low = { x0: 7, x1: 8, z0: -0.5, z1: 0.5, y0: 0, y1: 1.8 };
+    const post = { x0: 7, x1: 7.4, z0: -0.2, z1: 0.2, y0: 0, y1: 6 };
+    const w = (q: typeof low): HandWorld => ({ ...W, solids: [q] });
+    expect(handHits(w(low), 0, 0, 0, heli)).toBe(false);
+    expect(handHits(w(post), 0, 0, 0, heli)).toBe(true);
+    // Within the fuselage's reach it does touch the low one.
+    expect(handHits(w(low), 5, 0, 0, heli)).toBe(true);
+    // Without a disc of its own (the carpet), its whole height reaches as far.
+    expect(handHits(w(low), 0, 0, 0, LIM)).toBe(true);
+    // Coming down 7 m beside the pump, it sets down on the pad.
+    let s = { ...handStart("helicoptero", A, 0), y: 6, onGround: false } as ReturnType<typeof handStart>;
+    s = taps(s, "colectivo-abajo", 1);
+    for (let t = 0; t < 20; t += 0.1) s = handStep(s, 0.1, w(low), heli);
+    expect(s.onGround).toBe(true);
+    expect(s.landedOn).toBe("a");
   });
 });

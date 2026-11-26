@@ -127,7 +127,9 @@ El engranaje de la ventana de navegación elige el modo (se guarda en el disposi
   izquierda, derecha), **colectivo** (sube, baja) y **pedales** (morro a izquierda o derecha); cada toque, un paso, y el aparato llega
   con retardo (`domain/hand-flight.ts`). La alfombra los imita a su velocidad. Nada atraviesa nada: el rotor se para contra paredes y
   torres; sobre el mar se queda en el estacionario más bajo (no amara); solo se posa despacio (≤ 1,5 m/s). Posada en el helipuerto
-  o andén de una isla que admite el aparato, «Dejar los mandos» la baja allí.
+  o andén de una isla que admite el aparato, «Dejar los mandos» la baja allí. El disco del rotor es lo alto del S-92 (su último
+  metro y pico); bajo él solo va el fuselaje, así que pasa sobre lo bajo de junto a la cubierta (surtidor, máquina de navegación);
+  lo alto (manga, focos) queda fuera del alcance del rotor desde todo el círculo de toma de 10 m (`data/layout.test.ts`).
 
 ## Escala y muelle
 

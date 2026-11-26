@@ -919,9 +919,11 @@ export function furnishHelipad(sink: FurnishSink, area: string, heli: { x: numbe
     P(heli.x + Math.cos(a) * R, heli.z + Math.sin(a) * R, { k: "luz-pista", y: 0.05 });
   }
   P(heli.x, heli.z - 6.2, { k: "rotulo-suelo", y: 0.07, text: "12 t · 21", plate: false, name: "Peso máximo y tamaño (S-92: 12,0 t; 1 D = 21 m)" });
-  P(heli.x + half + 3, heli.z - 12, { k: "manga", plate: true });
-  P(heli.x - half - 2, heli.z + 10, { k: "foco" });
-  P(heli.x + half + 2, heli.z + 10, { k: "foco" });
+  // The tall ones (the 6 m windsock and floodlights) beyond the rotor's reach from all the touchdown circle (10 m + the
+  // S-92's 8,6 m: data/layout.test.ts); the low pump and extinguisher pass under its disc.
+  P(heli.x + half + 3, heli.z - 15, { k: "manga", plate: true });
+  P(heli.x - half - 2, heli.z + 15, { k: "foco" });
+  P(heli.x + half + 2, heli.z + 15, { k: "foco" });
   P(heli.x + half + 4, heli.z + 3, { k: "surtidor", rot: 3, plate: true });
   P(heli.x + half + 4, heli.z + 5, { k: "extintor" });
 }

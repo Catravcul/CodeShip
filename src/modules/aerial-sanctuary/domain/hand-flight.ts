@@ -33,6 +33,13 @@ export interface HandLimits {
   readonly radiusM: number;
   /** How far up its body goes over its skids, m. */
   readonly heightM: number;
+  /**
+   * A helicopter's rotor disc is the top of it: the disc reaches `radiusM` only in its top `rotorDiscM` metres, and
+   * below it only the fuselage, `bodyRadiusM` round the mast (a low pump beside the deck passes under the blades).
+   * Without them (the carpet) its whole height reaches `radiusM`.
+   */
+  readonly rotorDiscM?: number;
+  readonly bodyRadiusM?: number;
   /** Touching down only slower than this, down and across, m/s. */
   readonly touchdownMs: number;
   /** How close to a pad's centre it has to set down, m. */
@@ -132,12 +139,18 @@ export function groundUnder(w: HandWorld, x: number, z: number, y: number): numb
 /** Whether the craft (its disc of `radiusM`, from its skids up `heightM`) at (x, y, z) touches a solid or a deck above its skids. */
 export function handHits(w: HandWorld, x: number, y: number, z: number, lim: HandLimits): boolean {
   const r = lim.radiusM;
-  const touches = (q: { x0: number; x1: number; z0: number; z1: number }) => {
+  const touches = (q: { x0: number; x1: number; z0: number; z1: number }, reach = r) => {
     const dx = Math.max(q.x0 - x, 0, x - q.x1);
     const dz = Math.max(q.z0 - z, 0, z - q.z1);
-    return dx * dx + dz * dz < r * r;
+    return dx * dx + dz * dz < reach * reach;
   };
-  for (const s of w.solids) if (s.y1 > y + 0.05 && s.y0 < y + lim.heightM && touches(s)) return true;
+  // The disc's underside (the whole height when it has none of its own) and the fuselage under it.
+  const disc = y + lim.heightM - (lim.rotorDiscM ?? lim.heightM);
+  const body = lim.bodyRadiusM ?? r;
+  for (const s of w.solids) {
+    if (!(s.y1 > y + 0.05 && s.y0 < y + lim.heightM)) continue;
+    if (s.y1 > disc ? touches(s) : touches(s, body)) return true;
+  }
   // A deck higher than the skids and lower than the rotor is a slab it would cut through.
   for (const f of w.floors) if (f.y > y + 0.6 && f.y - 0.5 < y + lim.heightM && touches(f)) return true;
   return false;

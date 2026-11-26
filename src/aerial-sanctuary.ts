@@ -25,7 +25,7 @@ import { beatsFor } from "@modules/aerial-sanctuary/domain/station-beat";
 import { handHover, handStart, handStep, handTap, type HandControl, type HandState } from "@modules/aerial-sanctuary/domain/hand-flight";
 import { HAND } from "@modules/aerial-sanctuary/data/facts";
 import { SEA_Y } from "@modules/aerial-sanctuary/data/layout";
-import { HOLLOW, ceilingAt, flightWorld } from "@modules/aerial-sanctuary/data/montana";
+import { HOLLOW, ceilingAt, dropLimit, flightWorld } from "@modules/aerial-sanctuary/data/montana";
 import { CAMPUS_RETOS } from "@modules/aerial-sanctuary/data/campus";
 import { carpetRoute } from "@modules/sanctuary-one/data/alfombras";
 import { along, flightSpeed, route as carpetPath, type Route } from "@modules/sanctuary-one/domain/motion";
@@ -42,6 +42,8 @@ import { playSession, savedGames } from "./adapters/storage/saved-games";
 import { bird, buildBlocks, buildFloors, buildProps, buildSea, buildWater, carpet, helicopter } from "./adapters/three/aerial-models";
 import { buildFixtures } from "./adapters/three/s3-fixtures";
 import { buildMountain, isClearWater } from "./adapters/three/s3-mountain";
+import { CarpetStationsView } from "./adapters/three/carpet-stations";
+import { CarpetStations } from "./ui/carpet-stations";
 import { CubeFigure } from "./adapters/three/interior/figure";
 import { Walker } from "./adapters/input/walker";
 import { DOMENICA_HAIR } from "./ui/portraits";
@@ -161,12 +163,13 @@ let yaw = Math.PI;
 let pitch = -0.08;
 /**
  * Walking, sprinting (Correr), swimming, jumping, climbing and dropping off an edge with the Switch pad: the same moves
- * as sanctuary 1 (aerial-sanctuary/application/free-walk.ts), at this island's walking and swimming pace. A drop is
- * at most 10 m, the highest Olympic diving platform (World Aquatics): off an island's edge she does not jump.
+ * as sanctuary 1 (aerial-sanctuary/application/free-walk.ts), at this island's walking and swimming pace. Off a
+ * tree's floor in the hollow mountain she jumps down to the floor below or the lake, as in sanctuary 1 (E13); off an
+ * island's edge a drop is at most 10 m (data/montana.ts dropLimit).
  */
 const WALK_MS = 1.4;
 const SWIM_MS = 0.9;
-const walk = new FreeWalk(() => L.world, { walk: WALK_MS, swim: SWIM_MS, maxDrop: 10 }, Math.PI);
+const walk = new FreeWalk(() => L.world, { walk: WALK_MS, swim: SWIM_MS, maxDrop: dropLimit }, Math.PI);
 let thirdPerson = settings.value.walkView === "tercera";
 let clock = 0;
 let days = 0;
@@ -405,7 +408,7 @@ for (const [a, b] of L.graph.links)
 /** «Árbol de los servicios · piso 2», «Cueva sur». */
 const stationName = (id: string) => {
   const s = stationById.get(id);
-  return !s ? id : s.building && !s.label.startsWith(s.building) ? `${s.building} · ${s.label.toLowerCase()}` : s.label;
+  return !s ? id : s.building && !s.building.toLowerCase().includes(s.label.toLowerCase()) ? `${s.building} · ${s.label.toLowerCase()}` : s.building || s.label;
 };
 function flyCarpet(from: string, to: string, then: () => void): void {
   const a = stationById.get(from);
@@ -430,6 +433,41 @@ function frameCarpet(dt: number, m: Extract<Mode, { kind: "alfombra" }>): void {
   mode = { kind: "libre" };
   avatar.pose("stand");
   m.then();
+}
+
+// The stations as sanctuary 1's (ui/carpet-stations.ts, adapters/three/carpet-stations.ts; Berón 2026-11-26: «las
+// estaciones de alfombras… reutiliza el código de S1»): the pad with its two floating carpets and the orrery; on it the
+// orange button «Volar» (Y) opens the same map window as Áreas with its destinations and its own «viaje o
+// teletransporte». A destination with no clear flight of its own is reached in hops (cueva → pie → piso), each flown.
+const carpetsView = new CarpetStationsView(scene, L.hollow.stations, { pads: true });
+const CARPET_DESC: Record<string, string> = { pie: "Estación de alfombras: a los pies de los árboles, las cuevas y el Starship, y a los pisos de su árbol" };
+const carpets = new CarpetStations(root, {
+  vehicle: "entrenamiento",
+  stations: L.hollow.stations,
+  node: (s) => ({ label: stationName(s.id), desc: s.kind === "piso" ? (L.areas.find((a) => a.id === s.area)?.desc ?? "Estación de alfombras") : (CARPET_DESC[s.kind] ?? ""), category: s.kind === "piso" ? s.building : "Pies, cuevas y Starship" }),
+  teleport: (to) => {
+    fade();
+    body = placeAt(L.world, to.x, to.y + 0.05, to.z) ?? body;
+    yaw = Math.atan2(to.out.x, to.out.z);
+    mode = { kind: "libre" };
+    say(`En ${stationName(to.id)}`);
+  },
+  fly: (from, to) => {
+    const st = stationById.get(from.id);
+    const dest = stationById.get(to.id);
+    if (!st || !dest) return;
+    // Straight if its flight is clear; else the way of hops the graph knows (only carpets: pad to pad).
+    if ((carpetNext.get(st.point) ?? []).includes(dest.point)) return flyCarpet(st.id, dest.id, () => say(`En ${stationName(dest.id)}`));
+    walkTo(dest.point, `Alfombras a ${stationName(dest.id)}`, () => say(`En ${stationName(dest.id)}`));
+  },
+});
+/** On a station's pad, free: its «Volar» on the orange button. */
+function offerCarpets(): boolean {
+  const st = mode.kind === "libre" && !duel.visible ? carpets.at(body.x, body.y, body.z) : undefined;
+  if (st || !carpets.window.visible) carpets.station = st;
+  if (!st) return false;
+  RootMenu.interact(carpets.button(st));
+  return true;
 }
 
 /** Sleep or eat at a campus machine: in the nearest bed or chair, for a few seconds of the scene. */
@@ -878,12 +916,7 @@ function renderCard(): void {
     acts = `<button class="${suited ? "primary" : ""}" data-act="lanzar"${suited ? "" : ` disabled data-why="Primero, el traje: puesto 13, en la sala de trajes de la isla de entrenamiento"`}>Empezar el lanzamiento</button>`;
     why = suited ? `<p class="cm-who">La tripulación eres tú: ${esc(launchStepText())}</p>` : `<p class="cm-why"><b aria-hidden="true">⊘</b> Primero, el traje: puesto 13, en la sala de trajes de la isla de entrenamiento</p>`;
   }
-  else if (m.kind === "alfombra" && m.station) {
-    const st = stationById.get(m.station);
-    const to = st ? (carpetNext.get(st.point) ?? []) : [];
-    acts = to.map((p) => `<button data-act="carpet:${esc(p)}">${esc(stationName(carpetOfPoint.get(p)!))}</button>`).join("");
-    why = `<p class="cm-who">${to.length ? "Elige destino: la alfombra sale de la plataforma" : "Sin vuelos desde aquí"}</p>`;
-  } else if (m.kind === "cama") acts = `<button class="primary" data-act="dormir">Dormir 8 horas</button>`;
+  else if (m.kind === "cama") acts = `<button class="primary" data-act="dormir">Dormir 8 horas</button>`;
   else if (m.kind === "comedor") acts = `<button class="primary" data-act="comer">Comer</button>`;
   else if (m.kind === "servicio" && m.reto && CAMPUS_RETOS[m.reto]) acts = `<button class="primary" data-act="servicio" data-title="${esc(CAMPUS_RETOS[m.reto]!.title)}">Empezar el reto</button>`;
   else if (ready && !who) {
@@ -910,12 +943,6 @@ card.addEventListener("click", (e) => {
   if (act === "nav") return nav.open(islandChoices());
   if (act === "reto" && m.post !== undefined) return startPost(m);
   if (act === "lanzar" && mode.kind === "libre") return startLaunch(m);
-  if (act.startsWith("carpet:") && mode.kind === "libre" && m.station) {
-    const st = stationById.get(m.station);
-    const to = carpetOfPoint.get(act.slice(7));
-    if (!st || !to) return;
-    return void walkTo(st.point, "A la plataforma de las alfombras", () => flyCarpet(st.id, to, () => say(`En ${stationName(to)}`)));
-  }
   if (act === "dormir" && mode.kind === "libre") return startActo(m, "cama", "supine", 6, "Durmiendo", () => {
     days += 8 / 24;
     crowd.jumped();
@@ -1366,7 +1393,7 @@ function frame(now: number): void {
       endPost = undefined;
       e();
     }
-  } else if (!duel.visible && !nav.visible && !settingsPanel.visible && !taskBoard.visible && !areasWindow.visible) frameFree(dt);
+  } else if (!duel.visible && !nav.visible && !settingsPanel.visible && !taskBoard.visible && !areasWindow.visible && !carpets.window.visible) frameFree(dt);
   if (mode.kind === "vuelo" || mode.kind === "mano") avatar.pose("lotus");
   crowd.update(dt, hour());
   // While the sheet is open only it and the scene show (reglas.md §4.3): the caption only once it closes.
@@ -1380,7 +1407,8 @@ function frame(now: number): void {
   updateBar();
   near = nearestMachine();
   renderCard();
-  if (!biome.offer()) machinePanel.tick();
+  carpetsView.update(dt, clock, body.x, body.y, body.z);
+  if (!biome.offer() && !offerCarpets()) machinePanel.tick();
   const isl = island();
   sims.showLm(body.area === "entrenamiento:simulador-lm" || sims.kind === "alunizaje");
   const area = L.areas.find((a) => a.id === body.area)?.label;
@@ -1430,6 +1458,7 @@ if (frameStats) (window as unknown as { codeshipS3: unknown }).codeshipS3 = {
   tasks,
   taskBoard,
   areasWindow,
+  carpets,
   nav,
   islandChoices,
   get body() {
@@ -1504,4 +1533,9 @@ if (frameStats) (window as unknown as { codeshipS3: unknown }).codeshipS3 = {
   /** Test hook: walk her by herself to a way point (as «Ir» does), or put her there at once. */
   walkTo: (id: string) => walkTo(id, "Prueba"),
   placeAt: placeAtPoint,
+  /** Test hook: where the camera looks (yaw, pitch). */
+  look(y: number, p: number) {
+    yaw = y;
+    pitch = p;
+  },
 };

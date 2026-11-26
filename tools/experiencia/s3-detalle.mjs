@@ -8,8 +8,10 @@
 // centre (classroom, whiteboards, the 3/4 Destiny); Mission Control (four rows, the sunken trench, FLIGHT and CAPCOM, the five big screens and nine small);
 // the gym; the medical centre (exam room with the ECG, the audiometry booth, the ultrasound, the waiting room and the
 // records) and the hypobaric chamber with its airlock, seats and O₂ panels; the water survival pool (METS, raft,
-// hoist); the helipad (green lights, wind cone, fuel point) and the island (paths, lamps, signpost, tussock, the
-// landing stage). In each she walks a few steps with «Moverse» and looks with «Mirar»: the capture must look full.
+// hoist); the helipad at the south cave's mouth (green lights, wind cone, fuel point); the campus's services in the
+// giant trees of the hollow mountain (docs/design/montana-hueca.md: the residence, the restaurant, the clinic, the
+// sample lab and the prototype workshop) and the mountain inside, from the foot of the training tree. In each she walks a few
+// steps with «Moverse» and looks with «Mirar»: the capture must look full.
 // Captures in docs/screenshots/s3d-<área>-movil.png.
 import { mkdirSync } from "node:fs";
 
@@ -88,7 +90,12 @@ export async function goArea(j, id, title) {
   if (!(await j.page.locator(`.areas-window [data-pick="${id}"]`).count())) await j.areasScope("", "", "Todo: la isla");
   await j.tap(`.areas-window [data-pick="${id}"]`, `${title} en el mapa`);
   const ok = await j.tap(`.areas-window [data-area="${id}"]`, `Ir: ${title}`);
-  const s = await until(j, (q) => q.mode === "libre", 20000);
+  // The jump and the sign over the screen follow in the next frames, a while on a slow runner (CI saw the sign of the
+  // room she came from): she waits until she is in it, and the sign a little more.
+  const inIt = (q) => q.body.area === id || q.body.area?.startsWith(`${id}:`) || q.body.area?.startsWith(`${id}-`);
+  const s = await until(j, (q) => q.mode === "libre" && inIt(q), 30000);
+  const name = title.replace(/ \(.*\)$/, "");
+  if (inIt(s)) await until(j, (q) => q.where.includes(name), 10000);
   await j.page.waitForTimeout(600);
   return ok && s.mode === "libre";
 }
@@ -121,7 +128,15 @@ const SHOTS = [
   { id: "entrenamiento:medico-hipobarica", title: "Cámara hipobárica", label: "hipobarica", look: { dx: -6 }, stand: 0, back: 1, pitch: -0.15, kinds: [] },
   { id: "entrenamiento:supervivencia", title: "Supervivencia en el agua", label: "supervivencia", go: { pool: "supervivencia-piscina" }, look: { kind: "mets" }, stand: 0, back: 0.5, pitch: -0.25, kinds: ["mets", "balsa", "izado", "silla-socorrista", "chalecos"] },
   { id: "entrenamiento:helipuerto", title: "Helipuerto", label: "helipuerto", look: { kind: "manga" }, stand: 10, pitch: -0.15, kinds: [] },
-  { id: "entrenamiento:isla", title: "Isla de entrenamiento (exterior)", label: "isla", look: { kind: "poste-senal" }, stand: 7, pitch: -0.1, kinds: [] },
+  // The campus's services in the trees of the hollow mountain, one of each kind (montana-hueca.md §Auditoría del campus:
+  // living, food, health, science, production; the others share their fixtures and would only lengthen the run).
+  { id: "entrenamiento:residencia", title: "Residencia de la tripulación", label: "residencia", look: { kind: "cama" }, stand: 4, pitch: -0.15, kinds: ["cama", "armario", "sofa", "mesa-reunion"] },
+  { id: "entrenamiento:restaurante", title: "Restaurante y laboratorio de alimentos", label: "restaurante", look: { kind: "cocina" }, stand: 5, pitch: -0.12, kinds: ["cocina", "mostrador", "nevera", "mesa-reunion", "silla"] },
+  { id: "entrenamiento:clinica", title: "Clínica de medicina de vuelo", label: "clinica", look: { kind: "sillon-dental" }, stand: 4, pitch: -0.15, kinds: ["camilla-exam", "sillon-dental", "lavabo", "cama"] },
+  { id: "entrenamiento:laboratorio", title: "Laboratorio de muestras", label: "laboratorio", look: { kind: "guantera" }, stand: 4, pitch: -0.12, kinds: ["guantera", "nevera", "lavabo"] },
+  { id: "entrenamiento:taller", title: "Taller de prototipos", label: "taller", look: { kind: "impresora-3d" }, stand: 4, pitch: -0.12, kinds: ["impresora-3d", "torno", "fresadora", "banco-trabajo"] },
+  // Inside the hollow mountain, from the foot of the training tree: the lake, the giant trees and their carpet stations.
+  { id: "entrenamiento:arbol-entrenamiento:pie", title: "Árbol del entrenamiento · pie", label: "montana", look: { centre: "entrenamiento:lago" }, stand: 0, pitch: 0.1, kinds: [] },
 ];
 
 export async function s3Detalle(j) {

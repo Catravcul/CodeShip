@@ -15,8 +15,11 @@ export interface WalkSpeeds {
   /** With Correr on: a sprint and a hard crawl (domain/effort.ts), the same everywhere unless a level says otherwise. */
   readonly run?: number;
   readonly swimRun?: number;
-  /** Highest drop she lets herself fall off an edge, m (no limit if absent). */
-  readonly maxDrop?: number;
+  /**
+   * Highest drop she lets herself fall off an edge, m (no limit if absent), or a rule by where she jumps from and where
+   * she would land (sanctuary 3: off a tree's floor in the hollow mountain, no limit; off an island's edge, 10 m).
+   */
+  readonly maxDrop?: number | ((from: Body, to: Body) => number);
   /** How much a water's current speeds her swim, by its area (1 if absent: the sea; sanctuary 1's tree water carries her). */
   readonly current?: (area: string) => number;
 }
@@ -149,6 +152,11 @@ export class FreeWalk {
     return { body: b, busy: false };
   }
 
+  private dropLimit(from: Body, to: Body): number {
+    const m = this.speeds.maxDrop;
+    return m === undefined ? Infinity : typeof m === "number" ? m : m(from, to);
+  }
+
   /** One frame of the stick: walking, sprinting or swimming where the camera looks; off an edge, the fall begins. */
   move(dt: number, b: Body, i: WalkInput): Body {
     if (!i.forward && !i.right) return b;
@@ -193,7 +201,7 @@ export class FreeWalk {
       const z = b.z + (dz / len) * 0.5;
       const w = this.world(x, z);
       const to = blocked(w, x, b.y, z) ? undefined : dropTo(w, x, b.y, z, this.climbed);
-      if (to && b.y - to.y <= (this.speeds.maxDrop ?? Infinity)) this.fall = { x, z, y: b.y, vy: 0, to };
+      if (to && b.y - to.y <= this.dropLimit(b, to)) this.fall = { x, z, y: b.y, vy: 0, to };
     }
     this.stride += Math.hypot(body.x - b.x, swim ? body.y - b.y : 0, body.z - b.z) * (i.run && !swim ? 2.2 : 3);
     return body;

@@ -8,27 +8,42 @@ Todo es **ficción** (como los edificios-árbol de Cold Sanctuary); las salas de
 **reales** (cada una con su fuente en `data/campus.ts`). Código: `data/bioma-island.ts` (pirámide y cuevas),
 `domain/mountain.ts` (terreno con la cubierta y los túneles), `data/montana.ts` (lago, árboles, pisos, alfombras,
 Starship), `data/campus.ts` y `data/campus-fixtures.ts` (servicios), `adapters/three/s3-mountain.ts` (dibujo).
-Pruebas: `data/montana.test.ts`, `data/layout.test.ts`, `data/fixtures.test.ts`.
+Pruebas: `data/montana.test.ts`, `data/caidas.test.ts`, `data/layout.test.ts`, `data/fixtures.test.ts`.
 
-## Pirámide
+## Pirámide (capa delgada, Berón 2026-11-26)
 
-- Base de 440 m de lado y 320 m de alto, con su centro en (1610, 370); la cubierta de tierra y piedra tiene 15 m sobre
-  la cara natural del monte y deja intactos los farallones.
-- Hueco: 420 m de lado en el suelo (y 100 m) y techo a 310 m; `ceilingAt(x, z)` da la altura del techo en cada punto.
+- Base de 520 m de lado y 335 m de alto, con su centro en (1610, 370) (`CORE_DEF`); la cubierta de tierra y piedra tiene
+  solo 3 m sobre la cara natural y la cáscara 2 m (`SHELL_M`): deja intactos los farallones.
+- Hueco casi igual a la pirámide: 516 m de lado en el suelo (`INNER_HALF` 258, y 100) y ápice a 431 m (`INNER_H` 331);
+  `ceilingAt(x, z)` da la altura del techo en cada punto. `HOLLOW_INSIDE` (data/montana.ts) exporta las medidas del
+  interior (centro, suelo, lago, medio lado, ápice, techo y radio libre) para la fauna y la pupa.
+- **Centro libre** (`CENTRE_FREE_M` = 45 m alrededor de `HOLLOW` x, z, del lago al techo): ningún piso, tronco, copa ni
+  estación; ahí va la pupa central (la pone otra rama).
 - **Lago de 4 m** en todo el suelo (`lago-montana`, y 100–104): agua clara, fondo de arena visible.
 - **Luz**: dentro, la luz es pareja de todos lados (hemisférica ×2, sol casi apagado) y la niebla toma el color claro de
   las paredes: sin sombras, se ve el fondo del lago.
 
-## Cuevas
+## Cuevas (regla E14)
 
-Tres túneles por la cara sur (6 m de medio ancho, 9 m de bóveda), **por encima del agua**, cada uno termina en su
-estación de alfombras sobre el lago: sur (y 112, con el helipuerto del campus en su boca), suroeste (y 118) y sureste
-(y 124). Senderos del monte suben a las bocas; escalones de 0,4 m bajan de la boca a la ladera.
+Tres túneles cortos por la cara sur (37–43 m: atraviesan solo la capa), **por encima del agua**, cada uno termina en su
+estación de alfombras sobre el lago: sur (y 236, con el helipuerto del campus en su explanada de 22 m), suroeste (y 232)
+y sureste (y 236). Senderos del monte suben a las bocas; escalones de 0,4 m bajan de la boca a la explanada.
 
-## Árboles gigantes
+**Tamaño**: como las puertas de los troncos del santuario 1 (`sanctuary-one/data/paso.ts`): el mayor animal del santuario
++ 2 m a cada lado y por encima, nunca menos que esa puerta. El mayor se calcula de los datos de la fauna
+(`LARGEST_S3_ANIMAL` = tamaño real × `AIR_BIOME.drawScale`; hoy el saltamontes, 36 × 6 m) y da `CAVE_PASSAGE` 40 × 8 m
+(medio ancho 20 m, bóveda 13,3 m). Si llega un insecto mayor (una Meganeura), las cuevas crecen solas; si no cabe en la
+pirámide, `montana.test.ts` falla.
 
-Cuatro troncos de madera maciza (18 × 18 m) del lago al techo: lo sostienen. Sus pisos siguen las reglas indexadas en
-[edificios-y-pisos.md](edificios-y-pisos.md):
+## Árboles gigantes (regla E15)
+
+Cuatro troncos de madera maciza del lago al techo: lo sostienen. **Parecen árboles** (`adapters/three/s3-giant-trees.ts`):
+corteza con textura, tronco acanalado que se ensancha abajo, raíces de contrafuerte, ramas laterales donde no estorban
+a los pisos ni a los carriles, y una **copa** de ramas, masas de hojas, frutos y flores. La copa (`crownOf`, `CROWN`)
+empieza 12 m sobre la sala más alta de todos los árboles y 20 m sobre las cuevas (hoy y 256) y acaba bajo el techo: es
+sólida para los vuelos (los carriles la esquivan). Sus pisos siguen las reglas indexadas en
+[edificios-y-pisos.md](edificios-y-pisos.md); **no tienen paredes ni tejado** (E13): desde el borde se cae al piso de
+abajo o al lago. Las grúas de la NBL apoyan en pilotes en las esquinas de la sala.
 
 | Árbol | Pisos (de abajo arriba) | Cima |
 |---|---|---|
@@ -43,15 +58,23 @@ Cuatro troncos de madera maciza (18 × 18 m) del lago al techo: lo sostienen. Su
 
 En el centro del hueco (`HOLLOW`), de pie en el lago, la celda gigante de la abeja con su galería y un muelle hasta la
 cubierta del árbol más cercano ([pupa-abeja.md](pupa-abeja.md)); se construye en `buildHollow` antes que las rutas de
-alfombra, así que ninguna la atraviesa. Para dejarle sitio, el árbol de entrenamiento (A) está en (−65, 80) respecto al
+alfombra, así que ninguna la atraviesa. Para dejarle sitio, el árbol de entrenamiento (A) está en (−115, 95) respecto al
 centro (antes (−40, 30)). En el fondo del lago viven larvas acuáticas ([larvas-lago.md](larvas-lago.md)).
 
-## Alfombras
+![Copa de un árbol gigante](../screenshots/s3-arbol-gigante-copa-movil.png) ![Ventana de alfombras de la cueva sur](../screenshots/s3-alfombras-ventana-movil.png)
 
-Las del santuario 1 (`sanctuary-one/data/alfombras.ts`, `carpetRoute`): cada estación tiene su carril libre; un piso
+**Caídas**: fuera de la montaña, del borde de una isla no se baja más de 10 m (`ISLAND_DROP_M`); dentro del hueco no hay
+límite (`dropLimit`, `FreeWalk.maxDrop`): se cae al piso de abajo o al agua (`data/caidas.test.ts`).
+
+## Alfombras (código compartido con el santuario 1)
+
+Las del santuario 1, el mismo código: datos y rutas en `sanctuary-one/data/alfombras.ts` (`carpetRoute`), ventana y
+botón en `ui/carpet-stations.ts`, dibujo (plataforma, dos alfombras flotando y el planetario) en
+`adapters/three/carpet-stations.ts`. De pie en una estación, el botón naranja (Y) dice «Volar» y abre la misma ventana de
+mapa que Áreas con solo sus destinos; cada estación guarda su «viaje o teletransporte» (`ui/carpet-travel.ts`). Un piso
 vuela a los demás pisos y al pie de su árbol; los pies, las cuevas y el Starship vuelan entre sí. Un enlace solo existe
 si su vuelo no toca nada (`flightTouches`, probado para todos). «Ir» encadena saltos de alfombra cuando hace falta
-(cueva → pie → piso) y vuela cada uno a la vista. En la estación, su tarjeta lista los destinos.
+(cueva → pie → piso) y vuela cada uno a la vista.
 
 ## Starship inundado
 

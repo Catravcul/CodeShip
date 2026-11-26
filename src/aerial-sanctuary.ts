@@ -918,6 +918,7 @@ card.addEventListener("click", (e) => {
   }
   if (act === "dormir" && mode.kind === "libre") return startActo(m, "cama", "supine", 6, "Durmiendo", () => {
     days += 8 / 24;
+    crowd.jumped();
     say(`Ocho horas de sueño: son las ${clockText(hour())}`);
   });
   if (act === "comer" && mode.kind === "libre") return startActo(m, "silla", "sit", 8, "Comiendo", () => say("Comida del día: hecha (dos al día)"));
@@ -1471,6 +1472,7 @@ if (frameStats) (window as unknown as { codeshipS3: unknown }).codeshipS3 = {
   /** Jump the board clock to hour `h` (later today or tomorrow). */
   setHour(h: number) {
     days += ((((h - hour()) % 24) + 24) % 24) / 24;
+    crowd.jumped();
   },
   /** The exercise on the sheet now (the journeys' oracle). */
   get exercise() {

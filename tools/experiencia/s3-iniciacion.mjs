@@ -47,13 +47,14 @@ const scene = (p) =>
 
 /** «Ir» from Tareas to a post (teleport, chosen in the settings), then Panel. */
 /**
- * Each trainer leaves her post a quarter of an hour before lunch: between 10:00 and 11:00 she plays on the next morning, at
+ * Each trainer leaves her post a quarter of an hour before lunch, and drawing a compound takes a while of the board clock:
+ * past 9:30 she plays on the next morning, at
  * 9:12, while the trainers are still at their posts (a post takes about half an hour of the board clock).
  */
 async function morning(j) {
   await j.page.evaluate(() => {
     const c = window.codeshipS3;
-    if (c.hour > 10 || c.hour < 9) c.setHour(9.2);
+    if ((c.hour > 9.5 && c.hour < 11) || c.hour < 9) c.setHour(9.2);
   });
 }
 
@@ -62,6 +63,8 @@ async function goPost(j, n, title) {
   await j.tap(".s3-tasks", "Tareas");
   await j.tap(`.task-board [data-go="s3-puesto-${n}"]`, `Ir: ${title}`);
   await until(j, (s) => s.mode === "libre" && s.near, 20000);
+  // After a jump of the clock the trainer may still be walking to her post: a player waits for her.
+  await j.page.waitForFunction((post) => { const c = window.codeshipS3; const who = c.trainerOf(post); return !!who && c.crowd.atPost(who, post); }, n, { timeout: 90000, polling: 500 }).catch(() => {});
   await j.showPanel(".s3-ui .cm-who");
 }
 

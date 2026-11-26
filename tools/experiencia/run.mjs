@@ -100,6 +100,10 @@ for (const spec of expected) {
     await PLAY[spec.name](j);
   } catch (e) {
     j.check("el recorrido llega al final", false, e.message.split("\n")[0]);
+    if (process.env.EXPERIENCIA_TRAZA) {
+      console.log(e.stack);
+      console.log(await j.page?.evaluate(() => JSON.stringify({ toast: [...document.querySelectorAll(".cab-toast")].map((t) => t.textContent), mode: window.codeshipS3?.mode, hour: window.codeshipS3?.hour, near: window.codeshipS3?.near, body: document.body.className, picker: document.querySelector(".reto-picker")?.innerText })).catch((x) => x.message));
+    }
     try {
       await j.shot("error");
     } catch {}

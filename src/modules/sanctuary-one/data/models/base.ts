@@ -38,7 +38,7 @@ export const BASE_MODELS: readonly ModelDef[] = [
   ], "ficcion", `${S.csGym} (GymCarpetSpot, Alfombras_Santuario); el parqueadero en copa y pie, nuestro`),
   // A floor's carpet station (Berón 2026-11-20: «una estación de alfombras por cada piso»; Cold Sanctuary's carpet area,
   // ~7 × 4 m with two carpets): a pad with its border, two berths and the post with its sign. The two carpets float
-  // over it, waving, and a lit orrery hangs above (drawn by the scene, s1-carpets.ts).
+  // over it, waving, and a lit orrery hangs above (drawn by the scene, adapters/three/carpet-stations.ts).
   pz("estacion-alfombras", "mueble", "transporte", "Estación de alfombras voladoras (2 plazas)", 0x2f6f7f, [
     C(0, 0.02, 0, 7.6, 0.04, 4.4, 0x24414a),
     C(0, 0.045, -2.15, 7.6, 0.01, 0.1, 0xffcf5a), C(0, 0.045, 2.15, 7.6, 0.01, 0.1, 0xffcf5a),

@@ -12,7 +12,7 @@ import { furnishHelipad, furnishRoom, type PlacedFixture, type WalkCheck } from 
 import { furnishCampus } from "./campus-fixtures";
 import { CAMPUS_ROOMS } from "./campus";
 import { buildHollow, HOLLOW, type HollowPlan, type RoomSize } from "./montana";
-import { buildBiomeIsland } from "./bioma-island";
+import { buildBiomeIsland, INNER_HALF } from "./bioma-island";
 
 /**
  * Sanctuary 3 as the scene and the rules see it (docs/design/santuario3-escena.md): the islands, their floors, water
@@ -782,28 +782,16 @@ function buildRoom(b: Builder, r: RoomDef, k: number): void {
   const hz = r.half.z * k;
   const P = (x: number, z: number) => ({ x: c.x + x * k, z: c.z + z * k });
   const area = `entrenamiento:${r.id}`;
-  const inner = around(c.x, c.z, hx - 0.2, hz - 0.2);
+  // On a tree's floor a room has no walls and no roof (edificios-y-pisos.md E13, as Cold Sanctuary's floors): its floor
+  // is the floor's own, open to the edge, so she walks out of it anywhere and can jump off the floor's edge.
+  const inner = around(c.x, c.z, hx, hz);
   // Floor (minus the pool), and the pool's water.
   const pool = r.pool ? around(c.x, c.z, (r.pool.x / 2) * k, (r.pool.z / 2) * k) : undefined;
   for (const q of pool ? subtract(inner, pool) : [inner]) b.floor(area, 0, q);
   if (pool && r.pool) b.water({ id: `${r.id}-piscina`, ...pool, yBottom: -r.pool.depth, yTop: -0.3, area: `${area}:piscina` });
-  // Walls with the door (a doorway: only a gap).
-  const t = 0.4;
+  // Its door is only where its way comes in (no wall: a mark on the floor, the way points below).
   const d = r.door;
   const along = d.side === "n" || d.side === "s" ? c.x + d.at * k : c.z + d.at * k;
-  const gap = [{ from: along - d.width / 2, to: along + d.width / 2, y1: Math.min(r.height, 2.6) }];
-  const walls = [
-    { side: "n", axis: "x" as const, at: c.z + hz - t / 2, from: c.x - hx, to: c.x + hx },
-    { side: "s", axis: "x" as const, at: c.z - hz + t / 2, from: c.x - hx, to: c.x + hx },
-    { side: "e", axis: "z" as const, at: c.x + hx - t / 2, from: c.z - hz, to: c.z + hz },
-    { side: "w", axis: "z" as const, at: c.x - hx + t / 2, from: c.z - hz, to: c.z + hz },
-  ];
-  for (const w of walls) for (const s of wallWithGaps({ axis: w.axis, at: w.at, from: w.from, to: w.to, y0: 0, y1: r.height, thick: t, gaps: w.side === d.side ? gap : [] })) b.block("pared", s);
-  // The threshold: the floor across the wall in the doorway (the hall's floor stops 0,2 m short of the island's, and with
-  // small steps she would drop through that strip into the sea under the island).
-  const sill = d.side === "n" || d.side === "s" ? { x0: gap[0]!.from, x1: gap[0]!.to, z0: d.side === "n" ? c.z + hz - t - 0.05 : c.z - hz - 0.05, z1: d.side === "n" ? c.z + hz + 0.05 : c.z - hz + t + 0.05 } : { z0: gap[0]!.from, z1: gap[0]!.to, x0: d.side === "e" ? c.x + hx - t - 0.05 : c.x - hx - 0.05, x1: d.side === "e" ? c.x + hx + 0.05 : c.x - hx + t + 0.05 };
-  b.floor(area, 0, sill);
-  b.block("tejado", { ...around(c.x, c.z, hx, hz), y0: r.height, y1: r.height + 0.3 }, false);
   // The door's points, outside and inside, and the road it joins.
   const n = d.side === "n" ? { x: 0, z: 1 } : d.side === "s" ? { x: 0, z: -1 } : d.side === "e" ? { x: 1, z: 0 } : { x: -1, z: 0 };
   const doorAt = d.side === "n" || d.side === "s" ? { x: along, z: c.z + n.z * hz } : { x: c.x + n.x * hx, z: along };
@@ -1126,13 +1114,14 @@ export function buildLayout(k = 1): S3Layout {
   // ── The biome's island (docs/design/bioma-s3.md): data/bioma-island.ts ──
   const biome = buildBiomeIsland(b, k, HELIDECK_M.value);
   // The campus's helipad and the caves' mouths on the mountain's trail under the south face.
-  b.link("entrenamiento:cruce", "bioma:sendero-5-3");
-  for (const [cave, trail] of [["suroeste", "bioma:sendero-6-1"], ["sureste", "bioma:sendero-7-1"]] as const) b.link(b.points.some((p) => p.id === `entrenamiento:cueva-${cave}:escalones`) ? `entrenamiento:cueva-${cave}:escalones` : `entrenamiento:cueva-${cave}:boca`, trail);
+  // (A trail's point is named after the first trail through it: the south apron's end is also the farallón trail's.)
+  b.link("entrenamiento:cruce", "bioma:sendero-3-2");
+  for (const [cave, trail] of [["suroeste", "bioma:sendero-6-2"], ["sureste", "bioma:sendero-7-2"]] as const) b.link(b.points.some((p) => p.id === `entrenamiento:cueva-${cave}:escalones`) ? `entrenamiento:cueva-${cave}:escalones` : `entrenamiento:cueva-${cave}:boca`, trail);
   const { ground: _ground, ...biomeDef } = biome;
   pads.push(biome.pad);
 
   const islands: IslandDef[] = [
-    { id: "entrenamiento", name: "Campus de la montaña", desc: "El campus de los astronautas dentro de la montaña hueca: las instalaciones reales de formación (la piscina NBL, la centrífuga, las maquetas, el control de misión, el centro médico) y los servicios del campus (residencia, restaurante, clínica, aulas, biblioteca, laboratorio, crianza, huerto, taller) en los pisos de cuatro árboles colosales, y el Starship inundado. Se entra por las cuevas", reality: "ficcion", source: S.ours, rect: around(HOLLOW.x, HOLLOW.z, 210), deckY: hy, pad: pads[0]!, arrival: "entrenamiento:helipuerto:centro", nav: "m:nav-entrenamiento" },
+    { id: "entrenamiento", name: "Campus de la montaña", desc: "El campus de los astronautas dentro de la montaña hueca: las instalaciones reales de formación (la piscina NBL, la centrífuga, las maquetas, el control de misión, el centro médico) y los servicios del campus (residencia, restaurante, clínica, aulas, biblioteca, laboratorio, crianza, huerto, taller) en los pisos de cuatro árboles colosales, y el Starship inundado. Se entra por las cuevas", reality: "ficcion", source: S.ours, rect: around(HOLLOW.x, HOLLOW.z, INNER_HALF), deckY: hy, pad: pads[0]!, arrival: "entrenamiento:helipuerto:centro", nav: "m:nav-entrenamiento" },
     { id: "lanzadera", name: "Lanzadera de cohetes", desc: "El casquete de Cold Sanctuary con su edificio-árbol de agua, el ascensor del tronco y la corona del Electron en lo alto (con toda su magia)", reality: "ficcion", source: S.csBuilder, rect: around(L.x, L.z, LH * k), deckY: 0, pad: pads[1]!, arrival: "lanzadera:helipuerto", nav: "m:nav-lanzadera" },
     { id: "parque", name: "Parque energético", desc: "El casquete del parque: el árbol bajo, el campo solar, los tres E-33 de Ross Island con su parada por aves y la mareal piloto", reality: "ficcion", source: S.csBuilder, rect: around(E.x, E.z, EH * k), deckY: 0, pad: pads.find((p) => p.island === "parque")!, arrival: "parque:anden", nav: "m:nav-parque" },
     { id: "muelle", name: "Muelle aéreo", desc: "El muelle de las alfombras voladoras de Cold Sanctuary", reality: "ficcion", source: S.csBuilder, rect: around(Dk.x, Dk.z, (dz.x / 2) * k, (dz.z / 2) * k), deckY: 0, pad: pads.find((p) => p.island === "muelle")!, arrival: "muelle:pista", nav: "m:nav-muelle" },

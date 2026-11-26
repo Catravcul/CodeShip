@@ -5,10 +5,10 @@ import { advance as advanceEgg, stageAt as eggStage } from "@modules/sanctuary-o
 import { workOutfit } from "@modules/sanctuary-one/domain/ropa";
 import { AQUARIUM_AREA, buildS1Layout, TREE_CURRENT, treeWater } from "@modules/sanctuary-one/data/layout";
 import { globeDepth } from "@modules/sanctuary-one/data/globo";
-import { carpetDestinations, carpetRoute, stationAt, type CarpetStation } from "@modules/sanctuary-one/data/alfombras";
-import { CarpetStationsView } from "./adapters/three/s1-carpets";
+import { carpetRoute, type CarpetStation } from "@modules/sanctuary-one/data/alfombras";
+import { CarpetStationsView } from "./adapters/three/carpet-stations";
 import { TRUNK_HALF } from "@modules/sanctuary-one/data/paso";
-import { carpetTravel } from "./ui/carpet-travel";
+import { CarpetStations } from "./ui/carpet-stations";
 import { personRule } from "@modules/sanctuary-one/data/overrides";
 import { blocked, placeAt, waterAt, type Body } from "@modules/aerial-sanctuary/domain/walk";
 import { FreeWalk } from "@modules/aerial-sanctuary/application/free-walk";
@@ -541,45 +541,32 @@ const areasWindow = new AreasWindow(root, {
 RootMenu.global({ className: "areas-btn", icon: ICON.areas, label: "Áreas", window: "areas", order: 2, pad: true }, () => areasWindow.open()).show(true);
 
 // --- Alfombras: a station on every floor and ring, each crown and each foot (data/alfombras.ts) -------------------
+// The stations' view and window are shared with sanctuary 3's hollow mountain (adapters/three/carpet-stations.ts,
+// ui/carpet-stations.ts).
 const carpetsView = new CarpetStationsView(scene, L.carpets);
-const stationById = new Map(L.carpets.map((s) => [s.id, s]));
-/** The station she stands on: the carpets' window is its own (where its carpets reach, its own travel setting). */
-let station: CarpetStation | undefined;
 const CARPET_DESC: Record<CarpetStation["kind"], string> = { piso: "Su estación de alfombras", copa: "En la copa: alfombras del edificio y del santuario (a las otras copas y pies)", pie: "En el hielo, junto a la puerta del tronco" };
-/** What a station's carpets reach, on the same map as Áreas: its building (from a crown, also the others' crowns and feet). */
-function carpetMap(st: CarpetStation): AreaMap {
-  const shown = [st, ...carpetDestinations(L.carpets, st)];
-  const towers = new Set(shown.map((s) => s.tower));
-  return {
-    vehicle: "santuario-1",
-    nodes: shown.map((s) => ({ id: s.id, label: s.kind === "piso" ? s.label : `${s.label} (${s.building})`, desc: s.kind === "piso" ? (areaById.get(s.area)?.desc ?? CARPET_DESC.piso) : CARPET_DESC[s.kind], goal: s.area, fixture: s.area, centre: { x: s.x, y: s.y, z: s.z }, half: { x: 1, y: 1, z: 1 }, category: st.reach === "santuario" ? s.building : s.kind === "piso" ? "Pisos" : "Copa y pie", scope: { edificio: s.tower } })),
-    links: [],
-    structure: (s1Map.structure ?? []).filter((b) => b.kind === "tronco" && towers.has(b.scope?.edificio ?? "")),
-  };
-}
-/** Fly (automatic, no challenge) or appear there, as the station she leaves from is set. */
-function flyTo(id: string): void {
-  const from = station;
-  const to = stationById.get(id);
-  if (!from || !to) return;
-  if (carpetTravel.get(from.id) === "teletransporte") {
-    body = placeAt(near(to.x, to.z), to.x, to.y + 0.01, to.z) ?? body;
-    yaw = Math.atan2(to.out.x, to.out.z);
-    return;
-  }
-  auto = { way: route(carpetRoute({ ...L.world, towers: L.towers }, from, to)), s: 0, to: { area: to.area, x: to.x, y: to.y, z: to.z, yaw: Math.atan2(to.out.x, to.out.z), pose: "stand" } };
-}
-const carpetsWindow = new AreasWindow(root, {
-  kind: { title: "Alfombras", window: "alfombras", bodyClass: "in-carpets", className: "carpets-window" },
-  here: () => "santuario-1",
-  map: () => (station ? carpetMap(station) : undefined),
+const carpets = new CarpetStations(root, {
+  vehicle: "santuario-1",
+  stations: L.carpets,
+  // What a station's carpets reach: its building (from a crown, also the others' crowns and feet).
+  node: (s, st) => ({ label: s.kind === "piso" ? s.label : `${s.label} (${s.building})`, desc: s.kind === "piso" ? (areaById.get(s.area)?.desc ?? CARPET_DESC.piso) : CARPET_DESC[s.kind], category: st.reach === "santuario" ? s.building : s.kind === "piso" ? "Pisos" : "Copa y pie" }),
+  structure: (shown) => {
+    const towers = new Set(shown.map((s) => s.tower));
+    return (s1Map.structure ?? []).filter((b) => b.kind === "tronco" && towers.has(b.scope?.edificio ?? ""));
+  },
   whole: "Todo el santuario",
   view: S1_MAP_VIEW,
-  at: () => station?.id,
-  row: (n) => (n.id === station?.id ? { locked: "Estás aquí" } : { action: "Volar", actionLabel: `Volar a ${n.label}` }),
-  travel: { get: () => carpetTravel.get(station?.id ?? ""), set: (v) => station && carpetTravel.set(station.id, v), heading: "Desde esta estación", help: "Ajuste propio de esta estación de alfombras: cada una guarda el suyo." },
-  go: (n) => flyTo(n.id),
+  teleport: (to) => {
+    body = placeAt(near(to.x, to.z), to.x, to.y + 0.01, to.z) ?? body;
+    yaw = Math.atan2(to.out.x, to.out.z);
+  },
+  fly: (from, to) => {
+    auto = { way: route(carpetRoute({ ...L.world, towers: L.towers }, from, to)), s: 0, to: { area: to.area, x: to.x, y: to.y, z: to.z, yaw: Math.atan2(to.out.x, to.out.z), pose: "stand" } };
+  },
 });
+const carpetsWindow = carpets.window;
+/** The station she stands on: the carpets' window is its own (where its carpets reach, its own travel setting). */
+let station: CarpetStation | undefined;
 
 // --- Misiones: the workday's missions on the same map window (docs/design/misiones-y-jornada.md §3) ---------------
 /** The day of the sanctuary (the clock wraps at midnight) and the missions done today. */
@@ -720,14 +707,15 @@ function updateAtHand(dt: number): void {
   reachT = 0.2;
   const t = challenge || picker.isOpen ? undefined : findAtHand();
   // On a carpet station with nothing else at hand: «Volar» opens its carpets (Berón 2026-11-20).
-  const st = t || challenge || picker.isOpen || auto || flying ? undefined : stationAt(L.carpets, body.x, body.y, body.z);
+  const st = t || challenge || picker.isOpen || auto || flying ? undefined : carpets.at(body.x, body.y, body.z);
   // On the Residencia's crown: the pillow war's treasures (s1-castillos.ts).
   const war = t || st || challenge || picker.isOpen ? undefined : crownPlay.offer(body);
   if (t?.i === atHand?.i && (t === undefined) === (atHand === undefined) && st === station && war?.label === warLabel) return;
   atHand = t;
   warLabel = war?.label;
   station = st ?? (carpetsWindow.visible ? station : undefined);
-  if (st) RootMenu.interact({ icon: ICON.carpet, label: `Volar: ${st.kind === "piso" ? "estación de alfombras" : `${st.label.toLowerCase()} de ${st.building}`}`, onClick: () => stationChoices(st) });
+  carpets.station = station;
+  if (st) RootMenu.interact(carpets.button(st, () => stationChoices(st)));
   else if (war) RootMenu.interact({ icon: ICON.chest, label: war.label, onClick: () => ((reachT = 0), war.run()) });
   // Its button says in one word what its challenges are about (chores/domain/palabra.ts).
   else offerReto(t?.label, () => t && offerRetos(t), t && retosWord(retosFor(model(t.modelId), t.i).map(retoTag)));

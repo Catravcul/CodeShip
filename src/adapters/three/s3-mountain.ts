@@ -2,18 +2,18 @@ import * as THREE from "three";
 import type { S3Layout } from "@modules/aerial-sanctuary/data/layout";
 import { CORE_DEF, INNER_H, INNER_HALF, caves } from "@modules/aerial-sanctuary/data/bioma-island";
 import { HOLLOW } from "@modules/aerial-sanctuary/data/montana";
+import { buildGiantTrees } from "./s3-giant-trees";
 
 /**
  * The hollow mountain seen from inside (docs/design/montana-hueca.md): the pyramid's four inner faces of earth and
  * stone, lit and pale (bright, with no shadows), the caves' holes in its south face, and the flooded Starship standing
- * in the lake: its steel hull with the airlock's door, the nose and the four flaps. The trunks and floors are blocks
- * of the layout (aerial-models.ts buildBlocks, their looks in LOOKS below).
+ * in the lake: its steel hull with the airlock's door, the nose and the four flaps. The giant trees are drawn by
+ * s3-giant-trees.ts; their floors are blocks of the layout (aerial-models.ts buildBlocks, their looks in LOOKS below).
  */
 const mat = (c: number, o: Partial<THREE.MeshStandardMaterialParameters> = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, metalness: 0.05, ...o });
 
 /** The looks of the hollow's blocks (data/montana.ts). */
 export const MOUNTAIN_LOOKS: Record<string, THREE.Material> = {
-  "tronco-gigante": mat(0x6b4a32, { flatShading: true }),
   raices: mat(0x5a3d28, { flatShading: true }),
   "piso-arbol": mat(0xb89a72),
   riostra: mat(0x5a3d28),
@@ -70,6 +70,9 @@ export function buildMountain(L: S3Layout): THREE.Group {
   bed.rotation.x = -Math.PI / 2;
   bed.position.set(HOLLOW.x, HOLLOW.floorY + 0.02, HOLLOW.z);
   g.add(bed);
+  // The giant trees as trees: bark, roots, limbs, leaves, fruit and flowers (s3-giant-trees.ts; their trunks' solid is
+  // the layout's «tronco-gigante» block, not drawn).
+  g.add(buildGiantTrees(L.hollow));
   const ship = L.props.find((p) => p.kind === "lake-starship");
   if (ship?.size) g.add(starship(ship.x, ship.y, ship.z, ship.size.x / 2, ship.size.y, L.hollow.starship.deck3Y));
   return g;

@@ -1,10 +1,10 @@
-import type { Floor, Rect, Solid, Water } from "../domain/walk";
+import type { Body, Floor, Rect, Solid, Water } from "../domain/walk";
 import type { WayPoint } from "../domain/route";
 import type { AreaDef, MachineDef, Prop } from "./layout";
 import type { CarpetStation, CarpetTower } from "@modules/sanctuary-one/data/alfombras";
 import { carpetRoute, Grid, obstaclesOf, touches, STATION_PAD, CARPET_CLEAR_M, OUT_HIGH_M } from "@modules/sanctuary-one/data/alfombras";
 import { heightAt } from "../domain/mountain";
-import { BIOME_ISLAND, MOUNTAIN, CORE_DEF, CAVE_HALF_M, CAVE_VAULT_M, INNER_HALF, caves, innerAt, innerY } from "./bioma-island";
+import { APRON_M, BIOME_ISLAND, MOUNTAIN, CORE_DEF, CAVE_HALF_M, CAVE_VAULT_M, INNER_HALF, INNER_H, caves, innerAt, innerY } from "./bioma-island";
 import { scaleInteriorPlan } from "@modules/station/domain/interior";
 import { starshipInteriorPlan, STARSHIP_DECKS } from "@modules/mothership/data/starship-interior";
 
@@ -28,6 +28,39 @@ export const HOLLOW = {
 } as const;
 /** The inner face's height over world (x, z). */
 export const ceilingAt = (x: number, z: number): number => innerY(Math.max(Math.abs(x - HOLLOW.x), Math.abs(z - HOLLOW.z)));
+
+/**
+ * The middle of the hollow kept free of the trees, their floors and the carpets' stations, from the lake to the apex
+ * (Berón 2026-11-26: the pupa stands there, ringed by the trees; its fauna and flora are another branch's), m of radius
+ * on the plan.
+ */
+export const CENTRE_FREE_M = 45;
+/**
+ * The inside of the hollow mountain, for whoever furnishes it (the pupa, the carboniferous fauna and flora, the lake's
+ * nymphs): its middle on the world plan, its floor and the lake's surface, half its floor, its apex, the ceiling over
+ * any point, the free middle and whether a point is inside. World m.
+ */
+export const HOLLOW_INSIDE = {
+  x: HOLLOW.x,
+  z: HOLLOW.z,
+  floorY: HOLLOW.floorY,
+  lakeTop: HOLLOW.lakeTop,
+  half: INNER_HALF,
+  apexY: HOLLOW.floorY + INNER_H,
+  ceilingAt,
+  centreFree: CENTRE_FREE_M,
+} as const;
+/** Is world (x, y, z) inside the hollow (over its floor, under its ceiling)? */
+export const inHollow = (x: number, y: number, z: number): boolean =>
+  Math.max(Math.abs(x - HOLLOW.x), Math.abs(z - HOLLOW.z)) < INNER_HALF && y >= HOLLOW.floorY - 1 && y < ceilingAt(x, z);
+/** Off an island's edge she does not jump more than the highest Olympic diving platform (World Aquatics), m. */
+export const ISLAND_DROP_M = 10;
+/**
+ * How far she lets herself fall off an edge (application/free-walk.ts `maxDrop`; edificios-y-pisos.md E13): off a
+ * tree's floor inside the hollow mountain, all the way down to the floor under it or the lake (as off sanctuary 1's
+ * floors); anywhere else, off an island's edge, 10 m.
+ */
+export const dropLimit = (from: Body, _to: Body): number => (inHollow(from.x, from.y, from.z) ? Infinity : ISLAND_DROP_M);
 
 /** The giant trees' rules (sanctuary 1's tree-buildings: data/site.ts TREE, reglas.md §2.7–2.13). */
 export const GIANT = {
@@ -71,7 +104,7 @@ export interface GiantTreeDef {
 
 /** The four giant trees and what each holds (the audit: data/campus.ts CAMPUS_SERVICES). */
 export const GIANT_TREES: readonly GiantTreeDef[] = [
-  { id: "arbol-entrenamiento", label: "Árbol del entrenamiento", building: "entrenamiento", desc: "Las instalaciones reales de formación de astronautas, un piso de árbol cada una; arriba, la NBL", at: { x: -40, z: 30 }, first: "ew", floors: [["supervivencia"], ["gimnasio", "trajes"], ["simulador-dragon", "simulador-lm"], ["robotica", "control"], ["svmf"]], cima: { room: "nbl", side: "e" } },
+  { id: "arbol-entrenamiento", label: "Árbol del entrenamiento", building: "entrenamiento", desc: "Las instalaciones reales de formación de astronautas, un piso de árbol cada una; arriba, la NBL", at: { x: -115, z: 95 }, first: "ew", floors: [["supervivencia"], ["gimnasio", "trajes"], ["simulador-dragon", "simulador-lm"], ["robotica", "control"], ["svmf"]], cima: { room: "nbl", side: "e" } },
   { id: "arbol-servicios", label: "Árbol de los servicios", building: "servicios", desc: "Donde se vive: la residencia, el restaurante, la clínica, el médico de selección y la sala de asambleas", at: { x: 105, z: -70 }, first: "ns", floors: [["residencia"], ["restaurante"], ["clinica"], ["medico"], ["asambleas"]] },
   { id: "arbol-ciencias", label: "Árbol de las ciencias y el estudio", building: "ciencias", desc: "Las aulas, la biblioteca, el laboratorio de muestras y el área de crianza", at: { x: 95, z: 120 }, first: "ew", floors: [["aulas"], ["biblioteca"], ["laboratorio"], ["crianza"]] },
   { id: "arbol-produccion", label: "Árbol de la producción y los campos", building: "produccion", desc: "El huerto y el taller; arriba, la centrífuga", at: { x: -85, z: -115 }, first: "ns", floors: [["huerto"], ["taller"]], cima: { room: "centrifuga", side: "e" } },
@@ -79,7 +112,7 @@ export const GIANT_TREES: readonly GiantTreeDef[] = [
 
 /** The flooded Starship (Berón: «un starship relleno de agua, de modo que se puede nadar en su interior»). */
 export const LAKE_STARSHIP = {
-  at: { x: -125, z: 125 },
+  at: { x: -160, z: -20 },
   /** The real ship: 50 m tall, 9 m across; its crew decks start this far over its base (ours: the payload section). */
   heightM: 50,
   radiusM: 4.5,
@@ -178,6 +211,31 @@ export function placeTree(t: GiantTreeDef, size: (id: string) => RoomSize): Plac
   return { def: t, x: tx, z: tz, floors, top: ceilingAt(tx, tz) };
 }
 
+/**
+ * A giant tree's crown (Berón 2026-11-26: «los árboles colosales deben parecer árboles: corteza, ramas, hojas, frutos y
+ * flores»): its limbs, leaves, fruit and flowers spread round the trunk from a little over its highest room up to the
+ * ceiling it holds, so no floor, lane or flight goes through it. Ours (ficción, like the trees). World m.
+ */
+export const CROWN = { over: 12, caveOver: 20, reach: 34, minDepth: 18 } as const;
+export interface Crown {
+  readonly tree: string;
+  readonly x: number;
+  readonly z: number;
+  readonly y0: number;
+  readonly y1: number;
+  readonly r: number;
+}
+/**
+ * A tree's crown: all the crowns start over the highest room of any tree and over the caves' ends (`caveOver` m over
+ * the highest cave floor), so the carpets cross from tree to tree and to the caves under them.
+ */
+export function crownOf(t: PlacedTree, all: readonly PlacedTree[]): Crown | undefined {
+  const y0 = Math.max(Math.max(...all.flatMap((q) => q.floors.map((f) => f.top))) + CROWN.over, Math.max(...caves().map((c) => c.y)) + CROWN.caveOver);
+  const y1 = t.top;
+  if (y1 - y0 < CROWN.minDepth) return undefined;
+  return { tree: t.def.id, x: t.x, z: t.z, y0, y1, r: CROWN.reach };
+}
+
 /** The highest point under the ceiling a rectangle keeps (its corner farthest out). */
 export function ceilingOver(r: Rect): number {
   return Math.min(ceilingAt(r.x0, r.z0), ceilingAt(r.x0, r.z1), ceilingAt(r.x1, r.z0), ceilingAt(r.x1, r.z1));
@@ -239,6 +297,8 @@ export interface HollowStation extends CarpetStation {
 
 export interface HollowPlan {
   readonly trees: readonly PlacedTree[];
+  /** The trees' crowns (their limbs, leaves, fruit and flowers). */
+  readonly crowns: readonly Crown[];
   readonly stations: readonly HollowStation[];
   readonly towers: readonly CarpetTower[];
   /** The carpets' way over everything inside (under the ceiling). */
@@ -382,7 +442,7 @@ export function buildHollow(b: HollowBuilder, k: number, size: (id: string) => R
     b.block("suelo-cueva", { x0: x - half, x1: x + half, z0: zMouth - 1, z1: zEnd + 1, y0: cv.y - 1, y1: cv.y - 0.02 }, false);
     // The ledge over the lake: from the wall inwards, its station at the end.
     const wallZ = H.z - innerAt(cv.y);
-    const ledge = { x0: x - 8, x1: x + 8, z0: zEnd, z1: Math.max(wallZ, zEnd) + 22 };
+    const ledge = { x0: x - half - 2, x1: x + half + 2, z0: zEnd, z1: Math.max(wallZ, zEnd) + 22 };
     b.floor(area, cv.y, ledge);
     b.block("repisa-cueva", { ...ledge, y0: cv.y - 1.2, y1: cv.y - 0.02 }, false);
     // Steps down from the mouth to the slope where it lies lower (0,4 m each, a metre apart: walked, not climbed).
@@ -416,6 +476,9 @@ export function buildHollow(b: HollowBuilder, k: number, size: (id: string) => R
     const trunk = around(t.x, t.z, T);
     b.block("tronco-gigante", { ...trunk, y0: H.floorY - 1, y1: t.top + 6 });
     b.props.push({ kind: "giant-tree", x: t.x, y: H.floorY, z: t.z, size: { x: 2 * T, y: t.top - H.floorY, z: 2 * T }, label: t.def.label });
+    // Its crown under the ceiling (drawn by adapters/three/s3-giant-trees.ts): solid air for the carpets.
+    const cr = crownOf(t, trees);
+    if (cr) b.block("oculto", { ...around(t.x, t.z, cr.r), y0: cr.y0, y1: cr.y1 });
     // The root deck on the lake, round the trunk, with its station («pie»).
     const D = GIANT.deckHalf;
     const deck = around(t.x, t.z, D);
@@ -534,15 +597,10 @@ export function buildHollow(b: HollowBuilder, k: number, size: (id: string) => R
     return { ...s, reach: s.kind === "piso" ? "edificio" : "santuario", lane: ln };
   });
   for (const s of stations) {
-    // The station's point is its pad: a carpet way point; and its console beside the pad.
+    // The station's point is its pad: a carpet way point. Its pad, carpets and orrery are sanctuary 1's, drawn by the
+    // scene (adapters/three/carpet-stations.ts); on it the orange button «Volar» opens its carpets (ui/carpet-stations.ts).
     const i = b.points.findIndex((p) => p.id === s.point);
     (b.points as WayPoint[])[i] = { ...b.points[i]!, carpet: s.id };
-    const side = { x: -s.out.z, z: s.out.x };
-    const cx = s.x + side.x * (STATION_PAD.x / 2 + 0.9);
-    const cz = s.z + side.z * (STATION_PAD.x / 2 + 0.9);
-    b.props.push({ kind: "carpet-pad", x: s.x, y: s.y + 0.02, z: s.z, rot: Math.atan2(s.out.x, s.out.z) });
-    b.block("kiosco", { ...around(cx, cz, 0.45), y0: s.y, y1: s.y + 1.2 });
-    b.machine({ id: `alfombras-${s.area.replace(/^entrenamiento:/, "").replace(/:/g, "-")}`, kind: "alfombra", island: "entrenamiento", area: s.area, label: `Estación de alfombras · ${s.label}`, what: s.kind === "piso" ? `Alfombras a los demás pisos de ${s.building.toLowerCase()} y a su pie` : "Alfombras a los pies de los árboles, las cuevas y el Starship, y a los pisos de este árbol", x: s.x + side.x * 2.2, y: s.y, z: s.z + side.z * 2.2, station: s.id }, s.point);
   }
   // The carpet links: a floor's station to the others of its tree; the feet, caves and the Starship to one another;
   // each only if its flight is clear of everything (else «Ir» goes by another station: flown in two hops).
@@ -563,6 +621,7 @@ export function buildHollow(b: HollowBuilder, k: number, size: (id: string) => R
 
   // ── The campus's helipad: outside, on the apron at the south cave's mouth ──
   const sur = caves()[0]!;
-  const heli = { x: C.x + sur.from.x, y: sur.y + 0.05, z: C.z + sur.from.z - 26, half: heliHalf };
-  return { trees, stations, towers, sky, heli, starship: { x: sx, z: sz, baseY: H.floorY, k, deck3Y } };
+  const heli = { x: C.x + sur.from.x, y: heightAt(MOUNTAIN.value, sur.from.x, sur.from.z - APRON_M) + 0.05, z: C.z + sur.from.z - APRON_M, half: heliHalf };
+  const crowns = trees.map((t) => crownOf(t, trees)).filter((c): c is Crown => !!c);
+  return { trees, crowns, stations, towers, sky, heli, starship: { x: sx, z: sz, baseY: H.floorY, k, deck3Y } };
 }

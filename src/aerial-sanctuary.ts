@@ -25,7 +25,7 @@ import { beatsFor } from "@modules/aerial-sanctuary/domain/station-beat";
 import { handHover, handStart, handStep, handTap, type HandControl, type HandState } from "@modules/aerial-sanctuary/domain/hand-flight";
 import { HAND } from "@modules/aerial-sanctuary/data/facts";
 import { SEA_Y } from "@modules/aerial-sanctuary/data/layout";
-import { HOLLOW, ceilingAt, flightWorld } from "@modules/aerial-sanctuary/data/montana";
+import { HOLLOW, ceilingAt, dropLimit, flightWorld } from "@modules/aerial-sanctuary/data/montana";
 import { CAMPUS_RETOS } from "@modules/aerial-sanctuary/data/campus";
 import { carpetRoute } from "@modules/sanctuary-one/data/alfombras";
 import { along, flightSpeed, route as carpetPath, type Route } from "@modules/sanctuary-one/domain/motion";
@@ -161,12 +161,13 @@ let yaw = Math.PI;
 let pitch = -0.08;
 /**
  * Walking, sprinting (Correr), swimming, jumping, climbing and dropping off an edge with the Switch pad: the same moves
- * as sanctuary 1 (aerial-sanctuary/application/free-walk.ts), at this island's walking and swimming pace. A drop is
- * at most 10 m, the highest Olympic diving platform (World Aquatics): off an island's edge she does not jump.
+ * as sanctuary 1 (aerial-sanctuary/application/free-walk.ts), at this island's walking and swimming pace. Off a
+ * tree's floor in the hollow mountain she jumps down to the floor below or the lake, as in sanctuary 1 (E13); off an
+ * island's edge a drop is at most 10 m (data/montana.ts dropLimit).
  */
 const WALK_MS = 1.4;
 const SWIM_MS = 0.9;
-const walk = new FreeWalk(() => L.world, { walk: WALK_MS, swim: SWIM_MS, maxDrop: 10 }, Math.PI);
+const walk = new FreeWalk(() => L.world, { walk: WALK_MS, swim: SWIM_MS, maxDrop: dropLimit }, Math.PI);
 let thirdPerson = settings.value.walkView === "tercera";
 let clock = 0;
 let days = 0;

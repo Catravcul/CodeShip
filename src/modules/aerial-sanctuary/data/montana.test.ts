@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { buildLayout } from "./layout";
 import { carpetRoute, Grid, obstaclesOf } from "@modules/sanctuary-one/data/alfombras";
-import { GIANT, GIANT_TREES, HOLLOW, ceilingAt, flightTouches, flightWorld, hollowPlan } from "./montana";
-import { caves } from "./bioma-island";
+import { CENTRE_FREE_M, GIANT, GIANT_TREES, HOLLOW, HOLLOW_INSIDE, ceilingAt, flightTouches, flightWorld, hollowPlan } from "./montana";
+import { CAVE_HALF_M, CAVE_PASSAGE, CAVE_VAULT_M, CORE_DEF, INNER_H, INNER_HALF, LARGEST_S3_ANIMAL, caves } from "./bioma-island";
+import { NEEDED as S1_DOOR, PASSAGE } from "@modules/sanctuary-one/data/paso";
 import { placeAt, step } from "../domain/walk";
 
 for (const k of [1, 1.5]) {
@@ -17,6 +18,40 @@ for (const k of [1, 1.5]) {
         expect(c.y).toBeGreaterThan(HOLLOW.lakeTop + 5);
         expect(plan.stations.some((s) => s.id === `entrenamiento:cueva-${c.id}:alfombras`)).toBe(true);
       }
+    });
+
+    it("la capa de tierra y piedra es delgada: el hueco casi llena la pirámide y las cuevas son cortas", () => {
+      expect(CORE_DEF.cover).toBeLessThanOrEqual(5);
+      expect(CORE_DEF.half - INNER_HALF).toBeLessThanOrEqual(3);
+      expect(CORE_DEF.height - INNER_H).toBeLessThanOrEqual(6);
+      for (const c of caves()) expect(c.to.z - c.from.z, c.id).toBeLessThan(50);
+    });
+
+    it("las cuevas dejan pasar al mayor animal del santuario con 2 m a cada lado y por encima, y nunca son menores que la puerta de un tronco del santuario 1", () => {
+      expect(LARGEST_S3_ANIMAL.x).toBeGreaterThan(1);
+      expect(2 * CAVE_HALF_M).toBeGreaterThanOrEqual(LARGEST_S3_ANIMAL.x + 2 * PASSAGE.beside);
+      expect(CAVE_VAULT_M).toBeGreaterThanOrEqual(LARGEST_S3_ANIMAL.y + PASSAGE.over);
+      expect(CAVE_PASSAGE.w).toBeGreaterThanOrEqual(S1_DOOR.w);
+      expect(CAVE_VAULT_M).toBeGreaterThanOrEqual(S1_DOOR.h);
+      // Each cave as built is that wide and high, and they fit side by side in the south face.
+      const cs = caves();
+      for (const c of cs) {
+        expect(2 * c.half).toBeGreaterThanOrEqual(CAVE_PASSAGE.w);
+        expect(c.vault).toBeGreaterThanOrEqual(CAVE_PASSAGE.h);
+        const floor = L.world.floors.find((f) => f.area === `entrenamiento:cueva-${c.id}` && f.y === c.y)!;
+        expect(floor.x1 - floor.x0).toBeGreaterThanOrEqual(CAVE_PASSAGE.w);
+      }
+      const xs = cs.map((c) => c.from.x).sort((a, b) => a - b);
+      for (let i = 1; i < xs.length; i++) expect(xs[i]! - xs[i - 1]!).toBeGreaterThan(2 * CAVE_HALF_M + 10);
+    });
+
+    it("el centro del hueco queda libre para la pupa: ningún piso, tronco ni estación en su radio, del lago al techo", () => {
+      const near = (r: { x0: number; x1: number; z0: number; z1: number }) => Math.hypot(Math.max(r.x0 - HOLLOW.x, 0, HOLLOW.x - r.x1), Math.max(r.z0 - HOLLOW.z, 0, HOLLOW.z - r.z1)) < CENTRE_FREE_M;
+      const inside = (y0: number, y1: number) => y1 > HOLLOW.lakeTop - 1 && y0 < HOLLOW_INSIDE.apexY;
+      expect(L.world.floors.filter((f) => inside(f.y, f.y) && near(f)).map((f) => f.area)).toEqual([]);
+      expect(L.world.solids.filter((q) => inside(q.y0, q.y1) && near(q)).length).toBe(0);
+      for (const st of plan.stations) expect(Math.hypot(st.x - HOLLOW.x, st.z - HOLLOW.z), st.id).toBeGreaterThan(CENTRE_FREE_M);
+      expect(HOLLOW_INSIDE.ceilingAt(HOLLOW.x, HOLLOW.z)).toBeCloseTo(HOLLOW_INSIDE.apexY, 6);
     });
 
     it("cada árbol llega al techo y lo sostiene; ningún piso ni sala toca el techo", () => {

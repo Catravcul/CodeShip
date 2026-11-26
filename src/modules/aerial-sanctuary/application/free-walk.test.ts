@@ -60,6 +60,16 @@ describe("andar, correr, saltar, trepar y caer: lo mismo en cada nivel con grave
     expect(run(safe, edge, 3, east)).toMatchObject({ y: 12, area: "piso" });
   });
 
+  it("el límite de la caída puede depender de dónde salta y adónde cae (los pisos del santuario 3 sí se tiran)", () => {
+    const edge = at(29.9, 12, 0, "piso");
+    const east = { forward: 0, right: 1, yaw: 0, pitch: 0, run: false };
+    // From the floor's area there is no limit; elsewhere, 10 m.
+    const byPlace = new FreeWalk(() => W, { walk: 1.6, swim: 2.2, maxDrop: (from) => (from.area === "piso" ? Infinity : 10) });
+    expect(run(byPlace, edge, 3, east).y).toBe(0);
+    const closed = new FreeWalk(() => W, { walk: 1.6, swim: 2.2, maxDrop: () => 10 });
+    expect(run(closed, edge, 3, east)).toMatchObject({ y: 12, area: "piso" });
+  });
+
   it("nada en el agua, y con Correr nada más deprisa", () => {
     const w = new FreeWalk(() => W, { walk: 1.6, swim: 1 });
     const b: Body = { x: -30, y: -1.45, z: 5, motion: "agua", area: "piscina" };

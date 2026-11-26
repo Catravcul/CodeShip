@@ -426,16 +426,11 @@ export function roomKit(sink: FurnishSink, fr: RoomFrame) {
     });
     for (const s of wallWithGaps({ axis, at: A, from: F, to: T, y0, y1, thick, gaps: g })) put(sink, fr.area, { k: "caja", x: 0, z: 0, wx: (s.x0 + s.x1) / 2, wz: (s.z0 + s.z1) / 2, y: s.y0, w: s.x1 - s.x0, d: s.z1 - s.z0, h: s.y1 - s.y0, color, name, source: S.ours });
   };
-  /** Ceiling lights in a grid over the room. */
-  const lights = (nx: number, nz: number, y: number) => {
-    span({ k: "techo", x0: -half.x / k + 0.4 / k, x1: half.x / k - 0.4 / k, z0: -half.z / k + 0.4 / k, z1: half.z / k - 0.4 / k, y0: fr.height - 0.06, y1: fr.height - 0.03, solid: false });
-    for (let i = 0; i < nx; i++)
-      for (let j = 0; j < nz; j++) {
-        const x = -half.x / k + ((i + 0.5) * (2 * half.x)) / k / nx;
-        const z = -half.z / k + ((j + 0.5) * (2 * half.z)) / k / nz;
-        at({ k: "luz-techo", x, z, y, w: 1.2, d: 0.3 });
-      }
-  };
+  /**
+   * Ceiling lights in a grid over the room: none on a tree's floor, which has no roof (edificios-y-pisos.md E13): the
+   * hollow mountain's light comes from everywhere (montana-hueca.md). Kept as a call so a room with a roof could have them.
+   */
+  const lights = (_nx: number, _nz: number, _y: number) => undefined;
   /** The pool's tiled basin under the water (drawn only: the water and the deck are the layout's). */
   const basin = () => {
     const q = fr.pool;
@@ -449,7 +444,16 @@ export function roomKit(sink: FurnishSink, fr: RoomFrame) {
     span({ k: "vaso", x0: -hx, x1: hx, z0: -hz - t, z1: -hz, y0: -q.depth, y1: 0, solid: false });
     span({ k: "vaso", x0: -hx, x1: hx, z0: hz, z1: hz + t, y0: -q.depth, y1: 0, solid: false });
   };
-  return { P, at, span, partition, lights, face, basin };
+  /**
+   * The legs of a bridge crane's rails (its runway columns: on an open floor there are no walls to carry them, E13),
+   * at the four corners of the room, from the floor up to the rails at `y`.
+   */
+  const gantryLegs = (y: number) => {
+    const hx = fr.half.x / k - 0.5;
+    const hz = fr.half.z / k - 0.5;
+    for (const x of [-hx, hx]) for (const z of [-hz, hz]) span({ k: "pilote", x0: x - 0.3 / k, x1: x + 0.3 / k, z0: z - 0.3 / k, z1: z + 0.3 / k, y0: 0, y1: y, solid: true, name: "Columna de la grúa puente", source: S.nblCranes, reality: "real" });
+  };
+  return { P, at, span, partition, lights, face, basin, gantryLegs };
 }
 
 /** A straight stair (floors she climbs, a stringer under it that she cannot walk into, and its steps drawn). */
@@ -478,12 +482,13 @@ function stair(sink: FurnishSink, area: string, o: { x: number; z: number; dir: 
 // ── The rooms ──
 
 function nbl(sink: FurnishSink, fr: RoomFrame): void {
-  const { P, at, span, partition, lights, face, basin } = roomKit(sink, fr);
+  const { P, at, span, partition, lights, face, basin, gantryLegs } = roomKit(sink, fr);
   const k = fr.k;
   const A = fr.area;
   // Overhead: two 10 t bridge cranes on rails along the long walls, four 1,6 t jib cranes round the pool (FS-NBL-508c).
   for (const z of [face("s") + 0.3, face("n") - 0.3]) span({ k: "carril-grua", x0: -fr.half.x / k + 0.5, x1: fr.half.x / k - 0.5, z0: (z - fr.centre.z) / k - 0.3 / k, z1: (z - fr.centre.z) / k + 0.3 / k, y0: 14.6, y1: 15.1, solid: false, name: "Carril de la grúa puente" });
   for (const x of [-20, 20]) span({ k: "grua-puente", x0: x - 0.6 / k, x1: x + 0.6 / k, z0: -fr.half.z / k + 0.6, z1: fr.half.z / k - 0.6, y0: 15.1, y1: 16.5, solid: false, name: "Grúa puente de 10 t" });
+  gantryLegs(14.6);
   for (const [x, z, r] of [[-23.5, -16.5, 0], [23.5, -16.5, 0], [-23.5, 16.6, 2], [23.5, 16.6, 2]] as const) at({ k: "grua-pluma", x, z, rot: r, plate: x < 0 && z < 0 });
   // The ISS on the bottom with Dragon and Cygnus (Wikipedia, NBL): the lab (layout.ts) with Unity and Quest at its ends, a truss segment.
   const bottom = -12;
@@ -614,13 +619,14 @@ function hatchStep(sink: FurnishSink, fr: RoomFrame, id: string, side: "w" | "e"
 }
 
 function svmf(sink: FurnishSink, fr: RoomFrame): void {
-  const { P, at, span, lights, face } = roomKit(sink, fr);
+  const { P, at, span, lights, face, gantryLegs } = roomKit(sink, fr);
   const k = fr.k;
   const A = fr.area;
   // The overhead crane that sets the mock-ups in place (Wikipedia, SVMF), and the industrial door of the north end.
   span({ k: "carril-grua", x0: -fr.half.x / k + 0.5, x1: fr.half.x / k - 0.5, z0: (face("s") + 0.3 - fr.centre.z) / k - 0.3 / k, z1: (face("s") + 0.3 - fr.centre.z) / k + 0.3 / k, y0: 12.8, y1: 13.3, solid: false });
   span({ k: "carril-grua", x0: -fr.half.x / k + 0.5, x1: fr.half.x / k - 0.5, z0: (face("n") - 0.3 - fr.centre.z) / k - 0.3 / k, z1: (face("n") - 0.3 - fr.centre.z) / k + 0.3 / k, y0: 12.8, y1: 13.3, solid: false });
   span({ k: "grua-puente", x0: 4 - 0.6 / k, x1: 4 + 0.6 / k, z0: -fr.half.z / k + 0.6, z1: fr.half.z / k - 0.6, y0: 13.3, y1: 14.7, solid: false, name: "Grúa puente" });
+  gantryLegs(12.8);
   at({ k: "puerta-industrial", x: 20, z: 0, snap: "n", rot: 2, plate: true });
   // Access steps at each mock-up's hatch, and their stands.
   const step = (id: string, side: "w" | "e") => hatchStep(sink, fr, id, side);

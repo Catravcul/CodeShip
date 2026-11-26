@@ -62,8 +62,12 @@ async function solve(j, title) {
   await j.waitDuel(60000);
   for (let i = 0; i < 4; i++) {
     if (!(await p.evaluate(oracle))) break;
+    // One call draws the whole compound (retos-trazos.md): the launch day's next challenge opens right after it, and
+    // is the next `solve`'s.
+    const drawing = await j.tracing();
     await j.answer(oracle, true);
     await p.waitForTimeout(2600);
+    if (drawing) break;
   }
   for (let k = 0; k < 40 && (await s3(p)).busy; k++) await p.waitForTimeout(500);
   // The sheet of options says «Conseguido»; the drawing ends on its molecule and closes by itself.

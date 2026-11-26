@@ -9,9 +9,8 @@
 // the gym; the medical centre (exam room with the ECG, the audiometry booth, the ultrasound, the waiting room and the
 // records) and the hypobaric chamber with its airlock, seats and O₂ panels; the water survival pool (METS, raft,
 // hoist); the helipad at the south cave's mouth (green lights, wind cone, fuel point); the campus's services in the
-// giant trees of the hollow mountain (docs/design/montana-hueca.md: the crew's suits room, the residence, the
-// restaurant, the clinic, the assembly hall, the classrooms, the library, the sample lab, the rearing room, the growing
-// room and the prototype workshop) and the mountain inside, from the foot of the training tree. In each she walks a few
+// giant trees of the hollow mountain (docs/design/montana-hueca.md: the residence, the restaurant, the clinic, the
+// sample lab and the prototype workshop) and the mountain inside, from the foot of the training tree. In each she walks a few
 // steps with «Moverse» and looks with «Mirar»: the capture must look full.
 // Captures in docs/screenshots/s3d-<área>-movil.png.
 import { mkdirSync } from "node:fs";
@@ -124,17 +123,12 @@ const SHOTS = [
   { id: "entrenamiento:medico-hipobarica", title: "Cámara hipobárica", label: "hipobarica", look: { dx: -6 }, stand: 0, back: 1, pitch: -0.15, kinds: [] },
   { id: "entrenamiento:supervivencia", title: "Supervivencia en el agua", label: "supervivencia", go: { pool: "supervivencia-piscina" }, look: { kind: "mets" }, stand: 0, back: 0.5, pitch: -0.25, kinds: ["mets", "balsa", "izado", "silla-socorrista", "chalecos"] },
   { id: "entrenamiento:helipuerto", title: "Helipuerto", label: "helipuerto", look: { kind: "manga" }, stand: 10, pitch: -0.15, kinds: [] },
-  // The campus's services in the trees of the hollow mountain (montana-hueca.md §Auditoría del campus).
-  { id: "entrenamiento:trajes", title: "Sala de trajes de la tripulación", label: "trajes", look: { kind: "taquillas" }, stand: 4, pitch: -0.12, kinds: ["taquillas", "consola-fcr", "mesa"] },
+  // The campus's services in the trees of the hollow mountain, one of each kind (montana-hueca.md §Auditoría del campus:
+  // living, food, health, science, production; the others share their fixtures and would only lengthen the run).
   { id: "entrenamiento:residencia", title: "Residencia de la tripulación", label: "residencia", look: { kind: "cama" }, stand: 4, pitch: -0.15, kinds: ["cama", "armario", "sofa", "mesa-reunion"] },
   { id: "entrenamiento:restaurante", title: "Restaurante y laboratorio de alimentos", label: "restaurante", look: { kind: "cocina" }, stand: 5, pitch: -0.12, kinds: ["cocina", "mostrador", "nevera", "mesa-reunion", "silla"] },
   { id: "entrenamiento:clinica", title: "Clínica de medicina de vuelo", label: "clinica", look: { kind: "sillon-dental" }, stand: 4, pitch: -0.15, kinds: ["camilla-exam", "sillon-dental", "lavabo", "cama"] },
-  { id: "entrenamiento:asambleas", title: "Sala de asambleas", label: "asambleas", look: { kind: "pizarra" }, stand: 5, pitch: -0.1, kinds: ["mesa-reunion", "silla", "tele-pared", "pizarra"] },
-  { id: "entrenamiento:aulas", title: "Aulas", label: "aulas", look: { kind: "pizarra" }, stand: 5, pitch: -0.1, kinds: ["pupitre", "silla", "pizarra"] },
-  { id: "entrenamiento:biblioteca", title: "Biblioteca", label: "biblioteca", look: { kind: "estanteria" }, stand: 4, pitch: -0.1, kinds: ["estanteria", "mesa", "silla"] },
   { id: "entrenamiento:laboratorio", title: "Laboratorio de muestras", label: "laboratorio", look: { kind: "guantera" }, stand: 4, pitch: -0.12, kinds: ["guantera", "nevera", "lavabo"] },
-  { id: "entrenamiento:crianza", title: "Área de crianza", label: "crianza", look: { kind: "colmena" }, stand: 4, pitch: -0.12, kinds: ["insectario", "colmena"] },
-  { id: "entrenamiento:huerto", title: "Huerto de cultivo", label: "huerto", look: { kind: "camara-cultivo" }, stand: 4, pitch: -0.1, kinds: ["camara-cultivo", "estante-cultivo"] },
   { id: "entrenamiento:taller", title: "Taller de prototipos", label: "taller", look: { kind: "impresora-3d" }, stand: 4, pitch: -0.12, kinds: ["impresora-3d", "torno", "fresadora", "banco-trabajo"] },
   // Inside the hollow mountain, from the foot of the training tree: the lake, the giant trees and their carpet stations.
   { id: "entrenamiento:arbol-entrenamiento:pie", title: "Árbol del entrenamiento · pie", label: "montana", look: { centre: "entrenamiento:lago" }, stand: 0, pitch: 0.1, kinds: [] },

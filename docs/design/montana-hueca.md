@@ -54,6 +54,8 @@ abajo o al lago. Las grúas de la NBL apoyan en pilotes en las esquinas de la sa
 
 21 salas en total. Cada pie y cada piso tiene su estación de alfombras.
 
+![Copa de un árbol gigante](../screenshots/s3-arbol-gigante-copa-movil.png) ![Ventana de alfombras de la cueva sur](../screenshots/s3-alfombras-ventana-movil.png)
+
 **Caídas**: fuera de la montaña, del borde de una isla no se baja más de 10 m (`ISLAND_DROP_M`); dentro del hueco no hay
 límite (`dropLimit`, `FreeWalk.maxDrop`): se cae al piso de abajo o al agua (`data/caidas.test.ts`).
 

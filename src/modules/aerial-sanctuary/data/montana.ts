@@ -567,15 +567,10 @@ export function buildHollow(b: HollowBuilder, k: number, size: (id: string) => R
     return { ...s, reach: s.kind === "piso" ? "edificio" : "santuario", lane: ln };
   });
   for (const s of stations) {
-    // The station's point is its pad: a carpet way point; and its console beside the pad.
+    // The station's point is its pad: a carpet way point. Its pad, carpets and orrery are sanctuary 1's, drawn by the
+    // scene (adapters/three/carpet-stations.ts); on it the orange button «Volar» opens its carpets (ui/carpet-stations.ts).
     const i = b.points.findIndex((p) => p.id === s.point);
     (b.points as WayPoint[])[i] = { ...b.points[i]!, carpet: s.id };
-    const side = { x: -s.out.z, z: s.out.x };
-    const cx = s.x + side.x * (STATION_PAD.x / 2 + 0.9);
-    const cz = s.z + side.z * (STATION_PAD.x / 2 + 0.9);
-    b.props.push({ kind: "carpet-pad", x: s.x, y: s.y + 0.02, z: s.z, rot: Math.atan2(s.out.x, s.out.z) });
-    b.block("kiosco", { ...around(cx, cz, 0.45), y0: s.y, y1: s.y + 1.2 });
-    b.machine({ id: `alfombras-${s.area.replace(/^entrenamiento:/, "").replace(/:/g, "-")}`, kind: "alfombra", island: "entrenamiento", area: s.area, label: `Estación de alfombras · ${s.label}`, what: s.kind === "piso" ? `Alfombras a los demás pisos de ${s.building.toLowerCase()} y a su pie` : "Alfombras a los pies de los árboles, las cuevas y el Starship, y a los pisos de este árbol", x: s.x + side.x * 2.2, y: s.y, z: s.z + side.z * 2.2, station: s.id }, s.point);
   }
   // The carpet links: a floor's station to the others of its tree; the feet, caves and the Starship to one another;
   // each only if its flight is clear of everything (else «Ir» goes by another station: flown in two hops).

@@ -167,8 +167,11 @@ export class DuelView {
 
   onClose?: () => void;
 
+  /** Another challenge screen stands in the sheet's place (ui/trace-view.ts): the scene treats the sheet as open. */
+  standIn = false;
+
   get visible(): boolean {
-    return !this.el.classList.contains("hidden");
+    return this.standIn || !this.el.classList.contains("hidden");
   }
 
   hide(): void {

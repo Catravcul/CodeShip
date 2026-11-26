@@ -3,6 +3,26 @@
 Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documento. El historial anterior al
 2026-11-18 está en git y en `docs/design/`.
 
+## 2026-11-25
+
+- **Santuario 3, montaña hueca**: la montaña es una pirámide hueca con tres cuevas sobre un lago de 4 m; cuatro árboles
+  gigantes hasta el techo llevan en sus pisos el entrenamiento y los servicios del campus (residencia con cama para
+  dormir, restaurante para comer, clínica, aulas, biblioteca, laboratorio, crianza, huerto, taller, asambleas); alfombras
+  entre estaciones; un Starship inundado para nadar; luz pareja sin sombras ([montana-hueca.md](docs/design/montana-hueca.md),
+  reglas indexadas en [edificios-y-pisos.md](docs/design/edificios-y-pisos.md)).
+- **Santuario 3: los retos se dibujan** como con una varita mágica: cada reto es un compuesto real (H₂O en la NBL, O₂ en la
+  hipobárica, TEA en la cuenta atrás…) que se traza letra a letra con el dedo, con su aspecto (gotas, burbujas, cristales
+  cúbicos…) y su molécula al final; los pasos del puesto siguen animándose ([retos-trazos.md](docs/design/retos-trazos.md)).
+- **Mandos alrededor de los joysticks** (todos los botones de la Switch en dos anillos alrededor de «Moverse» y «Mirar»,
+  también en 0 g), **la Y dice el reto en una palabra** («Boxeo», «Cocina», «Natación», «Hipoxia»: `retoWord`) y
+  **pantalla de carga en los santuarios 3 y 6**, regla para todos ([reglas.md](docs/design/reglas.md) §5,
+  [ux-acciones.md](docs/design/ux-acciones.md)).
+- **Santuario 3, insectos gigantes**: la fauna de la Isla de las alturas son 15 insectos reales de Gilgit-Baltistán
+  ×400 (la mosca de la fruta mide 1 m), con cadena viva, vuelos reales, colonias y la regla de **animales por persona**
+  del santuario 1; y el **globo de nubes** al sur de la isla, donde se nada hasta una abeja asiática gigante que se
+  desarrolla de huevo a adulta (ajuste «Duración del desarrollo de la abeja») ([bioma-s3.md](docs/design/bioma-s3.md),
+  [globo-nubes.md](docs/design/globo-nubes.md)).
+
 ## 2026-11-24
 
 - **Hábitat acuático (AQH)**: en sus retos la cámara encuadra las cámaras, sus manos y la tableta que lee, sobre la hoja

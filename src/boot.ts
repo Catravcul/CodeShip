@@ -50,6 +50,7 @@ function goOn(): boolean {
   restoreSettings(slot);
   startSession({ slotId: slot.id, resume: slot });
   performance.mark("codeship-inicio-elegido");
+  showLoading("espacio");
   void import("./main");
   return true;
 }
@@ -67,7 +68,8 @@ const start = new StartScreen(
       startSession({ slotId: choice.slot.id, resume: choice.slot });
     } else startSession({ slotId: book.newSlot(), resume: undefined });
     start.close();
-    if (level.id === "terrestre") showLoading("santuario-1");
+    // Every sanctuary its loading screen until its first frame (reglas.md §5.3: all sanctuaries equivalent).
+    showLoading(level.id);
     void (level.id === "aereo" ? import("./aerial-sanctuary") : level.id === "terrestre" ? import("./sanctuary-one") : import("./main"));
   },
 );

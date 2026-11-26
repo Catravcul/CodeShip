@@ -90,7 +90,8 @@ export function legPose(leg: Leg, t: number, c: CraftSpec): { x: number; y: numb
     const u = (total - tc) / climb;
     return { x: leg.b.x, y: leg.b.y + (cruiseY - leg.b.y) * ease(u), z: leg.b.z, heading, phase: "aterrizaje" };
   }
-  const u = ease((tc - climb) / Math.max(1e-6, total - 2 * climb));
+  // At its cruise speed all the way across (an eased crossing would peak at 1,5 × the S-92's 280 km/h).
+  const u = (tc - climb) / Math.max(1e-6, total - 2 * climb);
   return { x: leg.a.x + (leg.b.x - leg.a.x) * u, y: cruiseY, z: leg.a.z + (leg.b.z - leg.a.z) * u, heading, phase: "crucero" };
 }
 

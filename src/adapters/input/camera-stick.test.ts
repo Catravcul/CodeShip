@@ -20,7 +20,8 @@ describe("UI-07 camera only by joystick (reglas.md §5.7)", () => {
   it("only the on-screen sticks follow a moving finger: no pointermove, touchmove or mousemove on the screen", () => {
     // A camera that follows a finger needs move events; the stick (stick.ts) is the one place that may listen to them,
     // and the 3D maps' finger (map-gestures.ts), the rule's one exception.
-    const allowed = new Set(["src/adapters/input/stick.ts", "src/ui/map-gestures.ts"]);
+    // The drawing sheet of sanctuary 3 follows the finger to trace a glyph (retos-trazos.md), not the camera.
+    const allowed = new Set(["src/adapters/input/stick.ts", "src/ui/map-gestures.ts", "src/ui/trace-view.ts"]);
     const bad = files.filter(({ f, text }) => !allowed.has(f) && /["'](pointermove|touchmove|mousemove)["']/.test(text)).map(({ f }) => f);
     expect(bad).toEqual([]);
   });

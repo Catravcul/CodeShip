@@ -46,6 +46,11 @@ const TRAILS = [
   [{ x: 290, z: -140 }, { x: 120, z: -44 }],
   // Along the shore to the steppe.
   [{ x: -150, z: -476 }, { x: 100, z: -520 }],
+  // Under the south face, past the caves' mouths into the hollow mountain (Berón 2026-11-25).
+  [{ x: -30, z: -322 }, { x: 20, z: -318 }, { x: 80, z: -330 }, { x: 160, z: -345 }, { x: 230, z: -350 }, { x: 290, z: -345 }],
+  // Up to the south-west and south-east caves' mouths.
+  [{ x: 20, z: -318 }, { x: 40, z: -284 }],
+  [{ x: 290, z: -345 }, { x: 280, z: -334 }],
 ];
 
 /**
@@ -53,8 +58,7 @@ const TRAILS = [
  * above the sea (5 080 m real), cliffs 90 m high (800 m real: the Batura and Hunza walls are higher), a gorge 160 m deep
  * at the lookout (the Hunza gorge is ~1 km deep).
  */
-export const MOUNTAIN = fact<MountainDef>(
-  {
+const NATURAL: MountainDef = {
     half: { x: 800, z: 600 },
     peak: { x: 120, z: 180 },
     cliffs: [{ d: 0, h: 520 }, { d: 120, h: 400 }, { d: 175, h: 338 }, { d: 225, h: 245 }, { d: 380, h: 195 }, { d: 560, h: 95 }, { d: 690, h: 32 }, { d: 800, h: 10 }, { d: 950, h: 8 }],
@@ -70,10 +74,52 @@ export const MOUNTAIN = fact<MountainDef>(
     baseAltitudeM: 2400,
     altitudePerM: 9,
     walkSlope: 0.66,
-  },
+};
+
+/**
+ * THE HOLLOW PYRAMID (docs/design/montana-hueca.md): a square pyramid 440 m a side and 320 m high, its base 100 m above
+ * the sea, buried under 15 m of earth and stone at least (ficción, Berón 2026-11-25). Its inside is the campus: a lake
+ * 4 m deep on its floor, giant trees up to its ceiling and the flooded Starship. Three caves bore into it from the south
+ * face, above the lake's surface, each ending at a carpet station.
+ */
+export const CORE_DEF = { x: 160, z: 120, half: 220, baseY: 100, height: 320, cover: 15 } as const;
+/** The caves: where each runs (along −z from the pyramid's wall, at local x), its floor, half width and vault. */
+const CAVES = [
+  { id: "sur", label: "Cueva sur", x: 160, y: 112 },
+  { id: "suroeste", label: "Cueva suroeste", x: 40, y: 118 },
+  { id: "sureste", label: "Cueva sureste", x: 280, y: 124 },
+] as const;
+export const CAVE_HALF_M = 6;
+export const CAVE_VAULT_M = 9;
+/** The hollow: half its floor and the height of its ceiling's apex over the floor, m. */
+export const INNER_HALF = 210;
+export const INNER_H = 310;
+/** The pyramid's inner face: its height at plan distance `d` (Chebyshev) from its middle (the shell is ~10 m thick). */
+export const innerY = (d: number): number => CORE_DEF.baseY + INNER_H * (1 - d / INNER_HALF);
+/** Plan distance from the middle at which the inner face is at height y. */
+export const innerAt = (y: number): number => INNER_HALF * (1 - (y - CORE_DEF.baseY) / INNER_H);
+
+function withCore(m: MountainDef): MountainDef {
+  const c = CORE_DEF;
+  const bare = { ...m, core: { ...c, caves: [] } };
+  const caves = CAVES.map((cv) => {
+    const endZ = c.z - innerAt(cv.y + CAVE_VAULT_M) + 2;
+    // Out along −z until the (buried) slope is down to the floor: the mouth.
+    let z = c.z - c.half;
+    while (heightAt(bare, cv.x, z) > cv.y + 0.5 && z > -700) z -= 1;
+    return { id: cv.id, from: { x: cv.x, z }, to: { x: cv.x, z: endZ }, y: cv.y, half: CAVE_HALF_M, vault: CAVE_VAULT_M };
+  });
+  const mouth = caves[0]!;
+  return { ...m, flats: [...m.flats, { x: mouth.from.x, z: mouth.from.z - 26, r: 26, h: mouth.y }], core: { ...c, caves } };
+}
+
+export const MOUNTAIN = fact<MountainDef>(
+  withCore(NATURAL),
   "licencia",
-  `nuestro, del orden del Karakórum de Hunza: ${BATURA}; cumbre de 5 080 m, garganta y anillo de cantiles comprimidos (1 m de la isla = 9 m de ladera real)`,
+  `nuestro, del orden del Karakórum de Hunza: ${BATURA}; cumbre de 5 080 m, garganta y anillo de cantiles comprimidos (1 m de la isla = 9 m de ladera real); dentro, la pirámide hueca (ficción, Berón 2026-11-25)`,
 );
+/** The caves as built (their mouths found on the slope). */
+export const caves = () => MOUNTAIN.value.core!.caves.map((c, i) => ({ ...c, label: CAVES[i]!.label }));
 
 export interface BiomeZone {
   readonly id: string;

@@ -12,8 +12,8 @@ const name = (id: string) => L.islands.find((i) => i.id === id)!.name;
 
 describe("vuelo «Por reto» (§3.6): el programa del vuelo", () => {
   it("helicóptero: pasos reales en orden, con la altura de crucero y la velocidad del S-92", () => {
-    const legs = planTrip("entrenamiento", "plataforma", pads, crafts)!;
-    const steps = flightSteps(legs[0]!, crafts.helicoptero, "X");
+    const legs = planTrip("lanzadera", "plataforma", pads, crafts)!;
+    const steps = flightSteps(legs.find((l) => l.craft === "helicoptero")!, crafts.helicoptero, "X");
     expect(steps[0]).toMatch(/arrancar/);
     expect(steps[1]).toMatch(/82 m/);
     expect(steps[3]).toMatch(/280 km\/h/);

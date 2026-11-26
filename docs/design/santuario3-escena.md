@@ -5,6 +5,8 @@ arriba del todo) llevada a una escena de Three.js. Casos AER-01 a AER-09 en [cas
 
 ## Qué hay
 
+> **2026-11-25**: la isla de entrenamiento pasó a ser el **Campus de la montaña**, dentro de la montaña hueca de la Isla de las alturas: sus salas están en los pisos de cuatro árboles gigantes. Ver [montana-hueca.md](montana-hueca.md); lo de abajo sobre la isla describe su versión anterior.
+
 - **Inicio.** El 3 se juega desde la pantalla de inicio (`boot.ts` carga `src/aerial-sanctuary.ts`). Su tarjeta dice que los retos de
   los puestos de entrenamiento están «En construcción». Doménica empieza en el helipuerto de la isla de entrenamiento, al empezar la
   iniciación. La partida se guarda sola (ranuras de [partidas.md](partidas.md); `checkAerialState` en `STATE_CHECKS`).

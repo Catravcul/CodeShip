@@ -5,6 +5,7 @@ import type { Floor, Water } from "@modules/aerial-sanctuary/domain/walk";
 import { CRAFT, DRAGON, ELECTRON, FALCON9_CREW, S92, TURBINE } from "@modules/aerial-sanctuary/data/facts";
 import { textSign } from "./interior/sign";
 import { interiorFloor } from "./s3-fixtures";
+import { MOUNTAIN_LOOKS, isClearWater } from "./s3-mountain";
 
 /**
  * Procedural models of sanctuary 3 (docs/design/santuario3-escena.md), at true size: the walls, floors and water
@@ -74,7 +75,7 @@ export function buildBlocks(blocks: readonly Block[]): THREE.Group {
     // The centrifuge's gondola is drawn by its rig (s3-rigs.ts), which swings it round on the arm; the LM mock-up by
     // the simulators (s3-simulators.ts), with the lander's own cabin.
     if (look === "cohete" || look === "gondola" || look === "lm-maqueta" || look === "oculto") continue;
-    const m = new THREE.Mesh(mergeGeometries(geos), LOOK[look] ?? mat(0xaaaaaa));
+    const m = new THREE.Mesh(mergeGeometries(geos), LOOK[look] ?? MOUNTAIN_LOOKS[look] ?? mat(0xaaaaaa));
     m.name = `bloques-${look}`;
     g.add(m);
   }
@@ -89,7 +90,8 @@ export function buildFloors(floors: readonly Floor[]): THREE.Group {
     // The air island draws its own ground (s3-biome-models.ts); its climbing ledges are rock blocks.
     if (f.area === "bioma:isla" || f.id.startsWith("bioma:repisa")) continue;
     const isl = f.area.split(":")[0]!;
-    const c = f.area.includes("helipuerto") ? 0x3a3f44 : f.area === "glaciar:pista" || f.area === "glaciar:hielo-azul" ? BLUE_ICE : (interiorFloor(f.area) ?? FLOOR_LOOK[isl] ?? 0xb9c4cc);
+    // The giant trees' floors and decks are wood; the caves' floors, stone (montana-hueca.md).
+    const c = f.area.includes("helipuerto") ? 0x3a3f44 : /^entrenamiento:arbol-|starship:pasarela/.test(f.area) ? 0xb89a72 : f.area.startsWith("entrenamiento:cueva-") ? 0x9a8f7e : f.area === "entrenamiento:lago" ? 0xe6dcc0 : f.area === "glaciar:pista" || f.area === "glaciar:hielo-azul" ? BLUE_ICE : (interiorFloor(f.area) ?? FLOOR_LOOK[isl] ?? 0xb9c4cc);
     const list = by.get(c) ?? [];
     list.push(boxGeo(f.x0, f.x1, f.y - 0.25, f.y - 0.01, f.z0, f.z1));
     by.set(c, list);
@@ -102,10 +104,17 @@ export function buildFloors(floors: readonly Floor[]): THREE.Group {
 export function buildWater(waters: readonly Water[]): THREE.Group {
   const g = new THREE.Group();
   const geos: THREE.BufferGeometry[] = [];
-  for (const w of waters) if (w.id !== "mar") geos.push(boxGeo(w.x0, w.x1, w.yBottom, w.yTop, w.z0, w.z1));
+  const clear: THREE.BufferGeometry[] = [];
+  for (const w of waters) if (w.id !== "mar") (isClearWater(w.id) ? clear : geos).push(boxGeo(w.x0, w.x1, w.yBottom, w.yTop, w.z0, w.z1));
   if (geos.length) {
     const m = new THREE.Mesh(mergeGeometries(geos), mat(0x2f8fbf, { transparent: true, opacity: 0.35, roughness: 0.05, depthWrite: false, side: THREE.DoubleSide }));
     m.name = "agua";
+    g.add(m);
+  }
+  // The hollow mountain's lake and the flooded Starship: clear, light water (its bottom shows, montana-hueca.md).
+  if (clear.length) {
+    const m = new THREE.Mesh(mergeGeometries(clear), mat(0x8fe0ee, { transparent: true, opacity: 0.18, roughness: 0.05, depthWrite: false, side: THREE.DoubleSide }));
+    m.name = "agua-clara";
     g.add(m);
   }
   return g;

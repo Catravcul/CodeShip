@@ -1,13 +1,19 @@
 import type { Reality } from "@core/reality";
+import { allocate, ANIMALS_PER_HUMAN, type PopulationTable, type Trophic } from "@modules/fauna/domain/population";
+import { fact } from "./sources";
+import { TRAINERS } from "./trainers";
 
 /**
- * THE BIOME of sanctuary 3: the AIR and the HEIGHTS (Berón, 2026-11-20: «cada santuario debe recrear un bioma
- * distintivo … sanctuary3 debe ser más aéreo … las aves y las alturas, quizás las cabras, las montañas, los
- * acantilados … algún tipo de roedor»; docs/design/bioma-s3.md). One real region, so every species truly lives with
- * the others: the Hunza–Nagar valleys of the Karakoram (Gilgit-Baltistan, Pakistan), from the valley floor to
- * Khunjerab. The birds, mammals and the snow leopard are those of Khunjerab National Park's list (Wikipedia), plus the
- * markhor and the woolly flying squirrel of the forests of Nagar and Gilgit next to it; the plants are the altitude
- * belts of the Batura valley (Eberhardt, Dickoré y Miehe 2007) and the moist forests of Rakaposhi across the valley.
+ * THE BIOME of sanctuary 3: the AIR and the HEIGHTS (Berón, 2026-11-20: «sanctuary3 debe ser más aéreo»;
+ * docs/design/bioma-s3.md). One real region, so every species truly lives with the others: the Hunza–Nagar valleys of
+ * the Karakoram (Gilgit-Baltistan, Pakistan), from the valley floor to Khunjerab. Since 2026-11-25 its fauna is GIANT
+ * INSECTS (Berón: «el aire está más poblado por insectos que animales … cambiaríamos la fauna por insectos gigantes …
+ * tomando de referencia a un mosquito de la fruta, dicho mosquito medirá 1 m»): bees and bumblebees, the Apollo
+ * butterfly, the locust and the fruit fly; ladybirds, lacewings, hoverflies, ants and robber flies; the dragonfly, the
+ * mantis and the hornet on top; burying and dung beetles and springtails to recycle; the high jumping spider (an
+ * arachnid) closes the chain where no insect hunts. Recorded in the region where the source says so (Hunza's
+ * butterflies, Baltistan's grasshoppers, Gilgit's bumblebee); a genus or family where it does not (said in `ours`).
+ * The plants are the altitude belts of the Batura valley (Eberhardt, Dickoré y Miehe 2007) and Rakaposhi's forests.
  *
  * Every species carries ONE source for its numbers (all `real` unless the species' `ours` names the field: then that
  * number is `licencia`, a value of ours of the right order, and the note says why). Ages are real days of biology; the
@@ -19,7 +25,7 @@ import type { Reality } from "@core/reality";
 export type Stage = "cria" | "joven" | "adulto" | "anciano";
 /** The zone of the island it lives in (data/bioma-island.ts `ZONES`), or the air. */
 export type Habitat = string;
-export type BodyShape = "cuadrupedo" | "ave" | "pajaro";
+export type BodyShape = "cuadrupedo" | "ave" | "pajaro" | "insecto";
 
 /** What a consumer eats: a food (species id or remains) and, for animals, which of its stages. `pref` weighs it. */
 export interface Food {
@@ -130,6 +136,21 @@ export interface AnimalSpec extends Base {
   readonly away?: number;
   /** Chance a hunt of this predator ends in a catch. */
   readonly huntSuccess?: number;
+  // Insects (sanctuary 3's giant insects): optional, a vertebrate has none of them.
+  /** Its first days are an egg: it neither eats nor moves nor is hunted (an insect's egg, a mantis's ootheca). */
+  readonly eggDays?: number;
+  /** Its «joven» stage is a pupa (complete metamorphosis): it neither eats nor moves nor is hunted. */
+  readonly pupa?: boolean;
+  /** Its young are nymphs: the adult's shape without wings (incomplete metamorphosis: locusts, dragonflies, mantises). */
+  readonly nymph?: boolean;
+  /** Its young feed by themselves (or the colony feeds them): no mother carries their food, none dies for losing her. */
+  readonly selfFed?: boolean;
+  /** All of a generation are born together in its laying month (one generation a year): day 0 finds them at their age of the year, not spread over a lifetime. */
+  readonly annual?: boolean;
+  /** Its young live out of sight (in the soil, in dung, a carcass's crypt, the river's water). */
+  readonly hiddenYoung?: boolean;
+  /** A social insect: each one of the chain is a colony, drawn with its workers about its nest (bioma-crowd.ts). */
+  readonly social?: "colmena" | "nido" | "hormiguero";
 }
 
 export type BiomeSpec = PlantSpec | SwarmSpec | AnimalSpec;
@@ -170,17 +191,15 @@ export interface BiomeDef {
   readonly startDayOfYear: number;
   /** Where a starving grown animal goes in words («a otra parte del valle»). */
   readonly elsewhere: string;
+  /** Its animals are drawn this many times their real size (sanctuary 3's giant insects: `INSECT_SCALE`); 1 if none. */
+  readonly drawScale?: number;
 }
 
 const WIKI = (page: string) => `https://en.wikipedia.org/wiki/${page}`;
-const ADW = (latin: string) => `https://animaldiversity.org/accounts/${latin.replace(" ", "_")}/`;
-const KHUNJERAB = `${WIKI("Khunjerab_National_Park")} (lista de especies del parque: 4 000–5 200 m, Gilgit-Baltistán)`;
 const BATURA = "Eberhardt, Dickoré y Miehe 2007, «Vegetation map of the Batura Valley (Hunza Karakorum, North Pakistan)», Erdkunde 61(1): 93–112, doi:10.3112/erdkunde.2007.01.06 (cinturones: submontano hasta ~2 700 m, montano 2 600–3 900, subalpino 3 500–4 400, alpino 3 900–4 600, subnival desde 4 600; plantas vasculares hasta 5 000–5 200 m)";
 const OURS_SURV = "supervivencia anual del orden publicado para su grupo; sin serie propia de esta especie";
-const OURS_FAST = "días de ayuno del orden de su grupo (los grandes aguantan semanas; los pájaros, horas)";
-const OURS_INTAKE_HERB = "ración nuestra: ~3 % de la masa en materia seca al día, ~8–9 % en fresco (rumiantes de montaña)";
-const OURS_INTAKE_BIRD = "ración nuestra con la regla de las aves (~10–25 % de la masa al día; más cuanto más pequeña)";
-const OURS_CAP = "el presupuesto del móvil (docs/design/bioma-s3.md §Presupuesto), no un censo real: cada uno representa a muchos (§Multitudes)";
+const OURS_FAST = "días de ayuno del orden de su grupo: nuestro (los que pasan el invierno de adultos viven de su grasa semanas)";
+const OURS_CAP_S3 = "la regla de animales por persona (S3_POPULATION): cada santuario tantos como personas × el ajuste; aquí, los de 4 por persona";
 const OURS_AWAY = "cuánto caza o come fuera de la isla: nuestro, del tamaño de su territorio real frente a la isla (~1,9 km²)";
 
 /** The altitude belts of the Karakoram (Batura valley): real, from Eberhardt et al. 2007; boundaries between overlaps, ours. */
@@ -262,225 +281,219 @@ export const SPECIES: readonly BiomeSpec[] = [
     ours: { perYear: "nuestro: se renueva cada verano con el viento del valle", stockKg: "nuestro", minTempC: "llega mientras el valle está templado (nuestro)", altitudeM: "crece con el calor del valle, 2 450 m: nuestro" },
   },
 
-  // ── Insects, spiders and mice (cohorts) ──────────────────────────────────────────────────────────────────────────
   {
-    kind: "banco", id: "insectos", name: "Insectos de la pradera", latin: "Orthoptera, Coleoptera, larvas de Diptera", habitat: "pradera", trophic: 2,
-    adultMassKg: 0.0005, maxAgeYears: 1, matureYears: 0, spawnMonth: 6, spawnMonths: 3, perYear: 4, mortality: 2, intakePerDay: 0.3,
-    diet: [{ food: "pradera", pref: 2 }, { food: "cojines" }, { food: "artemisa" }], stockKg: 900, unit: "insectos",
-    source: `${WIKI("Alpine_chough")} (en verano la chova come escarabajos, caracoles, saltamontes, orugas y larvas de mosca de los pastos)`,
-    ours: { adultMassKg: "nuestro", perYear: "nuestro", mortality: "nuestro", intakePerDay: "nuestro", stockKg: "nuestro", spawnMonth: "el verano alpino, nuestro" },
+    kind: "planta", id: "flores", name: "Flores (néctar y polen)", latin: "flores de la pradera, la estepa y los albaricoqueros de Hunza", habitat: "pradera",
+    perYear: 3, stockKg: 3_000, minTempC: 5, altitudeM: 3000,
+    source: `${BATURA} (praderas en flor del alpino y del subalpino); ${WIKI("Apis_cerana")} (la abeja asiática liba néctar y recoge polen de flores silvestres y frutales); ${WIKI("Hunza_Valley")} (los albaricoqueros del valle)`,
+    ours: { perYear: "flores que se renuevan cada pocos días en verano: nuestro", stockKg: "nuestro", minTempC: "nuestro", altitudeM: "la altitud media de las flores: nuestra" },
+  },
+
+  // ── Small ones by cohorts: aphids, midges, springtails, spiders ──────────────────────────────────────────────────
+  {
+    kind: "banco", id: "pulgones", name: "Pulgones", latin: "Aphidoidea (como Cinara en los pinos)", habitat: "bosque", trophic: 2,
+    adultMassKg: 3e-7, maxAgeYears: 1, matureYears: 0, spawnMonth: 4, spawnMonths: 6, perYear: 12, mortality: 4, intakePerDay: 1,
+    diet: [{ food: "pino", pref: 2 }, { food: "espino" }, { food: "abedul" }, { food: "pradera" }], stockKg: 60, unit: "pulgones",
+    source: `${WIKI("Aphid")} (1–10 mm; chupan la savia del floema; muchas generaciones al año, las de verano sin machos y paridas vivas; los cuidan las hormigas por su melaza; los comen mariquitas, larvas de crisopa y de sírfido); ${WIKI("Coccinella_septempunctata")}`,
+    ours: { adultMassKg: "nuestro", perYear: "nuestro: muchas generaciones al año", mortality: "nuestro", intakePerDay: "nuestro", stockKg: "nuestro", habitat: "los pulgones de los pinos, del espino y de la pradera, en el bosque: nuestro" },
   },
   {
-    kind: "banco", id: "voladores", name: "Insectos voladores (plancton aéreo)", latin: "Diptera, Homoptera, Hymenoptera", habitat: "aire", trophic: 2,
-    adultMassKg: 0.00002, maxAgeYears: 1, matureYears: 0, spawnMonth: 5, spawnMonths: 4, perYear: 6, mortality: 3, intakePerDay: 0.5,
-    diet: [{ food: "pradera" }, { food: "artemisa" }, { food: "pino", pref: 0.5 }, { food: "espino", pref: 0.5 }], stockKg: 250, variable: true, unit: "insectos",
-    source: `${WIKI("Alpine_swift")} (el vencejo real come sobre todo insectos voladores: homópteros, dípteros e himenópteros); Swan 1992, BioScience 42: 262 (el viento sube insectos a la zona eólica)`,
+    kind: "banco", id: "voladores", name: "Mosquitos y moscas pequeñas (plancton aéreo)", latin: "Chironomidae, Diptera, Homoptera", habitat: "aire", trophic: 2,
+    adultMassKg: 2e-6, maxAgeYears: 1, matureYears: 0, spawnMonth: 5, spawnMonths: 5, perYear: 8, mortality: 3, intakePerDay: 0.5,
+    diet: [{ food: "pradera" }, { food: "artemisa" }, { food: "eolica" }, { food: "espino", pref: 0.5 }], stockKg: 40, variable: true, unit: "insectos",
+    source: `Swan 1992, «The aeolian biome», BioScience 42: 262–270 (el viento sube insectos pequeños de los valles a las alturas); ${WIKI("Chironomidae")} (larvas en el agua de los ríos y los charcos, nubes de adultos en el aire)`,
     ours: { adultMassKg: "nuestro", perYear: "nuestro", mortality: "nuestro", intakePerDay: "nuestro", stockKg: "nuestro", variable: "años buenos y malos según el tiempo: nuestro" },
-  },
-  {
-    kind: "banco", id: "ratones", name: "Ratón de campo de Cachemira y hámster enano", latin: "Apodemus rusiges, Cricetulus migratorius", habitat: "estepa", trophic: 2,
-    adultMassKg: 0.025, maxAgeYears: 2, matureYears: 0, spawnMonth: 5, spawnMonths: 4, perYear: 3, mortality: 1.5, intakePerDay: 0.15,
-    diet: [{ food: "artemisa" }, { food: "pradera" }, { food: "enebro", pref: 0.5 }, { food: "espino", pref: 0.5 }], stockKg: 500, unit: "ratones",
-    source: `${KHUNJERAB} (ratón de campo de Cachemira y hámster enano gris en su lista); ${WIKI("Common_kestrel")} (el cernícalo come casi solo mamíferos del tamaño de un ratón, 4–8 al día)`,
-    ours: { adultMassKg: "nuestro", maxAgeYears: "nuestro", perYear: "nuestro", mortality: "nuestro", intakePerDay: "nuestro", stockKg: "nuestro", spawnMonth: "nuestro" },
   },
   {
     kind: "banco", id: "colembolos", name: "Colémbolos de la nieve", latin: "Collembola", habitat: "nieves", trophic: 2,
     adultMassKg: 1e-7, maxAgeYears: 1, matureYears: 0, spawnMonth: 6, spawnMonths: 3, perYear: 3, mortality: 1.5, intakePerDay: 0.1,
     diet: [{ food: "eolica", pref: 2 }, { food: "liquen" }], stockKg: 25, unit: "colémbolos",
-    source: `${WIKI("Euophrys_omnisuperstes")} (Swan vio colémbolos en el Makalu, que comen los restos que sube el viento); Swan 1992, BioScience 42: 262`,
+    source: `${WIKI("Euophrys_omnisuperstes")} (Swan vio colémbolos en el Makalu, que comen los restos que sube el viento); Swan 1992, BioScience 42: 262; ${WIKI("Springtail")} (descomponedores del suelo: hongos y restos de plantas)`,
     ours: { adultMassKg: "nuestro", perYear: "nuestro", mortality: "nuestro", intakePerDay: "nuestro", stockKg: "nuestro", spawnMonth: "nuestro" },
   },
   {
-    kind: "banco", id: "aranas", name: "Arañas saltarinas de altura", latin: "Salticidae (como Euophrys omnisuperstes)", habitat: "nieves", trophic: 3,
+    kind: "banco", id: "aranas", name: "Arañas saltarinas de altura (arácnidos)", latin: "Salticidae (como Euophrys omnisuperstes)", habitat: "nieves", trophic: 3,
     adultMassKg: 2e-5, maxAgeYears: 2, matureYears: 1, spawnMonth: 7, spawnMonths: 2, perYear: 1, mortality: 0.8, intakePerDay: 0.05,
     diet: [{ food: "colembolos", pref: 2 }, { food: "voladores" }], stockKg: 4, unit: "arañas",
-    source: `${WIKI("Euophrys_omnisuperstes")} (hasta 6 700 m, quizá el animal que vive más alto; 4–5 mm; come colémbolos y moscas que trae el viento; descrita por Wanless en 1975)`,
+    source: `${WIKI("Euophrys_omnisuperstes")} (hasta 6 700 m, quizá el animal que vive más alto; 4–5 mm; come colémbolos y moscas que trae el viento; descrita por Wanless en 1975). No es un insecto: es el arácnido que cierra la cadena de la zona eólica, donde no llega ningún insecto cazador`,
     ours: { habitat: "la especie se conoce del Everest y el Makalu: en el Karakórum la ponemos como representante de las saltícidas de altura (licencia)", adultMassKg: "nuestro", maxAgeYears: "nuestro", perYear: "nuestro", mortality: "nuestro", intakePerDay: "nuestro", stockKg: "nuestro", spawnMonth: "nuestro" },
   },
 
-  // ── Mammals ───────────────────────────────────────────────────────────────────────────────────────────────────────
+  // ── Insects lived one by one (giant: INSECT_SCALE) ──────────────────────────────────────────────────────────────
+  // Herbivores and pollinators.
   {
-    kind: "animal", id: "ibice", name: "Íbice del Himalaya", latin: "Capra sibirica", habitat: "farallon", trophic: 2, shape: "cuadrupedo",
-    massKg: 45, size: { x: 0.34, y: 0.8, z: 1.3 }, male: 1.25, color: 0x8a7356, intakeKgDay: 3.8,
-    diet: [{ food: "pradera", pref: 2 }, { food: "cojines" }, { food: "abedul", pref: 0.5 }, { food: "enebro", pref: 0.5 }],
-    childDays: 180, teenDays: 365, adultDays: 5300, birthSize: 0.4, gestationMonths: 5.8, intervalMonths: 12, birthMonth: 6, young: 1,
-    survival: 0.85, fastDays: 20, start: 14, cap: 20,
-    source: `${WIKI("Siberian_ibex")} (hembras 34–56 kg, machos 60–130 kg; celo de finales de octubre a principios de enero; 170–180 días de gestación; una cría, gemelos hasta un 14 %; las hembras crían en su segundo año; viven hasta 17 años; pasto y juncias en verano, ramitas de sauce y enebro en invierno; laderas empinadas y pedreras); ${KHUNJERAB}`,
-    ours: { intakeKgDay: OURS_INTAKE_HERB, childDays: "lactancia de unos seis meses, nuestra", survival: OURS_SURV, fastDays: OURS_FAST, cap: OURS_CAP, birthMonth: "celo de diciembre + 175 días: junio (cálculo nuestro)" },
+    kind: "animal", id: "abeja", name: "Abeja melífera asiática", latin: "Apis cerana", habitat: "pradera", trophic: 2, shape: "insecto",
+    massKg: 8e-5, size: { x: 0.019, y: 0.004, z: 0.011 }, male: 1.1, color: 0x5a3e20, intakeKgDay: 0.02,
+    diet: [{ food: "flores", pref: 3 }, { food: "espino", pref: 0.3 }],
+    childDays: 8, teenDays: 8, adultDays: 1000, birthSize: 0.12, gestationMonths: 0.5, intervalMonths: 12, birthMonth: 4, young: 2,
+    survival: 0.7, fastDays: 40, start: 7, cap: 7, eggDays: 3, pupa: true, selfFed: true, dormant: { from: 12, months: 2 }, social: "colmena",
+    source: `${WIKI("Apis_cerana")} (la abeja melífera nativa del sur y el este de Asia, del Himalaya incluido; obreras de unos 10 mm; colonias en cavidades; enjambran en primavera; se defienden del avispón formando una bola a su alrededor y calentándolo hasta matarlo); Oldroyd y Wongsiri 2006, «Asian Honey Bees: Biology, Conservation, and Human Interactions», Harvard University Press (la obrera se desarrolla en ~19–20 días; danza como A. mellifera); Winston 1987, «The Biology of the Honey Bee», Harvard University Press (reina: huevo 3 días, larva 5,5, pupa 7,5; vive años)`,
+    ours: { massKg: "masa de obrera, nuestra del orden de la fuente", intakeKgDay: "lo que liba la colonia que representa: nuestro", childDays: "huevo y larva de la reina (Winston 1987, de A. mellifera)", teenDays: "pupa de la reina (Winston 1987, de A. mellifera)", adultDays: "la cadena vive las reinas: unos tres años", survival: OURS_SURV, fastDays: "vive de la miel guardada: nuestro", cap: OURS_CAP_S3, start: OURS_CAP_S3, young: "dos enjambres al año salen adelante: nuestro", dormant: "en diciembre y enero la colonia se apiña dentro y no sale: nuestro, del clima de Gilgit", social: "cada abeja de la cadena es una colonia: se ve con sus obreras (bioma-crowd.ts)", birthSize: "nuestro", selfFed: "las larvas las alimentan las nodrizas de la colonia, no su madre", gestationMonths: "nuestro" },
   },
   {
-    kind: "animal", id: "markhor", name: "Markhor", latin: "Capra falconeri", habitat: "garganta", trophic: 2, shape: "cuadrupedo",
-    massKg: 40, size: { x: 0.34, y: 0.78, z: 1.3 }, male: 1.33, color: 0x9a8668, intakeKgDay: 3.4,
-    diet: [{ food: "artemisa" }, { food: "abedul" }, { food: "pino", pref: 0.5 }, { food: "pradera" }],
-    childDays: 165, teenDays: 560, adultDays: 3700, birthSize: 0.4, gestationMonths: 5, intervalMonths: 12, birthMonth: 5, young: 1,
-    survival: 0.85, fastDays: 20, start: 10, cap: 14,
-    source: `${ADW("Capra falconeri")} (hembras 32–50 kg, machos 80–110 kg; celo en otoño e invierno; 135–170 días de gestación; nacen en mayo y junio, 1–2; destete a los 5–6 meses; hembras maduras a los 18–30 meses; viven 11–13 años); ${WIKI("Astor_markhor")} (hasta 3 600 m, laderas con matorral y bosque abierto, en Gilgit y Nagar)`,
-    ours: { intakeKgDay: OURS_INTAKE_HERB, survival: OURS_SURV, fastDays: OURS_FAST, cap: OURS_CAP },
+    kind: "animal", id: "abejorro", name: "Abejorro de Gilgit", latin: "Bombus tunicatus (= B. gilgitensis)", habitat: "pradera", trophic: 2, shape: "insecto",
+    massKg: 6e-4, size: { x: 0.034, y: 0.009, z: 0.02 }, male: 0.8, color: 0x2a2a2a, intakeKgDay: 0.004,
+    diet: [{ food: "flores", pref: 3 }],
+    childDays: 14, teenDays: 14, adultDays: 377, birthSize: 0.12, gestationMonths: 0.5, intervalMonths: 12, birthMonth: 7, young: 3,
+    survival: 0.6, fastDays: 60, start: 7, cap: 7, eggDays: 4, pupa: true, selfFed: true, annual: true, dormant: { from: 10, months: 6 }, social: "nido",
+    source: `GBIF 11075556 (Bombus gilgitensis Cockerell 1905, descrito de Gilgit, sinónimo de B. tunicatus); Williams 1991, «The bumble bees of the Kashmir Himalaya», Bulletin of the British Museum (Natural History), Entomology 60: 1–204; ${WIKI("Bumblebee")} (las reinas nuevas se aparean al final del verano, hibernan bajo tierra y en primavera fundan solas su colonia anual; huevo ~4 días, larva ~10–19, pupa ~2 semanas; vuelan con frío)`,
+    ours: { massKg: "reina: nuestro del orden del género", intakeKgDay: "la colonia que representa: nuestro", adultDays: "la reina, de un verano al siguiente", survival: OURS_SURV, cap: OURS_CAP_S3, start: OURS_CAP_S3, young: "tres reinas nuevas por colonia salen adelante: nuestro", dormant: "las reinas hibernan de octubre a marzo: meses nuestros del clima", birthMonth: "las celdas de las reinas nuevas, en julio: nuestro", social: "cada reina representa su colonia de obreras", birthSize: "nuestro", gestationMonths: "nuestro" },
   },
   {
-    kind: "animal", id: "bharal", name: "Bharal (oveja azul)", latin: "Pseudois nayaur", habitat: "pradera", trophic: 2, shape: "cuadrupedo",
-    massKg: 45, size: { x: 0.34, y: 0.78, z: 1.25 }, male: 1.2, color: 0x8d8e94, intakeKgDay: 3.8,
-    diet: [{ food: "pradera", pref: 2 }, { food: "artemisa" }, { food: "cojines", pref: 0.5 }],
-    childDays: 180, teenDays: 550, adultDays: 3300, birthSize: 0.4, gestationMonths: 5.3, intervalMonths: 12, birthMonth: 6, young: 1,
-    survival: 0.85, fastDays: 20, start: 14, cap: 20,
-    source: `${ADW("Pseudois nayaur")} (35–75 kg; celo de finales de noviembre a febrero; gestación de 4 a 5,3 meses; nacen de mediados de mayo a principios de julio, 1–2; maduran a los 2 años; viven 4–11 años de normal, hasta 17); ${WIKI("Bharal")} (2 200–5 500 m; pasto; sube a los cantiles y se queda quieta contra la roca); ${KHUNJERAB}`,
-    ours: { intakeKgDay: OURS_INTAKE_HERB, childDays: "nuestro", survival: OURS_SURV, fastDays: OURS_FAST, cap: OURS_CAP },
+    kind: "animal", id: "mariposa", name: "Apolo del Himalaya", latin: "Parnassius epaphus", habitat: "pedrera", trophic: 2, shape: "insecto",
+    massKg: 3e-4, size: { x: 0.055, y: 0.012, z: 0.022 }, male: 0.95, color: 0x2a2a2a, intakeKgDay: 3e-4,
+    diet: [{ food: "cojines", pref: 2 }, { food: "flores", pref: 1 }],
+    childDays: 290, teenDays: 20, adultDays: 95, birthSize: 0.06, gestationMonths: 0.5, intervalMonths: 12, birthMonth: 8, young: 4,
+    survival: 0.7, fastDays: 5, start: 7, cap: 7, selfFed: true, eggDays: 230, pupa: true, annual: true,
+    source: `Smith, Naseer, Bálint y Hasan 2007, «Butterflies of the Hunza region, northern Pakistan, and adjacent Afghanistan», Holarctic Lepidoptera 11: 1–57 (Parnassius epaphus en la meseta de Khunjerab, ~4 700 m, el 5 de julio, y en el Fakar, Nagar; P. charltonius y P. delphius en Hunza); ${WIKI("Parnassius_epaphus")} (alas blancas con manchas negras y rojas; ~5,5 cm); ${WIKI("Parnassius")} (los huevos pasan el invierno; las orugas comen crasuláceas como Sedum y Rhodiola)`,
+    ours: { massKg: "nuestro", intakeKgDay: "nuestro", eggDays: "el huevo pasa el invierno: de agosto a abril, nuestro", childDays: "huevo y oruga: nuestro", teenDays: "crisálida: nuestro", adultDays: "un mes y medio de vuelo en verano: nuestro", survival: OURS_SURV, fastDays: OURS_FAST, cap: OURS_CAP_S3, start: OURS_CAP_S3, young: "de cientos de huevos, los que el valle sostiene: nuestro", birthSize: "nuestro", gestationMonths: "nuestro" },
   },
   {
-    kind: "animal", id: "marmota", name: "Marmota de cola larga", latin: "Marmota caudata", habitat: "pradera", trophic: 2, shape: "cuadrupedo",
-    massKg: 4, size: { x: 0.22, y: 0.26, z: 0.55 }, male: 1.05, color: 0xc98a3a, intakeKgDay: 0.5,
-    diet: [{ food: "pradera", pref: 2 }, { food: "cojines" }],
-    childDays: 365, teenDays: 1100, adultDays: 3000, birthSize: 0.3, gestationMonths: 1.1, intervalMonths: 12, birthMonth: 6, young: 4,
-    survival: 0.85, fastDays: 15, start: 14, cap: 20, dormant: { from: 9, months: 8 },
-    source: `${WIKI("Long-tailed_marmot")} (1,5–7,3 kg; hiberna de septiembre a abril o mayo; se aparea a finales de abril y principios de mayo, 4 semanas y media de gestación, unas cuatro crías que salen a las seis semanas; las hembras crían en su cuarto año; grupos de hasta siete adultos en ~3 ha con unas tres madrigueras; la cazan el zorro, el lobo, el águila real y el leopardo de las nieves); ${KHUNJERAB}`,
-    ours: { intakeKgDay: "ración nuestra", childDays: "las crías hibernan con su familia el primer invierno: nuestro", adultDays: "vida desconocida: orden de las marmotas", survival: OURS_SURV, fastDays: OURS_FAST, cap: OURS_CAP, intervalMonths: "nuestro" },
+    kind: "animal", id: "saltamontes", name: "Langosta migratoria", latin: "Locusta migratoria", habitat: "estepa", trophic: 2, shape: "insecto",
+    massKg: 2e-3, size: { x: 0.09, y: 0.012, z: 0.05 }, male: 0.85, color: 0x8a7a4a, intakeKgDay: 0.002,
+    diet: [{ food: "pradera", pref: 2 }, { food: "artemisa" }],
+    childDays: 280, teenDays: 20, adultDays: 105, birthSize: 0.12, gestationMonths: 0.5, intervalMonths: 12, birthMonth: 9, young: 4,
+    survival: 0.7, fastDays: 4, start: 7, cap: 7, selfFed: true, eggDays: 235, annual: true, nymph: true,
+    source: `Mahmood, Abbas y Shah 2004, «A preliminary study of grasshoppers (Acrididae: Orthoptera) of Baltistan», Pakistan Journal of Zoology 36(1): 21–25 (Locusta migratoria en Baltistán, medida a varias altitudes); ${WIKI("Migratory_locust")} (4–6 cm; pone en el suelo y los huevos pasan el invierno; cinco estadios de ninfa sin alas; come gramíneas; come cada día casi su propio peso)`,
+    ours: { eggDays: "de septiembre a mayo en el suelo: nuestro", childDays: "huevo y primeras ninfas: nuestro", teenDays: "las últimas ninfas: nuestro", adultDays: "nuestro", survival: OURS_SURV, fastDays: OURS_FAST, cap: OURS_CAP_S3, start: OURS_CAP_S3, young: "los que el valle sostiene: nuestro", birthSize: "nuestro", gestationMonths: "nuestro" },
   },
   {
-    kind: "animal", id: "pika", name: "Pika orejuda", latin: "Ochotona macrotis", habitat: "pedrera", trophic: 2, shape: "cuadrupedo",
-    massKg: 0.15, size: { x: 0.08, y: 0.09, z: 0.18 }, male: 1, color: 0x9c8b72, intakeKgDay: 0.05,
-    diet: [{ food: "cojines", pref: 2 }, { food: "pradera" }, { food: "liquen", pref: 0.5 }, { food: "saussurea", pref: 0.5 }, { food: "amapola", pref: 0.3 }],
-    childDays: 40, teenDays: 300, adultDays: 750, birthSize: 0.35, gestationMonths: 1, intervalMonths: 12, birthMonth: 6, young: 5,
-    survival: 0.55, fastDays: 3, start: 16, cap: 24,
-    source: `${WIKI("Large-eared_pika")} (15–20 cm; entre las grietas de las pedreras, sin madrigueras, de 2 300 a 6 130 m; come hierbas, ramitas, líquenes y musgos; algunas guardan heno para el invierno; dos camadas al año de 2–3, unos 30 días de gestación; vive unos tres años; en Pakistán); ${KHUNJERAB}`,
-    ours: { massKg: "masa del género, la página no la da", young: "las dos camadas de 2–3 como una de 5: licencia", birthMonth: "nuestro", childDays: "nuestro", teenDays: "nuestro", intakeKgDay: "nuestro", survival: OURS_SURV, fastDays: OURS_FAST, cap: OURS_CAP },
+    kind: "animal", id: "drosophila", name: "Mosca de la fruta", latin: "Drosophila melanogaster", habitat: "rio", trophic: 2, shape: "insecto",
+    massKg: 1e-6, size: { x: 0.0055, y: 0.0012, z: 0.0025 }, male: 0.8, color: 0xb08a50, intakeKgDay: 2e-7,
+    diet: [{ food: "espino", pref: 3 }, { food: "flores", pref: 0.5 }],
+    childDays: 5, teenDays: 4, adultDays: 396, birthSize: 0.2, gestationMonths: 0.5, intervalMonths: 12, birthMonth: 8, young: 6,
+    survival: 0.6, fastDays: 60, start: 7, cap: 7, selfFed: true, eggDays: 1, pupa: true, annual: true, dormant: { from: 12, months: 3 },
+    source: `${WIKI("Drosophila_melanogaster")} (las hembras miden unos 2,5 mm y los machos algo menos; ojos rojos; huevo ~1 día, larva ~4 días en tres estadios, pupa ~4 días a 25 °C; comen las levaduras de la fruta que fermenta; en los climas templados pasan el invierno de adultas, en diapausa reproductiva; cosmopolita, también en Pakistán)`,
+    ours: { habitat: "junto al río, en las bayas del espino amarillo y los albaricoques de Hunza: nuestro", adultDays: "la generación de otoño, que pasa el invierno de adulta: una sola generación al año en la cadena (licencia: en la realidad, muchas)", survival: OURS_SURV, cap: OURS_CAP_S3, start: OURS_CAP_S3, young: "nuestro", intakeKgDay: "nuestro", dormant: "diapausa invernal: nuestros meses", birthSize: "nuestro", gestationMonths: "nuestro" },
   },
+  // Decomposers.
   {
-    kind: "animal", id: "ardilla", name: "Ardilla voladora lanuda", latin: "Eupetaurus cinereus", habitat: "bosque", trophic: 2, shape: "cuadrupedo",
-    massKg: 2, size: { x: 0.25, y: 0.2, z: 0.5 }, male: 1, color: 0x8f8a84, intakeKgDay: 0.2,
-    diet: [{ food: "pino", pref: 3 }, { food: "liquen", pref: 0.3 }],
-    childDays: 90, teenDays: 365, adultDays: 3650, birthSize: 0.3, gestationMonths: 1.5, intervalMonths: 12, birthMonth: 6, young: 1,
-    survival: 0.85, fastDays: 5, start: 4, cap: 6,
-    source: `${WIKI("Western_woolly_flying_squirrel")} (1,4–2,5 kg, 42–60 cm y cola de 43–54 cm; alrededor de Gilgit, valle de Sai; bosques de coníferas altos con cantiles y cuevas; planea bien pese a su tamaño; En peligro según la UICN); Zahler y Khan 2003, «Evidence for dietary specialization on pine needles by the woolly flying squirrel», Journal of Mammalogy 84: 480–486`,
-    ours: { intakeKgDay: "nuestro", childDays: "nuestro: su cría no está descrita", teenDays: "nuestro", adultDays: "nuestro", gestationMonths: "nuestro", birthMonth: "nuestro", young: "nuestro", survival: OURS_SURV, fastDays: OURS_FAST, cap: OURS_CAP },
-  },
-  {
-    kind: "animal", id: "zorro", name: "Zorro rojo", latin: "Vulpes vulpes", habitat: "estepa", trophic: 3, shape: "cuadrupedo",
-    massKg: 5, size: { x: 0.18, y: 0.38, z: 0.68 }, male: 1.06, color: 0xb8693a, intakeKgDay: 0.5,
-    diet: [{ food: "ratones", pref: 2 }, { food: "marmota", stages: ["cria"] }, { food: "pika" }, { food: "perdiz", stages: ["cria"] }, { food: "bharal", stages: ["cria"], pref: 0.3 }, { food: "ibice", stages: ["cria"], pref: 0.3 }, { food: "insectos", pref: 0.5 }, { food: "espino", pref: 0.5 }, { food: "carrona", pref: 0.5 }],
-    childDays: 90, teenDays: 270, adultDays: 1300, birthSize: 0.3, gestationMonths: 1.75, intervalMonths: 12, birthMonth: 4, young: 4,
-    survival: 0.6, fastDays: 5, start: 4, cap: 6, away: 0.3, huntSuccess: 0.3,
-    source: `${WIKI("Red_fox")} (las hembras pesan un 15–20 % menos; celo hacia febrero, 49–58 días de gestación, 4–6 crías en primavera, maduran a los 9–10 meses, viven menos de 5 años en libertad; ~500 g de comida al día; sobre todo roedores, salta sobre ellos guiándose por el oído); ${KHUNJERAB} (zorro rojo de montaña); ${WIKI("Siberian_ibex")} y ${WIKI("Bharal")} (los zorros toman algunas crías)`,
-    ours: { massKg: "zorro de montaña, nuestro dentro de 2,2–14 kg", childDays: "nuestro", survival: OURS_SURV, fastDays: OURS_FAST, cap: OURS_CAP, away: OURS_AWAY, huntSuccess: "nuestro" },
-  },
-  {
-    kind: "animal", id: "leopardo", name: "Leopardo de las nieves", latin: "Panthera uncia", habitat: "farallon", trophic: 4, shape: "cuadrupedo",
-    massKg: 37, size: { x: 0.33, y: 0.6, z: 1.15 }, male: 1.1, color: 0xcfcac0, intakeKgDay: 2.5,
-    diet: [{ food: "bharal", pref: 3 }, { food: "ibice", pref: 3 }, { food: "markhor" }, { food: "marmota" }, { food: "perdiz", pref: 0.5 }, { food: "pika", pref: 0.3 }],
-    childDays: 600, teenDays: 400, adultDays: 4600, birthSize: 0.3, gestationMonths: 3.2, intervalMonths: 24, birthMonth: 5, young: 2,
-    survival: 0.88, fastDays: 14, start: 2, cap: 2, away: 0.8, huntSuccess: 0.3,
-    source: `${WIKI("Snow_leopard")} (hembras 35–40 kg, machos 45–55 kg; en el Karakórum caza sobre todo íbices; marmotas y picas de presas menores; un adulto necesita 20–30 bharales al año; se aparea a finales del invierno, 90–100 días de gestación, 2–3 crías de abril a junio; las crías se separan de la madre a los 20–22 meses; maduran a los 2–3 años; 15–18 años en libertad; territorio de 12–39 km² en Nepal); ${KHUNJERAB}`,
-    ours: { intakeKgDay: "de 20–30 bharales al año, lo que come de verdad: nuestro", survival: OURS_SURV, fastDays: OURS_FAST, cap: "una pareja: la isla es una parte de su territorio", away: OURS_AWAY, huntSuccess: "nuestro: la fuente no da un porcentaje", intervalMonths: "las crías siguen a la madre casi dos años: un parto cada dos, nuestro" },
-  },
-
-  // ── Birds ─────────────────────────────────────────────────────────────────────────────────────────────────────────
-  {
-    kind: "animal", id: "quebrantahuesos", name: "Quebrantahuesos", latin: "Gypaetus barbatus", habitat: "garganta", trophic: 3, shape: "ave",
-    massKg: 6.2, size: { x: 2.6, y: 0.3, z: 1.1 }, male: 0.97, color: 0x4a4540, intakeKgDay: 0.45,
-    diet: [{ food: "huesos", pref: 4 }, { food: "carrona", pref: 0.5 }],
-    childDays: 115, teenDays: 2550, adultDays: 5100, birthSize: 0.3, gestationMonths: 1.9, intervalMonths: 12, birthMonth: 3, young: 1,
-    survival: 0.94, fastDays: 14, start: 2, cap: 2, away: 0.85,
-    source: `${WIKI("Bearded_vulture")} (4,5–7,8 kg, 2,31–2,83 m de envergadura; el 70–90 % de lo que come son huesos, que suelta desde 50–150 m sobre las rocas para romperlos; 1–2 huevos, 53–60 días, el pollo pasa 100–130 días en el nido; cría de noviembre a junio en el subcontinente indio; primera cría a los 8 años o más; 21 años de media en libertad; nidos en cuevas y repisas de paredes; hasta 5 000 m en Asia central); ${KHUNJERAB}`,
-    ours: { intakeKgDay: "ración nuestra (~7 % de su masa)", young: "de dos huevos sale adelante uno (el mayor mata al menor): nuestro", survival: OURS_SURV, fastDays: OURS_FAST, cap: "una pareja, nuestro", away: OURS_AWAY },
-  },
-  {
-    kind: "animal", id: "buitre", name: "Buitre del Himalaya", latin: "Gyps himalayensis", habitat: "farallon", trophic: 3, shape: "ave",
-    massKg: 9, size: { x: 2.9, y: 0.35, z: 1.15 }, male: 1, color: 0xc9b28c, intakeKgDay: 0.7,
+    kind: "animal", id: "carronero", name: "Escarabajo enterrador", latin: "Nicrophorus nepalensis", habitat: "enebral", trophic: 2, shape: "insecto",
+    massKg: 4e-4, size: { x: 0.03, y: 0.007, z: 0.02 }, male: 1, color: 0x151515, intakeKgDay: 2e-4,
     diet: [{ food: "carrona", pref: 3 }],
-    childDays: 150, teenDays: 1800, adultDays: 6000, birthSize: 0.3, gestationMonths: 1.9, intervalMonths: 12, birthMonth: 3, young: 1,
-    survival: 0.93, fastDays: 14, start: 6, cap: 8, away: 0.85,
-    source: `${WIKI("Himalayan_vulture")} (6–12,5 kg, 9 kg de media; 2,56–3,1 m de envergadura; solo carroña, el 64 % de yak doméstico en el Tíbet; un huevo, 54–58 días; pone del 25 de diciembre al 7 de marzo; colonias de 5–7 parejas en repisas de un cantil; de 1 200 a 5 500 m); ${KHUNJERAB}`,
-    ours: { intakeKgDay: "ración nuestra", childDays: "los pollos siguen con los padres 6–7 meses: en el nido, nuestro", teenDays: "madurez del género Gyps, nuestra", adultDays: "nuestro", survival: OURS_SURV, fastDays: OURS_FAST, cap: "una colonia de cuatro parejas, nuestro", away: OURS_AWAY },
+    childDays: 19, teenDays: 20, adultDays: 366, birthSize: 0.15, gestationMonths: 0.5, intervalMonths: 12, birthMonth: 7, young: 4,
+    survival: 0.7, fastDays: 60, start: 7, cap: 7, selfFed: true, eggDays: 5, pupa: true, annual: true, hiddenYoung: true, dormant: { from: 11, months: 4 },
+    source: `${WIKI("Nicrophorus_nepalensis")} (de Pakistán, 73° E, a Japón, en las montañas; ~20 mm; entierra cadáveres de roedores y aves y los dos padres crían y alimentan a las larvas, que tras unas dos semanas en la cripta se van a pupar; adultos de hasta cuatro meses)`,
+    ours: { adultDays: "la cadena le deja pasar el invierno de adulto (licencia: la fuente da hasta cuatro meses)", survival: OURS_SURV, cap: OURS_CAP_S3, start: OURS_CAP_S3, young: "nuestro", intakeKgDay: "nuestro", dormant: "nuestro, del clima", teenDays: "pupa: nuestro", eggDays: "nuestro", birthMonth: "nuestro", birthSize: "nuestro", gestationMonths: "nuestro", habitat: "nuestro" },
   },
   {
-    kind: "animal", id: "aguila", name: "Águila real", latin: "Aquila chrysaetos", habitat: "farallon", trophic: 4, shape: "ave",
-    massKg: 5.1, size: { x: 2.1, y: 0.3, z: 0.9 }, male: 0.9, color: 0x5a3e28, intakeKgDay: 0.24,
-    diet: [{ food: "marmota", pref: 3 }, { food: "pika", pref: 1.5 }, { food: "perdiz" }, { food: "ibice", stages: ["cria"], pref: 0.5 }, { food: "markhor", stages: ["cria"], pref: 0.5 }, { food: "bharal", stages: ["cria"], pref: 0.3 }, { food: "chova", pref: 0.3 }, { food: "carrona", pref: 0.3 }],
-    childDays: 75, teenDays: 1640, adultDays: 6000, birthSize: 0.3, gestationMonths: 1.4, intervalMonths: 12, birthMonth: 4, young: 1,
-    survival: 0.9, fastDays: 10, start: 2, cap: 2, away: 0.6, huntSuccess: 0.2,
-    source: `${WIKI("Golden_eagle")} (hembras ~5,1 kg, machos ~3,6 kg; 1,8–2,34 m; picados de 240–320 km/h; sobre todo liebres y marmotas; 230–250 g al día; hasta cuatro huevos, unas seis semanas, el pollo vuela a los 66–81 días; adulto a los 5,5–6,5 años, territorio propio a los 4–5; hasta 32 años; un 20 % de las cazas acaban en captura); ${KHUNJERAB}; ${WIKI("Siberian_ibex")} y ${ADW("Capra falconeri")} (las águilas toman cabritos); ${WIKI("Alpine_chough")} (las águilas reales cazan chovas)`,
-    ours: { young: "suele salir adelante un pollo: nuestro", birthMonth: "pone a finales de invierno en el Himalaya: nuestro", adultDays: "nuestro", survival: OURS_SURV, fastDays: OURS_FAST, cap: "una pareja, nuestro", away: OURS_AWAY },
+    kind: "animal", id: "pelotero", name: "Escarabajo del estiércol", latin: "Aphodius (Aphodiinae)", habitat: "pradera", trophic: 2, shape: "insecto",
+    massKg: 1e-4, size: { x: 0.012, y: 0.003, z: 0.007 }, male: 1, color: 0x4a3020, intakeKgDay: 5e-4,
+    diet: [{ food: "estiercol", pref: 3 }],
+    childDays: 290, teenDays: 15, adultDays: 100, birthSize: 0.15, gestationMonths: 0.5, intervalMonths: 12, birthMonth: 6, young: 4,
+    survival: 0.7, fastDays: 5, start: 7, cap: 7, selfFed: true, eggDays: 7, pupa: true, annual: true, hiddenYoung: true,
+    source: `${WIKI("Aphodiinae")} (escarabajos pequeños del estiércol, de 3–15 mm, que viven y crían dentro de las boñigas; los más abundantes en los pastos de montaña); ${WIKI("Dung_beetle")} (descomponedores: entierran y reciclan el estiércol)`,
+    ours: { habitat: "en los pastos de yaks y cabras de Hunza: nuestro (la fuente es de la subfamilia)", childDays: "la larva pasa el invierno en el suelo: nuestro", teenDays: "nuestro", adultDays: "nuestro", survival: OURS_SURV, cap: OURS_CAP_S3, start: OURS_CAP_S3, young: "nuestro", intakeKgDay: "nuestro", massKg: "nuestro", birthMonth: "nuestro", eggDays: "nuestro", birthSize: "nuestro", gestationMonths: "nuestro" },
+  },
+  // Middle predators.
+  {
+    kind: "animal", id: "mariquita", name: "Mariquita de siete puntos", latin: "Coccinella septempunctata", habitat: "bosque", trophic: 3, shape: "insecto",
+    massKg: 4e-5, size: { x: 0.011, y: 0.004, z: 0.007 }, male: 0.95, color: 0xd02a20, intakeKgDay: 2e-5,
+    diet: [{ food: "pulgones", pref: 3 }],
+    childDays: 24, teenDays: 7, adultDays: 374, birthSize: 0.15, gestationMonths: 0.5, intervalMonths: 12, birthMonth: 5, young: 5,
+    survival: 0.7, fastDays: 60, start: 3, cap: 3, selfFed: true, eggDays: 4, pupa: true, annual: true, dormant: { from: 12, months: 3 },
+    source: `${WIKI("Coccinella_septempunctata")} (7–8 mm; élitros rojos con siete puntos negros; adultos y larvas comen pulgones, un adulto unos 100 al día; pasa el invierno de adulto en grupos; huevo 3–6 días, larva unas 3 semanas en cuatro estadios, pupa una semana; Europa y Asia, Pakistán incluido)`,
+    ours: { survival: OURS_SURV, cap: OURS_CAP_S3, start: OURS_CAP_S3, young: "nuestro", intakeKgDay: "nuestro", dormant: "nuestro, del clima", birthMonth: "nuestro", habitat: "en los pinos de los pulgones: nuestro", birthSize: "nuestro", gestationMonths: "nuestro" },
   },
   {
-    kind: "animal", id: "cernicalo", name: "Cernícalo vulgar", latin: "Falco tinnunculus", habitat: "pradera", trophic: 3, shape: "ave",
-    massKg: 0.18, size: { x: 0.74, y: 0.12, z: 0.34 }, male: 0.95, color: 0xa0603a, intakeKgDay: 0.1,
-    diet: [{ food: "ratones", pref: 3 }, { food: "insectos" }],
-    childDays: 32, teenDays: 330, adultDays: 1500, birthSize: 0.3, gestationMonths: 1, intervalMonths: 12, birthMonth: 6, young: 4,
-    survival: 0.65, fastDays: 1.5, start: 4, cap: 6,
-    source: `${WIKI("Common_kestrel")} (hembras 154–314 g; 65–82 cm; se cierne a 10–20 m contra el viento y se lanza en picado corto; 4–8 topillos al día; 3–7 huevos, unas 4 semanas, vuela a las 4–5 semanas; cría en abril o mayo; las hembras crían al año; la mayoría muere antes de los 2 años); ${KHUNJERAB}`,
-    ours: { young: "nuestro dentro de 3–7", birthMonth: "nuestro", adultDays: "nuestro", survival: OURS_SURV, fastDays: OURS_FAST, cap: OURS_CAP },
+    kind: "animal", id: "crisopa", name: "Crisopa verde", latin: "Chrysoperla carnea", habitat: "rio", trophic: 3, shape: "insecto",
+    massKg: 1e-5, size: { x: 0.025, y: 0.004, z: 0.012 }, male: 1, color: 0x9ad070, intakeKgDay: 1e-5,
+    diet: [{ food: "pulgones", pref: 2 }, { food: "flores", pref: 1 }],
+    childDays: 19, teenDays: 10, adultDays: 376, birthSize: 0.15, gestationMonths: 0.5, intervalMonths: 12, birthMonth: 5, young: 4,
+    survival: 0.7, fastDays: 60, start: 3, cap: 3, selfFed: true, eggDays: 4, pupa: true, annual: true, dormant: { from: 12, months: 3 },
+    source: `${WIKI("Chrysoperla_carnea")} (alas grandes y transparentes con venas verdes, ojos dorados; la larva, el «león de los pulgones», come pulgones y el adulto néctar, polen y melaza; pasa el invierno de adulto y entonces se vuelve pardo; Paleártico, Pakistán incluido)`,
+    ours: { survival: OURS_SURV, cap: OURS_CAP_S3, start: OURS_CAP_S3, young: "nuestro", intakeKgDay: "nuestro", dormant: "nuestro", childDays: "nuestro", teenDays: "nuestro", birthMonth: "nuestro", habitat: "nuestro", birthSize: "nuestro", gestationMonths: "nuestro", eggDays: "nuestro" },
   },
   {
-    kind: "animal", id: "chova", name: "Chova piquigualda", latin: "Pyrrhocorax graculus", habitat: "farallon", trophic: 3, shape: "ave",
-    massKg: 0.21, size: { x: 0.8, y: 0.12, z: 0.38 }, male: 1.05, color: 0x151515, intakeKgDay: 0.05,
-    diet: [{ food: "insectos", pref: 2 }, { food: "enebro" }, { food: "espino" }, { food: "carrona", pref: 0.3 }],
-    childDays: 30, teenDays: 700, adultDays: 3650, birthSize: 0.3, gestationMonths: 0.7, intervalMonths: 12, birthMonth: 6, young: 4,
-    survival: 0.87, fastDays: 1.5, start: 12, cap: 18,
-    source: `${WIKI("Alpine_chough")} (191–244 g la del Himalaya, 75–85 cm; cría a 3 500–5 000 m en el Himalaya y ha anidado a 6 500 m, más alto que ninguna otra ave; sigue a los escaladores a 8 200 m en el Everest; insectos en verano, bayas en invierno; 3–5 huevos, 14–21 días, vuela a los 29–31; empieza a anidar a principios de mayo; supervivencia adulta del 83–92 %; siempre en bandadas; vuelo acrobático); ${KHUNJERAB}`,
-    ours: { intakeKgDay: OURS_INTAKE_BIRD, teenDays: "nuestro", adultDays: "nuestro", cap: OURS_CAP },
+    kind: "animal", id: "sirfido", name: "Sírfido de bandas", latin: "Episyrphus balteatus", habitat: "pradera", trophic: 3, shape: "insecto",
+    massKg: 1.5e-5, size: { x: 0.02, y: 0.003, z: 0.01 }, male: 1, color: 0xd88a2a, intakeKgDay: 1e-5,
+    diet: [{ food: "pulgones", pref: 2 }, { food: "flores", pref: 2 }],
+    childDays: 13, teenDays: 8, adultDays: 384, birthSize: 0.15, gestationMonths: 0.5, intervalMonths: 12, birthMonth: 4, young: 4,
+    survival: 0.7, fastDays: 60, start: 3, cap: 3, selfFed: true, eggDays: 3, pupa: true, annual: true, dormant: { from: 12, months: 3 },
+    source: `${WIKI("Episyrphus_balteatus")} (9–12 mm; abdomen naranja con dobles bandas negras, imita a las avispas; se cierne inmóvil en el aire; la larva come pulgones, el adulto polen y néctar; migra en masa, también por los pasos de montaña; algunas hembras pasan el invierno de adultas; de Europa a Asia)`,
+    ours: { survival: OURS_SURV, cap: OURS_CAP_S3, start: OURS_CAP_S3, young: "nuestro", intakeKgDay: "nuestro", dormant: "nuestro", adultDays: "la hembra que pasa el invierno: nuestro", birthMonth: "nuestro", childDays: "nuestro", teenDays: "nuestro", birthSize: "nuestro", gestationMonths: "nuestro", eggDays: "nuestro" },
   },
   {
-    kind: "animal", id: "treparriscos", name: "Treparriscos", latin: "Tichodroma muraria", habitat: "garganta", trophic: 3, shape: "pajaro",
-    massKg: 0.018, size: { x: 0.28, y: 0.08, z: 0.16 }, male: 1, color: 0x8a9096, intakeKgDay: 0.006,
-    diet: [{ food: "aranas", pref: 2 }, { food: "voladores" }, { food: "insectos", pref: 0.5 }],
-    childDays: 29, teenDays: 335, adultDays: 1460, birthSize: 0.35, gestationMonths: 0.65, intervalMonths: 12, birthMonth: 7, young: 4,
-    survival: 0.6, fastDays: 1, start: 4, cap: 6,
-    source: `${WIKI("Wallcreeper")} (17–19 g, 15,5–17 cm; cría entre 3 600 y 5 100 m en el Himalaya; busca insectos y arañas en las paredes de roca; 4–5 huevos, 19–20 días, vuela a los 28–30; baja en invierno); ${KHUNJERAB}`,
-    ours: { intakeKgDay: OURS_INTAKE_BIRD, birthMonth: "nuestro", teenDays: "nuestro", adultDays: "nuestro", survival: OURS_SURV, fastDays: OURS_FAST, cap: OURS_CAP },
+    kind: "animal", id: "hormiga", name: "Hormiga de los bosques", latin: "Formica (reina)", habitat: "bosque", trophic: 3, shape: "insecto",
+    massKg: 3e-5, size: { x: 0.02, y: 0.004, z: 0.009 }, male: 0.8, color: 0x2a1a14, intakeKgDay: 0.002,
+    diet: [{ food: "pulgones", pref: 2 }, { food: "voladores" }, { food: "carrona", pref: 0.5 }],
+    childDays: 35, teenDays: 15, adultDays: 3650, birthSize: 0.15, gestationMonths: 0.5, intervalMonths: 12, birthMonth: 7, young: 2,
+    survival: 0.85, fastDays: 30, start: 3, cap: 3, eggDays: 10, pupa: true, selfFed: true, dormant: { from: 11, months: 4 }, social: "hormiguero",
+    source: `${WIKI("Formica")} (hormigas de los bosques templados de Eurasia; ordeñan a los pulgones por su melaza y cazan insectos; hormigueros de agujas y ramitas; reinas que viven muchos años; vuelo nupcial en verano)`,
+    ours: { habitat: "en el pinar: el género, no una especie de Gilgit con fuente (licencia)", massKg: "nuestro", intakeKgDay: "la colonia que representa: nuestro", childDays: "nuestro", teenDays: "nuestro", adultDays: "una reina, unos diez años: nuestro", survival: OURS_SURV, fastDays: OURS_FAST, cap: OURS_CAP_S3, start: OURS_CAP_S3, young: "dos reinas nuevas que fundan: nuestro", dormant: "nuestro, del clima", social: "cada reina es su hormiguero", birthMonth: "nuestro", birthSize: "nuestro", gestationMonths: "nuestro", eggDays: "nuestro", selfFed: "las larvas las crían las obreras" },
   },
   {
-    kind: "animal", id: "perdiz", name: "Perdiz nival del Himalaya", latin: "Tetraogallus himalayensis", habitat: "cresta", trophic: 2, shape: "ave",
-    massKg: 2.5, size: { x: 0.9, y: 0.4, z: 0.65 }, male: 1.08, color: 0x8f8a80, intakeKgDay: 0.15,
-    diet: [{ food: "cojines", pref: 2 }, { food: "pradera" }, { food: "artemisa" }],
-    childDays: 60, teenDays: 300, adultDays: 2500, birthSize: 0.25, gestationMonths: 0.9, intervalMonths: 12, birthMonth: 6, young: 7,
-    survival: 0.7, fastDays: 4, start: 8, cap: 12,
-    source: `${WIKI("Himalayan_snowcock")} (2–3,1 kg, 55–74 cm; 4 000–5 000 m en verano; brotes, bayas, semillas, bulbos y hojas de artemisa, en Hunza sobre todo Sibbaldia cuneata; 5–12 huevos, 27–28 días; cría de abril a junio; sube corriendo la ladera y se lanza en planeo valle abajo; la caza el águila real); ${KHUNJERAB}`,
-    ours: { intakeKgDay: "ración nuestra", young: "nuestro dentro de 5–12", childDays: "nuestro", teenDays: "nuestro", adultDays: "nuestro", survival: OURS_SURV, fastDays: OURS_FAST, cap: OURS_CAP },
+    kind: "animal", id: "asilido", name: "Mosca ladrona", latin: "Asilidae (como Machimus)", habitat: "estepa", trophic: 3, shape: "insecto",
+    massKg: 5e-5, size: { x: 0.03, y: 0.005, z: 0.02 }, male: 0.9, color: 0x6a5a48, intakeKgDay: 2e-5,
+    diet: [{ food: "voladores", pref: 2 }, { food: "drosophila" }, { food: "sirfido", pref: 0.5, stages: ["adulto", "anciano"] }, { food: "abeja", pref: 0.3, stages: ["adulto", "anciano"] }],
+    childDays: 290, teenDays: 15, adultDays: 100, birthSize: 0.1, gestationMonths: 0.5, intervalMonths: 12, birthMonth: 7, young: 4,
+    survival: 0.7, fastDays: 4, start: 3, cap: 3, selfFed: true, eggDays: 10, pupa: true, annual: true, hiddenYoung: true, huntSuccess: 0.4,
+    source: `${WIKI("Asilidae")} (moscas cazadoras de ojos grandes y «barba» que acechan en una percha y cazan al vuelo otros insectos, abejas y avispas incluidas, y les inyectan saliva que los paraliza; las larvas viven en el suelo; de todo el mundo, más en las zonas secas y soleadas)`,
+    ours: { habitat: "la familia, en la estepa: no una especie de Gilgit con fuente (licencia)", childDays: "la larva en el suelo: nuestro", teenDays: "nuestro", adultDays: "nuestro", survival: OURS_SURV, cap: OURS_CAP_S3, start: OURS_CAP_S3, young: "nuestro", intakeKgDay: "nuestro", massKg: "nuestro", huntSuccess: "nuestro", birthMonth: "nuestro", eggDays: "nuestro", birthSize: "nuestro", gestationMonths: "nuestro" },
+  },
+  // Top predators.
+  {
+    kind: "animal", id: "libelula", name: "Libélula migradora", latin: "Pantala flavescens", habitat: "rio", trophic: 4, shape: "insecto",
+    massKg: 3e-4, size: { x: 0.08, y: 0.008, z: 0.048 }, male: 1, color: 0xd8a040, intakeKgDay: 6e-5,
+    diet: [{ food: "voladores", pref: 3 }, { food: "drosophila" }, { food: "sirfido", pref: 0.5, stages: ["adulto", "anciano"] }, { food: "mariposa", pref: 0.3, stages: ["adulto", "anciano"] }],
+    childDays: 50, teenDays: 10, adultDays: 150, birthSize: 0.1, gestationMonths: 0.5, intervalMonths: 12, birthMonth: 6, young: 2,
+    survival: 0.7, fastDays: 3, start: 0, cap: 2, selfFed: true, eggDays: 6, hiddenYoung: true, nymph: true, huntSuccess: 0.9, away: 0.3,
+    visitor: { windows: [{ arrive: 5, leave: 10 }], count: 2, breeds: true, from: "migra con los monzones entre la India y África, cruzando el Himalaya" },
+    source: `${WIKI("Pantala_flavescens")} (envergadura de 72–84 mm; el insecto que vuela más lejos, generaciones que cruzan el océano Índico con los monzones; vista a 6 300 m en el Himalaya; pone en charcas temporales y la ninfa crece en 38–65 días; caza al vuelo mosquitos y otros insectos); Combes, Rundle, Iwasaki y Crall 2012, «Linking biomechanics and ecology through predator–prey interactions: flight performance of dragonflies and their prey», Journal of Experimental Biology 215: 903–913 (las libélulas aciertan más del 90 % de sus cazas)`,
+    ours: { survival: OURS_SURV, cap: OURS_CAP_S3, start: OURS_CAP_S3, young: "nuestro", intakeKgDay: "nuestro", visitor: "llega en mayo y se va en octubre con el monzón: nuestro", birthMonth: "nuestro", teenDays: "nuestro", adultDays: "la cadena las deja vivir el verano: en la realidad se suceden las generaciones", fastDays: OURS_FAST, away: OURS_AWAY, birthSize: "nuestro", gestationMonths: "nuestro", eggDays: "nuestro" },
   },
   {
-    kind: "animal", id: "paloma", name: "Paloma nival", latin: "Columba leuconota", habitat: "garganta", trophic: 2, shape: "ave",
-    massKg: 0.3, size: { x: 0.65, y: 0.12, z: 0.34 }, male: 1, color: 0xdcdcd6, intakeKgDay: 0.03,
-    diet: [{ food: "pradera" }, { food: "artemisa", pref: 0.5 }, { food: "enebro" }, { food: "espino", pref: 0.5 }],
-    childDays: 30, teenDays: 335, adultDays: 2500, birthSize: 0.3, gestationMonths: 0.6, intervalMonths: 12, birthMonth: 6, young: 2,
-    survival: 0.7, fastDays: 2, start: 12, cap: 18,
-    source: `${WIKI("Snow_pigeon")} (hasta la línea de la nieve; bayas, grano, yemas, bulbos, semillas y brotes; anida en colonias en grietas y cuevas de los cantiles; dos huevos; en invierno bandadas de 150 o más); ${KHUNJERAB}`,
-    ours: { massKg: "masa nuestra, la página no la da", intakeKgDay: OURS_INTAKE_BIRD, gestationMonths: "incubación de las palomas, nuestra", birthMonth: "nuestro", childDays: "nuestro", teenDays: "nuestro", adultDays: "nuestro", survival: OURS_SURV, fastDays: OURS_FAST, cap: OURS_CAP },
+    kind: "animal", id: "mantis", name: "Mantis religiosa", latin: "Mantis religiosa", habitat: "estepa", trophic: 4, shape: "insecto",
+    massKg: 2.5e-3, size: { x: 0.05, y: 0.015, z: 0.07 }, male: 0.8, color: 0x7a9a48, intakeKgDay: 1e-4,
+    diet: [{ food: "saltamontes", pref: 2, stages: ["joven", "adulto", "anciano"] }, { food: "mariposa", pref: 1, stages: ["adulto", "anciano"] }, { food: "sirfido", pref: 1, stages: ["adulto", "anciano"] }, { food: "abeja", pref: 0.5, stages: ["adulto", "anciano"] }, { food: "voladores", pref: 1 }],
+    childDays: 290, teenDays: 20, adultDays: 95, birthSize: 0.1, gestationMonths: 0.5, intervalMonths: 12, birthMonth: 9, young: 3,
+    survival: 0.7, fastDays: 10, start: 2, cap: 2, selfFed: true, eggDays: 230, annual: true, nymph: true, huntSuccess: 0.5,
+    source: `${WIKI("European_mantis")} (6–7 cm la hembra, verde o parda; patas delanteras raptoras; caza al acecho saltamontes, mariposas, moscas y abejas; la hembra a veces se come al macho; la ooteca pasa el invierno y las ninfas salen en primavera; de Europa a Asia, también en Pakistán)`,
+    ours: { habitat: "en la estepa cálida del fondo del valle: nuestro", eggDays: "la ooteca de septiembre a mayo: nuestro", childDays: "nuestro", teenDays: "nuestro", adultDays: "nuestro", survival: OURS_SURV, cap: OURS_CAP_S3, start: OURS_CAP_S3, young: "nuestro", intakeKgDay: "nuestro", massKg: "nuestro", huntSuccess: "nuestro", birthSize: "nuestro", gestationMonths: "nuestro" },
   },
   {
-    kind: "animal", id: "vencejo", name: "Vencejo real", latin: "Tachymarptis melba", habitat: "aire", trophic: 3, shape: "pajaro",
-    massKg: 0.1, size: { x: 0.57, y: 0.08, z: 0.22 }, male: 1, color: 0x6b5a48, intakeKgDay: 0.02,
-    diet: [{ food: "voladores" }],
-    childDays: 50, teenDays: 700, adultDays: 3000, birthSize: 0.3, gestationMonths: 0.65, intervalMonths: 12, birthMonth: 7, young: 2,
-    survival: 0.8, fastDays: 2, start: 0, cap: 14, away: 0.5,
-    visitor: { windows: [{ arrive: 5, leave: 9 }], count: 10, breeds: true, from: "inverna en el sur de Asia y en África" },
-    source: `${WIKI("Alpine_swift")} (~100 g, 54–60 cm; cría en montañas del sur de Europa al Himalaya y Pakistán; en 2013 el equipo de Liechti midió más de 200 días seguidos en el aire; insectos voladores; 1–4 huevos, los pollos dejan el nido a los ~50 días; colonias en grietas de cantiles; muy migrador)`,
-    ours: { intakeKgDay: OURS_INTAKE_BIRD, gestationMonths: "incubación nuestra", birthMonth: "nuestro", teenDays: "nuestro", adultDays: "nuestro", survival: OURS_SURV, fastDays: OURS_FAST, cap: OURS_CAP, visitor: "llega en mayo y se va en septiembre: meses nuestros, la página no los da", away: OURS_AWAY },
-  },
-  {
-    kind: "animal", id: "ansar", name: "Ánsar indio", latin: "Anser indicus", habitat: "aire", trophic: 2, shape: "ave",
-    massKg: 2.5, size: { x: 1.5, y: 0.3, z: 0.75 }, male: 1.05, color: 0xd8d6cf, intakeKgDay: 0.4,
-    diet: [{ food: "pradera" }],
-    childDays: 55, teenDays: 700, adultDays: 5000, birthSize: 0.3, gestationMonths: 0.95, intervalMonths: 12, birthMonth: 6, young: 4,
-    survival: 0.85, fastDays: 7, start: 0, cap: 16, away: 0.9,
-    visitor: { windows: [{ arrive: 10, leave: 12 }, { arrive: 3, leave: 5 }], count: 12, from: "cría en los lagos de Asia central y del Tíbet e inverna en la India y Pakistán" },
-    source: `${WIKI("Bar-headed_goose")} (1,87–3,2 kg; un ganso marcado subió a 7 290 m, el 95 % del tiempo por debajo de 5 784 m; cruza el Himalaya sin parar en siete horas; pasta hierba corta; 3–8 huevos; cría en Asia central); Köppen et al. 2010, «Seasonal migrations of four individual bar-headed geese Anser indicus from Kyrgyzstan followed by satellite telemetry», Journal of Ornithology 151: 703–712 (de Kirguistán a invernar en Pakistán y la India, cruzando cumbres muy altas)`,
-    ours: { intakeKgDay: "ración nuestra", visitor: "pasa en octubre-noviembre y en marzo-abril: meses nuestros del orden de las paradas de la fuente", childDays: "nuestro", teenDays: "nuestro", adultDays: "nuestro", survival: OURS_SURV, fastDays: OURS_FAST, cap: "una bandada, nuestro", away: OURS_AWAY },
+    kind: "animal", id: "avispon", name: "Avispón asiático", latin: "Vespa velutina", habitat: "enebral", trophic: 4, shape: "insecto",
+    massKg: 6e-4, size: { x: 0.045, y: 0.008, z: 0.03 }, male: 0.8, color: 0x241810, intakeKgDay: 0.003,
+    diet: [{ food: "abeja", pref: 2, stages: ["adulto", "anciano"] }, { food: "voladores", pref: 1 }, { food: "sirfido", pref: 1, stages: ["adulto", "anciano"] }, { food: "drosophila", pref: 0.5 }, { food: "saltamontes", pref: 0.5 }, { food: "carrona", pref: 0.3 }],
+    childDays: 20, teenDays: 12, adultDays: 373, birthSize: 0.12, gestationMonths: 0.5, intervalMonths: 12, birthMonth: 9, young: 3,
+    survival: 0.6, fastDays: 60, start: 2, cap: 2, eggDays: 5, pupa: true, selfFed: true, annual: true, dormant: { from: 11, months: 4 }, social: "nido", huntSuccess: 0.3,
+    source: `${WIKI("Asian_hornet")} (nativo de Pakistán, el norte de la India y Afganistán al sudeste de Asia; reinas de ~30 mm y obreras de ~20; se cierne sobre las colmenas y caza abejas al vuelo, sobre todo Apis cerana, que se defiende formando una bola y calentándolo; también moscas, libélulas y saltamontes; las reinas fundan solas en primavera y las nuevas hibernan)`,
+    ours: { habitat: "nuestro", intakeKgDay: "la colonia que representa: nuestro", childDays: "nuestro", teenDays: "nuestro", adultDays: "la reina, de un otoño al siguiente", survival: OURS_SURV, cap: OURS_CAP_S3, start: OURS_CAP_S3, young: "nuestro", dormant: "las reinas hibernan de noviembre a febrero: nuestro", massKg: "nuestro", huntSuccess: "nuestro: la bola de calor de A. cerana frena muchas cazas", social: "cada reina, su nido de obreras", birthMonth: "las reinas nuevas, en septiembre: nuestro", birthSize: "nuestro", gestationMonths: "nuestro", eggDays: "nuestro", selfFed: "las larvas las alimentan las obreras" },
   },
 ];
 
-/** What is left of a body: carrion for the vultures, the fox and the eagle; bones for the bearded vulture. */
+/** What is left: the bodies (carrion) for the burying beetle, the ants and the hornets; the dung of the valley's herds for the dung beetles. */
 export const REMAINS: readonly RemainsSpec[] = [
   {
-    id: "carrona", name: "Carroña", share: 0.8, shareKilled: 0.3, rotPerDay: 0.08, inflowKgDay: 2,
+    id: "carrona", name: "Carroña", share: 0.8, shareKilled: 0.3, rotPerDay: 0.08, inflowKgDay: 0.01,
     reality: "licencia",
-    source: `ritmo de descomposición nuestro; lo que llega de fuera (cadáveres de ganado y de animales del resto de la cordillera) es nuestro, del orden de ${WIKI("Himalayan_vulture")} (el 64 % de su comida en el Tíbet es yak doméstico muerto)`,
+    source: `ritmo de descomposición nuestro; lo que llega de fuera (cadáveres de ratones y aves del resto del valle, que la isla no muestra) es nuestro, del orden de lo que come el escarabajo enterrador (${WIKI("Nicrophorus_nepalensis")})`,
   },
   {
-    id: "huesos", name: "Huesos", share: 0.15, shareKilled: 0.15, rotPerDay: 0.004, inflowKgDay: 0.5,
+    id: "estiercol", name: "Estiércol de los pastos", share: 0, shareKilled: 0, rotPerDay: 0.03, inflowKgDay: 0.05,
     reality: "licencia",
-    source: `${WIKI("Bearded_vulture")} (huesos de cadáveres: el 70–90 % de la dieta del quebrantahuesos); que un esqueleto sea ~15 % del cuerpo, que duren meses y lo que llega de fuera, nuestro`,
+    source: `${WIKI("Dung_beetle")} (reciclan el estiércol del ganado); los yaks y las cabras de Hunza pastan en verano en los pastos altos (${WIKI("Hunza_Valley")}): lo que dejan llega de fuera de la isla, cantidad nuestra`,
   },
 ];
+
+/**
+ * THE SCALE OF THE GIANT INSECTS (Berón 2026-11-25: «se respetará la escala tomando de referencia a un mosquito de la
+ * fruta, dicho mosquito medirá 1 m de largo»): the fruit fly's real length, and the factor every insect of the island
+ * is drawn at. All the biology stays real (masses, rations, days): only the drawing and its distances are ×400.
+ */
+export const FRUIT_FLY_M = fact(0.0025, "real", `${WIKI("Drosophila_melanogaster")}: «las hembras miden unos 2,5 mm de largo; los machos son algo más pequeños»`);
+export const INSECT_SCALE = fact(1 / FRUIT_FLY_M.value, "ficcion", "Berón 2026-11-25: la mosca de la fruta mide 1 m; 1 m ÷ 2,5 mm = 400 para todos los insectos (ficción: la regla del santuario 3)");
+
+/**
+ * THE PEOPLE AND THE RULE OF ANIMALS PER PERSON (the same as sanctuary 1's: Cold Sanctuary's PopulationPlan,
+ * fauna/domain/population.ts): K animals per person (setting «Animales por persona», 4 by default), shared out 70 / 22 /
+ * 8 % by trophic level (presas = herbivores and decomposers, trophic 2; meso = middle predators, 3; ápice = top, 4)
+ * and inside a level by each species' weight; two of each at least. The people of sanctuary 3: the trainers and
+ * Doménica. The weights are ours (licencia), of the order of how common each is.
+ */
+export const S3_PER_HUMAN: Readonly<Record<string, number>> = {
+  abeja: 1, abejorro: 1, mariposa: 1, saltamontes: 1, drosophila: 1, carronero: 1, pelotero: 1,
+  mariquita: 1, crisopa: 1, sirfido: 1, hormiga: 1, asilido: 1, libelula: 1, mantis: 1, avispon: 1,
+};
 
 /**
  * The climate of the valley floor: Gilgit (1 500 m, 35,9°N), mean of the daily maximum and minimum of each month
@@ -496,20 +509,42 @@ export const CLIMATE: ClimateSpec = {
   reality: { airC: "real" },
 };
 
-/** The air biome: the Hunza–Nagar valleys from the valley floor to Khunjerab. Day 0 is 20 November (Berón's day). */
-export const AIR_BIOME: BiomeDef = {
-  id: "aire",
-  name: "Karakórum (Hunza–Nagar)",
-  species: SPECIES,
-  remains: REMAINS,
-  climate: CLIMATE,
-  startDayOfYear: 323,
-  elsewhere: "a otra parte de la cordillera",
+/** The trophic level of a species for the rule (presas 2, meso 3, ápice 4). */
+const levelOfTrophic = (t: number): Trophic => (t >= 4 ? "apice" : t === 3 ? "meso" : "presa");
+const ANIMALS = SPECIES.filter((s): s is AnimalSpec => s.kind === "animal");
+/** The tables of the rule for sanctuary 3 (fauna/domain/population.ts `allocate`). */
+export const S3_POPULATION: PopulationTable = {
+  perHuman: S3_PER_HUMAN,
+  level: Object.fromEntries(ANIMALS.map((s) => [s.id, levelOfTrophic(s.trophic)])),
 };
 
+/** The people of sanctuary 3 (the rule's humans): the trainers of the initiation (data/trainers.ts) and Doménica. */
+export function s3People(): number {
+  return TRAINERS.length + 1;
+}
+
+/** How many of each insect live on the island for `k` animals per person (the setting): species → individuals. */
+export function s3Plan(k: number = ANIMALS_PER_HUMAN, people = s3People()): Map<string, number> {
+  return allocate(Math.max(0, k * people), ANIMALS.map((s) => s.id), S3_POPULATION).counts;
+}
+
+/** The air biome for `k` animals per person: every insect's start and cap by the rule (a visitor brings as many). */
+export function airBiome(k = 4): BiomeDef {
+  const plan = s3Plan(k);
+  const species = SPECIES.map((s): BiomeSpec => {
+    if (s.kind !== "animal") return s;
+    const n = plan.get(s.id) ?? s.cap;
+    return s.visitor ? { ...s, start: 0, cap: n, visitor: { ...s.visitor, count: n } } : { ...s, start: n, cap: n };
+  });
+  return { id: `aire-${k}`, name: "Karakórum (Hunza–Nagar)", species, remains: REMAINS, climate: CLIMATE, startDayOfYear: 323, elsewhere: "a otra parte del valle", drawScale: INSECT_SCALE.value };
+}
+
+/** The air biome: the Hunza–Nagar valleys from the valley floor to Khunjerab, at 4 animals per person (the default). Day 0 is 20 November (Berón's day). */
+export const AIR_BIOME: BiomeDef = airBiome(4);
+
 /** The species of the air biome (the census and the scene read them). */
-export const BIOME = SPECIES;
-export const biomeSpec = (id: string): BiomeSpec | undefined => SPECIES.find((s) => s.id === id);
+export const BIOME = AIR_BIOME.species;
+export const biomeSpec = (id: string): BiomeSpec | undefined => BIOME.find((s) => s.id === id);
 export const nameOf = (id: string): string => REMAINS.find((r) => r.id === id)?.name ?? biomeSpec(id)?.name ?? id;
 
 /** The reality of a species' field: real from its source, or licencia if it is ours. */

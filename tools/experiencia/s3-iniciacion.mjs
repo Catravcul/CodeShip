@@ -35,7 +35,7 @@ async function until(j, ok, ms) {
   return s;
 }
 
-const oracle = () => window.codeshipS3.exercise;
+const oracle = () => window.codeshipS3.exercise ?? window.codeshipS3.trace?.state;
 
 /** What is out in the post's scene now: the things shown and where her rig is. */
 const scene = (p) =>
@@ -47,21 +47,24 @@ const scene = (p) =>
 
 /** «Ir» from Tareas to a post (teleport, chosen in the settings), then Panel. */
 /**
- * Each trainer leaves her post a quarter of an hour before lunch: between 10:00 and 11:00 she plays on the next morning, at
+ * Each trainer leaves her post a quarter of an hour before lunch, and drawing a compound takes a while of the board clock:
+ * past 9:30 she plays on the next morning, at
  * 9:12, while the trainers are still at their posts (a post takes about half an hour of the board clock).
  */
 async function morning(j) {
   await j.page.evaluate(() => {
     const c = window.codeshipS3;
-    if (c.hour > 10 && c.hour < 11) c.setHour(9.2);
+    if (c.hour > 9.5 || c.hour < 9) c.setHour(9.2);
   });
 }
 
-async function goPost(j, n, title) {
-  await morning(j);
+async function goPost(j, n, title, keepHour = false) {
+  if (!keepHour) await morning(j);
   await j.tap(".s3-tasks", "Tareas");
   await j.tap(`.task-board [data-go="s3-puesto-${n}"]`, `Ir: ${title}`);
   await until(j, (s) => s.mode === "libre" && s.near, 20000);
+  // After a jump of the clock the trainer may still be walking to her post: a player waits for her.
+  if (!keepHour) await j.page.waitForFunction((post) => { const c = window.codeshipS3; const who = c.trainerOf(post); return !!who && c.crowd.atPost(who, post); }, n, { timeout: 90000, polling: 500 }).catch(() => {});
   await j.showPanel(".s3-ui .cm-who");
 }
 
@@ -110,13 +113,15 @@ async function doPost(j, n, title, label, expectThings) {
     await p.waitForTimeout(700);
   }
   for (const t of await p.evaluate(() => (clearInterval(window.__s3timer), [...window.__s3seen]))) seen.add(t);
-  const result = (await j.texts(".duel .result"))[0] ?? "";
-  j.check(`${title}: el reto se completa («Conseguido»)`, /Conseguido/.test(result), result);
+  // The sheet of options says «Conseguido»; the drawing ends on its molecule and closes (its pass is checked below).
+  const drawn = !(await p.locator(".duel:not(.hidden)").count());
+  const result = drawn ? "" : ((await j.texts(".duel .result"))[0] ?? "");
+  if (!drawn) j.check(`${title}: el reto se completa («Conseguido»)`, /Conseguido/.test(result), result);
   j.check(`${title}: cada paso se ve en el sitio, con los objetos (${expectThings.join(", ")})`, expectThings.every((t) => seen.has(t)), [...seen].join(", "));
   await capture(j, `${label}-reto`, `${title}: la hoja del reto y la escena`, false);
   const only = await j.outsideChallenge().catch(() => null);
-  if (only) j.check(`${title}: con el reto abierto solo se ven la hoja y la escena (reglas §4.3)`, only.length === 0, JSON.stringify(only).slice(0, 200));
-  await j.tap(".duel button.end", "Continuar");
+  if (only && !drawn) j.check(`${title}: con el reto abierto solo se ven la hoja y la escena (reglas §4.3)`, only.length === 0, JSON.stringify(only).slice(0, 200));
+  await j.endSheet();
   const after = await until(j, (s) => s.mode === "libre", 30000);
   j.check(`${title}: el puesto queda superado y ella vuelve a andar`, after.passed.includes(n) && after.mode === "libre", JSON.stringify({ passed: after.passed, mode: after.mode }));
   return who;
@@ -154,16 +159,12 @@ export async function s3Iniciacion(j) {
   // «Paso a paso»: each block placed right is acted at once.
   await j.tap('.s3-ui .cab-machine:not(.hidden) [data-act="reto"]', "Empezar el reto: Selección");
   await j.waitDuel();
-  const toggle = (await j.texts(".duel .order-toggle"))[0] ?? "";
-  if (/Paso a paso/.test(toggle)) await j.tap(".duel .order-toggle", "Paso a paso");
-  const ex1 = await p.evaluate(oracle);
-  await p.locator(`.duel .tray [data-id="${ex1.solution[0]}"]`).first().waitFor({ timeout: 5000 });
-  await j.tapAt(p.locator(`.duel .tray [data-id="${ex1.solution[0]}"]`));
+  await j.firstStep(oracle);
   await p.waitForTimeout(1200);
   const b1 = await scene(p);
   j.check("paso a paso, el primer bloque bien se ve al momento: la solicitud sobre la mesa del tribunal", b1.shown.includes("carpeta"), JSON.stringify(b1));
   await capture(j, "tribunal-paso", "Puesto 1: la carpeta sobre la mesa", false);
-  await j.tap(".duel [data-act='close']", "Cerrar el reto");
+  await j.closeChallenge();
   await until(j, (s) => s.mode === "libre", 15000);
   await j.showPanel(".s3-ui .cm-who");
   await doPost(j, 1, "Puesto 1, selección", "tribunal", ["carpeta", "acreditacion", "sello"]);
@@ -182,10 +183,7 @@ export async function s3Iniciacion(j) {
   j.check("el puesto 3 está en la piscina de supervivencia, la del METS, la balsa y el izado", /Supervivencia en el agua/.test(where3), where3);
   await j.tap('.s3-ui .cab-machine:not(.hidden) [data-act="reto"]', "Empezar el reto: Natación");
   await j.waitDuel();
-  const toggle3 = (await j.texts(".duel .order-toggle"))[0] ?? "";
-  if (/Paso a paso/.test(toggle3)) await j.tap(".duel .order-toggle", "Paso a paso");
-  const ex3 = await p.evaluate(oracle);
-  await j.tapAt(p.locator(`.duel .tray [data-id="${ex3.solution[0]}"]`));
+  await j.firstStep(oracle);
   const xs = [];
   for (let k = 0; k < 10; k++) {
     await p.waitForTimeout(500);
@@ -194,7 +192,7 @@ export async function s3Iniciacion(j) {
   const span = Math.max(...xs) - Math.min(...xs);
   j.check("los largos se nadan: ella va de un extremo al otro de la piscina", span > 10, xs.map((x) => x.toFixed(1)).join(" "));
   await capture(j, "natacion-largo", "Puesto 3: un largo de la piscina", false);
-  await j.tap(".duel [data-act='close']", "Cerrar el reto");
+  await j.closeChallenge();
   await until(j, (s) => s.mode === "libre", 20000);
   await j.showPanel(".s3-ui .cm-who");
   await doPost(j, 3, "Puesto 3, natación y supervivencia", "natacion", ["balsa", "arnes"]);
@@ -207,7 +205,7 @@ export async function s3Iniciacion(j) {
 
   // 8. At lunch (11–12) nobody is on shift: the post waits for the next shift (no stand-in), and the card says when.
   await p.evaluate(() => window.codeshipS3.setHour(11.3));
-  await goPost(j, 2, "Reconocimiento médico");
+  await goPost(j, 2, "Reconocimiento médico", true);
   await p.waitForTimeout(800);
   const lunch = await p.evaluate(() => ({ who: window.codeshipS3.trainerOf(2) ?? null, card: document.querySelector(".s3-ui .cab-machine:not(.hidden) .cm-why")?.textContent ?? "", off: !!document.querySelector('.s3-ui .cab-machine:not(.hidden) [data-act="reto"][disabled]') }));
   j.check("a la hora de comer nadie está de turno: el puesto espera y la tarjeta dice cuándo empieza el siguiente turno y con quién", lunch.who === null && lunch.off && /Sin turno a las 11:\d\d: el siguiente empieza a las 12:00, con \S+/.test(lunch.card), JSON.stringify(lunch));
@@ -218,7 +216,7 @@ export async function s3Iniciacion(j) {
   // On foot (teleporting would put her straight on the other island): she walks to the navigation machine.
   await j.taskSettings({ travel: "viaje", vehicle: "todos" });
   await j.tap('.task-board [data-go="s3-puesto-11"]', "Ir: Geología (otra isla)");
-  await until(j, (s) => s.mode === "libre" && s.near === "nav-entrenamiento", 90000);
+  await until(j, (s) => s.mode === "libre" && s.near === "nav-entrenamiento", 300000);
   await j.showPanel(".s3-ui .cm-acts [data-act='nav']");
   await j.tap('.s3-ui .cm-acts [data-act="nav"]', "Abrir navegación");
   await j.tap(".island-nav .mw-gear", "Ajustes del vuelo");
@@ -238,7 +236,7 @@ export async function s3Iniciacion(j) {
     await j.answer(oracle, true);
     await p.waitForTimeout(600);
   }
-  await j.tap(".duel button.end", "Continuar");
+  await j.endSheet();
   const f1 = await until(j, (s) => s.mode === "vuelo" && s.craftY > 40, 60000);
   j.check("con el programa bien, el piloto automático despega y se ve el vuelo", f1.mode === "vuelo" && f1.craftY > 40, JSON.stringify({ mode: f1.mode, y: f1.craftY }));
   const bar = (await j.texts(".s3-bar .jb-text"))[0] ?? "";

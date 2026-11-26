@@ -7,6 +7,9 @@ deprisa). Casos AER-10 a AER-15 (fase 4) y AER-16 a AER-23 (fase 5) en [casos.md
 
 ## Puestos con reto
 
+Desde el 2026-11-25 cada reto del santuario 3 se **dibuja**: un compuesto real que lo representa, trazado glifo a glifo con
+el dedo; los pasos y sus animaciones siguen ([retos-trazos.md](retos-trazos.md)). Las preguntas de las tablas siguen en los datos.
+
 Cada puesto es un reto de código con pasos reales (`application/stations.ts`). Cada paso bien hecho se ve en el sitio
 ([reglas.md](reglas.md) §4.2): ella y quien da el reto, con los objetos en las manos o puestos, junto a los muebles reales de la sala
 (`data/stages.ts`, `adapters/three/s3-stage.ts`). En «Paso a paso» cada bloque bien puesto se ve al momento; en «Ordenar todo», los

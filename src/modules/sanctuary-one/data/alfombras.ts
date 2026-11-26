@@ -55,6 +55,9 @@ const HIGH_OVER_M = 10;
 /** How high over its pad a carpet flies out to its lane, m (over the people on the landing). */
 export const OUT_HIGH_M = 2;
 
+/** A building as a flight needs it: its middle (to go round its trunk) and its top (the sky way goes over it). */
+export type CarpetTower = Pick<TowerShape, "id" | "x" | "z" | "rootHeight">;
+
 /** The sanctuary as the stations need it. */
 export interface StationWorld {
   readonly areas: readonly S1Area[];
@@ -367,7 +370,7 @@ function gridOf(w: Pick<StationWorld, "floors" | "waters" | "solids">): Grid {
  * down it to the height nearest its two pads at which it can cross clear to the other's lane (straight, or round the
  * trunk either way), across, down that lane and in. Over every crown the sky way is always clear.
  */
-export function carpetRoute(w: Pick<StationWorld, "floors" | "waters" | "solids" | "towers">, a: CarpetStation, b: CarpetStation): Waypoint[] {
+export function carpetRoute(w: Pick<StationWorld, "floors" | "waters" | "solids"> & { readonly towers: readonly CarpetTower[] }, a: CarpetStation, b: CarpetStation, sky?: number): Waypoint[] {
   const g = gridOf(w);
   const ya = Math.max(a.y + OUT_HIGH_M, a.lane.lo);
   const yb = Math.max(b.y + OUT_HIGH_M, b.lane.lo);
@@ -376,12 +379,12 @@ export function carpetRoute(w: Pick<StationWorld, "floors" | "waters" | "solids"
   const hs: number[] = [];
   for (let h = Math.ceil(lo); h <= hi; h += 1) hs.push(h);
   hs.sort((p, q) => Math.abs(p - ya) + Math.abs(p - yb) - (Math.abs(q - ya) + Math.abs(q - yb)) || p - q);
-  const t = w.towers.find((q) => q.id === a.tower)!;
+  const t = w.towers.find((q) => q.id === a.tower);
   let across: Waypoint[] | undefined;
   for (const h of hs) {
     const from = { x: a.lane.x, y: h, z: a.lane.z, fly: true };
     const options: Waypoint[][] = [[{ x: b.lane.x, y: h, z: b.lane.z, fly: true }]];
-    if (a.tower === b.tower && a.kind === "piso" && b.kind === "piso") options.push(around(t, a.lane, b.lane, h, false), around(t, a.lane, b.lane, h, true));
+    if (t && a.tower === b.tower && (a.kind === "piso" || b.kind === "piso")) options.push(around(t, a.lane, b.lane, h, false), around(t, a.lane, b.lane, h, true));
     const way = options.find((o) => clearPath(g, [from, ...o]));
     if (way) {
       across = [from, ...way];
@@ -389,7 +392,7 @@ export function carpetRoute(w: Pick<StationWorld, "floors" | "waters" | "solids"
     }
   }
   // Over every crown (never needed: the sky way is clear).
-  const sky = skyOf(w.towers);
+  sky ??= skyOf(w.towers);
   across ??= [{ x: a.lane.x, y: sky, z: a.lane.z, fly: true }, { x: b.lane.x, y: sky, z: b.lane.z, fly: true }];
   const pts: Waypoint[] = [
     { x: a.x, y: a.y, z: a.z },

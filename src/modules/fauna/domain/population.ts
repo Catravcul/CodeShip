@@ -28,14 +28,26 @@ const LEVEL: Readonly<Record<string, Trophic>> = {
 
 const MIN_VIABLE: Readonly<Record<string, number>> = { ArcticFox: 4 };
 
-export const levelOf = (s: string): Trophic => LEVEL[s] ?? "meso";
-const minOf = (s: string): number => MIN_VIABLE[s] ?? 2;
-const weight = (s: string): number => Math.max(0.01, PER_HUMAN[s] ?? 0.2);
+/**
+ * The tables a sanctuary shares its animals out by (PopulationPlan's): each species' weight per human, its trophic
+ * level and its minimum viable group. Sanctuary 1's are Cold Sanctuary's own (the default); sanctuary 3 passes its
+ * insects' (aerial-sanctuary/data/bioma.ts `S3_POPULATION`).
+ */
+export interface PopulationTable {
+  readonly perHuman: Readonly<Record<string, number>>;
+  readonly level: Readonly<Record<string, Trophic>>;
+  readonly minViable?: Readonly<Record<string, number>>;
+}
+export const COLD_SANCTUARY_TABLE: PopulationTable = { perHuman: PER_HUMAN, level: LEVEL, minViable: MIN_VIABLE };
+
+export const levelOf = (s: string, t: PopulationTable = COLD_SANCTUARY_TABLE): Trophic => t.level[s] ?? "meso";
 const sum = (l: readonly string[], f: (s: string) => number) => l.reduce((a, s) => a + f(s), 0);
 const byName = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /** Each species' share (they add up to 1): its level's, split inside the level by weight. A missing level's share goes to the rest. */
-export function shares(species: readonly string[]): Map<string, number> {
+export function shares(species: readonly string[], t: PopulationTable = COLD_SANCTUARY_TABLE): Map<string, number> {
+  const levelOf = (s: string) => t.level[s] ?? "meso";
+  const weight = (s: string): number => Math.max(0.01, t.perHuman[s] ?? 0.2);
   const w = new Map<Trophic, number>();
   for (const s of species) w.set(levelOf(s), (w.get(levelOf(s)) ?? 0) + weight(s));
   let levels = 0;
@@ -49,10 +61,12 @@ export function shares(species: readonly string[]): Map<string, number> {
 }
 
 /** Shares `total` animals out (PopulationPlan.Allocate): minimum viable groups, exact sum; if the minimums don't fit, the rarest predators go first. */
-export function allocate(total: number, species: readonly string[]): { counts: Map<string, number>; dropped: string[] } {
+export function allocate(total: number, species: readonly string[], t: PopulationTable = COLD_SANCTUARY_TABLE): { counts: Map<string, number>; dropped: string[] } {
+  const levelOf = (s: string) => t.level[s] ?? "meso";
+  const minOf = (s: string): number => t.minViable?.[s] ?? 2;
   let list = [...species];
   const dropped: string[] = [];
-  let sh = shares(list);
+  let sh = shares(list, t);
   const predators = list
     .filter((s) => levelOf(s) !== "presa")
     .sort((a, b) => (levelOf(a) === "apice" ? 0 : 1) - (levelOf(b) === "apice" ? 0 : 1) || sh.get(a)! - sh.get(b)! || byName(a, b));
@@ -67,7 +81,7 @@ export function allocate(total: number, species: readonly string[]): { counts: M
     for (const s of list) r.set(s, 0);
     return { counts: r, dropped };
   }
-  sh = shares(list);
+  sh = shares(list, t);
   for (const s of list) r.set(s, Math.max(minOf(s), Math.floor(sh.get(s)! * total)));
   const tot = () => sum(list, (s) => r.get(s)!);
   for (let g = 0; g < 1000 && tot() > total; g++) {

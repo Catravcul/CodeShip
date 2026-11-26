@@ -154,10 +154,12 @@ export function stageFor(layout: S3Layout, post: number): Stage | undefined {
   if (!area) return undefined;
   const k = layout.k;
   const c = area.centre;
-  const at = (l: L): StageSpot => ({ x: c.x + l[0] * k, y: l[1], z: c.z + l[2] * k, face: l[3] });
+  // The room's floor: on its giant tree's floor inside the mountain (data/montana.ts), the stage stands on it.
+  const fy = area.floorY ?? 0;
+  const at = (l: L): StageSpot => ({ x: c.x + l[0] * k, y: l[1] + fy, z: c.z + l[2] * k, face: l[3] });
   const her: Partial<Record<HerSpot, StageSpot>> = {};
   for (const [key, l] of Object.entries(p.her)) her[key as HerSpot] = at(l as L);
-  const anchors: Stage["anchors"] = Object.fromEntries(Object.entries(p.anchors).map(([key, a]) => [key, { x: c.x + a![0] * k, y: a![1], z: c.z + a![2] * k }]));
+  const anchors: Stage["anchors"] = Object.fromEntries(Object.entries(p.anchors).map(([key, a]) => [key, { x: c.x + a![0] * k, y: a![1] + fy, z: c.z + a![2] * k }]));
   // The eye chart hangs on the wall's inner face, whatever the scale (the wall is 0,4 m thick).
   if (anchors.pared) anchors.pared = { ...anchors.pared, z: c.z - area.half.z + 0.45 };
   return {
@@ -171,7 +173,7 @@ export function stageFor(layout: S3Layout, post: number): Stage | undefined {
     trainerVia: (p.trainerVia ?? []).map(at),
     beside: Object.fromEntries(Object.entries(p.beside ?? {}).map(([key, l]) => [key, at(l as L)])),
     anchors,
-    ...(p.eye ? { eye: { x: c.x + p.eye[0] * k, y: p.eye[1], z: c.z + p.eye[2] * k } } : {}),
+    ...(p.eye ? { eye: { x: c.x + p.eye[0] * k, y: p.eye[1] + fy, z: c.z + p.eye[2] * k } } : {}),
   };
 }
 

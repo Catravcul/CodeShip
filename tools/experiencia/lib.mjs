@@ -531,6 +531,9 @@ export class Journey {
    * and returns the challenge being shown (the answer key a player who knows the code would have).
    */
   async answer(oracle, right = true) {
+    // Sanctuary 3 draws its challenges (docs/design/retos-trazos.md): one call traces the glyph now with the finger,
+    // along its ideal path (or, wrong, a stroke across the canvas's corner).
+    if (await this.page.evaluate(() => !!window.codeshipS3?.trace?.state)) return this.traceGlyph(right);
     const ex = await this.page.evaluate(oracle);
     if (!ex) return false;
     await this.fits(ex);
@@ -553,6 +556,85 @@ export class Journey {
     }
     for (const id of right ? ex.solution : [...ex.solution].reverse()) if (await inTray(id)) await pick(id);
     return this.tapAt(this.page.locator(".duel .submit"));
+  }
+
+  /** Sanctuary 3's drawing sheet is open (docs/design/retos-trazos.md). */
+  async tracing() {
+    return this.page.evaluate(() => !!window.codeshipS3?.trace?.state);
+  }
+
+  /**
+   * The challenge's first step, right: on the drawing, its first glyph traced stroke by stroke; on the sheet of
+   * options «Paso a paso», its first block placed.
+   */
+  async firstStep(oracle) {
+    if (await this.tracing()) {
+      const g0 = await this.page.evaluate(() => window.codeshipS3.trace.state.glyph);
+      for (let k = 0; k < 20; k++) {
+        const st = await this.page.evaluate(() => window.codeshipS3.trace.state);
+        if (!st || st.glyph !== g0) return true;
+        const paths = await this.page.evaluate(() => window.codeshipS3.trace.ideal());
+        if (!paths.length) return true;
+        const [a, ...rest] = paths[0];
+        await this.page.mouse.move(a.x, a.y);
+        await this.page.mouse.down();
+        for (const q of rest) await this.page.mouse.move(q.x, q.y, { steps: 2 });
+        await this.page.mouse.up();
+        await this.page.waitForTimeout(150);
+      }
+      return true;
+    }
+    const toggle = (await this.texts(".duel .order-toggle"))[0] ?? "";
+    if (/Paso a paso/.test(toggle)) await this.tap(".duel .order-toggle", "Paso a paso");
+    const ex = await this.page.evaluate(oracle);
+    await this.page.locator(`.duel .tray [data-id="${ex.solution[0]}"]`).first().waitFor({ timeout: 5000 });
+    return this.tapAt(this.page.locator(`.duel .tray [data-id="${ex.solution[0]}"]`));
+  }
+
+  /** Close the open challenge without finishing it (the drawing's × or the sheet's). */
+  async closeChallenge() {
+    if (await this.page.locator(".trace:not(.hidden) .trace-close").count()) return this.tap(".trace .trace-close", "Cerrar el reto");
+    return this.tap(".duel [data-act='close']", "Cerrar el reto");
+  }
+
+  /** Close the challenge: «Continuar» on the sheet of options; the drawing of sanctuary 3 closes by itself. */
+  async endSheet() {
+    await this.page.waitForFunction(() => !document.querySelector(".trace:not(.hidden)") || document.querySelector(".duel:not(.hidden) button.end"), null, { timeout: 20000 }).catch(() => {});
+    if (await this.page.locator(".duel:not(.hidden) button.end").count()) return this.tap(".duel button.end", "Continuar");
+    return true;
+  }
+
+  /** Trace the glyph now on sanctuary 3's drawing sheet: every stroke left, as a finger drag (pointer events). */
+  async traceGlyph(right = true) {
+    const paths = right ? await this.page.evaluate(() => window.codeshipS3.trace.ideal()) : await this.page.evaluate(() => {
+      const r = document.querySelector(".trace canvas, canvas.trace-canvas")?.getBoundingClientRect() ?? { left: 20, top: 120 };
+      return [[{ x: r.left + 8, y: r.top + 8 }, { x: r.left + 30, y: r.top + 12 }, { x: r.left + 50, y: r.top + 9 }]];
+    });
+    if (!paths.length) {
+      // The molecule's closing animation: wait for it to pass.
+      await this.page.waitForTimeout(800);
+      return true;
+    }
+    const drag = async (path) => {
+      const [a, ...rest] = path;
+      await this.page.mouse.move(a.x, a.y);
+      await this.page.mouse.down();
+      for (const q of rest) await this.page.mouse.move(q.x, q.y, { steps: 2 });
+      await this.page.mouse.up();
+      await this.page.waitForTimeout(150);
+    };
+    if (!right) {
+      await drag(paths[0]);
+      return true;
+    }
+    // Right: every stroke of every glyph, to the molecule (at most 80 strokes), as the player would.
+    for (let k = 0, next = paths; k < 80 && next.length; k++) {
+      await drag(next[0]);
+      next = await this.page.evaluate(() => (window.codeshipS3?.trace?.state ? window.codeshipS3.trace.ideal() : []));
+      if (!next.length) await this.page.waitForTimeout(600);
+      if (!next.length) next = await this.page.evaluate(() => (window.codeshipS3?.trace?.state ? window.codeshipS3.trace.ideal() : []));
+    }
+    return true;
   }
 
   /**
@@ -623,7 +705,7 @@ export class Journey {
 
   /** Waits until the challenge screen is up, then checks that it is the only interface on screen. */
   async waitDuel(timeout = 30000) {
-    await this.page.waitForFunction(() => [...document.querySelectorAll(".duel")].some((e) => !e.classList.contains("hidden")), null, { timeout });
+    await this.page.waitForFunction(() => [...document.querySelectorAll(".duel, .trace")].some((e) => !e.classList.contains("hidden")), null, { timeout });
     await this.page.waitForTimeout(400);
     await this.onlyChallengeVisible();
   }
@@ -636,7 +718,7 @@ export class Journey {
    */
   async outsideChallenge() {
     return this.page.evaluate(() => {
-      const keep = (el) => !!el.closest("#app > canvas, .duel");
+      const keep = (el) => !!el.closest("#app > canvas, .duel, .trace");
       const root = (el) => {
         let r = el;
         while (r.parentElement && r.parentElement !== document.body && r.parentElement.id !== "app") r = r.parentElement;
@@ -818,6 +900,15 @@ export class Journey {
           if (getComputedStyle(a).position === "sticky" || getComputedStyle(b).position === "sticky") continue;
           const r = seen(a);
           const q = seen(b);
+          // The joysticks are round and the pad's buttons orbit them (action-pad.css, Berón 2026-11-25): a stick and a
+          // round button (or two buttons) touch only if their circles do.
+          const round = (el) => el.classList.contains("vstick") || el.classList.contains("ap-btn");
+          if (round(a) && round(b)) {
+            const c = (k) => ({ x: (k.left + k.right) / 2, y: (k.top + k.bottom) / 2, r: Math.min(k.right - k.left, k.bottom - k.top) / 2 });
+            const u = c(a.getBoundingClientRect());
+            const v = c(b.getBoundingClientRect());
+            if (Math.hypot(u.x - v.x, u.y - v.y) > u.r + v.r - 4) continue;
+          }
           const w = Math.min(r.right, q.right) - Math.max(r.left, q.left);
           const h = Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top);
           // Only when both stay on top at their own centre: one hidden behind a sheet is covered, not competing.

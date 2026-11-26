@@ -37,3 +37,7 @@ body.has-rcs-pad .vstick.s3-move { display: none !important; }
 /* Every census row wraps inside a 390 px phone (long numbers and names never push it wider). */
 .s3-censo .cz-list li > *, .s3-censo .cz-events li { overflow-wrap: anywhere; min-width: 0; }
 .s3-censo .cz-seen { color: #ffe3a8; }
+/* The cloud globe's honeybee: its stage now, under the place tag (s3-biome.ts, docs/design/globo-nubes.md). */
+.s3-globo-etapa { position: fixed; top: calc(46px + env(safe-area-inset-top)); left: 12px; max-width: min(calc(100vw - 84px), 420px); box-sizing: border-box; padding: 5px 10px; border-radius: 10px; background: #05141cc4; color: #fff3c8; font-size: 12px; pointer-events: none; z-index: 5; }
+.s3-globo-etapa.hidden { display: none; }
+body.in-tasks .s3-globo-etapa, body.in-areas .s3-globo-etapa, body.in-settings .s3-globo-etapa { display: none; }

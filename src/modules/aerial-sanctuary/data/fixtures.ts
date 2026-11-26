@@ -3,6 +3,7 @@ import type { Floor, Rect, Solid } from "../domain/walk";
 import { wallWithGaps } from "../domain/walk";
 import type { WayPoint } from "../domain/route";
 import type { AreaDef, MachineDef } from "./layout";
+import { CAMPUS_SRC } from "./campus";
 import { S3_SOURCES as S } from "./sources";
 
 /**
@@ -106,7 +107,21 @@ export type FixtureKind =
   | "cajones-salto"
   | "elevadora"
   | "carro-herramientas"
-  | "mesa-reunion";
+  | "mesa-reunion"
+  | "cama"
+  | "cocina"
+  | "nevera"
+  | "sofa"
+  | "guantera"
+  | "camara-cultivo"
+  | "estante-cultivo"
+  | "colmena"
+  | "insectario"
+  | "impresora-3d"
+  | "torno"
+  | "fresadora"
+  | "pupitre"
+  | "sillon-dental";
 
 export interface PlacedFixture {
   readonly kind: FixtureKind;
@@ -187,6 +202,21 @@ interface Spec {
 }
 const G = S.generic;
 const CAT: Readonly<Record<FixtureKind, Spec>> = {
+  // The campus (data/campus.ts): its furniture and equipment.
+  cama: { w: 1.0, d: 2.05, h: 0.55, name: "Cama", reality: "real", source: CAMPUS_SRC.crewQuarters },
+  cocina: { w: 1.8, d: 0.7, h: 0.92, name: "Cocina: fogones, horno y campana", reality: "real", source: G, mounted: true },
+  nevera: { w: 0.8, d: 0.75, h: 1.9, name: "Frigorífico", reality: "real", source: G, mounted: true },
+  sofa: { w: 2.2, d: 0.9, h: 0.85, name: "Sofá de la sala común", reality: "real", source: CAMPUS_SRC.crewQuarters },
+  guantera: { w: 1.6, d: 0.9, h: 1.9, name: "Guantera de nitrógeno", reality: "real", source: CAMPUS_SRC.glovebox, mounted: true },
+  "camara-cultivo": { w: 1.2, d: 0.6, h: 1.8, name: "Cámara de cultivo (como Veggie)", reality: "real", source: CAMPUS_SRC.veggie, mounted: true },
+  "estante-cultivo": { w: 1.8, d: 0.6, h: 2.0, name: "Estantería de cultivo con luz LED", reality: "real", source: CAMPUS_SRC.veggie },
+  colmena: { w: 0.9, d: 0.4, h: 1.1, name: "Colmena de observación con ventana", reality: "real", source: CAMPUS_SRC.bees, mounted: true },
+  insectario: { w: 1.6, d: 0.6, h: 1.8, name: "Insectario: cajas ventiladas con viales de moscas", reality: "real", source: CAMPUS_SRC.flyLab, mounted: true },
+  "impresora-3d": { w: 0.7, d: 0.7, h: 1.2, name: "Impresora 3D", reality: "real", source: CAMPUS_SRC.aaf },
+  torno: { w: 1.8, d: 0.7, h: 1.3, name: "Torno", reality: "real", source: G },
+  fresadora: { w: 1.3, d: 1.2, h: 2.0, name: "Fresadora", reality: "real", source: G },
+  pupitre: { w: 1.2, d: 0.6, h: 0.75, name: "Pupitre", reality: "real", source: G },
+  "sillon-dental": { w: 0.8, d: 1.9, h: 1.0, name: "Sillón de odontología", reality: "real", source: CAMPUS_SRC.flightMed },
   caja: { w: 1, d: 1, h: 1, name: "Tabique", reality: "real", source: S.ours },
   vidrio: { w: 1, d: 0.05, h: 1, name: "Cristal", reality: "real", source: S.ours, solid: false, mounted: true },
   pavimento: { w: 1, d: 1, h: 0.02, name: "Pavimento", reality: "real", source: S.ours, solid: false },
@@ -288,7 +318,7 @@ export function footprint(f: Pick<PlacedFixture, "x" | "z" | "w" | "d" | "rot">)
 }
 
 type Side = "n" | "s" | "e" | "w";
-interface Put {
+export interface Put {
   readonly k: FixtureKind;
   readonly x: number;
   readonly z: number;
@@ -318,7 +348,7 @@ interface Put {
 const box = (x0: number, x1: number, z0: number, z1: number, y0: number, y1: number): Solid => ({ x0: Math.min(x0, x1), x1: Math.max(x0, x1), z0: Math.min(z0, z1), z1: Math.max(z0, z1), y0, y1 });
 
 /** Put a fixture in the world (world coordinates already). */
-function put(sink: FurnishSink, area: string, p: Put & { wx: number; wz: number }): PlacedFixture {
+export function put(sink: FurnishSink, area: string, p: Put & { wx: number; wz: number }): PlacedFixture {
   const c = CAT[p.k];
   const f: PlacedFixture = {
     kind: p.k,
@@ -347,7 +377,7 @@ function put(sink: FurnishSink, area: string, p: Put & { wx: number; wz: number 
 }
 
 /** A room's furnishing helpers: local plan coordinates (as the room's data) to the world. */
-function roomKit(sink: FurnishSink, fr: RoomFrame) {
+export function roomKit(sink: FurnishSink, fr: RoomFrame) {
   const { k, centre: c, half } = fr;
   const P = (x: number, z: number) => ({ x: c.x + x * k, z: c.z + z * k });
   /** The inner face of a wall: the room's (0,4 m thick) or a compartment's (0,2 m thick). */
@@ -869,6 +899,25 @@ const ROOM_FURNISH: Readonly<Record<string, (sink: FurnishSink, fr: RoomFrame) =
 /** Furnish one training room (none for the centrifuge: its machines come with its own branch). */
 export function furnishRoom(sink: FurnishSink, fr: RoomFrame): void {
   ROOM_FURNISH[fr.id]?.(sink, fr);
+}
+
+/**
+ * A helipad's own furniture (FAA AC 150/5390-2D): the TLOF's edge lights in green, the weight and size painted on it
+ * (S-92: 12,0 t and D = 21 m), the wind cone, two floodlights, the fuel point with its extinguisher. At height `y`.
+ */
+export function furnishHelipad(sink: FurnishSink, area: string, heli: { x: number; z: number }, half: number, y: number): void {
+  const P = (x: number, z: number, p: Omit<Put, "x" | "z">) => put(sink, area, { ...p, y: (p.y ?? 0) + y, x: 0, z: 0, wx: x, wz: z });
+  const R = half - 0.3;
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2;
+    P(heli.x + Math.cos(a) * R, heli.z + Math.sin(a) * R, { k: "luz-pista", y: 0.05 });
+  }
+  P(heli.x, heli.z - 6.2, { k: "rotulo-suelo", y: 0.07, text: "12 t · 21", plate: false, name: "Peso máximo y tamaño (S-92: 12,0 t; 1 D = 21 m)" });
+  P(heli.x + half + 3, heli.z - 12, { k: "manga", plate: true });
+  P(heli.x - half - 2, heli.z + 10, { k: "foco" });
+  P(heli.x + half + 2, heli.z + 10, { k: "foco" });
+  P(heli.x + half + 4, heli.z + 3, { k: "surtidor", rot: 3, plate: true });
+  P(heli.x + half + 4, heli.z + 5, { k: "extintor" });
 }
 
 // ── Outdoors ──

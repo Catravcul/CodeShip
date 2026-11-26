@@ -1,6 +1,7 @@
 import { RootMenu } from "./root-menu";
 import { ICON } from "./icons";
 import type { PickOption, RetoPicker } from "./reto-picker";
+import { retoWord } from "@modules/chores/domain/palabra";
 
 /**
  * The orange interaction button under the root menu (reglas.md §5.8, Berón 2026-11-19), the same in every level: when
@@ -12,14 +13,18 @@ import type { PickOption, RetoPicker } from "./reto-picker";
 /** «Lavadora (Servicios)» → «Lavadora»: the button's label is short. */
 export const shortLabel = (l: string) => l.replace(/\s*\(.*\)\s*/g, " ").trim();
 
-/** A challenge's orange button: «Reto: <thing>». */
-export function retoButton(thing: string, onClick: () => void, open = false): Parameters<typeof RootMenu.interact>[0] {
-  return { icon: ICON.reto, label: `Reto: ${shortLabel(thing)}`, onClick, open };
+/**
+ * A challenge's orange button: its face says in one word what the challenge is about (Berón 2026-11-25: «Cocina»,
+ * «Boxeo»; chores/domain/palabra.ts), «Reto: <thing>» stays its accessible name. `word`: the challenge's own (from its
+ * data, `retoWord` / `retosWord`); without it, the thing's name tells it.
+ */
+export function retoButton(thing: string, onClick: () => void, open = false, word?: string): Parameters<typeof RootMenu.interact>[0] {
+  return { icon: ICON.reto, label: `Reto: ${shortLabel(thing)}`, word: word ?? retoWord({ title: thing }), onClick, open };
 }
 
-/** Show (or hide, with undefined) the orange button for a thing that gives challenges. */
-export function offerReto(thing: string | undefined, onClick: () => void): void {
-  RootMenu.interact(thing === undefined ? undefined : retoButton(thing, onClick));
+/** Show (or hide, with undefined) the orange button for a thing that gives challenges (`word`: as retoButton). */
+export function offerReto(thing: string | undefined, onClick: () => void, word?: string): void {
+  RootMenu.interact(thing === undefined ? undefined : retoButton(thing, onClick, false, word));
 }
 
 /** One challenge: open it; several: let her choose (RetoPicker), locked ones greyed with why. */

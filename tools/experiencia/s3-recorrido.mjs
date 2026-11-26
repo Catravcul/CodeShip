@@ -50,7 +50,10 @@ async function track(j, ok, ms, maxMs) {
     await j.page.waitForTimeout(300);
     s = await s3(j.page);
     const d = Math.hypot(s.body.x - a.body.x, s.body.y - a.body.y, s.body.z - a.body.z);
-    const v = d / Math.max(0.3, (Date.now() - ta) / 1000);
+    const v0 = d / Math.max(0.3, (Date.now() - ta) / 1000);
+    // On a carpet of the hollow mountain she flies at up to its 12 m/s cruise (montana-hueca.md; the samples' timing
+    // jitters by a few hundred ms): faster than 20 m/s is a jump.
+    const v = (a.mode === "alfombra" || s.mode === "alfombra") && v0 <= 20 ? 0 : v0;
     if (v > worst) at = `de (${a.body.x.toFixed(1)}, ${a.body.y.toFixed(2)}, ${a.body.z.toFixed(1)}) a (${s.body.x.toFixed(1)}, ${s.body.y.toFixed(2)}, ${s.body.z.toFixed(1)}) en ${Date.now() - ta} ms`;
     worst = Math.max(worst, v);
   }
@@ -150,11 +153,12 @@ export async function s3Recorrido(j) {
   await until(j, (s) => s.mode === "reto" || s.mode === "vuelo", 60000);
   if ((await s3(p)).mode === "reto") {
     await j.waitDuel(30000);
-    for (let i = 0; i < 3 && (await p.evaluate(() => window.codeshipS3.exercise)); i++) {
-      await j.answer(() => window.codeshipS3.exercise, true);
+    for (let i = 0; i < 3 && (await p.evaluate(() => window.codeshipS3.exercise ?? window.codeshipS3.trace?.state)); i++) {
+      await j.answer(() => window.codeshipS3.exercise ?? window.codeshipS3.trace?.state, true);
       await p.waitForTimeout(500);
     }
-    await j.tap(".duel button.end", "Continuar");
+    // The sheet of options closes with «Continuar»; the drawing (retos-trazos.md) closes by itself.
+    if (await p.locator(".duel:not(.hidden) button.end").count()) await j.tap(".duel button.end", "Continuar");
   }
   const f0 = await until(j, (s) => s.mode === "vuelo", 30000);
   j.check("camina al helipuerto y despega: se ve el vuelo (sin teletransporte)", f0.mode === "vuelo", f0.mode);
@@ -162,7 +166,7 @@ export async function s3Recorrido(j) {
   j.check("el helicóptero sube a su altura de crucero", f1.craftY > 40, String(f1.craftY));
   await capture(j, "vuelo", "Santuario 3: en vuelo a la lanzadera");
   const f2 = await track(j, (s) => s.mode === "libre", 150000, 120);
-  j.check("aterriza en la lanzadera, andando, sin saltos mayores que el vuelo", f2.s.island === "lanzadera" && f2.s.body.motion === "gravedad" && f2.ok, `${f2.s.island} · ${f2.worst.toFixed(1)} m/s`);
+  j.check("aterriza en la lanzadera, andando, sin saltos mayores que el vuelo", f2.s.island === "lanzadera" && f2.s.body.motion === "gravedad" && f2.ok, `${f2.s.island} · ${f2.worst.toFixed(1)} m/s ${f2.at}`);
   await capture(j, "lanzadera", "Santuario 3: en la lanzadera");
 
   // 6. Áreas: «Ir» to the Electron's crown: walk to the lift, ride it, step out at 182 m.

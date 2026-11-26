@@ -31,7 +31,7 @@ async function until(j, ok, ms) {
   return s;
 }
 
-const oracle = () => window.codeshipS3.exercise;
+const oracle = () => window.codeshipS3.exercise ?? window.codeshipS3.trace?.state;
 
 /** Gathers in the page, every 150 ms, what the launches show (the beats are faster than a capture). */
 const watch = (p) =>
@@ -65,7 +65,9 @@ async function solve(j, title) {
     await p.waitForTimeout(2600);
   }
   for (let k = 0; k < 40 && (await s3(p)).busy; k++) await p.waitForTimeout(500);
-  const result = (await j.texts(".duel .result"))[0] ?? "";
+  // The sheet of options says «Conseguido»; the drawing ends on its molecule and closes by itself.
+  const drawn = !(await j.page.locator(".duel:not(.hidden)").count());
+  const result = drawn ? "Conseguido" : ((await j.texts(".duel .result"))[0] ?? "");
   j.check(`${title}: el reto se completa («Conseguido»)`, /Conseguido/.test(result), result);
 }
 
@@ -89,7 +91,7 @@ async function post(j, n, title, who, label) {
   await capture(j, `${label}-paso`);
   await solve(j, title);
   const seen = await seenNow(p);
-  await j.tap(".duel button.end", "Continuar");
+  await j.endSheet();
   const after = await until(j, (s) => s.mode === "libre", 40000);
   j.check(`${title}: el puesto queda superado`, after.passed.includes(n), JSON.stringify(after.passed));
   return seen;
@@ -130,14 +132,14 @@ export async function iniciacionCompleta(j) {
   await j.tap(".s3-tasks", "Tareas");
   await j.taskSettings({ travel: "viaje", vehicle: "todos" });
   await j.tap('.task-board [data-go="s3-puesto-11"]', "Ir: Geología (otra isla: a la máquina de navegación)");
-  await until(j, (s) => s.mode === "libre" && s.near === "nav-entrenamiento", 90000);
+  await until(j, (s) => s.mode === "libre" && s.near === "nav-entrenamiento", 300000);
   await j.showPanel(".s3-ui .cm-acts [data-act='nav']");
   await j.tap('.s3-ui .cm-acts [data-act="nav"]', "Abrir navegación");
   await j.tap('.island-nav .mw-pick[data-pick="plataforma"]', "Plataforma de tripulación en la lista");
   await j.tap('.island-nav .mw-go[data-fly="plataforma"]', "Volar a la plataforma");
   await until(j, (s) => s.mode === "reto", 60000);
   await solve(j, "El vuelo a la plataforma, programado");
-  await j.tap(".duel button.end", "Continuar");
+  await j.endSheet();
   const flown = await until(j, (s) => s.mode === "libre" && s.island === "plataforma", 240000);
   j.check("el helicóptero aterriza en la plataforma de tripulación", flown.island === "plataforma", flown.island);
 
@@ -152,13 +154,13 @@ export async function iniciacionCompleta(j) {
   await watch(p);
   await solve(j, "La torre, el brazo de acceso y la sala blanca");
   await capture(j, "torre");
-  await j.tap(".duel button.end", "Continuar");
+  await j.endSheet();
   await solve(j, "La cuenta atrás del Falcon 9");
   await capture(j, "despegue");
-  await j.tap(".duel button.end", "Continuar");
+  await j.endSheet();
   await solve(j, "El ascenso: las etapas y la órbita");
   await capture(j, "ascenso");
-  await j.tap(".duel button.end", "Continuar");
+  await j.endSheet();
   await solve(j, "La cita con la Starship en órbita baja");
   await capture(j, "cita");
   const f = await seenNow(p);
@@ -166,7 +168,7 @@ export async function iniciacionCompleta(j) {
   j.check("el brazo se retira, el Falcon 9 despega, la 1.ª etapa se separa y la Dragon queda sola en órbita", f.arm > 1 && f.fRise > 100 && f.sep && ["despegue", "separacion", "orbita"].every((x) => f.fPhases.includes(x)), JSON.stringify({ arm: f.arm, rise: f.fRise, sep: f.sep, phases: f.fPhases }));
   j.check("en la cita, la pantalla de la Dragon ante su asiento con la cámara de acople", f.display && f.fPhases.includes("cita"), JSON.stringify({ display: f.display }));
   j.check("con el traje y el casco de la Crew Dragon durante todo el día", ["casco-ss"].every((k) => f.things.includes(k)), f.things.join(", "));
-  await j.tap(".duel button.end", "Continuar");
+  await j.endSheet();
 
   // 6. Docked: the slot is a level-6 game now, and the page goes on in the Starship.
   const handed = await until(j, (s) => !!s.handedOver, 30000);

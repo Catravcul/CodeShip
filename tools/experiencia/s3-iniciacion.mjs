@@ -289,10 +289,11 @@ export async function s3Iniciacion(j) {
   await tapPad("Colectivo arriba: subir", 4);
   const up = await until(j, (s) => s.hand && s.hand.y > 40, 40000);
   j.check("el colectivo la sube: despega del helipuerto", up.hand && !up.hand.onGround && up.hand.y > 40, JSON.stringify(up.hand && { y: up.hand.y }));
-  // The campus's helipad is up the mountain, at the south cave's mouth (y ≈ 112, montana-hueca.md): she climbs on to
-  // 30 m over it before heading there, so as to come in from above, not under its edge.
+  // The campus's helipad is up the mountain, at the south cave's mouth (y ≈ 112, montana-hueca.md): she leaves the cap
+  // low (the launch tree's decks are over its pad: the rotor stops at 132 m) and, within 600 m of the campus, climbs to
+  // 55 m over the pad before going on, to come in from above, not against the mountain's flank (the rotor stopped
+  // there at 132 m too).
   const dest = await p.evaluate(() => window.codeshipS3.layout.islands.find((i) => i.id === "entrenamiento").pad.at);
-  await until(j, (s) => s.hand && s.hand.y > dest.y + 30, 120000);
   await tapPad("Anular giros y velocidad");
   await capture(j, "manual", "Vuelo manual: el pad con cíclico, colectivo y pedales");
   // Fly by the numbers: nose to the pad with the pedals, cyclic forward, slow down near it and come down slowly.
@@ -307,16 +308,21 @@ export async function s3Iniciacion(j) {
     const d = dist(h);
     const r = rel(h);
     const yawAsk = h.ask.yaw;
-    const wantYaw = Math.abs(r) < 0.05 ? 0 : r > 0 ? 1 : -1;
+    // The pedals stop the turn within ~7° of the pad: the rotor's lag carries it on a little, and a tighter aim made it
+    // swing ±20° around the pad for minutes, never close enough to fly on (the campus's helipad, 144 m short).
+    // In the last 32 m the pad may be behind her (she drifted past): she aims the tail or the nose, whichever is nearer.
+    const rr = d <= 32 && Math.abs(r) > Math.PI / 2 ? r - Math.sign(r) * Math.PI : r;
+    const wantYaw = Math.abs(rr) < 0.12 ? 0 : rr > 0 ? 1 : -1;
     if (yawAsk < wantYaw) await tapPad("Pedal izquierdo: morro a la izquierda");
     else if (yawAsk > wantYaw) await tapPad("Pedal derecho: morro a la derecha");
-    const fwdWant = Math.abs(r) > 0.3 ? 0 : d > 600 ? 8 : d > 250 ? 3 : d > 32 ? 1 : 0;
+    const high = d >= 600 || h.y > dest.y + 45;
+    const fwdWant = Math.abs(r) > 0.45 || (!high && d > 8) ? 0 : d > 600 ? 8 : d > 250 ? 3 : d > 32 ? 1 : 0;
     const fwdNow = h.ask.fwd;
     if (fwdNow < fwdWant) await tapPad("Cíclico adelante");
     else if (fwdNow > fwdWant) await tapPad("Cíclico atrás");
     // Hovering short of the pad: a nudge of cyclic, then level it again (a pilot's small corrections).
-    if (d > 8 && d <= 32 && Math.hypot(h.vFwd, h.vSide) < 0.8 && Math.abs(r) < 0.3 && h.ask.fwd === 0) {
-      await tapPad("Cíclico adelante");
+    if (high && d > 8 && d <= 32 && Math.hypot(h.vFwd, h.vSide) < 0.8 && Math.abs(rr) < 0.3 && h.ask.fwd === 0) {
+      await tapPad(rr === r ? "Cíclico adelante" : "Cíclico atrás");
       await p.waitForTimeout(Math.min(1500, 200 + d * 30));
       await tapPad("Anular giros y velocidad");
       await p.waitForTimeout(1500);
@@ -324,7 +330,7 @@ export async function s3Iniciacion(j) {
       continue;
     }
     // Over the pad (it lands within 10 m of its centre) and slow: down, the last metres at 1,5 m/s.
-    const upWant = d < 8 && Math.hypot(h.vFwd, h.vSide) < 1 ? (h.y - dest.y > 15 ? -3 : -1) : 0;
+    const upWant = d < 8 && Math.hypot(h.vFwd, h.vSide) < 1 ? (h.y - dest.y > 15 ? -3 : -1) : d >= 8 && d < 600 && h.y < dest.y + 55 ? 2 : 0;
     if (h.ask.up > upWant) await tapPad("Colectivo abajo: bajar");
     else if (h.ask.up < upWant) await tapPad("Colectivo arriba: subir");
     await p.waitForTimeout(500);

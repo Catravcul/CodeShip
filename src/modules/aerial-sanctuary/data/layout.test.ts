@@ -209,7 +209,7 @@ describe("Datos del santuario 3", () => {
 
   it("las áreas de Cold Sanctuary son ficción y las salas del campus, reales (la montaña, sus árboles y el Starship inundado, ficción)", () => {
     const L = buildLayout(1);
-    const built = /:(lago|montana|cueva-|arbol-|starship)/;
+    const built = /:(lago|montana|cueva-|arbol-|starship|pupa)/;
     for (const a of L.areas) {
       if (a.island === "entrenamiento") expect(a.reality, a.id).toBe(built.test(a.id) ? "ficcion" : "real");
       if (a.island === "lanzadera" || a.island === "parque" || a.island === "muelle") expect(a.reality, a.id).toBe("ficcion");

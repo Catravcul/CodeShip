@@ -4,7 +4,8 @@ import { inEstrus } from "@modules/fauna/domain/mating";
 import { STAGE_LABEL, type Stage } from "@modules/fauna/domain/life-cycle";
 import { hash01, wanderAt } from "@modules/fauna/domain/roam";
 import { AIR_BIOME, type AnimalSpec, type BiomeDef, type Habitat } from "../data/bioma";
-import { BIOME_ISLAND, BIOME_ZONES, MOUNTAIN } from "../data/bioma-island";
+import { BIOME_ISLAND, BIOME_ZONES, MOUNTAIN, type BiomeZone } from "../data/bioma-island";
+import { CARBON_ZONE } from "../data/carbonifero";
 import { AGENT_NAMES, BIOME_ETHOGRAMS, BIOME_TRAITS, COURTSHIPS, RIVALRIES, agentKey, agentTraits } from "../data/bioma-conducta";
 import { advance, createBiome, dormantIn, hungerOf, huntKill, lifeStageOf, mate, monthOfDay, quietNow, scaleOf, stageOfIndividual, BIO_DAYS_PER_GAME_DAY, STEP_GAME_DAYS, type BiomeState, type Individual, type LifeStage } from "../domain/bioma";
 import { heightAt, slopeAt } from "../domain/mountain";
@@ -60,6 +61,10 @@ export const FLIGHT: Readonly<Record<string, { style: FlightStyle; zone?: string
   libelula: { style: "patrulla", zone: "rio", bodies: 0.8 },
   asilido: { style: "acecho", bodies: 1.5 },
   avispon: { style: "colmena", bodies: 1.2 },
+  // The Carboniferous giants (data/carbonifero.ts), at their real size: bodies of 0,1–0,4 m.
+  meganeura: { style: "patrulla", zone: "bosque-carbonifero", bodies: 12 },
+  meganeuropsis: { style: "patrulla", zone: "bosque-carbonifero", bodies: 30 },
+  mazothairos: { style: "planeo", bodies: 25 },
   drosophila: { style: "revoloteo", bodies: 3 },
   crisopa: { style: "revoloteo", bodies: 2 },
   mariquita: { style: "revoloteo", bodies: 3 },
@@ -68,12 +73,12 @@ export const FLIGHT: Readonly<Record<string, { style: FlightStyle; zone?: string
 const LIFE_VERB: Partial<Record<LifeStage, string>> = { huevo: "un huevo, se desarrolla", pupa: "una pupa, se transforma en adulto" };
 
 /** The island's frame: local plan metres ↔ world (the mountain keeps its true size), its ground and its zones. */
-export function biomeGeo(_k = 1) {
+export function biomeGeo(_k = 1, zones: readonly BiomeZone[] = BIOME_ZONES) {
   const C = BIOME_ISLAND.centre.value;
   const M = MOUNTAIN.value;
   const world = (x: number, z: number) => ({ x: C.x + x, z: C.z + z });
   const local = (x: number, z: number) => ({ x: x - C.x, z: z - C.z });
-  const zone = (id: string) => BIOME_ZONES.find((q) => q.id === id) ?? BIOME_ZONES[0]!;
+  const zone = (id: string) => zones.find((q) => q.id === id) ?? zones[0]!;
   const ground = (x: number, z: number) => heightAt(M, x - C.x, z - C.z);
   return {
     world,
@@ -106,6 +111,8 @@ export function biomeGeo(_k = 1) {
   };
 }
 export type BiomeGeo = ReturnType<typeof biomeGeo>;
+/** The frame of the Carboniferous forest at the pyramid's foot (data/carbonifero.ts): the island's, with its zone. */
+export const carbonGeo = (): BiomeGeo => biomeGeo(1, [CARBON_ZONE.value, ...BIOME_ZONES]);
 
 interface Body {
   pose: Pose;
@@ -248,7 +255,7 @@ export class BiomeLife {
         const R = b.home.r * 0.8;
         const x = b.home.x + R * Math.cos(t * 0.05 + ph) + 8 * Math.sin(t * 0.21);
         const z = b.home.z + R * Math.sin(t * 0.05 + ph);
-        return { x, z, y: over(x, z, H + len * 0.4 * Math.sin(t * 0.8 + ph)), verb: "planea despacio sobre la pedrera" };
+        return { x, z, y: over(x, z, H + len * 0.4 * Math.sin(t * 0.8 + ph)), verb: s.id === "mariposa" ? "planea despacio sobre la pedrera" : "vuela despacio con las alas extendidas" };
       }
       case "cernido": {
         // The hoverfly hangs still in the air, then darts a few metres to hang again (Episyrphus balteatus).
@@ -264,7 +271,7 @@ export class BiomeLife {
         const u = Math.sin(t * 0.12 + ph);
         const x = zz.x + u * zz.r * 1.2;
         const z = zz.z + Math.sin(t * 0.31 + ph) * zz.r * 0.4;
-        return { x, z, y: over(x, z, H + 4 + 3 * Math.sin(t * 0.5)), verb: doing === "cazar" ? "caza al vuelo" : "patrulla sobre el río" };
+        return { x, z, y: over(x, z, H + 4 + 3 * Math.sin(t * 0.5)), verb: doing === "cazar" ? "caza al vuelo" : f.zone === "rio" ? "patrulla sobre el río" : "patrulla sobre el bosque" };
       }
       case "acecho": {
         // The robber fly waits on its perch and sallies after a passing insect, back to the perch.
@@ -340,7 +347,8 @@ export class BiomeLife {
         if (Math.hypot(dx, dz) > 0.05) p.yaw = Math.atan2(dx, dz);
         p.x += dx * k;
         p.z += dz * k;
-        p.y += (to.y - p.y) * k;
+        // Never under its ground (the slope rises under it faster than it climbs).
+        p.y = Math.max(g.ground(p.x, p.z), p.y + (to.y - p.y) * k);
         p.flying = p.y - g.ground(p.x, p.z) > len * 0.25;
         p.moving = true;
         p.label = label(to.verb);

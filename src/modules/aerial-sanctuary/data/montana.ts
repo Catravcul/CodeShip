@@ -7,6 +7,7 @@ import { heightAt } from "../domain/mountain";
 import { APRON_M, BIOME_ISLAND, MOUNTAIN, CORE_DEF, CAVE_HALF_M, CAVE_VAULT_M, INNER_HALF, INNER_H, caves, innerAt, innerY } from "./bioma-island";
 import { scaleInteriorPlan } from "@modules/station/domain/interior";
 import { starshipInteriorPlan, STARSHIP_DECKS } from "@modules/mothership/data/starship-interior";
+import { buildPupa, type PupaPlan } from "./pupa-abeja";
 
 /**
  * INSIDE THE HOLLOW MOUNTAIN (docs/design/montana-hueca.md; Berón 2026-11-25): the buried pyramid's hollow is the
@@ -306,6 +307,8 @@ export interface HollowPlan {
   /** Where the helipad of the campus is (outside, at the south cave's mouth) and its way point. */
   readonly heli: { readonly x: number; readonly y: number; readonly z: number; readonly half: number };
   readonly starship: { readonly x: number; readonly z: number; readonly baseY: number; readonly k: number; readonly deck3Y: number };
+  /** The bee's pupa at the middle (data/pupa-abeja.ts). */
+  readonly pupa: PupaPlan;
 }
 
 const around = (x: number, z: number, hx: number, hz = hx): Rect => ({ x0: x - hx, x1: x + hx, z0: z - hz, z1: z + hz });
@@ -588,6 +591,9 @@ export function buildHollow(b: HollowBuilder, k: number, size: (id: string) => R
     stationsDraft.push({ id: `${area}:alfombras`, area, tower: c.id, building: c.label, kind: "pie", label: c.label, x: c.pad.x, y: c.pad.y, z: c.pad.z, out: { x: 0, z: 1 }, point: p });
   }
 
+  // ── The bee's pupa at the hollow's middle, in the room the campus leaves (data/pupa-abeja.ts) ──
+  const pupa = buildPupa(b, trees);
+
   // ── The stations: their pads, consoles and lanes (found from what was built) ──
   const g = new Grid(obstaclesOf({ floors: b.floors, waters: b.waters.filter(flownOver), solids: b.solids }));
   const treeTop = new Map(trees.map((t) => [t.def.id, Math.max(...t.floors.map((f) => f.y)) + 8]));
@@ -623,5 +629,5 @@ export function buildHollow(b: HollowBuilder, k: number, size: (id: string) => R
   const sur = caves()[0]!;
   const heli = { x: C.x + sur.from.x, y: heightAt(MOUNTAIN.value, sur.from.x, sur.from.z - APRON_M) + 0.05, z: C.z + sur.from.z - APRON_M, half: heliHalf };
   const crowns = trees.map((t) => crownOf(t, trees)).filter((c): c is Crown => !!c);
-  return { trees, crowns, stations, towers, sky, heli, starship: { x: sx, z: sz, baseY: H.floorY, k, deck3Y } };
+  return { trees, crowns, stations, towers, sky, heli, pupa, starship: { x: sx, z: sz, baseY: H.floorY, k, deck3Y } };
 }

@@ -54,6 +54,13 @@ abajo o al lago. Las grúas de la NBL apoyan en pilotes en las esquinas de la sa
 
 21 salas en total. Cada pie y cada piso tiene su estación de alfombras.
 
+## La pupa del centro
+
+En el centro del hueco (`HOLLOW`), de pie en el lago, la celda gigante de la abeja con su galería y un muelle hasta la
+cubierta del árbol más cercano ([pupa-abeja.md](pupa-abeja.md)); se construye en `buildHollow` antes que las rutas de
+alfombra, así que ninguna la atraviesa. Para dejarle sitio, el árbol de entrenamiento (A) está en (−115, 95) respecto al
+centro (antes (−40, 30)). En el fondo del lago viven larvas acuáticas ([larvas-lago.md](larvas-lago.md)).
+
 ![Copa de un árbol gigante](../screenshots/s3-arbol-gigante-copa-movil.png) ![Ventana de alfombras de la cueva sur](../screenshots/s3-alfombras-ventana-movil.png)
 
 **Caídas**: fuera de la montaña, del borde de una isla no se baja más de 10 m (`ISLAND_DROP_M`); dentro del hueco no hay

@@ -21,7 +21,7 @@ cada regla está en [reglas.md](reglas.md) §2; aquí, su número, en qué consi
 | E13 | **Pisos sin paredes ni tejado; borde abierto**: desde cada lado que no da al tronco se tira al piso de abajo, al suelo o al agua; sin límite de caída dentro de un edificio (§2.10) | `caidas.test.ts` | `caidas.test.ts` (`dropLimit`) |
 | E14 | **Paso de puertas y cuevas**: el mayor vehículo o animal + 2 m a cada lado y por encima, calculado de los datos (si crece la fauna, crece el paso) | `paso.ts`, `reglas.test.ts` | `CAVE_PASSAGE`, `montana.test.ts` |
 | E15 | **Los árboles parecen árboles**: corteza, ramas, hojas, frutos y flores; la copa sobre los pisos y bajo el techo, sólida para los carriles de alfombras | — (edificios-árbol con pisos) | `crownOf`, `montana.test.ts` («parece un árbol») |
-| E16 | **Centro libre** (solo santuario 3): nada en 45 m alrededor del centro del hueco, del lago al techo | — | `CENTRE_FREE_M`, `montana.test.ts` |
+| E16 | **Centro libre** (solo santuario 3): nada en 45 m alrededor del centro del hueco, del lago al techo, salvo la pupa de la abeja con su galería y su muelle ([pupa-abeja.md](pupa-abeja.md)) | — | `CENTRE_FREE_M`, `montana.test.ts` |
 
 Al añadir una regla de edificios, se añade aquí con su número y su prueba.
 

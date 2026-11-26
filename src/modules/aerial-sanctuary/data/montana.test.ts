@@ -5,6 +5,7 @@ import { CENTRE_FREE_M, CROWN, GIANT, GIANT_TREES, HOLLOW, HOLLOW_INSIDE, ceilin
 import { CAVE_HALF_M, CAVE_PASSAGE, CAVE_VAULT_M, CORE_DEF, INNER_H, INNER_HALF, LARGEST_S3_ANIMAL, caves } from "./bioma-island";
 import { NEEDED as S1_DOOR, PASSAGE } from "@modules/sanctuary-one/data/paso";
 import { placeAt, step } from "../domain/walk";
+import { pupaSolid } from "./pupa-abeja";
 
 for (const k of [1, 1.5]) {
   describe(`La montaña hueca a escala ${k} (montana-hueca.md)`, () => {
@@ -45,11 +46,14 @@ for (const k of [1, 1.5]) {
       for (let i = 1; i < xs.length; i++) expect(xs[i]! - xs[i - 1]!).toBeGreaterThan(2 * CAVE_HALF_M + 10);
     });
 
-    it("el centro del hueco queda libre para la pupa: ningún piso, tronco ni estación en su radio, del lago al techo", () => {
+    it("el centro del hueco queda libre para la pupa: ningún piso, tronco ni estación en su radio salvo la propia pupa, del lago al techo", () => {
+      const pupa = (area: string) => area === "entrenamiento:pupa" || area.startsWith("entrenamiento:pupa-");
       const near = (r: { x0: number; x1: number; z0: number; z1: number }) => Math.hypot(Math.max(r.x0 - HOLLOW.x, 0, HOLLOW.x - r.x1), Math.max(r.z0 - HOLLOW.z, 0, HOLLOW.z - r.z1)) < CENTRE_FREE_M;
       const inside = (y0: number, y1: number) => y1 > HOLLOW.lakeTop - 1 && y0 < HOLLOW_INSIDE.apexY;
-      expect(L.world.floors.filter((f) => inside(f.y, f.y) && near(f)).map((f) => f.area)).toEqual([]);
-      expect(L.world.solids.filter((q) => inside(q.y0, q.y1) && near(q)).length).toBe(0);
+      expect(L.world.floors.filter((f) => inside(f.y, f.y) && near(f) && !pupa(f.area)).map((f) => f.area)).toEqual([]);
+      const cell = pupaSolid(plan.pupa);
+      const isCell = (q: { x0: number; x1: number; z0: number; z1: number }) => q.x0 >= cell.x0 - 1e-6 && q.x1 <= cell.x1 + 1e-6 && q.z0 >= cell.z0 - 1e-6 && q.z1 <= cell.z1 + 1e-6;
+      expect(L.world.solids.filter((q) => inside(q.y0, q.y1) && near(q) && !isCell(q)).map((q) => JSON.stringify(q))).toEqual([]);
       for (const st of plan.stations) expect(Math.hypot(st.x - HOLLOW.x, st.z - HOLLOW.z), st.id).toBeGreaterThan(CENTRE_FREE_M);
       expect(HOLLOW_INSIDE.ceilingAt(HOLLOW.x, HOLLOW.z)).toBeCloseTo(HOLLOW_INSIDE.apexY, 6);
     });

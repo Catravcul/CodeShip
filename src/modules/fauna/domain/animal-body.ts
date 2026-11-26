@@ -9,7 +9,7 @@
  *
  * Pure: the parts, and each joint's angle at a moment of its gait.
  */
-export type BodyKind = "cuadrupedo" | "pinnipedo" | "cetaceo" | "pinguino" | "ave" | "insecto";
+export type BodyKind = "cuadrupedo" | "pinnipedo" | "cetaceo" | "pinguino" | "ave" | "insecto" | "miriapodo";
 
 export interface BodyPart {
   readonly name: string;
@@ -227,6 +227,8 @@ export function bodyPlan(shape: string, id: string): readonly BodyPart[] | undef
       return bird(id);
     case "insecto":
       return insect(id);
+    case "miriapodo":
+      return myriapod(id);
     default:
       return undefined;
   }
@@ -237,6 +239,8 @@ export function gaitHz(kind: BodyKind, lengthM: number): number {
   if (kind === "ave") return 3;
   // Insects: the legs' tripod at a brisk step; the wings beat faster still (each wing's own `rate`).
   if (kind === "insecto") return 2.2;
+  // A myriapod's legs go in waves along its body, slowly (Arthropleura's trackways: Diplichnites).
+  if (kind === "miriapodo") return 0.8;
   if (kind === "cetaceo") return 0.35;
   return Math.max(0.6, Math.min(2.4, 1.6 / Math.sqrt(Math.max(0.2, lengthM))));
 }
@@ -285,6 +289,15 @@ interface InsectLook {
   readonly hindLegs?: number;
   readonly raptorial?: boolean;
   readonly legH?: number;
+  /** Palaeodictyoptera: a pair of small winglets on the prothorax, and the sucking beak under the head. */
+  readonly winglets?: boolean;
+  readonly beak?: boolean;
+  /** A roach's shield (pronotum) over the head, its colour. */
+  readonly pronotum?: number;
+  /** Tails at the abdomen's tip (a mayfly's three, a roach's two cerci), their length over z. */
+  readonly cerci?: { readonly n: number; readonly len: number };
+  /** Gill plates along the abdomen (a mayfly's nymph). */
+  readonly gills?: number;
 }
 const CLEAR = 0xdfe8ee;
 const INSECT: Readonly<Record<string, InsectLook>> = {
@@ -317,6 +330,17 @@ const INSECT: Readonly<Record<string, InsectLook>> = {
   // Robber fly (Asilidae): long tapering abdomen, bearded face, strong legs, two wings.
   asilido: { bodyW: 0.12, head: 0.15, thorax: 0.3, abdomen: 0.55, wings: 2, wingL: 0.44, wingC: 0.3, wingColor: 0xc8c0b0, beat: 5, flap: 0.8, eyes: 0x5a5a4a, antenna: 0.08, legH: 0.55 },
   // Formica: a queen of the wood ants, with her wings for the nuptial flight.
+  // ── The Carboniferous giants (sanctuary 3, data/carbonifero.ts), from their fossils ──
+  // Meganeura monyi: a griffenfly, as a dragonfly but with spiny legs and a stouter thorax; four long clear wings.
+  meganeura: { bodyW: 0.08, head: 0.09, thorax: 0.22, abdomen: 0.69, wings: 4, wingL: 0.47, wingC: 0.17, wingColor: 0xc8d4c8, beat: 2, flap: 0.45, eyes: 0x4a6a3a, thoraxColor: 0x2a3a2a, bands: 0x1a2a1a, antenna: 0.02 },
+  // Meganeuropsis permiana: the biggest, its wings with darker veins.
+  meganeuropsis: { bodyW: 0.08, head: 0.09, thorax: 0.22, abdomen: 0.69, wings: 4, wingL: 0.48, wingC: 0.16, wingColor: 0xb8b8a0, beat: 2, flap: 0.45, eyes: 0x6a5a2a, thoraxColor: 0x3a3a2a, bands: 0x2a2a1a, antenna: 0.02 },
+  // Mazothairos enormis: a palaeodictyopteran, wings held out flat (it could not fold them), banded; prothoracic winglets and a beak.
+  mazothairos: { bodyW: 0.12, head: 0.12, thorax: 0.28, abdomen: 0.6, wings: 4, wingL: 0.46, wingC: 0.55, wingColor: 0x9a8a6a, beat: 1.5, flap: 0.5, eyes: 0x2a2a2a, spots: 0x3a2a1a, antenna: 0.15, winglets: true, beak: true, cerci: { n: 2, len: 0.35 } },
+  // Archimylacris eggintoni: a roachoid, flat, its head under a shield (pronotum), leathery forewings, long antennae, cerci.
+  cucaracha: { bodyW: 0.7, head: 0.14, thorax: 0.22, abdomen: 0.64, wings: 2, wingL: 0.4, wingC: 0.75, wingColor: 0x7a5a32, beat: 3, flap: 0.6, eyes: 0x1a1a1a, pronotum: 0x5a3e22, antenna: 0.8, legH: 0.3, cerci: { n: 2, len: 0.12 } },
+  // A mayfly (its nymph in the pyramid's lake): gill plates along the abdomen, three tails.
+  efimera: { bodyW: 0.22, head: 0.16, thorax: 0.26, abdomen: 0.58, wings: 4, wingL: 0.4, wingC: 0.4, beat: 3, flap: 0.6, eyes: 0x2a2a2a, antenna: 0.12, legH: 0.3, cerci: { n: 3, len: 0.5 }, gills: 0xc8b8a0 },
   hormiga: { bodyW: 0.16, head: 0.26, thorax: 0.3, abdomen: 0.44, wings: 4, wingL: 0.42, wingC: 0.42, beat: 4, flap: 0.8, eyes: 0x111111, thoraxColor: 0x8a3a20, antenna: 0.3, legH: 0.5 },
 };
 /** An insect's look (the scene's far boxes read its colours). */
@@ -376,6 +400,20 @@ function insect(id: string): BodyPart[] {
       spots.forEach(([sx, sz], i) => parts.push(P(`mancha-${i}`, [sx * bw, L + 0.43, za], [0, 0, sz * v.abdomen, id.startsWith("mariquita") ? bw * 0.16 : bw * 0.45, 0.02, v.abdomen * (id.startsWith("mariquita") ? 0.12 : 0.15)], { color: v.spots })));
     }
   }
+  // The Carboniferous and the mayfly's extras: a roach's shield, a palaeodictyopteran's beak, tails, gill plates.
+  if (v.pronotum !== undefined) parts.push(P("pronoto", [0, L + 0.3, zt + v.thorax * 0.3], [0, 0.04, v.head * 0.4, bw * 1.05, 0.08, v.thorax * 0.9 + v.head * 0.6], { color: v.pronotum }));
+  if (v.beak) parts.push(P("pico", [0, L + 0.12, 0.5 - v.head * 0.6], [0, -0.12, -v.head * 0.4, 0.03, 0.24, 0.03], { color: DARK }));
+  if (v.cerci) {
+    const tip = 0.5 - v.head - v.thorax - v.abdomen;
+    for (let i = 0; i < v.cerci.n; i++) {
+      const sx = v.cerci.n === 3 ? i - 1 : i ? 1 : -1;
+      parts.push(P(`cerco-${i}`, [sx * bw * 0.15, L + 0.12, tip], [sx * v.cerci.len * 0.12, 0.02, -v.cerci.len / 2, 0.015, 0.02, v.cerci.len], { color: DARK, swing: { axis: "y", amp: 0.15, phase: i, rate: 0.6 } }));
+    }
+  }
+  if (v.gills !== undefined && nymph)
+    for (let i = 0; i < 6; i++)
+      for (const sx of [-1, 1]) parts.push(P(`branquia-${i}-${sx < 0 ? "izq" : "der"}`, [sx * bw * 0.5, L + 0.2, za - (i + 0.5) * (v.abdomen / 7)], [sx * bw * 0.25, 0, 0, bw * 0.5, 0.02, v.abdomen / 9], { color: v.gills, swing: { axis: "z", amp: 0.5, phase: i * 0.7, rate: 3 } }));
+  if (v.winglets && !nymph) for (const sx of [-1, 1]) parts.push(P(`aleta-protorax-${sx < 0 ? "izq" : "der"}`, [sx * bw * 0.4, top - 0.02, zt + v.thorax * 0.45], [sx * 0.06, 0, 0, 0.12, 0.012, 0.06], { color: v.wingColor ?? CLEAR }));
   // Wings: none on a nymph (only buds); the hind pair behind and smaller; a butterfly's with their spots.
   if (!nymph && v.wings) {
     const wl = v.wingL ?? 0.4;
@@ -400,6 +438,7 @@ function insect(id: string): BodyPart[] {
 function larva(id: string): BodyPart[] {
   const caterpillar = id === "mariposa";
   const grub = id === "abeja" || id === "abejorro" || id === "avispon" || id === "hormiga";
+  if (id === "tricoptero" || id === "quironomido") return aquaticLarva(id);
   const color = caterpillar ? 0x1a1a1a : grub ? 0xf4f0e0 : id === "mariquita" ? 0x2a2a3a : id === "crisopa" ? 0x8a7a60 : id === "sirfido" ? 0x9ab070 : 0xe8e0c8;
   const parts: BodyPart[] = [P("cabeza", [0, 0.25, 0.44], [0, 0.1, 0.03, 0.55, 0.5, 0.12], { color: caterpillar ? BLACK : grub ? 0xe8dcc0 : 0x6a4a2a, swing: { axis: "y", amp: 0.2, phase: 0, rate: 0.6 } })];
   const n = 8;
@@ -410,4 +449,45 @@ function larva(id: string): BodyPart[] {
     if (caterpillar && (i < 3 || (i > 4 && i < 8))) parts.push(P(`patita-${i}`, [0, 0, z], [0, 0.02, 0, 0.7, 0.06, 0.05], { color: DARK, swing: { axis: "x", amp: 0.25, phase: i * 0.8 } }));
   }
   return parts.map((p) => (p.color === undefined ? { ...p, color } : p));
+}
+
+/**
+ * The larvae of the pyramid's lake (sanctuary 3, data/larvas-lago.ts): the caddisfly's in its case of sand and leaf
+ * bits (Limnephilidae: only its head and three pairs of legs out of the case's mouth), and the midge's thin red one
+ * (Chironomus, red with haemoglobin), which wriggles.
+ */
+function aquaticLarva(id: string): BodyPart[] {
+  if (id === "tricoptero")
+    return [
+      P("estuche", [0, 0.3, -0.05], [0, 0.2, 0, 0.85, 0.75, 0.9], { color: 0x8a7a50 }),
+      P("estuche-hojas", [0, 0.3, -0.05], [0, 0.6, -0.1, 0.6, 0.1, 0.6], { color: 0x4a5a2a }),
+      P("cabeza", [0, 0.3, 0.42], [0, 0.05, 0.05, 0.45, 0.35, 0.14], { color: 0x3a2a1a, swing: { axis: "y", amp: 0.2, phase: 0, rate: 0.6 } }),
+      ...[-1, 1].flatMap((sx) => [0.32, 0.38, 0.44].map((z, k) => P(`pata-${k}-${sx < 0 ? "izq" : "der"}`, [sx * 0.2, 0.3, z], [sx * 0.2, -0.12, 0.04, 0.4, 0.05, 0.04], { color: 0x3a2a1a, swing: { axis: "x", amp: 0.4, phase: k + sx } }))),
+    ];
+  const parts: BodyPart[] = [P("cabeza", [0, 0.12, 0.47], [0, 0.05, 0, 0.5, 0.5, 0.06], { color: 0x5a1a1a })];
+  for (let i = 0; i < 10; i++) parts.push(P(`segmento-${i}`, [0, 0, 0.44 - (i + 0.5) * 0.09], [0, 0.4, 0, 0.75, 0.75, 0.095], { color: i % 2 ? 0xb02a2a : 0x9a2424, swing: { axis: "y", amp: 0.3, phase: i * 0.7, rate: 1.5 } }));
+  return parts;
+}
+
+/**
+ * A MYRIAPOD (Arthropleura, the Carboniferous giant: data/carbonifero.ts): a low flat body of ~30 segments, each under a
+ * plate (tergite) with its side lobes, and two pairs of legs on each (a millipede's diplosegment), walking in waves
+ * that run along the body; the head with its short antennae (Lhéritier et al. 2024). Size x is its width, z its length.
+ */
+function myriapod(_id: string): BodyPart[] {
+  const parts: BodyPart[] = [
+    P("cabeza", [0, 0.35, 0.47], [0, 0.1, 0.01, 0.55, 0.5, 0.05], { color: 0x3a2e24, swing: { axis: "y", amp: 0.1, phase: 0, rate: 0.4 } }),
+    ...[-1, 1].map((sx) => P(sx < 0 ? "antena-izq" : "antena-der", [sx * 0.15, 0.5, 0.5], [sx * 0.05, 0.05, 0.03, 0.04, 0.1, 0.07], { color: 0x2a2018, swing: { axis: "y", amp: 0.3, phase: sx, rate: 0.6 } })),
+  ];
+  const n = 28;
+  for (let i = 0; i < n; i++) {
+    const z = 0.45 - (i + 0.5) * (0.92 / n);
+    const w = 1 - 0.25 * Math.max(0, (i - n * 0.7) / (n * 0.3));
+    parts.push(P(`placa-${i}`, [0, 0.4, z], [0, 0.2, 0, w, 0.45, 0.92 / n + 0.004], { color: i % 2 ? 0x4a3c30 : 0x5a4a3a }));
+    parts.push(P(`lobulo-${i}`, [0, 0.4, z], [0, 0.32, 0, w * 1.08, 0.12, 0.92 / n - 0.004], { color: 0x6a5642 }));
+    // Two pairs of legs a segment; the wave runs back along the body.
+    for (const sx of [-1, 1])
+      for (const k of [0, 1]) parts.push(P(`pata-${i}-${k}-${sx < 0 ? "izq" : "der"}`, [sx * w * 0.42, 0.3, z + (k - 0.5) * (0.92 / n) * 0.5], [sx * 0.12, -0.15, 0, 0.3, 0.06, 0.008], { color: 0x2a2018, swing: { axis: "x", amp: 0.45, phase: i * 0.5 + (sx > 0 ? Math.PI : 0) } }));
+  }
+  return parts;
 }

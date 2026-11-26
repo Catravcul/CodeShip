@@ -380,7 +380,9 @@ const YOUNG_NAME: Record<string, [string, string]> = {
   pinguino: ["pollo", "pollos"], ave: ["pollo", "pollos"], pajaro: ["pollo", "pollos"], pinnipedo: ["cría", "crías"], cuadrupedo: ["cría", "crías"],
 };
 /** The young's word: «pollo», «cría», or an insect's «huevo» (its births are layings). */
-const youngWord = (s: AnimalSpec): [string, string] => (s.shape === "insecto" ? ["huevo", "huevos"] : YOUNG_NAME[s.shape]!);
+/** Its births are layings of eggs: the insects and the myriapods (the Carboniferous Arthropleura). */
+const laysEggs = (s: AnimalSpec): boolean => s.shape === "insecto" || s.shape === "miriapodo";
+const youngWord = (s: AnimalSpec): [string, string] => (laysEggs(s) ? ["huevo", "huevos"] : YOUNG_NAME[s.shape]!);
 const LIFE_WORD: Partial<Record<LifeStage, string>> = { huevo: "un huevo", larva: "una larva", ninfa: "una ninfa", pupa: "una pupa" };
 function log(st: BiomeState, e: Omit<BiomeEvent, "day" | "text">, text: string): void {
   st.events.push({ ...e, day: st.day, text });
@@ -646,7 +648,7 @@ export function step(st: BiomeState, dt: number, o: StepOptions = {}): void {
         for (let i = 0; i < s.young; i++) st.animals.push({ id: st.nextId++, species: s.id, female: rand(st) < 0.5, age: 0, reserve: s.fastDays, mother: a.id, lastBirthYear: -99, debt: {} });
         st.births[s.id] = (st.births[s.id] ?? 0) + s.young;
         const [one, many] = youngWord(s);
-        log(st, { species: s.id, kind: "nace", n: s.young }, s.shape === "insecto" ? `${s.name}: pone ${s.young} huevos` : s.young === 1 ? (one === "cría" ? `Nace una cría de ${s.name.toLowerCase()}` : `Nace un pollo de ${s.name.toLowerCase()}`) : `Nacen ${s.young} ${many} de ${s.name.toLowerCase()}`);
+        log(st, { species: s.id, kind: "nace", n: s.young }, laysEggs(s) ? `${s.name}: pone ${s.young} huevos` : s.young === 1 ? (one === "cría" ? `Nace una cría de ${s.name.toLowerCase()}` : `Nace un pollo de ${s.name.toLowerCase()}`) : `Nacen ${s.young} ${many} de ${s.name.toLowerCase()}`);
       } else if (!room) log(st, { species: s.id, kind: "muere", n: s.young, cause: "otras" }, `Una ${s.name.toLowerCase()} no cría este año: el valle está lleno`);
       else log(st, { species: s.id, kind: "muere", n: s.young, cause: "hambre" }, `Una ${s.name.toLowerCase()} pierde la camada: estaba sin reservas`);
     } else if (a.pregnant !== undefined && a.pregnant < year) a.pregnant = undefined;
@@ -861,11 +863,11 @@ export function census(st: BiomeState): CensusRow[] {
         s.visitor && !here.length
           ? `fuera: ${s.visitor.from}`
           : dormantIn(s, month)
-            ? s.shape === "insecto" ? "pasa el invierno escondido" : "hibernando en su madriguera"
+            ? laysEggs(s) ? "pasa el invierno escondido" : "hibernando en su madriguera"
             : st.away[s.id]
               ? `${st.away[s.id]} comiendo en otra parte; vuelven en su época de cría`
               : month === s.birthMonth
-                ? s.shape === "insecto" ? "en época de puesta" : "en época de crías"
+                ? laysEggs(s) ? "en época de puesta" : "en época de crías"
                 : undefined;
       rows.push({ ...base, count: here.length, stages, kg: here.reduce((t, a) => t + massOf(a), 0), eats: s.diet.map((f) => foodName(st, f.food) + (f.stages ? ` (${f.stages.map((x) => STAGE_LABEL[x]).join(", ")})` : "")), note });
     }

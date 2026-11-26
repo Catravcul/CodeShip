@@ -1,5 +1,5 @@
 /**
- * THE HONEYBEE OF THE CLOUD GLOBE (Berón 2026-11-25; docs/design/globo-nubes.md), sanctuary 3's sibling of sanctuary 1's
+ * THE HONEYBEE OF THE PUPA at the hollow pyramid's middle (Berón 2026-11-25 and 2026-11-26; docs/design/pupa-abeja.md; it was the cloud globe's), sanctuary 3's sibling of sanctuary 1's
  * octopus egg (sanctuary-one/domain/pulpo.ts): a worker of the Asian honeybee, Apis cerana (the honeybee native to
  * Hunza and Gilgit; data/bioma.ts), from the egg the queen lays in its wax cell to the adult that chews through the cap
  * and flies off. Pure: what it looks like at a moment `k` of its development (0 laid … 1 the adult out of its cell),
@@ -57,7 +57,7 @@ export const BEE_STAGES: readonly BeeStage[] = (
   ] as const satisfies readonly Omit<BeeStage, "at">[]
 ).map((s) => ({ ...s, at: D(s.day) }));
 
-/** After emerging, the adult flies round the globe for this share of the cycle before the queen lays a new egg. */
+/** After emerging, the adult flies a round under the pyramid's ceiling for this share of the cycle before the queen lays a new egg. */
 export const FLY_SHARE = 0.15;
 
 /** The worker's cell (adult lengths) and the egg. */
@@ -93,7 +93,7 @@ export interface BeeLook {
   readonly body: number;
   /** The wings: 0 folded pads … 1 spread (the adult). */
   readonly wings: number;
-  /** Out of the cell: 0 inside … 1 flown off round the globe. */
+  /** Out of the cell: 0 inside … 1 flown off round the hall. */
   readonly out: number;
 }
 

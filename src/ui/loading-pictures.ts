@@ -60,10 +60,10 @@ function tree(x: number, base: number, h: number, floors: readonly string[]): st
 
 /**
  * Sanctuary 3, the aerial one: the pyramid mountain covered in earth with its glowing caves, the colossal trees inside
- * suggested by its entrance, the clouds and the balloon of clouds with its bee, giant insects and the flying carpets.
+ * suggested by its entrance, the clouds, the bee's pupa in its translucent cell among the trees, giant insects and the flying carpets.
  */
 const SANTUARIO_3 = `
-<svg viewBox="0 0 360 300" role="img" aria-label="El santuario 3: la montaña pirámide de tierra con sus cuevas que brillan y los árboles colosales dentro, nubes, el globo de nubes con su abeja, insectos gigantes y alfombras voladoras">
+<svg viewBox="0 0 360 300" role="img" aria-label="El santuario 3: la montaña pirámide de tierra con sus cuevas que brillan y los árboles colosales dentro, nubes, la pupa de la abeja en su celda translúcida, insectos gigantes y alfombras voladoras">
   <defs>
     <linearGradient id="ld3-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#16325e"/><stop offset="0.55" stop-color="#5f9cc8"/><stop offset="1" stop-color="#f0d3a2"/></linearGradient>
     <linearGradient id="ld3-earth" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8a6240"/><stop offset="1" stop-color="#4a3220"/></linearGradient>
@@ -86,19 +86,15 @@ const SANTUARIO_3 = `
     <rect x="140" y="188" width="80" height="80" fill="url(#ld3-inside)"/>
     <rect x="156" y="200" width="9" height="66" fill="#3a2414"/><rect x="186" y="194" width="12" height="72" fill="#2e1c10"/><rect x="204" y="206" width="7" height="60" fill="#3a2414"/>
     <ellipse cx="162" cy="204" rx="14" ry="8" fill="#6fae4f"/><ellipse cx="193" cy="198" rx="18" ry="9" fill="#7fc05a"/><ellipse cx="210" cy="210" rx="10" ry="6" fill="#6fae4f"/>
+    <!-- The bee's pupa at the middle: a translucent cell of wax, the bee inside. -->
+    <path d="M172 262 L172 222 L180 217 L188 222 L188 262 Z" fill="#f2c868" opacity="0.45" stroke="#a07a28" stroke-width="1"/>
+    <g class="ld3-bee"><ellipse cx="180" cy="242" rx="3.6" ry="8" fill="#f4eee0"/><circle cx="180" cy="232" r="2.6" fill="#8a4a8a"/><path d="M177 244 h6 M177 248 h6" stroke="#9a6a28" stroke-width="1.2"/></g>
   </g>
   <path d="M146 262 L146 228 Q146 196 180 192 Q214 196 214 228 L214 262" fill="none" stroke="#2a1a0e" stroke-width="4"/>
   <path d="M0 262 L360 262 L360 300 L0 300 Z" fill="#46703a"/>
   <path d="M0 262 q30 -6 60 0 t60 0 t60 0 t60 0 t60 0 t60 0" fill="#5a8a46"/>
   <!-- Near clouds. -->
   <g class="ld3-cloud ld3-cloud-near" fill="#ffffff" opacity="0.85">${cloud(70, 232, 1.4)}${cloud(318, 120, 0.9)}</g>
-  <!-- The balloon of clouds with its bee. -->
-  <g class="ld3-balloon">
-    <g fill="#f7fbff">${[[0, 0, 20], [-16, 6, 13], [16, 6, 13], [-8, -14, 12], [10, -13, 12], [0, 14, 14]].map(([dx, dy, r]) => `<circle cx="${294 + dx!}" cy="${70 + dy!}" r="${r}"/>`).join("")}</g>
-    <path d="M286 92 L290 104 M302 92 L298 104" stroke="#d8e4ee" stroke-width="1.2"/>
-    <rect x="286" y="104" width="16" height="9" rx="2" fill="#a8743f"/>
-    <g class="ld3-bee"><ellipse cx="294" cy="100" rx="7" ry="4.6" fill="#f2c030"/><path d="M291 96 v8 M295 95.6 v8.8" stroke="#1d1d1d" stroke-width="1.6"/><circle cx="300" cy="99" r="2.6" fill="#1d1d1d"/><ellipse cx="292" cy="94" rx="4.5" ry="2.6" fill="#e8f6ff" opacity="0.8"/><ellipse cx="297" cy="94" rx="3.6" ry="2.2" fill="#e8f6ff" opacity="0.7"/></g>
-  </g>
   <!-- Giant insects: a dragonfly and a butterfly. -->
   <g class="ld3-dragonfly"><path d="M40 92 L92 96" stroke="#1f5a4a" stroke-width="4" stroke-linecap="round"/><circle cx="93" cy="96" r="4" fill="#2f8f6f"/><ellipse cx="78" cy="88" rx="14" ry="4" fill="#cfefff" opacity="0.75" transform="rotate(-14 78 88)"/><ellipse cx="78" cy="103" rx="14" ry="4" fill="#cfefff" opacity="0.75" transform="rotate(14 78 103)"/><ellipse cx="66" cy="89" rx="11" ry="3.4" fill="#cfefff" opacity="0.6" transform="rotate(-10 66 89)"/><ellipse cx="66" cy="102" rx="11" ry="3.4" fill="#cfefff" opacity="0.6" transform="rotate(10 66 102)"/></g>
   <g class="ld3-butterfly"><path d="M250 42 q-14 -14 -18 2 q6 10 18 2 Z" fill="#e07a3a"/><path d="M250 42 q14 -14 18 2 q-6 10 -18 2 Z" fill="#e07a3a"/><path d="M250 44 q-10 10 -4 14 q6 -2 4 -14 Z M250 44 q10 10 4 14 q-6 -2 -4 -14 Z" fill="#b8562a"/><path d="M250 36 v18" stroke="#2a1a0e" stroke-width="1.6"/></g>

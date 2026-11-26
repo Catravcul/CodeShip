@@ -21,4 +21,17 @@ describe("the bodies of the heights (sanctuary 3's air biome)", () => {
     // An animal of sanctuary 1 is untouched (a reindeer keeps its antlers and ears).
     expect(bodyPlan("cuadrupedo", "reno")!.map((p) => p.name)).toContain("asta-izq");
   });
+
+  it("the Carboniferous giants and the lake's larvae: Arthropleura's segments with two pairs of legs, the palaeodictyopteran's winglets and beak, the roach's shield, the mayfly nymph's gills", () => {
+    const names = (shape: string, id: string) => bodyPlan(shape, id)!.map((p) => p.name);
+    const a = names("miriapodo", "arthropleura");
+    expect(a.filter((n) => n.startsWith("placa-")).length).toBeGreaterThanOrEqual(26);
+    expect(a.filter((n) => n.startsWith("pata-")).length).toBe(4 * a.filter((n) => n.startsWith("placa-")).length);
+    expect(names("insecto", "mazothairos")).toEqual(expect.arrayContaining(["pico", "aleta-protorax-izq", "ala-trasera-der"]));
+    expect(names("insecto", "cucaracha")).toContain("pronoto");
+    expect(names("insecto", "efimera-ninfa").filter((n) => n.startsWith("branquia-")).length).toBe(12);
+    expect(names("insecto", "efimera-ninfa").filter((n) => n.startsWith("cerco-")).length).toBe(3);
+    expect(names("insecto", "larva-tricoptero")).toContain("estuche");
+    expect(names("insecto", "larva-quironomido").filter((n) => n.startsWith("segmento-")).length).toBe(10);
+  });
 });

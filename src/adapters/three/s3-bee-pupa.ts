@@ -1,16 +1,15 @@
 import * as THREE from "three";
 import { BEE_EGG, CELL, beeAt, type BeeLook } from "@modules/aerial-sanctuary/domain/abeja";
-import { BEE_LENGTH_M, CLOUD_GLOBE, CLOUD_LANDING, COMB } from "@modules/aerial-sanctuary/data/globo-nubes";
-import { hash01 } from "@modules/fauna/domain/roam";
+import type { PupaPlan } from "@modules/aerial-sanctuary/data/pupa-abeja";
+import { HOLLOW } from "@modules/aerial-sanctuary/data/montana";
 
 /**
- * The cloud globe drawn (docs/design/globo-nubes.md): a shell of cloud puffs (one instanced mesh), its landing of
- * dense cloud, and at its centre the comb of 7 hexagonal wax cells (translucent, so she sees inside) with the Asian
- * honeybee worker in the middle one, from egg to adult (domain/abeja.ts): egg, embryo, larva, prepupa, pupa, adult,
- * every part a box of one instanced mesh (one draw call), posed each frame from the look of that moment. About six
- * draw calls in all.
+ * The bee's pupa drawn (docs/design/pupa-abeja.md): at the hollow pyramid's middle a giant worker cell of wax stands
+ * on its foot in the lake, translucent (its six walls a clear tube with their edges drawn), with the Asian honeybee
+ * worker inside from egg to adult (domain/abeja.ts): egg, embryo, larva, prepupa, pupa, adult, every part a box of
+ * one instanced mesh (one draw call), posed each frame from the look of that moment; its wax cap seals it from day 8
+ * and the adult chews through it, flies a round under the ceiling and the queen lays again. About six draw calls.
  */
-const PUFFS = 240;
 const BEE_BOXES = 96;
 
 /** Eye colour of the pupa, by stage (white, pink, purple, brown: Jay 1962). */
@@ -19,7 +18,7 @@ const PEARL = new THREE.Color(0xf4f0e4);
 const DARK = new THREE.Color(0x2a1c10);
 const BAND = new THREE.Color(0x9a6a28);
 
-export class CloudGlobeView {
+export class BeePupaView {
   readonly root = new THREE.Group();
   private readonly bee: THREE.InstancedMesh;
   private readonly cap: THREE.Mesh;
@@ -33,72 +32,44 @@ export class CloudGlobeView {
   private readonly v = new THREE.Vector3();
   private readonly s = new THREE.Vector3();
   private readonly c = new THREE.Color();
+  /** The adult's length here, m (the cell's depth over CELL.depth). */
+  private readonly L: number;
 
-  constructor() {
-    const G = CLOUD_GLOBE.value;
-    this.root.name = "globo-nubes";
-    // The shell: puffs over the sphere (a Fibonacci spiral), each its own size; they let the light and her through.
-    const puff = new THREE.IcosahedronGeometry(1, 1);
-    const shell = new THREE.InstancedMesh(puff, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, transparent: true, opacity: 0.42, depthWrite: false, side: THREE.DoubleSide, flatShading: true }), PUFFS);
-    shell.name = "globo-nubes-capa";
-    const M = new THREE.Matrix4();
-    const q = new THREE.Quaternion();
-    for (let i = 0; i < PUFFS; i++) {
-      const y = 1 - (2 * (i + 0.5)) / PUFFS;
-      const rr = Math.sqrt(1 - y * y);
-      const a = i * 2.39996;
-      const s = 26 + 22 * hash01(i, 1);
-      const R = G.r - s * 0.35;
-      M.compose(new THREE.Vector3(G.x + Math.cos(a) * rr * R, G.y + y * R, G.z + Math.sin(a) * rr * R), q, new THREE.Vector3(s * 1.3, s, s * 1.15));
-      shell.setMatrixAt(i, M);
-    }
-    shell.renderOrder = 2;
-    this.root.add(shell);
-    // The landing: a slab of dense cloud under its lower edge (the carpet station's place).
-    const L = CLOUD_LANDING;
-    const land = new THREE.Mesh(new THREE.BoxGeometry(L.half * 2, 3, L.half * 2), new THREE.MeshStandardMaterial({ color: 0xf4f6f8, roughness: 1 }));
-    land.position.set(L.x, L.y - 1.5, L.z);
-    land.name = "globo-nubes-rellano";
-    this.root.add(land);
-    // The comb: 7 cells (one in the middle, six round it), open hexagonal tubes of wax, and its midrib behind them.
-    const C = COMB;
-    const r = C.cellWidth / Math.sqrt(3);
-    this.e.set(-C.tilt, 0, 0);
+  constructor(private readonly p: PupaPlan) {
+    this.L = p.beeLength;
+    this.root.name = "pupa-abeja";
+    const L = this.L;
+    const w = CELL.width * L;
+    const d = CELL.depth * L;
+    const r = w / Math.sqrt(3);
+    // The cell stands upright: its axis (+z in its frame) up, its bottom on the gallery, its opening under the ceiling.
+    this.e.set(-Math.PI / 2, 0, 0);
     this.q.setFromEuler(this.e);
-    const base = new THREE.Vector3(C.x, C.y, C.z - C.depth / 2).add(new THREE.Vector3(0, 0, 0));
-    this.cell.compose(base, this.q, new THREE.Vector3(1, 1, 1));
-    const tube = new THREE.CylinderGeometry(r, r, C.depth, 6, 1, true).rotateX(Math.PI / 2).rotateZ(Math.PI / 6).translate(0, 0, C.depth / 2);
-    // The comb's face round the bee's cell: six sealed neighbours (solid wax prisms, their caps at the face), and the bee's own
-    // cell a clear tube with its edges drawn, so she sees into it.
-    const lid = new THREE.CylinderGeometry(r * 0.96, r * 0.96, C.depth, 6).rotateX(Math.PI / 2).rotateZ(Math.PI / 6).translate(0, 0, C.depth / 2);
-    const wax = new THREE.InstancedMesh(lid, new THREE.MeshStandardMaterial({ color: 0xe2b85a, roughness: 0.7, flatShading: true }), 6);
-    wax.name = "globo-nubes-panal";
-    for (let k = 0; k < 6; k++) {
-      M.multiplyMatrices(this.cell, new THREE.Matrix4().makeTranslation(Math.cos((k * Math.PI) / 3 + Math.PI / 6) * C.cellWidth, Math.sin((k * Math.PI) / 3 + Math.PI / 6) * C.cellWidth, 0));
-      wax.setMatrixAt(k, M);
-    }
-    this.root.add(wax);
-    const own = new THREE.Mesh(tube, new THREE.MeshStandardMaterial({ color: 0xe8c060, roughness: 0.6, transparent: true, opacity: 0.14, side: THREE.DoubleSide, depthWrite: false }));
+    this.cell.compose(new THREE.Vector3(p.x, p.y0, p.z), this.q, new THREE.Vector3(1, 1, 1));
+    const tube = new THREE.CylinderGeometry(r, r, d, 6, 1, true).rotateX(Math.PI / 2).rotateZ(Math.PI / 6).translate(0, 0, d / 2);
+    const own = new THREE.Mesh(tube, new THREE.MeshStandardMaterial({ color: 0xd89a30, roughness: 0.4, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false }));
     own.applyMatrix4(this.cell);
-    own.name = "globo-nubes-celda";
+    own.name = "pupa-abeja-celda";
     own.renderOrder = 4;
     this.root.add(own);
     const edges = new THREE.LineSegments(new THREE.EdgesGeometry(tube), new THREE.LineBasicMaterial({ color: 0xa07a28 }));
     edges.applyMatrix4(this.cell);
-    edges.name = "globo-nubes-celda-aristas";
+    edges.name = "pupa-abeja-aristas";
     this.root.add(edges);
-    const rib = new THREE.Mesh(new THREE.CylinderGeometry(C.cellWidth * 1.6, C.cellWidth * 1.6, 2, 6).rotateX(Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xc89a40, roughness: 0.7 }));
-    rib.applyMatrix4(new THREE.Matrix4().multiplyMatrices(this.cell, new THREE.Matrix4().makeTranslation(0, 0, -1)));
-    rib.name = "globo-nubes-panal-base";
-    this.root.add(rib);
-    // The wax cap on the middle cell (slightly domed in a worker's cell: a flat hexagon here).
+    // Its foot: a solid prism of wax from the lake's bottom to the gallery, and the cell's floor (the rhombi of a real cell: flat here).
+    const foot = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.04, r * 1.12, p.y0 - HOLLOW.floorY - 0.05, 6).rotateY(Math.PI / 6), new THREE.MeshStandardMaterial({ color: 0xc89a40, roughness: 0.7, flatShading: true }));
+    // Its top just under the cell's bottom, so the egg and the young larva lie on it, not inside it.
+    foot.position.set(p.x, (HOLLOW.floorY + p.y0 - 0.05) / 2, p.z);
+    foot.name = "pupa-abeja-pie";
+    this.root.add(foot);
+    // The wax cap (slightly domed in a worker's cell: a flat hexagon here), translucent so the pupa shows through.
     this.cap = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1.2, 6).rotateX(Math.PI / 2).rotateZ(Math.PI / 6), new THREE.MeshStandardMaterial({ color: 0xd8b058, roughness: 0.8, transparent: true, opacity: 0.55, depthWrite: false }));
-    this.cap.name = "globo-nubes-operculo";
+    this.cap.name = "pupa-abeja-operculo";
     this.cap.matrixAutoUpdate = false;
     this.root.add(this.cap);
     // The bee (egg, larva, pupa, adult): boxes posed each frame.
     this.bee = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.75 }), BEE_BOXES);
-    this.bee.name = "globo-nubes-abeja";
+    this.bee.name = "pupa-abeja-abeja";
     this.bee.frustumCulled = false;
     this.bee.setColorAt(0, PEARL);
     this.root.add(this.bee);
@@ -107,7 +78,7 @@ export class CloudGlobeView {
   /** One box in the cell's frame (adult lengths: `u` along the axis from the bottom, `v` up, `w` across), rotated. */
   private box(frame: THREE.Matrix4, u: number, v: number, w: number, su: number, sv: number, sw: number, color: THREE.Color, rx = 0, ry = 0, rz = 0): void {
     if (this.n >= BEE_BOXES) return;
-    const L = BEE_LENGTH_M;
+    const L = this.L;
     this.e.set(rx, ry, rz);
     this.q.setFromEuler(this.e);
     this.P.compose(this.v.set(w * L, v * L, u * L), this.q, this.s.set(Math.max(1e-3, sw * L), Math.max(1e-3, sv * L), Math.max(1e-3, su * L)));
@@ -169,7 +140,7 @@ export class CloudGlobeView {
     // The cap.
     const cap = p.cap;
     this.cap.visible = cap > 0.01;
-    if (this.cap.visible) this.cap.matrix.multiplyMatrices(F, new THREE.Matrix4().compose(this.v.set(0, 0, COMB.depth), this.q.identity(), this.s.set(cap, cap, 1)));
+    if (this.cap.visible) this.cap.matrix.multiplyMatrices(F, new THREE.Matrix4().compose(this.v.set(0, 0, CELL.depth * this.L), this.q.identity(), this.s.set(cap, cap, 1)));
     this.bee.count = this.n;
     this.bee.instanceMatrix.needsUpdate = true;
     if (this.bee.instanceColor) this.bee.instanceColor.needsUpdate = true;
@@ -181,16 +152,17 @@ export class CloudGlobeView {
     // In the cell (its head at the cap), or flying out and round the globe's centre.
     let frame = this.cell;
     if (p.out > 0) {
-      const G = CLOUD_GLOBE.value;
+      // Out of the cap, then a round over the cell under the pyramid's ceiling, among the trees.
+      const P = this.p;
       const crawl = Math.min(1, p.out / 0.2);
       const fly = Math.max(0, (p.out - 0.2) / 0.8);
       const ang = fly * Math.PI * 2;
-      const R = G.r * 0.62 * Math.min(1, fly * 4);
-      const out = new THREE.Matrix4().multiplyMatrices(this.cell, new THREE.Matrix4().makeTranslation(0, 0, crawl * COMB.depth * 1.1));
+      const R = (P.r + 25) * Math.min(1, fly * 4);
+      const out = new THREE.Matrix4().multiplyMatrices(this.cell, new THREE.Matrix4().makeTranslation(0, 0, crawl * P.h * 1.05));
       if (fly > 0) {
-        const pos = new THREE.Vector3(G.x + Math.sin(ang) * R, G.y + 20 * Math.sin(ang * 2), COMB.z + COMB.depth * 0.8 + Math.cos(ang) * R * 0.8);
+        const pos = new THREE.Vector3(P.x + Math.sin(ang) * R, P.y0 + P.h * 1.15 + 12 * Math.sin(ang * 2), P.z + Math.cos(ang) * R);
         out.compose(pos, this.q.setFromEuler(this.e.set(0, ang + Math.PI / 2, 0)), this.s.set(1, 1, 1));
-        out.multiply(new THREE.Matrix4().makeTranslation(0, 0, -0.5 * BEE_LENGTH_M));
+        out.multiply(new THREE.Matrix4().makeTranslation(0, 0, -0.5 * this.L));
       }
       frame = out;
     }

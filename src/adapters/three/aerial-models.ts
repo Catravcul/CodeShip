@@ -73,8 +73,8 @@ export function buildBlocks(blocks: readonly Block[]): THREE.Group {
   }
   for (const [look, geos] of by) {
     // The centrifuge's gondola is drawn by its rig (s3-rigs.ts), which swings it round on the arm; the LM mock-up by
-    // the simulators (s3-simulators.ts), with the lander's own cabin.
-    if (look === "cohete" || look === "gondola" || look === "lm-maqueta" || look === "oculto") continue;
+    // the simulators (s3-simulators.ts), with the lander's own cabin; the giant trees' trunks by s3-giant-trees.ts.
+    if (look === "cohete" || look === "gondola" || look === "lm-maqueta" || look === "oculto" || look === "tronco-gigante") continue;
     const m = new THREE.Mesh(mergeGeometries(geos), LOOK[look] ?? MOUNTAIN_LOOKS[look] ?? mat(0xaaaaaa));
     m.name = `bloques-${look}`;
     g.add(m);

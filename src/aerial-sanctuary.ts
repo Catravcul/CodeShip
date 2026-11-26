@@ -408,7 +408,7 @@ for (const [a, b] of L.graph.links)
 /** «Árbol de los servicios · piso 2», «Cueva sur». */
 const stationName = (id: string) => {
   const s = stationById.get(id);
-  return !s ? id : s.building && !s.label.startsWith(s.building) ? `${s.building} · ${s.label.toLowerCase()}` : s.label;
+  return !s ? id : s.building && !s.building.toLowerCase().includes(s.label.toLowerCase()) ? `${s.building} · ${s.label.toLowerCase()}` : s.building || s.label;
 };
 function flyCarpet(from: string, to: string, then: () => void): void {
   const a = stationById.get(from);
@@ -1533,4 +1533,9 @@ if (frameStats) (window as unknown as { codeshipS3: unknown }).codeshipS3 = {
   /** Test hook: walk her by herself to a way point (as «Ir» does), or put her there at once. */
   walkTo: (id: string) => walkTo(id, "Prueba"),
   placeAt: placeAtPoint,
+  /** Test hook: where the camera looks (yaw, pitch). */
+  look(y: number, p: number) {
+    yaw = y;
+    pitch = p;
+  },
 };

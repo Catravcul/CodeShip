@@ -87,7 +87,7 @@ export class CarpetStations {
 
   /** The orange button on a station: «Volar» (its label names the station). */
   button(st: CarpetStation, onClick: () => void = () => this.open(st)): Interaction {
-    return { icon: ICON.carpet, label: `Volar: ${st.kind === "piso" ? "estación de alfombras" : `${st.label.toLowerCase()} de ${st.building}`}`, word: "Volar", onClick };
+    return { icon: ICON.carpet, label: `Volar: ${st.kind === "piso" ? "estación de alfombras" : st.label === st.building ? st.label.toLowerCase() : `${st.label.toLowerCase()} de ${st.building}`}`, word: "Volar", onClick };
   }
 
   /** Opens its carpets' window. */

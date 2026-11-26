@@ -211,6 +211,31 @@ export function placeTree(t: GiantTreeDef, size: (id: string) => RoomSize): Plac
   return { def: t, x: tx, z: tz, floors, top: ceilingAt(tx, tz) };
 }
 
+/**
+ * A giant tree's crown (Berón 2026-11-26: «los árboles colosales deben parecer árboles: corteza, ramas, hojas, frutos y
+ * flores»): its limbs, leaves, fruit and flowers spread round the trunk from a little over its highest room up to the
+ * ceiling it holds, so no floor, lane or flight goes through it. Ours (ficción, like the trees). World m.
+ */
+export const CROWN = { over: 12, caveOver: 20, reach: 34, minDepth: 18 } as const;
+export interface Crown {
+  readonly tree: string;
+  readonly x: number;
+  readonly z: number;
+  readonly y0: number;
+  readonly y1: number;
+  readonly r: number;
+}
+/**
+ * A tree's crown: all the crowns start over the highest room of any tree and over the caves' ends (`caveOver` m over
+ * the highest cave floor), so the carpets cross from tree to tree and to the caves under them.
+ */
+export function crownOf(t: PlacedTree, all: readonly PlacedTree[]): Crown | undefined {
+  const y0 = Math.max(Math.max(...all.flatMap((q) => q.floors.map((f) => f.top))) + CROWN.over, Math.max(...caves().map((c) => c.y)) + CROWN.caveOver);
+  const y1 = t.top;
+  if (y1 - y0 < CROWN.minDepth) return undefined;
+  return { tree: t.def.id, x: t.x, z: t.z, y0, y1, r: CROWN.reach };
+}
+
 /** The highest point under the ceiling a rectangle keeps (its corner farthest out). */
 export function ceilingOver(r: Rect): number {
   return Math.min(ceilingAt(r.x0, r.z0), ceilingAt(r.x0, r.z1), ceilingAt(r.x1, r.z0), ceilingAt(r.x1, r.z1));
@@ -272,6 +297,8 @@ export interface HollowStation extends CarpetStation {
 
 export interface HollowPlan {
   readonly trees: readonly PlacedTree[];
+  /** The trees' crowns (their limbs, leaves, fruit and flowers). */
+  readonly crowns: readonly Crown[];
   readonly stations: readonly HollowStation[];
   readonly towers: readonly CarpetTower[];
   /** The carpets' way over everything inside (under the ceiling). */
@@ -449,6 +476,9 @@ export function buildHollow(b: HollowBuilder, k: number, size: (id: string) => R
     const trunk = around(t.x, t.z, T);
     b.block("tronco-gigante", { ...trunk, y0: H.floorY - 1, y1: t.top + 6 });
     b.props.push({ kind: "giant-tree", x: t.x, y: H.floorY, z: t.z, size: { x: 2 * T, y: t.top - H.floorY, z: 2 * T }, label: t.def.label });
+    // Its crown under the ceiling (drawn by adapters/three/s3-giant-trees.ts): solid air for the carpets.
+    const cr = crownOf(t, trees);
+    if (cr) b.block("oculto", { ...around(t.x, t.z, cr.r), y0: cr.y0, y1: cr.y1 });
     // The root deck on the lake, round the trunk, with its station («pie»).
     const D = GIANT.deckHalf;
     const deck = around(t.x, t.z, D);
@@ -592,5 +622,6 @@ export function buildHollow(b: HollowBuilder, k: number, size: (id: string) => R
   // ── The campus's helipad: outside, on the apron at the south cave's mouth ──
   const sur = caves()[0]!;
   const heli = { x: C.x + sur.from.x, y: heightAt(MOUNTAIN.value, sur.from.x, sur.from.z - APRON_M) + 0.05, z: C.z + sur.from.z - APRON_M, half: heliHalf };
-  return { trees, stations, towers, sky, heli, starship: { x: sx, z: sz, baseY: H.floorY, k, deck3Y } };
+  const crowns = trees.map((t) => crownOf(t, trees)).filter((c): c is Crown => !!c);
+  return { trees, crowns, stations, towers, sky, heli, starship: { x: sx, z: sz, baseY: H.floorY, k, deck3Y } };
 }

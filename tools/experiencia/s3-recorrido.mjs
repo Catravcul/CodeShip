@@ -38,18 +38,25 @@ async function until(j, ok, ms) {
   return s;
 }
 
-/** Every look on the way: she never jumps further than she could walk, swim or fly in that time (no teleport). */
+/**
+ * Every look on the way: she never jumps further than she could walk, swim or fly in that time (no teleport). Past
+ * `ms` it keeps watching while she is still on her way (she moved in the last minute), up to 25 min: the walks of the
+ * hollow mountain are long (~400 m and carpet hops, montana-hueca.md) and a slow runner's few frames a second, each
+ * step capped, make them several times longer (PX-45 on CI run 45720318612 was still walking at 330 s).
+ */
 async function track(j, ok, ms, maxMs) {
   const t0 = Date.now();
   let s = await s3(j.page);
   let worst = 0;
   let at = "";
-  while (!ok(s) && Date.now() - t0 < ms) {
+  let moved = Date.now();
+  while (!ok(s) && (Date.now() - t0 < ms || (Date.now() - moved < 60000 && Date.now() - t0 < 1500000))) {
     const a = s;
     const ta = Date.now();
     await j.page.waitForTimeout(300);
     s = await s3(j.page);
     const d = Math.hypot(s.body.x - a.body.x, s.body.y - a.body.y, s.body.z - a.body.z);
+    if (d > 0.05) moved = Date.now();
     const v0 = d / Math.max(0.3, (Date.now() - ta) / 1000);
     // On a carpet of the hollow mountain she flies at up to its 12 m/s cruise (montana-hueca.md; the samples' timing
     // jitters by a few hundred ms): faster than 20 m/s is a jump.
@@ -150,7 +157,7 @@ export async function s3Recorrido(j) {
   await j.tap('.island-nav .mw-pick[data-pick="lanzadera"]', "Lanzadera en la lista");
   await j.tap('.island-nav .mw-go[data-fly="lanzadera"]', "Volar a la Lanzadera");
   // «Por reto» (the navigation's gear; reglas §3.6): the flight is programmed on the sheet, then flown in sight (PX-46).
-  await until(j, (s) => s.mode === "reto" || s.mode === "vuelo", 60000);
+  await j.untilArrived(() => s3(p), (s) => s.mode === "reto" || s.mode === "vuelo", 60000);
   if ((await s3(p)).mode === "reto") {
     await j.waitDuel(30000);
     for (let i = 0; i < 3 && (await p.evaluate(() => window.codeshipS3.exercise ?? window.codeshipS3.trace?.state)); i++) {
@@ -165,7 +172,10 @@ export async function s3Recorrido(j) {
   const f1 = await until(j, (s) => s.mode === "vuelo" && s.craftY > 40, 40000);
   j.check("el helicóptero sube a su altura de crucero", f1.craftY > 40, String(f1.craftY));
   await capture(j, "vuelo", "Santuario 3: en vuelo a la lanzadera");
-  const f2 = await track(j, (s) => s.mode === "libre", 150000, 120);
+  // At most twice the S-92's cruise (78 m/s, facts.ts), the margin the walks have (1,4 m/s against 3): the samples are
+  // taken between frames and a frame late or early makes one look up to ×1,7 faster (131 m/s locally); the island hop
+  // is ~1 km, so a teleport still shows.
+  const f2 = await track(j, (s) => s.mode === "libre", 150000, 160);
   j.check("aterriza en la lanzadera, andando, sin saltos mayores que el vuelo", f2.s.island === "lanzadera" && f2.s.body.motion === "gravedad" && f2.ok, `${f2.s.island} · ${f2.worst.toFixed(1)} m/s ${f2.at}`);
   await capture(j, "lanzadera", "Santuario 3: en la lanzadera");
 
@@ -184,7 +194,7 @@ export async function s3Recorrido(j) {
   await j.tap('.areas-window [data-pick="lanzadera-arbol:plataforma"]', "Plataforma de lanzamiento en el mapa");
   await capture(j, "areas", "Santuario 3: las áreas de la lanzadera");
   await j.tap('.areas-window [data-area="lanzadera-arbol:plataforma"]', "Ir: Plataforma de lanzamiento");
-  const r1 = await until(j, (s) => s.mode === "ascensor", 120000);
+  const r1 = await j.untilArrived(() => s3(p), (s) => s.mode === "ascensor", 120000);
   j.check("Áreas la lleva andando al ascensor del tronco", r1.mode === "ascensor", r1.mode);
   const r2 = await until(j, (s) => s.mode === "ascensor" && s.cabY > 40, 60000);
   j.check("sube en la cabina, que se ve subir por el tronco", r2.cabY > 40 && Math.abs(r2.body.y - r2.cabY) < 0.5, JSON.stringify({ cab: r2.cabY, y: r2.body.y }));

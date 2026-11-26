@@ -558,6 +558,47 @@ export class Journey {
     return this.tapAt(this.page.locator(".duel .submit"));
   }
 
+  /**
+   * Sanctuary 3's long trips (the hollow mountain: ~400 m on foot plus carpet hops, montana-hueca.md): polls `read()`
+   * until `ok(state)`. Past `ms` it keeps waiting while she is still on her way (her `body` moved in the last minute),
+   * as a player watches her walk, up to `cap`: on a slow runner (CI: few frames a second, each step capped) the same
+   * walk takes several times longer, but she never stands still. Returns the last state.
+   */
+  async untilArrived(read, ok, ms, cap = 1500000) {
+    const t0 = Date.now();
+    let s = await read();
+    let at = s?.body;
+    let moved = Date.now();
+    while (!ok(s)) {
+      const now = Date.now();
+      if (now - t0 > cap || (now - t0 > ms && now - moved > 60000)) break;
+      await this.page.waitForTimeout(400);
+      s = await read();
+      const b = s?.body;
+      if (b && at && Math.hypot(b.x - at.x, b.y - at.y, b.z - at.z) > 0.3) {
+        at = b;
+        moved = Date.now();
+      }
+    }
+    return s;
+  }
+
+  /**
+   * Waits, as a player does, for the trainer on shift at sanctuary 3's post `n` to be at it: after a jump of the clock
+   * she walks (and flies the campus's carpets) there at her pace, slower on a slow runner, so it waits while she is
+   * still on her way (`untilArrived`). True when she is there.
+   */
+  async trainerAtPost(n, ms = 90000) {
+    const read = () =>
+      this.page.evaluate((post) => {
+        const c = window.codeshipS3;
+        const who = c.trainerOf(post);
+        const q = who && c.crowd.positions().find((x) => x.id === who);
+        return { body: q ? { x: q.x, y: 0, z: q.z } : undefined, there: !!who && c.crowd.atPost(who, post) };
+      }, n);
+    return !!(await this.untilArrived(read, (s) => s.there, ms, 600000))?.there;
+  }
+
   /** Sanctuary 3's drawing sheet is open (docs/design/retos-trazos.md). */
   async tracing() {
     return this.page.evaluate(() => !!window.codeshipS3?.trace?.state);

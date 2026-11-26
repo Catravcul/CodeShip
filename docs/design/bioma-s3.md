@@ -168,6 +168,6 @@ langosta), `domain/abeja.test.ts`, `data/globo-nubes.test.ts`, `domain/mountain.
 
 - Los nombres de las zonas de `data/bioma-island.ts` aún hablan de mamíferos («Pradera de las marmotas», «Farallón de
   los íbices»): ese archivo lo cambia otro hilo (la montaña hueca con cuevas).
-- El recorrido **PX-51** (`tools/experiencia/s3-bioma.mjs`) busca íbices, markhores y marmotas: hay que reescribirlo
-  para los insectos (colmenas, Apolo en junio, avispón ante la colmena, el globo de nubes).
+- El recorrido **PX-51** (`tools/experiencia/s3-bioma.mjs`) ya juega los insectos (las colmenas en noviembre, la
+  revisión dibujada, los abejorros, el avispón ante las colmenas y el Apolo en junio); falta el globo de nubes.
 - Varias generaciones al año para la mosca y la mariquita; la bola de calor de las abejas contra el avispón.

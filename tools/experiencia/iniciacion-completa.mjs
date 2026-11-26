@@ -7,6 +7,7 @@
 // challenge (Dragon's display at each waypoint). Docked, the slot becomes a level-6 game and the page goes on in the
 // Starship, with the cruise to Bennu running. Captures in docs/screenshots/px48-<paso>-movil.png.
 import { mkdirSync } from "node:fs";
+import { goArea } from "./s3-detalle.mjs";
 
 async function capture(j, label) {
   await j.page.waitForTimeout(400);
@@ -18,7 +19,7 @@ async function capture(j, label) {
 const s3 = (p) =>
   p.evaluate(() => {
     const c = window.codeshipS3;
-    return { mode: c.mode, island: c.island, near: c.near, hour: c.hour, passed: c.passed, busy: c.stage.busy, craftY: c.craftY(), launchDone: c.launchDone, handedOver: c.handedOver ?? null };
+    return { body: c.body, mode: c.mode, island: c.island, near: c.near, hour: c.hour, passed: c.passed, busy: c.stage.busy, craftY: c.craftY(), launchDone: c.launchDone, handedOver: c.handedOver ?? null };
   });
 
 async function until(j, ok, ms) {
@@ -40,6 +41,10 @@ const watch = (p) =>
     const add = (a, v) => v && !a.includes(v) && a.push(v);
     window.__px48timer = setInterval(() => {
       const c = window.codeshipS3;
+      seen.handedOver ||= c.handedOver ?? null;
+      // Docked, the page reloads into the Starship 3,5 s later (aerial-sanctuary.ts): on a slow runner that can come
+      // before she reads this, so it is kept where the reload does not wipe it.
+      sessionStorage.setItem("px48", JSON.stringify(seen));
       const l = c.launch;
       for (const [k, o] of c.stage.things.entries()) if (o.visible) add(seen.things, k);
       add(seen.ePhases, l.ePhase);
@@ -53,7 +58,8 @@ const watch = (p) =>
       if (!l.flightT) seen.herY = Math.max(seen.herY, c.rig.position.y);
     }, 150);
   });
-const seenNow = (p) => p.evaluate(() => (clearInterval(window.__px48timer), window.__px48));
+// It keeps gathering until the reload (the hand-over comes after the last challenge).
+const seenNow = (p) => p.evaluate(() => window.__px48 ?? JSON.parse(sessionStorage.getItem("px48") ?? "null"));
 
 /** Answer the open sheet right, block by block, letting each beat play; then «Continuar». */
 async function solve(j, title) {
@@ -61,10 +67,15 @@ async function solve(j, title) {
   await j.waitDuel(60000);
   for (let i = 0; i < 4; i++) {
     if (!(await p.evaluate(oracle))) break;
+    // One call draws the whole compound (retos-trazos.md): the launch day's next challenge opens right after it, and
+    // is the next `solve`'s.
+    const drawing = await j.tracing();
     await j.answer(oracle, true);
     await p.waitForTimeout(2600);
+    if (drawing) break;
   }
-  for (let k = 0; k < 40 && (await s3(p)).busy; k++) await p.waitForTimeout(500);
+  // The last one docks, and the page may already be reloading into the Starship: nothing busy there.
+  for (let k = 0; k < 40 && (await s3(p).catch(() => ({ busy: false }))).busy; k++) await p.waitForTimeout(500);
   // The sheet of options says «Conseguido»; the drawing ends on its molecule and closes by itself.
   const drawn = !(await j.page.locator(".duel:not(.hidden)").count());
   const result = drawn ? "Conseguido" : ((await j.texts(".duel .result"))[0] ?? "");
@@ -77,8 +88,21 @@ async function goPost(j, n, title) {
   await until(j, (s) => s.mode === "libre" && s.near, 30000);
 }
 
+/**
+ * Drawing a compound takes a while of the board clock (a board hour is a real minute, retos-trazos.md): past 9:30 she
+ * plays the post the next morning at 9:12, and waits, as a player does, for its trainer to walk to it.
+ */
+async function morning(j, n) {
+  await j.page.evaluate(() => {
+    const c = window.codeshipS3;
+    if (c.hour > 9.5 || c.hour < 9) c.setHour(9.2);
+  });
+  await j.trainerAtPost(n);
+}
+
 async function post(j, n, title, who, label) {
   const p = j.page;
+  await morning(j, n);
   await goPost(j, n, title);
   await j.showPanel(".s3-ui .cm-who");
   const card = (await j.texts(".s3-ui .cab-machine:not(.hidden) .cm-who"))[0] ?? "";
@@ -86,7 +110,8 @@ async function post(j, n, title, who, label) {
   await j.tap('.s3-ui .cab-machine:not(.hidden) [data-act="reto"]', `Empezar el reto: ${title}`);
   await watch(p);
   await j.waitDuel();
-  await j.answer(oracle, true);
+  // The first step (a glyph of the drawing, or a block «Paso a paso»), then a look at its beat.
+  await j.firstStep(oracle);
   await p.waitForTimeout(9000);
   await capture(j, `${label}-paso`);
   await solve(j, title);
@@ -128,11 +153,13 @@ export async function iniciacionCompleta(j) {
   const t = await post(j, 13, "Puesto 13, el traje de la Crew Dragon", "Irosene", "traje");
   j.check("el traje se ve: el casco, el umbilical al puesto de pruebas y la lista de la comprobación de fugas", ["casco-ss", "umbilical", "lista"].every((k) => t.things.includes(k)), t.things.join(", "));
 
-  // 4. To the crew pad, «Por reto»: on foot to the navigation machine, the program, the flight in sight.
+  // 4. To the crew pad, «Por reto»: Áreas (by teleport) to the campus's helipad at the south cave's mouth (PX-45 walks
+  // the ~400 m from the trees), on foot to the navigation machine, the program, the flight in sight.
+  await goArea(j, "entrenamiento:helipuerto", "Helipuerto del campus");
   await j.tap(".s3-tasks", "Tareas");
   await j.taskSettings({ travel: "viaje", vehicle: "todos" });
   await j.tap('.task-board [data-go="s3-puesto-11"]', "Ir: Geología (otra isla: a la máquina de navegación)");
-  await until(j, (s) => s.mode === "libre" && s.near === "nav-entrenamiento", 300000);
+  await j.untilArrived(() => s3(p), (s) => s.mode === "libre" && s.near === "nav-entrenamiento", 300000);
   await j.showPanel(".s3-ui .cm-acts [data-act='nav']");
   await j.tap('.s3-ui .cm-acts [data-act="nav"]', "Abrir navegación");
   await j.tap('.island-nav .mw-pick[data-pick="plataforma"]', "Plataforma de tripulación en la lista");
@@ -146,7 +173,7 @@ export async function iniciacionCompleta(j) {
   // 5. At the tower: the launch card.
   await j.tap(".s3-tasks", "Tareas");
   await j.tap('.task-board [data-go="s3-lanzamiento"]', "Ir: Lanzamiento (la torre de acceso)");
-  const tower = await until(j, (s) => s.mode === "libre" && s.near === "plataforma-acceso", 300000);
+  const tower = await j.untilArrived(() => s3(p), (s) => s.mode === "libre" && s.near === "plataforma-acceso", 300000);
   j.check("«Ir» del lanzamiento lleva andando a la torre de acceso de la plataforma", tower.near === "plataforma-acceso", JSON.stringify(tower));
   await j.showPanel('.s3-ui .cm-acts [data-act="lanzar"]');
   await capture(j, "torre-tarjeta");
@@ -162,17 +189,22 @@ export async function iniciacionCompleta(j) {
   await capture(j, "ascenso");
   await j.endSheet();
   await solve(j, "La cita con la Starship en órbita baja");
-  await capture(j, "cita");
   const f = await seenNow(p);
+  const inS3 = () => p.evaluate(() => !!window.codeshipS3).catch(() => false);
+  if (await inS3()) await capture(j, "cita");
   j.check("por el brazo de acceso a la sala blanca, a la altura de la escotilla de la Dragon (más de 60 m sobre la cubierta)", f.herY > 22 + 60, JSON.stringify({ herY: f.herY }));
   j.check("el brazo se retira, el Falcon 9 despega, la 1.ª etapa se separa y la Dragon queda sola en órbita", f.arm > 1 && f.fRise > 100 && f.sep && ["despegue", "separacion", "orbita"].every((x) => f.fPhases.includes(x)), JSON.stringify({ arm: f.arm, rise: f.fRise, sep: f.sep, phases: f.fPhases }));
   j.check("en la cita, la pantalla de la Dragon ante su asiento con la cámara de acople", f.display && f.fPhases.includes("cita"), JSON.stringify({ display: f.display }));
   j.check("con el traje y el casco de la Crew Dragon durante todo el día", ["casco-ss"].every((k) => f.things.includes(k)), f.things.join(", "));
-  await j.endSheet();
+  if (await inS3()) await j.endSheet();
 
-  // 6. Docked: the slot is a level-6 game now, and the page goes on in the Starship.
-  const handed = await until(j, (s) => !!s.handedOver, 30000);
-  const slot = await p.evaluate((id) => JSON.parse(localStorage.getItem(`codeship.partida.${id}`) ?? "null"), handed.handedOver);
+  // 6. Docked: the slot is a level-6 game now, and the page goes on in the Starship (3,5 s later it reloads).
+  let handedOver = null;
+  for (let k = 0; k < 60 && !handedOver; k++) {
+    handedOver = await p.evaluate(() => window.codeshipS3?.handedOver ?? JSON.parse(sessionStorage.getItem("px48") ?? "null")?.handedOver ?? null).catch(() => null);
+    if (!handedOver) await p.waitForTimeout(500);
+  }
+  const slot = await p.evaluate((id) => JSON.parse(localStorage.getItem(`codeship.partida.${id}`) ?? "null"), handedOver);
   j.check("acoplada: la partida pasa al nivel 6 en la misma ranura, con los días y los puestos, y el crucero a Bennu por hacer", slot?.level === 6 && slot?.state?.fromLaunch?.cruiseDays === 816 && slot.state.fromLaunch.posts.length === 13, JSON.stringify(slot).slice(0, 300));
   await p.waitForFunction(() => window.codeship?.cruise, null, { timeout: 120000 });
   await p.waitForTimeout(2500);

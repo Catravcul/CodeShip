@@ -25,10 +25,12 @@ const face = (k: PadKey, b: ActionPadButton | undefined) => `<b>${FACE[k]}</b>${
 const ariaOf = (b: ActionPadButton) => `${b.aria ?? b.label}${b.key ? ` (${b.key})` : ""}`;
 
 /**
- * A finger's tap on the pad acts on pointerdown; the browser's click for that same tap comes after the finger lifts, at
- * the same spot, hit-tested again. When the press changed what lies there (Y shows a machine's card and the pad hides
- * under it), that click would press the card's button under the finger: a hatch's «Subir» would run by itself. The
- * click of a tap that began on the pad never reaches anything but the pad.
+ * A tap on the pad acts on pointerdown; the browser's click for that same tap comes after the finger (or the mouse
+ * button) lifts, at the same spot, hit-tested again. When the press changed what lies there (Y shows a machine's card
+ * and the pad hides under it), that click would press the card's button under the finger, or land on the scene and
+ * walk her to the machine drawn there: a hatch's «Subir» would run by itself, a click on Y beside the LM's forward
+ * hatch walked her off the commander's station (PX-11, once the buttons orbit the sticks). The click of a tap that
+ * began on the pad never reaches anything but the pad, with a finger or a mouse.
  */
 function swallowGhostClick(pad: HTMLElement, down: PointerEvent): void {
   const off = () => {
@@ -109,7 +111,7 @@ export class ActionPad {
       el.addEventListener("pointerdown", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (e.pointerType !== "mouse") swallowGhostClick(this.el, e);
+        swallowGhostClick(this.el, e);
         this.tap(k, true);
       });
       for (const ev of ["pointerup", "pointercancel", "pointerleave"]) el.addEventListener(ev, () => this.spec.get(k)?.hold && this.tap(k, false));

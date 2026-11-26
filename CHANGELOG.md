@@ -11,6 +11,8 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
   paredes ni tejado y caída libre por el borde; los árboles gigantes parecen árboles (corteza, ramas, hojas, frutos y
   flores) ([montana-hueca.md](docs/design/montana-hueca.md), reglas E13–E16 en
   [edificios-y-pisos.md](docs/design/edificios-y-pisos.md)).
+- **Mandos**: con ratón, el clic en un botón del mando que abre una tarjeta ya no cae en la escena y no la hace andar a otra
+  máquina (el Y del puesto del comandante, junto a la escotilla delantera del LM, la mandaba a la escotilla).
 
 ## 2026-11-25
 

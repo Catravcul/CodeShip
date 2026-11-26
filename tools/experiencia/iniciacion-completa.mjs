@@ -7,6 +7,7 @@
 // challenge (Dragon's display at each waypoint). Docked, the slot becomes a level-6 game and the page goes on in the
 // Starship, with the cruise to Bennu running. Captures in docs/screenshots/px48-<paso>-movil.png.
 import { mkdirSync } from "node:fs";
+import { goArea } from "./s3-detalle.mjs";
 
 async function capture(j, label) {
   await j.page.waitForTimeout(400);
@@ -18,7 +19,7 @@ async function capture(j, label) {
 const s3 = (p) =>
   p.evaluate(() => {
     const c = window.codeshipS3;
-    return { mode: c.mode, island: c.island, near: c.near, hour: c.hour, passed: c.passed, busy: c.stage.busy, craftY: c.craftY(), launchDone: c.launchDone, handedOver: c.handedOver ?? null };
+    return { body: c.body, mode: c.mode, island: c.island, near: c.near, hour: c.hour, passed: c.passed, busy: c.stage.busy, craftY: c.craftY(), launchDone: c.launchDone, handedOver: c.handedOver ?? null };
   });
 
 async function until(j, ok, ms) {
@@ -77,8 +78,21 @@ async function goPost(j, n, title) {
   await until(j, (s) => s.mode === "libre" && s.near, 30000);
 }
 
+/**
+ * Drawing a compound takes a while of the board clock (a board hour is a real minute, retos-trazos.md): past 9:30 she
+ * plays the post the next morning at 9:12, and waits, as a player does, for its trainer to walk to it.
+ */
+async function morning(j, n) {
+  await j.page.evaluate(() => {
+    const c = window.codeshipS3;
+    if (c.hour > 9.5 || c.hour < 9) c.setHour(9.2);
+  });
+  await j.trainerAtPost(n);
+}
+
 async function post(j, n, title, who, label) {
   const p = j.page;
+  await morning(j, n);
   await goPost(j, n, title);
   await j.showPanel(".s3-ui .cm-who");
   const card = (await j.texts(".s3-ui .cab-machine:not(.hidden) .cm-who"))[0] ?? "";
@@ -86,7 +100,8 @@ async function post(j, n, title, who, label) {
   await j.tap('.s3-ui .cab-machine:not(.hidden) [data-act="reto"]', `Empezar el reto: ${title}`);
   await watch(p);
   await j.waitDuel();
-  await j.answer(oracle, true);
+  // The first step (a glyph of the drawing, or a block «Paso a paso»), then a look at its beat.
+  await j.firstStep(oracle);
   await p.waitForTimeout(9000);
   await capture(j, `${label}-paso`);
   await solve(j, title);
@@ -128,11 +143,13 @@ export async function iniciacionCompleta(j) {
   const t = await post(j, 13, "Puesto 13, el traje de la Crew Dragon", "Irosene", "traje");
   j.check("el traje se ve: el casco, el umbilical al puesto de pruebas y la lista de la comprobación de fugas", ["casco-ss", "umbilical", "lista"].every((k) => t.things.includes(k)), t.things.join(", "));
 
-  // 4. To the crew pad, «Por reto»: on foot to the navigation machine, the program, the flight in sight.
+  // 4. To the crew pad, «Por reto»: Áreas (by teleport) to the campus's helipad at the south cave's mouth (PX-45 walks
+  // the ~400 m from the trees), on foot to the navigation machine, the program, the flight in sight.
+  await goArea(j, "entrenamiento:helipuerto", "Helipuerto del campus");
   await j.tap(".s3-tasks", "Tareas");
   await j.taskSettings({ travel: "viaje", vehicle: "todos" });
   await j.tap('.task-board [data-go="s3-puesto-11"]', "Ir: Geología (otra isla: a la máquina de navegación)");
-  await until(j, (s) => s.mode === "libre" && s.near === "nav-entrenamiento", 300000);
+  await j.untilArrived(() => s3(p), (s) => s.mode === "libre" && s.near === "nav-entrenamiento", 300000);
   await j.showPanel(".s3-ui .cm-acts [data-act='nav']");
   await j.tap('.s3-ui .cm-acts [data-act="nav"]', "Abrir navegación");
   await j.tap('.island-nav .mw-pick[data-pick="plataforma"]', "Plataforma de tripulación en la lista");
@@ -146,7 +163,7 @@ export async function iniciacionCompleta(j) {
   // 5. At the tower: the launch card.
   await j.tap(".s3-tasks", "Tareas");
   await j.tap('.task-board [data-go="s3-lanzamiento"]', "Ir: Lanzamiento (la torre de acceso)");
-  const tower = await until(j, (s) => s.mode === "libre" && s.near === "plataforma-acceso", 300000);
+  const tower = await j.untilArrived(() => s3(p), (s) => s.mode === "libre" && s.near === "plataforma-acceso", 300000);
   j.check("«Ir» del lanzamiento lleva andando a la torre de acceso de la plataforma", tower.near === "plataforma-acceso", JSON.stringify(tower));
   await j.showPanel('.s3-ui .cm-acts [data-act="lanzar"]');
   await capture(j, "torre-tarjeta");

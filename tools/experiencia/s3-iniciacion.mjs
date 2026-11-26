@@ -8,6 +8,7 @@
 // programmed on the sheet, then flown by itself in sight) and «Manual» (the S-92's cyclic, collective and pedals on
 // the pad, landed by hand on the other island's helipad). Captures in docs/screenshots/s3i-<paso>-movil.png.
 import { mkdirSync } from "node:fs";
+import { goArea } from "./s3-detalle.mjs";
 
 async function capture(j, label, title, overlaps = true) {
   await j.page.waitForTimeout(400);
@@ -64,7 +65,7 @@ async function goPost(j, n, title, keepHour = false) {
   await j.tap(`.task-board [data-go="s3-puesto-${n}"]`, `Ir: ${title}`);
   await until(j, (s) => s.mode === "libre" && s.near, 20000);
   // After a jump of the clock the trainer may still be walking to her post: a player waits for her.
-  if (!keepHour) await j.page.waitForFunction((post) => { const c = window.codeshipS3; const who = c.trainerOf(post); return !!who && c.crowd.atPost(who, post); }, n, { timeout: 90000, polling: 500 }).catch(() => {});
+  if (!keepHour) await j.trainerAtPost(n);
   await j.showPanel(".s3-ui .cm-who");
 }
 
@@ -212,11 +213,14 @@ export async function s3Iniciacion(j) {
   await capture(j, "pausa", "El puesto 2 a la hora de comer: espera al siguiente turno");
 
   // 9. Flight «Por reto»: the gear of the navigation window, the program on the sheet, the flight in sight.
+  // Áreas (still by teleport) to the campus's helipad at the south cave's mouth: PX-45 walks the ~400 m from the
+  // trees, which on a slow runner takes many minutes. Then on foot (teleporting would put her straight on the other
+  // island): «Ir» walks her the last metres to the navigation machine.
+  await goArea(j, "entrenamiento:helipuerto", "Helipuerto del campus");
   await j.tap(".s3-tasks", "Tareas");
-  // On foot (teleporting would put her straight on the other island): she walks to the navigation machine.
   await j.taskSettings({ travel: "viaje", vehicle: "todos" });
   await j.tap('.task-board [data-go="s3-puesto-11"]', "Ir: Geología (otra isla)");
-  await until(j, (s) => s.mode === "libre" && s.near === "nav-entrenamiento", 300000);
+  await j.untilArrived(() => s3(p), (s) => s.mode === "libre" && s.near === "nav-entrenamiento", 300000);
   await j.showPanel(".s3-ui .cm-acts [data-act='nav']");
   await j.tap('.s3-ui .cm-acts [data-act="nav"]', "Abrir navegación");
   await j.tap(".island-nav .mw-gear", "Ajustes del vuelo");
@@ -230,7 +234,11 @@ export async function s3Iniciacion(j) {
   await until(j, (s) => s.mode === "reto", 60000);
   await j.waitDuel(60000);
   const prog = await p.evaluate(oracle);
-  j.check("«Por reto»: en el helipuerto se programa el vuelo (pasos reales del helicóptero)", prog?.kind === "order" && /arrancar los motores/.test(JSON.stringify(prog.blocks)), JSON.stringify(prog?.blocks?.map((b) => b.pseudo)));
+  if (await j.tracing()) {
+    // Drawn (retos-trazos.md): the program is the kerosene's compound, its steps counted at the foot.
+    const tr = await p.evaluate(() => ({ title: document.querySelector(".trace .trace-title")?.textContent ?? "", name: document.querySelector(".trace .trace-name")?.textContent ?? "", steps: document.querySelector(".trace .trace-steps")?.textContent ?? "" }));
+    j.check("«Por reto»: en el helipuerto se programa el vuelo, dibujando el queroseno del S-92 paso a paso", /Programar el vuelo/.test(tr.title) && /queroseno/i.test(tr.name) && /Pasos 0\/[1-9]/.test(tr.steps), JSON.stringify(tr));
+  } else j.check("«Por reto»: en el helipuerto se programa el vuelo (pasos reales del helicóptero)", prog?.kind === "order" && /arrancar los motores/.test(JSON.stringify(prog.blocks)), JSON.stringify(prog?.blocks?.map((b) => b.pseudo)));
   await capture(j, "vuelo-reto", "El programa del vuelo en la hoja, con el S-92 en el helipuerto", false);
   for (let i = 0; i < 3 && (await p.evaluate(oracle)); i++) {
     await j.answer(oracle, true);
@@ -281,10 +289,13 @@ export async function s3Iniciacion(j) {
   await tapPad("Colectivo arriba: subir", 4);
   const up = await until(j, (s) => s.hand && s.hand.y > 40, 40000);
   j.check("el colectivo la sube: despega del helipuerto", up.hand && !up.hand.onGround && up.hand.y > 40, JSON.stringify(up.hand && { y: up.hand.y }));
+  // The campus's helipad is up the mountain, at the south cave's mouth (y ≈ 112, montana-hueca.md): she climbs on to
+  // 30 m over it before heading there, so as to come in from above, not under its edge.
+  const dest = await p.evaluate(() => window.codeshipS3.layout.islands.find((i) => i.id === "entrenamiento").pad.at);
+  await until(j, (s) => s.hand && s.hand.y > dest.y + 30, 120000);
   await tapPad("Anular giros y velocidad");
   await capture(j, "manual", "Vuelo manual: el pad con cíclico, colectivo y pedales");
   // Fly by the numbers: nose to the pad with the pedals, cyclic forward, slow down near it and come down slowly.
-  const dest = await p.evaluate(() => window.codeshipS3.layout.islands.find((i) => i.id === "entrenamiento").pad.at);
   const rel = (h) => {
     const want = Math.atan2(dest.x - h.x, dest.z - h.z);
     return Math.atan2(Math.sin(want - h.heading), Math.cos(want - h.heading));
@@ -292,7 +303,7 @@ export async function s3Iniciacion(j) {
   const dist = (h) => Math.hypot(dest.x - h.x, dest.z - h.z);
   let h = (await s3(p)).hand;
   const t0 = Date.now();
-  while (h && !h.onGround && Date.now() - t0 < 240000) {
+  while (h && !h.onGround && Date.now() - t0 < 420000) {
     const d = dist(h);
     const r = rel(h);
     const yawAsk = h.ask.yaw;

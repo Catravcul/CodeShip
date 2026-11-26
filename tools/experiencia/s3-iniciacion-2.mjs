@@ -65,10 +65,39 @@ const scene = (p) =>
  */
 async function onShift(j, n, id) {
   await j.page.evaluate(() => window.codeshipS3.setHour(11.95));
-  await j.page.waitForFunction(([n, id]) => window.codeshipS3.crowd.positions().some((c) => c.id === id && c.key === `puesto:${n}` && c.there), [n, id], { timeout: 240000 });
+  // She walks (and flies the campus's carpets) at her pace on the board's frames: on a slow runner it takes longer, so
+  // it waits while she is still on her way (untilArrived), not a fixed time.
+  const where = () => j.page.evaluate((id) => {
+    const c = window.codeshipS3.crowd.positions().find((q) => q.id === id);
+    return c && { body: { x: c.x, y: 0, z: c.z }, key: c.key, there: c.there };
+  }, id);
+  const at = await j.untilArrived(where, (c) => !!c && c.key === `puesto:${n}` && c.there, 240000);
+  if (!(at && at.key === `puesto:${n}` && at.there)) throw new Error(`${id} no llega al puesto ${n}: ${JSON.stringify(at)}`);
   // Her walk in moved the clock on (a board hour is a minute): back to the start of the shift, so that she does not
   // set off for the 14:00 training while the challenge is being played.
   await j.page.evaluate(() => window.codeshipS3.setHour(12.05));
+}
+
+/**
+ * Drawing a compound takes a while of the board clock (a board hour is a real minute, retos-trazos.md): past 9:30 a
+ * morning post is played the next morning. The clock goes to 7:30 and she waits, as a player does, for the trainer to
+ * come from the campus to her post (to the glacier, a long way: a jump to 9:12 left her on the way until she set off
+ * for lunch, PX-47 locally); once there, the clock goes on to her shift.
+ */
+async function morning(j, n, id) {
+  await j.page.evaluate(() => {
+    const c = window.codeshipS3;
+    if (c.hour > 9.5 || c.hour < 7) c.setHour(7.5);
+  });
+  const where = () => j.page.evaluate((id) => {
+    const c = window.codeshipS3.crowd.positions().find((q) => q.id === id);
+    return c && { body: { x: c.x, y: 0, z: c.z }, key: c.key, there: c.there };
+  }, id);
+  await j.untilArrived(where, (c) => !!c && c.key === `puesto:${n}` && c.there, 240000);
+  await j.page.evaluate(() => {
+    const c = window.codeshipS3;
+    if (c.hour < 9) c.setHour(9.05);
+  });
 }
 
 async function goPost(j, n, title) {
@@ -89,6 +118,12 @@ async function doPost(j, n, title, label, who, expectThings) {
   await p.waitForTimeout(800);
   const framed = await j.herFramed("codeshipS3");
   j.check(`${title}: el reto la enfoca en el puesto, encima de la hoja (reto-focus.ts)`, !!framed?.ok, JSON.stringify(framed));
+  // The drawing (retos-trazos.md) closes by itself when done: what else is on screen is looked at while it is open.
+  const drawing = await j.tracing();
+  if (drawing) {
+    const only = await j.outsideChallenge().catch(() => null);
+    if (only) j.check(`${title}: con el reto abierto solo se ven el dibujo y la escena (reglas §4.3)`, only.length === 0, JSON.stringify(only).slice(0, 200));
+  }
   const seen = { things: new Set(), reads: new Set(), phases: new Set(), shows: new Set(), maxG: 1, armTurn: 0, maxPlaneY: 0, armOn: false, armPlaying: false, herYs: [] };
   const look = async () => {
     const sc = await scene(p);
@@ -106,12 +141,17 @@ async function doPost(j, n, title, label, who, expectThings) {
   // What is out (things, the simulator's screen, the plane's phase) is also gathered in the page every 150 ms: a
   // capture can take longer than a beat (2,2 s) and polling from here alone missed some.
   await p.evaluate(() => {
-    const seen = (window.__s3seen = { things: new Set(), shows: new Set(), phases: new Set() });
+    const seen = (window.__s3seen = { things: new Set(), shows: new Set(), phases: new Set(), reads: new Set(), armOn: false, armPlaying: false, maxG: 1 });
     window.__s3timer = setInterval(() => {
       const c = window.codeshipS3;
+      const r = c.rigs;
       for (const [k, o] of c.stage.things.entries()) if (o.visible) seen.things.add(k);
-      if (c.rigs.show) seen.shows.add(c.rigs.show);
-      if (c.rigs.phase) seen.phases.add(c.rigs.phase);
+      if (r.show) seen.shows.add(r.show);
+      if (r.phase) seen.phases.add(r.phase);
+      if (r.readout) seen.reads.add(r.readout);
+      seen.maxG = Math.max(seen.maxG, r.g ?? 1);
+      seen.armOn ||= r.armScreens.some((m) => m.visible);
+      seen.armPlaying ||= !!r.armShow.playing;
     }, 150);
   });
   let shot = false;
@@ -133,15 +173,22 @@ async function doPost(j, n, title, label, who, expectThings) {
     if (!(await s3(p)).busy) break;
     await p.waitForTimeout(600);
   }
-  const inPage = await p.evaluate(() => (clearInterval(window.__s3timer), { things: [...window.__s3seen.things], shows: [...window.__s3seen.shows], phases: [...window.__s3seen.phases] }));
-  for (const k of ["things", "shows", "phases"]) for (const t of inPage[k]) seen[k].add(t);
+  const inPage = await p.evaluate(() => {
+    clearInterval(window.__s3timer);
+    const w = window.__s3seen;
+    return { things: [...w.things], shows: [...w.shows], phases: [...w.phases], reads: [...w.reads], armOn: w.armOn, armPlaying: w.armPlaying, maxG: w.maxG };
+  });
+  for (const k of ["things", "shows", "phases", "reads"]) for (const t of inPage[k]) seen[k].add(t);
+  seen.armOn ||= inPage.armOn;
+  seen.armPlaying ||= inPage.armPlaying;
+  seen.maxG = Math.max(seen.maxG, inPage.maxG);
   // The sheet of options says «Conseguido»; the drawing ends on its molecule and closes by itself.
   const drawn = !(await j.page.locator(".duel:not(.hidden)").count());
   const result = drawn ? "Conseguido" : ((await j.texts(".duel .result"))[0] ?? "");
   j.check(`${title}: el reto se completa («Conseguido»)`, /Conseguido/.test(result), result);
   if (expectThings.length) j.check(`${title}: cada paso se ve en el sitio, con los objetos (${expectThings.join(", ")})`, expectThings.every((t) => seen.things.has(t)), [...seen.things].join(", "));
   await capture(j, `${label}-reto`, `${title}: la hoja del reto y la escena`, false);
-  const only = await j.outsideChallenge().catch(() => null);
+  const only = drawn ? null : await j.outsideChallenge().catch(() => null);
   if (only) j.check(`${title}: con el reto abierto solo se ven la hoja y la escena (reglas §4.3)`, only.length === 0, JSON.stringify(only).slice(0, 200));
   await j.endSheet();
   const after = await until(j, (s) => s.mode === "libre", 40000);
@@ -195,11 +242,13 @@ export async function s3Iniciacion2(j) {
   await j.tap(".task-board .tb-close, .task-board [aria-label='Cerrar tareas']", "Cerrar tareas").catch(() => {});
 
   // 2. Post 5: the centrifuge (Fausto).
+  await morning(j, 5, "fausto");
   await goPost(j, 5, "Centrífuga");
   const c5 = await doPost(j, 5, "Puesto 5, centrífuga", "centrifuga", "Fausto", ["sensores", "boton"]);
   j.check("la centrífuga gira con ella en la góndola y sube a 4–5 g", c5.maxG >= 4 && c5.armTurn > 3, JSON.stringify({ maxG: c5.maxG, armTurn: c5.armTurn, reads: [...c5.reads] }));
 
   // 3. Post 6: the parabolic flight from the glacier (Ivelyna).
+  await morning(j, 6, "ivelyna");
   await goPost(j, 6, "Vuelo parabólico");
   const isl6 = (await s3(p)).island;
   j.check("el puesto 6 está en el glaciar, junto al Il-76MDK de la pista de hielo azul", isl6 === "glaciar", isl6);

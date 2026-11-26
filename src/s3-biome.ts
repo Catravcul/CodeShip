@@ -223,7 +223,8 @@ export class S3Biome {
     // Diving in the lake, the larva nearest the camera says its stage.
     const C = camera.position;
     const larva = C.y < HOLLOW.lakeTop ? this.carbonView.lastLarvae.filter((q) => q.y < HOLLOW.lakeTop).map((q) => ({ q, d: Math.hypot(q.x - C.x, q.y - C.y, q.z - C.z) })).sort((a, b) => a.d - b.d)[0] : undefined;
-    const text = by && look ? `Abeja de la pupa · ${look.stage.label}` : larva && larva.d < 40 ? larva.q.label : "";
+    // Under the water the larva says its stage, even by the gallery; above it, the bee.
+    const text = larva && larva.d < 40 ? larva.q.label : by && look ? `Abeja de la pupa · ${look.stage.label}` : "";
     if (this.beeTag.textContent !== text) this.beeTag.textContent = text;
     this.beeTag.classList.toggle("hidden", !text);
   }

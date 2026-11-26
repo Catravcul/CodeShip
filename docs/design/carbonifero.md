@@ -69,4 +69,4 @@ bosque (licencia). Cuánto viven, cuántas crías y cuánto comen: nuestro (`our
 | *Cordaites* | tronco recto, hojas en cinta al final de las ramas | Wikipedia |
 
 En el bosque: 22 + 16 + 30 + 26 + 12 árboles; en la cima de la pirámide, 2 Sigillaria, 4 Calamites, 6 Psaronius y 4
-Cordaites. Una llamada de dibujo por especie. En vivo: PX-51.
+Cordaites. Una llamada de dibujo por especie. En vivo: PX-51. Captura: `docs/screenshots/s3b-carbonifero-movil.png`.

@@ -81,7 +81,7 @@ vuelve a empezar), como la paralarva del pulpo que se aleja nadando.
 
 `aerial-sanctuary/domain/abeja.test.ts` (días, orden de etapas, continuidad, reloj), `aerial-sanctuary/data/pupa-abeja.test.ts`
 (en el centro y con proporciones de celda, sin pisar el campus ni los árboles, el muelle se anda, se llega a pie desde
-una estación de alfombra, el tamaño sale del sitio). En vivo: PX-51 (`tools/experiencia/s3-bioma.mjs`).
+una estación de alfombra, el tamaño sale del sitio). En vivo: PX-51 (`tools/experiencia/s3-bioma.mjs`). Captura: `docs/screenshots/s3b-pupa-movil.png` (la celda desde el muelle, con la pupa de ojos rosados dentro).
 
 ## Para después
 

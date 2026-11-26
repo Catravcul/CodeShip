@@ -72,7 +72,7 @@ export function larvaHome(s: LakeLarvaSpec, i: number, lake: LakeFrame, drawnLen
   for (let n = 0; n < 40; n++) {
     const x = lake.x + Math.cos(a) * r;
     const z = lake.z + Math.sin(a) * r;
-    if (!lake.keepOut.some((k) => inside(k, x, z, drawnLength * 2.5 + 2))) return { x, z };
+    if (!lake.keepOut.some((k) => inside(k, x, z, drawnLength * 1.5 + 3))) return { x, z };
     a += 0.31;
   }
   return { x: lake.x + Math.cos(a) * lake.r1, z: lake.z + Math.sin(a) * lake.r1 };

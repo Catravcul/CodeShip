@@ -29,4 +29,4 @@ visibles al bucear, cada una con su ciclo.
   lago son las de hoy, de la región (×400, como el resto de Gilgit).
 
 `larvas-lago.test.ts`: metamorfosis completa con pupa y la incompleta sin ella, crecimiento sin saltos, en el fondo
-y lejos de lo que está en pie, al emerger suben, y se ven varias etapas a la vez. En vivo: PX-51 (bucear junto a ellas).
+y lejos de lo que está en pie, al emerger suben, y se ven varias etapas a la vez. En vivo: PX-51 (bucear junto a ellas; bajo el agua la etiqueta dice la larva más cercana, aunque esté junto a la galería de la pupa). Captura: `docs/screenshots/s3b-lago-larvas-movil.png`.

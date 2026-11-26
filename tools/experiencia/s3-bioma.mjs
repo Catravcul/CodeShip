@@ -56,17 +56,6 @@ const around = (p, r, life = "life") =>
     [r, life],
   );
 
-/** Swim (or walk) at a point with «Moverse», the camera tilted `pitch` (down dives), for at most `ms`. */
-async function swimTo(j, x, z, pitch, stop, tries = 8) {
-  const dist = () => j.page.evaluate(([tx, tz]) => Math.hypot(tx - window.codeshipS3.body.x, tz - window.codeshipS3.body.z), [x, z]);
-  for (let i = 0; i < tries && (await dist()) > stop; i++) {
-    await lookAt(j, x, z);
-    await tilt(j, pitch);
-    await j.stick(".vstick.s3-move", 0, -40, 900);
-  }
-  return dist();
-}
-
 export async function s3Bioma(j) {
   const p = j.page;
   await j.tap('.start-screen .mw-pick[data-pick="aereo"]', "Tarjeta: Santuario Aéreo");
@@ -137,7 +126,7 @@ export async function s3Bioma(j) {
   const along = async (pts) => {
     for (const q of pts) {
       const b = await p.evaluate(() => ({ x: window.codeshipS3.body.x, z: window.codeshipS3.body.z }));
-      const n = Math.max(1, Math.ceil(Math.hypot(q.x - b.x, q.z - b.z) / 8));
+      const n = Math.max(1, Math.ceil(Math.hypot(q.x - b.x, q.z - b.z) / 12));
       for (let i = 1; i <= n; i++) await walkTo(j, b.x + ((q.x - b.x) * i) / n, b.z + ((q.z - b.z) * i) / n, 0.8);
     }
   };
@@ -153,17 +142,29 @@ export async function s3Bioma(j) {
   const atPupa = await p.evaluate(() => window.codeshipS3.body);
   j.check("andando por el muelle desde el pie del árbol se llega a la pupa", went && atPupa.area === "entrenamiento:pupa", `${way.map((q) => q.id).join(" → ")}; ${JSON.stringify(atPupa)}`);
   tag = await p.evaluate(() => document.querySelector(".s3-pupa-etapa:not(.hidden)")?.textContent ?? "");
-  j.check("en la galería, la etiqueta dice la etapa: la pupa con sus ojos de color", /Abeja de la pupa · .*(ojos|[Pp]upa)/.test(tag), tag);
+  // (The bee goes on with its clock while she walks: by now a pupa or the adult.)
+  j.check("en la galería, la etiqueta dice la etapa de la abeja", /Abeja de la pupa · /.test(tag), tag);
 
   // ── The lake's larvae: off the gallery into the lake, down to the bottom where the nymphs and larvae live.
   const larva = await p.evaluate(() => {
     const c = window.codeshipS3;
     const b = c.body;
-    return c.biome.carbonView.lastLarvae.filter((q) => q.stage !== "emergencia").sort((a, q) => Math.hypot(a.x - b.x, a.z - b.z) - Math.hypot(q.x - b.x, q.z - b.z))[0];
+    return c.biome.carbonView.lastLarvae.filter((q) => q.y < 101 && (q.stage === "ninfa" || q.stage === "larva")).sort((a, q) => Math.hypot(a.x - b.x, a.z - b.z) - Math.hypot(q.x - b.x, q.z - b.z))[0];
   });
-  await swimTo(j, larva.x, larva.z, -0.9, 9);
-  await lookAt(j, larva.x, larva.z);
-  await tilt(j, -0.2);
+  // Off the gallery into the water and down to it (swimming is slow: short strokes, diving when near).
+  // It crawls (its home's circle): follow it where it is now.
+  const now = () => p.evaluate(([sp, i]) => window.codeshipS3.biome.carbonView.lastLarvae.find((q) => q.species === sp && q.i === i), [larva.species, larva.i]);
+  for (let i = 0; i < 40; i++) {
+    const q = await now();
+    const s = await p.evaluate(([x, z]) => ({ d: Math.hypot(x - window.codeshipS3.body.x, z - window.codeshipS3.body.z), y: window.codeshipS3.camera.position.y }), [q.x, q.z]);
+    if (s.d < 8 && s.y < 102) break;
+    await lookAt(j, q.x, q.z);
+    await tilt(j, s.d < 12 ? -0.9 : -0.4);
+    await j.stick(".vstick.s3-move", 0, -40, 1200);
+  }
+  const q = await now();
+  await lookAt(j, q.x, q.z);
+  await tilt(j, await p.evaluate(([x, y, z]) => { const C = window.codeshipS3.camera.position; return Math.atan2(y - C.y, Math.hypot(x - C.x, z - C.z)); }, [q.x, q.y, q.z]));
   await p.waitForTimeout(1200);
   const under = await p.evaluate(() => {
     const c = window.codeshipS3;

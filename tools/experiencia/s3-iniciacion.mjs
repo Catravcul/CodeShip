@@ -308,25 +308,44 @@ export async function s3Iniciacion(j) {
     const d = dist(h);
     const r = rel(h);
     const yawAsk = h.ask.yaw;
+    const high = d >= 600 || h.y > dest.y + 45;
     // The pedals stop the turn within ~7° of the pad: the rotor's lag carries it on a little, and a tighter aim made it
     // swing ±20° around the pad for minutes, never close enough to fly on (the campus's helipad, 144 m short).
-    // In the last 32 m the pad may be behind her (she drifted past): she aims the tail or the nose, whichever is nearer.
-    const rr = d <= 32 && Math.abs(r) > Math.PI / 2 ? r - Math.sign(r) * Math.PI : r;
-    const wantYaw = Math.abs(rr) < 0.12 ? 0 : rr > 0 ? 1 : -1;
+    // In the last 32 m she no longer turns (turning near it made her swing past it for minutes): the cyclic moves her
+    // forward, back or sideways onto it.
+    const wantYaw = d <= 32 && high ? 0 : Math.abs(r) < 0.12 ? 0 : r > 0 ? 1 : -1;
     if (yawAsk < wantYaw) await tapPad("Pedal izquierdo: morro a la izquierda");
     else if (yawAsk > wantYaw) await tapPad("Pedal derecho: morro a la derecha");
-    const high = d >= 600 || h.y > dest.y + 45;
     const fwdWant = Math.abs(r) > 0.45 || (!high && d > 8) ? 0 : d > 600 ? 8 : d > 250 ? 3 : d > 32 ? 1 : 0;
     const fwdNow = h.ask.fwd;
     if (fwdNow < fwdWant) await tapPad("Cíclico adelante");
     else if (fwdNow > fwdWant) await tapPad("Cíclico atrás");
     // Hovering short of the pad: a nudge of cyclic, then level it again (a pilot's small corrections).
-    if (high && d > 8 && d <= 32 && Math.hypot(h.vFwd, h.vSide) < 0.8 && Math.abs(rr) < 0.3 && h.ask.fwd === 0) {
-      await tapPad(rr === r ? "Cíclico adelante" : "Cíclico atrás");
-      await p.waitForTimeout(Math.min(1500, 200 + d * 30));
-      await tapPad("Anular giros y velocidad");
-      await p.waitForTimeout(1500);
-      h = (await s3(p)).hand;
+    if (high && d > 6 && d <= 32 && Math.hypot(h.vFwd, h.vSide) < 0.8 && h.ask.fwd === 0 && h.ask.side === 0) {
+      // The pad ahead (+) or behind, and to her left (+) or right: a nudge along the longer of the two.
+      const ahead = d * Math.cos(r);
+      const left = d * Math.sin(r);
+      const along = Math.abs(ahead) >= Math.abs(left);
+      const m = along ? ahead : left;
+      await tapPad(along ? (m > 0 ? "Cíclico adelante" : "Cíclico atrás") : m > 0 ? "Cíclico a la izquierda" : "Cíclico a la derecha");
+      // The rotor lags (3 s): once moving at v it still coasts ≈ v·3 m after the stick is centred, and the tap takes a
+      // moment, so she centres it when what she has flown plus that coast reaches the pad.
+      const from = { x: h.x, z: h.z };
+      const t1 = Date.now();
+      let g = (await s3(p)).hand;
+      while (g && Date.now() - t1 < 8000 && Math.hypot(g.x - from.x, g.z - from.z) + Math.hypot(g.vFwd, g.vSide) * 3.5 < Math.abs(m)) {
+        await p.waitForTimeout(100);
+        g = (await s3(p)).hand;
+      }
+      // Centred at once: the journey's checks on a tap (its size, what covers it) take a second or two, and the rotor
+      // gathers speed meanwhile (the same button passed them a moment ago).
+      await p.locator('.s3-hand-pad button[aria-label="Anular giros y velocidad"]').tap({ timeout: 15000 });
+      // Then she waits for it to stop before looking again.
+      const t2 = Date.now();
+      do {
+        await p.waitForTimeout(300);
+        h = (await s3(p)).hand;
+      } while (h && Date.now() - t2 < 15000 && Math.hypot(h.vFwd, h.vSide) > 0.3);
       continue;
     }
     // Over the pad (it lands within 10 m of its centre) and slow: down, the last metres at 1,5 m/s.

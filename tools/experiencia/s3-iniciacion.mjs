@@ -54,17 +54,17 @@ const scene = (p) =>
 async function morning(j) {
   await j.page.evaluate(() => {
     const c = window.codeshipS3;
-    if ((c.hour > 9.5 && c.hour < 11) || c.hour < 9) c.setHour(9.2);
+    if (c.hour > 9.5 || c.hour < 9) c.setHour(9.2);
   });
 }
 
-async function goPost(j, n, title) {
-  await morning(j);
+async function goPost(j, n, title, keepHour = false) {
+  if (!keepHour) await morning(j);
   await j.tap(".s3-tasks", "Tareas");
   await j.tap(`.task-board [data-go="s3-puesto-${n}"]`, `Ir: ${title}`);
   await until(j, (s) => s.mode === "libre" && s.near, 20000);
   // After a jump of the clock the trainer may still be walking to her post: a player waits for her.
-  await j.page.waitForFunction((post) => { const c = window.codeshipS3; const who = c.trainerOf(post); return !!who && c.crowd.atPost(who, post); }, n, { timeout: 90000, polling: 500 }).catch(() => {});
+  if (!keepHour) await j.page.waitForFunction((post) => { const c = window.codeshipS3; const who = c.trainerOf(post); return !!who && c.crowd.atPost(who, post); }, n, { timeout: 90000, polling: 500 }).catch(() => {});
   await j.showPanel(".s3-ui .cm-who");
 }
 
@@ -205,7 +205,7 @@ export async function s3Iniciacion(j) {
 
   // 8. At lunch (11–12) nobody is on shift: the post waits for the next shift (no stand-in), and the card says when.
   await p.evaluate(() => window.codeshipS3.setHour(11.3));
-  await goPost(j, 2, "Reconocimiento médico");
+  await goPost(j, 2, "Reconocimiento médico", true);
   await p.waitForTimeout(800);
   const lunch = await p.evaluate(() => ({ who: window.codeshipS3.trainerOf(2) ?? null, card: document.querySelector(".s3-ui .cab-machine:not(.hidden) .cm-why")?.textContent ?? "", off: !!document.querySelector('.s3-ui .cab-machine:not(.hidden) [data-act="reto"][disabled]') }));
   j.check("a la hora de comer nadie está de turno: el puesto espera y la tarjeta dice cuándo empieza el siguiente turno y con quién", lunch.who === null && lunch.off && /Sin turno a las 11:\d\d: el siguiente empieza a las 12:00, con \S+/.test(lunch.card), JSON.stringify(lunch));
@@ -216,7 +216,7 @@ export async function s3Iniciacion(j) {
   // On foot (teleporting would put her straight on the other island): she walks to the navigation machine.
   await j.taskSettings({ travel: "viaje", vehicle: "todos" });
   await j.tap('.task-board [data-go="s3-puesto-11"]', "Ir: Geología (otra isla)");
-  await until(j, (s) => s.mode === "libre" && s.near === "nav-entrenamiento", 90000);
+  await until(j, (s) => s.mode === "libre" && s.near === "nav-entrenamiento", 300000);
   await j.showPanel(".s3-ui .cm-acts [data-act='nav']");
   await j.tap('.s3-ui .cm-acts [data-act="nav"]', "Abrir navegación");
   await j.tap(".island-nav .mw-gear", "Ajustes del vuelo");

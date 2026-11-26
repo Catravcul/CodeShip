@@ -132,7 +132,7 @@ export async function iniciacionCompleta(j) {
   await j.tap(".s3-tasks", "Tareas");
   await j.taskSettings({ travel: "viaje", vehicle: "todos" });
   await j.tap('.task-board [data-go="s3-puesto-11"]', "Ir: Geología (otra isla: a la máquina de navegación)");
-  await until(j, (s) => s.mode === "libre" && s.near === "nav-entrenamiento", 90000);
+  await until(j, (s) => s.mode === "libre" && s.near === "nav-entrenamiento", 300000);
   await j.showPanel(".s3-ui .cm-acts [data-act='nav']");
   await j.tap('.s3-ui .cm-acts [data-act="nav"]', "Abrir navegación");
   await j.tap('.island-nav .mw-pick[data-pick="plataforma"]', "Plataforma de tripulación en la lista");

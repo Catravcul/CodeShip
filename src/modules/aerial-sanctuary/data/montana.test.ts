@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildLayout } from "./layout";
 import { carpetRoute, Grid, obstaclesOf } from "@modules/sanctuary-one/data/alfombras";
-import { CENTRE_FREE_M, GIANT, GIANT_TREES, HOLLOW, HOLLOW_INSIDE, ceilingAt, flightTouches, flightWorld, hollowPlan } from "./montana";
+import { CENTRE_FREE_M, CROWN, GIANT, GIANT_TREES, HOLLOW, HOLLOW_INSIDE, ceilingAt, flightTouches, flightWorld, hollowPlan } from "./montana";
 import { CAVE_HALF_M, CAVE_PASSAGE, CAVE_VAULT_M, CORE_DEF, INNER_H, INNER_HALF, LARGEST_S3_ANIMAL, caves } from "./bioma-island";
 import { NEEDED as S1_DOOR, PASSAGE } from "@modules/sanctuary-one/data/paso";
 import { placeAt, step } from "../domain/walk";
@@ -60,6 +60,18 @@ for (const k of [1, 1.5]) {
         for (const f of t.floors) {
           for (const [x, z] of [[f.slab.x0, f.slab.z0], [f.slab.x1, f.slab.z1], [f.slab.x0, f.slab.z1], [f.slab.x1, f.slab.z0]] as const) expect(ceilingAt(x, z), `${t.def.id} nivel ${f.level}`).toBeGreaterThan(f.top + GIANT.headroom);
         }
+      }
+    });
+
+    it("cada árbol parece un árbol: su copa queda sobre todos los pisos y cuevas, bajo el techo y fuera del centro libre (E15)", () => {
+      expect(plan.crowns.length).toBe(plan.trees.length);
+      const top = Math.max(...plan.trees.flatMap((t) => t.floors.map((f) => f.top)));
+      for (const c of plan.crowns) {
+        expect(c.y0, c.tree).toBeGreaterThanOrEqual(top + CROWN.over);
+        for (const cv of caves()) expect(c.y0, c.tree).toBeGreaterThanOrEqual(cv.y + CROWN.caveOver);
+        expect(c.y1 - c.y0, c.tree).toBeGreaterThanOrEqual(CROWN.minDepth);
+        expect(c.y1, c.tree).toBeLessThanOrEqual(ceilingAt(c.x, c.z));
+        expect(Math.hypot(c.x - HOLLOW_INSIDE.x, c.z - HOLLOW_INSIDE.z) - c.r, c.tree).toBeGreaterThan(0);
       }
     });
 

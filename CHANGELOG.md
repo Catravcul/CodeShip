@@ -3,6 +3,15 @@
 Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documento. El historial anterior al
 2026-11-18 está en git y en `docs/design/`.
 
+## 2026-11-26
+
+- **Santuario 3, montaña hueca v2**: capa de tierra delgada (hueco de 516 m y 331 m de alto), cuevas cortas a la medida
+  del mayor insecto + 2 m, centro libre para la pupa; **las estaciones de alfombras son las del santuario 1** (botón
+  «Volar» con la Y, ventana de mapa con sus destinos, alfombras flotando y planetario; código compartido); pisos sin
+  paredes ni tejado y caída libre por el borde; los árboles gigantes parecen árboles (corteza, ramas, hojas, frutos y
+  flores) ([montana-hueca.md](docs/design/montana-hueca.md), reglas E13–E16 en
+  [edificios-y-pisos.md](docs/design/edificios-y-pisos.md)).
+
 ## 2026-11-25
 
 - **Santuario 3, montaña hueca**: la montaña es una pirámide hueca con tres cuevas sobre un lago de 4 m; cuatro árboles

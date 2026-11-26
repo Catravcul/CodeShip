@@ -287,13 +287,25 @@ export async function s3Iniciacion2(j) {
   await goPost(j, 8, "Simuladores");
   const c8 = await doPost(j, 8, "Puesto 8, simulador de Dragon", "simulador", "David", ["casco-vuelo"]);
   j.check("la pantalla del simulador muestra lanzamiento, aborto, acople, fallo y reentrada", ["lanzamiento", "aborto", "acople", "fallo", "reentrada"].every((s) => c8.shows.has(s)), [...c8.shows].join(", "));
-  await j.showPanel('.s3-ui .cm-acts [data-act="sim:acople"]');
-  await j.tap('.s3-ui .cm-acts [data-act="sim:acople"]', "Practicar el acople");
+  // It starts only while she walks free (aerial-sanctuary.ts): after the post she may still be standing up from it.
+  await until(j, (q) => q.mode === "libre", 30000);
+  const dockOn = () => p.waitForFunction(() => !!window.codeshipS3.sims.dock, null, { timeout: 20000 }).then(() => true, () => false);
+  let started = false;
+  for (let k = 0; k < 2 && !started; k++) {
+    await j.showPanel('.s3-ui .cm-acts [data-act="sim:acople"]');
+    await j.tap('.s3-ui .cm-acts [data-act="sim:acople"]', "Practicar el acople");
+    started = await dockOn();
+  }
+  j.check("«Practicar el acople» empieza el simulador de acople", started, JSON.stringify(await s3(p).then((q) => ({ mode: q.mode, near: q.near }))));
   await capture(j, "acople", "El acople a mano en el simulador de Dragon");
   // As a pilot does with a slow hand (a tap here takes ~2 s): first the yaw, as the translations go where Dragon
   // points; then onto the axis, each step stopped a tap's time early; then in at 0,1 m/s. The display's own numbers.
+  // The practice ends 4 s of simulator time after the contact (s3-simulators.ts): on a slow runner that can be between
+  // two looks, so once it is over she reads the simulator's verdict instead of the display.
   const g = () => p.evaluate(() => {
-    const d = window.codeshipS3.sims.dock;
+    const sims = window.codeshipS3.sims;
+    const d = sims.dock;
+    if (!d) return { gone: true, yaw: 0, yawRate: 0, right: 0, up: 0, z: 0, contact: sims.lastDockOk === undefined ? null : { ok: sims.lastDockOk }, v: { x: 0, y: 0, z: 0 } };
     const r = d.run;
     const q = r.orientation;
     return { yaw: (2 * Math.atan2(q.y, q.w) * 180) / Math.PI, yawRate: r.ratesDegS.y, right: r.position.x, up: r.position.y, z: r.position.z, contact: d.contact ?? null, v: r.velocity };
@@ -336,7 +348,7 @@ export async function s3Iniciacion2(j) {
     if (s.z < seen.z - 0.05) seen = { z: s.z, at: Date.now() };
   }
   const toast = (await j.texts(".s3-ui .cab-toast.on"))[0] ?? "";
-  j.check("el acople a mano toca dentro de los límites del IDSS y acopla", !!s.contact?.ok && /acoplada/.test(toast), JSON.stringify({ contact: s.contact, toast }));
+  j.check("el acople a mano toca dentro de los límites del IDSS y acopla", !!s.contact?.ok && (/acoplada/.test(toast) || !!s.gone), JSON.stringify({ contact: s.contact, toast, ended: !!s.gone }));
   await until(j, (q) => q.mode === "libre", 15000);
   // The LM's landing from 150 m, in the LM simulator's own hall (as the LMS of Building 5): Áreas, then a few steps
   // to the cabin with «Moverse»; the descent engine's throttle, the drift nulled with the RCS.
@@ -347,7 +359,7 @@ export async function s3Iniciacion2(j) {
   await j.tap('.s3-ui .cm-acts [data-act="sim:alunizaje"]', "Practicar el alunizaje (LM)");
   await capture(j, "alunizaje", "El alunizaje a mano en la maqueta del LM");
   await tapPad(j, "Anular giros y velocidad");
-  // Down at about a tenth of the height a second (2,5 m/s at most, 0,6 at the end): the 400 kg of the trainer's
+  // Down at about a fifteenth of the height a second (2,5 m/s at most, 0,6 at the end): the 400 kg of the trainer's
   // propellant last about 100 s of hover, so a slow CI runner must not dawdle (11-19). Until it touches down (the
   // simulator's own clock runs slower than the wall's on a loaded runner), not for a set number of looks.
   const lm = () => p.evaluate(() => window.codeshipS3.sims.land ?? null);
@@ -364,7 +376,9 @@ export async function s3Iniciacion2(j) {
     // tap (no hunting near the ground), and never below the engine's 10 % (a tap there cuts it). Chasing the rate a
     // tap late made it bounce near the ground and touch at 5,1 and 5,6 m/s (CI runs 45238233908, 45331168037).
     const acc = (m2.vzMs - m.vzMs) / Math.max(0.05, m2.t - m.t);
-    const want = -Math.max(0.6, Math.min(2.5, m2.altM / 10));
+    // The last 37 m at a fifteenth of the height a second: at a tenth, with three runs sharing the machine, the taps
+    // came late and it touched at 3,06 m/s.
+    const want = -Math.max(0.6, Math.min(2.5, m2.altM / 15));
     const aim = Math.max(-0.5, Math.min(0.5, (want - m2.vzMs) / 3));
     if (acc < aim - 0.17) await tapPad(j, "Subir el empuje del motor de descenso");
     else if (acc > aim + 0.17 && m2.throttle - 0.05 >= 0.1 + 1e-6) await tapPad(j, "Bajar el empuje del motor de descenso");

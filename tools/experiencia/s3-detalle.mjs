@@ -90,7 +90,12 @@ export async function goArea(j, id, title) {
   if (!(await j.page.locator(`.areas-window [data-pick="${id}"]`).count())) await j.areasScope("", "", "Todo: la isla");
   await j.tap(`.areas-window [data-pick="${id}"]`, `${title} en el mapa`);
   const ok = await j.tap(`.areas-window [data-area="${id}"]`, `Ir: ${title}`);
-  const s = await until(j, (q) => q.mode === "libre", 20000);
+  // The jump and the sign over the screen follow in the next frames, a while on a slow runner (CI saw the sign of the
+  // room she came from): she waits until she is in it, and the sign a little more.
+  const inIt = (q) => q.body.area === id || q.body.area?.startsWith(`${id}:`) || q.body.area?.startsWith(`${id}-`);
+  const s = await until(j, (q) => q.mode === "libre" && inIt(q), 30000);
+  const name = title.replace(/ \(.*\)$/, "");
+  if (inIt(s)) await until(j, (q) => q.where.includes(name), 10000);
   await j.page.waitForTimeout(600);
   return ok && s.mode === "libre";
 }

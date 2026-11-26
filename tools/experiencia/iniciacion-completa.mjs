@@ -41,6 +41,10 @@ const watch = (p) =>
     const add = (a, v) => v && !a.includes(v) && a.push(v);
     window.__px48timer = setInterval(() => {
       const c = window.codeshipS3;
+      seen.handedOver ||= c.handedOver ?? null;
+      // Docked, the page reloads into the Starship 3,5 s later (aerial-sanctuary.ts): on a slow runner that can come
+      // before she reads this, so it is kept where the reload does not wipe it.
+      sessionStorage.setItem("px48", JSON.stringify(seen));
       const l = c.launch;
       for (const [k, o] of c.stage.things.entries()) if (o.visible) add(seen.things, k);
       add(seen.ePhases, l.ePhase);
@@ -54,7 +58,8 @@ const watch = (p) =>
       if (!l.flightT) seen.herY = Math.max(seen.herY, c.rig.position.y);
     }, 150);
   });
-const seenNow = (p) => p.evaluate(() => (clearInterval(window.__px48timer), window.__px48));
+// It keeps gathering until the reload (the hand-over comes after the last challenge).
+const seenNow = (p) => p.evaluate(() => window.__px48 ?? JSON.parse(sessionStorage.getItem("px48") ?? "null"));
 
 /** Answer the open sheet right, block by block, letting each beat play; then «Continuar». */
 async function solve(j, title) {
@@ -69,7 +74,8 @@ async function solve(j, title) {
     await p.waitForTimeout(2600);
     if (drawing) break;
   }
-  for (let k = 0; k < 40 && (await s3(p)).busy; k++) await p.waitForTimeout(500);
+  // The last one docks, and the page may already be reloading into the Starship: nothing busy there.
+  for (let k = 0; k < 40 && (await s3(p).catch(() => ({ busy: false }))).busy; k++) await p.waitForTimeout(500);
   // The sheet of options says «Conseguido»; the drawing ends on its molecule and closes by itself.
   const drawn = !(await j.page.locator(".duel:not(.hidden)").count());
   const result = drawn ? "Conseguido" : ((await j.texts(".duel .result"))[0] ?? "");
@@ -183,17 +189,22 @@ export async function iniciacionCompleta(j) {
   await capture(j, "ascenso");
   await j.endSheet();
   await solve(j, "La cita con la Starship en órbita baja");
-  await capture(j, "cita");
   const f = await seenNow(p);
+  const inS3 = () => p.evaluate(() => !!window.codeshipS3).catch(() => false);
+  if (await inS3()) await capture(j, "cita");
   j.check("por el brazo de acceso a la sala blanca, a la altura de la escotilla de la Dragon (más de 60 m sobre la cubierta)", f.herY > 22 + 60, JSON.stringify({ herY: f.herY }));
   j.check("el brazo se retira, el Falcon 9 despega, la 1.ª etapa se separa y la Dragon queda sola en órbita", f.arm > 1 && f.fRise > 100 && f.sep && ["despegue", "separacion", "orbita"].every((x) => f.fPhases.includes(x)), JSON.stringify({ arm: f.arm, rise: f.fRise, sep: f.sep, phases: f.fPhases }));
   j.check("en la cita, la pantalla de la Dragon ante su asiento con la cámara de acople", f.display && f.fPhases.includes("cita"), JSON.stringify({ display: f.display }));
   j.check("con el traje y el casco de la Crew Dragon durante todo el día", ["casco-ss"].every((k) => f.things.includes(k)), f.things.join(", "));
-  await j.endSheet();
+  if (await inS3()) await j.endSheet();
 
-  // 6. Docked: the slot is a level-6 game now, and the page goes on in the Starship.
-  const handed = await until(j, (s) => !!s.handedOver, 30000);
-  const slot = await p.evaluate((id) => JSON.parse(localStorage.getItem(`codeship.partida.${id}`) ?? "null"), handed.handedOver);
+  // 6. Docked: the slot is a level-6 game now, and the page goes on in the Starship (3,5 s later it reloads).
+  let handedOver = null;
+  for (let k = 0; k < 60 && !handedOver; k++) {
+    handedOver = await p.evaluate(() => window.codeshipS3?.handedOver ?? JSON.parse(sessionStorage.getItem("px48") ?? "null")?.handedOver ?? null).catch(() => null);
+    if (!handedOver) await p.waitForTimeout(500);
+  }
+  const slot = await p.evaluate((id) => JSON.parse(localStorage.getItem(`codeship.partida.${id}`) ?? "null"), handedOver);
   j.check("acoplada: la partida pasa al nivel 6 en la misma ranura, con los días y los puestos, y el crucero a Bennu por hacer", slot?.level === 6 && slot?.state?.fromLaunch?.cruiseDays === 816 && slot.state.fromLaunch.posts.length === 13, JSON.stringify(slot).slice(0, 300));
   await p.waitForFunction(() => window.codeship?.cruise, null, { timeout: 120000 });
   await p.waitForTimeout(2500);

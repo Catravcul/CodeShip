@@ -52,7 +52,7 @@ describe("la pupa de la abeja en el centro de la pirámide (pupa-abeja.md)", () 
     for (const q of pier.pts.slice(1)) b = walk(L.world, b, q);
     expect(b.area).toBe(PUPA_AREA);
     // From the first tree's foot (the carpets' station there), the way graph reaches the lookout.
-    const from = L.hollow.stations.find((s) => s.kind === "pie" && s.tower.startsWith("arbol-"))!;
+    const from = L.hollow.stations.find((s) => s.kind === "pie" && L.hollow.s1.towers.some((t) => t.id === s.tower))!;
     expect(shortestWay(L.graph, from.point, PUPA_POINT)).toBeDefined();
     expect(area.point).toBe(PUPA_POINT);
   });

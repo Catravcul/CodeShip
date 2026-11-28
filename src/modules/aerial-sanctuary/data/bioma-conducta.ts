@@ -1,5 +1,6 @@
 import type { Traits } from "@modules/fauna/domain/predation";
 import type { EthoAct, SpeciesEthogram } from "@modules/fauna/domain/ethogram";
+import { REAL_COURTSHIPS, REAL_ETHOGRAMS, REAL_NAMES, REAL_RIVALRIES, REAL_TRAITS } from "./bioma-real-conducta";
 import { fact } from "./sources";
 import { CARBON_ETHOGRAMS, CARBON_NAMES, CARBON_TRAITS } from "./carbonifero-conducta";
 
@@ -23,7 +24,7 @@ const v = (realMs: number) => realMs * INSECT_SPEED.value;
 /** A prey's adult and its nymph (the hunters' keys). */
 const ADULT_NYMPH = (s: string) => [s, `${s}:joven`];
 
-export const BIOME_TRAITS: Readonly<Record<string, Traits & { readonly source: string }>> = {
+const INSECT_TRAITS: Readonly<Record<string, Traits & { readonly source: string }>> = {
   abeja: { ...t({ massKg: 8e-5, strength: 0.2, armour: 0.15, agility: 0.7, armament: 0.35, diet: "herbivoro", medium: "aire", runMs: v(7), senseM: 30, huntSuccess: 0, rangeM: 0, eats: [] }), source: `${W("Apis cerana")} (pica; forma una bola de obreras que calienta al avispón hasta matarlo); vuela a ~7 m/s (${W("Western honey bee")})` },
   abejorro: { ...t({ massKg: 6e-4, strength: 0.3, armour: 0.2, agility: 0.5, armament: 0.35, diet: "herbivoro", medium: "aire", runMs: v(5), senseM: 30, huntSuccess: 0, rangeM: 0, eats: [] }), source: `${W("Bumblebee")} (pica; vuela con frío calentando sus músculos)` },
   mariposa: { ...t({ massKg: 3e-4, strength: 0.05, agility: 0.5, armament: 0, diet: "herbivoro", medium: "aire", runMs: v(3), senseM: 20, huntSuccess: 0, rangeM: 0, eats: [] }), source: `${W("Parnassius")} (vuelo lento y planeado cerca del suelo)` },
@@ -80,10 +81,10 @@ const NAME: Readonly<Record<string, [string, string, string]>> = {
   ...CARBON_NAMES,
   Humano: ["Doménica", "Doménica", "Doménica"],
 };
-export const AGENT_NAMES: Readonly<Record<string, string>> = Object.fromEntries(Object.entries(NAME).flatMap(([k, [a, c, j]]) => [[k, a], [`${k}:cria`, c], [`${k}:joven`, j]]));
+const INSECT_NAMES: Readonly<Record<string, string>> = Object.fromEntries(Object.entries(NAME).flatMap(([k, [a, c, j]]) => [[k, a], [`${k}:cria`, c], [`${k}:joven`, j]]));
 
 /** Each species' courtship, in words (its real display), where the source describes it. */
-export const COURTSHIPS: Readonly<Record<string, string>> = {
+const INSECT_COURTSHIPS: Readonly<Record<string, string>> = {
   drosophila: "el macho la sigue y hace vibrar un ala: canta una canción de cortejo propia de su especie (Wikipedia, Drosophila melanogaster)",
   mariposa: "tras aparearse, el macho le deja un tapón en el abdomen, el esfragis, para que no se aparee con otro (Wikipedia, Parnassius)",
   libelula: "vuelan en tándem, el macho sujetando a la hembra por la nuca, y ella pone en el agua (Wikipedia, Pantala flavescens)",
@@ -93,7 +94,7 @@ export const COURTSHIPS: Readonly<Record<string, string>> = {
 };
 
 /** Each species' contest between males (fauna `Rivalries`), only where it is documented. */
-export const RIVALRIES: Readonly<Record<string, string>> = {
+const INSECT_RIVALRIES: Readonly<Record<string, string>> = {
   drosophila: "los machos se embisten y se empujan con las patas delanteras por un trozo de fruta (Wikipedia, Drosophila melanogaster)",
   libelula: "los machos defienden su tramo de agua y persiguen a los rivales (Wikipedia, Dragonfly)",
 };
@@ -102,7 +103,7 @@ const a = (verb: string, mode: EthoAct["mode"], weight: number, seconds: number,
 const LARVA = (verb: string, src: string) => a(verb, "pacer", 1, 30, src);
 
 /** What each does when it is calm (Cold Sanctuary's Ethogram, for these species from their sources). */
-export const BIOME_ETHOGRAMS: Readonly<Record<string, SpeciesEthogram>> = {
+const INSECT_ETHOGRAMS: Readonly<Record<string, SpeciesEthogram>> = {
   abeja: { acts: [a("liba néctar y recoge polen de flor en flor", "patrullar", 0.6, 25, W("Apis cerana")), a("vuelve a la colmena con las cestas de polen", "pasear", 0.25, 20, W("Apis cerana")), a("baila en la colmena para contar dónde están las flores", "quieto", 0.15, 20, "Oldroyd y Wongsiri 2006 (A. cerana danza como A. mellifera)")], young: LARVA("come la papilla que le dan las nodrizas", W("Apis cerana")) },
   abejorro: { acts: [a("pecorea flores de la pradera", "patrullar", 0.6, 25, W("Bumblebee")), a("calienta sus músculos temblando antes de volar", "quieto", 0.4, 15, W("Bumblebee"))], young: LARVA("come polen y néctar en su celda", W("Bumblebee")) },
   mariposa: { acts: [a("planea despacio sobre la pedrera", "patrullar", 0.5, 25, W("Parnassius")), a("liba en una flor con las alas abiertas al sol", "quieto", 0.5, 20, W("Parnassius"))], young: LARVA("come hojas de las plantas en cojín", W("Parnassius")) },
@@ -120,3 +121,13 @@ export const BIOME_ETHOGRAMS: Readonly<Record<string, SpeciesEthogram>> = {
   avispon: { acts: [a("se cierne ante una colmena esperando a las abejas", "quieto", 0.4, 20, W("Asian hornet")), a("caza insectos al vuelo", "patrullar", 0.6, 25, W("Asian hornet"))], young: LARVA("espera en su celda a que le traigan carne masticada", W("Asian hornet")) },
   ...CARBON_ETHOGRAMS,
 };
+
+/**
+ * The two chains of sanctuary 3 in one table each (Berón 2026-11-28): the giant insects inside the mountain (above)
+ * and the mountain's real animals outside (data/bioma-real-conducta.ts). Their ids never meet.
+ */
+export const BIOME_TRAITS: Readonly<Record<string, Traits & { readonly source: string }>> = { ...INSECT_TRAITS, ...REAL_TRAITS };
+export const AGENT_NAMES: Readonly<Record<string, string>> = { ...INSECT_NAMES, ...REAL_NAMES };
+export const COURTSHIPS: Readonly<Record<string, string>> = { ...INSECT_COURTSHIPS, ...REAL_COURTSHIPS };
+export const RIVALRIES: Readonly<Record<string, string>> = { ...INSECT_RIVALRIES, ...REAL_RIVALRIES };
+export const BIOME_ETHOGRAMS: Readonly<Record<string, SpeciesEthogram>> = { ...INSECT_ETHOGRAMS, ...REAL_ETHOGRAMS };

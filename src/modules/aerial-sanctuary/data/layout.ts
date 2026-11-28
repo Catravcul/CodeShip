@@ -12,7 +12,7 @@ import { furnishHelipad, furnishRoom, type PlacedFixture, type WalkCheck } from 
 import { furnishCampus } from "./campus-fixtures";
 import { CAMPUS_ROOMS } from "./campus";
 import { buildHollow, HOLLOW, type HollowPlan, type RoomSize } from "./montana";
-import { buildBiomeIsland, INNER_HALF } from "./bioma-island";
+import { BIOME_ISLAND, buildBiomeIsland, CORE_DEF, INNER_HALF } from "./bioma-island";
 
 /**
  * Sanctuary 3 as the scene and the rules see it (docs/design/santuario3-escena.md): the islands, their floors, water
@@ -53,8 +53,10 @@ export interface AreaDef {
   readonly point: string;
   /** The altitude belt it lies in, on a mountain (the air island's Áreas scope). */
   readonly belt?: { readonly id: string; readonly label: string };
-  /** Its floor's height, where it is not at the sea's level (a room on a giant tree's floor): stages stand on it. */
+  /** Its floor's height, where it is not at the sea's level (a room on a tree's floor): stages stand on it. */
   readonly floorY?: number;
+  /** The tree-building it is in, inside the mountain (sanctuary 1's, migrated, or a training one): Áreas' «Edificios». */
+  readonly tower?: { readonly id: string; readonly label: string };
 }
 
 export type MachineKind = "navegacion" | "ascensor" | "esterilla" | "puesto" | "simulador" | "lanzamiento" | "cama" | "comedor" | "servicio" | "alfombra";
@@ -78,6 +80,8 @@ export interface MachineDef {
   readonly reto?: string;
   /** For a carpet station (kind «alfombra»): its id (data/montana.ts). */
   readonly station?: string;
+  /** Where she lies or sits to use it, when it is a piece of sanctuary 1's furniture (a bunk, a table: data/montana.ts). */
+  readonly seat?: { readonly x: number; readonly y: number; readonly z: number; readonly yaw: number };
 }
 
 export interface LiftDef {
@@ -881,24 +885,24 @@ export function buildLayout(k = 1): S3Layout {
     return { hx: r.half.x * k, hz: r.half.z * k, h: r.height, pool: r.pool?.depth ?? 0 };
   };
   const hd = HELIDECK_M.value / 2;
-  const hollow = buildHollow(b, k, size, (id) => ROOM.get(id)!.label, (id, at) => {
+  const hollow = buildHollow(b, k, size, (id) => ROOM.get(id)!, (id, at) => {
     const r = ROOM.get(id)!;
     const m = b.mark();
     buildRoom(b, r, k);
     b.move(m, at.x - r.centre.x, at.y, at.z - r.centre.z);
   }, hd);
-  // The helipad: outside, on the apron at the south cave's mouth (the walk in is the cave).
+  // The helipad: outside, on the apron at the south gate (the way in is the gate: another scene).
   const heliC = { x: hollow.heli.x, z: hollow.heli.z };
   const hy = hollow.heli.y;
   b.floor("entrenamiento:helipuerto", hy, around(heliC.x, heliC.z, hd));
-  // Its paved apron round it (the navigation machine and the way to the cave stand on it): still the campus.
+  // Its paved apron round it (the navigation machine and the way to the gate stand on it): still the campus.
   b.floor("entrenamiento:helipuerto", hy - 0.03, around(heliC.x, heliC.z, hd + 8));
   b.props.push({ kind: "helideck", x: heliC.x, y: hy, z: heliC.z, size: { x: hd * 2, y: 0.1, z: hd * 2 } });
   const heliEdge = b.point("entrenamiento:helipuerto:borde", heliC.x, hy, heliC.z + hd - 1.5);
   const heliMid = b.point("entrenamiento:helipuerto:centro", heliC.x, hy, heliC.z + 4);
   const cross = b.point("entrenamiento:cruce", heliC.x, hy - 0.05, heliC.z + hd + 6);
-  b.link(heliMid, heliEdge, cross, "entrenamiento:cueva-sur:boca");
-  b.area({ id: "entrenamiento:helipuerto", island: "entrenamiento", label: "Helipuerto del campus", desc: "Cubierta de 1 D para el S-92 en la explanada de la cueva sur: por la cueva se entra al campus de la montaña hueca; desde aquí se vuela a las demás islas", reality: "real", centre: { x: heliC.x, y: hy + 0.5, z: heliC.z }, half: { x: hd, y: 0.5, z: hd }, point: heliMid });
+  b.link(heliMid, heliEdge, cross, "entrenamiento:compuerta-sur:boca");
+  b.area({ id: "entrenamiento:helipuerto", island: "entrenamiento", label: "Helipuerto del campus", desc: "Cubierta de 1 D para el S-92 en la explanada de la compuerta sur: por la compuerta se entra al campus de la montaña hueca; desde aquí se vuela a las demás islas", reality: "real", centre: { x: heliC.x, y: hy + 0.5, z: heliC.z }, half: { x: hd, y: 0.5, z: hd }, point: heliMid });
   const kiosk = { x: heliC.x - hd - 2.5, z: heliC.z + 3 };
   b.machine({ id: "nav-entrenamiento", kind: "navegacion", island: "entrenamiento", area: "entrenamiento:helipuerto", label: "Máquina de navegación", what: "El mapa de las islas: elegir adónde volar en el helicóptero (también al glaciar: vuelo parabólico, meteoritos y frío)", x: kiosk.x, y: hy, z: kiosk.z }, heliEdge);
   b.block("kiosco", { ...around(kiosk.x - 1.7, kiosk.z, 0.5), y0: hy, y1: hy + 1.3 });
@@ -1113,15 +1117,15 @@ export function buildLayout(k = 1): S3Layout {
 
   // ── The biome's island (docs/design/bioma-s3.md): data/bioma-island.ts ──
   const biome = buildBiomeIsland(b, k, HELIDECK_M.value);
-  // The campus's helipad and the caves' mouths on the mountain's trail under the south face.
+  // The campus's helipad and the gates' sills on the mountain's trail under the south face.
   // (A trail's point is named after the first trail through it: the south apron's end is also the farallón trail's.)
   b.link("entrenamiento:cruce", "bioma:sendero-3-2");
-  for (const [cave, trail] of [["suroeste", "bioma:sendero-6-2"], ["sureste", "bioma:sendero-7-2"]] as const) b.link(b.points.some((p) => p.id === `entrenamiento:cueva-${cave}:escalones`) ? `entrenamiento:cueva-${cave}:escalones` : `entrenamiento:cueva-${cave}:boca`, trail);
+  for (const [gate, trail] of [["suroeste", "bioma:sendero-6-2"], ["sureste", "bioma:sendero-7-2"]] as const) b.link(`entrenamiento:compuerta-${gate}:boca`, trail);
   const { ground: _ground, ...biomeDef } = biome;
   pads.push(biome.pad);
 
   const islands: IslandDef[] = [
-    { id: "entrenamiento", name: "Campus de la montaña", desc: "El campus de los astronautas dentro de la montaña hueca: las instalaciones reales de formación (la piscina NBL, la centrífuga, las maquetas, el control de misión, el centro médico) y los servicios del campus (residencia, restaurante, clínica, aulas, biblioteca, laboratorio, crianza, huerto, taller) en los pisos de cuatro árboles colosales, y el Starship inundado. Se entra por las cuevas", reality: "ficcion", source: S.ours, rect: around(HOLLOW.x, HOLLOW.z, INNER_HALF), deckY: hy, pad: pads[0]!, arrival: "entrenamiento:helipuerto:centro", nav: "m:nav-entrenamiento" },
+    { id: "entrenamiento", name: "Campus de la montaña", desc: "El campus de los astronautas dentro de la montaña hueca: las instalaciones reales de formación (la piscina NBL, la centrífuga, las maquetas, el control de misión, el centro médico) y los servicios del campus (residencia, restaurante, clínica, aulas, biblioteca, laboratorio, crianza, huerto, taller) en los edificios-árbol del santuario 1 tal cual (y dos más con los pisos de entrenamiento), y el Starship inundado: una nave excavada bajo el nivel del mar. Se entra por las compuertas de la cara sur", reality: "ficcion", source: S.ours, rect: around(HOLLOW.x, HOLLOW.z, INNER_HALF), deckY: hy, pad: pads[0]!, arrival: "entrenamiento:helipuerto:centro", nav: "m:nav-entrenamiento" },
     { id: "lanzadera", name: "Lanzadera de cohetes", desc: "El casquete de Cold Sanctuary con su edificio-árbol de agua, el ascensor del tronco y la corona del Electron en lo alto (con toda su magia)", reality: "ficcion", source: S.csBuilder, rect: around(L.x, L.z, LH * k), deckY: 0, pad: pads[1]!, arrival: "lanzadera:helipuerto", nav: "m:nav-lanzadera" },
     { id: "parque", name: "Parque energético", desc: "El casquete del parque: el árbol bajo, el campo solar, los tres E-33 de Ross Island con su parada por aves y la mareal piloto", reality: "ficcion", source: S.csBuilder, rect: around(E.x, E.z, EH * k), deckY: 0, pad: pads.find((p) => p.island === "parque")!, arrival: "parque:anden", nav: "m:nav-parque" },
     { id: "muelle", name: "Muelle aéreo", desc: "El muelle de las alfombras voladoras de Cold Sanctuary", reality: "ficcion", source: S.csBuilder, rect: around(Dk.x, Dk.z, (dz.x / 2) * k, (dz.z / 2) * k), deckY: 0, pad: pads.find((p) => p.island === "muelle")!, arrival: "muelle:pista", nav: "m:nav-muelle" },
@@ -1131,7 +1135,7 @@ export function buildLayout(k = 1): S3Layout {
   ];
 
   const inhabited = [
-    { id: "campus de la montaña", ...around(HOLLOW.x, HOLLOW.z, 210) },
+    { id: "campus de la montaña", ...around(BIOME_ISLAND.centre.value.x + CORE_DEF.x, BIOME_ISLAND.centre.value.z + CORE_DEF.z, CORE_DEF.half) },
     { id: "Parque Energético (tronco)", ...around(E.x, E.z, (TREE.waterHalf.value + TREE.wall.value) * k) },
     { id: "muelle aéreo", ...around(Dk.x, Dk.z, (dz.x / 2) * k, (dz.z / 2) * k) },
     { id: "campamento del glaciar", ...around(G.x + (-1440) * k, G.z + -80 * k, 15 * k, 15 * k) },

@@ -33,8 +33,7 @@ import { procedureReto } from "@modules/sanctuary-one/application/challenges";
 import { ChoreRun, type Chore } from "@modules/chores/domain/chore";
 import type { Answer } from "@modules/mind-duel/domain/exercise";
 import type { AreaMap, AreaNode } from "@modules/tasks/application/areas";
-import type { Task, Vehicle } from "@modules/tasks/application/task-list";
-import { ISLAND_TASK_VEHICLES } from "@modules/settings/domain/settings";
+import type { Task } from "@modules/tasks/application/task-list";
 import { AutoSave } from "@modules/saves/application/auto-save";
 import { boardDayOf } from "@modules/saves/domain/space-state";
 import { AERIAL_LEVEL, ISLAND_NAME, type AerialState } from "@modules/saves/domain/aerial-state";
@@ -58,14 +57,17 @@ import { TaskBoard } from "./ui/task-board";
 import { AreasWindow } from "./ui/areas-window";
 import { SettingsPanel } from "./ui/settings-panel";
 import { settings } from "./ui/settings-store";
-import { offerVehicles } from "./ui/task-settings";
+import { wholePlace } from "./ui/task-settings";
 import { IslandNavWindow, flightMode, type IslandChoice } from "./ui/island-nav";
 import { DuelView, type SessionText } from "./ui/duel-view";
 import { TraceView, openTraceChallenge } from "./ui/trace-view";
 import { compoundForChore } from "@modules/aerial-sanctuary/data/retos-trazos";
 import { RcsPad } from "./ui/rcs-pad";
 import { S3Stage } from "./adapters/three/s3-stage";
-import { framePair, roomAlong, roomiestYaw, sheetLens } from "./adapters/three/interior/reto-focus";
+import { focusReto, framePair, roomAlong, roomiestYaw, sheetLens } from "./adapters/three/interior/reto-focus";
+import { StepShow } from "./adapters/three/interior/step-show";
+import { sheetBand } from "./ui/sheet-band";
+import { stepAnimation } from "@modules/sanctuary-one/application/animations";
 import { TrainerCrowd } from "./adapters/three/s3-trainers";
 import { S3Rigs } from "./adapters/three/s3-rigs";
 import { S3Simulators, paintRendezvous, paintSimScreen, type SimKind } from "./s3-simulators";
@@ -233,35 +235,40 @@ function toggleView(): void {
   thirdPerson = !thirdPerson;
   menu.relabel(viewBtn, `Vista: ${thirdPerson ? "3ª" : "1ª"} persona`, "V");
 }
-offerVehicles(ISLAND_TASK_VEHICLES, "Isla");
-if (!ISLAND_TASK_VEHICLES.includes(settings.value.taskVehicle)) settings.set("taskVehicle", "auto");
+// No service repeats between islands: Tareas, Áreas and the carpets list the whole sanctuary, their gear only
+// Viaje/Teletransporte (task-settings.ts `wholePlace`; Berón 2026-11-28).
+wholePlace("Todo el santuario");
 const tasks = initiationTasks(L);
 const taskBoard = new TaskBoard(root, () => tasks, () => island());
 menu.add({ className: "s3-tasks", icon: ICON.tasks, label: "Tareas", key: "T", window: "tareas", order: 1, pad: true }, () => taskBoard.open());
 taskBoard.onGo = (t) => goToTask(t);
 
-const areaMaps = new Map<IslandId, AreaMap>();
-function areaMap(v: Vehicle): AreaMap | undefined {
-  if (!islandById.has(v as IslandId)) return undefined;
-  const id = v as IslandId;
-  const hit = areaMaps.get(id);
-  if (hit) return hit;
-  const areas = L.areas.filter((a) => a.island === id);
-  // The island's hierarchy (domain/area-scope.ts): its buildings and their floors, the shared scope of Áreas.
-  const tree = s3AreaScopes(areas);
-  const nodes: AreaNode[] = areas.map((a) => {
-    const scope = tree.of(a.id);
-    return { id: a.id, label: a.label, desc: a.desc, goal: a.point, fixture: a.point, centre: a.centre, half: a.half, category: s3AreaCategory(a), ...(scope ? { scope } : {}) };
-  });
-  const map: AreaMap = { vehicle: id, nodes, links: [], scopes: tree.scopes };
-  areaMaps.set(id, map);
-  return map;
+/**
+ * Áreas: every area of the sanctuary, every island (no island filter: wholePlace above), each with its building and
+ * floor kept for its category chip. Built once.
+ */
+let wholeMap: AreaMap | undefined;
+function areaMap(): AreaMap {
+  if (wholeMap) return wholeMap;
+  const nodes: AreaNode[] = [];
+  for (const isl of L.islands) {
+    const areas = L.areas.filter((a) => a.island === isl.id);
+    // The island's hierarchy (domain/area-scope.ts): its buildings and their floors.
+    const tree = s3AreaScopes(areas);
+    for (const a of areas) {
+      const scope = tree.of(a.id);
+      nodes.push({ id: a.id, label: a.label, desc: a.desc, goal: a.point, fixture: a.point, centre: a.centre, half: a.half, category: s3AreaCategory(a), scope: { ...scope, isla: a.island } });
+    }
+  }
+  wholeMap = { vehicle: "entrenamiento", nodes, links: [] };
+  return wholeMap;
 }
+const islandOfArea = new Map(L.areas.map((a) => [a.id, a.island]));
 const areasWindow = new AreasWindow(root, {
   here: () => island(),
   map: areaMap,
   at: () => L.areas.find((a) => a.id === body.area)?.id,
-  go: (n, map) => goTo(n.goal, n.label, map.vehicle as IslandId, "Áreas"),
+  go: (n) => goTo(n.goal, n.label, islandOfArea.get(n.id) ?? island(), "Áreas"),
 });
 RootMenu.global({ className: "areas-btn", icon: ICON.areas, label: "Áreas", window: "areas", order: 2, pad: true }, () => areasWindow.open()).show(true);
 const machinePanel = new MachinePanel(root);
@@ -492,16 +499,40 @@ function frameActo(dt: number, m: Extract<Mode, { kind: "acto" }>): void {
   m.then();
 }
 
-/** A campus service's challenge (data/campus.ts CAMPUS_RETOS), on the sheet like every other. */
+/**
+ * The campus services' stage (Berón 2026-11-28: «he realizado el reto de dar una clase en el aula y no he visto la
+ * animación, asegúrate que se encuadre la cámara»): the ships' and sanctuary 1's step player (StepShow, reto-focus.ts),
+ * as at the biome's field table. She stands at the service facing it, the camera past her right shoulder in the band
+ * the sheet leaves, and each step drawn is acted out with sanctuary 1's animation of that step
+ * (application/animations.ts `stepAnimation`: its gesture or, by the step's verb, the step player's action).
+ */
+const serviceSteps = new StepShow();
+scene.add(serviceSteps.root);
+
+/** A campus service's challenge (data/campus.ts CAMPUS_RETOS), on the sheet like every other, acted out at the service. */
 function startService(m: MachineDef): void {
   const q = m.reto ? CAMPUS_RETOS[m.reto] : undefined;
   if (!q) return;
   const r = procedureReto(q);
   mode = { kind: "reto", what: r.chore.id };
-  openChallenge(r.chore, () => undefined, (ok) => {
-    mode = { kind: "libre" };
-    say(ok ? `${q.title}: superado` : `${q.title}: sin terminar`);
-  });
+  focusReto(serviceSteps, camera, body, yaw, { x: m.x, y: m.y, z: m.z, sy: 1 });
+  // Its sign hangs over the service: hidden while it is acted, as at the posts.
+  signsOff(m.id, true);
+  openChallenge(
+    r.chore,
+    (index, part) => {
+      const acts = stepAnimation(r, undefined, index).acts;
+      const act = acts[part] ?? (part === 0 ? acts[0] : undefined);
+      if (act) serviceSteps.play([act]);
+    },
+    (ok) => {
+      serviceSteps.clear();
+      signsOff(m.id, false);
+      avatar.pose("stand");
+      mode = { kind: "libre" };
+      say(ok ? `${q.title}: superado` : `${q.title}: sin terminar`);
+    },
+  );
 }
 
 /** Fly to another island: walk to her pad, board, and fly each leg in sight (no teleport). */
@@ -1207,11 +1238,32 @@ function postCentre(st: Stage): { x: number; z: number } {
   const her = Object.values(st.her)[0] ?? st.lap!.from;
   return { x: (her.x + st.trainer.x) / 2, z: (her.z + st.trainer.z) / 2 };
 }
-/** The shared lens over the strip the sheet leaves (reto-focus.ts), on while a challenge's sheet is open. */
+/**
+ * The shared lens over the band the sheet leaves (reto-focus.ts), on while any challenge's sheet is open (the posts,
+ * the services, the flights, the field table): measured from the sheet itself (sheet-band.ts), so the panel and the
+ * HUD view each frame the stage in their own free band, and measured again when the sheet changes (the view toggled).
+ */
 let lensOn = false;
+let lensKey = "";
+let lensFrame = 0;
+function retoLens(force = false): void {
+  const want = duel.visible;
+  if (!force && want === lensOn && (!want || (lensFrame++ & 15) !== 0)) return;
+  const band = want ? sheetBand() : undefined;
+  const key = want ? (band ? `${Math.round(band.top)}-${Math.round(band.bottom)}` : "-") : "";
+  if (!force && want === lensOn && key === lensKey) return;
+  lensOn = want;
+  lensKey = key;
+  sheetLens(camera, want, band ? { band } : {});
+}
 function updateCamera(dt: number): void {
-  if ((mode.kind === "reto" && duel.visible) !== lensOn) sheetLens(camera, (lensOn = !lensOn));
   const look = walker.look(dt);
+  if (mode.kind === "reto" && serviceSteps.framing) {
+    // A campus service: she and the service in the band; the camera stick turns round her (reglas.md §3.8).
+    serviceSteps.orbit(-look.yaw, look.pitch);
+    serviceSteps.frame(dt, camera, rig, avatar);
+    return;
+  }
   yaw += look.yaw;
   pitch = Math.max(-1.3, Math.min(1.3, pitch + look.pitch));
   // At a simulator, or on a moving machine (the gondola, the plane): its own view; the stick turns round it.
@@ -1403,6 +1455,7 @@ function frame(now: number): void {
   frameBirds(dt);
   lightHollow();
   biome.update(dt, days, hour(), body, clock, camera, yaw);
+  retoLens();
   if (!biome.frameReto(dt, camera, rig, avatar)) updateCamera(dt);
   updateBar();
   near = nearestMachine();
@@ -1440,7 +1493,7 @@ function frame(now: number): void {
 }
 autoSave.saved(0);
 window.addEventListener("resize", () => {
-  sheetLens(camera, lensOn);
+  retoLens(true);
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 window.addEventListener("keydown", (e) => {

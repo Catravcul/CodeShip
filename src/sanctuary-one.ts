@@ -32,7 +32,7 @@ import { AreasWindow } from "./ui/areas-window";
 import { settings } from "./ui/settings-store";
 import { DayNight } from "./adapters/three/day-night";
 import { woodGridMetres } from "@modules/settings/domain/settings";
-import { offerVehicles } from "./ui/task-settings";
+import { wholePlace } from "./ui/task-settings";
 import type { AreaMap, AreaNode } from "@modules/tasks/application/areas";
 import { CAP_NAME, LOBES, WATER_Y, capOf, isLand } from "@modules/sanctuary-one/data/site";
 import { TREE } from "@modules/aerial-sanctuary/data/facts";
@@ -412,8 +412,8 @@ function toggleView(): void {
 }
 
 // --- Áreas: the map window with every place of the sanctuary and «Ir» (the real way, or teleport if she chose it) ---
-offerVehicles(["auto"], "Santuario");
-if (settings.value.taskVehicle !== "auto") settings.set("taskVehicle", "auto");
+// One place, no service repeated: Tareas, Áreas and the carpets show it all, their gear only Viaje/Teletransporte.
+wholePlace("Todo el santuario");
 /** The box of an area on the map: a floor's slab, a ring's U, a cap's disc; the sea round the lagoon. */
 function areaBox(a: (typeof L.areas)[number]): Pick<AreaNode, "centre" | "half"> {
   for (const t of L.towers) {
@@ -1132,7 +1132,7 @@ function frame(now: number): void {
   const clock = `${hh}:${String(Math.floor((hour - hh) * 60)).padStart(2, "0")}`;
   PULPO.k = advanceEgg(PULPO.k, dt, Number(settings.value.pulpoMinutes));
   // In the globe, the octopus egg's stage (domain/pulpo.ts).
-  const egg = (body.area === AQUARIUM_AREA ? ` · Huevo de pulpo: ${eggStage(Math.min(1, PULPO.k)).label}` : "") + crownPlay.frame(dt, body);
+  const egg = (body.area === AQUARIUM_AREA ? ` · ${PULPO.k < 1 ? "Huevo de pulpo" : "Pulpo"}: ${eggStage(PULPO.k).label}` : "") + crownPlay.frame(dt, body);
   const where = `Santuario 1 · ${clock} · ${a ? (a.building && !a.label.includes(a.building) ? `${a.building} · ${a.label}` : a.label) : flying ? "Volando en alfombra" : body.motion === "agua" ? "En el agua" : "Hielo"}${egg}`;
   if (whereEl.textContent !== where) whereEl.textContent = where;
   // The sheet changes (HUD or panel view, a longer question): the stage follows the room it leaves.

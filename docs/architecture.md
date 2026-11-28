@@ -26,7 +26,7 @@ al elegir, carga dinámica de un juego:
 | Nivel | Archivo | Qué |
 | --- | --- | --- |
 | 6 Espacio | `src/main.ts` | Nodriza (Starship), estación (ISS), módulo (Apollo LM), sonda, asteroides y duelos |
-| 3 Santuario Aéreo | `src/aerial-sanctuary.ts` | Islas de Cold Sanctuary + isla de entrenamiento real; iniciación de Doménica; la Isla de las alturas con su bioma (`src/s3-biome.ts`) |
+| 3 Santuario Aéreo | `src/aerial-sanctuary.ts` | Islas de Cold Sanctuary + la Isla de las alturas con su fauna real (`src/s3-biome.ts`); dentro de la montaña (otra escena, por compuertas) la nave con los edificios del santuario 1 tal cual (`buildTowers`), los pisos de entrenamiento, los insectos gigantes y la pupa; iniciación de Doménica |
 | (dentro del 1) Microcosmos | `src/microcosmos-academia.ts` (su arte: `adapters/three/academia-art.ts`) | La Academia de Platón, cargada al entrar por la máquina de simulación ([design/microcosmos.md](design/microcosmos.md)) |
 | 1 Santuario Terrestre | `src/sanctuary-one.ts` | El santuario de hielo de Cold Sanctuary ([design/santuario1.md](design/santuario1.md)) |
 

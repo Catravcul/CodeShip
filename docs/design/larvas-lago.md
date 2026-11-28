@@ -1,5 +1,7 @@
 # Las larvas del lago de la pirámide (santuario 3)
 
+> **2026-11-28**: el lago es el de la nave excavada (40 m de hondo, a nivel del mar del santuario 1): [montana-hueca.md](montana-hueca.md).
+
 Berón, 2026-11-26: el lago de la pirámide aloja larvas acuáticas (ninfas de libélula, efímeras, tricópteros…), todas
 visibles al bucear, cada una con su ciclo.
 
@@ -30,3 +32,6 @@ visibles al bucear, cada una con su ciclo.
 
 `larvas-lago.test.ts`: metamorfosis completa con pupa y la incompleta sin ella, crecimiento sin saltos, en el fondo
 y lejos de lo que está en pie, al emerger suben, y se ven varias etapas a la vez. En vivo: PX-51 (bucear junto a ellas; bajo el agua la etiqueta dice la larva más cercana, aunque esté junto a la galería de la pupa). Captura: `docs/screenshots/s3b-lago-larvas-movil.png`.
+
+**Censo** (2026-11-28): el tablón del censo de la nave, en el criadero, lista cada especie con sus larvas dibujadas por
+etapa ahora (`larvaeCensus`, probado en `larvas-lago.test.ts`: cada una contada una vez, en el orden de su ciclo).

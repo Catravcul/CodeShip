@@ -19,6 +19,24 @@ import { hash01 } from "@modules/fauna/domain/roam";
  * The nests are drawn smaller than the insects' scale (licencia): a hive's cavity ×400 would be a hill of 160 m.
  */
 
+/** The jointed workers of a crowd posed in a herd (its first `n`): a worker flies (or walks) its round about the nest every frame, wings beating; the rest breathe, a third each frame. */
+export function poseCrowd(herd: { pose(i: number, x: number, y: number, z: number, yaw: number, t: number, moving: boolean, scale: number): void; readonly capacity: number }, near: readonly CrowdPose[], t: number, everyone: boolean, frameNo: number, young: boolean): number {
+  const n = Math.min(near.length, herd.capacity);
+  for (let i = 0; i < n; i++) {
+    const c = near[i]!;
+    if (c.orbit) {
+      const o = c.orbit;
+      const a = Math.atan2(c.z - o.cz, c.x - o.cx) + o.w * Math.PI * 2 * t;
+      const bob = o.h > 0 ? Math.sin(t * 1.7 + c.seed) * 0.4 : 0;
+      herd.pose(i, o.cx + Math.cos(a) * o.r, c.y + bob, o.cz + Math.sin(a) * o.r, o.w > 0 ? -a : Math.PI - a, t + c.seed * 0.37, true, 1);
+      continue;
+    }
+    if (!everyone && (i + frameNo) % 3) continue;
+    herd.pose(i, c.x, c.y, c.z, c.yaw, t + c.seed * 0.37, false, young ? 0.55 : 1);
+  }
+  return n;
+}
+
 /** Within this distance of the camera (m) a crowd animal is a jointed body. */
 export const NEAR_M = 30;
 /** Jointed bodies of the crowd per herd, at most (the iPhone 13's budget, PX-51). */
@@ -61,6 +79,16 @@ const COLOR = {
   needles: new THREE.Color(0x7a5a36),
 };
 
+/**
+ * Where a crowd's nests stand: by default on the mountain (each patch in the island's local m); inside the hall
+ * (montana-hueca.md) on its shore, each patch in its direction from the middle (application/biome-life.ts hallGeo).
+ */
+export interface CrowdFrame {
+  world(x: number, z: number): { x: number; z: number };
+  ground(x: number, z: number): number;
+  isSea(x: number, z: number): boolean;
+}
+
 export class BiomeCrowd {
   readonly boxes: THREE.InstancedMesh;
   private readonly places = new Map<string, Place[]>();
@@ -77,7 +105,8 @@ export class BiomeCrowd {
   private readonly c = new THREE.Color();
   private static readonly Y = new THREE.Vector3(0, 1, 0);
 
-  constructor() {
+  /** `frame`: the hall's shore (its geo); none, the mountain's slopes. */
+  constructor(private readonly frame?: CrowdFrame) {
     const m = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0 }), BOX_CAP);
     m.name = "bioma-multitud";
     m.frustumCulled = false;
@@ -91,6 +120,7 @@ export class BiomeCrowd {
   private placesOf(c: CrowdSpec): Place[] {
     const C = BIOME_ISLAND.centre.value;
     const M = MOUNTAIN.value;
+    const F = this.frame;
     const s = c.spacingM;
     const out: (Place & { order: number })[] = [];
     c.patches.forEach((p, pi) => {
@@ -102,6 +132,15 @@ export class BiomeCrowd {
           const dz = (j + (hash01(seed, 2) - 0.5) * 0.4) * row;
           const d = Math.hypot(dx, dz);
           if (d > p.r) continue;
+          if (F) {
+            // On the hall's shore: the patch's middle in its direction, flat rock, never over the lake.
+            const m = F.world(p.x, p.z);
+            const x = m.x + dx;
+            const z = m.z + dz;
+            if (F.isSea(x, z)) continue;
+            out.push({ x, y: F.ground(x, z), z, yaw: hash01(seed, 3) * Math.PI * 2, order: d / p.r + 0.35 * hash01(seed, 4) });
+            continue;
+          }
           const lx = p.x + dx;
           const lz = p.z + dz;
           const y = heightAt(M, lx, lz);

@@ -14,16 +14,19 @@ describe("el alcance de Áreas del santuario 3: isla → edificio → piso (Ber�
     expect(s.of("lanzadera-arbol:techo")).toEqual({ edificio: "lanzadera-arbol" });
     expect(s.of("lanzadera:casquete")).toBeUndefined();
   });
-  it("en la isla de entrenamiento, cada instalación es un edificio y sus salas van dentro; sin pisos", () => {
+  it("dentro de la montaña, cada edificio-árbol es un edificio y sus pisos, pisos; las salas van en el piso de su edificio", () => {
     const s = s3AreaScopes(L.areas.filter((a) => a.island === "entrenamiento"));
-    expect(s.scopes.map((g) => g.kind)).toEqual(["edificio"]);
-    expect(s.of("entrenamiento:nbl-control")).toEqual({ edificio: "entrenamiento:nbl" });
-    expect(s.of("entrenamiento:simulador-dragon-capsula")).toEqual({ edificio: "entrenamiento:simulador-dragon" });
-    expect(s.of("entrenamiento:svmf-orion")).toEqual({ edificio: "entrenamiento:svmf" });
+    expect(s.scopes.map((g) => g.kind)).toEqual(["edificio", "piso"]);
+    const nbl = { edificio: "torre:astronautas", piso: "torre:astronautas:piso-1" };
+    expect(s.of("entrenamiento:nbl")).toEqual(nbl);
+    expect(s.of("entrenamiento:nbl-control")).toEqual(nbl);
+    expect(s.of("astronautas:piso-1")).toEqual(nbl);
+    expect(s.of("entrenamiento:residencia")).toEqual({ edificio: "torre:ciencias", piso: "torre:ciencias:cima" });
+    expect(s.of("entrenamiento:servicios:pie")).toEqual({ edificio: "torre:servicios", piso: "torre:entrenamiento:servicios:pie" });
     expect(s.of("entrenamiento:helipuerto")).toBeUndefined();
+    expect(s.of("entrenamiento:compuerta-sur")).toBeUndefined();
     const ids = s.scopes[0]!.options.map((o) => o.id);
-    expect(ids).toContain("entrenamiento:nbl");
-    expect(ids).not.toContain("entrenamiento:nbl-control");
+    expect(ids).toEqual(expect.arrayContaining(["torre:servicios", "torre:entrenamiento", "torre:ciencias", "torre:produccion", "torre:campos", "torre:astronautas", "torre:astronautas-salas"]));
   });
   it("una isla sin edificios (el glaciar) no tiene alcance propio: solo «Toda la isla»", () => {
     expect(s3AreaScopes(L.areas.filter((a) => a.island === "glaciar")).scopes).toEqual([]);

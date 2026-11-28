@@ -222,8 +222,8 @@ export const TREE_CURRENT = 3;
 export const FLOORS_PER_LEVEL = 2;
 
 /** A tree's square, m (k = 1): every floor's, the kitchen's (floors/kit.ts FLOOR_SIZE, Berón 2026-11-22). */
-export function towerSquare(t: Pick<TowerSpec, "floors">): number {
-  let s = Math.max(FLOOR_SIZE.x, FLOOR_SIZE.z);
+export function towerSquare(t: Pick<TowerSpec, "floors" | "square">): number {
+  let s = Math.max(FLOOR_SIZE.x, FLOOR_SIZE.z, t.square ?? 0);
   for (const f of t.floors) {
     const fp = f.furnish ? FLOOR_PLANS.get(f.furnish) : undefined;
     if (fp) s = Math.max(s, fp.size.x, fp.size.z);
@@ -817,6 +817,37 @@ function scatter(i: number, radius: number): { x: number; z: number } {
   return { x: Math.cos(a) * r, z: Math.sin(a) * r };
 }
 
+/**
+ * The carpet stations (alfombras.ts): on a landing out of each floor's and ring's edge, on each crown and at each foot,
+ * each with its landing as a floor and its pad as a catalogue instance. `sky`: the level's own sky way (else sanctuary 1's).
+ */
+function stationsOf(b: Built, sky?: number): CarpetStation[] {
+  const carpets = carpetStations({ areas: b.areas, towers: b.towers, floors: b.floors, waters: b.waters, solids: b.solids }, sky);
+  for (const st of carpets) {
+    if (st.landing) b.floors.push({ id: `${st.area}-rellano-alfombras`, ...st.landing, y: st.y, area: st.area });
+    const where = st.kind === "piso" ? { edificio: st.tower, piso: st.area } : { edificio: st.tower };
+    place(b, "estacion-alfombras", st.x, st.y, st.z, Math.atan2(st.out.x, st.out.z), st.area, where, 1, `Estación de alfombras (${st.kind === "piso" ? st.label : `${st.label} de ${st.building}`})`, false);
+  }
+  return carpets;
+}
+
+/** Sanctuary 1's tree-buildings alone, as `buildTowers` gives them. */
+export type TowersLayout = Pick<S1Layout, "k" | "world" | "instances" | "areas" | "towers" | "walls" | "carpets">;
+
+/**
+ * ONLY THE TREE-BUILDINGS, by this file's own rules (buildTower, the carpet stations), wherever their specs stand:
+ * trunks of water with their acrylic and doors, floors furnished from their plans, rings, branches and tips, crowns,
+ * bases and stations, without caps, sea, globe, animals or staff. Sanctuary 3 migrates sanctuary 1's buildings «tal
+ * cual» into its mountain this way (Berón 2026-11-28; docs/design/montana-hueca.md), with its own sky way under the
+ * hall's roof.
+ */
+export function buildTowers(towers: readonly TowerSpec[], k = 1, o: Overrides = OVERRIDES, opts: { readonly woodGrid?: number; readonly sky?: number } = {}): TowersLayout {
+  const b: Built = { o, grid: opts.woodGrid ?? FRAME.grid, floors: [], waters: [], solids: [], walls: [], instances: [], areas: [], towers: [] };
+  for (const t of towers) buildTower(b, t, k);
+  const carpets = stationsOf(b, opts.sky);
+  return { k, world: { floors: b.floors, waters: b.waters, solids: b.solids }, instances: b.instances, areas: b.areas, towers: b.towers, walls: b.walls, carpets };
+}
+
 /** `towers`: today's buildings, or the roomy ones kept in site.ts (TOWERS_AMPLIOS). */
 /** Animals per person in sanctuary 1 unless the setting says otherwise (Berón 2026-11-22: 4, Cold Sanctuary's 3 + 1). */
 export const ANIMALS_PER_PERSON_S1 = 4;
@@ -833,13 +864,7 @@ export function buildS1Layout(k = 1, o: Overrides = OVERRIDES, towers: readonly 
   aquarium(b);
   for (const t of towers) buildTower(b, t, k);
   cutTrunkHoles(b);
-  // The carpet stations (alfombras.ts): on a landing out of each floor's and ring's edge, on each crown and at each foot.
-  const carpets = carpetStations({ areas: b.areas, towers: b.towers, floors: b.floors, waters: b.waters, solids: b.solids });
-  for (const st of carpets) {
-    if (st.landing) b.floors.push({ id: `${st.area}-rellano-alfombras`, ...st.landing, y: st.y, area: st.area });
-    const where = st.kind === "piso" ? { edificio: st.tower, piso: st.area } : { edificio: st.tower };
-    place(b, "estacion-alfombras", st.x, st.y, st.z, Math.atan2(st.out.x, st.out.z), st.area, where, 1, `Estación de alfombras (${st.kind === "piso" ? st.label : `${st.label} de ${st.building}`})`, false);
-  }
+  const carpets = stationsOf(b);
   // Up the trunks from the sea (Berón 2026-11-19: «los animales marinos pueden subir por los troncos»): in each trunk a
   // seal and two penguins swim between its root under the ice and its top (ours: who and how many).
   for (const tw of b.towers) {

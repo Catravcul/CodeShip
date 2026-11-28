@@ -3,7 +3,8 @@
  * different room): the tallest screen-wide stretch no block of the sheet covers, in px from the top.
  */
 export function sheetBand(): { top: number; bottom: number } | undefined {
-  const d = document.querySelector(".duel:not(.hidden)");
+  // The drawn challenge (trace-view.ts) takes the sheet's place in sanctuary 3: measured the same way.
+  const d = document.querySelector(".trace:not(.hidden)") ?? document.querySelector(".duel:not(.hidden)");
   if (!d) return undefined;
   const h = window.innerHeight;
   const blocks = [...d.querySelectorAll<HTMLElement>(":scope > *, :scope > * > *")].map((e) => e.getBoundingClientRect()).filter((r) => r.width > 40 && r.height > 8 && r.bottom > 0 && r.top < h);

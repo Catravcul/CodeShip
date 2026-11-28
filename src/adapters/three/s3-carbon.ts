@@ -10,6 +10,8 @@ import { heightAt, slopeAt } from "@modules/aerial-sanctuary/domain/mountain";
 import type { Pose } from "@modules/aerial-sanctuary/application/biome-life";
 import { hash01 } from "@modules/fauna/domain/roam";
 import { AnimalHerd, type HerdModel } from "./animal-bodies";
+import { BiomeCrowd, NEAR_CAP, poseCrowd, type CrowdFrame } from "./s3-biome-crowd";
+import type { BiomeState } from "@modules/aerial-sanctuary/domain/bioma";
 
 /**
  * The Carboniferous forest at the pyramid's foot and on its summit, and the larvae of the pyramid's lake (docs/design/
@@ -189,7 +191,16 @@ export class CarbonScene {
   /** The larvae posed last (the label near her). */
   lastLarvae: LarvaPose[] = [];
 
-  constructor(def: BiomeDef, private readonly lake: LakeFrame) {
+  /** The colonies of the social insects about their nests (s3-biome-crowd.ts), when drawn here (inside the hall). */
+  readonly crowd?: BiomeCrowd;
+  private frameNo = 0;
+
+  /**
+   * `o.place`: where the trees stand (world m; by default on the mountain at the forest's zone: inside the hall, its
+   * shore); `o.trees` false: none (the giant insects of Gilgit-Baltistán drawn the same way); `o.larvae` false: none;
+   * `o.crowd`: the colonies' frame (the hall's shore), their nests and workers drawn as outside (bioma-s3.md §Colonias).
+   */
+  constructor(def: BiomeDef, private readonly lake: LakeFrame, private readonly o: { readonly trees?: boolean; readonly larvae?: boolean; readonly place?: (n: number, seed: number) => { x: number; y: number; z: number }[]; readonly crowd?: CrowdFrame } = {}) {
     this.root.name = "carbonifero";
     const C = BIOME_ISLAND.centre.value;
     const M = MOUNTAIN.value;
@@ -208,8 +219,8 @@ export class CarbonScene {
       }
       return out;
     };
-    Object.entries(CARBON_TREES).forEach(([id, t], k) => {
-      const spots = [...place(t.forest, CARBON_ZONE.value.point, CARBON_ZONE.value.r, 101 + k), ...place(t.summit, CARBON_SUMMIT.value.point, CARBON_SUMMIT.value.r, 211 + k)];
+    if (o.trees !== false) Object.entries(CARBON_TREES).forEach(([id, t], k) => {
+      const spots = o.place ? o.place(t.forest + t.summit, 101 + k).map((p) => ({ x: p.x - C.x, y: p.y, z: p.z - C.z })) : [...place(t.forest, CARBON_ZONE.value.point, CARBON_ZONE.value.r, 101 + k), ...place(t.summit, CARBON_SUMMIT.value.point, CARBON_SUMMIT.value.r, 211 + k)];
       const mesh = new THREE.InstancedMesh(t.geo(), mat, Math.max(1, spots.length));
       mesh.name = `carbonifero-${id}`;
       const m4 = new THREE.Matrix4();
@@ -228,14 +239,19 @@ export class CarbonScene {
     for (const s of def.species.filter((x): x is AnimalSpec => x.kind === "animal")) {
       const adult: HerdModel = { id: s.id, shape: s.shape === "pajaro" ? "ave" : s.shape, size: s.size, color: s.color, category: "animal", group: "carbonifero" };
       const young: HerdModel = { ...adult, id: s.shape === "insecto" && s.nymph ? `${s.id}-ninfa` : s.id };
-      const a = new AnimalHerd(adult, s.cap * 2 + 2, undefined, { merged: true });
-      const y = new AnimalHerd(young, s.cap * 2 + s.young * 3, undefined, { merged: true });
+      const extra = o.crowd ? (NEAR_CAP[s.id] ?? { adult: 0, young: 0 }) : { adult: 0, young: 0 };
+      const a = new AnimalHerd(adult, s.cap * 2 + 2 + extra.adult, undefined, { merged: true });
+      const y = new AnimalHerd(young, s.cap * 2 + s.young * 3 + extra.young, undefined, { merged: true });
       for (const m of [...a.meshes, ...y.meshes]) this.root.add(m);
       this.herds.set(s.id, { adult: a, young: y });
     }
+    if (o.crowd) {
+      this.crowd = new BiomeCrowd(o.crowd);
+      this.root.add(this.crowd.boxes);
+    }
     // The lake's larvae, ×400 like the island's insects.
     const k = INSECT_SCALE.value;
-    for (const s of LAKE_LARVAE) {
+    if (o.larvae !== false) for (const s of LAKE_LARVAE) {
       const h = new AnimalHerd({ id: s.body, shape: "insecto", size: { x: s.size.x * k, y: s.size.y * k, z: s.size.z * k }, color: s.color, category: "animal", group: "lago" }, s.drawn, undefined, { merged: true });
       for (const m of h.meshes) this.root.add(m);
       this.larvae.set(s.id, h);
@@ -243,13 +259,21 @@ export class CarbonScene {
   }
 
   /** Each frame: the giants posed from the chain; the larvae from their cycle (`bioDay`), when the camera is near. */
-  update(t: number, poses: readonly Pose[], bioDay: number, cam: THREE.Vector3): void {
+  update(t: number, poses: readonly Pose[], bioDay: number, cam: THREE.Vector3, st?: BiomeState): void {
+    // The colonies first: their jointed workers at the start of each herd, the chain's animals after them.
+    const first = new Map<string, [number, number]>();
+    if (this.crowd && st) {
+      const resorted = this.crowd.update(st, cam);
+      this.frameNo++;
+      for (const [sp, h] of this.herds)
+        first.set(sp, [poseCrowd(h.adult, this.crowd.near.get(sp) ?? [], t, resorted, this.frameNo, false), poseCrowd(h.young, this.crowd.near.get(`${sp}:cria`) ?? [], t, resorted, this.frameNo, true)]);
+    }
     const used = new Map<string, [number, number]>();
     for (const p of poses) {
       if (p.hidden) continue;
       const h = this.herds.get(p.species);
       if (!h) continue;
-      const u = used.get(p.species) ?? [0, 0];
+      const u = used.get(p.species) ?? [...(first.get(p.species) ?? [0, 0])] as [number, number];
       const young = p.stage === "cria" || p.stage === "joven";
       const herd = young ? h.young : h.adult;
       const i = young ? u[1] : u[0];
@@ -259,7 +283,7 @@ export class CarbonScene {
       used.set(p.species, u);
     }
     for (const [sp, h] of this.herds) {
-      const u = used.get(sp) ?? [0, 0];
+      const u = used.get(sp) ?? first.get(sp) ?? [0, 0];
       h.adult.show(u[0]);
       h.young.show(u[1]);
       h.adult.commit();
@@ -269,7 +293,8 @@ export class CarbonScene {
     const near = Math.hypot(cam.x - L.x, cam.z - L.z) < 400;
     this.lastLarvae = [];
     for (const s of LAKE_LARVAE) {
-      const h = this.larvae.get(s.id)!;
+      const h = this.larvae.get(s.id);
+      if (!h) continue;
       if (!near) {
         h.show(0);
         continue;

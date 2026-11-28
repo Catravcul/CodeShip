@@ -359,10 +359,18 @@ export class S3Rigs {
       at.addScaledVector(up ?? new THREE.Vector3(0, 1, 0), 0.7);
       return true;
     } else if ((this.post === 8 || this.post === 9) && her) {
-      // Over her shoulder to the screens she works at: the simulator's, or the robotics workstation's three.
+      // Over her shoulder to the screens she works at: the simulator's, or the robotics workstation's three. At the
+      // simulator (2026-11-28) from her side, so her head never covers the screen the steps play on.
       const P = this.post === 8 ? this.simShot : this.armShot;
       if (!P) return false;
-      const [backM, upM, sideM, toward] = this.post === 8 ? [0.9, 1.6, 0.45, 0.75] : [0.9, 1.5, 0.35, 0.7];
+      if (this.post === 8) {
+        // From her side, between her and the screen: she and the screen (where each step plays) side by side.
+        const fwd = new THREE.Vector3(P.x - her.x, 0, P.z - her.z).normalize();
+        at.set(her.x, her.y + 1.1, her.z).lerp(P, 0.5);
+        pos.copy(at).add(new THREE.Vector3(-fwd.z, 0.35, fwd.x).multiplyScalar(2.4)).addScaledVector(fwd, -0.4);
+        return true;
+      }
+      const [backM, upM, sideM, toward] = [0.9, 1.5, 0.35, 0.7];
       const back = new THREE.Vector3(her.x - P.x, 0, her.z - P.z).normalize();
       pos.set(her.x, her.y + upM, her.z).addScaledVector(back, backM).add(new THREE.Vector3(-back.z, 0, back.x).multiplyScalar(sideM));
       at.set(her.x, her.y + 1.1, her.z).lerp(P, toward);

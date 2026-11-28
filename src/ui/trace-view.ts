@@ -7,6 +7,7 @@ import { TraceRun } from "@modules/trazos/domain/run";
 import { bounds, pt, resample, type Pt } from "@modules/trazos/domain/shape";
 import { StrokeTracker, WHY_TEXT } from "@modules/trazos/domain/trace";
 import { choreParts, glyphBeats, stepsUpTo } from "@modules/trazos/application/trace-chore";
+import { compactUi, setCompactUi } from "./duel-view";
 
 /**
  * THE WAND: A CHALLENGE DRAWN AS A COMPOUND (Berón, 2026-11-25; docs/design/retos-trazos.md). In the challenge sheet's
@@ -14,6 +15,9 @@ import { choreParts, glyphBeats, stepsUpTo } from "@modules/trazos/application/t
  * the glyph to draw lit, and that glyph big, with its guide (the start dot, arrows the way to go) and the finger's
  * glowing trail, in the compound's look (its palette and particles: drops, bubbles, cubic crystals…). Finger or mouse
  * (pointer events). When the formula is done its molecule is drawn and the challenge closes, right; «×» leaves it.
+ * Two views, the player's setting shared with every challenge sheet (duel-view.ts `compactUi`; reglas.md: «HUD view
+ * available in every challenge»): the panel, and the HUD, floating over the scene with the pad see-through, so the
+ * stage acted above it shows the most.
  */
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 const ROLE_NAME = { base: "", sub: "subíndice ", sup: "superíndice " } as const;
@@ -79,7 +83,7 @@ export class TraceView {
     this.el.setAttribute("role", "dialog");
     this.el.setAttribute("aria-modal", "false");
     this.el.innerHTML = `
-      <div class="trace-top"><h2 class="trace-title"></h2><button class="trace-close" type="button" aria-label="Cerrar el reto sin terminarlo">×</button></div>
+      <div class="trace-top"><h2 class="trace-title"></h2><button class="trace-ui ui-toggle" type="button" data-act="ui"></button><button class="trace-close" type="button" aria-label="Cerrar el reto sin terminarlo">×</button></div>
       <div class="trace-formula" aria-live="polite"></div>
       <div class="trace-pad"><canvas class="trace-canvas" role="img"></canvas></div>
       <p class="trace-hint" role="status" aria-live="polite"></p>
@@ -93,6 +97,10 @@ export class TraceView {
     this.nameEl = this.el.querySelector(".trace-name")!;
     this.stepsEl = this.el.querySelector(".trace-steps")!;
     this.el.querySelector(".trace-close")!.addEventListener("click", () => this.close(false));
+    this.el.querySelector(".trace-ui")!.addEventListener("click", () => {
+      setCompactUi(!compactUi());
+      this.showView();
+    });
     const c = this.canvas;
     c.addEventListener("pointerdown", (e) => this.down(e));
     c.addEventListener("pointermove", (e) => this.move(e));
@@ -124,11 +132,21 @@ export class TraceView {
     this.hint("Pasa el dedo por la figura: empieza en el punto y sigue la flecha");
     this.el.classList.remove("hidden");
     document.body.classList.add("in-duel", "in-trace");
+    this.showView();
     if (this.sheet) this.sheet.standIn = true;
     this.renderFormula();
     this.last = performance.now();
     cancelAnimationFrame(this.raf);
     this.raf = requestAnimationFrame((t) => this.frame(t));
+  }
+
+  /** HUD or panel (the shared setting): the body's class and the toggle's label, as the challenge sheet does. */
+  private showView(): void {
+    const hud = compactUi();
+    document.body.classList.toggle("ui-compact", hud);
+    const b = this.el.querySelector<HTMLElement>(".trace-ui")!;
+    b.textContent = hud ? "Vista panel" : "Vista HUD";
+    b.setAttribute("aria-label", hud ? "Ver el reto en un panel" : "Ver el reto flotando sobre la escena (HUD)");
   }
 
   /** «Pasos 2/5»: the challenge's steps done so far. */
@@ -409,7 +427,10 @@ export class TraceView {
     bg.addColorStop(0, c2);
     bg.addColorStop(1, "#05060c");
     c.fillStyle = bg;
+    // In the HUD the scene shows through the pad: a faint veil keeps the guide readable over it.
+    c.globalAlpha = document.body.classList.contains("ui-compact") ? 0.35 : 1;
     c.fillRect(0, 0, w, h);
+    c.globalAlpha = 1;
     this.shake = Math.max(0, this.shake - dt * 3);
     this.flash = Math.max(0, this.flash - dt * 2.5);
     c.save();

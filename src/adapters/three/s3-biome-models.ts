@@ -7,7 +7,7 @@ import { hash01 } from "@modules/fauna/domain/roam";
 import type { Pose } from "@modules/aerial-sanctuary/application/biome-life";
 import type { BiomeState } from "@modules/aerial-sanctuary/domain/bioma";
 import { AnimalHerd, type HerdModel } from "./animal-bodies";
-import { BiomeCrowd, NEAR_CAP } from "./s3-biome-crowd";
+import { BiomeCrowd, NEAR_CAP, poseCrowd } from "./s3-biome-crowd";
 
 /**
  * The air island drawn (docs/design/bioma-s3.md §Escena): ONE GIANT MOUNTAIN, procedural, at its true size. The ground
@@ -547,22 +547,7 @@ export class BiomeScene {
     this.frameNo++;
     for (const [sp, h] of this.herds) {
       for (const [herd, key] of [[h.adult, sp], [h.young, `${sp}:cria`]] as const) {
-        const near = this.crowd.near.get(key) ?? [];
-        const n = Math.min(near.length, herd.capacity);
-        this.crowdN.set(key, n);
-        for (let i = 0; i < n; i++) {
-          const c = near[i]!;
-          // A worker flies (or walks) its round about the nest every frame, wings beating; the rest breathe.
-          if (c.orbit) {
-            const o = c.orbit;
-            const a = Math.atan2(c.z - o.cz, c.x - o.cx) + o.w * Math.PI * 2 * t;
-            const bob = o.h > 0 ? Math.sin(t * 1.7 + c.seed) * 0.4 : 0;
-            herd.pose(i, o.cx + Math.cos(a) * o.r, c.y + bob, o.cz + Math.sin(a) * o.r, o.w > 0 ? -a : Math.PI - a, t + c.seed * 0.37, true, 1);
-            continue;
-          }
-          if (!resorted && (i + this.frameNo) % 3) continue;
-          herd.pose(i, c.x, c.y, c.z, c.yaw, t + c.seed * 0.37, false, key.endsWith(":cria") ? 0.55 : 1);
-        }
+        this.crowdN.set(key, poseCrowd(herd, this.crowd.near.get(key) ?? [], t, resorted, this.frameNo, key.endsWith(":cria")));
       }
     }
     // The chain's animals (not the ones asleep out of sight); the soaring birds glide with their wings still.

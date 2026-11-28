@@ -148,6 +148,11 @@ export interface TowerSpec {
   readonly source: string;
   /** The giant floor on its crown, round the trunk's top (organizacion.ts rule 1), if any. */
   readonly cima?: { readonly name: string; readonly desc: string; readonly furnish: string };
+  /**
+   * The floors' side (k = 1) when its rooms are bigger than the kitchen's square: sanctuary 3's training floors hold
+   * the NBL's pool hall (docs/design/montana-hueca.md). Sanctuary 1's own towers leave it out.
+   */
+  readonly square?: number;
 }
 
 const FIRST_Y = 64;

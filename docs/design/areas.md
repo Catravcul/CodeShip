@@ -35,14 +35,24 @@ lista, los mismos chips y el mismo filtro.
 
 | Nivel | Arriba (lista de vehículos o islas) | Jerarquía (`AreaMap.scopes`) | Áreas |
 | --- | --- | --- | --- |
-| Santuario 1 | (un solo sitio: «Todo el santuario») | Edificios, Casquetes | pisos, anillos, troncos |
-| Santuario 3 | la isla (los ajustes de Tareas) | Edificios (edificios-árbol e instalaciones), Pisos (nivel 1, 2) — `aerial-sanctuary/domain/area-scope.ts` | salas, pisos, miradores |
+| Santuario 1 | (un solo sitio: «Todo el santuario»; sin filtros en el engranaje, 2026-11-28) | — | pisos, anillos, troncos |
+| Santuario 3 | (un solo sitio: «Todo el santuario», todas las islas; sin filtros en el engranaje, 2026-11-28) | — | salas, pisos, miradores |
 | Naves | el vehículo | Starship: Cubiertas (la de vuelo y las tres); estación: Módulos — `interiorAreas` | compartimentos (los camarotes van con el módulo o la cubierta a la que se abren) |
 
 - «Automático: donde está ella» es el nivel más ancho del área donde está (su edificio, su cubierta, su módulo); el
   santuario 1 lo dice mejor fuera de los edificios (el casquete que pisa, `scopeAt`). En otra isla o vehículo no hay
   «donde está ella»: se ve todo. Al cambiar de isla o vehículo, el alcance vuelve a «Automático».
 - Una isla o vehículo sin jerarquía (el glaciar, el LM) no enseña el grupo «Mostrar».
+
+## Santuarios 1 y 3: solo Viaje/Teletransporte (2026-11-28)
+
+Berón: «En sanctuary6 existe el filtro de estación/nodriza porque ambas ofrecen servicios similares, pero en sanctuary3 y
+sanctuary1 no existen servicios repetidos por lo que vamos a retirar los filtros de ajustes, nos quedamos solo con el de
+viaje/teletransporte y mostramos la lista de todo el santuario». Es una opción del módulo compartido
+(`wholePlace("Todo el santuario")` de `src/ui/task-settings.ts`), que cada santuario pone al cargar: el engranaje de
+**Tareas**, **Áreas**, **Misiones** y **Alfombras** solo tiene Viaje/Teletransporte (las alfombras, el suyo de cada
+estación); las listas enseñan todo el santuario (en el 3, las áreas de todas las islas) con sus **chips de categoría**,
+que se quedan. Las naves (nivel 6, `offerVehicles`) siguen con su vehículo y sus cubiertas o módulos.
 
 ## Para más adelante (no hecho)
 

@@ -47,8 +47,8 @@ const TRAILS = [
   [{ x: 290, z: -140 }, { x: 205, z: -92 }, { x: 160, z: -68 }, { x: 122, z: -64 }, { x: 120, z: -44 }],
   // Along the shore to the steppe.
   [{ x: -150, z: -476 }, { x: 100, z: -520 }],
-  // To the caves of the hollow mountain (Berón 2026-11-25): up to the apron of the south cave, then along the foot of
-  // the pyramid's face to the south-west and south-east caves' mouths.
+  // To the gates of the mountain (Berón 2026-11-28; caves until then): up to the apron of the south gate, then along
+  // the foot of the pyramid's face to the south-west and south-east gates.
   [{ x: 200, z: -120 }, { x: 160, z: -100 }, { x: 160, z: -68 }],
   [{ x: 160, z: -100 }, { x: 100, z: -84 }, { x: 40, z: -70 }],
   [{ x: 160, z: -68 }, { x: 220, z: -74 }, { x: 280, z: -70 }],
@@ -78,22 +78,19 @@ const NATURAL: MountainDef = {
 };
 
 /**
- * THE HOLLOW PYRAMID (docs/design/montana-hueca.md): a square pyramid 520 m a side and 335 m high, its base 100 m above
- * the sea, under a THIN layer of earth and stone (ficción, Berón 2026-11-25 and 2026-11-26: «la capa de tierra y piedra
- * debe ser delgada»): its faces are almost the mountain's own slopes above the farallón, so the hollow is nearly as big
- * as the pyramid and the caves are short. Its inside is the campus: a lake 4 m deep on its floor, giant trees up to its
- * ceiling and the flooded Starship. Three caves bore into it from the south face, above the lake's surface, each
- * ending at a carpet station.
+ * THE PYRAMID UNDER THE MOUNTAIN (docs/design/montana-hueca.md): a square pyramid 520 m a side and 335 m high, its base
+ * 100 m above the sea, under a thin layer of earth and stone (ficción, Berón 2026-11-25 and 2026-11-26). Since
+ * 2026-11-28 its inside is a scene of its own (Berón: «¿quizás en sanctuary3 el interior de la montaña podría ser un
+ * cambio de escena? En lugar de cuevas se colocarían compuertas»): from outside the mountain is solid, with three
+ * steel gates in its south face; through them one passes to the hall excavated inside it (data/montana.ts `NAVE`),
+ * wider than the pyramid and deeper than the sea, where sanctuary 1's buildings stand at their true height.
  */
 export const CORE_DEF = { x: 160, z: 120, half: 260, baseY: 100, height: 335, cover: 3 } as const;
-/** The shell of the pyramid itself (stone, under the cover), m: the hollow starts this far in. */
-export const SHELL_M = 2;
 /**
- * THE CAVES' PASSAGE (the rule of sanctuary 1's trunk doors, sanctuary-one/data/paso.ts, applied to sanctuary 3; Berón
- * 2026-11-26: «las cuevas deben ser al menos tan grandes como las puertas de los troncos… para que cualquier insecto
- * gigante quepa»): the largest animal of the sanctuary as drawn (its size × the biome's draw scale: the giant insects)
- * with 2 m beside it on each side and over it, and never less than sanctuary 1's trunk door. Dynamic: a larger
- * animal in the data widens the caves.
+ * THE GATES' PASSAGE (the rule of sanctuary 1's trunk doors, sanctuary-one/data/paso.ts, applied to sanctuary 3; Berón
+ * 2026-11-26: «al menos tan grandes como las puertas de los troncos… para que cualquier insecto gigante quepa»): the
+ * largest animal of the sanctuary as drawn (its size × the biome's draw scale: the giant insects) with 2 m beside it on
+ * each side and over it, and never less than sanctuary 1's trunk door. Dynamic: a larger animal widens the gates.
  */
 export const LARGEST_S3_ANIMAL = SPECIES.reduce(
   (a, s) => {
@@ -103,53 +100,50 @@ export const LARGEST_S3_ANIMAL = SPECIES.reduce(
   },
   { id: "", x: 0, y: 0, z: 0 },
 );
-export const CAVE_PASSAGE = { w: Math.max(S1_DOOR.w, LARGEST_S3_ANIMAL.x + 2 * PASSAGE.beside), h: Math.max(S1_DOOR.h, LARGEST_S3_ANIMAL.y + PASSAGE.over) } as const;
-/** Half a cave's width, and its height to the vault (at least the passage, and a third of its width: ours). */
-export const CAVE_HALF_M = CAVE_PASSAGE.w / 2;
-export const CAVE_VAULT_M = Math.max(CAVE_PASSAGE.h, CAVE_PASSAGE.w / 3);
-/**
- * The caves: where each runs (along −z into the pyramid's south face, at local x) and its floor, at the foot of the
- * pyramid's face on the south slope (the mountain's own ground there), so each is only a few metres of stone long.
- */
-const CAVES = [
-  { id: "sur", label: "Cueva sur", x: 160, y: 236 },
-  { id: "suroeste", label: "Cueva suroeste", x: 40, y: 232 },
-  { id: "sureste", label: "Cueva sureste", x: 280, y: 236 },
+export const GATE_PASSAGE = { w: Math.max(S1_DOOR.w, LARGEST_S3_ANIMAL.x + 2 * PASSAGE.beside), h: Math.max(S1_DOOR.h, LARGEST_S3_ANIMAL.y + PASSAGE.over) } as const;
+/** Half a gate's width, and its height (at least the passage, and a third of its width: ours). */
+export const GATE_HALF_M = GATE_PASSAGE.w / 2;
+export const GATE_H_M = Math.max(GATE_PASSAGE.h, GATE_PASSAGE.w / 3);
+/** The gates on the pyramid's south face (local x) and their sills, at the foot of the face on the south slope. */
+const GATES = [
+  { id: "sur", label: "Compuerta sur", x: 160, y: 236 },
+  { id: "suroeste", label: "Compuerta suroeste", x: 40, y: 232 },
+  { id: "sureste", label: "Compuerta sureste", x: 280, y: 236 },
 ] as const;
-/** The hollow: half its floor and the height of its ceiling's apex over the floor, m (the pyramid less its shell). */
-export const INNER_HALF = CORE_DEF.half - SHELL_M;
-export const INNER_H = CORE_DEF.height - SHELL_M * (CORE_DEF.height / CORE_DEF.half) - 1;
-/** The pyramid's inner face: its height at plan distance `d` (Chebyshev) from its middle. */
-export const innerY = (d: number): number => CORE_DEF.baseY + INNER_H * (1 - d / INNER_HALF);
-/** Plan distance from the middle at which the inner face is at height y. */
-export const innerAt = (y: number): number => INNER_HALF * (1 - (y - CORE_DEF.baseY) / INNER_H);
+/** Half the hall excavated inside the mountain (its own scene: data/montana.ts NAVE), m. */
+export const INNER_HALF = 640;
 
-/** How far in front of the south cave's mouth the helipad's apron is, and its radius, m. */
+/** How far in front of the south gate the helipad's apron is, and its radius, m. */
 export const APRON_M = 22;
 
-function withCore(m: MountainDef): MountainDef {
-  const c = CORE_DEF;
-  const bare = { ...m, core: { ...c, caves: [] } };
-  const caves = CAVES.map((cv) => {
-    const endZ = c.z - innerAt(cv.y + CAVE_VAULT_M) + 2;
-    // Out along −z from the inner face until the (covered) slope is down to the floor: the mouth.
-    let z = endZ;
-    while (heightAt(bare, cv.x, z) > cv.y + 0.5 && z > -700) z -= 1;
-    return { id: cv.id, from: { x: cv.x, z }, to: { x: cv.x, z: endZ }, y: cv.y, half: CAVE_HALF_M, vault: CAVE_VAULT_M };
+/** Where each gate is: out along −z from the pyramid's middle until the (covered) slope is down to its sill. */
+function gatesOf(m: MountainDef): { id: string; label: string; x: number; z: number; y: number }[] {
+  const bare = { ...m, core: { ...CORE_DEF, caves: [] } };
+  return GATES.map((g) => {
+    let z = CORE_DEF.z;
+    while (heightAt(bare, g.x, z) > g.y + 0.5 && z > -700) z -= 1;
+    return { id: g.id, label: g.label, x: g.x, z, y: g.y };
   });
-  // The south cave's apron (the campus's helipad), levelled in front of the mouth four steps under it (data/montana.ts).
-  const mouth = caves[0]!;
-  const apron = { x: mouth.from.x, z: mouth.from.z - APRON_M };
-  return { ...m, flats: [...m.flats, { ...apron, r: APRON_M - 1, h: mouth.y - 1.6 }], core: { ...c, caves } };
+}
+
+function withCore(m: MountainDef): MountainDef {
+  const g = gatesOf(m)[0]!;
+  // The south gate's apron (the campus's helipad), levelled in front of it (its sill is at the apron: data/montana.ts).
+  const apron = { x: g.x, z: g.z - APRON_M };
+  const south = { ...m, flats: [...m.flats, { ...apron, r: APRON_M - 1, h: g.y - 1.6 }] };
+  // Each other gate's sill: the ground levelled before it at the height of the way that comes to it.
+  const sills = gatesOf(m).slice(1).map((q) => ({ x: q.x, z: q.z - 4, r: 7, h: heightAt(south, q.x, q.z - 12) }));
+  return { ...south, flats: [...south.flats, ...sills], core: { ...CORE_DEF, caves: [] } };
 }
 
 export const MOUNTAIN = fact<MountainDef>(
   withCore(NATURAL),
   "licencia",
-  `nuestro, del orden del Karakórum de Hunza: ${BATURA}; cumbre de 5 080 m, garganta y anillo de cantiles comprimidos (1 m de la isla = 9 m de ladera real); dentro, la pirámide hueca (ficción, Berón 2026-11-25)`,
+  `nuestro, del orden del Karakórum de Hunza: ${BATURA}; cumbre de 5 080 m, garganta y anillo de cantiles comprimidos (1 m de la isla = 9 m de ladera real); dentro, la pirámide con sus compuertas (ficción, Berón 2026-11-25 y 2026-11-28)`,
 );
-/** The caves as built (their mouths found on the slope). */
-export const caves = () => MOUNTAIN.value.core!.caves.map((c, i) => ({ ...c, label: CAVES[i]!.label }));
+/** The gates as built (their sills found on the slope), local m of the island. */
+const GATE_AT = gatesOf(NATURAL);
+export const gates = () => GATE_AT;
 
 export interface BiomeZone {
   readonly id: string;

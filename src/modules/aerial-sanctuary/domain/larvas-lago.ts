@@ -35,6 +35,17 @@ export function stageAt(s: LakeLarvaSpec, day: number): LarvaMoment {
   return { stage: last.stage, label: last.label, k: 1, grown: 1 };
 }
 
+/** The drawn larvae of a species by their stage at `bioDay` (the hall's census board), in the order of its cycle. */
+export function larvaeCensus(s: LakeLarvaSpec, bioDay: number): { stage: LarvaStage; label: string; n: number }[] {
+  const D = cycleDays(s);
+  const n = new Map<LarvaStage, number>();
+  for (let i = 0; i < s.drawn; i++) {
+    const m = stageAt(s, bioDay + (i * D) / s.drawn);
+    n.set(m.stage, (n.get(m.stage) ?? 0) + 1);
+  }
+  return s.stages.filter((x) => n.has(x.stage)).map((x) => ({ stage: x.stage, label: x.label, n: n.get(x.stage)! }));
+}
+
 /** The lake as the larvae need it: its middle, bottom and surface, the ring they live in, what they keep out of. */
 export interface LakeFrame {
   readonly x: number;

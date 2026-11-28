@@ -16,6 +16,23 @@ export const VEHICLE_NAME: Record<Vehicle, string> = { nodriza: "Nave (Starship)
 let offered: { readonly list: readonly TaskVehicle[]; readonly heading: string } = { list: TASK_VEHICLES, heading: "Vehículo" };
 export function offerVehicles(list: readonly TaskVehicle[], heading: string): void {
   offered = { list, heading };
+  place = undefined;
+}
+
+/**
+ * A level whose services are not repeated in several places (sanctuaries 1 and 3; Berón 2026-11-28: «en sanctuary3 y
+ * sanctuary1 no existen servicios repetidos por lo que vamos a retirar los filtros de ajustes, nos quedamos solo con el
+ * de viaje/teletransporte y mostramos la lista de todo el santuario»): the settings of Tareas, Áreas and the carpets
+ * offer only Viaje/Teletransporte, and the lists show the whole place, named `name`. The space game (nodriza and
+ * station, whose services are alike) keeps its vehicle filter.
+ */
+let place: string | undefined;
+export function wholePlace(name: string): void {
+  place = name;
+}
+/** The whole place's name when the level has no vehicle filter (see `wholePlace`). */
+export function wholePlaceName(): string | undefined {
+  return place;
 }
 const TRAVEL: Record<TaskTravel, string> = { viaje: "Viaje", teletransporte: "Teletransporte" };
 
@@ -29,6 +46,7 @@ export function travelHtml(id: string, now: TaskTravel = settings.value.taskTrav
  * sense (the task list; a schematic shows one vehicle).
  */
 export function vehicleHtml(id: string, here: Vehicle, count?: (v: Vehicle | null) => number, withAll = true): string {
+  if (place) return "";
   const filter = settings.value.taskVehicle;
   const n = (v: Vehicle | null) => (count ? ` <small>${count(v)}</small>` : "");
   const label = (v: TaskVehicle) => (v === "auto" ? `Automático: donde está ella <small>${VEHICLE_NAME[here]}${count ? ` · ${count(here)}` : ""}</small>` : v === "todos" ? `Todos${n(null)}` : `${VEHICLE_NAME[v]}${n(v)}`);

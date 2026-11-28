@@ -1,5 +1,9 @@
 # El bosque del Carbonífero y sus insectos gigantes (santuario 3)
 
+> **2026-11-28**: el bosque y sus gigantes están **dentro de la montaña**, en un tramo de la orilla de la nave (la dirección
+> de su antigua zona, al noreste; `carbonHallGeo`, `CarbonScene` con `place`); su área es `entrenamiento:bosque-carbonifero`,
+> a pie desde el muelle de la compuerta más cercana ([montana-hueca.md](montana-hueca.md)).
+
 Berón, 2026-11-26: insectos gigantes del Carbonífero y el Pérmico (con el oxígeno al ~35 %): *Meganeura monyi* y
 *Meganeuropsis permiana*, *Arthropleura*, *Mazothairos* (paleodictiópteros) y las cucarachas primitivas, con su flora
 (*Psaronius*, *Lepidodendron*, *Sigillaria*, *Calamites*, *Cordaites*), con fuentes reales: tamaños fósiles «real

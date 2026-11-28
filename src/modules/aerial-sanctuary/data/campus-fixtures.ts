@@ -98,6 +98,9 @@ const laboratorio: Furnish = (sink, fr) => {
   lights(3, 2, fr.height - 0.1);
 };
 
+/** The name of the census board of the breeding room, the one inside the mountain (s3-biome.ts finds it by it). */
+export const CENSUS_BOARD = "Censo de la nave";
+
 const crianza: Furnish = (sink, fr) => {
   const { at, lights } = roomKit(sink, fr);
   for (const x of [-6, -4, -2]) at({ k: "insectario", x, z: 0, snap: "n", rot: 2, plate: x === -4 });
@@ -105,6 +108,8 @@ const crianza: Furnish = (sink, fr) => {
   at({ k: "colmena", x: 5, z: 0, snap: "s", plate: true });
   at({ k: "estanteria", x: 1, z: 0, snap: "s", name: "Material de la colmena y del insectario" });
   at({ k: "mesa", x: 0, z: 0, snap: "w", rot: 1, name: "Microscopio de disección (lupa)", source: C.flyLab });
+  // The hall's census (s3-biome.ts): the giant insects, the Carboniferous and the lake's larvae (outside, the hut's is the real fauna's).
+  at({ k: "pizarra", x: -5, z: 0, snap: "s", y: 1.0, name: CENSUS_BOARD, plate: true });
   lights(3, 2, fr.height - 0.1);
 };
 

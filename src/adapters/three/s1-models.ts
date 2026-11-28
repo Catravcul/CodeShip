@@ -5,7 +5,7 @@ import { CROWN, TRUNK_OUT } from "@modules/sanctuary-one/data/castillos";
 import { model, type Category, type ModelDef } from "@modules/sanctuary-one/data/catalog";
 import { BASE, WATER_Y } from "@modules/sanctuary-one/data/site";
 import { GLOBE, globeSkin } from "@modules/sanctuary-one/data/globo";
-import { EGG, pulpoAt } from "@modules/sanctuary-one/domain/pulpo";
+import { EGG, pulpoAt, pulpoBody } from "@modules/sanctuary-one/domain/pulpo";
 import { textSign } from "./interior/sign";
 import { AnimalHerd } from "./animal-bodies";
 
@@ -300,7 +300,11 @@ export interface S1Scene {
   style(category: Category, o: { visible?: boolean; color?: number; group?: string }): void;
 }
 
-export function buildS1Scene(L: S1Layout): S1Scene {
+/**
+ * Sanctuary 1 drawn. Sanctuary 3 draws its migrated tree-buildings with it too (`buildTowers`, montana-hueca.md):
+ * without the whales' globe, and with its lake as the sea round the hall's middle (`sea`).
+ */
+export function buildS1Scene(L: Pick<S1Layout, "world" | "instances" | "towers" | "areas" | "walls">, o: { readonly globe?: boolean; readonly sea?: { readonly x: number; readonly z: number; readonly size: number } } = {}): S1Scene {
   const root = new THREE.Group();
   // The ground: ice caps (snow over blue sea ice, 2,3 m thick plates) and the land island (tundra), merged by kind.
   const ice: THREE.BufferGeometry[] = [];
@@ -371,7 +375,7 @@ export function buildS1Scene(L: S1Layout): S1Scene {
   add(water, mat(0x2f8fbf, { transparent: true, opacity: 0.3, roughness: 0.05, depthWrite: false, side: THREE.DoubleSide }), "agua");
   // The whales' globe (data/globo.ts): its outer skin, cell by cell (pixelated, Berón 2026-11-22), one mesh of the
   // faces between water and air; deep blue (a great natural water); and the embryo in its belly.
-  {
+  if (o.globe !== false) {
     const pos = globeSkin();
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
@@ -386,16 +390,17 @@ export function buildS1Scene(L: S1Layout): S1Scene {
   add(L.walls.map((s) => box(s.x0, s.x1, s.y0, s.y1, s.z0, s.z1)), mat(0x8fd8ff, { transparent: true, opacity: 0.18, roughness: 0.1, depthWrite: false }), "acrilico");
   // Matte (Lambert): seen from just over it, swimming, a glossy plane at a grazing angle turns as white as the sky
   // (Berón 2026-11-20: «en primera persona… oculta el agua»).
-  const sea = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), new THREE.MeshLambertMaterial({ color: 0x1d4f6b, side: THREE.FrontSide }));
+  const seaAt = o.sea ?? { x: 0, z: 0, size: 9000 };
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(seaAt.size, seaAt.size), new THREE.MeshLambertMaterial({ color: 0x1d4f6b, side: THREE.FrontSide }));
   sea.rotation.x = -Math.PI / 2;
-  sea.position.y = WATER_Y;
+  sea.position.set(seaAt.x, WATER_Y, seaAt.z);
   sea.name = "mar";
   root.add(sea);
   // Its surface seen from below (Berón 2026-11-22: «si miro hacia arriba… debería ser posible ver lo que hace fuera»):
   // a bright, see-through ceiling, so the sky and what stands over the water show through it, fainter with depth.
-  const underside = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), new THREE.MeshBasicMaterial({ color: 0xcdeef5, transparent: true, opacity: 0.28, side: THREE.BackSide, depthWrite: false }));
+  const underside = new THREE.Mesh(new THREE.PlaneGeometry(seaAt.size, seaAt.size), new THREE.MeshBasicMaterial({ color: 0xcdeef5, transparent: true, opacity: 0.28, side: THREE.BackSide, depthWrite: false }));
   underside.rotation.x = -Math.PI / 2;
-  underside.position.y = WATER_Y;
+  underside.position.set(seaAt.x, WATER_Y, seaAt.z);
   underside.name = "mar-desde-abajo";
   root.add(underside);
 
@@ -484,7 +489,8 @@ export const PULPO = { k: 0 };
 
 /**
  * The octopus egg in the whales' globe, developing until it hatches (domain/pulpo.ts: Naef's stages, real
- * proportions; Berón 2026-11-24). `size` m is the hatchling's length: a third of the globe across its belly (GLOBE.embryo).
+ * proportions; Berón 2026-11-24), and then growing up in the globe to the adult whose open arms span 66 % of it (Berón
+ * 2026-11-28). `size` m is the hatchling's length: a third of the globe across its belly (GLOBE.embryo).
  * Built once; each frame only moves, scales and tints its parts, so it costs a few draw calls. Spheres and tubes, ours.
  */
 function embryo(x: number, y: number, z: number, size: number): THREE.Object3D {
@@ -512,6 +518,8 @@ function embryo(x: number, y: number, z: number, size: number): THREE.Object3D {
   // The chorion: the egg's clear shell, long axis up.
   const shell = ball(shellM, g);
   shell.renderOrder = 2;
+  // It drives the whole octopus each frame (onBeforeRender): drawn even when the egg is off screen and only the grown arms show.
+  shell.frustumCulled = false;
   shell.scale.set((EGG.width / 2) * u, (EGG.length / 2) * u, (EGG.width / 2) * u);
   // Inside: the yolk and the embryo on it (`whole` turns over in the second inversion and swims off at hatching).
   const whole = new THREE.Group();
@@ -539,45 +547,52 @@ function embryo(x: number, y: number, z: number, size: number): THREE.Object3D {
     d.scale.setScalar(0.045);
     return d;
   });
-  // Eight short arms round the mouth, from the head down to the yolk (unit-long tubes, scaled).
-  const armGroup = new THREE.Group();
-  body.add(armGroup);
+  // Eight arms round the mouth: each a tapering cone from its root on the head down (unit long, scaled), hung from a
+  // pivot that opens it outwards (`splay`): down along the body in the egg, spread wide on the adult.
+  const armGeo = new THREE.CylinderGeometry(1, 0.18, 1, 8, 1).translate(0, -0.5, 0);
   const arms = Array.from({ length: 8 }, (_, k) => {
-    const a = (k / 8) * Math.PI * 2;
-    const c = new THREE.CatmullRomCurve3([new THREE.Vector3(Math.cos(a) * 0.35, 0, Math.sin(a) * 0.35), new THREE.Vector3(Math.cos(a) * 0.55, -0.5, Math.sin(a) * 0.55), new THREE.Vector3(Math.cos(a + 0.25) * 0.6, -1, Math.sin(a + 0.25) * 0.6)]);
-    const arm = new THREE.Mesh(new THREE.TubeGeometry(c, 12, 0.16, 8, false), skin);
-    armGroup.add(arm);
-    return arm;
+    const pivot = new THREE.Group();
+    pivot.userData.a = (k / 8) * Math.PI * 2 + Math.PI / 8;
+    const arm = new THREE.Mesh(armGeo, skin);
+    pivot.add(arm);
+    body.add(pivot);
+    return pivot;
   });
   const dark = new THREE.Color(0x0d1f2a);
   const clear = new THREE.Color(0xcfe8f0);
   shell.onBeforeRender = () => {
     const t = performance.now() / 1000;
     const p = pulpoAt(PULPO.k);
-    const b = p.body * u;
     const on = p.body > 0.002;
     body.visible = on;
-    // The embryo, from the yolk outwards: arms, head, mantle.
-    const armLen = Math.max(1e-3, p.arms * b);
-    const headH = Math.max(1e-3, 0.23 * b);
-    const mantleLen = Math.max(1e-3, p.mantle * b);
-    const mR = mantleLen * 0.4;
-    const hR = Math.max(1e-3, Math.min(headH * 0.6, mR * 0.95));
-    armGroup.position.y = armLen;
-    armGroup.scale.set(hR, armLen, hR);
-    arms.forEach((a, k) => (a.rotation.y = p.beat * Math.sin(t * 1.3 + k) * 0.08));
+    // The body, from the mouth outwards: arms, head, mantle (pulpoBody: the same measures the tests check).
+    const m = pulpoBody(p);
+    const armLen = Math.max(1e-3, m.armLen * u);
+    const headH = Math.max(1e-3, m.headH * u);
+    const mantleLen = Math.max(1e-3, m.mantleLen * u);
+    const mR = Math.max(1e-3, m.mR * u);
+    const hR = Math.max(1e-3, m.hR * u);
+    const thick = Math.max(1e-3, p.armThick * u);
+    // Their roots: as high as the hanging arms are long (so the hatchling's arm tips touch the yolk), lower as they open.
+    const rootY = armLen * Math.cos(p.splay);
+    arms.forEach((a, k) => {
+      const ang = a.userData.a as number;
+      a.position.set(Math.cos(ang) * m.rootR * u, rootY, Math.sin(ang) * m.rootR * u);
+      a.rotation.set(0, -ang, p.splay + p.beat * Math.sin(t * 1.3 + k) * (0.08 + 0.1 * p.grow));
+      a.children[0]!.scale.set(thick, armLen, thick);
+    });
     head.scale.set(hR, headH / 2, hR);
-    head.position.y = armLen + headH / 2;
+    head.position.y = rootY + headH / 2;
     const pulse = 1 + p.beat * 0.07 * (0.5 + 0.5 * Math.sin(t * Math.PI * 2 * 0.9));
     mantle.scale.set(mR * pulse, (mantleLen / 2) * (2 - pulse), mR * pulse);
-    mantle.position.y = armLen + headH * 0.9 + mantleLen / 2;
+    mantle.position.y = rootY + headH * 0.9 + mantleLen / 2;
     for (const e of eyes) {
       e.scale.setScalar(Math.max(1e-3, (p.eyes * u) / 2));
       e.position.set(e.userData.side * hR * 0.85, head.position.y + headH * 0.05, hR * 0.45);
       (e.material as THREE.MeshStandardMaterial).color.copy(clear).lerp(dark, p.eyeDark);
     }
     dots.forEach((d, i) => (d.visible = i < Math.round(p.chromato * dots.length)));
-    const len = on ? armLen + headH * 0.9 + mantleLen : 0;
+    const len = on ? rootY + headH * 0.9 + mantleLen : 0;
     // The blastodisc: a flattened cap where the embryo touches the yolk.
     cap.visible = p.cap > 0.001;
     cap.scale.set(p.cap * u * 0.5, p.cap * u * 0.08, p.cap * u * 0.5);
@@ -596,13 +611,16 @@ function embryo(x: number, y: number, z: number, size: number): THREE.Object3D {
     const c = Math.abs(Math.cos(p.flip));
     const sn = Math.abs(Math.sin(p.flip));
     const fit = Math.min(1, (EGG.length * u * 0.95) / Math.max(1e-6, span * c + wide * sn), (EGG.width * u * 0.95 * 1.6) / Math.max(1e-6, span * sn + wide * c));
-    whole.scale.setScalar(fit);
     whole.rotation.x = p.flip;
-    // Hatched: the paralarva swims up and out of the egg's free end, the shell fades; a new egg fades in.
-    whole.position.y = p.away * u * 2.5;
-    yolk.visible = p.away < 0.01;
+    // Hatched: the shell fades and it grows up in the globe, centred on its arms' roots (where they open), bobbing
+    // slowly; the adult leaves at the end and a new egg fades in.
+    const fitE = fit + (1 - fit) * (1 - p.chorion);
+    whole.scale.setScalar(fitE);
+    const hub = (yl / 2 - len / 2 + rootY) * fitE;
+    whole.position.y = -hub * Math.min(1, p.grow * 8) + p.grow * u * 0.04 * Math.sin(t * 0.5);
+    yolk.visible = p.grow < 0.01;
     const appear = Math.min(1, PULPO.k / 0.01);
-    const out = 1 - p.away;
+    const out = 1 - p.leave;
     for (const m of fade) (m as THREE.MeshStandardMaterial).opacity = (m === shellM ? 0.16 * p.chorion : m === skin ? 0.93 : 1) * appear * (m === shellM ? 1 : out);
   };
   g.position.set(x, y, z);

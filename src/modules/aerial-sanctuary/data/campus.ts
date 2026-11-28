@@ -103,16 +103,16 @@ export const CAMPUS_ROOMS: readonly RoomDef[] = [
   }),
   room({
     id: "crianza",
-    label: "Área de crianza",
-    desc: "El insectario del laboratorio de moscas de la fruta (las cajas ventiladas con sus viales, como en Ames) y la colmena de observación con su ventana, como la que voló en el transbordador en 1982. Las crías de la isla empiezan aquí",
+    label: "Criadero de insectos gigantes",
+    desc: "Donde se crían y se domestican los insectos gigantes de la montaña (Berón 2026-11-28: «el criadero será para domesticar a estos insectos gigantes»): el insectario con sus cajas ventiladas y viales, como el laboratorio de moscas de Ames, y la colmena de observación con su ventana, como la que voló en el transbordador en 1982. Las crías se acostumbran a la gente antes de salir a la nave",
     reality: "real",
     centre: { x: 0, z: 0 },
     half: { x: 10, z: 7 },
     height: 3.6,
     door: { side: "e", at: 0, width: 2 },
     machines: [
-      { id: "crianza-moscas", kind: "servicio", label: "Insectario", what: "Pasar las moscas a un vial con comida nueva", x: -4, z: 5.1, reto: "moscas" },
-      { id: "crianza-colmena", kind: "servicio", label: "Colmena de observación", what: "Revisar la colmena por su ventana", x: 5, z: -5.4, reto: "colmena" },
+      { id: "crianza-moscas", kind: "servicio", label: "Insectario", what: "Pasar las moscas a un vial con comida nueva: así empieza la cría de las gigantes", x: -4, z: 5.1, reto: "moscas" },
+      { id: "crianza-colmena", kind: "servicio", label: "Colmena de observación", what: "Revisar la colmena por su ventana: las abejas se acostumbran a la gente", x: 5, z: -5.4, reto: "colmena" },
     ],
   }),
   room({
@@ -183,3 +183,23 @@ export const CAMPUS_SERVICES: readonly { service: string; rooms: readonly string
   { service: "Producción", rooms: ["taller"] },
   { service: "Asambleas", rooms: ["asambleas"] },
 ];
+
+/**
+ * WHERE EACH CAMPUS SERVICE IS SINCE 2026-11-28 (Berón: «tomar los de sanctuary1 y migrarlos tal cual dentro de la
+ * montaña»): sanctuary 1's buildings stand in the hall with their floors furnished as there, so each service of the
+ * campus is done on the floor of sanctuary 1 that does it, at its own piece of furniture (a bunk of the Residencia's
+ * crown, a table of the restaurant's ring…), not in a room of its own. Each machine of the room it stood in (its id,
+ * kind and challenge, CAMPUS_ROOMS) goes to the model named here on that floor (data/montana.ts finds it, the way to it
+ * and where she stands). The giant insects' breeding room and the training rooms stay sanctuary 3's own floors.
+ */
+export const CAMPUS_IN_S1: Readonly<Record<string, { readonly area: string; readonly at: Readonly<Record<string, string>> }>> = {
+  residencia: { area: "ciencias:cima", at: { "residencia-cama": "res-habitacion-1", "residencia-sueno": "res-habitacion-2" } },
+  restaurante: { area: "servicios:piso-1:anillo", at: { "restaurante-mesa": "comedor-mesa", "restaurante-cata": "comedor-mesa" } },
+  clinica: { area: "servicios:piso-2", at: { "clinica-cuarentena": "hospital-aislamiento" } },
+  aulas: { area: "ciencias:cima", at: { "aulas-clase": "aula-pared-pizarra" } },
+  biblioteca: { area: "ciencias:cima", at: { "biblioteca-estudio": "aula-biblioteca" } },
+  laboratorio: { area: "ciencias:piso-1", at: { "laboratorio-guantera": "q-guantes" } },
+  huerto: { area: "produccion:piso-3", at: { "huerto-veggie": "vf-rack" } },
+  taller: { area: "produccion:piso-2", at: { "taller-impresora": "mec-banco" } },
+  asambleas: { area: "servicios:piso-5", at: { "asambleas-reunion": "asamblea-mesa-comision" } },
+};

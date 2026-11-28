@@ -13,10 +13,10 @@ describe("las categorías de Áreas del santuario 3", () => {
     expect(t.filter((a) => s3AreaCategory(a) === "Instalaciones").length).toBeGreaterThan(5);
     expect(s3AreaCategory(t.find((a) => a.id === "entrenamiento:helipuerto")!)).toBe("Exterior");
   });
-  it("en la montaña hueca, los pies y pisos de los árboles son Pisos; las cuevas y el lago, Exterior; las salas, Instalaciones", () => {
+  it("dentro de la montaña, las bases y pisos de los edificios son Pisos; las compuertas, el lago y la orilla, Exterior; las salas, Instalaciones", () => {
     const of = (id: string) => s3AreaCategory(L.areas.find((a) => a.id === id)!);
-    expect([of("entrenamiento:arbol-servicios:pie"), of("entrenamiento:arbol-servicios:piso-2")]).toEqual(["Pisos", "Pisos"]);
-    expect([of("entrenamiento:cueva-sur"), of("entrenamiento:lago")]).toEqual(["Exterior", "Exterior"]);
-    expect([of("entrenamiento:residencia"), of("entrenamiento:starship:cubierta-2")]).toEqual(["Instalaciones", "Instalaciones"]);
+    expect([of("entrenamiento:servicios:pie"), of("servicios:piso-2"), of("astronautas:piso-1")]).toEqual(["Pisos", "Pisos", "Pisos"]);
+    expect([of("entrenamiento:compuerta-sur"), of("entrenamiento:lago"), of("entrenamiento:orilla")]).toEqual(["Exterior", "Exterior", "Exterior"]);
+    expect([of("entrenamiento:residencia"), of("entrenamiento:nbl"), of("entrenamiento:starship:cubierta-2")]).toEqual(["Instalaciones", "Instalaciones", "Instalaciones"]);
   });
 });

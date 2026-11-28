@@ -73,8 +73,8 @@ export function buildBlocks(blocks: readonly Block[]): THREE.Group {
   }
   for (const [look, geos] of by) {
     // The centrifuge's gondola is drawn by its rig (s3-rigs.ts), which swings it round on the arm; the LM mock-up by
-    // the simulators (s3-simulators.ts), with the lander's own cabin; the giant trees' trunks by s3-giant-trees.ts.
-    if (look === "cohete" || look === "gondola" || look === "lm-maqueta" || look === "oculto" || look === "tronco-gigante") continue;
+    // the simulators (s3-simulators.ts), with the lander's own cabin.
+    if (look === "cohete" || look === "gondola" || look === "lm-maqueta" || look === "oculto") continue;
     const m = new THREE.Mesh(mergeGeometries(geos), LOOK[look] ?? MOUNTAIN_LOOKS[look] ?? mat(0xaaaaaa));
     m.name = `bloques-${look}`;
     g.add(m);
@@ -90,8 +90,8 @@ export function buildFloors(floors: readonly Floor[]): THREE.Group {
     // The air island draws its own ground (s3-biome-models.ts); its climbing ledges are rock blocks.
     if (f.area === "bioma:isla" || f.id.startsWith("bioma:repisa")) continue;
     const isl = f.area.split(":")[0]!;
-    // The giant trees' floors and decks are wood; the caves' floors, stone (montana-hueca.md).
-    const c = f.area.includes("helipuerto") ? 0x3a3f44 : /^entrenamiento:arbol-|starship:pasarela/.test(f.area) ? 0xb89a72 : f.area.startsWith("entrenamiento:cueva-") ? 0x9a8f7e : f.area === "entrenamiento:lago" ? 0xe6dcc0 : f.area === "glaciar:pista" || f.area === "glaciar:hielo-azul" ? BLUE_ICE : (interiorFloor(f.area) ?? FLOOR_LOOK[isl] ?? 0xb9c4cc);
+    // Inside the mountain (montana-hueca.md): the Starship's gangway is wood; the gates' sills and docks and the shore, stone.
+    const c = f.area.includes("helipuerto") ? 0x3a3f44 : /starship:pasarela/.test(f.area) ? 0xb89a72 : /^entrenamiento:(compuerta-|orilla)/.test(f.area) ? 0x9a8f7e : f.area === "entrenamiento:lago" ? 0xe6dcc0 : f.area === "glaciar:pista" || f.area === "glaciar:hielo-azul" ? BLUE_ICE : (interiorFloor(f.area) ?? FLOOR_LOOK[isl] ?? 0xb9c4cc);
     const list = by.get(c) ?? [];
     list.push(boxGeo(f.x0, f.x1, f.y - 0.25, f.y - 0.01, f.z0, f.z1));
     by.set(c, list);

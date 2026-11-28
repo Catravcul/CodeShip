@@ -5,6 +5,10 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-26
 
+- **Santuario 3, aterrizaje a mano**: el rotor del S-92 es un disco arriba (bajo él solo el fuselaje) y la manga y los focos
+  del helipuerto del campus se apartan: desde todo el círculo de toma se posa; antes se quedaba colgado sobre la cubierta si
+  bajaba a más de ~5,7 m del centro, con el rotor «tocando» el surtidor o la máquina de navegación
+  ([santuario3-puestos.md](docs/design/santuario3-puestos.md)).
 - **Santuario 3, la pupa, el Carbonífero y el lago**: el globo de nubes da paso a una celda gigante translúcida en el
   centro de la pirámide, entre los árboles colosales, donde una obrera de *Apis cerana* pasa de huevo a adulta; se llega
   andando por un muelle desde la cubierta del árbol más cercano y está en Áreas ([pupa-abeja.md](docs/design/pupa-abeja.md)).

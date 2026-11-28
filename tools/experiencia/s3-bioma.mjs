@@ -266,14 +266,20 @@ export async function s3Bioma(j) {
   await capture(j, "carbonifero", "Bosque del Carbonífero");
 
   // ── To mid June (≈ 16 game days): births or deaths in the census; the griffenflies fly over the forest.
-  await p.evaluate(() => window.codeshipS3.biome.skip(15.8));
+  // At midday: the griffenflies fly by day and rest on the ground at night (biome-life.ts), and a slow run reaches the
+  // forest at night (24 real minutes a board day from 9:00: CI took ~18 min to get here; at 3:00 none flew).
+  await p.evaluate(() => {
+    const c = window.codeshipS3;
+    if (c.hour < 10 || c.hour > 16) c.setHour(12);
+    c.biome.skip(15.8);
+  });
   await p.waitForTimeout(2500);
   let fly = {};
   for (let k = 0; k < 20 && !((fly.meganeura ?? 0) + (fly.meganeuropsis ?? 0) > 0); k++) {
     fly = (await around(p, 250, "carbon")).flying;
     if (!((fly.meganeura ?? 0) + (fly.meganeuropsis ?? 0) > 0)) await p.waitForTimeout(500);
   }
-  j.check("en junio las libélulas gigantes (Meganeura, Meganeuropsis) patrullan sobre el bosque", (fly.meganeura ?? 0) + (fly.meganeuropsis ?? 0) > 0, JSON.stringify(fly));
+  j.check("en junio las libélulas gigantes (Meganeura, Meganeuropsis) patrullan sobre el bosque", (fly.meganeura ?? 0) + (fly.meganeuropsis ?? 0) > 0, JSON.stringify({ fly, hour: await p.evaluate(() => window.codeshipS3.hour) }));
   const m = await p.evaluate(() => window.codeshipS3.biome.carbon.poses().find((q) => !q.hidden && q.flying && q.species.startsWith("meganeur")));
   if (m) {
     const b = await p.evaluate(() => window.codeshipS3.body);

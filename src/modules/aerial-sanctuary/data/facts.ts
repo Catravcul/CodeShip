@@ -114,7 +114,7 @@ export const S92 = { lengthM: fact(20.88, "real", S.s92), rotorM: fact(17.17, "r
  * steps of each tap are ours. The carpet mirrors it with Cold Sanctuary's speed.
  */
 export const HAND: Readonly<Record<"helicoptero" | "alfombra", Fact<HandLimits>>> = {
-  helicoptero: fact({ fwdMs: 280 / 3.6, backMs: 18, sideMs: 18, climbMs: 7.5, yawDegS: 30, fwdStepMs: 280 / 3.6 / 8, climbStepMs: 1.5, yawStepDegS: 10, lagS: 3, radiusM: 17.17 / 2, heightM: 4.7, touchdownMs: 1.5, padRadiusM: 10, seaHoverM: 5 }, "real", S.s92, "velocidad y rotor del S-92; 35 kt de lado y atrás, el ascenso de 7,5 m/s, el retardo y los pasos: estimación nuestra"),
+  helicoptero: fact({ fwdMs: 280 / 3.6, backMs: 18, sideMs: 18, climbMs: 7.5, yawDegS: 30, fwdStepMs: 280 / 3.6 / 8, climbStepMs: 1.5, yawStepDegS: 10, lagS: 3, radiusM: 17.17 / 2, heightM: 4.7, rotorDiscM: 1.2, bodyRadiusM: 2.65, touchdownMs: 1.5, padRadiusM: 10, seaHoverM: 5 }, "real", S.s92, "velocidad y rotor del S-92; 35 kt de lado y atrás, el ascenso de 7,5 m/s, el retardo y los pasos: estimación nuestra; el disco del rotor ocupa su metro y pico de arriba y bajo él solo va el fuselaje, unos 5,3 m de ancho con los flotadores (estimación nuestra; sin la cola)"),
   alfombra: fact({ fwdMs: 26, backMs: 8, sideMs: 8, climbMs: 4, yawDegS: 45, fwdStepMs: 26 / 4, climbStepMs: 1, yawStepDegS: 15, lagS: 1, radiusM: 1.6, heightM: 1.8, touchdownMs: 1.5, padRadiusM: 4, seaHoverM: 3 }, "ficcion", `${S.csAereo}; ${S.csCarpet}`, "la alfombra imita los mandos del helicóptero (nuestro), a su velocidad"),
 };
 

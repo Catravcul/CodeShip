@@ -321,7 +321,7 @@ export async function s3Iniciacion(j) {
     if (fwdNow < fwdWant) await tapPad("Cíclico adelante");
     else if (fwdNow > fwdWant) await tapPad("Cíclico atrás");
     // Hovering short of the pad: a nudge of cyclic, then level it again (a pilot's small corrections).
-    if (high && d > 6 && d <= 32 && Math.hypot(h.vFwd, h.vSide) < 0.8 && h.ask.fwd === 0 && h.ask.side === 0) {
+    if (high && d > 6 && d <= 32 && !(h.ask.up < 0 && d < 9.5) && Math.hypot(h.vFwd, h.vSide) < 0.8 && h.ask.fwd === 0 && h.ask.side === 0) {
       // The pad ahead (+) or behind, and to her left (+) or right: a nudge along the longer of the two.
       const ahead = d * Math.cos(r);
       const left = d * Math.sin(r);
@@ -348,8 +348,12 @@ export async function s3Iniciacion(j) {
       } while (h && Date.now() - t2 < 15000 && Math.hypot(h.vFwd, h.vSide) > 0.3);
       continue;
     }
-    // Over the pad (it lands within 10 m of its centre) and slow: down, the last metres at 1,5 m/s.
-    const upWant = d < 8 && Math.hypot(h.vFwd, h.vSide) < 1 ? (h.y - dest.y > 15 ? -3 : -1) : d >= 8 && d < 600 && h.y < dest.y + 55 ? 2 : 0;
+    // Over the pad (it lands within 10 m of its centre, and from all that circle the rotor clears what stands round
+    // the deck: data/layout.test.ts) and slow: down, the last metres at 1,5 m/s. Once coming down she keeps coming down
+    // while within 9,5 m: with one edge at 8 m, a drift across it sent her back up and down again until the time ran
+    // out (CI run 45888147207, 7,9 m from the centre).
+    const over = d < 8 || (d < 9.5 && h.ask.up < 0);
+    const upWant = over && Math.hypot(h.vFwd, h.vSide) < 1 ? (h.y - dest.y > 15 ? -3 : -1) : !over && d < 600 && h.y < dest.y + 55 ? 2 : 0;
     if (h.ask.up > upWant) await tapPad("Colectivo abajo: bajar");
     else if (h.ask.up < upWant) await tapPad("Colectivo arriba: subir");
     await p.waitForTimeout(500);

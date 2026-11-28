@@ -6,7 +6,8 @@ import { reachable, shortestWay } from "../domain/route";
 import { safetyDistanceM, tooClose } from "../domain/safety";
 import { planTrip } from "../domain/travel";
 import { spacingViolations, INTERACTABLE_SPACING } from "@core/spacing";
-import { CRAFT, ELECTRON, FALCON9_CREW } from "./facts";
+import { CRAFT, ELECTRON, FALCON9_CREW, HAND } from "./facts";
+import { handHits } from "../domain/hand-flight";
 import * as FACTS from "./facts";
 
 const crafts = { helicoptero: CRAFT.helicoptero.value, alfombra: CRAFT.alfombra.value };
@@ -43,6 +44,28 @@ for (const k of [1, 1.5]) {
     const L = buildLayout(k);
     const W = L.world;
     const byId = new Map(L.graph.points.map((p) => [p.id, p]));
+
+    it("el S-92 se posa en cualquier punto del círculo de toma de cada helipuerto sin que el rotor toque nada", () => {
+      // The touchdown circle (padRadiusM) says where a landing counts: from all of it the rotor must clear what stands
+      // round the deck (the windsock, the floodlights), or she hangs stuck over the pad (PX-46 on CI, 1,5 m over it).
+      const lim = HAND.helicoptero.value;
+      const bad: string[] = [];
+      for (const isl of L.islands) {
+        if (!isl.pad.crafts.includes("helicoptero")) continue;
+        const { x, y, z } = isl.pad.at;
+        for (let r = 0; r <= lim.padRadiusM; r += 0.25)
+          for (let a = 0; a < 360; a += 5) {
+            const px = x + r * Math.cos((a * Math.PI) / 180);
+            const pz = z + r * Math.sin((a * Math.PI) / 180);
+            if (handHits({ floors: W.floors, solids: W.solids, seaY: SEA_Y, pads: [] }, px, y, pz, lim)) {
+              bad.push(`${isl.id}: a ${r} m del centro (${a}°)`);
+              r = Infinity;
+              break;
+            }
+          }
+      }
+      expect(bad).toEqual([]);
+    });
 
     it("cada tramo del camino se anda (o se nada) sin chocar: el «Ir» nunca atraviesa una pared", () => {
       const bad: string[] = [];

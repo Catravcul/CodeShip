@@ -123,7 +123,6 @@ export interface Prop {
     | "scott-tent"
     | "snowmobile"
     | "snow-wall"
-    | "giant-tree"
     | "lake-starship";
   readonly x: number;
   readonly y: number;

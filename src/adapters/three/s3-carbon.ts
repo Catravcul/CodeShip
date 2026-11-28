@@ -189,7 +189,11 @@ export class CarbonScene {
   /** The larvae posed last (the label near her). */
   lastLarvae: LarvaPose[] = [];
 
-  constructor(def: BiomeDef, private readonly lake: LakeFrame) {
+  /**
+   * `o.place`: where the trees stand (world m; by default on the mountain at the forest's zone: inside the hall, its
+   * shore); `o.trees` false: none (the giant insects of Gilgit-Baltistán drawn the same way); `o.larvae` false: none.
+   */
+  constructor(def: BiomeDef, private readonly lake: LakeFrame, private readonly o: { readonly trees?: boolean; readonly larvae?: boolean; readonly place?: (n: number, seed: number) => { x: number; y: number; z: number }[] } = {}) {
     this.root.name = "carbonifero";
     const C = BIOME_ISLAND.centre.value;
     const M = MOUNTAIN.value;
@@ -208,8 +212,8 @@ export class CarbonScene {
       }
       return out;
     };
-    Object.entries(CARBON_TREES).forEach(([id, t], k) => {
-      const spots = [...place(t.forest, CARBON_ZONE.value.point, CARBON_ZONE.value.r, 101 + k), ...place(t.summit, CARBON_SUMMIT.value.point, CARBON_SUMMIT.value.r, 211 + k)];
+    if (o.trees !== false) Object.entries(CARBON_TREES).forEach(([id, t], k) => {
+      const spots = o.place ? o.place(t.forest + t.summit, 101 + k).map((p) => ({ x: p.x - C.x, y: p.y, z: p.z - C.z })) : [...place(t.forest, CARBON_ZONE.value.point, CARBON_ZONE.value.r, 101 + k), ...place(t.summit, CARBON_SUMMIT.value.point, CARBON_SUMMIT.value.r, 211 + k)];
       const mesh = new THREE.InstancedMesh(t.geo(), mat, Math.max(1, spots.length));
       mesh.name = `carbonifero-${id}`;
       const m4 = new THREE.Matrix4();
@@ -235,7 +239,7 @@ export class CarbonScene {
     }
     // The lake's larvae, ×400 like the island's insects.
     const k = INSECT_SCALE.value;
-    for (const s of LAKE_LARVAE) {
+    if (o.larvae !== false) for (const s of LAKE_LARVAE) {
       const h = new AnimalHerd({ id: s.body, shape: "insecto", size: { x: s.size.x * k, y: s.size.y * k, z: s.size.z * k }, color: s.color, category: "animal", group: "lago" }, s.drawn, undefined, { merged: true });
       for (const m of h.meshes) this.root.add(m);
       this.larvae.set(s.id, h);
@@ -269,7 +273,8 @@ export class CarbonScene {
     const near = Math.hypot(cam.x - L.x, cam.z - L.z) < 400;
     this.lastLarvae = [];
     for (const s of LAKE_LARVAE) {
-      const h = this.larvae.get(s.id)!;
+      const h = this.larvae.get(s.id);
+      if (!h) continue;
       if (!near) {
         h.show(0);
         continue;

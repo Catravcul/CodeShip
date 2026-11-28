@@ -22,7 +22,7 @@ describe("los insectos gigantes dentro de la montaña, en la orilla de la nave (
 
   it("la cadena de los insectos vive y se mueve por la orilla", () => {
     const life = new BiomeLife(hallGeo(), 1, airBiome(4));
-    for (let i = 0; i < 40; i++) life.tick(0.25, i * 0.01, i * 0.25, 12, { x: 0, y: 0, z: 0 }, false);
+    for (let i = 0; i < 40; i++) life.tick(0.25, i * 0.01, i * 0.25, 12, { x: 0, z: 0 }, false);
     const shown = life.poses().filter((p) => !p.hidden);
     expect(shown.length).toBeGreaterThan(10);
     for (const p of shown) if (!p.flying) expect(onShore(p.x, p.z), p.species).toBe(true);

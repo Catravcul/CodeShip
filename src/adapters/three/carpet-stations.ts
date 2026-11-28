@@ -45,16 +45,18 @@ export class CarpetStationsView {
   private pickT = 0;
 
   constructor(
-    scene: THREE.Scene,
+    scene: THREE.Object3D,
     private readonly stations: readonly CarpetStation[],
-    o: { readonly pads?: boolean } = {},
+    /** Draw the stations' pads too (those `pads` keeps, when it is a filter: the rest are drawn by their level). */
+    o: { readonly pads?: boolean | ((s: CarpetStation) => boolean) } = {},
   ) {
-    if (o.pads && stations.length) {
-      const pads = new THREE.InstancedMesh(stationPadGeometry(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.05 }), stations.length);
+    const padded = o.pads === true ? stations : o.pads ? stations.filter(o.pads) : [];
+    if (padded.length) {
+      const pads = new THREE.InstancedMesh(stationPadGeometry(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.05 }), padded.length);
       const m4 = new THREE.Matrix4();
       const q = new THREE.Quaternion();
       const up = new THREE.Vector3(0, 1, 0);
-      stations.forEach((st, i) => {
+      padded.forEach((st, i) => {
         q.setFromAxisAngle(up, Math.atan2(st.out.x, st.out.z));
         m4.compose(new THREE.Vector3(st.x, st.y + 0.005, st.z), q, new THREE.Vector3(1, 1, 1));
         pads.setMatrixAt(i, m4);

@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import type { S3Layout } from "@modules/aerial-sanctuary/data/layout";
 import { BIOME_ISLAND } from "@modules/aerial-sanctuary/data/bioma-island";
-import { BiomeLife, biomeGeo, carbonGeo } from "@modules/aerial-sanctuary/application/biome-life";
+import { BiomeLife, biomeGeo, carbonHallGeo, hallGeo } from "@modules/aerial-sanctuary/application/biome-life";
+import { REAL_BIOME } from "@modules/aerial-sanctuary/data/bioma-real";
 import { census, count, mass, dateLabel, monthOfDay, type CensusRow } from "@modules/aerial-sanctuary/domain/bioma";
 import type { BiomeDef, SwarmSpec } from "@modules/aerial-sanctuary/data/bioma";
 import { CROWDS } from "@modules/aerial-sanctuary/data/bioma-crowd";
@@ -21,7 +22,7 @@ import type { AreaDef } from "@modules/aerial-sanctuary/data/layout";
 import type { WayPoint } from "@modules/aerial-sanctuary/domain/route";
 import { heightAt } from "@modules/aerial-sanctuary/domain/mountain";
 import { MOUNTAIN, beltAt } from "@modules/aerial-sanctuary/data/bioma-island";
-import { GIANT, HOLLOW, LAKE_STARSHIP } from "@modules/aerial-sanctuary/data/montana";
+import { GIANT, HOLLOW, LAKE_STARSHIP, inHollow } from "@modules/aerial-sanctuary/data/montana";
 import { CarbonScene } from "./adapters/three/s3-carbon";
 import { PUPA_AREA, pupaOfArea, type PupaPlan } from "@modules/aerial-sanctuary/data/pupa-abeja";
 import { advanceBee } from "@modules/aerial-sanctuary/domain/abeja";
@@ -37,7 +38,11 @@ type OpenChallenge = (chore: Chore, beat: (index: number, part: number) => void,
  * its card shows only through the orange button when she stands at the board (reglas.md §5.8), like any machine's.
  */
 export class S3Biome {
+  /** The giant insects of Gilgit-Baltistán (×400), inside the mountain on the hall's shore (montana-hueca.md). */
   readonly life: BiomeLife;
+  readonly insectView: CarbonScene;
+  /** The mountain's real fauna outside, at real size (data/bioma-real.ts), drawn with the mountain and its flora. */
+  readonly real: BiomeLife;
   readonly view: BiomeScene;
   /** Game days added by the test hook (`skip`) to the board clock. */
   private offset = 0;
@@ -74,19 +79,23 @@ export class S3Biome {
   /** The points this adds to the way graph (the forest's: aerial-sanctuary.ts puts them in its map, one line). */
   readonly points: readonly WayPoint[];
 
-  constructor(scene: THREE.Scene, ui: HTMLElement, private readonly L: S3Layout) {
-    // The rule of animals per person (the shared setting, as sanctuary 1's): the chain's numbers (data/bioma.ts).
-    this.life = new BiomeLife(biomeGeo(L.k), 1, airBiome(Number(settings.value.animalsPerPerson)));
-    this.view = new BiomeScene(L.k, this.life.state.def);
+  /** `scene`: the islands' root; `hall`: the hall's inside the mountain (aerial-sanctuary.ts draws one at a time). */
+  constructor(scene: THREE.Object3D, ui: HTMLElement, private readonly L: S3Layout, hall: THREE.Object3D = scene) {
+    // Outside, the mountain's real fauna and flora (Berón 2026-11-28: «volver a dejar sobre la montaña su flora y fauna real»).
+    this.real = new BiomeLife(biomeGeo(L.k), 5, REAL_BIOME);
+    this.view = new BiomeScene(L.k, REAL_BIOME);
     scene.add(this.view.root);
-    // The hornets hunt at the bees' hives (application/biome-life.ts).
-    this.life.hives = this.view.crowd.hivesOf("abeja");
+    // Inside, the giant insects (the rule of animals per person, the shared setting: data/bioma.ts), on the shore.
+    this.life = new BiomeLife(hallGeo(), 1, airBiome(Number(settings.value.animalsPerPerson)));
+    this.insectView = new CarbonScene(this.life.state.def, { x: HOLLOW.x, z: HOLLOW.z, floorY: HOLLOW.floorY, lakeTop: HOLLOW.lakeTop, r0: 0, r1: 0, keepOut: [] }, { trees: false, larvae: false });
+    this.insectView.root.name = "insectos-gigantes";
+    hall.add(this.insectView.root);
     // The bee's pupa: built into the hollow with the campus (data/montana.ts); drawn here from its area.
     this.pupaAt = pupaOfArea(L.areas.find((a) => a.id === PUPA_AREA)!);
     this.pupa = new BeePupaView(this.pupaAt);
-    scene.add(this.pupa.root);
+    hall.add(this.pupa.root);
     // The Carboniferous giants (their own chain, the same rule of animals per person) and the larvae of the lake.
-    this.carbon = new BiomeLife(carbonGeo(), 7, carbonBiome(Number(settings.value.animalsPerPerson)));
+    this.carbon = new BiomeLife(carbonHallGeo(), 7, carbonBiome(Number(settings.value.animalsPerPerson)));
     const D = GIANT.deckHalf + 4;
     const P = this.pupaAt;
     const ss = L.hollow.starship;
@@ -94,15 +103,27 @@ export class S3Biome {
     this.carbonView = new CarbonScene(this.carbon.state.def, {
       x: P.x, z: P.z, floorY: HOLLOW.floorY, lakeTop: HOLLOW.lakeTop, r0: P.gallery.x1 - P.x + 6, r1: P.gallery.x1 - P.x + 90,
       keepOut: [...L.hollow.trees.map((t) => ({ x0: t.x - D, x1: t.x + D, z0: t.z - D, z1: t.z + D })), { x0: ss.x - ssR, x1: ss.x + ssR, z0: ss.z - ssR - 20, z1: ss.z + ssR }, P.gallery],
-    });
-    scene.add(this.carbonView.root);
-    // The forest in Áreas (the air island, its own zone): «Ir» takes her to its middle.
+    }, { place: (n, seed) => {
+      // Its trees on the shore, in its zone's stretch (application/biome-life.ts hallGeo), 6 m apart at least.
+      const geo = carbonHallGeo();
+      const out: { x: number; y: number; z: number }[] = [];
+      for (let i = 0; out.length < n && i < n * 12; i++) {
+        const h = geo.home("bosque-carbonifero", seed * 1000 + i);
+        if (out.some((p) => Math.hypot(p.x - h.x, p.z - h.z) < 6)) continue;
+        out.push({ x: h.x, y: geo.ground(h.x, h.z), z: h.z });
+      }
+      return out;
+    } });
+    hall.add(this.carbonView.root);
+    // The forest in Áreas (inside the mountain, on the shore): «Ir» takes her to its middle, from the nearest dock.
     const Z = CARBON_ZONE.value;
-    const IC = BIOME_ISLAND.centre.value;
-    const fp = { id: `bioma:${Z.id}`, x: IC.x + Z.point.x, y: heightAt(MOUNTAIN.value, Z.point.x, Z.point.z), z: IC.z + Z.point.z };
-    (L.areas as AreaDef[]).push({ id: `bioma:${Z.id}`, island: "bioma", label: Z.label, desc: Z.desc, reality: Z.reality, centre: { x: fp.x, y: fp.y, z: fp.z }, half: { x: Z.r, y: 20, z: Z.r }, point: fp.id, belt: (({ id, label }) => ({ id, label }))(beltAt(Z.point.x, Z.point.z).belt) });
+    const zc = carbonHallGeo().zone(Z.id);
+    const fp = { id: `entrenamiento:${Z.id}`, x: zc.x, y: 0, z: zc.z };
+    (L.areas as AreaDef[]).push({ id: `entrenamiento:${Z.id}`, island: "entrenamiento", label: Z.label, desc: Z.desc, reality: Z.reality, centre: { x: fp.x, y: 5, z: fp.z }, half: { x: zc.r, y: 5, z: zc.r }, point: fp.id, floorY: 0 });
     this.points = [fp];
     (L.graph.points as WayPoint[]).push(...this.points);
+    const dock = L.hollow.gates.map((g) => g.in).sort((a, b) => Math.hypot(a.x - fp.x, a.z - fp.z) - Math.hypot(b.x - fp.x, b.z - fp.z))[0];
+    if (dock) (L.graph.links as [string, string][]).push([dock.point, fp.id]);
     this.beeTag = document.createElement("div");
     this.beeTag.className = "s3-pupa-etapa hidden";
     this.beeTag.setAttribute("role", "status");
@@ -192,17 +213,22 @@ export class S3Biome {
     if (camera instanceof THREE.PerspectiveCamera) this.camera = camera;
     if (!this.working) this.her = { x: body.x, y: body.y, z: body.z, yaw };
     const onStage = body.area.startsWith("bioma");
-    this.life.tick(dt, this.days(boardDays), t, hour, body, onStage);
-    this.carbon.tick(dt, this.days(boardDays), t, hour, body, onStage);
+    const inside = inHollow(body.x, body.y, body.z);
+    this.real.tick(dt, this.days(boardDays), t, hour, body, onStage);
+    this.life.tick(dt, this.days(boardDays), t, hour, body, inside);
+    this.carbon.tick(dt, this.days(boardDays), t, hour, body, inside);
     this.updatePupa(dt, t, body, camera);
     const C = BIOME_ISLAND.centre.value;
     const far = Math.hypot(camera.position.x - C.x, camera.position.z - C.z);
     // The mountain is seen from every island; its life is posed only from nearby (mobile budget): the chain lives on.
     if (far < 1600) {
-      const rows = census(this.life.state);
+      const rows = census(this.real.state);
       const cover: Record<string, number> = {};
       for (const r of rows) if (r.cover !== undefined) cover[r.id] = r.cover;
-      this.view.update(t, this.life.poses(), cover, this.life.state, camera.position);
+      this.view.update(t, this.real.poses(), cover, undefined, camera.position);
+    }
+    if (inside) {
+      this.insectView.update(t, this.life.poses(), this.life.state.day + this.life.state.def.startDayOfYear, camera.position);
       this.carbonView.update(t, this.carbon.poses(), this.carbon.state.day + this.carbon.state.def.startDayOfYear, camera.position);
     }
     this.near = onStage && !this.working && Math.hypot(body.x - this.board.x, body.z - this.board.z) < 2.4 && Math.abs(body.y - this.board.y) < 1;
@@ -237,7 +263,7 @@ export class S3Biome {
     this.card.classList.toggle("hidden", !this.near);
     if (!this.near) return;
     const start = st.def.startDayOfYear;
-    this.card.innerHTML = censusHtml(st.def, census(st), st.events.slice(-10).reverse().map((e) => ({ when: dateLabel(e.day, start), text: e.text })), dateLabel(st.day, start), monthOfDay(st.day, start), Object.fromEntries(CROWDS.map((c) => [c.species, this.view.crowd.countsOf(c.species) ?? crowdCounts(st, c)])), this.notebook, { title: "Bosque del Carbonífero (pie noreste de la pirámide, a tamaño real)", def: this.carbon.state.def, rows: census(this.carbon.state), chain: CARBON_CHAIN });
+    this.card.innerHTML = censusHtml(st.def, census(st), st.events.slice(-10).reverse().map((e) => ({ when: dateLabel(e.day, start), text: e.text })), dateLabel(st.day, start), monthOfDay(st.day, start), Object.fromEntries(CROWDS.map((c) => [c.species, crowdCounts(st, c)])), this.notebook, { title: "Bosque del Carbonífero (en la orilla de la nave, dentro de la montaña, a tamaño real)", def: this.carbon.state.def, rows: census(this.carbon.state), chain: CARBON_CHAIN });
   }
 }
 

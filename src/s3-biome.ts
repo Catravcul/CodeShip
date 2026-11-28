@@ -242,8 +242,9 @@ export class S3Biome {
       this.insectView.update(t, this.life.poses(), this.life.state.day + this.life.state.def.startDayOfYear, camera.position, this.life.state);
       this.carbonView.update(t, this.carbon.poses(), this.carbon.state.day + this.carbon.state.def.startDayOfYear, camera.position);
     }
-    const by = (q: { x: number; y: number; z: number } | undefined) => !!q && Math.hypot(body.x - q.x, body.z - q.z) < 2.4 && Math.abs(body.y - q.y) < 1;
-    this.at = this.working ? "" : onStage && by(this.board) ? "fuera" : inside && by(this.hallBoard) ? "nave" : "";
+    const by = (q: { x: number; y: number; z: number } | undefined, r: number) => !!q && Math.hypot(body.x - q.x, body.z - q.z) < r && Math.abs(body.y - q.y) < 1;
+    // The hall's hangs on the wall over the insectaries: read from a step farther.
+    this.at = this.working ? "" : onStage && by(this.board, 2.4) ? "fuera" : inside && by(this.hallBoard, 3.2) ? "nave" : "";
     this.near = !!this.at;
     this.nearDesk = onStage && !this.working && !this.near && Math.hypot(body.x - this.desk.x, body.z - this.desk.z) < 1.9 && Math.abs(body.y - this.desk.y) < 1;
     if (!this.nearDesk && this.picker.isOpen) this.picker.close();

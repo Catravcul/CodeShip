@@ -99,7 +99,7 @@ const laboratorio: Furnish = (sink, fr) => {
 };
 
 /** The name of the census board of the breeding room, the one inside the mountain (s3-biome.ts finds it by it). */
-export const CENSUS_BOARD = "Tablón del censo de la nave: insectos gigantes, Carbonífero y larvas";
+export const CENSUS_BOARD = "Censo de la nave";
 
 const crianza: Furnish = (sink, fr) => {
   const { at, lights } = roomKit(sink, fr);

@@ -96,57 +96,49 @@ export async function s3Bioma(j) {
   maxCalls = Math.max(maxCalls, await p.evaluate(() => window.__codeshipFrame?.calls ?? 0));
   await capture(j, "pupa-larva", "La pupa: la larva");
 
-  // Walking: from the root deck of the tree its pier leaves (the carpets' foot station), by the graph's walked links.
+  // Walking as a player: from the foot of the building its pier leaves, «Ir» with «Viaje: el camino real» in the
+  // gear (the game's own route, montana-hueca.md); she must never fall into the lake on the way.
   const foot = await p.evaluate(() => {
     const c = window.codeshipS3;
     const end = c.layout.graph.points.filter((q) => q.id.startsWith("entrenamiento:pupa:muelle")).at(-1);
     return c.layout.hollow.trees.map((t) => ({ id: `entrenamiento:${t.def.id}:pie`, d: Math.hypot(t.x - end.x, t.z - end.z) })).sort((a, b) => a.d - b.d)[0].id;
   });
-  const way = await p.evaluate((foot) => {
-    const g = window.codeshipS3.layout.graph;
-    const from = window.codeshipS3.layout.areas.find((a) => a.id === foot).point;
-    const by = new Map(g.points.map((q) => [q.id, q]));
-    const prev = new Map([[from, ""]]);
-    const queue = [from];
-    while (queue.length) {
-      const id = queue.shift();
-      if (id === "entrenamiento:pupa:mirador") break;
-      for (const [a, b] of g.links) {
-        const n = a === id ? b : b === id ? a : undefined;
-        if (!n || prev.has(n) || (by.get(id)?.carpet && by.get(n)?.carpet) || by.get(n)?.lift) continue;
-        prev.set(n, id);
-        queue.push(n);
-      }
-    }
-    const out = [];
-    for (let id = "entrenamiento:pupa:mirador"; id; id = prev.get(id)) out.unshift(by.get(id));
-    return out.map((q) => ({ id: q.id, x: q.x, z: q.z }));
-  }, foot);
   went = await goArea(j, foot, "Pie del árbol del muelle");
-  const pierAt = way.findIndex((q) => q.id.startsWith("entrenamiento:pupa:"));
-  // Along each stretch in short legs (the stick's aim drifts over a long one, and the pier is 6 m wide).
-  const along = async (pts) => {
-    for (const q of pts) {
-      const b = await p.evaluate(() => ({ x: window.codeshipS3.body.x, z: window.codeshipS3.body.z }));
-      const n = Math.max(1, Math.ceil(Math.hypot(q.x - b.x, q.z - b.z) / 12));
-      for (let i = 1; i <= n; i++) await walkTo(j, b.x + ((q.x - b.x) * i) / n, b.z + ((q.z - b.z) * i) / n, 0.8);
+  await j.tap(".s3-tasks", "Tareas");
+  await j.taskSettings({ travel: "viaje" });
+  await j.tap(".task-board .tb-close, .task-board [aria-label='Cerrar tareas']", "Cerrar tareas").catch(() => {});
+  await j.tap(".areas-btn", "Áreas");
+  await j.tap('.areas-window [data-pick="entrenamiento:pupa"]', "La pupa en el mapa");
+  went = (await j.tap('.areas-window [data-area="entrenamiento:pupa"]', "Ir: la pupa, andando")) && went;
+  const pierEnd = await p.evaluate(() => window.codeshipS3.layout.graph.points.filter((q) => q.id.startsWith("entrenamiento:pupa:muelle")).at(-1));
+  let wet = "";
+  let shotPier = false;
+  for (let i = 0; i < 400; i++) {
+    const s = await p.evaluate(() => ({ mode: window.codeshipS3.mode, body: window.codeshipS3.body }));
+    if (s.body.motion === "agua" && !wet) wet = JSON.stringify(s.body);
+    if (s.mode !== "ruta") break;
+    // Halfway along the pier: the whole cell standing in the lake among the buildings, the pupa inside it.
+    if (!shotPier && Math.hypot(s.body.x - pierEnd.x, s.body.z - pierEnd.z) > 120 && s.body.area === "entrenamiento:pupa") {
+      shotPier = true;
+      await p.evaluate(() => (window.codeshipS3.biome.bee.k = 12 / 19));
+      await p.waitForTimeout(800);
+      j.check("desde el muelle se ve la celda entera, con la pupa dentro", await p.evaluate(() => window.codeshipS3.biome.pupa.root.visible && window.codeshipS3.biome.pupa.bee.count > 10));
+      await capture(j, "pupa", "La pupa de la abeja desde el muelle");
     }
-  };
-  await along(way.slice(1, pierAt + 1));
-  // From the pier's start: the whole cell standing in the lake among the giant trees, the pupa inside it.
-  await p.evaluate(() => (window.codeshipS3.biome.bee.k = 12 / 19));
-  await lookAt(j, P.x, P.z);
-  await tilt(j, 0.35);
-  await p.waitForTimeout(1200);
-  j.check("desde el muelle se ve la celda entera, con la pupa dentro", await p.evaluate(() => window.codeshipS3.biome.pupa.root.visible && window.codeshipS3.biome.pupa.bee.count > 10));
-  await capture(j, "pupa", "La pupa de la abeja desde el muelle");
-  await along(way.slice(pierAt + 1));
+    await p.waitForTimeout(1500);
+  }
   const atPupa = await p.evaluate(() => window.codeshipS3.body);
-  j.check("andando por el muelle desde el pie del árbol se llega a la pupa", went && atPupa.area === "entrenamiento:pupa", `${way.map((q) => q.id).join(" → ")}; ${JSON.stringify(atPupa)}`);
+  j.check("con «Ir» andando desde el pie del edificio más cercano llega a la pupa por el muelle, sin caer al lago", went && atPupa.area === "entrenamiento:pupa" && !wet, `${foot}; ${JSON.stringify(atPupa)}${wet ? `; cayó al agua en ${wet}` : ""}`);
   tag = await p.evaluate(() => document.querySelector(".s3-pupa-etapa:not(.hidden)")?.textContent ?? "");
   // (The bee goes on with its clock while she walks: by now a pupa or the adult.)
   j.check("en la galería, la etiqueta dice la etapa de la abeja", /Abeja de la pupa · /.test(tag), tag);
+  await j.tap(".s3-tasks", "Tareas");
+  await j.taskSettings({ travel: "teletransporte" });
+  await j.tap(".task-board .tb-close, .task-board [aria-label='Cerrar tareas']", "Cerrar tareas").catch(() => {});
 
+  // EXPERIENCIA_TRAMO=pupa-tablones: only the pupa and the two census boards (a short run while they change).
+  const only = process.env.EXPERIENCIA_TRAMO === "pupa-tablones";
+  if (!only) {
   // ── The lake's larvae: off the gallery into the lake, down to the bottom where the nymphs and larvae live.
   const larva = await p.evaluate(() => {
     const c = window.codeshipS3;
@@ -179,6 +171,7 @@ export async function s3Bioma(j) {
   j.check("buceando, la etiqueta dice la larva más cercana y su etapa", /·/.test(under.tag) && !/Abeja/.test(under.tag), under.tag);
   await capture(j, "lago-larvas", "Larvas del lago");
 
+  }
   // ── The breeding room inside the mountain: its census board (the giant insects, the Carboniferous, the lake's larvae).
   const card = () =>
     p.evaluate(() => {
@@ -196,7 +189,11 @@ export async function s3Bioma(j) {
   const row = (id) => c.rows.find((r) => r.id === id)?.text ?? "";
   went = await goArea(j, "entrenamiento:crianza", "Criadero de insectos gigantes");
   const hb = await p.evaluate(() => window.codeshipS3.biome.hallBoard);
-  if (hb) await walkTo(j, hb.x, hb.z + 1.2, 0.5);
+  if (hb) {
+    // Into the room's middle first (the insectaries and the hive stand along its walls), then before the board.
+    await walkTo(j, hb.x, hb.z + 4, 0.6);
+    await walkTo(j, hb.x, hb.z + 1.6, 0.5);
+  }
   const nearHall = await p.waitForFunction(() => window.codeshipS3.biome.at === "nave", null, { timeout: 8000 }).then(() => true).catch(() => false);
   j.check("en el criadero de la nave está el tablón del censo de dentro", went && nearHall, await p.evaluate(() => JSON.stringify({ body: window.codeshipS3.body, board: window.codeshipS3.biome.hallBoard })));
   await j.showPanel(".s3-censo");
@@ -224,6 +221,11 @@ export async function s3Bioma(j) {
   j.check("cada fila del censo cabe en el móvil de 390 px", wide.over.length === 0 && wide.card <= wide.vw, JSON.stringify(wide));
   await capture(j, "censo", "Censo de la montaña");
 
+  if (only) {
+    maxCalls = Math.max(maxCalls, await p.evaluate(() => window.__codeshipFrame?.calls ?? 0));
+    j.check("las llamadas de dibujo quedan en el presupuesto (≤ 600)", maxCalls > 0 && maxCalls <= 600, String(maxCalls));
+    return;
+  }
   // ── The field table: the field methods; she does the first one open now.
   await j.tapInteraction("Cerrar el censo (botón naranja)");
   const desk = await p.evaluate(() => window.codeshipS3.biome.view.deskAt);

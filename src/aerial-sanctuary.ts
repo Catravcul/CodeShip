@@ -304,9 +304,13 @@ function areaMap(v: Vehicle): AreaMap | undefined {
   const areas = L.areas.filter((a) => a.island === id);
   // The island's hierarchy (domain/area-scope.ts): its buildings and their floors, the shared scope of Áreas.
   const tree = s3AreaScopes(areas);
+  // The campus's outside (the helipad, the gates' sills) is drawn on the map just south of the hall, as it lies about the
+  // south gate: the hall is far off on the plan (another scene), the map shows them as one place.
+  const sur = L.hollow.gates[0];
+  const onMap = (c: { x: number; y: number; z: number }) => (id !== "entrenamiento" || !sur || inHall(c.x, c.z) ? c : { x: sur.in.x + (c.x - sur.out.x), y: c.y - sur.out.y, z: sur.in.z - 40 + (c.z - sur.out.z) });
   const nodes: AreaNode[] = areas.map((a) => {
     const scope = tree.of(a.id);
-    return { id: a.id, label: a.label, desc: a.desc, goal: a.point, fixture: a.point, centre: a.centre, half: a.half, category: s3AreaCategory(a), ...(scope ? { scope } : {}) };
+    return { id: a.id, label: a.label, desc: a.desc, goal: a.point, fixture: a.point, centre: onMap(a.centre), half: a.half, category: s3AreaCategory(a), ...(scope ? { scope } : {}) };
   });
   const map: AreaMap = { vehicle: id, nodes, links: [], scopes: tree.scopes };
   areaMaps.set(id, map);

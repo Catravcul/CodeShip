@@ -38,6 +38,10 @@ animación, asegúrate que se encuadre la cámara para ver las animaciones».
   servicio, la cámara entra por detrás de su hombro derecho (`focusReto`) y cada paso dibujado se representa con la
   animación de ese paso del santuario 1 (`stepAnimation`, con el reproductor de pasos `StepShow` de las naves). El
   mando de la cámara gira alrededor de ella.
+- **Encuadre en panel**: la franja ve ±33° (antes 28°, `sheetLens` compartido): ella entera con aire sobre la cabeza
+  y el objeto del paso dentro de la franja medida.
+- **Puesto 8 (simulador de Dragon)**: la cámara se pone a su lado, entre ella y la pantalla (`S3Rigs.eye`): se ven ella
+  y la pantalla donde se juega cada paso, sin que su cabeza la tape.
 
 ## Código
 

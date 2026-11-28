@@ -10,7 +10,7 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
   con nodriza/estación) ([areas.md](docs/design/areas.md)).
 - **Santuario 3, retos dibujados**: botón **Vista HUD / Vista panel** como en el resto de retos; la cámara encuadra la
   escena en la franja que deja libre cada vista; los servicios del campus (la clase del aula y los demás) encuadran a
-  Doménica y representan cada paso ([retos-trazos.md](docs/design/retos-trazos.md); capturas
+  Doménica y representan cada paso; en panel cabe entera, y en el simulador de Dragon su cabeza ya no tapa la pantalla ([retos-trazos.md](docs/design/retos-trazos.md); capturas
   `docs/screenshots/s3-reto-aula-{panel,hud}-movil.png`).
 
 ## 2026-11-26

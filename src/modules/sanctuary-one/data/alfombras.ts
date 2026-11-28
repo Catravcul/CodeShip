@@ -189,10 +189,11 @@ const skyOf = (towers: readonly { readonly rootHeight: number }[]) => Math.ceil(
  * Every station: one on a landing out of each floor's and ring's edge (the spot whose lane is nearest and that one walks
  * to from the door), one on each crown and one at each foot (on the ice near the ground door, under open sky).
  */
-export function carpetStations(w: StationWorld): CarpetStation[] {
+export function carpetStations(w: StationWorld, skyWay?: number): CarpetStation[] {
   const out: CarpetStation[] = [];
   const grid = new Grid(obstaclesOf(w));
-  const sky = skyOf(w.towers);
+  // The sky way every lane reaches: over every crown and the globe, or the level's own (sanctuary 3's hall, under its roof).
+  const sky = skyWay ?? skyOf(w.towers);
   // A landing chosen is in the way of the lanes after it; a lane chosen keeps the landings after it out.
   const lanes: { x: number; z: number }[] = [];
   const ground = w.floors.filter((f) => Math.abs(f.y) < 0.01 && /^(hielo|tierra|base):/.test(f.area));

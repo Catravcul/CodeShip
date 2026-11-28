@@ -1132,7 +1132,7 @@ function frame(now: number): void {
   const clock = `${hh}:${String(Math.floor((hour - hh) * 60)).padStart(2, "0")}`;
   PULPO.k = advanceEgg(PULPO.k, dt, Number(settings.value.pulpoMinutes));
   // In the globe, the octopus egg's stage (domain/pulpo.ts).
-  const egg = (body.area === AQUARIUM_AREA ? ` · Huevo de pulpo: ${eggStage(Math.min(1, PULPO.k)).label}` : "") + crownPlay.frame(dt, body);
+  const egg = (body.area === AQUARIUM_AREA ? ` · ${PULPO.k < 1 ? "Huevo de pulpo" : "Pulpo"}: ${eggStage(PULPO.k).label}` : "") + crownPlay.frame(dt, body);
   const where = `Santuario 1 · ${clock} · ${a ? (a.building && !a.label.includes(a.building) ? `${a.building} · ${a.label}` : a.label) : flying ? "Volando en alfombra" : body.motion === "agua" ? "En el agua" : "Hielo"}${egg}`;
   if (whereEl.textContent !== where) whereEl.textContent = where;
   // The sheet changes (HUD or panel view, a longer question): the stage follows the room it leaves.

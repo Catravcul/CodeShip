@@ -3,6 +3,14 @@
 Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documento. El historial anterior al
 2026-11-18 está en git y en `docs/design/`.
 
+## 2026-11-28
+
+- **Santuario 3, la abeja de la pupa**: la larva ya no se sale de la celda: es una C segmentada en el fondo que crece
+  hasta llenarlo; la prepupa se desenrosca y se pone de pie con la cabeza al opérculo y la pupa se forma dentro; las alas
+  se despliegan al salir. Prueba que cada caja de cada etapa cabe en la celda ([pupa-abeja.md](docs/design/pupa-abeja.md)).
+- **Santuario 1, el pulpo crece**: tras nacer crece en el globo (paralarva, asentamiento, subadulto, adulto) hasta que
+  sus brazos abiertos miden el 66 % del diámetro del globo; luego otro huevo ([santuario1.md](docs/design/santuario1.md)).
+
 ## 2026-11-26
 
 - **Santuario 3, aterrizaje a mano**: el rotor del S-92 es un disco arriba (bajo él solo el fuselaje) y la manga y los focos

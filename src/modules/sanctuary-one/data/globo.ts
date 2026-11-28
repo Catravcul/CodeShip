@@ -1,4 +1,5 @@
 import { LOBES, SEA, WATER_Y, lobeRadius } from "./site";
+import { PULPO_SIZE } from "../domain/pulpo";
 
 /**
  * The whales' globe (Berón 2026-11-22: «el 62 % era sobre el espacio total disponible… el espacio entre casquetes e
@@ -52,7 +53,9 @@ export interface Globe {
   readonly bellyY: number;
   readonly x: number;
   readonly z: number;
-  /** The embryo's size (a third of the globe across its belly, Berón 2026-11-22), m. */
+  /** Its diameter across the belly (of a circle as big as its widest layer), m. */
+  readonly across: number;
+  /** The octopus hatchling's length (a third of the globe across its belly, Berón 2026-11-22; domain/pulpo.ts PULPO_SIZE), m. */
   readonly embryo: number;
 }
 
@@ -162,7 +165,7 @@ function build(): Globe {
     }
   }
   const across = 2 * Math.sqrt((widest * GLOBE_CELL * GLOBE_CELL) / Math.PI);
-  return { sea, seaArea: seaCells * GLOBE_CELL * GLOBE_CELL, layers, topY: top, bellyY: belly, x, z, embryo: across / 3 };
+  return { sea, seaArea: seaCells * GLOBE_CELL * GLOBE_CELL, layers, topY: top, bellyY: belly, x, z, across, embryo: across * PULPO_SIZE.hatchling };
 }
 
 export const GLOBE: Globe = build();

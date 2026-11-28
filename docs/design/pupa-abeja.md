@@ -64,6 +64,23 @@ Biology of the Honey Bee*); la de *A. cerana*, unos 19–20 (Oldroyd y Wongsiri 
 DuPraw 1967 (Annals of the Entomological Society of America 60: 1147–1157) y Fleig y Sander 1986 (Journal of
 Morphology 189: 133–158, diez etapas en ~72 h a 35 °C) describen el embrión de *A. mellifera*.
 
+**Nada sale de la celda** (Berón, 2026-11-28: «empieza a crecer muchísimo con una forma rara saliendo de los límites
+del contenedor amarillo»). Real: el huevo de pie que se inclina y se tumba (días 0–3), la larva enroscada en C en el
+fondo y la prepupa que se estira a lo largo de la celda con la cabeza hacia el opérculo (Winston 1987). Era un fallo:
+la larva crecía hasta 1,2 veces la abeja y su C, de 0,8 de ancho, se salía de una celda de 0,42; sus cajas además se
+giraban mal (parecía una forma rara). Ahora:
+
+- La **larva** es una C segmentada (cabeza + 13 segmentos, `LARVA`) tumbada en el fondo, en el plano del suelo, que
+  crece hasta que la C llena el fondo (su borde al 95 % del medio ancho: `LARVA_MAX` ≈ 0,5 de la abeja) y desde ahí
+  engorda; crece unas 50 veces en volumen (en peso real, ~1 500).
+- Operculada (día 8), la **prepupa** se desenrosca y se pone de pie a lo largo del eje, cabeza al opérculo (0,86 de
+  largo); la **pupa** se forma dentro de ella: ya tiene su largo y se ensancha mientras la prepupa adelgaza.
+- Las **alas** siguen siendo esbozos dentro de la celda; se despliegan al salir.
+- Pruebas: `abeja.test.ts` (la C nunca pasa del medio ancho ni del fondo; el giro es de la prepupa) y
+  `adapters/three/s3-bee-pupa.test.ts` (cada caja dibujada de cada etapa, del día 0 al 19, queda dentro de la celda).
+  Captura por etapa: `docs/screenshots/s3b-abeja-etapas-movil.png`.
+- Días: 19 en *A. cerana* (3 + 5 + 11, Oldroyd y Wongsiri 2006; Ruttner 1988, 18–20); los 21 son de *A. mellifera*.
+
 **Tamaños** (unidad: la obrera adulta = 1): huevo 0,14 × 0,03 (1,5 × 0,35 mm), celda de 0,42 de ancho y 1,05 de hondo
 (~4,5 × 11 mm en *cerana*) con su eje subido ~13°. La celda gigante guarda esas proporciones y **la abeja mide lo que cabe** bajo el techo
 de la pirámide (hoy ~78 m, ×17 000 aprox.; ficción, como el huevo del pulpo del santuario 1). La celda es translúcida

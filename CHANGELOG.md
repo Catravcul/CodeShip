@@ -5,6 +5,10 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
 
 ## 2026-11-28
 
+- **Santuario 3, dentro de la montaña**: las colonias de los insectos gigantes (colmenas, nidos, hormigueros y sus
+  obreras) en la orilla de la nave; el **tablón del censo de la nave** en el criadero (insectos gigantes, Carbonífero y
+  larvas del lago por etapa) y el de la cabaña de fuera con la **fauna real**; memoria medida al entrar y andar (sin
+  fugas; la caché de la rejilla del paseo con tope). [montana-hueca.md](docs/design/montana-hueca.md)
 - **Santuario 3, la montaña por dentro es otra escena**: en lugar de cuevas, tres **compuertas** de acero en la cara sur
   (botón naranja «Entrar»/«Salir»; pantalla de carga al pasar); dentro, una **nave excavada** de 1280 m de lado y 40 m bajo
   el mar con **los edificios del santuario 1 tal cual** (el mismo código: `buildTowers`) y dos edificios-árbol más con los

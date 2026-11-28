@@ -24,6 +24,9 @@ import { heightAt } from "@modules/aerial-sanctuary/domain/mountain";
 import { MOUNTAIN, beltAt } from "@modules/aerial-sanctuary/data/bioma-island";
 import { GIANT, HOLLOW, LAKE_STARSHIP, inHollow } from "@modules/aerial-sanctuary/data/montana";
 import { CarbonScene } from "./adapters/three/s3-carbon";
+import { CENSUS_BOARD } from "@modules/aerial-sanctuary/data/campus-fixtures";
+import { LAKE_LARVAE } from "@modules/aerial-sanctuary/data/larvas-lago";
+import { larvaeCensus } from "@modules/aerial-sanctuary/domain/larvas-lago";
 import { PUPA_AREA, pupaOfArea, type PupaPlan } from "@modules/aerial-sanctuary/data/pupa-abeja";
 import { advanceBee } from "@modules/aerial-sanctuary/domain/abeja";
 import { BeePupaView } from "./adapters/three/s3-bee-pupa";
@@ -49,7 +52,11 @@ export class S3Biome {
   private readonly card: HTMLElement;
   private cardKey = "";
   private readonly board: { x: number; y: number; z: number };
+  /** The hall's census board, in the breeding room (data/campus-fixtures.ts CENSUS_BOARD): its floor's height. */
+  readonly hallBoard?: { x: number; y: number; z: number };
+  /** At a census board: the hut's (the real fauna outside) or the breeding room's (the giant insects inside). */
   near = false;
+  at: "" | "fuera" | "nave" = "";
   /** At the hut's field table: the orange «Reto: Mesa de campo» button (ui/interaction.ts, as in sanctuary 1). */
   nearDesk = false;
   private readonly desk: { x: number; y: number; z: number };
@@ -87,7 +94,9 @@ export class S3Biome {
     scene.add(this.view.root);
     // Inside, the giant insects (the rule of animals per person, the shared setting: data/bioma.ts), on the shore.
     this.life = new BiomeLife(hallGeo(), 1, airBiome(Number(settings.value.animalsPerPerson)));
-    this.insectView = new CarbonScene(this.life.state.def, { x: HOLLOW.x, z: HOLLOW.z, floorY: HOLLOW.floorY, lakeTop: HOLLOW.lakeTop, r0: 0, r1: 0, keepOut: [] }, { trees: false, larvae: false });
+    this.insectView = new CarbonScene(this.life.state.def, { x: HOLLOW.x, z: HOLLOW.z, floorY: HOLLOW.floorY, lakeTop: HOLLOW.lakeTop, r0: 0, r1: 0, keepOut: [] }, { trees: false, larvae: false, crowd: hallGeo() });
+    // The hornets hover before the hives on the shore, as outside (bioma-s3.md §Colonias).
+    this.life.hives = this.insectView.crowd!.hivesOf("abeja");
     this.insectView.root.name = "insectos-gigantes";
     hall.add(this.insectView.root);
     // The bee's pupa: built into the hollow with the campus (data/montana.ts); drawn here from its area.
@@ -130,10 +139,12 @@ export class S3Biome {
     ui.appendChild(this.beeTag);
     const p = L.graph.points.find((q) => q.id === "bioma:estacion:censo")!;
     this.board = { x: p.x, y: p.y, z: p.z };
+    const hb = L.fixtures.find((f) => f.name === CENSUS_BOARD);
+    if (hb) this.hallBoard = { x: hb.x, y: hb.y - 1, z: hb.z };
     this.card = document.createElement("div");
     this.card.className = "cab-machine s3-censo hidden";
     this.card.setAttribute("role", "region");
-    this.card.setAttribute("aria-label", "Censo de la isla");
+    this.card.setAttribute("aria-label", "Censo");
     ui.appendChild(this.card);
     // The field table, against the hut's west wall (adapters' furniture at local (−4,5, 1,5)).
     this.desk = this.view.deskAt;
@@ -228,10 +239,12 @@ export class S3Biome {
       this.view.update(t, this.real.poses(), cover, undefined, camera.position);
     }
     if (inside) {
-      this.insectView.update(t, this.life.poses(), this.life.state.day + this.life.state.def.startDayOfYear, camera.position);
+      this.insectView.update(t, this.life.poses(), this.life.state.day + this.life.state.def.startDayOfYear, camera.position, this.life.state);
       this.carbonView.update(t, this.carbon.poses(), this.carbon.state.day + this.carbon.state.def.startDayOfYear, camera.position);
     }
-    this.near = onStage && !this.working && Math.hypot(body.x - this.board.x, body.z - this.board.z) < 2.4 && Math.abs(body.y - this.board.y) < 1;
+    const by = (q: { x: number; y: number; z: number } | undefined) => !!q && Math.hypot(body.x - q.x, body.z - q.z) < 2.4 && Math.abs(body.y - q.y) < 1;
+    this.at = this.working ? "" : onStage && by(this.board) ? "fuera" : inside && by(this.hallBoard) ? "nave" : "";
+    this.near = !!this.at;
     this.nearDesk = onStage && !this.working && !this.near && Math.hypot(body.x - this.desk.x, body.z - this.desk.z) < 1.9 && Math.abs(body.y - this.desk.y) < 1;
     if (!this.nearDesk && this.picker.isOpen) this.picker.close();
     this.renderCard();
@@ -256,16 +269,42 @@ export class S3Biome {
   }
 
   private renderCard(): void {
-    const st = this.life.state;
-    const key = this.near ? `${Math.floor(st.day * 2)}|${st.events.length}|${st.events.at(-1)?.text}|${this.notebook.length}` : "";
+    const st = this.at === "nave" ? this.life.state : this.real.state;
+    const key = this.near ? `${this.at}|${Math.floor(st.day * 2)}|${st.events.length}|${st.events.at(-1)?.text}|${this.notebook.length}` : "";
     if (key === this.cardKey) return;
     this.cardKey = key;
     this.card.classList.toggle("hidden", !this.near);
     if (!this.near) return;
     const start = st.def.startDayOfYear;
-    this.card.innerHTML = censusHtml(st.def, census(st), st.events.slice(-10).reverse().map((e) => ({ when: dateLabel(e.day, start), text: e.text })), dateLabel(st.day, start), monthOfDay(st.day, start), Object.fromEntries(CROWDS.map((c) => [c.species, crowdCounts(st, c)])), this.notebook, { title: "Bosque del Carbonífero (en la orilla de la nave, dentro de la montaña, a tamaño real)", def: this.carbon.state.def, rows: census(this.carbon.state), chain: CARBON_CHAIN });
+    const events = st.events.slice(-10).reverse().map((e) => ({ when: dateLabel(e.day, start), text: e.text }));
+    if (this.at === "fuera") {
+      // The hut's board: the mountain's real fauna and flora, at real size; the field table's notebook.
+      this.card.innerHTML = censusHtml(st.def, census(st), events, dateLabel(st.day, start), monthOfDay(st.day, start), {}, this.notebook, undefined, LOOK.fuera);
+      return;
+    }
+    // The breeding room's: the giant insects of the hall's shore with their colonies, the Carboniferous and the lake's larvae.
+    const bioDay = this.carbon.state.day + this.carbon.state.def.startDayOfYear;
+    const larvae = LAKE_LARVAE.map((s) => ({ id: s.id, name: s.name, latin: s.latin, eats: s.eats, stages: larvaeCensus(s, bioDay).map((r) => `${LARVA_STAGE[r.stage]} ${r.n}`) }));
+    this.card.innerHTML = censusHtml(st.def, census(st), events, dateLabel(st.day, start), monthOfDay(st.day, start), Object.fromEntries(CROWDS.map((c) => [c.species, crowdCounts(st, c)])), undefined, { title: "Bosque del Carbonífero (en la orilla de la nave, a tamaño real)", def: this.carbon.state.def, rows: census(this.carbon.state), chain: CARBON_CHAIN }, { ...LOOK.nave, larvae });
   }
 }
+
+const LARVA_STAGE = { huevo: "huevos", ninfa: "ninfas", larva: "larvas", pupa: "pupas", subimago: "subimagos", emergencia: "saliendo del agua" } as const;
+
+/** How each board says itself: its head, where it is, the titles of its groups. */
+export interface CensusLook {
+  readonly title: string;
+  readonly where: string;
+  readonly animals: string;
+  readonly small: string;
+  readonly plants: string;
+  /** The lake's larvae drawn now, by stage (the hall's board). */
+  readonly larvae?: readonly { id: string; name: string; latin: string; eats: string; stages: readonly string[] }[];
+}
+export const LOOK = {
+  fuera: { title: "Censo de la montaña", where: "Estación de investigación", animals: "Fauna real de la montaña (a tamaño real)", small: "Los pequeños", plants: "Plantas, de la estepa a las nieves" },
+  nave: { title: "Censo de la nave", where: "Criadero de insectos gigantes, dentro de la montaña", animals: "Insectos gigantes (cada colonia, por su reina)", small: "Los pequeños: pulgones, mosquitos, colémbolos y arañas", plants: "Plantas de la orilla de las que comen" },
+} as const satisfies Record<string, CensusLook>;
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 const SEASON = (m: number) => (m >= 12 || m <= 2 ? "invierno" : m <= 5 ? "primavera" : m <= 8 ? "verano" : "otoño");
@@ -273,7 +312,7 @@ const STAGES: readonly Stage[] = ["cria", "joven", "adulto", "anciano"];
 const NEST_WORD = { colmena: "colmenas", nido: "nidos", hormiguero: "hormigueros" } as const;
 
 /** The census card: each species with its count by stage, what it eats and who eats it, how fed it is; the last events. */
-export function censusHtml(def: BiomeDef, rows: readonly CensusRow[], events: readonly { when: string; text: string }[], date: string, month: number, crowds: Readonly<Record<string, CrowdCounts>> = {}, notebook: readonly { when: string; text: string }[] = [], more?: { title: string; def: BiomeDef; rows: readonly CensusRow[]; chain: readonly string[] }): string {
+export function censusHtml(def: BiomeDef, rows: readonly CensusRow[], events: readonly { when: string; text: string }[], date: string, month: number, crowds: Readonly<Record<string, CrowdCounts>> = {}, notebook: readonly { when: string; text: string }[] | undefined = [], more?: { title: string; def: BiomeDef; rows: readonly CensusRow[]; chain: readonly string[] }, look: CensusLook = LOOK.nave): string {
   const row = (r: CensusRow) => {
     const s = (def.species.find((x) => x.id === r.id) ?? more?.def.species.find((x) => x.id === r.id))!;
     let n = "";
@@ -296,11 +335,12 @@ export function censusHtml(def: BiomeDef, rows: readonly CensusRow[], events: re
     const seen = c && per && (c.adults + c.young > 0 || c.asleep) ? `<small class="cz-seen">${c.asleep ? "Pasan el invierno dentro del nido" : `Se ven ≈ ${count(c.adults + c.young)} obreras`} (×${String(per).replace(".", ",")} cada colonia)${c.nests ? ` · ${count(c.nests)} ${NEST_WORD[CROWDS.find((x) => x.species === r.id)?.nest ?? "nido"]}` : ""}</small>` : "";
     return `<li data-especie="${r.id}"><span class="cz-name">${esc(r.name)} <i>${esc(s.latin)}</i></span><span>${n}${fed}${r.note ? ` · ${esc(r.note)}` : ""}</span>${seen}${eats}${by}${deaths}</li>`;
   };
-  const group = (title: string, kind: CensusRow["kind"]) => `<h4>${title}</h4><ul class="cz-list">${rows.filter((r) => r.kind === kind).map(row).join("")}</ul>`;
-  return `<div class="cm-head"><b>Censo de la montaña</b><small>Estación de investigación · ${esc(date)} · ${SEASON(month)}</small></div>
-<div class="cz-body">${group("Insectos gigantes (cada colonia, por su reina)", "animal")}${group("Los pequeños: pulgones, mosquitos, colémbolos y arañas", "banco")}${group("Plantas, de la estepa a las nieves", "planta")}
-${more ? `<h4>${esc(more.title)}</h4><ul class="cz-list">${more.rows.filter((r) => r.kind !== "planta").map(row).join("")}</ul><p class="cz-note"><small>${more.chain.map(esc).join(". ")}.</small></p>` : ""}
-<h4>Cuaderno de campo (la mesa de campo)</h4><ul class="cz-events cz-notebook">${notebook.map((e) => `<li><small>${esc(e.when)}</small> ${esc(e.text)}</li>`).join("") || "<li>Aún nada anotado: las colmenas, el transecto de mariposas y las trampas se hacen en la mesa</li>"}</ul>
+  const group = (title: string, kind: CensusRow["kind"]) => (rows.some((r) => r.kind === kind) ? `<h4>${esc(title)}</h4><ul class="cz-list">${rows.filter((r) => r.kind === kind).map(row).join("")}</ul>` : "");
+  const larvae = look.larvae?.length ? `<h4>Larvas del lago (en el fondo, con su ciclo)</h4><ul class="cz-list">${look.larvae.map((l) => `<li data-especie="larva-${l.id}"><span class="cz-name">${esc(l.name)} <i>${esc(l.latin)}</i></span><span>${esc(l.stages.join(" · "))}</span><small>Come: ${esc(l.eats)}</small></li>`).join("")}</ul>` : "";
+  return `<div class="cm-head"><b>${esc(look.title)}</b><small>${esc(look.where)} · ${esc(date)} · ${SEASON(month)}</small></div>
+<div class="cz-body">${group(look.animals, "animal")}${group(look.small, "banco")}${group(look.plants, "planta")}
+${more ? `<h4>${esc(more.title)}</h4><ul class="cz-list">${more.rows.filter((r) => r.kind !== "planta").map(row).join("")}</ul><p class="cz-note"><small>${more.chain.map(esc).join(". ")}.</small></p>` : ""}${larvae}
+${notebook ? `<h4>Cuaderno de campo (la mesa de campo)</h4><ul class="cz-events cz-notebook">${notebook.map((e) => `<li><small>${esc(e.when)}</small> ${esc(e.text)}</li>`).join("") || "<li>Aún nada anotado: las colmenas, el transecto de mariposas y las trampas se hacen en la mesa</li>"}</ul>` : ""}
 <h4>Últimos sucesos</h4><ul class="cz-events">${events.map((e) => `<li><small>${esc(e.when)}</small> ${esc(e.text)}</li>`).join("") || "<li>Aún nada</li>"}</ul>
 <p class="cz-note"><small>Un año de la montaña dura 28 días de juego (Cold Sanctuary): cada día de juego son unos 13 días de vida.</small></p></div>`;
 }

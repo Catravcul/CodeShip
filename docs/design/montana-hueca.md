@@ -91,10 +91,22 @@ El mismo código del santuario 1 (`carpetRoute`, `ui/carpet-stations.ts`, `adapt
 
 - **Dentro** (en la orilla y sobre el lago): los insectos gigantes de Gilgit-Baltistán ×400 (`airBiome`, geometría
   `hallGeo`: cada zona de la isla es el tramo de orilla en su dirección), el bosque del Carbonífero con sus gigantes
-  ([carbonifero.md](carbonifero.md)), las larvas del lago ([larvas-lago.md](larvas-lago.md)) y la pupa.
+  ([carbonifero.md](carbonifero.md)), las larvas del lago ([larvas-lago.md](larvas-lago.md)) y la pupa. Las colonias
+  (colmenas, nidos, hormigueros y sus obreras) en la orilla, como fuera antes. En el **criadero** (piso 5 de
+  «Simuladores y control») el **tablón del censo de la nave**: insectos gigantes, Carbonífero y larvas por etapa.
+- **Fuera**, el tablón de la cabaña cuenta solo la fauna y la flora reales.
 - **Fuera**: la flora y la **fauna real** de la montaña, a tamaño real (`data/bioma-real.ts`, la de Khunjerab de antes de
   los insectos: íbices, markhores, bharales, leopardo de las nieves, buitres, quebrantahuesos, marmotas, pikas…, cada una
   con su fuente), [bioma-s3.md](bioma-s3.md).
+
+## Memoria (PX-51)
+
+Medido con Playwright (CPU ×4, CDP `Performance.getMetrics` y `renderer.info`): fuera, montón JS ~45 MB y 34
+geometrías; al entrar ~50–70 MB, 431 geometrías y 95 texturas; andando hacia la pupa sube a ~510 geometrías y 110
+texturas (los letreros y pisos que se ven al acercarse; no crece por fotograma) y el montón oscila entre 40 y 80 MB
+(el recolector lo baja). Proceso de la página ~410 MB, GPU ~190 MB. Sin fugas: la caché de `WalkIndex` tiene tope
+(`WALK_CACHE_MAX`, con prueba) y dentro no se mueven los pájaros de fuera ni se posa su fauna. El «cierre de página» de
+PX-51 era el corte de 25 min del recorrido (`timeout` cerraba el navegador), no memoria.
 
 ## Starship inundado
 

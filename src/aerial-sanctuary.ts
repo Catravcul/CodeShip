@@ -1290,6 +1290,8 @@ function frameFree(dt: number): void {
 }
 
 function frameBirds(dt: number): void {
+  // Inside the mountain the sky's birds are not drawn: nothing to move (the phone's frame).
+  if (place === "dentro") return;
   for (const b of birds) {
     const a = (clock * b.speed) / b.r + b.phase;
     let x = home.x + Math.cos(a) * b.r;

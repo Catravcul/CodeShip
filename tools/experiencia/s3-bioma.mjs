@@ -6,8 +6,9 @@
 // honeybee lives its metamorphosis, reached walking along the pier from a tree's foot; its lake holds the larvae of
 // the island's insects (dragonfly nymphs, mayflies, caddisflies, midges), seen diving; at the pyramid's north-east
 // foot, the Carboniferous forest (Lepidodendron, Sigillaria, Calamites, Psaronius, Cordaites) with its giants at real
-// size (Arthropleura, roachoids, Mazothairos, Meganeura, Meganeuropsis). At the research hut the orange button opens
-// the census (insects, the Carboniferous and their food chain) and the field table offers the field methods (hive
+// size (Arthropleura, roachoids, Mazothairos, Meganeura, Meganeuropsis). In the breeding room inside, the census board
+// counts the giant insects, the Carboniferous and the lake's larvae; at the research hut the orange button opens its
+// census of the real fauna outside, and the field table offers the field methods (hive
 // inspection, butterfly transect, pitfall traps): she does one. The draw calls stay ≤ 600. Captures in
 // docs/screenshots/s3b-<sitio>-movil.png.
 import { mkdirSync } from "node:fs";
@@ -178,31 +179,48 @@ export async function s3Bioma(j) {
   j.check("buceando, la etiqueta dice la larva más cercana y su etapa", /·/.test(under.tag) && !/Abeja/.test(under.tag), under.tag);
   await capture(j, "lago-larvas", "Larvas del lago");
 
-  // ── The research hut: the census through the orange button (insects, the Carboniferous, their food chain).
-  went = await goArea(j, "bioma:estacion", "Estación de investigación");
-  const near = await p.waitForFunction(() => window.codeshipS3.biome.near, null, { timeout: 8000 }).then(() => true).catch(() => false);
-  j.check("«Ir» la deja ante el tablón del censo, dentro de la cabaña", went && near, await p.evaluate(() => JSON.stringify(window.codeshipS3.body)));
-  const shownAlone = await p.evaluate(() => document.body.classList.contains("panel-on") && !!document.querySelector(".s3-censo:not(.hidden)")?.checkVisibility());
-  j.check("el censo no se abre solo: espera al botón naranja (reglas §5.8)", !shownAlone);
-  await j.showPanel(".s3-censo");
+  // ── The breeding room inside the mountain: its census board (the giant insects, the Carboniferous, the lake's larvae).
   const card = () =>
     p.evaluate(() => {
       const el = document.querySelector(".s3-censo");
       const rows = [...el.querySelectorAll("li[data-especie]")].map((li) => ({ id: li.dataset.especie, text: li.innerText }));
       return { open: !!el.checkVisibility() && document.body.classList.contains("panel-on"), rows, events: [...el.querySelectorAll(".cz-events li")].map((li) => li.innerText), text: el.innerText };
     });
-  let c = await card();
+  const fits = () =>
+    p.evaluate(() => {
+      const el = document.querySelector(".s3-censo");
+      const over = [...el.querySelectorAll("li")].filter((li) => li.scrollWidth > li.clientWidth + 1 || li.getBoundingClientRect().right > window.innerWidth + 1).map((li) => li.dataset.especie ?? li.innerText.slice(0, 20));
+      return { over, card: Math.round(el.getBoundingClientRect().width), vw: window.innerWidth };
+    });
+  let c;
   const row = (id) => c.rows.find((r) => r.id === id)?.text ?? "";
-  j.check("el botón naranja abre el censo de la montaña", c.open, String(c.rows.length));
-  j.check("cada especie tiene su fila: plantas, bancos, 15 insectos de Gilgit-Baltistán y 5 gigantes del Carbonífero", c.rows.length >= 36, String(c.rows.length));
+  went = await goArea(j, "entrenamiento:crianza", "Criadero de insectos gigantes");
+  const hb = await p.evaluate(() => window.codeshipS3.biome.hallBoard);
+  if (hb) await walkTo(j, hb.x, hb.z + 1.2, 0.5);
+  const nearHall = await p.waitForFunction(() => window.codeshipS3.biome.at === "nave", null, { timeout: 8000 }).then(() => true).catch(() => false);
+  j.check("en el criadero de la nave está el tablón del censo de dentro", went && nearHall, await p.evaluate(() => JSON.stringify({ body: window.codeshipS3.body, board: window.codeshipS3.biome.hallBoard })));
+  await j.showPanel(".s3-censo");
+  c = await card();
+  j.check("el tablón del criadero cuenta los insectos gigantes, el Carbonífero y las larvas del lago", c.open && /Censo de la nave/.test(c.text) && !!row("abeja") && !!row("meganeuropsis") && c.rows.filter((r) => r.id.startsWith("larva-")).length >= 4 && !row("ibice"), `${c.rows.length} filas: ${c.rows.map((r) => r.id).join(", ")}`);
   j.check("las colonias de abeja asiática salen con sus obreras y sus colmenas", /abeja/i.test(row("abeja")) && /colmena/i.test(row("abeja")), row("abeja"));
   j.check("la cadena del Carbonífero: Meganeuropsis come Mazothairos; a la cucaracha primitiva se la comen las libélulas gigantes", /Come:.*Mazothairos/i.test(row("meganeuropsis")) && /Lo comen:.*Meganeur/i.test(row("cucaracha")), `${row("meganeuropsis")} | ${row("cucaracha")}`);
-  j.check("el censo dice quién come a quién en el bosque del Carbonífero", /hojarasca/i.test(c.text) && /Carbonífero/.test(c.text));
-  const wide = await p.evaluate(() => {
-    const el = document.querySelector(".s3-censo");
-    const over = [...el.querySelectorAll("li")].filter((li) => li.scrollWidth > li.clientWidth + 1 || li.getBoundingClientRect().right > window.innerWidth + 1).map((li) => li.dataset.especie ?? li.innerText.slice(0, 20));
-    return { over, card: Math.round(el.getBoundingClientRect().width), vw: window.innerWidth };
-  });
+  j.check("las larvas del lago con sus etapas de ahora (huevos, ninfas, larvas, pupas)", /ninfas \d+/.test(row("larva-libelula")) || /huevos \d+/.test(row("larva-libelula")), row("larva-libelula"));
+  let wide = await fits();
+  j.check("cada fila del censo de la nave cabe en el móvil de 390 px", wide.over.length === 0 && wide.card <= wide.vw, JSON.stringify(wide));
+  await capture(j, "censo-nave", "Censo de la nave");
+  await j.tapInteraction("Cerrar el censo (botón naranja)");
+
+  // ── The research hut outside: its census through the orange button (the mountain's real fauna and flora).
+  went = await goArea(j, "bioma:estacion", "Estación de investigación");
+  const near = await p.waitForFunction(() => window.codeshipS3.biome.at === "fuera", null, { timeout: 8000 }).then(() => true).catch(() => false);
+  j.check("«Ir» la deja ante el tablón del censo, dentro de la cabaña", went && near, await p.evaluate(() => JSON.stringify(window.codeshipS3.body)));
+  const shownAlone = await p.evaluate(() => document.body.classList.contains("panel-on") && !!document.querySelector(".s3-censo:not(.hidden)")?.checkVisibility());
+  j.check("el censo no se abre solo: espera al botón naranja (reglas §5.8)", !shownAlone);
+  await j.showPanel(".s3-censo");
+  c = await card();
+  j.check("el botón naranja abre el censo de la montaña", c.open && /Censo de la montaña/.test(c.text), String(c.rows.length));
+  j.check("el tablón de la cabaña cuenta la fauna real de fuera (íbice, markhor, leopardo de las nieves…) y sus plantas, sin los insectos gigantes", c.rows.length >= 30 && !!row("ibice") && !!row("leopardo") && !!row("pino") && !row("abeja") && !row("meganeuropsis"), `${c.rows.length} filas: ${c.rows.map((r) => r.id).join(", ")}`);
+  wide = await fits();
   j.check("cada fila del censo cabe en el móvil de 390 px", wide.over.length === 0 && wide.card <= wide.vw, JSON.stringify(wide));
   await capture(j, "censo", "Censo de la montaña");
 

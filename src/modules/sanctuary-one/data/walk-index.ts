@@ -10,6 +10,9 @@ import type { Floor, Solid, Water, WalkWorld } from "@modules/aerial-sanctuary/d
 /** Solids farther than this above or below her are left out of `near` (m: more than a level of a tree-building). */
 export const SOLID_BAND = 24;
 
+/** Pieces of the world kept round her at most (cells × heights): past it the cache starts again (a phone's memory). */
+export const WALK_CACHE_MAX = 800;
+
 export class WalkIndex {
   private readonly cells = new Map<string, { floors: Floor[]; waters: Water[]; solids: Solid[] }>();
   private readonly huge: { floors: Floor[]; waters: Water[]; solids: Solid[] } = { floors: [], waters: [], solids: [] };
@@ -53,8 +56,14 @@ export class WalkIndex {
     const lo = (band - 2) * (SOLID_BAND / 2);
     const hi = (band + 3) * (SOLID_BAND / 2);
     const out: WalkWorld = { floors: w.floors, waters: w.waters, solids: w.solids.filter((s) => s.y1 > lo && s.y0 < hi) };
+    if (this.cache.size >= WALK_CACHE_MAX) this.cache.clear();
     this.cache.set(key, out);
     return out;
+  }
+
+  /** How many pieces are cached now (the tests' bound). */
+  get cached(): number {
+    return this.cache.size;
   }
 
   private flat(x: number, z: number): WalkWorld {
@@ -69,7 +78,7 @@ export class WalkIndex {
       return all.filter((it) => s.has(it));
     };
     const w: WalkWorld = { floors: pick("floors", this.world.floors), waters: pick("waters", this.world.waters), solids: pick("solids", this.world.solids) };
-    if (this.cache.size > 800) this.cache.clear();
+    if (this.cache.size >= WALK_CACHE_MAX) this.cache.clear();
     this.cache.set(key, w);
     return w;
   }

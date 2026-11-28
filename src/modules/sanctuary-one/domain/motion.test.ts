@@ -1,0 +1,78 @@
+import { describe, expect, it } from "vitest";
+import { activityAt, along, drift, route, shuttle, wanderAt, waypoint } from "./motion";
+
+describe("movimiento del santuario 1", () => {
+  it("un animal merodea dentro de su territorio, y el mismo instante da el mismo sitio", () => {
+    const home = { x: 10, z: -5 };
+    for (let t = 0; t < 600; t += 7.3) {
+      const p = wanderAt(home, 8, 42, t, 0.8);
+      expect(Math.hypot(p.x - home.x, p.z - home.z)).toBeLessThanOrEqual(8 + 1e-9);
+      expect(wanderAt(home, 8, 42, t, 0.8)).toEqual(p);
+    }
+  });
+
+  it("anda de un punto al siguiente sin saltos y descansa al llegar", () => {
+    const home = { x: 0, z: 0 };
+    let prev = wanderAt(home, 6, 7, 0, 1);
+    let rested = false;
+    for (let t = 0.1; t < 200; t += 0.1) {
+      const p = wanderAt(home, 6, 7, t, 1);
+      expect(Math.hypot(p.x - prev.x, p.z - prev.z)).toBeLessThanOrEqual(0.1 * 1 + 1e-6);
+      if (!p.moving) rested = true;
+      prev = p;
+    }
+    expect(rested).toBe(true);
+  });
+
+  it("los puntos de paso cubren el territorio", () => {
+    const pts = Array.from({ length: 200 }, (_, i) => waypoint({ x: 0, z: 0 }, 10, 3, i));
+    expect(pts.some((p) => p.x > 6)).toBe(true);
+    expect(pts.some((p) => p.x < -6)).toBe(true);
+  });
+
+  it("una ruta se recorre por metros, y marca dónde se nada", () => {
+    const r = route([{ x: 0, y: 0, z: 0 }, { x: 10, y: 0, z: 0 }, { x: 10, y: 20, z: 0, swim: true }]);
+    expect(r.length).toBe(30);
+    expect(along(r, 5)).toMatchObject({ x: 5, y: 0, swim: false, done: false });
+    expect(along(r, 20)).toMatchObject({ x: 10, y: 10, swim: true });
+    expect(along(r, 40)).toMatchObject({ x: 10, y: 20, done: true });
+  });
+
+  it("la jornada de Cold Sanctuary: desayuno, entrenamiento, tareas, comida, libre y a dormir", () => {
+    expect(activityAt(3)).toBe("dormir");
+    expect(activityAt(7.5)).toBe("desayuno");
+    expect(activityAt(8.5)).toBe("entrenamiento");
+    expect(activityAt(10)).toBe("tareas");
+    expect(activityAt(11.5)).toBe("comida");
+    expect(activityAt(14.5)).toBe("entrenamiento");
+    expect(activityAt(18)).toBe("libre");
+    expect(activityAt(23)).toBe("dormir");
+  });
+});
+
+describe("a vehicle's round trip", () => {
+  const r = route([{ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 10 }, { x: 0, y: -10, z: 10 }]);
+  it("waits, goes out, waits away and comes back the same way", () => {
+    expect(shuttle(r, 1, 1, 5, 5)).toMatchObject({ x: 0, z: 0, moving: false });
+    expect(shuttle(r, 10, 1, 5, 5)).toMatchObject({ z: 5, moving: true });
+    expect(shuttle(r, 10, 1, 5, 5).yaw).toBeCloseTo(0);
+    expect(shuttle(r, 27, 1, 5, 5)).toMatchObject({ y: -10, moving: false });
+    const back = shuttle(r, 47, 1, 5, 5);
+    expect(back.moving).toBe(true);
+    expect(back.z).toBeCloseTo(3);
+    expect(Math.abs(back.yaw)).toBeCloseTo(Math.PI);
+    expect(shuttle(r, 50, 1, 5, 5)).toMatchObject({ x: 0, z: 0 });
+  });
+});
+
+describe("an iceberg drifting between two points", () => {
+  const a = { x: 0, z: 0 };
+  const b = { x: 0, z: -100 };
+  it("goes from A to B at its speed and back again", () => {
+    expect(drift(a, b, 0.2, 0)).toEqual({ x: 0, z: 0 });
+    expect(drift(a, b, 0.2, 250).z).toBeCloseTo(-50);
+    expect(drift(a, b, 0.2, 500).z).toBeCloseTo(-100);
+    expect(drift(a, b, 0.2, 750).z).toBeCloseTo(-50);
+    expect(drift(a, b, 0.2, 1000).z).toBeCloseTo(0);
+  });
+});

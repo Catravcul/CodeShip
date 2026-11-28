@@ -61,4 +61,14 @@ describe("Asteroid surface and spin", () => {
     const v = a.surfaceVelocity(new Vec3(245, 0, 0));
     expect(v.z).toBeCloseTo(-a.spinRadS * 245, 12);
   });
+
+  it("can move itself: frame, gravity and ground velocity follow (gravity drive)", () => {
+    const a = new Asteroid(BENNU, Vec3.ZERO);
+    const local = new Vec3(245, 0, 0);
+    a.moveTo(new Vec3(1000, 0, 0), new Vec3(2, 0, 0));
+    expect(a.position.x).toBe(1000);
+    expect(a.toWorld(local, 0).x).toBeCloseTo(1245, 9);
+    expect(a.gravityAt(new Vec3(2000, 0, 0)).x).toBeLessThan(0);
+    expect(a.surfaceVelocity(a.toWorld(local, 0)).x).toBeCloseTo(2, 9);
+  });
 });

@@ -1,0 +1,89 @@
+# Pruebas
+
+Hay tres capas:
+
+| Capa | Comando | Qué prueba |
+| --- | --- | --- |
+| Unitarias (Vitest) | `npx vitest run` | Reglas del juego en el dominio y la aplicación (TDD). Sin DOM ni Three.js. |
+| Arquitectura | `npm run lint:arch` | Que el dominio y la aplicación no importan adaptadores, UI, Three.js ni el DOM. |
+| Experiencia del jugador (Playwright) | `npm run experiencia` | Recorridos completos jugados con toques y teclas, con capturas y rendimiento. |
+
+## Experiencia del jugador
+
+Copia el modelo del `ExperienciaJugadorTest` de Cold Sanctuary: **emular solo lo que un jugador puede hacer** y comprobar lo que ve. Cada recorrido:
+
+- se juega con **toques en los controles visibles** (`tap` en el centro del botón, arrastre de los mandos táctiles) o con las teclas que tiene un jugador de escritorio; si un botón está oculto o tapado, el toque falla y el recorrido lo apunta;
+- comprueba **lo que se ve**: textos (`Aciertos 1/7`, `Fallos 1/3`), colores calculados (ámbar, verde, rojo), si la vista cambia, avisos;
+- guarda una **captura** en cada momento importante;
+- apunta los **problemas de experiencia** que no son fallos (por ejemplo, «dos botones para lo mismo»).
+
+Lo único que no hace un jugador son las **preparaciones**, marcadas con `·` en el informe: llevar a Doménica al anillo sin esperar el ascensor, posar el módulo sobre Bennu o acoplarlo en la estación. Son el equivalente del `Teleport` de Cold Sanctuary: ahorran minutos que no prueban nada nuevo. Para saber qué opción es la correcta en un duelo se lee la respuesta del reto (el «oráculo», lo que sabría un jugador que entiende el código); la acción sigue siendo un toque.
+
+### Recorridos (`tools/experiencia/`)
+
+Cada recorrido tiene un ID estable (`PX-01`…) en la sección «Experiencia del jugador (PX)» de [qa/casos.md](qa/casos.md), con su estado en [qa/registro.md](qa/registro.md); cada ejecución deja un registro en `docs/qa/runs/<fecha>-PX-….md`. **Sin registro de ejecución no hay «Probado».**
+
+| Recorrido | Qué juega |
+| --- | --- |
+| PX-01 `cocina` | Entra en la nave, abre Tareas, cocina **huevos revueltos** comprobando que cada paso bien se ve en 3D (`data-paso` en la interfaz del módulo: tomar, cascar, calentar, remover, sazonar, emplatar), hace la crema de cacahuete tocando **tres veces la misma opción errónea** (el informe del diseñador) y luego los siete pasos; después cocina cacahuetes tostados en **vista HUD**, falla hasta perder y da un toque rápido de más sobre el resultado. |
+| PX-02 `movimiento` | Propulsores de la cabina con W y la velocidad del HUD; el mando de flechas en ingravidez (salto, flechas apagadas durante el salto); avisos del jugador sin pisar (H24) y de ambiente a la vista; una tarea elegida desde el eje (avisa de que baja); caminar y mirar con los mandos del anillo. |
+| PX-03 `mision` | Radio → carta de Nevaeh → registro de misiones → posado en Bennu → duelo con un fallo a propósito → misión cumplida. |
+| PX-04 `acciones-movil`, PX-05 `acciones-escritorio` | Visita cada pantalla (cabina, ingravidez, anillo, tareas, puente, mapa, sonda, vuelo libre, posado, paseo, estación y sus pestañas), la captura como `ux-<antes/despues>-<pantalla>-<movil/escritorio>.png` y lista los controles que se solapan. |
+| PX-06 `ordenar` | En el puente programa el viaje a Bennu: un orden con dos pasos cambiados (marcas ✓/✗ por casilla en las dos vistas, Reintentar que deja los buenos) y, en otro intento, **paso a paso** (aviso al momento, un fallo por bloque erróneo, repetirlo no cuenta). Capturas `ordenar-*` (copiadas a `docs/screenshots/`). |
+| PX-07 `aterrizaje-programa`, PX-08 `aterrizaje-manual`, PX-09 `aterrizaje-escritorio` | Un paso del viaje se dibuja al acertarlo; la sonda aterriza por programa con toques; los indicadores de aterrizaje del módulo aparecen y cambian de color; el módulo aterriza por programa a 1280×800 ([aterrizaje.md](design/aterrizaje.md)). |
+| PX-10 `habitaculo-movil`, PX-11 `habitaculo-escritorio` | Habitáculo del módulo: sin Nombres ni Mandos, levantarse y desacoplar en la consola, ajustes en la esterilla (ayuda de teclado), «Ir» de una tarea de vuelo, y las consolas del puente (cada una abre solo su página; la mente aparte de la sonda). Capturas en `docs/screenshots/habitaculo-*-<movil/escritorio>.png`. |
+| PX-12 `estacion-movil` | Estación en un iPhone 13 ([estacion-tripulacion.md](design/estacion-tripulacion.md)): primera persona e iconos de raíz, puerta con nombre y «Entrar en…», cocina con la despensa de la estación, camarote, ajustes en la esterilla, «Ir» de una tarea de la estación y hangar con el módulo dentro y la lista global en su consola. Capturas en `docs/screenshots/estacion-*-movil.png`. |
+| PX-13 `acuario` | Acuario del anillo: adopta medakas y caracoles Biomphalaria en el catálogo (el tanque empieza vacío), «Ir» hasta el tanque, dar de comer con escamas en el tanque, hacer amistad con las medakas (programa), pedir ayuda a los caracoles (bajan las algas) y a las medakas (avisan del nitrato y aparece el cambio de agua). Capturas en `docs/screenshots/acuario-*-movil.png`. |
+| PX-15 `puente-real` | Puente real en 1ª persona ([puente.md](design/puente.md), [escala.md](design/escala.md)): cada consola se reconoce por su cartel y se toca sin solapes, sentarse en el mando de la sonda, abrir la mesa de navegación y pasar a 3ª persona con el ojo. Capturas en `docs/screenshots/puente-*.png`. |
+| PX-20 `animaciones` | Auditoría de animaciones de los retos ([qa/animaciones.md](qa/animaciones.md)): juega cada receta, proceso y tarea del anillo, un viaje y un aterrizaje por programa con toques, y tras cada paso mide en la escena 3D si sus objetos están al alcance de Doménica, a la vista sobre la hoja y sin atravesar muebles, y si su gesto se nota (`src/adapters/three/interior/step-audit.ts`). Capturas webp pequeñas en `docs/screenshots/anim/`. `ANIM_SOLO=crema,huevos` juega solo esas tareas. |
+| PX-25 `foco` | Foco del reto ([design/ux-acciones.md](design/ux-acciones.md) §7): abre con toques cada clase de reto en cada sitio (anillo: receta en las dos vistas, tarea, acuario, yoga; puente: viaje, viaje y aterrizaje de la sonda, mente por la sonda; módulo: aterrizaje por programa, mente, traje, nano_net; estación: cocina, máquina, pantalla, importar, hangar) y comprueba que solo se ven la hoja, la escena y el paso (`j.onlyChallengeVisible`, que también llama `j.waitDuel` en todos los recorridos). |
+| PX-30 `soporte-vital` | Soporte vital real ([design/soporte-vital.md](design/soporte-vital.md)): lecturas solo en los bastidores y la consola, alarma de CO₂ con el CDRA averiado, «Ir» a su reparación con los pasos encendidos en el bastidor, recuperación del CO₂ y mantenimiento del lecho del WPA. |
+| PX-27 `catalogo` | Catálogo de especies ([catalogo-especies.md](design/catalogo-especies.md)): partida nueva con Doménica sola, el catálogo desde la lista de tareas, los dos caracoles lado a lado (la nerita, «pendiente»: solo se adoptan especies reales en hábitats reales), adoptar medakas y Biomphalaria, verlas llegar al tanque vacío, hacerse amigos, el terminal del catálogo y dos comidas en un día de a bordo. Lo usan PX-13 y PX-20 para adoptar sus animales con toques (`tools/experiencia/catalogo.mjs`). |
+| PX-42 `tareas-ajustes` | Menú árbol general ([design/ux-acciones.md](design/ux-acciones.md), reglas.md §5.8–5.9), Áreas ([design/areas.md](design/areas.md)) y ajustes de la lista de tareas ([viaje-a-una-tarea.md](design/viaje-a-una-tarea.md#ajustes-de-tareas)): engranaje que se vuelve X; Vista, Tareas, Áreas y Trayecto; el esquema del LM y de la ISS y un toque que la lleva andando; los ajustes compartidos; «Automático» del LM a la Starship; Trayecto de solo estado; capturas `docs/screenshots/tareas-ajustes-*` |
+| PX-44 `inicio` | Pantalla de inicio ([design/santuario3-iniciacion.md](design/santuario3-iniciacion.md) §5): la ventana de mapa con los seis santuarios antes de la partida; el mapa gira con el dedo y se amplía pellizcando; tarjetas bloqueadas («Próximamente»), el 3 jugable (su descripción dice qué está «En construcción»: PX-45); «Jugar» en el 6 empieza la partida y «Continuar» con una partida guardada; capturas `docs/screenshots/inicio-*`. Los demás recorridos entran por el inicio con `enterGame` de `lib.mjs`: una partida nueva («Jugar» en el 6 o, si ya hay una guardada, «Jugar sin partida guardada» del engranaje); `enterGame(page, { resume: true })` toca «Continuar» |
+| PX-45 `s3-recorrido` | Santuario 3 ([design/santuario3-escena.md](design/santuario3-escena.md)): «Jugar» en el 3, andar con el joystick por la isla de entrenamiento, «Ir» andando a un puesto, la máquina de navegación y el vuelo a la vista a la lanzadera, el ascensor del árbol hasta la corona del Electron y la plataforma del Falcon 9 en el mar |
+| PX-46 `s3-iniciacion` | Santuario 3, fase 4 ([design/santuario3-puestos.md](design/santuario3-puestos.md)): las entrenadoras en sus puestos a las 9:00, los retos de los puestos 1, 2, 3, 4 y 7 vistos paso a paso en el sitio, a la hora de comer el puesto espera al siguiente turno, y los vuelos entre islas «Por reto» (programa y vuelo a la vista) y «Manual» (cíclico, colectivo y pedales, aterrizaje a mano) |
+| PX-47 `s3-iniciacion-2` | Santuario 3, fase 5 ([design/santuario3-puestos.md](design/santuario3-puestos.md)): los retos de los puestos 5, 6, 8, 9, 11 y 12 con quien está de turno; la centrífuga que gira hasta 4–5 g con ella en la góndola; el Il-76MDK desde la pista de hielo azul del glaciar (despegue, subida a 6000 m, entrada a 2 g, ingravidez, aterrizaje); la pantalla del simulador de Dragon en su sala; el acople a mano dentro de los límites del IDSS y el alunizaje a mano en la sala del LM; el Canadarm2 en las tres pantallas de la estación de robótica; los meteoritos y el frío con sus objetos; el puesto que espera a la hora de comer y la entrenadora que sale antes |
+| PX-48 `iniciacion-completa` | Santuario 3, fase 6 ([design/santuario3-lanzamiento.md](design/santuario3-lanzamiento.md)): el traje espera a los demás puestos; el puesto 10 (el Electron en la pantalla del control de misión) y el 13 (el traje) con quien está de turno; el vuelo a la plataforma; la torre, el brazo y la sala blanca, la cuenta atrás, el ascenso por etapas y la cita con la Starship; el paso al nivel 6 en la misma ranura y el crucero a Bennu |
+| PX-49 `s3-detalle` | Santuario 3, la isla de entrenamiento con detalle ([design/santuario3-detalle.md](design/santuario3-detalle.md)): Áreas → «Ir» (teletransporte) a cada sala, unos pasos con «Moverse», «Mirar», su equipo real y una captura `s3d-*-movil.png` por sala; ≤ 600 llamadas de dibujo |
+| PX-50 `partidas` | Partidas guardadas ([design/partidas.md](design/partidas.md)): se guarda sola; jugar, pasar del módulo a la Starship, recargar y «Continuar» la deja allí con el estado intacto; el engranaje del inicio lista la partida y una dañada, borra con confirmación en la ventana y «Jugar sin partida guardada»; capturas `docs/screenshots/partidas-*` |
+
+```
+npm run experiencia                 # compila, sirve dist/ y juega todos los recorridos
+npm run experiencia -- cocina mision
+EXPERIENCIA_URL=http://localhost:5173/ node tools/experiencia/run.mjs cocina   # contra un servidor ya en marcha
+```
+
+Salida: `experiencia-informe/<fecha>/report.md`, `report.json` y las capturas (carpeta ignorada por git), más el registro `docs/qa/runs/<fecha>-PX-….md` (commit, tabla de recorridos, comprobaciones y rendimiento frente a presupuesto) la fila de cada recorrido en `docs/qa/registro.md` y una línea en su tabla de ejecuciones. El proceso sale con 1 si falla alguna comprobación, si un recorrido esperado no hizo **ninguna** comprobación, si una medida falta o si se pasa algún presupuesto que aplica.
+
+Antes de cada toque se comprueban tres invariantes (como los ayudantes de invariantes de Natuka): el objetivo mide al menos **44×44 px** en el móvil (24×24 en escritorio), nada tapa su centro (`elementFromPoint`) y tiene nombre accesible (texto o `aria-label`). Cada control se comprueba una vez por recorrido.
+
+El comprobador y el informe (`tools/experiencia/qa.mjs`: `makeChecker`, `verdict`, `exitCodeFor`, `checkBudgets`, `renderRunLog`, `updateRegistro`) son funciones puras con sus pruebas en Vitest (`qa.test.mjs`).
+
+Variables: `EXPERIENCIA_SIN_REGISTRO=1` (no escribe en `docs/qa/`), `EXPERIENCIA_URL` (servidor ya en marcha), `EXPERIENCIA_OUT` (carpeta de salida), `EXPERIENCIA_PREFIJO` (`antes`/`despues` en las capturas de botones), `EXPERIENCIA_CPU` (freno de CPU por defecto, 4), `EXPERIENCIA_ESTRICTO=1` (aplica todos los presupuestos aunque la GPU sea por software).
+
+### Rendimiento
+
+Cada recorrido corre en el perfil **iPhone 13** de Playwright con la CPU frenada **×4** (`Emulation.setCPUThrottlingRate` por CDP), que se acerca a un móvil de gama media. Mide:
+
+- **fotogramas** con `requestAnimationFrame` desde que empieza el recorrido (después de cargar): mediana y p95 en ms, % de fotogramas de más de 33 ms;
+- **tareas largas** (`PerformanceObserver` de `longtask`): cuántas por minuto y la mayor;
+- **memoria JS** (`performance.memory`, Chromium);
+- **llamadas de dibujo y triángulos** del último fotograma: `window.__codeshipFrame`, un gancho que solo existe en desarrollo o con `?prueba` en la URL (`renderer.info` sin reinicio automático, leído al empezar cada fotograma);
+- **carga hasta el primer fotograma interactivo**: la marca `codeship-primer-fotograma` que pone el bucle en su primera vuelta.
+
+Los presupuestos se declaran en un solo sitio, `tools/experiencia/presupuestos.mjs`; `npm run check:docs` falla si esta tabla no coincide.
+
+| Presupuesto | Máximo | Depende de la GPU | Por qué |
+| --- | --- | --- | --- |
+| Carga hasta el primer fotograma | 8000 ms | sí | Un móvil con CPU ×4 debe ver la cabina en menos de 8 s. |
+| Fotograma p95 | 33 ms | sí | 30 fps sostenidos; por encima, los mandos táctiles se notan pesados. |
+| Fotogramas de más de 33 ms | 10 % | sí | Tirones ocasionales sí, entrecortado no. |
+| Tareas largas por minuto | 30 | sí | Cada una bloquea los toques más de 50 ms. |
+| Memoria JS | 350 MB | no | Safari en iPhone mata pestañas que pasan de unos 400 MB. |
+| Llamadas de dibujo por fotograma | 600 | no | Por encima, la GPU de un móvil no llega a 30 fps. |
+| Triángulos por fotograma | 2000 k | no | Ídem. |
+
+Una medida que falta (sin fotogramas, sin el gancho de dibujo, sin `performance.memory`) se apunta como **no medido** y hace fallar el recorrido: nunca cuenta como 0.
+
+Los presupuestos de **carga, fotogramas y tareas largas dependen de la GPU**. En un contenedor sin GPU Chromium dibuja con SwiftShader (por software) y la escena va a 2–6 fps aunque el juego vaya bien en un teléfono: ahí esos tres se informan como «informativo» y no hacen fallar la ejecución. Memoria, llamadas de dibujo y triángulos no dependen de la GPU y siempre aplican. En una máquina con GPU (o con `EXPERIENCIA_ESTRICTO=1`) aplican todos.

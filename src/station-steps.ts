@@ -1,0 +1,102 @@
+import type { Chore } from "@modules/chores/domain/chore";
+import type { StepAct, StepVisual } from "@modules/chores/domain/step-visual";
+import { AqhModel } from "./adapters/three/interior/aqh-model";
+import { choreVisuals } from "@modules/chores/application/step-visuals";
+import { RECIPES } from "@modules/kitchen/data/recipes";
+import { PROCESSES } from "@modules/kitchen/data/processes";
+import { ISS_FOOD } from "@modules/kitchen/data/iss-food";
+import { YOGA_SEQUENCES } from "@modules/wellness/data/yoga";
+import { asanaById } from "@modules/body/data/asanas";
+import { motionOf } from "@modules/body/data/exercise-motions";
+import { WORKOUTS } from "@modules/wellness/data/exercise";
+import type { StationPanel } from "@modules/station/domain/interior";
+import type { StationSession } from "@modules/station/application/station-ops";
+import type { StationInteriorMode } from "./station-interior";
+import type { ChoreMode } from "./station-screen";
+
+/** What each solved step of a station chore looks like: the same sources as the ring's (step-visuals.ts). */
+const STEP_VISUALS = choreVisuals({ recipes: RECIPES, processes: PROCESSES, spaceFood: ISS_FOOD });
+
+/** The machine of each workout's device (data/exercise.ts): the T2, the CEVIS and the ARED, on Starship and on the station. */
+export const DEVICE_FIXTURE: Readonly<Record<string, string>> = { cinta: "t2", bicicleta: "cevis", fuerza: "ared" };
+
+/** Where a workout is done: at its own machine (the same fixture ids in both vehicles, reglas.md §6.0). */
+export function exerciseFixture(chore: Chore): string {
+  const device = WORKOUTS.find((w) => w.id === chore.targetId)?.device;
+  return (device && DEVICE_FIXTURE[device]) ?? "t2";
+}
+
+/** Yoga starts standing, as on the ring (interior.ts). */
+const STANDING_ASANA = "samasthitih-de-pie";
+
+/**
+ * A crew chore of a 0 g interior (the station or Starship) acted out at fixture `fixtureId`: a meal at the galley
+ * with its package, a workout at its machine, yoga on the mat posture by posture, the aquatic habitat or the
+ * catalogue at their rack (reglas.md §4.2).
+ */
+export function crewStepVisual(mode: StationInteriorMode, chore: Chore, fixtureId: string): StepVisual | undefined {
+  if (chore.kind === "yoga") {
+    const seq = YOGA_SEQUENCES.find((s) => s.id === chore.targetId);
+    return mode.yogaVisual(fixtureId, (i) => asanaById(i < 0 ? STANDING_ASANA : (seq?.postures.value[i]?.asana ?? STANDING_ASANA)));
+  }
+  if (chore.kind === "ejercicio") {
+    // Each machine its own movement (reglas.md §4.5): run in the T2's harness, pedal the CEVIS, squat at the ARED.
+    const device = WORKOUTS.find((w) => w.id === chore.targetId)?.device ?? "cinta";
+    const v = mode.exerciseVisual(fixtureId, motionOf(device));
+    if (v) return v;
+  }
+  const acts = (i: number) => STEP_VISUALS.acts(chore, i) ?? [];
+  const v = mode.stepVisual(fixtureId, acts);
+  // At an AQH each solved step also plays on the habitat itself: the wiper on the glass, the feeder, a program's glow.
+  const tank = mode.gearOf(fixtureId);
+  return v && tank instanceof AqhModel ? withTank(v, acts, tank) : v;
+}
+
+/** A step visual that also acts the steps out on the AQH (the same in Starship and in Kibo). */
+function withTank(v: StepVisual, acts: (i: number) => readonly StepAct[], tank: AqhModel): StepVisual {
+  return {
+    ...v,
+    stepDone: (i) => {
+      tank.react(acts(i));
+      v.stepDone(i);
+    },
+    partDone: (i, p) => {
+      const a = acts(i)[p];
+      if (a) tank.react([a]);
+      v.partDone?.(i, p);
+    },
+  };
+}
+
+/** The tab whose machines do each kind of station chore (when she did not open it from one). */
+const PANEL_OF: Readonly<Record<ChoreMode, StationPanel>> = { refinar: "materiales", fabricar: "fabricacion", repostar: "propelente", importar: "materiales", ajustar: "vida" };
+
+/**
+ * Step visuals at the station (docs/design/vida-a-bordo.md, «Pasos visibles»; PX-20): the galley's
+ * dishes and the machines' chores (fabricate, refine, refuel, import, the biology lab) acted out by
+ * Doménica at their fixture in the station's interior, through the shared `StepVisual` port.
+ * `inside()`: she is in the station (the screen was opened from one of its machines); from outside
+ * (the screen from the lander's dock) there is nobody at the machine to show.
+ */
+export function stationStepVisuals(station: StationInteriorMode, inside: () => boolean) {
+  const acts = (chore: Chore) => (i: number) => STEP_VISUALS.acts(chore, i) ?? [];
+  return {
+    /** A crew area's chore (the galley): at its fixture, which has the area's id. */
+    crew(chore: Chore, area: string): StepVisual | undefined {
+      return crewStepVisual(station, chore, area);
+    },
+    /** A machine's chore from the station screen: at the machine she opened it from, or the first of its tab. */
+    machine(session: StationSession, mode: ChoreMode): StepVisual | undefined {
+      if (!inside()) return undefined;
+      const plan = station.interior;
+      const near = station.nearFixture();
+      const held = near ? plan.fixture(near) : undefined;
+      const own = held?.action.kind === "panel" && (held.action.panel === PANEL_OF[mode] || (mode === "importar" && held.action.panel === "materiales")) ? held : undefined;
+      const fixture = own ?? plan.fixturesFor(PANEL_OF[mode])[0] ?? plan.fixturesFor("materiales")[0];
+      if (!fixture) return undefined;
+      // She goes to that machine first (the screen hides the interior meanwhile).
+      if (fixture !== held) station.placeAt(fixture.id);
+      return station.stepVisual(fixture.id, acts(session.chore));
+    },
+  };
+}

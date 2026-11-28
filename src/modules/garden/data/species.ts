@@ -126,6 +126,95 @@ export const CAT_GRASS: PlantSpecies = {
   toxicToCats: { value: "non-toxic", source: "https://escholarship.org/content/qt8x40j557/qt8x40j557.pdf", note: "Grown to be eaten by cats." },
 };
 
+/** Peanut grown hydroponically (NFT) at Tuskegee University for NASA's life-support program. */
+const PEANUT_NFT = "https://journals.ashs.org/downloadpdf/view/journals/hortsci/35/1/article-p46.pdf";
+export const PEANUT_GEORGIA_RED: PlantSpecies = {
+  id: "cacahuete-georgia-red",
+  name: "Cacahuete",
+  cultivar: "Georgia Red",
+  form: "hoja",
+  color: 0x4f8d34,
+  harvestDays: {
+    value: [110],
+    source: PEANUT_NFT,
+    note: "Mortley et al. 2000, HortScience 35(1):46–48 (doi:10.21273/HORTSCI.35.1.46): harvested 110 d after transplanting (124 d from seeding).",
+  },
+  needsShaking: {
+    value: false,
+    source: PEANUT_NFT,
+    note: "Flowers self-pollinate; the gynophores (pegs) grow down into the medium, where the pods form.",
+  },
+  toxicToCats: { value: "unknown", source: ASPCA, note: "No peanut (Arachis) entry in the ASPCA list." },
+  edibleYield: {
+    value: { gPerM2: 588, portionG: 50 },
+    source: PEANUT_NFT,
+    note: "Total seed dry weight 588 g/m² at 85 % RH (427 g/m² at 50 %). Raw kernels are ~6.5 % water (USDA), so dry ≈ edible. Portion 50 g: game value (USDA serving is 28 g).",
+  },
+};
+
+/** Day-neutral strawberry chosen at Purdue (NASA NSCORT) as a low-maintenance crop for long missions. */
+const STRAWBERRY_PURDUE = "https://ashs.confex.com/ashs/2010/webprogram/Paper4007.html";
+export const STRAWBERRY_SEASCAPE: PlantSpecies = {
+  id: "fresa-seascape",
+  name: "Fresa",
+  cultivar: "Seascape",
+  form: "fruto",
+  color: 0x3f8f3a,
+  fruitColor: 0xd8203a,
+  harvestDays: {
+    value: [65, 100, 135, 170, 205, 240, 275],
+    source: STRAWBERRY_PURDUE,
+    note: "Massa & Mitchell (Purdue): fruit collection began 65 d after planting and plants were grown 282 d (also https://www.purdue.edu/newsroom/research/2010/100503MitchellStrawberrie.html). One pick every 35 d is game tuning.",
+  },
+  needsShaking: {
+    value: true,
+    source: "https://extension.umn.edu/agriculture/specialty-crops/commercial-fruit-production/strawberry-farming/small-or-misshapen-strawberries",
+    note: "Self-pollination alone does not pollinate all ovules; there are no bees on board, so the flowers are shaken. Game simplification: unshaken flowers give no fruit.",
+  },
+  toxicToCats: { value: "non-toxic", source: "https://www.aspca.org/pet-care/aspca-poison-control/toxic-and-non-toxic-plants/strawberry" },
+  edibleYield: {
+    value: { gPerM2: 990, portionG: 150 },
+    source: "https://projects.sare.org/project-reports/lne06-241/",
+    note: "SARE LNE06-241: Seascape 0.59 lb (268 g) marketable per plant in its worst year (about half its average), at 15,000 plants/acre → ≈ 990 g/m² per season. Conservative. Portion 150 g ≈ 1 cup (USDA).",
+  },
+};
+
+/**
+ * Fig trees in planters. Dwarf fruit trees are being studied for space (NASA KSC's dwarf PtFT1 plum,
+ * https://ntrs.nasa.gov/citations/20170011641) but have no yield data yet, so the farm deck grows
+ * figs, whose greenhouse yield in pots is measured.
+ */
+const FIG_POTS = "https://www.cambridge.org/core/journals/experimental-agriculture/article/abs/intensive-production-systems-of-fig-ficus-carica-l-under-greenhouse-conditions/E508363F501D2011BBFCA6FA023386EE";
+export const FIG_TREE: PlantSpecies = {
+  id: "higo",
+  name: "Higuera",
+  cultivar: "Ficus carica (higo común, en maceta)",
+  form: "arbol",
+  color: 0x3c7a30,
+  fruitColor: 0x5b2a4a,
+  harvestDays: {
+    value: [120, 160, 200, 240, 280],
+    source: "https://www.freshfruitportal.com/news/2019/01/14/mexico-pioneering-project-uses-greenhouses-new-growing-methods-to-triple-fig-yields/",
+    note: "Greenhouse figs with heavy pruning fruit about 4 months after planting; the potted-fig trial ran Nov 2010–Sep 2011 (~300 d). One pick every 40 d is game tuning.",
+  },
+  needsShaking: {
+    value: false,
+    source: "https://en.wikipedia.org/wiki/Common_fig",
+    note: "Persistent ('common') figs do not need pollination: the fruit develops by parthenocarpy.",
+  },
+  toxicToCats: {
+    value: "toxic",
+    source: "https://www.aspca.org/pet-care/aspca-poison-control/toxic-and-non-toxic-plants/fig",
+    note: "ASPCA lists Ficus as toxic to cats (ficin and psoralen: stomach and skin irritation). Keep the cats off the planters.",
+  },
+  edibleYield: {
+    value: { gPerM2: 7860, portionG: 100 },
+    source: FIG_POTS,
+    note: "Mendoza-Castillo et al. 2017, Exp. Agric. 53(3):339–350 (doi:10.1017/S0014479716000405): hydroponic potted figs at 1.25 plants/m², 78.6 t/ha with six productive stems (109.5 t/ha with eight). Portion 100 g = two figs.",
+  },
+  areaPerPlantM2: { value: 0.8, source: FIG_POTS, note: "1.25 plants per m²." },
+};
+
 export const SPECIES: readonly PlantSpecies[] = [
   LETTUCE_OUTREDGEOUS,
   CHILE_ESPANOLA,
@@ -134,5 +223,8 @@ export const SPECIES: readonly PlantSpecies[] = [
   POTATO_NORLAND,
   SOYBEAN_HOYT,
   WHEAT_APOGEE,
+  PEANUT_GEORGIA_RED,
+  STRAWBERRY_SEASCAPE,
+  FIG_TREE,
   CAT_GRASS,
 ];

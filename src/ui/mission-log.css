@@ -1,0 +1,53 @@
+/* --- Mission log «Misiones» (docs/design/misiones.md) --------------------------- */
+.mission-log { position: fixed; inset: 0; z-index: 11; display: flex; align-items: stretch; justify-content: center; background: #02060acc; color: #e6f6ff; font-size: 13px; }
+.mission-log.hidden { display: none; }
+body.in-missions .flight-bar, body.in-missions .touch, body.in-missions .mode-btn, body.in-missions .action { display: none !important; }
+.ml-sheet { width: min(560px, 100vw); box-sizing: border-box; overflow-y: auto; padding: 0 14px 14px; padding-bottom: max(14px, env(safe-area-inset-bottom)); background: #0a1220f7; border-left: 1px solid #7fdcff33; border-right: 1px solid #7fdcff33; }
+.ml-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 10px; margin: 0 -14px; padding: 10px 14px; padding-top: max(10px, env(safe-area-inset-top)); background: #0a1220; border-bottom: 1px solid #7fdcff33; }
+.ml-head b { font-size: 16px; color: #ffcf5a; }
+.ml-head span { flex: 1; font-size: 12px; opacity: 0.75; }
+.ml-head button { min-height: 40px; min-width: 40px; padding: 6px 10px; font: inherit; color: #d8f6ff; background: #0b2a36cc; border: 1px solid #7fdcff66; border-radius: 10px; }
+.ml-head .x { font-size: 20px; line-height: 1; }
+.mission-log h3 { margin: 16px 0 6px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #7fdcff; font-weight: 600; }
+.ml-intro { margin: 8px 0; font-size: 12px; opacity: 0.8; line-height: 1.4; }
+.ml-n { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 22px; height: 22px; font-style: normal; font-weight: 700; font-size: 12px; color: #1a1000; background: #ffcf5a; transform: rotate(45deg); border-radius: 3px; }
+.ml-n span { display: block; transform: rotate(-45deg); line-height: 1; }
+.ml-intro .ml-n { width: 16px; height: 16px; font-size: 10px; margin: 0 8px 0 3px; vertical-align: -3px; }
+.ml-mission { margin-bottom: 6px; border-radius: 12px; background: #13243a; border: 1px solid #2c4a6a; }
+.ml-mission.activa { border-color: #ffcf5a; background: #2a2410; }
+.ml-mission.hecha .ml-n { background: #7dffb0; color: #001a0c; }
+.ml-mission.bloqueada { opacity: 0.75; }
+.ml-mission.bloqueada .ml-n { background: #55606c; color: #cfd8e0; }
+.ml-row { display: flex; width: 100%; align-items: center; gap: 12px; min-height: 48px; padding: 8px 12px; font: inherit; color: inherit; text-align: left; background: none; border: 0; }
+.ml-row b { flex: 1; font-weight: 600; }
+.pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #ffffff14; }
+.activa .pill { color: #1a1000; background: #ffcf5a; }
+.hecha .pill { color: #7dffb0; background: #7dffb022; }
+.ml-body { padding: 0 12px 12px; line-height: 1.45; }
+.ml-body p { margin: 0 0 8px; }
+.ml-body dl { display: grid; grid-template-columns: max-content 1fr; gap: 3px 10px; margin: 0 0 8px; font-size: 12px; }
+.ml-body dt { opacity: 0.6; }
+.ml-body dd { margin: 0; }
+.ml-body small { opacity: 0.6; }
+.ml-body a { color: #7fdcff; font-size: 11px; }
+.ml-locked { padding: 6px 10px; border-radius: 8px; background: #ffffff0f; color: #ffd8a0; font-size: 12px; }
+.ml-reward { color: #ffd27f; }
+.ml-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.ml-actions button { flex: 1; min-height: 44px; padding: 8px 12px; font: inherit; font-size: 14px; color: #d8f6ff; background: #0b2a36; border: 1px solid #7fdcff66; border-radius: 10px; }
+.ml-actions .primary { color: #001018; background: #58d6ff; border-color: #58d6ff; font-weight: 600; }
+.ml-sides { display: flex; flex-wrap: wrap; gap: 6px; }
+.ml-side { min-height: 40px; padding: 6px 10px; font: inherit; font-size: 12px; color: #e6dfd3; background: #0b1c24; border: 1px solid #ffffff22; border-radius: 10px; }
+.ml-side.done { color: #7dffb0; border-color: #7dffb066; }
+.ml-letter { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; font-size: 14px; line-height: 1.5; }
+.ml-letter p { margin: 0; }
+.ml-letter .ps { font-style: italic; opacity: 0.9; }
+.ml-from { display: flex; gap: 12px; align-items: center; }
+.ml-from svg { flex: none; width: 56px; height: 56px; }
+.ml-from small { display: block; opacity: 0.7; font-size: 12px; }
+/* Cockpit button. */
+.flight-bar .missions-btn { color: #1a1000; background: #ffcf5a; border-color: #ffcf5a; font-weight: 600; }
+.flight-bar .missions-btn b { margin-left: 4px; color: #b3261e; }
+.ml-toast { position: fixed; z-index: 12; top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translate(-50%, -20px); opacity: 0; visibility: hidden; white-space: pre-line; width: min(440px, 92vw); padding: 10px 14px; font: inherit; font-size: 13px; text-align: left; color: #1a1000; background: #ffcf5a; border: 0; border-radius: 12px; box-shadow: 0 6px 24px #0008; transition: transform 0.3s, opacity 0.3s, visibility 0.3s; pointer-events: none; }
+.ml-toast.on { transform: translate(-50%, 0); opacity: 1; visibility: visible; pointer-events: auto; }
+.ml-toast.secundaria { color: #001a0c; background: #7dffb0; }
+.ml-toast.anunciada { color: #e6f6ff; background: #2b3a4c; }

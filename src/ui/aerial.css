@@ -1,0 +1,43 @@
+/* Sanctuary 3 (src/aerial-sanctuary.ts, docs/design/santuario3-escena.md): the full-screen scene, its two sticks
+   (moving her and the camera: core/realism.ts, gravity and water), and the island navigation window over it. */
+.s3-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+body.in-s3 .vstick.s3-move, body.in-s3 .vstick.s3-look { display: block; }
+body.in-s3 .vstick.s3-move span { color: #9fe8c4; }
+/* The journey bar takes the bottom left while she goes by herself: the move stick hides there (journey.css). */
+body.in-journey .vstick.s3-move { display: none !important; }
+/* The island navigation window covers the screen: nothing of the scene's HUD over it. */
+body.in-island-nav .root-menu, body.in-island-nav .cab-machine, body.in-island-nav .vstick:not(.island-nav .vstick), body.in-island-nav .cab-where, body.in-island-nav .journey-bar { display: none !important; }
+body.in-tasks .cab-where, body.in-areas .cab-where, body.in-settings .cab-where { display: none; }
+.cm-why b { font-weight: 700; margin-right: 4px; }
+/* On a phone: the place tag clear of the tree menu's gear, the notices under the menu's column, and the journey
+   bar clear of the camera's + / − (the move stick it replaces is hidden while she goes by herself). */
+.s3-ui .cab-where { max-width: calc(100vw - 84px); box-sizing: border-box; }
+.s3-ui .cab-toast { top: 42vh; }
+.journey-bar.s3-bar { width: calc(100vw - 244px); min-width: 140px; max-width: 300px; }
+body.in-island-nav .cab-toast, body.in-tasks .cab-toast, body.in-areas .cab-toast { display: none; }
+/* A post's challenge (s3-iniciacion-1): what the step on screen is doing, over the scene and above the sheet. */
+.s3-caption { position: fixed; top: calc(44px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 11; max-width: min(92vw, 520px); box-sizing: border-box; padding: 6px 12px; border-radius: 10px; background: #05141cdd; border: 1px solid #58d6ff66; color: #d8f6ff; font-size: 13px; text-align: center; pointer-events: none; }
+.s3-caption.hidden { display: none; }
+.cab-machine .cm-who { margin: 0; font-size: 12px; color: #d8f6ff; }
+.cab-machine .cm-who .cm-ok { color: #37e07a; }
+body.in-duel .vstick.s3-move, body.in-duel .cab-machine, body.in-duel .s3-bar { display: none !important; }
+/* Flying by hand: the pad replaces the move stick; the place tag stays at the top. */
+body.has-rcs-pad .vstick.s3-move { display: none !important; }
+/* The biome's census board (s3-biome.ts, docs/design/bioma-s3.md). */
+.s3-censo .cz-body h4 { margin: 6px 0 2px; font-size: 12px; color: #9fe3ff; }
+.s3-censo .cz-list, .s3-censo .cz-events { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.s3-censo .cz-list li { display: flex; flex-direction: column; padding: 4px 0; border-bottom: 1px solid #7fdcff22; font-size: 12px; }
+.s3-censo .cz-name { font-weight: 600; color: #e6f7ff; }
+.s3-censo .cz-name i { font-weight: 400; color: #9bb7c4; }
+.s3-censo .cz-n { color: #ffd27a; }
+.s3-censo .cz-hungry { color: #ff9b7a; }
+.s3-censo small { color: #b8d3de; }
+.s3-censo .cz-events li { font-size: 12px; }
+@media (min-width: 521px) { .s3-censo { max-height: 70vh; overflow-y: auto; } }
+/* Every census row wraps inside a 390 px phone (long numbers and names never push it wider). */
+.s3-censo .cz-list li > *, .s3-censo .cz-events li { overflow-wrap: anywhere; min-width: 0; }
+.s3-censo .cz-seen { color: #ffe3a8; }
+/* The bee of the pupa: its stage now, under the place tag (s3-biome.ts, docs/design/pupa-abeja.md). */
+.s3-pupa-etapa { position: fixed; top: calc(46px + env(safe-area-inset-top)); left: 12px; max-width: min(calc(100vw - 84px), 420px); box-sizing: border-box; padding: 5px 10px; border-radius: 10px; background: #05141cc4; color: #fff3c8; font-size: 12px; pointer-events: none; z-index: 5; }
+.s3-pupa-etapa.hidden { display: none; }
+body.in-tasks .s3-pupa-etapa, body.in-areas .s3-pupa-etapa, body.in-settings .s3-pupa-etapa { display: none; }

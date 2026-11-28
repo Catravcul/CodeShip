@@ -1,0 +1,67 @@
+/* Trip chip and live preview (docs/design/viajes.md). Mobile first: a compact pill under the top bar. */
+.trip-chip {
+  position: fixed;
+  left: 50%;
+  bottom: calc(8px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 9;
+  width: min(380px, calc(100vw - 16px));
+  box-sizing: border-box;
+  padding: 6px 8px 6px 10px;
+  color: #d8f6ff;
+  font-size: 12px;
+  background: #08202bee;
+  border: 1px solid #58d6ffaa;
+  border-radius: 12px;
+  box-shadow: 0 4px 18px #0008;
+  display: none;
+}
+.trip-chip.on { display: block; }
+.trip-chip .tc-row { display: flex; align-items: center; gap: 6px; }
+.trip-chip .tc-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trip-chip .tc-eta { white-space: nowrap; color: #9fe8ff; font-variant-numeric: tabular-nums; }
+.trip-chip button { min-height: 44px; padding: 0 10px; font: inherit; font-weight: 600; color: #08202b; background: #58d6ff; border: 0; border-radius: 8px; }
+.trip-chip .tc-take { color: #d8f6ff; background: #ffffff1c; }
+.trip-chip .tc-view[aria-pressed="true"] { background: #a8ecff; }
+.trip-chip .tc-detail { margin-top: 3px; font-size: 11px; color: #a9cfdc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trip-chip .tc-bar { height: 4px; margin-top: 5px; border-radius: 2px; background: #ffffff1a; overflow: hidden; }
+.trip-chip .tc-bar i { display: block; height: 100%; background: #58d6ff; }
+/* The touch pads sit at the bottom of the cockpit and the probe console: lift the chip above them. */
+body.in-cockpit .trip-chip, body.in-probe .trip-chip { bottom: calc(168px + env(safe-area-inset-bottom)); }
+/* «Ver trayecto»: the chip goes to the bottom edge so the vehicle in the middle is seen. */
+body.in-trip-view .trip-chip { bottom: calc(8px + env(safe-area-inset-bottom)) !important; }
+/* The challenge sheet and the map go over it. */
+body.in-map .trip-chip { display: none; }
+
+.trip-pip {
+  position: fixed;
+  z-index: 9;
+  box-sizing: border-box;
+  border: 1px solid #58d6ffaa;
+  border-radius: 10px;
+  pointer-events: none;
+  box-shadow: 0 4px 18px #0008;
+  display: none;
+}
+.trip-pip.on { display: block; }
+.trip-pip .tp-label { position: absolute; left: 6px; top: 5px; padding: 1px 6px; font-size: 11px; color: #d8f6ff; background: #08202bcc; border-radius: 6px; }
+.trip-pip .tp-close { position: absolute; right: 4px; top: 4px; width: 30px; height: 30px; font-size: 16px; line-height: 1; color: #d8f6ff; background: #08202bcc; border: 0; border-radius: 8px; pointer-events: auto; }
+/* The chip carries the trip progress everywhere; the cockpit strip keeps its messages. */
+body.on-trip .autopilot-tag { display: none !important; }
+/* Inside the station (zero-g pad, 168 px) the chip goes above the pad, clear of its arrows. */
+body.in-station-interior .trip-chip { bottom: calc(200px + env(safe-area-inset-bottom)); }
+/* «Ver trayecto» full screen: the vehicle on its path; the room's HUD hides, the trip's controls stay. */
+.trip-pip.full { z-index: 8; border: 0; border-radius: 0; box-shadow: none; pointer-events: auto; }
+.trip-pip.full .tp-label { left: 12px; top: calc(12px + env(safe-area-inset-top)); padding: 6px 10px; font-size: 14px; font-weight: 600; border: 1px solid #7fdcff66; border-radius: 10px; }
+.trip-pip.full .tp-close { right: 12px; top: calc(8px + env(safe-area-inset-top)); width: 48px; height: 48px; font-size: 24px; color: #04121a; background: #7fdcff; border-radius: 12px; }
+body.in-trip-view #app > :not(canvas):not(.trip-pip):not(.trip-chip):not(.journey-bar):not(.journey-note):not(.ctx-dock) { visibility: hidden !important; }
+/* Probe console on a phone: the context column is half the width, so the chip stacks (title, time, buttons) instead of cutting its title. */
+@media (pointer: coarse) {
+  body.in-probe .trip-chip .tc-row { flex-wrap: wrap; row-gap: 4px; }
+  body.in-probe .trip-chip .tc-title { flex-basis: 100%; white-space: normal; }
+  body.in-probe .trip-chip .tc-eta { flex-basis: 100%; }
+  body.in-probe .trip-chip button { flex: 1; padding: 0 6px; }
+  body.in-probe .trip-chip .tc-detail { white-space: normal; }
+}
+/* «Ver trayecto»'s camera joystick and zoom (reglas.md §5.7), under «×»: the trip chip moves with the vehicle's console. */
+.cam-stick.trip-look { right: 12px; top: calc(72px + env(safe-area-inset-top)); bottom: auto; }

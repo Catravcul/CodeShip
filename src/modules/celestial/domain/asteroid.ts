@@ -11,9 +11,14 @@ export interface CompositionEntry {
   readonly massFraction: Sourced<[number, number]>;
 }
 
+/** A rocky asteroid or an icy comet nucleus (both can be subjugated; a comet's ice gives volatiles). */
+export type SmallBodyKind = "asteroide" | "cometa";
+
 export interface AsteroidData {
   readonly id: string;
   readonly name: string;
+  /** Absent means an asteroid. */
+  readonly kind?: SmallBodyKind;
   readonly spectralType: Sourced<SpectralType>;
   /** Extents in metres (x, y, z). */
   readonly dimensionsM: Sourced<Vec3>;
@@ -30,14 +35,33 @@ export type SurfaceShape = (local: Vec3) => number;
 
 export class Asteroid {
   private readonly shape: SurfaceShape;
+  private _position: Vec3;
+  private _velocity = Vec3.ZERO;
 
   /** @param shape optional real surface; defaults to a sphere of the mean radius. */
   constructor(
     readonly data: AsteroidData,
-    readonly position: Vec3,
+    position: Vec3,
     shape?: SurfaceShape,
   ) {
+    this._position = position;
     this.shape = shape ?? (() => this.meanRadiusM);
+  }
+
+  /** Centre, world frame, m. It can change: asteroids move themselves with their gravity drive (game fiction, gravity-drive.ts). */
+  get position(): Vec3 {
+    return this._position;
+  }
+
+  /** Velocity of its centre, world frame, m/s (zero unless its gravity drive is moving it). */
+  get velocity(): Vec3 {
+    return this._velocity;
+  }
+
+  /** Move the body (its gravity drive): whatever is anchored on it rides along in its frame. */
+  moveTo(position: Vec3, velocity: Vec3 = Vec3.ZERO): void {
+    this._position = position;
+    this._velocity = velocity;
   }
 
   /** Orientation after t seconds of spin around its own Y axis. */
@@ -53,15 +77,20 @@ export class Asteroid {
     return this.orientationAt(timeS).rotate(local).add(this.position);
   }
 
+  /** Distance from the centre to the surface along the ray through a local point (the real shape). */
+  surfaceRadius(local: Vec3): number {
+    return this.shape(local);
+  }
+
   /** Height above the real surface, metres (negative = inside). */
   surfaceDistance(world: Vec3, timeS: number): number {
     const local = this.toLocal(world, timeS);
     return local.length() - this.shape(local);
   }
 
-  /** Velocity of the ground under a point, due to the asteroid's spin. */
+  /** Velocity of the ground under a point: the asteroid's spin plus its own motion. */
   surfaceVelocity(world: Vec3): Vec3 {
-    return new Vec3(0, this.spinRadS, 0).cross(world.sub(this.position));
+    return new Vec3(0, this.spinRadS, 0).cross(world.sub(this.position)).add(this._velocity);
   }
 
   get massKg(): number {

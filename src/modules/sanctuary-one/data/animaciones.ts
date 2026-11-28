@@ -1,0 +1,240 @@
+import { PASOS_2 } from "./retos-objetos-2";
+import { PASOS_3 } from "./retos-objetos-3";
+
+/**
+ * THE ANIMATION CATALOG of sanctuary 1 (Berón 2026-11-19: «he ido a la máquina de jalón al pecho y el reto mostraba
+ * la animación de correr… quizás nos falta una lista de animaciones categorizadas y con los retos que las lanzan y en
+ * qué paso»). Every animation she (or the staff) plays, by category, and which step of which reto launches it.
+ * `application/animations.ts` builds the full table (reto → step → animation) and its test checks it against the
+ * retos, so no step is left with a wrong or missing animation. The shapes are drawn in
+ * adapters/three/interior/step-show.ts (`gesture`, «entrenar» by its `mov:` name).
+ */
+export type AnimationCategory = "fuerza-maquina" | "peso-libre" | "cardio" | "peso-corporal" | "combate" | "musica" | "preparar" | "oficio" | "yoga";
+
+export interface Animation {
+  readonly label: string;
+  readonly category: AnimationCategory;
+  /** What the body does, in one line (the real technique it follows). */
+  readonly does: string;
+}
+
+export const CATEGORY_LABEL: Readonly<Record<AnimationCategory, string>> = {
+  "fuerza-maquina": "Fuerza en máquina",
+  "peso-libre": "Peso libre",
+  cardio: "Cardio",
+  "peso-corporal": "Peso corporal y saltos",
+  combate: "Artes de combate",
+  musica: "Música",
+  preparar: "Preparar, recoger y limpiar",
+  oficio: "Gestos de oficio (cocina, cuidado, laboratorio, taller)",
+  yoga: "Yoga",
+};
+
+/** The exercise motions (played as «entrenar» with `vessel: "mov:<id>"`). */
+export const MOTIONS = {
+  jalon: { label: "Jalón al pecho", category: "fuerza-maquina", does: "Sentada, tira de la barra desde arriba hasta el pecho y vuelve con los brazos estirados" },
+  "press-pecho": { label: "Press de pecho", category: "fuerza-maquina", does: "Sentada, empuja los agarres hacia delante hasta estirar los brazos" },
+  "press-hombros": { label: "Press de hombros", category: "fuerza-maquina", does: "Sentada, empuja los agarres desde los hombros por encima de la cabeza" },
+  "remo-sentado": { label: "Remo sentado", category: "fuerza-maquina", does: "Sentada, tira de los agarres hacia el abdomen juntando las escápulas" },
+  prensa: { label: "Prensa de piernas", category: "fuerza-maquina", does: "Recostada, estira las rodillas empujando la plataforma y vuelve a 90°" },
+  extension: { label: "Extensión de cuádriceps", category: "fuerza-maquina", does: "Sentada, estira las rodillas levantando el rodillo" },
+  "curl-femoral": { label: "Curl femoral tumbado", category: "fuerza-maquina", does: "Boca abajo en el banco, dobla las rodillas llevando el rodillo hacia los glúteos" },
+  "hip-thrust": { label: "Hip thrust", category: "fuerza-maquina", does: "Espalda en el banco, sube la cadera hasta alinearla con el tronco" },
+  gemelos: { label: "Gemelos sentado", category: "fuerza-maquina", does: "Sentada con las almohadillas sobre los muslos, sube y baja los talones" },
+  "press-inclinado": { label: "Press inclinado", category: "peso-libre", does: "Recostada a 45° en el banco inclinado, empuja la barra por encima de la cara" },
+  "elevar-rodillas": { label: "Elevación de rodillas", category: "fuerza-maquina", does: "En la silla romana, antebrazos en los apoyos, sube las rodillas al pecho" },
+  "abdominal-declinado": { label: "Abdominal declinado", category: "fuerza-maquina", does: "Pies bajo el rodillo, sube el tronco de tumbada a sentada" },
+  hiperextension: { label: "Hiperextensión", category: "fuerza-maquina", does: "Cadera en el apoyo y talones bajo el rodillo, baja el tronco y sube hasta alinearlo con las piernas" },
+  fondos: { label: "Fondos en paralelas", category: "peso-corporal", does: "Apoyada en las barras, dobla los codos a 90° y vuelve a estirarlos" },
+  "remo-australiano": { label: "Remo australiano", category: "peso-corporal", does: "Colgada bajo la barra baja con el cuerpo recto, lleva el pecho a la barra" },
+  swing: { label: "Swing con kettlebell", category: "peso-libre", does: "Bisagra de cadera y la pesa entre las piernas; la cadera empuja y la pesa sube hasta el pecho" },
+  "curl-biceps": { label: "Curl de bíceps", category: "fuerza-maquina", does: "Sentada con los brazos en el apoyo, dobla los codos" },
+  sentadilla: { label: "Sentadilla con barra", category: "peso-libre", does: "La barra en los trapecios, baja hasta muslos paralelos y sube" },
+  "press-banca": { label: "Press de banca", category: "peso-libre", does: "Tumbada, baja la barra al pecho y empuja hasta estirar los brazos" },
+  "peso-muerto": { label: "Peso muerto", category: "peso-libre", does: "Bisagra de cadera con la espalda neutra, sube la barra rozando las piernas" },
+  "curl-mancuernas": { label: "Curl con mancuernas", category: "peso-libre", does: "De pie, sube las mancuernas doblando los codos pegados al cuerpo" },
+  "press-mancuernas": { label: "Press con mancuernas", category: "peso-libre", does: "De pie, empuja las mancuernas por encima de la cabeza" },
+  "cargar-discos": { label: "Cargar discos", category: "peso-libre", does: "Agachada con la espalda recta, levanta un disco y lo lleva a la barra" },
+  correr: { label: "Correr en la cinta", category: "cardio", does: "Zancada de carrera, brazos a 90°" },
+  pedalear: { label: "Pedalear", category: "cardio", does: "Sentada, rodillas alternas en círculo" },
+  remar: { label: "Remo ergómetro", category: "cardio", does: "Piernas, tronco y brazos; vuelta en orden inverso" },
+  eliptica: { label: "Elíptica", category: "cardio", does: "Zancada sin impacto con los brazos empujando y tirando de las barras" },
+  escaladora: { label: "Escaladora", category: "cardio", does: "Sube escalones con las rodillas altas" },
+  skierg: { label: "SkiErg", category: "cardio", does: "Tira de las asas desde arriba doblando la cadera, como el esquí de fondo" },
+  dominada: { label: "Dominada", category: "peso-corporal", does: "Colgada, sube hasta pasar la barbilla de la barra y baja estirando los brazos" },
+  plancha: { label: "Plancha frontal", category: "peso-corporal", does: "Sobre antebrazos y puntas, el cuerpo en línea" },
+  puente: { label: "Puente de glúteos", category: "peso-corporal", does: "Tumbada boca arriba, sube la cadera" },
+  "bird-dog": { label: "Bird-dog", category: "peso-corporal", does: "A cuatro patas, brazo y pierna contrarios estirados" },
+  estirar: { label: "Estiramiento", category: "peso-corporal", does: "Estiramientos estáticos de cuádriceps e isquios" },
+  agacharse: { label: "Preparar el salto", category: "peso-corporal", does: "Rodillas y cadera flexionadas, brazos atrás" },
+  salto: { label: "Salto de precisión", category: "peso-corporal", does: "Despega con los dos pies lanzando los brazos" },
+  aterrizar: { label: "Aterrizaje", category: "peso-corporal", does: "Puntas primero, amortigua con tobillos, rodillas y cadera" },
+  plie: { label: "Plié", category: "peso-corporal", does: "De lado a la barra, dobla las rodillas sobre las puntas de los pies con la espalda recta" },
+  tendu: { label: "Tendu", category: "peso-corporal", does: "La pierna sale estirada desde la cadera, rozando el suelo hasta la punta" },
+  releve: { label: "Relevé", category: "peso-corporal", does: "Sube a media punta despacio y baja los talones" },
+  guardia: { label: "Guardia", category: "peso-corporal", does: "Manos arriba, barbilla abajo, pies a la anchura de los hombros, rebotando" },
+  golpear: { label: "Golpear", category: "peso-corporal", does: "Directo de un brazo y otro, girando la cadera" },
+  "empujar-trineo": { label: "Empujar el trineo", category: "peso-corporal", does: "Inclinada a 45°, brazos estirados, pasos cortos de la punta del pie" },
+  // Music (Berón 2026-11-23: each instrument its own challenge and motion).
+  "tocar-bateria": { label: "Tocar la batería", category: "musica", does: "Sentada en el taburete, baquetas alternas sobre charles y caja, el pie en el bombo" },
+  "tocar-guitarra": { label: "Tocar la guitarra", category: "musica", does: "La izquierda en el mástil, la derecha rasgueando sobre la boca" },
+  "tocar-bajo": { label: "Tocar el bajo", category: "musica", does: "La izquierda en el mástil, índice y medio de la derecha pulsando" },
+  "tocar-teclado": { label: "Tocar el teclado", category: "musica", does: "Sentada, antebrazos a la altura de las teclas, los dedos curvados" },
+  cantar: { label: "Cantar", category: "musica", does: "De pie, el micrófono a un palmo, la cabeza arriba" },
+  respirar: { label: "Respirar con el diafragma", category: "musica", does: "Las manos en el abdomen, que sube y baja" },
+  afinar: { label: "Afinar", category: "musica", does: "Una mano en la clavija y la cabeza ladeada escuchando" },
+  mezclar: { label: "Mezclar en la mesa", category: "musica", does: "Inclinada sobre la mesa, las manos en los faders" },
+  // Fighting arts.
+  guantes: { label: "Ponerse los guantes", category: "combate", does: "Las manos al pecho, una tira del velcro de la otra" },
+  comba: { label: "Saltar a la comba", category: "combate", does: "Saltitos sobre las puntas, las muñecas girando la cuerda" },
+  pera: { label: "Golpear la pera", category: "combate", does: "Los puños a la altura de la cara, en círculos alternos" },
+  makiwara: { label: "Choku-zuki a la makiwara", category: "combate", does: "En zenkutsu-dachi, un puño sale recto mientras el otro vuelve a la cadera" },
+  rei: { label: "Saludo (rei)", category: "combate", does: "De pie, se inclina desde la cadera y vuelve" },
+  "ukemi-atras": { label: "Caída atrás (ushiro-ukemi)", category: "combate", does: "Se sienta y rueda atrás con la barbilla al pecho, los brazos palmean el tatami" },
+  "ukemi-lado": { label: "Caída de lado (yoko-ukemi)", category: "combate", does: "Cae de lado y palmea con el brazo a 45°" },
+  uchikomi: { label: "Uchi-komi", category: "combate", does: "Gira la cadera hacia dentro y se agacha bajo la compañera, repitiendo la entrada" },
+  sombra: { label: "Boxeo de sombra", category: "combate", does: "Directos y crochets al aire moviéndose sobre las puntas" },
+  patada: { label: "Patada circular", category: "combate", does: "Gira el pie de apoyo y la pierna barre a la altura de la cadera" },
+  derribo: { label: "Entrada de doble pierna", category: "combate", does: "Baja la cadera y entra con la rodilla al suelo" },
+  sprawl: { label: "Sprawl", category: "combate", does: "Echa las piernas atrás y deja caer la cadera al suelo" },
+  gamba: { label: "Gamba", category: "combate", does: "Tumbada, apoya un pie y saca la cadera hacia atrás" },
+  levantarse: { label: "Levantarse técnico", category: "combate", does: "De sentada, una mano y un pie en el suelo, se levanta atrás protegiéndose" },
+  // Mats, bands, bars.
+  crunch: { label: "Crunch", category: "peso-corporal", does: "Tumbada boca arriba, sube los hombros sin tirar del cuello" },
+  "plancha-lateral": { label: "Plancha lateral", category: "peso-corporal", does: "Sobre un antebrazo, el cuerpo de lado en línea" },
+  "estirar-nino": { label: "Postura del niño", category: "peso-corporal", does: "De rodillas, se sienta en los talones con los brazos estirados al frente" },
+  banda: { label: "Banda elástica", category: "peso-libre", does: "Separa la banda a la altura del pecho juntando las escápulas" },
+  "l-sit": { label: "L-sit", category: "peso-corporal", does: "Apoyada en las paralelas con los brazos estirados, las piernas al frente" },
+  "llevar-barra": { label: "Llevar la barra", category: "peso-libre", does: "Camina con la barra horizontal en las dos manos" },
+  "pedalear-de-pie": { label: "Pedalear de pie", category: "cardio", does: "De pie sobre los pedales, inclinada sobre el manillar" },
+  // The simulation's team parts (data/simulacion.ts).
+  cocinar: { label: "Cocinar en el fogón", category: "oficio", does: "Ante el fogón, una mano en el mango de la sartén y la otra removiendo" },
+  "emplatar-plato": { label: "Emplatar", category: "oficio", does: "Inclinada sobre la mesa, coloca con cuidado sobre el plato" },
+  pedir: { label: "Hablar y pedir", category: "oficio", does: "De pie, una mano abierta acompaña lo que dice" },
+  "servir-plato": { label: "Servir el plato", category: "oficio", does: "Lleva el plato con las dos manos y lo deja delante" },
+} as const satisfies Record<string, Animation>;
+export type MotionId = keyof typeof MOTIONS;
+
+/** Gestures of the step player (step-show.ts) used for preparing and cleaning, and their meaning here. */
+export const GESTURES = {
+  ajustar: { label: "Ajustar la máquina", category: "preparar", does: "Las manos en el asiento, el pasador o los topes" },
+  limpiar: { label: "Limpiar", category: "preparar", does: "Frota con la toalla" },
+  tomar: { label: "Tomar o dejar algo", category: "preparar", does: "Alcanza, coge y deja" },
+  mirar: { label: "Mirar", category: "preparar", does: "Mira y mide con la vista" },
+  cortar: { label: "Cortar", category: "oficio", does: "La mano en garra guía el cuchillo arriba y abajo" },
+  emplatar: { label: "Emplatar", category: "oficio", does: "Coloca con cuidado sobre el plato" },
+  servir: { label: "Servir", category: "oficio", does: "Entrega el plato con las dos manos" },
+} as const satisfies Record<string, Animation>;
+export type GestureId = keyof typeof GESTURES;
+
+/** The motion each machine plays when a step says «the exercise itself» (`maquina`). */
+export const MACHINE_MOTION: Readonly<Record<string, MotionId>> = {
+  "gym-press-pecho": "press-pecho",
+  "gym-press-hombros": "press-hombros",
+  "gym-jalon": "jalon",
+  "gym-remo": "remo-sentado",
+  "gym-prensa": "prensa",
+  "gym-extension": "extension",
+  "gym-curl-femoral": "curl-femoral",
+  "gym-hip-thrust": "hip-thrust",
+  "gym-gemelos": "gemelos",
+  "gym-curl-biceps": "curl-biceps",
+  "gym-jaula": "sentadilla",
+  "gym-smith": "sentadilla",
+  "gym-arbol-discos": "cargar-discos",
+  "gym-soporte-barras": "cargar-discos",
+  "gym-press-banca": "press-banca",
+  "gym-press-inclinado": "press-inclinado",
+  "gym-banco-fid": "press-banca",
+  "gym-plataforma": "peso-muerto",
+  "gym-estante-mancuernas": "curl-mancuernas",
+  "gym-cinta": "correr",
+  "gym-bici": "pedalear",
+  "gym-bici-reclinada": "pedalear",
+  "gym-assault-bike": "pedalear",
+  "gym-remo-ergometro": "remar",
+  "gym-eliptica": "eliptica",
+  "gym-escaladora": "escaladora",
+  "gym-skierg": "skierg",
+  "gym-silla-romana": "elevar-rodillas",
+  "gym-espalderas-3": "elevar-rodillas",
+  "gym-banco-declinado": "abdominal-declinado",
+  "gym-hiperextensiones": "hiperextension",
+  "cf-ghd": "hiperextension",
+  "cal-dominadas": "dominada",
+  "cal-monkey-bars": "dominada",
+  "cal-anillas": "remo-australiano",
+  "cal-bandera": "dominada",
+  "cal-barras-bajas": "remo-australiano",
+  "cal-paralelas": "fondos",
+  "cal-fondos-v": "fondos",
+  "cal-paralelas-bajas": "plancha",
+  "cf-rig": "dominada",
+  "pk-lache": "dominada",
+};
+
+export type StepAnimation = MotionId | GestureId | "maquina";
+
+/** Each exercise procedure (data/retos.ts) step by step: the animation each solved step plays. */
+export const PROCEDURE_STEPS: Readonly<Record<string, readonly StepAnimation[]>> = {
+  "gym-maquina-placas": ["ajustar", "ajustar", "maquina", "maquina", "maquina", "ajustar"],
+  "gym-peso-libre": ["ajustar", "tomar", "maquina", "maquina", "maquina", "maquina", "ajustar"],
+  "gym-press-banca": ["ajustar", "maquina", "maquina", "maquina", "maquina", "ajustar"],
+  "gym-peso-muerto": ["peso-muerto", "peso-muerto", "peso-muerto", "peso-muerto", "peso-muerto", "peso-muerto"],
+  "gym-mancuernas": ["tomar", "curl-mancuernas", "curl-mancuernas", "press-mancuernas", "tomar"],
+  "gym-cardio": ["maquina", "maquina", "maquina", "maquina", "limpiar"],
+  "gym-zona-libre": ["tomar", "plancha", "puente", "bird-dog", "estirar", "tomar"],
+  "ballet-barra": ["tomar", "tomar", "plie", "tendu", "releve", "estirar"],
+  "dojo-saco": ["tomar", "salto", "guardia", "golpear", "golpear", "estirar"],
+  "gym-calistenia": ["maquina", "maquina", "maquina", "maquina", "maquina"],
+  "gym-fondos": ["maquina", "maquina", "maquina", "maquina", "estirar"],
+  "gym-core-maquina": ["ajustar", "maquina", "maquina", "maquina", "maquina", "limpiar"],
+  "gym-swing": ["tomar", "swing", "swing", "swing", "tomar"],
+  "gym-salto-cajon": ["mirar", "mirar", "agacharse", "salto", "aterrizar"],
+  "gym-parkour": ["mirar", "agacharse", "salto", "aterrizar", "aterrizar"],
+  "gym-crossfit": ["cargar-discos", "empujar-trineo", "empujar-trineo", "empujar-trineo", "cargar-discos"],
+  "gym-limpiar-maquina": ["limpiar", "limpiar", "limpiar", "limpiar"],
+  // Each object its own (data/retos-objetos.ts, Berón 2026-11-23).
+  "musica-bateria": ["ajustar", "tomar", "tocar-bateria", "tocar-bateria", "tocar-bateria"],
+  "musica-guitarra": ["tomar", "afinar", "tocar-guitarra", "tocar-guitarra", "tocar-guitarra"],
+  "musica-bajo": ["tomar", "afinar", "tocar-bajo", "tocar-bajo", "tocar-bajo"],
+  "musica-teclado": ["ajustar", "tocar-teclado", "tocar-teclado", "tocar-teclado", "tocar-teclado"],
+  "musica-voz": ["respirar", "cantar", "cantar", "ajustar", "cantar"],
+  "musica-mesa": ["ajustar", "mezclar", "mezclar", "mezclar", "ajustar"],
+  "dojo-saco-pesado": ["guantes", "comba", "guardia", "golpear", "respirar", "estirar"],
+  "dojo-pera-rapida": ["guantes", "ajustar", "pera", "pera", "respirar"],
+  "dojo-makiwara-zuki": ["rei", "makiwara", "makiwara", "makiwara", "estirar"],
+  "dojo-judo-ukemi": ["rei", "ukemi-atras", "ukemi-lado", "uchikomi", "rei"],
+  "dojo-ring-sombra": ["guardia", "sombra", "patada", "sombra", "estirar"],
+  "dojo-jaula-derribo": ["guantes", "agacharse", "derribo", "sprawl", "guardia"],
+  "dojo-grappling-gamba": ["crunch", "gamba", "puente", "levantarse", "gamba"],
+  "gym-smith-sentadilla": ["ajustar", "sentadilla", "ajustar", "sentadilla", "ajustar"],
+  "gym-discos-orden": ["cargar-discos", "cargar-discos", "ajustar", "cargar-discos", "cargar-discos"],
+  "gym-barras-elegir": ["mirar", "llevar-barra", "llevar-barra", "tomar", "llevar-barra"],
+  "gym-esterilla-core": ["tomar", "crunch", "plancha", "plancha-lateral", "estirar-nino"],
+  "gym-bandas": ["tomar", "banda", "banda", "banda", "tomar"],
+  "cal-l-sit": ["l-sit", "l-sit", "l-sit", "l-sit", "estirar"],
+  "gym-cinta-carrera": ["ajustar", "correr", "correr", "correr", "limpiar"],
+  "gym-eliptica-sesion": ["eliptica", "eliptica", "eliptica", "eliptica", "limpiar"],
+  "gym-bici-spinning": ["ajustar", "ajustar", "pedalear", "pedalear-de-pie", "limpiar"],
+  "gym-bici-reclinada-sesion": ["ajustar", "pedalear", "pedalear", "pedalear", "limpiar"],
+  "gym-escaladora-sesion": ["escaladora", "escaladora", "escaladora", "escaladora", "limpiar"],
+  "gym-remo-tecnica": ["ajustar", "remar", "remar", "remar", "remar"],
+  "gym-assault-intervalos": ["ajustar", "pedalear", "pedalear", "pedalear", "pedalear"],
+  "gym-skierg-tecnica": ["skierg", "skierg", "skierg", "skierg", "skierg"],
+  ...Object.fromEntries(["press-pecho", "press-hombros", "jalon", "remo", "prensa", "extension", "femoral", "hip-thrust", "gemelos", "curl-biceps"].map((m) => [`gym-${m}-serie`, ["ajustar", "ajustar", "maquina", "maquina", "ajustar"] as const])),
+  "cocina-cortar-verdura": ["limpiar", "tomar", "cortar", "tomar", "limpiar"],
+  "cocina-preparar-carne": ["limpiar", "tomar", "cortar", "tomar", "limpiar"],
+  "cocina-pase-servicio": ["mirar", "mirar", "mirar", "servir", "mirar"],
+  "cocina-emplatar": ["tomar", "emplatar", "emplatar", "emplatar", "limpiar"],
+  "cocina-mise-en-place": ["mirar", "tomar", "tomar", "tomar", "tomar"],
+  "cocina-inventario": ["mirar", "mirar", "tomar", "mirar", "limpiar"],
+  // The simulation machine's area challenges (data/simulacion.ts): hers, step by step.
+  "sim-ensayo-banda": ["afinar", "respirar", "respirar", "cantar", "cantar", "respirar"],
+  "sim-servicio-sala": ["pedir", "pedir", "respirar", "emplatar-plato", "servir-plato", "pedir"],
+  "sim-tanque-revision": ["mirar", "limpiar", "ajustar", "mirar"],
+  // The second batch of each object's own challenge (data/retos-objetos-2.ts): hospital, veterinary, guard room.
+  ...PASOS_2,
+  // …and the rest (data/retos-objetos-3.ts and -4.ts): each step's animation from its verb.
+  ...PASOS_3,
+};

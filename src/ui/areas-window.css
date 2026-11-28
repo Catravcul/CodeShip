@@ -1,0 +1,14 @@
+/* «Áreas» (docs/design/areas.md): the map window (map-window.css) with the vehicle's 3D map on top and its
+   areas under it, each with what is there and «Ir». Over the task list's layer, the tree menu hidden. */
+.nav-map.areas-window { z-index: 11; background: radial-gradient(ellipse at 50% 40%, #0a1a26, #02060a 75%); }
+.areas-window .nav-side { max-height: 50cqh; }
+.areas-window .ar-side { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; }
+.areas-window .tb-scope { margin: 0; }
+.ar-title { margin: 0 0 4px; font-size: 16px; color: #fff; }
+body.in-duel .areas-window, body.in-duel .task-board { display: none !important; }
+/* The category chips (Berón 2026-11-19): one row that scrolls sideways, so the list keeps its room. */
+.areas-window .ar-chips { display: flex; flex-wrap: nowrap; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; flex-shrink: 0; }
+.areas-window .ar-chips .chip { flex-shrink: 0; white-space: nowrap; min-height: 44px; display: inline-flex; align-items: center; gap: 4px; }
+.areas-window .ar-scope-opts { flex-wrap: wrap; }
+.areas-window .ar-side, .areas-window .nav-side { min-width: 0; }
+.areas-window .ar-chips { max-width: 100%; min-width: 0; }

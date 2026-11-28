@@ -1,0 +1,263 @@
+/**
+ * The lander's crew cabin as a small walkable place (docs/design/habitaculo.md): its machines replace
+ * HUD buttons. Pure rules: where she can stand, which machine she is at, and what each machine offers
+ * given the state of the craft.
+ */
+
+/** A point on the cabin floor, m (x to starboard, z aft; the pilot's eye is over x = 0, z = 0). */
+export interface FloorPoint {
+  readonly x: number;
+  readonly z: number;
+}
+
+export interface FloorRect {
+  readonly minX: number;
+  readonly maxX: number;
+  readonly minZ: number;
+  readonly maxZ: number;
+}
+
+/** The floor she can stand on: a rectangle inside the walls minus what is fixed on it (seats, the hygiene bay). */
+export interface CabinFloor extends FloorRect {
+  readonly blocked: readonly FloorRect[];
+}
+
+export type CabinStationId = "asiento" | "acople" | "mente" | "escotilla" | "ecs" | "esterilla";
+
+/** A machine of a walkable room (the lander's cabin, the travel ship's bridge). */
+export interface CabinStation<Id extends string = CabinStationId> {
+  readonly id: Id;
+  readonly label: string;
+  /** Where she stands to use it. */
+  readonly stand: FloorPoint;
+  /** What she looks at, m above the floor. */
+  readonly look: { readonly x: number; readonly y: number; readonly z: number };
+  /** One line on what it is, for its sign and the task board. */
+  readonly what: string;
+  /** She uses it sitting, belted to a seat with her feet in its loops (the bridge's pilot and probe stations). */
+  readonly seated?: boolean;
+}
+
+export interface CabinLayout<Id extends string = CabinStationId> {
+  readonly floor: CabinFloor;
+  readonly stations: readonly CabinStation<Id>[];
+  /** How close she must stand to a machine to use it, m. */
+  readonly reachM: number;
+  readonly heightM: number;
+  readonly habitableM3: number;
+  /** Lanes across the room (z) that walking goes along round what is fixed; default `roomAisles`. */
+  readonly aisles?: readonly number[];
+}
+
+/** The lanes walking takes round the furniture: the layout's own, or one along each end of the floor. */
+export function roomAisles<Id extends string>(L: CabinLayout<Id>): number[] {
+  return L.aisles ? [...L.aisles] : [L.floor.minZ + 0.25, L.floor.maxZ - 0.07];
+}
+
+/** What the cabin's machines need to know about the craft. */
+export interface CabinState {
+  readonly dockedTo: "nodriza" | "estacion" | null;
+  /** Free and close enough to a port for the docking assist. */
+  readonly dockInRange: boolean;
+  readonly dockAssist: boolean;
+  /** Anchored on an asteroid. */
+  readonly landed: boolean;
+  /** The suit can go out now (anchored, nothing in the way). */
+  readonly canLeaveEva: boolean;
+  /** The asteroid's mind: the duel the stage allows here, if any (label and whether it can start). */
+  readonly mind: { readonly label: string; readonly enabled: boolean; readonly why?: string } | null;
+  /**
+   * «Automático» at the commander's station: the lander's own trips, picked in the navigation window with the
+   * destinations out of its reach locked (Berón, 2026-11-18; navigation/domain/nearby.ts). `why`: it can't fly
+   * anywhere now.
+   */
+  readonly auto?: { readonly why?: string };
+  /** The LM's own life support (life-support/domain/open-loop.ts): what its panel offers. */
+  readonly ecs?: { readonly cartridgeLeft: number; readonly cartridges: number; readonly canReplenish: boolean };
+}
+
+export type CabinActionId = "pilotar" | "automatico" | "entrar-nodriza" | "entrar-estacion" | "salir-eva" | "mente" | "ajustes" | "cambiar-lioh" | "reponer-ecs";
+
+export interface CabinAction {
+  readonly id: CabinActionId;
+  readonly label: string;
+  readonly enabled: boolean;
+  /** Why it cannot be done now. */
+  readonly why?: string;
+}
+
+const inside = (r: FloorRect, p: FloorPoint) => p.x > r.minX && p.x < r.maxX && p.z > r.minZ && p.z < r.maxZ;
+
+/**
+ * Keep a point on the floor: inside the walls and off the fixed furniture. With `prev` (where she was), a
+ * blocked step slides along the obstacle like the habitat's walking; without it, the point goes to the
+ * nearest edge of the obstacle.
+ */
+export function clampToFloor(f: CabinFloor, p: FloorPoint, prev?: FloorPoint): FloorPoint {
+  const clamp = (q: FloorPoint) => ({ x: Math.min(f.maxX, Math.max(f.minX, q.x)), z: Math.min(f.maxZ, Math.max(f.minZ, q.z)) });
+  const free = (q: FloorPoint) => !f.blocked.some((b) => inside(b, q));
+  const q = clamp(p);
+  if (free(q)) return q;
+  if (prev) {
+    const a = clamp({ x: q.x, z: prev.z });
+    if (free(a)) return a;
+    const b = clamp({ x: prev.x, z: q.z });
+    if (free(b)) return b;
+    if (free(prev)) return clamp(prev);
+  }
+  const b = f.blocked.find((r) => inside(r, q))!;
+  const exits = [
+    { x: b.minX - 1e-3, z: q.z },
+    { x: b.maxX + 1e-3, z: q.z },
+    { x: q.x, z: b.minZ - 1e-3 },
+    { x: q.x, z: b.maxZ + 1e-3 },
+  ]
+    .map(clamp)
+    .filter(free)
+    .sort((m, n) => Math.hypot(m.x - q.x, m.z - q.z) - Math.hypot(n.x - q.x, n.z - q.z));
+  return exits[0] ?? q;
+}
+
+/** The machine she is standing at, if any (the nearest within reach). */
+export function nearestStation<Id extends string>(layout: CabinLayout<Id>, p: FloorPoint): CabinStation<Id> | undefined {
+  let best: CabinStation<Id> | undefined;
+  let bestD = layout.reachM;
+  for (const s of layout.stations) {
+    const d = Math.hypot(s.stand.x - p.x, s.stand.z - p.z);
+    if (d <= bestD) {
+      best = s;
+      bestD = d;
+    }
+  }
+  return best;
+}
+
+/**
+ * What a machine offers now. The first action is the main one. The docking hatch only gives passage
+ * (docs/design/reglas.md §2.2). The commander's station offers the two ways of every flight (reglas.md §3.6):
+ * «Manual» (fly it; docking and undocking are a switch of the flight view, shown at a port) and «Automático»
+ * (the navigation window, then the trip challenge).
+ */
+export function cabinActions(id: CabinStationId, s: CabinState): CabinAction[] {
+  return stationActions(id, s);
+}
+
+/** The commander's station: Manual and Automático (its destination is picked in the navigation window). */
+function seatActions(s: CabinState): CabinAction[] {
+  const manual: CabinAction = { id: "pilotar", label: "Manual", enabled: true };
+  const a = s.auto;
+  if (!a) return [manual];
+  return [manual, a.why ? { id: "automatico", label: "Automático", enabled: false, why: a.why } : { id: "automatico", label: "Automático", enabled: true }];
+}
+
+function stationActions(id: CabinStationId, s: CabinState): CabinAction[] {
+  switch (id) {
+    case "asiento":
+      return seatActions(s);
+    case "esterilla":
+      return [{ id: "ajustes", label: "Sentarse en loto: ajustes", enabled: true }];
+    case "escotilla":
+      return [
+        s.canLeaveEva
+          ? { id: "salir-eva", label: "Ponerse el traje y salir", enabled: true }
+          : { id: "salir-eva", label: "Ponerse el traje y salir", enabled: false, why: s.landed ? "Ahora no se puede despresurizar la cabina" : "Solo con el módulo anclado en un asteroide" },
+      ];
+    case "mente":
+      if (!s.mind) return [{ id: "mente", label: "Entrar en su mente", enabled: false, why: s.landed ? "Este asteroide no tiene nada que hablar ahora" : "Posa el módulo sobre el asteroide para conectar con su mente" }];
+      return [{ id: "mente", label: s.mind.label, enabled: s.mind.enabled, ...(s.mind.why ? { why: s.mind.why } : {}) }];
+    case "ecs": {
+      const e = s.ecs;
+      if (!e) return [{ id: "cambiar-lioh", label: "Cambiar el cartucho de LiOH", enabled: false, why: "El panel del ECS no responde" }];
+      const change: CabinAction =
+        e.cartridges <= 0
+          ? { id: "cambiar-lioh", label: "Cambiar el cartucho de LiOH", enabled: false, why: "No quedan cartuchos de repuesto" }
+          : e.cartridgeLeft > 0.25
+            ? { id: "cambiar-lioh", label: "Cambiar el cartucho de LiOH", enabled: false, why: `Al cartucho le queda el ${Math.round(e.cartridgeLeft * 100)} %` }
+            : { id: "cambiar-lioh", label: "Cambiar el cartucho de LiOH", enabled: true };
+      const refill: CabinAction = e.canReplenish
+        ? { id: "reponer-ecs", label: "Reponer O₂, agua y cartuchos", enabled: true }
+        : { id: "reponer-ecs", label: "Reponer O₂, agua y cartuchos", enabled: false, why: "Solo acoplado a la nodriza o a la estación" };
+      return [change, refill];
+    }
+    case "acople":
+      // A hatch only gives passage: through it into the vehicle the LM is docked to.
+      if (s.dockedTo === "nodriza") return [{ id: "entrar-nodriza", label: "Entrar en la nave de viaje", enabled: true }];
+      if (s.dockedTo === "estacion") return [{ id: "entrar-estacion", label: "Entrar en la estación", enabled: true }];
+      return [{ id: "entrar-estacion", label: "Abrir la escotilla", enabled: false, why: "No hay nada acoplado: se abre acoplada a la nodriza o a la estación (acople desde el puesto del comandante)" }];
+  }
+}
+
+/** Whether the straight segment from `a` to `b` stays on the floor and off the furniture (sampled every 2 cm). */
+export function clearPath(f: CabinFloor, a: FloorPoint, b: FloorPoint): boolean {
+  const n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / 0.02));
+  for (let i = 0; i <= n; i++) {
+    const p = { x: a.x + ((b.x - a.x) * i) / n, z: a.z + ((b.z - a.z) * i) / n };
+    if (p.x < f.minX || p.x > f.maxX || p.z < f.minZ || p.z > f.maxZ || f.blocked.some((r) => inside(r, p))) return false;
+  }
+  return true;
+}
+
+/**
+ * Waypoints from `from` to `to` (the last one is `to`): straight when clear, otherwise along the front
+ * aisle (between the console and the seats) or the rear one (behind them).
+ */
+export function floorPath(f: CabinFloor, from: FloorPoint, to: FloorPoint, aisles: readonly number[] = [-0.25, 0.85]): FloorPoint[] {
+  if (clearPath(f, from, to)) return [to];
+  for (const z of aisles) {
+    const legs = [from, { x: from.x, z }, { x: to.x, z }, to];
+    if (legs.every((p, i) => i === 0 || clearPath(f, legs[i - 1]!, p))) return legs.slice(1);
+  }
+  // Beside something fixed in the middle of the floor (the bridge's plot table): along a lane on either side of it.
+  for (const b of f.blocked)
+    for (const x of [b.minX - 0.15, b.maxX + 0.15]) {
+      const legs = [from, { x, z: from.z }, { x, z: to.z }, to];
+      if (legs.every((p, i) => i === 0 || clearPath(f, legs[i - 1]!, p))) return legs.slice(1);
+    }
+  // Around the outside of the pilot's seat on the port aisle.
+  for (const z of aisles) {
+    const x = f.minX + 0.2;
+    const legs = [from, { x: from.x, z }, { x, z }, { x, z: aisles.find((a) => a !== z)! }, { x: to.x, z: aisles.find((a) => a !== z)! }, to];
+    if (legs.every((p, i) => i === 0 || clearPath(f, legs[i - 1]!, p))) return legs.slice(1);
+  }
+  return [to];
+}
+
+/**
+ * The presentation layer's spacing (src/core/presentation.ts, «Separación: Amplia») for a walkable room
+ * stored at true size: when two machines would be closer than `minM` as played at drawing scale `k`
+ * (src/core/spacing.ts, `asPlayed`), every position on the floor plan (floor, furniture, machines, aisles)
+ * is spread by one factor about the origin until none is. Heights and the machines' sizes stay; nothing is
+ * tuned by hand per room. Returns the factor and the spread layout (the same one when it already complies).
+ */
+export function spreadLayout<Id extends string>(L: CabinLayout<Id>, k: number, minM: number, factorOf: (items: readonly RoomInteractable[]) => number): { factor: number; layout: CabinLayout<Id> } {
+  let s = 1;
+  let out = L;
+  for (let i = 0; i < 30; i++) {
+    const f = factorOf(roomInteractables(out, k));
+    if (f <= 1 + 1e-9) return { factor: s, layout: out };
+    s *= f * 1.001;
+    out = spreadBy(L, s);
+  }
+  return { factor: s, layout: out };
+}
+
+/** A machine as the 2 m rule sees it (src/core/spacing.ts `Interactable`): what she looks at and where she stands, as played at scale `k`. */
+export interface RoomInteractable {
+  readonly id: string;
+  readonly centre: { readonly x: number; readonly y: number; readonly z: number };
+  readonly anchor: { readonly x: number; readonly y: number; readonly z: number };
+}
+
+export function roomInteractables<Id extends string>(L: CabinLayout<Id>, k = 1): RoomInteractable[] {
+  return L.stations.map((s) => ({ id: s.id, centre: { x: s.look.x * k, y: s.look.y, z: s.look.z * k }, anchor: { x: s.stand.x * k, y: 0, z: s.stand.z * k } }));
+}
+
+function spreadBy<Id extends string>(L: CabinLayout<Id>, s: number): CabinLayout<Id> {
+  const r = (b: FloorRect): FloorRect => ({ minX: b.minX * s, maxX: b.maxX * s, minZ: b.minZ * s, maxZ: b.maxZ * s });
+  return {
+    ...L,
+    floor: { ...r(L.floor), blocked: L.floor.blocked.map(r) },
+    stations: L.stations.map((st) => ({ ...st, stand: { x: st.stand.x * s, z: st.stand.z * s }, look: { x: st.look.x * s, y: st.look.y, z: st.look.z * s } })),
+    ...(L.aisles ? { aisles: L.aisles.map((z) => z * s) } : {}),
+  };
+}

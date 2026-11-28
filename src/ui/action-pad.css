@@ -1,0 +1,91 @@
+/* The Switch's Joy-Cons (action-pad.ts, reglas.md §5.4–5.5): round, dark and see-through, marks in white. Every button
+   orbits its stick (Berón 2026-11-25: «debido a la dificultad de alcanzar los botones de los mandos vamos a moverlos
+   para que orbiten los joysticks»): two rings in an arc towards the inside and the top of the screen, never past its
+   edge, the inner one a thumb's stretch from the stick («Moverse»: the D-pad; «Mirar»: A, X, Y, B), the outer one
+   just beyond («Moverse»: ZL, L, −, capture; «Mirar»: ZR, R, +, home). Each button sits at its angle `--a`
+   (counter-clockwise from the right, on the left stick; the right one mirrors it) and its ring's radius. */
+.switch-pad { position: fixed; inset: 0; z-index: 5; pointer-events: none;
+  /* Where the sticks' centres are (style.css .vstick: 120 px + borders, 22 px from the side, 26 px from the bottom). */
+  --stick-x: 84px; --stick-y: 88px;
+  /* The rings: the stick's radius (62) + a gap + half a button (22); the outer one a button (44) and a gap further. */
+  --r1: 90px; --r2: 148px; }
+.sp-side { position: absolute; width: 0; height: 0; bottom: var(--stick-y); }
+.sp-left { left: var(--stick-x); }
+.sp-right { right: var(--stick-x); }
+.sp-cluster { display: contents; }
+.ap-btn { --s: 44px; --r: var(--r1); position: absolute; left: calc(var(--s) / -2); top: calc(var(--s) / -2); width: var(--s); height: var(--s); transform: rotate(calc(-1 * var(--a))) translateX(var(--r)) rotate(var(--a)); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; padding: 0; color: #fff; background: radial-gradient(circle at 40% 35%, #4a4f57cc, #1c1f24cc 70%); border: 2px solid #ffffff40; border-radius: 50%; opacity: 0.62; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; box-shadow: 0 2px 4px #0005; transition: opacity 0.15s, scale 0.08s; }
+.ap-btn b { font: 700 16px/1 system-ui, sans-serif; }
+.ap-btn span { font-size: 9px; letter-spacing: 0.01em; opacity: 0.9; white-space: nowrap; }
+/* The press shrinks it with `scale`, so its place on the ring (transform) stays. */
+.ap-btn span.l { font-size: 8px; letter-spacing: -0.02em; }
+.ap-btn span.xl { font-size: 7px; letter-spacing: -0.03em; }
+.ap-btn:active, .ap-btn.hit { scale: 0.92; opacity: 0.95; }
+.ap-btn.on { opacity: 0.95; color: #1d0d00; background: radial-gradient(circle at 40% 35%, #ffd2a0, #ff9a2e 70%); border-color: #ffd2a0; }
+.ap-btn.idle { opacity: 0.32; }
+.ap-btn.free { opacity: 0.3; }
+/* Inner ring, «Moverse»: the D-pad from the outer top to the inside (◀ ▲ ▶ ▼). «Mirar», mirrored: A X Y B. */
+.ap-left { --a: 130deg; }
+.ap-up { --a: 96deg; }
+.ap-right { --a: 62deg; }
+.ap-down { --a: 28deg; }
+.ap-a { --a: 50deg; }
+.ap-x { --a: 84deg; }
+.ap-y { --a: 118deg; }
+.ap-b { --a: 152deg; }
+.ap-up b, .ap-down b, .ap-left b, .ap-right b { font-size: 14px; }
+/* Every button is round, so that neighbours on a ring never touch (rounded squares did at the diagonals). */
+/* Outer ring: the shoulders on top (ZL L / R ZR), then «−» and capture / «+» and home towards the middle. */
+.ap-zl, .ap-l, .ap-minus, .ap-capture, .ap-zr, .ap-r, .ap-plus, .ap-home { --r: var(--r2); }
+.ap-zl { --a: 114deg; }
+.ap-l { --a: 95.5deg; }
+.ap-minus { --a: 77deg; }
+.ap-capture { --a: 58.5deg; }
+.ap-zr { --a: 66deg; }
+.ap-r { --a: 84.5deg; }
+.ap-plus { --a: 103deg; }
+.ap-home { --a: 121.5deg; }
+.ap-l b, .ap-zl b, .ap-r b, .ap-zr b { font-size: 13px; }
+.ap-minus b, .ap-plus b, .ap-home b, .ap-capture b { font-size: 15px; }
+/* The look stick's own «−» / «+» go: the D-pad zooms now. */
+body.has-switch-pad .vstick > .cam-zoom { display: none; }
+/* Hidden wherever reglas.md hides the controls: a challenge (the sheet, the choice of challenge), manual piloting (any RCS
+   or flight pad), the full-screen windows (Áreas, Misiones, Tareas, the settings, Navegación), an automatic trip, a
+   console's own screen, the views that take the whole screen and a machine's card (body.panel-on). */
+body.in-duel .switch-pad, body.in-areas .switch-pad, body.in-missions .switch-pad, body.in-tasks .switch-pad, body.in-settings .switch-pad, body.in-reto-picker .switch-pad, body.in-journey .switch-pad,
+body.has-rcs-pad .switch-pad, body.in-manual-flight .switch-pad, body.in-island-nav .switch-pad, body.in-map .switch-pad, body.in-deck .switch-pad, body.in-cockpit .switch-pad, body.in-carrier-hand .switch-pad, body.arm-manual .switch-pad,
+body.in-trip-view .switch-pad, body.in-dock-view .switch-pad, body.in-probe .switch-pad, body.in-station .switch-pad, body.in-bay .switch-pad,
+/* A machine's card shown with the orange button sits over the pad, like the choice of challenge in sanctuary 1: the pad steps aside until its X. */
+body.panel-on .switch-pad { display: none; }
+/* With the pad, the general menu's icons live on −, + and capture, and home opens the general settings (ui/game-pad.ts):
+   those icons hide from the tree, and the gear shows only for what is left (Trayecto while a trip runs, a mode's own);
+   the orange interaction button stays. */
+body.has-switch-pad .root-menu .rm-icon[data-pad] { display: none; }
+/* In 0 g the hop arrows (zero-g.css «Saltar», 168 px, bottom left) take the move stick's place: the left buttons orbit
+   them. Their corners are empty, but the arrows reach 84 px up and right: the rings open out and tilt up a little. */
+body:has(.zg-pad:not(.hidden)) .sp-left { --stick-x: 100px; --stick-y: 106px; --r1: 114px; --r2: 166px; }
+body:has(.zg-pad:not(.hidden)) .sp-left .ap-left { --a: 128deg; }
+body:has(.zg-pad:not(.hidden)) .sp-left .ap-up { --a: 104deg; }
+body:has(.zg-pad:not(.hidden)) .sp-left .ap-right { --a: 80deg; }
+body:has(.zg-pad:not(.hidden)) .sp-left .ap-down { --a: 56deg; }
+body:has(.zg-pad:not(.hidden)) .sp-left .ap-zl { --a: 117deg; }
+body:has(.zg-pad:not(.hidden)) .sp-left .ap-l { --a: 100.5deg; }
+body:has(.zg-pad:not(.hidden)) .sp-left .ap-minus { --a: 84deg; }
+body:has(.zg-pad:not(.hidden)) .sp-left .ap-capture { --a: 67.5deg; }
+/* Lying down the screen is short: the outer ring goes round to the inside instead of up, under the 0 g status card. */
+@media (orientation: landscape) and (max-height: 500px) {
+  body:has(.zg-pad:not(.hidden)) .sp-left .ap-zl { --a: 55deg; }
+  body:has(.zg-pad:not(.hidden)) .sp-left .ap-l { --a: 38.4deg; }
+  body:has(.zg-pad:not(.hidden)) .sp-left .ap-minus { --a: 21.8deg; }
+  body:has(.zg-pad:not(.hidden)) .sp-left .ap-capture { --a: 5.2deg; }
+}
+@media (pointer: fine) and (min-width: 900px) {
+  body:has(.zg-pad:not(.hidden)) .sp-left { --stick-x: 91px; --stick-y: 97px; --r1: 105px; --r2: 157px; }
+}
+
+/* The interaction on Y (Berón 2026-11-20): orange like the alert it replaces, a little bigger than the rest; its label
+   under it like the others: the challenge's one word («Cocina», «Boxeo»: chores/domain/palabra.ts) or «Cerrar». */
+.ap-btn.alert { --s: 54px; --r: calc(var(--r1) + 6px); opacity: 0.95; color: #1d0d00; background: radial-gradient(circle at 40% 35%, #ffc27a, #ff8a1e 70%); border-color: #ffe0b8; box-shadow: 0 0 0 3px #ff8a1e55, 0 2px 4px #0005; animation: ap-alert 1.6s ease-in-out infinite; }
+.ap-btn.alert span { font-size: 10px; font-weight: 700; letter-spacing: 0; }
+.ap-btn.alert span.l { font-size: 9px; letter-spacing: -0.02em; }
+.ap-btn.alert span.xl { font-size: 8px; letter-spacing: -0.03em; }
+@keyframes ap-alert { 50% { box-shadow: 0 0 0 7px #ff8a1e22, 0 2px 4px #0005; } }

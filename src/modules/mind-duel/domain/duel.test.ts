@@ -92,4 +92,12 @@ describe("MindDuel", () => {
   it("refuses to start without suitable exercises", () => {
     expect(() => MindDuel.start({ ...profile, maxConcept: 1 }, [{ ...order("x"), concept: 5 } as Exercise], 1)).toThrow();
   });
+
+  it("UI-05 a wrong pick step by step (an incomplete order) is one rejected idea: one patience, like a wrong order", () => {
+    const duel = MindDuel.start(profile, bank, 1);
+    const first = duel.current!.id;
+    expect(duel.submit({ kind: "order", order: ["b"] })).toEqual([{ type: "idea-rejected", exerciseId: first }]);
+    expect(duel.patience).toBe(1);
+    expect(duel.persuasion).toBe(0);
+  });
 });

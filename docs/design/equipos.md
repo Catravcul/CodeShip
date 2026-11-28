@@ -1,0 +1,105 @@
+# Equipos de la tripulación
+
+Cómo se ven y cómo se usan las máquinas de las áreas de tripulación de la Starship y de la estación ([reglas.md](reglas.md) §4.5: «cada equipo se ve como el real […] y cada uno tiene su propia animación»; §6.0: las instalaciones funcionan en todos los vehículos que las tienen). Recorrido: PX-38 (`equipos`). Capturas: `docs/screenshots/equipos-*-movil.png` y las hojas `equipos-hoja-maquinas.png`, `equipos-hoja-esterillas.png` y `equipos-hoja-aqh-refugio-aseo.png`.
+
+## Etiquetas
+
+- **Real**: la máquina vuela (o voló) en la ISS y se ve en la estación tal cual.
+- **Licencia: equivalente de la ISS**: la Starship no tiene interior publicado, así que en sus cubiertas van las mismas máquinas de la ISS. Lo dice la ficha de cada una.
+- **En desarrollo**: un concepto propuesto para vuelos largos (el refugio de agua).
+- **Medida nuestra**: las medidas que no están publicadas se han sacado de las fotos de la NASA y de JAXA; la nota de cada medida lo dice (`src/modules/wellness/data/gear.ts`).
+
+## Las máquinas
+
+Los datos (qué es, medidas, etiqueta y fuente) están en `src/modules/wellness/data/gear.ts`. Los modelos 3D, en `src/adapters/three/interior/crew-gear.ts` y `aqh-model.ts`. La figura se dibuja a tamaño real, así que lo que toca su cuerpo (banda, pedales, barra, esterilla) también va a 1×. El resto de la máquina sigue la escala de presentación de la estación (1,5×).
+
+| Equipo | Etiqueta | Medidas (an × al × fondo) | Qué se ve | Animación | Fuente |
+|---|---|---|---|---|---|
+| Cinta T2 (COLBERT) | real (estación) · licencia (Starship) | 0,8 × 0,35 × 1,9 m (medida nuestra) | Banda, barandillas y pantalla; arnés de hombros y cintura con dos gomas a cada lado | Carrera en el esqueleto (`carrera-t2`); la banda corre y las gomas siguen la pelvis | [T2](https://en.wikipedia.org/wiki/Treadmill_with_Vibration_Isolation_Stabilization), [Sprint](https://pmc.ncbi.nlm.nih.gov/articles/PMC7434884) |
+| Bicicleta CEVIS | real · licencia | 0,5 × 1,3 × 0,8 m (medida nuestra); 26,8 kg | Base con aisladores, volante, bielas y manillar; sin sillín | Pedaleo (`pedaleo-cevis`): pies en los pedales y manos en el manillar por IK; las bielas giran con su fase | [Danish Aerospace](https://danishaerospace.com/en/products-sep/cevis) |
+| ARED | real · licencia | 1,6 × 1,9 × 1,0 m (medida nuestra) | Plataforma, dos cilindros de vacío, volantes de inercia y la barra en su brazo | Sentadilla (`sentadilla-ared`): la barra sobre los hombros sigue sus manos | [ARED](https://en.wikipedia.org/wiki/Advanced_Resistive_Exercise_Device) |
+| Esterilla | licencia | 0,6 × 1,8 m | Esterilla sujeta a la pared con cintas y lazos para los pies | Loto (ajustes) y yoga sobre ella, orientada a su pared; la cámara toma la pared por suelo | [Ejercicio en la ISS](https://pmc.ncbi.nlm.nih.gov/articles/PMC7434884) |
+| Hábitat acuático (AQH) | real | 2 cámaras de unos 15 × 7 × 7 cm (unos 0,7 L) | Bastidor con bandeja, dos cámaras con agua y algas, LED de día y noche, cámaras de vídeo, filtro, comedero y tuberías; medakas (3,5 cm) y caracoles a tamaño real | Pienso, escobilla en el cristal y brillo de un programa, paso a paso; los peces nadan en cada cámara | [AQH](https://www.universetoday.com/96475/fish-in-space-space-station-gets-an-aquarium/) |
+| Refugio de tormenta solar | en desarrollo | 1,05 × 2,0 × 0,86 m (tamaño de bastidor) | Cubículo que sale de la pared, forrado de bolsas de agua azules, con la puerta enrollada, marco amarillo, dosímetro y cinta | «Simulacro de tormenta solar»: un reto por paso (aviso, dosímetro, bolsas llenas, dentro, cinta, dosis cada hora, salir); los pasos se ven dentro | [RadWorks, NTRS 20150001237](https://ntrs.nasa.gov/api/citations/20150001237/downloads/20150001237.pdf), [Orion](https://www.space.com/space-exploration/artemis/how-the-artemis-2-astronauts-could-weather-a-solar-storm-during-their-moon-mission) |
+| Aseo (WHC) | real | 1,0 × 1,9 × 0,75 m (tamaño de bastidor, medida nuestra) | Embudo y manguera con aire, asiento con barras para los muslos y cortina | «Asearse»: un reto por paso (toalla con jabón sin aclarado, cara y brazos, champú sin aclarado, secar, peinarse, colgar la toalla); cada paso se ve ante el WHC | [Tranquility](https://en.wikipedia.org/wiki/Tranquility_(ISS_module)), [higiene en el espacio (CSA)](https://asc-csa.gc.ca/eng/astronauts/living-in-space/personal-hygiene-in-space.asp) |
+| Sistema médico (CHeCS) | real (estación) · licencia (Starship) | 1,05 × 2,0 × 0,86 m (tamaño de bastidor) | Bastidor con la bolsa médica ambulatoria (azul), la de soporte vital avanzado (roja), el desfibrilador (amarillo), el ecógrafo con su sonda y la tabla de inmovilización | «Chequeo médico» (tensión, electrocardiograma a los médicos de vuelo, ecografía guiada desde tierra) y «Formación médica: el desfibrilador», un reto por paso | [CHeCS](https://newspaceeconomy.ca/2025/09/20/life-above-earth-emergency-procedures-and-medical-capabilities-on-the-international-space-station) |
+| Estiba (bolsas CTB) | real | 0,5 × 0,25 × 0,43 m por bolsa | Bolsas blancas sujetas con cintas | Ninguna (es estiba; su ficha informa) | [NTRS 20160002631](https://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/20160002631.pdf) |
+
+Las animaciones de ejercicio están en `src/modules/body/data/exercise-motions.ts`: son claves por articulación sobre el esqueleto de Cold Sanctuary, con el mismo convenio que las asanas, y las reproduce `MotionPlayer`. Los ángulos de cada clave son nuestros, sacados de cómo se ve el movimiento: licencia de animación. Cada acierto del reto sube el ritmo un momento, como un intervalo.
+
+## Dónde están
+
+| Equipo | Starship | Estación |
+|---|---|---|
+| T2 | Cubierta 3, en el suelo | Tranquility, en el suelo, cruzada en el módulo (lejos del hueco de la Cupola) |
+| ARED | Cubierta 3, babor | Tranquility, pared de popa |
+| CEVIS | Cubierta 3, estribor | Destiny, estribor (el único sitio con 2 m de separación) |
+| Esterilla | Cubierta 1 | Destiny |
+| AQH | Cubierta 3 | Kibo |
+| WHC | Cubierta 2 | Tranquility |
+| Refugio | Cubierta 2 | No hay refugio dedicado: se resguarda en su camarote de Harmony, con material contra la radiación en sus paredes |
+| CHeCS | Cubierta 2, babor, junto al WHC | Columbus, pared de popa (en la ISS está en Destiny; allí no queda hueco a 2 m de los demás: medida nuestra) |
+
+## Paridad entre la Starship y la estación
+
+Prueba: `src/modules/station/data/parity.test.ts`. Recorrido: PX-38, apartado de paridad.
+
+| Instalación | Starship | Estación | Notas |
+|---|---|---|---|
+| Cocina | Sí | Sí | Comida de la ISS con su envase (VID-40) |
+| Esterilla: ajustes y yoga | Sí | Sí | Ella sobre la esterilla en las dos vistas |
+| Ejercicio: T2, CEVIS y ARED | Sí | Sí | Mismos ids (`t2`, `cevis`, `ared`); cada entrenamiento en su máquina |
+| Camarotes y dormir | Sí | Sí | Cuatro por vehículo; el suyo es el 1 |
+| Aseo (WHC) | Sí | Sí | «Asearse», reto con sus pasos animados, en los dos |
+| Bastidores de soporte vital | Sí | Sí | Los mismos seis; la Starship añade el refugio |
+| Tormenta solar | Sí | Sí | El simulacro en el refugio de agua (Starship) o en el camarote de Harmony (estación) |
+| AQH | Sí | Sí | Cada vehículo tiene su colonia, la que vive en su tanque; lo adoptado llega al vehículo desde el que se adopta. Atracados, «Trasladar» las lleva al otro: un reto por paso |
+| Catálogo de especies | Sí | Sí | Su terminal en la cubierta 2 o en Kibo |
+| Sistema médico (CHeCS) | Sí | Sí | Mismo id (`botiquin`), el mismo modelo, el chequeo y la formación con el desfibrilador |
+
+## Auditoría de lo que se toca
+
+Se han revisado los elementos con los que se interactúa en la Starship, la estación y la cabina del LM, buscando los que fueran solo un asidero:
+
+- El antiguo «Ejercicio» de las dos era un bastidor con asideros. Ahora son tres máquinas.
+- La esterilla, el hábitat acuático, el aseo y el refugio eran paneles. Ahora tienen su modelo.
+- El almacén de la Starship era un panel. Ahora son bolsas CTB.
+- La esclusa de la Starship era un frente de bastidor. Ahora es una escotilla con su marco y su asa.
+- Las escotillas y puertos de la estación (CBM, PMA, esclusa de Kibo, EVA) ya eran escotillas.
+- Las máquinas de la estación (guantera, impresora, AMF, refinería…) son frentes de bastidor con su ventana encendida, como en la ISS.
+- Los bastidores de soporte vital, la cocina y el puesto de trabajo usan el kit de bastidores ECLSS.
+- La cabina del LM tiene sus paneles reales ([cabina-lm.md](cabina-lm.md)) y su esterilla.
+
+## Versión
+
+Los ajustes generales dicen la versión al pie: hash corto del commit y su fecha. La pone `vite.config.ts` con `define` (`__BUILD_LABEL__`) en el momento de compilar. En el servidor de desarrollo es la del arranque.
+
+## Procedimientos de la tripulación
+
+Los datos están en `src/modules/wellness/data/procedures.ts`: cada paso real es un reto (los que piden un valor llevan `{bien|mal|mal}`), con pasos falsos verosímiles y lo que se ve al resolverlo (`acts`). Prueba: `procedures.test.ts`.
+
+- **Asearse** (real): en la ISS no hay ducha. Toalla mojada con jabón sin aclarado, champú sin aclarado, secarse y peinarse; el agua de la toalla pasa al aire y la recupera el soporte vital ([CSA](https://asc-csa.gc.ca/eng/astronauts/living-in-space/personal-hygiene-in-space.asp)).
+- **Tormenta solar en la estación** (real): el grupo de radiación de la NASA (SRAG) avisa y la tripulación va a las zonas más blindadas ([fuente](https://johnsonfrancis.org/techworld/?p=16371)). Los camarotes de Harmony llevan material contra la radiación en sus paredes ([NTRS 20080013462](https://ntrs.nasa.gov/citations/20080013462)): allí se resguarda, con bolsas de agua contra la pared de fuera y el dosímetro.
+- **Tormenta solar en la Starship** (en desarrollo): el refugio de paredes de agua de RadWorks.
+- **Chequeo médico** y **desfibrilador** (real): el CHeCS de la ISS, con un oficial médico de la tripulación formado unas 40 h.
+
+
+## AQH: tamaño real (Berón, 2026-11-17)
+
+Berón: «se mete en la pared de la nave y es muy pequeño para que naden». Comprobado con fuentes, el tamaño es el real:
+
+- **Cámaras**: el AQH de JAXA tiene dos cámaras de unos **15 × 7 × 7 cm**, con unos **700 cm³** de agua cada una ([ScienceDaily, 2012](https://www.sciencedaily.com/releases/2012/07/120725183634.htm); [Universe Today](https://www.universetoday.com/96475/fish-in-space-space-station-gets-an-aquarium/)). 15 × 7 × 7 cm son 735 cm³.
+- **Peces**: la medaka mide hasta unos **3,6 cm** ([Japanese rice fish](https://en.wikipedia.org/wiki/Japanese_rice_fish)); el pez cebra, de 4 a 5 cm, y en libertad de 1,8 a 3,7 cm ([Zebrafish](https://en.wikipedia.org/wiki/Zebrafish)).
+- Así que una medaka ocupa menos de un cuarto del largo de su cámara: el AQH es pequeño porque sus peces lo son. Se dibuja a tamaño real y la «Escala de interiores» lo amplía todo igual (cámaras, peces y caracoles; con «Cómoda», cámaras de 22,5 cm y medakas de 5,3 cm).
+
+Lo que se arregló:
+
+- **Ya no se mete en la pared**: el frente del bastidor estaba en el mismo plano que la pared y parpadeaba dentro de ella; ahora sale 3 cm y toda la unidad queda en el pasillo (en la Starship y en Kibo, que usan el mismo modelo).
+- **Los peces nadan dentro**: cada medaka da vueltas por su cámara a una distancia del cristal de medio cuerpo más 3 mm, sea cual sea su rumbo, y mira hacia donde nada (`fishPose`, VID-50). Antes la malla de los peces se quedaba sin dibujar: se calculaba su esfera de recorte con el tanque vacío.
+- **Se ve al llegar**: la unidad está a la altura de sus ojos y ella mira las cámaras un poco por debajo, para que se vean encima de su tarjeta; el filtro está al lado de la unidad, no delante de las cámaras. Con «−» junto a «Mirar» se ve entera.
+- **En el reto se ven las cámaras, sus manos y la tableta** (2026-11-24): la cámara del reto mira 12 cm por encima de las cámaras y se aparta 0,9 m del cristal; antes, a 0,7 m y mirando las cámaras, la tableta que lee en «revisar» quedaba fuera de la franja sobre la hoja (PX-20). Desde que ella mantiene el gesto entre pasos ya no aparecía ni un instante.
+
+## Una colonia en cada vehículo
+
+Los animales viven donde están (`AquariumOps`, uno por vehículo). Lo que se adopta desde la estación llega al AQH de Kibo; desde cualquier otro sitio, al de la Starship. Con la Starship atracada, la tarjeta del AQH ofrece «Trasladar … a la estación» (o «a la Starship»). Es un reto por paso: bolsa con agua de su propio tanque, red sin sacarlos del agua, caja acolchada, el túnel, igualar la temperatura flotando la bolsa 15 minutos y soltarlos. Las medakas de JAXA llegaron a la ISS en un recipiente de transporte con agua y allí se pasaron al AQH ([AQH](https://www.universetoday.com/96475/fish-in-space-space-station-gets-an-aquarium/)); igualar la temperatura flotando la bolsa es la práctica de cualquier acuario. Licencia: el tiempo en la bolsa no se simula.
+

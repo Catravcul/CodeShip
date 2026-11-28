@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Vec3 } from "@core/math/vec3";
-import { evaluateContact, LANDING_SPEED_MS, CRASH_SPEED_MS } from "./contact";
+import { evaluateContact, reachToward, GEAR_LEG_M, LANDING_SPEED_MS, CRASH_SPEED_MS } from "./contact";
 
 const ground = { height: 0.5, normal: Vec3.Y, groundVelocity: Vec3.ZERO };
 
@@ -39,5 +39,31 @@ describe("evaluateContact", () => {
     expect(c.hullDamage).toBeGreaterThan(0);
     expect(c.hullDamage).toBeLessThanOrEqual(1);
     expect(CRASH_SPEED_MS).toBe(1);
+  });
+
+  it("a slow touch on the hull instead of the legs slides off without landing", () => {
+    const c = evaluateContact({ ...ground, tiltRad: Math.PI / 2 }, new Vec3(0, -0.05, 0));
+    expect(c.kind).toBe("tilted");
+    if (c.kind !== "tilted") return;
+    expect(c.velocity.y).toBeGreaterThan(0);
+    expect(evaluateContact({ ...ground, tiltRad: 0.3 }, new Vec3(0, -0.05, 0)).kind).toBe("landed");
+  });
+
+  it("contact starts at the ship's reach, not a fixed height", () => {
+    expect(evaluateContact({ ...ground, height: 2.5, reach: 3 }, new Vec3(0, -0.05, 0)).kind).toBe("landed");
+    expect(evaluateContact({ ...ground, height: 2.5, reach: 1.5 }, new Vec3(0, -0.05, 0)).kind).toBe("none");
+  });
+});
+
+describe("reachToward", () => {
+  const half = new Vec3(1.5, 1, 2.5);
+  it("belly down: the legs reach below the hull", () => {
+    expect(reachToward(half, new Vec3(0, -1, 0))).toBeCloseTo(1 + GEAR_LEG_M, 9);
+  });
+  it("nose first: the whole half length plus the nose", () => {
+    expect(reachToward(half, new Vec3(0, 0, -1), 0.45)).toBeCloseTo(2.95, 9);
+  });
+  it("on its side: half the width", () => {
+    expect(reachToward(half, new Vec3(1, 0, 0))).toBeCloseTo(1.5, 9);
   });
 });

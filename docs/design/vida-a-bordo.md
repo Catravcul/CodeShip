@@ -46,9 +46,16 @@ Los datos de cultivo son reales (`modules/garden/data/species.ts`):
 | Papa 'Norland' (Biomass Production Chamber, NASA) | Día 91 (91 o 105) | No hace falta | [Wheeler, BPC](https://ntrs.nasa.gov/api/citations/20140017323/downloads/20140017323.pdf) |
 | Soja 'Hoyt' (BPC) | Día 90 (90 o 97) | Autopoliniza | idem |
 | Trigo 'Apogee' (BPC) | Día 77 (77–86) | Autopoliniza | idem |
+| Cacahuete 'Georgia Red' (NFT, Universidad de Tuskegee, programa de soporte vital de la NASA) | Día 110 tras el trasplante; **588 g/m²** de semilla seca | Autopoliniza; las clavijas (ginóforos) bajan al sustrato | [Mortley et al. 2000, HortScience 35(1):46–48](https://journals.ashs.org/downloadpdf/view/journals/hortsci/35/1/article-p46.pdf) |
+| Fresa 'Seascape' (día neutro, Purdue para la NASA) | Fruta desde el día 65 y durante 282 días; en el juego, una recogida cada 35 días (ajuste). **≈ 990 g/m²** por temporada | Hay que **agitar** las flores: sin abejas, la autopolinización se queda corta | [Massa y Mitchell (ASHS 2010)](https://ashs.confex.com/ashs/2010/webprogram/Paper4007.html), [Purdue](https://www.purdue.edu/newsroom/research/2010/100503MitchellStrawberrie.html), rendimiento: [SARE LNE06-241](https://projects.sare.org/project-reports/lne06-241/) (0,59 lb por planta en su peor año, 15.000 plantas/acre), polinización: [U. Minnesota](https://extension.umn.edu/agriculture/specialty-crops/commercial-fruit-production/strawberry-farming/small-or-misshapen-strawberries) |
+| Higuera en maceta (*Ficus carica*, higo común) | Primeros higos a los ~4 meses (día 120); temporada de ~300 días, una recogida cada 40 días (ajuste). **7,86 kg/m²** a 1,25 árboles/m² (≈ 6,3 kg por árbol) | Los higos comunes no necesitan polinizar (partenocarpia) | [Mendoza-Castillo et al. 2017, Exp. Agric.](https://www.cambridge.org/core/journals/experimental-agriculture/article/abs/intensive-production-systems-of-fig-ficus-carica-l-under-greenhouse-conditions/E508363F501D2011BBFCA6FA023386EE), [FreshFruitPortal](https://www.freshfruitportal.com/news/2019/01/14/mexico-pioneering-project-uses-greenhouses-new-growing-methods-to-triple-fig-yields/), [Wikipedia](https://en.wikipedia.org/wiki/Common_fig) |
 | Hierba para gatos (brotes de avena) | ~10 días (ajuste de juego) | — | [Hart et al. 2021](https://escholarship.org/content/qt8x40j557/qt8x40j557.pdf): el 65 % de los gatos come plantas cada semana; es una conducta normal |
 
-**Tóxicas para gatos.** La ASPCA lista la planta del tomate y la de la papa como tóxicas para gatos. Si un gato las muerde, sufre una **intoxicación** y hay que llevarlo a la enfermería.
+**Rendimiento real.** El cacahuete, la fresa y la higuera llevan su rendimiento medido (`edibleYield`): cada cosecha da esa comida repartida entre sus días de cosecha, en porciones de 50 g (cacahuete), 150 g (fresa, una taza USDA) y 100 g (dos higos). Un bancal de cacahuete de 15 m² da unos 8,8 kg. El resto de cultivos sigue con las porciones fijas del juego.
+
+**¿Y los árboles enanos?** La NASA estudia un ciruelo enano con el gen *FT1* que florece en menos de un año ([Wheeler, NTRS 20170011641](https://ntrs.nasa.gov/citations/20170011641)), pero aún no hay datos de cosecha. Por eso los cuatro árboles de la cubierta son higueras en maceta, que sí los tienen.
+
+**Tóxicas para gatos.** La ASPCA lista la planta del tomate, la de la papa y las higueras (*Ficus*: ficina y psoraleno) como tóxicas para gatos; la fresa, como no tóxica ([ASPCA](https://www.aspca.org/pet-care/aspca-poison-control/toxic-and-non-toxic-plants/strawberry)). Si un gato las muerde, sufre una **intoxicación** y hay que llevarlo a la enfermería.
 
 El Veggie usaba LED rojos, azules y verdes. En el juego, «luces encendidas» es la condición para crecer.
 
@@ -159,6 +166,39 @@ Cada tarea es una **cadena de retos en orden** (`modules/chores`): cada reto res
 | Carne cultivada con papas | 250 g de carne y 1 papa | 7, con 71 °C como la carne picada |
 | Milpa con chile | chile | 6 |
 | Mercimek | solo despensa seca | 7 |
+| Cacahuetes tostados | 2 cacahuete | 7, tostar a 160 °C ([Wikipedia](https://en.wikipedia.org/wiki/Peanut_butter)) |
+| Gachas de avena con cacahuete (desayuno) | 1 cacahuete + avena de la despensa | 6 |
+| Llapingachos con salsa de maní (Ecuador) | 2 papa, 2 huevos, 1 cacahuete | 7 ([Wikipedia](https://en.wikipedia.org/wiki/Llapingacho)) |
+| Bol de fruta de la cubierta | fresa, higo y cacahuete | 7 |
+| Desayuno completo: avena, fresas y crema de cacahuete | fresa y crema de cacahuete | 6 |
+| Higos asados con crema de cacahuete (postre) | 2 higos y crema de cacahuete | 5 |
+| Chapati con fresas y crema de cacahuete (postre) | harina, fresa y crema | 6 |
+
+La **crema de cacahuete** se hace en el molino (nuevo proceso): tostar a 160 °C, aflojar la piel con aire a 138 °C, moler en grueso y en fino, salar ([Wikipedia](https://en.wikipedia.org/wiki/Peanut_butter)).
+
+**Nutrición real por porción.** Cada receta dice cuántos gramos de cada alimento lleva una porción (`perPortionG`, valor de juego del tamaño de un plato casero). Los nutrientes por 100 g son de USDA FoodData Central, SR Legacy (`kitchen/data/nutrition.ts`): por ejemplo, cacahuete crudo 567 kcal ([FDC 172430](https://fdc.nal.usda.gov/food-details/172430/nutrients)), fresa 32 kcal, higo 74 kcal. La carne cultivada usa la carne picada 85/15 como sustituta. El tablero de tareas muestra las kcal de cada porción:
+
+| Platillo | kcal por porción |
+| --- | --- |
+| Carne cultivada con papas | 618 |
+| Llapingachos | 600 |
+| Desayuno completo | 539 |
+| Mercimek | 529 |
+| Milpa | 498 |
+| Gachas de avena con cacahuete | 479 |
+| Tortilla de papa | 414 |
+| Chapati con fresas y crema | 349 |
+| Cacahuetes tostados | 293 |
+| Chapati | 231 |
+| Tofu con chile | 214 |
+| Bol de fruta | 207 |
+| Huevos revueltos | 187 |
+| Higos asados | 168 |
+| Ensalada | 113 |
+
+**Comer llena según la energía.** Al cocinar, Doménica come una porción y su saciedad sube kcal ÷ su energía diaria (2.277 kcal, [JSC-67378](https://ntrs.nasa.gov/api/citations/20205008306/downloads/JSC67378%20Expl%20Nutr%20Reqs%20042020.pdf)). La saciedad baja 1 al día, así que tiene que comer lo que gasta.
+
+**Despensa de salida** (`kitchen/data/stores.ts`, valores de juego): 12 papas, 20 porciones de cacahuete (1 kg), 10 de harina, 6 huevos, 500 g de carne cultivada, más pienso y medio de cultivo. La despensa seca (avena, lenteja, frijol, aceite, especias) no se cuenta. Desde el día 1 se pueden cocinar 8 platos, no solo el mercimek, y un día variado (gachas, llapingachos, carne con papas, mercimek, tortilla) suma más de 2.600 kcal. Las higueras empiezan con higos maduros y la fresa en flor, así que la fruta llega con la primera cosecha.
 
 ## Producir toda la comida: el módulo de soporte vital
 
@@ -184,7 +224,7 @@ El proceso real, tal como lo documentó Cold Sanctuary: un vial de 10⁹ célula
 
 ## Gallinas
 
-Tres gallinas viven en el gallinero del anillo, donde hay gravedad. Ponen alrededor de un huevo al día (ajuste de juego) si comen, están tranquilas, sanas y tienen **14–16 h de luz** (Merck). El pienso se hace en el molino con trigo, soja y calcio para la cáscara. Un gato sin programar **acecha** a las gallinas: se asustan, dejan de poner y a veces una sale herida. Se arregla programando al gato con la lección «respetar gallinas».
+Tres gallinas viven en el gallinero de la cubierta de cultivo, en el anillo, donde hay gravedad. Ponen alrededor de un huevo al día (ajuste de juego) si comen, están tranquilas, sanas y tienen **14–16 h de luz** (Merck). El pienso se hace en el molino con trigo, soja y calcio para la cáscara. Un gato sin programar **acecha** a las gallinas: se asustan, dejan de poner y a veces una sale herida. Se arregla programando al gato con la lección «respetar gallinas».
 
 ## Qué comen los gatos
 
@@ -212,7 +252,7 @@ Todo empieza por el **triaje ABCDE** (vía aérea, respiración, circulación, e
 
 ## El interior
 
-El módulo habitable se recorre en primera persona: joystick y arrastrar para mirar en el móvil, WASD y flechas en el escritorio. Tiene estas estaciones:
+El módulo habitable se recorre en primera persona: joysticks para moverse y mirar en el móvil (nunca arrastrar la pantalla, reglas.md §5.7), WASD y flechas en el escritorio. Tiene estas estaciones:
 
 - el **huerto**: dos pisos de bastidores con luces LED, canal de nutrientes y 18 macetas, cada especie con su forma (roseta, fruto, raíz, espigas, hierba);
 - la **cocina**: placa que se enciende al cocinar, horno y nevera;
@@ -220,28 +260,38 @@ El módulo habitable se recorre en primera persona: joystick y arrastrar para mi
 - el **laboratorio de carne cultivada**: tanque de vidrio cuyo medio cambia de rosa a amarillo al acidificarse (como el rojo de fenol), tanque de nitrógeno, campana de flujo y consola con fase, células, pH y glucosa;
 - la **enfermería**: camilla, mesa veterinaria y monitor con los pacientes;
 - el **panel de la mente de la nave**, con su clase y sus valores reales;
-- la **esterilla de yoga**, con la figura de perfil;
-- el **rincón de los gatos**;
-- el **gallinero**, con malla, ponederos (los huevos aparecen en el nido), aseladero, comedero y bebedero.
+- el **rincón de ejercicio**: la esterilla de yoga, con la figura de perfil, una cinta, una bicicleta y una máquina de fuerza (copias de la T2, la CEVIS y la ARED de la ISS) con los entrenamientos del protocolo Sprint de la NASA;
+- el **camarote de Doménica**, con su litera, su portátil para leer las cartas y las fotos de su familia; los gatos duermen en su litera;
+- el **aseo** y, junto a él, el arenero y los cuencos de los gatos;
+- el **gallinero**, ya en la cubierta de cultivo, al final del césped: malla, ponederos (los huevos aparecen en el nido), aseladero, comedero y bebedero.
+
+Por qué están así y con qué referencias: [interiores.md](interiores.md).
 
 Cada máquina tiene una luz: verde si funciona y roja parpadeante si está averiada.
 
 El botón **Tareas** lista lo pendiente con su escenario. Al elegir una, el personaje camina a la estación y el reto se abre en una hoja inferior, para que se siga viendo la planta, el gato o la postura.
 
-Se camina con los pies en el suelo porque el módulo es un **anillo giratorio con gravedad artificial**. Es una licencia de diseño para poder hacer yoga y cocinar: las naves reales, como la ISS, no la tienen.
+Se camina con los pies en el suelo porque el módulo va en un **anillo que gira**: 56 m de radio a 4 rpm dan 1 g (a = ω²r). La ISS no tiene gravedad porque no gira. Desde el fondo del módulo, un **ascensor sube por el radio**, y la gravedad baja con la altura hasta el **eje**. Allí, y en la espina que lleva a la cabina del módulo de aterrizaje, se flota. Las cifras, las fuentes y las licencias están en [gravedad.md](gravedad.md).
+
+**La nodriza y el módulo** ([nave-nodriza.md](nave-nodriza.md)). El anillo, el módulo, la cubierta de cultivo, los animales y las máquinas están en la **nave nodriza**, que se queda aparcada cerca del asteroide. Doménica va a Bennu en la **sonda** (la Explorer). Con el módulo acoplado, **Ir al interior** lleva al anillo y todo funciona como siempre. Con el módulo fuera, el interior no se puede visitar: Doménica está en ingravidez y las tareas se acumulan. La vida a bordo sigue, y al volver hay más trabajo. En la bahía, la pestaña **Nodriza** muestra las máquinas y la cubierta de cultivo, pero solo se puede trabajar en ellas acoplada.
 
 ## Historia: las cartas de Nevaeh
 
 Decisión de Berón (2026-11-12): se rescata la historia del borrador. **Doménica** es la protagonista. **Nevaeh** le escribe cartas que llegan por la **radio de la nave** (botón «Radio», con contador de no leídas). Están en `modules/story`.
 
+Las misiones del borrador se hacían en el panel de la nave. Desde la nano_net (2026-11-12) cada carta anuncia una etapa de un núcleo o una avería, y la misión se cumple **aterrizado en el núcleo**, con retos de código. Ver [nano-net.md](nano-net.md).
+
 | Carta | Llega | Misión |
 | --- | --- | --- |
-| Configurar la nano_net: números (borrador, `number.js`) | Al empezar | `let pulsosPorHora = 20`, `capasDeOnda = 10`, `girosPorHora = 60`, y distinguir un número |
-| Configurar la nano_net: textos (borrador, `text.js`) | Medio día después de la misión anterior | Los códigos `'3396815'`, `'8819618'` y `'441319'`, y distinguir un texto |
-| Encendido y apagado (borrador, `boolean.js`) | Medio día después de la anterior | `A001Encendido = true`, `P003Encendido = false`, `A002Encendido = true`, y un `si` con booleano |
+| La nano_net necesita un núcleo (borrador, `number.js`) | Al empezar | Convertir a Bennu en núcleo |
+| Que el núcleo aprenda a generar nodos (borrador, `text.js`) | 0,25 días después de la misión anterior | Etapa «generar nodos» |
+| Mover los nodos a su órbita (nueva) | Igual | Etapa «mover nodos» |
+| Cerrar el anillo y cubrir un área (borrador, `boolean.js`) | Igual | Etapa «cubrir un área» |
+| Enlazar tu red con la nuestra (nueva) | Igual | Etapa «enlazar redes» |
+| Avería en la nano_net (generada) | Con cada avería nueva | Reparar esa avería en el núcleo |
 | ¿Estáis bien? (nueva) | Tras la primera sacudida | — |
 
-Las misiones repiten la mecánica del borrador: **ordenar las piezas** `let`, nombre, `=` y valor. Se hacen en el panel de la mente de la nave. Las posdatas siguen el arco del borrador: los seres queridos de Doménica escriben preocupados, el fallo de comunicaciones se investiga y al final «alguien estaba detrás». La carta nueva lo continúa.
+Las variables del borrador (`pulsosPorHora = 20`, `'3396815'`, `A001Encendido = true`…) siguen vivas dentro de los retos del núcleo. Las posdatas siguen el arco del borrador: los seres queridos de Doménica escriben preocupados, el fallo de comunicaciones se investiga y al final «alguien estaba detrás». La carta nueva lo continúa.
 
 El retrato original de Nevaeh se perdió (el borrador apuntaba a `/img/nevaeh/face_100px.webp`). Ahora se dibuja a partir de su hoja de diseño de Cold Sanctuary; ver más abajo.
 
@@ -286,9 +336,10 @@ Decisión de Berón (2026-11-12): las gallinas pueden vivir libres, suben a bord
 
 La nave es grande. Detrás del módulo habitable, una puerta da a una **cubierta de cultivo** de 18 × 18 m:
 
-- suelo artificial con colinas suaves y árboles frutales;
+- suelo de placas, con una alfombra de césped para gallinas y perros junto a la puerta;
 - un cielo de LED;
-- ocho bancales de 15 m² con riego por goteo, que no hay que regar a mano;
+- once bancales de 15 m² con riego por goteo, que no hay que regar a mano: dos filas de cuatro y, junto a la pared del fondo, una tercera fila de tres bancales girados (cacahuete, cacahuete y fresa);
+- cuatro higueras en maceta junto a las paredes, de 0,8 m² cada una, que dan higos de verdad;
 - el compost de las gallinas;
 - el rincón de los chihuahuas.
 
@@ -301,7 +352,7 @@ La nave es grande. Detrás del módulo habitable, una puerta da a una **cubierta
   - cada gallina: 110 g de pienso a unas 2,9 kcal/g;
   - gatos y perros: su RER × factor.
 - Es una **cota inferior**, porque alimentar animales a partir de cultivos pierde energía por el camino.
-- Hoy a bordo hacen falta unos 81 m². Los bastidores (4,5 m²) dan un 5 %. Con los bancales hay 124 m², un 150 %, con margen para malas cosechas y futuros tripulantes.
+- Hoy a bordo hacen falta unos 81 m². Los bastidores (3,75 m² de macetas vivas) dan un 5 %. Con los once bancales (165 m²) y las cuatro higueras (3,2 m²) hay unos 172 m², un 213 %. La cifra de Wheeler supone cultivos básicos como trigo, papa y soja; las dos primeras filas (120 m²) ya bastan solas, y la fruta y los frutos secos dan variedad y margen para malas cosechas y futuros tripulantes.
 - El HUD muestra la autosuficiencia en todo momento.
 
 ## Historia: Doménica, Nevaeh y Kushal
@@ -324,9 +375,9 @@ En el juego (`story/data/friends.ts`):
 - **Kushal:** gorro de lana rojo, gafas redondas, barba de unos días y chaleco morado con cuello de borrego.
 - **Doménica:** aún no tiene hoja de diseño.
 
-**Próximo:** la nano_net.
+**La nano_net** ya está: ver [nano-net.md](nano-net.md).
 
-- Las misiones de Nevaeh serán vuelos al núcleo que falla, que se arregla con un reto de código.
+- Las misiones de Nevaeh son vuelos al núcleo que falla, que se arregla con un reto de código.
 - Un asteroide subyugado puede convertirse en **núcleo** de la red. Al programarlo, aprende a generar nodos, moverlos, conectarlos para cubrir un área y unirse a otra red.
 
 ## Qué hay implementado
@@ -334,12 +385,12 @@ En el juego (`story/data/friends.ts`):
 | Pieza | Dónde | Estado |
 | --- | --- | --- |
 | Planta (agua, luz, salud, agitar, cosechar) | `modules/garden/domain/plant.ts` | ✓ con tests |
-| Especies con datos reales | `modules/garden/data/species.ts` | ✓ 8 especies |
+| Especies con datos reales | `modules/garden/data/species.ts` | ✓ 11 especies (con cacahuete, fresa e higuera) |
 | Máquinas del soporte vital | `modules/life-support` | ✓ con tests |
 | Biorreactor de carne cultivada | `modules/cultured-meat` | ✓ con tests |
 | Gallinas | `modules/poultry` | ✓ con tests |
 | Salud y enfermería (cualquier paciente) | `modules/medical` | ✓ con tests |
-| Recetas, ingredientes y procesos | `modules/kitchen/data` | ✓ 8 recetas, 3 procesos |
+| Recetas, ingredientes, procesos, nutrición USDA y despensa de salida | `modules/kitchen/data`, `modules/kitchen/domain/nutrition.ts` | ✓ 15 recetas, 4 procesos, con tests |
 | Gato (energía real, necesidades, estrés, reglas) | `modules/pets/domain/cat.ts` | ✓ con tests |
 | Instintos y decisión | `modules/pets/domain/behavior.ts` | ✓ con tests |
 | Presentaciones entre gatos | `modules/pets/domain/introduction.ts` | ✓ con tests |
@@ -348,13 +399,162 @@ En el juego (`story/data/friends.ts`):
 | Tareas como cadenas de retos generados | `modules/chores` | ✓ con tests |
 | Tripulante (saciedad, forma, estrés) | `modules/crew` | ✓ con tests |
 | Yoga y recetas de Cold Sanctuary | `wellness/data/yoga.ts`, `kitchen/data/recipes.ts` | ✓ |
-| Panel de la mente de la nave y reparación por retos | `chores/application/catalog.ts`, `src/interior.ts` | ✓ (cambiar piezas: pendiente) |
-| Interior 3D: caminar, huerto, cocina, molino, laboratorio, enfermería, panel, esterilla, gatos, gallinero | `src/interior.ts`, `src/adapters/three/interior/` | ✓ |
-| Cartas de Nevaeh a Doménica con misiones | `modules/story`, radio en `src/interior.ts` | ✓ con tests |
+| Panel de la mente de la nave y reparación por retos | `chores/application/catalog.ts`, `src/interior.ts` | ✓ |
+| Bahía de la nave: vista exterior, estado por pieza y cambio de piezas ([bahia-de-la-nave.md](bahia-de-la-nave.md)) | `modules/ship-bay`, `ship/domain/refit.ts`, `src/ship-bay.ts` | ✓ con tests |
+| Interior 3D: caminar, huerto, cocina, molino, laboratorio, enfermería, panel, rincón de ejercicio, camarote, aseo, gatos, gallinero (en la cubierta) | `src/interior.ts`, `src/adapters/three/interior/` | ✓ |
+| Ejercicio con el protocolo Sprint de la NASA (cinta, bici, fuerza) | `wellness/data/exercise.ts`, `workoutChore` | ✓ |
+| Cartas de Nevaeh a Doménica con misiones de la nano_net | `modules/story`, radio en `src/interior.ts` | ✓ con tests |
 | Gallinas libres, chihuahuas, lazos y familias entre especies | `modules/family`, `pets/domain/dog.ts`, `pets/data/family-lessons.ts` | ✓ con tests |
 | Cubierta de cultivo y autosuficiencia | `life-support/domain/sustainability.ts`, `src/adapters/three/interior/farm-deck.ts` | ✓ con tests |
 | Prólogo de Nevaeh, llamadas de Kushal y retratos | `story/data/friends.ts`, `src/ui/portraits.ts` | ✓ con tests |
-| nano_net: núcleos hechos de asteroides | — | siguiente PR |
+| nano_net: núcleos hechos de asteroides, etapas, averías y reparaciones | `modules/nano-net`, `src/ui/nano-net-panel.ts`, `src/adapters/three/nano-net-view.ts` | ✓ con tests |
+| Anillo giratorio (1 g a 4 rpm, Coriolis, gradiente), radio, eje sin gravedad y efecto en la salud | `modules/gravity`, `src/adapters/three/interior/zones.ts`, [gravedad.md](gravedad.md) | ✓ con tests |
+| Nave nodriza (anillos, huerto, motores X3, reactor) y acople del módulo con límites IDSS | `modules/mothership`, `src/adapters/three/mothership-model.ts`, [nave-nodriza.md](nave-nodriza.md) | ✓ con tests |
 | Viaje automático programado entre asteroides | — | pendiente |
 
 Los números de cuidado sin fuente (velocidad de secado, ritmo de juego y de cariño, probabilidad de mordisco, días por etapa) están marcados en el código como **ajuste de juego**. Así se distinguen de los datos reales.
+
+## Pasos visibles
+
+Cada paso resuelto de una tarea se ve en 3D en su estación: Doménica se pone delante (la cámara la ve
+por encima del hombro, sobre la hoja del reto en el móvil o a su izquierda en horizontal), hace el gesto
+del paso y un utensilio pequeño lo muestra durante unos dos segundos. Se puede contestar el siguiente paso
+mientras tanto: los pasos hacen cola y, si hay cola, el que se ve va más deprisa. En «Paso a paso» cada
+bloque bien se ve en cuanto se toca.
+
+- **Vocabulario** (`src/modules/chores/domain/step-visual.ts`): acciones de cocina (tomar, lavar, cortar,
+  cascar, batir, remover, verter, calentar, hervir, hornear, moler, amasar, sazonar, reposar, emplatar,
+  como el `KitchenCook` de Cold Sanctuary) y de cuidado (regar, agitar, cosechar, servir, mimar, jugar,
+  programar, revisar, reparar, curar, postura, entrenar); `gesto` es el comodín. El verbo con que empieza
+  el texto del paso elige la acción.
+- **Cocina** (`src/modules/kitchen/domain/kitchen-visuals.ts`): cada paso de cada receta y proceso con su
+  sitio (nevera, despensa, encimera, fogón, horno, molino, procesador), su recipiente, el color del
+  alimento y si hay calor; recorre la receta recordando qué está caliente, así «revuelve los huevos»
+  después de «calienta la plancha» pasa en la sartén. Huevos revueltos: nevera → cascar en el bol →
+  plancha → remover → cocinar a 71 °C → sazonar → emplatar (capturas `docs/screenshots/cocina-huevos-*`).
+- **Demás tareas** (`src/modules/chores/application/step-visuals.ts`): una tabla por tipo de tarea dice
+  cómo actúa cada área (regar con regadera, servir la ración en el cuenco, mimar, programar con una
+  pantalla holográfica, reparar con llave y chispas, curar con botiquín) y qué se ve cuando el paso es un
+  número o una línea de código. El yoga muestra la postura en la esterilla (en el anillo y en las naves reales).
+- **Estación** (`src/station-steps.ts`, `StationInteriorMode.stepVisual`): la cocina de la estación y las
+  máquinas (refinar, fabricar, repostar, importar, el laboratorio de biología) se actúan en el interior de la
+  estación, con Doménica sujeta por los estribos delante de su puesto (en 0 g «abajo» es la cubierta), la
+  cámara a su lado en el pasillo, dentro del módulo y con línea limpia a sus dos manos (nunca dentro de una
+  escotilla, cuyo borde taparía lo que sostiene); trabaja ante lo que está dibujado (el frente del rack). Una
+  máquina sin rack donde montarla (sin el módulo que la lleva) no se representa. Las salas y máquinas están dibujadas a la escala de la
+  estación (1,5, `MACHINE_SCALE`) y ella a tamaño real; las alturas del paso (manos, cuenco) cuentan desde
+  sus pies. La cocina de la estación es compacta (horno, calentador y grifo en un mismo puesto, como en la
+  ISS): todos sus pasos ocurren en ese puesto. Si la pantalla se abre desde fuera (el módulo acoplado), no hay
+  nadie en la máquina y no se representa.
+- **Naves reales** (Berón, 2026-11-17: «no hay animación para el acuario ni la cocina en la nave»; [reglas.md](reglas.md) §4.2).
+  En la Starship, la ISS y el LM cada reto se actúa donde se hace de verdad (`crewStepVisual`, `src/station-steps.ts`):
+  - **Comida de la ISS** (`src/modules/kitchen/domain/space-galley-visuals.ts`): sin sartén, fogón ni nevera. Se hace con el
+    envase en la cocina, como en la ISS ([NASA, Food in Space](https://www.nasa.gov/humans-in-space/food-in-space/)): sacarlo
+    del cajón del día, agua por la aguja del dispensador, amasarlo, esperar a que se rehidrate o meterlo en el calentador,
+    abrirlo con las tijeras y comer con la cuchara. El envase es un utensilio nuevo de `StepShow` (`pouch`).
+  - **Yoga**: postura a postura, con la asana de cada paso (el esqueleto de Cold Sanctuary) en la esterilla; la cámara se
+    aparta por el pasillo para verla de cuerpo entero. Al sentarse en loto para los ajustes también se la ve en la esterilla.
+  - **Ejercicio**: cada entrenamiento en su máquina: la cinta en la T2 (en el suelo, ella de pie sobre ella), la bicicleta en
+    el CEVIS, la fuerza en el ARED.
+  - **Hábitat acuático y catálogo**: en el rack AQH (JAXA, voló en Kibo) y en el terminal del catálogo.
+  - **Soporte vital**: además de las luces del procedimiento en el bastidor, ella está delante con la llave; los bastidores del
+    techo (el de aire de Tranquility) los trabaja flotando debajo.
+  - **Traje**: en la escotilla delantera del LM, ella revisa el traje paso a paso (`WalkRoom.stepVisual`).
+  - **Bahía**: cambiar una pieza del LM atracado en la estación se actúa en el CBM de Unity, junto a la cuna.
+  - La esterilla de la estación pasa del techo de Unity (donde no se la veía) a la pared de estribor de Destiny, junto al
+    sitio del CEVIS, que es donde la ISS tuvo su bicicleta; la T2 y el ARED siguen en Tranquility.
+- **Nada atraviesa la escena**: el cuenco que se deja en el suelo busca un hueco libre al alcance de su mano
+  si el sitio de siempre está ocupado (la pata de un gato, un mueble): `StepShow.clearOf`.
+- **Un solo puerto** (`src/modules/chores/domain/step-visual.ts`): `StepVisual` es lo que llama toda hoja
+  de retos: `stepDone(i)` al acertar el paso i, `partDone(i, bloque)` en «Paso a paso», `finish()` y
+  `clear()`. El módulo lo implementa con Doménica y los utensilios (`adapters/three/interior/step-show.ts`);
+  viajes y aterrizajes, dibujando su plan (`adapters/three/plan-overlay.ts`, docs/design/aterrizaje.md).
+  Las tareas traducen cada paso a `StepAct` (acción, sitio, color, recipiente, calor) con una
+  `StepActSource` (`firstSource` encadena la de cocina y la de áreas).
+- **Rendimiento**: los utensilios se crean una vez (cuatro geometrías y una docena de materiales
+  compartidos) y se reutilizan; 32 partículas en un solo `Points` hacen vapor, gotas, polvo y chispas;
+  sin luces ni sombras nuevas; todo se libera al salir del módulo. Medido con la suite de experiencia
+  (docs/testing.md).
+
+## Ritmo de los días
+
+Berón (2026-11-16): «Los días parecen ir demasiado rápido, ¿por eso el hambre parece constante?». Sí: un día de a
+bordo duraba **40 s reales** y la saciedad baja un día de energía por día, así que Doménica tenía hambre cada
+13 s y la barra de Saciedad se vaciaba entera en 40 s.
+
+### Qué hacen otros juegos
+
+| Juego | Un día dura | Hambre | Fuente |
+| --- | --- | --- | --- |
+| The Sims | 24 min reales: 1 minuto de juego por segundo real a velocidad normal | Comen unas tres veces al día de juego, una cada ~8 min reales | [The Sims Wiki, Live mode](https://www.thesimswiki.com/wiki/Live_mode) |
+| Stardew Valley | 14 min 20 s (6:00 a 2:00, 10 min de juego cada 7,2 s) | Sin hambre: energía que se repone durmiendo | [Stardew Valley Wiki, Time](https://stardewvalleywiki.com/Time) |
+| Don't Starve | 8 min (16 segmentos de 30 s) | Hambre máxima 150 (Wilson); sin comer se muere de hambre «en un par de días» | [Don't Starve Wiki, Day-Night Cycle](https://dontstarve.wiki.gg/wiki/Day-Night_Cycle), [guía de Reign of Giants](https://dontstarve.wiki.gg/wiki/Guides/Don%27t_Starve_in_Reign_of_Giants) |
+| Animal Crossing: New Horizons | El día real: el juego sigue el reloj de la consola | Sin hambre | [Shacknews](https://shacknews.com/article/117080/how-does-time-work-in-animal-crossing-new-horizons) |
+| Cold Sanctuary (nuestro otro juego) | 60 min reales por defecto (`Clock.realMinutesPerDay`, un minuto de juego cada 2,5 s); el año de vida se comprime a 28 días | El hambre sube de 0 a 1 en 7 h de juego despierta (`BodyMetabolism.hoursToHungry`), unos 17 min reales | `Assets/Scripts/Time/Clock.cs`, `Assets/Scripts/Time/Time.cs`, `Assets/Scripts/Body/BodyMetabolism.cs` |
+
+Y las comidas de verdad: en NHANES 2007–2008 (What We Eat in America, 5 420 adultos) el 59–64 % come desayuno,
+comida y cena cada día. El desayuno da ≈ 16 % de la energía, la comida ≈ 24 %, la cena ≈ 36 % y los
+tentempiés ≈ 24 % ([resumen del USDA ARS en MDedge](https://mdedge.com/content/three-meal-day-pattern-still-strong-among-us-adults)).
+Repartiendo los tentempiés, cada comida sería un tercio del día. Berón (2026-11-16) lo decidió de otra forma:
+«Las comidas serán 2 al día». Dos comidas grandes, como en el patrón de comida y cena, y cada una es la mitad
+del día.
+
+### Decisión: un día de a bordo dura 24 minutos reales
+
+Es la proporción de The Sims (un minuto de a bordo por segundo real) y queda entre Stardew Valley (14 min) y
+Cold Sanctuary (60 min). Es una sola constante, `BOARD_DAY_REAL_S` en `src/core/board-time.ts`, de la que salen
+`BOARD_DAYS_PER_REAL_S` (vida a bordo, nano_net, niveles) y `STATION_TUNING.hoursPerSecond` (estación,
+laboratorio bio, importación). Antes había tres `1 / 40` sueltos (`interior.ts`, `main.ts` y el plano de la
+estación).
+
+**El hambre, dos veces al día.** La saciedad sigue bajando un día de energía por día (`satietyPerDay`, 1) y
+comer suma las kcal reales del plato entre las de su día (`eatKcal`). Lo nuevo:
+
+- **Una comida es la mitad del día** (`CREW_TUNING.mealShareOfDay`, 1/2). Al cocinar, come las raciones del plato
+  que suman unos 1 140 kcal (la mitad de sus 2 277): dos raciones grandes (carne con papas, 2 × 618 kcal) o
+  varias pequeñas. El resto va a la despensa, como antes. Antes comía siempre una ración, unos 360 kcal de
+  media, y le volvía el hambre a las pocas horas.
+- **Tiene hambre por debajo de 0,5** (`hungryBelow`). Al cruzarlo sale el aviso «Doménica tiene hambre: hora de
+  cocinar».
+- Con comidas de medio día le entra hambre **2 veces por día de a bordo**, una comida cada ~12 min reales:
+  unas 2 o 3 en una sesión de media hora. Lo prueban VID-20 (`crew-member.test.ts`), CV-20 (`comidas.test.ts`,
+  con los relojes del viaje y del tiempo acelerado) y el recorrido PX-27. Con una comida ligera
+  (huevos revueltos, 187 kcal) vuelve antes, como en la vida real.
+
+**Viajes y tiempo acelerado.** Los viajes comprimidos y el ×10/×50 a mano siguen mandando (`frameClocks`, casos
+CV-01, CV-02 y CV-08):
+
+- La vida va a `max(su ritmo, el del viaje)`. Antes la nodriza (×600) no cambiaba nada porque la vida ya iba a
+  ×2160; ahora la vida va a ×60, así que **un salto de la nodriza acelera la vida ×10**: un viaje de 75 s son
+  12,5 h a bordo, una comida. El módulo (×5) y la sonda (×10) no la cambian.
+- Con ×10 a mano un día dura 2,4 min; con ×50, 29 s.
+- La estación sigue siendo 24 h por día de a bordo.
+
+### Qué más corre con el día
+
+Todo lo que dice «por día» o «por hora» lee el mismo reloj, así que todo va 36 veces más despacio que con el
+día de 40 s. Se revisó uno por uno:
+
+| Proceso | Ritmo | Con el día de 24 min | Decisión |
+| --- | --- | --- | --- |
+| Hambre de Doménica | 1 día de energía por día | Dos comidas al día, una cada ~12 min | Berón: «Las comidas serán 2 al día» |
+| Gatos y perros (`companion.ts`) | Comen medio día de energía por comida (`catMeal`) | Dos comidas al día, cada ~12 min; juego y cariño bajan 0,8 y 0,5 por día | Igual que en la vida real, sin cambios |
+| Gallinas | Saciedad 1 por día, un huevo al día con luz | El comedero se vacía en un día (24 min); como mucho un huevo al día por gallina | Sin cambios (antes, un día de puesta cada 40 s) |
+| Huerto (`plant.ts`) | Agua 0,5 por día, seca bajo 0,15 | Regar cada ~1,7 días (~40 min) | Sin cambios |
+| Crecimiento de cultivos | Días reales de las fuentes (lechuga 33, rábano 27, cacahuete 110, higuera 120) | Lechuga 13 h, rábano 11 h, cacahuete 44 h a ×1; se acortan viajando (×10) o con ×10/×50 | **Pregunta abierta** (abajo) |
+| Carne cultivada (`bioreactor.ts`) | Glucosa 0,35 y pH −0,12 por día | La glucosa baja 0,35 al día: el cultivo pide medio cada pocos días | Sin cambios |
+| nano_net (`core.ts`) | Desgaste 0,02 por día, averías 0,03 por día | Golpes y averías al 0,02–0,03 por día y núcleo: una cada ~33 días por núcleo (13 h a ×1) | Sin cambios: así no estorba a cada rato |
+| Química del acuario | Por día (amonio, nitrato, algas) | Amonio, nitrato y algas avanzan por día de a bordo | Sin cambios |
+| Estación: máquinas, refinería, obras | Horas de la estación (24 por día) | Un plano de 240 h son 10 días: 4 h reales a ×1, 24 min a ×10 | Sin cambios: valores de juego; pregunta abierta |
+| Importación (`GAME_HOURS_PER_TRANSIT_DAY`) | 1 h de estación por día de tránsito | Una transferencia de 372 días habría tardado 6 h reales | **Ajustado a 4 min por día de tránsito**: unas 25 h de estación, ~25 min reales |
+| Paquetes de nivel 2 y 3, confianza del servicio | Uno por día de la estación, +2 % al día | Un paquete cada 24 min | Sin cambios: un ritmo diario |
+| Buzón de cartas | Por día | Más espaciadas | Sin cambios |
+
+### Preguntas abiertas para Berón
+
+- **¿Los cultivos crecen con el mismo reloj?** Con datos reales, la lechuga tarda 33 días: 13 h de juego a ×1.
+  Opciones: dejarlo así (se ve crecer en varias sesiones y se acelera viajando o con ×10/×50), o un
+  «calendario de cultivo» que corra más deprisa que las comidas, como Cold Sanctuary comprime el año de vida a
+  28 días. Eso separa el reloj del cuerpo del de la biología.
+- **¿Las obras de la estación (240 h) son demasiado largas?** Son valores de juego y se pueden acortar sin tocar
+  datos reales.

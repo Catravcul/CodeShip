@@ -1,97 +1,106 @@
-# La montaña hueca del santuario 3 (Berón, 2026-11-25)
+# La montaña del santuario 3 por dentro: la nave excavada (Berón, 2026-11-25; rehecha el 2026-11-28)
 
-> «La montaña es una pirámide artificial hueca cubierta de tierra y piedra, con cuevas; dentro, árboles gigantes llegan
-> al techo como columnas; sus pisos siguen las reglas de los edificios del santuario 1; estaciones de alfombras; un
-> Starship lleno de agua donde se nada; la base es un lago de 4 m; luz brillante sin sombras y se ve el fondo.»
+> «Los edificios de sanctuary3 no veo que se parezcan a los de coldsanctuary1… tomar los de sanctuary1 y migrarlos tal
+> cual dentro de la montaña, y luego… agregar los pisos especiales de sanctuary3… los de entrenamiento para ser
+> astronauta… el interior baja más del nivel del mar, como si se hubiera excavado… más ancho para que exista mayor
+> espacio entre edificios y con la abeja… el interior de la montaña podría ser un cambio de escena? En lugar de cuevas se
+> colocarían compuertas, y todos los insectos gigantes estarían dentro… volver a dejar sobre la montaña su flora y
+> fauna real… las alfombras de las entradas… llevan a cualquier edificio directamente.» (Berón, 2026-11-28)
 
-Todo es **ficción** (como los edificios-árbol de Cold Sanctuary); las salas del campus dentro de los árboles son
-**reales** (cada una con su fuente en `data/campus.ts`). Código: `data/bioma-island.ts` (pirámide y cuevas),
-`domain/mountain.ts` (terreno con la cubierta y los túneles), `data/montana.ts` (lago, árboles, pisos, alfombras,
-Starship), `data/campus.ts` y `data/campus-fixtures.ts` (servicios), `adapters/three/s3-mountain.ts` (dibujo).
-Pruebas: `data/montana.test.ts`, `data/caidas.test.ts`, `data/layout.test.ts`, `data/fixtures.test.ts`.
+Todo es **ficción** (la nave, los edificios-árbol de Cold Sanctuary); las salas de entrenamiento y los servicios son
+**reales** (cada uno con su fuente en `data/layout.ts` y `data/campus.ts`). Código: `data/montana.ts` (la nave, sus
+edificios, compuertas, orilla, alfombras, Starship), `data/bioma-island.ts` (las compuertas en la cara sur),
+`sanctuary-one/data/layout.ts` `buildTowers` (los edificios del santuario 1, el mismo código), `data/campus.ts`
+(`CAMPUS_IN_S1`), `adapters/three/s3-mountain.ts` (muros, techo, fondo, Starship) y `adapters/three/s1-models.ts` (los
+edificios, dibujados por el santuario 1). Pruebas: `data/montana.test.ts`, `data/caidas.test.ts`, `data/layout.test.ts`,
+`application/hall-geo.test.ts`.
 
-## Pirámide (capa delgada, Berón 2026-11-26)
+## Otra escena
 
-- Base de 520 m de lado y 335 m de alto, con su centro en (1610, 370) (`CORE_DEF`); la cubierta de tierra y piedra tiene
-  solo 3 m sobre la cara natural y la cáscara 2 m (`SHELL_M`): deja intactos los farallones.
-- Hueco casi igual a la pirámide: 516 m de lado en el suelo (`INNER_HALF` 258, y 100) y ápice a 431 m (`INNER_H` 331);
-  `ceilingAt(x, z)` da la altura del techo en cada punto. `HOLLOW_INSIDE` (data/montana.ts) exporta las medidas del
-  interior (centro, suelo, lago, medio lado, ápice, techo y radio libre) para la fauna y la pupa.
-- **Centro libre** (`CENTRE_FREE_M` = 45 m alrededor de `HOLLOW` x, z, del lago al techo): ningún piso, tronco, copa ni
-  estación; ahí va la pupa central (la pone otra rama).
-- **Lago de 4 m** en todo el suelo (`lago-montana`, y 100–104): agua clara, fondo de arena visible.
-- **Luz**: dentro, la luz es pareja de todos lados (hemisférica ×2, sol casi apagado) y la niebla toma el color claro de
-  las paredes: sin sombras, se ve el fondo del lago.
+La nave está en una parte del plano solo suya (`NAVE`, centro en (9000, 9000), a más de 2 km de toda isla): fuera se ven
+las islas y la montaña **maciza**; dentro, solo la nave. `aerial-sanctuary.ts` tiene dos raíces (`fuera`, `dentro`) y
+**solo dibuja la de donde está ella** (la otra, oculta, no se pinta): al pasar una compuerta, teletransportarse o cargar
+una partida, sale la pantalla de carga un momento (la de siempre, `ui/loading-screen.ts`) y cambian el fondo, la niebla y
+la luz. Ella, las alfombras, los entrenadores y los escenarios de los puestos siguen en la escena, cada uno donde está.
+No se copió el patrón de escenas separadas de la nave espacial (`main.ts` `present`): habría que reparentar a ella y todo
+lo que la acompaña en cada paso; ocultar la otra raíz cuesta lo mismo al dibujar.
 
-## Cuevas (regla E14)
+## La nave
 
-Tres túneles cortos por la cara sur (37–43 m: atraviesan solo la capa), **por encima del agua**, cada uno termina en su
-estación de alfombras sobre el lago: sur (y 236, con el helipuerto del campus en su explanada de 22 m), suroeste (y 232)
-y sureste (y 236). Senderos del monte suben a las bocas; escalones de 0,4 m bajan de la boca a la explanada.
+- **1280 m de lado** (`INNER_HALF` 640: más que los 520 m de la pirámide; Berón: «más ancho»), muros hasta 200 m y techo
+  piramidal hasta 330 m sobre el mar (`ceilingAt`).
+- **Excavada 40 m bajo el mar** (`bottomY` −40): el lago (`lago-montana`) es tan hondo como el mar del santuario 1 bajo
+  sus edificios, y se dibuja como ese mar.
+- **Luz**: pareja de todos lados (hemisférica ×2, sol casi apagado), niebla del color de los muros: sin sombras.
+- **Centro libre** (`CENTRE_FREE_M` 45 m, E16): ahí está la pupa de la abeja ([pupa-abeja.md](pupa-abeja.md)).
+- **Orilla** (`SHORE`): una franja de roca al nivel del lago a lo largo de los muros (de 520 m del centro al muro), fuera
+  del anillo de edificios: el suelo de los insectos gigantes y del bosque del Carbonífero; en ella atracan las compuertas.
+- **Caídas**: dentro, sin límite (`dropLimit`): de un piso se cae al de abajo o al agua (`caidas.test.ts`); fuera, 10 m.
 
-**Tamaño**: como las puertas de los troncos del santuario 1 (`sanctuary-one/data/paso.ts`): el mayor animal del santuario
-+ 2 m a cada lado y por encima, nunca menos que esa puerta. El mayor se calcula de los datos de la fauna
-(`LARGEST_S3_ANIMAL` = tamaño real × `AIR_BIOME.drawScale`; hoy el saltamontes, 36 × 6 m) y da `CAVE_PASSAGE` 40 × 8 m
-(medio ancho 20 m, bóveda 13,3 m). Si llega un insecto mayor (una Meganeura), las cuevas crecen solas; si no cabe en la
-pirámide, `montana.test.ts` falla.
+## Los edificios del santuario 1, tal cual
 
-## Árboles gigantes (regla E15)
+Los cinco edificios-árbol del santuario 1 (Servicios, Entrenamiento, Ciencias con su cima, Producción y el Árbol de los
+Campos) con **sus pisos, muebles, troncos de agua, anillos, bases y estaciones**, a sus mismas distancias del centro:
+`buildTowers` (el mismo código que construye el santuario 1, sin casquetes, mar ni globo) y `buildS1Scene` los dibuja.
+`montana.test.ts` comprueba que son los mismos (pisos, alturas, cima). Sus reglas: [edificios-y-pisos.md](edificios-y-pisos.md).
 
-Cuatro troncos de madera maciza del lago al techo: lo sostienen. **Parecen árboles** (`adapters/three/s3-giant-trees.ts`):
-corteza con textura, tronco acanalado que se ensancha abajo, raíces de contrafuerte, ramas laterales donde no estorban
-a los pisos ni a los carriles, y una **copa** de ramas, masas de hojas, frutos y flores. La copa (`crownOf`, `CROWN`)
-empieza 12 m sobre la sala más alta de todos los árboles y 20 m sobre las cuevas (hoy y 256) y acaba bajo el techo: es
-sólida para los vuelos (los carriles la esquivan). Sus pisos siguen las reglas indexadas en
-[edificios-y-pisos.md](edificios-y-pisos.md); **no tienen paredes ni tejado** (E13): desde el borde se cae al piso de
-abajo o al lago. Las grúas de la NBL apoyan en pilotes en las esquinas de la sala.
+**Pisos de entrenamiento** (los «pisos especiales» del santuario 3): dos edificios-árbol más con las reglas del santuario
+1 (`TRAINING_TOWERS`), al oeste, en el hueco del anillo. Cada piso crece a la medida de su sala (`TowerSpec.square`) y la
+sala real se construye encima (`buildRoom`; el suelo del piso se abre donde está: la piscina de la NBL baja por él).
 
-| Árbol | Pisos (de abajo arriba) | Cima |
-|---|---|---|
-| Entrenamiento | supervivencia · gimnasio + trajes · simuladores Dragon + LM · robótica + control · SVMF | NBL |
-| Servicios | residencia · restaurante · clínica · centro médico · asambleas | — |
-| Ciencias y estudio | aulas · biblioteca · laboratorio · crianza | — |
-| Producción y campos | huerto · taller | centrífuga |
+| Edificio | Pisos (de abajo arriba) |
+|---|---|
+| Entrenamiento de astronautas | NBL · SVMF (maquetas) · centrífuga · supervivencia |
+| Simuladores y control | gimnasio + trajes · simuladores Dragon + LM · robótica + control · centro médico · criadero |
 
-21 salas en total. Cada pie y cada piso tiene su estación de alfombras.
+**Criadero de insectos gigantes** (la sala «crianza», Berón: «el criadero será para domesticar a estos insectos
+gigantes»): insectario, colmenas y cámaras de cría; aquí se crían y amansan los insectos de la nave (ficción sobre salas
+reales de cría de insectos).
 
-## La pupa del centro
+**Servicios del campus en los pisos del santuario 1 que los hacen** (`CAMPUS_IN_S1`): dormir en un aposento libre de la
+cima de Ciencias (en la litera: `MachineDef.seat`), comer en el comedor del piso 1 de Servicios (sentada a la mesa),
+clínica en el hospital de aislamiento, aulas y biblioteca en la cima de Ciencias, laboratorio en sus laboratorios,
+huerto en el piso de textil y huerto de Producción, taller en su mecánica, asambleas en la sala de comisión de
+Servicios. Sus retos son los de siempre (`CAMPUS_RETOS`).
 
-En el centro del hueco (`HOLLOW`), de pie en el lago, la celda gigante de la abeja con su galería y un muelle hasta la
-cubierta del árbol más cercano ([pupa-abeja.md](pupa-abeja.md)); se construye en `buildHollow` antes que las rutas de
-alfombra, así que ninguna la atraviesa. Para dejarle sitio, el árbol de entrenamiento (A) está en (−115, 95) respecto al
-centro (antes (−40, 30)). En el fondo del lago viven larvas acuáticas ([larvas-lago.md](larvas-lago.md)).
+**Caminos por un piso amueblado** (`domain/floor-way.ts`): rodean los muebles por una rejilla de 0,5 m con medio cuerpo de
+margen y guardan solo las esquinas; así «Ir» llega de la estación a cada sala o mueble sin atravesar nada.
 
-![Copa de un árbol gigante](../screenshots/s3-arbol-gigante-copa-movil.png) ![Ventana de alfombras de la cueva sur](../screenshots/s3-alfombras-ventana-movil.png)
+## Compuertas (regla E14)
 
-**Caídas**: fuera de la montaña, del borde de una isla no se baja más de 10 m (`ISLAND_DROP_M`); dentro del hueco no hay
-límite (`dropLimit`, `FreeWalk.maxDrop`): se cae al piso de abajo o al agua (`data/caidas.test.ts`).
+Tres compuertas de acero en la cara sur (sur, con el helipuerto del campus en su explanada; suroeste; sureste), en lugar
+de las cuevas: la montaña ya no tiene túneles. **Tamaño**: el mayor animal del santuario + 2 m a cada lado y por encima,
+nunca menos que la puerta de un tronco del santuario 1 (`GATE_PASSAGE`, de `LARGEST_S3_ANIMAL`). Fuera, ante la hoja, el
+botón naranja dice **«Entrar»**; dentro, cada compuerta abre a su muelle en el muro sur de la nave, con **«Salir»**. En el
+grafo, los dos lados son un paso con `gate` (coste 20): «Ir» desde fuera entra solo por la compuerta.
 
-## Alfombras (código compartido con el santuario 1)
+## Alfombras: dos tipos
 
-Las del santuario 1, el mismo código: datos y rutas en `sanctuary-one/data/alfombras.ts` (`carpetRoute`), ventana y
-botón en `ui/carpet-stations.ts`, dibujo (plataforma, dos alfombras flotando y el planetario) en
-`adapters/three/carpet-stations.ts`. De pie en una estación, el botón naranja (Y) dice «Volar» y abre la misma ventana de
-mapa que Áreas con solo sus destinos; cada estación guarda su «viaje o teletransporte» (`ui/carpet-travel.ts`). Un piso
-vuela a los demás pisos y al pie de su árbol; los pies, las cuevas y el Starship vuelan entre sí. Un enlace solo existe
-si su vuelo no toca nada (`flightTouches`, probado para todos). «Ir» encadena saltos de alfombra cuando hace falta
-(cueva → pie → piso) y vuela cada uno a la vista.
+El mismo código del santuario 1 (`carpetRoute`, `ui/carpet-stations.ts`, `adapters/three/carpet-stations.ts`).
+
+- **De un piso**: el botón «Volar» abre la ventana de alfombras con las estaciones **de su edificio** (pisos, pie, copa).
+- **Entre edificios** (las de los muelles de las compuertas, los pies, las copas y el Starship, `reach: "santuario"`):
+  «Volar» abre **Áreas de la nave, con sus filtros** (categorías, edificio y piso) y vuela **directo** a la estación de lo
+  elegido, y de ahí andando; nunca saltos encadenados a la vista (`frameRoute` vuela de una vez una serie de estaciones).
+- **Coste** (medido el 2026-11-28, `node` sin freno, escala 1,5, las 846 rutas de las 18 estaciones entre edificios a
+  todas): mediana 0,04 ms, p95 1,3 ms, peor 4,9 ms. Con el freno ×4 del iPhone 13 (`tools/experiencia`), ≤ 20 ms **una
+  vez por viaje**: se calcula al pedirlo, sin tablas precalculadas. Todas las rutas se prueban sin tocar nada ni el techo
+  (`flightTouches`).
+
+## Fauna dentro y fuera
+
+- **Dentro** (en la orilla y sobre el lago): los insectos gigantes de Gilgit-Baltistán ×400 (`airBiome`, geometría
+  `hallGeo`: cada zona de la isla es el tramo de orilla en su dirección), el bosque del Carbonífero con sus gigantes
+  ([carbonifero.md](carbonifero.md)), las larvas del lago ([larvas-lago.md](larvas-lago.md)) y la pupa.
+- **Fuera**: la flora y la **fauna real** de la montaña, a tamaño real (`data/bioma-real.ts`, la de Khunjerab de antes de
+  los insectos: íbices, markhores, bharales, leopardo de las nieves, buitres, quebrantahuesos, marmotas, pikas…, cada una
+  con su fuente), [bioma-s3.md](bioma-s3.md).
 
 ## Starship inundado
 
-La Starship de la nodriza (`nodriza-starship.md`) a escala del campus, de pie en el lago: sus cubiertas, escotillas y
-camarotes son agua. Se entra por la pasarela y la esclusa de la cubierta 3 nadando, y se visita cada cubierta.
+La Starship de la nodriza (`nodriza-starship.md`) de pie en el fondo del lago: se entra por la pasarela y la esclusa de
+la cubierta 3 nadando, y se visita cada cubierta; su pasarela tiene estación entre edificios.
 
-## Auditoría del campus (servicios)
-
-| Servicio | Salas | Qué se hace |
-|---|---|---|
-| Residencia | residencia | **Dormir** en tu cama (8 h del reloj) · reto «Preparar el descanso» |
-| Restaurante | restaurante | **Comer** sentada a la mesa · reto «Cata» |
-| Hospital | clínica, centro médico | reto «Cuarentena» + la cámara hipobárica |
-| Crianza | crianza | retos «Moscas» y «Colmena» |
-| Entrenamiento | NBL, centrífuga, SVMF, gimnasio, supervivencia, simuladores, robótica, trajes, control | los puestos de la iniciación |
-| Estudio | aulas, biblioteca | retos «Clase» y «Procedimiento» |
-| Ciencias | laboratorio | reto «Guantera» |
-| Campos | huerto | reto «Veggie» |
-| Producción | taller | reto «Impresora 3D» |
-| Asambleas | asambleas | reto «Reunión» |
+![La nave desde el muelle de la compuerta sur](../screenshots/s3m-nave-movil.png) ![Alfombras entre edificios: Áreas de la nave](../screenshots/s3m-alfombras-areas-movil.png)
+![La NBL en su piso](../screenshots/s3m-nbl-piso-movil.png) ![La residencia en la cima de Ciencias](../screenshots/s3m-residencia-movil.png)
+![El bosque del Carbonífero en la orilla](../screenshots/s3m-orilla-insectos-movil.png) ![La compuerta sur desde el sendero](../screenshots/s3m-compuerta-fuera-movil.png)

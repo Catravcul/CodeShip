@@ -1,5 +1,9 @@
 # La pupa de la abeja (santuario 3)
 
+> **2026-11-28**: la pupa sigue en el centro, ahora de la **nave excavada** dentro de la montaña (otra escena), entre los
+> edificios del santuario 1 migrados tal cual; su muelle llega a la base del edificio más cercano
+> (`entrenamiento:<edificio>:pie`) ([montana-hueca.md](montana-hueca.md)).
+
 Berón, 2026-11-26: «quitar el globo de nubes y en su lugar una pupa gigante semitransparente en el centro de la
 pirámide, rodeada de los árboles colosales, donde se vea la metamorfosis de *Apis cerana*; que se llegue andando o en
 alfombra, no solo por Áreas». Sustituye al globo de nubes (2026-11-25), que flotaba sobre el mar y solo se alcanzaba

@@ -1,5 +1,13 @@
 # Santuario 3: el bioma del aire y las alturas (rama `bioma-aire`)
 
+> **2026-11-28 (Berón: «todos los insectos gigantes estarían dentro de la montaña y podríamos volver a dejar sobre la
+> montaña su flora y fauna real»)**: fuera, sobre la montaña, vuelven su flora y su **fauna real a tamaño real**
+> (`data/bioma-real.ts` y `bioma-real-conducta.ts`: la de Khunjerab de antes de los insectos, con sus fuentes), dibujada
+> con el monte (`BiomeScene`). Los **insectos gigantes ×400** de lo que sigue viven **dentro**, en la orilla de la nave
+> ([montana-hueca.md](montana-hueca.md), `hallGeo`), dibujados como los gigantes del Carbonífero (sin colonias con
+> obreras dentro: el censo sigue contando colmenas y nidos). El censo y los trabajos de campo de la cabaña siguen siendo
+> los de los insectos.
+
 Berón, 2026-11-19: «crear un bioma donde hay animales y plantas de todo tipo para cumplir una cadena alimenticia y que
 sigan sus ciclos de vida naturales». Berón, 2026-11-20: cada santuario recrea el bioma de un elemento (reglas.md §1); el
 3 es **el aire y las alturas**: aves, cabras que trepan, acantilados, cañones y roedores. La isla subantártica de la

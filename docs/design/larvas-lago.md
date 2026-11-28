@@ -1,5 +1,7 @@
 # Las larvas del lago de la pirámide (santuario 3)
 
+> **2026-11-28**: el lago es el de la nave excavada (40 m de hondo, a nivel del mar del santuario 1): [montana-hueca.md](montana-hueca.md).
+
 Berón, 2026-11-26: el lago de la pirámide aloja larvas acuáticas (ninfas de libélula, efímeras, tricópteros…), todas
 visibles al bucear, cada una con su ciclo.
 

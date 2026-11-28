@@ -3,6 +3,17 @@
 Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documento. El historial anterior al
 2026-11-18 está en git y en `docs/design/`.
 
+## 2026-11-28
+
+- **Santuario 3, la montaña por dentro es otra escena**: en lugar de cuevas, tres **compuertas** de acero en la cara sur
+  (botón naranja «Entrar»/«Salir»; pantalla de carga al pasar); dentro, una **nave excavada** de 1280 m de lado y 40 m bajo
+  el mar con **los edificios del santuario 1 tal cual** (el mismo código: `buildTowers`) y dos edificios-árbol más con los
+  **pisos de entrenamiento de astronautas** (NBL, SVMF, centrífuga, supervivencia, simuladores, robótica, control,
+  gimnasio, trajes, centro médico) y el **criadero de insectos gigantes**; los servicios (dormir, comer, clínica, aulas…)
+  en los pisos del santuario 1 que los hacen. Las alfombras de compuertas, pies, copas y Starship abren **Áreas de la
+  nave** y vuelan directo (una ruta por viaje, ≤ 5 ms); las de un piso, a su edificio. Los **insectos gigantes**, el
+  Carbonífero y la pupa, dentro; sobre la montaña vuelve su **fauna real** ([montana-hueca.md](docs/design/montana-hueca.md)).
+
 ## 2026-11-26
 
 - **Santuario 3, aterrizaje a mano**: el rotor del S-92 es un disco arriba (bajo él solo el fuselaje) y la manga y los focos

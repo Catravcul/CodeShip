@@ -1,6 +1,7 @@
 // PX-51 Sanctuary 3, the biome of the air and the heights (docs/design/bioma-s3.md, pupa-abeja.md, larvas-lago.md,
 // carbonifero.md), on an iPhone 13 with visible taps only. The «Isla de las alturas» is a mountain of the Karakoram from
-// the river to the snows with its giant insects of Gilgit-Baltistán (×400); the hollow pyramid in it holds at its
+// the river to the snows with its real fauna (Khunjerab: ibex, markhor, snow leopard…); inside the mountain (another
+// scene, through its gates: montana-hueca.md) live its giant insects of Gilgit-Baltistán (×400), and the hall holds at its
 // middle the bee's pupa (Berón 2026-11-26: it takes the cloud globe's place), a translucent wax cell where an Asian
 // honeybee lives its metamorphosis, reached walking along the pier from a tree's foot; its lake holds the larvae of
 // the island's insects (dragonfly nymphs, mayflies, caddisflies, midges), seen diving; at the pyramid's north-east
@@ -70,12 +71,12 @@ export async function s3Bioma(j) {
   await j.taskSettings({ travel: "teletransporte", vehicle: "bioma" });
   await j.tap(".task-board .tb-close, .task-board [aria-label='Cerrar tareas']", "Cerrar tareas").catch(() => {});
 
-  const zones = ["estacion", "estepa", "rio", "bosque", "enebral", "garganta", "pradera", "pedrera", "farallon", "cresta", "nieves", "bosque-carbonifero"].map((z) => `bioma:${z}`);
+  const zones = ["estacion", "estepa", "rio", "bosque", "enebral", "garganta", "pradera", "pedrera", "farallon", "cresta", "nieves"].map((z) => `bioma:${z}`);
   const isl = await p.evaluate(() => {
     const c = window.codeshipS3;
     return { name: c.layout.islands.find((i) => i.id === "bioma")?.name, areas: c.layout.areas.filter((a) => a.island === "bioma").map((a) => ({ id: a.id, belt: a.belt?.id })), pupa: c.layout.areas.find((a) => a.id === "entrenamiento:pupa"), globe: c.layout.areas.some((a) => a.id.includes("globo")) };
   });
-  j.check("la Isla de las alturas tiene sus zonas del río a las nieves y el bosque del Carbonífero", isl.name === "Isla de las alturas" && zones.every((z) => isl.areas.some((a) => a.id === z)), isl.areas.map((a) => a.id).join(", "));
+  j.check("la Isla de las alturas tiene sus zonas del río a las nieves (el bosque del Carbonífero está dentro de la montaña)", isl.name === "Isla de las alturas" && zones.every((z) => isl.areas.some((a) => a.id === z)), isl.areas.map((a) => a.id).join(", "));
   j.check("Áreas tiene la pupa de la abeja en la montaña hueca, y ya no el globo de nubes", !!isl.pupa && !isl.globe, JSON.stringify(isl.pupa?.label));
 
   let maxCalls = 0;
@@ -172,7 +173,7 @@ export async function s3Bioma(j) {
     const near = c.biome.carbonView.lastLarvae.filter((q) => Math.hypot(q.x - cam.x, q.z - cam.z) < 60);
     return { y: cam.y, motion: c.body.motion, n: near.length, kinds: [...new Set(near.map((q) => q.species))], stages: [...new Set(near.map((q) => q.stage))], tag: document.querySelector(".s3-pupa-etapa:not(.hidden)")?.textContent ?? "" };
   });
-  j.check("bucea en el lago de la pirámide (la cámara bajo el agua)", under.motion === "agua" && under.y < 104, JSON.stringify(under));
+  j.check("bucea en el lago de la pirámide (la cámara bajo el agua)", under.motion === "agua" && under.y < 0, JSON.stringify(under));
   j.check("en el fondo viven larvas de los insectos: al menos 3 a la vista y de 2 especies, en distintas etapas", under.n >= 3 && under.kinds.length >= 2, JSON.stringify(under));
   j.check("buceando, la etiqueta dice la larva más cercana y su etapa", /·/.test(under.tag) && !/Abeja/.test(under.tag), under.tag);
   await capture(j, "lago-larvas", "Larvas del lago");
@@ -242,8 +243,8 @@ export async function s3Bioma(j) {
   }
 
   // ── The Carboniferous forest at the pyramid's north-east foot: its five trees, its giants walking.
-  went = await goArea(j, "bioma:bosque-carbonifero", "Bosque del Carbonífero");
-  j.check("«Ir» la lleva al bosque del Carbonífero, al pie de la pirámide", went, await p.evaluate(() => window.codeshipS3.body.area));
+  went = await goArea(j, "entrenamiento:bosque-carbonifero", "Bosque del Carbonífero");
+  j.check("«Ir» la lleva al bosque del Carbonífero, en la orilla de la nave dentro de la montaña", went, await p.evaluate(() => window.codeshipS3.body.area));
   const forest = await p.evaluate(() => {
     const c = window.codeshipS3;
     const b = c.body;

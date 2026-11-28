@@ -1657,6 +1657,15 @@ if (frameStats) (window as unknown as { codeshipS3: unknown }).codeshipS3 = {
   },
   hallCarpets,
   passGate,
+  /** Test hook: what is drawn at a point of the screen (its names up to the scene). */
+  pick(px: number, py: number) {
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(new THREE.Vector2((px / window.innerWidth) * 2 - 1, -(py / window.innerHeight) * 2 + 1), camera);
+    const hit = ray.intersectObjects(scene.children, true).find((h) => h.object.visible);
+    const names: string[] = [];
+    for (let o: THREE.Object3D | null = hit?.object ?? null; o; o = o.parent) names.push(o.name || o.type);
+    return { names, at: hit?.point };
+  },
   /** Test hook: where the camera looks (yaw, pitch). */
   look(y: number, p: number) {
     yaw = y;

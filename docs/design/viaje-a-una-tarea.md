@@ -20,6 +20,7 @@ Petición de Berón (2026-11-17): un engranaje junto al botón de cerrar que ocu
 
 - El vehículo es el ajuste `taskVehicle` de `codeship.ajustes` («auto» por defecto; `nodriza`, `estacion`, `modulo`, `todos`). «Automático» usa el vehículo en el que está ella al abrir la lista (`crewIn` de main.ts): el habitáculo y la cabina del LM son el módulo; las cubiertas, el puente y su paseo, la nave; la estación, su pantalla, la bahía y su paseo, la estación. Cada tarea es de un vehículo por su sitio (`place.vehicle`).
 - Viaje/Teletransporte y el vehículo son los mismos en la ventana **Áreas** del menú ([areas.md](areas.md)): un solo ajuste para las dos (`src/ui/task-settings.ts`).
+- Santuarios 1 y 3 (2026-11-28, sin servicios repetidos): sin vehículo ni isla; los ajustes solo tienen Viaje/Teletransporte y la lista enseña todas las tareas del santuario («Todo el santuario», `wholePlace`; [areas.md](areas.md#santuarios-1-y-3-solo-viajeteletransporte-2026-11-28)).
 - El grupo no se guarda: la lista abre siempre en «Todas», como antes.
 - La lista ocupa todo el ancho de la pantalla y tiene su propio ✕: el menú árbol se oculta mientras está abierta y vuelve tal como estaba al cerrarla (reglas.md §5.8).
 - Cerrar (✕ o Escape) cierra la lista desde cualquiera de las dos vistas; al abrirla, sale siempre la lista.

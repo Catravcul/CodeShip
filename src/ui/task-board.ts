@@ -1,6 +1,6 @@
 import { groupTasks, shownVehicle, tasksIn, type Task, type TaskGroupId, type Vehicle } from "@modules/tasks/application/task-list";
 import { settings } from "./settings-store";
-import { settingsClick, travelHtml, vehicleHtml } from "./task-settings";
+import { settingsClick, travelHtml, vehicleHtml, wholePlaceName } from "./task-settings";
 import { ICON } from "./icons";
 import { onCloseRequest, windowState } from "./hud-windows";
 import "./task-board.css";
@@ -91,7 +91,9 @@ export class TaskBoard {
   private render(): void {
     const all = this.source();
     const here = this.here();
-    const filter = settings.value.taskVehicle;
+    // A level with no repeated services (sanctuaries 1 and 3, task-settings.ts `wholePlace`): every task of the place.
+    const whole = wholePlaceName();
+    const filter = whole ? "todos" : settings.value.taskVehicle;
     const vehicle = shownVehicle(filter, here);
     const inVehicle = tasksIn(all, vehicle);
     const groups = groupTasks(inVehicle);
@@ -110,7 +112,7 @@ export class TaskBoard {
     const groupLabel = this.group ? groups.find((g) => g.id === this.group)?.label : undefined;
     const shown = groups.filter((g) => !this.group || g.id === this.group);
     const count = shown.reduce((n, g) => n + g.tasks.length, 0);
-    const where = vehicle ? `${IN[vehicle]}${filter === "auto" ? " (automático)" : ""}` : "Todos los vehículos";
+    const where = whole ?? (vehicle ? `${IN[vehicle]}${filter === "auto" ? " (automático)" : ""}` : "Todos los vehículos");
     const scope = `<p class="tb-scope">${where}${groupLabel ? ` · ${groupLabel}` : ""} · ${count} de ${all.length}</p>`;
     // The groups are chips in the list itself (Berón, 2026-11-18); the vehicle and the way there, behind the gear.
     const chip = (id: TaskGroupId | null, text: string, k: number) => `<button class="chip ${this.group === id ? "on" : ""}" data-group="${id ?? ""}" aria-pressed="${this.group === id}">${text} <small>${k}</small></button>`;

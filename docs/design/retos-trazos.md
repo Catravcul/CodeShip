@@ -20,6 +20,25 @@ Los pasos del reto siguen ahí y suenan igual que antes: al terminar el glifo *i
 hasta ⌈(*i*+1)·*N*/*G*⌉ de *N* (con todas las partes de un paso de ordenar), y cada uno lanza su animación del puesto
 (`beat(index, part)`). El pie dice «Pasos 2/5».
 
+## Vista HUD y la escena encuadrada (2026-11-28)
+
+Berón: «en los retos de sanctuary3 falta la vista hud, he realizado el reto de dar una clase en el aula y no he visto la
+animación, asegúrate que se encuadre la cámara para ver las animaciones».
+
+- **Vista HUD / Vista panel** en la barra de arriba, junto a «×»: el mismo ajuste que la hoja de opciones de todos los
+  niveles y que los ajustes generales («Vista de retos», `compactUi` de `ui/duel-view.ts`). En HUD el reto flota sobre la
+  escena: arriba el título y la fórmula, abajo el panel de dibujo transparente (un velo tenue para leer la guía) con la
+  pista y los pasos; en medio, la escena.
+- **La cámara encuadra en la franja libre**, medida en la propia pantalla del reto (`ui/sheet-band.ts` mide `.trace`
+  igual que `.duel`): en panel, encima del panel; en HUD, entre la fórmula y el panel de dibujo. El santuario 3 la mide
+  para todos sus retos (`retoLens` de `aerial-sanctuary.ts`: puestos, servicios, vuelos, mesa de campo) y la vuelve a
+  medir al cambiar de vista.
+- **Los servicios del campus** (la clase del aula, la cata, la cuarentena, el estudio, la guantera, el insectario, la
+  colmena, la Veggie, la impresora, la reunión, el descanso) antes no encuadraban ni animaban: ahora ella se pone ante el
+  servicio, la cámara entra por detrás de su hombro derecho (`focusReto`) y cada paso dibujado se representa con la
+  animación de ese paso del santuario 1 (`stepAnimation`, con el reproductor de pasos `StepShow` de las naves). El
+  mando de la cámara gira alrededor de ella.
+
 ## Código
 
 | Pieza | Dónde |

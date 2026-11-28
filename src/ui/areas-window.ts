@@ -2,7 +2,7 @@ import { scopeOfNode, type AreaMap, type AreaNode, type AreaScope, type AreaVec 
 import type { Vehicle } from "@modules/tasks/application/task-list";
 import { settings } from "./settings-store";
 import { onCloseRequest, windowState } from "./hud-windows";
-import { settingsClick, travelHtml, vehicleHtml, VEHICLE_NAME } from "./task-settings";
+import { settingsClick, travelHtml, vehicleHtml, VEHICLE_NAME, wholePlaceName } from "./task-settings";
 import type { TaskTravel } from "@modules/settings/domain/settings";
 import { asteroidDecor, baseRings, MapWindow, markPicked, optionsHtml, outlinePath, type MapOption } from "./map-window";
 import { MapSelection, nearestPick, orbitProjector, type MapView } from "./map-window-model";
@@ -24,8 +24,10 @@ export interface AreasDeps {
   /** The window's own names and HUD id: Áreas by default; the workday's Misiones reuses it (Berón 2026-11-18). */
   readonly kind?: { readonly title: string; readonly window: HudWindow; readonly bodyClass: string; readonly className: string };
   /**
-   * A level that is one place (sanctuary 1): the name of the whole («Todo el santuario»), and no vehicle list in the
-   * gear. Levels with several (the islands, the vehicles) leave it out: the gear lists them first, as in Tareas.
+   * A level that is one place: the name of the whole («Todo el santuario»). Its gear holds only Viaje/Teletransporte
+   * and the list shows all of it (no vehicle, island or building filter; the category chips stay). By default the
+   * level's own (task-settings.ts `wholePlace`: sanctuaries 1 and 3); the ships leave it out: the gear lists the
+   * vehicles and their modules or decks, as in Tareas.
    */
   readonly whole?: string;
   /**
@@ -162,6 +164,7 @@ export class AreasWindow {
 
   /** The vehicle shown: the setting, «Automático» (and «Todos», which one map cannot show) where she is. */
   private vehicle(): Vehicle {
+    if (this.whole) return this.d.here();
     const f = settings.value.taskVehicle;
     return f === "auto" || f === "todos" ? this.d.here() : f;
   }
@@ -171,7 +174,12 @@ export class AreasWindow {
    * hierarchy under the vehicle or island (`AreaMap.scopes`: sanctuary 1's buildings and caps, sanctuary 3's buildings
    * and floors, the ships' modules and decks). «Todo» shows everything; an option, only its areas.
    */
+  /** The whole place, when it is one (no filters in the gear). */
+  private get whole(): string | undefined {
+    return this.d.whole ?? wholePlaceName();
+  }
   private scopes(map = this.shown): readonly AreaScope[] {
+    if (this.whole) return [];
     return map?.scopes ?? [];
   }
   /** Where she is as a scope, in the place shown (another island or vehicle has no «where she is»). */
@@ -181,6 +189,7 @@ export class AreasWindow {
   }
   /** The scope in force: the chosen one, or where she is («Automático»). */
   private scope(): { kind: string; id: string } | undefined {
+    if (this.whole) return undefined;
     if (this.scopeKind === "auto") return this.scopeHere();
     return this.scopeKind && this.scopeId ? { kind: this.scopeKind, id: this.scopeId } : undefined;
   }
@@ -249,7 +258,7 @@ export class AreasWindow {
     this.el.classList.toggle("ar-in-settings", settingsView);
     if (settingsView) {
       const map = this.d.map(this.vehicle());
-      this.win.settingsBox!.innerHTML = `<h2 class="ar-title">Ajustes de ${t}</h2>${this.d.whole ? "" : vehicleHtml("ar-s-vehicle", this.d.here(), undefined, false)}${this.scopeHtml(map)}${this.d.travel ? `${travelHtml("ar-s-travel", this.d.travel.get(), this.d.travel.heading)}<small class="tb-travel-help">${esc(this.d.travel.help)}</small>` : `${travelHtml("ar-s-travel")}<small class="tb-travel-help">Los mismos ajustes que en Tareas.</small>`}`;
+      this.win.settingsBox!.innerHTML = `<h2 class="ar-title">Ajustes de ${t}</h2>${this.whole ? "" : vehicleHtml("ar-s-vehicle", this.d.here(), undefined, false)}${this.scopeHtml(map)}${this.d.travel ? `${travelHtml("ar-s-travel", this.d.travel.get(), this.d.travel.heading)}<small class="tb-travel-help">${esc(this.d.travel.help)}</small>` : `${travelHtml("ar-s-travel")}<small class="tb-travel-help">Los mismos ajustes que en Tareas.</small>`}`;
       return;
     }
     this.shown = this.d.map(this.vehicle());
@@ -269,7 +278,7 @@ export class AreasWindow {
       const on = this.scopeKind === kind && (kind === "auto" || kind === "" || this.scopeId === id);
       return `<button role="radio" data-scope-kind="${esc(kind)}" data-scope-id="${esc(id)}" aria-checked="${on}" class="${on ? "on" : ""}${cls}">${html}</button>`;
     };
-    const whole = this.d.whole ?? `Todo: ${map ? VEHICLE_NAME[map.vehicle] : ""}`;
+    const whole = `Todo: ${map ? VEHICLE_NAME[map.vehicle] : ""}`;
     const here = this.scopeLabel(this.scopeHere(map), map);
     const top = `${btn("auto", "", `Automático: donde está ella <small>${esc(here ?? whole)}</small>`, " auto")}${btn("", "", whole)}`;
     const groups = scopes.map((g, k) => `<h3 class="tb-group" id="ar-s-scope-${k}">${esc(g.label)}</h3><div class="tb-vehicles ar-scope-opts" role="radiogroup" aria-labelledby="ar-s-scope-${k}">${g.options.map((o) => btn(g.kind, o.id, esc(o.label))).join("")}</div>`).join("");
@@ -286,7 +295,7 @@ export class AreasWindow {
     if (rebuild) {
       const named = this.scopeLabel();
       const where = named ? ` · ${named}${this.scopeKind === "auto" ? " (donde está ella)" : ""}` : "";
-      const scope = `<p class="tb-scope">${VEHICLE_NAME[v]}${auto && !this.d.whole ? " (automático)" : ""}${where} · ${travel}</p>`;
+      const scope = `<p class="tb-scope">${this.whole ?? `${VEHICLE_NAME[v]}${auto ? " (automático)" : ""}`}${where} · ${travel}</p>`;
       if (!map?.nodes.length) {
         this.side.innerHTML = `${scope}<p class="tb-empty">${this.d.empty ?? `No hay plano de ${VEHICLE_NAME[v].toLowerCase()} ahora.`}</p>`;
         return;

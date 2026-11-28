@@ -321,7 +321,9 @@ export async function s3Iniciacion(j) {
     if (fwdNow < fwdWant) await tapPad("Cíclico adelante");
     else if (fwdNow > fwdWant) await tapPad("Cíclico atrás");
     // Hovering short of the pad: a nudge of cyclic, then level it again (a pilot's small corrections).
-    if (high && d > 6 && d <= 32 && !(h.ask.up < 0 && d < 9.5) && Math.hypot(h.vFwd, h.vSide) < 0.8 && h.ask.fwd === 0 && h.ask.side === 0) {
+    // At any height clear of what stands round the deck (≥ 4 m over it): low down, a nudge is quicker than climbing back
+    // up to come round again (CI run 46117242755 hovered 9 m off the centre, going up and down, until the time ran out).
+    if (h.y > dest.y + 4 && d > 6 && d <= 32 && !(h.ask.up < 0 && d < 9.5) && Math.hypot(h.vFwd, h.vSide) < 0.8 && h.ask.fwd === 0 && h.ask.side === 0) {
       // The pad ahead (+) or behind, and to her left (+) or right: a nudge along the longer of the two.
       const ahead = d * Math.cos(r);
       const left = d * Math.sin(r);
@@ -353,7 +355,9 @@ export async function s3Iniciacion(j) {
     // while within 9,5 m: with one edge at 8 m, a drift across it sent her back up and down again until the time ran
     // out (CI run 45888147207, 7,9 m from the centre).
     const over = d < 8 || (d < 9.5 && h.ask.up < 0);
-    const upWant = over && Math.hypot(h.vFwd, h.vSide) < 1 ? (h.y - dest.y > 15 ? -3 : -1) : !over && d < 600 && h.y < dest.y + 55 ? 2 : 0;
+    // Within 32 m and not yet over it she holds her height, at least 6 m over the deck (the nudges above bring her over
+    // it); farther, she climbs to cruise.
+    const upWant = over && Math.hypot(h.vFwd, h.vSide) < 1 ? (h.y - dest.y > 15 ? -3 : -1) : !over && ((d > 32 && d < 600 && h.y < dest.y + 55) || (d <= 32 && h.y < dest.y + 6)) ? 2 : 0;
     if (h.ask.up > upWant) await tapPad("Colectivo abajo: bajar");
     else if (h.ask.up < upWant) await tapPad("Colectivo arriba: subir");
     await p.waitForTimeout(500);

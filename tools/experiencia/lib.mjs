@@ -417,7 +417,12 @@ export class Journey {
    */
   async taskSettings(choices) {
     let ok = await this.tap('.task-board .board-head [data-view][aria-label="Ajustes de tareas"]', "⚙︎ Ajustes de tareas");
-    for (const [k, v] of Object.entries(choices)) ok = (await this.tap(`.task-board .tb-settings [data-${k}="${v}"]`, `${k}: ${v}`)) && ok;
+    for (const [k, v] of Object.entries(choices)) {
+      // Sanctuaries 1 and 3 have no vehicle setting (Berón 2026-11-28: no repeated services there; the list is the whole
+      // sanctuary, wholePlace in ui/task-settings.ts): that choice is already made.
+      if (k === "vehicle" && (await this.page.locator(".task-board .tb-settings [data-vehicle]").count()) === 0) continue;
+      ok = (await this.tap(`.task-board .tb-settings [data-${k}="${v}"]`, `${k}: ${v}`)) && ok;
+    }
     return (await this.tap('.task-board .board-head [data-view][aria-label="Volver a la lista de tareas"]', "Lista de tareas")) && ok;
   }
 

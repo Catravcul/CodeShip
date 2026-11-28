@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { LAKE_LARVAE } from "../data/larvas-lago";
-import { cycleDays, larvaPose, stageAt, type LakeFrame } from "./larvas-lago";
+import { cycleDays, larvaeCensus, larvaPose, stageAt, type LakeFrame } from "./larvas-lago";
 
 const lake: LakeFrame = { x: 0, z: 0, floorY: 100, lakeTop: 104, r0: 40, r1: 90, keepOut: [{ x0: 30, x1: 60, z0: -15, z1: 15 }] };
 const spec = (id: string) => LAKE_LARVAE.find((s) => s.id === id)!;
@@ -52,6 +52,18 @@ describe("las larvas del lago de la pirámide viven su ciclo real", () => {
     for (const s of LAKE_LARVAE) {
       const seen = new Set(Array.from({ length: s.drawn }, (_, i) => larvaPose(s, i, 0, 0, lake, 1).stage));
       expect(seen.size, s.id).toBeGreaterThanOrEqual(2);
+    }
+  });
+});
+
+describe("larvaeCensus (the hall's census board: the lake's larvae by stage)", () => {
+  it("counts every drawn larva of a species once, by its stage now, in the order of its cycle", () => {
+    for (const s of LAKE_LARVAE) {
+      const rows = larvaeCensus(s, 37);
+      expect(rows.reduce((t, r) => t + r.n, 0)).toBe(s.drawn);
+      const order = s.stages.map((x) => x.stage);
+      expect(rows.map((r) => order.indexOf(r.stage))).toEqual([...rows.map((r) => order.indexOf(r.stage))].sort((a, b) => a - b));
+      for (const r of rows) expect(r.n).toBeGreaterThan(0);
     }
   });
 });

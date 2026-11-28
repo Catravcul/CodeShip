@@ -9,6 +9,7 @@ import { CARBON_ZONE } from "../data/carbonifero";
 import { AGENT_NAMES, BIOME_ETHOGRAMS, BIOME_TRAITS, COURTSHIPS, RIVALRIES, agentKey, agentTraits } from "../data/bioma-conducta";
 import { advance, createBiome, dormantIn, hungerOf, huntKill, lifeStageOf, mate, monthOfDay, quietNow, scaleOf, stageOfIndividual, BIO_DAYS_PER_GAME_DAY, STEP_GAME_DAYS, type BiomeState, type Individual, type LifeStage } from "../domain/bioma";
 import { heightAt, slopeAt } from "../domain/mountain";
+import { HOLLOW, NAVE, SHORE, onShore } from "../data/montana";
 
 /**
  * THE BIOME LIVING ON SCREEN (docs/design/bioma-s3.md): the food chain of domain/bioma.ts (births, growth, hunger,
@@ -111,6 +112,56 @@ export function biomeGeo(_k = 1, zones: readonly BiomeZone[] = BIOME_ZONES) {
   };
 }
 export type BiomeGeo = ReturnType<typeof biomeGeo>;
+
+/**
+ * The frame of the giant insects INSIDE the mountain (montana-hueca.md, Berón 2026-11-28): the hall's shore (data/
+ * montana.ts SHORE), a flat band of rock at the lake's level along the walls. Each of the island's zones is the stretch
+ * of shore in its direction from the middle (the river's to the west, the meadow's to the east…), so every species
+ * keeps its neighbours; the Carboniferous forest has its own corner (its zone's direction too).
+ */
+export function hallGeo(zones: readonly BiomeZone[] = BIOME_ZONES) {
+  const H = HOLLOW;
+  const mid = (SHORE.inner + NAVE.half - 1) / 2;
+  const band = (NAVE.half - 1 - SHORE.inner) / 2 - 4;
+  const zone = (id: string) => zones.find((q) => q.id === id) ?? zones[0]!;
+  /** A point of the shore in the direction (x, z) from the middle (the square's ring at its middle line). */
+  const onRing = (x: number, z: number) => {
+    const a = Math.atan2(z, x);
+    const c = Math.cos(a);
+    const s = Math.sin(a);
+    const k = mid / Math.max(Math.abs(c), Math.abs(s));
+    return { x: H.x + c * k, z: H.z + s * k };
+  };
+  const clampToShore = (x: number, z: number) => {
+    const dx = x - H.x;
+    const dz = z - H.z;
+    const d = Math.max(Math.abs(dx), Math.abs(dz));
+    if (d >= SHORE.inner + 2 && d <= NAVE.half - 3) return { x, z };
+    const k = Math.min(NAVE.half - 3, Math.max(SHORE.inner + 2, d)) / (d || 1);
+    return { x: H.x + dx * k, z: H.z + dz * k };
+  };
+  const ground = (_x: number, _z: number) => SHORE.y;
+  return {
+    world: (x: number, z: number) => onRing(x, z),
+    local: (x: number, z: number) => ({ x: x - H.x, z: z - H.z }),
+    ground,
+    steep: (_x: number, _z: number) => 0,
+    isSea: (x: number, z: number) => !onShore(x, z),
+    zone(id: string): { x: number; z: number; r: number } {
+      const q = zone(id);
+      return { ...onRing(q.point.x, q.point.z), r: Math.min(band, q.r) };
+    },
+    home(habitat: Habitat, seed: number, _rock = false): { x: number; z: number; r: number } {
+      const q = zone(ZONE_OF[habitat] ?? habitat);
+      const c = onRing(q.point.x, q.point.z);
+      const a = hash01(seed, 2) * Math.PI * 2;
+      const d = Math.sqrt(hash01(seed, 3)) * Math.min(band, q.r);
+      return { ...clampToShore(c.x + Math.cos(a) * d, c.z + Math.sin(a) * d), r: Math.min(30, band) };
+    },
+  };
+}
+/** The Carboniferous giants inside the mountain: the hall's shore, with their forest's zone. */
+export const carbonHallGeo = (): BiomeGeo => hallGeo([CARBON_ZONE.value, ...BIOME_ZONES]);
 /** The frame of the Carboniferous forest at the pyramid's foot (data/carbonifero.ts): the island's, with its zone. */
 export const carbonGeo = (): BiomeGeo => biomeGeo(1, [CARBON_ZONE.value, ...BIOME_ZONES]);
 

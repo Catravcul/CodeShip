@@ -1,25 +1,24 @@
 import * as THREE from "three";
 import type { S3Layout } from "@modules/aerial-sanctuary/data/layout";
-import { CORE_DEF, INNER_H, INNER_HALF, caves } from "@modules/aerial-sanctuary/data/bioma-island";
-import { HOLLOW } from "@modules/aerial-sanctuary/data/montana";
-import { buildGiantTrees } from "./s3-giant-trees";
+import { HOLLOW, NAVE } from "@modules/aerial-sanctuary/data/montana";
 
 /**
- * The hollow mountain seen from inside (docs/design/montana-hueca.md): the pyramid's four inner faces of earth and
- * stone, lit and pale (bright, with no shadows), the caves' holes in its south face, and the flooded Starship standing
- * in the lake: its steel hull with the airlock's door, the nose and the four flaps. The giant trees are drawn by
- * s3-giant-trees.ts; their floors are blocks of the layout (aerial-models.ts buildBlocks, their looks in LOOKS below).
+ * The hall inside the mountain (docs/design/montana-hueca.md), a scene of its own: its four walls of pale rock dug
+ * from under the sea, its pyramid roof lit like a sky (bright, with no shadows), the lake's sandy bed, and the flooded
+ * Starship standing in the lake: its steel hull with the airlock's door, the nose and the four flaps. Sanctuary 1's
+ * buildings are drawn by sanctuary 1's own scene code (adapters/three/s1-models.ts); the gates' leaves, docks and the
+ * training rooms are blocks of the layout (aerial-models.ts buildBlocks, their looks in MOUNTAIN_LOOKS below).
  */
 const mat = (c: number, o: Partial<THREE.MeshStandardMaterialParameters> = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, metalness: 0.05, ...o });
 
-/** The looks of the hollow's blocks (data/montana.ts). */
+/** The looks of the mountain's blocks (data/montana.ts, data/bioma-island.ts). */
 export const MOUNTAIN_LOOKS: Record<string, THREE.Material> = {
-  raices: mat(0x5a3d28, { flatShading: true }),
-  "piso-arbol": mat(0xb89a72),
-  riostra: mat(0x5a3d28),
-  "roca-cueva": mat(0x8a7f70, { flatShading: true }),
   "suelo-cueva": mat(0x9a8f7e),
-  "repisa-cueva": mat(0x7d7366, { flatShading: true }),
+  orilla: mat(0x8a7f70, { flatShading: true }),
+  raices: mat(0x5a3d28, { flatShading: true }),
+  compuerta: mat(0x6f7880, { metalness: 0.6, roughness: 0.4 }),
+  "marco-compuerta": mat(0x3d4247, { metalness: 0.5, roughness: 0.5 }),
+  "muelle-compuerta": mat(0x8d949a, { metalness: 0.2 }),
   pasarela: mat(0x9aa1a8, { metalness: 0.5, roughness: 0.4 }),
   "equipo-starship": mat(0xd0d5da, { metalness: 0.4, roughness: 0.5 }),
   "escotilla-starship": mat(0x3d4650, { metalness: 0.5, roughness: 0.4 }),
@@ -28,51 +27,34 @@ export const MOUNTAIN_LOOKS: Record<string, THREE.Material> = {
 /** The lake and the Starship's water: clear and light, so the bottom shows through it. */
 export const isClearWater = (id: string) => id === "lago-montana" || id.startsWith("starship-");
 
-/** One inner face of the pyramid: a triangle in (u along its foot, y up) with holes, mapped onto its slope. */
-function face(side: number, holes: readonly { u0: number; u1: number; y0: number; y1: number }[]): THREE.BufferGeometry {
-  const y0 = CORE_DEF.baseY;
-  const shape = new THREE.Shape([new THREE.Vector2(-INNER_HALF, y0), new THREE.Vector2(INNER_HALF, y0), new THREE.Vector2(0, y0 + INNER_H)]);
-  for (const h of holes) shape.holes.push(new THREE.Path([new THREE.Vector2(h.u0, h.y0), new THREE.Vector2(h.u0, h.y1), new THREE.Vector2(h.u1, h.y1), new THREE.Vector2(h.u1, h.y0)]));
-  const g = new THREE.ShapeGeometry(shape);
-  const pos = g.attributes.position!;
-  const turn = (side * Math.PI) / 2;
-  const c = Math.cos(turn);
-  const s = Math.sin(turn);
-  for (let i = 0; i < pos.count; i++) {
-    const u = pos.getX(i);
-    const y = pos.getY(i);
-    // The south face (side 0) at −z: its distance from the middle shrinks as it rises.
-    const d = INNER_HALF * (1 - (y - y0) / INNER_H);
-    const lx = u;
-    const lz = -d;
-    pos.setXYZ(i, HOLLOW.x + lx * c - lz * s, y, HOLLOW.z + lx * s + lz * c);
-  }
-  g.computeVertexNormals();
-  return g;
-}
-
+/** The hall: walls, roof, the lake's bed and the Starship. */
 export function buildMountain(L: S3Layout): THREE.Group {
   const g = new THREE.Group();
-  g.name = "montana-hueca";
-  // The shell, seen from inside: warm pale earth and stone, a little self-lit (the light panels of its ceiling).
-  const shell = mat(0xd9cbb0, { side: THREE.DoubleSide, emissive: 0x3a3226, flatShading: true });
-  const holes = caves().map((c) => {
-    const u = c.to.x - CORE_DEF.x;
-    return { u0: u - c.half, u1: u + c.half, y0: c.y, y1: c.y + c.vault };
-  });
+  g.name = "nave-montana";
+  const N = NAVE;
+  // The rock, seen from inside: warm pale stone, a little self-lit (the light panels of its roof).
+  const rock = mat(0xd9cbb0, { side: THREE.DoubleSide, emissive: 0x3a3226, flatShading: true });
+  const h = N.wallTopY - N.bottomY;
   for (let side = 0; side < 4; side++) {
-    const m = new THREE.Mesh(face(side, side === 0 ? holes : []), shell);
-    m.name = `montana-cara-${side}`;
-    g.add(m);
+    const wall = new THREE.Mesh(new THREE.PlaneGeometry(2 * N.half, h), rock);
+    const a = (side * Math.PI) / 2;
+    wall.position.set(HOLLOW.x - Math.sin(a) * N.half, N.bottomY + h / 2, HOLLOW.z - Math.cos(a) * N.half);
+    wall.rotation.y = a;
+    wall.name = `nave-muro-${side}`;
+    g.add(wall);
   }
+  // The roof: a pyramid of four faces from the walls' top to the apex.
+  const roof = new THREE.ConeGeometry(N.half * Math.SQRT2, N.apexY - N.wallTopY, 4, 1, true);
+  roof.rotateY(Math.PI / 4);
+  const top = new THREE.Mesh(roof, mat(0xf0e8d6, { side: THREE.DoubleSide, emissive: 0x6a6150, flatShading: true }));
+  top.position.set(HOLLOW.x, (N.wallTopY + N.apexY) / 2, HOLLOW.z);
+  top.name = "nave-techo";
+  g.add(top);
   // The lake's bottom: pale sand, seen through the clear water.
-  const bed = new THREE.Mesh(new THREE.PlaneGeometry(2 * INNER_HALF, 2 * INNER_HALF), mat(0xe6dcc0));
+  const bed = new THREE.Mesh(new THREE.PlaneGeometry(2 * N.half, 2 * N.half), mat(0xe6dcc0));
   bed.rotation.x = -Math.PI / 2;
   bed.position.set(HOLLOW.x, HOLLOW.floorY + 0.02, HOLLOW.z);
   g.add(bed);
-  // The giant trees as trees: bark, roots, limbs, leaves, fruit and flowers (s3-giant-trees.ts; their trunks' solid is
-  // the layout's «tronco-gigante» block, not drawn).
-  g.add(buildGiantTrees(L.hollow));
   const ship = L.props.find((p) => p.kind === "lake-starship");
   if (ship?.size) g.add(starship(ship.x, ship.y, ship.z, ship.size.x / 2, ship.size.y, L.hollow.starship.deck3Y));
   return g;

@@ -17,6 +17,18 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
   escena en la franja que deja libre cada vista; los servicios del campus (la clase del aula y los demás) encuadran a
   Doménica y representan cada paso; en panel cabe entera, y en el simulador de Dragon su cabeza ya no tapa la pantalla ([retos-trazos.md](docs/design/retos-trazos.md); capturas
   `docs/screenshots/s3-reto-aula-{panel,hud}-movil.png`).
+- **Santuario 3, dentro de la montaña**: las colonias de los insectos gigantes (colmenas, nidos, hormigueros y sus
+  obreras) en la orilla de la nave; el **tablón del censo de la nave** en el criadero (insectos gigantes, Carbonífero y
+  larvas del lago por etapa) y el de la cabaña de fuera con la **fauna real**; memoria medida al entrar y andar (sin
+  fugas; la caché de la rejilla del paseo con tope). [montana-hueca.md](docs/design/montana-hueca.md)
+- **Santuario 3, la montaña por dentro es otra escena**: en lugar de cuevas, tres **compuertas** de acero en la cara sur
+  (botón naranja «Entrar»/«Salir»; pantalla de carga al pasar); dentro, una **nave excavada** de 1280 m de lado y 40 m bajo
+  el mar con **los edificios del santuario 1 tal cual** (el mismo código: `buildTowers`) y dos edificios-árbol más con los
+  **pisos de entrenamiento de astronautas** (NBL, SVMF, centrífuga, supervivencia, simuladores, robótica, control,
+  gimnasio, trajes, centro médico) y el **criadero de insectos gigantes**; los servicios (dormir, comer, clínica, aulas…)
+  en los pisos del santuario 1 que los hacen. Las alfombras de compuertas, pies, copas y Starship abren **Áreas de la
+  nave** y vuelan directo (una ruta por viaje, ≤ 5 ms); las de un piso, a su edificio. Los **insectos gigantes**, el
+  Carbonífero y la pupa, dentro; sobre la montaña vuelve su **fauna real** ([montana-hueca.md](docs/design/montana-hueca.md)).
 
 ## 2026-11-26
 

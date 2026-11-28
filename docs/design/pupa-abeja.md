@@ -1,5 +1,9 @@
 # La pupa de la abeja (santuario 3)
 
+> **2026-11-28**: la pupa sigue en el centro, ahora de la **nave excavada** dentro de la montaña (otra escena), entre los
+> edificios del santuario 1 migrados tal cual; su muelle llega a la base del edificio más cercano
+> (`entrenamiento:<edificio>:pie`) ([montana-hueca.md](montana-hueca.md)).
+
 Berón, 2026-11-26: «quitar el globo de nubes y en su lugar una pupa gigante semitransparente en el centro de la
 pirámide, rodeada de los árboles colosales, donde se vea la metamorfosis de *Apis cerana*; que se llegue andando o en
 alfombra, no solo por Áreas». Sustituye al globo de nubes (2026-11-25), que flotaba sobre el mar y solo se alcanzaba
@@ -114,3 +118,9 @@ el cuerpo, y la adulta que roe la tapa y sale volando). Se llega **andando**: de
 cercano (donde paran las alfombras) sale un muelle hasta una galería alrededor de la celda; también se puede nadar
 alrededor y está en Áreas. Su tamaño se calcula con el sitio libre del centro, así que sigue cabiendo si la montaña
 cambia.
+
+**Ir andando** (2026-11-28): desde el pie del edificio más cercano, «Ir» con «Viaje: el camino real» sigue el camino del
+grafo por el muelle sin salirse; `pupa-abeja.test.ts` comprueba con el juego (k = 1) que cada medio metro del camino
+está sobre suelo y que andándolo nunca cae al lago. PX-51 lo hace así, como un jugador (antes empujaba el joystick tramo
+a tramo y se desviaba al agua: era fallo del recorrido, no del juego). `EXPERIENCIA_TRAMO=pupa-tablones` corre solo la
+pupa y los dos tablones del censo (24/24 el 2026-11-28; captura del de dentro: `docs/screenshots/s3b-censo-nave-movil.png`).

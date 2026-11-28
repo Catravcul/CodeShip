@@ -128,15 +128,15 @@ const SHOTS = [
   { id: "entrenamiento:medico-hipobarica", title: "Cámara hipobárica", label: "hipobarica", look: { dx: -6 }, stand: 0, back: 1, pitch: -0.15, kinds: [] },
   { id: "entrenamiento:supervivencia", title: "Supervivencia en el agua", label: "supervivencia", go: { pool: "supervivencia-piscina" }, look: { kind: "mets" }, stand: 0, back: 0.5, pitch: -0.25, kinds: ["mets", "balsa", "izado", "silla-socorrista", "chalecos"] },
   { id: "entrenamiento:helipuerto", title: "Helipuerto", label: "helipuerto", look: { kind: "manga" }, stand: 10, pitch: -0.15, kinds: [] },
-  // The campus's services in the trees of the hollow mountain, one of each kind (montana-hueca.md §Auditoría del campus:
-  // living, food, health, science, production; the others share their fixtures and would only lengthen the run).
-  { id: "entrenamiento:residencia", title: "Residencia de la tripulación", label: "residencia", look: { kind: "cama" }, stand: 4, pitch: -0.15, kinds: ["cama", "armario", "sofa", "mesa-reunion"] },
-  { id: "entrenamiento:restaurante", title: "Restaurante y laboratorio de alimentos", label: "restaurante", look: { kind: "cocina" }, stand: 5, pitch: -0.12, kinds: ["cocina", "mostrador", "nevera", "mesa-reunion", "silla"] },
-  { id: "entrenamiento:clinica", title: "Clínica de medicina de vuelo", label: "clinica", look: { kind: "sillon-dental" }, stand: 4, pitch: -0.15, kinds: ["camilla-exam", "sillon-dental", "lavabo", "cama"] },
-  { id: "entrenamiento:laboratorio", title: "Laboratorio de muestras", label: "laboratorio", look: { kind: "guantera" }, stand: 4, pitch: -0.12, kinds: ["guantera", "nevera", "lavabo"] },
-  { id: "entrenamiento:taller", title: "Taller de prototipos", label: "taller", look: { kind: "impresora-3d" }, stand: 4, pitch: -0.12, kinds: ["impresora-3d", "torno", "fresadora", "banco-trabajo"] },
-  // Inside the hollow mountain, from the foot of the training tree: the lake, the giant trees and their carpet stations.
-  { id: "entrenamiento:arbol-entrenamiento:pie", title: "Árbol del entrenamiento · pie", label: "montana", look: { centre: "entrenamiento:lago" }, stand: 0, pitch: 0.1, kinds: [] },
+  // The campus's services, inside the mountain on sanctuary 1's floors that do them (montana-hueca.md: the crown's
+  // aposentos, the dining room, the hospital, the laboratories, the workshop): sanctuary 1's furniture, not fixtures.
+  { id: "entrenamiento:residencia", title: "Residencia de la tripulación", label: "residencia", look: { centre: "ciencias:cima" }, stand: 4, pitch: -0.15, kinds: [] },
+  { id: "entrenamiento:restaurante", title: "Restaurante", label: "restaurante", look: { centre: "servicios:piso-1" }, stand: 5, pitch: -0.12, kinds: [] },
+  { id: "entrenamiento:clinica", title: "Clínica de medicina de vuelo", label: "clinica", look: { centre: "servicios:piso-2" }, stand: 4, pitch: -0.15, kinds: [] },
+  { id: "entrenamiento:laboratorio", title: "Laboratorio de muestras", label: "laboratorio", look: { centre: "ciencias:piso-1" }, stand: 4, pitch: -0.12, kinds: [] },
+  { id: "entrenamiento:taller", title: "Taller de prototipos", label: "taller", look: { centre: "produccion:piso-2" }, stand: 4, pitch: -0.12, kinds: [] },
+  // Inside the mountain, from the foot of sanctuary 1's training tree: the lake, the buildings and their carpet stations.
+  { id: "entrenamiento:entrenamiento:pie", title: "Entrenamiento · pie", label: "montana", look: { centre: "entrenamiento:lago" }, stand: 0, pitch: 0.1, kinds: [] },
 ];
 
 export async function s3Detalle(j) {

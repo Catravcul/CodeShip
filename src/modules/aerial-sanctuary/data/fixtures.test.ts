@@ -43,7 +43,10 @@ for (const k of [1, 1.5]) {
       const count = (room: string) => F.filter((f) => f.area.startsWith(`entrenamiento:${room}`) && f.kind !== "caja" && f.kind !== "luz-techo").length;
       for (const room of ["nbl", "svmf", "control", "gimnasio", "medico", "supervivencia"]) expect(count(room), room).toBeGreaterThanOrEqual(12);
       const kinds = new Set(F.map((f) => f.kind));
-      for (const want of ["grua-puente", "grua-pluma", "soporte-emu", "puesto-buzos", "camaras-buceo", "hiperbarica", "maqueta-modulo", "consola-fcr", "pantallas-frente", "camilla-exam", "ecg", "ecografo", "audiometro", "asiento-camara", "consola-camara", "cinta", "bici", "jaula", "ared", "taquillas", "mets", "balsa", "izado", "luz-pista", "manga", "surtidor", "capsula-orion", "cama", "guantera", "insectario", "colmena", "camara-cultivo", "impresora-3d", "rack-ispr"] as const) expect(kinds.has(want), want).toBe(true);
+      for (const want of ["grua-puente", "grua-pluma", "soporte-emu", "puesto-buzos", "camaras-buceo", "hiperbarica", "maqueta-modulo", "consola-fcr", "pantallas-frente", "camilla-exam", "ecg", "ecografo", "audiometro", "asiento-camara", "consola-camara", "cinta", "bici", "jaula", "ared", "taquillas", "mets", "balsa", "izado", "luz-pista", "manga", "surtidor", "capsula-orion", "insectario", "colmena", "rack-ispr"] as const) expect(kinds.has(want), want).toBe(true);
+      // The campus's services are done on sanctuary 1's floors with sanctuary 1's furniture (montana-hueca.md):
+      // their own rooms are not built any more.
+      for (const gone of ["cama", "guantera", "camara-cultivo", "impresora-3d"] as const) expect(kinds.has(gone), gone).toBe(false);
       expect(F.filter((f) => f.kind === "consola-fcr" && f.area === "entrenamiento:control").length).toBe(16);
       expect(F.filter((f) => f.kind === "grua-pluma").length).toBe(4);
       expect(F.filter((f) => f.kind === "grua-puente" && f.area === "entrenamiento:nbl").length).toBe(2);

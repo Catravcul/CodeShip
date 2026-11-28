@@ -1,5 +1,8 @@
 # Santuario 3: la escena (rama `s3-escena`)
 
+> **2026-11-28**: el campus de la montaña es **otra escena** (la nave excavada, con los edificios del santuario 1 tal cual y
+> los pisos de entrenamiento), a la que se entra por las compuertas de la cara sur: [montana-hueca.md](montana-hueca.md).
+
 Lo que se juega del santuario aéreo: la decisión de Berón del 2026-11-18 ([santuario3-iniciacion.md](santuario3-iniciacion.md),
 arriba del todo) llevada a una escena de Three.js. Casos AER-01 a AER-09 en [casos.md](../qa/casos.md); recorrido PX-45 `s3-recorrido`.
 

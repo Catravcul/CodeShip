@@ -12,6 +12,11 @@ export interface WayPoint {
   readonly lift?: { readonly id: string; readonly stop: number };
   /** The carpet station it is the pad of, if any (two stations linked are flown between, not walked). */
   readonly carpet?: string;
+  /**
+   * The mountain's gate it stands at, if any (data/montana.ts): the gate's outside and inside points are linked, and that
+   * link is a change of scene (the hall inside is a scene of its own), not a walk.
+   */
+  readonly gate?: string;
 }
 
 export interface WayGraph {
@@ -22,6 +27,8 @@ export interface WayGraph {
 /** A link's cost, m: its length, and a lift ride counted by height (it is quicker than walking it). */
 function cost(a: WayPoint, b: WayPoint): number {
   if (a.lift && b.lift && a.lift.id === b.lift.id) return 10 + Math.abs(b.y - a.y) * 0.2;
+  // Through a gate of the mountain: a door and the change of scene (its two sides are far apart on the plan).
+  if (a.gate && a.gate === b.gate) return 20;
   // A carpet flight: boarding and the flight, quicker than walking the same distance.
   if (a.carpet && b.carpet) return 15 + Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z) * 0.15;
   return Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);

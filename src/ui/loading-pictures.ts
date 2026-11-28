@@ -59,11 +59,11 @@ function tree(x: number, base: number, h: number, floors: readonly string[]): st
 }
 
 /**
- * Sanctuary 3, the aerial one: the pyramid mountain covered in earth with its glowing caves, the colossal trees inside
- * suggested by its entrance, the clouds, the bee's pupa in its translucent cell among the trees, giant insects and the flying carpets.
+ * Sanctuary 3, the aerial one: the pyramid mountain covered in earth with its steel gates, sanctuary 1's tree-buildings
+ * inside suggested by its open gate, the clouds, the bee's pupa in its translucent cell among the trees, giant insects and the flying carpets.
  */
 const SANTUARIO_3 = `
-<svg viewBox="0 0 360 300" role="img" aria-label="El santuario 3: la montaña pirámide de tierra con sus cuevas que brillan y los árboles colosales dentro, nubes, la pupa de la abeja en su celda translúcida, insectos gigantes y alfombras voladoras">
+<svg viewBox="0 0 360 300" role="img" aria-label="El santuario 3: la montaña pirámide de tierra con sus compuertas y los edificios-árbol dentro, nubes, la pupa de la abeja en su celda translúcida, insectos gigantes y alfombras voladoras">
   <defs>
     <linearGradient id="ld3-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#16325e"/><stop offset="0.55" stop-color="#5f9cc8"/><stop offset="1" stop-color="#f0d3a2"/></linearGradient>
     <linearGradient id="ld3-earth" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8a6240"/><stop offset="1" stop-color="#4a3220"/></linearGradient>
@@ -79,8 +79,8 @@ const SANTUARIO_3 = `
   <path d="M40 266 L180 52 L320 266 Z" fill="url(#ld3-earth)"/>
   <path d="M180 52 L320 266 L246 266 Z" fill="#3b281a" opacity="0.45"/>
   <g fill="#5f8f45" opacity="0.9"><path d="M120 150 q16 -6 30 0 l-4 5 q-12 -3 -24 0 Z"/><path d="M196 118 q14 -5 26 1 l-3 4 q-10 -3 -21 0 Z"/><path d="M92 206 q22 -7 40 0 l-5 6 q-15 -4 -30 0 Z"/><path d="M232 196 q18 -6 34 0 l-4 5 q-13 -3 -26 0 Z"/><path d="M162 92 q10 -4 18 0 l-2 3 q-7 -2 -14 0 Z"/></g>
-  <!-- Its caves, glowing. -->
-  ${[[150, 140, 9], [212, 128, 7], [118, 196, 10], [252, 214, 9], [182, 98, 6], [204, 174, 8]].map(([x, y, r], i) => `<g class="ld3-cave" style="animation-delay:${i * 0.4}s"><circle cx="${x}" cy="${y}" r="${r! * 2.2}" fill="url(#ld3-glow)"/><path d="M${x! - r!} ${y! + r! * 0.6} Q${x} ${y! - r!} ${x! + r!} ${y! + r! * 0.6} Z" fill="#ffd27a"/></g>`).join("")}
+  <!-- Its steel gates at the foot of the face, lit (montana-hueca.md: gates, not caves). -->
+  ${[[100, 244, 10], [260, 244, 10]].map(([x, y, r], i) => `<g class="ld3-cave" style="animation-delay:${i * 0.4}s"><circle cx="${x}" cy="${y}" r="${r! * 2.2}" fill="url(#ld3-glow)"/><rect x="${x! - r!}" y="${y! - r! * 1.2}" width="${2 * r!}" height="${r! * 1.8}" fill="#6f7880" stroke="#3d4247" stroke-width="2"/></g>`).join("")}
   <!-- The entrance: the colossal trees inside, their trunks and the light of their crowns. -->
   <g clip-path="url(#ld3-door)">
     <rect x="140" y="188" width="80" height="80" fill="url(#ld3-inside)"/>

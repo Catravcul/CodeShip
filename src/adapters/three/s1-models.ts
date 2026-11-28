@@ -300,7 +300,11 @@ export interface S1Scene {
   style(category: Category, o: { visible?: boolean; color?: number; group?: string }): void;
 }
 
-export function buildS1Scene(L: S1Layout): S1Scene {
+/**
+ * Sanctuary 1 drawn. Sanctuary 3 draws its migrated tree-buildings with it too (`buildTowers`, montana-hueca.md):
+ * without the whales' globe, and with its lake as the sea round the hall's middle (`sea`).
+ */
+export function buildS1Scene(L: Pick<S1Layout, "world" | "instances" | "towers" | "areas" | "walls">, o: { readonly globe?: boolean; readonly sea?: { readonly x: number; readonly z: number; readonly size: number } } = {}): S1Scene {
   const root = new THREE.Group();
   // The ground: ice caps (snow over blue sea ice, 2,3 m thick plates) and the land island (tundra), merged by kind.
   const ice: THREE.BufferGeometry[] = [];
@@ -371,7 +375,7 @@ export function buildS1Scene(L: S1Layout): S1Scene {
   add(water, mat(0x2f8fbf, { transparent: true, opacity: 0.3, roughness: 0.05, depthWrite: false, side: THREE.DoubleSide }), "agua");
   // The whales' globe (data/globo.ts): its outer skin, cell by cell (pixelated, Berón 2026-11-22), one mesh of the
   // faces between water and air; deep blue (a great natural water); and the embryo in its belly.
-  {
+  if (o.globe !== false) {
     const pos = globeSkin();
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
@@ -386,16 +390,17 @@ export function buildS1Scene(L: S1Layout): S1Scene {
   add(L.walls.map((s) => box(s.x0, s.x1, s.y0, s.y1, s.z0, s.z1)), mat(0x8fd8ff, { transparent: true, opacity: 0.18, roughness: 0.1, depthWrite: false }), "acrilico");
   // Matte (Lambert): seen from just over it, swimming, a glossy plane at a grazing angle turns as white as the sky
   // (Berón 2026-11-20: «en primera persona… oculta el agua»).
-  const sea = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), new THREE.MeshLambertMaterial({ color: 0x1d4f6b, side: THREE.FrontSide }));
+  const seaAt = o.sea ?? { x: 0, z: 0, size: 9000 };
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(seaAt.size, seaAt.size), new THREE.MeshLambertMaterial({ color: 0x1d4f6b, side: THREE.FrontSide }));
   sea.rotation.x = -Math.PI / 2;
-  sea.position.y = WATER_Y;
+  sea.position.set(seaAt.x, WATER_Y, seaAt.z);
   sea.name = "mar";
   root.add(sea);
   // Its surface seen from below (Berón 2026-11-22: «si miro hacia arriba… debería ser posible ver lo que hace fuera»):
   // a bright, see-through ceiling, so the sky and what stands over the water show through it, fainter with depth.
-  const underside = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), new THREE.MeshBasicMaterial({ color: 0xcdeef5, transparent: true, opacity: 0.28, side: THREE.BackSide, depthWrite: false }));
+  const underside = new THREE.Mesh(new THREE.PlaneGeometry(seaAt.size, seaAt.size), new THREE.MeshBasicMaterial({ color: 0xcdeef5, transparent: true, opacity: 0.28, side: THREE.BackSide, depthWrite: false }));
   underside.rotation.x = -Math.PI / 2;
-  underside.position.y = WATER_Y;
+  underside.position.set(seaAt.x, WATER_Y, seaAt.z);
   underside.name = "mar-desde-abajo";
   root.add(underside);
 

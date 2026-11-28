@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { placeAt, step } from "@modules/aerial-sanctuary/domain/walk";
 import { buildS1Layout } from "./layout";
-import { WalkIndex } from "./walk-index";
+import { WALK_CACHE_MAX, WalkIndex } from "./walk-index";
 
 describe("rejilla del mundo de paseo", () => {
   const L = buildS1Layout(1);
@@ -25,5 +25,13 @@ describe("rejilla del mundo de paseo", () => {
       expect(idx.near(a.x, a.z, a.y).solids.length, a.id).toBeLessThan(L.world.solids.length / 3);
     }
     expect(checked).toBeGreaterThan(20);
+  });
+});
+
+describe("la rejilla no crece sin fin (memoria del móvil, PX-51)", () => {
+  it("andando por miles de celdas y alturas, su caché se queda acotada", () => {
+    const idx = new WalkIndex({ floors: [{ id: "suelo", area: "a", x0: -5000, x1: 5000, z0: -5000, z1: 5000, y: 0 }], waters: [], solids: [] });
+    for (let i = 0; i < 4000; i++) idx.near((i % 70) * 40, Math.floor(i / 70) * 40, (i % 9) * 12);
+    expect(idx.cached).toBeLessThanOrEqual(WALK_CACHE_MAX);
   });
 });

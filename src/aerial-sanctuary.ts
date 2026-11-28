@@ -25,14 +25,16 @@ import { beatsFor } from "@modules/aerial-sanctuary/domain/station-beat";
 import { handHover, handStart, handStep, handTap, type HandControl, type HandState } from "@modules/aerial-sanctuary/domain/hand-flight";
 import { HAND } from "@modules/aerial-sanctuary/data/facts";
 import { SEA_Y } from "@modules/aerial-sanctuary/data/layout";
-import { HOLLOW, ceilingAt, dropLimit, flightWorld } from "@modules/aerial-sanctuary/data/montana";
+import { HOLLOW, NAVE, dropLimit, flightWorld } from "@modules/aerial-sanctuary/data/montana";
+import { WalkIndex } from "@modules/sanctuary-one/data/walk-index";
+import type { WalkWorld } from "@modules/aerial-sanctuary/domain/walk";
 import { CAMPUS_RETOS } from "@modules/aerial-sanctuary/data/campus";
 import { carpetRoute } from "@modules/sanctuary-one/data/alfombras";
 import { along, flightSpeed, route as carpetPath, type Route } from "@modules/sanctuary-one/domain/motion";
 import { procedureReto } from "@modules/sanctuary-one/application/challenges";
 import { ChoreRun, type Chore } from "@modules/chores/domain/chore";
 import type { Answer } from "@modules/mind-duel/domain/exercise";
-import type { AreaMap, AreaNode } from "@modules/tasks/application/areas";
+import type { AreaMap, AreaNode, AreaScope } from "@modules/tasks/application/areas";
 import type { Task } from "@modules/tasks/application/task-list";
 import { AutoSave } from "@modules/saves/application/auto-save";
 import { boardDayOf } from "@modules/saves/domain/space-state";
@@ -41,8 +43,10 @@ import { playSession, savedGames } from "./adapters/storage/saved-games";
 import { bird, buildBlocks, buildFloors, buildProps, buildSea, buildWater, carpet, helicopter } from "./adapters/three/aerial-models";
 import { buildFixtures } from "./adapters/three/s3-fixtures";
 import { buildMountain, isClearWater } from "./adapters/three/s3-mountain";
+import { buildS1Scene } from "./adapters/three/s1-models";
 import { CarpetStationsView } from "./adapters/three/carpet-stations";
 import { CarpetStations } from "./ui/carpet-stations";
+import { carpetTravel } from "./ui/carpet-travel";
 import { CubeFigure } from "./adapters/three/interior/figure";
 import { Walker } from "./adapters/input/walker";
 import { DOMENICA_HAIR } from "./ui/portraits";
@@ -78,7 +82,7 @@ import "./ui/lander-cabin.css";
 import "./ui/journey.css";
 import "./ui/acciones.css";
 import "./ui/aerial.css";
-import { doneLoading } from "./ui/loading-screen";
+import { doneLoading, showLoading } from "./ui/loading-screen";
 
 /**
  * Sanctuary 3, the aerial sanctuary (Berón, 2026-11-18; docs/design/santuario3-escena.md): Cold Sanctuary's aerial
@@ -115,9 +119,46 @@ camera.rotation.order = "YXZ";
 const BASE_FOV = camera.fov;
 /** Under water (the pools, the trees' water trunks): the same view as sanctuary 1 (adapters/three/walk-look.ts). */
 const underwater = new UnderwaterView(scene);
-scene.add(buildSea(L.world.waters.filter((w) => w.id.endsWith("-piscina"))), buildFloors(L.world.floors), buildWater(L.world.waters), buildBlocks(L.blocks), buildFixtures(L.fixtures), buildMountain(L));
+/**
+ * TWO PLACES (montana-hueca.md, Berón 2026-11-28: «el interior de la montaña podría ser un cambio de escena»): the
+ * islands outside, and the hall inside the mountain, far off on the plan; only the one she is in is drawn (the other's
+ * root is hidden: nothing of it is rendered), with the loading screen between them as a scene change. She and what
+ * goes with her (the craft, the rug, the trainers, the posts' stages) stay in the scene, drawn where they are.
+ */
+const outside = new THREE.Group();
+outside.name = "fuera";
+const inside = new THREE.Group();
+inside.name = "dentro";
+inside.visible = false;
+scene.add(outside, inside);
+const inHall = (x: number, z: number) => Math.max(Math.abs(x - HOLLOW.x), Math.abs(z - HOLLOW.z)) < NAVE.half + 60;
+const s1Waters = new Set(L.hollow.s1.world.waters.map((w) => w.id));
+const floorsOut = L.world.floors.filter((f) => !inHall(f.x0, f.z0));
+const floorsIn = L.world.floors.filter((f) => inHall(f.x0, f.z0) && !L.hollow.s1Floors.has(f.id));
+const watersOut = L.world.waters.filter((w) => !inHall(w.x0, w.z0) || w.x1 - w.x0 > 4000);
+const watersIn = L.world.waters.filter((w) => inHall(w.x0, w.z0) && w.x1 - w.x0 < 4000 && !s1Waters.has(w.id) && w.id !== "lago-montana");
+outside.add(buildSea(L.world.waters.filter((w) => w.id.endsWith("-piscina"))), buildFloors(floorsOut), buildWater(watersOut), buildBlocks(L.blocks.filter((q) => !inHall(q.x0, q.z0))), buildFixtures(L.fixtures.filter((f) => !inHall(f.x, f.z))));
+inside.add(buildFloors(floorsIn), buildWater(watersIn), buildBlocks(L.blocks.filter((q) => inHall(q.x0, q.z0))), buildFixtures(L.fixtures.filter((f) => inHall(f.x, f.z))), buildMountain(L));
+// Sanctuary 1's buildings, drawn by sanctuary 1's own code (its lake is its sea round them).
+inside.add(buildS1Scene(L.hollow.s1, { globe: false, sea: { x: HOLLOW.x, z: HOLLOW.z, size: 2 * NAVE.half } }).root);
 const parts = buildProps(L);
-scene.add(parts.root);
+for (const o of [...parts.root.children]) (inHall(o.position.x, o.position.z) ? inside : outside).add(o);
+/** Where she is drawn: «fuera» (the islands) or «dentro» (the hall). */
+let place: "fuera" | "dentro" = "fuera";
+let placeShown = -1;
+function showPlace(p: "fuera" | "dentro"): void {
+  if (p === place) return;
+  place = p;
+  inside.visible = p === "dentro";
+  outside.visible = p === "fuera";
+  const c = p === "dentro" ? HALL_SKY : SKY;
+  scene.background = new THREE.Color(c);
+  scene.fog = p === "dentro" ? new THREE.Fog(HALL_SKY, 700, 2200) : new THREE.Fog(SKY, 900, 5200);
+  // The scene change: the loading screen for a moment (ui/loading-screen.ts), gone after the first frames there.
+  showLoading("aereo", root);
+  placeShown = 2;
+}
+const HALL_SKY = 0xf3ead8;
 
 const avatar = new CubeFigure(0xe8b48f, 0x2f7f8f, DOMENICA_HAIR, true);
 avatar.root.scale.setScalar(0.92);
@@ -159,8 +200,22 @@ const turbineStops: StopState[] = parts.turbines.map(() => RUNNING);
 let scanAt = 0;
 
 // --- Her ---------------------------------------------------------------------------------------------------------------
+/**
+ * The walk world round a point (sanctuary 1's WalkIndex, santuario1.md §Rendimiento): the hall holds sanctuary 1's
+ * buildings with all their furniture, thousands of solids, so a step scans only the cells round her (and the biome's
+ * ground, everywhere).
+ */
+const walkIndex = new WalkIndex(L.world);
+const withGround = new WeakMap<WalkWorld, WalkWorld>();
+function worldAt(x: number, z: number, y: number = body?.y ?? 0): WalkWorld {
+  const w = walkIndex.near(x, z, y);
+  if (!L.world.grounds?.length) return w;
+  let g = withGround.get(w);
+  if (!g) withGround.set(w, (g = { ...w, grounds: L.world.grounds }));
+  return g;
+}
 const startPoint = byPoint.get(L.start)!;
-let body: Body = placeAt(L.world, startPoint.x, startPoint.y, startPoint.z)!;
+let body: Body = placeAt(worldAt(startPoint.x, startPoint.z, startPoint.y), startPoint.x, startPoint.y, startPoint.z)!;
 let yaw = Math.PI;
 let pitch = -0.08;
 /**
@@ -171,7 +226,7 @@ let pitch = -0.08;
  */
 const WALK_MS = 1.4;
 const SWIM_MS = 0.9;
-const walk = new FreeWalk(() => L.world, { walk: WALK_MS, swim: SWIM_MS, maxDrop: dropLimit }, Math.PI);
+const walk = new FreeWalk((x, z) => worldAt(x, z), { walk: WALK_MS, swim: SWIM_MS, maxDrop: dropLimit }, Math.PI);
 let thirdPerson = settings.value.walkView === "tercera";
 let clock = 0;
 let days = 0;
@@ -245,22 +300,32 @@ taskBoard.onGo = (t) => goToTask(t);
 
 /**
  * Áreas: every area of the sanctuary, every island (no island filter: wholePlace above), each with its building and
- * floor kept for its category chip. Built once.
+ * floor kept for its category chip. Built once. The campus's outside (the helipad, the gates' sills) is drawn on the map
+ * just south of the hall, as it lies about the south gate: the hall is far off on the plan (another scene), the map shows
+ * them as one place.
  */
 let wholeMap: AreaMap | undefined;
 function areaMap(): AreaMap {
   if (wholeMap) return wholeMap;
   const nodes: AreaNode[] = [];
+  const byKind = new Map<string, { kind: string; label: string; options: { id: string; label: string }[] }>();
+  const sur = L.hollow.gates[0];
   for (const isl of L.islands) {
     const areas = L.areas.filter((a) => a.island === isl.id);
     // The island's hierarchy (domain/area-scope.ts): its buildings and their floors.
     const tree = s3AreaScopes(areas);
+    for (const sc of tree.scopes) {
+      const into = byKind.get(sc.kind) ?? byKind.set(sc.kind, { kind: sc.kind, label: sc.label, options: [] }).get(sc.kind)!;
+      for (const o of sc.options) if (!into.options.some((x) => x.id === o.id)) into.options.push(o);
+    }
+    const onMap = (c: { x: number; y: number; z: number }) => (isl.id !== "entrenamiento" || !sur || inHall(c.x, c.z) ? c : { x: sur.in.x + (c.x - sur.out.x), y: c.y - sur.out.y, z: sur.in.z - 40 + (c.z - sur.out.z) });
     for (const a of areas) {
       const scope = tree.of(a.id);
-      nodes.push({ id: a.id, label: a.label, desc: a.desc, goal: a.point, fixture: a.point, centre: a.centre, half: a.half, category: s3AreaCategory(a), scope: { ...scope, isla: a.island } });
+      nodes.push({ id: a.id, label: a.label, desc: a.desc, goal: a.point, fixture: a.point, centre: onMap(a.centre), half: a.half, category: s3AreaCategory(a), scope: { ...scope, isla: a.island } });
     }
   }
-  wholeMap = { vehicle: "entrenamiento", nodes, links: [] };
+  const scopes: AreaScope[] = [...byKind.values()];
+  wholeMap = { vehicle: "entrenamiento", nodes, links: [], scopes };
   return wholeMap;
 }
 const islandOfArea = new Map(L.areas.map((a) => [a.id, a.island]));
@@ -327,7 +392,7 @@ root.appendChild(caption);
 const hour = () => boardHour(days);
 const passed = new Set<number>();
 // The biome's island: its living food chain and the census board (s3-biome.ts, docs/design/bioma-s3.md).
-const biome = new S3Biome(scene, ui, L);
+const biome = new S3Biome(outside, ui, L, inside);
 for (const p of biome.points) byPoint.set(p.id, p);
 biome.wire(openChallenge, say);
 
@@ -342,7 +407,7 @@ function stop(why?: string): void {
 /** Put her at a point of the way graph at once (the teleport the player chose, or a landing). */
 function placeAtPoint(id: string): boolean {
   const p = byPoint.get(id);
-  const b = p && placeAt(L.world, p.x, p.y, p.z);
+  const b = p && placeAt(worldAt(p.x, p.z, p.y), p.x, p.y, p.z);
   if (!b) return false;
   body = b;
   return true;
@@ -404,15 +469,7 @@ function startRide(lift: LiftDef, from: number, to: number, then?: () => void): 
 // --- The carpets of the hollow mountain (data/montana.ts): station to station, in sight (no teleport) ---------------
 const carpetWorld = flightWorld(L);
 const stationById = new Map(L.hollow.stations.map((s) => [s.id, s]));
-const carpetOfPoint = new Map(L.graph.points.filter((p) => p.carpet).map((p) => [p.id, p.carpet!]));
-/** Each station's pad point and the pads a carpet flies to from it (the links data/montana.ts found clear). */
-const carpetNext = new Map<string, string[]>();
-for (const [a, b] of L.graph.links)
-  if (carpetOfPoint.has(a) && carpetOfPoint.has(b)) {
-    carpetNext.set(a, [...(carpetNext.get(a) ?? []), b]);
-    carpetNext.set(b, [...(carpetNext.get(b) ?? []), a]);
-  }
-/** «Árbol de los servicios · piso 2», «Cueva sur». */
+/** «Servicios · piso 2», «Compuerta sur». */
 const stationName = (id: string) => {
   const s = stationById.get(id);
   return !s ? id : s.building && !s.building.toLowerCase().includes(s.label.toLowerCase()) ? `${s.building} · ${s.label.toLowerCase()}` : s.building || s.label;
@@ -436,7 +493,7 @@ function frameCarpet(dt: number, m: Extract<Mode, { kind: "alfombra" }>): void {
   if (!q.done) return;
   rug.group.visible = false;
   const e = m.r.points[m.r.points.length - 1]!;
-  body = placeAt(L.world, e.x, e.y + 0.05, e.z) ?? body;
+  body = placeAt(worldAt(e.x, e.z, e.y), e.x, e.y + 0.05, e.z) ?? body;
   mode = { kind: "libre" };
   avatar.pose("stand");
   m.then();
@@ -444,17 +501,20 @@ function frameCarpet(dt: number, m: Extract<Mode, { kind: "alfombra" }>): void {
 
 // The stations as sanctuary 1's (ui/carpet-stations.ts, adapters/three/carpet-stations.ts; Berón 2026-11-26: «las
 // estaciones de alfombras… reutiliza el código de S1»): the pad with its two floating carpets and the orrery; on it the
-// orange button «Volar» (Y) opens the same map window as Áreas with its destinations and its own «viaje o
-// teletransporte». A destination with no clear flight of its own is reached in hops (cueva → pie → piso), each flown.
-const carpetsView = new CarpetStationsView(scene, L.hollow.stations, { pads: true });
-const CARPET_DESC: Record<string, string> = { pie: "Estación de alfombras: a los pies de los árboles, las cuevas y el Starship, y a los pisos de su árbol" };
+// orange button «Volar» (Y). Two kinds (Berón 2026-11-28): a FLOOR's carpets go to the other stations of its building
+// (the same map window as sanctuary 1); the gates', the feet's, the crowns' and the Starship's are «entre edificios»:
+// they open Áreas of the hall, with its filters, and fly straight to wherever is chosen (its route planned then, one
+// flight a trip: sanctuary 1's carpetRoute, a few ms).
+const s1Stations = new Set(L.hollow.s1.carpets.map((c) => c.id));
+const carpetsView = new CarpetStationsView(inside, L.hollow.stations, { pads: (st) => !s1Stations.has(st.id) });
 const carpets = new CarpetStations(root, {
   vehicle: "entrenamiento",
   stations: L.hollow.stations,
-  node: (s) => ({ label: stationName(s.id), desc: s.kind === "piso" ? (L.areas.find((a) => a.id === s.area)?.desc ?? "Estación de alfombras") : (CARPET_DESC[s.kind] ?? ""), category: s.kind === "piso" ? s.building : "Pies, cuevas y Starship" }),
+  node: (s) => ({ label: stationName(s.id), desc: L.areas.find((a) => a.id === s.area)?.desc ?? "Estación de alfombras", category: s.building }),
+  destinations: (from) => L.hollow.stations.filter((s) => s.id !== from.id && s.tower === from.tower),
   teleport: (to) => {
     fade();
-    body = placeAt(L.world, to.x, to.y + 0.05, to.z) ?? body;
+    body = placeAt(worldAt(to.x, to.z, to.y), to.x, to.y + 0.05, to.z) ?? body;
     yaw = Math.atan2(to.out.x, to.out.z);
     mode = { kind: "libre" };
     say(`En ${stationName(to.id)}`);
@@ -463,18 +523,73 @@ const carpets = new CarpetStations(root, {
     const st = stationById.get(from.id);
     const dest = stationById.get(to.id);
     if (!st || !dest) return;
-    // Straight if its flight is clear; else the way of hops the graph knows (only carpets: pad to pad).
-    if ((carpetNext.get(st.point) ?? []).includes(dest.point)) return flyCarpet(st.id, dest.id, () => say(`En ${stationName(dest.id)}`));
-    walkTo(dest.point, `Alfombras a ${stationName(dest.id)}`, () => say(`En ${stationName(dest.id)}`));
+    flyCarpet(st.id, dest.id, () => say(`En ${stationName(dest.id)}`));
   },
 });
+/** The «entre edificios» station she stands on (or whose window is open). */
+let hallStation: (typeof L.hollow.stations)[number] | undefined;
+/** Áreas of the hall (the areas inside the mountain, with Áreas' own filters by building and floor). */
+function hallMap(): AreaMap | undefined {
+  const all = areaMap();
+  if (!all) return undefined;
+  return { ...all, nodes: all.nodes.filter((n) => inHall(n.centre.x, n.centre.z) && n.id !== hallStation?.area) };
+}
+const hallCarpets = new AreasWindow(root, {
+  kind: { title: "Alfombras", window: "alfombras", bodyClass: "in-carpets", className: "carpets-window" },
+  here: () => "entrenamiento",
+  map: () => hallMap(),
+  row: (n) => ({ action: "Volar", actionLabel: `Volar a ${n.label}` }),
+  travel: { get: () => carpetTravel.get(hallStation?.id ?? ""), set: (v) => hallStation && carpetTravel.set(hallStation.id, v), heading: "Desde esta estación", help: "Ajuste propio de esta estación de alfombras: cada una guarda el suyo." },
+  go: (n) => flyToArea(n.goal, n.label),
+});
+/** From an «entre edificios» station, straight to an area of the hall: one flight to its station, then on foot. */
+function flyToArea(point: string, label: string): void {
+  const st = hallStation;
+  if (!st) return;
+  if (carpetTravel.get(st.id) === "teletransporte") {
+    fade();
+    mode = { kind: "libre" };
+    if (placeAtPoint(point)) say(`En ${label}`);
+    return;
+  }
+  const pts = shortestWay(L.graph, st.point, point);
+  if (!pts) return say("Las alfombras no llegan allí");
+  mode = { kind: "ruta", pts, i: 0, label, still: 0, then: () => say(`En ${label}`) };
+}
 /** On a station's pad, free: its «Volar» on the orange button. */
 function offerCarpets(): boolean {
-  const st = mode.kind === "libre" && !duel.visible ? carpets.at(body.x, body.y, body.z) : undefined;
+  const at = mode.kind === "libre" && !duel.visible ? carpets.at(body.x, body.y, body.z) : undefined;
+  const st = at && stationById.get(at.id);
   if (st || !carpets.window.visible) carpets.station = st;
-  if (!st) return false;
-  RootMenu.interact(carpets.button(st));
+  if (st || !hallCarpets.visible) hallStation = st?.reach === "santuario" ? st : undefined;
+  if (!st) return offerGate();
+  RootMenu.interact(st.reach === "santuario" ? carpets.button(st, () => ((hallStation = st), hallCarpets.open())) : carpets.button(st));
   return true;
+}
+
+/**
+ * The gates of the mountain (montana-hueca.md): at a gate's sill outside, the orange button «Entrar» takes her
+ * through it to its dock in the hall; on the dock inside, «Salir» takes her out (a scene change: lightHollow).
+ */
+function offerGate(): boolean {
+  if (mode.kind !== "libre" || duel.visible) return false;
+  for (const g of L.hollow.gates)
+    for (const side of ["fuera", "dentro"] as const) {
+      const p = g[side === "fuera" ? "out" : "in"];
+      if (Math.hypot(body.x - p.x, body.z - p.z) > 5 || Math.abs(body.y - p.y) > 2) continue;
+      RootMenu.interact({ icon: ICON.carpet, label: side === "fuera" ? `Entrar por la ${g.label.toLowerCase()}` : `Salir por la ${g.label.toLowerCase()}`, word: side === "fuera" ? "Entrar" : "Salir", onClick: () => passGate(g.id, side) });
+      return true;
+    }
+  return false;
+}
+function passGate(id: string, from: "fuera" | "dentro"): void {
+  const g = L.hollow.gates.find((q) => q.id === id);
+  if (!g) return;
+  const to = from === "fuera" ? g.in : g.out;
+  placeAtPoint(to.point);
+  yaw = from === "fuera" ? Math.PI : 0;
+  mode = { kind: "libre" };
+  say(from === "fuera" ? `Dentro de la montaña: ${g.label.toLowerCase()}` : `Fuera: ${g.label.toLowerCase()}`);
 }
 
 /** Sleep or eat at a campus machine: in the nearest bed or chair, for a few seconds of the scene. */
@@ -486,7 +601,8 @@ function startActo(m: MachineDef, kind: "cama" | "silla", pose: string, seconds:
     if (d < 4 && (!best || d < best.d)) best = { f, d };
   }
   const f = best?.f;
-  const at = f ? { x: f.x, y: f.y + (kind === "cama" ? f.h : 0), z: f.z, yaw: (f.rot * Math.PI) / 2 } : { x: body.x, y: body.y, z: body.z, yaw };
+  // On sanctuary 1's floors (a bunk of the aposentos, a chair at the table) the machine says where she lies or sits.
+  const at = m.seat ? { ...m.seat } : f ? { x: f.x, y: f.y + (kind === "cama" ? f.h : 0), z: f.z, yaw: (f.rot * Math.PI) / 2 } : { x: body.x, y: body.y, z: body.z, yaw };
   fade();
   mode = { kind: "acto", pose, t: 0, seconds, label, at, then };
 }
@@ -800,7 +916,7 @@ function docked(m: MachineDef): void {
 let handedOver: string | undefined;
 /** The machine's and the room's signs hang over the post: hidden while its challenge is acted. */
 function signsOff(machine: string, off: boolean): void {
-  const m = parts.root.getObjectByName(`cartel-m:${machine}`);
+  const m = scene.getObjectByName(`cartel-m:${machine}`);
   if (m) m.visible = !off;
 }
 
@@ -1037,7 +1153,7 @@ let lastIsland = island();
 if (session.resume) {
   const s = session.resume.state as AerialState;
   days = s.boardDays;
-  const b = placeAt(L.world, s.at.x, s.at.y + 0.01, s.at.z);
+  const b = placeAt(worldAt(s.at.x, s.at.z, s.at.y), s.at.x, s.at.y + 0.01, s.at.z);
   if (b) body = b;
   if (typeof s.yaw === "number") yaw = s.yaw;
   say(`Partida ${session.resume.id} recuperada: ${session.resume.summary.vehicle} · ${session.resume.summary.place}`, 5);
@@ -1080,8 +1196,8 @@ function moveToward(p: { x: number; y: number; z: number }, d: number): boolean 
     const dist = Math.hypot(dx, dy, dz);
     if (dist < 0.05) return true;
     const s = Math.min(0.25, left, dist) / dist;
-    let next = step(L.world, body, { dx: dx * s, dy: dy * s, dz: dz * s });
-    if (next === body && body.motion === "agua" && Math.abs(dy) > 0.05) next = step(L.world, body, { dx: 0, dy: Math.sign(dy) * Math.min(0.25, Math.abs(dy)), dz: 0 });
+    let next = step(worldAt(body.x, body.z), body, { dx: dx * s, dy: dy * s, dz: dz * s });
+    if (next === body && body.motion === "agua" && Math.abs(dy) > 0.05) next = step(worldAt(body.x, body.z), body, { dx: 0, dy: Math.sign(dy) * Math.min(0.25, Math.abs(dy)), dz: 0 });
     if (next === body) return false;
     if (Math.hypot(dx, dz) > 0.05) yaw = Math.atan2(-dx, -dz);
     body = next;
@@ -1119,14 +1235,27 @@ function frameRoute(dt: number, m: Extract<Mode, { kind: "ruta" }>): void {
     });
     return;
   }
-  // At a carpet pad whose next point is another pad: that edge is flown (a hop of the hollow mountain's carpets).
+  // At a carpet pad whose next point is another pad: one flight, straight to the last pad of the run (never hops
+  // seen one by one: Berón 2026-11-28, «llevan a cualquier edificio directamente»).
   if (next && target.carpet && next.carpet) {
-    // She lands on the next pad: from it the route goes on (another hop if the point after it is a pad too).
-    const rest = { ...m, i: m.i + 1, still: 0 };
-    flyCarpet(target.carpet, next.carpet, () => {
+    let j = m.i + 1;
+    while (m.pts[j + 1]?.carpet) j++;
+    const rest = { ...m, i: j + 1, still: 0 };
+    flyCarpet(target.carpet, m.pts[j]!.carpet!, () => {
       if (rest.i < rest.pts.length) mode = rest;
       else rest.then?.();
     });
+    return;
+  }
+  // Through a gate of the mountain: from its sill outside to its dock in the hall, or back (a scene change).
+  if (next && target.gate && next.gate === target.gate) {
+    placeAtPoint(next.id);
+    m.i += 2;
+    m.still = 0;
+    if (m.i >= m.pts.length) {
+      mode = { kind: "libre" };
+      m.then?.();
+    }
     return;
   }
   m.i++;
@@ -1198,6 +1327,8 @@ function frameFree(dt: number): void {
 }
 
 function frameBirds(dt: number): void {
+  // Inside the mountain the sky's birds are not drawn: nothing to move (the phone's frame).
+  if (place === "dentro") return;
   for (const b of birds) {
     const a = (clock * b.speed) / b.r + b.phase;
     let x = home.x + Math.cos(a) * b.r;
@@ -1347,7 +1478,7 @@ function updateCamera(dt: number): void {
     camera.rotation.set(pitch, yaw, 0);
     rig.visible = false;
   }
-  const cw = waterAt(L.world, camera.position.x, camera.position.y, camera.position.z);
+  const cw = waterAt(worldAt(camera.position.x, camera.position.z, camera.position.y), camera.position.x, camera.position.y, camera.position.z);
   underwater.set(!!cw && camera.position.y < cw.yTop && camera.position.y > cw.yBottom && (isClearWater(cw.id) ? "claro" : true));
   avatar.wearMask(body.motion === "agua");
   poseOnFoot(avatar, walk, { body, moving, sprinting, lotus: settingsPanel.visible, clock }, dt);
@@ -1360,21 +1491,20 @@ function stagesEye(): { x: number; y: number; z: number } | undefined {
 }
 
 /**
- * Inside the hollow mountain (montana-hueca.md): bright and without shadows, the light even from every side (the
- * panels of the ceiling), no haze, so the lake's bottom shows through the water.
+ * Inside the mountain (montana-hueca.md): bright and without shadows, the light even from every side (the panels of
+ * the roof), the haze the walls' colour. The place she is in is the one drawn (`showPlace`): through a gate, a
+ * teleport or a saved game, it changes with her.
  */
-let inHollow = false;
-const HOLLOW_LIGHT = 0xf4efe2;
 function lightHollow(): void {
-  const c = camera.position;
-  const inside = Math.max(Math.abs(c.x - HOLLOW.x), Math.abs(c.z - HOLLOW.z)) < 210 && c.y > HOLLOW.floorY - 1 && c.y < ceilingAt(c.x, c.z);
-  if (inside === inHollow) return;
-  inHollow = inside;
+  if (placeShown > 0 && --placeShown === 0) doneLoading();
+  const p = inHall(body.x, body.z) ? "dentro" : "fuera";
+  if (p === place) return;
+  showPlace(p);
+  const inside = p === "dentro";
   hemi.intensity = inside ? 2.6 : 1.3;
-  hemi.groundColor.set(inside ? 0xf4efe2 : 0x5d6b4f);
+  hemi.groundColor.set(inside ? HALL_SKY : 0x5d6b4f);
   sun.intensity = inside ? 0.25 : 1.7;
-  // The haze starts 900 m off, past the far wall (420 m across): inside, its colour is the walls' light.
-  underwater.setSky(inside ? HOLLOW_LIGHT : SKY);
+  underwater.setSky(inside ? HALL_SKY : SKY);
 }
 
 function updateBar(): void {
@@ -1445,7 +1575,7 @@ function frame(now: number): void {
       endPost = undefined;
       e();
     }
-  } else if (!duel.visible && !nav.visible && !settingsPanel.visible && !taskBoard.visible && !areasWindow.visible && !carpets.window.visible) frameFree(dt);
+  } else if (!duel.visible && !nav.visible && !settingsPanel.visible && !taskBoard.visible && !areasWindow.visible && !carpets.window.visible && !hallCarpets.visible) frameFree(dt);
   if (mode.kind === "vuelo" || mode.kind === "mano") avatar.pose("lotus");
   crowd.update(dt, hour());
   // While the sheet is open only it and the scene show (reglas.md §4.3): the caption only once it closes.
@@ -1586,6 +1716,21 @@ if (frameStats) (window as unknown as { codeshipS3: unknown }).codeshipS3 = {
   /** Test hook: walk her by herself to a way point (as «Ir» does), or put her there at once. */
   walkTo: (id: string) => walkTo(id, "Prueba"),
   placeAt: placeAtPoint,
+  /** Which place is drawn («fuera», «dentro»), the hall's carpets window and a gate passed (as its orange button). */
+  get place() {
+    return place;
+  },
+  hallCarpets,
+  passGate,
+  /** Test hook: what is drawn at a point of the screen (its names up to the scene). */
+  pick(px: number, py: number) {
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(new THREE.Vector2((px / window.innerWidth) * 2 - 1, -(py / window.innerHeight) * 2 + 1), camera);
+    const hit = ray.intersectObjects(scene.children, true).find((h) => h.object.visible);
+    const names: string[] = [];
+    for (let o: THREE.Object3D | null = hit?.object ?? null; o; o = o.parent) names.push(o.name || o.type);
+    return { names, at: hit?.point };
+  },
   /** Test hook: where the camera looks (yaw, pitch). */
   look(y: number, p: number) {
     yaw = y;

@@ -368,3 +368,13 @@ Si algo pasa un presupuesto, se mira en vivo antes de subirlo.
    entrenamiento, cría, veterinario, residencia). Herramienta: el `.jsonl` de la rama `codeship-export`.
 3. La fachada de fotobiorreactores está completa (arpas del tronco, quillas bajo las ramas, bombas y cuadro); el iceberg a
    la deriva es sólido donde está.
+
+## Los edificios en el santuario 3 (2026-11-28)
+
+Berón: «tomar los de sanctuary1 y migrarlos tal cual dentro de la montaña». `data/layout.ts` `buildTowers(towers, k, o,
+{ sky })` construye solo los edificios-árbol (pisos, muebles, troncos, anillos, bases, cimas y estaciones; sin casquetes,
+mar, globo, animales ni personal) y `buildS1Layout` usa las mismas piezas (`stationsOf`). El santuario 3 lo llama con
+los edificios de `TOWERS` desplazados al centro de su nave y dos edificios más para sus pisos de entrenamiento
+(`TowerSpec.square`: un piso crece a la medida de su sala); `adapters/three/s1-models.ts` `buildS1Scene` los dibuja allí
+sin globo y con el lago como mar (`{ globe: false, sea }`). `carpetStations(w, skyWay)` acepta el cielo de la nave.
+[montana-hueca.md](montana-hueca.md).

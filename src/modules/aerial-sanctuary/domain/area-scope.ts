@@ -15,7 +15,7 @@ export interface S3ScopeGroup {
  * (`nbl-control` in the NBL, the capsule in the Dragon simulators). The outdoors belong to no building. On a mountain
  * (the air island, docs/design/bioma-s3.md) the zones group by their altitude belt instead: island → belt → zone.
  */
-export function s3AreaScopes(areas: readonly Pick<AreaDef, "id" | "label" | "island" | "belt">[]): { readonly scopes: readonly S3ScopeGroup[]; of(id: string): { edificio?: string; piso?: string; cinturon?: string } | undefined } {
+export function s3AreaScopes(areas: readonly (Pick<AreaDef, "id" | "label" | "island" | "belt"> & Partial<Pick<AreaDef, "tower" | "floorY">>)[]): { readonly scopes: readonly S3ScopeGroup[]; of(id: string): { edificio?: string; piso?: string; cinturon?: string } | undefined } {
   const out = new Map<string, { edificio?: string; piso?: string; cinturon?: string }>();
   const belts = new Map<string, string>();
   const buildings = new Map<string, string>();
@@ -26,6 +26,15 @@ export function s3AreaScopes(areas: readonly Pick<AreaDef, "id" | "label" | "isl
     if (a.belt) {
       belts.set(a.belt.id, a.belt.label);
       out.set(a.id, { cinturon: a.belt.id });
+      continue;
+    }
+    // Inside the mountain (montana-hueca.md) every area of a tree-building names it (`tower`): its building, and its
+    // floor the building's floor at its height (a room on a training floor, a service on sanctuary 1's floor).
+    if (a.tower) {
+      buildings.set(`torre:${a.tower.id}`, a.tower.label);
+      const floor = a.floorY === undefined ? undefined : areas.find((q) => q.tower?.id === a.tower!.id && q.floorY !== undefined && Math.abs(q.floorY - a.floorY!) < 0.5 && !q.id.startsWith("entrenamiento:")) ?? (a.floorY < 1 && a.id.endsWith(":pie") ? a : undefined);
+      if (floor) floors.set(`torre:${floor.id}`, floor.id.endsWith(":pie") ? floor.label : `${a.tower.label} · ${floor.label.replace(`${a.tower.label} · `, "")}`);
+      out.set(a.id, { edificio: `torre:${a.tower.id}`, ...(floor ? { piso: `torre:${floor.id}` } : {}) });
       continue;
     }
     const [prefix, local = ""] = a.id.split(":") as [string, string?];

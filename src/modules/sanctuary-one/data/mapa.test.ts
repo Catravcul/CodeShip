@@ -6,6 +6,7 @@ import { AQUARIUM_AREA, buildS1Layout, embryoBox } from "./layout";
 import { BASE, LOBES, NESTS, SEA, TOWERS, WATER_Y, capOf, lobeRadius } from "./site";
 import { GLOBE, GLOBE_CELL, globeShare, globeDepth, globeTopAt, layerBoxes } from "./globo";
 import { TRUNK_HALF } from "./paso";
+import { LIFE, pulpoAt, pulpoBody } from "../domain/pulpo";
 import { TREE } from "@modules/aerial-sanctuary/data/facts";
 
 /** The map in rings (Berón 2026-11-21): the whales' sea in the middle, the caps round it, the trees on bases at the edge. */
@@ -133,6 +134,15 @@ describe("el mapa en anillos", () => {
     const widest = Math.max(...GLOBE.layers.map((l) => l.cells.size)) * GLOBE_CELL * GLOBE_CELL;
     expect(GLOBE.embryo).toBeCloseTo((2 * Math.sqrt(widest / Math.PI)) / 3);
     for (const s of L.carpets) expect(s.lane.hi, s.id).toBeGreaterThan(GLOBE.topY);
+  });
+
+  it("el pulpo adulto, con los brazos abiertos, ocupa el 66 % del diámetro del globo y cabe en él (Berón 2026-11-28)", () => {
+    const span = pulpoBody(pulpoAt(LIFE.grown)).span * GLOBE.embryo;
+    expect(span / GLOBE.across).toBeCloseTo(0.66, 3);
+    // Its arms open at the belly, inside the water there: the layer at its height is wider than its span.
+    const layer = GLOBE.layers.find((l) => l.y0 <= GLOBE.bellyY && l.y1 > GLOBE.bellyY)!;
+    const wide = 2 * Math.sqrt((layer.cells.size * GLOBE_CELL * GLOBE_CELL) / Math.PI);
+    expect(span).toBeLessThan(wide);
   });
 
   it("las ballenas, delfines y focas viven en el mar y en el globo, dentro del agua y sin atravesar el embrión", () => {

@@ -229,6 +229,12 @@ Por fases, cada una con su PR.
 | 133 | **La pecera con Informática** | Hecho: en el piso de Informática |
 | 134 | **Reglas de reorganización por cálculo (marcas, mixto/puro, categorías, migrar, cima/anillo/repartir)** | Hecho (`domain/organizacion.ts`, [reglas.md](reglas.md) §2.13) |
 
+### Lista del 2026-11-28: el pulpo crece
+
+| # | Pedido | Estado |
+| --- | --- | --- |
+| 135 | **El pulpo debería llegar a ocupar el 66 % del globo de agua** | Hecho (`domain/pulpo.ts`): tras nacer, crece en el globo por etapas reales (paralarva en el plancton, asentamiento, subadulto, adulto; Villanueva 1995, Iglesias et al. 2007, Mangold 1983) y el **adulto, con los brazos abiertos, mide de punta a punta el 66 % del diámetro del globo** (≈185 m de 280; `PULPO_SIZE`, `pulpoBody`; por diámetro, no volumen, porque lo que se ve llenar el globo son los brazos). Proporciones del adulto: brazos ~4 veces el manto (Jereb et al. 2016, FAO). Se centra en la raíz de los brazos, a la altura del vientre del globo, entre las ballenas (arriba) y los delfines (abajo). Luego se va y aparece otro huevo. El ajuste «Huevo de pulpo» da los minutos hasta nacer; crecer hasta adulto dura otro tanto. Prueba: `pulpo.test.ts` y `mapa.test.ts` (66 % y cabe en la capa del vientre). Captura: `docs/screenshots/s1-pulpo-crece-movil.png`. Escala: ficción (en el mar crece ~500 veces; aquí ~2, porque la cría ya mide un tercio del globo). El sólido con que se choca nadando sigue siendo el huevo |
+
 ### Duodécima lista (2026-11-22, noche)
 
 | # | Pedido | Estado |

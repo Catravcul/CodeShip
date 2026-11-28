@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { BEE_EGG, CELL, beeAt, type BeeLook } from "@modules/aerial-sanctuary/domain/abeja";
+import { BEE_EGG, CELL, LARVA, beeAt, larvaShape, type BeeLook } from "@modules/aerial-sanctuary/domain/abeja";
 import type { PupaPlan } from "@modules/aerial-sanctuary/data/pupa-abeja";
 import { HOLLOW } from "@modules/aerial-sanctuary/data/montana";
 
@@ -17,6 +17,10 @@ const EYE = [0xf2eee4, 0xe8a8b8, 0x8a4a8a, 0x4a2a1a].map((c) => new THREE.Color(
 const PEARL = new THREE.Color(0xf4f0e4);
 const DARK = new THREE.Color(0x2a1c10);
 const BAND = new THREE.Color(0x9a6a28);
+const LARVA_HEAD = new THREE.Color(0xeadcb0);
+const Z = new THREE.Vector3(0, 0, 1);
+const AX = new THREE.Vector3();
+const AY = new THREE.Vector3();
 
 export class BeePupaView {
   readonly root = new THREE.Group();
@@ -27,6 +31,7 @@ export class BeePupaView {
   private readonly cell = new THREE.Matrix4();
   private readonly M = new THREE.Matrix4();
   private readonly P = new THREE.Matrix4();
+  private readonly R = new THREE.Matrix4();
   private readonly q = new THREE.Quaternion();
   private readonly e = new THREE.Euler();
   private readonly v = new THREE.Vector3();
@@ -88,16 +93,31 @@ export class BeePupaView {
     this.n++;
   }
 
+  /** One segment in the cell's frame (adult lengths), its long side (`su`) along `dir` (in the frame's w, v, u). */
+  private seg(u: number, v: number, w: number, dir: THREE.Vector3, su: number, sv: number, color: THREE.Color): void {
+    if (this.n >= BEE_BOXES) return;
+    const L = this.L;
+    // Square across, one side flat on the cell's floor while curled (so it sits on it, not into it).
+    const ax = (Math.abs(dir.z) < 0.99 ? AX.copy(Z) : AX.set(1, 0, 0)).cross(dir).normalize();
+    const ay = AY.crossVectors(dir, ax);
+    this.q.setFromRotationMatrix(this.R.makeBasis(ax, ay, dir));
+    this.P.compose(this.v.set(w * L, v * L, u * L), this.q, this.s.set(Math.max(1e-3, sv * L), Math.max(1e-3, sv * L), Math.max(1e-3, su * L)));
+    this.M.multiplyMatrices(this.cell, this.P);
+    this.bee.setMatrixAt(this.n, this.M);
+    this.bee.setColorAt(this.n, color);
+    this.n++;
+  }
+
   /** Each frame: the bee at its moment `k` (domain/abeja.ts), `t` real seconds (wingbeats, breathing). */
   update(k: number, t: number): BeeLook {
     const p = beeAt(k);
     this.n = 0;
     const F = this.cell;
-    // The egg: standing on the cell's bottom, leaning and lying down; inside it the embryo shows through the chorion.
+    // The egg: standing on the cell's bottom, leaning and lying down (on its side, not into the floor); inside it the embryo shows through the chorion.
     if (p.egg > 0.01) {
       const len = BEE_EGG.length;
       const wid = BEE_EGG.width * p.egg;
-      const frame = new THREE.Matrix4().multiplyMatrices(F, new THREE.Matrix4().makeRotationX(p.lean));
+      const frame = new THREE.Matrix4().multiplyMatrices(F, new THREE.Matrix4().makeTranslation(0, 0, Math.sin(p.lean) * wid * 0.62 * this.L)).multiply(new THREE.Matrix4().makeRotationX(p.lean));
       const S = 7;
       for (let i = 0; i < S; i++) {
         const s = (i + 0.5) / S;
@@ -112,27 +132,35 @@ export class BeePupaView {
       if (p.buds > 0) for (let i = 0; i < 4; i++) this.box(frame, len * (0.8 - i * 0.05), -wid * 0.55, (i % 2 ? 1 : -1) * wid * 0.2, len * 0.03 * p.buds, wid * 0.12 * p.buds, wid * 0.1, new THREE.Color(0xb89a70));
     }
     // The royal jelly the nurses lay under the young larva.
-    if (p.jelly > 0.01) this.box(F, 0.02, -CELL.width * 0.3, 0, 0.03, CELL.width * 0.12 * p.jelly, CELL.width * 0.6 * p.jelly, new THREE.Color(0xf6f0d0));
-    // The larva: a C on the cell's bottom, stretching out along the cell as a prepupa.
-    if (p.larva > 0.005) {
-      const N = 11;
+    if (p.jelly > 0.01) this.box(F, 0.003, 0, 0, 0.004, CELL.width * 0.45 * p.jelly, CELL.width * 0.45 * p.jelly, new THREE.Color(0xf2d878));
+    // The larva: a segmented C lying on the cell's bottom (in the floor's plane), as wide as it has grown; capped, it
+    // uncoils and stands up along the axis, head to the cap (the prepupa), and thins away as the pupa forms in it.
+    if (p.thick > 0.002 && p.larva > 0.005) {
+      const N = LARVA.segments;
+      const { ring, thick } = larvaShape(p);
       const len = p.larva;
-      const th = len * (0.22 + 0.06 * p.curl);
-      const R = len / (2 * Math.PI * 0.85);
+      const lift = thick / 2 + 0.005;
+      const dir = new THREE.Vector3();
       for (let i = 0; i < N; i++) {
         const s = (i + 0.5) / N;
-        const a = -Math.PI / 2 + s * Math.PI * 2 * 0.85;
-        const cu = th * 0.6;
-        const cv = Math.sin(a) * R;
-        const cw = Math.cos(a) * R;
-        const su = 0.05 + s * len;
-        const u = cu * p.curl + su * (1 - p.curl);
-        const v = cv * p.curl;
-        const w = cw * p.curl;
-        const taper = 0.75 + 0.25 * Math.sin(Math.PI * s);
-        // Its segments breathe a little (it is alive).
+        // Round the C from its tail (i 0) to its head (the last), which lies by the tail, nearly closing the ring.
+        const a = s * Math.PI * 2 * LARVA.arc;
+        const c = p.curl;
+        const along = 0.005 + s * len;
+        const v = Math.sin(a) * ring * c;
+        const w = Math.cos(a) * ring * c;
+        dir.set(-Math.sin(a) * c, Math.cos(a) * c, 1 - c);
+        if (dir.lengthSq() < 1e-6) dir.set(0, 0, 1);
+        dir.normalize();
+        const taper = i === N - 1 ? 0.62 : 0.72 + 0.28 * Math.sin(Math.PI * Math.min(1, s * 1.15));
+        // Its segments breathe a little (it is alive); a gap between them shows the rings.
         const b = 1 + 0.03 * Math.sin(t * 2 + i);
-        this.box(F, u, v, w, (len / N) * 1.25, th * taper * b, th * taper * b, i % 2 ? PEARL : this.c.set(0xece6d6), a * p.curl, 0, 0);
+        // Curled, each ring is as long as the C's outer edge round it (its inner edge overlaps, inside the body); straight, a little gap.
+        const su = (len / N) * (0.88 + c * (thick / 2 / Math.max(1e-6, ring)) * 0.95);
+        const sv = thick * taper * b;
+        // Never into the floor, however it leans as it uncoils.
+        const u = Math.max(lift * c + along * (1 - c), (su / 2) * Math.abs(dir.z) + (sv / 2) * Math.sqrt(Math.max(0, 1 - dir.z * dir.z)) + 0.005);
+        this.seg(u, v, w, dir, su, sv, i === N - 1 ? LARVA_HEAD : i % 2 ? PEARL : this.c.set(0xece6d6));
       }
     }
     // The pupa and the adult: head to the cap; the eyes darken, then the thorax, then the rest.
@@ -169,28 +197,31 @@ export class BeePupaView {
     const cut = new THREE.Color().copy(PEARL).lerp(DARK, p.body);
     const tho = new THREE.Color().copy(PEARL).lerp(new THREE.Color(0x3a2814), p.thorax);
     const eye = this.eyeColor(p.eyes);
-    const s = 0.98 * k;
+    // The pupa forms inside the thinning prepupa: as long as it at once, filling out across.
+    const s = 0.98;
+    const x = k;
     const u0 = 0.04;
+    const bx = (u: number, v: number, w: number, su: number, sv: number, sw: number, color: THREE.Color, rx = 0, ry = 0, rz = 0) => this.box(frame, u, v * x, w * x, su, sv * x, sw * x, color, rx, ry, rz);
     // Abdomen (6 tergites banded when dark), thorax, head with its compound eyes, antennae, legs, wings.
     for (let i = 0; i < 6; i++) {
       const band = new THREE.Color().copy(PEARL).lerp(i % 2 ? BAND : DARK, p.body);
       const w = 0.2 * Math.sin(Math.PI * (0.25 + (0.75 * (i + 0.5)) / 6)) + 0.07;
-      this.box(frame, u0 + (0.07 + i * 0.075) * s, 0, 0, 0.08 * s, w * s, w * 1.05 * s, band);
+      bx(u0 + (0.07 + i * 0.075) * s, 0, 0, 0.08 * s, w * s, w * 1.05 * s, band);
     }
-    this.box(frame, u0 + 0.58 * s, 0.01 * s, 0, 0.22 * s, 0.2 * s, 0.22 * s, tho);
-    this.box(frame, u0 + 0.78 * s, 0, 0, 0.13 * s, 0.17 * s, 0.2 * s, cut);
+    bx(u0 + 0.58 * s, 0.01 * s, 0, 0.22 * s, 0.2 * s, 0.22 * s, tho);
+    bx(u0 + 0.78 * s, 0, 0, 0.13 * s, 0.17 * s, 0.2 * s, cut);
     for (const side of [-1, 1]) {
-      this.box(frame, u0 + 0.79 * s, 0.02 * s, side * 0.1 * s, 0.1 * s, 0.12 * s, 0.035 * s, eye);
-      this.box(frame, u0 + 0.9 * s, 0.07 * s, side * 0.04 * s, 0.16 * s, 0.015 * s, 0.015 * s, cut, -0.5, side * 0.3, 0);
+      bx(u0 + 0.79 * s, 0.02 * s, side * 0.1 * s, 0.1 * s, 0.12 * s, 0.035 * s, eye);
+      bx(u0 + 0.9 * s, 0.07 * s, side * 0.04 * s, 0.16 * s, 0.015 * s, 0.015 * s, cut, -0.5, side * 0.3, 0);
       // Legs: folded under the pupa, out on the adult.
       for (let j = 0; j < 3; j++) {
         const spread = p.out > 0 ? 0.6 : 0.1;
-        this.box(frame, u0 + (0.5 + j * 0.08) * s, -0.11 * s, side * (0.08 + spread * 0.1) * s, 0.025 * s, 0.025 * s, (0.14 + spread * 0.1) * s, cut, 0, 0, side * (0.3 + spread));
+        bx(u0 + (0.5 + j * 0.08) * s, -0.11 * s, side * (0.08 + spread * 0.1) * s, 0.025 * s, 0.025 * s, (0.14 + spread * 0.1) * s, cut, 0, 0, side * (0.3 + spread));
       }
       // Wing pads on the pupa, wings on the adult (beating ~230 times a second in reality: a blur here).
       const wing = p.wings;
       const beat = p.out > 0.2 ? Math.sin(t * 60) * 0.7 : 0;
-      this.box(frame, u0 + (0.5 - 0.15 * wing) * s, 0.12 * s, side * (0.08 + 0.18 * wing) * s, (0.12 + 0.3 * wing) * s, 0.008 * s, (0.08 + 0.2 * wing) * s, this.c.set(0xd8dce0).lerp(new THREE.Color(0xf6f8fa), wing), 0, side * 0.15 * wing, side * (0.1 + beat));
+      bx(u0 + (0.5 - 0.15 * wing) * s, 0.12 * s, side * (0.08 + 0.18 * wing) * s, (0.12 + 0.3 * wing) * s, 0.008 * s, (0.08 + 0.2 * wing) * s, this.c.set(0xd8dce0).lerp(new THREE.Color(0xf6f8fa), wing), 0, side * 0.15 * wing, side * (0.1 + beat));
     }
   }
 

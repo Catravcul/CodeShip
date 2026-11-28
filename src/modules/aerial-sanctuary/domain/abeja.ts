@@ -18,6 +18,12 @@
  *
  * Unit: the adult worker's length = 1 (A. cerana ~10–11 mm). Real proportions: the egg ~1,5 × 0,35 mm (0,14 × 0,03),
  * the worker cell's width ~4,5 mm and depth ~11 mm (0,42 × 1,05; Oldroyd y Wongsiri 2006), its axis tilted up ~13°.
+ *
+ * Nothing leaves the cell before the adult chews out (Berón 2026-11-28: «empieza a crecer muchísimo con una forma rara
+ * saliendo de los límites del contenedor amarillo»): the egg stands on the bottom, leans and lies (real, Winston 1987);
+ * the larva lies curled in a C on the bottom, in the plane of the floor, and grows until the C fills the bottom
+ * (LARVA: its outer edge at 95 % of the cell's half width), not longer; once capped it uncoils and stretches along the
+ * cell's axis, head to the cap (the prepupa), and the pupa forms inside it (Winston 1987, cap. 4).
  */
 import { advanceCycle, ramp, smooth, stageIn, type EmbryoStage } from "@modules/fauna/domain/globe-embryo";
 
@@ -64,6 +70,23 @@ export const FLY_SHARE = 0.15;
 export const CELL = { width: 0.42, depth: 1.05, tiltRad: (13 * Math.PI) / 180 } as const;
 export const BEE_EGG = { length: 0.14, width: 0.032 } as const;
 
+/**
+ * The larva's C (ours, from the photos of a worker cell: the full-grown larva curled round the bottom, a ring nearly
+ * closed, plump): the share of a full turn its body bends round, its segments (head + 3 thoracic + 10 abdominal, Snodgrass
+ * 1956 Anatomy of the Honey Bee), its thickness over its length, and how much of the cell's half width the C fills at
+ * most. The prepupa: as long as the cell lets it, head to the cap.
+ */
+export const LARVA = { arc: 0.85, segments: 14, thickShare: 0.3, fill: 0.95, prepupa: 0.86 } as const;
+/** The full-grown larva's length (adult lengths): the longest C whose outer edge (its square segments' corners) fills the bottom. */
+export const LARVA_MAX = (LARVA.fill * CELL.width) / 2 / (1 / (2 * Math.PI * LARVA.arc) + LARVA.thickShare * Math.SQRT1_2);
+
+/** The larva's shape at a moment: the C's ring (centre line) radius, its body thickness, its outer reach from the axis and its top. */
+export function larvaShape(p: Pick<BeeLook, "larva" | "thick" | "curl">): { ring: number; thick: number; reach: number; top: number } {
+  const ring = p.larva / (2 * Math.PI * LARVA.arc);
+  // Curled: a flat ring on the bottom; straight: a rod up the axis from the bottom. In between, every point lies between the two.
+  return { ring, thick: p.thick, reach: ring * p.curl + p.thick * Math.SQRT1_2, top: Math.max(p.thick + 0.01, p.larva + 0.02) };
+}
+
 /** What to draw at a moment: sizes in adult lengths, angles in radians, colours 0 (white) … 1 (dark). */
 export interface BeeLook {
   readonly stage: BeeStage;
@@ -76,8 +99,9 @@ export interface BeeLook {
   readonly band: number;
   readonly segments: number;
   readonly buds: number;
-  /** The larva: its length along its body (curled in a C until it stretches), how curled (1 a C … 0 straight). */
+  /** The larva: its length along its body (curled in a C until it stretches), its thickness, how curled (1 a C … 0 straight). */
   readonly larva: number;
+  readonly thick: number;
   readonly curl: number;
   /** Its instar (1–5; 0 before hatching). */
   readonly instar: number;
@@ -106,10 +130,15 @@ export function beeAt(k: number): BeeLook {
   const day = kk * BEE_TOTAL_DAYS;
   const st = beeStageAt(kk);
   const r = (d0: number, d1: number, a: number, b: number) => ramp(day, d0, d1, a, b);
-  // The larva grows ~1 500-fold in weight in 5 days: its length about the cube root (~11×), most of it at the end.
+  // The larva grows ~1 500-fold in weight in 5 days: its length about the cube root (~11×), most of it at the end; here
+  // it stops when its C fills the bottom (LARVA_MAX ≈ 4,4× the egg: the rest of its growth is girth).
   const grow = smooth((day - 3) / 5) ** 1.6;
-  // It comes out of the egg as the egg goes (the chorion dissolves round it): the one fades as the other shows.
-  const larva = day < 8 ? BEE_EGG.length * (1 + 7.5 * grow) * r(2.95, 3.05, 0, 1) : r(8, 9.5, BEE_EGG.length * 8.5, 0.95);
+  const hatch = r(2.95, 3.05, 0, 1);
+  const young = BEE_EGG.length + (LARVA_MAX - BEE_EGG.length) * grow;
+  // It comes out of the egg as the egg goes; capped, it stretches; then the pupa forms inside it as it thins away.
+  const length = day < 8 ? young * hatch : r(8, 9.5, LARVA_MAX, LARVA.prepupa);
+  const girth = day < 8 ? LARVA.thickShare * young * hatch : LARVA.thickShare * LARVA_MAX * Math.sqrt(LARVA_MAX / length);
+  const thin = 1 - r(9.6, 10.2, 0, 1);
   return {
     stage: st,
     phase: st.phase,
@@ -119,7 +148,8 @@ export function beeAt(k: number): BeeLook {
     band: r(0.9, 1.4, 0, 1),
     segments: r(1.4, 1.9, 0, 14),
     buds: r(1.9, 2.5, 0, 1),
-    larva: day >= 10 ? 0 : larva * (1 - r(9.6, 10, 0, 1)),
+    larva: length * (1 - r(10.1, 10.25, 0, 1)),
+    thick: girth * thin,
     curl: 1 - r(8, 9.5, 0, 1),
     instar: day < 3 ? 0 : Math.min(5, 1 + Math.floor(day - 3)),
     jelly: r(2.9, 3.2, 0, 1) * (1 - r(5, 7.5, 0, 1)),
@@ -128,7 +158,8 @@ export function beeAt(k: number): BeeLook {
     eyes: r(11.5, 16, 0, 1),
     thorax: r(15.5, 17, 0, 1),
     body: r(16.5, 18.2, 0, 1),
-    wings: r(18.8, 19.3, 0, 1),
+    // The wings stay folded pads in the cell and spread once she is out (a fresh worker's wings unfold in minutes).
+    wings: ramp(ramp(kk, 1, 1 + FLY_SHARE, 0, 1), 0.2, 0.4, 0, 1),
     out: ramp(kk, 1, 1 + FLY_SHARE, 0, 1),
   };
 }

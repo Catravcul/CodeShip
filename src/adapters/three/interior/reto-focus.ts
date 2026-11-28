@@ -15,7 +15,8 @@ import type { StepFrame, StepShow } from "./step-show";
 export interface LensFov {
   /** The scene's own angle, back when the sheet closes (default: the one it had when the lens came on). */
   readonly base?: number;
-  /** Half the vertical angle of the strip above the sheet in portrait (degrees, default 28: her whole at a thing). */
+  /** Half the vertical angle of the strip above the sheet in portrait (degrees, default 33: her whole at a thing with room
+   * over her head; 2026-11-28, with 28 the panel view left her head on the band's top edge at a thing). */
   readonly half?: number;
   /**
    * The free band of the screen in portrait (px from the top: where the sheet leaves room), measured from the sheet
@@ -50,7 +51,7 @@ export function sheetLens(camera: THREE.PerspectiveCamera, on: boolean, fov: Len
     const half = Math.max(20, (b.bottom - b.top) / 2);
     const F = 2 * Math.max(c, h - c);
     camera.aspect = w / F;
-    camera.fov = (2 * Math.atan((Math.tan((fov.half ?? 28) * rad) * (F / 2)) / half)) / rad;
+    camera.fov = (2 * Math.atan((Math.tan((fov.half ?? 33) * rad) * (F / 2)) / half)) / rad;
     camera.setViewOffset(w, F, 0, F / 2 - c, w, h);
   } else if (on) {
     const W = 1.44 * w;

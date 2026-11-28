@@ -10,6 +10,13 @@ Lo nuevo arriba. Una línea por cambio visible o de arquitectura, con su documen
   se despliegan al salir. Prueba que cada caja de cada etapa cabe en la celda ([pupa-abeja.md](docs/design/pupa-abeja.md)).
 - **Santuario 1, el pulpo crece**: tras nacer crece en el globo (paralarva, asentamiento, subadulto, adulto) hasta que
   sus brazos abiertos miden el 66 % del diámetro del globo; luego otro huevo ([santuario1.md](docs/design/santuario1.md)).
+- **Santuarios 1 y 3, ajustes de Tareas, Áreas y Alfombras**: solo Viaje/Teletransporte; sin filtro de isla, vehículo ni
+  edificio, las listas enseñan todo el santuario con sus chips de categoría (opción compartida `wholePlace`; el 6 sigue
+  con nodriza/estación) ([areas.md](docs/design/areas.md)).
+- **Santuario 3, retos dibujados**: botón **Vista HUD / Vista panel** como en el resto de retos; la cámara encuadra la
+  escena en la franja que deja libre cada vista; los servicios del campus (la clase del aula y los demás) encuadran a
+  Doménica y representan cada paso; en panel cabe entera, y en el simulador de Dragon su cabeza ya no tapa la pantalla ([retos-trazos.md](docs/design/retos-trazos.md); capturas
+  `docs/screenshots/s3-reto-aula-{panel,hud}-movil.png`).
 
 ## 2026-11-26
 

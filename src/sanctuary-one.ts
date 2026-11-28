@@ -32,7 +32,7 @@ import { AreasWindow } from "./ui/areas-window";
 import { settings } from "./ui/settings-store";
 import { DayNight } from "./adapters/three/day-night";
 import { woodGridMetres } from "@modules/settings/domain/settings";
-import { offerVehicles } from "./ui/task-settings";
+import { wholePlace } from "./ui/task-settings";
 import type { AreaMap, AreaNode } from "@modules/tasks/application/areas";
 import { CAP_NAME, LOBES, WATER_Y, capOf, isLand } from "@modules/sanctuary-one/data/site";
 import { TREE } from "@modules/aerial-sanctuary/data/facts";
@@ -412,8 +412,8 @@ function toggleView(): void {
 }
 
 // --- Áreas: the map window with every place of the sanctuary and «Ir» (the real way, or teleport if she chose it) ---
-offerVehicles(["auto"], "Santuario");
-if (settings.value.taskVehicle !== "auto") settings.set("taskVehicle", "auto");
+// One place, no service repeated: Tareas, Áreas and the carpets show it all, their gear only Viaje/Teletransporte.
+wholePlace("Todo el santuario");
 /** The box of an area on the map: a floor's slab, a ring's U, a cap's disc; the sea round the lagoon. */
 function areaBox(a: (typeof L.areas)[number]): Pick<AreaNode, "centre" | "half"> {
   for (const t of L.towers) {

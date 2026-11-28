@@ -20,3 +20,17 @@
 .trace-name { flex: 1; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.25; }
 .trace-steps { flex: none; font-weight: 600; color: #e8e4ff; }
 body.in-trace .duel { display: none; }
+/* The view toggle, as the challenge sheet's «Vista HUD / Vista panel» (duel-view.ts). */
+.trace-ui { flex: none; min-height: 44px; padding: 0 12px; border-radius: 22px; border: 1px solid #ffffff33; background: #ffffff14; color: #fff; font-size: 13px; cursor: pointer; }
+/*
+ * The HUD view (body.ui-compact, the shared setting): floating over the scene. The title and the formula at the top,
+ * the pad see-through at the bottom; the stage acted in between (reto-focus.ts measures that band, sheet-band.ts).
+ */
+body.ui-compact .trace { inset: 0; top: 0; background: none; border: 0; border-radius: 0; box-shadow: none; pointer-events: none; text-shadow: 0 0 3px #000, 0 0 10px #000c; padding-top: calc(8px + env(safe-area-inset-top)); }
+body.ui-compact .trace > * { pointer-events: auto; }
+body.ui-compact .trace-top { background: #020a12b3; border-radius: 12px; padding: 0 0 0 10px; }
+body.ui-compact .trace-formula { align-self: center; min-height: 0; padding: 0 12px; border-radius: 10px; background: #020a12b3; font-size: 24px; margin-bottom: auto; }
+body.ui-compact .trace-pad { flex: 0 0 auto; height: 36vh; min-height: 150px; background: transparent; border-color: color-mix(in srgb, var(--tc0, #fff) 35%, transparent); }
+body.ui-compact .trace-hint { min-height: 0; padding: 2px 8px; border-radius: 8px; background: #020a12b3; align-self: center; }
+body.ui-compact .trace-foot { padding: 2px 8px; border-radius: 8px; background: #020a12b3; }
+@media (min-aspect-ratio: 1/1) { body.ui-compact .trace { left: auto; width: min(480px, 46vw); padding-inline: 14px; } body.ui-compact .trace-pad { height: 46vh; } }
